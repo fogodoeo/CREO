@@ -6,7 +6,7 @@ const { channelKey } = require('../platform-core');
 async function main() {
     const repository = new SupabaseConfigRepository();
     const adminRow = await repository.getRow('admin_pw');
-    const admin = adminRow?.value || 'unconfigured-local-verification';
+    const admin = process.env.CREO_ADMIN_SECRET || adminRow?.value || 'unconfigured-local-verification';
     const base = String(process.env.CREO_VERIFY_URL || 'http://127.0.0.1:43920').replace(/\/$/, '') + '/api/platform';
     const idA = `verify-a-${Date.now().toString(36)}`;
     const idB = `verify-b-${Date.now().toString(36)}`;
