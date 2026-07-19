@@ -5,11 +5,15 @@ const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
 const { createBandOAuth } = require('./band-oauth');
+const { createPlatformApi } = require('./platform-api');
+const { SupabaseConfigRepository } = require('./platform-repository');
 
 const PORT = Number(process.env.PORT || 10000);
 const HOST = process.env.HOST || '0.0.0.0';
 const PUBLIC_DIR = path.resolve(__dirname, 'public');
 const bandOAuth = createBandOAuth();
+const platformRepository = new SupabaseConfigRepository();
+const platformApi = createPlatformApi({ repository: platformRepository });
 
 const SECURITY_HEADERS = {
     'X-Content-Type-Options': 'nosniff',
@@ -179,12 +183,20 @@ const server = http.createServer(async (req, res) => {
             return;
         }
 
+        if (url.pathname.startsWith('/api/platform/')) {
+            if (await platformApi.handle(req, res, url)) return;
+        }
+
         if (url.pathname === '/health' && req.method === 'GET') {
+            let platform;
+            try { platform = await platformRepository.health(); }
+            catch (error) { platform = { ok: false, error: error.message }; }
             sendJson(res, 200, {
                 ok: true,
                 service: 'creo',
                 publicSiteReady: true,
                 bandOAuthConfigured: bandOAuth.config.configured,
+                platform,
                 now: new Date().toISOString()
             });
             return;

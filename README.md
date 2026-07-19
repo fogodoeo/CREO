@@ -1,17 +1,34 @@
 # CREO
 
-CREO의 경매·운영 허브와 CREWARTS 설문, NAVER BAND OAuth 브리지를 한 서비스에서 제공합니다.
+CREO 멀티 경매 운영 허브, CREWARTS 설문, NAVER BAND OAuth 브리지입니다.
 
-## Public routes
+## 멀티 경매 운영
 
-- `/` — CREO 운영 허브
+- `/` — 채널 중심 운영 허브
+- `/channel-manager.html` — 신규 경매 채널 생성·복제·디자인 설정
+- `/channel-workspace.html?channel=<id>` — 채널별 업체·개체·배송 관리
+- `/auction-control.html?channel=<id>` — 통합 방송 제어
+- `/broadcast-router.html?page=1` — 방송 프로그램에 등록할 공용 송출 URL
+
+신규 채널 데이터는 `creo_v2::<channel_id>::...` 이름공간으로 분리됩니다. 자세한 설계와 운영 절차는 [멀티 경매 플랫폼 설계](docs/platform-architecture.md)를 참고하세요.
+
+## 기존 공개 화면
+
 - `/crewart-survey.html` — CREWARTS 성향 테스트
-- `/broadcast.html` — 방송 운영 화면
-- `/shipping.html` — 배송 관리 화면
+- `/cdcup-index.html` — CDCUP 기존 관리 화면
+- `/shipping.html` — 기존 배송 관리 화면
 - `/api/band-oauth/*` — NAVER BAND OAuth 브리지
-- `/health` — Render 상태 확인
+- `/health` — Render 상태와 플랫폼 저장소 확인
 
-`public/`의 정적 파일은 기존 CDCUP Static Site에서 이관했습니다. 동영상 요청은 HTTP Range를 지원하며 HTML/JSON은 재검증하고 이미지·영상·폰트는 장기 캐시합니다.
+`public/`의 이미지와 영상은 브라우저 캐시와 HTTP Range 요청을 지원합니다.
+
+## 실행
+
+```bash
+npm install
+npm test
+npm start
+```
 
 ## Render
 
@@ -21,10 +38,8 @@ CREO의 경매·운영 허브와 CREWARTS 설문, NAVER BAND OAuth 브리지를 
 - Health check: `/health`
 - Public URL: `https://creok.onrender.com`
 
-Render 환경변수는 `.env.example`을 기준으로 설정합니다. BAND client secret과 session secret은 Render Environment에만 저장하고 Git에 커밋하지 않습니다.
+환경변수는 `.env.example`을 기준으로 설정합니다. BAND client secret, session secret, `CREO_ADMIN_SECRET`, Supabase service-role 키는 Render Environment에만 저장하고 Git에 커밋하지 않습니다.
 
 등록할 BAND Redirect URI:
 
 `https://creok.onrender.com/api/band-oauth/callback`
-
-기존 CDCUP 주소를 전환하는 동안에는 `BAND_OAUTH_ALLOWED_RETURN_URLS`에 레거시 설문 주소를 유지합니다. 완전 전환 후 해당 값과 CDCUP 서비스를 정리할 수 있습니다.

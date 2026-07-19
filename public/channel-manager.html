@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+    <title>채널 관리 · CREO</title>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+    <script src="platform-client.js?v=20260720-platform-v1"></script>
+    <style>
+        :root{color-scheme:dark;--bg:#0a0c10;--panel:#12161d;--panel2:#181d26;--line:#29303b;--text:#f5f7fa;--muted:#9099a7;--gold:#d7b66d;--blue:#668bff;--danger:#ef6c6c}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Pretendard Variable,Pretendard,sans-serif;letter-spacing:-.018em}button,input,select,textarea{font:inherit}.shell{display:grid;grid-template-columns:310px minmax(0,1fr);min-height:100vh}.rail{position:sticky;top:0;height:100vh;padding:24px;border-right:1px solid var(--line);background:#0d1015}.brand{display:flex;align-items:center;gap:10px;color:inherit;text-decoration:none;font-weight:850;letter-spacing:.12em}.mark{display:grid;place-items:center;width:34px;height:34px;border:1px solid #4a402c;border-radius:10px;color:var(--gold);font-family:Georgia,serif;font-size:21px}.rail-head{display:flex;align-items:center;justify-content:space-between;margin:34px 0 12px}.rail-head h2{margin:0;font-size:13px}.new-btn{width:32px;height:32px;border:1px solid var(--line);border-radius:9px;background:var(--panel2);color:var(--text);font-size:20px;cursor:pointer}.channel-list{display:grid;gap:7px}.channel-row{display:flex;width:100%;align-items:center;gap:10px;padding:12px;border:1px solid transparent;border-radius:12px;background:transparent;color:var(--muted);text-align:left;cursor:pointer}.channel-row:hover,.channel-row.active{border-color:var(--line);background:var(--panel);color:var(--text)}.swatch{width:10px;height:34px;border-radius:7px;background:var(--swatch)}.channel-row b{display:block;font-size:13px}.channel-row small{display:block;margin-top:3px;color:#6f7886;font-size:10px}.rail-foot{position:absolute;right:24px;bottom:22px;left:24px}.rail-foot a{color:var(--muted);font-size:12px;text-decoration:none}
+        .main{padding:42px clamp(28px,5vw,74px) 80px}.main-head{display:flex;align-items:end;justify-content:space-between;gap:20px;max-width:920px}.eyebrow{color:var(--gold);font-size:11px;font-weight:850;letter-spacing:.12em}.main h1{margin:8px 0 0;font-size:clamp(30px,4vw,47px);letter-spacing:-.05em}.main-head p{margin:10px 0 0;color:var(--muted);line-height:1.6}.actions{display:flex;gap:8px}.btn{min-height:42px;padding:0 16px;border:1px solid var(--line);border-radius:11px;background:var(--panel2);color:var(--text);font-weight:760;cursor:pointer}.btn.primary{border-color:transparent;background:var(--gold);color:#181209}.btn.danger{color:#ff9a9a}.btn:disabled{opacity:.45;cursor:not-allowed}.form{display:grid;grid-template-columns:1fr 1fr;gap:18px;max-width:920px;margin-top:34px}.card{padding:24px;border:1px solid var(--line);border-radius:18px;background:var(--panel)}.card.full{grid-column:1/-1}.card h2{margin:0 0 18px;font-size:16px}.fields{display:grid;grid-template-columns:1fr 1fr;gap:14px}.field.full{grid-column:1/-1}.field label{display:block;margin:0 0 7px;color:#aab2bd;font-size:11px;font-weight:750}.field input,.field select,.field textarea{width:100%;min-height:44px;padding:10px 12px;border:1px solid #323a46;border-radius:10px;outline:none;background:#0c1015;color:var(--text)}.field textarea{min-height:86px;resize:vertical}.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(102,139,255,.12)}.color-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}.color-field input{height:48px;padding:4px}.checks{display:flex;flex-wrap:wrap;gap:8px}.check{display:flex;align-items:center;gap:8px;padding:11px 13px;border:1px solid var(--line);border-radius:10px;color:#c1c8d2;font-size:12px}.check input{accent-color:var(--gold)}.preview{display:flex;align-items:center;justify-content:space-between;gap:20px;min-height:128px;padding:24px;border-radius:15px;background:linear-gradient(135deg,var(--preview-primary),var(--preview-bg) 68%);color:var(--preview-text);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}.preview b{display:block;font-size:26px}.preview small{color:color-mix(in srgb,var(--preview-text) 68%,transparent)}.preview .seal{display:grid;place-items:center;width:64px;height:64px;border:2px solid var(--preview-secondary);border-radius:50%;color:var(--preview-secondary);font-family:Georgia,serif;font-size:28px}.notice{max-width:920px;margin-top:16px;color:var(--muted);font-size:12px}.toast{position:fixed;right:24px;bottom:24px;z-index:20;max-width:360px;padding:14px 17px;border:1px solid #3b4553;border-radius:12px;background:#1b222c;box-shadow:0 18px 50px #0008;opacity:0;transform:translateY(10px);pointer-events:none;transition:.2s}.toast.show{opacity:1;transform:none}.login{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:20px;background:rgba(5,7,10,.84);backdrop-filter:blur(14px)}.login[hidden]{display:none}.login-card{width:min(420px,100%);padding:28px;border:1px solid var(--line);border-radius:20px;background:var(--panel)}.login-card h2{margin:0}.login-card p{color:var(--muted);font-size:13px;line-height:1.6}.login-card form{display:flex;gap:8px;margin-top:20px}.login-card input{flex:1;min-width:0;height:46px;padding:0 13px;border:1px solid #343c49;border-radius:10px;background:#0b0e13;color:var(--text)}
+        @media(max-width:820px){.shell{display:block}.rail{position:relative;height:auto;padding:16px;border-right:0;border-bottom:1px solid var(--line)}.rail-head{margin-top:18px}.channel-list{display:flex;overflow:auto}.channel-row{min-width:180px}.rail-foot{display:none}.main{padding:30px 16px 64px}.main-head{align-items:start}.form{grid-template-columns:1fr}.card.full{grid-column:auto}.fields{grid-template-columns:1fr}.field.full{grid-column:auto}.color-grid{grid-template-columns:1fr 1fr}.preview{align-items:start}.actions{position:fixed;right:12px;bottom:12px;left:12px;z-index:10;padding:8px;border:1px solid var(--line);border-radius:14px;background:rgba(15,18,24,.9);backdrop-filter:blur(14px)}.actions .btn{flex:1}}
+    </style>
+</head>
+<body>
+<div class="shell">
+    <aside class="rail">
+        <a class="brand" href="/"><span class="mark">C</span> CREO</a>
+        <div class="rail-head"><h2>경매 채널</h2><button class="new-btn" id="new-channel" aria-label="새 채널">＋</button></div>
+        <div class="channel-list" id="channel-list"></div>
+        <div class="rail-foot"><a href="/">← 운영 허브로 돌아가기</a></div>
+    </aside>
+    <main class="main">
+        <header class="main-head"><div><span class="eyebrow">CHANNEL BLUEPRINT</span><h1 id="page-title">채널 설정</h1><p>경매별 데이터 경계와 방송 디자인을 한 번에 설정합니다.</p></div><div class="actions"><button class="btn" id="duplicate">복제</button><button class="btn primary" id="save">저장</button></div></header>
+        <form class="form" id="channel-form" autocomplete="off">
+            <section class="card"><h2>기본 정보</h2><div class="fields">
+                <div class="field"><label for="channel-id">채널 ID</label><input id="channel-id" maxlength="32" placeholder="new-auction" required></div>
+                <div class="field"><label for="channel-status">운영 상태</label><select id="channel-status"><option value="draft">준비 중</option><option value="active">운영 중</option><option value="paused">일시정지</option><option value="archived">보관됨</option></select></div>
+                <div class="field"><label for="channel-name">채널 이름</label><input id="channel-name" maxlength="48" required></div>
+                <div class="field"><label for="channel-short">방송용 짧은 이름</label><input id="channel-short" maxlength="24"></div>
+                <div class="field full"><label for="channel-description">설명</label><textarea id="channel-description" maxlength="140"></textarea></div>
+            </div></section>
+            <section class="card"><h2>운영 방식</h2><div class="fields">
+                <div class="field full"><label for="broadcast-template">방송 레이아웃</label><select id="broadcast-template"><option value="classic">일반 경매</option><option value="tournament">토너먼트</option><option value="academy">크레와트형</option></select></div>
+                <div class="field full"><label>사용 기능</label><div class="checks"><label class="check"><input type="checkbox" id="feature-ranking"> 순위표</label><label class="check"><input type="checkbox" id="feature-tournament"> 토너먼트</label><label class="check"><input type="checkbox" id="feature-survey"> 설문</label></div></div>
+            </div></section>
+            <section class="card full"><h2>방송 디자인</h2><div class="color-grid">
+                <div class="field color-field"><label for="theme-primary">주 색상</label><input type="color" id="theme-primary"></div>
+                <div class="field color-field"><label for="theme-secondary">강조 색상</label><input type="color" id="theme-secondary"></div>
+                <div class="field color-field"><label for="theme-background">배경</label><input type="color" id="theme-background"></div>
+                <div class="field color-field"><label for="theme-surface">패널</label><input type="color" id="theme-surface"></div>
+                <div class="field color-field"><label for="theme-text">글자</label><input type="color" id="theme-text"></div>
+            </div><div class="preview" id="theme-preview"><div><small>LIVE AUCTION</small><b id="preview-name">새 경매</b></div><div class="seal">C</div></div></section>
+        </form>
+        <p class="notice">채널을 복제하면 디자인과 기능 설정만 복사됩니다. 업체·개체·배송 데이터는 새 채널에 섞이지 않습니다.</p>
+    </main>
+</div>
+<div class="login" id="login"><div class="login-card"><h2>운영자 확인</h2><p>기존 경매 관리자 비밀번호를 입력하면 이 창에서만 유지됩니다.</p><form id="login-form"><input type="password" id="admin-password" autocomplete="current-password" placeholder="관리자 비밀번호" required><button class="btn primary">확인</button></form></div></div>
+<div class="toast" id="toast" role="status"></div>
+<script>
+const $ = id => document.getElementById(id);
+let catalog = { version: 0, channels: [] };
+let selectedId = '';
+let isNew = false;
+
+function toast(message){const el=$('toast');el.textContent=message;el.classList.add('show');clearTimeout(el._timer);el._timer=setTimeout(()=>el.classList.remove('show'),2600)}
+function blankChannel(){return{id:'',name:'',shortName:'',description:'',status:'draft',broadcastTemplate:'classic',theme:{primary:'#27364d',secondary:'#d7b66d',background:'#090d14',surface:'#151b25',text:'#f7f8fa'},features:{ranking:true,tournament:false,survey:false}}}
+function current(){return isNew?blankChannel():catalog.channels.find(c=>c.id===selectedId)||blankChannel()}
+function readForm(){return{id:$('channel-id').value,name:$('channel-name').value,shortName:$('channel-short').value,description:$('channel-description').value,status:$('channel-status').value,broadcastTemplate:$('broadcast-template').value,theme:{primary:$('theme-primary').value,secondary:$('theme-secondary').value,background:$('theme-background').value,surface:$('theme-surface').value,text:$('theme-text').value},features:{ranking:$('feature-ranking').checked,tournament:$('feature-tournament').checked,survey:$('feature-survey').checked}}}
+function fill(c){$('channel-id').value=c.id;$('channel-id').disabled=!isNew;$('channel-name').value=c.name;$('channel-short').value=c.shortName;$('channel-description').value=c.description;$('channel-status').value=c.status;$('broadcast-template').value=c.broadcastTemplate;$('theme-primary').value=c.theme.primary;$('theme-secondary').value=c.theme.secondary;$('theme-background').value=c.theme.background;$('theme-surface').value=c.theme.surface;$('theme-text').value=c.theme.text;$('feature-ranking').checked=!!c.features.ranking;$('feature-tournament').checked=!!c.features.tournament;$('feature-survey').checked=!!c.features.survey;$('page-title').textContent=isNew?'새 경매 채널':c.name;updatePreview()}
+function updatePreview(){const c=readForm(),p=$('theme-preview');p.style.setProperty('--preview-primary',c.theme.primary);p.style.setProperty('--preview-secondary',c.theme.secondary);p.style.setProperty('--preview-bg',c.theme.background);p.style.setProperty('--preview-text',c.theme.text);$('preview-name').textContent=c.shortName||c.name||'새 경매'}
+function renderList(){const esc=CreoPlatform.escapeHtml;$('channel-list').innerHTML=catalog.channels.map(c=>`<button class="channel-row ${!isNew&&c.id===selectedId?'active':''}" data-id="${esc(c.id)}" style="--swatch:${esc(c.theme.primary)}"><span class="swatch"></span><span><b>${esc(c.name)}</b><small>${esc(c.status)} · ${esc(c.id)}</small></span></button>`).join('');document.querySelectorAll('.channel-row').forEach(b=>b.onclick=()=>{isNew=false;selectedId=b.dataset.id;renderList();fill(current())})}
+async function load(){catalog=await CreoPlatform.api('channels');if(!selectedId)selectedId=catalog.channels[0]?.id||'';renderList();fill(current())}
+async function login(password){CreoPlatform.setAdmin(password);if(!await CreoPlatform.verifyAdmin(password))throw new Error('비밀번호가 맞지 않습니다.');$('login').hidden=true;await load()}
+$('login-form').onsubmit=async e=>{e.preventDefault();try{await login($('admin-password').value)}catch(err){toast(err.message)}};
+$('new-channel').onclick=()=>{isNew=true;selectedId='';renderList();fill(blankChannel());$('channel-id').focus()};
+$('channel-form').addEventListener('input',updatePreview);
+$('save').onclick=async()=>{const channel=readForm();try{const path=isNew?'channels':`channels/${encodeURIComponent(selectedId)}`;const method=isNew?'POST':'PUT';await CreoPlatform.api(path,{method,body:JSON.stringify({channel,expectedVersion:catalog.version})});toast('채널 설정을 저장했습니다.');isNew=false;selectedId=channel.id;await load()}catch(err){toast(err.message)}};
+$('duplicate').onclick=async()=>{if(isNew)return toast('먼저 채널을 저장해 주세요.');const source=current();const id=prompt('새 채널 ID를 입력하세요. 예: summer-auction');if(!id)return;const name=prompt('새 채널 이름을 입력하세요.',source.name+' 복사본');if(!name)return;try{await CreoPlatform.api(`channels/${encodeURIComponent(source.id)}/duplicate`,{method:'POST',body:JSON.stringify({channel:{id,name},copyVendors:false,expectedVersion:catalog.version})});toast('데이터가 섞이지 않는 새 채널을 만들었습니다.');selectedId=id;await load()}catch(err){toast(err.message)}};
+(async()=>{const saved=CreoPlatform.getAdmin();if(saved){try{await login(saved);return}catch(_){CreoPlatform.setAdmin('')}}$('login').hidden=false})();
+</script>
+</body>
+</html>

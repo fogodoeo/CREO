@@ -57,6 +57,7 @@
         const assetVersion = '20260717-egress-hotfix-v1';
         let lastSrc = '';
         let lastMode = '';
+        let platformActiveChannel = '';
 
         function syncViewportSize() {
             const height = window.visualViewport ? window.visualViewport.height : window.innerHeight;
@@ -69,8 +70,9 @@
         window.visualViewport?.addEventListener('resize', syncViewportSize, { passive: true });
 
         function normalizeEvent(value) {
-            value = String(value || '').toLowerCase();
-            return value === 'crewart' || value === 'crewarts' ? 'crewart' : 'cdcup';
+            value = String(value || '').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 32);
+            if (value === 'crewarts') return 'crewart';
+            return value || 'cdcup';
         }
 
         function normalizePage(value, fallback) {
@@ -87,30 +89,40 @@
         }
 
         function targetFor(config) {
-            const eventId = normalizeEvent(params.get('event') || config.active_event_module || 'cdcup');
+            const eventId = normalizeEvent(params.get('event') || platformActiveChannel || config.active_event_module || 'cdcup');
             if (eventId === 'crewart') {
                 const page = normalizeCrewartPage(params.get('page') || params.get('mode') || config.crewart_broadcast_page || config.crewart_broadcast_mode || '3');
                 return 'crewart-broadcast.html?page=' + encodeURIComponent(page);
             }
-            const page = normalizePage(params.get('page') || config.cdcup_broadcast_page || '1', '1');
-            return 'broadcast.html?page=' + encodeURIComponent(page) + '&module=cdcup&v=' + encodeURIComponent(assetVersion);
+            if (eventId === 'cdcup') {
+                const page = normalizePage(params.get('page') || config.cdcup_broadcast_page || '1', '1');
+                return 'broadcast.html?page=' + encodeURIComponent(page) + '&module=cdcup&v=' + encodeURIComponent(assetVersion);
+            }
+            const page = normalizePage(params.get('page') || '1', '1');
+            return 'auction-live.html?channel=' + encodeURIComponent(eventId) + '&page=' + encodeURIComponent(page);
         }
 
         async function refreshRoute() {
             try {
+                if (!params.get('event')) {
+                    try {
+                        const activeResponse = await fetch('/api/platform/active-channel', { cache: 'no-store' });
+                        if (activeResponse.ok) platformActiveChannel = normalizeEvent((await activeResponse.json()).channelId);
+                    } catch (_) {}
+                }
                 const config = await getRuntimeConfigMap(false) || {};
                 const src = targetFor(config);
                 if (src !== lastSrc) {
                     frame.src = src;
                     lastSrc = src;
                 }
-                const mode = normalizeEvent(params.get('event') || config.active_event_module || 'cdcup');
+                const mode = normalizeEvent(params.get('event') || platformActiveChannel || config.active_event_module || 'cdcup');
                 const page = mode === 'crewart'
                     ? normalizeCrewartPage(params.get('page') || params.get('mode') || config.crewart_broadcast_page || config.crewart_broadcast_mode || '3')
                     : normalizePage(params.get('page') || config.cdcup_broadcast_page || '1', '1');
                 const statusKey = mode + ':' + page;
                 if (statusKey !== lastMode || statusEl.textContent.indexOf('연결 중') >= 0) {
-                    statusEl.textContent = (mode === 'crewart' ? '크레와트' : 'CDCUP') + ' ' + page + 'P 송출 중';
+                    statusEl.textContent = (mode === 'crewart' ? '크레와트' : (mode === 'cdcup' ? 'CDCUP' : mode)) + ' ' + page + 'P 송출 중';
                     lastMode = statusKey;
                 }
             } catch (error) {

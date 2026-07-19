@@ -592,7 +592,7 @@
 
     async function setActiveEventModule(moduleId, href) {
         const next = normalizeModuleId(moduleId);
-        if (global.updateConfigs) await global.updateConfigs({ active_event_module: next });
+        if (global.updateConfigs) await global.updateConfigs({ active_event_module: next, 'creo_v2::active_channel': next });
         if (href) global.location.href = href;
         return next;
     }
