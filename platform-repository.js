@@ -1,5 +1,6 @@
 'use strict';
 
+const crypto = require('node:crypto');
 const { DEFAULT_CHANNELS, channelKey, normalizeChannel, normalizeChannelId } = require('./platform-core');
 
 const CATALOG_KEY = 'creo_v2::catalog';
@@ -10,6 +11,32 @@ const FALLBACK_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3M
 
 function jsonParse(value, fallback = null) {
     try { return JSON.parse(value); } catch { return fallback; }
+}
+
+function isProtectedKey(key) {
+    return String(key || '').startsWith('creo_v2::');
+}
+
+function storedSignature(key, payload, secret) {
+    return crypto.createHmac('sha256', secret).update(`${key}\n${payload}`).digest('base64url');
+}
+
+function protectStoredValue(key, value, secret) {
+    const payload = String(value);
+    if (!secret || !isProtectedKey(key)) return payload;
+    return JSON.stringify({ v: 1, payload, sig: storedSignature(key, payload, secret) });
+}
+
+function readStoredValue(key, stored, secret) {
+    const raw = String(stored ?? '');
+    if (!secret || !isProtectedKey(key)) return raw;
+    const envelope = jsonParse(raw, null);
+    if (!envelope || envelope.v !== 1 || typeof envelope.payload !== 'string' || typeof envelope.sig !== 'string') return null;
+    const expected = storedSignature(key, envelope.payload, secret);
+    const left = Buffer.from(envelope.sig);
+    const right = Buffer.from(expected);
+    if (left.length !== right.length || !crypto.timingSafeEqual(left, right)) return null;
+    return envelope.payload;
 }
 
 class SupabaseConfigRepository {
@@ -23,6 +50,7 @@ class SupabaseConfigRepository {
         );
         this.fetch = options.fetchImpl || globalThis.fetch;
         this.adminSecret = String(options.adminSecret || process.env.CREO_ADMIN_SECRET || '');
+        this.integritySecret = String(options.integritySecret || process.env.CREO_DATA_SIGNING_SECRET || this.adminSecret);
         if (!this.fetch) throw new Error('fetch is required');
     }
 
@@ -47,12 +75,17 @@ class SupabaseConfigRepository {
     async getRowsByKeys(keys) {
         if (!keys.length) return [];
         const encoded = keys.map((key) => `"${String(key).replace(/"/g, '\\"')}"`).join(',');
-        return await this.request(`config?select=key,value&key=in.(${encodeURIComponent(encoded)})`) || [];
+        const rows = await this.request(`config?select=key,value&key=in.(${encodeURIComponent(encoded)})`) || [];
+        return rows.map((row) => ({ ...row, value: readStoredValue(row.key, row.value, this.integritySecret) }))
+            .filter((row) => row.value !== null);
     }
 
     async getRow(key) {
         const rows = await this.request(`config?select=key,value&key=eq.${encodeURIComponent(key)}&limit=1`);
-        return rows?.[0] || null;
+        const row = rows?.[0];
+        if (!row) return null;
+        const value = readStoredValue(row.key, row.value, this.integritySecret);
+        return value === null ? null : { ...row, value };
     }
 
     async upsertRows(rows) {
@@ -60,7 +93,10 @@ class SupabaseConfigRepository {
         await this.request('config', {
             method: 'POST',
             headers: { Prefer: 'return=minimal,resolution=merge-duplicates' },
-            body: JSON.stringify(rows.map((row) => ({ key: row.key, value: String(row.value) })))
+            body: JSON.stringify(rows.map((row) => ({
+                key: row.key,
+                value: protectStoredValue(row.key, row.value, this.integritySecret)
+            })))
         });
     }
 
@@ -118,7 +154,10 @@ class SupabaseConfigRepository {
         const prefix = channelKey(channel, type, '');
         const like = encodeURIComponent(`${prefix}::%`);
         const rows = await this.request(`config?select=key,value&key=like.${like}&order=key.asc`) || [];
-        return rows.map((row) => jsonParse(row.value, null)).filter(Boolean);
+        return rows.map((row) => readStoredValue(row.key, row.value, this.integritySecret))
+            .filter((value) => value !== null)
+            .map((value) => jsonParse(value, null))
+            .filter(Boolean);
     }
 
     async getRecord(channelId, type, id = 'state') {
@@ -172,5 +211,7 @@ module.exports = {
     ACTIVE_CHANNEL_KEY,
     ALLOWED_RECORD_TYPES,
     CATALOG_KEY,
-    SupabaseConfigRepository
+    SupabaseConfigRepository,
+    protectStoredValue,
+    readStoredValue
 };
