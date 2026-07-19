@@ -1,5 +1,7 @@
 'use strict';
 
+require('./load-local-env')();
+
 const http = require('node:http');
 const fs = require('node:fs');
 const fsp = require('node:fs/promises');
