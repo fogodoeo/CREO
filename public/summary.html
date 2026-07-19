@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>경매 결과 — CDCUP</title>
+    <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
+    <script src="event-modules.js?v=20260710-crebti3"></script>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="common.css?v=20260707-nav-dropdown2">
+    <style>
+        :root {
+            --bg: #0B0E14;
+            --bg2: #0F1219;
+            --bg-card: #141820;
+            --bg-hover: #1A1F2B;
+            --border: #1E2430;
+            --border2: #262D3A;
+            --text: #D1D5DB;
+            --text-strong: #F3F4F6;
+            --text-muted: #6B7280;
+            --text-dim: #4B5563;
+            --green: #10B981;
+            --green-bg: rgba(16, 185, 129, 0.08);
+            --red: #EF4444;
+            --red-bg: rgba(239, 68, 68, 0.08);
+            --blue: #3B82F6;
+            --blue-bg: rgba(59, 130, 246, 0.08);
+            --yellow: #F59E0B;
+            --yellow-bg: rgba(245, 158, 11, 0.08);
+            --font: 'Pretendard Variable', 'Pretendard', -apple-system, sans-serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--font);
+            font-size: 13px;
+            line-height: 1.5;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ── 메인 레이아웃 ── */
+        .main {
+            max-width: 1440px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        /* ── 요약 카드 행 ── */
+        .summary-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .summary-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px 18px;
+        }
+
+        .sc-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .sc-value {
+            font-size: 24px;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            color: var(--text-strong);
+        }
+
+        .sc-value.green { color: var(--green); }
+        .sc-value.red { color: var(--red); }
+        .sc-value.blue { color: var(--blue); }
+
+        .sc-sub {
+            font-size: 11px;
+            color: var(--text-dim);
+            margin-top: 4px;
+        }
+
+        /* ── 진행률 바 ── */
+        .progress-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 14px 18px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .progress-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+
+        .progress-bar {
+            flex: 1;
+            height: 4px;
+            background: var(--border);
+            border-radius: 100px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--blue);
+            border-radius: 100px;
+            transition: width 0.6s ease;
+        }
+
+        .progress-pct {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text);
+            white-space: nowrap;
+        }
+
+        /* ── 섹션 헤더 ── */
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-strong);
+        }
+
+        .section-count {
+            font-size: 11px;
+            color: var(--text-dim);
+        }
+
+        /* ── 업체 테이블 ── */
+        .company-table {
+            width: 100%;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+
+        .ct-head {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr 1.5fr;
+            padding: 10px 18px;
+            background: var(--bg2);
+            border-bottom: 1px solid var(--border);
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-dim);
+        }
+
+        .ct-head > div:not(:first-child) {
+            text-align: right;
+        }
+
+        .ct-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr 1.5fr;
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border);
+            align-items: center;
+            cursor: pointer;
+            transition: background 0.12s;
+        }
+
+        .ct-row:last-child { border-bottom: none; }
+        .ct-row:hover { background: var(--bg-hover); }
+
+        .ct-row > div:not(:first-child) {
+            text-align: right;
+        }
+
+        .ct-company {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .ct-rank {
+            width: 22px; height: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 700;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+
+        .ct-rank.r1 { background: var(--yellow-bg); color: var(--yellow); }
+        .ct-rank.r2 { background: var(--blue-bg); color: var(--blue); }
+        .ct-rank.r3 { background: var(--green-bg); color: var(--green); }
+        .ct-rank.rn { background: rgba(255,255,255,0.04); color: var(--text-dim); }
+
+        .ct-name {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-strong);
+        }
+
+        .ct-sold {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--green);
+        }
+
+        .ct-unsold {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--red);
+        }
+
+        .ct-total-items {
+            font-size: 13px;
+            color: var(--text);
+        }
+
+        .ct-amount {
+            font-size: 14px;
+            font-weight: 800;
+            color: var(--text-strong);
+            letter-spacing: -0.02em;
+        }
+
+        .ct-unit {
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text-dim);
+            margin-left: 2px;
+        }
+
+        /* 확장 상세 */
+        .ct-expand {
+            display: none;
+            grid-column: 1 / -1;
+            padding: 0 18px 14px;
+            background: var(--bg2);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .ct-expand.show { display: block; }
+
+        .detail-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .detail-table th {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-dim);
+            text-align: left;
+            padding: 8px 10px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .detail-table th:nth-child(n+3) { text-align: right; }
+
+        .detail-table td {
+            font-size: 12px;
+            padding: 7px 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.02);
+            color: var(--text);
+        }
+
+        .detail-table td:nth-child(n+3) { text-align: right; }
+
+        .detail-table tr:last-child td { border-bottom: none; }
+
+        .detail-table .status-sold {
+            color: var(--green);
+            font-weight: 700;
+        }
+
+        .detail-table .status-unsold {
+            color: var(--red);
+            font-weight: 600;
+        }
+
+        .detail-table .status-wait {
+            color: var(--text-dim);
+        }
+
+        .detail-table .status-active {
+            color: var(--blue);
+            font-weight: 600;
+        }
+
+        .detail-table .winner-cell {
+            color: var(--text-muted);
+            font-size: 11px;
+        }
+
+        /* ── 로딩 ── */
+        .loading-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 120px 20px;
+            gap: 12px;
+        }
+
+        .loader {
+            width: 28px; height: 28px;
+            border: 2px solid var(--border);
+            border-top-color: var(--blue);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .loading-text {
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+
+        /* ── 빈 상태 ── */
+        .empty-wrap {
+            text-align: center;
+            padding: 100px 20px;
+        }
+
+        .empty-wrap .empty-icon {
+            font-size: 36px;
+            margin-bottom: 12px;
+            opacity: 0.4;
+        }
+
+        .empty-wrap .empty-msg {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .empty-wrap .empty-hint {
+            font-size: 12px;
+            color: var(--text-dim);
+            margin-top: 6px;
+        }
+
+        /* 반응형 */
+        @media (max-width: 768px) {
+            .summary-row { grid-template-columns: repeat(2, 1fr); }
+            .ct-head, .ct-row {
+                grid-template-columns: 2fr 1fr 1fr 1.5fr;
+            }
+            .ct-head > div:nth-child(4),
+            .ct-row > div:nth-child(4) { display: none; }
+            .main { padding: 16px; }
+            .top-nav { padding: 0 16px; }
+        }
+
+        /* 방송 오버레이 모드 */
+        body.overlay-mode {
+            background: transparent !important;
+        }
+
+        body.overlay-mode .cdcup-nav { display: none !important; }
+    </style>
+</head>
+
+<body>
+    <nav class="cdcup-nav">
+        <a href="cdcup-index.html" class="cdcup-nav__brand">
+            <span class="cdcup-nav__brand-icon">🏆</span>
+            <span>CDCUP 관리자</span>
+        </a>
+        <div class="cdcup-nav__links">
+            <a href="index.html" class="cdcup-nav__link">허브</a>
+            <a href="cdcup-index.html" class="cdcup-nav__link">CDCUP 관리</a>
+            <a href="summary.html" class="cdcup-nav__link active">경기결과표</a>
+            <a href="ranking.html" class="cdcup-nav__link">종합 순위표</a>
+            <a href="crewarts/" class="cdcup-nav__link">크레와트</a>
+        </div>
+        <div class="cdcup-nav__utils">
+            <span class="cdcup-nav__live">
+                <span class="cdcup-nav__live-dot"></span>
+                LIVE
+            </span>
+            <span class="refresh-time" id="refresh-time" style="font-size: 11px; color: var(--text-secondary); margin-right: 6px;">갱신 대기</span>
+        </div>
+    </nav>
+
+    <div class="main">
+        <!-- 세부 서브 탭 바 -->
+        <div class="cdcup-tabs" style="margin-bottom: 24px;">
+            <a href="cdcup-index.html" class="cdcup-tab" style="text-decoration: none;">개체 목록/등록</a>
+            <a href="summary.html" class="cdcup-tab active" style="text-decoration: none;">경매결과 조회</a>
+            <a href="shipping.html" class="cdcup-tab" style="text-decoration: none; background: #2563EB; color: white; border-radius: 4px; padding: 6px 12px; font-weight: 700;">🚚 배송 정보 관리</a>
+        </div>
+        <div class="loading-wrap" id="loading">
+            <div class="loader"></div>
+            <span class="loading-text">데이터 불러오는 중</span>
+        </div>
+        <div id="content" style="display:none;"></div>
+    </div>
+
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('overlay') === '1') document.body.classList.add('overlay-mode');
+
+        function fmt(n) {
+            if (isNaN(n) || n === 0) return '0';
+            return Number(n).toLocaleString('ko-KR');
+        }
+
+        function parsePrice(v) {
+            if (!v) return 0;
+            return parseInt(String(v).replace(/[^0-9.-]/g, ''), 10) || 0;
+        }
+
+        let expandedCompany = null;
+
+        async function load() {
+            const contentEl = document.getElementById('content');
+            const loadingEl = document.getElementById('loading');
+
+            try {
+                const items = await getItems();
+                loadingEl.style.display = 'none';
+                contentEl.style.display = 'block';
+
+                if (!items || !items.length) {
+                    contentEl.innerHTML = '<div class="empty-wrap"><div class="empty-icon">📭</div><div class="empty-msg">등록된 경매 개체가 없습니다</div><div class="empty-hint">개체 등록 후 경매를 진행하세요</div></div>';
+                    return;
+                }
+
+                const cos = {};
+                let gSold = 0, gSoldN = 0, gUnsoldN = 0, gActiveN = 0, gWaitN = 0;
+
+                for (const it of items) {
+                    const c = it.company || '미지정';
+                    if (!cos[c]) cos[c] = { name: c, items: [], sold: 0, soldN: 0, unsoldN: 0, waitN: 0, activeN: 0 };
+                    cos[c].items.push(it);
+                    const st = it.status || '대기';
+                    if (st === '낙찰') {
+                        const p = parsePrice(it.sold_price || it.soldPrice);
+                        cos[c].sold += p; cos[c].soldN++; gSold += p; gSoldN++;
+                    } else if (st === '유찰' || st === '취소') {
+                        cos[c].unsoldN++; gUnsoldN++;
+                    } else if (st === '진행중') {
+                        cos[c].activeN++; gActiveN++;
+                    } else {
+                        cos[c].waitN++; gWaitN++;
+                    }
+                }
+
+                const done = gSoldN + gUnsoldN;
+                const total = items.length;
+                const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+                const coList = Object.values(cos).sort((a, b) => b.sold - a.sold);
+                const avg = gSoldN > 0 ? Math.round(gSold / gSoldN) : 0;
+
+                let h = '';
+
+                // 요약 카드
+                h += `<div class="summary-row">
+                    <div class="summary-card">
+                        <div class="sc-label">총 낙찰액</div>
+                        <div class="sc-value">${fmt(gSold)}<span style="font-size:13px;color:var(--text-dim);font-weight:500;"> 만원</span></div>
+                        <div class="sc-sub">평균 ${fmt(avg)}만원/건</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="sc-label">낙찰</div>
+                        <div class="sc-value green">${gSoldN}<span style="font-size:13px;color:var(--text-dim);font-weight:500;"> 건</span></div>
+                        <div class="sc-sub">전체 ${total}개체 중</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="sc-label">유찰</div>
+                        <div class="sc-value red">${gUnsoldN}<span style="font-size:13px;color:var(--text-dim);font-weight:500;"> 건</span></div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="sc-label">대기/진행</div>
+                        <div class="sc-value blue">${gWaitN + gActiveN}<span style="font-size:13px;color:var(--text-dim);font-weight:500;"> 건</span></div>
+                    </div>
+                </div>`;
+
+                // 진행률
+                h += `<div class="progress-section">
+                    <span class="progress-label">진행률</span>
+                    <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+                    <span class="progress-pct">${done}/${total} (${pct}%)</span>
+                </div>`;
+
+                // 업체별 테이블
+                h += `<div class="section-header">
+                    <span class="section-title">업체별 낙찰 현황</span>
+                    <span class="section-count">${coList.length}개 업체</span>
+                </div>`;
+
+                h += `<div class="company-table">
+                    <div class="ct-head">
+                        <div>업체</div>
+                        <div>낙찰</div>
+                        <div>유찰</div>
+                        <div>전체</div>
+                        <div>낙찰 합계</div>
+                    </div>`;
+
+                coList.forEach((co, i) => {
+                    const rClass = i === 0 ? 'r1' : i === 1 ? 'r2' : i === 2 ? 'r3' : 'rn';
+                    const totalN = co.items.length;
+                    const isOpen = expandedCompany === co.name;
+
+                    h += `<div class="ct-row" onclick="toggleDetail('${co.name.replace(/'/g, "\\'")}')">
+                        <div class="ct-company">
+                            <span class="ct-rank ${rClass}">${i + 1}</span>
+                            <span class="ct-name">${co.name}</span>
+                        </div>
+                        <div class="ct-sold">${co.soldN}</div>
+                        <div class="ct-unsold">${co.unsoldN || '-'}</div>
+                        <div class="ct-total-items">${totalN}</div>
+                        <div class="ct-amount">${fmt(co.sold)}<span class="ct-unit">만원</span></div>
+                    </div>`;
+
+                    // 상세 영역
+                    const sorted = co.items.slice().sort((a, b) => (a.num || 0) - (b.num || 0));
+                    h += `<div class="ct-expand${isOpen ? ' show' : ''}" id="detail-${co.name.replace(/[^a-zA-Z0-9가-힣]/g, '_')}">
+                        <table class="detail-table">
+                            <thead><tr><th>번호</th><th>구분</th><th>이름 · 낙찰팀</th><th>상태</th><th>낙찰가</th><th>낙찰자</th></tr></thead>
+                            <tbody>`;
+
+                    sorted.forEach(it => {
+                        const st = it.status || '대기';
+                        let stClass = 'status-wait', stText = '대기', priceText = '-', winner = '';
+                        if (st === '낙찰') {
+                            stClass = 'status-sold'; stText = '낙찰';
+                            priceText = fmt(parsePrice(it.sold_price || it.soldPrice)) + '만';
+                            winner = it.winner || '';
+                        } else if (st === '유찰' || st === '취소') {
+                            stClass = 'status-unsold'; stText = st;
+                        } else if (st === '진행중') {
+                            stClass = 'status-active'; stText = '진행중';
+                        }
+                        h += `<tr>
+                            <td>${auctionNumber(it)}</td>
+                            <td>${auctionStageLabel(it)}</td>
+                            <td>${getItemAuctionMeta(it).publicName || ''}${it.teamCode ? ' · ' + it.teamCode + '팀' : ''}</td>
+                            <td class="${stClass}">${stText}</td>
+                            <td class="${stClass}">${priceText}</td>
+                            <td class="winner-cell">${winner}</td>
+                        </tr>`;
+                    });
+
+                    h += `</tbody></table></div>`;
+                });
+
+                h += '</div>';
+                contentEl.innerHTML = h;
+
+                // 갱신 시각
+                const t = new Date();
+                document.getElementById('refresh-time').textContent =
+                    t.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+            } catch (err) {
+                loadingEl.style.display = 'none';
+                contentEl.style.display = 'block';
+                contentEl.innerHTML = `<div class="empty-wrap"><div class="empty-icon">⚠️</div><div class="empty-msg">데이터 로드 실패</div><div class="empty-hint">${err.message}</div></div>`;
+            }
+        }
+
+        function toggleDetail(name) {
+            const id = 'detail-' + name.replace(/[^a-zA-Z0-9가-힣]/g, '_');
+            const el = document.getElementById(id);
+            if (!el) return;
+            const isOpen = el.classList.contains('show');
+            // 모든 상세 닫기
+            document.querySelectorAll('.ct-expand.show').forEach(e => e.classList.remove('show'));
+            if (!isOpen) {
+                el.classList.add('show');
+                expandedCompany = name;
+            } else {
+                expandedCompany = null;
+            }
+        }
+
+        load();
+        setInterval(load, 10000);
+    </script>
+</body>
+
+</html>

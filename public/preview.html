@@ -1,0 +1,3579 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script>
+        window.onerror = function(message, source, lineno, colno, error) {
+            alert("[PREVIEW RUNTIME ERROR]\nMessage: " + message + "\nSource: " + source + "\nLine: " + lineno + "\nCol: " + colno + "\nStack: " + (error ? error.stack : 'no stack'));
+            return false;
+        };
+    </script>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>방송 미리보기 - CREO</title>
+    <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
+    <script src="event-modules.js?v=20260710-crebti3"></script>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="common.css?v=20260707-nav-dropdown2">
+    <style>
+        :root {
+            --bg: #0F172A;
+            --card-bg: #1E293B;
+            --border: #334155;
+            --text: #F8FAFC;
+            --text2: #94A3B8;
+            --accent: #2563EB;
+            --accent-hover: #1D4ED8;
+            --green: #10B981;
+            --red: #EF4444;
+            --font: 'Pretendard Variable', 'Pretendard', sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: var(--font);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ══ Studio Screen Container (16:9) ══ */
+        .workspace {
+            width: 100%;
+            max-width: 1440px;
+            margin: 24px auto;
+            padding: 0 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .screen-container {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            background-color: #000;
+            border: 4px solid #1E293B;
+            border-radius: 12px;
+            position: relative;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4);
+            overflow: hidden;
+        }
+
+        /* The actual live broadcast screen loaded in iframe */
+        .broadcast-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* Transparent drag overlay */
+        .drag-overlay {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.15);
+            pointer-events: auto;
+        }
+
+        /* Draggable elements */
+        .draggable-element {
+            position: absolute;
+            cursor: move;
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 700;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+            user-select: none;
+            transition: opacity 0.3s;
+        }
+
+        .draggable-element.hidden-state {
+            opacity: 0.25 !important;
+            border-style: dotted !important;
+            background: rgba(239, 68, 68, 0.1) !important;
+            border-color: var(--red) !important;
+        }
+
+        /* Draggable Nametag 1 (PAGE1 only) */
+        .draggable-nametag1 {
+            width: 16%;
+            height: 8%;
+            background: rgba(168, 85, 247, 0.15);
+            border: 2px dashed #A855F7;
+            border-radius: 8px;
+            box-shadow: 0 0 12px rgba(168, 85, 247, 0.4);
+        }
+        .draggable-nametag1:hover {
+            border-color: #C084FC;
+            background: rgba(168, 85, 247, 0.25);
+        }
+
+        /* Draggable Nametag 2 (PAGE1 only) */
+        .draggable-nametag2 {
+            width: 16%;
+            height: 8%;
+            background: rgba(236, 72, 153, 0.15);
+            border: 2px dashed #EC4899;
+            border-radius: 8px;
+            box-shadow: 0 0 12px rgba(236, 72, 153, 0.4);
+        }
+        .draggable-nametag2:hover {
+            border-color: #F472B6;
+            background: rgba(236, 72, 153, 0.25);
+        }
+
+        .draggable-info {
+            width: 42%;
+            height: 16%;
+            background: rgba(14, 165, 233, 0.14);
+            border: 2px dashed #38bdf8;
+            border-radius: 8px;
+            box-shadow: 0 0 12px rgba(56, 189, 248, 0.35);
+        }
+        .draggable-info:hover {
+            border-color: #7dd3fc;
+            background: rgba(14, 165, 233, 0.23);
+        }
+
+        .draggable-photo {
+            width: 34%;
+            height: 60%;
+            overflow: hidden;
+            background:
+                linear-gradient(145deg, rgba(255,255,255,0.16), rgba(255,255,255,0.03)),
+                rgba(15, 23, 42, 0.58);
+            border: 2px dashed rgba(125, 211, 252, 0.95);
+            border-radius: 18px;
+            box-shadow: 0 18px 42px rgba(0, 0, 0, 0.42), 0 0 0 1px rgba(255,255,255,0.08);
+        }
+        .draggable-photo:hover {
+            border-color: #e0f2fe;
+            box-shadow: 0 22px 52px rgba(0, 0, 0, 0.5), 0 0 22px rgba(56, 189, 248, 0.22);
+        }
+        .draggable-photo-preview {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: rgba(5, 8, 14, 0.72);
+            pointer-events: none;
+            opacity: 0.84;
+        }
+        .draggable-photo .element-label {
+            position: absolute;
+            left: 10px;
+            bottom: 10px;
+            z-index: 2;
+            padding: 5px 9px;
+            border-radius: 999px;
+            background: rgba(15, 23, 42, 0.78);
+            box-shadow: 0 6px 18px rgba(0,0,0,0.28);
+        }
+
+        /* Draggable Bracket */
+        .draggable-bracket {
+            width: 80%;
+            height: 70%;
+            background: rgba(59, 130, 246, 0.1);
+            border: 2px dashed #3b82f6;
+            border-radius: 8px;
+            box-shadow: 0 0 12px rgba(59, 130, 246, 0.3);
+        }
+        .draggable-bracket:hover {
+            border-color: #60a5fa;
+            background: rgba(59, 130, 246, 0.2);
+        }
+
+        /* Draggable Bracket Title */
+        .draggable-bracket-title {
+            width: 50%;
+            height: 10%;
+            background: rgba(234, 179, 8, 0.15);
+            border: 2px dashed #eab308;
+            border-radius: 6px;
+            box-shadow: 0 0 12px rgba(234, 179, 8, 0.4);
+        }
+        .draggable-bracket-title:hover {
+            border-color: #facc15;
+            background: rgba(234, 179, 8, 0.25);
+        }
+
+        /* Draggable Battle Announcement */
+        .draggable-battle-ann {
+            width: 80%;
+            height: 25%;
+            background: rgba(244, 63, 94, 0.15);
+            border: 2px dashed #f43f5e;
+            border-radius: 12px;
+            box-shadow: 0 0 16px rgba(244, 63, 94, 0.4);
+        }
+        .draggable-battle-ann:hover {
+            border-color: #fb7185;
+            background: rgba(244, 63, 94, 0.25);
+        }
+
+        .draggable-blind-totals {
+            width: 42%;
+            height: 24%;
+            background: rgba(217, 176, 92, 0.14);
+            border: 2px dashed #d9b05c;
+            border-radius: 8px;
+            box-shadow: 0 0 16px rgba(217, 176, 92, 0.34);
+        }
+        .draggable-blind-totals:hover {
+            border-color: #f8d77c;
+            background: rgba(217, 176, 92, 0.24);
+        }
+
+        /* Draggable Banner */
+        .draggable-banner {
+            width: auto;
+            height: auto;
+            max-width: 42%;
+            max-height: 50%;
+            background: rgba(37, 99, 235, 0.15);
+            border: 2px dashed var(--accent);
+            border-radius: 8px;
+            box-shadow: 0 0 12px rgba(37, 99, 235, 0.4);
+            overflow: hidden;
+        }
+
+        .draggable-banner:hover {
+            border-color: #3B82F6;
+            background: rgba(37, 99, 235, 0.25);
+        }
+
+        /* Draggable Ticker (Zamak Bar) */
+        .draggable-ticker {
+            width: 100%;
+            height: 12%; /* Simulates actual ticker ratio */
+            background: rgba(16, 185, 129, 0.25);
+            border: 2px dashed var(--green);
+            border-radius: 4px;
+            box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .draggable-ticker:hover {
+            border-color: #34D399;
+            background: rgba(16, 185, 129, 0.35);
+        }
+
+        .element-label {
+            pointer-events: none;
+            background: rgba(15, 23, 42, 0.85);
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* 리사이즈 핸들 */
+        .resize-handle {
+            position: absolute;
+            z-index: 30;
+            background: rgba(255, 255, 255, 0.9);
+            border: 2px solid var(--accent);
+            border-radius: 3px;
+            pointer-events: auto;
+        }
+        .resize-handle-se {
+            width: 14px; height: 14px;
+            right: -4px; bottom: -4px;
+            cursor: nwse-resize;
+            border-radius: 0 0 6px 0;
+        }
+        .resize-handle-n {
+            width: 40px; height: 10px;
+            top: -4px; left: 50%; transform: translateX(-50%);
+            cursor: ns-resize;
+            border-color: var(--green);
+            border-radius: 4px;
+        }
+
+        /* ══ Status Bar & Helper controls ══ */
+        .control-panel {
+            width: 100%;
+            background-color: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .control-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            width: 100%;
+        }
+
+        .status-txt {
+            font-size: 12px;
+            color: var(--text2);
+        }
+
+        .status-txt strong {
+            color: var(--text);
+        }
+
+        .toggle-switch-group {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .switch-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .switch-input {
+            width: 38px;
+            height: 20px;
+            appearance: none;
+            background: #475569;
+            border-radius: 20px;
+            position: relative;
+            outline: none;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .switch-input:checked {
+            background-color: var(--green);
+        }
+
+        .switch-input::before {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #fff;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.2s;
+        }
+
+        .switch-input:checked::before {
+            transform: translateX(18px);
+        }
+
+        .switch-container.layout-target {
+            padding: 6px 8px;
+            border-radius: 8px;
+            background: rgba(59, 130, 246, 0.12);
+            box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.55);
+        }
+
+        .layout-target-badge {
+            display: none;
+            padding: 2px 5px;
+            border-radius: 999px;
+            background: #2563eb;
+            color: #fff;
+            font-size: 9px;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+
+        .switch-container.layout-target .layout-target-badge {
+            display: inline-flex;
+        }
+
+        .draggable-bracket.layout-active {
+            z-index: 40 !important;
+            border-style: solid;
+            box-shadow: 0 0 0 2px rgba(255,255,255,0.75), 0 0 20px rgba(59,130,246,0.7);
+        }
+
+        .actions-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-action {
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            color: #fff;
+            transition: background-color 0.2s;
+        }
+
+        .btn-action.save {
+            background-color: var(--accent);
+        }
+
+        .btn-action.save:hover {
+            background-color: var(--accent-hover);
+        }
+
+        .btn-action.reset {
+            background-color: rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+
+        .btn-action.reset:hover {
+            background-color: rgba(255, 255, 255, 0.12);
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid var(--accent);
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-size: 13px;
+            font-weight: 600;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 1000;
+            pointer-events: none;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* ══ 3P Tournament Dashboard ══ */
+        .tournament-dashboard { display: none; width: 100%; }
+        .tournament-dashboard.active { display: block; }
+
+        .t-header {
+            display: flex; justify-content: space-between; align-items: center;
+            background: var(--card-bg); border: 1px solid var(--border);
+            padding: 16px 20px; border-radius: 12px; margin-bottom: 16px;
+            flex-wrap: wrap; gap: 12px;
+        }
+        .t-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .t-btn {
+            padding: 7px 14px; border-radius: 6px; border: 1px solid var(--border);
+            background: var(--card-bg); color: var(--text); font-size: 12px;
+            font-weight: 700; cursor: pointer; transition: all 0.15s;
+        }
+        .t-btn:hover { background: rgba(255,255,255,0.08); }
+        .t-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+        .t-btn.save { background: var(--accent); color: #fff; border-color: var(--accent); }
+        .t-btn.danger { background: rgba(239,68,68,0.1); border-color: #ef4444; color: #f87171; }
+        .t-btn.success { background: rgba(16,185,129,0.1); border-color: #10b981; color: #34d399; }
+        .t-select {
+            padding: 7px 10px; border-radius: 6px; border: 1px solid var(--border);
+            background: var(--card-bg); color: #fff; font-size: 12px; font-weight: 700; cursor: pointer;
+        }
+        .t-label { font-size: 12px; font-weight: 800; color: var(--text2); white-space: nowrap; }
+
+        /* Team Pool */
+        .t-pool-title {
+            font-size: 13px; font-weight: 800; color: var(--text);
+            margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
+        }
+        .t-pool {
+            display: flex; flex-wrap: wrap; gap: 6px;
+            background: var(--card-bg); border: 1px solid var(--border);
+            padding: 12px; border-radius: 10px; margin-bottom: 16px; min-height: 44px;
+        }
+        .t-team-chip {
+            padding: 5px 12px; border-radius: 16px; font-size: 12px; font-weight: 700;
+            background: rgba(37, 99, 235, 0.1); border: 1px solid rgba(37, 99, 235, 0.3);
+            color: #93c5fd; cursor: grab; user-select: none; transition: all 0.15s;
+        }
+        .t-team-chip:active { cursor: grabbing; }
+        .t-team-chip:hover { background: rgba(37, 99, 235, 0.2); border-color: #3b82f6; }
+
+        /* Quick company registration */
+        .t-pool-title { justify-content: space-between; flex-wrap: wrap; }
+        .t-pool-actions { display: flex; gap: 7px; margin-left: auto; }
+        .t-quick-register {
+            display: none; grid-template-columns: minmax(280px, 1fr) auto; gap: 14px;
+            padding: 16px; margin-bottom: 16px; border: 1px solid rgba(59,130,246,.32);
+            border-radius: 12px; background: linear-gradient(135deg, rgba(37,99,235,.09), rgba(15,23,42,.42));
+        }
+        .t-quick-register.open { display: grid; }
+        .t-quick-textarea {
+            width: 100%; min-height: 112px; resize: vertical; box-sizing: border-box;
+            border: 1px solid var(--border); border-radius: 9px; background: rgba(15,23,42,.7);
+            color: var(--text); padding: 11px 12px; font: inherit; font-size: 13px; line-height: 1.55;
+            outline: none;
+        }
+        .t-quick-textarea:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,.12); }
+        .t-quick-textarea::placeholder { color: #64748b; }
+        .t-quick-side { min-width: 250px; display: flex; flex-direction: column; gap: 10px; }
+        .t-quick-field { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .t-quick-field label { font-size: 12px; font-weight: 800; color: var(--text2); }
+        .t-quick-count {
+            min-width: 94px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px;
+            background: #0f172a; color: #fff; font-size: 12px; font-weight: 800;
+        }
+        .t-quick-check { justify-content: flex-start; cursor: pointer; color: var(--text2); font-size: 12px; font-weight: 700; }
+        .t-quick-check input { accent-color: #2563eb; }
+        .t-quick-summary {
+            padding: 9px 11px; border-radius: 8px; background: rgba(15,23,42,.55);
+            color: #93c5fd; font-size: 12px; font-weight: 850; line-height: 1.45;
+        }
+        .t-quick-submit { margin-top: auto; width: 100%; padding: 10px 14px; }
+        @media (max-width: 760px) {
+            .t-quick-register.open { grid-template-columns: 1fr; }
+            .t-quick-side { min-width: 0; }
+        }
+
+        /* Tournament item assignment */
+        .t-item-setup {
+            background: var(--card-bg); border: 1px solid var(--border);
+            border-radius: 14px; margin: 16px 0; overflow: hidden;
+        }
+        .t-item-setup-head {
+            display: flex; justify-content: space-between; align-items: center; gap: 16px;
+            padding: 18px 20px; border-bottom: 1px solid var(--border); flex-wrap: wrap;
+        }
+        .t-item-setup-title { font-size: 15px; font-weight: 900; color: var(--text); }
+        .t-item-setup-desc { margin-top: 5px; font-size: 12px; line-height: 1.55; color: var(--text2); }
+        .t-item-setup-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .t-item-count-control {
+            display:flex;align-items:center;gap:7px;padding:6px 8px;border:1px solid rgba(148,163,184,.22);
+            border-radius:8px;background:rgba(15,23,42,.6);color:var(--text2);font-size:11px;font-weight:800;
+        }
+        .t-item-count-control input {
+            width:54px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;background:#0f172a;
+            color:#fff;text-align:center;font-size:12px;font-weight:900;
+        }
+        .t-match-count-controls { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+        .t-item-progress {
+            padding: 9px 12px; border-radius: 8px; background: rgba(59,130,246,.1);
+            border: 1px solid rgba(59,130,246,.22); color: #93c5fd;
+            font-size: 12px; font-weight: 850;
+        }
+        .t-item-setup-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+            gap: 12px; padding: 16px;
+        }
+        .t-item-team {
+            border: 1px solid rgba(148,163,184,.18); border-radius: 11px;
+            background: rgba(15,23,42,.45); padding: 13px;
+        }
+        .t-item-team.ready { border-color: rgba(16,185,129,.48); box-shadow: inset 0 0 0 1px rgba(16,185,129,.08); }
+        .t-item-team-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+        .t-item-team-letter {
+            width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center;
+            background: #2563eb; color: #fff; font-size: 15px; font-weight: 950;
+            box-shadow: 0 5px 14px rgba(37,99,235,.28);
+        }
+        .t-item-team-name { min-width: 0; flex: 1; }
+        .t-item-team-name strong { display: block; color: var(--text); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .t-item-team-name span { display: block; margin-top: 3px; color: var(--text2); font-size: 11px; }
+        .t-item-auto { border: 0; background: transparent; color: #93c5fd; font-size: 11px; font-weight: 800; cursor: pointer; }
+        .t-item-list { display: grid; gap: 6px; }
+        .t-item-choice {
+            width: 100%; border: 1px solid rgba(148,163,184,.15); border-radius: 8px;
+            background: rgba(255,255,255,.025); color: var(--text2); padding: 7px 8px;
+            display: grid; grid-template-columns: 30px minmax(0,1fr) auto; align-items: center; gap: 8px;
+            text-align: left; cursor: pointer; transition: .15s ease;
+        }
+        .t-item-choice:hover { border-color: rgba(96,165,250,.55); background: rgba(59,130,246,.07); }
+        .t-item-choice.selected { border-color: #3b82f6; background: rgba(37,99,235,.13); color: #fff; }
+        .t-item-thumb {
+            width: 30px; height: 30px; border-radius: 6px; object-fit: cover;
+            background: rgba(148,163,184,.1); display: grid; place-items: center;
+            color: #64748b; font-size: 10px; font-weight: 900; overflow: hidden;
+        }
+        .t-item-thumb img { width: 100%; height: 100%; object-fit: cover; }
+        .t-item-copy { min-width: 0; }
+        .t-item-copy strong { display: block; color: inherit; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .t-item-copy span { display: block; color: #64748b; font-size: 10px; margin-top: 2px; }
+        .t-item-code {
+            min-width: 30px; padding: 4px 6px; border-radius: 6px; text-align: center;
+            background: rgba(148,163,184,.1); color: #64748b; font-size: 11px; font-weight: 950;
+        }
+        .t-item-choice.selected .t-item-code { background: #2563eb; color: #fff; }
+        .t-item-empty { padding: 28px 18px; text-align: center; color: #64748b; font-size: 12px; line-height: 1.65; }
+        .t-item-warning {
+            padding: 11px 18px; border-top: 1px solid var(--border); color: #94a3b8;
+            background: rgba(245,158,11,.045); font-size: 11px; line-height: 1.55;
+        }
+        .t-btn:disabled { opacity: .42; cursor: not-allowed; }
+
+        /* Bracket Tree */
+        .t-bracket-wrap {
+            background: var(--card-bg); border: 1px solid var(--border);
+            border-radius: 12px; padding: 20px; margin-bottom: 16px;
+            overflow-x: auto;
+        }
+        .t-bracket-tree {
+            display: flex; justify-content: center; align-items: stretch;
+            gap: 40px; min-height: 300px;
+        }
+        .t-round-col {
+            display: flex; flex-direction: column; justify-content: space-around;
+            gap: 16px;
+        }
+        .t-match {
+            background: rgba(15, 23, 42, 0.5); border: 2px solid rgba(255,255,255,0.06);
+            border-radius: 10px; width: 220px; padding: 8px; position: relative;
+            transition: all 0.2s; cursor: default;
+        }
+        .t-match:hover { border-color: rgba(255,255,255,0.12); }
+        .t-match.active-match {
+            border-color: #3b82f6; box-shadow: 0 0 12px rgba(59,130,246,0.35);
+            background: rgba(30, 41, 59, 0.7);
+        }
+        .t-match-title {
+            font-size: 10px; color: #64748b; font-weight: 800; text-align: center;
+            margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.06em;
+            cursor: pointer; padding: 2px 0; border-radius: 4px; transition: color 0.15s;
+        }
+        .t-match-title:hover { color: #93c5fd; }
+        .t-slot {
+            height: 34px; border-radius: 5px; margin: 3px 0;
+            display: flex; align-items: center; padding: 0 10px;
+            font-size: 12px; font-weight: 700; background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.06); color: #64748b;
+            position: relative; overflow: hidden; transition: all 0.15s; cursor: pointer;
+        }
+        .t-slot:hover { background: rgba(255,255,255,0.06); }
+        .t-slot.dragover { border-color: #3b82f6; background: rgba(59,130,246,0.1); }
+        .t-slot.winner-slot {
+            background: linear-gradient(90deg, rgba(16,185,129,0.12), rgba(16,185,129,0.03));
+            border-color: #10b981; color: #10b981;
+        }
+        .t-slot-team { max-width: 75%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .t-slot-crown { position: absolute; right: 8px; font-size: 12px; }
+        .t-slot-clear {
+            position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+            width: 18px; height: 18px; border-radius: 50%; background: rgba(239,68,68,0.2);
+            color: #f87171; font-size: 10px; display: flex; align-items: center;
+            justify-content: center; cursor: pointer; opacity: 0; transition: opacity 0.15s;
+            border: none;
+        }
+        .t-slot:hover .t-slot-clear { opacity: 1; }
+
+        /* Match Controller */
+        .t-match-ctrl {
+            background: var(--card-bg); border: 1px solid var(--border);
+            border-radius: 12px; padding: 16px 20px; margin-bottom: 16px; display: none;
+        }
+        .t-match-ctrl.visible { display: block; }
+        .t-ctrl-title {
+            font-size: 14px; font-weight: 800; color: var(--text);
+            border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 12px;
+        }
+        .t-ctrl-row {
+            display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 10px;
+        }
+        .t-ctrl-label { font-size: 13px; font-weight: 700; color: var(--text); }
+        .t-score-row {
+            display: flex; gap: 16px; align-items: center; flex-wrap: wrap;
+            padding-top: 10px; border-top: 1px dashed var(--border);
+        }
+        .t-score-item { font-size: 12px; font-weight: 600; color: var(--text2); display: flex; align-items: center; gap: 4px; }
+        .t-score-select {
+            padding: 4px 6px; border-radius: 4px; border: 1px solid var(--border);
+            background: var(--card-bg); color: #fff; font-size: 12px;
+        }
+        .t-score-display {
+            margin-left: auto; font-weight: 800; font-size: 15px; color: #60a5fa;
+        }
+
+        /* Live Match Status Card */
+        .t-live-card {
+            background: linear-gradient(135deg, rgba(37,99,235,0.08), rgba(139,92,246,0.06));
+            border: 1px solid rgba(37,99,235,0.25); border-radius: 12px;
+            padding: 16px 20px; margin-bottom: 16px; display: none;
+        }
+        .t-live-card.visible { display: block; }
+        .t-live-header {
+            display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+        }
+        .t-live-dot {
+            width: 8px; height: 8px; border-radius: 50%; background: #ef4444;
+            animation: t-pulse 1.5s infinite;
+        }
+        @keyframes t-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .t-live-tag {
+            font-size: 11px; font-weight: 800; color: #ef4444;
+            text-transform: uppercase; letter-spacing: 0.06em;
+        }
+        .t-live-match-title {
+            font-size: 11px; font-weight: 700; color: #94a3b8; margin-left: auto;
+        }
+        .t-live-teams {
+            display: flex; align-items: center; justify-content: center; gap: 16px;
+            margin-bottom: 8px; font-size: 16px; font-weight: 800; color: var(--text);
+        }
+        .t-live-vs { font-size: 12px; color: #ef4444; font-weight: 800; }
+        .t-live-score {
+            text-align: center; font-size: 28px; font-weight: 900; color: #fff;
+            margin-bottom: 6px; letter-spacing: 0.04em;
+        }
+        .t-live-round {
+            text-align: center; font-size: 12px; font-weight: 700; color: #94a3b8;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="cdcup-nav">
+        <a href="index.html" class="cdcup-nav__brand">
+            <span class="cdcup-nav__brand-icon js-event-nav-icon">C</span>
+            <span class="js-event-admin-title">CREO 방송 콘솔</span>
+        </a>
+        <div class="cdcup-nav__links">
+            <a href="index.html" class="cdcup-nav__link">허브</a>
+            <div class="cdcup-nav__dropdown cdcup-nav__module">
+                <button class="cdcup-nav__link" type="button">방송 화면 제어 <span class="caret">▼</span></button>
+                <div class="cdcup-nav__dropdown-menu">
+                    <a href="settings.html?module=cdcup" class="cdcup-nav__dropdown-item" onclick="return handleAuctionEventModuleLink(event,'cdcup',this.href)">CDCUP 방송 제어</a>
+                    <a href="settings.html?module=crewart" class="cdcup-nav__dropdown-item" onclick="return handleAuctionEventModuleLink(event,'crewart',this.href)">크레와트 방송 제어</a>
+                </div>
+            </div>
+            <a href="preview.html?page=1" id="nav-preview-link" class="cdcup-nav__link active">방송 미리보기</a>
+            <div class="cdcup-nav__dropdown cdcup-nav__module">
+                <button class="cdcup-nav__link" type="button">송출 화면 <span class="caret">▼</span></button>
+                <div class="cdcup-nav__dropdown-menu">
+                    <a href="broadcast-router.html?event=cdcup&amp;page=1" class="cdcup-nav__dropdown-item" target="_blank" rel="noopener">CDCUP 1P 송출</a>
+                    <a href="broadcast-router.html?event=cdcup&amp;page=2" class="cdcup-nav__dropdown-item" target="_blank" rel="noopener">CDCUP 2P 송출</a>
+                    <a href="broadcast-router.html?event=cdcup&amp;page=3" class="cdcup-nav__dropdown-item" target="_blank" rel="noopener">CDCUP 3P 송출</a>
+                    <a href="broadcast-router.html?event=crewart&amp;page=1" class="cdcup-nav__dropdown-item" target="_blank" rel="noopener">크레와트 1P 송출</a>
+                    <a href="broadcast-router.html?event=crewart&amp;page=2" class="cdcup-nav__dropdown-item" target="_blank" rel="noopener">크레와트 2P 송출</a>
+                    <a href="broadcast-router.html?event=crewart&amp;page=3" class="cdcup-nav__dropdown-item" target="_blank" rel="noopener">크레와트 3P 송출</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="workspace">
+        <!-- 세부 서브 탭 바 -->
+        <div class="cdcup-tabs" style="margin-bottom: 24px; width: 100%;">
+            <a href="preview.html?page=1" id="btn-tab-p1" class="cdcup-tab" data-preview-page="1" style="text-decoration: none;">1P 배치기</a>
+            <a href="preview.html?page=2" id="btn-tab-p2" class="cdcup-tab" data-preview-page="2" style="text-decoration: none;">2P 배치기</a>
+            <a href="preview.html?page=3" id="btn-tab-p3" class="cdcup-tab" data-preview-page="3" style="text-decoration: none;">3P 배치기</a>
+            <a href="settings.html" class="cdcup-tab" style="text-decoration: none;">방송 화면 제어</a>
+        </div>
+        <div class="event-module-panel" id="preview-event-module-panel">
+            <div>
+                <strong id="preview-event-module-title">CDCUP 화면 모듈</strong>
+                <span id="preview-event-module-desc">송출 화면의 규칙과 3P 구성을 선택합니다.</span>
+            </div>
+            <select id="preview-event-module-select" onchange="changeEventModule(this.value)">
+                <option value="cdcup">CDCUP · 토너먼트</option>
+                <option value="crewart">크레와트 · 기숙사 점수전</option>
+            </select>
+        </div>
+        <!-- 대진용 배치기 배경 미리보기 선택 옵션 -->
+        <div id="bracket-bg-selector-group" class="control-row" style="margin-bottom: 16px; display: none; align-items: center; gap: 16px; padding: 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 8px;">
+            <span style="font-weight: 600; color: var(--text-muted); font-size: 14px;">대진표 배치용 배경 화면 선택:</span>
+            <label style="display:inline-flex; align-items:center; gap:8px; cursor:pointer; color:var(--text); font-size:14px; font-weight: 500;">
+                <input type="radio" name="bracket-bg" value="1" checked onchange="changeBracketBg(1)"> 1P 진행용 화면
+            </label>
+            <label style="display:inline-flex; align-items:center; gap:8px; cursor:pointer; color:var(--text); font-size:14px; font-weight: 500;">
+                <input type="radio" name="bracket-bg" value="2" onchange="changeBracketBg(2)"> 2P 개체용 화면
+            </label>
+            <label style="display:inline-flex; align-items:center; gap:8px; cursor:pointer; color:var(--text); font-size:14px; font-weight: 500;">
+                <input type="radio" name="bracket-bg" value="bracket" onchange="changeBracketBg('bracket')"> 대진표 단독 화면 (검은 배경)
+            </label>
+        </div>
+        <!-- 16:9 OBS screen simulation -->
+        <div class="screen-container" id="screen-container">
+            <!-- Actual broadcast page inside -->
+            <iframe class="broadcast-iframe" id="broadcast-frame" src="broadcast.html?page=2&amp;module=cdcup&amp;v=20260715-suji-region"></iframe>
+            
+            <!-- Draggable wrapper layer -->
+            <div class="drag-overlay" id="drag-overlay">
+                <!-- 1. Draggable Banner -->
+                <div class="draggable-element draggable-banner" id="draggable-banner" data-type="banner">
+                    <div id="draggable-banner-blur" style="position:absolute; top:0; left:0; width:100%; height:100%; background-size:cover; background-position:center; filter:blur(10px) brightness(0.65); transform:scale(1.1); pointer-events:none; display:none; z-index:0; border-radius:6px;"></div>
+                    <img id="draggable-banner-preview" style="width:100%; height:100%; object-fit:contain; border-radius:6px; pointer-events:none; display:none; position:relative; z-index:1;" alt="">
+                    <div class="element-label" id="draggable-banner-label" style="z-index:2;">롤링 배너</div>
+                    <div class="resize-handle resize-handle-se" id="resize-banner" title="드래그로 크기 조절"></div>
+                </div>
+
+                <!-- 2. Draggable Ticker (Zamak Bar) -->
+                <div class="draggable-element draggable-ticker" id="draggable-ticker" data-type="ticker">
+                    <div class="element-label">공지사항 자막</div>
+                    <div class="resize-handle resize-handle-n" id="resize-ticker" title="드래그로 높이 조절"></div>
+                </div>
+
+                <!-- 3. Draggable Nametag 1 (PAGE1 only) -->
+                <div class="draggable-element draggable-nametag1" id="draggable-nametag1" data-type="nametag1" style="display:none;">
+                    <div class="element-label">네임택 1</div>
+                    <div class="resize-handle resize-handle-se" id="resize-nametag1" title="크기 조절" style="border-color: #A855F7;"></div>
+                </div>
+
+                <!-- 4. Draggable Nametag 2 (PAGE1 only) -->
+                <div class="draggable-element draggable-nametag2" id="draggable-nametag2" data-type="nametag2" style="display:none;">
+                    <div class="element-label">네임택 2</div>
+                    <div class="resize-handle resize-handle-se" id="resize-nametag2" title="크기 조절" style="border-color: #EC4899;"></div>
+                </div>
+
+                <!-- PAGE2 개체정보 위치 -->
+                <div class="draggable-element draggable-info" id="draggable-info" data-type="info" style="display:none;">
+                    <div class="element-label">개체정보</div>
+                </div>
+
+                <!-- PAGE2 경매 사진 위치/크기 -->
+                <div class="draggable-element draggable-photo" id="draggable-photo" data-type="photo" style="display:none;">
+                    <img class="draggable-photo-preview" id="draggable-photo-preview" alt="">
+                    <div class="element-label" id="draggable-photo-label">경매 사진</div>
+                    <div class="resize-handle resize-handle-se" id="resize-photo" title="드래그로 사진 크기 조절"></div>
+                </div>
+
+                <!-- 5. Draggable Full Bracket (PAGE3 only) -->
+                <div class="draggable-element draggable-bracket" id="draggable-bracket-full" data-type="bracket_full" style="display:none; z-index:20;">
+                    <div class="element-label">전체 결과</div>
+                    <div class="resize-handle resize-handle-se" id="resize-bracket-full" title="크기 조절" style="border-color: #3b82f6;"></div>
+                </div>
+
+                <!-- 5b. Draggable Live Bracket (PAGE3 only) -->
+                <div class="draggable-element draggable-bracket" id="draggable-bracket-live" data-type="bracket_live" style="display:none; z-index:10;">
+                    <div class="element-label">실시간 대진</div>
+                    <div class="resize-handle resize-handle-se" id="resize-bracket-live" title="크기 조절" style="border-color: #ef4444;"></div>
+                </div>
+
+                <!-- 6. Draggable Bracket Title (PAGE3 only) -->
+                <div class="draggable-element draggable-bracket-title" id="draggable-bracket-title" data-type="bracket_title" style="display:none; z-index:11;">
+                    <div class="element-label">대진표 타이틀</div>
+                    <div class="resize-handle resize-handle-se" id="resize-bracket-title" title="크기 조절" style="border-color: #eab308;"></div>
+                </div>
+
+                <!-- 7. Draggable Battle Announcement (PAGE3 only) -->
+                <div class="draggable-element draggable-battle-ann" id="draggable-battle-ann" data-type="battle_ann" style="display:none; z-index:12;">
+                    <div class="element-label">경기 안내 자막</div>
+                    <div class="resize-handle resize-handle-se" id="resize-battle-ann" title="크기 조절" style="border-color: #f43f5e;"></div>
+                </div>
+
+                <!-- 8. Draggable Blind Team Totals (PAGE3 only) -->
+                <div class="draggable-element draggable-blind-totals" id="draggable-blind-totals" data-type="blind_totals" style="display:none; z-index:22;">
+                    <div class="element-label">블라인드 팀 합산</div>
+                    <div class="resize-handle resize-handle-se" id="resize-blind-totals" title="크기 조절" style="border-color: #d9b05c;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Coordinates Status & Live Control Bar -->
+        <div class="control-panel">
+            <div class="control-row" style="border-bottom: 1px solid var(--border); padding-bottom: 12px;">
+                <div class="toggle-switch-group">
+                    <div class="switch-container">
+                        <span>자막</span>
+                        <input type="checkbox" id="toggle-ticker-show" class="switch-input" checked onchange="toggleShowState('ticker')">
+                    </div>
+                    <div class="switch-container">
+                        <span>배너</span>
+                        <input type="checkbox" id="toggle-banner-show" class="switch-input" checked onchange="toggleShowState('banner')">
+                    </div>
+                    <div class="switch-container" id="toggle-photo-show-group" style="display:none;">
+                        <span>경매 사진</span>
+                        <input type="checkbox" id="toggle-photo-show" class="switch-input" checked onchange="toggleShowState('photo')">
+                    </div>
+                    <div class="switch-container" id="toggle-nametag1-group" style="display:none;">
+                        <span>네임택 1</span>
+                        <input type="checkbox" id="toggle-nametag1-show" class="switch-input" checked onchange="toggleShowState('nametag1')">
+                    </div>
+                    <div class="switch-container" id="toggle-nametag2-group" style="display:none;">
+                        <span>네임택 2</span>
+                        <input type="checkbox" id="toggle-nametag2-show" class="switch-input" checked onchange="toggleShowState('nametag2')">
+                    </div>
+                    <div class="switch-container" id="toggle-bracket-full-show-group" style="display:none;" onclick="focusBracketLayer('bracket_full')" title="클릭하면 전체대진 배치 박스가 선택됩니다">
+                        <span>전체 결과</span>
+                        <small class="layout-target-badge">배치 선택됨</small>
+                        <input type="checkbox" id="toggle-bracket-full-show" class="switch-input" checked onchange="toggleShowState('bracket_full')">
+                    </div>
+                    <div class="switch-container" id="toggle-bracket-live-show-group" style="display:none;" onclick="focusBracketLayer('bracket_live')" title="클릭하면 실시간대진 배치 박스가 선택됩니다">
+                        <span>실시간 대진</span>
+                        <small class="layout-target-badge">배치 선택됨</small>
+                        <input type="checkbox" id="toggle-bracket-live-show" class="switch-input" onchange="toggleShowState('bracket_live')">
+                    </div>
+                    <div class="switch-container" id="toggle-bracket-full-blind-group" style="display:none;" title="ON이면 전체 대진표에서 업체명과 로고를 숨깁니다. 개체 경매 화면은 이 설정과 별도로 블라인드 처리됩니다">
+                        <span>전체대진 업체 숨김</span>
+                        <input type="checkbox" id="toggle-bracket-full-blind" class="switch-input" checked onchange="toggleFullBracketBlind()">
+                    </div>
+                    <div class="switch-container" id="toggle-bracket-title-show-group" style="display:none;">
+                        <span>타이틀</span>
+                        <input type="checkbox" id="toggle-bracket-title-show" class="switch-input" checked onchange="toggleShowState('bracket_title')">
+                    </div>
+                    <div class="switch-container" id="toggle-battle-ann-show-group" style="display:none;">
+                        <span>경기 안내</span>
+                        <input type="checkbox" id="toggle-battle-ann-show" class="switch-input" checked onchange="toggleShowState('battle_ann')">
+                    </div>
+                    <div class="switch-container" id="toggle-blind-totals-show-group" style="display:none;" onclick="focusBracketLayer('blind_totals')" title="클릭하면 블라인드 합산 배치 박스가 선택됩니다">
+                        <span>팀 합산</span>
+                        <small class="layout-target-badge">배치 선택됨</small>
+                        <input type="checkbox" id="toggle-blind-totals-show" class="switch-input" checked onchange="toggleShowState('blind_totals')">
+                    </div>
+                    <div class="switch-container" id="toggle-event-match-show-group" style="display:none;">
+                        <span>이벤트 매치</span>
+                        <input type="checkbox" id="toggle-event-match-show" class="switch-input" onchange="toggleEventMatchShow()">
+                    </div>
+                    <div class="switch-container" id="toggle-live-bidders-show-group" style="display:none;">
+                        <span>입찰자 팝업</span>
+                        <input type="checkbox" id="toggle-live-bidders-show" class="switch-input" onchange="toggleLiveBiddersShow()">
+                    </div>
+                    <div class="switch-container" id="toggle-live-bidders-switch-group" style="display:none; gap: 6px; align-items: center; border-left: 1px solid var(--border); padding-left: 12px; margin-left: 6px;">
+                        <span style="font-weight: 700;">전환 주기:</span>
+                        <input type="number" id="live-bidders-switch-input" onchange="updateLiveBiddersSwitchSec(this.value)" class="cdcup-input" style="padding: 2px 6px; width: 48px; height: 28px; font-size: 11px; font-weight: 700; border-radius: 4px;" min="2" max="60" value="5">
+                        <span style="font-size: 11px; font-weight: 700; color: var(--text-muted);">초</span>
+                    </div>
+                    <div class="switch-container" id="toggle-live-bidders-mode-group" style="display:none; gap: 6px; align-items: center; border-left: 1px solid var(--border); padding-left: 12px; margin-left: 6px;">
+                        <span style="font-weight: 700;">입찰자 노출:</span>
+                        <select id="live-bidders-mode-select" onchange="updateLiveBiddersMode(this.value)" class="cdcup-input" style="padding: 2px 6px; width: auto; height: 28px; font-size: 11px; font-weight: 700; border-radius: 4px;">
+                            <option value="top">최상위 금액만</option>
+                            <option value="all">모든 입찰 내역</option>
+                        </select>
+                    </div>
+                    <div class="switch-container" id="toggle-bracket-scale-group" style="display:none; gap: 6px; align-items: center; border-left: 1px solid var(--border); padding-left: 12px; margin-left: 6px;">
+                        <span style="font-weight: 700;">대진표 크기:</span>
+                        <select id="bracket-scale-select" onchange="changeBracketScale(this.value)" class="cdcup-input" style="padding: 2px 6px; width: auto; height: 28px; font-size: 11px; font-weight: 700; border-radius: 4px;">
+                            <option value="16">16강</option>
+                            <option value="8">8강</option>
+                            <option value="4">4강</option>
+                            <option value="2">결승·3·4위전</option>
+                        </select>
+                    </div>
+                    <div class="switch-container" id="toggle-bracket-full-font-group" style="display:none; gap: 6px; align-items: center; border-left: 1px solid var(--border); padding-left: 12px; margin-left: 6px;">
+                        <span style="font-weight: 700;">전체결과 폰트:</span>
+                        <input type="number" id="bracket-full-font-input" oninput="previewBracketFontSize('bracket_full', this.value)" onchange="updateBracketFontSize('bracket_full', this.value)" class="cdcup-input" style="padding: 2px 6px; width: 52px; height: 28px; font-size: 11px; font-weight: 700; border-radius: 4px;" min="8" max="60" value="14">
+                        <span style="font-size: 11px; font-weight: 700; color: var(--text-muted);">px</span>
+                    </div>
+                    <div class="switch-container" id="toggle-bracket-live-font-group" style="display:none; gap: 6px; align-items: center; border-left: 1px solid var(--border); padding-left: 12px; margin-left: 6px;">
+                        <span style="font-weight: 700;">실시간 폰트:</span>
+                        <input type="number" id="bracket-live-font-input" oninput="previewBracketFontSize('bracket_live', this.value)" onchange="updateBracketFontSize('bracket_live', this.value)" class="cdcup-input" style="padding: 2px 6px; width: 52px; height: 28px; font-size: 11px; font-weight: 700; border-radius: 4px;" min="8" max="60" value="14">
+                        <span style="font-size: 11px; font-weight: 700; color: var(--text-muted);">px</span>
+                    </div>
+                    <div class="switch-container" id="toggle-bracket-live-opacity-group" style="display:none; gap: 7px; align-items: center; border-left: 1px solid var(--border); padding-left: 12px; margin-left: 6px;">
+                        <span style="font-weight: 700;">실시간 투명도:</span>
+                        <input type="range" id="bracket-live-opacity-input" min="35" max="100" step="1" value="94" oninput="previewBracketOpacity(this.value)" onchange="updateBracketOpacity(this.value)" style="width:86px; accent-color:#2563eb;">
+                        <strong id="bracket-live-opacity-value" style="min-width:32px; font-size:11px; color:var(--text-muted);">94%</strong>
+                    </div>
+                    <div class="switch-container" id="toggle-blind-totals-font-group" style="display:none; gap: 6px; align-items: center; border-left: 1px solid var(--border); padding-left: 12px; margin-left: 6px;">
+                        <span style="font-weight: 700;">팀합산 폰트:</span>
+                        <input type="number" id="blind-totals-font-input" oninput="previewBracketFontSize('blind_totals', this.value)" onchange="updateBracketFontSize('blind_totals', this.value)" class="cdcup-input" style="padding: 2px 6px; width: 52px; height: 28px; font-size: 11px; font-weight: 700; border-radius: 4px;" min="9" max="96" value="14">
+                        <span style="font-size: 11px; font-weight: 700; color: var(--text-muted);">px</span>
+                    </div>
+                    <div class="switch-container" id="toggle-blind-totals-opacity-group" style="display:none; gap: 7px; align-items: center; border-left: 1px solid var(--border); padding-left: 12px; margin-left: 6px;">
+                        <span style="font-weight: 700;">투명도:</span>
+                        <input type="range" id="blind-totals-opacity-input" min="0" max="100" step="5" value="0" oninput="previewBlindTotalsOpacity(this.value)" onchange="updateBlindTotalsOpacity(this.value)" onwheel="wheelBlindTotalsOpacity(event)" style="width:86px; accent-color:#d9b05c;">
+                        <strong id="blind-totals-opacity-value" style="min-width:32px; font-size:11px; color:var(--text-muted);">0%</strong>
+                    </div>
+                    <div class="switch-container" id="toggle-bracket-mode-group" style="display:none; gap: 6px; align-items: center; border-left: 1px solid var(--border); padding-left: 12px; margin-left: 6px;">
+                        <span style="font-weight: 700;">송출 모드:</span>
+                        <select id="bracket-active-select" onchange="changeActiveTournament(this.value)" class="cdcup-input" style="padding: 2px 6px; width: auto; height: 28px; font-size: 11px; font-weight: 700; border-radius: 4px;">
+                            <option value="none">대진표 비송출 (기본경매)</option>
+                            <option value="16">16강 대진표 송출</option>
+                            <option value="8">8강 대진표 송출</option>
+                            <option value="4">4강 대진표 송출</option>
+                            <option value="2">결승·3·4위전 송출</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="actions-row">
+                    <button class="btn-action reset" onclick="resetPositions()">기본 좌표 복구</button>
+                    <button class="btn-action save" onclick="saveCoordinates(false)">현재 상태 전체 저장</button>
+                </div>
+            </div>
+
+            <div class="control-row">
+                <div class="status-txt">
+                    <span id="banner-coords-group">배너 좌표: Top <strong id="banner-val-top">0%</strong>, Left <strong id="banner-val-left">0%</strong> | </span>
+                    <span id="ticker-coords-group">자막 좌표: Top <strong id="ticker-val-top">0%</strong>, Left <strong id="ticker-val-left">0%</strong></span>
+                    <span id="nametag1-coords" style="display:none;"> | 네임택1: <strong id="nametag1-val-top">0%</strong>, <strong id="nametag1-val-left">0%</strong></span>
+                    <span id="nametag2-coords" style="display:none;"> | 네임택2: <strong id="nametag2-val-top">0%</strong>, <strong id="nametag2-val-left">0%</strong></span>
+                    <span id="info-coords" style="display:none;"> | 개체정보: <strong id="info-val-top">0%</strong>, <strong id="info-val-left">0%</strong></span>
+                    <span id="photo-coords" style="display:none;"> | 사진: <strong id="photo-val-top">0%</strong>, <strong id="photo-val-left">0%</strong></span>
+                    <span id="bracket-coords" style="display:none;">전체결과: Top <strong id="bracket-val-top">0%</strong>, Left <strong id="bracket-val-left">0%</strong></span>
+                    <span id="bracket-live-coords" style="display:none;"> | 실시간대진: Top <strong id="bracket-live-val-top">0%</strong>, Left <strong id="bracket-live-val-left">0%</strong></span>
+                    <span id="bracket-title-coords" style="display:none;"> | 타이틀: <strong id="bracket-title-val-top">0%</strong>, <strong id="bracket-title-val-left">0%</strong></span>
+                    <span id="battle-ann-coords" style="display:none;"> | 경기자막: <strong id="battle-ann-val-top">0%</strong>, <strong id="battle-ann-val-left">0%</strong></span>
+                    <span id="blind-totals-coords" style="display:none;">팀합산: <strong id="blind-totals-val-top">0%</strong>, <strong id="blind-totals-val-left">0%</strong></span>
+                    <span id="save-status" style="margin-left: 10px; color: var(--green); display: none;">✓ 저장 완료</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ 3P Tournament Dashboard ═══ -->
+        <div class="tournament-dashboard" id="tournament-dashboard">
+
+            <!-- 헤더 (크기 선택 + 송출 모드 + 저장/초기화) -->
+            <div class="t-header">
+                <div class="t-controls">
+                    <span class="t-label">토너먼트 크기:</span>
+                    <button class="t-btn active" id="t-btn-16" onclick="tChangeScale(16)">16강</button>
+                    <button class="t-btn" id="t-btn-8" onclick="tChangeScale(8)">8강</button>
+                    <button class="t-btn" id="t-btn-4" onclick="tChangeScale(4)">4강</button>
+                    <button class="t-btn" id="t-btn-2" onclick="tChangeScale(2)">결승·3·4위전</button>
+                </div>
+                <div class="t-controls">
+                    <span class="t-label">방송 송출:</span>
+                    <select class="t-select" id="t-active-select" onchange="tChangeActive(this.value)">
+                        <option value="none">비송출 (기본경매)</option>
+                        <option value="16">16강 송출</option>
+                        <option value="8">8강 송출</option>
+                        <option value="4">4강 송출</option>
+                        <option value="2">결승·3·4위전 송출</option>
+                    </select>
+                </div>
+
+                <div class="t-controls">
+                    <button class="t-btn danger" onclick="tReset()">초기화</button>
+                    <button class="t-btn success" onclick="tRandomFill()">랜덤 배치</button>
+                    <button class="t-btn save" onclick="tSave()">대진표 저장</button>
+                    <a class="t-btn" href="ranking.html?ceremony=1" target="_blank" rel="noopener" style="text-decoration:none;">시상식 화면</a>
+                </div>
+            </div>
+
+            <!-- 참가 팀 풀 -->
+            <div class="t-pool-title">
+                <span>참가 팀 목록 (드래그하여 대진표 슬롯에 넣으세요)</span>
+                <div class="t-pool-actions">
+                    <button class="t-btn" id="t-company-add-toggle" type="button" onclick="tToggleQuickRegister()">업체 추가</button>
+                    <button class="t-btn danger" id="t-delete-all-items" type="button" onclick="tDeleteAllTournamentItems()">개체 일괄삭제</button>
+                </div>
+            </div>
+            <section class="t-quick-register" id="t-quick-register">
+                <div>
+                    <textarea class="t-quick-textarea" id="t-quick-company-names" placeholder="업체명을 한 줄에 하나씩 입력하세요.&#10;미야게코&#10;아틀리에&#10;니코게코" oninput="tUpdateQuickRegisterSummary()"></textarea>
+                </div>
+                <div class="t-quick-side">
+                    <div class="t-quick-field">
+                        <label for="t-quick-item-count">업체당 개체 수</label>
+                        <input class="t-quick-count" type="number" id="t-quick-item-count" min="1" max="99" value="4" onchange="tUpdateQuickRegisterSummary()">
+                    </div>
+                    <label class="t-quick-field t-quick-check"><input type="checkbox" id="t-quick-random" checked> 등록 후 자동 랜덤 배치</label>
+                    <div class="t-quick-summary" id="t-quick-summary">업체명을 입력해주세요.</div>
+                    <button class="t-btn save t-quick-submit" id="t-quick-submit" type="button" onclick="tQuickRegisterCompanies()" disabled>업체·개체 일괄 생성</button>
+                </div>
+            </section>
+            <div class="t-pool" id="t-team-pool">
+                <span style="color:#64748b; font-size:12px;">로딩 중...</span>
+            </div>
+
+            <!-- 대진표 트리 -->
+            <div class="t-bracket-wrap">
+                <div class="t-bracket-tree" id="t-bracket-tree"></div>
+            </div>
+
+            <section class="t-item-setup" id="t-item-setup">
+                <div class="t-item-setup-head">
+                    <div>
+                        <div class="t-item-setup-title">대진 개체 일괄 편성</div>
+                        <div class="t-item-setup-desc" id="t-item-setup-desc">업체별 설정 수만큼 내부 팀 슬롯에 연결합니다. 공개 라벨은 팀과 무관한 숫자 번호로 자동 배치됩니다.</div>
+                    </div>
+                    <div class="t-item-setup-actions">
+                        <label class="t-item-count-control">팀당 <input id="t-items-per-team" type="number" min="1" max="99" value="4" onchange="tSetItemsPerTeam(this.value)">마리</label>
+                        <span class="t-match-count-controls" id="t-match-count-controls"></span>
+                        <span class="t-item-progress" id="t-item-progress">배치를 먼저 완료해주세요</span>
+                        <button class="t-btn" id="t-item-auto-all" type="button" onclick="tAutoSelectAllItems()">업체별 자동 선택</button>
+                        <button class="t-btn save" id="t-item-apply" type="button" onclick="tApplyTournamentItems()" disabled>토너먼트 개체 편성</button>
+                    </div>
+                </div>
+                <div class="t-item-setup-grid" id="t-item-setup-grid"></div>
+                <div class="t-item-warning">선택한 개체만 현재 라운드 슬롯에 연결되고 낙찰·배송 상태가 초기화됩니다. 일반 경매와 이전 라운드 기록은 삭제하지 않습니다.</div>
+            </section>
+
+            <!-- ── 이벤트 매치 설정 ── -->
+            <section class="t-item-setup" id="event-match-setup" style="margin-top:24px; border-top: 2px solid rgba(56,189,248,0.2); padding-top: 18px;">
+                <div class="t-item-setup-head">
+                    <div>
+                        <div class="t-item-setup-title" style="color:#38bdf8;">EVENT MATCH</div>
+                        <div class="t-item-setup-desc">토너먼트와 별도로 진행되는 이벤트 매치 팀을 설정합니다.</div>
+                    </div>
+                </div>
+
+                <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-start; margin-top:12px;">
+                    <!-- 이벤트 매치 팀 슬롯 -->
+                    <div id="event-match-slots" style="display:flex; gap:8px; flex-wrap:wrap; flex:1; min-width:0;">
+                    </div>
+
+                    <!-- 컨트롤 -->
+                    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                        <button class="t-btn" type="button" onclick="evAddSlot()">+ 팀 추가</button>
+                        <label class="t-item-count-control">업체당 <input id="ev-items-per-team" type="number" min="1" max="99" value="4" style="width:48px;">마리</label>
+                        <button class="t-btn save" type="button" onclick="evApplyEventItems()">이벤트 개체 편성</button>
+                    </div>
+                </div>
+
+                <div class="t-item-warning" style="margin-top:8px; border-color: rgba(56,189,248,0.15);">
+                    팀 슬롯에 업체명을 드래그하거나 직접 입력하세요. 편성 버튼을 누르면 해당 업체의 개체가 이벤트 경매 개체로 등록됩니다.
+                </div>
+            </section>
+
+
+        </div>
+
+        <div class="tournament-dashboard" id="crewart-dashboard">
+            <div class="t-header">
+                <div class="t-controls">
+                    <span class="t-label">크레와트 3P</span>
+                    <button class="t-btn save" type="button" onclick="refreshCrewartPreview()">점수판 새로고침</button>
+                    <a class="t-btn" href="crewart-settings.html" style="text-decoration:none;">기숙사 설정</a>
+                </div>
+                <div class="t-controls">
+                    <span class="t-label">송출 화면:</span>
+                    <span class="event-module-chip">기숙사 점수판</span>
+                </div>
+            </div>
+            <div id="crewart-score-preview" style="min-height:220px;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:rgba(255,255,255,.03);">
+                <div style="padding:28px;color:var(--text2);font-weight:700;">점수 데이터를 불러오는 중...</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // URL Parameter Parsing (page=1, page=2 or page=3)
+        const params = new URLSearchParams(window.location.search);
+        function normalizePreviewPage(value) {
+            const page = String(value || '2').trim();
+            return ['1', '2', '3'].includes(page) ? page : '2';
+        }
+
+        const pageNum = normalizePreviewPage(params.get('page')); // Default: page=2 (개체용)
+        const broadcastAssetVersion = '20260715-suji-region';
+        let previewConfigMap = {};
+
+        function requestedModuleId() {
+            const requestedRaw = params.get('module') || params.get('event');
+            return requestedRaw ? getActiveAuctionEventModule({ active_event_module: requestedRaw }).id : '';
+        }
+
+        function broadcastPreviewSrc(page, moduleId) {
+            const p = normalizePreviewPage(page);
+            return moduleId === 'crewart'
+                ? `crewart-broadcast.html?page=${p}`
+                : `broadcast.html?page=${p}&module=${encodeURIComponent(moduleId || 'cdcup')}&v=${broadcastAssetVersion}`;
+        }
+
+        function updatePreviewTabs(moduleId) {
+            const id = moduleId || getActiveAuctionEventModule(previewConfigMap).id;
+            const label = id === 'crewart' ? '크레와트' : 'CDCUP';
+            document.querySelectorAll('[data-preview-page]').forEach(link => {
+                const page = normalizePreviewPage(link.getAttribute('data-preview-page'));
+                link.href = `preview.html?module=${id}&page=${page}`;
+                link.textContent = `${label} ${page}P 배치기`;
+            });
+            const settingsLink = document.querySelector('.cdcup-tabs a[href^="settings.html"]');
+            if (settingsLink) settingsLink.href = `settings.html?module=${id}`;
+            const navPreview = document.getElementById('nav-preview-link');
+            if (navPreview) navPreview.href = `preview.html?module=${id}&page=${pageNum}`;
+        }
+
+        function updatePreviewUrlModule(moduleId) {
+            const nextParams = new URLSearchParams(location.search);
+            nextParams.set('module', moduleId);
+            nextParams.set('page', pageNum);
+            history.replaceState(null, '', `${location.pathname}?${nextParams.toString()}`);
+        }
+
+        function applyPreviewEventModule(cfg) {
+            previewConfigMap = cfg || {};
+            const module = applyAuctionEventModule(previewConfigMap);
+            updatePreviewTabs(module.id);
+            const previewFrame = document.getElementById('broadcast-frame');
+            if (previewFrame) {
+                previewFrame.src = broadcastPreviewSrc(pageNum, module.id);
+            }
+            const select = document.getElementById('preview-event-module-select');
+            if (select) select.value = module.id;
+            const title = document.getElementById('preview-event-module-title');
+            const desc = document.getElementById('preview-event-module-desc');
+            if (title) title.textContent = module.title + ' 화면 모듈';
+            if (desc) desc.textContent = module.id === 'crewart'
+                ? '1P 대기, 2P 현재 경매, 3P 기숙사 점수판으로 송출합니다.'
+                : '1P 진행, 2P 개체, 3P 블라인드 팀합산으로 송출합니다.';
+
+            const isCrewart = module.id === 'crewart';
+            document.body.classList.toggle('event-crewart-preview', isCrewart);
+            const fullLabel = document.querySelector('#draggable-bracket-full .element-label');
+            if (fullLabel) fullLabel.textContent = isCrewart ? '기숙사 점수판' : '전체 결과';
+            const liveLabel = document.querySelector('#draggable-bracket-live .element-label');
+            if (liveLabel) liveLabel.textContent = isCrewart ? '보조 점수판' : '실시간 대진';
+            const p3Tab = document.getElementById('btn-tab-p3');
+            if (p3Tab) p3Tab.textContent = isCrewart ? '3P 점수판 배치기' : '3P 배치기';
+
+            if (pageNum === '3') {
+                document.getElementById('tournament-dashboard')?.classList.toggle('active', !isCrewart);
+                document.getElementById('crewart-dashboard')?.classList.toggle('active', isCrewart);
+                const setDisplay = (id, visible) => {
+                    const el = document.getElementById(id);
+                    if (el) el.style.display = visible ? '' : 'none';
+                };
+                setDisplay('draggable-bracket-full', true);
+                setDisplay('draggable-bracket-live', false);
+                setDisplay('draggable-bracket-title', false);
+                setDisplay('draggable-battle-ann', false);
+                setDisplay('draggable-blind-totals', !isCrewart);
+                setDisplay('toggle-bracket-full-show-group', true);
+                [
+                    'toggle-bracket-live-show-group',
+                    'toggle-bracket-scale-group',
+                    'toggle-bracket-live-font-group',
+                    'toggle-bracket-live-opacity-group',
+                    'toggle-bracket-title-show-group',
+                    'toggle-battle-ann-show-group'
+                ].forEach(id => {
+                    setDisplay(id, false);
+                });
+                setDisplay('toggle-bracket-full-blind-group', !isCrewart);
+                setDisplay('toggle-bracket-mode-group', !isCrewart);
+                setDisplay('toggle-bracket-full-font-group', isCrewart);
+                setDisplay('toggle-blind-totals-show-group', !isCrewart);
+                setDisplay('toggle-event-match-show-group', !isCrewart);
+                setDisplay('toggle-blind-totals-font-group', !isCrewart);
+                setDisplay('toggle-blind-totals-opacity-group', !isCrewart);
+                setDisplay('toggle-live-bidders-show-group', !isCrewart);
+                setDisplay('toggle-live-bidders-switch-group', !isCrewart);
+                setDisplay('toggle-live-bidders-mode-group', !isCrewart);
+                setDisplay('bracket-coords', true);
+                setDisplay('bracket-live-coords', false);
+                setDisplay('bracket-title-coords', false);
+                setDisplay('battle-ann-coords', false);
+                setDisplay('blind-totals-coords', !isCrewart);
+                const fullToggleLabel = document.querySelector('#toggle-bracket-full-show-group span');
+                if (fullToggleLabel) fullToggleLabel.textContent = isCrewart ? '점수판' : '전체 결과';
+                const coords = document.getElementById('bracket-coords');
+                if (coords && coords.firstChild) coords.firstChild.textContent = isCrewart ? '점수판: Top ' : '전체결과: Top ';
+                if (isCrewart) refreshCrewartPreview();
+                try { focusBracketLayer(isCrewart ? 'bracket_full' : 'blind_totals'); } catch (e) {}
+            }
+        }
+
+        async function changeEventModule(value) {
+            const active_event_module = value || 'cdcup';
+            const next = { ...previewConfigMap, active_event_module };
+            applyPreviewEventModule(next);
+            updatePreviewUrlModule(active_event_module);
+            try {
+                await updateConfigs({ active_event_module });
+                frame.src = broadcastPreviewSrc(pageNum, active_event_module);
+                toast(getActiveAuctionEventModule(next).title + ' 모듈로 전환했습니다.');
+            } catch (err) {
+                toast('모듈 전환 실패: ' + err.message);
+            }
+        }
+
+        async function refreshCrewartPreview() {
+            const target = document.getElementById('crewart-score-preview');
+            if (!target) return;
+            try {
+                const [cfg, items] = await Promise.all([getConfigMap(), getBroadcastItems()]);
+                previewConfigMap = cfg || previewConfigMap;
+                target.innerHTML = renderCrewartHouseBoardHTML(items || [], previewConfigMap, { compact: true });
+            } catch (err) {
+                target.innerHTML = '<div style="padding:28px;color:#fca5a5;font-weight:800;">점수판을 불러오지 못했습니다: ' + String(err.message || err) + '</div>';
+            }
+        }
+
+        // Set Nav Active and iframe source
+        const frame = document.getElementById('broadcast-frame');
+        const pageTitle = document.getElementById('page-title');
+        const initialModuleId = requestedModuleId() || 'cdcup';
+        updatePreviewTabs(initialModuleId);
+        if (pageNum === '1') {
+            document.getElementById('btn-tab-p1')?.classList.add('active');
+            if (pageTitle) pageTitle.textContent = (initialModuleId === 'crewart' ? '크레와트 대기용' : '진행용') + " (1P) 실시간 레이아웃 배치기";
+            frame.src = broadcastPreviewSrc('1', initialModuleId);
+        } else if (pageNum === '3') {
+            document.getElementById('btn-tab-p3')?.classList.add('active');
+            if (pageTitle) pageTitle.textContent = (initialModuleId === 'crewart' ? '기숙사 점수판' : '팀합산') + " (3P) 실시간 레이아웃 배치기";
+            frame.src = broadcastPreviewSrc('3', initialModuleId);
+            // 3P: 레이아웃 미리보기 + 대진표 관리 대시보드 함께 표시
+            const bgSel = document.getElementById('bracket-bg-selector-group');
+            if (bgSel) bgSel.style.display = 'none';
+            document.getElementById('tournament-dashboard')?.classList.toggle('active', initialModuleId !== 'crewart');
+            document.getElementById('crewart-dashboard')?.classList.toggle('active', initialModuleId === 'crewart');
+        } else {
+            document.getElementById('btn-tab-p2')?.classList.add('active');
+            if (pageTitle) pageTitle.textContent = (initialModuleId === 'crewart' ? '현재 경매용' : '개체용') + " (2P) 실시간 레이아웃 배치기";
+            frame.src = broadcastPreviewSrc('2', initialModuleId); // Default page2 layout
+        }
+
+        // PAGE1 전용 요소 표시
+        if (pageNum === '1') {
+            document.getElementById('draggable-nametag1').style.display = '';
+            document.getElementById('draggable-nametag2').style.display = '';
+            document.getElementById('toggle-nametag1-group').style.display = '';
+            document.getElementById('toggle-nametag2-group').style.display = '';
+            document.getElementById('nametag1-coords').style.display = '';
+            document.getElementById('nametag2-coords').style.display = '';
+        }
+
+        if (pageNum === '2') {
+            document.getElementById('draggable-info').style.display = '';
+            document.getElementById('draggable-photo').style.display = '';
+            document.getElementById('toggle-photo-show-group').style.display = '';
+            document.getElementById('info-coords').style.display = '';
+            document.getElementById('photo-coords').style.display = '';
+        }
+
+        // PAGE3 전용 요소 표시 + 배너/자막 숨김 (3P는 오버레이 전용)
+        if (pageNum === '3') {
+            const isInitialCrewart = initialModuleId === 'crewart';
+            // P3 is the blind team totals overlay editor. Legacy round/bracket layers stay hidden.
+            document.getElementById('draggable-bracket-full').style.display = isInitialCrewart ? '' : 'none';
+            document.getElementById('draggable-bracket-live').style.display = 'none';
+            document.getElementById('draggable-bracket-title').style.display = 'none'; // Hidden per user request
+            document.getElementById('draggable-battle-ann').style.display = 'none';
+            document.getElementById('draggable-blind-totals').style.display = isInitialCrewart ? 'none' : '';
+            document.getElementById('toggle-bracket-full-show-group').style.display = '';
+            document.getElementById('toggle-bracket-live-show-group').style.display = 'none';
+            document.getElementById('toggle-bracket-full-blind-group').style.display = isInitialCrewart ? 'none' : '';
+            document.getElementById('toggle-bracket-title-show-group').style.display = 'none'; // Hidden per user request
+            document.getElementById('toggle-battle-ann-show-group').style.display = 'none';
+            document.getElementById('toggle-blind-totals-show-group').style.display = isInitialCrewart ? 'none' : '';
+            document.getElementById('toggle-live-bidders-show-group').style.display = isInitialCrewart ? 'none' : '';
+            document.getElementById('toggle-live-bidders-switch-group').style.display = isInitialCrewart ? 'none' : '';
+            document.getElementById('toggle-live-bidders-mode-group').style.display = isInitialCrewart ? 'none' : '';
+            document.getElementById('toggle-bracket-scale-group').style.display = 'none';
+            document.getElementById('toggle-bracket-mode-group').style.display = isInitialCrewart ? 'none' : '';
+            document.getElementById('toggle-bracket-full-font-group').style.display = isInitialCrewart ? '' : 'none';
+            document.getElementById('toggle-bracket-live-font-group').style.display = 'none';
+            document.getElementById('toggle-bracket-live-opacity-group').style.display = 'none';
+            document.getElementById('toggle-blind-totals-font-group').style.display = isInitialCrewart ? 'none' : '';
+            document.getElementById('toggle-blind-totals-opacity-group').style.display = isInitialCrewart ? 'none' : '';
+            document.getElementById('bracket-coords').style.display = '';
+            document.getElementById('bracket-live-coords').style.display = 'none';
+            document.getElementById('bracket-title-coords').style.display = 'none'; // Hidden per user request
+            document.getElementById('battle-ann-coords').style.display = 'none';
+            document.getElementById('blind-totals-coords').style.display = isInitialCrewart ? 'none' : '';
+            // 배너/자막 완전 숨김 (3P 오버레이에 불필요)
+            document.getElementById('draggable-banner').style.display = 'none';
+            document.getElementById('draggable-ticker').style.display = 'none';
+            document.getElementById('toggle-ticker-show')?.closest('.switch-container')?.style.setProperty('display', 'none');
+            document.getElementById('toggle-banner-show')?.closest('.switch-container')?.style.setProperty('display', 'none');
+            document.getElementById('banner-coords-group').style.display = 'none';
+            document.getElementById('ticker-coords-group').style.display = 'none';
+        }
+
+        // 페이지별 config 접두사 (PAGE2는 p2_, PAGE3는 p3_)
+        const cfgPrefix = pageNum === '1' ? '' : (pageNum === '3' ? 'p3_' : 'p2_');
+
+        // Draggables Configuration
+        const container = document.getElementById('screen-container');
+        const dragOverlay = document.getElementById('drag-overlay');
+        const elements = {
+            banner: {
+                el: document.getElementById('draggable-banner'),
+                top: "auto", left: "auto", right: "1%", bottom: "4%",
+                show: "1", width: "42%", height: "50%"
+            },
+            ticker: {
+                el: document.getElementById('draggable-ticker'),
+                top: "auto", left: "auto", right: "auto", bottom: "4%",
+                show: "1", width: "100%", height: "12%"
+            }
+        };
+
+        if (pageNum === '2') {
+            elements.info = {
+                el: document.getElementById('draggable-info'),
+                top: '3%', left: 'auto', right: '2%', bottom: 'auto',
+                show: '1', width: '42%', height: '16%'
+            };
+            elements.photo = {
+                el: document.getElementById('draggable-photo'),
+                top: 'auto', left: '3%', right: 'auto', bottom: '5%',
+                show: '1', width: '34vw', height: '60vh'
+            };
+        }
+
+        // PAGE1 전용: 네임택 2개 개별 드래그
+        if (pageNum === '1') {
+            elements.nametag1 = {
+                el: document.getElementById('draggable-nametag1'),
+                top: "auto", left: "3%", right: "auto", bottom: "6%", show: "1",
+                width: "16vw", height: "8vh"
+            };
+            elements.nametag2 = {
+                el: document.getElementById('draggable-nametag2'),
+                top: "auto", left: "18%", right: "auto", bottom: "6%", show: "1",
+                width: "16vw", height: "8vh"
+            };
+        }
+
+        // PAGE3 전용: 대진표 (브라켓) 드래그 설정
+        if (pageNum === '3') {
+            elements.bracket_full = {
+                el: document.getElementById('draggable-bracket-full'),
+                top: "5%", left: "20%", right: "auto", bottom: "auto",
+                show: "1", width: "60%", height: "65%"
+            };
+            elements.bracket_live = {
+                el: document.getElementById('draggable-bracket-live'),
+                top: "0px", left: "0px", right: "auto", bottom: "auto",
+                show: "0", width: "100%", height: "100%", fontSize: "14", opacity: "94"
+            };
+            elements.bracket_title = {
+                el: document.getElementById('draggable-bracket-title'),
+                top: "40px", left: "25%", right: "auto", bottom: "auto",
+                show: "1", width: "50%", height: "10%"
+            };
+            elements.blind_totals = {
+                el: document.getElementById('draggable-blind-totals'),
+                top: "10%", left: "2%", right: "auto", bottom: "auto",
+                show: "1", width: "42%", height: "24%", fontSize: "14", opacity: "0"
+            };
+        }
+
+        let activeDragKey = null;
+        let isDragging = false;
+        let isResizing = false;
+        let resizeTarget = null;
+        let startX = 0;
+        let startY = 0;
+        let resizeStartW = 0;
+        let resizeStartH = 0;
+        let visibilitySaveQueue = Promise.resolve();
+
+        function focusBracketLayer(key) {
+            if (pageNum !== '3' || !elements[key]) return;
+            ['bracket_full', 'bracket_live', 'blind_totals'].forEach(layerKey => {
+                if (!elements[layerKey]) return;
+                const isTarget = layerKey === key;
+                elements[layerKey].el.classList.toggle('layout-active', isTarget);
+                elements[layerKey].el.style.zIndex = isTarget ? '40' : '10';
+                const group = document.getElementById(`toggle-${layerKey.replace(/_/g, '-')}-show-group`);
+                if (group) group.classList.toggle('layout-target', isTarget);
+            });
+        }
+
+        function toast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.classList.add('show');
+            setTimeout(() => { t.classList.remove('show'); }, 2000);
+        }
+
+        function fontSizeConfigKey(key) {
+            if (key === 'bracket_full') return 'bracket_full_font_size';
+            if (key === 'bracket_live') return 'bracket_live_font_size';
+            if (key === 'blind_totals') return 'blind_totals_font_size';
+            return '';
+        }
+
+        function postPreviewConfigPatch(patch) {
+            if (!patch || !Object.keys(patch).length) return;
+            previewConfigMap = { ...(previewConfigMap || {}), ...patch };
+            try {
+                frame.contentWindow.postMessage({ type: 'configUpdate', config: previewConfigMap }, '*');
+            } catch (e) {}
+        }
+
+        function previewBracketFontSize(key, val) {
+            const size = parseInt(val, 10) || 14;
+            if (elements[key]) {
+                elements[key].fontSize = String(size);
+                applyVisualState(key);
+                const configKey = fontSizeConfigKey(key);
+                const patch = configKey ? { [configKey]: String(size) } : {};
+                if (key === 'bracket_full') patch.bracket_font_size = String(size);
+                postPreviewConfigPatch(patch);
+            }
+            return size;
+        }
+
+        function updateBracketFontSize(key, val) {
+            previewBracketFontSize(key, val);
+            saveCoordinates(false);
+        }
+
+        function previewBracketOpacity(val) {
+            const opacity = String(Math.max(35, Math.min(100, parseInt(val, 10) || 94)));
+            if (elements.bracket_live) elements.bracket_live.opacity = opacity;
+            const valueEl = document.getElementById('bracket-live-opacity-value');
+            if (valueEl) valueEl.textContent = opacity + '%';
+            frame.contentWindow.postMessage({ type: 'bracketLiveOpacity', value: opacity }, '*');
+        }
+
+        function updateBracketOpacity(val) {
+            previewBracketOpacity(val);
+            saveCoordinates(false);
+        }
+
+        function previewBlindTotalsOpacity(val) {
+            const parsed = parseInt(val, 10);
+            const opacity = Math.max(0, Math.min(100, Number.isFinite(parsed) ? parsed : 0));
+            const valueEl = document.getElementById('blind-totals-opacity-value');
+            if (valueEl) valueEl.textContent = opacity + '%';
+            if (elements.blind_totals) elements.blind_totals.opacity = String(opacity);
+        }
+
+        function updateBlindTotalsOpacity(val) {
+            previewBlindTotalsOpacity(val);
+            saveCoordinates(false);
+        }
+
+        function wheelBlindTotalsOpacity(event) {
+            event.preventDefault();
+            const input = event.currentTarget;
+            const step = parseInt(input.step || '5', 10) || 5;
+            const current = parseInt(input.value || '0', 10) || 0;
+            const next = Math.max(0, Math.min(100, current + (event.deltaY < 0 ? step : -step)));
+            input.value = String(next);
+            updateBlindTotalsOpacity(next);
+        }
+
+        async function toggleFullBracketBlind() {
+            const checkbox = document.getElementById('toggle-bracket-full-blind');
+            const requested = checkbox.checked ? '1' : '0';
+            checkbox.disabled = true;
+            try {
+                await updateConfigs({ bracket_full_blind: requested });
+                frame.contentWindow.postMessage({ type: 'forceRefresh' }, '*');
+                toast(requested === '1' ? '전체대진 업체명 숨김' : '전체대진 업체명 공개');
+            } catch (err) {
+                checkbox.checked = requested !== '1';
+                toast('블라인드 설정 저장 실패: ' + err.message);
+            } finally {
+                checkbox.disabled = false;
+            }
+        }
+
+        function convertToPercent(val) {
+            if (!val) return '';
+            const raw = String(val).trim().toLowerCase();
+            if (raw.endsWith('vw') || raw.endsWith('vh')) {
+                return parseFloat(raw) + '%';
+            }
+            if (raw.endsWith('%')) {
+                return raw;
+            }
+            if (/^[0-9.]+$/.test(raw)) {
+                return raw + '%';
+            }
+            return val;
+        }
+
+        // Load configuration from database
+        async function loadConfigurations() {
+            try {
+                const cfg = await getConfigMap();
+                if (cfg) {
+                    const requestedRaw = params.get('module') || params.get('event');
+                    const requestedModule = requestedRaw ? getActiveAuctionEventModule({ active_event_module: requestedRaw }).id : '';
+                    if (requestedModule && requestedModule !== cfg.active_event_module) {
+                        try {
+                            await updateConfigs({ active_event_module: requestedModule });
+                            cfg.active_event_module = requestedModule;
+                        } catch (e) {
+                            console.warn('active_event_module query sync failed', e);
+                        }
+                    }
+                    const displayCfg = requestedModule ? { ...cfg, active_event_module: requestedModule } : cfg;
+                    applyPreviewEventModule(displayCfg);
+
+                // Load Banner values (페이지별 접두사 적용)
+                elements.banner.top = cfg[cfgPrefix+'banner_top'] || 'auto';
+                elements.banner.left = cfg[cfgPrefix+'banner_left'] || 'auto';
+                elements.banner.right = cfg[cfgPrefix+'banner_right'] || 'auto';
+                elements.banner.bottom = cfg[cfgPrefix+'banner_bottom'] || 'auto';
+                elements.banner.show = cfg[cfgPrefix+'banner_show'] !== undefined ? String(cfg[cfgPrefix+'banner_show']) : '1';
+                elements.banner.width = cfg[cfgPrefix+'banner_width'] || cfg.banner_maxwidth || '42vw';
+                elements.banner.height = cfg[cfgPrefix+'banner_height'] || cfg.banner_maxheight || '50vh';
+
+                // Load Ticker values
+                elements.ticker.top = cfg[cfgPrefix+'ticker_top'] || 'auto';
+                elements.ticker.left = cfg[cfgPrefix+'ticker_left'] || 'auto';
+                elements.ticker.right = cfg[cfgPrefix+'ticker_right'] || 'auto';
+                elements.ticker.bottom = cfg[cfgPrefix+'ticker_bottom'] || 'auto';
+                elements.ticker.show = cfg[cfgPrefix+'ticker_show'] !== undefined ? String(cfg[cfgPrefix+'ticker_show']) : '1';
+                elements.ticker.height = cfg[cfgPrefix+'ticker_height'] || '12vh';
+
+                if (elements.info) {
+                    elements.info.top = cfg.p2_info_top || '3%';
+                    elements.info.left = cfg.p2_info_left || 'auto';
+                    elements.info.right = cfg.p2_info_right || '2%';
+                    elements.info.bottom = cfg.p2_info_bottom || 'auto';
+                }
+                if (elements.photo) {
+                    elements.photo.top = cfg.page2_photo_top || 'auto';
+                    elements.photo.left = cfg.page2_photo_left || '3%';
+                    elements.photo.right = cfg.page2_photo_right || 'auto';
+                    elements.photo.bottom = cfg.page2_photo_bottom || '5%';
+                    elements.photo.width = cfg.page2_photo_width || '34vw';
+                    elements.photo.height = cfg.page2_photo_height || '60vh';
+                    elements.photo.show = cfg.page2_photo_show !== undefined
+                        ? String(cfg.page2_photo_show)
+                        : (cfg.p2_photo_show !== undefined ? String(cfg.p2_photo_show) : '1');
+                }
+
+                // Load Nametag 1 & 2 values (PAGE1 only)
+                if (elements.nametag1) {
+                    const sharedW = cfg.nametag_width || cfg.nametag1_width || '16vw';
+                    const sharedH = cfg.nametag_height || cfg.nametag1_height || '8vh';
+                    const sharedTop = cfg.nametag_top || cfg.nametag1_top || 'auto';
+                    const sharedBottom = cfg.nametag_bottom || cfg.nametag1_bottom || '6%';
+
+                    elements.nametag1.top = sharedTop;
+                    elements.nametag1.left = cfg.nametag1_left || '3%';
+                    elements.nametag1.right = cfg.nametag1_right || 'auto';
+                    elements.nametag1.bottom = sharedBottom;
+                    elements.nametag1.show = cfg.nametag1_show !== undefined ? String(cfg.nametag1_show) : '1';
+                    elements.nametag1.width = sharedW;
+                    elements.nametag1.height = sharedH;
+                }
+                if (elements.nametag2) {
+                    const sharedW = cfg.nametag_width || cfg.nametag2_width || '16vw';
+                    const sharedH = cfg.nametag_height || cfg.nametag2_height || '8vh';
+                    const sharedTop = cfg.nametag_top || cfg.nametag2_top || 'auto';
+                    const sharedBottom = cfg.nametag_bottom || cfg.nametag2_bottom || '6%';
+
+                    elements.nametag2.top = sharedTop;
+                    elements.nametag2.left = cfg.nametag2_left || 'auto';
+                    elements.nametag2.right = cfg.nametag2_right || '3%';
+                    elements.nametag2.bottom = sharedBottom;
+                    elements.nametag2.show = cfg.nametag2_show !== undefined ? String(cfg.nametag2_show) : '1';
+                    elements.nametag2.width = sharedW;
+                    elements.nametag2.height = sharedH;
+                }
+
+                // Load Bracket values (PAGE3 only)
+                if (elements.bracket_full) {
+                    elements.bracket_full.top = cfg.bracket_full_top || cfg.bracket_top || '5%';
+                    elements.bracket_full.left = cfg.bracket_full_left || cfg.bracket_left || '20%';
+                    elements.bracket_full.right = cfg.bracket_full_right || 'auto';
+                    elements.bracket_full.bottom = cfg.bracket_full_bottom || 'auto';
+                    elements.bracket_full.show = cfg.bracket_full_show !== undefined ? String(cfg.bracket_full_show) : '1';
+                    elements.bracket_full.width = cfg.bracket_full_width || cfg.bracket_width || '60%';
+                    elements.bracket_full.height = cfg.bracket_full_height || cfg.bracket_height || '65%';
+                    elements.bracket_full.fontSize = cfg.bracket_full_font_size || cfg.bracket_font_size || '14';
+                    
+                    const fullFontInput = document.getElementById('bracket-full-font-input');
+                    if (fullFontInput) fullFontInput.value = elements.bracket_full.fontSize;
+                }
+                if (elements.bracket_live) {
+                    elements.bracket_live.top = cfg.bracket_live_top || '0px';
+                    elements.bracket_live.left = cfg.bracket_live_left || '0px';
+                    elements.bracket_live.right = cfg.bracket_live_right || 'auto';
+                    elements.bracket_live.bottom = cfg.bracket_live_bottom || 'auto';
+                    elements.bracket_live.show = cfg.bracket_live_show !== undefined ? String(cfg.bracket_live_show) : '0';
+                    elements.bracket_live.width = cfg.bracket_live_width || '100%';
+                    elements.bracket_live.height = cfg.bracket_live_height || '100%';
+                    elements.bracket_live.fontSize = cfg.bracket_live_font_size || '14';
+                    elements.bracket_live.opacity = cfg.bracket_live_opacity || '94';
+                    
+                    const liveFontInput = document.getElementById('bracket-live-font-input');
+                    if (liveFontInput) liveFontInput.value = elements.bracket_live.fontSize;
+                    const liveOpacityInput = document.getElementById('bracket-live-opacity-input');
+                    if (liveOpacityInput) liveOpacityInput.value = elements.bracket_live.opacity;
+                    const liveOpacityValue = document.getElementById('bracket-live-opacity-value');
+                    if (liveOpacityValue) liveOpacityValue.textContent = elements.bracket_live.opacity + '%';
+                }
+                if (elements.bracket_title) {
+                    elements.bracket_title.top = cfg.bracket_title_top || '40px';
+                    elements.bracket_title.left = cfg.bracket_title_left || '25%';
+                    elements.bracket_title.right = cfg.bracket_title_right || 'auto';
+                    elements.bracket_title.bottom = cfg.bracket_title_bottom || 'auto';
+                    elements.bracket_title.show = cfg.bracket_title_show !== undefined ? String(cfg.bracket_title_show) : '1';
+                    elements.bracket_title.width = cfg.bracket_title_width || '50%';
+                    elements.bracket_title.height = cfg.bracket_title_height || '10%';
+                }
+                if (elements.battle_ann) {
+                    elements.battle_ann.top = cfg.battle_ann_top || '35%';
+                    elements.battle_ann.left = cfg.battle_ann_left || '10%';
+                    elements.battle_ann.right = cfg.battle_ann_right || 'auto';
+                    elements.battle_ann.bottom = cfg.battle_ann_bottom || 'auto';
+                    elements.battle_ann.show = cfg.battle_ann_show !== undefined ? String(cfg.battle_ann_show) : '1';
+                    elements.battle_ann.width = cfg.battle_ann_width || '80%';
+                    elements.battle_ann.height = cfg.battle_ann_height || '25%';
+                }
+                if (elements.blind_totals) {
+                    elements.blind_totals.top = cfg.blind_totals_top || '10%';
+                    elements.blind_totals.left = cfg.blind_totals_left || '2%';
+                    elements.blind_totals.right = cfg.blind_totals_right || 'auto';
+                    elements.blind_totals.bottom = cfg.blind_totals_bottom || 'auto';
+                    elements.blind_totals.show = cfg.blind_totals_show !== undefined ? String(cfg.blind_totals_show) : '1';
+                    elements.blind_totals.width = cfg.blind_totals_width || '42%';
+                    elements.blind_totals.height = cfg.blind_totals_height || '24%';
+                    elements.blind_totals.fontSize = cfg.blind_totals_font_size || '14';
+                    elements.blind_totals.opacity = cfg.blind_totals_opacity ?? '0';
+
+                    const blindFontInput = document.getElementById('blind-totals-font-input');
+                    if (blindFontInput) blindFontInput.value = elements.blind_totals.fontSize;
+                    const blindOpacityInput = document.getElementById('blind-totals-opacity-input');
+                    if (blindOpacityInput) { blindOpacityInput.value = elements.blind_totals.opacity; previewBlindTotalsOpacity(elements.blind_totals.opacity); }
+
+                    // 실시간 입찰자 설정 팝업 데이터 로딩
+                    const liveBiddersShow = cfg.live_bidders_show !== undefined ? String(cfg.live_bidders_show) : '0';
+                    const liveBiddersSwitchSec = cfg.live_bidders_switch_sec || '5';
+                    const liveBiddersMode = cfg.live_bidders_mode || 'top';
+
+                    const showInput = document.getElementById('toggle-live-bidders-show');
+                    if (showInput) showInput.checked = liveBiddersShow === '1';
+
+                    const switchInput = document.getElementById('live-bidders-switch-input');
+                    if (switchInput) switchInput.value = liveBiddersSwitchSec;
+
+                    const modeSelect = document.getElementById('live-bidders-mode-select');
+                    if (modeSelect) modeSelect.value = liveBiddersMode;
+
+                    // 이벤트 매치 설정 로딩
+                    const eventMatchShow = cfg.event_match_show !== undefined ? String(cfg.event_match_show) : '0';
+                    const eventMatchToggle = document.getElementById('toggle-event-match-show');
+                    if (eventMatchToggle) eventMatchToggle.checked = eventMatchShow === '1';
+                }
+
+                // Apply states visually
+                applyVisualState('banner');
+                applyVisualState('ticker');
+                if (elements.nametag1) applyVisualState('nametag1');
+                if (elements.nametag2) applyVisualState('nametag2');
+                if (elements.info) applyVisualState('info');
+                if (elements.photo) applyVisualState('photo');
+                if (elements.bracket_full) applyVisualState('bracket_full');
+                if (elements.bracket_live) applyVisualState('bracket_live');
+                if (elements.bracket_title) applyVisualState('bracket_title');
+                if (elements.battle_ann) applyVisualState('battle_ann');
+                if (elements.blind_totals) applyVisualState('blind_totals');
+
+                // Update switch checkboxes
+                document.getElementById('toggle-banner-show').checked = elements.banner.show === "1";
+                document.getElementById('toggle-ticker-show').checked = elements.ticker.show === "1";
+                if (elements.nametag1) document.getElementById('toggle-nametag1-show').checked = elements.nametag1.show === "1";
+                if (elements.nametag2) document.getElementById('toggle-nametag2-show').checked = elements.nametag2.show === "1";
+                if (elements.photo) document.getElementById('toggle-photo-show').checked = elements.photo.show === "1";
+                if (elements.bracket_full) document.getElementById('toggle-bracket-full-show').checked = elements.bracket_full.show === "1";
+                if (elements.bracket_live) document.getElementById('toggle-bracket-live-show').checked = elements.bracket_live.show === "1";
+                const fullBlindToggle = document.getElementById('toggle-bracket-full-blind');
+                if (fullBlindToggle) fullBlindToggle.checked = String(cfg.bracket_full_blind ?? '1') !== '0';
+                if (elements.bracket_title) document.getElementById('toggle-bracket-title-show').checked = elements.bracket_title.show === "1";
+                if (elements.battle_ann) document.getElementById('toggle-battle-ann-show').checked = elements.battle_ann.show === "1";
+                if (elements.blind_totals) document.getElementById('toggle-blind-totals-show').checked = elements.blind_totals.show === "1";
+                if (pageNum === '3') {
+                    const activePreviewModule = getActiveAuctionEventModule(cfg).id;
+                    const initialLayer = activePreviewModule === 'crewart'
+                        ? 'bracket_full'
+                        : (elements.blind_totals ? 'blind_totals' : 'bracket_full');
+                    focusBracketLayer(initialLayer);
+                }
+
+                updateLabelReadouts();
+
+                // Apply custom sizes from saved config (vw/vh → % for preview display)
+                elements.banner.el.style.width = convertToPercent(elements.banner.width);
+                elements.banner.el.style.height = convertToPercent(elements.banner.height);
+                elements.banner.el.style.maxWidth = 'none';
+                elements.banner.el.style.maxHeight = 'none';
+                elements.ticker.el.style.height = convertToPercent(elements.ticker.height);
+                // 네임택 크기 적용
+                if (elements.nametag1) {
+                    elements.nametag1.el.style.width = convertToPercent(elements.nametag1.width);
+                    elements.nametag1.el.style.height = convertToPercent(elements.nametag1.height);
+                }
+                if (elements.nametag2) {
+                    elements.nametag2.el.style.width = convertToPercent(elements.nametag2.width);
+                    elements.nametag2.el.style.height = convertToPercent(elements.nametag2.height);
+                }
+                if (elements.photo) {
+                    elements.photo.el.style.width = convertToPercent(elements.photo.width);
+                    elements.photo.el.style.height = convertToPercent(elements.photo.height);
+                }
+                // 대진표 크기 적용
+                if (elements.bracket_full) {
+                    elements.bracket_full.el.style.width = convertToPercent(elements.bracket_full.width);
+                    elements.bracket_full.el.style.height = convertToPercent(elements.bracket_full.height);
+                }
+                if (elements.bracket_live) {
+                    elements.bracket_live.el.style.width = convertToPercent(elements.bracket_live.width);
+                    elements.bracket_live.el.style.height = convertToPercent(elements.bracket_live.height);
+                }
+                if (elements.bracket_title) {
+                    elements.bracket_title.el.style.width = convertToPercent(elements.bracket_title.width);
+                    elements.bracket_title.el.style.height = convertToPercent(elements.bracket_title.height);
+                }
+                if (elements.battle_ann) {
+                    elements.battle_ann.el.style.width = convertToPercent(elements.battle_ann.width);
+                    elements.battle_ann.el.style.height = convertToPercent(elements.battle_ann.height);
+                }
+                if (elements.blind_totals) {
+                    elements.blind_totals.el.style.width = convertToPercent(elements.blind_totals.width);
+                    elements.blind_totals.el.style.height = convertToPercent(elements.blind_totals.height);
+                }
+
+                // Load first banner image as preview inside drag box
+                const banner1 = (cfg.banner1 || '').trim();
+                const bannerPreviewImg = document.getElementById('draggable-banner-preview');
+                const bannerBlurBg = document.getElementById('draggable-banner-blur');
+                const bannerLabel = document.getElementById('draggable-banner-label');
+                if (banner1) {
+                    bannerPreviewImg.src = banner1;
+                    bannerPreviewImg.style.display = 'block';
+                    if (bannerBlurBg) {
+                        bannerBlurBg.style.backgroundImage = 'url(' + JSON.stringify(banner1) + ')';
+                        bannerBlurBg.style.display = 'block';
+                    }
+                    bannerLabel.style.position = 'absolute';
+                    bannerLabel.style.bottom = '2px';
+                    bannerLabel.style.left = '50%';
+                    bannerLabel.style.transform = 'translateX(-50%)';
+                    bannerLabel.style.background = 'rgba(15,23,42,0.8)';
+                    bannerLabel.style.fontSize = '8px';
+                    bannerLabel.style.padding = '1px 4px';
+                    bannerLabel.style.whiteSpace = 'nowrap';
+                    bannerLabel.style.border = 'none';
+                    bannerLabel.textContent = '롤링 배너';
+                } else {
+                    bannerPreviewImg.style.display = 'none';
+                    if (bannerBlurBg) bannerBlurBg.style.display = 'none';
+                    bannerLabel.style.position = 'static';
+                    bannerLabel.style.transform = 'none';
+                    bannerLabel.textContent = '롤링 배너 (이미지 없음)';
+                }
+
+                // 대진 제어 초기 설정값 바인딩 (PAGE3 전용)
+                if (pageNum === '3') {
+                    if (cfg.active_tournament) {
+                        document.getElementById('bracket-active-select').value = cfg.active_tournament;
+                        if (cfg.active_tournament !== 'none') {
+                            document.getElementById('bracket-scale-select').value = cfg.active_tournament;
+                        }
+                    }
+                }
+            }
+            } catch(err) { console.error('Config load failed:', err); }
+        }
+
+        async function loadPage2PhotoSample() {
+            if (pageNum !== '2') return;
+            const image = document.getElementById('draggable-photo-preview');
+            const label = document.getElementById('draggable-photo-label');
+            if (!image || !label) return;
+            try {
+                const items = await getItems();
+                const sample = (items || []).find(item => item.photoSibling || item.photoItem || item.photoSire || item.photoDam);
+                const source = sample && (sample.photoSibling || sample.photoItem || sample.photoSire || sample.photoDam);
+                if (source) {
+                    image.src = source;
+                    image.style.display = 'block';
+                    label.textContent = `경매 사진 · ${sample.name || sample.num || ''}`;
+                } else {
+                    image.removeAttribute('src');
+                    image.style.display = 'none';
+                    label.textContent = '경매 사진 · 드래그/크기조절';
+                }
+            } catch (error) {
+                image.style.display = 'none';
+                label.textContent = '경매 사진 · 드래그/크기조절';
+                console.warn('page2 photo sample load failed', error);
+            }
+        }
+
+        // 대진용 제어 함수
+        function changeBracketBg(bgType) {
+            const frame = document.getElementById('broadcast-frame');
+            if (!frame) return;
+            if (bgType === 1) {
+                frame.src = `broadcast.html?page=1&module=cdcup&v=${broadcastAssetVersion}`;
+            } else if (bgType === 2) {
+                frame.src = `broadcast.html?page=2&module=cdcup&v=${broadcastAssetVersion}`;
+            } else if (bgType === 'bracket') {
+                frame.src = `broadcast.html?page=3&module=cdcup&v=${broadcastAssetVersion}`;
+            }
+        }
+
+        async function changeBracketScale(scale) {
+            try {
+                await updateConfigs({ active_tournament: scale });
+                toast('대진표 크기가 ' + scale + '강으로 변경되었습니다.');
+                document.getElementById('bracket-active-select').value = scale;
+                frame.contentWindow.location.reload();
+            } catch(err) { toast('변경 실패: ' + err.message); }
+        }
+
+        async function changeActiveTournament(val) {
+            try {
+                await updateConfigs({ active_tournament: val });
+                toast('송출 모드가 변경되었습니다: ' + (val === 'none' ? '비송출' : val + '강 송출'));
+                frame.contentWindow.location.reload();
+            } catch(err) { toast('변경 실패: ' + err.message); }
+        }
+
+        function applyVisualState(key) {
+            const data = elements[key];
+            data.el.style.removeProperty('left');
+            data.el.style.removeProperty('right');
+            data.el.style.removeProperty('top');
+            data.el.style.removeProperty('bottom');
+
+            const isVal = (val) => val && val !== 'auto' && val !== 'initial' && val !== 'unset';
+
+            if (isVal(data.right)) {
+                data.el.style.right = data.right;
+            } else if (isVal(data.left)) {
+                data.el.style.left = data.left;
+            } else {
+                data.el.style.left = '0%';
+            }
+
+            if (isVal(data.bottom)) {
+                data.el.style.bottom = data.bottom;
+            } else if (isVal(data.top)) {
+                data.el.style.top = data.top;
+            } else {
+                data.el.style.top = '0%';
+            }
+
+            if (data.show === "0") {
+                data.el.classList.add('hidden-state');
+            } else {
+                data.el.classList.remove('hidden-state');
+            }
+        }
+
+        function updateLabelReadouts() {
+            const b = elements.banner;
+            const t = elements.ticker;
+            
+            const bXStr = b.right !== 'auto' ? `Right ${b.right}` : `Left ${b.left}`;
+            const bYStr = b.bottom !== 'auto' ? `Bottom ${b.bottom}` : `Top ${b.top}`;
+            const tXStr = t.right !== 'auto' ? `Right ${t.right}` : `Left ${t.left}`;
+            const tYStr = t.bottom !== 'auto' ? `Bottom ${t.bottom}` : `Top ${t.top}`;
+
+            document.getElementById('banner-val-top').textContent = bYStr;
+            document.getElementById('banner-val-left').textContent = `${bXStr} (${elements.banner.width}×${elements.banner.height})`;
+            document.getElementById('ticker-val-top').textContent = tYStr;
+            document.getElementById('ticker-val-left').textContent = `H ${elements.ticker.height}`;
+
+            if (elements.nametag1) {
+                const n = elements.nametag1;
+                document.getElementById('nametag1-val-top').textContent = n.bottom !== 'auto' ? `B ${n.bottom}` : `T ${n.top}`;
+                document.getElementById('nametag1-val-left').textContent = n.right !== 'auto' ? `R ${n.right}` : `L ${n.left}` + ` (${n.width})`;
+            }
+            if (elements.nametag2) {
+                const n = elements.nametag2;
+                document.getElementById('nametag2-val-top').textContent = n.bottom !== 'auto' ? `B ${n.bottom}` : `T ${n.top}`;
+                document.getElementById('nametag2-val-left').textContent = n.right !== 'auto' ? `R ${n.right}` : `L ${n.left}` + ` (${n.width})`;
+            }
+            if (elements.info) {
+                const info = elements.info;
+                document.getElementById('info-val-top').textContent = info.bottom !== 'auto' ? `B ${info.bottom}` : `T ${info.top}`;
+                document.getElementById('info-val-left').textContent = info.right !== 'auto' ? `R ${info.right}` : `L ${info.left}`;
+            }
+            if (elements.photo) {
+                const photo = elements.photo;
+                document.getElementById('photo-val-top').textContent = photo.bottom !== 'auto' ? `B ${photo.bottom}` : `T ${photo.top}`;
+                const photoX = photo.right !== 'auto' ? `R ${photo.right}` : `L ${photo.left}`;
+                document.getElementById('photo-val-left').textContent = `${photoX} (${photo.width}×${photo.height})`;
+            }
+            if (pageNum === '3') {
+                if (elements.bracket_full) {
+                    const br = elements.bracket_full;
+                    const brXStr = br.left !== 'auto' ? `Left ${br.left}` : `Right ${br.right}`;
+                    const brYStr = br.top !== 'auto' ? `Top ${br.top}` : `Bottom ${br.bottom}`;
+                    document.getElementById('bracket-val-top').textContent = brYStr;
+                    document.getElementById('bracket-val-left').textContent = `${brXStr} (${br.width}×${br.height})`;
+                }
+                if (elements.bracket_live) {
+                    const bl = elements.bracket_live;
+                    const blXStr = bl.left !== 'auto' ? `Left ${bl.left}` : `Right ${bl.right}`;
+                    const blYStr = bl.top !== 'auto' ? `Top ${bl.top}` : `Bottom ${bl.bottom}`;
+                    document.getElementById('bracket-live-val-top').textContent = blYStr;
+                    document.getElementById('bracket-live-val-left').textContent = `${blXStr} (${bl.width}×${bl.height})`;
+                }
+                if (elements.bracket_title) {
+                    const bt = elements.bracket_title;
+                    const btXStr = bt.left !== 'auto' ? `Left ${bt.left}` : `Right ${bt.right}`;
+                    const btYStr = bt.top !== 'auto' ? `Top ${bt.top}` : `Bottom ${bt.bottom}`;
+                    document.getElementById('bracket-title-val-top').textContent = btYStr;
+                    document.getElementById('bracket-title-val-left').textContent = `${btXStr} (${bt.width})`;
+                }
+                if (elements.battle_ann) {
+                    const ba = elements.battle_ann;
+                    const baXStr = ba.left !== 'auto' ? `Left ${ba.left}` : `Right ${ba.right}`;
+                    const baYStr = ba.top !== 'auto' ? `Top ${ba.top}` : `Bottom ${ba.bottom}`;
+                    document.getElementById('battle-ann-val-top').textContent = baYStr;
+                    document.getElementById('battle-ann-val-left').textContent = `${baXStr} (${ba.width})`;
+                }
+                if (elements.blind_totals) {
+                    const bt = elements.blind_totals;
+                    const btXStr = bt.left !== 'auto' ? `Left ${bt.left}` : `Right ${bt.right}`;
+                    const btYStr = bt.top !== 'auto' ? `Top ${bt.top}` : `Bottom ${bt.bottom}`;
+                    document.getElementById('blind-totals-val-top').textContent = btYStr;
+                    document.getElementById('blind-totals-val-left').textContent = `${btXStr} (${bt.width}x${bt.height})`;
+                }
+            }
+        }
+
+        // Drag Setup
+        Object.keys(elements).forEach(key => {
+            const el = elements[key].el;
+            el.addEventListener('mousedown', (e) => {
+                if (e.target.classList.contains('resize-handle')) return;
+                startDrag(e, key);
+            });
+            el.addEventListener('touchstart', (e) => {
+                if (e.target.classList.contains('resize-handle')) return;
+                startDrag(e, key);
+            }, { passive: true });
+        });
+
+        // Resize Setup
+        const resizeBanner = document.getElementById('resize-banner');
+        const resizeTicker = document.getElementById('resize-ticker');
+
+        function startResize(e, key) {
+            e.stopPropagation();
+            isResizing = true;
+            resizeTarget = key;
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            startX = clientX;
+            startY = clientY;
+            resizeStartW = elements[key].el.offsetWidth;
+            resizeStartH = elements[key].el.offsetHeight;
+        }
+        resizeBanner.addEventListener('mousedown', (e) => startResize(e, 'banner'));
+        resizeBanner.addEventListener('touchstart', (e) => startResize(e, 'banner'), { passive: false });
+        resizeTicker.addEventListener('mousedown', (e) => startResize(e, 'ticker'));
+        resizeTicker.addEventListener('touchstart', (e) => startResize(e, 'ticker'), { passive: false });
+        const resizePhoto = document.getElementById('resize-photo');
+        if (resizePhoto && elements.photo) {
+            resizePhoto.addEventListener('mousedown', (e) => startResize(e, 'photo'));
+            resizePhoto.addEventListener('touchstart', (e) => startResize(e, 'photo'), { passive: false });
+        }
+
+        // 네임택 리사이즈 핸들 (PAGE1 only)
+        if (pageNum === '1') {
+            const rn1 = document.getElementById('resize-nametag1');
+            const rn2 = document.getElementById('resize-nametag2');
+            rn1.addEventListener('mousedown', (e) => startResize(e, 'nametag1'));
+            rn1.addEventListener('touchstart', (e) => startResize(e, 'nametag1'), { passive: false });
+            rn2.addEventListener('mousedown', (e) => startResize(e, 'nametag2'));
+            rn2.addEventListener('touchstart', (e) => startResize(e, 'nametag2'), { passive: false });
+        }
+
+        // 대진표 리사이즈 핸들 (PAGE3 only)
+        if (pageNum === '3') {
+            const resizeBracketFull = document.getElementById('resize-bracket-full');
+            if (resizeBracketFull) {
+                resizeBracketFull.addEventListener('mousedown', (e) => startResize(e, 'bracket_full'));
+                resizeBracketFull.addEventListener('touchstart', (e) => startResize(e, 'bracket_full'), { passive: false });
+            }
+            const resizeBracketLive = document.getElementById('resize-bracket-live');
+            if (resizeBracketLive) {
+                resizeBracketLive.addEventListener('mousedown', (e) => startResize(e, 'bracket_live'));
+                resizeBracketLive.addEventListener('touchstart', (e) => startResize(e, 'bracket_live'), { passive: false });
+            }
+            const resizeBracketTitle = document.getElementById('resize-bracket-title');
+            if (resizeBracketTitle) {
+                resizeBracketTitle.addEventListener('mousedown', (e) => startResize(e, 'bracket_title'));
+                resizeBracketTitle.addEventListener('touchstart', (e) => startResize(e, 'bracket_title'), { passive: false });
+            }
+            const resizeBattleAnn = document.getElementById('resize-battle-ann');
+            if (resizeBattleAnn) {
+                resizeBattleAnn.addEventListener('mousedown', (e) => startResize(e, 'battle_ann'));
+                resizeBattleAnn.addEventListener('touchstart', (e) => startResize(e, 'battle_ann'), { passive: false });
+            }
+            const resizeBlindTotals = document.getElementById('resize-blind-totals');
+            if (resizeBlindTotals) {
+                resizeBlindTotals.addEventListener('mousedown', (e) => startResize(e, 'blind_totals'));
+                resizeBlindTotals.addEventListener('touchstart', (e) => startResize(e, 'blind_totals'), { passive: false });
+            }
+        }
+
+        window.addEventListener('mousemove', drag);
+        window.addEventListener('touchmove', drag, { passive: false });
+
+        window.addEventListener('mouseup', endDrag);
+        window.addEventListener('touchend', endDrag);
+
+        function startDrag(e, key) {
+            isDragging = true;
+            activeDragKey = key;
+            if (key === 'bracket_full' || key === 'bracket_live' || key === 'blind_totals') {
+                focusBracketLayer(key);
+            }
+
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+            const elRect = elements[key].el.getBoundingClientRect();
+            startX = clientX - elRect.left;
+            startY = clientY - elRect.top;
+        }
+
+        function drag(e) {
+            if (isResizing && resizeTarget) {
+                if (e.cancelable) e.preventDefault();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                const containerRect = container.getBoundingClientRect();
+                const dx = clientX - startX;
+                const dy = clientY - startY;
+
+                if (resizeTarget === 'banner') {
+                    const newW = Math.max(80, resizeStartW + dx);
+                    const newH = Math.max(60, resizeStartH + dy);
+                    elements.banner.width = ((newW / containerRect.width) * 100).toFixed(1) + 'vw';
+                    elements.banner.height = ((newH / containerRect.height) * 100).toFixed(1) + 'vh';
+                    elements.banner.el.style.width = convertToPercent(elements.banner.width);
+                    elements.banner.el.style.height = convertToPercent(elements.banner.height);
+                    elements.banner.el.style.maxWidth = 'none';
+                    elements.banner.el.style.maxHeight = 'none';
+                } else if (resizeTarget === 'ticker') {
+                    const newH = Math.max(40, resizeStartH - dy);
+                    elements.ticker.height = ((newH / containerRect.height) * 100).toFixed(1) + 'vh';
+                    elements.ticker.el.style.height = convertToPercent(elements.ticker.height);
+                } else if (resizeTarget === 'photo' && elements.photo) {
+                    const newW = Math.max(140, resizeStartW + dx);
+                    const newH = Math.max(140, resizeStartH + dy);
+                    elements.photo.width = ((newW / containerRect.width) * 100).toFixed(1) + 'vw';
+                    elements.photo.height = ((newH / containerRect.height) * 100).toFixed(1) + 'vh';
+                    elements.photo.el.style.width = convertToPercent(elements.photo.width);
+                    elements.photo.el.style.height = convertToPercent(elements.photo.height);
+                } else if (resizeTarget === 'nametag1' || resizeTarget === 'nametag2') {
+                    const newW = Math.max(50, resizeStartW + dx);
+                    const newH = Math.max(30, resizeStartH + dy);
+                    const unifiedW = ((newW / containerRect.width) * 100).toFixed(1) + 'vw';
+                    const unifiedH = ((newH / containerRect.height) * 100).toFixed(1) + 'vh';
+                    elements.nametag1.width = unifiedW;
+                    elements.nametag1.height = unifiedH;
+                    elements.nametag2.width = unifiedW;
+                    elements.nametag2.height = unifiedH;
+                    elements.nametag1.el.style.width = convertToPercent(unifiedW);
+                    elements.nametag1.el.style.height = convertToPercent(unifiedH);
+                    elements.nametag2.el.style.width = convertToPercent(unifiedW);
+                    elements.nametag2.el.style.height = convertToPercent(unifiedH);
+                } else if (resizeTarget === 'bracket_full' && elements.bracket_full) {
+                    const newW = Math.max(100, resizeStartW + dx);
+                    const newH = Math.max(100, resizeStartH + dy);
+                    elements.bracket_full.width = ((newW / containerRect.width) * 100).toFixed(1) + '%';
+                    elements.bracket_full.height = ((newH / containerRect.height) * 100).toFixed(1) + '%';
+                    elements.bracket_full.el.style.width = convertToPercent(elements.bracket_full.width);
+                    elements.bracket_full.el.style.height = convertToPercent(elements.bracket_full.height);
+                } else if (resizeTarget === 'bracket_live' && elements.bracket_live) {
+                    const newW = Math.max(100, resizeStartW + dx);
+                    const newH = Math.max(100, resizeStartH + dy);
+                    elements.bracket_live.width = ((newW / containerRect.width) * 100).toFixed(1) + '%';
+                    elements.bracket_live.height = ((newH / containerRect.height) * 100).toFixed(1) + '%';
+                    elements.bracket_live.el.style.width = convertToPercent(elements.bracket_live.width);
+                    elements.bracket_live.el.style.height = convertToPercent(elements.bracket_live.height);
+                } else if (resizeTarget === 'bracket_title') {
+                    const newW = Math.max(80, resizeStartW + dx);
+                    const newH = Math.max(20, resizeStartH + dy);
+                    elements.bracket_title.width = ((newW / containerRect.width) * 100).toFixed(1) + '%';
+                    elements.bracket_title.height = ((newH / containerRect.height) * 100).toFixed(1) + '%';
+                    elements.bracket_title.el.style.width = convertToPercent(elements.bracket_title.width);
+                    elements.bracket_title.el.style.height = convertToPercent(elements.bracket_title.height);
+                } else if (resizeTarget === 'battle_ann') {
+                    const newW = Math.max(100, resizeStartW + dx);
+                    const newH = Math.max(50, resizeStartH + dy);
+                    elements.battle_ann.width = ((newW / containerRect.width) * 100).toFixed(1) + '%';
+                    elements.battle_ann.height = ((newH / containerRect.height) * 100).toFixed(1) + '%';
+                    elements.battle_ann.el.style.width = convertToPercent(elements.battle_ann.width);
+                    elements.battle_ann.el.style.height = convertToPercent(elements.battle_ann.height);
+                } else if (resizeTarget === 'blind_totals' && elements.blind_totals) {
+                    const newW = Math.max(90, resizeStartW + dx);
+                    const newH = Math.max(54, resizeStartH + dy);
+                    elements.blind_totals.width = ((newW / containerRect.width) * 100).toFixed(1) + '%';
+                    elements.blind_totals.height = ((newH / containerRect.height) * 100).toFixed(1) + '%';
+                    elements.blind_totals.el.style.width = convertToPercent(elements.blind_totals.width);
+                    elements.blind_totals.el.style.height = convertToPercent(elements.blind_totals.height);
+                }
+                updateLabelReadouts();
+                return;
+            }
+            if (!isDragging || !activeDragKey) return;
+            if (e.cancelable) e.preventDefault();
+
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+            const containerRect = container.getBoundingClientRect();
+            const el = elements[activeDragKey].el;
+
+            let x = clientX - containerRect.left - startX;
+            let y = clientY - containerRect.top - startY;
+
+            // Constrain
+            const maxX = containerRect.width - el.offsetWidth;
+            let maxY = containerRect.height - el.offsetHeight;
+
+            if (activeDragKey === 'bracket_full' || activeDragKey === 'bracket_live') {
+                // 대진표는 화면 전체 크기여도 자유롭게 움직일 수 있게 최소 32px만 화면에 남긴다.
+                const minVisible = 32;
+                x = Math.max(-el.offsetWidth + minVisible, Math.min(x, containerRect.width - minVisible));
+                y = Math.max(-el.offsetHeight + minVisible, Math.min(y, containerRect.height - minVisible));
+            } else {
+                x = Math.max(0, Math.min(x, maxX));
+                y = Math.max(0, Math.min(y, maxY));
+            }
+
+            // Dynamic boundary switching based on center point
+            const centerX = x + el.offsetWidth / 2;
+            const centerY = y + el.offsetHeight / 2;
+
+            // 티커는 수직 이동만 (좌우 항상 풀사이즈)
+            if (activeDragKey === 'ticker') {
+                elements[activeDragKey].left = 'auto';
+                elements[activeDragKey].right = 'auto';
+                if (centerY > containerRect.height / 2) {
+                    const bottomPx = containerRect.height - (y + el.offsetHeight);
+                    elements[activeDragKey].bottom = ((bottomPx / containerRect.height) * 100).toFixed(1) + "%";
+                    elements[activeDragKey].top = 'auto';
+                } else {
+                    elements[activeDragKey].top = ((y / containerRect.height) * 100).toFixed(1) + "%";
+                    elements[activeDragKey].bottom = 'auto';
+                }
+                applyVisualState('ticker');
+            } else if (activeDragKey === 'nametag1' || activeDragKey === 'nametag2') {
+                // Couple vertical positions
+                let topVal = 'auto';
+                let bottomVal = 'auto';
+                if (centerY > containerRect.height / 2) {
+                    const bottomPx = containerRect.height - (y + el.offsetHeight);
+                    bottomVal = ((bottomPx / containerRect.height) * 100).toFixed(1) + "%";
+                } else {
+                    topVal = ((y / containerRect.height) * 100).toFixed(1) + "%";
+                }
+                
+                elements.nametag1.top = topVal;
+                elements.nametag1.bottom = bottomVal;
+                elements.nametag2.top = topVal;
+                elements.nametag2.bottom = bottomVal;
+                
+                // Horizontal position remains independent for active dragged key
+                if (centerX > containerRect.width / 2) {
+                    const rightPx = containerRect.width - (x + el.offsetWidth);
+                    elements[activeDragKey].right = ((rightPx / containerRect.width) * 100).toFixed(1) + "%";
+                    elements[activeDragKey].left = 'auto';
+                } else {
+                    elements[activeDragKey].left = ((x / containerRect.width) * 100).toFixed(1) + "%";
+                    elements[activeDragKey].right = 'auto';
+                }
+                
+                applyVisualState('nametag1');
+                applyVisualState('nametag2');
+            } else if (activeDragKey === 'bracket_full' && elements.bracket_full) {
+                elements.bracket_full.left = ((x / containerRect.width) * 100).toFixed(1) + "%";
+                elements.bracket_full.top = ((y / containerRect.height) * 100).toFixed(1) + "%";
+                elements.bracket_full.right = 'auto';
+                elements.bracket_full.bottom = 'auto';
+                applyVisualState('bracket_full');
+            } else if (activeDragKey === 'bracket_live' && elements.bracket_live) {
+                elements.bracket_live.left = ((x / containerRect.width) * 100).toFixed(1) + "%";
+                elements.bracket_live.top = ((y / containerRect.height) * 100).toFixed(1) + "%";
+                elements.bracket_live.right = 'auto';
+                elements.bracket_live.bottom = 'auto';
+                applyVisualState('bracket_live');
+            } else if (activeDragKey === 'bracket_title') {
+                elements.bracket_title.left = ((x / containerRect.width) * 100).toFixed(1) + "%";
+                elements.bracket_title.top = ((y / containerRect.height) * 100).toFixed(1) + "%";
+                elements.bracket_title.right = 'auto';
+                elements.bracket_title.bottom = 'auto';
+                applyVisualState('bracket_title');
+            } else if (activeDragKey === 'battle_ann') {
+                elements.battle_ann.left = ((x / containerRect.width) * 100).toFixed(1) + "%";
+                elements.battle_ann.top = ((y / containerRect.height) * 100).toFixed(1) + "%";
+                elements.battle_ann.right = 'auto';
+                elements.battle_ann.bottom = 'auto';
+                applyVisualState('battle_ann');
+            } else if (activeDragKey === 'blind_totals' && elements.blind_totals) {
+                elements.blind_totals.left = ((x / containerRect.width) * 100).toFixed(1) + "%";
+                elements.blind_totals.top = ((y / containerRect.height) * 100).toFixed(1) + "%";
+                elements.blind_totals.right = 'auto';
+                elements.blind_totals.bottom = 'auto';
+                applyVisualState('blind_totals');
+            } else {
+                if (centerX > containerRect.width / 2) {
+                    const rightPx = containerRect.width - (x + el.offsetWidth);
+                    elements[activeDragKey].right = ((rightPx / containerRect.width) * 100).toFixed(1) + "%";
+                    elements[activeDragKey].left = 'auto';
+                } else {
+                    elements[activeDragKey].left = ((x / containerRect.width) * 100).toFixed(1) + "%";
+                    elements[activeDragKey].right = 'auto';
+                }
+
+                if (centerY > containerRect.height / 2) {
+                    const bottomPx = containerRect.height - (y + el.offsetHeight);
+                    elements[activeDragKey].bottom = ((bottomPx / containerRect.height) * 100).toFixed(1) + "%";
+                    elements[activeDragKey].top = 'auto';
+                } else {
+                    elements[activeDragKey].top = ((y / containerRect.height) * 100).toFixed(1) + "%";
+                    elements[activeDragKey].bottom = 'auto';
+                }
+
+                applyVisualState(activeDragKey);
+            }
+            updateLabelReadouts();
+        }
+
+        function endDrag() {
+            if (isResizing) {
+                isResizing = false;
+                resizeTarget = null;
+                saveCoordinates(true);
+                return;
+            }
+            if (!isDragging) return;
+            isDragging = false;
+            saveCoordinates(true);
+            activeDragKey = null;
+        }
+
+        // 노출 토글은 해당 키만 순차 저장하여 빠른 조작 시 이전 요청이 최신 상태를 덮지 않게 한다.
+        function toggleShowState(key) {
+            const checkbox = document.getElementById(`toggle-${key.replace(/_/g, '-')}-show`);
+            if (!checkbox || !elements[key]) return;
+            if (key === 'bracket_full' || key === 'bracket_live' || key === 'blind_totals') focusBracketLayer(key);
+
+            const previousShow = elements[key].show;
+            const requestedShow = checkbox.checked ? "1" : "0";
+            elements[key].show = requestedShow;
+            applyVisualState(key);
+
+            const page3StandaloneKeys = ['bracket_full', 'bracket_live', 'bracket_title', 'battle_ann', 'blind_totals'];
+            const configKey = key === 'photo'
+                ? 'page2_photo_show'
+                : (pageNum === '3' && page3StandaloneKeys.includes(key)
+                    ? `${key}_show`
+                    : `${cfgPrefix}${key}_show`);
+            checkbox.disabled = true;
+
+            visibilitySaveQueue = visibilitySaveQueue.then(async () => {
+                try {
+                    await updateConfigs({ [configKey]: requestedShow });
+                    if (elements[key].show === requestedShow) {
+                        if (pageNum === '3' && (key === 'bracket_full' || key === 'bracket_live')) {
+                            frame.contentWindow.postMessage({
+                                type: 'bracketVisibility',
+                                key,
+                                show: requestedShow
+                            }, '*');
+                        } else {
+                            frame.contentWindow.postMessage({ type: 'forceRefresh' }, '*');
+                        }
+                    }
+                    toast(`${key === 'bracket_full' ? '전체결과' : key === 'bracket_live' ? '실시간대진' : key === 'blind_totals' ? '팀합산' : '노출 설정'} ${requestedShow === '1' ? 'ON' : 'OFF'} 저장 완료`);
+                } catch (err) {
+                    if (elements[key].show === requestedShow) {
+                        elements[key].show = previousShow;
+                        checkbox.checked = previousShow === '1';
+                        applyVisualState(key);
+                    }
+                    toast('노출 설정 저장 실패: ' + err.message);
+                } finally {
+                    checkbox.disabled = false;
+                }
+            });
+        }
+
+        async function saveCoordinates(isAuto = false) {
+            const configMap = {};
+            // 페이지별 접두사 적용
+            configMap[cfgPrefix+'banner_top'] = elements.banner.top;
+            configMap[cfgPrefix+'banner_left'] = elements.banner.left;
+            configMap[cfgPrefix+'banner_right'] = elements.banner.right;
+            configMap[cfgPrefix+'banner_bottom'] = elements.banner.bottom;
+            configMap[cfgPrefix+'banner_show'] = elements.banner.show;
+            configMap[cfgPrefix+'banner_width'] = elements.banner.width;
+            configMap[cfgPrefix+'banner_height'] = elements.banner.height;
+            configMap[cfgPrefix+'ticker_top'] = elements.ticker.top;
+            configMap[cfgPrefix+'ticker_left'] = elements.ticker.left;
+            configMap[cfgPrefix+'ticker_right'] = elements.ticker.right;
+            configMap[cfgPrefix+'ticker_bottom'] = elements.ticker.bottom;
+            configMap[cfgPrefix+'ticker_show'] = elements.ticker.show;
+            configMap[cfgPrefix+'ticker_height'] = elements.ticker.height;
+
+            if (elements.info) {
+                configMap.p2_info_top = elements.info.top;
+                configMap.p2_info_left = elements.info.left;
+                configMap.p2_info_right = elements.info.right;
+                configMap.p2_info_bottom = elements.info.bottom;
+            }
+            if (elements.photo) {
+                configMap.page2_photo_top = elements.photo.top;
+                configMap.page2_photo_left = elements.photo.left;
+                configMap.page2_photo_right = elements.photo.right;
+                configMap.page2_photo_bottom = elements.photo.bottom;
+                configMap.page2_photo_width = elements.photo.width;
+                configMap.page2_photo_height = elements.photo.height;
+                configMap.page2_photo_show = elements.photo.show;
+                configMap.page2_photo_maxwidth = elements.photo.width;
+                configMap.page2_photo_maxheight = elements.photo.height;
+                configMap.page2_photo_peek = '0';
+            }
+
+            if (pageNum === '3') {
+                if (elements.bracket_full) {
+                    configMap['bracket_full_top'] = elements.bracket_full.top;
+                    configMap['bracket_full_left'] = elements.bracket_full.left;
+                    configMap['bracket_full_right'] = elements.bracket_full.right;
+                    configMap['bracket_full_bottom'] = elements.bracket_full.bottom;
+                    configMap['bracket_full_width'] = elements.bracket_full.width;
+                    configMap['bracket_full_height'] = elements.bracket_full.height;
+                    configMap['bracket_full_show'] = elements.bracket_full.show;
+                    configMap['bracket_full_font_size'] = elements.bracket_full.fontSize || '14';
+                    configMap['bracket_font_size'] = elements.bracket_full.fontSize || '14';
+                }
+                if (elements.bracket_live) {
+                    configMap['bracket_live_top'] = elements.bracket_live.top;
+                    configMap['bracket_live_left'] = elements.bracket_live.left;
+                    configMap['bracket_live_right'] = elements.bracket_live.right;
+                    configMap['bracket_live_bottom'] = elements.bracket_live.bottom;
+                    configMap['bracket_live_width'] = elements.bracket_live.width;
+                    configMap['bracket_live_height'] = elements.bracket_live.height;
+                    configMap['bracket_live_show'] = elements.bracket_live.show;
+                    configMap['bracket_live_font_size'] = elements.bracket_live.fontSize || '14';
+                    configMap['bracket_live_opacity'] = elements.bracket_live.opacity || '94';
+                }
+                if (elements.bracket_title) {
+                    configMap['bracket_title_top'] = elements.bracket_title.top;
+                    configMap['bracket_title_left'] = elements.bracket_title.left;
+                    configMap['bracket_title_right'] = elements.bracket_title.right;
+                    configMap['bracket_title_bottom'] = elements.bracket_title.bottom;
+                    configMap['bracket_title_width'] = elements.bracket_title.width;
+                    configMap['bracket_title_height'] = elements.bracket_title.height;
+                    configMap['bracket_title_show'] = elements.bracket_title.show;
+                }
+                if (elements.battle_ann) {
+                    configMap['battle_ann_top'] = elements.battle_ann.top;
+                    configMap['battle_ann_left'] = elements.battle_ann.left;
+                    configMap['battle_ann_right'] = elements.battle_ann.right;
+                    configMap['battle_ann_bottom'] = elements.battle_ann.bottom;
+                    configMap['battle_ann_width'] = elements.battle_ann.width;
+                    configMap['battle_ann_height'] = elements.battle_ann.height;
+                    configMap['battle_ann_show'] = elements.battle_ann.show;
+                }
+                const currentPreviewModule = document.getElementById('preview-event-module-select')?.value || initialModuleId;
+                if (currentPreviewModule !== 'crewart' && elements.blind_totals) {
+                    configMap['blind_totals_mode'] = '1';
+                    configMap['blind_totals_top'] = elements.blind_totals.top;
+                    configMap['blind_totals_left'] = elements.blind_totals.left;
+                    configMap['blind_totals_right'] = elements.blind_totals.right;
+                    configMap['blind_totals_bottom'] = elements.blind_totals.bottom;
+                    configMap['blind_totals_width'] = elements.blind_totals.width;
+                    configMap['blind_totals_height'] = elements.blind_totals.height;
+                    configMap['blind_totals_show'] = elements.blind_totals.show;
+                    configMap['blind_totals_font_size'] = elements.blind_totals.fontSize || '14';
+                    configMap['blind_totals_opacity'] = elements.blind_totals.opacity ?? '0';
+                    configMap['bracket_live_show'] = '0';
+                    configMap['battle_ann_show'] = '0';
+
+                    // 실시간 입찰자 설정값 저장
+                    configMap['live_bidders_show'] = document.getElementById('toggle-live-bidders-show')?.checked ? '1' : '0';
+                    configMap['live_bidders_switch_sec'] = document.getElementById('live-bidders-switch-input')?.value || '5';
+                    configMap['live_bidders_mode'] = document.getElementById('live-bidders-mode-select')?.value || 'top';
+                    configMap['event_match_show'] = document.getElementById('toggle-event-match-show')?.checked ? '1' : '0';
+                }
+            }
+
+            // PAGE1 전용: 네임택 1,2 좌표 저장 (수직 및 크기는 공유, 수평은 개별)
+            if (elements.nametag1 && elements.nametag2) {
+                configMap.nametag_width = elements.nametag1.width;
+                configMap.nametag_height = elements.nametag1.height;
+                configMap.nametag_top = elements.nametag1.top;
+                configMap.nametag_bottom = elements.nametag1.bottom;
+
+                configMap.nametag1_left = elements.nametag1.left;
+                configMap.nametag1_right = elements.nametag1.right;
+                configMap.nametag1_show = elements.nametag1.show;
+
+                configMap.nametag2_left = elements.nametag2.left;
+                configMap.nametag2_right = elements.nametag2.right;
+                configMap.nametag2_show = elements.nametag2.show;
+
+                // Backwards compatibility / explicit synchronization
+                configMap.nametag1_width = elements.nametag1.width;
+                configMap.nametag1_height = elements.nametag1.height;
+                configMap.nametag1_top = elements.nametag1.top;
+                configMap.nametag1_bottom = elements.nametag1.bottom;
+                
+                configMap.nametag2_width = elements.nametag2.width;
+                configMap.nametag2_height = elements.nametag2.height;
+                configMap.nametag2_top = elements.nametag2.top;
+                configMap.nametag2_bottom = elements.nametag2.bottom;
+
+                // Clear unified left/right keys to avoid stale conflicts
+                configMap.nametag_left = 'auto';
+                configMap.nametag_right = 'auto';
+            }
+
+            try {
+                await updateConfigs(configMap);
+                previewConfigMap = { ...(previewConfigMap || {}), ...configMap };
+                // Flash Save status indicator
+                const indicator = document.getElementById('save-status');
+                indicator.style.display = 'inline';
+                setTimeout(() => { indicator.style.display = 'none'; }, 1200);
+
+                if (!isAuto) toast("방송 배치 정보 및 노출 설정을 저장했습니다.");
+
+                frame.contentWindow.postMessage({ type: 'configUpdate', config: previewConfigMap }, '*');
+                // Reload iframe inside visual screen simulator to show real result
+                frame.contentWindow.location.reload();
+            } catch(err) { toast('저장 실패: ' + err.message); }
+        }
+
+        function resetPositions() {
+            elements.banner.top = "auto";
+            elements.banner.left = "auto";
+            elements.banner.right = "1%";
+            elements.banner.bottom = "4%";
+            elements.banner.show = "1";
+            elements.banner.width = "42vw";
+            elements.banner.height = "50vh";
+            elements.banner.el.style.width = '42%';
+            elements.banner.el.style.height = '50%';
+            elements.banner.el.style.maxWidth = 'none';
+            elements.banner.el.style.maxHeight = 'none';
+
+            elements.ticker.top = "auto";
+            elements.ticker.left = "auto";
+            elements.ticker.right = "auto";
+            elements.ticker.bottom = "4%";
+            elements.ticker.show = "1";
+            elements.ticker.height = "12vh";
+            elements.ticker.el.style.height = '12%';
+
+            document.getElementById('toggle-banner-show').checked = true;
+            document.getElementById('toggle-ticker-show').checked = true;
+
+            if (elements.info) {
+                elements.info.top = '3%';
+                elements.info.left = 'auto';
+                elements.info.right = '2%';
+                elements.info.bottom = 'auto';
+                applyVisualState('info');
+            }
+            if (elements.photo) {
+                elements.photo.top = 'auto';
+                elements.photo.left = '3%';
+                elements.photo.right = 'auto';
+                elements.photo.bottom = '5%';
+                elements.photo.width = '34vw';
+                elements.photo.height = '60vh';
+                elements.photo.show = '1';
+                elements.photo.el.style.width = '34%';
+                elements.photo.el.style.height = '60%';
+                document.getElementById('toggle-photo-show').checked = true;
+                applyVisualState('photo');
+            }
+
+            if (elements.nametag1) {
+                elements.nametag1.top = "auto"; elements.nametag1.left = "3%";
+                elements.nametag1.right = "auto"; elements.nametag1.bottom = "6%";
+                elements.nametag1.show = "1";
+                elements.nametag1.width = "16vw"; elements.nametag1.height = "8vh";
+                elements.nametag1.el.style.width = '16%'; elements.nametag1.el.style.height = '8%';
+                document.getElementById('toggle-nametag1-show').checked = true;
+                applyVisualState('nametag1');
+            }
+            if (elements.nametag2) {
+                elements.nametag2.top = "auto"; elements.nametag2.left = "auto";
+                elements.nametag2.right = "3%"; elements.nametag2.bottom = "6%";
+                elements.nametag2.show = "1";
+                elements.nametag2.width = "16vw"; elements.nametag2.height = "8vh";
+                elements.nametag2.el.style.width = '16%'; elements.nametag2.el.style.height = '8%';
+                document.getElementById('toggle-nametag2-show').checked = true;
+                applyVisualState('nametag2');
+            }
+
+            if (pageNum === '3') {
+                const resetPreviewModule = document.getElementById('preview-event-module-select')?.value || initialModuleId;
+                const resetIsCrewart = resetPreviewModule === 'crewart';
+                if (elements.bracket_full) {
+                    elements.bracket_full.top = "120px";
+                    elements.bracket_full.left = "0px";
+                    elements.bracket_full.right = "auto";
+                    elements.bracket_full.bottom = "auto";
+                    elements.bracket_full.show = resetIsCrewart ? "1" : "0";
+                    elements.bracket_full.width = "100%";
+                    elements.bracket_full.height = "calc(100% - 120px)";
+                    elements.bracket_full.el.style.width = '100%';
+                    elements.bracket_full.el.style.height = 'calc(100% - 120px)';
+                    document.getElementById('toggle-bracket-full-show').checked = resetIsCrewart;
+                    applyVisualState('bracket_full');
+                }
+                if (elements.bracket_live) {
+                    elements.bracket_live.top = "0px";
+                    elements.bracket_live.left = "0px";
+                    elements.bracket_live.right = "auto";
+                    elements.bracket_live.bottom = "auto";
+                    elements.bracket_live.show = "0";
+                    elements.bracket_live.width = "100%";
+                    elements.bracket_live.height = "100%";
+                    elements.bracket_live.opacity = "94";
+                    elements.bracket_live.el.style.width = '100%';
+                    elements.bracket_live.el.style.height = '100%';
+                    const liveOpacityInput = document.getElementById('bracket-live-opacity-input');
+                    if (liveOpacityInput) liveOpacityInput.value = '94';
+                    const liveOpacityValue = document.getElementById('bracket-live-opacity-value');
+                    if (liveOpacityValue) liveOpacityValue.textContent = '94%';
+                    document.getElementById('toggle-bracket-live-show').checked = false;
+                    applyVisualState('bracket_live');
+                }
+                if (elements.bracket_title) {
+                    elements.bracket_title.top = "40px";
+                    elements.bracket_title.left = "25%";
+                    elements.bracket_title.right = "auto";
+                    elements.bracket_title.bottom = "auto";
+                    elements.bracket_title.show = "1";
+                    elements.bracket_title.width = "50%";
+                    elements.bracket_title.height = "10%";
+                    elements.bracket_title.el.style.width = '50%';
+                    elements.bracket_title.el.style.height = '10%';
+                    document.getElementById('toggle-bracket-title-show').checked = true;
+                    applyVisualState('bracket_title');
+                }
+                if (elements.battle_ann) {
+                    elements.battle_ann.top = "35%";
+                    elements.battle_ann.left = "10%";
+                    elements.battle_ann.right = "auto";
+                    elements.battle_ann.bottom = "auto";
+                    elements.battle_ann.show = "0";
+                    elements.battle_ann.width = "80%";
+                    elements.battle_ann.height = "25%";
+                    elements.battle_ann.el.style.width = '80%';
+                    elements.battle_ann.el.style.height = '25%';
+                    document.getElementById('toggle-battle-ann-show').checked = false;
+                    applyVisualState('battle_ann');
+                }
+                if (elements.blind_totals) {
+                    elements.blind_totals.top = "10%";
+                    elements.blind_totals.left = "2%";
+                    elements.blind_totals.right = "auto";
+                    elements.blind_totals.bottom = "auto";
+                    elements.blind_totals.show = resetIsCrewart ? "0" : "1";
+                    elements.blind_totals.width = "42%";
+                    elements.blind_totals.height = "24%";
+                    elements.blind_totals.fontSize = "14";
+                    elements.blind_totals.opacity = "0";
+                    elements.blind_totals.el.style.width = '42%';
+                    elements.blind_totals.el.style.height = '24%';
+                    const blindShowToggle = document.getElementById('toggle-blind-totals-show');
+                    if (blindShowToggle) blindShowToggle.checked = !resetIsCrewart;
+                    const blindFontInput = document.getElementById('blind-totals-font-input');
+                    if (blindFontInput) blindFontInput.value = '14';
+                    const blindOpacityInput = document.getElementById('blind-totals-opacity-input');
+                    if (blindOpacityInput) { blindOpacityInput.value = '0'; previewBlindTotalsOpacity('0'); }
+                    applyVisualState('blind_totals');
+                    focusBracketLayer(resetIsCrewart ? 'bracket_full' : 'blind_totals');
+                }
+            }
+
+            applyVisualState('banner');
+            applyVisualState('ticker');
+            updateLabelReadouts();
+            saveCoordinates();
+        }
+
+        // ════════════════════════════════════════════
+        //  3P Tournament Dashboard Logic
+        // ════════════════════════════════════════════
+        let tScale = 16;
+        let tBrackets = { 16: { matches: {} }, 8: { matches: {} }, 4: { matches: {} }, 2: { matches: {} } };
+        let tActiveTournament = 'none';
+        let tEditingMatch = null;
+        let tAllItems = [];
+        let tItemSelections = {};
+        let tItemsPerTeam = { 16: 4, 8: 4, 4: 3, 2: 3 };
+        let tMatchItemsPerTeam = { 16: {}, 8: {}, 4: {}, 2: {} };
+
+        function tStageMatchCount(round) {
+            return Number(round) === 2 ? 2 : Number(round) / 2;
+        }
+
+        function tMatchTitle(round, index) {
+            if (Number(round) === 2) return Number(index) === 2 ? '3·4위전' : '결승전';
+            if (Number(round) === 4) return '준결승 ' + index + '조';
+            return round + '강 ' + index + '조';
+        }
+
+
+        function tEsc(s) {
+            if (!s) return '';
+            return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        }
+
+        function tLegacyTournamentScale() {
+            const letters = [...new Set(tAllItems.map(item => getItemAuctionMeta(item)).filter(meta => meta.auctionType === 'tournament' && !meta.tournamentStage && meta.teamCode).map(meta => meta.teamCode))];
+            return [2, 4, 8, 16].find(scale => letters.length <= scale) || 16;
+        }
+
+        function tIsCurrentStageItem(item) {
+            const meta = getItemAuctionMeta(item);
+            // 단독/이벤트/일반 경매 업체는 토너먼트 팀 풀과 일괄삭제 대상에 절대 섞지 않는다.
+            if (meta.auctionType !== 'tournament') return false;
+            return !meta.tournamentStage || meta.tournamentStage === Number(tScale);
+        }
+
+        async function tInit() {
+            try {
+                const map = await getConfigMap();
+                if (map) {
+                    [16, 8, 4, 2].forEach(s => {
+                        const k = 'tournament_bracket_' + s;
+                        if (map[k]) try { tBrackets[s] = JSON.parse(map[k]); } catch(e){}
+                        const count = Number.parseInt(map['tournament_items_per_team_' + s], 10);
+                        if (Number.isInteger(count) && count > 0 && count <= 99) tItemsPerTeam[s] = count;
+                        try {
+                            const matchCounts = JSON.parse(map['tournament_match_rounds_' + s] || '{}');
+                            if (matchCounts && typeof matchCounts === 'object' && !Array.isArray(matchCounts)) {
+                                tMatchItemsPerTeam[s] = matchCounts;
+                            }
+                        } catch (error) {}
+                    });
+                    if (map.active_tournament) {
+                        tActiveTournament = map.active_tournament;
+                        document.getElementById('t-active-select').value = tActiveTournament;
+                        if (['16','8','4','2'].includes(tActiveTournament)) {
+                            tScale = parseInt(tActiveTournament);
+                        }
+                    }
+
+                    // DB 값에 맞춰 토글 버튼의 ON/OFF 상태 강제 동기화
+                    const fullShow = map.bracket_full_show !== undefined ? String(map.bracket_full_show) : '1';
+                    const liveShow = map.bracket_live_show !== undefined ? String(map.bracket_live_show) : '0';
+                    const fullBtn = document.getElementById('t-toggle-full');
+                    const liveBtn = document.getElementById('t-toggle-live');
+                    if (fullBtn) {
+                        fullBtn.textContent = '전체대진 ' + (fullShow === '1' ? 'ON' : 'OFF');
+                        fullBtn.style.background = fullShow === '1' ? '#3b82f6' : '#64748b';
+                    }
+                    if (liveBtn) {
+                        liveBtn.textContent = '실시간대진 ' + (liveShow === '1' ? 'ON' : 'OFF');
+                        liveBtn.style.background = liveShow === '1' ? '#3b82f6' : '#64748b';
+                    }
+                }
+                tChangeScale(tScale);
+                await tLoadTeams();
+            } catch (err) {
+                toast('대진표 데이터 로드 실패: ' + err.message);
+                await tLoadTeams();
+            }
+        }
+
+        async function tLoadTeams() {
+            try {
+                const items = await getItems();
+                tAllItems = items || [];
+                const teams = [...new Set((items || []).filter(tIsCurrentStageItem).map(i => i.company).filter(Boolean))];
+                const pool = document.getElementById('t-team-pool');
+                if (teams.length === 0) {
+                    pool.innerHTML = '<span style="color:#64748b; font-size:12px;">등록된 업체가 없습니다. 개체를 먼저 등록해주세요.</span>';
+                    tToggleQuickRegister(true);
+                    tRenderItemSetup();
+                    return;
+                }
+                pool.innerHTML = teams.map(t =>
+                    `<div class="t-team-chip" draggable="true" ondragstart="event.dataTransfer.setData('text/plain','${tEsc(t)}')">${tEsc(t)}</div>`
+                ).join('');
+                tRenderItemSetup();
+                evInitSlots();
+            } catch (err) {
+                tAllItems = [];
+                document.getElementById('t-team-pool').innerHTML = '<span style="color:#f87171; font-size:12px;">팀 목록 로딩 실패</span>';
+                tRenderItemSetup();
+            }
+        }
+
+        function tQuickCompanyNames() {
+            const raw = document.getElementById('t-quick-company-names')?.value || '';
+            const names = [];
+            const seen = new Set();
+            raw.split(/[\n,]+/).forEach(value => {
+                const name = value.trim();
+                const key = name.toLocaleLowerCase();
+                if (name && !seen.has(key)) { seen.add(key); names.push(name); }
+            });
+            return names;
+        }
+
+        function tToggleQuickRegister(forceOpen) {
+            const panel = document.getElementById('t-quick-register');
+            const btn = document.getElementById('t-company-add-toggle');
+            if (!panel || !btn) return;
+            const shouldOpen = forceOpen === true ? true : (forceOpen === false ? false : !panel.classList.contains('open'));
+            panel.classList.toggle('open', shouldOpen);
+            btn.textContent = shouldOpen ? '업체 추가 닫기' : '업체 추가';
+            btn.classList.toggle('active', shouldOpen);
+            btn.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+            if (shouldOpen) document.getElementById('t-quick-company-names')?.focus();
+        }
+
+        function tUpdateQuickRegisterSummary() {
+            const names = tQuickCompanyNames();
+            const count = Math.max(1, Math.min(99, Number(document.getElementById('t-quick-item-count')?.value) || 4));
+            const summary = document.getElementById('t-quick-summary');
+            const submit = document.getElementById('t-quick-submit');
+            if (!summary || !submit) return;
+            summary.textContent = names.length
+                ? `${names.length}개 업체 × ${count}마리 = 총 ${names.length * count}개체`
+                : '업체명을 입력해주세요.';
+            submit.disabled = names.length === 0;
+        }
+
+        async function tQuickRegisterCompanies() {
+            const names = tQuickCompanyNames();
+            const count = Math.max(1, Math.min(99, Number(document.getElementById('t-quick-item-count')?.value) || 4));
+            if (!names.length) { toast('업체명을 입력해주세요.'); return; }
+
+            const existing = new Set(tAllItems.filter(tIsCurrentStageItem).map(item => String(item.company || '').trim().toLocaleLowerCase()).filter(Boolean));
+            const duplicates = names.filter(name => existing.has(name.toLocaleLowerCase()));
+            if (duplicates.length) {
+                toast('이미 등록된 업체가 있습니다: ' + duplicates.join(', '));
+                return;
+            }
+            if (existing.size + names.length > 16) {
+                toast(`토너먼트 참가 업체는 최대 16곳입니다. 현재 ${existing.size}곳이 등록되어 있습니다.`);
+                return;
+            }
+            const total = names.length * count;
+            if (!confirm(`${names.length}개 업체에 업체당 ${count}마리, 총 ${total}개체를 생성합니다.\n\n업체: ${names.join(', ')}\n\n계속할까요?`)) return;
+
+            const button = document.getElementById('t-quick-submit');
+            button.disabled = true;
+            button.textContent = '일괄 생성 중...';
+            try {
+                const items = [];
+                names.forEach(company => {
+                    for (let i = 1; i <= count; i++) {
+                        items.push({
+                            company,
+                            name: `${company} ${i}`,
+                            startPrice: '', note: '', announce: '',
+                            photoItem: '', photoSire: '', photoDam: '', photoSibling: '',
+                            checklist: '', sireId: '', damId: ''
+                        });
+                    }
+                });
+                const result = await registerBatch(items);
+                if (!result || result.success === false) throw new Error(result?.error || '일괄 등록 실패');
+                document.getElementById('t-quick-company-names').value = '';
+                tUpdateQuickRegisterSummary();
+                await tLoadTeams();
+
+                if (document.getElementById('t-quick-random')?.checked) {
+                    const teamCount = new Set(tAllItems.filter(tIsCurrentStageItem).map(item => String(item.company || '').trim()).filter(Boolean)).size;
+                    const bestScale = teamCount <= 4 ? 4 : (teamCount <= 8 ? 8 : 16);
+                    tItemsPerTeam[bestScale] = count;
+                    await updateConfigs({ ['tournament_items_per_team_' + bestScale]: count });
+                    tChangeScale(bestScale);
+                    await tRandomFill();
+                    const saved = await tSave(true);
+                    if (!saved) throw new Error('랜덤 대진표 자동 저장 실패');
+                }
+                tToggleQuickRegister(false);
+                toast(`${names.length}개 업체 · ${total}개체 등록 완료`);
+            } catch (err) {
+                toast('업체 일괄 등록 실패: ' + err.message);
+            } finally {
+                button.textContent = '업체·개체 일괄 생성';
+                tUpdateQuickRegisterSummary();
+            }
+        }
+
+        async function tDeleteAllTournamentItems() {
+            const targets = tAllItems.filter(tIsCurrentStageItem);
+            if (!targets.length) { toast('현재 단계에서 삭제할 토너먼트 개체가 없습니다.'); tToggleQuickRegister(true); return; }
+            const stageName = tScale === 2 ? '결승·3·4위전' : `${tScale}강`;
+            if (!confirm(`현재 ${stageName} 토너먼트 개체 ${targets.length}건을 삭제합니다.\n\n이전 라운드 기록과 일반 경매는 유지됩니다. 이 작업은 되돌릴 수 없습니다.\n\n계속할까요?`)) return;
+            const pw = prompt('관리자 비밀번호를 입력하세요.');
+            if (pw === null) return;
+
+            const button = document.getElementById('t-delete-all-items');
+            button.disabled = true;
+            button.textContent = '삭제 중...';
+            try {
+                const result = await deleteItems(targets.map(item => item.row), pw);
+                if (!result || result.success === false) throw new Error(result?.error || '일괄 삭제 실패');
+                tAllItems = [];
+                tItemSelections = {};
+                await tLoadTeams();
+                tToggleQuickRegister(true);
+                toast(`${tScale}강 토너먼트 개체 ${result.count || targets.length}건 삭제 완료`);
+            } catch (err) {
+                toast('개체 일괄삭제 실패: ' + err.message);
+            } finally {
+                button.disabled = false;
+                button.textContent = '개체 일괄삭제';
+            }
+        }
+
+        function tChangeScale(scale) {
+            tScale = scale;
+            if (scale === 2) tSyncMedalMatchesFromSemifinals();
+            [16, 8, 4, 2].forEach(s => {
+                const btn = document.getElementById('t-btn-' + s);
+                if (btn) btn.classList.toggle('active', s === scale);
+            });
+            tEditingMatch = null;
+            tSyncItemCountUi();
+            tRenderTree();
+            if (tAllItems.length) tLoadTeams();
+        }
+
+        function tRequiredItemCount() {
+            const value = Number.parseInt(tItemsPerTeam[tScale], 10);
+            return Number.isInteger(value) && value > 0 ? Math.min(value, 99) : 1;
+        }
+
+        function tRequiredItemCountForMatch(scale, matchIndex) {
+            const matchKey = scale + '_' + matchIndex;
+            const override = Number.parseInt(tMatchItemsPerTeam[scale]?.[matchKey], 10);
+            if (Number.isInteger(override) && override > 0) return Math.min(override, 99);
+            const fallback = Number.parseInt(tItemsPerTeam[scale], 10);
+            return Number.isInteger(fallback) && fallback > 0 ? Math.min(fallback, 99) : 1;
+        }
+
+        function tMatchIndexForLetter(letter) {
+            const code = String(letter || '').trim().toUpperCase().charCodeAt(0) - 65;
+            return code >= 0 ? Math.floor(code / 2) + 1 : 1;
+        }
+
+        function tRequiredItemCountForSeed(seed) {
+            return tRequiredItemCountForMatch(tScale, tMatchIndexForLetter(seed?.letter));
+        }
+
+        function tSyncItemCountUi() {
+            const count = tRequiredItemCount();
+            const input = document.getElementById('t-items-per-team');
+            const desc = document.getElementById('t-item-setup-desc');
+            const auto = document.getElementById('t-item-auto-all');
+            const matchControls = document.getElementById('t-match-count-controls');
+            if (input) input.value = count;
+            const stageName = tScale === 2 ? '결승·3·4위전' : `${tScale}강`;
+            if (desc) desc.textContent = `${stageName}은 경기별 설정 수만큼 내부 슬롯에 연결합니다. 공개 번호는 팀 정보와 분리해 자동 배치됩니다.`;
+            if (auto) auto.textContent = '업체별 자동 선택';
+            if (matchControls) {
+                const shouldShowOverrides = tScale === 2 || Object.keys(tMatchItemsPerTeam[tScale] || {}).length > 0;
+                matchControls.innerHTML = shouldShowOverrides
+                    ? Array.from({ length: tStageMatchCount(tScale) }, (_, offset) => {
+                        const index = offset + 1;
+                        const matchKey = tScale + '_' + index;
+                        const value = tRequiredItemCountForMatch(tScale, index);
+                        return `<label class="t-item-count-control">${tEsc(tMatchTitle(tScale, index))} 팀당 <input type="number" min="1" max="99" value="${value}" data-match-key="${matchKey}" onchange="tSetMatchItemsPerTeam(this.dataset.matchKey,this.value)">마리</label>`;
+                    }).join('')
+                    : '';
+            }
+        }
+
+        async function tSetItemsPerTeam(rawValue) {
+            const requested = Number.parseInt(rawValue, 10);
+            const count = Math.max(1, Math.min(99, Number.isInteger(requested) ? requested : tRequiredItemCount()));
+            const previous = tRequiredItemCount();
+            tItemsPerTeam[tScale] = count;
+            Object.values(tItemSelections).forEach(selection => {
+                if (selection?.rows) selection.rows = selection.rows.slice(0, count);
+            });
+            tSyncItemCountUi();
+            tRenderItemSetup();
+            if (count === previous) return;
+            try {
+                await updateConfigs({ ['tournament_items_per_team_' + tScale]: count });
+                toast(`${tScale === 2 ? '결승·3·4위전' : tScale + '강'} 팀당 ${count}마리로 저장했습니다.`);
+            } catch (error) {
+                tItemsPerTeam[tScale] = previous;
+                tSyncItemCountUi();
+                tRenderItemSetup();
+                toast('개체 수 설정 저장 실패: ' + error.message);
+            }
+        }
+
+        function tGetMatch(scale, key) {
+            if (!tBrackets[scale]) tBrackets[scale] = { matches: {} };
+            if (!tBrackets[scale].matches) tBrackets[scale].matches = {};
+            if (!tBrackets[scale].matches[key]) tBrackets[scale].matches[key] = { left: '', right: '', winner: '' };
+            return tBrackets[scale].matches[key];
+        }
+
+        function tGetParentSlot(round, idx) {
+            const pr = round / 2;
+            if (pr < 2) return null;
+            return { key: pr + '_' + Math.ceil(idx / 2), slot: (idx % 2 === 1) ? 'left' : 'right' };
+        }
+
+        function tSetPropagatedSlot(scale, matchKey, slot, team) {
+            const match = tGetMatch(scale, matchKey);
+            if (match[slot] === team) return;
+            match[slot] = team;
+            if (match.winner) {
+                match.winner = '';
+                tPropagate(scale, matchKey);
+            }
+        }
+
+        async function tSetMatchItemsPerTeam(matchKey, rawValue) {
+            const match = String(matchKey || '').match(/^(16|8|4|2)_(\d+)$/);
+            if (!match || Number(match[1]) !== Number(tScale)) return;
+            const requested = Number.parseInt(rawValue, 10);
+            const previousMap = { ...(tMatchItemsPerTeam[tScale] || {}) };
+            const count = Math.max(1, Math.min(99, Number.isInteger(requested) ? requested : tRequiredItemCount()));
+            tMatchItemsPerTeam[tScale] = { ...previousMap, [matchKey]: count };
+            tGetSeedTeams().forEach(seed => {
+                const required = tRequiredItemCountForSeed(seed);
+                const selection = tGetSelection(seed);
+                selection.rows = selection.rows.slice(0, required);
+            });
+            tSyncItemCountUi();
+            tRenderItemSetup();
+            try {
+                await updateConfigs({
+                    ['tournament_match_rounds_' + tScale]: JSON.stringify(tMatchItemsPerTeam[tScale]),
+                });
+                toast(`${tMatchTitle(tScale, Number(match[2]))} 팀당 ${count}마리로 저장했습니다.`);
+            } catch (error) {
+                tMatchItemsPerTeam[tScale] = previousMap;
+                tSyncItemCountUi();
+                tRenderItemSetup();
+                toast('경기별 개체 수 저장 실패: ' + error.message);
+            }
+        }
+
+        function tPropagate(scale, key) {
+            const parts = key.split('_');
+            const round = parseInt(parts[0], 10);
+            const index = parseInt(parts[1], 10);
+            const match = tGetMatch(scale, key);
+            const winner = match.winner ? match[match.winner] : '';
+            const loserSlot = match.winner === 'left' ? 'right' : (match.winner === 'right' ? 'left' : '');
+            const loser = loserSlot ? match[loserSlot] : '';
+
+            // 준결승 승자는 결승으로, 패자는 3·4위전으로 같은 좌우 위치를 유지해 보낸다.
+            if (round === 4) {
+                const slot = index % 2 === 1 ? 'left' : 'right';
+                tSetPropagatedSlot(scale, '2_1', slot, winner || '');
+                tSetPropagatedSlot(scale, '2_2', slot, loser || '');
+                return;
+            }
+
+            const p = tGetParentSlot(round, index);
+            if (p) {
+                tSetPropagatedSlot(scale, p.key, p.slot, winner || '');
+            }
+        }
+
+        function tSyncMedalMatchesFromSemifinals() {
+            const semifinals = tBrackets[4]?.matches || {};
+            ['4_1', '4_2'].forEach((key, idx) => {
+                const match = semifinals[key];
+                if (!match || !['left', 'right'].includes(match.winner) || !match.left || !match.right) return;
+                const slot = idx === 0 ? 'left' : 'right';
+                const winner = match[match.winner] || '';
+                const loser = match[match.winner === 'left' ? 'right' : 'left'] || '';
+                tSetPropagatedSlot(2, '2_1', slot, winner);
+                tSetPropagatedSlot(2, '2_2', slot, loser);
+            });
+        }
+
+        function tRenderTree() {
+            const tree = document.getElementById('t-bracket-tree');
+            tree.innerHTML = '';
+            const rounds = [];
+            let r = tScale;
+            while (r >= 2) { rounds.push(r); r = r / 2; }
+
+            rounds.forEach(round => {
+                const col = document.createElement('div');
+                col.className = 't-round-col';
+                const mc = tStageMatchCount(round);
+                for (let i = 1; i <= mc; i++) {
+                    const mk = round + '_' + i;
+                    const m = tGetMatch(tScale, mk);
+                    const node = document.createElement('div');
+                    node.className = 't-match';
+                    node.id = 't-node-' + mk;
+                    if (tEditingMatch === mk) node.classList.add('active-match');
+
+                    const tt = tMatchTitle(round, i);
+                    let lp = '', rp = '';
+                    if (round === tScale) {
+                        lp = `[${String.fromCharCode(65 + (i-1)*2)}팀] `;
+                        rp = `[${String.fromCharCode(65 + (i-1)*2 + 1)}팀] `;
+                    }
+
+                    node.innerHTML = `
+                        <div class="t-match-title">${tt}</div>
+                        <div class="t-slot ${m.winner==='left'?'winner-slot':''}"
+                             ondragover="event.preventDefault();this.classList.add('dragover')"
+                             ondragleave="this.classList.remove('dragover')"
+                             ondrop="tDrop(event,'${mk}','left')"
+                             onclick="tClickWinner('${mk}','left')">
+                            <span class="t-slot-team">${lp}${tEsc(m.left||'대기중...')}</span>
+                            ${m.winner==='left'?'<span class="t-slot-crown">승</span>':''}
+                            ${m.left?`<button class="t-slot-clear" onclick="event.stopPropagation();tClearSlot('${mk}','left')">×</button>`:''}
+                        </div>
+                        <div class="t-slot ${m.winner==='right'?'winner-slot':''}"
+                             ondragover="event.preventDefault();this.classList.add('dragover')"
+                             ondragleave="this.classList.remove('dragover')"
+                             ondrop="tDrop(event,'${mk}','right')"
+                             onclick="tClickWinner('${mk}','right')">
+                            <span class="t-slot-team">${rp}${tEsc(m.right||'대기중...')}</span>
+                            ${m.winner==='right'?'<span class="t-slot-crown">승</span>':''}
+                            ${m.right?`<button class="t-slot-clear" onclick="event.stopPropagation();tClearSlot('${mk}','right')">×</button>`:''}
+                        </div>
+                    `;
+                    col.appendChild(node);
+                }
+                tree.appendChild(col);
+            });
+            tRenderItemSetup();
+        }
+
+        function tGetSeedTeams() {
+            const seeds = [];
+            const matchCount = tStageMatchCount(tScale);
+            for (let i = 1; i <= matchCount; i++) {
+                const match = tGetMatch(tScale, tScale + '_' + i);
+                const leftLetter = String.fromCharCode(65 + (i - 1) * 2);
+                const rightLetter = String.fromCharCode(65 + (i - 1) * 2 + 1);
+                if (match.left) seeds.push({ letter: leftLetter, company: String(match.left).trim() });
+                if (match.right) seeds.push({ letter: rightLetter, company: String(match.right).trim() });
+            }
+            return seeds;
+        }
+
+        function tGetSelection(seed) {
+            const current = tItemSelections[seed.letter];
+            if (!current || current.company !== seed.company) {
+                tItemSelections[seed.letter] = { company: seed.company, rows: [] };
+            }
+            return tItemSelections[seed.letter];
+        }
+
+        function tCompanyItems(company) {
+            return tAllItems
+                .filter(item => String(item.company || '').trim() === company && tIsCurrentStageItem(item))
+                .sort((a, b) => (Number(a.publicNumber || a.num) || 0) - (Number(b.publicNumber || b.num) || 0));
+        }
+
+        function tRenderItemSetup() {
+            const grid = document.getElementById('t-item-setup-grid');
+            const progress = document.getElementById('t-item-progress');
+            const applyBtn = document.getElementById('t-item-apply');
+            if (!grid || !progress || !applyBtn) return;
+            tSyncItemCountUi();
+
+            const seeds = tGetSeedTeams();
+            if (!seeds.length) {
+                grid.innerHTML = '<div class="t-item-empty" style="grid-column:1/-1;">참가 팀을 랜덤 배치하거나 슬롯에 넣으면<br>업체별 개체 선택 카드가 여기에 생성됩니다.</div>';
+                progress.textContent = '배치를 먼저 완료해주세요';
+                applyBtn.disabled = true;
+                return;
+            }
+
+            let readyCount = 0;
+            grid.innerHTML = seeds.map(seed => {
+                const requiredCount = tRequiredItemCountForSeed(seed);
+                const selection = tGetSelection(seed);
+                const items = tCompanyItems(seed.company);
+                selection.rows = selection.rows.filter(row => items.some(item => String(item.row) === String(row))).slice(0, requiredCount);
+                if (selection.rows.length === requiredCount) readyCount++;
+                const codeByRow = {};
+                selection.rows.forEach((row, idx) => { codeByRow[String(row)] = seed.letter + (idx + 1); });
+                const itemRows = items.length ? items.map(item => {
+                    const rowKey = String(item.row);
+                    const code = codeByRow[rowKey] || '';
+                    const photo = item.photoItem || '';
+                    return `<button type="button" class="t-item-choice ${code ? 'selected' : ''}" data-letter="${tEsc(seed.letter)}" data-row="${tEsc(rowKey)}" onclick="tToggleItemSelection(this.dataset.letter,this.dataset.row)">
+                        <span class="t-item-thumb">${photo ? `<img src="${tEsc(photo)}" alt="">` : 'NO'}</span>
+                        <span class="t-item-copy"><strong>${tEsc(item.name || '이름 없음')}</strong><span>${auctionNumber(item)}</span></span>
+                        <span class="t-item-code">${code ? seed.letter + '팀 · 슬롯 ' + code.slice(1) : '선택'}</span>
+                    </button>`;
+                }).join('') : '<div class="t-item-empty">이 업체에 등록된 개체가 없습니다.</div>';
+                return `<article class="t-item-team ${selection.rows.length === requiredCount ? 'ready' : ''}">
+                    <div class="t-item-team-head">
+                        <span class="t-item-team-letter">${tEsc(seed.letter)}</span>
+                        <div class="t-item-team-name"><strong>${tEsc(seed.company)}</strong><span>${selection.rows.length}/${requiredCount} 선택 · 총 ${items.length}개체</span></div>
+                        ${items.length >= requiredCount ? `<button type="button" class="t-item-auto" data-letter="${tEsc(seed.letter)}" onclick="tAutoSelectTeamItems(this.dataset.letter)">앞 ${requiredCount}개</button>` : ''}
+                    </div>
+                    <div class="t-item-list">${itemRows}</div>
+                </article>`;
+            }).join('');
+
+            const duplicateCompanies = new Set(seeds.map(seed => seed.company)).size !== seeds.length;
+            const medalTeamsMissing = tScale === 2 && seeds.length !== 4;
+            progress.textContent = duplicateCompanies ? '같은 업체가 중복 배치됨' : (medalTeamsMissing ? `메달 결정전 ${seeds.length}/4팀 배치` : `${readyCount}/${seeds.length} 업체 준비`);
+            applyBtn.disabled = duplicateCompanies || medalTeamsMissing || readyCount !== seeds.length;
+        }
+
+        function tToggleItemSelection(letter, row) {
+            const seed = tGetSeedTeams().find(item => item.letter === letter);
+            if (!seed) return;
+            const requiredCount = tRequiredItemCountForSeed(seed);
+            const selection = tGetSelection(seed);
+            const rowKey = String(row);
+            const selectedIndex = selection.rows.indexOf(rowKey);
+            if (selectedIndex >= 0) selection.rows.splice(selectedIndex, 1);
+            else if (selection.rows.length < requiredCount) selection.rows.push(rowKey);
+            else { toast(seed.letter + '팀은 ' + requiredCount + '개체까지 선택할 수 있습니다.'); return; }
+            tRenderItemSetup();
+        }
+
+        function tAutoSelectTeamItems(letter) {
+            const seed = tGetSeedTeams().find(item => item.letter === letter);
+            if (!seed) return;
+            tGetSelection(seed).rows = tCompanyItems(seed.company).slice(0, tRequiredItemCountForSeed(seed)).map(item => String(item.row));
+            tRenderItemSetup();
+        }
+
+        function tAutoSelectAllItems() {
+            const seeds = tGetSeedTeams();
+            if (!seeds.length) { toast('참가 팀 배치를 먼저 완료해주세요.'); return; }
+            seeds.forEach(seed => {
+                tGetSelection(seed).rows = tCompanyItems(seed.company).slice(0, tRequiredItemCountForSeed(seed)).map(item => String(item.row));
+            });
+            tRenderItemSetup();
+        }
+
+        async function tApplyTournamentItems() {
+            const seeds = tGetSeedTeams();
+            if (tScale === 2 && seeds.length !== 4) {
+                toast('결승 2팀과 3·4위전 2팀, 총 4팀을 모두 배치해주세요.');
+                return;
+            }
+            const assignments = [];
+            const usedRows = new Set();
+            const companies = new Set();
+            for (const seed of seeds) {
+                if (companies.has(seed.company)) { toast('같은 업체가 두 슬롯에 배치되어 있습니다.'); return; }
+                companies.add(seed.company);
+                const requiredCount = tRequiredItemCountForSeed(seed);
+                const selection = tGetSelection(seed);
+                if (selection.rows.length !== requiredCount) { toast(seed.letter + '팀에서 ' + requiredCount + '개체를 선택해주세요.'); return; }
+                for (let idx = 0; idx < selection.rows.length; idx++) {
+                    const row = String(selection.rows[idx]);
+                    const item = tAllItems.find(candidate => String(candidate.row) === row);
+                    if (!item || String(item.company || '').trim() !== seed.company || usedRows.has(row)) {
+                        toast('선택 목록이 변경되었습니다. 개체를 다시 선택해주세요.'); return;
+                    }
+                    usedRows.add(row);
+                    assignments.push({ row: item.row, company: seed.company, code: seed.letter + (idx + 1), stage: tScale });
+                }
+            }
+            if (!assignments.length) { toast('편성할 개체가 없습니다.'); return; }
+
+            const generalCount = tAllItems.filter(item => !isTournamentAuctionItem(item)).length;
+            const soloCount = tAllItems.filter(item => getItemAuctionMeta(item).auctionType === 'solo').length;
+            const stageName = tScale === 2 ? '결승·3·4위전' : `${tScale}강`;
+            const sequenceLine = tScale === 2 ? `\n· 운영 순서: 3·4위전 → 단독 경매 ${soloCount}개체 → 결승 → 시상식` : '';
+            const countSummary = Array.from({ length: tStageMatchCount(tScale) }, (_, offset) => {
+                const index = offset + 1;
+                return `${tMatchTitle(tScale, index)} 팀당 ${tRequiredItemCountForMatch(tScale, index)}마리`;
+            }).join(' · ');
+            const confirmed = confirm(`선택한 ${assignments.length}개체를 ${stageName} 토너먼트에 편성합니다.\n\n· ${countSummary}\n· 결승은 A·B팀, 3·4위전은 C·D팀으로 내부 분리${sequenceLine}\n· 공개 번호는 001부터 팀 정보와 분리해 자동 배치\n· 팀/라운드 코드는 내부 데이터로만 저장\n· 일반 경매 ${generalCount}개와 이전 라운드 데이터 유지\n· 선택된 토너먼트 개체의 낙찰/배송 상태 초기화\n\n계속할까요?`);
+            if (!confirmed) return;
+            const pw = prompt('관리자 비밀번호를 입력하세요.');
+            if (pw === null) return;
+
+            const applyBtn = document.getElementById('t-item-apply');
+            applyBtn.disabled = true;
+            applyBtn.textContent = '목록 구성 중...';
+            try {
+                const bracketPayload = {};
+                [16, 8, 4, 2].forEach(scale => {
+                    bracketPayload['tournament_bracket_' + scale] = JSON.stringify(tBrackets[scale]);
+                });
+                bracketPayload['tournament_items_per_team_' + tScale] = tRequiredItemCount();
+                bracketPayload['tournament_match_rounds_' + tScale] = JSON.stringify(tMatchItemsPerTeam[tScale] || {});
+                if (tScale === 2) bracketPayload['bracket_full_blind'] = '0';
+                await updateConfigs(bracketPayload);
+                const result = await rebuildTournamentItems(assignments, pw);
+                if (!result || result.success === false) throw new Error(result?.error || '목록 재구성 실패');
+                tItemSelections = {};
+                await tLoadTeams();
+                const sequenceDone = result.sequence?.length ? ' · 3·4위전 → 단독 경매 → 결승 순서 적용' : '';
+                toast(result.count + '개체 편성 완료 · 기존 데이터 ' + (result.preserved || 0) + '개 유지' + sequenceDone);
+            } catch (err) {
+                toast('개체 편성 실패: ' + err.message);
+            } finally {
+                applyBtn.textContent = '토너먼트 개체 편성';
+                tRenderItemSetup();
+            }
+        }
+
+        function tDrop(e, mk, slot) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('dragover');
+            const team = e.dataTransfer.getData('text/plain');
+            if (!team) return;
+            const m = tGetMatch(tScale, mk);
+            m[slot] = team;
+            if (m.winner) m.winner = '';
+            tPropagate(tScale, mk);
+            tRenderTree();
+        }
+
+        function tClearSlot(mk, slot) {
+            const m = tGetMatch(tScale, mk);
+            m[slot] = '';
+            if (m.winner) m.winner = '';
+            tPropagate(tScale, mk);
+            tRenderTree();
+        }
+
+        function tClickWinner(mk, slot) {
+            const m = tGetMatch(tScale, mk);
+            if (!m[slot]) return;
+            m.winner = (m.winner === slot) ? '' : slot;
+            tPropagate(tScale, mk);
+            tRenderTree();
+
+        }
+
+
+
+        async function tChangeActive(val) {
+            try {
+                tActiveTournament = val;
+                await updateConfigs({ active_tournament: val });
+                toast('송출 모드 변경: ' + (val === 'none' ? '비송출' : (val === '2' ? '결승·3·4위전 송출' : val + '강 송출')));
+            } catch (err) { toast('송출 모드 갱신 실패: ' + err.message); }
+        }
+
+
+
+        function tReset() {
+            if (!confirm('현재 ' + (tScale === 2 ? '결승·3·4위전' : tScale + '강') + ' 대진표를 초기화합니까?')) return;
+            tBrackets[tScale] = { matches: {} };
+            tEditingMatch = null;
+
+            tRenderTree();
+        }
+
+        async function tRandomFill() {
+            try {
+                const items = await getItems();
+                const teams = [...new Set((items || []).filter(tIsCurrentStageItem).map(i => i.company).filter(Boolean))];
+                if (!teams.length) { alert('등록된 업체가 없습니다.'); return; }
+                for (let i = teams.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [teams[i], teams[j]] = [teams[j], teams[i]];
+                }
+                tBrackets[tScale] = { matches: {} };
+                const mc = tStageMatchCount(tScale);
+                for (let i = 1; i <= mc; i++) {
+                    const m = tGetMatch(tScale, tScale + '_' + i);
+                    m.left = teams.pop() || '';
+                    m.right = teams.pop() || '';
+                }
+                tRenderTree();
+                toast('랜덤 배치 완료 (저장 버튼을 눌러 확정하세요)');
+            } catch (err) { alert('팀 목록 조회 실패: ' + err.message); }
+        }
+
+        async function tSave(silent = false) {
+            try {
+                const payload = {};
+                [16, 8, 4, 2].forEach(s => {
+                    payload['tournament_bracket_' + s] = JSON.stringify(tBrackets[s]);
+                });
+                await updateConfigs(payload);
+                if (!silent) toast('대진표 전체 데이터 저장 완료!');
+                return true;
+            } catch (err) {
+                toast('대진표 저장 실패: ' + err.message);
+                return false;
+            }
+        }
+
+
+
+
+        // ── 이벤트 매치 팀 설정 ──
+        let evSlotCount = 0;
+
+        function evAddSlot(prefill) {
+            const container = document.getElementById('event-match-slots');
+            if (!container) return;
+            evSlotCount++;
+            const slot = document.createElement('div');
+            slot.className = 't-team-chip';
+            slot.style.cssText = 'min-width:120px; min-height:36px; border:2px dashed rgba(56,189,248,0.3); border-radius:8px; display:flex; align-items:center; justify-content:center; gap:6px; padding:4px 10px; background:rgba(15,23,42,0.6); cursor:pointer; position:relative;';
+            slot.dataset.evSlot = evSlotCount;
+
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.placeholder = '업체명 입력 또는 드래그';
+            input.value = prefill || '';
+            input.style.cssText = 'background:transparent; border:none; color:#e2e8f0; font-size:13px; font-weight:700; width:100%; outline:none; text-align:center;';
+            slot.appendChild(input);
+
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.textContent = 'X';
+            removeBtn.style.cssText = 'position:absolute; top:-6px; right:-6px; width:18px; height:18px; border-radius:50%; background:#ef4444; color:#fff; border:none; font-size:10px; font-weight:900; cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:1;';
+            removeBtn.onclick = function(e) { e.stopPropagation(); slot.remove(); };
+            slot.appendChild(removeBtn);
+
+            // 드래그앤드롭 수신
+            slot.addEventListener('dragover', function(e) { e.preventDefault(); slot.style.borderColor = '#38bdf8'; });
+            slot.addEventListener('dragleave', function() { slot.style.borderColor = 'rgba(56,189,248,0.3)'; });
+            slot.addEventListener('drop', function(e) {
+                e.preventDefault();
+                slot.style.borderColor = 'rgba(56,189,248,0.3)';
+                const team = e.dataTransfer.getData('text/plain');
+                if (team) input.value = team;
+            });
+
+            container.appendChild(slot);
+        }
+
+        function evGetTeams() {
+            const slots = document.querySelectorAll('#event-match-slots [data-ev-slot]');
+            const teams = [];
+            slots.forEach(slot => {
+                const input = slot.querySelector('input');
+                const name = (input?.value || '').trim();
+                if (name) teams.push(name);
+            });
+            return teams;
+        }
+
+        async function evApplyEventItems() {
+            const teams = evGetTeams();
+            if (teams.length < 2) { toast('이벤트 매치에 최소 2팀이 필요합니다.'); return; }
+
+            const duplicates = teams.filter((t, i) => teams.indexOf(t) !== i);
+            if (duplicates.length) { toast('중복된 업체명이 있습니다: ' + duplicates.join(', ')); return; }
+
+            const count = Math.max(1, Math.min(99, Number(document.getElementById('ev-items-per-team')?.value) || 4));
+            const total = teams.length * count;
+            if (!confirm('이벤트 매치 개체를 편성합니다.\n\n' + teams.join(' vs ') + '\n업체당 ' + count + '마리, 총 ' + total + '개체\n\n기존 이벤트 개체는 덮어씌워집니다. 계속할까요?')) return;
+
+            try {
+                // 1. 기존 이벤트 개체 삭제
+                const allItems = await getItems();
+                const existingEvent = (allItems || []).filter(item => {
+                    const cl = String(item.checklist || '');
+                    return cl.includes('_auction:event');
+                });
+                if (existingEvent.length > 0) {
+                    const pw = prompt('관리자 비밀번호를 입력하세요.');
+                    if (pw === null) return;
+                    const delResult = await deleteItems(existingEvent.map(i => i.row), pw);
+                    if (!delResult || delResult.success === false) throw new Error(delResult?.error || '기존 이벤트 개체 삭제 실패');
+                }
+
+                // 2. 새 이벤트 개체 생성
+                const newItems = [];
+                let labelNum = 1;
+                teams.forEach(company => {
+                    for (let i = 1; i <= count; i++) {
+                        newItems.push({
+                            company,
+                            name: String(i),
+                            startPrice: '', note: '', announce: '',
+                            photoItem: '', photoSire: '', photoDam: '', photoSibling: '',
+                            checklist: '_auction:event|_label:' + (labelNum + newItems.length),
+                            sireId: '', damId: ''
+                        });
+                    }
+                });
+
+                // 라벨 넘버 재계산 (토너먼트 개체 이후부터)
+                const maxTournamentNum = Math.max(0, ...(allItems || []).filter(item => {
+                    const cl = String(item.checklist || '');
+                    return !cl.includes('_auction:event');
+                }).map(i => Number(i.num) || 0));
+
+                // 라벨 번호를 토너먼트 이후부터 시작
+                newItems.forEach((item, idx) => {
+                    item.checklist = '_auction:event|_label:' + (maxTournamentNum + idx + 1);
+                });
+
+                const result = await registerBatch(newItems);
+                if (!result || result.success === false) throw new Error(result?.error || '이벤트 개체 등록 실패');
+
+                // 3. 이벤트 매치 설정 저장 + event_match_show 자동 활성화
+                await updateConfigs({ event_match_show: '1' });
+                const toggle = document.getElementById('toggle-event-match-show');
+                if (toggle) toggle.checked = true;
+
+                toast(teams.join(' vs ') + ' 이벤트 매치 편성 완료 (' + total + '개체)');
+                await tLoadTeams();
+            } catch (err) {
+                toast('이벤트 개체 편성 실패: ' + err.message);
+            }
+        }
+
+        function evInitSlots() {
+            // 기존 이벤트 개체에서 업체 목록 추출하여 슬롯 자동 생성
+            const container = document.getElementById('event-match-slots');
+            if (!container) return;
+            container.innerHTML = '';
+            evSlotCount = 0;
+
+            const eventTeams = [...new Set(
+                (tAllItems || [])
+                    .filter(item => String(item.checklist || '').includes('_auction:event'))
+                    .map(item => String(item.company || '').trim())
+                    .filter(Boolean)
+            )];
+
+            if (eventTeams.length > 0) {
+                eventTeams.forEach(team => evAddSlot(team));
+            } else {
+                // 기본 2개 빈 슬롯
+                evAddSlot();
+                evAddSlot();
+            }
+        }
+
+        function toggleEventMatchShow() {
+            saveCoordinates(true);
+        }
+        function toggleLiveBiddersShow() {
+            saveCoordinates(true);
+        }
+        function updateLiveBiddersSwitchSec(val) {
+            saveCoordinates(true);
+        }
+        function updateLiveBiddersMode(val) {
+            saveCoordinates(true);
+        }
+
+        // Initial Initialization
+        window.addEventListener('DOMContentLoaded', () => {
+            loadConfigurations();
+            loadPage2PhotoSample();
+            if (pageNum === '3' && document.getElementById('tournament-dashboard')?.classList.contains('active')) {
+                tInit();
+            }
+        });
+    </script>
+</body>
+
+</html>

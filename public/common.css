@@ -1,0 +1,627 @@
+/* ═══════════════════════════════════════════════════════════════
+   common.css — CDCUP 통합 디자인 시스템 (화이트 테마 / 업비트 라이트 모드)
+   모든 관리 페이지(index, settings, preview, tournament, summary)가 공유
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── 디자인 토큰 (업비트 스타일 라이트 테마) ── */
+:root {
+    --bg:             #F1F5F9; /* 부드러운 회청색 배경 */
+    --bg-secondary:   #FFFFFF; /* 상단바 배경 */
+    --bg-tertiary:    #F8FAFC;
+    --card:           #FFFFFF; /* 카드 배경 */
+    --card-hover:     #F8FAFC;
+    --card-border:    #E2E8F0; /* 연한 회색 보더 */
+    --input-bg:       #FFFFFF;
+    --input-border:   #CBD5E1;
+    --input-focus:    #2563EB;
+
+    --text:           #334155; /* Slate 700 */
+    --text-strong:    #0F172A; /* Slate 900 */
+    --text-secondary: #64748B; /* Slate 500 */
+    --text-muted:     #94A3B8; /* Slate 400 */
+    --text-dim:       #CBD5E1; /* Slate 300 */
+
+    --accent:         #093687; /* 업비트 신뢰의 블루 */
+    --accent-hover:   #06245C;
+    --accent-light:   rgba(9, 54, 135, 0.06);
+    --accent-glow:    rgba(9, 54, 135, 0.15);
+
+    --green:          #E11D48; /* 낙찰/상승 (한국식 붉은색) */
+    --green-light:    rgba(225, 29, 72, 0.08);
+    --red:            #2563EB; /* 유찰/하락 (한국식 파란색) */
+    --red-light:      rgba(37, 99, 235, 0.08);
+    --orange:         #F59E0B;
+    --purple:         #8B5CF6;
+
+    --radius:         8px;
+    --radius-sm:      4px;
+    --radius-lg:      12px;
+    --radius-xl:      16px;
+
+    --shadow-sm:      0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-md:      0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    --shadow-lg:      0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
+
+    --font:           'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+
+    --nav-height:     52px;
+}
+
+/* ── 리셋 & 베이스 ── */
+*, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.55;
+    letter-spacing: -0.02em;
+    min-height: 100vh;
+}
+
+
+/* ═══════════════════════════════════════════
+   글로벌 네비게이션 바 (업비트 라이트 스타일)
+   ═══════════════════════════════════════════ */
+.cdcup-nav {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    height: var(--nav-height);
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--card-border);
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    gap: 0;
+    box-shadow: var(--shadow-sm);
+    overflow: visible;
+}
+
+.cdcup-nav__brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    color: var(--text-strong);
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    margin-right: 32px;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.cdcup-nav__brand-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: var(--accent);
+    color: #FFFFFF;
+    border-radius: 6px;
+    font-size: 14px;
+    line-height: 1;
+}
+
+/* 메인 네비 링크 그룹 (대분류) */
+.cdcup-nav__links {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 100%;
+    overflow: visible;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    flex: 1;
+    min-width: 0;
+}
+
+.cdcup-nav__links::-webkit-scrollbar {
+    display: none;
+}
+
+.cdcup-nav__link {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    height: 100%;
+    padding: 0 16px;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    position: relative;
+    transition: color 0.15s ease;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-family: var(--font);
+}
+
+.cdcup-nav__link:hover {
+    color: var(--accent);
+}
+
+.cdcup-nav__link.active {
+    color: var(--accent);
+}
+
+/* 업비트 스타일 하단 블루 액센트 라인 */
+.cdcup-nav__link.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 16px);
+    height: 3px;
+    background: var(--accent);
+    border-radius: 3px 3px 0 0;
+}
+
+.cdcup-nav__link-icon {
+    font-size: 14px;
+    line-height: 1;
+    opacity: 0.7;
+}
+
+.cdcup-nav__link.active .cdcup-nav__link-icon {
+    opacity: 1;
+}
+
+/* 구분선 */
+.cdcup-nav__sep {
+    width: 1px;
+    height: 20px;
+    background: var(--card-border);
+    margin: 0 12px;
+    flex-shrink: 0;
+}
+
+/* 우측 유틸리티 영역 */
+.cdcup-nav__utils {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-left: auto;
+    flex-shrink: 0;
+    height: 100%;
+}
+
+.cdcup-nav__util-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 36px;
+    padding: 0 16px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+    border: 1px solid var(--card-border);
+    background: var(--bg-secondary);
+    color: var(--text-strong);
+    cursor: pointer;
+    font-family: var(--font);
+}
+
+.cdcup-nav__util-btn:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--input-border);
+}
+
+.cdcup-nav__util-btn--broadcast {
+    background: var(--accent-light);
+    border-color: var(--accent-glow);
+    color: var(--accent);
+}
+
+.cdcup-nav__util-btn--broadcast:hover {
+    background: rgba(9, 54, 135, 0.1);
+    border-color: var(--accent);
+}
+
+/* 드롭다운 메뉴 */
+.cdcup-nav__dropdown {
+    position: relative;
+    height: 100%;
+    display: flex;
+    align-items: center;
+}
+
+.cdcup-nav__dropdown-menu {
+    display: none;
+    position: absolute;
+    top: calc(var(--nav-height) - 4px);
+    right: 0;
+    min-width: 180px;
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+    padding: 6px;
+    z-index: 2000;
+    max-height: calc(100vh - var(--nav-height) - 16px);
+    overflow-y: auto;
+}
+
+.cdcup-nav__dropdown:hover .cdcup-nav__dropdown-menu,
+.cdcup-nav__dropdown:focus-within .cdcup-nav__dropdown-menu,
+.cdcup-nav__dropdown.is-open .cdcup-nav__dropdown-menu {
+    display: block;
+}
+
+body.nav-dropdown-portal-ready .cdcup-nav__dropdown:hover .cdcup-nav__dropdown-menu,
+body.nav-dropdown-portal-ready .cdcup-nav__dropdown:focus-within .cdcup-nav__dropdown-menu,
+body.nav-dropdown-portal-ready .cdcup-nav__dropdown.is-open .cdcup-nav__dropdown-menu {
+    display: none;
+}
+
+.cdcup-nav__module {
+    flex: 0 0 auto;
+}
+
+.cdcup-nav__module .cdcup-nav__dropdown-menu {
+    left: 0;
+    right: auto;
+    top: var(--nav-height);
+    min-width: 206px;
+}
+
+.cdcup-nav__module .caret {
+    margin-left: 3px;
+    font-size: 8px;
+    opacity: .55;
+    transition: transform .2s;
+}
+
+.cdcup-nav__module:hover .caret,
+.cdcup-nav__module:focus-within .caret,
+.cdcup-nav__module.is-open .caret {
+    transform: rotate(180deg);
+}
+
+.cdcup-nav__dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text);
+    border-radius: var(--radius-sm);
+    transition: all 0.15s ease;
+}
+
+.cdcup-nav__dropdown-item:hover {
+    background: var(--accent-light);
+    color: var(--accent);
+}
+
+.cdcup-nav-portal-menu {
+    position: fixed;
+    top: var(--nav-height);
+    left: 12px;
+    z-index: 9999;
+    display: none;
+    min-width: 220px;
+    max-width: calc(100vw - 24px);
+    max-height: calc(100vh - var(--nav-height) - 16px);
+    padding: 6px;
+    overflow-y: auto;
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius);
+    box-shadow: 0 18px 45px rgba(15, 23, 42, 0.22);
+}
+
+.cdcup-nav-portal-menu.is-open {
+    display: block;
+}
+
+.cdcup-nav-portal-menu .cdcup-nav__dropdown-item {
+    min-height: 38px;
+}
+
+/* 드롭다운 캐럿 */
+.cdcup-nav__util-btn .caret {
+    font-size: 8px;
+    margin-left: 2px;
+    opacity: 0.6;
+    transition: transform 0.2s;
+}
+
+.cdcup-nav__dropdown:hover .caret {
+    transform: rotate(180deg);
+}
+
+/* 라이브 인디케이터 */
+.cdcup-nav__live {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: var(--green-light);
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--green);
+    letter-spacing: 0.05em;
+    border: 1px solid rgba(225, 29, 72, 0.15);
+}
+
+.cdcup-nav__live-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: cdcup-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes cdcup-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+
+/* ═══════════════════════════════════════════
+   공통 컴포넌트 스타일 (와이드 대시보드 규격)
+   ═══════════════════════════════════════════ */
+
+/* 카드 */
+.cdcup-card {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    box-shadow: var(--shadow-sm);
+}
+
+.cdcup-card--hover:hover {
+    background: var(--card-hover);
+    box-shadow: var(--shadow-md);
+}
+
+/* 섹션 제목 */
+.cdcup-section-title {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--text-strong);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--card-border);
+    padding-bottom: 12px;
+}
+
+.cdcup-section-title .icon {
+    font-size: 16px;
+    opacity: 0.7;
+    color: var(--accent);
+}
+
+/* 버튼 */
+.cdcup-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-weight: 700;
+    font-family: var(--font);
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-decoration: none;
+    white-space: nowrap;
+    line-height: 1;
+}
+
+.cdcup-btn--primary {
+    background: var(--accent);
+    color: #FFFFFF;
+    border-color: var(--accent);
+}
+
+.cdcup-btn--primary:hover {
+    background: var(--accent-hover);
+}
+
+.cdcup-btn--secondary {
+    background: var(--bg-secondary);
+    color: var(--text);
+    border-color: var(--input-border);
+}
+
+.cdcup-btn--secondary:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-strong);
+    border-color: var(--text-secondary);
+}
+
+.cdcup-btn--ghost {
+    background: transparent;
+    color: var(--text-secondary);
+    border-color: transparent;
+}
+
+.cdcup-btn--ghost:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-strong);
+}
+
+.cdcup-btn--danger {
+    background: var(--green-light);
+    color: var(--green);
+    border-color: rgba(225, 29, 72, 0.2);
+}
+
+.cdcup-btn--danger:hover {
+    background: rgba(225, 29, 72, 0.15);
+}
+
+.cdcup-btn--sm {
+    padding: 6px 12px;
+    font-size: 11px;
+    border-radius: var(--radius-sm);
+}
+
+/* 입력 필드 */
+.cdcup-input {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: var(--radius);
+    color: var(--text-strong);
+    font-size: 13px;
+    font-family: var(--font);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    outline: none;
+}
+
+.cdcup-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.cdcup-input::placeholder {
+    color: var(--text-muted);
+}
+
+/* 뱃지 / 필 */
+.cdcup-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.cdcup-badge--blue {
+    background: var(--accent-light);
+    color: var(--accent);
+    border: 1px solid var(--accent-glow);
+}
+
+.cdcup-badge--green {
+    background: var(--green-light);
+    color: var(--green);
+    border: 1px solid rgba(225, 29, 72, 0.15);
+}
+
+.cdcup-badge--red {
+    background: var(--red-light);
+    color: var(--red);
+    border: 1px solid rgba(37, 99, 235, 0.15);
+}
+
+.cdcup-badge--orange {
+    background: rgba(245, 158, 11, 0.08);
+    color: var(--orange);
+    border: 1px solid rgba(245, 158, 11, 0.15);
+}
+
+/* 서브 탭 바 (개체관리 내부 등에서 활용) */
+.cdcup-tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--card-border);
+    padding: 0;
+    margin-bottom: 24px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius) var(--radius) 0 0;
+    padding: 4px 4px 0;
+}
+
+.cdcup-tab {
+    padding: 12px 24px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.15s;
+    font-family: var(--font);
+}
+
+.cdcup-tab:hover {
+    color: var(--accent);
+}
+
+.cdcup-tab.active {
+    color: var(--accent);
+}
+
+.cdcup-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 32px);
+    height: 3px;
+    background: var(--accent);
+    border-radius: 3px 3px 0 0;
+}
+
+
+/* ═══════════════════════════════════════════
+   반응형 및 모바일 제거 레이아웃 지원
+   ═══════════════════════════════════════════ */
+@media (max-width: 768px) {
+    .cdcup-nav {
+        padding: 0 16px;
+    }
+
+    .cdcup-nav__brand {
+        margin-right: 16px;
+        font-size: 15px;
+    }
+
+    .cdcup-nav__link {
+        padding: 0 12px;
+        font-size: 13px;
+    }
+
+    .cdcup-nav__links {
+        overflow-x: auto;
+        overflow-y: visible;
+    }
+
+    .cdcup-nav__dropdown-menu,
+    .cdcup-nav__module .cdcup-nav__dropdown-menu {
+        position: fixed;
+        top: var(--nav-height);
+        left: 12px;
+        right: 12px;
+        width: auto;
+        min-width: 0;
+        max-width: calc(100vw - 24px);
+    }
+}

@@ -21,8 +21,9 @@ const ENV = {
     BAND_OAUTH_PUBLIC_URL: 'https://creok.example.com',
     BAND_OAUTH_REDIRECT_URI: 'https://creok.example.com/api/band-oauth/callback',
     BAND_OAUTH_RETURN_URL: 'https://survey.example.com/crewart-survey.html',
-    BAND_OAUTH_TARGET_BAND_NO: '101005857',
-    BAND_OAUTH_TARGET_BAND_URL: 'https://www.band.us/band/101005857/post'
+    BAND_OAUTH_ALLOWED_RETURN_URLS: 'https://legacy.example.com/crewart-survey.html',
+    BAND_OAUTH_TARGET_BAND_NO: '101992972',
+    BAND_OAUTH_TARGET_BAND_URL: 'https://www.band.us/band/101992972/post'
 };
 
 class CapturedResponse {
@@ -77,6 +78,26 @@ test('OAuth start uses an exact callback URI and an HttpOnly state cookie', asyn
     assert.equal(authorize.searchParams.get('redirect_uri'), ENV.BAND_OAUTH_REDIRECT_URI);
     assert.match(accepted.headers['Set-Cookie'], /HttpOnly; Secure; SameSite=Lax/);
     assert.ok(cookieValue(accepted.headers['Set-Cookie']));
+});
+
+test('OAuth transition accepts the explicitly configured legacy survey URL', async () => {
+    const oauth = createBandOAuth({ env: ENV, now: () => NOW });
+    const accepted = new CapturedResponse();
+    await oauth.handle(
+        request('GET'),
+        accepted,
+        new URL('https://creok.example.com/api/band-oauth/start?return_url=https%3A%2F%2Flegacy.example.com%2Fcrewart-survey.html')
+    );
+    assert.equal(accepted.status, 302);
+
+    const preflight = new CapturedResponse();
+    await oauth.handle(
+        request('OPTIONS', '', { origin: 'https://legacy.example.com' }),
+        preflight,
+        new URL('https://creok.example.com/api/band-oauth/session')
+    );
+    assert.equal(preflight.status, 204);
+    assert.equal(preflight.headers['Access-Control-Allow-Origin'], 'https://legacy.example.com');
 });
 
 test('callback discards the BAND access token and creates a pseudonymous browser session', async () => {

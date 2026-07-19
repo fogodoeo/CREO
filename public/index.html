@@ -1,28 +1,450 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <meta name="description" content="CREO 크리에이터 커뮤니티">
-    <title>CREO</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <title>CREO 운영 허브</title>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet">
     <style>
-        :root { color-scheme: dark; font-family: Pretendard, system-ui, sans-serif; }
+        :root {
+            --bg: #0a0d12;
+            --bg-2: #101722;
+            --panel: rgba(20, 27, 38, .94);
+            --panel-2: rgba(16, 22, 32, .96);
+            --line: rgba(255, 255, 255, .11);
+            --text: #f8fafc;
+            --muted: #9aa6b8;
+            --dim: #667386;
+            --blue: #4f8cff;
+            --gold: #d6b25e;
+            --green: #35c28f;
+            --red: #d84d67;
+            --font: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
         * { box-sizing: border-box; }
-        body { margin: 0; min-height: 100vh; display: grid; place-items: center; color: #f7f5ff; background: radial-gradient(circle at 20% 15%, #5b36b9 0, transparent 34%), radial-gradient(circle at 85% 80%, #153b75 0, transparent 34%), #100d1b; }
-        main { width: min(680px, calc(100% - 36px)); padding: 54px 38px; text-align: center; border: 1px solid #ffffff22; border-radius: 28px; background: #ffffff0c; box-shadow: 0 30px 80px #0008; backdrop-filter: blur(18px); }
-        small { color: #b9a9f8; font-weight: 800; letter-spacing: .22em; }
-        h1 { margin: 14px 0 12px; font-size: clamp(48px, 12vw, 92px); line-height: .95; letter-spacing: -.06em; }
-        p { margin: 0 auto 30px; max-width: 440px; color: #c8c2d8; line-height: 1.65; }
-        a { display: inline-flex; align-items: center; justify-content: center; min-height: 52px; padding: 0 25px; color: #171122; background: #fff; border-radius: 999px; font-weight: 900; text-decoration: none; }
-        a:hover { transform: translateY(-1px); box-shadow: 0 12px 30px #0005; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background:
+                linear-gradient(180deg, rgba(10, 13, 18, .96), rgba(16, 23, 34, .98)),
+                repeating-linear-gradient(90deg, rgba(255,255,255,.035) 0 1px, transparent 1px 128px);
+            color: var(--text);
+            font-family: var(--font);
+            letter-spacing: 0;
+        }
+
+        a { color: inherit; }
+
+        .shell {
+            width: min(1240px, calc(100% - 32px));
+            margin: 0 auto;
+            padding: 28px 0 42px;
+        }
+
+        .top {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            align-items: end;
+            gap: 24px;
+            margin-bottom: 18px;
+        }
+
+        .kicker {
+            color: var(--gold);
+            font-size: 11px;
+            font-weight: 920;
+            letter-spacing: .18em;
+        }
+
+        h1 {
+            margin: 7px 0 0;
+            font-size: clamp(34px, 5vw, 62px);
+            line-height: 1;
+            font-weight: 960;
+        }
+
+        .lead {
+            margin: 10px 0 0;
+            max-width: 720px;
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.65;
+        }
+
+        .domain {
+            min-width: 190px;
+            padding: 12px 14px;
+            border: 1px solid var(--line);
+            background: rgba(255,255,255,.035);
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 850;
+            text-align: right;
+        }
+
+        .domain strong {
+            display: block;
+            margin-top: 3px;
+            color: var(--text);
+            font-size: 16px;
+        }
+
+        .section {
+            margin-top: 16px;
+            border: 1px solid var(--line);
+            background: var(--panel);
+        }
+
+        .section-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            min-height: 62px;
+            padding: 16px 18px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            min-width: 0;
+        }
+
+        .mark {
+            display: grid;
+            place-items: center;
+            width: 36px;
+            height: 36px;
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            font-size: 14px;
+            font-weight: 950;
+            flex: 0 0 auto;
+        }
+
+        .section-title h2 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 920;
+        }
+
+        .section-title p {
+            margin: 3px 0 0;
+            color: var(--dim);
+            font-size: 12px;
+            line-height: 1.45;
+        }
+
+        .section-tag {
+            color: var(--accent);
+            font-size: 10px;
+            font-weight: 900;
+            letter-spacing: .14em;
+            white-space: nowrap;
+        }
+
+        .common { --accent: var(--green); }
+        .cdcup { --accent: var(--blue); }
+        .crewart { --accent: var(--gold); }
+
+        .link-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 1px;
+            background: var(--line);
+        }
+
+        .link-card {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 12px;
+            min-height: 96px;
+            padding: 17px 18px;
+            background: var(--panel-2);
+            text-decoration: none;
+            transition: background .16s ease, color .16s ease;
+        }
+
+        .link-card:hover {
+            background: rgba(255,255,255,.07);
+        }
+
+        .link-card strong {
+            display: block;
+            color: var(--text);
+            font-size: 15px;
+            font-weight: 900;
+        }
+
+        .link-card span {
+            display: block;
+            margin-top: 6px;
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .arrow {
+            color: var(--accent);
+            font-size: 22px;
+            font-weight: 900;
+            align-self: center;
+        }
+
+        .module-card {
+            position: relative;
+        }
+
+        .module-card .arrow {
+            transition: transform .16s ease;
+        }
+
+        .module-card:hover .arrow,
+        .module-card:focus-within .arrow {
+            transform: rotate(180deg);
+        }
+
+        .module-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            max-height: 0;
+            margin-top: 0;
+            overflow: hidden;
+            opacity: 0;
+            pointer-events: none;
+            transition: max-height .18s ease, margin-top .18s ease, opacity .16s ease;
+        }
+
+        .module-card:hover .module-options,
+        .module-card:focus-within .module-options {
+            max-height: 92px;
+            margin-top: 12px;
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .module-option {
+            display: inline-flex;
+            align-items: center;
+            min-height: 30px;
+            padding: 0 10px;
+            border: 1px solid rgba(255,255,255,.14);
+            color: var(--text);
+            background: rgba(255,255,255,.055);
+            text-decoration: none;
+            font-size: 11px;
+            font-weight: 850;
+        }
+
+        .module-option:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .wide { grid-column: span 2; }
+
+        .quick-row {
+            display: flex;
+            gap: 7px;
+            flex-wrap: wrap;
+            margin-top: 11px;
+        }
+
+        .mini-link {
+            min-height: 28px;
+            display: inline-flex;
+            align-items: center;
+            padding: 0 9px;
+            border: 1px solid rgba(255,255,255,.13);
+            color: var(--muted);
+            text-decoration: none;
+            font-size: 11px;
+            font-weight: 820;
+        }
+
+        .mini-link:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        @media (max-width: 820px) {
+            .shell { width: min(100% - 22px, 1240px); padding-top: 20px; }
+            .top { grid-template-columns: 1fr; align-items: start; }
+            .domain { text-align: left; }
+            .section-head { align-items: flex-start; flex-direction: column; }
+            .link-grid { grid-template-columns: 1fr; }
+            .wide { grid-column: span 1; }
+            .module-options {
+                max-height: none;
+                margin-top: 12px;
+                opacity: 1;
+                pointer-events: auto;
+            }
+        }
     </style>
 </head>
 <body>
-    <main>
-        <small>CREATE · CONNECT · GROW</small>
-        <h1>CREO</h1>
-        <p>크리에이터가 만나고, 선택하고, 함께 성장하는 커뮤니티입니다.</p>
-        <a href="https://cdcup.onrender.com/crewart-survey.html">크레와트 기숙사 테스트</a>
+    <main class="shell">
+        <header class="top">
+            <div>
+                <div class="kicker">AUCTION OPERATIONS HUB</div>
+                <h1>CREO 운영 허브</h1>
+                <p class="lead">Band 모니터링 앱과 공통 데이터는 유지하고, 방송 콘솔에서 이벤트 모듈만 선택합니다. CDCUP과 크레와트는 같은 서버 안에서 서로 다른 운영 동선을 갖습니다.</p>
+            </div>
+            <div class="domain">
+                Render service
+                <strong>creok.onrender.com</strong>
+            </div>
+        </header>
+
+        <section class="section common">
+            <div class="section-head">
+                <div class="section-title">
+                    <span class="mark">G</span>
+                    <div>
+                        <h2>공통 운영</h2>
+                        <p>모든 경매가 함께 쓰는 등록, 배송, 방송 콘솔입니다.</p>
+                    </div>
+                </div>
+                <div class="section-tag">GLOBAL</div>
+            </div>
+            <div class="link-grid">
+                <a class="link-card" href="cdcup-index.html?tab=register">
+                    <div>
+                        <strong>개체 등록</strong>
+                        <span>CDCUP과 크레와트가 함께 쓰는 경매 개체를 등록합니다.</span>
+                    </div>
+                    <span class="arrow">›</span>
+                </a>
+                <a class="link-card" href="shipping.html">
+                    <div>
+                        <strong>배송관리</strong>
+                        <span>낙찰자별 배송 방식, 합배송, 결제 안내를 관리합니다. 전체 배송 조회는 배송관리 안에서 이어서 확인합니다.</span>
+                    </div>
+                    <span class="arrow">›</span>
+                </a>
+                <div class="link-card module-card">
+                    <div>
+                        <strong>방송 화면 제어</strong>
+                        <span>방송 모듈을 선택하면 제어, 미리보기, 송출 라우터가 같은 설정을 사용합니다.</span>
+                        <div class="module-options" aria-label="방송 모듈 선택">
+                            <a class="module-option" href="settings.html?module=cdcup">CDCUP 방송 제어</a>
+                            <a class="module-option" href="settings.html?module=crewart">크레와트 방송 제어</a>
+                        </div>
+                    </div>
+                    <span class="arrow">▼</span>
+                </div>
+                <div class="link-card module-card">
+                    <div>
+                        <strong>방송 미리보기</strong>
+                        <span>6개 송출 슬롯을 각각 확인하고 배치합니다.</span>
+                        <div class="module-options" aria-label="방송 미리보기 슬롯 선택">
+                            <a class="module-option" href="preview.html?module=cdcup&amp;page=1">CDCUP 1P</a>
+                            <a class="module-option" href="preview.html?module=cdcup&amp;page=2">CDCUP 2P</a>
+                            <a class="module-option" href="preview.html?module=cdcup&amp;page=3">CDCUP 3P</a>
+                            <a class="module-option" href="preview.html?module=crewart&amp;page=1">크레와트 1P</a>
+                            <a class="module-option" href="preview.html?module=crewart&amp;page=2">크레와트 2P</a>
+                            <a class="module-option" href="preview.html?module=crewart&amp;page=3">크레와트 3P</a>
+                        </div>
+                    </div>
+                    <span class="arrow">▼</span>
+                </div>
+                <div class="link-card wide module-card">
+                    <div>
+                        <strong>송출 화면</strong>
+                        <span>OBS에는 필요한 슬롯 주소를 연결합니다. CDCUP 3개, 크레와트 3개로 분리됩니다.</span>
+                        <div class="module-options" aria-label="송출 화면 슬롯 선택">
+                            <a class="module-option" href="broadcast-router.html?event=cdcup&amp;page=1" target="_blank" rel="noopener">CDCUP 1P 송출</a>
+                            <a class="module-option" href="broadcast-router.html?event=cdcup&amp;page=2" target="_blank" rel="noopener">CDCUP 2P 송출</a>
+                            <a class="module-option" href="broadcast-router.html?event=cdcup&amp;page=3" target="_blank" rel="noopener">CDCUP 3P 송출</a>
+                            <a class="module-option" href="broadcast-router.html?event=crewart&amp;page=1" target="_blank" rel="noopener">크레와트 1P 송출</a>
+                            <a class="module-option" href="broadcast-router.html?event=crewart&amp;page=2" target="_blank" rel="noopener">크레와트 2P 송출</a>
+                            <a class="module-option" href="broadcast-router.html?event=crewart&amp;page=3" target="_blank" rel="noopener">크레와트 3P 송출</a>
+                        </div>
+                    </div>
+                    <span class="arrow">▼</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="section cdcup">
+            <div class="section-head">
+                <div class="section-title">
+                    <span class="mark">C</span>
+                    <div>
+                        <h2>CDCUP 설정/관리</h2>
+                        <p>토너먼트 경매 데이터와 경기 결과를 관리합니다.</p>
+                    </div>
+                </div>
+                <div class="section-tag">TOURNAMENT</div>
+            </div>
+            <div class="link-grid">
+                <a class="link-card" href="cdcup/">
+                    <div>
+                        <strong>CDCUP 설정/관리</strong>
+                        <span>개체 목록, 회차 기록, 토너먼트 후보를 관리합니다.</span>
+                    </div>
+                    <span class="arrow">›</span>
+                </a>
+                <a class="link-card" href="summary.html">
+                    <div>
+                        <strong>경기결과표</strong>
+                        <span>낙찰 결과와 정산용 결과표를 확인합니다.</span>
+                    </div>
+                    <span class="arrow">›</span>
+                </a>
+                <a class="link-card" href="ranking.html">
+                    <div>
+                        <strong>종합 순위표</strong>
+                        <span>토너먼트 팀 순위와 라운드별 진행 결과를 확인합니다.</span>
+                    </div>
+                    <span class="arrow">›</span>
+                </a>
+            </div>
+        </section>
+
+        <section class="section crewart">
+            <div class="section-head">
+                <div class="section-title">
+                    <span class="mark">W</span>
+                    <div>
+                        <h2>크레와트 설정/관리</h2>
+                        <p>기숙사 배정 설문과 기숙사 점수 데이터를 관리합니다.</p>
+                    </div>
+                </div>
+                <div class="section-tag">HOUSE CUP</div>
+            </div>
+            <div class="link-grid">
+                <a class="link-card" href="crewarts/">
+                    <div>
+                        <strong>기숙사 설정</strong>
+                        <span>기숙사 이름, 색상, 입찰자 매칭, 점수 환산을 설정합니다.</span>
+                    </div>
+                    <span class="arrow">›</span>
+                </a>
+                <a class="link-card" href="crewart-survey.html">
+                    <div>
+                        <strong>설문</strong>
+                        <span>밸런스 게임 답변으로 참여자 기숙사를 자동 배정합니다.</span>
+                    </div>
+                    <span class="arrow">›</span>
+                </a>
+                <a class="link-card" href="crewart-ranking.html">
+                    <div>
+                        <strong>점수표</strong>
+                        <span>기숙사별 낙찰 점수와 미배정 낙찰자를 확인합니다.</span>
+                    </div>
+                    <span class="arrow">›</span>
+                </a>
+            </div>
+        </section>
     </main>
 </body>
 </html>

@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>방송 화면 제어 - CREO</title>
+    <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
+    <script src="event-modules.js?v=20260710-crebti3"></script>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="common.css?v=20260707-nav-dropdown2">
+    <style>
+        :root {
+            --bg: #0F172A;
+            --bg-accent: #1E293B;
+            --card-bg: #1E293B;
+            --text: #F8FAFC;
+            --text2: #94A3B8;
+            --text3: #64748B;
+            --accent: #2563EB;
+            --accent-hover: #1D4ED8;
+            --green: #10B981;
+            --red: #EF4444;
+            --orange: #F59E0B;
+            --input-bg: #0F172A;
+            --input-border: #334155;
+            --font: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: var(--font);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 24px auto;
+            padding: 0 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            padding-bottom: 60px;
+        }
+
+        @media (min-width: 992px) {
+            .container {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                align-items: start;
+            }
+            .container > .card:first-of-type {
+                grid-column: span 2;
+            }
+        }
+
+        /* ══ Cards & Sections ══ */
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--input-border);
+            border-radius: 14px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            border-bottom: 1px solid var(--input-border);
+            padding-bottom: 10px;
+            margin-bottom: 4px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 12px;
+        }
+
+        .form-row > * {
+            flex: 1;
+        }
+
+        label {
+            font-size: 11px;
+            color: var(--text2);
+            font-weight: 600;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        input[type="password"],
+        textarea {
+            width: 100%;
+            background-color: var(--input-bg);
+            border: 1px solid var(--input-border);
+            border-radius: 8px;
+            padding: 10px;
+            color: var(--text);
+            font-size: 13px;
+            font-family: inherit;
+            box-sizing: border-box;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input:focus,
+        textarea:focus {
+            border-color: var(--accent);
+        }
+
+        textarea {
+            resize: vertical;
+        }
+
+        /* ══ Buttons ══ */
+        .btn {
+            width: 100%;
+            padding: 11px;
+            border: none;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
+            transition: background-color 0.2s;
+        }
+
+        .btn.primary {
+            background-color: var(--accent);
+            color: #fff;
+        }
+
+        .btn.primary:hover {
+            background-color: var(--accent-hover);
+        }
+
+        .btn.success {
+            background-color: var(--green);
+            color: #fff;
+        }
+
+        .btn.success:hover {
+            background-color: #059669;
+        }
+
+        .btn.secondary {
+            background-color: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--input-border);
+            color: var(--text);
+        }
+
+        .btn.secondary:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        /* ══ Toast ══ */
+        .toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(100px); background:rgba(15,23,42,0.95); border:1px solid var(--accent); color:#fff; padding:12px 24px; border-radius:50px; font-size:13px; font-weight:600; box-shadow:0 10px 15px -3px rgba(0,0,0,0.3); transition:transform 0.3s cubic-bezier(0.16,1,0.3,1); z-index:1000; pointer-events:none; text-align:center; }
+        .toast.show { transform:translateX(-50%) translateY(0); }
+        .preview-wrap { width:100%; aspect-ratio:16/9; background:#000; border-radius:10px; overflow:hidden; border:2px solid var(--input-border); position:relative; }
+        .preview-wrap iframe { width:100%; height:100%; border:none; }
+        .preview-tabs { display:flex; gap:6px; margin-bottom:8px; }
+        .preview-tabs button { flex:1; padding:8px; border:1px solid var(--input-border); border-radius:8px; background:transparent; color:var(--text2); font-size:12px; font-weight:700; cursor:pointer; transition:all .2s; }
+        .preview-tabs button.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+        .quick-toggles { display:flex; gap:8px; flex-wrap:wrap; }
+        .qtoggle { flex:1; min-width:120px; padding:10px 12px; border-radius:10px; border:1px solid var(--input-border); background:rgba(255,255,255,0.03); cursor:pointer; display:flex; align-items:center; gap:8px; transition:all .2s; }
+        .qtoggle:hover { background:rgba(255,255,255,0.06); }
+        .qtoggle .dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; transition:background .2s; }
+        .qtoggle .dot.on { background:var(--green); box-shadow:0 0 6px var(--green); }
+        .qtoggle .dot.off { background:var(--red); box-shadow:0 0 6px var(--red); }
+        .qtoggle span { font-size:12px; font-weight:600; color:var(--text2); }
+        .banner-slot { display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap; }
+        .banner-slot input[type=text] { flex:1; min-width:0; }
+        .banner-thumb { width:48px; height:36px; border-radius:6px; object-fit:cover; border:1px solid var(--input-border); background:var(--input-bg); flex-shrink:0; }
+        .banner-thumb.empty { display:flex; align-items:center; justify-content:center; font-size:16px; color:var(--text3); }
+        .banner-slot .slot-del { width:28px; height:28px; border-radius:6px; border:1px solid var(--input-border); background:transparent; color:var(--red); font-size:14px; cursor:pointer; flex-shrink:0; }
+        .banner-dropzone { width:100%; padding:12px; border:2px dashed var(--input-border); border-radius:8px; text-align:center; font-size:11px; color:var(--text3); cursor:pointer; transition:all .2s; position:relative; overflow:hidden; }
+        .banner-dropzone:hover, .banner-dropzone.drag-over { border-color:var(--accent); color:var(--accent); background:rgba(37,99,235,0.06); }
+        .banner-dropzone input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; }
+        .banner-dropzone .uploading { color:var(--accent); font-weight:700; }
+        .add-slot-btn { width:100%; padding:8px; border:1.5px dashed var(--input-border); border-radius:8px; background:transparent; color:var(--text3); font-size:12px; font-weight:600; cursor:pointer; transition:all .2s; }
+        .add-slot-btn:hover { border-color:var(--accent); color:var(--accent); }
+        .rule-slot { display:flex; gap:8px; align-items:center; margin-bottom:6px; }
+        .rule-slot input { flex:1; }
+        .rule-slot .slot-del { width:28px; height:28px; border-radius:6px; border:1px solid var(--input-border); background:transparent; color:var(--red); font-size:14px; cursor:pointer; flex-shrink:0; }
+        .section-desc { font-size:11px; color:var(--text3); margin-bottom:8px; line-height:1.5; }
+        .color-row { display:flex; gap:8px; align-items:center; }
+        .color-row input[type=color] { width:36px; height:36px; border:none; border-radius:8px; cursor:pointer; background:transparent; padding:0; }
+        .save-fab { position:fixed; bottom:20px; right:20px; width:56px; height:56px; border-radius:50%; background:var(--green); border:none; color:#fff; font-size:22px; cursor:pointer; box-shadow:0 4px 16px rgba(16,185,129,0.4); z-index:999; transition:transform .2s; display:flex; align-items:center; justify-content:center; }
+        .save-fab:hover { transform:scale(1.1); }
+        .save-fab:active { transform:scale(0.95); }
+
+        @media (max-width: 720px) {
+            .container {
+                margin: 14px auto;
+                padding: 0 12px 72px;
+            }
+            .form-row {
+                flex-direction: column;
+            }
+            .card {
+                padding: 16px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="cdcup-nav">
+        <a href="index.html" class="cdcup-nav__brand">
+            <span class="cdcup-nav__brand-icon">C</span>
+            <span class="js-event-admin-title">CREO 방송 콘솔</span>
+        </a>
+        <div class="cdcup-nav__links">
+            <a href="index.html" class="cdcup-nav__link">허브</a>
+            <div class="cdcup-nav__dropdown cdcup-nav__module">
+                <button class="cdcup-nav__link active" type="button">방송 화면 제어 <span class="caret">▼</span></button>
+                <div class="cdcup-nav__dropdown-menu">
+                    <a href="settings.html?module=cdcup" class="cdcup-nav__dropdown-item" onclick="return handleAuctionEventModuleLink(event,'cdcup',this.href)">CDCUP 방송 제어</a>
+                    <a href="settings.html?module=crewart" class="cdcup-nav__dropdown-item" onclick="return handleAuctionEventModuleLink(event,'crewart',this.href)">크레와트 방송 제어</a>
+                </div>
+            </div>
+            <a href="preview.html?page=1" id="nav-preview-link" class="cdcup-nav__link">방송 미리보기</a>
+            <div class="cdcup-nav__dropdown cdcup-nav__module">
+                <button class="cdcup-nav__link" type="button">송출 화면 <span class="caret">▼</span></button>
+                <div class="cdcup-nav__dropdown-menu">
+                    <a href="broadcast-router.html?event=cdcup&amp;page=1" class="cdcup-nav__dropdown-item" target="_blank" rel="noopener">CDCUP 1P 송출</a>
+                    <a href="broadcast-router.html?event=cdcup&amp;page=2" class="cdcup-nav__dropdown-item" target="_blank" rel="noopener">CDCUP 2P 송출</a>
+                    <a href="broadcast-router.html?event=cdcup&amp;page=3" class="cdcup-nav__dropdown-item" target="_blank" rel="noopener">CDCUP 3P 송출</a>
+                    <a href="broadcast-router.html?event=crewart&amp;page=1" class="cdcup-nav__dropdown-item" target="_blank" rel="noopener">크레와트 1P 송출</a>
+                    <a href="broadcast-router.html?event=crewart&amp;page=2" class="cdcup-nav__dropdown-item" target="_blank" rel="noopener">크레와트 2P 송출</a>
+                    <a href="broadcast-router.html?event=crewart&amp;page=3" class="cdcup-nav__dropdown-item" target="_blank" rel="noopener">크레와트 3P 송출</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- 세부 서브 탭 바 -->
+        <div class="cdcup-tabs" style="margin-bottom: 24px; grid-column: span 2;">
+            <a href="preview.html?page=1" class="cdcup-tab" data-preview-page="1" style="text-decoration: none;">1P 배치기</a>
+            <a href="preview.html?page=2" class="cdcup-tab" data-preview-page="2" style="text-decoration: none;">2P 배치기</a>
+            <a href="preview.html?page=3" class="cdcup-tab" data-preview-page="3" style="text-decoration: none;">3P 배치기</a>
+            <a href="settings.html" class="cdcup-tab active" style="text-decoration: none;">방송 화면 제어</a>
+        </div>
+
+        <!-- ══ 이벤트 화면 모듈 ══ -->
+        <div class="card" style="grid-column: span 2;">
+            <div class="card-title">이벤트 화면 모듈</div>
+            <div class="section-desc">Band 모니터링 앱은 그대로 두고, 공통 방송 콘솔에서 송출 세계관과 집계 방식을 전환합니다.</div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>현재 모듈</label>
+                    <select id="cfg-active-event-module" onchange="onEventModuleChanged(this.value)">
+                        <option value="cdcup">CDCUP · 토너먼트</option>
+                        <option value="crewart">크레와트 · 기숙사 점수전</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>크레와트 점수 환산</label>
+                    <input type="number" id="cfg-crewart-score-per-man" placeholder="1" step="0.1">
+                </div>
+                <div class="form-group">
+                    <label>낙찰 건당 보너스</label>
+                    <input type="number" id="cfg-crewart-sold-bonus" placeholder="0" step="1">
+                </div>
+                <div class="form-group">
+                    <label>집계 범위</label>
+                    <select id="cfg-crewart-score-scope">
+                        <option value="crewart">크레와트 타입만</option>
+                        <option value="all">전체 낙찰</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>기숙사 목록</label>
+                    <textarea id="cfg-crewart-houses" rows="5" placeholder="감각형|#B91C1C|#FCA5A5&#10;관리형|#047857|#86EFAC"></textarea>
+                    <div class="section-desc">한 줄에 기숙사명|대표색|보조색 순서로 입력합니다.</div>
+                </div>
+                <div class="form-group">
+                    <label>입찰자 기숙사 배정</label>
+                    <textarea id="cfg-crewart-participants" rows="5" placeholder="닉네임,감각형&#10;채팅닉,관리형,별칭1/별칭2"></textarea>
+                    <div class="section-desc">한 줄에 낙찰자명,기숙사명,별칭 순서입니다. 별칭은 / 또는 ; 로 여러 개 입력할 수 있습니다.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ 실시간 미리보기 ══ -->
+        <div class="card">
+            <div class="card-title">📺 실시간 방송 미리보기</div>
+            <div class="preview-tabs">
+                <button class="active" onclick="switchPreview(1,this)">1P 진행용</button>
+                <button onclick="switchPreview(2,this)">2P 개체용</button>
+                <button onclick="switchPreview(3,this)">3P 종합용</button>
+            </div>
+            <div class="preview-wrap"><iframe id="preview-frame" src="broadcast.html?page=1&amp;v=20260713-round-code-map-v1"></iframe></div>
+        </div>
+
+        <!-- ══ 빠른 제어 ══ -->
+        <div class="card">
+            <div class="card-title">⚡ 빠른 제어</div>
+            <div class="quick-toggles">
+                <div class="qtoggle" onclick="quickToggle('ticker')" id="qt-ticker"><div class="dot on"></div><span>자막 ON</span></div>
+                <div class="qtoggle" onclick="quickToggle('banner')" id="qt-banner"><div class="dot on"></div><span>배너 ON</span></div>
+                <div class="qtoggle" onclick="toggleBroadcastPhotos()" id="qt-photo"><div class="dot on"></div><span>사진 ON</span></div>
+                <div class="qtoggle" onclick="doShuffle()"><div class="dot" style="background:var(--orange)"></div><span>순서 섞기</span></div>
+            </div>
+        </div>
+
+        <!-- ══ 공지사항 (티커) 설정 ══ -->
+        <div class="card">
+            <div class="card-title">📢 공지사항 자막 (티커)</div>
+            <div class="section-desc">줄바꿈으로 여러 문장을 구분하면 롤링됩니다. <b>[텍스트:#색상]</b> 형식으로 색상 강조 가능.</div>
+            <div class="form-group">
+                <textarea id="cfg-ticker" rows="4" placeholder="[안내:#FFB84D] 입찰은 밴드 댓글로 참여해 주세요&#10;[규정:#7CF0FF] 호가 단위를 준수해 주세요"></textarea>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>롤링 간격 (ms)</label><input type="number" id="cfg-ticker-interval" placeholder="4200"></div>
+                <div class="form-group"><label>LIVE 배지</label><input type="text" id="cfg-badge-text" placeholder="LIVE"></div>
+                <div class="form-group"><label>로고 크기 (px)</label><input type="number" id="cfg-ticker-sponsor-size" placeholder="46"></div>
+                <div class="form-group"><label>자막 폰트 크기 (px)</label><input type="number" id="cfg-ticker-fontsize" placeholder="40"></div>
+            </div>
+            <div class="form-group">
+                <label>배경 스타일</label>
+                <input type="text" id="cfg-ticker-bg" placeholder="linear-gradient(135deg, rgba(17,30,56,0.94), rgba(7,9,15,0.98))">
+            </div>
+            <div class="form-group" style="margin-top:12px;">
+                <label>🖼️ 자막 스폰서/주최자 로고</label>
+                <div class="section-desc" style="margin-bottom:6px;">자막 바 좌우측 끝에 배치할 로고 이미지입니다. (2개 등록 시 좌1/우1, 4개 등록 시 좌2/우2로 자동 분배 정렬)</div>
+                <div id="sponsor-list"></div>
+                <button class="add-slot-btn" onclick="addSponsorSlot()" style="margin-top:6px;">+ 로고 추가</button>
+            </div>
+        </div>
+
+        <!-- ══ 롤링 배너 설정 ══ -->
+        <div class="card">
+            <div class="card-title">🖼️ 롤링 이미지 배너</div>
+            <div class="section-desc">이미지 URL을 입력하면 방송 화면에 롤링 배너로 표시됩니다.</div>
+            <div id="banner-list"></div>
+            <button class="add-slot-btn" onclick="addBannerSlot()">+ 배너 추가</button>
+            <div class="form-row" style="margin-top:12px">
+                <div class="form-group"><label>롤링 주기 (ms)</label><input type="number" id="cfg-banner-interval" placeholder="5000"></div>
+                <div class="form-group"><label>투명도</label><input type="text" id="cfg-banner-opacity" placeholder="0.93"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>최대 가로</label><input type="text" id="cfg-banner-maxwidth" placeholder="42vw"></div>
+                <div class="form-group"><label>최대 세로</label><input type="text" id="cfg-banner-maxheight" placeholder="auto"></div>
+            </div>
+        </div>
+
+        <!-- ══ 1P 진행자 네임택 ══ -->
+        <div class="card">
+            <div class="card-title">🎤 1P 진행자 네임택</div>
+            <div class="section-desc">1페이지 하단에 표시되는 진행자 이름표</div>
+            <div class="form-row">
+                <div class="form-group"><label>진행자 1 이름</label><input type="text" id="cfg-host-name1" placeholder="예: 홍길동"></div>
+                <div class="form-group"><label>진행자 2 이름</label><input type="text" id="cfg-host-name2" placeholder="예: 김철수"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>진행자 1 역할</label><input type="text" id="cfg-host-role1" placeholder="예: MC"></div>
+                <div class="form-group"><label>진행자 2 역할</label><input type="text" id="cfg-host-role2" placeholder="예: 해설"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>네임택 폰트 크기 (px)</label><input type="number" id="cfg-nametag-font-size" placeholder="22"></div>
+            </div>
+        </div>
+
+        <!-- ══ 2P 스코어보드 설정 ══ -->
+        <div class="card">
+            <div class="card-title">⚽ 2P 스코어보드</div>
+            <div class="section-desc">2페이지 상단 정보 바 스타일 설정</div>
+            <div class="form-row">
+                <div class="form-group"><label>이름 폰트 크기 (px)</label><input type="number" id="cfg-scoreboard-name-fontsize" placeholder="30"></div>
+                <div class="form-group"><label>특성 폰트 크기 (px)</label><input type="number" id="cfg-scoreboard-pill-fontsize" placeholder="17"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>대회명 폰트 크기 (px)</label><input type="number" id="cfg-scoreboard-label-fontsize" placeholder="14"></div>
+                <div class="form-group"><label>박스 투명도 (0~1)</label><input type="text" id="cfg-scoreboard-opacity" placeholder="0.88"></div>
+            </div>
+            <div class="form-group"><label>대회명 문구</label><input type="text" id="cfg-scoreboard-label" placeholder="CRE WORLD CUP"></div>
+        </div>
+
+        <!-- ══ 3P 대진표 설정 ══ -->
+        <div class="card">
+            <div class="card-title">3P 대진표</div>
+            <div class="section-desc">대진표 오버레이(3페이지)의 표시 스타일 설정</div>
+            <div class="form-row">
+                <div class="form-group"><label>대진표 폰트 크기 (px)</label><input type="number" id="cfg-bracket-font-size" placeholder="14" min="8" max="40"></div>
+            </div>
+        </div>
+
+        <!-- ══ 업체 로고 등록 ══ -->
+        <div class="card">
+            <div class="card-title">업체 로고 등록</div>
+            <div class="section-desc">대진표에서 팀 이름 옆에 표시될 업체 로고입니다. 업체명은 대진표에 등록한 이름과 동일하게 입력하세요.</div>
+            <div id="team-logo-list"></div>
+            <button class="add-slot-btn" onclick="addTeamLogoSlot()">+ 업체 로고 추가</button>
+        </div>
+
+        <!-- ══ 안내사항 (룰) 설정 ══ -->
+        <div class="card">
+            <div class="card-title">📋 방송 안내사항 (룰 카드)</div>
+            <div class="section-desc"><b>[라벨]</b> 내용 형식으로 입력하면 라벨이 강조 표시됩니다. 예: <b>[호가] 1만원 단위</b></div>
+            <div id="rule-list"></div>
+            <button class="add-slot-btn" onclick="addRuleSlot()">+ 안내사항 추가</button>
+            <div class="form-group" style="margin-top:10px">
+                <label>위치</label>
+                <div class="form-row">
+                    <button class="btn secondary" id="rules-pos-top" onclick="setRulesPos('top')" style="flex:1">상단</button>
+                    <button class="btn secondary" id="rules-pos-bottom" onclick="setRulesPos('bottom')" style="flex:1">하단</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ 비밀번호 ══ -->
+        <div class="card">
+            <div class="card-title">🔑 비밀번호 설정</div>
+            <div id="pw-status" style="font-size:12px;color:var(--text2)">확인 중...</div>
+            <div id="pw-cur-wrap" style="display:none" class="form-group"><label>현재 비밀번호</label><input type="password" id="pw-current"></div>
+            <div class="form-group"><label>새 비밀번호</label><input type="password" id="pw-new" placeholder="새 비밀번호"></div>
+            <button onclick="savePw()" class="btn primary">비밀번호 변경</button>
+        </div>
+
+        <div style="height:80px"></div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+    <button class="save-fab" onclick="saveBroadcastSettings()" title="전체 저장">💾</button>
+
+    <script>
+        let _cfg = {};
+        let _toggleStates = { ticker: '1', banner: '1' };
+        let _bannerCount = 5;
+        let _rulesPos = 'top';
+
+        function toast(msg, isError) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.style.borderColor = isError ? 'var(--red)' : 'var(--green)';
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 3000);
+        }
+
+        function activeModuleId(map) {
+            return getActiveAuctionEventModule(map || _cfg || {}).id;
+        }
+
+        function broadcastPreviewSrc(page, moduleId) {
+            const p = ['1', '2', '3'].includes(String(page)) ? String(page) : '1';
+            return moduleId === 'crewart'
+                ? `crewart-broadcast.html?page=${p}`
+                    : `broadcast.html?page=${p}&v=20260713-round-code-map-v1`;
+        }
+
+        function updatePreviewPageLinks(moduleId) {
+            const id = moduleId || activeModuleId();
+            const label = id === 'crewart' ? '크레와트' : 'CDCUP';
+            document.querySelectorAll('[data-preview-page]').forEach(link => {
+                const page = link.getAttribute('data-preview-page') || '1';
+                link.href = `preview.html?module=${id}&page=${page}`;
+                link.textContent = `${label} ${page}P 배치기`;
+            });
+            const navPreview = document.getElementById('nav-preview-link');
+            if (navPreview) navPreview.href = `preview.html?module=${id}&page=1`;
+        }
+
+        // ── Preview ──
+        function switchPreview(page, btn) {
+            document.querySelectorAll('.preview-tabs button').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('preview-frame').src = broadcastPreviewSrc(page, activeModuleId());
+        }
+
+        function pushToPreview() {
+            try {
+                const frame = document.getElementById('preview-frame');
+                if (frame && frame.contentWindow) {
+                    frame.contentWindow.postMessage({ type: 'configUpdate', config: buildConfigMap() }, '*');
+                }
+            } catch(e) {}
+        }
+
+        async function onEventModuleChanged(value) {
+            const next = value || 'cdcup';
+            const currentMap = { ...(_cfg || {}), active_event_module: next };
+            _cfg = currentMap;
+            applyAuctionEventModule(currentMap);
+            updatePreviewPageLinks(next);
+            if (next === 'crewart' && !document.getElementById('cfg-crewart-houses').value.trim()) {
+                document.getElementById('cfg-crewart-houses').value = serializeCrewartHouses(parseCrewartHouses(''));
+            }
+            try {
+                await updateConfigs({ active_event_module: next });
+                const frame = document.getElementById('preview-frame');
+                if (frame) frame.src = broadcastPreviewSrc(1, next);
+                toast(getActiveAuctionEventModule(currentMap).title + ' 모듈로 전환했습니다.');
+            } catch (e) {
+                toast('모듈 전환 저장 실패: ' + e.message, true);
+            }
+        }
+
+        // ── Quick Toggles ──
+        async function quickToggle(key) {
+            const cur = _toggleStates[key];
+            _toggleStates[key] = cur === '1' ? '0' : '1';
+            updateToggleUI();
+            const map = {};
+            map[key + '_show'] = _toggleStates[key];
+            try {
+                await updateConfigs(map);
+                toast(key === 'ticker' ? '자막 ' : '배너 ' + (_toggleStates[key]==='1'?'ON':'OFF'));
+                pushToPreview();
+            } catch(e) {
+                console.error('toggle error', e);
+            }
+        }
+
+        function updateToggleUI() {
+            ['ticker','banner'].forEach(key => {
+                const el = document.getElementById('qt-' + key);
+                if (!el) return;
+                const on = _toggleStates[key] === '1';
+                el.querySelector('.dot').className = 'dot ' + (on ? 'on' : 'off');
+                el.querySelector('span').textContent = (key==='ticker'?'자막':'배너') + (on?' ON':' OFF');
+            });
+        }
+
+        // ── Photo toggle ──
+        let _photoShow = true;
+        async function loadPhotoState() {
+            try {
+                const cfg = await getConfigMap();
+                if (!cfg) return;
+                _photoShow = cfg.hiddenPhotos !== '1';
+                const el = document.getElementById('qt-photo');
+                if (el) {
+                    el.querySelector('.dot').className = 'dot ' + (_photoShow?'on':'off');
+                    el.querySelector('span').textContent = '사진 ' + (_photoShow?'ON':'OFF');
+                }
+            } catch(e) {
+                console.error('loadPhotoState error', e);
+            }
+        }
+        async function toggleBroadcastPhotos() {
+            _photoShow = !_photoShow;
+            try {
+                await updateConfigs({ hiddenPhotos: _photoShow ? '' : '1' });
+                loadPhotoState();
+                toast(_photoShow ? '사진 ON' : '사진 OFF');
+            } catch(e) {
+                console.error('toggleBroadcastPhotos error', e);
+            }
+        }
+
+        // ── Shuffle ──
+        async function doShuffle() {
+            if (!confirm('순서를 균등 분산하시겠습니까?')) return;
+            toast('순서 섞는 중...');
+            try {
+                const r = await shuffleRoundRobin();
+                if (r && !r.success) toast('실패: ' + r.error, true);
+                else toast('순서 배정 완료!');
+            } catch(e) {
+                console.error('doShuffle error', e);
+                toast('오류: ' + e.message, true);
+            }
+        }
+
+        // ── Banner Slots ──
+        // ── Supabase Storage Upload ──
+        const SB_URL = 'https://iuwqjeecwepqyqqlzprf.supabase.co';
+        const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml1d3FqZWVjd2VwcXlxcWx6cHJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyMTA3OTIsImV4cCI6MjA5Nzc4Njc5Mn0.psiAk4cqzjHqT6gP46m6nQM97nNsLEgc-a7K8BEAd_Y';
+
+        async function resizeImage(file, maxWidth = 1200, maxHeight = 1200) {
+            const isPng = file.type === 'image/png';
+            const outputType = isPng ? 'image/png' : 'image/jpeg';
+            const ext = isPng ? '.png' : '.jpg';
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = function (event) {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = function () {
+                        let width = img.width;
+                        let height = img.height;
+
+                        if (width > maxWidth || height > maxHeight) {
+                            if (width > height) {
+                                height = Math.round((height * maxWidth) / width);
+                                width = maxWidth;
+                            } else {
+                                width = Math.round((width * maxHeight) / height);
+                                height = maxHeight;
+                            }
+                        }
+
+                        const canvas = document.createElement('canvas');
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        if (!isPng) {
+                            ctx.fillStyle = '#FFFFFF';
+                            ctx.fillRect(0, 0, width, height);
+                        }
+                        ctx.drawImage(img, 0, 0, width, height);
+
+                        canvas.toBlob(
+                            (blob) => {
+                                if (blob) {
+                                    resolve(new File([blob], file.name.replace(/\.[^/.]+$/, "") + ext, { type: outputType }));
+                                } else {
+                                    reject(new Error('Canvas to Blob conversion failed'));
+                                }
+                            },
+                            outputType,
+                            isPng ? undefined : 0.85
+                        );
+                    };
+                    img.onerror = () => reject(new Error('Image load error'));
+                };
+                reader.onerror = () => reject(new Error('File read error'));
+            });
+        }
+
+        async function uploadToSupabase(file) {
+            const ext = file.name.split('.').pop().toLowerCase();
+            const fname = 'banner_' + Date.now() + '_' + Math.random().toString(36).slice(2,8) + '.' + ext;
+            const uploadUrl = SB_URL + '/storage/v1/object/banner/' + fname;
+            const resp = await fetch(uploadUrl, {
+                method: 'POST',
+                headers: {
+                    'apikey': SB_KEY,
+                    'Authorization': 'Bearer ' + SB_KEY,
+                    'Content-Type': file.type,
+                    'x-upsert': 'true',
+                },
+                body: file,
+            });
+            if (!resp.ok) {
+                const errText = await resp.text();
+                throw new Error(`Upload failed (${resp.status}): ${errText}`);
+            }
+            return SB_URL + '/storage/v1/object/public/banner/' + fname;
+        }
+
+        function addBannerSlot(url) {
+            const list = document.getElementById('banner-list');
+            const idx = list.children.length + 1;
+            const div = document.createElement('div');
+            div.className = 'banner-slot';
+            const hasUrl = url && url.trim();
+
+            // Row 1: thumb + input + delete
+            const row1 = document.createElement('div');
+            row1.style.cssText = 'display:flex;gap:8px;align-items:center;width:100%';
+            row1.innerHTML = '<img class="banner-thumb ' + (hasUrl?'':'empty') + '" src="' + (hasUrl?url:'') + '" onerror="this.className=\'banner-thumb empty\';this.src=\'\';this.textContent=\'🖼\'" alt="">'
+                + '<input type="text" class="cfg-banner-url" data-key="banner' + idx + '" placeholder="배너 ' + idx + ' URL 또는 파일 드롭" value="' + (url||'') + '">'
+                + '<button class="slot-del" onclick="this.closest(\'.banner-slot\').remove()">✕</button>';
+
+            // Row 2: dropzone
+            const dropzone = document.createElement('div');
+            dropzone.className = 'banner-dropzone';
+            dropzone.innerHTML = '📂 이미지를 여기에 드래그하거나 클릭해서 업로드<input type="file" accept="image/*">';
+
+            div.appendChild(row1);
+            div.appendChild(dropzone);
+
+            const input = row1.querySelector('input[type=text]');
+            const thumb = row1.querySelector('img');
+            const fileInput = dropzone.querySelector('input[type=file]');
+
+            // URL input → thumb preview
+            input.addEventListener('input', function() {
+                const v = this.value.trim();
+                if (v) { thumb.src = v; thumb.className = 'banner-thumb'; }
+                else { thumb.src = ''; thumb.className = 'banner-thumb empty'; thumb.textContent = '🖼'; }
+            });
+            // File upload handler
+            async function handleFile(file) {
+                if (!file || !file.type.startsWith('image/')) { toast('이미지 파일만 업로드 가능합니다', true); return; }
+                if (file.size > 25 * 1024 * 1024) { toast('25MB 이하 이미지 파일만 업로드 가능합니다', true); return; }
+                dropzone.innerHTML = '<span class="uploading">이미지 리사이징 중...</span>';
+                try {
+                    console.log('Original file size:', (file.size / 1024).toFixed(1) + 'KB');
+                    const resizedFile = await resizeImage(file);
+                    console.log('Resized file size:', (resizedFile.size / 1024).toFixed(1) + 'KB');
+                    
+                    dropzone.innerHTML = '<span class="uploading">업로드 중...</span>';
+                    const publicUrl = await uploadToSupabase(resizedFile);
+                    input.value = publicUrl;
+                    thumb.src = publicUrl;
+                    thumb.className = 'banner-thumb';
+                    dropzone.innerHTML = '✅ 업로드 완료! 다른 이미지로 교체하려면 클릭<input type="file" accept="image/*">';
+                    dropzone.querySelector('input[type=file]').addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+                    toast('배너 이미지 업로드 완료!');
+                } catch(e) {
+                    console.error('Upload process failed:', e);
+                    dropzone.innerHTML = '❌ 업로드 실패 — 다시 시도<input type="file" accept="image/*">';
+                    dropzone.querySelector('input[type=file]').addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+                    toast('업로드 실패: ' + e.message, true);
+                }
+            }
+            // File input change
+            fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+
+            // Drag and drop
+            dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+            dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+            dropzone.addEventListener('drop', e => {
+                e.preventDefault();
+                dropzone.classList.remove('drag-over');
+                const file = e.dataTransfer.files[0];
+                if (file) handleFile(file);
+            });
+
+            // Clipboard Paste (Ctrl+V) Support
+            div.addEventListener('paste', async function(e) {
+                const items = (e.clipboardData || window.clipboardData).items;
+                if (!items) return;
+                for (let i = 0; i < items.length; i++) {
+                    if (items[i].type.indexOf('image') !== -1) {
+                        const file = items[i].getAsFile();
+                        if (file) {
+                            e.preventDefault();
+                            await handleFile(file);
+                            break;
+                        }
+                    }
+                }
+            });
+
+            list.appendChild(div);
+        }
+
+        // ── Ticker Sponsor Slots ──
+        function addSponsorSlot(url) {
+            const list = document.getElementById('sponsor-list');
+            const idx = list.children.length + 1;
+            const div = document.createElement('div');
+            div.className = 'banner-slot'; // reuse class for styling consistency
+            const hasUrl = url && url.trim();
+
+            const row1 = document.createElement('div');
+            row1.style.cssText = 'display:flex;gap:8px;align-items:center;width:100%';
+            row1.innerHTML = '<img class="banner-thumb ' + (hasUrl?'':'empty') + '" src="' + (hasUrl?url:'') + '" onerror="this.className=\'banner-thumb empty\';this.src=\'\';this.textContent=\'🖼\'" alt="">'
+                + '<input type="text" class="cfg-sponsor-url" data-key="ticker_sponsor' + idx + '" placeholder="로고 ' + idx + ' URL 또는 파일 드롭" value="' + (url||'') + '">'
+                + '<button class="slot-del" onclick="this.closest(\'.banner-slot\').remove()">✕</button>';
+
+            const dropzone = document.createElement('div');
+            dropzone.className = 'banner-dropzone';
+            dropzone.innerHTML = '📂 이미지를 여기에 드래그하거나 클릭해서 업로드<input type="file" accept="image/*">';
+
+            div.appendChild(row1);
+            div.appendChild(dropzone);
+
+            const input = row1.querySelector('input[type=text]');
+            const thumb = row1.querySelector('img');
+            const fileInput = dropzone.querySelector('input[type=file]');
+
+            input.addEventListener('input', function() {
+                const v = this.value.trim();
+                if (v) { thumb.src = v; thumb.className = 'banner-thumb'; }
+                else { thumb.src = ''; thumb.className = 'banner-thumb empty'; thumb.textContent = '🖼'; }
+            });
+
+            async function handleFile(file) {
+                if (!file || !file.type.startsWith('image/')) { toast('이미지 파일만 업로드 가능합니다', true); return; }
+                if (file.size > 25 * 1024 * 1024) { toast('25MB 이하 이미지 파일만 업로드 가능합니다', true); return; }
+                dropzone.innerHTML = '<span class="uploading">이미지 리사이징 중...</span>';
+                try {
+                    const resizedFile = await resizeImage(file);
+                    dropzone.innerHTML = '<span class="uploading">업로드 중...</span>';
+                    const publicUrl = await uploadToSupabase(resizedFile);
+                    input.value = publicUrl;
+                    thumb.src = publicUrl;
+                    thumb.className = 'banner-thumb';
+                    dropzone.innerHTML = '✅ 업로드 완료! 다른 이미지로 교체하려면 클릭<input type="file" accept="image/*">';
+                    dropzone.querySelector('input[type=file]').addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+                    toast('로고 이미지 업로드 완료!');
+                } catch(e) {
+                    console.error('Upload process failed:', e);
+                    dropzone.innerHTML = '❌ 업로드 실패 — 다시 시도<input type="file" accept="image/*">';
+                    dropzone.querySelector('input[type=file]').addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+                    toast('업로드 실패: ' + e.message, true);
+                }
+            }
+
+            fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+
+            dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+            dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+            dropzone.addEventListener('drop', e => {
+                e.preventDefault();
+                dropzone.classList.remove('drag-over');
+                const file = e.dataTransfer.files[0];
+                if (file) handleFile(file);
+            });
+
+            div.addEventListener('paste', async function(e) {
+                const items = (e.clipboardData || window.clipboardData).items;
+                if (!items) return;
+                for (let i = 0; i < items.length; i++) {
+                    if (items[i].type.indexOf('image') !== -1) {
+                        const file = items[i].getAsFile();
+                        if (file) {
+                            e.preventDefault();
+                            await handleFile(file);
+                            break;
+                        }
+                    }
+                }
+            });
+
+            list.appendChild(div);
+        }
+
+        // ── Team Logo Slots ──
+        function addTeamLogoSlot(name, url) {
+            const list = document.getElementById('team-logo-list');
+            const idx = list.children.length + 1;
+            const div = document.createElement('div');
+            div.className = 'banner-slot';
+            const hasUrl = url && url.trim();
+
+            const row1 = document.createElement('div');
+            row1.style.cssText = 'display:flex;gap:8px;align-items:center;width:100%';
+            row1.innerHTML = '<img class="banner-thumb ' + (hasUrl?'':'empty') + '" src="' + (hasUrl?url:'') + '" onerror="this.className=\'banner-thumb empty\';this.src=\'\';" alt="" style="width:36px;height:36px;border-radius:6px;object-fit:cover;">'
+                + '<input type="text" class="cfg-team-logo-name" placeholder="업체명 (예: 도도시)" value="' + (name||'') + '" style="flex:0.6;">'
+                + '<input type="text" class="cfg-team-logo-url" placeholder="로고 URL 또는 파일 드롭" value="' + (url||'') + '" style="flex:1;">'
+                + '<button class="slot-del" onclick="this.closest(\'.banner-slot\').remove()">✕</button>';
+
+            const dropzone = document.createElement('div');
+            dropzone.className = 'banner-dropzone';
+            dropzone.innerHTML = '이미지를 여기에 드래그하거나 클릭해서 업로드<input type="file" accept="image/*">';
+
+            div.appendChild(row1);
+            div.appendChild(dropzone);
+
+            const urlInput = row1.querySelector('.cfg-team-logo-url');
+            const thumb = row1.querySelector('img');
+            const fileInput = dropzone.querySelector('input[type=file]');
+
+            urlInput.addEventListener('input', function() {
+                const v = this.value.trim();
+                if (v) { thumb.src = v; thumb.className = 'banner-thumb'; }
+                else { thumb.src = ''; thumb.className = 'banner-thumb empty'; }
+            });
+
+            async function handleFile(file) {
+                if (!file || !file.type.startsWith('image/')) { toast('이미지 파일만 업로드 가능합니다', true); return; }
+                if (file.size > 25 * 1024 * 1024) { toast('25MB 이하 이미지만 업로드 가능합니다', true); return; }
+                dropzone.innerHTML = '<span class="uploading">리사이징 중...</span>';
+                try {
+                    const resizedFile = await resizeImage(file);
+                    dropzone.innerHTML = '<span class="uploading">업로드 중...</span>';
+                    const publicUrl = await uploadToSupabase(resizedFile);
+                    urlInput.value = publicUrl;
+                    thumb.src = publicUrl;
+                    thumb.className = 'banner-thumb';
+                    dropzone.innerHTML = '업로드 완료! 교체하려면 클릭<input type="file" accept="image/*">';
+                    dropzone.querySelector('input[type=file]').addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+                    toast('로고 업로드 완료!');
+                } catch(e) {
+                    dropzone.innerHTML = '업로드 실패 — 다시 시도<input type="file" accept="image/*">';
+                    dropzone.querySelector('input[type=file]').addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+                    toast('업로드 실패: ' + e.message, true);
+                }
+            }
+
+            fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+            dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+            dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+            dropzone.addEventListener('drop', e => {
+                e.preventDefault();
+                dropzone.classList.remove('drag-over');
+                const file = e.dataTransfer.files[0];
+                if (file) handleFile(file);
+            });
+            div.addEventListener('paste', async function(e) {
+                const items = (e.clipboardData || window.clipboardData).items;
+                if (!items) return;
+                for (let i = 0; i < items.length; i++) {
+                    if (items[i].type.indexOf('image') !== -1) {
+                        const file = items[i].getAsFile();
+                        if (file) { e.preventDefault(); await handleFile(file); break; }
+                    }
+                }
+            });
+
+            list.appendChild(div);
+        }
+
+        // ── Rule Slots ──
+        function addRuleSlot(val) {
+            const list = document.getElementById('rule-list');
+            const div = document.createElement('div');
+            div.className = 'rule-slot';
+            div.innerHTML = '<input type="text" placeholder="[라벨] 내용 (예: [호가] 1만원 단위)" value="' + (val||'') + '">'
+                + '<button class="slot-del" onclick="this.parentElement.remove()">✕</button>';
+            list.appendChild(div);
+        }
+
+        function setRulesPos(pos) {
+            _rulesPos = pos;
+            document.getElementById('rules-pos-top').style.background = pos==='top' ? 'var(--accent)' : '';
+            document.getElementById('rules-pos-top').style.color = pos==='top' ? '#fff' : '';
+            document.getElementById('rules-pos-bottom').style.background = pos!=='top' ? 'var(--accent)' : '';
+            document.getElementById('rules-pos-bottom').style.color = pos!=='top' ? '#fff' : '';
+        }
+
+        // ── Password ──
+        async function loadPwStatus() {
+            try {
+                const r = await getAdminPwStatus();
+                const st = document.getElementById('pw-status');
+                if (r.isSet) {
+                    st.innerHTML = '<b style="color:var(--green)">설정됨</b>';
+                    document.getElementById('pw-cur-wrap').style.display = 'block';
+                } else {
+                    st.innerHTML = '<b style="color:var(--red)">미설정</b>';
+                }
+            } catch(e) {
+                console.error('loadPwStatus error', e);
+            }
+        }
+        async function savePw() {
+            const cur = document.getElementById('pw-current').value;
+            const nw = document.getElementById('pw-new').value;
+            if (!nw) { toast('새 비밀번호를 입력하세요', true); return; }
+            try {
+                const r = await setAdminPw(cur, nw);
+                if (r.success) { toast('비밀번호 변경 완료'); loadPwStatus(); }
+                else toast(r.error || '오류', true);
+            } catch(e) {
+                toast('오류: ' + e.message, true);
+            }
+        }
+
+        // ── Build Config Map ──
+        function buildConfigMap() {
+            const m = {
+                ticker: document.getElementById('cfg-ticker').value,
+                badge_text: document.getElementById('cfg-badge-text').value,
+                ticker_interval: document.getElementById('cfg-ticker-interval').value,
+                ticker_background: document.getElementById('cfg-ticker-bg').value,
+                banner_interval: document.getElementById('cfg-banner-interval').value,
+                banner_opacity: document.getElementById('cfg-banner-opacity').value,
+                banner_maxwidth: document.getElementById('cfg-banner-maxwidth').value,
+                banner_maxheight: document.getElementById('cfg-banner-maxheight').value,
+                ticker_sponsor_size: document.getElementById('cfg-ticker-sponsor-size').value,
+                ticker_fontsize: document.getElementById('cfg-ticker-fontsize').value,
+                ticker_show: _toggleStates.ticker,
+                banner_show: _toggleStates.banner,
+                rules_position: _rulesPos,
+                active_event_module: document.getElementById('cfg-active-event-module').value || 'cdcup',
+                crewart_houses: document.getElementById('cfg-crewart-houses').value,
+                crewart_participants: document.getElementById('cfg-crewart-participants').value,
+                crewart_score_per_man: document.getElementById('cfg-crewart-score-per-man').value,
+                crewart_sold_bonus: document.getElementById('cfg-crewart-sold-bonus').value,
+                crewart_score_scope: document.getElementById('cfg-crewart-score-scope').value,
+                scoreboard_name_fontsize: document.getElementById('cfg-scoreboard-name-fontsize').value,
+                scoreboard_pill_fontsize: document.getElementById('cfg-scoreboard-pill-fontsize').value,
+                scoreboard_label_fontsize: document.getElementById('cfg-scoreboard-label-fontsize').value,
+                scoreboard_opacity: document.getElementById('cfg-scoreboard-opacity').value,
+                scoreboard_label: document.getElementById('cfg-scoreboard-label').value,
+                host_name1: document.getElementById('cfg-host-name1').value,
+                host_name2: document.getElementById('cfg-host-name2').value,
+                host_role1: document.getElementById('cfg-host-role1').value,
+                host_role2: document.getElementById('cfg-host-role2').value,
+                nametag_font_size: document.getElementById('cfg-nametag-font-size').value,
+                bracket_font_size: document.getElementById('cfg-bracket-font-size').value || '14',
+            };
+            // banners
+            document.querySelectorAll('.cfg-banner-url').forEach((input, i) => {
+                m['banner' + (i+1)] = input.value;
+            });
+            const bc = document.querySelectorAll('.cfg-banner-url').length;
+            for (let i = bc+1; i <= 10; i++) m['banner'+i] = '';
+
+            // ticker sponsors
+            document.querySelectorAll('.cfg-sponsor-url').forEach((input, i) => {
+                m['ticker_sponsor' + (i+1)] = input.value;
+            });
+            const sc = document.querySelectorAll('.cfg-sponsor-url').length;
+            for (let i = sc+1; i <= 10; i++) m['ticker_sponsor'+i] = '';
+
+            // rules
+            document.querySelectorAll('.rule-slot input').forEach((input, i) => {
+                m['rule' + (i+1)] = input.value;
+            });
+            const rc = document.querySelectorAll('.rule-slot input').length;
+            for (let i = rc+1; i <= 10; i++) m['rule'+i] = '';
+
+            // team logos
+            const nameInputs = document.querySelectorAll('.cfg-team-logo-name');
+            const urlInputs = document.querySelectorAll('.cfg-team-logo-url');
+            nameInputs.forEach((nameInput, i) => {
+                const logoName = nameInput.value.trim();
+                const logoUrl = urlInputs[i] ? urlInputs[i].value.trim() : '';
+                m['team_logo' + (i+1)] = (logoName || logoUrl) ? JSON.stringify({name: logoName, url: logoUrl}) : '';
+            });
+            const tc = nameInputs.length;
+            for (let i = tc+1; i <= 20; i++) m['team_logo'+i] = '';
+            return m;
+        }
+
+        // ── Save All ──
+        async function saveBroadcastSettings() {
+            const fab = document.querySelector('.save-fab');
+            fab.textContent = '⏳';
+            fab.style.pointerEvents = 'none';
+            const configMap = buildConfigMap();
+            try {
+                await updateConfigs(configMap);
+                fab.textContent = '✓';
+                fab.style.background = 'var(--green)';
+                toast('전체 설정이 저장되었습니다!');
+                pushToPreview();
+                setTimeout(() => { fab.textContent = '💾'; fab.style.pointerEvents = ''; }, 1500);
+            } catch(e) {
+                fab.textContent = '💾';
+                fab.style.pointerEvents = '';
+                toast('저장 실패: ' + e.message, true);
+            }
+        }
+
+        // ── Load All ──
+        async function loadAll() {
+            try {
+                const cfg = await getConfigMap();
+                if (!cfg) return;
+                const requestedRaw = new URLSearchParams(location.search).get('module') || new URLSearchParams(location.search).get('event');
+                const requestedModule = requestedRaw ? getActiveAuctionEventModule({ active_event_module: requestedRaw }).id : '';
+                if (requestedModule && requestedModule !== cfg.active_event_module) {
+                    try {
+                        await updateConfigs({ active_event_module: requestedModule });
+                        cfg.active_event_module = requestedModule;
+                    } catch (e) {
+                        console.warn('active_event_module query sync failed', e);
+                    }
+                }
+                _cfg = requestedModule ? { ...cfg, active_event_module: requestedModule } : cfg;
+                document.getElementById('cfg-active-event-module').value = _cfg.active_event_module || 'cdcup';
+                document.getElementById('cfg-crewart-houses').value = cfg.crewart_houses || serializeCrewartHouses(parseCrewartHouses(''));
+                document.getElementById('cfg-crewart-participants').value = cfg.crewart_participants || '';
+                document.getElementById('cfg-crewart-score-per-man').value = cfg.crewart_score_per_man || '1';
+                document.getElementById('cfg-crewart-sold-bonus').value = cfg.crewart_sold_bonus || '0';
+                document.getElementById('cfg-crewart-score-scope').value = cfg.crewart_score_scope || 'crewart';
+                applyAuctionEventModule(_cfg);
+                updatePreviewPageLinks(activeModuleId(_cfg));
+                const previewFrame = document.getElementById('preview-frame');
+                if (previewFrame) previewFrame.src = broadcastPreviewSrc(1, activeModuleId(_cfg));
+                document.getElementById('cfg-ticker').value = cfg.ticker || '';
+                document.getElementById('cfg-badge-text').value = cfg.badge_text || 'LIVE';
+                document.getElementById('cfg-ticker-interval').value = cfg.ticker_interval || '4200';
+                document.getElementById('cfg-ticker-sponsor-size').value = cfg.ticker_sponsor_size || '';
+                document.getElementById('cfg-ticker-fontsize').value = cfg.ticker_fontsize || '';
+                document.getElementById('cfg-ticker-bg').value = cfg.ticker_background || '';
+                document.getElementById('cfg-banner-interval').value = cfg.banner_interval || '5000';
+                document.getElementById('cfg-banner-opacity').value = cfg.banner_opacity || '0.93';
+                document.getElementById('cfg-banner-maxwidth').value = cfg.banner_maxwidth || '';
+                document.getElementById('cfg-banner-maxheight').value = cfg.banner_maxheight || '';
+                // toggle states
+                _toggleStates.ticker = cfg.ticker_show !== undefined ? String(cfg.ticker_show) : '1';
+                _toggleStates.banner = cfg.banner_show !== undefined ? String(cfg.banner_show) : '1';
+                updateToggleUI();
+                // banners with thumbnails
+                const bannerList = document.getElementById('banner-list');
+                bannerList.innerHTML = '';
+                let hasBanner = false;
+                for (let i = 1; i <= 10; i++) {
+                    const url = cfg['banner'+i] || '';
+                    if (url || i <= 3) { addBannerSlot(url); hasBanner = true; }
+                }
+                if (!hasBanner) { addBannerSlot(''); addBannerSlot(''); addBannerSlot(''); }
+
+                // ticker sponsors with thumbnails
+                const sponsorList = document.getElementById('sponsor-list');
+                sponsorList.innerHTML = '';
+                let hasSponsor = false;
+                for (let i = 1; i <= 10; i++) {
+                    const url = cfg['ticker_sponsor'+i] || '';
+                    if (url || i <= 2) { addSponsorSlot(url); hasSponsor = true; }
+                }
+                if (!hasSponsor) { addSponsorSlot(''); addSponsorSlot(''); }
+
+                // rules
+                const ruleList = document.getElementById('rule-list');
+                ruleList.innerHTML = '';
+                let hasRule = false;
+                for (let i = 1; i <= 10; i++) {
+                    const v = cfg['rule'+i] || '';
+                    if (v) { addRuleSlot(v); hasRule = true; }
+                }
+                if (!hasRule) { addRuleSlot(''); }
+                // rules position
+                _rulesPos = cfg.rules_position || 'top';
+                setRulesPos(_rulesPos);
+                // scoreboard
+                document.getElementById('cfg-scoreboard-name-fontsize').value = cfg.scoreboard_name_fontsize || '';
+                document.getElementById('cfg-scoreboard-pill-fontsize').value = cfg.scoreboard_pill_fontsize || '';
+                document.getElementById('cfg-scoreboard-label-fontsize').value = cfg.scoreboard_label_fontsize || '';
+                document.getElementById('cfg-scoreboard-opacity').value = cfg.scoreboard_opacity || '';
+                document.getElementById('cfg-scoreboard-label').value = cfg.scoreboard_label || '';
+                // 진행자 네임택
+                document.getElementById('cfg-host-name1').value = cfg.host_name1 || '';
+                document.getElementById('cfg-host-name2').value = cfg.host_name2 || '';
+                document.getElementById('cfg-host-role1').value = cfg.host_role1 || '';
+                document.getElementById('cfg-host-role2').value = cfg.host_role2 || '';
+                document.getElementById('cfg-nametag-font-size').value = cfg.nametag_font_size || '';
+                document.getElementById('cfg-bracket-font-size').value = cfg.bracket_font_size || '14';
+                // team logos
+                const logoList = document.getElementById('team-logo-list');
+                logoList.innerHTML = '';
+                let hasLogo = false;
+                for (let i = 1; i <= 20; i++) {
+                    const raw = cfg['team_logo'+i] || '';
+                    if (!raw) continue;
+                    try {
+                        const obj = JSON.parse(raw);
+                        if (obj.name || obj.url) { addTeamLogoSlot(obj.name, obj.url); hasLogo = true; }
+                    } catch(e) {}
+                }
+                if (!hasLogo) { addTeamLogoSlot('', ''); }
+            } catch(e) {
+                console.error('loadAll error', e);
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            loadPwStatus();
+            loadPhotoState();
+            loadAll();
+        });
+    </script>
+</body>
+</html>

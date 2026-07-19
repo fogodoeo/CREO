@@ -74,18 +74,30 @@ function loadConfig(env = process.env) {
     const publicBaseUrl = trimSlash(
         env.BAND_OAUTH_PUBLIC_URL || env.RENDER_EXTERNAL_URL || 'https://creok.onrender.com'
     );
-    const targetBandNo = String(env.BAND_OAUTH_TARGET_BAND_NO || '101005857').trim();
+    const targetBandNo = String(env.BAND_OAUTH_TARGET_BAND_NO || '101992972').trim();
     const returnUrl = String(
-        env.BAND_OAUTH_RETURN_URL || 'https://cdcup.onrender.com/crewart-survey.html'
+        env.BAND_OAUTH_RETURN_URL || 'https://creok.onrender.com/crewart-survey.html'
     ).trim();
     const callbackUrl = String(
         env.BAND_OAUTH_REDIRECT_URI || `${publicBaseUrl}/api/band-oauth/callback`
     ).trim();
-    let allowedOrigin = '';
-    try {
-        allowedOrigin = new URL(returnUrl).origin;
-    } catch {
-        // Invalid configuration is reported through configured=false.
+    const allowedReturnUrls = [
+        returnUrl,
+        ...String(env.BAND_OAUTH_ALLOWED_RETURN_URLS || '')
+            .split(',')
+            .map((value) => value.trim())
+            .filter(Boolean)
+    ].filter((value, index, values) => values.indexOf(value) === index);
+    const allowedOrigins = [];
+    for (const value of allowedReturnUrls) {
+        try {
+            const parsed = new URL(value);
+            if (parsed.protocol === 'https:' && !allowedOrigins.includes(parsed.origin)) {
+                allowedOrigins.push(parsed.origin);
+            }
+        } catch {
+            // Invalid configuration is reported through configured=false.
+        }
     }
 
     const config = {
@@ -95,7 +107,9 @@ function loadConfig(env = process.env) {
         publicBaseUrl,
         callbackUrl,
         returnUrl,
-        allowedOrigin,
+        allowedOrigin: allowedOrigins[0] || '',
+        allowedOrigins,
+        allowedReturnUrls,
         targetBandNo,
         targetBandKey: String(env.BAND_OAUTH_TARGET_BAND_KEY || '').trim(),
         targetBandUrl: String(
@@ -110,7 +124,8 @@ function loadConfig(env = process.env) {
         config.clientId
         && config.clientSecret
         && config.sessionSecret.length >= 32
-        && config.allowedOrigin
+        && config.allowedReturnUrls.length > 0
+        && config.allowedReturnUrls.every((value) => /^https:\/\//i.test(value))
         && /^https:\/\//i.test(config.callbackUrl)
         && /^https:\/\//i.test(config.returnUrl)
     );
@@ -138,7 +153,7 @@ function sendJson(res, status, value, extraHeaders = {}) {
 
 function corsHeaders(config, req) {
     const origin = String(req.headers?.origin || '');
-    if (!origin || origin !== config.allowedOrigin) return {};
+    if (!origin || !config.allowedOrigins.includes(origin)) return {};
     return {
         'Access-Control-Allow-Origin': origin,
         'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -152,10 +167,14 @@ function isAllowedReturnUrl(value, config) {
     if (!value) return config.returnUrl;
     try {
         const requested = new URL(value);
-        const allowed = new URL(config.returnUrl);
         requested.hash = '';
-        allowed.hash = '';
-        return requested.toString() === allowed.toString() ? requested.toString() : '';
+        const normalized = requested.toString();
+        const allowed = config.allowedReturnUrls.some((candidate) => {
+            const parsed = new URL(candidate);
+            parsed.hash = '';
+            return parsed.toString() === normalized;
+        });
+        return allowed ? normalized : '';
     } catch {
         return '';
     }
