@@ -259,6 +259,30 @@ function createPlatformApi({ repository, logger = console } = {}) {
                 return true;
             }
 
+            if (segments.length === 2 && method === 'DELETE') {
+                if (!await requireAdmin(req, res)) return true;
+                if (DEFAULT_CHANNELS.some((entry) => entry.id === channelId) || channel.legacy?.items) {
+                    replyJson(res, 409, { error: '기본 운영 채널은 삭제할 수 없습니다. 보관 상태로 변경해 주세요.' });
+                    return true;
+                }
+                if (await repository.getActiveChannel() === channelId) {
+                    replyJson(res, 409, { error: '현재 방송 중인 채널은 삭제할 수 없습니다. 다른 채널로 전환해 주세요.' });
+                    return true;
+                }
+                const data = await workspace(channelId);
+                if (data.vendors.length || data.items.length || data.shipments.length) {
+                    replyJson(res, 409, { error: '업체·개체·배송 자료를 먼저 삭제해 주세요.' });
+                    return true;
+                }
+                if (data.broadcast?.id === 'state') await repository.deleteRecord(channelId, 'broadcast', 'state');
+                const saved = await repository.saveCatalog(
+                    catalog.channels.filter((entry) => entry.id !== channelId),
+                    url.searchParams.has('expectedVersion') ? url.searchParams.get('expectedVersion') : catalog.version
+                );
+                replyJson(res, 200, { deleted: true, catalogVersion: saved.version });
+                return true;
+            }
+
             if (segments.length === 3 && segments[2] === 'workspace' && method === 'GET') {
                 if (!await requireAdmin(req, res)) return true;
                 replyJson(res, 200, { channel, ...(await workspace(channelId)) });

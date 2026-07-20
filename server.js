@@ -9,12 +9,19 @@ const path = require('node:path');
 const { createBandOAuth } = require('./band-oauth');
 const { createPlatformApi } = require('./platform-api');
 const { SupabaseConfigRepository } = require('./platform-repository');
+const { SQLitePlatformRepository } = require('./sqlite-platform-repository');
 
 const PORT = Number(process.env.PORT || 10000);
 const HOST = process.env.HOST || '0.0.0.0';
 const PUBLIC_DIR = path.resolve(__dirname, 'public');
 const bandOAuth = createBandOAuth();
-const platformRepository = new SupabaseConfigRepository();
+const supabasePlatformRepository = new SupabaseConfigRepository();
+const platformStorageMode = String(process.env.CREO_PLATFORM_STORAGE || 'sqlite').toLowerCase();
+const platformRepository = platformStorageMode === 'supabase'
+    ? supabasePlatformRepository
+    : new SQLitePlatformRepository({
+        mirror: process.env.CREO_SUPABASE_MIRROR_ENABLED === 'false' ? null : supabasePlatformRepository
+    });
 const platformApi = createPlatformApi({ repository: platformRepository });
 
 const SECURITY_HEADERS = {
@@ -224,4 +231,22 @@ server.listen(PORT, HOST, () => {
     console.log(`[creo] listening on http://${HOST}:${PORT}`);
     console.log(`[creo] public directory: ${PUBLIC_DIR}`);
     console.log(`[creo] BAND OAuth configured: ${bandOAuth.config.configured}`);
+    console.log(`[creo] platform storage: ${platformStorageMode}`);
 });
+
+let shuttingDown = false;
+function shutdown(signal) {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    console.log(`[creo] ${signal} received, closing cleanly`);
+    const forceExit = setTimeout(() => process.exit(1), 10_000);
+    forceExit.unref?.();
+    server.close(() => {
+        try { platformRepository.close?.(); } catch (error) { console.error('[creo] repository close failed:', error.message); }
+        clearTimeout(forceExit);
+        process.exit(0);
+    });
+}
+
+process.once('SIGTERM', () => shutdown('SIGTERM'));
+process.once('SIGINT', () => shutdown('SIGINT'));

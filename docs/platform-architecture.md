@@ -38,7 +38,7 @@ creo_v2::<channel_id>::broadcast::state
 - 채널 복제는 디자인·기능만 복사하며 운영 데이터는 복사하지 않는다.
 - 업체 복사는 관리자가 명시적으로 선택할 때만 가능하다.
 
-Supabase의 기존 `config` 테이블을 레코드 단위 KV 저장소로 사용한다. 한 채널의 JSON 묶음을 통째로 덮어쓰지 않고 업체·개체·배송을 각각 별도 행으로 저장하므로 동시 수정 충돌과 채널 간 덮어쓰기를 줄인다.
+CREOK의 영구 디스크에 SQLite를 기본 저장소로 사용한다. 한 채널의 JSON 묶음을 통째로 덮어쓰지 않고 업체·개체·배송을 각각 별도 행으로 저장하므로 동시 수정 충돌과 채널 간 덮어쓰기를 줄인다. Supabase는 선택적 미러이며, 장애 시 로컬 outbox에 최신 변경만 남겨 운영을 막지 않고 복구 후 자동 재전송한다.
 
 ## 방송 전환
 
@@ -77,11 +77,13 @@ Supabase의 기존 `config` 테이블을 레코드 단위 KV 저장소로 사용
 - `SUPABASE_SERVICE_ROLE_KEY`가 있으면 서버 저장에 우선 사용하고, 없으면 현재 공개 anon 정책과 호환된다.
 - 비밀번호와 Supabase 키는 응답·로그·브라우저 URL에 포함하지 않는다.
 - 새 플랫폼 키는 `CREO_DATA_SIGNING_SECRET` 또는 관리자 비밀번호로 HMAC 서명한다. 공개 anon API로 직접 덮어쓴 값은 서명이 맞지 않아 서버가 무시한다.
+- Supabase 장애는 채널 생성·개체·배송·방송 제어를 막지 않는다. SQLite 커밋이 성공하면 요청은 완료되고 미러 전송은 백그라운드에서 재시도된다.
 
 ## 주요 파일
 
 - `platform-core.js`: 채널 규칙, 정규화, 키 생성, 공개 데이터 필터
 - `platform-repository.js`: Supabase 저장 및 카탈로그 버전 관리
+- `sqlite-platform-repository.js`: SQLite 기본 저장, WAL, 원자적 변경, Supabase outbox
 - `platform-api.js`: 인증, 검증, CRUD, 방송 상태 API
 - `public/channel-manager.html`: 채널 생성·복제·디자인 설정
 - `public/channel-workspace.html`: 업체·개체·배송 관리

@@ -12,6 +12,8 @@ CREO 멀티 경매 운영 허브, CREWARTS 설문, NAVER BAND OAuth 브리지입
 
 신규 채널 데이터는 `creo_v2::<channel_id>::...` 이름공간으로 분리됩니다. 자세한 설계와 운영 절차는 [멀티 경매 플랫폼 설계](docs/platform-architecture.md)를 참고하세요.
 
+운영 데이터의 기본 저장소는 CREOK 영구 디스크의 SQLite입니다. Supabase가 한도 초과나 장애로 멈춰도 운영은 계속되며, 미러 변경은 outbox에 보관됐다가 복구 후 자동 전송됩니다.
+
 ## 기존 공개 화면
 
 - `/crewart-survey.html` — CREWARTS 성향 테스트

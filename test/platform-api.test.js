@@ -97,3 +97,19 @@ test('referenced vendors and items cannot be deleted out from under shipments', 
     assert.equal(vendorDelete.status, 409);
     assert.equal(itemDelete.status, 409);
 });
+
+test('temporary channels can only be deleted when inactive and empty', async () => {
+    const repository = new MemoryRepository();
+    const api = createPlatformApi({ repository, logger: { error() {} } });
+    let catalog = await repository.getCatalog();
+    await repository.saveCatalog([...catalog.channels, normalizeChannel({ id: 'temporary', name: '임시', status: 'draft' })]);
+    await call(api, 'POST', '/api/platform/channels/temporary/vendors', { record: { id: 'vendor_one', name: '업체' } });
+    let response = await call(api, 'DELETE', '/api/platform/channels/temporary');
+    assert.equal(response.status, 409);
+    await call(api, 'DELETE', '/api/platform/channels/temporary/vendors/vendor_one');
+    response = await call(api, 'DELETE', '/api/platform/channels/temporary');
+    assert.equal(response.status, 200);
+    assert.equal((await repository.getCatalog()).channels.some((channel) => channel.id === 'temporary'), false);
+    response = await call(api, 'DELETE', '/api/platform/channels/alpha');
+    assert.equal(response.status, 409);
+});

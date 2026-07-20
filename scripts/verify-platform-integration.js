@@ -1,12 +1,10 @@
 'use strict';
 
-const { SupabaseConfigRepository } = require('../platform-repository');
-const { channelKey } = require('../platform-core');
+require('../load-local-env')();
 
 async function main() {
-    const repository = new SupabaseConfigRepository();
-    const adminRow = await repository.getRow('admin_pw');
-    const admin = process.env.CREO_ADMIN_SECRET || adminRow?.value || 'unconfigured-local-verification';
+    const admin = String(process.env.CREO_ADMIN_SECRET || '');
+    if (!admin) throw new Error('CREO_ADMIN_SECRET is required');
     const base = String(process.env.CREO_VERIFY_URL || 'http://127.0.0.1:43920').replace(/\/$/, '') + '/api/platform';
     const idA = `verify-a-${Date.now().toString(36)}`;
     const idB = `verify-b-${Date.now().toString(36)}`;
@@ -64,19 +62,13 @@ async function main() {
         console.log('integration=PASS channels=2 vendors-isolated items-isolated shipments-isolated broadcast-switched');
     } finally {
         try { await request('active-channel', { method: 'PUT', body: JSON.stringify({ channelId: originalActive }) }); } catch (_) {}
-        for (const key of [
-            channelKey(idA, 'vendor', 'same_vendor'),
-            channelKey(idB, 'vendor', 'same_vendor'),
-            channelKey(idA, 'item', 'item_one'),
-            channelKey(idA, 'shipment', 'ship_one'),
-            channelKey(idA, 'broadcast', 'state')
-        ]) {
-            try { await repository.deleteRow(key); } catch (_) {}
-        }
-        const catalog = await repository.getCatalog();
-        if (catalog.channels.some((channel) => channel.id === idA || channel.id === idB)) {
-            await repository.saveCatalog(catalog.channels.filter((channel) => channel.id !== idA && channel.id !== idB));
-        }
+        for (const [channel, collection, id] of [
+            [idA, 'shipments', 'ship_one'],
+            [idA, 'items', 'item_one'],
+            [idA, 'vendors', 'same_vendor'],
+            [idB, 'vendors', 'same_vendor']
+        ]) try { await request(`channels/${channel}/${collection}/${id}`, { method: 'DELETE' }); } catch (_) {}
+        for (const channel of [idA, idB]) try { await request(`channels/${channel}`, { method: 'DELETE' }); } catch (_) {}
         console.log('cleanup=PASS');
     }
 }

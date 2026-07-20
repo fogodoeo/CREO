@@ -6,10 +6,10 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js && node --check load-local-env.js && node --check band-oauth.js && node --check platform-core.js && node --check platform-repository.js && node --check platform-api.js",
+    "check": "node --check server.js && node --check load-local-env.js && node --check band-oauth.js && node --check platform-core.js && node --check platform-repository.js && node --check sqlite-platform-repository.js && node --check platform-api.js",
     "test": "node --test"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22.5"
   }
 }
