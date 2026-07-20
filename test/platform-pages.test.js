@@ -34,3 +34,24 @@ test('platform client script is valid JavaScript', () => {
     const source = fs.readFileSync(path.join(__dirname, '..', 'public', 'platform-client.js'), 'utf8');
     assert.doesNotThrow(() => new vm.Script(source, { filename: 'platform-client.js' }));
 });
+
+test('the universal broadcast route is storage-independent and uses the modular renderer', () => {
+    const router = fs.readFileSync(path.join(__dirname, '..', 'public', 'broadcast-router.html'), 'utf8');
+    assert.doesNotMatch(router, /supabase-bridge|active_event_module|getRuntimeConfigMap/i);
+    assert.match(router, /\/api\/platform\/active-channel/);
+    assert.match(router, /auction-live\.html\?channel=/);
+});
+
+test('hub operations always enter channel-scoped workspace and control pages', () => {
+    const hub = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+    assert.match(hub, /c\.links\.workspace/);
+    assert.match(hub, /c\.links\.control/);
+    assert.doesNotMatch(hub, /legacy\?\.managementUrl\s*\?/);
+    assert.doesNotMatch(hub, /legacy\?\.controlUrl\s*\|\|/);
+});
+
+test('broadcast templates have distinct runtime design systems', () => {
+    const live = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-live.html'), 'utf8');
+    for (const template of ['classic', 'tournament', 'academy']) assert.match(live, new RegExp(template));
+    assert.match(live, /body\.dataset\.template/);
+});

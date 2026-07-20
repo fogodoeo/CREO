@@ -1,138 +1,27 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <title>CREO 송출 화면</title>
-    <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
-    <script src="event-modules.js?v=20260710-crebti3"></script>
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache,no-store,must-revalidate">
+    <title>CREO 통합 송출</title>
     <style>
-        html,
-        body {
-            width: 100%;
-            height: 100%;
-            min-height: 100dvh;
-            margin: 0;
-            overflow: hidden;
-            background: transparent;
-        }
-
-        iframe {
-            position: fixed;
-            left: 50%;
-            top: 50%;
-            width: min(100vw, calc(var(--router-vh, 100dvh) * 16 / 9));
-            height: min(var(--router-vh, 100dvh), calc(100vw * 9 / 16));
-            transform: translate(-50%, -50%);
-            border: 0;
-            background: transparent;
-        }
-
-        .status {
-            position: fixed;
-            left: 16px;
-            top: 16px;
-            z-index: 2;
-            padding: 10px 12px;
-            border: 1px solid rgba(255,255,255,.16);
-            background: rgba(0,0,0,.72);
-            color: #f8fafc;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            font-size: 12px;
-            font-weight: 800;
-        }
-
-        body:not(.debug) .status { display: none; }
+        html,body{width:100%;height:100%;min-height:100dvh;margin:0;overflow:hidden;background:transparent}
+        iframe{position:fixed;inset:0;width:100%;height:100%;border:0;background:transparent}
+        .status{position:fixed;top:14px;left:14px;z-index:2;padding:9px 11px;border:1px solid #ffffff26;background:#000b;color:#fff;font:800 12px/1.2 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+        body:not(.debug) .status{display:none}
     </style>
 </head>
 <body>
-    <iframe id="broadcast-frame" title="CREO 송출 화면" allowtransparency="true"></iframe>
-    <div class="status" id="status">송출 화면 연결 중</div>
-
-    <script>
-        const params = new URLSearchParams(location.search);
-        const frame = document.getElementById('broadcast-frame');
-        const statusEl = document.getElementById('status');
-        const assetVersion = '20260717-egress-hotfix-v1';
-        let lastSrc = '';
-        let lastMode = '';
-        let platformActiveChannel = '';
-
-        function syncViewportSize() {
-            const height = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-            document.documentElement.style.setProperty('--router-vh', Math.max(1, height) + 'px');
-        }
-
-        if (params.get('debug') === '1') document.body.classList.add('debug');
-        syncViewportSize();
-        window.addEventListener('resize', syncViewportSize, { passive: true });
-        window.visualViewport?.addEventListener('resize', syncViewportSize, { passive: true });
-
-        function normalizeEvent(value) {
-            value = String(value || '').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 32);
-            if (value === 'crewarts') return 'crewart';
-            return value || 'cdcup';
-        }
-
-        function normalizePage(value, fallback) {
-            const page = String(value || fallback || '1').trim();
-            return ['1', '2', '3'].includes(page) ? page : String(fallback || '1');
-        }
-
-        function normalizeCrewartPage(value) {
-            const mode = String(value || '').trim().toLowerCase();
-            if (mode === 'host') return '1';
-            if (mode === 'auction') return '2';
-            if (mode === 'score') return '3';
-            return normalizePage(mode, '3');
-        }
-
-        function targetFor(config) {
-            const eventId = normalizeEvent(params.get('event') || platformActiveChannel || config.active_event_module || 'cdcup');
-            if (eventId === 'crewart') {
-                const page = normalizeCrewartPage(params.get('page') || params.get('mode') || config.crewart_broadcast_page || config.crewart_broadcast_mode || '3');
-                return 'crewart-broadcast.html?page=' + encodeURIComponent(page);
-            }
-            if (eventId === 'cdcup') {
-                const page = normalizePage(params.get('page') || config.cdcup_broadcast_page || '1', '1');
-                return 'broadcast.html?page=' + encodeURIComponent(page) + '&module=cdcup&v=' + encodeURIComponent(assetVersion);
-            }
-            const page = normalizePage(params.get('page') || '1', '1');
-            return 'auction-live.html?channel=' + encodeURIComponent(eventId) + '&page=' + encodeURIComponent(page);
-        }
-
-        async function refreshRoute() {
-            try {
-                if (!params.get('event')) {
-                    try {
-                        const activeResponse = await fetch('/api/platform/active-channel', { cache: 'no-store' });
-                        if (activeResponse.ok) platformActiveChannel = normalizeEvent((await activeResponse.json()).channelId);
-                    } catch (_) {}
-                }
-                const config = await getRuntimeConfigMap(false) || {};
-                const src = targetFor(config);
-                if (src !== lastSrc) {
-                    frame.src = src;
-                    lastSrc = src;
-                }
-                const mode = normalizeEvent(params.get('event') || platformActiveChannel || config.active_event_module || 'cdcup');
-                const page = mode === 'crewart'
-                    ? normalizeCrewartPage(params.get('page') || params.get('mode') || config.crewart_broadcast_page || config.crewart_broadcast_mode || '3')
-                    : normalizePage(params.get('page') || config.cdcup_broadcast_page || '1', '1');
-                const statusKey = mode + ':' + page;
-                if (statusKey !== lastMode || statusEl.textContent.indexOf('연결 중') >= 0) {
-                    statusEl.textContent = (mode === 'crewart' ? '크레와트' : (mode === 'cdcup' ? 'CDCUP' : mode)) + ' ' + page + 'P 송출 중';
-                    lastMode = statusKey;
-                }
-            } catch (error) {
-                statusEl.textContent = '송출 설정 오류: ' + (error.message || error);
-                document.body.classList.add('debug');
-            }
-        }
-
-        refreshRoute();
-        setInterval(refreshRoute, 2400);
-    </script>
+<iframe id="broadcast-frame" title="CREO 송출 화면" allowtransparency="true"></iframe>
+<div class="status" id="status">송출 화면 연결 중</div>
+<script>
+const params=new URLSearchParams(location.search),frame=document.getElementById('broadcast-frame'),statusEl=document.getElementById('status');let lastChannel='',lastPage='';
+if(params.get('debug')==='1')document.body.classList.add('debug');
+function normalize(value){const id=String(value||'').toLowerCase().replace(/[^a-z0-9-]/g,'').slice(0,32);return id==='crewarts'?'crewart':id}
+function page(){return ['1','2','3'].includes(params.get('page'))?params.get('page'):'1'}
+async function refresh(){try{let channel=normalize(params.get('event'));if(!channel){const response=await fetch('/api/platform/active-channel',{cache:'no-store'});if(!response.ok)throw new Error(`채널 연결 오류 ${response.status}`);channel=normalize((await response.json()).channelId)}if(!channel)throw new Error('운영 채널이 없습니다.');const selectedPage=page();if(channel!==lastChannel||selectedPage!==lastPage){frame.src=`auction-live.html?channel=${encodeURIComponent(channel)}&page=${selectedPage}`;lastChannel=channel;lastPage=selectedPage;statusEl.textContent=`${channel} · ${selectedPage}P 송출 중`}}catch(error){statusEl.textContent=error.message||String(error);document.body.classList.add('debug')}}
+refresh();setInterval(refresh,1000);
+</script>
 </body>
 </html>

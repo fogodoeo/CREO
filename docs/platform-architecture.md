@@ -16,7 +16,7 @@ CREO 운영 허브
 ├─ 통합 방송 제어
 │  └─ 활성 채널 + 현재 개체 + 화면 상태 + 페이지
 └─ 통합 송출 URL
-   └─ 활성 채널에 맞춰 기존 전용 화면 또는 공용 화면 선택
+   └─ 활성 채널에 맞춰 공용 화면의 테마·레이아웃 자동 전환
 ```
 
 ## 강제되는 데이터 경계
@@ -45,8 +45,8 @@ CREOK의 영구 디스크에 SQLite를 기본 저장소로 사용한다. 한 채
 - 고정 채널 확인: `/broadcast-router.html?event=<channel_id>&page=1`
 - 실제 공용 송출: `/broadcast-router.html?page=1`
 - 방송 제어에서 적용을 누르면 `creo_v2::active_channel`이 변경된다.
-- CDCUP과 CREWARTS는 검증된 기존 방송 화면을 유지한다.
-- 신규 채널은 `auction-live.html` 공용 화면을 사용하며 채널 테마를 CSS 변수로 적용한다.
+- 모든 채널은 `auction-live.html` 공용 화면과 동일한 채널 전용 API를 사용한다.
+- `classic`, `tournament`, `academy` 템플릿은 색만 바꾸지 않고 프레임·형태·서체·배경 구성을 각각 변경한다.
 - 공용 화면은 약 1초마다 해당 채널의 방송 상태만 확인한다.
 
 ## 신규 채널 생성 절차
@@ -61,19 +61,17 @@ CREOK의 영구 디스크에 SQLite를 기본 저장소로 사용한다. 한 채
 
 비슷한 경매는 기존 채널의 **복제**를 사용한다. 복제본은 항상 `draft` 상태로 시작하며 데이터가 비어 있다.
 
-## 기존 시스템 호환
+## 기존 시스템과의 경계
 
-- CDCUP 관리와 방송 제어는 기존 검증 화면으로 연결된다.
-- CREWARTS 설정·설문·점수 화면도 기존 주소를 유지한다.
+- 운영 허브의 기본 **관리하기·방송 제어·송출** 경로는 CDCUP과 CREWARTS를 포함해 모두 신규 채널 API를 사용한다.
+- 기존 CDCUP 토너먼트 도구와 CREWARTS 설문 주소는 보조 도구로 유지하되 신규 운영 데이터의 원본 저장소로 사용하지 않는다.
 - 기존 `items`, `parents`, 전역 설정 데이터는 변경하거나 삭제하지 않는다.
-- 신규 채널부터 분리 저장 방식을 적용한다.
-- 기존 채널을 새 작업공간으로 옮길 때는 별도 가져오기 검증 후 전환한다.
+- 기존 자료를 새 작업공간으로 옮길 때는 채널 ID를 명시한 가져오기 검증 후 전환한다.
 
 ## 운영 보안
 
-- `CREO_ADMIN_SECRET`이 설정되면 서버는 이 값으로 관리 API를 보호한다.
-- 미설정 시 기존 `config.admin_pw`를 사용한다.
-- 두 값이 모두 없으면 기존 운영 화면과 같은 초기 설치 호환 모드다. 실제 외부 운영 전 둘 중 하나를 반드시 설정한다.
+- SQLite 기본 모드의 관리 API는 `CREO_ADMIN_SECRET`이 반드시 일치해야 한다. 비밀값이 없으면 관리 요청을 허용하지 않는다.
+- Supabase 호환 모드를 명시적으로 선택한 경우에만 기존 `config.admin_pw`를 보조 인증값으로 읽는다.
 - `SUPABASE_SERVICE_ROLE_KEY`가 있으면 서버 저장에 우선 사용하고, 없으면 현재 공개 anon 정책과 호환된다.
 - 비밀번호와 Supabase 키는 응답·로그·브라우저 URL에 포함하지 않는다.
 - 새 플랫폼 키는 `CREO_DATA_SIGNING_SECRET` 또는 관리자 비밀번호로 HMAC 서명한다. 공개 anon API로 직접 덮어쓴 값은 서명이 맞지 않아 서버가 무시한다.
@@ -88,8 +86,8 @@ CREOK의 영구 디스크에 SQLite를 기본 저장소로 사용한다. 한 채
 - `public/channel-manager.html`: 채널 생성·복제·디자인 설정
 - `public/channel-workspace.html`: 업체·개체·배송 관리
 - `public/auction-control.html`: 공용 방송 제어
-- `public/auction-live.html`: 신규 채널 공용 방송 화면
-- `public/broadcast-router.html`: 기존/신규 방송 화면 선택
+- `public/auction-live.html`: 모든 채널의 템플릿별 공용 방송 화면
+- `public/broadcast-router.html`: 고정 URL에서 활성 채널을 자동 선택
 - `scripts/verify-platform-integration.js`: 실제 저장소 격리 후 자동 정리 검증
 
 ## 검증 기준
