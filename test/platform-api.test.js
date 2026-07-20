@@ -158,3 +158,36 @@ test('simultaneous writes cannot create duplicate lot numbers in one channel', a
     assert.deepEqual([first.status, second.status].sort(), [201, 422]);
     assert.equal((await repository.listRecords('alpha', 'item')).length, 1);
 });
+
+test('brand assets are channel-scoped and only active assets reach the public overlay', async () => {
+    const repository = new MemoryRepository();
+    const api = createPlatformApi({ repository, logger: { error() {} } });
+    let response = await call(api, 'POST', '/api/platform/channels/alpha/assets', {
+        record: { id: 'banner_one', name: '메인 배너', kind: 'banner', page: '1', imageUrl: 'https://example.com/banner.webp', sortOrder: 2, active: true }
+    });
+    assert.equal(response.status, 201);
+    response = await call(api, 'POST', '/api/platform/channels/alpha/assets', {
+        record: { id: 'banner_off', name: '비활성 배너', kind: 'banner', page: 'all', imageUrl: 'https://example.com/off.webp', active: false }
+    });
+    assert.equal(response.status, 201);
+    const alpha = await call(api, 'GET', '/api/platform/channels/alpha/broadcast', null, '');
+    const beta = await call(api, 'GET', '/api/platform/channels/beta/broadcast', null, '');
+    assert.deepEqual(alpha.json().assets.map((asset) => asset.id), ['banner_one']);
+    assert.equal(alpha.json().assets[0].imageUrl, 'https://example.com/banner.webp');
+    assert.equal(beta.json().assets.length, 0);
+});
+
+test('vendor logos follow the vendor id into public item data without exposing vendor contacts', async () => {
+    const repository = new MemoryRepository();
+    const api = createPlatformApi({ repository, logger: { error() {} } });
+    await call(api, 'POST', '/api/platform/channels/alpha/vendors', {
+        record: { id: 'vendor_logo', name: '로고 업체', phone: '01012345678', logoUrl: 'https://example.com/vendor.webp' }
+    });
+    await call(api, 'POST', '/api/platform/channels/alpha/items', {
+        record: { id: 'item_logo', lotNumber: 3, name: '테스트 개체', vendorId: 'vendor_logo' }
+    });
+    const response = await call(api, 'GET', '/api/platform/channels/alpha/broadcast', null, '');
+    assert.equal(response.json().items[0].vendorName, '로고 업체');
+    assert.equal(response.json().items[0].vendorLogoUrl, 'https://example.com/vendor.webp');
+    assert.equal(response.json().items[0].phone, undefined);
+});

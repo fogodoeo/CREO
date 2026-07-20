@@ -12,7 +12,7 @@ const {
 } = require('./platform-core');
 
 const BODY_LIMIT = 512 * 1024;
-const TYPES = new Set(['vendor', 'item', 'shipment']);
+const TYPES = new Set(['vendor', 'item', 'shipment', 'asset']);
 
 function replyJson(res, status, value, headers = {}) {
     const body = Buffer.from(JSON.stringify(value));
@@ -105,6 +105,7 @@ function sanitizeRecord(type, input = {}, current = {}) {
             name: cleanText(input.name, 80),
             manager: cleanText(input.manager, 60),
             phone: cleanText(input.phone, 30),
+            logoUrl: cleanText(input.logoUrl, 600),
             address: cleanText(input.address, 240),
             note: cleanText(input.note, 500),
             active: input.active !== false
@@ -146,6 +147,19 @@ function sanitizeRecord(type, input = {}, current = {}) {
             note: cleanText(input.note, 500)
         };
     }
+    if (type === 'asset') {
+        return {
+            ...base,
+            name: cleanText(input.name, 80),
+            kind: ['banner', 'sponsor', 'vendor'].includes(input.kind) ? input.kind : 'banner',
+            page: ['1', '2', 'all'].includes(String(input.page)) ? String(input.page) : 'all',
+            targetName: cleanText(input.targetName, 80),
+            imageUrl: cleanText(input.imageUrl, 600),
+            linkUrl: cleanText(input.linkUrl, 600),
+            sortOrder: Math.max(0, Math.min(9999, Number.parseInt(input.sortOrder, 10) || 0)),
+            active: booleanValue(input.active)
+        };
+    }
     throw new Error('Unsupported record type');
 }
 
@@ -177,6 +191,11 @@ function validateRecord(type, record, workspace) {
             errors.push('이 개체의 배송 정보가 이미 등록되어 있습니다.');
         }
     }
+    if (type === 'asset') {
+        if (!record.name) errors.push('자산 이름을 입력해 주세요.');
+        if (!record.imageUrl) errors.push('이미지 URL을 입력해 주세요.');
+        if (record.kind === 'vendor' && !record.targetName) errors.push('로고를 연결할 업체명을 입력해 주세요.');
+    }
     return errors;
 }
 
@@ -198,7 +217,6 @@ function createPlatformApi({ repository, logger = console } = {}) {
             if (mutationLocks.get(lockKey) === tail) mutationLocks.delete(lockKey);
         }
     }
-
     async function isAdmin(req) {
         return repository.verifyAdmin(req.headers['x-creo-admin']);
     }
@@ -210,13 +228,14 @@ function createPlatformApi({ repository, logger = console } = {}) {
     }
 
     async function workspace(channelId) {
-        const [vendors, items, shipments, broadcast] = await Promise.all([
+        const [vendors, items, shipments, assets, broadcast] = await Promise.all([
             repository.listRecords(channelId, 'vendor'),
             repository.listRecords(channelId, 'item'),
             repository.listRecords(channelId, 'shipment'),
+            repository.listRecords(channelId, 'asset'),
             repository.getRecord(channelId, 'broadcast', 'state')
         ]);
-        return { vendors, items, shipments, broadcast: broadcast || { id: 'state', mode: 'standby', page: 1 } };
+        return { vendors, items, shipments, assets, broadcast: broadcast || { id: 'state', mode: 'standby', page: 1 } };
     }
 
     async function handle(req, res, url) {
@@ -327,8 +346,8 @@ function createPlatformApi({ repository, logger = console } = {}) {
                     return true;
                 }
                 const data = await workspace(channelId);
-                if (data.vendors.length || data.items.length || data.shipments.length) {
-                    replyJson(res, 409, { error: '업체·개체·배송 자료를 먼저 삭제해 주세요.' });
+                if (data.vendors.length || data.items.length || data.shipments.length || data.assets.length) {
+                    replyJson(res, 409, { error: '업체·개체·배송·브랜드 자산을 먼저 삭제해 주세요.' });
                     return true;
                 }
                 if (data.broadcast?.id === 'state') await repository.deleteRecord(channelId, 'broadcast', 'state');
@@ -348,11 +367,22 @@ function createPlatformApi({ repository, logger = console } = {}) {
 
             if (segments.length === 3 && segments[2] === 'broadcast' && method === 'GET') {
                 const data = await workspace(channelId);
-                const vendors = new Map(data.vendors.map((vendor) => [vendor.id, vendor.name]));
+                const vendors = new Map(data.vendors.map((vendor) => [vendor.id, vendor]));
                 replyJson(res, 200, {
                     channel,
                     state: data.broadcast,
-                    items: data.items.map((item) => publicItem({ ...item, vendorName: vendors.get(item.vendorId) || item.vendorName }))
+                    assets: data.assets
+                        .filter((asset) => asset.active !== false)
+                        .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name, 'ko'))
+                        .map(({ id, name, kind, page, targetName, imageUrl, linkUrl, sortOrder }) => ({ id, name, kind, page, targetName, imageUrl, linkUrl, sortOrder })),
+                    items: data.items.map((item) => {
+                        const vendor = vendors.get(item.vendorId);
+                        return publicItem({
+                            ...item,
+                            vendorName: vendor?.name || item.vendorName,
+                            vendorLogoUrl: vendor?.logoUrl || item.vendorLogoUrl
+                        });
+                    })
                 });
                 return true;
             }

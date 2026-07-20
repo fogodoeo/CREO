@@ -5,7 +5,7 @@ const { DEFAULT_CHANNELS, channelKey, normalizeChannel, normalizeChannelId } = r
 
 const CATALOG_KEY = 'creo_v2::catalog';
 const ACTIVE_CHANNEL_KEY = 'creo_v2::active_channel';
-const ALLOWED_RECORD_TYPES = new Set(['vendor', 'item', 'shipment', 'setting', 'broadcast']);
+const ALLOWED_RECORD_TYPES = new Set(['vendor', 'item', 'shipment', 'setting', 'broadcast', 'asset']);
 const FALLBACK_SUPABASE_URL = 'https://iuwqjeecwepqyqqlzprf.supabase.co';
 const FALLBACK_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml1d3FqZWVjd2VwcXlxcWx6cHJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyMTA3OTIsImV4cCI6MjA5Nzc4Njc5Mn0.psiAk4cqzjHqT6gP46m6nQM97nNsLEgc-a7K8BEAd_Y';
 

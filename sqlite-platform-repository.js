@@ -7,7 +7,7 @@ const { DatabaseSync } = require('node:sqlite');
 const { DEFAULT_CHANNELS, channelKey, normalizeChannel, normalizeChannelId } = require('./platform-core');
 const { CATALOG_KEY, ACTIVE_CHANNEL_KEY } = require('./platform-repository');
 
-const RECORD_TYPES = new Set(['vendor', 'item', 'shipment', 'setting', 'broadcast']);
+const RECORD_TYPES = new Set(['vendor', 'item', 'shipment', 'setting', 'broadcast', 'asset']);
 
 function parseJson(value, fallback = null) {
     try { return JSON.parse(value); } catch { return fallback; }

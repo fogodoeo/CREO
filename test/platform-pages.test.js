@@ -96,3 +96,15 @@ test('legacy broadcast bridge survives Supabase quota exhaustion with cached or 
     assert.match(bridge, /_readBroadcastStorage\('config', \{\}\)/);
     assert.match(cdcup, /await _refreshBroadcastFromItems\(\[\]\)/);
 });
+
+test('broadcast control manages reusable banners, sponsors, and vendor logos', () => {
+    const control = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-control.html'), 'utf8');
+    const live = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-live.html'), 'utf8');
+    for (const marker of ['배너·로고', '회전 배너', '협찬 로고', '업체 로고', 'importLegacyAssets']) {
+        assert.match(control, new RegExp(marker));
+    }
+    assert.match(live, /function pageAssets/);
+    assert.match(live, /function vendorLogo/);
+    assert.match(live, /ticker-sponsors/);
+    assert.match(live, /Math\.floor\(Date\.now\(\)\/6000\)/);
+});
