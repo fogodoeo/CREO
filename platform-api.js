@@ -51,6 +51,44 @@ function numberValue(value, fallback = 0) {
     return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function booleanValue(value, fallback = true) {
+    if (value === undefined || value === null || value === '') return fallback;
+    return value === true || value === 1 || value === '1' || value === 'true' || value === 'on';
+}
+
+function sanitizeBroadcastState(input = {}) {
+    const extraMode = ['bracket', 'ranking', 'status'].includes(input.extraMode) ? input.extraMode : 'bracket';
+    return {
+        id: 'state',
+        activeItemId: cleanText(input.activeItemId, 64),
+        mode: ['standby', 'live', 'sold'].includes(input.mode) ? input.mode : 'standby',
+        page: Math.max(1, Math.min(3, Number.parseInt(input.page, 10) || 1)),
+        hostName1: cleanText(input.hostName1, 60),
+        hostRole1: cleanText(input.hostRole1, 40),
+        hostName2: cleanText(input.hostName2, 60),
+        hostRole2: cleanText(input.hostRole2, 40),
+        notice: cleanText(input.notice || input.headline, 160),
+        noticeDetail: cleanText(input.noticeDetail, 200),
+        page1NoticeOn: booleanValue(input.page1NoticeOn),
+        page1HostsOn: booleanValue(input.page1HostsOn),
+        page1TickerOn: booleanValue(input.page1TickerOn),
+        page1BannerOn: booleanValue(input.page1BannerOn, false),
+        page1Ticker: cleanText(input.page1Ticker || input.ticker, 220),
+        page1BannerUrl: cleanText(input.page1BannerUrl, 600),
+        page2InfoOn: booleanValue(input.page2InfoOn),
+        page2PhotoOn: booleanValue(input.page2PhotoOn),
+        page2PriceOn: booleanValue(input.page2PriceOn),
+        page2SoldOn: booleanValue(input.page2SoldOn),
+        page2TickerOn: booleanValue(input.page2TickerOn),
+        page2BannerOn: booleanValue(input.page2BannerOn, false),
+        page2Ticker: cleanText(input.page2Ticker || input.ticker, 220),
+        page2BannerUrl: cleanText(input.page2BannerUrl, 600),
+        page3On: booleanValue(input.page3On, false),
+        extraMode,
+        page3Title: cleanText(input.page3Title || input.headline, 120)
+    };
+}
+
 function sanitizeRecord(type, input = {}, current = {}) {
     const candidateId = cleanText(input.id || current.id || recordId(type.slice(0, 3)), 64)
         .toLowerCase()
@@ -350,11 +388,7 @@ function createPlatformApi({ repository, logger = console } = {}) {
                 if (!await requireAdmin(req, res)) return true;
                 const body = await readJson(req);
                 const record = await repository.upsertRecord(channelId, 'broadcast', {
-                    id: 'state',
-                    activeItemId: cleanText(body.activeItemId, 64),
-                    mode: cleanText(body.mode || 'standby', 24),
-                    page: Math.max(1, Math.min(3, Number.parseInt(body.page, 10) || 1)),
-                    headline: cleanText(body.headline, 120),
+                    ...sanitizeBroadcastState(body),
                     revision: Date.now()
                 });
                 replyJson(res, 200, { state: record });

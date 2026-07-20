@@ -98,6 +98,27 @@ test('referenced vendors and items cannot be deleted out from under shipments', 
     assert.equal(itemDelete.status, 409);
 });
 
+test('broadcast state stores independent 1P, 2P, and 3P overlay controls', async () => {
+    const repository = new MemoryRepository();
+    const api = createPlatformApi({ repository, logger: { error() {} } });
+    const response = await call(api, 'PUT', '/api/platform/channels/alpha/broadcast-state', {
+        activeItemId: 'item_1', mode: 'sold', page: 2,
+        hostName1: '진행자', page1TickerOn: false, page1BannerOn: true,
+        page1BannerUrl: 'https://example.com/banner.png', page2SoldOn: true,
+        page3On: true, extraMode: 'ranking', page3Title: '낙찰 순위',
+        ignoredSecret: 'must-not-persist'
+    });
+    assert.equal(response.status, 200);
+    const state = response.json().state;
+    assert.equal(state.hostName1, '진행자');
+    assert.equal(state.page1TickerOn, false);
+    assert.equal(state.page1BannerOn, true);
+    assert.equal(state.page2SoldOn, true);
+    assert.equal(state.page3On, true);
+    assert.equal(state.extraMode, 'ranking');
+    assert.equal(state.ignoredSecret, undefined);
+});
+
 test('temporary channels can only be deleted when inactive and empty', async () => {
     const repository = new MemoryRepository();
     const api = createPlatformApi({ repository, logger: { error() {} } });

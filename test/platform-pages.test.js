@@ -12,6 +12,7 @@ const PAGES = [
     'channel-workspace.html',
     'auction-control.html',
     'auction-live.html',
+    'channel-shipping.html',
     'broadcast-router.html',
     'broadcast.html',
     'crewart-broadcast.html'
@@ -37,32 +38,42 @@ test('platform client script is valid JavaScript', () => {
     assert.doesNotThrow(() => new vm.Script(source, { filename: 'platform-client.js' }));
 });
 
-test('the universal broadcast route preserves proven legacy screens and uses the modular renderer for new channels', () => {
+test('the universal broadcast route sends every channel to the new camera overlay renderer', () => {
     const router = fs.readFileSync(path.join(__dirname, '..', 'public', 'broadcast-router.html'), 'utf8');
     assert.doesNotMatch(router, /supabase-bridge|active_event_module|getRuntimeConfigMap/i);
     assert.match(router, /\/api\/platform\/active-channel/);
-    assert.match(router, /broadcast\.html\?page=/);
-    assert.match(router, /crewart-broadcast\.html\?page=/);
     assert.match(router, /auction-live\.html\?channel=/);
+    assert.doesNotMatch(router, /broadcast\.html\?page=/);
+    assert.doesNotMatch(router, /crewart-broadcast\.html\?page=/);
 });
 
-test('hub operations preserve configured legacy tools and fall back to channel-scoped tools', () => {
+test('hub preserves established management pages but always uses the new broadcast control', () => {
     const hub = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
     assert.match(hub, /c\.links\.workspace/);
     assert.match(hub, /c\.links\.control/);
     assert.match(hub, /legacy\?\.managementUrl/);
-    assert.match(hub, /legacy\?\.controlUrl/);
+    assert.doesNotMatch(hub, /legacy\?\.controlUrl/);
+    assert.match(hub, /c\.links\.shipping/);
 });
 
-test('the shared broadcast follows the CDCUP three-page overlay system', () => {
+test('the new broadcast implements three independent camera overlays', () => {
     const live = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-live.html'), 'utf8');
     assert.match(live, /1P · HOST/);
     assert.match(live, /2P · ITEM/);
-    assert.match(live, /TOURNAMENT & EXTRA INFO/);
+    assert.match(live, /EXTRA INFORMATION/);
     assert.match(live, /function pageOne/);
     assert.match(live, /function pageTwo/);
     assert.match(live, /function pageThree/);
+    assert.match(live, /page1BannerOn/);
+    assert.match(live, /page2SoldOn/);
+    assert.match(live, /if\(!s\.page3On\)return''/);
     assert.match(live, /background:transparent/);
+});
+
+test('established CDCUP registration, list, print, and round archive remain intact', () => {
+    const operations = fs.readFileSync(path.join(__dirname, '..', 'public', 'cdcup-index.html'), 'utf8');
+    for (const label of ['개체 등록', '개체 목록', '인쇄', '회차 기록']) assert.match(operations, new RegExp(label));
+    assert.match(operations, /channel-shipping\.html\?channel=cdcup/);
 });
 
 test('legacy broadcast bridge survives Supabase quota exhaustion with cached or standby data', () => {

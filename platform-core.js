@@ -141,7 +141,7 @@ function channelLinks(channelId) {
         control: `/auction-control.html?${query}`,
         preview: `/broadcast-router.html?event=${encodeURIComponent(id)}&page=1`,
         live: `/broadcast-router.html?event=${encodeURIComponent(id)}&page=1&live=1`,
-        shipping: `/channel-workspace.html?${query}&tab=shipping`
+        shipping: `/channel-shipping.html?${query}`
     };
 }
 
