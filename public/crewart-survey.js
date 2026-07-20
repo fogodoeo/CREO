@@ -239,6 +239,28 @@
         renderQuestion();
     }
 
+    function openGuestConfirm() {
+        const dialog = element('guest-confirm');
+        if (!dialog) return;
+        dialog.hidden = false;
+        requestAnimationFrame(() => (bandAuthReady ? element('guest-confirm-band') : element('guest-confirm-continue'))?.focus());
+    }
+
+    function closeGuestConfirm() {
+        const dialog = element('guest-confirm');
+        if (dialog) dialog.hidden = true;
+    }
+
+    function continueAsGuest() {
+        closeGuestConfirm();
+        startSurvey();
+    }
+
+    function loginFromGuestConfirm() {
+        closeGuestConfirm();
+        handleBandEntry();
+    }
+
     function returnToIntro() {
         if (currentStage() !== 'intro' && !window.confirm('처음부터 다시 할까요?\n\n현재 테스트 진행 내용은 초기화되지만 BAND 연결 상태는 유지됩니다.')) return;
         pauseTimer();
@@ -739,7 +761,9 @@
         const button = element('band-float');
         const label = element('band-float-label');
         const note = element('band-entry-note');
+        const dialogBand = element('guest-confirm-band');
         button.disabled = !BAND_INTEGRATION_ENABLED || !bandAuthReady;
+        if (dialogBand) dialogBand.disabled = !BAND_INTEGRATION_ENABLED || !bandAuthReady;
         button.hidden = !BAND_INTEGRATION_ENABLED;
         if (note) note.hidden = !BAND_INTEGRATION_ENABLED;
         label.textContent = !bandAuthReady
@@ -960,7 +984,7 @@
     }
 
     function bindEvents() {
-        element('start-button').addEventListener('click', startSurvey);
+        element('start-button').addEventListener('click', openGuestConfirm);
         element('question-back').addEventListener('click', previousQuestion);
         element('mbti-unknown').addEventListener('click', () => {
             selectedMbti = '';
@@ -968,6 +992,15 @@
         });
         element('show-result').addEventListener('click', () => showResult(false));
         element('band-float').addEventListener('click', handleBandEntry);
+        element('guest-confirm-band').addEventListener('click', loginFromGuestConfirm);
+        element('guest-confirm-continue').addEventListener('click', continueAsGuest);
+        element('guest-confirm-close').addEventListener('click', closeGuestConfirm);
+        element('guest-confirm').addEventListener('click', event => {
+            if (event.target === element('guest-confirm')) closeGuestConfirm();
+        });
+        document.addEventListener('keydown', event => {
+            if (event.key === 'Escape' && !element('guest-confirm').hidden) closeGuestConfirm();
+        });
         element('persistent-band-button').addEventListener('click', handlePersistentBand);
         element('persistent-home-button').addEventListener('click', returnToIntro);
         document.addEventListener('visibilitychange', () => {
@@ -993,7 +1026,7 @@
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', syncThemeColor);
         const start = element('start-button');
         start.disabled = false;
-        start.querySelector('span').textContent = '바로 테스트하기';
+        start.querySelector('span').textContent = '로그인 없이 테스트하기';
         playWordmark();
         void loadConfig();
         if (!BAND_INTEGRATION_ENABLED) {

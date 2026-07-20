@@ -108,3 +108,18 @@ test('broadcast control manages reusable banners, sponsors, and vendor logos', (
     assert.match(live, /ticker-sponsors/);
     assert.match(live, /Math\.floor\(Date\.now\(\)\/6000\)/);
 });
+
+test('CREWARTS landing prioritizes BAND and confirms before guest testing', () => {
+    const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey.html'), 'utf8');
+    const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey-v2.css'), 'utf8');
+    const script = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey.js'), 'utf8');
+    assert.doesNotThrow(() => new vm.Script(script, { filename: 'crewart-survey.js' }));
+    assert.ok(html.indexOf('id="band-float"') < html.indexOf('id="start-button"'));
+    assert.match(html, /BAND 로그인 없이/);
+    assert.match(html, /기숙사별 상품·이벤트 혜택/);
+    assert.match(html, /경매 참여 시 회원 할인/);
+    assert.match(html, /그래도 로그인 없이 테스트하기/);
+    assert.match(css, /\.cw-guest-entry[\s\S]*background:\s*transparent/);
+    assert.match(script, /function openGuestConfirm/);
+    assert.match(script, /function continueAsGuest/);
+});
