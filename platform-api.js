@@ -141,6 +141,22 @@ function validateRecord(type, record, workspace) {
 
 function createPlatformApi({ repository, logger = console } = {}) {
     if (!repository) throw new Error('repository is required');
+    const mutationLocks = new Map();
+
+    async function withMutationLock(key, callback) {
+        const lockKey = String(key || 'global');
+        const previous = mutationLocks.get(lockKey) || Promise.resolve();
+        let release;
+        const gate = new Promise((resolve) => { release = resolve; });
+        const tail = previous.then(() => gate);
+        mutationLocks.set(lockKey, tail);
+        await previous;
+        try { return await callback(); }
+        finally {
+            release();
+            if (mutationLocks.get(lockKey) === tail) mutationLocks.delete(lockKey);
+        }
+    }
 
     async function isAdmin(req) {
         return repository.verifyAdmin(req.headers['x-creo-admin']);
@@ -353,52 +369,58 @@ function createPlatformApi({ repository, logger = console } = {}) {
             if (!await requireAdmin(req, res)) return true;
 
             if (segments.length === 3 && method === 'POST') {
-                const body = await readJson(req);
-                const data = await workspace(channelId);
-                const record = sanitizeRecord(type, body.record);
-                const errors = validateRecord(type, record, data);
-                if (errors.length) {
-                    replyJson(res, 422, { error: errors.join(' '), errors });
-                    return true;
-                }
-                replyJson(res, 201, { record: await repository.upsertRecord(channelId, type, record) });
+                await withMutationLock(`channel:${channelId}`, async () => {
+                    const body = await readJson(req);
+                    const data = await workspace(channelId);
+                    const record = sanitizeRecord(type, body.record);
+                    const errors = validateRecord(type, record, data);
+                    if (errors.length) {
+                        replyJson(res, 422, { error: errors.join(' '), errors });
+                        return;
+                    }
+                    replyJson(res, 201, { record: await repository.upsertRecord(channelId, type, record) });
+                });
                 return true;
             }
 
             if (segments.length === 4 && method === 'PUT') {
-                const body = await readJson(req);
-                const current = await repository.getRecord(channelId, type, segments[3]);
-                if (!current) {
-                    replyJson(res, 404, { error: '항목을 찾을 수 없습니다.' });
-                    return true;
-                }
-                const data = await workspace(channelId);
-                const record = sanitizeRecord(type, { ...body.record, id: current.id }, current);
-                const errors = validateRecord(type, record, data);
-                if (errors.length) {
-                    replyJson(res, 422, { error: errors.join(' '), errors });
-                    return true;
-                }
-                replyJson(res, 200, { record: await repository.upsertRecord(channelId, type, record) });
+                await withMutationLock(`channel:${channelId}`, async () => {
+                    const body = await readJson(req);
+                    const current = await repository.getRecord(channelId, type, segments[3]);
+                    if (!current) {
+                        replyJson(res, 404, { error: '항목을 찾을 수 없습니다.' });
+                        return;
+                    }
+                    const data = await workspace(channelId);
+                    const record = sanitizeRecord(type, { ...body.record, id: current.id }, current);
+                    const errors = validateRecord(type, record, data);
+                    if (errors.length) {
+                        replyJson(res, 422, { error: errors.join(' '), errors });
+                        return;
+                    }
+                    replyJson(res, 200, { record: await repository.upsertRecord(channelId, type, record) });
+                });
                 return true;
             }
 
             if (segments.length === 4 && method === 'DELETE') {
-                const data = await workspace(channelId);
-                if (type === 'vendor') {
-                    const usedByItem = data.items.some((item) => item.vendorId === segments[3]);
-                    const usedByShipment = data.shipments.some((shipment) => shipment.vendorId === segments[3]);
-                    if (usedByItem || usedByShipment) {
-                        replyJson(res, 409, { error: '연결된 개체나 배송이 있어 업체를 삭제할 수 없습니다.' });
-                        return true;
+                await withMutationLock(`channel:${channelId}`, async () => {
+                    const data = await workspace(channelId);
+                    if (type === 'vendor') {
+                        const usedByItem = data.items.some((item) => item.vendorId === segments[3]);
+                        const usedByShipment = data.shipments.some((shipment) => shipment.vendorId === segments[3]);
+                        if (usedByItem || usedByShipment) {
+                            replyJson(res, 409, { error: '연결된 개체나 배송이 있어 업체를 삭제할 수 없습니다.' });
+                            return;
+                        }
                     }
-                }
-                if (type === 'item' && data.shipments.some((shipment) => shipment.itemId === segments[3])) {
-                    replyJson(res, 409, { error: '연결된 배송 정보가 있어 개체를 삭제할 수 없습니다.' });
-                    return true;
-                }
-                await repository.deleteRecord(channelId, type, segments[3]);
-                replyJson(res, 200, { deleted: true });
+                    if (type === 'item' && data.shipments.some((shipment) => shipment.itemId === segments[3])) {
+                        replyJson(res, 409, { error: '연결된 배송 정보가 있어 개체를 삭제할 수 없습니다.' });
+                        return;
+                    }
+                    await repository.deleteRecord(channelId, type, segments[3]);
+                    replyJson(res, 200, { deleted: true });
+                });
                 return true;
             }
 

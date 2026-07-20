@@ -113,3 +113,14 @@ test('temporary channels can only be deleted when inactive and empty', async () 
     response = await call(api, 'DELETE', '/api/platform/channels/alpha');
     assert.equal(response.status, 409);
 });
+
+test('simultaneous writes cannot create duplicate lot numbers in one channel', async () => {
+    const repository = new MemoryRepository();
+    const api = createPlatformApi({ repository, logger: { error() {} } });
+    const [first, second] = await Promise.all([
+        call(api, 'POST', '/api/platform/channels/alpha/items', { record: { id: 'item_a', lotNumber: 7, name: '개체 A' } }),
+        call(api, 'POST', '/api/platform/channels/alpha/items', { record: { id: 'item_b', lotNumber: 7, name: '개체 B' } })
+    ]);
+    assert.deepEqual([first.status, second.status].sort(), [201, 422]);
+    assert.equal((await repository.listRecords('alpha', 'item')).length, 1);
+});

@@ -125,18 +125,26 @@ class SQLitePlatformRepository {
     }
 
     async saveCatalog(channels, expectedVersion = null) {
-        const current = await this.getCatalog();
-        if (expectedVersion !== null && Number(expectedVersion) !== current.version) {
-            const error = new Error('다른 화면에서 채널 설정이 변경되었습니다. 새로고침 후 다시 시도해 주세요.');
-            error.code = 'VERSION_CONFLICT';
-            throw error;
-        }
-        const payload = {
-            version: current.version + 1,
-            updatedAt: new Date().toISOString(),
-            channels: channels.map((channel) => normalizeChannel(channel)).filter((channel) => channel.id)
-        };
-        await this.upsertRows([{ key: CATALOG_KEY, value: JSON.stringify(payload) }]);
+        let payload;
+        this.transaction(() => {
+            const row = this.statements.get.get(CATALOG_KEY);
+            const stored = parseJson(row?.value, null);
+            const currentVersion = Number(stored?.version) || 1;
+            if (expectedVersion !== null && Number(expectedVersion) !== currentVersion) {
+                const error = new Error('다른 화면에서 채널 설정이 변경되었습니다. 새로고침 후 다시 시도해 주세요.');
+                error.code = 'VERSION_CONFLICT';
+                throw error;
+            }
+            const now = new Date().toISOString();
+            payload = {
+                version: currentVersion + 1,
+                updatedAt: now,
+                channels: channels.map((channel) => normalizeChannel(channel)).filter((channel) => channel.id)
+            };
+            const value = JSON.stringify(payload);
+            this.statements.upsert.run(CATALOG_KEY, value, now);
+            this.enqueue(CATALOG_KEY, 'upsert', value);
+        });
         return payload;
     }
 

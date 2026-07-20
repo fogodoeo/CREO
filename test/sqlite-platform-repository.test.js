@@ -63,3 +63,23 @@ test('SQLite delete creates a durable mirror tombstone', async (t) => {
     assert.equal((await repository.health()).outboxPending, 1);
     repository.close();
 });
+
+test('catalog compare-and-swap rejects simultaneous stale saves', async (t) => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'creo-catalog-'));
+    t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+    const repository = new SQLitePlatformRepository({
+        dbPath: path.join(directory, 'platform.sqlite'),
+        adminSecret: 'secret',
+        startWorker: false
+    });
+    const alpha = [{ id: 'alpha', name: '알파', status: 'active' }];
+    const beta = [{ id: 'beta', name: '베타', status: 'active' }];
+    const results = await Promise.allSettled([
+        repository.saveCatalog(alpha, 1),
+        repository.saveCatalog(beta, 1)
+    ]);
+    assert.equal(results.filter((result) => result.status === 'fulfilled').length, 1);
+    assert.equal(results.filter((result) => result.status === 'rejected' && result.reason.code === 'VERSION_CONFLICT').length, 1);
+    assert.equal((await repository.getCatalog()).version, 2);
+    repository.close();
+});
