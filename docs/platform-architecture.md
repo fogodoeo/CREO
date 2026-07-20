@@ -45,8 +45,8 @@ CREOK의 영구 디스크에 SQLite를 기본 저장소로 사용한다. 한 채
 - 고정 채널 확인: `/broadcast-router.html?event=<channel_id>&page=1`
 - 실제 공용 송출: `/broadcast-router.html?page=1`
 - 방송 제어에서 적용을 누르면 `creo_v2::active_channel`이 변경된다.
-- 모든 채널은 `auction-live.html` 공용 화면과 동일한 채널 전용 API를 사용한다.
-- `classic`, `tournament`, `academy` 템플릿은 색만 바꾸지 않고 프레임·형태·서체·배경 구성을 각각 변경한다.
+- CDCUP은 검증된 `broadcast.html`, CREWARTS는 `crewart-broadcast.html` 디자인을 그대로 유지한다.
+- 신규 채널은 `auction-live.html`을 사용하며 `classic`, `tournament`, `academy` 템플릿에 따라 프레임·형태·서체·배경 구성을 변경한다.
 - 공용 화면은 약 1초마다 해당 채널의 방송 상태만 확인한다.
 
 ## 신규 채널 생성 절차
@@ -63,8 +63,8 @@ CREOK의 영구 디스크에 SQLite를 기본 저장소로 사용한다. 한 채
 
 ## 기존 시스템과의 경계
 
-- 운영 허브의 기본 **관리하기·방송 제어·송출** 경로는 CDCUP과 CREWARTS를 포함해 모두 신규 채널 API를 사용한다.
-- 기존 CDCUP 토너먼트 도구와 CREWARTS 설문 주소는 보조 도구로 유지하되 신규 운영 데이터의 원본 저장소로 사용하지 않는다.
+- CDCUP과 CREWARTS는 기존 관리·제어·송출 화면을 기본 경로로 유지한다.
+- 새로 추가하는 채널은 채널별 작업공간·제어·공용 송출 모듈을 사용한다.
 - 기존 `items`, `parents`, 전역 설정 데이터는 변경하거나 삭제하지 않는다.
 - 기존 자료를 새 작업공간으로 옮길 때는 채널 ID를 명시한 가져오기 검증 후 전환한다.
 
@@ -86,8 +86,8 @@ CREOK의 영구 디스크에 SQLite를 기본 저장소로 사용한다. 한 채
 - `public/channel-manager.html`: 채널 생성·복제·디자인 설정
 - `public/channel-workspace.html`: 업체·개체·배송 관리
 - `public/auction-control.html`: 공용 방송 제어
-- `public/auction-live.html`: 모든 채널의 템플릿별 공용 방송 화면
-- `public/broadcast-router.html`: 고정 URL에서 활성 채널을 자동 선택
+- `public/auction-live.html`: 신규 채널의 템플릿별 공용 방송 화면
+- `public/broadcast-router.html`: 고정 URL에서 활성 채널과 기존/신규 화면을 자동 선택
 - `scripts/verify-platform-integration.js`: 실제 저장소 격리 후 자동 정리 검증
 
 ## 검증 기준

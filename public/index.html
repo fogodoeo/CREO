@@ -64,16 +64,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         const channels = data.channels || [];
         select.innerHTML = channels.map(c => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
         grid.innerHTML = channels.length ? channels.map(c => {
+            const manage = c.legacy?.managementUrl ? `${c.legacy.managementUrl}?channel=${encodeURIComponent(c.id)}` : c.links.workspace;
+            const control = c.legacy?.controlUrl || c.links.control;
             return `<article class="channel-card" style="--channel-primary:${esc(c.theme.primary)};--channel-secondary:${esc(c.theme.secondary)}">
                 <div class="channel-top"><span class="channel-badge"><span class="dot"></span>${esc(c.broadcastTemplate)}</span><span class="channel-badge">${esc(c.id)}</span></div>
                 <h3>${esc(c.name)}</h3><p>${esc(c.description || '경매 운영 채널')}</p>
-                <div class="channel-actions"><a class="btn primary" href="${esc(c.links.workspace)}">관리하기</a><a class="btn" href="${esc(c.links.control)}">방송 제어</a><a class="btn" href="${esc(c.links.live)}" target="_blank" rel="noopener">송출</a></div>
+                <div class="channel-actions"><a class="btn primary" href="${esc(manage)}">관리하기</a><a class="btn" href="${esc(control)}">방송 제어</a><a class="btn" href="${esc(c.links.live)}" target="_blank" rel="noopener">송출</a></div>
             </article>`;
         }).join('') : '<div class="empty">활성 채널이 없습니다. 채널 관리에서 첫 채널을 만들어 주세요.</div>';
         const syncQuickLinks = () => {
             const current = channels.find(c => c.id === select.value) || channels[0];
             if (!current) return;
-            workspace.href = current.links.workspace;
+            workspace.href = current.legacy?.managementUrl ? `${current.legacy.managementUrl}?channel=${encodeURIComponent(current.id)}` : current.links.workspace;
             live.href = current.links.live;
         };
         select.addEventListener('change', syncQuickLinks);
