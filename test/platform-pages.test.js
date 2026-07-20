@@ -54,10 +54,15 @@ test('hub operations preserve configured legacy tools and fall back to channel-s
     assert.match(hub, /legacy\?\.controlUrl/);
 });
 
-test('broadcast templates have distinct runtime design systems', () => {
+test('the shared broadcast follows the CDCUP three-page overlay system', () => {
     const live = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-live.html'), 'utf8');
-    for (const template of ['classic', 'tournament', 'academy']) assert.match(live, new RegExp(template));
-    assert.match(live, /body\.dataset\.template/);
+    assert.match(live, /1P · HOST/);
+    assert.match(live, /2P · ITEM/);
+    assert.match(live, /TOURNAMENT & EXTRA INFO/);
+    assert.match(live, /function pageOne/);
+    assert.match(live, /function pageTwo/);
+    assert.match(live, /function pageThree/);
+    assert.match(live, /background:transparent/);
 });
 
 test('legacy broadcast bridge survives Supabase quota exhaustion with cached or standby data', () => {
