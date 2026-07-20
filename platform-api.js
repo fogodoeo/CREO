@@ -131,6 +131,9 @@ function sanitizeRecord(type, input = {}, current = {}) {
         return {
             ...base,
             itemId: cleanText(input.itemId, 64),
+            itemName: cleanText(input.itemName, 100),
+            itemLotNumber: Math.max(0, Number.parseInt(input.itemLotNumber, 10) || 0),
+            itemVendorName: cleanText(input.itemVendorName, 80),
             vendorId: cleanText(input.vendorId, 64),
             recipientName: cleanText(input.recipientName, 80),
             recipientPhone: cleanText(input.recipientPhone, 30),
@@ -166,7 +169,7 @@ function validateRecord(type, record, workspace) {
     }
     if (type === 'shipment') {
         const item = workspace.items.find((entry) => entry.id === record.itemId);
-        if (!item) errors.push('이 채널에 등록된 개체를 선택해 주세요.');
+        if (!item && !record.itemName) errors.push('이 채널에 등록된 개체를 선택해 주세요.');
         if (record.vendorId && !workspace.vendors.some((vendor) => vendor.id === record.vendorId)) {
             errors.push('이 채널에 등록되지 않은 업체입니다.');
         }

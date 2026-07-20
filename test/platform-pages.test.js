@@ -76,6 +76,18 @@ test('established CDCUP registration, list, print, and round archive remain inta
     assert.match(operations, /channel-shipping\.html\?channel=cdcup/);
 });
 
+test('new CDCUP overlays and shipping retain compatibility with the established item list', () => {
+    const live = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-live.html'), 'utf8');
+    const control = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-control.html'), 'utf8');
+    const shipping = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-shipping.html'), 'utf8');
+    for (const source of [live, control, shipping]) {
+        assert.match(source, /getBroadcastItemsCached/);
+        assert.match(source, /channelId==='cdcup'/);
+    }
+    assert.match(shipping, /itemLotNumber/);
+    assert.match(shipping, /itemVendorName/);
+});
+
 test('legacy broadcast bridge survives Supabase quota exhaustion with cached or standby data', () => {
     const bridge = fs.readFileSync(path.join(__dirname, '..', 'public', 'supabase-bridge.js'), 'utf8');
     const cdcup = fs.readFileSync(path.join(__dirname, '..', 'public', 'broadcast.html'), 'utf8');

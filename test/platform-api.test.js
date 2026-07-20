@@ -98,6 +98,19 @@ test('referenced vendors and items cannot be deleted out from under shipments', 
     assert.equal(itemDelete.status, 409);
 });
 
+test('channel shipping can snapshot a legacy CDCUP item without weakening channel isolation', async () => {
+    const repository = new MemoryRepository();
+    const api = createPlatformApi({ repository, logger: { error() {} } });
+    const response = await call(api, 'POST', '/api/platform/channels/alpha/shipments', {
+        record: { id: 'legacy_ship', itemId: 'legacy_17', itemName: '기존 개체', itemLotNumber: 17, itemVendorName: '기존 업체' }
+    });
+    assert.equal(response.status, 201);
+    assert.equal(response.json().record.itemName, '기존 개체');
+    assert.equal(response.json().record.itemLotNumber, 17);
+    const beta = await call(api, 'GET', '/api/platform/channels/beta/workspace');
+    assert.equal(beta.json().shipments.length, 0);
+});
+
 test('broadcast state stores independent 1P, 2P, and 3P overlay controls', async () => {
     const repository = new MemoryRepository();
     const api = createPlatformApi({ repository, logger: { error() {} } });
