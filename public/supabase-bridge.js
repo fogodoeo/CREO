@@ -119,13 +119,49 @@ function auctionItemLabel(item, options = {}) {
     return prefix + (meta.publicName ? ' · ' + meta.publicName : '') + team;
 }
 
+const BROADCAST_STORAGE_PREFIX = 'creo_legacy_broadcast_v1_';
+const SUPABASE_QUOTA_COOLDOWN_MS = 5 * 60 * 1000;
+let _supabaseUnavailableUntil = 0;
+
+function _readBroadcastStorage(key, fallback) {
+    try {
+        const raw = localStorage.getItem(BROADCAST_STORAGE_PREFIX + key);
+        return raw ? JSON.parse(raw) : fallback;
+    } catch (_) {
+        return fallback;
+    }
+}
+
+function _writeBroadcastStorage(key, value) {
+    try {
+        localStorage.setItem(BROADCAST_STORAGE_PREFIX + key, JSON.stringify(value));
+    } catch (_) {}
+}
+
 async function _sbFetch(path, options = {}) {
+    if (Date.now() < _supabaseUnavailableUntil) {
+        const error = new Error('Supabase quota cooldown active');
+        error.code = 'SUPABASE_QUOTA_COOLDOWN';
+        error.retryAfterMs = Math.max(1000, _supabaseUnavailableUntil - Date.now());
+        throw error;
+    }
     const url = `${SUPABASE_URL}/rest/v1/${path}`;
     const resp = await fetch(url, {
         headers: { ..._sbHeaders, ...(options.headers || {}) },
         ...options,
     });
-    if (!resp.ok) throw new Error(`Supabase ${resp.status}: ${await resp.text()}`);
+    if (!resp.ok) {
+        const detail = await resp.text();
+        if (resp.status === 402 || /exceed_egress_quota/i.test(detail)) {
+            _supabaseUnavailableUntil = Date.now() + SUPABASE_QUOTA_COOLDOWN_MS;
+        }
+        const error = new Error(`Supabase ${resp.status}: ${detail}`);
+        if (_supabaseUnavailableUntil) {
+            error.code = 'SUPABASE_QUOTA';
+            error.retryAfterMs = SUPABASE_QUOTA_COOLDOWN_MS;
+        }
+        throw error;
+    }
     const text = await resp.text();
     return text ? JSON.parse(text) : null;
 }
@@ -345,26 +381,37 @@ const _broadcastPhotoCache = new Map();
 
 async function getBroadcastItemsLite() {
     const rows = await _sbFetch(`items?select=${BROADCAST_LITE_COLUMNS}&order=num.asc`);
-    return (rows || []).map(_mapBroadcastItem);
+    const items = (rows || []).map(_mapBroadcastItem);
+    _writeBroadcastStorage('items', items);
+    return items;
 }
 
 async function getBroadcastItemsCached(force = false, maxAgeMs = 30000) {
     if (_broadcastLiteRequest) return _broadcastLiteRequest;
     _broadcastLiteRequest = (async () => {
-        const pulse = await getAuctionPulse();
-        const pulseKey = [pulse?.id ?? '', pulse?.status || '', pulse?.updatedAt || ''].join('|');
-        const cacheExpired = Date.now() - _broadcastLiteCacheAt >= Math.max(5000, Number(maxAgeMs) || 30000);
-        const needsItems = force
-            || !_broadcastLiteReady
-            || cacheExpired
-            || (_broadcastLitePulseKey && pulseKey !== _broadcastLitePulseKey);
-        _broadcastLitePulseKey = pulseKey;
-        if (needsItems) {
-            _broadcastLiteCache = await getBroadcastItemsLite();
-            _broadcastLiteCacheAt = Date.now();
-            _broadcastLiteReady = true;
+        try {
+            const pulse = await getAuctionPulse();
+            const pulseKey = [pulse?.id ?? '', pulse?.status || '', pulse?.updatedAt || ''].join('|');
+            const cacheExpired = Date.now() - _broadcastLiteCacheAt >= Math.max(5000, Number(maxAgeMs) || 30000);
+            const needsItems = force
+                || !_broadcastLiteReady
+                || cacheExpired
+                || (_broadcastLitePulseKey && pulseKey !== _broadcastLitePulseKey);
+            _broadcastLitePulseKey = pulseKey;
+            if (needsItems) {
+                _broadcastLiteCache = await getBroadcastItemsLite();
+                _broadcastLiteCacheAt = Date.now();
+                _broadcastLiteReady = true;
+            }
+            return _broadcastLiteCache;
+        } catch (error) {
+            const stored = _readBroadcastStorage('items', []);
+            if (!_broadcastLiteReady) {
+                _broadcastLiteCache = Array.isArray(stored) ? stored : [];
+                _broadcastLiteReady = true;
+            }
+            return _broadcastLiteCache;
         }
-        return _broadcastLiteCache;
     })().finally(() => {
         _broadcastLiteRequest = null;
     });
@@ -1213,6 +1260,7 @@ async function getConfigPulse() {
 async function getRuntimeConfigMap(force = false) {
     if (_runtimeConfigRequest) return _runtimeConfigRequest;
     _runtimeConfigRequest = (async () => {
+        try {
         const now = Date.now();
         let needsFull = force
             || !_runtimeConfigCache
@@ -1232,7 +1280,15 @@ async function getRuntimeConfigMap(force = false) {
         _runtimeConfigCacheAt = Date.now();
         _runtimeConfigVersion = String(map[RUNTIME_CONFIG_VERSION_KEY] || '');
         _runtimeConfigLastPulseAt = Date.now();
+        _writeBroadcastStorage('config', _runtimeConfigCache);
         return _runtimeConfigCache;
+        } catch (error) {
+            if (!_runtimeConfigCache) {
+                _runtimeConfigCache = _mergeCrewartSurveyEntries(_readBroadcastStorage('config', {}));
+                _runtimeConfigCacheAt = Date.now();
+            }
+            return _runtimeConfigCache;
+        }
     })().finally(() => {
         _runtimeConfigRequest = null;
     });

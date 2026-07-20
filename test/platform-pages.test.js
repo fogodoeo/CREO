@@ -12,7 +12,9 @@ const PAGES = [
     'channel-workspace.html',
     'auction-control.html',
     'auction-live.html',
-    'broadcast-router.html'
+    'broadcast-router.html',
+    'broadcast.html',
+    'crewart-broadcast.html'
 ];
 
 test('platform pages contain valid inline JavaScript and required viewport metadata', () => {
@@ -56,4 +58,13 @@ test('broadcast templates have distinct runtime design systems', () => {
     const live = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-live.html'), 'utf8');
     for (const template of ['classic', 'tournament', 'academy']) assert.match(live, new RegExp(template));
     assert.match(live, /body\.dataset\.template/);
+});
+
+test('legacy broadcast bridge survives Supabase quota exhaustion with cached or standby data', () => {
+    const bridge = fs.readFileSync(path.join(__dirname, '..', 'public', 'supabase-bridge.js'), 'utf8');
+    const cdcup = fs.readFileSync(path.join(__dirname, '..', 'public', 'broadcast.html'), 'utf8');
+    assert.match(bridge, /SUPABASE_QUOTA_COOLDOWN_MS/);
+    assert.match(bridge, /_readBroadcastStorage\('items', \[\]\)/);
+    assert.match(bridge, /_readBroadcastStorage\('config', \{\}\)/);
+    assert.match(cdcup, /await _refreshBroadcastFromItems\(\[\]\)/);
 });
