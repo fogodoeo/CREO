@@ -27,6 +27,8 @@ class SQLitePlatformRepository {
         this.mirror = options.mirror || null;
         this.durable = options.durable ?? Boolean(process.env.CREO_DATA_DIR);
         this.outboxTimer = null;
+        this.mirrorKickTimer = null;
+        this.mirrorWorkerEnabled = options.startWorker !== false;
         this.lastMirrorError = '';
         this.lastMirrorSyncAt = null;
         fs.mkdirSync(path.dirname(this.dbPath), { recursive: true });
@@ -64,7 +66,7 @@ class SQLitePlatformRepository {
             failed: this.db.prepare('UPDATE platform_outbox SET attempts=?,next_attempt_at=?,last_error=?,updated_at=? WHERE key=?'),
             outboxCount: this.db.prepare('SELECT COUNT(*) AS count FROM platform_outbox')
         };
-        if (this.mirror && options.startWorker !== false) this.startOutboxWorker();
+        if (this.mirror && this.mirrorWorkerEnabled) this.startOutboxWorker();
     }
 
     transaction(callback) {
@@ -85,12 +87,53 @@ class SQLitePlatformRepository {
         this.statements.enqueue.run(key, operation, value, now, now);
     }
 
+    cacheRows(rows) {
+        if (!rows?.length) return;
+        const now = new Date().toISOString();
+        this.transaction(() => {
+            for (const row of rows) {
+                if (!row?.key || row.value === undefined || row.value === null) continue;
+                this.statements.upsert.run(String(row.key), String(row.value), now);
+            }
+        });
+    }
+
+    kickMirror() {
+        if (!this.mirror || !this.mirrorWorkerEnabled || this.mirrorKickTimer) return;
+        this.mirrorKickTimer = setTimeout(() => {
+            this.mirrorKickTimer = null;
+            this.flushOutbox().catch(() => {});
+        }, 0);
+        this.mirrorKickTimer.unref?.();
+    }
+
     async getRowsByKeys(keys) {
-        return keys.map((key) => this.statements.get.get(key)).filter(Boolean);
+        const local = keys.map((key) => this.statements.get.get(key)).filter(Boolean);
+        const found = new Set(local.map((row) => row.key));
+        const missing = keys.filter((key) => !found.has(key));
+        if (missing.length && this.mirror?.getRowsByKeys) {
+            try {
+                const remote = await this.mirror.getRowsByKeys(missing);
+                this.cacheRows(remote);
+                local.push(...remote);
+            } catch (error) {
+                this.lastMirrorError = String(error.message || error).slice(0, 200);
+            }
+        }
+        return local;
     }
 
     async getRow(key) {
-        return this.statements.get.get(key) || null;
+        const local = this.statements.get.get(key);
+        if (local || !this.mirror?.getRow) return local || null;
+        try {
+            const remote = await this.mirror.getRow(key);
+            if (remote) this.cacheRows([remote]);
+            return remote || null;
+        } catch (error) {
+            this.lastMirrorError = String(error.message || error).slice(0, 200);
+            return null;
+        }
     }
 
     async upsertRows(rows) {
@@ -103,6 +146,7 @@ class SQLitePlatformRepository {
                 this.enqueue(row.key, 'upsert', value);
             }
         });
+        this.kickMirror();
     }
 
     async deleteRow(key) {
@@ -110,6 +154,7 @@ class SQLitePlatformRepository {
             this.statements.delete.run(key);
             this.enqueue(key, 'delete');
         });
+        this.kickMirror();
     }
 
     async getCatalog() {
@@ -145,6 +190,7 @@ class SQLitePlatformRepository {
             this.statements.upsert.run(CATALOG_KEY, value, now);
             this.enqueue(CATALOG_KEY, 'upsert', value);
         });
+        this.kickMirror();
         return payload;
     }
 
@@ -164,7 +210,16 @@ class SQLitePlatformRepository {
         const channel = normalizeChannelId(channelId);
         if (!channel || !RECORD_TYPES.has(type)) throw new Error('Invalid record scope');
         const prefix = `${channelKey(channel, type)}::`;
-        return this.statements.listPrefix.all(`${prefix}%`).map((row) => parseJson(row.value, null)).filter(Boolean);
+        const local = this.statements.listPrefix.all(`${prefix}%`).map((row) => parseJson(row.value, null)).filter(Boolean);
+        if (local.length || !this.mirror?.listRecords) return local;
+        try {
+            const remote = await this.mirror.listRecords(channel, type);
+            this.cacheRows(remote.map((record) => ({ key: channelKey(channel, type, record.id), value: JSON.stringify(record) })));
+            return remote;
+        } catch (error) {
+            this.lastMirrorError = String(error.message || error).slice(0, 200);
+            return local;
+        }
     }
 
     async getRecord(channelId, type, id = 'state') {
@@ -239,7 +294,9 @@ class SQLitePlatformRepository {
 
     close() {
         if (this.outboxTimer) clearInterval(this.outboxTimer);
+        if (this.mirrorKickTimer) clearTimeout(this.mirrorKickTimer);
         this.outboxTimer = null;
+        this.mirrorKickTimer = null;
         try { this.db.exec('PRAGMA wal_checkpoint(TRUNCATE)'); } catch (_) {}
         this.db.close();
     }

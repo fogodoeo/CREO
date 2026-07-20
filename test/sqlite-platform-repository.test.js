@@ -12,6 +12,18 @@ class OfflineMirror {
     async deleteRow() { throw new Error('mirror offline'); }
 }
 
+class ReadableMirror {
+    constructor() {
+        this.rows = new Map();
+        this.records = new Map();
+    }
+    async getRow(key) { return this.rows.has(key) ? { key, value: this.rows.get(key) } : null; }
+    async getRowsByKeys(keys) { return keys.filter((key) => this.rows.has(key)).map((key) => ({ key, value: this.rows.get(key) })); }
+    async listRecords(channel, type) { return structuredClone(this.records.get(`${channel}:${type}`) || []); }
+    async upsertRows() {}
+    async deleteRow() {}
+}
+
 test('SQLite repository persists channel-isolated records across restarts', async (t) => {
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'creo-sqlite-'));
     const database = path.join(directory, 'platform.sqlite');
@@ -81,5 +93,25 @@ test('catalog compare-and-swap rejects simultaneous stale saves', async (t) => {
     assert.equal(results.filter((result) => result.status === 'fulfilled').length, 1);
     assert.equal(results.filter((result) => result.status === 'rejected' && result.reason.code === 'VERSION_CONFLICT').length, 1);
     assert.equal((await repository.getCatalog()).version, 2);
+    repository.close();
+});
+
+test('ephemeral SQLite restores missing catalog and assets from the Supabase mirror once', async (t) => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'creo-hydrate-'));
+    t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+    const mirror = new ReadableMirror();
+    mirror.rows.set('creo_v2::catalog', JSON.stringify({ version: 7, channels: [{ id: 'alpha', name: '알파', status: 'active' }] }));
+    mirror.records.set('alpha:asset', [{ id: 'banner', name: '복구 배너', kind: 'banner', page: 'all', imageUrl: 'https://example.com/banner.webp', active: true }]);
+    const repository = new SQLitePlatformRepository({
+        dbPath: path.join(directory, 'platform.sqlite'),
+        mirror,
+        startWorker: false
+    });
+    assert.equal((await repository.getCatalog()).version, 7);
+    assert.equal((await repository.listRecords('alpha', 'asset'))[0].name, '복구 배너');
+    mirror.rows.clear();
+    mirror.records.clear();
+    assert.equal((await repository.getCatalog()).version, 7);
+    assert.equal((await repository.listRecords('alpha', 'asset'))[0].name, '복구 배너');
     repository.close();
 });
