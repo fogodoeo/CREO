@@ -123,3 +123,13 @@ test('CREWARTS landing prioritizes BAND and confirms before guest testing', () =
     assert.match(script, /function openGuestConfirm/);
     assert.match(script, /function continueAsGuest/);
 });
+
+test('CREWARTS keeps a fixed BAND login handoff throughout the questionnaire', () => {
+    const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey-v2.css'), 'utf8');
+    const script = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey.js'), 'utf8');
+    assert.match(css, /Always-available BAND handoff/);
+    assert.match(css, /\.cw-persistent-footer\s*\{[\s\S]*position:\s*fixed/);
+    assert.match(script, /현재 답변 저장하고 BAND 로그인/);
+    assert.match(script, /로그인 후 \$\{resumePoint\}부터 계속해요/);
+    assert.match(script, /function handlePersistentBand\(\)[\s\S]*saveResumeState\(\)/);
+});

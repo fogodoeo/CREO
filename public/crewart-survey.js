@@ -241,9 +241,9 @@
 
     function openGuestConfirm() {
         const dialog = element('guest-confirm');
-        if (!dialog) return;
+        if (!dialog) { startSurvey(); return; }
         dialog.hidden = false;
-        requestAnimationFrame(() => (bandAuthReady ? element('guest-confirm-band') : element('guest-confirm-continue'))?.focus());
+        requestAnimationFrame(() => element('guest-confirm-continue')?.focus());
     }
 
     function closeGuestConfirm() {
@@ -258,7 +258,7 @@
 
     function loginFromGuestConfirm() {
         closeGuestConfirm();
-        handleBandEntry();
+        toast('BAND 로그인은 현재 준비 중이에요.');
     }
 
     function returnToIntro() {
@@ -761,28 +761,15 @@
         const button = element('band-float');
         const label = element('band-float-label');
         const note = element('band-entry-note');
+        button.disabled = false;
         const dialogBand = element('guest-confirm-band');
-        button.disabled = !BAND_INTEGRATION_ENABLED || !bandAuthReady;
-        if (dialogBand) dialogBand.disabled = !BAND_INTEGRATION_ENABLED || !bandAuthReady;
+        if (dialogBand) dialogBand.disabled = false;
+        // Original: button.disabled = !BAND_INTEGRATION_ENABLED || !bandAuthReady;
         button.hidden = !BAND_INTEGRATION_ENABLED;
         if (note) note.hidden = !BAND_INTEGRATION_ENABLED;
-        label.textContent = !bandAuthReady
-            ? 'BAND 확인 중'
-            : !bandAuthConfigured
-                ? 'BAND로 들어가기'
-                : hasDetailedAccess()
-                    ? 'BAND 연결됨 · 테스트 시작'
-                    : bandAuthUser ? 'BAND 가입 후 시작' : 'BAND 로그인하고 시작';
+        label.textContent = 'BAND 로그인 (준비 중)';
         if (note) {
-            note.textContent = !bandAuthReady
-                ? 'BAND 연결 상태를 확인하고 있어요'
-                : !bandAuthConfigured
-                    ? 'OAuth 승인 전 · 지금은 BAND 페이지로 연결돼요'
-                    : hasDetailedAccess()
-                        ? `${bandAuthUser.name || 'BAND 회원'}님 · 상세 결과까지 확인할 수 있어요`
-                        : bandAuthUser
-                            ? '대상 BAND 가입 후 상세 결과를 확인할 수 있어요'
-                            : 'BAND 로그인 시 상세 결과까지 확인할 수 있어요';
+            note.textContent = 'BAND 로그인은 현재 준비 중이에요';
         }
         button.setAttribute('aria-label', label.textContent);
         updatePersistentActions();
@@ -798,6 +785,11 @@
         if (!footer || !button || !label || !note || !home) return;
 
         const stage = currentStage();
+        const resumePoint = stage === 'questions'
+            ? `${current + 1}번 질문`
+            : stage === 'mbti'
+                ? 'MBTI 선택'
+                : '결과 화면';
         home.hidden = stage === 'intro';
         footer.hidden = stage === 'intro' || !BAND_INTEGRATION_ENABLED;
         if (footer.hidden) return;
@@ -812,8 +804,8 @@
             label.textContent = '크레와트 BAND로 이동';
             note.textContent = '현재는 BAND 페이지로 바로 연결돼요.';
         } else if (!bandAuthUser) {
-            label.textContent = '현재 정보 저장하고 BAND 로그인';
-            note.textContent = '로그인 후 지금 보던 화면에서 그대로 이어져요.';
+            label.textContent = '현재 답변 저장하고 BAND 로그인';
+            note.textContent = `로그인 후 ${resumePoint}부터 계속해요.`;
         } else if (!hasDetailedAccess()) {
             label.textContent = '크레와트 BAND 가입 이어서 하기';
             note.textContent = '가입 후 돌아오면 연결 상태를 자동으로 확인해요.';
@@ -840,6 +832,12 @@
     }
 
     function handleBandEntry() {
+        toast('BAND 로그인은 현재 준비 중이에요.');
+        return;
+    }
+
+    // Original handleBandEntry logic disabled
+    function _handleBandEntry_disabled() {
         if (!BAND_INTEGRATION_ENABLED) return;
         if (!bandAuthReady) return;
         if (!bandAuthConfigured) {
@@ -985,6 +983,9 @@
 
     function bindEvents() {
         element('start-button').addEventListener('click', openGuestConfirm);
+        element('guest-confirm-close')?.addEventListener('click', closeGuestConfirm);
+        element('guest-confirm-band')?.addEventListener('click', loginFromGuestConfirm);
+        element('guest-confirm-continue')?.addEventListener('click', continueAsGuest);
         element('question-back').addEventListener('click', previousQuestion);
         element('mbti-unknown').addEventListener('click', () => {
             selectedMbti = '';
@@ -992,15 +993,6 @@
         });
         element('show-result').addEventListener('click', () => showResult(false));
         element('band-float').addEventListener('click', handleBandEntry);
-        element('guest-confirm-band').addEventListener('click', loginFromGuestConfirm);
-        element('guest-confirm-continue').addEventListener('click', continueAsGuest);
-        element('guest-confirm-close').addEventListener('click', closeGuestConfirm);
-        element('guest-confirm').addEventListener('click', event => {
-            if (event.target === element('guest-confirm')) closeGuestConfirm();
-        });
-        document.addEventListener('keydown', event => {
-            if (event.key === 'Escape' && !element('guest-confirm').hidden) closeGuestConfirm();
-        });
         element('persistent-band-button').addEventListener('click', handlePersistentBand);
         element('persistent-home-button').addEventListener('click', returnToIntro);
         document.addEventListener('visibilitychange', () => {
@@ -1026,7 +1018,7 @@
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', syncThemeColor);
         const start = element('start-button');
         start.disabled = false;
-        start.querySelector('span').textContent = '로그인 없이 테스트하기';
+        start.querySelector('span').textContent = '바로 테스트하기';
         playWordmark();
         void loadConfig();
         if (!BAND_INTEGRATION_ENABLED) {
