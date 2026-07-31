@@ -4,15 +4,14 @@
     const Core = window.CrewartSurveyCore;
     const SURVEY_URL = new URL('crewart-survey.html', document.baseURI).toString();
     const DEFAULT_BAND_URL = 'https://www.band.us/band/101992972/post';
-    const BAND_OAUTH_API = 'https://creok.onrender.com/api/band-oauth';
+    const BAND_MEMBER_API = '/api/band-membership';
     const KAKAO_JS_KEY = 'db7ffc8d6b9b7601b792ed69be4658fc';
     const QUESTION_IMAGE_ROOT = 'assets/crewart-illustrations/';
-    const AUTH_STORAGE_KEY = 'crewart_band_auth_v1';
-    const RESUME_STORAGE_KEY = 'crewart_cre_mbti_resume_v1';
+    const MEMBERSHIP_STORAGE_KEY = 'crewart_band_member_access_v1';
     const CONTENT_CONFIG_KEY = 'crewart_mbti_content_v1';
     const BAND_INTEGRATION_ENABLED = true;
     const IS_LOCAL_QA = ['127.0.0.1', 'localhost'].includes(location.hostname);
-    const IS_QA_MODE = IS_LOCAL_QA || new URLSearchParams(location.search).has('qa');
+    const IS_QA_MODE = IS_LOCAL_QA;
 
     let config = {};
     let cohortResponses = [];
@@ -37,8 +36,8 @@
     let bandAuthToken = '';
     let bandAuthUser = null;
     let bandTargetUrl = DEFAULT_BAND_URL;
-    let pendingBandResume = false;
-    let lastMembershipRefreshAt = 0;
+    let pendingResultReveal = false;
+    let pendingSurveyStart = false;
 
     function element(id) {
         return document.getElementById(id);
@@ -239,30 +238,32 @@
         renderQuestion();
     }
 
-    function openGuestConfirm() {
-        const dialog = element('guest-confirm');
-        if (!dialog) { startSurvey(); return; }
+    function openMemberCheck(options = {}) {
+        const dialog = element('member-check-dialog');
+        if (!dialog) return;
+        pendingResultReveal = Boolean(options.revealResult);
+        pendingSurveyStart = Boolean(options.startSurvey);
+        const status = element('member-check-status');
+        const joinLink = element('member-join-link');
+        if (status) {
+            status.hidden = true;
+            status.textContent = '';
+            status.classList.remove('is-error', 'is-success');
+        }
+        if (joinLink) joinLink.hidden = true;
         dialog.hidden = false;
-        requestAnimationFrame(() => element('guest-confirm-continue')?.focus());
+        requestAnimationFrame(() => element('member-phone')?.focus());
     }
 
-    function closeGuestConfirm() {
-        const dialog = element('guest-confirm');
+    function closeMemberCheck() {
+        const dialog = element('member-check-dialog');
         if (dialog) dialog.hidden = true;
-    }
-
-    function continueAsGuest() {
-        closeGuestConfirm();
-        startSurvey();
-    }
-
-    function loginFromGuestConfirm() {
-        closeGuestConfirm();
-        toast('BAND 로그인은 현재 준비 중이에요.');
+        pendingResultReveal = false;
+        pendingSurveyStart = false;
     }
 
     function returnToIntro() {
-        if (currentStage() !== 'intro' && !window.confirm('처음부터 다시 할까요?\n\n현재 테스트 진행 내용은 초기화되지만 BAND 연결 상태는 유지됩니다.')) return;
+        if (currentStage() !== 'intro' && !window.confirm('처음부터 다시 할까요?\n\n현재 테스트 진행 내용은 초기화되지만 BAND 회원 확인 상태는 유지됩니다.')) return;
         pauseTimer();
         activeTimer = null;
         questions = [];
@@ -277,7 +278,6 @@
         timingStats = null;
         advancing = false;
         lastSavedSignature = '';
-        try { sessionStorage.removeItem(RESUME_STORAGE_KEY); } catch (_) {}
         element('result-content').replaceChildren();
         setScreen('intro-screen');
     }
@@ -391,6 +391,14 @@
             toast('평소 MBTI를 고르거나 잘 모르겠어요를 눌러주세요.', true);
             return;
         }
+        if (!hasDetailedAccess()) {
+            openMemberCheck({ revealResult: true });
+            return;
+        }
+        completeResultReveal();
+    }
+
+    function completeResultReveal() {
         renderResult();
         setScreen('result-screen');
         void submitSurvey();
@@ -414,7 +422,7 @@
     }
 
     function hasDetailedAccess() {
-        return Boolean(bandAuthUser && bandAuthUser.isTargetMember === true);
+        return IS_LOCAL_QA || Boolean(bandAuthUser && bandAuthUser.isTargetMember === true);
     }
 
     function openBandTarget() {
@@ -502,17 +510,11 @@
 
     function renderLockedDetail() {
         const configured = BAND_INTEGRATION_ENABLED && bandAuthConfigured;
-        const label = !configured
-            ? '세부 결과 준비 중'
-            : bandAuthUser ? '크레와트 BAND 가입하기' : 'BAND 가입하고 세부 분석 보기';
-        const status = !BAND_INTEGRATION_ENABLED
-            ? '정식 공개 전까지 잠시 닫아두었어요.'
-            : !configured
-                ? 'BAND 인증 오픈과 함께 제공됩니다.'
-            : bandAuthUser ? '가입 후 이 페이지로 돌아오면 자동으로 다시 확인해요.' : '가입 후 선택 근거와 기숙사 배정이 열려요.';
-        const description = !BAND_INTEGRATION_ENABLED
-            ? '선택 근거, 고민한 문항과 기숙사 배정은<br>정식 공개와 함께 열립니다.'
-            : '선택 근거, 고민한 문항과 기숙사 배정은<br>BAND 가입 확인 후 바로 선명해져요.';
+        const label = configured ? '전화번호로 BAND 회원 확인' : '회원 확인 준비 중';
+        const status = configured
+            ? '가입할 때 프로필에 적은 전화번호로 확인해요.'
+            : '회원 명단 연결을 준비하고 있어요.';
+        const description = '선택 근거, 고민한 문항과 기숙사 배정은<br>BAND 가입 확인 후 바로 열려요.';
         return `
             <section class="cw-detail-gate">
                 <div class="cw-detail-preview" aria-hidden="true" inert>${renderMemberDetail()}${renderHouseCard()}</div>
@@ -567,10 +569,6 @@
 
     function handleResultBand() {
         if (!BAND_INTEGRATION_ENABLED) return;
-        if (bandAuthConfigured && !bandAuthUser) {
-            beginBandLogin();
-            return;
-        }
         openBandTarget();
     }
 
@@ -579,20 +577,11 @@
             toast('BAND 연동은 현재 준비 중이에요.');
             return;
         }
-        if (!bandAuthConfigured) {
-            toast('BAND 연결 설정을 준비하고 있어요.', true);
-            return;
-        }
-        if (!bandAuthUser) {
-            beginBandLogin();
-            return;
-        }
         if (hasDetailedAccess()) {
-            openBandTarget();
+            renderResult();
             return;
         }
-        openBandTarget();
-        toast('가입 후 이 화면으로 돌아오면 자동으로 확인해요.');
+        openMemberCheck({ revealResult: true });
     }
 
     async function submitSurvey() {
@@ -669,74 +658,6 @@
         return 'intro';
     }
 
-    function saveResumeState() {
-        if (!surveySessionId || currentStage() === 'intro') return;
-        const state = {
-            stage: currentStage(), current, answers, responseTimings, selectedMbti,
-            surveySessionId, sessionCreatedAt, assignedHouseKey,
-            questions: questions.map(question => ({
-                id: question.id,
-                options: question.options,
-                scores: question.scores,
-                flipped: question.flipped
-            }))
-        };
-        try { sessionStorage.setItem(RESUME_STORAGE_KEY, JSON.stringify(state)); } catch (_) {}
-    }
-
-    function restoreResumeState() {
-        if (!pendingBandResume || !bandAuthUser) return false;
-        let state = null;
-        try {
-            state = JSON.parse(sessionStorage.getItem(RESUME_STORAGE_KEY) || 'null');
-            sessionStorage.removeItem(RESUME_STORAGE_KEY);
-        } catch (_) {}
-        pendingBandResume = false;
-        if (!state || !Array.isArray(state.questions) || !Array.isArray(state.answers)) return false;
-        const baseMap = new Map(Core.QUESTIONS.map(question => [question.id, question]));
-        questions = state.questions.map(saved => {
-            const base = baseMap.get(saved.id);
-            if (!base) return null;
-            return { ...base, options: saved.options.slice(0, 2), scores: saved.scores.slice(0, 2), flipped: Boolean(saved.flipped) };
-        }).filter(Boolean);
-        if (questions.length !== Core.QUESTIONS.length) return false;
-        answers = state.answers.slice(0, questions.length);
-        responseTimings = Array.isArray(state.responseTimings) ? state.responseTimings.slice(0, questions.length) : [];
-        selectedMbti = String(state.selectedMbti || '');
-        surveySessionId = String(state.surveySessionId || createSessionId());
-        sessionCreatedAt = String(state.sessionCreatedAt || new Date().toISOString());
-        assignedHouseKey = String(state.assignedHouseKey || '');
-        current = Math.min(Math.max(0, Number(state.current) || 0), questions.length - 1);
-        const completed = questions.every((_, index) => answers[index] !== undefined);
-        result = completed ? Core.scoreAnswers(questions, answers) : null;
-        timingStats = completed ? Core.buildTimingStats(responseTimings, questions) : null;
-        if (completed && !assignedHouseKey) assignedHouseKey = Core.chooseBalancedHouse(result, currentHouseCounts(), surveySessionId);
-        if (state.stage === 'result') {
-            if (!completed) return false;
-            renderResult();
-            setScreen('result-screen');
-            void submitSurvey();
-        } else if (state.stage === 'mbti') {
-            if (!completed) return false;
-            renderMbtiOptions();
-            element('show-result').disabled = !selectedMbti;
-            setScreen('mbti-screen');
-        } else {
-            setScreen('question-screen');
-            renderQuestion();
-        }
-        toast('BAND 연결 완료 · 보던 결과를 이어서 열었어요.');
-        return true;
-    }
-
-    function clearOAuthFragment() {
-        const params = new URLSearchParams(location.hash.replace(/^#/, ''));
-        params.delete('band_auth');
-        params.delete('band_oauth_error');
-        const hash = params.toString();
-        history.replaceState(null, '', `${location.pathname}${location.search}${hash ? `#${hash}` : ''}`);
-    }
-
     async function bandFetch(url, options) {
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), 7000);
@@ -748,12 +669,12 @@
     }
 
     async function verifyBandSession(token) {
-        const response = await bandFetch(`${BAND_OAUTH_API}/session`, {
-            method: 'POST', mode: 'cors', cache: 'no-store',
+        const response = await bandFetch(`${BAND_MEMBER_API}/session`, {
+            method: 'POST', cache: 'no-store',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ token })
         });
-        if (!response.ok) throw new Error('BAND session expired');
+        if (!response.ok) throw new Error('BAND membership session expired');
         return response.json();
     }
 
@@ -761,16 +682,15 @@
         const button = element('band-float');
         const label = element('band-float-label');
         const note = element('band-entry-note');
-        button.disabled = false;
-        const dialogBand = element('guest-confirm-band');
-        if (dialogBand) dialogBand.disabled = false;
-        // Original: button.disabled = !BAND_INTEGRATION_ENABLED || !bandAuthReady;
+        button.disabled = !bandAuthReady;
         button.hidden = !BAND_INTEGRATION_ENABLED;
         if (note) note.hidden = !BAND_INTEGRATION_ENABLED;
-        label.textContent = 'BAND 로그인 (준비 중)';
-        if (note) {
-            note.textContent = 'BAND 로그인은 현재 준비 중이에요';
-        }
+        label.textContent = hasDetailedAccess() ? 'BAND 회원 확인 완료' : '전화번호로 BAND 회원 확인';
+        if (note) note.textContent = hasDetailedAccess()
+            ? '확인된 회원으로 결과를 바로 볼 수 있어요'
+            : bandAuthConfigured
+                ? '전화번호는 가입 여부 확인에만 사용해요'
+                : '회원 명단 연결을 준비하고 있어요';
         button.setAttribute('aria-label', label.textContent);
         updatePersistentActions();
         if (result && !element('result-screen').hidden) renderResult();
@@ -785,11 +705,6 @@
         if (!footer || !button || !label || !note || !home) return;
 
         const stage = currentStage();
-        const resumePoint = stage === 'questions'
-            ? `${current + 1}번 질문`
-            : stage === 'mbti'
-                ? 'MBTI 선택'
-                : '결과 화면';
         home.hidden = stage === 'intro';
         footer.hidden = stage === 'intro' || !BAND_INTEGRATION_ENABLED;
         if (footer.hidden) return;
@@ -797,21 +712,15 @@
         button.hidden = false;
         note.hidden = false;
         button.disabled = !bandAuthReady;
-        if (!bandAuthReady) {
-            label.textContent = 'BAND 연결 확인 중';
-            note.textContent = '연결 상태를 확인하고 있어요.';
-        } else if (!bandAuthConfigured) {
-            label.textContent = '크레와트 BAND로 이동';
-            note.textContent = '현재는 BAND 페이지로 바로 연결돼요.';
-        } else if (!bandAuthUser) {
-            label.textContent = '현재 답변 저장하고 BAND 로그인';
-            note.textContent = `로그인 후 ${resumePoint}부터 계속해요.`;
+        if (!bandAuthReady || !bandAuthConfigured) {
+            label.textContent = 'BAND 회원 확인 준비 중';
+            note.textContent = '회원 명단 연결을 확인하고 있어요.';
         } else if (!hasDetailedAccess()) {
-            label.textContent = '크레와트 BAND 가입 이어서 하기';
-            note.textContent = '가입 후 돌아오면 연결 상태를 자동으로 확인해요.';
+            label.textContent = '전화번호로 BAND 회원 확인';
+            note.textContent = '결과를 열기 전에 가입 여부를 확인해요.';
         } else {
-            label.textContent = '크레와트 BAND로 이동';
-            note.textContent = `${bandAuthUser.name || 'BAND 회원'}님으로 연결되어 있어요.`;
+            label.textContent = 'BAND 회원 확인 완료';
+            note.textContent = '결과를 바로 열 수 있어요.';
         }
         button.setAttribute('aria-label', label.textContent);
     }
@@ -819,104 +728,122 @@
     function handlePersistentBand() {
         if (!BAND_INTEGRATION_ENABLED) return;
         if (!bandAuthReady) return;
-        if (!bandAuthConfigured) {
-            openBandTarget();
-            return;
-        }
-        if (!bandAuthUser) {
-            beginBandLogin();
-            return;
-        }
-        openBandTarget();
-        if (!hasDetailedAccess()) toast('가입 후 이 화면으로 돌아오면 자동으로 확인해요.');
+        if (hasDetailedAccess()) toast('BAND 회원 확인이 완료됐어요.');
+        else openMemberCheck({ revealResult: currentStage() === 'mbti' && Boolean(result) });
     }
 
     function handleBandEntry() {
-        toast('BAND 로그인은 현재 준비 중이에요.');
-        return;
+        if (hasDetailedAccess()) {
+            startSurvey();
+            return;
+        }
+        openMemberCheck({ startSurvey: true });
     }
 
-    // Original handleBandEntry logic disabled
-    function _handleBandEntry_disabled() {
-        if (!BAND_INTEGRATION_ENABLED) return;
-        if (!bandAuthReady) return;
-        if (!bandAuthConfigured) {
-            openBandTarget();
-            toast('OAuth 승인 전이라 BAND 페이지를 먼저 열었어요.');
-            return;
-        }
-        if (!bandAuthUser) {
-            beginBandLogin();
-            return;
-        }
-        if (!hasDetailedAccess()) {
-            openBandTarget();
-            toast('BAND 가입 후 돌아오면 상세 결과까지 확인할 수 있어요.');
-            return;
-        }
-        startSurvey();
-    }
-
-    async function initBandAuth() {
-        const fragment = new URLSearchParams(location.hash.replace(/^#/, ''));
-        const returnedToken = fragment.get('band_auth') || '';
-        const returnedError = fragment.get('band_oauth_error') || '';
-        pendingBandResume = Boolean(returnedToken);
-        if (returnedToken || returnedError) clearOAuthFragment();
+    async function initBandMembership() {
         try {
-            bandAuthToken = returnedToken || sessionStorage.getItem(AUTH_STORAGE_KEY) || '';
-            if (returnedToken) sessionStorage.setItem(AUTH_STORAGE_KEY, returnedToken);
+            bandAuthToken = sessionStorage.getItem(MEMBERSHIP_STORAGE_KEY) || '';
         } catch (_) {
-            bandAuthToken = returnedToken;
+            bandAuthToken = '';
         }
         try {
-            const response = await bandFetch(`${BAND_OAUTH_API}/config`, { mode: 'cors', cache: 'no-store' });
-            if (!response.ok) throw new Error('BAND OAuth config unavailable');
-            const oauthConfig = await response.json();
-            bandAuthConfigured = Boolean(oauthConfig.configured);
-            bandTargetUrl = oauthConfig.targetBandUrl || DEFAULT_BAND_URL;
+            const response = await bandFetch(`${BAND_MEMBER_API}/config`, { cache: 'no-store' });
+            if (!response.ok) throw new Error('BAND membership config unavailable');
+            const memberConfig = await response.json();
+            bandAuthConfigured = Boolean(memberConfig.configured);
+            bandTargetUrl = memberConfig.targetBandUrl || DEFAULT_BAND_URL;
             if (bandAuthConfigured && bandAuthToken) {
                 const session = await verifyBandSession(bandAuthToken);
                 bandAuthUser = session.user || null;
                 bandTargetUrl = session.targetBandUrl || bandTargetUrl;
             }
         } catch (error) {
-            console.error('[Crewart BAND OAuth]', error);
+            console.error('[Crewart BAND membership]', error);
             bandAuthUser = null;
+            bandAuthToken = '';
+            try { sessionStorage.removeItem(MEMBERSHIP_STORAGE_KEY); } catch (_) {}
         } finally {
             bandAuthReady = true;
             updateBandUi();
         }
-        if (!restoreResumeState() && returnedError) toast('BAND 로그인을 완료하지 못했어요.', true);
     }
 
-    function beginBandLogin() {
-        if (!BAND_INTEGRATION_ENABLED) return;
-        if (!bandAuthReady || !bandAuthConfigured) {
-            toast('BAND 연결 설정을 확인 중이에요.', true);
+    async function verifyMembershipPhone(event) {
+        event.preventDefault();
+        const phoneInput = element('member-phone');
+        const submit = element('member-check-submit');
+        const status = element('member-check-status');
+        const joinLink = element('member-join-link');
+        if (!phoneInput || !submit || !status || !joinLink) return;
+        status.hidden = false;
+        status.classList.remove('is-error', 'is-success');
+        joinLink.hidden = true;
+        if (!bandAuthConfigured) {
+            status.textContent = '회원 명단 연결을 준비하고 있어요. 잠시 후 다시 시도해주세요.';
+            status.classList.add('is-error');
             return;
         }
-        saveResumeState();
-        const url = new URL(`${BAND_OAUTH_API}/start`);
-        url.searchParams.set('return_url', SURVEY_URL);
-        location.assign(url.toString());
+        submit.disabled = true;
+        status.textContent = 'BAND 회원 명단을 확인하고 있어요…';
+        try {
+            const response = await bandFetch(`${BAND_MEMBER_API}/verify`, {
+                method: 'POST', cache: 'no-store',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone: phoneInput.value })
+            });
+            const payload = await response.json().catch(() => ({}));
+            bandTargetUrl = payload.targetBandUrl || bandTargetUrl;
+            joinLink.href = bandTargetUrl;
+            if (!response.ok) throw new Error(payload.error || '가입 여부를 확인하지 못했어요.');
+            if (!payload.member) {
+                status.textContent = '가입된 회원 명단에서 확인되지 않았어요.';
+                status.classList.add('is-error');
+                joinLink.hidden = false;
+                return;
+            }
+            bandAuthToken = payload.token || '';
+            bandAuthUser = payload.user || { id: 'band_member', name: 'BAND 회원', isTargetMember: true };
+            if (bandAuthToken) {
+                try { sessionStorage.setItem(MEMBERSHIP_STORAGE_KEY, bandAuthToken); } catch (_) {}
+            }
+            status.textContent = '가입 확인 완료! 결과를 열게요.';
+            status.classList.add('is-success');
+            updateBandUi();
+            const reveal = pendingResultReveal && Boolean(result);
+            const startAfterCheck = pendingSurveyStart;
+            pendingResultReveal = false;
+            pendingSurveyStart = false;
+            setTimeout(() => {
+                const dialog = element('member-check-dialog');
+                if (dialog) dialog.hidden = true;
+                phoneInput.value = '';
+                if (reveal) completeResultReveal();
+                else if (startAfterCheck) startSurvey();
+                else toast('BAND 회원 확인이 완료됐어요.');
+            }, 350);
+        } catch (error) {
+            status.textContent = error.message || '가입 여부를 확인하지 못했어요.';
+            status.classList.add('is-error');
+        } finally {
+            submit.disabled = false;
+        }
     }
 
-    async function refreshMembership() {
-        if (!bandAuthToken || !bandAuthUser || Date.now() - lastMembershipRefreshAt < 8000) return;
-        lastMembershipRefreshAt = Date.now();
-        try {
-            const session = await verifyBandSession(bandAuthToken);
-            const wasMember = hasDetailedAccess();
-            bandAuthUser = session.user || bandAuthUser;
-            bandTargetUrl = session.targetBandUrl || bandTargetUrl;
-            updateBandUi();
-            if (!wasMember && hasDetailedAccess()) {
-                toast('가입 확인 완료 · 세부 분석을 열었어요.');
-                void submitSurvey();
+    function formatMemberPhone(event) {
+        const input = event.currentTarget;
+        const digits = String(input.value || '').replace(/\D/g, '').slice(0, 11);
+        if (digits.length > 7) input.value = `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+        else if (digits.length > 3) input.value = `${digits.slice(0, 3)}-${digits.slice(3)}`;
+        else input.value = digits;
+    }
+
+    function handleMemberJoinReturn() {
+        if (!element('member-check-dialog')?.hidden) {
+            const status = element('member-check-status');
+            if (status) {
+                status.hidden = false;
+                status.textContent = '가입 후 명단에 반영되면 같은 번호로 다시 확인해주세요.';
             }
-        } catch (error) {
-            console.error('[Crewart BAND membership refresh]', error);
         }
     }
 
@@ -982,10 +909,14 @@
     }
 
     function bindEvents() {
-        element('start-button').addEventListener('click', openGuestConfirm);
-        element('guest-confirm-close')?.addEventListener('click', closeGuestConfirm);
-        element('guest-confirm-band')?.addEventListener('click', loginFromGuestConfirm);
-        element('guest-confirm-continue')?.addEventListener('click', continueAsGuest);
+        element('start-button').addEventListener('click', startSurvey);
+        element('member-check-close')?.addEventListener('click', closeMemberCheck);
+        element('member-check-form')?.addEventListener('submit', verifyMembershipPhone);
+        element('member-phone')?.addEventListener('input', formatMemberPhone);
+        element('member-join-link')?.addEventListener('click', handleMemberJoinReturn);
+        element('member-check-dialog')?.addEventListener('click', event => {
+            if (event.target === event.currentTarget) closeMemberCheck();
+        });
         element('question-back').addEventListener('click', previousQuestion);
         element('mbti-unknown').addEventListener('click', () => {
             selectedMbti = '';
@@ -995,15 +926,12 @@
         element('band-float').addEventListener('click', handleBandEntry);
         element('persistent-band-button').addEventListener('click', handlePersistentBand);
         element('persistent-home-button').addEventListener('click', returnToIntro);
+        document.addEventListener('keydown', event => {
+            if (event.key === 'Escape' && !element('member-check-dialog')?.hidden) closeMemberCheck();
+        });
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'hidden') pauseTimer();
-            else {
-                resumeTimer();
-                if (bandAuthToken && bandAuthUser) void refreshMembership();
-            }
-        });
-        window.addEventListener('focus', () => {
-            if (bandAuthToken && bandAuthUser) void refreshMembership();
+            else resumeTimer();
         });
     }
 
@@ -1018,17 +946,14 @@
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', syncThemeColor);
         const start = element('start-button');
         start.disabled = false;
-        start.querySelector('span').textContent = '바로 테스트하기';
+        start.querySelector('span').textContent = '먼저 테스트하기';
         playWordmark();
         void loadConfig();
         if (!BAND_INTEGRATION_ENABLED) {
             bandAuthReady = false;
             updateBandUi();
-        } else if (IS_LOCAL_QA) {
-            bandAuthReady = true;
-            updateBandUi();
         } else {
-            void initBandAuth();
+            void initBandMembership();
         }
     }
 

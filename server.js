@@ -7,6 +7,7 @@ const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
 const { createBandOAuth } = require('./band-oauth');
+const { createBandMembership } = require('./band-membership');
 const { createPlatformApi } = require('./platform-api');
 const { SupabaseConfigRepository } = require('./platform-repository');
 const { SQLitePlatformRepository } = require('./sqlite-platform-repository');
@@ -15,6 +16,7 @@ const PORT = Number(process.env.PORT || 10000);
 const HOST = process.env.HOST || '0.0.0.0';
 const PUBLIC_DIR = path.resolve(__dirname, 'public');
 const bandOAuth = createBandOAuth();
+const bandMembership = createBandMembership();
 const supabasePlatformRepository = new SupabaseConfigRepository();
 const platformStorageMode = String(process.env.CREO_PLATFORM_STORAGE || 'sqlite').toLowerCase();
 const platformRepository = platformStorageMode === 'supabase'
@@ -192,6 +194,12 @@ const server = http.createServer(async (req, res) => {
             return;
         }
 
+        if (url.pathname.startsWith('/api/band-membership/')) {
+            if (await bandMembership.handle(req, res, url)) return;
+            sendJson(res, 404, { error: 'Not found' });
+            return;
+        }
+
         if (url.pathname.startsWith('/api/platform/')) {
             if (await platformApi.handle(req, res, url)) return;
         }
@@ -205,6 +213,7 @@ const server = http.createServer(async (req, res) => {
                 service: 'creo',
                 publicSiteReady: true,
                 bandOAuthConfigured: bandOAuth.config.configured,
+                bandMembershipConfigured: bandMembership.config.configured,
                 platform,
                 now: new Date().toISOString()
             });
@@ -231,6 +240,7 @@ server.listen(PORT, HOST, () => {
     console.log(`[creo] listening on http://${HOST}:${PORT}`);
     console.log(`[creo] public directory: ${PUBLIC_DIR}`);
     console.log(`[creo] BAND OAuth configured: ${bandOAuth.config.configured}`);
+    console.log(`[creo] BAND membership configured: ${bandMembership.config.configured}`);
     console.log(`[creo] platform storage: ${platformStorageMode}`);
 });
 

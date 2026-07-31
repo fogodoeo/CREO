@@ -16,11 +16,11 @@
     <link
         href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
         rel="stylesheet">
-    <link rel="stylesheet" href="crewart-survey-v2.css?v=20260721-band-logo-v1">
+    <link rel="stylesheet" href="crewart-survey-v2.css?v=20260801-phone-member-v1">
     <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
     <script src="assets/vendor/kakao-2.8.1.min.js"></script>
     <script src="crewart-survey-core.js?v=20260718-cre-mbti-v4"></script>
-    <script src="crewart-survey.js?v=20260721-band-logo-v1" defer></script>
+    <script src="crewart-survey.js?v=20260801-phone-member-v1" defer></script>
 </head>
 
 <body>
@@ -42,11 +42,11 @@
                 <div class="cw-intro-actions">
                     <button class="cw-band-entry" id="band-float" type="button" disabled>
                         <img src="assets/band-logo.svg" alt="BAND" width="27" height="27"><strong
-                            id="band-float-label">BAND 로그인하고 테스트</strong>
+                            id="band-float-label">전화번호로 BAND 회원 확인</strong>
                     </button>
-                    <small class="cw-intro-note" id="band-entry-note">BAND 연결 상태를 확인하고 있어요</small>
+                    <small class="cw-intro-note" id="band-entry-note">전화번호는 가입 여부 확인에만 사용해요</small>
                     <button class="cw-guest-entry" id="start-button" type="button" disabled>
-                        <span>로그인 없이 테스트하기</span>
+                        <span>먼저 테스트하기</span>
                     </button>
                 </div>
             </div>
@@ -94,28 +94,31 @@
         <div class="cw-persistent-footer-inner">
             <button class="cw-persistent-band" id="persistent-band-button" type="button" disabled>
                 <img src="assets/band-logo.svg" alt="BAND" width="27" height="27">
-                <strong id="persistent-band-label">BAND 연결 확인 중</strong>
+                <strong id="persistent-band-label">BAND 회원 확인</strong>
             </button>
-            <small id="persistent-band-note">현재 테스트 내용을 저장하고 같은 화면으로 돌아와요.</small>
+            <small id="persistent-band-note">결과를 열기 전에 가입 여부를 확인해요.</small>
         </div>
     </footer>
 
-    <section class="cw-guest-dialog" id="guest-confirm" role="dialog" aria-modal="true"
-        aria-labelledby="guest-confirm-title" hidden>
+    <section class="cw-guest-dialog" id="member-check-dialog" role="dialog" aria-modal="true"
+        aria-labelledby="member-check-title" hidden>
         <div class="cw-guest-dialog-card">
-            <button class="cw-dialog-close" id="guest-confirm-close" type="button" aria-label="닫기">×</button>
+            <button class="cw-dialog-close" id="member-check-close" type="button" aria-label="닫기">×</button>
             <img class="cw-dialog-band-mark" src="assets/band-logo.svg" alt="BAND" width="48" height="48">
-            <h2 id="guest-confirm-title">BAND 로그인 없이<br>테스트할까요?</h2>
-            <p>로그인하면 테스트 결과가 크레와트 BAND 활동과 연결돼요.</p>
-            <ul>
-                <li>기숙사별 상품·이벤트 혜택</li>
-                <li>경매 참여 시 회원 할인</li>
-                <li>선택 분석과 상세 결과 열람</li>
-            </ul>
-            <small>로그인 없이도 테스트할 수 있지만 상세 결과 일부는 제한됩니다.</small>
-            <button class="cw-dialog-band-button" id="guest-confirm-band" type="button"><img src="assets/band-logo.svg"
-                    alt="BAND" width="22" height="22"><strong>BAND 로그인하고 계속</strong></button>
-            <button class="cw-dialog-continue" id="guest-confirm-continue" type="button">그래도 로그인 없이 테스트하기</button>
+            <h2 id="member-check-title">BAND 회원 확인</h2>
+            <p>가입할 때 BAND 프로필에 적은 휴대전화번호를 입력해주세요.</p>
+            <form class="cw-member-form" id="member-check-form">
+                <label for="member-phone">휴대전화번호</label>
+                <input id="member-phone" name="phone" type="tel" inputmode="numeric" autocomplete="tel"
+                    maxlength="13" placeholder="010-1234-5678" aria-describedby="member-phone-help" required>
+                <small id="member-phone-help">번호는 가입 여부 확인에만 사용하며 설문 결과에 저장하지 않아요.</small>
+                <button class="cw-dialog-band-button" id="member-check-submit" type="submit">
+                    <img src="assets/band-logo.svg" alt="" width="22" height="22"><strong>가입 여부 확인하고 결과 보기</strong>
+                </button>
+            </form>
+            <div class="cw-member-status" id="member-check-status" role="status" aria-live="polite" hidden></div>
+            <a class="cw-dialog-continue cw-member-join" id="member-join-link"
+                href="https://www.band.us/band/101992972/post" target="_blank" rel="noopener noreferrer" hidden>BAND 가입하기</a>
         </div>
     </section>
 

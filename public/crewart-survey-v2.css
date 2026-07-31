@@ -1812,7 +1812,7 @@ body {
     color: var(--ink);
 }
 
-/* Guest confirm dialog */
+/* BAND member phone check */
 .cw-guest-dialog {
     position: fixed;
     inset: 0;
@@ -1892,6 +1892,70 @@ img.cw-dialog-band-mark {
     line-height: 1.5;
 }
 
+.cw-member-form {
+    display: grid;
+    gap: 10px;
+    margin-top: 18px;
+    text-align: left;
+}
+
+.cw-member-form label {
+    color: var(--ink);
+    font-size: 12px;
+    font-weight: 750;
+}
+
+.cw-member-form input {
+    width: 100%;
+    height: 52px;
+    padding: 0 15px;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    outline: none;
+    background: rgba(255, 255, 255, .66);
+    color: var(--ink);
+    font: inherit;
+    font-size: 17px;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: .03em;
+    transition: border-color .16s ease, box-shadow .16s ease;
+}
+
+.cw-member-form input:focus {
+    border-color: var(--green);
+    box-shadow: 0 0 0 3px rgba(87, 197, 126, .16);
+}
+
+.cw-member-form>small {
+    display: block;
+    margin: -2px 0 6px;
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1.55;
+}
+
+.cw-member-status {
+    margin-top: 12px;
+    padding: 11px 12px;
+    border: 1px solid rgba(87, 197, 126, .3);
+    border-radius: 8px;
+    background: rgba(87, 197, 126, .08);
+    color: var(--ink);
+    font-size: 12px;
+    line-height: 1.5;
+    text-align: left;
+}
+
+.cw-member-status.is-error {
+    border-color: rgba(220, 92, 92, .28);
+    background: rgba(220, 92, 92, .08);
+}
+
+.cw-member-status.is-success {
+    color: #1b6c39;
+    font-weight: 700;
+}
+
 .cw-dialog-band-button {
     display: flex;
     align-items: center;
@@ -1937,6 +2001,15 @@ img.cw-dialog-band-mark {
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
+    text-align: center;
+    text-decoration: none;
+    line-height: 44px;
+}
+
+.cw-member-join {
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    color: var(--ink);
 }
 
 .cw-guest-entry {

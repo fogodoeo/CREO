@@ -32,7 +32,7 @@ async function waitForHealth(url, timeoutMs = 8000) {
     throw lastError || new Error('server did not become ready');
 }
 
-test('HTTP server exposes the CREO hub, survey assets, health, and OAuth config', async (t) => {
+test('HTTP server exposes the CREO hub, survey assets, health, and membership config', async (t) => {
     const port = await freePort();
     const child = spawn(process.execPath, ['server.js'], {
         cwd: path.join(__dirname, '..'),
@@ -74,4 +74,10 @@ test('HTTP server exposes the CREO hub, survey assets, health, and OAuth config'
     const config = await configResponse.json();
     assert.equal(config.configured, false);
     assert.equal(config.targetBandNo, '101992972');
+
+    const memberConfigResponse = await fetch(`http://127.0.0.1:${port}/api/band-membership/config`);
+    assert.equal(memberConfigResponse.status, 200);
+    const memberConfig = await memberConfigResponse.json();
+    assert.equal(memberConfig.configured, false);
+    assert.match(memberConfig.targetBandUrl, /band\/101992972/);
 });

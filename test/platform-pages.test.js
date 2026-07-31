@@ -109,27 +109,28 @@ test('broadcast control manages reusable banners, sponsors, and vendor logos', (
     assert.match(live, /Math\.floor\(Date\.now\(\)\/6000\)/);
 });
 
-test('CREWARTS landing prioritizes BAND and confirms before guest testing', () => {
+test('CREWARTS verifies BAND membership by phone before revealing results', () => {
     const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey.html'), 'utf8');
     const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey-v2.css'), 'utf8');
     const script = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey.js'), 'utf8');
     assert.doesNotThrow(() => new vm.Script(script, { filename: 'crewart-survey.js' }));
     assert.ok(html.indexOf('id="band-float"') < html.indexOf('id="start-button"'));
-    assert.match(html, /BAND 로그인 없이/);
-    assert.match(html, /기숙사별 상품·이벤트 혜택/);
-    assert.match(html, /경매 참여 시 회원 할인/);
-    assert.match(html, /그래도 로그인 없이 테스트하기/);
+    assert.match(html, /전화번호로 BAND 회원 확인/);
+    assert.match(html, /id="member-phone"/);
+    assert.match(html, /가입 여부 확인하고 결과 보기/);
+    assert.match(html, /BAND 가입하기/);
     assert.match(css, /\.cw-guest-entry[\s\S]*background:\s*transparent/);
-    assert.match(script, /function openGuestConfirm/);
-    assert.match(script, /function continueAsGuest/);
+    assert.match(script, /function verifyMembershipPhone/);
+    assert.match(script, /if \(!hasDetailedAccess\(\)\)[\s\S]*openMemberCheck\(\{ revealResult: true \}\)/);
+    assert.doesNotMatch(script, /BAND_OAUTH_API|beginBandLogin/);
 });
 
-test('CREWARTS keeps a fixed BAND login handoff throughout the questionnaire', () => {
+test('CREWARTS keeps a fixed member-check handoff throughout the questionnaire', () => {
     const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey-v2.css'), 'utf8');
     const script = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey.js'), 'utf8');
     assert.match(css, /Always-available BAND handoff/);
     assert.match(css, /\.cw-persistent-footer\s*\{[\s\S]*position:\s*fixed/);
-    assert.match(script, /현재 답변 저장하고 BAND 로그인/);
-    assert.match(script, /로그인 후 \$\{resumePoint\}부터 계속해요/);
-    assert.match(script, /function handlePersistentBand\(\)[\s\S]*saveResumeState\(\)/);
+    assert.match(script, /전화번호로 BAND 회원 확인/);
+    assert.match(script, /결과를 열기 전에 가입 여부를 확인해요/);
+    assert.match(script, /function handlePersistentBand\(\)[\s\S]*openMemberCheck/);
 });
