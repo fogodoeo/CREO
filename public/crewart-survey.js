@@ -8,6 +8,9 @@
     const KAKAO_JS_KEY = 'db7ffc8d6b9b7601b792ed69be4658fc';
     const QUESTION_IMAGE_ROOT = 'assets/crewart-illustrations/';
     const MEMBERSHIP_STORAGE_KEY = 'crewart_band_member_access_v1';
+    const MEMBERSHIP_RECHECK_VISIBLE_MS = 3000;
+    const MEMBERSHIP_RECHECK_HIDDEN_MS = 12000;
+    const MEMBERSHIP_RECHECK_TIMEOUT_MS = 15 * 60 * 1000;
     const CONTENT_CONFIG_KEY = 'crewart_mbti_content_v1';
     const BAND_INTEGRATION_ENABLED = true;
     const IS_LOCAL_QA = ['127.0.0.1', 'localhost'].includes(location.hostname);
@@ -38,6 +41,11 @@
     let bandTargetUrl = DEFAULT_BAND_URL;
     let pendingResultReveal = false;
     let pendingSurveyStart = false;
+    let pendingMemberPhone = '';
+    let membershipRecheckTimer = null;
+    let membershipRecheckStartedAt = 0;
+    let membershipCheckInFlight = false;
+    let bandJoinWindow = null;
 
     function element(id) {
         return document.getElementById(id);
@@ -258,6 +266,7 @@
     function closeMemberCheck() {
         const dialog = element('member-check-dialog');
         if (dialog) dialog.hidden = true;
+        stopMembershipRecheck({ closePopup: true });
         pendingResultReveal = false;
         pendingSurveyStart = false;
     }
@@ -768,6 +777,132 @@
         }
     }
 
+    function stopMembershipRecheck(options = {}) {
+        if (membershipRecheckTimer) clearTimeout(membershipRecheckTimer);
+        membershipRecheckTimer = null;
+        pendingMemberPhone = '';
+        membershipRecheckStartedAt = 0;
+        membershipCheckInFlight = false;
+        if (options.closePopup && bandJoinWindow) {
+            try {
+                if (!bandJoinWindow.closed) bandJoinWindow.close();
+            } catch (_) {}
+            bandJoinWindow = null;
+        }
+    }
+
+    function openBandJoinWindow() {
+        stopMembershipRecheck({ closePopup: true });
+        try {
+            bandJoinWindow = window.open('', '_blank', 'popup=yes,width=480,height=760,resizable=yes,scrollbars=yes');
+            if (!bandJoinWindow) return null;
+            bandJoinWindow.document.title = 'BAND 연결 중';
+            bandJoinWindow.document.body.style.cssText = 'margin:0;min-height:100vh;display:grid;place-items:center;background:#f5f7f6;color:#202421;font:600 16px system-ui,sans-serif';
+            bandJoinWindow.document.body.textContent = 'BAND 가입 여부를 확인하고 있어요…';
+            bandJoinWindow.opener = null;
+            return bandJoinWindow;
+        } catch (_) {
+            bandJoinWindow = null;
+            return null;
+        }
+    }
+
+    async function requestPhoneMembership(phone) {
+        const response = await bandFetch(`${BAND_MEMBER_API}/verify`, {
+            method: 'POST', cache: 'no-store',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone })
+        });
+        const payload = await response.json().catch(() => ({}));
+        bandTargetUrl = payload.targetBandUrl || bandTargetUrl;
+        const joinLink = element('member-join-link');
+        if (joinLink) joinLink.href = bandTargetUrl;
+        if (!response.ok) throw new Error(payload.error || '가입 여부를 확인하지 못했어요.');
+        return payload;
+    }
+
+    function completeMembershipAccess(payload) {
+        const status = element('member-check-status');
+        const phoneInput = element('member-phone');
+        stopMembershipRecheck({ closePopup: true });
+        bandAuthToken = payload.token || '';
+        bandAuthUser = payload.user || { id: 'band_member', name: 'BAND 회원', isTargetMember: true };
+        if (bandAuthToken) {
+            try { sessionStorage.setItem(MEMBERSHIP_STORAGE_KEY, bandAuthToken); } catch (_) {}
+        }
+        if (status) {
+            status.hidden = false;
+            status.textContent = '가입 확인 완료! 자동으로 이어갈게요.';
+            status.classList.remove('is-error');
+            status.classList.add('is-success');
+        }
+        updateBandUi();
+        const reveal = pendingResultReveal && Boolean(result);
+        const startAfterCheck = pendingSurveyStart;
+        pendingResultReveal = false;
+        pendingSurveyStart = false;
+        setTimeout(() => {
+            const dialog = element('member-check-dialog');
+            if (dialog) dialog.hidden = true;
+            if (phoneInput) phoneInput.value = '';
+            if (reveal) completeResultReveal();
+            else if (startAfterCheck) startSurvey();
+            else toast('BAND 회원 확인이 완료됐어요.');
+        }, 250);
+    }
+
+    function scheduleMembershipRecheck() {
+        if (!pendingMemberPhone || membershipRecheckTimer) return;
+        const delay = document.visibilityState === 'visible'
+            ? MEMBERSHIP_RECHECK_VISIBLE_MS
+            : MEMBERSHIP_RECHECK_HIDDEN_MS;
+        membershipRecheckTimer = setTimeout(() => {
+            membershipRecheckTimer = null;
+            void recheckPendingMembership();
+        }, delay);
+    }
+
+    async function recheckPendingMembership(options = {}) {
+        if (!pendingMemberPhone || membershipCheckInFlight || hasDetailedAccess()) return;
+        const status = element('member-check-status');
+        const joinLink = element('member-join-link');
+        if (Date.now() - membershipRecheckStartedAt > MEMBERSHIP_RECHECK_TIMEOUT_MS) {
+            stopMembershipRecheck();
+            if (status) {
+                status.hidden = false;
+                status.textContent = '가입 승인 확인 시간이 지났어요. 같은 번호로 다시 확인해주세요.';
+                status.classList.add('is-error');
+            }
+            return;
+        }
+        if (options.visibleOnly && document.visibilityState !== 'visible') {
+            scheduleMembershipRecheck();
+            return;
+        }
+        membershipCheckInFlight = true;
+        try {
+            const payload = await requestPhoneMembership(pendingMemberPhone);
+            if (payload.member) {
+                completeMembershipAccess(payload);
+                return;
+            }
+            if (status) {
+                status.hidden = false;
+                status.textContent = 'BAND 가입·승인 후 이 화면으로 돌아오면 자동으로 이어져요.';
+                status.classList.remove('is-success');
+            }
+            if (joinLink && !bandJoinWindow) joinLink.hidden = false;
+        } catch (error) {
+            if (status) {
+                status.hidden = false;
+                status.textContent = '가입 승인을 기다리고 있어요. 화면으로 돌아오면 다시 확인할게요.';
+            }
+        } finally {
+            membershipCheckInFlight = false;
+            if (pendingMemberPhone) scheduleMembershipRecheck();
+        }
+    }
+
     async function verifyMembershipPhone(event) {
         event.preventDefault();
         const phoneInput = element('member-phone');
@@ -789,62 +924,30 @@
             status.classList.add('is-error');
             return;
         }
-        let bandPopup = null;
-        try {
-            bandPopup = window.open('', '_blank', 'popup=yes,width=480,height=760,resizable=yes,scrollbars=yes');
-            if (bandPopup) {
-                bandPopup.document.title = 'BAND 연결 중';
-                bandPopup.document.body.style.cssText = 'margin:0;min-height:100vh;display:grid;place-items:center;background:#f5f7f6;color:#202421;font:600 16px system-ui,sans-serif';
-                bandPopup.document.body.textContent = 'BAND 가입 여부를 확인하고 있어요…';
-                bandPopup.opener = null;
-            }
-        } catch (_) {
-            bandPopup = null;
-        }
+        const bandPopup = openBandJoinWindow();
         submit.disabled = true;
         status.textContent = 'BAND 회원 명단을 확인하고 있어요…';
         try {
-            const response = await bandFetch(`${BAND_MEMBER_API}/verify`, {
-                method: 'POST', cache: 'no-store',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ phone: phoneInput.value })
-            });
-            const payload = await response.json().catch(() => ({}));
-            bandTargetUrl = payload.targetBandUrl || bandTargetUrl;
-            joinLink.href = bandTargetUrl;
-            if (!response.ok) throw new Error(payload.error || '가입 여부를 확인하지 못했어요.');
+            const payload = await requestPhoneMembership(phoneDigits);
             if (!payload.member) {
                 status.textContent = bandPopup
-                    ? '가입된 번호가 아니어서 새 창에 BAND 가입 페이지를 열었어요.'
-                    : '팝업이 차단됐어요. 아래 버튼으로 BAND 가입 페이지를 열어주세요.';
-                status.classList.add('is-error');
-                if (bandPopup) bandPopup.location.replace(bandTargetUrl);
-                else joinLink.hidden = false;
+                    ? 'BAND 가입·승인 후 설문으로 돌아오면 자동으로 이어져요.'
+                    : '아래 버튼에서 BAND 가입 후 돌아오면 자동으로 이어져요.';
+                status.classList.remove('is-error', 'is-success');
+                pendingMemberPhone = phoneDigits;
+                membershipRecheckStartedAt = Date.now();
+                if (bandPopup) {
+                    try { bandPopup.location.replace(bandTargetUrl); }
+                    catch (_) { joinLink.hidden = false; }
+                } else {
+                    joinLink.hidden = false;
+                }
+                scheduleMembershipRecheck();
                 return;
             }
-            if (bandPopup && !bandPopup.closed) bandPopup.close();
-            bandAuthToken = payload.token || '';
-            bandAuthUser = payload.user || { id: 'band_member', name: 'BAND 회원', isTargetMember: true };
-            if (bandAuthToken) {
-                try { sessionStorage.setItem(MEMBERSHIP_STORAGE_KEY, bandAuthToken); } catch (_) {}
-            }
-            status.textContent = '가입 확인 완료! 결과를 열게요.';
-            status.classList.add('is-success');
-            updateBandUi();
-            const reveal = pendingResultReveal && Boolean(result);
-            const startAfterCheck = pendingSurveyStart;
-            pendingResultReveal = false;
-            pendingSurveyStart = false;
-            setTimeout(() => {
-                const dialog = element('member-check-dialog');
-                if (dialog) dialog.hidden = true;
-                phoneInput.value = '';
-                if (reveal) completeResultReveal();
-                else if (startAfterCheck) startSurvey();
-                else toast('BAND 회원 확인이 완료됐어요.');
-            }, 350);
+            completeMembershipAccess(payload);
         } catch (error) {
-            if (bandPopup && !bandPopup.closed) bandPopup.close();
+            stopMembershipRecheck({ closePopup: true });
             status.textContent = error.message || '가입 여부를 확인하지 못했어요.';
             status.classList.add('is-error');
         } finally {
@@ -954,8 +1057,13 @@
         });
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'hidden') pauseTimer();
-            else resumeTimer();
+            else {
+                resumeTimer();
+                void recheckPendingMembership({ visibleOnly: true });
+            }
         });
+        window.addEventListener('pageshow', () => void recheckPendingMembership({ visibleOnly: true }));
+        window.addEventListener('focus', () => void recheckPendingMembership({ visibleOnly: true }));
     }
 
     function initialize() {

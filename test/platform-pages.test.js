@@ -123,6 +123,9 @@ test('CREWARTS verifies BAND membership by phone before revealing results', () =
     assert.match(script, /function verifyMembershipPhone/);
     assert.match(script, /window\.open\('', '_blank',[\s\S]*if \(!payload\.member\)[\s\S]*bandPopup\.location\.replace\(bandTargetUrl\)/);
     assert.doesNotMatch(script, /window\.location\.assign\(bandTargetUrl\)/);
+    assert.match(script, /function recheckPendingMembership[\s\S]*completeMembershipAccess\(payload\)/);
+    assert.match(script, /visibilitychange[\s\S]*recheckPendingMembership\(\{ visibleOnly: true \}\)/);
+    assert.match(script, /BAND 가입·승인 후 설문으로 돌아오면 자동으로 이어져요/);
     assert.match(script, /if \(!hasDetailedAccess\(\)\)[\s\S]*openMemberCheck\(\{ revealResult: true \}\)/);
     assert.doesNotMatch(script, /BAND_OAUTH_API|beginBandLogin/);
 });
