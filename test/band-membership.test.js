@@ -104,6 +104,25 @@ test('an unknown number returns only the join destination', async () => {
     });
 });
 
+test('a zero attempt limit disables throttling during testing', async () => {
+    const membership = createBandMembership({
+        env: { ...ENV, BAND_MEMBER_RATE_LIMIT_ATTEMPTS: '0' },
+        now: () => NOW,
+        fetchImpl: async () => jsonResponse([]),
+        logger: { error() {} }
+    });
+
+    for (let index = 0; index < 12; index += 1) {
+        const response = new CapturedResponse();
+        await membership.handle(
+            request('POST', JSON.stringify({ phone: '01099998888' }), { host: 'creok.example.com' }),
+            response,
+            new URL('https://creok.example.com/api/band-membership/verify')
+        );
+        assert.equal(response.status, 200);
+    }
+});
+
 test('foreign browser origins and missing server credentials are rejected', async () => {
     const configured = createBandMembership({ env: ENV, now: () => NOW, fetchImpl: async () => jsonResponse([]) });
     const foreign = new CapturedResponse();

@@ -53,6 +53,7 @@ npm start
 4. 기존 회원 테이블을 쓸 때는 `BAND_MEMBER_TABLE`, `BAND_MEMBER_PHONE_COLUMN`, `BAND_MEMBER_ACTIVE_COLUMN`을 실제 이름에 맞춥니다.
 
 브라우저용 Supabase anon 키로는 회원 명단을 조회할 수 없게 RLS를 유지해야 합니다. 미가입자는 `BAND_MEMBER_TARGET_BAND_URL`로 이동합니다.
+테스트 중 확인 횟수 제한을 끄려면 `BAND_MEMBER_RATE_LIMIT_ATTEMPTS=0`으로 설정하고, 운영 전에는 양수로 되돌립니다.
 
 등록할 BAND Redirect URI:
 

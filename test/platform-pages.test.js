@@ -121,6 +121,7 @@ test('CREWARTS verifies BAND membership by phone before revealing results', () =
     assert.match(html, /BAND 가입하기/);
     assert.match(css, /\.cw-guest-entry[\s\S]*background:\s*transparent/);
     assert.match(script, /function verifyMembershipPhone/);
+    assert.match(script, /if \(!payload\.member\)[\s\S]*window\.location\.assign\(bandTargetUrl\)/);
     assert.match(script, /if \(!hasDetailedAccess\(\)\)[\s\S]*openMemberCheck\(\{ revealResult: true \}\)/);
     assert.doesNotMatch(script, /BAND_OAUTH_API|beginBandLogin/);
 });

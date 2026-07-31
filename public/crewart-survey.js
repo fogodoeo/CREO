@@ -796,9 +796,13 @@
             joinLink.href = bandTargetUrl;
             if (!response.ok) throw new Error(payload.error || '가입 여부를 확인하지 못했어요.');
             if (!payload.member) {
-                status.textContent = '가입된 회원 명단에서 확인되지 않았어요.';
+                status.textContent = '가입된 번호가 아니어서 BAND 가입 페이지로 이동할게요.';
                 status.classList.add('is-error');
-                joinLink.hidden = false;
+                try {
+                    window.location.assign(bandTargetUrl);
+                } catch (_) {
+                    joinLink.hidden = false;
+                }
                 return;
             }
             bandAuthToken = payload.token || '';

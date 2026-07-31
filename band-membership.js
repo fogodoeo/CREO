@@ -17,6 +17,11 @@ function positiveInteger(value, fallback, minimum, maximum) {
     return Math.max(minimum, Math.min(maximum, Math.round(number)));
 }
 
+function rateLimitAttempts(value, fallback = 8) {
+    if (String(value ?? '').trim() === '0') return 0;
+    return positiveInteger(value, fallback, 2, 100);
+}
+
 function validIdentifier(value, fallback = '') {
     const text = String(value || fallback).trim();
     return /^[a-z_][a-z0-9_]*$/i.test(text) ? text : '';
@@ -56,7 +61,7 @@ function loadConfig(env = process.env) {
         sessionTtlSec: positiveInteger(env.BAND_MEMBER_SESSION_TTL_SEC, 7200, 300, 86400),
         requestTimeoutMs: positiveInteger(env.BAND_MEMBER_REQUEST_TIMEOUT_MS, 7000, 1000, 20000),
         rateLimitWindowMs: positiveInteger(env.BAND_MEMBER_RATE_LIMIT_WINDOW_MS, 600000, 10000, 3600000),
-        rateLimitAttempts: positiveInteger(env.BAND_MEMBER_RATE_LIMIT_ATTEMPTS, 8, 2, 100)
+        rateLimitAttempts: rateLimitAttempts(env.BAND_MEMBER_RATE_LIMIT_ATTEMPTS)
     };
     config.configured = Boolean(
         /^https:\/\/[^/]+/i.test(config.url)
@@ -157,6 +162,7 @@ function clientAddress(req) {
 function createRateLimiter(config, now) {
     const attempts = new Map();
     return function allow(key) {
+        if (config.rateLimitAttempts === 0) return true;
         const current = now();
         const cutoff = current - config.rateLimitWindowMs;
         const recent = (attempts.get(key) || []).filter((timestamp) => timestamp > cutoff);
