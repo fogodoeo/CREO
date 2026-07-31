@@ -783,6 +783,24 @@
             status.classList.add('is-error');
             return;
         }
+        const phoneDigits = String(phoneInput.value || '').replace(/\D/g, '');
+        if (!/^010\d{8}$/.test(phoneDigits)) {
+            status.textContent = '010으로 시작하는 휴대전화번호 11자리를 입력해주세요.';
+            status.classList.add('is-error');
+            return;
+        }
+        let bandPopup = null;
+        try {
+            bandPopup = window.open('', '_blank', 'popup=yes,width=480,height=760,resizable=yes,scrollbars=yes');
+            if (bandPopup) {
+                bandPopup.document.title = 'BAND 연결 중';
+                bandPopup.document.body.style.cssText = 'margin:0;min-height:100vh;display:grid;place-items:center;background:#f5f7f6;color:#202421;font:600 16px system-ui,sans-serif';
+                bandPopup.document.body.textContent = 'BAND 가입 여부를 확인하고 있어요…';
+                bandPopup.opener = null;
+            }
+        } catch (_) {
+            bandPopup = null;
+        }
         submit.disabled = true;
         status.textContent = 'BAND 회원 명단을 확인하고 있어요…';
         try {
@@ -796,15 +814,15 @@
             joinLink.href = bandTargetUrl;
             if (!response.ok) throw new Error(payload.error || '가입 여부를 확인하지 못했어요.');
             if (!payload.member) {
-                status.textContent = '가입된 번호가 아니어서 BAND 가입 페이지로 이동할게요.';
+                status.textContent = bandPopup
+                    ? '가입된 번호가 아니어서 새 창에 BAND 가입 페이지를 열었어요.'
+                    : '팝업이 차단됐어요. 아래 버튼으로 BAND 가입 페이지를 열어주세요.';
                 status.classList.add('is-error');
-                try {
-                    window.location.assign(bandTargetUrl);
-                } catch (_) {
-                    joinLink.hidden = false;
-                }
+                if (bandPopup) bandPopup.location.replace(bandTargetUrl);
+                else joinLink.hidden = false;
                 return;
             }
+            if (bandPopup && !bandPopup.closed) bandPopup.close();
             bandAuthToken = payload.token || '';
             bandAuthUser = payload.user || { id: 'band_member', name: 'BAND 회원', isTargetMember: true };
             if (bandAuthToken) {
@@ -826,6 +844,7 @@
                 else toast('BAND 회원 확인이 완료됐어요.');
             }, 350);
         } catch (error) {
+            if (bandPopup && !bandPopup.closed) bandPopup.close();
             status.textContent = error.message || '가입 여부를 확인하지 못했어요.';
             status.classList.add('is-error');
         } finally {
