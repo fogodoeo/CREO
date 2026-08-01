@@ -8,6 +8,9 @@
     const KAKAO_JS_KEY = 'db7ffc8d6b9b7601b792ed69be4658fc';
     const QUESTION_IMAGE_ROOT = 'assets/crewart-illustrations/';
     const MEMBERSHIP_STORAGE_KEY = 'crewart_band_member_access_v1';
+    const MEMBERSHIP_PHONE_STORAGE_KEY = 'crewart_band_member_phone_mask_v1';
+    const LAST_RESULT_STORAGE_KEY = 'crewart_last_result_v1';
+    const LAST_RESULT_VERSION = 1;
     const MEMBERSHIP_RECHECK_VISIBLE_MS = 1000;
     const MEMBERSHIP_RECHECK_HIDDEN_MS = 10000;
     const MEMBERSHIP_RECHECK_TIMEOUT_MS = 15 * 60 * 1000;
@@ -42,6 +45,7 @@
     let bandAuthConfigured = false;
     let bandAuthToken = '';
     let bandAuthUser = null;
+    let bandAuthPhoneMask = '';
     let bandTargetUrl = DEFAULT_BAND_URL;
     let pendingResultReveal = false;
     let pendingSurveyStart = false;
@@ -50,6 +54,7 @@
     let membershipRecheckStartedAt = 0;
     let membershipCheckInFlight = false;
     let bandJoinWindow = null;
+    let showingStoredResult = false;
 
     function element(id) {
         return document.getElementById(id);
@@ -59,6 +64,107 @@
         return String(value ?? '').replace(/[&<>"']/g, character => ({
             '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
         }[character]));
+    }
+
+    function maskPhone(phone) {
+        const digits = String(phone || '').replace(/\D/g, '');
+        return /^010\d{8}$/.test(digits) ? `${digits.slice(0, 3)}-****-${digits.slice(-4)}` : '';
+    }
+
+    function loadLastResult() {
+        try {
+            const snapshot = JSON.parse(localStorage.getItem(LAST_RESULT_STORAGE_KEY) || 'null');
+            if (snapshot?.version !== LAST_RESULT_VERSION || snapshot.questionVersion !== Core.SURVEY_VERSION) return null;
+            if (!Core.MBTI_TYPES.includes(snapshot.result?.code)) return null;
+            if (!Core.HOUSE_KEYS.includes(snapshot.assignedHouseKey)) return null;
+            if (!Array.isArray(snapshot.result?.axes) || snapshot.result.axes.length !== 4) return null;
+            return snapshot;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    function saveLastResult() {
+        if (!result || !Core.MBTI_TYPES.includes(result.code) || !Core.HOUSE_KEYS.includes(assignedHouseKey)) return;
+        const snapshot = {
+            version: LAST_RESULT_VERSION,
+            questionVersion: Core.SURVEY_VERSION,
+            savedAt: new Date().toISOString(),
+            selectedMbti: Core.MBTI_TYPES.includes(selectedMbti) ? selectedMbti : '',
+            assignedHouseKey,
+            result: {
+                code: result.code,
+                typeName: result.typeName,
+                letters: { ...result.letters },
+                axes: result.axes.map(axis => ({ ...axis }))
+            },
+            timingStats: timingStats ? {
+                validCount: timingStats.validCount,
+                totalMs: timingStats.totalMs,
+                averageMs: timingStats.averageMs,
+                medianMs: timingStats.medianMs,
+                axisMedians: { ...timingStats.axisMedians },
+                style: { ...timingStats.style },
+                fastest: timingStats.fastest ? { ...timingStats.fastest } : null,
+                slowest: timingStats.slowest ? { ...timingStats.slowest } : null
+            } : null
+        };
+        try { localStorage.setItem(LAST_RESULT_STORAGE_KEY, JSON.stringify(snapshot)); } catch (_) {}
+        renderHome();
+    }
+
+    function formatSavedAt(value) {
+        const date = new Date(value);
+        if (!Number.isFinite(date.getTime())) return '';
+        return new Intl.DateTimeFormat('ko-KR', {
+            year: 'numeric', month: 'long', day: 'numeric'
+        }).format(date);
+    }
+
+    function renderHome() {
+        const snapshot = loadLastResult();
+        const card = element('home-result-card');
+        const startCard = element('home-start-card');
+        if (!card || !startCard) return;
+        card.hidden = !snapshot;
+        startCard.hidden = Boolean(snapshot);
+        if (!snapshot) return;
+        element('home-result-code').textContent = snapshot.result.code;
+        element('home-result-heading').textContent = snapshot.result.typeName;
+        element('home-result-summary').textContent = typeSummary(snapshot.result.code);
+        element('home-result-saved').textContent = `${formatSavedAt(snapshot.savedAt)}에 저장한 결과`;
+    }
+
+    function restoreLastResult() {
+        const snapshot = loadLastResult();
+        if (!snapshot) {
+            renderHome();
+            toast('저장된 결과가 없어요.', true);
+            return;
+        }
+        pauseTimer();
+        activeTimer = null;
+        questions = [];
+        answers = [];
+        responseTimings = [];
+        selectedMbti = snapshot.selectedMbti || '';
+        surveySessionId = '';
+        sessionCreatedAt = '';
+        assignedHouseKey = snapshot.assignedHouseKey;
+        result = snapshot.result;
+        timingStats = snapshot.timingStats;
+        showingStoredResult = true;
+        renderResult();
+        setScreen('result-screen');
+    }
+
+    function updateAuthHeader() {
+        const chip = element('auth-phone-chip');
+        const number = element('auth-phone-number');
+        if (!chip || !number) return;
+        const authenticated = Boolean(bandAuthUser?.isTargetMember);
+        chip.hidden = !authenticated;
+        number.textContent = bandAuthPhoneMask || 'BAND 회원 인증됨';
     }
 
     function toast(message, isError) {
@@ -249,6 +355,7 @@
         assignedHouseKey = '';
         result = null;
         timingStats = null;
+        showingStoredResult = false;
         advancing = false;
         lastSavedSignature = '';
         setScreen('question-screen');
@@ -281,7 +388,9 @@
     }
 
     function returnToIntro() {
-        if (currentStage() !== 'intro' && !window.confirm('처음부터 다시 할까요?\n\n현재 테스트 진행 내용은 초기화되지만 BAND 회원 확인 상태는 유지됩니다.')) return;
+        const stage = currentStage();
+        if ((stage === 'questions' || stage === 'mbti')
+            && !window.confirm('진행 중인 테스트를 닫고 처음 화면으로 갈까요?\n\nBAND 회원 확인 상태와 이전에 저장한 결과는 유지됩니다.')) return;
         pauseTimer();
         activeTimer = null;
         questions = [];
@@ -294,9 +403,11 @@
         assignedHouseKey = '';
         result = null;
         timingStats = null;
+        showingStoredResult = false;
         advancing = false;
         lastSavedSignature = '';
         element('result-content').replaceChildren();
+        renderHome();
         setScreen('intro-screen');
     }
 
@@ -323,7 +434,7 @@
         }
         element('choice-list').innerHTML = question.options.map((option, index) => `
             <button class="cw-choice-button${answers[current] === index ? ' is-selected' : ''}" type="button" data-choice="${index}">
-                <span>${escapeHtml(option)}</span>
+                <b aria-hidden="true">${index === 0 ? 'A' : 'B'}</b><span>${escapeHtml(option)}</span>
             </button>`).join('');
         element('choice-list').querySelectorAll('[data-choice]').forEach(button => {
             button.addEventListener('click', () => chooseAnswer(Number(button.dataset.choice)));
@@ -415,6 +526,8 @@
     }
 
     function completeResultReveal() {
+        showingStoredResult = false;
+        saveLastResult();
         renderResult();
         setScreen('result-screen');
         void submitSurvey();
@@ -461,23 +574,26 @@
     }
 
     function renderSpeedCard() {
+        if (!timingStats?.style) return '';
         const valid = timingStats.validCount > 0;
         const total = valid ? formatSeconds(timingStats.totalMs) : '측정 안 됨';
         const median = valid ? formatSeconds(timingStats.medianMs) : '-';
         const benchmark = Core.buildSpeedBenchmark(timingStats.medianMs, speedSamples());
+        const questionTotal = questions.length || Core.QUESTIONS.length;
         return `
             <section class="cw-result-section cw-speed-card">
                 <div class="cw-result-section-head">
-                    <div><span>선택 속도</span><strong>${escapeHtml(timingStats.style.label)}</strong></div>
+                    <div><span>나의 선택 템포</span><strong>${escapeHtml(timingStats.style.label)}</strong></div>
                     <div class="cw-speed-number">${escapeHtml(median)}<small> 문항당</small></div>
                 </div>
                 <p class="cw-speed-copy">${escapeHtml(timingStats.style.copy)}</p>
-                <div class="cw-speed-measure"><span>전체 응답 ${escapeHtml(total)}</span><span>유효 ${timingStats.validCount} / ${questions.length}</span></div>
+                <div class="cw-speed-measure"><span>전체 ${escapeHtml(total)}</span><span>측정 ${timingStats.validCount} / ${questionTotal}</span></div>
                 <div class="cw-benchmark-inline"><b>${escapeHtml(benchmark.badge)}</b><span>${escapeHtml(benchmark.message)}</span></div>
             </section>`;
     }
 
     function detailedAnswerRows(axis) {
+        if (questions.length !== Core.QUESTIONS.length || answers.length !== Core.QUESTIONS.length) return '';
         return questions.map((question, index) => ({
             question,
             answer: question.options[answers[index]],
@@ -488,21 +604,29 @@
     }
 
     function renderMemberDetail() {
+        const hasAnswerHistory = questions.length === Core.QUESTIONS.length && answers.length === Core.QUESTIONS.length;
         const axisCards = result.axes.map(axisResult => {
             const meta = Core.AXIS_META[axisResult.axis];
             const dominant = meta.letters[axisResult.dominant];
+            const first = axisResult.axis[0];
+            const second = axisResult.axis[1];
+            const firstCount = Number(result.letters[first]) || 0;
+            const secondCount = Number(result.letters[second]) || 0;
+            const firstWidth = Math.max(0, Math.min(100, (firstCount / 5) * 100));
             return `
                 <article class="cw-axis-detail">
-                    <header><div><span>${escapeHtml(meta.title)}</span><strong>${axisResult.dominant} · ${escapeHtml(dominant.short)}</strong></div><b>${axisResult.dominantCount} : ${axisResult.oppositeCount}</b></header>
+                    <header><div><span>${escapeHtml(meta.title)}</span><strong>${axisResult.dominant} · ${escapeHtml(dominant.short)}</strong></div><b>${firstCount} : ${secondCount}</b></header>
+                    <div class="cw-axis-meter" aria-label="${first} ${firstCount}, ${second} ${secondCount}"><i style="width:${firstWidth}%"></i></div>
+                    <div class="cw-axis-poles"><span>${first}</span><span>${second}</span></div>
                     <p>${escapeHtml(dominant.description)}</p>
-                    <details class="cw-answer-detail"><summary>내 선택 5개와 응답시간 보기</summary><ul>${detailedAnswerRows(axisResult.axis)}</ul></details>
+                    ${hasAnswerHistory ? `<details class="cw-answer-detail"><summary>이 결과가 나온 선택 보기</summary><ul>${detailedAnswerRows(axisResult.axis)}</ul></details>` : ''}
                 </article>`;
         }).join('');
-        const slowestQuestion = questions.find(question => question.id === timingStats.slowest?.questionId);
-        const fastestQuestion = questions.find(question => question.id === timingStats.fastest?.questionId);
+        const slowestQuestion = questions.find(question => question.id === timingStats?.slowest?.questionId);
+        const fastestQuestion = questions.find(question => question.id === timingStats?.fastest?.questionId);
         return `
             <section class="cw-result-section cw-member-detail">
-                <h2 class="cw-detail-title">내가 뭘 골랐길래?</h2>
+                <div class="cw-section-heading"><p>네 글자를 한눈에</p><h2 class="cw-detail-title">내 크레 성향 자세히 보기</h2></div>
                 <div class="cw-axis-detail-list">${axisCards}</div>
                 <div class="cw-speed-meta">
                     ${fastestQuestion ? `<span>가장 빠른 선택 · ${escapeHtml(fastestQuestion.label)} ${formatSeconds(timingStats.fastest.elapsedMs)}</span>` : ''}
@@ -554,33 +678,46 @@
         const bandShare = BAND_INTEGRATION_ENABLED
             ? `<button class="cw-share-icon is-band" type="button" data-action="band-result" aria-label="크레와트 BAND 열기"><strong aria-hidden="true">B</strong></button>`
             : '';
+        const dominantTraits = result.axes.map(axis => Core.AXIS_META[axis.axis].letters[axis.dominant].short);
         element('result-content').innerHTML = `
             <div class="cw-result-wrap">
                 <section class="cw-result-poster">
-                    <img class="cw-result-crest" src="assets/crewart-crest-v2.webp" width="720" height="838" alt="" aria-hidden="true">
-                    <p class="cw-poster-kicker">CREWART PERSONALITY TEST</p>
-                    ${typeFlow}
-                    <h1>${escapeHtml(result.typeName)}</h1>
-                    <p>${escapeHtml(typeSummary(result.code))}</p>
+                    <div class="cw-result-crest-wrap"><img class="cw-result-crest" src="assets/crewart-crest-v2.webp" width="720" height="838" alt="" aria-hidden="true"></div>
+                    <div class="cw-result-hero-copy">
+                        <p class="cw-poster-kicker">내 크레MBTI 결과</p>
+                        ${typeFlow}
+                        <h1>${escapeHtml(result.typeName)}</h1>
+                        <p>${escapeHtml(dominantTraits.join(' · '))}</p>
+                        ${showingStoredResult ? '<small class="cw-stored-note">이 기기에 저장된 최근 결과예요.</small>' : ''}
+                    </div>
                 </section>
-                <div class="cw-share-tools" aria-label="결과 공유">
-                    <button class="cw-share-icon is-kakao" type="button" data-action="share" aria-label="카카오톡으로 공유">
-                        <img src="assets/kakaolink_btn_medium.png" width="24" height="24" alt="">
-                    </button>
-                    <button class="cw-share-icon is-instagram" type="button" data-action="instagram" aria-label="인스타그램으로 공유">
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.2" y="3.2" width="17.6" height="17.6" rx="5"></rect><circle cx="12" cy="12" r="4.1"></circle><circle class="cw-instagram-dot" cx="17.4" cy="6.8" r="1.1"></circle></svg>
-                    </button>
-                    ${bandShare}
-                </div>
                 ${renderComparison(comparison)}
-                ${renderSpeedCard()}
                 ${detail}
+                ${renderSpeedCard()}
+                <section class="cw-result-section cw-share-section">
+                    <div><p>친구에게도 보여주고 싶다면</p><h2>결과 공유하기</h2></div>
+                    <div class="cw-share-tools" aria-label="결과 공유">
+                        <button class="cw-share-icon is-kakao" type="button" data-action="share" aria-label="카카오톡으로 공유">
+                            <img src="assets/kakaolink_btn_medium.png" width="24" height="24" alt="">
+                        </button>
+                        <button class="cw-share-icon is-instagram" type="button" data-action="instagram" aria-label="인스타그램으로 공유">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.2" y="3.2" width="17.6" height="17.6" rx="5"></rect><circle cx="12" cy="12" r="4.1"></circle><circle class="cw-instagram-dot" cx="17.4" cy="6.8" r="1.1"></circle></svg>
+                        </button>
+                        ${bandShare}
+                    </div>
+                </section>
+                <div class="cw-result-actions">
+                    <button class="cw-primary-button" type="button" data-action="retest">다시 테스트하기</button>
+                    <button class="cw-secondary-button" type="button" data-action="home">처음 화면으로</button>
+                </div>
             </div>`;
         element('result-content').querySelector('[data-action="unlock-detail"]')?.addEventListener('click', handleUnlockDetail);
         element('result-content').querySelector('[data-action="open-band"]')?.addEventListener('click', openBandTarget);
         element('result-content').querySelector('[data-action="share"]')?.addEventListener('click', shareResult);
         element('result-content').querySelector('[data-action="instagram"]')?.addEventListener('click', shareToInstagram);
         element('result-content').querySelector('[data-action="band-result"]')?.addEventListener('click', handleResultBand);
+        element('result-content').querySelector('[data-action="retest"]')?.addEventListener('click', startSurvey);
+        element('result-content').querySelector('[data-action="home"]')?.addEventListener('click', returnToIntro);
     }
 
     function handleResultBand() {
@@ -702,6 +839,7 @@
                 ? '전화번호는 가입 여부 확인에만 사용해요'
                 : '회원 명단 연결을 준비하고 있어요';
         button.setAttribute('aria-label', label.textContent);
+        updateAuthHeader();
         updatePersistentActions();
         if (result && !element('result-screen').hidden) renderResult();
     }
@@ -716,7 +854,7 @@
 
         const stage = currentStage();
         home.hidden = stage === 'intro';
-        footer.hidden = stage === 'intro' || !BAND_INTEGRATION_ENABLED;
+        footer.hidden = stage === 'intro' || !BAND_INTEGRATION_ENABLED || Boolean(bandAuthUser?.isTargetMember);
         if (footer.hidden) return;
 
         button.hidden = false;
@@ -753,8 +891,10 @@
     async function initBandMembership() {
         try {
             bandAuthToken = sessionStorage.getItem(MEMBERSHIP_STORAGE_KEY) || '';
+            bandAuthPhoneMask = sessionStorage.getItem(MEMBERSHIP_PHONE_STORAGE_KEY) || '';
         } catch (_) {
             bandAuthToken = '';
+            bandAuthPhoneMask = '';
         }
         try {
             const response = await bandFetch(`${BAND_MEMBER_API}/config`, { cache: 'no-store' });
@@ -771,7 +911,11 @@
             console.error('[Crewart BAND membership]', error);
             bandAuthUser = null;
             bandAuthToken = '';
-            try { sessionStorage.removeItem(MEMBERSHIP_STORAGE_KEY); } catch (_) {}
+            bandAuthPhoneMask = '';
+            try {
+                sessionStorage.removeItem(MEMBERSHIP_STORAGE_KEY);
+                sessionStorage.removeItem(MEMBERSHIP_PHONE_STORAGE_KEY);
+            } catch (_) {}
         } finally {
             bandAuthReady = true;
             updateBandUi();
@@ -822,14 +966,18 @@
         return payload;
     }
 
-    function completeMembershipAccess(payload) {
+    function completeMembershipAccess(payload, verifiedPhone) {
         const status = element('member-check-status');
         const phoneInput = element('member-phone');
         stopMembershipRecheck({ closePopup: true });
         bandAuthToken = payload.token || '';
         bandAuthUser = payload.user || { id: 'band_member', name: 'BAND 회원', isTargetMember: true };
+        bandAuthPhoneMask = maskPhone(verifiedPhone) || bandAuthPhoneMask;
         if (bandAuthToken) {
-            try { sessionStorage.setItem(MEMBERSHIP_STORAGE_KEY, bandAuthToken); } catch (_) {}
+            try {
+                sessionStorage.setItem(MEMBERSHIP_STORAGE_KEY, bandAuthToken);
+                if (bandAuthPhoneMask) sessionStorage.setItem(MEMBERSHIP_PHONE_STORAGE_KEY, bandAuthPhoneMask);
+            } catch (_) {}
         }
         if (status) {
             status.hidden = false;
@@ -884,7 +1032,8 @@
         try {
             const payload = await requestPhoneMembership(pendingMemberPhone);
             if (payload.member) {
-                completeMembershipAccess(payload);
+                const verifiedPhone = pendingMemberPhone;
+                completeMembershipAccess(payload, verifiedPhone);
                 return;
             }
             if (status) {
@@ -946,7 +1095,7 @@
                 scheduleMembershipRecheck();
                 return;
             }
-            completeMembershipAccess(payload);
+            completeMembershipAccess(payload, phoneDigits);
         } catch (error) {
             stopMembershipRecheck({ closePopup: true });
             status.textContent = error.message || '가입 여부를 확인하지 못했어요.';
@@ -1037,6 +1186,8 @@
 
     function bindEvents() {
         element('start-button').addEventListener('click', startSurvey);
+        element('home-result-open')?.addEventListener('click', restoreLastResult);
+        element('home-retest')?.addEventListener('click', startSurvey);
         element('member-check-close')?.addEventListener('click', closeMemberCheck);
         element('member-check-form')?.addEventListener('submit', verifyMembershipPhone);
         element('member-phone')?.addEventListener('input', formatMemberPhone);
@@ -1074,6 +1225,7 @@
         }
         setupIntroVideo();
         bindEvents();
+        renderHome();
         syncThemeColor();
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', syncThemeColor);
         const start = element('start-button');
@@ -1082,7 +1234,7 @@
         playWordmark();
         void loadConfig().finally(() => {
             start.disabled = false;
-            start.querySelector('span').textContent = '먼저 테스트하기';
+            start.querySelector('span').textContent = '테스트 시작하기';
         });
         if (!BAND_INTEGRATION_ENABLED) {
             bandAuthReady = false;

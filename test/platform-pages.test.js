@@ -126,31 +126,45 @@ test('broadcast control manages reusable banners, sponsors, and vendor logos', (
 
 test('CREWARTS verifies BAND membership by phone before revealing results', () => {
     const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey.html'), 'utf8');
-    const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey-v2.css'), 'utf8');
+    const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey-v3.css'), 'utf8');
     const script = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey.js'), 'utf8');
     assert.doesNotThrow(() => new vm.Script(script, { filename: 'crewart-survey.js' }));
-    assert.ok(html.indexOf('id="band-float"') < html.indexOf('id="start-button"'));
     assert.match(html, /전화번호로 BAND 회원 확인/);
     assert.match(html, /id="member-phone"/);
     assert.match(html, /가입 여부 확인하고 결과 보기/);
     assert.match(html, /BAND 가입하기/);
     assert.doesNotMatch(html, /supabase-bridge\.js/);
-    assert.match(css, /\.cw-guest-entry[\s\S]*background:\s*transparent/);
+    assert.match(css, /\.cw-choice-button[\s\S]*min-height:\s*72px/);
     assert.match(script, /function verifyMembershipPhone/);
     assert.match(script, /\/api\/crewart-survey\/bootstrap/);
     assert.match(script, /\/api\/crewart-survey\/responses/);
     assert.doesNotMatch(script, /getConfigMap|saveCrewartSurveyEntry/);
     assert.match(script, /window\.open\('', '_blank',[\s\S]*if \(!payload\.member\)[\s\S]*bandPopup\.location\.replace\(bandTargetUrl\)/);
     assert.doesNotMatch(script, /window\.location\.assign\(bandTargetUrl\)/);
-    assert.match(script, /function recheckPendingMembership[\s\S]*completeMembershipAccess\(payload\)/);
+    assert.match(script, /function recheckPendingMembership[\s\S]*completeMembershipAccess\(payload, verifiedPhone\)/);
     assert.match(script, /visibilitychange[\s\S]*recheckPendingMembership\(\{ visibleOnly: true \}\)/);
     assert.match(script, /BAND 가입·승인 후 설문으로 돌아오면 자동으로 이어져요/);
     assert.match(script, /if \(!hasDetailedAccess\(\)\)[\s\S]*openMemberCheck\(\{ revealResult: true \}\)/);
     assert.doesNotMatch(script, /BAND_OAUTH_API|beginBandLogin/);
 });
 
+test('CREWARTS home shows the saved result and only a masked authenticated phone', () => {
+    const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey.html'), 'utf8');
+    const script = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey.js'), 'utf8');
+    for (const id of ['auth-phone-chip', 'auth-phone-number', 'home-result-card', 'home-result-open', 'home-retest']) {
+        assert.match(html, new RegExp(`id=["']${id}["']`));
+    }
+    assert.match(html, /내 크레MBTI/);
+    assert.match(script, /crewart_band_member_phone_mask_v1/);
+    assert.match(script, /function maskPhone[\s\S]*\*\*\*\*/);
+    assert.match(script, /function saveLastResult/);
+    assert.match(script, /function restoreLastResult/);
+    const savedResultBody = script.match(/function saveLastResult\(\) \{([\s\S]*?)\n    \}/)?.[1] || '';
+    assert.doesNotMatch(savedResultBody, /phone|bandAuth/i);
+});
+
 test('CREWARTS keeps a fixed member-check handoff throughout the questionnaire', () => {
-    const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey-v2.css'), 'utf8');
+    const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey-v3.css'), 'utf8');
     const script = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey.js'), 'utf8');
     assert.match(css, /Always-available BAND handoff/);
     assert.match(css, /\.cw-persistent-footer\s*\{[\s\S]*position:\s*fixed/);
