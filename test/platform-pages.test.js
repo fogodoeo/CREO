@@ -171,6 +171,7 @@ test('CREWARTS home shows the saved result and only a masked authenticated phone
     assert.match(html, /최근 결과/);
     assert.match(html, /결과 보기/);
     assert.match(html, /새로 하기/);
+    assert.match(html, /class="cw-home-result-open" id="home-result-open"/);
     assert.match(html, /class="cw-home-panel"[\s\S]*id="home-result-card"[\s\S]*id="home-start-card"[\s\S]*class="cw-home-member"/);
     assert.match(html, /class="cw-home-band-join" data-band-join/);
     assert.doesNotMatch(html, /home-result-summary|home-result-saved|결과 다시 보기|다시 테스트하기/);
@@ -245,7 +246,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(css, /\.cw-choice-button span[\s\S]*font-size:\s*var\(--cw-type-control\)/);
     assert.match(css, /\.cw-poster-kicker[\s\S]*color:\s*var\(--cw-green\)/);
     assert.match(css, /\.cw-intro-visual\s*\{[^}]*position:\s*fixed[^}]*inset:\s*-24px/);
-    assert.match(css, /\.cw-intro-video\s*\{[^}]*object-fit:\s*cover[^}]*filter:\s*blur\(12px\)/);
+    assert.match(css, /\.cw-intro-video\s*\{[^}]*object-fit:\s*cover[^}]*filter:\s*blur\(6px\)/);
+    assert.match(css, /\.cw-home-result-link b[\s\S]*border-radius:\s*50%/);
     assert.match(css, /\.cw-intro::after\s*\{[^}]*position:\s*fixed/);
     assert.doesNotMatch(css, /\.cw-position-scale\.is-measuring \.cw-scale-line::after/);
     assert.match(css, /@keyframes cw-code-flicker/);

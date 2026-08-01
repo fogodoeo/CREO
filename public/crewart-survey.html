@@ -14,10 +14,10 @@
     <link
         href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
         rel="stylesheet">
-    <link rel="stylesheet" href="crewart-survey-v4.css?v=20260801-home-layout-v12">
+    <link rel="stylesheet" href="crewart-survey-v4.css?v=20260801-home-polish-v13">
     <script src="assets/vendor/kakao-2.8.1.min.js"></script>
     <script src="crewart-survey-core.js?v=20260801-house-map-v5"></script>
-    <script src="crewart-survey.js?v=20260801-home-layout-v12" defer></script>
+    <script src="crewart-survey.js?v=20260801-home-polish-v13" defer></script>
 </head>
 
 <body>
@@ -53,15 +53,17 @@
 
                 <section class="cw-home-panel" aria-label="테스트 메뉴">
                     <section class="cw-home-result" id="home-result-card" hidden aria-labelledby="home-result-heading">
-                        <p>최근 결과</p>
-                        <div class="cw-home-result-main">
-                            <strong id="home-result-code">—</strong>
-                            <h2 id="home-result-heading">성향 결과</h2>
-                        </div>
-                        <div class="cw-home-result-actions">
-                            <button class="cw-primary-button" id="home-result-open" type="button">결과 보기</button>
-                            <button class="cw-secondary-button" id="home-retest" type="button">새로 하기</button>
-                        </div>
+                        <header class="cw-home-result-head">
+                            <p>최근 결과</p>
+                            <button id="home-retest" type="button">새로 하기</button>
+                        </header>
+                        <button class="cw-home-result-open" id="home-result-open" type="button">
+                            <span class="cw-home-result-main">
+                                <strong id="home-result-code">—</strong>
+                                <span id="home-result-heading">성향 결과</span>
+                            </span>
+                            <span class="cw-home-result-link">결과 보기 <b aria-hidden="true">→</b></span>
+                        </button>
                     </section>
 
                     <section class="cw-home-start" id="home-start-card">
