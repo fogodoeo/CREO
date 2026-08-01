@@ -584,19 +584,7 @@
             </section>`;
     }
 
-    function detailedAnswerRows(axis) {
-        if (questions.length !== Core.QUESTIONS.length || answers.length !== Core.QUESTIONS.length) return '';
-        return questions.map((question, index) => ({
-            question,
-            answer: question.options[answers[index]],
-            letter: question.scores[answers[index]],
-            timing: responseTimings[index]
-        })).filter(item => item.question.axis === axis).map(item => `
-            <li><span><b>${item.letter}</b> · ${escapeHtml(item.answer)}</span><time>${item.timing?.valid ? formatSeconds(item.timing.elapsedMs) : '측정 제외'}</time></li>`).join('');
-    }
-
     function renderMemberDetail() {
-        const hasAnswerHistory = questions.length === Core.QUESTIONS.length && answers.length === Core.QUESTIONS.length;
         const axisCards = result.axes.map(axisResult => {
             const meta = Core.AXIS_META[axisResult.axis];
             const dominant = meta.letters[axisResult.dominant];
@@ -607,14 +595,13 @@
             const position = Math.max(0, Math.min(100, (secondCount / 5) * 100));
             return `
                 <article class="cw-axis-detail">
-                    <header><div><span>${escapeHtml(meta.title)}</span><strong>${axisResult.dominant} · ${escapeHtml(dominant.short)}</strong></div><b>${first} ${firstCount} · ${second} ${secondCount}</b></header>
+                    <header><strong>${axisResult.dominant} · ${escapeHtml(dominant.short)}</strong></header>
                     <div class="cw-position-scale cw-axis-scale" aria-label="${first} ${firstCount}, ${second} ${secondCount}">
                         <span class="cw-scale-marker" style="--position:${position}%" aria-hidden="true"></span>
                         <div class="cw-scale-line"><i aria-hidden="true"></i></div>
                         <div class="cw-scale-labels"><span>${first}</span><span>중립</span><span>${second}</span></div>
                     </div>
                     <p>${escapeHtml(dominant.description)}</p>
-                    ${hasAnswerHistory ? `<details class="cw-answer-detail"><summary>이 결과가 나온 선택 보기</summary><ul>${detailedAnswerRows(axisResult.axis)}</ul></details>` : ''}
                 </article>`;
         }).join('');
         return `
@@ -655,7 +642,9 @@
     }
 
     function renderResult() {
-        const detail = BAND_INTEGRATION_ENABLED && hasDetailedAccess() ? `${renderMemberDetail()}${renderHouseCard()}` : renderLockedDetail();
+        const detail = BAND_INTEGRATION_ENABLED && hasDetailedAccess()
+            ? `${renderMemberDetail()}${renderSpeedCard()}${renderHouseCard()}`
+            : `${renderLockedDetail()}${renderSpeedCard()}`;
         const bandShare = BAND_INTEGRATION_ENABLED
             ? `<button class="cw-share-icon is-band" type="button" data-action="band-result" aria-label="크레와트 BAND 열기"><img src="assets/band-app-icon-official.png?v=20260801-logo-v2" width="28" height="28" alt=""></button>`
             : '';
@@ -670,7 +659,6 @@
                     </div>
                 </section>
                 ${detail}
-                ${renderSpeedCard()}
                 <section class="cw-result-section cw-share-section">
                     <div><p>SHARE</p><h2>결과 공유</h2></div>
                     <div class="cw-share-tools" aria-label="결과 공유">

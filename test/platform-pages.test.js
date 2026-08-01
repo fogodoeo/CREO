@@ -197,4 +197,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /Core\.chooseTendencyHouse\(result\)/);
     assert.doesNotMatch(script, /기숙사 참여하기|현재 커뮤니티 인원을 기준/);
     assert.match(css, /\.cw-scale-line[\s\S]*left:\s*50%/);
+    assert.match(script, /renderMemberDetail\(\)\}\$\{renderSpeedCard\(\)\}\$\{renderHouseCard\(\)/);
+    assert.doesNotMatch(script, /class="cw-answer-detail"/);
+    assert.doesNotMatch(script, /<span>\$\{escapeHtml\(meta\.title\)\}<\/span>/);
+    assert.doesNotMatch(css, /@media \(max-width: 560px\)[\s\S]*\.cw-axis-detail-list\s*\{\s*grid-template-columns:\s*1fr/);
 });
