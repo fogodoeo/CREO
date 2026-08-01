@@ -154,7 +154,7 @@
         assignedHouseKey = Core.chooseTendencyHouse(result);
         timingStats = snapshot.timingStats;
         showingStoredResult = true;
-        renderResult();
+        renderResult({ animate: true });
         setScreen('result-screen');
     }
 
@@ -537,7 +537,7 @@
     function completeResultReveal() {
         showingStoredResult = false;
         saveLastResult();
-        renderResult();
+        renderResult({ animate: true });
         setScreen('result-screen');
         void submitSurvey();
     }
@@ -589,10 +589,10 @@
             <section class="cw-result-section cw-speed-card">
                 <header class="cw-speed-head">
                     <span>선택 속도</span>
-                    <strong>문항당 ${escapeHtml(median)}</strong>
+                    <strong data-measure-speed data-final-text="문항당 ${escapeHtml(median)}">문항당 ${escapeHtml(median)}</strong>
                 </header>
                 <div class="cw-position-scale cw-speed-scale" aria-label="빠름에서 신중함 사이 ${Math.round(position)}% 위치">
-                    <span class="cw-scale-marker" style="--position:${position}%" aria-hidden="true"></span>
+                    <span class="cw-scale-marker" data-final-position="${position}" style="--position:${position}%" aria-hidden="true"></span>
                     <div class="cw-scale-line"><i aria-hidden="true"></i></div>
                     <div class="cw-scale-labels"><span>빠름</span><span>평균</span><span>신중</span></div>
                 </div>
@@ -609,11 +609,14 @@
             const firstCount = Number(result.letters[first]) || 0;
             const secondCount = Number(result.letters[second]) || 0;
             const position = Math.max(0, Math.min(100, (secondCount / 5) * 100));
+            const firstLabel = `${first} · ${meta.letters[first].short}`;
+            const secondLabel = `${second} · ${meta.letters[second].short}`;
+            const finalLabel = `${axisResult.dominant} · ${dominant.short}`;
             return `
                 <article class="cw-axis-detail">
-                    <header><strong>${axisResult.dominant} · ${escapeHtml(dominant.short)}</strong></header>
+                    <header><strong data-measure-axis data-measure-first="${escapeHtml(firstLabel)}" data-measure-second="${escapeHtml(secondLabel)}" data-final-label="${escapeHtml(finalLabel)}">${escapeHtml(finalLabel)}</strong></header>
                     <div class="cw-position-scale cw-axis-scale" aria-label="${first} ${firstCount}, ${second} ${secondCount}">
-                        <span class="cw-scale-marker" style="--position:${position}%" aria-hidden="true"></span>
+                        <span class="cw-scale-marker" data-final-position="${position}" style="--position:${position}%" aria-hidden="true"></span>
                         <div class="cw-scale-line"><i aria-hidden="true"></i></div>
                         <div class="cw-scale-labels"><span>${first}</span><span>중립</span><span>${second}</span></div>
                     </div>
@@ -632,7 +635,7 @@
         return `
             <section class="cw-result-section cw-house-card">
                 <span>기숙사</span>
-                <div><h2>${house.name}</h2><b>${assignedHouseKey[0]} · ${assignedHouseKey[1]} 조합</b></div>
+                <div><h2 data-measure-house data-final-text="${escapeHtml(house.name)}">${escapeHtml(house.name)}</h2><b>${assignedHouseKey[0]} · ${assignedHouseKey[1]} 조합</b></div>
             </section>`;
     }
 
@@ -652,7 +655,93 @@
             </section>`;
     }
 
-    function renderResult() {
+    function playResultMeasurementAnimation(container) {
+        if (!container || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        const code = container.querySelector('[data-final-code]');
+        const name = container.querySelector('[data-final-name]');
+        const relation = container.querySelector('.cw-type-relation');
+        const axisLabels = [...container.querySelectorAll('[data-measure-axis]')];
+        const speedValues = [...container.querySelectorAll('[data-measure-speed]')];
+        const houseNames = [...container.querySelectorAll('[data-measure-house]')];
+        const finalCode = code?.dataset.finalCode || result.code;
+        const letterPairs = [['E', 'I'], ['S', 'N'], ['T', 'F'], ['J', 'P']];
+
+        container.classList.add('is-measuring');
+        code?.classList.add('is-cycling');
+        name?.classList.add('is-measure-pending');
+        relation?.classList.add('is-measure-pending');
+        speedValues.forEach(node => {
+            node.textContent = '측정 중…';
+            node.classList.add('is-measure-pending');
+        });
+        houseNames.forEach(node => {
+            node.textContent = '배정 중…';
+            node.classList.add('is-measure-pending');
+        });
+
+        let tick = 0;
+        const cycleCode = () => {
+            if (!container.isConnected || !code) return;
+            if (tick < 13) {
+                code.textContent = letterPairs.map((pair, index) => pair[(tick + index) % 2]).join('');
+                axisLabels.forEach((node, index) => {
+                    node.textContent = (tick + index) % 2 ? node.dataset.measureFirst : node.dataset.measureSecond;
+                });
+                tick += 1;
+                setTimeout(cycleCode, 58 + tick * 3);
+                return;
+            }
+            code.textContent = finalCode;
+            code.classList.remove('is-cycling');
+            code.classList.add('is-settled');
+            axisLabels.forEach(node => { node.textContent = node.dataset.finalLabel; });
+            [name, relation].filter(Boolean).forEach(node => {
+                node.classList.remove('is-measure-pending');
+                node.classList.add('is-measure-revealed');
+            });
+        };
+        cycleCode();
+
+        const markers = [...container.querySelectorAll('.cw-scale-marker[data-final-position]')];
+        markers.forEach((marker, index) => {
+            const finalPosition = Math.max(0, Math.min(100, Number(marker.dataset.finalPosition) || 0));
+            const scale = marker.closest('.cw-position-scale');
+            scale?.classList.add('is-measuring');
+            if (typeof marker.animate !== 'function') return;
+            const preFinal = Math.max(4, Math.min(96, finalPosition + (finalPosition < 50 ? 13 : -13)));
+            const animation = marker.animate([
+                { left: '50%', offset: 0 },
+                { left: index % 2 ? '84%' : '16%', offset: .24 },
+                { left: index % 2 ? '22%' : '78%', offset: .5 },
+                { left: `${preFinal}%`, offset: .76 },
+                { left: `${finalPosition}%`, offset: 1 }
+            ], {
+                duration: 1050 + index * 105,
+                delay: 90 + index * 95,
+                easing: 'cubic-bezier(.22,.78,.24,1)',
+                fill: 'both'
+            });
+            animation.finished.then(() => {
+                animation.cancel();
+                scale?.classList.remove('is-measuring');
+                marker.classList.add('is-settled');
+            }).catch(() => {});
+        });
+
+        setTimeout(() => {
+            if (!container.isConnected) return;
+            [...speedValues, ...houseNames].forEach(node => {
+                node.textContent = node.dataset.finalText;
+                node.classList.remove('is-measure-pending');
+                node.classList.add('is-measure-revealed');
+            });
+        }, 1550);
+        setTimeout(() => {
+            if (container.isConnected) container.classList.remove('is-measuring');
+        }, 2200);
+    }
+
+    function renderResult(options = {}) {
         const detail = BAND_INTEGRATION_ENABLED && hasDetailedAccess()
             ? `${renderMemberDetail()}${renderSpeedCard()}${renderHouseCard()}`
             : renderLockedDetail();
@@ -664,8 +753,8 @@
                 <section class="cw-result-poster">
                     <div class="cw-result-hero-copy">
                         <p class="cw-poster-kicker">나의 결과</p>
-                        <strong class="cw-result-code">${escapeHtml(result.code)}</strong>
-                        <h1>${escapeHtml(result.typeName)}</h1>
+                        <strong class="cw-result-code" data-final-code="${escapeHtml(result.code)}">${escapeHtml(result.code)}</strong>
+                        <h1 data-final-name="${escapeHtml(result.typeName)}">${escapeHtml(result.typeName)}</h1>
                         ${renderTypeRelation()}
                     </div>
                 </section>
@@ -694,6 +783,7 @@
         element('result-content').querySelector('[data-action="band-result"]')?.addEventListener('click', handleResultBand);
         element('result-content').querySelector('[data-action="retest"]')?.addEventListener('click', startSurvey);
         element('result-content').querySelector('[data-action="home"]')?.addEventListener('click', returnToIntro);
+        if (options.animate) playResultMeasurementAnimation(element('result-content').querySelector('.cw-result-wrap'));
     }
 
     function handleResultBand() {

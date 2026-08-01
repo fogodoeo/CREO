@@ -204,6 +204,12 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /Kakao\.Share\.uploadImage/);
     assert.doesNotMatch(script, /크레\s*MBTI|나의 크레 MBTI|평소 MBTI/i);
     assert.match(script, /class="cw-scale-marker"/);
+    assert.match(script, /data-final-position="\$\{position\}"/);
+    assert.match(script, /function playResultMeasurementAnimation\(container\)/);
+    assert.match(script, /letterPairs = \[\['E', 'I'\], \['S', 'N'\], \['T', 'F'\], \['J', 'P'\]\]/);
+    assert.match(script, /marker\.animate\(\[/);
+    assert.match(script, /prefers-reduced-motion: reduce/);
+    assert.match(script, /renderResult\(\{ animate: true \}\)/);
     assert.match(script, /빠름[\s\S]*평균[\s\S]*신중/);
     assert.match(script, /Core\.chooseTendencyHouse\(result\)/);
     assert.doesNotMatch(script, /기숙사 참여하기|현재 커뮤니티 인원을 기준/);
@@ -221,6 +227,9 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(css, /\.cw-intro-visual\s*\{[^}]*position:\s*fixed[^}]*inset:\s*-24px/);
     assert.match(css, /\.cw-intro-video\s*\{[^}]*object-fit:\s*cover[^}]*filter:\s*blur\(12px\)/);
     assert.match(css, /\.cw-intro::after\s*\{[^}]*position:\s*fixed/);
+    assert.match(css, /\.cw-position-scale\.is-measuring \.cw-scale-line::after/);
+    assert.match(css, /@keyframes cw-code-flicker/);
+    assert.match(css, /@keyframes cw-scale-scan/);
     const lockedDetailBody = script.match(/function renderLockedDetail\(\) \{([\s\S]*?)\n    \}/)?.[1] || '';
     assert.match(lockedDetailBody, /renderMemberDetail\(\)\}\$\{renderSpeedCard\(\)\}\$\{renderHouseCard\(\)/);
     assert.match(css, /\.cw-detail-preview\s*\{[^}]*filter:\s*blur\(3px\)/);
