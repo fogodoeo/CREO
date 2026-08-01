@@ -203,6 +203,7 @@ function createPlatformApi({ repository, logger = console } = {}) {
     if (!repository) throw new Error('repository is required');
     const mutationLocks = new Map();
     const channelRevisions = new Map();
+    const knownChannelIds = new Set(DEFAULT_CHANNELS.map((channel) => channel.id));
     let revisionSequence = 0;
 
     function channelRevision(channelId) {
@@ -211,8 +212,15 @@ function createPlatformApi({ repository, logger = console } = {}) {
 
     function touchChannel(channelId) {
         revisionSequence += 1;
+        knownChannelIds.add(channelId);
         channelRevisions.set(channelId, revisionSequence);
         return revisionSequence;
+    }
+
+    async function loadCatalog() {
+        const catalog = await repository.getCatalog();
+        catalog.channels.forEach((channel) => knownChannelIds.add(channel.id));
+        return catalog;
     }
 
     async function withMutationLock(key, callback) {
@@ -274,7 +282,7 @@ function createPlatformApi({ repository, logger = console } = {}) {
             if (segments.length === 1 && segments[0] === 'active-channel' && method === 'PUT') {
                 if (!await requireAdmin(req, res)) return true;
                 const body = await readJson(req);
-                const catalog = await repository.getCatalog();
+                const catalog = await loadCatalog();
                 const channelId = normalizeChannelId(body.channelId);
                 if (!catalog.channels.some((channel) => channel.id === channelId && channel.status !== 'archived')) {
                     replyJson(res, 422, { error: '운영 가능한 채널을 선택해 주세요.' });
@@ -285,7 +293,7 @@ function createPlatformApi({ repository, logger = console } = {}) {
             }
 
             if (segments.length === 1 && segments[0] === 'channels' && method === 'GET') {
-                const catalog = await repository.getCatalog();
+                const catalog = await loadCatalog();
                 const admin = await isAdmin(req);
                 const channels = catalog.channels
                     .filter((channel) => admin || channel.status === 'active')
@@ -297,7 +305,7 @@ function createPlatformApi({ repository, logger = console } = {}) {
             if (segments.length === 1 && segments[0] === 'channels' && method === 'POST') {
                 if (!await requireAdmin(req, res)) return true;
                 const body = await readJson(req);
-                const catalog = await repository.getCatalog();
+                const catalog = await loadCatalog();
                 const checked = validateChannel(body.channel, catalog.channels);
                 if (!checked.valid) {
                     replyJson(res, 422, { error: checked.errors.join(' '), errors: checked.errors });
@@ -319,7 +327,7 @@ function createPlatformApi({ repository, logger = console } = {}) {
 
             const channelId = normalizeChannelId(segments[1]);
             if (segments.length === 3 && segments[2] === 'broadcast-pulse' && method === 'GET') {
-                if (!channelId) {
+                if (!channelId || !knownChannelIds.has(channelId)) {
                     replyJson(res, 404, { error: '채널을 찾을 수 없습니다.' });
                     return true;
                 }
@@ -328,7 +336,7 @@ function createPlatformApi({ repository, logger = console } = {}) {
                 replyJson(res, 200, { revision: channelRevision(channelId) });
                 return true;
             }
-            const catalog = await repository.getCatalog();
+            const catalog = await loadCatalog();
             const channelIndex = catalog.channels.findIndex((channel) => channel.id === channelId);
             const channel = catalog.channels[channelIndex];
             if (!channel) {
@@ -380,6 +388,7 @@ function createPlatformApi({ repository, logger = console } = {}) {
                     url.searchParams.has('expectedVersion') ? url.searchParams.get('expectedVersion') : catalog.version
                 );
                 channelRevisions.delete(channelId);
+                knownChannelIds.delete(channelId);
                 replyJson(res, 200, { deleted: true, catalogVersion: saved.version });
                 return true;
             }

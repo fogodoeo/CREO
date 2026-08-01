@@ -136,10 +136,15 @@ test('broadcast state stores independent 1P, 2P, and 3P overlay controls', async
 test('350 ms broadcast pulse is memory-only and changes after a public mutation', async () => {
     const repository = new MemoryRepository();
     const api = createPlatformApi({ repository, logger: { error() {} } });
+    await call(api, 'GET', '/api/platform/channels', null, '');
     const beforeReads = repository.catalogReads;
     const initial = await call(api, 'GET', '/api/platform/channels/alpha/broadcast-pulse', null, '');
     assert.equal(initial.status, 200);
     assert.equal(initial.json().revision, 0);
+    assert.equal(repository.catalogReads, beforeReads);
+
+    const unknown = await call(api, 'GET', '/api/platform/channels/not-a-channel/broadcast-pulse', null, '');
+    assert.equal(unknown.status, 404);
     assert.equal(repository.catalogReads, beforeReads);
 
     await call(api, 'PUT', '/api/platform/channels/alpha/broadcast-state', {
