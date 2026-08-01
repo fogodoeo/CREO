@@ -661,11 +661,11 @@
             const position = Math.max(0, Math.min(100, (secondCount / 5) * 100));
             const firstSelected = axisResult.dominant === first;
             return `
-                <article class="cw-axis-detail">
+                <article class="cw-axis-detail" data-axis-result data-final-pole="${firstSelected ? 'left' : 'right'}">
                     <header><h3>${escapeHtml(copy.title)}</h3></header>
                     <div class="cw-axis-poles">
-                        <div class="cw-axis-pole is-left${firstSelected ? ' is-selected' : ''}"><strong>${escapeHtml(first)}</strong><span>${escapeHtml(copy.left)}</span></div>
-                        <div class="cw-axis-pole is-right${firstSelected ? '' : ' is-selected'}"><span>${escapeHtml(copy.right)}</span><strong>${escapeHtml(second)}</strong></div>
+                        <div class="cw-axis-pole is-left${firstSelected ? ' is-selected' : ''}" data-pole="left"><strong>${escapeHtml(first)}</strong><span>${escapeHtml(copy.left)}</span></div>
+                        <div class="cw-axis-pole is-right${firstSelected ? '' : ' is-selected'}" data-pole="right"><strong>${escapeHtml(second)}</strong><span>${escapeHtml(copy.right)}</span></div>
                     </div>
                     <div class="cw-position-scale cw-axis-scale" aria-label="${escapeHtml(copy.title)}: ${escapeHtml(first)} ${escapeHtml(copy.left)}, ${escapeHtml(second)} ${escapeHtml(copy.right)} 중 ${escapeHtml(axisResult.dominant)} 쪽">
                         <span class="cw-scale-marker" data-final-position="${position}" style="--position:${position}%" aria-hidden="true"></span>
@@ -714,6 +714,7 @@
         const codeSlots = [...container.querySelectorAll('[data-code-slot]')];
         const name = container.querySelector('[data-final-name]');
         const relation = container.querySelector('.cw-type-relation');
+        const axisCards = [...container.querySelectorAll('[data-axis-result]')];
         const speedValues = [...container.querySelectorAll('[data-measure-speed]')];
         const houseNames = [...container.querySelectorAll('[data-measure-house]')];
         const letterPairs = [['E', 'I'], ['S', 'N'], ['T', 'F'], ['J', 'P']];
@@ -724,6 +725,10 @@
         container.classList.add('is-measuring');
         name?.classList.add('is-measure-pending');
         relation?.classList.add('is-measure-pending');
+        axisCards.forEach(card => {
+            card.classList.add('is-cycling');
+            card.querySelectorAll('[data-pole]').forEach(pole => pole.classList.remove('is-selected'));
+        });
         speedValues.forEach(node => {
             node.textContent = '측정 중…';
             node.classList.add('is-measure-pending');
@@ -734,15 +739,22 @@
             setTimeout(() => {
                 const startedAt = performance.now();
                 slot.classList.add('is-cycling');
+                const axisCard = axisCards[index];
+                const axisPoles = [...(axisCard?.querySelectorAll('[data-pole]') || [])];
                 const cycleSlot = () => {
                     if (!container.isConnected) return;
                     if (performance.now() - startedAt >= settleDurations[index]) {
                         slot.textContent = slot.dataset.finalLetter;
                         slot.classList.remove('is-cycling');
                         slot.classList.add('is-settled');
+                        axisPoles.forEach(pole => pole.classList.toggle('is-selected', pole.dataset.pole === axisCard?.dataset.finalPole));
+                        axisCard?.classList.remove('is-cycling');
+                        axisCard?.classList.add('is-settled');
                         return;
                     }
-                    slot.textContent = letterPairs[index][tick % 2];
+                    const candidate = tick % 2;
+                    slot.textContent = letterPairs[index][candidate];
+                    axisPoles.forEach((pole, poleIndex) => pole.classList.toggle('is-selected', poleIndex === candidate));
                     tick += 1;
                     setTimeout(cycleSlot, tickDelays[index]);
                 };
@@ -1015,9 +1027,9 @@
         }
         if (tab === 'result') {
             if (result) {
-                renderResult();
+                renderResult({ animate: true });
                 setScreen('result-screen');
-            } else restoreLastResult();
+            } else restoreLastResult({ animate: true });
             return;
         }
         if (tab === 'band') openMemberCheck();

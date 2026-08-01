@@ -185,7 +185,7 @@ test('CREWARTS home shows the saved result and only a masked authenticated phone
     assert.doesNotMatch(script, /확인된 회원으로 결과를 바로 볼 수 있어요/);
     assert.match(script, /document\.querySelectorAll\('\[data-band-join\]'\)/);
     assert.match(script, /function updateBandState\(\)[\s\S]*bandAuthPhoneMask/);
-    assert.match(script, /function navigateToTab\(tab\)[\s\S]*restoreLastResult\(\)[\s\S]*openMemberCheck\(\)/);
+    assert.match(script, /function navigateToTab\(tab\)[\s\S]*restoreLastResult\(\{ animate: true \}\)[\s\S]*openMemberCheck\(\)/);
     const savedResultBody = script.match(/function saveLastResult\(\) \{([\s\S]*?)\n    \}/)?.[1] || '';
     assert.doesNotMatch(savedResultBody, /phone|bandAuth/i);
 });
@@ -247,9 +247,14 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /TF: \{ title: '선택 기준', left: '조건·근거', right: '취향·관계' \}/);
     assert.match(script, /JP: \{ title: '사육 방식', left: '계획·준비', right: '유연·조정' \}/);
     assert.match(script, /class="cw-axis-poles"/);
+    assert.match(script, /data-axis-result data-final-pole=/);
+    assert.match(script, /axisPoles\.forEach[\s\S]*classList\.toggle\('is-selected'/);
+    assert.match(script, /if \(tab === 'result'\)[\s\S]*renderResult\(\{ animate: true \}\)[\s\S]*restoreLastResult\(\{ animate: true \}\)/);
     assert.doesNotMatch(script, /data-measure-axis|data-final-label/);
     assert.match(css, /\.cw-result-report\s*\{[^}]*border-radius:\s*6px/);
-    assert.match(css, /\.cw-axis-detail-list\s*\{\s*display:\s*grid/);
+    assert.match(css, /\.cw-axis-detail-list\s*\{[^}]*display:\s*grid[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
+    assert.match(css, /\.cw-axis-detail\s*\{[^}]*border:\s*1px solid[^}]*border-radius:\s*13px/);
+    assert.match(css, /\.cw-axis-detail header h3\s*\{[^}]*text-align:\s*center/);
     assert.match(css, /\.cw-axis-pole\.is-selected[\s\S]*font-weight:\s*800/);
     assert.match(css, /--cw-type-body:\s*14px/);
     assert.match(css, /--cw-type-section:\s*18px/);
