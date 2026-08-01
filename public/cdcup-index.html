@@ -3395,9 +3395,10 @@
         };
 
 
-        // ── 목록 (10초 자동갱신) ──
+        // ── 목록 (30초 자동갱신, 숨김 탭/중복 요청 정지) ──
         let listInterval = null;
         let isEditing = false; // 수정 중일 때 자동갱신 중단 플래그
+        let listRefreshInFlight = false;
         async function loadList() {
             // 수정 중이거나 체크된 항목이 있으면 자동갱신 무시
             if (isEditing || document.querySelectorAll('.row-cb:checked').length > 0) return;
@@ -3415,19 +3416,22 @@
             // 자동갱신 시작
             if (!listInterval) {
                 listInterval = setInterval(async () => {
+                    if (document.hidden || listRefreshInFlight) return;
                     if (isEditing) return; // 수정 중이면 갱신 안 함!
                     if (activeBsRow) return; // 바텀시트 열린 중이면 갱신 안 함!
                     if (document.querySelectorAll('.row-cb:checked').length > 0) return; // 체크된 항목이 있으면 갱신 안 함!
                     if (window._isDragReordering) return; // 드래그 순서변경 중이면 갱신 안 함!
                     if (document.getElementById('tab-list').classList.contains('active')) {
+                        listRefreshInFlight = true;
                         try {
                             const items = await getItems();
                             renderList(items);
                         } catch (e) { console.error('auto-refresh getItems failed:', e); }
                         // 사진 토글 상태도 동기화
                         try { const arr = await getHiddenPhotos(); _bsHiddenPhotos = arr || []; updatePhotoToggleBtn(); } catch (e) { }
+                        finally { listRefreshInFlight = false; }
                     }
-                }, 10000);
+                }, 30000);
             }
         }
 

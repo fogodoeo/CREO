@@ -154,16 +154,41 @@ test('production ignores an accidental zero attempt limit', async () => {
     });
 
     let lastStatus = 0;
-    for (let index = 0; index < 9; index += 1) {
+    for (let index = 0; index < 31; index += 1) {
+        const phone = `010${String(index).padStart(8, '0')}`;
         const response = new CapturedResponse();
         await membership.handle(
-            request('POST', JSON.stringify({ phone: '01099998888' }), { host: 'creok.example.com' }),
+            request('POST', JSON.stringify({ phone }), { host: 'creok.example.com' }),
             response,
             new URL('https://creok.example.com/api/band-membership/verify')
         );
         lastStatus = response.status;
     }
     assert.equal(lastStatus, 429);
+});
+
+test('repeated checks for one phone reuse the short membership cache', async () => {
+    let fetchCount = 0;
+    const membership = createBandMembership({
+        env: ENV,
+        now: () => NOW,
+        fetchImpl: async () => {
+            fetchCount += 1;
+            return jsonResponse([]);
+        },
+        logger: { error() {} }
+    });
+
+    for (let index = 0; index < 5; index += 1) {
+        const response = new CapturedResponse();
+        await membership.handle(
+            request('POST', JSON.stringify({ phone: '01099998888' }), { host: 'creok.example.com' }),
+            response,
+            new URL('https://creok.example.com/api/band-membership/verify')
+        );
+        assert.equal(response.status, 200);
+    }
+    assert.equal(fetchCount, 1);
 });
 
 test('foreign browser origins and missing server credentials are rejected', async () => {

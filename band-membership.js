@@ -69,9 +69,11 @@ function loadConfig(env = process.env) {
         rateLimitWindowMs: positiveInteger(env.BAND_MEMBER_RATE_LIMIT_WINDOW_MS, 600000, 10000, 3600000),
         rateLimitAttempts: rateLimitAttempts(
             env.BAND_MEMBER_RATE_LIMIT_ATTEMPTS,
-            8,
+            30,
             !productionRuntime
-        )
+        ),
+        positiveCacheMs: positiveInteger(env.BAND_MEMBER_POSITIVE_CACHE_MS, 60000, 5000, 600000),
+        negativeCacheMs: positiveInteger(env.BAND_MEMBER_NEGATIVE_CACHE_MS, 15000, 3000, 120000)
     };
     config.configured = Boolean(
         /^https:\/\/[^/]+/i.test(config.url)
@@ -202,8 +204,24 @@ function createBandMembership(options = {}) {
     const now = options.now || Date.now;
     const logger = options.logger || console;
     const allowAttempt = createRateLimiter(config, now);
+    const memberCache = new Map();
+    const memberLookups = new Map();
+
+    function cachedMember(phone) {
+        const cached = memberCache.get(phone);
+        if (!cached) return undefined;
+        if (cached.expiresAt <= now()) {
+            memberCache.delete(phone);
+            return undefined;
+        }
+        return cached.member;
+    }
 
     async function lookupMember(phone) {
+        const cached = cachedMember(phone);
+        if (cached !== undefined) return cached;
+        if (memberLookups.has(phone)) return memberLookups.get(phone);
+        const lookup = (async () => {
         const query = new URL(`${config.url}/rest/v1/${config.table}`);
         query.searchParams.set('select', config.phoneColumn);
         query.searchParams.set(config.phoneColumn, `eq.${phone}`);
@@ -222,10 +240,18 @@ function createBandMembership(options = {}) {
             });
             if (!response.ok) throw new Error(`Supabase ${response.status}`);
             const rows = await response.json();
-            return Array.isArray(rows) && rows.length > 0;
+            const member = Array.isArray(rows) && rows.length > 0;
+            memberCache.set(phone, {
+                member,
+                expiresAt: now() + (member ? config.positiveCacheMs : config.negativeCacheMs)
+            });
+            return member;
         } finally {
             clearTimeout(timer);
         }
+        })().finally(() => memberLookups.delete(phone));
+        memberLookups.set(phone, lookup);
+        return lookup;
     }
 
     function sessionResponse(payload, token = '') {
@@ -273,10 +299,6 @@ function createBandMembership(options = {}) {
         }
 
         if (url.pathname === '/api/band-membership/verify' && req.method === 'POST') {
-            if (!allowAttempt(clientAddress(req))) {
-                sendJson(res, 429, { error: '확인 횟수가 많아요. 잠시 후 다시 시도해주세요.' });
-                return true;
-            }
             let input;
             try { input = await readSmallJson(req); }
             catch {
@@ -289,7 +311,8 @@ function createBandMembership(options = {}) {
                 return true;
             }
             const phoneAttemptKey = `phone:${publicSubject(phone, config.sessionSecret)}`;
-            if (!allowAttempt(phoneAttemptKey)) {
+            const cacheHit = cachedMember(phone) !== undefined;
+            if (!cacheHit && (!allowAttempt(clientAddress(req)) || !allowAttempt(phoneAttemptKey))) {
                 sendJson(res, 429, { error: '확인 횟수가 많아요. 잠시 후 다시 시도해주세요.' });
                 return true;
             }
