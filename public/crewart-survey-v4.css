@@ -340,10 +340,15 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-member-form input:focus { border-color: var(--cw-green); background: #fff; }
 .cw-member-form small { color: var(--cw-muted); font-size: var(--cw-type-micro); }
 .cw-dialog-band-button { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 6px; border: 0; background: var(--cw-green); color: #fff; }
+.cw-dialog-band-button.is-recheck { border: 1px solid var(--cw-line); background: #fff; color: var(--cw-ink); }
 .cw-member-status { margin-top: 12px; padding: 11px; border-radius: 12px; background: #f1f2ef; color: var(--cw-muted); font-size: var(--cw-type-small); font-weight: var(--cw-weight-body); }
 .cw-member-status.is-error { background: #fff0f0; color: #923232; }
 .cw-member-status.is-success { background: var(--cw-green-soft); color: var(--cw-green-dark); }
+.cw-member-status.is-action { background: #f1f7f3; color: var(--cw-ink); font-weight: var(--cw-weight-medium); }
 .cw-dialog-continue { display: flex; align-items: center; justify-content: center; margin-top: 9px; background: var(--cw-ink); color: #fff; }
+.cw-member-join { gap: 9px; padding: 0 14px; background: var(--cw-green); }
+.cw-member-join img { border-radius: 6px; }
+.cw-member-join span { margin-left: auto; }
 
 .cw-toast { position: fixed; z-index: 80; left: 50%; bottom: max(24px, calc(env(safe-area-inset-bottom) + 18px)); width: max-content; max-width: calc(100% - 32px); padding: 11px 14px; border-radius: 12px; background: var(--cw-ink); color: #fff; box-shadow: 0 11px 28px rgba(0,0,0,.17); font-size: var(--cw-type-small); font-weight: var(--cw-weight-medium); opacity: 0; pointer-events: none; transform: translate(-50%, 12px); transition: .18s ease; }
 .cw-toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
