@@ -160,6 +160,10 @@ test('CREWARTS home shows the saved result and only a masked authenticated phone
     assert.match(script, /if \(bandAuthToken && !bandAuthPhoneMask\)[\s\S]*removeItem\(MEMBERSHIP_STORAGE_KEY\)/);
     assert.match(script, /function saveLastResult/);
     assert.match(script, /function restoreLastResult/);
+    assert.match(script, /button\.disabled = !bandAuthReady \|\| authenticated/);
+    const bandEntryBody = script.match(/function handleBandEntry\(\) \{([\s\S]*?)\n    \}/)?.[1] || '';
+    assert.match(bandEntryBody, /if \(hasDetailedAccess\(\)\) return/);
+    assert.doesNotMatch(bandEntryBody, /\bstartSurvey\s*\(/);
     const savedResultBody = script.match(/function saveLastResult\(\) \{([\s\S]*?)\n    \}/)?.[1] || '';
     assert.doesNotMatch(savedResultBody, /phone|bandAuth/i);
 });
@@ -207,4 +211,9 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(css, /\.cw-question-card > h1[\s\S]*font-weight:\s*var\(--cw-weight-bold\)/);
     assert.match(css, /\.cw-choice-button span[\s\S]*font-size:\s*var\(--cw-type-control\)/);
     assert.match(css, /\.cw-poster-kicker[\s\S]*color:\s*var\(--cw-green\)/);
+    const lockedDetailBody = script.match(/function renderLockedDetail\(\) \{([\s\S]*?)\n    \}/)?.[1] || '';
+    assert.match(lockedDetailBody, /renderMemberDetail\(\)\}\$\{renderSpeedCard\(\)\}\$\{renderHouseCard\(\)/);
+    assert.match(css, /\.cw-detail-preview\s*\{[^}]*filter:\s*blur\(3px\)/);
+    assert.match(css, /\.cw-speed-head span\s*\{[^}]*color:\s*var\(--cw-ink\)[^}]*font-size:\s*var\(--cw-type-section\)[^}]*font-weight:\s*var\(--cw-weight-bold\)/);
+    assert.match(css, /\.cw-house-card > span\s*\{[^}]*color:\s*var\(--cw-ink\)[^}]*font-size:\s*var\(--cw-type-section\)[^}]*font-weight:\s*var\(--cw-weight-bold\)/);
 });

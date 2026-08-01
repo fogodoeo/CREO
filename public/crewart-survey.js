@@ -622,20 +622,15 @@
 
     function renderLockedDetail() {
         const configured = BAND_INTEGRATION_ENABLED && bandAuthConfigured;
-        const label = configured ? '전화번호로 BAND 회원 확인' : '회원 확인 준비 중';
-        const status = configured
-            ? '가입할 때 프로필에 적은 전화번호로 확인해요.'
-            : '회원 명단 연결을 준비하고 있어요.';
-        const description = '선택 근거, 고민한 문항과 기숙사 배정은<br>BAND 가입 확인 후 바로 열려요.';
+        const label = configured ? 'BAND 회원 확인' : '확인 준비 중';
+        const status = configured ? '확인 후 바로 열려요' : '회원 명단 연결을 준비하고 있어요';
         return `
             <section class="cw-detail-gate">
-                <div class="cw-detail-preview" aria-hidden="true" inert>${renderMemberDetail()}${renderHouseCard()}</div>
+                <div class="cw-detail-preview" aria-hidden="true" inert>${renderMemberDetail()}${renderSpeedCard()}${renderHouseCard()}</div>
                 <div class="cw-detail-shade" aria-hidden="true"></div>
                 <div class="cw-detail-unlock">
-                    <span class="cw-lock-icon" aria-hidden="true">⌁</span>
-                    <h2>세부 결과가 궁금한가요?</h2>
-                    <p>${description}</p>
-                    <button class="cw-band-cta" type="button" data-action="unlock-detail" ${configured ? '' : 'disabled'}><span>${escapeHtml(label)}</span><b aria-hidden="true">→</b></button>
+                    <h2>전체 결과 보기</h2>
+                    <button class="cw-band-cta" type="button" data-action="unlock-detail" ${configured ? '' : 'disabled'}><img src="assets/band-app-icon-official.png?v=20260801-logo-v2" width="24" height="24" alt=""><span>${escapeHtml(label)}</span><b aria-hidden="true">→</b></button>
                     <small class="cw-lock-status">${escapeHtml(status)}</small>
                 </div>
             </section>`;
@@ -644,7 +639,7 @@
     function renderResult() {
         const detail = BAND_INTEGRATION_ENABLED && hasDetailedAccess()
             ? `${renderMemberDetail()}${renderSpeedCard()}${renderHouseCard()}`
-            : `${renderLockedDetail()}${renderSpeedCard()}`;
+            : renderLockedDetail();
         const bandShare = BAND_INTEGRATION_ENABLED
             ? `<button class="cw-share-icon is-band" type="button" data-action="band-result" aria-label="크레와트 BAND 열기"><img src="assets/band-app-icon-official.png?v=20260801-logo-v2" width="28" height="28" alt=""></button>`
             : '';
@@ -794,11 +789,13 @@
         const button = element('band-float');
         const label = element('band-float-label');
         const note = element('band-entry-note');
-        button.disabled = !bandAuthReady;
+        const authenticated = hasDetailedAccess();
+        button.disabled = !bandAuthReady || authenticated;
+        button.classList.toggle('is-verified', authenticated);
         button.hidden = !BAND_INTEGRATION_ENABLED;
         if (note) note.hidden = !BAND_INTEGRATION_ENABLED;
-        label.textContent = hasDetailedAccess() ? 'BAND 회원 확인 완료' : '전화번호로 BAND 회원 확인';
-        if (note) note.textContent = hasDetailedAccess()
+        label.textContent = authenticated ? 'BAND 회원 확인 완료' : '전화번호로 BAND 회원 확인';
+        if (note) note.textContent = authenticated
             ? '확인된 회원으로 결과를 바로 볼 수 있어요'
             : bandAuthConfigured
                 ? '전화번호는 가입 여부 확인에만 사용해요'
@@ -846,10 +843,7 @@
     }
 
     function handleBandEntry() {
-        if (hasDetailedAccess()) {
-            startSurvey();
-            return;
-        }
+        if (hasDetailedAccess()) return;
         openMemberCheck({ startSurvey: true });
     }
 
