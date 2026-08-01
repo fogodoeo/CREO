@@ -16,6 +16,12 @@
     const MEMBERSHIP_RECHECK_TIMEOUT_MS = 15 * 60 * 1000;
     const CONTENT_CONFIG_KEY = 'crewart_mbti_content_v1';
     const BAND_INTEGRATION_ENABLED = true;
+    const AXIS_REPORT_COPY = Object.freeze({
+        EI: { title: '생각 정리', left: '함께 정리', right: '혼자 정리' },
+        SN: { title: '관찰 초점', left: '현재 정보', right: '성장 가능성' },
+        TF: { title: '선택 기준', left: '조건·근거', right: '취향·관계' },
+        JP: { title: '사육 방식', left: '계획·준비', right: '유연·조정' }
+    });
     const IS_LOCAL_QA = ['127.0.0.1', 'localhost'].includes(location.hostname);
     const IS_QA_MODE = IS_LOCAL_QA;
 
@@ -648,26 +654,22 @@
 
     function renderMemberDetail() {
         const axisCards = result.axes.map(axisResult => {
-            const meta = Core.AXIS_META[axisResult.axis];
-            const dominant = meta.letters[axisResult.dominant];
+            const copy = AXIS_REPORT_COPY[axisResult.axis];
             const first = axisResult.axis[0];
             const second = axisResult.axis[1];
-            const firstCount = Number(result.letters[first]) || 0;
             const secondCount = Number(result.letters[second]) || 0;
             const position = Math.max(0, Math.min(100, (secondCount / 5) * 100));
-            const firstLabel = `${first} · ${meta.letters[first].short}`;
-            const secondLabel = `${second} · ${meta.letters[second].short}`;
-            const finalLabel = `${axisResult.dominant} · ${dominant.short}`;
+            const firstSelected = axisResult.dominant === first;
             return `
                 <article class="cw-axis-detail">
-                    <header>
-                        <span>${escapeHtml(first)} / ${escapeHtml(second)}</span>
-                        <strong data-measure-axis data-measure-first="${escapeHtml(firstLabel)}" data-measure-second="${escapeHtml(secondLabel)}" data-final-label="${escapeHtml(finalLabel)}">${escapeHtml(finalLabel)}</strong>
-                    </header>
-                    <div class="cw-position-scale cw-axis-scale" aria-label="${first} ${firstCount}, ${second} ${secondCount}">
+                    <header><h3>${escapeHtml(copy.title)}</h3></header>
+                    <div class="cw-axis-poles">
+                        <div class="cw-axis-pole is-left${firstSelected ? ' is-selected' : ''}"><strong>${escapeHtml(first)}</strong><span>${escapeHtml(copy.left)}</span></div>
+                        <div class="cw-axis-pole is-right${firstSelected ? '' : ' is-selected'}"><span>${escapeHtml(copy.right)}</span><strong>${escapeHtml(second)}</strong></div>
+                    </div>
+                    <div class="cw-position-scale cw-axis-scale" aria-label="${escapeHtml(copy.title)}: ${escapeHtml(first)} ${escapeHtml(copy.left)}, ${escapeHtml(second)} ${escapeHtml(copy.right)} 중 ${escapeHtml(axisResult.dominant)} 쪽">
                         <span class="cw-scale-marker" data-final-position="${position}" style="--position:${position}%" aria-hidden="true"></span>
                         <div class="cw-scale-line"><i aria-hidden="true"></i></div>
-                        <div class="cw-scale-labels"><span>${first}</span><span aria-hidden="true"></span><span>${second}</span></div>
                     </div>
                 </article>`;
         }).join('');
@@ -712,7 +714,6 @@
         const codeSlots = [...container.querySelectorAll('[data-code-slot]')];
         const name = container.querySelector('[data-final-name]');
         const relation = container.querySelector('.cw-type-relation');
-        const axisLabels = [...container.querySelectorAll('[data-measure-axis]')];
         const speedValues = [...container.querySelectorAll('[data-measure-speed]')];
         const houseNames = [...container.querySelectorAll('[data-measure-house]')];
         const letterPairs = [['E', 'I'], ['S', 'N'], ['T', 'F'], ['J', 'P']];
@@ -739,15 +740,9 @@
                         slot.textContent = slot.dataset.finalLetter;
                         slot.classList.remove('is-cycling');
                         slot.classList.add('is-settled');
-                        if (axisLabels[index]) axisLabels[index].textContent = axisLabels[index].dataset.finalLabel;
                         return;
                     }
                     slot.textContent = letterPairs[index][tick % 2];
-                    if (axisLabels[index]) {
-                        axisLabels[index].textContent = tick % 2
-                            ? axisLabels[index].dataset.measureFirst
-                            : axisLabels[index].dataset.measureSecond;
-                    }
                     tick += 1;
                     setTimeout(cycleSlot, tickDelays[index]);
                 };

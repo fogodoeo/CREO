@@ -250,11 +250,15 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 
 .cw-member-detail { padding: 0; }
 .cw-axis-detail-list { display: grid; }
-.cw-axis-detail { min-width: 0; padding: 13px 0 14px; border-bottom: 1px solid var(--cw-line); }
-.cw-axis-detail header { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; }
-.cw-axis-detail header > span { color: #909590; font-size: 9px; font-weight: 750; letter-spacing: .1em; }
-.cw-axis-detail header strong { color: var(--cw-ink); font-size: 12px; font-weight: 750; line-height: 1.35; text-align: right; }
+.cw-axis-detail { min-width: 0; padding: 14px 0 15px; border-bottom: 1px solid var(--cw-line); }
+.cw-axis-detail header h3 { margin: 0; color: var(--cw-ink); font-size: 12px; font-weight: 750; letter-spacing: -.015em; }
+.cw-axis-poles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 9px; }
+.cw-axis-pole { display: flex; min-width: 0; align-items: baseline; gap: 6px; color: #9a9e9a; font-size: 11px; font-weight: 500; white-space: nowrap; }
+.cw-axis-pole.is-right { justify-content: flex-end; text-align: right; }
+.cw-axis-pole strong { color: inherit; font-size: 12px; font-weight: 500; }
+.cw-axis-pole.is-selected, .cw-axis-pole.is-selected strong { color: var(--cw-ink); font-weight: 800; }
 .cw-position-scale { position: relative; margin-top: 17px; }
+.cw-axis-scale { margin-top: 12px; }
 .cw-scale-line { position: relative; height: 3px; background: #cfd2cd; }
 .cw-scale-line i { position: absolute; top: -4px; bottom: -4px; left: 50%; width: 1px; background: #8f948f; transform: translateX(-50%); }
 .cw-scale-marker { position: absolute; z-index: 1; top: -11px; left: var(--position); width: 0; height: 0; border-right: 6px solid transparent; border-top: 8px solid var(--cw-ink); border-left: 6px solid transparent; transform: translateX(-50%); }

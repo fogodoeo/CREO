@@ -242,8 +242,15 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /REPORT ID[\s\S]*DATE[\s\S]*20 ITEMS/);
     assert.match(script, /RESULT TYPE/);
     assert.doesNotMatch(script, /평소 유형과 같아요|글자 달라요/);
+    assert.match(script, /EI: \{ title: '생각 정리', left: '함께 정리', right: '혼자 정리' \}/);
+    assert.match(script, /SN: \{ title: '관찰 초점', left: '현재 정보', right: '성장 가능성' \}/);
+    assert.match(script, /TF: \{ title: '선택 기준', left: '조건·근거', right: '취향·관계' \}/);
+    assert.match(script, /JP: \{ title: '사육 방식', left: '계획·준비', right: '유연·조정' \}/);
+    assert.match(script, /class="cw-axis-poles"/);
+    assert.doesNotMatch(script, /data-measure-axis|data-final-label/);
     assert.match(css, /\.cw-result-report\s*\{[^}]*border-radius:\s*6px/);
     assert.match(css, /\.cw-axis-detail-list\s*\{\s*display:\s*grid/);
+    assert.match(css, /\.cw-axis-pole\.is-selected[\s\S]*font-weight:\s*800/);
     assert.match(css, /--cw-type-body:\s*14px/);
     assert.match(css, /--cw-type-section:\s*18px/);
     assert.match(css, /--cw-weight-bold:\s*800/);
