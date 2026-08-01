@@ -8,8 +8,8 @@
     const KAKAO_JS_KEY = 'db7ffc8d6b9b7601b792ed69be4658fc';
     const QUESTION_IMAGE_ROOT = 'assets/crewart-illustrations/';
     const MEMBERSHIP_STORAGE_KEY = 'crewart_band_member_access_v1';
-    const MEMBERSHIP_RECHECK_VISIBLE_MS = 10000;
-    const MEMBERSHIP_RECHECK_HIDDEN_MS = 30000;
+    const MEMBERSHIP_RECHECK_VISIBLE_MS = 1000;
+    const MEMBERSHIP_RECHECK_HIDDEN_MS = 10000;
     const MEMBERSHIP_RECHECK_TIMEOUT_MS = 15 * 60 * 1000;
     const CONTENT_CONFIG_KEY = 'crewart_mbti_content_v1';
     const BAND_INTEGRATION_ENABLED = true;
@@ -853,7 +853,7 @@
 
     function scheduleMembershipRecheck() {
         if (!pendingMemberPhone || membershipRecheckTimer) return;
-        const delay = document.visibilityState === 'visible'
+        const delay = document.visibilityState === 'visible' && document.hasFocus()
             ? MEMBERSHIP_RECHECK_VISIBLE_MS
             : MEMBERSHIP_RECHECK_HIDDEN_MS;
         membershipRecheckTimer = setTimeout(() => {

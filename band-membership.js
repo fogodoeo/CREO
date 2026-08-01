@@ -69,11 +69,11 @@ function loadConfig(env = process.env) {
         rateLimitWindowMs: positiveInteger(env.BAND_MEMBER_RATE_LIMIT_WINDOW_MS, 600000, 10000, 3600000),
         rateLimitAttempts: rateLimitAttempts(
             env.BAND_MEMBER_RATE_LIMIT_ATTEMPTS,
-            30,
+            120,
             !productionRuntime
         ),
         positiveCacheMs: positiveInteger(env.BAND_MEMBER_POSITIVE_CACHE_MS, 60000, 5000, 600000),
-        negativeCacheMs: positiveInteger(env.BAND_MEMBER_NEGATIVE_CACHE_MS, 15000, 3000, 120000)
+        negativeCacheMs: positiveInteger(env.BAND_MEMBER_NEGATIVE_CACHE_MS, 500, 250, 5000)
     };
     config.configured = Boolean(
         /^https:\/\/[^/]+/i.test(config.url)

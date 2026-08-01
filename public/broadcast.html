@@ -5002,7 +5002,8 @@
         // - 사진은 현재 개체가 바뀔 때 한 번만 받고 페이지 안에서 캐시한다.
         // - 숨김 탭은 네트워크 조회를 멈추고 다시 보일 때 즉시 동기화한다.
         const AUCTION_HOT_WINDOW_MS = 10 * 60 * 1000;
-        const AUCTION_HOT_POLL_MS = 1000;
+        const AUCTION_HOT_POLL_MS = 350;
+        const AUCTION_IDLE_POLL_MS = 3000;
         const AUCTION_FULL_SYNC_MS = 30000;
         const AUCTION_VIEW_SYNC_MS = 1500;
         const AUCTION_MAX_BACKOFF_MS = 8000;
@@ -5028,7 +5029,8 @@
                 errors: _auctionPollErrors,
                 intervalMs: Math.min(
                     AUCTION_MAX_BACKOFF_MS,
-                    AUCTION_HOT_POLL_MS * Math.pow(2, _auctionPollErrors)
+                    (now < _auctionHotUntil ? AUCTION_HOT_POLL_MS : AUCTION_IDLE_POLL_MS)
+                        * Math.pow(2, _auctionPollErrors)
                 )
             };
             document.body.dataset.auctionPollMode = window.__auctionPollState.mode;
@@ -5125,9 +5127,12 @@
             } finally {
                 _auctionPollRunning = false;
                 _publishAuctionPollState();
+                const baseInterval = Date.now() < _auctionHotUntil
+                    ? AUCTION_HOT_POLL_MS
+                    : AUCTION_IDLE_POLL_MS;
                 const backoff = Math.min(
                     AUCTION_MAX_BACKOFF_MS,
-                    AUCTION_HOT_POLL_MS * Math.pow(2, _auctionPollErrors)
+                    baseInterval * Math.pow(2, _auctionPollErrors)
                 );
                 _scheduleAuctionPoll(retryAfterMs || backoff);
             }

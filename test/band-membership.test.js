@@ -154,7 +154,7 @@ test('production ignores an accidental zero attempt limit', async () => {
     });
 
     let lastStatus = 0;
-    for (let index = 0; index < 31; index += 1) {
+    for (let index = 0; index < 121; index += 1) {
         const phone = `010${String(index).padStart(8, '0')}`;
         const response = new CapturedResponse();
         await membership.handle(
