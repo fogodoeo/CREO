@@ -207,7 +207,12 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /data-final-position="\$\{position\}"/);
     assert.match(script, /function playResultMeasurementAnimation\(container\)/);
     assert.match(script, /letterPairs = \[\['E', 'I'\], \['S', 'N'\], \['T', 'F'\], \['J', 'P'\]\]/);
+    assert.match(script, /settleDurations = \[560, 730, 900, 1070\]/);
+    assert.match(script, /data-code-slot="\$\{index\}"/);
     assert.match(script, /marker\.animate\(\[/);
+    assert.match(script, /\{ left: '50%' \}[\s\S]*\{ left: `\$\{finalPosition\}%` \}/);
+    assert.doesNotMatch(script, /left: index % 2 \? '84%' : '16%'/);
+    assert.match(script, /Core\.HOUSE_KEYS\.map\(key => Core\.HOUSE_META\[key\]\?\.name\)/);
     assert.match(script, /prefers-reduced-motion: reduce/);
     assert.match(script, /renderResult\(\{ animate: true \}\)/);
     assert.match(script, /빠름[\s\S]*평균[\s\S]*신중/);
@@ -227,9 +232,10 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(css, /\.cw-intro-visual\s*\{[^}]*position:\s*fixed[^}]*inset:\s*-24px/);
     assert.match(css, /\.cw-intro-video\s*\{[^}]*object-fit:\s*cover[^}]*filter:\s*blur\(12px\)/);
     assert.match(css, /\.cw-intro::after\s*\{[^}]*position:\s*fixed/);
-    assert.match(css, /\.cw-position-scale\.is-measuring \.cw-scale-line::after/);
+    assert.doesNotMatch(css, /\.cw-position-scale\.is-measuring \.cw-scale-line::after/);
     assert.match(css, /@keyframes cw-code-flicker/);
-    assert.match(css, /@keyframes cw-scale-scan/);
+    assert.match(css, /@keyframes cw-house-roll/);
+    assert.doesNotMatch(css, /cw-scale-scan|rgba\(22, 129, 75, \.7\)/);
     const lockedDetailBody = script.match(/function renderLockedDetail\(\) \{([\s\S]*?)\n    \}/)?.[1] || '';
     assert.match(lockedDetailBody, /renderMemberDetail\(\)\}\$\{renderSpeedCard\(\)\}\$\{renderHouseCard\(\)/);
     assert.match(css, /\.cw-detail-preview\s*\{[^}]*filter:\s*blur\(3px\)/);

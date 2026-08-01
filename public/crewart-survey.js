@@ -635,7 +635,7 @@
         return `
             <section class="cw-result-section cw-house-card">
                 <span>기숙사</span>
-                <div><h2 data-measure-house data-final-text="${escapeHtml(house.name)}">${escapeHtml(house.name)}</h2><b>${assignedHouseKey[0]} · ${assignedHouseKey[1]} 조합</b></div>
+                <div><h2 class="cw-house-wheel" aria-label="${escapeHtml(house.name)}"><span data-measure-house data-final-text="${escapeHtml(house.name)}">${escapeHtml(house.name)}</span></h2><b>${assignedHouseKey[0]} · ${assignedHouseKey[1]} 조합</b></div>
             </section>`;
     }
 
@@ -657,85 +657,107 @@
 
     function playResultMeasurementAnimation(container) {
         if (!container || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-        const code = container.querySelector('[data-final-code]');
+        const codeSlots = [...container.querySelectorAll('[data-code-slot]')];
         const name = container.querySelector('[data-final-name]');
         const relation = container.querySelector('.cw-type-relation');
         const axisLabels = [...container.querySelectorAll('[data-measure-axis]')];
         const speedValues = [...container.querySelectorAll('[data-measure-speed]')];
         const houseNames = [...container.querySelectorAll('[data-measure-house]')];
-        const finalCode = code?.dataset.finalCode || result.code;
         const letterPairs = [['E', 'I'], ['S', 'N'], ['T', 'F'], ['J', 'P']];
+        const slotDelays = [0, 70, 145, 225];
+        const settleDurations = [560, 730, 900, 1070];
+        const tickDelays = [43, 55, 67, 79];
 
         container.classList.add('is-measuring');
-        code?.classList.add('is-cycling');
         name?.classList.add('is-measure-pending');
         relation?.classList.add('is-measure-pending');
         speedValues.forEach(node => {
             node.textContent = '측정 중…';
             node.classList.add('is-measure-pending');
         });
-        houseNames.forEach(node => {
-            node.textContent = '배정 중…';
-            node.classList.add('is-measure-pending');
-        });
 
-        let tick = 0;
-        const cycleCode = () => {
-            if (!container.isConnected || !code) return;
-            if (tick < 13) {
-                code.textContent = letterPairs.map((pair, index) => pair[(tick + index) % 2]).join('');
-                axisLabels.forEach((node, index) => {
-                    node.textContent = (tick + index) % 2 ? node.dataset.measureFirst : node.dataset.measureSecond;
-                });
-                tick += 1;
-                setTimeout(cycleCode, 58 + tick * 3);
-                return;
-            }
-            code.textContent = finalCode;
-            code.classList.remove('is-cycling');
-            code.classList.add('is-settled');
-            axisLabels.forEach(node => { node.textContent = node.dataset.finalLabel; });
-            [name, relation].filter(Boolean).forEach(node => {
-                node.classList.remove('is-measure-pending');
-                node.classList.add('is-measure-revealed');
-            });
-        };
-        cycleCode();
+        codeSlots.forEach((slot, index) => {
+            let tick = 0;
+            setTimeout(() => {
+                const startedAt = performance.now();
+                slot.classList.add('is-cycling');
+                const cycleSlot = () => {
+                    if (!container.isConnected) return;
+                    if (performance.now() - startedAt >= settleDurations[index]) {
+                        slot.textContent = slot.dataset.finalLetter;
+                        slot.classList.remove('is-cycling');
+                        slot.classList.add('is-settled');
+                        if (axisLabels[index]) axisLabels[index].textContent = axisLabels[index].dataset.finalLabel;
+                        return;
+                    }
+                    slot.textContent = letterPairs[index][tick % 2];
+                    if (axisLabels[index]) {
+                        axisLabels[index].textContent = tick % 2
+                            ? axisLabels[index].dataset.measureFirst
+                            : axisLabels[index].dataset.measureSecond;
+                    }
+                    tick += 1;
+                    setTimeout(cycleSlot, tickDelays[index]);
+                };
+                cycleSlot();
+            }, slotDelays[index]);
+        });
 
         const markers = [...container.querySelectorAll('.cw-scale-marker[data-final-position]')];
         markers.forEach((marker, index) => {
             const finalPosition = Math.max(0, Math.min(100, Number(marker.dataset.finalPosition) || 0));
-            const scale = marker.closest('.cw-position-scale');
-            scale?.classList.add('is-measuring');
             if (typeof marker.animate !== 'function') return;
-            const preFinal = Math.max(4, Math.min(96, finalPosition + (finalPosition < 50 ? 13 : -13)));
             const animation = marker.animate([
-                { left: '50%', offset: 0 },
-                { left: index % 2 ? '84%' : '16%', offset: .24 },
-                { left: index % 2 ? '22%' : '78%', offset: .5 },
-                { left: `${preFinal}%`, offset: .76 },
-                { left: `${finalPosition}%`, offset: 1 }
+                { left: '50%' },
+                { left: `${finalPosition}%` }
             ], {
-                duration: 1050 + index * 105,
-                delay: 90 + index * 95,
-                easing: 'cubic-bezier(.22,.78,.24,1)',
+                duration: 650 + index * 70,
+                delay: 170 + index * 85,
+                easing: 'cubic-bezier(.18,.78,.22,1)',
                 fill: 'both'
             });
             animation.finished.then(() => {
                 animation.cancel();
-                scale?.classList.remove('is-measuring');
                 marker.classList.add('is-settled');
             }).catch(() => {});
         });
 
+        const houseOrder = Core.HOUSE_KEYS.map(key => Core.HOUSE_META[key]?.name).filter(Boolean);
+        houseNames.forEach((node, nodeIndex) => {
+            let step = nodeIndex;
+            const rollHouse = () => {
+                if (!container.isConnected) return;
+                if (step >= 12 + nodeIndex) {
+                    node.textContent = node.dataset.finalText;
+                    node.classList.remove('is-house-rolling');
+                    node.classList.add('is-settled');
+                    return;
+                }
+                node.textContent = houseOrder[step % houseOrder.length];
+                node.classList.remove('is-house-rolling');
+                void node.offsetWidth;
+                node.classList.add('is-house-rolling');
+                step += 1;
+                setTimeout(rollHouse, 92 + step * 5);
+            };
+            setTimeout(rollHouse, 180 + nodeIndex * 40);
+        });
+
         setTimeout(() => {
             if (!container.isConnected) return;
-            [...speedValues, ...houseNames].forEach(node => {
+            [name, relation].filter(Boolean).forEach(node => {
+                node.classList.remove('is-measure-pending');
+                node.classList.add('is-measure-revealed');
+            });
+        }, 1380);
+        setTimeout(() => {
+            if (!container.isConnected) return;
+            speedValues.forEach(node => {
                 node.textContent = node.dataset.finalText;
                 node.classList.remove('is-measure-pending');
                 node.classList.add('is-measure-revealed');
             });
-        }, 1550);
+        }, 1480);
         setTimeout(() => {
             if (container.isConnected) container.classList.remove('is-measuring');
         }, 2200);
@@ -748,12 +770,13 @@
         const bandShare = BAND_INTEGRATION_ENABLED
             ? `<button class="cw-share-icon is-band" type="button" data-action="band-result" aria-label="크레와트 BAND 열기"><img src="assets/band-app-icon-official.png?v=20260801-logo-v2" width="28" height="28" alt=""></button>`
             : '';
+        const resultCodeSlots = [...result.code].map((letter, index) => `<span data-code-slot="${index}" data-final-letter="${escapeHtml(letter)}">${escapeHtml(letter)}</span>`).join('');
         element('result-content').innerHTML = `
             <div class="cw-result-wrap">
                 <section class="cw-result-poster">
                     <div class="cw-result-hero-copy">
                         <p class="cw-poster-kicker">나의 결과</p>
-                        <strong class="cw-result-code" data-final-code="${escapeHtml(result.code)}">${escapeHtml(result.code)}</strong>
+                        <strong class="cw-result-code" data-final-code="${escapeHtml(result.code)}" aria-label="${escapeHtml(result.code)}">${resultCodeSlots}</strong>
                         <h1 data-final-name="${escapeHtml(result.typeName)}">${escapeHtml(result.typeName)}</h1>
                         ${renderTypeRelation()}
                     </div>

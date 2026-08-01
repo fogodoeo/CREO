@@ -250,9 +250,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 }
 .cw-result-hero-copy { min-width: 0; }
 .cw-poster-kicker { margin: 0 0 10px; color: var(--cw-green); font-size: var(--cw-type-caption); font-weight: var(--cw-weight-bold); letter-spacing: .1em; }
-.cw-result-code { display: block; font-size: clamp(50px, 14vw, 76px); font-weight: var(--cw-weight-heavy); line-height: 1; letter-spacing: -.065em; }
-.cw-result-code.is-cycling { animation: cw-code-flicker .16s ease-in-out infinite alternate; }
-.cw-result-code.is-settled { animation: cw-code-settle .34s cubic-bezier(.2,.8,.2,1) both; }
+.cw-result-code { display: flex; align-items: center; font-size: clamp(50px, 14vw, 76px); font-weight: var(--cw-weight-heavy); line-height: 1; letter-spacing: 0; }
+.cw-result-code > span { display: grid; width: .68em; place-items: center; }
+.cw-result-code > span.is-cycling { animation: cw-code-flicker .16s ease-in-out infinite alternate; }
+.cw-result-code > span.is-settled { animation: cw-code-settle .34s cubic-bezier(.2,.8,.2,1) both; }
 .cw-result-hero-copy h1 { margin: 10px 0 0; color: var(--cw-muted); font-size: var(--cw-type-section); font-weight: var(--cw-weight-medium); letter-spacing: -.03em; }
 .cw-type-relation { margin: 13px 0 0; color: var(--cw-muted); font-size: var(--cw-type-small); font-weight: var(--cw-weight-body); }
 .is-measure-pending { opacity: .28; transform: translateY(4px); }
@@ -265,9 +266,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-axis-detail { min-width: 0; padding: 14px; border: 1px solid #e1e2dd; border-radius: 16px; background: var(--cw-surface-soft); }
 .cw-axis-detail header strong { display: block; color: var(--cw-ink); font-size: 13px; font-weight: var(--cw-weight-bold); line-height: 1.35; }
 .cw-position-scale { position: relative; margin-top: 30px; }
-.cw-scale-line { position: relative; height: 4px; overflow: hidden; border-radius: 999px; background: #d3d5d1; }
+.cw-scale-line { position: relative; height: 4px; border-radius: 999px; background: #d3d5d1; }
 .cw-scale-line i { position: absolute; top: -4px; bottom: -4px; left: 50%; width: 1px; background: #929792; transform: translateX(-50%); }
-.cw-position-scale.is-measuring .cw-scale-line::after { position: absolute; top: 0; bottom: 0; left: -34%; width: 34%; background: linear-gradient(90deg, transparent, rgba(22, 129, 75, .7), transparent); content: ""; animation: cw-scale-scan .48s ease-in-out infinite alternate; }
 .cw-scale-marker {
     position: absolute;
     z-index: 1;
@@ -289,6 +289,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-house-card > span { color: var(--cw-ink); font-size: var(--cw-type-section); font-weight: var(--cw-weight-bold); }
 .cw-house-card > div { display: flex; align-items: baseline; gap: 10px; }
 .cw-house-card h2 { margin: 0; font-size: var(--cw-type-section); font-weight: var(--cw-weight-bold); }
+.cw-house-wheel { min-width: 78px; overflow: hidden; line-height: 1.25; }
+.cw-house-wheel > span { display: block; }
+.cw-house-wheel > span.is-house-rolling { animation: cw-house-roll .13s ease-out both; }
+.cw-house-wheel > span.is-settled { animation: cw-code-settle .34s cubic-bezier(.2,.8,.2,1) both; }
 .cw-house-card b { color: var(--cw-green); font-size: var(--cw-type-caption); font-weight: var(--cw-weight-medium); }
 .cw-band-cta { display: flex; align-items: center; justify-content: space-between; width: 100%; margin-top: 14px; padding: 0 16px; border: 0; background: var(--cw-green); color: #fff; }
 .cw-band-cta:disabled { background: #b7bcb8; }
@@ -380,4 +384,4 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 @keyframes cw-code-flicker { from { opacity: .52; filter: blur(.7px); transform: translateY(1px); } to { opacity: 1; filter: blur(0); transform: translateY(0); } }
 @keyframes cw-code-settle { from { filter: blur(1px); transform: scale(1.035); } to { filter: blur(0); transform: scale(1); } }
 @keyframes cw-measure-reveal { from { opacity: .2; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes cw-scale-scan { from { left: -34%; } to { left: 100%; } }
+@keyframes cw-house-roll { from { opacity: .2; transform: translateY(78%); } to { opacity: 1; transform: translateY(0); } }
