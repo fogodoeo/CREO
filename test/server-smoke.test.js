@@ -54,7 +54,7 @@ test('HTTP server exposes the CREO hub, survey assets, health, and membership co
     const surveyResponse = await fetch(`http://127.0.0.1:${port}/crewart-survey.html`);
     assert.equal(surveyResponse.status, 200);
     assert.match(surveyResponse.headers.get('content-type'), /^text\/html/);
-    assert.match(await surveyResponse.text(), /CREWARTS PERSONALITY TEST/);
+    assert.match(await surveyResponse.text(), /크레와트 성향 테스트/);
 
     const scriptResponse = await fetch(`http://127.0.0.1:${port}/crewart-survey.js`);
     assert.equal(scriptResponse.status, 200);

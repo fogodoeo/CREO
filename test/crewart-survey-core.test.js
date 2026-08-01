@@ -20,7 +20,7 @@ test('paired choices have symmetric structure and avoid loaded pole wording', ()
         assert.equal(question.options.length, 2);
         assert.equal(question.scores.length, 2);
         assert.deepEqual([...question.scores].sort(), [...question.axis].sort());
-        assert.ok(question.options.every((option) => option.length >= 15 && option.length <= 32));
+        assert.ok(question.options.every((option) => option.length >= 10 && option.length <= 32));
         assert.ok(Math.abs(question.options[0].length - question.options[1].length) <= 6);
         assert.equal(question.options.some((option) => loaded.test(option)), false);
         assert.match(question.image, /^question-c\d{2}\.webp$/);

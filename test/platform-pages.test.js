@@ -126,7 +126,7 @@ test('broadcast control manages reusable banners, sponsors, and vendor logos', (
 
 test('CREWARTS verifies BAND membership by phone before revealing results', () => {
     const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey.html'), 'utf8');
-    const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey-v3.css'), 'utf8');
+    const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey-v4.css'), 'utf8');
     const script = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey.js'), 'utf8');
     assert.doesNotThrow(() => new vm.Script(script, { filename: 'crewart-survey.js' }));
     assert.match(html, /전화번호로 BAND 회원 확인/);
@@ -134,7 +134,7 @@ test('CREWARTS verifies BAND membership by phone before revealing results', () =
     assert.match(html, /가입 여부 확인하고 결과 보기/);
     assert.match(html, /BAND 가입하기/);
     assert.doesNotMatch(html, /supabase-bridge\.js/);
-    assert.match(css, /\.cw-choice-button[\s\S]*min-height:\s*72px/);
+    assert.match(css, /\.cw-choice-button[\s\S]*min-height:\s*68px/);
     assert.match(script, /function verifyMembershipPhone/);
     assert.match(script, /\/api\/crewart-survey\/bootstrap/);
     assert.match(script, /\/api\/crewart-survey\/responses/);
@@ -154,7 +154,7 @@ test('CREWARTS home shows the saved result and only a masked authenticated phone
     for (const id of ['auth-phone-chip', 'auth-phone-number', 'home-result-card', 'home-result-open', 'home-retest']) {
         assert.match(html, new RegExp(`id=["']${id}["']`));
     }
-    assert.match(html, /내 크레MBTI/);
+    assert.match(html, /내 결과/);
     assert.match(script, /crewart_band_member_phone_mask_v1/);
     assert.match(script, /function maskPhone[\s\S]*\*\*\*\*/);
     assert.match(script, /if \(bandAuthToken && !bandAuthPhoneMask\)[\s\S]*removeItem\(MEMBERSHIP_STORAGE_KEY\)/);
@@ -165,11 +165,31 @@ test('CREWARTS home shows the saved result and only a masked authenticated phone
 });
 
 test('CREWARTS keeps a fixed member-check handoff throughout the questionnaire', () => {
-    const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey-v3.css'), 'utf8');
+    const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey-v4.css'), 'utf8');
     const script = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey.js'), 'utf8');
-    assert.match(css, /Always-available BAND handoff/);
     assert.match(css, /\.cw-persistent-footer\s*\{[\s\S]*position:\s*fixed/);
     assert.match(script, /전화번호로 BAND 회원 확인/);
     assert.match(script, /결과를 열기 전에 가입 여부를 확인해요/);
     assert.match(script, /function handlePersistentBand\(\)[\s\S]*openMemberCheck/);
+});
+
+test('CREWARTS personality test uses minimal copy, Pretendard, and official share marks', () => {
+    const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey.html'), 'utf8');
+    const managerHtml = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey-manager.html'), 'utf8');
+    const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey-v4.css'), 'utf8');
+    const script = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey.js'), 'utf8');
+
+    assert.match(html, /크레와트 성향 테스트/);
+    assert.doesNotMatch(html, />[^<]*MBTI[^<]*</i);
+    assert.doesNotMatch(managerHtml, />[^<]*MBTI[^<]*</i);
+    assert.match(css, /font-family:\s*"Pretendard Variable"/);
+    assert.doesNotMatch(css, /Cinzel|Georgia/i);
+    assert.match(html, /assets\/band-app-icon-official\.png/);
+    assert.match(script, /assets\/instagram-glyph-official\.svg/);
+    assert.match(script, /assets\/kakaolink_btn_medium\.png/);
+    assert.match(script, /function createResultShareFile/);
+    assert.match(script, /navigator\.canShare\?\.\(\{ files: \[file\] \}\)/);
+    assert.match(script, /Kakao\.Share\.sendDefault/);
+    assert.match(script, /Kakao\.Share\.uploadImage/);
+    assert.doesNotMatch(script, /크레\s*MBTI|나의 크레 MBTI|평소 MBTI/i);
 });

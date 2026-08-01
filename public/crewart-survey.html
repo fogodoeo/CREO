@@ -4,22 +4,20 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#f4f1e9">
-    <meta name="description" content="20개의 선택으로 알아보는 크레와트 성향 테스트">
-    <meta property="og:title" content="CREWARTS PERSONALITY TEST">
-    <meta property="og:description" content="20개의 선택으로 알아보는 크레 앞의 나">
-    <title>CREWARTS PERSONALITY TEST</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&display=swap" rel="stylesheet">
+    <meta name="theme-color" content="#f4f4f1">
+    <meta name="description" content="20개의 선택으로 알아보는 나의 크레 성향">
+    <meta property="og:title" content="크레와트 성향 테스트">
+    <meta property="og:description" content="크레를 선택하고 돌보는 나의 방식">
+    <meta property="og:image" content="https://creok.onrender.com/assets/crewart-cave-mobile.webp">
+    <title>크레와트 성향 테스트</title>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link
         href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
         rel="stylesheet">
-    <link rel="stylesheet" href="crewart-survey-v3.css?v=20260801-readable-v5">
+    <link rel="stylesheet" href="crewart-survey-v4.css?v=20260801-minimal-v1">
     <script src="assets/vendor/kakao-2.8.1.min.js"></script>
-    <script src="crewart-survey-core.js?v=20260801-friendly-copy-v3"></script>
-    <script src="crewart-survey.js?v=20260801-home-result-v5" defer></script>
+    <script src="crewart-survey-core.js?v=20260801-friendly-copy-v4"></script>
+    <script src="crewart-survey.js?v=20260801-minimal-share-v2" defer></script>
 </head>
 
 <body>
@@ -27,7 +25,7 @@
 
     <header class="cw-utility-bar" aria-label="설문 상태">
         <div class="cw-auth-chip" id="auth-phone-chip" hidden>
-            <img src="assets/band-logo.svg" alt="" width="20" height="20">
+            <img src="assets/band-app-icon-official.png?v=20260801-logo-v2" alt="" width="20" height="20">
             <span><small>BAND 인증 번호</small><strong id="auth-phone-number">회원 인증됨</strong></span>
         </div>
         <button class="cw-top-home" id="persistent-home-button" type="button" aria-label="크레와트 메인으로 돌아가기"
@@ -45,16 +43,13 @@
                             <source src="assets/crewarts-sealing-wax.mp4" type="video/mp4">
                         </video>
                     </div>
-                    <p class="cw-eyebrow">CREWARTS · CRE MBTI</p>
-                    <h1><span class="cw-wordmark is-pending" id="crewart-wordmark">CREWARTS</span><small>크레 앞의 나는 어떤 타입일까?</small></h1>
-                    <p class="cw-intro-copy">사육과 경매 상황에서 나에게 더 편한 쪽을 골라보세요.</p>
-                    <ul class="cw-intro-facts" aria-label="테스트 안내">
-                        <li>20문항</li><li>약 2분</li><li>정답 없음</li>
-                    </ul>
+                    <p class="cw-eyebrow">CREWARTS</p>
+                    <h1><span class="cw-wordmark is-pending" id="crewart-wordmark">크레와트</span><small>성향 테스트</small></h1>
+                    <p class="cw-intro-copy">20문항 · 약 2분</p>
                 </header>
 
                 <section class="cw-home-result" id="home-result-card" hidden aria-labelledby="home-result-heading">
-                    <p>내 크레MBTI</p>
+                    <p>내 결과</p>
                     <div class="cw-home-result-main">
                         <strong id="home-result-code">—</strong>
                         <div><h2 id="home-result-heading">내 결과</h2><span id="home-result-summary"></span></div>
@@ -67,14 +62,12 @@
                 </section>
 
                 <section class="cw-home-start" id="home-start-card">
-                    <h2>가볍게 시작해볼까요?</h2>
-                    <p>오래 고민하지 말고, 지금 더 자연스럽게 느껴지는 답을 선택하면 돼요.</p>
                     <button class="cw-primary-button" id="start-button" type="button" disabled><span>테스트 시작하기</span></button>
                 </section>
 
                 <div class="cw-intro-actions">
                     <button class="cw-band-entry" id="band-float" type="button" disabled>
-                        <img src="assets/band-logo.svg" alt="BAND" width="27" height="27"><strong
+                        <img src="assets/band-app-icon-official.png?v=20260801-logo-v2" alt="BAND" width="27" height="27"><strong
                             id="band-float-label">전화번호로 BAND 회원 확인</strong>
                     </button>
                     <small class="cw-intro-note" id="band-entry-note">전화번호는 가입 여부 확인에만 사용해요</small>
@@ -101,13 +94,13 @@
 
         <section class="cw-screen cw-mbti" id="mbti-screen" hidden>
             <header class="cw-simple-head">
-                <p class="cw-step-label">마지막 한 단계</p>
-                <h1>평소 MBTI도 알려주세요</h1>
-                <p>평소의 나와 크레 앞의 내가 어떻게 다른지 같이 보여드려요.<br>모르면 건너뛰어도 괜찮아요.</p>
+                <p class="cw-step-label">선택 입력</p>
+                <h1>평소 유형은?</h1>
+                <p>알고 있다면 골라주세요.</p>
             </header>
-            <div class="cw-mbti-grid" id="mbti-grid" aria-label="평소 MBTI 선택"></div>
+            <div class="cw-mbti-grid" id="mbti-grid" aria-label="평소 유형 선택"></div>
             <div class="cw-mbti-actions">
-                <button class="cw-secondary-button" id="mbti-unknown" type="button">모르겠어요 · 건너뛰기</button>
+                <button class="cw-secondary-button" id="mbti-unknown" type="button">모름 · 건너뛰기</button>
                 <button class="cw-primary-button" id="show-result" type="button" disabled><span>내 결과 보기</span></button>
             </div>
         </section>
@@ -120,7 +113,7 @@
     <footer class="cw-persistent-footer" id="survey-footer" hidden>
         <div class="cw-persistent-footer-inner">
             <button class="cw-persistent-band" id="persistent-band-button" type="button" disabled>
-                <img src="assets/band-logo.svg" alt="BAND" width="27" height="27">
+                <img src="assets/band-app-icon-official.png?v=20260801-logo-v2" alt="BAND" width="27" height="27">
                 <strong id="persistent-band-label">BAND 회원 확인</strong>
             </button>
             <small id="persistent-band-note">결과를 열기 전에 가입 여부를 확인해요.</small>
@@ -131,7 +124,7 @@
         aria-labelledby="member-check-title" hidden>
         <div class="cw-guest-dialog-card">
             <button class="cw-dialog-close" id="member-check-close" type="button" aria-label="닫기">×</button>
-            <img class="cw-dialog-band-mark" src="assets/band-logo.svg" alt="BAND" width="48" height="48">
+            <img class="cw-dialog-band-mark" src="assets/band-app-icon-official.png?v=20260801-logo-v2" alt="BAND" width="48" height="48">
             <p class="cw-step-label">결과 확인 전 한 번만</p>
             <h2 id="member-check-title">BAND 가입 번호를 확인할게요</h2>
             <p>가입 승인된 BAND 프로필에 적은 휴대전화번호를 입력해주세요.</p>
@@ -141,7 +134,7 @@
                     maxlength="13" placeholder="010-1234-5678" aria-describedby="member-phone-help" required>
                 <small id="member-phone-help">입력한 번호는 가입 여부 확인에만 사용되며 설문 답변·결과와 함께 저장되지 않습니다.</small>
                 <button class="cw-dialog-band-button" id="member-check-submit" type="submit">
-                    <img src="assets/band-logo.svg" alt="" width="22" height="22"><strong>가입 여부 확인하고 결과 보기</strong>
+                    <img src="assets/band-app-icon-official.png?v=20260801-logo-v2" alt="" width="22" height="22"><strong>가입 여부 확인하고 결과 보기</strong>
                 </button>
             </form>
             <div class="cw-member-status" id="member-check-status" role="status" aria-live="polite" hidden></div>

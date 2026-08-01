@@ -21,30 +21,30 @@
     // - every axis samples five different behavioural facets;
     // - option order is randomized later without changing the score mapping.
     const QUESTIONS = [
-        { id: 'Q01', axis: 'EI', facet: 'processing', label: '두 마리 중 고민될 때', q: '둘 다 마음에 들어서 결정이 안 된다. 나는 먼저?', options: ['친구에게 상황을 말하면서 내 기준을 찾아본다', '사진과 메모를 다시 보며 혼자 기준을 정리한다'], scores: ['E', 'I'] },
-        { id: 'Q02', axis: 'SN', facet: 'evidence', label: '설명을 짧게 들을 때', q: '설명을 짧게만 들을 수 있다. 무엇부터 물어볼까?', options: ['지금 체중과 먹이 반응처럼 확인되는 정보를 묻는다', '부모와 형제의 변화처럼 앞으로의 흐름을 묻는다'], scores: ['S', 'N'] },
-        { id: 'Q03', axis: 'TF', facet: 'resources', label: '예산을 넘었을 때', q: '마음에 든 개체가 예산을 넘었다. 무엇을 보고 정할까?', options: ['예산과 이후 비용을 다시 계산해 가능한 선을 정한다', '오래 함께할 마음과 내 생활에 주는 의미를 살핀다'], scores: ['T', 'F'] },
-        { id: 'Q04', axis: 'JP', facet: 'setup', label: '새 크레를 맞이할 때', q: '새 크레가 오기 전, 사육장은 어떻게 준비할까?', options: ['필요한 것을 미리 확인해 오기 전에 모두 맞춘다', '필수 준비부터 하고 반응을 보며 하나씩 맞춘다'], scores: ['J', 'P'] },
+        { id: 'Q01', axis: 'EI', facet: 'processing', label: '두 마리 중 고민될 때', q: '둘 다 마음에 든다. 나는 먼저?', options: ['친구에게 말하며 내 기준을 찾는다', '사진과 메모를 보며 혼자 정리한다'], scores: ['E', 'I'] },
+        { id: 'Q02', axis: 'SN', facet: 'evidence', label: '설명을 짧게 들을 때', q: '먼저 물어볼 것은?', options: ['현재 체중과 먹이 반응', '부모·형제의 성장 흐름'], scores: ['S', 'N'] },
+        { id: 'Q03', axis: 'TF', facet: 'resources', label: '예산을 넘었을 때', q: '마음에 든 개체가 예산을 넘었다. 나는?', options: ['총비용을 계산해 가능한 선을 정한다', '오래 함께할 마음과 의미를 살핀다'], scores: ['T', 'F'] },
+        { id: 'Q04', axis: 'JP', facet: 'setup', label: '새 크레를 맞이할 때', q: '새 크레가 오기 전, 나는?', options: ['필요한 것을 미리 모두 준비한다', '필수만 준비하고 반응에 맞춰 채운다'], scores: ['J', 'P'] },
 
-        { id: 'Q05', axis: 'EI', facet: 'recovery', label: '행사를 마치고 돌아왔을 때', q: '크레 행사에서 돌아온 저녁, 나는 먼저?', options: ['만난 사람들과 기억에 남은 이야기를 바로 나눈다', '혼자 쉬면서 본 것과 느낀 점을 차분히 정리한다'], scores: ['E', 'I'] },
-        { id: 'Q06', axis: 'SN', facet: 'tracking', label: '성장 기록을 볼 때', q: '석 달치 성장 기록을 펼쳤다. 무엇이 먼저 보일까?', options: ['날짜별 체중과 먹이 반응처럼 달라진 점을 본다', '여러 변화가 이어지는 전체 성장 흐름을 먼저 본다'], scores: ['S', 'N'] },
-        { id: 'Q07', axis: 'TF', facet: 'advice', label: '친구의 선택을 도울 때', q: '친구가 두 개체 중 골라 달라고 한다. 먼저 물어볼 것은?', options: ['각 선택의 장단점과 필요한 조건부터 물어본다', '친구의 생활과 취향에 더 잘 맞는 쪽을 물어본다'], scores: ['T', 'F'] },
-        { id: 'Q08', axis: 'JP', facet: 'bidding', label: '경매를 시작할 때', q: '경매 목록을 처음 열었다. 나는 어떻게 살펴볼까?', options: ['후보와 최대 금액을 정한 뒤 그 안에서 살펴본다', '전체 흐름을 보면서 후보와 금액을 계속 조정한다'], scores: ['J', 'P'] },
+        { id: 'Q05', axis: 'EI', facet: 'recovery', label: '행사를 마치고 돌아왔을 때', q: '행사에서 돌아온 저녁, 먼저 하고 싶은 것은?', options: ['기억에 남은 이야기를 사람들과 나눈다', '혼자 쉬며 본 것과 느낀 점을 정리한다'], scores: ['E', 'I'] },
+        { id: 'Q06', axis: 'SN', facet: 'tracking', label: '성장 기록을 볼 때', q: '석 달치 기록에서 먼저 보이는 것은?', options: ['날짜별 체중과 먹이 반응의 차이', '변화가 이어지는 전체 성장 흐름'], scores: ['S', 'N'] },
+        { id: 'Q07', axis: 'TF', facet: 'advice', label: '친구의 선택을 도울 때', q: '친구가 두 개체 중 고민한다. 먼저 물어볼 것은?', options: ['각 선택의 장단점과 조건', '친구의 생활과 취향'], scores: ['T', 'F'] },
+        { id: 'Q08', axis: 'JP', facet: 'bidding', label: '경매를 시작할 때', q: '경매 목록을 열었다. 나는?', options: ['후보와 최대 금액부터 정한다', '흐름을 보며 후보와 금액을 조정한다'], scores: ['J', 'P'] },
 
-        { id: 'Q09', axis: 'EI', facet: 'learning', label: '낯선 방법을 배울 때', q: '처음 보는 사육 방법을 배워야 한다. 나는 먼저?', options: ['경험자에게 바로 물어보며 필요한 내용을 좁혀간다', '자료를 먼저 읽고 궁금한 점을 정리한 뒤 물어본다'], scores: ['E', 'I'] },
-        { id: 'Q10', axis: 'SN', facet: 'classification', label: '처음 보는 표현을 만났을 때', q: '처음 보는 표현의 크레를 만났다. 어떻게 이해할까?', options: ['눈에 보이는 특징을 내가 아는 개체와 비교해본다', '혈통과 조합을 연결해 어떤 모습일지 상상해본다'], scores: ['S', 'N'] },
-        { id: 'Q11', axis: 'TF', facet: 'disagreement', label: '관리 의견이 갈릴 때', q: '같은 관리 문제를 두고 의견이 갈렸다. 나는 무엇을 볼까?', options: ['같은 조건으로 다시 확인한 결과를 기준으로 본다', '개체의 반응과 돌보는 사람의 상황을 함께 본다'], scores: ['T', 'F'] },
-        { id: 'Q12', axis: 'JP', facet: 'routine', label: '매일 관리할 때', q: '급여와 청소를 오래 이어가려면 어떤 방식이 편할까?', options: ['정해둔 주기와 순서대로 하고 변화만 기록한다', '매일 상태를 보고 필요한 관리부터 바꿔서 한다'], scores: ['J', 'P'] },
+        { id: 'Q09', axis: 'EI', facet: 'learning', label: '낯선 방법을 배울 때', q: '처음 보는 사육법을 배운다. 나는?', options: ['경험자에게 바로 물어본다', '자료를 읽고 질문을 정리한다'], scores: ['E', 'I'] },
+        { id: 'Q10', axis: 'SN', facet: 'classification', label: '처음 보는 표현을 만났을 때', q: '처음 보는 표현을 만났다. 나는?', options: ['보이는 특징을 아는 개체와 비교한다', '혈통과 조합으로 다음 모습을 상상한다'], scores: ['S', 'N'] },
+        { id: 'Q11', axis: 'TF', facet: 'disagreement', label: '관리 의견이 갈릴 때', q: '관리 방법을 두고 의견이 갈렸다. 나는?', options: ['같은 조건에서 확인한 결과를 본다', '개체 반응과 사람의 상황을 함께 본다'], scores: ['T', 'F'] },
+        { id: 'Q12', axis: 'JP', facet: 'routine', label: '매일 관리할 때', q: '급여와 청소를 이어갈 때 편한 방식은?', options: ['정한 주기와 순서대로 한다', '매일 상태에 맞춰 순서를 바꾼다'], scores: ['J', 'P'] },
 
-        { id: 'Q13', axis: 'EI', facet: 'stimulation', label: '입찰이 뜨거워질 때', q: '원하던 개체의 입찰이 치열해졌다. 내 모습은?', options: ['옆 사람과 상황을 이야기하며 긴장을 풀어본다', '화면에 집중하면서 속으로 판단을 정리해본다'], scores: ['E', 'I'] },
-        { id: 'Q14', axis: 'SN', facet: 'planning', label: '다음 개체를 정할 때', q: '다음 한 마리를 계획한다. 내 목록에서 먼저 보는 것은?', options: ['지금 가진 개체들 사이에 비어 있는 특징을 찾는다', '앞으로 만들고 싶은 라인의 방향부터 그려본다'], scores: ['S', 'N'] },
-        { id: 'Q15', axis: 'TF', facet: 'boundaries', label: '이번에는 보내주기로 했을 때', q: '좋아 보이지만 이번에는 데려오지 않기로 했다. 그 이유는?', options: ['맞지 않은 조건과 내가 정한 기준을 설명한다', '지금 함께하기 어려운 내 생활의 이유를 설명한다'], scores: ['T', 'F'] },
-        { id: 'Q16', axis: 'JP', facet: 'disruption', label: '바쁜 주를 앞두고', q: '다음 주 일정이 들쭉날쭉하다. 관리는 어떻게 준비할까?', options: ['며칠치 할 일을 나누고 혹시 모를 계획도 세운다', '그날 가능한 시간과 상태를 보고 순서를 정한다'], scores: ['J', 'P'] },
+        { id: 'Q13', axis: 'EI', facet: 'stimulation', label: '입찰이 뜨거워질 때', q: '원하던 개체의 입찰이 치열해졌다. 나는?', options: ['옆 사람과 이야기하며 긴장을 푼다', '화면에 집중하며 속으로 판단한다'], scores: ['E', 'I'] },
+        { id: 'Q14', axis: 'SN', facet: 'planning', label: '다음 개체를 정할 때', q: '다음 한 마리를 계획한다. 먼저 보는 것은?', options: ['지금 비어 있는 특징', '앞으로 만들고 싶은 라인'], scores: ['S', 'N'] },
+        { id: 'Q15', axis: 'TF', facet: 'boundaries', label: '이번에는 보내주기로 했을 때', q: '좋아 보이지만 데려오지 않기로 했다. 이유는?', options: ['조건이 내 기준과 맞지 않아서', '지금 내 생활과 맞지 않아서'], scores: ['T', 'F'] },
+        { id: 'Q16', axis: 'JP', facet: 'disruption', label: '바쁜 주를 앞두고', q: '다음 주 일정이 들쭉날쭉하다. 관리는?', options: ['며칠치 할 일과 대안을 미리 짠다', '그날 시간과 상태에 맞춰 정한다'], scores: ['J', 'P'] },
 
-        { id: 'Q17', axis: 'EI', facet: 'reward', label: '좋은 변화를 발견했을 때', q: '오래 기다린 좋은 변화가 보였다. 언제 가장 뿌듯할까?', options: ['과정을 보여주고 다른 사람과 기쁨을 나눌 때', '기록을 마치고 혼자 변화를 천천히 확인할 때'], scores: ['E', 'I'] },
-        { id: 'Q18', axis: 'SN', facet: 'anomaly', label: '예상과 다르게 자랐을 때', q: '생각과 다른 모습으로 자랐다. 무엇부터 기록할까?', options: ['언제 무엇이 달라졌는지 조건과 함께 적어둔다', '변화가 어떻게 이어졌는지 하나의 흐름으로 묶는다'], scores: ['S', 'N'] },
-        { id: 'Q19', axis: 'TF', facet: 'collaboration', label: '함께 계획을 정할 때', q: '함께 짠 브리딩 계획에서 의견이 갈렸다. 무엇부터 맞출까?', options: ['확인할 기준과 멈출 조건을 먼저 분명히 맞춘다', '서로 중요하게 여기는 것과 부담을 먼저 맞춘다'], scores: ['T', 'F'] },
-        { id: 'Q20', axis: 'JP', facet: 'change', label: '사육장을 바꿀 때', q: '사육장을 업그레이드하려 한다. 나는 어떻게 할까?', options: ['목표와 부품을 정리하고 한 번에 작업을 마친다', '하나씩 바꾸고 반응을 본 뒤 다음을 결정한다'], scores: ['J', 'P'] }
+        { id: 'Q17', axis: 'EI', facet: 'reward', label: '좋은 변화를 발견했을 때', q: '기다리던 변화가 보였다. 가장 뿌듯한 순간은?', options: ['과정을 보여주며 기쁨을 나눌 때', '기록을 마치고 혼자 확인할 때'], scores: ['E', 'I'] },
+        { id: 'Q18', axis: 'SN', facet: 'anomaly', label: '예상과 다르게 자랐을 때', q: '예상과 다르게 자랐다. 먼저 기록할 것은?', options: ['언제 무엇이 달라졌는지', '변화가 어떻게 이어졌는지'], scores: ['S', 'N'] },
+        { id: 'Q19', axis: 'TF', facet: 'collaboration', label: '함께 계획을 정할 때', q: '브리딩 계획에서 의견이 갈렸다. 먼저 맞출 것은?', options: ['확인 기준과 멈출 조건', '서로 중요하게 여기는 것과 부담'], scores: ['T', 'F'] },
+        { id: 'Q20', axis: 'JP', facet: 'change', label: '사육장을 바꿀 때', q: '사육장을 업그레이드한다. 나는?', options: ['목표와 부품을 정해 한 번에 바꾼다', '하나씩 바꾸며 반응을 확인한다'], scores: ['J', 'P'] }
     ];
 
     const QUESTION_IMAGES = [

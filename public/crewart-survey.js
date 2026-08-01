@@ -515,7 +515,7 @@
     function showResult(skipMbti) {
         if (!result) return;
         if (!selectedMbti && !skipMbti) {
-            toast('평소 MBTI를 고르거나 잘 모르겠어요를 눌러주세요.', true);
+            toast('평소 유형을 고르거나 건너뛰기를 눌러주세요.', true);
             return;
         }
         if (!hasDetailedAccess()) {
@@ -546,10 +546,6 @@
         ].join(' · ');
     }
 
-    function speedSamples() {
-        return cohortSummary.timingMedians.slice();
-    }
-
     function hasDetailedAccess() {
         return IS_LOCAL_QA || Boolean(bandAuthUser && bandAuthUser.isTargetMember === true);
     }
@@ -560,35 +556,26 @@
         return true;
     }
 
-    function renderComparison(comparison) {
+    function renderComparison() {
         if (!selectedMbti) return '';
-        const changes = comparison.changes.length
-            ? `<div class="cw-change-list">${comparison.changes.map(change => `
-                <div class="cw-change-row"><b>${change.from} → ${change.to}</b><span>${escapeHtml(change.message)}</span></div>`).join('')}</div>`
-            : '<p class="cw-same-note">평소와 크레 앞의 내가 네 글자 모두 같아요.</p>';
         return `
             <section class="cw-result-insight">
-                <header><h2>평소와 달라진 점</h2><span>${comparison.changes.length ? `${comparison.changes.length}개 축 변화` : '같은 유형'}</span></header>
-                ${changes}
+                <span>평소 ${escapeHtml(selectedMbti)}</span>
+                <i aria-hidden="true">→</i>
+                <strong>크레 앞 ${escapeHtml(result.code)}</strong>
             </section>`;
     }
 
     function renderSpeedCard() {
         if (!timingStats?.style) return '';
         const valid = timingStats.validCount > 0;
-        const total = valid ? formatSeconds(timingStats.totalMs) : '측정 안 됨';
         const median = valid ? formatSeconds(timingStats.medianMs) : '-';
-        const benchmark = Core.buildSpeedBenchmark(timingStats.medianMs, speedSamples());
-        const questionTotal = questions.length || Core.QUESTIONS.length;
         return `
             <section class="cw-result-section cw-speed-card">
                 <div class="cw-result-section-head">
-                    <div><span>나의 선택 템포</span><strong>${escapeHtml(timingStats.style.label)}</strong></div>
+                    <div><span>선택 템포</span><strong>${escapeHtml(timingStats.style.label)}</strong></div>
                     <div class="cw-speed-number">${escapeHtml(median)}<small> 문항당</small></div>
                 </div>
-                <p class="cw-speed-copy">${escapeHtml(timingStats.style.copy)}</p>
-                <div class="cw-speed-measure"><span>전체 ${escapeHtml(total)}</span><span>측정 ${timingStats.validCount} / ${questionTotal}</span></div>
-                <div class="cw-benchmark-inline"><b>${escapeHtml(benchmark.badge)}</b><span>${escapeHtml(benchmark.message)}</span></div>
             </section>`;
     }
 
@@ -622,16 +609,10 @@
                     ${hasAnswerHistory ? `<details class="cw-answer-detail"><summary>이 결과가 나온 선택 보기</summary><ul>${detailedAnswerRows(axisResult.axis)}</ul></details>` : ''}
                 </article>`;
         }).join('');
-        const slowestQuestion = questions.find(question => question.id === timingStats?.slowest?.questionId);
-        const fastestQuestion = questions.find(question => question.id === timingStats?.fastest?.questionId);
         return `
             <section class="cw-result-section cw-member-detail">
-                <div class="cw-section-heading"><p>네 글자를 한눈에</p><h2 class="cw-detail-title">내 크레 성향 자세히 보기</h2></div>
+                <h2 class="cw-visually-hidden">성향 요약</h2>
                 <div class="cw-axis-detail-list">${axisCards}</div>
-                <div class="cw-speed-meta">
-                    ${fastestQuestion ? `<span>가장 빠른 선택 · ${escapeHtml(fastestQuestion.label)} ${formatSeconds(timingStats.fastest.elapsedMs)}</span>` : ''}
-                    ${slowestQuestion ? `<span>가장 오래 고민 · ${escapeHtml(slowestQuestion.label)} ${formatSeconds(timingStats.slowest.elapsedMs)}</span>` : ''}
-                </div>
             </section>`;
     }
 
@@ -643,7 +624,7 @@
         return `
             <section class="cw-result-section cw-house-card" style="--house-accent:${house.accent}">
                 <div class="cw-house-row"><div class="cw-house-seal">${house.seal}</div><div><small>CREWART COMMUNITY HOUSE</small><h2>${house.name}</h2></div></div>
-                <p>${house.korean} · ${house.color}. MBTI와 별개로 커뮤니티 인원이 고르게 만나도록 배정된 기숙사예요.</p>
+                <p>현재 커뮤니티 인원을 기준으로 고르게 배정했어요.</p>
                 ${bandAction}
             </section>`;
     }
@@ -670,38 +651,34 @@
     }
 
     function renderResult() {
-        const comparison = Core.buildMbtiComparison(selectedMbti, result.code);
         const typeFlow = selectedMbti
             ? `<div class="cw-result-code-flow"><div><small>평소</small><strong>${escapeHtml(selectedMbti)}</strong></div><i aria-hidden="true">→</i><div class="is-cre"><small>크레 앞</small><strong>${escapeHtml(result.code)}</strong></div></div>`
             : `<div class="cw-result-code-flow is-single"><div class="is-cre"><small>크레 앞의 나는</small><strong>${escapeHtml(result.code)}</strong></div></div>`;
         const detail = BAND_INTEGRATION_ENABLED && hasDetailedAccess() ? `${renderMemberDetail()}${renderHouseCard()}` : renderLockedDetail();
         const bandShare = BAND_INTEGRATION_ENABLED
-            ? `<button class="cw-share-icon is-band" type="button" data-action="band-result" aria-label="크레와트 BAND 열기"><strong aria-hidden="true">B</strong></button>`
+            ? `<button class="cw-share-icon is-band" type="button" data-action="band-result" aria-label="크레와트 BAND 열기"><img src="assets/band-app-icon-official.png?v=20260801-logo-v2" width="28" height="28" alt=""></button>`
             : '';
-        const dominantTraits = result.axes.map(axis => Core.AXIS_META[axis.axis].letters[axis.dominant].short);
         element('result-content').innerHTML = `
             <div class="cw-result-wrap">
                 <section class="cw-result-poster">
-                    <div class="cw-result-crest-wrap"><img class="cw-result-crest" src="assets/crewart-crest-v2.webp" width="720" height="838" alt="" aria-hidden="true"></div>
                     <div class="cw-result-hero-copy">
-                        <p class="cw-poster-kicker">내 크레MBTI 결과</p>
+                        <p class="cw-poster-kicker">나의 결과</p>
                         ${typeFlow}
                         <h1>${escapeHtml(result.typeName)}</h1>
-                        <p>${escapeHtml(dominantTraits.join(' · '))}</p>
                         ${showingStoredResult ? '<small class="cw-stored-note">이 기기에 저장된 최근 결과예요.</small>' : ''}
                     </div>
                 </section>
-                ${renderComparison(comparison)}
+                ${renderComparison()}
                 ${detail}
                 ${renderSpeedCard()}
                 <section class="cw-result-section cw-share-section">
-                    <div><p>친구에게도 보여주고 싶다면</p><h2>결과 공유하기</h2></div>
+                    <div><p>SHARE</p><h2>결과 공유</h2></div>
                     <div class="cw-share-tools" aria-label="결과 공유">
                         <button class="cw-share-icon is-kakao" type="button" data-action="share" aria-label="카카오톡으로 공유">
                             <img src="assets/kakaolink_btn_medium.png" width="24" height="24" alt="">
                         </button>
-                        <button class="cw-share-icon is-instagram" type="button" data-action="instagram" aria-label="인스타그램으로 공유">
-                            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.2" y="3.2" width="17.6" height="17.6" rx="5"></rect><circle cx="12" cy="12" r="4.1"></circle><circle class="cw-instagram-dot" cx="17.4" cy="6.8" r="1.1"></circle></svg>
+                        <button class="cw-share-icon is-instagram" type="button" data-action="instagram" aria-label="인스타그램 스토리로 공유">
+                            <img src="assets/instagram-glyph-official.svg" width="24" height="24" alt="">
                         </button>
                         ${bandShare}
                     </div>
@@ -1127,18 +1104,219 @@
         }
     }
 
+    function resultShareTitle() {
+        return selectedMbti ? `평소 ${selectedMbti} → 크레 앞 ${result.code}` : `나의 크레 성향은 ${result.code}`;
+    }
+
+    function drawRoundedRect(context, x, y, width, height, radius) {
+        const safeRadius = Math.min(radius, width / 2, height / 2);
+        context.beginPath();
+        context.moveTo(x + safeRadius, y);
+        context.arcTo(x + width, y, x + width, y + height, safeRadius);
+        context.arcTo(x + width, y + height, x, y + height, safeRadius);
+        context.arcTo(x, y + height, x, y, safeRadius);
+        context.arcTo(x, y, x + width, y, safeRadius);
+        context.closePath();
+    }
+
+    function loadShareImage(source) {
+        return new Promise((resolve, reject) => {
+            const image = new Image();
+            image.onload = () => resolve(image);
+            image.onerror = reject;
+            image.src = source;
+        });
+    }
+
+    function canvasBlob(canvas) {
+        return new Promise((resolve, reject) => {
+            canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('공유 이미지를 만들 수 없습니다.')), 'image/png', .96);
+        });
+    }
+
+    async function createResultShareFile(layout = 'story') {
+        if (!result) throw new Error('공유할 결과가 없습니다.');
+        await document.fonts?.ready;
+        const isStory = layout === 'story';
+        const canvas = document.createElement('canvas');
+        canvas.width = isStory ? 1080 : 1200;
+        canvas.height = isStory ? 1920 : 630;
+        const context = canvas.getContext('2d');
+        const font = '"Pretendard Variable", Pretendard, sans-serif';
+
+        context.fillStyle = '#f4f4f1';
+        context.fillRect(0, 0, canvas.width, canvas.height);
+
+        if (isStory) {
+            context.fillStyle = '#0e6539';
+            context.font = `800 28px ${font}`;
+            context.letterSpacing = '3px';
+            context.fillText('CREWARTS', 80, 108);
+            context.letterSpacing = '0px';
+
+            context.fillStyle = '#202421';
+            context.font = `850 58px ${font}`;
+            context.fillText('크레와트 성향 테스트', 80, 190);
+            context.fillStyle = '#6f746f';
+            context.font = `700 28px ${font}`;
+            context.fillText('나의 결과', 80, 316);
+            context.fillStyle = '#202421';
+            context.font = `900 190px ${font}`;
+            context.fillText(result.code, 72, 500);
+            context.fillStyle = '#6f746f';
+            context.font = `700 34px ${font}`;
+            context.fillText(result.typeName, 80, 565);
+
+            result.axes.forEach((axisResult, index) => {
+                const meta = Core.AXIS_META[axisResult.axis];
+                const dominant = meta.letters[axisResult.dominant];
+                const first = axisResult.axis[0];
+                const second = axisResult.axis[1];
+                const firstCount = Number(result.letters[first]) || 0;
+                const secondCount = Number(result.letters[second]) || 0;
+                const x = 70 + (index % 2) * 475;
+                const y = 670 + Math.floor(index / 2) * 360;
+                const width = 440;
+                const height = 320;
+                drawRoundedRect(context, x, y, width, height, 30);
+                context.fillStyle = '#ffffff';
+                context.fill();
+                context.strokeStyle = '#dedfd9';
+                context.lineWidth = 2;
+                context.stroke();
+
+                context.fillStyle = '#6f746f';
+                context.font = `650 21px ${font}`;
+                context.fillText(meta.title, x + 30, y + 48);
+                context.fillStyle = '#202421';
+                context.font = `800 27px ${font}`;
+                context.fillText(`${axisResult.dominant} · ${dominant.short}`, x + 30, y + 88);
+                context.fillStyle = '#0e6539';
+                context.font = `800 22px ${font}`;
+                context.textAlign = 'right';
+                context.fillText(`${firstCount} : ${secondCount}`, x + width - 30, y + 48);
+                context.textAlign = 'left';
+
+                context.fillStyle = '#d9cdd0';
+                drawRoundedRect(context, x + 30, y + 128, width - 60, 12, 6);
+                context.fill();
+                context.fillStyle = '#16814b';
+                drawRoundedRect(context, x + 30, y + 128, (width - 60) * (firstCount / 5), 12, 6);
+                context.fill();
+                context.fillStyle = '#6f746f';
+                context.font = `800 18px ${font}`;
+                context.fillText(first, x + 30, y + 170);
+                context.textAlign = 'right';
+                context.fillText(second, x + width - 30, y + 170);
+                context.textAlign = 'left';
+                context.font = `600 20px ${font}`;
+                const description = dominant.description.replace(/\.$/, '');
+                const midpoint = Math.min(description.length, 24);
+                context.fillText(description.slice(0, midpoint), x + 30, y + 224);
+                if (description.length > midpoint) context.fillText(description.slice(midpoint), x + 30, y + 258);
+            });
+
+            context.fillStyle = '#6f746f';
+            context.font = `650 22px ${font}`;
+            context.fillText('creok.onrender.com/crewart-survey.html', 80, 1778);
+            try {
+                const bandIcon = await loadShareImage(new URL('assets/band-app-icon-official.png?v=20260801-logo-v2', document.baseURI).toString());
+                context.drawImage(bandIcon, 80, 1810, 54, 54);
+                context.fillStyle = '#202421';
+                context.font = `750 23px ${font}`;
+                context.fillText('크레와트 BAND', 152, 1846);
+            } catch (_) {
+                // The result image remains usable if the optional mark fails to load.
+            }
+        } else {
+            context.fillStyle = '#0e6539';
+            context.font = `800 24px ${font}`;
+            context.fillText('CREWARTS', 62, 72);
+            context.fillStyle = '#202421';
+            context.font = `850 38px ${font}`;
+            context.fillText('크레와트 성향 테스트', 62, 126);
+            context.font = `900 116px ${font}`;
+            context.fillText(result.code, 58, 274);
+            context.fillStyle = '#6f746f';
+            context.font = `700 27px ${font}`;
+            context.fillText(result.typeName, 64, 322);
+
+            result.axes.forEach((axisResult, index) => {
+                const meta = Core.AXIS_META[axisResult.axis];
+                const dominant = meta.letters[axisResult.dominant];
+                const first = axisResult.axis[0];
+                const second = axisResult.axis[1];
+                const firstCount = Number(result.letters[first]) || 0;
+                const x = 62 + index * 277;
+                const y = 382;
+                drawRoundedRect(context, x, y, 250, 170, 20);
+                context.fillStyle = '#ffffff';
+                context.fill();
+                context.strokeStyle = '#dedfd9';
+                context.lineWidth = 2;
+                context.stroke();
+                context.fillStyle = '#6f746f';
+                context.font = `650 16px ${font}`;
+                context.fillText(meta.title, x + 18, y + 32);
+                context.fillStyle = '#202421';
+                context.font = `800 20px ${font}`;
+                context.fillText(`${axisResult.dominant} · ${dominant.short}`, x + 18, y + 62);
+                context.fillStyle = '#d9cdd0';
+                drawRoundedRect(context, x + 18, y + 92, 214, 9, 5);
+                context.fill();
+                context.fillStyle = '#16814b';
+                drawRoundedRect(context, x + 18, y + 92, 214 * (firstCount / 5), 9, 5);
+                context.fill();
+                context.fillStyle = '#6f746f';
+                context.font = `800 14px ${font}`;
+                context.fillText(first, x + 18, y + 126);
+                context.textAlign = 'right';
+                context.fillText(second, x + 232, y + 126);
+                context.textAlign = 'left';
+            });
+        }
+
+        const blob = await canvasBlob(canvas);
+        return new File([blob], `crewart-${result.code}-${isStory ? 'story' : 'share'}.png`, { type: 'image/png' });
+    }
+
+    async function uploadKakaoShareImage(file) {
+        if (!window.Kakao?.Share?.uploadImage || typeof DataTransfer === 'undefined') return '';
+        const transfer = new DataTransfer();
+        transfer.items.add(file);
+        const response = await window.Kakao.Share.uploadImage({ file: transfer.files });
+        return response?.infos?.original?.url || '';
+    }
+
+    function downloadShareFile(file) {
+        const url = URL.createObjectURL(file);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = file.name;
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
     async function shareResult() {
-        const title = selectedMbti ? `평소 ${selectedMbti} → 크레 ${result.code}` : `나의 크레 MBTI는 ${result.code}`;
-        const text = `${title}\n${result.typeName} · 문항당 ${formatSeconds(timingStats.medianMs)}`;
+        const title = resultShareTitle();
+        const text = `${title}\n${result.typeName}`;
         try {
             if (window.Kakao) {
                 if (!window.Kakao.isInitialized()) window.Kakao.init(KAKAO_JS_KEY);
+                let imageUrl = new URL('assets/crewart-cave-mobile.webp', document.baseURI).toString();
+                try {
+                    imageUrl = await uploadKakaoShareImage(await createResultShareFile('feed')) || imageUrl;
+                } catch (imageError) {
+                    console.warn('[Crewart Kakao image]', imageError);
+                }
                 window.Kakao.Share.sendDefault({
                     objectType: 'feed',
                     content: {
                         title,
-                        description: `${result.typeName} · 20개의 선택으로 확인한 크레 앞의 나`,
-                        imageUrl: new URL('assets/crewart-cave-mobile.webp', document.baseURI).toString(),
+                        description: `${result.typeName} · 20개의 선택으로 확인한 나의 크레 성향`,
+                        imageUrl,
                         link: { mobileWebUrl: SURVEY_URL, webUrl: SURVEY_URL }
                     },
                     buttons: [{ title: '나도 테스트하기', link: { mobileWebUrl: SURVEY_URL, webUrl: SURVEY_URL } }]
@@ -1165,8 +1343,26 @@
     }
 
     async function shareToInstagram() {
-        const title = selectedMbti ? `평소 ${selectedMbti} → 크레 ${result.code}` : `나의 크레 MBTI는 ${result.code}`;
+        const title = resultShareTitle();
         const text = `${title}\n${result.typeName}`;
+        try {
+            const file = await createResultShareFile('story');
+            if (navigator.share && navigator.canShare?.({ files: [file] })) {
+                await navigator.share({ files: [file], title: `${title} | 크레와트`, text });
+                return;
+            }
+            downloadShareFile(file);
+            try {
+                await navigator.clipboard.writeText(SURVEY_URL);
+            } catch (_) {
+                // Saving the story image is the primary fallback.
+            }
+            toast('스토리 이미지를 저장했어요. 인스타그램에서 열어주세요.');
+            return;
+        } catch (error) {
+            if (error?.name === 'AbortError') return;
+            console.error('[Crewart Instagram share]', error);
+        }
         if (navigator.share) {
             try {
                 await navigator.share({ title: `${title} | 크레와트`, text, url: SURVEY_URL });
@@ -1183,9 +1379,12 @@
         }
     }
 
+    if (IS_LOCAL_QA) {
+        window.CrewartShareQA = Object.freeze({ createResultShareFile });
+    }
+
     function syncThemeColor() {
-        const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#171819' : '#f4f1e9');
+        document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#f4f4f1');
     }
 
     function bindEvents() {
@@ -1231,7 +1430,6 @@
         bindEvents();
         renderHome();
         syncThemeColor();
-        window.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', syncThemeColor);
         const start = element('start-button');
         start.disabled = true;
         start.querySelector('span').textContent = '문항 준비 중…';
