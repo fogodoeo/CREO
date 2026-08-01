@@ -7,6 +7,8 @@
     const BAND_MEMBER_API = '/api/band-membership';
     const KAKAO_JS_KEY = 'db7ffc8d6b9b7601b792ed69be4658fc';
     const QUESTION_IMAGE_ROOT = 'assets/crewart-illustrations/';
+    const TYPE_CHARACTER_ROOT = 'assets/crewart-types/';
+    const TYPE_CHARACTER_VERSION = '20260802-character-v1';
     const MEMBERSHIP_STORAGE_KEY = 'crewart_band_member_access_v1';
     const MEMBERSHIP_PHONE_STORAGE_KEY = 'crewart_band_member_phone_mask_v1';
     const LAST_RESULT_STORAGE_KEY = 'crewart_last_result_v1';
@@ -21,6 +23,12 @@
         SN: { title: '관찰 초점', left: '현재 정보', right: '성장 가능성' },
         TF: { title: '선택 기준', left: '조건·근거', right: '취향·관계' },
         JP: { title: '사육 방식', left: '계획·준비', right: '유연·조정' }
+    });
+    const HOUSE_REPORT_COPY = Object.freeze({
+        SF: '지금의 감각과 관계를 세심하게 챙기는 기숙사',
+        ST: '확인되는 정보와 근거로 안정적으로 운영하는 기숙사',
+        NT: '가능성을 논리적으로 설계하고 실험하는 기숙사',
+        NF: '성장 가능성과 관계를 연결해 방향을 만드는 기숙사'
     });
     const IS_LOCAL_QA = ['127.0.0.1', 'localhost'].includes(location.hostname);
     const IS_QA_MODE = IS_LOCAL_QA;
@@ -70,6 +78,11 @@
         return String(value ?? '').replace(/[&<>"']/g, character => ({
             '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
         }[character]));
+    }
+
+    function typeCharacterPath(code) {
+        const normalized = String(code || '').toLowerCase();
+        return `${TYPE_CHARACTER_ROOT}crewart-type-${normalized}.png?v=${TYPE_CHARACTER_VERSION}`;
     }
 
     function maskPhone(phone) {
@@ -618,12 +631,24 @@
         };
     }
 
-    function renderReportSectionHead(index, english, korean) {
+    function renderReportSectionHead(index, english, korean, controls) {
         return `
             <header class="cw-report-section-head">
-                <span>${escapeHtml(index)}</span>
-                <div><small>${escapeHtml(english)}</small><h2>${escapeHtml(korean)}</h2></div>
+                <button class="cw-report-section-toggle" type="button" data-report-toggle aria-expanded="false" aria-controls="${escapeHtml(controls)}">
+                    <span>${escapeHtml(index)}</span>
+                    <span><small>${escapeHtml(english)}</small><strong>${escapeHtml(korean)}</strong></span>
+                    <i aria-hidden="true">＋</i>
+                </button>
             </header>`;
+    }
+
+    function axisStrength(axisResult) {
+        const first = axisResult.axis[0];
+        const second = axisResult.axis[1];
+        const difference = Math.abs((Number(result.letters[first]) || 0) - (Number(result.letters[second]) || 0));
+        if (difference >= 5) return '매우 뚜렷';
+        if (difference >= 3) return '비교적 뚜렷';
+        return '균형에 가까움';
     }
 
     function renderSpeedCard() {
@@ -639,7 +664,7 @@
             : '평균 데이터 준비 중';
         return `
             <section class="cw-result-section cw-speed-card">
-                ${renderReportSectionHead('02', 'RESPONSE PACE', '선택 속도')}
+                ${renderReportSectionHead('02', 'RESPONSE PACE', '선택 속도', 'speed-report-detail')}
                 <header class="cw-speed-head">
                     <strong data-measure-speed data-final-text="문항당 ${escapeHtml(median)}">문항당 ${escapeHtml(median)}</strong>
                     <span>${escapeHtml(comparison)}</span>
@@ -648,6 +673,14 @@
                     <span class="cw-scale-marker" data-final-position="${position}" style="--position:${position}%" aria-hidden="true"></span>
                     <div class="cw-scale-line"><i aria-hidden="true"></i></div>
                     <div class="cw-scale-labels"><span>빠름</span><span>평균</span><span>신중</span></div>
+                </div>
+                <div class="cw-report-disclosure cw-speed-disclosure" id="speed-report-detail" hidden>
+                    <header><strong>${escapeHtml(timingStats.style.label)}</strong><span>유효 선택 ${escapeHtml(timingStats.validCount)}개</span></header>
+                    <p>${escapeHtml(timingStats.style.copy)}</p>
+                    <dl>
+                        <div><dt>문항당 선택</dt><dd>${escapeHtml(median)}</dd></div>
+                        <div><dt>측정된 전체 시간</dt><dd>${escapeHtml(formatSeconds(timingStats.totalMs))}</dd></div>
+                    </dl>
                 </div>
             </section>`;
     }
@@ -673,21 +706,43 @@
                     </div>
                 </article>`;
         }).join('');
+        const axisInsights = result.axes.map(axisResult => {
+            const meta = Core.AXIS_META[axisResult.axis];
+            const dominant = meta.letters[axisResult.dominant];
+            return `
+                <article class="cw-axis-insight">
+                    <header><strong>${escapeHtml(axisResult.dominant)} · ${escapeHtml(dominant.short)}</strong><span>${escapeHtml(axisStrength(axisResult))}</span></header>
+                    <p>${escapeHtml(dominant.description)}</p>
+                </article>`;
+        }).join('');
         return `
             <section class="cw-result-section cw-member-detail">
-                ${renderReportSectionHead('01', 'TRAIT AXES', '성향 지표')}
+                ${renderReportSectionHead('01', 'TRAIT AXES', '성향 지표', 'axes-report-detail')}
                 <div class="cw-axis-detail-list">${axisCards}</div>
+                <div class="cw-report-disclosure cw-axis-insights" id="axes-report-detail" hidden>${axisInsights}</div>
             </section>`;
     }
 
     function renderHouseCard() {
         const house = Core.HOUSE_META[assignedHouseKey];
+        const snAxis = result.axes.find(axisResult => axisResult.axis === 'SN');
+        const tfAxis = result.axes.find(axisResult => axisResult.axis === 'TF');
+        const snCopy = snAxis?.dominant === 'S' ? AXIS_REPORT_COPY.SN.left : AXIS_REPORT_COPY.SN.right;
+        const tfCopy = tfAxis?.dominant === 'T' ? AXIS_REPORT_COPY.TF.left : AXIS_REPORT_COPY.TF.right;
         return `
             <section class="cw-report-house" style="--house-accent:${escapeHtml(house.accent)}">
-                ${renderReportSectionHead('03', 'HOUSE ASSIGNMENT', '기숙사')}
+                ${renderReportSectionHead('03', 'HOUSE ASSIGNMENT', '기숙사', 'house-report-detail')}
                 <div class="cw-house-assignment">
                     <b aria-hidden="true">${escapeHtml(house.seal)}</b>
                     <div><small>ASSIGNED HOUSE</small><strong aria-label="${escapeHtml(house.name)}"><span data-measure-house data-final-text="${escapeHtml(house.name)}">${escapeHtml(house.name)}</span></strong></div>
+                </div>
+                <div class="cw-report-disclosure cw-house-disclosure" id="house-report-detail" hidden>
+                    <strong>${escapeHtml(HOUSE_REPORT_COPY[assignedHouseKey] || '')}</strong>
+                    <p>관찰 초점과 선택 기준의 조합을 반영해 배정했어요.</p>
+                    <dl>
+                        <div><dt>관찰 초점</dt><dd>${escapeHtml(snAxis?.dominant || '')} · ${escapeHtml(snCopy)}</dd></div>
+                        <div><dt>선택 기준</dt><dd>${escapeHtml(tfAxis?.dominant || '')} · ${escapeHtml(tfCopy)}</dd></div>
+                    </dl>
                 </div>
             </section>`;
     }
@@ -710,7 +765,13 @@
     }
 
     function playResultMeasurementAnimation(container) {
-        if (!container || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        if (!container) return;
+        const characterReveal = container.querySelector('[data-character-reveal]');
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            characterReveal?.classList.remove('is-pending', 'is-resolving');
+            characterReveal?.classList.add('is-revealed');
+            return;
+        }
         const codeSlots = [...container.querySelectorAll('[data-code-slot]')];
         const name = container.querySelector('[data-final-name]');
         const relation = container.querySelector('.cw-type-relation');
@@ -818,8 +879,29 @@
             });
         }, 1480);
         setTimeout(() => {
+            if (!container.isConnected) return;
+            characterReveal?.classList.add('is-resolving');
+        }, 1050);
+        setTimeout(() => {
+            if (!container.isConnected) return;
+            characterReveal?.classList.remove('is-pending', 'is-resolving');
+            characterReveal?.classList.add('is-revealed');
+        }, 1460);
+        setTimeout(() => {
             if (container.isConnected) container.classList.remove('is-measuring');
         }, 2200);
+    }
+
+    function toggleReportDisclosure(event) {
+        const button = event.currentTarget;
+        const panel = element(button.getAttribute('aria-controls'));
+        if (!panel) return;
+        const opening = panel.hidden;
+        panel.hidden = !opening;
+        button.setAttribute('aria-expanded', String(opening));
+        const icon = button.querySelector('i');
+        if (icon) icon.textContent = opening ? '−' : '＋';
+        button.closest('.cw-result-section, .cw-report-house')?.classList.toggle('is-expanded', opening);
     }
 
     function renderResult(options = {}) {
@@ -831,6 +913,8 @@
             ? `<button class="cw-share-icon is-band" type="button" data-action="band-result" aria-label="크레와트 BAND 열기"><img src="assets/band-app-icon-official.png?v=20260801-logo-v2" width="28" height="28" alt=""></button>`
             : '';
         const resultCodeSlots = [...result.code].map((letter, index) => `<span data-code-slot="${index}" data-final-letter="${escapeHtml(letter)}">${escapeHtml(letter)}</span>`).join('');
+        const characterState = options.animate ? 'is-pending' : 'is-revealed';
+        const characterPath = typeCharacterPath(result.code);
         element('result-content').innerHTML = `
             <div class="cw-result-wrap">
                 <article class="cw-result-report">
@@ -842,11 +926,17 @@
                             <div><dt>FORMAT</dt><dd>20 ITEMS</dd></div>
                         </dl>
                     </header>
-                    <div class="cw-result-hero-copy">
-                        <p class="cw-poster-kicker">RESULT TYPE</p>
-                        <strong class="cw-result-code" data-final-code="${escapeHtml(result.code)}" aria-label="${escapeHtml(result.code)}">${resultCodeSlots}</strong>
-                        <h1 data-final-name="${escapeHtml(result.typeName)}">${escapeHtml(result.typeName)}</h1>
-                    </div>
+                    <section class="cw-result-identity">
+                        <div class="cw-result-hero-copy">
+                            <p class="cw-poster-kicker">RESULT TYPE</p>
+                            <strong class="cw-result-code" data-final-code="${escapeHtml(result.code)}" aria-label="${escapeHtml(result.code)}">${resultCodeSlots}</strong>
+                            <h1 data-final-name="${escapeHtml(result.typeName)}">${escapeHtml(result.typeName)}</h1>
+                        </div>
+                        <figure class="cw-character-reveal ${characterState}" data-character-reveal>
+                            <div class="cw-character-placeholder" aria-hidden="true"><span>?</span><small>TYPE CHARACTER</small></div>
+                            <img src="${escapeHtml(characterPath)}" width="360" height="520" alt="${escapeHtml(`${result.code} ${result.typeName} 아기 크레 캐릭터`)}" loading="eager" decoding="async">
+                        </figure>
+                    </section>
                     ${detail}
                     <footer class="cw-report-footer">
                         <p>성향을 이해하기 위한 참고 결과입니다.</p>
@@ -870,6 +960,9 @@
         element('result-content').querySelector('[data-action="share"]')?.addEventListener('click', shareResult);
         element('result-content').querySelector('[data-action="instagram"]')?.addEventListener('click', shareToInstagram);
         element('result-content').querySelector('[data-action="band-result"]')?.addEventListener('click', handleResultBand);
+        element('result-content').querySelectorAll('[data-report-toggle]').forEach(button => {
+            button.addEventListener('click', toggleReportDisclosure);
+        });
         element('result-content').querySelector('[data-action="share-menu"]')?.addEventListener('click', event => {
             const button = event.currentTarget;
             const tools = button.nextElementSibling;

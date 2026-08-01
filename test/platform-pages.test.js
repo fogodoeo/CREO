@@ -203,6 +203,11 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     const managerHtml = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey-manager.html'), 'utf8');
     const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey-v4.css'), 'utf8');
     const script = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey.js'), 'utf8');
+    const characterDirectory = path.join(__dirname, '..', 'public', 'assets', 'crewart-types');
+    const characterCodes = [
+        'istj', 'isfj', 'infj', 'intj', 'istp', 'isfp', 'infp', 'intp',
+        'estp', 'esfp', 'enfp', 'entp', 'estj', 'esfj', 'enfj', 'entj'
+    ];
 
     assert.match(html, /크레와트 성향 테스트/);
     assert.match(html, /id="crewart-wordmark">CREWARTS<\/span><small>PERSONALITY TEST<\/small>/);
@@ -222,6 +227,23 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /class="cw-scale-marker"/);
     assert.match(script, /data-final-position="\$\{position\}"/);
     assert.match(script, /function playResultMeasurementAnimation\(container\)/);
+    assert.match(script, /function typeCharacterPath\(code\)/);
+    assert.match(script, /TYPE_CHARACTER_ROOT = 'assets\/crewart-types\/'/);
+    assert.match(script, /class="cw-character-reveal \$\{characterState\}" data-character-reveal/);
+    assert.match(script, /cw-character-placeholder[^>]*[\s\S]*<span>\?<\/span>/);
+    assert.match(script, /characterReveal\?\.classList\.add\('is-revealed'\)/);
+    assert.match(css, /\.cw-character-reveal\.is-revealed img\s*\{[^}]*opacity:\s*1/);
+    assert.match(css, /@keyframes cw-character-search/);
+    assert.match(html, /20260802-type-characters-v19/);
+    assert.deepEqual(
+        fs.readdirSync(characterDirectory).filter(file => file.endsWith('.png')).sort(),
+        characterCodes.map(code => `crewart-type-${code}.png`).sort()
+    );
+    characterCodes.forEach(code => {
+        const png = fs.readFileSync(path.join(characterDirectory, `crewart-type-${code}.png`));
+        assert.equal(png.subarray(1, 4).toString('ascii'), 'PNG');
+        assert.equal(png[25], 6, `${code} character should be RGBA PNG`);
+    });
     assert.match(script, /letterPairs = \[\['E', 'I'\], \['S', 'N'\], \['T', 'F'\], \['J', 'P'\]\]/);
     assert.match(script, /settleDurations = \[560, 730, 900, 1070\]/);
     assert.match(script, /data-code-slot="\$\{index\}"/);
@@ -247,6 +269,14 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /TF: \{ title: '선택 기준', left: '조건·근거', right: '취향·관계' \}/);
     assert.match(script, /JP: \{ title: '사육 방식', left: '계획·준비', right: '유연·조정' \}/);
     assert.match(script, /class="cw-axis-poles"/);
+    assert.match(script, /data-report-toggle aria-expanded="false" aria-controls=/);
+    assert.match(script, /'axes-report-detail'/);
+    assert.match(script, /'speed-report-detail'/);
+    assert.match(script, /'house-report-detail'/);
+    assert.match(script, /function toggleReportDisclosure\(event\)[\s\S]*panel\.hidden = !opening[\s\S]*aria-expanded/);
+    assert.match(css, /\.cw-speed-card\s*\{[^}]*margin:\s*32px 0 0/);
+    assert.match(css, /\.cw-report-house\s*\{[^}]*margin-top:\s*32px/);
+    assert.match(css, /\.cw-report-disclosure\[hidden\]\s*\{[^}]*display:\s*none/);
     assert.match(script, /data-axis-result data-final-pole=/);
     assert.match(script, /axisPoles\.forEach[\s\S]*classList\.toggle\('is-selected'/);
     assert.match(script, /if \(tab === 'result'\)[\s\S]*renderResult\(\{ animate: true \}\)[\s\S]*restoreLastResult\(\{ animate: true \}\)/);
