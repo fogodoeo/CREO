@@ -48,7 +48,7 @@
     let bandAuthPhoneMask = '';
     let bandTargetUrl = DEFAULT_BAND_URL;
     let pendingResultReveal = false;
-    let pendingSurveyStart = false;
+    let editingMembership = false;
     let pendingMemberPhone = '';
     let membershipRecheckTimer = null;
     let membershipRecheckStartedAt = 0;
@@ -116,19 +116,26 @@
         const snapshot = loadLastResult();
         const card = element('home-result-card');
         const startCard = element('home-start-card');
+        const intro = element('intro-screen');
         if (!card || !startCard) return;
         card.hidden = !snapshot;
         startCard.hidden = Boolean(snapshot);
+        intro?.classList.toggle('has-result', Boolean(snapshot));
         if (!snapshot) return;
+        const house = Core.HOUSE_META[snapshot.assignedHouseKey];
         element('home-result-code').textContent = snapshot.result.code;
         element('home-result-heading').textContent = snapshot.result.typeName;
+        element('home-house-seal').textContent = house?.seal || snapshot.assignedHouseKey[0];
+        element('home-house-name').textContent = house?.name || snapshot.assignedHouseKey;
+        card.style.setProperty('--house-accent', house?.accent || '#fff');
     }
 
-    function restoreLastResult() {
+    function restoreLastResult(options = {}) {
         const snapshot = loadLastResult();
         if (!snapshot) {
             renderHome();
-            toast('저장된 결과가 없어요.', true);
+            renderEmptyResult();
+            setScreen('result-screen');
             return;
         }
         pauseTimer();
@@ -143,17 +150,20 @@
         assignedHouseKey = Core.chooseTendencyHouse(result);
         timingStats = snapshot.timingStats;
         showingStoredResult = true;
-        renderResult({ animate: true });
+        renderResult({ animate: Boolean(options.animate) });
         setScreen('result-screen');
     }
 
-    function updateAuthHeader() {
-        const chip = element('auth-phone-chip');
+    function updateBandState() {
+        const form = element('member-check-form');
+        const verified = element('band-verified-state');
         const number = element('auth-phone-number');
-        if (!chip || !number) return;
         const authenticated = Boolean(bandAuthUser?.isTargetMember);
-        chip.hidden = !authenticated;
-        number.textContent = bandAuthPhoneMask || 'BAND 회원 인증됨';
+        if (form) form.hidden = authenticated && !editingMembership;
+        if (verified) verified.hidden = !authenticated || editingMembership;
+        if (number) number.textContent = bandAuthPhoneMask || 'BAND 회원';
+        const navStatus = element('band-nav-status');
+        navStatus?.classList.toggle('is-verified', authenticated);
     }
 
     function toast(message, isError) {
@@ -206,7 +216,7 @@
     }
 
     function setScreen(screenId) {
-        ['intro-screen', 'question-screen', 'mbti-screen', 'result-screen'].forEach(id => {
+        ['intro-screen', 'question-screen', 'mbti-screen', 'result-screen', 'band-screen'].forEach(id => {
             const screen = element(id);
             const active = id === screenId;
             screen.hidden = !active;
@@ -224,6 +234,7 @@
             else introVideo.pause();
         }
         updatePersistentActions();
+        syncThemeColor(screenId);
         window.scrollTo({ top: 0, behavior: 'instant' });
     }
 
@@ -352,15 +363,12 @@
     }
 
     function openMemberCheck(options = {}) {
-        const dialog = element('member-check-dialog');
-        if (!dialog) return;
         pendingResultReveal = Boolean(options.revealResult);
-        pendingSurveyStart = Boolean(options.startSurvey);
         const status = element('member-check-status');
         const joinLink = element('member-join-link');
         const submit = element('member-check-submit');
         const submitLabel = element('member-check-submit-label');
-        if (status) {
+        if (status && !pendingMemberPhone) {
             status.hidden = true;
             status.textContent = '';
             status.classList.remove('is-error', 'is-success', 'is-action');
@@ -374,21 +382,23 @@
             submit.classList.remove('is-recheck');
         }
         if (submitLabel) submitLabel.textContent = '회원 확인';
-        dialog.hidden = false;
-        requestAnimationFrame(() => element('member-phone')?.focus());
-    }
-
-    function closeMemberCheck() {
-        const dialog = element('member-check-dialog');
-        if (dialog) dialog.hidden = true;
-        stopMembershipRecheck();
-        pendingResultReveal = false;
-        pendingSurveyStart = false;
+        if (!hasDetailedAccess()) editingMembership = false;
+        updateBandState();
+        setScreen('band-screen');
+        if (!hasDetailedAccess() || editingMembership) requestAnimationFrame(() => element('member-phone')?.focus());
     }
 
     function editMembershipAccess() {
         if (!hasDetailedAccess()) return;
-        openMemberCheck();
+        editingMembership = true;
+        const status = element('member-check-status');
+        if (status) {
+            status.hidden = true;
+            status.textContent = '';
+            status.classList.remove('is-error', 'is-success', 'is-action');
+        }
+        updateBandState();
+        requestAnimationFrame(() => element('member-phone')?.focus());
     }
 
     function clearMembershipAccess() {
@@ -398,6 +408,7 @@
         bandAuthToken = '';
         bandAuthUser = null;
         bandAuthPhoneMask = '';
+        editingMembership = false;
         try {
             sessionStorage.removeItem(MEMBERSHIP_STORAGE_KEY);
             sessionStorage.removeItem(MEMBERSHIP_PHONE_STORAGE_KEY);
@@ -623,9 +634,9 @@
     function renderHouseCard() {
         const house = Core.HOUSE_META[assignedHouseKey];
         return `
-            <section class="cw-result-section cw-house-card">
-                <span>기숙사</span>
-                <div><h2 class="cw-house-wheel" aria-label="${escapeHtml(house.name)}"><span data-measure-house data-final-text="${escapeHtml(house.name)}">${escapeHtml(house.name)}</span></h2><b>${assignedHouseKey[0]} · ${assignedHouseKey[1]} 조합</b></div>
+            <section class="cw-report-house" style="--house-accent:${escapeHtml(house.accent)}">
+                <span>HOUSE</span>
+                <div><b aria-hidden="true">${escapeHtml(house.seal)}</b><strong aria-label="${escapeHtml(house.name)}"><span data-measure-house data-final-text="${escapeHtml(house.name)}">${escapeHtml(house.name)}</span></strong></div>
             </section>`;
     }
 
@@ -635,7 +646,7 @@
         const status = configured ? '확인 후 바로 열려요' : '회원 명단 연결을 준비하고 있어요';
         return `
             <section class="cw-detail-gate">
-                <div class="cw-detail-preview" aria-hidden="true" inert>${renderMemberDetail()}${renderSpeedCard()}${renderHouseCard()}</div>
+                <div class="cw-detail-preview" aria-hidden="true" inert>${renderMemberDetail()}${renderSpeedCard()}</div>
                 <div class="cw-detail-shade" aria-hidden="true"></div>
                 <div class="cw-detail-unlock">
                     <h2>전체 결과 보기</h2>
@@ -755,7 +766,7 @@
 
     function renderResult(options = {}) {
         const detail = BAND_INTEGRATION_ENABLED && hasDetailedAccess()
-            ? `${renderMemberDetail()}${renderSpeedCard()}${renderHouseCard()}`
+            ? `${renderMemberDetail()}${renderSpeedCard()}`
             : renderLockedDetail();
         const bandShare = BAND_INTEGRATION_ENABLED
             ? `<button class="cw-share-icon is-band" type="button" data-action="band-result" aria-label="크레와트 BAND 열기"><img src="assets/band-app-icon-official.png?v=20260801-logo-v2" width="28" height="28" alt=""></button>`
@@ -763,18 +774,19 @@
         const resultCodeSlots = [...result.code].map((letter, index) => `<span data-code-slot="${index}" data-final-letter="${escapeHtml(letter)}">${escapeHtml(letter)}</span>`).join('');
         element('result-content').innerHTML = `
             <div class="cw-result-wrap">
-                <section class="cw-result-poster">
+                <article class="cw-result-report">
+                    <header class="cw-report-head"><strong>CREWARTS</strong><span>PERSONALITY REPORT</span></header>
                     <div class="cw-result-hero-copy">
-                        <p class="cw-poster-kicker">나의 결과</p>
+                        <p class="cw-poster-kicker">MY CREWART PROFILE</p>
                         <strong class="cw-result-code" data-final-code="${escapeHtml(result.code)}" aria-label="${escapeHtml(result.code)}">${resultCodeSlots}</strong>
                         <h1 data-final-name="${escapeHtml(result.typeName)}">${escapeHtml(result.typeName)}</h1>
                         ${renderTypeRelation()}
                     </div>
-                </section>
-                ${detail}
-                <section class="cw-result-section cw-share-section">
-                    <div><p>SHARE</p><h2>결과 공유</h2></div>
-                    <div class="cw-share-tools" aria-label="결과 공유">
+                    ${renderHouseCard()}
+                    ${detail}
+                    <section class="cw-share-section">
+                        <button class="cw-share-toggle" type="button" data-action="share-menu" aria-expanded="false">공유하기 <span aria-hidden="true">＋</span></button>
+                        <div class="cw-share-tools" aria-label="결과 공유" hidden>
                         <button class="cw-share-icon is-kakao" type="button" data-action="share" aria-label="카카오톡으로 공유">
                             <img src="assets/kakaolink_btn_medium.png" width="24" height="24" alt="">
                         </button>
@@ -782,21 +794,34 @@
                             <img src="assets/instagram-glyph-official.svg" width="24" height="24" alt="">
                         </button>
                         ${bandShare}
-                    </div>
-                </section>
-                <div class="cw-result-actions">
-                    <button class="cw-primary-button" type="button" data-action="retest">새로 하기</button>
-                    <button class="cw-secondary-button" type="button" data-action="home">메인</button>
-                </div>
+                        </div>
+                    </section>
+                </article>
             </div>`;
         element('result-content').querySelector('[data-action="unlock-detail"]')?.addEventListener('click', handleUnlockDetail);
         element('result-content').querySelector('[data-action="open-band"]')?.addEventListener('click', openBandTarget);
         element('result-content').querySelector('[data-action="share"]')?.addEventListener('click', shareResult);
         element('result-content').querySelector('[data-action="instagram"]')?.addEventListener('click', shareToInstagram);
         element('result-content').querySelector('[data-action="band-result"]')?.addEventListener('click', handleResultBand);
-        element('result-content').querySelector('[data-action="retest"]')?.addEventListener('click', startSurvey);
-        element('result-content').querySelector('[data-action="home"]')?.addEventListener('click', returnToIntro);
+        element('result-content').querySelector('[data-action="share-menu"]')?.addEventListener('click', event => {
+            const button = event.currentTarget;
+            const tools = button.nextElementSibling;
+            const opening = Boolean(tools?.hidden);
+            if (tools) tools.hidden = !opening;
+            button.setAttribute('aria-expanded', String(opening));
+            button.querySelector('span').textContent = opening ? '−' : '＋';
+        });
         if (options.animate) playResultMeasurementAnimation(element('result-content').querySelector('.cw-result-wrap'));
+    }
+
+    function renderEmptyResult() {
+        element('result-content').innerHTML = `
+            <section class="cw-result-empty">
+                <p>CREWARTS PERSONALITY TEST</p>
+                <h1>아직 결과가 없어요</h1>
+                <button class="cw-primary-button" type="button" data-action="start-empty">검사 시작</button>
+            </section>`;
+        element('result-content').querySelector('[data-action="start-empty"]')?.addEventListener('click', startSurvey);
     }
 
     function handleResultBand() {
@@ -878,6 +903,7 @@
     }
 
     function currentStage() {
+        if (!element('band-screen').hidden) return 'band';
         if (!element('result-screen').hidden) return 'result';
         if (!element('mbti-screen').hidden) return 'mbti';
         if (!element('question-screen').hidden) return 'questions';
@@ -905,37 +931,41 @@
     }
 
     function updateBandUi() {
-        const button = element('band-float');
-        const label = element('band-float-label');
-        const authenticated = hasDetailedAccess();
-        button.disabled = !bandAuthReady || authenticated;
-        button.classList.toggle('is-verified', authenticated);
-        button.hidden = !BAND_INTEGRATION_ENABLED;
-        label.textContent = authenticated ? 'BAND 확인 완료' : 'BAND 회원 확인';
         document.querySelectorAll('[data-band-join]').forEach(link => { link.href = bandTargetUrl; });
-        button.setAttribute('aria-label', label.textContent);
-        updateAuthHeader();
+        updateBandState();
         updatePersistentActions();
         if (result && !element('result-screen').hidden) renderResult();
     }
 
     function updatePersistentActions() {
-        const footer = element('survey-footer');
+        const nav = element('app-nav');
         const home = element('persistent-home-button');
-        if (home) home.hidden = currentStage() === 'intro';
-        if (footer) footer.hidden = true;
+        const stage = currentStage();
+        const focused = stage === 'questions' || stage === 'mbti';
+        if (home) home.hidden = !focused;
+        if (nav) nav.hidden = focused;
+        const activeTab = stage === 'intro' ? 'home' : stage;
+        document.querySelectorAll('[data-nav]').forEach(button => {
+            const active = button.dataset.nav === activeTab;
+            button.classList.toggle('is-active', active);
+            if (active) button.setAttribute('aria-current', 'page');
+            else button.removeAttribute('aria-current');
+        });
     }
 
-    function handlePersistentBand() {
-        if (!BAND_INTEGRATION_ENABLED) return;
-        if (!bandAuthReady) return;
-        if (hasDetailedAccess()) toast('BAND 회원 확인이 완료됐어요.');
-        else openMemberCheck({ revealResult: currentStage() === 'mbti' && Boolean(result) });
-    }
-
-    function handleBandEntry() {
-        if (hasDetailedAccess()) return;
-        openMemberCheck({ startSurvey: true });
+    function navigateToTab(tab) {
+        if (tab === 'home') {
+            returnToIntro();
+            return;
+        }
+        if (tab === 'result') {
+            if (result) {
+                renderResult();
+                setScreen('result-screen');
+            } else restoreLastResult();
+            return;
+        }
+        if (tab === 'band') openMemberCheck();
     }
 
     async function initBandMembership() {
@@ -1004,6 +1034,7 @@
         bandAuthToken = payload.token || '';
         bandAuthUser = payload.user || { id: 'band_member', name: 'BAND 회원', isTargetMember: true };
         bandAuthPhoneMask = maskPhone(verifiedPhone) || bandAuthPhoneMask;
+        editingMembership = false;
         if (bandAuthToken) {
             try {
                 sessionStorage.setItem(MEMBERSHIP_STORAGE_KEY, bandAuthToken);
@@ -1018,17 +1049,12 @@
         }
         updateBandUi();
         const reveal = pendingResultReveal && Boolean(result);
-        const startAfterCheck = pendingSurveyStart;
         pendingResultReveal = false;
-        pendingSurveyStart = false;
         setTimeout(() => {
-            const dialog = element('member-check-dialog');
-            if (dialog) dialog.hidden = true;
             if (phoneInput) phoneInput.value = '';
             if (reveal) completeResultReveal();
-            else if (startAfterCheck) startSurvey();
             else toast('BAND 회원 확인이 완료됐어요.');
-        }, 250);
+        }, 350);
     }
 
     function scheduleMembershipRecheck() {
@@ -1043,7 +1069,7 @@
     }
 
     async function recheckPendingMembership(options = {}) {
-        if (!pendingMemberPhone || membershipCheckInFlight || hasDetailedAccess()) return;
+        if (!pendingMemberPhone || membershipCheckInFlight || (hasDetailedAccess() && !editingMembership)) return;
         const status = element('member-check-status');
         const joinLink = element('member-join-link');
         if (Date.now() - membershipRecheckStartedAt > MEMBERSHIP_RECHECK_TIMEOUT_MS) {
@@ -1152,7 +1178,7 @@
     }
 
     function handleMemberJoinReturn() {
-        if (!element('member-check-dialog')?.hidden) {
+        if (currentStage() === 'band') {
             const status = element('member-check-status');
             if (status) {
                 status.hidden = false;
@@ -1380,7 +1406,7 @@
                         imageUrl,
                         link: { mobileWebUrl: SURVEY_URL, webUrl: SURVEY_URL }
                     },
-                    buttons: [{ title: '나도 테스트하기', link: { mobileWebUrl: SURVEY_URL, webUrl: SURVEY_URL } }]
+                        buttons: [{ title: '나도 검사하기', link: { mobileWebUrl: SURVEY_URL, webUrl: SURVEY_URL } }]
                 });
                 return;
             }
@@ -1444,34 +1470,28 @@
         window.CrewartShareQA = Object.freeze({ createResultShareFile });
     }
 
-    function syncThemeColor() {
-        document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#f4f4f1');
+    function syncThemeColor(screenId) {
+        const color = screenId === 'intro-screen' ? '#111712' : '#f4f4f1';
+        document.querySelector('meta[name="theme-color"]')?.setAttribute('content', color);
     }
 
     function bindEvents() {
         element('start-button').addEventListener('click', startSurvey);
-        element('home-result-open')?.addEventListener('click', restoreLastResult);
         element('home-retest')?.addEventListener('click', startSurvey);
         element('auth-phone-edit')?.addEventListener('click', editMembershipAccess);
         element('auth-phone-clear')?.addEventListener('click', clearMembershipAccess);
-        element('member-check-close')?.addEventListener('click', closeMemberCheck);
         element('member-check-form')?.addEventListener('submit', verifyMembershipPhone);
         element('member-phone')?.addEventListener('input', formatMemberPhone);
         element('member-join-link')?.addEventListener('click', handleMemberJoinReturn);
-        element('member-check-dialog')?.addEventListener('click', event => {
-            if (event.target === event.currentTarget) closeMemberCheck();
-        });
         element('question-back').addEventListener('click', previousQuestion);
         element('mbti-unknown').addEventListener('click', () => {
             selectedMbti = '';
             showResult(true);
         });
         element('show-result').addEventListener('click', () => showResult(false));
-        element('band-float').addEventListener('click', handleBandEntry);
-        element('persistent-band-button').addEventListener('click', handlePersistentBand);
         element('persistent-home-button').addEventListener('click', returnToIntro);
-        document.addEventListener('keydown', event => {
-            if (event.key === 'Escape' && !element('member-check-dialog')?.hidden) closeMemberCheck();
+        document.querySelectorAll('[data-nav]').forEach(button => {
+            button.addEventListener('click', () => navigateToTab(button.dataset.nav));
         });
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'hidden') pauseTimer();
@@ -1492,14 +1512,15 @@
         setupIntroVideo();
         bindEvents();
         renderHome();
-        syncThemeColor();
+        updatePersistentActions();
+        syncThemeColor('intro-screen');
         const start = element('start-button');
         start.disabled = true;
         start.querySelector('span').textContent = '문항 준비 중…';
         playWordmark();
         void loadConfig().finally(() => {
             start.disabled = false;
-            start.querySelector('span').textContent = '시작하기';
+            start.querySelector('span').textContent = '검사 시작';
         });
         if (!BAND_INTEGRATION_ENABLED) {
             bandAuthReady = false;

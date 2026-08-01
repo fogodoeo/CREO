@@ -130,15 +130,16 @@ test('CREWARTS reveals the basic result first and unlocks member detail by phone
     const script = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey.js'), 'utf8');
     assert.doesNotThrow(() => new vm.Script(script, { filename: 'crewart-survey.js' }));
     assert.doesNotMatch(html, /BAND 회원 연동/);
-    assert.match(html, /id="band-float-label">BAND 회원 확인/);
+    assert.match(html, /id="band-screen"/);
+    assert.match(html, /data-nav="band"/);
     assert.match(html, /id="member-phone"/);
     assert.match(html, /id="member-check-submit-label">회원 확인<\/strong>/);
     assert.match(html, /가입 확인에만 사용해요\./);
     assert.match(html, /class="cw-visually-hidden" for="member-phone"/);
     assert.doesNotMatch(html, /BAND 가입 번호를 확인할게요|가입 승인된 BAND 프로필|설문 답변·결과와 함께 저장되지 않습니다/);
     assert.doesNotMatch(html, /결과 확인 전 한 번만/);
-    assert.match(html, /BAND 가입하러 가기/);
-    assert.match(html, /id="member-join-link"[\s\S]*data-band-join[\s\S]*BAND 가입하러 가기/);
+    assert.match(html, /BAND 가입하기/);
+    assert.match(html, /id="member-join-link"[\s\S]*data-band-join[\s\S]*BAND 가입하기/);
     assert.doesNotMatch(html, /id="member-join-link"[^>]*hidden/);
     assert.doesNotMatch(html, /supabase-bridge\.js/);
     assert.match(css, /\.cw-choice-button[\s\S]*min-height:\s*68px/);
@@ -165,36 +166,33 @@ test('CREWARTS reveals the basic result first and unlocks member detail by phone
 test('CREWARTS home shows the saved result and only a masked authenticated phone', () => {
     const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey.html'), 'utf8');
     const script = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey.js'), 'utf8');
-    for (const id of ['auth-phone-chip', 'auth-phone-number', 'auth-phone-edit', 'auth-phone-clear', 'home-result-card', 'home-result-open', 'home-retest']) {
+    for (const id of ['auth-phone-number', 'auth-phone-edit', 'auth-phone-clear', 'home-result-card', 'home-retest', 'home-house-seal', 'home-house-name', 'app-nav']) {
         assert.match(html, new RegExp(`id=["']${id}["']`));
     }
-    assert.match(html, /최근 결과/);
-    assert.match(html, /결과 보기/);
-    assert.match(html, /새로 하기/);
-    assert.match(html, /class="cw-home-result-open" id="home-result-open"/);
-    assert.match(html, /class="cw-home-panel"[\s\S]*id="home-result-card"[\s\S]*id="home-start-card"[\s\S]*class="cw-home-member"/);
-    assert.match(html, /class="cw-home-band-join" data-band-join/);
-    assert.doesNotMatch(html, /home-result-summary|home-result-saved|결과 다시 보기|다시 테스트하기/);
+    assert.match(html, /MY CREWART PROFILE/);
+    assert.match(html, /새로 검사하기/);
+    assert.match(html, /data-nav="home"[\s\S]*data-nav="result"[\s\S]*data-nav="band"/);
+    assert.doesNotMatch(html, /최근 결과|home-result-open|cw-home-panel|cw-home-member/);
     assert.match(script, /crewart_band_member_phone_mask_v1/);
     assert.match(script, /function maskPhone[\s\S]*\*\*\*\*/);
     assert.match(script, /if \(bandAuthToken && !bandAuthPhoneMask\)[\s\S]*removeItem\(MEMBERSHIP_STORAGE_KEY\)/);
     assert.match(script, /function saveLastResult/);
     assert.match(script, /function restoreLastResult/);
-    assert.match(script, /function editMembershipAccess\(\)[\s\S]*openMemberCheck\(\)/);
+    assert.match(script, /function editMembershipAccess\(\)[\s\S]*editingMembership = true[\s\S]*updateBandState\(\)/);
     assert.match(script, /function clearMembershipAccess\(\)[\s\S]*removeItem\(MEMBERSHIP_STORAGE_KEY\)[\s\S]*removeItem\(MEMBERSHIP_PHONE_STORAGE_KEY\)/);
     assert.doesNotMatch(script, /확인된 회원으로 결과를 바로 볼 수 있어요/);
-    assert.match(script, /button\.disabled = !bandAuthReady \|\| authenticated/);
     assert.match(script, /document\.querySelectorAll\('\[data-band-join\]'\)/);
-    const bandEntryBody = script.match(/function handleBandEntry\(\) \{([\s\S]*?)\n    \}/)?.[1] || '';
-    assert.match(bandEntryBody, /if \(hasDetailedAccess\(\)\) return/);
-    assert.doesNotMatch(bandEntryBody, /\bstartSurvey\s*\(/);
+    assert.match(script, /function updateBandState\(\)[\s\S]*bandAuthPhoneMask/);
+    assert.match(script, /function navigateToTab\(tab\)[\s\S]*restoreLastResult\(\)[\s\S]*openMemberCheck\(\)/);
     const savedResultBody = script.match(/function saveLastResult\(\) \{([\s\S]*?)\n    \}/)?.[1] || '';
     assert.doesNotMatch(savedResultBody, /phone|bandAuth/i);
 });
 
 test('CREWARTS keeps member linking out of the questionnaire flow', () => {
+    const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey.html'), 'utf8');
     const script = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey.js'), 'utf8');
-    assert.match(script, /function updatePersistentActions\(\)[\s\S]*footer\.hidden = true/);
+    assert.match(script, /function updatePersistentActions\(\)[\s\S]*focused = stage === 'questions' \|\| stage === 'mbti'[\s\S]*nav\.hidden = focused/);
+    assert.doesNotMatch(html, /member-check-dialog|cw-guest-dialog/);
     assert.doesNotMatch(script, /결과를 열기 전에 가입 여부를 확인해요/);
 });
 
@@ -235,7 +233,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /Core\.chooseTendencyHouse\(result\)/);
     assert.doesNotMatch(script, /기숙사 참여하기|현재 커뮤니티 인원을 기준/);
     assert.match(css, /\.cw-scale-line[\s\S]*left:\s*50%/);
-    assert.match(script, /renderMemberDetail\(\)\}\$\{renderSpeedCard\(\)\}\$\{renderHouseCard\(\)/);
+    assert.match(script, /renderMemberDetail\(\)\}\$\{renderSpeedCard\(\)/);
+    assert.match(script, /\$\{renderHouseCard\(\)\}[\s\S]*\$\{detail\}/);
     assert.doesNotMatch(script, /class="cw-answer-detail"/);
     assert.doesNotMatch(script, /<span>\$\{escapeHtml\(meta\.title\)\}<\/span>/);
     assert.doesNotMatch(css, /@media \(max-width: 560px\)[\s\S]*\.cw-axis-detail-list\s*\{\s*grid-template-columns:\s*1fr/);
@@ -244,18 +243,19 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(css, /--cw-weight-bold:\s*800/);
     assert.match(css, /\.cw-question-card > h1[\s\S]*font-weight:\s*var\(--cw-weight-bold\)/);
     assert.match(css, /\.cw-choice-button span[\s\S]*font-size:\s*var\(--cw-type-control\)/);
-    assert.match(css, /\.cw-poster-kicker[\s\S]*color:\s*var\(--cw-green\)/);
+    assert.match(css, /\.cw-poster-kicker[\s\S]*color:\s*var\(--cw-muted\)/);
     assert.match(css, /\.cw-intro-visual\s*\{[^}]*position:\s*fixed[^}]*inset:\s*-24px/);
-    assert.match(css, /\.cw-intro-video\s*\{[^}]*object-fit:\s*cover[^}]*filter:\s*blur\(6px\)/);
-    assert.match(css, /\.cw-home-result-link b[\s\S]*border-radius:\s*50%/);
+    assert.match(css, /\.cw-intro-video\s*\{[^}]*object-fit:\s*cover[^}]*filter:\s*blur\(5px\)/);
+    assert.match(css, /\.cw-bottom-nav[\s\S]*position:\s*fixed/);
     assert.match(css, /\.cw-intro::after\s*\{[^}]*position:\s*fixed/);
     assert.doesNotMatch(css, /\.cw-position-scale\.is-measuring \.cw-scale-line::after/);
     assert.match(css, /@keyframes cw-code-flicker/);
     assert.match(css, /@keyframes cw-house-roll/);
     assert.doesNotMatch(css, /cw-scale-scan|rgba\(22, 129, 75, \.7\)/);
     const lockedDetailBody = script.match(/function renderLockedDetail\(\) \{([\s\S]*?)\n    \}/)?.[1] || '';
-    assert.match(lockedDetailBody, /renderMemberDetail\(\)\}\$\{renderSpeedCard\(\)\}\$\{renderHouseCard\(\)/);
-    assert.match(css, /\.cw-detail-preview\s*\{[^}]*filter:\s*blur\(3px\)/);
+    assert.match(lockedDetailBody, /renderMemberDetail\(\)\}\$\{renderSpeedCard\(\)/);
+    assert.doesNotMatch(lockedDetailBody, /renderHouseCard/);
+    assert.match(css, /\.cw-detail-preview\s*\{[^}]*filter:\s*blur\(4px\)/);
     assert.match(css, /\.cw-speed-head span\s*\{[^}]*color:\s*var\(--cw-ink\)[^}]*font-size:\s*var\(--cw-type-section\)[^}]*font-weight:\s*var\(--cw-weight-bold\)/);
-    assert.match(css, /\.cw-house-card > span\s*\{[^}]*color:\s*var\(--cw-ink\)[^}]*font-size:\s*var\(--cw-type-section\)[^}]*font-weight:\s*var\(--cw-weight-bold\)/);
+    assert.match(css, /\.cw-report-house[\s\S]*border-top:\s*1px solid var\(--cw-line\)/);
 });
