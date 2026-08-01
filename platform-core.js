@@ -136,9 +136,10 @@ function recordId(prefix = 'rec') {
 function channelLinks(channelId) {
     const id = normalizeChannelId(channelId) || 'cdcup';
     const query = `channel=${encodeURIComponent(id)}`;
+    const legacyControl = id === 'cdcup' ? '/settings.html?module=cdcup' : '';
     return {
         workspace: `/channel-workspace.html?${query}`,
-        control: `/auction-control.html?${query}`,
+        control: legacyControl || `/auction-control.html?${query}`,
         preview: `/broadcast-router.html?event=${encodeURIComponent(id)}&page=1`,
         live: `/broadcast-router.html?event=${encodeURIComponent(id)}&page=1&live=1`,
         shipping: `/channel-shipping.html?${query}`

@@ -38,22 +38,33 @@ test('platform client script is valid JavaScript', () => {
     assert.doesNotThrow(() => new vm.Script(source, { filename: 'platform-client.js' }));
 });
 
-test('the universal broadcast route sends every channel to the new camera overlay renderer', () => {
+test('the universal broadcast route preserves CDCUP legacy output and uses the new renderer elsewhere', () => {
     const router = fs.readFileSync(path.join(__dirname, '..', 'public', 'broadcast-router.html'), 'utf8');
     assert.doesNotMatch(router, /supabase-bridge|active_event_module|getRuntimeConfigMap/i);
     assert.match(router, /\/api\/platform\/active-channel/);
     assert.match(router, /auction-live\.html\?channel=/);
-    assert.doesNotMatch(router, /broadcast\.html\?page=/);
+    assert.match(router, /channel==='cdcup'/);
+    assert.match(router, /broadcast\.html\?page=/);
+    assert.match(router, /module=cdcup&direct=1/);
     assert.doesNotMatch(router, /crewart-broadcast\.html\?page=/);
 });
 
-test('hub preserves established management pages but always uses the new broadcast control', () => {
+test('hub preserves established management and CDCUP broadcast control links', () => {
     const hub = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
     assert.match(hub, /c\.links\.workspace/);
     assert.match(hub, /c\.links\.control/);
     assert.match(hub, /legacy\?\.managementUrl/);
-    assert.doesNotMatch(hub, /legacy\?\.controlUrl/);
     assert.match(hub, /c\.links\.shipping/);
+});
+
+test('CDCUP platform links use the established control while other channels use the unified control', () => {
+    const { channelLinks } = require('../platform-core');
+    assert.equal(channelLinks('cdcup').control, '/settings.html?module=cdcup');
+    assert.equal(channelLinks('sample').control, '/auction-control.html?channel=sample');
+    const workspace = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-workspace.html'), 'utf8');
+    const shipping = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-shipping.html'), 'utf8');
+    assert.match(workspace, /c\?\.links\?\.control/);
+    assert.match(shipping, /c\?\.links\?\.control/);
 });
 
 test('the new broadcast implements three independent camera overlays', () => {
