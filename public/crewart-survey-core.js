@@ -5,7 +5,7 @@
 }(typeof globalThis !== 'undefined' ? globalThis : this, function () {
     'use strict';
 
-    const SURVEY_VERSION = 'cre-mbti-v1.0';
+    const SURVEY_VERSION = 'cre-mbti-v2.0';
     const AXES = ['EI', 'SN', 'TF', 'JP'];
     const HOUSE_KEYS = ['SF', 'ST', 'NT', 'NF'];
     const MBTI_TYPES = [
@@ -15,31 +15,36 @@
         'ESTJ', 'ESFJ', 'ENFJ', 'ENTJ'
     ];
 
+    // v2.0 bias controls:
+    // - both choices describe competent, responsible behaviour;
+    // - no pole is framed as the emotional, careless, or less-informed answer;
+    // - every axis samples five different behavioural facets;
+    // - option order is randomized later without changing the score mapping.
     const QUESTIONS = [
-        { id: 'Q01', axis: 'EI', label: '선택을 정리할 때', q: '두 크레 중 어느 쪽이 더 끌리는지 모르겠다. 나는?', options: ['친구와 이야기하며 생각을 정리한다', '혼자 사진을 다시 보며 생각을 정리한다'], scores: ['E', 'I'] },
-        { id: 'Q02', axis: 'SN', label: '어린 크레를 볼 때', q: '아직 어린 크레를 고른다면 먼저 눈이 가는 것은?', options: ['지금 확인되는 컨디션과 표현', '가족의 성장 흐름과 앞으로의 가능성'], scores: ['S', 'N'] },
-        { id: 'Q03', axis: 'TF', label: '조건이 비슷할 때', q: '건강과 가격이 비슷한 두 크레가 있다. 마지막 기준은?', options: ['미리 정한 조건에 더 잘 맞는 쪽', '계속 마음에 남고 정이 가는 쪽'], scores: ['T', 'F'] },
-        { id: 'Q04', axis: 'JP', label: '입양을 준비할 때', q: '새 크레가 오기 전 사육장은 어떻게 준비할까?', options: ['필요한 세팅을 미리 끝내 둔다', '기본만 갖추고 반응을 보며 맞춘다'], scores: ['J', 'P'] },
+        { id: 'Q01', axis: 'EI', facet: 'processing', label: '선택이 막혔을 때', q: '후보 둘 사이에서 생각이 엉켰다. 자연스럽게 먼저 하는 것은?', options: ['누군가에게 상황을 말하며 기준을 찾아간다', '사진과 메모를 혼자 다시 보며 기준을 세운다'], scores: ['E', 'I'] },
+        { id: 'Q02', axis: 'SN', facet: 'evidence', label: '짧은 설명을 들을 때', q: '판매자의 설명을 3분만 들을 수 있다. 먼저 확인하고 싶은 것은?', options: ['현재 체중·먹이 반응·사진에서 보이는 특징', '부모·형제의 변화와 이 조합이 보여온 흐름'], scores: ['S', 'N'] },
+        { id: 'Q03', axis: 'TF', facet: 'resources', label: '예산을 넘었을 때', q: '매력적인 개체가 정한 예산을 넘었다. 결정을 정리하는 기준은?', options: ['우선순위와 총비용을 다시 계산해 선을 정한다', '내 생활에 들일 의미와 오래 책임질 마음을 살핀다'], scores: ['T', 'F'] },
+        { id: 'Q04', axis: 'JP', facet: 'setup', label: '입양을 준비할 때', q: '새 크레가 오기 전 사육장은 어떻게 준비할까?', options: ['필요 항목을 점검해 입주 전 기준까지 맞춘다', '필수 조건부터 갖추고 반응을 보며 세부를 맞춘다'], scores: ['J', 'P'] },
 
-        { id: 'Q05', axis: 'EI', label: '변화를 발견했을 때', q: '키우던 크레에게 예상 밖의 변화가 생겼다. 먼저 하는 일은?', options: ['사진을 공유하고 다른 경험을 들어본다', '이전 사진과 기록을 혼자 비교해 본다'], scores: ['E', 'I'] },
-        { id: 'Q06', axis: 'SN', label: '성장 기록을 볼 때', q: '몇 달치 성장 기록을 펼쳤다. 먼저 찾는 것은?', options: ['체중과 색처럼 실제로 달라진 부분', '변화가 이어지는 방향과 다음 모습'], scores: ['S', 'N'] },
-        { id: 'Q07', axis: 'TF', label: '친구를 도울 때', q: '친구가 두 크레 사이에서 고민한다. 나는 어떻게 도울까?', options: ['조건과 장단점을 나란히 비교해 준다', '어느 쪽이 더 오래 마음에 남는지 묻는다'], scores: ['T', 'F'] },
-        { id: 'Q08', axis: 'JP', label: '경매를 시작할 때', q: '크레 경매를 보기 시작했다. 나에게 더 편한 방식은?', options: ['후보와 예산을 먼저 정해 놓고 본다', '전체를 둘러보며 후보를 바꿔 간다'], scores: ['J', 'P'] },
+        { id: 'Q05', axis: 'EI', facet: 'recovery', label: '행사를 마친 저녁', q: '크레 행사에서 돌아온 뒤 가장 먼저 하고 싶은 것은?', options: ['만난 사람들과 인상 깊었던 장면을 나눈다', '혼자 쉬며 본 것과 느낀 점을 정리한다'], scores: ['E', 'I'] },
+        { id: 'Q06', axis: 'SN', facet: 'tracking', label: '성장 기록을 볼 때', q: '같은 크레의 석 달 기록을 펼쳤다. 먼저 잡히는 것은?', options: ['날짜별 체중·색·먹이 반응의 구체적인 차이', '여러 변화가 함께 향하는 전체 성장 패턴'], scores: ['S', 'N'] },
+        { id: 'Q07', axis: 'TF', facet: 'advice', label: '친구의 선택을 도울 때', q: '친구가 두 개체 중 골라 달라고 한다. 어떤 질문부터 할까?', options: ['각 선택에서 얻고 잃는 조건이 무엇인지', '어느 선택이 친구의 생활과 취향에 더 맞는지'], scores: ['T', 'F'] },
+        { id: 'Q08', axis: 'JP', facet: 'bidding', label: '경매를 시작할 때', q: '경매 목록을 처음 펼쳤다. 나에게 더 편한 진행 방식은?', options: ['후보와 상한선을 정하고 그 범위 안에서 본다', '전체 흐름을 보며 후보와 상한선을 계속 조정한다'], scores: ['J', 'P'] },
 
-        { id: 'Q09', axis: 'EI', label: '새 방법이 궁금할 때', q: '처음 보는 사육 방법이 궁금해졌다. 나는?', options: ['커뮤니티에 질문하며 생각을 넓힌다', '자료를 모아 혼자 이해한 뒤 판단한다'], scores: ['E', 'I'] },
-        { id: 'Q10', axis: 'SN', label: '낯선 모프를 볼 때', q: '처음 보는 모프를 만났다. 더 궁금한 것은?', options: ['지금 눈으로 확인되는 특징과 차이', '다른 조합에서 나타날 수 있는 변화'], scores: ['S', 'N'] },
-        { id: 'Q11', axis: 'TF', label: '공간이 부족할 때', q: '공간상 한 마리만 더 데려올 수 있다. 무엇을 우선할까?', options: ['현재 사육 환경과 계획에 잘 맞는지', '오래 보고 싶었던 특별한 이유가 있는지'], scores: ['T', 'F'] },
-        { id: 'Q12', axis: 'JP', label: '관리를 이어갈 때', q: '급여와 청소를 오래 이어갈 때 편한 방식은?', options: ['정한 요일과 순서를 꾸준히 지킨다', '상태와 일정에 맞춰 그때그때 조절한다'], scores: ['J', 'P'] },
+        { id: 'Q09', axis: 'EI', facet: 'learning', label: '낯선 방법을 배울 때', q: '처음 보는 사육 방법을 이해해야 한다. 더 편한 시작은?', options: ['경험자와 문답을 주고받으며 범위를 좁힌다', '자료를 읽고 내 질문을 정리한 뒤 묻는다'], scores: ['E', 'I'] },
+        { id: 'Q10', axis: 'SN', facet: 'classification', label: '낯선 표현을 볼 때', q: '처음 보는 표현의 크레를 만났다. 이해를 시작하는 방식은?', options: ['눈에 보이는 부분을 기존 개체와 하나씩 비교한다', '관련 혈통과 조합을 연결해 가능한 설명을 그린다'], scores: ['S', 'N'] },
+        { id: 'Q11', axis: 'TF', facet: 'disagreement', label: '관리 의견이 갈릴 때', q: '같은 관리 문제를 두고 의견이 갈렸다. 내 판단을 움직이는 것은?', options: ['조건을 같게 두고 다시 확인한 결과', '그 개체의 반응과 돌보는 사람의 현실적인 맥락'], scores: ['T', 'F'] },
+        { id: 'Q12', axis: 'JP', facet: 'routine', label: '관리를 이어갈 때', q: '급여와 청소를 오래 이어갈 때 더 편한 방식은?', options: ['정한 주기와 순서로 하고 변화만 따로 기록한다', '매일 상태를 보고 필요한 관리부터 조정한다'], scores: ['J', 'P'] },
 
-        { id: 'Q13', axis: 'EI', label: '행사장에서 고민할 때', q: '행사장에서 마음에 드는 크레를 발견했다. 나는?', options: ['주변 사람과 이야기하며 확신을 찾는다', '혼자 한 바퀴 더 돌며 생각해 본다'], scores: ['E', 'I'] },
-        { id: 'Q14', axis: 'SN', label: '설명을 들을 때', q: '브리더의 설명에서 더 기억에 남는 내용은?', options: ['현재 체중과 먹이 반응 같은 구체적인 정보', '혈통이 앞으로 보여줄 수 있는 성장 이야기'], scores: ['S', 'N'] },
-        { id: 'Q15', axis: 'TF', label: '추천이 엇갈릴 때', q: '주변의 추천이 서로 다르다. 마지막에는 무엇을 믿을까?', options: ['같은 조건에서 비교할 수 있는 근거', '내 생활과 취향에 더 잘 맞는 느낌'], scores: ['T', 'F'] },
-        { id: 'Q16', axis: 'JP', label: '바쁜 주를 앞두고', q: '다음 주가 바쁠 것 같다. 크레 관리는 어떻게 할까?', options: ['할 일을 미리 나누고 시간을 정해 둔다', '매일 상황을 보고 가능한 순서로 처리한다'], scores: ['J', 'P'] },
+        { id: 'Q13', axis: 'EI', facet: 'stimulation', label: '입찰이 뜨거워질 때', q: '원하던 개체의 입찰이 치열해졌다. 내 반응에 가까운 것은?', options: ['옆 사람과 상황을 주고받으며 긴장을 푼다', '화면에 집중하고 속으로 판단을 정리한다'], scores: ['E', 'I'] },
+        { id: 'Q14', axis: 'SN', facet: 'planning', label: '다음 개체를 정할 때', q: '다음 한 마리를 계획하며 내 목록을 보는 관점은?', options: ['현재 보유 개체 사이에 비어 있는 특징을 찾는다', '앞으로 만들고 싶은 라인의 방향을 먼저 그린다'], scores: ['S', 'N'] },
+        { id: 'Q15', axis: 'TF', facet: 'boundaries', label: '데려오지 않기로 했을 때', q: '좋아 보이지만 이번에는 데려오지 않기로 했다. 이유를 설명한다면?', options: ['충족되지 않은 조건과 선택 기준을 말한다', '지금 함께하기 어려운 생활상의 이유를 말한다'], scores: ['T', 'F'] },
+        { id: 'Q16', axis: 'JP', facet: 'disruption', label: '바쁜 주를 앞두고', q: '다음 주 일정이 불규칙하다. 크레 관리를 어떻게 준비할까?', options: ['며칠치 할 일을 나누고 대체 계획도 적어 둔다', '매일 가능한 시간과 상태에 맞춰 우선순위를 정한다'], scores: ['J', 'P'] },
 
-        { id: 'Q17', axis: 'EI', label: '좋은 결과가 생겼을 때', q: '새 세팅이 잘 맞아 크레 컨디션이 좋아졌다. 나는?', options: ['과정을 공유하고 다른 반응도 들어본다', '기록을 남기고 다음 변화를 더 지켜본다'], scores: ['E', 'I'] },
-        { id: 'Q18', axis: 'SN', label: '여러 사진을 볼 때', q: '같은 크레의 사진 여러 장을 보면 먼저 보이는 것은?', options: ['사진마다 반복해서 확인되는 디테일', '시간에 따라 이어지는 전체 변화의 흐름'], scores: ['S', 'N'] },
-        { id: 'Q19', axis: 'TF', label: '선택을 설명할 때', q: '내가 고른 크레를 누군가에게 설명한다면?', options: ['조건과 비교 결과를 중심으로 말한다', '처음 마음이 움직인 장면을 중심으로 말한다'], scores: ['T', 'F'] },
-        { id: 'Q20', axis: 'JP', label: '사육장을 바꿀 때', q: '사육장을 업그레이드하려 한다. 나는?', options: ['필요한 것을 정리해 한 번에 완성한다', '한 가지씩 바꾸며 반응에 맞춰 이어간다'], scores: ['J', 'P'] }
+        { id: 'Q17', axis: 'EI', facet: 'reward', label: '좋은 변화를 발견했을 때', q: '오래 기다린 긍정적 변화가 보였다. 만족이 가장 커지는 순간은?', options: ['과정을 보여주고 함께 반응을 나눌 때', '기록을 완성하고 스스로 변화를 확인할 때'], scores: ['E', 'I'] },
+        { id: 'Q18', axis: 'SN', facet: 'anomaly', label: '예상과 다르게 자랐을 때', q: '예상과 다른 모습으로 자랐다. 가장 먼저 남길 기록은?', options: ['언제 무엇이 달라졌는지 관찰 조건과 함께 적는다', '변화들이 어떻게 이어졌는지 가설 지도로 묶는다'], scores: ['S', 'N'] },
+        { id: 'Q19', axis: 'TF', facet: 'collaboration', label: '함께 계획을 정할 때', q: '공동 브리딩 계획에서 의견이 갈렸다. 합의의 출발점은?', options: ['검증할 기준과 중단 조건을 명확히 맞춘다', '각자가 중요하게 여기는 가치와 부담을 맞춘다'], scores: ['T', 'F'] },
+        { id: 'Q20', axis: 'JP', facet: 'change', label: '사육장을 바꿀 때', q: '사육장을 업그레이드하려 한다. 더 자연스러운 진행은?', options: ['목표와 부품을 정리해 한 번의 작업으로 마친다', '한 요소씩 바꾸고 반응을 확인한 뒤 다음을 정한다'], scores: ['J', 'P'] }
     ];
 
     const QUESTION_IMAGES = [

@@ -79,6 +79,10 @@ test('the new broadcast implements three independent camera overlays', () => {
     assert.match(live, /page2SoldOn/);
     assert.match(live, /if\(!s\.page3On\)return''/);
     assert.match(live, /background:transparent/);
+    assert.match(live, /broadcast-pulse/);
+    assert.match(live, /setInterval\(pollPulse,350\)/);
+    assert.match(live, /document\.hidden/);
+    assert.doesNotMatch(live, /setInterval\(refresh,1000\)/);
 });
 
 test('established CDCUP registration, list, print, and round archive remain intact', () => {
@@ -130,8 +134,12 @@ test('CREWARTS verifies BAND membership by phone before revealing results', () =
     assert.match(html, /id="member-phone"/);
     assert.match(html, /가입 여부 확인하고 결과 보기/);
     assert.match(html, /BAND 가입하기/);
+    assert.doesNotMatch(html, /supabase-bridge\.js/);
     assert.match(css, /\.cw-guest-entry[\s\S]*background:\s*transparent/);
     assert.match(script, /function verifyMembershipPhone/);
+    assert.match(script, /\/api\/crewart-survey\/bootstrap/);
+    assert.match(script, /\/api\/crewart-survey\/responses/);
+    assert.doesNotMatch(script, /getConfigMap|saveCrewartSurveyEntry/);
     assert.match(script, /window\.open\('', '_blank',[\s\S]*if \(!payload\.member\)[\s\S]*bandPopup\.location\.replace\(bandTargetUrl\)/);
     assert.doesNotMatch(script, /window\.location\.assign\(bandTargetUrl\)/);
     assert.match(script, /function recheckPendingMembership[\s\S]*completeMembershipAccess\(payload\)/);

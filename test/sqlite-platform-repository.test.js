@@ -24,6 +24,15 @@ class ReadableMirror {
     async deleteRow() {}
 }
 
+class RecordingMirror extends ReadableMirror {
+    async upsertRows(rows) {
+        rows.forEach((row) => this.rows.set(row.key, row.value));
+    }
+    async deleteRow(key) {
+        this.rows.delete(key);
+    }
+}
+
 test('SQLite repository persists channel-isolated records across restarts', async (t) => {
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'creo-sqlite-'));
     const database = path.join(directory, 'platform.sqlite');
@@ -96,11 +105,32 @@ test('catalog compare-and-swap rejects simultaneous stale saves', async (t) => {
     repository.close();
 });
 
-test('ephemeral SQLite restores missing catalog and assets from the Supabase mirror once', async (t) => {
+test('ephemeral SQLite mirrors a mutation before returning', async (t) => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'creo-sync-mirror-'));
+    t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+    const mirror = new RecordingMirror();
+    const repository = new SQLitePlatformRepository({
+        dbPath: path.join(directory, 'platform.sqlite'),
+        durable: false,
+        mirror,
+        startWorker: false
+    });
+    await repository.upsertRecord('alpha', 'item', { id: 'item_one', lotNumber: 1, name: '즉시 미러 개체' });
+    assert.match(mirror.rows.get('creo_v2::alpha::item::item_one'), /즉시 미러 개체/);
+    assert.equal((await repository.health()).outboxPending, 0);
+    repository.close();
+});
+
+test('ephemeral SQLite restores every operational record type from the Supabase mirror once', async (t) => {
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'creo-hydrate-'));
     t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
     const mirror = new ReadableMirror();
     mirror.rows.set('creo_v2::catalog', JSON.stringify({ version: 7, channels: [{ id: 'alpha', name: '알파', status: 'active' }] }));
+    mirror.rows.set('creo_v2::active_channel', 'alpha');
+    mirror.rows.set('creo_v2::alpha::broadcast::state', JSON.stringify({ id: 'state', mode: 'live', page: 2 }));
+    mirror.records.set('alpha:vendor', [{ id: 'vendor', name: '복구 업체' }]);
+    mirror.records.set('alpha:item', [{ id: 'item', lotNumber: 1, name: '복구 개체' }]);
+    mirror.records.set('alpha:shipment', [{ id: 'shipment', itemId: 'item', method: 'delivery' }]);
     mirror.records.set('alpha:asset', [{ id: 'banner', name: '복구 배너', kind: 'banner', page: 'all', imageUrl: 'https://example.com/banner.webp', active: true }]);
     const repository = new SQLitePlatformRepository({
         dbPath: path.join(directory, 'platform.sqlite'),
@@ -108,10 +138,19 @@ test('ephemeral SQLite restores missing catalog and assets from the Supabase mir
         startWorker: false
     });
     assert.equal((await repository.getCatalog()).version, 7);
+    assert.equal(await repository.getActiveChannel(), 'alpha');
+    assert.equal((await repository.listRecords('alpha', 'vendor'))[0].name, '복구 업체');
+    assert.equal((await repository.listRecords('alpha', 'item'))[0].name, '복구 개체');
+    assert.equal((await repository.listRecords('alpha', 'shipment'))[0].id, 'shipment');
+    assert.equal((await repository.getRecord('alpha', 'broadcast', 'state')).mode, 'live');
     assert.equal((await repository.listRecords('alpha', 'asset'))[0].name, '복구 배너');
     mirror.rows.clear();
     mirror.records.clear();
     assert.equal((await repository.getCatalog()).version, 7);
+    assert.equal((await repository.listRecords('alpha', 'vendor'))[0].name, '복구 업체');
+    assert.equal((await repository.listRecords('alpha', 'item'))[0].name, '복구 개체');
+    assert.equal((await repository.listRecords('alpha', 'shipment'))[0].id, 'shipment');
+    assert.equal((await repository.getRecord('alpha', 'broadcast', 'state')).mode, 'live');
     assert.equal((await repository.listRecords('alpha', 'asset'))[0].name, '복구 배너');
     repository.close();
 });

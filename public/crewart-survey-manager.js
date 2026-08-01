@@ -35,6 +35,7 @@ function mergeSavedContent(raw) {
     if (!raw) return result;
     try {
         const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        if (parsed?.version !== Core.SURVEY_VERSION) return result;
         const items = Array.isArray(parsed) ? parsed : parsed?.questions;
         if (!Array.isArray(items)) return result;
         items.forEach(item => {

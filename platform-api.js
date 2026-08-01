@@ -202,6 +202,18 @@ function validateRecord(type, record, workspace) {
 function createPlatformApi({ repository, logger = console } = {}) {
     if (!repository) throw new Error('repository is required');
     const mutationLocks = new Map();
+    const channelRevisions = new Map();
+    let revisionSequence = 0;
+
+    function channelRevision(channelId) {
+        return channelRevisions.get(channelId) || 0;
+    }
+
+    function touchChannel(channelId) {
+        revisionSequence += 1;
+        channelRevisions.set(channelId, revisionSequence);
+        return revisionSequence;
+    }
 
     async function withMutationLock(key, callback) {
         const lockKey = String(key || 'global');
@@ -295,6 +307,7 @@ function createPlatformApi({ repository, logger = console } = {}) {
                 checked.value.createdAt = now;
                 checked.value.updatedAt = now;
                 const saved = await repository.saveCatalog([...catalog.channels, checked.value], body.expectedVersion ?? catalog.version);
+                touchChannel(checked.value.id);
                 replyJson(res, 201, { channel: checked.value, catalogVersion: saved.version });
                 return true;
             }
@@ -305,6 +318,16 @@ function createPlatformApi({ repository, logger = console } = {}) {
             }
 
             const channelId = normalizeChannelId(segments[1]);
+            if (segments.length === 3 && segments[2] === 'broadcast-pulse' && method === 'GET') {
+                if (!channelId) {
+                    replyJson(res, 404, { error: '채널을 찾을 수 없습니다.' });
+                    return true;
+                }
+                // This endpoint intentionally stays memory-only. OBS can poll it
+                // every 350 ms without creating SQLite/Supabase read traffic.
+                replyJson(res, 200, { revision: channelRevision(channelId) });
+                return true;
+            }
             const catalog = await repository.getCatalog();
             const channelIndex = catalog.channels.findIndex((channel) => channel.id === channelId);
             const channel = catalog.channels[channelIndex];
@@ -331,6 +354,7 @@ function createPlatformApi({ repository, logger = console } = {}) {
                 const next = catalog.channels.slice();
                 next[channelIndex] = checked.value;
                 const saved = await repository.saveCatalog(next, body.expectedVersion ?? catalog.version);
+                touchChannel(channelId);
                 replyJson(res, 200, { channel: checked.value, catalogVersion: saved.version });
                 return true;
             }
@@ -355,6 +379,7 @@ function createPlatformApi({ repository, logger = console } = {}) {
                     catalog.channels.filter((entry) => entry.id !== channelId),
                     url.searchParams.has('expectedVersion') ? url.searchParams.get('expectedVersion') : catalog.version
                 );
+                channelRevisions.delete(channelId);
                 replyJson(res, 200, { deleted: true, catalogVersion: saved.version });
                 return true;
             }
@@ -369,6 +394,7 @@ function createPlatformApi({ repository, logger = console } = {}) {
                 const data = await workspace(channelId);
                 const vendors = new Map(data.vendors.map((vendor) => [vendor.id, vendor]));
                 replyJson(res, 200, {
+                    revision: channelRevision(channelId),
                     channel,
                     state: data.broadcast,
                     assets: data.assets
@@ -413,6 +439,7 @@ function createPlatformApi({ repository, logger = console } = {}) {
                         await repository.upsertRecord(checked.value.id, 'vendor', { ...vendor, id: recordId('ven'), channelId: checked.value.id });
                     }
                 }
+                touchChannel(checked.value.id);
                 replyJson(res, 201, { channel: checked.value, catalogVersion: saved.version });
                 return true;
             }
@@ -424,6 +451,7 @@ function createPlatformApi({ repository, logger = console } = {}) {
                     ...sanitizeBroadcastState(body),
                     revision: Date.now()
                 });
+                touchChannel(channelId);
                 replyJson(res, 200, { state: record });
                 return true;
             }
@@ -445,7 +473,9 @@ function createPlatformApi({ repository, logger = console } = {}) {
                         replyJson(res, 422, { error: errors.join(' '), errors });
                         return;
                     }
-                    replyJson(res, 201, { record: await repository.upsertRecord(channelId, type, record) });
+                    const saved = await repository.upsertRecord(channelId, type, record);
+                    touchChannel(channelId);
+                    replyJson(res, 201, { record: saved });
                 });
                 return true;
             }
@@ -465,7 +495,9 @@ function createPlatformApi({ repository, logger = console } = {}) {
                         replyJson(res, 422, { error: errors.join(' '), errors });
                         return;
                     }
-                    replyJson(res, 200, { record: await repository.upsertRecord(channelId, type, record) });
+                    const saved = await repository.upsertRecord(channelId, type, record);
+                    touchChannel(channelId);
+                    replyJson(res, 200, { record: saved });
                 });
                 return true;
             }
@@ -486,6 +518,7 @@ function createPlatformApi({ repository, logger = console } = {}) {
                         return;
                     }
                     await repository.deleteRecord(channelId, type, segments[3]);
+                    touchChannel(channelId);
                     replyJson(res, 200, { deleted: true });
                 });
                 return true;

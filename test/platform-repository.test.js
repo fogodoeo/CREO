@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { protectStoredValue, readStoredValue } = require('../platform-repository');
+const { SupabaseConfigRepository, protectStoredValue, readStoredValue } = require('../platform-repository');
 
 test('platform values are signed and reject direct tampering', () => {
     const key = 'creo_v2::alpha::item::one';
@@ -21,4 +21,25 @@ test('platform values are signed and reject direct tampering', () => {
 test('legacy non-platform keys remain compatible', () => {
     assert.equal(protectStoredValue('admin_pw', 'plain', 'secret'), 'plain');
     assert.equal(readStoredValue('admin_pw', 'plain', 'secret'), 'plain');
+});
+
+test('survey prefix reads request only matching key/value rows with a hard limit', async () => {
+    let requestedUrl = '';
+    const repository = new SupabaseConfigRepository({
+        url: 'https://example.supabase.co',
+        key: 'test-anon-key',
+        fetchImpl: async (url) => {
+            requestedUrl = String(url);
+            return new Response(JSON.stringify([
+                { key: 'crewart_survey_response_entry_a', value: '{"ok":true}' },
+                { key: 'unrelated', value: 'must-be-filtered' }
+            ]), { status: 200, headers: { 'Content-Type': 'application/json' } });
+        }
+    });
+    const rows = await repository.listRowsByPrefix('crewart_survey_response_entry_', 25);
+    assert.deepEqual(rows.map((row) => row.key), ['crewart_survey_response_entry_a']);
+    assert.match(requestedUrl, /select=key,value/);
+    assert.match(requestedUrl, /key=like\.crewart_survey_response_entry_\*/);
+    assert.match(requestedUrl, /limit=25/);
+    assert.doesNotMatch(requestedUrl, /select=\*/);
 });

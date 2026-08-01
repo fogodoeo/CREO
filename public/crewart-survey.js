@@ -17,7 +17,11 @@
     const IS_QA_MODE = IS_LOCAL_QA;
 
     let config = {};
-    let cohortResponses = [];
+    let cohortSummary = {
+        houseCounts: Object.fromEntries(Core.HOUSE_KEYS.map(key => [key, 0])),
+        timingMedians: [],
+        sampleSize: 0
+    };
     let questions = [];
     let answers = [];
     let responseTimings = [];
@@ -138,37 +142,23 @@
             const digest = await window.crypto.subtle.digest('SHA-256', source);
             return Array.from(new Uint8Array(digest)).slice(0, 12).map(byte => byte.toString(16).padStart(2, '0')).join('');
         }
-        let hash = 2166136261;
-        source.forEach(byte => {
-            hash ^= byte;
-            hash = Math.imul(hash, 16777619);
-        });
-        return `legacy-${(hash >>> 0).toString(16)}`;
-    }
-
-    function parseCohortResponses(raw) {
-        let parsed = [];
-        try {
-            parsed = Array.isArray(raw) ? raw : JSON.parse(raw || '[]');
-        } catch (_) {
-            parsed = [];
+        let output = '';
+        for (let round = 0; round < 3; round += 1) {
+            let hash = (2166136261 ^ (round * 2654435761)) >>> 0;
+            source.forEach(byte => {
+                hash ^= byte + round;
+                hash = Math.imul(hash, 16777619);
+            });
+            output += (hash >>> 0).toString(16).padStart(8, '0');
         }
-        const deduped = new Map();
-        parsed.forEach((response, index) => {
-            if (!response || response.questionVersion !== Core.SURVEY_VERSION) return;
-            const key = response.surveySessionId || response.participantKey || `response-${index}`;
-            const previous = deduped.get(key);
-            if (!previous || String(previous.syncedAt || previous.createdAt || '') <= String(response.syncedAt || response.createdAt || '')) {
-                deduped.set(key, response);
-            }
-        });
-        return Array.from(deduped.values());
+        return output;
     }
 
     function applyManagedContent(raw) {
         if (!raw || questions.length) return;
         try {
             const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+            if (parsed?.version !== Core.SURVEY_VERSION) return;
             const items = Array.isArray(parsed) ? parsed : parsed?.questions;
             if (!Array.isArray(items)) return;
             items.forEach(item => {
@@ -188,13 +178,32 @@
 
     async function loadConfig() {
         try {
-            config = await getConfigMap() || {};
-            applyManagedContent(config[CONTENT_CONFIG_KEY]);
-            cohortResponses = parseCohortResponses(config.crewart_survey_responses);
+            const response = await bandFetch('/api/crewart-survey/bootstrap', { cache: 'no-store' });
+            if (!response.ok) throw new Error('CREWART survey bootstrap unavailable');
+            const payload = await response.json();
+            config = {
+                [CONTENT_CONFIG_KEY]: payload.content || null,
+                crewart_mbti_content_updated_at: payload.contentUpdatedAt || null
+            };
+            applyManagedContent(payload.content);
+            cohortSummary = {
+                houseCounts: Object.fromEntries(Core.HOUSE_KEYS.map(key => [
+                    key,
+                    Math.max(0, Number(payload.cohort?.houseCounts?.[key]) || 0)
+                ])),
+                timingMedians: (Array.isArray(payload.cohort?.timingMedians)
+                    ? payload.cohort.timingMedians
+                    : []).map(Number).filter(value => value >= 400 && value <= 30000),
+                sampleSize: Math.max(0, Number(payload.cohort?.sampleSize) || 0)
+            };
         } catch (error) {
             console.error('[Crewart config]', error);
             config = {};
-            cohortResponses = [];
+            cohortSummary = {
+                houseCounts: Object.fromEntries(Core.HOUSE_KEYS.map(key => [key, 0])),
+                timingMedians: [],
+                sampleSize: 0
+            };
         }
     }
 
@@ -386,12 +395,10 @@
     }
 
     function currentHouseCounts() {
-        const counts = Object.fromEntries(Core.HOUSE_KEYS.map(key => [key, 0]));
-        cohortResponses.forEach(response => {
-            const key = response.assignedHouseKey || response.houseId;
-            if (key in counts) counts[key] += 1;
-        });
-        return counts;
+        return Object.fromEntries(Core.HOUSE_KEYS.map(key => [
+            key,
+            Math.max(0, Number(cohortSummary.houseCounts?.[key]) || 0)
+        ]));
     }
 
     function showResult(skipMbti) {
@@ -427,7 +434,7 @@
     }
 
     function speedSamples() {
-        return cohortResponses.map(response => Number(response?.timingStats?.medianMs)).filter(Boolean);
+        return cohortSummary.timingMedians.slice();
     }
 
     function hasDetailedAccess() {
@@ -600,35 +607,19 @@
         saveInFlight = true;
         try {
             const participantKey = await hashSessionId(surveySessionId);
-            const house = Core.HOUSE_META[assignedHouseKey];
-            const comparison = Core.buildMbtiComparison(selectedMbti, result.code);
             const response = {
                 participantKey,
-                surveySessionId,
-                participationMode: bandAuthUser ? 'official' : 'guest',
-                anonymous: !bandAuthUser,
-                bandUserId: bandAuthUser?.id || null,
-                bandProfileName: bandAuthUser?.name || null,
-                bandIsTargetMember: bandAuthUser?.isTargetMember ?? null,
-                name: bandAuthUser?.name || '익명 참여자',
-                phone: null,
                 creMbti: result.code,
                 crebtiType: result.code,
-                profile: `${result.code} · ${result.typeName}`,
                 knownMbti: selectedMbti || null,
-                mbtiComparison: selectedMbti ? comparison : null,
                 axisScores: result.letters,
                 assignedHouseKey,
-                house: house.name,
                 houseId: assignedHouseKey,
-                houseColor: house.color,
                 answers: answers.slice(),
                 answerLabels: questions.map((question, index) => ({
                     questionId: question.id,
                     axis: question.axis,
-                    question: question.q,
                     displayedPosition: answers[index] + 1,
-                    label: question.options[answers[index]],
                     score: question.scores[answers[index]],
                     responseMs: responseTimings[index]?.elapsedMs || null,
                     timingValid: Boolean(responseTimings[index]?.valid)
@@ -649,9 +640,19 @@
                 createdAt: sessionCreatedAt,
                 syncedAt: new Date().toISOString()
             };
-            const identity = bandAuthUser?.id || `anonymous-${participantKey}`;
-            const participantLine = [identity, house.name, bandAuthUser?.name || '익명 참여자'].join(',');
-            await saveCrewartSurveyEntry(participantKey, participantLine, response);
+            const saved = await bandFetch('/api/crewart-survey/responses', {
+                method: 'POST',
+                cache: 'no-store',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${bandAuthToken}`
+                },
+                body: JSON.stringify({ response })
+            });
+            if (!saved.ok) {
+                const payload = await saved.json().catch(() => ({}));
+                throw new Error(payload.error || '설문 결과를 저장하지 못했습니다.');
+            }
             lastSavedSignature = signature;
         } catch (error) {
             console.error('[Crewart survey save]', error);
@@ -1076,10 +1077,13 @@
         syncThemeColor();
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', syncThemeColor);
         const start = element('start-button');
-        start.disabled = false;
-        start.querySelector('span').textContent = '먼저 테스트하기';
+        start.disabled = true;
+        start.querySelector('span').textContent = '문항 준비 중…';
         playWordmark();
-        void loadConfig();
+        void loadConfig().finally(() => {
+            start.disabled = false;
+            start.querySelector('span').textContent = '먼저 테스트하기';
+        });
         if (!BAND_INTEGRATION_ENABLED) {
             bandAuthReady = false;
             updateBandUi();

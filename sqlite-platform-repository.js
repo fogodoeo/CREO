@@ -28,6 +28,7 @@ class SQLitePlatformRepository {
         this.durable = options.durable ?? Boolean(process.env.CREO_DATA_DIR);
         this.outboxTimer = null;
         this.mirrorKickTimer = null;
+        this.mirrorFlushPromise = null;
         this.mirrorWorkerEnabled = options.startWorker !== false;
         this.lastMirrorError = '';
         this.lastMirrorSyncAt = null;
@@ -107,6 +108,21 @@ class SQLitePlatformRepository {
         this.mirrorKickTimer.unref?.();
     }
 
+    async syncOutboxAfterMutation(limit = 20) {
+        if (!this.mirror) return;
+        if (!this.durable) {
+            // Render without a persistent disk loses both SQLite and its outbox
+            // on deploy. Mirror before returning so the recovery source is not
+            // left to a later timer that may never run.
+            const result = await this.flushOutbox(limit);
+            if (result.synced > 0 && result.pending > 0) {
+                await this.flushOutbox(limit);
+            }
+            return;
+        }
+        this.kickMirror();
+    }
+
     async getRowsByKeys(keys) {
         const local = keys.map((key) => this.statements.get.get(key)).filter(Boolean);
         const found = new Set(local.map((row) => row.key));
@@ -146,7 +162,7 @@ class SQLitePlatformRepository {
                 this.enqueue(row.key, 'upsert', value);
             }
         });
-        this.kickMirror();
+        await this.syncOutboxAfterMutation(rows.length);
     }
 
     async deleteRow(key) {
@@ -154,7 +170,7 @@ class SQLitePlatformRepository {
             this.statements.delete.run(key);
             this.enqueue(key, 'delete');
         });
-        this.kickMirror();
+        await this.syncOutboxAfterMutation(1);
     }
 
     async getCatalog() {
@@ -190,7 +206,7 @@ class SQLitePlatformRepository {
             this.statements.upsert.run(CATALOG_KEY, value, now);
             this.enqueue(CATALOG_KEY, 'upsert', value);
         });
-        this.kickMirror();
+        await this.syncOutboxAfterMutation(1);
         return payload;
     }
 
@@ -256,6 +272,13 @@ class SQLitePlatformRepository {
     }
 
     async flushOutbox(limit = 20) {
+        if (this.mirrorFlushPromise) return this.mirrorFlushPromise;
+        this.mirrorFlushPromise = this.flushOutboxBatch(limit)
+            .finally(() => { this.mirrorFlushPromise = null; });
+        return this.mirrorFlushPromise;
+    }
+
+    async flushOutboxBatch(limit = 20) {
         if (!this.mirror) return { synced: 0, pending: 0 };
         const due = this.statements.due.all(Date.now(), Math.max(1, Math.min(100, Number(limit) || 20)));
         let synced = 0;

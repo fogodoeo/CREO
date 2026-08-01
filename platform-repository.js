@@ -80,6 +80,20 @@ class SupabaseConfigRepository {
             .filter((row) => row.value !== null);
     }
 
+    async listRowsByPrefix(prefix, limit = 500) {
+        const safePrefix = String(prefix || '').slice(0, 120);
+        if (!safePrefix) return [];
+        const safeLimit = Math.max(1, Math.min(1000, Number(limit) || 500));
+        const pattern = encodeURIComponent(`${safePrefix}*`);
+        const rows = await this.request(
+            `config?select=key,value&key=like.${pattern}&order=key.asc&limit=${safeLimit}`
+        ) || [];
+        return rows
+            .filter((row) => String(row.key || '').startsWith(safePrefix))
+            .map((row) => ({ ...row, value: readStoredValue(row.key, row.value, this.integritySecret) }))
+            .filter((row) => row.value !== null);
+    }
+
     async getRow(key) {
         const rows = await this.request(`config?select=key,value&key=eq.${encodeURIComponent(key)}&limit=1`);
         const row = rows?.[0];

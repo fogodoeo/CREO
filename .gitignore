@@ -9,3 +9,4 @@ storage/
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal
+supabase/.temp/

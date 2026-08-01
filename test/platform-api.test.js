@@ -11,10 +11,11 @@ class MemoryRepository {
         this.catalog = { version: 1, channels: [normalizeChannel({ id: 'alpha', name: '알파', status: 'active' }), normalizeChannel({ id: 'beta', name: '베타', status: 'active' })] };
         this.records = new Map();
         this.active = 'alpha';
+        this.catalogReads = 0;
     }
     key(channel, type, id) { return `${channel}:${type}:${id}`; }
     async verifyAdmin(value) { return value === 'secret'; }
-    async getCatalog() { return structuredClone(this.catalog); }
+    async getCatalog() { this.catalogReads += 1; return structuredClone(this.catalog); }
     async saveCatalog(channels) { this.catalog = { version: this.catalog.version + 1, channels: structuredClone(channels) }; return this.getCatalog(); }
     async listRecords(channel, type) { return [...this.records.entries()].filter(([key]) => key.startsWith(`${channel}:${type}:`)).map(([, value]) => structuredClone(value)); }
     async getRecord(channel, type, id) { return structuredClone(this.records.get(this.key(channel, type, id)) || null); }
@@ -130,6 +131,27 @@ test('broadcast state stores independent 1P, 2P, and 3P overlay controls', async
     assert.equal(state.page3On, true);
     assert.equal(state.extraMode, 'ranking');
     assert.equal(state.ignoredSecret, undefined);
+});
+
+test('350 ms broadcast pulse is memory-only and changes after a public mutation', async () => {
+    const repository = new MemoryRepository();
+    const api = createPlatformApi({ repository, logger: { error() {} } });
+    const beforeReads = repository.catalogReads;
+    const initial = await call(api, 'GET', '/api/platform/channels/alpha/broadcast-pulse', null, '');
+    assert.equal(initial.status, 200);
+    assert.equal(initial.json().revision, 0);
+    assert.equal(repository.catalogReads, beforeReads);
+
+    await call(api, 'PUT', '/api/platform/channels/alpha/broadcast-state', {
+        activeItemId: 'item_1', mode: 'live', page: 2
+    });
+    const afterMutationReads = repository.catalogReads;
+    const pulse = await call(api, 'GET', '/api/platform/channels/alpha/broadcast-pulse', null, '');
+    assert.ok(pulse.json().revision > 0);
+    assert.equal(repository.catalogReads, afterMutationReads);
+
+    const full = await call(api, 'GET', '/api/platform/channels/alpha/broadcast', null, '');
+    assert.equal(full.json().revision, pulse.json().revision);
 });
 
 test('temporary channels can only be deleted when inactive and empty', async () => {

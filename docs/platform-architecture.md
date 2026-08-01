@@ -38,16 +38,21 @@ creo_v2::<channel_id>::broadcast::state
 - 채널 복제는 디자인·기능만 복사하며 운영 데이터는 복사하지 않는다.
 - 업체 복사는 관리자가 명시적으로 선택할 때만 가능하다.
 
-CREOK의 영구 디스크에 SQLite를 기본 저장소로 사용한다. 한 채널의 JSON 묶음을 통째로 덮어쓰지 않고 업체·개체·배송을 각각 별도 행으로 저장하므로 동시 수정 충돌과 채널 간 덮어쓰기를 줄인다. Supabase는 선택적 미러이며, 장애 시 로컬 outbox에 최신 변경만 남겨 운영을 막지 않고 복구 후 자동 재전송한다.
+SQLite를 기본 저장소로 사용한다. 한 채널의 JSON 묶음을 통째로 덮어쓰지 않고 업체·개체·배송을 각각 별도 행으로 저장하므로 동시 수정 충돌과 채널 간 덮어쓰기를 줄인다.
+
+- Render Persistent Disk가 연결되면 SQLite와 outbox가 영구 보존되고, Supabase 장애 중에도 로컬 운영을 이어간다.
+- Disk가 없으면 SQLite는 실행 중 캐시다. 이때 변경 요청은 Supabase 미러 전송을 즉시 시도한 뒤 응답한다. 전송 성공분은 재배포 후 카탈로그·활성 채널·업체·개체·배송·방송 상태·브랜드 자산까지 복구하고, 실패분은 `/health`의 outbox·오류 상태로 운영자에게 드러낸다.
+- 실제 모드는 `/health`의 `platform.durable`, `mirrorEnabled`, `outboxPending`, `mirrorError`로 확인한다. 환경변수 설명이나 요금제가 아니라 이 값을 운영 판단 기준으로 삼는다.
 
 ## 방송 전환
 
 - 고정 채널 확인: `/broadcast-router.html?event=<channel_id>&page=1`
 - 실제 공용 송출: `/broadcast-router.html?page=1`
 - 방송 제어에서 적용을 누르면 `creo_v2::active_channel`이 변경된다.
-- CDCUP은 검증된 `broadcast.html`, CREWARTS는 `crewart-broadcast.html` 디자인을 그대로 유지한다.
-- 신규 채널은 `auction-live.html`을 사용하며 `classic`, `tournament`, `academy` 템플릿에 따라 프레임·형태·서체·배경 구성을 변경한다.
-- 공용 화면은 약 1초마다 해당 채널의 방송 상태만 확인한다.
+- CDCUP은 검증된 기존 `broadcast.html` 송출 껍데기와 기존 제어 화면을 유지한다.
+- CREWARTS와 신규 채널은 채널별 테마를 적용하는 `auction-live.html`을 사용한다.
+- 신규 송출은 350ms마다 메모리 전용 `broadcast-pulse`만 확인한다. revision이 바뀔 때만 전체 방송 데이터를 다시 읽고, 30초 안전 동기화를 둔다. 따라서 숫자·상태 반영 지연은 약 0.35초지만 DB 전체 읽기는 반복하지 않는다.
+- 숨겨진 OBS/브라우저 탭은 펄스 확인을 멈추고 다시 보일 때 즉시 재확인한다.
 
 ## 신규 채널 생성 절차
 
@@ -75,7 +80,8 @@ CREOK의 영구 디스크에 SQLite를 기본 저장소로 사용한다. 한 채
 - `SUPABASE_SERVICE_ROLE_KEY`가 있으면 서버 저장에 우선 사용하고, 없으면 현재 공개 anon 정책과 호환된다.
 - 비밀번호와 Supabase 키는 응답·로그·브라우저 URL에 포함하지 않는다.
 - 새 플랫폼 키는 `CREO_DATA_SIGNING_SECRET` 또는 관리자 비밀번호로 HMAC 서명한다. 공개 anon API로 직접 덮어쓴 값은 서명이 맞지 않아 서버가 무시한다.
-- Supabase 장애는 채널 생성·개체·배송·방송 제어를 막지 않는다. SQLite 커밋이 성공하면 요청은 완료되고 미러 전송은 백그라운드에서 재시도된다.
+- 영구 Disk 모드에서는 Supabase 장애가 채널 생성·개체·배송·방송 제어를 막지 않으며 outbox가 복구 후 재전송한다.
+- Disk가 없는 모드에서는 재배포 복구 원본을 확보하기 위해 변경 직후 미러를 즉시 시도한다. 미러 오류와 남은 outbox는 `/health`에 표시한다.
 
 ## 주요 파일
 
