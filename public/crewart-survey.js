@@ -531,10 +531,6 @@
             toast('평소 유형을 고르거나 건너뛰기를 눌러주세요.', true);
             return;
         }
-        if (!hasDetailedAccess()) {
-            openMemberCheck({ revealResult: true });
-            return;
-        }
         completeResultReveal();
     }
 
@@ -642,7 +638,7 @@
 
     function renderLockedDetail() {
         const configured = BAND_INTEGRATION_ENABLED && bandAuthConfigured;
-        const label = configured ? 'BAND 회원 확인' : '확인 준비 중';
+        const label = configured ? 'BAND 회원 연동' : '연동 준비 중';
         const status = configured ? '확인 후 바로 열려요' : '회원 명단 연결을 준비하고 있어요';
         return `
             <section class="cw-detail-gate">
@@ -718,7 +714,7 @@
     }
 
     async function submitSurvey() {
-        if (IS_QA_MODE || !result || !surveySessionId || saveInFlight) return;
+        if (IS_QA_MODE || !result || !surveySessionId || saveInFlight || !hasDetailedAccess()) return;
         const signature = JSON.stringify({ session: surveySessionId, answers, selectedMbti, band: bandAuthUser?.id || '', member: bandAuthUser?.isTargetMember || false });
         if (signature === lastSavedSignature) return;
         saveInFlight = true;
@@ -814,7 +810,7 @@
         button.classList.toggle('is-verified', authenticated);
         button.hidden = !BAND_INTEGRATION_ENABLED;
         if (note) note.hidden = !BAND_INTEGRATION_ENABLED || authenticated;
-        label.textContent = authenticated ? 'BAND 회원 확인 완료' : '전화번호로 BAND 회원 확인';
+        label.textContent = authenticated ? 'BAND 회원 확인 완료' : 'BAND 회원 연동';
         if (note && !authenticated) note.textContent = bandAuthConfigured
                 ? '전화번호는 가입 여부 확인에만 사용해요'
                 : '회원 명단 연결을 준비하고 있어요';
@@ -826,31 +822,9 @@
 
     function updatePersistentActions() {
         const footer = element('survey-footer');
-        const button = element('persistent-band-button');
-        const label = element('persistent-band-label');
-        const note = element('persistent-band-note');
         const home = element('persistent-home-button');
-        if (!footer || !button || !label || !note || !home) return;
-
-        const stage = currentStage();
-        home.hidden = stage === 'intro';
-        footer.hidden = stage === 'intro' || !BAND_INTEGRATION_ENABLED || Boolean(bandAuthUser?.isTargetMember);
-        if (footer.hidden) return;
-
-        button.hidden = false;
-        note.hidden = false;
-        button.disabled = !bandAuthReady;
-        if (!bandAuthReady || !bandAuthConfigured) {
-            label.textContent = 'BAND 회원 확인 준비 중';
-            note.textContent = '회원 명단 연결을 확인하고 있어요.';
-        } else if (!hasDetailedAccess()) {
-            label.textContent = '전화번호로 BAND 회원 확인';
-            note.textContent = '결과를 열기 전에 가입 여부를 확인해요.';
-        } else {
-            label.textContent = 'BAND 회원 확인 완료';
-            note.textContent = '결과를 바로 열 수 있어요.';
-        }
-        button.setAttribute('aria-label', label.textContent);
+        if (home) home.hidden = currentStage() === 'intro';
+        if (footer) footer.hidden = true;
     }
 
     function handlePersistentBand() {
@@ -962,7 +936,7 @@
         }
         if (status) {
             status.hidden = false;
-            status.textContent = '가입 확인 완료! 자동으로 이어갈게요.';
+            status.textContent = 'BAND 회원 연동 완료! 자동으로 이어갈게요.';
             status.classList.remove('is-error');
             status.classList.add('is-success');
         }
