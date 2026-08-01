@@ -892,6 +892,10 @@
         try {
             bandAuthToken = sessionStorage.getItem(MEMBERSHIP_STORAGE_KEY) || '';
             bandAuthPhoneMask = sessionStorage.getItem(MEMBERSHIP_PHONE_STORAGE_KEY) || '';
+            if (bandAuthToken && !bandAuthPhoneMask) {
+                bandAuthToken = '';
+                sessionStorage.removeItem(MEMBERSHIP_STORAGE_KEY);
+            }
         } catch (_) {
             bandAuthToken = '';
             bandAuthPhoneMask = '';

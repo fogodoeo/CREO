@@ -157,6 +157,7 @@ test('CREWARTS home shows the saved result and only a masked authenticated phone
     assert.match(html, /내 크레MBTI/);
     assert.match(script, /crewart_band_member_phone_mask_v1/);
     assert.match(script, /function maskPhone[\s\S]*\*\*\*\*/);
+    assert.match(script, /if \(bandAuthToken && !bandAuthPhoneMask\)[\s\S]*removeItem\(MEMBERSHIP_STORAGE_KEY\)/);
     assert.match(script, /function saveLastResult/);
     assert.match(script, /function restoreLastResult/);
     const savedResultBody = script.match(/function saveLastResult\(\) \{([\s\S]*?)\n    \}/)?.[1] || '';
