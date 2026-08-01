@@ -55,7 +55,7 @@ npm start
 5. 기존 회원 테이블을 쓸 때는 `BAND_MEMBER_TABLE`, `BAND_MEMBER_PHONE_COLUMN`, `BAND_MEMBER_ACTIVE_COLUMN`을 실제 이름에 맞춥니다.
 
 브라우저용 Supabase anon 키로는 회원 명단을 조회할 수 없게 RLS를 유지해야 합니다. 미가입자는 `BAND_MEMBER_TARGET_BAND_URL`로 이동합니다.
-로컬 테스트 중 확인 횟수 제한을 끄려면 `BAND_MEMBER_RATE_LIMIT_ATTEMPTS=0`으로 설정할 수 있습니다. Render 또는 `NODE_ENV=production`에서는 값이 0이어도 기본 제한이 적용됩니다.
+테스트 중 확인 횟수 제한을 끄려면 `BAND_MEMBER_RATE_LIMIT_ATTEMPTS=0`으로 설정합니다. 이 값은 Render에서도 명시적인 무제한 설정으로 적용됩니다. 공개 운영을 시작하기 전에는 `120`처럼 유한한 값으로 되돌리세요. `/api/band-membership/config`의 `rateLimitDisabled`로 실제 적용 여부를 확인할 수 있습니다.
 
 승인 프로그램은 `이름 / 전화번호` 형식의 프로필을 확인합니다. `BAND 폰 인증 필수` 옵션은 독립적으로 켜거나 끌 수 있습니다. 공개된 BAND 인증번호와 프로필 번호가 달라도 가입을 승인하며, 로컬 승인 UI에는 두 번호와 `불일치` 상태를 따로 표시합니다. 승인 뒤에는 두 번호를 같은 회원의 별칭으로 명단에 등록해 어느 번호로도 CREWARTS 결과를 열 수 있게 합니다.
 

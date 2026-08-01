@@ -145,7 +145,7 @@ test('a zero attempt limit disables throttling during testing', async () => {
     }
 });
 
-test('production ignores an accidental zero attempt limit', async () => {
+test('an explicit zero attempt limit also disables throttling on Render', async () => {
     const membership = createBandMembership({
         env: { ...ENV, RENDER: 'true', BAND_MEMBER_RATE_LIMIT_ATTEMPTS: '0' },
         now: () => NOW,
@@ -153,7 +153,6 @@ test('production ignores an accidental zero attempt limit', async () => {
         logger: { error() {} }
     });
 
-    let lastStatus = 0;
     for (let index = 0; index < 121; index += 1) {
         const phone = `010${String(index).padStart(8, '0')}`;
         const response = new CapturedResponse();
@@ -162,9 +161,8 @@ test('production ignores an accidental zero attempt limit', async () => {
             response,
             new URL('https://creok.example.com/api/band-membership/verify')
         );
-        lastStatus = response.status;
+        assert.equal(response.status, 200);
     }
-    assert.equal(lastStatus, 429);
 });
 
 test('repeated checks for one phone reuse the short membership cache', async () => {

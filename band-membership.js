@@ -48,13 +48,6 @@ function loadConfig(env = process.env) {
         .split(',')
         .map((value) => value.trim())
         .filter((value) => /^https?:\/\//i.test(value));
-    const productionRuntime = Boolean(
-        env.RENDER
-        || env.RENDER_SERVICE_ID
-        || env.RENDER_EXTERNAL_URL
-        || String(env.NODE_ENV || '').toLowerCase() === 'production'
-    );
-
     const config = {
         url,
         serviceRoleKey,
@@ -70,7 +63,7 @@ function loadConfig(env = process.env) {
         rateLimitAttempts: rateLimitAttempts(
             env.BAND_MEMBER_RATE_LIMIT_ATTEMPTS,
             120,
-            !productionRuntime
+            true
         ),
         positiveCacheMs: positiveInteger(env.BAND_MEMBER_POSITIVE_CACHE_MS, 60000, 5000, 600000),
         negativeCacheMs: positiveInteger(env.BAND_MEMBER_NEGATIVE_CACHE_MS, 500, 250, 5000)
@@ -288,7 +281,8 @@ function createBandMembership(options = {}) {
         if (url.pathname === '/api/band-membership/config' && req.method === 'GET') {
             sendJson(res, 200, {
                 configured: config.configured,
-                targetBandUrl: config.targetBandUrl
+                targetBandUrl: config.targetBandUrl,
+                rateLimitDisabled: config.rateLimitAttempts === 0
             });
             return true;
         }
