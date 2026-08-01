@@ -184,7 +184,7 @@
         if (!wordmark) return;
         if (!wordmarkFontReady) {
             const fontLoad = document.fonts?.load
-                ? document.fonts.load('900 72px "Cinzel Decorative"').catch(() => [])
+                ? document.fonts.load('900 72px "Pretendard Variable"').catch(() => [])
                 : Promise.resolve([]);
             wordmarkFontReady = Promise.race([
                 fontLoad,
@@ -385,6 +385,26 @@
         stopMembershipRecheck({ closePopup: true });
         pendingResultReveal = false;
         pendingSurveyStart = false;
+    }
+
+    function editMembershipAccess() {
+        if (!hasDetailedAccess()) return;
+        openMemberCheck();
+    }
+
+    function clearMembershipAccess() {
+        if (!hasDetailedAccess()) return;
+        if (!window.confirm('이 기기의 BAND 회원 확인을 해제할까요?')) return;
+        stopMembershipRecheck({ closePopup: true });
+        bandAuthToken = '';
+        bandAuthUser = null;
+        bandAuthPhoneMask = '';
+        try {
+            sessionStorage.removeItem(MEMBERSHIP_STORAGE_KEY);
+            sessionStorage.removeItem(MEMBERSHIP_PHONE_STORAGE_KEY);
+        } catch (_) {}
+        updateBandUi();
+        toast('BAND 회원 확인을 해제했어요.');
     }
 
     function returnToIntro() {
@@ -793,11 +813,9 @@
         button.disabled = !bandAuthReady || authenticated;
         button.classList.toggle('is-verified', authenticated);
         button.hidden = !BAND_INTEGRATION_ENABLED;
-        if (note) note.hidden = !BAND_INTEGRATION_ENABLED;
+        if (note) note.hidden = !BAND_INTEGRATION_ENABLED || authenticated;
         label.textContent = authenticated ? 'BAND 회원 확인 완료' : '전화번호로 BAND 회원 확인';
-        if (note) note.textContent = authenticated
-            ? '확인된 회원으로 결과를 바로 볼 수 있어요'
-            : bandAuthConfigured
+        if (note && !authenticated) note.textContent = bandAuthConfigured
                 ? '전화번호는 가입 여부 확인에만 사용해요'
                 : '회원 명단 연결을 준비하고 있어요';
         button.setAttribute('aria-label', label.textContent);
@@ -1373,6 +1391,8 @@
         element('start-button').addEventListener('click', startSurvey);
         element('home-result-open')?.addEventListener('click', restoreLastResult);
         element('home-retest')?.addEventListener('click', startSurvey);
+        element('auth-phone-edit')?.addEventListener('click', editMembershipAccess);
+        element('auth-phone-clear')?.addEventListener('click', clearMembershipAccess);
         element('member-check-close')?.addEventListener('click', closeMemberCheck);
         element('member-check-form')?.addEventListener('submit', verifyMembershipPhone);
         element('member-phone')?.addEventListener('input', formatMemberPhone);

@@ -14,10 +14,10 @@
     <link
         href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
         rel="stylesheet">
-    <link rel="stylesheet" href="crewart-survey-v4.css?v=20260801-member-gate-v5">
+    <link rel="stylesheet" href="crewart-survey-v4.css?v=20260801-video-auth-v6">
     <script src="assets/vendor/kakao-2.8.1.min.js"></script>
     <script src="crewart-survey-core.js?v=20260801-house-map-v5"></script>
-    <script src="crewart-survey.js?v=20260801-member-gate-v5" defer></script>
+    <script src="crewart-survey.js?v=20260801-video-auth-v6" defer></script>
 </head>
 
 <body>
@@ -26,7 +26,11 @@
     <header class="cw-utility-bar" aria-label="설문 상태">
         <div class="cw-auth-chip" id="auth-phone-chip" hidden>
             <img src="assets/band-app-icon-official.png?v=20260801-logo-v2" alt="" width="20" height="20">
-            <span><small>BAND 인증 번호</small><strong id="auth-phone-number">회원 인증됨</strong></span>
+            <span class="cw-auth-chip-copy"><small>BAND 인증 번호</small><strong id="auth-phone-number">회원 인증됨</strong></span>
+            <span class="cw-auth-chip-actions">
+                <button id="auth-phone-edit" type="button">수정</button>
+                <button id="auth-phone-clear" type="button">해제</button>
+            </span>
         </div>
         <button class="cw-top-home" id="persistent-home-button" type="button" aria-label="크레와트 메인으로 돌아가기"
             title="크레와트 메인으로 돌아가기" hidden>처음으로</button>
@@ -43,8 +47,7 @@
                             <source src="assets/crewarts-sealing-wax.mp4" type="video/mp4">
                         </video>
                     </div>
-                    <p class="cw-eyebrow">CREWARTS</p>
-                    <h1><span class="cw-wordmark is-pending" id="crewart-wordmark">크레와트</span><small>성향 테스트</small></h1>
+                    <h1><span class="cw-wordmark is-pending" id="crewart-wordmark">CREWARTS</span><small>PERSONALITY TEST</small></h1>
                     <p class="cw-intro-copy">20문항 · 약 2분</p>
                 </header>
 

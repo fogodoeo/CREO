@@ -151,7 +151,7 @@ test('CREWARTS verifies BAND membership by phone before revealing results', () =
 test('CREWARTS home shows the saved result and only a masked authenticated phone', () => {
     const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey.html'), 'utf8');
     const script = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey.js'), 'utf8');
-    for (const id of ['auth-phone-chip', 'auth-phone-number', 'home-result-card', 'home-result-open', 'home-retest']) {
+    for (const id of ['auth-phone-chip', 'auth-phone-number', 'auth-phone-edit', 'auth-phone-clear', 'home-result-card', 'home-result-open', 'home-retest']) {
         assert.match(html, new RegExp(`id=["']${id}["']`));
     }
     assert.match(html, /내 결과/);
@@ -160,6 +160,9 @@ test('CREWARTS home shows the saved result and only a masked authenticated phone
     assert.match(script, /if \(bandAuthToken && !bandAuthPhoneMask\)[\s\S]*removeItem\(MEMBERSHIP_STORAGE_KEY\)/);
     assert.match(script, /function saveLastResult/);
     assert.match(script, /function restoreLastResult/);
+    assert.match(script, /function editMembershipAccess\(\)[\s\S]*openMemberCheck\(\)/);
+    assert.match(script, /function clearMembershipAccess\(\)[\s\S]*removeItem\(MEMBERSHIP_STORAGE_KEY\)[\s\S]*removeItem\(MEMBERSHIP_PHONE_STORAGE_KEY\)/);
+    assert.doesNotMatch(script, /확인된 회원으로 결과를 바로 볼 수 있어요/);
     assert.match(script, /button\.disabled = !bandAuthReady \|\| authenticated/);
     const bandEntryBody = script.match(/function handleBandEntry\(\) \{([\s\S]*?)\n    \}/)?.[1] || '';
     assert.match(bandEntryBody, /if \(hasDetailedAccess\(\)\) return/);
@@ -184,6 +187,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     const script = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey.js'), 'utf8');
 
     assert.match(html, /크레와트 성향 테스트/);
+    assert.match(html, /id="crewart-wordmark">CREWARTS<\/span><small>PERSONALITY TEST<\/small>/);
+    assert.doesNotMatch(html, /PERSNALITY/);
     assert.doesNotMatch(html, />[^<]*MBTI[^<]*</i);
     assert.doesNotMatch(managerHtml, />[^<]*MBTI[^<]*</i);
     assert.match(css, /font-family:\s*"Pretendard Variable"/);
@@ -211,6 +216,9 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(css, /\.cw-question-card > h1[\s\S]*font-weight:\s*var\(--cw-weight-bold\)/);
     assert.match(css, /\.cw-choice-button span[\s\S]*font-size:\s*var\(--cw-type-control\)/);
     assert.match(css, /\.cw-poster-kicker[\s\S]*color:\s*var\(--cw-green\)/);
+    assert.match(css, /\.cw-intro-visual\s*\{[^}]*position:\s*fixed[^}]*inset:\s*-24px/);
+    assert.match(css, /\.cw-intro-video\s*\{[^}]*object-fit:\s*cover[^}]*filter:\s*blur\(12px\)/);
+    assert.match(css, /\.cw-intro::after\s*\{[^}]*position:\s*fixed/);
     const lockedDetailBody = script.match(/function renderLockedDetail\(\) \{([\s\S]*?)\n    \}/)?.[1] || '';
     assert.match(lockedDetailBody, /renderMemberDetail\(\)\}\$\{renderSpeedCard\(\)\}\$\{renderHouseCard\(\)/);
     assert.match(css, /\.cw-detail-preview\s*\{[^}]*filter:\s*blur\(3px\)/);
