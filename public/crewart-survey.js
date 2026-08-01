@@ -34,6 +34,7 @@
     let sessionCreatedAt = '';
     let assignedHouseKey = '';
     let result = null;
+    let resultSavedAt = '';
     let timingStats = null;
     let activeTimer = null;
     let advancing = false;
@@ -85,10 +86,12 @@
 
     function saveLastResult() {
         if (!result || !Core.MBTI_TYPES.includes(result.code) || !Core.HOUSE_KEYS.includes(assignedHouseKey)) return;
+        const savedAt = new Date().toISOString();
+        resultSavedAt = savedAt;
         const snapshot = {
             version: LAST_RESULT_VERSION,
             questionVersion: Core.SURVEY_VERSION,
-            savedAt: new Date().toISOString(),
+            savedAt,
             selectedMbti: Core.MBTI_TYPES.includes(selectedMbti) ? selectedMbti : '',
             assignedHouseKey,
             result: {
@@ -147,6 +150,7 @@
         surveySessionId = '';
         sessionCreatedAt = '';
         result = snapshot.result;
+        resultSavedAt = snapshot.savedAt || '';
         assignedHouseKey = Core.chooseTendencyHouse(result);
         timingStats = snapshot.timingStats;
         showingStoredResult = true;
@@ -158,12 +162,33 @@
         const form = element('member-check-form');
         const verified = element('band-verified-state');
         const number = element('auth-phone-number');
+        const connection = element('band-connection-status');
+        const bandScreen = element('band-screen');
         const authenticated = Boolean(bandAuthUser?.isTargetMember);
+        const state = authenticated && editingMembership
+            ? 'editing'
+            : authenticated
+                ? 'connected'
+                : pendingMemberPhone
+                    ? 'pending'
+                    : bandAuthReady
+                        ? 'disconnected'
+                        : 'loading';
         if (form) form.hidden = authenticated && !editingMembership;
         if (verified) verified.hidden = !authenticated || editingMembership;
-        if (number) number.textContent = bandAuthPhoneMask || 'BAND 회원';
+        if (number) number.textContent = bandAuthPhoneMask || '확인된 회원';
+        if (connection) connection.textContent = ({
+            connected: '연결됨',
+            editing: '번호 변경 중',
+            pending: '가입 승인 확인 중',
+            disconnected: '연결되지 않음',
+            loading: '상태 확인 중'
+        })[state];
+        if (bandScreen) bandScreen.dataset.membershipState = state;
         const navStatus = element('band-nav-status');
         navStatus?.classList.toggle('is-verified', authenticated);
+        navStatus?.classList.toggle('is-pending', state === 'pending');
+        if (navStatus) navStatus.hidden = authenticated;
     }
 
     function toast(message, isError) {
@@ -354,6 +379,7 @@
         sessionCreatedAt = new Date().toISOString();
         assignedHouseKey = '';
         result = null;
+        resultSavedAt = '';
         timingStats = null;
         showingStoredResult = false;
         advancing = false;
@@ -381,7 +407,7 @@
             submit.disabled = false;
             submit.classList.remove('is-recheck');
         }
-        if (submitLabel) submitLabel.textContent = '회원 확인';
+        if (submitLabel) submitLabel.textContent = '확인하기';
         if (!hasDetailedAccess()) editingMembership = false;
         updateBandState();
         setScreen('band-screen');
@@ -414,7 +440,7 @@
             sessionStorage.removeItem(MEMBERSHIP_PHONE_STORAGE_KEY);
         } catch (_) {}
         updateBandUi();
-        toast('BAND 회원 확인을 해제했어요.');
+        toast('회원 확인을 해제했어요.');
     }
 
     function returnToIntro() {
@@ -566,13 +592,32 @@
         return true;
     }
 
-    function renderTypeRelation() {
-        if (!selectedMbti) return '';
-        const same = selectedMbti === result.code;
-        return `<p class="cw-type-relation">${same
-            ? '평소 유형과 같아요'
-            : `평소 ${escapeHtml(selectedMbti)}에서 ${Core.buildMbtiComparison(selectedMbti, result.code).changes.length}글자 달라요`
-        }</p>`;
+    function reportIdentity() {
+        const source = new Date(resultSavedAt || sessionCreatedAt || Date.now());
+        const date = Number.isNaN(source.getTime()) ? new Date() : source;
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const compactDate = `${year}${month}${day}`;
+        const seed = `${date.getTime()}-${result?.code || ''}-${assignedHouseKey}`;
+        let hash = 2166136261;
+        for (const character of seed) {
+            hash ^= character.charCodeAt(0);
+            hash = Math.imul(hash, 16777619);
+        }
+        const suffix = (hash >>> 0).toString(36).toUpperCase().padStart(4, '0').slice(-4);
+        return {
+            id: `CW-${compactDate.slice(2)}-${suffix}`,
+            date: `${year}.${month}.${day}`
+        };
+    }
+
+    function renderReportSectionHead(index, english, korean) {
+        return `
+            <header class="cw-report-section-head">
+                <span>${escapeHtml(index)}</span>
+                <div><small>${escapeHtml(english)}</small><h2>${escapeHtml(korean)}</h2></div>
+            </header>`;
     }
 
     function renderSpeedCard() {
@@ -588,16 +633,16 @@
             : '평균 데이터 준비 중';
         return `
             <section class="cw-result-section cw-speed-card">
+                ${renderReportSectionHead('02', 'RESPONSE PACE', '선택 속도')}
                 <header class="cw-speed-head">
-                    <span>선택 속도</span>
                     <strong data-measure-speed data-final-text="문항당 ${escapeHtml(median)}">문항당 ${escapeHtml(median)}</strong>
+                    <span>${escapeHtml(comparison)}</span>
                 </header>
                 <div class="cw-position-scale cw-speed-scale" aria-label="빠름에서 신중함 사이 ${Math.round(position)}% 위치">
                     <span class="cw-scale-marker" data-final-position="${position}" style="--position:${position}%" aria-hidden="true"></span>
                     <div class="cw-scale-line"><i aria-hidden="true"></i></div>
                     <div class="cw-scale-labels"><span>빠름</span><span>평균</span><span>신중</span></div>
                 </div>
-                <small class="cw-speed-average">${escapeHtml(comparison)}</small>
             </section>`;
     }
 
@@ -615,18 +660,20 @@
             const finalLabel = `${axisResult.dominant} · ${dominant.short}`;
             return `
                 <article class="cw-axis-detail">
-                    <header><strong data-measure-axis data-measure-first="${escapeHtml(firstLabel)}" data-measure-second="${escapeHtml(secondLabel)}" data-final-label="${escapeHtml(finalLabel)}">${escapeHtml(finalLabel)}</strong></header>
+                    <header>
+                        <span>${escapeHtml(first)} / ${escapeHtml(second)}</span>
+                        <strong data-measure-axis data-measure-first="${escapeHtml(firstLabel)}" data-measure-second="${escapeHtml(secondLabel)}" data-final-label="${escapeHtml(finalLabel)}">${escapeHtml(finalLabel)}</strong>
+                    </header>
                     <div class="cw-position-scale cw-axis-scale" aria-label="${first} ${firstCount}, ${second} ${secondCount}">
                         <span class="cw-scale-marker" data-final-position="${position}" style="--position:${position}%" aria-hidden="true"></span>
                         <div class="cw-scale-line"><i aria-hidden="true"></i></div>
-                        <div class="cw-scale-labels"><span>${first}</span><span>중립</span><span>${second}</span></div>
+                        <div class="cw-scale-labels"><span>${first}</span><span aria-hidden="true"></span><span>${second}</span></div>
                     </div>
-                    <p>${escapeHtml(dominant.description)}</p>
                 </article>`;
         }).join('');
         return `
             <section class="cw-result-section cw-member-detail">
-                <h2 class="cw-visually-hidden">성향 요약</h2>
+                ${renderReportSectionHead('01', 'TRAIT AXES', '성향 지표')}
                 <div class="cw-axis-detail-list">${axisCards}</div>
             </section>`;
     }
@@ -635,22 +682,26 @@
         const house = Core.HOUSE_META[assignedHouseKey];
         return `
             <section class="cw-report-house" style="--house-accent:${escapeHtml(house.accent)}">
-                <span>HOUSE</span>
-                <div><b aria-hidden="true">${escapeHtml(house.seal)}</b><strong aria-label="${escapeHtml(house.name)}"><span data-measure-house data-final-text="${escapeHtml(house.name)}">${escapeHtml(house.name)}</span></strong></div>
+                ${renderReportSectionHead('03', 'HOUSE ASSIGNMENT', '기숙사')}
+                <div class="cw-house-assignment">
+                    <b aria-hidden="true">${escapeHtml(house.seal)}</b>
+                    <div><small>ASSIGNED HOUSE</small><strong aria-label="${escapeHtml(house.name)}"><span data-measure-house data-final-text="${escapeHtml(house.name)}">${escapeHtml(house.name)}</span></strong></div>
+                </div>
             </section>`;
     }
 
     function renderLockedDetail() {
         const configured = BAND_INTEGRATION_ENABLED && bandAuthConfigured;
-        const label = configured ? 'BAND 회원 확인' : '확인 준비 중';
-        const status = configured ? '확인 후 바로 열려요' : '회원 명단 연결을 준비하고 있어요';
+        const label = configured ? '회원 확인' : '확인 준비 중';
+        const status = configured ? '확인 후 상세 결과가 열려요' : '회원 명단 연결을 준비하고 있어요';
         return `
             <section class="cw-detail-gate">
-                <div class="cw-detail-preview" aria-hidden="true" inert>${renderMemberDetail()}${renderSpeedCard()}</div>
+                <div class="cw-detail-preview" aria-hidden="true" inert>${renderMemberDetail()}${renderSpeedCard()}${renderHouseCard()}</div>
                 <div class="cw-detail-shade" aria-hidden="true"></div>
                 <div class="cw-detail-unlock">
-                    <h2>전체 결과 보기</h2>
-                    <button class="cw-band-cta" type="button" data-action="unlock-detail" ${configured ? '' : 'disabled'}><img src="assets/band-app-icon-official.png?v=20260801-logo-v2" width="24" height="24" alt=""><span>${escapeHtml(label)}</span><b aria-hidden="true">→</b></button>
+                    <small>MEMBER ACCESS</small>
+                    <h2>상세 결과 잠김</h2>
+                    <button class="cw-band-cta" type="button" data-action="unlock-detail" ${configured ? '' : 'disabled'}><span>${escapeHtml(label)}</span><b aria-hidden="true">→</b></button>
                     <small class="cw-lock-status">${escapeHtml(status)}</small>
                 </div>
             </section>`;
@@ -765,8 +816,9 @@
     }
 
     function renderResult(options = {}) {
+        const report = reportIdentity();
         const detail = BAND_INTEGRATION_ENABLED && hasDetailedAccess()
-            ? `${renderMemberDetail()}${renderSpeedCard()}`
+            ? `${renderMemberDetail()}${renderSpeedCard()}${renderHouseCard()}`
             : renderLockedDetail();
         const bandShare = BAND_INTEGRATION_ENABLED
             ? `<button class="cw-share-icon is-band" type="button" data-action="band-result" aria-label="크레와트 BAND 열기"><img src="assets/band-app-icon-official.png?v=20260801-logo-v2" width="28" height="28" alt=""></button>`
@@ -775,27 +827,35 @@
         element('result-content').innerHTML = `
             <div class="cw-result-wrap">
                 <article class="cw-result-report">
-                    <header class="cw-report-head"><strong>CREWARTS</strong><span>PERSONALITY REPORT</span></header>
+                    <header class="cw-report-head">
+                        <div class="cw-report-brand"><strong>CREWARTS</strong><span>PERSONALITY REPORT</span></div>
+                        <dl class="cw-report-meta">
+                            <div><dt>REPORT ID</dt><dd>${escapeHtml(report.id)}</dd></div>
+                            <div><dt>DATE</dt><dd>${escapeHtml(report.date)}</dd></div>
+                            <div><dt>FORMAT</dt><dd>20 ITEMS</dd></div>
+                        </dl>
+                    </header>
                     <div class="cw-result-hero-copy">
-                        <p class="cw-poster-kicker">MY CREWART PROFILE</p>
+                        <p class="cw-poster-kicker">RESULT TYPE</p>
                         <strong class="cw-result-code" data-final-code="${escapeHtml(result.code)}" aria-label="${escapeHtml(result.code)}">${resultCodeSlots}</strong>
                         <h1 data-final-name="${escapeHtml(result.typeName)}">${escapeHtml(result.typeName)}</h1>
-                        ${renderTypeRelation()}
                     </div>
-                    ${renderHouseCard()}
                     ${detail}
-                    <section class="cw-share-section">
-                        <button class="cw-share-toggle" type="button" data-action="share-menu" aria-expanded="false">공유하기 <span aria-hidden="true">＋</span></button>
-                        <div class="cw-share-tools" aria-label="결과 공유" hidden>
-                        <button class="cw-share-icon is-kakao" type="button" data-action="share" aria-label="카카오톡으로 공유">
-                            <img src="assets/kakaolink_btn_medium.png" width="24" height="24" alt="">
-                        </button>
-                        <button class="cw-share-icon is-instagram" type="button" data-action="instagram" aria-label="인스타그램 스토리로 공유">
-                            <img src="assets/instagram-glyph-official.svg" width="24" height="24" alt="">
-                        </button>
-                        ${bandShare}
-                        </div>
-                    </section>
+                    <footer class="cw-report-footer">
+                        <p>성향을 이해하기 위한 참고 결과입니다.</p>
+                        <section class="cw-share-section">
+                            <button class="cw-share-toggle" type="button" data-action="share-menu" aria-expanded="false">결과 공유 <span aria-hidden="true">＋</span></button>
+                            <div class="cw-share-tools" aria-label="결과 공유" hidden>
+                            <button class="cw-share-icon is-kakao" type="button" data-action="share" aria-label="카카오톡으로 공유">
+                                <img src="assets/kakaolink_btn_medium.png" width="24" height="24" alt="">
+                            </button>
+                            <button class="cw-share-icon is-instagram" type="button" data-action="instagram" aria-label="인스타그램 스토리로 공유">
+                                <img src="assets/instagram-glyph-official.svg" width="24" height="24" alt="">
+                            </button>
+                            ${bandShare}
+                            </div>
+                        </section>
+                    </footer>
                 </article>
             </div>`;
         element('result-content').querySelector('[data-action="unlock-detail"]')?.addEventListener('click', handleUnlockDetail);
@@ -1042,10 +1102,9 @@
             } catch (_) {}
         }
         if (status) {
-            status.hidden = false;
-            status.textContent = 'BAND 회원 확인 완료!';
-            status.classList.remove('is-error', 'is-action');
-            status.classList.add('is-success');
+            status.hidden = true;
+            status.textContent = '';
+            status.classList.remove('is-error', 'is-action', 'is-success');
         }
         updateBandUi();
         const reveal = pendingResultReveal && Boolean(result);
@@ -1053,7 +1112,7 @@
         setTimeout(() => {
             if (phoneInput) phoneInput.value = '';
             if (reveal) completeResultReveal();
-            else toast('BAND 회원 확인이 완료됐어요.');
+            else toast('회원 확인이 완료됐어요.');
         }, 350);
     }
 
@@ -1074,6 +1133,7 @@
         const joinLink = element('member-join-link');
         if (Date.now() - membershipRecheckStartedAt > MEMBERSHIP_RECHECK_TIMEOUT_MS) {
             stopMembershipRecheck();
+            updateBandState();
             if (status) {
                 status.hidden = false;
                 status.textContent = '가입 승인 확인 시간이 지났어요. 같은 번호로 다시 확인해주세요.';
@@ -1150,6 +1210,7 @@
                 status.classList.add('is-action');
                 pendingMemberPhone = phoneDigits;
                 membershipRecheckStartedAt = Date.now();
+                updateBandState();
                 joinLink.hidden = false;
                 joinLink.classList.add('is-recommended');
                 submitLabel.textContent = '다시 확인';
@@ -1160,6 +1221,7 @@
             completeMembershipAccess(payload, phoneDigits);
         } catch (error) {
             stopMembershipRecheck();
+            updateBandState();
             status.textContent = error.message || '가입 여부를 확인하지 못했어요.';
             status.classList.add('is-error');
             submitLabel.textContent = '다시 확인';

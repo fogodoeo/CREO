@@ -14,10 +14,10 @@
     <link
         href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
         rel="stylesheet">
-    <link rel="stylesheet" href="crewart-survey-v4.css?v=20260802-app-renewal-v14">
+    <link rel="stylesheet" href="crewart-survey-v4.css?v=20260802-report-band-v15">
     <script src="assets/vendor/kakao-2.8.1.min.js"></script>
     <script src="crewart-survey-core.js?v=20260801-house-map-v5"></script>
-    <script src="crewart-survey.js?v=20260802-app-renewal-v14" defer></script>
+    <script src="crewart-survey.js?v=20260802-report-band-v15" defer></script>
 </head>
 
 <body>
@@ -95,43 +95,57 @@
         </section>
 
         <section class="cw-screen cw-band" id="band-screen" hidden aria-labelledby="band-page-title">
-            <header class="cw-page-head">
-                <p>CREWARTS COMMUNITY</p>
-                <h1 id="band-page-title">BAND</h1>
-            </header>
-            <section class="cw-band-card">
-                <header class="cw-band-card-head">
-                    <img src="assets/band-app-icon-official.png?v=20260801-logo-v2" alt="BAND" width="52" height="52">
-                    <div><small>MEMBERSHIP</small><h2 id="member-check-title">회원 확인</h2></div>
+            <div class="cw-band-shell">
+                <header class="cw-band-identity">
+                    <img src="assets/band-app-icon-official.png?v=20260801-logo-v2" alt="" width="54" height="54">
+                    <div>
+                        <h1 id="band-page-title">크레와트 커뮤니티</h1>
+                        <p class="cw-band-connection"><i id="band-state-dot" aria-hidden="true"></i><span id="band-connection-status">연결되지 않음</span></p>
+                    </div>
                 </header>
 
-                <form class="cw-member-form" id="member-check-form">
-                    <label class="cw-visually-hidden" for="member-phone">휴대전화번호</label>
-                    <input id="member-phone" name="phone" type="tel" inputmode="numeric" autocomplete="tel"
-                        maxlength="13" placeholder="010-1234-5678" aria-describedby="member-phone-help" required>
-                    <small id="member-phone-help">가입 확인에만 사용해요.</small>
-                    <button class="cw-dialog-band-button" id="member-check-submit" type="submit">
-                        <strong id="member-check-submit-label">회원 확인</strong>
-                    </button>
-                </form>
+                <section class="cw-band-account" aria-labelledby="member-check-title">
+                    <header class="cw-band-account-head">
+                        <div><small>MEMBER ACCESS</small><h2 id="member-check-title">회원 확인</h2></div>
+                    </header>
 
-                <div class="cw-band-verified" id="band-verified-state" hidden>
-                    <small>확인 완료</small>
-                    <strong id="auth-phone-number">BAND 회원</strong>
-                    <div>
-                        <button id="auth-phone-edit" type="button">번호 수정</button>
-                        <button id="auth-phone-clear" type="button">확인 해제</button>
+                    <form class="cw-member-form" id="member-check-form">
+                        <label for="member-phone">휴대전화번호</label>
+                        <input id="member-phone" name="phone" type="tel" inputmode="numeric" autocomplete="tel"
+                            maxlength="13" placeholder="010-1234-5678" aria-describedby="member-phone-help" required>
+                        <small id="member-phone-help">입력한 번호는 가입 여부 확인에만 사용해요.</small>
+                        <button class="cw-dialog-band-button" id="member-check-submit" type="submit">
+                            <strong id="member-check-submit-label">확인하기</strong>
+                        </button>
+                    </form>
+
+                    <div class="cw-band-verified" id="band-verified-state" hidden>
+                        <header>
+                            <span aria-hidden="true">✓</span>
+                            <div><small>STATUS</small><strong>회원 확인 완료</strong></div>
+                        </header>
+                        <dl>
+                            <div><dt>휴대전화번호</dt><dd id="auth-phone-number">확인된 회원</dd></div>
+                            <div><dt>연결 상태</dt><dd><i aria-hidden="true"></i> 정상</dd></div>
+                        </dl>
+                        <div class="cw-band-account-actions">
+                            <button id="auth-phone-edit" type="button">번호 변경</button>
+                            <button id="auth-phone-clear" type="button">연결 해제</button>
+                        </div>
                     </div>
-                </div>
 
-                <div class="cw-member-status" id="member-check-status" role="status" aria-live="polite" hidden></div>
-                <a class="cw-dialog-continue cw-member-join" id="member-join-link" data-band-join
-                    href="https://www.band.us/band/101992972/post" target="_blank" rel="noopener noreferrer">
-                    <img src="assets/band-app-icon-official.png?v=20260801-logo-v2" alt="" width="22" height="22">
-                    <strong>BAND 가입하기</strong><span aria-hidden="true">→</span>
-                </a>
-            </section>
-            <p class="cw-device-note">결과는 이 기기에 저장돼요.</p>
+                    <div class="cw-member-status" id="member-check-status" role="status" aria-live="polite" hidden></div>
+
+                    <a class="cw-member-join" id="member-join-link" data-band-join
+                        href="https://www.band.us/band/101992972/post" target="_blank" rel="noopener noreferrer">
+                        <span class="cw-member-join-copy">
+                            <img src="assets/band-app-icon-official.png?v=20260801-logo-v2" alt="" width="38" height="38">
+                            <span><small>COMMUNITY</small><strong>BAND 가입하기</strong></span>
+                        </span>
+                        <span aria-hidden="true">↗</span>
+                    </a>
+                </section>
+            </div>
         </section>
     </main>
 
