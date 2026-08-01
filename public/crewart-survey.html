@@ -14,10 +14,10 @@
     <link
         href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
         rel="stylesheet">
-    <link rel="stylesheet" href="crewart-survey-v4.css?v=20260801-member-state-v11">
+    <link rel="stylesheet" href="crewart-survey-v4.css?v=20260801-home-layout-v12">
     <script src="assets/vendor/kakao-2.8.1.min.js"></script>
     <script src="crewart-survey-core.js?v=20260801-house-map-v5"></script>
-    <script src="crewart-survey.js?v=20260801-member-state-v11" defer></script>
+    <script src="crewart-survey.js?v=20260801-home-layout-v12" defer></script>
 </head>
 
 <body>
@@ -51,30 +51,32 @@
                     <p class="cw-intro-copy">20문항 · 약 2분</p>
                 </header>
 
-                <section class="cw-home-result" id="home-result-card" hidden aria-labelledby="home-result-heading">
-                    <p>내 결과</p>
-                    <div class="cw-home-result-main">
-                        <strong id="home-result-code">—</strong>
-                        <div><h2 id="home-result-heading">내 결과</h2><span id="home-result-summary"></span></div>
-                    </div>
-                    <small id="home-result-saved"></small>
-                    <div class="cw-home-result-actions">
-                        <button class="cw-primary-button" id="home-result-open" type="button">결과 다시 보기</button>
-                        <button class="cw-secondary-button" id="home-retest" type="button">다시 테스트하기</button>
+                <section class="cw-home-panel" aria-label="테스트 메뉴">
+                    <section class="cw-home-result" id="home-result-card" hidden aria-labelledby="home-result-heading">
+                        <p>최근 결과</p>
+                        <div class="cw-home-result-main">
+                            <strong id="home-result-code">—</strong>
+                            <h2 id="home-result-heading">성향 결과</h2>
+                        </div>
+                        <div class="cw-home-result-actions">
+                            <button class="cw-primary-button" id="home-result-open" type="button">결과 보기</button>
+                            <button class="cw-secondary-button" id="home-retest" type="button">새로 하기</button>
+                        </div>
+                    </section>
+
+                    <section class="cw-home-start" id="home-start-card">
+                        <button class="cw-primary-button" id="start-button" type="button" disabled><span>시작하기</span></button>
+                    </section>
+
+                    <div class="cw-home-member">
+                        <button class="cw-band-entry" id="band-float" type="button" disabled>
+                            <img src="assets/band-app-icon-official.png?v=20260801-logo-v2" alt="" width="22" height="22">
+                            <strong id="band-float-label">BAND 회원 확인</strong>
+                        </button>
+                        <a class="cw-home-band-join" data-band-join href="https://www.band.us/band/101992972/post"
+                            target="_blank" rel="noopener noreferrer">가입하기 <span aria-hidden="true">→</span></a>
                     </div>
                 </section>
-
-                <section class="cw-home-start" id="home-start-card">
-                    <button class="cw-primary-button" id="start-button" type="button" disabled><span>테스트 시작하기</span></button>
-                </section>
-
-                <div class="cw-intro-actions">
-                    <button class="cw-band-entry" id="band-float" type="button" disabled>
-                        <img src="assets/band-app-icon-official.png?v=20260801-logo-v2" alt="BAND" width="27" height="27"><strong
-                            id="band-float-label">BAND 회원 연동</strong>
-                    </button>
-                    <small class="cw-intro-note" id="band-entry-note">전화번호는 가입 여부 확인에만 사용해요</small>
-                </div>
             </div>
         </section>
 
@@ -128,7 +130,7 @@
         <div class="cw-guest-dialog-card">
             <button class="cw-dialog-close" id="member-check-close" type="button" aria-label="닫기">×</button>
             <img class="cw-dialog-band-mark" src="assets/band-app-icon-official.png?v=20260801-logo-v2" alt="BAND" width="48" height="48">
-            <h2 id="member-check-title">BAND 회원 연동</h2>
+            <h2 id="member-check-title">BAND 회원 확인</h2>
             <form class="cw-member-form" id="member-check-form">
                 <label class="cw-visually-hidden" for="member-phone">휴대전화번호</label>
                 <input id="member-phone" name="phone" type="tel" inputmode="numeric" autocomplete="tel"
@@ -139,8 +141,8 @@
                 </button>
             </form>
             <div class="cw-member-status" id="member-check-status" role="status" aria-live="polite" hidden></div>
-            <a class="cw-dialog-continue cw-member-join" id="member-join-link"
-                href="https://www.band.us/band/101992972/post" target="_blank" rel="noopener noreferrer" hidden>
+            <a class="cw-dialog-continue cw-member-join" id="member-join-link" data-band-join
+                href="https://www.band.us/band/101992972/post" target="_blank" rel="noopener noreferrer">
                 <img src="assets/band-app-icon-official.png?v=20260801-logo-v2" alt="" width="22" height="22"><strong>BAND 가입하러 가기</strong><span aria-hidden="true">→</span>
             </a>
         </div>

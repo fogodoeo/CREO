@@ -112,14 +112,6 @@
         renderHome();
     }
 
-    function formatSavedAt(value) {
-        const date = new Date(value);
-        if (!Number.isFinite(date.getTime())) return '';
-        return new Intl.DateTimeFormat('ko-KR', {
-            year: 'numeric', month: 'long', day: 'numeric'
-        }).format(date);
-    }
-
     function renderHome() {
         const snapshot = loadLastResult();
         const card = element('home-result-card');
@@ -130,8 +122,6 @@
         if (!snapshot) return;
         element('home-result-code').textContent = snapshot.result.code;
         element('home-result-heading').textContent = snapshot.result.typeName;
-        element('home-result-summary').textContent = typeSummary(snapshot.result.code);
-        element('home-result-saved').textContent = `${formatSavedAt(snapshot.savedAt)}에 저장한 결과`;
     }
 
     function restoreLastResult() {
@@ -375,7 +365,10 @@
             status.textContent = '';
             status.classList.remove('is-error', 'is-success', 'is-action');
         }
-        if (joinLink) joinLink.hidden = true;
+        if (joinLink) {
+            joinLink.hidden = false;
+            joinLink.classList.remove('is-recommended');
+        }
         if (submit) {
             submit.disabled = false;
             submit.classList.remove('is-recheck');
@@ -552,15 +545,6 @@
         return `${(Math.max(0, milliseconds) / 1000).toFixed(1)}초`;
     }
 
-    function typeSummary(code) {
-        return [
-            Core.AXIS_META.EI.letters[code[0]].short,
-            Core.AXIS_META.SN.letters[code[1]].short,
-            Core.AXIS_META.TF.letters[code[2]].short,
-            Core.AXIS_META.JP.letters[code[3]].short
-        ].join(' · ');
-    }
-
     function hasDetailedAccess() {
         return IS_LOCAL_QA || Boolean(bandAuthUser && bandAuthUser.isTargetMember === true);
     }
@@ -647,7 +631,7 @@
 
     function renderLockedDetail() {
         const configured = BAND_INTEGRATION_ENABLED && bandAuthConfigured;
-        const label = configured ? 'BAND 회원 연동' : '연동 준비 중';
+        const label = configured ? 'BAND 회원 확인' : '확인 준비 중';
         const status = configured ? '확인 후 바로 열려요' : '회원 명단 연결을 준비하고 있어요';
         return `
             <section class="cw-detail-gate">
@@ -801,8 +785,8 @@
                     </div>
                 </section>
                 <div class="cw-result-actions">
-                    <button class="cw-primary-button" type="button" data-action="retest">다시 테스트하기</button>
-                    <button class="cw-secondary-button" type="button" data-action="home">처음 화면으로</button>
+                    <button class="cw-primary-button" type="button" data-action="retest">새로 하기</button>
+                    <button class="cw-secondary-button" type="button" data-action="home">메인</button>
                 </div>
             </div>`;
         element('result-content').querySelector('[data-action="unlock-detail"]')?.addEventListener('click', handleUnlockDetail);
@@ -822,7 +806,7 @@
 
     function handleUnlockDetail() {
         if (!BAND_INTEGRATION_ENABLED) {
-            toast('BAND 연동은 현재 준비 중이에요.');
+            toast('BAND 회원 확인은 현재 준비 중이에요.');
             return;
         }
         if (hasDetailedAccess()) {
@@ -923,16 +907,12 @@
     function updateBandUi() {
         const button = element('band-float');
         const label = element('band-float-label');
-        const note = element('band-entry-note');
         const authenticated = hasDetailedAccess();
         button.disabled = !bandAuthReady || authenticated;
         button.classList.toggle('is-verified', authenticated);
         button.hidden = !BAND_INTEGRATION_ENABLED;
-        if (note) note.hidden = !BAND_INTEGRATION_ENABLED || authenticated;
-        label.textContent = authenticated ? 'BAND 회원 확인 완료' : 'BAND 회원 연동';
-        if (note && !authenticated) note.textContent = bandAuthConfigured
-                ? '전화번호는 가입 여부 확인에만 사용해요'
-                : '회원 명단 연결을 준비하고 있어요';
+        label.textContent = authenticated ? 'BAND 확인 완료' : 'BAND 회원 확인';
+        document.querySelectorAll('[data-band-join]').forEach(link => { link.href = bandTargetUrl; });
         button.setAttribute('aria-label', label.textContent);
         updateAuthHeader();
         updatePersistentActions();
@@ -1012,8 +992,7 @@
         });
         const payload = await response.json().catch(() => ({}));
         bandTargetUrl = payload.targetBandUrl || bandTargetUrl;
-        const joinLink = element('member-join-link');
-        if (joinLink) joinLink.href = bandTargetUrl;
+        document.querySelectorAll('[data-band-join]').forEach(link => { link.href = bandTargetUrl; });
         if (!response.ok) throw new Error(payload.error || '가입 여부를 확인하지 못했어요.');
         return payload;
     }
@@ -1095,6 +1074,7 @@
                 status.classList.add('is-action');
             }
             if (joinLink) joinLink.hidden = false;
+            if (joinLink) joinLink.classList.add('is-recommended');
         } catch (error) {
             if (status) {
                 status.hidden = false;
@@ -1116,7 +1096,8 @@
         if (!phoneInput || !submit || !submitLabel || !status || !joinLink) return;
         status.hidden = false;
         status.classList.remove('is-error', 'is-success', 'is-action');
-        joinLink.hidden = true;
+        joinLink.hidden = false;
+        joinLink.classList.remove('is-recommended');
         submit.classList.remove('is-recheck');
         if (!bandAuthConfigured) {
             status.textContent = '회원 명단 연결을 준비하고 있어요. 잠시 후 다시 시도해주세요.';
@@ -1144,6 +1125,7 @@
                 pendingMemberPhone = phoneDigits;
                 membershipRecheckStartedAt = Date.now();
                 joinLink.hidden = false;
+                joinLink.classList.add('is-recommended');
                 submitLabel.textContent = '다시 확인';
                 submit.classList.add('is-recheck');
                 scheduleMembershipRecheck();
@@ -1174,7 +1156,9 @@
             const status = element('member-check-status');
             if (status) {
                 status.hidden = false;
-                status.textContent = '가입 승인 후 돌아오면 자동으로 다시 확인해요.';
+                status.textContent = pendingMemberPhone
+                    ? '가입 승인 후 돌아오면 자동으로 다시 확인해요.'
+                    : '가입 후 이 화면에서 회원 확인을 진행해주세요.';
                 status.classList.remove('is-error', 'is-success');
                 status.classList.add('is-action');
             }
@@ -1515,7 +1499,7 @@
         playWordmark();
         void loadConfig().finally(() => {
             start.disabled = false;
-            start.querySelector('span').textContent = '테스트 시작하기';
+            start.querySelector('span').textContent = '시작하기';
         });
         if (!BAND_INTEGRATION_ENABLED) {
             bandAuthReady = false;
