@@ -104,6 +104,28 @@ test('an unknown number returns only the join destination', async () => {
     });
 });
 
+test('the same phone receives unlinkable random membership sessions', async () => {
+    const membership = createBandMembership({
+        env: { ...ENV, BAND_MEMBER_RATE_LIMIT_ATTEMPTS: '20' },
+        now: () => NOW,
+        fetchImpl: async () => jsonResponse([{ phone_normalized: '01012345678' }]),
+        logger: { error() {} }
+    });
+    const subjects = [];
+    for (let index = 0; index < 2; index += 1) {
+        const response = new CapturedResponse();
+        await membership.handle(
+            request('POST', JSON.stringify({ phone: '01012345678' }), { host: 'creok.example.com' }),
+            response,
+            new URL('https://creok.example.com/api/band-membership/verify')
+        );
+        const payload = JSON.parse(response.body);
+        subjects.push(verifyToken(payload.token, SESSION_SECRET, NOW).sub);
+        assert.equal(response.body.includes('01012345678'), false);
+    }
+    assert.notEqual(subjects[0], subjects[1]);
+});
+
 test('a zero attempt limit disables throttling during testing', async () => {
     const membership = createBandMembership({
         env: { ...ENV, BAND_MEMBER_RATE_LIMIT_ATTEMPTS: '0' },
@@ -121,6 +143,27 @@ test('a zero attempt limit disables throttling during testing', async () => {
         );
         assert.equal(response.status, 200);
     }
+});
+
+test('production ignores an accidental zero attempt limit', async () => {
+    const membership = createBandMembership({
+        env: { ...ENV, RENDER: 'true', BAND_MEMBER_RATE_LIMIT_ATTEMPTS: '0' },
+        now: () => NOW,
+        fetchImpl: async () => jsonResponse([]),
+        logger: { error() {} }
+    });
+
+    let lastStatus = 0;
+    for (let index = 0; index < 9; index += 1) {
+        const response = new CapturedResponse();
+        await membership.handle(
+            request('POST', JSON.stringify({ phone: '01099998888' }), { host: 'creok.example.com' }),
+            response,
+            new URL('https://creok.example.com/api/band-membership/verify')
+        );
+        lastStatus = response.status;
+    }
+    assert.equal(lastStatus, 429);
 });
 
 test('foreign browser origins and missing server credentials are rejected', async () => {

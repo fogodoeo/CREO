@@ -1,6 +1,6 @@
 'use strict';
 
-const { createHmac, timingSafeEqual } = require('node:crypto');
+const { createHmac, randomBytes, timingSafeEqual } = require('node:crypto');
 
 const SESSION_TYPE = 'band_phone_membership';
 const DEFAULT_TARGET_BAND_URL = 'https://www.band.us/band/101992972/post';
@@ -17,8 +17,8 @@ function positiveInteger(value, fallback, minimum, maximum) {
     return Math.max(minimum, Math.min(maximum, Math.round(number)));
 }
 
-function rateLimitAttempts(value, fallback = 8) {
-    if (String(value ?? '').trim() === '0') return 0;
+function rateLimitAttempts(value, fallback = 8, allowUnlimited = true) {
+    if (allowUnlimited && String(value ?? '').trim() === '0') return 0;
     return positiveInteger(value, fallback, 2, 100);
 }
 
@@ -48,6 +48,12 @@ function loadConfig(env = process.env) {
         .split(',')
         .map((value) => value.trim())
         .filter((value) => /^https?:\/\//i.test(value));
+    const productionRuntime = Boolean(
+        env.RENDER
+        || env.RENDER_SERVICE_ID
+        || env.RENDER_EXTERNAL_URL
+        || String(env.NODE_ENV || '').toLowerCase() === 'production'
+    );
 
     const config = {
         url,
@@ -61,7 +67,11 @@ function loadConfig(env = process.env) {
         sessionTtlSec: positiveInteger(env.BAND_MEMBER_SESSION_TTL_SEC, 7200, 300, 86400),
         requestTimeoutMs: positiveInteger(env.BAND_MEMBER_REQUEST_TIMEOUT_MS, 7000, 1000, 20000),
         rateLimitWindowMs: positiveInteger(env.BAND_MEMBER_RATE_LIMIT_WINDOW_MS, 600000, 10000, 3600000),
-        rateLimitAttempts: rateLimitAttempts(env.BAND_MEMBER_RATE_LIMIT_ATTEMPTS)
+        rateLimitAttempts: rateLimitAttempts(
+            env.BAND_MEMBER_RATE_LIMIT_ATTEMPTS,
+            8,
+            !productionRuntime
+        )
     };
     config.configured = Boolean(
         /^https:\/\/[^/]+/i.test(config.url)
@@ -106,6 +116,10 @@ function publicSubject(phone, secret) {
         .update(`band-phone:${phone}`)
         .digest('base64url')
         .slice(0, 32)}`;
+}
+
+function sessionSubject() {
+    return `member_${randomBytes(24).toString('base64url').slice(0, 32)}`;
 }
 
 async function readSmallJson(req) {
@@ -274,6 +288,11 @@ function createBandMembership(options = {}) {
                 sendJson(res, 400, { error: '010으로 시작하는 휴대전화번호 11자리를 입력해주세요.' });
                 return true;
             }
+            const phoneAttemptKey = `phone:${publicSubject(phone, config.sessionSecret)}`;
+            if (!allowAttempt(phoneAttemptKey)) {
+                sendJson(res, 429, { error: '확인 횟수가 많아요. 잠시 후 다시 시도해주세요.' });
+                return true;
+            }
             try {
                 const member = await lookupMember(phone);
                 if (!member) {
@@ -285,7 +304,7 @@ function createBandMembership(options = {}) {
                     typ: SESSION_TYPE,
                     iat: issuedAt,
                     exp: issuedAt + config.sessionTtlSec,
-                    sub: publicSubject(phone, config.sessionSecret)
+                    sub: sessionSubject()
                 };
                 const token = signToken(payload, config.sessionSecret);
                 sendJson(res, 200, sessionResponse(payload, token));

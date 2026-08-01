@@ -45,7 +45,7 @@ npm start
 
 ## CREWARTS BAND 회원 확인
 
-설문 결과는 전화번호가 Supabase의 활성 BAND 회원 명단과 일치할 때 열립니다. 전화번호 조회는 서버에서만 수행하며, 브라우저에는 원번호가 없는 단기 인증 토큰만 저장됩니다. 설문 응답에도 전화번호를 넣지 않습니다.
+설문 결과는 전화번호가 Supabase의 활성 BAND 회원 명단과 일치할 때 열립니다. 전화번호 조회는 서버에서만 수행하며, 브라우저에는 원번호가 없는 무작위 단기 인증 토큰만 저장됩니다. 같은 전화번호를 다시 확인해도 새로운 무작위 식별자를 발급하므로 설문 결과와 전화번호를 연결하지 않습니다. 설문 응답에도 전화번호를 넣지 않습니다.
 
 1. Supabase SQL Editor에서 `supabase/band-members.sql`을 실행합니다.
 2. 회원 전화번호는 하이픈 없이 `band_members.phone_normalized`에 입력합니다.
@@ -53,7 +53,9 @@ npm start
 4. 기존 회원 테이블을 쓸 때는 `BAND_MEMBER_TABLE`, `BAND_MEMBER_PHONE_COLUMN`, `BAND_MEMBER_ACTIVE_COLUMN`을 실제 이름에 맞춥니다.
 
 브라우저용 Supabase anon 키로는 회원 명단을 조회할 수 없게 RLS를 유지해야 합니다. 미가입자는 `BAND_MEMBER_TARGET_BAND_URL`로 이동합니다.
-테스트 중 확인 횟수 제한을 끄려면 `BAND_MEMBER_RATE_LIMIT_ATTEMPTS=0`으로 설정하고, 운영 전에는 양수로 되돌립니다.
+로컬 테스트 중 확인 횟수 제한을 끄려면 `BAND_MEMBER_RATE_LIMIT_ATTEMPTS=0`으로 설정할 수 있습니다. Render 또는 `NODE_ENV=production`에서는 값이 0이어도 기본 제한이 적용됩니다.
+
+승인 프로그램은 BAND의 `휴대폰 번호 인증`과 `휴대폰 번호 공개 요청`이 모두 켜진 상태에서, 공개된 인증 전화번호와 `이름 / 전화번호` 형식의 프로필 번호가 일치하는 회원만 이 명단에 등록해야 합니다.
 
 등록할 BAND Redirect URI:
 
