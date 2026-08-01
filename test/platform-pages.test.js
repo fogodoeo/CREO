@@ -131,7 +131,10 @@ test('CREWARTS reveals the basic result first and unlocks member detail by phone
     assert.doesNotThrow(() => new vm.Script(script, { filename: 'crewart-survey.js' }));
     assert.match(html, /BAND 회원 연동/);
     assert.match(html, /id="member-phone"/);
-    assert.match(html, /BAND 회원 연동하기/);
+    assert.match(html, /<strong>연동하기<\/strong>/);
+    assert.match(html, /가입 확인에만 사용해요\./);
+    assert.match(html, /class="cw-visually-hidden" for="member-phone"/);
+    assert.doesNotMatch(html, /BAND 가입 번호를 확인할게요|가입 승인된 BAND 프로필|설문 답변·결과와 함께 저장되지 않습니다/);
     assert.doesNotMatch(html, /결과 확인 전 한 번만/);
     assert.match(html, /BAND 가입하기/);
     assert.doesNotMatch(html, /supabase-bridge\.js/);

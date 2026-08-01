@@ -14,7 +14,7 @@
     <link
         href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
         rel="stylesheet">
-    <link rel="stylesheet" href="crewart-survey-v4.css?v=20260801-slot-motion-v9">
+    <link rel="stylesheet" href="crewart-survey-v4.css?v=20260801-minimal-member-v10">
     <script src="assets/vendor/kakao-2.8.1.min.js"></script>
     <script src="crewart-survey-core.js?v=20260801-house-map-v5"></script>
     <script src="crewart-survey.js?v=20260801-slot-motion-v9" defer></script>
@@ -128,16 +128,14 @@
         <div class="cw-guest-dialog-card">
             <button class="cw-dialog-close" id="member-check-close" type="button" aria-label="닫기">×</button>
             <img class="cw-dialog-band-mark" src="assets/band-app-icon-official.png?v=20260801-logo-v2" alt="BAND" width="48" height="48">
-            <p class="cw-step-label">BAND 회원 연동</p>
-            <h2 id="member-check-title">BAND 가입 번호를 확인할게요</h2>
-            <p>가입 승인된 BAND 프로필에 적은 휴대전화번호를 입력해주세요.</p>
+            <h2 id="member-check-title">BAND 회원 연동</h2>
             <form class="cw-member-form" id="member-check-form">
-                <label for="member-phone">휴대전화번호</label>
+                <label class="cw-visually-hidden" for="member-phone">휴대전화번호</label>
                 <input id="member-phone" name="phone" type="tel" inputmode="numeric" autocomplete="tel"
                     maxlength="13" placeholder="010-1234-5678" aria-describedby="member-phone-help" required>
-                <small id="member-phone-help">입력한 번호는 가입 여부 확인에만 사용되며 설문 답변·결과와 함께 저장되지 않습니다.</small>
+                <small id="member-phone-help">가입 확인에만 사용해요.</small>
                 <button class="cw-dialog-band-button" id="member-check-submit" type="submit">
-                    <img src="assets/band-app-icon-official.png?v=20260801-logo-v2" alt="" width="22" height="22"><strong>BAND 회원 연동하기</strong>
+                    <img src="assets/band-app-icon-official.png?v=20260801-logo-v2" alt="" width="22" height="22"><strong>연동하기</strong>
                 </button>
             </form>
             <div class="cw-member-status" id="member-check-status" role="status" aria-live="polite" hidden></div>

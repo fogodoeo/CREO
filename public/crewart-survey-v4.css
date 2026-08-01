@@ -332,6 +332,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-dialog-close { position: absolute; right: 13px; top: 13px; width: 42px; height: 42px; border: 0; border-radius: 50%; background: var(--cw-surface-soft); font-size: 24px; cursor: pointer; }
 .cw-dialog-band-mark { display: block; margin-bottom: 15px; border-radius: 12px; }
 .cw-guest-dialog-card h2 { margin: 0; font-size: 24px; font-weight: var(--cw-weight-bold); letter-spacing: -.04em; }
+.cw-guest-dialog-card h2 + .cw-member-form { margin-top: 18px; }
 .cw-guest-dialog-card > p:not(.cw-step-label) { margin: 8px 0 18px; color: var(--cw-muted); font-size: 13px; font-weight: var(--cw-weight-body); }
 .cw-member-form { display: grid; gap: 8px; }
 .cw-member-form label { font-size: 13px; font-weight: var(--cw-weight-bold); }
