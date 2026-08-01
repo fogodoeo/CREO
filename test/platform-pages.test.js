@@ -192,4 +192,9 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /Kakao\.Share\.sendDefault/);
     assert.match(script, /Kakao\.Share\.uploadImage/);
     assert.doesNotMatch(script, /크레\s*MBTI|나의 크레 MBTI|평소 MBTI/i);
+    assert.match(script, /class="cw-scale-marker"/);
+    assert.match(script, /빠름[\s\S]*평균[\s\S]*신중/);
+    assert.match(script, /Core\.chooseTendencyHouse\(result\)/);
+    assert.doesNotMatch(script, /기숙사 참여하기|현재 커뮤니티 인원을 기준/);
+    assert.match(css, /\.cw-scale-line[\s\S]*left:\s*50%/);
 });

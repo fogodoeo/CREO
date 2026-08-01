@@ -72,9 +72,11 @@ test('scoring recovers all sixteen intended profiles without an NT shortcut', ()
     }
 });
 
-test('house balancing remains independent from the MBTI result', () => {
+test('house assignment follows the result SN and TF combination', () => {
     const prepared = Core.prepareQuestions(() => 0.2);
     const answers = prepared.map((question) => question.scores.indexOf(question.axis[0]));
     const result = Core.scoreAnswers(prepared, answers);
-    assert.equal(Core.chooseBalancedHouse(result, { SF: 4, ST: 2, NT: 3, NF: 3 }, 'session-a'), 'ST');
+    assert.equal(Core.chooseTendencyHouse(result), 'ST');
+    assert.equal(Core.chooseTendencyHouse({ code: 'ENFJ' }), 'NF');
+    assert.equal(Core.chooseTendencyHouse({ code: 'INTJ' }), 'NT');
 });

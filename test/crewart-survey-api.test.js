@@ -66,8 +66,8 @@ function validSubmission() {
         crebtiType: 'ESTJ',
         knownMbti: 'INFP',
         axisScores: { E: 5, I: 0, S: 5, N: 0, T: 5, F: 0, J: 5, P: 0 },
-        assignedHouseKey: 'SF',
-        houseId: 'SF',
+        assignedHouseKey: 'ST',
+        houseId: 'ST',
         answers: Array(20).fill(0),
         answerLabels: Core.QUESTIONS.map((question) => ({
             questionId: question.id,

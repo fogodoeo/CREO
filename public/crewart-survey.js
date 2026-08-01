@@ -150,8 +150,8 @@
         selectedMbti = snapshot.selectedMbti || '';
         surveySessionId = '';
         sessionCreatedAt = '';
-        assignedHouseKey = snapshot.assignedHouseKey;
         result = snapshot.result;
+        assignedHouseKey = Core.chooseTendencyHouse(result);
         timingStats = snapshot.timingStats;
         showingStoredResult = true;
         renderResult();
@@ -488,7 +488,7 @@
         }
         result = Core.scoreAnswers(questions, answers);
         timingStats = Core.buildTimingStats(responseTimings, questions);
-        if (!assignedHouseKey) assignedHouseKey = Core.chooseBalancedHouse(result, currentHouseCounts(), surveySessionId);
+        assignedHouseKey = Core.chooseTendencyHouse(result);
         renderMbtiOptions();
         setScreen('mbti-screen');
     }
@@ -503,13 +503,6 @@
                 element('show-result').disabled = false;
             });
         });
-    }
-
-    function currentHouseCounts() {
-        return Object.fromEntries(Core.HOUSE_KEYS.map(key => [
-            key,
-            Math.max(0, Number(cohortSummary.houseCounts?.[key]) || 0)
-        ]));
     }
 
     function showResult(skipMbti) {
@@ -556,26 +549,38 @@
         return true;
     }
 
-    function renderComparison() {
+    function renderTypeRelation() {
         if (!selectedMbti) return '';
-        return `
-            <section class="cw-result-insight">
-                <span>평소 ${escapeHtml(selectedMbti)}</span>
-                <i aria-hidden="true">→</i>
-                <strong>크레 앞 ${escapeHtml(result.code)}</strong>
-            </section>`;
+        const same = selectedMbti === result.code;
+        return `<p class="cw-type-relation">${same
+            ? '평소 유형과 같아요'
+            : `평소 ${escapeHtml(selectedMbti)}에서 ${Core.buildMbtiComparison(selectedMbti, result.code).changes.length}글자 달라요`
+        }</p>`;
     }
 
     function renderSpeedCard() {
         if (!timingStats?.style) return '';
         const valid = timingStats.validCount > 0;
         const median = valid ? formatSeconds(timingStats.medianMs) : '-';
+        const samples = cohortSummary.timingMedians.map(Number).filter(value => value >= 400 && value <= 30000);
+        const averageMs = samples.length ? samples.reduce((sum, value) => sum + value, 0) / samples.length : timingStats.medianMs;
+        const relative = valid && averageMs > 0 ? Math.log2(timingStats.medianMs / averageMs) : 0;
+        const position = Math.max(7, Math.min(93, 50 + relative * 25));
+        const comparison = samples.length
+            ? `평균 ${formatSeconds(averageMs)} · ${samples.length}명`
+            : '평균 데이터 준비 중';
         return `
             <section class="cw-result-section cw-speed-card">
-                <div class="cw-result-section-head">
-                    <div><span>선택 템포</span><strong>${escapeHtml(timingStats.style.label)}</strong></div>
-                    <div class="cw-speed-number">${escapeHtml(median)}<small> 문항당</small></div>
+                <header class="cw-speed-head">
+                    <span>선택 속도</span>
+                    <strong>문항당 ${escapeHtml(median)}</strong>
+                </header>
+                <div class="cw-position-scale cw-speed-scale" aria-label="빠름에서 신중함 사이 ${Math.round(position)}% 위치">
+                    <span class="cw-scale-marker" style="--position:${position}%" aria-hidden="true"></span>
+                    <div class="cw-scale-line"><i aria-hidden="true"></i></div>
+                    <div class="cw-scale-labels"><span>빠름</span><span>평균</span><span>신중</span></div>
                 </div>
+                <small class="cw-speed-average">${escapeHtml(comparison)}</small>
             </section>`;
     }
 
@@ -599,12 +604,15 @@
             const second = axisResult.axis[1];
             const firstCount = Number(result.letters[first]) || 0;
             const secondCount = Number(result.letters[second]) || 0;
-            const firstWidth = Math.max(0, Math.min(100, (firstCount / 5) * 100));
+            const position = Math.max(0, Math.min(100, (secondCount / 5) * 100));
             return `
                 <article class="cw-axis-detail">
-                    <header><div><span>${escapeHtml(meta.title)}</span><strong>${axisResult.dominant} · ${escapeHtml(dominant.short)}</strong></div><b>${firstCount} : ${secondCount}</b></header>
-                    <div class="cw-axis-meter" aria-label="${first} ${firstCount}, ${second} ${secondCount}"><i style="width:${firstWidth}%"></i></div>
-                    <div class="cw-axis-poles"><span>${first}</span><span>${second}</span></div>
+                    <header><div><span>${escapeHtml(meta.title)}</span><strong>${axisResult.dominant} · ${escapeHtml(dominant.short)}</strong></div><b>${first} ${firstCount} · ${second} ${secondCount}</b></header>
+                    <div class="cw-position-scale cw-axis-scale" aria-label="${first} ${firstCount}, ${second} ${secondCount}">
+                        <span class="cw-scale-marker" style="--position:${position}%" aria-hidden="true"></span>
+                        <div class="cw-scale-line"><i aria-hidden="true"></i></div>
+                        <div class="cw-scale-labels"><span>${first}</span><span>중립</span><span>${second}</span></div>
+                    </div>
                     <p>${escapeHtml(dominant.description)}</p>
                     ${hasAnswerHistory ? `<details class="cw-answer-detail"><summary>이 결과가 나온 선택 보기</summary><ul>${detailedAnswerRows(axisResult.axis)}</ul></details>` : ''}
                 </article>`;
@@ -618,14 +626,10 @@
 
     function renderHouseCard() {
         const house = Core.HOUSE_META[assignedHouseKey];
-        const bandAction = BAND_INTEGRATION_ENABLED
-            ? `<button class="cw-band-cta" type="button" data-action="open-band"><span>${house.name} 기숙사 참여하기</span><b aria-hidden="true">↗</b></button>`
-            : '';
         return `
-            <section class="cw-result-section cw-house-card" style="--house-accent:${house.accent}">
-                <div class="cw-house-row"><div class="cw-house-seal">${house.seal}</div><div><small>CREWART COMMUNITY HOUSE</small><h2>${house.name}</h2></div></div>
-                <p>현재 커뮤니티 인원을 기준으로 고르게 배정했어요.</p>
-                ${bandAction}
+            <section class="cw-result-section cw-house-card">
+                <span>기숙사</span>
+                <div><h2>${house.name}</h2><b>${assignedHouseKey[0]} · ${assignedHouseKey[1]} 조합</b></div>
             </section>`;
     }
 
@@ -651,9 +655,6 @@
     }
 
     function renderResult() {
-        const typeFlow = selectedMbti
-            ? `<div class="cw-result-code-flow"><div><small>평소</small><strong>${escapeHtml(selectedMbti)}</strong></div><i aria-hidden="true">→</i><div class="is-cre"><small>크레 앞</small><strong>${escapeHtml(result.code)}</strong></div></div>`
-            : `<div class="cw-result-code-flow is-single"><div class="is-cre"><small>크레 앞의 나는</small><strong>${escapeHtml(result.code)}</strong></div></div>`;
         const detail = BAND_INTEGRATION_ENABLED && hasDetailedAccess() ? `${renderMemberDetail()}${renderHouseCard()}` : renderLockedDetail();
         const bandShare = BAND_INTEGRATION_ENABLED
             ? `<button class="cw-share-icon is-band" type="button" data-action="band-result" aria-label="크레와트 BAND 열기"><img src="assets/band-app-icon-official.png?v=20260801-logo-v2" width="28" height="28" alt=""></button>`
@@ -663,12 +664,11 @@
                 <section class="cw-result-poster">
                     <div class="cw-result-hero-copy">
                         <p class="cw-poster-kicker">나의 결과</p>
-                        ${typeFlow}
+                        <strong class="cw-result-code">${escapeHtml(result.code)}</strong>
                         <h1>${escapeHtml(result.typeName)}</h1>
-                        ${showingStoredResult ? '<small class="cw-stored-note">이 기기에 저장된 최근 결과예요.</small>' : ''}
+                        ${renderTypeRelation()}
                     </div>
                 </section>
-                ${renderComparison()}
                 ${detail}
                 ${renderSpeedCard()}
                 <section class="cw-result-section cw-share-section">

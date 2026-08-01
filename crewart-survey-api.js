@@ -107,7 +107,8 @@ function sanitizeSubmission(input, nowIso) {
         throw error;
     }
     const assignedHouseKey = cleanText(input.assignedHouseKey || input.houseId, 2).toUpperCase();
-    if (!Core.HOUSE_KEYS.includes(assignedHouseKey)) {
+    const expectedHouseKey = Core.chooseTendencyHouse({ code: creMbti, letters: axisScores });
+    if (!Core.HOUSE_KEYS.includes(assignedHouseKey) || assignedHouseKey !== expectedHouseKey) {
         const error = new Error('기숙사 배정값이 올바르지 않습니다.');
         error.status = 422;
         throw error;

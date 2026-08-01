@@ -277,28 +277,14 @@
         };
     }
 
-    function stableHash(value) {
-        let hash = 2166136261;
-        String(value || '').split('').forEach(character => {
-            hash ^= character.charCodeAt(0);
-            hash = Math.imul(hash, 16777619);
-        });
-        return hash >>> 0;
-    }
-
-    function chooseBalancedHouse(result, counts, seed) {
-        const safeCounts = Object.fromEntries(HOUSE_KEYS.map(key => [key, Math.max(0, Number(counts?.[key]) || 0)]));
-        const minimum = Math.min(...HOUSE_KEYS.map(key => safeCounts[key]));
-        const candidates = HOUSE_KEYS.filter(key => safeCounts[key] === minimum);
-        const affinity = {
-            SF: result.letters.S + result.letters.F,
-            ST: result.letters.S + result.letters.T,
-            NT: result.letters.N + result.letters.T,
-            NF: result.letters.N + result.letters.F
-        };
-        const bestScore = Math.max(...candidates.map(key => affinity[key]));
-        const best = candidates.filter(key => affinity[key] === bestScore);
-        return best[stableHash(seed) % best.length];
+    function chooseTendencyHouse(result) {
+        const code = String(result?.code || '').toUpperCase();
+        const codeKey = `${code[1] || ''}${code[2] || ''}`;
+        if (HOUSE_KEYS.includes(codeKey)) return codeKey;
+        const letters = result?.letters || {};
+        const perception = Number(letters.S) > Number(letters.N) ? 'S' : 'N';
+        const decision = Number(letters.T) > Number(letters.F) ? 'T' : 'F';
+        return `${perception}${decision}`;
     }
 
     return {
@@ -315,7 +301,7 @@
         buildMbtiComparison,
         buildTimingStats,
         buildSpeedBenchmark,
-        chooseBalancedHouse,
+        chooseTendencyHouse,
         median,
         average
     };
