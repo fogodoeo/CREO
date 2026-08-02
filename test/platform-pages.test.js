@@ -279,7 +279,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /cw-result-code cw-result-code-back/);
     assert.match(script, /cw-result-code cw-result-code-front/);
     assert.match(script, /class="cw-type-poster"/);
-    assert.match(html, /20260802-home-code-v51/);
+    assert.match(html, /20260802-home-code-v52/);
     assert.match(html, /property="og:url" content="https:\/\/creok\.onrender\.com\/crewart-survey\.html"/);
     assert.match(html, /rel="canonical" href="https:\/\/creok\.onrender\.com\/crewart-survey\.html"/);
     assert.deepEqual(
@@ -389,6 +389,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.doesNotMatch(css, /\.cw-band\.is-keyboard-open \.cw-member-status[^}]*display:\s*none/);
     assert.match(css, /@media \(max-width: 420px\)[\s\S]*\.cw-result-code-front\s*\{\s*right:\s*17%/);
     assert.match(css, /@media \(max-width: 420px\)[\s\S]*\.cw-axis-detail header h3\s*\{\s*font-size:\s*12px/);
+    assert.match(css, /\.cw-axis-pole\s*\{[^}]*z-index:\s*2/);
+    assert.match(css, /\.cw-axis-pole strong\s*\{[^}]*font-size:\s*12\.5px[^}]*transform:\s*translateY\(-2px\)/);
     assert.match(css, /@media \(max-width: 420px\)[\s\S]*\.cw-member-status\s*\{\s*font-size:\s*12px/);
     assert.match(script, /function syncMemberKeyboardState\(options = \{\}\)/);
     assert.match(script, /window\.visualViewport\?\.addEventListener\('resize'/);
