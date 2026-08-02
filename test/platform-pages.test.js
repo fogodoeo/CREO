@@ -237,7 +237,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /cw-result-code cw-result-code-back/);
     assert.match(script, /cw-result-code cw-result-code-front/);
     assert.match(script, /class="cw-type-poster"/);
-    assert.match(html, /20260802-report-poster-v20/);
+    assert.match(html, /20260802-mobile-report-v21/);
     assert.deepEqual(
         fs.readdirSync(characterDirectory).filter(file => file.endsWith('.png')).sort(),
         characterCodes.map(code => `crewart-type-${code}.png`).sort()
@@ -264,8 +264,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /\? `\$\{renderMemberDetail\(\)\}\$\{renderSpeedCard\(\)\}\$\{renderHouseCard\(\)\}`/);
     assert.doesNotMatch(script, /class="cw-answer-detail"/);
     assert.doesNotMatch(script, /<span>\$\{escapeHtml\(meta\.title\)\}<\/span>/);
-    assert.match(script, /REPORT ID[\s\S]*DATE[\s\S]*20 ITEMS/);
-    assert.match(script, /RESULT TYPE/);
+    assert.match(script, /<dt>ID<\/dt>[\s\S]*<dt>DATE<\/dt>[\s\S]*20 ITEMS/);
+    assert.doesNotMatch(script, /RESULT TYPE/);
     assert.doesNotMatch(script, /평소 유형과 같아요|글자 달라요/);
     assert.match(script, /EI: \{ title: '생각 정리', left: '함께 정리', right: '혼자 정리' \}/);
     assert.match(script, /SN: \{ title: '관찰 초점', left: '현재 정보', right: '성장 가능성' \}/);
@@ -277,8 +277,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /'speed-report-detail'/);
     assert.match(script, /'house-report-detail'/);
     assert.match(script, /function toggleReportDisclosure\(event\)[\s\S]*panel\.hidden = !opening[\s\S]*aria-expanded/);
-    assert.match(css, /\.cw-speed-card\s*\{[^}]*margin:\s*32px 0 0/);
-    assert.match(css, /\.cw-report-house\s*\{[^}]*margin-top:\s*32px/);
+    assert.match(css, /\.cw-speed-card\s*\{[^}]*margin:\s*20px 0 0/);
+    assert.match(css, /\.cw-report-house\s*\{[^}]*margin-top:\s*20px/);
     assert.match(css, /\.cw-report-disclosure\[hidden\]\s*\{[^}]*display:\s*none/);
     assert.match(script, /data-axis-result data-final-pole=/);
     assert.match(script, /axisPoles\.forEach[\s\S]*classList\.toggle\('is-selected'/);
@@ -286,7 +286,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.doesNotMatch(script, /data-measure-axis|data-final-label/);
     assert.match(css, /\.cw-result-report\s*\{[^}]*border-radius:\s*6px/);
     assert.match(css, /\.cw-axis-detail-list\s*\{[^}]*display:\s*grid[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
-    assert.match(css, /\.cw-axis-detail\s*\{[^}]*border:\s*1px solid[^}]*border-radius:\s*13px/);
+    assert.match(css, /\.cw-axis-detail\s*\{[^}]*border:\s*1px solid[^}]*border-radius:\s*10px/);
     assert.match(css, /\.cw-axis-detail header h3\s*\{[^}]*text-align:\s*center/);
     assert.match(css, /\.cw-axis-pole\.is-selected[\s\S]*font-weight:\s*800/);
     assert.match(css, /--cw-type-body:\s*14px/);
@@ -294,10 +294,16 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(css, /--cw-weight-bold:\s*800/);
     assert.match(css, /\.cw-question-card > h1[\s\S]*font-weight:\s*var\(--cw-weight-bold\)/);
     assert.match(css, /\.cw-choice-button span[\s\S]*font-size:\s*var\(--cw-type-control\)/);
-    assert.match(css, /\.cw-poster-kicker[\s\S]*color:\s*var\(--cw-muted\)/);
+    assert.doesNotMatch(css, /\.cw-poster-kicker/);
     assert.match(css, /\.cw-intro-visual\s*\{[^}]*position:\s*fixed[^}]*inset:\s*-24px/);
     assert.match(css, /\.cw-intro-video\s*\{[^}]*object-fit:\s*cover[^}]*filter:\s*blur\(5px\)/);
     assert.match(css, /\.cw-bottom-nav[\s\S]*position:\s*fixed/);
+    assert.match(css, /\.cw-bottom-nav > div\s*\{[^}]*height:\s*54px/);
+    assert.match(css, /body\.cw-keyboard-open \.cw-bottom-nav[\s\S]*translateY\(110%\)/);
+    assert.match(css, /\.cw-band\.is-keyboard-open[\s\S]*--cw-visual-viewport-height/);
+    assert.match(script, /function syncMemberKeyboardState\(options = \{\}\)/);
+    assert.match(script, /window\.visualViewport\?\.addEventListener\('resize'/);
+    assert.match(css, /\.cw-result-code-front\s*\{[^}]*z-index:\s*1/);
     assert.match(css, /\.cw-intro::after\s*\{[^}]*position:\s*fixed/);
     assert.doesNotMatch(css, /\.cw-position-scale\.is-measuring \.cw-scale-line::after/);
     assert.match(css, /@keyframes cw-code-flicker/);

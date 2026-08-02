@@ -69,6 +69,7 @@
     let membershipRecheckStartedAt = 0;
     let membershipCheckInFlight = false;
     let showingStoredResult = false;
+    let memberKeyboardTimer = null;
 
     function element(id) {
         return document.getElementById(id);
@@ -260,6 +261,11 @@
     }
 
     function setScreen(screenId) {
+        if (screenId !== 'band-screen') {
+            element('member-phone')?.blur();
+            document.body.classList.remove('cw-keyboard-open');
+            element('band-screen')?.classList.remove('is-keyboard-open');
+        }
         ['intro-screen', 'question-screen', 'mbti-screen', 'result-screen', 'band-screen'].forEach(id => {
             const screen = element(id);
             const active = id === screenId;
@@ -280,6 +286,26 @@
         updatePersistentActions();
         syncThemeColor(screenId);
         window.scrollTo({ top: 0, behavior: 'instant' });
+    }
+
+    function syncMemberKeyboardState(options = {}) {
+        const input = element('member-phone');
+        const screen = element('band-screen');
+        const viewport = window.visualViewport;
+        const viewportHeight = Math.round(viewport?.height || window.innerHeight || document.documentElement.clientHeight);
+        const focused = Boolean(input && screen && !screen.hidden && document.activeElement === input);
+        document.documentElement.style.setProperty('--cw-visual-viewport-height', `${viewportHeight}px`);
+        document.body.classList.toggle('cw-keyboard-open', focused);
+        screen?.classList.toggle('is-keyboard-open', focused);
+        if (!focused || options.ensureVisible === false) return;
+        if (memberKeyboardTimer) clearTimeout(memberKeyboardTimer);
+        memberKeyboardTimer = setTimeout(() => {
+            if (document.activeElement !== input || screen?.hidden) return;
+            input.closest('.cw-member-form')?.scrollIntoView({
+                block: 'center',
+                behavior: options.immediate ? 'auto' : 'smooth'
+            });
+        }, options.immediate ? 20 : 90);
     }
 
     function createSessionId() {
@@ -430,7 +456,14 @@
         if (!hasDetailedAccess()) editingMembership = false;
         updateBandState();
         setScreen('band-screen');
-        if (!hasDetailedAccess() || editingMembership) requestAnimationFrame(() => element('member-phone')?.focus());
+        if (!hasDetailedAccess() || editingMembership) {
+            requestAnimationFrame(() => {
+                const input = element('member-phone');
+                if (!input) return;
+                try { input.focus({ preventScroll: true }); } catch (_) { input.focus(); }
+                syncMemberKeyboardState({ immediate: true });
+            });
+        }
     }
 
     function editMembershipAccess() {
@@ -443,7 +476,12 @@
             status.classList.remove('is-error', 'is-success', 'is-action');
         }
         updateBandState();
-        requestAnimationFrame(() => element('member-phone')?.focus());
+        requestAnimationFrame(() => {
+            const input = element('member-phone');
+            if (!input) return;
+            try { input.focus({ preventScroll: true }); } catch (_) { input.focus(); }
+            syncMemberKeyboardState({ immediate: true });
+        });
     }
 
     function clearMembershipAccess() {
@@ -923,16 +961,15 @@
         element('result-content').innerHTML = `
             <div class="cw-result-wrap">
                 <article class="cw-result-report">
-                    <header class="cw-report-head">
+                    <header class="cw-report-head" aria-label="크레와트 성향 보고서 명세">
                         <div class="cw-report-brand"><strong>CREWARTS</strong><span>PERSONALITY REPORT</span></div>
                         <dl class="cw-report-meta">
-                            <div><dt>REPORT ID</dt><dd>${escapeHtml(report.id)}</dd></div>
+                            <div><dt>ID</dt><dd>${escapeHtml(report.id)}</dd></div>
                             <div><dt>DATE</dt><dd>${escapeHtml(report.date)}</dd></div>
                             <div><dt>FORMAT</dt><dd>20 ITEMS</dd></div>
                         </dl>
                     </header>
                     <section class="cw-result-identity">
-                        <p class="cw-poster-kicker">RESULT TYPE</p>
                         <div class="cw-type-poster" data-final-code="${escapeHtml(result.code)}">
                             <span class="cw-visually-hidden">${escapeHtml(result.code)}</span>
                             <strong class="cw-result-code cw-result-code-back" aria-hidden="true">${resultCodeBackSlots}</strong>
@@ -1309,6 +1346,8 @@
         submit.disabled = true;
         submitLabel.textContent = '확인 중…';
         status.textContent = '회원 명단을 확인하고 있어요…';
+        phoneInput.blur();
+        syncMemberKeyboardState({ ensureVisible: false });
         try {
             const payload = await requestPhoneMembership(phoneDigits);
             if (!payload.member) {
@@ -1651,6 +1690,10 @@
         element('auth-phone-clear')?.addEventListener('click', clearMembershipAccess);
         element('member-check-form')?.addEventListener('submit', verifyMembershipPhone);
         element('member-phone')?.addEventListener('input', formatMemberPhone);
+        element('member-phone')?.addEventListener('focus', () => syncMemberKeyboardState());
+        element('member-phone')?.addEventListener('blur', () => {
+            setTimeout(() => syncMemberKeyboardState({ ensureVisible: false }), 80);
+        });
         element('member-join-link')?.addEventListener('click', handleMemberJoinReturn);
         element('question-back').addEventListener('click', previousQuestion);
         element('mbti-unknown').addEventListener('click', () => {
@@ -1671,6 +1714,9 @@
         });
         window.addEventListener('pageshow', () => void recheckPendingMembership({ visibleOnly: true }));
         window.addEventListener('focus', () => void recheckPendingMembership({ visibleOnly: true }));
+        window.visualViewport?.addEventListener('resize', () => syncMemberKeyboardState());
+        window.visualViewport?.addEventListener('scroll', () => syncMemberKeyboardState({ ensureVisible: false }));
+        window.addEventListener('resize', () => syncMemberKeyboardState({ ensureVisible: false }));
     }
 
     function initialize() {
