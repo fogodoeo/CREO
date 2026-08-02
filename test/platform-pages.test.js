@@ -279,7 +279,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /cw-result-code cw-result-code-back/);
     assert.match(script, /cw-result-code cw-result-code-front/);
     assert.match(script, /class="cw-type-poster"/);
-    assert.match(html, /20260802-unified-report-v39/);
+    assert.match(html, /20260802-control-system-v40/);
     assert.match(html, /property="og:url" content="https:\/\/creok\.onrender\.com\/crewart-survey\.html"/);
     assert.match(html, /rel="canonical" href="https:\/\/creok\.onrender\.com\/crewart-survey\.html"/);
     assert.deepEqual(
@@ -352,6 +352,12 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(css, /\.cw-axis-pole\.is-selected[\s\S]*font-weight:\s*800/);
     assert.match(css, /\.cw-axis-pole\.is-right\s*\{[^}]*justify-content:\s*flex-end/);
     assert.match(css, /--cw-type-body:\s*14px/);
+    assert.match(css, /--cw-control-height:\s*48px/);
+    assert.match(css, /--cw-control-radius:\s*12px/);
+    assert.match(css, /\.cw-primary-button\s*\{[^}]*background:\s*var\(--cw-ink\)/);
+    assert.match(css, /\.cw-dialog-band-button\s*\{[^}]*background:\s*var\(--cw-green\)/);
+    assert.match(css, /\.cw-share-action\.is-kakao\s*\{[^}]*background:\s*#fee500/);
+    assert.match(css, /\.cw-share-action\.is-save\s*\{[^}]*background:\s*var\(--cw-ink\)/);
     assert.match(css, /--cw-type-section:\s*18px/);
     assert.match(css, /--cw-weight-bold:\s*800/);
     assert.match(css, /\.cw-question-card > h1[\s\S]*font-weight:\s*var\(--cw-weight-bold\)/);
