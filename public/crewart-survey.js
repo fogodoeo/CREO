@@ -709,7 +709,7 @@
                 <button class="cw-report-section-toggle" type="button" data-report-toggle aria-expanded="false" aria-controls="${escapeHtml(controls)}">
                     <span>${escapeHtml(index)}</span>
                     <span><small>${escapeHtml(english)}</small><strong>${escapeHtml(korean)}</strong></span>
-                    <i aria-hidden="true">＋</i>
+                    <span class="cw-report-section-action"><em data-report-action>자세히</em><i aria-hidden="true">＋</i></span>
                 </button>
             </header>`;
     }
@@ -1035,6 +1035,8 @@
         button.setAttribute('aria-expanded', String(opening));
         const icon = button.querySelector('i');
         if (icon) icon.textContent = opening ? '−' : '＋';
+        const action = button.querySelector('[data-report-action]');
+        if (action) action.textContent = opening ? '접기' : '자세히';
         button.closest('.cw-result-section, .cw-report-house')?.classList.toggle('is-expanded', opening);
     }
 

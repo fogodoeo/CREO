@@ -279,7 +279,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /cw-result-code cw-result-code-back/);
     assert.match(script, /cw-result-code cw-result-code-front/);
     assert.match(script, /class="cw-type-poster"/);
-    assert.match(html, /20260802-mobile-history-v35/);
+    assert.match(html, /20260802-result-disclosure-v36/);
     assert.match(html, /property="og:url" content="https:\/\/creok\.onrender\.com\/crewart-survey\.html"/);
     assert.match(html, /rel="canonical" href="https:\/\/creok\.onrender\.com\/crewart-survey\.html"/);
     assert.deepEqual(
@@ -319,6 +319,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /class="cw-axis-meanings"/);
     assert.match(script, /data-pole-copy="left"/);
     assert.match(script, /data-report-toggle aria-expanded="false" aria-controls=/);
+    assert.match(script, /data-report-action>자세히/);
+    assert.match(script, /action\.textContent = opening \? '접기' : '자세히'/);
     assert.match(script, /'axes-report-detail'/);
     assert.match(script, /'speed-report-detail'/);
     assert.match(script, /'house-report-detail'/);
@@ -360,8 +362,11 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(css, /\.cw-bottom-nav\s*\{[^}]*bottom:\s*max\(10px, env\(safe-area-inset-bottom\)\)[^}]*border-radius:\s*16px/);
     assert.doesNotMatch(css, /\.cw-bottom-nav\.is-result-hidden/);
     assert.doesNotMatch(script, /resultNavRevealed|updateResultNavigationVisibility/);
-    assert.match(css, /body\.cw-keyboard-open \.cw-bottom-nav[\s\S]*translate\(-50%, 130%\)/);
+    assert.doesNotMatch(css, /body\.cw-keyboard-open \.cw-bottom-nav/);
     assert.match(css, /\.cw-band\.is-keyboard-open[\s\S]*--cw-visual-viewport-height/);
+    assert.doesNotMatch(css, /\.cw-band\.is-keyboard-open \.cw-band-account-head\s*\{[^}]*display:\s*none/);
+    assert.doesNotMatch(css, /\.cw-band\.is-keyboard-open \.cw-member-status[^}]*display:\s*none/);
+    assert.match(css, /@media \(max-width: 420px\)[\s\S]*\.cw-result-code-front\s*\{\s*right:\s*21%/);
     assert.match(script, /function syncMemberKeyboardState\(options = \{\}\)/);
     assert.match(script, /window\.visualViewport\?\.addEventListener\('resize'/);
     assert.match(css, /\.cw-result-code-front\s*\{[^}]*z-index:\s*1/);
