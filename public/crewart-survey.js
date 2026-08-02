@@ -70,6 +70,7 @@
     let membershipCheckInFlight = false;
     let showingStoredResult = false;
     let memberKeyboardTimer = null;
+    let resultNavRevealed = false;
 
     function element(id) {
         return document.getElementById(id);
@@ -261,6 +262,7 @@
     }
 
     function setScreen(screenId) {
+        if (screenId === 'result-screen') resultNavRevealed = false;
         if (screenId !== 'band-screen') {
             element('member-phone')?.blur();
             document.body.classList.remove('cw-keyboard-open');
@@ -649,26 +651,6 @@
         return true;
     }
 
-    function reportIdentity() {
-        const source = new Date(resultSavedAt || sessionCreatedAt || Date.now());
-        const date = Number.isNaN(source.getTime()) ? new Date() : source;
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        const compactDate = `${year}${month}${day}`;
-        const seed = `${date.getTime()}-${result?.code || ''}-${assignedHouseKey}`;
-        let hash = 2166136261;
-        for (const character of seed) {
-            hash ^= character.charCodeAt(0);
-            hash = Math.imul(hash, 16777619);
-        }
-        const suffix = (hash >>> 0).toString(36).toUpperCase().padStart(4, '0').slice(-4);
-        return {
-            id: `CW-${compactDate.slice(2)}-${suffix}`,
-            date: `${year}.${month}.${day}`
-        };
-    }
-
     function renderReportSectionHead(index, english, korean, controls) {
         return `
             <header class="cw-report-section-head">
@@ -703,14 +685,16 @@
         return `
             <section class="cw-result-section cw-speed-card">
                 ${renderReportSectionHead('02', 'RESPONSE PACE', '선택 속도', 'speed-report-detail')}
-                <header class="cw-speed-head">
-                    <strong data-measure-speed data-final-text="문항당 ${escapeHtml(median)}">문항당 ${escapeHtml(median)}</strong>
-                    <span>${escapeHtml(comparison)}</span>
-                </header>
-                <div class="cw-position-scale cw-speed-scale" aria-label="빠름에서 신중함 사이 ${Math.round(position)}% 위치">
-                    <span class="cw-scale-marker" data-final-position="${position}" style="--position:${position}%" aria-hidden="true"></span>
-                    <div class="cw-scale-line"><i aria-hidden="true"></i></div>
-                    <div class="cw-scale-labels"><span>빠름</span><span>평균</span><span>신중</span></div>
+                <div class="cw-speed-summary">
+                    <header class="cw-speed-head">
+                        <strong data-measure-speed data-final-text="문항당 ${escapeHtml(median)}">문항당 ${escapeHtml(median)}</strong>
+                        <span>${escapeHtml(comparison)}</span>
+                    </header>
+                    <div class="cw-position-scale cw-speed-scale" aria-label="빠름에서 신중함 사이 ${Math.round(position)}% 위치">
+                        <span class="cw-scale-marker" data-final-position="${position}" style="--position:${position}%" aria-hidden="true"></span>
+                        <div class="cw-scale-line"><i aria-hidden="true"></i></div>
+                        <div class="cw-scale-labels"><span>빠름</span><span>평균</span><span>신중</span></div>
+                    </div>
                 </div>
                 <div class="cw-report-disclosure cw-speed-disclosure" id="speed-report-detail" hidden>
                     <header><strong>${escapeHtml(timingStats.style.label)}</strong><span>유효 선택 ${escapeHtml(timingStats.validCount)}개</span></header>
@@ -943,7 +927,6 @@
     }
 
     function renderResult(options = {}) {
-        const report = reportIdentity();
         const detail = BAND_INTEGRATION_ENABLED && hasDetailedAccess()
             ? `${renderMemberDetail()}${renderSpeedCard()}${renderHouseCard()}`
             : renderLockedDetail();
@@ -961,14 +944,6 @@
         element('result-content').innerHTML = `
             <div class="cw-result-wrap">
                 <article class="cw-result-report">
-                    <header class="cw-report-head" aria-label="크레와트 성향 보고서 명세">
-                        <div class="cw-report-brand"><strong>CREWARTS</strong><span>PERSONALITY REPORT</span></div>
-                        <dl class="cw-report-meta">
-                            <div><dt>ID</dt><dd>${escapeHtml(report.id)}</dd></div>
-                            <div><dt>DATE</dt><dd>${escapeHtml(report.date)}</dd></div>
-                            <div><dt>FORMAT</dt><dd>20 ITEMS</dd></div>
-                        </dl>
-                    </header>
                     <section class="cw-result-identity">
                         <div class="cw-type-poster" data-final-code="${escapeHtml(result.code)}">
                             <span class="cw-visually-hidden">${escapeHtml(result.code)}</span>
@@ -1141,6 +1116,13 @@
         if (result && !element('result-screen').hidden) renderResult();
     }
 
+    function updateResultNavigationVisibility() {
+        const nav = element('app-nav');
+        const resultVisible = currentStage() === 'result';
+        if (!resultVisible) resultNavRevealed = false;
+        nav?.classList.toggle('is-result-hidden', resultVisible && !resultNavRevealed);
+    }
+
     function updatePersistentActions() {
         const nav = element('app-nav');
         const home = element('persistent-home-button');
@@ -1148,6 +1130,7 @@
         const focused = stage === 'questions' || stage === 'mbti';
         if (home) home.hidden = !focused;
         if (nav) nav.hidden = focused;
+        updateResultNavigationVisibility();
         const activeTab = stage === 'intro' ? 'home' : stage;
         document.querySelectorAll('[data-nav]').forEach(button => {
             const active = button.dataset.nav === activeTab;
@@ -1717,6 +1700,11 @@
         window.visualViewport?.addEventListener('resize', () => syncMemberKeyboardState());
         window.visualViewport?.addEventListener('scroll', () => syncMemberKeyboardState({ ensureVisible: false }));
         window.addEventListener('resize', () => syncMemberKeyboardState({ ensureVisible: false }));
+        window.addEventListener('scroll', () => {
+            if (currentStage() !== 'result') return;
+            resultNavRevealed = window.scrollY > 28;
+            updateResultNavigationVisibility();
+        }, { passive: true });
     }
 
     function initialize() {

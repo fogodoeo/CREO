@@ -237,7 +237,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /cw-result-code cw-result-code-back/);
     assert.match(script, /cw-result-code cw-result-code-front/);
     assert.match(script, /class="cw-type-poster"/);
-    assert.match(html, /20260802-mobile-report-v21/);
+    assert.match(html, /20260802-mobile-report-v22/);
     assert.deepEqual(
         fs.readdirSync(characterDirectory).filter(file => file.endsWith('.png')).sort(),
         characterCodes.map(code => `crewart-type-${code}.png`).sort()
@@ -264,7 +264,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /\? `\$\{renderMemberDetail\(\)\}\$\{renderSpeedCard\(\)\}\$\{renderHouseCard\(\)\}`/);
     assert.doesNotMatch(script, /class="cw-answer-detail"/);
     assert.doesNotMatch(script, /<span>\$\{escapeHtml\(meta\.title\)\}<\/span>/);
-    assert.match(script, /<dt>ID<\/dt>[\s\S]*<dt>DATE<\/dt>[\s\S]*20 ITEMS/);
+    assert.doesNotMatch(script, /cw-report-head|PERSONALITY REPORT|<dt>ID<\/dt>/);
     assert.doesNotMatch(script, /RESULT TYPE/);
     assert.doesNotMatch(script, /평소 유형과 같아요|글자 달라요/);
     assert.match(script, /EI: \{ title: '생각 정리', left: '함께 정리', right: '혼자 정리' \}/);
@@ -277,8 +277,10 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /'speed-report-detail'/);
     assert.match(script, /'house-report-detail'/);
     assert.match(script, /function toggleReportDisclosure\(event\)[\s\S]*panel\.hidden = !opening[\s\S]*aria-expanded/);
-    assert.match(css, /\.cw-speed-card\s*\{[^}]*margin:\s*20px 0 0/);
-    assert.match(css, /\.cw-report-house\s*\{[^}]*margin-top:\s*20px/);
+    assert.match(css, /\.cw-speed-card\s*\{[^}]*margin:\s*18px 0 0/);
+    assert.match(css, /\.cw-speed-summary\s*\{[^}]*background:\s*var\(--cw-surface-soft\)/);
+    assert.match(css, /\.cw-report-house\s*\{[^}]*margin-top:\s*18px/);
+    assert.match(css, /\.cw-house-assignment\s*\{[^}]*background:\s*var\(--cw-surface-soft\)/);
     assert.match(css, /\.cw-report-disclosure\[hidden\]\s*\{[^}]*display:\s*none/);
     assert.match(script, /data-axis-result data-final-pole=/);
     assert.match(script, /axisPoles\.forEach[\s\S]*classList\.toggle\('is-selected'/);
@@ -299,6 +301,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(css, /\.cw-intro-video\s*\{[^}]*object-fit:\s*cover[^}]*filter:\s*blur\(5px\)/);
     assert.match(css, /\.cw-bottom-nav[\s\S]*position:\s*fixed/);
     assert.match(css, /\.cw-bottom-nav > div\s*\{[^}]*height:\s*54px/);
+    assert.match(css, /\.cw-bottom-nav\.is-result-hidden[\s\S]*translateY\(110%\)/);
+    assert.match(script, /resultNavRevealed = window\.scrollY > 28/);
     assert.match(css, /body\.cw-keyboard-open \.cw-bottom-nav[\s\S]*translateY\(110%\)/);
     assert.match(css, /\.cw-band\.is-keyboard-open[\s\S]*--cw-visual-viewport-height/);
     assert.match(script, /function syncMemberKeyboardState\(options = \{\}\)/);
