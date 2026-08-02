@@ -279,7 +279,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /cw-result-code cw-result-code-back/);
     assert.match(script, /cw-result-code cw-result-code-front/);
     assert.match(script, /class="cw-type-poster"/);
-    assert.match(html, /20260802-home-code-v44/);
+    assert.match(html, /20260802-home-code-v45/);
     assert.match(html, /property="og:url" content="https:\/\/creok\.onrender\.com\/crewart-survey\.html"/);
     assert.match(html, /rel="canonical" href="https:\/\/creok\.onrender\.com\/crewart-survey\.html"/);
     assert.deepEqual(
@@ -367,7 +367,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.doesNotMatch(css, /\.cw-poster-kicker/);
     assert.match(css, /\.cw-intro-visual\s*\{[^}]*position:\s*fixed[^}]*inset:\s*-24px/);
     assert.match(css, /\.cw-intro-video\s*\{[^}]*object-fit:\s*cover[^}]*filter:\s*blur\(5px\)/);
-    assert.match(css, /\.cw-intro::after\s*\{[^}]*rgba\(8, 12, 9, \.94\) 100%/);
+    assert.match(css, /\.cw-intro::after\s*\{\s*display:\s*none/);
     assert.match(css, /\.cw-intro-content\s*\{[^}]*opacity:\s*0[^}]*visibility:\s*hidden/);
     assert.match(css, /\.cw-intro\.is-video-ready\s+\.cw-intro-content\s*\{[^}]*opacity:\s*1/);
     assert.match(script, /classList\.add\('is-video-ready'\)/);
@@ -386,7 +386,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /function syncMemberKeyboardState\(options = \{\}\)/);
     assert.match(script, /window\.visualViewport\?\.addEventListener\('resize'/);
     assert.match(css, /\.cw-result-code-front\s*\{[^}]*z-index:\s*1/);
-    assert.match(css, /\.cw-intro::after\s*\{[^}]*position:\s*fixed/);
+    assert.match(css, /\.cw-intro::after\s*\{\s*display:\s*none/);
     assert.doesNotMatch(css, /\.cw-position-scale\.is-measuring \.cw-scale-line::after/);
     assert.match(css, /@keyframes cw-code-flicker/);
     assert.match(css, /@keyframes cw-house-roll/);
