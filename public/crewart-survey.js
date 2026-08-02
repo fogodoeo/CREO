@@ -1729,7 +1729,7 @@
 
         const canvas = document.createElement('canvas');
         canvas.width = 1200;
-        canvas.height = 600;
+        canvas.height = 800;
         const context = canvas.getContext('2d');
         const font = '"Pretendard Variable", Pretendard, sans-serif';
         const house = Core.HOUSE_META[assignedHouseKey];
@@ -1738,7 +1738,7 @@
         context.fillStyle = '#e9eae5';
         context.fillRect(0, 0, canvas.width, canvas.height);
 
-        drawRoundedRect(context, 22, 22, 1156, 556, 28);
+        drawRoundedRect(context, 22, 22, 1156, 756, 28);
         context.fillStyle = '#f8f8f5';
         context.fill();
         context.strokeStyle = '#d8dad4';
@@ -1762,7 +1762,7 @@
         context.fillText('CREWARTS', 70, 76);
         context.fillStyle = '#7b807b';
         context.font = `720 16px ${font}`;
-        context.fillText('PERSONALITY TEST · 20 ITEMS', 70, 102);
+        context.fillText('PERSONALITY TEST', 70, 102);
 
         const houseLabel = `HOUSE ${house?.seal || assignedHouseKey[0] || '—'} · ${house?.name || assignedHouseKey || 'CREWARTS'}`;
         context.font = `760 18px ${font}`;
@@ -1782,26 +1782,26 @@
         context.fillText(houseLabel, housePillX + housePillWidth / 2, 85);
 
         context.fillStyle = '#242925';
-        context.font = `850 214px ${font}`;
+        context.font = `850 238px ${font}`;
         context.textBaseline = 'alphabetic';
-        context.fillText(result.code.slice(0, 2), 336, 402);
-        context.fillText(result.code.slice(2), 864, 402);
+        context.fillText(result.code.slice(0, 2), 328, 532);
+        context.fillText(result.code.slice(2), 872, 532);
 
         try {
             const character = await loadShareImage(new URL(typeCharacterPath(result.code), document.baseURI).toString());
-            drawShareImageContain(context, character, 410, 48, 380, 484);
+            drawShareImageContain(context, character, 390, 70, 420, 620);
         } catch (_) {
             context.fillStyle = '#eceee8';
             context.beginPath();
-            context.arc(600, 292, 152, 0, Math.PI * 2);
+            context.arc(600, 380, 180, 0, Math.PI * 2);
             context.fill();
         }
 
-        context.font = `820 42px ${font}`;
+        context.font = `820 44px ${font}`;
         const typeNameWidth = Math.ceil(context.measureText(result.typeName).width) + 74;
         const typePillWidth = Math.max(254, typeNameWidth);
         const typePillX = (canvas.width - typePillWidth) / 2;
-        drawRoundedRect(context, typePillX, 486, typePillWidth, 68, 34);
+        drawRoundedRect(context, typePillX, 670, typePillWidth, 82, 41);
         context.fillStyle = '#ffffff';
         context.fill();
         context.strokeStyle = '#d7d9d3';
@@ -1809,7 +1809,7 @@
         context.stroke();
         context.fillStyle = '#17617b';
         context.textAlign = 'center';
-        context.fillText(result.typeName, 600, 533);
+        context.fillText(result.typeName, 600, 726);
         context.textAlign = 'left';
 
         const blob = await canvasBlob(canvas);
@@ -2017,8 +2017,8 @@
 
     async function sharePreparedNativeResult(event) {
         const button = event?.currentTarget;
-        const title = 'CREWARTS 성향 결과';
-        const text = `${result.code} · ${result.typeName}`;
+        const title = `${result.code} · ${result.typeName}`;
+        const text = '나는 크레 앞에서 어떤 유형일까?\n20문항 약 2분';
         setShareButtonBusy(button, true, '공유 준비 중');
 
         try {
@@ -2058,7 +2058,7 @@
     async function shareResult(event) {
         const button = event?.currentTarget;
         const title = `${result.code} · ${result.typeName}`;
-        const text = '나는 크레 앞에서 어떤 유형일까? · 20문항 약 2분';
+        const text = '나는 크레 앞에서 어떤 유형일까?\n20문항 약 2분';
         let shareFile = null;
         setShareButtonBusy(button, true, '카카오톡 여는 중');
 
@@ -2073,7 +2073,7 @@
                     description: text,
                     imageUrl,
                     imageWidth: 1200,
-                    imageHeight: 600,
+                    imageHeight: 800,
                     link: { mobileWebUrl: SURVEY_URL, webUrl: SURVEY_URL }
                 },
                 buttons: [{

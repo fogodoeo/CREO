@@ -357,7 +357,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-kakao-dialog-head small { color: var(--cw-muted); font-size: 7px; font-weight: 750; letter-spacing: .14em; }
 .cw-kakao-dialog-head h2 { margin: 2px 0 0; font-size: 19px; font-weight: 820; letter-spacing: -.035em; }
 .cw-kakao-dialog-head > button { width: 36px; height: 36px; padding: 0; border: 1px solid var(--cw-line); border-radius: 50%; background: #fff; color: var(--cw-muted); font-size: 24px; font-weight: 350; line-height: 1; cursor: pointer; }
-.cw-kakao-preview { position: relative; overflow: hidden; aspect-ratio: 2 / 1; border: 1px solid #d8dad5; border-radius: 13px; background: #ecece8; }
+.cw-kakao-preview { position: relative; overflow: hidden; aspect-ratio: 3 / 2; border: 1px solid #d8dad5; border-radius: 13px; background: #ecece8; }
 .cw-kakao-preview img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; }
 .cw-kakao-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 0; padding: 0; list-style: none; }
 .cw-kakao-steps li { display: grid; min-width: 0; min-height: 74px; padding: 10px 7px; align-content: center; justify-items: center; gap: 6px; border: 1px solid var(--cw-line); border-radius: 11px; background: #fafaf8; text-align: center; }
