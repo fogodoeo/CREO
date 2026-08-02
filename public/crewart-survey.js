@@ -18,6 +18,8 @@
     const MEMBERSHIP_RECHECK_TIMEOUT_MS = 15 * 60 * 1000;
     const CONTENT_CONFIG_KEY = 'crewart_mbti_content_v1';
     const BAND_INTEGRATION_ENABLED = true;
+    const APP_HISTORY_KEY = 'crewartTab';
+    const APP_TABS = Object.freeze(['home', 'result', 'band']);
     const AXIS_REPORT_COPY = Object.freeze({
         EI: { title: '생각 정리', left: '함께 정리', right: '혼자 정리' },
         SN: { title: '관찰 초점', left: '현재 정보', right: '성장 가능성' },
@@ -1108,7 +1110,7 @@
             renderResult();
             return;
         }
-        openMemberCheck({ revealResult: true });
+        navigateToTab('band', { memberOptions: { revealResult: true } });
     }
 
     async function submitSurvey() {
@@ -1223,7 +1225,31 @@
         });
     }
 
-    function navigateToTab(tab) {
+    function navigationTabForStage(stage = currentStage()) {
+        if (stage === 'intro') return 'home';
+        return APP_TABS.includes(stage) ? stage : 'home';
+    }
+
+    function tabHistoryState(tab) {
+        const previous = history.state && typeof history.state === 'object' ? history.state : {};
+        return { ...previous, [APP_HISTORY_KEY]: tab };
+    }
+
+    function replaceTabHistory(tab) {
+        try { history.replaceState(tabHistoryState(tab), document.title); } catch (_) {}
+    }
+
+    function pushTabHistory(tab) {
+        try { history.pushState(tabHistoryState(tab), document.title); } catch (_) {}
+    }
+
+    function navigateToTab(tab, options = {}) {
+        if (!APP_TABS.includes(tab)) return;
+        const currentTab = navigationTabForStage();
+        if (!options.fromHistory && currentTab !== tab) {
+            replaceTabHistory(currentTab);
+            pushTabHistory(tab);
+        }
         if (tab === 'home') {
             returnToIntro();
             return;
@@ -1235,7 +1261,7 @@
             } else restoreLastResult({ animate: true });
             return;
         }
-        if (tab === 'band') openMemberCheck();
+        if (tab === 'band') openMemberCheck(options.memberOptions);
     }
 
     async function initBandMembership() {
@@ -2132,6 +2158,10 @@
         document.querySelectorAll('[data-nav]').forEach(button => {
             button.addEventListener('click', () => navigateToTab(button.dataset.nav));
         });
+        window.addEventListener('popstate', event => {
+            const tab = event.state?.[APP_HISTORY_KEY];
+            navigateToTab(APP_TABS.includes(tab) ? tab : 'home', { fromHistory: true });
+        });
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'hidden') pauseTimer();
             else {
@@ -2155,6 +2185,7 @@
         bindEvents();
         renderHome();
         updatePersistentActions();
+        replaceTabHistory(navigationTabForStage());
         syncThemeColor('intro-screen');
         const start = element('start-button');
         start.disabled = true;

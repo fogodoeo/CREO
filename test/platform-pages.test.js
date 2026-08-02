@@ -165,7 +165,7 @@ test('CREWARTS reveals the basic result first and unlocks member detail by phone
     const showResultBody = script.match(/function showResult\(skipMbti\) \{([\s\S]*?)\n    \}/)?.[1] || '';
     assert.match(showResultBody, /completeResultReveal\(\)/);
     assert.doesNotMatch(showResultBody, /openMemberCheck/);
-    assert.match(script, /function handleUnlockDetail\(\)[\s\S]*openMemberCheck\(\{ revealResult: true \}\)/);
+    assert.match(script, /function handleUnlockDetail\(\)[\s\S]*navigateToTab\('band', \{ memberOptions: \{ revealResult: true \} \}\)/);
     assert.match(script, /function submitSurvey\(\)[\s\S]*!hasDetailedAccess\(\)/);
     assert.doesNotMatch(script, /BAND_OAUTH_API|beginBandLogin/);
 });
@@ -190,7 +190,10 @@ test('CREWARTS home shows the saved result and only a masked authenticated phone
     assert.doesNotMatch(script, /확인된 회원으로 결과를 바로 볼 수 있어요/);
     assert.match(script, /document\.querySelectorAll\('\[data-band-join\]'\)/);
     assert.match(script, /function updateBandState\(\)[\s\S]*bandAuthPhoneMask/);
-    assert.match(script, /function navigateToTab\(tab\)[\s\S]*restoreLastResult\(\{ animate: true \}\)[\s\S]*openMemberCheck\(\)/);
+    assert.match(script, /function navigateToTab\(tab, options = \{\}\)[\s\S]*restoreLastResult\(\{ animate: true \}\)[\s\S]*openMemberCheck\(options\.memberOptions\)/);
+    assert.match(script, /function navigateToTab\(tab, options = \{\}\)[\s\S]*replaceTabHistory\(currentTab\)[\s\S]*pushTabHistory\(tab\)/);
+    assert.match(script, /addEventListener\('popstate'[\s\S]*navigateToTab\(APP_TABS\.includes\(tab\) \? tab : 'home', \{ fromHistory: true \}\)/);
+    assert.match(script, /history\.replaceState[\s\S]*history\.pushState/);
     const savedResultBody = script.match(/function saveLastResult\(\) \{([\s\S]*?)\n    \}/)?.[1] || '';
     assert.doesNotMatch(savedResultBody, /phone|bandAuth/i);
 });
@@ -276,7 +279,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /cw-result-code cw-result-code-back/);
     assert.match(script, /cw-result-code cw-result-code-front/);
     assert.match(script, /class="cw-type-poster"/);
-    assert.match(html, /20260802-band-flow-v34/);
+    assert.match(html, /20260802-mobile-history-v35/);
     assert.match(html, /property="og:url" content="https:\/\/creok\.onrender\.com\/crewart-survey\.html"/);
     assert.match(html, /rel="canonical" href="https:\/\/creok\.onrender\.com\/crewart-survey\.html"/);
     assert.deepEqual(
