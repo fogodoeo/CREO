@@ -671,8 +671,8 @@
         return '균형에 가까움';
     }
 
-    function renderSpeedCard() {
-        if (!timingStats?.style) return '';
+    function resultSpeedPresentation() {
+        if (!timingStats?.style) return null;
         const valid = timingStats.validCount > 0;
         const median = valid ? formatSeconds(timingStats.medianMs) : '-';
         const samples = cohortSummary.timingMedians.map(Number).filter(value => value >= 400 && value <= 30000);
@@ -682,6 +682,13 @@
         const comparison = samples.length
             ? `평균 ${formatSeconds(averageMs)} · ${samples.length}명`
             : '평균 데이터 준비 중';
+        return { median, position, comparison };
+    }
+
+    function renderSpeedCard() {
+        const presentation = resultSpeedPresentation();
+        if (!presentation) return '';
+        const { median, position, comparison } = presentation;
         return `
             <section class="cw-result-section cw-speed-card">
                 ${renderReportSectionHead('02', 'RESPONSE PACE', '선택 속도', 'speed-report-detail')}
@@ -930,9 +937,6 @@
         const detail = BAND_INTEGRATION_ENABLED && hasDetailedAccess()
             ? `${renderMemberDetail()}${renderSpeedCard()}${renderHouseCard()}`
             : renderLockedDetail();
-        const bandShare = BAND_INTEGRATION_ENABLED
-            ? `<button class="cw-share-icon is-band" type="button" data-action="band-result" aria-label="크레와트 BAND 열기"><img src="assets/band-app-icon-official.png?v=20260801-logo-v2" width="28" height="28" alt=""></button>`
-            : '';
         const resultCodeLetters = [...result.code];
         const renderResultCodeSlots = (letters, startIndex) => letters
             .map((letter, index) => `<span data-code-slot="${startIndex + index}" data-final-letter="${escapeHtml(letter)}">${escapeHtml(letter)}</span>`)
@@ -959,17 +963,15 @@
                     ${detail}
                     <footer class="cw-report-footer">
                         <p>성향을 이해하기 위한 참고 결과입니다.</p>
-                        <section class="cw-share-section">
-                            <button class="cw-share-toggle" type="button" data-action="share-menu" aria-expanded="false">결과 공유 <span aria-hidden="true">＋</span></button>
-                            <div class="cw-share-tools" aria-label="결과 공유" hidden>
-                            <button class="cw-share-icon is-kakao" type="button" data-action="share" aria-label="카카오톡으로 공유">
+                        <section class="cw-share-section" aria-label="결과 공유">
+                            <button class="cw-share-action is-save" type="button" data-action="save-image">
+                                <span class="cw-share-save-mark" aria-hidden="true">↓</span>
+                                <strong data-action-label>결과 이미지 저장</strong>
+                            </button>
+                            <button class="cw-share-action is-kakao" type="button" data-action="share">
                                 <img src="assets/kakaolink_btn_medium.png" width="24" height="24" alt="">
+                                <strong data-action-label>카카오톡 공유</strong>
                             </button>
-                            <button class="cw-share-icon is-instagram" type="button" data-action="instagram" aria-label="인스타그램 스토리로 공유">
-                                <img src="assets/instagram-glyph-official.svg" width="24" height="24" alt="">
-                            </button>
-                            ${bandShare}
-                            </div>
                         </section>
                     </footer>
                 </article>
@@ -977,18 +979,9 @@
         element('result-content').querySelector('[data-action="unlock-detail"]')?.addEventListener('click', handleUnlockDetail);
         element('result-content').querySelector('[data-action="open-band"]')?.addEventListener('click', openBandTarget);
         element('result-content').querySelector('[data-action="share"]')?.addEventListener('click', shareResult);
-        element('result-content').querySelector('[data-action="instagram"]')?.addEventListener('click', shareToInstagram);
-        element('result-content').querySelector('[data-action="band-result"]')?.addEventListener('click', handleResultBand);
+        element('result-content').querySelector('[data-action="save-image"]')?.addEventListener('click', saveResultImage);
         element('result-content').querySelectorAll('[data-report-toggle]').forEach(button => {
             button.addEventListener('click', toggleReportDisclosure);
-        });
-        element('result-content').querySelector('[data-action="share-menu"]')?.addEventListener('click', event => {
-            const button = event.currentTarget;
-            const tools = button.nextElementSibling;
-            const opening = Boolean(tools?.hidden);
-            if (tools) tools.hidden = !opening;
-            button.setAttribute('aria-expanded', String(opening));
-            button.querySelector('span').textContent = opening ? '−' : '＋';
         });
         if (options.animate) playResultMeasurementAnimation(element('result-content').querySelector('.cw-result-wrap'));
     }
@@ -1001,11 +994,6 @@
                 <button class="cw-primary-button" type="button" data-action="start-empty">검사 시작</button>
             </section>`;
         element('result-content').querySelector('[data-action="start-empty"]')?.addEventListener('click', startSurvey);
-    }
-
-    function handleResultBand() {
-        if (!BAND_INTEGRATION_ENABLED) return;
-        openBandTarget();
     }
 
     function handleUnlockDetail() {
@@ -1382,10 +1370,6 @@
         }
     }
 
-    function resultShareTitle() {
-        return selectedMbti ? `평소 ${selectedMbti} → 크레 앞 ${result.code}` : `나의 크레 성향은 ${result.code}`;
-    }
-
     function drawRoundedRect(context, x, y, width, height, radius) {
         const safeRadius = Math.min(radius, width / 2, height / 2);
         context.beginPath();
@@ -1412,150 +1396,207 @@
         });
     }
 
-    async function createResultShareFile(layout = 'story') {
-        if (!result) throw new Error('공유할 결과가 없습니다.');
+    function drawShareScale(context, x, y, width, position, color = '#202421') {
+        context.fillStyle = '#cfd2cd';
+        context.fillRect(x, y, width, 4);
+        context.fillStyle = '#8f948f';
+        context.fillRect(x + width / 2 - 1, y - 6, 2, 16);
+        const markerX = x + width * (Math.max(0, Math.min(100, position)) / 100);
+        context.beginPath();
+        context.moveTo(markerX, y - 13);
+        context.lineTo(markerX - 8, y - 23);
+        context.lineTo(markerX + 8, y - 23);
+        context.closePath();
+        context.fillStyle = color;
+        context.fill();
+    }
+
+    function drawShareSectionLabel(context, number, english, korean, x, y, width, font) {
+        context.fillStyle = '#989d98';
+        context.font = `700 15px ${font}`;
+        context.fillText(number, x, y);
+        context.fillStyle = '#707570';
+        context.font = `700 13px ${font}`;
+        context.fillText(english, x + 38, y);
+        context.fillStyle = '#202421';
+        context.font = `800 24px ${font}`;
+        context.textAlign = 'right';
+        context.fillText(korean, x + width, y);
+        context.textAlign = 'left';
+        context.fillStyle = '#565a56';
+        context.fillRect(x, y + 14, width, 2);
+    }
+
+    function shareFileName() {
+        const typeName = String(result?.typeName || 'RESULT')
+            .replace(/[\\/:*?"<>|]/g, '')
+            .replace(/\s+/g, '');
+        return `CREWARTS_${result.code}_${typeName}.png`;
+    }
+
+    async function createResultShareFile() {
+        if (!result) throw new Error('저장할 결과가 없습니다.');
         await document.fonts?.ready;
-        const isStory = layout === 'story';
+
         const canvas = document.createElement('canvas');
-        canvas.width = isStory ? 1080 : 1200;
-        canvas.height = isStory ? 1920 : 630;
+        canvas.width = 1080;
+        canvas.height = 1350;
         const context = canvas.getContext('2d');
         const font = '"Pretendard Variable", Pretendard, sans-serif';
+        const pageX = 48;
+        const pageY = 38;
+        const pageWidth = 984;
+        const pageHeight = 1274;
+        const contentX = 88;
+        const contentWidth = 904;
 
-        context.fillStyle = '#f4f4f1';
+        context.fillStyle = '#ecece8';
         context.fillRect(0, 0, canvas.width, canvas.height);
+        drawRoundedRect(context, pageX, pageY, pageWidth, pageHeight, 12);
+        context.fillStyle = '#ffffff';
+        context.fill();
+        context.strokeStyle = '#d2d3cd';
+        context.lineWidth = 2;
+        context.stroke();
 
-        if (isStory) {
-            context.fillStyle = '#0e6539';
-            context.font = `800 28px ${font}`;
-            context.letterSpacing = '3px';
-            context.fillText('CREWARTS', 80, 108);
-            context.letterSpacing = '0px';
+        context.fillStyle = '#2b302c';
+        context.font = `790 188px ${font}`;
+        context.textBaseline = 'alphabetic';
+        context.fillText(result.code.slice(0, 2), 116, 360);
+        context.fillText(result.code.slice(2), 676, 360);
 
-            context.fillStyle = '#202421';
-            context.font = `850 58px ${font}`;
-            context.fillText('크레와트 성향 테스트', 80, 190);
-            context.fillStyle = '#6f746f';
-            context.font = `700 28px ${font}`;
-            context.fillText('나의 결과', 80, 316);
-            context.fillStyle = '#202421';
-            context.font = `900 190px ${font}`;
-            context.fillText(result.code, 72, 500);
-            context.fillStyle = '#6f746f';
-            context.font = `700 34px ${font}`;
-            context.fillText(result.typeName, 80, 565);
-
-            result.axes.forEach((axisResult, index) => {
-                const meta = Core.AXIS_META[axisResult.axis];
-                const dominant = meta.letters[axisResult.dominant];
-                const first = axisResult.axis[0];
-                const second = axisResult.axis[1];
-                const firstCount = Number(result.letters[first]) || 0;
-                const secondCount = Number(result.letters[second]) || 0;
-                const x = 70 + (index % 2) * 475;
-                const y = 670 + Math.floor(index / 2) * 360;
-                const width = 440;
-                const height = 320;
-                drawRoundedRect(context, x, y, width, height, 30);
-                context.fillStyle = '#ffffff';
-                context.fill();
-                context.strokeStyle = '#dedfd9';
-                context.lineWidth = 2;
-                context.stroke();
-
-                context.fillStyle = '#6f746f';
-                context.font = `650 21px ${font}`;
-                context.fillText(meta.title, x + 30, y + 48);
-                context.fillStyle = '#202421';
-                context.font = `800 27px ${font}`;
-                context.fillText(`${axisResult.dominant} · ${dominant.short}`, x + 30, y + 88);
-                context.fillStyle = '#0e6539';
-                context.font = `800 22px ${font}`;
-                context.textAlign = 'right';
-                context.fillText(`${firstCount} : ${secondCount}`, x + width - 30, y + 48);
-                context.textAlign = 'left';
-
-                context.fillStyle = '#d9cdd0';
-                drawRoundedRect(context, x + 30, y + 128, width - 60, 12, 6);
-                context.fill();
-                context.fillStyle = '#16814b';
-                drawRoundedRect(context, x + 30, y + 128, (width - 60) * (firstCount / 5), 12, 6);
-                context.fill();
-                context.fillStyle = '#6f746f';
-                context.font = `800 18px ${font}`;
-                context.fillText(first, x + 30, y + 170);
-                context.textAlign = 'right';
-                context.fillText(second, x + width - 30, y + 170);
-                context.textAlign = 'left';
-                context.font = `600 20px ${font}`;
-                const description = dominant.description.replace(/\.$/, '');
-                const midpoint = Math.min(description.length, 24);
-                context.fillText(description.slice(0, midpoint), x + 30, y + 224);
-                if (description.length > midpoint) context.fillText(description.slice(midpoint), x + 30, y + 258);
-            });
-
-            context.fillStyle = '#6f746f';
-            context.font = `650 22px ${font}`;
-            context.fillText('creok.onrender.com/crewart-survey.html', 80, 1778);
-            try {
-                const bandIcon = await loadShareImage(new URL('assets/band-app-icon-official.png?v=20260801-logo-v2', document.baseURI).toString());
-                context.drawImage(bandIcon, 80, 1810, 54, 54);
-                context.fillStyle = '#202421';
-                context.font = `750 23px ${font}`;
-                context.fillText('크레와트 BAND', 152, 1846);
-            } catch (_) {
-                // The result image remains usable if the optional mark fails to load.
-            }
-        } else {
-            context.fillStyle = '#0e6539';
-            context.font = `800 24px ${font}`;
-            context.fillText('CREWARTS', 62, 72);
-            context.fillStyle = '#202421';
-            context.font = `850 38px ${font}`;
-            context.fillText('크레와트 성향 테스트', 62, 126);
-            context.font = `900 116px ${font}`;
-            context.fillText(result.code, 58, 274);
-            context.fillStyle = '#6f746f';
-            context.font = `700 27px ${font}`;
-            context.fillText(result.typeName, 64, 322);
-
-            result.axes.forEach((axisResult, index) => {
-                const meta = Core.AXIS_META[axisResult.axis];
-                const dominant = meta.letters[axisResult.dominant];
-                const first = axisResult.axis[0];
-                const second = axisResult.axis[1];
-                const firstCount = Number(result.letters[first]) || 0;
-                const x = 62 + index * 277;
-                const y = 382;
-                drawRoundedRect(context, x, y, 250, 170, 20);
-                context.fillStyle = '#ffffff';
-                context.fill();
-                context.strokeStyle = '#dedfd9';
-                context.lineWidth = 2;
-                context.stroke();
-                context.fillStyle = '#6f746f';
-                context.font = `650 16px ${font}`;
-                context.fillText(meta.title, x + 18, y + 32);
-                context.fillStyle = '#202421';
-                context.font = `800 20px ${font}`;
-                context.fillText(`${axisResult.dominant} · ${dominant.short}`, x + 18, y + 62);
-                context.fillStyle = '#d9cdd0';
-                drawRoundedRect(context, x + 18, y + 92, 214, 9, 5);
-                context.fill();
-                context.fillStyle = '#16814b';
-                drawRoundedRect(context, x + 18, y + 92, 214 * (firstCount / 5), 9, 5);
-                context.fill();
-                context.fillStyle = '#6f746f';
-                context.font = `800 14px ${font}`;
-                context.fillText(first, x + 18, y + 126);
-                context.textAlign = 'right';
-                context.fillText(second, x + 232, y + 126);
-                context.textAlign = 'left';
-            });
+        try {
+            const character = await loadShareImage(new URL(typeCharacterPath(result.code), document.baseURI).toString());
+            context.drawImage(character, 362, 72, 356, 452);
+        } catch (_) {
+            context.fillStyle = '#f1f2ef';
+            context.beginPath();
+            context.arc(540, 286, 144, 0, Math.PI * 2);
+            context.fill();
         }
 
+        context.fillStyle = '#17617b';
+        context.font = `800 42px ${font}`;
+        context.textAlign = 'center';
+        context.fillText(result.typeName, 540, 530);
+        context.textAlign = 'left';
+        context.fillStyle = '#d5d7d2';
+        context.fillRect(contentX, 558, contentWidth, 2);
+
+        if (hasDetailedAccess()) {
+            drawShareSectionLabel(context, '01', 'TRAIT AXES', '성향 지표', contentX, 600, contentWidth, font);
+            result.axes.forEach((axisResult, index) => {
+                const copy = AXIS_REPORT_COPY[axisResult.axis];
+                const first = axisResult.axis[0];
+                const second = axisResult.axis[1];
+                const secondCount = Number(result.letters[second]) || 0;
+                const position = Math.max(0, Math.min(100, (secondCount / 5) * 100));
+                const firstSelected = axisResult.dominant === first;
+                const x = contentX + (index % 2) * 458;
+                const y = 636 + Math.floor(index / 2) * 151;
+                const width = 446;
+                const height = 136;
+
+                drawRoundedRect(context, x, y, width, height, 12);
+                context.fillStyle = '#f6f6f3';
+                context.fill();
+                context.strokeStyle = '#dfe1dc';
+                context.lineWidth = 2;
+                context.stroke();
+
+                context.fillStyle = '#202421';
+                context.font = `750 20px ${font}`;
+                context.textAlign = 'center';
+                context.fillText(copy.title, x + width / 2, y + 28);
+
+                context.textAlign = 'left';
+                context.fillStyle = firstSelected ? '#202421' : '#9a9e9a';
+                context.font = `${firstSelected ? 800 : 550} 19px ${font}`;
+                context.fillText(`${first}  ${copy.left}`, x + 24, y + 66);
+                context.textAlign = 'right';
+                context.fillStyle = firstSelected ? '#9a9e9a' : '#202421';
+                context.font = `${firstSelected ? 550 : 800} 19px ${font}`;
+                context.fillText(`${second}  ${copy.right}`, x + width - 24, y + 66);
+                context.textAlign = 'left';
+                drawShareScale(context, x + 24, y + 103, width - 48, position);
+            });
+
+            const speed = resultSpeedPresentation();
+            drawShareSectionLabel(context, '02', 'RESPONSE PACE', '선택 속도', contentX, 954, contentWidth, font);
+            drawRoundedRect(context, contentX, 990, contentWidth, 104, 12);
+            context.fillStyle = '#f6f6f3';
+            context.fill();
+            context.strokeStyle = '#dfe1dc';
+            context.lineWidth = 2;
+            context.stroke();
+            context.fillStyle = '#202421';
+            context.font = `800 26px ${font}`;
+            context.fillText(speed ? `문항당 ${speed.median}` : '측정 정보 없음', contentX + 24, 1027);
+            context.fillStyle = '#737873';
+            context.font = `650 16px ${font}`;
+            context.textAlign = 'right';
+            context.fillText(speed?.comparison || '', contentX + contentWidth - 24, 1027);
+            context.textAlign = 'left';
+            drawShareScale(context, contentX + 24, 1064, contentWidth - 48, speed?.position ?? 50);
+            context.fillStyle = '#737873';
+            context.font = `700 14px ${font}`;
+            context.fillText('빠름', contentX + 24, 1086);
+            context.textAlign = 'center';
+            context.fillText('평균', 540, 1086);
+            context.textAlign = 'right';
+            context.fillText('신중', contentX + contentWidth - 24, 1086);
+            context.textAlign = 'left';
+
+            const house = Core.HOUSE_META[assignedHouseKey];
+            drawShareSectionLabel(context, '03', 'HOUSE ASSIGNMENT', '기숙사', contentX, 1144, contentWidth, font);
+            drawRoundedRect(context, contentX, 1180, contentWidth, 84, 12);
+            context.fillStyle = '#f6f6f3';
+            context.fill();
+            context.strokeStyle = '#dfe1dc';
+            context.lineWidth = 2;
+            context.stroke();
+            context.beginPath();
+            context.arc(contentX + 46, 1222, 25, 0, Math.PI * 2);
+            context.strokeStyle = house?.accent || '#16814b';
+            context.lineWidth = 3;
+            context.stroke();
+            context.fillStyle = house?.accent || '#16814b';
+            context.font = `800 22px ${font}`;
+            context.textAlign = 'center';
+            context.fillText(house?.seal || assignedHouseKey[0], contentX + 46, 1230);
+            context.textAlign = 'left';
+            context.fillStyle = '#707570';
+            context.font = `700 12px ${font}`;
+            context.fillText('ASSIGNED HOUSE', contentX + 88, 1214);
+            context.fillStyle = '#202421';
+            context.font = `800 27px ${font}`;
+            context.fillText(house?.name || assignedHouseKey, contentX + 88, 1242);
+        } else {
+            drawRoundedRect(context, contentX, 640, contentWidth, 526, 14);
+            context.fillStyle = '#f3f4f1';
+            context.fill();
+            context.strokeStyle = '#dfe1dc';
+            context.lineWidth = 2;
+            context.stroke();
+            context.fillStyle = '#202421';
+            context.font = `800 31px ${font}`;
+            context.textAlign = 'center';
+            context.fillText('상세 결과 잠김', 540, 875);
+            context.fillStyle = '#737873';
+            context.font = `650 20px ${font}`;
+            context.fillText('BAND 회원 확인 후 결과에서 볼 수 있어요', 540, 916);
+            context.textAlign = 'left';
+        }
+
+        context.fillStyle = '#737873';
+        context.font = `650 14px ${font}`;
+        context.fillText('CREWARTS · 20 ITEMS', contentX, 1294);
+        context.textAlign = 'right';
+        context.fillText('creok.onrender.com', contentX + contentWidth, 1294);
+        context.textAlign = 'left';
+
         const blob = await canvasBlob(canvas);
-        return new File([blob], `crewart-${result.code}-${isStory ? 'story' : 'share'}.png`, { type: 'image/png' });
+        return new File([blob], shareFileName(), { type: 'image/png' });
     }
 
     async function uploadKakaoShareImage(file) {
@@ -1577,88 +1618,130 @@
         window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
-    async function shareResult() {
-        const title = resultShareTitle();
-        const text = `${title}\n${result.typeName}`;
+    function setShareButtonBusy(button, busy, busyLabel) {
+        if (!button) return;
+        const label = button.querySelector('[data-action-label]');
+        if (busy) {
+            button.dataset.idleLabel = label?.textContent || '';
+            if (label && busyLabel) label.textContent = busyLabel;
+            button.disabled = true;
+            button.setAttribute('aria-busy', 'true');
+            return;
+        }
+        if (label && button.dataset.idleLabel) label.textContent = button.dataset.idleLabel;
+        button.disabled = false;
+        button.removeAttribute('aria-busy');
+        delete button.dataset.idleLabel;
+    }
+
+    function isAppleMobileDevice() {
+        return /iP(?:hone|ad|od)/.test(navigator.userAgent)
+            || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    }
+
+    function initializeKakaoSdk() {
         try {
-            if (window.Kakao) {
-                if (!window.Kakao.isInitialized()) window.Kakao.init(KAKAO_JS_KEY);
-                let imageUrl = new URL('assets/crewart-cave-mobile.webp', document.baseURI).toString();
-                try {
-                    imageUrl = await uploadKakaoShareImage(await createResultShareFile('feed')) || imageUrl;
-                } catch (imageError) {
-                    console.warn('[Crewart Kakao image]', imageError);
-                }
-                window.Kakao.Share.sendDefault({
-                    objectType: 'feed',
-                    content: {
-                        title,
-                        description: `${result.typeName} · 20개의 선택으로 확인한 나의 크레 성향`,
-                        imageUrl,
-                        link: { mobileWebUrl: SURVEY_URL, webUrl: SURVEY_URL }
-                    },
-                        buttons: [{ title: '나도 검사하기', link: { mobileWebUrl: SURVEY_URL, webUrl: SURVEY_URL } }]
-                });
+            if (!window.Kakao) return false;
+            if (!window.Kakao.isInitialized()) window.Kakao.init(KAKAO_JS_KEY);
+            return Boolean(window.Kakao.Share?.sendDefault);
+        } catch (error) {
+            console.warn('[Crewart Kakao init]', error);
+            return false;
+        }
+    }
+
+    async function saveResultImage(event) {
+        const button = event?.currentTarget;
+        setShareButtonBusy(button, true, '이미지 만드는 중');
+        try {
+            const file = await createResultShareFile();
+            if (isAppleMobileDevice() && navigator.share && navigator.canShare?.({ files: [file] })) {
+                toast('공유 메뉴에서 ‘이미지 저장’을 선택해주세요.');
+                await navigator.share({ files: [file], title: 'CREWARTS 성향 결과' });
                 return;
             }
+            downloadShareFile(file);
+            toast('결과 이미지를 저장했어요.');
+        } catch (error) {
+            if (error?.name !== 'AbortError') {
+                console.error('[Crewart image save]', error);
+                toast('이미지를 저장하지 못했어요. 다시 시도해주세요.', true);
+            }
+        } finally {
+            setShareButtonBusy(button, false);
+        }
+    }
+
+    async function shareResult(event) {
+        const button = event?.currentTarget;
+        const title = 'CREWARTS 성향 결과';
+        const text = `${result.code} · ${result.typeName}`;
+        let shareFile = null;
+        setShareButtonBusy(button, true, '공유 준비 중');
+
+        try {
+            if (!initializeKakaoSdk()) throw new Error('Kakao SDK is unavailable');
+            shareFile = await createResultShareFile();
+            let imageUrl = new URL('assets/crewart-cave-mobile.webp', document.baseURI).toString();
+            try {
+                imageUrl = await uploadKakaoShareImage(shareFile) || imageUrl;
+            } catch (imageError) {
+                console.warn('[Crewart Kakao image]', imageError);
+            }
+            window.Kakao.Share.sendDefault({
+                objectType: 'feed',
+                content: {
+                    title,
+                    description: text,
+                    imageUrl,
+                    imageWidth: 1080,
+                    imageHeight: 1350,
+                    link: { mobileWebUrl: SURVEY_URL, webUrl: SURVEY_URL }
+                },
+                buttons: [{ title: '테스트하기', link: { mobileWebUrl: SURVEY_URL, webUrl: SURVEY_URL } }]
+            });
+            setShareButtonBusy(button, false);
+            return;
         } catch (error) {
             console.error('[Crewart Kakao share]', error);
         }
-        if (navigator.share) {
-            try {
-                await navigator.share({ title: `${title} | 크레와트`, text, url: SURVEY_URL });
+
+        try {
+            shareFile ||= await createResultShareFile();
+            if (navigator.share && navigator.canShare?.({ files: [shareFile] })) {
+                toast('공유 앱에서 카카오톡을 선택해주세요.');
+                await navigator.share({
+                    files: [shareFile],
+                    title,
+                    text: `${text}\n${SURVEY_URL}`
+                });
                 return;
-            } catch (error) {
-                if (error?.name === 'AbortError') return;
             }
+            if (navigator.share) {
+                await navigator.share({ title, text, url: SURVEY_URL });
+                return;
+            }
+        } catch (error) {
+            if (error?.name === 'AbortError') return;
+            console.error('[Crewart native share]', error);
+        } finally {
+            setShareButtonBusy(button, false);
         }
+
         try {
             await navigator.clipboard.writeText(`${text}\n${SURVEY_URL}`);
-            toast('결과와 링크를 복사했어요.');
+            toast('공유 링크를 복사했어요.');
         } catch (_) {
             window.prompt('아래 내용을 복사해주세요.', `${text}\n${SURVEY_URL}`);
         }
     }
 
-    async function shareToInstagram() {
-        const title = resultShareTitle();
-        const text = `${title}\n${result.typeName}`;
-        try {
-            const file = await createResultShareFile('story');
-            if (navigator.share && navigator.canShare?.({ files: [file] })) {
-                await navigator.share({ files: [file], title: `${title} | 크레와트`, text });
-                return;
-            }
-            downloadShareFile(file);
-            try {
-                await navigator.clipboard.writeText(SURVEY_URL);
-            } catch (_) {
-                // Saving the story image is the primary fallback.
-            }
-            toast('스토리 이미지를 저장했어요. 인스타그램에서 열어주세요.');
-            return;
-        } catch (error) {
-            if (error?.name === 'AbortError') return;
-            console.error('[Crewart Instagram share]', error);
-        }
-        if (navigator.share) {
-            try {
-                await navigator.share({ title: `${title} | 크레와트`, text, url: SURVEY_URL });
-                return;
-            } catch (error) {
-                if (error?.name === 'AbortError') return;
-            }
-        }
-        try {
-            await navigator.clipboard.writeText(`${text}\n${SURVEY_URL}`);
-            toast('링크를 복사했어요. 인스타그램에서 공유해 주세요.');
-        } catch (_) {
-            window.prompt('인스타그램에 공유할 내용을 복사해주세요.', `${text}\n${SURVEY_URL}`);
-        }
-    }
-
     if (IS_LOCAL_QA) {
-        window.CrewartShareQA = Object.freeze({ createResultShareFile });
+        window.CrewartShareQA = Object.freeze({
+            createResultShareFile,
+            shareFileName,
+            isAppleMobileDevice
+        });
     }
 
     function syncThemeColor(screenId) {
@@ -1714,6 +1797,7 @@
         }
         setupIntroVideo();
         bindEvents();
+        initializeKakaoSdk();
         renderHome();
         updatePersistentActions();
         syncThemeColor('intro-screen');

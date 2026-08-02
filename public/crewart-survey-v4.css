@@ -323,13 +323,15 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 
 .cw-report-footer { margin-top: 18px; border-top: 2px solid var(--cw-ink); }
 .cw-report-footer > p { margin: 12px 0 0; color: var(--cw-muted); font-size: 9px; font-weight: 550; }
-.cw-share-section { display: grid; gap: 10px; margin-top: 8px; border: 0; }
-.cw-share-toggle { display: flex; width: 100%; min-height: 42px; padding: 0; align-items: center; justify-content: space-between; border: 0; background: transparent; color: var(--cw-ink); font-size: 12px; font-weight: 750; cursor: pointer; }
-.cw-share-toggle span { color: var(--cw-green); font-size: 17px; font-weight: 500; }
-.cw-share-tools { display: flex; align-items: center; gap: 8px; }
-.cw-share-icon { display: grid; width: 42px; height: 42px; padding: 0; place-items: center; border: 1px solid var(--cw-line); border-radius: 10px; background: #fff; cursor: pointer; }
-.cw-share-icon img { display: block; width: 24px; height: 24px; object-fit: contain; }
-.cw-share-icon.is-band img { width: 28px; height: 28px; border-radius: 7px; }
+.cw-share-section { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; margin-top: 10px; border: 0; }
+.cw-share-action { display: flex; min-width: 0; min-height: 45px; padding: 0 10px; align-items: center; justify-content: center; gap: 7px; border: 1px solid var(--cw-line); border-radius: 9px; background: #fff; color: var(--cw-ink); cursor: pointer; transition: opacity .15s ease, transform .15s ease, border-color .15s ease; }
+.cw-share-action:hover { border-color: #aeb3ae; transform: translateY(-1px); }
+.cw-share-action:disabled { opacity: .58; cursor: wait; transform: none; }
+.cw-share-action strong { overflow: hidden; font-size: 11px; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
+.cw-share-action img { display: block; flex: 0 0 auto; width: 23px; height: 23px; object-fit: contain; }
+.cw-share-save-mark { display: grid; flex: 0 0 auto; width: 23px; height: 23px; place-items: center; border: 1px solid #9ca19c; border-radius: 50%; font-size: 15px; font-weight: 650; line-height: 1; }
+.cw-share-action.is-kakao { border-color: #f2dc00; background: #fee500; color: #191919; }
+.cw-share-action.is-kakao:hover { border-color: #d9c600; }
 
 .cw-result-empty { display: grid; min-height: calc(100dvh - 150px); place-content: center; text-align: center; }
 .cw-result-empty p { margin: 0 0 8px; color: var(--cw-muted); font-size: 10px; font-weight: 700; letter-spacing: .14em; }

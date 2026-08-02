@@ -217,12 +217,25 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(css, /font-family:\s*"Pretendard Variable"/);
     assert.doesNotMatch(css, /Cinzel|Georgia/i);
     assert.match(html, /assets\/band-app-icon-official\.png/);
-    assert.match(script, /assets\/instagram-glyph-official\.svg/);
+    assert.match(html, /https:\/\/t1\.kakaocdn\.net\/kakao_js_sdk\/2\.8\.1\/kakao\.min\.js/);
+    assert.match(html, /assets\/vendor\/kakao-2\.8\.1\.min\.js/);
     assert.match(script, /assets\/kakaolink_btn_medium\.png/);
     assert.match(script, /function createResultShareFile/);
+    assert.match(script, /data-action="save-image"/);
+    assert.match(script, /결과 이미지 저장/);
+    assert.match(script, /카카오톡 공유/);
+    assert.match(script, /function saveResultImage/);
+    assert.match(script, /CREWARTS_\$\{result\.code\}_\$\{typeName\}\.png/);
+    assert.match(script, /canvas\.width = 1080/);
+    assert.match(script, /canvas\.height = 1350/);
     assert.match(script, /navigator\.canShare\?\.\(\{ files: \[file\] \}\)/);
     assert.match(script, /Kakao\.Share\.sendDefault/);
     assert.match(script, /Kakao\.Share\.uploadImage/);
+    assert.match(script, /function initializeKakaoSdk\(\)[\s\S]*Kakao\.init\(KAKAO_JS_KEY\)[\s\S]*Kakao\.Share\?\.sendDefault/);
+    assert.match(script, /imageWidth: 1080/);
+    assert.match(script, /imageHeight: 1350/);
+    assert.doesNotMatch(script, /data-action="instagram"|shareToInstagram/);
+    assert.doesNotMatch(script, /data-action="band-result"/);
     assert.doesNotMatch(script, /크레\s*MBTI|나의 크레 MBTI|평소 MBTI/i);
     assert.match(script, /class="cw-scale-marker"/);
     assert.match(script, /data-final-position="\$\{position\}"/);
@@ -237,7 +250,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /cw-result-code cw-result-code-back/);
     assert.match(script, /cw-result-code cw-result-code-front/);
     assert.match(script, /class="cw-type-poster"/);
-    assert.match(html, /20260802-mobile-report-v22/);
+    assert.match(html, /20260802-result-share-v23/);
     assert.deepEqual(
         fs.readdirSync(characterDirectory).filter(file => file.endsWith('.png')).sort(),
         characterCodes.map(code => `crewart-type-${code}.png`).sort()
