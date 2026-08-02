@@ -106,7 +106,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-screen { width: min(100%, 760px); min-height: 100dvh; margin: 0 auto; }
 .cw-screen.is-entering { animation: cw-fade-in .22s ease both; }
 
-.cw-intro { position: relative; display: flex; isolation: isolate; padding: max(50px, calc(env(safe-area-inset-top) + 38px)) 18px max(94px, calc(env(safe-area-inset-bottom) + 84px)); }
+.cw-intro { position: relative; display: flex; isolation: isolate; padding: max(50px, calc(env(safe-area-inset-top) + 38px)) 18px max(94px, calc(env(safe-area-inset-bottom) + 84px)); background: #242724; }
 .cw-intro::after { display: none; }
 .cw-intro-content { position: relative; display: flex; flex: 1; flex-direction: column; width: min(100%, 560px); min-height: calc(100dvh - 144px); margin: 0 auto; opacity: 0; visibility: hidden; transition: opacity .34s ease, visibility 0s linear .34s; }
 .cw-intro.is-video-ready .cw-intro-content { opacity: 1; visibility: visible; transition-delay: 0s; }
