@@ -69,9 +69,9 @@
     let membershipCheckInFlight = false;
     let showingStoredResult = false;
     let memberKeyboardTimer = null;
-    let resultNavRevealed = false;
     let preparedSaveFile = null;
     let preparedSaveUrl = '';
+    let preparedKakaoShareFile = null;
 
     function element(id) {
         return document.getElementById(id);
@@ -263,7 +263,6 @@
     }
 
     function setScreen(screenId) {
-        if (screenId === 'result-screen') resultNavRevealed = false;
         if (screenId !== 'band-screen') {
             element('member-phone')?.blur();
             document.body.classList.remove('cw-keyboard-open');
@@ -727,12 +726,16 @@
                 <article class="cw-axis-detail" data-axis-result data-final-pole="${firstSelected ? 'left' : 'right'}">
                     <header><h3>${escapeHtml(copy.title)}</h3></header>
                     <div class="cw-axis-poles">
-                        <div class="cw-axis-pole is-left${firstSelected ? ' is-selected' : ''}" data-pole="left"><strong>${escapeHtml(first)}</strong><span>${escapeHtml(copy.left)}</span></div>
-                        <div class="cw-axis-pole is-right${firstSelected ? '' : ' is-selected'}" data-pole="right"><strong>${escapeHtml(second)}</strong><span>${escapeHtml(copy.right)}</span></div>
+                        <div class="cw-axis-pole is-left${firstSelected ? ' is-selected' : ''}" data-pole="left"><strong>${escapeHtml(first)}</strong></div>
+                        <div class="cw-axis-pole is-right${firstSelected ? '' : ' is-selected'}" data-pole="right"><strong>${escapeHtml(second)}</strong></div>
                     </div>
                     <div class="cw-position-scale cw-axis-scale" aria-label="${escapeHtml(copy.title)}: ${escapeHtml(first)} ${escapeHtml(copy.left)}, ${escapeHtml(second)} ${escapeHtml(copy.right)} 중 ${escapeHtml(axisResult.dominant)} 쪽">
                         <span class="cw-scale-marker" data-final-position="${position}" style="--position:${position}%" aria-hidden="true"></span>
                         <div class="cw-scale-line"><i aria-hidden="true"></i></div>
+                    </div>
+                    <div class="cw-axis-meanings">
+                        <span class="${firstSelected ? 'is-selected' : ''}" data-pole-copy="left">${escapeHtml(copy.left)}</span>
+                        <span class="${firstSelected ? '' : 'is-selected'}" data-pole-copy="right">${escapeHtml(copy.right)}</span>
                     </div>
                 </article>`;
         }).join('');
@@ -818,7 +821,7 @@
         relation?.classList.add('is-measure-pending');
         axisCards.forEach(card => {
             card.classList.add('is-cycling');
-            card.querySelectorAll('[data-pole]').forEach(pole => pole.classList.remove('is-selected'));
+            card.querySelectorAll('[data-pole], [data-pole-copy]').forEach(pole => pole.classList.remove('is-selected'));
         });
         speedValues.forEach(node => {
             node.textContent = '측정 중…';
@@ -832,6 +835,7 @@
                 slot.classList.add('is-cycling');
                 const axisCard = axisCards[index];
                 const axisPoles = [...(axisCard?.querySelectorAll('[data-pole]') || [])];
+                const axisCopies = [...(axisCard?.querySelectorAll('[data-pole-copy]') || [])];
                 const cycleSlot = () => {
                     if (!container.isConnected) return;
                     if (performance.now() - startedAt >= settleDurations[index]) {
@@ -839,6 +843,7 @@
                         slot.classList.remove('is-cycling');
                         slot.classList.add('is-settled');
                         axisPoles.forEach(pole => pole.classList.toggle('is-selected', pole.dataset.pole === axisCard?.dataset.finalPole));
+                        axisCopies.forEach(copy => copy.classList.toggle('is-selected', copy.dataset.poleCopy === axisCard?.dataset.finalPole));
                         axisCard?.classList.remove('is-cycling');
                         axisCard?.classList.add('is-settled');
                         return;
@@ -846,6 +851,7 @@
                     const candidate = tick % 2;
                     slot.textContent = letterPairs[index][candidate];
                     axisPoles.forEach((pole, poleIndex) => pole.classList.toggle('is-selected', poleIndex === candidate));
+                    axisCopies.forEach((copy, copyIndex) => copy.classList.toggle('is-selected', copyIndex === candidate));
                     tick += 1;
                     setTimeout(cycleSlot, tickDelays[index]);
                 };
@@ -979,7 +985,7 @@
             </div>`;
         element('result-content').querySelector('[data-action="unlock-detail"]')?.addEventListener('click', handleUnlockDetail);
         element('result-content').querySelector('[data-action="open-band"]')?.addEventListener('click', openBandTarget);
-        element('result-content').querySelector('[data-action="share"]')?.addEventListener('click', shareResult);
+        element('result-content').querySelector('[data-action="share"]')?.addEventListener('click', openKakaoShareGuide);
         element('result-content').querySelector('[data-action="save-image"]')?.addEventListener('click', saveResultImage);
         element('result-content').querySelectorAll('[data-report-toggle]').forEach(button => {
             button.addEventListener('click', toggleReportDisclosure);
@@ -1105,13 +1111,6 @@
         if (result && !element('result-screen').hidden) renderResult();
     }
 
-    function updateResultNavigationVisibility() {
-        const nav = element('app-nav');
-        const resultVisible = currentStage() === 'result';
-        if (!resultVisible) resultNavRevealed = false;
-        nav?.classList.toggle('is-result-hidden', resultVisible && !resultNavRevealed);
-    }
-
     function updatePersistentActions() {
         const nav = element('app-nav');
         const home = element('persistent-home-button');
@@ -1119,7 +1118,6 @@
         const focused = stage === 'questions' || stage === 'mbti';
         if (home) home.hidden = !focused;
         if (nav) nav.hidden = focused;
-        updateResultNavigationVisibility();
         const activeTab = stage === 'intro' ? 'home' : stage;
         document.querySelectorAll('[data-nav]').forEach(button => {
             const active = button.dataset.nav === activeTab;
@@ -1412,7 +1410,7 @@
         context.fill();
     }
 
-    function drawShareSectionLabel(context, number, english, korean, x, y, width, font) {
+    function drawShareSectionLabel(context, number, english, korean, x, y, width, font, drawLine = true) {
         context.fillStyle = '#989d98';
         context.font = `700 15px ${font}`;
         context.fillText(number, x, y);
@@ -1424,8 +1422,10 @@
         context.textAlign = 'right';
         context.fillText(korean, x + width, y);
         context.textAlign = 'left';
-        context.fillStyle = '#565a56';
-        context.fillRect(x, y + 14, width, 2);
+        if (drawLine) {
+            context.fillStyle = '#565a56';
+            context.fillRect(x, y + 14, width, 2);
+        }
     }
 
     function shareFileName() {
@@ -1463,8 +1463,8 @@
         context.fillStyle = '#2b302c';
         context.font = `790 188px ${font}`;
         context.textBaseline = 'alphabetic';
-        context.fillText(result.code.slice(0, 2), 116, 360);
-        context.fillText(result.code.slice(2), 676, 360);
+        context.fillText(result.code.slice(0, 2), 145, 360);
+        context.fillText(result.code.slice(2), 650, 360);
 
         try {
             const character = await loadShareImage(new URL(typeCharacterPath(result.code), document.baseURI).toString());
@@ -1485,7 +1485,7 @@
         context.fillRect(contentX, 558, contentWidth, 2);
 
         if (hasDetailedAccess()) {
-            drawShareSectionLabel(context, '01', 'TRAIT AXES', '성향 지표', contentX, 600, contentWidth, font);
+            drawShareSectionLabel(context, '01', 'TRAIT AXES', '성향 지표', contentX, 600, contentWidth, font, false);
             result.axes.forEach((axisResult, index) => {
                 const copy = AXIS_REPORT_COPY[axisResult.axis];
                 const first = axisResult.axis[0];
@@ -1512,14 +1512,22 @@
 
                 context.textAlign = 'left';
                 context.fillStyle = firstSelected ? '#202421' : '#9a9e9a';
-                context.font = `${firstSelected ? 800 : 550} 19px ${font}`;
-                context.fillText(`${first}  ${copy.left}`, x + 24, y + 66);
+                context.font = `${firstSelected ? 800 : 550} 24px ${font}`;
+                context.fillText(first, x + 24, y + 65);
                 context.textAlign = 'right';
                 context.fillStyle = firstSelected ? '#9a9e9a' : '#202421';
-                context.font = `${firstSelected ? 550 : 800} 19px ${font}`;
-                context.fillText(`${second}  ${copy.right}`, x + width - 24, y + 66);
+                context.font = `${firstSelected ? 550 : 800} 24px ${font}`;
+                context.fillText(second, x + width - 24, y + 65);
                 context.textAlign = 'left';
-                drawShareScale(context, x + 24, y + 103, width - 48, position);
+                drawShareScale(context, x + 24, y + 96, width - 48, position);
+                context.fillStyle = firstSelected ? '#202421' : '#9a9e9a';
+                context.font = `${firstSelected ? 800 : 550} 16px ${font}`;
+                context.fillText(copy.left, x + 24, y + 126);
+                context.textAlign = 'right';
+                context.fillStyle = firstSelected ? '#9a9e9a' : '#202421';
+                context.font = `${firstSelected ? 550 : 800} 16px ${font}`;
+                context.fillText(copy.right, x + width - 24, y + 126);
+                context.textAlign = 'left';
             });
 
             const speed = resultSpeedPresentation();
@@ -1750,6 +1758,25 @@
         }
     }
 
+    async function openKakaoShareGuide(event) {
+        const button = event?.currentTarget;
+        setShareButtonBusy(button, true, '이미지 만드는 중');
+        try {
+            preparedKakaoShareFile = await createResultShareFile();
+            const dialog = element('kakao-share-dialog');
+            if (!dialog.open) dialog.showModal();
+        } catch (error) {
+            console.error('[Crewart Kakao preview]', error);
+            toast('공유할 이미지를 만들지 못했어요. 다시 시도해주세요.', true);
+        } finally {
+            setShareButtonBusy(button, false);
+        }
+    }
+
+    function clearPreparedKakaoShare() {
+        preparedKakaoShareFile = null;
+    }
+
     async function shareResult(event) {
         const button = event?.currentTarget;
         const title = 'CREWARTS 성향 결과';
@@ -1757,9 +1784,9 @@
         setShareButtonBusy(button, true, '공유 준비 중');
 
         try {
-            const shareFile = await createResultShareFile();
+            const shareFile = preparedKakaoShareFile || await createResultShareFile();
+            element('kakao-share-dialog')?.close('share');
             if (navigator.share && navigator.canShare?.({ files: [shareFile] })) {
-                toast('공유 앱에서 카카오톡을 선택해주세요.');
                 await navigator.share({
                     files: [shareFile],
                     title,
@@ -1824,6 +1851,11 @@
         });
         element('show-result').addEventListener('click', () => showResult(false));
         element('persistent-home-button').addEventListener('click', returnToIntro);
+        element('kakao-share-confirm')?.addEventListener('click', shareResult);
+        element('kakao-share-dialog')?.addEventListener('close', clearPreparedKakaoShare);
+        element('kakao-share-dialog')?.addEventListener('click', event => {
+            if (event.target === event.currentTarget) event.currentTarget.close('cancel');
+        });
         element('result-save-confirm')?.addEventListener('click', savePreparedResultImage);
         element('result-save-dialog')?.addEventListener('close', clearPreparedSaveImage);
         element('result-save-dialog')?.addEventListener('click', event => {
@@ -1844,11 +1876,6 @@
         window.visualViewport?.addEventListener('resize', () => syncMemberKeyboardState());
         window.visualViewport?.addEventListener('scroll', () => syncMemberKeyboardState({ ensureVisible: false }));
         window.addEventListener('resize', () => syncMemberKeyboardState({ ensureVisible: false }));
-        window.addEventListener('scroll', () => {
-            if (currentStage() !== 'result') return;
-            resultNavRevealed = window.scrollY > 28;
-            updateResultNavigationVisibility();
-        }, { passive: true });
     }
 
     function initialize() {

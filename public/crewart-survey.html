@@ -14,9 +14,9 @@
     <link
         href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
         rel="stylesheet">
-    <link rel="stylesheet" href="crewart-survey-v4.css?v=20260802-save-dialog-v24">
+    <link rel="stylesheet" href="crewart-survey-v4.css?v=20260802-result-layout-v25">
     <script src="crewart-survey-core.js?v=20260801-house-map-v5"></script>
-    <script src="crewart-survey.js?v=20260802-save-dialog-v24" defer></script>
+    <script src="crewart-survey.js?v=20260802-result-layout-v25" defer></script>
 </head>
 
 <body>
@@ -93,19 +93,12 @@
             <div id="result-content"></div>
         </section>
 
-        <section class="cw-screen cw-band" id="band-screen" hidden aria-labelledby="band-page-title">
+        <section class="cw-screen cw-band" id="band-screen" hidden aria-labelledby="member-check-title">
             <div class="cw-band-shell">
-                <header class="cw-band-identity">
-                    <img src="assets/band-app-icon-official.png?v=20260801-logo-v2" alt="" width="54" height="54">
-                    <div>
-                        <h1 id="band-page-title">크레와트 커뮤니티</h1>
-                        <p class="cw-band-connection"><i id="band-state-dot" aria-hidden="true"></i><span id="band-connection-status">연결되지 않음</span></p>
-                    </div>
-                </header>
-
                 <section class="cw-band-account" aria-labelledby="member-check-title">
                     <header class="cw-band-account-head">
                         <div><small>MEMBER ACCESS</small><h2 id="member-check-title">회원 확인</h2></div>
+                        <p class="cw-band-connection"><i id="band-state-dot" aria-hidden="true"></i><span id="band-connection-status">연결되지 않음</span></p>
                     </header>
 
                     <form class="cw-member-form" id="member-check-form">
@@ -155,6 +148,24 @@
             <button type="button" data-nav="band"><span>BAND</span><i id="band-nav-status" aria-hidden="true"></i></button>
         </div>
     </nav>
+
+    <dialog class="cw-kakao-dialog" id="kakao-share-dialog" aria-labelledby="kakao-share-title">
+        <form method="dialog" class="cw-kakao-dialog-sheet">
+            <header class="cw-kakao-dialog-head">
+                <div>
+                    <img src="assets/kakaolink_btn_medium.png" width="34" height="34" alt="">
+                    <div><small>SHARE RESULT</small><h2 id="kakao-share-title">카카오톡으로 보내기</h2></div>
+                </div>
+                <button type="submit" value="cancel" aria-label="닫기">×</button>
+            </header>
+            <ol class="cw-kakao-steps">
+                <li><b>1</b><span>공유창 열기</span></li>
+                <li><b>2</b><span>카카오톡 선택</span></li>
+                <li><b>3</b><span>친구·채팅방 선택</span></li>
+            </ol>
+            <button class="cw-kakao-open" id="kakao-share-confirm" type="button"><span data-action-label>공유창 열기</span></button>
+        </form>
+    </dialog>
 
     <dialog class="cw-save-dialog" id="result-save-dialog" aria-labelledby="result-save-title">
         <form method="dialog" class="cw-save-dialog-sheet">

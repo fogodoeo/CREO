@@ -137,6 +137,8 @@ test('CREWARTS reveals the basic result first and unlocks member detail by phone
     assert.match(html, /입력한 번호는 가입 여부 확인에만 사용해요\./);
     assert.match(html, /<label for="member-phone">휴대전화번호<\/label>/);
     assert.match(html, /id="band-connection-status">연결되지 않음<\/span>/);
+    assert.match(html, /class="cw-band-account-head"[\s\S]*id="member-check-title">회원 확인[\s\S]*class="cw-band-connection"/);
+    assert.doesNotMatch(html, /cw-band-identity|band-page-title|크레와트 커뮤니티/);
     assert.doesNotMatch(html, /CREWARTS COMMUNITY|<h1 id="band-page-title">BAND<\/h1>|>MEMBERSHIP</);
     assert.doesNotMatch(html, /BAND 가입 번호를 확인할게요|가입 승인된 BAND 프로필|설문 답변·결과와 함께 저장되지 않습니다/);
     assert.doesNotMatch(html, /결과 확인 전 한 번만/);
@@ -231,7 +233,10 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(html, /id="result-save-preview"/);
     assert.match(html, /id="result-save-name"/);
     assert.match(html, /id="result-save-confirm"/);
+    assert.match(html, /id="kakao-share-dialog"/);
+    assert.match(html, /공유창 열기[\s\S]*카카오톡 선택[\s\S]*친구·채팅방 선택/);
     assert.match(script, /function savePreparedResultImage/);
+    assert.match(script, /function openKakaoShareGuide/);
     assert.match(script, /window\.showSaveFilePicker/);
     assert.match(script, /suggestedName: file\.name/);
     assert.match(script, /공유 앱에서 카카오톡을 선택해주세요/);
@@ -254,7 +259,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /cw-result-code cw-result-code-back/);
     assert.match(script, /cw-result-code cw-result-code-front/);
     assert.match(script, /class="cw-type-poster"/);
-    assert.match(html, /20260802-save-dialog-v24/);
+    assert.match(html, /20260802-result-layout-v25/);
     assert.deepEqual(
         fs.readdirSync(characterDirectory).filter(file => file.endsWith('.png')).sort(),
         characterCodes.map(code => `crewart-type-${code}.png`).sort()
@@ -289,6 +294,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /TF: \{ title: '선택 기준', left: '조건·근거', right: '취향·관계' \}/);
     assert.match(script, /JP: \{ title: '사육 방식', left: '계획·준비', right: '유연·조정' \}/);
     assert.match(script, /class="cw-axis-poles"/);
+    assert.match(script, /class="cw-axis-meanings"/);
+    assert.match(script, /data-pole-copy="left"/);
     assert.match(script, /data-report-toggle aria-expanded="false" aria-controls=/);
     assert.match(script, /'axes-report-detail'/);
     assert.match(script, /'speed-report-detail'/);
@@ -317,10 +324,11 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(css, /\.cw-intro-visual\s*\{[^}]*position:\s*fixed[^}]*inset:\s*-24px/);
     assert.match(css, /\.cw-intro-video\s*\{[^}]*object-fit:\s*cover[^}]*filter:\s*blur\(5px\)/);
     assert.match(css, /\.cw-bottom-nav[\s\S]*position:\s*fixed/);
-    assert.match(css, /\.cw-bottom-nav > div\s*\{[^}]*height:\s*54px/);
-    assert.match(css, /\.cw-bottom-nav\.is-result-hidden[\s\S]*translateY\(110%\)/);
-    assert.match(script, /resultNavRevealed = window\.scrollY > 28/);
-    assert.match(css, /body\.cw-keyboard-open \.cw-bottom-nav[\s\S]*translateY\(110%\)/);
+    assert.match(css, /\.cw-bottom-nav > div\s*\{[^}]*height:\s*50px/);
+    assert.match(css, /\.cw-bottom-nav\s*\{[^}]*bottom:\s*max\(10px, env\(safe-area-inset-bottom\)\)[^}]*border-radius:\s*16px/);
+    assert.doesNotMatch(css, /\.cw-bottom-nav\.is-result-hidden/);
+    assert.doesNotMatch(script, /resultNavRevealed|updateResultNavigationVisibility/);
+    assert.match(css, /body\.cw-keyboard-open \.cw-bottom-nav[\s\S]*translate\(-50%, 130%\)/);
     assert.match(css, /\.cw-band\.is-keyboard-open[\s\S]*--cw-visual-viewport-height/);
     assert.match(script, /function syncMemberKeyboardState\(options = \{\}\)/);
     assert.match(script, /window\.visualViewport\?\.addEventListener\('resize'/);
