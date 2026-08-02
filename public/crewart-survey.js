@@ -307,15 +307,28 @@
     function setupIntroVideo() {
         const introVideo = element('intro-video');
         if (!introVideo) return;
+        const intro = element('intro-screen');
+        let fallbackTimer = 0;
         introVideo.controls = false;
         introVideo.muted = true;
         introVideo.defaultMuted = true;
         introVideo.playsInline = true;
-        const reveal = () => introVideo.classList.add('is-playing');
-        const conceal = () => introVideo.classList.remove('is-playing');
+        const reveal = () => {
+            window.clearTimeout(fallbackTimer);
+            introVideo.classList.add('is-playing');
+            intro?.classList.add('is-video-ready');
+        };
+        const conceal = () => {
+            introVideo.classList.remove('is-playing');
+            if (!intro?.classList.contains('is-video-ready')) {
+                window.clearTimeout(fallbackTimer);
+                fallbackTimer = window.setTimeout(() => intro?.classList.add('is-video-ready'), 1400);
+            }
+        };
         introVideo.addEventListener('playing', reveal);
         introVideo.addEventListener('error', conceal);
         introVideo.addEventListener('emptied', conceal);
+        fallbackTimer = window.setTimeout(() => intro?.classList.add('is-video-ready'), 2200);
         if (!introVideo.paused && introVideo.readyState >= 3) reveal();
         if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
             void introVideo.play().then(reveal).catch(conceal);
