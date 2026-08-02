@@ -217,8 +217,6 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(css, /font-family:\s*"Pretendard Variable"/);
     assert.doesNotMatch(css, /Cinzel|Georgia/i);
     assert.match(html, /assets\/band-app-icon-official\.png/);
-    assert.match(html, /https:\/\/t1\.kakaocdn\.net\/kakao_js_sdk\/2\.8\.1\/kakao\.min\.js/);
-    assert.match(html, /assets\/vendor\/kakao-2\.8\.1\.min\.js/);
     assert.match(script, /assets\/kakaolink_btn_medium\.png/);
     assert.match(script, /function createResultShareFile/);
     assert.match(script, /data-action="save-image"/);
@@ -229,11 +227,17 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /canvas\.width = 1080/);
     assert.match(script, /canvas\.height = 1350/);
     assert.match(script, /navigator\.canShare\?\.\(\{ files: \[file\] \}\)/);
-    assert.match(script, /Kakao\.Share\.sendDefault/);
-    assert.match(script, /Kakao\.Share\.uploadImage/);
-    assert.match(script, /function initializeKakaoSdk\(\)[\s\S]*Kakao\.init\(KAKAO_JS_KEY\)[\s\S]*Kakao\.Share\?\.sendDefault/);
-    assert.match(script, /imageWidth: 1080/);
-    assert.match(script, /imageHeight: 1350/);
+    assert.match(html, /id="result-save-dialog"/);
+    assert.match(html, /id="result-save-preview"/);
+    assert.match(html, /id="result-save-name"/);
+    assert.match(html, /id="result-save-confirm"/);
+    assert.match(script, /function savePreparedResultImage/);
+    assert.match(script, /window\.showSaveFilePicker/);
+    assert.match(script, /suggestedName: file\.name/);
+    assert.match(script, /공유 앱에서 카카오톡을 선택해주세요/);
+    assert.doesNotMatch(script, /KAKAO_JS_KEY|Kakao\.Share/);
+    assert.doesNotMatch(html, /kakao_js_sdk|kakao-2\.8\.1\.min\.js/);
+    assert.match(css, /\.cw-save-dialog::backdrop/);
     assert.doesNotMatch(script, /data-action="instagram"|shareToInstagram/);
     assert.doesNotMatch(script, /data-action="band-result"/);
     assert.doesNotMatch(script, /크레\s*MBTI|나의 크레 MBTI|평소 MBTI/i);
@@ -250,7 +254,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /cw-result-code cw-result-code-back/);
     assert.match(script, /cw-result-code cw-result-code-front/);
     assert.match(script, /class="cw-type-poster"/);
-    assert.match(html, /20260802-result-share-v23/);
+    assert.match(html, /20260802-save-dialog-v24/);
     assert.deepEqual(
         fs.readdirSync(characterDirectory).filter(file => file.endsWith('.png')).sort(),
         characterCodes.map(code => `crewart-type-${code}.png`).sort()

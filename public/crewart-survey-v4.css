@@ -333,6 +333,27 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-share-action.is-kakao { border-color: #f2dc00; background: #fee500; color: #191919; }
 .cw-share-action.is-kakao:hover { border-color: #d9c600; }
 
+.cw-save-dialog { width: min(calc(100% - 24px), 480px); max-height: min(92dvh, 760px); padding: 0; overflow: visible; border: 0; border-radius: 22px; background: transparent; color: var(--cw-ink); }
+.cw-save-dialog::backdrop { background: rgba(17, 23, 18, .62); backdrop-filter: blur(5px); }
+.cw-save-dialog[open] { animation: cw-save-dialog-in .22s cubic-bezier(.2,.8,.2,1) both; }
+.cw-save-dialog-sheet { display: grid; gap: 13px; max-height: min(92dvh, 760px); padding: 19px; overflow-y: auto; border: 1px solid rgba(255,255,255,.5); border-radius: inherit; background: #fff; box-shadow: 0 22px 70px rgba(12, 18, 14, .28); }
+.cw-save-dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.cw-save-dialog-head small { color: var(--cw-muted); font-size: 7px; font-weight: 750; letter-spacing: .15em; }
+.cw-save-dialog-head h2 { margin: 2px 0 0; font-size: 20px; font-weight: 820; letter-spacing: -.035em; }
+.cw-save-dialog-head button { width: 36px; height: 36px; padding: 0; border: 1px solid var(--cw-line); border-radius: 50%; background: #fff; color: var(--cw-muted); font-size: 24px; font-weight: 350; line-height: 1; cursor: pointer; }
+.cw-save-preview { display: grid; height: min(43dvh, 390px); min-height: 230px; overflow: hidden; place-items: center; border: 1px solid #d8dad5; border-radius: 13px; background: #ecece8; }
+.cw-save-preview img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.cw-save-name { display: grid; gap: 6px; }
+.cw-save-name > span { color: var(--cw-muted); font-size: 9px; font-weight: 700; }
+.cw-save-name input { width: 100%; height: 45px; padding: 0 12px; border: 1px solid var(--cw-line); border-radius: 10px; background: var(--cw-surface-soft); color: var(--cw-ink); font-size: 12px; font-weight: 650; }
+.cw-save-name input:focus { border-color: #8fa497; background: #fff; outline: 0; }
+.cw-save-destination { display: grid; grid-template-columns: 34px 1fr; align-items: center; gap: 8px; min-height: 51px; padding: 8px 10px; border: 1px solid var(--cw-line); border-radius: 11px; background: #fafaf8; }
+.cw-save-destination > span { display: grid; width: 30px; height: 30px; place-items: center; border-radius: 50%; background: #eceeea; color: var(--cw-ink); font-size: 18px; }
+.cw-save-destination strong { display: block; font-size: 11px; font-weight: 780; }
+.cw-save-destination p { margin: 2px 0 0; color: var(--cw-muted); font-size: 8px; line-height: 1.4; }
+.cw-save-confirm { min-height: 48px; border: 0; border-radius: 11px; background: var(--cw-ink); color: #fff; font-size: 12px; font-weight: 780; cursor: pointer; }
+.cw-save-confirm:disabled { opacity: .55; cursor: wait; }
+
 .cw-result-empty { display: grid; min-height: calc(100dvh - 150px); place-content: center; text-align: center; }
 .cw-result-empty p { margin: 0 0 8px; color: var(--cw-muted); font-size: 10px; font-weight: 700; letter-spacing: .14em; }
 .cw-result-empty h1 { margin: 0; font-size: 27px; font-weight: 750; letter-spacing: -.04em; }
@@ -421,6 +442,9 @@ body.cw-keyboard-open .cw-bottom-nav { opacity: 0; pointer-events: none; transfo
 
 @media (max-width: 560px) {
     .cw-mbti-actions { grid-template-columns: 1fr; }
+    .cw-save-dialog { width: 100%; max-width: none; max-height: 94dvh; margin: auto 0 0; border-radius: 22px 22px 0 0; }
+    .cw-save-dialog-sheet { max-height: 94dvh; padding: 18px 16px max(18px, calc(env(safe-area-inset-bottom) + 12px)); }
+    .cw-save-preview { height: min(41dvh, 360px); min-height: 210px; }
 }
 
 @media (max-width: 420px) {
@@ -466,3 +490,4 @@ body.cw-keyboard-open .cw-bottom-nav { opacity: 0; pointer-events: none; transfo
 @keyframes cw-disclosure-in { from { opacity: 0; transform: translateY(-4px); } }
 @keyframes cw-character-search { from { opacity: .35; transform: translateY(1px) scale(.96); } to { opacity: 1; transform: translateY(-1px) scale(1.04); } }
 @keyframes cw-status-pulse { 50% { opacity: .35; transform: scale(.82); } }
+@keyframes cw-save-dialog-in { from { opacity: 0; transform: translateY(12px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }

@@ -14,12 +14,9 @@
     <link
         href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
         rel="stylesheet">
-    <link rel="stylesheet" href="crewart-survey-v4.css?v=20260802-result-share-v23">
-    <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.8.1/kakao.min.js"
-        crossorigin="anonymous"
-        onerror="this.onerror=null;this.src='assets/vendor/kakao-2.8.1.min.js'"></script>
+    <link rel="stylesheet" href="crewart-survey-v4.css?v=20260802-save-dialog-v24">
     <script src="crewart-survey-core.js?v=20260801-house-map-v5"></script>
-    <script src="crewart-survey.js?v=20260802-result-share-v23" defer></script>
+    <script src="crewart-survey.js?v=20260802-save-dialog-v24" defer></script>
 </head>
 
 <body>
@@ -158,6 +155,25 @@
             <button type="button" data-nav="band"><span>BAND</span><i id="band-nav-status" aria-hidden="true"></i></button>
         </div>
     </nav>
+
+    <dialog class="cw-save-dialog" id="result-save-dialog" aria-labelledby="result-save-title">
+        <form method="dialog" class="cw-save-dialog-sheet">
+            <header class="cw-save-dialog-head">
+                <div><small>RESULT IMAGE</small><h2 id="result-save-title">이미지 저장</h2></div>
+                <button type="submit" value="cancel" aria-label="닫기">×</button>
+            </header>
+            <div class="cw-save-preview"><img id="result-save-preview" alt="저장될 결과 이미지 미리보기"></div>
+            <label class="cw-save-name" for="result-save-name">
+                <span>파일 이름</span>
+                <input id="result-save-name" type="text" maxlength="80" autocomplete="off" spellcheck="false">
+            </label>
+            <div class="cw-save-destination">
+                <span aria-hidden="true">⌄</span>
+                <div><strong id="result-save-destination">저장 위치 선택</strong><p id="result-save-help">저장할 폴더를 선택할 수 있어요.</p></div>
+            </div>
+            <button class="cw-save-confirm" id="result-save-confirm" type="button"><span>저장 위치 선택</span></button>
+        </form>
+    </dialog>
 
     <div class="cw-toast" id="toast" role="status" aria-live="polite"></div>
     <noscript>이 테스트를 이용하려면 자바스크립트를 켜주세요.</noscript>

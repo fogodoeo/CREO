@@ -5,7 +5,6 @@
     const SURVEY_URL = new URL('crewart-survey.html', document.baseURI).toString();
     const DEFAULT_BAND_URL = 'https://www.band.us/band/101992972/post';
     const BAND_MEMBER_API = '/api/band-membership';
-    const KAKAO_JS_KEY = 'db7ffc8d6b9b7601b792ed69be4658fc';
     const QUESTION_IMAGE_ROOT = 'assets/crewart-illustrations/';
     const TYPE_CHARACTER_ROOT = 'assets/crewart-types/';
     const TYPE_CHARACTER_VERSION = '20260802-character-v1';
@@ -71,6 +70,8 @@
     let showingStoredResult = false;
     let memberKeyboardTimer = null;
     let resultNavRevealed = false;
+    let preparedSaveFile = null;
+    let preparedSaveUrl = '';
 
     function element(id) {
         return document.getElementById(id);
@@ -1599,14 +1600,6 @@
         return new File([blob], shareFileName(), { type: 'image/png' });
     }
 
-    async function uploadKakaoShareImage(file) {
-        if (!window.Kakao?.Share?.uploadImage || typeof DataTransfer === 'undefined') return '';
-        const transfer = new DataTransfer();
-        transfer.items.add(file);
-        const response = await window.Kakao.Share.uploadImage({ file: transfer.files });
-        return response?.infos?.original?.url || '';
-    }
-
     function downloadShareFile(file) {
         const url = URL.createObjectURL(file);
         const anchor = document.createElement('a');
@@ -1639,15 +1632,66 @@
             || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     }
 
-    function initializeKakaoSdk() {
-        try {
-            if (!window.Kakao) return false;
-            if (!window.Kakao.isInitialized()) window.Kakao.init(KAKAO_JS_KEY);
-            return Boolean(window.Kakao.Share?.sendDefault);
-        } catch (error) {
-            console.warn('[Crewart Kakao init]', error);
-            return false;
+    function normalizedShareFileName(value) {
+        const fallback = result ? `CREWARTS_${result.code}_${result.typeName}` : 'CREWARTS_RESULT';
+        const base = String(value || fallback)
+            .trim()
+            .replace(/\.png$/i, '')
+            .replace(/[\\/:*?"<>|]/g, '')
+            .replace(/\s+/g, '_')
+            .slice(0, 72) || 'CREWARTS_RESULT';
+        return `${base}.png`;
+    }
+
+    function renameShareFile(file, name) {
+        return new File([file], normalizedShareFileName(name), {
+            type: 'image/png',
+            lastModified: Date.now()
+        });
+    }
+
+    function saveDestinationPresentation() {
+        if (typeof window.showSaveFilePicker === 'function') {
+            return {
+                destination: '저장할 폴더 직접 선택',
+                help: '저장 버튼을 누르면 기기의 폴더 선택 창이 열려요.',
+                action: '저장 위치 선택'
+            };
         }
+        if (isAppleMobileDevice()
+            && navigator.share
+            && preparedSaveFile
+            && navigator.canShare?.({ files: [preparedSaveFile] })) {
+            return {
+                destination: '사진 앱 또는 파일 앱',
+                help: '공유 메뉴에서 ‘이미지 저장’ 또는 ‘파일에 저장’을 선택해요.',
+                action: '저장 방법 선택'
+            };
+        }
+        return {
+            destination: '브라우저 다운로드 폴더',
+            help: '기기에 설정된 Downloads 폴더에 저장돼요.',
+            action: 'Downloads에 저장'
+        };
+    }
+
+    function clearPreparedSaveImage() {
+        if (preparedSaveUrl) URL.revokeObjectURL(preparedSaveUrl);
+        preparedSaveUrl = '';
+        preparedSaveFile = null;
+        element('result-save-preview')?.removeAttribute('src');
+    }
+
+    function prepareSaveDialog(file) {
+        clearPreparedSaveImage();
+        preparedSaveFile = file;
+        preparedSaveUrl = URL.createObjectURL(file);
+        element('result-save-preview').src = preparedSaveUrl;
+        element('result-save-name').value = file.name.replace(/\.png$/i, '');
+        const presentation = saveDestinationPresentation();
+        element('result-save-destination').textContent = presentation.destination;
+        element('result-save-help').textContent = presentation.help;
+        element('result-save-confirm').querySelector('span').textContent = presentation.action;
     }
 
     async function saveResultImage(event) {
@@ -1655,20 +1699,54 @@
         setShareButtonBusy(button, true, '이미지 만드는 중');
         try {
             const file = await createResultShareFile();
-            if (isAppleMobileDevice() && navigator.share && navigator.canShare?.({ files: [file] })) {
-                toast('공유 메뉴에서 ‘이미지 저장’을 선택해주세요.');
+            prepareSaveDialog(file);
+            const dialog = element('result-save-dialog');
+            if (!dialog.open) dialog.showModal();
+        } catch (error) {
+            console.error('[Crewart image preview]', error);
+            toast('저장할 이미지를 만들지 못했어요. 다시 시도해주세요.', true);
+        } finally {
+            setShareButtonBusy(button, false);
+        }
+    }
+
+    async function savePreparedResultImage() {
+        if (!preparedSaveFile) return;
+        const button = element('result-save-confirm');
+        const label = button.querySelector('span');
+        const idleLabel = label.textContent;
+        const file = renameShareFile(preparedSaveFile, element('result-save-name').value);
+        button.disabled = true;
+        label.textContent = '저장 중';
+        try {
+            if (typeof window.showSaveFilePicker === 'function') {
+                const handle = await window.showSaveFilePicker({
+                    suggestedName: file.name,
+                    types: [{
+                        description: 'PNG 이미지',
+                        accept: { 'image/png': ['.png'] }
+                    }]
+                });
+                const writable = await handle.createWritable();
+                await writable.write(file);
+                await writable.close();
+                toast(`${handle.name || file.name} 파일을 저장했어요.`);
+            } else if (isAppleMobileDevice() && navigator.share && navigator.canShare?.({ files: [file] })) {
+                toast('공유 메뉴에서 저장 위치를 선택해주세요.');
                 await navigator.share({ files: [file], title: 'CREWARTS 성향 결과' });
-                return;
+            } else {
+                downloadShareFile(file);
+                toast('브라우저 다운로드 폴더에 저장했어요.');
             }
-            downloadShareFile(file);
-            toast('결과 이미지를 저장했어요.');
+            element('result-save-dialog').close('saved');
         } catch (error) {
             if (error?.name !== 'AbortError') {
                 console.error('[Crewart image save]', error);
                 toast('이미지를 저장하지 못했어요. 다시 시도해주세요.', true);
             }
         } finally {
-            setShareButtonBusy(button, false);
+            button.disabled = false;
+            label.textContent = idleLabel;
         }
     }
 
@@ -1676,38 +1754,10 @@
         const button = event?.currentTarget;
         const title = 'CREWARTS 성향 결과';
         const text = `${result.code} · ${result.typeName}`;
-        let shareFile = null;
         setShareButtonBusy(button, true, '공유 준비 중');
 
         try {
-            if (!initializeKakaoSdk()) throw new Error('Kakao SDK is unavailable');
-            shareFile = await createResultShareFile();
-            let imageUrl = new URL('assets/crewart-cave-mobile.webp', document.baseURI).toString();
-            try {
-                imageUrl = await uploadKakaoShareImage(shareFile) || imageUrl;
-            } catch (imageError) {
-                console.warn('[Crewart Kakao image]', imageError);
-            }
-            window.Kakao.Share.sendDefault({
-                objectType: 'feed',
-                content: {
-                    title,
-                    description: text,
-                    imageUrl,
-                    imageWidth: 1080,
-                    imageHeight: 1350,
-                    link: { mobileWebUrl: SURVEY_URL, webUrl: SURVEY_URL }
-                },
-                buttons: [{ title: '테스트하기', link: { mobileWebUrl: SURVEY_URL, webUrl: SURVEY_URL } }]
-            });
-            setShareButtonBusy(button, false);
-            return;
-        } catch (error) {
-            console.error('[Crewart Kakao share]', error);
-        }
-
-        try {
-            shareFile ||= await createResultShareFile();
+            const shareFile = await createResultShareFile();
             if (navigator.share && navigator.canShare?.({ files: [shareFile] })) {
                 toast('공유 앱에서 카카오톡을 선택해주세요.');
                 await navigator.share({
@@ -1718,21 +1768,25 @@
                 return;
             }
             if (navigator.share) {
+                downloadShareFile(shareFile);
+                toast('이미지는 저장했어요. 공유 앱에서 카카오톡을 선택해주세요.');
                 await navigator.share({ title, text, url: SURVEY_URL });
                 return;
             }
+            downloadShareFile(shareFile);
+            await navigator.clipboard.writeText(`${text}\n${SURVEY_URL}`);
+            toast('이미지 저장과 링크 복사를 완료했어요.');
         } catch (error) {
             if (error?.name === 'AbortError') return;
-            console.error('[Crewart native share]', error);
+            console.error('[Crewart result share]', error);
+            try {
+                await navigator.clipboard.writeText(`${text}\n${SURVEY_URL}`);
+                toast('공유 링크를 복사했어요.');
+            } catch (_) {
+                window.prompt('아래 내용을 복사해주세요.', `${text}\n${SURVEY_URL}`);
+            }
         } finally {
             setShareButtonBusy(button, false);
-        }
-
-        try {
-            await navigator.clipboard.writeText(`${text}\n${SURVEY_URL}`);
-            toast('공유 링크를 복사했어요.');
-        } catch (_) {
-            window.prompt('아래 내용을 복사해주세요.', `${text}\n${SURVEY_URL}`);
         }
     }
 
@@ -1740,7 +1794,9 @@
         window.CrewartShareQA = Object.freeze({
             createResultShareFile,
             shareFileName,
-            isAppleMobileDevice
+            isAppleMobileDevice,
+            normalizedShareFileName,
+            saveDestinationPresentation
         });
     }
 
@@ -1768,6 +1824,11 @@
         });
         element('show-result').addEventListener('click', () => showResult(false));
         element('persistent-home-button').addEventListener('click', returnToIntro);
+        element('result-save-confirm')?.addEventListener('click', savePreparedResultImage);
+        element('result-save-dialog')?.addEventListener('close', clearPreparedSaveImage);
+        element('result-save-dialog')?.addEventListener('click', event => {
+            if (event.target === event.currentTarget) event.currentTarget.close('cancel');
+        });
         document.querySelectorAll('[data-nav]').forEach(button => {
             button.addEventListener('click', () => navigateToTab(button.dataset.nav));
         });
@@ -1797,7 +1858,6 @@
         }
         setupIntroVideo();
         bindEvents();
-        initializeKakaoSdk();
         renderHome();
         updatePersistentActions();
         syncThemeColor('intro-screen');
