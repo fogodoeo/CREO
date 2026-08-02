@@ -1,5 +1,7 @@
 'use strict';
 
+const crypto = require('node:crypto');
+
 const {
     DEFAULT_CHANNELS,
     channelLinks,
@@ -13,6 +15,10 @@ const {
 
 const BODY_LIMIT = 512 * 1024;
 const TYPES = new Set(['vendor', 'item', 'shipment', 'asset']);
+const ADMIN_COOKIE = 'creo_admin_session';
+const ADMIN_SESSION_TTL_MS = 12 * 60 * 60 * 1000;
+const ADMIN_LOGIN_WINDOW_MS = 10 * 60 * 1000;
+const ADMIN_LOGIN_ATTEMPTS = 6;
 
 function replyJson(res, status, value, headers = {}) {
     const body = Buffer.from(JSON.stringify(value));
@@ -54,6 +60,42 @@ function numberValue(value, fallback = 0) {
 function booleanValue(value, fallback = true) {
     if (value === undefined || value === null || value === '') return fallback;
     return value === true || value === 1 || value === '1' || value === 'true' || value === 'on';
+}
+
+function cookieValue(req, name) {
+    const cookies = String(req.headers.cookie || '').split(';');
+    for (const cookie of cookies) {
+        const separator = cookie.indexOf('=');
+        if (separator < 0 || cookie.slice(0, separator).trim() !== name) continue;
+        try { return decodeURIComponent(cookie.slice(separator + 1).trim()); }
+        catch { return ''; }
+    }
+    return '';
+}
+
+function clientAddress(req) {
+    const forwarded = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
+    return forwarded || req.socket?.remoteAddress || 'unknown';
+}
+
+function secureRequest(req) {
+    return String(req.headers['x-forwarded-proto'] || '').toLowerCase() === 'https' || Boolean(req.socket?.encrypted);
+}
+
+function adminCookie(token, req, maxAgeSeconds) {
+    const parts = [
+        `${ADMIN_COOKIE}=${encodeURIComponent(token)}`,
+        'Path=/',
+        'HttpOnly',
+        'SameSite=Strict',
+        `Max-Age=${Math.max(0, Math.floor(maxAgeSeconds))}`
+    ];
+    if (secureRequest(req)) parts.push('Secure');
+    return parts.join('; ');
+}
+
+function sessionKey(token) {
+    return crypto.createHash('sha256').update(String(token || '')).digest('base64url');
 }
 
 function sanitizeBroadcastState(input = {}) {
@@ -204,6 +246,8 @@ function createPlatformApi({ repository, logger = console } = {}) {
     const mutationLocks = new Map();
     const channelRevisions = new Map();
     const knownChannelIds = new Set(DEFAULT_CHANNELS.map((channel) => channel.id));
+    const adminSessions = new Map();
+    const adminLoginAttempts = new Map();
     let revisionSequence = 0;
 
     function channelRevision(channelId) {
@@ -237,8 +281,43 @@ function createPlatformApi({ repository, logger = console } = {}) {
             if (mutationLocks.get(lockKey) === tail) mutationLocks.delete(lockKey);
         }
     }
+    function pruneAdminState(now = Date.now()) {
+        for (const [key, expiresAt] of adminSessions) {
+            if (expiresAt <= now) adminSessions.delete(key);
+        }
+        for (const [key, attempt] of adminLoginAttempts) {
+            if (attempt.resetAt <= now) adminLoginAttempts.delete(key);
+        }
+    }
+
+    function hasAdminSession(req, now = Date.now()) {
+        const token = cookieValue(req, ADMIN_COOKIE);
+        if (!token) return false;
+        const key = sessionKey(token);
+        const expiresAt = adminSessions.get(key) || 0;
+        if (expiresAt <= now) {
+            adminSessions.delete(key);
+            return false;
+        }
+        return true;
+    }
+
+    function revokeAdminSession(req) {
+        const token = cookieValue(req, ADMIN_COOKIE);
+        if (token) adminSessions.delete(sessionKey(token));
+    }
+
+    function loginAttempt(address, now = Date.now()) {
+        const current = adminLoginAttempts.get(address);
+        if (!current || current.resetAt <= now) return { count: 0, resetAt: now + ADMIN_LOGIN_WINDOW_MS };
+        return current;
+    }
+
     async function isAdmin(req) {
-        return repository.verifyAdmin(req.headers['x-creo-admin']);
+        pruneAdminState();
+        if (hasAdminSession(req)) return true;
+        const supplied = req.headers['x-creo-admin'];
+        return supplied ? repository.verifyAdmin(supplied) : false;
     }
 
     async function requireAdmin(req, res) {
@@ -263,6 +342,38 @@ function createPlatformApi({ repository, logger = console } = {}) {
         try {
             const segments = url.pathname.slice('/api/platform/'.length).split('/').filter(Boolean).map(decodeURIComponent);
             const method = req.method || 'GET';
+
+            if (segments.length === 2 && segments[0] === 'auth' && segments[1] === 'login' && method === 'POST') {
+                const now = Date.now();
+                const address = clientAddress(req);
+                const attempt = loginAttempt(address, now);
+                if (attempt.count >= ADMIN_LOGIN_ATTEMPTS) {
+                    const retryAfter = Math.max(1, Math.ceil((attempt.resetAt - now) / 1000));
+                    replyJson(res, 429, { error: '로그인 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.' }, { 'Retry-After': retryAfter });
+                    return true;
+                }
+                const body = await readJson(req);
+                if (!await repository.verifyAdmin(body.password)) {
+                    adminLoginAttempts.set(address, { count: attempt.count + 1, resetAt: attempt.resetAt });
+                    replyJson(res, 401, { error: '비밀번호가 맞지 않습니다.' });
+                    return true;
+                }
+                adminLoginAttempts.delete(address);
+                const token = crypto.randomBytes(32).toString('base64url');
+                adminSessions.set(sessionKey(token), now + ADMIN_SESSION_TTL_MS);
+                replyJson(res, 200, { authenticated: true }, {
+                    'Set-Cookie': adminCookie(token, req, ADMIN_SESSION_TTL_MS / 1000)
+                });
+                return true;
+            }
+
+            if (segments.length === 2 && segments[0] === 'auth' && segments[1] === 'logout' && method === 'POST') {
+                revokeAdminSession(req);
+                replyJson(res, 200, { authenticated: false }, {
+                    'Set-Cookie': adminCookie('', req, 0)
+                });
+                return true;
+            }
 
             if (segments.length === 1 && segments[0] === 'health' && method === 'GET') {
                 replyJson(res, 200, await repository.health());

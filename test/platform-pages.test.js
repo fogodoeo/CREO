@@ -36,6 +36,10 @@ test('platform pages contain valid inline JavaScript and required viewport metad
 test('platform client script is valid JavaScript', () => {
     const source = fs.readFileSync(path.join(__dirname, '..', 'public', 'platform-client.js'), 'utf8');
     assert.doesNotThrow(() => new vm.Script(source, { filename: 'platform-client.js' }));
+    assert.match(source, /\/api\/platform\/auth\/login/);
+    assert.match(source, /credentials:\s*'same-origin'/);
+    assert.match(source, /SESSION_MARKER/);
+    assert.match(source, /async function logout/);
 });
 
 test('the universal broadcast route preserves CDCUP legacy output and uses the new renderer elsewhere', () => {
@@ -51,6 +55,11 @@ test('the universal broadcast route preserves CDCUP legacy output and uses the n
 
 test('hub preserves established management and CDCUP broadcast control links', () => {
     const hub = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+    assert.match(hub, /id="login-gate"/);
+    assert.match(hub, /id="dashboard" hidden/);
+    assert.match(hub, /id="admin-password"/);
+    assert.match(hub, /CreoPlatform\.verifyAdmin\(\)/);
+    assert.match(hub, /CreoPlatform\.logout\(\)/);
     assert.match(hub, /c\.links\.workspace/);
     assert.match(hub, /c\.links\.control/);
     assert.match(hub, /legacy\?\.managementUrl/);

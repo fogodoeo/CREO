@@ -2,19 +2,27 @@
     'use strict';
 
     const ADMIN_KEY = 'creo_platform_admin';
+    const SESSION_MARKER = 'session';
+
+    async function readResponse(response) {
+        let payload = null;
+        try { payload = await response.json(); } catch (_) {}
+        return payload;
+    }
 
     async function api(path, options = {}) {
         const admin = options.admin ?? sessionStorage.getItem(ADMIN_KEY) ?? '';
+        const headerAdmin = admin && admin !== SESSION_MARKER ? admin : '';
         const response = await fetch(`/api/platform/${String(path).replace(/^\/+/, '')}`, {
             ...options,
+            credentials: 'same-origin',
             headers: {
                 'Content-Type': 'application/json',
-                ...(admin ? { 'X-Creo-Admin': admin } : {}),
+                ...(headerAdmin ? { 'X-Creo-Admin': headerAdmin } : {}),
                 ...(options.headers || {})
             }
         });
-        let payload = null;
-        try { payload = await response.json(); } catch (_) {}
+        const payload = await readResponse(response);
         if (!response.ok) {
             const error = new Error(payload?.error || `요청 실패 (${response.status})`);
             error.status = response.status;
@@ -31,14 +39,38 @@
     }
 
     function getAdmin() {
-        return sessionStorage.getItem(ADMIN_KEY) || '';
+        return sessionStorage.getItem(ADMIN_KEY) || SESSION_MARKER;
     }
 
     async function verifyAdmin(password = getAdmin()) {
-        if (!password) return false;
-        const result = await api('admin-check', { admin: password });
-        if (result.authenticated) setAdmin(password);
+        const supplied = String(password || '');
+        if (supplied && supplied !== SESSION_MARKER) {
+            const response = await fetch('/api/platform/auth/login', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password: supplied })
+            });
+            const payload = await readResponse(response);
+            if (!response.ok || !payload?.authenticated) {
+                sessionStorage.removeItem(ADMIN_KEY);
+                return false;
+            }
+            sessionStorage.setItem(ADMIN_KEY, SESSION_MARKER);
+            return true;
+        }
+        const result = await api('admin-check', { admin: '' });
+        if (result.authenticated) sessionStorage.setItem(ADMIN_KEY, SESSION_MARKER);
+        else sessionStorage.removeItem(ADMIN_KEY);
         return Boolean(result.authenticated);
+    }
+
+    async function logout() {
+        try {
+            await api('auth/logout', { method: 'POST', admin: '', body: '{}' });
+        } finally {
+            sessionStorage.removeItem(ADMIN_KEY);
+        }
     }
 
     function escapeHtml(value) {
@@ -59,6 +91,7 @@
         api,
         escapeHtml,
         getAdmin,
+        logout,
         money,
         setAdmin,
         verifyAdmin

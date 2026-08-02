@@ -33,6 +33,24 @@ class RecordingMirror extends ReadableMirror {
     }
 }
 
+test('SQLite repository uses the requested 1234 default and rejects arbitrary passwords', async (t) => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'creo-default-admin-'));
+    t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+    const previous = process.env.CREO_ADMIN_SECRET;
+    delete process.env.CREO_ADMIN_SECRET;
+    t.after(() => {
+        if (previous === undefined) delete process.env.CREO_ADMIN_SECRET;
+        else process.env.CREO_ADMIN_SECRET = previous;
+    });
+    const repository = new SQLitePlatformRepository({
+        dbPath: path.join(directory, 'platform.sqlite'),
+        startWorker: false
+    });
+    assert.equal(await repository.verifyAdmin('1234'), true);
+    assert.equal(await repository.verifyAdmin('anything'), false);
+    repository.close();
+});
+
 test('SQLite repository persists channel-isolated records across restarts', async (t) => {
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'creo-sqlite-'));
     const database = path.join(directory, 'platform.sqlite');

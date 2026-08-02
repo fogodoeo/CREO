@@ -32,18 +32,62 @@ class ResponseCapture {
     json() { return JSON.parse(this.body || '{}'); }
 }
 
-function req(method, body, admin = 'secret') {
+function req(method, body, admin = 'secret', headers = {}) {
     const request = Readable.from(body ? [Buffer.from(JSON.stringify(body))] : []);
     request.method = method;
-    request.headers = admin ? { 'x-creo-admin': admin } : {};
+    request.headers = { ...headers, ...(admin ? { 'x-creo-admin': admin } : {}) };
     return request;
 }
 
-async function call(api, method, pathname, body, admin = 'secret') {
+async function call(api, method, pathname, body, admin = 'secret', headers = {}) {
     const response = new ResponseCapture();
-    await api.handle(req(method, body, admin), response, new URL(`https://creo.test${pathname}`));
+    await api.handle(req(method, body, admin, headers), response, new URL(`https://creo.test${pathname}`));
     return response;
 }
+
+test('admin login exchanges the password for an HttpOnly session and logout revokes it', async () => {
+    const repository = new MemoryRepository();
+    const api = createPlatformApi({ repository, logger: { error() {} } });
+    const requestHeaders = { 'x-forwarded-for': '203.0.113.8', 'x-forwarded-proto': 'https' };
+
+    const rejected = await call(api, 'POST', '/api/platform/auth/login', { password: 'wrong' }, '', requestHeaders);
+    assert.equal(rejected.status, 401);
+    assert.equal(rejected.headers['Set-Cookie'], undefined);
+
+    const login = await call(api, 'POST', '/api/platform/auth/login', { password: 'secret' }, '', requestHeaders);
+    assert.equal(login.status, 200);
+    assert.equal(login.json().authenticated, true);
+    assert.match(login.headers['Set-Cookie'], /^creo_admin_session=/);
+    assert.match(login.headers['Set-Cookie'], /HttpOnly/);
+    assert.match(login.headers['Set-Cookie'], /SameSite=Strict/);
+    assert.match(login.headers['Set-Cookie'], /Secure/);
+
+    const cookie = login.headers['Set-Cookie'].split(';')[0];
+    const sessionHeaders = { ...requestHeaders, cookie };
+    const session = await call(api, 'GET', '/api/platform/admin-check', null, '', sessionHeaders);
+    assert.equal(session.json().authenticated, true);
+    const protectedChannels = await call(api, 'GET', '/api/platform/channels', null, '', sessionHeaders);
+    assert.equal(protectedChannels.json().channels.length, 2);
+
+    const logout = await call(api, 'POST', '/api/platform/auth/logout', {}, '', sessionHeaders);
+    assert.equal(logout.status, 200);
+    assert.match(logout.headers['Set-Cookie'], /Max-Age=0/);
+    const expired = await call(api, 'GET', '/api/platform/admin-check', null, '', sessionHeaders);
+    assert.equal(expired.json().authenticated, false);
+});
+
+test('admin login throttles repeated incorrect passwords', async () => {
+    const repository = new MemoryRepository();
+    const api = createPlatformApi({ repository, logger: { error() {} } });
+    const headers = { 'x-forwarded-for': '203.0.113.9' };
+    for (let index = 0; index < 6; index += 1) {
+        const response = await call(api, 'POST', '/api/platform/auth/login', { password: 'wrong' }, '', headers);
+        assert.equal(response.status, 401);
+    }
+    const blocked = await call(api, 'POST', '/api/platform/auth/login', { password: 'secret' }, '', headers);
+    assert.equal(blocked.status, 429);
+    assert.ok(Number(blocked.headers['Retry-After']) > 0);
+});
 
 test('vendor records with identical ids remain isolated by channel', async () => {
     const repository = new MemoryRepository();

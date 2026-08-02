@@ -9,6 +9,8 @@ const ALLOWED_RECORD_TYPES = new Set(['vendor', 'item', 'shipment', 'setting', '
 const FALLBACK_SUPABASE_URL = 'https://iuwqjeecwepqyqqlzprf.supabase.co';
 const FALLBACK_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml1d3FqZWVjd2VwcXlxcWx6cHJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyMTA3OTIsImV4cCI6MjA5Nzc4Njc5Mn0.psiAk4cqzjHqT6gP46m6nQM97nNsLEgc-a7K8BEAd_Y';
 
+const DEFAULT_ADMIN_SECRET = '1234';
+
 function jsonParse(value, fallback = null) {
     try { return JSON.parse(value); } catch { return fallback; }
 }
@@ -49,7 +51,7 @@ class SupabaseConfigRepository {
             || FALLBACK_SUPABASE_ANON_KEY
         );
         this.fetch = options.fetchImpl || globalThis.fetch;
-        this.adminSecret = String(options.adminSecret || process.env.CREO_ADMIN_SECRET || '');
+        this.adminSecret = String(options.adminSecret || process.env.CREO_ADMIN_SECRET || DEFAULT_ADMIN_SECRET);
         this.integritySecret = String(options.integritySecret || process.env.CREO_DATA_SIGNING_SECRET || this.adminSecret);
         if (!this.fetch) throw new Error('fetch is required');
     }
@@ -201,18 +203,10 @@ class SupabaseConfigRepository {
     async verifyAdmin(password) {
         const supplied = String(password || '');
         if (!supplied) return false;
-        if (this.adminSecret) {
-            const crypto = require('node:crypto');
-            const left = Buffer.from(supplied);
-            const right = Buffer.from(this.adminSecret);
-            return left.length === right.length && crypto.timingSafeEqual(left, right);
-        }
-        const row = await this.getRow('admin_pw');
-        // 기존 운영 도구와 동일하게, 관리자 비밀번호가 아직 설정되지 않은
-        // 설치에서는 비어 있지 않은 입력을 임시 통과시킨다. admin_pw 또는
-        // CREO_ADMIN_SECRET을 설정하는 즉시 정확한 값만 허용된다.
-        if (!row?.value) return true;
-        return String(row.value) === supplied;
+        const crypto = require('node:crypto');
+        const left = Buffer.from(supplied);
+        const right = Buffer.from(this.adminSecret);
+        return left.length === right.length && crypto.timingSafeEqual(left, right);
     }
 
     async health() {
