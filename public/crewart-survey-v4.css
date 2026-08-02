@@ -151,7 +151,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     font-weight: 650;
     letter-spacing: .19em;
 }
-.cw-intro-copy { margin: 21px auto 0; color: rgba(255, 255, 255, .62); font-size: var(--cw-type-caption); font-weight: 600; letter-spacing: .035em; }
+.cw-intro-copy { display: grid; gap: 5px; margin: 21px auto 0; color: rgba(255, 255, 255, .62); font-size: var(--cw-type-caption); font-weight: 600; letter-spacing: .035em; }
+.cw-intro-copy small { color: rgba(255, 255, 255, .52); font-size: 10px; font-weight: 500; letter-spacing: 0; line-height: 1.35; }
 
 .cw-home-start { width: min(100%, 340px); margin: auto auto 0; }
 .cw-home-result { display: grid; flex: 1; align-self: stretch; width: 100%; min-height: 0; place-content: center; justify-items: center; color: #fff; text-align: center; }
