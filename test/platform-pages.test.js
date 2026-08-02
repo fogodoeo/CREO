@@ -134,7 +134,7 @@ test('CREWARTS reveals the basic result first and unlocks member detail by phone
     assert.match(html, /data-nav="band"/);
     assert.match(html, /id="member-phone"/);
     assert.match(html, /id="member-check-submit-label">확인하기<\/strong>/);
-    assert.match(html, /입력한 번호는 가입 여부 확인에만 사용해요\./);
+    assert.match(html, /번호는 저장하지 않고 가입 후 자동 확인해요\./);
     assert.match(html, /<label for="member-phone">휴대전화번호<\/label>/);
     assert.match(html, /id="band-connection-status">연결되지 않음<\/span>/);
     assert.match(html, /class="cw-band-account-head"[\s\S]*id="member-check-title">회원 확인[\s\S]*class="cw-band-connection"/);
@@ -152,13 +152,16 @@ test('CREWARTS reveals the basic result first and unlocks member detail by phone
     assert.match(script, /\/api\/crewart-survey\/responses/);
     assert.doesNotMatch(script, /getConfigMap|saveCrewartSurveyEntry/);
     assert.doesNotMatch(script, /openBandJoinWindow|bandPopup|window\.open\('', '_blank'/);
-    assert.match(script, /if \(!payload\.member\)[\s\S]*아직 가입 확인이 안 됐어요[\s\S]*joinLink\.hidden = false[\s\S]*is-recommended[\s\S]*submitLabel\.textContent = '다시 확인'/);
+    assert.match(script, /if \(!payload\.member\)[\s\S]*가입 후 돌아오면 같은 번호로 자동 확인해요[\s\S]*joinLink\.hidden = false[\s\S]*is-recommended[\s\S]*submitLabel\.textContent = '다시 확인'/);
     assert.match(script, /handleMemberJoinReturn[\s\S]*가입 승인 후 돌아오면 자동으로 다시 확인해요/);
     assert.match(css, /\.cw-dialog-band-button\.is-recheck/);
     assert.match(css, /\.cw-member-status\.is-action/);
     assert.doesNotMatch(script, /window\.location\.assign\(bandTargetUrl\)/);
     assert.match(script, /function recheckPendingMembership[\s\S]*completeMembershipAccess\(payload, verifiedPhone\)/);
     assert.match(script, /visibilitychange[\s\S]*recheckPendingMembership\(\{ visibleOnly: true \}\)/);
+    const openMemberCheckBody = script.match(/function openMemberCheck\(options = \{\}\) \{([\s\S]*?)\n    \}/)?.[1] || '';
+    assert.doesNotMatch(openMemberCheckBody, /\.focus\(/);
+    assert.match(openMemberCheckBody, /setScreen\('band-screen'\)/);
     const showResultBody = script.match(/function showResult\(skipMbti\) \{([\s\S]*?)\n    \}/)?.[1] || '';
     assert.match(showResultBody, /completeResultReveal\(\)/);
     assert.doesNotMatch(showResultBody, /openMemberCheck/);
@@ -273,7 +276,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /cw-result-code cw-result-code-back/);
     assert.match(script, /cw-result-code cw-result-code-front/);
     assert.match(script, /class="cw-type-poster"/);
-    assert.match(html, /20260802-kakao-card-v33/);
+    assert.match(html, /20260802-band-flow-v34/);
     assert.match(html, /property="og:url" content="https:\/\/creok\.onrender\.com\/crewart-survey\.html"/);
     assert.match(html, /rel="canonical" href="https:\/\/creok\.onrender\.com\/crewart-survey\.html"/);
     assert.deepEqual(

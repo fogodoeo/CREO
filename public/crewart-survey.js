@@ -516,14 +516,6 @@
         if (!hasDetailedAccess()) editingMembership = false;
         updateBandState();
         setScreen('band-screen');
-        if (!hasDetailedAccess() || editingMembership) {
-            requestAnimationFrame(() => {
-                const input = element('member-phone');
-                if (!input) return;
-                try { input.focus({ preventScroll: true }); } catch (_) { input.focus(); }
-                syncMemberKeyboardState({ immediate: true });
-            });
-        }
     }
 
     function editMembershipAccess() {
@@ -1373,7 +1365,7 @@
             }
             if (status) {
                 status.hidden = false;
-                status.textContent = '아직 가입 확인이 안 됐어요.';
+                status.textContent = '가입 후 돌아오면 같은 번호로 자동 확인해요.';
                 status.classList.remove('is-error', 'is-success');
                 status.classList.add('is-action');
             }
@@ -1425,7 +1417,7 @@
         try {
             const payload = await requestPhoneMembership(phoneDigits);
             if (!payload.member) {
-                status.textContent = '아직 가입 확인이 안 됐어요.';
+                status.textContent = '가입 후 돌아오면 같은 번호로 자동 확인해요.';
                 status.classList.remove('is-error', 'is-success');
                 status.classList.add('is-action');
                 pendingMemberPhone = phoneDigits;
