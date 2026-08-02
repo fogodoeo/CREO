@@ -279,7 +279,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /cw-result-code cw-result-code-back/);
     assert.match(script, /cw-result-code cw-result-code-front/);
     assert.match(script, /class="cw-type-poster"/);
-    assert.match(html, /20260802-control-system-v40/);
+    assert.match(html, /20260802-home-code-v41/);
     assert.match(html, /property="og:url" content="https:\/\/creok\.onrender\.com\/crewart-survey\.html"/);
     assert.match(html, /rel="canonical" href="https:\/\/creok\.onrender\.com\/crewart-survey\.html"/);
     assert.deepEqual(
@@ -358,6 +358,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(css, /\.cw-dialog-band-button\s*\{[^}]*background:\s*var\(--cw-green\)/);
     assert.match(css, /\.cw-share-action\.is-kakao\s*\{[^}]*background:\s*#fee500/);
     assert.match(css, /\.cw-share-action\.is-save\s*\{[^}]*background:\s*var\(--cw-ink\)/);
+    assert.match(css, /\.cw-home-result\s*\{[^}]*justify-items:\s*center/);
+    assert.match(css, /@media \(max-width: 420px\)[\s\S]*\.cw-result-code-back\s*\{\s*left:\s*17%/);
     assert.match(css, /--cw-type-section:\s*18px/);
     assert.match(css, /--cw-weight-bold:\s*800/);
     assert.match(css, /\.cw-question-card > h1[\s\S]*font-weight:\s*var\(--cw-weight-bold\)/);
@@ -374,7 +376,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(css, /\.cw-band\.is-keyboard-open[\s\S]*--cw-visual-viewport-height/);
     assert.doesNotMatch(css, /\.cw-band\.is-keyboard-open \.cw-band-account-head\s*\{[^}]*display:\s*none/);
     assert.doesNotMatch(css, /\.cw-band\.is-keyboard-open \.cw-member-status[^}]*display:\s*none/);
-    assert.match(css, /@media \(max-width: 420px\)[\s\S]*\.cw-result-code-front\s*\{\s*right:\s*21%/);
+    assert.match(css, /@media \(max-width: 420px\)[\s\S]*\.cw-result-code-front\s*\{\s*right:\s*17%/);
     assert.match(css, /@media \(max-width: 420px\)[\s\S]*\.cw-axis-detail header h3\s*\{\s*font-size:\s*12px/);
     assert.match(css, /@media \(max-width: 420px\)[\s\S]*\.cw-member-status\s*\{\s*font-size:\s*12px/);
     assert.match(script, /function syncMemberKeyboardState\(options = \{\}\)/);
