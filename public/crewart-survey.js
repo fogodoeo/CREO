@@ -363,6 +363,11 @@
         window.scrollTo({ top: 0, behavior: 'instant' });
     }
 
+    function syncViewportNavigation() {
+        const viewportWidth = Math.round(window.innerWidth || document.documentElement.clientWidth || 0);
+        if (viewportWidth > 0) document.documentElement.style.setProperty('--cw-nav-center', `${viewportWidth / 2}px`);
+    }
+
     function syncMemberKeyboardState(options = {}) {
         const input = element('member-phone');
         const screen = element('band-screen');
@@ -2187,9 +2192,15 @@
         });
         window.addEventListener('pageshow', () => void recheckPendingMembership({ visibleOnly: true }));
         window.addEventListener('focus', () => void recheckPendingMembership({ visibleOnly: true }));
-        window.visualViewport?.addEventListener('resize', () => syncMemberKeyboardState());
+        window.visualViewport?.addEventListener('resize', () => {
+            syncViewportNavigation();
+            syncMemberKeyboardState();
+        });
         window.visualViewport?.addEventListener('scroll', () => syncMemberKeyboardState({ ensureVisible: false }));
-        window.addEventListener('resize', () => syncMemberKeyboardState({ ensureVisible: false }));
+        window.addEventListener('resize', () => {
+            syncViewportNavigation();
+            syncMemberKeyboardState({ ensureVisible: false });
+        });
     }
 
     function initialize() {
@@ -2199,6 +2210,7 @@
         }
         setupIntroVideo();
         bindEvents();
+        syncViewportNavigation();
         renderHome();
         updatePersistentActions();
         replaceTabHistory(navigationTabForStage());

@@ -279,7 +279,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /cw-result-code cw-result-code-back/);
     assert.match(script, /cw-result-code cw-result-code-front/);
     assert.match(script, /class="cw-type-poster"/);
-    assert.match(html, /20260802-home-code-v50/);
+    assert.match(html, /20260802-home-code-v51/);
     assert.match(html, /property="og:url" content="https:\/\/creok\.onrender\.com\/crewart-survey\.html"/);
     assert.match(html, /rel="canonical" href="https:\/\/creok\.onrender\.com\/crewart-survey\.html"/);
     assert.deepEqual(
@@ -378,7 +378,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /classList\.add\('is-video-ready'\)/);
     assert.match(css, /\.cw-bottom-nav[\s\S]*position:\s*fixed/);
     assert.match(css, /\.cw-bottom-nav > div\s*\{[^}]*height:\s*var\(--cw-nav-height\)[^}]*place-items:\s*stretch/);
-    assert.match(css, /\.cw-bottom-nav\s*\{[^}]*left:\s*50vw[^}]*width:\s*min\(calc\(100vw - 24px\), 760px\)/);
+    assert.match(css, /\.cw-bottom-nav\s*\{[^}]*left:\s*var\(--cw-nav-center, 50vw\)[^}]*width:\s*min\(calc\(100vw - 24px\), 760px\)/);
+    assert.match(script, /function syncViewportNavigation\(\)/);
     assert.match(css, /\.cw-bottom-nav\s*\{[^}]*bottom:\s*max\(10px, env\(safe-area-inset-bottom\)\)[^}]*border-radius:\s*16px/);
     assert.doesNotMatch(css, /\.cw-bottom-nav\.is-result-hidden/);
     assert.doesNotMatch(script, /resultNavRevealed|updateResultNavigationVisibility/);
