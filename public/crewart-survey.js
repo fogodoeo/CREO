@@ -30,6 +30,62 @@
         NT: '가능성을 논리적으로 설계하고 실험하는 기숙사',
         NF: '성장 가능성과 관계를 연결해 방향을 만드는 기숙사'
     });
+    const AXIS_DETAIL_GUIDE = Object.freeze({
+        E: {
+            signals: ['정보를 말로 풀며 우선순위를 정해요.', '주변 반응에서 놓친 단서를 빠르게 찾아요.', '경험을 공유하고 피드백을 받으며 판단을 굳혀요.'],
+            balance: '분위기나 타인의 반응이 강할 때는 혼자 검토할 시간을 짧게 두면 내 기준이 더 선명해져요.'
+        },
+        I: {
+            signals: ['관찰과 기록을 충분히 모은 뒤 판단해요.', '말하기 전에 조건과 차이를 머릿속에서 비교해요.', '조용히 정리할 때 미세한 변화까지 발견하는 편이에요.'],
+            balance: '검토가 길어질 때는 결정 시점을 먼저 정해두면 좋은 관찰이 실제 행동으로 더 잘 이어져요.'
+        },
+        S: {
+            signals: ['현재 확인되는 컨디션과 수치를 먼저 봐요.', '직접 본 변화와 반복된 패턴을 신뢰해요.', '지금 필요한 관리 행동을 구체적으로 정해요.'],
+            balance: '현재 정보가 안정적일수록 성장 흐름과 다음 단계까지 함께 보면 장기적인 선택이 더 쉬워져요.'
+        },
+        N: {
+            signals: ['현재 모습에서 앞으로의 성장 흐름을 그려요.', '서로 떨어진 단서를 연결해 가능성을 찾아요.', '익숙한 방식보다 새로운 조합과 실험에 관심을 보여요.'],
+            balance: '가능성을 선택하기 전 지금 확인되는 컨디션과 관리 조건을 한 번 더 점검하면 실행력이 높아져요.'
+        },
+        T: {
+            signals: ['조건과 근거를 같은 기준으로 비교해요.', '문제가 생기면 원인과 해결 순서를 먼저 찾아요.', '결정의 일관성과 재현 가능성을 중요하게 봐요.'],
+            balance: '수치가 비슷한 선택지에서는 애착과 만족감도 기준에 넣으면 오래 유지할 수 있는 결정이 돼요.'
+        },
+        F: {
+            signals: ['개체와의 교감, 취향, 관계의 의미를 함께 봐요.', '관리 과정에서 받는 느낌과 만족도를 중요하게 여겨요.', '누구와 어떤 경험을 만들지까지 생각해 선택해요.'],
+            balance: '마음이 크게 움직이는 선택일수록 관리 조건과 비용을 숫자로 확인하면 만족을 더 오래 지킬 수 있어요.'
+        },
+        J: {
+            signals: ['기준과 순서를 미리 정하면 마음이 편해져요.', '급여·청소·기록을 일정한 루틴으로 관리해요.', '예상 가능한 준비와 마감이 있을 때 실행이 빨라져요.'],
+            balance: '계획과 다른 반응이 보이면 예외 기준을 하나 정해두세요. 루틴을 지키면서도 유연하게 대응할 수 있어요.'
+        },
+        P: {
+            signals: ['실제 반응을 본 뒤 계획을 유연하게 바꿔요.', '여러 가능성을 열어두고 가장 맞는 방식을 찾아요.', '예상 밖의 변화에도 부담 없이 대응하는 편이에요.'],
+            balance: '반드시 지켜야 할 최소 루틴만 고정하면 유연함은 유지하면서 기록 누락과 관리 편차를 줄일 수 있어요.'
+        }
+    });
+    const HOUSE_DETAIL_GUIDE = Object.freeze({
+        SF: {
+            strengths: ['현재 컨디션을 세심하게 살핌', '취향과 관계의 작은 변화를 기억함', '안정적이고 편안한 돌봄 환경을 만듦'],
+            role: '개체와 사람 사이의 분위기를 읽고, 모두가 편안하게 참여할 수 있도록 연결하는 역할에 강해요.',
+            balance: '애착만으로 판단하기 어려운 순간에는 기록과 관리 조건을 함께 확인해보세요.'
+        },
+        ST: {
+            strengths: ['확인되는 정보로 관리 기준을 세움', '문제를 순서대로 안정적으로 해결함', '반복 가능한 운영 루틴을 만듦'],
+            role: '관리 기준을 실제 행동으로 바꾸고, 팀이 흔들리지 않도록 운영의 중심을 잡는 역할에 강해요.',
+            balance: '기존 기준이 잘 작동하더라도 새로운 가능성을 시험할 작은 여지를 남겨두면 더 발전할 수 있어요.'
+        },
+        NT: {
+            strengths: ['성장 가능성을 구조적으로 분석함', '새로운 조합과 방법을 실험함', '복잡한 문제를 원리와 시스템으로 해결함'],
+            role: '아직 정답이 없는 문제에 가설을 세우고, 다음 시도를 설계하는 역할에 강해요.',
+            balance: '아이디어를 실행하기 전 현재 컨디션과 돌봄 부담을 확인하면 실험의 완성도가 높아져요.'
+        },
+        NF: {
+            strengths: ['개체의 성장 가능성과 관계를 함께 봄', '사람들이 공감할 수 있는 방향을 제시함', '의미 있는 경험과 이야기를 연결함'],
+            role: '서로 다른 관심을 하나의 방향으로 묶고, 참여할 이유를 만들어주는 역할에 강해요.',
+            balance: '좋은 방향을 오래 이어가려면 일정·비용·관리 기준을 구체적인 실행 항목으로 바꿔보세요.'
+        }
+    });
     const IS_LOCAL_QA = ['127.0.0.1', 'localhost'].includes(location.hostname);
     const IS_QA_MODE = IS_LOCAL_QA;
 
@@ -686,6 +742,21 @@
         return { median, position, comparison };
     }
 
+    function timingEntryLabel(entry) {
+        if (!entry) return '측정 정보 없음';
+        const question = questions.find(item => item.id === entry.questionId)
+            || Core.QUESTIONS.find(item => item.id === entry.questionId);
+        const label = question?.label || AXIS_REPORT_COPY[entry.axis]?.title || '선택 문항';
+        return `${label} · ${formatSeconds(entry.elapsedMs)}`;
+    }
+
+    function speedPositionCopy(position, hasBenchmark) {
+        if (!hasBenchmark) return '아직 전체 참여자 기준이 충분하지 않아 이번 응답 안에서의 선택 리듬만 보여드려요.';
+        if (position <= 35) return '전체 참여자보다 빠르게 첫 판단을 확정한 편이에요. 직감적인 선택 리듬이 비교적 선명해요.';
+        if (position >= 65) return '전체 참여자보다 한 번 더 비교한 뒤 선택한 편이에요. 숙고하는 리듬이 비교적 선명해요.';
+        return '전체 참여자 평균과 가까운 속도예요. 직감과 확인 사이에서 비교적 균형 있게 선택했어요.';
+    }
+
     function renderSpeedCard() {
         const presentation = resultSpeedPresentation();
         if (!presentation) return '';
@@ -693,6 +764,25 @@
         return `
             <section class="cw-result-section cw-speed-card">
                 ${renderReportSectionHead('02', 'RESPONSE PACE', '선택 속도', 'speed-report-detail')}
+                <div class="cw-report-disclosure cw-speed-disclosure" id="speed-report-detail" hidden>
+                    <header><strong>${escapeHtml(timingStats.style.label)}</strong><span>유효 선택 ${escapeHtml(timingStats.validCount)} / ${escapeHtml(questions.length || 20)}</span></header>
+                    <p class="cw-detail-lead">${escapeHtml(timingStats.style.copy)} ${escapeHtml(speedPositionCopy(position, cohortSummary.timingMedians.length > 0))}</p>
+                    <section class="cw-detail-points" aria-label="선택 속도 해석">
+                        <h4>응답에서 보인 흐름</h4>
+                        <ul>
+                            <li>가장 빠른 선택: ${escapeHtml(timingEntryLabel(timingStats.fastest))}</li>
+                            <li>가장 오래 본 선택: ${escapeHtml(timingEntryLabel(timingStats.slowest))}</li>
+                            <li>문항별 시간의 중앙값을 사용해 한두 번의 긴 멈춤이 결과를 과도하게 바꾸지 않도록 했어요.</li>
+                        </ul>
+                    </section>
+                    <dl>
+                        <div><dt>문항당 중앙값</dt><dd>${escapeHtml(median)}</dd></div>
+                        <div><dt>문항당 평균</dt><dd>${escapeHtml(formatSeconds(timingStats.averageMs))}</dd></div>
+                        <div><dt>유효 선택 전체 시간</dt><dd>${escapeHtml(formatSeconds(timingStats.totalMs))}</dd></div>
+                        ${Core.AXES.map(axis => `<div><dt>${escapeHtml(AXIS_REPORT_COPY[axis].title)}</dt><dd>${escapeHtml(formatSeconds(timingStats.axisMedians[axis]))}</dd></div>`).join('')}
+                    </dl>
+                    <div class="cw-detail-note"><strong>읽는 법</strong><p>선택 속도는 정확도나 성실도 점수가 아니에요. 이번 검사에서 결정을 내린 리듬만 보여주는 참고 지표예요.</p></div>
+                </div>
                 <div class="cw-speed-summary">
                     <header class="cw-speed-head">
                         <strong data-measure-speed data-final-text="문항당 ${escapeHtml(median)}">문항당 ${escapeHtml(median)}</strong>
@@ -703,14 +793,6 @@
                         <div class="cw-scale-line"><i aria-hidden="true"></i></div>
                         <div class="cw-scale-labels"><span>빠름</span><span>평균</span><span>신중</span></div>
                     </div>
-                </div>
-                <div class="cw-report-disclosure cw-speed-disclosure" id="speed-report-detail" hidden>
-                    <header><strong>${escapeHtml(timingStats.style.label)}</strong><span>유효 선택 ${escapeHtml(timingStats.validCount)}개</span></header>
-                    <p>${escapeHtml(timingStats.style.copy)}</p>
-                    <dl>
-                        <div><dt>문항당 선택</dt><dd>${escapeHtml(median)}</dd></div>
-                        <div><dt>측정된 전체 시간</dt><dd>${escapeHtml(formatSeconds(timingStats.totalMs))}</dd></div>
-                    </dl>
                 </div>
             </section>`;
     }
@@ -743,17 +825,29 @@
         const axisInsights = result.axes.map(axisResult => {
             const meta = Core.AXIS_META[axisResult.axis];
             const dominant = meta.letters[axisResult.dominant];
+            const first = axisResult.axis[0];
+            const second = axisResult.axis[1];
+            const guide = AXIS_DETAIL_GUIDE[axisResult.dominant];
             return `
                 <article class="cw-axis-insight">
                     <header><strong>${escapeHtml(axisResult.dominant)} · ${escapeHtml(dominant.short)}</strong><span>${escapeHtml(axisStrength(axisResult))}</span></header>
-                    <p>${escapeHtml(dominant.description)}</p>
+                    <p class="cw-detail-lead">${escapeHtml(dominant.description)}</p>
+                    <section class="cw-detail-points">
+                        <h4>응답에서 보인 흐름</h4>
+                        <ul>${guide.signals.map(signal => `<li>${escapeHtml(signal)}</li>`).join('')}</ul>
+                    </section>
+                    <dl>
+                        <div><dt>응답 분포</dt><dd>${escapeHtml(first)} ${escapeHtml(result.letters[first])} · ${escapeHtml(second)} ${escapeHtml(result.letters[second])}</dd></div>
+                        <div><dt>해석 강도</dt><dd>${escapeHtml(axisStrength(axisResult))}</dd></div>
+                    </dl>
+                    <div class="cw-detail-note"><strong>균형 포인트</strong><p>${escapeHtml(guide.balance)}</p></div>
                 </article>`;
         }).join('');
         return `
             <section class="cw-result-section cw-member-detail">
                 ${renderReportSectionHead('01', 'TRAIT AXES', '성향 지표', 'axes-report-detail')}
-                <div class="cw-axis-detail-list">${axisCards}</div>
                 <div class="cw-report-disclosure cw-axis-insights" id="axes-report-detail" hidden>${axisInsights}</div>
+                <div class="cw-axis-detail-list">${axisCards}</div>
             </section>`;
     }
 
@@ -763,20 +857,28 @@
         const tfAxis = result.axes.find(axisResult => axisResult.axis === 'TF');
         const snCopy = snAxis?.dominant === 'S' ? AXIS_REPORT_COPY.SN.left : AXIS_REPORT_COPY.SN.right;
         const tfCopy = tfAxis?.dominant === 'T' ? AXIS_REPORT_COPY.TF.left : AXIS_REPORT_COPY.TF.right;
+        const guide = HOUSE_DETAIL_GUIDE[assignedHouseKey];
         return `
             <section class="cw-report-house" style="--house-accent:${escapeHtml(house.accent)}">
                 ${renderReportSectionHead('03', 'HOUSE ASSIGNMENT', '기숙사', 'house-report-detail')}
-                <div class="cw-house-assignment">
-                    <b aria-hidden="true">${escapeHtml(house.seal)}</b>
-                    <div><small>ASSIGNED HOUSE</small><strong aria-label="${escapeHtml(house.name)}"><span data-measure-house data-final-text="${escapeHtml(house.name)}">${escapeHtml(house.name)}</span></strong></div>
-                </div>
                 <div class="cw-report-disclosure cw-house-disclosure" id="house-report-detail" hidden>
                     <strong>${escapeHtml(HOUSE_REPORT_COPY[assignedHouseKey] || '')}</strong>
-                    <p>관찰 초점과 선택 기준의 조합을 반영해 배정했어요.</p>
+                    <p class="cw-detail-lead">기숙사는 네 글자 전체가 아니라, 크레를 보는 관찰 초점과 선택 기준의 조합으로 배정해요.</p>
+                    <section class="cw-detail-points">
+                        <h4>이 기숙사에서 드러나는 강점</h4>
+                        <ul>${guide.strengths.map(strength => `<li>${escapeHtml(strength)}</li>`).join('')}</ul>
+                    </section>
+                    <div class="cw-house-role"><strong>커뮤니티에서의 역할</strong><p>${escapeHtml(guide.role)}</p></div>
                     <dl>
                         <div><dt>관찰 초점</dt><dd>${escapeHtml(snAxis?.dominant || '')} · ${escapeHtml(snCopy)}</dd></div>
                         <div><dt>선택 기준</dt><dd>${escapeHtml(tfAxis?.dominant || '')} · ${escapeHtml(tfCopy)}</dd></div>
+                        <div><dt>배정 조합</dt><dd>${escapeHtml(assignedHouseKey)}</dd></div>
                     </dl>
+                    <div class="cw-detail-note"><strong>균형 포인트</strong><p>${escapeHtml(guide.balance)}</p></div>
+                </div>
+                <div class="cw-house-assignment">
+                    <b aria-hidden="true">${escapeHtml(house.seal)}</b>
+                    <div><small>ASSIGNED HOUSE</small><strong aria-label="${escapeHtml(house.name)}"><span data-measure-house data-final-text="${escapeHtml(house.name)}">${escapeHtml(house.name)}</span></strong></div>
                 </div>
             </section>`;
     }
@@ -1390,6 +1492,17 @@
         });
     }
 
+    function drawShareImageContain(context, image, x, y, width, height) {
+        const sourceWidth = Number(image.naturalWidth || image.width) || width;
+        const sourceHeight = Number(image.naturalHeight || image.height) || height;
+        const scale = Math.min(width / sourceWidth, height / sourceHeight);
+        const drawWidth = sourceWidth * scale;
+        const drawHeight = sourceHeight * scale;
+        const drawX = x + (width - drawWidth) / 2;
+        const drawY = y + (height - drawHeight) / 2;
+        context.drawImage(image, drawX, drawY, drawWidth, drawHeight);
+    }
+
     function canvasBlob(canvas) {
         return new Promise((resolve, reject) => {
             canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('공유 이미지를 만들 수 없습니다.')), 'image/png', .96);
@@ -1442,13 +1555,13 @@
 
         const canvas = document.createElement('canvas');
         canvas.width = 1080;
-        canvas.height = 1350;
+        canvas.height = 1440;
         const context = canvas.getContext('2d');
         const font = '"Pretendard Variable", Pretendard, sans-serif';
         const pageX = 48;
         const pageY = 38;
         const pageWidth = 984;
-        const pageHeight = 1274;
+        const pageHeight = 1364;
         const contentX = 88;
         const contentWidth = 904;
 
@@ -1469,7 +1582,7 @@
 
         try {
             const character = await loadShareImage(new URL(typeCharacterPath(result.code), document.baseURI).toString());
-            context.drawImage(character, 362, 72, 356, 452);
+            drawShareImageContain(context, character, 362, 72, 356, 452);
         } catch (_) {
             context.fillStyle = '#f1f2ef';
             context.beginPath();
@@ -1532,8 +1645,8 @@
             });
 
             const speed = resultSpeedPresentation();
-            drawShareSectionLabel(context, '02', 'RESPONSE PACE', '선택 속도', contentX, 954, contentWidth, font);
-            drawRoundedRect(context, contentX, 990, contentWidth, 104, 12);
+            drawShareSectionLabel(context, '02', 'RESPONSE PACE', '선택 속도', contentX, 974, contentWidth, font);
+            drawRoundedRect(context, contentX, 1010, contentWidth, 104, 12);
             context.fillStyle = '#f6f6f3';
             context.fill();
             context.strokeStyle = '#dfe1dc';
@@ -1541,48 +1654,48 @@
             context.stroke();
             context.fillStyle = '#202421';
             context.font = `800 26px ${font}`;
-            context.fillText(speed ? `문항당 ${speed.median}` : '측정 정보 없음', contentX + 24, 1027);
+            context.fillText(speed ? `문항당 ${speed.median}` : '측정 정보 없음', contentX + 24, 1047);
             context.fillStyle = '#737873';
             context.font = `650 16px ${font}`;
             context.textAlign = 'right';
-            context.fillText(speed?.comparison || '', contentX + contentWidth - 24, 1027);
+            context.fillText(speed?.comparison || '', contentX + contentWidth - 24, 1047);
             context.textAlign = 'left';
-            drawShareScale(context, contentX + 24, 1064, contentWidth - 48, speed?.position ?? 50);
+            drawShareScale(context, contentX + 24, 1084, contentWidth - 48, speed?.position ?? 50);
             context.fillStyle = '#737873';
             context.font = `700 14px ${font}`;
-            context.fillText('빠름', contentX + 24, 1086);
+            context.fillText('빠름', contentX + 24, 1106);
             context.textAlign = 'center';
-            context.fillText('평균', 540, 1086);
+            context.fillText('평균', 540, 1106);
             context.textAlign = 'right';
-            context.fillText('신중', contentX + contentWidth - 24, 1086);
+            context.fillText('신중', contentX + contentWidth - 24, 1106);
             context.textAlign = 'left';
 
             const house = Core.HOUSE_META[assignedHouseKey];
-            drawShareSectionLabel(context, '03', 'HOUSE ASSIGNMENT', '기숙사', contentX, 1144, contentWidth, font);
-            drawRoundedRect(context, contentX, 1180, contentWidth, 84, 12);
+            drawShareSectionLabel(context, '03', 'HOUSE ASSIGNMENT', '기숙사', contentX, 1184, contentWidth, font);
+            drawRoundedRect(context, contentX, 1220, contentWidth, 84, 12);
             context.fillStyle = '#f6f6f3';
             context.fill();
             context.strokeStyle = '#dfe1dc';
             context.lineWidth = 2;
             context.stroke();
             context.beginPath();
-            context.arc(contentX + 46, 1222, 25, 0, Math.PI * 2);
+            context.arc(contentX + 46, 1262, 25, 0, Math.PI * 2);
             context.strokeStyle = house?.accent || '#16814b';
             context.lineWidth = 3;
             context.stroke();
             context.fillStyle = house?.accent || '#16814b';
             context.font = `800 22px ${font}`;
             context.textAlign = 'center';
-            context.fillText(house?.seal || assignedHouseKey[0], contentX + 46, 1230);
+            context.fillText(house?.seal || assignedHouseKey[0], contentX + 46, 1270);
             context.textAlign = 'left';
             context.fillStyle = '#707570';
             context.font = `700 12px ${font}`;
-            context.fillText('ASSIGNED HOUSE', contentX + 88, 1214);
+            context.fillText('ASSIGNED HOUSE', contentX + 88, 1254);
             context.fillStyle = '#202421';
             context.font = `800 27px ${font}`;
-            context.fillText(house?.name || assignedHouseKey, contentX + 88, 1242);
+            context.fillText(house?.name || assignedHouseKey, contentX + 88, 1282);
         } else {
-            drawRoundedRect(context, contentX, 640, contentWidth, 526, 14);
+            drawRoundedRect(context, contentX, 640, contentWidth, 636, 14);
             context.fillStyle = '#f3f4f1';
             context.fill();
             context.strokeStyle = '#dfe1dc';
@@ -1591,18 +1704,18 @@
             context.fillStyle = '#202421';
             context.font = `800 31px ${font}`;
             context.textAlign = 'center';
-            context.fillText('상세 결과 잠김', 540, 875);
+            context.fillText('상세 결과 잠김', 540, 930);
             context.fillStyle = '#737873';
             context.font = `650 20px ${font}`;
-            context.fillText('BAND 회원 확인 후 결과에서 볼 수 있어요', 540, 916);
+            context.fillText('BAND 회원 확인 후 결과에서 볼 수 있어요', 540, 972);
             context.textAlign = 'left';
         }
 
         context.fillStyle = '#737873';
         context.font = `650 14px ${font}`;
-        context.fillText('CREWARTS · 20 ITEMS', contentX, 1294);
+        context.fillText('CREWARTS · 20 ITEMS', contentX, 1384);
         context.textAlign = 'right';
-        context.fillText('creok.onrender.com', contentX + contentWidth, 1294);
+        context.fillText('creok.onrender.com', contentX + contentWidth, 1384);
         context.textAlign = 'left';
 
         const blob = await canvasBlob(canvas);
@@ -1859,7 +1972,7 @@
                     description: text,
                     imageUrl,
                     imageWidth: 1080,
-                    imageHeight: 1350,
+                    imageHeight: 1440,
                     link: { mobileWebUrl: SURVEY_URL, webUrl: SURVEY_URL }
                 },
                 buttons: [{

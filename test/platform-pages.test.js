@@ -227,7 +227,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /function saveResultImage/);
     assert.match(script, /CREWARTS_\$\{result\.code\}_\$\{typeName\}\.png/);
     assert.match(script, /canvas\.width = 1080/);
-    assert.match(script, /canvas\.height = 1350/);
+    assert.match(script, /canvas\.height = 1440/);
+    assert.match(script, /imageHeight:\s*1440/);
     assert.match(script, /navigator\.canShare\?\.\(\{ files: \[file\] \}\)/);
     assert.match(html, /id="result-save-dialog"/);
     assert.match(html, /id="result-save-preview"/);
@@ -246,6 +247,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /function sharePreparedNativeResult/);
     assert.match(html, /assets\/vendor\/kakao-2\.8\.1\.min\.js/);
     assert.match(css, /\.cw-save-dialog::backdrop/);
+    assert.match(css, /\.cw-save-preview img\s*\{[^}]*position:\s*absolute[^}]*object-fit:\s*contain/);
     assert.doesNotMatch(script, /data-action="instagram"|shareToInstagram/);
     assert.doesNotMatch(script, /data-action="band-result"/);
     assert.doesNotMatch(script, /크레\s*MBTI|나의 크레 MBTI|평소 MBTI/i);
@@ -262,7 +264,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /cw-result-code cw-result-code-back/);
     assert.match(script, /cw-result-code cw-result-code-front/);
     assert.match(script, /class="cw-type-poster"/);
-    assert.match(html, /20260802-kakao-share-v26/);
+    assert.match(html, /20260802-detail-layout-v29/);
     assert.deepEqual(
         fs.readdirSync(characterDirectory).filter(file => file.endsWith('.png')).sort(),
         characterCodes.map(code => `crewart-type-${code}.png`).sort()
@@ -304,9 +306,18 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /'speed-report-detail'/);
     assert.match(script, /'house-report-detail'/);
     assert.match(script, /function toggleReportDisclosure\(event\)[\s\S]*panel\.hidden = !opening[\s\S]*aria-expanded/);
+    assert.match(script, /id="axes-report-detail" hidden>\$\{axisInsights\}<\/div>\s*<div class="cw-axis-detail-list">/);
+    assert.match(script, /id="speed-report-detail" hidden>[\s\S]*<div class="cw-speed-summary">/);
+    assert.match(script, /id="house-report-detail" hidden>[\s\S]*<div class="cw-house-assignment">/);
+    assert.match(script, /응답에서 보인 흐름/);
+    assert.match(script, /균형 포인트/);
+    assert.match(script, /커뮤니티에서의 역할/);
+    assert.match(script, /선택 속도는 정확도나 성실도 점수가 아니에요/);
     assert.match(css, /\.cw-speed-card\s*\{[^}]*margin:\s*18px 0 0/);
+    assert.match(css, /\.cw-speed-card \.cw-report-section-head\s*\{[^}]*border-bottom:\s*0/);
     assert.match(css, /\.cw-speed-summary\s*\{[^}]*background:\s*var\(--cw-surface-soft\)/);
     assert.match(css, /\.cw-report-house\s*\{[^}]*margin-top:\s*18px/);
+    assert.match(css, /\.cw-report-house \.cw-report-section-head\s*\{[^}]*border-bottom:\s*0/);
     assert.match(css, /\.cw-house-assignment\s*\{[^}]*background:\s*var\(--cw-surface-soft\)/);
     assert.match(css, /\.cw-report-disclosure\[hidden\]\s*\{[^}]*display:\s*none/);
     assert.match(script, /data-axis-result data-final-pole=/);
@@ -341,6 +352,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.doesNotMatch(css, /\.cw-position-scale\.is-measuring \.cw-scale-line::after/);
     assert.match(css, /@keyframes cw-code-flicker/);
     assert.match(css, /@keyframes cw-house-roll/);
+    assert.match(script, /function drawShareImageContain\(context, image, x, y, width, height\)/);
+    assert.match(script, /drawShareImageContain\(context, character, 362, 72, 356, 452\)/);
     assert.doesNotMatch(css, /cw-scale-scan|rgba\(22, 129, 75, \.7\)/);
     const lockedDetailBody = script.match(/function renderLockedDetail\(\) \{([\s\S]*?)\n    \}/)?.[1] || '';
     assert.match(lockedDetailBody, /renderMemberDetail\(\)\}\$\{renderSpeedCard\(\)/);
