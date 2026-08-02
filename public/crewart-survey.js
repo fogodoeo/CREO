@@ -2,7 +2,7 @@
     'use strict';
 
     const Core = window.CrewartSurveyCore;
-    const SURVEY_URL = new URL('crewart-survey.html', document.baseURI).toString();
+    const SURVEY_URL = 'https://creok.onrender.com/crewart-survey.html';
     const DEFAULT_BAND_URL = 'https://www.band.us/band/101992972/post';
     const BAND_MEMBER_API = '/api/band-membership';
     const KAKAO_JS_KEY = 'db7ffc8d6b9b7601b792ed69be4658fc';

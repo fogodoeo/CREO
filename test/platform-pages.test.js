@@ -242,6 +242,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /suggestedName: file\.name/);
     assert.match(script, /공유 앱에서 카카오톡을 선택해주세요/);
     assert.match(script, /KAKAO_JS_KEY/);
+    assert.match(script, /const SURVEY_URL = 'https:\/\/creok\.onrender\.com\/crewart-survey\.html'/);
+    assert.doesNotMatch(script, /const SURVEY_URL = new URL\([^\n]*document\.baseURI/);
     assert.match(script, /Kakao\.Share\.uploadImage/);
     assert.match(script, /Kakao\.Share\.sendDefault/);
     assert.match(script, /function sharePreparedNativeResult/);
@@ -264,7 +266,9 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /cw-result-code cw-result-code-back/);
     assert.match(script, /cw-result-code cw-result-code-front/);
     assert.match(script, /class="cw-type-poster"/);
-    assert.match(html, /20260802-detail-layout-v29/);
+    assert.match(html, /20260802-share-link-v30/);
+    assert.match(html, /property="og:url" content="https:\/\/creok\.onrender\.com\/crewart-survey\.html"/);
+    assert.match(html, /rel="canonical" href="https:\/\/creok\.onrender\.com\/crewart-survey\.html"/);
     assert.deepEqual(
         fs.readdirSync(characterDirectory).filter(file => file.endsWith('.png')).sort(),
         characterCodes.map(code => `crewart-type-${code}.png`).sort()
