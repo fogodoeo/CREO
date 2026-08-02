@@ -706,9 +706,9 @@
     function renderReportSectionHead(index, english, korean, controls) {
         return `
             <header class="cw-report-section-head">
-                <button class="cw-report-section-toggle" type="button" data-report-toggle aria-expanded="false" aria-controls="${escapeHtml(controls)}">
+                <button class="cw-report-section-toggle" type="button" data-report-toggle data-report-label="${escapeHtml(korean)}" aria-label="${escapeHtml(`${korean} 자세히 보기`)}" aria-expanded="false" aria-controls="${escapeHtml(controls)}">
                     <span>${escapeHtml(index)}</span>
-                    <span><small>${escapeHtml(english)}</small><strong>${escapeHtml(korean)}</strong></span>
+                    <span><small>${escapeHtml(english)}</small></span>
                     <span class="cw-report-section-action"><em data-report-action>자세히</em><i aria-hidden="true">＋</i></span>
                 </button>
             </header>`;
@@ -1037,6 +1037,7 @@
         if (icon) icon.textContent = opening ? '−' : '＋';
         const action = button.querySelector('[data-report-action]');
         if (action) action.textContent = opening ? '접기' : '자세히';
+        button.setAttribute('aria-label', `${button.dataset.reportLabel || ''} ${opening ? '접기' : '자세히 보기'}`.trim());
         button.closest('.cw-result-section, .cw-report-house')?.classList.toggle('is-expanded', opening);
     }
 
