@@ -1112,7 +1112,7 @@
             <section class="cw-result-empty">
                 <p>CREWARTS PERSONALITY TEST</p>
                 <h1>아직 결과가 없어요</h1>
-                <button class="cw-primary-button" type="button" data-action="start-empty">검사 시작</button>
+                <button class="cw-test-action cw-primary-button" type="button" data-action="start-empty">검사 시작</button>
             </section>`;
         element('result-content').querySelector('[data-action="start-empty"]')?.addEventListener('click', startSurvey);
     }
