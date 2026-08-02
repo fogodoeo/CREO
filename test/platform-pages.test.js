@@ -240,8 +240,11 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /window\.showSaveFilePicker/);
     assert.match(script, /suggestedName: file\.name/);
     assert.match(script, /공유 앱에서 카카오톡을 선택해주세요/);
-    assert.doesNotMatch(script, /KAKAO_JS_KEY|Kakao\.Share/);
-    assert.doesNotMatch(html, /kakao_js_sdk|kakao-2\.8\.1\.min\.js/);
+    assert.match(script, /KAKAO_JS_KEY/);
+    assert.match(script, /Kakao\.Share\.uploadImage/);
+    assert.match(script, /Kakao\.Share\.sendDefault/);
+    assert.match(script, /function sharePreparedNativeResult/);
+    assert.match(html, /assets\/vendor\/kakao-2\.8\.1\.min\.js/);
     assert.match(css, /\.cw-save-dialog::backdrop/);
     assert.doesNotMatch(script, /data-action="instagram"|shareToInstagram/);
     assert.doesNotMatch(script, /data-action="band-result"/);
@@ -259,7 +262,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /cw-result-code cw-result-code-back/);
     assert.match(script, /cw-result-code cw-result-code-front/);
     assert.match(script, /class="cw-type-poster"/);
-    assert.match(html, /20260802-result-layout-v25/);
+    assert.match(html, /20260802-kakao-share-v26/);
     assert.deepEqual(
         fs.readdirSync(characterDirectory).filter(file => file.endsWith('.png')).sort(),
         characterCodes.map(code => `crewart-type-${code}.png`).sort()
@@ -315,6 +318,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(css, /\.cw-axis-detail\s*\{[^}]*border:\s*1px solid[^}]*border-radius:\s*10px/);
     assert.match(css, /\.cw-axis-detail header h3\s*\{[^}]*text-align:\s*center/);
     assert.match(css, /\.cw-axis-pole\.is-selected[\s\S]*font-weight:\s*800/);
+    assert.match(css, /\.cw-axis-pole\.is-right\s*\{[^}]*justify-content:\s*flex-end/);
     assert.match(css, /--cw-type-body:\s*14px/);
     assert.match(css, /--cw-type-section:\s*18px/);
     assert.match(css, /--cw-weight-bold:\s*800/);

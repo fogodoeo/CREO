@@ -5,6 +5,7 @@
     const SURVEY_URL = new URL('crewart-survey.html', document.baseURI).toString();
     const DEFAULT_BAND_URL = 'https://www.band.us/band/101992972/post';
     const BAND_MEMBER_API = '/api/band-membership';
+    const KAKAO_JS_KEY = 'db7ffc8d6b9b7601b792ed69be4658fc';
     const QUESTION_IMAGE_ROOT = 'assets/crewart-illustrations/';
     const TYPE_CHARACTER_ROOT = 'assets/crewart-types/';
     const TYPE_CHARACTER_VERSION = '20260802-character-v1';
@@ -985,7 +986,7 @@
             </div>`;
         element('result-content').querySelector('[data-action="unlock-detail"]')?.addEventListener('click', handleUnlockDetail);
         element('result-content').querySelector('[data-action="open-band"]')?.addEventListener('click', openBandTarget);
-        element('result-content').querySelector('[data-action="share"]')?.addEventListener('click', openKakaoShareGuide);
+        element('result-content').querySelector('[data-action="share"]')?.addEventListener('click', shareResult);
         element('result-content').querySelector('[data-action="save-image"]')?.addEventListener('click', saveResultImage);
         element('result-content').querySelectorAll('[data-report-toggle]').forEach(button => {
             button.addEventListener('click', toggleReportDisclosure);
@@ -1619,6 +1620,29 @@
         window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
+    function initializeKakaoSdk() {
+        try {
+            if (!window.Kakao) return false;
+            if (!window.Kakao.isInitialized()) window.Kakao.init(KAKAO_JS_KEY);
+            return Boolean(window.Kakao.Share?.sendDefault && window.Kakao.Share?.uploadImage);
+        } catch (error) {
+            console.warn('[Crewart Kakao init]', error);
+            return false;
+        }
+    }
+
+    async function uploadKakaoShareImage(file) {
+        if (!window.Kakao?.Share?.uploadImage || typeof DataTransfer === 'undefined') {
+            throw new Error('Kakao image upload is unavailable');
+        }
+        const transfer = new DataTransfer();
+        transfer.items.add(file);
+        const response = await window.Kakao.Share.uploadImage({ file: transfer.files });
+        const imageUrl = response?.infos?.original?.url;
+        if (!imageUrl) throw new Error('Kakao image URL is missing');
+        return imageUrl;
+    }
+
     function setShareButtonBusy(button, busy, busyLabel) {
         if (!button) return;
         const label = button.querySelector('[data-action-label]');
@@ -1758,11 +1782,11 @@
         }
     }
 
-    async function openKakaoShareGuide(event) {
-        const button = event?.currentTarget;
-        setShareButtonBusy(button, true, '이미지 만드는 중');
+    async function openKakaoShareGuide(event, file = null) {
+        const button = event?.currentTarget || null;
+        setShareButtonBusy(button, true, '공유 준비 중');
         try {
-            preparedKakaoShareFile = await createResultShareFile();
+            preparedKakaoShareFile = file || await createResultShareFile();
             const dialog = element('kakao-share-dialog');
             if (!dialog.open) dialog.showModal();
         } catch (error) {
@@ -1777,7 +1801,7 @@
         preparedKakaoShareFile = null;
     }
 
-    async function shareResult(event) {
+    async function sharePreparedNativeResult(event) {
         const button = event?.currentTarget;
         const title = 'CREWARTS 성향 결과';
         const text = `${result.code} · ${result.typeName}`;
@@ -1817,6 +1841,43 @@
         }
     }
 
+    async function shareResult(event) {
+        const button = event?.currentTarget;
+        const title = 'CREWARTS 성향 결과';
+        const text = `${result.code} · ${result.typeName}`;
+        let shareFile = null;
+        setShareButtonBusy(button, true, '카카오톡 여는 중');
+
+        try {
+            if (!initializeKakaoSdk()) throw new Error('Kakao SDK is unavailable');
+            shareFile = await createResultShareFile();
+            const imageUrl = await uploadKakaoShareImage(shareFile);
+            await window.Kakao.Share.sendDefault({
+                objectType: 'feed',
+                content: {
+                    title,
+                    description: text,
+                    imageUrl,
+                    imageWidth: 1080,
+                    imageHeight: 1350,
+                    link: { mobileWebUrl: SURVEY_URL, webUrl: SURVEY_URL }
+                },
+                buttons: [{
+                    title: '테스트하기',
+                    link: { mobileWebUrl: SURVEY_URL, webUrl: SURVEY_URL }
+                }]
+            });
+            return;
+        } catch (error) {
+            if (error?.name === 'AbortError') return;
+            console.error('[Crewart Kakao direct share]', error);
+            await openKakaoShareGuide(null, shareFile);
+            toast('카카오톡 직접 연결이 어려워 기기 공유로 전환했어요.');
+        } finally {
+            setShareButtonBusy(button, false);
+        }
+    }
+
     if (IS_LOCAL_QA) {
         window.CrewartShareQA = Object.freeze({
             createResultShareFile,
@@ -1851,7 +1912,7 @@
         });
         element('show-result').addEventListener('click', () => showResult(false));
         element('persistent-home-button').addEventListener('click', returnToIntro);
-        element('kakao-share-confirm')?.addEventListener('click', shareResult);
+        element('kakao-share-confirm')?.addEventListener('click', sharePreparedNativeResult);
         element('kakao-share-dialog')?.addEventListener('close', clearPreparedKakaoShare);
         element('kakao-share-dialog')?.addEventListener('click', event => {
             if (event.target === event.currentTarget) event.currentTarget.close('cancel');
