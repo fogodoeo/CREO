@@ -52,6 +52,7 @@
                 body: JSON.stringify({ password: supplied })
             });
             const payload = await readResponse(response);
+            if (response.status === 429) throw new Error(payload?.error || '로그인 시도가 너무 많습니다.');
             if (!response.ok || !payload?.authenticated) {
                 sessionStorage.removeItem(ADMIN_KEY);
                 return false;

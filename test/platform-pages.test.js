@@ -60,6 +60,7 @@ test('hub preserves established management and CDCUP broadcast control links', (
     assert.match(hub, /id="admin-password"/);
     assert.match(hub, /CreoPlatform\.verifyAdmin\(\)/);
     assert.match(hub, /CreoPlatform\.logout\(\)/);
+    assert.match(hub, /\.channel-actions\{display:grid;grid-template-columns:1fr 1fr/);
     assert.match(hub, /c\.links\.workspace/);
     assert.match(hub, /c\.links\.control/);
     assert.match(hub, /legacy\?\.managementUrl/);
@@ -74,6 +75,17 @@ test('CDCUP platform links use the established control while other channels use 
     const shipping = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-shipping.html'), 'utf8');
     assert.match(workspace, /c\?\.links\?\.control/);
     assert.match(shipping, /c\?\.links\?\.control/);
+});
+
+test('channel creation starts with a safe generated id and protects unsaved edits', () => {
+    const manager = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-manager.html'), 'utf8');
+    assert.match(manager, /function nextChannelId\(\)/);
+    assert.match(manager, /draft\.id=nextChannelId\(\)/);
+    assert.match(manager, /copy\.id=nextChannelId\(\)/);
+    assert.match(manager, /channel-form'\)\.reportValidity\(\)/);
+    assert.match(manager, /function canDiscard\(\)/);
+    assert.match(manager, /beforeunload/);
+    assert.match(manager, /scrollbar-width:none/);
 });
 
 test('the new broadcast implements three independent camera overlays', () => {
