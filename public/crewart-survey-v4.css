@@ -37,6 +37,7 @@
 html {
     min-height: 100%;
     overflow-x: hidden;
+    scrollbar-gutter: stable;
     background: var(--cw-bg);
     color: var(--cw-ink);
     -webkit-text-size-adjust: 100%;
