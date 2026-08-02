@@ -221,6 +221,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(html, /assets\/band-app-icon-official\.png/);
     assert.match(script, /assets\/kakaolink_btn_medium\.png/);
     assert.match(script, /function createResultShareFile/);
+    assert.match(script, /function createKakaoShareFile/);
     assert.match(script, /data-action="save-image"/);
     assert.match(script, /결과 이미지 저장/);
     assert.match(script, /카카오톡 공유/);
@@ -228,13 +229,18 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /CREWARTS_\$\{result\.code\}_\$\{typeName\}\.png/);
     assert.match(script, /canvas\.width = 1080/);
     assert.match(script, /canvas\.height = 1440/);
-    assert.match(script, /imageHeight:\s*1440/);
+    assert.match(script, /createKakaoShareFile\(\)[\s\S]*canvas\.width = 1200[\s\S]*canvas\.height = 600/);
+    assert.match(script, /imageWidth:\s*1200/);
+    assert.match(script, /imageHeight:\s*600/);
+    assert.match(script, /나는 크레 앞에서 어떤 유형일까\? · 20문항 약 2분/);
+    assert.match(script, /title:\s*'나도 알아보기'/);
     assert.match(script, /navigator\.canShare\?\.\(\{ files: \[file\] \}\)/);
     assert.match(html, /id="result-save-dialog"/);
     assert.match(html, /id="result-save-preview"/);
     assert.match(html, /id="result-save-name"/);
     assert.match(html, /id="result-save-confirm"/);
     assert.match(html, /id="kakao-share-dialog"/);
+    assert.match(html, /id="kakao-share-preview"/);
     assert.match(html, /공유창 열기[\s\S]*카카오톡 선택[\s\S]*친구·채팅방 선택/);
     assert.match(script, /function savePreparedResultImage/);
     assert.match(script, /function openKakaoShareGuide/);
@@ -249,6 +255,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /function sharePreparedNativeResult/);
     assert.match(html, /assets\/vendor\/kakao-2\.8\.1\.min\.js/);
     assert.match(css, /\.cw-save-dialog::backdrop/);
+    assert.match(css, /\.cw-kakao-preview\s*\{[^}]*aspect-ratio:\s*2\s*\/\s*1/);
     assert.match(css, /\.cw-save-preview img\s*\{[^}]*position:\s*absolute[^}]*object-fit:\s*contain/);
     assert.doesNotMatch(script, /data-action="instagram"|shareToInstagram/);
     assert.doesNotMatch(script, /data-action="band-result"/);
@@ -266,7 +273,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /cw-result-code cw-result-code-back/);
     assert.match(script, /cw-result-code cw-result-code-front/);
     assert.match(script, /class="cw-type-poster"/);
-    assert.match(html, /20260802-share-link-v30/);
+    assert.match(html, /20260802-kakao-card-v32/);
     assert.match(html, /property="og:url" content="https:\/\/creok\.onrender\.com\/crewart-survey\.html"/);
     assert.match(html, /rel="canonical" href="https:\/\/creok\.onrender\.com\/crewart-survey\.html"/);
     assert.deepEqual(

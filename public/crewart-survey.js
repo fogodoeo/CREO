@@ -129,6 +129,7 @@
     let preparedSaveFile = null;
     let preparedSaveUrl = '';
     let preparedKakaoShareFile = null;
+    let preparedKakaoShareUrl = '';
 
     function element(id) {
         return document.getElementById(id);
@@ -1722,6 +1723,99 @@
         return new File([blob], shareFileName(), { type: 'image/png' });
     }
 
+    async function createKakaoShareFile() {
+        if (!result) throw new Error('공유할 결과가 없습니다.');
+        await document.fonts?.ready;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = 1200;
+        canvas.height = 600;
+        const context = canvas.getContext('2d');
+        const font = '"Pretendard Variable", Pretendard, sans-serif';
+        const house = Core.HOUSE_META[assignedHouseKey];
+        const accent = house?.accent || '#17617b';
+
+        context.fillStyle = '#e9eae5';
+        context.fillRect(0, 0, canvas.width, canvas.height);
+
+        drawRoundedRect(context, 22, 22, 1156, 556, 28);
+        context.fillStyle = '#f8f8f5';
+        context.fill();
+        context.strokeStyle = '#d8dad4';
+        context.lineWidth = 2;
+        context.stroke();
+
+        context.save();
+        context.globalAlpha = .1;
+        context.strokeStyle = accent;
+        context.lineWidth = 2;
+        [112, 164, 216].forEach(radius => {
+            context.beginPath();
+            context.arc(1048, 74, radius, 0, Math.PI * 2);
+            context.stroke();
+        });
+        context.restore();
+
+        context.fillStyle = '#222724';
+        context.font = `850 28px ${font}`;
+        context.textAlign = 'left';
+        context.fillText('CREWARTS', 70, 76);
+        context.fillStyle = '#7b807b';
+        context.font = `720 16px ${font}`;
+        context.fillText('PERSONALITY TEST · 20 ITEMS', 70, 102);
+
+        const houseLabel = `HOUSE ${house?.seal || assignedHouseKey[0] || '—'} · ${house?.name || assignedHouseKey || 'CREWARTS'}`;
+        context.font = `760 18px ${font}`;
+        const housePillWidth = Math.ceil(context.measureText(houseLabel).width) + 44;
+        const housePillX = 1130 - housePillWidth;
+        drawRoundedRect(context, housePillX, 55, housePillWidth, 46, 23);
+        context.save();
+        context.globalAlpha = .13;
+        context.fillStyle = accent;
+        context.fill();
+        context.restore();
+        context.strokeStyle = accent;
+        context.lineWidth = 1.5;
+        context.stroke();
+        context.fillStyle = '#2c312e';
+        context.textAlign = 'center';
+        context.fillText(houseLabel, housePillX + housePillWidth / 2, 85);
+
+        context.fillStyle = '#242925';
+        context.font = `850 214px ${font}`;
+        context.textBaseline = 'alphabetic';
+        context.fillText(result.code.slice(0, 2), 336, 402);
+        context.fillText(result.code.slice(2), 864, 402);
+
+        try {
+            const character = await loadShareImage(new URL(typeCharacterPath(result.code), document.baseURI).toString());
+            drawShareImageContain(context, character, 410, 48, 380, 484);
+        } catch (_) {
+            context.fillStyle = '#eceee8';
+            context.beginPath();
+            context.arc(600, 292, 152, 0, Math.PI * 2);
+            context.fill();
+        }
+
+        context.font = `820 42px ${font}`;
+        const typeNameWidth = Math.ceil(context.measureText(result.typeName).width) + 74;
+        const typePillWidth = Math.max(254, typeNameWidth);
+        const typePillX = (canvas.width - typePillWidth) / 2;
+        drawRoundedRect(context, typePillX, 486, typePillWidth, 68, 34);
+        context.fillStyle = '#ffffff';
+        context.fill();
+        context.strokeStyle = '#d7d9d3';
+        context.lineWidth = 2;
+        context.stroke();
+        context.fillStyle = '#17617b';
+        context.textAlign = 'center';
+        context.fillText(result.typeName, 600, 533);
+        context.textAlign = 'left';
+
+        const blob = await canvasBlob(canvas);
+        return new File([blob], `CREWARTS_${result.code}_KAKAO.png`, { type: 'image/png' });
+    }
+
     function downloadShareFile(file) {
         const url = URL.createObjectURL(file);
         const anchor = document.createElement('a');
@@ -1899,7 +1993,11 @@
         const button = event?.currentTarget || null;
         setShareButtonBusy(button, true, '공유 준비 중');
         try {
-            preparedKakaoShareFile = file || await createResultShareFile();
+            const nextFile = file || await createKakaoShareFile();
+            clearPreparedKakaoShare();
+            preparedKakaoShareFile = nextFile;
+            preparedKakaoShareUrl = URL.createObjectURL(nextFile);
+            element('kakao-share-preview').src = preparedKakaoShareUrl;
             const dialog = element('kakao-share-dialog');
             if (!dialog.open) dialog.showModal();
         } catch (error) {
@@ -1911,7 +2009,10 @@
     }
 
     function clearPreparedKakaoShare() {
+        if (preparedKakaoShareUrl) URL.revokeObjectURL(preparedKakaoShareUrl);
+        preparedKakaoShareUrl = '';
         preparedKakaoShareFile = null;
+        element('kakao-share-preview')?.removeAttribute('src');
     }
 
     async function sharePreparedNativeResult(event) {
@@ -1956,14 +2057,14 @@
 
     async function shareResult(event) {
         const button = event?.currentTarget;
-        const title = 'CREWARTS 성향 결과';
-        const text = `${result.code} · ${result.typeName}`;
+        const title = `${result.code} · ${result.typeName}`;
+        const text = '나는 크레 앞에서 어떤 유형일까? · 20문항 약 2분';
         let shareFile = null;
         setShareButtonBusy(button, true, '카카오톡 여는 중');
 
         try {
+            shareFile = await createKakaoShareFile();
             if (!initializeKakaoSdk()) throw new Error('Kakao SDK is unavailable');
-            shareFile = await createResultShareFile();
             const imageUrl = await uploadKakaoShareImage(shareFile);
             await window.Kakao.Share.sendDefault({
                 objectType: 'feed',
@@ -1971,12 +2072,12 @@
                     title,
                     description: text,
                     imageUrl,
-                    imageWidth: 1080,
-                    imageHeight: 1440,
+                    imageWidth: 1200,
+                    imageHeight: 600,
                     link: { mobileWebUrl: SURVEY_URL, webUrl: SURVEY_URL }
                 },
                 buttons: [{
-                    title: '테스트하기',
+                    title: '나도 알아보기',
                     link: { mobileWebUrl: SURVEY_URL, webUrl: SURVEY_URL }
                 }]
             });
@@ -1994,6 +2095,7 @@
     if (IS_LOCAL_QA) {
         window.CrewartShareQA = Object.freeze({
             createResultShareFile,
+            createKakaoShareFile,
             shareFileName,
             isAppleMobileDevice,
             normalizedShareFileName,
