@@ -234,7 +234,10 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /characterReveal\?\.classList\.add\('is-revealed'\)/);
     assert.match(css, /\.cw-character-reveal\.is-revealed img\s*\{[^}]*opacity:\s*1/);
     assert.match(css, /@keyframes cw-character-search/);
-    assert.match(html, /20260802-type-characters-v19/);
+    assert.match(script, /cw-result-code cw-result-code-back/);
+    assert.match(script, /cw-result-code cw-result-code-front/);
+    assert.match(script, /class="cw-type-poster"/);
+    assert.match(html, /20260802-report-poster-v20/);
     assert.deepEqual(
         fs.readdirSync(characterDirectory).filter(file => file.endsWith('.png')).sort(),
         characterCodes.map(code => `crewart-type-${code}.png`).sort()
@@ -246,7 +249,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     });
     assert.match(script, /letterPairs = \[\['E', 'I'\], \['S', 'N'\], \['T', 'F'\], \['J', 'P'\]\]/);
     assert.match(script, /settleDurations = \[560, 730, 900, 1070\]/);
-    assert.match(script, /data-code-slot="\$\{index\}"/);
+    assert.match(script, /data-code-slot="\$\{startIndex \+ index\}"/);
     assert.match(script, /marker\.animate\(\[/);
     assert.match(script, /\{ left: '50%' \}[\s\S]*\{ left: `\$\{finalPosition\}%` \}/);
     assert.doesNotMatch(script, /left: index % 2 \? '84%' : '16%'/);

@@ -912,7 +912,12 @@
         const bandShare = BAND_INTEGRATION_ENABLED
             ? `<button class="cw-share-icon is-band" type="button" data-action="band-result" aria-label="크레와트 BAND 열기"><img src="assets/band-app-icon-official.png?v=20260801-logo-v2" width="28" height="28" alt=""></button>`
             : '';
-        const resultCodeSlots = [...result.code].map((letter, index) => `<span data-code-slot="${index}" data-final-letter="${escapeHtml(letter)}">${escapeHtml(letter)}</span>`).join('');
+        const resultCodeLetters = [...result.code];
+        const renderResultCodeSlots = (letters, startIndex) => letters
+            .map((letter, index) => `<span data-code-slot="${startIndex + index}" data-final-letter="${escapeHtml(letter)}">${escapeHtml(letter)}</span>`)
+            .join('');
+        const resultCodeBackSlots = renderResultCodeSlots(resultCodeLetters.slice(0, 2), 0);
+        const resultCodeFrontSlots = renderResultCodeSlots(resultCodeLetters.slice(2), 2);
         const characterState = options.animate ? 'is-pending' : 'is-revealed';
         const characterPath = typeCharacterPath(result.code);
         element('result-content').innerHTML = `
@@ -927,15 +932,17 @@
                         </dl>
                     </header>
                     <section class="cw-result-identity">
-                        <div class="cw-result-hero-copy">
-                            <p class="cw-poster-kicker">RESULT TYPE</p>
-                            <strong class="cw-result-code" data-final-code="${escapeHtml(result.code)}" aria-label="${escapeHtml(result.code)}">${resultCodeSlots}</strong>
-                            <h1 data-final-name="${escapeHtml(result.typeName)}">${escapeHtml(result.typeName)}</h1>
+                        <p class="cw-poster-kicker">RESULT TYPE</p>
+                        <div class="cw-type-poster" data-final-code="${escapeHtml(result.code)}">
+                            <span class="cw-visually-hidden">${escapeHtml(result.code)}</span>
+                            <strong class="cw-result-code cw-result-code-back" aria-hidden="true">${resultCodeBackSlots}</strong>
+                            <figure class="cw-character-reveal ${characterState}" data-character-reveal>
+                                <div class="cw-character-placeholder" aria-hidden="true"><span>?</span><small>TYPE CHARACTER</small></div>
+                                <img src="${escapeHtml(characterPath)}" width="360" height="520" alt="${escapeHtml(`${result.code} ${result.typeName} 아기 크레 캐릭터`)}" loading="eager" decoding="async">
+                            </figure>
+                            <strong class="cw-result-code cw-result-code-front" aria-hidden="true">${resultCodeFrontSlots}</strong>
                         </div>
-                        <figure class="cw-character-reveal ${characterState}" data-character-reveal>
-                            <div class="cw-character-placeholder" aria-hidden="true"><span>?</span><small>TYPE CHARACTER</small></div>
-                            <img src="${escapeHtml(characterPath)}" width="360" height="520" alt="${escapeHtml(`${result.code} ${result.typeName} 아기 크레 캐릭터`)}" loading="eager" decoding="async">
-                        </figure>
+                        <h1 class="cw-result-type-name" data-final-name="${escapeHtml(result.typeName)}">${escapeHtml(result.typeName)}</h1>
                     </section>
                     ${detail}
                     <footer class="cw-report-footer">
