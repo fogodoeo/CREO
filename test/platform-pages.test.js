@@ -167,7 +167,7 @@ test('CREWARTS reveals the basic result first and unlocks member detail by phone
     assert.match(html, /id="member-join-link"[\s\S]*data-band-join[\s\S]*BAND 가입하기/);
     assert.doesNotMatch(html, /id="member-join-link"[^>]*hidden/);
     assert.doesNotMatch(html, /supabase-bridge\.js/);
-    assert.match(css, /\.cw-choice-button[\s\S]*min-height:\s*68px/);
+    assert.match(css, /\.cw-choice-button[\s\S]*min-height:\s*78px/);
     assert.match(script, /function verifyMembershipPhone/);
     assert.match(script, /\/api\/crewart-survey\/bootstrap/);
     assert.match(script, /\/api\/crewart-survey\/responses/);
@@ -309,7 +309,9 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /cw-result-code cw-result-code-back/);
     assert.match(script, /cw-result-code cw-result-code-front/);
     assert.match(script, /class="cw-type-poster"/);
-    assert.match(html, /20260803-tendency-v61/);
+    assert.match(html, /20260803-scenario-v63/);
+    assert.doesNotMatch(html, /question-illustration|question-image/);
+    assert.doesNotMatch(script, /QUESTION_IMAGE_ROOT|question\.image|nextImage/);
     assert.doesNotMatch(html, /cw-home-guide|cw-home-disclaimer/);
     assert.match(script, /재미를 위한 성향 콘텐츠이며, 과학적·의학적 진단이 아닙니다\./);
     assert.match(script, /data-q0-start/);
@@ -409,7 +411,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(css, /--cw-type-section:\s*18px/);
     assert.match(css, /--cw-weight-bold:\s*800/);
     assert.match(css, /\.cw-question-card > h1[\s\S]*font-weight:\s*var\(--cw-weight-bold\)/);
-    assert.match(css, /\.cw-choice-button span[\s\S]*font-size:\s*var\(--cw-type-control\)/);
+    assert.match(css, /\.cw-choice-button span[\s\S]*font-size:\s*16px/);
     assert.doesNotMatch(css, /\.cw-poster-kicker/);
     assert.match(css, /\.cw-intro-visual\s*\{[^}]*position:\s*fixed[^}]*inset:\s*-24px/);
     assert.match(css, /\.cw-intro-video\s*\{[^}]*object-fit:\s*cover[^}]*filter:\s*blur\(5px\)/);

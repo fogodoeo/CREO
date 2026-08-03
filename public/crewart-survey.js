@@ -6,7 +6,6 @@
     const DEFAULT_BAND_URL = 'https://www.band.us/band/101992972/post';
     const BAND_MEMBER_API = '/api/band-membership';
     const KAKAO_JS_KEY = 'db7ffc8d6b9b7601b792ed69be4658fc';
-    const QUESTION_IMAGE_ROOT = 'assets/crewart-illustrations/';
     const TYPE_CHARACTER_ROOT = 'assets/crewart-types/';
     const TYPE_CHARACTER_VERSION = '20260802-character-v1';
     const MEMBERSHIP_STORAGE_KEY = 'crewart_band_member_access_v1';
@@ -602,7 +601,6 @@
             element('question-back').disabled = false;
             element('question-label').textContent = 'BEFORE YOU START';
             element('question-title').textContent = '시작 전, 이것만 확인해 주세요';
-            element('question-illustration').hidden = true;
             element('choice-list').innerHTML = `
                 <div class="cw-q0-card">
                     <ol class="cw-q0-list">
@@ -633,31 +631,15 @@
         element('question-back').disabled = false;
         element('question-label').textContent = question.label;
         element('question-title').textContent = question.q;
-        const illustration = element('question-illustration');
-        const image = element('question-image');
-        if (question.image) {
-            illustration.hidden = false;
-            image.src = `${QUESTION_IMAGE_ROOT}${question.image}`;
-            image.alt = question.imageAlt || `${question.label} 상황 삽화`;
-        } else {
-            illustration.hidden = true;
-            image.removeAttribute('src');
-            image.alt = '';
-        }
         element('choice-list').innerHTML = question.options.map((option, index) => `
             <button class="cw-choice-button${answers[qIndex] === index ? ' is-selected' : ''}" type="button" data-choice="${index}">
-                <b aria-hidden="true">${index === 0 ? 'A' : 'B'}</b><span>${escapeHtml(option)}</span>
+                <span>${escapeHtml(option)}</span>
             </button>`).join('');
         element('choice-list').querySelectorAll('[data-choice]').forEach(button => {
             button.addEventListener('click', () => chooseAnswer(Number(button.dataset.choice)));
         });
         card.classList.remove('is-changing');
         requestAnimationFrame(() => card.classList.add('is-changing'));
-        const nextImage = questions[qIndex + 1]?.image;
-        if (nextImage) {
-            const preloader = new Image();
-            preloader.src = `${QUESTION_IMAGE_ROOT}${nextImage}`;
-        }
         startTimer(qIndex);
     }
 

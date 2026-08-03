@@ -4,8 +4,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const Core = require('../public/crewart-survey-core');
 
-test('v5 questionnaire covers five distinct facets on every axis', () => {
-    assert.equal(Core.SURVEY_VERSION, 'crewart-tendency-v5.0');
+test('v6 questionnaire covers five distinct facets on every axis', () => {
+    assert.equal(Core.SURVEY_VERSION, 'crewart-tendency-v6.0');
     assert.equal(Core.QUESTIONS.length, 20);
     assert.equal(new Set(Core.QUESTIONS.map((question) => question.id)).size, 20);
     for (const axis of Core.AXES) {
@@ -27,7 +27,7 @@ test('paired choices have symmetric structure and avoid loaded pole wording', ()
         assert.equal(question.options.some((option) => loaded.test(option)), false);
         assert.equal([question.label, question.q, ...question.options].some((copy) => revealing.test(copy)), false);
         assert.equal([question.label, question.q, ...question.options].some((copy) => narrowContext.test(copy)), false);
-        assert.match(question.image, /^question-c\d{2}\.webp$/);
+        assert.equal('image' in question, false);
     }
     const optionCopy = Core.QUESTIONS.flatMap(question => question.options).join(' ');
     assert.ok((optionCopy.match(/순서/g) || []).length <= 1, 'one repeated surface cue must not reveal the JP key');
