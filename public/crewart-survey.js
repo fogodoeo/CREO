@@ -616,6 +616,7 @@
                         <li><b>03</b><span>오래 고민하지 말고 먼저 떠오른 답을 선택해주세요.</span></li>
                     </ol>
                     <button class="cw-primary-button cw-q0-start-button" type="button" data-q0-start>시작하기</button>
+                    <p class="cw-copyright">© 2026 CREO. All rights reserved.</p>
                 </div>`;
             element('choice-list').querySelector('[data-q0-start]')?.addEventListener('click', () => {
                 if (advancing) return;
