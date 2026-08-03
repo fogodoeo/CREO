@@ -5,7 +5,7 @@
 }(typeof globalThis !== 'undefined' ? globalThis : this, function () {
     'use strict';
 
-    const SURVEY_VERSION = 'crewart-tendency-v3.0';
+    const SURVEY_VERSION = 'crewart-tendency-v3.1';
     const AXES = ['EI', 'SN', 'TF', 'JP'];
     const HOUSE_KEYS = ['SF', 'ST', 'NT', 'NF'];
     const MBTI_TYPES = [
@@ -29,14 +29,14 @@
         { id: 'Q05', axis: 'EI', facet: 'recovery', label: '행사를 마치고 돌아왔을 때', q: '집에 돌아온 저녁, 먼저 하고 싶은 일은?', options: ['기억에 남은 일을 사람들과 나눈다', '혼자 쉬며 본 것과 느낀 점을 정리한다'], scores: ['E', 'I'] },
         { id: 'Q06', axis: 'SN', facet: 'tracking', label: '성장 기록을 볼 때', q: '석 달치 기록에서 먼저 보이는 것은?', options: ['날짜별 체중과 먹이 반응의 차이', '변화가 이어지는 전체 성장 흐름'], scores: ['S', 'N'] },
         { id: 'Q07', axis: 'TF', facet: 'advice', label: '친구의 선택을 도울 때', q: '친구가 두 개체 중 고민한다. 먼저 묻는 것은?', options: ['각 선택의 장단점과 필요한 조건', '친구의 생활 방식과 마음이 가는 쪽'], scores: ['T', 'F'] },
-        { id: 'Q08', axis: 'JP', facet: 'bidding', label: '경매 목록을 열었을 때', q: '관심 있는 개체가 여럿 보인다. 나는?', options: ['후보와 최대 금액을 먼저 정한다', '흐름을 보며 후보와 금액을 조정한다'], scores: ['J', 'P'] },
+        { id: 'Q08', axis: 'JP', facet: 'comparison', label: '여러 개체를 비교할 때', q: '마음에 드는 개체가 여럿 보인다. 나는?', options: ['후보와 선택 기준을 먼저 정한다', '하나씩 보며 후보와 기준을 조정한다'], scores: ['J', 'P'] },
 
         { id: 'Q09', axis: 'EI', facet: 'learning', label: '낯선 사육법을 배울 때', q: '처음 접한 방법을 이해하려면?', options: ['경험자와 대화하며 핵심을 잡는다', '자료를 읽으며 핵심과 질문을 정리한다'], scores: ['E', 'I'] },
         { id: 'Q10', axis: 'SN', facet: 'classification', label: '낯선 특징을 발견했을 때', q: '처음 보는 색과 무늬가 눈에 띈다. 나는 먼저?', options: ['지금 보이는 특징을 익숙한 개체와 비교한다', '혈통과 조합에서 다음 변화를 상상한다'], scores: ['S', 'N'] },
         { id: 'Q11', axis: 'TF', facet: 'disagreement', label: '관리 의견이 갈렸을 때', q: '서로 다른 방법을 추천받았다. 먼저 볼 것은?', options: ['같은 조건에서 확인한 결과와 근거', '개체 반응과 돌보는 사람의 상황'], scores: ['T', 'F'] },
         { id: 'Q12', axis: 'JP', facet: 'routine', label: '매일 관리할 때', q: '급여와 청소를 이어가기 편한 방식은?', options: ['정한 주기와 순서대로 관리한다', '그날 상태에 맞춰 순서를 바꾼다'], scores: ['J', 'P'] },
 
-        { id: 'Q13', axis: 'EI', facet: 'stimulation', label: '경매에서 낙찰받았을 때', q: '치열했던 경매 끝에 원하던 개체를 낙찰받았다! 나는?', options: ['사진과 소식을 바로 공유하며 자랑한다', '조용히 한숨 돌리며 결제와 사육장을 준비한다'], scores: ['E', 'I'] },
+        { id: 'Q13', axis: 'EI', facet: 'stimulation', label: '처음 보는 모임에 갔을 때', q: '크레 이야기가 오가는 자리에서 나는?', options: ['대화에 참여하며 사람들과 분위기를 익힌다', '이야기를 들으며 천천히 분위기를 익힌다'], scores: ['E', 'I'] },
         { id: 'Q14', axis: 'SN', facet: 'planning', label: '다음 한 마리를 계획할 때', q: '컬렉션에 더할 방향을 정한다. 먼저 보는 것은?', options: ['지금 비어 있는 색과 무늬의 특징', '앞으로 이어 가고 싶은 성장 라인'], scores: ['S', 'N'] },
         { id: 'Q15', axis: 'TF', facet: 'boundaries', label: '데려오지 않기로 정했을 때', q: '좋아 보이지만 이번에는 보내준다. 결정적인 이유는?', options: ['확인한 조건이 내 선택 기준과 달라서', '내 생활에서 오래 마음 쓰기 어려워서'], scores: ['T', 'F'] },
         { id: 'Q16', axis: 'JP', facet: 'disruption', label: '바쁜 한 주를 앞두고', q: '다음 주 일정이 자주 바뀐다. 관리는?', options: ['며칠치 할 일과 대안을 미리 짠다', '그날 시간과 개체 상태에 맞춰 정한다'], scores: ['J', 'P'] },
