@@ -78,6 +78,7 @@ test('prepared surveys balance option positions within each axis', () => {
 
 test('scoring recovers all sixteen intended profiles without an NT shortcut', () => {
     const prepared = Core.prepareQuestions(() => 0.42);
+    assert.equal(prepared[0].id, 'Q01');
     for (const target of Core.MBTI_TYPES) {
         const answers = prepared.map((question) => {
             const axisIndex = Core.AXES.indexOf(question.axis);

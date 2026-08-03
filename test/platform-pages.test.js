@@ -310,7 +310,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /cw-result-code cw-result-code-front/);
     assert.match(script, /class="cw-type-poster"/);
     assert.match(html, /20260804-reading-v76/);
-    assert.match(html, /20260804-scenario-v15/);
+    assert.match(html, /20260804-scenario-v16/);
     assert.doesNotMatch(html, /question-illustration|question-image/);
     assert.doesNotMatch(script, /QUESTION_IMAGE_ROOT|question\.image|nextImage/);
     assert.doesNotMatch(html, /cw-home-guide|cw-home-disclaimer/);

@@ -153,7 +153,8 @@
         let ordered = questions;
         for (let attempt = 0; attempt < 200; attempt += 1) {
             const candidate = shuffle(questions, rng);
-            if (candidate.every((question, index) => index === 0 || candidate[index - 1].axis !== question.axis)) {
+            const previewStartsFirst = !questions.some(question => question.previewOptions) || candidate[0]?.previewOptions;
+            if (previewStartsFirst && candidate.every((question, index) => index === 0 || candidate[index - 1].axis !== question.axis)) {
                 ordered = candidate;
                 break;
             }
