@@ -60,6 +60,12 @@ function memberToken() {
 }
 
 function validSubmission() {
+    const prepared = Core.prepareQuestions(() => 0.42);
+    const target = 'ESTJ';
+    const answers = prepared.map(question => question.scorePairs.findIndex(pair => (
+        pair[0] === target[Core.AXES.indexOf(question.axis)]
+        && pair[1] === target[Core.AXES.indexOf(question.secondaryAxis)]
+    )));
     return {
         participantKey: 'a'.repeat(24),
         creMbti: 'ESTJ',
@@ -68,19 +74,21 @@ function validSubmission() {
         axisScores: { E: 5, I: 0, S: 5, N: 0, T: 5, F: 0, J: 5, P: 0 },
         assignedHouseKey: 'ST',
         houseId: 'ST',
-        answers: Array(20).fill(0),
-        answerLabels: Core.QUESTIONS.map((question) => ({
+        answers,
+        answerLabels: prepared.map((question, index) => ({
             questionId: question.id,
             axis: question.axis,
-            displayedPosition: 1,
-            score: question.scores[0],
+            secondaryAxis: question.secondaryAxis,
+            displayedPosition: answers[index] + 1,
+            score: question.scorePairs[answers[index]][0],
+            secondaryScore: question.scorePairs[answers[index]][1],
             responseMs: 1800,
             timingValid: true,
             label: '서버에 저장하면 안 되는 선택지 원문'
         })),
         timingStats: {
-            validCount: 20,
-            totalMs: 36000,
+            validCount: 10,
+            totalMs: 18000,
             averageMs: 1800,
             medianMs: 1800,
             axisMedians: { EI: 1800, SN: 1800, TF: 1800, JP: 1800 },
@@ -170,7 +178,7 @@ test('question content management requires admin auth and stores copy-only field
     assert.equal(defaults.status, 200);
     const defaultPayload = JSON.parse(defaults.body);
     assert.equal(defaultPayload.usingDefaults, true);
-    assert.equal(defaultPayload.content.questions.length, 20);
+    assert.equal(defaultPayload.content.questions.length, Core.QUESTIONS.length);
 
     const edited = {
         version: Core.SURVEY_VERSION,
@@ -245,7 +253,7 @@ test('response storage requires a valid BAND session and strips personal fields'
     assert.equal('surveySessionId' in stored, false);
     assert.equal('label' in stored.answerLabels[0], false);
     assert.equal(repository.writes[0].value.includes('member_random_session_subject'), false);
-    assert.equal(stored.timingStats.validCount, 20);
+    assert.equal(stored.timingStats.validCount, Core.QUESTIONS.length);
     assert.equal(stored.timingStats.medianMs, 1800);
     assert.equal(stored.timingStats.style, 'instinct');
     assert.equal(stored.answerLabels[0].timingValid, true);

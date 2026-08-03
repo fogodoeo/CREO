@@ -12,7 +12,11 @@
     const MEMBERSHIP_PHONE_STORAGE_KEY = 'crewart_band_member_phone_mask_v1';
     const LAST_RESULT_STORAGE_KEY = 'crewart_last_result_v1';
     const LAST_RESULT_VERSION = 1;
-    const COMPATIBLE_RESULT_QUESTION_VERSIONS = Object.freeze([Core.SURVEY_VERSION, 'crewart-tendency-v8.0']);
+    const COMPATIBLE_RESULT_QUESTION_VERSIONS = Object.freeze([
+        Core.SURVEY_VERSION,
+        'crewart-tendency-v8.1',
+        'crewart-tendency-v8.0'
+    ]);
     const MEMBERSHIP_RECHECK_VISIBLE_MS = 1000;
     const MEMBERSHIP_RECHECK_HIDDEN_MS = 10000;
     const MEMBERSHIP_RECHECK_TIMEOUT_MS = 15 * 60 * 1000;
@@ -439,8 +443,8 @@
                 if (!target) return;
                 if (String(item.label || '').trim()) target.label = String(item.label).trim();
                 if (String(item.q || '').trim()) target.q = String(item.q).trim();
-                if (Array.isArray(item.options) && item.options.length >= 2) {
-                    const options = item.options.slice(0, 2).map(value => String(value || '').trim());
+                if (Array.isArray(item.options) && item.options.length >= 4) {
+                    const options = item.options.slice(0, 4).map(value => String(value || '').trim());
                     if (options.every(Boolean)) target.options = options;
                 }
             });
@@ -652,17 +656,17 @@
         const qIndex = current - 1;
         const question = questions[qIndex];
         if (!question) return;
-        const options = question.previewOptions || question.options;
-        const isPreviewChoice = Array.isArray(question.previewOptions);
+        const options = question.options;
+        const isFourOption = Array.isArray(question.scorePairs);
         element('progress-text').textContent = `${current} / ${questions.length}`;
         element('progress-axis').textContent = '크레 앞의 나를 찾는 중';
         element('progress-bar').style.width = `${(current / questions.length) * 100}%`;
         element('question-back').disabled = false;
         element('question-label').textContent = question.label;
         element('question-title').textContent = question.q;
-        element('choice-list').classList.toggle('is-four-option', isPreviewChoice);
+        element('choice-list').classList.toggle('is-four-option', isFourOption);
         element('choice-list').innerHTML = options.map((option, index) => `
-            <button class="cw-choice-button${(isPreviewChoice ? displayedChoices[qIndex] : answers[qIndex]) === index ? ' is-selected' : ''}" type="button" data-choice="${index}">
+            <button class="cw-choice-button${(isFourOption ? displayedChoices[qIndex] : answers[qIndex]) === index ? ' is-selected' : ''}" type="button" data-choice="${index}">
                 <span>${escapeHtml(option)}</span>
             </button>`).join('');
         element('choice-list').querySelectorAll('[data-choice]').forEach(button => {
@@ -679,7 +683,7 @@
         const qIndex = current - 1;
         const question = questions[qIndex];
         displayedChoices[qIndex] = choice;
-        answers[qIndex] = question?.previewScores?.[choice] ?? choice;
+        answers[qIndex] = choice;
         captureTiming(qIndex);
         element('choice-list').querySelectorAll('[data-choice]').forEach(button => {
             const selected = Number(button.dataset.choice) === choice;
@@ -1180,14 +1184,19 @@
                 assignedHouseKey,
                 houseId: assignedHouseKey,
                 answers: answers.slice(),
-                answerLabels: questions.map((question, index) => ({
+                answerLabels: questions.map((question, index) => {
+                    const scores = Core.answerLetters(question, answers[index]);
+                    return {
                     questionId: question.id,
                     axis: question.axis,
+                    secondaryAxis: question.secondaryAxis || '',
                     displayedPosition: answers[index] + 1,
-                    score: question.scores[answers[index]],
+                    score: scores[0],
+                    secondaryScore: scores[1] || '',
                     responseMs: responseTimings[index]?.elapsedMs || null,
                     timingValid: Boolean(responseTimings[index]?.valid)
-                })),
+                    };
+                }),
                 responseTimes: responseTimings.slice(),
                 timingStats: {
                     validCount: timingStats.validCount,
@@ -2093,7 +2102,7 @@
     async function sharePreparedNativeResult(event) {
         const button = event?.currentTarget;
         const title = `${result.code} · ${result.typeName}`;
-        const text = '나는 크레 앞에서 어떤 유형일까?\n20문항 약 2분';
+        const text = '나는 크레 앞에서 어떤 유형일까?\n10문항 약 2분';
         setShareButtonBusy(button, true, '공유 준비 중');
 
         try {
@@ -2133,7 +2142,7 @@
     async function shareResult(event) {
         const button = event?.currentTarget;
         const title = `${result.code} · ${result.typeName}`;
-        const text = '나는 크레 앞에서 어떤 유형일까?\n20문항 약 2분';
+        const text = '나는 크레 앞에서 어떤 유형일까?\n10문항 약 2분';
         let shareFile = null;
         setShareButtonBusy(button, true, '카카오톡 여는 중');
 
@@ -2238,7 +2247,7 @@
     }
 
     function initialize() {
-        if (!Core || Core.QUESTIONS.length !== 20) {
+        if (!Core || Core.QUESTIONS.length !== 10) {
             toast('테스트 데이터를 불러오지 못했어요.', true);
             return;
         }

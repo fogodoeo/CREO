@@ -27,7 +27,8 @@ function cloneDefaults() {
     return Core.QUESTIONS.map(question => ({
         ...question,
         options: question.options.slice(),
-        scores: question.scores.slice()
+        scores: question.scores.slice(),
+        scorePairs: question.scorePairs ? question.scorePairs.map(pair => pair.slice()) : null
     }));
 }
 
@@ -58,11 +59,10 @@ function mergeSavedContent(raw) {
             if (!target) return;
             if (String(item.label || '').trim()) target.label = String(item.label).trim();
             if (String(item.q || '').trim()) target.q = String(item.q).trim();
-            if (Array.isArray(item.options) && item.options.length >= 2) {
-                target.options = [
-                    String(item.options[0] || '').trim() || target.options[0],
-                    String(item.options[1] || '').trim() || target.options[1]
-                ];
+            if (Array.isArray(item.options) && item.options.length >= 4) {
+                target.options = target.options.map((fallback, index) =>
+                    String(item.options[index] || '').trim() || fallback
+                );
             }
         });
     } catch (error) {
@@ -96,8 +96,12 @@ function renderEditor() {
     document.getElementById('manager-question').value = question.q;
     document.getElementById('manager-answer-a').value = question.options[0];
     document.getElementById('manager-answer-b').value = question.options[1];
-    document.getElementById('manager-answer-a-label').textContent = `${question.scores[0]} 성향 선택지`;
-    document.getElementById('manager-answer-b-label').textContent = `${question.scores[1]} 성향 선택지`;
+    document.getElementById('manager-answer-c').value = question.options[2];
+    document.getElementById('manager-answer-d').value = question.options[3];
+    document.getElementById('manager-answer-a-label').textContent = '선택지 A';
+    document.getElementById('manager-answer-b-label').textContent = '선택지 B';
+    document.getElementById('manager-answer-c-label').textContent = '선택지 C';
+    document.getElementById('manager-answer-d-label').textContent = '선택지 D';
 }
 
 function commitEditor() {
@@ -107,7 +111,9 @@ function commitEditor() {
     question.q = document.getElementById('manager-question').value.trim();
     question.options = [
         document.getElementById('manager-answer-a').value.trim(),
-        document.getElementById('manager-answer-b').value.trim()
+        document.getElementById('manager-answer-b').value.trim(),
+        document.getElementById('manager-answer-c').value.trim(),
+        document.getElementById('manager-answer-d').value.trim()
     ];
 }
 
@@ -125,9 +131,9 @@ function selectQuestion(id) {
 
 function validateQuestions() {
     commitEditor();
-    if (managedQuestions.length !== 20) throw new Error('20개 문항이 모두 필요합니다.');
+    if (managedQuestions.length !== Core.QUESTIONS.length) throw new Error(`${Core.QUESTIONS.length}개 문항이 모두 필요합니다.`);
     managedQuestions.forEach(question => {
-        if (!question.label || !question.q || !question.options[0] || !question.options[1]) {
+        if (!question.label || !question.q || question.options.length !== 4 || question.options.some(option => !option)) {
             throw new Error(`${question.id} 문항에 빈 내용이 있습니다.`);
         }
     });
@@ -153,7 +159,7 @@ async function saveQuestions() {
         managerUpdatedAt = payload.contentUpdatedAt;
         managerDirty = false;
         document.getElementById('manager-save-state').textContent = `저장됨 · ${new Date(managerUpdatedAt).toLocaleString('ko-KR')}`;
-        toast('20개 문항을 저장했습니다.');
+        toast(`${Core.QUESTIONS.length}개 문항을 저장했습니다.`);
     } catch (error) {
         if (error.status === 401) showManagerLogin('인증이 만료되었습니다. 다시 로그인해 주세요.');
         toast(error.message || '문항을 저장하지 못했습니다.', true);
@@ -175,7 +181,7 @@ function resetCurrent() {
 }
 
 function resetAll() {
-    if (!window.confirm('20개 문항을 모두 기본값으로 되돌릴까요?')) return;
+    if (!window.confirm(`${Core.QUESTIONS.length}개 문항을 모두 기본값으로 되돌릴까요?`)) return;
     managedQuestions = cloneDefaults();
     selectedQuestionId = 'Q01';
     renderQuestionList();

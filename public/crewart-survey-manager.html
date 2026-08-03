@@ -6,7 +6,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <title>크레와트 성향 문항 관리 | 크레와트</title>
     <script src="platform-client.js?v=20260803-admin-session-v2"></script>
-    <script src="crewart-survey-core.js?v=20260804-scenario-v16"></script>
+    <script src="crewart-survey-core.js?v=20260804-scenario-v17"></script>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet">
     <link rel="stylesheet" href="crewart.css?v=20260718-cre-mbti-manager-v2">
@@ -41,8 +41,8 @@
         <header class="cw-page-head cw-manager-head">
             <div>
                 <div class="cw-kicker">CREWART CONTENT STUDIO</div>
-                <h1>20개 질문 관리</h1>
-                <p>문항과 두 성향의 선택 문구를 수정합니다. 질문 이미지는 문항별 기본 삽화를 유지합니다.</p>
+                <h1>10개 질문 관리</h1>
+                <p>문항과 네 행동 선택지를 수정합니다. 점수 축과 선택지 순서는 자동으로 관리됩니다.</p>
                 <span class="cw-manager-save-state" id="manager-save-state">설정을 불러오는 중...</span>
             </div>
             <div class="cw-actions">
@@ -59,7 +59,7 @@
         <section class="cw-manager-workspace" id="manager-workspace" hidden>
             <aside class="cw-panel cw-manager-sidebar">
                 <header>
-                    <div><div class="cw-kicker">20 QUESTIONS</div><h2>문항 선택</h2></div>
+                    <div><div class="cw-kicker">10 QUESTIONS</div><h2>문항 선택</h2></div>
                     <button class="cw-manager-text-button" id="manager-reset-all" type="button">전체 기본값</button>
                 </header>
                 <div class="cw-manager-question-list" id="manager-question-list"></div>
@@ -91,11 +91,19 @@
                         <label for="manager-answer-b" id="manager-answer-b-label">반대 성향 선택지</label>
                         <textarea class="cw-textarea" id="manager-answer-b" rows="3" maxlength="120"></textarea>
                     </div>
+                    <div class="cw-field">
+                        <label for="manager-answer-c" id="manager-answer-c-label">선택지 C</label>
+                        <textarea class="cw-textarea" id="manager-answer-c" rows="3" maxlength="120"></textarea>
+                    </div>
+                    <div class="cw-field">
+                        <label for="manager-answer-d" id="manager-answer-d-label">선택지 D</label>
+                        <textarea class="cw-textarea" id="manager-answer-d" rows="3" maxlength="120"></textarea>
+                    </div>
                 </div>
 
                 <div class="cw-manager-lock-note">
                     <strong>점수축과 화면 위치는 자동 관리됩니다.</strong>
-                    <span>두 선택지는 같은 축의 반대 의미를 유지해 주세요. 실제 설문에서는 좌우 위치가 무작위로 바뀝니다.</span>
+                    <span>네 선택지는 서로 다른 행동처럼 작성해 주세요. 실제 설문에서는 카드 위치가 무작위로 바뀝니다.</span>
                 </div>
             </section>
         </section>

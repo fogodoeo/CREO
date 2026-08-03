@@ -94,7 +94,7 @@ function sanitizeSubmission(input, nowIso) {
         throw error;
     }
     const answers = Array.isArray(input.answers) ? input.answers.map(Number) : [];
-    if (answers.length !== Core.QUESTIONS.length || answers.some((answer) => answer !== 0 && answer !== 1)) {
+    if (answers.length !== Core.QUESTIONS.length || answers.some((answer, index) => answer < 0 || answer >= (Core.QUESTIONS[index]?.options?.length || 0))) {
         const error = new Error('응답 개수가 올바르지 않습니다.');
         error.status = 422;
         throw error;
@@ -128,23 +128,31 @@ function sanitizeSubmission(input, nowIso) {
             const questionId = cleanText(answer?.questionId, 3).toUpperCase();
             const axis = cleanText(answer?.axis, 2).toUpperCase();
             const score = cleanText(answer?.score, 1).toUpperCase();
+            const secondaryAxis = cleanText(answer?.secondaryAxis, 2).toUpperCase();
+            const secondaryScore = cleanText(answer?.secondaryScore, 1).toUpperCase();
             const question = questionById.get(questionId);
-            const displayedPosition = exactInteger(answer?.displayedPosition, 1, 2);
+            const displayedPosition = exactInteger(answer?.displayedPosition, 1, question?.options?.length || 0);
+            const expectedSecondaryAxis = question?.secondaryAxis || '';
             if (
                 !question
                 || seenQuestionIds.has(questionId)
                 || question.axis !== axis
                 || !axis.includes(score)
+                || secondaryAxis !== expectedSecondaryAxis
+                || (expectedSecondaryAxis && !expectedSecondaryAxis.includes(secondaryScore))
                 || displayedPosition !== answers[index] + 1
             ) return null;
             const responseMs = exactInteger(answer?.responseMs, 0, 30000) ?? 0;
             seenQuestionIds.add(questionId);
             scoreCounts[score] += 1;
+            if (secondaryScore) scoreCounts[secondaryScore] += 1;
             return {
                 questionId,
                 axis,
+                secondaryAxis,
                 displayedPosition,
                 score,
+                secondaryScore,
                 responseMs,
                 timingValid: responseMs >= 400 && responseMs <= 30000
             };
@@ -202,7 +210,7 @@ function sanitizeManagedContent(input) {
     }
     const items = Array.isArray(input?.questions) ? input.questions : [];
     if (items.length !== Core.QUESTIONS.length) {
-        const error = new Error('20개 문항이 모두 필요합니다.');
+        const error = new Error(`${Core.QUESTIONS.length}개 문항이 모두 필요합니다.`);
         error.status = 422;
         throw error;
     }
@@ -221,9 +229,9 @@ function sanitizeManagedContent(input) {
         const label = cleanText(item?.label, 40);
         const q = cleanText(item?.q, 160);
         const options = Array.isArray(item?.options)
-            ? item.options.slice(0, 2).map((option) => cleanText(option, 120))
+            ? item.options.slice(0, 4).map((option) => cleanText(option, 120))
             : [];
-        if (!label || !q || options.length !== 2 || options.some((option) => option.length < 6) || options[0] === options[1]) {
+        if (!label || !q || options.length !== 4 || options.some((option) => option.length < 6) || new Set(options).size !== options.length) {
             const error = new Error(`${question.id} 문항의 문구를 확인해 주세요.`);
             error.status = 422;
             throw error;
