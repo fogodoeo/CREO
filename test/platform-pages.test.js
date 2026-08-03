@@ -309,7 +309,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /cw-result-code cw-result-code-back/);
     assert.match(script, /cw-result-code cw-result-code-front/);
     assert.match(script, /class="cw-type-poster"/);
-    assert.match(html, /20260803-analysis-v70/);
+    assert.match(html, /20260803-analysis-v71/);
     assert.doesNotMatch(html, /question-illustration|question-image/);
     assert.doesNotMatch(script, /QUESTION_IMAGE_ROOT|question\.image|nextImage/);
     assert.doesNotMatch(html, /cw-home-guide|cw-home-disclaimer/);
@@ -377,6 +377,9 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /'house-report-detail'/);
     assert.match(script, /function toggleReportDisclosure\(event\)[\s\S]*panel\.hidden = !opening[\s\S]*aria-expanded/);
     assert.match(script, /id="axes-report-detail" hidden>\$\{renderTypeComparisonAnalysis\(\)\}\$\{axisInsights\}<\/div>\s*<div class="cw-axis-detail-list">/);
+    assert.match(script, /function renderAxisGraph\(axisResult, compact = false\)/);
+    assert.match(script, /\$\{renderAxisGraph\(axisResult, true\)\}\s*<p class="cw-analysis-lead">/);
+    assert.match(css, /\.cw-axis-insight-graph\s*\{[^}]*margin-top:\s*12px[^}]*background:\s*#f7f8f5/);
     assert.match(script, /id="speed-report-detail" hidden>[\s\S]*<div class="cw-speed-summary">/);
     assert.match(script, /id="house-report-detail" hidden>[\s\S]*<div class="cw-house-assignment">/);
     assert.match(script, /내 선택에서 보인 모습/);

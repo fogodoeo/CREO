@@ -906,16 +906,16 @@
             </section>`;
     }
 
-    function renderMemberDetail() {
-        const axisCards = result.axes.map(axisResult => {
-            const copy = AXIS_REPORT_COPY[axisResult.axis];
-            const first = axisResult.axis[0];
-            const second = axisResult.axis[1];
-            const secondCount = Number(result.letters[second]) || 0;
-            const position = Math.max(0, Math.min(100, (secondCount / 5) * 100));
-            const firstSelected = axisResult.dominant === first;
-            return `
-                <article class="cw-axis-detail" data-axis-result data-final-pole="${firstSelected ? 'left' : 'right'}">
+    function renderAxisGraph(axisResult, compact = false) {
+        const copy = AXIS_REPORT_COPY[axisResult.axis];
+        const first = axisResult.axis[0];
+        const second = axisResult.axis[1];
+        const secondCount = Number(result.letters[second]) || 0;
+        const position = Math.max(0, Math.min(100, (secondCount / 5) * 100));
+        const firstSelected = axisResult.dominant === first;
+        const tag = compact ? 'section' : 'article';
+        return `
+                <${tag} class="cw-axis-detail${compact ? ' cw-axis-insight-graph' : ''}" data-axis-result data-final-pole="${firstSelected ? 'left' : 'right'}">
                     <header><h3>${escapeHtml(copy.title)}</h3></header>
                     <div class="cw-axis-poles">
                         <div class="cw-axis-pole is-left${firstSelected ? ' is-selected' : ''}" data-pole="left"><strong>${escapeHtml(first)}</strong></div>
@@ -929,8 +929,11 @@
                         <span class="${firstSelected ? 'is-selected' : ''}" data-pole-copy="left">${escapeHtml(copy.left)}</span>
                         <span class="${firstSelected ? '' : 'is-selected'}" data-pole-copy="right">${escapeHtml(copy.right)}</span>
                     </div>
-                </article>`;
-        }).join('');
+                </${tag}>`;
+    }
+
+    function renderMemberDetail() {
+        const axisCards = result.axes.map(axisResult => renderAxisGraph(axisResult)).join('');
         const axisInsights = result.axes.map(axisResult => {
             const meta = Core.AXIS_META[axisResult.axis];
             const dominant = meta.letters[axisResult.dominant];
@@ -945,6 +948,7 @@
                         <div><small>${escapeHtml(AXIS_REPORT_COPY[axisResult.axis].title)}</small><strong>${escapeHtml(axisResult.dominant)} · ${escapeHtml(dominant.short)}</strong></div>
                         <span>${escapeHtml(result.letters[axisResult.dominant])}:${escapeHtml(result.letters[axisResult.opposite])} · ${escapeHtml(axisStrength(axisResult))}</span>
                     </header>
+                    ${renderAxisGraph(axisResult, true)}
                     <p class="cw-analysis-lead">${escapeHtml(axisAnalysisLead(axisResult, guide))}</p>
                     ${hasEvidence ? `<section class="cw-analysis-evidence">
                         <h4>내 선택에서 보인 모습</h4>
