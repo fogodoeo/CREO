@@ -7,6 +7,13 @@ const Core = require('../public/crewart-survey-core');
 test('v8.1 questionnaire covers five distinct facets on every axis', () => {
     assert.equal(Core.SURVEY_VERSION, 'crewart-tendency-v8.1');
     assert.equal(Core.QUESTIONS.length, 20);
+    assert.deepEqual(Core.QUESTIONS[0].previewOptions, [
+        '동행인과 기준을 정해 비교한다',
+        '동행인과 마음 가는 쪽을 이야기한다',
+        '자리를 옮겨 기준대로 다시 본다',
+        '자리를 옮겨 끌리는 쪽을 더 본다'
+    ]);
+    assert.deepEqual(Core.QUESTIONS[0].previewScores, [0, 0, 1, 1]);
     assert.equal(new Set(Core.QUESTIONS.map((question) => question.id)).size, 20);
     for (const axis of Core.AXES) {
         const questions = Core.QUESTIONS.filter((question) => question.axis === axis);

@@ -309,7 +309,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /cw-result-code cw-result-code-back/);
     assert.match(script, /cw-result-code cw-result-code-front/);
     assert.match(script, /class="cw-type-poster"/);
-    assert.match(html, /20260804-reading-v75/);
+    assert.match(html, /20260804-reading-v76/);
+    assert.match(html, /20260804-scenario-v15/);
     assert.doesNotMatch(html, /question-illustration|question-image/);
     assert.doesNotMatch(script, /QUESTION_IMAGE_ROOT|question\.image|nextImage/);
     assert.doesNotMatch(html, /cw-home-guide|cw-home-disclaimer/);
@@ -323,6 +324,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.doesNotMatch(script, /성향을 이해하기 위한 참고 결과입니다/);
     assert.match(script, /<\/article>\s*<small class="cw-result-copyright cw-result-copyright-outside"/);
     assert.match(css, /\.cw-q0-list li\s*\{[^}]*grid-template-columns:\s*30px 1fr/);
+    assert.match(css, /\.cw-choice-list\.is-four-option\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
     assert.match(css, /\.cw-intro\s*\{[^}]*height:\s*100dvh[^}]*overflow:\s*hidden/);
     assert.match(css, /\.cw-intro-content\s*\{[^}]*min-height:\s*0/);
     assert.match(html, /property="og:url" content="https:\/\/creok\.onrender\.com\/crewart-survey\.html"/);

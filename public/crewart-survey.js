@@ -119,6 +119,7 @@
     };
     let questions = [];
     let answers = [];
+    let displayedChoices = [];
     let responseTimings = [];
     let current = 0;
     let selectedMbti = '';
@@ -247,6 +248,7 @@
         activeTimer = null;
         questions = [];
         answers = [];
+        displayedChoices = [];
         responseTimings = [];
         selectedMbti = snapshot.selectedMbti || '';
         surveySessionId = '';
@@ -512,6 +514,7 @@
     function startSurvey() {
         questions = Core.prepareQuestions();
         answers = [];
+        displayedChoices = [];
         responseTimings = [];
         current = 0;
         selectedMbti = '';
@@ -595,6 +598,7 @@
         activeTimer = null;
         questions = [];
         answers = [];
+        displayedChoices = [];
         responseTimings = [];
         current = 0;
         selectedMbti = '';
@@ -614,6 +618,7 @@
     function renderQuestion() {
         advancing = false;
         const card = element('question-card');
+        element('choice-list').classList.remove('is-four-option');
         card.classList.toggle('is-guide', current === 0);
         element('q0-copyright').hidden = current !== 0;
         if (current === 0) {
@@ -647,14 +652,17 @@
         const qIndex = current - 1;
         const question = questions[qIndex];
         if (!question) return;
+        const options = question.previewOptions || question.options;
+        const isPreviewChoice = Array.isArray(question.previewOptions);
         element('progress-text').textContent = `${current} / ${questions.length}`;
         element('progress-axis').textContent = '크레 앞의 나를 찾는 중';
         element('progress-bar').style.width = `${(current / questions.length) * 100}%`;
         element('question-back').disabled = false;
         element('question-label').textContent = question.label;
         element('question-title').textContent = question.q;
-        element('choice-list').innerHTML = question.options.map((option, index) => `
-            <button class="cw-choice-button${answers[qIndex] === index ? ' is-selected' : ''}" type="button" data-choice="${index}">
+        element('choice-list').classList.toggle('is-four-option', isPreviewChoice);
+        element('choice-list').innerHTML = options.map((option, index) => `
+            <button class="cw-choice-button${(isPreviewChoice ? displayedChoices[qIndex] : answers[qIndex]) === index ? ' is-selected' : ''}" type="button" data-choice="${index}">
                 <span>${escapeHtml(option)}</span>
             </button>`).join('');
         element('choice-list').querySelectorAll('[data-choice]').forEach(button => {
@@ -669,7 +677,9 @@
         if (advancing || current < 1) return;
         advancing = true;
         const qIndex = current - 1;
-        answers[qIndex] = choice;
+        const question = questions[qIndex];
+        displayedChoices[qIndex] = choice;
+        answers[qIndex] = question?.previewScores?.[choice] ?? choice;
         captureTiming(qIndex);
         element('choice-list').querySelectorAll('[data-choice]').forEach(button => {
             const selected = Number(button.dataset.choice) === choice;

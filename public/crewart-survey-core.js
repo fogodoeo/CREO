@@ -22,7 +22,7 @@
     // - choices describe concrete micro-behaviours without naming the axis traits;
     // - option order is randomized later without changing the score mapping.
     const QUESTIONS = [
-        { id: 'Q01', axis: 'EI', facet: 'processing', label: '새로 온 사진을 보니 후보가 둘로 좁혀졌다.', q: '마지막 판단을 정리할 때 나는?', options: ['두 사진을 보여주며 다른 사람과 의견을 나눈다', '두 사진을 번갈아 보며 내 생각을 정리한다'], scores: ['E', 'I'] },
+        { id: 'Q01', axis: 'EI', facet: 'processing', label: '새로 온 사진을 보니 후보가 둘로 좁혀졌다.', q: '마지막 판단을 정리할 때 나는?', options: ['두 사진을 보여주며 다른 사람과 의견을 나눈다', '두 사진을 번갈아 보며 내 생각을 정리한다'], scores: ['E', 'I'], previewOptions: ['동행인과 기준을 정해 비교한다', '동행인과 마음 가는 쪽을 이야기한다', '자리를 옮겨 기준대로 다시 본다', '자리를 옮겨 끌리는 쪽을 더 본다'], previewScores: [0, 0, 1, 1] },
         { id: 'Q02', axis: 'SN', facet: 'noticing', label: '지난달 사진과 오늘 사진을 나란히 놓았다.', q: '변화를 볼 때 먼저 확인하는 것은?', options: ['무늬·체중처럼 실제로 달라진 부분', '전체 모습이 어느 방향으로 변하는지'], scores: ['S', 'N'] },
         { id: 'Q03', axis: 'TF', facet: 'decision', label: '마음에 드는 두 크레 중 한 마리만 데려올 수 있다.', q: '끝까지 비교하게 되는 것은?', options: ['내 환경에서 더 안정적으로 관리할 수 있는 쪽', '내가 더 오래 애정을 갖고 돌볼 수 있는 쪽'], scores: ['T', 'F'] },
         { id: 'Q04', axis: 'JP', facet: 'readiness', label: '새 크레가 사흘 뒤 집에 온다.', q: '준비를 마쳤다고 느끼는 때는?', options: ['사육장 위치와 용품 배치를 모두 끝냈을 때', '필수 용품을 갖추고 반응에 맞출 여지를 남겼을 때'], scores: ['J', 'P'] },
@@ -109,6 +109,8 @@
             ...question,
             options: question.options.slice(),
             scores: question.scores.slice(),
+            previewOptions: question.previewOptions?.slice(),
+            previewScores: question.previewScores?.slice(),
             flipped: false
         }));
     }
@@ -130,13 +132,22 @@
         const questions = cloneQuestions();
         const axesByFlipCount = shuffle(AXES, rng);
         axesByFlipCount.forEach((axis, axisIndex) => {
-            const group = shuffle(questions.filter(question => question.axis === axis), rng);
+            const group = shuffle(questions.filter(question => question.axis === axis && !question.previewOptions), rng);
             const flipCount = axisIndex < 2 ? 3 : 2;
             group.slice(0, flipCount).forEach(question => {
                 [question.options[0], question.options[1]] = [question.options[1], question.options[0]];
                 [question.scores[0], question.scores[1]] = [question.scores[1], question.scores[0]];
                 question.flipped = true;
             });
+        });
+
+        questions.filter(question => question.previewOptions).forEach(question => {
+            const preview = shuffle(question.previewOptions.map((option, index) => ({
+                option,
+                score: question.previewScores[index]
+            })), rng);
+            question.previewOptions = preview.map(item => item.option);
+            question.previewScores = preview.map(item => item.score);
         });
 
         let ordered = questions;
