@@ -43,44 +43,44 @@
     });
     const AXIS_DETAIL_GUIDE = Object.freeze({
         E: {
-            summary: '정보를 말로 풀어내고 반응을 주고받는 과정에서 판단이 선명해지는 경향입니다.',
-            signals: ['외부 반응을 새로운 단서로 받아들이며 판단 범위를 넓힙니다.', '경험을 설명하는 과정에서 우선순위가 빠르게 정리됩니다.'],
-            balance: '주변 반응이 강하게 작용할 때는 짧은 단독 검토 시간을 두면 자신의 기준을 더 분명히 유지할 수 있습니다.'
+            summary: '생각을 완성한 뒤 말하기보다, 주고받는 과정에서 생각이 완성되는 쪽에 가깝습니다.',
+            signals: ['처음 보는 상황에서도 질문과 반응을 빠르게 연결해 필요한 정보를 끌어냅니다.', '혼자라면 지나칠 단서도 대화 속에서 발견해 다음 행동으로 옮기는 힘이 있습니다.'],
+            balance: '의견이 많이 들어오는 날에는 결정 전에 잠깐 멈춰 “내가 처음 중요하게 본 것은 무엇이었나”를 확인하면 중심을 지키기 쉽습니다.'
         },
         I: {
-            summary: '관찰한 내용을 내부에서 충분히 정리한 뒤 판단을 밖으로 꺼내는 경향입니다.',
-            signals: ['말하기 전에 조건과 차이를 머릿속에서 비교합니다.', '독립적으로 검토할 때 미세한 변화와 누락을 더 잘 발견합니다.'],
-            balance: '검토가 길어질 때는 결정 시점을 먼저 정해두면 세밀한 관찰을 실제 행동으로 연결하기 쉽습니다.'
+            summary: '말보다 관찰이 먼저이고, 충분히 정리된 생각을 필요한 순간에 꺼내는 쪽에 가깝습니다.',
+            signals: ['겉으로 조용해 보여도 안에서는 조건과 차이를 촘촘하게 비교합니다.', '시간을 두고 다시 볼 때 작은 변화와 누락을 발견하는 집중력이 돋보입니다.'],
+            balance: '확신이 생길 때까지 검토가 길어질 수 있으니 결정 시점을 먼저 정해두면 좋은 관찰을 실제 행동으로 연결하기 쉽습니다.'
         },
         S: {
-            summary: '현재 확인할 수 있는 상태와 구체적인 차이를 중심으로 상황을 판단하는 경향입니다.',
-            signals: ['직접 관찰한 변화와 측정 가능한 정보를 우선합니다.', '확인된 사실을 바로 실행 가능한 관리 행동으로 전환합니다.'],
-            balance: '현재 상태가 안정적일수록 성장 흐름과 다음 단계도 함께 검토하면 장기적인 판단의 폭을 넓힐 수 있습니다.'
+            summary: '막연한 인상보다 지금 눈앞에서 확인되는 작은 차이를 놓치지 않는 쪽에 가깝습니다.',
+            signals: ['컨디션 변화가 생기면 실제로 달라진 지점을 빠르게 찾아냅니다.', '확인한 사실을 급여·온도·환경 같은 구체적인 관리 행동으로 바꾸는 힘이 있습니다.'],
+            balance: '현재 상태를 정확히 보는 강점에 최근의 흐름까지 함께 붙이면, 문제가 커지기 전 다음 변화를 예상하기 쉬워집니다.'
         },
         N: {
-            summary: '현재의 단서를 연결해 앞으로의 변화와 전체 흐름을 먼저 그리는 경향입니다.',
-            signals: ['서로 떨어진 정보를 하나의 성장 흐름으로 연결합니다.', '지금 보이는 모습보다 이후의 변화와 새로운 조합에 주목합니다.'],
-            balance: '예상한 흐름을 선택으로 옮기기 전에 현재 컨디션과 관리 조건을 다시 확인하면 실행 가능성이 높아집니다.'
+            summary: '현재의 한 장면보다 여러 단서를 연결해 다음 모습을 그리는 쪽에 가깝습니다.',
+            signals: ['따로 보이는 기록에서도 성장의 방향과 반복되는 흐름을 찾아냅니다.', '아직 드러나지 않은 변화와 새로운 조합을 먼저 발견하는 상상력이 돋보입니다.'],
+            balance: '떠오른 그림을 선택으로 옮기기 전에 현재 컨디션과 관리 여건을 한 번 확인하면 아이디어의 실현 가능성이 높아집니다.'
         },
         T: {
-            summary: '선택지를 동일한 조건에 놓고 차이와 인과관계를 비교하는 경향입니다.',
-            signals: ['문제가 생기면 원인과 해결 구조를 먼저 분리합니다.', '누가 판단해도 설명할 수 있는 일관성과 재현성을 중시합니다.'],
-            balance: '조건이 비슷한 선택지에서는 애착과 장기 만족도도 기준에 포함하면 지속하기 쉬운 결정을 만들 수 있습니다.'
+            summary: '마음이 가는 것과 실제로 맞는 조건을 분리해, 설명 가능한 선택을 만드는 쪽에 가깝습니다.',
+            signals: ['문제가 생기면 감정에 휩쓸리기보다 원인과 해결 순서를 빠르게 나눕니다.', '판단 기준이 분명해 경험을 다른 사람도 다시 활용할 수 있는 정보로 만드는 힘이 있습니다.'],
+            balance: '조건 차이가 거의 없는 선택에서는 오래 보고 싶은 마음도 하나의 유효한 기준으로 인정하면 결정 뒤 만족도가 높아질 수 있습니다.'
         },
         F: {
-            summary: '개체와의 관계, 개인의 취향, 돌봄 경험의 지속 가능성을 함께 고려하는 경향입니다.',
-            signals: ['선택 이후 자신과 주변이 경험할 만족도를 중요하게 봅니다.', '일률적인 기준보다 대상과 상황에 맞는 결정을 선호합니다.'],
-            balance: '마음이 크게 움직이는 선택일수록 관리 조건과 비용을 수치로 확인하면 만족을 더 안정적으로 유지할 수 있습니다.'
+            summary: '개체를 조건표로만 보지 않고, 함께 지낼 시간과 관계까지 선택에 넣는 쪽에 가깝습니다.',
+            signals: ['작은 반응에서도 그 개체만의 매력을 발견하고 오래 기억합니다.', '사람과 개체 모두가 무리 없이 이어갈 수 있는 돌봄 방식을 찾는 감각이 돋보입니다.'],
+            balance: '마음이 크게 움직이는 선택일수록 공간·비용·관리 시간을 숫자로 한 번 확인하면 애착을 더 안정적으로 지킬 수 있습니다.'
         },
         J: {
-            summary: '해야 할 범위와 완료 기준을 먼저 정한 뒤 안정적으로 실행하는 경향입니다.',
-            signals: ['반복 업무를 일정한 구조와 순환 방식으로 관리합니다.', '준비 상태와 마감 지점이 분명할수록 실행 속도가 높아집니다.'],
-            balance: '예상과 다른 반응에 적용할 예외 기준을 미리 두면 운영의 안정성과 대응력을 함께 유지할 수 있습니다.'
+            summary: '돌봄을 그날의 감각에 맡기기보다, 끝나는 기준을 만들어 안정적으로 운영하는 쪽에 가깝습니다.',
+            signals: ['반복되는 급여와 청소도 빠뜨리지 않는 자기만의 구조를 만듭니다.', '무엇부터 어디까지 할지 분명해 여러 개체를 돌볼 때도 흐름이 쉽게 무너지지 않습니다.'],
+            balance: '예상 밖 반응이 나온 날에는 계획을 지키는 것보다 개체 상태를 우선하는 예외 기준을 두면 안정성과 대응력을 함께 지킬 수 있습니다.'
         },
         P: {
-            summary: '실제 반응과 새로 들어온 정보에 맞춰 다음 행동을 조정하는 경향입니다.',
-            signals: ['여러 선택지를 열어둔 채 상황에 맞는 방식을 탐색합니다.', '예상 밖의 변화가 생겨도 우선순위를 빠르게 다시 배치합니다.'],
-            balance: '반드시 지켜야 할 최소 루틴만 고정하면 적응력은 유지하면서 기록 누락과 관리 편차를 줄일 수 있습니다.'
+            summary: '처음 정한 방식에 매이기보다, 실제 반응을 보고 가장 맞는 다음 행동을 찾는 쪽에 가깝습니다.',
+            signals: ['예상 밖의 변화가 생겨도 당황하기보다 우선순위를 빠르게 다시 배치합니다.', '정답이 없는 상황에서 여러 방법을 시험하며 그 개체에게 맞는 방식을 찾아내는 힘이 있습니다.'],
+            balance: '급여·온도·기록처럼 반드시 지킬 최소선만 고정하면 적응력은 살리면서 관리 편차와 누락을 줄일 수 있습니다.'
         }
     });
     const HOUSE_DETAIL_GUIDE = Object.freeze({
@@ -633,8 +633,9 @@
                 <div class="cw-q0-card">
                     <ol class="cw-q0-list">
                         <li><b>01</b><span>재미를 위한 성향 콘텐츠이며, 과학적·의학적 진단이 아닙니다.</span></li>
-                        <li><b>02</b><span>좋아 보이는 답보다 평소 내 모습에 가까운 쪽을 골라주세요.</span></li>
-                        <li><b>03</b><span>오래 고민하지 말고 먼저 떠오른 답을 선택해주세요.</span></li>
+                        <li><b>02</b><span>크레 앞에서는 평소 유형과 다른 결과가 나올 수 있습니다.</span></li>
+                        <li><b>03</b><span>좋아 보이는 답보다 평소 내 모습에 가까운 쪽을 골라주세요.</span></li>
+                        <li><b>04</b><span>오래 고민하지 말고 먼저 떠오른 답을 선택해주세요.</span></li>
                     </ol>
                     <button class="cw-primary-button cw-q0-start-button" type="button" data-q0-start>시작하기</button>
                     <p class="cw-copyright">© 2026 CREO. All rights reserved.</p>
@@ -878,13 +879,9 @@
     function axisAnalysisLead(axisResult, guide) {
         const dominantCount = Number(result.letters[axisResult.dominant]) || 0;
         const oppositeCount = Number(result.letters[axisResult.opposite]) || 0;
-        if (dominantCount === 5) {
-            return `다섯 장면 모두 ${guide.summary.replace(/입니다\.$/, '으로 이어졌습니다.')}`;
-        }
-        if (dominantCount === 4) {
-            return `${guide.summary} 다만 한 장면에서는 반대 방식도 함께 사용했습니다.`;
-        }
-        return `두 방식이 함께 나타났으며, ${dominantCount}:${oppositeCount}의 근소한 차이로 ${axisResult.dominant} 방향이 선택되었습니다. 상황에 따라 판단 방식을 바꾸는 폭이 있는 결과입니다.`;
+        if (dominantCount === 5) return `${guide.summary} 다섯 장면에서 이 방향이 일관되게 나타났습니다.`;
+        if (dominantCount === 4) return `${guide.summary} 네 장면에서 이 방향이 나타났고, 한 장면에서는 다른 방식도 사용했습니다.`;
+        return `${guide.summary} 두 방식이 함께 나타났으며, ${dominantCount}:${oppositeCount}의 근소한 차이로 ${axisResult.dominant} 방향이 선택되었습니다.`;
     }
 
     function renderTypeComparisonAnalysis() {
@@ -950,12 +947,12 @@
                     </header>
                     <p class="cw-analysis-lead">${escapeHtml(axisAnalysisLead(axisResult, guide))}</p>
                     ${hasEvidence ? `<section class="cw-analysis-evidence">
-                        <h4>결과를 만든 실제 선택</h4>
+                        <h4>내 선택에서 보인 모습</h4>
                         ${evidence.dominant.map(example => `<div><small>주된 방향 · ${escapeHtml(axisResult.dominant)}</small><section>${example.scene ? `<b>${escapeHtml(example.scene)}</b>` : ''}<p>${escapeHtml(example.choice)}</p></section></div>`).join('')}
                         ${evidence.opposite.map(example => `<div class="is-opposite"><small>함께 나타난 방향 · ${escapeHtml(axisResult.opposite)}</small><section>${example.scene ? `<b>${escapeHtml(example.scene)}</b>` : ''}<p>${escapeHtml(example.choice)}</p></section></div>`).join('')}
                     </section>` : ''}
-                    <section class="cw-analysis-reading"><strong>해석</strong><p>${guide.signals.slice(0, 2).map(signal => escapeHtml(signal)).join(' ')}</p></section>
-                    <aside class="cw-analysis-caution"><strong>보완 관점</strong><p>${escapeHtml(guide.balance)}</p></aside>
+                    <section class="cw-analysis-reading"><strong>이 성향의 강점</strong><p>${guide.signals.slice(0, 2).map(signal => escapeHtml(signal)).join(' ')}</p></section>
+                    <aside class="cw-analysis-caution"><strong>더 편해지는 방법</strong><p>${escapeHtml(guide.balance)}</p></aside>
                 </article>`;
         }).join('');
         return `

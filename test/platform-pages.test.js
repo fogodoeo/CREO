@@ -309,12 +309,13 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /cw-result-code cw-result-code-back/);
     assert.match(script, /cw-result-code cw-result-code-front/);
     assert.match(script, /class="cw-type-poster"/);
-    assert.match(html, /20260803-analysis-v69/);
+    assert.match(html, /20260803-analysis-v70/);
     assert.doesNotMatch(html, /question-illustration|question-image/);
     assert.doesNotMatch(script, /QUESTION_IMAGE_ROOT|question\.image|nextImage/);
     assert.doesNotMatch(html, /cw-home-guide|cw-home-disclaimer/);
     assert.match(script, /재미를 위한 성향 콘텐츠이며, 과학적·의학적 진단이 아닙니다\./);
     assert.match(script, /data-q0-start/);
+    assert.match(script, /크레 앞에서는 평소 유형과 다른 결과가 나올 수 있습니다/);
     assert.match(html, /© 2026 CREO\. All rights reserved\./);
     assert.match(script, /© 2026 CREO\. All rights reserved\./);
     assert.match(script, /© 2026 CREO · ALL RIGHTS RESERVED/);
@@ -378,7 +379,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /id="axes-report-detail" hidden>\$\{renderTypeComparisonAnalysis\(\)\}\$\{axisInsights\}<\/div>\s*<div class="cw-axis-detail-list">/);
     assert.match(script, /id="speed-report-detail" hidden>[\s\S]*<div class="cw-speed-summary">/);
     assert.match(script, /id="house-report-detail" hidden>[\s\S]*<div class="cw-house-assignment">/);
-    assert.match(script, /결과를 만든 실제 선택/);
+    assert.match(script, /내 선택에서 보인 모습/);
     assert.match(script, /주된 방향 ·/);
     assert.match(script, /함께 나타난 방향 ·/);
     assert.match(script, /function selectedAxisEvidence\(axisResult\)/);
@@ -389,7 +390,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /class="cw-analysis-reading"/);
     assert.match(script, /TYPE_CHANGE_ANALYSIS/);
     assert.match(script, /guide\.summary/);
-    assert.match(script, /보완 관점/);
+    assert.match(script, /이 성향의 강점/);
+    assert.match(script, /더 편해지는 방법/);
     assert.match(script, /커뮤니티에서의 역할/);
     assert.match(script, /속도는 정확도나 성실도의 점수가 아닙니다/);
     assert.match(css, /\.cw-analysis-summary p\s*\{[^}]*font-size:\s*12\.5px[^}]*line-height:\s*1\.7/);

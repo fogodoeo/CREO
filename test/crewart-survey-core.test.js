@@ -4,8 +4,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const Core = require('../public/crewart-survey-core');
 
-test('v7 questionnaire covers five distinct facets on every axis', () => {
-    assert.equal(Core.SURVEY_VERSION, 'crewart-tendency-v7.0');
+test('v8 questionnaire covers five distinct facets on every axis', () => {
+    assert.equal(Core.SURVEY_VERSION, 'crewart-tendency-v8.0');
     assert.equal(Core.QUESTIONS.length, 20);
     assert.equal(new Set(Core.QUESTIONS.map((question) => question.id)).size, 20);
     for (const axis of Core.AXES) {

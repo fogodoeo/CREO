@@ -5,7 +5,7 @@
 }(typeof globalThis !== 'undefined' ? globalThis : this, function () {
     'use strict';
 
-    const SURVEY_VERSION = 'crewart-tendency-v7.0';
+    const SURVEY_VERSION = 'crewart-tendency-v8.0';
     const AXES = ['EI', 'SN', 'TF', 'JP'];
     const HOUSE_KEYS = ['SF', 'ST', 'NT', 'NF'];
     const MBTI_TYPES = [
@@ -15,27 +15,27 @@
         'ESTJ', 'ESFJ', 'ENFJ', 'ENTJ'
     ];
 
-    // v7.0 bias controls:
+    // v8.0 bias controls:
     // - both choices describe competent, responsible behaviour;
     // - no pole is framed as the emotional, careless, or less-informed answer;
     // - every axis samples five different behavioural facets;
     // - choices describe concrete micro-behaviours without naming the axis traits;
     // - option order is randomized later without changing the score mapping.
     const QUESTIONS = [
-        { id: 'Q01', axis: 'EI', facet: 'processing', label: '분양자에게 새 사진과 설명이 도착했다.', q: '확인하는 흐름은 어느 쪽에 가까운가?', options: ['사진을 넘기며 그때 보이는 점을 바로 확인한다', '사진을 끝까지 본 뒤 놓친 부분을 다시 확인한다'], scores: ['E', 'I'] },
+        { id: 'Q01', axis: 'EI', facet: 'processing', label: '분양자에게 새 사진과 설명이 도착했다.', q: '애매한 부분을 확인하는 흐름은?', options: ['사진을 함께 보며 질문을 이어가다 핵심을 찾는다', '궁금한 점이 모인 뒤 필요한 내용만 확인한다'], scores: ['E', 'I'] },
         { id: 'Q02', axis: 'SN', facet: 'noticing', label: '처음 보는 크레를 손 위에서 만났다.', q: '가장 먼저 눈에 들어오는 건?', options: ['발가락과 꼬리, 피부의 작은 차이', '무늬와 체형이 함께 만드는 전체 느낌'], scores: ['S', 'N'] },
-        { id: 'Q03', axis: 'TF', facet: 'decision', label: '마음에 드는 두 마리 중 하나만 데려올 수 있다.', q: '마지막까지 남는 질문은 어느 쪽인가?', options: ['지금 확인한 차이가 선택을 바꿀 만큼 큰가', '오래 지내도 계속 마음이 갈 모습인가'], scores: ['T', 'F'] },
+        { id: 'Q03', axis: 'TF', facet: 'decision', label: '한 후보는 기록이 충분하고, 다른 후보는 유독 눈에 밟힌다.', q: '결정을 미루게 하는 생각은?', options: ['아직 확인하지 못한 조건이 남아 있다는 점', '선택하지 않은 쪽이 계속 생각날 것 같은 점'], scores: ['T', 'F'] },
         { id: 'Q04', axis: 'JP', facet: 'readiness', label: '새 크레가 이번 주에 집에 온다.', q: '이제 맞을 준비가 됐다고 느끼는 때는?', options: ['빈 사육장이 실제로 사용할 모습까지 갖춰졌을 때', '필요한 용품을 모아 첫 반응에 맞출 수 있을 때'], scores: ['J', 'P'] },
 
         { id: 'Q05', axis: 'EI', facet: 'approach', label: '처음 간 파충류 행사에서 눈길 가는 크레를 봤다.', q: '그다음 행동은 어느 쪽에 가까운가?', options: ['설명을 듣는 자리에서 궁금한 점을 이어서 확인한다', '다른 부스도 둘러본 뒤 다시 돌아와 확인한다'], scores: ['E', 'I'] },
         { id: 'Q06', axis: 'SN', facet: 'tracking', label: '몇 달치 체중과 먹이 기록을 펼쳐봤다.', q: '변화를 찾을 때 먼저 보는 곳은?', options: ['먹이와 체중이 달라진 각각의 날짜', '변화가 시작되고 흐름이 꺾인 구간'], scores: ['S', 'N'] },
-        { id: 'Q07', axis: 'TF', facet: 'advice', label: '친구가 두 크레 사이에서 고민하고 있다.', q: '결정을 돕기 위해 먼저 묻고 싶은 것은?', options: ['두 후보 사이에서 실제로 달랐던 점', '한쪽을 놓쳤을 때 더 아쉬울 것 같은 이유'], scores: ['T', 'F'] },
+        { id: 'Q07', axis: 'TF', facet: 'advice', label: '친구가 두 크레 사이에서 고민하고 있다.', q: '이야기를 듣고 먼저 짚어주는 것은?', options: ['선택 뒤 관리에서 실제로 달라지는 부분', '처음부터 마음이 더 오래 머물렀던 순간'], scores: ['T', 'F'] },
         { id: 'Q08', axis: 'JP', facet: 'selection', label: '분양 목록에 후보 사진이 한 화면 가득하다.', q: '후보가 줄어드는 흐름은 어느 쪽인가?', options: ['전체를 한 번 본 뒤 남길 사진을 골라낸다', '눈에 걸린 사진을 따라가며 범위를 좁힌다'], scores: ['J', 'P'] },
 
         { id: 'Q09', axis: 'EI', facet: 'learning', label: '처음 해보는 관리법을 며칠 적용해봤다.', q: '내 방식으로 다듬는 과정은 어느 쪽인가?', options: ['해본 모습을 보여주고 돌아온 반응으로 고친다', '며칠의 전후 기록을 나란히 놓고 고친다'], scores: ['E', 'I'] },
         { id: 'Q10', axis: 'SN', facet: 'interpretation', label: '사육장 위치를 바꾼 다음 날이다.', q: '잘 적응하는지 살필 때는?', options: ['먹이 반응과 머문 위치가 달라졌는지 본다', '이 변화가 다음 생활 리듬을 바꿀지 본다'], scores: ['S', 'N'] },
         { id: 'Q11', axis: 'TF', facet: 'disagreement', label: '같은 문제에 서로 다른 관리법을 추천받았다.', q: '두 경험의 차이를 찾을 때 먼저 보는 것은?', options: ['결과가 달라지기 시작한 환경과 시점', '그 방식을 오래 이어갈 수 있었던 이유'], scores: ['T', 'F'] },
-        { id: 'Q12', axis: 'JP', facet: 'routine', label: '급여와 청소가 한꺼번에 겹친 저녁이다.', q: '손이 움직이는 흐름은 어느 쪽인가?', options: ['한 사육장을 끝낸 뒤 옆 사육장으로 간다', '같은 일을 여러 사육장에 먼저 돌며 마친다'], scores: ['J', 'P'] },
+        { id: 'Q12', axis: 'JP', facet: 'routine', label: '청소 중 한 사육장이 예상보다 오래 걸린다.', q: '이때 더 자연스러운 흐름은?', options: ['정해둔 상태까지 마친 뒤 다음 사육장으로 간다', '다른 사육장을 먼저 살핀 뒤 다시 돌아온다'], scores: ['J', 'P'] },
 
         { id: 'Q13', axis: 'EI', facet: 'reward', label: '기다리던 성장 변화가 드디어 보였다.', q: '발견 직후의 모습은 어느 쪽에 가까운가?', options: ['가장 잘 보이는 사진을 골라 소식부터 전한다', '예전 사진을 꺼내 지금 모습과 먼저 맞춰본다'], scores: ['E', 'I'] },
         { id: 'Q14', axis: 'SN', facet: 'recall', label: '어린 크레 여러 마리를 보고 집에 돌아왔다.', q: '오래 기억에 남는 쪽은?', options: ['색이나 무늬의 한 부분이 선명했던 크레', '자란 뒤 모습까지 자꾸 상상되던 크레'], scores: ['S', 'N'] },
@@ -44,7 +44,7 @@
 
         { id: 'Q17', axis: 'EI', facet: 'contribution', label: '커뮤니티에 내가 겪어본 질문이 올라왔다.', q: '답변을 완성하는 과정은 어느 쪽인가?', options: ['겪은 일을 먼저 남기고 이어지는 질문을 보탠다', '당시 기록을 찾아본 뒤 한 번에 내용을 올린다'], scores: ['E', 'I'] },
         { id: 'Q18', axis: 'SN', facet: 'anomaly', label: '크레가 평소와 다른 행동을 보인다.', q: '원인을 알아보는 첫 행동은?', options: ['온도와 먹이 등 지금 달라진 점을 확인한다', '최근 며칠의 변화를 이어서 흐름을 살핀다'], scores: ['S', 'N'] },
-        { id: 'Q19', axis: 'TF', facet: 'coordination', label: '둘이 나눠 돌보다 관리 방식이 달라졌다.', q: '함께 지킬 기준을 만들 때 먼저 보는 것은?', options: ['담당자가 바뀌어도 같은 방식으로 확인되는 항목', '각자가 부담 없이 오래 맡을 수 있는 구간'], scores: ['T', 'F'] },
+        { id: 'Q19', axis: 'TF', facet: 'coordination', label: '둘이 나눠 돌보다 관리 방식이 달라졌다.', q: '하나만 먼저 맞춘다면 어느 쪽인가?', options: ['담당자가 달라도 같은 답이 나오는 확인 항목', '각자가 오래 맡아도 부담이 쌓이지 않는 범위'], scores: ['T', 'F'] },
         { id: 'Q20', axis: 'JP', facet: 'change', label: '사육장 여러 개의 배치를 바꾸기로 했다.', q: '실제로 자리를 옮기는 흐름은 어느 쪽인가?', options: ['새 배치를 정해두고 필요한 빈자리부터 만든다', '하나를 옮겨본 뒤 다음 위치를 이어서 정한다'], scores: ['J', 'P'] }
     ];
 
