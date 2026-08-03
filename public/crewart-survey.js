@@ -363,11 +363,6 @@
         window.scrollTo({ top: 0, behavior: 'instant' });
     }
 
-    function syncViewportNavigation() {
-        const viewportWidth = Math.round(window.innerWidth || document.documentElement.clientWidth || 0);
-        if (viewportWidth > 0) document.documentElement.style.setProperty('--cw-nav-center', `${viewportWidth / 2}px`);
-    }
-
     function syncMemberKeyboardState(options = {}) {
         const input = element('member-phone');
         const screen = element('band-screen');
@@ -1125,6 +1120,7 @@
                     ${detail}
                     <footer class="cw-report-footer">
                         <p>성향을 이해하기 위한 참고 결과입니다.</p>
+                        <small class="cw-result-copyright">© 2026 CREO. All rights reserved.</small>
                         <section class="cw-share-section" aria-label="결과 공유">
                             <button class="cw-share-action is-save" type="button" data-action="save-image">
                                 <span class="cw-share-save-mark" aria-hidden="true">↓</span>
@@ -1789,7 +1785,7 @@
 
         context.fillStyle = '#737873';
         context.font = `650 14px ${font}`;
-        context.fillText('CREWARTS · 20 ITEMS', contentX, 1384);
+        context.fillText('© 2026 CREO · ALL RIGHTS RESERVED', contentX, 1384);
         context.textAlign = 'right';
         context.fillText('creok.onrender.com', contentX + contentWidth, 1384);
         context.textAlign = 'left';
@@ -1885,6 +1881,13 @@
         context.fillStyle = '#17617b';
         context.textAlign = 'center';
         context.fillText(result.typeName, 600, 726);
+        context.textAlign = 'left';
+
+        context.fillStyle = '#858a85';
+        context.font = `650 12px ${font}`;
+        context.fillText('© 2026 CREO · ALL RIGHTS RESERVED', 52, 766);
+        context.textAlign = 'right';
+        context.fillText('creok.onrender.com', 1148, 766);
         context.textAlign = 'left';
 
         const blob = await canvasBlob(canvas);
@@ -2229,12 +2232,10 @@
         window.addEventListener('pageshow', () => void recheckPendingMembership({ visibleOnly: true }));
         window.addEventListener('focus', () => void recheckPendingMembership({ visibleOnly: true }));
         window.visualViewport?.addEventListener('resize', () => {
-            syncViewportNavigation();
             syncMemberKeyboardState();
         });
         window.visualViewport?.addEventListener('scroll', () => syncMemberKeyboardState({ ensureVisible: false }));
         window.addEventListener('resize', () => {
-            syncViewportNavigation();
             syncMemberKeyboardState({ ensureVisible: false });
         });
     }
@@ -2246,7 +2247,6 @@
         }
         setupIntroVideo();
         bindEvents();
-        syncViewportNavigation();
         renderHome();
         updatePersistentActions();
         replaceTabHistory(navigationTabForStage());

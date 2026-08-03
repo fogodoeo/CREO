@@ -309,12 +309,14 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /cw-result-code cw-result-code-back/);
     assert.match(script, /cw-result-code cw-result-code-front/);
     assert.match(script, /class="cw-type-poster"/);
-    assert.match(html, /20260803-alignment-v57/);
+    assert.match(html, /20260803-result-rights-v60/);
     assert.doesNotMatch(html, /cw-home-guide|cw-home-disclaimer/);
     assert.match(script, /재미를 위한 성향 콘텐츠이며, 과학적·의학적 진단이 아닙니다\./);
     assert.match(script, /data-q0-start/);
     assert.match(html, /© 2026 CREO\. All rights reserved\./);
     assert.match(script, /© 2026 CREO\. All rights reserved\./);
+    assert.match(script, /© 2026 CREO · ALL RIGHTS RESERVED/);
+    assert.match(script, /class="cw-result-copyright"/);
     assert.match(css, /\.cw-q0-list li\s*\{[^}]*grid-template-columns:\s*30px 1fr/);
     assert.match(css, /\.cw-intro\s*\{[^}]*height:\s*100dvh[^}]*overflow:\s*hidden/);
     assert.match(css, /\.cw-intro-content\s*\{[^}]*min-height:\s*0/);
@@ -408,7 +410,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(css, /\.cw-intro::after\s*\{\s*display:\s*none/);
     assert.match(css, /\.cw-intro\s*\{[^}]*background:\s*#242724/);
     assert.match(css, /--cw-action-width:\s*340px/);
-    assert.doesNotMatch(css, /scrollbar-gutter:\s*stable/);
+    assert.match(css, /html\s*\{[^}]*scrollbar-gutter:\s*stable/);
     assert.match(css, /\.cw-test-action\s*\{[^}]*width:\s*min\(100%, var\(--cw-action-width\)\)[^}]*height:\s*var\(--cw-control-height\)/);
     assert.match(css, /\.cw-result-empty button\s*\{[^}]*width:\s*min\(100%, var\(--cw-action-width\)\)/);
     assert.match(css, /\.cw-intro-content\s*\{[^}]*opacity:\s*0[^}]*visibility:\s*hidden/);
@@ -416,8 +418,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /classList\.add\('is-video-ready'\)/);
     assert.match(css, /\.cw-bottom-nav[\s\S]*position:\s*fixed/);
     assert.match(css, /\.cw-bottom-nav > div\s*\{[^}]*height:\s*var\(--cw-nav-height\)[^}]*place-items:\s*stretch/);
-    assert.match(css, /\.cw-bottom-nav\s*\{[^}]*left:\s*var\(--cw-nav-center, 50vw\)[^}]*width:\s*min\(calc\(100vw - 24px\), 760px\)/);
-    assert.match(script, /function syncViewportNavigation\(\)/);
+    assert.match(css, /\.cw-bottom-nav\s*\{[^}]*left:\s*50%[^}]*width:\s*min\(calc\(100vw - 24px\), 760px\)/);
+    assert.doesNotMatch(script, /syncViewportNavigation|--cw-nav-center/);
     assert.match(css, /\.cw-bottom-nav\s*\{[^}]*bottom:\s*max\(10px, env\(safe-area-inset-bottom\)\)[^}]*border-radius:\s*16px/);
     assert.doesNotMatch(css, /\.cw-bottom-nav\.is-result-hidden/);
     assert.doesNotMatch(script, /resultNavRevealed|updateResultNavigationVisibility/);
