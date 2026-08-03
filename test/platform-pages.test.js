@@ -309,9 +309,11 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /cw-result-code cw-result-code-back/);
     assert.match(script, /cw-result-code cw-result-code-front/);
     assert.match(script, /class="cw-type-poster"/);
-    assert.match(html, /20260803-home-viewport-v55/);
-    assert.match(html, /본 검사는 과학적 진단이나 심리검사가 아니며, 재미를 위한 콘텐츠입니다\./);
-    assert.match(css, /\.cw-home-disclaimer\s*\{[^}]*text-align:\s*center/);
+    assert.match(html, /20260803-guide-v56/);
+    assert.doesNotMatch(html, /cw-home-guide|cw-home-disclaimer/);
+    assert.match(script, /재미를 위한 성향 콘텐츠이며, 과학적·의학적 진단이 아닙니다\./);
+    assert.match(script, /data-q0-start/);
+    assert.match(css, /\.cw-q0-list li\s*\{[^}]*grid-template-columns:\s*30px 1fr/);
     assert.match(css, /\.cw-intro\s*\{[^}]*height:\s*100dvh[^}]*overflow:\s*hidden/);
     assert.match(css, /\.cw-intro-content\s*\{[^}]*min-height:\s*0/);
     assert.match(html, /property="og:url" content="https:\/\/creok\.onrender\.com\/crewart-survey\.html"/);

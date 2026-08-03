@@ -598,39 +598,31 @@
 
     function renderQuestion() {
         advancing = false;
+        const card = element('question-card');
+        card.classList.toggle('is-guide', current === 0);
         if (current === 0) {
             element('progress-text').textContent = `0 / ${questions.length}`;
-            element('progress-axis').textContent = '시작 전 확인';
+            element('progress-axis').textContent = '안내사항';
             element('progress-bar').style.width = '0%';
-            element('question-back').disabled = true;
-            element('question-label').textContent = 'GUIDE · 검사 전 안내';
-            element('question-title').textContent = '좋아 보이는 답보다 실제 평소의 나를 골라주세요';
+            element('question-back').disabled = false;
+            element('question-label').textContent = 'BEFORE YOU START';
+            element('question-title').textContent = '시작 전, 이것만 확인해 주세요';
             element('question-illustration').hidden = true;
-
-            const guideOptions = [
-                '네, 깊이 고민 않고 3초 내 직감으로 고를게요!',
-                '솔직한 사육 스타일을 기준으로 검사를 시작합니다'
-            ];
-
-            element('choice-list').innerHTML = guideOptions.map((option, index) => `
-                <button class="cw-choice-button" type="button" data-q0-choice="${index}">
-                    <b aria-hidden="true">${index === 0 ? 'A' : 'B'}</b><span>${escapeHtml(option)}</span>
-                </button>`).join('');
-
-            element('choice-list').querySelectorAll('[data-q0-choice]').forEach(button => {
-                button.addEventListener('click', () => {
-                    if (advancing) return;
-                    advancing = true;
-                    button.classList.add('is-selected');
-                    const delay = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 20 : 220;
-                    setTimeout(() => {
-                        current = 1;
-                        renderQuestion();
-                    }, delay);
-                });
+            element('choice-list').innerHTML = `
+                <div class="cw-q0-card">
+                    <ol class="cw-q0-list">
+                        <li><b>01</b><span>재미를 위한 성향 콘텐츠이며, 과학적·의학적 진단이 아닙니다.</span></li>
+                        <li><b>02</b><span>좋아 보이는 답보다 평소 내 모습에 가까운 쪽을 골라주세요.</span></li>
+                        <li><b>03</b><span>오래 고민하지 말고 먼저 떠오른 답을 선택해주세요.</span></li>
+                    </ol>
+                    <button class="cw-primary-button cw-q0-start-button" type="button" data-q0-start>시작하기</button>
+                </div>`;
+            element('choice-list').querySelector('[data-q0-start]')?.addEventListener('click', () => {
+                if (advancing) return;
+                advancing = true;
+                current = 1;
+                renderQuestion();
             });
-
-            const card = element('question-card');
             card.classList.remove('is-changing');
             requestAnimationFrame(() => card.classList.add('is-changing'));
             return;
@@ -663,7 +655,6 @@
         element('choice-list').querySelectorAll('[data-choice]').forEach(button => {
             button.addEventListener('click', () => chooseAnswer(Number(button.dataset.choice)));
         });
-        const card = element('question-card');
         card.classList.remove('is-changing');
         requestAnimationFrame(() => card.classList.add('is-changing'));
         const nextImage = questions[qIndex + 1]?.image;
@@ -697,7 +688,11 @@
     }
 
     function previousQuestion() {
-        if (advancing || current === 0) return;
+        if (advancing) return;
+        if (current === 0) {
+            returnToIntro();
+            return;
+        }
         current -= 1;
         renderQuestion();
     }
