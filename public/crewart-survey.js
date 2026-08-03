@@ -597,13 +597,43 @@
     }
 
     function renderQuestion() {
-        const question = questions[current];
-        if (!question) return;
         advancing = false;
-        element('progress-text').textContent = `${current + 1} / ${questions.length}`;
+        if (current === 0) {
+            element('progress-text').textContent = `0 / ${questions.length}`;
+            element('progress-axis').textContent = '시작하기 전 유의사항';
+            element('progress-bar').style.width = '0%';
+            element('question-back').disabled = true;
+            element('question-label').textContent = 'GUIDE · 안내';
+            element('question-title').textContent = '크레 성향 테스트를 시작하기 전에';
+            element('question-illustration').hidden = true;
+            element('choice-list').innerHTML = `
+                <div class="cw-q0-card">
+                    <ul class="cw-q0-list">
+                        <li>본 검사는 의학적·심리적 진단이 아닌 <strong>재미용 성향 테스트</strong>입니다. <small>(제작: CREO)</small></li>
+                        <li>'좋아 보이는 답' 대신 <strong>'실제 평소 나의 모습'</strong>을 편하게 골라주세요.</li>
+                        <li>깊이 고민하기보다 <strong>3초 내 직감적으로 떠오르는 선택</strong>이 가장 정확합니다.</li>
+                    </ul>
+                    <button class="cw-test-action cw-primary-button cw-q0-start-button" id="q0-start-button" type="button">
+                        <span>네, 준비되었습니다!</span>
+                    </button>
+                </div>`;
+            element('q0-start-button')?.addEventListener('click', () => {
+                current = 1;
+                renderQuestion();
+            });
+            const card = element('question-card');
+            card.classList.remove('is-changing');
+            requestAnimationFrame(() => card.classList.add('is-changing'));
+            return;
+        }
+
+        const qIndex = current - 1;
+        const question = questions[qIndex];
+        if (!question) return;
+        element('progress-text').textContent = `${current} / ${questions.length}`;
         element('progress-axis').textContent = '크레 앞의 나를 찾는 중';
-        element('progress-bar').style.width = `${((current + 1) / questions.length) * 100}%`;
-        element('question-back').disabled = current === 0;
+        element('progress-bar').style.width = `${(current / questions.length) * 100}%`;
+        element('question-back').disabled = false;
         element('question-label').textContent = question.label;
         element('question-title').textContent = question.q;
         const illustration = element('question-illustration');
@@ -618,7 +648,7 @@
             image.alt = '';
         }
         element('choice-list').innerHTML = question.options.map((option, index) => `
-            <button class="cw-choice-button${answers[current] === index ? ' is-selected' : ''}" type="button" data-choice="${index}">
+            <button class="cw-choice-button${answers[qIndex] === index ? ' is-selected' : ''}" type="button" data-choice="${index}">
                 <b aria-hidden="true">${index === 0 ? 'A' : 'B'}</b><span>${escapeHtml(option)}</span>
             </button>`).join('');
         element('choice-list').querySelectorAll('[data-choice]').forEach(button => {
@@ -627,19 +657,20 @@
         const card = element('question-card');
         card.classList.remove('is-changing');
         requestAnimationFrame(() => card.classList.add('is-changing'));
-        const nextImage = questions[current + 1]?.image;
+        const nextImage = questions[qIndex + 1]?.image;
         if (nextImage) {
             const preloader = new Image();
             preloader.src = `${QUESTION_IMAGE_ROOT}${nextImage}`;
         }
-        startTimer(current);
+        startTimer(qIndex);
     }
 
     function chooseAnswer(choice) {
-        if (advancing) return;
+        if (advancing || current < 1) return;
         advancing = true;
-        answers[current] = choice;
-        captureTiming(current);
+        const qIndex = current - 1;
+        answers[qIndex] = choice;
+        captureTiming(qIndex);
         element('choice-list').querySelectorAll('[data-choice]').forEach(button => {
             const selected = Number(button.dataset.choice) === choice;
             button.classList.toggle('is-selected', selected);
@@ -647,7 +678,7 @@
         });
         const delay = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 20 : 260;
         setTimeout(() => {
-            if (current < questions.length - 1) {
+            if (current < questions.length) {
                 current += 1;
                 renderQuestion();
             } else {
@@ -666,7 +697,7 @@
         activeTimer = null;
         const missing = questions.findIndex((_, index) => answers[index] === undefined);
         if (missing >= 0) {
-            current = missing;
+            current = missing + 1;
             renderQuestion();
             toast('선택하지 않은 질문이 있어요.', true);
             return;

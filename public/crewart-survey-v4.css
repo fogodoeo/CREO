@@ -575,3 +575,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 @keyframes cw-character-search { from { opacity: .35; transform: translateY(1px) scale(.96); } to { opacity: 1; transform: translateY(-1px) scale(1.04); } }
 @keyframes cw-status-pulse { 50% { opacity: .35; transform: scale(.82); } }
 @keyframes cw-save-dialog-in { from { opacity: 0; transform: translateY(12px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+.cw-q0-card { display: grid; gap: 18px; padding: 20px 18px; border: 1.5px solid var(--cw-line, #e2e8f0); border-radius: 18px; background: #fafaf8; text-align: left; }
+.cw-q0-list { margin: 0; padding-left: 20px; color: var(--cw-ink, #1e293b); font-size: 14px; line-height: 1.65; }
+.cw-q0-list li { margin-bottom: 10px; }
+.cw-q0-list li:last-child { margin-bottom: 0; }
+.cw-q0-list strong { color: var(--cw-green-dark, #166534); font-weight: 750; }
+.cw-q0-list small { color: var(--cw-muted, #64748b); font-size: 12px; }
+.cw-q0-start-button { width: 100%; margin-top: 6px; }
