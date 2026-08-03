@@ -5,14 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <title>크레와트 성향 문항 관리 | 크레와트</title>
-    <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
-    <script src="crewart-survey-core.js?v=20260801-house-map-v5"></script>
+    <script src="platform-client.js?v=20260803-admin-session-v2"></script>
+    <script src="crewart-survey-core.js?v=20260803-tendency-v6"></script>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet">
     <link rel="stylesheet" href="crewart.css?v=20260718-cre-mbti-manager-v2">
+    <style>
+        [hidden]{display:none!important}.cw-manager-auth{position:fixed;z-index:100;inset:0;display:grid;place-items:center;padding:20px;background:#101714}.cw-manager-auth-card{width:min(100%,390px);padding:28px;border:1px solid #d9ddd8;border-radius:20px;background:#fff;box-shadow:0 26px 80px rgba(0,0,0,.24)}.cw-manager-auth-card h1{margin:0;color:#202421;font-size:27px;letter-spacing:-.045em}.cw-manager-auth-card>p{margin:9px 0 22px;color:#6f746f;font-size:13px;line-height:1.6}.cw-manager-auth-card label{display:block;margin-bottom:7px;color:#535954;font-size:12px;font-weight:750}.cw-manager-auth-card input{width:100%;height:48px;padding:0 13px;border:1px solid #cfd3ce;border-radius:11px;font:inherit}.cw-manager-auth-card input:focus{border-color:#16814b;outline:3px solid rgba(22,129,75,.13)}.cw-manager-auth-card button{width:100%;min-height:46px;margin-top:10px;border:0;border-radius:11px;background:#202421;color:#fff;font:inherit;font-weight:800;cursor:pointer}.cw-manager-auth-error{min-height:19px;margin:9px 0 0;color:#c43f3f;font-size:12px}.cw-manager-nav-logout{min-height:34px;padding:0 11px;border:1px solid rgba(255,255,255,.18);border-radius:9px;background:transparent;color:inherit;font:inherit;font-size:11px;font-weight:750;cursor:pointer}@media(max-width:640px){.cw-manager-auth{align-items:end;padding:12px}.cw-manager-auth-card{padding:24px 20px}}
+    </style>
 </head>
 <body class="crewart-page cw-manager-page">
-    <nav class="cw-nav">
+    <section class="cw-manager-auth" id="manager-auth" aria-labelledby="manager-auth-title">
+        <form class="cw-manager-auth-card" id="manager-login-form">
+            <h1 id="manager-auth-title">문항 관리자 로그인</h1>
+            <p>문항 조회와 저장은 관리자 인증 후 사용할 수 있습니다.</p>
+            <label for="manager-password">관리자 비밀번호</label>
+            <input id="manager-password" type="password" autocomplete="current-password" maxlength="128" required>
+            <button id="manager-login-submit" type="submit">로그인</button>
+            <p class="cw-manager-auth-error" id="manager-login-error" role="alert"></p>
+        </form>
+    </section>
+    <nav class="cw-nav" id="manager-nav" hidden>
         <a class="cw-brand" href="crewart-settings.html"><span class="cw-brand-mark">W</span><span>크레와트</span></a>
         <div class="cw-nav-links">
             <a href="index.html">허브</a>
@@ -20,10 +33,11 @@
             <a class="active" href="crewart-survey-manager.html">문항 관리</a>
             <a href="crewart-survey.html">설문</a>
             <a href="crewart-ranking.html">점수표</a>
+            <button class="cw-manager-nav-logout" id="manager-logout" type="button">로그아웃</button>
         </div>
     </nav>
 
-    <main class="cw-shell">
+    <main class="cw-shell" id="manager-main" hidden>
         <header class="cw-page-head cw-manager-head">
             <div>
                 <div class="cw-kicker">CREWART CONTENT STUDIO</div>
@@ -87,11 +101,11 @@
         </section>
     </main>
 
-    <div class="cw-manager-sticky-save">
+    <div class="cw-manager-sticky-save" id="manager-sticky" hidden>
         <span>저장한 문구는 새로 시작하는 설문부터 적용됩니다.</span>
         <button class="cw-btn primary" id="manager-sticky-save" type="button">전체 변경사항 저장</button>
     </div>
     <div class="cw-toast" id="toast"></div>
-    <script src="crewart-survey-manager.js?v=20260801-cre-mbti-v2"></script>
+    <script src="crewart-survey-manager.js?v=20260803-admin-content-v3"></script>
 </body>
 </html>

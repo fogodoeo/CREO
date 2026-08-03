@@ -151,6 +151,55 @@ test('old managed question versions cannot override the deployed questionnaire',
     assert.equal(payload.contentUpdatedAt, null);
 });
 
+test('question content management requires admin auth and stores copy-only fields', async () => {
+    const repository = new FakeRepository();
+    const api = createCrewartSurveyApi({
+        repository,
+        bandMembership: { config: { sessionSecret: SECRET } },
+        isAdmin: async (req) => req.headers['x-creo-admin'] === 'secret',
+        now: () => NOW
+    });
+    const contentUrl = new URL('https://creok.example.com/api/crewart-survey/content');
+
+    const unauthorized = new CapturedResponse();
+    await api.handle(request('GET'), unauthorized, contentUrl);
+    assert.equal(unauthorized.status, 401);
+
+    const defaults = new CapturedResponse();
+    await api.handle(request('GET', '', { 'x-creo-admin': 'secret' }), defaults, contentUrl);
+    assert.equal(defaults.status, 200);
+    const defaultPayload = JSON.parse(defaults.body);
+    assert.equal(defaultPayload.usingDefaults, true);
+    assert.equal(defaultPayload.content.questions.length, 20);
+
+    const edited = {
+        version: Core.SURVEY_VERSION,
+        questions: Core.QUESTIONS.map((question, index) => ({
+            id: question.id,
+            label: question.label,
+            q: index === 0 ? '관리자가 수정한 질문' : question.q,
+            options: question.options,
+            scores: ['X', 'Y'],
+            axis: 'XX'
+        }))
+    };
+    const saved = new CapturedResponse();
+    await api.handle(request('PUT', JSON.stringify({ content: edited }), { 'x-creo-admin': 'secret' }), saved, contentUrl);
+    assert.equal(saved.status, 200);
+    assert.equal(repository.writes.length, 2);
+    const stored = JSON.parse(repository.rows.get(CONTENT_KEY));
+    assert.equal(stored.questions[0].q, '관리자가 수정한 질문');
+    assert.deepEqual(Object.keys(stored.questions[0]).sort(), ['id', 'label', 'options', 'q']);
+    assert.equal(repository.rows.get(CONTENT_UPDATED_KEY), '2026-08-01T00:00:00.000Z');
+    assert.equal((await api.bootstrap()).content.questions[0].q, '관리자가 수정한 질문');
+
+    const duplicate = structuredClone(edited);
+    duplicate.questions[1].id = duplicate.questions[0].id;
+    const rejected = new CapturedResponse();
+    await api.handle(request('PUT', JSON.stringify({ content: duplicate }), { 'x-creo-admin': 'secret' }), rejected, contentUrl);
+    assert.equal(rejected.status, 422);
+});
+
 test('response storage requires a valid BAND session and strips personal fields', async () => {
     const repository = new FakeRepository();
     const api = createCrewartSurveyApi({

@@ -28,7 +28,8 @@ const platformRepository = platformStorageMode === 'supabase'
 const platformApi = createPlatformApi({ repository: platformRepository });
 const crewartSurveyApi = createCrewartSurveyApi({
     repository: supabasePlatformRepository,
-    bandMembership
+    bandMembership,
+    isAdmin: platformApi.isAdmin
 });
 
 const SECURITY_HEADERS = {

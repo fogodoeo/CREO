@@ -194,6 +194,45 @@ function sanitizeSubmission(input, nowIso) {
     };
 }
 
+function sanitizeManagedContent(input) {
+    if (input?.version !== Core.SURVEY_VERSION) {
+        const error = new Error('현재 문항 버전과 맞지 않습니다. 새로고침 후 다시 저장해 주세요.');
+        error.status = 409;
+        throw error;
+    }
+    const items = Array.isArray(input?.questions) ? input.questions : [];
+    if (items.length !== Core.QUESTIONS.length) {
+        const error = new Error('20개 문항이 모두 필요합니다.');
+        error.status = 422;
+        throw error;
+    }
+    const byId = new Map();
+    for (const item of items) {
+        const id = cleanText(item?.id, 3).toUpperCase();
+        if (!Core.QUESTIONS.some((question) => question.id === id) || byId.has(id)) {
+            const error = new Error('문항 번호가 중복되었거나 올바르지 않습니다.');
+            error.status = 422;
+            throw error;
+        }
+        byId.set(id, item);
+    }
+    const questions = Core.QUESTIONS.map((question) => {
+        const item = byId.get(question.id);
+        const label = cleanText(item?.label, 40);
+        const q = cleanText(item?.q, 160);
+        const options = Array.isArray(item?.options)
+            ? item.options.slice(0, 2).map((option) => cleanText(option, 120))
+            : [];
+        if (!label || !q || options.length !== 2 || options.some((option) => option.length < 6) || options[0] === options[1]) {
+            const error = new Error(`${question.id} 문항의 문구를 확인해 주세요.`);
+            error.status = 422;
+            throw error;
+        }
+        return { id: question.id, label, q, options };
+    });
+    return { version: Core.SURVEY_VERSION, questions };
+}
+
 function responseIdentity(response, fallback) {
     return cleanText(response?.participantKey || response?.surveySessionId || fallback, 80);
 }
@@ -233,6 +272,7 @@ function aggregateResponses(rows, legacyValue) {
 function createCrewartSurveyApi(options = {}) {
     const repository = options.repository;
     const bandMembership = options.bandMembership;
+    const isAdmin = options.isAdmin;
     const logger = options.logger || console;
     const now = options.now || Date.now;
     const cacheMs = Math.max(5000, Math.min(300000, Number(options.cacheMs) || 60000));
@@ -290,6 +330,45 @@ function createCrewartSurveyApi(options = {}) {
                 replyJson(res, 200, await bootstrap(), {
                     'Cache-Control': 'public, max-age=15, stale-while-revalidate=45'
                 });
+                return true;
+            }
+            if (url.pathname === '/api/crewart-survey/content' && req.method === 'GET') {
+                if (typeof isAdmin !== 'function' || !await isAdmin(req)) {
+                    replyJson(res, 401, { error: '관리자 인증이 필요합니다.' });
+                    return true;
+                }
+                const current = await bootstrap();
+                const defaults = {
+                    version: Core.SURVEY_VERSION,
+                    questions: Core.QUESTIONS.map((question) => ({
+                        id: question.id,
+                        label: question.label,
+                        q: question.q,
+                        options: question.options.slice()
+                    }))
+                };
+                replyJson(res, 200, {
+                    questionVersion: Core.SURVEY_VERSION,
+                    content: current.content || defaults,
+                    contentUpdatedAt: current.contentUpdatedAt,
+                    usingDefaults: !current.content
+                });
+                return true;
+            }
+            if (url.pathname === '/api/crewart-survey/content' && req.method === 'PUT') {
+                if (typeof isAdmin !== 'function' || !await isAdmin(req)) {
+                    replyJson(res, 401, { error: '관리자 인증이 필요합니다.' });
+                    return true;
+                }
+                const body = await readJson(req);
+                const content = sanitizeManagedContent(body.content);
+                const updatedAt = new Date(now()).toISOString();
+                await repository.upsertRows([
+                    { key: CONTENT_KEY, value: JSON.stringify(content) },
+                    { key: CONTENT_UPDATED_KEY, value: updatedAt }
+                ]);
+                bootstrapCache = null;
+                replyJson(res, 200, { saved: true, content, contentUpdatedAt: updatedAt });
                 return true;
             }
             if (url.pathname === '/api/crewart-survey/responses' && req.method === 'POST') {
@@ -358,5 +437,6 @@ module.exports = {
     RESPONSE_PREFIX,
     aggregateResponses,
     createCrewartSurveyApi,
+    sanitizeManagedContent,
     sanitizeSubmission
 };

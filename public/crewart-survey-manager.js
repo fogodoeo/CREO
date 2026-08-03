@@ -1,12 +1,27 @@
-const CREWART_MBTI_CONTENT_KEY = 'crewart_mbti_content_v1';
-const CREWART_MBTI_UPDATED_KEY = 'crewart_mbti_content_updated_at';
 const Core = window.CrewartSurveyCore;
 
-let managerConfig = {};
 let managedQuestions = [];
 let selectedQuestionId = 'Q01';
 let managerDirty = false;
 let managerSaving = false;
+let managerUpdatedAt = null;
+
+async function contentApi(method = 'GET', content = null) {
+    const response = await fetch('/api/crewart-survey/content', {
+        method,
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        ...(content ? { body: JSON.stringify({ content }) } : {})
+    });
+    let payload = null;
+    try { payload = await response.json(); } catch (_) {}
+    if (!response.ok) {
+        const error = new Error(payload?.error || `문항 요청 실패 (${response.status})`);
+        error.status = response.status;
+        throw error;
+    }
+    return payload;
+}
 
 function cloneDefaults() {
     return Core.QUESTIONS.map(question => ({
@@ -125,17 +140,22 @@ async function saveQuestions() {
         managerSaving = true;
         document.getElementById('manager-save-button').disabled = true;
         document.getElementById('manager-sticky-save').disabled = true;
-        const updatedAt = new Date().toISOString();
-        await updateConfigs({
-            [CREWART_MBTI_CONTENT_KEY]: JSON.stringify({ version: Core.SURVEY_VERSION, questions: managedQuestions }),
-            [CREWART_MBTI_UPDATED_KEY]: updatedAt
-        });
-        managerConfig[CREWART_MBTI_CONTENT_KEY] = JSON.stringify({ version: Core.SURVEY_VERSION, questions: managedQuestions });
-        managerConfig[CREWART_MBTI_UPDATED_KEY] = updatedAt;
+        const content = {
+            version: Core.SURVEY_VERSION,
+            questions: managedQuestions.map(question => ({
+                id: question.id,
+                label: question.label,
+                q: question.q,
+                options: question.options.slice()
+            }))
+        };
+        const payload = await contentApi('PUT', content);
+        managerUpdatedAt = payload.contentUpdatedAt;
         managerDirty = false;
-        document.getElementById('manager-save-state').textContent = `저장됨 · ${new Date(updatedAt).toLocaleString('ko-KR')}`;
+        document.getElementById('manager-save-state').textContent = `저장됨 · ${new Date(managerUpdatedAt).toLocaleString('ko-KR')}`;
         toast('20개 문항을 저장했습니다.');
     } catch (error) {
+        if (error.status === 401) showManagerLogin('인증이 만료되었습니다. 다시 로그인해 주세요.');
         toast(error.message || '문항을 저장하지 못했습니다.', true);
     } finally {
         managerSaving = false;
@@ -165,19 +185,40 @@ function resetAll() {
 
 async function loadManager() {
     try {
-        managerConfig = await getConfigMap() || {};
-        managedQuestions = mergeSavedContent(managerConfig[CREWART_MBTI_CONTENT_KEY]);
-        const updatedAt = managerConfig[CREWART_MBTI_UPDATED_KEY];
-        document.getElementById('manager-save-state').textContent = updatedAt
-            ? `마지막 저장 · ${new Date(updatedAt).toLocaleString('ko-KR')}`
+        const payload = await contentApi();
+        managedQuestions = mergeSavedContent(payload.content);
+        managerUpdatedAt = payload.contentUpdatedAt || null;
+        document.getElementById('manager-save-state').textContent = managerUpdatedAt
+            ? `마지막 저장 · ${new Date(managerUpdatedAt).toLocaleString('ko-KR')}`
             : '기본 문항을 사용 중입니다.';
         renderQuestionList();
         renderEditor();
         document.getElementById('manager-loading').hidden = true;
         document.getElementById('manager-workspace').hidden = false;
     } catch (error) {
+        if (error.status === 401) showManagerLogin('인증이 만료되었습니다. 다시 로그인해 주세요.');
         toast('문항 설정을 불러오지 못했습니다: ' + error.message, true);
     }
+}
+
+function showManagerLogin(message = '') {
+    document.getElementById('manager-auth').hidden = false;
+    document.getElementById('manager-nav').hidden = true;
+    document.getElementById('manager-main').hidden = true;
+    document.getElementById('manager-sticky').hidden = true;
+    document.getElementById('manager-login-error').textContent = message;
+    const input = document.getElementById('manager-password');
+    input.disabled = false;
+    document.getElementById('manager-login-submit').disabled = false;
+    requestAnimationFrame(() => input.focus({ preventScroll: true }));
+}
+
+async function showManager() {
+    document.getElementById('manager-auth').hidden = true;
+    document.getElementById('manager-nav').hidden = false;
+    document.getElementById('manager-main').hidden = false;
+    document.getElementById('manager-sticky').hidden = false;
+    await loadManager();
 }
 
 document.getElementById('manager-save-button').addEventListener('click', saveQuestions);
@@ -193,4 +234,35 @@ window.addEventListener('beforeunload', event => {
     event.returnValue = '';
 });
 
-loadManager();
+document.getElementById('manager-login-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    const input = document.getElementById('manager-password');
+    const submit = document.getElementById('manager-login-submit');
+    const errorText = document.getElementById('manager-login-error');
+    const password = input.value;
+    if (!password) return;
+    input.disabled = true;
+    submit.disabled = true;
+    errorText.textContent = '';
+    try {
+        CreoPlatform.setAdmin(password);
+        if (!await CreoPlatform.verifyAdmin(password)) throw new Error('비밀번호가 맞지 않습니다.');
+        input.value = '';
+        await showManager();
+    } catch (error) {
+        CreoPlatform.setAdmin('');
+        showManagerLogin(error.message || '로그인하지 못했습니다.');
+    }
+});
+
+document.getElementById('manager-logout').addEventListener('click', async () => {
+    await CreoPlatform.logout();
+    showManagerLogin();
+});
+
+(async () => {
+    try {
+        if (await CreoPlatform.verifyAdmin()) return showManager();
+    } catch (_) {}
+    showManagerLogin();
+})();

@@ -654,7 +654,7 @@ function createPlatformApi({ repository, logger = console } = {}) {
         }
     }
 
-    return { handle, workspace };
+    return { handle, isAdmin, workspace };
 }
 
 module.exports = { createPlatformApi, readJson, sanitizeRecord, validateRecord };
