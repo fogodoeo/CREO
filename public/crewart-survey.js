@@ -25,6 +25,16 @@
         TF: { title: '선택 기준', left: '조건·근거', right: '취향·관계' },
         JP: { title: '사육 방식', left: '계획·준비', right: '유연·조정' }
     });
+    const TYPE_CHANGE_ANALYSIS = Object.freeze({
+        'E>I': '크레 관련 상황에서는 외부 반응보다 독립적인 관찰과 내부 검토의 비중이 높아졌습니다.',
+        'I>E': '크레 관련 상황에서는 경험을 주고받는 과정이 판단을 정리하는 데 더 크게 작용했습니다.',
+        'S>N': '현재 상태를 확인하는 데서 더 나아가 성장 흐름과 이후 변화까지 먼저 그리는 경향이 나타났습니다.',
+        'N>S': '예상되는 변화보다 지금 직접 확인할 수 있는 상태와 차이를 우선하는 경향이 나타났습니다.',
+        'T>F': '동일한 조건 비교보다 취향, 관계, 장기적인 만족도를 더 크게 반영했습니다.',
+        'F>T': '개인적인 만족만큼 비교 가능한 조건과 판단의 일관성을 더 크게 반영했습니다.',
+        'J>P': '미리 정한 운영 방식보다 실제 반응에 맞춰 다음 행동을 조정하는 경향이 나타났습니다.',
+        'P>J': '상황에 따라 움직이기보다 범위와 완료 기준을 먼저 정하는 경향이 나타났습니다.'
+    });
     const HOUSE_REPORT_COPY = Object.freeze({
         SF: '지금의 감각과 관계를 세심하게 챙기는 기숙사',
         ST: '확인되는 정보와 근거로 안정적으로 운영하는 기숙사',
@@ -33,58 +43,66 @@
     });
     const AXIS_DETAIL_GUIDE = Object.freeze({
         E: {
-            signals: ['정보를 말로 풀며 우선순위를 정해요.', '주변 반응에서 놓친 단서를 빠르게 찾아요.', '경험을 공유하고 피드백을 받으며 판단을 굳혀요.'],
-            balance: '분위기나 타인의 반응이 강할 때는 혼자 검토할 시간을 짧게 두면 내 기준이 더 선명해져요.'
+            summary: '정보를 말로 풀어내고 반응을 주고받는 과정에서 판단이 선명해지는 경향입니다.',
+            signals: ['외부 반응을 새로운 단서로 받아들이며 판단 범위를 넓힙니다.', '경험을 설명하는 과정에서 우선순위가 빠르게 정리됩니다.'],
+            balance: '주변 반응이 강하게 작용할 때는 짧은 단독 검토 시간을 두면 자신의 기준을 더 분명히 유지할 수 있습니다.'
         },
         I: {
-            signals: ['관찰과 기록을 충분히 모은 뒤 판단해요.', '말하기 전에 조건과 차이를 머릿속에서 비교해요.', '조용히 정리할 때 미세한 변화까지 발견하는 편이에요.'],
-            balance: '검토가 길어질 때는 결정 시점을 먼저 정해두면 좋은 관찰이 실제 행동으로 더 잘 이어져요.'
+            summary: '관찰한 내용을 내부에서 충분히 정리한 뒤 판단을 밖으로 꺼내는 경향입니다.',
+            signals: ['말하기 전에 조건과 차이를 머릿속에서 비교합니다.', '독립적으로 검토할 때 미세한 변화와 누락을 더 잘 발견합니다.'],
+            balance: '검토가 길어질 때는 결정 시점을 먼저 정해두면 세밀한 관찰을 실제 행동으로 연결하기 쉽습니다.'
         },
         S: {
-            signals: ['현재 확인되는 컨디션과 수치를 먼저 봐요.', '직접 본 변화와 반복된 패턴을 신뢰해요.', '지금 필요한 관리 행동을 구체적으로 정해요.'],
-            balance: '현재 정보가 안정적일수록 성장 흐름과 다음 단계까지 함께 보면 장기적인 선택이 더 쉬워져요.'
+            summary: '현재 확인할 수 있는 상태와 구체적인 차이를 중심으로 상황을 판단하는 경향입니다.',
+            signals: ['직접 관찰한 변화와 측정 가능한 정보를 우선합니다.', '확인된 사실을 바로 실행 가능한 관리 행동으로 전환합니다.'],
+            balance: '현재 상태가 안정적일수록 성장 흐름과 다음 단계도 함께 검토하면 장기적인 판단의 폭을 넓힐 수 있습니다.'
         },
         N: {
-            signals: ['현재 모습에서 앞으로의 성장 흐름을 그려요.', '서로 떨어진 단서를 연결해 가능성을 찾아요.', '익숙한 방식보다 새로운 조합과 실험에 관심을 보여요.'],
-            balance: '가능성을 선택하기 전 지금 확인되는 컨디션과 관리 조건을 한 번 더 점검하면 실행력이 높아져요.'
+            summary: '현재의 단서를 연결해 앞으로의 변화와 전체 흐름을 먼저 그리는 경향입니다.',
+            signals: ['서로 떨어진 정보를 하나의 성장 흐름으로 연결합니다.', '지금 보이는 모습보다 이후의 변화와 새로운 조합에 주목합니다.'],
+            balance: '예상한 흐름을 선택으로 옮기기 전에 현재 컨디션과 관리 조건을 다시 확인하면 실행 가능성이 높아집니다.'
         },
         T: {
-            signals: ['조건과 근거를 같은 기준으로 비교해요.', '문제가 생기면 원인과 해결 순서를 먼저 찾아요.', '결정의 일관성과 재현 가능성을 중요하게 봐요.'],
-            balance: '수치가 비슷한 선택지에서는 애착과 만족감도 기준에 넣으면 오래 유지할 수 있는 결정이 돼요.'
+            summary: '선택지를 동일한 조건에 놓고 차이와 인과관계를 비교하는 경향입니다.',
+            signals: ['문제가 생기면 원인과 해결 구조를 먼저 분리합니다.', '누가 판단해도 설명할 수 있는 일관성과 재현성을 중시합니다.'],
+            balance: '조건이 비슷한 선택지에서는 애착과 장기 만족도도 기준에 포함하면 지속하기 쉬운 결정을 만들 수 있습니다.'
         },
         F: {
-            signals: ['개체와의 교감, 취향, 관계의 의미를 함께 봐요.', '관리 과정에서 받는 느낌과 만족도를 중요하게 여겨요.', '누구와 어떤 경험을 만들지까지 생각해 선택해요.'],
-            balance: '마음이 크게 움직이는 선택일수록 관리 조건과 비용을 숫자로 확인하면 만족을 더 오래 지킬 수 있어요.'
+            summary: '개체와의 관계, 개인의 취향, 돌봄 경험의 지속 가능성을 함께 고려하는 경향입니다.',
+            signals: ['선택 이후 자신과 주변이 경험할 만족도를 중요하게 봅니다.', '일률적인 기준보다 대상과 상황에 맞는 결정을 선호합니다.'],
+            balance: '마음이 크게 움직이는 선택일수록 관리 조건과 비용을 수치로 확인하면 만족을 더 안정적으로 유지할 수 있습니다.'
         },
         J: {
-            signals: ['기준과 순서를 미리 정하면 마음이 편해져요.', '급여·청소·기록을 일정한 루틴으로 관리해요.', '예상 가능한 준비와 마감이 있을 때 실행이 빨라져요.'],
-            balance: '계획과 다른 반응이 보이면 예외 기준을 하나 정해두세요. 루틴을 지키면서도 유연하게 대응할 수 있어요.'
+            summary: '해야 할 범위와 완료 기준을 먼저 정한 뒤 안정적으로 실행하는 경향입니다.',
+            signals: ['반복 업무를 일정한 구조와 순환 방식으로 관리합니다.', '준비 상태와 마감 지점이 분명할수록 실행 속도가 높아집니다.'],
+            balance: '예상과 다른 반응에 적용할 예외 기준을 미리 두면 운영의 안정성과 대응력을 함께 유지할 수 있습니다.'
         },
         P: {
-            signals: ['실제 반응을 본 뒤 계획을 유연하게 바꿔요.', '여러 가능성을 열어두고 가장 맞는 방식을 찾아요.', '예상 밖의 변화에도 부담 없이 대응하는 편이에요.'],
-            balance: '반드시 지켜야 할 최소 루틴만 고정하면 유연함은 유지하면서 기록 누락과 관리 편차를 줄일 수 있어요.'
+            summary: '실제 반응과 새로 들어온 정보에 맞춰 다음 행동을 조정하는 경향입니다.',
+            signals: ['여러 선택지를 열어둔 채 상황에 맞는 방식을 탐색합니다.', '예상 밖의 변화가 생겨도 우선순위를 빠르게 다시 배치합니다.'],
+            balance: '반드시 지켜야 할 최소 루틴만 고정하면 적응력은 유지하면서 기록 누락과 관리 편차를 줄일 수 있습니다.'
         }
     });
     const HOUSE_DETAIL_GUIDE = Object.freeze({
         SF: {
             strengths: ['현재 컨디션을 세심하게 살핌', '취향과 관계의 작은 변화를 기억함', '안정적이고 편안한 돌봄 환경을 만듦'],
-            role: '개체와 사람 사이의 분위기를 읽고, 모두가 편안하게 참여할 수 있도록 연결하는 역할에 강해요.',
-            balance: '애착만으로 판단하기 어려운 순간에는 기록과 관리 조건을 함께 확인해보세요.'
+            role: '개체와 사람 사이의 분위기를 읽고 모두가 편안하게 참여할 수 있도록 연결하는 역할에 강점이 있습니다.',
+            balance: '애착만으로 판단하기 어려운 순간에는 기록과 관리 조건을 함께 확인하는 것이 좋습니다.'
         },
         ST: {
             strengths: ['확인되는 정보로 관리 기준을 세움', '문제를 순서대로 안정적으로 해결함', '반복 가능한 운영 루틴을 만듦'],
-            role: '관리 기준을 실제 행동으로 바꾸고, 팀이 흔들리지 않도록 운영의 중심을 잡는 역할에 강해요.',
-            balance: '기존 기준이 잘 작동하더라도 새로운 가능성을 시험할 작은 여지를 남겨두면 더 발전할 수 있어요.'
+            role: '관리 기준을 실제 행동으로 전환하고 팀이 흔들리지 않도록 운영의 중심을 잡는 역할에 강점이 있습니다.',
+            balance: '기존 기준이 잘 작동하더라도 새로운 방식을 시험할 작은 여지를 남기면 운영을 발전시킬 수 있습니다.'
         },
         NT: {
             strengths: ['성장 가능성을 구조적으로 분석함', '새로운 조합과 방법을 실험함', '복잡한 문제를 원리와 시스템으로 해결함'],
-            role: '아직 정답이 없는 문제에 가설을 세우고, 다음 시도를 설계하는 역할에 강해요.',
-            balance: '아이디어를 실행하기 전 현재 컨디션과 돌봄 부담을 확인하면 실험의 완성도가 높아져요.'
+            role: '정답이 정해지지 않은 문제에 가설을 세우고 다음 시도를 설계하는 역할에 강점이 있습니다.',
+            balance: '아이디어를 실행하기 전에 현재 컨디션과 돌봄 부담을 확인하면 시도의 완성도를 높일 수 있습니다.'
         },
         NF: {
             strengths: ['개체의 성장 가능성과 관계를 함께 봄', '사람들이 공감할 수 있는 방향을 제시함', '의미 있는 경험과 이야기를 연결함'],
-            role: '서로 다른 관심을 하나의 방향으로 묶고, 참여할 이유를 만들어주는 역할에 강해요.',
-            balance: '좋은 방향을 오래 이어가려면 일정·비용·관리 기준을 구체적인 실행 항목으로 바꿔보세요.'
+            role: '서로 다른 관심을 하나의 방향으로 묶고 참여할 이유를 만드는 역할에 강점이 있습니다.',
+            balance: '선택한 방향을 오래 이어가려면 일정·비용·관리 기준을 구체적인 실행 항목으로 전환하는 것이 좋습니다.'
         }
     });
     const IS_LOCAL_QA = ['127.0.0.1', 'localhost'].includes(location.hostname);
@@ -105,6 +123,7 @@
     let sessionCreatedAt = '';
     let assignedHouseKey = '';
     let result = null;
+    let resultAxisExamples = {};
     let resultSavedAt = '';
     let timingStats = null;
     let activeTimer = null;
@@ -181,6 +200,7 @@
                 letters: { ...result.letters },
                 axes: result.axes.map(axis => ({ ...axis }))
             },
+            axisExamples: Object.fromEntries(result.axes.map(axis => [axis.axis, selectedAxisExamples(axis)])),
             timingStats: timingStats ? {
                 validCount: timingStats.validCount,
                 totalMs: timingStats.totalMs,
@@ -231,6 +251,7 @@
         surveySessionId = '';
         sessionCreatedAt = '';
         result = snapshot.result;
+        resultAxisExamples = snapshot.axisExamples && typeof snapshot.axisExamples === 'object' ? snapshot.axisExamples : {};
         resultSavedAt = snapshot.savedAt || '';
         assignedHouseKey = Core.chooseTendencyHouse(result);
         timingStats = snapshot.timingStats;
@@ -491,6 +512,7 @@
     function startSurvey() {
         questions = Core.prepareQuestions();
         answers = [];
+        resultAxisExamples = {};
         responseTimings = [];
         current = 0;
         selectedMbti = '';
@@ -574,6 +596,7 @@
         activeTimer = null;
         questions = [];
         answers = [];
+        resultAxisExamples = {};
         responseTimings = [];
         current = 0;
         selectedMbti = '';
@@ -777,10 +800,10 @@
     }
 
     function speedPositionCopy(position, hasBenchmark) {
-        if (!hasBenchmark) return '아직 전체 참여자 기준이 충분하지 않아 이번 응답 안에서의 선택 리듬만 보여드려요.';
-        if (position <= 35) return '전체 참여자보다 빠르게 첫 판단을 확정한 편이에요. 직감적인 선택 리듬이 비교적 선명해요.';
-        if (position >= 65) return '전체 참여자보다 한 번 더 비교한 뒤 선택한 편이에요. 숙고하는 리듬이 비교적 선명해요.';
-        return '전체 참여자 평균과 가까운 속도예요. 직감과 확인 사이에서 비교적 균형 있게 선택했어요.';
+        if (!hasBenchmark) return '아직 전체 참여자 기준이 충분하지 않아 이번 응답 안에서의 선택 리듬만 제시합니다.';
+        if (position <= 35) return '전체 참여자보다 빠르게 첫 판단을 확정했습니다. 직감적인 선택 리듬이 비교적 선명합니다.';
+        if (position >= 65) return '전체 참여자보다 한 번 더 비교한 뒤 선택했습니다. 숙고하는 리듬이 비교적 선명합니다.';
+        return '전체 참여자 평균과 가까운 속도입니다. 직감과 확인 사이에서 비교적 균형 있게 선택했습니다.';
     }
 
     function renderSpeedCard() {
@@ -791,23 +814,19 @@
             <section class="cw-result-section cw-speed-card">
                 ${renderReportSectionHead('02', 'RESPONSE PACE', '선택 속도', 'speed-report-detail')}
                 <div class="cw-report-disclosure cw-speed-disclosure" id="speed-report-detail" hidden>
-                    <header><strong>${escapeHtml(timingStats.style.label)}</strong><span>유효 선택 ${escapeHtml(timingStats.validCount)} / ${escapeHtml(questions.length || 20)}</span></header>
-                    <p class="cw-detail-lead">${escapeHtml(timingStats.style.copy)} ${escapeHtml(speedPositionCopy(position, cohortSummary.timingMedians.length > 0))}</p>
-                    <section class="cw-detail-points" aria-label="선택 속도 해석">
-                        <h4>응답에서 보인 흐름</h4>
-                        <ul>
-                            <li>가장 빠른 선택: ${escapeHtml(timingEntryLabel(timingStats.fastest))}</li>
-                            <li>가장 오래 본 선택: ${escapeHtml(timingEntryLabel(timingStats.slowest))}</li>
-                            <li>문항별 시간의 중앙값을 사용해 한두 번의 긴 멈춤이 결과를 과도하게 바꾸지 않도록 했어요.</li>
-                        </ul>
-                    </section>
-                    <dl>
+                    <header class="cw-analysis-title"><small>DECISION RHYTHM</small><strong>${escapeHtml(timingStats.style.label)}</strong></header>
+                    <p class="cw-analysis-lead">${escapeHtml(speedPositionCopy(position, cohortSummary.timingMedians.length > 0))}</p>
+                    <dl class="cw-analysis-metrics">
                         <div><dt>문항당 중앙값</dt><dd>${escapeHtml(median)}</dd></div>
-                        <div><dt>문항당 평균</dt><dd>${escapeHtml(formatSeconds(timingStats.averageMs))}</dd></div>
-                        <div><dt>유효 선택 전체 시간</dt><dd>${escapeHtml(formatSeconds(timingStats.totalMs))}</dd></div>
-                        ${Core.AXES.map(axis => `<div><dt>${escapeHtml(AXIS_REPORT_COPY[axis].title)}</dt><dd>${escapeHtml(formatSeconds(timingStats.axisMedians[axis]))}</dd></div>`).join('')}
+                        <div><dt>비교 기준</dt><dd>${escapeHtml(comparison)}</dd></div>
+                        <div><dt>유효 응답</dt><dd>${escapeHtml(timingStats.validCount)} / ${escapeHtml(questions.length || 20)}</dd></div>
                     </dl>
-                    <div class="cw-detail-note"><strong>읽는 법</strong><p>선택 속도는 정확도나 성실도 점수가 아니에요. 이번 검사에서 결정을 내린 리듬만 보여주는 참고 지표예요.</p></div>
+                    <section class="cw-analysis-evidence" aria-label="선택 속도 장면">
+                        <h4>선택 리듬이 갈린 장면</h4>
+                        <div><small>가장 빠르게 선택</small><p>${escapeHtml(timingEntryLabel(timingStats.fastest))}</p></div>
+                        <div><small>가장 오래 살펴봄</small><p>${escapeHtml(timingEntryLabel(timingStats.slowest))}</p></div>
+                    </section>
+                    <aside class="cw-analysis-caution"><strong>해석할 때</strong><p>속도는 정확도나 성실도의 점수가 아닙니다. 한두 번의 긴 멈춤에 흔들리지 않도록 문항별 중앙값을 사용했습니다.</p></aside>
                 </div>
                 <div class="cw-speed-summary">
                     <header class="cw-speed-head">
@@ -820,6 +839,41 @@
                         <div class="cw-scale-labels"><span>빠름</span><span>평균</span><span>신중</span></div>
                     </div>
                 </div>
+            </section>`;
+    }
+
+    function selectedAxisExamples(axisResult) {
+        const liveExamples = questions.map((question, index) => {
+            const choice = answers[index];
+            if (choice === undefined || question.axis !== axisResult.axis) return null;
+            const score = question.scores[choice];
+            if (score !== axisResult.dominant) return null;
+            return question.options[choice];
+        }).filter(Boolean).slice(0, 2);
+        if (liveExamples.length) return liveExamples;
+        const stored = resultAxisExamples[axisResult.axis];
+        return Array.isArray(stored) ? stored.slice(0, 2).map(String) : [];
+    }
+
+    function renderTypeComparisonAnalysis() {
+        const comparison = currentTypeComparison();
+        if (!comparison) return '';
+        if (!comparison.changes.length) {
+            return `
+                <section class="cw-analysis-summary">
+                    <small>평소 유형 비교</small>
+                    <strong>평소 ${escapeHtml(comparison.knownType)}와 같은 방향</strong>
+                    <p>크레를 고르고 돌보는 상황에서도 평소 익숙한 판단 방식이 네 지표에서 일관되게 나타났습니다.</p>
+                </section>`;
+        }
+        const changedAxes = comparison.changes
+            .map(change => `${AXIS_REPORT_COPY[change.axis].title} ${change.from} → ${change.to}`)
+            .join(' · ');
+        return `
+            <section class="cw-analysis-summary">
+                <small>평소 ${escapeHtml(comparison.knownType)}와 비교</small>
+                <strong>${escapeHtml(changedAxes)}</strong>
+                <p>${comparison.changes.map(change => escapeHtml(TYPE_CHANGE_ANALYSIS[`${change.from}>${change.to}`] || change.message)).join(' ')}</p>
             </section>`;
     }
 
@@ -854,25 +908,26 @@
             const first = axisResult.axis[0];
             const second = axisResult.axis[1];
             const guide = AXIS_DETAIL_GUIDE[axisResult.dominant];
+            const examples = selectedAxisExamples(axisResult);
             return `
                 <article class="cw-axis-insight">
-                    <header><strong>${escapeHtml(axisResult.dominant)} · ${escapeHtml(dominant.short)}</strong><span>${escapeHtml(axisStrength(axisResult))}</span></header>
-                    <p class="cw-detail-lead">${escapeHtml(dominant.description)}</p>
-                    <section class="cw-detail-points">
-                        <h4>응답에서 보인 흐름</h4>
-                        <ul>${guide.signals.map(signal => `<li>${escapeHtml(signal)}</li>`).join('')}</ul>
-                    </section>
-                    <dl>
-                        <div><dt>응답 분포</dt><dd>${escapeHtml(first)} ${escapeHtml(result.letters[first])} · ${escapeHtml(second)} ${escapeHtml(result.letters[second])}</dd></div>
-                        <div><dt>해석 강도</dt><dd>${escapeHtml(axisStrength(axisResult))}</dd></div>
-                    </dl>
-                    <div class="cw-detail-note"><strong>균형 포인트</strong><p>${escapeHtml(guide.balance)}</p></div>
+                    <header>
+                        <div><small>${escapeHtml(AXIS_REPORT_COPY[axisResult.axis].title)}</small><strong>${escapeHtml(axisResult.dominant)} · ${escapeHtml(dominant.short)}</strong></div>
+                        <span>${escapeHtml(result.letters[axisResult.dominant])}:${escapeHtml(result.letters[axisResult.opposite])} · ${escapeHtml(axisStrength(axisResult))}</span>
+                    </header>
+                    <p class="cw-analysis-lead">${escapeHtml(guide.summary)}</p>
+                    ${examples.length ? `<section class="cw-analysis-evidence">
+                        <h4>이번 응답에서 확인된 장면</h4>
+                        ${examples.map(example => `<blockquote>${escapeHtml(example)}</blockquote>`).join('')}
+                    </section>` : ''}
+                    <section class="cw-analysis-reading"><strong>행동 해석</strong><p>${guide.signals.slice(0, 2).map(signal => escapeHtml(signal)).join(' ')}</p></section>
+                    <aside class="cw-analysis-caution"><strong>균형 포인트</strong><p>${escapeHtml(guide.balance)}</p></aside>
                 </article>`;
         }).join('');
         return `
             <section class="cw-result-section cw-member-detail">
                 ${renderReportSectionHead('01', 'TRAIT AXES', '성향 지표', 'axes-report-detail')}
-                <div class="cw-report-disclosure cw-axis-insights" id="axes-report-detail" hidden>${axisInsights}</div>
+                <div class="cw-report-disclosure cw-axis-insights" id="axes-report-detail" hidden>${renderTypeComparisonAnalysis()}${axisInsights}</div>
                 <div class="cw-axis-detail-list">${axisCards}</div>
             </section>`;
     }
@@ -888,19 +943,18 @@
             <section class="cw-report-house" style="--house-accent:${escapeHtml(house.accent)}">
                 ${renderReportSectionHead('03', 'HOUSE ASSIGNMENT', '기숙사', 'house-report-detail')}
                 <div class="cw-report-disclosure cw-house-disclosure" id="house-report-detail" hidden>
-                    <strong>${escapeHtml(HOUSE_REPORT_COPY[assignedHouseKey] || '')}</strong>
-                    <p class="cw-detail-lead">기숙사는 네 글자 전체가 아니라, 크레를 보는 관찰 초점과 선택 기준의 조합으로 배정해요.</p>
-                    <section class="cw-detail-points">
-                        <h4>이 기숙사에서 드러나는 강점</h4>
-                        <ul>${guide.strengths.map(strength => `<li>${escapeHtml(strength)}</li>`).join('')}</ul>
-                    </section>
-                    <div class="cw-house-role"><strong>커뮤니티에서의 역할</strong><p>${escapeHtml(guide.role)}</p></div>
-                    <dl>
+                    <header class="cw-analysis-title"><small>HOUSE PROFILE</small><strong>${escapeHtml(HOUSE_REPORT_COPY[assignedHouseKey] || '')}</strong></header>
+                    <p class="cw-analysis-lead">기숙사는 전체 유형이 아니라 관찰 초점과 선택 기준의 조합으로 배정됩니다.</p>
+                    <dl class="cw-analysis-metrics is-house">
                         <div><dt>관찰 초점</dt><dd>${escapeHtml(snAxis?.dominant || '')} · ${escapeHtml(snCopy)}</dd></div>
                         <div><dt>선택 기준</dt><dd>${escapeHtml(tfAxis?.dominant || '')} · ${escapeHtml(tfCopy)}</dd></div>
-                        <div><dt>배정 조합</dt><dd>${escapeHtml(assignedHouseKey)}</dd></div>
                     </dl>
-                    <div class="cw-detail-note"><strong>균형 포인트</strong><p>${escapeHtml(guide.balance)}</p></div>
+                    <section class="cw-analysis-evidence">
+                        <h4>이 조합의 강점</h4>
+                        <ul>${guide.strengths.map(strength => `<li>${escapeHtml(strength)}</li>`).join('')}</ul>
+                    </section>
+                    <section class="cw-analysis-reading"><strong>커뮤니티에서의 역할</strong><p>${escapeHtml(guide.role)}</p></section>
+                    <aside class="cw-analysis-caution"><strong>균형 포인트</strong><p>${escapeHtml(guide.balance)}</p></aside>
                 </div>
                 <div class="cw-house-assignment">
                     <b aria-hidden="true">${escapeHtml(house.seal)}</b>
@@ -1077,23 +1131,6 @@
         return Core.buildMbtiComparison(selectedMbti, result.code);
     }
 
-    function typeComparisonSummary(comparison) {
-        if (!comparison) return '';
-        if (!comparison.changes.length) return '결과와 동일';
-        return comparison.changes.map(change => `${change.from} → ${change.to}`).join(' · ');
-    }
-
-    function renderTypeComparison() {
-        const comparison = currentTypeComparison();
-        if (!comparison) return '';
-        const summary = typeComparisonSummary(comparison);
-        return `
-            <section class="cw-profile-compare" aria-label="평소 유형 비교">
-                <span>평소 <strong>${escapeHtml(comparison.knownType)}</strong></span>
-                <b class="${comparison.changes.length ? 'is-changed' : 'is-same'}">${escapeHtml(summary)}</b>
-            </section>`;
-    }
-
     function renderResult(options = {}) {
         const detail = BAND_INTEGRATION_ENABLED && hasDetailedAccess()
             ? `${renderMemberDetail()}${renderSpeedCard()}${renderHouseCard()}`
@@ -1121,7 +1158,6 @@
                         </div>
                         <h1 class="cw-result-type-name" data-final-name="${escapeHtml(result.typeName)}">${escapeHtml(result.typeName)}</h1>
                     </section>
-                    ${renderTypeComparison()}
                     ${detail}
                     <footer class="cw-report-footer">
                         <p>성향을 이해하기 위한 참고 결과입니다.</p>
@@ -1675,15 +1711,6 @@
         context.fillStyle = '#d5d7d2';
         context.fillRect(contentX, 558, contentWidth, 2);
 
-        const comparison = currentTypeComparison();
-        if (comparison) {
-            context.fillStyle = '#6f756f';
-            context.font = `700 15px ${font}`;
-            context.textAlign = 'center';
-            context.fillText(`평소 ${comparison.knownType}  ·  ${typeComparisonSummary(comparison)}`, 540, 586);
-            context.textAlign = 'left';
-        }
-
         if (hasDetailedAccess()) {
             drawShareSectionLabel(context, '01', 'TRAIT AXES', '성향 지표', contentX, 600, contentWidth, font, false);
             result.axes.forEach((axisResult, index) => {
@@ -1848,13 +1875,6 @@
         context.fillStyle = '#7b807b';
         context.font = `720 16px ${font}`;
         context.fillText('PERSONALITY TEST', 70, 102);
-        const comparison = currentTypeComparison();
-        if (comparison) {
-            context.fillStyle = '#747a75';
-            context.font = `700 15px ${font}`;
-            context.fillText(`평소 ${comparison.knownType}  ·  ${typeComparisonSummary(comparison)}`, 70, 130);
-        }
-
         const houseLabel = `HOUSE ${house?.seal || assignedHouseKey[0] || '—'} · ${house?.name || assignedHouseKey || 'CREWARTS'}`;
         context.font = `760 18px ${font}`;
         const housePillWidth = Math.ceil(context.measureText(houseLabel).width) + 44;
