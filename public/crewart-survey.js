@@ -12,6 +12,7 @@
     const MEMBERSHIP_PHONE_STORAGE_KEY = 'crewart_band_member_phone_mask_v1';
     const LAST_RESULT_STORAGE_KEY = 'crewart_last_result_v1';
     const LAST_RESULT_VERSION = 1;
+    const COMPATIBLE_RESULT_QUESTION_VERSIONS = Object.freeze([Core.SURVEY_VERSION, 'crewart-tendency-v8.0']);
     const MEMBERSHIP_RECHECK_VISIBLE_MS = 1000;
     const MEMBERSHIP_RECHECK_HIDDEN_MS = 10000;
     const MEMBERSHIP_RECHECK_TIMEOUT_MS = 15 * 60 * 1000;
@@ -175,7 +176,7 @@
     function loadLastResult() {
         try {
             const snapshot = JSON.parse(localStorage.getItem(LAST_RESULT_STORAGE_KEY) || 'null');
-            if (snapshot?.version !== LAST_RESULT_VERSION || snapshot.questionVersion !== Core.SURVEY_VERSION) return null;
+            if (snapshot?.version !== LAST_RESULT_VERSION || !COMPATIBLE_RESULT_QUESTION_VERSIONS.includes(snapshot.questionVersion)) return null;
             if (!Core.MBTI_TYPES.includes(snapshot.result?.code)) return null;
             if (!Core.HOUSE_KEYS.includes(snapshot.assignedHouseKey)) return null;
             if (!Array.isArray(snapshot.result?.axes) || snapshot.result.axes.length !== 4) return null;
