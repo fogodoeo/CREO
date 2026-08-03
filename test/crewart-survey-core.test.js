@@ -4,8 +4,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const Core = require('../public/crewart-survey-core');
 
-test('v8 questionnaire covers five distinct facets on every axis', () => {
-    assert.equal(Core.SURVEY_VERSION, 'crewart-tendency-v8.0');
+test('v8.1 questionnaire covers five distinct facets on every axis', () => {
+    assert.equal(Core.SURVEY_VERSION, 'crewart-tendency-v8.1');
     assert.equal(Core.QUESTIONS.length, 20);
     assert.equal(new Set(Core.QUESTIONS.map((question) => question.id)).size, 20);
     for (const axis of Core.AXES) {
@@ -19,6 +19,8 @@ test('paired choices have symmetric structure and avoid loaded pole wording', ()
     const revealing = /외향|내향|감각형|직관형|사고형|감정형|판단형|인식형|계획적|즉흥적|유연하게|혼자|사람들과|가능성|근거/;
     const narrowContext = /경매|낙찰|브리딩|컬렉션|최대 금액/;
     for (const question of Core.QUESTIONS) {
+        assert.ok(question.label.length <= 30);
+        assert.ok(question.q.length <= 24);
         assert.equal(question.options.length, 2);
         assert.equal(question.scores.length, 2);
         assert.deepEqual([...question.scores].sort(), [...question.axis].sort());
