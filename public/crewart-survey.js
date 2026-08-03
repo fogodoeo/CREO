@@ -1090,6 +1090,31 @@
         button.closest('.cw-result-section, .cw-report-house')?.classList.toggle('is-expanded', opening);
     }
 
+    function currentTypeComparison() {
+        if (!result || !Core.MBTI_TYPES.includes(selectedMbti)) return null;
+        return Core.buildMbtiComparison(selectedMbti, result.code);
+    }
+
+    function renderTypeComparison() {
+        const comparison = currentTypeComparison();
+        if (!comparison) return '';
+        const axes = [...comparison.creType].map((letter, index) => {
+            const usualLetter = comparison.knownType[index];
+            const changed = usualLetter !== letter;
+            return changed
+                ? `<span class="cw-profile-shift is-changed" aria-label="${escapeHtml(usualLetter)}에서 ${escapeHtml(letter)}로 변화"><del>${escapeHtml(usualLetter)}</del><i aria-hidden="true">→</i><strong>${escapeHtml(letter)}</strong></span>`
+                : `<span class="cw-profile-shift is-same" aria-label="${escapeHtml(letter)} 일치"><strong>${escapeHtml(letter)}</strong></span>`;
+        }).join('');
+        return `
+            <section class="cw-profile-compare" aria-label="평소 유형 비교">
+                <div class="cw-profile-compare-head">
+                    <span><small>USUAL TYPE</small><strong>${escapeHtml(comparison.knownType)}</strong></span>
+                    <b>${comparison.sameCount}/4 <small>일치</small></b>
+                </div>
+                <div class="cw-profile-compare-axes" aria-label="축별 비교">${axes}</div>
+            </section>`;
+    }
+
     function renderResult(options = {}) {
         const detail = BAND_INTEGRATION_ENABLED && hasDetailedAccess()
             ? `${renderMemberDetail()}${renderSpeedCard()}${renderHouseCard()}`
@@ -1117,6 +1142,7 @@
                         </div>
                         <h1 class="cw-result-type-name" data-final-name="${escapeHtml(result.typeName)}">${escapeHtml(result.typeName)}</h1>
                     </section>
+                    ${renderTypeComparison()}
                     ${detail}
                     <footer class="cw-report-footer">
                         <p>성향을 이해하기 위한 참고 결과입니다.</p>
@@ -1670,6 +1696,15 @@
         context.fillStyle = '#d5d7d2';
         context.fillRect(contentX, 558, contentWidth, 2);
 
+        const comparison = currentTypeComparison();
+        if (comparison) {
+            context.fillStyle = '#6f756f';
+            context.font = `700 15px ${font}`;
+            context.textAlign = 'center';
+            context.fillText(`USUAL ${comparison.knownType}  ·  MATCH ${comparison.sameCount}/4`, 540, 586);
+            context.textAlign = 'left';
+        }
+
         if (hasDetailedAccess()) {
             drawShareSectionLabel(context, '01', 'TRAIT AXES', '성향 지표', contentX, 600, contentWidth, font, false);
             result.axes.forEach((axisResult, index) => {
@@ -1834,6 +1869,12 @@
         context.fillStyle = '#7b807b';
         context.font = `720 16px ${font}`;
         context.fillText('PERSONALITY TEST', 70, 102);
+        const comparison = currentTypeComparison();
+        if (comparison) {
+            context.fillStyle = '#747a75';
+            context.font = `700 15px ${font}`;
+            context.fillText(`USUAL ${comparison.knownType}  ·  MATCH ${comparison.sameCount}/4`, 70, 130);
+        }
 
         const houseLabel = `HOUSE ${house?.seal || assignedHouseKey[0] || '—'} · ${house?.name || assignedHouseKey || 'CREWARTS'}`;
         context.font = `760 18px ${font}`;

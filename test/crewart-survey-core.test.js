@@ -4,8 +4,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const Core = require('../public/crewart-survey-core');
 
-test('v4 questionnaire covers five distinct facets on every axis', () => {
-    assert.equal(Core.SURVEY_VERSION, 'crewart-tendency-v4.0');
+test('v5 questionnaire covers five distinct facets on every axis', () => {
+    assert.equal(Core.SURVEY_VERSION, 'crewart-tendency-v5.0');
     assert.equal(Core.QUESTIONS.length, 20);
     assert.equal(new Set(Core.QUESTIONS.map((question) => question.id)).size, 20);
     for (const axis of Core.AXES) {
@@ -29,6 +29,8 @@ test('paired choices have symmetric structure and avoid loaded pole wording', ()
         assert.equal([question.label, question.q, ...question.options].some((copy) => narrowContext.test(copy)), false);
         assert.match(question.image, /^question-c\d{2}\.webp$/);
     }
+    const optionCopy = Core.QUESTIONS.flatMap(question => question.options).join(' ');
+    assert.ok((optionCopy.match(/순서/g) || []).length <= 1, 'one repeated surface cue must not reveal the JP key');
 });
 
 test('every pole wins exactly half of all possible answer patterns on its axis', () => {
@@ -83,4 +85,14 @@ test('house assignment follows the result SN and TF combination', () => {
     assert.equal(Core.chooseTendencyHouse(result), 'ST');
     assert.equal(Core.chooseTendencyHouse({ code: 'ENFJ' }), 'NF');
     assert.equal(Core.chooseTendencyHouse({ code: 'INTJ' }), 'NT');
+});
+
+test('usual type comparison identifies each matching and changed axis', () => {
+    const comparison = Core.buildMbtiComparison('ISTJ', 'ISFJ');
+    assert.equal(comparison.knownType, 'ISTJ');
+    assert.equal(comparison.creType, 'ISFJ');
+    assert.equal(comparison.sameCount, 3);
+    assert.deepEqual(comparison.changes.map(change => ({ axis: change.axis, from: change.from, to: change.to })), [
+        { axis: 'TF', from: 'T', to: 'F' }
+    ]);
 });

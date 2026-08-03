@@ -261,6 +261,19 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .is-measure-pending { opacity: .28; transform: translateY(4px); }
 .is-measure-revealed { animation: cw-measure-reveal .38s ease both; }
 
+.cw-profile-compare { display: grid; grid-template-columns: minmax(112px, .72fr) 1.28fr; align-items: center; gap: 14px; min-height: 72px; margin: 12px 0 18px; padding: 10px 12px; border: 1px solid #dfe1dc; border-radius: 10px; background: #f6f6f3; }
+.cw-profile-compare-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; padding-right: 14px; border-right: 1px solid #d8dad5; }
+.cw-profile-compare-head > span { display: grid; gap: 2px; }
+.cw-profile-compare-head small { color: var(--cw-muted); font-size: 7px; font-weight: 750; letter-spacing: .12em; }
+.cw-profile-compare-head > span strong { color: var(--cw-ink); font-size: 16px; font-weight: 800; letter-spacing: .05em; }
+.cw-profile-compare-head > b { color: var(--cw-ink); font-size: 12px; font-weight: 800; white-space: nowrap; }
+.cw-profile-compare-head > b small { margin-left: 1px; font-size: 8px; letter-spacing: 0; }
+.cw-profile-compare-axes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; }
+.cw-profile-shift { display: flex; min-width: 0; height: 34px; align-items: center; justify-content: center; gap: 2px; border: 1px solid #d9dcd6; border-radius: 7px; background: #fff; color: var(--cw-ink); font-size: 12px; font-weight: 800; }
+.cw-profile-shift del { color: #949994; font-size: 9px; font-weight: 650; text-decoration-thickness: 1px; }
+.cw-profile-shift i { color: #8b908b; font-size: 8px; font-style: normal; }
+.cw-profile-shift.is-changed { border-color: #aac5b5; background: #edf5f0; color: #17617b; }
+
 .cw-result-section, .cw-report-house { overflow: hidden; border: 1px solid #dfe1dc; border-radius: 12px; background: var(--cw-surface-soft); box-shadow: none; }
 .cw-detail-gate, .cw-share-section { border-radius: 0; background: transparent; box-shadow: none; }
 .cw-report-section-head { padding: 0; border: 0; }
