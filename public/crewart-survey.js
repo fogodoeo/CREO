@@ -615,6 +615,7 @@
         advancing = false;
         const card = element('question-card');
         card.classList.toggle('is-guide', current === 0);
+        element('q0-copyright').hidden = current !== 0;
         if (current === 0) {
             element('progress-text').textContent = `0 / ${questions.length}`;
             element('progress-axis').textContent = '안내사항';
@@ -631,7 +632,6 @@
                         <li><b>04</b><span>오래 고민하지 말고 먼저 떠오른 답을 선택해주세요.</span></li>
                     </ol>
                     <button class="cw-primary-button cw-q0-start-button" type="button" data-q0-start>시작하기</button>
-                    <p class="cw-copyright">© 2026 CREO. All rights reserved.</p>
                 </div>`;
             element('choice-list').querySelector('[data-q0-start]')?.addEventListener('click', () => {
                 if (advancing) return;

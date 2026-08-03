@@ -309,7 +309,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /cw-result-code cw-result-code-back/);
     assert.match(script, /cw-result-code cw-result-code-front/);
     assert.match(script, /class="cw-type-poster"/);
-    assert.match(html, /20260804-reading-v74/);
+    assert.match(html, /20260804-reading-v75/);
     assert.doesNotMatch(html, /question-illustration|question-image/);
     assert.doesNotMatch(script, /QUESTION_IMAGE_ROOT|question\.image|nextImage/);
     assert.doesNotMatch(html, /cw-home-guide|cw-home-disclaimer/);
@@ -317,7 +317,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /data-q0-start/);
     assert.match(script, /크레 앞에서는 평소 유형과 다른 결과가 나올 수 있습니다/);
     assert.match(html, /© 2026 CREO\. All rights reserved\./);
-    assert.match(script, /© 2026 CREO\. All rights reserved\./);
+    assert.match(html, /class="cw-q0-copyright" id="q0-copyright" hidden>© 2026 CREO\. All rights reserved\./);
     assert.match(script, /© 2026 CREO · ALL RIGHTS RESERVED/);
     assert.match(script, /class="cw-result-copyright cw-result-copyright-outside"/);
     assert.doesNotMatch(script, /성향을 이해하기 위한 참고 결과입니다/);

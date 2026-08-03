@@ -572,7 +572,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-q0-list li { display: grid; grid-template-columns: 30px 1fr; gap: 12px; align-items: start; padding: 15px 2px; border-bottom: 1px solid var(--cw-line); color: var(--cw-ink); font-size: 15px; font-weight: var(--cw-weight-medium); line-height: 1.5; letter-spacing: -.018em; }
 .cw-q0-list b { color: var(--cw-green); font-size: 11px; font-weight: 800; line-height: 1.9; letter-spacing: .08em; }
 .cw-q0-start-button { width: 100%; }
-.cw-q0-card .cw-copyright { margin-top: -10px; }
+.cw-q0-copyright { margin: 12px auto 0; color: #9a9e9a; font-size: 9px; font-weight: 600; letter-spacing: .035em; text-align: center; }
+.cw-q0-copyright[hidden] { display: none; }
 
 /* Expanded report: readable, evidence-led analysis */
 .cw-report-disclosure { margin: 6px 0 10px; padding: 16px 4px 4px; }
