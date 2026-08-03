@@ -588,10 +588,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-axis-insight > header small { color: #7c827d; font-size: 9px; font-weight: 700; }
 .cw-axis-insight > header strong { color: var(--cw-ink); font-size: 15px; font-weight: 800; line-height: 1.35; }
 .cw-axis-insight > header > span { flex: 0 0 auto; padding: 4px 7px; border: 1px solid #d9dcd7; border-radius: 999px; color: #686e69; font-size: 9px; font-weight: 700; white-space: nowrap; }
-.cw-axis-insight-graph { margin-top: 12px; padding: 11px 13px 12px; border-color: #d8ddd8; background: #f7f8f5; }
-.cw-axis-insight-graph header h3 { font-size: 11px; }
-.cw-axis-insight-graph .cw-axis-poles { margin-top: 9px; }
-.cw-axis-insight-graph .cw-axis-meanings { font-size: 9px; }
 .cw-report-disclosure .cw-analysis-lead { margin: 10px 0 0; color: #454c47; font-size: 12.5px; font-weight: 520; line-height: 1.7; }
 .cw-analysis-evidence { margin-top: 14px; padding: 13px; border-radius: 9px; background: #f3f3f0; }
 .cw-analysis-evidence h4 { margin: 0 0 9px; color: #343936; font-size: 10px; font-weight: 800; letter-spacing: .015em; }
@@ -619,3 +615,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-analysis-metrics dt { color: #777d78; font-size: 9.5px; font-weight: 700; }
 .cw-analysis-metrics dd { margin: 0; color: var(--cw-ink); font-size: 11.5px; font-weight: 780; line-height: 1.35; text-align: left; }
 .cw-analysis-metrics.is-house { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.cw-type-reading-wrap { margin: 10px 0 0; padding: 0 1px 2px; }
+.cw-type-reading { padding: 18px 16px 16px; border: 1px solid #d8ddd8; border-radius: 10px; background: #fff; }
+.cw-type-reading > p { margin: 0; color: #343a36; font-size: 15px; font-weight: 520; line-height: 1.82; letter-spacing: -.014em; word-break: keep-all; }
+.cw-type-reading > footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; padding-top: 11px; border-top: 1px solid #e1e3df; color: #7b817c; font-size: 10px; }
+.cw-type-reading > footer strong { color: #555c57; font-weight: 750; }

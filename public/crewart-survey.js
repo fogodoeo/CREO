@@ -83,6 +83,24 @@
             balance: '급여·온도·기록처럼 반드시 지킬 최소선만 고정하면 적응력은 살리면서 관리 편차와 누락을 줄일 수 있습니다.'
         }
     });
+    const TYPE_READINGS = Object.freeze({
+        ISTJ: '당신이 돌본 크레의 변화는 기억보다 기록에 오래 남습니다. 어제와 비슷해 보이는 하루에서도 작은 차이를 찾아내고, 문제가 생기면 감으로 넘기기보다 언제부터 무엇이 달라졌는지 차분히 되짚어요. 덕분에 주변에서는 흔들릴 때 기준을 잡아주는 사람으로 기억하지만, 한 번 세운 방식이 잘 맞았던 만큼 새로운 신호를 기존 기록 안에서만 찾으려 할 때도 있습니다. 익숙한 기준 밖에서 들어온 작은 예외 하나가 오히려 다음 돌봄을 더 단단하게 만들어줄 수 있어요.',
+        ISFJ: '당신 곁의 크레는 평소와 다른 작은 움직임도 쉽게 지나치지 않습니다. 말로 크게 드러내지는 않아도 어느 아이가 무엇을 좋아하고 언제 편안해지는지 오래 기억해두었다가 필요한 순간에 먼저 챙겨줘요. 그래서 함께 있는 사람들은 당신의 돌봄 안에서 안정감을 느끼지만, 모두가 편안하기를 바라는 마음 때문에 자신의 피로를 뒤늦게 알아차리기도 합니다. 오래 돌보기 위해 잠시 쉬는 것 역시 당신다운 책임의 한 부분이에요.',
+        INFJ: '처음 만난 크레를 볼 때 당신의 시선은 지금 모습에서 오래 머물지 않습니다. 작은 반응과 지나온 기록을 천천히 이어보며 이 아이가 앞으로 어떤 모습으로 자랄지, 어떤 환경에서 가장 편안할지를 마음속에 그려요. 주변에서는 미처 말로 설명하지 못한 변화까지 먼저 알아채는 사람으로 느끼지만, 한 번 의미를 발견한 뒤에는 그 흐름을 너무 오래 믿고 싶어질 때도 있습니다. 가끔은 오늘 눈앞의 상태만 다시 바라보는 일이 당신의 깊은 직감을 더 정확하게 지켜줍니다.',
+        INTJ: '한 마리를 데려오는 일도 당신에게는 오늘의 선택으로 끝나지 않습니다. 성장한 뒤의 모습과 관리가 이어질 방식까지 미리 그려본 다음, 오래 흔들리지 않을 구조를 조용히 만들어가요. 처음에는 혼자 멀리 보는 것처럼 보여도 시간이 지나면 주변 사람들은 당신이 왜 그 순서를 택했는지 뒤늦게 이해하게 됩니다. 다만 완성도 높은 그림일수록 예상 밖의 반응이 끼어들 자리가 좁아질 수 있으니, 계획 속에 작은 빈칸 하나를 남겨두는 편이 오히려 더 멀리 가게 해줘요.',
+        ISTP: '예상하지 못한 문제가 생긴 순간, 당신은 걱정을 길게 설명하기보다 먼저 손이 움직이는 사람입니다. 눈앞의 상태를 빠르게 살피고 지금 바꿀 수 있는 것부터 건드리면서 가장 단순한 해결점을 찾아내요. 평소에는 존재감이 크지 않아 보여도 급한 순간이 오면 주변에서 자연스럽게 당신을 찾게 됩니다. 다만 문제가 해결된 뒤 기록을 남기는 일은 뒤로 밀릴 수 있으니, 짧은 한 줄만 남겨도 다음번의 빠른 감각이 훨씬 강해질 거예요.',
+        ISFP: '당신은 설명을 오래 듣기 전부터 크레가 편안한지 아닌지를 먼저 느끼는 사람입니다. 남들이 비슷하다고 넘긴 색과 움직임에서도 그 아이만의 분위기를 발견하고, 정해진 방식보다 지금 필요한 돌봄을 조용히 건네요. 그래서 당신 곁의 개체는 비교의 대상보다 하나의 고유한 존재로 남지만, 마음이 깊어진 뒤에는 불편한 현실을 쉽게 끊어내지 못할 때도 있습니다. 좋아하는 마음을 오래 지키려면 때때로 거리와 기준도 돌봄의 일부가 되어야 해요.',
+        INFP: '남들이 잠깐 보고 지나친 크레가 이상하게 오래 마음에 남는다면, 당신에게는 이미 작은 이야기가 시작된 것입니다. 지금 드러난 조건보다 그 아이가 앞으로 보여줄 모습과 함께 쌓일 시간을 떠올리며 천천히 애착을 키워가요. 그래서 익숙한 기준 밖에 있는 개체에서도 누구도 알아보지 못한 매력을 발견하지만, 마음속 이야기가 깊어질수록 현실적인 부담을 나중에 계산하기도 합니다. 그 이야기를 오래 이어가고 싶다면 시작 전에 생활 속 자리를 먼저 마련해주는 것이 좋아요.',
+        INTP: '이상한 변화 하나가 보이면 당신의 머릿속에는 곧 여러 개의 가설이 생깁니다. 단순히 원인을 찾는 데서 멈추지 않고 기록과 환경을 다시 연결하며 왜 이런 반응이 나타났는지 스스로 납득할 때까지 파고들어요. 주변에서는 복잡한 문제를 새로운 관점으로 풀어내는 사람으로 보지만, 답이 거의 보이는 순간에도 더 나은 설명을 찾느라 행동이 늦어질 수 있습니다. 완벽한 해답보다 지금 시험할 수 있는 작은 한 가지를 고르면 탐구가 실제 변화로 이어져요.',
+        ESTP: '문제가 생긴 자리에서 가장 먼저 상황을 읽고 움직이는 사람은 대개 당신입니다. 긴 설명을 기다리기보다 눈앞의 반응을 확인하며 지금 효과가 있는 방법을 빠르게 찾아내고, 분위기가 굳기 전에 다음 선택을 만들어내요. 덕분에 주변에서는 함께 있으면 어떻게든 풀릴 것 같은 사람으로 느끼지만, 해결이 빨랐던 만큼 원인을 기록하는 일은 가볍게 지나칠 수 있습니다. 일이 끝난 뒤 단 한 번만 되짚어봐도 타고난 대응력이 반복 가능한 실력으로 남게 됩니다.',
+        ESFP: '좋은 변화를 발견한 순간 당신의 기쁨은 혼자 있는 법이 없습니다. 사진 한 장과 짧은 이야기만으로도 그 아이의 매력을 생생하게 전하고, 주변 사람들까지 자연스럽게 같은 순간을 즐기게 만들어요. 그래서 당신이 있는 자리에서는 작은 성장도 모두가 기억하는 장면이 되지만, 즐거운 반응이 클수록 다음 관리의 부담은 잠시 뒤로 밀릴 때가 있습니다. 설렘이 가장 클 때 필요한 것 하나만 먼저 확인해두면 즐거움도 훨씬 오래갑니다.',
+        ENFP: '아직 작고 평범해 보이는 크레에게서 남들이 보지 못한 다음 모습을 먼저 발견하는 사람이 있습니다. 당신은 그 작은 가능성에 이야기를 붙이고 주변과 나누는 동안, 처음의 호기심을 모두가 기다리는 기대감으로 바꿔놓아요. 새로운 매력을 만날 때마다 세계가 조금씩 넓어지는 듯하지만, 마음을 끄는 가능성이 많아질수록 이미 시작한 돌봄의 무게가 흐릿해질 때도 있습니다. 새로 열린 문 하나를 고르기 전에 지금 품고 있는 이야기부터 돌아보면 당신의 발견은 더 오래 빛날 거예요.',
+        ENTP: '모두가 익숙한 방법을 따를 때 당신은 자연스럽게 다른 가능성을 떠올립니다. 크레의 작은 반응 하나에서도 새로운 가설을 만들고, 사람들과 의견을 주고받으며 금세 다음 실험으로 이어가요. 정답이 없는 문제일수록 오히려 눈빛이 살아나 주변의 생각까지 움직이게 하지만, 흥미로운 다음 시도가 나타나면 이전 결과를 끝까지 정리하는 일은 지루해질 수 있습니다. 발견한 것을 한 줄이라도 남겨두면 당신의 호기심은 순간의 아이디어가 아니라 모두가 활용할 수 있는 길이 됩니다.',
+        ESTJ: '개체가 늘고 해야 할 일이 겹쳐도 당신이 있는 곳에서는 곧 흐름이 생깁니다. 누가 무엇을 언제까지 해야 하는지 빠르게 정리하고, 복잡한 돌봄을 누구나 따라갈 수 있는 방식으로 바꾸는 힘이 있어요. 주변에서는 일이 흔들릴 때 믿고 맡길 수 있는 사람으로 느끼지만, 잘 돌아가던 기준일수록 개체마다 다른 작은 예외가 불편하게 보일 수 있습니다. 원칙을 버리지 않고도 예외 하나를 받아들일 자리를 만들면 당신의 운영은 더 오래 단단하게 유지됩니다.',
+        ESFJ: '누가 어떤 크레를 아끼는지, 어느 아이가 평소와 조금 다른지를 당신은 생각보다 오래 기억합니다. 필요한 일을 먼저 발견하고도 혼자 처리한 티를 내기보다 주변이 함께 돌볼 수 있도록 자연스럽게 사람을 불러 모아요. 덕분에 당신이 있는 곳에서는 개체도 사람도 쉽게 소외되지 않지만, 모두의 필요를 챙기다 보면 자신의 여유가 가장 마지막에 남기도 합니다. 당신이 편안해야 돌봄의 분위기도 오래 유지된다는 사실을 잊지 않는 것이 좋아요.',
+        ENFJ: '당신이 마음에 둔 크레는 이상하게 주변 사람들의 기억에도 오래 남습니다. 처음에는 사진 한 장을 보여줬을 뿐인데, 이야기를 나누는 사이 그 아이의 매력과 앞으로 달라질 모습이 점점 선명해지고 어느새 모두가 함께 성장을 기다리게 돼요. 무언가를 혼자 좋아하는 데서 끝내기보다 그 마음이 사람들 사이에 머물 자리를 만들어주는 사람에 가깝습니다. 다만 기대가 커질수록 현실적인 부담은 조금 늦게 보일 수 있으니, 마지막에는 지금의 생활과 오래 맞을지만 조용히 확인해보세요.',
+        ENTJ: '마음에 드는 크레를 발견하면 당신의 관심은 한 마리에서 곧 더 큰 그림으로 이어집니다. 어떻게 관리해야 오래 안정적으로 성장할지, 필요한 사람과 자원을 어디에 놓아야 할지 자연스럽게 구조를 만들어요. 처음에는 속도가 빠르고 기준이 분명해 보이지만 결국 주변 사람들까지 같은 목표를 바라보게 만드는 힘이 있습니다. 다만 목표가 선명할수록 개체가 보내는 느린 신호를 일정의 변수처럼 볼 수 있으니, 계획이 잠시 멈추는 순간도 과정 안에 남겨두는 것이 좋아요.'
+    });
     const HOUSE_DETAIL_GUIDE = Object.freeze({
         SF: {
             strengths: ['현재 컨디션을 세심하게 살핌', '취향과 관계의 작은 변화를 기억함', '안정적이고 편안한 돌봄 환경을 만듦'],
@@ -123,7 +141,6 @@
     let sessionCreatedAt = '';
     let assignedHouseKey = '';
     let result = null;
-    let resultAxisEvidence = {};
     let resultSavedAt = '';
     let timingStats = null;
     let activeTimer = null;
@@ -200,7 +217,6 @@
                 letters: { ...result.letters },
                 axes: result.axes.map(axis => ({ ...axis }))
             },
-            axisEvidence: Object.fromEntries(result.axes.map(axis => [axis.axis, selectedAxisEvidence(axis)])),
             timingStats: timingStats ? {
                 validCount: timingStats.validCount,
                 totalMs: timingStats.totalMs,
@@ -251,12 +267,6 @@
         surveySessionId = '';
         sessionCreatedAt = '';
         result = snapshot.result;
-        resultAxisEvidence = snapshot.axisEvidence && typeof snapshot.axisEvidence === 'object'
-            ? snapshot.axisEvidence
-            : Object.fromEntries(Object.entries(snapshot.axisExamples || {}).map(([axis, examples]) => [axis, {
-                dominant: Array.isArray(examples) ? examples.map(choice => ({ scene: '', choice: String(choice) })) : [],
-                opposite: []
-            }]));
         resultSavedAt = snapshot.savedAt || '';
         assignedHouseKey = Core.chooseTendencyHouse(result);
         timingStats = snapshot.timingStats;
@@ -517,7 +527,6 @@
     function startSurvey() {
         questions = Core.prepareQuestions();
         answers = [];
-        resultAxisEvidence = {};
         responseTimings = [];
         current = 0;
         selectedMbti = '';
@@ -601,7 +610,6 @@
         activeTimer = null;
         questions = [];
         answers = [];
-        resultAxisEvidence = {};
         responseTimings = [];
         current = 0;
         selectedMbti = '';
@@ -848,74 +856,28 @@
             </section>`;
     }
 
-    function selectedAxisEvidence(axisResult) {
-        const liveEvidence = questions.map((question, index) => {
-            const choice = answers[index];
-            if (choice === undefined || question.axis !== axisResult.axis) return null;
-            return {
-                pole: question.scores[choice],
-                scene: question.label,
-                choice: question.options[choice]
-            };
-        }).filter(Boolean);
-        if (liveEvidence.length) {
-            const dominant = liveEvidence.filter(item => item.pole === axisResult.dominant).map(({ scene, choice }) => ({ scene, choice }));
-            const opposite = liveEvidence.filter(item => item.pole === axisResult.opposite).map(({ scene, choice }) => ({ scene, choice }));
-            return {
-                dominant: dominant.slice(0, opposite.length ? 1 : 2),
-                opposite: opposite.slice(0, 1)
-            };
-        }
-        const stored = resultAxisEvidence[axisResult.axis];
-        const normalizeEvidence = item => typeof item === 'string'
-            ? { scene: '', choice: item }
-            : { scene: String(item?.scene || ''), choice: String(item?.choice || '') };
-        return {
-            dominant: Array.isArray(stored?.dominant) ? stored.dominant.slice(0, 2).map(normalizeEvidence).filter(item => item.choice) : [],
-            opposite: Array.isArray(stored?.opposite) ? stored.opposite.slice(0, 1).map(normalizeEvidence).filter(item => item.choice) : []
-        };
-    }
-
-    function axisAnalysisLead(axisResult, guide) {
-        const dominantCount = Number(result.letters[axisResult.dominant]) || 0;
-        const oppositeCount = Number(result.letters[axisResult.opposite]) || 0;
-        if (dominantCount === 5) return `${guide.summary} 다섯 장면에서 이 방향이 일관되게 나타났습니다.`;
-        if (dominantCount === 4) return `${guide.summary} 네 장면에서 이 방향이 나타났고, 한 장면에서는 다른 방식도 사용했습니다.`;
-        return `${guide.summary} 두 방식이 함께 나타났으며, ${dominantCount}:${oppositeCount}의 근소한 차이로 ${axisResult.dominant} 방향이 선택되었습니다.`;
-    }
-
-    function renderTypeComparisonAnalysis() {
+    function renderTypeReading() {
+        const reading = TYPE_READINGS[result.code] || '';
         const comparison = currentTypeComparison();
-        if (!comparison) return '';
-        if (!comparison.changes.length) {
-            return `
-                <section class="cw-analysis-summary">
-                    <small>평소 유형 비교</small>
-                    <strong>평소 ${escapeHtml(comparison.knownType)}와 같은 방향</strong>
-                    <p>크레를 고르고 돌보는 상황에서도 평소 익숙한 판단 방식이 네 지표에서 일관되게 나타났습니다.</p>
-                </section>`;
-        }
-        const changedAxes = comparison.changes
-            .map(change => `${AXIS_REPORT_COPY[change.axis].title} ${change.from} → ${change.to}`)
-            .join(' · ');
+        const comparisonMeta = comparison
+            ? `<footer><span>평소 ${escapeHtml(comparison.knownType)}</span><strong>${escapeHtml(4 - comparison.changes.length)}/4 같은 방향</strong></footer>`
+            : '';
         return `
-            <section class="cw-analysis-summary">
-                <small>평소 ${escapeHtml(comparison.knownType)}와 비교</small>
-                <strong>${escapeHtml(changedAxes)}</strong>
-                <p>${comparison.changes.map(change => escapeHtml(TYPE_CHANGE_ANALYSIS[`${change.from}>${change.to}`] || change.message)).join(' ')}</p>
-            </section>`;
+            <article class="cw-type-reading" aria-label="${escapeHtml(`${result.typeName} 유형 이야기`)}">
+                <p>${escapeHtml(reading)}</p>
+                ${comparisonMeta}
+            </article>`;
     }
 
-    function renderAxisGraph(axisResult, compact = false) {
+    function renderAxisGraph(axisResult) {
         const copy = AXIS_REPORT_COPY[axisResult.axis];
         const first = axisResult.axis[0];
         const second = axisResult.axis[1];
         const secondCount = Number(result.letters[second]) || 0;
         const position = Math.max(0, Math.min(100, (secondCount / 5) * 100));
         const firstSelected = axisResult.dominant === first;
-        const tag = compact ? 'section' : 'article';
         return `
-                <${tag} class="cw-axis-detail${compact ? ' cw-axis-insight-graph' : ''}" data-axis-result data-final-pole="${firstSelected ? 'left' : 'right'}">
+                <article class="cw-axis-detail" data-axis-result data-final-pole="${firstSelected ? 'left' : 'right'}">
                     <header><h3>${escapeHtml(copy.title)}</h3></header>
                     <div class="cw-axis-poles">
                         <div class="cw-axis-pole is-left${firstSelected ? ' is-selected' : ''}" data-pole="left"><strong>${escapeHtml(first)}</strong></div>
@@ -929,41 +891,16 @@
                         <span class="${firstSelected ? 'is-selected' : ''}" data-pole-copy="left">${escapeHtml(copy.left)}</span>
                         <span class="${firstSelected ? '' : 'is-selected'}" data-pole-copy="right">${escapeHtml(copy.right)}</span>
                     </div>
-                </${tag}>`;
+                </article>`;
     }
 
     function renderMemberDetail() {
         const axisCards = result.axes.map(axisResult => renderAxisGraph(axisResult)).join('');
-        const axisInsights = result.axes.map(axisResult => {
-            const meta = Core.AXIS_META[axisResult.axis];
-            const dominant = meta.letters[axisResult.dominant];
-            const first = axisResult.axis[0];
-            const second = axisResult.axis[1];
-            const guide = AXIS_DETAIL_GUIDE[axisResult.dominant];
-            const evidence = selectedAxisEvidence(axisResult);
-            const hasEvidence = evidence.dominant.length || evidence.opposite.length;
-            return `
-                <article class="cw-axis-insight">
-                    <header>
-                        <div><small>${escapeHtml(AXIS_REPORT_COPY[axisResult.axis].title)}</small><strong>${escapeHtml(axisResult.dominant)} · ${escapeHtml(dominant.short)}</strong></div>
-                        <span>${escapeHtml(result.letters[axisResult.dominant])}:${escapeHtml(result.letters[axisResult.opposite])} · ${escapeHtml(axisStrength(axisResult))}</span>
-                    </header>
-                    ${renderAxisGraph(axisResult, true)}
-                    <p class="cw-analysis-lead">${escapeHtml(axisAnalysisLead(axisResult, guide))}</p>
-                    ${hasEvidence ? `<section class="cw-analysis-evidence">
-                        <h4>내 선택에서 보인 모습</h4>
-                        ${evidence.dominant.map(example => `<div><small>주된 방향 · ${escapeHtml(axisResult.dominant)}</small><section>${example.scene ? `<b>${escapeHtml(example.scene)}</b>` : ''}<p>${escapeHtml(example.choice)}</p></section></div>`).join('')}
-                        ${evidence.opposite.map(example => `<div class="is-opposite"><small>함께 나타난 방향 · ${escapeHtml(axisResult.opposite)}</small><section>${example.scene ? `<b>${escapeHtml(example.scene)}</b>` : ''}<p>${escapeHtml(example.choice)}</p></section></div>`).join('')}
-                    </section>` : ''}
-                    <section class="cw-analysis-reading"><strong>이 성향의 강점</strong><p>${guide.signals.slice(0, 2).map(signal => escapeHtml(signal)).join(' ')}</p></section>
-                    <aside class="cw-analysis-caution"><strong>더 편해지는 방법</strong><p>${escapeHtml(guide.balance)}</p></aside>
-                </article>`;
-        }).join('');
         return `
             <section class="cw-result-section cw-member-detail">
                 ${renderReportSectionHead('01', 'TRAIT AXES', '성향 지표', 'axes-report-detail')}
-                <div class="cw-report-disclosure cw-axis-insights" id="axes-report-detail" hidden>${renderTypeComparisonAnalysis()}${axisInsights}</div>
                 <div class="cw-axis-detail-list">${axisCards}</div>
+                <div class="cw-report-disclosure cw-type-reading-wrap" id="axes-report-detail" hidden>${renderTypeReading()}</div>
             </section>`;
     }
 
