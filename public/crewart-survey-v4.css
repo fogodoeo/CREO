@@ -620,3 +620,31 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-type-reading > p { margin: 0; color: #343a36; font-size: 15px; font-weight: 520; line-height: 1.82; letter-spacing: -.014em; word-break: keep-all; }
 .cw-type-reading > footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px; padding-top: 11px; border-top: 1px solid #e1e3df; color: #7b817c; font-size: 10px; }
 .cw-type-reading > footer strong { color: #555c57; font-weight: 750; }
+
+/* 02 · 측정 결과는 큰 수치와 짧은 해석이 먼저 읽히도록 구성합니다. */
+.cw-speed-summary { margin-top: 5px; padding: 14px 14px 13px; border: 1px solid #dfe2dd; border-radius: 10px; background: var(--cw-surface-soft); }
+.cw-speed-head { padding-top: 0; }
+.cw-speed-head strong { font-size: 18px; letter-spacing: -.025em; }
+.cw-speed-head span { color: #555c57; font-size: 11px; font-weight: 750; }
+.cw-speed-reading > strong { display: block; color: var(--cw-ink); font-size: 17px; font-weight: 800; letter-spacing: -.025em; }
+.cw-speed-reading > p { margin: 7px 0 0; color: #444b46; font-size: 15px; font-weight: 500; line-height: 1.72; letter-spacing: -.015em; word-break: keep-all; }
+.cw-speed-scenes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; margin-top: 14px; }
+.cw-speed-scenes > div { display: grid; min-width: 0; gap: 5px; padding: 11px; border: 1px solid #e0e3de; border-radius: 9px; background: #f7f8f5; }
+.cw-speed-scenes small { color: #747b75; font-size: 10px; font-weight: 700; }
+.cw-speed-scenes span { color: #353b37; font-size: 12px; font-weight: 700; line-height: 1.45; word-break: keep-all; }
+.cw-speed-reading > footer { display: flex; justify-content: space-between; gap: 10px; margin-top: 13px; padding-top: 10px; border-top: 1px solid #e1e3df; color: #7b817c; font-size: 10px; }
+
+/* 03 · 기숙사는 측정표 대신 배정 카드와 세계관 설명으로 구분합니다. */
+.cw-house-assignment { margin-top: 5px; padding: 13px 14px; border: 1px solid #dfe2dd; border-radius: 10px; background: var(--cw-surface-soft); }
+.cw-house-assignment > b { width: 44px; height: 44px; border-width: 1.5px; font-size: 17px; }
+.cw-house-assignment small { color: #737a74; font-size: 9px; }
+.cw-house-assignment strong { font-size: 19px; letter-spacing: .06em; }
+.cw-house-reading > strong { display: block; color: var(--house-accent, var(--cw-ink)); font-size: 17px; font-weight: 800; line-height: 1.4; letter-spacing: -.025em; word-break: keep-all; }
+.cw-house-reading > p { margin: 8px 0 0; color: #444b46; font-size: 15px; font-weight: 500; line-height: 1.76; letter-spacing: -.015em; word-break: keep-all; }
+.cw-house-reading > footer { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+.cw-house-reading > footer span { padding: 6px 9px; border: 1px solid #dfe2dd; border-radius: 999px; background: #f7f8f5; color: #616862; font-size: 10px; font-weight: 700; }
+
+@media (max-width: 420px) {
+    .cw-speed-scenes { grid-template-columns: 1fr; }
+    .cw-speed-reading > p, .cw-house-reading > p { font-size: 15px; }
+}

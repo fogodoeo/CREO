@@ -41,6 +41,12 @@
         NT: '가능성을 논리적으로 설계하고 실험하는 기숙사',
         NF: '성장 가능성과 관계를 연결해 방향을 만드는 기숙사'
     });
+    const HOUSE_READINGS = Object.freeze({
+        SF: '이곳에는 크레의 작은 표정과 컨디션 변화를 먼저 알아보는 사람들이 모입니다. 누군가 지나친 신호도 조용히 챙겨 편안한 분위기로 바꾸고, 처음 온 사람까지 자연스럽게 자리를 잡게 해요. 다만 모두를 살피느라 자신의 여유를 놓치지 않도록, 가끔은 돌봄을 나누어 맡는 것이 좋습니다.',
+        ST: '이곳에서는 해야 할 일이 흐트러진 채 오래 남지 않습니다. 확인한 정보를 기준으로 순서를 세우고, 누구나 다시 따라 할 수 있는 방식으로 정리하는 사람들이 중심을 잡아요. 익숙한 방법이 안정감을 주지만, 새로운 신호가 보이는 날에는 작은 예외 하나를 허용해도 괜찮습니다.',
+        NT: '이곳에는 당연하게 여겨온 방식에도 한 번쯤 새로운 질문을 던지는 사람들이 모입니다. 흩어진 단서를 연결해 원리를 찾고, 더 나은 환경과 다음 시도를 설계하며 커뮤니티의 가능성을 넓혀가요. 좋은 생각이 머릿속에만 머물지 않도록 가장 작은 실험부터 시작해보세요.',
+        NF: '이곳에서는 한 마리의 성장도 사람들을 이어주는 이야기가 됩니다. 아직 드러나지 않은 가능성을 먼저 발견하고, 서로 다른 마음이 같은 방향을 바라보도록 분위기를 만드는 사람들이 많아요. 오래 이어질 이야기에는 현실적인 일정과 역할도 필요하다는 점만 함께 기억하면 좋습니다.'
+    });
     const AXIS_DETAIL_GUIDE = Object.freeze({
         E: {
             summary: '생각을 완성한 뒤 말하기보다, 주고받는 과정에서 생각이 완성되는 쪽에 가깝습니다.',
@@ -100,28 +106,6 @@
         ESFJ: '누가 어떤 크레를 아끼는지, 어느 아이가 평소와 조금 다른지를 당신은 생각보다 오래 기억합니다. 필요한 일을 먼저 발견하고도 혼자 처리한 티를 내기보다 주변이 함께 돌볼 수 있도록 자연스럽게 사람을 불러 모아요. 덕분에 당신이 있는 곳에서는 개체도 사람도 쉽게 소외되지 않지만, 모두의 필요를 챙기다 보면 자신의 여유가 가장 마지막에 남기도 합니다. 당신이 편안해야 돌봄의 분위기도 오래 유지된다는 사실을 잊지 않는 것이 좋아요.',
         ENFJ: '당신이 마음에 둔 크레는 이상하게 주변 사람들의 기억에도 오래 남습니다. 처음에는 사진 한 장을 보여줬을 뿐인데, 이야기를 나누는 사이 그 아이의 매력과 앞으로 달라질 모습이 점점 선명해지고 어느새 모두가 함께 성장을 기다리게 돼요. 무언가를 혼자 좋아하는 데서 끝내기보다 그 마음이 사람들 사이에 머물 자리를 만들어주는 사람에 가깝습니다. 다만 기대가 커질수록 현실적인 부담은 조금 늦게 보일 수 있으니, 마지막에는 지금의 생활과 오래 맞을지만 조용히 확인해보세요.',
         ENTJ: '마음에 드는 크레를 발견하면 당신의 관심은 한 마리에서 곧 더 큰 그림으로 이어집니다. 어떻게 관리해야 오래 안정적으로 성장할지, 필요한 사람과 자원을 어디에 놓아야 할지 자연스럽게 구조를 만들어요. 처음에는 속도가 빠르고 기준이 분명해 보이지만 결국 주변 사람들까지 같은 목표를 바라보게 만드는 힘이 있습니다. 다만 목표가 선명할수록 개체가 보내는 느린 신호를 일정의 변수처럼 볼 수 있으니, 계획이 잠시 멈추는 순간도 과정 안에 남겨두는 것이 좋아요.'
-    });
-    const HOUSE_DETAIL_GUIDE = Object.freeze({
-        SF: {
-            strengths: ['현재 컨디션을 세심하게 살핌', '취향과 관계의 작은 변화를 기억함', '안정적이고 편안한 돌봄 환경을 만듦'],
-            role: '개체와 사람 사이의 분위기를 읽고 모두가 편안하게 참여할 수 있도록 연결하는 역할에 강점이 있습니다.',
-            balance: '애착만으로 판단하기 어려운 순간에는 기록과 관리 조건을 함께 확인하는 것이 좋습니다.'
-        },
-        ST: {
-            strengths: ['확인되는 정보로 관리 기준을 세움', '문제를 순서대로 안정적으로 해결함', '반복 가능한 운영 루틴을 만듦'],
-            role: '관리 기준을 실제 행동으로 전환하고 팀이 흔들리지 않도록 운영의 중심을 잡는 역할에 강점이 있습니다.',
-            balance: '기존 기준이 잘 작동하더라도 새로운 방식을 시험할 작은 여지를 남기면 운영을 발전시킬 수 있습니다.'
-        },
-        NT: {
-            strengths: ['성장 가능성을 구조적으로 분석함', '새로운 조합과 방법을 실험함', '복잡한 문제를 원리와 시스템으로 해결함'],
-            role: '정답이 정해지지 않은 문제에 가설을 세우고 다음 시도를 설계하는 역할에 강점이 있습니다.',
-            balance: '아이디어를 실행하기 전에 현재 컨디션과 돌봄 부담을 확인하면 시도의 완성도를 높일 수 있습니다.'
-        },
-        NF: {
-            strengths: ['개체의 성장 가능성과 관계를 함께 봄', '사람들이 공감할 수 있는 방향을 제시함', '의미 있는 경험과 이야기를 연결함'],
-            role: '서로 다른 관심을 하나의 방향으로 묶고 참여할 이유를 만드는 역할에 강점이 있습니다.',
-            balance: '선택한 방향을 오래 이어가려면 일정·비용·관리 기준을 구체적인 실행 항목으로 전환하는 것이 좋습니다.'
-        }
     });
     const IS_LOCAL_QA = ['127.0.0.1', 'localhost'].includes(location.hostname);
     const IS_QA_MODE = IS_LOCAL_QA;
@@ -827,31 +811,27 @@
         return `
             <section class="cw-result-section cw-speed-card">
                 ${renderReportSectionHead('02', 'RESPONSE PACE', '선택 속도', 'speed-report-detail')}
-                <div class="cw-report-disclosure cw-speed-disclosure" id="speed-report-detail" hidden>
-                    <header class="cw-analysis-title"><small>DECISION RHYTHM</small><strong>${escapeHtml(timingStats.style.label)}</strong></header>
-                    <p class="cw-analysis-lead">${escapeHtml(speedPositionCopy(position, cohortSummary.timingMedians.length > 0))}</p>
-                    <dl class="cw-analysis-metrics">
-                        <div><dt>문항당 중앙값</dt><dd>${escapeHtml(median)}</dd></div>
-                        <div><dt>비교 기준</dt><dd>${escapeHtml(comparison)}</dd></div>
-                        <div><dt>유효 응답</dt><dd>${escapeHtml(timingStats.validCount)} / ${escapeHtml(questions.length || 20)}</dd></div>
-                    </dl>
-                    <section class="cw-analysis-evidence" aria-label="선택 속도 장면">
-                        <h4>선택 리듬이 갈린 장면</h4>
-                        <div><small>가장 빠르게 선택</small><p>${escapeHtml(timingEntryLabel(timingStats.fastest))}</p></div>
-                        <div><small>가장 오래 살펴봄</small><p>${escapeHtml(timingEntryLabel(timingStats.slowest))}</p></div>
-                    </section>
-                    <aside class="cw-analysis-caution"><strong>해석할 때</strong><p>속도는 정확도나 성실도의 점수가 아닙니다. 한두 번의 긴 멈춤에 흔들리지 않도록 문항별 중앙값을 사용했습니다.</p></aside>
-                </div>
                 <div class="cw-speed-summary">
                     <header class="cw-speed-head">
                         <strong data-measure-speed data-final-text="문항당 ${escapeHtml(median)}">문항당 ${escapeHtml(median)}</strong>
-                        <span>${escapeHtml(comparison)}</span>
+                        <span>${escapeHtml(timingStats.style.label)}</span>
                     </header>
                     <div class="cw-position-scale cw-speed-scale" aria-label="빠름에서 신중함 사이 ${Math.round(position)}% 위치">
                         <span class="cw-scale-marker" data-final-position="${position}" style="--position:${position}%" aria-hidden="true"></span>
                         <div class="cw-scale-line"><i aria-hidden="true"></i></div>
                         <div class="cw-scale-labels"><span>빠름</span><span>평균</span><span>신중</span></div>
                     </div>
+                </div>
+                <div class="cw-report-disclosure cw-speed-disclosure" id="speed-report-detail" hidden>
+                    <article class="cw-speed-reading">
+                        <strong>${escapeHtml(timingStats.style.label)}</strong>
+                        <p>${escapeHtml(speedPositionCopy(position, cohortSummary.timingMedians.length > 0))}</p>
+                        <div class="cw-speed-scenes" aria-label="선택 속도가 달랐던 장면">
+                            <div><small>바로 고른 장면</small><span>${escapeHtml(timingEntryLabel(timingStats.fastest))}</span></div>
+                            <div><small>오래 본 장면</small><span>${escapeHtml(timingEntryLabel(timingStats.slowest))}</span></div>
+                        </div>
+                        <footer><span>${escapeHtml(comparison)}</span><span>속도는 점수가 아닙니다</span></footer>
+                    </article>
                 </div>
             </section>`;
     }
@@ -910,27 +890,22 @@
         const tfAxis = result.axes.find(axisResult => axisResult.axis === 'TF');
         const snCopy = snAxis?.dominant === 'S' ? AXIS_REPORT_COPY.SN.left : AXIS_REPORT_COPY.SN.right;
         const tfCopy = tfAxis?.dominant === 'T' ? AXIS_REPORT_COPY.TF.left : AXIS_REPORT_COPY.TF.right;
-        const guide = HOUSE_DETAIL_GUIDE[assignedHouseKey];
         return `
             <section class="cw-report-house" style="--house-accent:${escapeHtml(house.accent)}">
                 ${renderReportSectionHead('03', 'HOUSE ASSIGNMENT', '기숙사', 'house-report-detail')}
-                <div class="cw-report-disclosure cw-house-disclosure" id="house-report-detail" hidden>
-                    <header class="cw-analysis-title"><small>HOUSE PROFILE</small><strong>${escapeHtml(HOUSE_REPORT_COPY[assignedHouseKey] || '')}</strong></header>
-                    <p class="cw-analysis-lead">기숙사는 전체 유형이 아니라 관찰 초점과 선택 기준의 조합으로 배정됩니다.</p>
-                    <dl class="cw-analysis-metrics is-house">
-                        <div><dt>관찰 초점</dt><dd>${escapeHtml(snAxis?.dominant || '')} · ${escapeHtml(snCopy)}</dd></div>
-                        <div><dt>선택 기준</dt><dd>${escapeHtml(tfAxis?.dominant || '')} · ${escapeHtml(tfCopy)}</dd></div>
-                    </dl>
-                    <section class="cw-analysis-evidence">
-                        <h4>이 조합의 강점</h4>
-                        <ul>${guide.strengths.map(strength => `<li>${escapeHtml(strength)}</li>`).join('')}</ul>
-                    </section>
-                    <section class="cw-analysis-reading"><strong>커뮤니티에서의 역할</strong><p>${escapeHtml(guide.role)}</p></section>
-                    <aside class="cw-analysis-caution"><strong>균형 포인트</strong><p>${escapeHtml(guide.balance)}</p></aside>
-                </div>
                 <div class="cw-house-assignment">
                     <b aria-hidden="true">${escapeHtml(house.seal)}</b>
                     <div><small>ASSIGNED HOUSE</small><strong aria-label="${escapeHtml(house.name)}"><span data-measure-house data-final-text="${escapeHtml(house.name)}">${escapeHtml(house.name)}</span></strong></div>
+                </div>
+                <div class="cw-report-disclosure cw-house-disclosure" id="house-report-detail" hidden>
+                    <article class="cw-house-reading">
+                        <strong>${escapeHtml(HOUSE_REPORT_COPY[assignedHouseKey] || '')}</strong>
+                        <p>${escapeHtml(HOUSE_READINGS[assignedHouseKey] || '')}</p>
+                        <footer>
+                            <span>${escapeHtml(snAxis?.dominant || '')} · ${escapeHtml(snCopy)}</span>
+                            <span>${escapeHtml(tfAxis?.dominant || '')} · ${escapeHtml(tfCopy)}</span>
+                        </footer>
+                    </article>
                 </div>
             </section>`;
     }
