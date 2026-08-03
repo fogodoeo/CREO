@@ -4,8 +4,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const Core = require('../public/crewart-survey-core');
 
-test('v3 questionnaire covers five distinct facets on every axis', () => {
-    assert.equal(Core.SURVEY_VERSION, 'crewart-tendency-v3.1');
+test('v4 questionnaire covers five distinct facets on every axis', () => {
+    assert.equal(Core.SURVEY_VERSION, 'crewart-tendency-v4.0');
     assert.equal(Core.QUESTIONS.length, 20);
     assert.equal(new Set(Core.QUESTIONS.map((question) => question.id)).size, 20);
     for (const axis of Core.AXES) {
@@ -16,6 +16,8 @@ test('v3 questionnaire covers five distinct facets on every axis', () => {
 });
 test('paired choices have symmetric structure and avoid loaded pole wording', () => {
     const loaded = /정답|객관적|합리적|감정적|충동|대충|무조건|옳은|더 좋은/;
+    const revealing = /외향|내향|감각형|직관형|사고형|감정형|판단형|인식형|계획적|즉흥적|유연하게|혼자|사람들과|가능성|근거/;
+    const narrowContext = /경매|낙찰|브리딩|컬렉션|최대 금액/;
     for (const question of Core.QUESTIONS) {
         assert.equal(question.options.length, 2);
         assert.equal(question.scores.length, 2);
@@ -23,6 +25,8 @@ test('paired choices have symmetric structure and avoid loaded pole wording', ()
         assert.ok(question.options.every((option) => option.length >= 10 && option.length <= 32));
         assert.ok(Math.abs(question.options[0].length - question.options[1].length) <= 6);
         assert.equal(question.options.some((option) => loaded.test(option)), false);
+        assert.equal([question.label, question.q, ...question.options].some((copy) => revealing.test(copy)), false);
+        assert.equal([question.label, question.q, ...question.options].some((copy) => narrowContext.test(copy)), false);
         assert.match(question.image, /^question-c\d{2}\.webp$/);
     }
 });
