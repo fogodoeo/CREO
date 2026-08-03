@@ -1077,23 +1077,20 @@
         return Core.buildMbtiComparison(selectedMbti, result.code);
     }
 
+    function typeComparisonSummary(comparison) {
+        if (!comparison) return '';
+        if (!comparison.changes.length) return '결과와 동일';
+        return comparison.changes.map(change => `${change.from} → ${change.to}`).join(' · ');
+    }
+
     function renderTypeComparison() {
         const comparison = currentTypeComparison();
         if (!comparison) return '';
-        const axes = [...comparison.creType].map((letter, index) => {
-            const usualLetter = comparison.knownType[index];
-            const changed = usualLetter !== letter;
-            return changed
-                ? `<span class="cw-profile-shift is-changed" aria-label="${escapeHtml(usualLetter)}에서 ${escapeHtml(letter)}로 변화"><del>${escapeHtml(usualLetter)}</del><i aria-hidden="true">→</i><strong>${escapeHtml(letter)}</strong></span>`
-                : `<span class="cw-profile-shift is-same" aria-label="${escapeHtml(letter)} 일치"><strong>${escapeHtml(letter)}</strong></span>`;
-        }).join('');
+        const summary = typeComparisonSummary(comparison);
         return `
             <section class="cw-profile-compare" aria-label="평소 유형 비교">
-                <div class="cw-profile-compare-head">
-                    <span><small>USUAL TYPE</small><strong>${escapeHtml(comparison.knownType)}</strong></span>
-                    <b>${comparison.sameCount}/4 <small>일치</small></b>
-                </div>
-                <div class="cw-profile-compare-axes" aria-label="축별 비교">${axes}</div>
+                <span>평소 <strong>${escapeHtml(comparison.knownType)}</strong></span>
+                <b class="${comparison.changes.length ? 'is-changed' : 'is-same'}">${escapeHtml(summary)}</b>
             </section>`;
     }
 
@@ -1683,7 +1680,7 @@
             context.fillStyle = '#6f756f';
             context.font = `700 15px ${font}`;
             context.textAlign = 'center';
-            context.fillText(`USUAL ${comparison.knownType}  ·  MATCH ${comparison.sameCount}/4`, 540, 586);
+            context.fillText(`평소 ${comparison.knownType}  ·  ${typeComparisonSummary(comparison)}`, 540, 586);
             context.textAlign = 'left';
         }
 
@@ -1855,7 +1852,7 @@
         if (comparison) {
             context.fillStyle = '#747a75';
             context.font = `700 15px ${font}`;
-            context.fillText(`USUAL ${comparison.knownType}  ·  MATCH ${comparison.sameCount}/4`, 70, 130);
+            context.fillText(`평소 ${comparison.knownType}  ·  ${typeComparisonSummary(comparison)}`, 70, 130);
         }
 
         const houseLabel = `HOUSE ${house?.seal || assignedHouseKey[0] || '—'} · ${house?.name || assignedHouseKey || 'CREWARTS'}`;

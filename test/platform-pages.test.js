@@ -309,7 +309,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /cw-result-code cw-result-code-back/);
     assert.match(script, /cw-result-code cw-result-code-front/);
     assert.match(script, /class="cw-type-poster"/);
-    assert.match(html, /20260803-scenario-v63/);
+    assert.match(html, /20260803-compare-v64/);
     assert.doesNotMatch(html, /question-illustration|question-image/);
     assert.doesNotMatch(script, /QUESTION_IMAGE_ROOT|question\.image|nextImage/);
     assert.doesNotMatch(html, /cw-home-guide|cw-home-disclaimer/);
@@ -356,9 +356,11 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /function renderTypeComparison\(\)/);
     assert.match(script, /Core\.buildMbtiComparison\(selectedMbti, result\.code\)/);
     assert.match(script, /class="cw-profile-compare" aria-label="평소 유형 비교"/);
-    assert.match(script, /class="cw-profile-shift is-changed"/);
-    assert.match(script, /USUAL \$\{comparison\.knownType\}[\s\S]*MATCH \$\{comparison\.sameCount\}\/4/);
-    assert.match(css, /\.cw-profile-compare\s*\{[^}]*grid-template-columns:[^}]*min-height:\s*72px/);
+    assert.match(script, /function typeComparisonSummary\(comparison\)/);
+    assert.match(script, /결과와 동일/);
+    assert.match(script, /change\.from\} → \$\{change\.to/);
+    assert.doesNotMatch(script, /USUAL TYPE|MATCH \$\{comparison\.sameCount\}|comparison\.sameCount\}\/4/);
+    assert.match(css, /\.cw-profile-compare\s*\{[^}]*display:\s*flex[^}]*min-height:\s*48px/);
     assert.match(script, /EI: \{ title: '생각 정리', left: '함께 정리', right: '혼자 정리' \}/);
     assert.match(script, /SN: \{ title: '관찰 초점', left: '현재 정보', right: '성장 가능성' \}/);
     assert.match(script, /TF: \{ title: '선택 기준', left: '조건·근거', right: '취향·관계' \}/);
