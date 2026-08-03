@@ -123,7 +123,7 @@
     let sessionCreatedAt = '';
     let assignedHouseKey = '';
     let result = null;
-    let resultAxisExamples = {};
+    let resultAxisEvidence = {};
     let resultSavedAt = '';
     let timingStats = null;
     let activeTimer = null;
@@ -200,7 +200,7 @@
                 letters: { ...result.letters },
                 axes: result.axes.map(axis => ({ ...axis }))
             },
-            axisExamples: Object.fromEntries(result.axes.map(axis => [axis.axis, selectedAxisExamples(axis)])),
+            axisEvidence: Object.fromEntries(result.axes.map(axis => [axis.axis, selectedAxisEvidence(axis)])),
             timingStats: timingStats ? {
                 validCount: timingStats.validCount,
                 totalMs: timingStats.totalMs,
@@ -251,7 +251,12 @@
         surveySessionId = '';
         sessionCreatedAt = '';
         result = snapshot.result;
-        resultAxisExamples = snapshot.axisExamples && typeof snapshot.axisExamples === 'object' ? snapshot.axisExamples : {};
+        resultAxisEvidence = snapshot.axisEvidence && typeof snapshot.axisEvidence === 'object'
+            ? snapshot.axisEvidence
+            : Object.fromEntries(Object.entries(snapshot.axisExamples || {}).map(([axis, examples]) => [axis, {
+                dominant: Array.isArray(examples) ? examples.map(choice => ({ scene: '', choice: String(choice) })) : [],
+                opposite: []
+            }]));
         resultSavedAt = snapshot.savedAt || '';
         assignedHouseKey = Core.chooseTendencyHouse(result);
         timingStats = snapshot.timingStats;
@@ -512,7 +517,7 @@
     function startSurvey() {
         questions = Core.prepareQuestions();
         answers = [];
-        resultAxisExamples = {};
+        resultAxisEvidence = {};
         responseTimings = [];
         current = 0;
         selectedMbti = '';
@@ -596,7 +601,7 @@
         activeTimer = null;
         questions = [];
         answers = [];
-        resultAxisExamples = {};
+        resultAxisEvidence = {};
         responseTimings = [];
         current = 0;
         selectedMbti = '';
@@ -842,17 +847,44 @@
             </section>`;
     }
 
-    function selectedAxisExamples(axisResult) {
-        const liveExamples = questions.map((question, index) => {
+    function selectedAxisEvidence(axisResult) {
+        const liveEvidence = questions.map((question, index) => {
             const choice = answers[index];
             if (choice === undefined || question.axis !== axisResult.axis) return null;
-            const score = question.scores[choice];
-            if (score !== axisResult.dominant) return null;
-            return question.options[choice];
-        }).filter(Boolean).slice(0, 2);
-        if (liveExamples.length) return liveExamples;
-        const stored = resultAxisExamples[axisResult.axis];
-        return Array.isArray(stored) ? stored.slice(0, 2).map(String) : [];
+            return {
+                pole: question.scores[choice],
+                scene: question.label,
+                choice: question.options[choice]
+            };
+        }).filter(Boolean);
+        if (liveEvidence.length) {
+            const dominant = liveEvidence.filter(item => item.pole === axisResult.dominant).map(({ scene, choice }) => ({ scene, choice }));
+            const opposite = liveEvidence.filter(item => item.pole === axisResult.opposite).map(({ scene, choice }) => ({ scene, choice }));
+            return {
+                dominant: dominant.slice(0, opposite.length ? 1 : 2),
+                opposite: opposite.slice(0, 1)
+            };
+        }
+        const stored = resultAxisEvidence[axisResult.axis];
+        const normalizeEvidence = item => typeof item === 'string'
+            ? { scene: '', choice: item }
+            : { scene: String(item?.scene || ''), choice: String(item?.choice || '') };
+        return {
+            dominant: Array.isArray(stored?.dominant) ? stored.dominant.slice(0, 2).map(normalizeEvidence).filter(item => item.choice) : [],
+            opposite: Array.isArray(stored?.opposite) ? stored.opposite.slice(0, 1).map(normalizeEvidence).filter(item => item.choice) : []
+        };
+    }
+
+    function axisAnalysisLead(axisResult, guide) {
+        const dominantCount = Number(result.letters[axisResult.dominant]) || 0;
+        const oppositeCount = Number(result.letters[axisResult.opposite]) || 0;
+        if (dominantCount === 5) {
+            return `다섯 장면 모두 ${guide.summary.replace(/입니다\.$/, '으로 이어졌습니다.')}`;
+        }
+        if (dominantCount === 4) {
+            return `${guide.summary} 다만 한 장면에서는 반대 방식도 함께 사용했습니다.`;
+        }
+        return `두 방식이 함께 나타났으며, ${dominantCount}:${oppositeCount}의 근소한 차이로 ${axisResult.dominant} 방향이 선택되었습니다. 상황에 따라 판단 방식을 바꾸는 폭이 있는 결과입니다.`;
     }
 
     function renderTypeComparisonAnalysis() {
@@ -908,20 +940,22 @@
             const first = axisResult.axis[0];
             const second = axisResult.axis[1];
             const guide = AXIS_DETAIL_GUIDE[axisResult.dominant];
-            const examples = selectedAxisExamples(axisResult);
+            const evidence = selectedAxisEvidence(axisResult);
+            const hasEvidence = evidence.dominant.length || evidence.opposite.length;
             return `
                 <article class="cw-axis-insight">
                     <header>
                         <div><small>${escapeHtml(AXIS_REPORT_COPY[axisResult.axis].title)}</small><strong>${escapeHtml(axisResult.dominant)} · ${escapeHtml(dominant.short)}</strong></div>
                         <span>${escapeHtml(result.letters[axisResult.dominant])}:${escapeHtml(result.letters[axisResult.opposite])} · ${escapeHtml(axisStrength(axisResult))}</span>
                     </header>
-                    <p class="cw-analysis-lead">${escapeHtml(guide.summary)}</p>
-                    ${examples.length ? `<section class="cw-analysis-evidence">
-                        <h4>이번 응답에서 확인된 장면</h4>
-                        ${examples.map(example => `<blockquote>${escapeHtml(example)}</blockquote>`).join('')}
+                    <p class="cw-analysis-lead">${escapeHtml(axisAnalysisLead(axisResult, guide))}</p>
+                    ${hasEvidence ? `<section class="cw-analysis-evidence">
+                        <h4>결과를 만든 실제 선택</h4>
+                        ${evidence.dominant.map(example => `<div><small>주된 방향 · ${escapeHtml(axisResult.dominant)}</small><section>${example.scene ? `<b>${escapeHtml(example.scene)}</b>` : ''}<p>${escapeHtml(example.choice)}</p></section></div>`).join('')}
+                        ${evidence.opposite.map(example => `<div class="is-opposite"><small>함께 나타난 방향 · ${escapeHtml(axisResult.opposite)}</small><section>${example.scene ? `<b>${escapeHtml(example.scene)}</b>` : ''}<p>${escapeHtml(example.choice)}</p></section></div>`).join('')}
                     </section>` : ''}
-                    <section class="cw-analysis-reading"><strong>행동 해석</strong><p>${guide.signals.slice(0, 2).map(signal => escapeHtml(signal)).join(' ')}</p></section>
-                    <aside class="cw-analysis-caution"><strong>균형 포인트</strong><p>${escapeHtml(guide.balance)}</p></aside>
+                    <section class="cw-analysis-reading"><strong>해석</strong><p>${guide.signals.slice(0, 2).map(signal => escapeHtml(signal)).join(' ')}</p></section>
+                    <aside class="cw-analysis-caution"><strong>보완 관점</strong><p>${escapeHtml(guide.balance)}</p></aside>
                 </article>`;
         }).join('');
         return `
@@ -1160,8 +1194,6 @@
                     </section>
                     ${detail}
                     <footer class="cw-report-footer">
-                        <p>성향을 이해하기 위한 참고 결과입니다.</p>
-                        <small class="cw-result-copyright">© 2026 CREO. All rights reserved.</small>
                         <section class="cw-share-section" aria-label="결과 공유">
                             <button class="cw-share-action is-save" type="button" data-action="save-image">
                                 <span class="cw-share-save-mark" aria-hidden="true">↓</span>
@@ -1174,6 +1206,7 @@
                         </section>
                     </footer>
                 </article>
+                <small class="cw-result-copyright cw-result-copyright-outside">© 2026 CREO. All rights reserved.</small>
             </div>`;
         element('result-content').querySelector('[data-action="unlock-detail"]')?.addEventListener('click', handleUnlockDetail);
         element('result-content').querySelector('[data-action="open-band"]')?.addEventListener('click', openBandTarget);
