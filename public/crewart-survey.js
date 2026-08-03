@@ -600,27 +600,36 @@
         advancing = false;
         if (current === 0) {
             element('progress-text').textContent = `0 / ${questions.length}`;
-            element('progress-axis').textContent = '시작하기 전 유의사항';
+            element('progress-axis').textContent = '시작 전 확인';
             element('progress-bar').style.width = '0%';
             element('question-back').disabled = true;
-            element('question-label').textContent = 'GUIDE · 안내';
-            element('question-title').textContent = '크레 성향 테스트를 시작하기 전에';
+            element('question-label').textContent = 'GUIDE · 검사 전 안내';
+            element('question-title').textContent = '좋아 보이는 답보다 실제 평소의 나를 골라주세요';
             element('question-illustration').hidden = true;
-            element('choice-list').innerHTML = `
-                <div class="cw-q0-card">
-                    <ul class="cw-q0-list">
-                        <li>본 검사는 의학적·심리적 진단이 아닌 <strong>재미용 성향 테스트</strong>입니다. <small>(제작: CREO)</small></li>
-                        <li>'좋아 보이는 답' 대신 <strong>'실제 평소 나의 모습'</strong>을 편하게 골라주세요.</li>
-                        <li>깊이 고민하기보다 <strong>3초 내 직감적으로 떠오르는 선택</strong>이 가장 정확합니다.</li>
-                    </ul>
-                    <button class="cw-test-action cw-primary-button cw-q0-start-button" id="q0-start-button" type="button">
-                        <span>네, 준비되었습니다!</span>
-                    </button>
-                </div>`;
-            element('q0-start-button')?.addEventListener('click', () => {
-                current = 1;
-                renderQuestion();
+
+            const guideOptions = [
+                '네, 깊이 고민 않고 3초 내 직감으로 고를게요!',
+                '솔직한 사육 스타일을 기준으로 검사를 시작합니다'
+            ];
+
+            element('choice-list').innerHTML = guideOptions.map((option, index) => `
+                <button class="cw-choice-button" type="button" data-q0-choice="${index}">
+                    <b aria-hidden="true">${index === 0 ? 'A' : 'B'}</b><span>${escapeHtml(option)}</span>
+                </button>`).join('');
+
+            element('choice-list').querySelectorAll('[data-q0-choice]').forEach(button => {
+                button.addEventListener('click', () => {
+                    if (advancing) return;
+                    advancing = true;
+                    button.classList.add('is-selected');
+                    const delay = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 20 : 220;
+                    setTimeout(() => {
+                        current = 1;
+                        renderQuestion();
+                    }, delay);
+                });
             });
+
             const card = element('question-card');
             card.classList.remove('is-changing');
             requestAnimationFrame(() => card.classList.add('is-changing'));
