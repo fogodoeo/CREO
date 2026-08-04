@@ -1,8 +1,16 @@
 {
   "version": "crewart-tendency-v9.0",
+  "axisReference": {
+    "EI": { "poles": ["E", "I"], "label": "생각 정리" },
+    "SN": { "poles": ["S", "N"], "label": "관찰 초점" },
+    "TF": { "poles": ["T", "F"], "label": "선택 기준" },
+    "JP": { "poles": ["J", "P"], "label": "사육 방식" }
+  },
   "questions": [
     {
       "id": "Q01",
+      "axis": "EI",
+      "secondaryAxis": "JP",
       "label": "행사에서 두 후보의 설명을 모두 들었다.",
       "q": "결정을 정리할 때 가장 먼저 하는 일은?",
       "options": [
@@ -14,6 +22,8 @@
     },
     {
       "id": "Q02",
+      "axis": "SN",
+      "secondaryAxis": "TF",
       "label": "체중이 한 번 줄었다가 다시 돌아왔다.",
       "q": "기록에서 먼저 확인하는 것은?",
       "options": [
@@ -25,6 +35,8 @@
     },
     {
       "id": "Q03",
+      "axis": "EI",
+      "secondaryAxis": "TF",
       "label": "마음에 드는 두 크레 중 한 마리만 데려올 수 있다.",
       "q": "끝까지 비교하게 되는 것은?",
       "options": [
@@ -36,6 +48,8 @@
     },
     {
       "id": "Q04",
+      "axis": "SN",
+      "secondaryAxis": "JP",
       "label": "성체용 사육장으로 바꿀 시기가 다가온다.",
       "q": "크기를 정할 때 더 가까운 방법은?",
       "options": [
@@ -47,6 +61,8 @@
     },
     {
       "id": "Q05",
+      "axis": "EI",
+      "secondaryAxis": "SN",
       "label": "설명을 들었지만 두 후보가 계속 눈에 남는다.",
       "q": "다음으로 하는 일은?",
       "options": [
@@ -58,6 +74,8 @@
     },
     {
       "id": "Q06",
+      "axis": "TF",
+      "secondaryAxis": "JP",
       "label": "두 사람이 크레 돌봄을 나눠 맡기로 했다.",
       "q": "역할을 정할 때 먼저 맞추는 것은?",
       "options": [
@@ -69,6 +87,8 @@
     },
     {
       "id": "Q07",
+      "axis": "EI",
+      "secondaryAxis": "JP",
       "label": "오늘 청소할 사육장이 여러 개인데 시간이 부족하다.",
       "q": "남은 시간을 쓰는 방법은?",
       "options": [
@@ -80,6 +100,8 @@
     },
     {
       "id": "Q08",
+      "axis": "SN",
+      "secondaryAxis": "TF",
       "label": "평소 잘 먹던 크레가 오늘 먹이를 남겼다.",
       "q": "먼저 확인하는 것은?",
       "options": [
@@ -91,6 +113,8 @@
     },
     {
       "id": "Q09",
+      "axis": "EI",
+      "secondaryAxis": "SN",
       "label": "기다리던 성장 변화가 뚜렷하게 보였다.",
       "q": "사진을 찍은 다음 하는 일은?",
       "options": [
@@ -102,6 +126,8 @@
     },
     {
       "id": "Q10",
+      "axis": "TF",
+      "secondaryAxis": "JP",
       "label": "새 크레가 사흘 뒤 집에 온다.",
       "q": "준비할 때 더 가까운 방법은?",
       "options": [
