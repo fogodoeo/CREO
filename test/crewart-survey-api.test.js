@@ -71,7 +71,7 @@ function validSubmission() {
         creMbti: 'ESTJ',
         crebtiType: 'ESTJ',
         knownMbti: 'INFP',
-        axisScores: { E: 5, I: 0, S: 5, N: 0, T: 5, F: 0, J: 5, P: 0 },
+        axisScores: { E: 15, I: 0, S: 15, N: 0, T: 15, F: 0, J: 15, P: 0 },
         assignedHouseKey: 'ST',
         houseId: 'ST',
         answers,
@@ -87,8 +87,8 @@ function validSubmission() {
             label: '서버에 저장하면 안 되는 선택지 원문'
         })),
         timingStats: {
-            validCount: 10,
-            totalMs: 18000,
+            validCount: 12,
+            totalMs: 21600,
             averageMs: 1800,
             medianMs: 1800,
             axisMedians: { EI: 1800, SN: 1800, TF: 1800, JP: 1800 },

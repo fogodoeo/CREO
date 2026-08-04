@@ -1,0 +1,92 @@
+{
+  "version": "crewart-tendency-v12.3-balanced-3to2",
+  "title": "크레와트 성향 테스트",
+  "scoring": {
+    "method": "weighted_sum",
+    "strongSignalPoints": 3,
+    "supportingSignalPoints": 2,
+    "primaryQuestionsPerAxis": 3,
+    "secondaryQuestionsPerAxis": 3,
+    "displayScoresToUser": false
+  },
+  "axisReference": {
+    "EI": { "poles": ["E", "I"], "label": "생각을 꺼내는 방식" },
+    "SN": { "poles": ["S", "N"], "label": "정보를 보는 방식" },
+    "TF": { "poles": ["T", "F"], "label": "선택을 좁히는 방식" },
+    "JP": { "poles": ["J", "P"], "label": "결정을 진행하는 방식" }
+  },
+  "questions": [
+    {
+      "id": "Q01", "axis": "TF", "secondaryAxis": "JP", "label": "두 개체 중 하나를 고를 때", "q": "둘 중 하나를 정하기 위해 마지막으로 하는 일은?",
+      "options": ["두 개체 사진을 한 화면에 놓고 본다", "한 마리씩 따로 다시 살펴본다", "잠깐 다른 곳을 본 뒤 다시 돌아온다", "각각 마음에 드는 점을 하나씩 짚어본다"],
+      "optionCriteria": [{ "TF": "T", "JP": "J" }, { "TF": "T", "JP": "P" }, { "TF": "F", "JP": "P" }, { "TF": "F", "JP": "J" }],
+      "optionWeights": [[3, 2], [3, 2], [3, 2], [3, 2]]
+    },
+    {
+      "id": "Q02", "axis": "JP", "secondaryAxis": "EI", "label": "찾던 부스가 보이지 않을 때", "q": "먼저 어떻게 할까?",
+      "options": ["안내 요원에게 위치를 묻는다", "온라인 지도를 다시 확인한다", "주변 부스를 보며 근처부터 찾아본다", "다음에 볼 부스로 갔다가 나중에 돌아온다"],
+      "optionCriteria": [{ "JP": "J", "EI": "E" }, { "JP": "J", "EI": "I" }, { "JP": "P", "EI": "E" }, { "JP": "P", "EI": "I" }],
+      "optionWeights": [[3, 2], [3, 2], [3, 2], [3, 2]]
+    },
+    {
+      "id": "Q03", "axis": "TF", "secondaryAxis": "JP", "label": "후보 세 개를 하나로 줄일 때", "q": "세 후보를 하나로 줄이는 방식은?",
+      "options": ["세 글을 나란히 띄워 한꺼번에 본다", "가장 기억에 남는 후보를 기준으로 비교한다", "가장 덜 끌리는 후보 하나를 먼저 뺀다", "두 개씩 짝지어 비교해 마지막 둘을 남긴다"],
+      "optionCriteria": [{ "TF": "T", "JP": "P" }, { "TF": "F", "JP": "J" }, { "TF": "F", "JP": "P" }, { "TF": "T", "JP": "J" }],
+      "optionWeights": [[3, 2], [3, 2], [3, 2], [3, 2]]
+    },
+    {
+      "id": "Q04", "axis": "EI", "secondaryAxis": "SN", "label": "행사를 설명할 때", "q": "나는 어떻게 이야기를 시작할까?",
+      "options": ["가장 기억나는 한 마리부터 이야기한다", "찍어둔 사진 한 장부터 보여준다", "마지막까지 고민했던 두 마리를 비교한다", "행사 전체 분위기부터 설명한다"],
+      "optionCriteria": [{ "EI": "I", "SN": "S" }, { "EI": "E", "SN": "S" }, { "EI": "I", "SN": "N" }, { "EI": "E", "SN": "N" }],
+      "optionWeights": [[3, 2], [3, 2], [3, 2], [3, 2]]
+    },
+    {
+      "id": "Q05", "axis": "SN", "secondaryAxis": "TF", "label": "이름 후보가 둘 남았을 때", "q": "마지막 결정은 어떻게 할까?",
+      "options": ["사진을 보며 이름을 각각 소리 내어 부른다", "사진 아래에 두 이름을 번갈아 써본다", "두 이름에서 나올 별명을 각각 떠올린다", "가까운 사람에게 두 이름을 들려주고 반응을 본다"],
+      "optionCriteria": [{ "SN": "S", "TF": "F" }, { "SN": "S", "TF": "T" }, { "SN": "N", "TF": "T" }, { "SN": "N", "TF": "F" }],
+      "optionWeights": [[3, 2], [3, 2], [3, 2], [3, 2]]
+    },
+    {
+      "id": "Q06", "axis": "SN", "secondaryAxis": "TF", "label": "두 가지 콘셉트를 비교할 때", "q": "처음 비교하는 방식은?",
+      "options": ["두 이미지를 번갈아 전체로 본다", "같은 위치의 소품끼리 비교한다", "내 공간에 놓인 모습을 각각 떠올린다", "각 이미지에서 마음에 드는 부분을 하나씩 찾는다"],
+      "optionCriteria": [{ "SN": "N", "TF": "F" }, { "SN": "S", "TF": "T" }, { "SN": "N", "TF": "T" }, { "SN": "S", "TF": "F" }],
+      "optionWeights": [[3, 2], [3, 2], [3, 2], [3, 2]]
+    },
+    {
+      "id": "Q07", "axis": "JP", "secondaryAxis": "EI", "label": "행사에서 시간이 남았을 때", "q": "남은 시간을 어떻게 쓸까?",
+      "options": ["가장 기억나는 부스에 다시 간다", "아직 자세히 안 본 구역을 둘러본다", "잠깐 앉아서 찍은 사진을 확인한다", "같이 간 사람과 한 곳을 정해 다시 간다"],
+      "optionCriteria": [{ "JP": "J", "EI": "I" }, { "JP": "P", "EI": "E" }, { "JP": "P", "EI": "I" }, { "JP": "J", "EI": "E" }],
+      "optionWeights": [[3, 2], [3, 2], [3, 2], [3, 2]]
+    },
+    {
+      "id": "Q08", "axis": "JP", "secondaryAxis": "SN", "label": "행사 사진을 정리할 때", "q": "처음 정리하는 방식은?",
+      "options": ["촬영 순서를 유지한 채 정리한다", "부스별로 묶을 폴더부터 만든다", "눈에 띄는 사진부터 표시해둔다", "전체를 훑으며 비슷한 사진끼리 묶는다"],
+      "optionCriteria": [{ "JP": "J", "SN": "S" }, { "JP": "J", "SN": "N" }, { "JP": "P", "SN": "S" }, { "JP": "P", "SN": "N" }],
+      "optionWeights": [[3, 2], [3, 2], [3, 2], [3, 2]]
+    },
+    {
+      "id": "Q09", "axis": "EI", "secondaryAxis": "SN", "label": "사진 여러 장을 채팅으로 받았을 때", "q": "사진을 처음 확인할 때 나는?",
+      "options": ["전체 썸네일을 훑고 눈에 띈 사진에 바로 반응한다", "받은 순서대로 본 뒤 한 번에 답한다", "비슷한 사진을 비교한 뒤 궁금한 점을 묻는다", "가장 인상적인 사진을 저장해두고 나중에 다시 본다"],
+      "optionCriteria": [{ "EI": "E", "SN": "N" }, { "EI": "I", "SN": "S" }, { "EI": "E", "SN": "S" }, { "EI": "I", "SN": "N" }],
+      "optionWeights": [[3, 2], [3, 2], [3, 2], [3, 2]]
+    },
+    {
+      "id": "Q10", "axis": "TF", "secondaryAxis": "EI", "label": "처음 가는 친구에게 설명할 때", "q": "나는 어떻게 답하기 시작할까?",
+      "options": ["무엇을 기대하는지 먼저 물어본다", "재미있었는지 결론부터 말해준다", "행사에서 찍은 사진 두 장을 보여준다", "기억에 남는 장면 하나를 이야기한다"],
+      "optionCriteria": [{ "TF": "T", "EI": "E" }, { "TF": "T", "EI": "I" }, { "TF": "F", "EI": "E" }, { "TF": "F", "EI": "I" }],
+      "optionWeights": [[3, 2], [3, 2], [3, 2], [3, 2]]
+    },
+    {
+      "id": "Q11", "axis": "EI", "secondaryAxis": "JP", "label": "친구와 다시 합류했을 때", "q": "다시 만난 뒤 먼저 하는 행동은?",
+      "options": ["서로 가장 기억나는 부스를 말하고 한 곳을 정한다", "서로 찍은 사진을 보며 다음에 볼 곳을 고른다", "내가 찍은 사진을 훑고 다시 볼 한 곳을 정한다", "각자 조금 더 둘러본 뒤 다시 만나자고 한다"],
+      "optionCriteria": [{ "EI": "E", "JP": "J" }, { "EI": "E", "JP": "P" }, { "EI": "I", "JP": "J" }, { "EI": "I", "JP": "P" }],
+      "optionWeights": [[3, 2], [3, 2], [3, 2], [3, 2]]
+    },
+    {
+      "id": "Q12", "axis": "SN", "secondaryAxis": "TF", "label": "이름표 시안 중 하나를 고를 때", "q": "두 시안을 처음 비교하는 방식은?",
+      "options": ["글자 크기와 사진 배치의 차이를 본다", "매일 볼 때 어느 쪽이 더 마음에 들지 본다", "사육장 전체 분위기와 어떻게 이어질지 본다", "나중에 사진이나 장식을 바꿔도 어울릴지 본다"],
+      "optionCriteria": [{ "SN": "S", "TF": "T" }, { "SN": "S", "TF": "F" }, { "SN": "N", "TF": "F" }, { "SN": "N", "TF": "T" }],
+      "optionWeights": [[3, 2], [3, 2], [3, 2], [3, 2]]
+    }
+  ]
+}

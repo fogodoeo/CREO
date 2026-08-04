@@ -5,7 +5,10 @@
 }(typeof globalThis !== 'undefined' ? globalThis : this, function () {
     'use strict';
 
-    const SURVEY_VERSION = 'crewart-tendency-v9.0';
+    const SURVEY_VERSION = 'crewart-tendency-v12.3-balanced-3to2';
+    const AXIS_SCORE_TOTAL = 15;
+    const PRIMARY_SIGNAL_POINTS = 3;
+    const SECONDARY_SIGNAL_POINTS = 2;
     const AXES = ['EI', 'SN', 'TF', 'JP'];
     const HOUSE_KEYS = ['SF', 'ST', 'NT', 'NF'];
     const MBTI_TYPES = [
@@ -15,18 +18,21 @@
         'ESTJ', 'ESFJ', 'ENFJ', 'ENTJ'
     ];
 
-    // v9.0 uses ten short situations. Each four-choice block measures two axes at once.
+    // v12.3 uses twelve balanced situations. Each four-choice block measures two axes,
+    // with a 3:2 primary/supporting signal so both axes influence the result.
     const QUESTIONS = [
-        { id: 'Q01', axis: 'EI', secondaryAxis: 'JP', facet: 'processing', label: '행사에서 두 후보의 설명을 모두 들었다.', q: '결정을 정리할 때 가장 먼저 하는 일은?', options: ['동행인과 기준을 정해 비교한다', '동행인과 마음 가는 쪽을 이야기한다', '자리를 옮겨 기준대로 다시 본다', '자리를 옮겨 끌리는 쪽을 더 본다'], scores: ['E', 'E', 'I', 'I'], scorePairs: [['E', 'J'], ['E', 'P'], ['I', 'J'], ['I', 'P']] },
-        { id: 'Q02', axis: 'SN', secondaryAxis: 'TF', facet: 'tracking', label: '체중이 한 번 줄었다가 다시 돌아왔다.', q: '기록에서 먼저 확인하는 것은?', options: ['줄어든 날 먹이와 온도를 적어본다', '그날 어떤 불편이 있었는지 떠올린다', '비슷한 변화가 전에도 있었는지 찾는다', '앞으로 편하게 이어질 생활을 그려본다'], scores: ['S', 'S', 'N', 'N'], scorePairs: [['S', 'T'], ['S', 'F'], ['N', 'T'], ['N', 'F']] },
-        { id: 'Q03', axis: 'EI', secondaryAxis: 'TF', facet: 'decision', label: '마음에 드는 두 크레 중 한 마리만 데려올 수 있다.', q: '끝까지 비교하게 되는 것은?', options: ['관리 조건을 다른 사람과 함께 비교한다', '어느 쪽과 더 오래 지낼지 이야기한다', '사육 환경과 기록을 혼자 다시 확인한다', '계속 마음이 가는 쪽을 혼자 돌아본다'], scores: ['E', 'E', 'I', 'I'], scorePairs: [['E', 'T'], ['E', 'F'], ['I', 'T'], ['I', 'F']] },
-        { id: 'Q04', axis: 'SN', secondaryAxis: 'JP', facet: 'readiness', label: '성체용 사육장으로 바꿀 시기가 다가온다.', q: '크기를 정할 때 더 가까운 방법은?', options: ['지금 몸길이에 맞춰 바로 정한다', '현재 움직임을 보며 필요한 크기를 찾는다', '앞으로 자랄 크기까지 계산해 정한다', '자랄 모습에 맞춰 바꿀 여지를 남긴다'], scores: ['S', 'S', 'N', 'N'], scorePairs: [['S', 'J'], ['S', 'P'], ['N', 'J'], ['N', 'P']] },
-        { id: 'Q05', axis: 'EI', secondaryAxis: 'SN', facet: 'approach', label: '설명을 들었지만 두 후보가 계속 눈에 남는다.', q: '다음으로 하는 일은?', options: ['동행인과 지금 보이는 차이를 말한다', '동행인과 자란 뒤 모습을 이야기한다', '자리를 옮겨 사진 속 차이를 다시 본다', '자리를 옮겨 앞으로의 모습을 그려본다'], scores: ['E', 'E', 'I', 'I'], scorePairs: [['E', 'S'], ['E', 'N'], ['I', 'S'], ['I', 'N']] },
-        { id: 'Q06', axis: 'TF', secondaryAxis: 'JP', facet: 'coordination', label: '두 사람이 크레 돌봄을 나눠 맡기로 했다.', q: '역할을 정할 때 먼저 맞추는 것은?', options: ['급여량과 기록 방법부터 정한다', '문제가 생겼을 때 볼 기준부터 정한다', '각자 맡을 일을 날짜별로 나눈다', '서로 편한 일을 먼저 고른다'], scores: ['T', 'T', 'F', 'F'], scorePairs: [['T', 'J'], ['T', 'P'], ['F', 'J'], ['F', 'P']] },
-        { id: 'Q07', axis: 'EI', secondaryAxis: 'JP', facet: 'routine', label: '오늘 청소할 사육장이 여러 개인데 시간이 부족하다.', q: '남은 시간을 쓰는 방법은?', options: ['동행인과 순서를 정해 한 곳을 마친다', '동행인과 급한 곳부터 나눠 한다', '혼자 순서를 정해 한 곳을 마친다', '전체를 보고 필요한 곳부터 한다'], scores: ['E', 'E', 'I', 'I'], scorePairs: [['E', 'J'], ['E', 'P'], ['I', 'J'], ['I', 'P']] },
-        { id: 'Q08', axis: 'SN', secondaryAxis: 'TF', facet: 'feeding', label: '평소 잘 먹던 크레가 오늘 먹이를 남겼다.', q: '먼저 확인하는 것은?', options: ['오늘 온도와 먹이 양을 확인한다', '오늘 불편해 보인 행동을 살핀다', '최근 며칠 행동과 함께 비교한다', '앞으로 먹기 편한 환경을 만들어본다'], scores: ['S', 'S', 'N', 'N'], scorePairs: [['S', 'T'], ['S', 'F'], ['N', 'T'], ['N', 'F']] },
-        { id: 'Q09', axis: 'EI', secondaryAxis: 'SN', facet: 'reward', label: '기다리던 성장 변화가 뚜렷하게 보였다.', q: '사진을 찍은 다음 하는 일은?', options: ['사진을 보여주며 지금 달라진 점을 말한다', '사진을 보여주며 다음 모습을 이야기한다', '예전 사진과 지금의 차이를 확인한다', '예전 사진을 보며 앞으로를 그려본다'], scores: ['E', 'E', 'I', 'I'], scorePairs: [['E', 'S'], ['E', 'N'], ['I', 'S'], ['I', 'N']] },
-        { id: 'Q10', axis: 'TF', secondaryAxis: 'JP', facet: 'readiness', label: '새 크레가 사흘 뒤 집에 온다.', q: '준비할 때 더 가까운 방법은?', options: ['필요한 용품과 배치를 미리 끝낸다', '필수 용품만 갖추고 반응을 본다', '오래 돌볼 일정과 역할을 먼저 맞춘다', '함께 돌볼 사람이 편한 방법을 고른다'], scores: ['T', 'T', 'F', 'F'], scorePairs: [['T', 'J'], ['T', 'P'], ['F', 'J'], ['F', 'P']] }
+        { id: 'Q01', axis: 'TF', secondaryAxis: 'JP', facet: 'selection', label: '두 개체 중 하나를 고를 때', q: '둘 중 하나를 정하기 위해 마지막으로 하는 일은?', options: ['두 개체 사진을 한 화면에 놓고 본다', '한 마리씩 따로 다시 살펴본다', '잠깐 다른 곳을 본 뒤 다시 돌아온다', '각각 마음에 드는 점을 하나씩 짚어본다'], scores: ['T', 'T', 'F', 'F'], scorePairs: [['T', 'J'], ['T', 'P'], ['F', 'P'], ['F', 'J']], scoreWeights: [[3, 2], [3, 2], [3, 2], [3, 2]] },
+        { id: 'Q02', axis: 'JP', secondaryAxis: 'EI', facet: 'orientation', label: '찾던 부스가 보이지 않을 때', q: '먼저 어떻게 할까?', options: ['안내 요원에게 위치를 묻는다', '온라인 지도를 다시 확인한다', '주변 부스를 보며 근처부터 찾아본다', '다음에 볼 부스로 갔다가 나중에 돌아온다'], scores: ['J', 'J', 'P', 'P'], scorePairs: [['J', 'E'], ['J', 'I'], ['P', 'E'], ['P', 'I']], scoreWeights: [[3, 2], [3, 2], [3, 2], [3, 2]] },
+        { id: 'Q03', axis: 'TF', secondaryAxis: 'JP', facet: 'shortlist', label: '후보 세 개를 하나로 줄일 때', q: '세 후보를 하나로 줄이는 방식은?', options: ['세 글을 나란히 띄워 한꺼번에 본다', '가장 기억에 남는 후보를 기준으로 비교한다', '가장 덜 끌리는 후보 하나를 먼저 뺀다', '두 개씩 짝지어 비교해 마지막 둘을 남긴다'], scores: ['T', 'F', 'F', 'T'], scorePairs: [['T', 'P'], ['F', 'J'], ['F', 'P'], ['T', 'J']], scoreWeights: [[3, 2], [3, 2], [3, 2], [3, 2]] },
+        { id: 'Q04', axis: 'EI', secondaryAxis: 'SN', facet: 'storytelling', label: '행사를 설명할 때', q: '나는 어떻게 이야기를 시작할까?', options: ['가장 기억나는 한 마리부터 이야기한다', '찍어둔 사진 한 장부터 보여준다', '마지막까지 고민했던 두 마리를 비교한다', '행사 전체 분위기부터 설명한다'], scores: ['I', 'E', 'I', 'E'], scorePairs: [['I', 'S'], ['E', 'S'], ['I', 'N'], ['E', 'N']], scoreWeights: [[3, 2], [3, 2], [3, 2], [3, 2]] },
+        { id: 'Q05', axis: 'SN', secondaryAxis: 'TF', facet: 'naming', label: '이름 후보가 둘 남았을 때', q: '마지막 결정은 어떻게 할까?', options: ['사진을 보며 이름을 각각 소리 내어 부른다', '사진 아래에 두 이름을 번갈아 써본다', '두 이름에서 나올 별명을 각각 떠올린다', '가까운 사람에게 두 이름을 들려주고 반응을 본다'], scores: ['S', 'S', 'N', 'N'], scorePairs: [['S', 'F'], ['S', 'T'], ['N', 'T'], ['N', 'F']], scoreWeights: [[3, 2], [3, 2], [3, 2], [3, 2]] },
+        { id: 'Q06', axis: 'SN', secondaryAxis: 'TF', facet: 'concept', label: '두 가지 콘셉트를 비교할 때', q: '처음 비교하는 방식은?', options: ['두 이미지를 번갈아 전체로 본다', '같은 위치의 소품끼리 비교한다', '내 공간에 놓인 모습을 각각 떠올린다', '각 이미지에서 마음에 드는 부분을 하나씩 찾는다'], scores: ['N', 'S', 'N', 'S'], scorePairs: [['N', 'F'], ['S', 'T'], ['N', 'T'], ['S', 'F']], scoreWeights: [[3, 2], [3, 2], [3, 2], [3, 2]] },
+        { id: 'Q07', axis: 'JP', secondaryAxis: 'EI', facet: 'free-time', label: '행사에서 시간이 남았을 때', q: '남은 시간을 어떻게 쓸까?', options: ['가장 기억나는 부스에 다시 간다', '아직 자세히 안 본 구역을 둘러본다', '잠깐 앉아서 찍은 사진을 확인한다', '같이 간 사람과 한 곳을 정해 다시 간다'], scores: ['J', 'P', 'P', 'J'], scorePairs: [['J', 'I'], ['P', 'E'], ['P', 'I'], ['J', 'E']], scoreWeights: [[3, 2], [3, 2], [3, 2], [3, 2]] },
+        { id: 'Q08', axis: 'JP', secondaryAxis: 'SN', facet: 'sorting', label: '행사 사진을 정리할 때', q: '처음 정리하는 방식은?', options: ['촬영 순서를 유지한 채 정리한다', '부스별로 묶을 폴더부터 만든다', '눈에 띄는 사진부터 표시해둔다', '전체를 훑으며 비슷한 사진끼리 묶는다'], scores: ['J', 'J', 'P', 'P'], scorePairs: [['J', 'S'], ['J', 'N'], ['P', 'S'], ['P', 'N']], scoreWeights: [[3, 2], [3, 2], [3, 2], [3, 2]] },
+        { id: 'Q09', axis: 'EI', secondaryAxis: 'SN', facet: 'incoming-photos', label: '사진 여러 장을 채팅으로 받았을 때', q: '사진을 처음 확인할 때 나는?', options: ['전체 썸네일을 훑고 눈에 띈 사진에 바로 반응한다', '받은 순서대로 본 뒤 한 번에 답한다', '비슷한 사진을 비교한 뒤 궁금한 점을 묻는다', '가장 인상적인 사진을 저장해두고 나중에 다시 본다'], scores: ['E', 'I', 'E', 'I'], scorePairs: [['E', 'N'], ['I', 'S'], ['E', 'S'], ['I', 'N']], scoreWeights: [[3, 2], [3, 2], [3, 2], [3, 2]] },
+        { id: 'Q10', axis: 'TF', secondaryAxis: 'EI', facet: 'explaining', label: '처음 가는 친구에게 설명할 때', q: '나는 어떻게 답하기 시작할까?', options: ['무엇을 기대하는지 먼저 물어본다', '재미있었는지 결론부터 말해준다', '행사에서 찍은 사진 두 장을 보여준다', '기억에 남는 장면 하나를 이야기한다'], scores: ['T', 'T', 'F', 'F'], scorePairs: [['T', 'E'], ['T', 'I'], ['F', 'E'], ['F', 'I']], scoreWeights: [[3, 2], [3, 2], [3, 2], [3, 2]] },
+        { id: 'Q11', axis: 'EI', secondaryAxis: 'JP', facet: 'rejoining', label: '친구와 다시 합류했을 때', q: '다시 만난 뒤 먼저 하는 행동은?', options: ['서로 가장 기억나는 부스를 말하고 한 곳을 정한다', '서로 찍은 사진을 보며 다음에 볼 곳을 고른다', '내가 찍은 사진을 훑고 다시 볼 한 곳을 정한다', '각자 조금 더 둘러본 뒤 다시 만나자고 한다'], scores: ['E', 'E', 'I', 'I'], scorePairs: [['E', 'J'], ['E', 'P'], ['I', 'J'], ['I', 'P']], scoreWeights: [[3, 2], [3, 2], [3, 2], [3, 2]] },
+        { id: 'Q12', axis: 'SN', secondaryAxis: 'TF', facet: 'name-card', label: '이름표 시안 중 하나를 고를 때', q: '두 시안을 처음 비교하는 방식은?', options: ['글자 크기와 사진 배치의 차이를 본다', '매일 볼 때 어느 쪽이 더 마음에 들지 본다', '사육장 전체 분위기와 어떻게 이어질지 본다', '나중에 사진이나 장식을 바꿔도 어울릴지 본다'], scores: ['S', 'S', 'N', 'N'], scorePairs: [['S', 'T'], ['S', 'F'], ['N', 'F'], ['N', 'T']], scoreWeights: [[3, 2], [3, 2], [3, 2], [3, 2]] }
     ];
 
     const AXIS_META = {
@@ -91,6 +97,7 @@
             options: question.options.slice(),
             scores: question.scores.slice(),
             scorePairs: question.scorePairs?.map(pair => pair.slice()),
+            scoreWeights: question.scoreWeights?.map(pair => pair.slice()),
             flipped: false
         }));
     }
@@ -141,6 +148,17 @@
                 break;
             }
         }
+        if (ordered === questions) {
+            const remaining = questions.filter(question => question.id !== 'Q01');
+            const first = questions.find(question => question.id === 'Q01');
+            ordered = first ? [first] : [];
+            while (remaining.length) {
+                const previousAxis = ordered[ordered.length - 1]?.axis;
+                let nextIndex = remaining.findIndex(question => question.axis !== previousAxis);
+                if (nextIndex < 0) nextIndex = 0;
+                ordered.push(remaining.splice(nextIndex, 1)[0]);
+            }
+        }
         return ordered;
     }
 
@@ -150,11 +168,20 @@
         return letter ? [letter] : [];
     }
 
+    function answerSignals(question, choice) {
+        const letters = answerLetters(question, choice);
+        const weights = question?.scoreWeights?.[choice] || letters.map(() => 1);
+        return letters.map((letter, index) => ({
+            letter,
+            points: Number(weights[index]) || 1
+        }));
+    }
+
     function scoreAnswers(questions, answers) {
         const letters = { E: 0, I: 0, S: 0, N: 0, T: 0, F: 0, J: 0, P: 0 };
         questions.forEach((question, index) => {
-            answerLetters(question, answers[index]).forEach(letter => {
-                if (letter in letters) letters[letter] += 1;
+            answerSignals(question, answers[index]).forEach(signal => {
+                if (signal.letter in letters) letters[signal.letter] += signal.points;
             });
         });
         const code = (letters.E > letters.I ? 'E' : 'I')
@@ -170,7 +197,7 @@
                 opposite,
                 dominantCount: letters[dominant],
                 oppositeCount: letters[opposite],
-                confidence: Math.abs(letters[dominant] - letters[opposite]) / 5
+                confidence: Math.abs(letters[dominant] - letters[opposite]) / AXIS_SCORE_TOTAL
             };
         });
         return { letters, code, axes, typeName: TYPE_NAMES[code] || '크레 집사' };
@@ -281,12 +308,16 @@
         HOUSE_KEYS,
         HOUSE_META,
         MBTI_TYPES,
+        AXIS_SCORE_TOTAL,
+        PRIMARY_SIGNAL_POINTS,
+        SECONDARY_SIGNAL_POINTS,
         QUESTIONS,
         AXIS_META,
         TYPE_NAMES,
         prepareQuestions,
         scoreAnswers,
         answerLetters,
+        answerSignals,
         buildMbtiComparison,
         buildTimingStats,
         buildSpeedBenchmark,

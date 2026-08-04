@@ -62,10 +62,11 @@ function validDate(value, fallback) {
 
 function normalizeAxisScores(input) {
     const scores = {};
+    const axisTotal = Number(Core.AXIS_SCORE_TOTAL) || 5;
     for (const [left, right] of AXIS_PAIRS) {
-        scores[left] = exactInteger(input?.[left], 0, 5);
-        scores[right] = exactInteger(input?.[right], 0, 5);
-        if (scores[left] === null || scores[right] === null || scores[left] + scores[right] !== 5) {
+        scores[left] = exactInteger(input?.[left], 0, axisTotal);
+        scores[right] = exactInteger(input?.[right], 0, axisTotal);
+        if (scores[left] === null || scores[right] === null || scores[left] + scores[right] !== axisTotal) {
             const error = new Error('축 점수 형식이 올바르지 않습니다.');
             error.status = 422;
             throw error;
@@ -139,13 +140,13 @@ function sanitizeSubmission(input, nowIso) {
                 || question.axis !== axis
                 || !axis.includes(score)
                 || secondaryAxis !== expectedSecondaryAxis
-                || (expectedSecondaryAxis && !expectedSecondaryAxis.includes(secondaryScore))
+                || !expectedSecondaryAxis.includes(secondaryScore)
                 || displayedPosition !== answers[index] + 1
             ) return null;
             const responseMs = exactInteger(answer?.responseMs, 0, 30000) ?? 0;
             seenQuestionIds.add(questionId);
-            scoreCounts[score] += 1;
-            if (secondaryScore) scoreCounts[secondaryScore] += 1;
+            scoreCounts[score] += Core.PRIMARY_SIGNAL_POINTS || 1;
+            scoreCounts[secondaryScore] += Core.SECONDARY_SIGNAL_POINTS || 1;
             return {
                 questionId,
                 axis,

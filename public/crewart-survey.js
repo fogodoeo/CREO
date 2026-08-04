@@ -869,7 +869,7 @@
         const first = axisResult.axis[0];
         const second = axisResult.axis[1];
         const secondCount = Number(result.letters[second]) || 0;
-        const position = Math.max(0, Math.min(100, (secondCount / 5) * 100));
+        const position = Math.max(0, Math.min(100, (secondCount / (Core.AXIS_SCORE_TOTAL || 5)) * 100));
         const firstSelected = axisResult.dominant === first;
         return `
                 <article class="cw-axis-detail" data-axis-result data-final-pole="${firstSelected ? 'left' : 'right'}">
@@ -1684,7 +1684,7 @@
                 const first = axisResult.axis[0];
                 const second = axisResult.axis[1];
                 const secondCount = Number(result.letters[second]) || 0;
-                const position = Math.max(0, Math.min(100, (secondCount / 5) * 100));
+            const position = Math.max(0, Math.min(100, (secondCount / (Core.AXIS_SCORE_TOTAL || 5)) * 100));
                 const firstSelected = axisResult.dominant === first;
                 const x = contentX + (index % 2) * 458;
                 const y = 636 + Math.floor(index / 2) * 151;
@@ -2102,7 +2102,7 @@
     async function sharePreparedNativeResult(event) {
         const button = event?.currentTarget;
         const title = `${result.code} · ${result.typeName}`;
-        const text = '나는 크레 앞에서 어떤 유형일까?\n10문항 약 2분';
+        const text = `나는 크레 앞에서 어떤 유형일까?\n${Core.QUESTIONS.length}문항 약 2분`;
         setShareButtonBusy(button, true, '공유 준비 중');
 
         try {
@@ -2142,7 +2142,7 @@
     async function shareResult(event) {
         const button = event?.currentTarget;
         const title = `${result.code} · ${result.typeName}`;
-        const text = '나는 크레 앞에서 어떤 유형일까?\n10문항 약 2분';
+        const text = `나는 크레 앞에서 어떤 유형일까?\n${Core.QUESTIONS.length}문항 약 2분`;
         let shareFile = null;
         setShareButtonBusy(button, true, '카카오톡 여는 중');
 
@@ -2247,7 +2247,7 @@
     }
 
     function initialize() {
-        if (!Core || Core.QUESTIONS.length !== 10) {
+        if (!Core || Core.QUESTIONS.length !== 12) {
             toast('테스트 데이터를 불러오지 못했어요.', true);
             return;
         }

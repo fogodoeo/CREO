@@ -268,7 +268,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /createKakaoShareFile\(\)[\s\S]*canvas\.width = 1200[\s\S]*canvas\.height = 800/);
     assert.match(script, /imageWidth:\s*1200/);
     assert.match(script, /imageHeight:\s*800/);
-    assert.match(script, /나는 크레 앞에서 어떤 유형일까\?\\n10문항 약 2분/);
+    assert.match(script, /나는 크레 앞에서 어떤 유형일까\?\\n\$\{Core\.QUESTIONS\.length\}문항 약 2분/);
     assert.match(script, /title:\s*'나도 알아보기'/);
     assert.match(script, /navigator\.canShare\?\.\(\{ files: \[file\] \}\)/);
     assert.match(html, /id="result-save-dialog"/);
@@ -309,8 +309,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /cw-result-code cw-result-code-back/);
     assert.match(script, /cw-result-code cw-result-code-front/);
     assert.match(script, /class="cw-type-poster"/);
-    assert.match(html, /20260804-reading-v77/);
-    assert.match(html, /20260804-scenario-v17/);
+    assert.match(html, /20260804-reading-v78/);
+    assert.match(html, /20260804-scenario-v18/);
     assert.doesNotMatch(html, /question-illustration|question-image/);
     assert.doesNotMatch(script, /QUESTION_IMAGE_ROOT|question\.image|nextImage/);
     assert.doesNotMatch(html, /cw-home-guide|cw-home-disclaimer/);
