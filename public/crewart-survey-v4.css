@@ -202,7 +202,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-question-card { padding: clamp(20px, 5vw, 30px); border: 1px solid var(--cw-line); border-radius: 22px; background: var(--cw-surface); box-shadow: var(--cw-shadow); }
 .cw-question-card.is-changing { animation: cw-question-in .24s ease both; }
 .cw-question-card:not(.is-guide) { display: flex; min-height: 360px; flex-direction: column; }
-.cw-question-card > p { margin: 0; color: #717671; font-size: 15px; font-weight: 570; line-height: 1.6; word-break: keep-all; }
+.cw-question-card > p { margin: 0; padding-left: 11px; border-left: 3px solid #a8b5ab; color: #3f4741; font-size: clamp(15px, 4vw, 17px); font-weight: 700; line-height: 1.5; letter-spacing: -.025em; word-break: keep-all; }
 .cw-question-card > h1 { margin: 10px 0 0; font-size: clamp(25px, 6vw, 31px); font-weight: var(--cw-weight-bold); line-height: 1.32; letter-spacing: -.04em; word-break: keep-all; }
 .cw-choice-list { display: grid; gap: 10px; }
 .cw-choice-list.is-four-option { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
