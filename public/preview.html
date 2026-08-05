@@ -329,6 +329,77 @@
             gap: 16px;
         }
 
+        /* 3P는 송출 화면보다 노출/표시 방식 제어가 먼저 보여야 한다. */
+        body.preview-page-3 .workspace {
+            max-width: 1600px;
+            align-items: stretch;
+        }
+        body.preview-page-3 .control-panel {
+            order: 10;
+            position: sticky;
+            top: 62px;
+            z-index: 90;
+            padding: 12px;
+            border-color: rgba(217, 176, 92, 0.42);
+            background: linear-gradient(145deg, rgba(20, 29, 48, 0.97), rgba(11, 18, 32, 0.97));
+            box-shadow: 0 14px 34px rgba(0, 0, 0, 0.34), inset 0 1px 0 rgba(255,255,255,0.05);
+            backdrop-filter: blur(14px);
+        }
+        body.preview-page-3 .screen-container { order: 20; }
+        body.preview-page-3 .tournament-dashboard,
+        body.preview-page-3 .crewart-dashboard { order: 30; }
+        body.preview-page-3 .control-panel > .control-row:first-child {
+            align-items: stretch;
+            gap: 10px;
+        }
+        body.preview-page-3 .toggle-switch-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(142px, 1fr));
+            flex: 1 1 900px;
+            gap: 8px;
+        }
+        body.preview-page-3 .switch-container {
+            min-height: 42px;
+            padding: 7px 10px !important;
+            margin: 0 !important;
+            border: 1px solid rgba(148, 163, 184, 0.18) !important;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.035);
+            justify-content: space-between;
+            white-space: nowrap;
+        }
+        body.preview-page-3 .switch-container:hover {
+            border-color: rgba(217, 176, 92, 0.48) !important;
+            background: rgba(217, 176, 92, 0.08);
+        }
+        body.preview-page-3 #toggle-blind-totals-show-group,
+        body.preview-page-3 #toggle-blind-totals-display-group {
+            border-color: rgba(217, 176, 92, 0.56) !important;
+            background: linear-gradient(135deg, rgba(217,176,92,0.15), rgba(217,176,92,0.05));
+        }
+        body.preview-page-3 .actions-row {
+            align-self: flex-start;
+            align-items: flex-start;
+        }
+        body.preview-page-3 .actions-row .btn-action {
+            min-height: 42px;
+            height: 42px;
+        }
+        body.preview-page-3 .control-panel > .control-row:last-child {
+            padding: 0 4px;
+        }
+        body.preview-page-3 .drag-overlay { background: rgba(0, 0, 0, 0.04); }
+        body.preview-page-3 .draggable-blind-totals {
+            background: rgba(217, 176, 92, 0.04);
+            border-style: solid;
+        }
+        @media (max-width: 900px) {
+            body.preview-page-3 .control-panel { position: static; }
+            body.preview-page-3 .toggle-switch-group { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            body.preview-page-3 .actions-row { width: 100%; }
+            body.preview-page-3 .actions-row .btn-action { flex: 1; }
+        }
+
         .control-row {
             display: flex;
             justify-content: space-between;
@@ -901,11 +972,11 @@
         <div class="control-panel">
             <div class="control-row" style="border-bottom: 1px solid var(--border); padding-bottom: 12px;">
                 <div class="toggle-switch-group">
-                    <div class="switch-container">
+                    <div class="switch-container" id="toggle-ticker-show-group">
                         <span>자막</span>
                         <input type="checkbox" id="toggle-ticker-show" class="switch-input" checked onchange="toggleShowState('ticker')">
                     </div>
-                    <div class="switch-container">
+                    <div class="switch-container" id="toggle-banner-show-group">
                         <span>배너</span>
                         <input type="checkbox" id="toggle-banner-show" class="switch-input" checked onchange="toggleShowState('banner')">
                     </div>
@@ -998,16 +1069,13 @@
                         <span style="font-size: 11px; font-weight: 700; color: var(--text-muted);">px</span>
                     </div>
                     <div class="switch-container" id="toggle-blind-totals-opacity-group" style="display:none; gap: 7px; align-items: center; border-left: 1px solid var(--border); padding-left: 12px; margin-left: 6px;">
-                        <span style="font-weight: 700;">투명도:</span>
+                        <span style="font-weight: 700;">배경 농도:</span>
                         <input type="range" id="blind-totals-opacity-input" min="0" max="100" step="5" value="0" oninput="previewBlindTotalsOpacity(this.value)" onchange="updateBlindTotalsOpacity(this.value)" onwheel="wheelBlindTotalsOpacity(event)" style="width:86px; accent-color:#d9b05c;">
                         <strong id="blind-totals-opacity-value" style="min-width:32px; font-size:11px; color:var(--text-muted);">0%</strong>
                     </div>
-                    <div class="switch-container" id="toggle-blind-totals-display-group" style="display:none; gap: 6px; align-items: center; border-left: 1px solid var(--border); padding-left: 12px; margin-left: 6px;">
-                        <span style="font-weight: 700;">팀내역 표시:</span>
-                        <select id="blind-totals-display-select" onchange="updateBlindTotalsDisplayMode(this.value)" class="cdcup-input" style="padding: 2px 6px; width: auto; height: 28px; font-size: 11px; font-weight: 700; border-radius: 4px;">
-                            <option value="pages">6팀씩 5초 순환</option>
-                            <option value="ticker">한 줄 자막</option>
-                        </select>
+                    <div class="switch-container" id="toggle-blind-totals-display-group" style="display:none;">
+                        <span style="font-weight: 800;">팀합산 하단 자막</span>
+                        <input type="checkbox" id="toggle-blind-totals-ticker" class="switch-input" onchange="toggleBlindTotalsTicker(this.checked)" aria-label="팀합산 한 줄 자막 모드">
                     </div>
                     <div class="switch-container" id="toggle-bracket-mode-group" style="display:none; gap: 6px; align-items: center; border-left: 1px solid var(--border); padding-left: 12px; margin-left: 6px;">
                         <span style="font-weight: 700;">송출 모드:</span>
@@ -1189,6 +1257,7 @@
         }
 
         const pageNum = normalizePreviewPage(params.get('page')); // Default: page=2 (개체용)
+        document.body.classList.toggle('preview-page-3', pageNum === '3');
         const broadcastAssetVersion = '20260715-suji-region';
         let previewConfigMap = {};
 
@@ -1263,6 +1332,12 @@
                 setDisplay('draggable-bracket-title', false);
                 setDisplay('draggable-battle-ann', false);
                 setDisplay('draggable-blind-totals', !isCrewart);
+                setDisplay('draggable-banner', false);
+                setDisplay('draggable-ticker', false);
+                setDisplay('toggle-banner-show-group', false);
+                setDisplay('toggle-ticker-show-group', false);
+                setDisplay('banner-coords-group', false);
+                setDisplay('ticker-coords-group', false);
                 setDisplay('toggle-bracket-full-show-group', true);
                 [
                     'toggle-bracket-live-show-group',
@@ -1567,6 +1642,8 @@
 
         async function updateBlindTotalsDisplayMode(value) {
             const mode = value === 'ticker' ? 'ticker' : 'pages';
+            const tickerToggle = document.getElementById('toggle-blind-totals-ticker');
+            if (tickerToggle) tickerToggle.checked = mode === 'ticker';
             try {
                 await updateConfigs({ blind_totals_display_mode: mode, blind_totals_page_size: '6', blind_totals_page_interval: '5' });
                 frame.contentWindow.postMessage({ type: 'forceRefresh' }, '*');
@@ -1574,6 +1651,10 @@
             } catch (error) {
                 toast('팀내역 표시 방식 저장 실패: ' + error.message);
             }
+        }
+
+        function toggleBlindTotalsTicker(checked) {
+            updateBlindTotalsDisplayMode(checked ? 'ticker' : 'pages');
         }
 
         function wheelBlindTotalsOpacity(event) {
@@ -1765,8 +1846,8 @@
                     if (blindFontInput) blindFontInput.value = elements.blind_totals.fontSize;
                     const blindOpacityInput = document.getElementById('blind-totals-opacity-input');
                     if (blindOpacityInput) { blindOpacityInput.value = elements.blind_totals.opacity; previewBlindTotalsOpacity(elements.blind_totals.opacity); }
-                    const blindDisplaySelect = document.getElementById('blind-totals-display-select');
-                    if (blindDisplaySelect) blindDisplaySelect.value = cfg.blind_totals_display_mode === 'ticker' ? 'ticker' : 'pages';
+                    const blindTickerToggle = document.getElementById('toggle-blind-totals-ticker');
+                    if (blindTickerToggle) blindTickerToggle.checked = cfg.blind_totals_display_mode === 'ticker';
 
                     // 실시간 입찰자 설정 팝업 데이터 로딩
                     const liveBiddersShow = cfg.live_bidders_show !== undefined ? String(cfg.live_bidders_show) : '0';
