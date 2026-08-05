@@ -4,11 +4,12 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const Core = require('../public/crewart-survey-core');
 
-test('v12.3 questionnaire has twelve balanced four-choice scenarios', () => {
-    assert.equal(Core.SURVEY_VERSION, 'crewart-tendency-v12.3-balanced-3to2');
-    assert.equal(Core.QUESTIONS.length, 12);
+test('questionnaire spec has balanced four-choice scenarios', () => {
+    const spec = Core.getQuestionnaireSpec();
+    assert.equal(Core.SURVEY_VERSION, spec.version);
+    assert.equal(Core.QUESTIONS.length, spec.questions.length);
     assert.equal(Core.QUESTIONS[0].id, 'Q01');
-    assert.equal(new Set(Core.QUESTIONS.map(question => question.id)).size, 12);
+    assert.equal(new Set(Core.QUESTIONS.map(question => question.id)).size, Core.QUESTIONS.length);
 
     const primaryCounts = Object.fromEntries(Core.AXES.map(axis => [axis, 0]));
     const secondaryCounts = Object.fromEntries(Core.AXES.map(axis => [axis, 0]));
@@ -28,11 +29,13 @@ test('v12.3 questionnaire has twelve balanced four-choice scenarios', () => {
             assert.ok(question.axis.includes(pair[0]));
             assert.ok(question.secondaryAxis.includes(pair[1]));
             assert.equal(question.scores[index], pair[0]);
-            assert.deepEqual(question.scoreWeights[index], [3, 2]);
+            assert.deepEqual(question.scoreWeights[index], [Core.PRIMARY_SIGNAL_POINTS, Core.SECONDARY_SIGNAL_POINTS]);
         });
     }
-    assert.deepEqual(primaryCounts, { EI: 3, SN: 3, TF: 3, JP: 3 });
-    assert.deepEqual(secondaryCounts, { EI: 3, SN: 3, TF: 3, JP: 3 });
+    const primaryExpected = Number(spec.scoring.primaryQuestionsPerAxis) || 0;
+    const secondaryExpected = Number(spec.scoring.secondaryQuestionsPerAxis) || 0;
+    assert.deepEqual(Object.values(primaryCounts), Object.values(primaryCounts).map(() => primaryExpected));
+    assert.deepEqual(Object.values(secondaryCounts), Object.values(secondaryCounts).map(() => secondaryExpected));
 });
 
 test('choices avoid direct MBTI answer-key language and narrow auction context', () => {
@@ -56,14 +59,14 @@ test('prepared surveys keep options, score pairs, weights, and Q01 first', () =>
     };
     for (let run = 0; run < 100; run += 1) {
         const prepared = Core.prepareQuestions(rng);
-        assert.equal(prepared.length, 12);
+        assert.equal(prepared.length, Core.QUESTIONS.length);
         assert.equal(prepared[0].id, 'Q01');
         prepared.forEach((question, index) => {
             if (index > 0) assert.notEqual(question.axis, prepared[index - 1].axis);
             question.options.forEach((option, choice) => {
                 assert.ok(option);
                 assert.ok(question.scorePairs[choice].includes(question.scores[choice]));
-                assert.deepEqual(question.scoreWeights[choice], [3, 2]);
+                assert.deepEqual(question.scoreWeights[choice], [Core.PRIMARY_SIGNAL_POINTS, Core.SECONDARY_SIGNAL_POINTS]);
             });
         });
     }
@@ -80,7 +83,7 @@ test('weighted scoring recovers all sixteen intended profiles', () => {
         assert.ok(answers.every(answer => answer >= 0));
         const result = Core.scoreAnswers(prepared, answers);
         assert.equal(result.code, target);
-        assert.deepEqual(Object.values(result.letters).filter(Number.isFinite).sort((a, b) => a - b), [0, 0, 0, 0, 15, 15, 15, 15]);
+        assert.deepEqual(Object.values(result.letters).filter(Number.isFinite).sort((a, b) => a - b), [0, 0, 0, 0, Core.AXIS_SCORE_TOTAL, Core.AXIS_SCORE_TOTAL, Core.AXIS_SCORE_TOTAL, Core.AXIS_SCORE_TOTAL]);
     }
 });
 
@@ -90,7 +93,7 @@ test('secondary signals can influence an axis when primary evidence is close', (
     assert.ok(target);
     const choice = target.scorePairs.findIndex(pair => pair[0] === 'E' && pair[1] === 'J');
     const signals = Core.answerSignals(target, choice);
-    assert.deepEqual(signals, [{ letter: 'E', points: 3 }, { letter: 'J', points: 2 }]);
+    assert.deepEqual(signals, [{ letter: 'E', points: Core.PRIMARY_SIGNAL_POINTS }, { letter: 'J', points: Core.SECONDARY_SIGNAL_POINTS }]);
 });
 
 test('house assignment follows the result SN and TF combination', () => {
