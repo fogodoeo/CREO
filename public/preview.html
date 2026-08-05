@@ -424,6 +424,34 @@
             cursor: default;
         }
         body.preview-team-ticker #draggable-blind-totals .resize-handle { display: none; }
+        body.preview-auto-p3 #draggable-blind-totals {
+            top: 12% !important;
+            left: 2% !important;
+            right: auto !important;
+            bottom: auto !important;
+            width: 34% !important;
+            height: 42% !important;
+            cursor: default;
+        }
+        body.preview-auto-p3 #draggable-blind-totals .resize-handle { display: none; }
+        .p3-auto-ticker-guide {
+            display: none;
+            position: absolute;
+            z-index: 21;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 10%;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid rgba(56,189,248,0.78);
+            background: rgba(56,189,248,0.07);
+            color: #e0f2fe;
+            font-size: 11px;
+            font-weight: 850;
+            pointer-events: none;
+        }
+        body.preview-auto-p3 .p3-auto-ticker-guide { display: flex; }
         body.preview-clean-view .drag-overlay {
             pointer-events: none;
             background: transparent;
@@ -1001,9 +1029,10 @@
 
                 <!-- 8. Draggable Blind Team Totals (PAGE3 only) -->
                 <div class="draggable-element draggable-blind-totals" id="draggable-blind-totals" data-type="blind_totals" style="display:none; z-index:22;">
-                    <div class="element-label">블라인드 팀 합산</div>
+                    <div class="element-label">자동 좌측 영역 · 팀합산 ↔ 실시간 입찰</div>
                     <div class="resize-handle resize-handle-se" id="resize-blind-totals" title="크기 조절" style="border-color: #d9b05c;"></div>
                 </div>
+                <div class="p3-auto-ticker-guide">입찰 중 자동 전환 · 팀합산 하단 티커</div>
             </div>
         </div>
 
@@ -1399,8 +1428,12 @@
                 setDisplay('toggle-event-match-show-group', !isCrewart);
                 setDisplay('toggle-blind-totals-font-group', !isCrewart);
                 setDisplay('toggle-blind-totals-opacity-group', !isCrewart);
-                setDisplay('toggle-blind-totals-display-group', !isCrewart);
+                setDisplay('toggle-blind-totals-display-group', false);
                 setDisplay('toggle-preview-guides-group', true);
+                document.body.classList.toggle('preview-auto-p3', !isCrewart);
+                document.body.classList.remove('preview-team-ticker');
+                const autoLabel = document.querySelector('#draggable-blind-totals .element-label');
+                if (autoLabel) autoLabel.textContent = isCrewart ? '기숙사 점수판' : '자동 좌측 영역 · 팀합산 ↔ 실시간 입찰';
                 setDisplay('toggle-live-bidders-show-group', !isCrewart);
                 setDisplay('toggle-live-bidders-switch-group', !isCrewart);
                 setDisplay('toggle-live-bidders-mode-group', !isCrewart);
@@ -1515,8 +1548,9 @@
             document.getElementById('toggle-bracket-live-opacity-group').style.display = 'none';
             document.getElementById('toggle-blind-totals-font-group').style.display = isInitialCrewart ? 'none' : '';
             document.getElementById('toggle-blind-totals-opacity-group').style.display = isInitialCrewart ? 'none' : '';
-            document.getElementById('toggle-blind-totals-display-group').style.display = isInitialCrewart ? 'none' : '';
+            document.getElementById('toggle-blind-totals-display-group').style.display = 'none';
             document.getElementById('toggle-preview-guides-group').style.display = '';
+            document.body.classList.toggle('preview-auto-p3', !isInitialCrewart);
             document.getElementById('bracket-coords').style.display = '';
             document.getElementById('bracket-live-coords').style.display = 'none';
             document.getElementById('bracket-title-coords').style.display = 'none'; // Hidden per user request
@@ -1919,9 +1953,9 @@
                     if (blindOpacityInput) { blindOpacityInput.value = elements.blind_totals.opacity; previewBlindTotalsOpacity(elements.blind_totals.opacity); }
                     const blindTickerToggle = document.getElementById('toggle-blind-totals-ticker');
                     if (blindTickerToggle) blindTickerToggle.checked = cfg.blind_totals_display_mode === 'ticker';
-                    document.body.classList.toggle('preview-team-ticker', cfg.blind_totals_display_mode === 'ticker');
+                    document.body.classList.remove('preview-team-ticker');
                     const blindTotalsLabel = document.querySelector('#draggable-blind-totals .element-label');
-                    if (blindTotalsLabel) blindTotalsLabel.textContent = cfg.blind_totals_display_mode === 'ticker' ? '팀합산 하단 자막 · 위치 고정' : '블라인드 팀 합산';
+                    if (blindTotalsLabel) blindTotalsLabel.textContent = '자동 좌측 영역 · 팀합산 ↔ 실시간 입찰';
 
                     // 실시간 입찰자 설정 팝업 데이터 로딩
                     const liveBiddersShow = cfg.live_bidders_show !== undefined ? String(cfg.live_bidders_show) : '0';

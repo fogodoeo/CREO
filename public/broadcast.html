@@ -2892,7 +2892,21 @@
         .blind-total-ticker-item small { color: #94a3b8; font-size: 0.72em; }
         @keyframes blind-total-ticker-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 
-        /* 하단 자막 모드: 팀합산은 화면 바닥 고정, 입찰자는 우측 소형 카드로 분리한다. */
+        /* 자동 전환: 평소 팀합산은 좌측, 입찰 중에는 좌측 입찰자 + 하단 팀합산 티커. */
+        #p3-switching-container.side-layout {
+            top: 12% !important;
+            left: 2% !important;
+            right: auto !important;
+            bottom: auto !important;
+            width: min(540px, 34%) !important;
+            height: auto !important;
+            max-width: none !important;
+        }
+        #p3-switching-container.side-layout #blind-team-total-overlay {
+            position: relative;
+            inset: auto;
+            width: 100%;
+        }
         #p3-switching-container.ticker-layout {
             top: 0 !important;
             left: 0 !important;
@@ -2934,10 +2948,10 @@
             width: min(520px, 100%);
         }
         #p3-switching-container.ticker-layout #live-bidders-overlay {
-            top: auto;
-            left: auto;
-            right: 24px;
-            bottom: 118px;
+            top: 12%;
+            left: 2%;
+            right: auto;
+            bottom: auto;
             width: min(500px, calc(100% - 48px));
             padding: 12px !important;
             border-color: rgba(56,189,248,0.32) !important;
@@ -6818,6 +6832,9 @@
             const biddersConfigured = String(map?.live_bidders_show ?? '0') === '1';
             const liveBidRows = biddersConfigured ? buildLiveBidRows(map, activeAuctionItem) : [];
             const biddersShow = biddersConfigured && liveBidRows.length > 0;
+            const tickerLayout = biddersShow;
+            container.classList.toggle('ticker-layout', tickerLayout);
+            container.classList.toggle('side-layout', !tickerLayout);
 
             const top = map.blind_totals_top || '10%';
             const left = map.blind_totals_left || '2%';
@@ -6828,9 +6845,6 @@
             const fontSize = Math.max(9, Math.min(96, parseInt(map.blind_totals_font_size || '14', 10) || 14));
             const opacityRaw = parseInt(map.blind_totals_opacity ?? '0', 10);
             const opacity = Math.max(0, Math.min(100, Number.isFinite(opacityRaw) ? opacityRaw : 0)) / 100;
-            const tickerLayout = String(map?.blind_totals_display_mode || 'pages') === 'ticker';
-            container.classList.toggle('ticker-layout', tickerLayout);
-
             container.style.removeProperty('top');
             container.style.removeProperty('left');
             container.style.removeProperty('right');
@@ -6850,12 +6864,16 @@
                 container.style.width = width;
                 container.style.height = height;
             }
-            container.style.setProperty('--blind-total-fs', fontSize + 'px');
+            const effectiveFontSize = tickerLayout ? Math.min(fontSize, 34) : Math.min(fontSize, 24);
+            container.style.setProperty('--blind-total-fs', effectiveFontSize + 'px');
             container.style.setProperty('--blind-total-opacity', String(opacity));
             biddersPanel.style.setProperty('--blind-total-fs', Math.min(fontSize, 24) + 'px');
 
             if (totalsShow) {
-                renderBlindTeamTotals(map, items);
+                renderBlindTeamTotals({
+                    ...map,
+                    blind_totals_display_mode: tickerLayout ? 'ticker' : 'pages'
+                }, items);
             } else {
                 totalsPanel.classList.remove('active');
             }
