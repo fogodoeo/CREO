@@ -65,23 +65,40 @@
             width: 100%;
             aspect-ratio: 16 / 9;
             background-color: #000;
-            border: 4px solid #1E293B;
+            border: 0;
             border-radius: 12px;
             position: relative;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4);
+            box-shadow: inset 0 0 0 4px #1E293B, 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4);
             overflow: hidden;
         }
 
         /* The actual live broadcast screen loaded in iframe */
         .broadcast-iframe {
-            width: 100%;
-            height: 100%;
+            width: 1920px;
+            height: 1080px;
             border: none;
             position: absolute;
             top: 0;
             left: 0;
+            transform: scale(var(--preview-output-scale, 1));
+            transform-origin: 0 0;
             pointer-events: none;
             z-index: 1;
+        }
+        .preview-resolution-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            z-index: 60;
+            padding: 6px 9px;
+            border: 1px solid rgba(255,255,255,0.16);
+            border-radius: 999px;
+            background: rgba(5, 10, 19, 0.76);
+            color: #cbd5e1;
+            font-size: 10px;
+            font-weight: 800;
+            pointer-events: none;
+            backdrop-filter: blur(8px);
         }
 
         /* Transparent drag overlay */
@@ -395,6 +412,13 @@
         body.preview-page-3 .draggable-blind-totals {
             background: rgba(217, 176, 92, 0.04);
             border-style: solid;
+        }
+        body.preview-clean-view .drag-overlay {
+            pointer-events: none;
+            background: transparent;
+        }
+        body.preview-clean-view .drag-overlay .draggable-element {
+            display: none !important;
         }
         @media (max-width: 900px) {
             body.preview-page-3 .control-panel { position: static; }
@@ -896,6 +920,7 @@
         </div>
         <!-- 16:9 OBS screen simulation -->
         <div class="screen-container" id="screen-container">
+            <div class="preview-resolution-badge" id="preview-resolution-badge">실제 송출 1920×1080</div>
             <!-- Actual broadcast page inside -->
             <iframe class="broadcast-iframe" id="broadcast-frame" src="broadcast.html?page=2&amp;module=cdcup&amp;v=20260715-suji-region"></iframe>
             
@@ -1079,6 +1104,10 @@
                     <div class="switch-container" id="toggle-blind-totals-display-group" style="display:none;">
                         <span style="font-weight: 800;">팀합산 하단 자막</span>
                         <input type="checkbox" id="toggle-blind-totals-ticker" class="switch-input" onchange="toggleBlindTotalsTicker(this.checked)" aria-label="팀합산 한 줄 자막 모드">
+                    </div>
+                    <div class="switch-container" id="toggle-preview-guides-group" style="display:none;">
+                        <span style="font-weight: 800;">배치선 표시</span>
+                        <input type="checkbox" id="toggle-preview-guides" class="switch-input" checked onchange="togglePreviewGuides(this.checked)" aria-label="편집용 배치선 표시">
                     </div>
                     <div class="switch-container" id="toggle-bracket-mode-group" style="display:none; gap: 6px; align-items: center; border-left: 1px solid var(--border); padding-left: 12px; margin-left: 6px;">
                         <span style="font-weight: 700;">송출 모드:</span>
@@ -1360,6 +1389,7 @@
                 setDisplay('toggle-blind-totals-font-group', !isCrewart);
                 setDisplay('toggle-blind-totals-opacity-group', !isCrewart);
                 setDisplay('toggle-blind-totals-display-group', !isCrewart);
+                setDisplay('toggle-preview-guides-group', true);
                 setDisplay('toggle-live-bidders-show-group', !isCrewart);
                 setDisplay('toggle-live-bidders-switch-group', !isCrewart);
                 setDisplay('toggle-live-bidders-mode-group', !isCrewart);
@@ -1405,6 +1435,10 @@
 
         // Set Nav Active and iframe source
         const frame = document.getElementById('broadcast-frame');
+        frame.addEventListener('load', () => {
+            if (!previewConfigMap || !Object.keys(previewConfigMap).length) return;
+            frame.contentWindow.postMessage({ type: 'configUpdate', config: previewConfigMap }, '*');
+        });
         const pageTitle = document.getElementById('page-title');
         const initialModuleId = requestedModuleId() || 'cdcup';
         updatePreviewTabs(initialModuleId);
@@ -1471,6 +1505,7 @@
             document.getElementById('toggle-blind-totals-font-group').style.display = isInitialCrewart ? 'none' : '';
             document.getElementById('toggle-blind-totals-opacity-group').style.display = isInitialCrewart ? 'none' : '';
             document.getElementById('toggle-blind-totals-display-group').style.display = isInitialCrewart ? 'none' : '';
+            document.getElementById('toggle-preview-guides-group').style.display = '';
             document.getElementById('bracket-coords').style.display = '';
             document.getElementById('bracket-live-coords').style.display = 'none';
             document.getElementById('bracket-title-coords').style.display = 'none'; // Hidden per user request
@@ -1491,6 +1526,19 @@
         // Draggables Configuration
         const container = document.getElementById('screen-container');
         const dragOverlay = document.getElementById('drag-overlay');
+        function syncPreviewOutputScale() {
+            if (!container) return;
+            const scale = Math.min(container.clientWidth / 1920, container.clientHeight / 1080);
+            container.style.setProperty('--preview-output-scale', String(scale || 1));
+            const badge = document.getElementById('preview-resolution-badge');
+            if (badge) badge.textContent = `실제 송출 1920×1080 · ${Math.round((scale || 1) * 100)}% 축소`;
+        }
+        syncPreviewOutputScale();
+        if (window.ResizeObserver) {
+            new ResizeObserver(syncPreviewOutputScale).observe(container);
+        } else {
+            window.addEventListener('resize', syncPreviewOutputScale, { passive: true });
+        }
         const elements = {
             banner: {
                 el: document.getElementById('draggable-banner'),
@@ -1648,8 +1696,9 @@
             const tickerToggle = document.getElementById('toggle-blind-totals-ticker');
             if (tickerToggle) tickerToggle.checked = mode === 'ticker';
             try {
-                await updateConfigs({ blind_totals_display_mode: mode, blind_totals_page_size: '6', blind_totals_page_interval: '5' });
-                frame.contentWindow.postMessage({ type: 'forceRefresh' }, '*');
+                const patch = { blind_totals_display_mode: mode, blind_totals_page_size: '6', blind_totals_page_interval: '5' };
+                await updateConfigs(patch);
+                postPreviewConfigPatch(patch);
                 toast(mode === 'ticker' ? '팀 실시간 내역을 한 줄 자막으로 표시합니다.' : '팀 실시간 내역을 6팀씩 5초 간격으로 순환합니다.');
             } catch (error) {
                 toast('팀내역 표시 방식 저장 실패: ' + error.message);
@@ -1658,6 +1707,11 @@
 
         function toggleBlindTotalsTicker(checked) {
             updateBlindTotalsDisplayMode(checked ? 'ticker' : 'pages');
+        }
+
+        function togglePreviewGuides(show) {
+            document.body.classList.toggle('preview-clean-view', !show);
+            toast(show ? '편집용 배치선을 표시합니다.' : '실제 1920×1080 송출 화면만 표시합니다.');
         }
 
         function wheelBlindTotalsOpacity(event) {
@@ -1988,6 +2042,8 @@
                         }
                     }
                 }
+                // 부모와 iframe이 각자 가진 캐시 시점이 달라도 미리보기는 같은 설정을 즉시 사용한다.
+                postPreviewConfigPatch(cfg);
             }
             } catch(err) { console.error('Config load failed:', err); }
         }
@@ -2495,13 +2551,14 @@
                 try {
                     await updateConfigs({ [configKey]: requestedShow });
                     if (elements[key].show === requestedShow) {
+                        postPreviewConfigPatch({ [configKey]: requestedShow });
                         if (pageNum === '3' && (key === 'bracket_full' || key === 'bracket_live')) {
                             frame.contentWindow.postMessage({
                                 type: 'bracketVisibility',
                                 key,
                                 show: requestedShow
                             }, '*');
-                        } else {
+                        } else if (key !== 'blind_totals') {
                             frame.contentWindow.postMessage({ type: 'forceRefresh' }, '*');
                         }
                     }
