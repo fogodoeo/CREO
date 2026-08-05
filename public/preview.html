@@ -413,6 +413,17 @@
             background: rgba(217, 176, 92, 0.04);
             border-style: solid;
         }
+        body.preview-team-ticker #draggable-blind-totals {
+            top: auto !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            width: 100% !important;
+            height: 10% !important;
+            border-radius: 0;
+            cursor: default;
+        }
+        body.preview-team-ticker #draggable-blind-totals .resize-handle { display: none; }
         body.preview-clean-view .drag-overlay {
             pointer-events: none;
             background: transparent;
@@ -1695,6 +1706,9 @@
             const mode = value === 'ticker' ? 'ticker' : 'pages';
             const tickerToggle = document.getElementById('toggle-blind-totals-ticker');
             if (tickerToggle) tickerToggle.checked = mode === 'ticker';
+            document.body.classList.toggle('preview-team-ticker', mode === 'ticker');
+            const label = document.querySelector('#draggable-blind-totals .element-label');
+            if (label) label.textContent = mode === 'ticker' ? '팀합산 하단 자막 · 위치 고정' : '블라인드 팀 합산';
             try {
                 const patch = { blind_totals_display_mode: mode, blind_totals_page_size: '6', blind_totals_page_interval: '5' };
                 await updateConfigs(patch);
@@ -1905,6 +1919,9 @@
                     if (blindOpacityInput) { blindOpacityInput.value = elements.blind_totals.opacity; previewBlindTotalsOpacity(elements.blind_totals.opacity); }
                     const blindTickerToggle = document.getElementById('toggle-blind-totals-ticker');
                     if (blindTickerToggle) blindTickerToggle.checked = cfg.blind_totals_display_mode === 'ticker';
+                    document.body.classList.toggle('preview-team-ticker', cfg.blind_totals_display_mode === 'ticker');
+                    const blindTotalsLabel = document.querySelector('#draggable-blind-totals .element-label');
+                    if (blindTotalsLabel) blindTotalsLabel.textContent = cfg.blind_totals_display_mode === 'ticker' ? '팀합산 하단 자막 · 위치 고정' : '블라인드 팀 합산';
 
                     // 실시간 입찰자 설정 팝업 데이터 로딩
                     const liveBiddersShow = cfg.live_bidders_show !== undefined ? String(cfg.live_bidders_show) : '0';
