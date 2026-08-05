@@ -1,6 +1,27 @@
 {
   "version": "crewart-tendency-v12.3-balanced-3to2",
   "title": "크레와트 성향 테스트",
+  "editorGuide": {
+    "purpose": "크레 앞에서 개체를 고르고 돌보는 상황을 소재로, 정답이 없는 선택을 통해 평소의 판단 경향을 재미로 살펴본다.",
+    "audience": "크레스티드게코 경험이 적어도 장면을 상상해 답할 수 있는 일반 참여자",
+    "tone": ["자연스러운 일상 장면", "짧고 쉬운 문장", "정답처럼 보이지 않는 선택지", "특정 지식이나 경제력에 의존하지 않는 상황"],
+    "answerDesign": "각 문항은 네 선택지를 제공한다. 선택지는 정답·오답이 아니라 서로 다른 행동 흐름을 나타내며, 선택지만 읽어도 MBTI 글자를 바로 추측하기 어렵게 작성한다.",
+    "scoringDesign": "각 선택지는 주축 글자에 strongSignalPoints, 보조축 글자에 supportingSignalPoints를 부여한다. 질문의 axis와 secondaryAxis가 어떤 축을 측정하는지 명시한다.",
+    "rewriteRules": [
+      "먹이·탈피·청소·온습도처럼 정답이 정해진 관리 지식 문제는 핵심 성향 문항으로 쓰지 않는다.",
+      "선택지 사이의 차이는 행동 순서·주의를 두는 대상·결정 방식 중 하나로 분명하게 만든다.",
+      "질문 상황과 선택지는 초보자도 한 번 읽고 이해할 수 있게 쓴다.",
+      "선택지 문장에 E/I, S/N, T/F, J/P 또는 성향 이름을 직접 드러내지 않는다.",
+      "한쪽 선택지가 상식적으로 명백히 우월하거나 안전해 보이지 않도록 한다.",
+      "문항을 수정한 뒤에도 id, axis, secondaryAxis, options, optionCriteria, optionWeights 구조를 유지한다."
+    ],
+    "workflow": [
+      "이 파일의 editorGuide와 scoring을 먼저 읽는다.",
+      "questions의 label, q, options만 자연스럽게 수정하고 optionCriteria·optionWeights는 의도적으로 검토한다.",
+      "각 축의 주축·보조축 문항 수와 네 선택지의 구조를 검증한다.",
+      "웹 코드 파일은 질문지 리뉴얼만으로 수정하지 않는다. JSON을 단일 원본으로 사용한다."
+    ]
+  },
   "scoring": {
     "method": "weighted_sum",
     "strongSignalPoints": 3,

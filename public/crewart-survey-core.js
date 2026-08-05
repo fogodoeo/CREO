@@ -5,10 +5,10 @@
 }(typeof globalThis !== 'undefined' ? globalThis : this, function () {
     'use strict';
 
-    const SURVEY_VERSION = 'crewart-tendency-v12.3-balanced-3to2';
-    const AXIS_SCORE_TOTAL = 15;
-    const PRIMARY_SIGNAL_POINTS = 3;
-    const SECONDARY_SIGNAL_POINTS = 2;
+    let SURVEY_VERSION = 'crewart-tendency-v12.3-balanced-3to2';
+    let AXIS_SCORE_TOTAL = 15;
+    let PRIMARY_SIGNAL_POINTS = 3;
+    let SECONDARY_SIGNAL_POINTS = 2;
     const AXES = ['EI', 'SN', 'TF', 'JP'];
     const HOUSE_KEYS = ['SF', 'ST', 'NT', 'NF'];
     const MBTI_TYPES = [
@@ -34,6 +34,87 @@
         { id: 'Q11', axis: 'EI', secondaryAxis: 'JP', facet: 'rejoining', label: '친구와 다시 합류했을 때', q: '다시 만난 뒤 먼저 하는 행동은?', options: ['서로 가장 기억나는 부스를 말하고 한 곳을 정한다', '서로 찍은 사진을 보며 다음에 볼 곳을 고른다', '내가 찍은 사진을 훑고 다시 볼 한 곳을 정한다', '각자 조금 더 둘러본 뒤 다시 만나자고 한다'], scores: ['E', 'E', 'I', 'I'], scorePairs: [['E', 'J'], ['E', 'P'], ['I', 'J'], ['I', 'P']], scoreWeights: [[3, 2], [3, 2], [3, 2], [3, 2]] },
         { id: 'Q12', axis: 'SN', secondaryAxis: 'TF', facet: 'name-card', label: '이름표 시안 중 하나를 고를 때', q: '두 시안을 처음 비교하는 방식은?', options: ['글자 크기와 사진 배치의 차이를 본다', '매일 볼 때 어느 쪽이 더 마음에 들지 본다', '사육장 전체 분위기와 어떻게 이어질지 본다', '나중에 사진이나 장식을 바꿔도 어울릴지 본다'], scores: ['S', 'S', 'N', 'N'], scorePairs: [['S', 'T'], ['S', 'F'], ['N', 'F'], ['N', 'T']], scoreWeights: [[3, 2], [3, 2], [3, 2], [3, 2]] }
     ];
+
+    const QUESTIONNAIRE_FILE = 'crewart-survey-questions-v12.3-balanced-3to2.json';
+    let questionnaireSpec = null;
+
+    function normalizeQuestionnaireSpec(spec) {
+        if (!spec || !Array.isArray(spec.questions) || !spec.questions.length) {
+            throw new Error('Questionnaire spec must contain a non-empty questions array.');
+        }
+        const questions = spec.questions.map((question, index) => {
+            const optionCriteria = Array.isArray(question.optionCriteria)
+                ? question.optionCriteria
+                : question.scorePairs;
+            const scorePairs = Array.isArray(optionCriteria)
+                ? optionCriteria.map(criteria => {
+                    if (Array.isArray(criteria)) return criteria.slice(0, 2);
+                    return [criteria?.[question.axis], criteria?.[question.secondaryAxis]];
+                })
+                : [];
+            const scoreWeights = (question.optionWeights || question.scoreWeights || [])
+                .map(weight => Array.isArray(weight) ? weight.slice(0, 2).map(Number) : [PRIMARY_SIGNAL_POINTS, SECONDARY_SIGNAL_POINTS]);
+            if (!question.id || !question.axis || !question.secondaryAxis
+                || !Array.isArray(question.options) || question.options.length !== 4
+                || scorePairs.length !== 4 || scoreWeights.length !== 4
+                || scorePairs.some(pair => pair.length !== 2 || !pair[0] || !pair[1])) {
+                throw new Error(`Invalid questionnaire item at index ${index}.`);
+            }
+            return {
+                ...question,
+                options: question.options.slice(),
+                scores: scorePairs.map(pair => pair[0]),
+                scorePairs,
+                scoreWeights
+            };
+        });
+        const ids = new Set(questions.map(question => question.id));
+        if (ids.size !== questions.length) throw new Error('Questionnaire item ids must be unique.');
+        return {
+            version: String(spec.version || SURVEY_VERSION),
+            scoring: spec.scoring || {},
+            questions
+        };
+    }
+
+    function applyQuestionnaireSpec(spec) {
+        const normalized = normalizeQuestionnaireSpec(spec);
+        questionnaireSpec = normalized;
+        SURVEY_VERSION = normalized.version;
+        PRIMARY_SIGNAL_POINTS = Number(normalized.scoring.strongSignalPoints) || PRIMARY_SIGNAL_POINTS;
+        SECONDARY_SIGNAL_POINTS = Number(normalized.scoring.supportingSignalPoints) || SECONDARY_SIGNAL_POINTS;
+        AXIS_SCORE_TOTAL = (Number(normalized.scoring.primaryQuestionsPerAxis) || 3) * PRIMARY_SIGNAL_POINTS
+            + (Number(normalized.scoring.secondaryQuestionsPerAxis) || 3) * SECONDARY_SIGNAL_POINTS;
+        QUESTIONS.splice(0, QUESTIONS.length, ...normalized.questions);
+        return normalized;
+    }
+
+    let readyResolve;
+    let readyReject;
+    const ready = new Promise((resolve, reject) => {
+        readyResolve = resolve;
+        readyReject = reject;
+    });
+
+    if (typeof module === 'object' && module.exports && typeof require === 'function') {
+        try {
+            applyQuestionnaireSpec(require(`./${QUESTIONNAIRE_FILE}`));
+            readyResolve();
+        } catch (error) {
+            readyReject(error);
+        }
+    } else if (typeof fetch === 'function' && typeof document !== 'undefined') {
+        const url = new URL(QUESTIONNAIRE_FILE, document.baseURI).href;
+        fetch(url, { cache: 'no-store' })
+            .then(response => {
+                if (!response.ok) throw new Error(`Questionnaire fetch failed: ${response.status}`);
+                return response.json();
+            })
+            .then(spec => { applyQuestionnaireSpec(spec); readyResolve(); })
+            .catch(readyReject);
+    } else {
+        readyResolve();
+    }
 
     const AXIS_META = {
         EI: {
@@ -302,15 +383,11 @@
         return `${perception}${decision}`;
     }
 
-    return {
-        SURVEY_VERSION,
+    const api = {
         AXES,
         HOUSE_KEYS,
         HOUSE_META,
         MBTI_TYPES,
-        AXIS_SCORE_TOTAL,
-        PRIMARY_SIGNAL_POINTS,
-        SECONDARY_SIGNAL_POINTS,
         QUESTIONS,
         AXIS_META,
         TYPE_NAMES,
@@ -323,6 +400,16 @@
         buildSpeedBenchmark,
         chooseTendencyHouse,
         median,
-        average
+        average,
+        ready,
+        questionnaireFile: QUESTIONNAIRE_FILE,
+        getQuestionnaireSpec: () => questionnaireSpec
     };
+    Object.defineProperties(api, {
+        SURVEY_VERSION: { enumerable: true, get: () => SURVEY_VERSION },
+        AXIS_SCORE_TOTAL: { enumerable: true, get: () => AXIS_SCORE_TOTAL },
+        PRIMARY_SIGNAL_POINTS: { enumerable: true, get: () => PRIMARY_SIGNAL_POINTS },
+        SECONDARY_SIGNAL_POINTS: { enumerable: true, get: () => SECONDARY_SIGNAL_POINTS }
+    });
+    return api;
 }));

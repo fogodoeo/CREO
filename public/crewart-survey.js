@@ -12,11 +12,13 @@
     const MEMBERSHIP_PHONE_STORAGE_KEY = 'crewart_band_member_phone_mask_v1';
     const LAST_RESULT_STORAGE_KEY = 'crewart_last_result_v1';
     const LAST_RESULT_VERSION = 1;
-    const COMPATIBLE_RESULT_QUESTION_VERSIONS = Object.freeze([
-        Core.SURVEY_VERSION,
+    const LEGACY_RESULT_QUESTION_VERSIONS = Object.freeze([
         'crewart-tendency-v8.1',
         'crewart-tendency-v8.0'
     ]);
+    const isCompatibleResultQuestionVersion = version => (
+        version === Core.SURVEY_VERSION || LEGACY_RESULT_QUESTION_VERSIONS.includes(version)
+    );
     const MEMBERSHIP_RECHECK_VISIBLE_MS = 1000;
     const MEMBERSHIP_RECHECK_HIDDEN_MS = 10000;
     const MEMBERSHIP_RECHECK_TIMEOUT_MS = 15 * 60 * 1000;
@@ -181,7 +183,7 @@
     function loadLastResult() {
         try {
             const snapshot = JSON.parse(localStorage.getItem(LAST_RESULT_STORAGE_KEY) || 'null');
-            if (snapshot?.version !== LAST_RESULT_VERSION || !COMPATIBLE_RESULT_QUESTION_VERSIONS.includes(snapshot.questionVersion)) return null;
+            if (snapshot?.version !== LAST_RESULT_VERSION || !isCompatibleResultQuestionVersion(snapshot.questionVersion)) return null;
             if (!Core.MBTI_TYPES.includes(snapshot.result?.code)) return null;
             if (!Core.HOUSE_KEYS.includes(snapshot.assignedHouseKey)) return null;
             if (!Array.isArray(snapshot.result?.axes) || snapshot.result.axes.length !== 4) return null;
@@ -2247,7 +2249,7 @@
     }
 
     function initialize() {
-        if (!Core || Core.QUESTIONS.length !== 12) {
+        if (!Core || !Array.isArray(Core.QUESTIONS) || Core.QUESTIONS.length < 1) {
             toast('테스트 데이터를 불러오지 못했어요.', true);
             return;
         }
@@ -2273,5 +2275,10 @@
         }
     }
 
-    initialize();
+    Promise.resolve(Core?.ready)
+        .then(initialize)
+        .catch(error => {
+            console.error('[Crewart questionnaire]', error);
+            toast('문항 파일을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.', true);
+        });
 }());
