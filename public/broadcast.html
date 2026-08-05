@@ -2907,6 +2907,12 @@
             inset: auto;
             width: 100%;
         }
+        #p3-switching-container.side-layout #blind-team-total-overlay .blind-total-row {
+            --rank-text-opacity: 1;
+        }
+        #p3-switching-container.side-layout #blind-team-total-overlay .blind-total-list {
+            gap: 5px;
+        }
         #p3-switching-container.ticker-layout {
             top: 0 !important;
             left: 0 !important;
@@ -6872,7 +6878,9 @@
             if (totalsShow) {
                 renderBlindTeamTotals({
                     ...map,
-                    blind_totals_display_mode: tickerLayout ? 'ticker' : 'pages'
+                    blind_totals_display_mode: tickerLayout ? 'ticker' : 'pages',
+                    blind_totals_page_size: tickerLayout ? map?.blind_totals_page_size : '8',
+                    blind_totals_page_interval: tickerLayout ? map?.blind_totals_page_interval : '5'
                 }, items);
             } else {
                 totalsPanel.classList.remove('active');
