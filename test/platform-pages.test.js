@@ -73,7 +73,7 @@ test('home is an operational channel launcher without duplicate management route
     assert.doesNotMatch(hub, /모든 경매 운영을|한곳에서\.|채널은 완전히|공통 도구|관리하기/);
 });
 
-test('every channel uses one broadcast studio with specialized CDCUP and CREWARTS adapters', () => {
+test('every non-legacy channel uses the shared workspace, control, and overlay engine', () => {
     const { channelLinks } = require('../platform-core');
     assert.equal(channelLinks('cdcup').control, '/broadcast-studio.html?channel=cdcup');
     assert.equal(channelLinks('crewart').control, '/broadcast-studio.html?channel=crewart');
@@ -83,14 +83,15 @@ test('every channel uses one broadcast studio with specialized CDCUP and CREWART
     const control = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-control.html'), 'utf8');
     assert.match(studio, /function controlKind/);
     assert.match(studio, /settings\.html\?module=/);
-    assert.match(studio, /kind==='crewart'/);
+    assert.doesNotMatch(studio, /kind==='crewart'/);
+    assert.match(studio, /channel\?\.id==='cdcup'\?'cdcup':'platform'/);
     assert.match(studio, /auction-control\.html\?channel=/);
     assert.match(studio, /broadcast-router\.html\?event=/);
     assert.match(studio, /id="layout-1"/);
     assert.match(studio, /id="layout-2"/);
     assert.match(studio, /id="layout-3"/);
-    assert.match(studio, /preview\.html\?module=/);
-    assert.match(studio, /page=\$\{page\}&embedded=1/);
+    assert.doesNotMatch(studio, /preview\.html\?module=/);
+    assert.match(studio, /broadcast-router\.html\?event=\$\{encodeURIComponent\(channel\.id\)\}&page=\$\{page\}/);
     assert.match(studio, /data-mode="layout" data-page="1"/);
     assert.match(studio, /id="mode-operations"/);
     assert.match(studio, /function operationsUrl/);
@@ -114,6 +115,16 @@ test('channel creation starts with a safe generated id and protects unsaved edit
     assert.match(manager, /function canDiscard\(\)/);
     assert.match(manager, /beforeunload/);
     assert.match(manager, /scrollbar-width:none/);
+    assert.match(manager, /function syncFeatureUi/);
+    assert.match(manager, /data-key="topN"/);
+    assert.doesNotMatch(manager, /<label for="broadcast-template">집계 화면 기본형/);
+});
+
+test('shared workspace builds real select fields for channel groups and auction state', () => {
+    const workspace = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-workspace.html'), 'utf8');
+    assert.match(workspace, /field\('groupId',term\('group','그룹'\),record\?\.groupId,'select'/);
+    assert.match(workspace, /field\('status','상태',record\?\.status,'select'/);
+    assert.match(workspace, /field\('winnerAlias','방송용 낙찰자명'/);
 });
 
 test('the new broadcast implements three independent camera overlays', () => {
@@ -131,6 +142,8 @@ test('the new broadcast implements three independent camera overlays', () => {
     assert.match(live, /broadcast-pulse/);
     assert.match(live, /setInterval\(pollPulse,350\)/);
     assert.match(live, /function teamStats\(items\)/);
+    assert.match(live, /function scoreboardRows\(channel,items,board\)/);
+    assert.match(live, /function boardValue\(row,board,unit\)/);
     assert.match(live, /팀별 낙찰금액/);
     assert.match(live, /quizStatus==='open'/);
     assert.match(live, /첫 정답자/);
@@ -191,7 +204,9 @@ test('broadcast control manages reusable banners, sponsors, and vendor logos', (
     assert.match(control, /crewartSampleAssets/);
     assert.match(control, /name="quizQuestion"/);
     assert.match(control, /value="vendor">업체별 금액/);
-    assert.match(control, /value="team">팀별 금액/);
+    assert.match(control, /value="team">그룹별 금액/);
+    assert.match(control, /name="scoreboardId"/);
+    assert.match(live, /function scoreboardRows/);
     assert.match(control, /seedCrewartAssets/);
     assert.match(live, /CREWART_DEFAULT_ASSETS/);
     const crewartLive = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-broadcast.html'), 'utf8');

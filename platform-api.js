@@ -127,6 +127,7 @@ function sanitizeBroadcastState(input = {}) {
         page2BannerUrl: cleanText(input.page2BannerUrl, 600),
         page3On: booleanValue(input.page3On, false),
         extraMode,
+        scoreboardId: cleanText(input.scoreboardId, 64),
         page3Title: cleanText(input.page3Title || input.headline, 120),
         quizOn: booleanValue(input.quizOn, false),
         quizStatus: ['ready', 'open', 'closed'].includes(input.quizStatus) ? input.quizStatus : 'ready',
@@ -153,6 +154,7 @@ function sanitizeRecord(type, input = {}, current = {}) {
             manager: cleanText(input.manager, 60),
             phone: cleanText(input.phone, 30),
             logoUrl: cleanText(input.logoUrl, 600),
+            groupId: cleanText(input.groupId, 64),
             address: cleanText(input.address, 240),
             note: cleanText(input.note, 500),
             active: input.active !== false
@@ -165,6 +167,9 @@ function sanitizeRecord(type, input = {}, current = {}) {
             vendorId: cleanText(input.vendorId, 64),
             vendorName: cleanText(input.vendorName, 80),
             teamName: cleanText(input.teamName, 60),
+            groupId: cleanText(input.groupId, 64),
+            category: cleanText(input.category, 60),
+            points: numberValue(input.points),
             name: cleanText(input.name, 100),
             startPrice: Math.max(0, numberValue(input.startPrice)),
             soldPrice: Math.max(0, numberValue(input.soldPrice)),
@@ -172,6 +177,7 @@ function sanitizeRecord(type, input = {}, current = {}) {
             note: cleanText(input.note, 1000),
             photoUrl: cleanText(input.photoUrl, 600),
             winnerName: cleanText(input.winnerName, 80),
+            winnerAlias: cleanText(input.winnerAlias, 80),
             winnerPhone: cleanText(input.winnerPhone, 30),
             attributes: input.attributes && typeof input.attributes === 'object' ? input.attributes : {}
         };
@@ -215,6 +221,7 @@ function validateRecord(type, record, workspace) {
     const errors = [];
     if (type === 'vendor') {
         if (!record.name) errors.push('업체명을 입력해 주세요.');
+        if (record.groupId && !workspace.groups?.some((group) => group.id === record.groupId)) errors.push('이 채널에 등록되지 않은 그룹입니다.');
         if (record.code && workspace.vendors.some((vendor) => vendor.code === record.code && vendor.id !== record.id)) {
             errors.push('이 채널에서 이미 사용 중인 업체 코드입니다.');
         }
@@ -225,6 +232,7 @@ function validateRecord(type, record, workspace) {
         if (record.vendorId && !workspace.vendors.some((vendor) => vendor.id === record.vendorId)) {
             errors.push('이 채널에 등록되지 않은 업체입니다.');
         }
+        if (record.groupId && !workspace.groups?.some((group) => group.id === record.groupId)) errors.push('이 채널에 등록되지 않은 그룹입니다.');
         if (workspace.items.some((item) => item.lotNumber === record.lotNumber && item.id !== record.id)) {
             errors.push('이 채널에서 이미 사용 중인 경매 번호입니다.');
         }
@@ -536,7 +544,8 @@ function createPlatformApi({ repository, logger = console } = {}) {
                         return publicItem({
                             ...item,
                             vendorName: vendor?.name || item.vendorName,
-                            vendorLogoUrl: vendor?.logoUrl || item.vendorLogoUrl
+                            vendorLogoUrl: vendor?.logoUrl || item.vendorLogoUrl,
+                            groupId: item.groupId || vendor?.groupId || ''
                         });
                     })
                 });
@@ -598,7 +607,7 @@ function createPlatformApi({ repository, logger = console } = {}) {
                     const body = await readJson(req);
                     const data = await workspace(channelId);
                     const record = sanitizeRecord(type, body.record);
-                    const errors = validateRecord(type, record, data);
+                    const errors = validateRecord(type, record, { ...data, groups: channel.groups || [] });
                     if (errors.length) {
                         replyJson(res, 422, { error: errors.join(' '), errors });
                         return;
@@ -670,7 +679,7 @@ function createPlatformApi({ repository, logger = console } = {}) {
                     }
                     const data = await workspace(channelId);
                     const record = sanitizeRecord(type, { ...body.record, id: current.id }, current);
-                    const errors = validateRecord(type, record, data);
+                    const errors = validateRecord(type, record, { ...data, groups: channel.groups || [] });
                     if (errors.length) {
                         replyJson(res, 422, { error: errors.join(' '), errors });
                         return;

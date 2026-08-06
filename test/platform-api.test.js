@@ -120,6 +120,20 @@ test('public broadcast payload excludes shipping and winner contacts', async () 
     assert.equal(response.json().items[0].winnerPhone, undefined);
 });
 
+test('group assignments are channel-configured and enrich public scoreboard data', async () => {
+    const repository = new MemoryRepository();
+    const api = createPlatformApi({ repository, logger: { error() {} } });
+    const catalog = await repository.getCatalog();
+    const alpha = normalizeChannel({ ...catalog.channels.find((channel) => channel.id === 'alpha'), groups: [{ id: 'red', name: 'RED', color: '#aa0000' }] });
+    await repository.saveCatalog(catalog.channels.map((channel) => channel.id === 'alpha' ? alpha : channel));
+    await call(api, 'POST', '/api/platform/channels/alpha/vendors', { record: { id: 'vendor_red', name: 'RED 업체', groupId: 'red' } });
+    await call(api, 'POST', '/api/platform/channels/alpha/items', { record: { id: 'item_red', lotNumber: 1, name: '개체', vendorId: 'vendor_red', soldPrice: 50000, status: 'sold', points: 5 } });
+    const response = await call(api, 'GET', '/api/platform/channels/alpha/broadcast', null, '');
+    assert.equal(response.status, 200);
+    assert.equal(response.json().items[0].groupId, 'red');
+    assert.equal(response.json().items[0].points, 5);
+});
+
 test('round archives snapshot each channel without leaking records across channels', async () => {
     const repository = new MemoryRepository();
     const api = createPlatformApi({ repository, logger: { error() {} } });
