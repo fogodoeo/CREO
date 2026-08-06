@@ -333,10 +333,8 @@ body.crewart-broadcast {
     overflow: hidden;
     color: var(--cw-ink);
     background:
-        radial-gradient(circle at 50% -18%, rgba(245,219,142,.26), transparent 34%),
-        radial-gradient(circle at 12% 18%, rgba(126,36,54,.28), transparent 28%),
-        radial-gradient(circle at 87% 20%, rgba(31,79,143,.22), transparent 28%),
-        linear-gradient(180deg, #08050d 0%, #140b18 52%, #07050a 100%);
+        linear-gradient(180deg, rgba(12,5,2,.22), rgba(6,2,1,.58)),
+        url('assets/crewart-broadcast/crewarts-great-hall.png') center/cover no-repeat;
     isolation: isolate;
 }
 
@@ -345,27 +343,20 @@ body.crewart-broadcast {
     position: absolute;
     inset: 0;
     z-index: -2;
-    background:
-        radial-gradient(circle, rgba(255,244,213,.92) 0 1px, transparent 1.8px) 8% 13% / 120px 120px,
-        radial-gradient(circle, rgba(224,184,90,.62) 0 1px, transparent 1.7px) 42% 7% / 170px 140px,
-        radial-gradient(circle, rgba(255,255,255,.58) 0 1px, transparent 1.5px) 75% 18% / 150px 130px;
-    opacity: .55;
+    background:linear-gradient(90deg,rgba(0,0,0,.5),transparent 28% 72%,rgba(0,0,0,.5));
+    opacity: 1;
 }
 
 .cw-broadcast-root::after {
     content: '';
     position: absolute;
-    left: -4vw;
-    right: -4vw;
-    bottom: 7vh;
+    left: 0;
+    right: 0;
+    bottom: 0;
     z-index: -1;
-    height: 38vh;
-    background:
-        linear-gradient(180deg, transparent 0 34%, rgba(0,0,0,.36) 35% 100%),
-        repeating-linear-gradient(90deg, transparent 0 8vw, rgba(224,184,90,.13) 8vw 8.16vw, transparent 8.16vw 15vw);
-    border-top: 1px solid rgba(224,184,90,.13);
-    opacity: .78;
-    clip-path: polygon(0 34%, 6% 26%, 12% 34%, 18% 24%, 24% 34%, 31% 23%, 38% 34%, 45% 25%, 52% 34%, 60% 22%, 68% 34%, 76% 24%, 84% 34%, 92% 25%, 100% 34%, 100% 100%, 0 100%);
+    height: 32vh;
+    background:linear-gradient(180deg,transparent,rgba(5,2,1,.72));
+    opacity: 1;
 }
 
 .cw-broadcast-root.score-only .crewart-scoreboard {
@@ -376,8 +367,8 @@ body.crewart-broadcast {
     padding: 3.6vh 5vw 1.4vh;
     border: 0;
     background:
-        radial-gradient(circle at 50% -10%, rgba(224,184,90,.28), transparent 34%),
-        linear-gradient(180deg, rgba(12,7,16,.96), rgba(5,4,9,.98));
+        linear-gradient(180deg,rgba(20,9,3,.24),rgba(8,3,1,.82)),
+        url('assets/crewart-broadcast/crewarts-great-hall.png') center/cover no-repeat;
 }
 
 .cw-broadcast-root.score-only .crewart-score-head h1 {
@@ -408,9 +399,17 @@ body.crewart-broadcast {
 }
 
 .cw-current-auction--waiting {
-    display: flex;
-    justify-content: center;
+    inset:3.5vh 4vw 13vh;
+    grid-template-columns:minmax(180px,.65fr) minmax(420px,1.3fr) minmax(220px,.72fr);
+    gap:2vw;
+    justify-content:center;
 }
+
+.cw-waiting-crest { width:min(32vw,390px);max-height:64vh;justify-self:center;object-fit:contain;filter:drop-shadow(0 22px 28px rgba(0,0,0,.58)); }
+.cw-waiting-mascot { width:min(28vw,360px);max-height:69vh;align-self:end;justify-self:center;object-fit:contain;filter:drop-shadow(0 24px 20px rgba(0,0,0,.55)); }
+.cw-house-key { display:flex;justify-content:center;gap:8px;margin-top:2.2vh; }
+.cw-house-key b { display:grid;width:clamp(42px,4vw,70px);aspect-ratio:1;place-items:center;border:1px solid #d9b86d;background:#691f20;color:#f9e6b5;font-family:Georgia,serif;font-size:clamp(20px,2vw,34px);box-shadow:inset 0 0 0 3px rgba(255,230,170,.12),0 8px 20px rgba(0,0,0,.3);clip-path:polygon(50% 0,94% 20%,85% 88%,50% 100%,15% 88%,6% 20%); }
+.cw-house-key b:nth-child(2){background:#1e5132}.cw-house-key b:nth-child(3){background:#203f72}.cw-house-key b:nth-child(4){background:#9b6e18}
 
 .cw-current-photo {
     width: 100%;
@@ -433,7 +432,7 @@ body.crewart-broadcast {
     padding: clamp(26px, 4vw, 64px);
     border: 1px solid rgba(224,184,90,.42);
     background:
-        linear-gradient(135deg, rgba(44,27,31,.92), rgba(16,9,18,.9)),
+        linear-gradient(135deg, rgba(48,24,10,.93), rgba(15,7,3,.92)),
         radial-gradient(circle at 0 0, rgba(224,184,90,.18), transparent 32%);
     box-shadow:
         inset 0 0 0 1px rgba(255,244,213,.06),
@@ -458,6 +457,9 @@ body.crewart-broadcast {
     margin: 0 auto;
     text-align: center;
 }
+.cw-current-copy.is-waiting h1 { font-size:clamp(42px,4.6vw,82px);line-height:1.05; }
+
+.cw-current-crest { width:clamp(76px,7vw,126px);height:clamp(88px,8vw,144px);margin-bottom:1vh;object-fit:contain;filter:drop-shadow(0 10px 16px rgba(0,0,0,.45)); }
 
 .cw-current-copy .eyebrow {
     color: var(--cw-gold);
@@ -472,7 +474,8 @@ body.crewart-broadcast {
     color: #fff8df;
     font-size: clamp(48px, 6vw, 112px);
     line-height: .98;
-    font-weight: 980;
+    font-family:Georgia,'Times New Roman',serif;
+    font-weight: 800;
     text-shadow: 0 6px 32px rgba(0,0,0,.5), 0 0 28px rgba(224,184,90,.13);
 }
 
@@ -500,24 +503,20 @@ body.crewart-broadcast {
     position: absolute;
     right: 3vw;
     top: 4vh;
-    width: min(420px, 32vw);
-    display: grid;
-    gap: 8px;
+    width:min(350px,27vw);display:grid;grid-template-columns:repeat(4,1fr);gap:7px;
 }
 
 .cw-mini-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    display:flex;
+    flex-direction:column;
     align-items: center;
     gap: 10px;
-    min-height: 48px;
-    padding: 10px 13px;
+    min-height:78px;padding:10px 8px;
     border: 1px solid color-mix(in srgb, var(--house) 55%, transparent);
     background:
-        linear-gradient(90deg, color-mix(in srgb, var(--house) 30%, transparent), rgba(12,7,15,.76)),
-        rgba(16,11,22,.72);
+        linear-gradient(180deg,color-mix(in srgb,var(--house) 78%,rgba(20,8,3,.15)),color-mix(in srgb,var(--house) 52%,rgba(8,3,1,.82)));
     box-shadow:
-        inset 5px 0 0 var(--house),
+        inset 0 4px 0 var(--house),
         0 10px 28px rgba(0,0,0,.2);
 }
 
@@ -525,13 +524,12 @@ body.crewart-broadcast {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: 13px;
-    font-weight: 850;
+    font-family:Georgia,serif;font-size:26px;font-weight:900;
 }
 
 .cw-mini-row strong {
     color: var(--cw-gold);
-    font-size: 16px;
+    font-size:12px;
     font-weight: 930;
     font-variant-numeric: tabular-nums;
 }

@@ -201,9 +201,20 @@ test('broadcast control manages reusable banners, sponsors, and vendor logos', (
     const legacySettings = fs.readFileSync(path.join(__dirname, '..', 'public', 'settings.html'), 'utf8');
     assert.match(legacySettings, /m\.crewart_ticker = m\.ticker/);
     assert.match(legacySettings, /delete m\.ticker/);
-    for (const asset of ['crewart-live-banner.svg', 'crewart-house-banner.svg', 'creo-live-mark.svg']) {
+    for (const asset of [
+        'crewart-live-banner.svg',
+        'crewart-house-banner.svg',
+        'creo-live-mark.svg',
+        'crewarts-crest.png',
+        'crewarts-great-hall.png',
+        'creo-mascot-parchment.png'
+    ]) {
         assert.ok(fs.existsSync(path.join(__dirname, '..', 'public', 'assets', 'crewart-broadcast', asset)));
     }
+    const crewartModules = fs.readFileSync(path.join(__dirname, '..', 'public', 'event-modules.js'), 'utf8');
+    assert.match(crewartModules, /CREWARTS HOUSE CUP/);
+    assert.match(crewartModules, /houseOrder = \{R:0,G:1,B:2,Y:3\}/);
+    assert.match(crewartLive, /class="cw-house-key"><b>R<\/b><b>G<\/b><b>B<\/b><b>Y<\/b>/);
 });
 
 test('broadcast setup keeps live operations separate and removes dead legacy controls', () => {

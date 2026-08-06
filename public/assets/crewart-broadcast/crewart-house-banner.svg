@@ -1,9 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="460" viewBox="0 0 1600 460" role="img" aria-labelledby="title desc">
-  <title id="title">CREWARTS RGBY house banner</title>
-  <desc id="desc">RED GREEN BLUE YELLOW house teams</desc>
-  <rect width="1600" height="460" rx="30" fill="#11151d"/>
-  <path d="M0 0h400v460H0z" fill="#b8343c"/><path d="M400 0h400v460H400z" fill="#177d4a"/><path d="M800 0h400v460H800z" fill="#276bc5"/><path d="M1200 0h400v460h-400z" fill="#c7991d"/>
-  <rect width="1600" height="460" rx="30" fill="#000" fill-opacity=".17"/>
-  <g fill="#fff" font-family="Arial, sans-serif" font-weight="900" text-anchor="middle"><text x="200" y="225" font-size="132">R</text><text x="600" y="225" font-size="132">G</text><text x="1000" y="225" font-size="132">B</text><text x="1400" y="225" font-size="132">Y</text><text x="200" y="300" font-size="24" letter-spacing="5">RED</text><text x="600" y="300" font-size="24" letter-spacing="5">GREEN</text><text x="1000" y="300" font-size="24" letter-spacing="5">BLUE</text><text x="1400" y="300" font-size="24" letter-spacing="5">YELLOW</text></g>
-  <text x="800" y="71" fill="#fff" fill-opacity=".9" font-family="Arial, sans-serif" font-size="22" font-weight="800" letter-spacing="8" text-anchor="middle">CREWARTS HOUSE TEAMS</text>
+  <title id="title">CREWARTS R G B Y houses</title>
+  <desc id="desc">Four medieval house banners</desc>
+  <defs>
+    <linearGradient id="stone" x2="0" y2="1"><stop stop-color="#3b2a1d"/><stop offset="1" stop-color="#160c07"/></linearGradient>
+    <linearGradient id="gold" x2="1"><stop stop-color="#7b4d18"/><stop offset=".5" stop-color="#f0d18a"/><stop offset="1" stop-color="#8b581d"/></linearGradient>
+    <filter id="shadow"><feDropShadow dx="0" dy="14" stdDeviation="11" flood-opacity=".55"/></filter>
+  </defs>
+  <rect width="1600" height="460" rx="24" fill="url(#stone)"/>
+  <path d="M0 118h1600M0 230h1600M0 342h1600M250 0v460M520 0v460M790 0v460M1060 0v460M1330 0v460" stroke="#e5c27a" stroke-opacity=".07" stroke-width="3"/>
+  <rect x="22" y="22" width="1556" height="416" rx="14" fill="none" stroke="url(#gold)" stroke-width="4"/>
+  <text x="800" y="68" fill="#efd99b" font-family="Georgia,serif" font-size="25" font-weight="700" letter-spacing="10" text-anchor="middle">CREWARTS HOUSE CUP</text>
+  <g filter="url(#shadow)" font-family="Georgia,serif" font-weight="700" text-anchor="middle">
+    <g transform="translate(170 92)"><path d="M0 0h250v278l-125 58L0 278z" fill="#792728" stroke="url(#gold)" stroke-width="7"/><path d="M13 14h224v250l-112 52L13 264z" fill="none" stroke="#f1d695" stroke-opacity=".42" stroke-width="2"/><text x="125" y="205" fill="#f7e8bd" font-size="142">R</text></g>
+    <g transform="translate(510 92)"><path d="M0 0h250v278l-125 58L0 278z" fill="#245638" stroke="url(#gold)" stroke-width="7"/><path d="M13 14h224v250l-112 52L13 264z" fill="none" stroke="#f1d695" stroke-opacity=".42" stroke-width="2"/><text x="125" y="205" fill="#f7e8bd" font-size="142">G</text></g>
+    <g transform="translate(850 92)"><path d="M0 0h250v278l-125 58L0 278z" fill="#274778" stroke="url(#gold)" stroke-width="7"/><path d="M13 14h224v250l-112 52L13 264z" fill="none" stroke="#f1d695" stroke-opacity=".42" stroke-width="2"/><text x="125" y="205" fill="#f7e8bd" font-size="142">B</text></g>
+    <g transform="translate(1190 92)"><path d="M0 0h250v278l-125 58L0 278z" fill="#a37720" stroke="url(#gold)" stroke-width="7"/><path d="M13 14h224v250l-112 52L13 264z" fill="none" stroke="#f1d695" stroke-opacity=".42" stroke-width="2"/><text x="125" y="205" fill="#fff0ba" font-size="142">Y</text></g>
+  </g>
 </svg>

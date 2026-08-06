@@ -6,12 +6,12 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <title>크레와트 송출</title>
     <script src="supabase-bridge.js?v=20260720-quota-fallback-v2"></script>
-    <script src="event-modules.js?v=20260710-crebti3"></script>
+    <script src="event-modules.js?v=20260806-house-redesign"></script>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="crewart.css?v=20260707-magic2">
+    <link rel="stylesheet" href="crewart.css?v=20260806-house-redesign">
     <style>
-        .cw-live-quiz{position:absolute;inset:8% 7% 11%;display:grid;place-items:center}.cw-live-quiz-card{width:min(1040px,90vw);padding:clamp(34px,5vw,70px);border:1px solid rgba(224,184,90,.45);border-radius:22px;background:linear-gradient(145deg,rgba(18,10,20,.97),rgba(8,5,13,.96));box-shadow:0 30px 100px rgba(0,0,0,.55);text-align:center}.cw-live-quiz-card small{color:#e0b85a;font-size:clamp(12px,1.2vw,18px);font-weight:950;letter-spacing:.22em}.cw-live-quiz-card h1{margin:24px 0 0;color:#fff8df;font-size:clamp(38px,5.4vw,82px);line-height:1.16;letter-spacing:-.055em}.cw-live-quiz-card p{margin:24px 0 0;color:#cab98b;font-size:clamp(14px,1.4vw,22px);font-weight:760}.cw-live-quiz-result{margin-top:30px;padding-top:25px;border-top:1px solid rgba(224,184,90,.3);color:#fff4d5;font-size:clamp(24px,3vw,46px);font-weight:950}.cw-live-quiz-result b{color:#e0b85a}
+        .cw-live-quiz{position:absolute;inset:6% 7% 12%;display:grid;place-items:center}.cw-live-quiz-card{position:relative;width:min(1040px,90vw);padding:clamp(34px,4vw,64px);border:3px double #8a5c24;background:linear-gradient(90deg,rgba(102,59,21,.13),transparent 20% 80%,rgba(102,59,21,.13)),linear-gradient(180deg,#f6e8bd,#d6b873);box-shadow:0 30px 100px rgba(0,0,0,.62),inset 0 0 0 7px rgba(255,250,220,.22);color:#2c1a0f;text-align:center}.cw-live-quiz-card img{width:clamp(90px,9vw,150px);height:clamp(104px,10vw,170px);margin-top:clamp(-110px,-7vw,-70px);object-fit:contain;filter:drop-shadow(0 10px 14px rgba(0,0,0,.38))}.cw-live-quiz-card small{display:block;color:#6f421d;font-family:Georgia,serif;font-size:clamp(12px,1.2vw,18px);font-weight:900;letter-spacing:.22em}.cw-live-quiz-card h1{margin:20px 0 0;color:#24140c;font-family:Georgia,serif;font-size:clamp(38px,5vw,78px);line-height:1.12}.cw-live-quiz-card p{margin:22px 0 0;color:#664a2d;font-size:clamp(14px,1.4vw,22px);font-weight:760}.cw-live-quiz-result{margin-top:28px;padding-top:23px;border-top:1px solid rgba(79,45,15,.34);color:#2b1a12;font-size:clamp(24px,3vw,46px);font-weight:950}.cw-live-quiz-result b{color:#7a2a20}
     </style>
 </head>
 <body class="crewart-page crewart-broadcast">
@@ -28,6 +28,7 @@
     <script>
         const params = new URLSearchParams(location.search);
         const explicitPageMode = params.has('page') ? String(params.get('page') || 'score').toLowerCase() : '';
+        const demoMode = params.get('demo') === '1';
         const root = document.getElementById('root');
         const stage = document.getElementById('stage');
         const mini = document.getElementById('mini-score');
@@ -100,10 +101,12 @@
 
         function renderMiniScore(items) {
             const result = buildCrewartHouseScores(items || [], config);
-            mini.innerHTML = result.houses.slice(0, 4).map(row => `
-                <div class="cw-mini-row" style="--house:${esc(row.color)};">
-                    <span>${esc(row.name)}</span>
-                    <strong>${Math.round(row.points).toLocaleString('ko-KR')}점</strong>
+            const rows=result.houses.map(row=>{const key=({RED:'R',GREEN:'G',BLUE:'B',YELLOW:'Y'})[String(row.name||'').toUpperCase()]||String(row.name||'?').slice(0,1).toUpperCase();return{row,key}}).sort((a,b)=>'RGBY'.indexOf(a.key)-'RGBY'.indexOf(b.key));
+            const palette={R:'#7a2528',G:'#24543a',B:'#294d83',Y:'#a9781d'};
+            mini.innerHTML = rows.slice(0, 4).map(({row,key}) => `
+                <div class="cw-mini-row" style="--house:${esc(palette[key]||row.color)};">
+                    <span>${esc(key)}</span>
+                    <strong>${Math.round(row.points).toLocaleString('ko-KR')} P</strong>
                 </div>
             `).join('');
         }
@@ -122,14 +125,14 @@
             const open = status === 'open';
             const answer = String(cfg.live_quiz_answer || '').trim();
             const winner = String(cfg.live_quiz_winner || '').trim();
-            stage.innerHTML = `<section class="cw-live-quiz"><div class="cw-live-quiz-card"><small>${closed ? 'QUIZ RESULT' : open ? 'SURPRISE QUIZ · OPEN' : 'SURPRISE QUIZ'}</small><h1>${esc(cfg.live_quiz_question || '문제를 준비하고 있습니다.')}</h1>${closed ? `<div class="cw-live-quiz-result">${answer ? `정답 <b>${esc(answer)}</b><br>` : ''}${winner ? `첫 정답자 · ${esc(winner)}` : '정답자 확인 중'}</div>` : `<p>${open ? '채팅으로 정답을 입력해주세요. 가장 먼저 맞힌 사람이 정답자입니다.' : '잠시 후 정답 접수를 시작합니다.'}</p>`}</div></section>`;
+            stage.innerHTML = `<section class="cw-live-quiz"><div class="cw-live-quiz-card"><img src="assets/crewart-broadcast/crewarts-crest.png" alt=""><small>${closed ? 'QUIZ RESULT' : open ? 'SURPRISE QUIZ · OPEN' : 'SURPRISE QUIZ'}</small><h1>${esc(cfg.live_quiz_question || '문제를 준비하고 있습니다.')}</h1>${closed ? `<div class="cw-live-quiz-result">${answer ? `정답 <b>${esc(answer)}</b><br>` : ''}${winner ? `첫 정답자 · ${esc(winner)}` : '정답자 확인 중'}</div>` : `<p>${open ? '채팅으로 정답을 입력해주세요. 가장 먼저 맞힌 사람이 정답자입니다.' : '잠시 후 정답 접수를 시작합니다.'}</p>`}</div></section>`;
         }
 
         function renderAuction(item, items) {
             root.classList.remove('score-only');
             renderMiniScore(items);
             if (!item) {
-                stage.innerHTML = '<section class="cw-current-auction cw-current-auction--waiting"><div class="cw-current-copy is-waiting"><div class="eyebrow">CREWART GREAT HALL</div><h1>마법 경매 대기중</h1><div class="cw-current-meta"><span>기숙사 점수 집계 준비</span><span>낙찰 시 기숙사 컵에 즉시 반영</span></div></div></section>';
+                stage.innerHTML = '<section class="cw-current-auction cw-current-auction--waiting"><img class="cw-waiting-crest" src="assets/crewart-broadcast/crewarts-crest.png" alt=""><div class="cw-current-copy is-waiting"><div class="eyebrow">CREWARTS GREAT HALL</div><h1>잠시 후 시작합니다</h1><div class="cw-house-key"><b>R</b><b>G</b><b>B</b><b>Y</b></div></div><img class="cw-waiting-mascot" src="assets/crewart-broadcast/creo-mascot-parchment.png" alt=""></section>';
                 return;
             }
             const photo = item.photoItem ? `<img class="cw-current-photo" src="${esc(item.photoItem)}" alt="">` : '<div class="cw-current-photo"></div>';
@@ -137,7 +140,7 @@
                 <section class="cw-current-auction">
                     ${photo}
                     <div class="cw-current-copy">
-                        <div class="eyebrow">MAGICAL LOT</div>
+                        <img class="cw-current-crest" src="assets/crewart-broadcast/crewarts-crest.png" alt=""><div class="eyebrow">CREWARTS LOT</div>
                         <h1>${esc(item.name || item.displayName || '마법 개체')}</h1>
                         <div class="cw-current-meta">
                             <span>개체 번호 ${esc(auctionNumber(item))}</span>
@@ -188,28 +191,37 @@
                     getRuntimeConfigMap(false),
                     getBroadcastItemsCached(force, 15000)
                 ]);
-                const activeRow = (items || []).find(isActive) || null;
-                const active = activeRow ? await enrichBroadcastItem(activeRow) : null;
+                const demoItems = demoMode ? [
+                    {id:'demo-live',num:12,name:'릴리화이트 크레',status:'진행',startPrice:18,photoItem:'assets/crewart-broadcast/creo-mascot-parchment.png',auctionType:'crewart',winner:'RINA'},
+                    {id:'demo-r',num:1,name:'R LOT',status:'낙찰',soldPrice:42,winner:'RINA',auctionType:'crewart'},
+                    {id:'demo-g',num:2,name:'G LOT',status:'낙찰',soldPrice:36,winner:'GREENY',auctionType:'crewart'},
+                    {id:'demo-b',num:3,name:'B LOT',status:'낙찰',soldPrice:58,winner:'BLUEMOON',auctionType:'crewart'},
+                    {id:'demo-y',num:4,name:'Y LOT',status:'낙찰',soldPrice:29,winner:'YELLO',auctionType:'crewart'}
+                ] : [];
+                const frameItems = demoMode ? demoItems : (items || []);
+                const activeRow = frameItems.find(isActive) || null;
+                const active = activeRow ? (demoMode ? activeRow : await enrichBroadcastItem(activeRow)) : null;
                 config = {
                     ...(cfg || {}),
                     ticker: cfg?.crewart_ticker ?? cfg?.ticker,
                     badge_text: cfg?.crewart_badge_text ?? cfg?.badge_text,
                     ticker_interval: cfg?.crewart_ticker_interval ?? cfg?.ticker_interval,
-                    active_event_module: 'crewart'
+                    active_event_module: 'crewart',
+                    ...(demoMode ? {crewart_participants:'RINA,RED\nGREENY,GREEN\nBLUEMOON,BLUE\nYELLO,YELLOW'} : {})
                 };
                 applyAuctionEventModule(config);
                 applyTicker(config);
-                detectNewSold(items || []);
+                detectNewSold(frameItems);
                 const pageMode = currentPageMode();
                 root.dataset.mode = pageMode;
                 if (String(config.live_quiz_show || '0') === '1') {
                     renderQuiz(config);
                 } else if (pageMode === 'auction') {
-                    renderAuction(active, items || []);
+                    renderAuction(active, frameItems);
                 } else if (pageMode === 'host') {
-                    renderAuction(null, items || []);
+                    renderAuction(null, frameItems);
                 } else {
-                    renderScore(items || []);
+                    renderScore(frameItems);
                 }
             } catch (error) {
                 stage.innerHTML = '<div class="cw-current-auction"><div></div><div class="cw-current-copy"><div class="eyebrow">ERROR</div><h1>송출 데이터 오류</h1><div class="cw-current-meta"><span>' + esc(error.message || error) + '</span></div></div></div>';
