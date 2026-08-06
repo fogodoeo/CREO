@@ -54,21 +54,25 @@
     });
 
     const DEFAULT_HOUSES = Object.freeze([
-        { id: 'sensory', name: '감각형', color: '#B91C1C', accent: '#FCA5A5' },
-        { id: 'care', name: '관리형', color: '#047857', accent: '#86EFAC' },
-        { id: 'analysis', name: '분석형', color: '#1D4ED8', accent: '#93C5FD' },
-        { id: 'vision', name: '비전형', color: '#6D28D9', accent: '#C4B5FD' }
+        { id: 'red', name: 'RED', color: '#C83C3C', accent: '#FFC0C0' },
+        { id: 'green', name: 'GREEN', color: '#16824A', accent: '#B9EBCB' },
+        { id: 'blue', name: 'BLUE', color: '#2868C7', accent: '#BDD7FF' },
+        { id: 'yellow', name: 'YELLOW', color: '#C9961A', accent: '#FFE7A0' }
     ]);
 
     const LEGACY_HOUSE_NAMES = Object.freeze({
-        '용맹의 탑': '감각형',
-        '지혜의 탑': '관리형',
-        '조화의 탑': '분석형',
-        '야망의 탑': '비전형',
-        '루멘크라운': '감각형',
-        '모스그로브': '관리형',
-        '세이블퀼': '분석형',
-        '오닉스테일': '비전형'
+        '감각형': 'RED',
+        '용맹의 탑': 'RED',
+        '루멘크라운': 'RED',
+        '관리형': 'GREEN',
+        '지혜의 탑': 'GREEN',
+        '모스그로브': 'GREEN',
+        '분석형': 'BLUE',
+        '조화의 탑': 'BLUE',
+        '세이블퀼': 'BLUE',
+        '비전형': 'YELLOW',
+        '야망의 탑': 'YELLOW',
+        '오닉스테일': 'YELLOW'
     });
 
     function normalizeModuleId(value) {

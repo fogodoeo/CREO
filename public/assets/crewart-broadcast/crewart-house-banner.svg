@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="460" viewBox="0 0 1600 460" role="img" aria-labelledby="title desc">
+  <title id="title">CREWARTS RGBY house banner</title>
+  <desc id="desc">RED GREEN BLUE YELLOW house teams</desc>
+  <rect width="1600" height="460" rx="30" fill="#11151d"/>
+  <path d="M0 0h400v460H0z" fill="#b8343c"/><path d="M400 0h400v460H400z" fill="#177d4a"/><path d="M800 0h400v460H800z" fill="#276bc5"/><path d="M1200 0h400v460h-400z" fill="#c7991d"/>
+  <rect width="1600" height="460" rx="30" fill="#000" fill-opacity=".17"/>
+  <g fill="#fff" font-family="Arial, sans-serif" font-weight="900" text-anchor="middle"><text x="200" y="225" font-size="132">R</text><text x="600" y="225" font-size="132">G</text><text x="1000" y="225" font-size="132">B</text><text x="1400" y="225" font-size="132">Y</text><text x="200" y="300" font-size="24" letter-spacing="5">RED</text><text x="600" y="300" font-size="24" letter-spacing="5">GREEN</text><text x="1000" y="300" font-size="24" letter-spacing="5">BLUE</text><text x="1400" y="300" font-size="24" letter-spacing="5">YELLOW</text></g>
+  <text x="800" y="71" fill="#fff" fill-opacity=".9" font-family="Arial, sans-serif" font-size="22" font-weight="800" letter-spacing="8" text-anchor="middle">CREWARTS HOUSE TEAMS</text>
+</svg>

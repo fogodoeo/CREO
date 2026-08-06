@@ -632,6 +632,7 @@
             element('progress-axis').textContent = '안내사항';
             element('progress-bar').style.width = '0%';
             element('question-back').disabled = false;
+            element('question-label').hidden = false;
             element('question-label').textContent = 'BEFORE YOU START';
             element('question-title').textContent = '시작 전, 이것만 확인해 주세요';
             element('choice-list').innerHTML = `
@@ -664,7 +665,10 @@
         element('progress-axis').textContent = '크레 앞의 나를 찾는 중';
         element('progress-bar').style.width = `${(current / questions.length) * 100}%`;
         element('question-back').disabled = false;
-        element('question-label').textContent = question.label;
+        // Scenario labels are useful for the question editor, but duplicate the actual
+        // question for participants and cost valuable vertical space on mobile.
+        element('question-label').hidden = true;
+        element('question-label').textContent = '';
         element('question-title').textContent = question.q;
         element('choice-list').classList.toggle('is-four-option', isFourOption);
         element('choice-list').innerHTML = options.map((option, index) => `

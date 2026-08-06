@@ -105,6 +105,18 @@ test('house assignment follows the result SN and TF combination', () => {
     assert.equal(Core.chooseTendencyHouse({ code: 'INTJ' }), 'NT');
 });
 
+test('house assignments use the unified RGBY team names', () => {
+    assert.deepEqual(
+        Core.HOUSE_KEYS.map(key => ({ key, name: Core.HOUSE_META[key].name, seal: Core.HOUSE_META[key].seal })),
+        [
+            { key: 'SF', name: 'RED', seal: 'R' },
+            { key: 'ST', name: 'GREEN', seal: 'G' },
+            { key: 'NT', name: 'BLUE', seal: 'B' },
+            { key: 'NF', name: 'YELLOW', seal: 'Y' }
+        ]
+    );
+});
+
 test('usual type comparison identifies each matching and changed axis', () => {
     const comparison = Core.buildMbtiComparison('ISTJ', 'ISFJ');
     assert.equal(comparison.knownType, 'ISTJ');

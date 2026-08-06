@@ -38,7 +38,7 @@ const DEFAULT_CHANNELS = Object.freeze([
             text: '#fffaf0'
         }),
         features: Object.freeze({ tournament: false, survey: true, ranking: true }),
-        legacy: Object.freeze({ items: false, managementUrl: '/crewart-settings.html', controlUrl: '/settings.html?module=crewart' })
+        legacy: Object.freeze({ items: false, managementUrl: '/auction-control.html?channel=crewart', controlUrl: '/auction-control.html?channel=crewart' })
     })
 ]);
 

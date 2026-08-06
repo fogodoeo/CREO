@@ -165,11 +165,13 @@
         ESTJ: '루틴 운영자', ESFJ: '함께 돌보는 사람', ENFJ: '방향 연결자', ENTJ: '프로젝트 지휘자'
     };
 
+    // The four teams use a single, immediately readable RGBY system everywhere.
+    // Keys stay semantic so existing saved results and score aggregation remain compatible.
     const HOUSE_META = {
-        SF: { name: 'ALPHA', korean: '알파', color: 'RED', seal: 'A', accent: '#df5a4b' },
-        ST: { name: 'BRAVO', korean: '브라보', color: 'GREEN', seal: 'B', accent: '#6f9164' },
-        NT: { name: 'CHARLIE', korean: '찰리', color: 'YELLOW', seal: 'C', accent: '#d9a83e' },
-        NF: { name: 'DELTA', korean: '델타', color: 'BLUE', seal: 'D', accent: '#567fc4' }
+        SF: { name: 'RED', korean: '레드', color: 'RED', seal: 'R', accent: '#df5a4b' },
+        ST: { name: 'GREEN', korean: '그린', color: 'GREEN', seal: 'G', accent: '#5f9667' },
+        NT: { name: 'BLUE', korean: '블루', color: 'BLUE', seal: 'B', accent: '#4f7fc8' },
+        NF: { name: 'YELLOW', korean: '옐로우', color: 'YELLOW', seal: 'Y', accent: '#d9a83e' }
     };
 
     function cloneQuestions() {

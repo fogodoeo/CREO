@@ -70,6 +70,7 @@ test('hub preserves established management and CDCUP broadcast control links', (
 test('CDCUP platform links use the established control while other channels use the unified control', () => {
     const { channelLinks } = require('../platform-core');
     assert.equal(channelLinks('cdcup').control, '/settings.html?module=cdcup');
+    assert.equal(channelLinks('crewart').control, '/auction-control.html?channel=crewart');
     assert.equal(channelLinks('sample').control, '/auction-control.html?channel=sample');
     const workspace = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-workspace.html'), 'utf8');
     const shipping = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-shipping.html'), 'utf8');
@@ -143,6 +144,12 @@ test('broadcast control manages reusable banners, sponsors, and vendor logos', (
     assert.match(live, /function vendorLogo/);
     assert.match(live, /ticker-sponsors/);
     assert.match(live, /Math\.floor\(Date\.now\(\)\/6000\)/);
+    assert.match(control, /crewartSampleAssets/);
+    assert.match(control, /seedCrewartAssets/);
+    assert.match(live, /CREWART_DEFAULT_ASSETS/);
+    for (const asset of ['crewart-live-banner.svg', 'crewart-house-banner.svg', 'creo-live-mark.svg']) {
+        assert.ok(fs.existsSync(path.join(__dirname, '..', 'public', 'assets', 'crewart-broadcast', asset)));
+    }
 });
 
 test('CREWARTS reveals the basic result first and unlocks member detail by phone', () => {
@@ -173,6 +180,7 @@ test('CREWARTS reveals the basic result first and unlocks member detail by phone
     assert.match(script, /\/api\/crewart-survey\/responses/);
     assert.doesNotMatch(script, /getConfigMap|saveCrewartSurveyEntry/);
     assert.doesNotMatch(script, /openBandJoinWindow|bandPopup|window\.open\('', '_blank'/);
+    assert.match(script, /question-label'\)\.hidden = true/);
     assert.match(script, /if \(!payload\.member\)[\s\S]*가입 후 돌아오면 같은 번호로 자동 확인해요[\s\S]*joinLink\.hidden = false[\s\S]*is-recommended[\s\S]*submitLabel\.textContent = '다시 확인'/);
     assert.match(script, /handleMemberJoinReturn[\s\S]*가입 승인 후 돌아오면 자동으로 다시 확인해요/);
     assert.match(css, /\.cw-dialog-band-button\.is-recheck/);
