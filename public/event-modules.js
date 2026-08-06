@@ -542,7 +542,10 @@
         });
         document.querySelectorAll('.js-event-admin-title').forEach(el => {
             if (!el.dataset.defaultTitle) el.dataset.defaultTitle = el.textContent || '';
-            el.textContent = el.dataset.eventAdminScope === 'module' ? module.adminTitle : el.dataset.defaultTitle;
+            const moduleTitle = document.documentElement.classList.contains('vendor-mode')
+                ? module.title
+                : module.adminTitle;
+            el.textContent = el.dataset.eventAdminScope === 'module' ? moduleTitle : el.dataset.defaultTitle;
         });
         document.querySelectorAll('.js-event-nav-icon').forEach(el => { el.textContent = module.navIcon; });
         return module;
