@@ -239,9 +239,9 @@
         .advanced-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:0 20px 20px}.advanced-grid>.card{box-shadow:none}
         .color-row { display:flex; gap:8px; align-items:center; }
         .color-row input[type=color] { width:36px; height:36px; border:none; border-radius:8px; cursor:pointer; background:transparent; padding:0; }
-        .save-fab { position:fixed; bottom:20px; right:20px; width:56px; height:56px; border-radius:50%; background:var(--green); border:none; color:#fff; font-size:22px; cursor:pointer; box-shadow:0 4px 16px rgba(16,185,129,0.4); z-index:999; transition:transform .2s; display:flex; align-items:center; justify-content:center; }
-        .save-fab:hover { transform:scale(1.1); }
-        .save-fab:active { transform:scale(0.95); }
+        .save-fab { position:fixed; right:20px; bottom:20px; min-width:136px; height:48px; padding:0 20px; border:0; border-radius:10px; background:var(--green); color:#fff; font-size:12px; font-weight:850; cursor:pointer; box-shadow:0 10px 30px rgba(0,0,0,.28); z-index:999; display:flex; align-items:center; justify-content:center; }
+        .save-fab:hover { filter:brightness(1.06); }
+        .save-fab:active { transform:translateY(1px); }
         html.embedded .cdcup-nav,html.embedded .cdcup-tabs{display:none!important}
         html.embedded .container{margin:0 auto;padding-top:16px}
         html.embedded #event-module-select-group{display:none}
@@ -345,65 +345,40 @@
             </div>
         </div>
 
-        <div class="section-heading"><strong>방송 중 제어</strong><span>송출 상태와 화면 요소를 즉시 바꿉니다.</span></div>
+        <div class="section-heading"><strong>퀴즈 화면</strong></div>
 
         <!-- ══ 돌발 퀴즈 ══ -->
         <div class="card" id="live-quiz-card" style="grid-column: span 2;">
-            <div class="card-title">돌발 퀴즈</div>
-            <div class="section-desc">문제를 송출하고 채팅 순서대로 첫 정답자를 확정합니다.</div>
+            <div class="card-title">퀴즈</div>
             <div class="form-row">
-                <div class="form-group"><label>송출 상태</label><select id="cfg-live-quiz-status"><option value="off">OFF</option><option value="ready">문제 준비</option><option value="open">정답 접수 중</option><option value="closed">정답 공개</option></select></div>
-                <div class="form-group"><label>첫 정답자</label><input id="cfg-live-quiz-winner" maxlength="80" placeholder="채팅에서 가장 먼저 맞힌 사람"></div>
+                <div class="form-group"><label>상태</label><select id="cfg-live-quiz-status"><option value="off">사용 안 함</option><option value="ready">준비</option><option value="open">정답 접수</option><option value="closed">정답 공개</option></select></div>
+                <div class="form-group"><label>정답자</label><input id="cfg-live-quiz-winner" maxlength="80"></div>
             </div>
             <div class="form-group"><label>문제</label><textarea id="cfg-live-quiz-question" rows="2" maxlength="180" placeholder="방송에 표시할 문제"></textarea></div>
-            <div class="form-group"><label>공개할 정답</label><input id="cfg-live-quiz-answer" maxlength="80" placeholder="정답 공개 상태에서만 화면에 표시"></div>
-            <div class="section-desc">현재는 운영자가 채팅을 확인해 첫 정답자를 입력합니다. 채팅 수집 봇 연결 시 이 정답자 칸을 자동으로 갱신할 수 있습니다.</div>
+            <div class="form-group"><label>정답</label><input id="cfg-live-quiz-answer" maxlength="80"></div>
         </div>
 
-        <!-- ══ 실시간 미리보기 ══ -->
-        <div class="card">
-            <div class="card-title">📺 실시간 방송 미리보기</div>
-            <div class="preview-tabs">
-                <button class="active" onclick="switchPreview(1,this)">1P 진행용</button>
-                <button onclick="switchPreview(2,this)">2P 개체용</button>
-                <button onclick="switchPreview(3,this)">3P 종합용</button>
-            </div>
-            <div class="preview-wrap"><iframe id="preview-frame" src="broadcast.html?page=1&amp;v=20260713-round-code-map-v1"></iframe></div>
-        </div>
-
-        <!-- ══ 빠른 제어 ══ -->
-        <div class="card" data-control-scope="cdcup">
-            <div class="card-title">⚡ 빠른 제어</div>
-            <div class="quick-toggles">
-                <div class="qtoggle" onclick="quickToggle('ticker')" id="qt-ticker"><div class="dot on"></div><span>자막 ON</span></div>
-                <div class="qtoggle" onclick="quickToggle('banner')" id="qt-banner"><div class="dot on"></div><span>배너 ON</span></div>
-                <div class="qtoggle" onclick="toggleBroadcastPhotos()" id="qt-photo"><div class="dot on"></div><span>사진 ON</span></div>
-                <div class="qtoggle" onclick="doShuffle()"><div class="dot" style="background:var(--orange)"></div><span>순서 섞기</span></div>
-            </div>
-        </div>
-
-        <div class="section-heading"><strong>방송 콘텐츠</strong><span>방송 중 교체할 자막과 배너입니다.</span></div>
+        <div class="section-heading"><strong>자막과 배너</strong></div>
 
         <!-- ══ 공지사항 (티커) 설정 ══ -->
         <div class="card">
-            <div class="card-title">📢 공지사항 자막 (티커)</div>
-            <div class="section-desc">줄바꿈으로 여러 문장을 구분하면 롤링됩니다. <b>[텍스트:#색상]</b> 형식으로 색상 강조 가능.</div>
+            <div class="card-title">하단 자막</div>
+            <div class="section-desc">여러 문장은 줄을 바꿔 입력합니다.</div>
             <div class="form-group">
                 <textarea id="cfg-ticker" rows="4" placeholder="[안내:#FFB84D] 입찰은 밴드 댓글로 참여해 주세요&#10;[규정:#7CF0FF] 호가 단위를 준수해 주세요"></textarea>
             </div>
             <div class="form-row">
-                <div class="form-group"><label>롤링 간격 (ms)</label><input type="number" id="cfg-ticker-interval" placeholder="4200"></div>
-                <div class="form-group"><label>LIVE 배지</label><input type="text" id="cfg-badge-text" placeholder="LIVE"></div>
-                <div class="form-group" data-control-scope="cdcup"><label>로고 크기 (px)</label><input type="number" id="cfg-ticker-sponsor-size" placeholder="46"></div>
-                <div class="form-group" data-control-scope="cdcup"><label>자막 폰트 크기 (px)</label><input type="number" id="cfg-ticker-fontsize" placeholder="40"></div>
+                <div class="form-group"><label>전환 시간</label><input type="number" id="cfg-ticker-interval" placeholder="4200"></div>
+                <div class="form-group"><label>왼쪽 표시</label><input type="text" id="cfg-badge-text" placeholder="LIVE"></div>
+                <div class="form-group" data-control-scope="cdcup"><label>로고 크기</label><input type="number" id="cfg-ticker-sponsor-size" placeholder="46"></div>
+                <div class="form-group" data-control-scope="cdcup"><label>글자 크기</label><input type="number" id="cfg-ticker-fontsize" placeholder="40"></div>
             </div>
             <div class="form-group" data-control-scope="cdcup">
                 <label>배경 스타일</label>
                 <input type="text" id="cfg-ticker-bg" placeholder="linear-gradient(135deg, rgba(17,30,56,0.94), rgba(7,9,15,0.98))">
             </div>
             <div class="form-group" data-control-scope="cdcup" style="margin-top:12px;">
-                <label>🖼️ 자막 스폰서/주최자 로고</label>
-                <div class="section-desc" style="margin-bottom:6px;">자막 바 좌우측 끝에 배치할 로고 이미지입니다. (2개 등록 시 좌1/우1, 4개 등록 시 좌2/우2로 자동 분배 정렬)</div>
+                <label>자막 로고</label>
                 <div id="sponsor-list"></div>
                 <button class="add-slot-btn" onclick="addSponsorSlot()" style="margin-top:6px;">+ 로고 추가</button>
             </div>
@@ -411,12 +386,11 @@
 
         <!-- ══ 롤링 배너 설정 ══ -->
         <div class="card" data-control-scope="cdcup">
-            <div class="card-title">🖼️ 롤링 이미지 배너</div>
-            <div class="section-desc">이미지 URL을 입력하면 방송 화면에 롤링 배너로 표시됩니다.</div>
+            <div class="card-title">이미지 배너</div>
             <div id="banner-list"></div>
             <button class="add-slot-btn" onclick="addBannerSlot()">+ 배너 추가</button>
             <div class="form-row" style="margin-top:12px">
-                <div class="form-group"><label>롤링 주기 (ms)</label><input type="number" id="cfg-banner-interval" placeholder="5000"></div>
+                <div class="form-group"><label>전환 시간</label><input type="number" id="cfg-banner-interval" placeholder="5000"></div>
                 <div class="form-group"><label>투명도</label><input type="text" id="cfg-banner-opacity" placeholder="0.93"></div>
             </div>
             <div class="form-row">
@@ -426,13 +400,12 @@
         </div>
 
         <details class="advanced-panel">
-            <summary><span>고급 화면 설정</span><span style="margin-left:auto;color:var(--text3);font-size:10px;font-weight:600">진행자 · 글꼴 · 로고 · 운영 보안</span></summary>
+            <summary><span>세부 설정</span><span style="margin-left:auto;color:var(--text3);font-size:10px;font-weight:600">진행자 · 글자 · 로고 · 비밀번호</span></summary>
             <div class="advanced-grid">
 
         <!-- ══ 1P 진행자 네임택 ══ -->
         <div class="card" data-control-scope="cdcup">
-            <div class="card-title">🎤 1P 진행자 네임택</div>
-            <div class="section-desc">1페이지 하단에 표시되는 진행자 이름표</div>
+            <div class="card-title">1 화면 진행자</div>
             <div class="form-row">
                 <div class="form-group"><label>진행자 1 이름</label><input type="text" id="cfg-host-name1" placeholder="예: 홍길동"></div>
                 <div class="form-group"><label>진행자 2 이름</label><input type="text" id="cfg-host-name2" placeholder="예: 김철수"></div>
@@ -442,14 +415,13 @@
                 <div class="form-group"><label>진행자 2 역할</label><input type="text" id="cfg-host-role2" placeholder="예: 해설"></div>
             </div>
             <div class="form-row">
-                <div class="form-group"><label>네임택 폰트 크기 (px)</label><input type="number" id="cfg-nametag-font-size" placeholder="22"></div>
+                <div class="form-group"><label>이름 크기</label><input type="number" id="cfg-nametag-font-size" placeholder="22"></div>
             </div>
         </div>
 
         <!-- ══ 2P 스코어보드 설정 ══ -->
         <div class="card" data-control-scope="cdcup">
-            <div class="card-title">⚽ 2P 스코어보드</div>
-            <div class="section-desc">2페이지 상단 정보 바 스타일 설정</div>
+            <div class="card-title">2 화면 정보</div>
             <div class="form-row">
                 <div class="form-group"><label>이름 폰트 크기 (px)</label><input type="number" id="cfg-scoreboard-name-fontsize" placeholder="30"></div>
                 <div class="form-group"><label>특성 폰트 크기 (px)</label><input type="number" id="cfg-scoreboard-pill-fontsize" placeholder="17"></div>
@@ -463,10 +435,9 @@
 
         <!-- ══ 3P 대진표 설정 ══ -->
         <div class="card" data-control-scope="cdcup">
-            <div class="card-title">3P 대진표</div>
-            <div class="section-desc">대진표 오버레이(3페이지)의 표시 스타일 설정</div>
+            <div class="card-title">3 화면 대진표</div>
             <div class="form-row">
-                <div class="form-group"><label>대진표 폰트 크기 (px)</label><input type="number" id="cfg-bracket-font-size" placeholder="14" min="8" max="40"></div>
+                <div class="form-group"><label>글자 크기</label><input type="number" id="cfg-bracket-font-size" placeholder="14" min="8" max="40"></div>
             </div>
         </div>
 
@@ -478,24 +449,10 @@
             <button class="add-slot-btn" onclick="addTeamLogoSlot()">+ 업체 로고 추가</button>
         </div>
 
-        <!-- ══ 안내사항 (룰) 설정 ══ -->
-        <div class="card" data-control-scope="cdcup">
-            <div class="card-title">📋 방송 안내사항 (룰 카드)</div>
-            <div class="section-desc"><b>[라벨]</b> 내용 형식으로 입력하면 라벨이 강조 표시됩니다. 예: <b>[호가] 1만원 단위</b></div>
-            <div id="rule-list"></div>
-            <button class="add-slot-btn" onclick="addRuleSlot()">+ 안내사항 추가</button>
-            <div class="form-group" style="margin-top:10px">
-                <label>위치</label>
-                <div class="form-row">
-                    <button class="btn secondary" id="rules-pos-top" onclick="setRulesPos('top')" style="flex:1">상단</button>
-                    <button class="btn secondary" id="rules-pos-bottom" onclick="setRulesPos('bottom')" style="flex:1">하단</button>
-                </div>
-            </div>
-        </div>
 
         <!-- ══ 비밀번호 ══ -->
         <div class="card">
-            <div class="card-title">🔑 비밀번호 설정</div>
+            <div class="card-title">관리 비밀번호</div>
             <div id="pw-status" style="font-size:12px;color:var(--text2)">확인 중...</div>
             <div id="pw-cur-wrap" style="display:none" class="form-group"><label>현재 비밀번호</label><input type="password" id="pw-current"></div>
             <div class="form-group"><label>새 비밀번호</label><input type="password" id="pw-new" placeholder="새 비밀번호"></div>
@@ -509,7 +466,7 @@
     </div>
 
     <div class="toast" id="toast"></div>
-    <button class="save-fab" onclick="saveBroadcastSettings()" title="전체 저장">💾</button>
+    <button class="save-fab" onclick="saveBroadcastSettings()">설정 저장</button>
 
     <script>
         let _cfg = {};
@@ -1105,18 +1062,18 @@
         // ── Save All ──
         async function saveBroadcastSettings() {
             const fab = document.querySelector('.save-fab');
-            fab.textContent = '⏳';
+            fab.textContent = '저장 중';
             fab.style.pointerEvents = 'none';
             const configMap = buildConfigMap();
             try {
                 await updateConfigs(configMap);
-                fab.textContent = '✓';
+                fab.textContent = '저장 완료';
                 fab.style.background = 'var(--green)';
-                toast('전체 설정이 저장되었습니다!');
+                toast('화면 설정을 저장했습니다.');
                 pushToPreview();
-                setTimeout(() => { fab.textContent = '💾'; fab.style.pointerEvents = ''; }, 1500);
+                setTimeout(() => { fab.textContent = '설정 저장'; fab.style.pointerEvents = ''; }, 1500);
             } catch(e) {
-                fab.textContent = '💾';
+                fab.textContent = '설정 저장';
                 fab.style.pointerEvents = '';
                 toast('저장 실패: ' + e.message, true);
             }
@@ -1194,16 +1151,13 @@
 
                 // rules
                 const ruleList = document.getElementById('rule-list');
-                ruleList.innerHTML = '';
-                let hasRule = false;
-                for (let i = 1; i <= 10; i++) {
-                    const v = cfg['rule'+i] || '';
-                    if (v) { addRuleSlot(v); hasRule = true; }
+                if (ruleList) {
+                    ruleList.innerHTML = '';
+                    for (let i = 1; i <= 10; i++) {
+                        const v = cfg['rule'+i] || '';
+                        if (v) addRuleSlot(v);
+                    }
                 }
-                if (!hasRule) { addRuleSlot(''); }
-                // rules position
-                _rulesPos = cfg.rules_position || 'top';
-                setRulesPos(_rulesPos);
                 // scoreboard
                 document.getElementById('cfg-scoreboard-name-fontsize').value = cfg.scoreboard_name_fontsize || '';
                 document.getElementById('cfg-scoreboard-pill-fontsize').value = cfg.scoreboard_pill_fontsize || '';

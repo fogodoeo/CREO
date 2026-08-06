@@ -166,7 +166,7 @@ test('broadcast studio exposes channel-scoped round archives for every channel',
     assert.match(studio, /cdcup-index\.html\?embedded=1&tab=archive/);
     assert.match(studio, /channel-archives\.html\?channel=/);
     assert.match(archives, /channels\/\$\{encodeURIComponent\(channelId\)\}\/archives/);
-    assert.match(archives, /현재 상태 저장/);
+    assert.match(archives, /회차 저장/);
 });
 
 test('legacy broadcast bridge survives Supabase quota exhaustion with cached or standby data', () => {
@@ -181,7 +181,7 @@ test('legacy broadcast bridge survives Supabase quota exhaustion with cached or 
 test('broadcast control manages reusable banners, sponsors, and vendor logos', () => {
     const control = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-control.html'), 'utf8');
     const live = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-live.html'), 'utf8');
-    for (const marker of ['배너·로고', '회전 배너', '협찬 로고', '업체 로고', 'importLegacyAssets']) {
+    for (const marker of ['화면 자산', '회전 배너', '협찬 로고', '업체 로고', 'importLegacyAssets']) {
         assert.match(control, new RegExp(marker));
     }
     assert.match(live, /function pageAssets/);
@@ -190,8 +190,8 @@ test('broadcast control manages reusable banners, sponsors, and vendor logos', (
     assert.match(live, /Math\.floor\(Date\.now\(\)\/6000\)/);
     assert.match(control, /crewartSampleAssets/);
     assert.match(control, /name="quizQuestion"/);
-    assert.match(control, /value="vendor">업체별 낙찰금액/);
-    assert.match(control, /value="team">팀별 낙찰금액/);
+    assert.match(control, /value="vendor">업체별 금액/);
+    assert.match(control, /value="team">팀별 금액/);
     assert.match(control, /seedCrewartAssets/);
     assert.match(live, /CREWART_DEFAULT_ASSETS/);
     const crewartLive = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-broadcast.html'), 'utf8');
@@ -204,6 +204,20 @@ test('broadcast control manages reusable banners, sponsors, and vendor logos', (
     for (const asset of ['crewart-live-banner.svg', 'crewart-house-banner.svg', 'creo-live-mark.svg']) {
         assert.ok(fs.existsSync(path.join(__dirname, '..', 'public', 'assets', 'crewart-broadcast', asset)));
     }
+});
+
+test('broadcast setup keeps live operations separate and removes dead legacy controls', () => {
+    const legacySettings = fs.readFileSync(path.join(__dirname, '..', 'public', 'settings.html'), 'utf8');
+    const control = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-control.html'), 'utf8');
+    const workspace = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-workspace.html'), 'utf8');
+    assert.doesNotMatch(legacySettings, /실시간 방송 미리보기|빠른 제어|방송 안내사항/);
+    assert.doesNotMatch(legacySettings, /id="preview-frame"|id="qt-photo"|id="rule-list"/);
+    assert.doesNotMatch(control, /id="preview-frame"|id="active-item"/);
+    assert.match(control, /1 화면/);
+    assert.match(control, /설정 저장/);
+    assert.match(workspace, /id="live-panel"/);
+    assert.match(workspace, /id="live-item"/);
+    assert.match(workspace, /function setLive/);
 });
 
 test('CREWARTS reveals the basic result first and unlocks member detail by phone', () => {
