@@ -489,7 +489,7 @@
         function broadcastPreviewSrc(page, moduleId) {
             const p = ['1', '2', '3'].includes(String(page)) ? String(page) : '1';
             return moduleId === 'crewart'
-                ? `crewart-broadcast.html?page=${p}`
+                ? `broadcast-router.html?event=crewart&page=${p}`
                     : `broadcast.html?page=${p}&v=20260713-round-code-map-v1`;
         }
 

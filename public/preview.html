@@ -1352,7 +1352,7 @@
         function broadcastPreviewSrc(page, moduleId) {
             const p = normalizePreviewPage(page);
             return moduleId === 'crewart'
-                ? `crewart-broadcast.html?page=${p}`
+                ? `broadcast-router.html?event=crewart&page=${p}`
                 : `broadcast.html?page=${p}&module=${encodeURIComponent(moduleId || 'cdcup')}&v=${broadcastAssetVersion}`;
         }
 

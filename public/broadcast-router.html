@@ -22,7 +22,7 @@ function normalize(value){const id=String(value||'').toLowerCase().replace(/[^a-
 function page(){return ['1','2','3'].includes(params.get('page'))?params.get('page'):'1'}
 function target(channel,selectedPage){
     if(channel==='cdcup')return`broadcast.html?page=${selectedPage}&module=cdcup&direct=1&v=20260801-cdcup-legacy-ui`;
-    if(channel==='crewart')return`crewart-broadcast.html?page=${selectedPage}&v=20260806-rgby-studio-v1`;
+    if(channel==='crewart')return`auction-live.html?channel=crewart&page=${selectedPage}&v=20260806-crewart-overlay-v2`;
     return`auction-live.html?channel=${encodeURIComponent(channel)}&page=${selectedPage}&v=20260720-creo-overlay-v1`;
 }
 async function refresh(){try{let channel=normalize(params.get('event'));if(!channel){const response=await fetch('/api/platform/active-channel',{cache:'no-store'});if(!response.ok)throw new Error(`채널 연결 오류 ${response.status}`);channel=normalize((await response.json()).channelId)}if(!channel)throw new Error('운영 채널이 없습니다.');const selectedPage=page();if(channel!==lastChannel||selectedPage!==lastPage){frame.src=target(channel,selectedPage);lastChannel=channel;lastPage=selectedPage;statusEl.textContent=`${channel} · ${selectedPage}P 송출 중`}}catch(error){statusEl.textContent=error.message||String(error);document.body.classList.add('debug')}}

@@ -5,6 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <title>크레와트 송출</title>
+    <script>
+        (() => {
+            const requested = new URLSearchParams(location.search).get('page');
+            const page = ['1', '2', '3'].includes(requested) ? requested : '1';
+            location.replace(`auction-live.html?channel=crewart&page=${page}&v=20260806-crewart-overlay-v2`);
+        })();
+    </script>
     <script src="supabase-bridge.js?v=20260720-quota-fallback-v2"></script>
     <script src="event-modules.js?v=20260806-house-redesign"></script>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>

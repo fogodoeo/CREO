@@ -52,7 +52,7 @@ test('the universal broadcast route preserves CDCUP legacy output and uses the n
     assert.match(router, /channel==='crewart'/);
     assert.match(router, /broadcast\.html\?page=/);
     assert.match(router, /module=cdcup&direct=1/);
-    assert.match(router, /crewart-broadcast\.html\?page=/);
+    assert.match(router, /auction-live\.html\?channel=crewart&page=/);
 });
 
 test('home is an operational channel launcher without duplicate management routes', () => {
