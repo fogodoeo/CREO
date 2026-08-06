@@ -82,7 +82,12 @@ test('every channel uses one broadcast studio with specialized CDCUP and CREWART
     assert.match(studio, /kind==='crewart'/);
     assert.match(studio, /auction-control\.html\?channel=/);
     assert.match(studio, /broadcast-router\.html\?event=/);
-    assert.match(studio, /preview\.html\?module=cdcup/);
+    assert.match(studio, /id="layout-1"/);
+    assert.match(studio, /id="layout-2"/);
+    assert.match(studio, /id="layout-3"/);
+    assert.match(studio, /preview\.html\?module=/);
+    assert.match(studio, /page=\$\{page\}&embedded=1/);
+    assert.match(studio, /data-mode="layout" data-page="1"/);
     assert.match(legacy, /broadcast-studio\.html\?channel=/);
     assert.match(control, /broadcast-studio\.html\?channel=/);
     const workspace = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-workspace.html'), 'utf8');
