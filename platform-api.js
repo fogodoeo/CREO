@@ -100,6 +100,8 @@ function sessionKey(token) {
 
 function sanitizeBroadcastState(input = {}) {
     const extraMode = ['bracket', 'ranking', 'status', 'vendor', 'team'].includes(input.extraMode) ? input.extraMode : 'vendor';
+    const positions = ['auto', 'top-left', 'top-center', 'top-right', 'middle-left', 'center', 'middle-right', 'bottom-left', 'bottom-center', 'bottom-right'];
+    const position = (value, fallback = 'auto') => positions.includes(value) ? value : fallback;
     return {
         id: 'state',
         activeItemId: cleanText(input.activeItemId, 64),
@@ -117,6 +119,10 @@ function sanitizeBroadcastState(input = {}) {
         page1BannerOn: booleanValue(input.page1BannerOn, false),
         page1Ticker: cleanText(input.page1Ticker || input.ticker, 220),
         page1BannerUrl: cleanText(input.page1BannerUrl, 600),
+        page1HostsPosition: position(input.page1HostsPosition),
+        page1NoticePosition: position(input.page1NoticePosition),
+        page1BannerPosition: position(input.page1BannerPosition),
+        page1TickerPosition: ['auto', 'top', 'bottom'].includes(input.page1TickerPosition) ? input.page1TickerPosition : 'auto',
         page2InfoOn: booleanValue(input.page2InfoOn),
         page2PhotoOn: booleanValue(input.page2PhotoOn),
         page2PriceOn: booleanValue(input.page2PriceOn),
@@ -125,10 +131,19 @@ function sanitizeBroadcastState(input = {}) {
         page2BannerOn: booleanValue(input.page2BannerOn, false),
         page2Ticker: cleanText(input.page2Ticker || input.ticker, 220),
         page2BannerUrl: cleanText(input.page2BannerUrl, 600),
+        page2HeaderPosition: position(input.page2HeaderPosition),
+        page2InfoPosition: position(input.page2InfoPosition),
+        page2PhotoPosition: position(input.page2PhotoPosition),
+        page2PricePosition: position(input.page2PricePosition),
+        page2SoldPosition: position(input.page2SoldPosition),
+        page2BannerPosition: position(input.page2BannerPosition),
+        page2TickerPosition: ['auto', 'top', 'bottom'].includes(input.page2TickerPosition) ? input.page2TickerPosition : 'auto',
         page3On: booleanValue(input.page3On, false),
         extraMode,
         scoreboardId: cleanText(input.scoreboardId, 64),
         page3Title: cleanText(input.page3Title || input.headline, 120),
+        page3BoardPosition: ['auto', 'full', 'left', 'right'].includes(input.page3BoardPosition) ? input.page3BoardPosition : 'auto',
+        page3QuizPosition: ['auto', 'top', 'center', 'bottom'].includes(input.page3QuizPosition) ? input.page3QuizPosition : 'auto',
         quizOn: booleanValue(input.quizOn, false),
         quizStatus: ['ready', 'open', 'closed'].includes(input.quizStatus) ? input.quizStatus : 'ready',
         quizQuestion: cleanText(input.quizQuestion, 180),

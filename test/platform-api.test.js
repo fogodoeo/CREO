@@ -214,8 +214,10 @@ test('broadcast state stores independent 1P, 2P, and 3P overlay controls', async
     const response = await call(api, 'PUT', '/api/platform/channels/alpha/broadcast-state', {
         activeItemId: 'item_1', mode: 'sold', page: 2,
         hostName1: '진행자', page1TickerOn: false, page1BannerOn: true,
-        page1BannerUrl: 'https://example.com/banner.png', page2SoldOn: true,
-        page3On: true, extraMode: 'team', page3Title: '팀별 낙찰금액',
+        page1BannerUrl: 'https://example.com/banner.png', page1HostsPosition: 'bottom-left',
+        page1TickerPosition: 'top', page2SoldOn: true, page2PhotoPosition: 'middle-right',
+        page2PricePosition: 'bottom-left', page3On: true, extraMode: 'team', page3Title: '팀별 낙찰금액',
+        page3BoardPosition: 'right', page3QuizPosition: 'bottom',
         quizOn: true, quizStatus: 'open', quizQuestion: '첫 번째 문제',
         quizWinner: '참가자 A', quizAnswer: '정답',
         ignoredSecret: 'must-not-persist'
@@ -225,8 +227,14 @@ test('broadcast state stores independent 1P, 2P, and 3P overlay controls', async
     assert.equal(state.hostName1, '진행자');
     assert.equal(state.page1TickerOn, false);
     assert.equal(state.page1BannerOn, true);
+    assert.equal(state.page1HostsPosition, 'bottom-left');
+    assert.equal(state.page1TickerPosition, 'top');
     assert.equal(state.page2SoldOn, true);
+    assert.equal(state.page2PhotoPosition, 'middle-right');
+    assert.equal(state.page2PricePosition, 'bottom-left');
     assert.equal(state.page3On, true);
+    assert.equal(state.page3BoardPosition, 'right');
+    assert.equal(state.page3QuizPosition, 'bottom');
     assert.equal(state.extraMode, 'team');
     assert.equal(state.quizOn, true);
     assert.equal(state.quizStatus, 'open');

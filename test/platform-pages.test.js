@@ -144,6 +144,9 @@ test('the new broadcast implements three independent camera overlays', () => {
     assert.match(live, /function teamStats\(items\)/);
     assert.match(live, /function scoreboardRows\(channel,items,board\)/);
     assert.match(live, /function boardValue\(row,board,unit\)/);
+    assert.match(live, /function placed\(value\)/);
+    assert.match(live, /data-pos/);
+    assert.match(live, /data-zone/);
     assert.match(live, /팀별 낙찰금액/);
     assert.match(live, /quizStatus==='open'/);
     assert.match(live, /첫 정답자/);
@@ -206,6 +209,10 @@ test('broadcast control manages reusable banners, sponsors, and vendor logos', (
     assert.match(control, /value="vendor">업체별 금액/);
     assert.match(control, /value="team">그룹별 금액/);
     assert.match(control, /name="scoreboardId"/);
+    for (const positionField of ['page1HostsPosition', 'page1NoticePosition', 'page1BannerPosition', 'page2HeaderPosition', 'page2InfoPosition', 'page2PhotoPosition', 'page2PricePosition', 'page2SoldPosition', 'page2BannerPosition', 'page3BoardPosition', 'page3QuizPosition']) {
+        assert.match(control, new RegExp(`name="${positionField}"`));
+    }
+    assert.match(control, /function updatePositionWarnings/);
     assert.match(live, /function scoreboardRows/);
     assert.match(control, /seedCrewartAssets/);
     assert.match(live, /CREWART_DEFAULT_ASSETS/);
