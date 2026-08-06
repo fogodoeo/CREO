@@ -63,13 +63,13 @@ test('home is an operational channel launcher without duplicate management route
     assert.match(hub, /CreoPlatform\.verifyAdmin\(\)/);
     assert.match(hub, /CreoPlatform\.logout\(\)/);
     assert.match(hub, /id="quick-workspace"/);
-    assert.match(hub, /id="quick-archives"/);
     assert.match(hub, /id="quick-shipping"/);
-    assert.match(hub, /function studio\(id,view\)/);
-    assert.match(hub, /studio\(c\.id,'operations'\)/);
-    assert.match(hub, /studio\(c\.id,'archives'\)/);
-    assert.match(hub, /channel-shipping\.html\?channel=\$\{encodeURIComponent\(c\.id\)\}/);
-    assert.match(hub, /c\.links\.live/);
+    assert.match(hub, /id="quick-broadcast"/);
+    assert.match(hub, /id="quick-settings"/);
+    assert.match(hub, /id="quick-design"/);
+    assert.match(hub, /function workspaceUrl\(c\)/);
+    assert.match(hub, /broadcast-studio\.html\?channel=/);
+    assert.doesNotMatch(hub, /id="quick-archives"|전체 채널|현장 운영|방송 열기/);
     assert.doesNotMatch(hub, /모든 경매 운영을|한곳에서\.|채널은 완전히|공통 도구|관리하기/);
 });
 
@@ -87,17 +87,12 @@ test('every non-legacy channel uses the shared workspace, control, and overlay e
     assert.match(studio, /channel\?\.id==='cdcup'\?'cdcup':'platform'/);
     assert.match(studio, /auction-control\.html\?channel=/);
     assert.match(studio, /broadcast-router\.html\?event=/);
-    assert.match(studio, /id="layout-1"/);
-    assert.match(studio, /id="layout-2"/);
-    assert.match(studio, /id="layout-3"/);
+    assert.match(studio, /진행 · 1P/);
+    assert.match(studio, /경매 · 2P/);
+    assert.match(studio, /집계 · 3P/);
     assert.doesNotMatch(studio, /preview\.html\?module=/);
     assert.match(studio, /broadcast-router\.html\?event=\$\{encodeURIComponent\(channel\.id\)\}&page=\$\{page\}/);
-    assert.match(studio, /data-mode="layout" data-page="1"/);
-    assert.match(studio, /id="mode-operations"/);
-    assert.match(studio, /function operationsUrl/);
-    assert.match(studio, /controlKind\(channel\)==='cdcup'\?\(channel\?\.legacy\?\.managementUrl/);
-    assert.match(studio, /channel-workspace\.html\?channel=/);
-    assert.match(studio, /activeMode='operations'/);
+    assert.doesNotMatch(studio, /id="mode-operations"|id="mode-archives"|data-mode="layout"/);
     assert.match(legacy, /broadcast-studio\.html\?channel=/);
     assert.match(control, /broadcast-studio\.html\?channel=/);
     const workspace = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-workspace.html'), 'utf8');
@@ -174,13 +169,10 @@ test('new CDCUP overlays and shipping retain compatibility with the established 
     assert.match(shipping, /CreoPlatform\.api\(`channels\/\$\{encodeURIComponent\(q\)\}`\)/);
 });
 
-test('broadcast studio exposes channel-scoped round archives for every channel', () => {
+test('round archives stay available without being duplicated inside broadcast management', () => {
     const studio = fs.readFileSync(path.join(__dirname, '..', 'public', 'broadcast-studio.html'), 'utf8');
     const archives = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-archives.html'), 'utf8');
-    assert.match(studio, /id="mode-archives"/);
-    assert.match(studio, /function archivesUrl/);
-    assert.match(studio, /cdcup-index\.html\?embedded=1&tab=archive/);
-    assert.match(studio, /channel-archives\.html\?channel=/);
+    assert.doesNotMatch(studio, /id="mode-archives"|function archivesUrl|channel-archives\.html/);
     assert.match(archives, /channels\/\$\{encodeURIComponent\(channelId\)\}\/archives/);
     assert.match(archives, /회차 저장/);
 });
@@ -246,7 +238,9 @@ test('broadcast setup keeps live operations separate and removes dead legacy con
     assert.doesNotMatch(legacySettings, /실시간 방송 미리보기|빠른 제어|방송 안내사항/);
     assert.doesNotMatch(legacySettings, /id="preview-frame"|id="qt-photo"|id="rule-list"/);
     assert.doesNotMatch(control, /id="preview-frame"|id="active-item"/);
-    assert.match(control, /배치 1/);
+    assert.match(control, /진행 화면 <small>1P<\/small>/);
+    assert.match(control, /경매 화면 <small>2P<\/small>/);
+    assert.match(control, /집계 화면 <small>3P<\/small>/);
     assert.match(control, /변경 저장/);
     assert.match(workspace, /id="live-panel"/);
     assert.match(workspace, /id="live-item"/);
