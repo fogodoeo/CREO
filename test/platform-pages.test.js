@@ -91,7 +91,12 @@ test('every non-legacy channel uses the shared workspace, control, and overlay e
     assert.match(studio, /진행 · 1P/);
     assert.match(studio, /경매 · 2P/);
     assert.match(studio, /집계 · 3P/);
-    assert.doesNotMatch(studio, /preview\.html\?module=/);
+    assert.match(studio, /data-view="layout-1"/);
+    assert.match(studio, /data-view="layout-2"/);
+    assert.match(studio, /data-view="layout-3"/);
+    assert.match(studio, /data-view="settings"/);
+    assert.match(studio, /preview\.html\?module=.*embedded=1/);
+    assert.match(studio, /function frameUrl\(channel,view\)/);
     assert.match(studio, /broadcast-router\.html\?event=\$\{encodeURIComponent\(channel\.id\)\}&page=\$\{page\}/);
     assert.doesNotMatch(studio, /id="mode-operations"|id="mode-archives"|data-mode="layout"/);
     assert.match(legacy, /broadcast-studio\.html\?channel=/);
