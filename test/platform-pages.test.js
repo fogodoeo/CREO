@@ -294,7 +294,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /KAKAO_JS_KEY/);
     assert.match(script, /const SURVEY_URL = 'https:\/\/creok\.onrender\.com\/crewart-survey\.html'/);
     assert.doesNotMatch(script, /const SURVEY_URL = new URL\([^\n]*document\.baseURI/);
-    assert.match(html, /crewart-survey\.js\?v=20260806-share-target-v1/);
+    assert.match(html, /crewart-survey\.js\?v=20260806-rgby-houses-v1/);
     assert.match(script, /Kakao\.Share\.uploadImage/);
     assert.match(script, /Kakao\.Share\.sendDefault/);
     assert.match(script, /function sharePreparedNativeResult/);
