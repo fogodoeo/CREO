@@ -11,6 +11,7 @@ const PAGES = [
     'channel-manager.html',
     'channel-workspace.html',
     'auction-control.html',
+    'broadcast-studio.html',
     'auction-live.html',
     'channel-shipping.html',
     'broadcast-router.html',
@@ -48,9 +49,10 @@ test('the universal broadcast route preserves CDCUP legacy output and uses the n
     assert.match(router, /\/api\/platform\/active-channel/);
     assert.match(router, /auction-live\.html\?channel=/);
     assert.match(router, /channel==='cdcup'/);
+    assert.match(router, /channel==='crewart'/);
     assert.match(router, /broadcast\.html\?page=/);
     assert.match(router, /module=cdcup&direct=1/);
-    assert.doesNotMatch(router, /crewart-broadcast\.html\?page=/);
+    assert.match(router, /crewart-broadcast\.html\?page=/);
 });
 
 test('hub preserves established management and CDCUP broadcast control links', () => {
@@ -67,11 +69,22 @@ test('hub preserves established management and CDCUP broadcast control links', (
     assert.match(hub, /c\.links\.shipping/);
 });
 
-test('CDCUP platform links use the established control while other channels use the unified control', () => {
+test('every channel uses one broadcast studio with specialized CDCUP and CREWARTS adapters', () => {
     const { channelLinks } = require('../platform-core');
-    assert.equal(channelLinks('cdcup').control, '/settings.html?module=cdcup');
-    assert.equal(channelLinks('crewart').control, '/auction-control.html?channel=crewart');
-    assert.equal(channelLinks('sample').control, '/auction-control.html?channel=sample');
+    assert.equal(channelLinks('cdcup').control, '/broadcast-studio.html?channel=cdcup');
+    assert.equal(channelLinks('crewart').control, '/broadcast-studio.html?channel=crewart');
+    assert.equal(channelLinks('sample').control, '/broadcast-studio.html?channel=sample');
+    const studio = fs.readFileSync(path.join(__dirname, '..', 'public', 'broadcast-studio.html'), 'utf8');
+    const legacy = fs.readFileSync(path.join(__dirname, '..', 'public', 'settings.html'), 'utf8');
+    const control = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-control.html'), 'utf8');
+    assert.match(studio, /function controlKind/);
+    assert.match(studio, /settings\.html\?module=/);
+    assert.match(studio, /kind==='crewart'/);
+    assert.match(studio, /auction-control\.html\?channel=/);
+    assert.match(studio, /broadcast-router\.html\?event=/);
+    assert.match(studio, /preview\.html\?module=cdcup/);
+    assert.match(legacy, /broadcast-studio\.html\?channel=/);
+    assert.match(control, /broadcast-studio\.html\?channel=/);
     const workspace = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-workspace.html'), 'utf8');
     const shipping = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-shipping.html'), 'utf8');
     assert.match(workspace, /c\?\.links\?\.control/);
@@ -147,6 +160,13 @@ test('broadcast control manages reusable banners, sponsors, and vendor logos', (
     assert.match(control, /crewartSampleAssets/);
     assert.match(control, /seedCrewartAssets/);
     assert.match(live, /CREWART_DEFAULT_ASSETS/);
+    const crewartLive = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-broadcast.html'), 'utf8');
+    assert.match(crewartLive, /cfg\.ticker_show === '0'/);
+    assert.match(crewartLive, /Number\(cfg\.ticker_interval\)/);
+    assert.match(crewartLive, /crewart_ticker/);
+    const legacySettings = fs.readFileSync(path.join(__dirname, '..', 'public', 'settings.html'), 'utf8');
+    assert.match(legacySettings, /m\.crewart_ticker = m\.ticker/);
+    assert.match(legacySettings, /delete m\.ticker/);
     for (const asset of ['crewart-live-banner.svg', 'crewart-house-banner.svg', 'creo-live-mark.svg']) {
         assert.ok(fs.existsSync(path.join(__dirname, '..', 'public', 'assets', 'crewart-broadcast', asset)));
     }

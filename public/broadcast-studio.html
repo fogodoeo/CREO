@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+    <meta name="theme-color" content="#090b0f">
+    <title>CREO 방송 스튜디오</title>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+    <script src="platform-client.js?v=20260803-admin-session-v2" defer></script>
+    <style>
+        :root{color-scheme:dark;--bg:#090b0f;--surface:#11151c;--line:#29313d;--text:#f4f6f8;--muted:#8f99a7;--gold:#d4ad60}*{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden;background:var(--bg);color:var(--text);font-family:"Pretendard Variable",Pretendard,sans-serif}button,input,select,a{font:inherit}.studio{display:grid;height:100dvh;grid-template-rows:68px minmax(0,1fr)}.bar{display:flex;align-items:center;gap:12px;padding:0 18px;border-bottom:1px solid var(--line);background:#0c0f14}.brand{color:#fff;font-size:15px;font-weight:950;letter-spacing:.15em;text-decoration:none}.brand small{margin-left:9px;color:#687382;font-size:9px;letter-spacing:.12em}.channel{width:min(270px,27vw);height:40px;padding:0 12px;border:1px solid #333c49;border-radius:9px;background:#151a21;color:#fff;font-weight:800}.engine{padding:6px 9px;border:1px solid #3a3324;border-radius:99px;background:#1e1a12;color:#d6b86f;font-size:9px;font-weight:900;letter-spacing:.06em}.actions{display:flex;align-items:center;gap:6px;margin-left:auto}.actions a{display:flex;align-items:center;justify-content:center;height:36px;padding:0 11px;border:1px solid var(--line);border-radius:8px;color:#aeb7c3;font-size:10px;font-weight:820;text-decoration:none}.actions a.primary{border-color:#755f35;background:#211b12;color:#e4c57e}.frame-shell{position:relative;min-height:0;background:#0a0d12}.frame-shell:before{content:"방송 관리 화면 연결 중";position:absolute;top:50%;left:50%;color:#414b58;font-size:12px;font-weight:800;transform:translate(-50%,-50%)}iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#090b0f}.login{position:fixed;inset:0;z-index:10;display:grid;place-items:center;padding:20px;background:#080a0ef2}.login[hidden]{display:none}.login-card{width:min(390px,100%);padding:27px;border:1px solid var(--line);border-radius:18px;background:var(--surface);box-shadow:0 30px 100px #000a}.login-card strong{display:block;font-size:18px;letter-spacing:.08em}.login-card p{margin:8px 0 20px;color:var(--muted);font-size:12px;line-height:1.55}.login-row{display:flex;gap:7px}.login input{min-width:0;flex:1;height:44px;padding:0 11px;border:1px solid #333c49;border-radius:9px;background:#090d12;color:#fff}.login button{height:44px;padding:0 15px;border:0;border-radius:9px;background:var(--gold);color:#171107;font-weight:900}.error{min-height:18px;margin:9px 1px 0!important;color:#ff8f8f!important}.studio[hidden]{display:none}@media(max-width:760px){.studio{grid-template-rows:auto minmax(0,1fr)}.bar{min-height:112px;padding:10px 12px;flex-wrap:wrap}.brand small,.engine{display:none}.channel{order:3;width:100%}.actions a:not(.primary){display:none}.actions{margin-left:auto}.frame-shell{min-height:0}}
+        [hidden]{display:none!important}
+    </style>
+</head>
+<body>
+<section class="login" id="login-gate">
+    <form class="login-card" id="login-form">
+        <strong>CREO BROADCAST STUDIO</strong>
+        <p>모든 채널의 방송 제어와 송출 화면을 한곳에서 관리합니다.</p>
+        <div class="login-row"><input id="admin-password" type="password" autocomplete="current-password" placeholder="관리자 비밀번호" required><button id="login-submit" type="submit">확인</button></div>
+        <p class="error" id="login-error" role="alert"></p>
+    </form>
+</section>
+<main class="studio" id="studio" hidden>
+    <header class="bar">
+        <a class="brand" href="/">CREO <small>BROADCAST STUDIO</small></a>
+        <select class="channel" id="channel-select" aria-label="방송 채널"></select>
+        <span class="engine" id="engine-label"></span>
+        <nav class="actions" aria-label="방송 도구">
+            <a id="workspace-link">운영 관리</a>
+            <a id="layout-link">배치 편집</a>
+            <a id="live-1" target="_blank" rel="noopener">1P 송출</a>
+            <a id="live-2" target="_blank" rel="noopener">2P 송출</a>
+            <a id="live-3" target="_blank" rel="noopener">3P 송출</a>
+            <a class="primary" id="live-main" target="_blank" rel="noopener">송출 열기</a>
+        </nav>
+    </header>
+    <section class="frame-shell"><iframe id="control-frame" title="채널 방송 제어"></iframe></section>
+</main>
+<script>
+document.addEventListener('DOMContentLoaded',()=>{
+    const $=id=>document.getElementById(id),gate=$('login-gate'),studio=$('studio'),form=$('login-form'),password=$('admin-password'),submit=$('login-submit'),error=$('login-error'),select=$('channel-select'),frame=$('control-frame');
+    let channels=[];
+    const requested=String(new URLSearchParams(location.search).get('channel')||'cdcup').toLowerCase().replace(/[^a-z0-9-]/g,'');
+    const esc=value=>CreoPlatform.escapeHtml(value);
+    function controlKind(channel){if(channel?.id==='cdcup')return'cdcup';if(channel?.id==='crewart')return'crewart';return'platform'}
+    function workspaceUrl(channel){return channel?.legacy?.managementUrl||`channel-workspace.html?channel=${encodeURIComponent(channel.id)}`}
+    function controlUrl(channel){const kind=controlKind(channel);return kind==='platform'?`auction-control.html?channel=${encodeURIComponent(channel.id)}&embedded=1`:`settings.html?module=${encodeURIComponent(kind)}&channel=${encodeURIComponent(channel.id)}&embedded=1`}
+    function liveUrl(channel,page){return`broadcast-router.html?event=${encodeURIComponent(channel.id)}&page=${page}`}
+    function activate(id,replace=true){const channel=channels.find(row=>row.id===id)||channels[0];if(!channel)return;const kind=controlKind(channel);select.value=channel.id;$('engine-label').textContent=kind==='cdcup'?'CDCUP 방송 제어':kind==='crewart'?'CREWARTS 방송 제어':'공통 채널 제어';$('workspace-link').href=workspaceUrl(channel);$('layout-link').hidden=kind!=='cdcup';$('layout-link').href=`preview.html?module=cdcup&page=1`;for(let page=1;page<=3;page++)$('live-'+page).href=liveUrl(channel,page);$('live-main').href=liveUrl(channel,1);const src=controlUrl(channel);if(frame.getAttribute('src')!==src)frame.src=src;if(replace)history.replaceState(null,'',`broadcast-studio.html?channel=${encodeURIComponent(channel.id)}`)}
+    async function load(){const data=await CreoPlatform.api('channels');channels=data.channels||[];select.innerHTML=channels.map(channel=>`<option value="${esc(channel.id)}">${esc(channel.name)}</option>`).join('');if(!channels.length)throw new Error('사용 가능한 채널이 없습니다.');gate.hidden=true;studio.hidden=false;activate(requested,false)}
+    function showLogin(message=''){studio.hidden=true;gate.hidden=false;error.textContent=message;submit.disabled=false;password.disabled=false;requestAnimationFrame(()=>password.focus({preventScroll:true}))}
+    select.addEventListener('change',()=>activate(select.value));
+    form.addEventListener('submit',async event=>{event.preventDefault();const value=password.value;if(!value)return;submit.disabled=true;password.disabled=true;error.textContent='';try{CreoPlatform.setAdmin(value);if(!await CreoPlatform.verifyAdmin(value))throw new Error('비밀번호가 맞지 않습니다.');password.value='';await load()}catch(failure){CreoPlatform.setAdmin('');showLogin(failure.message||'로그인하지 못했습니다.')}});
+    (async()=>{try{if(await CreoPlatform.verifyAdmin())return await load()}catch(_){}showLogin()})();
+});
+</script>
+</body>
+</html>

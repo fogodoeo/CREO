@@ -28,6 +28,7 @@
         const root = document.getElementById('root');
         const stage = document.getElementById('stage');
         const mini = document.getElementById('mini-score');
+        const ticker = document.getElementById('ticker');
         const tickerText = document.getElementById('ticker-text');
         const tickerBadge = document.getElementById('ticker-badge');
         let config = {};
@@ -35,6 +36,8 @@
         let tickerIndex = 0;
         let tickerLines = [];
         let lastTickerRaw = '';
+        let tickerTimer = null;
+        let tickerInterval = 0;
 
         function esc(value) {
             return String(value == null ? '' : value).replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
@@ -60,7 +63,14 @@
         }
 
         function applyTicker(cfg) {
+            ticker.hidden = cfg.ticker_show === '0';
             tickerBadge.textContent = cfg.badge_text || 'OWL POST';
+            const nextInterval = Math.max(1500, Math.min(30000, Number(cfg.ticker_interval) || 4200));
+            if (tickerInterval !== nextInterval) {
+                tickerInterval = nextInterval;
+                clearInterval(tickerTimer);
+                tickerTimer = setInterval(renderTickerLine, tickerInterval);
+            }
             const raw = cfg.ticker || '[부엉이 안내:#7B3F1D] 채팅 닉네임과 설문 닉네임을 맞춰주세요\n[기숙사 점수:#234F8F] 낙찰 금액이 기숙사 컵 점수로 반영됩니다';
             if (raw === lastTickerRaw && tickerLines.length) return;
             lastTickerRaw = raw;
@@ -166,7 +176,13 @@
                 ]);
                 const activeRow = (items || []).find(isActive) || null;
                 const active = activeRow ? await enrichBroadcastItem(activeRow) : null;
-                config = { ...(cfg || {}), active_event_module: 'crewart' };
+                config = {
+                    ...(cfg || {}),
+                    ticker: cfg?.crewart_ticker ?? cfg?.ticker,
+                    badge_text: cfg?.crewart_badge_text ?? cfg?.badge_text,
+                    ticker_interval: cfg?.crewart_ticker_interval ?? cfg?.ticker_interval,
+                    active_event_module: 'crewart'
+                };
                 applyAuctionEventModule(config);
                 applyTicker(config);
                 detectNewSold(items || []);
@@ -188,7 +204,6 @@
 
         loadFrame(true);
         setInterval(() => loadFrame(false), 750);
-        setInterval(renderTickerLine, 4200);
     </script>
 </body>
 </html>

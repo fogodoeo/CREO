@@ -21,7 +21,7 @@ const DEFAULT_CHANNELS = Object.freeze([
             text: '#f8fafc'
         }),
         features: Object.freeze({ tournament: true, survey: false, ranking: true }),
-        legacy: Object.freeze({ items: true, managementUrl: '/cdcup-index.html', controlUrl: '/settings.html?module=cdcup' })
+        legacy: Object.freeze({ items: true, managementUrl: '/cdcup-index.html', controlUrl: '/broadcast-studio.html?channel=cdcup' })
     }),
     Object.freeze({
         id: 'crewart',
@@ -38,7 +38,7 @@ const DEFAULT_CHANNELS = Object.freeze([
             text: '#fffaf0'
         }),
         features: Object.freeze({ tournament: false, survey: true, ranking: true }),
-        legacy: Object.freeze({ items: false, managementUrl: '/auction-control.html?channel=crewart', controlUrl: '/auction-control.html?channel=crewart' })
+        legacy: Object.freeze({ items: false, managementUrl: '/channel-workspace.html?channel=crewart', controlUrl: '/broadcast-studio.html?channel=crewart' })
     })
 ]);
 
@@ -136,10 +136,9 @@ function recordId(prefix = 'rec') {
 function channelLinks(channelId) {
     const id = normalizeChannelId(channelId) || 'cdcup';
     const query = `channel=${encodeURIComponent(id)}`;
-    const legacyControl = id === 'cdcup' ? '/settings.html?module=cdcup' : '';
     return {
         workspace: `/channel-workspace.html?${query}`,
-        control: legacyControl || `/auction-control.html?${query}`,
+        control: `/broadcast-studio.html?${query}`,
         preview: `/broadcast-router.html?event=${encodeURIComponent(id)}&page=1`,
         live: `/broadcast-router.html?event=${encodeURIComponent(id)}&page=1&live=1`,
         shipping: `/channel-shipping.html?${query}`
