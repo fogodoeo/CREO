@@ -64,6 +64,7 @@ test('home is an operational channel launcher without duplicate management route
     assert.match(hub, /CreoPlatform\.logout\(\)/);
     assert.match(hub, /id="quick-workspace"/);
     assert.match(hub, /id="quick-shipping"/);
+    assert.match(hub, /id="quick-rounds"/);
     assert.match(hub, /id="quick-broadcast"/);
     assert.match(hub, /id="quick-settings"/);
     assert.match(hub, /id="quick-design"/);
@@ -153,6 +154,11 @@ test('established CDCUP registration, list, print, and round archive remain inta
     const operations = fs.readFileSync(path.join(__dirname, '..', 'public', 'cdcup-index.html'), 'utf8');
     for (const label of ['개체 등록', '개체 목록', '인쇄', '회차 기록']) assert.match(operations, new RegExp(label));
     assert.match(operations, /channel-shipping\.html\?channel=cdcup/);
+    assert.match(operations, /vendor-mode/);
+    assert.match(operations, /id="admin-archive-tab"/);
+    assert.match(operations, /href="shipping\.html"/);
+    assert.match(operations, /html\.vendor-mode #admin-archive-tab/);
+    assert.match(operations, /html\.admin-mode \.vendor-only/);
 });
 
 test('new CDCUP overlays and shipping retain compatibility with the established item list', () => {
