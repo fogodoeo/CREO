@@ -120,6 +120,29 @@ test('public broadcast payload excludes shipping and winner contacts', async () 
     assert.equal(response.json().items[0].winnerPhone, undefined);
 });
 
+test('round archives snapshot each channel without leaking records across channels', async () => {
+    const repository = new MemoryRepository();
+    const api = createPlatformApi({ repository, logger: { error() {} } });
+    await call(api, 'POST', '/api/platform/channels/alpha/vendors', { record: { id: 'alpha_vendor', name: '알파 업체' } });
+    await call(api, 'POST', '/api/platform/channels/alpha/items', { record: { id: 'alpha_item', lotNumber: 1, name: '알파 개체', vendorId: 'alpha_vendor', status: 'sold', soldPrice: 120000, winnerName: '낙찰자' } });
+    await call(api, 'POST', '/api/platform/channels/beta/vendors', { record: { id: 'beta_vendor', name: '베타 업체' } });
+    await call(api, 'POST', '/api/platform/channels/beta/items', { record: { id: 'beta_item', lotNumber: 1, name: '베타 개체', vendorId: 'beta_vendor', status: 'sold', soldPrice: 90000 } });
+
+    let response = await call(api, 'POST', '/api/platform/channels/alpha/archives', { title: '알파 1회차' });
+    assert.equal(response.status, 201);
+    assert.equal(response.json().archive.totalSoldAmount, 120000);
+    const archiveId = response.json().archive.id;
+
+    response = await call(api, 'GET', '/api/platform/channels/alpha/archives');
+    assert.equal(response.json().archives.length, 1);
+    assert.equal(response.json().archives[0].items, undefined);
+    const detail = await call(api, 'GET', `/api/platform/channels/alpha/archives/${archiveId}`);
+    assert.equal(detail.json().archive.items[0].name, '알파 개체');
+    assert.equal(detail.json().archive.items.some((item) => item.name === '베타 개체'), false);
+    const beta = await call(api, 'GET', '/api/platform/channels/beta/archives');
+    assert.equal(beta.json().archives.length, 0);
+});
+
 test('public broadcast hides a quiz answer until the operator closes the quiz', async () => {
     const repository = new MemoryRepository();
     const api = createPlatformApi({ repository, logger: { error() {} } });

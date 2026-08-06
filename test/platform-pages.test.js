@@ -63,10 +63,12 @@ test('home is an operational channel launcher without duplicate management route
     assert.match(hub, /CreoPlatform\.verifyAdmin\(\)/);
     assert.match(hub, /CreoPlatform\.logout\(\)/);
     assert.match(hub, /id="quick-workspace"/);
-    assert.match(hub, /id="quick-control"/);
+    assert.match(hub, /id="quick-archives"/);
+    assert.match(hub, /id="quick-shipping"/);
     assert.match(hub, /function studio\(id,view\)/);
     assert.match(hub, /studio\(c\.id,'operations'\)/);
-    assert.match(hub, /studio\(c\.id,'control'\)/);
+    assert.match(hub, /studio\(c\.id,'archives'\)/);
+    assert.match(hub, /channel-shipping\.html\?channel=\$\{encodeURIComponent\(c\.id\)\}/);
     assert.match(hub, /c\.links\.live/);
     assert.doesNotMatch(hub, /모든 경매 운영을|한곳에서\.|채널은 완전히|공통 도구|관리하기/);
 });
@@ -100,7 +102,7 @@ test('every channel uses one broadcast studio with specialized CDCUP and CREWART
     const workspace = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-workspace.html'), 'utf8');
     const shipping = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-shipping.html'), 'utf8');
     assert.match(workspace, /c\?\.links\?\.control/);
-    assert.match(shipping, /c\?\.links\?\.control/);
+    assert.doesNotMatch(shipping, /c\?\.links\?\.control|manage-link|control-link/);
 });
 
 test('channel creation starts with a safe generated id and protects unsaved edits', () => {
@@ -152,6 +154,19 @@ test('new CDCUP overlays and shipping retain compatibility with the established 
     }
     assert.match(shipping, /itemLotNumber/);
     assert.match(shipping, /itemVendorName/);
+    assert.doesNotMatch(shipping, /<a\b|id="channel-select"|id="manage-link"|id="control-link"/);
+    assert.match(shipping, /CreoPlatform\.api\(`channels\/\$\{encodeURIComponent\(q\)\}`\)/);
+});
+
+test('broadcast studio exposes channel-scoped round archives for every channel', () => {
+    const studio = fs.readFileSync(path.join(__dirname, '..', 'public', 'broadcast-studio.html'), 'utf8');
+    const archives = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-archives.html'), 'utf8');
+    assert.match(studio, /id="mode-archives"/);
+    assert.match(studio, /function archivesUrl/);
+    assert.match(studio, /cdcup-index\.html\?embedded=1&tab=archive/);
+    assert.match(studio, /channel-archives\.html\?channel=/);
+    assert.match(archives, /channels\/\$\{encodeURIComponent\(channelId\)\}\/archives/);
+    assert.match(archives, /현재 상태 저장/);
 });
 
 test('legacy broadcast bridge survives Supabase quota exhaustion with cached or standby data', () => {

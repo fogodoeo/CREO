@@ -495,8 +495,9 @@ function createPlatformApi({ repository, logger = console } = {}) {
                     return true;
                 }
                 const data = await workspace(channelId);
-                if (data.vendors.length || data.items.length || data.shipments.length || data.assets.length) {
-                    replyJson(res, 409, { error: '업체·개체·배송·브랜드 자산을 먼저 삭제해 주세요.' });
+                const archives = await repository.listRecords(channelId, 'archive');
+                if (data.vendors.length || data.items.length || data.shipments.length || data.assets.length || archives.length) {
+                    replyJson(res, 409, { error: '업체·개체·배송·회차 기록·브랜드 자산을 먼저 삭제해 주세요.' });
                     return true;
                 }
                 if (data.broadcast?.id === 'state') await repository.deleteRecord(channelId, 'broadcast', 'state');
@@ -586,13 +587,13 @@ function createPlatformApi({ repository, logger = console } = {}) {
             }
 
             const type = segments[2]?.replace(/s$/, '');
-            if (!TYPES.has(type)) {
+            if (segments[2] !== 'archives' && !TYPES.has(type)) {
                 replyJson(res, 404, { error: 'Not found' });
                 return true;
             }
             if (!await requireAdmin(req, res)) return true;
 
-            if (segments.length === 3 && method === 'POST') {
+            if (segments.length === 3 && method === 'POST' && segments[2] !== 'archives') {
                 await withMutationLock(`channel:${channelId}`, async () => {
                     const body = await readJson(req);
                     const data = await workspace(channelId);
@@ -607,6 +608,56 @@ function createPlatformApi({ repository, logger = console } = {}) {
                     replyJson(res, 201, { record: saved });
                 });
                 return true;
+            }
+
+            if (segments.length >= 3 && segments[2] === 'archives') {
+                if (!await requireAdmin(req, res)) return true;
+                if (segments.length === 3 && method === 'GET') {
+                    const records = await repository.listRecords(channelId, 'archive');
+                    const archives = records
+                        .map(({ items, vendors, shipments, broadcast, ...summary }) => summary)
+                        .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+                    replyJson(res, 200, { channelId, archives });
+                    return true;
+                }
+                if (segments.length === 3 && method === 'POST') {
+                    const body = await readJson(req);
+                    const data = await workspace(channelId);
+                    const sold = data.items.filter((item) => item.status === 'sold' || Number(item.soldPrice) > 0);
+                    const record = await repository.upsertRecord(channelId, 'archive', {
+                        id: recordId('arc'),
+                        title: cleanText(body.title || `${channel.name} ${new Date().toLocaleDateString('ko-KR')}`, 80),
+                        itemCount: data.items.length,
+                        soldCount: sold.length,
+                        totalSoldAmount: sold.reduce((sum, item) => sum + (Number(item.soldPrice) || 0), 0),
+                        vendorCount: data.vendors.length,
+                        shipmentCount: data.shipments.length,
+                        items: data.items,
+                        vendors: data.vendors,
+                        shipments: data.shipments,
+                        broadcast: data.broadcast
+                    });
+                    touchChannel(channelId);
+                    const { items, vendors, shipments, broadcast, ...summary } = record;
+                    replyJson(res, 201, { archive: summary });
+                    return true;
+                }
+                if (segments.length === 4 && method === 'GET') {
+                    const archive = await repository.getRecord(channelId, 'archive', segments[3]);
+                    if (!archive) replyJson(res, 404, { error: '회차 기록을 찾을 수 없습니다.' });
+                    else replyJson(res, 200, { archive });
+                    return true;
+                }
+                if (segments.length === 4 && method === 'DELETE') {
+                    const archive = await repository.getRecord(channelId, 'archive', segments[3]);
+                    if (!archive) replyJson(res, 404, { error: '회차 기록을 찾을 수 없습니다.' });
+                    else {
+                        await repository.deleteRecord(channelId, 'archive', segments[3]);
+                        touchChannel(channelId);
+                        replyJson(res, 200, { deleted: true });
+                    }
+                    return true;
+                }
             }
 
             if (segments.length === 4 && method === 'PUT') {
