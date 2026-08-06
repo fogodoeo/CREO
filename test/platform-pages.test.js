@@ -55,18 +55,20 @@ test('the universal broadcast route preserves CDCUP legacy output and uses the n
     assert.match(router, /crewart-broadcast\.html\?page=/);
 });
 
-test('hub preserves established management and CDCUP broadcast control links', () => {
+test('home is an operational channel launcher without duplicate management routes', () => {
     const hub = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
     assert.match(hub, /id="login-gate"/);
     assert.match(hub, /id="dashboard" hidden/);
     assert.match(hub, /id="admin-password"/);
     assert.match(hub, /CreoPlatform\.verifyAdmin\(\)/);
     assert.match(hub, /CreoPlatform\.logout\(\)/);
-    assert.match(hub, /\.channel-actions\{display:grid;grid-template-columns:1fr 1fr/);
-    assert.match(hub, /c\.links\.workspace/);
-    assert.match(hub, /c\.links\.control/);
-    assert.match(hub, /legacy\?\.managementUrl/);
-    assert.match(hub, /c\.links\.shipping/);
+    assert.match(hub, /id="quick-workspace"/);
+    assert.match(hub, /id="quick-control"/);
+    assert.match(hub, /function studio\(id,view\)/);
+    assert.match(hub, /studio\(c\.id,'operations'\)/);
+    assert.match(hub, /studio\(c\.id,'control'\)/);
+    assert.match(hub, /c\.links\.live/);
+    assert.doesNotMatch(hub, /모든 경매 운영을|한곳에서\.|채널은 완전히|공통 도구|관리하기/);
 });
 
 test('every channel uses one broadcast studio with specialized CDCUP and CREWARTS adapters', () => {
