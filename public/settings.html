@@ -22,8 +22,8 @@
                 if (moduleId !== 'crewart') return;
                 const title = document.getElementById('event-module-card-title');
                 const description = document.getElementById('event-module-card-description');
-                if (title) title.textContent = 'RGBY 팀·점수 설정';
-                if (description) description.textContent = '팀 배정과 낙찰 점수 환산 기준을 설정합니다.';
+                if (title) title.textContent = '팀·점수';
+                if (description) description.textContent = '팀 배정과 점수 기준';
             });
         })();
     </script>
@@ -34,19 +34,19 @@
     <link rel="stylesheet" href="common.css?v=20260707-nav-dropdown2">
     <style>
         :root {
-            --bg: #0F172A;
-            --bg-accent: #1E293B;
-            --card-bg: #1E293B;
-            --text: #F8FAFC;
-            --text2: #94A3B8;
-            --text3: #64748B;
-            --accent: #2563EB;
-            --accent-hover: #1D4ED8;
-            --green: #10B981;
+            --bg: #0b0d10;
+            --bg-accent: #171b21;
+            --card-bg: #14181f;
+            --text: #f4f5f7;
+            --text2: #9aa3af;
+            --text3: #68727f;
+            --accent: #d4ad60;
+            --accent-hover: #e0bc73;
+            --green: #55c990;
             --red: #EF4444;
             --orange: #F59E0B;
-            --input-bg: #0F172A;
-            --input-border: #334155;
+            --input-bg: #0b0f14;
+            --input-border: #2d3540;
             --font: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
         }
 
@@ -72,7 +72,7 @@
             padding: 0 16px;
             display: flex;
             flex-direction: column;
-            gap: 20px;
+            gap: 16px;
             padding-bottom: 60px;
         }
 
@@ -91,23 +91,21 @@
         .card {
             background-color: var(--card-bg);
             border: 1px solid var(--input-border);
-            border-radius: 14px;
-            padding: 20px;
+            border-radius: 12px;
+            padding: 18px;
             display: flex;
             flex-direction: column;
             gap: 16px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            box-shadow: none;
         }
 
         .card-title {
-            font-size: 14px;
-            font-weight: 700;
+            font-size: 15px;
+            font-weight: 850;
             display: flex;
             align-items: center;
             gap: 6px;
-            border-bottom: 1px solid var(--input-border);
-            padding-bottom: 10px;
-            margin-bottom: 4px;
+            padding-bottom: 2px;
         }
 
         .form-group {
@@ -126,7 +124,7 @@
         }
 
         label {
-            font-size: 11px;
+            font-size: 12px;
             color: var(--text2);
             font-weight: 600;
         }
@@ -138,8 +136,9 @@
             width: 100%;
             background-color: var(--input-bg);
             border: 1px solid var(--input-border);
-            border-radius: 8px;
-            padding: 10px;
+            min-height: 44px;
+            border-radius: 9px;
+            padding: 10px 11px;
             color: var(--text);
             font-size: 13px;
             font-family: inherit;
@@ -239,11 +238,11 @@
         .advanced-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:0 20px 20px}.advanced-grid>.card{box-shadow:none}
         .color-row { display:flex; gap:8px; align-items:center; }
         .color-row input[type=color] { width:36px; height:36px; border:none; border-radius:8px; cursor:pointer; background:transparent; padding:0; }
-        .save-fab { position:fixed; right:20px; bottom:20px; min-width:136px; height:48px; padding:0 20px; border:0; border-radius:10px; background:var(--green); color:#fff; font-size:12px; font-weight:850; cursor:pointer; box-shadow:0 10px 30px rgba(0,0,0,.28); z-index:999; display:flex; align-items:center; justify-content:center; }
+        .save-fab { position:fixed; right:20px; bottom:20px; min-width:156px; height:48px; padding:0 22px; border:1px solid #745f36; border-radius:10px; background:var(--accent); color:#171107; font-size:12px; font-weight:900; cursor:pointer; box-shadow:0 10px 30px rgba(0,0,0,.35); z-index:999; display:flex; align-items:center; justify-content:center; }
         .save-fab:hover { filter:brightness(1.06); }
         .save-fab:active { transform:translateY(1px); }
         html.embedded .cdcup-nav,html.embedded .cdcup-tabs{display:none!important}
-        html.embedded .container{margin:0 auto;padding-top:16px}
+        html.embedded .container{margin:0 auto;padding-top:20px}
         html.embedded #event-module-select-group{display:none}
         html.embedded-cdcup #event-module-card{display:none}
         html.embedded-crewart [data-control-scope="cdcup"]{display:none!important}
@@ -348,16 +347,15 @@
 
         <!-- ══ 돌발 퀴즈 ══ -->
         <div class="card" id="live-quiz-card" style="grid-column: span 2;">
-            <div class="card-title">퀴즈</div>
+            <div class="card-title">돌발 퀴즈</div>
             <div class="form-row">
-                <div class="form-group"><label>상태</label><select id="cfg-live-quiz-status"><option value="off">사용 안 함</option><option value="ready">준비</option><option value="open">정답 접수</option><option value="closed">정답 공개</option></select></div>
-                <div class="form-group"><label>정답자</label><input id="cfg-live-quiz-winner" maxlength="80"></div>
+                <div class="form-group"><label>문제</label><textarea id="cfg-live-quiz-question" rows="2" maxlength="180" placeholder="방송에 표시할 문제"></textarea></div>
+                <div class="form-group"><label>진행 상태</label><select id="cfg-live-quiz-status"><option value="off">숨김</option><option value="ready">대기</option><option value="open">정답 접수</option><option value="closed">결과 공개</option></select></div>
             </div>
-            <div class="form-group"><label>문제</label><textarea id="cfg-live-quiz-question" rows="2" maxlength="180" placeholder="방송에 표시할 문제"></textarea></div>
-            <div class="form-group"><label>정답</label><input id="cfg-live-quiz-answer" maxlength="80"></div>
+            <div class="form-row"><div class="form-group"><label>정답</label><input id="cfg-live-quiz-answer" maxlength="80"></div><div class="form-group"><label>첫 정답자</label><input id="cfg-live-quiz-winner" maxlength="80"></div></div>
         </div>
 
-        <div class="section-heading"><strong>자막과 배너</strong></div>
+        <div class="section-heading"><strong>방송 자산</strong></div>
 
         <!-- ══ 공지사항 (티커) 설정 ══ -->
         <div class="card">
@@ -367,14 +365,7 @@
                 <textarea id="cfg-ticker" rows="4" placeholder="[안내:#FFB84D] 입찰은 밴드 댓글로 참여해 주세요&#10;[규정:#7CF0FF] 호가 단위를 준수해 주세요"></textarea>
             </div>
             <div class="form-row">
-                <div class="form-group"><label>전환 간격(ms)</label><input type="number" id="cfg-ticker-interval" placeholder="4200"></div>
-                <div class="form-group"><label>왼쪽 표시</label><input type="text" id="cfg-badge-text" placeholder="LIVE"></div>
-                <div class="form-group" data-control-scope="cdcup"><label>로고 크기(px)</label><input type="number" id="cfg-ticker-sponsor-size" placeholder="46"></div>
-                <div class="form-group" data-control-scope="cdcup"><label>글자 크기(px)</label><input type="number" id="cfg-ticker-fontsize" placeholder="40"></div>
-            </div>
-            <div class="form-group" data-control-scope="cdcup">
-                <label>배경 스타일</label>
-                <input type="text" id="cfg-ticker-bg" placeholder="linear-gradient(135deg, rgba(17,30,56,0.94), rgba(7,9,15,0.98))">
+                <div class="form-group"><label>전환 간격 (ms)</label><input type="number" id="cfg-ticker-interval" placeholder="4200"></div>
             </div>
             <div class="form-group" data-control-scope="cdcup" style="margin-top:12px;">
                 <label>자막 로고</label>
@@ -389,18 +380,28 @@
             <div id="banner-list"></div>
             <button class="add-slot-btn" onclick="addBannerSlot()">+ 배너 추가</button>
             <div class="form-row" style="margin-top:12px">
-                <div class="form-group"><label>전환 간격(ms)</label><input type="number" id="cfg-banner-interval" placeholder="5000"></div>
-                <div class="form-group"><label>투명도</label><input type="text" id="cfg-banner-opacity" placeholder="0.93"></div>
-            </div>
-            <div class="form-row">
-                <div class="form-group"><label>최대 가로</label><input type="text" id="cfg-banner-maxwidth" placeholder="42vw"></div>
-                <div class="form-group"><label>최대 세로</label><input type="text" id="cfg-banner-maxheight" placeholder="auto"></div>
+                <div class="form-group"><label>전환 간격 (ms)</label><input type="number" id="cfg-banner-interval" placeholder="5000"></div>
             </div>
         </div>
 
         <details class="advanced-panel">
-            <summary><span>세부 설정</span><span style="margin-left:auto;color:var(--text3);font-size:10px;font-weight:600">진행자 · 글자 · 로고 · 비밀번호</span></summary>
+            <summary><span>고급 설정</span><span style="margin-left:auto;color:var(--text3);font-size:10px;font-weight:600">진행자 · 글자 · 로고 · 비밀번호</span></summary>
             <div class="advanced-grid">
+
+        <div class="card" data-control-scope="cdcup">
+            <div class="card-title">표시 크기</div>
+            <div class="form-row">
+                <div class="form-group"><label>왼쪽 문구</label><input type="text" id="cfg-badge-text" placeholder="LIVE"></div>
+                <div class="form-group"><label>자막 글자 (px)</label><input type="number" id="cfg-ticker-fontsize" placeholder="40"></div>
+                <div class="form-group"><label>로고 크기 (px)</label><input type="number" id="cfg-ticker-sponsor-size" placeholder="46"></div>
+            </div>
+            <div class="form-group"><label>자막 배경</label><input type="text" id="cfg-ticker-bg" placeholder="linear-gradient(135deg, rgba(17,30,56,0.94), rgba(7,9,15,0.98))"></div>
+            <div class="form-row">
+                <div class="form-group"><label>배너 투명도</label><input type="text" id="cfg-banner-opacity" placeholder="0.93"></div>
+                <div class="form-group"><label>배너 너비</label><input type="text" id="cfg-banner-maxwidth" placeholder="42vw"></div>
+                <div class="form-group"><label>배너 높이</label><input type="text" id="cfg-banner-maxheight" placeholder="auto"></div>
+            </div>
+        </div>
 
         <!-- ══ 1P 진행자 네임택 ══ -->
         <div class="card" data-control-scope="cdcup">
@@ -465,7 +466,7 @@
     </div>
 
     <div class="toast" id="toast"></div>
-    <button class="save-fab" onclick="saveBroadcastSettings()">설정 저장</button>
+    <button class="save-fab" onclick="saveBroadcastSettings()">변경 저장</button>
 
     <script>
         let _cfg = {};
@@ -1068,11 +1069,12 @@
                 await updateConfigs(configMap);
                 fab.textContent = '저장 완료';
                 fab.style.background = 'var(--green)';
-                toast('화면 설정을 저장했습니다.');
+                toast('송출 설정을 저장했습니다.');
                 pushToPreview();
-                setTimeout(() => { fab.textContent = '설정 저장'; fab.style.pointerEvents = ''; }, 1500);
+                setTimeout(() => { fab.textContent = '변경 저장'; fab.style.background = ''; fab.style.pointerEvents = ''; }, 1500);
             } catch(e) {
-                fab.textContent = '설정 저장';
+                fab.textContent = '변경 저장';
+                fab.style.background = '';
                 fab.style.pointerEvents = '';
                 toast('저장 실패: ' + e.message, true);
             }

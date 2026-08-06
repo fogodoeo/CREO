@@ -16,9 +16,9 @@
 <script>if(new URLSearchParams(location.search).get('embedded')==='1')document.documentElement.classList.add('embedded-studio');</script>
 <header class="top"><a class="brand" href="/">CREO</a><select class="channel-select" id="channel-select" aria-label="채널"></select><nav class="top-links"><a href="channel-manager.html">채널 설정</a><a id="shipping-link" href="#">배송</a><a id="control-link" href="#">화면 설정</a><a id="live-link" href="#" target="_blank" rel="noopener">송출 화면</a></nav></header>
 <main class="shell">
-    <div class="heading"><div><h1 id="channel-name">채널 운영</h1><p id="channel-description"></p></div></div>
-    <section class="live-panel" id="live-panel"><div class="live-label"><span>ON AIR</span><strong>방송 상태</strong></div><select class="live-item" id="live-item" aria-label="현재 방송 개체"><option value="">개체 선택</option></select><div class="live-modes" id="live-modes"><button class="live-mode" data-mode="standby" type="button">대기</button><button class="live-mode" data-mode="live" type="button">진행</button><button class="live-mode" data-mode="sold" type="button">낙찰</button></div></section>
-    <section class="summary"><article><span>업체</span><b id="vendor-count">0</b></article><article><span>개체</span><b id="item-count">0</b></article><article><span>배송</span><b id="shipment-count">0</b></article></section>
+    <div class="heading"><div><h1 id="channel-name">현장 운영</h1><p id="channel-description"></p></div></div>
+    <section class="live-panel" id="live-panel"><div class="live-label"><span>LIVE</span><strong>현재 송출</strong></div><select class="live-item" id="live-item" aria-label="송출할 개체"><option value="">개체 선택</option></select><div class="live-modes" id="live-modes"><button class="live-mode" data-mode="standby" type="button">대기 화면</button><button class="live-mode" data-mode="live" type="button">진행 화면</button><button class="live-mode" data-mode="sold" type="button">낙찰 화면</button></div></section>
+    <section class="summary"><article><span>등록 업체</span><b id="vendor-count">0</b></article><article><span>등록 개체</span><b id="item-count">0</b></article><article><span>배송 등록</span><b id="shipment-count">0</b></article></section>
     <div class="tabs" role="tablist"><button class="tab active" data-tab="vendors">업체</button><button class="tab" data-tab="items">개체</button><button class="tab" data-tab="shipping">배송</button></div>
     <div class="toolbar"><p id="tab-help">이 경매에 참여하는 업체만 등록합니다.</p><button class="btn primary" id="add-record">＋ 업체 추가</button></div>
     <div class="table-wrap" id="table-wrap"></div>

@@ -213,8 +213,8 @@ test('broadcast setup keeps live operations separate and removes dead legacy con
     assert.doesNotMatch(legacySettings, /실시간 방송 미리보기|빠른 제어|방송 안내사항/);
     assert.doesNotMatch(legacySettings, /id="preview-frame"|id="qt-photo"|id="rule-list"/);
     assert.doesNotMatch(control, /id="preview-frame"|id="active-item"/);
-    assert.match(control, /1 화면/);
-    assert.match(control, /설정 저장/);
+    assert.match(control, /배치 1/);
+    assert.match(control, /변경 저장/);
     assert.match(workspace, /id="live-panel"/);
     assert.match(workspace, /id="live-item"/);
     assert.match(workspace, /function setLive/);
