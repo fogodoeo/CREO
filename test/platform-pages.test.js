@@ -159,6 +159,11 @@ test('established CDCUP registration, list, print, and round archive remain inta
     assert.match(operations, /href="shipping\.html"/);
     assert.match(operations, /html\.vendor-mode #admin-archive-tab/);
     assert.match(operations, /html\.admin-mode \.vendor-only/);
+    assert.match(operations, /사진 · 혈통 · 상태 추가/);
+    assert.match(operations, /class="register-actions"/);
+    assert.match(operations, /VENDOR_REGISTRATION_PREFS/);
+    assert.match(operations, /updateRegisterActions\(\)/);
+    assert.match(operations, /업체 정보는 유지하고 다음 개체만 비움/);
 });
 
 test('new CDCUP overlays and shipping retain compatibility with the established item list', () => {

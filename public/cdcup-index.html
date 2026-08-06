@@ -51,6 +51,25 @@
         html.vendor-mode .cdcup-tabs{position:sticky;top:58px;z-index:15;gap:4px;margin:0 0 16px!important;padding:8px;border:1px solid var(--card-border);border-radius:12px;background:rgba(255,255,255,.94);backdrop-filter:blur(12px)}html.vendor-mode .cdcup-tab{min-height:40px;border-radius:8px;color:var(--text2)}html.vendor-mode .cdcup-tab.active{background:#edf2ff;color:var(--accent)}html.vendor-mode .cdcup-tab.active:after{display:none}
         html.vendor-mode #admin-archive-tab,html.vendor-mode .admin-only{display:none!important}html.admin-mode .vendor-only{display:none!important}
         html.vendor-mode .form-card,html.vendor-mode .card{margin-bottom:12px;border:1px solid var(--card-border);border-radius:14px;background:#fff;box-shadow:var(--shadow-sm)}html.vendor-mode input,html.vendor-mode select,html.vendor-mode textarea{color:var(--text);background:#fff}html.vendor-mode table{background:#fff}html.vendor-mode th{background:#fafbfc;color:var(--text2)}html.vendor-mode td{color:var(--text)}
+        html.vendor-mode #tab-register{padding-bottom:4px}
+        html.vendor-mode .company-bar{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(150px,.65fr);align-items:end;gap:10px;padding:14px;margin-bottom:12px;border-radius:14px;background:#fff;box-shadow:var(--shadow-sm)}
+        html.vendor-mode .company-field{min-width:0}html.vendor-mode .company-field label{display:block;width:auto;margin:0 0 6px;font-size:11px;color:var(--text2)}
+        html.vendor-mode .company-field input,html.vendor-mode .company-field select{width:100%;max-width:none;min-width:0;height:48px;border-radius:10px;padding:0 13px;font-size:15px}
+        html.vendor-mode .company-memory{display:block;grid-column:1/-1;margin-top:-2px;color:var(--text3);font-size:11px}
+        html.vendor-mode .item-entry{margin-bottom:12px;padding:14px;border:1px solid var(--card-border);border-radius:14px;background:#fff;box-shadow:var(--shadow-sm)}
+        html.vendor-mode .item-entry .entry-header{margin-bottom:12px}html.vendor-mode .entry-title{display:flex;align-items:center;gap:8px}html.vendor-mode .entry-required{color:var(--text3);font-size:10px;font-weight:600}
+        html.vendor-mode .entry-core{display:grid;grid-template-columns:minmax(0,1fr) 82px;gap:12px;align-items:end}
+        html.vendor-mode .entry-core .ef label{display:block;margin-bottom:6px;color:var(--text2);font-size:11px;font-weight:700}html.vendor-mode .entry-core .ef input{width:100%;height:50px;border:1px solid var(--input-border);border-radius:10px;padding:0 13px;font-size:16px;font-weight:700;outline:none}
+        html.vendor-mode .entry-core .ef input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-light)}
+        html.vendor-mode .entry-core .drop-mini{width:72px;max-width:none}html.vendor-mode .entry-core .slot-label{font-size:11px}
+        .entry-more-toggle{width:100%;height:44px;margin-top:12px;padding:0 12px;border:1px solid var(--card-border);border-radius:10px;background:#fafbfc;color:var(--text2);display:flex;align-items:center;justify-content:space-between;font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+        .entry-more-toggle .material-symbols-rounded{font-size:19px;transition:transform .18s}.entry-more-toggle.open .material-symbols-rounded{transform:rotate(180deg)}
+        .entry-more-body{display:none;padding-top:12px}.entry-more-body.open{display:block}
+        html.vendor-mode .entry-more-body .entry-fields{margin-bottom:12px}html.vendor-mode .entry-more-body .entry-fields input{height:46px;border-radius:9px}
+        html.vendor-mode .entry-more-body .photo-row-mini{padding:12px 0;border-top:1px solid #eef0f3}
+        html.vendor-mode .register-actions{position:sticky;bottom:max(8px,env(safe-area-inset-bottom));z-index:14;padding:8px;border:1px solid rgba(215,220,226,.92);border-radius:14px;background:rgba(255,255,255,.94);box-shadow:0 10px 32px rgba(18,25,36,.17);backdrop-filter:blur(14px)}
+        html.vendor-mode .register-actions .progress-bar{margin:0 0 7px}html.vendor-mode .register-actions .submit-btn{height:52px;border-radius:10px;background:var(--accent)}
+        html.vendor-mode .add-btn{margin:0 0 12px;border-radius:12px;background:#fff;color:var(--text2)}
 
         * {
             margin: 0;
@@ -171,6 +190,19 @@
             white-space: nowrap;
         }
 
+        .company-field {
+            flex: 1;
+            min-width: 180px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .company-field input,
+        .company-field select { min-width: 0; }
+
+        .company-memory { display: none; }
+
         .company-bar input,
         .company-bar select {
             flex: 1;
@@ -208,6 +240,34 @@
             font-size: 13px;
             font-weight: 800;
             color: var(--accent);
+        }
+
+        .entry-title { display: flex; align-items: center; gap: 8px; }
+        .entry-required { color: var(--text3); font-size: 10px; font-weight: 600; }
+
+        .entry-core {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 82px;
+            gap: 12px;
+            align-items: end;
+        }
+
+        .entry-core .ef label {
+            display: block;
+            margin-bottom: 5px;
+            color: var(--text2);
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .entry-core .ef input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--input-border);
+            border-radius: 4px;
+            background: var(--input-bg);
+            color: var(--text);
+            font-size: 14px;
         }
 
         .item-entry .entry-del {
@@ -2450,6 +2510,11 @@
             .company-bar input, .company-bar select { min-width: calc(100% - 86px); max-width: none; }
             .entry-fields { flex-wrap: wrap; }
             .entry-fields .ef { min-width: 100%; }
+            html.vendor-mode .container{width:min(100% - 20px,1180px);padding-top:20px;padding-bottom:28px}
+            html.vendor-mode .vendor-head{margin-bottom:14px}html.vendor-mode .vendor-head h1{font-size:27px}
+            html.vendor-mode .company-bar{grid-template-columns:minmax(0,1fr) 132px;padding:12px;gap:8px}
+            html.vendor-mode .company-field input,html.vendor-mode .company-field select{min-width:0;height:46px;padding:0 11px;font-size:14px}
+            html.vendor-mode .item-entry{padding:12px}
         }
 
         .archive-hero { background:linear-gradient(135deg,#111827,#1F2937);color:#fff;border-radius:16px;padding:20px;margin-bottom:16px; }
@@ -2531,27 +2596,34 @@
         <!-- ═══ 등록 탭 ═══ -->
         <div id="tab-register" class="section">
             <div class="company-bar">
-                <label>업체명</label>
-                <input type="text" id="f-company" placeholder="업체/팀 이름">
-                <label for="f-auction-type">경매 구분</label>
-                <select id="f-auction-type" aria-label="경매 구분">
-                    <option value="tournament">토너먼트 후보</option>
-                    <option value="solo">단독 경매</option>
-                    <option value="crewart">크레와트 경매</option>
-                    <option value="extra">일반 경매</option>
-                </select>
+                <div class="company-field">
+                    <label for="f-company">업체명</label>
+                    <input type="text" id="f-company" placeholder="업체/팀 이름" autocomplete="organization">
+                </div>
+                <div class="company-field">
+                    <label for="f-auction-type">경매 구분</label>
+                    <select id="f-auction-type" aria-label="경매 구분">
+                        <option value="tournament">토너먼트 후보</option>
+                        <option value="solo">단독 경매</option>
+                        <option value="crewart">크레와트 경매</option>
+                        <option value="extra">일반 경매</option>
+                    </select>
+                </div>
+                <p class="company-memory">다음 등록에도 그대로 유지됩니다.</p>
             </div>
 
             <div id="entries"></div>
 
-            <button class="add-btn" onclick="addEntry()">개체 추가</button>
+            <button class="add-btn" id="add-entry-btn" onclick="addEntry(true)">+ 개체 하나 더 추가</button>
 
-            <div class="progress-bar" id="prog">
-                <div class="fill" id="prog-fill"></div>
+            <div class="register-actions">
+                <div class="progress-bar" id="prog">
+                    <div class="fill" id="prog-fill"></div>
+                </div>
+                <button class="submit-btn" id="submit-btn" onclick="submitAll()">
+                    등록하기
+                </button>
             </div>
-            <button class="submit-btn" id="submit-btn" onclick="submitAll()">
-                전체 등록하기
-            </button>
         </div>
 
         <!-- ═══ 목록 탭 ═══ -->
@@ -3106,6 +3178,7 @@
 
         // ── 개체 행 추가 ──
         function addEntry() {
+            const focusNew = arguments[0] === true;
             const id = entryId++;
             const e = { id, photos: { item: null, sire: null, dam: null, sibling: null }, sireId: '', damId: '' };
             entries.push(e);
@@ -3115,17 +3188,31 @@
             div.id = 'entry-' + id;
             div.innerHTML = `
     <div class="entry-header">
-      <span class="entry-num">${String(entries.length).padStart(3, '0')}</span>
+      <div class="entry-title"><span class="entry-num">개체 ${entries.length}</span><small class="entry-required">이름만 필수</small></div>
       <button class="entry-del" onclick="removeEntry(${id})">✕</button>
     </div>
-    <div class="entry-fields">
-      <div class="ef" style="flex:2"><label>개체명 *</label><input type="text" id="en-${id}" placeholder="이름"></div>
-      <div class="ef" style="flex:3"><label>비고</label><input type="text" id="en-note-${id}" placeholder="특이사항이나 메모"></div>
+    <div class="entry-core">
+      <div class="ef"><label for="en-${id}">개체명</label><input type="text" id="en-${id}" placeholder="개체 이름" autocomplete="off"></div>
+      <div class="photo-slot-mini">
+        <span class="slot-label">대표 사진</span>
+        <div class="drop-mini" id="dz-${id}-item" onclick="trigUp(${id},'item')">
+          <span class="ph">+</span>
+          <button class="rm" onclick="event.stopPropagation();rmPh(${id},'item')">✕</button>
+          <input type="file" accept="image/*" id="fi-${id}-item" onchange="hFile(event,${id},'item')">
+        </div>
+      </div>
     </div>
-    <div class="photo-row-mini">
-      ${['item', 'sibling'].map(k => `
+    <button type="button" class="entry-more-toggle" aria-expanded="false" onclick="toggleEntryMore(this)">
+      <span>사진 · 혈통 · 상태 추가</span><span class="material-symbols-rounded">expand_more</span>
+    </button>
+    <div class="entry-more-body">
+      <div class="entry-fields">
+        <div class="ef"><label for="en-note-${id}">비고</label><input type="text" id="en-note-${id}" placeholder="특이사항이나 메모"></div>
+      </div>
+      <div class="photo-row-mini">
+      ${['sibling'].map(k => `
         <div class="photo-slot-mini">
-          <span class="slot-label">${k === 'item' ? '개체' : '동배'}</span>
+          <span class="slot-label">동배</span>
           <div class="drop-mini" id="dz-${id}-${k}" onclick="trigUp(${id},'${k}')">
             <span class="ph">+</span>
             <button class="rm" onclick="event.stopPropagation();rmPh(${id},'${k}')">✕</button>
@@ -3147,8 +3234,8 @@
           </div>
         </div>
       `).join('')}
-    </div>
-    <div class="cl-section">
+      </div>
+      <div class="cl-section">
       <div class="cl-toggle" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">
         <span>개체 상태 체크</span><span class="arrow">▶</span>
       </div>
@@ -3167,6 +3254,7 @@
         <div class="cl-row"><span class="cl-label">비고</span><input type="text" class="cl-input-wide" id="cl-note-${id}" placeholder="탈피예정 등 메모"></div>
       </div>
     </div>
+    </div>
   `;
             document.getElementById('entries').appendChild(div);
 
@@ -3181,6 +3269,13 @@
                     if (ev.dataTransfer.files[0]) procFile(ev.dataTransfer.files[0], id, k);
                 });
             });
+            updateRegisterActions();
+            if (focusNew) {
+                requestAnimationFrame(function () {
+                    div.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    document.getElementById('en-' + id).focus({ preventScroll: true });
+                });
+            }
         }
 
         function removeEntry(id) {
@@ -3188,10 +3283,27 @@
             if (idx >= 0) entries.splice(idx, 1);
             const el = document.getElementById('entry-' + id);
             if (el) el.remove();
+            if (!entries.length) addEntry(false);
             renumber();
+            updateRegisterActions();
         }
         function renumber() {
-            document.querySelectorAll('.item-entry .entry-num').forEach((el, i) => el.textContent = '#' + (i + 1));
+            document.querySelectorAll('.item-entry .entry-num').forEach((el, i) => el.textContent = '개체 ' + (i + 1));
+        }
+
+        function toggleEntryMore(button) {
+            const open = !button.classList.contains('open');
+            button.classList.toggle('open', open);
+            button.setAttribute('aria-expanded', open ? 'true' : 'false');
+            button.nextElementSibling.classList.toggle('open', open);
+        }
+
+        function updateRegisterActions() {
+            const count = entries.length;
+            const submit = document.getElementById('submit-btn');
+            const add = document.getElementById('add-entry-btn');
+            if (submit && !submit.disabled) submit.textContent = count > 1 ? count + '개 등록하기' : '등록하기';
+            if (add) add.textContent = count > 1 ? '+ 개체 하나 더 추가' : '+ 여러 개체 함께 등록';
         }
 
         // ── 사진 ──
@@ -3248,11 +3360,23 @@
             if (entries.length === 0) { toast('개체를 추가해주세요', true); return; }
             const company = document.getElementById('f-company').value.trim();
             const auctionType = document.getElementById('f-auction-type').value || 'tournament';
+            if (!company) {
+                toast('업체명을 입력해주세요', true);
+                document.getElementById('f-company').focus();
+                return;
+            }
+            rememberVendorRegistration();
 
             // 유효성
             for (const e of entries) {
                 const name = document.getElementById('en-' + e.id).value.trim();
-                if (!name) { toast('모든 개체명을 입력해주세요', true); return; }
+                if (!name) {
+                    toast('개체명을 입력해주세요', true);
+                    const input = document.getElementById('en-' + e.id);
+                    input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    input.focus({ preventScroll: true });
+                    return;
+                }
             }
 
             const btn = document.getElementById('submit-btn');
@@ -3331,7 +3455,8 @@
             } catch (e) {
                 toast('오류: ' + (e.message || JSON.stringify(e) || '알 수 없는 오류'), true);
             } finally {
-                btn.disabled = false; btn.textContent = '전체 등록하기';
+                btn.disabled = false;
+                updateRegisterActions();
                 setTimeout(() => { prog.style.display = 'none'; fill.style.width = '0'; }, 1500);
             }
         }
@@ -3339,8 +3464,35 @@
         function resetAll() {
             entries.length = 0; entryId = 0;
             document.getElementById('entries').innerHTML = '';
-            addEntry(); // 빈 행 하나 추가
-            document.getElementById('f-auction-type').value = 'tournament';
+            addEntry(false); // 업체 정보는 유지하고 다음 개체만 비움
+            setTimeout(function () {
+                const firstName = document.querySelector('#entries input[id^="en-"]:not([id^="en-note-"])');
+                if (firstName) firstName.focus();
+            }, 180);
+        }
+
+        const VENDOR_REGISTRATION_PREFS = 'cdcup_vendor_registration_v1';
+        function rememberVendorRegistration() {
+            if (!document.documentElement.classList.contains('vendor-mode')) return;
+            try {
+                localStorage.setItem(VENDOR_REGISTRATION_PREFS, JSON.stringify({
+                    company: document.getElementById('f-company').value.trim(),
+                    auctionType: document.getElementById('f-auction-type').value || 'tournament'
+                }));
+            } catch (_) { }
+        }
+
+        function restoreVendorRegistration() {
+            if (!document.documentElement.classList.contains('vendor-mode')) return;
+            try {
+                const saved = JSON.parse(localStorage.getItem(VENDOR_REGISTRATION_PREFS) || '{}');
+                if (saved.company) document.getElementById('f-company').value = saved.company;
+                if (['tournament', 'solo', 'crewart', 'extra'].includes(saved.auctionType)) {
+                    document.getElementById('f-auction-type').value = saved.auctionType;
+                }
+            } catch (_) { }
+            document.getElementById('f-company').addEventListener('change', rememberVendorRegistration);
+            document.getElementById('f-auction-type').addEventListener('change', rememberVendorRegistration);
         }
 
         // ── 체크리스트 헬퍼 ──
@@ -5377,7 +5529,8 @@
         try {
             loadEventModuleContext();
             loadParents();
-            addEntry();
+            restoreVendorRegistration();
+            addEntry(false);
             if (!openInitialTabFromUrl()) loadList();
         } catch (initErr) {
             document.getElementById('item-list').innerHTML = '<div style="color:red;padding:20px;">초기화 오류: ' + initErr.message + '</div>';
