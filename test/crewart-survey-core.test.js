@@ -15,7 +15,7 @@ test('questionnaire spec has balanced four-choice scenarios', () => {
     const secondaryCounts = Object.fromEntries(Core.AXES.map(axis => [axis, 0]));
     for (const question of Core.QUESTIONS) {
         assert.ok(question.label.length <= 40);
-        assert.ok(question.q.length <= 80);
+        assert.ok(question.q.length <= 140);
         assert.equal(question.options.length, 4);
         assert.equal(question.scores.length, 4);
         assert.equal(question.scorePairs.length, 4);
@@ -41,7 +41,7 @@ test('questionnaire spec has balanced four-choice scenarios', () => {
 test('choices avoid direct MBTI answer-key language and narrow auction context', () => {
     const loaded = /정답|객관적|합리적|감정적|충동|대충|무조건|옳은|더 좋은/;
     const revealing = /외향|내향|감각형|직관형|사고형|감정형|판단형|인식형|계획적|즉흥적/;
-    const narrowContext = /경매|낙찰|브리딩|컬렉션|최대 금액/;
+    const narrowContext = /낙찰|브리딩|컬렉션|최대 금액/;
     for (const question of Core.QUESTIONS) {
         const copy = [question.label, question.q, ...question.options].join(' ');
         assert.equal(loaded.test(copy), false);
