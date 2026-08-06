@@ -1088,6 +1088,47 @@ async function registerParent(parentObj) {
 }
 
 /**
+ * 부모 개체 일괄 등록. 등록 화면에서 사용하는 사진 업로드와 ID 생성을 한 번에 처리한다.
+ */
+async function addParentsBatch(parentObjs) {
+    const items = Array.isArray(parentObjs) ? parentObjs.filter(p => p && p.name) : [];
+    if (!items.length) return { success: false, error: '등록할 부모개체가 없습니다.' };
+    try {
+        const photoInputs = [];
+        const photoIndexes = [];
+        items.forEach((item, index) => {
+            if (!item.photo) return;
+            photoInputs.push({ base64: item.photo, filename: item.name + '_parent.jpg' });
+            photoIndexes.push(index);
+        });
+        const photoUrls = photoInputs.length ? await uploadPhotos(photoInputs) : [];
+        const uploadedByIndex = {};
+        photoIndexes.forEach((itemIndex, resultIndex) => { uploadedByIndex[itemIndex] = photoUrls[resultIndex] || ''; });
+
+        const ids = [];
+        for (let index = 0; index < items.length; index++) {
+            const item = items[index];
+            const id = item.id || (globalThis.crypto && crypto.randomUUID ? crypto.randomUUID() : 'parent_' + Date.now() + '_' + index);
+            const result = await registerParent({
+                id,
+                name: item.name,
+                company: item.company || '',
+                morph: item.morph || '',
+                gender: item.gender || 'U',
+                memo: item.memo || '',
+                photoUrl: uploadedByIndex[index] || ''
+            });
+            if (!result || result.success === false) throw new Error(result && result.error || '부모개체 등록 실패');
+            ids.push(id);
+        }
+        return { success: true, count: ids.length, ids };
+    } catch (error) {
+        console.error('addParentsBatch error:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
  * 숨김 사진 목록 가져오기 (= GAS getHiddenPhotos)
  */
 async function getHiddenPhotos() {
@@ -1611,7 +1652,9 @@ async function getParents() {
         id: r.id,
         name: r.name || "",
         morph: r.morph || "",
+        photo: r.photo_url || "",
         photoUrl: r.photo_url || "",
+        photo_url: r.photo_url || "",
         gender: r.gender || "U",
         memo: r.memo || "",
         company: r.company || ""

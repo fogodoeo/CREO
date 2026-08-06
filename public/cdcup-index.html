@@ -2182,9 +2182,11 @@
             border-radius: 20px 20px 0 0;
             width: 100%;
             max-width: 500px;
-            max-height: 70vh;
-            overflow-y: auto;
-            padding: 16px;
+            max-height: min(72vh, 620px);
+            overflow: hidden;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
             animation: ppSlide .25s ease-out;
         }
 
@@ -2202,8 +2204,8 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 12px;
-            padding-bottom: 12px;
+            margin: 0;
+            padding: 16px;
             border-bottom: 1px solid var(--card-border);
         }
 
@@ -2224,8 +2226,22 @@
         .pp-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
+            grid-auto-rows: max-content;
+            align-content: start;
             gap: 10px;
+            padding: 12px 16px;
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow-y: auto;
+            overscroll-behavior: contain;
         }
+
+        .pp-search { position: relative; padding: 12px 16px 0; }
+        .pp-search .material-symbols-rounded { position: absolute; left: 28px; top: 24px; color: var(--text3); font-size: 19px; pointer-events: none; }
+        .pp-search input { width: 100%; height: 44px; padding: 0 12px 0 38px; border: 1px solid var(--input-border); border-radius: 10px; background: var(--input-bg); color: var(--text); font: inherit; font-size: 14px; outline: none; }
+        .pp-search input:focus { border-color: var(--accent); }
+        .pp-popup-footer { flex: 0 0 auto; padding: 10px 16px max(12px, env(safe-area-inset-bottom)); border-top: 1px solid var(--card-border); background: var(--card); }
+        .pp-new-parent { width: 100%; height: 46px; border: 0; border-radius: 10px; background: var(--accent); color: #fff; font: inherit; font-size: 14px; font-weight: 800; cursor: pointer; }
 
         .pp-card {
             border-radius: 12px;
@@ -2323,6 +2339,16 @@
             padding: 20px 0 0;
             animation: ppSlide .25s ease-out;
         }
+
+        html.vendor-mode .parent-modal { max-height: min(76vh, 650px); overflow: hidden; overflow-x: hidden; display: flex; flex-direction: column; padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+        html.vendor-mode .parent-modal #pm-entries { overflow-y: auto; overscroll-behavior: contain; }
+        html.vendor-mode .parent-modal .pm-list-title,
+        html.vendor-mode .parent-modal #pm-list,
+        html.vendor-mode .parent-modal #pm-add-row { display: none !important; }
+        html.vendor-mode .parent-modal .pm-form { margin-bottom: 8px; }
+        html.vendor-mode .parent-modal .pm-entry-head { display: none !important; }
+        html.vendor-mode .parent-modal .pm-form-row > * { min-width: 0; width: 0; }
+        html.vendor-mode .parent-modal .pm-actions { flex: 0 0 auto; }
 
         .pm-header {
             display: flex;
@@ -2755,6 +2781,7 @@
         let parentCache = [];
         let _pmPhotoBase64 = '';
         let _ppTarget = { eid: 0, key: '' };  // 팝업에서 선택 중인 대상
+        let _ppMode = 'register';
 
         async function loadParents(cb) {
             try {
@@ -2768,25 +2795,44 @@
 
         // ── 카드 피커 ──
         function openParentPopup(eid, key) {
+            _ppMode = 'register';
             _ppTarget = { eid: eid, key: key };
-            document.getElementById('pp-popup-title').textContent = key === 'sire' ? '부개체 선택' : '모개체 선택';
+            document.getElementById('pp-popup-title').textContent = key === 'sire' ? '부 개체 선택' : '모 개체 선택';
+            document.getElementById('pp-search-input').value = '';
+            document.getElementById('pp-new-parent').textContent = key === 'sire' ? '+ 새 부 개체 등록' : '+ 새 모 개체 등록';
+            renderParentPopupGrid('');
+            document.getElementById('pp-popup-overlay').classList.add('show');
+            setTimeout(function () { document.getElementById('pp-search-input').focus(); }, 220);
+        }
+
+        function renderParentPopupGrid(query) {
             const grid = document.getElementById('pp-popup-grid');
+            const key = _ppMode === 'edit' ? _edParentTarget.key : _ppTarget.key;
             const genderFilter = key === 'sire' ? 'M' : 'F';
-            const filtered = parentCache.filter(function (p) { return !p.gender || p.gender === genderFilter; });
+            const keyword = String(query || '').trim().toLowerCase();
+            const filtered = parentCache.filter(function (p) {
+                if (p.gender && p.gender !== 'U' && p.gender !== genderFilter) return false;
+                if (!keyword) return true;
+                return [p.name, p.company, p.morph].some(function (value) { return String(value || '').toLowerCase().includes(keyword); });
+            });
             if (filtered.length === 0) {
-                grid.innerHTML = '<div class="pp-empty">등록된 ' + (key === 'sire' ? '수컷' : '암컷') + ' 개체가 없습니다</div>' +
-                    '<div class="pp-manage-btn" onclick="closeParentPopup();openParentModal(\'' + genderFilter + '\')">+ 부모개체 등록하기</div>';
+                grid.innerHTML = '<div class="pp-empty">' + (keyword ? '검색 결과가 없습니다' : '등록된 ' + (key === 'sire' ? '수컷' : '암컷') + ' 개체가 없습니다') + '</div>';
             } else {
                 grid.innerHTML = filtered.map(function (p) {
-                    return '<div class="pp-card" onclick="selectParent(\'' + p.id + '\')">' +
+                    return '<div class="pp-card" onclick="' + (_ppMode === 'edit' ? 'selectEditParent' : 'selectParent') + '(\'' + p.id + '\')">' +
                         (p.photo ? '<img class="pp-card-img" src="' + p.photo + '">' :
                             '<div class="pp-card-img" style="display:flex;align-items:center;justify-content:center;font-size:28px;color:#CCC;">🦎</div>') +
                         '<div class="pp-card-info"><div class="pp-card-name">' + esc(p.name) + '</div>' +
                         '<div class="pp-card-sub">' + [p.company, p.morph].filter(Boolean).join(' · ') + '</div></div></div>';
-                }).join('') +
-                    '<div class="pp-manage-btn" onclick="closeParentPopup();openParentModal(\'' + genderFilter + '\')">부모개체 관리</div>';
+                }).join('');
             }
-            document.getElementById('pp-popup-overlay').classList.add('show');
+        }
+
+        function openParentRegistrationFromPicker() {
+            const key = _ppMode === 'edit' ? _edParentTarget.key : _ppTarget.key;
+            const gender = key === 'sire' ? 'M' : 'F';
+            closeParentPopup();
+            openParentModal(gender);
         }
 
         function closeParentPopup() {
@@ -2831,7 +2877,12 @@
             _pmEntryId = 0;
             document.getElementById('pm-entries').innerHTML = '';
             addPmEntry(presetGender || '');
-            loadParents(function () { renderParentList(); });
+            const quickMode = document.documentElement.classList.contains('vendor-mode');
+            document.getElementById('pm-title').textContent = quickMode
+                ? (presetGender === 'M' ? '새 부 개체 등록' : presetGender === 'F' ? '새 모 개체 등록' : '부모개체 등록')
+                : '부모개체 관리';
+            document.getElementById('pm-submit').textContent = quickMode ? '등록하고 선택' : '일괄 등록';
+            if (!quickMode) loadParents(function () { renderParentList(); });
             document.getElementById('parent-modal-overlay').classList.add('show');
         }
 
@@ -2846,7 +2897,7 @@
             div.className = 'pm-form';
             div.id = 'pme-' + id;
             div.innerHTML =
-                '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
+                '<div class="pm-entry-head" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
                 '<span style="font-size:12px;font-weight:700;color:var(--text2);">부모개체 #' + _pmEntries.length + '</span>' +
                 '<button style="background:none;border:none;font-size:18px;color:var(--text3);cursor:pointer;padding:0 2px;" onclick="removePmEntry(' + id + ')">✕</button></div>' +
                 '<div class="pm-form-row"><input type="text" id="pme-name-' + id + '" placeholder="개체명 *" style="flex:1.5">' +
@@ -2859,6 +2910,10 @@
                 '<span class="pm-photo-text">📷 사진 선택</span>' +
                 '<input type="file" id="pme-pf-' + id + '" accept="image/*" style="display:none" onchange="onPmPhotoEntry(' + id + ',this)"></div>';
             document.getElementById('pm-entries').appendChild(div);
+            if (document.documentElement.classList.contains('vendor-mode')) {
+                const company = document.getElementById('f-company');
+                if (company && company.value) document.getElementById('pme-company-' + id).value = company.value;
+            }
         }
 
         function removePmEntry(id) {
@@ -2900,23 +2955,36 @@
             }
             if (items.length === 0) { alert('등록할 개체명을 입력하세요.'); return; }
 
-            var btn = document.querySelector('.pm-add-btn');
-            btn.textContent = '등록중... (' + items.length + '개 일괄 처리)';
+            const quickMode = document.documentElement.classList.contains('vendor-mode');
+            var btn = document.getElementById('pm-submit');
+            btn.textContent = quickMode ? '등록 중...' : '등록중... (' + items.length + '개 일괄 처리)';
             btn.disabled = true;
 
             try {
                 const r = await addParentsBatch(items);
-                btn.textContent = '일괄 등록';
+                btn.textContent = quickMode ? '등록하고 선택' : '일괄 등록';
                 btn.disabled = false;
                 if (r && !r.success) { toast('등록 실패: ' + (r.error || ''), true); return; }
-                _pmEntries = [];
-                _pmEntryId = 0;
-                document.getElementById('pm-entries').innerHTML = '';
-                addPmEntry();
-                loadParents(function () { renderParentList(); });
-                toast(r.count + '개 부모개체 등록 완료');
+                if (quickMode) {
+                    const newParentId = r.ids && r.ids[0];
+                    loadParents(function () {
+                        closeParentModal();
+                        if (newParentId) {
+                            if (_ppMode === 'edit') selectEditParent(newParentId);
+                            else selectParent(newParentId);
+                        }
+                    });
+                    toast('부모개체 등록 완료');
+                } else {
+                    _pmEntries = [];
+                    _pmEntryId = 0;
+                    document.getElementById('pm-entries').innerHTML = '';
+                    addPmEntry();
+                    loadParents(function () { renderParentList(); });
+                    toast(r.count + '개 부모개체 등록 완료');
+                }
             } catch (err) {
-                btn.textContent = '일괄 등록';
+                btn.textContent = quickMode ? '등록하고 선택' : '일괄 등록';
                 btn.disabled = false;
                 toast('오류: ' + err.message, true);
             }
@@ -4402,24 +4470,12 @@
         var _edParentTarget = { row: 0, key: '' };
 
         function openEditParentPopup(row, key) {
+            _ppMode = 'edit';
             _edParentTarget = { row: row, key: key };
-            document.getElementById('pp-popup-title').textContent = key === 'sire' ? '부개체 선택' : '모개체 선택';
-            const grid = document.getElementById('pp-popup-grid');
-            const genderFilter = key === 'sire' ? 'M' : 'F';
-            const filtered = parentCache.filter(function (p) { return !p.gender || p.gender === genderFilter; });
-            if (filtered.length === 0) {
-                grid.innerHTML = '<div class="pp-empty">등록된 ' + (key === 'sire' ? '수컷' : '암컷') + ' 개체가 없습니다</div>' +
-                    '<div class="pp-manage-btn" onclick="closeParentPopup();openParentModal(\'' + genderFilter + '\')">+ 부모개체 등록하기</div>';
-            } else {
-                grid.innerHTML = filtered.map(function (p) {
-                    return '<div class="pp-card" onclick="selectEditParent(\'' + p.id + '\')">' +
-                        (p.photo ? '<img class="pp-card-img" src="' + p.photo + '">' :
-                            '<div class="pp-card-img" style="display:flex;align-items:center;justify-content:center;font-size:28px;color:#CCC;">🦎</div>') +
-                        '<div class="pp-card-info"><div class="pp-card-name">' + esc(p.name) + '</div>' +
-                        '<div class="pp-card-sub">' + [p.company, p.morph].filter(Boolean).join(' · ') + '</div></div></div>';
-                }).join('') +
-                    '<div class="pp-manage-btn" onclick="closeParentPopup();openParentModal(\'' + genderFilter + '\')">부모개체 관리</div>';
-            }
+            document.getElementById('pp-popup-title').textContent = key === 'sire' ? '부 개체 선택' : '모 개체 선택';
+            document.getElementById('pp-search-input').value = '';
+            document.getElementById('pp-new-parent').textContent = key === 'sire' ? '+ 새 부 개체 등록' : '+ 새 모 개체 등록';
+            renderParentPopupGrid('');
             document.getElementById('pp-popup-overlay').classList.add('show');
         }
 
@@ -5543,7 +5599,14 @@
                 <span class="pp-popup-title" id="pp-popup-title">부개체 선택</span>
                 <button class="pp-popup-close" onclick="closeParentPopup()">✕</button>
             </div>
+            <div class="pp-search">
+                <span class="material-symbols-rounded">search</span>
+                <input type="search" id="pp-search-input" placeholder="이름 · 업체 · 모프 검색" oninput="renderParentPopupGrid(this.value)">
+            </div>
             <div class="pp-grid" id="pp-popup-grid"></div>
+            <div class="pp-popup-footer">
+                <button type="button" class="pp-new-parent" id="pp-new-parent" onclick="openParentRegistrationFromPicker()">+ 새 부모개체 등록</button>
+            </div>
         </div>
     </div>
 
@@ -5551,13 +5614,13 @@
     <div class="parent-modal-overlay" id="parent-modal-overlay" onclick="if(event.target===this)closeParentModal()">
         <div class="parent-modal">
             <div class="pm-header">
-                <h3>부모개체 관리</h3>
+                <h3 id="pm-title">부모개체 관리</h3>
                 <button class="pm-close" onclick="closeParentModal()">✕</button>
             </div>
             <div id="pm-entries"></div>
-            <div style="padding:0 16px;">
-                <button class="add-btn" style="margin-bottom:8px;" onclick="addPmEntry()">+ 부모개체 행 추가</button>
-                <button class="pm-add-btn" style="margin-bottom:12px;" onclick="submitParentsBatch()">일괄 등록</button>
+            <div class="pm-actions" style="padding:0 16px;">
+                <button class="add-btn" id="pm-add-row" style="margin-bottom:8px;" onclick="addPmEntry()">+ 부모개체 행 추가</button>
+                <button class="pm-add-btn" id="pm-submit" style="margin-bottom:12px;" onclick="submitParentsBatch()">일괄 등록</button>
             </div>
             <div class="pm-list-title">등록된 부모개체</div>
             <div class="pm-grid" id="pm-list"></div>

@@ -164,6 +164,13 @@ test('established CDCUP registration, list, print, and round archive remain inta
     assert.match(operations, /VENDOR_REGISTRATION_PREFS/);
     assert.match(operations, /updateRegisterActions\(\)/);
     assert.match(operations, /업체 정보는 유지하고 다음 개체만 비움/);
+    assert.match(operations, /id="pp-search-input"/);
+    assert.match(operations, /openParentRegistrationFromPicker/);
+    assert.match(operations, /등록하고 선택/);
+
+    const bridge = fs.readFileSync(path.join(__dirname, '..', 'public', 'supabase-bridge.js'), 'utf8');
+    assert.match(bridge, /async function addParentsBatch/);
+    assert.match(bridge, /photo: r\.photo_url/);
 });
 
 test('new CDCUP overlays and shipping retain compatibility with the established item list', () => {
