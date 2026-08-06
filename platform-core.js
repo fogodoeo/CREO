@@ -152,6 +152,7 @@ function publicItem(item = {}) {
         name: cleanText(item.name, 80),
         vendorId: cleanText(item.vendorId, 64),
         vendorName: cleanText(item.vendorName, 80),
+        teamName: cleanText(item.teamName, 60),
         vendorLogoUrl: cleanText(item.vendorLogoUrl, 500),
         startPrice: Number(item.startPrice) || 0,
         soldPrice: Number(item.soldPrice) || 0,

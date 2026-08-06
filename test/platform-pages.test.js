@@ -88,6 +88,11 @@ test('every channel uses one broadcast studio with specialized CDCUP and CREWART
     assert.match(studio, /preview\.html\?module=/);
     assert.match(studio, /page=\$\{page\}&embedded=1/);
     assert.match(studio, /data-mode="layout" data-page="1"/);
+    assert.match(studio, /id="mode-operations"/);
+    assert.match(studio, /function operationsUrl/);
+    assert.match(studio, /controlKind\(channel\)==='cdcup'\?\(channel\?\.legacy\?\.managementUrl/);
+    assert.match(studio, /channel-workspace\.html\?channel=/);
+    assert.match(studio, /activeMode='operations'/);
     assert.match(legacy, /broadcast-studio\.html\?channel=/);
     assert.match(control, /broadcast-studio\.html\?channel=/);
     const workspace = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-workspace.html'), 'utf8');
@@ -111,7 +116,7 @@ test('the new broadcast implements three independent camera overlays', () => {
     const live = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-live.html'), 'utf8');
     assert.match(live, /1P · HOST/);
     assert.match(live, /2P · ITEM/);
-    assert.match(live, /EXTRA INFORMATION/);
+    assert.match(live, /LIVE AUCTION TOTAL/);
     assert.match(live, /function pageOne/);
     assert.match(live, /function pageTwo/);
     assert.match(live, /function pageThree/);
@@ -121,6 +126,10 @@ test('the new broadcast implements three independent camera overlays', () => {
     assert.match(live, /background:transparent/);
     assert.match(live, /broadcast-pulse/);
     assert.match(live, /setInterval\(pollPulse,350\)/);
+    assert.match(live, /function teamStats\(items\)/);
+    assert.match(live, /팀별 낙찰금액/);
+    assert.match(live, /quizStatus==='open'/);
+    assert.match(live, /첫 정답자/);
     assert.match(live, /document\.hidden/);
     assert.doesNotMatch(live, /setInterval\(refresh,1000\)/);
 });
@@ -163,6 +172,9 @@ test('broadcast control manages reusable banners, sponsors, and vendor logos', (
     assert.match(live, /ticker-sponsors/);
     assert.match(live, /Math\.floor\(Date\.now\(\)\/6000\)/);
     assert.match(control, /crewartSampleAssets/);
+    assert.match(control, /name="quizQuestion"/);
+    assert.match(control, /value="vendor">업체별 낙찰금액/);
+    assert.match(control, /value="team">팀별 낙찰금액/);
     assert.match(control, /seedCrewartAssets/);
     assert.match(live, /CREWART_DEFAULT_ASSETS/);
     const crewartLive = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-broadcast.html'), 'utf8');

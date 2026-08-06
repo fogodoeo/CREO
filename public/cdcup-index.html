@@ -15,6 +15,7 @@
     <link rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
     <link rel="stylesheet" href="common.css?v=20260707-nav-dropdown2">
+    <script>if(new URLSearchParams(location.search).get('embedded')==='1')document.documentElement.classList.add('embedded-studio');</script>
     <style>
         :root {
             --bg:             #0B1120;
@@ -40,6 +41,8 @@
             --shadow-md:      0 4px 12px rgba(0, 0, 0, 0.3);
             --shadow-lg:      0 8px 24px rgba(0, 0, 0, 0.4);
         }
+        html.embedded-studio .cdcup-nav{display:none!important}html.embedded-studio .container{padding-top:18px!important}
+        html.embedded-studio .cdcup-tabs>a{display:none!important}
 
         * {
             margin: 0;

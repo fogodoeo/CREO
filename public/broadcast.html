@@ -6375,6 +6375,22 @@
                 return;
             }
 
+            const liveQuiz = window.latestConfigMap || {};
+            if (String(liveQuiz.live_quiz_show || '0') === '1') {
+                const closed = String(liveQuiz.live_quiz_status || 'ready') === 'closed';
+                const open = String(liveQuiz.live_quiz_status || 'ready') === 'open';
+                const answer = String(liveQuiz.live_quiz_answer || '').trim();
+                const winner = String(liveQuiz.live_quiz_winner || '').trim();
+                container.classList.toggle('has-result', closed);
+                document.getElementById('sale-mode-kicker').textContent = closed ? 'QUIZ RESULT' : (open ? 'EVENT QUIZ · OPEN' : 'EVENT QUIZ');
+                document.getElementById('sale-mode-title').textContent = String(liveQuiz.live_quiz_question || '문제를 준비하고 있습니다.');
+                document.getElementById('sale-mode-subtitle').textContent = closed
+                    ? [answer ? `정답 ${answer}` : '', winner ? `첫 정답자 · ${winner}` : '정답자 확인 중'].filter(Boolean).join(' · ')
+                    : (open ? '채팅으로 정답을 입력해주세요. 가장 먼저 맞힌 사람이 정답자입니다.' : '잠시 후 정답 접수를 시작합니다.');
+                container.classList.add('visible');
+                return;
+            }
+
             let displayItem = item;
             let meta = getSaleModeMeta(displayItem);
             if (displayItem && meta.mode !== 'auction') {

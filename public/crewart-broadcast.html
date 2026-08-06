@@ -10,6 +10,9 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet">
     <link rel="stylesheet" href="crewart.css?v=20260707-magic2">
+    <style>
+        .cw-live-quiz{position:absolute;inset:8% 7% 11%;display:grid;place-items:center}.cw-live-quiz-card{width:min(1040px,90vw);padding:clamp(34px,5vw,70px);border:1px solid rgba(224,184,90,.45);border-radius:22px;background:linear-gradient(145deg,rgba(18,10,20,.97),rgba(8,5,13,.96));box-shadow:0 30px 100px rgba(0,0,0,.55);text-align:center}.cw-live-quiz-card small{color:#e0b85a;font-size:clamp(12px,1.2vw,18px);font-weight:950;letter-spacing:.22em}.cw-live-quiz-card h1{margin:24px 0 0;color:#fff8df;font-size:clamp(38px,5.4vw,82px);line-height:1.16;letter-spacing:-.055em}.cw-live-quiz-card p{margin:24px 0 0;color:#cab98b;font-size:clamp(14px,1.4vw,22px);font-weight:760}.cw-live-quiz-result{margin-top:30px;padding-top:25px;border-top:1px solid rgba(224,184,90,.3);color:#fff4d5;font-size:clamp(24px,3vw,46px);font-weight:950}.cw-live-quiz-result b{color:#e0b85a}
+    </style>
 </head>
 <body class="crewart-page crewart-broadcast">
     <div class="cw-broadcast-root" id="root">
@@ -111,6 +114,17 @@
             stage.innerHTML = renderCrewartHouseBoardHTML(items || [], config);
         }
 
+        function renderQuiz(cfg) {
+            root.classList.add('score-only');
+            mini.innerHTML = '';
+            const status = String(cfg.live_quiz_status || 'ready');
+            const closed = status === 'closed';
+            const open = status === 'open';
+            const answer = String(cfg.live_quiz_answer || '').trim();
+            const winner = String(cfg.live_quiz_winner || '').trim();
+            stage.innerHTML = `<section class="cw-live-quiz"><div class="cw-live-quiz-card"><small>${closed ? 'QUIZ RESULT' : open ? 'SURPRISE QUIZ · OPEN' : 'SURPRISE QUIZ'}</small><h1>${esc(cfg.live_quiz_question || '문제를 준비하고 있습니다.')}</h1>${closed ? `<div class="cw-live-quiz-result">${answer ? `정답 <b>${esc(answer)}</b><br>` : ''}${winner ? `첫 정답자 · ${esc(winner)}` : '정답자 확인 중'}</div>` : `<p>${open ? '채팅으로 정답을 입력해주세요. 가장 먼저 맞힌 사람이 정답자입니다.' : '잠시 후 정답 접수를 시작합니다.'}</p>`}</div></section>`;
+        }
+
         function renderAuction(item, items) {
             root.classList.remove('score-only');
             renderMiniScore(items);
@@ -188,7 +202,9 @@
                 detectNewSold(items || []);
                 const pageMode = currentPageMode();
                 root.dataset.mode = pageMode;
-                if (pageMode === 'auction') {
+                if (String(config.live_quiz_show || '0') === '1') {
+                    renderQuiz(config);
+                } else if (pageMode === 'auction') {
                     renderAuction(active, items || []);
                 } else if (pageMode === 'host') {
                     renderAuction(null, items || []);

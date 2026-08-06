@@ -231,6 +231,12 @@
         .rule-slot input { flex:1; }
         .rule-slot .slot-del { width:28px; height:28px; border-radius:6px; border:1px solid var(--input-border); background:transparent; color:var(--red); font-size:14px; cursor:pointer; flex-shrink:0; }
         .section-desc { font-size:11px; color:var(--text3); margin-bottom:8px; line-height:1.5; }
+        .section-heading{grid-column:1/-1;display:flex;align-items:end;justify-content:space-between;gap:16px;padding:8px 2px 0}
+        .section-heading strong{font-size:13px;letter-spacing:.01em}.section-heading span{color:var(--text3);font-size:10px}
+        .advanced-panel{grid-column:1/-1;border:1px solid var(--input-border);border-radius:14px;background:rgba(15,23,42,.56);overflow:hidden}
+        .advanced-panel>summary{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:17px 20px;cursor:pointer;list-style:none;font-size:13px;font-weight:800}
+        .advanced-panel>summary::-webkit-details-marker{display:none}.advanced-panel>summary:after{content:'열기';color:var(--text3);font-size:10px;font-weight:700}.advanced-panel[open]>summary:after{content:'닫기'}
+        .advanced-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:0 20px 20px}.advanced-grid>.card{box-shadow:none}
         .color-row { display:flex; gap:8px; align-items:center; }
         .color-row input[type=color] { width:36px; height:36px; border:none; border-radius:8px; cursor:pointer; background:transparent; padding:0; }
         .save-fab { position:fixed; bottom:20px; right:20px; width:56px; height:56px; border-radius:50%; background:var(--green); border:none; color:#fff; font-size:22px; cursor:pointer; box-shadow:0 4px 16px rgba(16,185,129,0.4); z-index:999; transition:transform .2s; display:flex; align-items:center; justify-content:center; }
@@ -253,6 +259,7 @@
             .card {
                 padding: 16px;
             }
+            .section-heading{display:block}.section-heading span{display:block;margin-top:4px}.advanced-grid{grid-template-columns:1fr;padding:0 12px 12px;gap:12px}
         }
     </style>
 </head>
@@ -338,6 +345,21 @@
             </div>
         </div>
 
+        <div class="section-heading"><strong>방송 중 제어</strong><span>송출 상태와 화면 요소를 즉시 바꿉니다.</span></div>
+
+        <!-- ══ 돌발 퀴즈 ══ -->
+        <div class="card" id="live-quiz-card" style="grid-column: span 2;">
+            <div class="card-title">돌발 퀴즈</div>
+            <div class="section-desc">문제를 송출하고 채팅 순서대로 첫 정답자를 확정합니다.</div>
+            <div class="form-row">
+                <div class="form-group"><label>송출 상태</label><select id="cfg-live-quiz-status"><option value="off">OFF</option><option value="ready">문제 준비</option><option value="open">정답 접수 중</option><option value="closed">정답 공개</option></select></div>
+                <div class="form-group"><label>첫 정답자</label><input id="cfg-live-quiz-winner" maxlength="80" placeholder="채팅에서 가장 먼저 맞힌 사람"></div>
+            </div>
+            <div class="form-group"><label>문제</label><textarea id="cfg-live-quiz-question" rows="2" maxlength="180" placeholder="방송에 표시할 문제"></textarea></div>
+            <div class="form-group"><label>공개할 정답</label><input id="cfg-live-quiz-answer" maxlength="80" placeholder="정답 공개 상태에서만 화면에 표시"></div>
+            <div class="section-desc">현재는 운영자가 채팅을 확인해 첫 정답자를 입력합니다. 채팅 수집 봇 연결 시 이 정답자 칸을 자동으로 갱신할 수 있습니다.</div>
+        </div>
+
         <!-- ══ 실시간 미리보기 ══ -->
         <div class="card">
             <div class="card-title">📺 실시간 방송 미리보기</div>
@@ -359,6 +381,8 @@
                 <div class="qtoggle" onclick="doShuffle()"><div class="dot" style="background:var(--orange)"></div><span>순서 섞기</span></div>
             </div>
         </div>
+
+        <div class="section-heading"><strong>방송 콘텐츠</strong><span>방송 중 교체할 자막과 배너입니다.</span></div>
 
         <!-- ══ 공지사항 (티커) 설정 ══ -->
         <div class="card">
@@ -400,6 +424,10 @@
                 <div class="form-group"><label>최대 세로</label><input type="text" id="cfg-banner-maxheight" placeholder="auto"></div>
             </div>
         </div>
+
+        <details class="advanced-panel">
+            <summary><span>고급 화면 설정</span><span style="margin-left:auto;color:var(--text3);font-size:10px;font-weight:600">진행자 · 글꼴 · 로고 · 운영 보안</span></summary>
+            <div class="advanced-grid">
 
         <!-- ══ 1P 진행자 네임택 ══ -->
         <div class="card" data-control-scope="cdcup">
@@ -473,6 +501,9 @@
             <div class="form-group"><label>새 비밀번호</label><input type="password" id="pw-new" placeholder="새 비밀번호"></div>
             <button onclick="savePw()" class="btn primary">비밀번호 변경</button>
         </div>
+
+            </div>
+        </details>
 
         <div style="height:80px"></div>
     </div>
@@ -1023,6 +1054,11 @@
                 host_role2: document.getElementById('cfg-host-role2').value,
                 nametag_font_size: document.getElementById('cfg-nametag-font-size').value,
                 bracket_font_size: document.getElementById('cfg-bracket-font-size').value || '14',
+                live_quiz_status: document.getElementById('cfg-live-quiz-status').value || 'off',
+                live_quiz_show: document.getElementById('cfg-live-quiz-status').value === 'off' ? '0' : '1',
+                live_quiz_question: document.getElementById('cfg-live-quiz-question').value,
+                live_quiz_answer: document.getElementById('cfg-live-quiz-status').value === 'closed' ? document.getElementById('cfg-live-quiz-answer').value : '',
+                live_quiz_winner: document.getElementById('cfg-live-quiz-winner').value,
             };
             if (m.active_event_module === 'crewart') {
                 m.crewart_ticker = m.ticker;
@@ -1109,6 +1145,10 @@
                     ticker_interval: cfg.crewart_ticker_interval ?? cfg.ticker_interval
                 } : cfg;
                 document.getElementById('cfg-active-event-module').value = _cfg.active_event_module || 'cdcup';
+                document.getElementById('cfg-live-quiz-status').value = cfg.live_quiz_show === '1' ? (cfg.live_quiz_status || 'ready') : 'off';
+                document.getElementById('cfg-live-quiz-question').value = cfg.live_quiz_question || '';
+                document.getElementById('cfg-live-quiz-answer').value = cfg.live_quiz_answer || '';
+                document.getElementById('cfg-live-quiz-winner').value = cfg.live_quiz_winner || '';
                 document.getElementById('cfg-crewart-houses').value = cfg.crewart_houses || serializeCrewartHouses(parseCrewartHouses(''));
                 document.getElementById('cfg-crewart-participants').value = cfg.crewart_participants || '';
                 document.getElementById('cfg-crewart-score-per-man').value = cfg.crewart_score_per_man || '1';

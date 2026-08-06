@@ -14,6 +14,15 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>방송 미리보기 - CREO</title>
+    <script>
+        (() => {
+            const params = new URLSearchParams(location.search);
+            if (params.get('embedded') === '1') return;
+            const channel = String(params.get('module') || params.get('event') || 'cdcup').toLowerCase().replace(/[^a-z0-9-]/g, '') || 'cdcup';
+            const page = Math.max(1, Math.min(3, Number(params.get('page')) || 1));
+            location.replace(`broadcast-studio.html?channel=${encodeURIComponent(channel)}&view=layout-${page}`);
+        })();
+    </script>
     <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
     <script src="event-modules.js?v=20260710-crebti3"></script>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>

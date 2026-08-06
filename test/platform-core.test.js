@@ -37,10 +37,11 @@ test('channel configuration is normalized and duplicate ids are rejected', () =>
 test('public broadcast items never expose winner or shipping contact data', () => {
     const item = publicItem({
         id: 'item_1', lotNumber: 3, name: '테스트 개체', winnerName: '홍길동',
-        winnerPhone: '01012345678', shippingAddress: '서울', soldPrice: 20
+        winnerPhone: '01012345678', shippingAddress: '서울', soldPrice: 20, teamName: 'RED'
     });
     assert.equal(item.name, '테스트 개체');
     assert.equal(item.soldPrice, 20);
+    assert.equal(item.teamName, 'RED');
     assert.equal('winnerPhone' in item, false);
     assert.equal('shippingAddress' in item, false);
 });

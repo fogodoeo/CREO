@@ -120,6 +120,21 @@ test('public broadcast payload excludes shipping and winner contacts', async () 
     assert.equal(response.json().items[0].winnerPhone, undefined);
 });
 
+test('public broadcast hides a quiz answer until the operator closes the quiz', async () => {
+    const repository = new MemoryRepository();
+    const api = createPlatformApi({ repository, logger: { error() {} } });
+    await call(api, 'PUT', '/api/platform/channels/alpha/broadcast-state', {
+        page3On: true, quizOn: true, quizStatus: 'open', quizQuestion: '문제', quizAnswer: '비밀 정답'
+    });
+    let response = await call(api, 'GET', '/api/platform/channels/alpha/broadcast', null, '');
+    assert.equal(response.json().state.quizAnswer, '');
+    await call(api, 'PUT', '/api/platform/channels/alpha/broadcast-state', {
+        page3On: true, quizOn: true, quizStatus: 'closed', quizQuestion: '문제', quizAnswer: '비밀 정답'
+    });
+    response = await call(api, 'GET', '/api/platform/channels/alpha/broadcast', null, '');
+    assert.equal(response.json().state.quizAnswer, '비밀 정답');
+});
+
 test('universal broadcast channel can only switch to a catalog channel', async () => {
     const repository = new MemoryRepository();
     const api = createPlatformApi({ repository, logger: { error() {} } });
@@ -163,7 +178,9 @@ test('broadcast state stores independent 1P, 2P, and 3P overlay controls', async
         activeItemId: 'item_1', mode: 'sold', page: 2,
         hostName1: '진행자', page1TickerOn: false, page1BannerOn: true,
         page1BannerUrl: 'https://example.com/banner.png', page2SoldOn: true,
-        page3On: true, extraMode: 'ranking', page3Title: '낙찰 순위',
+        page3On: true, extraMode: 'team', page3Title: '팀별 낙찰금액',
+        quizOn: true, quizStatus: 'open', quizQuestion: '첫 번째 문제',
+        quizWinner: '참가자 A', quizAnswer: '정답',
         ignoredSecret: 'must-not-persist'
     });
     assert.equal(response.status, 200);
@@ -173,7 +190,11 @@ test('broadcast state stores independent 1P, 2P, and 3P overlay controls', async
     assert.equal(state.page1BannerOn, true);
     assert.equal(state.page2SoldOn, true);
     assert.equal(state.page3On, true);
-    assert.equal(state.extraMode, 'ranking');
+    assert.equal(state.extraMode, 'team');
+    assert.equal(state.quizOn, true);
+    assert.equal(state.quizStatus, 'open');
+    assert.equal(state.quizQuestion, '첫 번째 문제');
+    assert.equal(state.quizWinner, '참가자 A');
     assert.equal(state.ignoredSecret, undefined);
 });
 

@@ -99,7 +99,7 @@ function sessionKey(token) {
 }
 
 function sanitizeBroadcastState(input = {}) {
-    const extraMode = ['bracket', 'ranking', 'status'].includes(input.extraMode) ? input.extraMode : 'bracket';
+    const extraMode = ['bracket', 'ranking', 'status', 'vendor', 'team'].includes(input.extraMode) ? input.extraMode : 'vendor';
     return {
         id: 'state',
         activeItemId: cleanText(input.activeItemId, 64),
@@ -127,7 +127,12 @@ function sanitizeBroadcastState(input = {}) {
         page2BannerUrl: cleanText(input.page2BannerUrl, 600),
         page3On: booleanValue(input.page3On, false),
         extraMode,
-        page3Title: cleanText(input.page3Title || input.headline, 120)
+        page3Title: cleanText(input.page3Title || input.headline, 120),
+        quizOn: booleanValue(input.quizOn, false),
+        quizStatus: ['ready', 'open', 'closed'].includes(input.quizStatus) ? input.quizStatus : 'ready',
+        quizQuestion: cleanText(input.quizQuestion, 180),
+        quizWinner: cleanText(input.quizWinner, 80),
+        quizAnswer: cleanText(input.quizAnswer, 80)
     };
 }
 
@@ -159,6 +164,7 @@ function sanitizeRecord(type, input = {}, current = {}) {
             lotNumber: Math.max(0, Number.parseInt(input.lotNumber, 10) || 0),
             vendorId: cleanText(input.vendorId, 64),
             vendorName: cleanText(input.vendorName, 80),
+            teamName: cleanText(input.teamName, 60),
             name: cleanText(input.name, 100),
             startPrice: Math.max(0, numberValue(input.startPrice)),
             soldPrice: Math.max(0, numberValue(input.soldPrice)),
@@ -516,7 +522,10 @@ function createPlatformApi({ repository, logger = console } = {}) {
                 replyJson(res, 200, {
                     revision: channelRevision(channelId),
                     channel,
-                    state: data.broadcast,
+                    state: data.broadcast ? {
+                        ...data.broadcast,
+                        quizAnswer: data.broadcast.quizStatus === 'closed' ? data.broadcast.quizAnswer : ''
+                    } : data.broadcast,
                     assets: data.assets
                         .filter((asset) => asset.active !== false)
                         .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name, 'ko'))
