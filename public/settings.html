@@ -260,6 +260,7 @@
                 padding: 16px;
             }
             .section-heading{display:block}.section-heading span{display:block;margin-top:4px}.advanced-grid{grid-template-columns:1fr;padding:0 12px 12px;gap:12px}
+            .save-fab{right:12px;bottom:10px;left:12px;width:calc(100% - 24px)}
         }
     </style>
 </head>
@@ -345,8 +346,6 @@
             </div>
         </div>
 
-        <div class="section-heading"><strong>퀴즈 화면</strong></div>
-
         <!-- ══ 돌발 퀴즈 ══ -->
         <div class="card" id="live-quiz-card" style="grid-column: span 2;">
             <div class="card-title">퀴즈</div>
@@ -368,10 +367,10 @@
                 <textarea id="cfg-ticker" rows="4" placeholder="[안내:#FFB84D] 입찰은 밴드 댓글로 참여해 주세요&#10;[규정:#7CF0FF] 호가 단위를 준수해 주세요"></textarea>
             </div>
             <div class="form-row">
-                <div class="form-group"><label>전환 시간</label><input type="number" id="cfg-ticker-interval" placeholder="4200"></div>
+                <div class="form-group"><label>전환 간격(ms)</label><input type="number" id="cfg-ticker-interval" placeholder="4200"></div>
                 <div class="form-group"><label>왼쪽 표시</label><input type="text" id="cfg-badge-text" placeholder="LIVE"></div>
-                <div class="form-group" data-control-scope="cdcup"><label>로고 크기</label><input type="number" id="cfg-ticker-sponsor-size" placeholder="46"></div>
-                <div class="form-group" data-control-scope="cdcup"><label>글자 크기</label><input type="number" id="cfg-ticker-fontsize" placeholder="40"></div>
+                <div class="form-group" data-control-scope="cdcup"><label>로고 크기(px)</label><input type="number" id="cfg-ticker-sponsor-size" placeholder="46"></div>
+                <div class="form-group" data-control-scope="cdcup"><label>글자 크기(px)</label><input type="number" id="cfg-ticker-fontsize" placeholder="40"></div>
             </div>
             <div class="form-group" data-control-scope="cdcup">
                 <label>배경 스타일</label>
@@ -390,7 +389,7 @@
             <div id="banner-list"></div>
             <button class="add-slot-btn" onclick="addBannerSlot()">+ 배너 추가</button>
             <div class="form-row" style="margin-top:12px">
-                <div class="form-group"><label>전환 시간</label><input type="number" id="cfg-banner-interval" placeholder="5000"></div>
+                <div class="form-group"><label>전환 간격(ms)</label><input type="number" id="cfg-banner-interval" placeholder="5000"></div>
                 <div class="form-group"><label>투명도</label><input type="text" id="cfg-banner-opacity" placeholder="0.93"></div>
             </div>
             <div class="form-row">
