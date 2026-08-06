@@ -15,7 +15,7 @@
     <link rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
     <link rel="stylesheet" href="common.css?v=20260707-nav-dropdown2">
-    <script>(()=>{const p=new URLSearchParams(location.search);if(p.get('embedded')==='1')document.documentElement.classList.add('embedded-studio','admin-mode');else if(p.get('admin')==='1')document.documentElement.classList.add('admin-mode');else document.documentElement.classList.add('vendor-mode')})()</script>
+    <script>(()=>{const p=new URLSearchParams(location.search),vendor=p.get('embedded')!=='1'&&p.get('admin')!=='1';if(p.get('embedded')==='1')document.documentElement.classList.add('embedded-studio','admin-mode');else if(p.get('admin')==='1')document.documentElement.classList.add('admin-mode');else document.documentElement.classList.add('vendor-mode');if(vendor)document.addEventListener('DOMContentLoaded',()=>document.querySelectorAll('.js-event-admin-title').forEach(el=>el.textContent='CDCUP'))})()</script>
     <style>
         :root {
             --bg:             #0B1120;
