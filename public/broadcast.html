@@ -25,7 +25,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <script src="supabase-bridge.js?v=20260720-quota-fallback-v2"></script>
+    <script src="supabase-bridge.js?v=20260809-team-progress-board"></script>
     <script src="event-modules.js?v=20260710-crebti3"></script>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link
@@ -3894,6 +3894,30 @@
             return staged.length ? staged : tournament.filter(item => !getItemAuctionMeta(item).tournamentStage);
         }
 
+        // 방송 화면은 오래 열린 OBS/배치기 탭에서 bridge 파일만 이전 캐시로 남을 수 있다.
+        // 팀 진행표 렌더링이 외부 bridge 함수 유무에 의존하지 않도록 필요한 설정을
+        // 이 화면에서도 안전하게 정규화한다.
+        function parseBroadcastStageGroups(configMap, stage = 8) {
+            if (typeof parseTournamentStageGroups === 'function') {
+                return parseTournamentStageGroups(configMap || {}, stage);
+            }
+            try {
+                const parsed = JSON.parse(configMap?.[`tournament_stage_groups_${stage}`] || 'null');
+                if (!parsed || !Array.isArray(parsed.groups)) return null;
+                const groups = parsed.groups.map((group, index) => ({
+                    code: String(group?.code || String.fromCharCode(65 + index)).trim().toUpperCase(),
+                    name: String(group?.name || `${group?.code || String.fromCharCode(65 + index)}팀`).trim(),
+                    leader: String(group?.leader || '').trim(),
+                    members: Array.isArray(group?.members)
+                        ? group.members.map(member => String(member || '').trim()).filter(Boolean)
+                        : []
+                })).filter(group => /^[A-Z]$/.test(group.code) && group.members.length);
+                return groups.length ? { ...parsed, groups } : null;
+            } catch (_) {
+                return null;
+            }
+        }
+
         // URL 파라미터 확인 후 host-mode 적용
         const urlParams = new URLSearchParams(window.location.search);
         const isHostMode = urlParams.get('mode') === 'host' || urlParams.get('page') === '1';
@@ -5701,9 +5725,7 @@
                 const team = individualFinal
                     ? company
                     : resolveBlindTeamLetter(item, teamIndex, fallbackByCompany, preferredScale);
-                const configuredGroups = typeof parseTournamentStageGroups === 'function'
-                    ? parseTournamentStageGroups(map || {}, preferredScale)
-                    : null;
+                const configuredGroups = parseBroadcastStageGroups(map || {}, preferredScale);
                 const teamLabel = individualFinal
                     ? company
                     : (configuredGroups?.groups.find(group => group.code === team)?.name || company);
@@ -7317,7 +7339,7 @@
                 totals[company] = (totals[company] || 0) + readLiveTotalAmount(item);
                 counts[company] = (counts[company] || 0) + (isSoldForTotals(item) ? 1 : 0);
             });
-            const stageGroups = parseTournamentStageGroups(map || {}, 8);
+            const stageGroups = parseBroadcastStageGroups(map || {}, 8);
             const board = document.createElement('section');
             board.className = 'sports-results-board animate-in';
             const title = stage === 8 ? '2라운드 팀 순위' : '3라운드 개인 순위';
@@ -7343,7 +7365,7 @@
                     grid.appendChild(card);
                 });
             } else {
-                const groups = parseTournamentStageGroups(map || {}, 8)?.groups || [];
+                const groups = parseBroadcastStageGroups(map || {}, 8)?.groups || [];
                 const teamTotals = {};
                 const roundTwoItems = scopeTournamentItems(items || [], 8);
                 roundTwoItems.forEach(item => {
