@@ -1348,7 +1348,7 @@
 
         const pageNum = normalizePreviewPage(params.get('page')); // Default: page=2 (개체용)
         document.body.classList.toggle('preview-page-3', pageNum === '3');
-        const broadcastAssetVersion = '20260809-team-progress-compact';
+        const broadcastAssetVersion = '20260809-free-banner-edge';
         let previewConfigMap = {};
 
         function requestedModuleId() {
@@ -2477,9 +2477,9 @@
             const maxX = containerRect.width - el.offsetWidth;
             let maxY = containerRect.height - el.offsetHeight;
 
-            if (activeDragKey === 'bracket_full' || activeDragKey === 'bracket_live') {
-                // 대진표는 화면 전체 크기여도 자유롭게 움직일 수 있게 최소 32px만 화면에 남긴다.
-                const minVisible = 32;
+            if (activeDragKey === 'bracket_full' || activeDragKey === 'bracket_live' || activeDragKey === 'banner') {
+                // 대진표와 배너는 일부를 송출 화면 밖으로 빼서 가장자리를 정확히 맞출 수 있다.
+                const minVisible = activeDragKey === 'banner' ? 24 : 32;
                 x = Math.max(-el.offsetWidth + minVisible, Math.min(x, containerRect.width - minVisible));
                 y = Math.max(-el.offsetHeight + minVisible, Math.min(y, containerRect.height - minVisible));
             } else {

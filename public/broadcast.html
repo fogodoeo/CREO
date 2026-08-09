@@ -4309,6 +4309,12 @@
             return `max(${normalized}, ${fallback})`;
         }
 
+        function freeBannerEdgeCss(value, axis) {
+            const fallback = axis === 'x' ? 'var(--broadcast-safe-x)' : 'var(--broadcast-safe-y)';
+            const normalized = normalizeCssLength(value);
+            return hasPlacementValue(normalized) ? normalized : fallback;
+        }
+
         function normalizeOpacity(value, fallback) {
             const raw = String(value == null ? '' : value).trim();
             const fallbackValue = typeof fallback === 'number' ? fallback : 0.93;
@@ -4399,17 +4405,17 @@
             container.style.bottom = 'auto';
 
             if (right) {
-                container.style.right = safeEdgeCss(right, 'x');
+                container.style.right = freeBannerEdgeCss(right, 'x');
             } else if (left) {
-                container.style.left = safeEdgeCss(left, 'x');
+                container.style.left = freeBannerEdgeCss(left, 'x');
             } else {
                 container.style.right = 'var(--broadcast-safe-x)';
             }
 
             if (bottom) {
-                container.style.bottom = safeEdgeCss(bottom, 'y');
+                container.style.bottom = freeBannerEdgeCss(bottom, 'y');
             } else if (top) {
-                container.style.top = safeEdgeCss(top, 'y');
+                container.style.top = freeBannerEdgeCss(top, 'y');
             } else {
                 container.style.bottom = 'var(--broadcast-safe-y)';
             }
@@ -4461,17 +4467,17 @@
             container.style.removeProperty('bottom');
 
             if (hasPlacementValue(layout.right)) {
-                container.style.right = safeEdgeCss(layout.right, 'x');
+                container.style.right = freeBannerEdgeCss(layout.right, 'x');
             } else if (hasPlacementValue(layout.left)) {
-                container.style.left = safeEdgeCss(layout.left, 'x');
+                container.style.left = freeBannerEdgeCss(layout.left, 'x');
             } else {
                 container.style.right = 'var(--broadcast-safe-x)';
             }
 
             if (hasPlacementValue(layout.bottom)) {
-                container.style.bottom = safeEdgeCss(layout.bottom, 'y');
+                container.style.bottom = freeBannerEdgeCss(layout.bottom, 'y');
             } else if (hasPlacementValue(layout.top)) {
-                container.style.top = safeEdgeCss(layout.top, 'y');
+                container.style.top = freeBannerEdgeCss(layout.top, 'y');
             } else {
                 container.style.bottom = 'var(--broadcast-safe-y)';
             }
