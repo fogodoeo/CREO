@@ -186,7 +186,9 @@
             });
         } else {
             [16, 8].forEach(stage => {
-                result[stage] = sumStageItems(items || [], stage, []);
+                const current = sumStageItems(items || [], stage, []);
+                const stored = storedStageAmounts(map || {}, stage, []);
+                result[stage] = Object.keys(current).length ? current : stored;
             });
         }
         [4, 2].forEach(stage => {
@@ -200,6 +202,33 @@
                     : archivedStageAmounts(map || {}, stage, expectedTeams));
         });
         return result;
+    }
+
+    function parseStageGroups(map, stage = 8) {
+        try {
+            const parsed = JSON.parse(map?.[`tournament_stage_groups_${stage}`] || 'null');
+            if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+            const groups = Array.isArray(parsed.groups) ? parsed.groups : [];
+            const normalized = groups.map((group, index) => {
+                const code = String(group?.code || String.fromCharCode(65 + index)).trim().toUpperCase().slice(0, 2);
+                const members = Array.isArray(group?.members) ? group.members : [];
+                const seen = new Set();
+                return {
+                    code,
+                    name: String(group?.name || `${code}팀`).trim(),
+                    leader: String(group?.leader || '').trim(),
+                    members: members.map(value => String(value || '').trim()).filter(value => value && !seen.has(value) && seen.add(value))
+                };
+            }).filter(group => group.members.length);
+            if (!groups.length || !normalized.length) return null;
+            return {
+                title: String(parsed.title || `${stage}강 팀 배정`).trim(),
+                groups: normalized,
+                eliminated: Array.isArray(parsed.eliminated) ? parsed.eliminated.map(value => String(value || '').trim()).filter(Boolean) : []
+            };
+        } catch (_) {
+            return null;
+        }
     }
 
     function isLegacySeason(map) {
@@ -234,6 +263,7 @@
         configuredStageTeams,
         archivedStageAmounts,
         buildRoundAmounts,
+        parseStageGroups,
         isLegacySeason,
         teamTotal,
         allTeamTotals

@@ -7,7 +7,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <title>2026 CDCUP 공식 토너먼트 대진표</title>
   <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
-  <script src="cdcup-tournament-data.js?v=20260805-season2-wildcard-v1"></script>
+  <script src="cdcup-tournament-data.js?v=20260809-season2-groups-v1"></script>
   <style>
     @font-face{font-family:Pretendard;src:local("Pretendard");font-weight:100 900}
     :root{
@@ -72,6 +72,10 @@
     .advance{flex:0 0 auto;padding:1px 4px;border:1px solid rgba(34,201,141,.42);color:var(--green);font-size:6px;font-style:normal;font-weight:950;letter-spacing:.08em}
     .r16 .match{height:79px}.r16 .m1{top:52px}.r16 .m2{top:147px}.r16 .m3{top:242px}.r16 .m4{top:337px}.r16 .m5{top:432px}.r16 .m6{top:527px}.r16 .m7{top:622px}.r16 .m8{top:717px}
     .r8 .match{height:101px}.r8 .match-label{height:25px;font-size:9px}.r8 .team{height:37px;grid-template-columns:31px minmax(0,1fr) auto;gap:10px}.r8 .team-logo{width:27px;height:27px}.r8 .team-main strong{font-size:14px}.r8 .team-main small{font-size:8px}.r8 .amount b{font-size:15px}.r8 .m1{top:78px}.r8 .m2{top:268px}.r8 .m3{top:458px}.r8 .m4{top:648px}
+    .r8 .group-card{height:209px}.r8 .group-card .team{height:45px}.r8 .group-card.m1{top:60px}.r8 .group-card.m2{top:325px}.r8 .group-card.m3{top:590px}
+    .leader-mark{margin-left:6px;padding:1px 5px;border:1px solid rgba(205,165,72,.5);color:var(--gold-soft);font-size:7px;font-style:normal;font-weight:950;letter-spacing:.06em}
+    .team-logo-fallback{color:#172235;font-size:11px;font-weight:950}
+    body.team-stage .round.r4,body.team-stage .round.final{opacity:.18}
     .r4 .match{height:125px}.r4 .match-label{height:29px;font-size:10px}.r4 .team{height:47px;grid-template-columns:39px minmax(0,1fr) auto;gap:12px;padding:0 13px}.r4 .team-logo{width:34px;height:34px}.r4 .team-main{display:block}.r4 .team-main strong{display:block;font-size:17px}.r4 .team-main small{display:block;margin-top:2px;font-size:8px}.r4 .amount{font-size:9px}.r4 .amount b{font-size:13px}.r4 .m1{top:165px}.r4 .m2{top:545px}
     .final .match{height:181px;border-color:rgba(205,165,72,.52);background:linear-gradient(135deg,rgba(18,30,44,.99),rgba(9,16,26,.99))}.final .m1{top:206px}.final .m2{top:524px}.final .match-label{height:36px;padding:0 15px;font-size:11px;color:var(--gold-soft)}.final .team{height:72px;grid-template-columns:54px minmax(0,1fr) auto;gap:15px;padding:0 16px}.final .team-logo{width:47px;height:47px}.final .team-main{display:block}.final .team-main strong{display:block;font-size:23px;color:var(--white)}.final .team-main small{display:block;margin-top:4px;font-size:10px}.final .amount{font-size:10px;color:var(--muted)}.final .amount b{font-size:15px}.final .team.finalist{background:linear-gradient(90deg,rgba(205,165,72,.09),transparent 78%)}
     .legend{position:absolute;left:0;right:0;bottom:3px;display:flex;align-items:center;justify-content:space-between;color:#4c5868;font-size:9px;font-weight:850;letter-spacing:.09em;z-index:3}
@@ -146,6 +150,7 @@
     ];
     let ROUNDS=[];
     let LINKS=[];
+    let STAGE_GROUPS=null;
     const pairMatch=(pairs,left,right)=>pairs.find(match=>
       (match.left===left&&match.right===right)||(match.left===right&&match.right===left)
     )||{left,right};
@@ -170,6 +175,7 @@
     }
     function buildTournamentModel(map,items){
       const roundAmounts=CdcupTournamentData.buildRoundAmounts(map||{},items||[]);
+      STAGE_GROUPS=CdcupTournamentData.parseStageGroups(map||{},8);
       const legacy=CdcupTournamentData.isLegacySeason(map||{});
       const stored16=CdcupTournamentData.parseBracket(map||{},16).matches||{};
       const stored8=CdcupTournamentData.parseBracket(map||{},8).matches||{};
@@ -204,6 +210,9 @@
           w:legacy?amountWinner(match,roundAmounts,8):savedOrAmountWinner(match,roundAmounts,8)
         };
       });
+      const stageGroupCards=STAGE_GROUPS?.groups?.map((group,index)=>({
+        id:`group-${group.code || index+1}`,stage:8,label:`${group.name} · ${group.members.length}팀`,members:group.members,leader:group.leader,code:group.code
+      }))||[];
       const qfWinners=quarterfinals.map(match=>match.w).filter(Boolean);
       const semifinalDefaults=[
         {left:qfWinners[0]||(legacy?'베누스':''),right:qfWinners[1]||(legacy?'히꼬':'')},
@@ -236,15 +245,23 @@
       };
       ROUNDS=[
         {key:'r16',round:0,label:'16강',matches:r16},
-        {key:'r8',round:1,label:'8강',matches:quarterfinals},
+        {key:'r8',round:1,label:STAGE_GROUPS?'2라운드 팀 배정':'8강',matches:STAGE_GROUPS?stageGroupCards:quarterfinals},
         {key:'r4',round:2,label:'4강',matches:semifinals},
         {key:'final',round:3,label:'결승·3위전',matches:[finalMatch,bronzeMatch]}
       ];
       LINKS=[];
       r16.forEach(match=>{
-        const target=quarterfinals.find(next=>next.a===match.w||next.b===match.w);
-        if(match.w&&target)LINKS.push([match.id,match.w,target.id,match.w,1]);
+        if(STAGE_GROUPS){
+          [match.a,match.b].forEach(team=>{
+            const target=stageGroupCards.find(group=>group.members.includes(team));
+            if(team&&target)LINKS.push([match.id,team,target.id,team,1]);
+          });
+        }else{
+          const target=quarterfinals.find(next=>next.a===match.w||next.b===match.w);
+          if(match.w&&target)LINKS.push([match.id,match.w,target.id,match.w,1]);
+        }
       });
+      if(STAGE_GROUPS)return;
       quarterfinals.forEach(match=>{
         const target=semifinals.find(next=>next.a===match.w||next.b===match.w);
         if(match.w&&target)LINKS.push([match.id,match.w,target.id,match.w,2]);
@@ -255,20 +272,25 @@
       });
     }
     const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-    function teamRow(name,price,winner,match){
+    function teamRow(name,price,winner,match,leader=''){
       const meta=TEAM[name]||[name,''];
       const isFinal=match.stage===2;
       const isWinner=winner===name;
       let status='';
       if(price!==undefined&&price!==null) status=`<span class="amount"><b>${Number(price).toLocaleString('ko-KR')}</b>만원</span>`;
       else status='<span class="amount">-</span>';
-      return `<div class="team${isWinner?' win':''}${isFinal?' finalist':''}" data-team="${escapeHtml(name)}"><span class="team-logo"><img src="${meta[1]}" alt=""></span><span class="team-main"><span class="team-name"><strong>${escapeHtml(name)}</strong>${isWinner?'<i class="advance">WIN</i>':''}</span><small>${escapeHtml(meta[0])}</small></span>${status}</div>`;
+      const logo=meta[1]?`<img src="${meta[1]}" alt="">`:`<span class="team-logo-fallback">${escapeHtml(String(name||'?').slice(0,1))}</span>`;
+      return `<div class="team${isWinner?' win':''}${isFinal?' finalist':''}" data-team="${escapeHtml(name)}"><span class="team-logo">${logo}</span><span class="team-main"><span class="team-name"><strong>${escapeHtml(name)}</strong>${name===leader?'<i class="leader-mark">팀장</i>':''}${isWinner?'<i class="advance">WIN</i>':''}</span><small>${escapeHtml(meta[0])}</small></span>${status}</div>`;
     }
     function matchCard(match,index,round){
+      if(Array.isArray(match.members))return `<article class="match group-card m${index+1}" id="${match.id}" data-round="${round.round}"><div class="match-label"><span>${escapeHtml(match.label)}</span><span>배정 완료</span></div>${match.members.map(name=>teamRow(name,null,'',match,match.leader)).join('')}</article>`;
       const status=match.w?'경기 종료':'집계 중';
       return `<article class="match m${index+1}" id="${match.id}" data-round="${round.round}"><div class="match-label"><span>${escapeHtml(match.label||`${round.label} ${index+1}경기`)}</span><span>${status}</span></div>${teamRow(match.a,match.ap,match.w,match)}${teamRow(match.b,match.bp,match.w,match)}</article>`;
     }
     function renderMatches(){
+      document.body.classList.toggle('team-stage',Boolean(STAGE_GROUPS));
+      const r8Title=document.querySelector('.round.r8 .round-title');
+      if(STAGE_GROUPS&&r8Title)r8Title.innerHTML='<strong>2라운드</strong><em>TEAM ASSIGNMENT · 12 TEAMS</em>';
       for(const round of ROUNDS){
         const target=document.querySelector('.round.'+round.key);
         target.querySelectorAll('.match').forEach(match=>match.remove());
@@ -318,7 +340,7 @@
         buildTournamentModel(map||{},items||[]);
         renderMatches();
         const grandTotal=ROUNDS.flatMap(round=>round.matches).reduce((sum,match)=>sum+Number(match.ap||0)+Number(match.bp||0),0);
-        document.getElementById('bracket-total').textContent=`총 낙찰금 ${grandTotal.toLocaleString('ko-KR')}만원`;
+        document.getElementById('bracket-total').textContent=`16강 총 낙찰금 ${Object.values(CdcupTournamentData.buildRoundAmounts(map||{},items||[])[16]||{}).reduce((sum,value)=>sum+Number(value||0),0).toLocaleString('ko-KR')}만원`;
         const params=new URLSearchParams(location.search);
         const requested=String(params.get('stage')||'all').toLowerCase();
         const autoplay=params.get('animate')==='1';

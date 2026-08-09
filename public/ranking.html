@@ -6,7 +6,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <title>종합 순위표 | CDCUP</title>
     <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
-    <script src="cdcup-tournament-data.js?v=20260805-season2-wildcard-v1"></script>
+    <script src="cdcup-tournament-data.js?v=20260809-season2-groups-v1"></script>
     <script src="event-modules.js?v=20260710-crebti3"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
@@ -393,7 +393,7 @@
             <button class="round-nav-btn active" type="button" onclick="setRoundView('summary', this)">종합</button>
             <a class="round-nav-btn" href="tournament-bracket.html" role="tab">전체 대진표</a>
             <button class="round-nav-btn" type="button" onclick="setRoundView('16', this)">16강</button>
-            <button class="round-nav-btn" type="button" onclick="setRoundView('8', this)">8강</button>
+            <button class="round-nav-btn" id="round-nav-8" type="button" onclick="setRoundView('8', this)">8강</button>
             <button class="round-nav-btn" type="button" onclick="setRoundView('4', this)">4강</button>
             <button class="round-nav-btn" type="button" onclick="setRoundView('2', this)">결승·3위전</button>
         </div>
@@ -434,9 +434,9 @@
 
         <div class="main-view" id="8-view">
             <section class="bracket-panel">
-                <header class="bracket-panel-head"><div class="stage-heading"><span class="stage-number">02</span><div class="stage-heading-copy"><small>TOURNAMENT STAGE</small><strong>8강</strong><span>QUARTER FINAL</span></div></div><span class="bracket-status is-complete">경기 종료</span></header>
+                <header class="bracket-panel-head"><div class="stage-heading"><span class="stage-number">02</span><div class="stage-heading-copy"><small>TOURNAMENT STAGE</small><strong id="round-title-8">8강</strong><span id="round-subtitle-8">QUARTER FINAL</span></div></div><span class="bracket-status is-complete" id="round-status-8">경기 종료</span></header>
                 <div class="bracket-scroll"><div class="round-stage-grid" id="round-content-8"></div></div>
-                <div class="bracket-note">현재 저장된 공식 8강 대진과 라운드별 낙찰금입니다.</div>
+                <div class="bracket-note" id="round-note-8">현재 저장된 공식 8강 대진과 라운드별 낙찰금입니다.</div>
             </section>
         </div>
 
@@ -654,6 +654,7 @@
         }
 
         function renderRoundViews(map) {
+            const stageGroups = CdcupTournamentData.parseStageGroups(map || {}, 8);
             const officialMap = Object.fromEntries((legacyOfficialMode ? OFFICIAL_ROUND_RESULTS : []).map(entry => [entry.name, entry]));
             const rowMap = Object.fromEntries(allRows.map(row => [row.name, row]));
             const storedRound16 = parseBracket(map || {}, 16).matches || {};
@@ -671,7 +672,7 @@
 
             const storedWinner = match => match?.winner === 'left' || match?.winner === 'right' ? (match[match.winner] || '') : '';
             const stageWinner = (match, round) => storedWinner(match) || winnerByStageAmount(match, round);
-            const qfWinners = quarterfinals.map(match => storedWinner(match) || (legacyOfficialMode ? winnerByOfficialPrice(match, 8) : winnerByStageAmount(match, 8)));
+            const qfWinners = stageGroups ? [] : quarterfinals.map(match => storedWinner(match) || (legacyOfficialMode ? winnerByOfficialPrice(match, 8) : winnerByStageAmount(match, 8)));
             const validQualifiedMatch = match => match && [match.left, match.right].filter(Boolean).every(team => qfWinners.includes(team));
             const semifinals = [0, 1].map(index => {
                 const candidate = storedSemifinal['4_' + (index + 1)] || {};
@@ -749,7 +750,17 @@
             };
 
             document.getElementById('round-content-16').innerHTML = round16Matches.map((match, index) => stageMatchMarkup(match, 16, index)).join('');
-            document.getElementById('round-content-8').innerHTML = quarterfinals.map((match, index) => stageMatchMarkup(match, 8, index)).join('');
+            if (stageGroups) {
+                const groupMarkup = group => `<article class="bracket-match is-complete"><div class="bracket-match-head"><span>${escapeHtml(group.name)}</span><span>${group.members.length}팀 · 배정 완료</span></div>${group.members.map(name => `<div class="bracket-team"><span class="team-logo logo-fallback">${escapeHtml(name.slice(0,1))}</span><span class="bracket-team-name">${escapeHtml(name)}${name === group.leader ? ' · 팀장' : ''}</span><span class="bracket-team-price">${formatAmount(CdcupTournamentData.roundAmount(tournamentStageAmounts,name,16)||0)}<small>만원</small></span><span></span></div>`).join('')}</article>`;
+                document.getElementById('round-content-8').innerHTML = stageGroups.groups.map(groupMarkup).join('');
+                document.getElementById('round-nav-8').textContent = '2라운드';
+                document.getElementById('round-title-8').textContent = '2라운드 팀 배정';
+                document.getElementById('round-subtitle-8').textContent = 'TEAM ASSIGNMENT';
+                document.getElementById('round-status-8').textContent = '배정 완료';
+                document.getElementById('round-note-8').textContent = '16강 승자 8팀과 와일드카드 4팀의 공식 팀 배정입니다.';
+            } else {
+                document.getElementById('round-content-8').innerHTML = quarterfinals.map((match, index) => stageMatchMarkup(match, 8, index)).join('');
+            }
             document.getElementById('round-content-4').innerHTML = `<div class="qualified-strip"><span class="qualified-strip-label">4강 진출 확정</span>${qfWinners.map(name => `<span class="qualified-team">${escapeHtml(name)} · ${escapeHtml(englishName(name))}</span>`).join('')}</div>` + semifinals.map((match, index) => stageMatchMarkup(match, 4, index)).join('');
             document.getElementById('round-content-2').innerHTML = stageMatchMarkup(finalMatch, 2, 0) + stageMatchMarkup(thirdMatch, 2, 1);
             const semifinalReady = semifinals.every(match => !isPlaceholder(match.left) && !isPlaceholder(match.right));
