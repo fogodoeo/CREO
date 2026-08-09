@@ -248,6 +248,10 @@ test('CDCUP three-round format assigns round-two teams and round-three finalists
     assert.match(broadcast, /team-progress-amount/);
     assert.match(broadcast, /class="team-progress-members"/);
     assert.match(broadcast, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+    assert.match(preview, /결과판 배경:/);
+    assert.match(preview, /postPreviewConfigPatch\(\{ blind_totals_opacity: String\(opacity\) \}\)/);
+    assert.match(broadcast, /--full-board-opacity/);
+    assert.match(broadcast, /boardOpacity \* 0\.05/);
     assert.match(preview, /activeDragKey === 'banner' \? 24 : 32/);
     assert.match(broadcast, /function freeBannerEdgeCss/);
     assert.match(broadcast, /container\.style\.right = freeBannerEdgeCss\(layout\.right, 'x'\)/);

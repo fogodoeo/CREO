@@ -3582,6 +3582,10 @@
         #bracket-page-tree-full .sports-results-board {
             width: 100%;
             padding: calc(var(--bracket-fs) * .8);
+            background: rgba(14, 15, 17, var(--full-board-opacity, .9)) !important;
+        }
+        #bracket-page-tree-full .sports-match-card {
+            background: rgba(255, 255, 255, var(--full-card-opacity, .045)) !important;
         }
         #bracket-page-tree-full .sports-results-grid { gap: calc(var(--bracket-fs) * .65); }
         #bracket-page-tree-full .sports-match-meta {
@@ -7153,6 +7157,9 @@
             const liveOpacity = Math.max(35, Math.min(100, parseInt(map.bracket_live_opacity || '94', 10) || 94)) / 100;
 
             if (treeFull) {
+                const boardOpacityRaw = parseInt(map.blind_totals_opacity ?? '90', 10);
+                const boardOpacity = Math.max(0, Math.min(100,
+                    Number.isFinite(boardOpacityRaw) ? boardOpacityRaw : 90)) / 100;
                 treeFull.style.position = 'absolute';
                 treeFull.style.zIndex = '20';
                 treeFull.style.top = fullTop;
@@ -7161,6 +7168,8 @@
                 treeFull.style.height = fullHeight;
                 treeFull.style.display = 'flex';
                 treeFull.style.setProperty('--bracket-fs', fullFontSize + 'px');
+                treeFull.style.setProperty('--full-board-opacity', String(boardOpacity));
+                treeFull.style.setProperty('--full-card-opacity', String(boardOpacity * 0.05));
             }
             if (treeLive) {
                 treeLive.style.position = 'absolute';

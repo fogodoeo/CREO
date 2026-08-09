@@ -1156,7 +1156,7 @@
                         <span style="font-size: 11px; font-weight: 700; color: var(--text-muted);">px</span>
                     </div>
                     <div class="switch-container" id="toggle-blind-totals-opacity-group" style="display:none; gap: 7px; align-items: center; border-left: 1px solid var(--border); padding-left: 12px; margin-left: 6px;">
-                        <span style="font-weight: 700;">배경 농도:</span>
+                        <span style="font-weight: 700;">결과판 배경:</span>
                         <input type="range" id="blind-totals-opacity-input" min="0" max="100" step="5" value="0" oninput="previewBlindTotalsOpacity(this.value)" onchange="updateBlindTotalsOpacity(this.value)" onwheel="wheelBlindTotalsOpacity(event)" style="width:86px; accent-color:#d9b05c;">
                         <strong id="blind-totals-opacity-value" style="min-width:32px; font-size:11px; color:var(--text-muted);">0%</strong>
                     </div>
@@ -1348,7 +1348,7 @@
 
         const pageNum = normalizePreviewPage(params.get('page')); // Default: page=2 (개체용)
         document.body.classList.toggle('preview-page-3', pageNum === '3');
-        const broadcastAssetVersion = '20260809-team-progress-2x2';
+        const broadcastAssetVersion = '20260809-result-board-opacity';
         let previewConfigMap = {};
 
         function requestedModuleId() {
@@ -1747,6 +1747,7 @@
             const valueEl = document.getElementById('blind-totals-opacity-value');
             if (valueEl) valueEl.textContent = opacity + '%';
             if (elements.blind_totals) elements.blind_totals.opacity = String(opacity);
+            postPreviewConfigPatch({ blind_totals_opacity: String(opacity) });
         }
 
         function updateBlindTotalsOpacity(val) {
