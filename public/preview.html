@@ -2997,6 +2997,12 @@
                 if (map) {
                     tConfigMap = map;
                     tStageGroups = window.CdcupTournamentData?.parseStageGroups?.(map, 8) || null;
+                    if (tStageGroups) {
+                        const roundButton = document.getElementById('t-btn-8');
+                        const roundOption = document.querySelector('#t-active-select option[value="8"]');
+                        if (roundButton) roundButton.textContent = '2라운드';
+                        if (roundOption) roundOption.textContent = '2라운드 송출';
+                    }
                     tWildcardCount = Math.max(1, Number.parseInt(map.tournament_wildcard_count, 10) || 4);
                     [16, 8, 4, 2].forEach(s => {
                         const k = 'tournament_bracket_' + s;
@@ -3046,7 +3052,11 @@
                 const items = await getItems();
                 tAllItems = items || [];
                 tRenderWildcardStandings();
-                const teams = [...new Set((items || []).filter(tIsCurrentStageItem).map(i => i.company).filter(Boolean))];
+                const registeredTeams = (items || []).filter(tIsCurrentStageItem).map(i => i.company).filter(Boolean);
+                const configuredTeams = tScale === 8 && tStageGroups
+                    ? tStageGroups.groups.flatMap(group => group.members)
+                    : [];
+                const teams = [...new Set([...configuredTeams, ...registeredTeams])];
                 const pool = document.getElementById('t-team-pool');
                 if (teams.length === 0) {
                     pool.innerHTML = '<span style="color:#64748b; font-size:12px;">등록된 업체가 없습니다. 개체를 먼저 등록해주세요.</span>';
@@ -3403,6 +3413,14 @@
         function tRenderTree() {
             const tree = document.getElementById('t-bracket-tree');
             tree.innerHTML = '';
+            if (tScale === 8 && tStageGroups?.groups?.length) {
+                tree.innerHTML = `<div class="t-stage-groups" style="grid-column:1/-1;width:100%;">${tStageGroups.groups.map(group => `<article class="t-stage-group">
+                    <div class="t-stage-group-head"><strong>${tEsc(group.name)}</strong><span>${group.members.length}개 업체</span></div>
+                    <div class="t-stage-group-members">${group.members.map(name => `<span class="t-stage-group-member ${name === group.leader ? 'leader' : ''}">${tEsc(name)}${name === group.leader ? ' · 팀장' : ''}</span>`).join('')}</div>
+                </article>`).join('')}</div>`;
+                tRenderItemSetup();
+                return;
+            }
             const rounds = [];
             let r = tScale;
             while (r >= 2) { rounds.push(r); r = r / 2; }
@@ -3487,6 +3505,26 @@
             const applyBtn = document.getElementById('t-item-apply');
             if (!grid || !progress || !applyBtn) return;
             tSyncItemCountUi();
+
+            if (tScale === 8 && tStageGroups?.groups?.length) {
+                const stageItems = tAllItems.filter(item => {
+                    const meta = getItemAuctionMeta(item);
+                    return meta.auctionType === 'tournament' && Number(meta.tournamentStage) === 8;
+                });
+                const counts = stageItems.reduce((result, item) => {
+                    const name = String(item.company || '').trim();
+                    result[name] = (result[name] || 0) + 1;
+                    return result;
+                }, {});
+                const desc = document.getElementById('t-item-setup-desc');
+                if (desc) desc.textContent = '등록 페이지에서 업체를 선택하면 A/B/C팀과 2라운드 코드가 자동 지정됩니다.';
+                grid.innerHTML = tStageGroups.groups.map(group => `<article class="t-item-team ready"><div class="t-item-team-head"><span class="t-item-team-letter">${tEsc(group.code)}</span><div class="t-item-team-name"><strong>${tEsc(group.name)}</strong><span>${group.members.reduce((sum, name) => sum + (counts[name] || 0), 0)}개체 등록</span></div></div><div class="t-item-list">${group.members.map(name => `<div class="t-item-empty" style="text-align:left;">${tEsc(name)}${name === group.leader ? ' · 팀장' : ''} · ${counts[name] || 0}개체</div>`).join('')}</div></article>`).join('');
+                progress.textContent = `${stageItems.length}개체 자동 편성`;
+                applyBtn.disabled = true;
+                applyBtn.textContent = '자동 편성 사용 중';
+                return;
+            }
+            applyBtn.textContent = '토너먼트 개체 편성';
 
             const seeds = tGetSeedTeams();
             if (!seeds.length) {

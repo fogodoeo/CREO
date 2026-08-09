@@ -2624,7 +2624,9 @@
             <div class="company-bar">
                 <div class="company-field">
                     <label for="f-company">업체명</label>
-                    <input type="text" id="f-company" placeholder="업체/팀 이름" autocomplete="organization">
+                    <input type="text" id="f-company" list="tournament-company-options" placeholder="업체/팀 이름" autocomplete="organization">
+                    <datalist id="tournament-company-options"></datalist>
+                    <div id="tournament-company-team" style="margin-top:5px;font-size:11px;font-weight:750;color:var(--accent);"></div>
                 </div>
                 <div class="company-field">
                     <label for="f-auction-type">경매 구분</label>
@@ -3426,12 +3428,28 @@
         // ── 일괄 제출 (사진 일괄 업로드 1회 호출) ──
         async function submitAll() {
             if (entries.length === 0) { toast('개체를 추가해주세요', true); return; }
-            const company = document.getElementById('f-company').value.trim();
+            let company = document.getElementById('f-company').value.trim();
             const auctionType = document.getElementById('f-auction-type').value || 'tournament';
             if (!company) {
                 toast('업체명을 입력해주세요', true);
                 document.getElementById('f-company').focus();
                 return;
+            }
+            if (auctionType === 'tournament') {
+                const activeStage = Number.parseInt(window._eventConfigMap?.active_tournament, 10) || 0;
+                const activeGroups = typeof parseTournamentStageGroups === 'function'
+                    ? parseTournamentStageGroups(window._eventConfigMap || {}, activeStage)
+                    : null;
+                if (activeGroups) {
+                    const assignment = resolveTournamentStageGroup(window._eventConfigMap || {}, company, activeStage);
+                    if (!assignment) {
+                        toast('현재 2라운드 참가 업체 12곳 중에서 선택해주세요.', true);
+                        document.getElementById('f-company').focus();
+                        return;
+                    }
+                    company = assignment.member;
+                    document.getElementById('f-company').value = company;
+                }
             }
             rememberVendorRegistration();
 
@@ -5571,11 +5589,31 @@
             return safe.substring(0, idx) + '<mark style="background:#FFF3CD;border-radius:2px;padding:0 1px;">' + safe.substring(idx, idx + q.length) + '</mark>' + safe.substring(idx + q.length);
         }
 
+        function applyTournamentCompanyOptions(cfg) {
+            const stage = Number.parseInt(cfg?.active_tournament, 10) || 0;
+            const groups = typeof parseTournamentStageGroups === 'function' ? parseTournamentStageGroups(cfg || {}, stage) : null;
+            const datalist = document.getElementById('tournament-company-options');
+            const input = document.getElementById('f-company');
+            const status = document.getElementById('tournament-company-team');
+            if (!datalist || !input || !status) return;
+            datalist.innerHTML = (groups?.groups || []).flatMap(group => group.members.map(member => `<option value="${esc(member)}">${esc(group.name)}${member === group.leader ? ' · 팀장' : ''}</option>`)).join('');
+            const updateStatus = () => {
+                const assignment = groups && typeof resolveTournamentStageGroup === 'function'
+                    ? resolveTournamentStageGroup(cfg || {}, input.value, stage)
+                    : null;
+                status.textContent = assignment ? `2라운드 ${assignment.name}${assignment.member === assignment.leader ? ' · 팀장' : ''}` : (groups ? '2라운드 참가 업체 12곳 중 선택' : '');
+                status.style.color = assignment ? 'var(--accent)' : 'var(--text3)';
+            };
+            input.addEventListener('input', updateStatus);
+            updateStatus();
+        }
+
         async function loadEventModuleContext() {
             try {
                 const cfg = await getConfigMap();
                 window._eventConfigMap = { ...(cfg || {}), active_event_module: 'cdcup' };
                 applyAuctionEventModule(window._eventConfigMap);
+                applyTournamentCompanyOptions(window._eventConfigMap);
             } catch (e) {
                 console.warn('event module context load failed', e);
             }

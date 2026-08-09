@@ -5681,10 +5681,14 @@
             tournamentItems.forEach(item => {
                 const company = String(item.company || '').trim() || '미지정';
                 const team = resolveBlindTeamLetter(item, teamIndex, fallbackByCompany, preferredScale);
+                const configuredGroups = typeof parseTournamentStageGroups === 'function'
+                    ? parseTournamentStageGroups(map || {}, preferredScale)
+                    : null;
+                const teamLabel = configuredGroups?.groups.find(group => group.code === team)?.name || company;
                 if (medalTeamFilter && !medalTeamFilter.has(team)) return;
                 if (!byTeam[team]) {
                     byTeam[team] = {
-                        company,
+                        company: teamLabel,
                         team,
                         total: 0,
                         soldCount: 0,

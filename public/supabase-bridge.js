@@ -20,6 +20,48 @@ const _sbHeaders = {
 const AUCTION_TYPES = Object.freeze({ TOURNAMENT: 'tournament', SOLO: 'solo', EVENT: 'event', EXTRA: 'extra', CREWART: 'crewart' });
 const VISIBILITY_MODES = Object.freeze({ PUBLIC: 'public', BLIND: 'blind' });
 
+function normalizeTournamentCompanyName(value) {
+    return String(value || '').normalize('NFKC').toLocaleLowerCase().replace(/[^0-9a-z가-힣]/g, '');
+}
+
+function parseTournamentStageGroups(configMap, stage = 8) {
+    try {
+        const parsed = JSON.parse(configMap?.[`tournament_stage_groups_${stage}`] || 'null');
+        if (!parsed || !Array.isArray(parsed.groups)) return null;
+        const groups = parsed.groups.map((group, index) => ({
+            code: String(group?.code || String.fromCharCode(65 + index)).trim().toUpperCase(),
+            name: String(group?.name || `${group?.code || String.fromCharCode(65 + index)}팀`).trim(),
+            leader: String(group?.leader || '').trim(),
+            members: Array.isArray(group?.members) ? group.members.map(member => String(member || '').trim()).filter(Boolean) : []
+        })).filter(group => /^[A-Z]$/.test(group.code) && group.members.length);
+        return groups.length ? { ...parsed, groups } : null;
+    } catch (_) {
+        return null;
+    }
+}
+
+function resolveTournamentStageGroup(configMap, company, stage = 8) {
+    const parsed = parseTournamentStageGroups(configMap, stage);
+    const target = normalizeTournamentCompanyName(company);
+    if (!parsed || !target) return null;
+    const candidates = [];
+    for (const group of parsed.groups) {
+        const member = group.members.find(name => normalizeTournamentCompanyName(name) === target);
+        if (member) return { ...group, member };
+        group.members.forEach(name => {
+            const normalized = normalizeTournamentCompanyName(name);
+            if (normalized && (target.startsWith(normalized) || normalized.startsWith(target))) candidates.push({ ...group, member: name });
+        });
+    }
+    return candidates.length === 1 ? candidates[0] : null;
+}
+
+function tournamentStageGroupLabel(configMap, stage, code) {
+    const parsed = parseTournamentStageGroups(configMap, stage);
+    const target = String(code || '').trim().toUpperCase();
+    return parsed?.groups.find(group => group.code === target)?.name || (target ? `${target}팀` : '팀 미지정');
+}
+
 function _checklistPairs(raw) {
     const result = {};
     String(raw || '').split('|').forEach(part => {
@@ -551,16 +593,33 @@ async function updateItem(row, data, pw) {
     
     // checklist가 변경되었으면 파싱본도 자동 반영
     if (data.checklist !== undefined || data.auctionType !== undefined || data.tournamentCode !== undefined || data.teamCode !== undefined || data.tournamentStage !== undefined || data.publicNumber !== undefined) {
-        const currentRows = await _sbFetch(`items?id=eq.${row}&select=checklist,num,name&limit=1`);
+        const currentRows = await _sbFetch(`items?id=eq.${row}&select=checklist,num,name,company&limit=1`);
         const current = currentRows && currentRows[0] ? currentRows[0] : {};
         const currentMeta = getItemAuctionMeta(current);
         const baseChecklist = data.checklist !== undefined ? data.checklist : (current.checklist || '');
-        payload.checklist = mergeItemAuctionMeta(baseChecklist, {
+        const nextMeta = {
             auctionType: data.auctionType ?? currentMeta.auctionType,
             tournamentCode: data.tournamentCode ?? currentMeta.tournamentCode,
             teamCode: data.teamCode ?? currentMeta.teamCode,
             tournamentStage: data.tournamentStage ?? currentMeta.tournamentStage,
             publicNumber: data.publicNumber ?? data.num ?? currentMeta.publicNumber ?? current.num
+        };
+        if (nextMeta.auctionType === AUCTION_TYPES.TOURNAMENT) {
+            const configMap = await getConfigMap();
+            const activeStage = Number.parseInt(configMap?.active_tournament, 10) || 0;
+            const requestedStage = Number.parseInt(nextMeta.tournamentStage, 10) || activeStage;
+            if (activeStage && requestedStage === activeStage && parseTournamentStageGroups(configMap, activeStage)) {
+                const assignment = resolveTournamentStageGroup(configMap, data.company ?? current.company, activeStage);
+                if (!assignment) {
+                    return { success: false, error: `현재 2라운드 참가 업체가 아닙니다: ${String(data.company ?? current.company ?? '업체 미입력')}` };
+                }
+                payload.company = assignment.member;
+                nextMeta.teamCode = assignment.code;
+                nextMeta.tournamentStage = activeStage;
+            }
+        }
+        payload.checklist = mergeItemAuctionMeta(baseChecklist, {
+            ...nextMeta
         });
         payload.checklist_parsed = formatChecklist(payload.checklist);
     }
@@ -806,13 +865,43 @@ async function deleteAll(pw) {
  */
 async function registerBatch(itemsArray) {
     try {
-        const existing = await _sbFetch('items?select=num');
+        const [existing, configMap] = await Promise.all([
+            _sbFetch('items?select=num,company,checklist,name'),
+            getConfigMap()
+        ]);
         let maxNum = 0;
         if (existing && existing.length > 0) {
             maxNum = Math.max(...existing.map(r => parseInt(r.num) || 0));
         }
 
-        const payloads = itemsArray.map((d, idx) => {
+        const activeStage = Number.parseInt(configMap?.active_tournament, 10) || 0;
+        const activeGroups = activeStage ? parseTournamentStageGroups(configMap, activeStage) : null;
+        const nextTeamSlot = {};
+        (existing || []).forEach(item => {
+            const meta = getItemAuctionMeta(item);
+            if (meta.auctionType !== AUCTION_TYPES.TOURNAMENT || Number(meta.tournamentStage) !== activeStage || !meta.teamCode) return;
+            const slotNumber = Number.parseInt(String(meta.tournamentCode || '').slice(1), 10) || 0;
+            nextTeamSlot[meta.teamCode] = Math.max(nextTeamSlot[meta.teamCode] || 0, slotNumber);
+        });
+
+        const prepared = itemsArray.map(item => {
+            const data = { ...(item || {}) };
+            const auctionType = data.auctionType || AUCTION_TYPES.TOURNAMENT;
+            const requestedStage = Number.parseInt(data.tournamentStage, 10) || activeStage;
+            if (auctionType !== AUCTION_TYPES.TOURNAMENT || !activeGroups || requestedStage !== activeStage) return data;
+            const assignment = resolveTournamentStageGroup(configMap, data.company, activeStage);
+            if (!assignment) {
+                throw new Error(`현재 2라운드 참가 업체가 아닙니다: ${String(data.company || '업체 미입력')}`);
+            }
+            nextTeamSlot[assignment.code] = (nextTeamSlot[assignment.code] || 0) + 1;
+            data.company = assignment.member;
+            data.teamCode = assignment.code;
+            data.tournamentStage = activeStage;
+            data.tournamentCode = `${assignment.code}${nextTeamSlot[assignment.code]}`;
+            return data;
+        });
+
+        const payloads = prepared.map((d, idx) => {
             const num = maxNum + idx + 1;
             const checklist = mergeItemAuctionMeta(d.checklist || '', {
                 auctionType: d.auctionType || AUCTION_TYPES.TOURNAMENT,
@@ -850,7 +939,7 @@ async function registerBatch(itemsArray) {
         return { success: true, count: payloads.length };
     } catch (e) {
         console.error("registerBatch error:", e);
-        return { success: false, error: "데이터베이스 기록 중 오류가 발생했습니다." };
+        return { success: false, error: e?.message || "데이터베이스 기록 중 오류가 발생했습니다." };
     }
 }
 
