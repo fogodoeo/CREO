@@ -25,7 +25,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <script src="supabase-bridge.js?v=20260809-team-progress-mobile"></script>
+    <script src="supabase-bridge.js?v=20260809-team-progress-compact"></script>
     <script src="event-modules.js?v=20260710-crebti3"></script>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link
@@ -3584,20 +3584,20 @@
             padding: calc(var(--bracket-fs) * .8);
         }
         #bracket-page-tree-full .sports-results-grid { gap: calc(var(--bracket-fs) * .65); }
+        #bracket-page-tree-full .sports-match-meta {
+            min-height: calc(var(--bracket-fs) * 2.7);
+            padding-inline: calc(var(--bracket-fs) * .9);
+        }
+        #bracket-page-tree-full .team-progress-amount {
+            color: var(--cdcup-gold-light);
+            font-size: calc(var(--bracket-fs) * 1.08);
+            font-variant-numeric: tabular-nums;
+        }
         #bracket-page-tree-full .sports-match-card.is-qualified {
             border: 2px solid var(--cdcup-gold) !important;
             box-shadow: 0 0 0 1px rgba(195,154,74,.16), 0 10px 24px rgba(0,0,0,.2) !important;
         }
         #bracket-page-tree-full .sports-match-card.is-qualified::before { display: none !important; }
-        #bracket-page-tree-full .team-progress-total {
-            display: flex;
-            align-items: baseline;
-            justify-content: space-between;
-            padding: calc(var(--bracket-fs) * .72) calc(var(--bracket-fs) * .9);
-            border-bottom: 1px solid rgba(195,154,74,.13);
-        }
-        #bracket-page-tree-full .team-progress-total strong { font-size: calc(var(--bracket-fs) * 1.55); }
-        #bracket-page-tree-full .team-progress-total span { color: var(--cdcup-muted); font-size: calc(var(--bracket-fs) * .78); }
         #bracket-page-tree-full .team-progress-member {
             display: flex;
             justify-content: space-between;
@@ -3617,7 +3617,6 @@
             #bracket-page-tree-full .sports-results-board { padding: 8px; }
             #bracket-page-tree-full .sports-results-grid { grid-template-columns: 1fr !important; gap: 7px; }
             #bracket-page-tree-full .sports-match-meta { min-height: 26px; padding-inline: 11px; }
-            #bracket-page-tree-full .team-progress-total { padding: 7px 11px; }
             #bracket-page-tree-full .team-progress-member { padding: 5px 11px; font-size: 12px; }
         }
     </style>
@@ -7375,12 +7374,16 @@
             const amount = item => Number(String(item?.sold_price ?? item?.soldPrice ?? 0).replace(/[^0-9.-]/g, '')) || 0;
             const scoped = scopeTournamentItems(items || [], stage);
             const totals = {};
-            const counts = {};
+            const completedCounts = {};
+            const itemCounts = {};
             scoped.forEach(item => {
                 const company = String(item.company || '').trim();
                 if (!company) return;
                 totals[company] = (totals[company] || 0) + readLiveTotalAmount(item);
-                counts[company] = (counts[company] || 0) + (isSoldForTotals(item) ? 1 : 0);
+                itemCounts[company] = (itemCounts[company] || 0) + 1;
+                const status = String(item?.status || '').trim();
+                const isCompleted = isSoldForTotals(item) || status.includes('유찰');
+                completedCounts[company] = (completedCounts[company] || 0) + (isCompleted ? 1 : 0);
             });
             const stageGroups = parseBroadcastStageGroups(map || {}, 8);
             const resultSignature = JSON.stringify({
@@ -7388,7 +7391,12 @@
                 groups: String(map?.tournament_stage_groups_8 || ''),
                 finalists: String(map?.tournament_finalists_4 || ''),
                 hideCompanies: String(map?.bracket_full_blind ?? '1'),
-                rows: Object.keys({ ...totals, ...counts }).sort().map(name => [name, totals[name] || 0, counts[name] || 0])
+                rows: Object.keys({ ...totals, ...itemCounts }).sort().map(name => [
+                    name,
+                    totals[name] || 0,
+                    completedCounts[name] || 0,
+                    itemCounts[name] || 0
+                ])
             });
             if (tree.dataset.threeRoundSignature === resultSignature
                 && tree.querySelector('.sports-results-board')) {
@@ -7405,8 +7413,7 @@
             if (stage === 8 && stageGroups?.groups?.length) {
                 const groups = stageGroups.groups.map(group => ({
                     ...group,
-                    total: group.members.reduce((sum, name) => sum + (totals[name] || 0), 0),
-                    soldCount: group.members.reduce((sum, name) => sum + (counts[name] || 0), 0)
+                    total: group.members.reduce((sum, name) => sum + (totals[name] || 0), 0)
                 })).sort((a, b) => b.total - a.total || a.code.localeCompare(b.code, 'en'));
                 const hasTeamResults = groups.some(group => group.total > 0);
                 grid.style.gridTemplateColumns = 'repeat(3,minmax(0,1fr))';
@@ -7415,7 +7422,7 @@
                     const card = document.createElement('article');
                     card.className = 'sports-match-card' + (qualified ? ' is-qualified' : '');
                     card.style.setProperty('--match-index', index);
-                    card.innerHTML = `<div class="sports-match-meta"><strong>${esc(group.name)}</strong></div><div class="team-progress-total"><strong>${formatBlindTotalAmount(group.total)}만원</strong><span>${group.soldCount}건</span></div>${group.members.map((name, memberIndex) => `<div class="team-progress-member"><strong>${hideCompanies ? `업체 ${memberIndex + 1}` : `${esc(name)}${name === group.leader ? ' · 팀장' : ''}`}</strong><span>${formatBlindTotalAmount(totals[name] || 0)}만원</span></div>`).join('')}`;
+                    card.innerHTML = `<div class="sports-match-meta"><strong>${esc(group.name)}</strong><strong class="team-progress-amount">${formatBlindTotalAmount(group.total)}만원</strong></div>${group.members.map((name, memberIndex) => `<div class="team-progress-member"><strong>${hideCompanies ? `업체 ${memberIndex + 1}` : esc(name)}</strong><span>${completedCounts[name] || 0}/${itemCounts[name] || 0}</span></div>`).join('')}`;
                     grid.appendChild(card);
                 });
             } else {
@@ -7428,13 +7435,13 @@
                 });
                 const entrants = groups.map(group => ({ ...group, total: group.members.reduce((sum, name) => sum + (teamTotals[name] || 0), 0) }))
                     .sort((a, b) => b.total - a.total || a.code.localeCompare(b.code, 'en')).slice(0, 2)
-                    .flatMap(group => group.members.map(name => ({ name, groupName: group.name, total: totals[name] || 0, soldCount: counts[name] || 0 })))
+                    .flatMap(group => group.members.map(name => ({ name, groupName: group.name, total: totals[name] || 0 })))
                     .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name, 'ko'));
                 grid.style.gridTemplateColumns = 'repeat(2,minmax(0,1fr))';
                 entrants.forEach((entry, index) => {
                     const card = document.createElement('article');
                     card.className = 'sports-match-card' + (index === 0 && entry.total > 0 ? ' is-current' : '');
-                    card.innerHTML = `<div class="sports-match-meta"><strong>${index + 1}위</strong><span>${esc(entry.groupName)}</span></div><div class="team-progress-total"><strong>${hideCompanies ? `진출 업체 ${index + 1}` : esc(entry.name)}</strong><span>${formatBlindTotalAmount(entry.total)}만원</span></div>`;
+                    card.innerHTML = `<div class="sports-match-meta"><strong>${hideCompanies ? `진출 업체 ${index + 1}` : esc(entry.name)}</strong><strong class="team-progress-amount">${formatBlindTotalAmount(entry.total)}만원</strong></div>`;
                     grid.appendChild(card);
                 });
                 if (!entrants.length) grid.innerHTML = '<div class="blind-total-empty" style="grid-column:1/-1">2라운드 결과 집계 후 진출 업체가 표시됩니다.</div>';

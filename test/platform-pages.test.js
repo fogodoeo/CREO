@@ -244,6 +244,8 @@ test('CDCUP three-round format assigns round-two teams and round-three finalists
     assert.match(broadcast, /hideBlindTeamTotals\(\);/);
     assert.match(broadcast, /tree\.dataset\.threeRoundSignature === resultSignature/);
     assert.match(broadcast, /isFirstRender \? ' animate-in' : ''/);
+    assert.match(broadcast, /completedCounts\[name\] \|\| 0}\/\$\{itemCounts\[name\] \|\| 0}/);
+    assert.match(broadcast, /team-progress-amount/);
 });
 
 test('broadcast control manages reusable banners, sponsors, and vendor logos', () => {

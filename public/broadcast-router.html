@@ -21,7 +21,7 @@ if(params.get('debug')==='1')document.body.classList.add('debug');
 function normalize(value){const id=String(value||'').toLowerCase().replace(/[^a-z0-9-]/g,'').slice(0,32);return id==='crewarts'?'crewart':id}
 function page(){return ['1','2','3'].includes(params.get('page'))?params.get('page'):'1'}
 function target(channel,selectedPage){
-    if(channel==='cdcup')return`broadcast.html?page=${selectedPage}&module=cdcup&direct=1&v=20260809-team-progress-mobile`;
+    if(channel==='cdcup')return`broadcast.html?page=${selectedPage}&module=cdcup&direct=1&v=20260809-team-progress-compact`;
     if(channel==='crewart')return`auction-live.html?channel=crewart&page=${selectedPage}&v=20260806-crewart-overlay-v2`;
     return`auction-live.html?channel=${encodeURIComponent(channel)}&page=${selectedPage}&v=20260720-creo-overlay-v1`;
 }
