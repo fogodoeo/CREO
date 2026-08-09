@@ -25,7 +25,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <script src="supabase-bridge.js?v=20260809-team-progress-board"></script>
+    <script src="supabase-bridge.js?v=20260809-team-progress-stable"></script>
     <script src="event-modules.js?v=20260710-crebti3"></script>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link
@@ -7340,8 +7340,19 @@
                 counts[company] = (counts[company] || 0) + (isSoldForTotals(item) ? 1 : 0);
             });
             const stageGroups = parseBroadcastStageGroups(map || {}, 8);
+            const resultSignature = JSON.stringify({
+                stage: Number(stage),
+                groups: String(map?.tournament_stage_groups_8 || ''),
+                finalists: String(map?.tournament_finalists_4 || ''),
+                rows: Object.keys({ ...totals, ...counts }).sort().map(name => [name, totals[name] || 0, counts[name] || 0])
+            });
+            if (tree.dataset.threeRoundSignature === resultSignature
+                && tree.querySelector('.sports-results-board')) {
+                return;
+            }
+            const isFirstRender = tree.dataset.threeRoundRendered !== '1';
             const board = document.createElement('section');
-            board.className = 'sports-results-board animate-in';
+            board.className = 'sports-results-board' + (isFirstRender ? ' animate-in' : '');
             const title = stage === 8 ? '2라운드 팀 순위' : '3라운드 개인 순위';
             const rule = stage === 8 ? '팀 합산 상위 2팀 진출' : '8개 업체 중 최고 낙찰금 우승';
             board.innerHTML = `<header class="sports-results-header"><div class="sports-results-heading"><span class="sports-results-kicker">CDCUP SEASON 2 · ${stage === 8 ? 'ROUND 2' : 'FINAL ROUND'}</span><h2 class="sports-results-title">${title}</h2></div><span class="sports-results-live">${rule}</span></header>`;
@@ -7387,6 +7398,8 @@
             }
             board.appendChild(grid);
             tree.replaceChildren(board);
+            tree.dataset.threeRoundSignature = resultSignature;
+            tree.dataset.threeRoundRendered = '1';
         }
 
         async function renderBracketPageTree(scale, bracket, map, providedItems = null) {
