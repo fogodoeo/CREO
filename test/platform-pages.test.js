@@ -246,6 +246,8 @@ test('CDCUP three-round format assigns round-two teams and round-three finalists
     assert.match(broadcast, /isFirstRender \? ' animate-in' : ''/);
     assert.match(broadcast, /completedCounts\[name\] \|\| 0}\/\$\{itemCounts\[name\] \|\| 0}/);
     assert.match(broadcast, /team-progress-amount/);
+    assert.match(broadcast, /class="team-progress-members"/);
+    assert.match(broadcast, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
     assert.match(preview, /activeDragKey === 'banner' \? 24 : 32/);
     assert.match(broadcast, /function freeBannerEdgeCss/);
     assert.match(broadcast, /container\.style\.right = freeBannerEdgeCss\(layout\.right, 'x'\)/);

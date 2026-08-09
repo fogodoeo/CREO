@@ -3587,10 +3587,11 @@
         #bracket-page-tree-full .sports-match-meta {
             min-height: calc(var(--bracket-fs) * 2.7);
             padding-inline: calc(var(--bracket-fs) * .9);
+            font-size: clamp(18px, calc(var(--bracket-fs) * 1.45), 32px);
         }
         #bracket-page-tree-full .team-progress-amount {
             color: var(--cdcup-gold-light);
-            font-size: calc(var(--bracket-fs) * 1.08);
+            font-size: 1em;
             font-variant-numeric: tabular-nums;
         }
         #bracket-page-tree-full .sports-match-card.is-qualified {
@@ -3598,14 +3599,34 @@
             box-shadow: 0 0 0 1px rgba(195,154,74,.16), 0 10px 24px rgba(0,0,0,.2) !important;
         }
         #bracket-page-tree-full .sports-match-card.is-qualified::before { display: none !important; }
+        #bracket-page-tree-full .team-progress-members {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
         #bracket-page-tree-full .team-progress-member {
             display: flex;
+            min-width: 0;
+            align-items: center;
             justify-content: space-between;
             gap: 12px;
-            padding: calc(var(--bracket-fs) * .52) calc(var(--bracket-fs) * .9);
+            min-height: calc(var(--bracket-fs) * 2.25);
+            padding: calc(var(--bracket-fs) * .36) calc(var(--bracket-fs) * .72);
             border-bottom: 1px solid rgba(195,154,74,.1);
+            font-size: clamp(16px, calc(var(--bracket-fs) * 1.28), 27px);
         }
-        #bracket-page-tree-full .team-progress-member:last-child { border-bottom: 0; }
+        #bracket-page-tree-full .team-progress-member:nth-child(odd) { border-right: 1px solid rgba(195,154,74,.1); }
+        #bracket-page-tree-full .team-progress-member:nth-last-child(-n+2) { border-bottom: 0; }
+        #bracket-page-tree-full .team-progress-member strong {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        #bracket-page-tree-full .team-progress-member span {
+            flex: 0 0 auto;
+            color: var(--cdcup-muted);
+            font-variant-numeric: tabular-nums;
+        }
         @media (max-width: 760px) {
             body.bracket-page #bracket-page-tree-full {
                 top: 2% !important;
@@ -3616,8 +3637,8 @@
             }
             #bracket-page-tree-full .sports-results-board { padding: 8px; }
             #bracket-page-tree-full .sports-results-grid { grid-template-columns: 1fr !important; gap: 7px; }
-            #bracket-page-tree-full .sports-match-meta { min-height: 26px; padding-inline: 11px; }
-            #bracket-page-tree-full .team-progress-member { padding: 5px 11px; font-size: 12px; }
+            #bracket-page-tree-full .sports-match-meta { min-height: 34px; padding-inline: 11px; font-size: 18px; }
+            #bracket-page-tree-full .team-progress-member { min-height: 30px; padding: 5px 10px; font-size: 15px; }
         }
     </style>
 </head>
@@ -7428,7 +7449,7 @@
                     const card = document.createElement('article');
                     card.className = 'sports-match-card' + (qualified ? ' is-qualified' : '');
                     card.style.setProperty('--match-index', index);
-                    card.innerHTML = `<div class="sports-match-meta"><strong>${esc(group.name)}</strong><strong class="team-progress-amount">${formatBlindTotalAmount(group.total)}만원</strong></div>${group.members.map((name, memberIndex) => `<div class="team-progress-member"><strong>${hideCompanies ? `업체 ${memberIndex + 1}` : esc(name)}</strong><span>${completedCounts[name] || 0}/${itemCounts[name] || 0}</span></div>`).join('')}`;
+                    card.innerHTML = `<div class="sports-match-meta"><strong>${esc(group.name)}</strong><strong class="team-progress-amount">${formatBlindTotalAmount(group.total)}만원</strong></div><div class="team-progress-members">${group.members.map((name, memberIndex) => `<div class="team-progress-member"><strong>${hideCompanies ? `업체 ${memberIndex + 1}` : esc(name)}</strong><span>${completedCounts[name] || 0}/${itemCounts[name] || 0}</span></div>`).join('')}</div>`;
                     grid.appendChild(card);
                 });
             } else {
