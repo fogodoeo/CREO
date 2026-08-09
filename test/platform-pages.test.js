@@ -236,6 +236,10 @@ test('CDCUP three-round format assigns round-two teams and round-three finalists
     assert.match(broadcast, /sports-match-card\.is-qualified/);
     assert.match(broadcast, /TOP 2 · 진출권/);
     assert.match(broadcast, /refreshBracketPage\(window\.latestItemsList/);
+    assert.match(broadcast, /const isThreeRoundProgress = eventModule\.id === 'cdcup'/);
+    assert.match(broadcast, /renderThreeRoundResults\(treeFull, Number\(displayStage\), map, window\.latestItemsList \|\| \[\]\)/);
+    assert.match(broadcast, /treeFull\.style\.setProperty\('opacity', '1', 'important'\)/);
+    assert.match(broadcast, /hideBlindTeamTotals\(\);/);
 });
 
 test('broadcast control manages reusable banners, sponsors, and vendor logos', () => {

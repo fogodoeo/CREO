@@ -7119,6 +7119,38 @@
                 }
             }
 
+            // CDCUP 3라운드제의 3P 전체 진행표는 독립된 단일 화면이다.
+            // 기존 팀합산/입찰 자동 패널과 함께 갱신하면 높은 z-index의 패널이
+            // 진행표를 덮거나, 비동기 대진 렌더가 visible 상태를 잃는 경쟁이 생긴다.
+            // 전체 진행표가 켜진 동안에는 현재 데이터로 즉시 팀/개인 순위표를
+            // 확정 렌더하고 이 함수의 다른 3P 분기로 내려가지 않는다.
+            const isThreeRoundProgress = eventModule.id === 'cdcup'
+                && isBracketPage
+                && String(map.tournament_format || '') === 'three-round-team-final'
+                && ['8', '4'].includes(String(getBracketViewRound(Number(active) || 8, map)));
+            if (isThreeRoundProgress && masterShow && fullShow && treeFull) {
+                hideBlindTeamTotals();
+                const displayStage = getBracketViewRound(Number(active) || 8, map);
+                renderThreeRoundResults(treeFull, Number(displayStage), map, window.latestItemsList || []);
+                treeFull.style.setProperty('display', 'flex', 'important');
+                treeFull.style.setProperty('opacity', '1', 'important');
+                treeFull.style.setProperty('visibility', 'visible', 'important');
+                treeFull.classList.add('visible');
+                if (containerEl) {
+                    containerEl.style.setProperty('display', 'block', 'important');
+                    containerEl.style.setProperty('opacity', '1', 'important');
+                    containerEl.style.setProperty('visibility', 'visible', 'important');
+                    containerEl.classList.add('visible');
+                }
+                if (treeLive) {
+                    treeLive.classList.remove('visible');
+                    treeLive.style.display = 'none';
+                    treeLive.innerHTML = '';
+                }
+                clearAuctionMotionPortal();
+                return;
+            }
+
             if (eventModule.id === 'crewart') {
                 hideBlindTeamTotals();
                 if (treeLive) {
