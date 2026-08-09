@@ -1279,6 +1279,19 @@
             border-color: #22d3ee;
             box-shadow: 0 0 0 1px rgba(34,211,238,0.3), 0 9px 24px rgba(0,0,0,0.28);
         }
+        .sports-match-card.is-qualified {
+            border: 3px solid #22c98d;
+            box-shadow: 0 0 0 2px rgba(34,201,141,.2), 0 16px 36px rgba(0,0,0,.34);
+        }
+        .sports-match-card.is-qualified::before { width: 7px; background:#22c98d; }
+        .sports-match-card.is-qualified .sports-match-state {
+            padding: 3px 8px;
+            border-radius: 999px;
+            background: rgba(34,201,141,.14);
+            color: #087553;
+            font-weight: 950;
+        }
+        .sports-match-card.is-third { opacity:.72; filter:saturate(.72); }
         .sports-match-card::before {
             content: '';
             position: absolute;
@@ -5483,7 +5496,10 @@
                 const map = Object.assign({}, window.latestConfigMap || {});
                 map[key + '_show'] = String(e.data.show) === '1' ? '1' : '0';
                 window.latestConfigMap = map;
-                applyBracketPageMap(map);
+                applyBracketPageMap(map, window.latestItemsList || []);
+                if (key === 'bracket_full' && String(e.data.show) === '1') {
+                    refreshBracketPage(window.latestItemsList || []).catch(error => console.warn('전체 진행표 새로고침 실패', error));
+                }
             }
 
             if (e.data.type === 'bracketLiveOpacity') {
@@ -7284,11 +7300,14 @@
                     total: group.members.reduce((sum, name) => sum + (totals[name] || 0), 0),
                     soldCount: group.members.reduce((sum, name) => sum + (counts[name] || 0), 0)
                 })).sort((a, b) => b.total - a.total || a.code.localeCompare(b.code, 'en'));
+                const hasTeamResults = groups.some(group => group.total > 0);
                 grid.style.gridTemplateColumns = 'repeat(3,minmax(0,1fr))';
                 groups.forEach((group, index) => {
+                    const qualified = hasTeamResults && index < 2;
                     const card = document.createElement('article');
-                    card.className = 'sports-match-card' + (index < 2 && group.total > 0 ? ' is-current' : '');
-                    card.innerHTML = `<div class="sports-match-meta"><span>${index + 1}위 · ${esc(group.name)}</span><span class="sports-match-state">${index < 2 && group.total > 0 ? '진출권' : group.total > 0 ? '3위' : '집계 중'}</span></div><div style="display:flex;align-items:baseline;justify-content:space-between;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.08)"><strong style="font-size:calc(var(--bracket-fs)*1.7)">${formatBlindTotalAmount(group.total)}만원</strong><span style="color:#94a3b8">${group.soldCount}건 낙찰</span></div>${group.members.map(name => `<div style="display:flex;justify-content:space-between;gap:12px;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,.055)"><strong>${esc(name)}${name === group.leader ? ' · 팀장' : ''}</strong><span>${formatBlindTotalAmount(totals[name] || 0)}만원</span></div>`).join('')}`;
+                    card.className = 'sports-match-card' + (qualified ? ' is-qualified' : (hasTeamResults ? ' is-third' : ''));
+                    card.style.setProperty('--match-index', index);
+                    card.innerHTML = `<div class="sports-match-meta"><span>${hasTeamResults ? index + 1 + '위 · ' : ''}${esc(group.name)}</span><span class="sports-match-state">${qualified ? 'TOP 2 · 진출권' : hasTeamResults ? '3위' : '집계 대기'}</span></div><div style="display:flex;align-items:baseline;justify-content:space-between;padding:14px 16px;border-bottom:1px solid rgba(15,23,42,.13)"><strong style="font-size:calc(var(--bracket-fs)*1.7)">${formatBlindTotalAmount(group.total)}만원</strong><span style="color:#64748b">팀 합계 · ${group.soldCount}건 낙찰</span></div>${group.members.map(name => `<div style="display:flex;justify-content:space-between;gap:12px;padding:10px 16px;border-bottom:1px solid rgba(15,23,42,.09)"><strong>${esc(name)}${name === group.leader ? ' · 팀장' : ''}</strong><span>${formatBlindTotalAmount(totals[name] || 0)}만원</span></div>`).join('')}`;
                     grid.appendChild(card);
                 });
             } else {

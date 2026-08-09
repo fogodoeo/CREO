@@ -233,6 +233,9 @@ test('CDCUP three-round format assigns round-two teams and round-three finalists
     assert.match(broadcast, /configuredGroups\?\.groups\.find\(group => group\.code === team\)\?\.name/);
     assert.match(broadcast, /2라운드 팀 순위/);
     assert.match(broadcast, /3라운드 개인 순위/);
+    assert.match(broadcast, /sports-match-card\.is-qualified/);
+    assert.match(broadcast, /TOP 2 · 진출권/);
+    assert.match(broadcast, /refreshBracketPage\(window\.latestItemsList/);
 });
 
 test('broadcast control manages reusable banners, sponsors, and vendor logos', () => {
