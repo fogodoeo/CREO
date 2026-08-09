@@ -211,7 +211,7 @@ test('legacy broadcast bridge survives Supabase quota exhaustion with cached or 
     assert.match(cdcup, /await _refreshBroadcastFromItems\(\[\]\)/);
 });
 
-test('CDCUP round-two registration assigns configured A B C teams and totals by team', () => {
+test('CDCUP three-round format assigns round-two teams and round-three finalists', () => {
     const bridge = fs.readFileSync(path.join(__dirname, '..', 'public', 'supabase-bridge.js'), 'utf8');
     const registration = fs.readFileSync(path.join(__dirname, '..', 'public', 'cdcup-index.html'), 'utf8');
     const preview = fs.readFileSync(path.join(__dirname, '..', 'public', 'preview.html'), 'utf8');
@@ -221,11 +221,18 @@ test('CDCUP round-two registration assigns configured A B C teams and totals by 
     assert.match(bridge, /function resolveTournamentStageGroup/);
     assert.match(bridge, /data\.teamCode = assignment\.code/);
     assert.match(bridge, /data\.tournamentStage = activeStage/);
-    assert.match(bridge, /현재 2라운드 참가 업체가 아닙니다/);
+    assert.match(bridge, /function parseTournamentFinalists/);
+    assert.match(bridge, /3라운드 진출 업체/);
+    assert.match(bridge, /tournament_finalists_4/);
+    assert.match(bridge, /active_tournament: '4'/);
     assert.match(registration, /id="tournament-company-options"/);
     assert.match(registration, /function applyTournamentCompanyOptions/);
+    assert.match(registration, /3라운드 목록 준비/);
     assert.match(preview, /자동 편성 사용 중/);
+    assert.match(preview, /3라운드 개인전/);
     assert.match(broadcast, /configuredGroups\?\.groups\.find\(group => group\.code === team\)\?\.name/);
+    assert.match(broadcast, /2라운드 팀 순위/);
+    assert.match(broadcast, /3라운드 개인 순위/);
 });
 
 test('broadcast control manages reusable banners, sponsors, and vendor logos', () => {

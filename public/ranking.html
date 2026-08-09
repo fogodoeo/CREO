@@ -6,7 +6,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <title>종합 순위표 | CDCUP</title>
     <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
-    <script src="cdcup-tournament-data.js?v=20260809-season2-groups-v1"></script>
+    <script src="cdcup-tournament-data.js?v=20260809-three-round-v2"></script>
     <script src="event-modules.js?v=20260710-crebti3"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
@@ -385,25 +385,24 @@
         <section class="stat-strip" aria-label="대회 요약">
             <div class="stat"><span class="stat-label">참가 팀</span><strong class="stat-value" id="stat-teams">-</strong></div>
             <div class="stat"><span class="stat-label">총 낙찰금</span><strong class="stat-value" id="stat-amount">-</strong></div>
-            <div class="stat"><span class="stat-label">진행 라운드</span><strong class="stat-value" id="stat-events">2<span class="stat-unit">/ 4</span></strong></div>
+            <div class="stat"><span class="stat-label">진행 라운드</span><strong class="stat-value" id="stat-events">2<span class="stat-unit">/ 3</span></strong></div>
             <div class="stat"><span class="stat-label">최종 업데이트</span><strong class="stat-value" id="stat-updated" style="font-size:16px">-</strong></div>
         </section>
 
         <div class="round-nav" role="tablist" aria-label="토너먼트 라운드 선택">
             <button class="round-nav-btn active" type="button" onclick="setRoundView('summary', this)">종합</button>
-            <a class="round-nav-btn" href="tournament-bracket.html" role="tab">전체 대진표</a>
-            <button class="round-nav-btn" type="button" onclick="setRoundView('16', this)">16강</button>
-            <button class="round-nav-btn" id="round-nav-8" type="button" onclick="setRoundView('8', this)">8강</button>
-            <button class="round-nav-btn" type="button" onclick="setRoundView('4', this)">4강</button>
-            <button class="round-nav-btn" type="button" onclick="setRoundView('2', this)">결승·3위전</button>
+            <a class="round-nav-btn" href="tournament-bracket.html" role="tab">전체 진행표</a>
+            <button class="round-nav-btn" type="button" onclick="setRoundView('16', this)">1라운드</button>
+            <button class="round-nav-btn" id="round-nav-8" type="button" onclick="setRoundView('8', this)">2라운드</button>
+            <button class="round-nav-btn" type="button" onclick="setRoundView('4', this)">3라운드</button>
         </div>
 
         <div class="main-view active" id="summary-view">
             <section class="podium" id="podium" aria-label="상위 3개 팀"></section>
-            <section class="survivors-panel" aria-label="최종 4강 진출팀">
+            <section class="survivors-panel" aria-label="3라운드 진출 업체">
                 <header class="survivors-head">
-                    <div class="survivors-title"><strong>최종 4강 진출팀</strong><span>FINAL FOUR</span></div>
-                    <span class="survivors-count">FINAL RESULTS</span>
+                    <div class="survivors-title"><strong>3라운드 진출 업체</strong><span>FINAL EIGHT</span></div>
+                    <span class="survivors-count">8 INDIVIDUALS</span>
                 </header>
                 <div class="survivors-grid" id="survivors-grid"></div>
             </section>
@@ -424,11 +423,11 @@
         <div class="main-view" id="16-view">
             <section class="bracket-panel">
                 <header class="bracket-panel-head">
-                    <div class="stage-heading"><span class="stage-number">01</span><div class="stage-heading-copy"><small>TOURNAMENT STAGE</small><strong>16강</strong><span>ROUND OF 16</span></div></div>
+                    <div class="stage-heading"><span class="stage-number">01</span><div class="stage-heading-copy"><small>FIRST ROUND</small><strong>1라운드</strong><span>16개 업체 · 1:1</span></div></div>
                     <span class="bracket-status is-complete">경기 종료</span>
                 </header>
                 <div class="bracket-scroll"><div class="round-stage-grid" id="round-content-16"></div></div>
-                <div class="bracket-note">낙찰금이 높은 팀이 8강에 진출합니다.</div>
+                <div class="bracket-note">대결 승자 8개 업체와 와일드카드 4개 업체가 2라운드에 진출합니다.</div>
             </section>
         </div>
 
@@ -442,13 +441,13 @@
 
         <div class="main-view" id="4-view">
             <section class="bracket-panel">
-                <header class="bracket-panel-head"><div class="stage-heading"><span class="stage-number">03</span><div class="stage-heading-copy"><small>TOURNAMENT STAGE</small><strong>4강</strong><span>SEMI FINAL</span></div></div><span class="bracket-status is-pending" id="round-status-4">대진 · 일정 미정</span></header>
+                <header class="bracket-panel-head"><div class="stage-heading"><span class="stage-number">03</span><div class="stage-heading-copy"><small>FINAL ROUND</small><strong>3라운드 개인전</strong><span>8개 업체 · 최고 낙찰금 우승</span></div></div><span class="bracket-status is-pending" id="round-status-4">진출 업체 집계 중</span></header>
                 <div class="bracket-scroll"><div class="round-stage-grid" id="round-content-4"></div></div>
-                <div class="bracket-note" id="round-note-4">4강 진출팀은 확정되었으며, 대진 상대와 경기 일정은 아직 미정입니다.</div>
+                <div class="bracket-note" id="round-note-4">2라운드 상위 2팀 소속 8개 업체가 개인전으로 경쟁합니다.</div>
             </section>
         </div>
 
-        <div class="main-view" id="2-view">
+        <div class="main-view" id="2-view" style="display:none">
             <section class="bracket-panel">
                 <header class="bracket-panel-head"><div class="stage-heading"><span class="stage-number">04</span><div class="stage-heading-copy"><small>MEDAL STAGE</small><strong>결승·3·4위전</strong><span>FINAL &amp; BRONZE MATCH</span></div></div><span class="bracket-status is-pending" id="round-status-2">대진 · 일정 미정</span></header>
                 <div class="bracket-scroll"><div class="round-stage-grid final-grid" id="round-content-2"></div></div>
@@ -751,13 +750,30 @@
 
             document.getElementById('round-content-16').innerHTML = round16Matches.map((match, index) => stageMatchMarkup(match, 16, index)).join('');
             if (stageGroups) {
-                const groupMarkup = group => `<article class="bracket-match is-complete"><div class="bracket-match-head"><span>${escapeHtml(group.name)}</span><span>${group.members.length}팀 · 배정 완료</span></div>${group.members.map(name => `<div class="bracket-team"><span class="team-logo logo-fallback">${escapeHtml(name.slice(0,1))}</span><span class="bracket-team-name">${escapeHtml(name)}${name === group.leader ? ' · 팀장' : ''}</span><span class="bracket-team-price">${formatAmount(CdcupTournamentData.roundAmount(tournamentStageAmounts,name,16)||0)}<small>만원</small></span><span></span></div>`).join('')}</article>`;
-                document.getElementById('round-content-8').innerHTML = stageGroups.groups.map(groupMarkup).join('');
+                const groupStandings = stageGroups.groups.map(group => ({
+                    ...group,
+                    total: group.members.reduce((sum, name) => sum + (CdcupTournamentData.roundAmount(tournamentStageAmounts, name, 8) || 0), 0)
+                })).sort((a, b) => b.total - a.total || a.code.localeCompare(b.code, 'en'))
+                    .map((group, index) => ({ ...group, rank: index + 1, advancing: index < 2 && group.total > 0 }));
+                const groupMarkup = group => `<article class="bracket-match ${group.advancing ? 'is-complete' : ''}"><div class="bracket-match-head"><span>${group.rank}위 · ${escapeHtml(group.name)}</span><span>${group.advancing ? '진출권' : group.total > 0 ? '3위' : '집계 중'} · ${formatAmount(group.total)}만원</span></div>${group.members.map(name => `<div class="bracket-team"><span class="team-logo logo-fallback">${escapeHtml(name.slice(0,1))}</span><span class="bracket-team-name">${escapeHtml(name)}${name === group.leader ? ' · 팀장' : ''}</span><span class="bracket-team-price">${formatAmount(CdcupTournamentData.roundAmount(tournamentStageAmounts,name,8)||0)}<small>만원</small></span><span></span></div>`).join('')}</article>`;
+                document.getElementById('round-content-8').innerHTML = groupStandings.map(groupMarkup).join('');
                 document.getElementById('round-nav-8').textContent = '2라운드';
-                document.getElementById('round-title-8').textContent = '2라운드 팀 배정';
-                document.getElementById('round-subtitle-8').textContent = 'TEAM ASSIGNMENT';
-                document.getElementById('round-status-8').textContent = '배정 완료';
-                document.getElementById('round-note-8').textContent = '16강 승자 8팀과 와일드카드 4팀의 공식 팀 배정입니다.';
+                document.getElementById('round-title-8').textContent = '2라운드 팀전';
+                document.getElementById('round-subtitle-8').textContent = 'TEAM TOTAL · TOP 2 ADVANCE';
+                document.getElementById('round-status-8').textContent = groupStandings.some(group => group.total > 0) ? '집계 중' : '경기 준비';
+                document.getElementById('round-note-8').textContent = 'A/B/C팀 낙찰금 합산 순위입니다. 상위 2팀의 소속 업체 8곳이 3라운드에 진출합니다.';
+
+                const finalists = groupStandings.filter(group => group.advancing).flatMap(group => group.members.map(name => ({
+                    name,
+                    groupName: group.name,
+                    amount: CdcupTournamentData.roundAmount(tournamentStageAmounts, name, 4) || 0
+                }))).sort((a, b) => b.amount - a.amount || a.name.localeCompare(b.name, 'ko'));
+                document.getElementById('round-content-4').innerHTML = finalists.length
+                    ? finalists.map((entry, index) => `<article class="bracket-match ${index === 0 && entry.amount > 0 ? 'is-complete' : ''}"><div class="bracket-match-head"><span>${index + 1}위 · ${escapeHtml(entry.groupName)}</span><span>${index === 0 && entry.amount > 0 ? '현재 1위' : '개인전'}</span></div><div class="bracket-team ${index === 0 && entry.amount > 0 ? 'is-winner' : ''}">${bracketLogoMarkup(entry.name, rowMap)}<span class="bracket-team-name">${escapeHtml(entry.name)}</span><span class="bracket-team-price">${formatAmount(entry.amount)}<small>만원</small></span>${index === 0 && entry.amount > 0 ? '<span class="winner-chip">LEADER</span>' : '<span></span>'}</div></article>`).join('')
+                    : '<div class="empty"><strong>3라운드 진출 업체 집계 중</strong><p>2라운드 낙찰 결과가 입력되면 상위 2팀의 8개 업체가 자동으로 표시됩니다.</p></div>';
+                document.getElementById('round-status-4').textContent = finalists.length ? (finalists.some(entry => entry.amount > 0) ? '개인전 진행 중' : '진출 확정') : '진출 업체 집계 중';
+                document.getElementById('round-note-4').textContent = '진출한 8개 업체의 3라운드 낙찰금만 비교하며, 가장 높은 업체가 최종 우승합니다.';
+                return;
             } else {
                 document.getElementById('round-content-8').innerHTML = quarterfinals.map((match, index) => stageMatchMarkup(match, 8, index)).join('');
             }
@@ -1096,6 +1112,16 @@
             document.getElementById('stat-teams').innerHTML = `${allRows.length}<span class="stat-unit">팀</span>`;
             document.getElementById('stat-amount').innerHTML = `${formatAmount(allRows.reduce((sum, row) => sum + row.amount, 0))}<span class="stat-unit">만원</span>`;
             document.getElementById('stat-updated').textContent = now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+            const season2Groups = CdcupTournamentData.parseStageGroups(latestRankingMap || {}, 8);
+            if (season2Groups) {
+                const hasFinalResults = Object.values(tournamentStageAmounts[4] || {}).some(amount => Number(amount) > 0);
+                document.getElementById('stat-events').innerHTML = `${hasFinalResults ? 3 : 2}<span class="stat-unit">/ 3</span>`;
+                renderPodium();
+                renderSurvivors();
+                renderTable();
+                renderSideAuctions();
+                return;
+            }
             const semifinalMatches = parseBracket(latestRankingMap, 4).matches || {};
             const qualified = new Set(QUARTERFINAL_MATCHUPS.map(match => winnerByOfficialPrice(match, 8)).filter(Boolean));
             const isOfficialStageMatch = match => match && [match.left,match.right].filter(Boolean).every(team => qualified.has(team));
@@ -1129,6 +1155,26 @@
 
         function renderPodium() {
             const podium = document.getElementById('podium');
+            const stageGroups = CdcupTournamentData.parseStageGroups(latestRankingMap || {}, 8);
+            if (stageGroups) {
+                const groupRows = stageGroups.groups.map(group => ({
+                    ...group,
+                    total: group.members.reduce((sum, name) => sum + (CdcupTournamentData.roundAmount(tournamentStageAmounts, name, 8) || 0), 0)
+                })).sort((a, b) => b.total - a.total || a.code.localeCompare(b.code, 'en'));
+                const finalists = groupRows.slice(0, 2).flatMap(group => group.members.map(name => ({
+                    name,
+                    groupName: group.name,
+                    amount: CdcupTournamentData.roundAmount(tournamentStageAmounts, name, 4) || 0,
+                    row: allRows.find(item => item.name === name)
+                }))).sort((a, b) => b.amount - a.amount || a.name.localeCompare(b.name, 'ko'));
+                const hasFinal = finalists.some(entry => entry.amount > 0);
+                if (hasFinal) {
+                    podium.innerHTML = finalists.slice(0, 3).map((entry, index) => `<article class="podium-card ${index === 0 ? 'first' : ''}"><div class="podium-rank">${index === 0 ? 'CHAMPION' : 'RANK ' + (index + 1)}</div><div class="podium-team">${entry.row ? logoMarkup(entry.row) : '<span class="team-logo logo-fallback">' + escapeHtml(entry.name.slice(0,1)) + '</span>'}<div class="podium-team-name"><strong>${escapeHtml(entry.name)}</strong><span>${escapeHtml(entry.groupName)}</span><small>3라운드 개인전</small></div></div><div class="podium-amount">${formatAmount(entry.amount)}<small>만원</small></div></article>`).join('');
+                } else {
+                    podium.innerHTML = groupRows.map((group, index) => `<article class="podium-card ${index === 0 ? 'first' : ''}"><div class="podium-rank">현재 팀 순위 ${index + 1}</div><div class="podium-team"><span class="team-logo logo-fallback">${escapeHtml(group.code)}</span><div class="podium-team-name"><strong>${escapeHtml(group.name)}</strong><span>${group.members.length}개 업체</span><small>${index < 2 && group.total > 0 ? '3라운드 진출권' : '2라운드 집계 중'}</small></div></div><div class="podium-amount">${formatAmount(group.total)}<small>만원</small></div></article>`).join('');
+                }
+                return;
+            }
             if (!allRows.length) { podium.innerHTML = ''; return; }
             podium.innerHTML = allRows.slice(0, 3).map((row, index) => {
                 const result = finalLabel(row);
@@ -1141,6 +1187,17 @@
         }
 
         function renderSurvivors() {
+            const stageGroups = CdcupTournamentData.parseStageGroups(latestRankingMap || {}, 8);
+            if (stageGroups) {
+                const groups = stageGroups.groups.map(group => ({
+                    ...group,
+                    total: group.members.reduce((sum, name) => sum + (CdcupTournamentData.roundAmount(tournamentStageAmounts, name, 8) || 0), 0)
+                })).sort((a, b) => b.total - a.total || a.code.localeCompare(b.code, 'en'));
+                const hasResults = groups.some(group => group.total > 0);
+                const finalists = hasResults ? groups.slice(0, 2).flatMap(group => group.members.map(name => ({ name, groupName: group.name, row: allRows.find(item => item.name === name) }))) : [];
+                document.getElementById('survivors-grid').innerHTML = finalists.length ? finalists.map(entry => `<button class="survivor-card" type="button" onclick="showTeamJourney('${escapeHtml(entry.name)}')">${entry.row ? logoMarkup(entry.row) : '<span class="team-logo logo-fallback">' + escapeHtml(entry.name.slice(0,1)) + '</span>'}<span class="survivor-copy"><strong>${escapeHtml(entry.name)}</strong><span>${escapeHtml(entry.groupName)}</span></span><span class="survivor-state">진출</span></button>`).join('') : '<div class="empty"><strong>2라운드 집계 중</strong><p>상위 2팀이 정해지면 8개 업체가 표시됩니다.</p></div>';
+                return;
+            }
             const survivors = allRows.filter(row => row.results[8]?.reached === 4 && !row.results[8]?.eliminated);
             document.getElementById('survivors-grid').innerHTML = survivors.map(row => `<button class="survivor-card" type="button" onclick="showTeamJourney('${escapeHtml(row.name)}')" aria-label="${escapeHtml(row.name)} 경기 여정 보기">
                 ${logoMarkup(row)}

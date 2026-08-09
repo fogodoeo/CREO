@@ -56,6 +56,62 @@ function resolveTournamentStageGroup(configMap, company, stage = 8) {
     return candidates.length === 1 ? candidates[0] : null;
 }
 
+function parseTournamentFinalists(configMap, items = []) {
+    try {
+        const saved = JSON.parse(configMap?.tournament_finalists_4 || 'null');
+        const rows = Array.isArray(saved) ? saved : (Array.isArray(saved?.entrants) ? saved.entrants : []);
+        if (rows.length === 8) {
+            return rows.map((entry, index) => ({
+                member: String(entry?.member || entry?.name || '').trim(),
+                code: String(entry?.groupCode || entry?.code || '').trim().toUpperCase(),
+                sourceGroupName: String(entry?.sourceGroupName || entry?.groupName || '').trim(),
+                seed: index + 1
+            })).filter(entry => entry.member);
+        }
+    } catch (_) {}
+
+    const groups = parseTournamentStageGroups(configMap, 8);
+    if (!groups) return [];
+    const totals = {};
+    let resultCount = 0;
+    (items || []).forEach(item => {
+        const meta = getItemAuctionMeta(item);
+        const status = String(item?.status || '').trim();
+        if (meta.auctionType !== AUCTION_TYPES.TOURNAMENT
+            || Number(meta.tournamentStage) !== 8
+            || !['완료', 'sold', '낙찰'].includes(status)) return;
+        const name = String(item?.company || '').trim();
+        const amount = Number(String(item?.sold_price ?? item?.soldPrice ?? 0).replace(/[^0-9.-]/g, '')) || 0;
+        totals[name] = (totals[name] || 0) + amount;
+        resultCount += 1;
+    });
+    if (!resultCount) return [];
+    return groups.groups.map(group => ({
+        ...group,
+        total: group.members.reduce((sum, member) => sum + (totals[member] || 0), 0)
+    })).sort((a, b) => b.total - a.total || a.code.localeCompare(b.code, 'en'))
+        .slice(0, 2)
+        .flatMap(group => group.members.map((member, index) => ({
+            member,
+            code: group.code,
+            sourceGroupName: group.name,
+            seed: index + 1
+        })));
+}
+
+function resolveTournamentFinalist(configMap, company, items = []) {
+    const target = normalizeTournamentCompanyName(company);
+    if (!target) return null;
+    const finalists = parseTournamentFinalists(configMap, items);
+    const exact = finalists.find(entry => normalizeTournamentCompanyName(entry.member) === target);
+    if (exact) return exact;
+    const candidates = finalists.filter(entry => {
+        const normalized = normalizeTournamentCompanyName(entry.member);
+        return normalized && (target.startsWith(normalized) || normalized.startsWith(target));
+    });
+    return candidates.length === 1 ? candidates[0] : null;
+}
+
 function tournamentStageGroupLabel(configMap, stage, code) {
     const parsed = parseTournamentStageGroups(configMap, stage);
     const target = String(code || '').trim().toUpperCase();
@@ -137,8 +193,10 @@ function auctionTypeLabel(itemOrType) {
 function auctionStageLabel(item) {
     const meta = getItemAuctionMeta(item);
     if (meta.auctionType === AUCTION_TYPES.TOURNAMENT) {
-        if (meta.tournamentStage === 2) return '결승·3·4위전';
-        return meta.tournamentStage ? meta.tournamentStage + '강' : '토너먼트';
+        if (meta.tournamentStage === 16) return '1라운드';
+        if (meta.tournamentStage === 8) return '2라운드 팀전';
+        if (meta.tournamentStage === 4) return '3라운드 개인전';
+        return meta.tournamentStage ? `라운드 ${meta.tournamentStage}` : '토너먼트';
     }
     if (meta.auctionType === AUCTION_TYPES.CREWART) return '크레와트';
     if (meta.auctionType === AUCTION_TYPES.SOLO) return '단독 경매';
@@ -608,10 +666,16 @@ async function updateItem(row, data, pw) {
             const configMap = await getConfigMap();
             const activeStage = Number.parseInt(configMap?.active_tournament, 10) || 0;
             const requestedStage = Number.parseInt(nextMeta.tournamentStage, 10) || activeStage;
-            if (activeStage && requestedStage === activeStage && parseTournamentStageGroups(configMap, activeStage)) {
-                const assignment = resolveTournamentStageGroup(configMap, data.company ?? current.company, activeStage);
+            if (activeStage && requestedStage === activeStage && (activeStage === 8 || activeStage === 4)) {
+                const stageItems = activeStage === 4
+                    ? await _sbFetch('items?select=company,status,sold_price,checklist')
+                    : [];
+                const assignment = activeStage === 4
+                    ? resolveTournamentFinalist(configMap, data.company ?? current.company, stageItems)
+                    : resolveTournamentStageGroup(configMap, data.company ?? current.company, activeStage);
                 if (!assignment) {
-                    return { success: false, error: `현재 2라운드 참가 업체가 아닙니다: ${String(data.company ?? current.company ?? '업체 미입력')}` };
+                    const phase = activeStage === 4 ? '3라운드 진출 업체' : '2라운드 참가 업체';
+                    return { success: false, error: `현재 ${phase}가 아닙니다: ${String(data.company ?? current.company ?? '업체 미입력')}` };
                 }
                 payload.company = assignment.member;
                 nextMeta.teamCode = assignment.code;
@@ -866,7 +930,7 @@ async function deleteAll(pw) {
 async function registerBatch(itemsArray) {
     try {
         const [existing, configMap] = await Promise.all([
-            _sbFetch('items?select=num,company,checklist,name'),
+            _sbFetch('items?select=num,company,checklist,name,status,sold_price'),
             getConfigMap()
         ]);
         let maxNum = 0;
@@ -875,7 +939,7 @@ async function registerBatch(itemsArray) {
         }
 
         const activeStage = Number.parseInt(configMap?.active_tournament, 10) || 0;
-        const activeGroups = activeStage ? parseTournamentStageGroups(configMap, activeStage) : null;
+        const activeGroups = activeStage === 8 ? parseTournamentStageGroups(configMap, activeStage) : null;
         const nextTeamSlot = {};
         (existing || []).forEach(item => {
             const meta = getItemAuctionMeta(item);
@@ -888,10 +952,13 @@ async function registerBatch(itemsArray) {
             const data = { ...(item || {}) };
             const auctionType = data.auctionType || AUCTION_TYPES.TOURNAMENT;
             const requestedStage = Number.parseInt(data.tournamentStage, 10) || activeStage;
-            if (auctionType !== AUCTION_TYPES.TOURNAMENT || !activeGroups || requestedStage !== activeStage) return data;
-            const assignment = resolveTournamentStageGroup(configMap, data.company, activeStage);
+            if (auctionType !== AUCTION_TYPES.TOURNAMENT || requestedStage !== activeStage || (activeStage !== 8 && activeStage !== 4)) return data;
+            const assignment = activeStage === 4
+                ? resolveTournamentFinalist(configMap, data.company, existing || [])
+                : resolveTournamentStageGroup(configMap, data.company, activeStage);
             if (!assignment) {
-                throw new Error(`현재 2라운드 참가 업체가 아닙니다: ${String(data.company || '업체 미입력')}`);
+                const phase = activeStage === 4 ? '3라운드 진출 업체' : '2라운드 참가 업체';
+                throw new Error(`현재 ${phase}가 아닙니다: ${String(data.company || '업체 미입력')}`);
             }
             nextTeamSlot[assignment.code] = (nextTeamSlot[assignment.code] || 0) + 1;
             data.company = assignment.member;
@@ -1586,16 +1653,28 @@ async function archiveAndPrepareMedalDay(title, pw) {
     const active = await _sbFetch('items?status=eq.진행중&select=id&limit=1');
     if (active && active.length) return { success: false, error: '진행 중인 경매를 먼저 종료해주세요.' };
     try {
-        // 4강 낙찰·배송 기록은 먼저 보관하고 현재 경매 목록만 비운다.
-        // 4강 대진표는 결승·3·4위전 자동 편성에 필요하므로 유지한다.
+        const [currentItems, configMap] = await Promise.all([
+            _sbFetch('items?select=company,status,sold_price,checklist'),
+            getConfigMap()
+        ]);
+        const finalists = parseTournamentFinalists(configMap, currentItems || []);
+        if (String(configMap?.tournament_format || '') === 'three-round-team-final' && finalists.length !== 8) {
+            return { success: false, error: '2라운드 낙찰 결과를 먼저 입력해주세요. 상위 2팀의 8개 업체가 확정되어야 합니다.' };
+        }
+        // 2라운드 기록을 보관하고 상위 2팀의 8개 업체를 확정한 뒤 현재 목록만 비운다.
         const archive = await _createAuctionArchive(title);
         await _sbFetch('items?id=gt.0', {
             method: 'DELETE',
             headers: { ..._sbHeaders, 'Prefer': 'return=minimal' }
         });
         await updateConfigs({
-            active_tournament: 'none',
-            tournament_bracket_2: JSON.stringify({ matches: {} }),
+            active_tournament: '4',
+            bracket_view_round: '4',
+            blind_totals_stage: '4',
+            blind_totals_show: '1',
+            tournament_format: 'three-round-team-final',
+            tournament_finalists_4: JSON.stringify({ entrants: finalists }),
+            tournament_round_amounts_4: '{}',
             event_match_show: '0',
             battle_current_match: '',
             battle_state: ''
@@ -1603,7 +1682,7 @@ async function archiveAndPrepareMedalDay(title, pw) {
         return { success: true, archive };
     } catch (error) {
         console.error('archiveAndPrepareMedalDay error:', error);
-        return { success: false, error: '결승일 목록 준비 중 오류가 발생했습니다: ' + error.message };
+        return { success: false, error: '3라운드 목록 준비 중 오류가 발생했습니다: ' + error.message };
     }
 }
 

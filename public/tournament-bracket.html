@@ -7,7 +7,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <title>2026 CDCUP 공식 토너먼트 대진표</title>
   <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
-  <script src="cdcup-tournament-data.js?v=20260809-season2-groups-v1"></script>
+  <script src="cdcup-tournament-data.js?v=20260809-three-round-v2"></script>
   <style>
     @font-face{font-family:Pretendard;src:local("Pretendard");font-weight:100 900}
     :root{
@@ -47,12 +47,12 @@
     .connector.active{stroke:var(--gold);filter:drop-shadow(0 0 4px rgba(205,165,72,.28))}
     .connector.entering{stroke-dasharray:1300;stroke-dashoffset:1300;animation:drawLine .85s ease forwards}
     @keyframes drawLine{to{stroke-dashoffset:0}}
-    .round{position:absolute;top:0;height:100%;width:390px;z-index:2}
-    .round.r16{left:0}.round.r8{left:465px}.round.r4{left:930px}.round.final{left:1395px}
+    .round{position:absolute;top:0;height:100%;width:550px;z-index:2}
+    .round.r16{left:0}.round.r8{left:630px}.round.r4{left:1260px}.round.final{display:none}
     .round-title{position:absolute;top:0;left:0;right:0;height:38px;display:flex;align-items:center;justify-content:space-between;padding:0 4px 0 1px;color:var(--muted);font-size:11px;font-weight:850;letter-spacing:.12em}
     .round-title strong{color:var(--white);font-size:17px;font-weight:950;letter-spacing:0}
     .round-title em{font-style:normal;color:var(--gold);font-size:10px;letter-spacing:.16em}
-    .match{position:absolute;left:0;width:390px;border:1px solid rgba(205,165,72,.28);background:linear-gradient(135deg,rgba(15,26,40,.98),rgba(7,14,24,.98));box-shadow:inset 0 0 0 1px rgba(255,255,255,.018);transition:opacity .45s ease,filter .45s ease,transform .45s ease,border-color .45s ease}
+    .match{position:absolute;left:0;width:550px;border:1px solid rgba(205,165,72,.28);background:linear-gradient(135deg,rgba(15,26,40,.98),rgba(7,14,24,.98));box-shadow:inset 0 0 0 1px rgba(255,255,255,.018);transition:opacity .45s ease,filter .45s ease,transform .45s ease,border-color .45s ease}
     .match:before{content:"";position:absolute;left:0;right:0;top:0;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:.32}
     .match.future{opacity:.12;filter:saturate(.2);transform:scale(.975)}
     .match-label{height:21px;display:flex;align-items:center;justify-content:space-between;padding:0 10px;color:var(--muted);font-size:8px;font-weight:850;letter-spacing:.11em;border-bottom:1px solid rgba(132,145,163,.11)}
@@ -75,7 +75,15 @@
     .r8 .group-card{height:209px}.r8 .group-card .team{height:45px}.r8 .group-card.m1{top:60px}.r8 .group-card.m2{top:325px}.r8 .group-card.m3{top:590px}
     .leader-mark{margin-left:6px;padding:1px 5px;border:1px solid rgba(205,165,72,.5);color:var(--gold-soft);font-size:7px;font-style:normal;font-weight:950;letter-spacing:.06em}
     .team-logo-fallback{color:#172235;font-size:11px;font-weight:950}
-    body.team-stage .round.r4,body.team-stage .round.final{opacity:.18}
+    body.team-stage .round.r4{opacity:1}
+    .r4 .final-ranking{top:52px;height:735px!important;border-color:rgba(205,165,72,.52)}
+    .r4 .final-ranking .match-label{height:43px;padding:0 16px;font-size:11px;color:var(--gold-soft)}
+    .r4 .final-ranking .team{height:86px;grid-template-columns:50px minmax(0,1fr) auto;gap:14px;padding:0 17px}
+    .r4 .final-ranking .team-logo{width:42px;height:42px}
+    .r4 .final-ranking .team-main strong{font-size:20px}
+    .r4 .final-ranking .team-main small{font-size:9px}
+    .r4 .final-ranking .amount b{font-size:19px}
+    .group-advance{color:var(--green)!important;font-weight:950}.group-wait{color:var(--muted)!important}
     .r4 .match{height:125px}.r4 .match-label{height:29px;font-size:10px}.r4 .team{height:47px;grid-template-columns:39px minmax(0,1fr) auto;gap:12px;padding:0 13px}.r4 .team-logo{width:34px;height:34px}.r4 .team-main{display:block}.r4 .team-main strong{display:block;font-size:17px}.r4 .team-main small{display:block;margin-top:2px;font-size:8px}.r4 .amount{font-size:9px}.r4 .amount b{font-size:13px}.r4 .m1{top:165px}.r4 .m2{top:545px}
     .final .match{height:181px;border-color:rgba(205,165,72,.52);background:linear-gradient(135deg,rgba(18,30,44,.99),rgba(9,16,26,.99))}.final .m1{top:206px}.final .m2{top:524px}.final .match-label{height:36px;padding:0 15px;font-size:11px;color:var(--gold-soft)}.final .team{height:72px;grid-template-columns:54px minmax(0,1fr) auto;gap:15px;padding:0 16px}.final .team-logo{width:47px;height:47px}.final .team-main{display:block}.final .team-main strong{display:block;font-size:23px;color:var(--white)}.final .team-main small{display:block;margin-top:4px;font-size:10px}.final .amount{font-size:10px;color:var(--muted)}.final .amount b{font-size:15px}.final .team.finalist{background:linear-gradient(90deg,rgba(205,165,72,.09),transparent 78%)}
     .legend{position:absolute;left:0;right:0;bottom:3px;display:flex;align-items:center;justify-content:space-between;color:#4c5868;font-size:9px;font-weight:850;letter-spacing:.09em;z-index:3}
@@ -95,20 +103,19 @@
         </div>
         <div class="title">
           <small>OFFICIAL BRACKET</small>
-          <h1>토너먼트 대진표</h1>
+          <h1>시즌 2 진행표</h1>
         </div>
         <div class="season">
           <div><span>TOURNAMENT SEASON</span><strong>ROAD TO THE FINAL</strong></div>
           <img src="assets/cdcup-official-emblem.png" alt="CDCUP 공식 트로피 로고">
         </div>
       </header>
-      <section class="board" id="board" aria-label="2026 CDCUP 16강부터 결승까지 토너먼트 대진표">
+      <section class="board" id="board" aria-label="2026 CDCUP 시즌 2 세 라운드 진행표">
         <svg class="connectors" id="connectors" aria-hidden="true"></svg>
-        <div class="round r16" data-round="0"><div class="round-title"><strong>16강</strong><em>ROUND OF 16 · 16 TEAMS</em></div></div>
-        <div class="round r8" data-round="1"><div class="round-title"><strong>8강</strong><em>QUARTER FINAL · 8 TEAMS</em></div></div>
-        <div class="round r4" data-round="2"><div class="round-title"><strong>4강</strong><em>SEMI FINAL · 4 TEAMS</em></div></div>
-        <div class="round final" data-round="3"><div class="round-title"><strong>결승·3위전</strong><em>FINAL STAGE · 4 TEAMS</em></div></div>
-        <div class="legend"><div><span><i></i>결승 진출 경로</span><span id="bracket-total">금액 단위: 만원</span></div><b>3·4위전은 연결선 없이 별도 표시</b></div>
+        <div class="round r16" data-round="0"><div class="round-title"><strong>1라운드</strong><em>16개 업체 · 1:1</em></div></div>
+        <div class="round r8" data-round="1"><div class="round-title"><strong>2라운드</strong><em>3개 팀 · 합산 상위 2팀 진출</em></div></div>
+        <div class="round r4" data-round="2"><div class="round-title"><strong>3라운드</strong><em>8개 업체 · 개인전</em></div></div>
+        <div class="legend"><div><span><i></i>현재 진출 경로</span><span id="bracket-total">금액 단위: 만원</span></div><b>3라운드 최고 낙찰금 업체가 최종 우승</b></div>
       </section>
       <div class="progress-note" id="progress-note"></div>
     </main>
@@ -225,9 +232,12 @@
           w:legacy?amountWinner(match,roundAmounts,8):savedOrAmountWinner(match,roundAmounts,8)
         };
       });
-      const stageGroupCards=STAGE_GROUPS?.groups?.map((group,index)=>({
-        id:`group-${group.code || index+1}`,stage:8,label:`${group.name} · ${group.members.length}팀`,members:group.members,leader:group.leader,code:group.code
-      }))||[];
+      const groupStandings=CdcupTournamentData.stageGroupStandings(map||{},items||[],8);
+      const stageGroupCards=groupStandings.map((group,index)=>({
+        id:`group-${group.code || index+1}`,stage:8,label:`${group.rank}위 · ${group.name}`,
+        members:group.members,leader:group.leader,code:group.code,total:group.total,
+        advancing:group.advancing
+      }));
       const qfWinners=quarterfinals.map(match=>match.w).filter(Boolean);
       const semifinalDefaults=[
         {left:qfWinners[0]||(legacy?'베누스':''),right:qfWinners[1]||(legacy?'히꼬':'')},
@@ -258,17 +268,18 @@
         b:bronzeSaved.right,bp:CdcupTournamentData.roundAmount(roundAmounts,bronzeSaved.right,2),
         w:savedOrAmountWinner(bronzeSaved,roundAmounts,2)
       };
+      const finalStandings=CdcupTournamentData.finalIndividualStandings(map||{},items||[],4);
+      const finalRanking={id:'final-ranking',stage:4,label:'개인전 순위',standings:finalStandings};
       ROUNDS=[
-        {key:'r16',round:0,label:'16강',matches:r16},
-        {key:'r8',round:1,label:STAGE_GROUPS?'2라운드 팀 배정':'8강',matches:STAGE_GROUPS?stageGroupCards:quarterfinals},
-        {key:'r4',round:2,label:'4강',matches:semifinals},
-        {key:'final',round:3,label:'결승·3위전',matches:[finalMatch,bronzeMatch]}
+        {key:'r16',round:0,label:'1라운드',matches:r16},
+        {key:'r8',round:1,label:'2라운드',matches:stageGroupCards},
+        {key:'r4',round:2,label:'3라운드',matches:[finalRanking]}
       ];
       LINKS=[];
       r16.forEach(match=>{
         if(STAGE_GROUPS){
           [match.a,match.b].forEach(team=>{
-            const target=stageGroupCards.find(group=>group.members.includes(team));
+            const target=stageGroupCards.find(group=>group.members.some(member=>member.name===team));
             if(team&&target)LINKS.push([match.id,team,target.id,team,1]);
           });
         }else{
@@ -276,20 +287,14 @@
           if(match.w&&target)LINKS.push([match.id,match.w,target.id,match.w,1]);
         }
       });
-      if(STAGE_GROUPS)return;
-      quarterfinals.forEach(match=>{
-        const target=semifinals.find(next=>next.a===match.w||next.b===match.w);
-        if(match.w&&target)LINKS.push([match.id,match.w,target.id,match.w,2]);
-      });
-      semifinals.forEach(match=>{
-        if(!match.w)return;
-        if(finalMatch.a===match.w||finalMatch.b===match.w)LINKS.push([match.id,match.w,finalMatch.id,match.w,3]);
+      stageGroupCards.filter(group=>group.advancing).forEach(group=>{
+        group.members.forEach(member=>LINKS.push([group.id,member.name,finalRanking.id,member.name,2]));
       });
     }
     const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
     function teamRow(name,price,winner,match,leader=''){
       const meta=teamMeta(name);
-      const isFinal=match.stage===2;
+      const isFinal=match.stage===4;
       const isWinner=winner===name;
       let status='';
       if(price!==undefined&&price!==null) status=`<span class="amount"><b>${Number(price).toLocaleString('ko-KR')}</b>만원</span>`;
@@ -298,14 +303,18 @@
       return `<div class="team${isWinner?' win':''}${isFinal?' finalist':''}" data-team="${escapeHtml(name)}"><span class="team-logo">${logo}</span><span class="team-main"><span class="team-name"><strong>${escapeHtml(name)}</strong>${name===leader?'<i class="leader-mark">팀장</i>':''}${isWinner?'<i class="advance">WIN</i>':''}</span><small>${escapeHtml(meta[0])}</small></span>${status}</div>`;
     }
     function matchCard(match,index,round){
-      if(Array.isArray(match.members))return `<article class="match group-card m${index+1}" id="${match.id}" data-round="${round.round}"><div class="match-label"><span>${escapeHtml(match.label)}</span><span>배정 완료</span></div>${match.members.map(name=>teamRow(name,null,'',match,match.leader)).join('')}</article>`;
+      if(Array.isArray(match.standings)){
+        const rows=match.standings.length?match.standings.map(entry=>teamRow(entry.name,entry.amount,entry.winner?entry.name:'',match)).join(''):'<div class="team"><span></span><span class="team-main"><strong>2라운드 결과 집계 후 진출 업체가 표시됩니다</strong></span><span></span></div>';
+        return `<article class="match final-ranking m${index+1}" id="${match.id}" data-round="${round.round}"><div class="match-label"><span>${escapeHtml(match.label)}</span><span>${match.standings.some(entry=>entry.winner)?'우승 확정':'진출 8개 업체'}</span></div>${rows}</article>`;
+      }
+      if(Array.isArray(match.members))return `<article class="match group-card m${index+1}" id="${match.id}" data-round="${round.round}"><div class="match-label"><span>${escapeHtml(match.label)}</span><span class="${match.advancing?'group-advance':'group-wait'}">${match.advancing?'진출권':match.total>0?'3위':'집계 전'} · ${Number(match.total||0).toLocaleString('ko-KR')}만원</span></div>${match.members.map(member=>teamRow(member.name,member.amount,'',match,match.leader)).join('')}</article>`;
       const status=match.w?'경기 종료':'집계 중';
       return `<article class="match m${index+1}" id="${match.id}" data-round="${round.round}"><div class="match-label"><span>${escapeHtml(match.label||`${round.label} ${index+1}경기`)}</span><span>${status}</span></div>${teamRow(match.a,match.ap,match.w,match)}${teamRow(match.b,match.bp,match.w,match)}</article>`;
     }
     function renderMatches(){
       document.body.classList.toggle('team-stage',Boolean(STAGE_GROUPS));
       const r8Title=document.querySelector('.round.r8 .round-title');
-      if(STAGE_GROUPS&&r8Title)r8Title.innerHTML='<strong>2라운드</strong><em>TEAM ASSIGNMENT · 12 TEAMS</em>';
+      if(STAGE_GROUPS&&r8Title)r8Title.innerHTML='<strong>2라운드</strong><em>3개 팀 · 합산 상위 2팀 진출</em>';
       for(const round of ROUNDS){
         const target=document.querySelector('.round.'+round.key);
         target.querySelectorAll('.match').forEach(match=>match.remove());
@@ -332,12 +341,13 @@
         return `<path class="connector active${entering?' entering':''}" data-stage="${stage}" data-match="${fromId}" data-team="${escapeHtml(fromTeam)}" style="animation-delay:${(index%4)*90}ms" d="M ${from.x} ${from.y} H ${middle} V ${to.y} H ${to.x}"/>`;
       }).join('');
     }
-    const stageMap={all:3,'16':0,'8':1,'4':2,final:3};
+    const stageMap={all:2,'16':0,'8':1,'4':2,final:2};
     function setStage(stage,animate=false){
       const maxRound=stageMap[stage]??3;
       document.querySelectorAll('.match').forEach(card=>card.classList.toggle('future',Number(card.dataset.round)>maxRound));
       drawConnectors(maxRound,animate?maxRound:-1);
-      document.getElementById('progress-note').textContent=stage==='all'?'':`${stage==='final'?'결승':stage+'강'} 진행 화면`;
+      const stageLabel=stage==='16'?'1라운드':stage==='8'?'2라운드':stage==='4'||stage==='final'?'3라운드':'';
+      document.getElementById('progress-note').textContent=stage==='all'?'':`${stageLabel} 진행 화면`;
     }
     function fitCanvas(){
       const viewport=document.getElementById('viewport');
@@ -364,7 +374,7 @@
         fitCanvas();
         window.addEventListener('resize',fitCanvas,{passive:true});
         if(autoplay){
-          const sequence=['16','8','4','final'];let index=0;
+          const sequence=['16','8','4'];let index=0;
           const advance=()=>{index+=1;if(index>=sequence.length)return;setStage(sequence[index],true);setTimeout(advance,2200)};
           setTimeout(advance,1800);
         }

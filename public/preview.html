@@ -24,7 +24,7 @@
         })();
     </script>
     <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
-    <script src="cdcup-tournament-data.js?v=20260809-season2-groups-v1"></script>
+    <script src="cdcup-tournament-data.js?v=20260809-three-round-v2"></script>
     <script src="event-modules.js?v=20260710-crebti3"></script>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet">
@@ -1025,7 +1025,7 @@
 
                 <!-- 5. Draggable Full Bracket (PAGE3 only) -->
                 <div class="draggable-element draggable-bracket" id="draggable-bracket-full" data-type="bracket_full" style="display:none; z-index:20;">
-                    <div class="element-label">전체 결과</div>
+                    <div class="element-label">전체 진행표</div>
                     <div class="resize-handle resize-handle-se" id="resize-bracket-full" title="크기 조절" style="border-color: #3b82f6;"></div>
                 </div>
 
@@ -1081,7 +1081,7 @@
                         <input type="checkbox" id="toggle-nametag2-show" class="switch-input" checked onchange="toggleShowState('nametag2')">
                     </div>
                     <div class="switch-container" id="toggle-bracket-full-show-group" style="display:none;" onclick="focusBracketLayer('bracket_full')" title="클릭하면 전체대진 배치 박스가 선택됩니다">
-                        <span>전체 결과</span>
+                        <span>전체 진행표</span>
                         <small class="layout-target-badge">배치 선택됨</small>
                         <input type="checkbox" id="toggle-bracket-full-show" class="switch-input" checked onchange="toggleShowState('bracket_full')">
                     </div>
@@ -1130,14 +1130,13 @@
                     <div class="switch-container" id="toggle-bracket-scale-group" style="display:none; gap: 6px; align-items: center; border-left: 1px solid var(--border); padding-left: 12px; margin-left: 6px;">
                         <span style="font-weight: 700;">대진표 크기:</span>
                         <select id="bracket-scale-select" onchange="changeBracketScale(this.value)" class="cdcup-input" style="padding: 2px 6px; width: auto; height: 28px; font-size: 11px; font-weight: 700; border-radius: 4px;">
-                            <option value="16">16강</option>
-                            <option value="8">8강</option>
-                            <option value="4">4강</option>
-                            <option value="2">결승·3·4위전</option>
+                            <option value="16">1라운드</option>
+                            <option value="8">2라운드 팀전</option>
+                            <option value="4">3라운드 개인전</option>
                         </select>
                     </div>
                     <div class="switch-container" id="toggle-bracket-full-font-group" style="display:none; gap: 6px; align-items: center; border-left: 1px solid var(--border); padding-left: 12px; margin-left: 6px;">
-                        <span style="font-weight: 700;">전체결과 폰트:</span>
+                        <span style="font-weight: 700;">진행표 폰트:</span>
                         <input type="number" id="bracket-full-font-input" oninput="previewBracketFontSize('bracket_full', this.value)" onchange="updateBracketFontSize('bracket_full', this.value)" class="cdcup-input" style="padding: 2px 6px; width: 52px; height: 28px; font-size: 11px; font-weight: 700; border-radius: 4px;" min="8" max="60" value="14">
                         <span style="font-size: 11px; font-weight: 700; color: var(--text-muted);">px</span>
                     </div>
@@ -1173,10 +1172,9 @@
                         <span style="font-weight: 700;">송출 모드:</span>
                         <select id="bracket-active-select" onchange="changeActiveTournament(this.value)" class="cdcup-input" style="padding: 2px 6px; width: auto; height: 28px; font-size: 11px; font-weight: 700; border-radius: 4px;">
                             <option value="none">대진표 비송출 (기본경매)</option>
-                            <option value="16">16강 대진표 송출</option>
-                            <option value="8">8강 대진표 송출</option>
-                            <option value="4">4강 대진표 송출</option>
-                            <option value="2">결승·3·4위전 송출</option>
+                            <option value="16">1라운드 송출</option>
+                            <option value="8">2라운드 팀전 송출</option>
+                            <option value="4">3라운드 개인전 송출</option>
                         </select>
                     </div>
                 </div>
@@ -1194,7 +1192,7 @@
                     <span id="nametag2-coords" style="display:none;"> | 네임택2: <strong id="nametag2-val-top">0%</strong>, <strong id="nametag2-val-left">0%</strong></span>
                     <span id="info-coords" style="display:none;"> | 개체정보: <strong id="info-val-top">0%</strong>, <strong id="info-val-left">0%</strong></span>
                     <span id="photo-coords" style="display:none;"> | 사진: <strong id="photo-val-top">0%</strong>, <strong id="photo-val-left">0%</strong></span>
-                    <span id="bracket-coords" style="display:none;">전체결과: Top <strong id="bracket-val-top">0%</strong>, Left <strong id="bracket-val-left">0%</strong></span>
+                    <span id="bracket-coords" style="display:none;">전체 진행표: Top <strong id="bracket-val-top">0%</strong>, Left <strong id="bracket-val-left">0%</strong></span>
                     <span id="bracket-live-coords" style="display:none;"> | 실시간대진: Top <strong id="bracket-live-val-top">0%</strong>, Left <strong id="bracket-live-val-left">0%</strong></span>
                     <span id="bracket-title-coords" style="display:none;"> | 타이틀: <strong id="bracket-title-val-top">0%</strong>, <strong id="bracket-title-val-left">0%</strong></span>
                     <span id="battle-ann-coords" style="display:none;"> | 경기자막: <strong id="battle-ann-val-top">0%</strong>, <strong id="battle-ann-val-left">0%</strong></span>
@@ -1210,20 +1208,19 @@
             <!-- 헤더 (크기 선택 + 송출 모드 + 저장/초기화) -->
             <div class="t-header">
                 <div class="t-controls">
-                    <span class="t-label">토너먼트 크기:</span>
-                    <button class="t-btn active" id="t-btn-16" onclick="tChangeScale(16)">16강</button>
-                    <button class="t-btn" id="t-btn-8" onclick="tChangeScale(8)">8강</button>
-                    <button class="t-btn" id="t-btn-4" onclick="tChangeScale(4)">4강</button>
-                    <button class="t-btn" id="t-btn-2" onclick="tChangeScale(2)">결승·3·4위전</button>
+                    <span class="t-label">라운드:</span>
+                    <button class="t-btn active" id="t-btn-16" onclick="tChangeScale(16)">1라운드</button>
+                    <button class="t-btn" id="t-btn-8" onclick="tChangeScale(8)">2라운드</button>
+                    <button class="t-btn" id="t-btn-4" onclick="tChangeScale(4)">3라운드</button>
+                    <button class="t-btn" id="t-btn-2" onclick="tChangeScale(2)" hidden>사용 안 함</button>
                 </div>
                 <div class="t-controls">
                     <span class="t-label">방송 송출:</span>
                     <select class="t-select" id="t-active-select" onchange="tChangeActive(this.value)">
                         <option value="none">비송출 (기본경매)</option>
-                        <option value="16">16강 송출</option>
-                        <option value="8">8강 송출</option>
-                        <option value="4">4강 송출</option>
-                        <option value="2">결승·3·4위전 송출</option>
+                        <option value="16">1라운드 송출</option>
+                        <option value="8">2라운드 팀전 송출</option>
+                        <option value="4">3라운드 개인전 송출</option>
                     </select>
                 </div>
 
@@ -1407,7 +1404,7 @@
             const isCrewart = module.id === 'crewart';
             document.body.classList.toggle('event-crewart-preview', isCrewart);
             const fullLabel = document.querySelector('#draggable-bracket-full .element-label');
-            if (fullLabel) fullLabel.textContent = isCrewart ? '기숙사 점수판' : '전체 결과';
+            if (fullLabel) fullLabel.textContent = isCrewart ? '기숙사 점수판' : '전체 진행표';
             const liveLabel = document.querySelector('#draggable-bracket-live .element-label');
             if (liveLabel) liveLabel.textContent = isCrewart ? '보조 점수판' : '실시간 대진';
             const p3Tab = document.getElementById('btn-tab-p3');
@@ -1464,9 +1461,9 @@
                 setDisplay('battle-ann-coords', false);
                 setDisplay('blind-totals-coords', !isCrewart);
                 const fullToggleLabel = document.querySelector('#toggle-bracket-full-show-group span');
-                if (fullToggleLabel) fullToggleLabel.textContent = isCrewart ? '점수판' : '전체 결과';
+                if (fullToggleLabel) fullToggleLabel.textContent = isCrewart ? '점수판' : '전체 진행표';
                 const coords = document.getElementById('bracket-coords');
-                if (coords && coords.firstChild) coords.firstChild.textContent = isCrewart ? '점수판: Top ' : '전체결과: Top ';
+                if (coords && coords.firstChild) coords.firstChild.textContent = isCrewart ? '점수판: Top ' : '전체 진행표: Top ';
                 if (isCrewart) refreshCrewartPreview();
                 try { focusBracketLayer(isCrewart ? 'bracket_full' : 'blind_totals'); } catch (e) {}
             }
@@ -2160,8 +2157,8 @@
 
         async function changeBracketScale(scale) {
             try {
-                await updateConfigs({ active_tournament: scale, bracket_view_round: scale });
-                toast('대진표 크기가 ' + scale + '강으로 변경되었습니다.');
+                await updateConfigs({ active_tournament: scale, bracket_view_round: scale, tournament_format: 'three-round-team-final', blind_totals_stage: scale });
+                toast(tStageLabel(scale) + '로 변경되었습니다.');
                 document.getElementById('bracket-active-select').value = scale;
                 frame.contentWindow.location.reload();
             } catch(err) { toast('변경 실패: ' + err.message); }
@@ -2171,8 +2168,10 @@
             try {
                 const payload = { active_tournament: val };
                 if (val !== 'none') payload.bracket_view_round = val;
+                if (val !== 'none') payload.blind_totals_stage = val;
+                payload.tournament_format = 'three-round-team-final';
                 await updateConfigs(payload);
-                toast('송출 모드가 변경되었습니다: ' + (val === 'none' ? '비송출' : val + '강 송출'));
+                toast('송출 모드가 변경되었습니다: ' + (val === 'none' ? '비송출' : tStageLabel(val) + ' 송출'));
                 frame.contentWindow.location.reload();
             } catch(err) { toast('변경 실패: ' + err.message); }
         }
@@ -2963,6 +2962,14 @@
         let tConfigMap = {};
         let tStageGroups = null;
 
+        function tStageLabel(scale) {
+            const value = Number(scale);
+            if (value === 16) return '1라운드';
+            if (value === 8) return '2라운드 팀전';
+            if (value === 4) return '3라운드 개인전';
+            return '비송출';
+        }
+
         function tStageMatchCount(round) {
             return Number(round) === 2 ? 2 : Number(round) / 2;
         }
@@ -3055,7 +3062,7 @@
                 const registeredTeams = (items || []).filter(tIsCurrentStageItem).map(i => i.company).filter(Boolean);
                 const configuredTeams = tScale === 8 && tStageGroups
                     ? tStageGroups.groups.flatMap(group => group.members)
-                    : [];
+                    : (tScale === 4 ? (window.CdcupTournamentData?.finalStageEntrants?.(tConfigMap, tAllItems) || []).map(entry => entry.name) : []);
                 const teams = [...new Set([...configuredTeams, ...registeredTeams])];
                 const pool = document.getElementById('t-team-pool');
                 if (teams.length === 0) {
@@ -3175,7 +3182,7 @@
         async function tDeleteAllTournamentItems() {
             const targets = tAllItems.filter(tIsCurrentStageItem);
             if (!targets.length) { toast('현재 단계에서 삭제할 토너먼트 개체가 없습니다.'); tToggleQuickRegister(true); return; }
-            const stageName = tScale === 2 ? '결승·3·4위전' : `${tScale}강`;
+            const stageName = tStageLabel(tScale);
             if (!confirm(`현재 ${stageName} 토너먼트 개체 ${targets.length}건을 삭제합니다.\n\n이전 라운드 기록과 일반 경매는 유지됩니다. 이 작업은 되돌릴 수 없습니다.\n\n계속할까요?`)) return;
             const pw = prompt('관리자 비밀번호를 입력하세요.');
             if (pw === null) return;
@@ -3286,7 +3293,7 @@
             const auto = document.getElementById('t-item-auto-all');
             const matchControls = document.getElementById('t-match-count-controls');
             if (input) input.value = count;
-            const stageName = tScale === 2 ? '결승·3·4위전' : `${tScale}강`;
+            const stageName = tStageLabel(tScale);
             if (desc) desc.textContent = `${stageName}은 경기별 설정 수만큼 내부 슬롯에 연결합니다. 공개 번호는 팀 정보와 분리해 자동 배치됩니다.`;
             if (auto) auto.textContent = '업체별 자동 선택';
             if (matchControls) {
@@ -3315,7 +3322,7 @@
             if (count === previous) return;
             try {
                 await updateConfigs({ ['tournament_items_per_team_' + tScale]: count });
-                toast(`${tScale === 2 ? '결승·3·4위전' : tScale + '강'} 팀당 ${count}마리로 저장했습니다.`);
+                toast(`${tStageLabel(tScale)} 팀당 ${count}마리로 저장했습니다.`);
             } catch (error) {
                 tItemsPerTeam[tScale] = previous;
                 tSyncItemCountUi();
@@ -3418,6 +3425,14 @@
                     <div class="t-stage-group-head"><strong>${tEsc(group.name)}</strong><span>${group.members.length}개 업체</span></div>
                     <div class="t-stage-group-members">${group.members.map(name => `<span class="t-stage-group-member ${name === group.leader ? 'leader' : ''}">${tEsc(name)}${name === group.leader ? ' · 팀장' : ''}</span>`).join('')}</div>
                 </article>`).join('')}</div>`;
+                tRenderItemSetup();
+                return;
+            }
+            if (tScale === 4 && String(tConfigMap.tournament_format || '') === 'three-round-team-final') {
+                const finalists = window.CdcupTournamentData?.finalIndividualStandings?.(tConfigMap, tAllItems, 4) || [];
+                tree.innerHTML = finalists.length
+                    ? `<div class="t-stage-groups" style="grid-column:1/-1;width:100%;">${finalists.map(entry => `<article class="t-stage-group"><div class="t-stage-group-head"><strong>${entry.rank}위 · ${tEsc(entry.name)}</strong><span>${Number(entry.amount || 0).toLocaleString('ko-KR')}만원</span></div><div class="t-stage-group-members"><span class="t-stage-group-member leader">${tEsc(entry.sourceGroupName)} · 개인전</span></div></article>`).join('')}</div>`
+                    : '<div class="t-item-empty" style="grid-column:1/-1;">2라운드 합산 결과가 입력되면 상위 2팀 소속 8개 업체가 자동 표시됩니다.</div>';
                 tRenderItemSetup();
                 return;
             }
@@ -3524,6 +3539,27 @@
                 applyBtn.textContent = '자동 편성 사용 중';
                 return;
             }
+            if (tScale === 4 && String(tConfigMap.tournament_format || '') === 'three-round-team-final') {
+                const finalists = window.CdcupTournamentData?.finalStageEntrants?.(tConfigMap, tAllItems) || [];
+                const finalItems = tAllItems.filter(item => {
+                    const meta = getItemAuctionMeta(item);
+                    return meta.auctionType === 'tournament' && Number(meta.tournamentStage) === 4;
+                });
+                const counts = finalItems.reduce((result, item) => {
+                    const name = String(item.company || '').trim();
+                    result[name] = (result[name] || 0) + 1;
+                    return result;
+                }, {});
+                const desc = document.getElementById('t-item-setup-desc');
+                if (desc) desc.textContent = '2라운드 상위 2팀의 8개 업체만 등록할 수 있으며, 업체별 낙찰금으로 최종 순위를 계산합니다.';
+                grid.innerHTML = finalists.length
+                    ? finalists.map((entry, index) => `<article class="t-item-team ready"><div class="t-item-team-head"><span class="t-item-team-letter">${index + 1}</span><div class="t-item-team-name"><strong>${tEsc(entry.name)}</strong><span>${tEsc(entry.sourceGroupName)} · ${counts[entry.name] || 0}개체</span></div></div></article>`).join('')
+                    : '<div class="t-item-empty" style="grid-column:1/-1;">2라운드 낙찰 결과가 입력되면 상위 2팀 소속 8개 업체가 자동 표시됩니다.</div>';
+                progress.textContent = finalists.length ? `${finalItems.length}개체 · 8개 업체 개인전` : '2라운드 결과 집계 중';
+                applyBtn.disabled = true;
+                applyBtn.textContent = '자동 진출 적용 중';
+                return;
+            }
             applyBtn.textContent = '토너먼트 개체 편성';
 
             const seeds = tGetSeedTeams();
@@ -3627,7 +3663,7 @@
 
             const generalCount = tAllItems.filter(item => !isTournamentAuctionItem(item)).length;
             const soloCount = tAllItems.filter(item => getItemAuctionMeta(item).auctionType === 'solo').length;
-            const stageName = tScale === 2 ? '결승·3·4위전' : `${tScale}강`;
+            const stageName = tStageLabel(tScale);
             const sequenceLine = tScale === 2 ? `\n· 운영 순서: 3·4위전 → 단독 경매 ${soloCount}개체 → 결승 → 시상식` : '';
             const countSummary = Array.from({ length: tStageMatchCount(tScale) }, (_, offset) => {
                 const index = offset + 1;
@@ -3701,15 +3737,17 @@
                 tActiveTournament = val;
                 const payload = { active_tournament: val };
                 if (val !== 'none') payload.bracket_view_round = val;
+                if (val !== 'none') payload.blind_totals_stage = val;
+                payload.tournament_format = 'three-round-team-final';
                 await updateConfigs(payload);
-                toast('송출 모드 변경: ' + (val === 'none' ? '비송출' : (val === '2' ? '결승·3·4위전 송출' : val + '강 송출')));
+                toast('송출 모드 변경: ' + (val === 'none' ? '비송출' : tStageLabel(val) + ' 송출'));
             } catch (err) { toast('송출 모드 갱신 실패: ' + err.message); }
         }
 
 
 
         function tReset() {
-            if (!confirm('현재 ' + (tScale === 2 ? '결승·3·4위전' : tScale + '강') + ' 대진표를 초기화합니까?')) return;
+            if (!confirm('현재 ' + tStageLabel(tScale) + ' 설정을 초기화합니까?')) return;
             tBrackets[tScale] = { matches: {} };
             tEditingMatch = null;
 

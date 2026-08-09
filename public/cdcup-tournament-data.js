@@ -231,6 +231,46 @@
         }
     }
 
+    function stageGroupStandings(map, items, stage = 8) {
+        const stageGroups = parseStageGroups(map || {}, stage);
+        if (!stageGroups) return [];
+        const roundAmounts = buildRoundAmounts(map || {}, items || []);
+        const standings = stageGroups.groups.map(group => {
+            const members = group.members.map(name => ({
+                name,
+                amount: roundAmount(roundAmounts, name, stage) || 0
+            }));
+            return {
+                ...group,
+                members,
+                total: members.reduce((sum, member) => sum + member.amount, 0)
+            };
+        }).sort((a, b) => b.total - a.total || a.code.localeCompare(b.code, 'en'));
+        const hasResults = standings.some(group => group.total > 0);
+        return standings.map((group, index) => ({ ...group, rank: index + 1, advancing: hasResults && index < 2 }));
+    }
+
+    function finalStageEntrants(map, items) {
+        return stageGroupStandings(map || {}, items || [], 8)
+            .filter(group => group.advancing)
+            .flatMap(group => group.members.map(member => ({
+                ...member,
+                sourceGroupCode: group.code,
+                sourceGroupName: group.name,
+                sourceGroupRank: group.rank
+            })));
+    }
+
+    function finalIndividualStandings(map, items, stage = 4) {
+        const entrants = finalStageEntrants(map || {}, items || []);
+        const roundAmounts = buildRoundAmounts(map || {}, items || []);
+        return entrants.map(entrant => ({
+            ...entrant,
+            amount: roundAmount(roundAmounts, entrant.name, stage) || 0
+        })).sort((a, b) => b.amount - a.amount || a.name.localeCompare(b.name, 'ko'))
+            .map((entrant, index) => ({ ...entrant, rank: index + 1, winner: index === 0 && entrant.amount > 0 }));
+    }
+
     function isLegacySeason(map) {
         const season = Number.parseInt(map?.tournament_season, 10);
         return !Number.isFinite(season) || season < 2;
@@ -264,6 +304,9 @@
         archivedStageAmounts,
         buildRoundAmounts,
         parseStageGroups,
+        stageGroupStandings,
+        finalStageEntrants,
+        finalIndividualStandings,
         isLegacySeason,
         teamTotal,
         allTeamTotals

@@ -5678,13 +5678,19 @@
                 : null;
             const groups = [];
             const byTeam = {};
+            const individualFinal = Number(preferredScale) === 4
+                && String(map?.tournament_format || '') === 'three-round-team-final';
             tournamentItems.forEach(item => {
                 const company = String(item.company || '').trim() || '미지정';
-                const team = resolveBlindTeamLetter(item, teamIndex, fallbackByCompany, preferredScale);
+                const team = individualFinal
+                    ? company
+                    : resolveBlindTeamLetter(item, teamIndex, fallbackByCompany, preferredScale);
                 const configuredGroups = typeof parseTournamentStageGroups === 'function'
                     ? parseTournamentStageGroups(map || {}, preferredScale)
                     : null;
-                const teamLabel = configuredGroups?.groups.find(group => group.code === team)?.name || company;
+                const teamLabel = individualFinal
+                    ? company
+                    : (configuredGroups?.groups.find(group => group.code === team)?.name || company);
                 if (medalTeamFilter && !medalTeamFilter.has(team)) return;
                 if (!byTeam[team]) {
                     byTeam[team] = {
@@ -5704,6 +5710,16 @@
                 if (isActiveForTotals(item)) group.active = true;
             });
             return groups.sort((a, b) => a.team.localeCompare(b.team, 'en'));
+        }
+
+        function blindTotalsTitle(map) {
+            const stage = Number.parseInt(map?.active_tournament || map?.blind_totals_stage || '', 10);
+            if (String(map?.tournament_format || '') === 'three-round-team-final') {
+                if (stage === 4) return '3라운드 개인 순위';
+                if (stage === 8) return '2라운드 팀 합산';
+                if (stage === 16) return '1라운드 결과';
+            }
+            return '팀 실시간 내역';
         }
 
         // ── 이벤트 매치 업체별 합산 ──
@@ -6048,7 +6064,10 @@
                 rowEl.style.setProperty('--rank-text-opacity', teamRankTextOpacity(rank));
 
                 const formattedAmount = formatBlindTotalAmount(row.total);
-                const cacheKey = `${row.team}|${row.company}|${row.soldCount}/${row.itemCount}|${formattedAmount}|${rank}`;
+                const topTwo = String(map?.tournament_format || '') === 'three-round-team-final'
+                    && Number.parseInt(map?.active_tournament || map?.blind_totals_stage || '', 10) === 8
+                    && rank <= 2 && Number(row.total) > 0;
+                const cacheKey = `${row.team}|${row.company}|${row.soldCount}/${row.itemCount}|${formattedAmount}|${rank}|${topTwo}`;
                 if (rowEl.dataset.lastCache === cacheKey) {
                     // 스킵
                 } else {
@@ -6057,7 +6076,7 @@
                         <span class="blind-total-rank${rank === 1 ? ' rank-1' : ''}">${rank}</span>
                         <div class="blind-total-main">
                             <strong class="blind-total-team">${esc(row.company)}</strong>
-                            <span class="blind-total-count">${row.soldCount}/${row.itemCount}</span>
+                            <span class="blind-total-count">${topTwo ? '진출권 · ' : ''}${row.soldCount}/${row.itemCount}</span>
                         </div>
                         <strong class="blind-total-amount">${formattedAmount}</strong>
                     `;
@@ -6161,8 +6180,9 @@
 
             const renderPresentation = (currentSorted, currentMap, animate) => {
                 const presentation = getBlindTotalsPresentation(currentSorted, currentMap);
+                const panelTitle = blindTotalsTitle(currentMap);
                 if (presentation.mode === 'ticker') {
-                    ensureP3PanelHeader(panel, '팀 실시간 내역', `<span class="blind-total-counter">전체 ${currentSorted.length}팀 · 자막</span>`);
+                    ensureP3PanelHeader(panel, panelTitle, `<span class="blind-total-counter">전체 ${currentSorted.length}${Number.parseInt(currentMap?.active_tournament,10)===4?'개 업체':'팀'} · 자막</span>`);
                     renderBlindTotalsTicker(panel, currentSorted);
                 } else {
                     panel.classList.remove('ticker-mode');
@@ -6172,7 +6192,7 @@
                     if (listEl) delete listEl.dataset.tickerCache;
                     const interval = Math.max(3, Math.min(30, Number.parseInt(currentMap?.blind_totals_page_interval || '5', 10) || 5));
                     const pageMeta = presentation.pageCount > 1 ? `${presentation.pageIndex + 1}/${presentation.pageCount} · ${interval}초 순환` : `전체 ${currentSorted.length}팀`;
-                    ensureP3PanelHeader(panel, '팀 실시간 내역', `<span class="blind-total-counter">${pageMeta}</span>`);
+                    ensureP3PanelHeader(panel, panelTitle, `<span class="blind-total-counter">${pageMeta}</span>`);
                     applyLeaderboardUpdate(panel, presentation.rows, currentMap, animate, presentation.rankOffset);
                 }
                 return presentation;
@@ -7117,7 +7137,7 @@
                         treeFull.classList.add('visible');
                     } else {
                         const bracketKey = 'tournament_bracket_' + active;
-                        if (map[bracketKey]) {
+                        if (map[bracketKey] || (String(map.tournament_format || '') === 'three-round-team-final' && ['8','4'].includes(String(active)))) {
                             let bracket = { matches: {} };
                             try { bracket = JSON.parse(map[bracketKey]); } catch(e){}
                             renderBracketPageTree(parseInt(active), bracket, map, window.latestItemsList || []);
@@ -7238,6 +7258,64 @@
             };
         }
 
+        function renderThreeRoundResults(tree, stage, map, items) {
+            const amount = item => Number(String(item?.sold_price ?? item?.soldPrice ?? 0).replace(/[^0-9.-]/g, '')) || 0;
+            const scoped = scopeTournamentItems(items || [], stage);
+            const totals = {};
+            const counts = {};
+            scoped.forEach(item => {
+                const company = String(item.company || '').trim();
+                if (!company) return;
+                totals[company] = (totals[company] || 0) + readLiveTotalAmount(item);
+                counts[company] = (counts[company] || 0) + (isSoldForTotals(item) ? 1 : 0);
+            });
+            const stageGroups = parseTournamentStageGroups(map || {}, 8);
+            const board = document.createElement('section');
+            board.className = 'sports-results-board animate-in';
+            const title = stage === 8 ? '2라운드 팀 순위' : '3라운드 개인 순위';
+            const rule = stage === 8 ? '팀 합산 상위 2팀 진출' : '8개 업체 중 최고 낙찰금 우승';
+            board.innerHTML = `<header class="sports-results-header"><div class="sports-results-heading"><span class="sports-results-kicker">CDCUP SEASON 2 · ${stage === 8 ? 'ROUND 2' : 'FINAL ROUND'}</span><h2 class="sports-results-title">${title}</h2></div><span class="sports-results-live">${rule}</span></header>`;
+            const grid = document.createElement('div');
+            grid.className = 'sports-results-grid';
+
+            if (stage === 8 && stageGroups?.groups?.length) {
+                const groups = stageGroups.groups.map(group => ({
+                    ...group,
+                    total: group.members.reduce((sum, name) => sum + (totals[name] || 0), 0),
+                    soldCount: group.members.reduce((sum, name) => sum + (counts[name] || 0), 0)
+                })).sort((a, b) => b.total - a.total || a.code.localeCompare(b.code, 'en'));
+                grid.style.gridTemplateColumns = 'repeat(3,minmax(0,1fr))';
+                groups.forEach((group, index) => {
+                    const card = document.createElement('article');
+                    card.className = 'sports-match-card' + (index < 2 && group.total > 0 ? ' is-current' : '');
+                    card.innerHTML = `<div class="sports-match-meta"><span>${index + 1}위 · ${esc(group.name)}</span><span class="sports-match-state">${index < 2 && group.total > 0 ? '진출권' : group.total > 0 ? '3위' : '집계 중'}</span></div><div style="display:flex;align-items:baseline;justify-content:space-between;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.08)"><strong style="font-size:calc(var(--bracket-fs)*1.7)">${formatBlindTotalAmount(group.total)}만원</strong><span style="color:#94a3b8">${group.soldCount}건 낙찰</span></div>${group.members.map(name => `<div style="display:flex;justify-content:space-between;gap:12px;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,.055)"><strong>${esc(name)}${name === group.leader ? ' · 팀장' : ''}</strong><span>${formatBlindTotalAmount(totals[name] || 0)}만원</span></div>`).join('')}`;
+                    grid.appendChild(card);
+                });
+            } else {
+                const groups = parseTournamentStageGroups(map || {}, 8)?.groups || [];
+                const teamTotals = {};
+                const roundTwoItems = scopeTournamentItems(items || [], 8);
+                roundTwoItems.forEach(item => {
+                    const name = String(item.company || '').trim();
+                    teamTotals[name] = (teamTotals[name] || 0) + (isSoldForTotals(item) ? amount(item) : 0);
+                });
+                const entrants = groups.map(group => ({ ...group, total: group.members.reduce((sum, name) => sum + (teamTotals[name] || 0), 0) }))
+                    .sort((a, b) => b.total - a.total || a.code.localeCompare(b.code, 'en')).slice(0, 2)
+                    .flatMap(group => group.members.map(name => ({ name, groupName: group.name, total: totals[name] || 0, soldCount: counts[name] || 0 })))
+                    .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name, 'ko'));
+                grid.style.gridTemplateColumns = 'repeat(2,minmax(0,1fr))';
+                entrants.forEach((entry, index) => {
+                    const card = document.createElement('article');
+                    card.className = 'sports-match-card' + (index === 0 && entry.total > 0 ? ' is-current' : '');
+                    card.innerHTML = `<div class="sports-match-meta"><span>${index + 1}위 · ${esc(entry.groupName)}</span><span class="sports-match-state">${index === 0 && entry.total > 0 ? '현재 1위' : '개인전'}</span></div><div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px"><strong style="font-size:calc(var(--bracket-fs)*1.45)">${esc(entry.name)}</strong><strong style="font-size:calc(var(--bracket-fs)*1.55);color:#d9b05c">${formatBlindTotalAmount(entry.total)}만원</strong></div>`;
+                    grid.appendChild(card);
+                });
+                if (!entrants.length) grid.innerHTML = '<div class="blind-total-empty" style="grid-column:1/-1">2라운드 결과 집계 후 진출 업체가 표시됩니다.</div>';
+            }
+            board.appendChild(grid);
+            tree.replaceChildren(board);
+        }
+
         async function renderBracketPageTree(scale, bracket, map, providedItems = null) {
             const renderId = ++bracketFullRenderId;
             const tree = document.getElementById('bracket-page-tree-full');
@@ -7251,6 +7329,10 @@
             }
             if (renderId !== bracketFullRenderId) return;
             const displayScale = getBracketViewRound(scale, map);
+            if (String(map?.tournament_format || '') === 'three-round-team-final' && (Number(displayScale) === 8 || Number(displayScale) === 4)) {
+                renderThreeRoundResults(tree, Number(displayScale), map, items || []);
+                return;
+            }
             // 전체 대진 점수도 현재 표시 라운드 데이터만 사용한다.
             // 결승 편성 전에는 과거 4강 낙찰액을 결승 점수로 재사용하지 않는다.
             items = scopeTournamentItems(items, displayScale);

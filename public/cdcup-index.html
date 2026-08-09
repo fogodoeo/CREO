@@ -2680,12 +2680,12 @@
                 <div class="archive-create">
                     <input id="archive-title" type="text" maxlength="80" placeholder="예: CDCUP 1회차 · 8강 종료">
                     <button class="archive-action save" type="button" onclick="saveCurrentArchive(false,this)">현재 상태 저장</button>
-                    <button class="archive-action medal" type="button" onclick="prepareMedalDay(this)">결승일 목록 준비</button>
+                    <button class="archive-action medal" type="button" onclick="prepareMedalDay(this)">3라운드 목록 준비</button>
                     <button class="archive-action reset" type="button" onclick="saveCurrentArchive(true,this)">저장 후 새 회차</button>
                 </div>
             </div>
             <div class="archive-guide">
-                <div><strong>결승일로 넘어갈 때</strong>결승일 목록 준비를 누르면 현재 기록을 저장하고 개체 목록만 비웁니다. 4강 대진은 유지됩니다.</div>
+                <div><strong>3라운드로 넘어갈 때</strong>2라운드 기록을 저장하고 목록을 비운 뒤, 합산 상위 2팀의 8개 업체를 개인전 참가자로 자동 확정합니다.</div>
                 <div><strong>대회가 끝났을 때</strong>저장 후 새 회차를 누르면 기록을 남긴 뒤 개체 목록과 대진 진행값만 초기화합니다.</div>
             </div>
             <div id="archive-list" class="archive-list"><div class="archive-empty">기록을 불러오는 중입니다.</div></div>
@@ -3146,8 +3146,8 @@
 
         async function prepareMedalDay(button) {
             const titleInput = document.getElementById('archive-title');
-            const title = (titleInput.value || 'CDCUP 1회차 · 4강 및 이벤트 종료').trim();
-            if (!confirm('현재 4강·이벤트 개체와 낙찰·배송 내역을 먼저 저장한 뒤 현재 개체 목록만 비웁니다.\n\n· 4강 대진과 결과는 유지\n· 결승·3·4위전 대진은 새로 생성\n· 개체 수는 새로 편성한 실제 목록을 기준으로 자동 인식\n· 기존 이벤트 매치 노출은 OFF\n\n계속할까요?')) return;
+            const title = (titleInput.value || 'CDCUP 시즌2 · 2라운드 종료').trim();
+            if (!confirm('2라운드 낙찰·배송 기록을 저장한 뒤 현재 개체 목록을 비웁니다.\n\n· A/B/C팀 합산 상위 2팀 확정\n· 상위 2팀 소속 8개 업체가 3라운드 진출\n· 3라운드는 업체별 개인 낙찰금으로 순위 결정\n· 기존 이벤트 매치 노출은 OFF\n\n계속할까요?')) return;
             const pw = getAdminPw();
             if (!pw) return;
             button.disabled = true;
@@ -3157,10 +3157,10 @@
                 const result = await archiveAndPrepareMedalDay(title, pw);
                 if (!result || result.success === false) {
                     if (String(result?.error || '').includes('비밀번호')) clearAdminPw();
-                    throw new Error(result?.error || '결승일 목록을 준비하지 못했습니다.');
+                    throw new Error(result?.error || '3라운드 목록을 준비하지 못했습니다.');
                 }
-                toast('4강 기록 저장 완료 · 결승일 개체 목록 준비 완료');
-                titleInput.value = 'CDCUP 1회차 · 결승 및 3·4위전';
+                toast('2라운드 기록 저장 완료 · 3라운드 진출 8개 업체 확정');
+                titleInput.value = 'CDCUP 시즌2 · 3라운드 개인전';
                 activeArchiveId = '';
                 document.getElementById('archive-detail').classList.remove('show');
                 await Promise.all([loadArchiveList(), loadList()]);
@@ -3440,10 +3440,15 @@
                 const activeGroups = typeof parseTournamentStageGroups === 'function'
                     ? parseTournamentStageGroups(window._eventConfigMap || {}, activeStage)
                     : null;
-                if (activeGroups) {
-                    const assignment = resolveTournamentStageGroup(window._eventConfigMap || {}, company, activeStage);
+                const finalStage = activeStage === 4 && typeof parseTournamentFinalists === 'function'
+                    ? parseTournamentFinalists(window._eventConfigMap || {}, window._eventItems || [])
+                    : [];
+                if (activeGroups || finalStage.length) {
+                    const assignment = activeStage === 4
+                        ? resolveTournamentFinalist(window._eventConfigMap || {}, company, window._eventItems || [])
+                        : resolveTournamentStageGroup(window._eventConfigMap || {}, company, activeStage);
                     if (!assignment) {
-                        toast('현재 2라운드 참가 업체 12곳 중에서 선택해주세요.', true);
+                        toast(activeStage === 4 ? '3라운드 진출 업체 8곳 중에서 선택해주세요.' : '현재 2라운드 참가 업체 12곳 중에서 선택해주세요.', true);
                         document.getElementById('f-company').focus();
                         return;
                     }
@@ -5589,19 +5594,26 @@
             return safe.substring(0, idx) + '<mark style="background:#FFF3CD;border-radius:2px;padding:0 1px;">' + safe.substring(idx, idx + q.length) + '</mark>' + safe.substring(idx + q.length);
         }
 
-        function applyTournamentCompanyOptions(cfg) {
+        function applyTournamentCompanyOptions(cfg, items = []) {
             const stage = Number.parseInt(cfg?.active_tournament, 10) || 0;
             const groups = typeof parseTournamentStageGroups === 'function' ? parseTournamentStageGroups(cfg || {}, stage) : null;
+            const finalists = stage === 4 && typeof parseTournamentFinalists === 'function'
+                ? parseTournamentFinalists(cfg || {}, items || [])
+                : [];
             const datalist = document.getElementById('tournament-company-options');
             const input = document.getElementById('f-company');
             const status = document.getElementById('tournament-company-team');
             if (!datalist || !input || !status) return;
-            datalist.innerHTML = (groups?.groups || []).flatMap(group => group.members.map(member => `<option value="${esc(member)}">${esc(group.name)}${member === group.leader ? ' · 팀장' : ''}</option>`)).join('');
+            datalist.innerHTML = finalists.length
+                ? finalists.map(entry => `<option value="${esc(entry.member)}">3라운드 · ${esc(entry.sourceGroupName || entry.code + '팀')}</option>`).join('')
+                : (groups?.groups || []).flatMap(group => group.members.map(member => `<option value="${esc(member)}">${esc(group.name)}${member === group.leader ? ' · 팀장' : ''}</option>`)).join('');
             const updateStatus = () => {
-                const assignment = groups && typeof resolveTournamentStageGroup === 'function'
-                    ? resolveTournamentStageGroup(cfg || {}, input.value, stage)
-                    : null;
-                status.textContent = assignment ? `2라운드 ${assignment.name}${assignment.member === assignment.leader ? ' · 팀장' : ''}` : (groups ? '2라운드 참가 업체 12곳 중 선택' : '');
+                const assignment = stage === 4 && typeof resolveTournamentFinalist === 'function'
+                    ? resolveTournamentFinalist(cfg || {}, input.value, items || [])
+                    : (groups && typeof resolveTournamentStageGroup === 'function' ? resolveTournamentStageGroup(cfg || {}, input.value, stage) : null);
+                status.textContent = stage === 4
+                    ? (assignment ? `3라운드 개인전 · ${assignment.sourceGroupName || assignment.code + '팀'}` : (finalists.length ? '진출 업체 8곳 중 선택' : '2라운드 결과 집계 후 진출 업체가 표시됩니다'))
+                    : (assignment ? `2라운드 ${assignment.name}${assignment.member === assignment.leader ? ' · 팀장' : ''}` : (groups ? '2라운드 참가 업체 12곳 중 선택' : ''));
                 status.style.color = assignment ? 'var(--accent)' : 'var(--text3)';
             };
             input.addEventListener('input', updateStatus);
@@ -5610,10 +5622,11 @@
 
         async function loadEventModuleContext() {
             try {
-                const cfg = await getConfigMap();
+                const [cfg, items] = await Promise.all([getConfigMap(), getItems()]);
                 window._eventConfigMap = { ...(cfg || {}), active_event_module: 'cdcup' };
+                window._eventItems = items || [];
                 applyAuctionEventModule(window._eventConfigMap);
-                applyTournamentCompanyOptions(window._eventConfigMap);
+                applyTournamentCompanyOptions(window._eventConfigMap, window._eventItems);
             } catch (e) {
                 console.warn('event module context load failed', e);
             }
