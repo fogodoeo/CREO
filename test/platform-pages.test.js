@@ -234,7 +234,9 @@ test('CDCUP three-round format assigns round-two teams and round-three finalists
     assert.match(broadcast, /2라운드 팀 순위/);
     assert.match(broadcast, /3라운드 개인 순위/);
     assert.match(broadcast, /sports-match-card\.is-qualified/);
-    assert.match(broadcast, /TOP 2 · 진출권/);
+    assert.match(broadcast, /hideCompanies: String\(map\?\.bracket_full_blind/);
+    assert.match(broadcast, /업체 \$\{memberIndex \+ 1\}/);
+    assert.match(broadcast, /sports-match-card\.is-qualified/);
     assert.match(broadcast, /refreshBracketPage\(window\.latestItemsList/);
     assert.match(broadcast, /const isThreeRoundProgress = eventModule\.id === 'cdcup'/);
     assert.match(broadcast, /renderThreeRoundResults\(treeFull, Number\(displayStage\), map, window\.latestItemsList \|\| \[\]\)/);

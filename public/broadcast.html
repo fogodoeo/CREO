@@ -25,7 +25,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <script src="supabase-bridge.js?v=20260809-team-progress-stable"></script>
+    <script src="supabase-bridge.js?v=20260809-team-progress-mobile"></script>
     <script src="event-modules.js?v=20260710-crebti3"></script>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link
@@ -3576,6 +3576,49 @@
         @media (prefers-reduced-motion: reduce) {
             .auction-motion-overlay.is-sold *,
             .blind-sold-popup-overlay * { animation-duration: .01ms !important; animation-delay: 0ms !important; }
+        }
+
+        /* 3P 팀 진행표: 설명 대신 카드 위계만으로 읽히는 간결한 송출형 */
+        #bracket-page-tree-full .sports-results-board {
+            width: 100%;
+            padding: calc(var(--bracket-fs) * .8);
+        }
+        #bracket-page-tree-full .sports-results-grid { gap: calc(var(--bracket-fs) * .65); }
+        #bracket-page-tree-full .sports-match-card.is-qualified {
+            border: 2px solid var(--cdcup-gold) !important;
+            box-shadow: 0 0 0 1px rgba(195,154,74,.16), 0 10px 24px rgba(0,0,0,.2) !important;
+        }
+        #bracket-page-tree-full .sports-match-card.is-qualified::before { display: none !important; }
+        #bracket-page-tree-full .team-progress-total {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            padding: calc(var(--bracket-fs) * .72) calc(var(--bracket-fs) * .9);
+            border-bottom: 1px solid rgba(195,154,74,.13);
+        }
+        #bracket-page-tree-full .team-progress-total strong { font-size: calc(var(--bracket-fs) * 1.55); }
+        #bracket-page-tree-full .team-progress-total span { color: var(--cdcup-muted); font-size: calc(var(--bracket-fs) * .78); }
+        #bracket-page-tree-full .team-progress-member {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            padding: calc(var(--bracket-fs) * .52) calc(var(--bracket-fs) * .9);
+            border-bottom: 1px solid rgba(195,154,74,.1);
+        }
+        #bracket-page-tree-full .team-progress-member:last-child { border-bottom: 0; }
+        @media (max-width: 760px) {
+            body.bracket-page #bracket-page-tree-full {
+                top: 2% !important;
+                left: 0 !important;
+                width: 100% !important;
+                height: 96% !important;
+                padding: 7px !important;
+            }
+            #bracket-page-tree-full .sports-results-board { padding: 8px; }
+            #bracket-page-tree-full .sports-results-grid { grid-template-columns: 1fr !important; gap: 7px; }
+            #bracket-page-tree-full .sports-match-meta { min-height: 26px; padding-inline: 11px; }
+            #bracket-page-tree-full .team-progress-total { padding: 7px 11px; }
+            #bracket-page-tree-full .team-progress-member { padding: 5px 11px; font-size: 12px; }
         }
     </style>
 </head>
@@ -7344,6 +7387,7 @@
                 stage: Number(stage),
                 groups: String(map?.tournament_stage_groups_8 || ''),
                 finalists: String(map?.tournament_finalists_4 || ''),
+                hideCompanies: String(map?.bracket_full_blind ?? '1'),
                 rows: Object.keys({ ...totals, ...counts }).sort().map(name => [name, totals[name] || 0, counts[name] || 0])
             });
             if (tree.dataset.threeRoundSignature === resultSignature
@@ -7353,11 +7397,10 @@
             const isFirstRender = tree.dataset.threeRoundRendered !== '1';
             const board = document.createElement('section');
             board.className = 'sports-results-board' + (isFirstRender ? ' animate-in' : '');
-            const title = stage === 8 ? '2라운드 팀 순위' : '3라운드 개인 순위';
-            const rule = stage === 8 ? '팀 합산 상위 2팀 진출' : '8개 업체 중 최고 낙찰금 우승';
-            board.innerHTML = `<header class="sports-results-header"><div class="sports-results-heading"><span class="sports-results-kicker">CDCUP SEASON 2 · ${stage === 8 ? 'ROUND 2' : 'FINAL ROUND'}</span><h2 class="sports-results-title">${title}</h2></div><span class="sports-results-live">${rule}</span></header>`;
+            board.setAttribute('aria-label', stage === 8 ? '2라운드 팀 순위' : '3라운드 개인 순위');
             const grid = document.createElement('div');
             grid.className = 'sports-results-grid';
+            const hideCompanies = String(map?.bracket_full_blind ?? '1') !== '0';
 
             if (stage === 8 && stageGroups?.groups?.length) {
                 const groups = stageGroups.groups.map(group => ({
@@ -7370,9 +7413,9 @@
                 groups.forEach((group, index) => {
                     const qualified = hasTeamResults && index < 2;
                     const card = document.createElement('article');
-                    card.className = 'sports-match-card' + (qualified ? ' is-qualified' : (hasTeamResults ? ' is-third' : ''));
+                    card.className = 'sports-match-card' + (qualified ? ' is-qualified' : '');
                     card.style.setProperty('--match-index', index);
-                    card.innerHTML = `<div class="sports-match-meta"><span>${hasTeamResults ? index + 1 + '위 · ' : ''}${esc(group.name)}</span><span class="sports-match-state">${qualified ? 'TOP 2 · 진출권' : hasTeamResults ? '3위' : '집계 대기'}</span></div><div style="display:flex;align-items:baseline;justify-content:space-between;padding:14px 16px;border-bottom:1px solid rgba(15,23,42,.13)"><strong style="font-size:calc(var(--bracket-fs)*1.7)">${formatBlindTotalAmount(group.total)}만원</strong><span style="color:#64748b">팀 합계 · ${group.soldCount}건 낙찰</span></div>${group.members.map(name => `<div style="display:flex;justify-content:space-between;gap:12px;padding:10px 16px;border-bottom:1px solid rgba(15,23,42,.09)"><strong>${esc(name)}${name === group.leader ? ' · 팀장' : ''}</strong><span>${formatBlindTotalAmount(totals[name] || 0)}만원</span></div>`).join('')}`;
+                    card.innerHTML = `<div class="sports-match-meta"><strong>${esc(group.name)}</strong></div><div class="team-progress-total"><strong>${formatBlindTotalAmount(group.total)}만원</strong><span>${group.soldCount}건</span></div>${group.members.map((name, memberIndex) => `<div class="team-progress-member"><strong>${hideCompanies ? `업체 ${memberIndex + 1}` : `${esc(name)}${name === group.leader ? ' · 팀장' : ''}`}</strong><span>${formatBlindTotalAmount(totals[name] || 0)}만원</span></div>`).join('')}`;
                     grid.appendChild(card);
                 });
             } else {
@@ -7391,7 +7434,7 @@
                 entrants.forEach((entry, index) => {
                     const card = document.createElement('article');
                     card.className = 'sports-match-card' + (index === 0 && entry.total > 0 ? ' is-current' : '');
-                    card.innerHTML = `<div class="sports-match-meta"><span>${index + 1}위 · ${esc(entry.groupName)}</span><span class="sports-match-state">${index === 0 && entry.total > 0 ? '현재 1위' : '개인전'}</span></div><div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px"><strong style="font-size:calc(var(--bracket-fs)*1.45)">${esc(entry.name)}</strong><strong style="font-size:calc(var(--bracket-fs)*1.55);color:#d9b05c">${formatBlindTotalAmount(entry.total)}만원</strong></div>`;
+                    card.innerHTML = `<div class="sports-match-meta"><strong>${index + 1}위</strong><span>${esc(entry.groupName)}</span></div><div class="team-progress-total"><strong>${hideCompanies ? `진출 업체 ${index + 1}` : esc(entry.name)}</strong><span>${formatBlindTotalAmount(entry.total)}만원</span></div>`;
                     grid.appendChild(card);
                 });
                 if (!entrants.length) grid.innerHTML = '<div class="blind-total-empty" style="grid-column:1/-1">2라운드 결과 집계 후 진출 업체가 표시됩니다.</div>';
