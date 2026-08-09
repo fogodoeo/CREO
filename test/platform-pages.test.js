@@ -97,6 +97,8 @@ test('every non-legacy channel uses the shared workspace, control, and overlay e
     assert.match(studio, /data-view="settings"/);
     assert.match(studio, /preview\.html\?module=.*embedded=1/);
     assert.match(studio, /function frameUrl\(channel,view\)/);
+    assert.match(studio, /let activeView=/);
+    assert.doesNotMatch(studio, /const\s+activeView\s*=/);
     assert.match(studio, /broadcast-router\.html\?event=\$\{encodeURIComponent\(channel\.id\)\}&page=\$\{page\}/);
     assert.doesNotMatch(studio, /id="mode-operations"|id="mode-archives"|data-mode="layout"/);
     assert.match(legacy, /broadcast-studio\.html\?channel=/);

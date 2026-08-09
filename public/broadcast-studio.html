@@ -58,7 +58,8 @@
 document.addEventListener('DOMContentLoaded',()=>{
     const $=id=>document.getElementById(id),gate=$('login-gate'),studio=$('studio'),form=$('login-form'),password=$('admin-password'),submit=$('login-submit'),error=$('login-error'),select=$('channel-select'),frame=$('control-frame');
     let channels=[],activeChannel=null;
-    const initialParams=new URLSearchParams(location.search),requested=String(initialParams.get('channel')||'cdcup').toLowerCase().replace(/[^a-z0-9-]/g,''),requestedView=String(initialParams.get('view')||'layout-1'),activeView=/^(layout-[123]|settings)$/.test(requestedView)?requestedView:'layout-1';
+    const initialParams=new URLSearchParams(location.search),requested=String(initialParams.get('channel')||'cdcup').toLowerCase().replace(/[^a-z0-9-]/g,''),requestedView=String(initialParams.get('view')||'layout-1');
+    let activeView=/^(layout-[123]|settings)$/.test(requestedView)?requestedView:'layout-1';
     const esc=value=>CreoPlatform.escapeHtml(value);
     function controlKind(channel){return channel?.id==='cdcup'?'cdcup':'platform'}
     function settingsUrl(channel){const kind=controlKind(channel);return kind==='platform'?`auction-control.html?channel=${encodeURIComponent(channel.id)}&embedded=1`:`settings.html?module=${encodeURIComponent(kind)}&channel=${encodeURIComponent(channel.id)}&embedded=1`}
