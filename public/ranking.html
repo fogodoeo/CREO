@@ -512,7 +512,7 @@
 
         function teamLogoMap(map) {
             const result = {};
-            for (let i = 1; i <= 20; i++) {
+            for (let i = 1; i <= 64; i++) {
                 try {
                     const value = JSON.parse(map['team_logo' + i] || '{}');
                     if (value.name && value.url) result[String(value.name).trim()] = value.url;

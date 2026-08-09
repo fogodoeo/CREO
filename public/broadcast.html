@@ -3863,7 +3863,7 @@
             const target = String(teamName || '').trim();
             if (!target) return '';
             let partial = '';
-            for (let i = 1; i <= 20; i++) {
+            for (let i = 1; i <= 64; i++) {
                 try {
                     const value = JSON.parse(map?.['team_logo' + i] || '{}');
                     const name = String(value.name || '').trim();
@@ -7256,7 +7256,7 @@
 
             // 업체 로고 맵 구성 (업체명 -> 로고URL)
             const teamLogoMap = {};
-            for (let i = 1; i <= 20; i++) {
+            for (let i = 1; i <= 64; i++) {
                 const raw = map['team_logo' + i];
                 if (!raw) continue;
                 try {

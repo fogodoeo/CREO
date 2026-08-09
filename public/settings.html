@@ -472,6 +472,7 @@
         let _cfg = {};
         let _toggleStates = { ticker: '1', banner: '1' };
         let _bannerCount = 5;
+        const TEAM_LOGO_LIMIT = 64;
         let _rulesPos = 'top';
 
         function toast(msg, isError) {
@@ -1055,7 +1056,7 @@
                 m['team_logo' + (i+1)] = (logoName || logoUrl) ? JSON.stringify({name: logoName, url: logoUrl}) : '';
             });
             const tc = nameInputs.length;
-            for (let i = tc+1; i <= 20; i++) m['team_logo'+i] = '';
+            for (let i = tc+1; i <= TEAM_LOGO_LIMIT; i++) m['team_logo'+i] = '';
             return m;
         }
 
@@ -1176,7 +1177,7 @@
                 const logoList = document.getElementById('team-logo-list');
                 logoList.innerHTML = '';
                 let hasLogo = false;
-                for (let i = 1; i <= 20; i++) {
+                for (let i = 1; i <= TEAM_LOGO_LIMIT; i++) {
                     const raw = cfg['team_logo'+i] || '';
                     if (!raw) continue;
                     try {

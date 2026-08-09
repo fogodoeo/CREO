@@ -132,6 +132,21 @@
       '해치랩':['HATCH LAB STUDIO','https://iuwqjeecwepqyqqlzprf.supabase.co/storage/v1/object/public/banner/banner_1782932059436_58i7f8.jpg'],
       '라이카':['LAIKA','https://iuwqjeecwepqyqqlzprf.supabase.co/storage/v1/object/public/banner/banner_1782933522030_612nnq.png']
     };
+    function applyConfiguredTeamLogos(map){
+      for(let index=1;index<=64;index++){
+        try{
+          const saved=JSON.parse(map?.[`team_logo${index}`]||'{}');
+          const name=String(saved.name||'').trim();
+          const url=String(saved.url||'').trim();
+          if(name&&url)TEAM[name]=[TEAM[name]?.[0]||name,url];
+        }catch(error){}
+      }
+    }
+    function teamMeta(name){
+      if(TEAM[name])return TEAM[name];
+      const key=Object.keys(TEAM).find(saved=>String(name||'').includes(saved)||saved.includes(String(name||'')));
+      return key?TEAM[key]:[name,''];
+    }
     const BRACKET_R16_ORDER=[
       ['베누스','라이카'],
       ['렙타일갤러리','크레빌딩'],
@@ -273,7 +288,7 @@
     }
     const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
     function teamRow(name,price,winner,match,leader=''){
-      const meta=TEAM[name]||[name,''];
+      const meta=teamMeta(name);
       const isFinal=match.stage===2;
       const isWinner=winner===name;
       let status='';
@@ -337,6 +352,7 @@
     async function initializeBracket(){
       try{
         const [map,items]=await Promise.all([getRuntimeConfigMap(false),getBroadcastItemsLite()]);
+        applyConfiguredTeamLogos(map||{});
         buildTournamentModel(map||{},items||[]);
         renderMatches();
         const grandTotal=ROUNDS.flatMap(round=>round.matches).reduce((sum,match)=>sum+Number(match.ap||0)+Number(match.bp||0),0);

@@ -240,6 +240,15 @@ test('broadcast control manages reusable banners, sponsors, and vendor logos', (
     const legacySettings = fs.readFileSync(path.join(__dirname, '..', 'public', 'settings.html'), 'utf8');
     assert.match(legacySettings, /m\.crewart_ticker = m\.ticker/);
     assert.match(legacySettings, /delete m\.ticker/);
+    const cdcupBroadcast = fs.readFileSync(path.join(__dirname, '..', 'public', 'broadcast.html'), 'utf8');
+    const cdcupRanking = fs.readFileSync(path.join(__dirname, '..', 'public', 'ranking.html'), 'utf8');
+    const cdcupBracket = fs.readFileSync(path.join(__dirname, '..', 'public', 'tournament-bracket.html'), 'utf8');
+    assert.match(legacySettings, /const TEAM_LOGO_LIMIT = 64/);
+    assert.match(control, /for\(let i=1;i<=64;i\+\+\)/);
+    assert.match(cdcupBroadcast, /for \(let i = 1; i <= 64; i\+\+\)/);
+    assert.match(cdcupRanking, /for \(let i = 1; i <= 64; i\+\+\)/);
+    assert.match(cdcupBracket, /function applyConfiguredTeamLogos/);
+    assert.match(cdcupBracket, /applyConfiguredTeamLogos\(map\|\|\{\}\)/);
     for (const asset of [
         'crewart-live-banner.svg',
         'crewart-house-banner.svg',
