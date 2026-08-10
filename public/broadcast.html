@@ -108,6 +108,29 @@
             animation: scoreboardSlideIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
         }
 
+        #p2-live-bidders-overlay {
+            --p2-bid-fs: clamp(12px, 1.15vw, 20px);
+            position: absolute;
+            top: 13%;
+            left: 2%;
+            z-index: 19;
+            display: none;
+            width: min(360px, 29vw);
+            color: #f8fafc;
+            font-family: 'Pretendard', sans-serif;
+            pointer-events: none;
+        }
+        #p2-live-bidders-overlay.visible { display: block; }
+        .p2-live-bidders-head { display: flex; align-items: center; gap: 9px; margin: 0 0 7px 3px; color: #d9b05c; font-size: calc(var(--p2-bid-fs) * .78); font-weight: 900; letter-spacing: .08em; }
+        .p2-live-bidders-head::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #ef4444; box-shadow: 0 0 10px rgba(239,68,68,.72); }
+        .p2-live-bidders-count { margin-left: auto; color: rgba(248,250,252,.65); font-size: .9em; letter-spacing: 0; }
+        .p2-live-bidders-list { display: grid; gap: 5px; }
+        .p2-live-bidder-row { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; min-height: calc(var(--p2-bid-fs) * 2.1); padding: 5px 10px 5px 7px; border-left: 3px solid rgba(217,176,92,.72); background: linear-gradient(90deg, rgba(10,14,21,.93), rgba(17,21,29,.82)); box-shadow: 0 5px 15px rgba(0,0,0,.24); }
+        .p2-live-bidder-rank { color: #d9b05c; font-size: .78em; font-weight: 950; text-align: center; }
+        .p2-live-bidder-name { min-width: 0; overflow: hidden; color: #f8fafc; font-size: var(--p2-bid-fs); font-weight: 850; text-overflow: ellipsis; white-space: nowrap; }
+        .p2-live-bidder-name small { margin-left: 6px; color: #94a3b8; font-size: .66em; font-weight: 700; }
+        .p2-live-bidder-amount { margin-left: 12px; color: #e7c776; font-size: var(--p2-bid-fs); font-weight: 950; font-variant-numeric: tabular-nums; }
+
         .auction-progress {
             position: absolute;
             top: 18px;
@@ -2356,21 +2379,14 @@
 
         .sports-results-board {
             position: relative;
-            border-radius: 6px;
-            background: var(--cdcup-surface);
+            padding: 0 !important;
+            border: 0 !important;
+            border-radius: 0;
+            background: transparent !important;
+            box-shadow: none !important;
         }
         .sports-results-board::after {
-            content: '';
-            display: block;
-            position: absolute;
-            right: calc(var(--bracket-fs) * 1.4);
-            bottom: calc(var(--bracket-fs) * 0.9);
-            z-index: 0;
-            width: calc(var(--bracket-fs) * 5.2);
-            height: calc(var(--bracket-fs) * 7.5);
-            background: var(--cdcup-logo) center / contain no-repeat;
-            opacity: 0.065;
-            pointer-events: none;
+            display: none;
         }
         .sports-results-header,
         .sports-results-grid,
@@ -2667,17 +2683,14 @@
             bottom: auto;
             width: auto;
             height: auto;
-            padding: calc(var(--blind-total-fs) * 0.62) !important;
-            border: 1px solid rgba(217, 176, 92, 0.34) !important;
-            border-radius: calc(var(--blind-total-fs) * 0.82);
-            background:
-                linear-gradient(145deg, rgba(13, 20, 34, 0.94), rgba(5, 10, 19, 0.9)) !important;
-            box-shadow:
-                0 calc(var(--blind-total-fs) * 0.8) calc(var(--blind-total-fs) * 2.2) rgba(0,0,0,0.42),
-                inset 0 1px 0 rgba(255,255,255,0.06) !important;
+            padding: 0 !important;
+            border: 0 !important;
+            border-radius: 0;
+            background: transparent !important;
+            box-shadow: none !important;
             margin: 0 !important;
-            backdrop-filter: blur(14px) saturate(1.08) !important;
-            -webkit-backdrop-filter: blur(14px) saturate(1.08) !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
             opacity: 0;
             pointer-events: none;
             display: flex;
@@ -2905,7 +2918,7 @@
         .blind-total-ticker-item small { color: #94a3b8; font-size: 0.72em; }
         @keyframes blind-total-ticker-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 
-        /* 자동 전환: 평소 팀합산은 좌측, 입찰 중에는 좌측 입찰자 + 하단 팀합산 티커. */
+        /* 팀 합산과 실시간 입찰은 같은 좌측 영역에서 교대로 전환한다. */
         #p3-switching-container.side-layout {
             top: 12% !important;
             left: 2% !important;
@@ -3661,6 +3674,7 @@
 
     <div class="broadcast" id="broadcast">
         <span class="top-bar-label auction-progress" id="auction-progress"></span>
+        <aside id="p2-live-bidders-overlay" aria-live="polite"></aside>
         <div class="scoreboard-wrap" id="scoreboard-wrap">
             <div class="top-bar" id="top-bar">
                 <div class="name-section">
@@ -4688,11 +4702,11 @@
             info.style.right = 'auto';
             info.style.top = 'auto';
             info.style.bottom = 'auto';
-            if (hasPlacementValue(right)) info.style.right = safeEdgeCss(right, 'x');
-            else if (hasPlacementValue(left)) info.style.left = safeEdgeCss(left, 'x');
+            if (hasPlacementValue(right)) info.style.right = right;
+            else if (hasPlacementValue(left)) info.style.left = left;
             else info.style.right = 'var(--broadcast-safe-x)';
-            if (hasPlacementValue(bottom)) info.style.bottom = safeEdgeCss(bottom, 'y');
-            else if (hasPlacementValue(top)) info.style.top = safeEdgeCss(top, 'y');
+            if (hasPlacementValue(bottom)) info.style.bottom = bottom;
+            else if (hasPlacementValue(top)) info.style.top = top;
             else info.style.top = 'var(--broadcast-safe-y)';
         }
 
@@ -4932,6 +4946,7 @@
                 return;
             }
             window.activeItem = item;
+            renderPage2LiveBidders(item, window.latestConfigMap || {});
             updateProgressText();
             let configPart = '';
             if (item && window.latestConfigMap) {
@@ -6353,6 +6368,7 @@
 
         // P3 실시간 패널 상태 변수
         let _p3SwitchTimer = null;
+        let _p3SwitchIntervalMs = 0;
         let _p3SwitchEffectTimer = null;
         let _p3ActiveCard = 'totals'; // 'totals' 또는 'bidders'
         const _liveBiddersRankState = {
@@ -6463,7 +6479,7 @@
             const isQuiz = saleMeta.mode === 'quiz';
             let label = '';
             if (competition === 'tournament') {
-                label = visibility === 'blind' ? '블라인드 토너먼트' : '공개 토너먼트';
+                label = '';
             } else if (isQuiz) {
                 label = visibility === 'blind' ? '블라인드 퀴즈' : '퀴즈 이벤트';
             } else {
@@ -6841,6 +6857,40 @@
             }).sort((a, b) => (b.sortTime - a.sortTime) || (b.index - a.index));
         }
 
+        function renderPage2LiveBidders(activeItem, map) {
+            const panel = document.getElementById('p2-live-bidders-overlay');
+            if (!panel) return;
+            const isPage2 = !document.body.classList.contains('host-mode')
+                && !document.body.classList.contains('bracket-page');
+            const isCdcup = (document.body.dataset.eventModule || 'cdcup') === 'cdcup';
+            const rows = isPage2 && isCdcup ? buildLiveBidRows(map, activeItem) : [];
+            if (!activeItem || !isAuctionActiveItem(activeItem) || rows.length === 0) {
+                panel.classList.remove('visible');
+                panel.replaceChildren();
+                return;
+            }
+
+            const visibleRows = rows.slice(0, 8);
+            panel.innerHTML = `
+                <div class="p2-live-bidders-head">
+                    <span>실시간 입찰</span>
+                    <span class="p2-live-bidders-count">${rows.length}명</span>
+                </div>
+                <div class="p2-live-bidders-list">
+                    ${visibleRows.map((bid, index) => {
+                        const identity = parseBidderIdentity(bid.name, bid.region);
+                        const amount = bid.isQuiz ? '정답!' : `${formatLiveBidAmount(bid.amount)}만`;
+                        return `<div class="p2-live-bidder-row">
+                            <span class="p2-live-bidder-rank">${index + 1}</span>
+                            <strong class="p2-live-bidder-name">${esc(identity.name)}${identity.region ? `<small>${esc(identity.region)}</small>` : ''}</strong>
+                            <strong class="p2-live-bidder-amount">${amount}</strong>
+                        </div>`;
+                    }).join('')}
+                </div>
+            `;
+            panel.classList.add('visible');
+        }
+
         function clearP3PanelEffects(totalsPanel, biddersPanel) {
             [totalsPanel, biddersPanel].forEach(panel => {
                 if (!panel) return;
@@ -6981,6 +7031,7 @@
                 totalsPanel.classList.remove('active');
                 biddersPanel.classList.remove('active');
                 if (_p3SwitchTimer) { clearInterval(_p3SwitchTimer); _p3SwitchTimer = null; }
+                _p3SwitchIntervalMs = 0;
                 return;
             }
 
@@ -6989,9 +7040,8 @@
             const biddersConfigured = String(map?.live_bidders_show ?? '0') === '1';
             const liveBidRows = biddersConfigured ? buildLiveBidRows(map, activeAuctionItem) : [];
             const biddersShow = biddersConfigured && liveBidRows.length > 0;
-            const tickerLayout = biddersShow;
-            container.classList.toggle('ticker-layout', tickerLayout);
-            container.classList.toggle('side-layout', !tickerLayout);
+            container.classList.remove('ticker-layout');
+            container.classList.add('side-layout');
 
             const top = map.blind_totals_top || '10%';
             const left = map.blind_totals_left || '2%';
@@ -7006,47 +7056,29 @@
             container.style.removeProperty('left');
             container.style.removeProperty('right');
             container.style.removeProperty('bottom');
-            if (tickerLayout) {
-                container.style.top = '0';
-                container.style.left = '0';
-                container.style.right = '0';
-                container.style.bottom = '0';
-                container.style.width = '100%';
-                container.style.height = '100%';
-            } else {
-                container.style.top = top !== 'auto' ? top : '';
-                container.style.left = left !== 'auto' ? left : '';
-                container.style.right = right !== 'auto' ? right : '';
-                container.style.bottom = bottom !== 'auto' ? bottom : '';
-                container.style.width = width;
-                container.style.height = height;
-            }
-            const effectiveFontSize = tickerLayout ? Math.min(fontSize, 34) : Math.min(fontSize, 24);
-            container.style.setProperty('--blind-total-fs', effectiveFontSize + 'px');
+            container.style.top = top !== 'auto' ? top : '';
+            container.style.left = left !== 'auto' ? left : '';
+            container.style.right = right !== 'auto' ? right : '';
+            container.style.bottom = bottom !== 'auto' ? bottom : '';
+            container.style.width = width;
+            container.style.height = height;
+            container.style.setProperty('--blind-total-fs', Math.min(fontSize, 24) + 'px');
             container.style.setProperty('--blind-total-opacity', String(opacity));
             biddersPanel.style.setProperty('--blind-total-fs', Math.min(fontSize, 24) + 'px');
 
             if (totalsShow) {
                 renderBlindTeamTotals({
                     ...map,
-                    blind_totals_display_mode: tickerLayout ? 'ticker' : 'pages',
-                    blind_totals_page_size: tickerLayout ? map?.blind_totals_page_size : '8',
-                    blind_totals_page_interval: tickerLayout ? map?.blind_totals_page_interval : '5'
+                    blind_totals_display_mode: 'pages',
+                    blind_totals_page_size: '8',
+                    blind_totals_page_interval: '5'
                 }, items);
             } else {
                 totalsPanel.classList.remove('active');
             }
 
-            if (tickerLayout && (totalsShow || biddersShow)) {
-                if (_p3SwitchTimer) { clearInterval(_p3SwitchTimer); _p3SwitchTimer = null; }
-                clearP3PanelEffects(totalsPanel, biddersPanel);
-                container.classList.add('visible');
-                totalsPanel.classList.toggle('active', totalsShow);
-                biddersPanel.classList.toggle('active', biddersShow);
-                _p3ActiveCard = biddersShow ? 'bidders' : 'totals';
-            } else if (biddersShow) {
-                renderLiveBidders(map, items, liveBidRows);
-            } else {
+            const hasBidUpdate = biddersShow ? renderLiveBidders(map, items, liveBidRows) : false;
+            if (!biddersShow) {
                 biddersPanel.classList.remove('active');
                 _liveBiddersRankState.prevOrder = [];
                 _liveBiddersRankState.prevAmounts = {};
@@ -7054,18 +7086,35 @@
                 _liveBiddersRankState.initialized = false;
             }
 
-            if (biddersShow) {
-                if (_p3SwitchTimer) { clearInterval(_p3SwitchTimer); _p3SwitchTimer = null; }
+            if (biddersShow && totalsShow) {
                 clearP3PanelEffects(totalsPanel, biddersPanel);
+                container.classList.add('visible');
+                const nextCard = hasBidUpdate
+                    ? 'bidders'
+                    : (['totals', 'bidders'].includes(_p3ActiveCard) ? _p3ActiveCard : 'bidders');
+                setP3ActivePanel(totalsPanel, biddersPanel, nextCard, false);
+                const intervalMs = Math.max(2, Math.min(60, parseInt(map.live_bidders_switch_sec || '5', 10) || 5)) * 1000;
+                if (!_p3SwitchTimer || _p3SwitchIntervalMs !== intervalMs) {
+                    if (_p3SwitchTimer) clearInterval(_p3SwitchTimer);
+                    _p3SwitchIntervalMs = intervalMs;
+                    _p3SwitchTimer = setInterval(() => {
+                        setP3ActivePanel(totalsPanel, biddersPanel, _p3ActiveCard === 'bidders' ? 'totals' : 'bidders', true);
+                    }, intervalMs);
+                }
+            } else if (biddersShow) {
+                if (_p3SwitchTimer) { clearInterval(_p3SwitchTimer); _p3SwitchTimer = null; }
+                _p3SwitchIntervalMs = 0;
                 container.classList.add('visible');
                 setP3ActivePanel(totalsPanel, biddersPanel, 'bidders', false);
             } else if (totalsShow) {
                 if (_p3SwitchTimer) { clearInterval(_p3SwitchTimer); _p3SwitchTimer = null; }
+                _p3SwitchIntervalMs = 0;
                 clearP3PanelEffects(totalsPanel, biddersPanel);
                 container.classList.add('visible');
                 setP3ActivePanel(totalsPanel, biddersPanel, 'totals', false);
             } else {
                 if (_p3SwitchTimer) { clearInterval(_p3SwitchTimer); _p3SwitchTimer = null; }
+                _p3SwitchIntervalMs = 0;
                 clearP3PanelEffects(totalsPanel, biddersPanel);
                 container.classList.remove('visible');
                 totalsPanel.classList.remove('active');
@@ -7085,6 +7134,7 @@
                 clearInterval(_p3SwitchTimer);
                 _p3SwitchTimer = null;
             }
+            _p3SwitchIntervalMs = 0;
         }
 
         function applyBracketPageMap(map, items) {
