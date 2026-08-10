@@ -7246,9 +7246,15 @@
             if (containerEl) {
                 containerEl.style.setProperty('--bracket-fs', fullFontSize + 'px');
                 if (masterShow) {
+                    containerEl.style.removeProperty('display');
+                    containerEl.style.removeProperty('opacity');
+                    containerEl.style.removeProperty('visibility');
                     containerEl.classList.add('visible');
                 } else {
                     containerEl.classList.remove('visible');
+                    containerEl.style.setProperty('display', 'none', 'important');
+                    containerEl.style.setProperty('opacity', '0', 'important');
+                    containerEl.style.setProperty('visibility', 'hidden', 'important');
                 }
             }
 
@@ -7260,9 +7266,16 @@
                 }
                 treeFull.dataset.wasVisible = shouldShowFull ? '1' : '0';
                 if (shouldShowFull) {
+                    treeFull.style.removeProperty('display');
+                    treeFull.style.removeProperty('opacity');
+                    treeFull.style.removeProperty('visibility');
+                    treeFull.style.display = 'flex';
                     treeFull.classList.add('visible');
                 } else {
                     treeFull.classList.remove('visible');
+                    treeFull.style.setProperty('display', 'none', 'important');
+                    treeFull.style.setProperty('opacity', '0', 'important');
+                    treeFull.style.setProperty('visibility', 'hidden', 'important');
                 }
             }
             if (treeLive) {
