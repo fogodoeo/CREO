@@ -282,7 +282,7 @@
 
         .buyer-shipping-options {
             display: grid;
-            grid-template-columns: repeat(5, 1fr);
+            grid-template-columns: repeat(3, 1fr);
             gap: 10px;
             margin-top: 10px;
             margin-bottom: 20px;
@@ -1891,16 +1891,7 @@
             }
 
             .buyer-shipping-options {
-                grid-template-columns: repeat(2, 1fr);
-            }
-
-            .buyer-shipping-options button:nth-child(4),
-            .buyer-shipping-options button:nth-child(5) {
-                grid-column: auto;
-            }
-
-            .buyer-option-btn:first-child {
-                grid-column: 1 / -1;
+                grid-template-columns: repeat(3, 1fr);
             }
 
             .segmented-btn {
@@ -2324,9 +2315,7 @@
                 <div style="font-size: 13px; font-weight: 700; color: var(--text-title); margin-bottom: 6px;">수령 방법 선택</div>
                 <div class="buyer-shipping-options">
                     <button type="button" class="buyer-option-btn" id="b-opt-pickup" onclick="setBuyerShippingType('픽업')">픽업</button>
-                    <button type="button" class="buyer-option-btn" id="b-opt-dodosi" onclick="setBuyerShippingType('도도시')">도도시</button>
-                    <button type="button" class="buyer-option-btn" id="b-opt-parge" onclick="setBuyerShippingType('파르게')">파르게</button>
-                    <button type="button" class="buyer-option-btn" id="b-opt-wrapang" onclick="setBuyerShippingType('랩팡')">랩팡</button>
+                    <button type="button" class="buyer-option-btn" id="b-opt-delegated" onclick="setBuyerShippingType('위탁')">위탁</button>
                     <button type="button" class="buyer-option-btn" id="b-opt-custom" onclick="setBuyerShippingType('기타')">기타</button>
                 </div>
 
@@ -2336,8 +2325,8 @@
                     <!-- Embedded Hub Search & Selection for buyer -->
                     <div id="buyer-hub-select-wrap" style="display: none; flex-direction: column; gap: 12px; margin-bottom: 12px;">
                         <div class="form-group" style="margin-bottom: 0;">
-                            <label>수령 거점 선택</label>
-                            <input type="text" id="buyer-hub-search" class="input-text" placeholder="거점명 또는 권역 초성 검색..." autocomplete="off">
+                            <label>위탁 배송사·수령 거점 검색</label>
+                            <input type="text" id="buyer-hub-search" class="input-text" placeholder="업체명, 지역 또는 거점명 검색" autocomplete="off">
                         </div>
                         <div id="buyer-hub-regions" class="modal-regions-tabs" style="display: flex; flex-wrap: wrap; gap: 6px;"></div>
                         <div id="buyer-hub-results" class="modal-results-list" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border); border-radius: 12px; background: rgba(0,0,0,0.2);"></div>
@@ -2457,9 +2446,7 @@
                 </div>
                 <div class="segmented-control" aria-label="배송 방식">
                     <button type="button" class="segmented-btn" id="seg-pickup" onclick="setEditorShippingType('픽업')">픽업</button>
-                    <button type="button" class="segmented-btn" id="seg-dodosi" onclick="setEditorShippingType('도도시')">도도시</button>
-                    <button type="button" class="segmented-btn" id="seg-parge" onclick="setEditorShippingType('파르게')">파르게</button>
-                    <button type="button" class="segmented-btn" id="seg-wrapang" onclick="setEditorShippingType('랩팡')">랩팡</button>
+                    <button type="button" class="segmented-btn" id="seg-delegated" onclick="setEditorShippingType('위탁')">위탁</button>
                     <button type="button" class="segmented-btn" id="seg-custom" onclick="setEditorShippingType('기타')">기타</button>
                 </div>
 
@@ -2467,7 +2454,7 @@
                 <div id="editor-shipping-details">
                     <!-- 배송사 선택 직후 검색창과 결과가 바로 이어짐 -->
                     <div id="editor-hub-select-wrap" style="display: none; flex-direction: column; gap: 8px;">
-                        <input type="text" id="editor-hub-search" class="input-text" placeholder="지역 또는 거점명으로 바로 검색" aria-label="거점 검색" autocomplete="off">
+                        <input type="text" id="editor-hub-search" class="input-text" placeholder="업체명, 지역 또는 거점명 검색" aria-label="위탁 배송사 및 거점 검색" autocomplete="off">
                         <div id="editor-hub-results" class="modal-results-list" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border); border-radius: 12px; background: rgba(0,0,0,0.2);"></div>
                     </div>
 
@@ -3704,7 +3691,7 @@ ${wrapangDuplicateNote}`;
                 document.getElementById('editor-info-objects').textContent = objectNames;
 
                 // Set Segmented Control Active Button
-                setEditorShippingType(editorShippingState.type === '직접수령' ? '픽업' : (editorShippingState.type === '배송' ? editorShippingState.company : '미설정'), true);
+                setEditorShippingType(editorShippingState.type === '직접수령' ? '픽업' : (editorShippingState.type === '배송' ? (['도도시', '파르게', '랩팡'].includes(editorShippingState.company) ? '위탁' : '기타') : '미설정'), true);
 
                 // Set Memo
                 document.getElementById('editor-memo').value = editorShippingState.memo;
@@ -3754,7 +3741,7 @@ ${wrapangDuplicateNote}`;
         }
 
         function setEditorShippingType(companyKey, isInit = false) {
-            const btns = ['pickup', 'dodosi', 'parge', 'wrapang', 'custom'];
+            const btns = ['pickup', 'delegated', 'custom'];
             btns.forEach(b => document.getElementById(`seg-${b}`).classList.remove('active'));
 
             const customWrap = document.getElementById('editor-custom-wrap');
@@ -3787,19 +3774,15 @@ ${wrapangDuplicateNote}`;
                 pickupWrap.style.display = 'none';
                 editorShippingState.type = '배송';
 
-                if (companyKey === '도도시' || companyKey === '파르게' || companyKey === '랩팡') {
-                    const companyChanged = editorShippingState.company !== companyKey;
+                if (companyKey === '위탁') {
                     customWrap.style.display = 'none';
-                    editorShippingState.company = companyKey;
-                    if (!isInit && companyChanged) {
+                    document.getElementById('seg-delegated').classList.add('active');
+                    if (!isInit) {
+                        editorShippingState.company = '';
                         editorShippingState.region = '';
                         editorShippingState.hub = '';
                         activeEmbeddedRegion.editor = '전체';
                     }
-                    
-                    if (companyKey === '도도시') document.getElementById('seg-dodosi').classList.add('active');
-                    else if (companyKey === '파르게') document.getElementById('seg-parge').classList.add('active');
-                    else if (companyKey === '랩팡') document.getElementById('seg-wrapang').classList.add('active');
 
                     if (embedSearchWrap) {
                         embedSearchWrap.style.display = 'flex';
@@ -3807,11 +3790,10 @@ ${wrapangDuplicateNote}`;
                         if (searchInput) {
                             if (isInit) {
                                 searchInput.value = editorShippingState.region && editorShippingState.hub
-                                    ? `${editorShippingState.region} ${editorShippingState.hub}`
+                                    ? `${editorShippingState.company} ${editorShippingState.region} ${editorShippingState.hub}`
                                     : '';
                             }
                         }
-                        renderEmbeddedRegionTabs(companyKey, 'editor');
                         filterEmbeddedHubs('editor');
                         if (!isInit) {
                             requestAnimationFrame(alignEditorPanelToViewport);
@@ -4218,7 +4200,8 @@ ${wrapangDuplicateNote}`;
             const initRegion = parsedShipping.region;
             const initHub = parsedShipping.hub;
 
-            setBuyerShippingType(initType === '직접수령' ? '픽업' : (initType === '배송' ? initCompany : '미설정'), true);
+            buyerShippingState = { type: initType, company: initCompany, region: initRegion, hub: initHub, cost: 0 };
+            setBuyerShippingType(initType === '직접수령' ? '픽업' : (initType === '배송' ? (['도도시', '파르게', '랩팡'].includes(initCompany) ? '위탁' : '기타') : '미설정'), true);
             if (initType === '배송' && (initCompany === '도도시' || initCompany === '파르게' || initCompany === '랩팡')) {
                 buyerShippingState.region = initRegion;
                 buyerShippingState.hub = initHub;
@@ -4240,7 +4223,7 @@ ${wrapangDuplicateNote}`;
 
         // 낙찰자 입력용 배송사 탭 선택
         function setBuyerShippingType(companyKey, isInit = false) {
-            const btns = ['pickup', 'dodosi', 'parge', 'wrapang', 'custom'];
+            const btns = ['pickup', 'delegated', 'custom'];
             btns.forEach(b => document.getElementById(`b-opt-${b}`).classList.remove('active'));
 
             const detailBox = document.getElementById('buyer-detail-box');
@@ -4272,14 +4255,10 @@ ${wrapangDuplicateNote}`;
                 detailBox.style.display = 'block';
                 buyerShippingState.type = '배송';
 
-                if (companyKey === '도도시' || companyKey === '파르게' || companyKey === '랩팡') {
-                    const companyChanged = buyerShippingState.company !== companyKey;
-                    if (companyKey === '도도시') document.getElementById('b-opt-dodosi').classList.add('active');
-                    else if (companyKey === '파르게') document.getElementById('b-opt-parge').classList.add('active');
-                    else if (companyKey === '랩팡') document.getElementById('b-opt-wrapang').classList.add('active');
-
-                    buyerShippingState.company = companyKey;
-                    if (!isInit && companyChanged) {
+                if (companyKey === '위탁') {
+                    document.getElementById('b-opt-delegated').classList.add('active');
+                    if (!isInit) {
+                        buyerShippingState.company = '';
                         buyerShippingState.region = '';
                         buyerShippingState.hub = '';
                         buyerShippingState.cost = 0;
@@ -4291,12 +4270,15 @@ ${wrapangDuplicateNote}`;
                         embedSearchWrap.style.display = 'flex';
                         const searchInput = document.getElementById('buyer-hub-search');
                         if (searchInput) {
-                            searchInput.value = '';
+                            searchInput.value = isInit && buyerShippingState.region && buyerShippingState.hub
+                                ? `${buyerShippingState.company} ${buyerShippingState.region} ${buyerShippingState.hub}`
+                                : '';
                             if (!isInit) {
                                 setTimeout(() => searchInput.focus(), 50);
                             }
                         }
-                        renderEmbeddedRegionTabs(companyKey, 'buyer');
+                        const regions = document.getElementById('buyer-hub-regions');
+                        if (regions) regions.innerHTML = '';
                         filterEmbeddedHubs('buyer');
                     }
                 } else {
@@ -4337,6 +4319,7 @@ ${wrapangDuplicateNote}`;
 
         function scoreMatch(d, words) {
             const fields = [
+                { v: d.company || "", w: 4 },
                 { v: d.shop || "", w: 3 },
                 { v: d.region || "", w: 2 }
             ];
@@ -4468,12 +4451,12 @@ ${wrapangDuplicateNote}`;
         function selectedEmbeddedHubText(target) {
             const state = getEmbeddedHubState(target);
             if (!state || !state.region || !state.hub) return '';
-            return `${state.region} ${state.hub}`;
+            return `${state.company} ${state.region} ${state.hub}`;
         }
 
-        function setEmbeddedHubSearchText(target, region, hub) {
+        function setEmbeddedHubSearchText(target, company, region, hub) {
             const searchInput = document.getElementById(`${target}-hub-search`);
-            if (searchInput) searchInput.value = `${region} ${hub}`;
+            if (searchInput) searchInput.value = `${company} ${region} ${hub}`;
         }
 
         function clearEmbeddedHubSelection(target) {
@@ -4482,6 +4465,7 @@ ${wrapangDuplicateNote}`;
             const hadSelection = Boolean(state.region || state.hub);
             state.region = '';
             state.hub = '';
+            if (state.type === '배송' && state.company !== '기타') state.company = '';
             if (Object.prototype.hasOwnProperty.call(state, 'cost')) state.cost = 0;
             return hadSelection;
         }
@@ -4567,38 +4551,33 @@ ${wrapangDuplicateNote}`;
                 refreshEmbeddedHubPricing(target);
             }
 
-            let comp = '';
             let itemCount = 1;
             if (target === 'editor') {
-                comp = editorShippingState.company;
                 const winnerName = activeEditorWinner;
                 const state = winnerStateMap[winnerName];
                 if (state) itemCount = state.allItems.length;
             } else {
-                comp = buyerShippingState.company;
                 itemCount = buyerFoundItems.length;
             }
 
-            const compData = SHIPPING_DATA[comp];
-            if (!compData || !compData.regions) {
-                resultsBox.innerHTML = '<div style="padding: 12px; text-align: center; color: var(--text-secondary);">데이터가 없습니다.</div>';
+            if (!q) {
+                resultsBox.innerHTML = '<div class="search-empty-hint">업체명, 지역 또는 거점명을 입력하면<br>모든 위탁 배송사를 한 번에 검색합니다.</div>';
                 return;
             }
 
-            if (target === 'editor' && !q) {
-                resultsBox.innerHTML = '<div class="search-empty-hint">지역 또는 거점명을 입력하면<br>검색 결과가 여기에 표시됩니다.</div>';
-                return;
-            }
-
-            // Flatten all hubs of this company
+            // 도도시·파르게·랩팡의 모든 거점을 하나의 검색 목록으로 합친다.
             let allHubs = [];
-            Object.keys(compData.regions).forEach(regName => {
-                compData.regions[regName].forEach(h => {
-                    allHubs.push({
-                        region: regName,
-                        shop: h.shop,
-                        cost: h.cost,
-                        day: h.day || ''
+            ['도도시', '파르게', '랩팡'].forEach(company => {
+                const compData = SHIPPING_DATA[company];
+                Object.keys(compData?.regions || {}).forEach(regName => {
+                    compData.regions[regName].forEach(h => {
+                        allHubs.push({
+                            company,
+                            region: regName,
+                            shop: h.shop,
+                            cost: h.cost,
+                            day: h.day || ''
+                        });
                     });
                 });
             });
@@ -4631,28 +4610,17 @@ ${wrapangDuplicateNote}`;
                 geoRoutes = [...new Set(geoRoutes)];
 
                 if (exact.length <= 4) {
-                    const compMap = GEO_TO_COMPANY_REGION[comp];
-                    if (compMap) {
-                        let targetRegs = [];
-                        geoRoutes.forEach(gr => {
-                            if (compMap[gr]) targetRegs.push(...compMap[gr]);
-                        });
-                        targetRegs = [...new Set(targetRegs)];
-
-                        if (targetRegs.length > 0) {
-                            nearby = allHubs.filter(h => targetRegs.includes(h.region) && !exact.some(ex => ex.shop === h.shop));
-                        }
-                    }
+                    // 통합 검색에서는 다른 배송사의 동일 지역 결과가 이미 exact에 함께 표시된다.
                 }
             }
 
             // Helper to calculate total cost for the winner
-            function getFinalCost(baseCost, regName) {
+            function getFinalCost(company, baseCost, regName) {
                 const isJeju = regName.includes('제주');
-                if (comp === '파르게') {
+                if (company === '파르게') {
                     if (itemCount <= 1) return baseCost;
                     return baseCost + (itemCount - 1) * (isJeju ? 4000 : 7000);
-                } else if (comp === '랩팡') {
+                } else if (company === '랩팡') {
                     if (itemCount <= 1) return baseCost;
                     if (itemCount <= 4) return baseCost + (itemCount - 1) * 7000;
                     if (itemCount <= 20) return baseCost + 28000;
@@ -4662,9 +4630,9 @@ ${wrapangDuplicateNote}`;
             }
 
             // Helper to get dispatch and receipt schedule (소비자 관점에서 직관적인 전달일로 변경)
-            function getSchedule(regName, dayField) {
+            function getSchedule(company, regName, dayField) {
                 const region = regName || '';
-                if (comp === '도도시') {
+                if (company === '도도시') {
                     // 도도시: 대구 토요일 집하 후 다음 주 지정 요일 도착
                     if (dayField) {
                         let formattedDay = dayField.replace(/\./g, '·');
@@ -4674,7 +4642,7 @@ ${wrapangDuplicateNote}`;
                         return `토요일 집하 ➔ 다음 주 ${formattedDay} 도착`;
                     }
                     return `토요일 집하 ➔ 다음 주 목·일요일 도착`;
-                } else if (comp === '파르게') {
+                } else if (company === '파르게') {
                     // 파르게 공식 주간 배송 타임라인 매핑 (대구 토요일 집하 마감 기준)
                     if (region.includes('제주')) {
                         return `토요일 집하 ➔ 다음 주 토요일 도착 (배편·격주)`;
@@ -4690,7 +4658,7 @@ ${wrapangDuplicateNote}`;
                         return `토요일 집하 ➔ 다음 주 금요일 도착`;
                     }
                     return `토요일 집하 ➔ 주간 순차 도착`;
-                } else if (comp === '랩팡') {
+                } else if (company === '랩팡') {
                     // 랩팡: 금요일 집하 및 거점별 도착 요일 동적 표시
                     if (dayField) {
                         return `금요일 집하 ➔ ${dayField} 도착`;
@@ -4721,18 +4689,19 @@ ${wrapangDuplicateNote}`;
 
             if (exact.length > 0) {
                 exact.forEach(h => {
-                    const finalCost = getFinalCost(h.cost, h.region);
-                    const schedule = getSchedule(h.region, h.day);
+                    const finalCost = getFinalCost(h.company, h.cost, h.region);
+                    const schedule = getSchedule(h.company, h.region, h.day);
                     
                     const isSelected = (target === 'editor')
-                        ? (editorShippingState.region === h.region && editorShippingState.hub === h.shop)
-                        : (buyerShippingState.region === h.region && buyerShippingState.hub === h.shop);
+                        ? (editorShippingState.company === h.company && editorShippingState.region === h.region && editorShippingState.hub === h.shop)
+                        : (buyerShippingState.company === h.company && buyerShippingState.region === h.region && buyerShippingState.hub === h.shop);
                     const selectedStyle = isSelected ? 'border: 2px solid var(--accent); background: rgba(59, 130, 246, 0.1);' : '';
                     
                     html += `
-                        <div class="search-item" style="padding: 12px 14px; font-weight: 500; display: flex; justify-content: space-between; align-items: center; ${selectedStyle}" onclick="selectEmbeddedHub('${h.region.replace(/'/g, "\\'")}', '${h.shop.replace(/'/g, "\\'")}', ${h.cost}, '${target}')">
+                        <div class="search-item" style="padding: 12px 14px; font-weight: 500; display: flex; justify-content: space-between; align-items: center; ${selectedStyle}" onclick="selectEmbeddedHub('${h.company}', '${h.region.replace(/'/g, "\\'")}', '${h.shop.replace(/'/g, "\\'")}', ${h.cost}, '${target}')">
                             <div class="search-item-copy">
                                 <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span class="search-item-region" style="background: var(--accent-light); color: var(--accent);">${h.company}</span>
                                     <span class="search-item-region">${h.region}</span>
                                     <span class="search-item-title" style="font-size: 14px; font-weight: 700;">${h.shop}</span>
                                 </div>
@@ -4742,6 +4711,7 @@ ${wrapangDuplicateNote}`;
                             </div>
                             <div class="search-item-price-block">
                                 <div class="search-item-price" style="font-size: 13px;">${h.cost.toLocaleString()}원</div>
+                                ${h.company === '랩팡' ? '<div class="search-item-total">CREO 30% 할인 적용</div>' : ''}
                                 ${itemCount > 1 ? `<div class="search-item-total">총 ${itemCount}개체 · ${finalCost.toLocaleString()}원</div>` : ''}
                             </div>
                         </div>
@@ -4758,16 +4728,16 @@ ${wrapangDuplicateNote}`;
                     `;
                 }
                 nearby.forEach(h => {
-                    const finalCost = getFinalCost(h.cost, h.region);
-                    const schedule = getSchedule(h.region, h.day);
+                    const finalCost = getFinalCost(h.company, h.cost, h.region);
+                    const schedule = getSchedule(h.company, h.region, h.day);
                     
                     const isSelected = (target === 'editor')
-                        ? (editorShippingState.region === h.region && editorShippingState.hub === h.shop)
-                        : (buyerShippingState.region === h.region && buyerShippingState.hub === h.shop);
+                        ? (editorShippingState.company === h.company && editorShippingState.region === h.region && editorShippingState.hub === h.shop)
+                        : (buyerShippingState.company === h.company && buyerShippingState.region === h.region && buyerShippingState.hub === h.shop);
                     const selectedStyle = isSelected ? 'border: 2px solid var(--accent); background: rgba(59, 130, 246, 0.1);' : '';
                     
                     html += `
-                        <div class="search-item" style="opacity: 0.75; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; ${selectedStyle}" onclick="selectEmbeddedHub('${h.region.replace(/'/g, "\\'")}', '${h.shop.replace(/'/g, "\\'")}', ${h.cost}, '${target}')">
+                        <div class="search-item" style="opacity: 0.75; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; ${selectedStyle}" onclick="selectEmbeddedHub('${h.company}', '${h.region.replace(/'/g, "\\'")}', '${h.shop.replace(/'/g, "\\'")}', ${h.cost}, '${target}')">
                             <div class="search-item-copy">
                                 <div style="display: flex; align-items: center; gap: 6px;">
                                     <span class="search-item-region" style="background: #E2E8F0; color: #475569;">${h.region}</span>
@@ -4789,12 +4759,13 @@ ${wrapangDuplicateNote}`;
             resultsBox.innerHTML = html;
         }
 
-        function selectEmbeddedHub(region, shop, cost, target) {
+        function selectEmbeddedHub(company, region, shop, cost, target) {
             if (target === 'editor') {
+                editorShippingState.company = company;
                 editorShippingState.region = region;
                 editorShippingState.hub = shop;
 
-                setEmbeddedHubSearchText('editor', region, shop);
+                setEmbeddedHubSearchText('editor', company, region, shop);
                 filterEmbeddedHubs('editor', { keepSelection: true });
                 updateEditorPricing();
 
@@ -4809,11 +4780,12 @@ ${wrapangDuplicateNote}`;
                     });
                 }
             } else {
+                buyerShippingState.company = company;
                 buyerShippingState.region = region;
                 buyerShippingState.hub = shop;
                 buyerShippingState.cost = cost;
 
-                setEmbeddedHubSearchText('buyer', region, shop);
+                setEmbeddedHubSearchText('buyer', company, region, shop);
                 filterEmbeddedHubs('buyer', { keepSelection: true });
                 recalculateBuyerTotal();
             }
