@@ -1399,7 +1399,7 @@
             if (title) title.textContent = module.title + ' 화면 모듈';
             if (desc) desc.textContent = module.id === 'crewart'
                 ? '1P 대기, 2P 현재 경매, 3P 기숙사 점수판으로 송출합니다.'
-                : '1P 진행, 2P 개체, 3P 블라인드 팀합산으로 송출합니다.';
+                : '1P 진행, 2P 개체·실시간 입찰, 3P 전체 진행표로 각각 독립 송출합니다.';
 
             const isCrewart = module.id === 'crewart';
             document.body.classList.toggle('event-crewart-preview', isCrewart);
@@ -1421,7 +1421,7 @@
                 setDisplay('draggable-bracket-live', false);
                 setDisplay('draggable-bracket-title', false);
                 setDisplay('draggable-battle-ann', false);
-                setDisplay('draggable-blind-totals', !isCrewart);
+                setDisplay('draggable-blind-totals', false);
                 setDisplay('draggable-banner', false);
                 setDisplay('draggable-ticker', false);
                 setDisplay('toggle-banner-show-group', false);
@@ -1441,31 +1441,31 @@
                 });
                 setDisplay('toggle-bracket-full-blind-group', !isCrewart);
                 setDisplay('toggle-bracket-mode-group', !isCrewart);
-                setDisplay('toggle-bracket-full-font-group', isCrewart);
-                setDisplay('toggle-blind-totals-show-group', !isCrewart);
-                setDisplay('toggle-event-match-show-group', !isCrewart);
-                setDisplay('toggle-blind-totals-font-group', !isCrewart);
-                setDisplay('toggle-blind-totals-opacity-group', !isCrewart);
+                setDisplay('toggle-bracket-full-font-group', true);
+                setDisplay('toggle-blind-totals-show-group', false);
+                setDisplay('toggle-event-match-show-group', false);
+                setDisplay('toggle-blind-totals-font-group', false);
+                setDisplay('toggle-blind-totals-opacity-group', false);
                 setDisplay('toggle-blind-totals-display-group', false);
                 setDisplay('toggle-preview-guides-group', true);
-                document.body.classList.toggle('preview-auto-p3', !isCrewart);
+                document.body.classList.remove('preview-auto-p3');
                 document.body.classList.remove('preview-team-ticker');
                 const autoLabel = document.querySelector('#draggable-blind-totals .element-label');
                 if (autoLabel) autoLabel.textContent = isCrewart ? '기숙사 점수판' : '자동 좌측 영역 · 팀합산 8팀씩 순환 ↔ 실시간 입찰';
-                setDisplay('toggle-live-bidders-show-group', !isCrewart);
-                setDisplay('toggle-live-bidders-switch-group', !isCrewart);
-                setDisplay('toggle-live-bidders-mode-group', !isCrewart);
+                setDisplay('toggle-live-bidders-show-group', false);
+                setDisplay('toggle-live-bidders-switch-group', false);
+                setDisplay('toggle-live-bidders-mode-group', false);
                 setDisplay('bracket-coords', true);
                 setDisplay('bracket-live-coords', false);
                 setDisplay('bracket-title-coords', false);
                 setDisplay('battle-ann-coords', false);
-                setDisplay('blind-totals-coords', !isCrewart);
+                setDisplay('blind-totals-coords', false);
                 const fullToggleLabel = document.querySelector('#toggle-bracket-full-show-group span');
                 if (fullToggleLabel) fullToggleLabel.textContent = isCrewart ? '점수판' : '전체 진행표';
                 const coords = document.getElementById('bracket-coords');
                 if (coords && coords.firstChild) coords.firstChild.textContent = isCrewart ? '점수판: Top ' : '전체 진행표: Top ';
                 if (isCrewart) refreshCrewartPreview();
-                try { focusBracketLayer(isCrewart ? 'bracket_full' : 'blind_totals'); } catch (e) {}
+                try { focusBracketLayer('bracket_full'); } catch (e) {}
             }
         }
 
@@ -1510,7 +1510,7 @@
             frame.src = broadcastPreviewSrc('1', initialModuleId);
         } else if (pageNum === '3') {
             document.getElementById('btn-tab-p3')?.classList.add('active');
-            if (pageTitle) pageTitle.textContent = (initialModuleId === 'crewart' ? '기숙사 점수판' : '팀합산') + " (3P) 실시간 레이아웃 배치기";
+            if (pageTitle) pageTitle.textContent = (initialModuleId === 'crewart' ? '기숙사 점수판' : '전체 진행표') + " (3P) 실시간 레이아웃 배치기";
             frame.src = broadcastPreviewSrc('3', initialModuleId);
             // 3P: 레이아웃 미리보기 + 대진표 관리 대시보드 함께 표시
             const bgSel = document.getElementById('bracket-bg-selector-group');
@@ -1521,6 +1521,10 @@
             document.getElementById('btn-tab-p2')?.classList.add('active');
             if (pageTitle) pageTitle.textContent = (initialModuleId === 'crewart' ? '현재 경매용' : '개체용') + " (2P) 실시간 레이아웃 배치기";
             frame.src = broadcastPreviewSrc('2', initialModuleId); // Default page2 layout
+            const isCdcupPage2 = initialModuleId !== 'crewart';
+            document.getElementById('toggle-live-bidders-show-group').style.display = isCdcupPage2 ? '' : 'none';
+            document.getElementById('toggle-live-bidders-mode-group').style.display = isCdcupPage2 ? '' : 'none';
+            document.getElementById('toggle-live-bidders-switch-group').style.display = 'none';
         }
 
         // PAGE1 전용 요소 표시
@@ -1544,36 +1548,36 @@
         // PAGE3 전용 요소 표시 + 배너/자막 숨김 (3P는 오버레이 전용)
         if (pageNum === '3') {
             const isInitialCrewart = initialModuleId === 'crewart';
-            // P3 is the blind team totals overlay editor. Legacy round/bracket layers stay hidden.
-            document.getElementById('draggable-bracket-full').style.display = isInitialCrewart ? '' : 'none';
+            // P3는 전체 진행표 전용 편집기다. 입찰자/팀합산 패널은 2P와 분리한다.
+            document.getElementById('draggable-bracket-full').style.display = '';
             document.getElementById('draggable-bracket-live').style.display = 'none';
             document.getElementById('draggable-bracket-title').style.display = 'none'; // Hidden per user request
             document.getElementById('draggable-battle-ann').style.display = 'none';
-            document.getElementById('draggable-blind-totals').style.display = isInitialCrewart ? 'none' : '';
+            document.getElementById('draggable-blind-totals').style.display = 'none';
             document.getElementById('toggle-bracket-full-show-group').style.display = '';
             document.getElementById('toggle-bracket-live-show-group').style.display = 'none';
             document.getElementById('toggle-bracket-full-blind-group').style.display = isInitialCrewart ? 'none' : '';
             document.getElementById('toggle-bracket-title-show-group').style.display = 'none'; // Hidden per user request
             document.getElementById('toggle-battle-ann-show-group').style.display = 'none';
-            document.getElementById('toggle-blind-totals-show-group').style.display = isInitialCrewart ? 'none' : '';
-            document.getElementById('toggle-live-bidders-show-group').style.display = isInitialCrewart ? 'none' : '';
-            document.getElementById('toggle-live-bidders-switch-group').style.display = isInitialCrewart ? 'none' : '';
-            document.getElementById('toggle-live-bidders-mode-group').style.display = isInitialCrewart ? 'none' : '';
+            document.getElementById('toggle-blind-totals-show-group').style.display = 'none';
+            document.getElementById('toggle-live-bidders-show-group').style.display = 'none';
+            document.getElementById('toggle-live-bidders-switch-group').style.display = 'none';
+            document.getElementById('toggle-live-bidders-mode-group').style.display = 'none';
             document.getElementById('toggle-bracket-scale-group').style.display = 'none';
             document.getElementById('toggle-bracket-mode-group').style.display = isInitialCrewart ? 'none' : '';
-            document.getElementById('toggle-bracket-full-font-group').style.display = isInitialCrewart ? '' : 'none';
+            document.getElementById('toggle-bracket-full-font-group').style.display = '';
             document.getElementById('toggle-bracket-live-font-group').style.display = 'none';
             document.getElementById('toggle-bracket-live-opacity-group').style.display = 'none';
-            document.getElementById('toggle-blind-totals-font-group').style.display = isInitialCrewart ? 'none' : '';
-            document.getElementById('toggle-blind-totals-opacity-group').style.display = isInitialCrewart ? 'none' : '';
+            document.getElementById('toggle-blind-totals-font-group').style.display = 'none';
+            document.getElementById('toggle-blind-totals-opacity-group').style.display = 'none';
             document.getElementById('toggle-blind-totals-display-group').style.display = 'none';
             document.getElementById('toggle-preview-guides-group').style.display = '';
-            document.body.classList.toggle('preview-auto-p3', !isInitialCrewart);
+            document.body.classList.remove('preview-auto-p3');
             document.getElementById('bracket-coords').style.display = '';
             document.getElementById('bracket-live-coords').style.display = 'none';
             document.getElementById('bracket-title-coords').style.display = 'none'; // Hidden per user request
             document.getElementById('battle-ann-coords').style.display = 'none';
-            document.getElementById('blind-totals-coords').style.display = isInitialCrewart ? 'none' : '';
+            document.getElementById('blind-totals-coords').style.display = 'none';
             // 배너/자막 완전 숨김 (3P 오버레이에 불필요)
             document.getElementById('draggable-banner').style.display = 'none';
             document.getElementById('draggable-ticker').style.display = 'none';
@@ -1976,25 +1980,22 @@
                     const blindTotalsLabel = document.querySelector('#draggable-blind-totals .element-label');
                     if (blindTotalsLabel) blindTotalsLabel.textContent = '자동 좌측 영역 · 팀합산 8팀씩 순환 ↔ 실시간 입찰';
 
-                    // 실시간 입찰자 설정 팝업 데이터 로딩
-                    const liveBiddersShow = cfg.live_bidders_show !== undefined ? String(cfg.live_bidders_show) : '0';
-                    const liveBiddersSwitchSec = cfg.live_bidders_switch_sec || '5';
-                    const liveBiddersMode = cfg.live_bidders_mode || 'top';
-
-                    const showInput = document.getElementById('toggle-live-bidders-show');
-                    if (showInput) showInput.checked = liveBiddersShow === '1';
-
-                    const switchInput = document.getElementById('live-bidders-switch-input');
-                    if (switchInput) switchInput.value = liveBiddersSwitchSec;
-
-                    const modeSelect = document.getElementById('live-bidders-mode-select');
-                    if (modeSelect) modeSelect.value = liveBiddersMode;
-
                     // 이벤트 매치 설정 로딩
                     const eventMatchShow = cfg.event_match_show !== undefined ? String(cfg.event_match_show) : '0';
                     const eventMatchToggle = document.getElementById('toggle-event-match-show');
                     if (eventMatchToggle) eventMatchToggle.checked = eventMatchShow === '1';
                 }
+
+                // 실시간 입찰자는 2P 개체 화면의 독립 오버레이다.
+                const liveBiddersShow = cfg.live_bidders_show !== undefined ? String(cfg.live_bidders_show) : '1';
+                const liveBiddersSwitchSec = cfg.live_bidders_switch_sec || '5';
+                const liveBiddersMode = cfg.live_bidders_mode || 'top';
+                const showInput = document.getElementById('toggle-live-bidders-show');
+                if (showInput) showInput.checked = liveBiddersShow === '1';
+                const switchInput = document.getElementById('live-bidders-switch-input');
+                if (switchInput) switchInput.value = liveBiddersSwitchSec;
+                const modeSelect = document.getElementById('live-bidders-mode-select');
+                if (modeSelect) modeSelect.value = liveBiddersMode;
 
                 // Apply states visually
                 applyVisualState('banner');
@@ -2023,11 +2024,7 @@
                 if (elements.battle_ann) document.getElementById('toggle-battle-ann-show').checked = elements.battle_ann.show === "1";
                 if (elements.blind_totals) document.getElementById('toggle-blind-totals-show').checked = elements.blind_totals.show === "1";
                 if (pageNum === '3') {
-                    const activePreviewModule = getActiveAuctionEventModule(cfg).id;
-                    const initialLayer = activePreviewModule === 'crewart'
-                        ? 'bracket_full'
-                        : (elements.blind_totals ? 'blind_totals' : 'bracket_full');
-                    focusBracketLayer(initialLayer);
+                    focusBracketLayer('bracket_full');
                 }
 
                 updateLabelReadouts();
@@ -2683,6 +2680,10 @@
                 configMap.page2_photo_maxheight = elements.photo.height;
                 configMap.page2_photo_peek = '0';
             }
+            if (pageNum === '2') {
+                configMap.live_bidders_show = document.getElementById('toggle-live-bidders-show')?.checked ? '1' : '0';
+                configMap.live_bidders_mode = document.getElementById('live-bidders-mode-select')?.value || 'top';
+            }
 
             if (pageNum === '3') {
                 if (elements.bracket_full) {
@@ -2726,24 +2727,10 @@
                     configMap['battle_ann_show'] = elements.battle_ann.show;
                 }
                 const currentPreviewModule = document.getElementById('preview-event-module-select')?.value || initialModuleId;
-                if (currentPreviewModule !== 'crewart' && elements.blind_totals) {
-                    configMap['blind_totals_mode'] = '1';
-                    configMap['blind_totals_top'] = elements.blind_totals.top;
-                    configMap['blind_totals_left'] = elements.blind_totals.left;
-                    configMap['blind_totals_right'] = elements.blind_totals.right;
-                    configMap['blind_totals_bottom'] = elements.blind_totals.bottom;
-                    configMap['blind_totals_width'] = elements.blind_totals.width;
-                    configMap['blind_totals_height'] = elements.blind_totals.height;
-                    configMap['blind_totals_show'] = elements.blind_totals.show;
-                    configMap['blind_totals_font_size'] = elements.blind_totals.fontSize || '14';
-                    configMap['blind_totals_opacity'] = elements.blind_totals.opacity ?? '0';
+                if (currentPreviewModule !== 'crewart') {
+                    configMap['blind_totals_show'] = '0';
                     configMap['bracket_live_show'] = '0';
                     configMap['battle_ann_show'] = '0';
-
-                    // 실시간 입찰자 설정값 저장
-                    configMap['live_bidders_show'] = document.getElementById('toggle-live-bidders-show')?.checked ? '1' : '0';
-                    configMap['live_bidders_switch_sec'] = document.getElementById('live-bidders-switch-input')?.value || '5';
-                    configMap['live_bidders_mode'] = document.getElementById('live-bidders-mode-select')?.value || 'top';
                     configMap['event_match_show'] = document.getElementById('toggle-event-match-show')?.checked ? '1' : '0';
                 }
             }

@@ -6863,7 +6863,8 @@
             const isPage2 = !document.body.classList.contains('host-mode')
                 && !document.body.classList.contains('bracket-page');
             const isCdcup = (document.body.dataset.eventModule || 'cdcup') === 'cdcup';
-            const rows = isPage2 && isCdcup ? buildLiveBidRows(map, activeItem) : [];
+            const isEnabled = String(map?.live_bidders_show ?? '1') !== '0';
+            const rows = isPage2 && isCdcup && isEnabled ? buildLiveBidRows(map, activeItem) : [];
             if (!activeItem || !isAuctionActiveItem(activeItem) || rows.length === 0) {
                 panel.classList.remove('visible');
                 panel.replaceChildren();
@@ -7176,6 +7177,10 @@
             window._teamToLetterMap = globalTeamToLetter;
 
             const eventModule = applyAuctionEventModule(map);
+            if (eventModule.id === 'cdcup' && isBracketPage) {
+                // 3P는 전체 진행표 전용이다. 2P 입찰자 팝업 및 과거 팀합산 패널과 독립시킨다.
+                hideBlindTeamTotals();
+            }
             
             // 빈 목록도 반영해야 전체삭제 직후 이전 경기 결과가 남지 않는다.
             if (Array.isArray(items)) {
@@ -7319,7 +7324,7 @@
             }
 
             if (isCdcupBlindTotalsMode(map)) {
-                updateP3SwitchingLogic(map, window.latestItemsList || []);
+                hideBlindTeamTotals();
                 // treeFull (전체 결과표) 렌더링 — bracket_full_blind가 업체명 마스킹 처리
                 if (treeFull && fullShow) {
                     // 컨테이너도 보이게
