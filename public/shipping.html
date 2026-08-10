@@ -2266,6 +2266,21 @@
         .editor-copy-action:hover { border-color:#A1A1AA; background:#FAFAFA; }
         .editor-save-action { border:1px solid var(--accent); background:var(--accent); color:#FFF; }
         .editor-save-action:hover { background:var(--accent-hover); }
+        .shipping-admin-login { margin-left:auto; height:36px; padding:0 12px; border:1px solid #D4D4D8; border-radius:9px; background:#FFF; color:#3F3F46; font-family:inherit; font-size:11px; font-weight:850; cursor:pointer; }
+        .shipping-admin-login:hover { border-color:#A1A1AA; background:#FAFAFA; }
+        .app-bottom-nav .admin-only-nav { display:none; }
+        .app-bottom-nav:not(.rates-unlocked) { grid-template-columns:repeat(3,1fr); }
+        .app-bottom-nav.rates-unlocked { grid-template-columns:repeat(4,1fr); }
+        .app-bottom-nav.rates-unlocked .admin-only-nav { display:flex; }
+        .shipping-admin-modal { position:fixed; inset:0; z-index:2500; display:grid; place-items:center; padding:18px; background:rgba(24,24,27,.48); backdrop-filter:blur(6px); }
+        .shipping-admin-modal[hidden] { display:none; }
+        .shipping-admin-card { width:min(350px,100%); padding:22px; border:1px solid #E4E4E7; border-radius:14px; background:#FFF; box-shadow:var(--shadow-md); }
+        .shipping-admin-card h2 { margin:0; color:#18181B; font-size:17px; }
+        .shipping-admin-card p { margin:6px 0 15px; color:#71717A; font-size:11px; }
+        .shipping-admin-card input { width:100%; height:42px; padding:0 11px; border:1px solid #D4D4D8; border-radius:9px; outline:0; }
+        .shipping-admin-card input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(37,99,235,.10); }
+        .shipping-admin-card button { width:100%; height:42px; margin-top:8px; border:0; border-radius:9px; background:var(--accent); color:#FFF; font-family:inherit; font-size:12px; font-weight:850; cursor:pointer; }
+        .shipping-admin-error { min-height:14px; margin-top:7px; color:#B91C1C; font-size:10px; }
         .toast { bottom:58px; }
         .app-bottom-nav { position:fixed; left:50%; bottom:max(2px,env(safe-area-inset-bottom)); z-index:1900; display:grid; grid-template-columns:repeat(4,1fr); gap:2px; width:min(410px,calc(100% - 8px)); height:50px; padding:3px; border:1px solid #D4D4D8; border-radius:12px; background:rgba(255,255,255,.97); box-shadow:0 6px 20px rgba(0,0,0,.10); transform:translateX(-50%); backdrop-filter:blur(16px); }
         .app-bottom-nav a,.app-bottom-nav button { display:flex; align-items:center; justify-content:center; min-width:0; border:0; border-radius:10px; background:transparent; color:#64748B; font-family:inherit; font-size:10.5px; font-weight:850; text-decoration:none; white-space:nowrap; cursor:pointer; }
@@ -2285,6 +2300,7 @@
                     <span id="shipping-channel-label" style="font-size: 12px; color: var(--text-secondary); font-weight: 600; display: block; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.5px;">배송관리</span>
                     <strong id="current-company-name" style="font-size: 18px; font-weight: 850; color: var(--text-title);">선택 필요</strong>
                 </div>
+                <button class="shipping-admin-login" id="shipping-admin-button" type="button">관리자 로그인</button>
             </div>
 
             <!-- 업체 선택 전용 팝업 모달 (사이즈 확장 및 2열 그리드화) -->
@@ -2428,9 +2444,18 @@
     <nav class="app-bottom-nav" aria-label="CREO 공통 페이지 이동">
         <a class="active" href="shipping.html" aria-current="page">배송관리</a>
         <a href="shipping-status.html">전체조회</a>
-        <a href="shipping-rates.html">요금표</a>
+        <a class="admin-only-nav" id="shipping-rates-nav" href="shipping-rates.html">요금표</a>
         <button class="utility" type="button" onclick="openCompanySelectModal()">업체변경</button>
     </nav>
+    <section class="shipping-admin-modal" id="shipping-admin-modal" hidden>
+        <form class="shipping-admin-card" id="shipping-admin-form">
+            <h2>관리자 로그인</h2>
+            <p>비밀번호가 확인되면 요금표 메뉴가 표시됩니다.</p>
+            <input id="shipping-admin-password" type="password" autocomplete="current-password" placeholder="관리자 비밀번호" required>
+            <button type="submit">로그인</button>
+            <div class="shipping-admin-error" id="shipping-admin-error"></div>
+        </form>
+    </section>
 
     <!-- 토스트 & 로딩 -->
     <div class="toast" id="toast"></div>
@@ -2569,6 +2594,55 @@
         const SHIPPING_USES_LEGACY_ITEMS = SHIPPING_CHANNEL_ID === 'cdcup';
         const SHIPPING_COMPANY_STORAGE_KEY = `creo_shipping_company_${SHIPPING_CHANNEL_ID}`;
         let platformShippingWorkspace = null;
+
+        function setShippingAdminState(authenticated) {
+            const nav = document.querySelector('.app-bottom-nav');
+            const button = document.getElementById('shipping-admin-button');
+            if (nav) nav.classList.toggle('rates-unlocked', Boolean(authenticated));
+            if (button) button.textContent = authenticated ? '관리자 로그아웃' : '관리자 로그인';
+            document.body.dataset.shippingAdmin = authenticated ? 'true' : 'false';
+        }
+
+        function openShippingAdminLogin() {
+            const modal = document.getElementById('shipping-admin-modal');
+            const error = document.getElementById('shipping-admin-error');
+            if (error) error.textContent = '';
+            if (modal) modal.hidden = false;
+            requestAnimationFrame(() => document.getElementById('shipping-admin-password')?.focus());
+        }
+
+        document.getElementById('shipping-admin-button')?.addEventListener('click', async () => {
+            if (document.body.dataset.shippingAdmin === 'true') {
+                await CreoPlatform.logout();
+                setShippingAdminState(false);
+                return;
+            }
+            openShippingAdminLogin();
+        });
+        document.getElementById('shipping-admin-modal')?.addEventListener('click', event => {
+            if (event.target === event.currentTarget) event.currentTarget.hidden = true;
+        });
+        document.getElementById('shipping-admin-form')?.addEventListener('submit', async event => {
+            event.preventDefault();
+            const input = document.getElementById('shipping-admin-password');
+            const error = document.getElementById('shipping-admin-error');
+            if (error) error.textContent = '';
+            try {
+                CreoPlatform.setAdmin(input.value);
+                if (!await CreoPlatform.verifyAdmin(input.value)) throw new Error('비밀번호가 맞지 않습니다.');
+                input.value = '';
+                document.getElementById('shipping-admin-modal').hidden = true;
+                setShippingAdminState(true);
+            } catch (failure) {
+                CreoPlatform.setAdmin('');
+                if (error) error.textContent = failure.message || '로그인하지 못했습니다.';
+            }
+        });
+        (async () => {
+            setShippingAdminState(false);
+            try { if (await CreoPlatform.verifyAdmin()) setShippingAdminState(true); }
+            catch (_) { await CreoPlatform.logout(); }
+        })();
 
         function platformShipmentLegacyStatus(shipment) {
             if (shipment?.status === 'complete') return '낙찰-입금완료';
