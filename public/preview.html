@@ -197,8 +197,9 @@
             box-shadow: 0 0 14px rgba(217, 176, 92, .28);
         }
         .draggable-live-bidders .bid-preview-list { display: grid; gap: 5px; width: 100%; pointer-events: none; }
-        .draggable-live-bidders .bid-preview-row { display: grid; grid-template-columns: 20px minmax(0,1fr) auto; gap: 6px; padding: 5px 7px; border-left: 3px solid rgba(217,176,92,.75); background: rgba(15,20,29,.9); color: #f8fafc; font-size: 10px; }
-        .draggable-live-bidders .bid-preview-row i { color: #d9b05c; font-style: normal; font-weight: 900; }
+        .draggable-live-bidders .bid-preview-row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 6px; padding: 5px 7px; border-left: 3px solid rgba(217,176,92,.75); background: rgba(15,20,29,.9); color: #f8fafc; font-size: 10px; }
+        .draggable-live-bidders .bid-preview-row:nth-child(2) { opacity: .42; }
+        .draggable-live-bidders .bid-preview-row:nth-child(3) { opacity: .13; }
         .draggable-live-bidders .bid-preview-row b:last-child { color: #e7c776; }
 
         .draggable-photo {
@@ -1042,9 +1043,9 @@
                 <div class="draggable-element draggable-live-bidders" id="draggable-live-bidders" data-type="live_bidders" style="display:none;">
                     <div class="element-label">실시간 입찰 명단 · 헤더 없이 송출</div>
                     <div class="bid-preview-list">
-                        <div class="bid-preview-row"><i>1</i><b>입찰자 A</b><b>125만</b></div>
-                        <div class="bid-preview-row"><i>2</i><b>입찰자 B</b><b>118만</b></div>
-                        <div class="bid-preview-row"><i>3</i><b>입찰자 C</b><b>110만</b></div>
+                        <div class="bid-preview-row"><b>입찰자 A · 서울</b><b>125만</b></div>
+                        <div class="bid-preview-row"><b>입찰자 B · 경기</b><b>118만</b></div>
+                        <div class="bid-preview-row"><b>입찰자 C · 부산</b><b>110만</b></div>
                     </div>
                     <div class="resize-handle resize-handle-se" id="resize-live-bidders" title="드래그로 크기 조절" style="border-color:#d9b05c;"></div>
                 </div>
