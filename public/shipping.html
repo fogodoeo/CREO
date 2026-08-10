@@ -2219,9 +2219,55 @@
             .wrapang-payment-actions { display: grid; grid-template-columns: 1fr 1fr; }
         }
 
-        body { padding-bottom: calc(72px + env(safe-area-inset-bottom)) !important; }
+        /* 배송 화면 최종 정리: 흰색·블랙·그레이와 단일 키컬러만 사용 */
+        :root {
+            --bg: #F4F4F5;
+            --bg-gradient: none;
+            --card: #FFFFFF;
+            --text-title: #18181B;
+            --text: #3F3F46;
+            --text-secondary: #71717A;
+            --accent: #2563EB;
+            --accent-hover: #1D4ED8;
+            --accent-light: #EFF6FF;
+            --border: #E4E4E7;
+            --radius: 14px;
+            --shadow: 0 1px 2px rgba(0,0,0,.035);
+            --shadow-md: 0 12px 32px rgba(0,0,0,.09);
+        }
+        body { padding-bottom: calc(72px + env(safe-area-inset-bottom)) !important; background:#F4F4F5; background-image:none; }
+        .card,.table-wrap,.registration-overview,#current-company-bar,.modal-content { border-color:#E4E4E7 !important; box-shadow:var(--shadow) !important; }
+        .winner-card,.registration-entry,.buyer-item-row,.buyer-form-detail { border-color:#E4E4E7 !important; background:#FFF !important; box-shadow:none !important; }
+        .winner-card:hover,.winner-card.is-selected { border-color:#A1A1AA !important; background:#FAFAFA !important; transform:none !important; box-shadow:none !important; }
+        .segmented-control { padding:4px; border:1px solid #E4E4E7; border-radius:12px; background:#F4F4F5; }
+        .segmented-btn { padding:10px 0; border-radius:9px; color:#71717A; }
+        .segmented-btn:hover { background:#FFF; color:#18181B; }
+        .segmented-btn.active { color:#FFF !important; background:var(--accent) !important; box-shadow:none !important; transform:none; }
+        .input-text,.control-group input,.form-group input,.form-group select { border-color:#D4D4D8 !important; border-radius:10px !important; background:#FFF !important; color:#18181B !important; box-shadow:none !important; }
+        .input-text:focus,.control-group input:focus,.form-group input:focus { border-color:var(--accent) !important; box-shadow:0 0 0 3px rgba(37,99,235,.10) !important; }
+        .modal-results-list { border-color:#E4E4E7 !important; background:#FAFAFA !important; }
+        .search-item { margin:4px; border-color:#E4E4E7; border-radius:9px; box-shadow:none; }
+        .search-item:hover { border-color:#A1A1AA !important; background:#FAFAFA !important; }
+        .search-item-region { padding:3px 6px; border-radius:5px; background:#F4F4F5; color:#52525B; }
+        .search-item-price { color:#18181B !important; }
+        .search-item-total { padding:0; border-radius:0; background:transparent; color:#71717A; }
+        .wrapang-payment-card { border-color:#D4D4D8; border-radius:10px; background:#FAFAFA; }
+        .wrapang-payment-head strong,.wrapang-payment-head b,.wrapang-account,.wrapang-payment-card p { color:#3F3F46; }
+        .shipping-breakdown,.editor-total-item { border-color:#E4E4E7; background:#FAFAFA; }
+        .editor-total-item.is-grand-total { background:#F4F4F5; }
+        .editor-total-item.is-grand-total span,#editor-summary-total,#b-summary-total { color:#18181B !important; }
+        #editor-summary-ship { color:#52525B !important; }
+        .registration-badge,.registration-badge.complete,.registration-badge.partial,.registration-badge.mismatch,.status-select.status-waiting,.status-select.status-contacted,.status-select.status-paid { border-color:#D4D4D8 !important; background:#F4F4F5 !important; color:#52525B !important; }
+        .action-icon-btn { border-color:#D4D4D8 !important; background:#FFF !important; color:#3F3F46 !important; box-shadow:none !important; filter:grayscale(1); }
+        .editor-action-footer { padding:12px 20px 16px; border-color:#E4E4E7; box-shadow:0 -6px 18px rgba(0,0,0,.035); }
+        .editor-footer-actions { display:grid; grid-template-columns:minmax(0,1fr) 96px; gap:8px; }
+        .editor-copy-action,.editor-save-action { display:flex; align-items:center; justify-content:center; height:44px; border-radius:10px; font-family:inherit; font-size:13px; font-weight:850; text-align:center; cursor:pointer; }
+        .editor-copy-action { border:1px solid #D4D4D8; background:#FFF; color:#3F3F46; }
+        .editor-copy-action:hover { border-color:#A1A1AA; background:#FAFAFA; }
+        .editor-save-action { border:1px solid var(--accent); background:var(--accent); color:#FFF; }
+        .editor-save-action:hover { background:var(--accent-hover); }
         .toast { bottom:58px; }
-        .app-bottom-nav { position:fixed; left:50%; bottom:max(2px,env(safe-area-inset-bottom)); z-index:1900; display:grid; grid-template-columns:repeat(4,1fr); gap:2px; width:min(410px,calc(100% - 8px)); height:50px; padding:3px; border:1px solid rgba(148,163,184,.34); border-radius:14px; background:rgba(248,250,252,.97); box-shadow:0 10px 30px rgba(15,23,42,.18); transform:translateX(-50%); backdrop-filter:blur(16px); }
+        .app-bottom-nav { position:fixed; left:50%; bottom:max(2px,env(safe-area-inset-bottom)); z-index:1900; display:grid; grid-template-columns:repeat(4,1fr); gap:2px; width:min(410px,calc(100% - 8px)); height:50px; padding:3px; border:1px solid #D4D4D8; border-radius:12px; background:rgba(255,255,255,.97); box-shadow:0 6px 20px rgba(0,0,0,.10); transform:translateX(-50%); backdrop-filter:blur(16px); }
         .app-bottom-nav a,.app-bottom-nav button { display:flex; align-items:center; justify-content:center; min-width:0; border:0; border-radius:10px; background:transparent; color:#64748B; font-family:inherit; font-size:10.5px; font-weight:850; text-decoration:none; white-space:nowrap; cursor:pointer; }
         .app-bottom-nav a.active { background:#2563EB; color:#fff; }
         .app-bottom-nav .utility { margin-left:2px; border-left:1px solid #D7DEE8; border-radius:0 10px 10px 0; color:#334155; }
@@ -2405,8 +2451,8 @@
                 <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
                     <div style="display: flex; align-items: center; gap: 12px;">
                         <!-- 프로필 아바타 -->
-                        <div style="width: 44px; height: 44px; border-radius: 50%; background: #EFF6FF; border: 1.5px solid #DBEAFE; display: flex; align-items: center; justify-content: center; font-size: 20px; color: var(--accent);">
-                            👤
+                        <div style="width: 44px; height: 44px; border-radius: 12px; background: #F4F4F5; border: 1px solid #E4E4E7; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 850; color: #52525B;">
+                            고객
                         </div>
                         <div>
                             <!-- 낙찰자명 -->
@@ -2416,11 +2462,10 @@
                         </div>
                     </div>
                     
-                    <!-- 통화, 전체 문자, 전체 안내문 복사 (우측 정렬) -->
+                    <!-- 빠른 연락 -->
                     <div style="display: flex; align-items: center; gap: 6px; margin-right: 24px;">
                         <a id="editor-info-call-btn" href="#" class="action-icon-btn" title="전화걸기" aria-label="전화걸기" style="width: 40px; height: 40px; font-size: 17px; border-radius: 50%; background: #EFF6FF; border: 1.5px solid #DBEAFE; color: var(--accent); display: flex; align-items: center; justify-content: center; text-decoration: none;">📞</a>
                         <a id="editor-info-sms-btn" href="#" class="action-icon-btn" title="전체 안내 문자 보내기" aria-label="전체 안내 문자 보내기" style="width: 40px; height: 40px; font-size: 17px; border-radius: 50%; background: #F0FDF4; border: 1.5px solid #BBE6CB; color: #15803D; display: flex; align-items: center; justify-content: center; text-decoration: none;">💬</a>
-                        <button id="editor-info-copy-btn" type="button" title="전체 안내문 복사" aria-label="전체 안내문 복사" style="width: 40px; height: 40px; border-radius: 50%; background: #172033; border: 0; color: #fff; font-size: 17px; cursor: pointer; display:flex; align-items:center; justify-content:center;">📋</button>
                     </div>
                 </div>
 
@@ -2507,7 +2552,10 @@
                         <strong id="editor-summary-total">0원</strong>
                     </div>
                 </div>
-                <button class="btn btn-full" style="padding: 14px 0;" onclick="saveWinnerEditor()">저장 및 적용 완료</button>
+                <div class="editor-footer-actions">
+                    <button class="editor-copy-action" id="editor-info-copy-btn" type="button">문구 복사</button>
+                    <button class="editor-save-action" type="button" onclick="saveWinnerEditor()">저장</button>
+                </div>
             </div>
         </div>
     </div>
@@ -4711,7 +4759,6 @@ ${wrapangDuplicateNote}`;
                             </div>
                             <div class="search-item-price-block">
                                 <div class="search-item-price" style="font-size: 13px;">${h.cost.toLocaleString()}원</div>
-                                ${h.company === '랩팡' ? '<div class="search-item-total">CREO 30% 할인 적용</div>' : ''}
                                 ${itemCount > 1 ? `<div class="search-item-total">총 ${itemCount}개체 · ${finalCost.toLocaleString()}원</div>` : ''}
                             </div>
                         </div>
