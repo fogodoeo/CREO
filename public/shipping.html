@@ -2252,16 +2252,33 @@
         .search-item-price { color:#18181B !important; }
         .search-item-total { padding:0; border-radius:0; background:transparent; color:#71717A; }
         .modal-results-list { max-height:min(46vh,420px) !important; }
-        .search-item.hub-result { display:block !important; width:calc(100% - 8px); padding:11px 12px !important; }
+        .search-item.hub-result { display:block !important; width:100%; margin:0 0 5px; padding:11px 12px !important; }
+        .search-item.hub-result:last-child { margin-bottom:0; }
         .hub-result-head { display:flex; align-items:center; gap:7px; width:100%; min-width:0; white-space:nowrap; }
-        .hub-result-badges { display:flex; align-items:center; gap:5px; min-width:0; overflow:hidden; }
-        .hub-result-badges .search-item-region { flex:0 1 auto; max-width:46%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .hub-result-badges { display:flex; flex:1 1 auto; align-items:center; gap:5px; min-width:0; overflow:hidden; }
+        .hub-result-badges .search-item-region { flex:0 0 auto; max-width:none; overflow:visible; text-overflow:clip; white-space:nowrap; }
         .hub-result-badges .hub-result-company { flex:0 0 auto; max-width:none; overflow:visible; color:var(--accent) !important; background:var(--accent-light) !important; text-overflow:clip; white-space:nowrap; }
         .hub-result-price { flex:0 0 auto; margin-left:auto; color:#18181B; font-size:13px; font-weight:900; white-space:nowrap; }
         .hub-result-shop { display:-webkit-box; margin-top:8px; overflow:hidden; color:#27272A; font-size:13.5px; font-weight:750; line-height:1.42; -webkit-box-orient:vertical; -webkit-line-clamp:2; }
         .hub-result-meta { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:5px; color:#71717A; font-size:10.5px; line-height:1.35; }
         .hub-result-schedule { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         .nearby-result { opacity:.82; }
+        @media (max-width:820px) {
+            #winner-edit-modal .modal-body { width:100%; padding:14px 8px 18px !important; }
+            #winner-edit-modal .modal-body > * { width:100%; min-width:0; }
+            #editor-shipping-details,
+            #editor-hub-select-wrap,
+            #editor-custom-wrap,
+            #editor-pickup-wrap,
+            #editor-shipping-breakdown,
+            #editor-wrapang-payment-card,
+            #winner-edit-modal .modal-body > .form-group { width:100%; min-width:0; }
+            #editor-hub-results { width:100%; padding:4px !important; scroll-margin-top:66px; }
+            #editor-hub-search { width:100%; min-height:48px; background:#FFF !important; }
+            body.hub-search-active #editor-hub-select-wrap { padding-top:56px; }
+            body.hub-search-active::before { content:""; position:fixed; inset:0 0 auto; z-index:1949; height:64px; pointer-events:none; background:#F4F4F5; }
+            body.hub-search-active #editor-hub-search { position:fixed; top:max(8px,env(safe-area-inset-top)); left:12px; right:12px; z-index:1950; width:auto; box-shadow:0 6px 18px rgba(24,24,27,.14) !important; }
+        }
         .wrapang-payment-card { border-color:#D4D4D8; border-radius:10px; background:#FAFAFA; }
         .wrapang-payment-head strong,.wrapang-payment-head b,.wrapang-account,.wrapang-payment-card p { color:#3F3F46; }
         .shipping-breakdown,.editor-total-item { border-color:#E4E4E7; background:#FAFAFA; }
@@ -3908,8 +3925,26 @@ ${wrapangDuplicateNote}`;
             const workspace = document.querySelector('.admin-workspace');
             if (workspace) workspace.classList.remove('is-editing');
             document.body.classList.remove('editor-open');
+            document.body.classList.remove('hub-search-active');
             document.querySelectorAll('.winner-card').forEach(card => card.classList.remove('is-selected'));
             activeEditorWinner = null;
+        }
+
+        function handleEditorHubSearchInput(input) {
+            filterEmbeddedHubs('editor');
+            const hasQuery = Boolean(input && input.value.trim());
+            document.body.classList.toggle('hub-search-active', hasQuery);
+            if (!input) return;
+            if (!hasQuery) {
+                delete input.dataset.searchPositioned;
+                return;
+            }
+            if (input.dataset.searchPositioned === 'true') return;
+            input.dataset.searchPositioned = 'true';
+            requestAnimationFrame(() => {
+                const results = document.getElementById('editor-hub-results');
+                if (results) results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
         }
 
         function setEditorShippingType(companyKey, isInit = false) {
@@ -3922,6 +3957,11 @@ ${wrapangDuplicateNote}`;
             const shippingDetails = document.getElementById('editor-shipping-details');
             const hasDetails = Boolean(companyKey && companyKey !== '미설정');
             if (shippingDetails) shippingDetails.classList.toggle('has-details', hasDetails);
+            if (companyKey !== '업체 배송') {
+                document.body.classList.remove('hub-search-active');
+                const editorHubSearch = document.getElementById('editor-hub-search');
+                if (editorHubSearch) delete editorHubSearch.dataset.searchPositioned;
+            }
 
             if (!companyKey || companyKey === '미설정') {
                 customWrap.style.display = 'none';
@@ -5114,7 +5154,7 @@ ${wrapangDuplicateNote}`;
             // Bind admin embedded search input
             const editorHubSearch = document.getElementById('editor-hub-search');
             if (editorHubSearch) {
-                editorHubSearch.addEventListener('input', () => filterEmbeddedHubs('editor'));
+                editorHubSearch.addEventListener('input', () => handleEditorHubSearchInput(editorHubSearch));
             }
             // Bind buyer embedded search input
             const buyerHubSearch = document.getElementById('buyer-hub-search');
