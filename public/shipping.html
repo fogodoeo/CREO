@@ -7,6 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>CREO - 배송/수령 정보 등록</title>
+    <script src="platform-client.js?v=20260803-admin-session-v2"></script>
     <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
     <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard-dynamic-subset.css" />
     <style>
@@ -2244,7 +2245,7 @@
             <!-- 현재 선택된 출품업체 표시 바 -->
             <div id="current-company-bar" style="display: flex; align-items: center; background: #FFFFFF; border: 1.5px solid var(--border); border-radius: 14px; padding: 14px 20px; margin-bottom: 20px; box-shadow: var(--shadow);">
                 <div>
-                    <span style="font-size: 12px; color: var(--text-secondary); font-weight: 600; display: block; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.5px;">배송관리</span>
+                    <span id="shipping-channel-label" style="font-size: 12px; color: var(--text-secondary); font-weight: 600; display: block; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.5px;">배송관리</span>
                     <strong id="current-company-name" style="font-size: 18px; font-weight: 850; color: var(--text-title);">선택 필요</strong>
                 </div>
             </div>
@@ -2253,7 +2254,7 @@
             <div id="company-select-modal" class="modal-overlay" onclick="if(event.target===this) closeCompanySelectModal()" style="display: none; align-items: center; justify-content: center; z-index: 2000; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px);">
                 <button type="button" aria-label="업체 선택 취소" onclick="closeCompanySelectModal()" style="position:absolute;left:0;right:0;top:0;height:5vh;border:0;background:transparent;cursor:default;"></button>
                 <div class="modal-content" style="position:relative;z-index:1;max-width: 680px; width: 90%; padding: 32px; border-radius: 24px; background: #FFFFFF; box-shadow: var(--shadow-md); display: flex; flex-direction: column; max-height: 90vh;">
-                    <h3 style="font-size: 22px; font-weight: 850; margin-bottom: 8px; color: var(--text-title); text-align: center; margin-top: 0;">배송관리</h3>
+                    <h3 id="shipping-company-dialog-title" style="font-size: 22px; font-weight: 850; margin-bottom: 8px; color: var(--text-title); text-align: center; margin-top: 0;">배송관리</h3>
                     <a href="ranking.html" style="align-self:center;margin-bottom:18px;color:var(--accent);font-size:13px;font-weight:800;text-decoration:none;">종합 순위표 보기</a>
                     <div id="modal-company-list" class="company-select-grid" style="flex: 1; overflow-y: auto;">
                         <!-- 동적 로딩 -->
@@ -2525,6 +2526,105 @@
     </div>
 
     <script>
+        const SHIPPING_CHANNEL_ID = String(new URLSearchParams(window.location.search).get('channel') || 'cdcup')
+            .toLowerCase().replace(/[^a-z0-9-]/g, '') || 'cdcup';
+        const SHIPPING_USES_LEGACY_ITEMS = SHIPPING_CHANNEL_ID === 'cdcup';
+        const SHIPPING_COMPANY_STORAGE_KEY = `creo_shipping_company_${SHIPPING_CHANNEL_ID}`;
+        let platformShippingWorkspace = null;
+
+        function platformShipmentLegacyStatus(shipment) {
+            if (shipment?.status === 'complete') return '낙찰-입금완료';
+            if (shipment?.status === 'ready' || shipment?.status === 'shipped') return '낙찰-연락완료';
+            return '낙찰-대기';
+        }
+
+        function mapPlatformShippingItems(workspace) {
+            const vendors = new Map((workspace.vendors || []).map(vendor => [vendor.id, vendor]));
+            const shipments = new Map((workspace.shipments || []).map(shipment => [shipment.itemId, shipment]));
+            return (workspace.items || [])
+                .filter(item => item.status === 'sold' || Number(item.soldPrice) > 0)
+                .map(item => {
+                    const shipment = shipments.get(item.id);
+                    const vendorName = vendors.get(item.vendorId)?.name || item.vendorName || '';
+                    const soldPriceWon = Number(item.soldPrice) || 0;
+                    return {
+                        ...item,
+                        row: item.id,
+                        num: item.lotNumber,
+                        company: vendorName,
+                        name: item.name || '개체',
+                        winner: item.winnerName || item.winnerAlias || '',
+                        winner_phone: item.winnerPhone || '',
+                        sold_price: soldPriceWon / 10000,
+                        soldPrice: soldPriceWon / 10000,
+                        status: platformShipmentLegacyStatus(shipment),
+                        shipping_type: shipment ? (shipment.method === 'pickup' ? '직접수령' : '배송') : '',
+                        shipping_company: shipment?.carrier || '',
+                        shipping_region: shipment?.address || '',
+                        shipping_cost: Number(shipment?.cost) || 0,
+                        _platformItemId: item.id,
+                        _platformShipmentId: shipment?.id || ''
+                    };
+                });
+        }
+
+        async function loadShippingItems() {
+            if (SHIPPING_USES_LEGACY_ITEMS) return getItems();
+            platformShippingWorkspace = await CreoPlatform.api(`channels/${encodeURIComponent(SHIPPING_CHANNEL_ID)}/workspace`);
+            return mapPlatformShippingItems(platformShippingWorkspace);
+        }
+
+        async function saveShippingItem(row, shippingData, auditMeta = {}) {
+            if (SHIPPING_USES_LEGACY_ITEMS) return updateItemShipping(row, shippingData, auditMeta);
+            if (!platformShippingWorkspace) await loadShippingItems();
+            const item = (platformShippingWorkspace.items || []).find(entry => entry.id === row);
+            if (!item) throw new Error('이 채널에서 낙찰 개체를 찾을 수 없습니다.');
+            const vendor = (platformShippingWorkspace.vendors || []).find(entry => entry.id === item.vendorId);
+            const current = (platformShippingWorkspace.shipments || []).find(entry => entry.itemId === item.id);
+            const pickup = shippingData.shipping_type === '직접수령';
+            const record = {
+                ...(current || {}),
+                itemId: item.id,
+                itemName: item.name || '',
+                itemLotNumber: Number(item.lotNumber) || 0,
+                itemVendorName: vendor?.name || item.vendorName || '',
+                vendorId: item.vendorId || '',
+                recipientName: item.winnerName || item.winnerAlias || '',
+                recipientPhone: item.winnerPhone || '',
+                method: pickup ? 'pickup' : 'delivery',
+                address: pickup ? '' : (shippingData.shipping_region || ''),
+                carrier: pickup ? '' : (shippingData.shipping_company || ''),
+                cost: pickup ? 0 : (Number(shippingData.shipping_cost) || 0),
+                status: current?.status || 'pending',
+                note: current?.note || ''
+            };
+            const path = `channels/${encodeURIComponent(SHIPPING_CHANNEL_ID)}/shipments${current ? '/' + encodeURIComponent(current.id) : ''}`;
+            const result = await CreoPlatform.api(path, {
+                method: current ? 'PUT' : 'POST',
+                body: JSON.stringify({ record })
+            });
+            const saved = result.record;
+            if (current) {
+                platformShippingWorkspace.shipments = platformShippingWorkspace.shipments.map(entry => entry.id === saved.id ? saved : entry);
+            } else {
+                platformShippingWorkspace.shipments.push(saved);
+            }
+            return { success: true, data: saved };
+        }
+
+        function syncShippingChannelUi() {
+            const label = SHIPPING_CHANNEL_ID.toUpperCase();
+            const channelLabel = document.getElementById('shipping-channel-label');
+            const dialogTitle = document.getElementById('shipping-company-dialog-title');
+            if (channelLabel) channelLabel.textContent = `${label} 배송관리`;
+            if (dialogTitle) dialogTitle.textContent = `${label} 배송관리`;
+            document.querySelectorAll('.app-bottom-nav a').forEach(link => {
+                const url = new URL(link.getAttribute('href'), window.location.href);
+                url.searchParams.set('channel', SHIPPING_CHANNEL_ID);
+                link.href = url.pathname + url.search;
+            });
+        }
+
         // 거점 가격표 데이터베이스
         const WRAPANG_DISCOUNT_RATE = 0.7;
         const WRAPANG_PAYMENT_ACCOUNT = { bank: '국민은행', number: '645901-04-465911', holder: '이시안' };
@@ -2737,6 +2837,7 @@ ${wrapangDuplicateNote}`;
 
         // 초기화 로딩
         window.addEventListener('DOMContentLoaded', async () => {
+            syncShippingChannelUi();
             showLoading(true, '데이터를 불러오는 중...');
             try {
                 console.log('[INIT] Step 1: Loading dodosi...');
@@ -2804,7 +2905,7 @@ ${wrapangDuplicateNote}`;
                 }
 
                 console.log('[INIT] Step 4: Loading items...');
-                const items = await getItems();
+                const items = await loadShippingItems();
                 allItems = (items || []).filter(it => it.status && it.status.indexOf('낙찰') >= 0);
                 console.log('[INIT] Step 5: Got', allItems.length, 'items, isAdminMode:', isAdminMode);
 
@@ -2813,7 +2914,7 @@ ${wrapangDuplicateNote}`;
                     uniqueSellerCompanies = [...new Set(companies)].sort();
                     console.log('[INIT] Step 6: Companies:', uniqueSellerCompanies);
                     
-                    const savedCompany = localStorage.getItem('cdc_active_seller_company');
+                    const savedCompany = localStorage.getItem(SHIPPING_COMPANY_STORAGE_KEY);
                     const forceCompanySelect = new URLSearchParams(window.location.search).get('changeCompany') === '1';
                     populateCompanySelect();
                     
@@ -2850,7 +2951,7 @@ ${wrapangDuplicateNote}`;
                 return;
             }
 
-            const savedCompany = localStorage.getItem('cdc_active_seller_company');
+            const savedCompany = localStorage.getItem(SHIPPING_COMPANY_STORAGE_KEY);
             if (savedCompany && uniqueSellerCompanies.includes(savedCompany)) {
                 activeSellerCompany = savedCompany;
             }
@@ -2891,7 +2992,7 @@ ${wrapangDuplicateNote}`;
         function confirmCompanySelection() {
             if (!tempSelectedCompany) return;
             activeSellerCompany = tempSelectedCompany;
-            localStorage.setItem('cdc_active_seller_company', activeSellerCompany);
+            localStorage.setItem(SHIPPING_COMPANY_STORAGE_KEY, activeSellerCompany);
             closeCompanySelectModal();
             updateCurrentCompanyBar();
             renderGrid();
@@ -2899,7 +3000,7 @@ ${wrapangDuplicateNote}`;
 
         function selectSellerCompany(co) {
             activeSellerCompany = co;
-            localStorage.setItem('cdc_active_seller_company', co);
+            localStorage.setItem(SHIPPING_COMPANY_STORAGE_KEY, co);
             closeCompanySelectModal();
             updateCurrentCompanyBar();
             renderGrid();
@@ -3265,7 +3366,7 @@ ${wrapangDuplicateNote}`;
             const originalText = button ? button.textContent : '';
             if (button) { button.disabled = true; button.textContent = '갱신 중...'; }
             try {
-                const items = await getItems();
+                const items = await loadShippingItems();
                 allItems = (items || []).filter(item => item.status && item.status.indexOf('낙찰') >= 0);
                 renderRegistrationOverview();
                 showToast('전체 등록 현황을 갱신했습니다.');
@@ -4018,7 +4119,7 @@ ${wrapangDuplicateNote}`;
                             : ((idx === 0) ? (shippingAllocations[co] || 0) : 0);
                         if (isWrapangCentralPayment && !wrapangTotalAssigned) wrapangTotalAssigned = true;
                         promises.push(
-                            updateItemShipping(it.row, {
+                            saveShippingItem(it.row, {
                                 shipping_type: type,
                                 shipping_company: company,
                                 shipping_region: region,
@@ -4033,7 +4134,7 @@ ${wrapangDuplicateNote}`;
                 closeWinnerEditor();
                 showToast(`${winnerName}님의 배송 정보가 저장되었습니다!`);
 
-                const items = await getItems();
+                const items = await loadShippingItems();
                 allItems = (items || []).filter(it => it.status && it.status.indexOf('낙찰') >= 0);
                 renderGrid();
             } catch (err) {
@@ -4828,7 +4929,7 @@ ${wrapangDuplicateNote}`;
                             } else if (idx === 0) shipping_cost = shippingAllocations[co] || 0;
                         }
 
-                        await updateItemShipping(it.row, {
+                        await saveShippingItem(it.row, {
                             shipping_type,
                             shipping_company,
                             shipping_region,

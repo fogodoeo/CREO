@@ -118,7 +118,7 @@
             z-index: 19;
             display: none;
             width: var(--p2-bidders-width, min(360px, 29vw));
-            max-height: var(--p2-bidders-height, 76vh);
+            height: var(--p2-bidders-height, 42vh);
             overflow: hidden;
             color: #f8fafc;
             font-family: 'Pretendard', sans-serif;
@@ -4735,7 +4735,7 @@
                 '--p2-bidders-right': normalizeCssLength(cfg.p2_live_bidders_right) || 'auto',
                 '--p2-bidders-bottom': normalizeCssLength(cfg.p2_live_bidders_bottom) || 'auto',
                 '--p2-bidders-width': normalizeCssLength(cfg.p2_live_bidders_width) || '29vw',
-                '--p2-bidders-height': normalizeCssLength(cfg.p2_live_bidders_height) || '76vh'
+                '--p2-bidders-height': normalizeCssLength(cfg.p2_live_bidders_height) || '42vh'
             };
             Object.entries(values).forEach(([key, value]) => panel.style.setProperty(key, value));
             const fontSize = Math.max(10, Math.min(48, parseInt(cfg.p2_live_bidders_font_size || '20', 10) || 20));

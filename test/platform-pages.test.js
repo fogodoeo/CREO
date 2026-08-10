@@ -184,15 +184,22 @@ test('established CDCUP registration, list, print, and round archive remain inta
 test('new CDCUP overlays and shipping retain compatibility with the established item list', () => {
     const live = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-live.html'), 'utf8');
     const control = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-control.html'), 'utf8');
-    const shipping = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-shipping.html'), 'utf8');
-    for (const source of [live, control, shipping]) {
+    const channelShipping = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-shipping.html'), 'utf8');
+    const shipping = fs.readFileSync(path.join(__dirname, '..', 'public', 'shipping.html'), 'utf8');
+    for (const source of [live, control]) {
         assert.match(source, /getBroadcastItemsCached/);
         assert.match(source, /channelId==='cdcup'/);
     }
-    assert.match(shipping, /itemLotNumber/);
-    assert.match(shipping, /itemVendorName/);
-    assert.doesNotMatch(shipping, /<a\b|id="channel-select"|id="manage-link"|id="control-link"/);
-    assert.match(shipping, /CreoPlatform\.api\(`channels\/\$\{encodeURIComponent\(q\)\}`\)/);
+    assert.match(channelShipping, /location\.replace\(target\.pathname\+target\.search\)/);
+    assert.match(channelShipping, /shipping\.html/);
+    assert.doesNotMatch(channelShipping, /<a\b|id="channel-select"|id="manage-link"|id="control-link"/);
+    assert.match(shipping, /SHIPPING_CHANNEL_ID/);
+    assert.match(shipping, /SHIPPING_USES_LEGACY_ITEMS/);
+    assert.match(shipping, /if \(SHIPPING_USES_LEGACY_ITEMS\) return getItems\(\)/);
+    assert.match(shipping, /mapPlatformShippingItems/);
+    assert.match(shipping, /channels\/\$\{encodeURIComponent\(SHIPPING_CHANNEL_ID\)\}\/workspace/);
+    assert.match(shipping, /saveShippingItem/);
+    assert.match(shipping, /SHIPPING_COMPANY_STORAGE_KEY/);
 });
 
 test('round archives stay available without being duplicated inside broadcast management', () => {
@@ -267,6 +274,9 @@ test('CDCUP three-round format assigns round-two teams and round-three finalists
     assert.match(broadcast, /Math\.max\(26, Number\(cfg\.scoreboard_label_fontsize\) \+ 4\)/);
     assert.doesNotMatch(broadcast, /<div class="p2-live-bidders-head">/);
     assert.match(broadcast, /function applyPage2LiveBiddersPlacement\(cfg\)/);
+    assert.match(broadcast, /height: var\(--p2-bidders-height, 42vh\)/);
+    assert.doesNotMatch(broadcast, /max-height: var\(--p2-bidders-height/);
+    assert.match(broadcast, /'--p2-bidders-height': normalizeCssLength\(cfg\.p2_live_bidders_height\) \|\| '42vh'/);
     assert.match(preview, /id="draggable-live-bidders"/);
     assert.match(preview, /id="live-bidders-font-input"/);
     assert.match(preview, /configMap\.p2_live_bidders_font_size/);
