@@ -1470,7 +1470,7 @@ async function getRuntimeConfigMap(force = false) {
         }
         if (!needsFull) return _runtimeConfigCache;
 
-        const rows = await _sbFetch('config?select=key,value&and=(key.neq.admin_pw,key.not.like.shipping_log_*,key.not.like.auction_archive_*)');
+        const rows = await _sbFetch('config?select=key,value&and=(key.neq.admin_pw,key.not.like.shipping_log_*,key.not.like.shipping_rate_*,key.not.like.auction_archive_*)');
         const map = {};
         (rows || []).forEach(row => { map[row.key] = row.value; });
         _runtimeConfigCache = _mergeCrewartSurveyEntries(map);
@@ -1832,8 +1832,40 @@ async function getParents() {
 /**
  * 도도시 가격표 데이터 조회
  */
+const SHIPPING_RATE_CONFIG_KEYS = Object.freeze({
+    '도도시': 'shipping_rate_dodosi',
+    '파르게': 'shipping_rate_parge',
+    '랩팡': 'shipping_rate_wrapang'
+});
+
+async function _getShippingRateOverride(company) {
+    const key = SHIPPING_RATE_CONFIG_KEYS[company];
+    if (!key) return null;
+    const rows = await _sbFetch(`config?key=eq.${encodeURIComponent(key)}&select=value&limit=1`);
+    if (!rows || !rows[0] || !rows[0].value) return null;
+    try {
+        const parsed = JSON.parse(rows[0].value);
+        return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch (error) {
+        console.warn(`[SB] ${company} 배송표 override parse failed:`, error);
+        return null;
+    }
+}
+
+async function saveShippingRateData(company, payload) {
+    const key = SHIPPING_RATE_CONFIG_KEYS[company];
+    if (!key) throw new Error('지원하지 않는 배송사입니다.');
+    const data = payload && typeof payload === 'object' ? payload : {};
+    await updateConfigs({ [key]: JSON.stringify(data) });
+    return { success: true, updated: data.updated || '' };
+}
+
 async function getDodosiData() {
     try {
+        const override = await _getShippingRateOverride('도도시');
+        if (override && Array.isArray(override.items)) {
+            return { success: true, data: override.items, updated: override.updated || '', source: 'excel' };
+        }
         const resp = await fetch('dodosi_data.json');
         if (!resp.ok) throw new Error('dodosi_data.json 로드 실패');
         const data = await resp.json();
@@ -1849,6 +1881,10 @@ async function getDodosiData() {
  */
 async function getPargeData() {
     try {
+        const override = await _getShippingRateOverride('파르게');
+        if (override && override.data && typeof override.data === 'object') {
+            return { success: true, data: override.data, updated: override.updated || '', source: 'excel' };
+        }
         const resp = await fetch('parge_data.json');
         if (!resp.ok) throw new Error('parge_data.json 로드 실패');
         const data = await resp.json();
@@ -1864,6 +1900,10 @@ async function getPargeData() {
  */
 async function getWrapangData() {
     try {
+        const override = await _getShippingRateOverride('랩팡');
+        if (override && override.data && typeof override.data === 'object') {
+            return { success: true, data: override.data, updated: override.updated || '', source: 'excel' };
+        }
         const resp = await fetch('wrapang_data.json');
         if (!resp.ok) throw new Error('wrapang_data.json 로드 실패');
         const data = await resp.json();

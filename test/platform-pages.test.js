@@ -14,6 +14,7 @@ const PAGES = [
     'broadcast-studio.html',
     'auction-live.html',
     'channel-shipping.html',
+    'shipping-rates.html',
     'broadcast-router.html',
     'broadcast.html',
     'crewart-broadcast.html'

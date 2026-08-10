@@ -1967,43 +1967,6 @@
             border: 1.5px solid #FFEDD5;
         }
 
-        /* 배송사 선택을 이름만 나열하는 탭 대신 용도가 보이는 정보 카드로 표시 */
-        .buyer-shipping-options {
-            grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
-            gap: 9px;
-        }
-        .buyer-option-btn,
-        .segmented-btn {
-            display: flex;
-            min-height: 64px;
-            flex-direction: column;
-            align-items: flex-start;
-            justify-content: center;
-            gap: 4px;
-            padding: 11px 13px;
-            text-align: left;
-        }
-        .segmented-control {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 8px;
-            padding: 0;
-            border: 0;
-            background: transparent;
-        }
-        .shipping-choice-title { color: inherit; font-size: 14px; font-weight: 900; line-height: 1.15; }
-        .shipping-choice-desc { color: #8A96A8; font-size: 10.5px; font-weight: 700; line-height: 1.35; }
-        .buyer-option-btn.active .shipping-choice-desc,
-        .segmented-btn.active .shipping-choice-desc { color: rgba(255,255,255,.82); }
-        .buyer-option-btn.active .shipping-choice-desc { color: #4F6F9F; }
-        @media (max-width: 520px) {
-            .buyer-shipping-options,
-            .segmented-control { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-            .buyer-option-btn:first-child { grid-column: auto; }
-            .buyer-option-btn,
-            .segmented-btn { min-height: 60px; padding: 10px 11px; }
-        }
-
 
 
 
@@ -2266,7 +2229,7 @@
 
         body { padding-bottom: calc(72px + env(safe-area-inset-bottom)) !important; }
         .toast { bottom:58px; }
-        .app-bottom-nav { position:fixed; left:50%; bottom:max(2px,env(safe-area-inset-bottom)); z-index:1900; display:grid; grid-template-columns:repeat(3,1fr); gap:2px; width:min(330px,calc(100% - 8px)); height:50px; padding:3px; border:1px solid rgba(148,163,184,.34); border-radius:14px; background:rgba(248,250,252,.97); box-shadow:0 10px 30px rgba(15,23,42,.18); transform:translateX(-50%); backdrop-filter:blur(16px); }
+        .app-bottom-nav { position:fixed; left:50%; bottom:max(2px,env(safe-area-inset-bottom)); z-index:1900; display:grid; grid-template-columns:repeat(4,1fr); gap:2px; width:min(410px,calc(100% - 8px)); height:50px; padding:3px; border:1px solid rgba(148,163,184,.34); border-radius:14px; background:rgba(248,250,252,.97); box-shadow:0 10px 30px rgba(15,23,42,.18); transform:translateX(-50%); backdrop-filter:blur(16px); }
         .app-bottom-nav a,.app-bottom-nav button { display:flex; align-items:center; justify-content:center; min-width:0; border:0; border-radius:10px; background:transparent; color:#64748B; font-family:inherit; font-size:10.5px; font-weight:850; text-decoration:none; white-space:nowrap; cursor:pointer; }
         .app-bottom-nav a.active { background:#2563EB; color:#fff; }
         .app-bottom-nav .utility { margin-left:2px; border-left:1px solid #D7DEE8; border-radius:0 10px 10px 0; color:#334155; }
@@ -2359,11 +2322,11 @@
 
                 <div style="font-size: 13px; font-weight: 700; color: var(--text-title); margin-bottom: 6px;">수령 방법 선택</div>
                 <div class="buyer-shipping-options">
-                    <button type="button" class="buyer-option-btn" id="b-opt-pickup" onclick="setBuyerShippingType('픽업')"><span class="shipping-choice-title">직접 픽업</span><span class="shipping-choice-desc">현장 수령 · 배송비 없음</span></button>
-                    <button type="button" class="buyer-option-btn" id="b-opt-dodosi" onclick="setBuyerShippingType('도도시')"><span class="shipping-choice-title">도도시</span><span class="shipping-choice-desc">전국 거점 · 노선별 요금</span></button>
-                    <button type="button" class="buyer-option-btn" id="b-opt-parge" onclick="setBuyerShippingType('파르게')"><span class="shipping-choice-title">파르게</span><span class="shipping-choice-desc">수도권·지방 거점 수령</span></button>
-                    <button type="button" class="buyer-option-btn" id="b-opt-wrapang" onclick="setBuyerShippingType('랩팡')"><span class="shipping-choice-title">랩팡 합배송</span><span class="shipping-choice-desc">배송비 30% 할인 · 1회 입금</span></button>
-                    <button type="button" class="buyer-option-btn" id="b-opt-custom" onclick="setBuyerShippingType('기타')"><span class="shipping-choice-title">기타 배송</span><span class="shipping-choice-desc">배송사·주소 직접 입력</span></button>
+                    <button type="button" class="buyer-option-btn" id="b-opt-pickup" onclick="setBuyerShippingType('픽업')">픽업</button>
+                    <button type="button" class="buyer-option-btn" id="b-opt-dodosi" onclick="setBuyerShippingType('도도시')">도도시</button>
+                    <button type="button" class="buyer-option-btn" id="b-opt-parge" onclick="setBuyerShippingType('파르게')">파르게</button>
+                    <button type="button" class="buyer-option-btn" id="b-opt-wrapang" onclick="setBuyerShippingType('랩팡')">랩팡</button>
+                    <button type="button" class="buyer-option-btn" id="b-opt-custom" onclick="setBuyerShippingType('기타')">기타</button>
                 </div>
 
                 <!-- 배송 세부 정보 -->
@@ -2429,6 +2392,7 @@
     <nav class="app-bottom-nav" aria-label="CREO 공통 페이지 이동">
         <a class="active" href="shipping.html" aria-current="page">배송관리</a>
         <a href="shipping-status.html">전체조회</a>
+        <a href="shipping-rates.html">요금표</a>
         <button class="utility" type="button" onclick="openCompanySelectModal()">업체변경</button>
     </nav>
 
@@ -2491,11 +2455,11 @@
                     <span style="color: #2563EB; font-size: 10px;">●</span> 배송 및 수령 방식
                 </div>
                 <div class="segmented-control" aria-label="배송 방식">
-                    <button type="button" class="segmented-btn" id="seg-pickup" onclick="setEditorShippingType('픽업')"><span class="shipping-choice-title">직접 픽업</span><span class="shipping-choice-desc">현장 수령 · 0원</span></button>
-                    <button type="button" class="segmented-btn" id="seg-dodosi" onclick="setEditorShippingType('도도시')"><span class="shipping-choice-title">도도시</span><span class="shipping-choice-desc">전국 거점 · 노선별 요금</span></button>
-                    <button type="button" class="segmented-btn" id="seg-parge" onclick="setEditorShippingType('파르게')"><span class="shipping-choice-title">파르게</span><span class="shipping-choice-desc">수도권·지방 거점</span></button>
-                    <button type="button" class="segmented-btn" id="seg-wrapang" onclick="setEditorShippingType('랩팡')"><span class="shipping-choice-title">랩팡 합배송</span><span class="shipping-choice-desc">30% 할인 · 배송비 별도</span></button>
-                    <button type="button" class="segmented-btn" id="seg-custom" onclick="setEditorShippingType('기타')"><span class="shipping-choice-title">기타 배송</span><span class="shipping-choice-desc">배송사·주소 직접 입력</span></button>
+                    <button type="button" class="segmented-btn" id="seg-pickup" onclick="setEditorShippingType('픽업')">픽업</button>
+                    <button type="button" class="segmented-btn" id="seg-dodosi" onclick="setEditorShippingType('도도시')">도도시</button>
+                    <button type="button" class="segmented-btn" id="seg-parge" onclick="setEditorShippingType('파르게')">파르게</button>
+                    <button type="button" class="segmented-btn" id="seg-wrapang" onclick="setEditorShippingType('랩팡')">랩팡</button>
+                    <button type="button" class="segmented-btn" id="seg-custom" onclick="setEditorShippingType('기타')">기타</button>
                 </div>
 
                 <!-- 세부 배송지 정보 입력 영역 -->
