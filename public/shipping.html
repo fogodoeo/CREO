@@ -2528,6 +2528,9 @@
     <script>
         const SHIPPING_CHANNEL_ID = String(new URLSearchParams(window.location.search).get('channel') || 'cdcup')
             .toLowerCase().replace(/[^a-z0-9-]/g, '') || 'cdcup';
+        document.querySelectorAll('a[href="shipping-rates.html"]').forEach(link => {
+            link.href = `shipping-rates.html?channel=${encodeURIComponent(SHIPPING_CHANNEL_ID)}`;
+        });
         const SHIPPING_USES_LEGACY_ITEMS = SHIPPING_CHANNEL_ID === 'cdcup';
         const SHIPPING_COMPANY_STORAGE_KEY = `creo_shipping_company_${SHIPPING_CHANNEL_ID}`;
         let platformShippingWorkspace = null;

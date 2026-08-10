@@ -1,6 +1,7 @@
 'use strict';
 
 const crypto = require('node:crypto');
+const { refreshShippingRate } = require('./shipping-rate-refresh');
 
 const {
     DEFAULT_CHANNELS,
@@ -411,6 +412,13 @@ function createPlatformApi({ repository, logger = console } = {}) {
 
             if (segments.length === 1 && segments[0] === 'admin-check' && method === 'GET') {
                 replyJson(res, 200, { authenticated: await isAdmin(req) });
+                return true;
+            }
+
+            if (segments.length === 2 && segments[0] === 'shipping-rates' && segments[1] === 'refresh' && method === 'POST') {
+                if (!await requireAdmin(req, res)) return true;
+                const body = await readJson(req);
+                replyJson(res, 200, await refreshShippingRate(cleanText(body.company), { force: body.force === true }));
                 return true;
             }
 
