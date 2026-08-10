@@ -111,11 +111,15 @@
         #p2-live-bidders-overlay {
             --p2-bid-fs: clamp(12px, 1.15vw, 20px);
             position: absolute;
-            top: 13%;
-            left: 2%;
+            top: var(--p2-bidders-top, 13%);
+            left: var(--p2-bidders-left, 2%);
+            right: var(--p2-bidders-right, auto);
+            bottom: var(--p2-bidders-bottom, auto);
             z-index: 19;
             display: none;
-            width: min(360px, 29vw);
+            width: var(--p2-bidders-width, min(360px, 29vw));
+            max-height: var(--p2-bidders-height, 76vh);
+            overflow: hidden;
             color: #f8fafc;
             font-family: 'Pretendard', sans-serif;
             pointer-events: none;
@@ -187,6 +191,21 @@
             background: rgba(10, 15, 28, 0.88);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
+        }
+
+        .top-bar .item-title-line {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+        }
+        .top-bar .current-item-progress {
+            flex: 0 0 auto;
+            color: #e4c887;
+            font-size: calc(var(--sb-name-size, 30px) * .72);
+            font-weight: 900;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: -.025em;
         }
 
         .top-bar .name {
@@ -2519,7 +2538,7 @@
 
         /* ── 승자 중심 결과 연출 / 전체 테마형 진행 번호 ── */
         #auction-progress.auction-progress {
-            display: inline-flex;
+            display: none !important;
             align-items: center;
             min-height: 34px;
             padding: 0 12px;
@@ -3678,7 +3697,7 @@
         <div class="scoreboard-wrap" id="scoreboard-wrap">
             <div class="top-bar" id="top-bar">
                 <div class="name-section">
-                    <span class="name" id="info-name"></span>
+                    <div class="item-title-line"><span class="current-item-progress" id="current-item-progress"></span><span class="name" id="info-name"></span></div>
                     <span class="sub" id="info-sub"></span>
                 </div>
                 <span class="sep"></span>
@@ -3810,7 +3829,8 @@
 
         function updateProgressText() {
             const labelEl = document.getElementById("auction-progress");
-            if (!labelEl) return;
+            const inlineEl = document.getElementById("current-item-progress");
+            if (!labelEl || !inlineEl) return;
             labelEl.style.setProperty('color', 'var(--event-broadcast-accent, #e4c887)', 'important');
             labelEl.style.setProperty('font-family', "'Pretendard', sans-serif", 'important');
             labelEl.style.setProperty('font-weight', '780', 'important');
@@ -3818,10 +3838,11 @@
             labelEl.style.setProperty('text-shadow', 'none', 'important');
             if (window._totalItemsCount > 0) {
                 const currentOrder = Math.min(window._completedItemsCount + 1, window._totalItemsCount);
-                labelEl.textContent = `${currentOrder}/${window._totalItemsCount}`;
+                inlineEl.textContent = `${currentOrder}/${window._totalItemsCount}`;
             } else {
-                labelEl.textContent = '';
+                inlineEl.textContent = '';
             }
+            labelEl.textContent = '';
         }
 
         function processItemsList(items) {
@@ -4710,6 +4731,23 @@
             else info.style.top = 'var(--broadcast-safe-y)';
         }
 
+        function applyPage2LiveBiddersPlacement(cfg) {
+            if (isHostMode || isBracketPageTemp) return;
+            const panel = document.getElementById('p2-live-bidders-overlay');
+            if (!panel) return;
+            const values = {
+                '--p2-bidders-top': normalizeCssLength(cfg.p2_live_bidders_top) || '13%',
+                '--p2-bidders-left': normalizeCssLength(cfg.p2_live_bidders_left) || '2%',
+                '--p2-bidders-right': normalizeCssLength(cfg.p2_live_bidders_right) || 'auto',
+                '--p2-bidders-bottom': normalizeCssLength(cfg.p2_live_bidders_bottom) || 'auto',
+                '--p2-bidders-width': normalizeCssLength(cfg.p2_live_bidders_width) || '29vw',
+                '--p2-bidders-height': normalizeCssLength(cfg.p2_live_bidders_height) || '76vh'
+            };
+            Object.entries(values).forEach(([key, value]) => panel.style.setProperty(key, value));
+            const fontSize = Math.max(10, Math.min(48, parseInt(cfg.p2_live_bidders_font_size || '20', 10) || 20));
+            panel.style.setProperty('--p2-bid-fs', fontSize + 'px');
+        }
+
         function applyLoadedHostConfig(cfg) {
             if (!cfg) return;
             window.latestConfigMap = cfg;
@@ -4750,6 +4788,7 @@
             
             // 페이지별 독립 배너/티커 위치 키 접두사
             applyPage2InfoPlacement(cfg);
+            applyPage2LiveBiddersPlacement(cfg);
 
             const lp = (new URLSearchParams(window.location.search).get('page') || '').toLowerCase() === 'bracket' ? 'p3_' : (document.body.classList.contains('host-mode') ? '' : 'p2_');
 
@@ -5056,6 +5095,7 @@
             // 공개 화면은 팀 슬롯과 분리된 숫자 라벨만 사용한다.
             const publicAuctionName = [cleanInfoName, publicCompanyName].filter(Boolean).join(' · ');
             document.getElementById("info-name").textContent = showCompanyInline ? publicAuctionName : cleanInfoName;
+            updateProgressText();
             document.getElementById("info-sub").textContent = presentation.label;
 
             // 호스트 카드 데이터 렌더링
@@ -5486,6 +5526,7 @@
 
                 // 티커 카드 및 배너 렌더링
                 applyPage2InfoPlacement(cfg);
+                applyPage2LiveBiddersPlacement(cfg);
                 renderTickerCards(cfg);
 
                 // 호스트 모드 전용: 네임택 개별 위치 적용
@@ -6873,10 +6914,6 @@
 
             const visibleRows = rows.slice(0, 8);
             panel.innerHTML = `
-                <div class="p2-live-bidders-head">
-                    <span>실시간 입찰</span>
-                    <span class="p2-live-bidders-count">${rows.length}명</span>
-                </div>
                 <div class="p2-live-bidders-list">
                     ${visibleRows.map((bid, index) => {
                         const identity = parseBidderIdentity(bid.name, bid.region);
@@ -6887,8 +6924,7 @@
                             <strong class="p2-live-bidder-amount">${amount}</strong>
                         </div>`;
                     }).join('')}
-                </div>
-            `;
+                </div>`;
             panel.classList.add('visible');
         }
 

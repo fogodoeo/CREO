@@ -261,6 +261,13 @@ test('CDCUP three-round format assigns round-two teams and round-three finalists
     assert.doesNotMatch(broadcast, /if \(isCdcupBlindTotalsMode\(map\)\) \{\s*updateP3SwitchingLogic/);
     assert.match(broadcast, /treeFull\.style\.setProperty\('display', 'none', 'important'\)/);
     assert.match(broadcast, /containerEl\.style\.setProperty\('visibility', 'hidden', 'important'\)/);
+    assert.match(broadcast, /id="current-item-progress"/);
+    assert.match(broadcast, /#auction-progress\.auction-progress\s*\{\s*display: none !important/);
+    assert.doesNotMatch(broadcast, /<div class="p2-live-bidders-head">/);
+    assert.match(broadcast, /function applyPage2LiveBiddersPlacement\(cfg\)/);
+    assert.match(preview, /id="draggable-live-bidders"/);
+    assert.match(preview, /id="live-bidders-font-input"/);
+    assert.match(preview, /configMap\.p2_live_bidders_font_size/);
     assert.match(preview, /activeDragKey === 'banner' \? 24 : 32/);
     assert.match(broadcast, /function freeBannerEdgeCss/);
     assert.match(broadcast, /container\.style\.right = freeBannerEdgeCss\(layout\.right, 'x'\)/);
