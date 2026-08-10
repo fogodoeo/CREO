@@ -2251,6 +2251,17 @@
         .search-item-region { padding:3px 6px; border-radius:5px; background:#F4F4F5; color:#52525B; }
         .search-item-price { color:#18181B !important; }
         .search-item-total { padding:0; border-radius:0; background:transparent; color:#71717A; }
+        .modal-results-list { max-height:min(46vh,420px) !important; }
+        .search-item.hub-result { display:block !important; width:calc(100% - 8px); padding:11px 12px !important; }
+        .hub-result-head { display:flex; align-items:center; gap:7px; width:100%; min-width:0; white-space:nowrap; }
+        .hub-result-badges { display:flex; align-items:center; gap:5px; min-width:0; overflow:hidden; }
+        .hub-result-badges .search-item-region { flex:0 1 auto; max-width:46%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .hub-result-badges .hub-result-company { flex:0 0 auto; max-width:none; overflow:visible; color:var(--accent) !important; background:var(--accent-light) !important; text-overflow:clip; white-space:nowrap; }
+        .hub-result-price { flex:0 0 auto; margin-left:auto; color:#18181B; font-size:13px; font-weight:900; white-space:nowrap; }
+        .hub-result-shop { display:-webkit-box; margin-top:8px; overflow:hidden; color:#27272A; font-size:13.5px; font-weight:750; line-height:1.42; -webkit-box-orient:vertical; -webkit-line-clamp:2; }
+        .hub-result-meta { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:5px; color:#71717A; font-size:10.5px; line-height:1.35; }
+        .hub-result-schedule { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .nearby-result { opacity:.82; }
         .wrapang-payment-card { border-color:#D4D4D8; border-radius:10px; background:#FAFAFA; }
         .wrapang-payment-head strong,.wrapang-payment-head b,.wrapang-account,.wrapang-payment-card p { color:#3F3F46; }
         .shipping-breakdown,.editor-total-item { border-color:#E4E4E7; background:#FAFAFA; }
@@ -4567,8 +4578,8 @@ ${wrapangDuplicateNote}`;
                 '인천': ['경기/인천'], '경기A': ['경기/인천'], '경기B': ['경기/인천'], '경기C': ['경기/인천'], '경기D': ['경기/인천'],
                 '충청A': ['충청/대전'], '충청B': ['충청/대전'],
                 '경상A': ['대구/경북'],
-                '경상B': ['부산/경남'], '부산': ['부산/경남'],
-                '전라': ['전라/광주']
+                '경상B': ['부산/경남/울산'], '부산': ['부산/경남/울산'],
+                '전라': ['광주/전라']
             }
         };
 
@@ -4771,7 +4782,17 @@ ${wrapangDuplicateNote}`;
                 geoRoutes = [...new Set(geoRoutes)];
 
                 if (exact.length <= 4) {
-                    // 통합 검색에서는 다른 배송사의 동일 지역 결과가 이미 exact에 함께 표시된다.
+                    nearby = allHubs.filter(h => {
+                        const companyMap = GEO_TO_COMPANY_REGION[h.company] || {};
+                        const targetRegions = geoRoutes.flatMap(route => companyMap[route] || []);
+                        const hubRegion = normalizeHubQuery(h.region);
+                        const isNear = targetRegions.some(region => {
+                            const targetRegion = normalizeHubQuery(region);
+                            return hubRegion === targetRegion || hubRegion.includes(targetRegion) || targetRegion.includes(hubRegion);
+                        });
+                        const alreadyExact = exact.some(item => item.company === h.company && item.region === h.region && item.shop === h.shop);
+                        return isNear && !alreadyExact;
+                    }).sort((a, b) => a.company.localeCompare(b.company, 'ko') || a.region.localeCompare(b.region, 'ko') || a.shop.localeCompare(b.shop, 'ko')).slice(0, 18);
                 }
             }
 
@@ -4841,9 +4862,9 @@ ${wrapangDuplicateNote}`;
             let html = '';
             if (exact.length === 0 && nearby.length > 0) {
                 html += `
-                    <div style="padding: 14px; margin: 4px 4px 12px 4px; border-radius: 16px; background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.2); color: #FBBF24; font-size: 13.5px; font-weight: 700; line-height: 1.5; text-align: left;">
+                    <div style="padding: 12px; margin: 4px 4px 10px; border-radius: 9px; background: #F4F4F5; border: 1px solid #E4E4E7; color: #3F3F46; font-size: 12px; font-weight: 750; line-height: 1.5; text-align: left;">
                         입력하신 "${q}" 지역의 직영 거점샵이 없습니다.<br>
-                        <span style="font-size: 11px; opacity: 0.8; font-weight: 500; color: #FCD34D;">동일 노선 또는 가장 가까운 인근 거점을 추천해 드립니다.</span>
+                        <span style="font-size: 10.5px; font-weight: 500; color: #71717A;">동일 노선 또는 가장 가까운 인근 거점을 추천합니다.</span>
                     </div>
                 `;
             }
@@ -4859,20 +4880,18 @@ ${wrapangDuplicateNote}`;
                     const selectedStyle = isSelected ? 'border: 2px solid var(--accent); background: rgba(59, 130, 246, 0.1);' : '';
                     
                     html += `
-                        <div class="search-item" style="padding: 12px 14px; font-weight: 500; display: flex; justify-content: space-between; align-items: center; ${selectedStyle}" onclick="selectEmbeddedHub('${h.company}', '${h.region.replace(/'/g, "\\'")}', '${h.shop.replace(/'/g, "\\'")}', ${h.cost}, '${target}')">
-                            <div class="search-item-copy">
-                                <div style="display: flex; align-items: center; gap: 6px;">
-                                    <span class="search-item-region" style="background: var(--accent-light); color: var(--accent);">${h.company}</span>
+                        <div class="search-item hub-result" style="${selectedStyle}" onclick="selectEmbeddedHub('${h.company}', '${h.region.replace(/'/g, "\\'")}', '${h.shop.replace(/'/g, "\\'")}', ${h.cost}, '${target}')">
+                            <div class="hub-result-head">
+                                <div class="hub-result-badges">
+                                    <span class="search-item-region hub-result-company">${h.company}</span>
                                     <span class="search-item-region">${h.region}</span>
-                                    <span class="search-item-title" style="font-size: 14px; font-weight: 700;">${h.shop}</span>
                                 </div>
-                                <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px; font-weight: 400;">
-                                    ${schedule}
-                                </div>
+                                <span class="hub-result-price">${h.cost.toLocaleString()}원</span>
                             </div>
-                            <div class="search-item-price-block">
-                                <div class="search-item-price" style="font-size: 13px;">${h.cost.toLocaleString()}원</div>
-                                ${itemCount > 1 ? `<div class="search-item-total">총 ${itemCount}개체 · ${finalCost.toLocaleString()}원</div>` : ''}
+                            <div class="hub-result-shop">${h.shop}</div>
+                            <div class="hub-result-meta">
+                                <span class="hub-result-schedule">${schedule}</span>
+                                ${itemCount > 1 ? `<span class="search-item-total">총 ${itemCount}개체 · ${finalCost.toLocaleString()}원</span>` : ''}
                             </div>
                         </div>
                     `;
@@ -4897,19 +4916,18 @@ ${wrapangDuplicateNote}`;
                     const selectedStyle = isSelected ? 'border: 2px solid var(--accent); background: rgba(59, 130, 246, 0.1);' : '';
                     
                     html += `
-                        <div class="search-item" style="opacity: 0.75; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; ${selectedStyle}" onclick="selectEmbeddedHub('${h.company}', '${h.region.replace(/'/g, "\\'")}', '${h.shop.replace(/'/g, "\\'")}', ${h.cost}, '${target}')">
-                            <div class="search-item-copy">
-                                <div style="display: flex; align-items: center; gap: 6px;">
-                                    <span class="search-item-region" style="background: #E2E8F0; color: #475569;">${h.region}</span>
-                                    <span class="search-item-title" style="font-weight: 500; font-size: 14px;">${h.shop}</span>
+                        <div class="search-item hub-result nearby-result" style="${selectedStyle}" onclick="selectEmbeddedHub('${h.company}', '${h.region.replace(/'/g, "\\'")}', '${h.shop.replace(/'/g, "\\'")}', ${h.cost}, '${target}')">
+                            <div class="hub-result-head">
+                                <div class="hub-result-badges">
+                                    <span class="search-item-region hub-result-company">${h.company}</span>
+                                    <span class="search-item-region">${h.region}</span>
                                 </div>
-                                <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px; font-weight: 400;">
-                                    ${schedule}
-                                </div>
+                                <span class="hub-result-price">${h.cost.toLocaleString()}원</span>
                             </div>
-                            <div class="search-item-price-block">
-                                <div class="search-item-price" style="font-size: 13px; color: #64748B;">${h.cost.toLocaleString()}원</div>
-                                ${itemCount > 1 ? `<div class="search-item-total">총 ${itemCount}개체 · ${finalCost.toLocaleString()}원</div>` : ''}
+                            <div class="hub-result-shop">${h.shop}</div>
+                            <div class="hub-result-meta">
+                                <span class="hub-result-schedule">${schedule}</span>
+                                ${itemCount > 1 ? `<span class="search-item-total">총 ${itemCount}개체 · ${finalCost.toLocaleString()}원</span>` : ''}
                             </div>
                         </div>
                     `;
