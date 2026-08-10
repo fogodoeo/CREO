@@ -2643,6 +2643,54 @@
         const SHIPPING_USES_LEGACY_ITEMS = SHIPPING_CHANNEL_ID === 'cdcup';
         const SHIPPING_COMPANY_STORAGE_KEY = `creo_shipping_company_${SHIPPING_CHANNEL_ID}`;
         let platformShippingWorkspace = null;
+        const MOBILE_SHIPPING_HISTORY = window.matchMedia('(max-width: 820px)').matches;
+        let restoringMobileShippingHistory = false;
+
+        function pushMobileShippingView(view) {
+            if (!MOBILE_SHIPPING_HISTORY || restoringMobileShippingHistory) return;
+            if (history.state?.creoShippingView === view) return;
+            history.pushState({ creoShippingView:view }, '', location.href);
+        }
+
+        function closeMobileShippingView(view) {
+            if (!MOBILE_SHIPPING_HISTORY || restoringMobileShippingHistory) return;
+            if (history.state?.creoShippingView === view) history.back();
+        }
+
+        if (MOBILE_SHIPPING_HISTORY) {
+            if (!document.referrer) {
+                history.replaceState({ creoShippingExit:true }, '', location.href);
+                history.pushState({ creoShippingView:'base' }, '', location.href);
+            } else {
+                history.replaceState({ creoShippingView:'base' }, '', location.href);
+            }
+            window.addEventListener('popstate', event => {
+                if (event.state?.creoShippingExit) {
+                    location.replace('/');
+                    return;
+                }
+                restoringMobileShippingHistory = true;
+                const target = event.state?.creoShippingView || 'base';
+                const searchInput = document.getElementById('editor-hub-search');
+                if (target !== 'editor' && target !== 'message-preview') {
+                    const clearHubSearch = () => {
+                        if (searchInput) {
+                            searchInput.value = '';
+                            delete searchInput.dataset.searchPositioned;
+                        }
+                        document.body.classList.remove('hub-search-active');
+                        filterEmbeddedHubs('editor');
+                    };
+                    clearHubSearch();
+                    setTimeout(clearHubSearch, 0);
+                }
+                if (target !== 'message-preview' && !document.getElementById('message-preview-modal')?.hidden) closeMessagePreview(true);
+                if (target !== 'admin-login' && !document.getElementById('shipping-admin-modal')?.hidden) document.getElementById('shipping-admin-modal').hidden = true;
+                if (target !== 'company-select' && document.getElementById('company-select-modal')?.classList.contains('active')) closeCompanySelectModal(true);
+                if (!['editor','message-preview'].includes(target) && activeEditorWinner) closeWinnerEditor(true);
+                restoringMobileShippingHistory = false;
+            });
+        }
 
         function setShippingAdminState(authenticated) {
             const nav = document.querySelector('.app-bottom-nav');
@@ -2657,6 +2705,7 @@
             const error = document.getElementById('shipping-admin-error');
             if (error) error.textContent = '';
             if (modal) modal.hidden = false;
+            pushMobileShippingView('admin-login');
             requestAnimationFrame(() => document.getElementById('shipping-admin-password')?.focus());
         }
 
@@ -2669,7 +2718,10 @@
             openShippingAdminLogin();
         });
         document.getElementById('shipping-admin-modal')?.addEventListener('click', event => {
-            if (event.target === event.currentTarget) event.currentTarget.hidden = true;
+            if (event.target === event.currentTarget) {
+                event.currentTarget.hidden = true;
+                closeMobileShippingView('admin-login');
+            }
         });
         document.getElementById('shipping-admin-form')?.addEventListener('submit', async event => {
             event.preventDefault();
@@ -2698,9 +2750,11 @@
             messagePreviewValue = String(message || '');
             document.getElementById('message-preview-text').textContent = messagePreviewValue;
             document.getElementById('message-preview-modal').hidden = false;
+            pushMobileShippingView('message-preview');
         }
-        function closeMessagePreview() {
+        function closeMessagePreview(fromHistory = false) {
             document.getElementById('message-preview-modal').hidden = true;
+            if (!fromHistory) closeMobileShippingView('message-preview');
         }
         document.getElementById('message-preview-close')?.addEventListener('click', closeMessagePreview);
         document.getElementById('message-preview-modal')?.addEventListener('click', event => {
@@ -3202,14 +3256,16 @@ ${wrapangDuplicateNote}`;
                 
                 modal.style.display = 'flex';
                 modal.classList.add('active');
+                pushMobileShippingView('company-select');
             }
         }
 
-        function closeCompanySelectModal() {
+        function closeCompanySelectModal(fromHistory = false) {
             const modal = document.getElementById('company-select-modal');
             if (modal) {
                 modal.style.display = 'none';
                 modal.classList.remove('active');
+                if (!fromHistory) closeMobileShippingView('company-select');
             }
         }
 
@@ -3899,6 +3955,7 @@ ${wrapangDuplicateNote}`;
                 const workspace = document.querySelector('.admin-workspace');
                 if (workspace) workspace.classList.add('is-editing');
                 document.body.classList.add('editor-open');
+                pushMobileShippingView('editor');
 
                 document.querySelectorAll('.winner-card').forEach(card => {
                     card.classList.toggle('is-selected', card.dataset.winner === winnerKey);
@@ -3914,7 +3971,7 @@ ${wrapangDuplicateNote}`;
             }
         }
 
-        function closeWinnerEditor() {
+        function closeWinnerEditor(fromHistory = false) {
             const modal = document.getElementById('winner-edit-modal');
             const panelSlot = document.getElementById('editor-panel-slot');
             const emptyState = document.getElementById('editor-empty-state');
@@ -3928,6 +3985,7 @@ ${wrapangDuplicateNote}`;
             document.body.classList.remove('hub-search-active');
             document.querySelectorAll('.winner-card').forEach(card => card.classList.remove('is-selected'));
             activeEditorWinner = null;
+            if (!fromHistory) closeMobileShippingView('editor');
         }
 
         function handleEditorHubSearchInput(input) {
