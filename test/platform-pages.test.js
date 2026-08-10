@@ -253,6 +253,12 @@ test('CDCUP three-round format assigns round-two teams and round-three finalists
     assert.match(preview, /postPreviewConfigPatch\(\{ blind_totals_opacity: String\(opacity\) \}\)/);
     assert.match(broadcast, /--full-board-opacity/);
     assert.match(broadcast, /boardOpacity \* 0\.05/);
+    assert.match(preview, /2P 개체·실시간 입찰, 3P 전체 진행표로 각각 독립 송출/);
+    assert.match(preview, /if \(pageNum === '2'\) \{[\s\S]*configMap\.live_bidders_show/);
+    assert.match(preview, /configMap\['blind_totals_show'\] = '0'/);
+    assert.match(broadcast, /const isEnabled = String\(map\?\.live_bidders_show \?\? '1'\) !== '0'/);
+    assert.match(broadcast, /3P는 전체 진행표 전용이다/);
+    assert.doesNotMatch(broadcast, /if \(isCdcupBlindTotalsMode\(map\)\) \{\s*updateP3SwitchingLogic/);
     assert.match(preview, /activeDragKey === 'banner' \? 24 : 32/);
     assert.match(broadcast, /function freeBannerEdgeCss/);
     assert.match(broadcast, /container\.style\.right = freeBannerEdgeCss\(layout\.right, 'x'\)/);
