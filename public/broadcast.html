@@ -6961,7 +6961,7 @@
                     rowEl.dataset.bidderKey = key;
                 }
                 rowEl.dataset.rank = String(index + 1);
-                const rankOpacity = [1, .42, .13, .08, .055, .04, .03, .025][index] ?? .02;
+                const rankOpacity = [1, .26, .06, .035, .025, .018, .014, .01][index] ?? .008;
                 rowEl.style.setProperty('--p2-row-opacity', String(rankOpacity));
                 const cacheKey = `${identity.name}|${identity.region}|${amount}|${index + 1}`;
                 if (rowEl.dataset.lastCache !== cacheKey) {
