@@ -980,17 +980,6 @@
             word-break: keep-all;
         }
 
-        .ticker-material-icon {
-            display: inline-block;
-            width: 0.82em;
-            height: 0.82em;
-            margin-right: 0.28em;
-            color: currentColor;
-            vertical-align: -0.08em;
-            fill: currentColor;
-            flex: 0 0 auto;
-        }
-
         /* 1P/2P 공통 스포츠 방송 그래픽 스킨 */
         .scoreboard-wrap .top-bar-label {
             color: #60a5fa;
@@ -4054,29 +4043,6 @@
             });
         }
 
-        const tickerMaterialIcons = {
-            '📢': '<path d="M18 11v2h4v-2h-4zm-2 6.61L19.2 20l1.2-1.6-3.2-2.4-1.2 1.61zM20.4 5.6 19.2 4 16 6.4 17.2 8l3.2-2.4zM4 9a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h1v4h2v-4h1l5 3V6L8 9H4zm7 5.47L8.55 13H4v-2h4.55L11 9.53v4.94zM15.5 12c0-1.33-.58-2.53-1.5-3.35v6.69c.92-.81 1.5-2.01 1.5-3.34z"/>',
-            '💳': '<path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/>',
-            '🚚': '<path d="M20 8h-3V4H3a2 2 0 0 0-2 2v11h2a3 3 0 0 0 6 0h6a3 3 0 0 0 6 0h2v-5l-3-4zM6 18.5A1.5 1.5 0 1 1 6 15a1.5 1.5 0 0 1 0 3.5zM15 15H8.82A3 3 0 0 0 3 15V6h12v9zm3 3.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm-1-6.5V9.5h2.5l1.96 2.5H17z"/>',
-            '⏰': '<path d="M22 5.72 17.4 1.86 16.11 3.4l4.6 3.86L22 5.72zM7.88 3.4 6.6 1.86 2 5.71l1.29 1.54L7.88 3.4zM12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16zm0 14a6 6 0 1 1 0-12 6 6 0 0 1 0 12zm-1-9h2v4.41l2.54 1.47-1 1.73L11 14.56V9z"/>'
-        };
-
-        function renderTickerMarkup(text) {
-            let message = String(text || '');
-            const leadingIcon = message.match(/^\s*([📢💳🚚⏰])(?:\uFE0F)?\s*/u);
-            let iconKey = leadingIcon && leadingIcon[1];
-            if (leadingIcon) message = message.slice(leadingIcon[0].length);
-            if (!iconKey) {
-                if (/입찰|채팅창/.test(message)) iconKey = '📢';
-                else if (/결제|계좌이체|카드/.test(message)) iconKey = '💳';
-                else if (/배송|직수령|수령/.test(message)) iconKey = '🚚';
-                else if (/지연|시간|대기/.test(message)) iconKey = '⏰';
-            }
-            if (!iconKey) return renderColorMarkup(message);
-            const iconPath = tickerMaterialIcons[iconKey];
-            return '<svg class="ticker-material-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">' + iconPath + '</svg>' + renderColorMarkup(message);
-        }
-
         function splitTickerMessages(raw) {
             const text = String(raw || '').replace(/\r/g, '').trim();
             if (!text) return [];
@@ -4169,7 +4135,7 @@
                     card.className = 'ticker-card';
                     const text = document.createElement('div');
                     text.className = 'ticker-card-text';
-                    text.innerHTML = renderTickerMarkup(messages[index]);
+                    text.innerHTML = renderColorMarkup(messages[index]);
                     card.appendChild(text);
                     stage.appendChild(card);
                     requestAnimationFrame(() => card.classList.add('show'));
@@ -4314,7 +4280,7 @@
                 const text = document.createElement('div');
                 text.className = 'ticker-card-text';
                 text.style.fontSize = fontSize + 'px';
-                text.innerHTML = renderTickerMarkup(messages[index]);
+                text.innerHTML = renderColorMarkup(messages[index]);
                 card.appendChild(text);
                 stage.appendChild(card);
                 requestAnimationFrame(() => card.classList.add('show'));
