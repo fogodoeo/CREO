@@ -448,8 +448,6 @@ test('CREWARTS keeps member linking out of the questionnaire flow', () => {
 
 test('CREWARTS personality test uses minimal copy, Pretendard, and official share marks', () => {
     const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey.html'), 'utf8');
-    const managerHtml = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey-manager.html'), 'utf8');
-    const managerScript = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey-manager.js'), 'utf8');
     const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey-v4.css'), 'utf8');
     const script = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey.js'), 'utf8');
     const characterDirectory = path.join(__dirname, '..', 'public', 'assets', 'crewart-types');
@@ -462,15 +460,6 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(html, /id="crewart-wordmark">CREWARTS<\/span><small>PERSONALITY TEST<\/small>/);
     assert.doesNotMatch(html, /PERSNALITY/);
     assert.doesNotMatch(html, />[^<]*MBTI[^<]*</i);
-    assert.doesNotMatch(managerHtml, />[^<]*MBTI[^<]*</i);
-    assert.doesNotMatch(managerHtml, /supabase-bridge\.js/);
-    assert.match(managerHtml, /platform-client\.js\?v=20260803-admin-session-v2/);
-    assert.match(managerHtml, /id="manager-auth"/);
-    assert.match(managerHtml, /id="manager-main" hidden/);
-    assert.match(managerScript, /\/api\/crewart-survey\/content/);
-    assert.match(managerScript, /CreoPlatform\.verifyAdmin\(\)/);
-    assert.match(managerScript, /CreoPlatform\.logout\(\)/);
-    assert.doesNotMatch(managerScript, /updateConfigs|getConfigMap/);
     assert.match(css, /font-family:\s*"Pretendard Variable"/);
     assert.doesNotMatch(css, /Cinzel|Georgia/i);
     assert.match(html, /assets\/band-app-icon-official\.png/);

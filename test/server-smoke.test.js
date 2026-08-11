@@ -56,6 +56,13 @@ test('HTTP server exposes the CREO hub, survey assets, health, and membership co
     assert.match(surveyResponse.headers.get('content-type'), /^text\/html/);
     assert.match(await surveyResponse.text(), /크레와트 성향 테스트/);
 
+    const retiredManagerResponse = await fetch(
+        `http://127.0.0.1:${port}/crewart-survey-manager.html`,
+        { redirect: 'manual' }
+    );
+    assert.equal(retiredManagerResponse.status, 308);
+    assert.equal(retiredManagerResponse.headers.get('location'), '/crewart-survey.html');
+
     const scriptResponse = await fetch(`http://127.0.0.1:${port}/crewart-survey.js`);
     assert.equal(scriptResponse.status, 200);
     assert.match(scriptResponse.headers.get('content-type'), /^text\/javascript/);

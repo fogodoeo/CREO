@@ -232,6 +232,18 @@ const server = http.createServer(async (req, res) => {
             return;
         }
 
+        if (
+            (req.method === 'GET' || req.method === 'HEAD')
+            && url.pathname === '/crewart-survey-manager.html'
+        ) {
+            writeHeaders(res, 308, {
+                Location: '/crewart-survey.html',
+                'Cache-Control': 'no-store'
+            });
+            res.end();
+            return;
+        }
+
         if ((req.method === 'GET' || req.method === 'HEAD') && await serveStatic(req, res, url)) {
             return;
         }
