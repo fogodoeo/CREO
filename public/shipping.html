@@ -2263,6 +2263,11 @@
         .hub-result-meta { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:5px; color:#71717A; font-size:10.5px; line-height:1.35; }
         .hub-result-schedule { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         .nearby-result { opacity:.82; }
+        .editor-hub-search-shell { position:relative; width:100%; }
+        .editor-hub-search-shell #editor-hub-search { padding-right:44px; }
+        .editor-hub-clear { position:absolute; top:50%; right:9px; display:grid; width:30px; height:30px; padding:0; place-items:center; border:0; border-radius:50%; background:#F4F4F5; color:#71717A; font-family:inherit; font-size:18px; line-height:1; cursor:pointer; transform:translateY(-50%); }
+        .editor-hub-clear[hidden] { display:none; }
+        .editor-hub-clear:hover { background:#E4E4E7; color:#18181B; }
         .editor-selected-hub { display:block; position:relative; width:100%; padding:13px 48px 13px 14px; border:1px solid #BFDBFE; border-radius:11px; background:#EFF6FF; color:#18181B; font-family:inherit; text-align:left; }
         .editor-selected-hub[hidden] { display:none; }
         .editor-selected-hub-head { display:flex; align-items:center; gap:10px; margin-bottom:7px; }
@@ -2589,7 +2594,10 @@
                 <div id="editor-shipping-details">
                     <!-- 배송사 선택 직후 검색창과 결과가 바로 이어짐 -->
                     <div id="editor-hub-select-wrap" style="display: none; flex-direction: column; gap: 8px;">
-                        <input type="text" id="editor-hub-search" class="input-text" placeholder="업체명, 지역 또는 거점명 검색" aria-label="배송업체 및 거점 검색" autocomplete="off">
+                        <div class="editor-hub-search-shell">
+                            <input type="text" id="editor-hub-search" class="input-text" placeholder="업체명, 지역 또는 거점명 검색" aria-label="배송업체 및 거점 검색" autocomplete="off">
+                            <button class="editor-hub-clear" id="editor-hub-clear" type="button" onclick="clearEditorHubSearch()" aria-label="배송지 검색어 지우기" title="검색어 지우기" hidden>×</button>
+                        </div>
                         <div id="editor-hub-results" class="modal-results-list" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border); border-radius: 12px; background: rgba(0,0,0,0.2);"></div>
                     </div>
 
@@ -2700,6 +2708,7 @@
                             searchInput.value = '';
                             delete searchInput.dataset.searchPositioned;
                         }
+                        syncEditorHubClearButton();
                         document.body.classList.remove('hub-search-active');
                         filterEmbeddedHubs('editor');
                     };
@@ -4011,6 +4020,24 @@ ${wrapangDuplicateNote}`;
             if (!fromHistory) closeMobileShippingView('editor');
         }
 
+        function syncEditorHubClearButton() {
+            const input = document.getElementById('editor-hub-search');
+            const button = document.getElementById('editor-hub-clear');
+            if (button) button.hidden = !input?.value;
+        }
+
+        function clearEditorHubSearch() {
+            const input = document.getElementById('editor-hub-search');
+            if (!input) return;
+            input.value = '';
+            delete input.dataset.searchPositioned;
+            if (clearEmbeddedHubSelection('editor')) refreshEmbeddedHubPricing('editor');
+            syncEditorHubClearButton();
+            filterEmbeddedHubs('editor', { keepSelection:true });
+            input.focus();
+            positionEditorHubSearch(input);
+        }
+
         function positionEditorHubSearch(input) {
             if (!input) return;
             document.body.classList.add('hub-search-active');
@@ -4023,6 +4050,7 @@ ${wrapangDuplicateNote}`;
         }
 
         function handleEditorHubSearchInput(input) {
+            syncEditorHubClearButton();
             filterEmbeddedHubs('editor');
             if (!input) return;
             if (input.value.trim() || document.activeElement === input) positionEditorHubSearch(input);
@@ -4123,6 +4151,7 @@ ${wrapangDuplicateNote}`;
                 }
             }
 
+            syncEditorHubClearButton();
             renderEditorSelectedHub();
             const activeMethodButton = document.querySelector('.segmented-btn.active');
             if (activeMethodButton && activeMethodButton.parentElement) {
@@ -4764,6 +4793,7 @@ ${wrapangDuplicateNote}`;
             if (!clearEmbeddedHubSelection('editor')) return;
             const searchInput = document.getElementById('editor-hub-search');
             if (searchInput) searchInput.value = '';
+            syncEditorHubClearButton();
             document.body.classList.remove('hub-search-active');
             renderEditorSelectedHub();
             filterEmbeddedHubs('editor', { keepSelection:true });
@@ -4784,6 +4814,7 @@ ${wrapangDuplicateNote}`;
         function setEmbeddedHubSearchText(target, company, region, hub) {
             const searchInput = document.getElementById(`${target}-hub-search`);
             if (searchInput) searchInput.value = `${company} ${region} ${hub}`;
+            if (target === 'editor') syncEditorHubClearButton();
         }
 
         function clearEmbeddedHubSelection(target) {
