@@ -64,12 +64,14 @@ test('home is an operational channel launcher without duplicate management route
     assert.match(hub, /CreoPlatform\.verifyAdmin\(\)/);
     assert.match(hub, /CreoPlatform\.logout\(\)/);
     assert.match(hub, /id="quick-workspace"/);
+    assert.match(hub, /id="quick-survey"[^>]*href="crewart-survey\.html"[^>]*hidden/);
     assert.match(hub, /id="quick-shipping"/);
     assert.match(hub, /id="quick-rounds"/);
     assert.match(hub, /id="quick-broadcast"/);
     assert.match(hub, /id="quick-settings"/);
     assert.match(hub, /id="quick-design"/);
     assert.match(hub, /function workspaceUrl\(c\)/);
+    assert.match(hub, /survey\.hidden=activeChannel\.id!==['"]crewart['"]\|\|activeChannel\.features\?\.survey!==true/);
     assert.match(hub, /broadcast-studio\.html\?channel=/);
     assert.doesNotMatch(hub, /id="quick-archives"|전체 채널|현장 운영|방송 열기/);
     assert.doesNotMatch(hub, /모든 경매 운영을|한곳에서\.|채널은 완전히|공통 도구|관리하기/);
