@@ -51,7 +51,7 @@ test('choices avoid direct MBTI answer-key language and narrow auction context',
     const loaded = /정답|객관적|합리적|감정적|충동|대충|무조건|옳은|더 좋은/;
     const revealing = /외향|내향|감각형|직관형|사고형|감정형|판단형|인식형|계획적|즉흥적/;
     const narrowContext = /낙찰|브리딩|컬렉션|최대 금액/;
-    const forcedLegacyScene = /정식 이름표|단 한 장 남긴다면|답할 순서를 정해|우리 사이의 다음 장면|마감 숫자가 내려/;
+    const forcedLegacyScene = /정식 이름표|단 한 장 남긴다면|답할 순서를 정해|우리 사이의 다음 장면|마감 숫자가 내려|계속 바꿔간다|나중에 생각나는 한마디|이제 내 차례/;
     for (const question of Core.QUESTIONS) {
         const copy = [question.label, question.q, ...question.options].join(' ');
         assert.equal(loaded.test(copy), false);

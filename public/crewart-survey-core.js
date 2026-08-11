@@ -18,7 +18,7 @@
         'ESTJ', 'ESFJ', 'ENFJ', 'ENTJ'
     ];
 
-    // This inline set remains only as a compatibility fallback. The deployed v23
+    // This inline set remains only as a compatibility fallback. The deployed v24
     // questionnaire and its graded, single-axis signals load from the JSON spec below.
     const QUESTIONS = [
         { id: 'Q01', axis: 'TF', secondaryAxis: 'JP', facet: 'selection', label: '두 개체 중 하나를 고를 때', q: '둘 중 하나를 정하기 위해 마지막으로 하는 일은?', options: ['두 개체 사진을 한 화면에 놓고 본다', '한 마리씩 따로 다시 살펴본다', '잠깐 다른 곳을 본 뒤 다시 돌아온다', '각각 마음에 드는 점을 하나씩 짚어본다'], scores: ['T', 'T', 'F', 'F'], scorePairs: [['T', 'J'], ['T', 'P'], ['F', 'P'], ['F', 'J']], scoreWeights: [[3, 2], [3, 2], [3, 2], [3, 2]] },
@@ -35,7 +35,7 @@
         { id: 'Q12', axis: 'SN', secondaryAxis: 'TF', facet: 'name-card', label: '이름표 시안 중 하나를 고를 때', q: '두 시안을 처음 비교하는 방식은?', options: ['글자 크기와 사진 배치의 차이를 본다', '매일 볼 때 어느 쪽이 더 마음에 들지 본다', '사육장 전체 분위기와 어떻게 이어질지 본다', '나중에 사진이나 장식을 바꿔도 어울릴지 본다'], scores: ['S', 'S', 'N', 'N'], scorePairs: [['S', 'T'], ['S', 'F'], ['N', 'F'], ['N', 'T']], scoreWeights: [[3, 2], [3, 2], [3, 2], [3, 2]] }
     ];
 
-    const QUESTIONNAIRE_FILE = 'crewart-survey-questions-v23.json';
+    const QUESTIONNAIRE_FILE = 'crewart-survey-questions-v24.json';
     let questionnaireSpec = null;
 
     function normalizeQuestionnaireSpec(spec) {
