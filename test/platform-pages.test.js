@@ -496,7 +496,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /KAKAO_JS_KEY/);
     assert.match(script, /const SURVEY_URL = 'https:\/\/creok\.onrender\.com\/crewart-survey\.html'/);
     assert.doesNotMatch(script, /const SURVEY_URL = new URL\([^\n]*document\.baseURI/);
-    assert.match(html, /crewart-survey\.js\?v=20260811-survey-v22/);
+    assert.match(html, /crewart-survey\.js\?v=20260811-survey-v23/);
     assert.match(script, /Kakao\.Share\.uploadImage/);
     assert.match(script, /Kakao\.Share\.sendDefault/);
     assert.match(script, /function sharePreparedNativeResult/);
@@ -520,8 +520,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /cw-result-code cw-result-code-back/);
     assert.match(script, /cw-result-code cw-result-code-front/);
     assert.match(script, /class="cw-type-poster"/);
-    assert.match(html, /crewart-survey-core\.js\?v=20260811-survey-v22/);
-    assert.match(html, /crewart-survey-v4\.css\?v=20260811-survey-v22/);
+    assert.match(html, /crewart-survey-core\.js\?v=20260811-survey-v23/);
+    assert.match(html, /crewart-survey-v4\.css\?v=20260811-survey-v23/);
     assert.match(script, /네 답 모두 괜찮습니다\. 평소 먼저 손이 가는 쪽을 골라주세요\./);
     assert.match(script, /두 답이 끌리면 실제 그 순간 가장 먼저 할 행동을 선택해주세요\./);
     assert.doesNotMatch(html, /question-illustration|question-image/);

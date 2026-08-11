@@ -51,13 +51,22 @@ test('choices avoid direct MBTI answer-key language and narrow auction context',
     const loaded = /정답|객관적|합리적|감정적|충동|대충|무조건|옳은|더 좋은/;
     const revealing = /외향|내향|감각형|직관형|사고형|감정형|판단형|인식형|계획적|즉흥적/;
     const narrowContext = /낙찰|브리딩|컬렉션|최대 금액/;
+    const forcedLegacyScene = /정식 이름표|단 한 장 남긴다면|답할 순서를 정해|우리 사이의 다음 장면|마감 숫자가 내려/;
     for (const question of Core.QUESTIONS) {
         const copy = [question.label, question.q, ...question.options].join(' ');
         assert.equal(loaded.test(copy), false);
         assert.equal(revealing.test(copy), false);
         assert.equal(narrowContext.test(copy), false);
+        assert.equal(forcedLegacyScene.test(copy), false);
         assert.ok(question.options.every(option => option.length >= 23 && option.length <= 38));
     }
+});
+
+test('questionnaire uses recognizable 2026 Korean keeper contexts', () => {
+    const copy = Core.QUESTIONS.map(question => [question.q, ...question.options].join(' ')).join(' ');
+    ['밴드 경매', '파충류 박람회', '단체방', '카톡', '해칭', '성장 기록'].forEach(context => {
+        assert.match(copy, new RegExp(context));
+    });
 });
 
 test('prepared surveys keep option ids and graded score maps aligned while shuffling', () => {
