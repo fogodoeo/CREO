@@ -2263,6 +2263,13 @@
         .hub-result-meta { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:5px; color:#71717A; font-size:10.5px; line-height:1.35; }
         .hub-result-schedule { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         .nearby-result { opacity:.82; }
+        .editor-selected-hub { display:block; width:100%; padding:13px 14px; border:1px solid #BFDBFE; border-radius:11px; background:#EFF6FF; color:#18181B; font-family:inherit; text-align:left; cursor:pointer; }
+        .editor-selected-hub[hidden] { display:none; }
+        .editor-selected-hub-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:7px; }
+        .editor-selected-hub-label { color:var(--accent); font-size:10px; font-weight:900; }
+        .editor-selected-hub-action { color:#71717A; font-size:9.5px; font-weight:700; }
+        .editor-selected-hub strong { display:block; overflow:hidden; font-size:13.5px; font-weight:850; line-height:1.45; text-overflow:ellipsis; white-space:nowrap; }
+        .editor-selected-hub-meta { display:block; margin-top:3px; color:#52525B; font-size:10.5px; font-weight:650; }
         @media (max-width:820px) {
             #winner-edit-modal .modal-body { width:100%; padding:14px 8px 18px !important; }
             #winner-edit-modal .modal-body > * { width:100%; min-width:0; }
@@ -2608,6 +2615,11 @@
                     <label>메모</label>
                     <input type="text" id="editor-memo" class="input-text" placeholder="특이사항 메모 입력">
                 </div>
+                <button type="button" class="editor-selected-hub" id="editor-selected-hub" onclick="toggleEditorSelectedHub()" hidden>
+                    <span class="editor-selected-hub-head"><span class="editor-selected-hub-label">선택한 배송지</span><span class="editor-selected-hub-action">누르면 선택 취소</span></span>
+                    <strong id="editor-selected-hub-name"></strong>
+                    <span class="editor-selected-hub-meta" id="editor-selected-hub-meta"></span>
+                </button>
             </div>
 
             <!-- 데스크톱에서는 스크롤과 무관하게 항상 보이는 하단 정산/저장 영역 -->
@@ -3988,21 +4000,25 @@ ${wrapangDuplicateNote}`;
             if (!fromHistory) closeMobileShippingView('editor');
         }
 
-        function handleEditorHubSearchInput(input) {
-            filterEmbeddedHubs('editor');
-            const hasQuery = Boolean(input && input.value.trim());
-            document.body.classList.toggle('hub-search-active', hasQuery);
+        function positionEditorHubSearch(input) {
             if (!input) return;
-            if (!hasQuery) {
-                delete input.dataset.searchPositioned;
-                return;
-            }
+            document.body.classList.add('hub-search-active');
             if (input.dataset.searchPositioned === 'true') return;
             input.dataset.searchPositioned = 'true';
             requestAnimationFrame(() => {
                 const results = document.getElementById('editor-hub-results');
                 if (results) results.scrollIntoView({ behavior: 'smooth', block: 'start' });
             });
+        }
+
+        function handleEditorHubSearchInput(input) {
+            filterEmbeddedHubs('editor');
+            if (!input) return;
+            if (input.value.trim() || document.activeElement === input) positionEditorHubSearch(input);
+            else {
+                document.body.classList.remove('hub-search-active');
+                delete input.dataset.searchPositioned;
+            }
         }
 
         function setEditorShippingType(companyKey, isInit = false) {
@@ -4096,6 +4112,7 @@ ${wrapangDuplicateNote}`;
                 }
             }
 
+            renderEditorSelectedHub();
             const activeMethodButton = document.querySelector('.segmented-btn.active');
             if (activeMethodButton && activeMethodButton.parentElement) {
                 const methodStrip = activeMethodButton.parentElement;
@@ -4714,6 +4731,35 @@ ${wrapangDuplicateNote}`;
             return target === 'editor' ? editorShippingState : buyerShippingState;
         }
 
+        function renderEditorSelectedHub() {
+            const card = document.getElementById('editor-selected-hub');
+            const name = document.getElementById('editor-selected-hub-name');
+            const meta = document.getElementById('editor-selected-hub-meta');
+            if (!card || !name || !meta) return;
+            const selected = editorShippingState.type === '배송'
+                && editorShippingState.company && editorShippingState.company !== '기타'
+                && editorShippingState.region && editorShippingState.hub;
+            card.hidden = !selected;
+            if (!selected) {
+                name.textContent = '';
+                meta.textContent = '';
+                return;
+            }
+            name.textContent = editorShippingState.hub;
+            meta.textContent = `${editorShippingState.company} · ${editorShippingState.region}`;
+        }
+
+        function toggleEditorSelectedHub() {
+            if (!clearEmbeddedHubSelection('editor')) return;
+            const searchInput = document.getElementById('editor-hub-search');
+            if (searchInput) searchInput.value = '';
+            document.body.classList.remove('hub-search-active');
+            renderEditorSelectedHub();
+            filterEmbeddedHubs('editor', { keepSelection:true });
+            updateEditorPricing();
+            requestAnimationFrame(() => searchInput?.focus());
+        }
+
         function normalizeHubQuery(value) {
             return String(value || '').replace(/\s+/g, ' ').trim().toLowerCase();
         }
@@ -4755,6 +4801,7 @@ ${wrapangDuplicateNote}`;
 
         function refreshEmbeddedHubPricing(target) {
             if (target === 'editor') {
+                renderEditorSelectedHub();
                 if (activeEditorWinner) updateEditorPricing();
             } else {
                 recalculateBuyerTotal();
@@ -5043,16 +5090,19 @@ ${wrapangDuplicateNote}`;
 
                 setEmbeddedHubSearchText('editor', company, region, shop);
                 filterEmbeddedHubs('editor', { keepSelection: true });
+                renderEditorSelectedHub();
                 updateEditorPricing();
+                document.body.classList.remove('hub-search-active');
+                const searchInput = document.getElementById('editor-hub-search');
+                if (searchInput) {
+                    delete searchInput.dataset.searchPositioned;
+                    searchInput.blur();
+                }
 
-                // 모바일은 고정 바가 키보드를 가리지 않도록 유지하고,
-                // 거점 선택 직후 정산/저장 영역으로 자연스럽게 이동한다.
+                // 선택 후에는 메모 아래의 적용 배송지를 바로 확인할 수 있게 한다.
                 if (window.innerWidth <= 820) {
                     requestAnimationFrame(() => {
-                        const footer = document.querySelector('.editor-action-footer');
-                        if (!footer) return;
-                        const targetTop = footer.getBoundingClientRect().bottom + window.scrollY - window.innerHeight + 16;
-                        window.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
+                        document.getElementById('editor-selected-hub')?.scrollIntoView({ behavior:'smooth', block:'center' });
                     });
                 }
             } else {
@@ -5213,6 +5263,15 @@ ${wrapangDuplicateNote}`;
             const editorHubSearch = document.getElementById('editor-hub-search');
             if (editorHubSearch) {
                 editorHubSearch.addEventListener('input', () => handleEditorHubSearchInput(editorHubSearch));
+                editorHubSearch.addEventListener('focus', () => positionEditorHubSearch(editorHubSearch));
+                editorHubSearch.addEventListener('blur', () => {
+                    setTimeout(() => {
+                        if (!editorHubSearch.value.trim() && document.activeElement !== editorHubSearch) {
+                            document.body.classList.remove('hub-search-active');
+                            delete editorHubSearch.dataset.searchPositioned;
+                        }
+                    }, 0);
+                });
             }
             // Bind buyer embedded search input
             const buyerHubSearch = document.getElementById('buyer-hub-search');
