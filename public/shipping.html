@@ -2924,6 +2924,7 @@
             const itemLines = (selectedItems || []).map(paymentSmsItemLine).join('\n');
             const others = otherCompanyPaymentText(allItems, selectedCompany);
             const wrapangDuplicateNote = '※ 랩팡 합배송비는 1회만 입금합니다. 다른 업체 안내로 이미 입금하셨다면 중복 입금하지 않으셔도 됩니다.';
+            const wrapangDestination = String(shippingInfo || '배송 거점 미지정').replace(/^\[랩팡\]\s*/, '');
 
             if (shippingType === '배송' && shippingCompany === '랩팡') {
                 return `[${selectedCompany} 낙찰]
@@ -2933,6 +2934,7 @@ ${selectedCompany} 결제금액: ${bid.toLocaleString()}원
 ※ 랩팡 배송비는 아래 계좌로 별도 입금${others}
 
 [랩팡 합배송]
+배송지: ${wrapangDestination}
 참여 업체: ${sellerCompanies.join(', ')}
 총 ${(allItems || []).length}개체 / 배송비 ${totalShipping.toLocaleString()}원
 
