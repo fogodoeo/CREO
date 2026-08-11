@@ -640,8 +640,8 @@
                     <ol class="cw-q0-list">
                         <li><b>01</b><span>재미를 위한 성향 콘텐츠이며, 과학적·의학적 진단이 아닙니다.</span></li>
                         <li><b>02</b><span>크레 앞에서는 평소 유형과 다른 결과가 나올 수 있습니다.</span></li>
-                        <li><b>03</b><span>좋아 보이는 답보다 평소 내 모습에 가까운 쪽을 골라주세요.</span></li>
-                        <li><b>04</b><span>오래 고민하지 말고 먼저 떠오른 답을 선택해주세요.</span></li>
+                        <li><b>03</b><span>네 답 모두 괜찮습니다. 평소 먼저 손이 가는 쪽을 골라주세요.</span></li>
+                        <li><b>04</b><span>두 답이 끌리면 실제 그 순간 가장 먼저 할 행동을 선택해주세요.</span></li>
                     </ol>
                     <button class="cw-primary-button cw-q0-start-button" type="button" data-q0-start>시작하기</button>
                 </div>`;
@@ -1196,9 +1196,11 @@
                     questionId: question.id,
                     axis: question.axis,
                     secondaryAxis: question.secondaryAxis || '',
+                    choiceId: question.optionIds?.[answers[index]] || '',
                     displayedPosition: answers[index] + 1,
                     score: scores[0],
                     secondaryScore: scores[1] || '',
+                    signalScores: Core.answerScoreMap(question, answers[index]),
                     responseMs: responseTimings[index]?.elapsedMs || null,
                     timingValid: Boolean(responseTimings[index]?.valid)
                     };

@@ -18,8 +18,8 @@
         'ESTJ', 'ESFJ', 'ENFJ', 'ENTJ'
     ];
 
-    // v12.3 uses twelve balanced situations. Each four-choice block measures two axes,
-    // with a 3:2 primary/supporting signal so both axes influence the result.
+    // This inline set remains only as a compatibility fallback. The deployed v22
+    // questionnaire and its graded, single-axis signals load from the JSON spec below.
     const QUESTIONS = [
         { id: 'Q01', axis: 'TF', secondaryAxis: 'JP', facet: 'selection', label: '두 개체 중 하나를 고를 때', q: '둘 중 하나를 정하기 위해 마지막으로 하는 일은?', options: ['두 개체 사진을 한 화면에 놓고 본다', '한 마리씩 따로 다시 살펴본다', '잠깐 다른 곳을 본 뒤 다시 돌아온다', '각각 마음에 드는 점을 하나씩 짚어본다'], scores: ['T', 'T', 'F', 'F'], scorePairs: [['T', 'J'], ['T', 'P'], ['F', 'P'], ['F', 'J']], scoreWeights: [[3, 2], [3, 2], [3, 2], [3, 2]] },
         { id: 'Q02', axis: 'JP', secondaryAxis: 'EI', facet: 'orientation', label: '찾던 부스가 보이지 않을 때', q: '먼저 어떻게 할까?', options: ['안내 요원에게 위치를 묻는다', '온라인 지도를 다시 확인한다', '주변 부스를 보며 근처부터 찾아본다', '다음에 볼 부스로 갔다가 나중에 돌아온다'], scores: ['J', 'J', 'P', 'P'], scorePairs: [['J', 'E'], ['J', 'I'], ['P', 'E'], ['P', 'I']], scoreWeights: [[3, 2], [3, 2], [3, 2], [3, 2]] },
@@ -35,44 +35,85 @@
         { id: 'Q12', axis: 'SN', secondaryAxis: 'TF', facet: 'name-card', label: '이름표 시안 중 하나를 고를 때', q: '두 시안을 처음 비교하는 방식은?', options: ['글자 크기와 사진 배치의 차이를 본다', '매일 볼 때 어느 쪽이 더 마음에 들지 본다', '사육장 전체 분위기와 어떻게 이어질지 본다', '나중에 사진이나 장식을 바꿔도 어울릴지 본다'], scores: ['S', 'S', 'N', 'N'], scorePairs: [['S', 'T'], ['S', 'F'], ['N', 'F'], ['N', 'T']], scoreWeights: [[3, 2], [3, 2], [3, 2], [3, 2]] }
     ];
 
-    const QUESTIONNAIRE_FILE = 'crewart-survey-questions-v12.3-balanced-3to2.json';
+    const QUESTIONNAIRE_FILE = 'crewart-survey-questions-v22.json';
     let questionnaireSpec = null;
 
     function normalizeQuestionnaireSpec(spec) {
         if (!spec || !Array.isArray(spec.questions) || !spec.questions.length) {
             throw new Error('Questionnaire spec must contain a non-empty questions array.');
         }
+        const scoring = spec.scoring || {};
+        const primaryPoints = Number(scoring.strongSignalPoints) || PRIMARY_SIGNAL_POINTS;
+        const secondaryPoints = Number(scoring.supportingSignalPoints) || SECONDARY_SIGNAL_POINTS;
         const questions = spec.questions.map((question, index) => {
-            const optionCriteria = Array.isArray(question.optionCriteria)
-                ? question.optionCriteria
-                : question.scorePairs;
-            const scorePairs = Array.isArray(optionCriteria)
-                ? optionCriteria.map(criteria => {
-                    if (Array.isArray(criteria)) return criteria.slice(0, 2);
-                    return [criteria?.[question.axis], criteria?.[question.secondaryAxis]];
-                })
-                : [];
-            const scoreWeights = (question.optionWeights || question.scoreWeights || [])
-                .map(weight => Array.isArray(weight) ? weight.slice(0, 2).map(Number) : [PRIMARY_SIGNAL_POINTS, SECONDARY_SIGNAL_POINTS]);
             if (!question.id || !question.axis || !question.secondaryAxis
-                || !Array.isArray(question.options) || question.options.length !== 4
-                || scorePairs.length !== 4 || scoreWeights.length !== 4
-                || scorePairs.some(pair => pair.length !== 2 || !pair[0] || !pair[1])) {
+                || !AXES.includes(question.axis) || !AXES.includes(question.secondaryAxis)
+                || question.axis === question.secondaryAxis
+                || !Array.isArray(question.options) || question.options.length !== 4) {
                 throw new Error(`Invalid questionnaire item at index ${index}.`);
             }
+            const allowedLetters = [...question.axis, ...question.secondaryAxis];
+            let optionScores;
+            if (Array.isArray(question.optionScores)) {
+                optionScores = question.optionScores.map((rawScore, choiceIndex) => {
+                    const score = Object.fromEntries(allowedLetters.map(letter => [letter, Number(rawScore?.[letter])]));
+                    if (Object.values(score).some(points => !Number.isInteger(points) || points < 0)
+                        || score[question.axis[0]] + score[question.axis[1]] !== primaryPoints
+                        || score[question.secondaryAxis[0]] + score[question.secondaryAxis[1]] !== secondaryPoints) {
+                        throw new Error(`Invalid option score at question ${question.id}, choice ${choiceIndex + 1}.`);
+                    }
+                    return score;
+                });
+            } else {
+                const optionCriteria = Array.isArray(question.optionCriteria)
+                    ? question.optionCriteria
+                    : question.scorePairs;
+                const legacyPairs = Array.isArray(optionCriteria)
+                    ? optionCriteria.map(criteria => {
+                        if (Array.isArray(criteria)) return criteria.slice(0, 2);
+                        return [criteria?.[question.axis], criteria?.[question.secondaryAxis]];
+                    })
+                    : [];
+                const legacyWeights = (question.optionWeights || question.scoreWeights || [])
+                    .map(weight => Array.isArray(weight) ? weight.slice(0, 2).map(Number) : [primaryPoints, secondaryPoints]);
+                if (legacyPairs.length !== 4 || legacyWeights.length !== 4
+                    || legacyPairs.some(pair => pair.length !== 2 || !pair[0] || !pair[1])) {
+                    throw new Error(`Invalid legacy questionnaire item at index ${index}.`);
+                }
+                optionScores = legacyPairs.map((pair, choiceIndex) => {
+                    const score = Object.fromEntries(allowedLetters.map(letter => [letter, 0]));
+                    score[pair[0]] += legacyWeights[choiceIndex][0];
+                    score[pair[1]] += legacyWeights[choiceIndex][1];
+                    return score;
+                });
+            }
+            if (optionScores.length !== 4) throw new Error(`Question ${question.id} must contain four option scores.`);
+            const dominantLetter = (axis, score) => (
+                score[axis[0]] === score[axis[1]] ? '' : score[axis[0]] > score[axis[1]] ? axis[0] : axis[1]
+            );
+            const scorePairs = optionScores.map(score => [
+                dominantLetter(question.axis, score),
+                dominantLetter(question.secondaryAxis, score)
+            ].filter(Boolean));
+            const optionIds = Array.isArray(question.optionIds) && question.optionIds.length === 4
+                ? question.optionIds.map(String)
+                : question.options.map((_, choiceIndex) => `${question.id}-${choiceIndex + 1}`);
+            if (new Set(optionIds).size !== 4) throw new Error(`Question ${question.id} option ids must be unique.`);
             return {
                 ...question,
                 options: question.options.slice(),
+                optionIds,
+                optionScores,
                 scores: scorePairs.map(pair => pair[0]),
                 scorePairs,
-                scoreWeights
+                scoreWeights: scorePairs.map((pair, choiceIndex) => pair.map(letter => optionScores[choiceIndex][letter]))
             };
         });
         const ids = new Set(questions.map(question => question.id));
         if (ids.size !== questions.length) throw new Error('Questionnaire item ids must be unique.');
         return {
             version: String(spec.version || SURVEY_VERSION),
-            scoring: spec.scoring || {},
+            scoring,
             questions
         };
     }
@@ -178,6 +219,8 @@
         return QUESTIONS.map(question => ({
             ...question,
             options: question.options.slice(),
+            optionIds: question.optionIds?.slice(),
+            optionScores: question.optionScores?.map(score => ({ ...score })),
             scores: question.scores.slice(),
             scorePairs: question.scorePairs?.map(pair => pair.slice()),
             scoreWeights: question.scoreWeights?.map(pair => pair.slice()),
@@ -214,12 +257,18 @@
         questions.filter(question => question.scorePairs).forEach(question => {
             const choices = shuffle(question.options.map((option, index) => ({
                 option,
+                optionId: question.optionIds?.[index],
+                optionScore: question.optionScores?.[index],
                 score: question.scores[index],
-                pair: question.scorePairs[index]
+                pair: question.scorePairs[index],
+                weight: question.scoreWeights?.[index]
             })), rng);
             question.options = choices.map(item => item.option);
+            question.optionIds = choices.map(item => item.optionId);
+            question.optionScores = choices.map(item => ({ ...item.optionScore }));
             question.scores = choices.map(item => item.score);
             question.scorePairs = choices.map(item => item.pair);
+            question.scoreWeights = choices.map(item => item.weight);
         });
 
         let ordered = questions;
@@ -245,19 +294,29 @@
         return ordered;
     }
 
+    function answerScoreMap(question, choice) {
+        const configured = question?.optionScores?.[choice];
+        if (configured && typeof configured === 'object') return { ...configured };
+        const letters = Array.isArray(question?.scorePairs)
+            ? question.scorePairs[choice] || []
+            : [question?.scores?.[choice]].filter(Boolean);
+        const weights = question?.scoreWeights?.[choice] || letters.map(() => 1);
+        return Object.fromEntries(letters.map((letter, index) => [letter, Number(weights[index]) || 1]));
+    }
+
     function answerLetters(question, choice) {
-        if (Array.isArray(question?.scorePairs)) return question.scorePairs[choice]?.slice() || [];
-        const letter = question?.scores?.[choice];
-        return letter ? [letter] : [];
+        const score = answerScoreMap(question, choice);
+        return [question?.axis, question?.secondaryAxis].filter(Boolean).map(axis => {
+            const left = Number(score[axis[0]]) || 0;
+            const right = Number(score[axis[1]]) || 0;
+            return left === right ? '' : left > right ? axis[0] : axis[1];
+        }).filter(Boolean);
     }
 
     function answerSignals(question, choice) {
-        const letters = answerLetters(question, choice);
-        const weights = question?.scoreWeights?.[choice] || letters.map(() => 1);
-        return letters.map((letter, index) => ({
-            letter,
-            points: Number(weights[index]) || 1
-        }));
+        return Object.entries(answerScoreMap(question, choice))
+            .filter(([, points]) => Number(points) > 0)
+            .map(([letter, points]) => ({ letter, points: Number(points) }));
     }
 
     function scoreAnswers(questions, answers) {
@@ -397,6 +456,7 @@
         scoreAnswers,
         answerLetters,
         answerSignals,
+        answerScoreMap,
         buildMbtiComparison,
         buildTimingStats,
         buildSpeedBenchmark,

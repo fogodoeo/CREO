@@ -128,32 +128,34 @@ function sanitizeSubmission(input, nowIso) {
         .map((answer, index) => {
             const questionId = cleanText(answer?.questionId, 3).toUpperCase();
             const axis = cleanText(answer?.axis, 2).toUpperCase();
-            const score = cleanText(answer?.score, 1).toUpperCase();
             const secondaryAxis = cleanText(answer?.secondaryAxis, 2).toUpperCase();
-            const secondaryScore = cleanText(answer?.secondaryScore, 1).toUpperCase();
+            const choiceId = cleanText(answer?.choiceId, 12).toUpperCase();
             const question = questionById.get(questionId);
+            const choiceIndex = question?.optionIds?.findIndex(id => id.toUpperCase() === choiceId) ?? -1;
             const displayedPosition = exactInteger(answer?.displayedPosition, 1, question?.options?.length || 0);
             const expectedSecondaryAxis = question?.secondaryAxis || '';
             if (
                 !question
                 || seenQuestionIds.has(questionId)
                 || question.axis !== axis
-                || !axis.includes(score)
                 || secondaryAxis !== expectedSecondaryAxis
-                || !expectedSecondaryAxis.includes(secondaryScore)
+                || choiceIndex < 0
                 || displayedPosition !== answers[index] + 1
             ) return null;
+            const signalScores = Core.answerScoreMap(question, choiceIndex);
+            const scoreLetters = Core.answerLetters(question, choiceIndex);
             const responseMs = exactInteger(answer?.responseMs, 0, 90000) ?? 0;
             seenQuestionIds.add(questionId);
-            scoreCounts[score] += Core.PRIMARY_SIGNAL_POINTS || 1;
-            scoreCounts[secondaryScore] += Core.SECONDARY_SIGNAL_POINTS || 1;
+            Object.entries(signalScores).forEach(([letter, points]) => { scoreCounts[letter] += points; });
             return {
                 questionId,
                 axis,
                 secondaryAxis,
+                choiceId,
                 displayedPosition,
-                score,
-                secondaryScore,
+                score: scoreLetters[0] || '',
+                secondaryScore: scoreLetters[1] || '',
+                signalScores,
                 responseMs,
                 timingValid: responseMs >= 400 && responseMs <= 90000
             };

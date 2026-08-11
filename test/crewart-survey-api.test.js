@@ -62,32 +62,46 @@ function memberToken() {
 function validSubmission() {
     const prepared = Core.prepareQuestions(() => 0.42);
     const target = 'ESTJ';
-    const answers = prepared.map(question => question.scorePairs.findIndex(pair => (
-        pair[0] === target[Core.AXES.indexOf(question.axis)]
-        && pair[1] === target[Core.AXES.indexOf(question.secondaryAxis)]
-    )));
-    const axisScores = Object.fromEntries('EISNTFJP'.split('').map(letter => [letter, target.includes(letter) ? Core.AXIS_SCORE_TOTAL : 0]));
+    const answers = prepared.map(question => {
+        const targetLetters = [question.axis, question.secondaryAxis]
+            .map(axis => target[Core.AXES.indexOf(axis)]);
+        const values = question.optionScores.map(score => targetLetters.reduce((sum, letter, axisIndex) => {
+            const axis = axisIndex === 0 ? question.axis : question.secondaryAxis;
+            const opposite = axis[0] === letter ? axis[1] : axis[0];
+            return sum + score[letter] - score[opposite];
+        }, 0));
+        return values.reduce((best, value, index) => value > values[best] ? index : best, 0);
+    });
+    const calculated = Core.scoreAnswers(prepared, answers);
+    assert.equal(calculated.code, target);
+    const axisScores = calculated.letters;
     const totalMs = Core.QUESTIONS.length * 1800;
     return {
         participantKey: 'a'.repeat(24),
-        creMbti: 'ESTJ',
-        crebtiType: 'ESTJ',
+        creMbti: calculated.code,
+        crebtiType: calculated.code,
         knownMbti: 'INFP',
         axisScores,
-        assignedHouseKey: 'ST',
-        houseId: 'ST',
+        assignedHouseKey: Core.chooseTendencyHouse(calculated),
+        houseId: Core.chooseTendencyHouse(calculated),
         answers,
-        answerLabels: prepared.map((question, index) => ({
-            questionId: question.id,
-            axis: question.axis,
-            secondaryAxis: question.secondaryAxis,
-            displayedPosition: answers[index] + 1,
-            score: question.scorePairs[answers[index]][0],
-            secondaryScore: question.scorePairs[answers[index]][1],
-            responseMs: 1800,
-            timingValid: true,
-            label: '서버에 저장하면 안 되는 선택지 원문'
-        })),
+        answerLabels: prepared.map((question, index) => {
+            const choice = answers[index];
+            const letters = Core.answerLetters(question, choice);
+            return {
+                questionId: question.id,
+                axis: question.axis,
+                secondaryAxis: question.secondaryAxis,
+                choiceId: question.optionIds[choice],
+                displayedPosition: choice + 1,
+                score: letters[0] || '',
+                secondaryScore: letters[1] || '',
+                signalScores: Core.answerScoreMap(question, choice),
+                responseMs: 1800,
+                timingValid: true,
+                label: '서버에 저장하면 안 되는 선택지 원문'
+            };
+        }),
         timingStats: {
             validCount: Core.QUESTIONS.length,
             totalMs,
@@ -306,6 +320,21 @@ test('tampered question identities and score totals are rejected', async () => {
     const api = createCrewartSurveyApi({ repository, bandMembership: { config: { sessionSecret: SECRET } }, now: () => NOW });
     const submission = validSubmission();
     submission.answerLabels[0].questionId = submission.answerLabels[1].questionId;
+    const response = new CapturedResponse();
+    await api.handle(
+        request('POST', JSON.stringify({ response: submission }), { authorization: `Bearer ${memberToken()}` }),
+        response,
+        new URL('https://creok.example.com/api/crewart-survey/responses')
+    );
+    assert.equal(response.status, 422);
+    assert.equal(repository.writes.length, 0);
+});
+
+test('unknown stable choice ids are rejected before score storage', async () => {
+    const repository = new FakeRepository();
+    const api = createCrewartSurveyApi({ repository, bandMembership: { config: { sessionSecret: SECRET } }, now: () => NOW });
+    const submission = validSubmission();
+    submission.answerLabels[0].choiceId = 'Q01-99';
     const response = new CapturedResponse();
     await api.handle(
         request('POST', JSON.stringify({ response: submission }), { authorization: `Bearer ${memberToken()}` }),
