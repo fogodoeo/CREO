@@ -15,7 +15,7 @@ test('questionnaire spec has balanced four-choice scenarios', () => {
     const secondaryCounts = Object.fromEntries(Core.AXES.map(axis => [axis, 0]));
     for (const question of Core.QUESTIONS) {
         assert.ok(question.label.length <= 40);
-        assert.ok(question.q.length <= 140);
+        assert.ok(question.q.length >= 70 && question.q.length <= 105);
         assert.equal(question.options.length, 4);
         assert.equal(question.scores.length, 4);
         assert.equal(question.scorePairs.length, 4);
@@ -47,7 +47,7 @@ test('choices avoid direct MBTI answer-key language and narrow auction context',
         assert.equal(loaded.test(copy), false);
         assert.equal(revealing.test(copy), false);
         assert.equal(narrowContext.test(copy), false);
-        assert.ok(question.options.every(option => option.length >= 10 && option.length <= 60));
+        assert.ok(question.options.every(option => option.length >= 22 && option.length <= 38));
     }
 });
 

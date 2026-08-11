@@ -472,7 +472,7 @@
                 ])),
                 timingMedians: (Array.isArray(payload.cohort?.timingMedians)
                     ? payload.cohort.timingMedians
-                    : []).map(Number).filter(value => value >= 400 && value <= 30000),
+                    : []).map(Number).filter(value => value >= 400 && value <= 90000),
                 sampleSize: Math.max(0, Number(payload.cohort?.sampleSize) || 0)
             };
         } catch (error) {
@@ -513,7 +513,7 @@
             questionId: questions[index].id,
             axis: questions[index].axis,
             elapsedMs,
-            valid: elapsedMs >= 400 && elapsedMs <= 30000
+            valid: elapsedMs >= 400 && elapsedMs <= 90000
         };
     }
 
@@ -800,7 +800,7 @@
         if (!timingStats?.style) return null;
         const valid = timingStats.validCount > 0;
         const median = valid ? formatSeconds(timingStats.medianMs) : '-';
-        const samples = cohortSummary.timingMedians.map(Number).filter(value => value >= 400 && value <= 30000);
+        const samples = cohortSummary.timingMedians.map(Number).filter(value => value >= 400 && value <= 90000);
         const averageMs = samples.length ? samples.reduce((sum, value) => sum + value, 0) / samples.length : timingStats.medianMs;
         const relative = valid && averageMs > 0 ? Math.log2(timingStats.medianMs / averageMs) : 0;
         const position = Math.max(7, Math.min(93, 50 + relative * 25));
@@ -2108,7 +2108,7 @@
     async function sharePreparedNativeResult(event) {
         const button = event?.currentTarget;
         const title = `${result.code} · ${result.typeName}`;
-        const text = `나는 크레 앞에서 어떤 유형일까?\n${Core.QUESTIONS.length}문항 약 2분`;
+        const text = `나는 크레 앞에서 어떤 유형일까?\n${Core.QUESTIONS.length}문항 약 3분`;
         setShareButtonBusy(button, true, '공유 준비 중');
 
         try {
@@ -2148,7 +2148,7 @@
     async function shareResult(event) {
         const button = event?.currentTarget;
         const title = `${result.code} · ${result.typeName}`;
-        const text = `나는 크레 앞에서 어떤 유형일까?\n${Core.QUESTIONS.length}문항 약 2분`;
+        const text = `나는 크레 앞에서 어떤 유형일까?\n${Core.QUESTIONS.length}문항 약 3분`;
         let shareFile = null;
         setShareButtonBusy(button, true, '카카오톡 여는 중');
 

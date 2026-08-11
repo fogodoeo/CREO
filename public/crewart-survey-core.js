@@ -318,7 +318,7 @@
             questionId: entry?.questionId || questions[index]?.id || '',
             axis: entry?.axis || questions[index]?.axis || '',
             elapsedMs: Math.round(Number(entry?.elapsedMs) || 0),
-            valid: entry?.valid !== false && Number(entry?.elapsedMs) >= 400 && Number(entry?.elapsedMs) <= 30000
+            valid: entry?.valid !== false && Number(entry?.elapsedMs) >= 400 && Number(entry?.elapsedMs) <= 90000
         }));
         const valid = normalized.filter(entry => entry.valid);
         const values = valid.map(entry => entry.elapsedMs);
@@ -346,7 +346,7 @@
     }
 
     function buildSpeedBenchmark(medianMs, sampleValues) {
-        const samples = (sampleValues || []).map(Number).filter(value => value >= 400 && value <= 30000);
+        const samples = (sampleValues || []).map(Number).filter(value => value >= 400 && value <= 90000);
         if (samples.length < 10) {
             return {
                 ready: false,

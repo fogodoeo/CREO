@@ -478,7 +478,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /createKakaoShareFile\(\)[\s\S]*canvas\.width = 1200[\s\S]*canvas\.height = 800/);
     assert.match(script, /imageWidth:\s*1200/);
     assert.match(script, /imageHeight:\s*800/);
-    assert.match(script, /나는 크레 앞에서 어떤 유형일까\?\\n\$\{Core\.QUESTIONS\.length\}문항 약 2분/);
+    assert.match(script, /나는 크레 앞에서 어떤 유형일까\?\\n\$\{Core\.QUESTIONS\.length\}문항 약 3분/);
     assert.match(script, /title:\s*'나도 알아보기'/);
     assert.match(script, /navigator\.canShare\?\.\(\{ files: \[file\] \}\)/);
     assert.match(html, /id="result-save-dialog"/);
@@ -496,7 +496,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /KAKAO_JS_KEY/);
     assert.match(script, /const SURVEY_URL = 'https:\/\/creok\.onrender\.com\/crewart-survey\.html'/);
     assert.doesNotMatch(script, /const SURVEY_URL = new URL\([^\n]*document\.baseURI/);
-    assert.match(html, /crewart-survey\.js\?v=20260806-rgby-houses-v1/);
+    assert.match(html, /crewart-survey\.js\?v=20260811-survey-v21/);
     assert.match(script, /Kakao\.Share\.uploadImage/);
     assert.match(script, /Kakao\.Share\.sendDefault/);
     assert.match(script, /function sharePreparedNativeResult/);
@@ -520,8 +520,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /cw-result-code cw-result-code-back/);
     assert.match(script, /cw-result-code cw-result-code-front/);
     assert.match(script, /class="cw-type-poster"/);
-    assert.match(html, /20260806-rgby-houses-v1/);
-    assert.match(html, /20260806-rgby-houses-v1/);
+    assert.match(html, /crewart-survey-core\.js\?v=20260811-survey-v21/);
+    assert.match(html, /crewart-survey-v4\.css\?v=20260811-survey-v21/);
     assert.doesNotMatch(html, /question-illustration|question-image/);
     assert.doesNotMatch(script, /QUESTION_IMAGE_ROOT|question\.image|nextImage/);
     assert.doesNotMatch(html, /cw-home-guide|cw-home-disclaimer/);
@@ -536,6 +536,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /<\/article>\s*<small class="cw-result-copyright cw-result-copyright-outside"/);
     assert.match(css, /\.cw-q0-list li\s*\{[^}]*grid-template-columns:\s*30px 1fr/);
     assert.match(css, /\.cw-choice-list\.is-four-option\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
+    assert.match(css, /@media \(max-width:\s*560px\)[\s\S]*\.cw-choice-list\.is-four-option\s*\{[^}]*grid-template-columns:\s*1fr/);
     assert.match(css, /\.cw-intro\s*\{[^}]*height:\s*100dvh[^}]*overflow:\s*hidden/);
     assert.match(css, /\.cw-intro-content\s*\{[^}]*min-height:\s*0/);
     assert.match(html, /property="og:url" content="https:\/\/creok\.onrender\.com\/crewart-survey\.html"/);

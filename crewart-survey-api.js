@@ -143,7 +143,7 @@ function sanitizeSubmission(input, nowIso) {
                 || !expectedSecondaryAxis.includes(secondaryScore)
                 || displayedPosition !== answers[index] + 1
             ) return null;
-            const responseMs = exactInteger(answer?.responseMs, 0, 30000) ?? 0;
+            const responseMs = exactInteger(answer?.responseMs, 0, 90000) ?? 0;
             seenQuestionIds.add(questionId);
             scoreCounts[score] += Core.PRIMARY_SIGNAL_POINTS || 1;
             scoreCounts[secondaryScore] += Core.SECONDARY_SIGNAL_POINTS || 1;
@@ -155,7 +155,7 @@ function sanitizeSubmission(input, nowIso) {
                 score,
                 secondaryScore,
                 responseMs,
-                timingValid: responseMs >= 400 && responseMs <= 30000
+                timingValid: responseMs >= 400 && responseMs <= 90000
             };
         })
         .filter(Boolean);
@@ -267,7 +267,7 @@ function aggregateResponses(rows, legacyValue) {
         const house = cleanText(response.assignedHouseKey || response.houseId, 2).toUpperCase();
         if (house in houseCounts) houseCounts[house] += 1;
         const median = Number(response?.timingStats?.medianMs);
-        if (Number.isFinite(median) && median >= 400 && median <= 30000) timingMedians.push(Math.round(median));
+        if (Number.isFinite(median) && median >= 400 && median <= 90000) timingMedians.push(Math.round(median));
         sampleSize += 1;
     }
     const aggregate = { houseCounts, timingMedians: timingMedians.slice(-RESPONSE_LIMIT), sampleSize };

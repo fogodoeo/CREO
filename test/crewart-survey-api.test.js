@@ -261,6 +261,31 @@ test('response storage requires a valid BAND session and strips personal fields'
     assert.equal(stored.answerLabels[0].timingValid, true);
 });
 
+test('thoughtful mobile responses remain valid for up to ninety seconds per question', async () => {
+    const repository = new FakeRepository();
+    const api = createCrewartSurveyApi({
+        repository,
+        bandMembership: { config: { sessionSecret: SECRET } },
+        now: () => NOW
+    });
+    const submission = validSubmission();
+    submission.answerLabels.forEach((answer) => { answer.responseMs = 60000; });
+    const response = new CapturedResponse();
+    await api.handle(
+        request('POST', JSON.stringify({ response: submission }), {
+            authorization: `Bearer ${memberToken()}`,
+            origin: 'https://creok.example.com'
+        }),
+        response,
+        new URL('https://creok.example.com/api/crewart-survey/responses')
+    );
+    assert.equal(response.status, 201);
+    const stored = JSON.parse(repository.writes[0].value);
+    assert.equal(stored.timingStats.validCount, Core.QUESTIONS.length);
+    assert.equal(stored.timingStats.medianMs, 60000);
+    assert.equal(stored.answerLabels.every((answer) => answer.timingValid), true);
+});
+
 test('tampered result codes are rejected before storage', async () => {
     const repository = new FakeRepository();
     const api = createCrewartSurveyApi({ repository, bandMembership: { config: { sessionSecret: SECRET } }, now: () => NOW });
