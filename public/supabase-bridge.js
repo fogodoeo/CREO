@@ -72,13 +72,15 @@ function parseTournamentFinalists(configMap, items = []) {
 
     const groups = parseTournamentStageGroups(configMap, 8);
     if (!groups) return [];
+    const activeStage = Number.parseInt(configMap?.active_tournament, 10) || 0;
     const totals = {};
     let resultCount = 0;
     (items || []).forEach(item => {
         const meta = getItemAuctionMeta(item);
         const status = String(item?.status || '').trim();
+        const itemStage = Number(meta.tournamentStage) || 0;
         if (meta.auctionType !== AUCTION_TYPES.TOURNAMENT
-            || Number(meta.tournamentStage) !== 8
+            || (itemStage !== 8 && !(activeStage === 8 && itemStage === 0))
             || !['완료', 'sold', '낙찰'].includes(status)) return;
         const name = String(item?.company || '').trim();
         const amount = Number(String(item?.sold_price ?? item?.soldPrice ?? 0).replace(/[^0-9.-]/g, '')) || 0;
@@ -1542,21 +1544,23 @@ function _archiveWonAmount(row) {
 
 function _archiveSummary(snapshot) {
     const items = snapshot?.items || [];
+    const activeStage = Number.parseInt(snapshot?.configs?.active_tournament, 10) || 0;
     const sold = items.filter(item => ['완료', 'sold', '낙찰'].includes(String(item.status || '').trim()));
     const stageCounts = {};
     const roundAmounts = {};
     items.forEach(item => {
         const meta = getItemAuctionMeta(item);
+        const tournamentStage = Number(meta.tournamentStage) || (meta.auctionType === AUCTION_TYPES.TOURNAMENT ? activeStage : 0);
         const key = meta.auctionType === AUCTION_TYPES.TOURNAMENT
-            ? (meta.tournamentStage === 2 ? '결승·3·4위전' : (meta.tournamentStage ? meta.tournamentStage + '강' : '토너먼트'))
+            ? (tournamentStage === 2 ? '결승·3·4위전' : (tournamentStage ? tournamentStage + '강' : '토너먼트'))
             : auctionTypeLabel(meta.auctionType);
         stageCounts[key] = (stageCounts[key] || 0) + 1;
         const company = String(item.company || '').trim();
         if (company
             && meta.auctionType === AUCTION_TYPES.TOURNAMENT
-            && [2, 4, 8, 16].includes(Number(meta.tournamentStage))
+            && [2, 4, 8, 16].includes(tournamentStage)
             && ['완료', 'sold', '낙찰'].includes(String(item.status || '').trim())) {
-            const stage = String(meta.tournamentStage);
+            const stage = String(tournamentStage);
             if (!roundAmounts[stage]) roundAmounts[stage] = {};
             roundAmounts[stage][company] = (roundAmounts[stage][company] || 0) + _archiveWonAmount(item);
         }

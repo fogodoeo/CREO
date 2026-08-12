@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <title>종합 순위표 | CDCUP</title>
-    <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
-    <script src="cdcup-tournament-data.js?v=20260809-three-round-v2"></script>
+    <script src="supabase-bridge.js?v=20260813-three-round-ranking"></script>
+    <script src="cdcup-tournament-data.js?v=20260813-three-round-ranking"></script>
     <script src="event-modules.js?v=20260710-crebti3"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
@@ -652,6 +652,45 @@
             return logoMarkup(row);
         }
 
+        function threeRoundStandings() {
+            const configured = CdcupTournamentData.parseStageGroups(latestRankingMap || {}, 8);
+            if (!configured) return null;
+            const groups = configured.groups.map(group => ({
+                ...group,
+                members: group.members.map(name => ({
+                    name,
+                    round1: CdcupTournamentData.roundAmount(tournamentStageAmounts, name, 16),
+                    round2: CdcupTournamentData.roundAmount(tournamentStageAmounts, name, 8),
+                    round3: CdcupTournamentData.roundAmount(tournamentStageAmounts, name, 4)
+                }))
+            })).map(group => ({
+                ...group,
+                total: group.members.reduce((sum, member) => sum + Number(member.round2 || 0), 0)
+            })).sort((a, b) => b.total - a.total || a.code.localeCompare(b.code, 'en'))
+                .map((group, index) => ({ ...group, rank: index + 1 }));
+            const round2Started = groups.some(group => group.members.some(member => member.round2 !== undefined));
+            const round2Complete = groups.every(group => group.members.every(member => member.round2 !== undefined));
+            const advancingGroups = round2Started ? groups.slice(0, 2) : [];
+            const advancingNames = new Set(advancingGroups.flatMap(group => group.members.map(member => member.name)));
+            const round3Rows = advancingGroups.flatMap(group => group.members.map(member => ({ ...member, group })))
+                .sort((a, b) => Number(b.round3 || 0) - Number(a.round3 || 0) || a.name.localeCompare(b.name, 'ko'));
+            const round3Started = round3Rows.some(member => member.round3 !== undefined);
+            const round3Ranks = Object.fromEntries(round3Rows.map((member, index) => [member.name, index + 1]));
+            return { configured, groups, round2Started, round2Complete, advancingGroups, advancingNames, round3Started, round3Ranks };
+        }
+
+        function threeRoundParticipantState(name, standings = threeRoundStandings()) {
+            if (!standings) return null;
+            const group = standings.groups.find(entry => entry.members.some(member => member.name === name));
+            const member = group?.members.find(entry => entry.name === name) || null;
+            const advancing = standings.advancingNames.has(name);
+            const eliminatedRound1 = standings.configured.eliminated.includes(name) || !group;
+            let text = '1라운드 탈락';
+            if (advancing) text = standings.round3Started ? `3라운드 ${standings.round3Ranks[name]}위` : (standings.round2Complete ? '3라운드 진출' : '3라운드 진출권');
+            else if (!eliminatedRound1) text = standings.round2Complete ? '2라운드 종료' : '2라운드 진행 중';
+            return { group, member, advancing, eliminatedRound1, text };
+        }
+
         function renderRoundViews(map) {
             const stageGroups = CdcupTournamentData.parseStageGroups(map || {}, 8);
             const officialMap = Object.fromEntries((legacyOfficialMode ? OFFICIAL_ROUND_RESULTS : []).map(entry => [entry.name, entry]));
@@ -711,8 +750,8 @@
             };
 
             const priceFor = (name, round) => {
-                if (round === 16) return officialMap[name]?.round16;
-                if (round === 8) return officialMap[name]?.round8;
+                if (round === 16) return legacyOfficialMode ? officialMap[name]?.round16 : CdcupTournamentData.roundAmount(tournamentStageAmounts, name, 16);
+                if (round === 8) return legacyOfficialMode ? officialMap[name]?.round8 : CdcupTournamentData.roundAmount(tournamentStageAmounts, name, 8);
                 if (round === 4) return tournamentStageAmounts[4]?.[name];
                 if (round === 2) return tournamentStageAmounts[2]?.[name];
                 return undefined;
@@ -755,12 +794,13 @@
                     total: group.members.reduce((sum, name) => sum + (CdcupTournamentData.roundAmount(tournamentStageAmounts, name, 8) || 0), 0)
                 })).sort((a, b) => b.total - a.total || a.code.localeCompare(b.code, 'en'))
                     .map((group, index) => ({ ...group, rank: index + 1, advancing: index < 2 && group.total > 0 }));
+                const round2Complete = stageGroups.groups.every(group => group.members.every(name => CdcupTournamentData.roundAmount(tournamentStageAmounts, name, 8) !== undefined));
                 const groupMarkup = group => `<article class="bracket-match ${group.advancing ? 'is-complete' : ''}"><div class="bracket-match-head"><span>${group.rank}위 · ${escapeHtml(group.name)}</span><span>${group.advancing ? '진출권' : group.total > 0 ? '3위' : '집계 중'} · ${formatAmount(group.total)}만원</span></div>${group.members.map(name => `<div class="bracket-team"><span class="team-logo logo-fallback">${escapeHtml(name.slice(0,1))}</span><span class="bracket-team-name">${escapeHtml(name)}${name === group.leader ? ' · 팀장' : ''}</span><span class="bracket-team-price">${formatAmount(CdcupTournamentData.roundAmount(tournamentStageAmounts,name,8)||0)}<small>만원</small></span><span></span></div>`).join('')}</article>`;
                 document.getElementById('round-content-8').innerHTML = groupStandings.map(groupMarkup).join('');
                 document.getElementById('round-nav-8').textContent = '2라운드';
                 document.getElementById('round-title-8').textContent = '2라운드 팀전';
                 document.getElementById('round-subtitle-8').textContent = 'TEAM TOTAL · TOP 2 ADVANCE';
-                document.getElementById('round-status-8').textContent = groupStandings.some(group => group.total > 0) ? '집계 중' : '경기 준비';
+                document.getElementById('round-status-8').textContent = round2Complete ? '경기 종료' : (groupStandings.some(group => group.total > 0) ? '집계 중' : '경기 준비');
                 document.getElementById('round-note-8').textContent = 'A/B/C팀 낙찰금 합산 순위입니다. 상위 2팀의 소속 업체 8곳이 3라운드에 진출합니다.';
 
                 const finalists = groupStandings.filter(group => group.advancing).flatMap(group => group.members.map(name => ({
@@ -803,6 +843,40 @@
         function showTeamJourney(name) {
             const row = allRows.find(item => item.name === name);
             if (!row) return;
+            const threeRound = threeRoundStandings();
+            if (threeRound) {
+                const state = threeRoundParticipantState(name, threeRound);
+                const winnerSet = new Set(threeRound.configured.qualification?.winners || []);
+                const wildcardSet = new Set(threeRound.configured.qualification?.wildcards || []);
+                const round1Amount = CdcupTournamentData.roundAmount(tournamentStageAmounts, name, 16);
+                const round2Amount = state.member?.round2;
+                const round3Amount = state.member?.round3;
+                const qualification = winnerSet.has(name) ? '승자 진출' : (wildcardSet.has(name) ? '와일드카드 진출' : (state.group ? '2라운드 진출' : '탈락'));
+                const stages = [
+                    {
+                        dot: '1', label: 'ROUND 1 · ROUND OF 16', title: '1라운드 16강 1:1 토너먼트',
+                        detail: `${round1Amount === undefined ? '-' : formatAmount(round1Amount) + '만원'} · ${qualification}`,
+                        state: state.group ? 'is-win' : 'is-loss'
+                    },
+                    state.group ? {
+                        dot: '2', label: 'ROUND 2 · TEAM BATTLE', title: `${state.group.name} 팀 합산전`,
+                        detail: `${round2Amount === undefined ? '집계 대기' : formatAmount(round2Amount) + '만원'} · 팀 합산 ${formatAmount(state.group.total)}만원 · ${state.advancing ? (threeRound.round2Complete ? '상위 2팀 진출' : '현재 진출권') : (threeRound.round2Complete ? '2라운드 종료' : '집계 중')}`,
+                        state: threeRound.round2Complete ? (state.advancing ? 'is-win' : 'is-loss') : 'is-pending'
+                    } : { dot: '2', label: 'ROUND 2 · TEAM BATTLE', title: '진출 실패', detail: '1라운드에서 여정 종료', state: 'is-locked' },
+                    state.advancing ? {
+                        dot: '3', label: 'ROUND 3 · FINAL EIGHT', title: '8인 개인전',
+                        detail: round3Amount === undefined ? '3라운드 진출 확정' : `${formatAmount(round3Amount)}만원 · 현재 ${threeRound.round3Ranks[name]}위`,
+                        state: round3Amount === undefined ? 'is-pending' : (threeRound.round3Ranks[name] === 1 ? 'is-win' : 'is-pending')
+                    } : { dot: '3', label: 'ROUND 3 · FINAL EIGHT', title: '진출 전', detail: state.group ? '2라운드 상위 2팀만 진출' : '대기', state: 'is-locked' }
+                ];
+                const final = finalLabel(row);
+                document.getElementById('journey-team').innerHTML = `${logoMarkup(row)}<div><strong>${escapeHtml(name)}</strong><span>${escapeHtml(englishName(name))}</span></div>`;
+                document.getElementById('journey-summary').innerHTML = `<span>현재 순위<strong>${row.rank}위</strong></span><span>누적 낙찰금<strong>${formatAmount(row.amount)}만원</strong></span><span>현재 결과<strong>${escapeHtml(final.text)}</strong></span>`;
+                document.getElementById('journey-timeline').innerHTML = stages.map(stage => `<article class="journey-step ${stage.state}"><div class="journey-dot">${stage.dot}</div><div class="journey-copy"><small>${stage.label}</small><strong>${escapeHtml(stage.title)}</strong><span>${escapeHtml(stage.detail)}</span></div></article>`).join('');
+                document.getElementById('team-journey-modal').classList.add('open');
+                document.body.style.overflow = 'hidden';
+                return;
+            }
             const r16Match = ROUND_OF_16_MATCHUPS.find(match => match.left === name || match.right === name);
             const qfMatch = QUARTERFINAL_MATCHUPS.find(match => match.left === name || match.right === name);
             const r16Winner = winnerByOfficialPrice(r16Match, 16);
@@ -888,6 +962,8 @@
         document.addEventListener('keydown', event => { if (event.key === 'Escape') closeTeamJourney(); });
 
         function finalLabel(row) {
+            const threeRound = threeRoundParticipantState(row?.name);
+            if (threeRound) return { text: threeRound.text, kind: threeRound.advancing && threeRound.text.includes('1위') ? 'champion' : '' };
             const best = [16, 8, 4, 2].map(scale => ({ scale, result: row.results[scale] }))
                 .filter(entry => entry.result)
                 .sort((a, b) => resultScore(b.result) - resultScore(a.result) || a.scale - b.scale)[0];
@@ -991,10 +1067,17 @@
                 const tournamentItems = (items || []).filter(isTournamentAuctionItem);
                 const amounts = {};
                 tournamentStageAmounts = CdcupTournamentData.buildRoundAmounts(map || {}, tournamentItems);
+                const threeRoundGroups = CdcupTournamentData.parseStageGroups(map || {}, 8);
                 const roundTotals = [16, 8, 4, 2].map(round =>
                     Object.values(tournamentStageAmounts[round] || {}).reduce((sum, value) => sum + Number(value || 0), 0)
                 );
-                document.querySelector('.board-foot').innerHTML = `<span>※ 16강 ${formatAmount(roundTotals[0])} + 8강 ${formatAmount(roundTotals[1])} + 4강 ${formatAmount(roundTotals[2])} + 결승·3위전 ${formatAmount(roundTotals[3])}만원</span><span>총 ${formatAmount(roundTotals.reduce((sum, value) => sum + value, 0))}만원</span>`;
+                document.querySelector('.board-foot').innerHTML = threeRoundGroups
+                    ? `<span>※ 1라운드 ${formatAmount(roundTotals[0])} + 2라운드 ${formatAmount(roundTotals[1])} + 3라운드 ${formatAmount(roundTotals[2])}만원</span><span>총 ${formatAmount(roundTotals[0] + roundTotals[1] + roundTotals[2])}만원</span>`
+                    : `<span>※ 16강 ${formatAmount(roundTotals[0])} + 8강 ${formatAmount(roundTotals[1])} + 4강 ${formatAmount(roundTotals[2])} + 결승·3위전 ${formatAmount(roundTotals[3])}만원</span><span>총 ${formatAmount(roundTotals.reduce((sum, value) => sum + value, 0))}만원</span>`;
+                if (threeRoundGroups) {
+                    document.querySelector('.board-title strong').textContent = '3-ROUND OFFICIAL RANKING';
+                    document.querySelector('.board-title span').textContent = '1라운드 16강, 2라운드 팀전, 3라운드 8인 개인전을 기준으로 집계합니다.';
+                }
                 tournamentItems.forEach(item => {
                     const name = String(item.company || '').trim();
                     if (!name || !isSold(item)) return;
@@ -1070,6 +1153,10 @@
 
                 const names = new Set([...Object.keys(phases[16]), ...Object.keys(phases[8]), ...Object.keys(phases[4]), ...Object.keys(phases[2]), ...(legacyOfficialMode ? OFFICIAL_ROUND_RESULTS.map(entry => entry.name) : [])]);
                 tournamentItems.forEach(item => { if (item.company) names.add(String(item.company).trim()); });
+                if (threeRoundGroups) {
+                    threeRoundGroups.groups.forEach(group => group.members.forEach(name => names.add(name)));
+                    threeRoundGroups.eliminated.forEach(name => names.add(name));
+                }
                 sideAuctionRows = (items || []).filter(item => !isTournamentAuctionItem(item) && ['완료','sold','낙찰','유찰'].includes(String(item.status || '').trim()))
                     .sort((a,b) => (Number(a.num)||0) - (Number(b.num)||0));
                 allRows = [...names].filter(Boolean).map(name => {
@@ -1078,10 +1165,14 @@
                     const phaseAmounts = Object.fromEntries([16, 8, 4, 2]
                         .map(round => [round, CdcupTournamentData.roundAmount(tournamentStageAmounts, name, round)])
                         .filter(([, value]) => value !== undefined));
-                    const amount = official
+                    const amount = (official || threeRoundGroups)
                         ? CdcupTournamentData.teamTotal(tournamentStageAmounts, name)
                         : (amounts[name] || 0);
-                    return { name, logo: logoFor(name, logos), amount, phaseAmounts, results, score: Math.max(resultScore(results[16]), resultScore(results[8]), resultScore(results[4]), resultScore(results[2])) };
+                    const threeRoundState = threeRoundGroups ? threeRoundParticipantState(name) : null;
+                    const threeRoundScore = threeRoundState
+                        ? (threeRoundState.advancing ? 3000 : (threeRoundState.group ? 2000 : 1000))
+                        : 0;
+                    return { name, logo: logoFor(name, logos), amount, phaseAmounts, results, score: threeRoundGroups ? threeRoundScore : Math.max(resultScore(results[16]), resultScore(results[8]), resultScore(results[4]), resultScore(results[2])) };
                 }).sort((a, b) => b.score - a.score || b.amount - a.amount || a.name.localeCompare(b.name, 'ko'));
 
                 if (!allRows.length && new URLSearchParams(location.search).get('demo') === '1') allRows = demoRows();
@@ -1157,6 +1248,7 @@
             const podium = document.getElementById('podium');
             const stageGroups = CdcupTournamentData.parseStageGroups(latestRankingMap || {}, 8);
             if (stageGroups) {
+                const stageState = threeRoundStandings();
                 const groupRows = stageGroups.groups.map(group => ({
                     ...group,
                     total: group.members.reduce((sum, name) => sum + (CdcupTournamentData.roundAmount(tournamentStageAmounts, name, 8) || 0), 0)
@@ -1171,7 +1263,7 @@
                 if (hasFinal) {
                     podium.innerHTML = finalists.slice(0, 3).map((entry, index) => `<article class="podium-card ${index === 0 ? 'first' : ''}"><div class="podium-rank">${index === 0 ? 'CHAMPION' : 'RANK ' + (index + 1)}</div><div class="podium-team">${entry.row ? logoMarkup(entry.row) : '<span class="team-logo logo-fallback">' + escapeHtml(entry.name.slice(0,1)) + '</span>'}<div class="podium-team-name"><strong>${escapeHtml(entry.name)}</strong><span>${escapeHtml(entry.groupName)}</span><small>3라운드 개인전</small></div></div><div class="podium-amount">${formatAmount(entry.amount)}<small>만원</small></div></article>`).join('');
                 } else {
-                    podium.innerHTML = groupRows.map((group, index) => `<article class="podium-card ${index === 0 ? 'first' : ''}"><div class="podium-rank">현재 팀 순위 ${index + 1}</div><div class="podium-team"><span class="team-logo logo-fallback">${escapeHtml(group.code)}</span><div class="podium-team-name"><strong>${escapeHtml(group.name)}</strong><span>${group.members.length}개 업체</span><small>${index < 2 && group.total > 0 ? '3라운드 진출권' : '2라운드 집계 중'}</small></div></div><div class="podium-amount">${formatAmount(group.total)}<small>만원</small></div></article>`).join('');
+                    podium.innerHTML = groupRows.map((group, index) => `<article class="podium-card ${index === 0 ? 'first' : ''}"><div class="podium-rank">2라운드 팀 순위 ${index + 1}</div><div class="podium-team"><span class="team-logo logo-fallback">${escapeHtml(group.code)}</span><div class="podium-team-name"><strong>${escapeHtml(group.name)}</strong><span>${group.members.length}개 업체</span><small>${index < 2 && group.total > 0 ? (stageState?.round2Complete ? '3라운드 진출' : '3라운드 진출권') : (stageState?.round2Complete ? '2라운드 종료' : '2라운드 집계 중')}</small></div></div><div class="podium-amount">${formatAmount(group.total)}<small>만원</small></div></article>`).join('');
                 }
                 return;
             }
@@ -1216,6 +1308,30 @@
             const filtered = activeFilter === 'all' ? allRows : allRows.filter(row => row.results[activeFilter]);
             if (!allRows.length) {
                 document.getElementById('board-content').innerHTML = `<div class="empty"><strong>아직 집계할 경기 결과가 없습니다.</strong><p>3P 대진표에서 16강·8강 팀과 승자를 입력하면 이곳에 자동 반영됩니다.</p><div class="empty-actions"><a class="primary" href="preview.html?page=3">대진표 관리</a><a href="settings.html">업체 로고 설정</a></div></div>`;
+                return;
+            }
+            const threeRound = threeRoundStandings();
+            if (threeRound) {
+                const rows = allRows.map(row => {
+                    const state = threeRoundParticipantState(row.name, threeRound);
+                    const round1 = CdcupTournamentData.roundAmount(tournamentStageAmounts, row.name, 16);
+                    const round2 = CdcupTournamentData.roundAmount(tournamentStageAmounts, row.name, 8);
+                    const round3 = CdcupTournamentData.roundAmount(tournamentStageAmounts, row.name, 4);
+                    const round1Label = state.group ? '2라운드 진출' : '1라운드 탈락';
+                    const round2Label = state.group ? `${state.group.name} · ${state.group.rank}위` : '-';
+                    const round3Label = state.advancing ? (round3 === undefined ? '진출 확정' : `현재 ${threeRound.round3Ranks[row.name]}위`) : '-';
+                    const final = finalLabel(row);
+                    return `<tr data-name="${escapeHtml(row.name)}" onclick="showTeamJourney(this.dataset.name)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showTeamJourney(this.dataset.name)}" tabindex="0" role="button" aria-label="${escapeHtml(row.name)} 경기 여정 보기">
+                        <td><span class="rank-no ${row.rank <= 3 ? 'medal' : ''}">${String(row.rank).padStart(2, '0')}</span></td>
+                        <td><div class="table-team">${logoMarkup(row)}<div class="team-copy"><strong>${escapeHtml(row.name)}</strong><span>${escapeHtml(englishName(row.name))}</span></div></div></td>
+                        <td><span class="phase-result">${round1Label}</span>${round1 === undefined ? '' : `<span class="phase-amount">${formatAmount(round1)}<small>만원</small></span>`}</td>
+                        <td><span class="phase-result ${state.advancing ? 'best' : ''}">${escapeHtml(round2Label)}</span>${round2 === undefined ? '' : `<span class="phase-amount">${formatAmount(round2)}<small>만원</small></span>`}</td>
+                        <td><span class="phase-result ${state.advancing ? 'best' : 'none'}">${escapeHtml(round3Label)}</span>${round3 === undefined ? '' : `<span class="phase-amount">${formatAmount(round3)}<small>만원</small></span>`}</td>
+                        <td class="amount"><strong>${formatAmount(row.amount)}</strong><span>만원</span></td>
+                        <td><span class="round-badge ${final.kind}">${escapeHtml(final.text)}</span></td>
+                    </tr>`;
+                }).join('');
+                document.getElementById('board-content').innerHTML = `<div class="table-scroll"><table class="ranking-table"><colgroup><col class="rank-col"><col class="team-col"><col class="phase-col"><col class="phase-col"><col class="phase-col"><col class="amount-col"><col class="result-col"></colgroup><thead><tr><th>RANK</th><th>업체</th><th>1라운드 · 16강</th><th>2라운드 · 팀전</th><th>3라운드 · 8인 개인전</th><th class="amount">누적 낙찰금</th><th>현재 결과</th></tr></thead><tbody>${rows}</tbody></table></div>`;
                 return;
             }
             const rows = filtered.map(row => {

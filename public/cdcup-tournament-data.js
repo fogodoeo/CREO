@@ -121,14 +121,15 @@
         }))];
     }
 
-    function sumStageItems(items, stage, expectedTeams) {
+    function sumStageItems(items, stage, expectedTeams, allowUnstaged = false) {
         const expected = new Set((expectedTeams || []).map(name => String(name || '').trim()).filter(Boolean));
         return (items || []).reduce((result, item) => {
             const meta = itemMeta(item);
             const name = String(item?.company || '').trim();
+            const itemStage = Number(meta.tournamentStage) || 0;
             if (!name
                 || !isTournamentItem(item)
-                || Number(meta.tournamentStage) !== Number(stage)
+                || (itemStage !== Number(stage) && !(allowUnstaged && itemStage === 0))
                 || !isSoldItem(item)
                 || (expected.size && !expected.has(name))) {
                 return result;
@@ -179,6 +180,7 @@
 
     function buildRoundAmounts(map, items) {
         const result = { 16: {}, 8: {}, 4: {}, 2: {} };
+        const activeStage = Number.parseInt(map?.active_tournament, 10) || 0;
         if (isLegacySeason(map)) {
             OFFICIAL_ROUND_RESULTS.forEach(entry => {
                 result[16][entry.name] = entry.round16;
@@ -186,14 +188,14 @@
             });
         } else {
             [16, 8].forEach(stage => {
-                const current = sumStageItems(items || [], stage, []);
+                const current = sumStageItems(items || [], stage, [], activeStage === stage);
                 const stored = storedStageAmounts(map || {}, stage, []);
                 result[stage] = Object.keys(current).length ? current : stored;
             });
         }
         [4, 2].forEach(stage => {
             const expectedTeams = configuredStageTeams(map || {}, stage);
-            const current = sumStageItems(items || [], stage, expectedTeams);
+            const current = sumStageItems(items || [], stage, expectedTeams, activeStage === stage);
             const stored = storedStageAmounts(map || {}, stage, expectedTeams);
             result[stage] = Object.keys(current).length
                 ? current
@@ -224,6 +226,10 @@
             return {
                 title: String(parsed.title || `${stage}강 팀 배정`).trim(),
                 groups: normalized,
+                qualification: {
+                    winners: Array.isArray(parsed.qualification?.winners) ? parsed.qualification.winners.map(value => String(value || '').trim()).filter(Boolean) : [],
+                    wildcards: Array.isArray(parsed.qualification?.wildcards) ? parsed.qualification.wildcards.map(value => String(value || '').trim()).filter(Boolean) : []
+                },
                 eliminated: Array.isArray(parsed.eliminated) ? parsed.eliminated.map(value => String(value || '').trim()).filter(Boolean) : []
             };
         } catch (_) {
