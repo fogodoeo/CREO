@@ -255,6 +255,10 @@ test('CDCUP three-round format assigns round-two teams and round-three finalists
     assert.match(broadcast, /tree\.dataset\.threeRoundSignature === resultSignature/);
     assert.match(broadcast, /isFirstRender \? ' animate-in' : ''/);
     assert.match(broadcast, /업체 합산 낙찰금액 \$\{formatBlindTotalAmount\(totals\[name\] \|\| 0\)\}만원/);
+    assert.match(broadcast, /bracket_team_details_show \?\? '0'/);
+    assert.match(broadcast, /team-summary-only/);
+    assert.match(preview, /id="toggle-bracket-team-details"/);
+    assert.match(preview, /function toggleBracketTeamDetails/);
     assert.match(broadcast, /team-progress-amount/);
     assert.match(broadcast, /class="team-progress-members"/);
     assert.match(broadcast, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);

@@ -1121,6 +1121,10 @@
                         <span>전체대진 업체 숨김</span>
                         <input type="checkbox" id="toggle-bracket-full-blind" class="switch-input" checked onchange="toggleFullBracketBlind()">
                     </div>
+                    <div class="switch-container" id="toggle-bracket-team-details-group" style="display:none;" title="OFF이면 팀 이름과 합산금액만 크게 표시하고, ON이면 업체별 합산금액을 함께 표시합니다">
+                        <span>업체별 상세</span>
+                        <input type="checkbox" id="toggle-bracket-team-details" class="switch-input" onchange="toggleBracketTeamDetails()">
+                    </div>
                     <div class="switch-container" id="toggle-bracket-title-show-group" style="display:none;">
                         <span>타이틀</span>
                         <input type="checkbox" id="toggle-bracket-title-show" class="switch-input" checked onchange="toggleShowState('bracket_title')">
@@ -1480,6 +1484,7 @@
                     setDisplay(id, false);
                 });
                 setDisplay('toggle-bracket-full-blind-group', !isCrewart);
+                setDisplay('toggle-bracket-team-details-group', !isCrewart);
                 setDisplay('toggle-bracket-mode-group', !isCrewart);
                 setDisplay('toggle-bracket-full-font-group', true);
                 setDisplay('toggle-blind-totals-show-group', false);
@@ -1599,6 +1604,7 @@
             document.getElementById('toggle-bracket-full-show-group').style.display = '';
             document.getElementById('toggle-bracket-live-show-group').style.display = 'none';
             document.getElementById('toggle-bracket-full-blind-group').style.display = isInitialCrewart ? 'none' : '';
+            document.getElementById('toggle-bracket-team-details-group').style.display = isInitialCrewart ? 'none' : '';
             document.getElementById('toggle-bracket-title-show-group').style.display = 'none'; // Hidden per user request
             document.getElementById('toggle-battle-ann-show-group').style.display = 'none';
             document.getElementById('toggle-blind-totals-show-group').style.display = 'none';
@@ -1858,6 +1864,22 @@
             }
         }
 
+        async function toggleBracketTeamDetails() {
+            const checkbox = document.getElementById('toggle-bracket-team-details');
+            const requested = checkbox.checked ? '1' : '0';
+            checkbox.disabled = true;
+            try {
+                await updateConfigs({ bracket_team_details_show: requested });
+                postPreviewConfigPatch({ bracket_team_details_show: requested });
+                toast(requested === '1' ? '업체별 합산금액 표시' : '팀 합계만 크게 표시');
+            } catch (err) {
+                checkbox.checked = requested !== '1';
+                toast('전체 진행표 표시 방식 저장 실패: ' + err.message);
+            } finally {
+                checkbox.disabled = false;
+            }
+        }
+
         function convertToPercent(val) {
             if (!val) return '';
             const raw = String(val).trim().toLowerCase();
@@ -2081,6 +2103,8 @@
                 if (elements.bracket_live) document.getElementById('toggle-bracket-live-show').checked = elements.bracket_live.show === "1";
                 const fullBlindToggle = document.getElementById('toggle-bracket-full-blind');
                 if (fullBlindToggle) fullBlindToggle.checked = String(cfg.bracket_full_blind ?? '1') !== '0';
+                const teamDetailsToggle = document.getElementById('toggle-bracket-team-details');
+                if (teamDetailsToggle) teamDetailsToggle.checked = String(cfg.bracket_team_details_show ?? '0') === '1';
                 if (elements.bracket_title) document.getElementById('toggle-bracket-title-show').checked = elements.bracket_title.show === "1";
                 if (elements.battle_ann) document.getElementById('toggle-battle-ann-show').checked = elements.battle_ann.show === "1";
                 if (elements.blind_totals) document.getElementById('toggle-blind-totals-show').checked = elements.blind_totals.show === "1";
