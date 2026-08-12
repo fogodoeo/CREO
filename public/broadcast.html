@@ -4017,6 +4017,7 @@
         // URL 파라미터 확인 후 host-mode 적용
         const urlParams = new URLSearchParams(window.location.search);
         const isHostMode = urlParams.get('mode') === 'host' || urlParams.get('page') === '1';
+        const isDirectBroadcastSource = urlParams.get('direct') === '1';
         const _pgValTemp = (urlParams.get('page') || '').toLowerCase();
         const isBracketPageTemp = _pgValTemp === 'bracket' || _pgValTemp === '3' || _pgValTemp === '3p';
 
@@ -5234,7 +5235,7 @@
         }
 
         async function smartRefresh(prefetchedItems) {
-            if (document.hidden) return;
+            if (document.hidden && !isDirectBroadcastSource) return;
             maybeRefreshHostConfig(false);
             try {
                 const items = Array.isArray(prefetchedItems)
@@ -5342,7 +5343,7 @@
 
         async function _adaptiveAuctionPollTick(forceData = false) {
             if (_auctionPollRunning) return;
-            if (document.hidden) {
+            if (document.hidden && !isDirectBroadcastSource) {
                 _scheduleAuctionPoll(5000);
                 return;
             }

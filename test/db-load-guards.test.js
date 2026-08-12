@@ -17,7 +17,8 @@ test('legacy broadcast is read-only and polls rapidly only while an auction is h
     assert.ok(idlePoll >= 3000);
     assert.match(html, /now < _auctionHotUntil \? AUCTION_HOT_POLL_MS : AUCTION_IDLE_POLL_MS/);
     assert.doesNotMatch(html, /updateConfigs\(\{\s*battle_current_match/);
-    assert.match(html, /if \(document\.hidden\)[\s\S]*_scheduleAuctionPoll\(5000\)/);
+    assert.match(html, /const isDirectBroadcastSource = urlParams\.get\('direct'\) === '1'/);
+    assert.match(html, /if \(document\.hidden && !isDirectBroadcastSource\)[\s\S]*_scheduleAuctionPoll\(5000\)/);
 });
 
 test('legacy item list pauses hidden and overlapping refreshes', () => {
