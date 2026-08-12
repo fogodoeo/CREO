@@ -4637,11 +4637,14 @@
         // ═══ 인쇄 탭 ═══
         // 인쇄 페이지용 배송 텍스트 포맷터 (배송비 제외, 지역 대분류 제외)
         function fmtShipTextForPrint(it, escapeHtml) {
-            if (it.shipping_type === '직접수령') return '직접수령';
-            if (it.shipping_type !== '배송') return '-';
-            
             var rawRegion = it.shipping_region || '';
             var location = rawRegion.replace(/\s*\[(?:메모|요청):[^\]]+\]\s*$/, '').trim();
+            if (it.shipping_type === '직접수령') {
+                var pickupText = location ? '직접수령 · ' + location : '직접수령 · 장소 미선택';
+                return escapeHtml ? esc(pickupText) : pickupText;
+            }
+            if (it.shipping_type !== '배송') return '-';
+
             var openIdx = location.indexOf('(');
             var closeIdx = location.lastIndexOf(')');
             var cleanRegion = openIdx >= 0
