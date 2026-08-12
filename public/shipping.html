@@ -1651,6 +1651,54 @@
             border-color: #CBD5E1 !important;
         }
 
+        .pickup-location-wrap {
+            display: none;
+            margin-bottom: 12px;
+            padding: 12px;
+            border: 1px solid #DDE3EB;
+            border-radius: 12px;
+            background: #FFFFFF;
+        }
+
+        .pickup-location-label {
+            display: block;
+            margin-bottom: 8px;
+            color: #667085;
+            font-size: 11px;
+            font-weight: 800;
+        }
+
+        .pickup-location-options {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 7px;
+        }
+
+        .pickup-location-btn {
+            min-height: 42px;
+            padding: 8px 9px;
+            border: 1px solid #D4DAE3;
+            border-radius: 9px;
+            background: #F8FAFC;
+            color: #475467;
+            font-size: 11px;
+            font-weight: 800;
+            line-height: 1.3;
+            cursor: pointer;
+        }
+
+        .pickup-location-btn.active {
+            border-color: #2563EB;
+            background: #EFF6FF;
+            color: #1D4ED8;
+            box-shadow: inset 0 0 0 1px #2563EB;
+        }
+
+        @media (max-width: 620px) {
+            .pickup-location-options { grid-template-columns: 1fr; }
+            .pickup-location-btn { min-height: 40px; text-align: left; }
+        }
+
         .editor-action-footer {
             flex-shrink: 0;
             padding: 13px 20px 16px;
@@ -2440,6 +2488,11 @@
                     <button type="button" class="buyer-option-btn" id="b-opt-custom" onclick="setBuyerShippingType('기타')">기타</button>
                 </div>
 
+                <div class="pickup-location-wrap" id="buyer-pickup-wrap">
+                    <span class="pickup-location-label">직수령 장소를 선택해 주세요</span>
+                    <div class="pickup-location-options" data-pickup-target="buyer"></div>
+                </div>
+
                 <!-- 배송 세부 정보 -->
                 <div class="buyer-form-detail" id="buyer-detail-box" style="display: none;">
 
@@ -2614,8 +2667,9 @@
                     </div>
 
                     <!-- 픽업 안내문구 -->
-                    <div id="editor-pickup-wrap" style="display: none; text-align: center; padding: 12px; color: var(--text-secondary); background: rgba(255, 255, 255, 0.02); border-radius: 12px; border: 1px dashed var(--border);">
-                        현장 직접 수령 (배송비 없음)
+                    <div id="editor-pickup-wrap" class="pickup-location-wrap">
+                        <span class="pickup-location-label">직수령 장소를 선택해 주세요 · 배송비 없음</span>
+                        <div class="pickup-location-options" data-pickup-target="editor"></div>
                     </div>
                 </div>
 
@@ -2959,7 +3013,7 @@ ${wrapangDuplicateNote}`;
             const selectedItemCount=(selectedItems || []).length;
             let deliverySection='';
             if(shippingType==='직접수령') {
-                deliverySection='[직접 수령]\n배송비 없음';
+                deliverySection=`[직접 수령]\n${shippingInfo || '수령 장소 미지정'}\n배송비 없음`;
             } else if(splitShipping) {
                 deliverySection=sellerCompanies.length>1
                     ? `[${shippingCompany} 합배송]\n참여 업체: ${sellerCompanies.join(', ')}\n전체 ${(allItems || []).length}개체 / 배송비 ${totalShipping.toLocaleString()}원\n${selectedCompany} 배분 배송비: ${shippingShare.toLocaleString()}원\n(${selectedCompany} 낙찰 ${selectedItemCount}개체 기준)`
@@ -3352,6 +3406,32 @@ ${wrapangDuplicateNote}`;
             return { region: location, hub: '', memo };
         }
 
+        const PICKUP_LOCATIONS = Object.freeze([
+            '대구 크레오',
+            '대구 렙타일아트뮤지엄',
+            '구미 렙타일아트뮤지엄'
+        ]);
+
+        function renderPickupLocations(target) {
+            const state = target === 'buyer' ? buyerShippingState : editorShippingState;
+            const container = document.querySelector(`[data-pickup-target="${target}"]`);
+            if (!container || !state) return;
+            container.innerHTML = PICKUP_LOCATIONS.map(location => `
+                <button type="button" class="pickup-location-btn${state.region === location ? ' active' : ''}"
+                    aria-pressed="${state.region === location}" onclick="selectPickupLocation('${target}', '${location}')">${location}</button>
+            `).join('');
+        }
+
+        function selectPickupLocation(target, location) {
+            if (!PICKUP_LOCATIONS.includes(location)) return;
+            const state = target === 'buyer' ? buyerShippingState : editorShippingState;
+            state.region = location;
+            state.hub = '';
+            renderPickupLocations(target);
+            if (target === 'buyer') recalculateBuyerTotal();
+            else updateEditorPricing();
+        }
+
         function getSavedShippingCost(items) {
             return (items || []).reduce((sum, item) => {
                 const cost = Number.parseInt(String(item.shipping_cost ?? 0).replace(/[^0-9-]/g, ''), 10);
@@ -3366,7 +3446,7 @@ ${wrapangDuplicateNote}`;
         function shippingDataLabel(data) {
             const type = shippingCompareValue(data?.shipping_type);
             if (!type) return '미등록';
-            if (type === '직접수령') return '직접수령';
+            if (type === '직접수령') return `직접수령 / ${shippingCompareValue(data?.shipping_region) || '장소 미선택'}`;
             if (type === '배송') {
                 return `${shippingCompareValue(data?.shipping_company) || '배송'} / ${shippingCompareValue(data?.shipping_region) || '배송지 미입력'}`;
             }
@@ -3413,6 +3493,8 @@ ${wrapangDuplicateNote}`;
                 } else {
                     region = `${editorShippingState.region} (${editorShippingState.hub})`;
                 }
+            } else if (type === '직접수령') {
+                region = editorShippingState.region;
             }
 
             const memoVal = document.getElementById('editor-memo')?.value.trim();
@@ -3434,6 +3516,8 @@ ${wrapangDuplicateNote}`;
                     company = buyerShippingState.company;
                     region = `${buyerShippingState.region} (${buyerShippingState.hub})`;
                 }
+            } else if (type === '직접수령') {
+                region = buyerShippingState.region;
             }
 
             const memoVal = document.getElementById('buyer-memo-input')?.value.trim();
@@ -3504,7 +3588,10 @@ ${wrapangDuplicateNote}`;
 
         function overviewShippingSummary(item) {
             if (!item || !item.shipping_type) return '수령 방법 미등록';
-            if (item.shipping_type === '직접수령') return '현장 직접 수령';
+            if (item.shipping_type === '직접수령') {
+                const parsed = parseSavedShippingRegion(item.shipping_region);
+                return parsed.region ? `직접 수령 · ${parsed.region}` : '직접 수령 · 장소 미선택';
+            }
             if (item.shipping_type !== '배송') return item.shipping_type;
             const company = String(item.shipping_company || '기타 배송').trim();
             if (!['도도시', '파르게', '랩팡'].includes(company)) return company + ' · 상세 정보 비공개';
@@ -3805,7 +3892,7 @@ ${wrapangDuplicateNote}`;
                     let shipSummaryStyle = 'color: #B54708;';
                     
                     if (state.shipping_type === '직접수령') {
-                        shipSummaryText = '현장 직접 수령';
+                        shipSummaryText = state.shipping_region ? `직접 수령 · ${state.shipping_region}` : '직접 수령 · 장소 미선택';
                         shipSummaryStyle = 'color: var(--text-secondary);';
                     } else if (state.shipping_type === '배송' && state.shipping_company) {
                         if (state.shipping_company === '기타') {
@@ -4093,8 +4180,9 @@ ${wrapangDuplicateNote}`;
 
                 editorShippingState.type = '직접수령';
                 editorShippingState.company = '';
-                editorShippingState.region = '';
+                if (!isInit) editorShippingState.region = '';
                 editorShippingState.hub = '';
+                renderPickupLocations('editor');
             } else {
                 pickupWrap.style.display = 'none';
                 editorShippingState.type = '배송';
@@ -4327,7 +4415,9 @@ ${wrapangDuplicateNote}`;
 
             let smsShipInfo = '';
             if (editorShippingState.type === '직접수령') {
-                smsShipInfo = '현장 직접 수령';
+                smsShipInfo = editorShippingState.region
+                    ? `직접 수령 장소: ${editorShippingState.region}`
+                    : '직접 수령 장소 미지정';
             } else if (editorShippingState.type === '배송') {
                 if (comp === '기타') {
                     smsShipInfo = `[기타배송] ${reg}`;
@@ -4380,6 +4470,11 @@ ${wrapangDuplicateNote}`;
 
             if (editorShippingState.type === '미설정') {
                 showToast('배송 방식을 먼저 선택해 주세요.', true);
+                return;
+            }
+
+            if (editorShippingState.type === '직접수령' && !PICKUP_LOCATIONS.includes(editorShippingState.region)) {
+                showToast('직수령 장소를 선택해 주세요.', true);
                 return;
             }
 
@@ -4556,11 +4651,13 @@ ${wrapangDuplicateNote}`;
             const detailBox = document.getElementById('buyer-detail-box');
             const embedSearchWrap = document.getElementById('buyer-hub-select-wrap');
             const customWrap = document.getElementById('buyer-custom-wrap');
+            const pickupWrap = document.getElementById('buyer-pickup-wrap');
 
             if (!companyKey || companyKey === '미설정') {
                 detailBox.style.display = 'none';
                 if (embedSearchWrap) embedSearchWrap.style.display = 'none';
                 if (customWrap) customWrap.style.display = 'none';
+                if (pickupWrap) pickupWrap.style.display = 'none';
 
                 buyerShippingState.type = '미설정';
                 buyerShippingState.company = '';
@@ -4572,14 +4669,17 @@ ${wrapangDuplicateNote}`;
                 detailBox.style.display = 'none';
                 if (embedSearchWrap) embedSearchWrap.style.display = 'none';
                 if (customWrap) customWrap.style.display = 'none';
+                if (pickupWrap) pickupWrap.style.display = 'block';
 
                 buyerShippingState.type = '직접수령';
                 buyerShippingState.company = '';
-                buyerShippingState.region = '';
+                if (!isInit) buyerShippingState.region = '';
                 buyerShippingState.hub = '';
                 buyerShippingState.cost = 0;
+                renderPickupLocations('buyer');
             } else {
                 detailBox.style.display = 'block';
+                if (pickupWrap) pickupWrap.style.display = 'none';
                 buyerShippingState.type = '배송';
 
                 if (companyKey === '업체 배송') {
@@ -5203,6 +5303,11 @@ ${wrapangDuplicateNote}`;
                 return;
             }
 
+            if (buyerShippingState.type === '직접수령' && !PICKUP_LOCATIONS.includes(buyerShippingState.region)) {
+                showToast('직수령 장소를 선택해 주세요.', true);
+                return;
+            }
+
             if (buyerShippingState.type === '배송' && buyerShippingState.company !== '기타' &&
                 clearEmbeddedHubSelectionIfQueryChanged('buyer')) {
                 refreshEmbeddedHubPricing('buyer');
@@ -5256,8 +5361,8 @@ ${wrapangDuplicateNote}`;
                     for (let idx = 0; idx < coItems.length; idx++) {
                         const it = coItems[idx];
                         let shipping_type = type;
-                        let shipping_company = '';
-                        let shipping_region = '';
+                        let shipping_company = baseShipping.shipping_company;
+                        let shipping_region = baseShipping.shipping_region;
                         let shipping_cost = 0;
 
                         if (type === '배송') {
