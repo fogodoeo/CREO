@@ -3963,8 +3963,11 @@
         function getAuctionItemDisplayLabel(item) {
             if (!item) return '';
             const meta = getItemAuctionMeta(item);
-            // publicName은 팀 코드(A1/C2 등)를 제거한 이름이므로 우선 사용한다.
-            const rawName = String(meta.publicName || item.displayName || item.name || '').trim();
+            // 팀 코드 뒤에 별도 이름이 있으면 그 이름을 쓰되, 코드 자체가 개체명인
+            // A01/C10 같은 항목은 공용 기본값인 "개체" 대신 실제 저장명을 표시한다.
+            const publicName = String(meta.publicName || '').trim();
+            const storedName = String(item.displayName || item.name || '').trim();
+            const rawName = publicName && publicName !== '개체' ? publicName : (storedName || meta.tournamentCode);
             return rawName || String(meta.publicNumber || item.num || '').trim();
         }
 
@@ -3974,6 +3977,7 @@
             if (meta.auctionType !== AUCTION_TYPES.TOURNAMENT) return auctionItemLabel(item);
             const code = getCleanCode(item);
             const name = getAuctionItemDisplayLabel(item);
+            if (code && name && code.toUpperCase() === name.toUpperCase()) return code;
             return [code, name].filter(Boolean).join(' · ');
         }
 
