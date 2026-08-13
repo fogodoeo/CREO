@@ -67,7 +67,7 @@ test('home is an operational channel launcher without duplicate management route
     assert.match(hub, /id="quick-workspace"/);
     assert.match(hub, /id="quick-survey"[^>]*href="crewart-survey\.html"[^>]*hidden/);
     assert.match(hub, /id="quick-shipping"/);
-    assert.match(hub, /id="quick-companies"/);
+    assert.doesNotMatch(hub, /id="quick-companies"|shipping-companies\.html/);
     assert.match(hub, /id="quick-rounds"/);
     assert.doesNotMatch(hub, /id="quick-rankings"/);
     assert.match(hub, /id="quick-broadcast"/);
@@ -244,13 +244,15 @@ test('new CDCUP overlays and shipping retain compatibility with the established 
     const shippingStatus = fs.readFileSync(path.join(__dirname, '..', 'public', 'shipping-status.html'), 'utf8');
     assert.match(shippingStatus, /CreoChannelAdapters\.resolve/);
     assert.match(shippingStatus, /adapter\.loadShippingItems/);
-    assert.doesNotMatch(shippingStatus, /basis-company|mode-company|renderCompany|shipping-workspace-link/);
+    assert.match(shippingStatus, /id="basis-company"/);
+    assert.match(shippingStatus, /id="mode-company"/);
+    assert.match(shippingStatus, /function renderCompanies/);
+    assert.match(shippingStatus, /buildCompanyGroups\(\)/);
+    assert.doesNotMatch(shippingStatus, /shipping-workspace-link/);
     assert.match(shippingStatus, /if \(!SHIPPING_CHANNEL_ID\) location\.replace\('\/'\)/);
     const companies = fs.readFileSync(path.join(__dirname, '..', 'public', 'shipping-companies.html'), 'utf8');
-    assert.match(companies, /channels\/\$\{encodeURIComponent\(channelId\)\}/);
-    assert.match(companies, /CreoChannelAdapters\.resolve/);
-    assert.match(companies, /adapter\.loadShippingItems/);
-    assert.match(companies, /if\(!channelId\)location\.replace\('\/'\)/);
+    assert.match(companies, /shipping-status\.html\?channel=\$\{encodeURIComponent\(channel\)\}&view=company/);
+    assert.doesNotMatch(companies, /CreoChannelAdapters\.resolve|adapter\.loadShippingItems|<main/);
 });
 
 test('episode management expands round details and aggregate rankings in one place', () => {

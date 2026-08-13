@@ -16,7 +16,7 @@ test('channel identifiers and storage keys create hard data boundaries', () => {
     assert.match(channelLinks('summer-auction').workspace, /channel=summer-auction/);
     assert.equal(channelLinks('crewart').shipping, '/shipping.html?channel=crewart');
     assert.equal(channelLinks('crewart').shippingStatus, '/shipping-status.html?channel=crewart');
-    assert.equal(channelLinks('crewart').shippingCompanies, '/shipping-companies.html?channel=crewart');
+    assert.equal(channelLinks('crewart').shippingCompanies, '/shipping-status.html?channel=crewart&view=company');
     assert.equal(channelLinks('crewart').shippingRates, '/shipping-rates.html?channel=crewart');
     assert.equal(channelLinks('crewart').archives, '/channel-archives.html?channel=crewart');
     assert.equal(channelLinks('crewart').rankings, '/channel-archives.html?channel=crewart&view=current');
