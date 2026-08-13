@@ -130,6 +130,7 @@ test('channel creation starts with a safe generated id and protects unsaved edit
 
 test('shared workspace builds real select fields for channel groups and auction state', () => {
     const workspace = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-workspace.html'), 'utf8');
+    assert.match(workspace, /color-scheme:dark/);
     assert.match(workspace, /field\('groupId',term\('group','그룹'\),record\?\.groupId,'select'/);
     assert.match(workspace, /field\('status','상태',record\?\.status,'select'/);
     assert.match(workspace, /field\('winnerAlias','방송용 낙찰자명'/);
