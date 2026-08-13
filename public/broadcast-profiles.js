@@ -39,6 +39,10 @@
         return profile.legacyEngine === true && channel?.dataAdapter === 'legacy-cdcup';
     }
 
+    function usesSharedStudio(channel, profile = resolve(channel)) {
+        return usesLegacyEngine(channel, profile) || profile.sharedStudio === true;
+    }
+
     function pageContract(channel, page) {
         const selectedPage = validPage(page);
         if (selectedPage !== '3') return SHARED_PAGE_CONTRACTS[selectedPage];
@@ -71,9 +75,9 @@
     function studioFrame(channel, view) {
         const profile = resolve(channel);
         const layout = String(view || '').match(/^layout-([123])$/);
-        if (!layout && usesLegacyEngine(channel, profile)) return `settings.html?module=${channelId(channel)}&channel=${channelId(channel)}&embedded=1`;
+        if (!layout && usesSharedStudio(channel, profile)) return `settings.html?module=${channelId(channel)}&channel=${channelId(channel)}&embedded=1`;
         if (!layout) return `auction-control.html?channel=${channelId(channel)}&embedded=1`;
-        if (usesLegacyEngine(channel, profile)) return `preview.html?module=${channelId(channel)}&page=${layout[1]}&embedded=1`;
+        if (usesSharedStudio(channel, profile)) return `preview.html?module=${channelId(channel)}&page=${layout[1]}&embedded=1`;
         return `auction-control.html?channel=${channelId(channel)}&embedded=1&page=${layout[1]}`;
     }
 
@@ -84,9 +88,9 @@
         return `auction-live.html?channel=${channelId(channel)}&page=${selectedPage}`;
     }
 
-    register({ id: 'standard', brandMark: 'C', page3Renderer: 'scoreboard', page3Label: '집계', page3Slots: ['scoreboard', 'quiz'], page3SettingsSections: ['scoreboard', 'quiz'], settings: { compatibilityModes: false, assets: true } });
+    register({ id: 'standard', brandMark: 'C', page3Renderer: 'scoreboard', page3Label: '집계', page3Slots: ['scoreboard'], page3SettingsSections: ['scoreboard'], settings: { compatibilityModes: false, assets: true } });
     register({ id: 'cdcup-tournament', brandMark: 'C', studioAccent: '#5f8cff', studioAccentInk: '#07132f', legacyEngine: true, page3Renderer: 'tournament', page3Label: '대진표', page3Slots: ['bracket', 'teamTotals', 'qualifiers'], page3SettingsSections: ['bracket', 'teamTotals'], settings: { compatibilityModes: true, assets: true } });
-    register({ id: 'crewart-academy', brandMark: 'W', studioAccent: '#ddb960', studioAccentInk: '#211604', legacyEngine: false, page3Renderer: 'academy', page3Label: '기숙사 컵', page3Slots: ['groupScoreboard', 'quiz'], page3SettingsSections: ['houseScoreboard', 'quiz'], assetPack: 'crewart', settings: { compatibilityModes: false, assets: true }, defaultState: { page1BannerOn: false, page2BannerOn: false, notice: 'CREWARTS LIVE', noticeDetail: 'R · G · B · Y', page1Ticker: '크레와트 라이브 · 기숙사 점수전', page2Ticker: 'R · G · B · Y' } });
+    register({ id: 'crewart-academy', brandMark: 'W', studioAccent: '#ddb960', studioAccentInk: '#211604', legacyEngine: false, sharedStudio: true, page3Renderer: 'academy', page3Label: '기숙사 컵', page3Slots: ['groupScoreboard'], page3SettingsSections: ['houseScoreboard'], assetPack: 'crewart', settings: { compatibilityModes: false, assets: true }, defaultState: { page1BannerOn: false, page2BannerOn: false, notice: 'CREWARTS LIVE', noticeDetail: 'R · G · B · Y', page1Ticker: '크레와트 라이브 · 기숙사 점수전', page2Ticker: 'R · G · B · Y' } });
 
-    return Object.freeze({ SHARED_PAGE_CONTRACTS, SHARED_SETTINGS_CONTRACT, broadcastTarget, defaultState, pageContract, register, resolve, settingsContract, studioFrame, usesLegacyEngine });
+    return Object.freeze({ SHARED_PAGE_CONTRACTS, SHARED_SETTINGS_CONTRACT, broadcastTarget, defaultState, pageContract, register, resolve, settingsContract, studioFrame, usesLegacyEngine, usesSharedStudio });
 });

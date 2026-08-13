@@ -369,11 +369,11 @@ test('broadcast control manages reusable banners, sponsors, and vendor logos', (
     assert.match(live, /ticker-sponsors/);
     assert.match(live, /Math\.floor\(Date\.now\(\)\/6000\)/);
     assert.match(control, /crewartSampleAssets/);
-    assert.match(control, /name="quizQuestion"/);
+    assert.doesNotMatch(control, /quiz-section|name="quizQuestion"|돌발 퀴즈/);
     assert.match(control, /value="vendor">업체별 금액/);
     assert.match(control, /value="team">그룹별 금액/);
     assert.match(control, /name="scoreboardId"/);
-    for (const positionField of ['page1HostsPosition', 'page1NoticePosition', 'page1BannerPosition', 'page2HeaderPosition', 'page2InfoPosition', 'page2PhotoPosition', 'page2PricePosition', 'page2SoldPosition', 'page2BannerPosition', 'page3BoardPosition', 'page3QuizPosition']) {
+    for (const positionField of ['page1HostsPosition', 'page1NoticePosition', 'page1BannerPosition', 'page2HeaderPosition', 'page2InfoPosition', 'page2PhotoPosition', 'page2PricePosition', 'page2SoldPosition', 'page2BannerPosition', 'page3BoardPosition']) {
         assert.match(control, new RegExp(`name="${positionField}"`));
     }
     assert.match(control, /function updatePositionWarnings/);
@@ -385,6 +385,10 @@ test('broadcast control manages reusable banners, sponsors, and vendor logos', (
     assert.match(crewartLive, /Number\(cfg\.ticker_interval\)/);
     assert.match(crewartLive, /crewart_ticker/);
     const legacySettings = fs.readFileSync(path.join(__dirname, '..', 'public', 'settings.html'), 'utf8');
+    assert.doesNotMatch(legacySettings, /id="live-quiz-card"|id="cfg-live-quiz-question"|돌발 퀴즈/);
+    assert.match(legacySettings, /<details class="advanced-panel" open>/);
+    assert.match(legacySettings, /html\.embedded #event-module-card\{display:none\}/);
+    assert.doesNotMatch(legacySettings, /embedded-crewart \[data-control-scope="cdcup"\]/);
     assert.match(legacySettings, /m\.crewart_ticker = m\.ticker/);
     assert.match(legacySettings, /delete m\.ticker/);
     const cdcupBroadcast = fs.readFileSync(path.join(__dirname, '..', 'public', 'broadcast.html'), 'utf8');

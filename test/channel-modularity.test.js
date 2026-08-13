@@ -67,6 +67,15 @@ test('CDCUP compatibility is tied to its adapter, not copied channel ids', () =>
     assert.equal(Profiles.pageContract(copiedCdcup, 3).id, 'tournament');
 });
 
+test('CREWART uses the shared CDCUP layout and settings surfaces without changing its live renderer', () => {
+    const academy = channel('crewart', { dataAdapter: 'platform', broadcastProfile: 'crewart-academy' });
+    assert.match(Profiles.studioFrame(academy, 'layout-1'), /^preview\.html\?module=crewart&page=1&embedded=1$/);
+    assert.match(Profiles.studioFrame(academy, 'layout-2'), /^preview\.html\?module=crewart&page=2&embedded=1$/);
+    assert.match(Profiles.studioFrame(academy, 'layout-3'), /^preview\.html\?module=crewart&page=3&embedded=1$/);
+    assert.match(Profiles.studioFrame(academy, 'settings'), /^settings\.html\?module=crewart&channel=crewart&embedded=1$/);
+    assert.match(Profiles.broadcastTarget(academy, 1), /^auction-live\.html\?/);
+});
+
 test('legacy CDCUP rows and platform workspaces expose a common isolated model', async (t) => {
     const legacy = Adapters.legacyWorkspace(channel('cdcup'), [
         { row: 7, company: 'A 업체', num: 12, name: '테스트', sold_price: 25, winner: '홍길동', status: '낙찰-대기' }

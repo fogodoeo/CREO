@@ -1440,23 +1440,22 @@
             const isCrewart = module.id === 'crewart';
             document.body.classList.toggle('event-crewart-preview', isCrewart);
             const fullLabel = document.querySelector('#draggable-bracket-full .element-label');
-            if (fullLabel) fullLabel.textContent = isCrewart ? '기숙사 점수판' : '전체 진행표';
+            if (fullLabel) fullLabel.textContent = '전체 진행표';
             const liveLabel = document.querySelector('#draggable-bracket-live .element-label');
             if (liveLabel) liveLabel.textContent = isCrewart ? '보조 점수판' : '실시간 대진';
             const p3Tab = document.getElementById('btn-tab-p3');
-            if (p3Tab) p3Tab.textContent = isCrewart ? '3P 점수판 배치기' : '3P 배치기';
+            if (p3Tab) p3Tab.textContent = '3P 배치기';
 
             if (pageNum === '2') {
-                const display = isCrewart ? 'none' : '';
-                document.getElementById('draggable-live-bidders').style.display = display;
-                document.getElementById('toggle-live-bidders-show-group').style.display = display;
-                document.getElementById('toggle-live-bidders-mode-group').style.display = display;
-                document.getElementById('toggle-live-bidders-font-group').style.display = display;
+                document.getElementById('draggable-live-bidders').style.display = '';
+                document.getElementById('toggle-live-bidders-show-group').style.display = '';
+                document.getElementById('toggle-live-bidders-mode-group').style.display = '';
+                document.getElementById('toggle-live-bidders-font-group').style.display = '';
             }
 
             if (pageNum === '3') {
                 document.getElementById('tournament-dashboard')?.classList.toggle('active', !isCrewart);
-                document.getElementById('crewart-dashboard')?.classList.toggle('active', isCrewart);
+                document.getElementById('crewart-dashboard')?.classList.remove('active');
                 const setDisplay = (id, visible) => {
                     const el = document.getElementById(id);
                     if (el) el.style.display = visible ? '' : 'none';
@@ -1506,10 +1505,9 @@
                 setDisplay('battle-ann-coords', false);
                 setDisplay('blind-totals-coords', false);
                 const fullToggleLabel = document.querySelector('#toggle-bracket-full-show-group span');
-                if (fullToggleLabel) fullToggleLabel.textContent = isCrewart ? '점수판' : '전체 진행표';
+                if (fullToggleLabel) fullToggleLabel.textContent = '전체 진행표';
                 const coords = document.getElementById('bracket-coords');
-                if (coords && coords.firstChild) coords.firstChild.textContent = isCrewart ? '점수판: Top ' : '전체 진행표: Top ';
-                if (isCrewart) refreshCrewartPreview();
+                if (coords && coords.firstChild) coords.firstChild.textContent = '전체 진행표: Top ';
                 try { focusBracketLayer('bracket_full'); } catch (e) {}
             }
         }
@@ -1551,25 +1549,24 @@
         updatePreviewTabs(initialModuleId);
         if (pageNum === '1') {
             document.getElementById('btn-tab-p1')?.classList.add('active');
-            if (pageTitle) pageTitle.textContent = (initialModuleId === 'crewart' ? '크레와트 대기용' : '진행용') + " (1P) 실시간 레이아웃 배치기";
+            if (pageTitle) pageTitle.textContent = "진행용 (1P) 실시간 레이아웃 배치기";
             frame.src = broadcastPreviewSrc('1', initialModuleId);
         } else if (pageNum === '3') {
             document.getElementById('btn-tab-p3')?.classList.add('active');
-            if (pageTitle) pageTitle.textContent = (initialModuleId === 'crewart' ? '기숙사 점수판' : '전체 진행표') + " (3P) 실시간 레이아웃 배치기";
+            if (pageTitle) pageTitle.textContent = "전체 진행표 (3P) 실시간 레이아웃 배치기";
             frame.src = broadcastPreviewSrc('3', initialModuleId);
             // 3P: 레이아웃 미리보기 + 대진표 관리 대시보드 함께 표시
             const bgSel = document.getElementById('bracket-bg-selector-group');
             if (bgSel) bgSel.style.display = 'none';
             document.getElementById('tournament-dashboard')?.classList.toggle('active', initialModuleId !== 'crewart');
-            document.getElementById('crewart-dashboard')?.classList.toggle('active', initialModuleId === 'crewart');
+            document.getElementById('crewart-dashboard')?.classList.remove('active');
         } else {
             document.getElementById('btn-tab-p2')?.classList.add('active');
-            if (pageTitle) pageTitle.textContent = (initialModuleId === 'crewart' ? '현재 경매용' : '개체용') + " (2P) 실시간 레이아웃 배치기";
+            if (pageTitle) pageTitle.textContent = "개체용 (2P) 실시간 레이아웃 배치기";
             frame.src = broadcastPreviewSrc('2', initialModuleId); // Default page2 layout
-            const isCdcupPage2 = initialModuleId !== 'crewart';
-            document.getElementById('toggle-live-bidders-show-group').style.display = isCdcupPage2 ? '' : 'none';
-            document.getElementById('toggle-live-bidders-mode-group').style.display = isCdcupPage2 ? '' : 'none';
-            document.getElementById('toggle-live-bidders-font-group').style.display = isCdcupPage2 ? '' : 'none';
+            document.getElementById('toggle-live-bidders-show-group').style.display = '';
+            document.getElementById('toggle-live-bidders-mode-group').style.display = '';
+            document.getElementById('toggle-live-bidders-font-group').style.display = '';
             document.getElementById('toggle-live-bidders-switch-group').style.display = 'none';
         }
 
@@ -1586,7 +1583,7 @@
         if (pageNum === '2') {
             document.getElementById('draggable-info').style.display = '';
             document.getElementById('draggable-photo').style.display = '';
-            document.getElementById('draggable-live-bidders').style.display = initialModuleId === 'crewart' ? 'none' : '';
+            document.getElementById('draggable-live-bidders').style.display = '';
             document.getElementById('toggle-photo-show-group').style.display = '';
             document.getElementById('info-coords').style.display = '';
             document.getElementById('photo-coords').style.display = '';

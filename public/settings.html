@@ -244,8 +244,7 @@
         html.embedded .cdcup-nav,html.embedded .cdcup-tabs{display:none!important}
         html.embedded .container{margin:0 auto;padding-top:20px}
         html.embedded #event-module-select-group{display:none}
-        html.embedded-cdcup #event-module-card{display:none}
-        html.embedded-crewart [data-control-scope="cdcup"]{display:none!important}
+        html.embedded #event-module-card{display:none}
 
         @media (max-width: 720px) {
             .container {
@@ -345,16 +344,6 @@
             </div>
         </div>
 
-        <!-- ══ 돌발 퀴즈 ══ -->
-        <div class="card" id="live-quiz-card" style="grid-column: span 2;">
-            <div class="card-title">돌발 퀴즈</div>
-            <div class="form-row">
-                <div class="form-group"><label>문제</label><textarea id="cfg-live-quiz-question" rows="2" maxlength="180" placeholder="방송에 표시할 문제"></textarea></div>
-                <div class="form-group"><label>진행 상태</label><select id="cfg-live-quiz-status"><option value="off">숨김</option><option value="ready">대기</option><option value="open">정답 접수</option><option value="closed">결과 공개</option></select></div>
-            </div>
-            <div class="form-row"><div class="form-group"><label>정답</label><input id="cfg-live-quiz-answer" maxlength="80"></div><div class="form-group"><label>첫 정답자</label><input id="cfg-live-quiz-winner" maxlength="80"></div></div>
-        </div>
-
         <div class="section-heading"><strong>방송 자산</strong></div>
 
         <!-- ══ 공지사항 (티커) 설정 ══ -->
@@ -384,7 +373,7 @@
             </div>
         </div>
 
-        <details class="advanced-panel">
+        <details class="advanced-panel" open>
             <summary><span>고급 설정</span><span style="margin-left:auto;color:var(--text3);font-size:10px;font-weight:600">진행자 · 글자 · 로고 · 비밀번호</span></summary>
             <div class="advanced-grid">
 
@@ -1012,11 +1001,11 @@
                 host_role2: document.getElementById('cfg-host-role2').value,
                 nametag_font_size: document.getElementById('cfg-nametag-font-size').value,
                 bracket_font_size: document.getElementById('cfg-bracket-font-size').value || '14',
-                live_quiz_status: document.getElementById('cfg-live-quiz-status').value || 'off',
-                live_quiz_show: document.getElementById('cfg-live-quiz-status').value === 'off' ? '0' : '1',
-                live_quiz_question: document.getElementById('cfg-live-quiz-question').value,
-                live_quiz_answer: document.getElementById('cfg-live-quiz-status').value === 'closed' ? document.getElementById('cfg-live-quiz-answer').value : '',
-                live_quiz_winner: document.getElementById('cfg-live-quiz-winner').value,
+                live_quiz_status: 'off',
+                live_quiz_show: '0',
+                live_quiz_question: '',
+                live_quiz_answer: '',
+                live_quiz_winner: '',
             };
             if (m.active_event_module === 'crewart') {
                 m.crewart_ticker = m.ticker;
@@ -1104,10 +1093,6 @@
                     ticker_interval: cfg.crewart_ticker_interval ?? cfg.ticker_interval
                 } : cfg;
                 document.getElementById('cfg-active-event-module').value = _cfg.active_event_module || 'cdcup';
-                document.getElementById('cfg-live-quiz-status').value = cfg.live_quiz_show === '1' ? (cfg.live_quiz_status || 'ready') : 'off';
-                document.getElementById('cfg-live-quiz-question').value = cfg.live_quiz_question || '';
-                document.getElementById('cfg-live-quiz-answer').value = cfg.live_quiz_answer || '';
-                document.getElementById('cfg-live-quiz-winner').value = cfg.live_quiz_winner || '';
                 document.getElementById('cfg-crewart-houses').value = cfg.crewart_houses || serializeCrewartHouses(parseCrewartHouses(''));
                 document.getElementById('cfg-crewart-participants').value = cfg.crewart_participants || '';
                 document.getElementById('cfg-crewart-score-per-man').value = cfg.crewart_score_per_man || '1';
