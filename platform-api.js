@@ -63,6 +63,10 @@ function booleanValue(value, fallback = true) {
     return value === true || value === 1 || value === '1' || value === 'true' || value === 'on';
 }
 
+function isBroadcastableChannel(channel) {
+    return channel?.status === 'active' || channel?.status === 'paused';
+}
+
 function archiveScoreboards(channel, items = []) {
     const groups = new Map((channel?.groups || []).map((group) => [group.id, group]));
     return (channel?.scoreboards || []).map((board) => {
@@ -475,8 +479,9 @@ function createPlatformApi({ repository, logger = console } = {}) {
             if (segments.length === 1 && segments[0] === 'active-channel' && method === 'GET') {
                 const catalog = await loadCatalog();
                 const storedId = await repository.getActiveChannel();
-                const active = catalog.channels.find((candidate) => candidate.id === storedId && candidate.status !== 'archived')
-                    || catalog.channels.find((candidate) => candidate.status === 'active')
+                const active = catalog.channels.find((candidate) => candidate.id === storedId && isBroadcastableChannel(candidate))
+                    || catalog.channels.find((candidate) => isBroadcastableChannel(candidate))
+                    || catalog.channels.find((candidate) => candidate.status !== 'archived')
                     || catalog.channels[0]
                     || null;
                 const channelId = active?.id || '';
@@ -493,7 +498,7 @@ function createPlatformApi({ repository, logger = console } = {}) {
                 const body = await readJson(req);
                 const catalog = await loadCatalog();
                 const channelId = normalizeChannelId(body.channelId);
-                if (!catalog.channels.some((channel) => channel.id === channelId && channel.status !== 'archived')) {
+                if (!catalog.channels.some((channel) => channel.id === channelId && isBroadcastableChannel(channel))) {
                     replyJson(res, 422, { error: '운영 가능한 채널을 선택해 주세요.' });
                     return true;
                 }

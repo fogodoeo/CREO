@@ -215,7 +215,8 @@ test('universal broadcast channel can only switch to a catalog channel', async (
 
 test('public active-channel lookup heals a stale deleted pointer', async () => {
     const repository = new MemoryRepository();
-    repository.active = 'temporary-deleted-channel';
+    repository.catalog.channels.push(normalizeChannel({ id: 'draft-copy', name: 'Draft copy', status: 'draft' }));
+    repository.active = 'draft-copy';
     const api = createPlatformApi({ repository, logger: { error() {} } });
     const response = await call(api, 'GET', '/api/platform/active-channel', null, '');
     assert.equal(response.status, 200);
