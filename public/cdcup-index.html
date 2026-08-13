@@ -1689,8 +1689,19 @@
             vertical-align: middle;
         }
 
+        .ptable-result th,
+        .ptable-result td,
+        .ptable-result .pcomp,
+        .ptable-result .pwinner,
+        .ptable-result .pphone,
         .ptable-result .pstatus {
-            text-align: center;
+            text-align: left;
+        }
+
+        .ptable-result .psold,
+        .ptable-result th:nth-child(3),
+        .ptable-result th:nth-child(3) .print-sort-btn {
+            text-align: right;
         }
 
         #tab-print {
@@ -4708,6 +4719,12 @@
         }
 
         function fmtPriceP(v) { if (!v && v !== 0) return ''; v = parseFloat(v); if (isNaN(v)) return String(v); return v === Math.floor(v) ? Math.floor(v) + '만' : v + '만'; }
+        function fmtSoldPriceNumber(v) {
+            if (v === '' || v == null) return '';
+            var value = parseFloat(v);
+            if (isNaN(value)) return String(v);
+            return value.toLocaleString('ko-KR', { maximumFractionDigits: 10 });
+        }
         function fmtPhoneP(raw) {
             var ph = (raw || '').replace(/[^0-9]/g, '');
             if (ph.length === 8) ph = '010' + ph;
@@ -4761,7 +4778,7 @@
             var details = [
                 '업체명: ' + ((item && item.company) || '-'),
                 '이름: ' + ((item && item.name) || '-'),
-                '낙찰가: ' + (item && item.soldPrice ? fmtPriceP(item.soldPrice) : '-'),
+                '낙찰가: ' + (item && item.soldPrice ? fmtSoldPriceNumber(item.soldPrice) : '-'),
                 '낙찰자: ' + (winner.name || '-'),
                 '연락처: ' + (fmtPhoneP(winner.phone) || '-'),
                 '배송: ' + (item ? fmtShipTextForPrint(item, false) : '-')
@@ -4813,7 +4830,7 @@
             var r = '<tr>';
             if (showCo) r += '<td class="pcomp">' + esc(it.company || '') + '</td>';
             r += '<td class="pname">' + esc(shortName) + '</td>';
-            r += '<td class="psold">' + (it.soldPrice ? fmtPriceP(it.soldPrice) : '') + '</td>';
+            r += '<td class="psold">' + (it.soldPrice ? fmtSoldPriceNumber(it.soldPrice) : '') + '</td>';
             r += '<td class="pwinner">' + esc(w.name) + '</td>';
             r += '<td class="pphone">' + esc(fmtPhoneP(w.phone)) + '</td>';
             
