@@ -41,6 +41,21 @@ test('1P and 2P use one contract while 3P is selected by broadcast profile', () 
     assert.equal(Profiles.pageContract(academy, 3).id, 'academy');
 });
 
+test('shared settings keep channel content overrides separate from profile structure', () => {
+    const academy = channel('academy-copy', {
+        broadcastProfile: 'crewart-academy',
+        broadcastDefaults: { notice: 'Academy live', page1Ticker: 'RGBY', page3Title: 'House cup' }
+    });
+    const contract = Profiles.settingsContract(academy);
+    assert.deepEqual(contract.shared.pages, ['1', '2']);
+    assert.ok(contract.shared.sections.some(section => section.id === 'page1'));
+    assert.equal(contract.page3.id, 'academy');
+    const state = Profiles.defaultState(academy);
+    assert.equal(state.notice, 'Academy live');
+    assert.equal(state.page1Ticker, 'RGBY');
+    assert.equal(state.page3Title, 'House cup');
+});
+
 test('CDCUP compatibility is tied to its adapter, not copied channel ids', () => {
     const liveCdcup = channel('cdcup', { dataAdapter: 'legacy-cdcup', broadcastProfile: 'cdcup-tournament' });
     const copiedCdcup = channel('summer-team', { dataAdapter: 'platform', broadcastProfile: 'cdcup-tournament' });

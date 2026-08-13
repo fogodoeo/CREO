@@ -39,6 +39,13 @@ const DEFAULT_CHANNELS = Object.freeze([
             Object.freeze({ id: 'teams', name: '팀별 낙찰금액', dimension: 'group', metric: 'soldAmount', unit: '원', topN: 8 })
         ]),
         overlay: Object.freeze({ skin: 'sport', layout: 'balanced' }),
+        broadcastDefaults: Object.freeze({
+            notice: 'CDCUP 라이브',
+            noticeDetail: '방송을 준비 중입니다.',
+            page1Ticker: 'CDCUP LIVE',
+            page2Ticker: '경매 정보를 확인해 주세요.',
+            page3Title: '종합 순위표'
+        }),
         legacy: Object.freeze({ items: true, managementUrl: '/cdcup-index.html', controlUrl: '/broadcast-studio.html?channel=cdcup' })
     }),
     Object.freeze({
@@ -72,6 +79,13 @@ const DEFAULT_CHANNELS = Object.freeze([
             Object.freeze({ id: 'houses', name: '기숙사 컵', dimension: 'group', metric: 'points', unit: '점', topN: 4 })
         ]),
         overlay: Object.freeze({ skin: 'heritage', layout: 'left' }),
+        broadcastDefaults: Object.freeze({
+            notice: 'CREWARTS LIVE',
+            noticeDetail: 'R · G · B · Y',
+            page1Ticker: '크레와트 라이브 · 기숙사 점수전',
+            page2Ticker: 'R · G · B · Y',
+            page3Title: '기숙사 컵'
+        }),
         legacy: Object.freeze({ items: false, managementUrl: '/channel-workspace.html?channel=crewart', controlUrl: '/broadcast-studio.html?channel=crewart' })
     })
 ]);
@@ -177,6 +191,24 @@ function normalizePages(value = {}, fallback = {}) {
     }).filter(Boolean));
 }
 
+function normalizeBroadcastDefaults(value = {}, fallback = {}) {
+    const source = { ...(fallback || {}), ...(value || {}) };
+    const text = (key, max = 220) => cleanText(source[key], max);
+    return {
+        hostName1: text('hostName1', 60),
+        hostRole1: text('hostRole1', 40),
+        hostName2: text('hostName2', 60),
+        hostRole2: text('hostRole2', 40),
+        notice: text('notice', 160),
+        noticeDetail: text('noticeDetail', 200),
+        page1Ticker: text('page1Ticker'),
+        page1BannerUrl: text('page1BannerUrl', 600),
+        page2Ticker: text('page2Ticker'),
+        page2BannerUrl: text('page2BannerUrl', 600),
+        page3Title: text('page3Title', 120)
+    };
+}
+
 function normalizeChannel(input = {}, fallback = {}) {
     const source = { ...fallback, ...input };
     const id = normalizeChannelId(source.id || source.slug || source.name);
@@ -220,6 +252,7 @@ function normalizeChannel(input = {}, fallback = {}) {
         groups: normalizeGroups(input.groups ?? source.groups, fallback.groups),
         scoreboards: normalizeScoreboards(input.scoreboards ?? source.scoreboards, fallback.scoreboards),
         overlay: normalizeOverlay(input.overlay || source.overlay, fallback.overlay),
+        broadcastDefaults: normalizeBroadcastDefaults(input.broadcastDefaults ?? source.broadcastDefaults, fallback.broadcastDefaults),
         legacy: legacy && typeof legacy === 'object'
             ? {
                 items: Boolean(legacy.items),
@@ -315,6 +348,7 @@ module.exports = {
     channelKey,
     channelLinks,
     cleanText,
+    normalizeBroadcastDefaults,
     normalizeChannel,
     normalizeChannelId,
     publicItem,

@@ -161,26 +161,32 @@ test('group assignments are channel-configured and enrich public scoreboard data
 test('round archives snapshot each channel without leaking records across channels', async () => {
     const repository = new MemoryRepository();
     const api = createPlatformApi({ repository, logger: { error() {} } });
-    await call(api, 'POST', '/api/platform/channels/alpha/vendors', { record: { id: 'alpha_vendor', name: '알파 업체' } });
-    await call(api, 'POST', '/api/platform/channels/alpha/items', { record: { id: 'alpha_item', lotNumber: 1, name: '알파 개체', vendorId: 'alpha_vendor', status: 'sold', soldPrice: 120000, winnerName: '낙찰자' } });
-    await call(api, 'POST', '/api/platform/channels/beta/vendors', { record: { id: 'beta_vendor', name: '베타 업체' } });
-    await call(api, 'POST', '/api/platform/channels/beta/items', { record: { id: 'beta_item', lotNumber: 1, name: '베타 개체', vendorId: 'beta_vendor', status: 'sold', soldPrice: 90000 } });
+    repository.catalog.channels[0] = normalizeChannel({
+        ...repository.catalog.channels[0],
+        scoreboards: [{ id: 'vendors', name: 'Vendor totals', dimension: 'vendor', metric: 'soldAmount', unit: 'KRW', topN: 8 }]
+    });
+    await call(api, 'POST', '/api/platform/channels/alpha/vendors', { record: { id: 'alpha_vendor', name: 'alpha vendor' } });
+    await call(api, 'POST', '/api/platform/channels/alpha/items', { record: { id: 'alpha_item', lotNumber: 1, name: 'alpha item', vendorId: 'alpha_vendor', status: 'sold', soldPrice: 120000, winnerName: 'winner' } });
+    await call(api, 'POST', '/api/platform/channels/beta/vendors', { record: { id: 'beta_vendor', name: 'beta vendor' } });
+    await call(api, 'POST', '/api/platform/channels/beta/items', { record: { id: 'beta_item', lotNumber: 1, name: 'beta item', vendorId: 'beta_vendor', status: 'sold', soldPrice: 90000 } });
 
-    let response = await call(api, 'POST', '/api/platform/channels/alpha/archives', { title: '알파 1회차' });
+    let response = await call(api, 'POST', '/api/platform/channels/alpha/archives', { title: 'alpha round' });
     assert.equal(response.status, 201);
     assert.equal(response.json().archive.totalSoldAmount, 120000);
     const archiveId = response.json().archive.id;
 
     response = await call(api, 'GET', '/api/platform/channels/alpha/archives');
     assert.equal(response.json().archives.length, 1);
-    assert.equal(response.json().archives[0].items, undefined);
+    const listed = response.json().archives[0];
+    for (const key of ['items', 'vendors', 'shipments', 'broadcast', 'vendorCount', 'shipmentCount']) assert.equal(listed[key], undefined);
     const detail = await call(api, 'GET', `/api/platform/channels/alpha/archives/${archiveId}`);
-    assert.equal(detail.json().archive.items[0].name, '알파 개체');
-    assert.equal(detail.json().archive.items.some((item) => item.name === '베타 개체'), false);
+    const archive = detail.json().archive;
+    for (const key of ['items', 'vendors', 'shipments', 'broadcast', 'vendorCount', 'shipmentCount']) assert.equal(archive[key], undefined);
+    assert.equal(archive.scoreboards.length, 1);
+    assert.equal(archive.scoreboards[0].rows[0].total, 120000);
     const beta = await call(api, 'GET', '/api/platform/channels/beta/archives');
     assert.equal(beta.json().archives.length, 0);
 });
-
 test('public broadcast hides a quiz answer until the operator closes the quiz', async () => {
     const repository = new MemoryRepository();
     const api = createPlatformApi({ repository, logger: { error() {} } });
@@ -205,6 +211,16 @@ test('universal broadcast channel can only switch to a catalog channel', async (
     response = await call(api, 'PUT', '/api/platform/active-channel', { channelId: 'missing' });
     assert.equal(response.status, 422);
     assert.equal(repository.active, 'beta');
+});
+
+test('public active-channel lookup heals a stale deleted pointer', async () => {
+    const repository = new MemoryRepository();
+    repository.active = 'temporary-deleted-channel';
+    const api = createPlatformApi({ repository, logger: { error() {} } });
+    const response = await call(api, 'GET', '/api/platform/active-channel', null, '');
+    assert.equal(response.status, 200);
+    assert.equal(response.json().channelId, 'alpha');
+    assert.equal(repository.active, 'alpha');
 });
 
 test('referenced vendors and items cannot be deleted out from under shipments', async () => {

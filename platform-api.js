@@ -63,6 +63,56 @@ function booleanValue(value, fallback = true) {
     return value === true || value === 1 || value === '1' || value === 'true' || value === 'on';
 }
 
+function archiveScoreboards(channel, items = []) {
+    const groups = new Map((channel?.groups || []).map((group) => [group.id, group]));
+    return (channel?.scoreboards || []).map((board) => {
+        const rows = new Map();
+        for (const item of items) {
+            if (!(item.status === 'sold' || Number(item.soldPrice) > 0)) continue;
+            let key = 'unknown';
+            let name = '미지정';
+            let color = '';
+            let logoUrl = '';
+            if (board.dimension === 'vendor') {
+                key = item.vendorId || item.vendorName || key;
+                name = item.vendorName || name;
+                logoUrl = item.vendorLogoUrl || '';
+            } else if (board.dimension === 'group') {
+                const group = groups.get(item.groupId) || [...groups.values()].find((candidate) => candidate.name === item.teamName || candidate.shortName === item.teamName);
+                key = group?.id || item.groupId || item.teamName || key;
+                name = group?.shortName || group?.name || item.teamName || name;
+                color = group?.color || '';
+                logoUrl = group?.logoUrl || '';
+            } else if (board.dimension === 'category') {
+                key = item.category || key;
+                name = item.category || name;
+            } else {
+                key = item.winnerAlias || item.winnerName || key;
+                name = item.winnerAlias || item.winnerName || name;
+            }
+            const row = rows.get(key) || { key, name, count: 0, total: 0, color, logoUrl };
+            row.count += 1;
+            row.total += board.metric === 'soldCount' ? 1 : board.metric === 'points' ? Number(item.points) || 0 : Number(item.soldPrice) || 0;
+            rows.set(key, row);
+        }
+        return {
+            id: board.id,
+            name: board.name,
+            dimension: board.dimension,
+            metric: board.metric,
+            unit: board.unit,
+            rows: [...rows.values()]
+                .sort((a, b) => b.total - a.total || b.count - a.count || a.name.localeCompare(b.name, 'ko'))
+                .slice(0, board.topN || 8)
+        };
+    });
+}
+
+function publicArchive(record = {}) {
+    const { items, vendors, shipments, broadcast, vendorCount, shipmentCount, ...safe } = record;
+    return { ...safe, scoreboards: Array.isArray(safe.scoreboards) ? safe.scoreboards : [] };
+}
+
 function cookieValue(req, name) {
     const cookies = String(req.headers.cookie || '').split(';');
     for (const cookie of cookies) {
@@ -423,7 +473,18 @@ function createPlatformApi({ repository, logger = console } = {}) {
             }
 
             if (segments.length === 1 && segments[0] === 'active-channel' && method === 'GET') {
-                replyJson(res, 200, { channelId: await repository.getActiveChannel() });
+                const catalog = await loadCatalog();
+                const storedId = await repository.getActiveChannel();
+                const active = catalog.channels.find((candidate) => candidate.id === storedId && candidate.status !== 'archived')
+                    || catalog.channels.find((candidate) => candidate.status === 'active')
+                    || catalog.channels[0]
+                    || null;
+                const channelId = active?.id || '';
+                // A stale active-channel pointer can survive a deleted temporary
+                // channel. Heal it on read so the universal broadcast route never
+                // points at a non-existent channel again.
+                if (channelId && channelId !== storedId) await repository.setActiveChannel(channelId);
+                replyJson(res, 200, { channelId });
                 return true;
             }
 
@@ -649,7 +710,7 @@ function createPlatformApi({ repository, logger = console } = {}) {
                 if (segments.length === 3 && method === 'GET') {
                     const records = await repository.listRecords(channelId, 'archive');
                     const archives = records
-                        .map(({ items, vendors, shipments, broadcast, ...summary }) => summary)
+                        .map((record) => publicArchive(record))
                         .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
                     replyJson(res, 200, { channelId, archives });
                     return true;
@@ -664,22 +725,17 @@ function createPlatformApi({ repository, logger = console } = {}) {
                         itemCount: data.items.length,
                         soldCount: sold.length,
                         totalSoldAmount: sold.reduce((sum, item) => sum + (Number(item.soldPrice) || 0), 0),
-                        vendorCount: data.vendors.length,
-                        shipmentCount: data.shipments.length,
-                        items: data.items,
-                        vendors: data.vendors,
-                        shipments: data.shipments,
-                        broadcast: data.broadcast
+                        scoreboardCount: channel.scoreboards?.length || 0,
+                        scoreboards: archiveScoreboards(channel, data.items)
                     });
                     touchChannel(channelId);
-                    const { items, vendors, shipments, broadcast, ...summary } = record;
-                    replyJson(res, 201, { archive: summary });
+                    replyJson(res, 201, { archive: publicArchive(record) });
                     return true;
                 }
                 if (segments.length === 4 && method === 'GET') {
                     const archive = await repository.getRecord(channelId, 'archive', segments[3]);
                     if (!archive) replyJson(res, 404, { error: '회차 기록을 찾을 수 없습니다.' });
-                    else replyJson(res, 200, { archive });
+                    else replyJson(res, 200, { archive: publicArchive(archive) });
                     return true;
                 }
                 if (segments.length === 4 && method === 'DELETE') {
