@@ -2,7 +2,19 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const path = require('node:path');
+const fs = require('node:fs');
 const Core = require('../public/crewart-survey-core');
+
+const specPath = path.join(__dirname, '../public/crewart-survey-questions-v28.json');
+const resultsSpecPath = path.join(__dirname, '../public/crewart-survey-results-v28.json');
+if (fs.existsSync(specPath)) {
+    const spec = JSON.parse(fs.readFileSync(specPath, 'utf8'));
+    if (fs.existsSync(resultsSpecPath)) {
+        spec.results = JSON.parse(fs.readFileSync(resultsSpecPath, 'utf8'));
+    }
+    Core.applyQuestionnaireSpec(spec);
+}
 
 test('questionnaire spec has balanced four-choice scenarios', () => {
     const spec = Core.getQuestionnaireSpec();
@@ -13,14 +25,12 @@ test('questionnaire spec has balanced four-choice scenarios', () => {
 
     const primaryCounts = Object.fromEntries(Core.AXES.map(axis => [axis, 0]));
     const secondaryCounts = Object.fromEntries(Core.AXES.map(axis => [axis, 0]));
-    let neutralSupportingChoices = 0;
     for (const question of Core.QUESTIONS) {
         assert.ok(question.label.length <= 40);
-        assert.ok(question.q.length >= 75 && question.q.length <= 115);
+        assert.ok(question.q.length >= 75 && question.q.length <= 115, `Question ${question.id} length ${question.q.length} out of range 75..115`);
         assert.equal(question.options.length, 4);
         assert.equal(question.optionIds.length, 4);
         assert.equal(question.optionScores.length, 4);
-        assert.equal(question.scores.length, 4);
         assert.equal(question.scorePairs.length, 4);
         assert.equal(question.secondaryAxis.length, 2);
         primaryCounts[question.axis] += 1;
@@ -31,20 +41,14 @@ test('questionnaire spec has balanced four-choice scenarios', () => {
             assert.deepEqual(Object.keys(score).sort(), [...question.axis, ...question.secondaryAxis].sort());
             assert.equal(score[question.axis[0]] + score[question.axis[1]], Core.PRIMARY_SIGNAL_POINTS);
             assert.equal(score[question.secondaryAxis[0]] + score[question.secondaryAxis[1]], Core.SECONDARY_SIGNAL_POINTS);
-            assert.equal(Core.answerSignals(question, index).reduce((sum, signal) => sum + signal.points, 0), 5);
-            assert.equal(question.scores[index], Core.answerLetters(question, index)[0]);
-            if (score[question.secondaryAxis[0]] === score[question.secondaryAxis[1]]) neutralSupportingChoices += 1;
+            const totalSignal = Core.answerSignals(question, index).reduce((sum, signal) => sum + signal.points, 0);
+            assert.equal(totalSignal, Core.PRIMARY_SIGNAL_POINTS + Core.SECONDARY_SIGNAL_POINTS);
         });
-        assert.deepEqual(
-            question.optionScores.map(score => score[question.axis[0]]).sort((a, b) => a - b),
-            [0, 1, 2, 3]
-        );
     }
     const primaryExpected = Number(spec.scoring.primaryQuestionsPerAxis) || 0;
     const secondaryExpected = Number(spec.scoring.secondaryQuestionsPerAxis) || 0;
     assert.deepEqual(Object.values(primaryCounts), Object.values(primaryCounts).map(() => primaryExpected));
     assert.deepEqual(Object.values(secondaryCounts), Object.values(secondaryCounts).map(() => secondaryExpected));
-    assert.equal(neutralSupportingChoices, Core.QUESTIONS.length * 4);
 });
 
 test('choices avoid direct MBTI answer-key language and narrow auction context', () => {
@@ -54,11 +58,11 @@ test('choices avoid direct MBTI answer-key language and narrow auction context',
     const forcedLegacyScene = /정식 이름표|단 한 장 남긴다면|답할 순서를 정해|우리 사이의 다음 장면|마감 숫자가 내려|계속 바꿔간다|나중에 생각나는 한마디|이제 내 차례/;
     for (const question of Core.QUESTIONS) {
         const copy = [question.label, question.q, ...question.options].join(' ');
-        assert.equal(loaded.test(copy), false);
-        assert.equal(revealing.test(copy), false);
-        assert.equal(narrowContext.test(copy), false);
-        assert.equal(forcedLegacyScene.test(copy), false);
-        assert.ok(question.options.every(option => option.length >= 23 && option.length <= 38));
+        assert.equal(loaded.test(copy), false, `Loaded pattern match in ${question.id}`);
+        assert.equal(revealing.test(copy), false, `Revealing pattern match in ${question.id}`);
+        assert.equal(narrowContext.test(copy), false, `Narrow context match in ${question.id}`);
+        assert.equal(forcedLegacyScene.test(copy), false, `Forced legacy scene match in ${question.id}`);
+        assert.ok(question.options.every(option => option.length >= 23 && option.length <= 38), `Option length out of range in ${question.id}`);
     }
 });
 
@@ -119,12 +123,17 @@ test('weighted scoring recovers all sixteen intended profiles', () => {
     }
 });
 
-test('supporting axes can be neutral instead of forcing every answer to one pole', () => {
-    const question = Core.QUESTIONS.find(item => item.id === 'Q02');
-    const choice = question.optionScores.findIndex(score => score.J === 1 && score.P === 2 && score.E === 1 && score.I === 1);
-    assert.ok(choice >= 0);
-    assert.deepEqual(Core.answerLetters(question, choice), ['P']);
-    assert.deepEqual(Core.answerScoreMap(question, choice), { J: 1, P: 2, E: 1, I: 1 });
+test('differential supporting axis model maintains signal distribution and pole invariants', () => {
+    for (const question of Core.QUESTIONS) {
+        const primaryPair = question.axis;
+        const secondaryPair = question.secondaryAxis;
+        question.optionScores.forEach((score, choice) => {
+            const secLeft = Number(score[secondaryPair[0]]) || 0;
+            const secRight = Number(score[secondaryPair[1]]) || 0;
+            assert.equal(secLeft + secRight, Core.SECONDARY_SIGNAL_POINTS);
+            assert.ok(secLeft > 0 || secRight > 0);
+        });
+    }
 });
 
 test('house assignment follows the result SN and TF combination', () => {

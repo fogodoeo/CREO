@@ -831,7 +831,7 @@
         const { median, position, comparison } = presentation;
         return `
             <section class="cw-result-section cw-speed-card">
-                ${renderReportSectionHead('02', 'RESPONSE PACE', '선택 속도', 'speed-report-detail')}
+                ${renderReportSectionHead('02', 'RESPONSE PACING', '응답 리듬', 'speed-report-detail')}
                 <div class="cw-speed-summary">
                     <header class="cw-speed-head">
                         <strong data-measure-speed data-final-text="문항당 ${escapeHtml(median)}">문항당 ${escapeHtml(median)}</strong>

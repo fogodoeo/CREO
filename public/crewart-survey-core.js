@@ -5,7 +5,45 @@
 }(typeof globalThis !== 'undefined' ? globalThis : this, function () {
     'use strict';
 
-    let SURVEY_VERSION = 'crewart-tendency-v12.3-balanced-3to2';
+    let SURVEY_VERSION = 'crewart-tendency-v28.0-pasamo-ultimate';
+
+    const SURVEY_VERSION_REGISTRY = {
+        v1: {
+            id: 'v1',
+            versionKey: 'v24',
+            displayName: 'Ver 1',
+            questionVersion: 'crewart-tendency-v12.3-balanced-3to2',
+            resultsVersion: 'crewart-results-v1-legacy',
+            questionsFile: 'crewart-survey-questions-v24.json',
+            resultsFile: null,
+            active: true,
+            legacy: true
+        },
+        v2: {
+            id: 'v2',
+            versionKey: 'v28',
+            displayName: 'Ver 2',
+            questionVersion: 'crewart-tendency-v28.0-pasamo-ultimate',
+            resultsVersion: 'crewart-results-v28.0-pasamo-ultimate',
+            questionsFile: 'crewart-survey-questions-v28.json',
+            resultsFile: 'crewart-survey-results-v28.json',
+            active: true,
+            legacy: false
+        }
+    };
+
+    function getSurveyVersion(keyOrId) {
+        if (!keyOrId) return SURVEY_VERSION_REGISTRY.v2;
+        const normalized = String(keyOrId).trim().toLowerCase();
+        if (SURVEY_VERSION_REGISTRY[normalized]) return SURVEY_VERSION_REGISTRY[normalized];
+        for (const reg of Object.values(SURVEY_VERSION_REGISTRY)) {
+            if (reg.versionKey.toLowerCase() === normalized || reg.id.toLowerCase() === normalized || reg.questionVersion.toLowerCase() === normalized) {
+                return reg;
+            }
+        }
+        return SURVEY_VERSION_REGISTRY.v2;
+    }
+
     let AXIS_SCORE_TOTAL = 15;
     let PRIMARY_SIGNAL_POINTS = 3;
     let SECONDARY_SIGNAL_POINTS = 2;
@@ -330,18 +368,26 @@
             + (letters.S > letters.N ? 'S' : 'N')
             + (letters.T > letters.F ? 'T' : 'F')
             + (letters.J > letters.P ? 'J' : 'P');
+
         const axes = AXES.map((axis, index) => {
             const dominant = code[index];
             const opposite = axis[0] === dominant ? axis[1] : axis[0];
+            const diff = Math.abs(letters[dominant] - letters[opposite]);
+            const confidence = diff / AXIS_SCORE_TOTAL;
+            const confidenceLabel = diff <= 2
+                ? `${dominant}에 조금 가까움`
+                : `확실한 ${dominant} 성향`;
             return {
                 axis,
                 dominant,
                 opposite,
                 dominantCount: letters[dominant],
                 oppositeCount: letters[opposite],
-                confidence: Math.abs(letters[dominant] - letters[opposite]) / AXIS_SCORE_TOTAL
+                confidence,
+                confidenceLabel
             };
         });
+
         return { letters, code, axes, typeName: TYPE_NAMES[code] || '크레 집사' };
     }
 
@@ -444,16 +490,58 @@
         return `${perception}${decision}`;
     }
 
-    function loadQuestionnaireFile(filename) {
+
+    function loadQuestionnaireFile(questionsFile, resultsFile) {
         if (typeof fetch !== 'function' || typeof document === 'undefined') return Promise.resolve(null);
-        const url = new URL(filename, document.baseURI).href;
-        return fetch(url, { cache: 'no-store' })
+        const questionsUrl = new URL(questionsFile, document.baseURI).href;
+        const fetchQuestions = fetch(questionsUrl, { cache: 'no-store' })
             .then(response => {
-                if (!response.ok) throw new Error(`Questionnaire fetch failed: ${response.status}`);
+                if (!response.ok) throw new Error(`Questions fetch failed: ${response.status}`);
                 return response.json();
-            })
-            .then(spec => applyQuestionnaireSpec(spec));
+            });
+
+        const fetchResults = resultsFile
+            ? fetch(new URL(resultsFile, document.baseURI).href, { cache: 'no-store' })
+                .then(response => response.ok ? response.json() : null)
+                .catch(() => null)
+            : Promise.resolve(null);
+
+        return Promise.all([fetchQuestions, fetchResults]).then(([spec, resultsSpec]) => {
+            if (resultsSpec && resultsSpec.results) {
+                spec.results = resultsSpec;
+            }
+            return applyQuestionnaireSpec(spec);
+        });
     }
+
+    function loadQuestionnaireVersion(versionKey) {
+        const reg = getSurveyVersion(versionKey);
+        return loadQuestionnaireFile(reg.questionsFile, reg.resultsFile);
+    }
+
+    function getResultProfile(code) {
+        if (questionnaireSpec && questionnaireSpec.results && questionnaireSpec.results.results && questionnaireSpec.results.results[code]) {
+            return questionnaireSpec.results.results[code];
+        }
+        return {
+            mbti: code,
+            title: TYPE_NAMES[code] || '크레 집사',
+            subtitle: `${code} 성향의 마스터 크레 집사`,
+            summary: `나만의 뚜렷한 사육 철학과 행동 방식으로 크레 라이프를 즐기는 ${code} 타입 집사입니다.`,
+            traits: [
+                '뚜렷한 판단 기준과 관찰력으로 사육장을 다스림',
+                '개체 피딩과 환경 케어를 자신만의 방식으로 완성함',
+                '파박 탐방과 커뮤니티 소통에서 고유한 존재감을 드러냄',
+                '지속적인 호기심과 애정으로 크레 집사 생활을 이어감'
+            ],
+            superpower: '나만의 개성과 노하우로 완성하는 크레 케어 능력',
+            weakness: '자신만의 방식에 몰입하여 가끔 휴식이 필요함',
+            bestMatch: { mbti: 'ESFP', title: '파사모 톡방 인싸 집사' },
+            worstMatch: { mbti: 'ENFP', title: '모프 상상 창작집사' },
+            actionItem: '오늘 밤엔 편안하게 꼬물이 슈푸 먹방을 보며 힐링하세요!'
+        };
+    }
+
 
     const api = {
         AXES,
@@ -476,6 +564,10 @@
         average,
         ready,
         loadQuestionnaireFile,
+        loadQuestionnaireVersion,
+        getSurveyVersion,
+        getResultProfile,
+        SURVEY_VERSION_REGISTRY,
         applyQuestionnaireSpec,
         questionnaireFile: QUESTIONNAIRE_FILE,
         getQuestionnaireSpec: () => questionnaireSpec
