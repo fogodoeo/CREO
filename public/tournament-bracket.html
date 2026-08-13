@@ -121,24 +121,7 @@
     </main>
   </div>
   <script>
-    const TEAM={
-      '베누스':['VENUS GECKO','https://iuwqjeecwepqyqqlzprf.supabase.co/storage/v1/object/public/banner/banner_1782614024896_myoy5t.png'],
-      '크레빌딩':['CREBUILDING','https://iuwqjeecwepqyqqlzprf.supabase.co/storage/v1/object/public/banner/banner_1782614039839_1zapyu.png'],
-      '니코게코':['NIKO GECKO','https://iuwqjeecwepqyqqlzprf.supabase.co/storage/v1/object/public/banner/banner_1782614045636_l4j9h8.png'],
-      '어비스':['ABYSS','https://iuwqjeecwepqyqqlzprf.supabase.co/storage/v1/object/public/banner/banner_1782614053967_e2r308.png'],
-      '미야게코':['MIYA GECKO','https://iuwqjeecwepqyqqlzprf.supabase.co/storage/v1/object/public/banner/banner_1782614062614_7q4w8m.png'],
-      '헤넥톤':['HENEKTON','https://iuwqjeecwepqyqqlzprf.supabase.co/storage/v1/object/public/banner/banner_1782614068383_ajajil.png'],
-      '아틀리에':['ATELIER TRI','https://iuwqjeecwepqyqqlzprf.supabase.co/storage/v1/object/public/banner/banner_1782614076171_7233s4.png'],
-      '크레용':['CREYON','https://iuwqjeecwepqyqqlzprf.supabase.co/storage/v1/object/public/banner/banner_1782614082189_4ch940.png'],
-      '자몽':['ZAMONG CRE','https://iuwqjeecwepqyqqlzprf.supabase.co/storage/v1/object/public/banner/banner_1782673018185_ho06c0.jpg'],
-      '비송':['BSONG','https://iuwqjeecwepqyqqlzprf.supabase.co/storage/v1/object/public/banner/banner_1782673024625_4qnd6z.png'],
-      '렙타일갤러리':['REPTILE GALLERY','https://iuwqjeecwepqyqqlzprf.supabase.co/storage/v1/object/public/banner/banner_1782673030103_eurlfj.png'],
-      '히꼬':['HIKKO','https://iuwqjeecwepqyqqlzprf.supabase.co/storage/v1/object/public/banner/banner_1782673035472_cz1i7k.jpg'],
-      '아쿠':['ACU','https://iuwqjeecwepqyqqlzprf.supabase.co/storage/v1/object/public/banner/banner_1782932057655_m0f98s.jpg'],
-      '앙크레':['ANCRE','https://iuwqjeecwepqyqqlzprf.supabase.co/storage/v1/object/public/banner/banner_1782932058677_v24mn4.jpg'],
-      '해치랩':['HATCH LAB STUDIO','https://iuwqjeecwepqyqqlzprf.supabase.co/storage/v1/object/public/banner/banner_1782932059436_58i7f8.jpg'],
-      '라이카':['LAIKA','https://iuwqjeecwepqyqqlzprf.supabase.co/storage/v1/object/public/banner/banner_1782933522030_612nnq.png']
-    };
+    const TEAM={};
     function applyConfiguredTeamLogos(map){
       for(let index=1;index<=64;index++){
         try{
@@ -154,28 +137,9 @@
       const key=Object.keys(TEAM).find(saved=>String(name||'').includes(saved)||saved.includes(String(name||'')));
       return key?TEAM[key]:[name,''];
     }
-    const BRACKET_R16_ORDER=[
-      ['베누스','라이카'],
-      ['렙타일갤러리','크레빌딩'],
-      ['히꼬','크레용'],
-      ['앙크레','어비스'],
-      ['비송','미야게코'],
-      ['해치랩','헤넥톤'],
-      ['자몽','아틀리에'],
-      ['니코게코','아쿠']
-    ];
-    const BRACKET_QF_ORDER=[
-      ['베누스','렙타일갤러리'],
-      ['히꼬','어비스'],
-      ['비송','헤넥톤'],
-      ['자몽','니코게코']
-    ];
     let ROUNDS=[];
     let LINKS=[];
     let STAGE_GROUPS=null;
-    const pairMatch=(pairs,left,right)=>pairs.find(match=>
-      (match.left===left&&match.right===right)||(match.left===right&&match.right===left)
-    )||{left,right};
     const amountWinner=(match,roundAmounts,round)=>{
       if(!match?.left||!match?.right)return '';
       const left=CdcupTournamentData.roundAmount(roundAmounts,match.left,round);
@@ -198,38 +162,31 @@
     function buildTournamentModel(map,items){
       const roundAmounts=CdcupTournamentData.buildRoundAmounts(map||{},items||[]);
       STAGE_GROUPS=CdcupTournamentData.parseStageGroups(map||{},8);
-      const legacy=CdcupTournamentData.isLegacySeason(map||{});
       const stored16=CdcupTournamentData.parseBracket(map||{},16).matches||{};
       const stored8=CdcupTournamentData.parseBracket(map||{},8).matches||{};
       const stored4=CdcupTournamentData.parseBracket(map||{},4).matches||{};
       const stored2=CdcupTournamentData.parseBracket(map||{},2).matches||{};
-      const officialR16=CdcupTournamentData.ROUND_OF_16_MATCHUPS;
-      const officialQf=CdcupTournamentData.QUARTERFINAL_MATCHUPS;
-      const r16Source=legacy
-        ? BRACKET_R16_ORDER.map(([left,right])=>pairMatch(officialR16,left,right))
-        : Array.from({length:8},(_,index)=>stored16[`16_${index+1}`]||{left:'',right:''});
+      const r16Source=Array.from({length:8},(_,index)=>stored16[`16_${index+1}`]||{left:'',right:''});
       const r16=r16Source.map((match,index)=>{
         return {
           id:`r16-${index+1}`,stage:16,label:`16강 ${index+1}경기`,
           a:match.left,ap:CdcupTournamentData.roundAmount(roundAmounts,match.left,16),
           b:match.right,bp:CdcupTournamentData.roundAmount(roundAmounts,match.right,16),
-          w:legacy?amountWinner(match,roundAmounts,16):savedOrAmountWinner(match,roundAmounts,16)
+          w:savedOrAmountWinner(match,roundAmounts,16)
         };
       });
       const r16Winners=r16.map(match=>match.w);
-      const qfSource=legacy ? BRACKET_QF_ORDER.map(([left,right])=>pairMatch(officialQf,left,right)) : Array.from({length:4},(_,index)=>({
+      const qfSource=Array.from({length:4},(_,index)=>({
         left:r16Winners[index*2]||'',right:r16Winners[index*2+1]||''
       }));
       const quarterfinals=qfSource.map((fallback,index)=>{
-        const official=legacy?pairMatch(officialQf,fallback.left,fallback.right):fallback;
-        const savedIndex=legacy?officialQf.indexOf(official)+1:index+1;
-        const saved=stored8[`8_${savedIndex}`]||{};
-        const match={...saved,left:saved.left||official.left,right:saved.right||official.right};
+        const saved=stored8[`8_${index+1}`]||{};
+        const match={...saved,left:saved.left||fallback.left,right:saved.right||fallback.right};
         return {
           id:`r8-${index+1}`,stage:8,label:`8강 ${index+1}경기`,
           a:match.left,ap:CdcupTournamentData.roundAmount(roundAmounts,match.left,8),
           b:match.right,bp:CdcupTournamentData.roundAmount(roundAmounts,match.right,8),
-          w:legacy?amountWinner(match,roundAmounts,8):savedOrAmountWinner(match,roundAmounts,8)
+          w:savedOrAmountWinner(match,roundAmounts,8)
         };
       });
       const groupStandings=CdcupTournamentData.stageGroupStandings(map||{},items||[],8);
@@ -240,8 +197,8 @@
       }));
       const qfWinners=quarterfinals.map(match=>match.w).filter(Boolean);
       const semifinalDefaults=[
-        {left:qfWinners[0]||(legacy?'베누스':''),right:qfWinners[1]||(legacy?'히꼬':'')},
-        {left:qfWinners[2]||(legacy?'비송':''),right:qfWinners[3]||(legacy?'자몽':'')}
+        {left:qfWinners[0]||'',right:qfWinners[1]||''},
+        {left:qfWinners[2]||'',right:qfWinners[3]||''}
       ];
       const semifinals=[0,1].map(index=>{
         const match=stageMatch(stored4,stored8,`4_${index+1}`,semifinalDefaults[index]);

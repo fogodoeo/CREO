@@ -41,3 +41,40 @@ test('active second-round items without legacy stage tags are counted as round t
     assert.deepEqual([...groups.qualification.winners], ['알파']);
     assert.deepEqual([...groups.qualification.wildcards], ['베타']);
 });
+
+test('missing runtime configuration never falls back to historical tournament teams', () => {
+    const data = loadTournamentData();
+    assert.equal(data.isLegacySeason({}), false);
+    const amounts = data.buildRoundAmounts({}, []);
+    assert.deepEqual({ ...amounts[16] }, {});
+    assert.deepEqual({ ...amounts[8] }, {});
+});
+
+test('tournament renderer contains no participant-specific fallback data', () => {
+    const dataSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'cdcup-tournament-data.js'), 'utf8');
+    const bracketSource = fs.readFileSync(path.join(__dirname, '..', 'public', 'tournament-bracket.html'), 'utf8');
+    for (const participant of ['비송', '베누스', '히꼬', '자몽']) {
+        assert.doesNotMatch(dataSource, new RegExp(participant));
+        assert.doesNotMatch(bracketSource, new RegExp(participant));
+    }
+    assert.match(bracketSource, /stored16\[`16_\$\{index\+1\}`\]/);
+    assert.match(bracketSource, /stored8\[`8_\$\{index\+1\}`\]/);
+});
+
+test('third-round entrants come only from the current top two second-round groups', () => {
+    const data = loadTournamentData();
+    const map = {
+        tournament_season: '2',
+        active_tournament: '8',
+        tournament_stage_groups_8: JSON.stringify({
+            groups: [
+                { code: 'A', name: 'A팀', members: ['A1', 'A2', 'A3', 'A4'] },
+                { code: 'B', name: 'B팀', members: ['B1', 'B2', 'B3', 'B4'] },
+                { code: 'C', name: 'C팀', members: ['C1', 'C2', 'C3', 'C4'] }
+            ]
+        }),
+        tournament_round_amounts_8: JSON.stringify({ A1: 10, A2: 10, A3: 10, A4: 10, B1: 30, B2: 30, B3: 30, B4: 30, C1: 20, C2: 20, C3: 20, C4: 20 })
+    };
+    const entrants = data.finalStageEntrants(map, []);
+    assert.deepEqual(Array.from(entrants, entry => entry.name), ['B1', 'B2', 'B3', 'B4', 'C1', 'C2', 'C3', 'C4']);
+});
