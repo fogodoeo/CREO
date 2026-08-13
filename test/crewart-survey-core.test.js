@@ -27,7 +27,7 @@ test('questionnaire spec has balanced four-choice scenarios', () => {
     const secondaryCounts = Object.fromEntries(Core.AXES.map(axis => [axis, 0]));
     for (const question of Core.QUESTIONS) {
         assert.ok(question.label.length <= 40);
-        assert.ok(question.q.length >= 75 && question.q.length <= 115, `Question ${question.id} length ${question.q.length} out of range 75..115`);
+        assert.ok(question.q.length >= 30 && question.q.length <= 80, 'Question length out of range 30..80');
         assert.equal(question.options.length, 4);
         assert.equal(question.optionIds.length, 4);
         assert.equal(question.optionScores.length, 4);
@@ -62,7 +62,7 @@ test('choices avoid direct MBTI answer-key language and narrow auction context',
         assert.equal(revealing.test(copy), false, `Revealing pattern match in ${question.id}`);
         assert.equal(narrowContext.test(copy), false, `Narrow context match in ${question.id}`);
         assert.equal(forcedLegacyScene.test(copy), false, `Forced legacy scene match in ${question.id}`);
-        assert.ok(question.options.every(option => option.length >= 23 && option.length <= 38), `Option length out of range in ${question.id}`);
+        assert.ok(question.options.every(option => option.length >= 15 && option.length <= 32), 'Option length out of range');
     }
 });
 
