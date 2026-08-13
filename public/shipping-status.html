@@ -152,6 +152,8 @@
         </section>
     </main>
     <nav class="app-bottom-nav" aria-label="CREO 공통 페이지 이동">
+        <a id="shipping-channel-home" href="/">채널홈</a>
+        <a id="shipping-workspace-link" href="#">업체</a>
         <a href="shipping.html">배송관리</a>
         <a class="active" href="shipping-status.html" aria-current="page">전체조회</a>
         <a class="admin-only-nav" id="shipping-rates-nav" href="shipping-rates.html">요금표</a>
@@ -164,6 +166,10 @@
         let winnerGroups = [];
         let auditLogs = [];
         const SHIPPING_CHANNEL_ID = String(new URLSearchParams(location.search).get('channel') || 'cdcup').toLowerCase().replace(/[^a-z0-9-]/g,'') || 'cdcup';
+        document.getElementById('shipping-channel-home').href='/?channel='+encodeURIComponent(SHIPPING_CHANNEL_ID);
+        document.getElementById('shipping-workspace-link').href=SHIPPING_CHANNEL_ID==='cdcup'
+            ? 'cdcup-index.html?channel='+encodeURIComponent(SHIPPING_CHANNEL_ID)
+            : 'channel-workspace.html?channel='+encodeURIComponent(SHIPPING_CHANNEL_ID);
         const MOBILE_STATUS_HISTORY = matchMedia('(max-width:820px)').matches;
         let activeMode = 'winner';
         let selectedWinnerKey = '';

@@ -71,8 +71,10 @@ test('home is an operational channel launcher without duplicate management route
     assert.match(hub, /id="quick-settings"/);
     assert.match(hub, /id="quick-design"/);
     assert.match(hub, /function workspaceUrl\(c\)/);
+    assert.match(hub, /activeChannel\.links\?\.shipping/);
+    assert.doesNotMatch(hub, /shipping\.href=`channel-shipping\.html/);
     assert.match(hub, /survey\.hidden=activeChannel\.id!==['"]crewart['"]\|\|activeChannel\.features\?\.survey!==true/);
-    assert.match(hub, /broadcast-studio\.html\?channel=/);
+    assert.match(hub, /activeChannel\.links\?\.control/);
     assert.doesNotMatch(hub, /id="quick-archives"|전체 채널|현장 운영|방송 열기/);
     assert.doesNotMatch(hub, /모든 경매 운영을|한곳에서\.|채널은 완전히|공통 도구|관리하기/);
 });
@@ -222,6 +224,8 @@ test('new CDCUP overlays and shipping retain compatibility with the established 
     assert.match(shipping, /channels\/\$\{encodeURIComponent\(SHIPPING_CHANNEL_ID\)\}\/workspace/);
     assert.match(shipping, /saveShippingItem/);
     assert.match(shipping, /SHIPPING_COMPANY_STORAGE_KEY/);
+    assert.match(shipping, /id="shipping-channel-home"/);
+    assert.match(shipping, /id="shipping-workspace-link"/);
 });
 
 test('round archives stay available without being duplicated inside broadcast management', () => {

@@ -2545,6 +2545,8 @@
     </div>
 
     <nav class="app-bottom-nav" aria-label="CREO 공통 페이지 이동">
+        <a id="shipping-channel-home" href="/">채널홈</a>
+        <a id="shipping-workspace-link" href="#">업체</a>
         <a class="active" href="shipping.html" aria-current="page">배송관리</a>
         <a href="shipping-status.html">전체조회</a>
         <a class="admin-only-nav" id="shipping-rates-nav" href="shipping-rates.html">요금표</a>
@@ -2711,6 +2713,10 @@
     <script>
         const SHIPPING_CHANNEL_ID = String(new URLSearchParams(window.location.search).get('channel') || 'cdcup')
             .toLowerCase().replace(/[^a-z0-9-]/g, '') || 'cdcup';
+        document.getElementById('shipping-channel-home').href = `/?channel=${encodeURIComponent(SHIPPING_CHANNEL_ID)}`;
+        document.getElementById('shipping-workspace-link').href = SHIPPING_CHANNEL_ID === 'cdcup'
+            ? `cdcup-index.html?channel=${encodeURIComponent(SHIPPING_CHANNEL_ID)}`
+            : `channel-workspace.html?channel=${encodeURIComponent(SHIPPING_CHANNEL_ID)}`;
         document.querySelectorAll('a[href="shipping-rates.html"]').forEach(link => {
             link.href = `shipping-rates.html?channel=${encodeURIComponent(SHIPPING_CHANNEL_ID)}`;
         });

@@ -248,7 +248,10 @@ function channelLinks(channelId) {
         control: `/broadcast-studio.html?${query}`,
         preview: `/broadcast-router.html?event=${encodeURIComponent(id)}&page=1`,
         live: `/broadcast-router.html?event=${encodeURIComponent(id)}&page=1&live=1`,
-        shipping: `/channel-shipping.html?${query}`
+        shipping: `/shipping.html?${query}`,
+        shippingStatus: `/shipping-status.html?${query}`,
+        archives: `/channel-archives.html?${query}`,
+        settings: `/channel-manager.html?${query}`
     };
 }
 

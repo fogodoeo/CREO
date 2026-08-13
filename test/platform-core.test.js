@@ -14,6 +14,10 @@ test('channel identifiers and storage keys create hard data boundaries', () => {
     assert.equal(channelKey('summer-auction', 'vendor', 'ven_1'), 'creo_v2::summer-auction::vendor::ven_1');
     assert.throws(() => channelKey('!!!', 'vendor', 'one'), /Invalid channel key/);
     assert.match(channelLinks('summer-auction').workspace, /channel=summer-auction/);
+    assert.equal(channelLinks('crewart').shipping, '/shipping.html?channel=crewart');
+    assert.equal(channelLinks('crewart').shippingStatus, '/shipping-status.html?channel=crewart');
+    assert.equal(channelLinks('crewart').archives, '/channel-archives.html?channel=crewart');
+    assert.equal(channelLinks('crewart').settings, '/channel-manager.html?channel=crewart');
 });
 
 test('channel configuration is normalized and duplicate ids are rejected', () => {
