@@ -2216,6 +2216,7 @@
         element('start-button')?.addEventListener('click', () => startSurveyVersion('v24'));
         element('start-button-v2')?.addEventListener('click', () => startSurveyVersion('v28'));
         element('home-retest')?.addEventListener('click', () => startSurveyVersion('v28'));
+        element('home-retest-v1')?.addEventListener('click', () => startSurveyVersion('v24'));
         element('auth-phone-edit')?.addEventListener('click', editMembershipAccess);
         element('auth-phone-clear')?.addEventListener('click', clearMembershipAccess);
         element('member-check-form')?.addEventListener('submit', verifyMembershipPhone);

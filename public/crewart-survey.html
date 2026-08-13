@@ -16,11 +16,11 @@
     <link
         href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
         rel="stylesheet">
-    <link rel="stylesheet" href="crewart-survey-v4.css?v=20260811-survey-v24">
+    <link rel="stylesheet" href="crewart-survey-v4.css?v=20260814-survey-v28-visible-start">
     <script src="assets/vendor/kakao-2.8.1.min.js"></script>
-    <script src="crewart-survey-core.js?v=20260811-survey-v24"></script>
+    <script src="crewart-survey-core.js?v=20260814-survey-v28-visible-start"></script>
     <!-- Share-link target is cache-busted so KakaoTalk never reuses the old root URL. -->
-    <script src="crewart-survey.js?v=20260811-survey-v24" defer></script>
+    <script src="crewart-survey.js?v=20260814-survey-v28-visible-start" defer></script>
 </head>
 
 <body>
@@ -42,8 +42,7 @@
                             <source src="assets/crewarts-sealing-wax.mp4" type="video/mp4">
                         </video>
                     </div>
-                    <h1><span class="cw-wordmark is-pending" id="crewart-wordmark">CREWARTS</span><small>PERSONALITY
-                            TEST</small></h1>
+                    <h1><span class="cw-wordmark is-pending" id="crewart-wordmark">CREWARTS</span><small>PERSONALITY TEST</small></h1>
                     <p class="cw-intro-copy">12문항 · 약 3분 · 제작 CREO</p>
                 </header>
 
@@ -55,15 +54,15 @@
                         <span id="home-house-seal">C</span>
                         <div><small>HOUSE</small><strong id="home-house-name">BLUE</strong></div>
                     </div>
-                    <button class="cw-test-action cw-home-retest" id="home-retest" type="button">새로 검사하기</button>
+                    <div class="cw-home-result-actions">
+                        <button class="cw-test-action cw-primary-button" id="home-retest" type="button">Ver 2 다시 시작</button>
+                        <button class="cw-test-action cw-secondary-button" id="home-retest-v1" type="button">Ver 1 다시 시작</button>
+                    </div>
                 </section>
 
                 <section class="cw-home-start" id="home-start-card">
-                    <button class="cw-test-action cw-primary-button cw-v2-button" id="start-button-v2" type="button"
-                        style="background: linear-gradient(135deg, #e11d48, #f97316); border: none; margin-bottom: 12px; box-shadow: 0 4px 15px rgba(225,29,72,0.3);"
-                        disabled><span>🔥 Ver 2 (파사모 실전 입말) 시작</span></button>
-                    <button class="cw-test-action cw-secondary-button" id="start-button" type="button"
-                        style="opacity: 0.85; font-size: 0.9em;" disabled><span>Ver 1 (기본 버전) 시작</span></button>
+                    <button class="cw-test-action cw-primary-button cw-v2-button" id="start-button-v2" type="button" disabled><span>Ver 2 시작</span></button>
+                    <button class="cw-test-action cw-secondary-button" id="start-button" type="button" disabled><span>Ver 1 시작</span></button>
                 </section>
             </div>
         </section>
