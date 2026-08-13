@@ -1799,13 +1799,25 @@
             font-size: 12pt;
         }
 
-        .ptable-result col:nth-child(1) { width: 14%; }
-        .ptable-result col:nth-child(2) { width: 17%; }
-        .ptable-result col:nth-child(3) { width: 11%; }
-        .ptable-result col:nth-child(4) { width: 14%; }
-        .ptable-result col:nth-child(5) { width: 16%; }
-        .ptable-result col:nth-child(6) { width: 20%; }
-        .ptable-result col:nth-child(7) { width: 8%; }
+        .ptable-result {
+            table-layout: auto;
+        }
+
+        .ptable-result col:nth-child(1),
+        .ptable-result col:nth-child(2),
+        .ptable-result col:nth-child(3),
+        .ptable-result col:nth-child(4),
+        .ptable-result col:nth-child(5),
+        .ptable-result col:nth-child(7) { width: 1%; }
+
+        .ptable-result col:nth-child(6) { width: auto; }
+
+        .ptable-result th:nth-child(-n+5),
+        .ptable-result td:nth-child(-n+5),
+        .ptable-result th:nth-child(7),
+        .ptable-result td:nth-child(7) {
+            white-space: nowrap;
+        }
 
         .ptable-buyer col:nth-child(1) { width: 13%; }
         .ptable-buyer col:nth-child(2) { width: 18%; }
@@ -4742,12 +4754,24 @@
         }
 
         function setShippingCompletion(itemId, completed, checkbox) {
-            if (completed && !confirm('배송지 입력이 완료되었습니까?')) {
-                checkbox.checked = false;
-                return;
-            }
-            if (!completed && !confirm('배송지 입력 완료 표시를 해제하시겠습니까?')) {
-                checkbox.checked = true;
+            var item = (window._lastItems || []).find(function (candidate) {
+                return shippingCompletionId(candidate) === itemId;
+            });
+            var winner = parseWinnerP(item && item.winner);
+            var details = [
+                '업체명: ' + ((item && item.company) || '-'),
+                '이름: ' + ((item && item.name) || '-'),
+                '낙찰가: ' + (item && item.soldPrice ? fmtPriceP(item.soldPrice) : '-'),
+                '낙찰자: ' + (winner.name || '-'),
+                '연락처: ' + (fmtPhoneP(winner.phone) || '-'),
+                '배송: ' + (item ? fmtShipTextForPrint(item, false) : '-')
+            ].join('\n');
+            var nextStatus = completed ? '완료' : '공란';
+            var question = (completed ? '배송지 입력이 완료되었습니까?' : '배송지 입력 완료 표시를 해제하시겠습니까?')
+                + '\n\n' + details
+                + '\n\n위 항목의 상태를 [' + nextStatus + ']로 변경하는 것이 맞습니까?';
+            if (!confirm(question)) {
+                checkbox.checked = !completed;
                 return;
             }
             var completions = readShippingCompletions();

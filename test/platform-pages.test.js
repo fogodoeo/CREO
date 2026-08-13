@@ -189,6 +189,9 @@ test('CDCUP opens on sortable shipping completion results without auction number
     assert.match(operations, /if \(!openInitialTabFromUrl\(\)\) showTab\('print'\)/);
     assert.match(operations, /id="print-sub-presult" class="print-sub active"/);
     assert.match(operations, /배송지 입력이 완료되었습니까\?/);
+    assert.match(operations, /업체명: /);
+    assert.match(operations, /위 항목의 상태를 \[' \+ nextStatus \+ '\]로 변경하는 것이 맞습니까\?/);
+    assert.match(operations, /\.ptable-result col:nth-child\(6\) \{ width: auto; \}/);
     assert.match(operations, /function sortPrintResults\(key\)/);
     assert.match(operations, /printResultHeader\('상태', 'complete'\)/);
     assert.match(operations, /\['업체', '이름', '낙찰가\(만원\)', '낙찰자', '연락처', '배송', '상태'\]/);
