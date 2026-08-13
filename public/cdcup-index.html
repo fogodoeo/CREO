@@ -1689,21 +1689,6 @@
             vertical-align: middle;
         }
 
-        .ptable-result th,
-        .ptable-result td,
-        .ptable-result .pcomp,
-        .ptable-result .pwinner,
-        .ptable-result .pphone,
-        .ptable-result .pstatus {
-            text-align: left;
-        }
-
-        .ptable-result .psold,
-        .ptable-result th:nth-child(3),
-        .ptable-result th:nth-child(3) .print-sort-btn {
-            text-align: right;
-        }
-
         #tab-print {
             background: #ffffff !important;
             color: #0f172a !important;
@@ -1923,6 +1908,22 @@
         .ptable .pship {
             text-align: center;
             white-space: nowrap;
+        }
+
+        #tab-print .ptable-result th,
+        #tab-print .ptable-result td,
+        #tab-print .ptable-result .pcomp,
+        #tab-print .ptable-result .pwinner,
+        #tab-print .ptable-result .pphone,
+        #tab-print .ptable-result .pship,
+        #tab-print .ptable-result .pstatus {
+            text-align: left !important;
+        }
+
+        #tab-print .ptable-result .psold,
+        #tab-print .ptable-result th:nth-child(3),
+        #tab-print .ptable-result th:nth-child(3) .print-sort-btn {
+            text-align: right !important;
         }
 
         .ptable .pstatus {

@@ -192,7 +192,8 @@ test('CDCUP opens on sortable shipping completion results without auction number
     assert.match(operations, /업체명: /);
     assert.match(operations, /위 항목의 상태를 \[' \+ nextStatus \+ '\]로 변경하는 것이 맞습니까\?/);
     assert.match(operations, /\.ptable-result col:nth-child\(6\) \{ width: auto; \}/);
-    assert.match(operations, /\.ptable-result \.psold,[\s\S]*text-align: right;/);
+    assert.match(operations, /#tab-print \.ptable-result \.pstatus[\s\S]*text-align: left !important;/);
+    assert.match(operations, /#tab-print \.ptable-result \.psold,[\s\S]*text-align: right !important;/);
     assert.match(operations, /function fmtSoldPriceNumber\(v\)/);
     assert.match(operations, /<td class="psold">' \+ \(it\.soldPrice \? fmtSoldPriceNumber\(it\.soldPrice\) : ''\)/);
     assert.match(operations, /function sortPrintResults\(key\)/);
