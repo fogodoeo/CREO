@@ -1,39 +1,10 @@
 <!doctype html>
 <html lang="ko">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <title>종합 순위표 · CREO</title>
-  <script src="platform-client.js?v=20260803-admin-session-v2"></script>
-  <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
-  <script src="channel-adapters.js?v=20260813-ranking-v2"></script>
-  <script src="ranking-engine.js?v=20260813-ranking-v2"></script>
-  <style>
-    :root{color-scheme:light;--bg:#f4f6f8;--panel:#fff;--line:#dfe4ea;--text:#15191f;--muted:#737d89;--accent:#254ac7;--surface:#fff}
-    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:-.018em}.shell{width:min(1100px,calc(100% - 30px));margin:auto;padding:30px 0 70px}.head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px}.eyebrow{color:var(--accent);font-size:10px;font-weight:900;letter-spacing:.12em}.head h1{margin:6px 0 0;font-size:30px}.head p{margin:7px 0 0;color:var(--muted);font-size:12px}.channel-mark{display:flex;align-items:center;gap:9px;color:var(--muted);font-size:11px}.channel-mark img{width:32px;height:32px;object-fit:contain}.boards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:24px}.board{overflow:hidden;border:1px solid var(--line);border-radius:14px;background:var(--panel);box-shadow:0 8px 25px rgba(20,30,45,.04)}.board-head{display:flex;justify-content:space-between;gap:10px;padding:16px;background:color-mix(in srgb,var(--accent) 5%,#fff)}.board-head h2{margin:0;font-size:15px}.board-head span{color:var(--muted);font-size:10px}.board table{width:100%;border-collapse:collapse}.board th,.board td{padding:12px 14px;border-top:1px solid #edf0f3;text-align:left;font-size:12px}.board th{color:var(--muted);font-size:9px}.num{text-align:right!important;font-variant-numeric:tabular-nums}.rank{width:48px;color:var(--muted);text-align:center!important}.identity{display:flex;align-items:center;gap:8px}.swatch{width:8px;height:22px;border-radius:4px;background:var(--row-color,var(--accent))}.logo{width:24px;height:24px;object-fit:contain}.empty{margin-top:24px;padding:60px 18px;border:1px dashed #cfd5dd;border-radius:12px;color:var(--muted);text-align:center}.board .empty{margin:0;border:0;border-radius:0}.error{margin-top:20px;padding:14px;border-radius:10px;background:#fff0f0;color:#a3313c;font-size:12px}
-    @media(max-width:720px){.shell{width:calc(100% - 22px);padding-top:20px}.head{display:block}.channel-mark{margin-top:14px}.boards{grid-template-columns:1fr}.board th,.board td{padding:10px 11px}}
-  </style>
-</head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>회차 관리로 이동</title></head>
 <body>
-  <main class="shell">
-    <header class="head">
-      <div><div class="eyebrow">CHANNEL RANKING</div><h1 id="title">종합 순위표</h1><p>현재 채널의 운영 데이터만 실시간으로 집계합니다.</p></div>
-      <div id="channel-mark" class="channel-mark"></div>
-    </header>
-    <div id="content"><div class="empty">불러오는 중…</div></div>
-  </main>
+  <p>회차 관리의 종합 순위표로 이동합니다.</p>
   <script>
-    const $=id=>document.getElementById(id),esc=CreoPlatform.escapeHtml;
-    let channelId=String(new URLSearchParams(location.search).get('channel')||'').toLowerCase().replace(/[^a-z0-9-]/g,'');
-    const formatNumber=value=>Number(value||0).toLocaleString('ko-KR');
-    const metricLabel=board=>board.metric==='soldCount'?'판매 수량':board.metric==='points'?'점수':'판매 금액';
-    const metricValue=(board,row)=>`${formatNumber(row.total)}${board.unit||''}`;
-    function identity(row){const logo=row.logoUrl?`<img class="logo" src="${esc(row.logoUrl)}" alt="">`:'';const swatch=row.color?`<span class="swatch" style="--row-color:${esc(row.color)}"></span>`:'';return `<span class="identity">${logo}${swatch}<b>${esc(row.name||row.key||'-')}</b></span>`}
-    function boardMarkup(board){const rows=Array.isArray(board.rows)?board.rows:[];return `<section class="board"><header class="board-head"><h2>${esc(board.name||'종합 순위표')}</h2><span>${esc(metricLabel(board))}</span></header><table><thead><tr><th class="rank">순위</th><th>대상</th><th class="num">${esc(metricLabel(board))}</th><th class="num">건수</th></tr></thead><tbody>${rows.length?rows.map((row,index)=>`<tr><td class="rank">${index+1}</td><td>${identity(row)}</td><td class="num"><b>${esc(metricValue(board,row))}</b></td><td class="num">${Number(row.count)||0}</td></tr>`).join(''):'<tr><td colspan="4" class="empty">아직 집계할 데이터가 없습니다.</td></tr>'}</tbody></table></section>`}
-    async function resolveChannel(){if(channelId)return channelId;const active=await CreoPlatform.api('active-channel');channelId=String(active.channelId||'').replace(/[^a-z0-9-]/g,'');if(channelId)history.replaceState(null,'',`ranking.html?channel=${encodeURIComponent(channelId)}`);return channelId}
-    async function rankingData(){const detail=await CreoPlatform.api(`channels/${encodeURIComponent(channelId)}`);const channel=detail.channel||{};if(channel.dataAdapter==='legacy-cdcup'){const adapter=CreoChannelAdapters.resolve(channel);const workspace=await adapter.loadWorkspace({channel});return {channel,scoreboards:CreoRankingEngine.rankingsForChannel(channel,workspace.items)}}return CreoPlatform.api(`channels/${encodeURIComponent(channelId)}/rankings`)}
-    async function load(){try{if(!await resolveChannel())throw new Error('사용할 채널을 찾지 못했습니다.');const data=await rankingData();const channel=data.channel||{};document.documentElement.style.setProperty('--accent',channel.theme?.primary||'#254ac7');$('title').textContent=`${channel.name||channelId} · 종합 순위표`;$('channel-mark').innerHTML=`${channel.logoUrl?`<img src="${esc(channel.logoUrl)}" alt="">`:''}<span>${esc(channel.shortName||channel.name||channelId)} · LIVE</span>`;$('content').innerHTML=data.scoreboards?.length?`<div class="boards">${data.scoreboards.map(boardMarkup).join('')}</div>`:'<div class="empty">이 채널에 설정된 순위표가 없습니다.</div>'}catch(error){$('content').innerHTML=`<div class="error">${esc(error.message)}</div>`}}
-    load();setInterval(load,15000);
+    const params=new URLSearchParams(location.search);const channel=String(params.get('channel')||'').replace(/[^a-z0-9-]/g,'');location.replace(`channel-archives.html${channel?`?channel=${encodeURIComponent(channel)}&view=current`:''}`);
   </script>
 </body>
 </html>

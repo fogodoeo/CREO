@@ -4,7 +4,7 @@
 <body>
   <p>채널별 종합 순위표로 이동합니다.</p>
   <script>
-    const params=new URLSearchParams(location.search);const channel=String(params.get('channel')||'').replace(/[^a-z0-9-]/g,'');location.replace(`ranking.html${channel?`?channel=${encodeURIComponent(channel)}`:''}`);
+    const params=new URLSearchParams(location.search);const channel=String(params.get('channel')||'').replace(/[^a-z0-9-]/g,'');location.replace(`channel-archives.html${channel?`?channel=${encodeURIComponent(channel)}&view=current`:''}`);
   </script>
 </body>
 </html>

@@ -72,12 +72,21 @@ function publicArchive(record = {}) {
     return {
         id: cleanText(record.id, 64),
         title: cleanText(record.title || '회차 기록', 80),
-        createdAt: record.createdAt || null
+        createdAt: record.createdAt || null,
+        itemCount: Number(record.itemCount) || 0,
+        soldCount: Number(record.soldCount) || 0,
+        totalSoldAmount: Number(record.totalSoldAmount) || 0,
+        scoreboardCount: Number(record.scoreboardCount || record.scoreboards?.length) || 0
     };
 }
 
-function isCompactArchive(record = {}) {
-    return Object.keys(record).every((key) => ['id', 'title', 'createdAt', 'channelId'].includes(key));
+function archiveDetail(record = {}) {
+    return {
+        ...publicArchive(record),
+        scoreboards: Array.isArray(record.scoreboards) ? record.scoreboards : [],
+        items: Array.isArray(record.items) ? record.items : [],
+        groups: Array.isArray(record.groups) ? record.groups : []
+    };
 }
 
 function cookieValue(req, name) {
@@ -696,9 +705,6 @@ function createPlatformApi({ repository, logger = console } = {}) {
                 if (!await requireAdmin(req, res)) return true;
                 if (segments.length === 3 && method === 'GET') {
                     const records = await repository.listRecords(channelId, 'archive');
-                    await Promise.all(records.filter((record) => !isCompactArchive(record)).map((record) => (
-                        repository.upsertRecord(channelId, 'archive', publicArchive(record))
-                    )));
                     const archives = records
                         .map((record) => publicArchive(record))
                         .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
@@ -707,23 +713,28 @@ function createPlatformApi({ repository, logger = console } = {}) {
                 }
                 if (segments.length === 3 && method === 'POST') {
                     const body = await readJson(req);
+                    const data = await workspace(channelId);
+                    const sold = data.items.filter((item) => item.status === 'sold' || Number(item.soldPrice) > 0);
                     const record = await repository.upsertRecord(channelId, 'archive', {
                         id: recordId('arc'),
                         title: cleanText(body.title || `${channel.name} ${new Date().toLocaleDateString('ko-KR')}`, 80),
-                        createdAt: new Date().toISOString()
+                        createdAt: new Date().toISOString(),
+                        itemCount: data.items.length,
+                        soldCount: sold.length,
+                        totalSoldAmount: sold.reduce((sum, item) => sum + (Number(item.soldPrice) || 0), 0),
+                        scoreboardCount: channel.scoreboards?.length || 0,
+                        scoreboards: rankingsForChannel(channel, data.items),
+                        groups: channel.groups || [],
+                        items: data.items
                     });
                     touchChannel(channelId);
-                    replyJson(res, 201, { archive: publicArchive(record) });
+                    replyJson(res, 201, { archive: archiveDetail(record) });
                     return true;
                 }
                 if (segments.length === 4 && method === 'GET') {
                     const archive = await repository.getRecord(channelId, 'archive', segments[3]);
                     if (!archive) replyJson(res, 404, { error: '회차 기록을 찾을 수 없습니다.' });
-                    else {
-                        const compact = publicArchive(archive);
-                        if (!isCompactArchive(archive)) await repository.upsertRecord(channelId, 'archive', compact);
-                        replyJson(res, 200, { archive: compact });
-                    }
+                    else replyJson(res, 200, { archive: archiveDetail(archive) });
                     return true;
                 }
                 if (segments.length === 4 && method === 'DELETE') {

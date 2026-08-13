@@ -67,7 +67,7 @@ test('home is an operational channel launcher without duplicate management route
     assert.match(hub, /id="quick-survey"[^>]*href="crewart-survey\.html"[^>]*hidden/);
     assert.match(hub, /id="quick-shipping"/);
     assert.match(hub, /id="quick-rounds"/);
-    assert.match(hub, /id="quick-rankings"/);
+    assert.doesNotMatch(hub, /id="quick-rankings"/);
     assert.match(hub, /id="quick-broadcast"/);
     assert.match(hub, /id="quick-settings"/);
     assert.match(hub, /id="quick-design"/);
@@ -75,7 +75,7 @@ test('home is an operational channel launcher without duplicate management route
     assert.match(hub, /runtime\.url\('shipping'\)/);
     assert.match(hub, /rounds\.href=runtime\.url\('archives'\)/);
     assert.doesNotMatch(hub, /runtime\.extension\('archives'\)/);
-    assert.match(hub, /rankings\.href=runtime\.url\('rankings'\)/);
+    assert.doesNotMatch(hub, /rankings\.href=runtime\.url\('rankings'\)/);
     assert.doesNotMatch(hub, /shipping\.href=`channel-shipping\.html/);
     assert.match(hub, /runtime\.extension\('survey'\)/);
     assert.match(hub, /runtime\.url\('control'\)/);
@@ -242,22 +242,22 @@ test('new CDCUP overlays and shipping retain compatibility with the established 
     assert.match(shippingStatus, /adapter\.loadShippingItems/);
 });
 
-test('round archives stay available without being duplicated inside broadcast management', () => {
+test('episode management expands round details and aggregate rankings in one place', () => {
     const studio = fs.readFileSync(path.join(__dirname, '..', 'public', 'broadcast-studio.html'), 'utf8');
     const archives = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-archives.html'), 'utf8');
     assert.doesNotMatch(studio, /id="mode-archives"|function archivesUrl|channel-archives\.html/);
     assert.match(archives, /channels\/\$\{encodeURIComponent\(channelId\)\}\/archives/);
-    assert.doesNotMatch(archives, /scoreboard|shipmentRows|상품|배송/i);
+    assert.match(archives, /function roundMarkup/);
+    assert.match(archives, /function boardMarkup/);
+    assert.match(archives, /function itemsMarkup/);
+    assert.match(archives, /CdcupTournamentData\.buildRoundAmounts/);
+    assert.match(archives, /listAuctionArchives/);
+    assert.match(archives, /getAuctionArchive/);
     const rankings = fs.readFileSync(path.join(__dirname, '..', 'public', 'ranking.html'), 'utf8');
-    assert.match(rankings, /channels\/\$\{encodeURIComponent\(channelId\)\}\/rankings/);
-    assert.match(rankings, /function boardMarkup/);
-    assert.match(rankings, /active-channel/);
-    assert.match(rankings, /CreoChannelAdapters\.resolve/);
-    assert.match(rankings, /CreoRankingEngine\.rankingsForChannel/);
-    assert.doesNotMatch(rankings, /cdcup-tournament-data|for \(let i = 1; i <= 64/i);
+    assert.match(rankings, /location\.replace\(`channel-archives\.html/);
     const rankingAlias = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-rankings.html'), 'utf8');
-    assert.match(rankingAlias, /location\.replace\(`ranking\.html/);
-    assert.match(archives, /회차 저장/);
+    assert.match(rankingAlias, /location\.replace\(`channel-archives\.html/);
+    assert.match(archives, /현재 회차 저장/);
 });
 
 test('legacy broadcast bridge survives Supabase quota exhaustion with cached or standby data', () => {

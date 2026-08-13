@@ -173,7 +173,7 @@ test('separate rankings channel aggregates live data without archive duplication
     assert.equal(JSON.stringify(response.json()).includes('01012345678'), false);
 });
 
-test('round archives keep only the named episode record', async () => {
+test('round archives preserve the episode snapshot and ranking detail per channel', async () => {
     const repository = new MemoryRepository();
     const api = createPlatformApi({ repository, logger: { error() {} } });
     await call(api, 'POST', '/api/platform/channels/alpha/vendors', { record: { id: 'alpha_vendor', name: 'alpha vendor' } });
@@ -189,12 +189,16 @@ test('round archives keep only the named episode record', async () => {
     response = await call(api, 'GET', '/api/platform/channels/alpha/archives');
     assert.equal(response.json().archives.length, 1);
     const listed = response.json().archives[0];
-    assert.deepEqual(Object.keys(listed).sort(), ['createdAt', 'id', 'title']);
+    assert.equal(listed.itemCount, 1);
+    assert.equal(listed.soldCount, 1);
+    assert.equal(listed.totalSoldAmount, 120000);
     const stored = await repository.getRecord('alpha', 'archive', archiveId);
-    assert.deepEqual(Object.keys(stored).sort(), ['channelId', 'createdAt', 'id', 'title']);
+    assert.equal(stored.items.length, 1);
+    assert.ok(Array.isArray(stored.scoreboards));
     const detail = await call(api, 'GET', `/api/platform/channels/alpha/archives/${archiveId}`);
     const archive = detail.json().archive;
-    assert.deepEqual(Object.keys(archive).sort(), ['createdAt', 'id', 'title']);
+    assert.equal(archive.items[0].name, 'alpha item');
+    assert.ok(Array.isArray(archive.scoreboards));
     const beta = await call(api, 'GET', '/api/platform/channels/beta/archives');
     assert.equal(beta.json().archives.length, 0);
 });
