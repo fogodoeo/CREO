@@ -158,13 +158,24 @@ test('group assignments are channel-configured and enrich public scoreboard data
     assert.equal(response.json().items[0].points, 5);
 });
 
-test('round archives snapshot each channel without leaking records across channels', async () => {
+test('separate rankings channel aggregates live data without archive duplication', async () => {
     const repository = new MemoryRepository();
-    const api = createPlatformApi({ repository, logger: { error() {} } });
     repository.catalog.channels[0] = normalizeChannel({
         ...repository.catalog.channels[0],
         scoreboards: [{ id: 'vendors', name: 'Vendor totals', dimension: 'vendor', metric: 'soldAmount', unit: 'KRW', topN: 8 }]
     });
+    const api = createPlatformApi({ repository, logger: { error() {} } });
+    await call(api, 'POST', '/api/platform/channels/alpha/vendors', { record: { id: 'alpha_vendor', name: 'Alpha vendor' } });
+    await call(api, 'POST', '/api/platform/channels/alpha/items', { record: { id: 'alpha_item', lotNumber: 1, name: 'Alpha item', vendorId: 'alpha_vendor', status: 'sold', soldPrice: 120000, winnerPhone: '01012345678' } });
+    const response = await call(api, 'GET', '/api/platform/channels/alpha/rankings', null, '');
+    assert.equal(response.status, 200);
+    assert.equal(response.json().scoreboards[0].rows[0].total, 120000);
+    assert.equal(JSON.stringify(response.json()).includes('01012345678'), false);
+});
+
+test('round archives keep only the named episode record', async () => {
+    const repository = new MemoryRepository();
+    const api = createPlatformApi({ repository, logger: { error() {} } });
     await call(api, 'POST', '/api/platform/channels/alpha/vendors', { record: { id: 'alpha_vendor', name: 'alpha vendor' } });
     await call(api, 'POST', '/api/platform/channels/alpha/items', { record: { id: 'alpha_item', lotNumber: 1, name: 'alpha item', vendorId: 'alpha_vendor', status: 'sold', soldPrice: 120000, winnerName: 'winner' } });
     await call(api, 'POST', '/api/platform/channels/beta/vendors', { record: { id: 'beta_vendor', name: 'beta vendor' } });
@@ -172,18 +183,18 @@ test('round archives snapshot each channel without leaking records across channe
 
     let response = await call(api, 'POST', '/api/platform/channels/alpha/archives', { title: 'alpha round' });
     assert.equal(response.status, 201);
-    assert.equal(response.json().archive.totalSoldAmount, 120000);
+    assert.equal(response.json().archive.title, 'alpha round');
     const archiveId = response.json().archive.id;
 
     response = await call(api, 'GET', '/api/platform/channels/alpha/archives');
     assert.equal(response.json().archives.length, 1);
     const listed = response.json().archives[0];
-    for (const key of ['items', 'vendors', 'shipments', 'broadcast', 'vendorCount', 'shipmentCount']) assert.equal(listed[key], undefined);
+    assert.deepEqual(Object.keys(listed).sort(), ['createdAt', 'id', 'title']);
+    const stored = await repository.getRecord('alpha', 'archive', archiveId);
+    assert.deepEqual(Object.keys(stored).sort(), ['channelId', 'createdAt', 'id', 'title']);
     const detail = await call(api, 'GET', `/api/platform/channels/alpha/archives/${archiveId}`);
     const archive = detail.json().archive;
-    for (const key of ['items', 'vendors', 'shipments', 'broadcast', 'vendorCount', 'shipmentCount']) assert.equal(archive[key], undefined);
-    assert.equal(archive.scoreboards.length, 1);
-    assert.equal(archive.scoreboards[0].rows[0].total, 120000);
+    assert.deepEqual(Object.keys(archive).sort(), ['createdAt', 'id', 'title']);
     const beta = await call(api, 'GET', '/api/platform/channels/beta/archives');
     assert.equal(beta.json().archives.length, 0);
 });

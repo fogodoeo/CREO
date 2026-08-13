@@ -313,6 +313,7 @@ function channelLinks(channelId) {
         shippingStatus: `/shipping-status.html?${query}`,
         shippingRates: `/shipping-rates.html?${query}`,
         archives: `/channel-archives.html?${query}`,
+        rankings: `/channel-rankings.html?${query}`,
         settings: `/channel-manager.html?${query}`
     };
 }

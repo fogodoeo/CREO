@@ -16,6 +16,7 @@ const PAGES = [
     'channel-shipping.html',
     'shipping-rates.html',
     'broadcast-router.html',
+    'channel-rankings.html',
     'broadcast.html',
     'crewart-broadcast.html'
 ];
@@ -65,6 +66,7 @@ test('home is an operational channel launcher without duplicate management route
     assert.match(hub, /id="quick-survey"[^>]*href="crewart-survey\.html"[^>]*hidden/);
     assert.match(hub, /id="quick-shipping"/);
     assert.match(hub, /id="quick-rounds"/);
+    assert.match(hub, /id="quick-rankings"/);
     assert.match(hub, /id="quick-broadcast"/);
     assert.match(hub, /id="quick-settings"/);
     assert.match(hub, /id="quick-design"/);
@@ -241,6 +243,10 @@ test('round archives stay available without being duplicated inside broadcast ma
     const archives = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-archives.html'), 'utf8');
     assert.doesNotMatch(studio, /id="mode-archives"|function archivesUrl|channel-archives\.html/);
     assert.match(archives, /channels\/\$\{encodeURIComponent\(channelId\)\}\/archives/);
+    assert.doesNotMatch(archives, /scoreboard|shipmentRows|상품|배송/i);
+    const rankings = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-rankings.html'), 'utf8');
+    assert.match(rankings, /channels\/\$\{encodeURIComponent\(channelId\)\}\/rankings/);
+    assert.match(rankings, /function boardMarkup/);
     assert.match(archives, /회차 저장/);
 });
 

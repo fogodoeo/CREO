@@ -4,80 +4,49 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>회차 기록 · CREO</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
   <script src="platform-client.js?v=20260803-admin-session-v2"></script>
   <style>
     :root{color-scheme:light;--bg:#f5f6f8;--panel:#fff;--line:#e0e4ea;--text:#15191f;--muted:#737d89;--accent:#254ac7;--danger:#bd3f46}
-    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard Variable",Pretendard,sans-serif;letter-spacing:-.018em}
-    button,input{font:inherit}.shell{width:min(1080px,calc(100% - 30px));margin:auto;padding:28px 0 70px}
-    .head{display:flex;align-items:end;justify-content:space-between;gap:18px}.head h1{margin:0;font-size:28px}.head p{margin:6px 0 0;color:var(--muted);font-size:11px}
-    .create{display:flex;gap:7px}.create input{width:280px;height:42px;padding:0 11px;border:1px solid var(--line);border-radius:9px;background:#fff}
-    .btn{height:42px;padding:0 14px;border:1px solid var(--line);border-radius:9px;background:#fff;font-size:11px;font-weight:800;cursor:pointer}.btn.primary{border-color:var(--accent);background:var(--accent);color:#fff}.btn.danger{color:var(--danger)}
-    .list{display:grid;gap:7px;margin-top:22px}.card{display:grid;grid-template-columns:1fr auto;align-items:center;gap:15px;padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}.card h2{margin:0;font-size:14px}
-    .meta{display:flex;flex-wrap:wrap;gap:6px 13px;margin-top:6px;color:var(--muted);font-size:10px}.actions{display:flex;gap:5px}.empty{padding:55px 18px;border:1px dashed #cfd5dd;border-radius:12px;color:var(--muted);text-align:center}
-    .modal{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:18px;background:#0b0e1288}.modal[hidden]{display:none}.dialog{width:min(920px,100%);max-height:calc(100vh - 36px);overflow:auto;padding:20px;border-radius:14px;background:#fff}.dialog-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.dialog h2{margin:0}
-    .notice{margin:14px 0 0;padding:12px 14px;border:1px solid #dce5ff;border-radius:10px;background:#f5f7ff;color:#44506a;font-size:11px;line-height:1.5}.summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:16px}.stat{padding:12px;border:1px solid var(--line);border-radius:10px;background:#fafbfc}.stat small{display:block;color:var(--muted);font-size:9px}.stat strong{display:block;margin-top:4px;font-size:16px}
-    .boards{display:grid;gap:12px;margin-top:18px}.board{border:1px solid var(--line);border-radius:11px;overflow:hidden}.board-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;background:#fafbfc}.board-head h3{margin:0;font-size:13px}.board-head span{color:var(--muted);font-size:10px}.board table{width:100%;border-collapse:collapse;white-space:nowrap}.board th,.board td{padding:10px 12px;border-top:1px solid #edf0f3;text-align:left;font-size:11px}.board th{color:var(--muted);font-size:9px;font-weight:700}.board td.num{text-align:right;font-variant-numeric:tabular-nums}.board .rank{width:45px;color:var(--muted);text-align:center}.login{position:fixed;inset:0;z-index:30;display:grid;place-items:center;background:#111722cc}.login[hidden]{display:none}.login form{display:flex;gap:7px;width:min(390px,calc(100% - 28px));padding:18px;border-radius:12px;background:#fff}.login input{min-width:0;flex:1;height:42px;padding:0 10px;border:1px solid var(--line);border-radius:8px}.toast{position:fixed;right:16px;bottom:16px;padding:11px 14px;border-radius:8px;background:#17202c;color:#fff;font-size:11px;opacity:0}.toast.show{opacity:1}
-    @media(max-width:680px){.shell{width:calc(100% - 22px);padding-top:20px}.head{display:block}.create{margin-top:14px}.create input{min-width:0;flex:1}.card{grid-template-columns:1fr}.actions .btn{flex:1}.summary{grid-template-columns:repeat(2,minmax(0,1fr))}.dialog{padding:16px}.board{overflow:auto}}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard Variable",Pretendard,sans-serif;letter-spacing:-.018em}button,input{font:inherit}
+    .shell{width:min(900px,calc(100% - 30px));margin:auto;padding:30px 0 70px}.head{display:flex;align-items:end;justify-content:space-between;gap:18px}.head h1{margin:0;font-size:28px}.head p{margin:7px 0 0;color:var(--muted);font-size:11px}.create{display:flex;gap:7px}.create input{width:280px;height:42px;padding:0 11px;border:1px solid var(--line);border-radius:9px;background:#fff}.btn{height:42px;padding:0 14px;border:1px solid var(--line);border-radius:9px;background:#fff;font-size:11px;font-weight:800;cursor:pointer}.btn.primary{border-color:var(--accent);background:var(--accent);color:#fff}.btn.danger{color:var(--danger)}
+    .list{display:grid;gap:8px;margin-top:24px}.card{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:17px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}.card h2{margin:0;font-size:14px}.date{margin-top:6px;color:var(--muted);font-size:10px}.actions{display:flex;gap:6px}.empty{padding:58px 18px;border:1px dashed #cfd5dd;border-radius:12px;color:var(--muted);text-align:center}.login{position:fixed;inset:0;z-index:30;display:grid;place-items:center;background:#111722cc}.login[hidden]{display:none}.login form{display:flex;gap:7px;width:min(390px,calc(100% - 28px));padding:18px;border-radius:12px;background:#fff}.login input{min-width:0;flex:1;height:42px;padding:0 10px;border:1px solid var(--line);border-radius:8px}.toast{position:fixed;right:16px;bottom:16px;padding:11px 14px;border-radius:8px;background:#17202c;color:#fff;font-size:11px;opacity:0}.toast.show{opacity:1}
+    @media(max-width:680px){.shell{width:calc(100% - 22px);padding-top:20px}.head{display:block}.create{margin-top:14px}.create input{min-width:0;flex:1}.card{align-items:flex-start}.actions .btn{flex:1}}
   </style>
 </head>
 <body>
   <main class="shell">
-    <header class="head">
-      <div><h1 id="title">회차 기록</h1><p>회차 기록과 종합순위표만 보관합니다. 개별 상품·배송 정보는 회차 데이터에 중복 저장하지 않습니다.</p></div>
-      <div class="create"><input id="archive-title" maxlength="80" placeholder="예: 8월 6일 본방송"><button class="btn primary" id="save">현재 회차 저장</button></div>
-    </header>
+    <header class="head"><div><h1 id="title">회차 기록</h1><p>방송이 끝난 회차의 이름과 저장 시각만 관리합니다.</p></div><div class="create"><input id="archive-title" maxlength="80" placeholder="예: 8월 6일 본방송"><button class="btn primary" id="save">회차 저장</button></div></header>
     <section class="list" id="list"><div class="empty">불러오는 중…</div></section>
   </main>
-  <div class="modal" id="modal" hidden><section class="dialog"><header class="dialog-head"><h2 id="detail-title">회차 상세</h2><button class="btn" id="close">닫기</button></header><div id="detail"></div></section></div>
   <div class="login" id="login"><form id="login-form"><input id="password" type="password" autocomplete="current-password" placeholder="관리자 비밀번호" required><button class="btn primary">확인</button></form></div>
   <div class="toast" id="toast"></div>
   <script>
     const $=id=>document.getElementById(id),esc=CreoPlatform.escapeHtml;
     const channelId=String(new URLSearchParams(location.search).get('channel')||'').toLowerCase().replace(/[^a-z0-9-]/g,'');
-    let channel=null,archives=[];
+    let archives=[];
     const toast=message=>{const el=$('toast');el.textContent=message;el.classList.add('show');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('show'),2400)};
-    const money=value=>CreoPlatform.money(Number(value)||0);
     const date=value=>{const d=new Date(value);return Number.isNaN(d.getTime())?'-':d.toLocaleString('ko-KR')};
-    const metricLabel=board=>board.metric==='soldCount'?'판매 수량':board.metric==='points'?'점수':'판매 금액';
-    const metricValue=(board,row)=>board.metric==='soldCount'?`${Number(row.count)||0}${board.unit||'건'}`:board.metric==='points'?`${Number(row.total)||0}${board.unit||'점'}`:money(row.total);
     async function load(){
       if(!channelId)throw new Error('채널 주소가 올바르지 않습니다.');
-      channel=(await CreoPlatform.api(`channels/${encodeURIComponent(channelId)}`)).channel;
+      const channel=(await CreoPlatform.api(`channels/${encodeURIComponent(channelId)}`)).channel;
       $('title').textContent=`${channel.name} · 회차 기록`;
       archives=(await CreoPlatform.api(`channels/${encodeURIComponent(channelId)}/archives`)).archives||[];
       render();
     }
     function render(){
-      $('list').innerHTML=archives.length?archives.map(a=>`<article class="card"><div><h2>${esc(a.title||'제목 없는 회차')}</h2><div class="meta"><span>${date(a.createdAt)}</span><span>전체 ${Number(a.itemCount)||0}건</span><span>낙찰 ${Number(a.soldCount)||0}건</span><span>총액 ${money(a.totalSoldAmount)}</span><span>순위표 ${Number(a.scoreboardCount||a.scoreboards?.length)||0}개</span></div></div><div class="actions"><button class="btn" data-open="${esc(a.id)}">상세</button><button class="btn danger" data-delete="${esc(a.id)}">삭제</button></div></article>`).join(''):'<div class="empty">저장된 회차가 없습니다.</div>';
-      document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>openArchive(b.dataset.open));
-      document.querySelectorAll('[data-delete]').forEach(b=>b.onclick=()=>removeArchive(b.dataset.delete));
-    }
-    function scoreboardMarkup(board){
-      const rows=Array.isArray(board.rows)?board.rows:[];
-      return `<section class="board"><header class="board-head"><h3>${esc(board.name||'종합순위표')}</h3><span>${esc(metricLabel(board))}</span></header><table><thead><tr><th class="rank">순위</th><th>이름</th><th class="num">${esc(metricLabel(board))}</th><th class="num">항목 수</th></tr></thead><tbody>${rows.length?rows.map((row,index)=>`<tr><td class="rank">${index+1}</td><td>${row.logoUrl?`<img src="${esc(row.logoUrl)}" alt="" width="20" height="20" style="vertical-align:middle;object-fit:contain;margin-right:6px">`:''}${esc(row.name||row.key||'-')}</td><td class="num">${esc(metricValue(board,row))}</td><td class="num">${Number(row.count)||0}</td></tr>`).join(''):`<tr><td colspan="4" style="text-align:center;color:var(--muted)">집계된 데이터가 없습니다.</td></tr>`}</tbody></table></section>`;
-    }
-    async function openArchive(id){
-      try{
-        const a=(await CreoPlatform.api(`channels/${encodeURIComponent(channelId)}/archives/${encodeURIComponent(id)}`)).archive;
-        $('detail-title').textContent=a.title||'회차 상세';
-        $('detail').innerHTML=`<div class="meta"><span>${date(a.createdAt)}</span><span>${esc(channel.name||'')}</span></div><div class="notice">이 화면은 회차 결과의 요약과 종합순위표만 표시합니다. 상품·업체·수령인·배송 추적 정보는 원본 운영 데이터에서만 관리됩니다.</div><section class="summary"><div class="stat"><small>전체 항목</small><strong>${Number(a.itemCount)||0}</strong></div><div class="stat"><small>낙찰 항목</small><strong>${Number(a.soldCount)||0}</strong></div><div class="stat"><small>총 낙찰액</small><strong>${money(a.totalSoldAmount)}</strong></div><div class="stat"><small>순위표</small><strong>${Number(a.scoreboardCount||a.scoreboards?.length)||0}</strong></div></section><div class="boards">${(a.scoreboards||[]).map(scoreboardMarkup).join('')||'<div class="empty">종합순위표 데이터가 없습니다.</div>'}</div>`;
-        $('modal').hidden=false;
-      }catch(e){toast(e.message)}
+      $('list').innerHTML=archives.length?archives.map(a=>`<article class="card"><div><h2>${esc(a.title||'제목 없는 회차')}</h2><div class="date">${date(a.createdAt)}</div></div><div class="actions"><button class="btn danger" data-delete="${esc(a.id)}">삭제</button></div></article>`).join(''):'<div class="empty">저장된 회차가 없습니다.</div>';
+      document.querySelectorAll('[data-delete]').forEach(button=>button.onclick=()=>removeArchive(button.dataset.delete));
     }
     async function removeArchive(id){
       if(!confirm('이 회차 기록을 삭제할까요?'))return;
-      try{await CreoPlatform.api(`channels/${encodeURIComponent(channelId)}/archives/${encodeURIComponent(id)}`,{method:'DELETE'});await load();toast('삭제했습니다.')}catch(e){toast(e.message)}
+      try{await CreoPlatform.api(`channels/${encodeURIComponent(channelId)}/archives/${encodeURIComponent(id)}`,{method:'DELETE'});await load();toast('삭제했습니다.')}catch(error){toast(error.message)}
     }
     $('save').onclick=async()=>{
       const title=$('archive-title').value.trim();if(!title)return toast('회차 이름을 입력해 주세요.');$('save').disabled=true;
-      try{await CreoPlatform.api(`channels/${encodeURIComponent(channelId)}/archives`,{method:'POST',body:JSON.stringify({title})});$('archive-title').value='';await load();toast('회차를 저장했습니다.')}catch(e){toast(e.message)}finally{$('save').disabled=false}
+      try{await CreoPlatform.api(`channels/${encodeURIComponent(channelId)}/archives`,{method:'POST',body:JSON.stringify({title})});$('archive-title').value='';await load();toast('회차를 저장했습니다.')}catch(error){toast(error.message)}finally{$('save').disabled=false}
     };
-    $('close').onclick=()=>{$('modal').hidden=true};
-    $('modal').onclick=e=>{if(e.target===$('modal'))$('modal').hidden=true};
-    async function boot(){await load()}
-    $('login-form').onsubmit=async e=>{e.preventDefault();try{CreoPlatform.setAdmin($('password').value);if(!await CreoPlatform.verifyAdmin())throw new Error('비밀번호가 맞지 않습니다.');$('login').hidden=true;await boot()}catch(error){toast(error.message)}};
-    (async()=>{try{if(await CreoPlatform.verifyAdmin()){$('login').hidden=true;return boot()}}catch(_){}$('login').hidden=false})();
+    $('login-form').onsubmit=async event=>{event.preventDefault();try{CreoPlatform.setAdmin($('password').value);if(!await CreoPlatform.verifyAdmin())throw new Error('비밀번호가 맞지 않습니다.');$('login').hidden=true;await load()}catch(error){toast(error.message)}};
+    (async()=>{try{if(await CreoPlatform.verifyAdmin()){$('login').hidden=true;return load()}}catch(_){}$('login').hidden=false})();
   </script>
 </body>
 </html>
