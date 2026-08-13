@@ -220,7 +220,7 @@
                 slowest: timingStats.slowest ? { ...timingStats.slowest } : null
             } : null
         };
-        try { localStorage.setItem(LAST_RESULT_STORAGE_KEY, JSON.stringify(snapshot)); } catch (_) {}
+        try { localStorage.setItem(LAST_RESULT_STORAGE_KEY, JSON.stringify(snapshot)); } catch (_) { }
         renderHome();
     }
 
@@ -591,7 +591,7 @@
         try {
             sessionStorage.removeItem(MEMBERSHIP_STORAGE_KEY);
             sessionStorage.removeItem(MEMBERSHIP_PHONE_STORAGE_KEY);
-        } catch (_) {}
+        } catch (_) { }
         updateBandUi();
         toast('회원 확인을 해제했어요.');
     }
@@ -1026,7 +1026,7 @@
             animation.finished.then(() => {
                 animation.cancel();
                 marker.classList.add('is-settled');
-            }).catch(() => {});
+            }).catch(() => { });
         });
 
         const houseOrder = Core.HOUSE_KEYS.map(key => Core.HOUSE_META[key]?.name).filter(Boolean);
@@ -1193,16 +1193,16 @@
                 answerLabels: questions.map((question, index) => {
                     const scores = Core.answerLetters(question, answers[index]);
                     return {
-                    questionId: question.id,
-                    axis: question.axis,
-                    secondaryAxis: question.secondaryAxis || '',
-                    choiceId: question.optionIds?.[answers[index]] || '',
-                    displayedPosition: answers[index] + 1,
-                    score: scores[0],
-                    secondaryScore: scores[1] || '',
-                    signalScores: Core.answerScoreMap(question, answers[index]),
-                    responseMs: responseTimings[index]?.elapsedMs || null,
-                    timingValid: Boolean(responseTimings[index]?.valid)
+                        questionId: question.id,
+                        axis: question.axis,
+                        secondaryAxis: question.secondaryAxis || '',
+                        choiceId: question.optionIds?.[answers[index]] || '',
+                        displayedPosition: answers[index] + 1,
+                        score: scores[0],
+                        secondaryScore: scores[1] || '',
+                        signalScores: Core.answerScoreMap(question, answers[index]),
+                        responseMs: responseTimings[index]?.elapsedMs || null,
+                        timingValid: Boolean(responseTimings[index]?.valid)
                     };
                 }),
                 responseTimes: responseTimings.slice(),
@@ -1304,11 +1304,11 @@
     }
 
     function replaceTabHistory(tab) {
-        try { history.replaceState(tabHistoryState(tab), document.title); } catch (_) {}
+        try { history.replaceState(tabHistoryState(tab), document.title); } catch (_) { }
     }
 
     function pushTabHistory(tab) {
-        try { history.pushState(tabHistoryState(tab), document.title); } catch (_) {}
+        try { history.pushState(tabHistoryState(tab), document.title); } catch (_) { }
     }
 
     function navigateToTab(tab, options = {}) {
@@ -1363,7 +1363,7 @@
             try {
                 sessionStorage.removeItem(MEMBERSHIP_STORAGE_KEY);
                 sessionStorage.removeItem(MEMBERSHIP_PHONE_STORAGE_KEY);
-            } catch (_) {}
+            } catch (_) { }
         } finally {
             bandAuthReady = true;
             updateBandUi();
@@ -1403,7 +1403,7 @@
             try {
                 sessionStorage.setItem(MEMBERSHIP_STORAGE_KEY, bandAuthToken);
                 if (bandAuthPhoneMask) sessionStorage.setItem(MEMBERSHIP_PHONE_STORAGE_KEY, bandAuthPhoneMask);
-            } catch (_) {}
+            } catch (_) { }
         }
         if (status) {
             status.hidden = true;
@@ -1692,7 +1692,7 @@
                 const first = axisResult.axis[0];
                 const second = axisResult.axis[1];
                 const secondCount = Number(result.letters[second]) || 0;
-            const position = Math.max(0, Math.min(100, (secondCount / (Core.AXIS_SCORE_TOTAL || 5)) * 100));
+                const position = Math.max(0, Math.min(100, (secondCount / (Core.AXIS_SCORE_TOTAL || 5)) * 100));
                 const firstSelected = axisResult.dominant === first;
                 const x = contentX + (index % 2) * 458;
                 const y = 636 + Math.floor(index / 2) * 151;
@@ -2200,9 +2200,22 @@
         document.querySelector('meta[name="theme-color"]')?.setAttribute('content', color);
     }
 
+    async function startSurveyVersion(ver) {
+        const file = ver === 'v24' ? 'crewart-survey-questions-v24.json' : 'crewart-survey-questions-v28.json';
+        if (Core?.loadQuestionnaireFile) {
+            try {
+                await Core.loadQuestionnaireFile(file);
+            } catch (err) {
+                console.error('[Survey load version error]', err);
+            }
+        }
+        startSurvey();
+    }
+
     function bindEvents() {
-        element('start-button').addEventListener('click', startSurvey);
-        element('home-retest')?.addEventListener('click', startSurvey);
+        element('start-button')?.addEventListener('click', () => startSurveyVersion('v24'));
+        element('start-button-v2')?.addEventListener('click', () => startSurveyVersion('v28'));
+        element('home-retest')?.addEventListener('click', () => startSurveyVersion('v28'));
         element('auth-phone-edit')?.addEventListener('click', editMembershipAccess);
         element('auth-phone-clear')?.addEventListener('click', clearMembershipAccess);
         element('member-check-form')?.addEventListener('submit', verifyMembershipPhone);
@@ -2266,12 +2279,13 @@
         replaceTabHistory(navigationTabForStage());
         syncThemeColor('intro-screen');
         const start = element('start-button');
-        start.disabled = true;
-        start.querySelector('span').textContent = '문항 준비 중…';
+        const startV2 = element('start-button-v2');
+        if (start) start.disabled = true;
+        if (startV2) startV2.disabled = true;
         playWordmark();
         void loadConfig().finally(() => {
-            start.disabled = false;
-            start.querySelector('span').textContent = '검사 시작';
+            if (start) start.disabled = false;
+            if (startV2) startV2.disabled = false;
         });
         if (!BAND_INTEGRATION_ENABLED) {
             bandAuthReady = false;

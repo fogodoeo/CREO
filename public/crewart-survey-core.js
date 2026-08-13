@@ -35,7 +35,7 @@
         { id: 'Q12', axis: 'SN', secondaryAxis: 'TF', facet: 'name-card', label: '이름표 시안 중 하나를 고를 때', q: '두 시안을 처음 비교하는 방식은?', options: ['글자 크기와 사진 배치의 차이를 본다', '매일 볼 때 어느 쪽이 더 마음에 들지 본다', '사육장 전체 분위기와 어떻게 이어질지 본다', '나중에 사진이나 장식을 바꿔도 어울릴지 본다'], scores: ['S', 'S', 'N', 'N'], scorePairs: [['S', 'T'], ['S', 'F'], ['N', 'F'], ['N', 'T']], scoreWeights: [[3, 2], [3, 2], [3, 2], [3, 2]] }
     ];
 
-    const QUESTIONNAIRE_FILE = 'crewart-survey-questions-v24.json';
+    let QUESTIONNAIRE_FILE = 'crewart-survey-questions-v28.json';
     let questionnaireSpec = null;
 
     function normalizeQuestionnaireSpec(spec) {
@@ -444,6 +444,17 @@
         return `${perception}${decision}`;
     }
 
+    function loadQuestionnaireFile(filename) {
+        if (typeof fetch !== 'function' || typeof document === 'undefined') return Promise.resolve(null);
+        const url = new URL(filename, document.baseURI).href;
+        return fetch(url, { cache: 'no-store' })
+            .then(response => {
+                if (!response.ok) throw new Error(`Questionnaire fetch failed: ${response.status}`);
+                return response.json();
+            })
+            .then(spec => applyQuestionnaireSpec(spec));
+    }
+
     const api = {
         AXES,
         HOUSE_KEYS,
@@ -464,6 +475,8 @@
         median,
         average,
         ready,
+        loadQuestionnaireFile,
+        applyQuestionnaireSpec,
         questionnaireFile: QUESTIONNAIRE_FILE,
         getQuestionnaireSpec: () => questionnaireSpec
     };
