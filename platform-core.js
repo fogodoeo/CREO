@@ -312,6 +312,7 @@ function channelLinks(channelId) {
         live: `/broadcast-router.html?event=${encodeURIComponent(id)}&page=1&live=1`,
         shipping: `/shipping.html?${query}`,
         shippingStatus: `/shipping-status.html?${query}`,
+        shippingCompanies: `/shipping-companies.html?${query}`,
         shippingRates: `/shipping-rates.html?${query}`,
         archives: `/channel-archives.html?${query}`,
         rankings: `/channel-archives.html?${query}&view=current`,

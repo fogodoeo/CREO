@@ -12,6 +12,7 @@
         workspace: Object.freeze({ path: '/channel-workspace.html', query: 'channel', label: '운영', feature: 'auction' }),
         shipping: Object.freeze({ path: '/shipping.html', query: 'channel', label: '배송', feature: 'shipping' }),
         shippingStatus: Object.freeze({ path: '/shipping-status.html', query: 'channel', label: '전체조회', feature: 'shipping' }),
+        shippingCompanies: Object.freeze({ path: '/shipping-companies.html', query: 'channel', label: '업체별 조회', feature: 'shipping' }),
         shippingRates: Object.freeze({ path: '/shipping-rates.html', query: 'channel', label: '요금표', feature: 'shipping' }),
         archives: Object.freeze({ path: '/channel-archives.html', query: 'channel', label: '회차', feature: 'auction' }),
         rankings: Object.freeze({ path: '/channel-archives.html', query: 'channel', label: 'RANKING', feature: 'scoreboards', defaults: { view: 'current' } }),

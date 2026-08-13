@@ -32,7 +32,7 @@
         .section-title small { color:var(--blue); font-size:10px; font-weight:850; letter-spacing:.1em; }
         .section-title h2 { margin:4px 0 3px; font-size:18px; }
         .section-title p { margin:0; color:var(--muted); font-size:12px; }
-        .basis-tabs { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-bottom:10px; padding:5px; border:1px solid var(--line); border-radius:14px; background:#eef2f7; }
+        .basis-tabs { display:grid; grid-template-columns:repeat(2,1fr); gap:6px; margin-bottom:10px; padding:5px; border:1px solid var(--line); border-radius:14px; background:#eef2f7; }
         .basis-tab { min-height:42px; border:0; border-radius:10px; background:transparent; color:#64748b; font-size:12px; font-weight:850; cursor:pointer; }
         .basis-tab.active { background:#fff; color:var(--blue); box-shadow:0 3px 10px rgba(23,32,51,.09); }
         .view { display:none; }
@@ -68,23 +68,6 @@
         .info-block strong { display:block; margin-top:4px; color:#344054; font-size:11px; line-height:1.55; }
         .items { display:flex; flex-wrap:wrap; gap:5px; margin-top:11px; }
         .item-chip { padding:4px 7px; border-radius:7px; background:#f1f5f9; color:#475569; font-size:9px; font-weight:700; }
-        .company-directory { display:grid; gap:12px; }
-        .company-group { overflow:hidden; border:1px solid var(--line); border-radius:15px; background:#fff; }
-        .company-group-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 16px; border-bottom:1px solid #edf0f4; background:#f8fafc; }
-        .company-group-title strong { display:block; font-size:16px; }
-        .company-group-title span { display:block; margin-top:3px; color:var(--muted); font-size:10px; }
-        .company-progress { flex:0 0 auto; color:var(--green); font-size:10px; font-weight:850; }
-        .company-items { display:grid; }
-        .company-item { padding:13px 16px; border-bottom:1px solid #edf0f4; }
-        .company-item:last-child { border-bottom:0; }
-        .company-item-top { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
-        .company-item-main { min-width:0; }
-        .company-item-main strong { display:block; overflow:hidden; color:#243047; font-size:13px; text-overflow:ellipsis; white-space:nowrap; }
-        .company-item-main span { display:block; margin-top:4px; color:#667085; font-size:10px; }
-        .company-item-main a { color:#475569; font-weight:700; text-decoration:none; }
-        .company-item-detail { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; margin-top:10px; padding:9px 10px; border-radius:9px; background:#f8fafc; }
-        .company-item-detail span { min-width:0; color:#8a94a3; font-size:8px; font-weight:700; }
-        .company-item-detail b { display:block; margin-top:3px; overflow:hidden; color:#475569; font-size:9px; text-overflow:ellipsis; white-space:nowrap; }
         .log-list { display:grid; gap:10px; }
         .log-card { padding:15px; border:1px solid var(--line); border-radius:13px; background:#fff; }
         .log-card-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
@@ -101,7 +84,6 @@
         .app-bottom-nav { position:fixed; left:50%; bottom:max(2px,env(safe-area-inset-bottom)); z-index:1900; display:grid; grid-template-columns:repeat(3,1fr); gap:2px; width:min(410px,calc(100% - 8px)); height:50px; padding:3px; border:1px solid rgba(148,163,184,.34); border-radius:14px; background:rgba(248,250,252,.97); box-shadow:0 10px 30px rgba(15,23,42,.18); transform:translateX(-50%); backdrop-filter:blur(16px); }
         .app-bottom-nav a { display:flex; align-items:center; justify-content:center; min-width:0; border-radius:10px; color:#64748b; font-size:10.5px; font-weight:850; text-decoration:none; white-space:nowrap; }
         .app-bottom-nav a.active { background:#2563eb; color:#fff; }
-        .app-bottom-nav .utility { margin-left:2px; border-left:1px solid #d7dee8; border-radius:0 10px 10px 0; color:#334155; }
         .app-bottom-nav .admin-only-nav { display:none; }
         .app-bottom-nav.rates-unlocked { grid-template-columns:repeat(4,1fr); }
         .app-bottom-nav.rates-unlocked .admin-only-nav { display:flex; }
@@ -117,9 +99,6 @@
             .directory { grid-template-columns:1fr; max-height:none; }
             .record-grid { grid-template-columns:1fr; gap:9px; }
             .info-block { padding-top:8px; border-top:1px dashed #e5e9f0; }
-            .company-group-head { padding:13px; }
-            .company-item { padding:12px 13px; }
-            .company-item-detail { grid-template-columns:minmax(0,1fr) auto; }
             .log-grid { grid-template-columns:1fr; }
         }
     </style>
@@ -133,14 +112,8 @@
 
         <div class="basis-tabs" aria-label="조회 기준">
             <button class="basis-tab active" id="basis-winner" type="button" onclick="openMode('winner')">낙찰자</button>
-            <button class="basis-tab" id="basis-company" type="button" onclick="openMode('company')">업체</button>
             <button class="basis-tab" id="basis-audit" type="button" onclick="openMode('audit')">변경내역</button>
         </div>
-
-        <section class="mode-section view" id="mode-company">
-            <select class="picker" id="company-picker" onchange="renderCompany(this.value)"><option value="">전체 업체 보기</option></select>
-            <div class="result" id="company-result"></div>
-        </section>
 
         <section class="mode-section view active" id="mode-winner">
             <input class="picker winner-search" id="winner-search" type="search" placeholder="이름 또는 연락처 검색" oninput="handleWinnerSearch(this)">
@@ -154,11 +127,9 @@
     </main>
     <nav class="app-bottom-nav" aria-label="CREO 공통 페이지 이동">
         <a id="shipping-channel-home" href="/">채널홈</a>
-        <a id="shipping-workspace-link" href="#">업체</a>
         <a href="shipping.html">배송관리</a>
         <a class="active" href="shipping-status.html" aria-current="page">전체조회</a>
         <a class="admin-only-nav" id="shipping-rates-nav" href="shipping-rates.html">요금표</a>
-        <a class="utility" href="shipping.html?changeCompany=1">업체변경</a>
     </nav>
     <div class="loading" id="loading">배송 등록 데이터를 불러오는 중...</div>
     <div class="toast" id="toast"></div>
@@ -168,9 +139,9 @@
         let auditLogs = [];
         let shippingAdapter = null;
         let shippingAdapterContext = null;
-        const SHIPPING_CHANNEL_ID = String(new URLSearchParams(location.search).get('channel') || 'cdcup').toLowerCase().replace(/[^a-z0-9-]/g,'') || 'cdcup';
+        const SHIPPING_CHANNEL_ID = String(new URLSearchParams(location.search).get('channel') || '').toLowerCase().replace(/[^a-z0-9-]/g,'');
+        if (!SHIPPING_CHANNEL_ID) location.replace('/');
         document.getElementById('shipping-channel-home').href='/?channel='+encodeURIComponent(SHIPPING_CHANNEL_ID);
-        document.getElementById('shipping-workspace-link').href='channel-workspace.html?channel='+encodeURIComponent(SHIPPING_CHANNEL_ID);
         const MOBILE_STATUS_HISTORY = matchMedia('(max-width:820px)').matches;
         let activeMode = 'winner';
         let selectedWinnerKey = '';
@@ -187,14 +158,6 @@
             const channel = (await CreoPlatform.api(`channels/${encodeURIComponent(SHIPPING_CHANNEL_ID)}`)).channel;
             shippingAdapter = CreoChannelAdapters.resolve(channel);
             shippingAdapterContext = { channel };
-            const workspaceLink = document.getElementById('shipping-workspace-link');
-            if (workspaceLink) {
-                const target = new URL(channel.legacy?.managementUrl || 'channel-workspace.html', location.href);
-                target.searchParams.set('channel', channel.id);
-                workspaceLink.href = target.origin === location.origin
-                    ? `${target.pathname}${target.search}${target.hash}`
-                    : target.href;
-            }
             return shippingAdapter;
         }
 
@@ -287,10 +250,6 @@
             document.getElementById('mode-'+mode).classList.add('active');
             document.querySelectorAll('.basis-tab').forEach(v=>v.classList.remove('active'));
             document.getElementById('basis-'+mode).classList.add('active');
-            if(mode==='company') {
-                document.getElementById('company-picker').value='';
-                renderCompany('');
-            }
             if(mode==='winner') {
                 const search=document.getElementById('winner-search');
                 const directory=document.getElementById('winner-directory');
@@ -308,38 +267,12 @@
             const attention=winnerGroups.length-complete;
             document.getElementById('stats').innerHTML=[['전체',winnerGroups.length+'명'],['확인 필요',attention+'명'],['등록 완료',complete+'명']].map(v=>'<div class="stat"><span>'+v[0]+'</span><strong>'+v[1]+'</strong></div>').join('');
         }
-        function populateCompanies() {
-            const list=[...new Set(soldItems.map(i=>String(i.company||'').trim()).filter(Boolean))].sort();
-            document.getElementById('company-picker').innerHTML='<option value="">업체 선택</option>'+list.map(c=>'<option value="'+esc(c)+'">'+esc(c)+'</option>').join('');
-        }
         function itemChips(items) {
             return '<div class="items">'+items.map(i=>'<span class="item-chip">'+esc((i.company?'['+i.company+'] ':'')+auctionItemLabel(i,{includeTeam:true}))+'</span>').join('')+'</div>';
         }
         function recordHtml(group, scopedItems) {
             const meta=statusMeta(group.status), ship=shippingInfo(group), items=scopedItems||group.items;
             return '<article class="record"><div class="record-top"><div class="record-person"><strong>'+esc(group.name)+'</strong><a href="tel:'+esc(group.phone)+'">'+esc(fmtPhone(group.phone))+'</a></div><span class="badge '+meta[1]+'">'+meta[0]+'</span></div><div class="record-grid"><div class="info-block"><span>배송 정보</span><strong>'+esc(ship.label)+(ship.memo?'<br>요청: '+esc(ship.memo):'')+'</strong></div><div class="info-block"><span>낙찰 내역</span><strong>'+esc(group.companies.join(', ')||'-')+' · '+group.items.length+'개체</strong></div></div>'+itemChips(items)+'</article>';
-        }
-        function itemShippingDetail(item) {
-            if(!item.shipping_type) return {label:'배송 정보 미등록',cost:'-',status:'pending'};
-            if(item.shipping_type==='직접수령') return {label:'현장 직접 수령',cost:'없음',status:'complete'};
-            const parsed=parseRegion(item.shipping_region);
-            return {label:(item.shipping_company||'배송')+' · '+(parsed.location||'상세 미입력'),cost:(Number(item.shipping_cost)||0).toLocaleString()+'원',status:'complete'};
-        }
-        function companyItemHtml(item) {
-            const winner=winnerIdentity(item), shipping=itemShippingDetail(item), meta=statusMeta(shipping.status);
-            return '<div class="company-item"><div class="company-item-top"><div class="company-item-main"><strong>'+esc(auctionItemLabel(item,{includeTeam:true}))+'</strong><span>'+esc(winner.name)+' · <a href="tel:'+esc(winner.phone)+'">'+esc(fmtPhone(winner.phone))+'</a></span></div><span class="badge '+meta[1]+'">'+meta[0]+'</span></div><div class="company-item-detail"><span>배송 정보<b>'+esc(shipping.label)+'</b></span><span>배송비<b>'+esc(shipping.cost)+'</b></span></div></div>';
-        }
-        function companyGroupHtml(company) {
-            const items=soldItems.filter(i=>String(i.company||'').trim()===company).sort((a,b)=>(Number(a.num)||0)-(Number(b.num)||0));
-            const winners=new Set(items.map(i=>winnerIdentity(i).key));
-            const registered=items.filter(i=>i.shipping_type).length;
-            return '<section class="company-group"><header class="company-group-head"><div class="company-group-title"><strong>'+esc(company)+'</strong><span>'+winners.size+'명 · '+items.length+'개체</span></div><span class="company-progress">'+registered+' / '+items.length+' 등록</span></header><div class="company-items">'+items.map(companyItemHtml).join('')+'</div></section>';
-        }
-        function renderCompany(company) {
-            const box=document.getElementById('company-result');
-            if (!company) { box.innerHTML='<div class="empty">확인할 업체를 선택해 주세요.</div>'; return; }
-            const itemCount=soldItems.filter(i=>String(i.company||'').trim()===company).length;
-            box.innerHTML='<div class="result-head"><strong>'+esc(company)+'</strong><span>'+itemCount+'개체</span></div><div class="company-directory">'+companyGroupHtml(company)+'</div>';
         }
         function renderWinnerDirectory(query) {
             const q=String(query||'').replace(/[^0-9가-힣a-zA-Z]/g,'').toLowerCase();
@@ -394,7 +327,7 @@
         function showToast(text){const t=document.getElementById('toast');t.textContent=text;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2400);}
         async function loadData() {
             document.getElementById('loading').style.display='grid';
-            try { const adapter=await ensureShippingAdapter();const [items, logs]=await Promise.all([adapter.loadShippingItems(shippingAdapterContext), adapter.id==='legacy-cdcup'&&typeof getShippingAuditLogs==='function'?getShippingAuditLogs(120):Promise.resolve([])]); auditLogs=logs||[]; soldItems=(items||[]).filter(i=>i.status&&i.status.includes('낙찰')); buildGroups(); renderStats(); populateCompanies(); renderCompany(''); renderWinnerDirectory(''); renderAuditLogs(); }
+            try { const adapter=await ensureShippingAdapter();const [items, logs]=await Promise.all([adapter.loadShippingItems(shippingAdapterContext), adapter.id==='legacy-cdcup'&&typeof getShippingAuditLogs==='function'?getShippingAuditLogs(120):Promise.resolve([])]); auditLogs=logs||[]; soldItems=(items||[]).filter(i=>i.status&&i.status.includes('낙찰')); buildGroups(); renderStats(); renderWinnerDirectory(''); renderAuditLogs(); }
             catch(e){ console.error(e); document.getElementById('mode-winner').innerHTML='<div class="empty">데이터를 불러오지 못했습니다.</div>'; }
             finally { document.getElementById('loading').style.display='none'; }
         }

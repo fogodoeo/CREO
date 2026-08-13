@@ -14,6 +14,7 @@ const PAGES = [
     'broadcast-studio.html',
     'auction-live.html',
     'channel-shipping.html',
+    'shipping-companies.html',
     'shipping-rates.html',
     'broadcast-router.html',
     'ranking.html',
@@ -66,6 +67,7 @@ test('home is an operational channel launcher without duplicate management route
     assert.match(hub, /id="quick-workspace"/);
     assert.match(hub, /id="quick-survey"[^>]*href="crewart-survey\.html"[^>]*hidden/);
     assert.match(hub, /id="quick-shipping"/);
+    assert.match(hub, /id="quick-companies"/);
     assert.match(hub, /id="quick-rounds"/);
     assert.doesNotMatch(hub, /id="quick-rankings"/);
     assert.match(hub, /id="quick-broadcast"/);
@@ -236,10 +238,19 @@ test('new CDCUP overlays and shipping retain compatibility with the established 
     assert.match(shipping, /saveShippingItem/);
     assert.match(shipping, /SHIPPING_COMPANY_STORAGE_KEY/);
     assert.match(shipping, /id="shipping-channel-home"/);
-    assert.match(shipping, /id="shipping-workspace-link"/);
+    assert.doesNotMatch(shipping, /id="shipping-workspace-link"/);
+    assert.match(shipping, /if \(!SHIPPING_CHANNEL_ID\) location\.replace\('\/'\)/);
+    assert.doesNotMatch(shipping, /get\('channel'\) \|\| 'cdcup'/);
     const shippingStatus = fs.readFileSync(path.join(__dirname, '..', 'public', 'shipping-status.html'), 'utf8');
     assert.match(shippingStatus, /CreoChannelAdapters\.resolve/);
     assert.match(shippingStatus, /adapter\.loadShippingItems/);
+    assert.doesNotMatch(shippingStatus, /basis-company|mode-company|renderCompany|shipping-workspace-link/);
+    assert.match(shippingStatus, /if \(!SHIPPING_CHANNEL_ID\) location\.replace\('\/'\)/);
+    const companies = fs.readFileSync(path.join(__dirname, '..', 'public', 'shipping-companies.html'), 'utf8');
+    assert.match(companies, /channels\/\$\{encodeURIComponent\(channelId\)\}/);
+    assert.match(companies, /CreoChannelAdapters\.resolve/);
+    assert.match(companies, /adapter\.loadShippingItems/);
+    assert.match(companies, /if\(!channelId\)location\.replace\('\/'\)/);
 });
 
 test('episode management expands round details and aggregate rankings in one place', () => {
