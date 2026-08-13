@@ -14,7 +14,7 @@
         shippingStatus: Object.freeze({ path: '/shipping-status.html', query: 'channel', label: '전체조회', feature: 'shipping' }),
         shippingRates: Object.freeze({ path: '/shipping-rates.html', query: 'channel', label: '요금표', feature: 'shipping' }),
         archives: Object.freeze({ path: '/channel-archives.html', query: 'channel', label: '회차', feature: 'auction' }),
-        rankings: Object.freeze({ path: '/channel-rankings.html', query: 'channel', label: 'RANKING', feature: 'scoreboards' }),
+        rankings: Object.freeze({ path: '/ranking.html', query: 'channel', label: 'RANKING', feature: 'scoreboards' }),
         control: Object.freeze({ path: '/broadcast-studio.html', query: 'channel', label: '방송', feature: 'broadcast' }),
         settings: Object.freeze({ path: '/channel-manager.html', query: 'channel', label: '설정' }),
         preview: Object.freeze({ path: '/broadcast-router.html', query: 'event', label: '미리보기', feature: 'broadcast', defaults: { page: 1 } }),

@@ -10,6 +10,7 @@ const SCOREBOARD_METRICS = Object.freeze(['soldAmount', 'soldCount', 'points']);
 const DATA_ADAPTERS = Object.freeze(['platform', 'legacy-cdcup']);
 const CHANNEL_ID_PATTERN = /^[a-z0-9][a-z0-9-]{1,31}$/;
 const HEX_COLOR_PATTERN = /^#[0-9a-f]{6}$/i;
+const RESERVED_CORE_PAGE_IDS = new Set(['archives', 'rankings']);
 
 const DEFAULT_CHANNELS = Object.freeze([
     Object.freeze({
@@ -22,7 +23,7 @@ const DEFAULT_CHANNELS = Object.freeze([
         broadcastTemplate: 'tournament',
         dataAdapter: 'legacy-cdcup',
         broadcastProfile: 'cdcup-tournament',
-        pages: Object.freeze({ archives: '/cdcup-index.html?admin=1&tab=archive' }),
+        pages: Object.freeze({}),
         templateId: 'team',
         theme: Object.freeze({
             primary: '#093687',
@@ -186,7 +187,7 @@ function normalizePages(value = {}, fallback = {}) {
     return Object.fromEntries(Object.entries(source || {}).slice(0, 12).map(([key, href]) => {
         const id = normalizeChannelId(key);
         const path = cleanText(href, 300);
-        if (!id || (!path.startsWith('/') && !/^https:\/\//i.test(path))) return null;
+        if (!id || RESERVED_CORE_PAGE_IDS.has(id) || (!path.startsWith('/') && !/^https:\/\//i.test(path))) return null;
         return [id, path];
     }).filter(Boolean));
 }
@@ -313,7 +314,7 @@ function channelLinks(channelId) {
         shippingStatus: `/shipping-status.html?${query}`,
         shippingRates: `/shipping-rates.html?${query}`,
         archives: `/channel-archives.html?${query}`,
-        rankings: `/channel-rankings.html?${query}`,
+        rankings: `/ranking.html?${query}`,
         settings: `/channel-manager.html?${query}`
     };
 }

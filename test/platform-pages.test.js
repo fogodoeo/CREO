@@ -16,6 +16,7 @@ const PAGES = [
     'channel-shipping.html',
     'shipping-rates.html',
     'broadcast-router.html',
+    'ranking.html',
     'channel-rankings.html',
     'broadcast.html',
     'crewart-broadcast.html'
@@ -72,6 +73,9 @@ test('home is an operational channel launcher without duplicate management route
     assert.match(hub, /id="quick-design"/);
     assert.match(hub, /function workspaceUrl\(c\)/);
     assert.match(hub, /runtime\.url\('shipping'\)/);
+    assert.match(hub, /rounds\.href=runtime\.url\('archives'\)/);
+    assert.doesNotMatch(hub, /runtime\.extension\('archives'\)/);
+    assert.match(hub, /rankings\.href=runtime\.url\('rankings'\)/);
     assert.doesNotMatch(hub, /shipping\.href=`channel-shipping\.html/);
     assert.match(hub, /runtime\.extension\('survey'\)/);
     assert.match(hub, /runtime\.url\('control'\)/);
@@ -244,9 +248,15 @@ test('round archives stay available without being duplicated inside broadcast ma
     assert.doesNotMatch(studio, /id="mode-archives"|function archivesUrl|channel-archives\.html/);
     assert.match(archives, /channels\/\$\{encodeURIComponent\(channelId\)\}\/archives/);
     assert.doesNotMatch(archives, /scoreboard|shipmentRows|상품|배송/i);
-    const rankings = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-rankings.html'), 'utf8');
+    const rankings = fs.readFileSync(path.join(__dirname, '..', 'public', 'ranking.html'), 'utf8');
     assert.match(rankings, /channels\/\$\{encodeURIComponent\(channelId\)\}\/rankings/);
     assert.match(rankings, /function boardMarkup/);
+    assert.match(rankings, /active-channel/);
+    assert.match(rankings, /CreoChannelAdapters\.resolve/);
+    assert.match(rankings, /CreoRankingEngine\.rankingsForChannel/);
+    assert.doesNotMatch(rankings, /cdcup-tournament-data|for \(let i = 1; i <= 64/i);
+    const rankingAlias = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-rankings.html'), 'utf8');
+    assert.match(rankingAlias, /location\.replace\(`ranking\.html/);
     assert.match(archives, /회차 저장/);
 });
 
@@ -367,12 +377,10 @@ test('broadcast control manages reusable banners, sponsors, and vendor logos', (
     assert.match(legacySettings, /m\.crewart_ticker = m\.ticker/);
     assert.match(legacySettings, /delete m\.ticker/);
     const cdcupBroadcast = fs.readFileSync(path.join(__dirname, '..', 'public', 'broadcast.html'), 'utf8');
-    const cdcupRanking = fs.readFileSync(path.join(__dirname, '..', 'public', 'ranking.html'), 'utf8');
     const cdcupBracket = fs.readFileSync(path.join(__dirname, '..', 'public', 'tournament-bracket.html'), 'utf8');
     assert.match(legacySettings, /const TEAM_LOGO_LIMIT = 64/);
     assert.match(control, /for\(let i=1;i<=64;i\+\+\)/);
     assert.match(cdcupBroadcast, /for \(let i = 1; i <= 64; i\+\+\)/);
-    assert.match(cdcupRanking, /for \(let i = 1; i <= 64; i\+\+\)/);
     assert.match(cdcupBracket, /function applyConfiguredTeamLogos/);
     assert.match(cdcupBracket, /applyConfiguredTeamLogos\(map\|\|\{\}\)/);
     for (const asset of [

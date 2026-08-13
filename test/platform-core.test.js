@@ -18,7 +18,7 @@ test('channel identifiers and storage keys create hard data boundaries', () => {
     assert.equal(channelLinks('crewart').shippingStatus, '/shipping-status.html?channel=crewart');
     assert.equal(channelLinks('crewart').shippingRates, '/shipping-rates.html?channel=crewart');
     assert.equal(channelLinks('crewart').archives, '/channel-archives.html?channel=crewart');
-    assert.equal(channelLinks('crewart').rankings, '/channel-rankings.html?channel=crewart');
+    assert.equal(channelLinks('crewart').rankings, '/ranking.html?channel=crewart');
     assert.equal(channelLinks('crewart').settings, '/channel-manager.html?channel=crewart');
 });
 
@@ -75,6 +75,20 @@ test('channel builder configuration normalizes reusable groups, scoreboards, and
     assert.equal(channel.broadcastProfile, 'cdcup-tournament');
     assert.equal(channel.pages.survey, '/survey.html');
     assert.equal(channel.pages.unsafe, undefined);
+});
+
+test('core archive and ranking routes cannot be replaced by channel page overrides', () => {
+    const channel = normalizeChannel({
+        id: 'route-test', name: 'Route Test',
+        pages: {
+            archives: '/legacy-archives.html',
+            rankings: '/legacy-rankings.html',
+            survey: '/survey.html'
+        }
+    });
+    assert.equal(channel.pages.archives, undefined);
+    assert.equal(channel.pages.rankings, undefined);
+    assert.equal(channel.pages.survey, '/survey.html');
 });
 
 test('channel validation rejects contradictory feature combinations', () => {

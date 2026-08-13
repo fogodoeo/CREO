@@ -44,6 +44,7 @@
             vendorId: vendorMap.get(String(row.company || '').trim() || '업체 미지정')?.id || '', vendorName: row.company || '',
             startPrice: (Number(row.startPrice || row.price) || 0) * 10000, soldPrice: (Number(row.soldPrice || row.sold_price) || 0) * 10000,
             winnerName: row.winner || '', winnerPhone: row.winner_phone || '', status: legacyStatus(row.status), photoUrl: row.photoItem || '',
+            groupId: row.teamCode || '', teamName: row.teamName || row.team || row.teamCode || '',
             note: row.note || '', source: 'legacy-cdcup', legacy: row
         }));
         const shipments = (rows || []).filter(row => row.shipping_type || row.shipping_company || row.shipping_region || row.shipping_cost).map(row => ({
