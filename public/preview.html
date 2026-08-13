@@ -1394,9 +1394,7 @@
 
         function broadcastPreviewSrc(page, moduleId) {
             const p = normalizePreviewPage(page);
-            return moduleId === 'crewart'
-                ? `broadcast-router.html?event=crewart&page=${p}`
-                : `broadcast.html?page=${p}&module=${encodeURIComponent(moduleId || 'cdcup')}&v=${broadcastAssetVersion}`;
+            return `broadcast.html?page=${p}&module=${encodeURIComponent(moduleId || 'cdcup')}&v=${broadcastAssetVersion}`;
         }
 
         function updatePreviewTabs(moduleId) {
@@ -1432,19 +1430,19 @@
             if (select) select.value = module.id;
             const title = document.getElementById('preview-event-module-title');
             const desc = document.getElementById('preview-event-module-desc');
-            if (title) title.textContent = module.title + ' 화면 모듈';
+            if (title) title.textContent = module.title + ' 화면 제어';
             if (desc) desc.textContent = module.id === 'crewart'
-                ? '1P 대기, 2P 현재 경매, 3P 기숙사 점수판으로 송출합니다.'
+                ? '1P 진행, 2P 개체 실시간, 3P 기숙사 점수판을 제어합니다.'
                 : '1P 진행, 2P 개체·실시간 입찰, 3P 전체 진행표로 각각 독립 송출합니다.';
 
             const isCrewart = module.id === 'crewart';
             document.body.classList.toggle('event-crewart-preview', isCrewart);
             const fullLabel = document.querySelector('#draggable-bracket-full .element-label');
-            if (fullLabel) fullLabel.textContent = '전체 진행표';
+            if (fullLabel) fullLabel.textContent = isCrewart ? '기숙사 점수판 (R·G·B·Y)' : '전체 대진표';
             const liveLabel = document.querySelector('#draggable-bracket-live .element-label');
             if (liveLabel) liveLabel.textContent = isCrewart ? '보조 점수판' : '실시간 대진';
             const p3Tab = document.getElementById('btn-tab-p3');
-            if (p3Tab) p3Tab.textContent = '3P 배치기';
+            if (p3Tab) p3Tab.textContent = isCrewart ? '기숙사 점수 3P' : '3P 배치표';
 
             if (pageNum === '2') {
                 document.getElementById('draggable-live-bidders').style.display = '';
@@ -1454,8 +1452,12 @@
             }
 
             if (pageNum === '3') {
+                const pageTitle = document.getElementById('page-title');
+                if (pageTitle) pageTitle.textContent = isCrewart ? '기숙사 점수판 (3P) 실시간 레이아웃 배치표' : '전체 대진표 (3P) 실시간 레이아웃 배치표';
                 document.getElementById('tournament-dashboard')?.classList.toggle('active', !isCrewart);
-                document.getElementById('crewart-dashboard')?.classList.remove('active');
+                document.getElementById('crewart-dashboard')?.classList.toggle('active', isCrewart);
+                if (isCrewart) refreshCrewartPreview();
+
                 const setDisplay = (id, visible) => {
                     const el = document.getElementById(id);
                     if (el) el.style.display = visible ? '' : 'none';
@@ -1495,7 +1497,7 @@
                 document.body.classList.remove('preview-auto-p3');
                 document.body.classList.remove('preview-team-ticker');
                 const autoLabel = document.querySelector('#draggable-blind-totals .element-label');
-                if (autoLabel) autoLabel.textContent = isCrewart ? '기숙사 점수판' : '자동 좌측 영역 · 팀합산 8팀씩 순환 ↔ 실시간 입찰';
+                if (autoLabel) autoLabel.textContent = isCrewart ? '기숙사 점수판' : '자동 좌측 영역 · 비결산 8강/4강 전환 시 실시간 입찰';
                 setDisplay('toggle-live-bidders-show-group', false);
                 setDisplay('toggle-live-bidders-switch-group', false);
                 setDisplay('toggle-live-bidders-mode-group', false);
@@ -1505,9 +1507,9 @@
                 setDisplay('battle-ann-coords', false);
                 setDisplay('blind-totals-coords', false);
                 const fullToggleLabel = document.querySelector('#toggle-bracket-full-show-group span');
-                if (fullToggleLabel) fullToggleLabel.textContent = '전체 진행표';
+                if (fullToggleLabel) fullToggleLabel.textContent = isCrewart ? '기숙사 점수판' : '전체 대진표';
                 const coords = document.getElementById('bracket-coords');
-                if (coords && coords.firstChild) coords.firstChild.textContent = '전체 진행표: Top ';
+                if (coords && coords.firstChild) coords.firstChild.textContent = (isCrewart ? '기숙사 점수판: Top ' : '전체 대진표: Top ');
                 try { focusBracketLayer('bracket_full'); } catch (e) {}
             }
         }
@@ -1553,13 +1555,14 @@
             frame.src = broadcastPreviewSrc('1', initialModuleId);
         } else if (pageNum === '3') {
             document.getElementById('btn-tab-p3')?.classList.add('active');
-            if (pageTitle) pageTitle.textContent = "전체 진행표 (3P) 실시간 레이아웃 배치기";
+            const isCrewart = initialModuleId === 'crewart';
+            if (pageTitle) pageTitle.textContent = isCrewart ? '기숙사 점수판 (3P) 실시간 레이아웃 배치표' : '전체 대진표 (3P) 실시간 레이아웃 배치표';
             frame.src = broadcastPreviewSrc('3', initialModuleId);
-            // 3P: 레이아웃 미리보기 + 대진표 관리 대시보드 함께 표시
             const bgSel = document.getElementById('bracket-bg-selector-group');
             if (bgSel) bgSel.style.display = 'none';
-            document.getElementById('tournament-dashboard')?.classList.toggle('active', initialModuleId !== 'crewart');
-            document.getElementById('crewart-dashboard')?.classList.remove('active');
+            document.getElementById('tournament-dashboard')?.classList.toggle('active', !isCrewart);
+            document.getElementById('crewart-dashboard')?.classList.toggle('active', isCrewart);
+            if (isCrewart) refreshCrewartPreview();
         } else {
             document.getElementById('btn-tab-p2')?.classList.add('active');
             if (pageTitle) pageTitle.textContent = "개체용 (2P) 실시간 레이아웃 배치기";

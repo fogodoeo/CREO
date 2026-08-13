@@ -9,7 +9,7 @@
         (() => {
             const requested = new URLSearchParams(location.search).get('page');
             const page = ['1', '2', '3'].includes(requested) ? requested : '1';
-            location.replace(`auction-live.html?channel=crewart&page=${page}&v=20260806-crewart-overlay-v2`);
+            location.replace(`broadcast.html?page=${page}&module=crewart&direct=1`);
         })();
     </script>
     <script src="supabase-bridge.js?v=20260720-quota-fallback-v2"></script>

@@ -98,7 +98,7 @@ test('broadcast studio uses shared profiles instead of channel-specific branches
     assert.match(studio, /CreoBroadcastProfiles\.studioFrame/);
     assert.match(studio, /CreoBroadcastProfiles\.resolve/);
     assert.doesNotMatch(studio, /channel\?\.id\s*===\s*['"](?:cdcup|crewart)['"]/);
-    assert.match(studio, /broadcast-router\.html\?event=/);
+    assert.match(studio, /CreoBroadcastProfiles\.broadcastTarget/);
     assert.match(studio, /진행 · 1P/);
     assert.match(studio, /경매 · 2P/);
     assert.match(studio, /집계 · 3P/);
@@ -109,7 +109,7 @@ test('broadcast studio uses shared profiles instead of channel-specific branches
     assert.match(studio, /function frameUrl\(channel,view\)/);
     assert.match(studio, /let activeView=/);
     assert.doesNotMatch(studio, /const\s+activeView\s*=/);
-    assert.match(studio, /broadcast-router\.html\?event=\$\{encodeURIComponent\(channel\.id\)\}&page=\$\{page\}/);
+    assert.match(studio, /function liveUrl\(channel,page\)/);
     assert.doesNotMatch(studio, /id="mode-operations"|id="mode-archives"|data-mode="layout"/);
     assert.match(legacy, /broadcast-studio\.html\?channel=/);
     assert.match(control, /broadcast-studio\.html\?channel=/);

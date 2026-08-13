@@ -82,6 +82,14 @@
     }
 
     function getActiveEventModule(config) {
+        if (typeof window !== 'undefined' && window.location) {
+            const params = new URLSearchParams(window.location.search);
+            const queryModule = params.get('module') || params.get('event') || params.get('channel');
+            if (queryModule) {
+                const id = normalizeModuleId(queryModule);
+                if (MODULES[id]) return MODULES[id];
+            }
+        }
         return MODULES[normalizeModuleId(config && config.active_event_module)];
     }
 

@@ -62,8 +62,8 @@ test('CDCUP compatibility is tied to its adapter, not copied channel ids', () =>
 
     assert.match(Profiles.studioFrame(liveCdcup, 'layout-1'), /^preview\.html\?/);
     assert.match(Profiles.broadcastTarget(liveCdcup, 2), /^broadcast\.html\?/);
-    assert.match(Profiles.studioFrame(copiedCdcup, 'layout-1'), /^auction-control\.html\?/);
-    assert.match(Profiles.broadcastTarget(copiedCdcup, 2), /^auction-live\.html\?/);
+    assert.match(Profiles.studioFrame(copiedCdcup, 'layout-1'), /^preview\.html\?/);
+    assert.match(Profiles.broadcastTarget(copiedCdcup, 2), /^broadcast\.html\?/);
     assert.equal(Profiles.pageContract(copiedCdcup, 3).id, 'tournament');
 });
 
@@ -73,7 +73,7 @@ test('CREWART uses the shared CDCUP layout and settings surfaces without changin
     assert.match(Profiles.studioFrame(academy, 'layout-2'), /^preview\.html\?module=crewart&page=2&embedded=1$/);
     assert.match(Profiles.studioFrame(academy, 'layout-3'), /^preview\.html\?module=crewart&page=3&embedded=1$/);
     assert.match(Profiles.studioFrame(academy, 'settings'), /^settings\.html\?module=crewart&channel=crewart&embedded=1$/);
-    assert.match(Profiles.broadcastTarget(academy, 1), /^auction-live\.html\?/);
+    assert.match(Profiles.broadcastTarget(academy, 1), /^broadcast\.html\?/);
 });
 
 test('legacy CDCUP rows and platform workspaces expose a common isolated model', async (t) => {
