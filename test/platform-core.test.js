@@ -16,6 +16,7 @@ test('channel identifiers and storage keys create hard data boundaries', () => {
     assert.match(channelLinks('summer-auction').workspace, /channel=summer-auction/);
     assert.equal(channelLinks('crewart').shipping, '/shipping.html?channel=crewart');
     assert.equal(channelLinks('crewart').shippingStatus, '/shipping-status.html?channel=crewart');
+    assert.equal(channelLinks('crewart').shippingRates, '/shipping-rates.html?channel=crewart');
     assert.equal(channelLinks('crewart').archives, '/channel-archives.html?channel=crewart');
     assert.equal(channelLinks('crewart').settings, '/channel-manager.html?channel=crewart');
 });
@@ -57,7 +58,10 @@ test('channel builder configuration normalizes reusable groups, scoreboards, and
         terminology: { item: '출품물', vendor: '브리더', group: '조' },
         groups: [{ id: 'alpha', name: 'A조', color: '#AA0000' }],
         scoreboards: [{ id: 'group-total', name: '조별 합계', dimension: 'group', metric: 'soldAmount', unit: '만원', topN: 4 }],
-        overlay: { skin: 'sport', layout: 'right' }
+        overlay: { skin: 'sport', layout: 'right' },
+        dataAdapter: 'platform',
+        broadcastProfile: 'cdcup-tournament',
+        pages: { survey: '/survey.html', unsafe: 'javascript:alert(1)' }
     });
     assert.equal(channel.logoUrl, '/logo.png');
     assert.equal(channel.features.groups, true);
@@ -66,6 +70,10 @@ test('channel builder configuration normalizes reusable groups, scoreboards, and
     assert.equal(channel.groups[0].color, '#aa0000');
     assert.equal(channel.scoreboards[0].dimension, 'group');
     assert.equal(channel.overlay.layout, 'right');
+    assert.equal(channel.dataAdapter, 'platform');
+    assert.equal(channel.broadcastProfile, 'cdcup-tournament');
+    assert.equal(channel.pages.survey, '/survey.html');
+    assert.equal(channel.pages.unsafe, undefined);
 });
 
 test('channel validation rejects contradictory feature combinations', () => {

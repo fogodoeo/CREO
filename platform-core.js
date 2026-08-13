@@ -7,6 +7,7 @@ const OVERLAY_SKINS = Object.freeze(['clean', 'sport', 'heritage', 'minimal']);
 const OVERLAY_LAYOUTS = Object.freeze(['left', 'right', 'balanced']);
 const SCOREBOARD_DIMENSIONS = Object.freeze(['vendor', 'group', 'category', 'winner']);
 const SCOREBOARD_METRICS = Object.freeze(['soldAmount', 'soldCount', 'points']);
+const DATA_ADAPTERS = Object.freeze(['platform', 'legacy-cdcup']);
 const CHANNEL_ID_PATTERN = /^[a-z0-9][a-z0-9-]{1,31}$/;
 const HEX_COLOR_PATTERN = /^#[0-9a-f]{6}$/i;
 
@@ -19,6 +20,9 @@ const DEFAULT_CHANNELS = Object.freeze([
         logoUrl: '',
         status: 'active',
         broadcastTemplate: 'tournament',
+        dataAdapter: 'legacy-cdcup',
+        broadcastProfile: 'cdcup-tournament',
+        pages: Object.freeze({ archives: '/cdcup-index.html?admin=1&tab=archive' }),
         templateId: 'team',
         theme: Object.freeze({
             primary: '#093687',
@@ -45,6 +49,9 @@ const DEFAULT_CHANNELS = Object.freeze([
         logoUrl: '/assets/crewart-broadcast/crewarts-crest.png',
         status: 'active',
         broadcastTemplate: 'academy',
+        dataAdapter: 'platform',
+        broadcastProfile: 'crewart-academy',
+        pages: Object.freeze({ survey: '/crewart-survey.html' }),
         templateId: 'community',
         theme: Object.freeze({
             primary: '#6d28d9',
@@ -160,6 +167,16 @@ function normalizeOverlay(value = {}, fallback = {}) {
     };
 }
 
+function normalizePages(value = {}, fallback = {}) {
+    const source = value && typeof value === 'object' ? value : fallback;
+    return Object.fromEntries(Object.entries(source || {}).slice(0, 12).map(([key, href]) => {
+        const id = normalizeChannelId(key);
+        const path = cleanText(href, 300);
+        if (!id || (!path.startsWith('/') && !/^https:\/\//i.test(path))) return null;
+        return [id, path];
+    }).filter(Boolean));
+}
+
 function normalizeChannel(input = {}, fallback = {}) {
     const source = { ...fallback, ...input };
     const id = normalizeChannelId(source.id || source.slug || source.name);
@@ -172,6 +189,13 @@ function normalizeChannel(input = {}, fallback = {}) {
     const features = { ...(fallback.features || {}), ...(input.features || {}) };
     const legacy = { ...(fallback.legacy || {}), ...(input.legacy || {}) };
     const templateId = CHANNEL_TEMPLATES.includes(source.templateId) ? source.templateId : 'standard';
+    const legacyItems = Boolean(legacy.items);
+    const dataAdapter = DATA_ADAPTERS.includes(source.dataAdapter)
+        ? source.dataAdapter
+        : (DATA_ADAPTERS.includes(fallback.dataAdapter) ? fallback.dataAdapter : (legacyItems ? 'legacy-cdcup' : 'platform'));
+    const broadcastProfile = normalizeChannelId(source.broadcastProfile)
+        || normalizeChannelId(fallback.broadcastProfile)
+        || 'standard';
     return {
         id,
         name: cleanText(source.name, 48),
@@ -180,6 +204,9 @@ function normalizeChannel(input = {}, fallback = {}) {
         logoUrl: cleanText(source.logoUrl, 600),
         status,
         broadcastTemplate,
+        dataAdapter,
+        broadcastProfile,
+        pages: normalizePages(input.pages ?? source.pages, fallback.pages),
         templateId,
         theme: {
             primary: normalizeColor(theme.primary, fallbackTheme.primary || '#1f2937'),
@@ -244,12 +271,14 @@ function channelLinks(channelId) {
     const id = normalizeChannelId(channelId) || 'cdcup';
     const query = `channel=${encodeURIComponent(id)}`;
     return {
+        home: `/?${query}`,
         workspace: `/channel-workspace.html?${query}`,
         control: `/broadcast-studio.html?${query}`,
         preview: `/broadcast-router.html?event=${encodeURIComponent(id)}&page=1`,
         live: `/broadcast-router.html?event=${encodeURIComponent(id)}&page=1&live=1`,
         shipping: `/shipping.html?${query}`,
         shippingStatus: `/shipping-status.html?${query}`,
+        shippingRates: `/shipping-rates.html?${query}`,
         archives: `/channel-archives.html?${query}`,
         settings: `/channel-manager.html?${query}`
     };
@@ -281,6 +310,7 @@ module.exports = {
     CHANNEL_TEMPLATES,
     CHANNEL_ID_PATTERN,
     CHANNEL_STATUSES,
+    DATA_ADAPTERS,
     DEFAULT_CHANNELS,
     channelKey,
     channelLinks,

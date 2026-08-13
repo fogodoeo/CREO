@@ -44,16 +44,14 @@ test('platform client script is valid JavaScript', () => {
     assert.match(source, /async function logout/);
 });
 
-test('the universal broadcast route preserves CDCUP legacy output and uses the new renderer elsewhere', () => {
+test('the universal broadcast route delegates renderer selection to channel profiles', () => {
     const router = fs.readFileSync(path.join(__dirname, '..', 'public', 'broadcast-router.html'), 'utf8');
     assert.doesNotMatch(router, /supabase-bridge|active_event_module|getRuntimeConfigMap/i);
     assert.match(router, /\/api\/platform\/active-channel/);
-    assert.match(router, /auction-live\.html\?channel=/);
-    assert.match(router, /channel==='cdcup'/);
-    assert.match(router, /channel==='crewart'/);
-    assert.match(router, /broadcast\.html\?page=/);
-    assert.match(router, /module=cdcup&direct=1/);
-    assert.match(router, /auction-live\.html\?channel=crewart&page=/);
+    assert.match(router, /broadcast-profiles\.js/);
+    assert.match(router, /\/api\/platform\/channels\//);
+    assert.match(router, /CreoBroadcastProfiles\.broadcastTarget/);
+    assert.doesNotMatch(router, /channelId?\s*===\s*['"](?:cdcup|crewart)['"]/);
 });
 
 test('home is an operational channel launcher without duplicate management routes', () => {
@@ -71,15 +69,16 @@ test('home is an operational channel launcher without duplicate management route
     assert.match(hub, /id="quick-settings"/);
     assert.match(hub, /id="quick-design"/);
     assert.match(hub, /function workspaceUrl\(c\)/);
-    assert.match(hub, /activeChannel\.links\?\.shipping/);
+    assert.match(hub, /runtime\.url\('shipping'\)/);
     assert.doesNotMatch(hub, /shipping\.href=`channel-shipping\.html/);
-    assert.match(hub, /survey\.hidden=activeChannel\.id!==['"]crewart['"]\|\|activeChannel\.features\?\.survey!==true/);
-    assert.match(hub, /activeChannel\.links\?\.control/);
+    assert.match(hub, /runtime\.extension\('survey'\)/);
+    assert.match(hub, /runtime\.url\('control'\)/);
+    assert.match(hub, /<strong>인쇄 페이지<\/strong>/);
     assert.doesNotMatch(hub, /id="quick-archives"|전체 채널|현장 운영|방송 열기/);
     assert.doesNotMatch(hub, /모든 경매 운영을|한곳에서\.|채널은 완전히|공통 도구|관리하기/);
 });
 
-test('every non-legacy channel uses the shared workspace, control, and overlay engine', () => {
+test('broadcast studio uses shared profiles instead of channel-specific branches', () => {
     const { channelLinks } = require('../platform-core');
     assert.equal(channelLinks('cdcup').control, '/broadcast-studio.html?channel=cdcup');
     assert.equal(channelLinks('crewart').control, '/broadcast-studio.html?channel=crewart');
@@ -87,11 +86,10 @@ test('every non-legacy channel uses the shared workspace, control, and overlay e
     const studio = fs.readFileSync(path.join(__dirname, '..', 'public', 'broadcast-studio.html'), 'utf8');
     const legacy = fs.readFileSync(path.join(__dirname, '..', 'public', 'settings.html'), 'utf8');
     const control = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-control.html'), 'utf8');
-    assert.match(studio, /function controlKind/);
-    assert.match(studio, /settings\.html\?module=/);
-    assert.doesNotMatch(studio, /kind==='crewart'/);
-    assert.match(studio, /channel\?\.id==='cdcup'\?'cdcup':'platform'/);
-    assert.match(studio, /auction-control\.html\?channel=/);
+    assert.match(studio, /broadcast-profiles\.js/);
+    assert.match(studio, /CreoBroadcastProfiles\.studioFrame/);
+    assert.match(studio, /CreoBroadcastProfiles\.resolve/);
+    assert.doesNotMatch(studio, /channel\?\.id\s*===\s*['"](?:cdcup|crewart)['"]/);
     assert.match(studio, /broadcast-router\.html\?event=/);
     assert.match(studio, /진행 · 1P/);
     assert.match(studio, /경매 · 2P/);
@@ -100,7 +98,6 @@ test('every non-legacy channel uses the shared workspace, control, and overlay e
     assert.match(studio, /data-view="layout-2"/);
     assert.match(studio, /data-view="layout-3"/);
     assert.match(studio, /data-view="settings"/);
-    assert.match(studio, /preview\.html\?module=.*embedded=1/);
     assert.match(studio, /function frameUrl\(channel,view\)/);
     assert.match(studio, /let activeView=/);
     assert.doesNotMatch(studio, /const\s+activeView\s*=/);
@@ -213,20 +210,25 @@ test('new CDCUP overlays and shipping retain compatibility with the established 
     const shipping = fs.readFileSync(path.join(__dirname, '..', 'public', 'shipping.html'), 'utf8');
     for (const source of [live, control]) {
         assert.match(source, /getBroadcastItemsCached/);
-        assert.match(source, /channelId==='cdcup'/);
+        assert.match(source, /CreoBroadcastProfiles\.usesLegacyEngine/);
+        assert.doesNotMatch(source, /channelId\s*===\s*['"]cdcup['"]/);
     }
+    assert.match(control, /profile\.defaultState/);
     assert.match(channelShipping, /location\.replace\(target\.pathname\+target\.search\)/);
     assert.match(channelShipping, /shipping\.html/);
     assert.doesNotMatch(channelShipping, /<a\b|id="channel-select"|id="manage-link"|id="control-link"/);
     assert.match(shipping, /SHIPPING_CHANNEL_ID/);
-    assert.match(shipping, /SHIPPING_USES_LEGACY_ITEMS/);
-    assert.match(shipping, /if \(SHIPPING_USES_LEGACY_ITEMS\) return getItems\(\)/);
-    assert.match(shipping, /mapPlatformShippingItems/);
-    assert.match(shipping, /channels\/\$\{encodeURIComponent\(SHIPPING_CHANNEL_ID\)\}\/workspace/);
+    assert.match(shipping, /channel-adapters\.js/);
+    assert.match(shipping, /CreoChannelAdapters\.resolve/);
+    assert.match(shipping, /adapter\.loadShippingItems/);
+    assert.match(shipping, /adapter\.saveShippingItem/);
     assert.match(shipping, /saveShippingItem/);
     assert.match(shipping, /SHIPPING_COMPANY_STORAGE_KEY/);
     assert.match(shipping, /id="shipping-channel-home"/);
     assert.match(shipping, /id="shipping-workspace-link"/);
+    const shippingStatus = fs.readFileSync(path.join(__dirname, '..', 'public', 'shipping-status.html'), 'utf8');
+    assert.match(shippingStatus, /CreoChannelAdapters\.resolve/);
+    assert.match(shippingStatus, /adapter\.loadShippingItems/);
 });
 
 test('round archives stay available without being duplicated inside broadcast management', () => {

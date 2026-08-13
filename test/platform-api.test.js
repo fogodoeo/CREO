@@ -102,6 +102,30 @@ test('vendor records with identical ids remain isolated by channel', async () =>
     assert.equal(beta.json().vendors[0].name, '베타 업체');
 });
 
+test('duplicating a legacy channel keeps its broadcast profile but starts on isolated platform data', async () => {
+    const repository = new MemoryRepository();
+    repository.catalog.channels[0] = normalizeChannel({
+        ...repository.catalog.channels[0],
+        dataAdapter: 'legacy-cdcup',
+        broadcastProfile: 'cdcup-tournament',
+        pages: { archives: '/legacy-archives.html' },
+        legacy: { items: true, managementUrl: '/legacy.html', controlUrl: '/legacy-control.html' }
+    });
+    const api = createPlatformApi({ repository, logger: { error() {} } });
+    const response = await call(api, 'POST', '/api/platform/channels/alpha/duplicate', {
+        channel: { id: 'alpha-copy', name: '알파 복제' },
+        expectedVersion: repository.catalog.version
+    });
+    assert.equal(response.status, 201);
+    assert.equal(response.json().channel.dataAdapter, 'platform');
+    assert.equal(response.json().channel.broadcastProfile, 'cdcup-tournament');
+    assert.deepEqual(response.json().channel.pages, {});
+    assert.equal(response.json().channel.legacy.items, false);
+    const workspace = await call(api, 'GET', '/api/platform/channels/alpha-copy/workspace');
+    assert.deepEqual(workspace.json().items, []);
+    assert.deepEqual(workspace.json().vendors, []);
+});
+
 test('an item cannot reference a vendor from another channel', async () => {
     const repository = new MemoryRepository();
     const api = createPlatformApi({ repository, logger: { error() {} } });

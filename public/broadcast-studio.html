@@ -8,11 +8,11 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
     <script src="platform-client.js?v=20260803-admin-session-v2" defer></script>
+    <script src="broadcast-profiles.js?v=20260813-modular-v1" defer></script>
     <style>
         :root{color-scheme:dark;--bg:#0b0d10;--panel:#111419;--panel-2:#171b21;--line:#292f38;--line-strong:#3b4350;--text:#f4f5f7;--muted:#8e97a4;--accent:#e3b75d;--accent-ink:#171106;--danger:#ff9090}
         *{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden;background:var(--bg);color:var(--text);font-family:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,sans-serif}button,input,select,a{font:inherit}.studio[hidden],.login[hidden],[hidden]{display:none!important}
         .studio{display:grid;height:100dvh;grid-template-rows:62px 58px minmax(0,1fr);background:var(--bg)}
-        .studio[data-channel="cdcup"]{--accent:#5f8cff;--accent-ink:#07132f}.studio[data-channel="crewart"]{--accent:#ddb960;--accent-ink:#211604}
         .topbar{display:grid;grid-template-columns:auto minmax(220px,330px) 1fr auto;align-items:center;gap:18px;padding:0 20px;border-bottom:1px solid var(--line);background:#0d1014}
         .brand{display:flex;align-items:center;gap:11px;color:#fff;text-decoration:none}.brand-mark{display:grid;width:32px;height:32px;place-items:center;border:1px solid #373d46;border-radius:9px;background:#171b20;font-size:13px;font-weight:950;letter-spacing:-.02em}.brand-copy{display:grid;gap:1px}.brand-copy strong{font-size:13px;font-weight:900;letter-spacing:.14em}.brand-copy small{color:#6f7885;font-size:8px;font-weight:850;letter-spacing:.13em}
         .channel-wrap{position:relative}.channel-label{position:absolute;z-index:1;top:7px;left:13px;color:#737d89;font-size:8px;font-weight:900;letter-spacing:.12em;pointer-events:none}.channel{width:100%;height:44px;padding:16px 36px 3px 12px;border:1px solid #323944;border-radius:10px;outline:0;background:#15191f;color:#fff;font-size:12px;font-weight:800}.channel:focus{border-color:#7c6840;box-shadow:0 0 0 3px #d4ad6018}
@@ -47,7 +47,7 @@
         <nav class="workspace-tools" aria-label="배치 및 설정">
             <button type="button" data-view="layout-1">1P <span>진행 배치</span></button>
             <button type="button" data-view="layout-2">2P <span>개체 배치</span></button>
-            <button type="button" data-view="layout-3">3P <span>집계 배치</span></button>
+            <button id="layout-3-button" type="button" data-view="layout-3">3P <span>집계 배치</span></button>
             <button type="button" data-view="settings">방송 설정</button>
         </nav>
         <nav class="live-tools" aria-label="송출 화면 열기"><a id="live-1" target="_blank" rel="noopener">진행 · 1P</a><a id="live-2" target="_blank" rel="noopener">경매 · 2P</a><a id="live-3" target="_blank" rel="noopener">집계 · 3P</a></nav>
@@ -61,12 +61,10 @@ document.addEventListener('DOMContentLoaded',()=>{
     const initialParams=new URLSearchParams(location.search),requested=String(initialParams.get('channel')||'cdcup').toLowerCase().replace(/[^a-z0-9-]/g,''),requestedView=String(initialParams.get('view')||'layout-1');
     let activeView=/^(layout-[123]|settings)$/.test(requestedView)?requestedView:'layout-1';
     const esc=value=>CreoPlatform.escapeHtml(value);
-    function controlKind(channel){return channel?.id==='cdcup'?'cdcup':'platform'}
-    function settingsUrl(channel){const kind=controlKind(channel);return kind==='platform'?`auction-control.html?channel=${encodeURIComponent(channel.id)}&embedded=1`:`settings.html?module=${encodeURIComponent(kind)}&channel=${encodeURIComponent(channel.id)}&embedded=1`}
-    function frameUrl(channel,view){const layout=view.match(/^layout-([123])$/);if(layout&&(channel.id==='cdcup'||channel.id==='crewart'))return`preview.html?module=${encodeURIComponent(channel.id)}&page=${layout[1]}&embedded=1`;if(layout)return`auction-control.html?channel=${encodeURIComponent(channel.id)}&embedded=1&page=${layout[1]}`;return settingsUrl(channel)}
+    function frameUrl(channel,view){return CreoBroadcastProfiles.studioFrame(channel,view)}
     function liveUrl(channel,page){return`broadcast-router.html?event=${encodeURIComponent(channel.id)}&page=${page}`}
     function showView(view){activeView=/^(layout-[123]|settings)$/.test(view)?view:'layout-1';document.querySelectorAll('[data-view]').forEach(button=>button.classList.toggle('active',button.dataset.view===activeView));if(!activeChannel)return;const src=frameUrl(activeChannel,activeView);if(frame.getAttribute('src')!==src)frame.src=src;const label=activeView==='settings'?'방송 설정':activeView.replace('layout-','')+'P 배치';frame.title=`${activeChannel.name} ${label}`;history.replaceState(null,'',`broadcast-studio.html?channel=${encodeURIComponent(activeChannel.id)}&view=${encodeURIComponent(activeView)}`)}
-    function activate(id){activeChannel=channels.find(row=>row.id===id)||channels[0];if(!activeChannel)return;select.value=activeChannel.id;studio.dataset.channel=activeChannel.id;$('engine-label').textContent=`${activeChannel.name} 방송 관리`;studio.querySelector('.brand-mark').textContent=activeChannel.id==='crewart'?'W':'C';for(let page=1;page<=3;page++)$('live-'+page).href=liveUrl(activeChannel,page);showView(activeView)}
+    function activate(id){activeChannel=channels.find(row=>row.id===id)||channels[0];if(!activeChannel)return;const profile=CreoBroadcastProfiles.resolve(activeChannel),page3Label=profile.page3Label||'집계';select.value=activeChannel.id;studio.dataset.channel=activeChannel.id;studio.dataset.broadcastProfile=profile.id;studio.style.setProperty('--accent',profile.studioAccent||activeChannel.theme?.secondary||'#e3b75d');studio.style.setProperty('--accent-ink',profile.studioAccentInk||activeChannel.theme?.background||'#171106');$('engine-label').textContent=`${activeChannel.name} 방송 관리`;studio.querySelector('.brand-mark').textContent=profile.brandMark||'C';$('layout-3-button').querySelector('span').textContent=`${page3Label} 배치`;for(let page=1;page<=3;page++)$('live-'+page).href=liveUrl(activeChannel,page);$('live-3').textContent=`${page3Label} · 3P`;showView(activeView)}
     async function load(){const data=await CreoPlatform.api('channels');channels=data.channels||[];select.innerHTML=channels.map(channel=>`<option value="${esc(channel.id)}">${esc(channel.name)}</option>`).join('');if(!channels.length)throw new Error('사용 가능한 채널이 없습니다.');gate.hidden=true;studio.hidden=false;activate(requested)}
     function showLogin(message=''){studio.hidden=true;gate.hidden=false;error.textContent=message;submit.disabled=false;password.disabled=false;requestAnimationFrame(()=>password.focus({preventScroll:true}))}
     select.addEventListener('change',()=>activate(select.value));

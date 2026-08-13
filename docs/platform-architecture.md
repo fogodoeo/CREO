@@ -19,6 +19,34 @@ CREO 운영 허브
    └─ 활성 채널에 맞춰 공용 화면의 테마·레이아웃 자동 전환
 ```
 
+## 공용 모듈과 채널 전용 설정
+
+화면에서 `channel === 'cdcup'`처럼 채널 ID를 직접 비교하지 않는다. 각 채널은 아래 세 가지 설정으로 공용 코드에 동작을 주입한다.
+
+```text
+channel-runtime.js
+└─ 채널 선택, 공용 URL, 기능 노출, 채널 전용 페이지
+
+channel-adapters.js
+├─ platform: 채널별 SQLite/Supabase 운영 데이터
+└─ legacy-cdcup: 현재 CDCUP 자료 호환
+
+broadcast-profiles.js
+├─ standard: 일반 집계판
+├─ cdcup-tournament: 대진표·팀 합계·진출자
+└─ crewart-academy: 그룹·기숙사 컵
+```
+
+채널 설정의 주요 확장 필드는 다음과 같다.
+
+- `dataAdapter`: 업체·개체·배송을 어느 저장 계약으로 읽고 쓸지 결정한다.
+- `broadcastProfile`: 3P 화면과 프로필별 방송 설정을 결정한다.
+- `pages`: 설문·레거시 회차처럼 해당 채널에만 있는 페이지를 연결한다.
+- `theme`, `overlay`, `logoUrl`: 공용 1P·2P 골격 안의 로고·색상·박스 디자인을 결정한다.
+- `features`, `terminology`, `groups`, `scoreboards`: 메뉴와 입력 항목, 채널 용어, 집계 단위를 결정한다.
+
+1P는 진행자·공지·자막·배너, 2P는 개체·업체·사진·가격·낙찰·자막·배너라는 공용 슬롯 계약을 사용한다. 값과 디자인 자산은 채널별로 저장된다. 3P만 `broadcastProfile`에 따라 일반 집계판, 토너먼트 대진표, 기숙사 컵처럼 서로 다른 렌더러를 사용한다.
+
 ## 강제되는 데이터 경계
 
 모든 신규 운영 데이터의 저장 키는 다음 형식이다.
@@ -66,9 +94,13 @@ SQLite를 기본 저장소로 사용한다. 한 채널의 JSON 묶음을 통째�
 
 비슷한 경매는 기존 채널의 **복제**를 사용한다. 복제본은 항상 `draft` 상태로 시작하며 데이터가 비어 있다.
 
+CDCUP을 복제해도 `cdcup-tournament` 방송 프로필과 디자인·기능 설정만 이어받는다. 복제본의 `dataAdapter`는 반드시 `platform`으로 바뀌며 CDCUP 레거시 페이지 주소와 운영 데이터는 복사되지 않는다. 따라서 새 채널은 같은 1P·2P 골격과 토너먼트 3P 규칙을 사용하면서 업체·개체·배송·방송 상태를 자기 채널 키에만 저장한다.
+
 ## 기존 시스템과의 경계
 
-- CDCUP과 CREWARTS는 기존 관리·제어·송출 화면을 기본 경로로 유지한다.
+- 현재 CDCUP은 검증된 등록·목록·인쇄·회차 화면과 기존 방송 엔진을 유지한다.
+- CDCUP 호환 여부는 채널 ID가 아니라 `legacy-cdcup` 데이터 어댑터로 결정한다.
+- CDCUP을 포함한 레거시 채널 복제본은 공용 플랫폼 엔진으로 전환되므로 원본 데이터를 공유하지 않는다.
 - 새로 추가하는 채널은 채널별 작업공간·제어·공용 송출 모듈을 사용한다.
 - 기존 `items`, `parents`, 전역 설정 데이터는 변경하거나 삭제하지 않는다.
 - 기존 자료를 새 작업공간으로 옮길 때는 채널 ID를 명시한 가져오기 검증 후 전환한다.
@@ -90,6 +122,9 @@ SQLite를 기본 저장소로 사용한다. 한 채널의 JSON 묶음을 통째�
 - `sqlite-platform-repository.js`: SQLite 기본 저장, WAL, 원자적 변경, Supabase outbox
 - `platform-api.js`: 인증, 검증, CRUD, 방송 상태 API
 - `public/channel-manager.html`: 채널 생성·복제·디자인 설정
+- `public/channel-runtime.js`: 공용 채널 선택·URL·기능·전용 페이지 해석
+- `public/channel-adapters.js`: CDCUP 호환 및 플랫폼 데이터의 공통 작업 계약
+- `public/broadcast-profiles.js`: 공용 1P·2P 계약과 채널별 3P·설정 프로필
 - `public/channel-workspace.html`: 업체·개체·배송 관리
 - `public/auction-control.html`: 공용 방송 제어
 - `public/auction-live.html`: 신규 채널의 템플릿별 공용 방송 화면

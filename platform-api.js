@@ -584,6 +584,8 @@ function createPlatformApi({ repository, logger = console } = {}) {
                     id: body.channel?.id,
                     name: body.channel?.name || `${channel.name} 복사본`,
                     status: 'draft',
+                    dataAdapter: 'platform',
+                    pages: {},
                     legacy: { items: false, managementUrl: '', controlUrl: '' }
                 });
                 const checked = validateChannel(proposed, catalog.channels);

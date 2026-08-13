@@ -9,6 +9,7 @@
     <title>CREO - 배송/수령 정보 등록</title>
     <script src="platform-client.js?v=20260803-admin-session-v2"></script>
     <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
+    <script src="channel-adapters.js?v=20260813-modular-v1"></script>
     <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard-dynamic-subset.css" />
     <style>
         /* ══════════════════════════════════════
@@ -2714,15 +2715,13 @@
         const SHIPPING_CHANNEL_ID = String(new URLSearchParams(window.location.search).get('channel') || 'cdcup')
             .toLowerCase().replace(/[^a-z0-9-]/g, '') || 'cdcup';
         document.getElementById('shipping-channel-home').href = `/?channel=${encodeURIComponent(SHIPPING_CHANNEL_ID)}`;
-        document.getElementById('shipping-workspace-link').href = SHIPPING_CHANNEL_ID === 'cdcup'
-            ? `cdcup-index.html?channel=${encodeURIComponent(SHIPPING_CHANNEL_ID)}`
-            : `channel-workspace.html?channel=${encodeURIComponent(SHIPPING_CHANNEL_ID)}`;
+        document.getElementById('shipping-workspace-link').href = `channel-workspace.html?channel=${encodeURIComponent(SHIPPING_CHANNEL_ID)}`;
         document.querySelectorAll('a[href="shipping-rates.html"]').forEach(link => {
             link.href = `shipping-rates.html?channel=${encodeURIComponent(SHIPPING_CHANNEL_ID)}`;
         });
-        const SHIPPING_USES_LEGACY_ITEMS = SHIPPING_CHANNEL_ID === 'cdcup';
         const SHIPPING_COMPANY_STORAGE_KEY = `creo_shipping_company_${SHIPPING_CHANNEL_ID}`;
-        let platformShippingWorkspace = null;
+        let shippingAdapter = null;
+        let shippingAdapterContext = null;
         const MOBILE_SHIPPING_HISTORY = window.matchMedia('(max-width: 820px)').matches;
         let restoringMobileShippingHistory = false;
 
@@ -2845,84 +2844,30 @@
             closeMessagePreview();
         });
 
-        function platformShipmentLegacyStatus(shipment) {
-            if (shipment?.status === 'complete') return '낙찰-입금완료';
-            if (shipment?.status === 'ready' || shipment?.status === 'shipped') return '낙찰-연락완료';
-            return '낙찰-대기';
-        }
-
-        function mapPlatformShippingItems(workspace) {
-            const vendors = new Map((workspace.vendors || []).map(vendor => [vendor.id, vendor]));
-            const shipments = new Map((workspace.shipments || []).map(shipment => [shipment.itemId, shipment]));
-            return (workspace.items || [])
-                .filter(item => item.status === 'sold' || Number(item.soldPrice) > 0)
-                .map(item => {
-                    const shipment = shipments.get(item.id);
-                    const vendorName = vendors.get(item.vendorId)?.name || item.vendorName || '';
-                    const soldPriceWon = Number(item.soldPrice) || 0;
-                    return {
-                        ...item,
-                        row: item.id,
-                        num: item.lotNumber,
-                        company: vendorName,
-                        name: item.name || '개체',
-                        winner: item.winnerName || item.winnerAlias || '',
-                        winner_phone: item.winnerPhone || '',
-                        sold_price: soldPriceWon / 10000,
-                        soldPrice: soldPriceWon / 10000,
-                        status: platformShipmentLegacyStatus(shipment),
-                        shipping_type: shipment ? (shipment.method === 'pickup' ? '직접수령' : '배송') : '',
-                        shipping_company: shipment?.carrier || '',
-                        shipping_region: shipment?.address || '',
-                        shipping_cost: Number(shipment?.cost) || 0,
-                        _platformItemId: item.id,
-                        _platformShipmentId: shipment?.id || ''
-                    };
-                });
+        async function ensureShippingAdapter() {
+            if (shippingAdapter) return shippingAdapter;
+            const channel = (await CreoPlatform.api(`channels/${encodeURIComponent(SHIPPING_CHANNEL_ID)}`)).channel;
+            shippingAdapter = CreoChannelAdapters.resolve(channel);
+            shippingAdapterContext = { channel };
+            const workspaceLink = document.getElementById('shipping-workspace-link');
+            if (workspaceLink) {
+                const target = new URL(channel.legacy?.managementUrl || 'channel-workspace.html', location.href);
+                target.searchParams.set('channel', channel.id);
+                workspaceLink.href = target.origin === location.origin
+                    ? `${target.pathname}${target.search}${target.hash}`
+                    : target.href;
+            }
+            return shippingAdapter;
         }
 
         async function loadShippingItems() {
-            if (SHIPPING_USES_LEGACY_ITEMS) return getItems();
-            platformShippingWorkspace = await CreoPlatform.api(`channels/${encodeURIComponent(SHIPPING_CHANNEL_ID)}/workspace`);
-            return mapPlatformShippingItems(platformShippingWorkspace);
+            const adapter = await ensureShippingAdapter();
+            return adapter.loadShippingItems(shippingAdapterContext);
         }
 
         async function saveShippingItem(row, shippingData, auditMeta = {}) {
-            if (SHIPPING_USES_LEGACY_ITEMS) return updateItemShipping(row, shippingData, auditMeta);
-            if (!platformShippingWorkspace) await loadShippingItems();
-            const item = (platformShippingWorkspace.items || []).find(entry => entry.id === row);
-            if (!item) throw new Error('이 채널에서 낙찰 개체를 찾을 수 없습니다.');
-            const vendor = (platformShippingWorkspace.vendors || []).find(entry => entry.id === item.vendorId);
-            const current = (platformShippingWorkspace.shipments || []).find(entry => entry.itemId === item.id);
-            const pickup = shippingData.shipping_type === '직접수령';
-            const record = {
-                ...(current || {}),
-                itemId: item.id,
-                itemName: item.name || '',
-                itemLotNumber: Number(item.lotNumber) || 0,
-                itemVendorName: vendor?.name || item.vendorName || '',
-                vendorId: item.vendorId || '',
-                recipientName: item.winnerName || item.winnerAlias || '',
-                recipientPhone: item.winnerPhone || '',
-                method: pickup ? 'pickup' : 'delivery',
-                address: pickup ? '' : (shippingData.shipping_region || ''),
-                carrier: pickup ? '' : (shippingData.shipping_company || ''),
-                cost: pickup ? 0 : (Number(shippingData.shipping_cost) || 0),
-                status: current?.status || 'pending',
-                note: current?.note || ''
-            };
-            const path = `channels/${encodeURIComponent(SHIPPING_CHANNEL_ID)}/shipments${current ? '/' + encodeURIComponent(current.id) : ''}`;
-            const result = await CreoPlatform.api(path, {
-                method: current ? 'PUT' : 'POST',
-                body: JSON.stringify({ record })
-            });
-            const saved = result.record;
-            if (current) {
-                platformShippingWorkspace.shipments = platformShippingWorkspace.shipments.map(entry => entry.id === saved.id ? saved : entry);
-            } else {
-                platformShippingWorkspace.shipments.push(saved);
-            }
-            return { success: true, data: saved };
+            const adapter = await ensureShippingAdapter();
+            return adapter.saveShippingItem(shippingAdapterContext, row, shippingData, auditMeta);
         }
 
         function syncShippingChannelUi() {
