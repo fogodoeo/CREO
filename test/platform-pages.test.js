@@ -183,6 +183,19 @@ test('established CDCUP registration, list, print, and round archive remain inta
     assert.match(bridge, /photo: r\.photo_url/);
 });
 
+test('CDCUP opens on sortable shipping completion results without auction number columns', () => {
+    const operations = fs.readFileSync(path.join(__dirname, '..', 'public', 'cdcup-index.html'), 'utf8');
+    assert.match(operations, /<button class="cdcup-tab tab-btn active" onclick="showTab\('print',this\)">인쇄<\/button>/);
+    assert.match(operations, /if \(!openInitialTabFromUrl\(\)\) showTab\('print'\)/);
+    assert.match(operations, /id="print-sub-presult" class="print-sub active"/);
+    assert.match(operations, /배송지 입력이 완료되었습니까\?/);
+    assert.match(operations, /function sortPrintResults\(key\)/);
+    assert.match(operations, /printResultHeader\('상태', 'complete'\)/);
+    assert.match(operations, /\['업체', '이름', '낙찰가\(만원\)', '낙찰자', '연락처', '배송', '상태'\]/);
+    assert.match(operations, /completions\[shippingCompletionId\(it\)\] \? '완료' : ''/);
+    assert.doesNotMatch(operations, /ptable-result[^\n]*<th>번호<\/th><th>구분<\/th>/);
+});
+
 test('new CDCUP overlays and shipping retain compatibility with the established item list', () => {
     const live = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-live.html'), 'utf8');
     const control = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-control.html'), 'utf8');

@@ -1658,6 +1658,41 @@
             cursor: wait;
         }
 
+        .print-sort-btn {
+            width: 100%;
+            padding: 0;
+            border: 0;
+            background: transparent;
+            color: inherit;
+            font: inherit;
+            font-weight: inherit;
+            text-align: inherit;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .print-sort-btn::after {
+            content: ' ↕';
+            color: #94a3b8;
+            font-size: .8em;
+        }
+
+        .print-sort-btn[data-direction="asc"]::after { content: ' ▲'; color: #2563eb; }
+        .print-sort-btn[data-direction="desc"]::after { content: ' ▼'; color: #2563eb; }
+
+        .shipping-complete-check {
+            width: 22px;
+            height: 22px;
+            margin: 0;
+            accent-color: #16a34a;
+            cursor: pointer;
+            vertical-align: middle;
+        }
+
+        .ptable-result .pstatus {
+            text-align: center;
+        }
+
         #tab-print {
             background: #ffffff !important;
             color: #0f172a !important;
@@ -1764,15 +1799,13 @@
             font-size: 12pt;
         }
 
-        .ptable-result col:nth-child(1) { width: 6%; }
-        .ptable-result col:nth-child(2) { width: 10%; }
-        .ptable-result col:nth-child(3) { width: 12%; }
+        .ptable-result col:nth-child(1) { width: 14%; }
+        .ptable-result col:nth-child(2) { width: 17%; }
+        .ptable-result col:nth-child(3) { width: 11%; }
         .ptable-result col:nth-child(4) { width: 14%; }
-        .ptable-result col:nth-child(5) { width: 9%; }
-        .ptable-result col:nth-child(6) { width: 12%; }
-        .ptable-result col:nth-child(7) { width: 14%; }
-        .ptable-result col:nth-child(8) { width: 15%; }
-        .ptable-result col:nth-child(9) { width: 8%; }
+        .ptable-result col:nth-child(5) { width: 16%; }
+        .ptable-result col:nth-child(6) { width: 20%; }
+        .ptable-result col:nth-child(7) { width: 8%; }
 
         .ptable-buyer col:nth-child(1) { width: 13%; }
         .ptable-buyer col:nth-child(2) { width: 18%; }
@@ -2610,9 +2643,9 @@
         <header class="vendor-head"><div><small>CDCUP</small><h1>업체 페이지</h1></div></header>
         <!-- 업비트 스타일 서브 탭 바 -->
         <div class="cdcup-tabs" style="margin-bottom: 24px; align-items: center; display: flex;">
+            <button class="cdcup-tab tab-btn active" onclick="showTab('print',this)">인쇄</button>
             <button class="cdcup-tab tab-btn" onclick="showTab('register',this)">등록</button>
-            <button class="cdcup-tab tab-btn active" onclick="showTab('list',this)">목록</button>
-            <button class="cdcup-tab tab-btn" onclick="showTab('print',this)">인쇄</button>
+            <button class="cdcup-tab tab-btn" onclick="showTab('list',this)">목록</button>
             <button class="cdcup-tab tab-btn" id="admin-archive-tab" onclick="showTab('archive',this)">회차 기록</button>
             <a href="shipping.html" class="cdcup-tab vendor-only" style="text-decoration:none">배송</a>
             <span style="margin-left: auto;"></span>
@@ -2655,7 +2688,7 @@
         </div>
 
         <!-- ═══ 목록 탭 ═══ -->
-        <div id="tab-list" class="section active">
+        <div id="tab-list" class="section">
             <!-- 일반 모드: 업체 필터 + 편집 버튼 -->
             <div class="normal-bar" id="normal-bar">
                 <div id="company-filter-bar" class="company-filter-bar" style="display:none;flex:1;margin:0;"></div>
@@ -2698,11 +2731,11 @@
         </div>
 
         <!-- ═══ 인쇄 탭 ═══ -->
-        <div id="tab-print" class="section">
+        <div id="tab-print" class="section active">
             <div class="print-controls"
                 style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">
-                <button class="print-sub-btn active" onclick="showPrintSub('plist',this)">경매 리스트</button>
-                <button class="print-sub-btn" onclick="showPrintSub('presult',this)">낙찰 결과</button>
+                <button class="print-sub-btn" onclick="showPrintSub('plist',this)">경매 리스트</button>
+                <button class="print-sub-btn active" onclick="showPrintSub('presult',this)">낙찰 결과</button>
                 <button class="print-sub-btn" onclick="showPrintSub('pcompany',this)">구매자별</button>
 
                 <span
@@ -2714,7 +2747,7 @@
                         oninput="applyPrintSettings()">
                     <span id="p-pad-lbl">1</span>px
                 </span>
-                <span class="print-export-actions" id="result-export-actions">
+                <span class="print-export-actions active" id="result-export-actions">
                     <button class="print-export-btn excel" type="button" onclick="exportAuctionResultsExcel(this)">엑셀 저장</button>
                     <button class="print-export-btn sheets" type="button" onclick="openAuctionResultsInGoogleSheets(this)">구글시트로 보내기</button>
                 </span>
@@ -2725,7 +2758,7 @@
                     style="padding:6px 16px;border-radius:8px;border:none;background:#2563EB;color:#fff;font-size:12px;font-weight:700;cursor:pointer;"
                     onclick="doPrint()">🖨️ 인쇄</button>
             </div>
-            <div id="print-sub-plist" class="print-sub active">
+            <div id="print-sub-plist" class="print-sub">
                 <div style="font-size:12px;color:var(--text3);margin-bottom:6px;text-align:left;">
                     <span id="pl-meta"></span>
                 </div>
@@ -2733,7 +2766,7 @@
                     <div style="text-align:center;padding:40px;color:var(--text3);">로딩중...</div>
                 </div>
             </div>
-            <div id="print-sub-presult" class="print-sub">
+            <div id="print-sub-presult" class="print-sub active">
                 <div style="font-size:12px;color:var(--text3);margin-bottom:6px;text-align:left;">
                     <span id="pr-meta"></span>
                 </div>
@@ -4692,28 +4725,100 @@
             return chars.slice(0, Math.max(0, maxChars - 1)).join('') + '…';
         }
 
+        var printResultSort = { key: '', direction: 'asc' };
+
+        function shippingCompletionStorageKey() {
+            var channel = new URLSearchParams(location.search).get('channel') || 'cdcup';
+            return 'creo_shipping_completion_v1_' + channel;
+        }
+
+        function shippingCompletionId(it) {
+            return String(it.id || it.row || [it.company, it.num, it.name].join('|'));
+        }
+
+        function readShippingCompletions() {
+            try { return JSON.parse(localStorage.getItem(shippingCompletionStorageKey()) || '{}') || {}; }
+            catch (e) { return {}; }
+        }
+
+        function setShippingCompletion(itemId, completed, checkbox) {
+            if (completed && !confirm('배송지 입력이 완료되었습니까?')) {
+                checkbox.checked = false;
+                return;
+            }
+            if (!completed && !confirm('배송지 입력 완료 표시를 해제하시겠습니까?')) {
+                checkbox.checked = true;
+                return;
+            }
+            var completions = readShippingCompletions();
+            if (completed) completions[itemId] = true;
+            else delete completions[itemId];
+            try { localStorage.setItem(shippingCompletionStorageKey(), JSON.stringify(completions)); }
+            catch (e) { toast('상태를 저장하지 못했습니다.', true); }
+            renderPrintResultTable();
+        }
+
+        function printResultSortValue(it, key) {
+            var winner = parseWinnerP(it.winner);
+            if (key === 'company') return it.company || '';
+            if (key === 'name') return it.name || '';
+            if (key === 'soldPrice') return parseFloat(it.soldPrice || 0) || 0;
+            if (key === 'winner') return winner.name || '';
+            if (key === 'phone') return String(winner.phone || '').replace(/[^0-9]/g, '');
+            if (key === 'shipping') return fmtShipTextForPrint(it, false);
+            if (key === 'complete') return readShippingCompletions()[shippingCompletionId(it)] ? 1 : 0;
+            return '';
+        }
+
+        function sortPrintResults(key) {
+            if (printResultSort.key === key) printResultSort.direction = printResultSort.direction === 'asc' ? 'desc' : 'asc';
+            else printResultSort = { key: key, direction: 'asc' };
+            renderPrintResultTable();
+        }
+
+        function printResultHeader(label, key) {
+            var direction = printResultSort.key === key ? printResultSort.direction : '';
+            return '<th><button type="button" class="print-sort-btn" data-direction="' + direction + '" onclick="sortPrintResults(\'' + key + '\')">' + label + '</button></th>';
+        }
+
         function buildRow(it, showCo) {
-            var st = it.status || '', sc = '', sx = '';
-            if (st.indexOf('낙찰') >= 0) { sc = 'color:#C84A31;'; sx = '낙찰'; }
-            else if (st.indexOf('유찰') >= 0) { sc = 'color:#888;'; sx = '유찰'; }
-            else if (st.indexOf('취소') >= 0) { sc = 'color:#888;'; sx = '취소'; }
-            else if (st.indexOf('진행') >= 0) { sx = '진행중'; }
             var w = parseWinnerP(it.winner);
             var shortName = truncatePrintListName(it.name, 10);
+            var itemId = shippingCompletionId(it);
+            var completed = !!readShippingCompletions()[itemId];
             var r = '<tr>';
-            r += '<td class="pnum">' + auctionNumber(it) + '</td>';
-            r += '<td class="ptype">' + auctionStageLabel(it) + '</td>';
-            if (showCo) r += '<td class="pcomp">' + (it.company || '') + '</td>';
-            r += '<td class="pname">' + shortName + '</td>';
+            if (showCo) r += '<td class="pcomp">' + esc(it.company || '') + '</td>';
+            r += '<td class="pname">' + esc(shortName) + '</td>';
             r += '<td class="psold">' + (it.soldPrice ? fmtPriceP(it.soldPrice) : '') + '</td>';
-            r += '<td class="pwinner">' + w.name + '</td>';
-            r += '<td class="pphone">' + fmtPhoneP(w.phone) + '</td>';
+            r += '<td class="pwinner">' + esc(w.name) + '</td>';
+            r += '<td class="pphone">' + esc(fmtPhoneP(w.phone)) + '</td>';
             
             var shipText = fmtShipTextForPrint(it, true);
             r += '<td class="pship">' + shipText + '</td>';
-            r += '<td class="pstatus" style="' + sc + '">' + sx + '</td>';
+            r += '<td class="pstatus"><input class="shipping-complete-check" type="checkbox" data-item-id="' + esc(itemId) + '" aria-label="' + esc(shortName) + ' 배송지 입력 완료" ' + (completed ? 'checked ' : '') + 'onchange="setShippingCompletion(this.dataset.itemId,this.checked,this)"></td>';
             r += '</tr>';
             return r;
+        }
+
+        function renderPrintResultTable() {
+            var items = (window._lastItems || []).slice();
+            if (printResultSort.key) {
+                var direction = printResultSort.direction === 'desc' ? -1 : 1;
+                items.sort(function (a, b) {
+                    var av = printResultSortValue(a, printResultSort.key);
+                    var bv = printResultSortValue(b, printResultSort.key);
+                    if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * direction;
+                    return String(av).localeCompare(String(bv), 'ko', { numeric: true, sensitivity: 'base' }) * direction;
+                });
+            }
+            var rh = '<table class="ptable ptable-result"><colgroup><col><col><col><col><col><col><col></colgroup><thead><tr>';
+            rh += printResultHeader('업체', 'company') + printResultHeader('이름', 'name') + printResultHeader('낙찰가', 'soldPrice');
+            rh += printResultHeader('낙찰자', 'winner') + printResultHeader('연락처', 'phone') + printResultHeader('배송', 'shipping') + printResultHeader('상태', 'complete');
+            rh += '</tr></thead><tbody>';
+            items.forEach(function (it) { rh += buildRow(it, true); });
+            rh += '</tbody></table>';
+            document.getElementById('pr-body').innerHTML = rh;
+            applyPrintSettings();
         }
 
         async function loadPrint() {
@@ -4748,10 +4853,7 @@
 
             // 낙찰 결과
             document.getElementById('pr-meta').textContent = dateStr + ' · 낙찰 ' + sold.length + '건 / 유찰 ' + unsold.length + '건 / 전체 ' + items.length + '건 · 총매출 ' + fmtPriceP(total);
-            var rh = '<table class="ptable ptable-result"><colgroup><col><col><col><col><col><col><col><col><col></colgroup><thead><tr><th>번호</th><th>구분</th><th>업체</th><th>이름</th><th>낙찰가</th><th>낙찰자</th><th>연락처</th><th>배송</th><th>상태</th></tr></thead><tbody>';
-            items.forEach(function (it) { rh += buildRow(it, true); });
-            rh += '</tbody></table>';
-            document.getElementById('pr-body').innerHTML = rh;
+            renderPrintResultTable();
 
             // 업체별 — 전화번호 기반 연결선
             var cmap = {}, corder = [];
@@ -4792,32 +4894,22 @@
             if (exportActions) exportActions.classList.toggle('active', name === 'presult');
         }
 
-        function auctionResultStatus(it) {
-            var status = String(it.status || '');
-            if (status.indexOf('낙찰') >= 0) return '낙찰';
-            if (status.indexOf('유찰') >= 0) return '유찰';
-            if (status.indexOf('취소') >= 0) return '취소';
-            if (status.indexOf('진행') >= 0) return '진행중';
-            return status;
-        }
-
         function auctionResultExportRows() {
             var items = window._lastItems || [];
+            var completions = readShippingCompletions();
             return [
-                ['번호', '경매 구분', '업체', '이름', '낙찰가(만원)', '낙찰자', '연락처', '배송', '상태']
+                ['업체', '이름', '낙찰가(만원)', '낙찰자', '연락처', '배송', '상태']
             ].concat(items.map(function (it) {
                 var winner = parseWinnerP(it.winner);
                 var soldPrice = it.soldPrice === '' || it.soldPrice == null ? '' : Number(it.soldPrice);
                 return [
-                    auctionNumber(it),
-                    auctionStageLabel(it),
                     it.company || '',
                     it.name || '',
                     Number.isFinite(soldPrice) ? soldPrice : '',
                     winner.name || '',
                     fmtPhoneP(winner.phone),
                     fmtShipTextForPrint(it, false),
-                    auctionResultStatus(it)
+                    completions[shippingCompletionId(it)] ? '완료' : ''
                 ];
             }));
         }
@@ -4850,10 +4942,10 @@
             try {
                 var worksheet = XLSX.utils.aoa_to_sheet(rows);
                 worksheet['!cols'] = [
-                    { wch: 8 }, { wch: 14 }, { wch: 18 }, { wch: 24 }, { wch: 16 },
-                    { wch: 18 }, { wch: 16 }, { wch: 28 }, { wch: 12 }
+                    { wch: 18 }, { wch: 24 }, { wch: 16 }, { wch: 18 },
+                    { wch: 16 }, { wch: 28 }, { wch: 12 }
                 ];
-                worksheet['!autofilter'] = { ref: 'A1:I' + rows.length };
+                worksheet['!autofilter'] = { ref: 'A1:G' + rows.length };
                 var workbook = XLSX.utils.book_new();
                 workbook.Props = { Title: 'CDCUP 낙찰 결과', Subject: '낙찰 결과 표', Author: 'CDCUP' };
                 XLSX.utils.book_append_sheet(workbook, worksheet, '낙찰 결과');
@@ -5641,7 +5733,7 @@
             loadParents();
             restoreVendorRegistration();
             addEntry(false);
-            if (!openInitialTabFromUrl()) loadList();
+            if (!openInitialTabFromUrl()) showTab('print');
         } catch (initErr) {
             document.getElementById('item-list').innerHTML = '<div style="color:red;padding:20px;">초기화 오류: ' + initErr.message + '</div>';
         }
