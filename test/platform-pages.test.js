@@ -122,6 +122,11 @@ test('channel creation starts with a safe generated id and protects unsaved edit
     assert.match(manager, /scrollbar-width:none/);
     assert.match(manager, /function syncFeatureUi/);
     assert.match(manager, /data-key="topN"/);
+    assert.match(manager, /id="broadcast-default-notice"/);
+    assert.match(manager, /id="broadcast-default-page1-ticker"/);
+    assert.match(manager, /id="broadcast-default-page2-ticker"/);
+    assert.match(manager, /id="broadcast-default-page3-title"/);
+    assert.match(manager, /broadcastDefaults/);
     assert.doesNotMatch(manager, /<label for="broadcast-template">집계 화면 기본형/);
 });
 
