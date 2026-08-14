@@ -814,9 +814,9 @@
     }
 
     function buildResultReportSteps(profile, house) {
-        const bestMatch = profile.bestMatch
-            ? `${profile.bestMatch.mbti} · ${profile.bestMatch.title}`
-            : '서로 다른 방식도 천천히 맞춰갈 수 있어요.';
+        const strengthStatement = profile.superpower || profile.summary || TYPE_READINGS[result.code] || '관찰한 내용을 자신만의 방식으로 정리해 다음 행동으로 연결합니다.';
+        const bestMatchCode = profile.bestMatch?.mbti || '좋은 조합';
+        const bestMatchTitle = profile.bestMatch?.title || '서로 다른 방식도 천천히 맞춰갈 수 있어요.';
         const cautiousMatch = profile.worstMatch
             ? `${profile.worstMatch.mbti} 유형과는 판단 속도를 맞춰보세요.`
             : '다른 기준을 먼저 확인하면 오해를 줄일 수 있어요.';
@@ -824,19 +824,21 @@
             {
                 kicker: '나의 방식',
                 railTitle: '자연스럽게 잘하는 것',
-                title: '이게 당신의 강점',
-                body: profile.superpower || profile.summary || TYPE_READINGS[result.code] || '관찰한 내용을 자신만의 방식으로 정리해 다음 행동으로 연결합니다.',
+                title: '당신의 핵심 강점',
+                body: '',
                 note: profile.weakness ? `한 번 더 볼 것 · ${profile.weakness}` : '',
                 keywords: [result.code, house.name],
+                hook: { kind: 'strength', value: strengthStatement },
                 visual: 'personality'
             },
             {
                 kicker: '궁합',
                 railTitle: '편한 조합과 어려운 조합',
                 title: '함께할 때 편안한 유형',
-                body: bestMatch,
+                body: '',
                 note: cautiousMatch,
                 keywords: [profile.bestMatch?.mbti, profile.worstMatch?.mbti, '관계 리듬'].filter(Boolean),
+                hook: { kind: 'match', value: bestMatchCode, detail: bestMatchTitle },
                 visual: 'compatibility'
             }
         ];
@@ -905,6 +907,11 @@
         const firstScenePath = resultScenePath(firstStep.visual);
         preloadResultScenes(steps);
         const stepMarkup = steps.map((step, index) => {
+            const hookMarkup = step.hook ? `
+                <div class="cw-depth-hook is-${escapeHtml(step.hook.kind)}">
+                    <strong>${escapeHtml(step.hook.value)}</strong>
+                    ${step.hook.detail ? `<span>${escapeHtml(step.hook.detail)}</span>` : ''}
+                </div>` : '';
             const axisScoreMarkup = step.axisScore ? `
                 <div class="cw-depth-axis-score" aria-label="가장 선명한 방향 ${escapeHtml(step.axisScore.label)} ${step.axisScore.value}%">
                     <span>가장 선명한 방향</span>
@@ -923,13 +930,14 @@
                         </div>`).join('')}
                 </div>` : '';
             return `
-            <li class="cw-depth-step is-${escapeHtml(step.visual)}${index === 0 ? ' is-active' : ''}${step.kind === 'axes' ? ' is-axis-hold' : ''}" data-depth-step="${index}">
+            <li class="cw-depth-step is-${escapeHtml(step.visual)}${step.hook ? ' has-hook' : ''}${index === 0 ? ' is-active' : ''}${step.kind === 'axes' ? ' is-axis-hold' : ''}" data-depth-step="${index}">
                 <article>
                     <div class="cw-depth-step-meta">
                         <span class="cw-depth-step-number">${String(index + 1).padStart(2, '0')}</span>
                         <small>${escapeHtml(step.kicker)}</small>
                     </div>
                     <h3>${escapeHtml(step.title)}</h3>
+                    ${hookMarkup}
                     ${step.body ? `<p>${escapeHtml(step.body)}</p>` : ''}
                     ${axisScoreMarkup}
                     ${axisMarkup}
