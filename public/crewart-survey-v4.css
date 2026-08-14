@@ -965,26 +965,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     line-height: 1.2;
 }
 
-.cw-depth-unlock {
-    display: inline-flex;
-    min-height: 42px;
-    margin-top: 16px;
-    padding: 0 16px;
-    align-items: center;
-    justify-content: space-between;
-    gap: 28px;
-    border: 0;
-    border-radius: 999px;
-    background: #202421;
-    color: #fff;
-    font-size: 12px;
-    font-weight: 800;
-    cursor: pointer;
-}
-
-.cw-depth-unlock[hidden] { display: none; }
-.cw-depth-unlock:disabled { background: #dfe2dd; color: #747a75; cursor: default; }
-
 .cw-depth-steps {
     margin: 0;
     padding: 0;
@@ -1002,6 +982,17 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-depth-step.is-active {
     opacity: 1;
     transform: none;
+}
+
+.cw-depth-step.is-axis-hold {
+    min-height: clamp(660px, 108svh, 860px);
+    padding-top: clamp(72px, 15svh, 128px);
+    align-items: flex-start;
+}
+
+.cw-depth-step.is-axis-hold > article {
+    position: sticky;
+    top: 74px;
 }
 
 .cw-depth-step-number {
@@ -1070,12 +1061,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     font-weight: 820;
 }
 
-.cw-depth-axis-row header span {
-    color: var(--house-accent, #16814b);
-    font-size: 11px;
-    font-weight: 820;
-}
-
 .cw-depth-axis-track {
     position: relative;
     height: 4px;
@@ -1083,6 +1068,21 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     border-radius: 999px;
     background: #dfe2dd;
 }
+
+.cw-depth-axis-track::after {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: var(--axis-fill-start);
+    width: var(--axis-fill-width);
+    border-radius: inherit;
+    background: color-mix(in srgb, var(--house-accent, #16814b) 58%, #fff);
+    content: "";
+    transform: scaleX(0);
+}
+
+.cw-depth-axis-row.is-left .cw-depth-axis-track::after { transform-origin: right center; }
+.cw-depth-axis-row.is-right .cw-depth-axis-track::after { transform-origin: left center; }
 
 .cw-depth-axis-track i {
     position: absolute;
@@ -1113,10 +1113,18 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     animation: cw-depth-axis-point .78s cubic-bezier(.18, .8, .2, 1) var(--axis-delay) both;
 }
 
+.cw-depth-step.is-active .cw-depth-axis-track::after {
+    animation: cw-depth-axis-fill .68s cubic-bezier(.18, .8, .2, 1) var(--axis-delay) both;
+}
+
 @keyframes cw-depth-axis-point {
     from { left: 50%; opacity: 0; transform: translate(-50%, -50%) scale(.72); }
     28% { opacity: 1; }
     to { left: var(--axis-position); opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+@keyframes cw-depth-axis-fill {
+    to { transform: scaleX(1); }
 }
 
 .cw-depth-axis-ends {
@@ -1129,7 +1137,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 }
 
 .cw-depth-axis-ends .is-selected {
-    color: #343a35;
+    color: var(--house-accent, #16814b);
     font-weight: 820;
 }
 
@@ -1142,10 +1150,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     font-weight: 650;
     line-height: 1.55;
     word-break: keep-all;
-}
-
-.cw-depth-step .cw-depth-unlock {
-    margin-top: 20px;
 }
 
 .cw-depth-outro {
@@ -1273,6 +1277,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
         opacity: .18;
     }
     .cw-depth-step.is-active { opacity: 1; transform: none; }
+    .cw-depth-step.is-axis-hold {
+        min-height: 132svh;
+        padding: 42svh 10px 24svh;
+        align-items: flex-start;
+    }
+    .cw-depth-step.is-axis-hold > article {
+        top: calc(min(46svh, 360px) + 24px);
+    }
     .cw-depth-step > article {
         width: 100%;
         min-height: 0;
@@ -1287,9 +1299,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     .cw-depth-step p { margin-top: 13px; font-size: 14px; line-height: 1.68; }
     .cw-depth-axis-chart { margin-top: 18px; gap: 14px; }
     .cw-depth-axis-row header strong { font-size: 11px; }
-    .cw-depth-axis-row header span { font-size: 10px; }
     .cw-depth-step footer { margin-top: 14px; padding-top: 11px; }
-    .cw-depth-step .cw-depth-unlock { min-height: 40px; margin-top: 14px; }
     .cw-depth-outro { min-height: 68svh; padding: 80px 8px max(56px, calc(env(safe-area-inset-bottom) + 36px)); }
 }
 
@@ -1312,6 +1322,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
         left: var(--axis-position);
         opacity: 1;
         transform: translate(-50%, -50%) scale(1);
+        animation: none;
+    }
+    .cw-depth-step.is-active .cw-depth-axis-track::after {
+        transform: scaleX(1);
         animation: none;
     }
 }

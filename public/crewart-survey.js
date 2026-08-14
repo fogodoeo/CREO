@@ -35,18 +35,6 @@
         TF: { title: '선택 기준', left: '조건·근거', right: '취향·관계' },
         JP: { title: '사육 방식', left: '계획·준비', right: '유연·조정' }
     });
-    const HOUSE_REPORT_COPY = Object.freeze({
-        SF: '지금의 감각과 관계를 세심하게 챙기는 기숙사',
-        ST: '확인되는 정보와 근거로 안정적으로 운영하는 기숙사',
-        NT: '가능성을 논리적으로 설계하고 실험하는 기숙사',
-        NF: '성장 가능성과 관계를 연결해 방향을 만드는 기숙사'
-    });
-    const HOUSE_READINGS = Object.freeze({
-        SF: '이곳에는 크레의 작은 표정과 컨디션 변화를 먼저 알아보는 사람들이 모입니다. 누군가 지나친 신호도 조용히 챙겨 편안한 분위기로 바꾸고, 처음 온 사람까지 자연스럽게 자리를 잡게 해요. 다만 모두를 살피느라 자신의 여유를 놓치지 않도록, 가끔은 돌봄을 나누어 맡는 것이 좋습니다.',
-        ST: '이곳에서는 해야 할 일이 흐트러진 채 오래 남지 않습니다. 확인한 정보를 기준으로 순서를 세우고, 누구나 다시 따라 할 수 있는 방식으로 정리하는 사람들이 중심을 잡아요. 익숙한 방법이 안정감을 주지만, 새로운 신호가 보이는 날에는 작은 예외 하나를 허용해도 괜찮습니다.',
-        NT: '이곳에는 당연하게 여겨온 방식에도 한 번쯤 새로운 질문을 던지는 사람들이 모입니다. 흩어진 단서를 연결해 원리를 찾고, 더 나은 환경과 다음 시도를 설계하며 커뮤니티의 가능성을 넓혀가요. 좋은 생각이 머릿속에만 머물지 않도록 가장 작은 실험부터 시작해보세요.',
-        NF: '이곳에서는 한 마리의 성장도 사람들을 이어주는 이야기가 됩니다. 아직 드러나지 않은 가능성을 먼저 발견하고, 서로 다른 마음이 같은 방향을 바라보도록 분위기를 만드는 사람들이 많아요. 오래 이어질 이야기에는 현실적인 일정과 역할도 필요하다는 점만 함께 기억하면 좋습니다.'
-    });
     const TYPE_READINGS = Object.freeze({
         ISTJ: '당신이 돌본 크레의 변화는 기억보다 기록에 오래 남습니다. 어제와 비슷해 보이는 하루에서도 작은 차이를 찾아내고, 문제가 생기면 감으로 넘기기보다 언제부터 무엇이 달라졌는지 차분히 되짚어요. 덕분에 주변에서는 흔들릴 때 기준을 잡아주는 사람으로 기억하지만, 한 번 세운 방식이 잘 맞았던 만큼 새로운 신호를 기존 기록 안에서만 찾으려 할 때도 있습니다. 익숙한 기준 밖에서 들어온 작은 예외 하나가 오히려 다음 돌봄을 더 단단하게 만들어줄 수 있어요.',
         ISFJ: '당신 곁의 크레는 평소와 다른 작은 움직임도 쉽게 지나치지 않습니다. 말로 크게 드러내지는 않아도 어느 아이가 무엇을 좋아하고 언제 편안해지는지 오래 기억해두었다가 필요한 순간에 먼저 챙겨줘요. 그래서 함께 있는 사람들은 당신의 돌봄 안에서 안정감을 느끼지만, 모두가 편안하기를 바라는 마음 때문에 자신의 피로를 뒤늦게 알아차리기도 합니다. 오래 돌보기 위해 잠시 쉬는 것 역시 당신다운 책임의 한 부분이에요.',
@@ -834,22 +822,13 @@
             : '다른 기준을 먼저 확인하면 오해를 줄일 수 있어요.';
         const steps = [
             {
-                kicker: '성향',
-                railTitle: '한 문장으로 보는 나',
-                title: profile.title || result.typeName,
-                body: profile.summary || TYPE_READINGS[result.code] || '당신의 선택에서 반복된 성향을 정리했습니다.',
-                note: profile.subtitle || `${result.code} 결과의 핵심 흐름`,
-                keywords: [result.code, house.name, '핵심 성향'],
+                kicker: '나의 방식',
+                railTitle: '자연스럽게 잘하는 것',
+                title: '이게 당신의 강점',
+                body: profile.superpower || profile.summary || TYPE_READINGS[result.code] || '관찰한 내용을 자신만의 방식으로 정리해 다음 행동으로 연결합니다.',
+                note: profile.weakness ? `한 번 더 볼 것 · ${profile.weakness}` : '',
+                keywords: [result.code, house.name],
                 visual: 'personality'
-            },
-            {
-                kicker: '강점과 주의점',
-                railTitle: '잘하는 방식과 빈틈',
-                title: '자연스럽게 잘하는 것, 한 번 더 볼 것',
-                body: `${profile.superpower || '관찰한 내용을 자신만의 방식으로 정리해 다음 행동으로 연결합니다.'}\n\n${profile.weakness || '익숙한 판단이 빨라질수록 지금 달라진 조건을 한 번 더 확인해보세요.'}`,
-                note: '강점은 선명하게, 익숙한 판단은 한 번 더 확인하기',
-                keywords: ['강점', '균형', '조건 점검'],
-                visual: 'strength'
             },
             {
                 kicker: '궁합',
@@ -875,39 +854,24 @@
                 right: copy?.right || second,
                 selected: firstSelected ? (copy?.left || first) : (copy?.right || second),
                 firstSelected,
-                position
+                position,
+                fillStart: Math.min(50, position),
+                fillWidth: Math.abs(position - 50)
             };
         });
-        const axisFacts = axisRows.map(axis => `${axis.title} · ${axis.selected}`);
         steps.push({
             kicker: '성향 지표',
-            railTitle: '네 가지 선택 축',
-            title: '알파벳보다 선명한 선택 방향',
-            body: '네 가지 축을 실제 선택 장면의 의미로 바꿔 읽었습니다. 어느 한쪽의 점수가 아니라 지금 가장 자연스럽게 사용한 판단 방식을 보여줍니다.',
-            note: '생각 정리 · 관찰 초점 · 선택 기준 · 사육 방식',
-            keywords: axisFacts,
+            railTitle: '선택이 기운 방향',
+            title: '내 선택은 이쪽',
+            body: '',
+            note: '',
+            keywords: [],
             axisRows,
             visual: 'axes',
             kind: 'axes'
         });
 
-        if (!hasDetailedAccess()) {
-            const configured = BAND_INTEGRATION_ENABLED && bandAuthConfigured;
-            steps.push({
-                kicker: '상세 결과',
-                railTitle: '회원에게 열리는 분석',
-                title: '내 선택을 더 자세히 보기',
-                body: configured
-                    ? '회원 확인을 마치면 문항별 응답 리듬과 기숙사 이야기가 이 카드 흐름에 이어집니다.'
-                    : '응답 리듬과 기숙사 이야기를 연결하기 위한 회원 명단 확인을 준비하고 있습니다.',
-                note: configured ? '결과 화면을 벗어나지 않고 확인할 수 있어요.' : '연결 준비가 끝나면 바로 열 수 있어요.',
-                keywords: ['회원 전용', '응답 리듬', '기숙사 이야기'],
-                visual: 'locked',
-                locked: true,
-                unlockAvailable: configured
-            });
-            return steps;
-        }
+        if (!hasDetailedAccess()) return steps;
 
         const speed = resultSpeedPresentation();
         if (speed) {
@@ -923,19 +887,6 @@
             });
         }
 
-        const houseReading = HOUSE_READINGS[assignedHouseKey] || `당신과 비슷한 돌봄 기준을 가진 사람들이 ${house.name} 기숙사에 모입니다.`;
-        const houseSummary = `${houseReading.split('.').map(sentence => sentence.trim()).filter(Boolean)[0] || houseReading}.`;
-        steps.push({
-            kicker: '기숙사 이야기',
-            railTitle: '나와 닮은 기숙사',
-            title: HOUSE_REPORT_COPY[assignedHouseKey] || `${house.name} 기숙사`,
-            body: houseSummary,
-            note: `${house.name} · 서로의 강점을 오래 이어가는 곳`,
-            keywords: [house.name, '기숙사', '공통 돌봄 기준'],
-            visual: 'house',
-            kind: 'house'
-        });
-
         return steps;
     }
 
@@ -950,8 +901,8 @@
             const axisMarkup = step.axisRows ? `
                 <div class="cw-depth-axis-chart" aria-label="성향 축 방향표">
                     ${step.axisRows.map((axis, axisIndex) => `
-                        <div class="cw-depth-axis-row" role="img" aria-label="${escapeHtml(`${axis.title}: ${axis.selected}`)}" style="--axis-position:${axis.position}%;--axis-delay:${axisIndex * 110}ms">
-                            <header><strong>${escapeHtml(axis.title)}</strong><span>${escapeHtml(axis.selected)}</span></header>
+                        <div class="cw-depth-axis-row${axis.firstSelected ? ' is-left' : ' is-right'}" role="img" aria-label="${escapeHtml(`${axis.title}: ${axis.selected}`)}" style="--axis-position:${axis.position}%;--axis-fill-start:${axis.fillStart}%;--axis-fill-width:${axis.fillWidth}%;--axis-delay:${axisIndex * 110}ms">
+                            <header><strong>${escapeHtml(axis.title)}</strong></header>
                             <div class="cw-depth-axis-track" aria-hidden="true"><i></i><b></b></div>
                             <div class="cw-depth-axis-ends" aria-hidden="true">
                                 <span class="${axis.firstSelected ? 'is-selected' : ''}">${escapeHtml(axis.left)}</span>
@@ -960,17 +911,16 @@
                         </div>`).join('')}
                 </div>` : '';
             return `
-            <li class="cw-depth-step${index === 0 ? ' is-active' : ''}" data-depth-step="${index}">
+            <li class="cw-depth-step${index === 0 ? ' is-active' : ''}${step.kind === 'axes' ? ' is-axis-hold' : ''}" data-depth-step="${index}">
                 <article>
                     <div class="cw-depth-step-meta">
                         <span class="cw-depth-step-number">${String(index + 1).padStart(2, '0')}</span>
                         <small>${escapeHtml(step.kicker)}</small>
                     </div>
                     <h3>${escapeHtml(step.title)}</h3>
-                    <p>${escapeHtml(step.body)}</p>
+                    ${step.body ? `<p>${escapeHtml(step.body)}</p>` : ''}
                     ${axisMarkup}
-                    <footer>${escapeHtml(step.note)}</footer>
-                    ${step.locked ? `<button class="cw-depth-unlock" type="button" data-action="unlock-detail" ${step.unlockAvailable ? '' : 'disabled'}>회원 확인 <span aria-hidden="true">${step.unlockAvailable ? '→' : '·'}</span></button>` : ''}
+                    ${step.note ? `<footer>${escapeHtml(step.note)}</footer>` : ''}
                 </article>
             </li>`;
         }).join('');
@@ -1011,7 +961,7 @@
                         <div class="cw-depth-stage-content" data-depth-content>
                             <small data-depth-kicker>${escapeHtml(firstStep.kicker)}</small>
                             <h2 data-depth-title>${escapeHtml(firstStep.railTitle)}</h2>
-                            <span class="cw-depth-keyword-label">핵심 키워드</span>
+                            <span class="cw-depth-keyword-label" data-depth-keyword-label>핵심 키워드</span>
                             <div class="cw-depth-stage-facts" data-depth-facts>${firstKeywords.map(keyword => `<span>${escapeHtml(keyword)}</span>`).join('')}</div>
                         </div>
                     </aside>
@@ -1021,6 +971,7 @@
                 <footer class="cw-depth-outro">
                     <div class="cw-depth-house"><span>당신의 기숙사는</span><strong>${escapeHtml(house.name)}</strong><span>입니다.</span></div>
                     <div class="cw-depth-actions">
+                        ${!hasDetailedAccess() && BAND_INTEGRATION_ENABLED && bandAuthConfigured ? '<button type="button" data-action="unlock-detail">회원 상세 보기</button>' : ''}
                         <button type="button" data-action="save-image">결과 이미지 저장</button>
                         <button type="button" data-action="share">카카오톡 공유</button>
                     </div>
@@ -1052,6 +1003,7 @@
         const kickerNode = stage.querySelector('[data-depth-kicker]');
         const titleNode = stage.querySelector('[data-depth-title]');
         const factsNode = stage.querySelector('[data-depth-facts]');
+        const keywordLabelNode = stage.querySelector('[data-depth-keyword-label]');
         const contentNode = stage.querySelector('[data-depth-content]');
         const visualNode = stage.querySelector('[data-depth-visual]');
         const progressNode = stage.querySelector('[data-depth-progress]');
@@ -1073,8 +1025,9 @@
                 return node;
             }));
             factsNode.hidden = !keywords.length;
+            if (keywordLabelNode) keywordLabelNode.hidden = !keywords.length;
             visualNode.src = resultScenePath(step.visual);
-            contentNode.dataset.kind = step.kind || (step.locked ? 'locked' : 'story');
+            contentNode.dataset.kind = step.kind || 'story';
             contentNode.classList.remove('is-entering');
             void contentNode.offsetWidth;
             contentNode.classList.add('is-entering');
