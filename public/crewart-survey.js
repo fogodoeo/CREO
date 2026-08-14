@@ -824,35 +824,40 @@
                 railTitle: '한 문장으로 보는 나',
                 title: profile.title || result.typeName,
                 body: profile.summary || TYPE_READINGS[result.code] || '당신의 선택에서 반복된 성향을 정리했습니다.',
-                note: profile.subtitle || `${result.code} 결과의 핵심 흐름`
+                note: profile.subtitle || `${result.code} 결과의 핵심 흐름`,
+                keywords: [result.code, house.name, '핵심 성향']
             },
             {
                 kicker: '강점',
                 railTitle: '나도 모르게 잘하는 것',
                 title: '가장 자연스럽게 잘하는 것',
                 body: profile.superpower || '관찰한 내용을 자신만의 방식으로 정리해 다음 행동으로 연결합니다.',
-                note: '억지로 바꾸기보다 잘하는 방식을 선명하게'
+                note: '억지로 바꾸기보다 잘하는 방식을 선명하게',
+                keywords: ['관찰', '정리', '실행']
             },
             {
                 kicker: '주의점',
                 railTitle: '강점이 흔들리는 순간',
                 title: '한 번 더 확인할 지점',
                 body: profile.weakness || '익숙한 판단이 빨라질수록 지금 달라진 조건을 한 번 더 확인해보세요.',
-                note: '강점이 과해질 때 생기는 빈틈'
+                note: '강점이 과해질 때 생기는 빈틈',
+                keywords: ['균형', '조건 점검', '한 번 더 확인']
             },
             {
                 kicker: '궁합',
                 railTitle: '편한 조합과 어려운 조합',
                 title: '함께할 때 편안한 유형',
                 body: bestMatch,
-                note: cautiousMatch
+                note: cautiousMatch,
+                keywords: [profile.bestMatch?.mbti, profile.worstMatch?.mbti, '관계 리듬'].filter(Boolean)
             },
             {
                 kicker: '가이드',
                 railTitle: '오늘의 작은 행동',
                 title: '오늘 바로 해볼 한 가지',
                 body: profile.actionItem || '지금 떠오른 크레 한 마리의 최근 변화를 짧게 기록해보세요.',
-                note: `당신의 기숙사는 ${house.name} 입니다.`
+                note: `당신의 기숙사는 ${house.name} 입니다.`,
+                keywords: ['오늘', '작은 행동', house.name]
             }
         ];
 
@@ -866,6 +871,7 @@
                     ? '회원 확인을 마치면 네 가지 성향 지표와 문항별 응답 리듬, 기숙사 이야기가 이 카드 흐름에 이어집니다.'
                     : '성향 지표와 응답 리듬을 연결하기 위한 회원 명단 확인을 준비하고 있습니다.',
                 note: configured ? '결과 화면을 벗어나지 않고 확인할 수 있어요.' : '연결 준비가 끝나면 바로 열 수 있어요.',
+                keywords: ['회원 전용', '성향 지표', '응답 리듬'],
                 locked: true,
                 unlockAvailable: configured
             });
@@ -883,7 +889,7 @@
             title: '알파벳보다 선명한 선택 방향',
             body: '네 가지 축을 실제 선택 장면의 의미로 바꿔 읽었습니다. 어느 한쪽의 점수가 아니라 지금 가장 자연스럽게 사용한 판단 방식을 보여줍니다.',
             note: '생각 정리 · 관찰 초점 · 선택 기준 · 사육 방식',
-            facts: axisFacts,
+            keywords: axisFacts,
             kind: 'metrics'
         });
 
@@ -895,7 +901,7 @@
                 title: timingStats.style.label,
                 body: speedPositionCopy(speed.position, cohortSummary.timingMedians.length > 0),
                 note: `${timingEntryLabel(timingStats.fastest)} · ${timingEntryLabel(timingStats.slowest)}`,
-                facts: [`문항당 ${speed.median}`, speed.comparison],
+                keywords: [`문항당 ${speed.median}`, speed.comparison],
                 kind: 'metrics'
             });
         }
@@ -908,6 +914,7 @@
             title: HOUSE_REPORT_COPY[assignedHouseKey] || `${house.name} 기숙사`,
             body: houseSummary,
             note: `${house.name} · 서로의 강점을 오래 이어가는 곳`,
+            keywords: [house.name, '기숙사', '공통 돌봄 기준'],
             kind: 'house'
         });
 
@@ -917,15 +924,18 @@
     function renderUnifiedResult(profile, house) {
         const steps = buildResultReportSteps(profile, house);
         const firstStep = steps[0];
+        const firstKeywords = firstStep.keywords || [];
         const characterPath = typeCharacterPath(result.code);
         const stepMarkup = steps.map((step, index) => `
             <li class="cw-depth-step${index === 0 ? ' is-active' : ''}" data-depth-step="${index}">
                 <span class="cw-depth-step-number">${String(index + 1).padStart(2, '0')}</span>
-                <div>
+                <article>
                     <small>${escapeHtml(step.kicker)}</small>
-                    <strong>${escapeHtml(step.railTitle)}</strong>
-                    <span>스크롤하면 카드가 바뀝니다</span>
-                </div>
+                    <h3>${escapeHtml(step.title)}</h3>
+                    <p>${escapeHtml(step.body)}</p>
+                    <footer>${escapeHtml(step.note)}</footer>
+                    ${step.locked ? `<button class="cw-depth-unlock" type="button" data-action="unlock-detail" ${step.unlockAvailable ? '' : 'disabled'}>회원 확인 <span aria-hidden="true">${step.unlockAvailable ? '→' : '·'}</span></button>` : ''}
+                </article>
             </li>`).join('');
         const dotMarkup = steps.map((step, index) => `
             <button type="button" class="cw-depth-dot${index === 0 ? ' is-active' : ''}" data-depth-target="${index}" aria-label="${escapeHtml(`${index + 1}. ${step.kicker}`)}"></button>`).join('');
@@ -963,11 +973,9 @@
                         </div>
                         <div class="cw-depth-stage-content" data-depth-content>
                             <small data-depth-kicker>${escapeHtml(firstStep.kicker)}</small>
-                            <h2 data-depth-title>${escapeHtml(firstStep.title)}</h2>
-                            <p data-depth-body>${escapeHtml(firstStep.body)}</p>
-                            <div class="cw-depth-stage-facts" data-depth-facts hidden></div>
-                            <footer data-depth-note>${escapeHtml(firstStep.note)}</footer>
-                            <button class="cw-depth-unlock" type="button" data-action="unlock-detail" data-depth-unlock hidden>회원 확인 <span aria-hidden="true">→</span></button>
+                            <h2 data-depth-title>${escapeHtml(firstStep.railTitle)}</h2>
+                            <span class="cw-depth-keyword-label">핵심 키워드</span>
+                            <div class="cw-depth-stage-facts" data-depth-facts>${firstKeywords.map(keyword => `<span>${escapeHtml(keyword)}</span>`).join('')}</div>
                         </div>
                     </aside>
                     <ol class="cw-depth-steps">${stepMarkup}</ol>
@@ -991,7 +999,7 @@
         element('result-content').querySelector('[data-action="go-home"]')?.addEventListener('click', () => navigateToTab('home'));
         element('result-content').querySelectorAll('[data-action="share"]').forEach(button => button.addEventListener('click', shareResult));
         element('result-content').querySelectorAll('[data-action="save-image"]').forEach(button => button.addEventListener('click', saveResultImage));
-        element('result-content').querySelector('[data-action="unlock-detail"]')?.addEventListener('click', handleUnlockDetail);
+        element('result-content').querySelectorAll('[data-action="unlock-detail"]').forEach(button => button.addEventListener('click', handleUnlockDetail));
         element('result-content').querySelector('[data-action="open-band"]')?.addEventListener('click', openBandTarget);
     }
 
@@ -1006,10 +1014,7 @@
         const countNode = stage.querySelector('[data-depth-count]');
         const kickerNode = stage.querySelector('[data-depth-kicker]');
         const titleNode = stage.querySelector('[data-depth-title]');
-        const bodyNode = stage.querySelector('[data-depth-body]');
         const factsNode = stage.querySelector('[data-depth-facts]');
-        const noteNode = stage.querySelector('[data-depth-note]');
-        const unlockNode = stage.querySelector('[data-depth-unlock]');
         const contentNode = stage.querySelector('[data-depth-content]');
         const progressNode = stage.querySelector('[data-depth-progress]');
         let activeIndex = -1;
@@ -1022,18 +1027,14 @@
             const step = steps[nextIndex];
             countNode.textContent = `${String(nextIndex + 1).padStart(2, '0')} / ${String(steps.length).padStart(2, '0')}`;
             kickerNode.textContent = step.kicker;
-            titleNode.textContent = step.title;
-            bodyNode.textContent = step.body;
-            factsNode.replaceChildren(...(step.facts || []).map(fact => {
+            titleNode.textContent = step.railTitle;
+            const keywords = step.keywords || [];
+            factsNode.replaceChildren(...keywords.map(keyword => {
                 const node = document.createElement('span');
-                node.textContent = fact;
+                node.textContent = keyword;
                 return node;
             }));
-            factsNode.hidden = !step.facts?.length;
-            noteNode.textContent = step.note;
-            unlockNode.hidden = !step.locked;
-            unlockNode.disabled = step.locked && !step.unlockAvailable;
-            unlockNode.querySelector('span').textContent = step.unlockAvailable ? '→' : '·';
+            factsNode.hidden = !keywords.length;
             contentNode.dataset.kind = step.kind || (step.locked ? 'locked' : 'story');
             contentNode.classList.remove('is-entering');
             void contentNode.offsetWidth;
