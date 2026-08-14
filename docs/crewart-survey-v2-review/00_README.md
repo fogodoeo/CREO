@@ -26,6 +26,7 @@
 - `04_GEMINI_CONTENT_FEEDBACK.md`: Gemini에게 전달할 질문·선택지·결과 문구 점수와 개선 의견
 - `05_GEMINI_CONTENT_REVIEW_2.md`: 문장 수정본에 대한 2차 점수와 남은 개선사항
 - `06_GEMINI_CONTENT_REVIEW_3.md`: 문장 수정본에 대한 3차 정밀 점수와 유형 간 일관성 검토
+- `07_GEMINI_CONTENT_REVIEW_4.md`: 버전 C 문장 수정본에 대한 4차 면밀 평가와 용어 검토
 
 ## 현재 버전 불일치
 
