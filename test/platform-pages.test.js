@@ -438,14 +438,14 @@ test('CREWARTS uses one result journey and unlocks member detail by phone', () =
     const script = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey.js'), 'utf8');
     assert.doesNotThrow(() => new vm.Script(script, { filename: 'crewart-survey.js' }));
     assert.doesNotMatch(html, /BAND 회원 연동/);
-    assert.match(html, /id="band-screen"/);
-    assert.match(html, /data-nav="band"/);
+    assert.match(html, /id="home-band-section"/);
+    assert.doesNotMatch(html, /data-nav="band"/);
     assert.match(html, /id="member-phone"/);
     assert.match(html, /id="member-check-submit-label">확인하기<\/strong>/);
     assert.match(html, /번호는 저장하지 않고 가입 후 자동 확인해요\./);
     assert.match(html, /<label for="member-phone">휴대전화번호<\/label>/);
     assert.match(html, /id="band-connection-status">연결되지 않음<\/span>/);
-    assert.match(html, /class="cw-band-account-head"[\s\S]*id="member-check-title">회원 확인[\s\S]*class="cw-band-connection"/);
+    assert.match(html, /id="home-band-title">BAND 회원 확인/);
     assert.doesNotMatch(html, /cw-band-identity|band-page-title|크레와트 커뮤니티/);
     assert.doesNotMatch(html, /CREWARTS COMMUNITY|<h1 id="band-page-title">BAND<\/h1>|>MEMBERSHIP</);
     assert.doesNotMatch(html, /BAND 가입 번호를 확인할게요|가입 승인된 BAND 프로필|설문 답변·결과와 함께 저장되지 않습니다/);
@@ -470,11 +470,11 @@ test('CREWARTS uses one result journey and unlocks member detail by phone', () =
     assert.match(script, /visibilitychange[\s\S]*recheckPendingMembership\(\{ visibleOnly: true \}\)/);
     const openMemberCheckBody = script.match(/function openMemberCheck\(options = \{\}\) \{([\s\S]*?)\n    \}/)?.[1] || '';
     assert.doesNotMatch(openMemberCheckBody, /\.focus\(/);
-    assert.match(openMemberCheckBody, /setScreen\('band-screen'\)/);
+    assert.match(openMemberCheckBody, /returnToIntro\(\)/);
     const showResultBody = script.match(/function showResult\(skipMbti\) \{([\s\S]*?)\n    \}/)?.[1] || '';
     assert.match(showResultBody, /completeResultReveal\(\)/);
     assert.doesNotMatch(showResultBody, /openMemberCheck/);
-    assert.match(script, /function handleUnlockDetail\(\)[\s\S]*navigateToTab\('band', \{ memberOptions: \{ revealResult: true \} \}\)/);
+    assert.match(script, /function handleUnlockDetail\(\)[\s\S]*openMemberCheck\(\{ revealResult: true \}\)/);
     assert.match(script, /function submitSurvey\(\)[\s\S]*!hasDetailedAccess\(\)/);
     assert.doesNotMatch(script, /BAND_OAUTH_API|beginBandLogin/);
 });
@@ -487,7 +487,8 @@ test('CREWARTS home shows the saved result and only a masked authenticated phone
     }
     assert.match(html, /MY CREWART PROFILE/);
     assert.match(html, /다시 시작/);
-    assert.match(html, /data-nav="home"[\s\S]*data-nav="result"[\s\S]*data-nav="band"/);
+    assert.match(html, /data-nav="home"[\s\S]*data-nav="result"/);
+    assert.doesNotMatch(html, /data-nav="band"/);
     assert.doesNotMatch(html, /최근 결과|home-result-open|cw-home-panel|cw-home-member/);
     assert.match(script, /crewart_band_member_phone_mask_v1/);
     assert.match(script, /function maskPhone[\s\S]*\*\*\*\*/);
@@ -499,7 +500,7 @@ test('CREWARTS home shows the saved result and only a masked authenticated phone
     assert.doesNotMatch(script, /확인된 회원으로 결과를 바로 볼 수 있어요/);
     assert.match(script, /document\.querySelectorAll\('\[data-band-join\]'\)/);
     assert.match(script, /function updateBandState\(\)[\s\S]*bandAuthPhoneMask/);
-    assert.match(script, /function navigateToTab\(tab, options = \{\}\)[\s\S]*restoreLastResult\(\{ animate: true \}\)[\s\S]*openMemberCheck\(options\.memberOptions\)/);
+    assert.match(script, /function navigateToTab\(tab, options = \{\}\)[\s\S]*restoreLastResult\(\{ animate: true \}\)/);
     assert.match(script, /function navigateToTab\(tab, options = \{\}\)[\s\S]*replaceTabHistory\(currentTab\)[\s\S]*pushTabHistory\(tab\)/);
     assert.match(script, /addEventListener\('popstate'[\s\S]*navigateToTab\(APP_TABS\.includes\(tab\) \? tab : 'home', \{ fromHistory: true \}\)/);
     assert.match(script, /history\.replaceState[\s\S]*history\.pushState/);

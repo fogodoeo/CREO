@@ -1319,3 +1319,188 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     background: #000000;
     transform: translateY(-1px);
 }
+
+/* ── Home BAND inline section ───────────────────────── */
+.cw-home-band {
+    margin-top: 24px;
+    padding: 20px;
+    border-radius: 14px;
+    background: var(--cw-surface, #fff);
+    border: 1px solid var(--cw-border, #e5e5e0);
+}
+
+.cw-home-band h3 {
+    font-size: 15px;
+    font-weight: 700;
+    margin: 0 0 2px;
+    letter-spacing: -0.01em;
+}
+
+.cw-home-band .cw-home-band-status {
+    font-size: 13px;
+    color: var(--cw-muted, #888);
+    margin: 0 0 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.cw-home-band .cw-home-band-status i {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--cw-muted, #888);
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+.cw-home-band .cw-home-band-status.is-connected i {
+    background: var(--cw-green, #16814b);
+}
+
+.cw-home-band .cw-member-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.cw-home-band .cw-member-form label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--cw-text, #1a1a1a);
+}
+
+.cw-home-band .cw-member-form input {
+    padding: 10px 12px;
+    border: 1px solid var(--cw-border, #d4d4cf);
+    border-radius: 8px;
+    font-size: 15px;
+    font-family: inherit;
+    background: var(--cw-bg, #f4f4f1);
+    color: var(--cw-text, #1a1a1a);
+    outline: none;
+    transition: border-color 0.15s;
+}
+
+.cw-home-band .cw-member-form input:focus {
+    border-color: var(--cw-green, #16814b);
+}
+
+.cw-home-band .cw-member-form small {
+    font-size: 12px;
+    color: var(--cw-muted, #888);
+}
+
+.cw-home-band .cw-band-verified {
+    padding: 14px 0 0;
+}
+
+.cw-home-band .cw-band-verified header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.cw-home-band .cw-band-verified header > span {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--cw-green, #16814b);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.cw-home-band .cw-band-verified dl {
+    margin: 0;
+    font-size: 13px;
+}
+
+.cw-home-band .cw-band-verified dl > div {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--cw-border, #e5e5e0);
+}
+
+.cw-home-band .cw-band-verified dt {
+    color: var(--cw-muted, #888);
+}
+
+.cw-home-band .cw-band-verified dd {
+    margin: 0;
+    font-weight: 600;
+}
+
+.cw-home-band .cw-band-account-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.cw-home-band .cw-band-account-actions button {
+    flex: 1;
+    padding: 8px;
+    border: 1px solid var(--cw-border, #d4d4cf);
+    border-radius: 8px;
+    background: transparent;
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    color: var(--cw-text, #1a1a1a);
+}
+
+.cw-home-band .cw-member-join {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0 0;
+    margin-top: 14px;
+    border-top: 1px solid var(--cw-border, #e5e5e0);
+    text-decoration: none;
+    color: var(--cw-text, #1a1a1a);
+}
+
+.cw-home-band .cw-member-join-copy {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.cw-home-band .cw-member-join-copy img {
+    border-radius: 10px;
+}
+
+.cw-home-band .cw-member-join-copy small {
+    display: block;
+    font-size: 11px;
+    color: var(--cw-muted, #888);
+    letter-spacing: 0.04em;
+}
+
+.cw-home-band .cw-member-join-copy strong {
+    font-size: 14px;
+}
+
+.cw-home-band .cw-member-status {
+    margin-top: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    background: var(--cw-bg, #f4f4f1);
+}
+
+.cw-home-band .cw-member-status.is-error {
+    background: #fef2f2;
+    color: #b91c1c;
+}
+
+.cw-home-band .cw-member-status.is-success {
+    background: #f0fdf4;
+    color: var(--cw-green, #16814b);
+}

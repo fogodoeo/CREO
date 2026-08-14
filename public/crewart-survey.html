@@ -62,52 +62,11 @@
                 <section class="cw-home-start" id="home-start-card">
                     <button class="cw-test-action cw-primary-button" id="start-button" type="button" disabled><span>시작하기</span></button>
                 </section>
-            </div>
-        </section>
 
-        <section class="cw-screen cw-test" id="question-screen" hidden>
-            <header class="cw-progress-head">
-                <button class="cw-back-button" id="question-back" type="button" aria-label="이전 질문">‹</button>
-                <div class="cw-progress-copy"><small id="progress-axis">크레 앞의 나를 찾는 중</small><span id="progress-text">1
-                        / 12</span></div>
-                <span class="cw-progress-space" aria-hidden="true"></span>
-            </header>
-            <div class="cw-progress-track" aria-hidden="true"><i id="progress-bar"></i></div>
-            <article class="cw-question-card" id="question-card" aria-live="polite">
-                <p id="question-label"></p>
-                <h1 id="question-title"></h1>
-                <div class="cw-choice-list" id="choice-list"></div>
-            </article>
-            <p class="cw-q0-copyright" id="q0-copyright" hidden>© 2026 CREO. All rights reserved.</p>
-        </section>
-
-        <section class="cw-screen cw-mbti" id="mbti-screen" hidden>
-            <header class="cw-simple-head">
-                <p class="cw-step-label">선택 입력</p>
-                <h1>평소 유형은?</h1>
-                <p>알고 있다면 골라주세요.</p>
-            </header>
-            <div class="cw-mbti-grid" id="mbti-grid" aria-label="평소 유형 선택"></div>
-            <div class="cw-mbti-actions">
-                <button class="cw-secondary-button" id="mbti-unknown" type="button">모름 · 건너뛰기</button>
-                <button class="cw-primary-button" id="show-result" type="button" disabled><span>결과 보기</span></button>
-            </div>
-        </section>
-
-        <section class="cw-screen cw-result" id="result-screen" hidden>
-            <div id="result-content"></div>
-        </section>
-
-        <section class="cw-screen cw-band" id="band-screen" hidden aria-labelledby="member-check-title">
-            <div class="cw-band-shell">
-                <section class="cw-band-account" aria-labelledby="member-check-title">
-                    <header class="cw-band-account-head">
-                        <div>
-                            <h2 id="member-check-title">회원 확인</h2>
-                        </div>
-                        <p class="cw-band-connection"><i id="band-state-dot" aria-hidden="true"></i><span
-                                id="band-connection-status">연결되지 않음</span></p>
-                    </header>
+                <section class="cw-home-band" id="home-band-section" aria-labelledby="home-band-title">
+                    <h3 id="home-band-title">BAND 회원 확인</h3>
+                    <p class="cw-home-band-status"><i id="band-state-dot" aria-hidden="true"></i><span
+                            id="band-connection-status">연결되지 않음</span></p>
 
                     <form class="cw-member-form" id="member-check-form">
                         <label for="member-phone">휴대전화번호</label>
@@ -153,8 +112,40 @@
                         <span aria-hidden="true">↗</span>
                     </a>
                 </section>
-                <p class="cw-copyright">© 2026 CREO. All rights reserved.</p>
             </div>
+        </section>
+
+        <section class="cw-screen cw-test" id="question-screen" hidden>
+            <header class="cw-progress-head">
+                <button class="cw-back-button" id="question-back" type="button" aria-label="이전 질문">‹</button>
+                <div class="cw-progress-copy"><small id="progress-axis">크레 앞의 나를 찾는 중</small><span id="progress-text">1
+                        / 12</span></div>
+                <span class="cw-progress-space" aria-hidden="true"></span>
+            </header>
+            <div class="cw-progress-track" aria-hidden="true"><i id="progress-bar"></i></div>
+            <article class="cw-question-card" id="question-card" aria-live="polite">
+                <p id="question-label"></p>
+                <h1 id="question-title"></h1>
+                <div class="cw-choice-list" id="choice-list"></div>
+            </article>
+            <p class="cw-q0-copyright" id="q0-copyright" hidden>© 2026 CREO. All rights reserved.</p>
+        </section>
+
+        <section class="cw-screen cw-mbti" id="mbti-screen" hidden>
+            <header class="cw-simple-head">
+                <p class="cw-step-label">선택 입력</p>
+                <h1>평소 유형은?</h1>
+                <p>알고 있다면 골라주세요.</p>
+            </header>
+            <div class="cw-mbti-grid" id="mbti-grid" aria-label="평소 유형 선택"></div>
+            <div class="cw-mbti-actions">
+                <button class="cw-secondary-button" id="mbti-unknown" type="button">모름 · 건너뛰기</button>
+                <button class="cw-primary-button" id="show-result" type="button" disabled><span>결과 보기</span></button>
+            </div>
+        </section>
+
+        <section class="cw-screen cw-result" id="result-screen" hidden>
+            <div id="result-content"></div>
         </section>
     </main>
 
@@ -162,8 +153,6 @@
         <div>
             <button type="button" data-nav="home"><span>홈</span></button>
             <button type="button" data-nav="result"><span>결과</span></button>
-            <button type="button" data-nav="band"><span>BAND</span><i id="band-nav-status"
-                    aria-hidden="true"></i></button>
         </div>
     </nav>
 

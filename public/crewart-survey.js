@@ -26,7 +26,7 @@
     const CONTENT_CONFIG_KEY = 'crewart_mbti_content_v1';
     const BAND_INTEGRATION_ENABLED = true;
     const APP_HISTORY_KEY = 'crewartTab';
-    const APP_TABS = Object.freeze(['home', 'result', 'band']);
+    const APP_TABS = Object.freeze(['home', 'result']);
     const AXIS_REPORT_COPY = Object.freeze({
         EI: { title: '생각 정리', left: '함께 정리', right: '혼자 정리' },
         SN: { title: '관찰 초점', left: '현재 정보', right: '성장 가능성' },
@@ -216,7 +216,7 @@
         const verified = element('band-verified-state');
         const number = element('auth-phone-number');
         const connection = element('band-connection-status');
-        const bandScreen = element('band-screen');
+        const bandScreen = element('home-band-section');
         const authenticated = Boolean(bandAuthUser?.isTargetMember);
         const state = authenticated && editingMembership
             ? 'editing'
@@ -307,12 +307,7 @@
     }
 
     function setScreen(screenId) {
-        if (screenId !== 'band-screen') {
-            element('member-phone')?.blur();
-            document.body.classList.remove('cw-keyboard-open');
-            element('band-screen')?.classList.remove('is-keyboard-open');
-        }
-        ['intro-screen', 'question-screen', 'mbti-screen', 'result-screen', 'band-screen'].forEach(id => {
+        ['intro-screen', 'question-screen', 'mbti-screen', 'result-screen'].forEach(id => {
             const screen = element(id);
             const active = id === screenId;
             screen.hidden = !active;
@@ -337,7 +332,7 @@
 
     function syncMemberKeyboardState(options = {}) {
         const input = element('member-phone');
-        const screen = element('band-screen');
+        const screen = element('home-band-section');
         const viewport = window.visualViewport;
         const viewportHeight = Math.round(viewport?.height || window.innerHeight || document.documentElement.clientHeight);
         const focused = Boolean(input && screen && !screen.hidden && document.activeElement === input);
@@ -549,7 +544,11 @@
         if (submitLabel) submitLabel.textContent = '확인하기';
         if (!hasDetailedAccess()) editingMembership = false;
         updateBandState();
-        setScreen('band-screen');
+        returnToIntro();
+        requestAnimationFrame(() => {
+            const section = element('home-band-section');
+            if (section) section.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
     }
 
     function editMembershipAccess() {
@@ -1174,7 +1173,8 @@
             renderResult();
             return;
         }
-        navigateToTab('band', { memberOptions: { revealResult: true } });
+        pendingResultReveal = true;
+        openMemberCheck({ revealResult: true });
     }
 
     async function submitSurvey() {
@@ -1252,7 +1252,7 @@
     }
 
     function currentStage() {
-        if (!element('band-screen').hidden) return 'band';
+
         if (!element('result-screen').hidden) return 'result';
         if (!element('mbti-screen').hidden) return 'mbti';
         if (!element('question-screen').hidden) return 'questions';
@@ -1339,7 +1339,6 @@
             } else restoreLastResult({ animate: true });
             return;
         }
-        if (tab === 'band') openMemberCheck(options.memberOptions);
     }
 
     async function initBandMembership() {
