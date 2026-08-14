@@ -563,7 +563,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /KAKAO_JS_KEY/);
     assert.match(script, /const SURVEY_URL = 'https:\/\/creok\.onrender\.com\/crewart-survey\.html'/);
     assert.doesNotMatch(script, /const SURVEY_URL = new URL\([^\n]*document\.baseURI/);
-    assert.match(html, /crewart-survey\.js\?v=20260815-card-motion-v17/);
+    assert.match(html, /crewart-survey\.js\?v=20260815-axis-metric-v18/);
     assert.match(script, /function renderUnifiedResult\(profile, house\)/);
     assert.doesNotMatch(script, /resultViewVersion|resultViewFromLocation|changeResultView|report=deep|set-result-version/);
     assert.match(script, /function renderResult\(options = \{\}\)[\s\S]*renderUnifiedResult\(profile, house\);/);
@@ -588,7 +588,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(css, /\.cw-depth-scrolly\s*\{[^}]*width:\s*min\(100%, 960px\)[^}]*gap:\s*42px/);
     assert.match(css, /\.cw-depth-stage\s*\{[^}]*position:\s*sticky[^}]*height:\s*min\(520px, calc\(100svh - 110px\)\)/);
     assert.match(css, /\.cw-depth-step\s*\{[^}]*min-height:\s*clamp\(340px, 50svh, 460px\)/);
-    assert.match(css, /\.cw-depth-step\.is-axis-hold\s*\{[^}]*min-height:\s*clamp\(660px, 108svh, 860px\)/);
+    assert.match(css, /\.cw-depth-step\.is-axis-hold\s*\{[^}]*min-height:\s*clamp\(700px, 120svh, 900px\)/);
     assert.match(css, /\.cw-depth-step\.is-axis-hold > article\s*\{[^}]*position:\s*sticky[^}]*top:\s*74px/);
     assert.match(css, /\.cw-depth-step > article\s*\{[^}]*border-radius:\s*20px[^}]*background:\s*#fff/);
     assert.match(css, /@media \(max-width: 760px\)[\s\S]*\.cw-depth-stage\s*\{[^}]*position:\s*sticky|@media \(max-width: 760px\)[\s\S]*\.cw-depth-stage\s*\{[^}]*top:\s*10px/);
@@ -603,6 +603,12 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /railTitle: '선택이 기운 방향'/);
     assert.match(script, /keywords: \[\],[\s\S]*axisRows,[\s\S]*kind: 'axes'/);
     assert.match(script, /axisRows,/);
+    assert.match(script, /const strongestAxis = axisRows\.reduce/);
+    assert.match(script, /axisScore: strongestAxis/);
+    assert.match(script, /class="cw-depth-axis-score"/);
+    assert.match(script, /가장 선명한 방향/);
+    assert.match(css, /\.cw-depth-axis-score strong\s*\{[^}]*font-size:\s*clamp\(48px, 6vw, 72px\)[^}]*font-variant-numeric:\s*tabular-nums/);
+    assert.match(css, /@keyframes cw-depth-metric-in/);
     assert.match(script, /class="cw-depth-axis-chart"/);
     assert.doesNotMatch(script, /cw-depth-axis-row[^\n]*[\s\S]{0,300}<header>/);
     assert.match(script, /aria-label="\$\{escapeHtml\(`\$\{axis\.title\}: \$\{axis\.selected\}`\)\}"/);
@@ -647,8 +653,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /class="cw-depth-intro-visual"/);
     assert.match(script, /class="cw-depth-stage-art"/);
     assert.match(script, /typeCharacterPath\(result\.code\)/);
-    assert.match(html, /crewart-survey-core\.js\?v=20260815-card-motion-v17/);
-    assert.match(html, /crewart-survey-v4\.css\?v=20260815-card-motion-v17/);
+    assert.match(html, /crewart-survey-core\.js\?v=20260815-axis-metric-v18/);
+    assert.match(html, /crewart-survey-v4\.css\?v=20260815-axis-metric-v18/);
     assert.match(html, /id="start-button"[^>]*>[\s\S]*시작하기/);
     assert.match(html, /id="home-retest"[^>]*>다시 시작/);
     assert.doesNotMatch(html, /start-button-v2|home-retest-v1|Ver 1 시작|Ver 2 시작/);

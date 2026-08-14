@@ -859,6 +859,12 @@
                 fillWidth: Math.abs(position - 50)
             };
         });
+        const strongestAxis = axisRows.reduce((strongest, axis) => {
+            const strength = Math.round(Math.max(axis.position, 100 - axis.position));
+            return !strongest || strength > strongest.value
+                ? { value: strength, label: axis.selected }
+                : strongest;
+        }, null);
         steps.push({
             kicker: '성향 지표',
             railTitle: '선택이 기운 방향',
@@ -867,6 +873,7 @@
             note: '',
             keywords: [],
             axisRows,
+            axisScore: strongestAxis,
             visual: 'axes',
             kind: 'axes'
         });
@@ -898,6 +905,12 @@
         const firstScenePath = resultScenePath(firstStep.visual);
         preloadResultScenes(steps);
         const stepMarkup = steps.map((step, index) => {
+            const axisScoreMarkup = step.axisScore ? `
+                <div class="cw-depth-axis-score" aria-label="가장 선명한 방향 ${escapeHtml(step.axisScore.label)} ${step.axisScore.value}%">
+                    <span>가장 선명한 방향</span>
+                    <strong>${step.axisScore.value}<small>%</small></strong>
+                    <em>${escapeHtml(step.axisScore.label)}</em>
+                </div>` : '';
             const axisMarkup = step.axisRows ? `
                 <div class="cw-depth-axis-chart" aria-label="성향 축 방향표">
                     ${step.axisRows.map((axis, axisIndex) => `
@@ -918,6 +931,7 @@
                     </div>
                     <h3>${escapeHtml(step.title)}</h3>
                     ${step.body ? `<p>${escapeHtml(step.body)}</p>` : ''}
+                    ${axisScoreMarkup}
                     ${axisMarkup}
                     ${step.note ? `<footer>${escapeHtml(step.note)}</footer>` : ''}
                 </article>
