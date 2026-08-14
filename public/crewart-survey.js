@@ -162,6 +162,7 @@
     let preparedSaveUrl = '';
     let preparedKakaoShareFile = null;
     let preparedKakaoShareUrl = '';
+    let resultViewVersion = (() => { try { return localStorage.getItem('crewart_result_view_version') || 'v2'; } catch (_) { return 'v2'; } })();
 
     function element(id) {
         return document.getElementById(id);
@@ -1154,6 +1155,7 @@
 
     function renderResult(options = {}) {
         const profile = Core.getResultProfile(result.code);
+        const isV2 = resultViewVersion === 'v2';
         const house = Core.HOUSE_META[assignedHouseKey] || { name: 'CREO', accent: '#f0b85a' };
         const detail = BAND_INTEGRATION_ENABLED && hasDetailedAccess()
             ? `${renderMemberDetail()}${renderSpeedCard()}${renderHouseCard()}`
@@ -1166,8 +1168,9 @@
         const resultCodeFrontSlots = renderResultCodeSlots(resultCodeLetters.slice(2), 2);
         const characterState = options.animate ? 'is-pending' : 'is-revealed';
         const characterPath = typeCharacterPath(result.code);
+        const activeTitle = isV2 ? (profile.title || result.typeName) : result.typeName;
 
-        const traitsHtml = Array.isArray(profile.traits) && profile.traits.length
+        const traitsHtml = isV2 && Array.isArray(profile.traits) && profile.traits.length
             ? `<section class="cw-result-traits-card">
                     <h3 class="cw-card-section-title"><span class="cw-card-icon" aria-hidden="true">🔍</span> 집사 팩폭 특징</h3>
                     <ul class="cw-traits-list">
@@ -1176,14 +1179,14 @@
                </section>`
             : '';
 
-        const powerGridHtml = (profile.superpower || profile.weakness)
+        const powerGridHtml = isV2 && (profile.superpower || profile.weakness)
             ? `<section class="cw-result-power-grid">
                     ${profile.superpower ? `<article class="cw-power-card is-superpower"><div class="cw-power-badge">⚡ 사육 강점</div><p>${escapeHtml(profile.superpower)}</p></article>` : ''}
                     ${profile.weakness ? `<article class="cw-power-card is-weakness"><div class="cw-power-badge">💔 주의할 점</div><p>${escapeHtml(profile.weakness)}</p></article>` : ''}
                </section>`
             : '';
 
-        const matchGridHtml = (profile.bestMatch || profile.worstMatch)
+        const matchGridHtml = isV2 && (profile.bestMatch || profile.worstMatch)
             ? `<section class="cw-result-match-grid">
                     ${profile.bestMatch ? `<article class="cw-match-card is-best">
                         <div class="cw-match-tag"><span aria-hidden="true">💖</span> 환상의 짝꿍</div>
@@ -1198,7 +1201,7 @@
                </section>`
             : '';
 
-        const actionItemHtml = profile.actionItem
+        const actionItemHtml = isV2 && profile.actionItem
             ? `<section class="cw-result-action-card">
                     <div class="cw-action-item-box">
                         <span class="cw-action-icon" aria-hidden="true">💡</span>
@@ -1212,24 +1215,34 @@
 
         element('result-content').innerHTML = `
             <div class="cw-result-wrap" style="--house-accent:${escapeHtml(house.accent)}">
-                <article class="cw-result-report">
-                    <section class="cw-result-identity">
+                <article class="cw-result-report ${isV2 ? 'is-v2-mode' : 'is-v1-mode'}">
+                    <header class="cw-result-top-bar">
                         <div class="cw-result-house-badge">
                             <span class="cw-badge-dot" aria-hidden="true"></span>
                             <span>${escapeHtml(house.name)} 기숙사</span>
                         </div>
+                        <div class="cw-result-version-switcher" role="group" aria-label="결과 카드 모드 전환">
+                            <button type="button" class="cw-version-tab ${!isV2 ? 'is-active' : ''}" data-action="set-result-version" data-version="v1">
+                                <span>Ver 1</span>
+                            </button>
+                            <button type="button" class="cw-version-tab ${isV2 ? 'is-active' : ''}" data-action="set-result-version" data-version="v2">
+                                <span>Ver 2</span>
+                            </button>
+                        </div>
+                    </header>
+                    <section class="cw-result-identity">
                         <div class="cw-type-poster" data-final-code="${escapeHtml(result.code)}">
                             <span class="cw-visually-hidden">${escapeHtml(result.code)}</span>
                             <strong class="cw-result-code cw-result-code-back" aria-hidden="true">${resultCodeBackSlots}</strong>
                             <figure class="cw-character-reveal ${characterState}" data-character-reveal>
                                 <div class="cw-character-placeholder" aria-hidden="true"><span>?</span></div>
-                                <img src="${escapeHtml(characterPath)}" width="360" height="520" alt="${escapeHtml(`${result.code} ${profile.title || result.typeName} 아기 크레 캐릭터`)}" loading="eager" decoding="async">
+                                <img src="${escapeHtml(characterPath)}" width="360" height="520" alt="${escapeHtml(`${result.code} ${activeTitle} 아기 크레 캐릭터`)}" loading="eager" decoding="async">
                             </figure>
                             <strong class="cw-result-code cw-result-code-front" aria-hidden="true">${resultCodeFrontSlots}</strong>
                         </div>
-                        <h1 class="cw-result-type-name" data-final-name="${escapeHtml(profile.title || result.typeName)}">${escapeHtml(profile.title || result.typeName)}</h1>
-                        ${profile.subtitle ? `<p class="cw-result-subtitle">${escapeHtml(profile.subtitle)}</p>` : ''}
-                        ${profile.summary ? `<div class="cw-result-summary-box"><p>${escapeHtml(profile.summary)}</p></div>` : ''}
+                        <h1 class="cw-result-type-name" data-final-name="${escapeHtml(activeTitle)}">${escapeHtml(activeTitle)}</h1>
+                        ${isV2 && profile.subtitle ? `<p class="cw-result-subtitle">${escapeHtml(profile.subtitle)}</p>` : ''}
+                        ${isV2 && profile.summary ? `<div class="cw-result-summary-box"><p>${escapeHtml(profile.summary)}</p></div>` : ''}
                     </section>
                     ${traitsHtml}
                     ${powerGridHtml}
@@ -1252,6 +1265,16 @@
                 </article>
                 <small class="cw-result-copyright cw-result-copyright-outside">© 2026 CREO. All rights reserved.</small>
             </div>`;
+        element('result-content').querySelectorAll('[data-action="set-result-version"]').forEach(button => {
+            button.addEventListener('click', event => {
+                const targetVer = event.currentTarget.dataset.version;
+                if (targetVer && (targetVer === 'v1' || targetVer === 'v2')) {
+                    resultViewVersion = targetVer;
+                    try { localStorage.setItem('crewart_result_view_version', targetVer); } catch (_) { }
+                    renderResult({ animate: false });
+                }
+            });
+        });
         element('result-content').querySelector('[data-action="unlock-detail"]')?.addEventListener('click', handleUnlockDetail);
         element('result-content').querySelector('[data-action="open-band"]')?.addEventListener('click', openBandTarget);
         element('result-content').querySelector('[data-action="share"]')?.addEventListener('click', shareResult);
