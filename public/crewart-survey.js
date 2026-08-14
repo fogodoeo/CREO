@@ -945,6 +945,9 @@
         const scenes = Object.fromEntries([...root.querySelectorAll('[data-story-scene]')].map(node => [node.dataset.storyScene, node]));
         const timeValueNode = root.querySelector('[data-time-value]');
         const timeLabelNode = root.querySelector('[data-time-label]');
+        const speedNode = root.querySelector('.cw-story-speed');
+        const targetSpeedPosition = Number(speed.position) || 50;
+        if (speedNode) speedNode.style.setProperty('--speed-position', '50%');
         const bandPromptNode = root.querySelector('[data-band-prompt]');
         const clamp = value => Math.max(0, Math.min(1, value));
         const segment = (value, start, end) => clamp((value - start) / (end - start));
@@ -1013,6 +1016,10 @@
             timeValueNode.classList.remove('is-shuffling');
             timeValueNode.classList.add('is-settled');
             if (timeLabelNode) timeLabelNode.textContent = '평균 문항 시간';
+            if (speedNode) {
+                speedNode.style.setProperty('--speed-position', `${targetSpeedPosition}%`);
+                speedNode.classList.add('is-settled');
+            }
             timeShuffleSettled = true;
             scheduleSync();
         };
@@ -1025,6 +1032,10 @@
             timeValueNode.classList.add('is-shuffling');
             timeValueNode.classList.remove('is-settled');
             if (timeLabelNode) timeLabelNode.textContent = '응답 시간 계산 중';
+            if (speedNode) {
+                speedNode.style.setProperty('--speed-position', '50%');
+                speedNode.classList.remove('is-settled');
+            }
             timeValueNode.textContent = `${(3 + Math.random() * 10).toFixed(1)}초`;
             timeShuffleTimer = window.setInterval(() => {
                 ticks += 1;

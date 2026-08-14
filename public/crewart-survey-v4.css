@@ -1011,7 +1011,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-story-speed > div { display: flex; width: 100%; justify-content: space-between; color: #374151; font-size: 14px; font-weight: 760; }
 .cw-story-speed > i { position: relative; display: block; width: 100%; height: 7px; margin-top: 12px; border-radius: 999px; background: linear-gradient(90deg, #d8eadf, #e2e3df 50%, #e9ddd8); font-style: normal; }
 .cw-story-speed > i::after { position: absolute; top: -5px; bottom: -5px; left: 50%; width: 1px; background: #aeb3ae; content: ""; }
-.cw-story-speed > i b { position: absolute; z-index: 1; top: 50%; left: var(--speed-position); width: 21px; height: 21px; border: 5px solid #fff; border-radius: 50%; background: var(--house-accent, #16814b); box-shadow: 0 4px 15px color-mix(in srgb, var(--house-accent, #16814b) 32%, transparent); transform: translate(-50%, -50%); }
+.cw-story-speed > i b { position: absolute; z-index: 1; top: 50%; left: var(--speed-position); width: 21px; height: 21px; border: 5px solid #fff; border-radius: 50%; background: var(--house-accent, #16814b); box-shadow: 0 4px 15px color-mix(in srgb, var(--house-accent, #16814b) 32%, transparent); transform: translate(-50%, -50%); transition: left 0.75s cubic-bezier(0.34, 1.45, 0.64, 1); }
 .cw-story-speed > strong { margin-top: 20px; color: #2c312d; font-size: 21px; font-weight: 880; }
 .cw-story-speed > small { margin-top: 6px; color: #4b5563; font-size: 13.5px; font-weight: 700; }
 
@@ -1243,9 +1243,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     transition: left 0.12s ease-out, transform 0.15s ease;
 }
 
-.cw-story-speed > i b {
-    transition: left 0.4s cubic-bezier(0.34, 1.25, 0.64, 1);
-}
+.cw-story-speed > i b { position: absolute; z-index: 1; top: 50%; left: var(--speed-position); width: 21px; height: 21px; border: 5px solid #fff; border-radius: 50%; background: var(--house-accent, #16814b); box-shadow: 0 4px 15px color-mix(in srgb, var(--house-accent, #16814b) 32%, transparent); transform: translate(-50%, -50%); transition: left 0.75s cubic-bezier(0.34, 1.45, 0.64, 1); }
 
 @media (max-width: 520px) {
     .cw-story-axis-labels {
