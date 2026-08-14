@@ -760,8 +760,15 @@
         if (!assignedHouseKey && IS_LOCAL_QA) assignedHouseKey = choosePreviewHouse();
         if (!assignedHouseKey && surveySessionId) {
             toast('기숙사를 배정하고 있어요.');
-            const savedHouse = await submitSurvey();
-            if (!savedHouse) return;
+            try {
+                const savedHouse = await submitSurvey();
+                if (savedHouse && Core.HOUSE_KEYS.includes(savedHouse)) assignedHouseKey = savedHouse;
+            } catch (err) {
+                console.warn('[completeResultReveal] submit fallback:', err);
+            }
+        }
+        if (!assignedHouseKey) {
+            assignedHouseKey = choosePreviewHouse() || Core.HOUSE_KEYS[0];
         }
         saveLastResult();
         renderResult({ animate: true });
