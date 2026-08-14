@@ -764,40 +764,30 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-story-scene.is-time { opacity: var(--time-opacity); text-align: center; }
 .cw-story-scene.is-house { opacity: var(--house-opacity); text-align: center; }
 
-.cw-story-heading { text-align: center; }
-.cw-story-heading small,
 .cw-story-scene.is-time > small {
     color: var(--house-accent, #16814b);
     font-size: 12px;
     font-weight: 850;
 }
 
-.cw-story-heading h1 {
-    margin: 0;
-    font-size: clamp(24px, 4vw, 38px);
-    font-weight: 900;
-    line-height: 1.1;
-    letter-spacing: -.06em;
-}
-
 .cw-story-result-hero {
     display: grid;
-    width: min(100%, 520px);
-    margin: 0 auto 18px;
-    grid-template-columns: 160px minmax(0, 1fr);
+    width: min(100%, 620px);
+    margin: 0 auto 28px;
+    grid-template-columns: 210px minmax(0, 1fr);
     align-items: center;
     gap: clamp(20px, 5vw, 46px);
 }
 
 .cw-story-result-character {
     display: grid;
-    height: 170px;
+    height: 220px;
     place-items: center;
 }
 
 .cw-story-result-character img {
     width: 100%;
-    max-width: 150px;
+    max-width: 190px;
     height: 100%;
     max-height: 100%;
     object-fit: contain;
@@ -805,21 +795,21 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 }
 
 .cw-story-result-type { display: grid; justify-items: start; }
-.cw-story-result-type small { color: #747a75; font-size: 11px; font-weight: 780; }
+.cw-story-result-type small { color: #747a75; font-size: 13px; font-weight: 780; }
 .cw-story-result-type strong {
     margin-top: 6px;
     color: var(--house-accent, #16814b);
-    font-size: clamp(64px, 10vw, 94px);
+    font-size: clamp(76px, 11vw, 108px);
     font-weight: 940;
     line-height: .86;
     letter-spacing: -.075em;
 }
-.cw-story-result-type em { margin-top: 10px; color: #353a36; font-size: 13px; font-style: normal; font-weight: 780; }
+.cw-story-result-type em { margin-top: 12px; color: #353a36; font-size: 15px; font-style: normal; font-weight: 780; }
 
 .cw-story-axis-chart {
     display: grid;
     width: min(100%, 640px);
-    margin: clamp(24px, 4svh, 38px) auto 0;
+    margin: 0 auto;
     gap: clamp(18px, 3svh, 26px);
 }
 
@@ -1005,13 +995,13 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     .cw-story-track { height: 480svh; }
     .cw-story-topbar { padding: 0 14px; }
     .cw-story-scene { width: min(calc(100% - 28px), 560px); }
-    .cw-story-result-hero { width: min(100%, 340px); margin-bottom: 14px; grid-template-columns: 112px minmax(0, 1fr); gap: 18px; }
-    .cw-story-result-character { height: 132px; }
-    .cw-story-result-character img { width: 112px; max-width: 112px; height: 132px; max-height: 132px; }
-    .cw-story-result-type strong { font-size: clamp(56px, 18vw, 72px); }
-    .cw-story-result-type em { margin-top: 7px; font-size: 11px; }
-    .cw-story-heading h1 { font-size: clamp(23px, 6.8vw, 30px); }
-    .cw-story-axis-chart { margin-top: clamp(20px, 3svh, 28px); gap: clamp(17px, 2.5svh, 22px); }
+    .cw-story-result-hero { width: min(100%, 370px); margin-bottom: clamp(24px, 4svh, 36px); grid-template-columns: 145px minmax(0, 1fr); gap: 18px; }
+    .cw-story-result-character { height: 172px; }
+    .cw-story-result-character img { width: 145px; max-width: 145px; height: 172px; max-height: 172px; }
+    .cw-story-result-type small { font-size: 12px; }
+    .cw-story-result-type strong { font-size: clamp(68px, 21vw, 86px); }
+    .cw-story-result-type em { margin-top: 9px; font-size: 12px; line-height: 1.35; }
+    .cw-story-axis-chart { gap: clamp(17px, 2.5svh, 22px); }
     .cw-story-axis-labels { font-size: 11px; }
     .cw-story-scene.is-profile { width: min(calc(100% - 28px), 560px); gap: 10px; }
     .cw-story-card { padding: 20px; border-radius: 18px; }
@@ -1028,8 +1018,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 
 @media (max-height: 680px) {
     .cw-story-result-hero { margin-bottom: 8px; }
-    .cw-story-result-character { height: 104px; }
-    .cw-story-result-character img { height: 104px; max-height: 104px; }
+    .cw-story-result-character { height: 132px; }
+    .cw-story-result-character img { height: 132px; max-height: 132px; }
+    .cw-story-result-type strong { font-size: clamp(58px, 18vw, 72px); }
     .cw-story-axis-chart { margin-top: 15px; gap: 14px; }
     .cw-story-card { padding: 16px 18px; }
     .cw-story-card.is-strength > strong { margin-top: 9px; font-size: 21px; }

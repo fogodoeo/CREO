@@ -827,7 +827,6 @@
                                     </div>
                                     <div class="cw-story-result-type"><small>당신의 유형</small><strong>${escapeHtml(result.code)}</strong><em>${escapeHtml(profile.title || result.typeName)}</em></div>
                                 </div>
-                                <div class="cw-story-heading"><h1>선택의 방향을 읽는 중</h1></div>
                                 <div class="cw-story-axis-chart">${axisMarkup}</div>
                             </section>
 
@@ -888,15 +887,46 @@
         let frame = 0;
         let activeScene = '';
         let timeShuffleTimer = 0;
+        let timeShuffleStarted = false;
+        let timeShuffleSettled = false;
+        const TIME_SCENE_START = .63;
+        const TIME_SCENE_LOCK = .7;
+
+        const storyProgressToScrollY = progress => {
+            const rect = root.getBoundingClientRect();
+            const rootTop = window.scrollY + rect.top;
+            const range = Math.max(1, root.offsetHeight - window.innerHeight);
+            return rootTop + (range * progress);
+        };
+        const holdTimeScene = () => {
+            if (!timeShuffleStarted || timeShuffleSettled) return;
+            const lockY = storyProgressToScrollY(TIME_SCENE_LOCK);
+            if (Math.abs(window.scrollY - lockY) > 1) window.scrollTo({ top: lockY, behavior: 'instant' });
+        };
+        const blockTimeSceneScroll = event => {
+            if (!timeShuffleStarted || timeShuffleSettled) return;
+            event.preventDefault();
+            holdTimeScene();
+        };
+        const blockTimeSceneKeys = event => {
+            if (!timeShuffleStarted || timeShuffleSettled) return;
+            if (!['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', 'Home', 'End', ' '].includes(event.key)) return;
+            event.preventDefault();
+            holdTimeScene();
+        };
 
         const settleTimeValue = () => {
             if (!timeValueNode) return;
             timeValueNode.textContent = timeValueNode.dataset.finalTime || '측정 전';
             timeValueNode.classList.remove('is-shuffling');
             if (timeLabelNode) timeLabelNode.textContent = '평균 문항 시간';
+            timeShuffleSettled = true;
+            scheduleSync();
         };
         const startTimeShuffle = () => {
-            if (!timeValueNode) return;
+            if (!timeValueNode || timeShuffleStarted) return;
+            timeShuffleStarted = true;
+            timeShuffleSettled = false;
             window.clearInterval(timeShuffleTimer);
             let ticks = 0;
             timeValueNode.classList.add('is-shuffling');
@@ -918,7 +948,11 @@
             frame = 0;
             const rect = root.getBoundingClientRect();
             const range = Math.max(1, root.offsetHeight - window.innerHeight);
-            const progress = clamp(-rect.top / range);
+            const rawProgress = clamp(-rect.top / range);
+            if (rawProgress >= TIME_SCENE_START && !timeShuffleStarted) startTimeShuffle();
+            const progress = timeShuffleStarted && !timeShuffleSettled
+                ? TIME_SCENE_LOCK
+                : rawProgress;
             const axisProgress = segment(progress, .02, .17);
             const profileIn = segment(progress, .35, .37);
             const profileOut = 1 - segment(progress, .59, .62);
@@ -954,17 +988,12 @@
                 row.style.setProperty('--axis-fill-width', `${Math.abs(current - 50)}%`);
             });
 
-            const nextScene = progress < .35 ? 'axis' : progress < .63 ? 'profile' : progress < .81 ? 'time' : 'house';
+            const nextScene = progress < .35 ? 'axis' : progress < TIME_SCENE_START ? 'profile' : progress < .81 ? 'time' : 'house';
             if (nextScene !== activeScene) {
                 activeScene = nextScene;
                 Object.entries(scenes).forEach(([name, node]) => node.setAttribute('aria-hidden', String(name !== activeScene)));
-                if (activeScene === 'time') startTimeShuffle();
-                else if (timeShuffleTimer) {
-                    window.clearInterval(timeShuffleTimer);
-                    timeShuffleTimer = 0;
-                    settleTimeValue();
-                }
             }
+            holdTimeScene();
             root.classList.toggle('is-share-ready', shareProgress >= .98);
         };
         const scheduleSync = () => {
@@ -972,10 +1001,16 @@
         };
         window.addEventListener('scroll', scheduleSync, { passive: true });
         window.addEventListener('resize', scheduleSync);
+        window.addEventListener('wheel', blockTimeSceneScroll, { passive: false });
+        window.addEventListener('touchmove', blockTimeSceneScroll, { passive: false });
+        window.addEventListener('keydown', blockTimeSceneKeys);
         sync();
         return () => {
             window.removeEventListener('scroll', scheduleSync);
             window.removeEventListener('resize', scheduleSync);
+            window.removeEventListener('wheel', blockTimeSceneScroll);
+            window.removeEventListener('touchmove', blockTimeSceneScroll);
+            window.removeEventListener('keydown', blockTimeSceneKeys);
             window.clearInterval(timeShuffleTimer);
             if (frame) cancelAnimationFrame(frame);
         };

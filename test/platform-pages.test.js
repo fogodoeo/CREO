@@ -563,7 +563,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /KAKAO_JS_KEY/);
     assert.match(script, /const SURVEY_URL = 'https:\/\/creok\.onrender\.com\/crewart-survey\.html'/);
     assert.doesNotMatch(script, /const SURVEY_URL = new URL\([^\n]*document\.baseURI/);
-    assert.match(html, /crewart-survey\.js\?v=20260815-result-sequence-v26/);
+    assert.match(html, /crewart-survey\.js\?v=20260815-result-sequence-v27/);
     assert.match(script, /function renderUnifiedResult\(profile, house\)/);
     assert.doesNotMatch(script, /resultViewVersion|resultViewFromLocation|changeResultView|report=deep|set-result-version/);
     assert.match(script, /function renderResult\(options = \{\}\)[\s\S]*renderUnifiedResult\(profile, house\);/);
@@ -578,7 +578,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /class="cw-story-result-character"/);
     assert.match(script, /typeCharacterPath\(result\.code\)/);
     assert.match(script, /class="cw-story-result-type"/);
-    assert.match(script, /선택의 방향을 읽는 중/);
+    assert.doesNotMatch(script, /선택의 방향을 읽는 중|cw-story-heading/);
     assert.match(script, /당신의 핵심 강점/);
     assert.match(script, /가장 편안한 유형/);
     assert.match(script, /평균 문항 시간/);
@@ -593,6 +593,11 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /function setupResultStory\(\)[\s\S]*const startTimeShuffle = \(\) =>/);
     assert.match(script, /Math\.random\(\) \* 10/);
     assert.match(script, /ticks >= 9[\s\S]*settleTimeValue\(\)/);
+    assert.match(script, /const TIME_SCENE_LOCK = \.7/);
+    assert.match(script, /rawProgress >= TIME_SCENE_START[\s\S]*startTimeShuffle\(\)/);
+    assert.match(script, /window\.addEventListener\('wheel', blockTimeSceneScroll, \{ passive: false \}\)/);
+    assert.match(script, /window\.addEventListener\('touchmove', blockTimeSceneScroll, \{ passive: false \}\)/);
+    assert.match(script, /timeShuffleStarted && !timeShuffleSettled[\s\S]*TIME_SCENE_LOCK/);
     assert.match(script, /data-time-value data-final-time=/);
     assert.match(script, /timeLabelNode\.textContent = '평균 문항 시간'/);
     assert.match(script, /row\.style\.setProperty\('--axis-current'/);
@@ -642,7 +647,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /function typeCharacterPath\(code\)/);
     assert.match(script, /TYPE_CHARACTER_ROOT = 'assets\/crewart-types\/'/);
     assert.match(html, /crewart-survey-core\.js\?v=20260815-result-sequence-v26/);
-    assert.match(html, /crewart-survey-v4\.css\?v=20260815-result-sequence-v26/);
+    assert.match(html, /crewart-survey-v4\.css\?v=20260815-result-sequence-v27/);
     assert.match(html, /id="start-button"[^>]*>[\s\S]*시작하기/);
     assert.match(html, /id="home-retest"[^>]*>다시 시작/);
     assert.doesNotMatch(html, /start-button-v2|home-retest-v1|Ver 1 시작|Ver 2 시작/);
