@@ -563,12 +563,13 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /KAKAO_JS_KEY/);
     assert.match(script, /const SURVEY_URL = 'https:\/\/creok\.onrender\.com\/crewart-survey\.html'/);
     assert.doesNotMatch(script, /const SURVEY_URL = new URL\([^\n]*document\.baseURI/);
-    assert.match(html, /crewart-survey\.js\?v=20260815-public-axes-scenes-v10/);
+    assert.match(html, /crewart-survey\.js\?v=20260815-compact-nav-v11/);
     assert.match(script, /function renderUnifiedResult\(profile, house\)/);
     assert.doesNotMatch(script, /resultViewVersion|resultViewFromLocation|changeResultView|report=deep|set-result-version/);
     assert.match(script, /function renderResult\(options = \{\}\)[\s\S]*renderUnifiedResult\(profile, house\);/);
     assert.match(script, /data-depth-scrolly aria-label="결과 리포트 \$\{steps\.length\}단계"/);
-    assert.equal((script.match(/kicker: '(?:성향|강점|주의점|궁합|가이드)'/g) || []).length, 5);
+    assert.equal((script.match(/kicker: '(?:성향|강점과 주의점|궁합)'/g) || []).length, 3);
+    assert.doesNotMatch(script, /kicker: '(?:주의점|가이드)'/);
     assert.match(script, /function setupResultScrollytelling\(steps\)/);
     assert.match(script, /<h2 data-depth-title>\$\{escapeHtml\(firstStep\.railTitle\)\}<\/h2>/);
     assert.match(script, /class="cw-depth-keyword-label">핵심 키워드/);
@@ -583,7 +584,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /resultExperienceCleanup\?\.\(\)/);
     assert.match(script, /function buildPreviewResult\(code\)/);
     assert.match(css, /\.cw-depth-stage\s*\{[^}]*position:\s*sticky[^}]*height:\s*min\(640px, calc\(100svh - 36px\)\)/);
-    assert.match(css, /\.cw-depth-step\s*\{[^}]*min-height:\s*78svh/);
+    assert.match(css, /\.cw-depth-step\s*\{[^}]*min-height:\s*clamp\(360px, 56svh, 520px\)/);
     assert.match(css, /@media \(max-width: 760px\)[\s\S]*\.cw-depth-stage\s*\{[^}]*position:\s*sticky|@media \(max-width: 760px\)[\s\S]*\.cw-depth-stage\s*\{[^}]*top:\s*10px/);
     assert.match(css, /\.cw-depth-stage-content\.is-entering/);
     assert.match(css, /html\s*\{[^}]*overflow-x:\s*clip/);
@@ -591,7 +592,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /classList\.add\('is-depth-view'\)/);
     assert.match(css, /\.cw-result\.is-depth-view\s*\{[^}]*width:\s*100%[^}]*max-width:\s*none/);
     assert.match(script, /classList\.toggle\('cw-result-experience', screenId === 'result-screen' && Boolean\(result\)\)/);
-    assert.match(css, /body\.cw-result-experience \.cw-bottom-nav\s*\{[^}]*visibility:\s*hidden[^}]*pointer-events:\s*none/);
+    assert.doesNotMatch(css, /body\.cw-result-experience \.cw-bottom-nav\s*\{/);
     assert.match(script, /railTitle: '한 문장으로 보는 나'/);
     assert.match(script, /keywords: axisFacts/);
     assert.doesNotMatch(script, /facts:\s*axisFacts/);
@@ -599,7 +600,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /function resultScenePath\(scene\)/);
     assert.match(script, /data-depth-visual/);
     assert.match(script, /visualNode\.src = resultScenePath\(step\.visual\)/);
-    for (const scene of ['personality', 'strength', 'caution', 'compatibility', 'guide', 'axes', 'speed', 'house', 'locked']) {
+    for (const scene of ['personality', 'strength', 'compatibility', 'axes', 'speed', 'house', 'locked']) {
         const scenePath = path.join(__dirname, '..', 'public', 'assets', 'crewart-result-scenes', `${scene}.webp`);
         assert.equal(fs.existsSync(scenePath), true, `${scene} result scene should exist`);
         assert.ok(fs.statSync(scenePath).size < 100_000, `${scene} result scene should stay lightweight`);
@@ -624,8 +625,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /class="cw-depth-intro-visual"/);
     assert.match(script, /class="cw-depth-stage-art"/);
     assert.match(script, /typeCharacterPath\(result\.code\)/);
-    assert.match(html, /crewart-survey-core\.js\?v=20260815-public-axes-scenes-v10/);
-    assert.match(html, /crewart-survey-v4\.css\?v=20260815-public-axes-scenes-v10/);
+    assert.match(html, /crewart-survey-core\.js\?v=20260815-compact-nav-v11/);
+    assert.match(html, /crewart-survey-v4\.css\?v=20260815-compact-nav-v11/);
     assert.match(html, /id="start-button"[^>]*>[\s\S]*시작하기/);
     assert.match(html, /id="home-retest"[^>]*>다시 시작/);
     assert.doesNotMatch(html, /start-button-v2|home-retest-v1|Ver 1 시작|Ver 2 시작/);

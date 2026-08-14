@@ -474,8 +474,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-bottom-nav i { position: absolute; top: 13px; left: calc(50% + 20px); width: 5px; height: 5px; border-radius: 50%; background: var(--cw-green); }
 .cw-bottom-nav i.is-verified { background: #9ba09b; }
 .cw-bottom-nav i.is-pending { background: #c18a25; }
-body.cw-result-experience .cw-bottom-nav { opacity: 0; visibility: hidden; pointer-events: none; transform: translate(-50%, 16px); }
-
 .cw-toast { position: fixed; z-index: 80; left: 50%; bottom: max(72px, calc(env(safe-area-inset-bottom) + 62px)); width: max-content; max-width: calc(100% - 32px); padding: 11px 14px; border-radius: 12px; background: var(--cw-ink); color: #fff; box-shadow: 0 11px 28px rgba(0,0,0,.17); font-size: var(--cw-type-small); font-weight: var(--cw-weight-medium); opacity: 0; pointer-events: none; transform: translate(-50%, 12px); transition: .18s ease; }
 .cw-toast.is-visible { opacity: 1; transform: translate(-50%, 0); }
 
@@ -993,7 +991,7 @@ body.cw-result-experience .cw-bottom-nav { opacity: 0; visibility: hidden; point
 
 .cw-depth-step {
     display: flex;
-    min-height: 78svh;
+    min-height: clamp(360px, 56svh, 520px);
     align-items: center;
     gap: 18px;
     opacity: .32;
@@ -1039,6 +1037,7 @@ body.cw-result-experience .cw-bottom-nav { opacity: 0; visibility: hidden; point
     color: #444a45;
     font-size: clamp(15px, 1.55vw, 17px);
     line-height: 1.76;
+    white-space: pre-line;
     word-break: keep-all;
 }
 
@@ -1176,8 +1175,8 @@ body.cw-result-experience .cw-bottom-nav { opacity: 0; visibility: hidden; point
     .cw-depth-stage-facts span { padding: 6px 8px; font-size: 10px; }
     .cw-depth-steps { position: relative; z-index: 1; }
     .cw-depth-step {
-        min-height: 84svh;
-        padding: 0 20px 8svh;
+        min-height: clamp(420px, 64svh, 560px);
+        padding: 0 20px 5svh;
         align-items: flex-end;
         opacity: .18;
     }

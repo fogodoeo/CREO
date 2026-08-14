@@ -843,22 +843,13 @@
                 visual: 'personality'
             },
             {
-                kicker: '강점',
-                railTitle: '나도 모르게 잘하는 것',
-                title: '가장 자연스럽게 잘하는 것',
-                body: profile.superpower || '관찰한 내용을 자신만의 방식으로 정리해 다음 행동으로 연결합니다.',
-                note: '억지로 바꾸기보다 잘하는 방식을 선명하게',
-                keywords: ['관찰', '정리', '실행'],
+                kicker: '강점과 주의점',
+                railTitle: '잘하는 방식과 빈틈',
+                title: '자연스럽게 잘하는 것, 한 번 더 볼 것',
+                body: `${profile.superpower || '관찰한 내용을 자신만의 방식으로 정리해 다음 행동으로 연결합니다.'}\n\n${profile.weakness || '익숙한 판단이 빨라질수록 지금 달라진 조건을 한 번 더 확인해보세요.'}`,
+                note: '강점은 선명하게, 익숙한 판단은 한 번 더 확인하기',
+                keywords: ['강점', '균형', '조건 점검'],
                 visual: 'strength'
-            },
-            {
-                kicker: '주의점',
-                railTitle: '강점이 흔들리는 순간',
-                title: '한 번 더 확인할 지점',
-                body: profile.weakness || '익숙한 판단이 빨라질수록 지금 달라진 조건을 한 번 더 확인해보세요.',
-                note: '강점이 과해질 때 생기는 빈틈',
-                keywords: ['균형', '조건 점검', '한 번 더 확인'],
-                visual: 'caution'
             },
             {
                 kicker: '궁합',
@@ -868,15 +859,6 @@
                 note: cautiousMatch,
                 keywords: [profile.bestMatch?.mbti, profile.worstMatch?.mbti, '관계 리듬'].filter(Boolean),
                 visual: 'compatibility'
-            },
-            {
-                kicker: '가이드',
-                railTitle: '오늘의 작은 행동',
-                title: '오늘 바로 해볼 한 가지',
-                body: profile.actionItem || '지금 떠오른 크레 한 마리의 최근 변화를 짧게 기록해보세요.',
-                note: `당신의 기숙사는 ${house.name} 입니다.`,
-                keywords: ['오늘', '작은 행동', house.name],
-                visual: 'guide'
             }
         ];
 
