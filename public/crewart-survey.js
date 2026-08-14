@@ -8,6 +8,8 @@
     const KAKAO_JS_KEY = 'db7ffc8d6b9b7601b792ed69be4658fc';
     const TYPE_CHARACTER_ROOT = 'assets/crewart-types/';
     const TYPE_CHARACTER_VERSION = '20260802-character-v1';
+    const RESULT_SCENE_ROOT = 'assets/crewart-result-scenes/';
+    const RESULT_SCENE_VERSION = '20260815-scenes-v1';
     const MEMBERSHIP_STORAGE_KEY = 'crewart_band_member_access_v1';
     const MEMBERSHIP_PHONE_STORAGE_KEY = 'crewart_band_member_phone_mask_v1';
     const LAST_RESULT_STORAGE_KEY = 'crewart_last_result_v2';
@@ -125,6 +127,18 @@
     function typeCharacterPath(code) {
         const normalized = String(code || '').toLowerCase();
         return `${TYPE_CHARACTER_ROOT}crewart-type-${normalized}.png?v=${TYPE_CHARACTER_VERSION}`;
+    }
+
+    function resultScenePath(scene) {
+        return `${RESULT_SCENE_ROOT}${scene}.webp?v=${RESULT_SCENE_VERSION}`;
+    }
+
+    function preloadResultScenes(steps) {
+        [...new Set(steps.map(step => step.visual).filter(Boolean))].forEach(scene => {
+            const image = new Image();
+            image.decoding = 'async';
+            image.src = resultScenePath(scene);
+        });
     }
 
     function maskPhone(phone) {
@@ -825,7 +839,8 @@
                 title: profile.title || result.typeName,
                 body: profile.summary || TYPE_READINGS[result.code] || '당신의 선택에서 반복된 성향을 정리했습니다.',
                 note: profile.subtitle || `${result.code} 결과의 핵심 흐름`,
-                keywords: [result.code, house.name, '핵심 성향']
+                keywords: [result.code, house.name, '핵심 성향'],
+                visual: 'personality'
             },
             {
                 kicker: '강점',
@@ -833,7 +848,8 @@
                 title: '가장 자연스럽게 잘하는 것',
                 body: profile.superpower || '관찰한 내용을 자신만의 방식으로 정리해 다음 행동으로 연결합니다.',
                 note: '억지로 바꾸기보다 잘하는 방식을 선명하게',
-                keywords: ['관찰', '정리', '실행']
+                keywords: ['관찰', '정리', '실행'],
+                visual: 'strength'
             },
             {
                 kicker: '주의점',
@@ -841,7 +857,8 @@
                 title: '한 번 더 확인할 지점',
                 body: profile.weakness || '익숙한 판단이 빨라질수록 지금 달라진 조건을 한 번 더 확인해보세요.',
                 note: '강점이 과해질 때 생기는 빈틈',
-                keywords: ['균형', '조건 점검', '한 번 더 확인']
+                keywords: ['균형', '조건 점검', '한 번 더 확인'],
+                visual: 'caution'
             },
             {
                 kicker: '궁합',
@@ -849,7 +866,8 @@
                 title: '함께할 때 편안한 유형',
                 body: bestMatch,
                 note: cautiousMatch,
-                keywords: [profile.bestMatch?.mbti, profile.worstMatch?.mbti, '관계 리듬'].filter(Boolean)
+                keywords: [profile.bestMatch?.mbti, profile.worstMatch?.mbti, '관계 리듬'].filter(Boolean),
+                visual: 'compatibility'
             },
             {
                 kicker: '가이드',
@@ -857,26 +875,10 @@
                 title: '오늘 바로 해볼 한 가지',
                 body: profile.actionItem || '지금 떠오른 크레 한 마리의 최근 변화를 짧게 기록해보세요.',
                 note: `당신의 기숙사는 ${house.name} 입니다.`,
-                keywords: ['오늘', '작은 행동', house.name]
+                keywords: ['오늘', '작은 행동', house.name],
+                visual: 'guide'
             }
         ];
-
-        if (!hasDetailedAccess()) {
-            const configured = BAND_INTEGRATION_ENABLED && bandAuthConfigured;
-            steps.push({
-                kicker: '상세 결과',
-                railTitle: '회원에게 열리는 분석',
-                title: '내 선택을 더 자세히 보기',
-                body: configured
-                    ? '회원 확인을 마치면 네 가지 성향 지표와 문항별 응답 리듬, 기숙사 이야기가 이 카드 흐름에 이어집니다.'
-                    : '성향 지표와 응답 리듬을 연결하기 위한 회원 명단 확인을 준비하고 있습니다.',
-                note: configured ? '결과 화면을 벗어나지 않고 확인할 수 있어요.' : '연결 준비가 끝나면 바로 열 수 있어요.',
-                keywords: ['회원 전용', '성향 지표', '응답 리듬'],
-                locked: true,
-                unlockAvailable: configured
-            });
-            return steps;
-        }
 
         const axisFacts = result.axes.map(axisResult => {
             const copy = AXIS_REPORT_COPY[axisResult.axis];
@@ -890,8 +892,27 @@
             body: '네 가지 축을 실제 선택 장면의 의미로 바꿔 읽었습니다. 어느 한쪽의 점수가 아니라 지금 가장 자연스럽게 사용한 판단 방식을 보여줍니다.',
             note: '생각 정리 · 관찰 초점 · 선택 기준 · 사육 방식',
             keywords: axisFacts,
+            visual: 'axes',
             kind: 'metrics'
         });
+
+        if (!hasDetailedAccess()) {
+            const configured = BAND_INTEGRATION_ENABLED && bandAuthConfigured;
+            steps.push({
+                kicker: '상세 결과',
+                railTitle: '회원에게 열리는 분석',
+                title: '내 선택을 더 자세히 보기',
+                body: configured
+                    ? '회원 확인을 마치면 문항별 응답 리듬과 기숙사 이야기가 이 카드 흐름에 이어집니다.'
+                    : '응답 리듬과 기숙사 이야기를 연결하기 위한 회원 명단 확인을 준비하고 있습니다.',
+                note: configured ? '결과 화면을 벗어나지 않고 확인할 수 있어요.' : '연결 준비가 끝나면 바로 열 수 있어요.',
+                keywords: ['회원 전용', '응답 리듬', '기숙사 이야기'],
+                visual: 'locked',
+                locked: true,
+                unlockAvailable: configured
+            });
+            return steps;
+        }
 
         const speed = resultSpeedPresentation();
         if (speed) {
@@ -902,6 +923,7 @@
                 body: speedPositionCopy(speed.position, cohortSummary.timingMedians.length > 0),
                 note: `${timingEntryLabel(timingStats.fastest)} · ${timingEntryLabel(timingStats.slowest)}`,
                 keywords: [`문항당 ${speed.median}`, speed.comparison],
+                visual: 'speed',
                 kind: 'metrics'
             });
         }
@@ -915,6 +937,7 @@
             body: houseSummary,
             note: `${house.name} · 서로의 강점을 오래 이어가는 곳`,
             keywords: [house.name, '기숙사', '공통 돌봄 기준'],
+            visual: 'house',
             kind: 'house'
         });
 
@@ -926,6 +949,8 @@
         const firstStep = steps[0];
         const firstKeywords = firstStep.keywords || [];
         const characterPath = typeCharacterPath(result.code);
+        const firstScenePath = resultScenePath(firstStep.visual);
+        preloadResultScenes(steps);
         const stepMarkup = steps.map((step, index) => `
             <li class="cw-depth-step${index === 0 ? ' is-active' : ''}" data-depth-step="${index}">
                 <span class="cw-depth-step-number">${String(index + 1).padStart(2, '0')}</span>
@@ -969,7 +994,7 @@
                         </div>
                         <div class="cw-depth-stage-art" aria-hidden="true">
                             <span>${escapeHtml(result.code)}</span>
-                            <img src="${escapeHtml(characterPath)}" width="180" height="260" alt="">
+                            <img src="${escapeHtml(firstScenePath)}" width="600" height="900" alt="" data-depth-visual>
                         </div>
                         <div class="cw-depth-stage-content" data-depth-content>
                             <small data-depth-kicker>${escapeHtml(firstStep.kicker)}</small>
@@ -1016,6 +1041,7 @@
         const titleNode = stage.querySelector('[data-depth-title]');
         const factsNode = stage.querySelector('[data-depth-facts]');
         const contentNode = stage.querySelector('[data-depth-content]');
+        const visualNode = stage.querySelector('[data-depth-visual]');
         const progressNode = stage.querySelector('[data-depth-progress]');
         let activeIndex = -1;
         let frame = 0;
@@ -1035,6 +1061,7 @@
                 return node;
             }));
             factsNode.hidden = !keywords.length;
+            visualNode.src = resultScenePath(step.visual);
             contentNode.dataset.kind = step.kind || (step.locked ? 'locked' : 'story');
             contentNode.classList.remove('is-entering');
             void contentNode.offsetWidth;

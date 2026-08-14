@@ -903,10 +903,13 @@ body.cw-result-experience .cw-bottom-nav { opacity: 0; visibility: hidden; point
 
 .cw-depth-stage-art img {
     position: relative;
-    width: min(48%, 180px);
-    height: 100%;
+    width: auto;
+    max-width: min(62%, 220px);
+    height: min(100%, 250px);
     object-fit: contain;
     object-position: center bottom;
+    mix-blend-mode: multiply;
+    transition: opacity .18s ease;
 }
 
 .cw-depth-stage-content {
@@ -1159,7 +1162,7 @@ body.cw-result-experience .cw-bottom-nav { opacity: 0; visibility: hidden; point
         opacity: .34;
     }
     .cw-depth-stage-art span { display: none; }
-    .cw-depth-stage-art img { width: 100%; }
+    .cw-depth-stage-art img { width: auto; max-width: 100%; height: 100%; }
     .cw-depth-stage-content {
         display: grid;
         min-height: 0;
