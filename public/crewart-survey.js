@@ -142,6 +142,7 @@
     let lastSavedSignature = '';
     let toastTimer = null;
     let choiceLockTimer = null;
+    let choiceLockAttempted = false;
 
     let bandAuthReady = false;
     let bandAuthConfigured = false;
@@ -490,6 +491,7 @@
 
     function startTimer(index) {
         clearChoiceLock();
+        choiceLockAttempted = false;
         activeTimer = {
             index,
             elapsedMs: 0,
@@ -540,15 +542,18 @@
         const remainingMs = Math.max(0, Core.MIN_RESPONSE_MS - activeElapsedMs());
         const locked = remainingMs > 0;
         element('choice-list').querySelectorAll('[data-choice]').forEach(button => {
-            button.disabled = locked;
-            button.setAttribute('aria-disabled', String(locked));
+            button.dataset.timeLocked = String(locked);
         });
         const status = element('choice-lock-status');
         if (status) {
+            const remainingSeconds = Math.max(1, Math.ceil(remainingMs / 1000));
             status.textContent = locked
-                ? `${Math.max(1, Math.ceil(remainingMs / 1000))}초 후 선택할 수 있어요`
+                ? choiceLockAttempted
+                    ? `아직 선택할 수 없어요 · ${remainingSeconds}초만 더 봐주세요`
+                    : `${remainingSeconds}초 후 선택할 수 있어요`
                 : '이제 선택할 수 있어요';
             status.classList.toggle('is-ready', !locked);
+            status.classList.toggle('is-warning', locked && choiceLockAttempted);
         }
         if (!locked) clearChoiceLock();
     }
@@ -718,7 +723,7 @@
         element('question-title').textContent = question.q;
         element('choice-list').classList.toggle('is-four-option', isFourOption);
         element('choice-list').innerHTML = options.map((option, index) => `
-            <button class="cw-choice-button${(isFourOption ? displayedChoices[qIndex] : answers[qIndex]) === index ? ' is-selected' : ''}" type="button" data-choice="${index}" disabled aria-disabled="true">
+            <button class="cw-choice-button${(isFourOption ? displayedChoices[qIndex] : answers[qIndex]) === index ? ' is-selected' : ''}" type="button" data-choice="${index}" data-time-locked="true" aria-describedby="choice-lock-status">
                 <span>${escapeHtml(option)}</span>
             </button>`).join('') + '<p class="cw-choice-lock-status" id="choice-lock-status" role="status" aria-live="polite"></p>';
         element('choice-list').querySelectorAll('[data-choice]').forEach(button => {
@@ -734,6 +739,7 @@
         if (advancing || current < 1) return;
         const qIndex = current - 1;
         if (!activeTimer || activeTimer.index !== qIndex || activeElapsedMs() < Core.MIN_RESPONSE_MS) {
+            choiceLockAttempted = true;
             updateChoiceLock(qIndex);
             return;
         }

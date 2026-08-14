@@ -238,13 +238,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 }
 .cw-choice-button:hover { border-color: #8e938e; background: #f8f8f5; }
 .cw-choice-button span { color: var(--cw-ink); font-size: 16px; font-weight: 650; line-height: 1.48; word-break: keep-all; }
-.cw-choice-button:disabled { border-color: #e0e2de; background: #f7f7f4; cursor: wait; opacity: .62; }
-.cw-choice-button:disabled:hover { border-color: #e0e2de; background: #f7f7f4; }
 .cw-choice-list.is-four-option .cw-choice-button { min-height: 112px; padding: 14px 12px; }
 .cw-choice-list.is-four-option .cw-choice-button span { font-size: 14px; line-height: 1.5; text-align: left; }
 .cw-choice-button.is-selected { border-color: #252a27; background: #efefeb; }
 .cw-choice-lock-status { grid-column: 1 / -1; min-height: 18px; margin: 2px 0 0; color: #737a74; font-size: 11px; font-weight: 650; text-align: center; }
 .cw-choice-lock-status.is-ready { color: var(--cw-green); }
+.cw-choice-lock-status.is-warning { color: #a33b2e; font-weight: 750; }
 
 .cw-mbti { padding: max(83px, calc(env(safe-area-inset-top) + 76px)) 16px 42px; }
 .cw-simple-head { margin: 0 auto 22px; text-align: center; }
