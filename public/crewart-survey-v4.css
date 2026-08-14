@@ -679,7 +679,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     --house-progress: 0;
     --share-progress: 0;
     position: relative;
-    height: 620svh;
+    height: 460svh;
 }
 
 .cw-story-sticky {
@@ -850,7 +850,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     display: grid;
     justify-items: center;
     opacity: var(--mbti-progress);
-    transform: translateY(calc((1 - var(--mbti-progress)) * 22px)) scale(calc(.92 + var(--mbti-progress) * .08));
 }
 
 .cw-story-mbti span { color: #656b66; font-size: 12px; font-weight: 760; }
@@ -880,7 +879,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-story-card small { color: #747a75; font-size: 12px; font-weight: 790; }
 .cw-story-card.is-strength {
     opacity: var(--strength-progress);
-    transform: translateY(calc((1 - var(--strength-progress)) * -28px));
 }
 .cw-story-card.is-strength > strong {
     display: block;
@@ -899,7 +897,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     align-items: center;
     gap: 20px;
     opacity: var(--match-progress);
-    transform: translateY(calc((1 - var(--match-progress)) * 30px));
 }
 .cw-story-card.is-match > div strong {
     display: block;
@@ -914,7 +911,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 
 .cw-story-scene.is-time {
     justify-items: center;
-    transform: scale(calc(.86 + var(--time-progress) * .14));
 }
 .cw-story-scene.is-time > strong {
     margin-top: 14px;
@@ -936,7 +932,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     font-size: clamp(16px, 3.2vw, 30px);
     font-weight: 860;
     white-space: nowrap;
-    transform: scale(calc(.68 + var(--house-progress) * .38));
+    transform: scale(calc(.9 + var(--house-progress) * .13));
 }
 .cw-story-house-line strong {
     color: var(--house-accent, #16814b);
@@ -952,7 +948,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     gap: 9px;
     opacity: var(--share-progress);
     pointer-events: auto;
-    transform: translateY(calc((1 - var(--share-progress)) * 24px));
 }
 .cw-story-final-actions button {
     min-height: 50px;
@@ -967,7 +962,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-story-final-actions .cw-story-kakao { border-color: #fee500; background: #fee500; color: #191600; }
 .cw-story-final-actions .cw-story-save,
 .cw-story-final-actions .cw-story-unlock { min-height: 42px; background: rgba(255,255,255,.7); font-size: 12px; }
-.cw-story-track.is-share-ready .cw-story-kakao { animation: cw-story-share-ready 1.6s ease-in-out infinite; }
+.cw-story-track.is-share-ready .cw-story-kakao { animation: cw-story-share-ready .72s cubic-bezier(.2, .8, .2, 1) both; }
 .cw-story-credit { margin-top: 24px; color: #8a8f8a; font-size: 10px; opacity: var(--share-progress); }
 
 .cw-story-cue {
@@ -983,15 +978,16 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     opacity: calc(1 - var(--share-progress));
     transform: translateX(-50%);
 }
-.cw-story-cue i { font-size: 17px; font-style: normal; animation: cw-depth-cue 1.4s ease-in-out infinite; }
+.cw-story-cue i { font-size: 17px; font-style: normal; }
 
 @keyframes cw-story-share-ready {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(254, 229, 0, 0); transform: translateY(0) scale(1); }
-    50% { box-shadow: 0 10px 30px rgba(158, 139, 0, .2); transform: translateY(-3px) scale(1.018); }
+    0% { box-shadow: 0 0 0 0 rgba(254, 229, 0, 0); transform: scale(.985); }
+    58% { box-shadow: 0 9px 24px rgba(158, 139, 0, .18); transform: scale(1.018); }
+    100% { box-shadow: 0 6px 18px rgba(158, 139, 0, .12); transform: scale(1); }
 }
 
 @media (max-width: 760px) {
-    .cw-story-track { height: 650svh; }
+    .cw-story-track { height: 480svh; }
     .cw-story-topbar { padding: 0 14px; }
     .cw-story-scene { width: min(calc(100% - 28px), 560px); }
     .cw-story-heading h1 { font-size: clamp(27px, 8vw, 36px); }

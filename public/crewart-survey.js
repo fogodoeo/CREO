@@ -886,20 +886,20 @@
             const rect = root.getBoundingClientRect();
             const range = Math.max(1, root.offsetHeight - window.innerHeight);
             const progress = clamp(-rect.top / range);
-            const axisProgress = segment(progress, .015, .19);
-            const mbtiProgress = segment(progress, .17, .29);
-            const profileIn = segment(progress, .33, .39);
-            const profileOut = 1 - segment(progress, .61, .67);
-            const timeIn = segment(progress, .62, .69);
-            const timeOut = 1 - segment(progress, .76, .82);
-            const houseProgress = segment(progress, .77, .91);
-            const shareProgress = segment(progress, .9, .985);
-            const axisOpacity = 1 - segment(progress, .34, .4);
+            const axisProgress = segment(progress, .02, .17);
+            const mbtiProgress = segment(progress, .22, .27);
+            const profileIn = segment(progress, .35, .37);
+            const profileOut = 1 - segment(progress, .59, .62);
+            const timeIn = segment(progress, .64, .66);
+            const timeOut = 1 - segment(progress, .77, .8);
+            const houseProgress = segment(progress, .82, .92);
+            const shareProgress = segment(progress, .93, .97);
+            const axisOpacity = 1 - segment(progress, .31, .34);
             const profileOpacity = Math.min(profileIn, profileOut);
             const timeOpacity = Math.min(timeIn, timeOut);
-            const houseOpacity = segment(progress, .78, .84);
-            const strengthProgress = segment(progress, .34, .43);
-            const matchProgress = segment(progress, .44, .55);
+            const houseOpacity = segment(progress, .81, .84);
+            const strengthProgress = segment(progress, .36, .38);
+            const matchProgress = segment(progress, .44, .47);
 
             root.style.setProperty('--story-progress', progress);
             root.style.setProperty('--axis-progress', axisProgress);
@@ -923,7 +923,7 @@
                 row.style.setProperty('--axis-fill-width', `${Math.abs(current - 50)}%`);
             });
 
-            const nextScene = progress < .38 ? 'axis' : progress < .66 ? 'profile' : progress < .81 ? 'time' : 'house';
+            const nextScene = progress < .35 ? 'axis' : progress < .63 ? 'profile' : progress < .81 ? 'time' : 'house';
             if (nextScene !== activeScene) {
                 activeScene = nextScene;
                 Object.entries(scenes).forEach(([name, node]) => node.setAttribute('aria-hidden', String(name !== activeScene)));
