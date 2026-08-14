@@ -758,7 +758,7 @@
             return;
         }
         if (!assignedHouseKey && IS_LOCAL_QA) assignedHouseKey = choosePreviewHouse();
-        if (!assignedHouseKey && surveySessionId) {
+        if (!assignedHouseKey && surveySessionId && bandAuthUser?.isTargetMember) {
             toast('기숙사를 배정하고 있어요.');
             try {
                 const savedHouse = await submitSurvey();
