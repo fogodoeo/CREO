@@ -1172,26 +1172,26 @@
 
         const powerGridHtml = isV2 && (profile.superpower || profile.weakness)
             ? `<section class="cw-result-power-grid" aria-label="사육 강점 및 주의점">
-                    ${profile.superpower ? `<article class="cw-power-card is-superpower">
-                        <header class="cw-power-header"><span class="cw-power-tag">STRENGTH · 강점</span></header>
+                    ${profile.superpower ? `<article class="cw-power-card">
+                        <strong class="cw-power-tag">사육 강점</strong>
                         <p>${escapeHtml(profile.superpower)}</p>
                     </article>` : ''}
-                    ${profile.weakness ? `<article class="cw-power-card is-weakness">
-                        <header class="cw-power-header"><span class="cw-power-tag">CAUTION · 주의점</span></header>
+                    ${profile.weakness ? `<article class="cw-power-card">
+                        <strong class="cw-power-tag">사육 주의점</strong>
                         <p>${escapeHtml(profile.weakness)}</p>
                     </article>` : ''}
                </section>`
             : '';
 
         const matchGridHtml = isV2 && (profile.bestMatch || profile.worstMatch)
-            ? `<section class="cw-result-match-grid" aria-label="성향 궁합 분석">
-                    ${profile.bestMatch ? `<article class="cw-match-card is-best">
-                        <span class="cw-match-tag">BEST MATCH · 환상의 짝꿍</span>
+            ? `<section class="cw-result-match-grid" aria-label="성향 궁합">
+                    ${profile.bestMatch ? `<article class="cw-match-card">
+                        <span class="cw-match-tag">환상의 짝꿍</span>
                         <strong class="cw-match-mbti">${escapeHtml(profile.bestMatch.mbti)}</strong>
                         <p class="cw-match-title">${escapeHtml(profile.bestMatch.title)}</p>
                     </article>` : ''}
-                    ${profile.worstMatch ? `<article class="cw-match-card is-worst">
-                        <span class="cw-match-tag">WORST MATCH · 주의할 짝꿍</span>
+                    ${profile.worstMatch ? `<article class="cw-match-card">
+                        <span class="cw-match-tag">주의할 짝꿍</span>
                         <strong class="cw-match-mbti">${escapeHtml(profile.worstMatch.mbti)}</strong>
                         <p class="cw-match-title">${escapeHtml(profile.worstMatch.title)}</p>
                     </article>` : ''}
@@ -1199,28 +1199,27 @@
             : '';
 
         const actionItemHtml = isV2 && profile.actionItem
-            ? `<section class="cw-result-action-card" aria-label="오늘의 사육 팁">
+            ? `<section class="cw-result-action-card" aria-label="오늘의 팁">
                     <div class="cw-action-item-box">
-                        <small class="cw-action-label">KEEPER NOTE</small>
+                        <strong class="cw-action-label">오늘의 팁</strong>
                         <p class="cw-action-text">${escapeHtml(profile.actionItem)}</p>
                     </div>
                </section>`
             : '';
 
         element('result-content').innerHTML = `
-            <div class="cw-result-wrap">
+            <div class="cw-result-wrap" style="--house-accent:${escapeHtml(house.accent)}">
                 <article class="cw-result-report ${isV2 ? 'is-v2-mode' : 'is-v1-mode'}">
                     <header class="cw-result-top-bar">
                         <div class="cw-result-house-badge">
-                            <span class="cw-badge-square" style="background:${escapeHtml(house.accent)}" aria-hidden="true"></span>
-                            <span>${escapeHtml(house.name)} HOUSE</span>
+                            <span>${escapeHtml(house.name)} 기숙사</span>
                         </div>
                         <div class="cw-result-version-switcher" role="group" aria-label="결과 모드 전환">
                             <button type="button" class="cw-version-tab ${!isV2 ? 'is-active' : ''}" data-action="set-result-version" data-version="v1">
-                                <span>VER 1</span>
+                                <span>기본</span>
                             </button>
                             <button type="button" class="cw-version-tab ${isV2 ? 'is-active' : ''}" data-action="set-result-version" data-version="v2">
-                                <span>VER 2</span>
+                                <span>심층</span>
                             </button>
                         </div>
                     </header>

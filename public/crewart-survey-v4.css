@@ -647,8 +647,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 
 
 
+
 /* ==========================================================================
-   CREWARTS MODERN FLAT EDITORIAL RESULT STYLES (NO GLASSMORPHISM, NO EMOJIS)
+   CREWARTS MODERN FLAT EDITORIAL RESULT STYLES (KOREAN ONLY, HOUSE COLOR ACCENT)
    ========================================================================== */
 .cw-result {
     padding: max(8px, calc(env(safe-area-inset-top) + 6px)) 12px max(120px, calc(env(safe-area-inset-bottom) + 104px));
@@ -664,12 +665,13 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     overflow: hidden;
     padding: clamp(16px, 3.5vw, 28px);
     border: 1px solid #18181b;
+    border-top: 5px solid var(--house-accent, #18181b);
     border-radius: 0px;
     background: #ffffff;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
 }
 
-/* Top Bar: House Indicator + Switcher */
+/* Top Bar */
 .cw-result-top-bar {
     display: flex;
     align-items: center;
@@ -682,18 +684,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-result-house-badge {
     display: inline-flex;
     align-items: center;
-    gap: 7px;
-    color: #18181b;
+    padding: 3px 9px;
+    background: var(--house-accent, #18181b);
+    color: #ffffff;
     font-size: 11px;
     font-weight: 800;
-    letter-spacing: 0.06em;
-}
-
-.cw-badge-square {
-    display: inline-block;
-    width: 8px;
-    height: 8px;
-    border-radius: 0px;
+    letter-spacing: -0.01em;
 }
 
 .cw-result-version-switcher {
@@ -702,21 +698,19 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     border: 1px solid #18181b;
     border-radius: 0px;
     background: #ffffff;
-    padding: 0;
 }
 
 .cw-version-tab {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 4px 10px;
+    padding: 4px 11px;
     border: 0;
     border-radius: 0px;
     background: transparent;
     color: #71717a;
-    font-size: 10px;
-    font-weight: 800;
-    letter-spacing: 0.05em;
+    font-size: 11px;
+    font-weight: 750;
     cursor: pointer;
     transition: all 0.12s ease;
 }
@@ -726,11 +720,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     color: #ffffff;
 }
 
-.cw-version-tab:hover:not(.is-active) {
-    color: #18181b;
-}
-
-/* Identity & Typography */
+/* Identity */
 .cw-result-identity {
     position: relative;
     display: grid;
@@ -801,12 +791,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-result-summary-box {
     margin: 16px 0 0;
     padding: 14px 16px;
-    border-left: 2px solid #18181b;
+    border-left: 3px solid var(--house-accent, #18181b);
     background: #fafafa;
     color: #27272a;
-    font-size: 13px;
+    font-size: 13.5px;
     font-weight: 500;
-    line-height: 1.65;
+    line-height: 1.68;
     text-align: left;
     word-break: keep-all;
 }
@@ -815,44 +805,40 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     margin: 0;
 }
 
-/* Strength & Caution (Clean Split Hairline Grid) */
+/* 2-Column Split: 사육 강점 / 주의점 */
 .cw-result-power-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
-    margin-top: 18px;
+    margin-top: 16px;
 }
 
 .cw-power-card {
     padding: 14px 15px;
     border: 1px solid #e4e4e7;
-    border-radius: 0px;
     background: #ffffff;
     word-break: keep-all;
 }
 
-.cw-power-header {
+.cw-power-tag {
+    display: block;
     margin-bottom: 8px;
     padding-bottom: 6px;
     border-bottom: 1px solid #f4f4f5;
-}
-
-.cw-power-tag {
     color: #18181b;
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 800;
-    letter-spacing: 0.05em;
 }
 
 .cw-power-card p {
     margin: 0;
     color: #3f3f46;
-    font-size: 12.5px;
-    font-weight: 550;
-    line-height: 1.55;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.6;
 }
 
-/* Best & Worst Match (Minimal Dual Card) */
+/* 2-Column Split: 환상의 짝꿍 / 주의할 짝꿍 */
 .cw-result-match-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -863,7 +849,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-match-card {
     padding: 14px 12px;
     border: 1px solid #e4e4e7;
-    border-radius: 0px;
     background: #fafafa;
     text-align: center;
     word-break: keep-all;
@@ -873,75 +858,72 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     display: block;
     margin-bottom: 4px;
     color: #71717a;
-    font-size: 10px;
-    font-weight: 800;
-    letter-spacing: 0.04em;
+    font-size: 11px;
+    font-weight: 750;
 }
 
 .cw-match-mbti {
     display: block;
     color: #09090b;
-    font-size: 18px;
+    font-size: 19px;
     font-weight: 900;
     letter-spacing: -0.02em;
-    line-height: 1.1;
+    line-height: 1.15;
 }
 
 .cw-match-title {
     margin: 4px 0 0;
     color: #3f3f46;
-    font-size: 11.5px;
+    font-size: 12px;
     font-weight: 600;
     line-height: 1.4;
 }
 
-/* Keeper Note */
+/* 오늘의 팁 */
 .cw-result-action-card {
     margin-top: 12px;
-    padding: 12px 14px;
+    padding: 13px 15px;
     border: 1px solid #e4e4e7;
-    border-radius: 0px;
     background: #ffffff;
 }
 
 .cw-action-label {
     display: block;
-    margin-bottom: 3px;
-    color: #71717a;
-    font-size: 9.5px;
+    margin-bottom: 4px;
+    color: #18181b;
+    font-size: 11.5px;
     font-weight: 800;
-    letter-spacing: 0.08em;
 }
 
 .cw-action-text {
     margin: 0;
-    color: #18181b;
-    font-size: 12.5px;
-    font-weight: 650;
-    line-height: 1.5;
+    color: #3f3f46;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.55;
     word-break: keep-all;
 }
 
-/* Declaration & Deep Telemetry Alignment */
+/* 기숙사 선언 */
 .cw-house-declaration {
-    margin-top: 18px;
-    padding: 16px 6px;
+    margin-top: 16px;
+    padding: 18px 8px;
     border: 1px solid #18181b;
-    border-radius: 0px;
+    border-left: 6px solid var(--house-accent, #18181b);
     background: #ffffff;
     text-align: center;
 }
 
 .cw-house-declaration p {
     color: #18181b;
-    font-size: clamp(13px, 3.2vw, 16px);
+    font-size: clamp(14px, 3.5vw, 17px);
     font-weight: 800;
     letter-spacing: -0.02em;
 }
 
 .cw-house-declaration strong {
-    color: #18181b;
-    font-size: clamp(20px, 5.2vw, 32px);
+    color: var(--house-accent, #18181b);
+    font-size: clamp(22px, 5.8vw, 34px);
     font-weight: 900;
     letter-spacing: 0.02em;
 }
@@ -954,7 +936,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 
 .cw-share-action {
     border: 1px solid #18181b;
-    border-radius: 0px;
     background: #ffffff;
     color: #18181b;
     font-weight: 750;
