@@ -945,10 +945,19 @@
                 </div>` : '';
             return `
             <li class="cw-depth-step is-${escapeHtml(step.visual)}${step.hook ? ' has-hook' : ''}${index === 0 ? ' is-active' : ''}${step.kind === 'axes' ? ' is-axis-hold' : ''}" data-depth-step="${index}" style="--depth-index:${index}">
-                <article>
-                    <div class="cw-depth-card-visual" aria-hidden="true">
+                <section class="cw-depth-mobile-summary" aria-label="${escapeHtml(step.kicker)} 요약">
+                    <small>${escapeHtml(step.kicker)}</small>
+                    <div class="cw-depth-mobile-summary-art" aria-hidden="true">
+                        <span>${escapeHtml(result.code)}</span>
                         <img src="${escapeHtml(resultScenePath(step.visual))}" width="600" height="900" alt="" loading="lazy" decoding="async">
                     </div>
+                    <h2>${escapeHtml(step.railTitle)}</h2>
+                    ${(step.keywords || []).length ? `
+                        <div class="cw-depth-mobile-summary-facts">
+                            ${(step.keywords || []).map(keyword => `<span>${escapeHtml(keyword)}</span>`).join('')}
+                        </div>` : ''}
+                </section>
+                <article>
                     <h3>${escapeHtml(step.title)}</h3>
                     ${hookMarkup}
                     ${step.body ? `<p>${escapeHtml(step.body)}</p>` : ''}
