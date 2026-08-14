@@ -16,11 +16,11 @@
     <link
         href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
         rel="stylesheet">
-    <link rel="stylesheet" href="crewart-survey-v4.css?v=20260815-result-card-v28">
+    <link rel="stylesheet" href="crewart-survey-v4.css?v=20260815-character-card-v29">
     <script src="assets/vendor/kakao-2.8.1.min.js"></script>
     <script src="crewart-survey-core.js?v=20260815-result-sequence-v26"></script>
     <!-- Share-link target is cache-busted so KakaoTalk never reuses the old root URL. -->
-    <script src="crewart-survey.js?v=20260815-result-card-v28" defer></script>
+    <script src="crewart-survey.js?v=20260815-character-card-v29" defer></script>
 </head>
 
 <body>
@@ -198,17 +198,7 @@
                 <button type="submit" value="cancel" aria-label="닫기">×</button>
             </header>
             <div class="cw-save-preview"><img id="result-save-preview" alt="저장될 결과 이미지 미리보기"></div>
-            <label class="cw-save-name" for="result-save-name">
-                <span>파일 이름</span>
-                <input id="result-save-name" type="text" maxlength="80" autocomplete="off" spellcheck="false">
-            </label>
-            <div class="cw-save-destination">
-                <span aria-hidden="true">⌄</span>
-                <div><strong id="result-save-destination">저장 위치 선택</strong>
-                    <p id="result-save-help">저장할 폴더를 선택할 수 있어요.</p>
-                </div>
-            </div>
-            <button class="cw-save-confirm" id="result-save-confirm" type="button"><span>저장 위치 선택</span></button>
+            <button class="cw-save-confirm" id="result-save-confirm" type="button"><span>저장하기</span></button>
         </form>
     </dialog>
 

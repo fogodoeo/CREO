@@ -763,12 +763,6 @@
         return IS_LOCAL_QA || Boolean(bandAuthUser && bandAuthUser.isTargetMember === true);
     }
 
-    function openBandTarget() {
-        if (!BAND_INTEGRATION_ENABLED) return false;
-        window.open(bandTargetUrl, '_blank', 'noopener,noreferrer');
-        return true;
-    }
-
     function resultSpeedPresentation() {
         if (!timingStats?.style) return null;
         const valid = timingStats.validCount > 0;
@@ -850,14 +844,19 @@
                             <section class="cw-story-scene is-house" data-story-scene="house">
                                 <div class="cw-story-house-line"><span>당신의 기숙사는</span><strong>${escapeHtml(house.name)}</strong><span>입니다.</span></div>
                                 <div class="cw-story-final-actions">
-                                    <button type="button" class="cw-story-kakao" data-action="share">카카오톡 공유하기</button>
-                                    <button type="button" class="cw-story-save" data-action="save-image">결과 이미지 저장</button>
-                                    ${!hasDetailedAccess() && BAND_INTEGRATION_ENABLED && bandAuthConfigured ? '<button type="button" class="cw-story-unlock" data-action="unlock-detail">회원 상세 보기</button>' : ''}
+                                    <div class="cw-story-share-row">
+                                        <button type="button" class="cw-story-kakao" data-action="share"><img src="assets/kakaolink_btn_medium.png" width="24" height="24" alt=""><span data-action-label>카카오톡 공유</span></button>
+                                        <button type="button" class="cw-story-save" data-action="save-image"><i aria-hidden="true">↓</i><span data-action-label>이미지 저장</span></button>
+                                    </div>
+                                    ${BAND_INTEGRATION_ENABLED ? `<button type="button" class="cw-story-band${bandAuthUser?.isTargetMember === true ? ' is-connected' : ''}" data-action="join-band" data-band-prompt>
+                                        <img src="assets/band-app-icon-official.png?v=20260801-logo-v2" width="40" height="40" alt="">
+                                        <span><small>${bandAuthUser?.isTargetMember === true ? 'MEMBER CONNECTED' : '결과를 저장하고 함께 이야기해요'}</small><strong>${bandAuthUser?.isTargetMember === true ? 'BAND 연결 완료' : 'BAND 참여하기'}</strong></span><i aria-hidden="true">→</i>
+                                    </button>` : ''}
                                 </div>
                                 <small class="cw-story-credit">© 2026 CREO. All rights reserved.</small>
                             </section>
                         </div>
-                        <div class="cw-story-cue" aria-hidden="true"><span>계속 스크롤</span><i>↓</i></div>
+                        <div class="cw-story-cue" aria-hidden="true"><span>아래로 스크롤</span><i><b></b><b></b></i></div>
                     </div>
                 </section>
             </div>`;
@@ -871,7 +870,7 @@
         element('result-content').querySelectorAll('[data-action="share"]').forEach(button => button.addEventListener('click', shareResult));
         element('result-content').querySelectorAll('[data-action="save-image"]').forEach(button => button.addEventListener('click', saveResultImage));
         element('result-content').querySelectorAll('[data-action="unlock-detail"]').forEach(button => button.addEventListener('click', handleUnlockDetail));
-        element('result-content').querySelector('[data-action="open-band"]')?.addEventListener('click', openBandTarget);
+        element('result-content').querySelector('[data-action="join-band"]')?.addEventListener('click', () => navigateToTab('band', { memberOptions: { revealResult: true } }));
     }
 
     function setupResultStory() {
@@ -882,11 +881,16 @@
         const scenes = Object.fromEntries([...root.querySelectorAll('[data-story-scene]')].map(node => [node.dataset.storyScene, node]));
         const timeValueNode = root.querySelector('[data-time-value]');
         const timeLabelNode = root.querySelector('[data-time-label]');
+        const bandPromptNode = root.querySelector('[data-band-prompt]');
         const clamp = value => Math.max(0, Math.min(1, value));
         const segment = (value, start, end) => clamp((value - start) / (end - start));
         let frame = 0;
         let activeScene = '';
         let timeShuffleTimer = 0;
+        let bandPromptTimer = 0;
+        let latestProgress = 0;
+        let touchStartY = 0;
+        let bandPromptAnnounced = false;
         let timeShuffleStarted = false;
         let timeShuffleSettled = false;
         const TIME_SCENE_START = .63;
@@ -909,10 +913,34 @@
             holdTimeScene();
         };
         const blockTimeSceneKeys = event => {
-            if (!timeShuffleStarted || timeShuffleSettled) return;
+            if (!timeShuffleStarted || timeShuffleSettled) {
+                if (['ArrowDown', 'PageDown', 'End', ' '].includes(event.key)) revealBandPrompt();
+                return;
+            }
             if (!['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', 'Home', 'End', ' '].includes(event.key)) return;
             event.preventDefault();
             holdTimeScene();
+        };
+        const revealBandPrompt = () => {
+            if (!bandPromptNode || bandAuthUser?.isTargetMember === true || latestProgress < .96) return;
+            window.clearTimeout(bandPromptTimer);
+            root.classList.remove('is-band-prompted');
+            requestAnimationFrame(() => root.classList.add('is-band-prompted'));
+            bandPromptTimer = window.setTimeout(() => root.classList.remove('is-band-prompted'), 1500);
+            if (!bandPromptAnnounced) {
+                bandPromptAnnounced = true;
+                toast('BAND에 참여하고 결과 이야기를 이어가보세요.');
+            }
+        };
+        const handleEndWheel = event => {
+            if (event.deltaY > 0) revealBandPrompt();
+        };
+        const handleEndTouchStart = event => {
+            touchStartY = event.touches?.[0]?.clientY || 0;
+        };
+        const handleEndTouchEnd = event => {
+            const endY = event.changedTouches?.[0]?.clientY || touchStartY;
+            if (touchStartY - endY > 18) revealBandPrompt();
         };
 
         const settleTimeValue = () => {
@@ -953,6 +981,7 @@
             const progress = timeShuffleStarted && !timeShuffleSettled
                 ? TIME_SCENE_LOCK
                 : rawProgress;
+            latestProgress = progress;
             const axisProgress = segment(progress, .02, .17);
             const profileIn = segment(progress, .35, .37);
             const profileOut = 1 - segment(progress, .59, .62);
@@ -1002,16 +1031,23 @@
         window.addEventListener('scroll', scheduleSync, { passive: true });
         window.addEventListener('resize', scheduleSync);
         window.addEventListener('wheel', blockTimeSceneScroll, { passive: false });
+        window.addEventListener('wheel', handleEndWheel, { passive: true });
         window.addEventListener('touchmove', blockTimeSceneScroll, { passive: false });
+        window.addEventListener('touchstart', handleEndTouchStart, { passive: true });
+        window.addEventListener('touchend', handleEndTouchEnd, { passive: true });
         window.addEventListener('keydown', blockTimeSceneKeys);
         sync();
         return () => {
             window.removeEventListener('scroll', scheduleSync);
             window.removeEventListener('resize', scheduleSync);
             window.removeEventListener('wheel', blockTimeSceneScroll);
+            window.removeEventListener('wheel', handleEndWheel);
             window.removeEventListener('touchmove', blockTimeSceneScroll);
+            window.removeEventListener('touchstart', handleEndTouchStart);
+            window.removeEventListener('touchend', handleEndTouchEnd);
             window.removeEventListener('keydown', blockTimeSceneKeys);
             window.clearInterval(timeShuffleTimer);
+            window.clearTimeout(bandPromptTimer);
             if (frame) cancelAnimationFrame(frame);
         };
     }
@@ -1469,23 +1505,23 @@
         });
     }
 
-    function drawShareScale(context, x, y, width, position, color = '#202421') {
+    function drawShareScale(context, x, y, width, position, color = '#202421', density = 1) {
         const markerX = x + width * (Math.max(0, Math.min(100, position)) / 100);
         const fillX = Math.min(x + width / 2, markerX);
-        const fillWidth = Math.max(6, Math.abs(markerX - (x + width / 2)));
+        const fillWidth = Math.max(6 * density, Math.abs(markerX - (x + width / 2)));
         context.fillStyle = '#dfe2dd';
-        drawRoundedRect(context, x, y, width, 8, 4);
+        drawRoundedRect(context, x, y, width, 8 * density, 4 * density);
         context.fill();
         context.fillStyle = color;
-        drawRoundedRect(context, fillX, y, fillWidth, 8, 4);
+        drawRoundedRect(context, fillX, y, fillWidth, 8 * density, 4 * density);
         context.fill();
         context.fillStyle = '#a6aaa5';
-        context.fillRect(x + width / 2 - 1, y - 7, 2, 22);
+        context.fillRect(x + width / 2 - density, y - 7 * density, 2 * density, 22 * density);
         context.beginPath();
-        context.arc(markerX, y + 4, 13, 0, Math.PI * 2);
+        context.arc(markerX, y + 4 * density, 13 * density, 0, Math.PI * 2);
         context.fillStyle = '#ffffff';
         context.fill();
-        context.lineWidth = 7;
+        context.lineWidth = 7 * density;
         context.strokeStyle = color;
         context.stroke();
     }
@@ -1502,6 +1538,33 @@
 
     function shareAccentInk(house) {
         return ['G', 'Y'].includes(house?.seal) ? '#172019' : '#ffffff';
+    }
+
+    function resultShareAxes() {
+        return result.axes.map(axisResult => {
+            const copy = AXIS_REPORT_COPY[axisResult.axis];
+            const first = axisResult.axis[0];
+            const second = axisResult.axis[1];
+            const secondCount = Number(result.letters[second]) || 0;
+            return {
+                copy,
+                firstSelected: axisResult.dominant === first,
+                position: Math.max(0, Math.min(100, (secondCount / (Core.AXIS_SCORE_TOTAL || 5)) * 100))
+            };
+        });
+    }
+
+    function drawShareHouseBadge(context, house, x, y, width, height, font) {
+        const accent = house?.accent || '#16814b';
+        drawRoundedRect(context, x, y, width, height, Math.min(22, height / 4));
+        context.fillStyle = accent;
+        context.fill();
+        context.fillStyle = shareAccentInk(house);
+        context.textAlign = 'left';
+        context.font = `760 ${Math.max(13, Math.round(height * .13))}px ${font}`;
+        context.fillText('YOUR HOUSE', x + 22, y + height * .33);
+        fitShareText(context, house?.name || 'CREWARTS', width - 44, height * .42, height * .29, 920, font);
+        context.fillText(house?.name || 'CREWARTS', x + 22, y + height * .76);
     }
 
     function shareFileName() {
@@ -1523,7 +1586,6 @@
         if (!context) throw new Error('이미지 생성 기능을 사용할 수 없습니다.');
         const house = Core.HOUSE_META[assignedHouseKey] || { name: assignedHouseKey || 'CREWARTS', seal: 'C', accent: '#16814b' };
         const accent = house.accent || '#16814b';
-        const accentInk = shareAccentInk(house);
         const pageX = 36;
         const pageY = 36;
         const pageWidth = 1008;
@@ -1531,7 +1593,7 @@
         const contentX = 86;
         const contentWidth = 908;
 
-        context.fillStyle = '#e8e9e4';
+        context.fillStyle = accent;
         context.fillRect(0, 0, canvas.width, canvas.height);
         drawRoundedRect(context, pageX, pageY, pageWidth, pageHeight, 34);
         context.fillStyle = '#fbfbf8';
@@ -1560,17 +1622,20 @@
 
         const houseBadgeWidth = 300;
         const houseBadgeX = pageX + pageWidth - houseBadgeWidth - 44;
-        drawRoundedRect(context, houseBadgeX, 66, houseBadgeWidth, 112, 22);
-        context.fillStyle = accent;
-        context.fill();
-        context.fillStyle = accentInk;
-        context.font = `760 15px ${font}`;
-        context.fillText('YOUR HOUSE', houseBadgeX + 24, 102);
-        fitShareText(context, house.name, houseBadgeWidth - 48, 47, 34, 920, font);
-        context.fillText(house.name, houseBadgeX + 24, 151);
+        drawShareHouseBadge(context, house, houseBadgeX, 66, houseBadgeWidth, 112, font);
 
         context.fillStyle = '#e0e2dc';
         context.fillRect(contentX, 211, contentWidth, 2);
+
+        drawRoundedRect(context, 66, 232, 948, 500, 32);
+        context.save();
+        context.globalAlpha = .075;
+        context.fillStyle = accent;
+        context.fill();
+        context.restore();
+        context.strokeStyle = `${accent}55`;
+        context.lineWidth = 2;
+        context.stroke();
 
         try {
             const character = await loadShareImage(new URL(typeCharacterPath(result.code), document.baseURI).toString());
@@ -1602,13 +1667,7 @@
         context.fillText('모든 축의 최종 선택 방향', contentX + contentWidth, 784);
         context.textAlign = 'left';
 
-        result.axes.forEach((axisResult, index) => {
-            const copy = AXIS_REPORT_COPY[axisResult.axis];
-            const first = axisResult.axis[0];
-            const second = axisResult.axis[1];
-            const secondCount = Number(result.letters[second]) || 0;
-            const position = Math.max(0, Math.min(100, (secondCount / (Core.AXIS_SCORE_TOTAL || 5)) * 100));
-            const firstSelected = axisResult.dominant === first;
+        resultShareAxes().forEach(({ copy, position, firstSelected }, index) => {
             const y = 846 + index * 124;
 
             context.fillStyle = firstSelected ? '#252a26' : '#858a85';
@@ -1646,90 +1705,85 @@
         canvas.height = 800;
         const context = canvas.getContext('2d');
         const font = '"Pretendard Variable", Pretendard, sans-serif';
-        const house = Core.HOUSE_META[assignedHouseKey];
+        if (!context) throw new Error('이미지 생성 기능을 사용할 수 없습니다.');
+        const house = Core.HOUSE_META[assignedHouseKey] || { name: assignedHouseKey || 'CREWARTS', seal: 'C', accent: '#16814b' };
         const accent = house?.accent || '#17617b';
 
-        context.fillStyle = '#e9eae5';
+        context.fillStyle = accent;
         context.fillRect(0, 0, canvas.width, canvas.height);
 
-        drawRoundedRect(context, 22, 22, 1156, 756, 28);
-        context.fillStyle = '#f8f8f5';
+        drawRoundedRect(context, 24, 24, 1152, 752, 34);
+        context.fillStyle = '#fbfbf8';
         context.fill();
         context.strokeStyle = '#d8dad4';
         context.lineWidth = 2;
         context.stroke();
 
         context.save();
-        context.globalAlpha = .1;
-        context.strokeStyle = accent;
-        context.lineWidth = 2;
-        [112, 164, 216].forEach(radius => {
-            context.beginPath();
-            context.arc(1048, 74, radius, 0, Math.PI * 2);
-            context.stroke();
-        });
+        drawRoundedRect(context, 24, 24, 1152, 752, 34);
+        context.clip();
+        context.fillStyle = accent;
+        context.fillRect(24, 24, 1152, 12);
         context.restore();
 
         context.fillStyle = '#222724';
-        context.font = `850 28px ${font}`;
+        context.font = `860 25px ${font}`;
         context.textAlign = 'left';
-        context.fillText('CREWARTS', 70, 76);
+        context.fillText('CREWARTS', 64, 77);
         context.fillStyle = '#7b807b';
-        context.font = `720 16px ${font}`;
-        context.fillText('PERSONALITY TEST', 70, 102);
-        const houseLabel = `HOUSE ${house?.seal || assignedHouseKey[0] || '—'} · ${house?.name || assignedHouseKey || 'CREWARTS'}`;
-        context.font = `760 18px ${font}`;
-        const housePillWidth = Math.ceil(context.measureText(houseLabel).width) + 44;
-        const housePillX = 1130 - housePillWidth;
-        drawRoundedRect(context, housePillX, 55, housePillWidth, 46, 23);
+        context.font = `720 13px ${font}`;
+        context.fillText('PERSONALITY RESULT', 64, 100);
+        drawShareHouseBadge(context, house, 914, 50, 222, 82, font);
+
+        drawRoundedRect(context, 54, 148, 1092, 570, 30);
         context.save();
-        context.globalAlpha = .13;
+        context.globalAlpha = .075;
         context.fillStyle = accent;
         context.fill();
         context.restore();
-        context.strokeStyle = accent;
-        context.lineWidth = 1.5;
+        context.strokeStyle = `${accent}55`;
+        context.lineWidth = 2;
         context.stroke();
-        context.fillStyle = '#2c312e';
-        context.textAlign = 'center';
-        context.fillText(houseLabel, housePillX + housePillWidth / 2, 85);
-
-        context.fillStyle = '#242925';
-        context.font = `850 238px ${font}`;
-        context.textBaseline = 'alphabetic';
-        context.fillText(result.code.slice(0, 2), 328, 532);
-        context.fillText(result.code.slice(2), 872, 532);
 
         try {
             const character = await loadShareImage(new URL(typeCharacterPath(result.code), document.baseURI).toString());
-            drawShareImageContain(context, character, 390, 70, 420, 620);
+            drawShareImageContain(context, character, 78, 176, 402, 500);
         } catch (_) {
             context.fillStyle = '#eceee8';
             context.beginPath();
-            context.arc(600, 380, 180, 0, Math.PI * 2);
+            context.arc(278, 420, 170, 0, Math.PI * 2);
             context.fill();
         }
 
-        context.font = `820 44px ${font}`;
-        const typeNameWidth = Math.ceil(context.measureText(result.typeName).width) + 74;
-        const typePillWidth = Math.max(254, typeNameWidth);
-        const typePillX = (canvas.width - typePillWidth) / 2;
-        drawRoundedRect(context, typePillX, 670, typePillWidth, 82, 41);
-        context.fillStyle = '#ffffff';
-        context.fill();
-        context.strokeStyle = '#d7d9d3';
-        context.lineWidth = 2;
-        context.stroke();
-        context.fillStyle = '#17617b';
-        context.textAlign = 'center';
-        context.fillText(result.typeName, 600, 726);
+        context.fillStyle = '#767c77';
+        context.font = `760 16px ${font}`;
+        context.fillText('당신의 유형', 520, 224);
+        context.fillStyle = accent;
+        fitShareText(context, result.code, 576, 150, 104, 940, font);
+        context.fillText(result.code, 516, 366);
+        context.fillStyle = '#303632';
+        fitShareText(context, result.typeName, 560, 29, 22, 820, font);
+        context.fillText(result.typeName, 522, 412);
+
+        resultShareAxes().forEach(({ copy, position, firstSelected }, index) => {
+            const y = 472 + index * 56;
+            context.fillStyle = firstSelected ? '#282d29' : '#8a8f8a';
+            context.font = `${firstSelected ? 800 : 650} 15px ${font}`;
+            context.fillText(copy.left, 520, y);
+            context.textAlign = 'right';
+            context.fillStyle = firstSelected ? '#8a8f8a' : '#282d29';
+            context.font = `${firstSelected ? 650 : 800} 15px ${font}`;
+            context.fillText(copy.right, 1100, y);
+            context.textAlign = 'left';
+            drawShareScale(context, 520, y + 16, 580, position, accent, .62);
+        });
         context.textAlign = 'left';
 
         context.fillStyle = '#858a85';
-        context.font = `650 12px ${font}`;
-        context.fillText('© 2026 CREO · ALL RIGHTS RESERVED', 52, 766);
+        context.font = `650 11px ${font}`;
+        context.fillText('© 2026 CREO · ALL RIGHTS RESERVED', 54, 750);
         context.textAlign = 'right';
-        context.fillText('creok.onrender.com', 1148, 766);
+        context.fillText('creok.onrender.com', 1146, 750);
         context.textAlign = 'left';
 
         const blob = await canvasBlob(canvas);
@@ -1814,55 +1868,6 @@
         return Boolean(opened);
     }
 
-    function normalizedShareFileName(value) {
-        const fallback = result ? `CREWARTS_${result.code}_${result.typeName}` : 'CREWARTS_RESULT';
-        const base = String(value || fallback)
-            .trim()
-            .replace(/\.png$/i, '')
-            .replace(/[\\/:*?"<>|]/g, '')
-            .replace(/\s+/g, '_')
-            .slice(0, 72) || 'CREWARTS_RESULT';
-        return `${base}.png`;
-    }
-
-    function renameShareFile(file, name) {
-        return new File([file], normalizedShareFileName(name), {
-            type: 'image/png',
-            lastModified: Date.now()
-        });
-    }
-
-    function saveDestinationPresentation() {
-        if (isMobileDevice() && canNativeShareFile(preparedSaveFile)) {
-            return {
-                destination: isAppleMobileDevice() ? '사진 앱 또는 파일 앱' : '기기 저장 또는 공유',
-                help: isAppleMobileDevice()
-                    ? '공유 메뉴에서 ‘이미지 저장’ 또는 ‘파일에 저장’을 선택해요.'
-                    : '기기의 공유 메뉴에서 사진·파일 앱 또는 저장 위치를 선택해요.',
-                action: '저장 방법 선택'
-            };
-        }
-        if (isAppleMobileDevice()) {
-            return {
-                destination: '이미지를 크게 열어 저장',
-                help: '열린 이미지를 길게 눌러 ‘사진에 저장’을 선택해요.',
-                action: '이미지 크게 열기'
-            };
-        }
-        if (typeof window.showSaveFilePicker === 'function') {
-            return {
-                destination: '저장할 폴더 직접 선택',
-                help: '저장 버튼을 누르면 기기의 폴더 선택 창이 열려요.',
-                action: '저장 위치 선택'
-            };
-        }
-        return {
-            destination: '브라우저 다운로드 폴더',
-            help: '기기에 설정된 Downloads 폴더에 저장돼요.',
-            action: 'Downloads에 저장'
-        };
-    }
-
     function clearPreparedSaveImage() {
         if (preparedSaveUrl) URL.revokeObjectURL(preparedSaveUrl);
         preparedSaveUrl = '';
@@ -1875,11 +1880,6 @@
         preparedSaveFile = file;
         preparedSaveUrl = URL.createObjectURL(file);
         element('result-save-preview').src = preparedSaveUrl;
-        element('result-save-name').value = file.name.replace(/\.png$/i, '');
-        const presentation = saveDestinationPresentation();
-        element('result-save-destination').textContent = presentation.destination;
-        element('result-save-help').textContent = presentation.help;
-        element('result-save-confirm').querySelector('span').textContent = presentation.action;
     }
 
     async function saveResultImage(event) {
@@ -1903,7 +1903,7 @@
         const button = element('result-save-confirm');
         const label = button.querySelector('span');
         const idleLabel = label.textContent;
-        const file = renameShareFile(preparedSaveFile, element('result-save-name').value);
+        const file = preparedSaveFile;
         button.disabled = true;
         label.textContent = '저장 중';
         try {
@@ -2045,14 +2045,14 @@
     }
 
     if (IS_LOCAL_QA) {
-        window.CrewartShareQA = Object.freeze({
-            createResultShareFile,
-            createKakaoShareFile,
-            shareFileName,
-            isAppleMobileDevice,
-            normalizedShareFileName,
-            saveDestinationPresentation
-        });
+            window.CrewartShareQA = Object.freeze({
+                createResultShareFile,
+                createKakaoShareFile,
+                shareFileName,
+                isAppleMobileDevice,
+                isMobileDevice,
+                canNativeShareFile
+            });
     }
 
     function syncThemeColor(screenId) {

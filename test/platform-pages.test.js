@@ -536,13 +536,14 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /function createResultShareFile/);
     assert.match(script, /function createKakaoShareFile/);
     assert.match(script, /data-action="save-image"/);
-    assert.match(script, /결과 이미지 저장/);
+    assert.match(script, /이미지 저장/);
     assert.match(script, /카카오톡 공유/);
     assert.match(script, /function saveResultImage/);
     assert.match(script, /CREWARTS_\$\{result\.code\}_\$\{typeName\}\.png/);
     assert.match(script, /canvas\.width = 1080/);
     assert.match(script, /canvas\.height = 1440/);
-    assert.match(script, /function createResultShareFile\(\)[\s\S]*YOUR HOUSE[\s\S]*result\.axes\.forEach/);
+    assert.match(script, /function drawShareHouseBadge[\s\S]*YOUR HOUSE/);
+    assert.match(script, /function createResultShareFile\(\)[\s\S]*resultShareAxes\(\)\.forEach/);
     assert.match(script, /drawShareScale\(context, contentX, y \+ 35, contentWidth, position, accent\)/);
     assert.match(script, /function canNativeShareFile\(file\)/);
     assert.match(script, /isMobileDevice\(\) && canNativeShareFile\(file\)[\s\S]*navigator\.share\(\{ files: \[file\]/);
@@ -555,7 +556,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /navigator\.canShare\(\{ files: \[file\] \}\)/);
     assert.match(html, /id="result-save-dialog"/);
     assert.match(html, /id="result-save-preview"/);
-    assert.match(html, /id="result-save-name"/);
+    assert.doesNotMatch(html, /id="result-save-name"|cw-save-name|result-save-destination/);
     assert.match(html, /id="result-save-confirm"/);
     assert.match(html, /id="kakao-share-dialog"/);
     assert.match(html, /id="kakao-share-preview"/);
@@ -568,7 +569,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /KAKAO_JS_KEY/);
     assert.match(script, /const SURVEY_URL = 'https:\/\/creok\.onrender\.com\/crewart-survey\.html'/);
     assert.doesNotMatch(script, /const SURVEY_URL = new URL\([^\n]*document\.baseURI/);
-    assert.match(html, /crewart-survey\.js\?v=20260815-result-card-v28/);
+    assert.match(html, /crewart-survey\.js\?v=20260815-character-card-v29/);
     assert.match(script, /function renderUnifiedResult\(profile, house\)/);
     assert.doesNotMatch(script, /resultViewVersion|resultViewFromLocation|changeResultView|report=deep|set-result-version/);
     assert.match(script, /function renderResult\(options = \{\}\)[\s\S]*renderUnifiedResult\(profile, house\);/);
@@ -588,7 +589,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /가장 편안한 유형/);
     assert.match(script, /평균 문항 시간/);
     assert.match(script, /당신의 기숙사는/);
-    assert.match(script, /data-action="share">카카오톡 공유하기/);
+    assert.match(script, /data-action="share"[\s\S]*카카오톡 공유/);
     assert.match(script, /const averageResponseTime = timingStats\?\.averageMs > 0 \? formatSeconds\(timingStats\.averageMs\) : '측정 전'/);
     assert.match(script, /const axisProgress = segment\(progress, \.02, \.17\)/);
     assert.doesNotMatch(script, /mbtiProgress|cw-story-mbti/);
@@ -652,7 +653,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /function typeCharacterPath\(code\)/);
     assert.match(script, /TYPE_CHARACTER_ROOT = 'assets\/crewart-types\/'/);
     assert.match(html, /crewart-survey-core\.js\?v=20260815-result-sequence-v26/);
-    assert.match(html, /crewart-survey-v4\.css\?v=20260815-result-card-v28/);
+    assert.match(html, /crewart-survey-v4\.css\?v=20260815-character-card-v29/);
     assert.match(html, /id="start-button"[^>]*>[\s\S]*시작하기/);
     assert.match(html, /id="home-retest"[^>]*>다시 시작/);
     assert.doesNotMatch(html, /start-button-v2|home-retest-v1|Ver 1 시작|Ver 2 시작/);
@@ -804,7 +805,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /function drawShareImageContain\(context, image, x, y, width, height\)/);
     assert.match(script, /drawShareImageContain\(context, character, 82, 240, 410, 500\)/);
     assert.doesNotMatch(css, /cw-scale-scan|rgba\(22, 129, 75, \.7\)/);
-    assert.match(script, /data-action="unlock-detail">회원 상세 보기/);
+    assert.match(script, /data-action="join-band" data-band-prompt/);
+    assert.match(script, /band-app-icon-official\.png/);
     assert.match(css, /\.cw-detail-preview\s*\{[^}]*filter:\s*blur\(5px\)/);
     assert.match(css, /\.cw-speed-head strong\s*\{[^}]*color:\s*var\(--cw-ink\)[^}]*font-size:\s*15px[^}]*font-weight:\s*800/);
     assert.match(css, /\.cw-report-house[\s\S]*border-top:\s*1px solid var\(--cw-line\)/);
