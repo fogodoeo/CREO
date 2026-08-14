@@ -1156,7 +1156,7 @@
     function renderResult(options = {}) {
         const profile = Core.getResultProfile(result.code);
         const isV2 = resultViewVersion === 'v2';
-        const house = Core.HOUSE_META[assignedHouseKey] || { name: 'CREO', accent: '#f0b85a' };
+        const house = Core.HOUSE_META[assignedHouseKey] || { name: 'CREO', accent: '#18181b' };
         const detail = BAND_INTEGRATION_ENABLED && hasDetailedAccess()
             ? `${renderMemberDetail()}${renderSpeedCard()}${renderHouseCard()}`
             : renderLockedDetail();
@@ -1170,31 +1170,28 @@
         const characterPath = typeCharacterPath(result.code);
         const activeTitle = isV2 ? (profile.title || result.typeName) : result.typeName;
 
-        const traitsHtml = isV2 && Array.isArray(profile.traits) && profile.traits.length
-            ? `<section class="cw-result-traits-card">
-                    <h3 class="cw-card-section-title"><span class="cw-card-icon" aria-hidden="true">🔍</span> 집사 팩폭 특징</h3>
-                    <ul class="cw-traits-list">
-                        ${profile.traits.map(t => `<li><span class="cw-trait-check" aria-hidden="true">✓</span><span>${escapeHtml(t)}</span></li>`).join('')}
-                    </ul>
-               </section>`
-            : '';
-
         const powerGridHtml = isV2 && (profile.superpower || profile.weakness)
-            ? `<section class="cw-result-power-grid">
-                    ${profile.superpower ? `<article class="cw-power-card is-superpower"><div class="cw-power-badge">⚡ 사육 강점</div><p>${escapeHtml(profile.superpower)}</p></article>` : ''}
-                    ${profile.weakness ? `<article class="cw-power-card is-weakness"><div class="cw-power-badge">💔 주의할 점</div><p>${escapeHtml(profile.weakness)}</p></article>` : ''}
+            ? `<section class="cw-result-power-grid" aria-label="사육 강점 및 주의점">
+                    ${profile.superpower ? `<article class="cw-power-card is-superpower">
+                        <header class="cw-power-header"><span class="cw-power-tag">STRENGTH · 강점</span></header>
+                        <p>${escapeHtml(profile.superpower)}</p>
+                    </article>` : ''}
+                    ${profile.weakness ? `<article class="cw-power-card is-weakness">
+                        <header class="cw-power-header"><span class="cw-power-tag">CAUTION · 주의점</span></header>
+                        <p>${escapeHtml(profile.weakness)}</p>
+                    </article>` : ''}
                </section>`
             : '';
 
         const matchGridHtml = isV2 && (profile.bestMatch || profile.worstMatch)
-            ? `<section class="cw-result-match-grid">
+            ? `<section class="cw-result-match-grid" aria-label="성향 궁합 분석">
                     ${profile.bestMatch ? `<article class="cw-match-card is-best">
-                        <div class="cw-match-tag"><span aria-hidden="true">💖</span> 환상의 짝꿍</div>
+                        <span class="cw-match-tag">BEST MATCH · 환상의 짝꿍</span>
                         <strong class="cw-match-mbti">${escapeHtml(profile.bestMatch.mbti)}</strong>
                         <p class="cw-match-title">${escapeHtml(profile.bestMatch.title)}</p>
                     </article>` : ''}
                     ${profile.worstMatch ? `<article class="cw-match-card is-worst">
-                        <div class="cw-match-tag"><span aria-hidden="true">💔</span> 주의할 짝꿍</div>
+                        <span class="cw-match-tag">WORST MATCH · 주의할 짝꿍</span>
                         <strong class="cw-match-mbti">${escapeHtml(profile.worstMatch.mbti)}</strong>
                         <p class="cw-match-title">${escapeHtml(profile.worstMatch.title)}</p>
                     </article>` : ''}
@@ -1202,31 +1199,28 @@
             : '';
 
         const actionItemHtml = isV2 && profile.actionItem
-            ? `<section class="cw-result-action-card">
+            ? `<section class="cw-result-action-card" aria-label="오늘의 사육 팁">
                     <div class="cw-action-item-box">
-                        <span class="cw-action-icon" aria-hidden="true">💡</span>
-                        <div>
-                            <small class="cw-action-label">TODAY'S KEEPER TIP</small>
-                            <p class="cw-action-text">${escapeHtml(profile.actionItem)}</p>
-                        </div>
+                        <small class="cw-action-label">KEEPER NOTE</small>
+                        <p class="cw-action-text">${escapeHtml(profile.actionItem)}</p>
                     </div>
                </section>`
             : '';
 
         element('result-content').innerHTML = `
-            <div class="cw-result-wrap" style="--house-accent:${escapeHtml(house.accent)}">
+            <div class="cw-result-wrap">
                 <article class="cw-result-report ${isV2 ? 'is-v2-mode' : 'is-v1-mode'}">
                     <header class="cw-result-top-bar">
                         <div class="cw-result-house-badge">
-                            <span class="cw-badge-dot" aria-hidden="true"></span>
-                            <span>${escapeHtml(house.name)} 기숙사</span>
+                            <span class="cw-badge-square" style="background:${escapeHtml(house.accent)}" aria-hidden="true"></span>
+                            <span>${escapeHtml(house.name)} HOUSE</span>
                         </div>
-                        <div class="cw-result-version-switcher" role="group" aria-label="결과 카드 모드 전환">
+                        <div class="cw-result-version-switcher" role="group" aria-label="결과 모드 전환">
                             <button type="button" class="cw-version-tab ${!isV2 ? 'is-active' : ''}" data-action="set-result-version" data-version="v1">
-                                <span>Ver 1</span>
+                                <span>VER 1</span>
                             </button>
                             <button type="button" class="cw-version-tab ${isV2 ? 'is-active' : ''}" data-action="set-result-version" data-version="v2">
-                                <span>Ver 2</span>
+                                <span>VER 2</span>
                             </button>
                         </div>
                     </header>
@@ -1244,7 +1238,6 @@
                         ${isV2 && profile.subtitle ? `<p class="cw-result-subtitle">${escapeHtml(profile.subtitle)}</p>` : ''}
                         ${isV2 && profile.summary ? `<div class="cw-result-summary-box"><p>${escapeHtml(profile.summary)}</p></div>` : ''}
                     </section>
-                    ${traitsHtml}
                     ${powerGridHtml}
                     ${matchGridHtml}
                     ${actionItemHtml}
