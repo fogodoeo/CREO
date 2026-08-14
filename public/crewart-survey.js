@@ -742,7 +742,8 @@
     }
 
     function showResult(skipMbti) {
-        if (!result) return;
+        console.log('[showResult] called, result:', Boolean(result), 'skipMbti:', skipMbti, 'selectedMbti:', selectedMbti);
+        if (!result) { console.warn('[showResult] no result, returning'); return; }
         if (!selectedMbti && !skipMbti) {
             toast('평소 유형을 고르거나 건너뛰기를 눌러주세요.', true);
             return;
@@ -751,10 +752,13 @@
     }
 
     async function completeResultReveal() {
+        console.log('[completeResultReveal] called, hasDetailedAccess:', hasDetailedAccess());
         showingStoredResult = false;
         if (!hasDetailedAccess()) {
+            console.log('[completeResultReveal] no detailed access, rendering teaser');
             renderResult({ animate: true });
             setScreen('result-screen');
+            console.log('[completeResultReveal] setScreen done');
             return;
         }
         if (!assignedHouseKey && IS_LOCAL_QA) assignedHouseKey = choosePreviewHouse();
