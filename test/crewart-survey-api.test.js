@@ -9,6 +9,7 @@ const {
     CONTENT_UPDATED_KEY,
     LEGACY_RESPONSES_KEY,
     RESPONSE_PREFIX,
+    chooseLeastPopulatedHouse,
     createCrewartSurveyApi
 } = require('../crewart-survey-api');
 const Core = require('../public/crewart-survey-core');
@@ -85,8 +86,6 @@ function validSubmission() {
         crebtiType: calculated.code,
         knownMbti: 'INFP',
         axisScores,
-        assignedHouseKey: Core.chooseTendencyHouse(calculated),
-        houseId: Core.chooseTendencyHouse(calculated),
         answers,
         answerLabels: prepared.map((question, index) => {
             const choice = answers[index];
@@ -266,6 +265,8 @@ test('response storage requires a valid BAND session and strips personal fields'
     assert.equal(repository.writes[0].key, `${RESPONSE_PREFIX}${'a'.repeat(24)}`);
     const stored = JSON.parse(repository.writes[0].value);
     assert.equal(stored.memberVerified, true);
+    assert.equal(Core.HOUSE_KEYS.includes(stored.assignedHouseKey), true);
+    assert.equal(JSON.parse(accepted.body).assignedHouseKey, stored.assignedHouseKey);
     assert.equal(stored.anonymous, true);
     assert.equal('bandProfileName' in stored, false);
     assert.equal('phone' in stored, false);
@@ -301,6 +302,37 @@ test('thoughtful mobile responses remain valid for up to ninety seconds per ques
     assert.equal(stored.timingStats.validCount, Core.QUESTIONS.length);
     assert.equal(stored.timingStats.medianMs, 60000);
     assert.equal(stored.answerLabels.every((answer) => answer.timingValid), true);
+});
+
+test('house assignment targets the smallest cohort and randomizes only equal minima', () => {
+    assert.equal(chooseLeastPopulatedHouse({ SF: 8, ST: 2, NT: 2, NF: 5 }, () => 0), 'ST');
+    assert.equal(chooseLeastPopulatedHouse({ SF: 8, ST: 2, NT: 2, NF: 5 }, () => 0.999), 'NT');
+    assert.equal(chooseLeastPopulatedHouse({ SF: 0, ST: 0, NT: 0, NF: 0 }, () => 0.51), 'NT');
+});
+
+test('concurrent members are serialized into the least populated houses', async () => {
+    const repository = new FakeRepository();
+    const api = createCrewartSurveyApi({
+        repository,
+        bandMembership: { config: { sessionSecret: SECRET } },
+        now: () => NOW,
+        random: () => 0
+    });
+    const submissions = Core.HOUSE_KEYS.map((_, index) => {
+        const submission = validSubmission();
+        submission.participantKey = String(index + 1).repeat(24);
+        submission.assignedHouseKey = 'SF';
+        submission.houseId = 'SF';
+        const response = new CapturedResponse();
+        return api.handle(
+            request('POST', JSON.stringify({ response: submission }), { authorization: `Bearer ${memberToken()}` }),
+            response,
+            new URL('https://creok.example.com/api/crewart-survey/responses')
+        ).then(() => response);
+    });
+    const responses = await Promise.all(submissions);
+    assert.deepEqual(responses.map(response => JSON.parse(response.body).assignedHouseKey), Core.HOUSE_KEYS);
+    assert.deepEqual((await api.bootstrap()).cohort.houseCounts, { SF: 1, ST: 1, NT: 1, NF: 1 });
 });
 
 test('responses faster than the three-second reading lock are rejected', async () => {

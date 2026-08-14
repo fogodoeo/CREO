@@ -569,7 +569,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /KAKAO_JS_KEY/);
     assert.match(script, /const SURVEY_URL = 'https:\/\/creok\.onrender\.com\/crewart-survey\.html'/);
     assert.doesNotMatch(script, /const SURVEY_URL = new URL\([^\n]*document\.baseURI/);
-    assert.match(html, /crewart-survey\.js\?v=20260815-mobile-resilience-v30/);
+    assert.match(html, /crewart-survey\.js\?v=20260815-member-gate-v31/);
     assert.match(script, /function renderUnifiedResult\(profile, house\)/);
     assert.doesNotMatch(script, /resultViewVersion|resultViewFromLocation|changeResultView|report=deep|set-result-version/);
     assert.match(script, /function renderResult\(options = \{\}\)[\s\S]*renderUnifiedResult\(profile, house\);/);
@@ -659,7 +659,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /function typeCharacterPath\(code\)/);
     assert.match(script, /TYPE_CHARACTER_ROOT = 'assets\/crewart-types\/'/);
     assert.match(html, /crewart-survey-core\.js\?v=20260815-result-sequence-v26/);
-    assert.match(html, /crewart-survey-v4\.css\?v=20260815-mobile-resilience-v30/);
+    assert.match(html, /crewart-survey-v4\.css\?v=20260815-member-gate-v31/);
     assert.match(html, /id="start-button"[^>]*>[\s\S]*시작하기/);
     assert.match(html, /id="home-retest"[^>]*>다시 시작/);
     assert.doesNotMatch(html, /start-button-v2|home-retest-v1|Ver 1 시작|Ver 2 시작/);
@@ -710,7 +710,13 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(css, /prefers-reduced-motion: reduce/);
     assert.match(script, /renderResult\(\{ animate: true \}\)/);
     assert.match(script, /평균 문항 시간/);
-    assert.match(script, /Core\.chooseTendencyHouse\(result\)/);
+    assert.doesNotMatch(script, /Core\.chooseTendencyHouse\(result\)/);
+    assert.match(script, /function renderResultTeaser\(profile\)/);
+    assert.match(script, /성향 분석과 내 기숙사 확인하기/);
+    assert.match(script, /BAND 회원 인증 후 전체 결과가 바로 열려요/);
+    assert.match(script, /if \(!hasDetailedAccess\(\)\)\s*\{[\s\S]*renderResultTeaser\(profile\)/);
+    assert.match(script, /const savedHouse = String\(payload\.assignedHouseKey \|\| payload\.houseId/);
+    assert.match(css, /\.cw-result-teaser-lock\s*\{[^}]*grid-template-columns/);
     assert.doesNotMatch(script, /기숙사 참여하기|현재 커뮤니티 인원을 기준/);
     assert.match(css, /\.cw-scale-line[\s\S]*left:\s*50%/);
     assert.match(script, /if \(!hasDetailedAccess\(\)\)/);

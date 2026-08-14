@@ -136,17 +136,6 @@ test('differential supporting axis model maintains signal distribution and pole 
     }
 });
 
-test('house assignment follows the result SN and TF combination', () => {
-    const prepared = Core.prepareQuestions(() => 0.2);
-    const answers = prepared.map(question => question.optionScores
-        .map(score => score[question.axis[0]] + score[question.secondaryAxis[0]])
-        .reduce((best, value, index, values) => value > values[best] ? index : best, 0));
-    const result = Core.scoreAnswers(prepared, answers);
-    assert.equal(Core.chooseTendencyHouse(result), 'ST');
-    assert.equal(Core.chooseTendencyHouse({ code: 'ENFJ' }), 'NF');
-    assert.equal(Core.chooseTendencyHouse({ code: 'INTJ' }), 'NT');
-});
-
 test('house assignments use the unified RGBY team names', () => {
     assert.deepEqual(
         Core.HOUSE_KEYS.map(key => ({ key, name: Core.HOUSE_META[key].name, seal: Core.HOUSE_META[key].seal })),

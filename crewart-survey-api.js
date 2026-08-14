@@ -9,6 +9,7 @@ const CONTENT_UPDATED_KEY = 'crewart_mbti_content_updated_at';
 const LEGACY_RESPONSES_KEY = 'crewart_survey_responses';
 const RESPONSE_PREFIX = 'crewart_survey_response_entry_';
 const RESPONSE_LIMIT = 500;
+const HOUSE_ASSIGNMENT_VERSION = 'balanced-v1';
 const MBTI_PATTERN = /^[EI][SN][TF][JP]$/;
 const AXIS_PAIRS = [['E', 'I'], ['S', 'N'], ['T', 'F'], ['J', 'P']];
 
@@ -107,13 +108,6 @@ function sanitizeSubmission(input, nowIso) {
         error.status = 422;
         throw error;
     }
-    const assignedHouseKey = cleanText(input.assignedHouseKey || input.houseId, 2).toUpperCase();
-    const expectedHouseKey = Core.chooseTendencyHouse({ code: creMbti, letters: axisScores });
-    if (!Core.HOUSE_KEYS.includes(assignedHouseKey) || assignedHouseKey !== expectedHouseKey) {
-        const error = new Error('기숙사 배정값이 올바르지 않습니다.');
-        error.status = 422;
-        throw error;
-    }
     const knownMbti = cleanText(input.knownMbti, 4).toUpperCase();
     if (knownMbti && !Core.MBTI_TYPES.includes(knownMbti)) {
         const error = new Error('평소 MBTI 형식이 올바르지 않습니다.');
@@ -191,8 +185,6 @@ function sanitizeSubmission(input, nowIso) {
         crebtiType: creMbti,
         knownMbti: knownMbti || null,
         axisScores,
-        assignedHouseKey,
-        houseId: assignedHouseKey,
         answers,
         answerLabels,
         timingStats: {
@@ -208,6 +200,20 @@ function sanitizeSubmission(input, nowIso) {
         createdAt: validDate(input.createdAt, nowIso),
         syncedAt: nowIso
     };
+}
+
+function chooseLeastPopulatedHouse(houseCounts, random = Math.random) {
+    const counts = Object.fromEntries(Core.HOUSE_KEYS.map((key) => [
+        key,
+        Math.max(0, Number(houseCounts?.[key]) || 0)
+    ]));
+    const minimum = Math.min(...Object.values(counts));
+    const candidates = Core.HOUSE_KEYS.filter((key) => counts[key] === minimum);
+    const roll = Number(random());
+    const index = Number.isFinite(roll)
+        ? Math.min(candidates.length - 1, Math.max(0, Math.floor(roll * candidates.length)))
+        : 0;
+    return candidates[index] || Core.HOUSE_KEYS[0];
 }
 
 function sanitizeManagedContent(input) {
@@ -291,10 +297,12 @@ function createCrewartSurveyApi(options = {}) {
     const isAdmin = options.isAdmin;
     const logger = options.logger || console;
     const now = options.now || Date.now;
+    const random = typeof options.random === 'function' ? options.random : Math.random;
     const cacheMs = Math.max(5000, Math.min(300000, Number(options.cacheMs) || 60000));
     const submissionAttempts = new Map();
     let bootstrapCache = null;
     let bootstrapRequest = null;
+    let assignmentQueue = Promise.resolve();
     if (!repository) throw new Error('repository is required');
 
     function allowSubmission(subject) {
@@ -333,6 +341,12 @@ function createCrewartSurveyApi(options = {}) {
             })
             .finally(() => { bootstrapRequest = null; });
         return bootstrapRequest;
+    }
+
+    function serializeAssignment(task) {
+        const pending = assignmentQueue.then(task, task);
+        assignmentQueue = pending.catch(() => undefined);
+        return pending;
     }
 
     async function handle(req, res, url) {
@@ -423,31 +437,52 @@ function createCrewartSurveyApi(options = {}) {
                     return true;
                 }
                 const body = await readJson(req);
-                const nowIso = new Date(now()).toISOString();
-                const response = sanitizeSubmission(body.response, nowIso);
-                await repository.upsertRows([{
-                    key: `${RESPONSE_PREFIX}${response.participantKey}`,
-                    value: JSON.stringify(response)
-                }]);
-                if (bootstrapCache) {
-                    const cohort = bootstrapCache.value.cohort;
-                    const alreadyCounted = cohort.identities.has(response.participantKey);
-                    cohort.identities.add(response.participantKey);
-                    if (!alreadyCounted) {
-                        cohort.houseCounts[response.assignedHouseKey] += 1;
-                        if (response.timingStats.medianMs >= Core.MIN_RESPONSE_MS) {
-                            cohort.timingMedians.push(response.timingStats.medianMs);
-                            cohort.timingMedians = cohort.timingMedians.slice(-RESPONSE_LIMIT);
-                        }
-                        cohort.sampleSize += 1;
-                    } else {
-                        // Replacing a participant's response may change its house or
-                        // timing. Rebuild on the next bootstrap instead of guessing
-                        // the previous values from the aggregate-only cache.
-                        bootstrapCache = null;
+                const response = await serializeAssignment(async () => {
+                    const nowIso = new Date(now()).toISOString();
+                    const sanitized = sanitizeSubmission(body.response, nowIso);
+                    const responseKey = `${RESPONSE_PREFIX}${sanitized.participantKey}`;
+                    const previousRows = await repository.getRowsByKeys([responseKey]);
+                    const previous = jsonParse(previousRows[0]?.value, null);
+                    const previousHouse = cleanText(previous?.assignedHouseKey || previous?.houseId, 2).toUpperCase();
+                    const current = await bootstrap();
+                    const keepPreviousHouse = previous?.houseAssignmentVersion === HOUSE_ASSIGNMENT_VERSION
+                        && Core.HOUSE_KEYS.includes(previousHouse);
+                    const allocationCounts = { ...current.cohort.houseCounts };
+                    if (!keepPreviousHouse && Core.HOUSE_KEYS.includes(previousHouse)) {
+                        allocationCounts[previousHouse] = Math.max(0, Number(allocationCounts[previousHouse]) - 1);
                     }
-                }
-                replyJson(res, 201, { saved: true });
+                    const assignedHouseKey = keepPreviousHouse
+                        ? previousHouse
+                        : chooseLeastPopulatedHouse(allocationCounts, random);
+                    const assigned = {
+                        ...sanitized,
+                        assignedHouseKey,
+                        houseId: assignedHouseKey,
+                        houseAssignmentVersion: HOUSE_ASSIGNMENT_VERSION
+                    };
+                    await repository.upsertRows([{ key: responseKey, value: JSON.stringify(assigned) }]);
+                    if (bootstrapCache) {
+                        const cohort = bootstrapCache.value.cohort;
+                        const alreadyCounted = cohort.identities.has(assigned.participantKey);
+                        cohort.identities.add(assigned.participantKey);
+                        if (!alreadyCounted) {
+                            cohort.houseCounts[assignedHouseKey] += 1;
+                            if (assigned.timingStats.medianMs >= Core.MIN_RESPONSE_MS) {
+                                cohort.timingMedians.push(assigned.timingStats.medianMs);
+                                cohort.timingMedians = cohort.timingMedians.slice(-RESPONSE_LIMIT);
+                            }
+                            cohort.sampleSize += 1;
+                        } else {
+                            bootstrapCache = null;
+                        }
+                    }
+                    return assigned;
+                });
+                replyJson(res, 201, {
+                    saved: true,
+                    assignedHouseKey: response.assignedHouseKey,
+                    houseId: response.assignedHouseKey
+                });
                 return true;
             }
             replyJson(res, 404, { error: 'Not found' });
@@ -468,9 +503,11 @@ function createCrewartSurveyApi(options = {}) {
 module.exports = {
     CONTENT_KEY,
     CONTENT_UPDATED_KEY,
+    HOUSE_ASSIGNMENT_VERSION,
     LEGACY_RESPONSES_KEY,
     RESPONSE_PREFIX,
     aggregateResponses,
+    chooseLeastPopulatedHouse,
     createCrewartSurveyApi,
     sanitizeManagedContent,
     sanitizeSubmission

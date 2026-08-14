@@ -10,9 +10,9 @@
     const TYPE_CHARACTER_VERSION = '20260802-character-v1';
     const MEMBERSHIP_STORAGE_KEY = 'crewart_band_member_access_v1';
     const MEMBERSHIP_PHONE_STORAGE_KEY = 'crewart_band_member_phone_mask_v1';
-    const LAST_RESULT_STORAGE_KEY = 'crewart_last_result_v2';
-    const LEGACY_RESULT_STORAGE_KEYS = Object.freeze(['crewart_last_result_v1']);
-    const LAST_RESULT_VERSION = 2;
+    const LAST_RESULT_STORAGE_KEY = 'crewart_last_result_v3';
+    const LEGACY_RESULT_STORAGE_KEYS = Object.freeze(['crewart_last_result_v1', 'crewart_last_result_v2']);
+    const LAST_RESULT_VERSION = 3;
     const LEGACY_RESULT_QUESTION_VERSIONS = Object.freeze([
         'crewart-tendency-v8.1',
         'crewart-tendency-v8.0'
@@ -174,12 +174,15 @@
         startCard.hidden = Boolean(snapshot);
         intro?.classList.toggle('has-result', Boolean(snapshot));
         if (!snapshot) return;
-        const house = Core.HOUSE_META[snapshot.assignedHouseKey];
+        const detailed = hasDetailedAccess();
+        const house = detailed ? Core.HOUSE_META[snapshot.assignedHouseKey] : null;
         element('home-result-code').textContent = snapshot.result.code;
         element('home-result-heading').textContent = snapshot.result.typeName;
-        element('home-house-seal').textContent = house?.seal || snapshot.assignedHouseKey[0];
-        element('home-house-name').textContent = house?.name || snapshot.assignedHouseKey;
-        card.style.setProperty('--house-accent', house?.accent || '#fff');
+        const housePanel = element('home-house-name')?.closest('.cw-home-house');
+        if (housePanel) housePanel.hidden = !detailed;
+        element('home-house-seal').textContent = house?.seal || '';
+        element('home-house-name').textContent = house?.name || '';
+        card.style.setProperty('--house-accent', house?.accent || '#16814b');
     }
 
     function restoreLastResult(options = {}) {
@@ -201,7 +204,7 @@
         sessionCreatedAt = '';
         result = snapshot.result;
         resultSavedAt = snapshot.savedAt || '';
-        assignedHouseKey = Core.chooseTendencyHouse(result);
+        assignedHouseKey = snapshot.assignedHouseKey;
         timingStats = snapshot.timingStats;
         showingStoredResult = true;
         renderResult({ animate: Boolean(options.animate) });
@@ -721,7 +724,7 @@
         }
         result = Core.scoreAnswers(questions, answers);
         timingStats = Core.buildTimingStats(responseTimings, questions);
-        assignedHouseKey = Core.chooseTendencyHouse(result);
+        assignedHouseKey = '';
         renderMbtiOptions();
         setScreen('mbti-screen');
     }
@@ -747,12 +750,22 @@
         completeResultReveal();
     }
 
-    function completeResultReveal() {
+    async function completeResultReveal() {
         showingStoredResult = false;
+        if (!hasDetailedAccess()) {
+            renderResult({ animate: true });
+            setScreen('result-screen');
+            return;
+        }
+        if (!assignedHouseKey && IS_LOCAL_QA) assignedHouseKey = choosePreviewHouse();
+        if (!assignedHouseKey && surveySessionId) {
+            toast('기숙사를 배정하고 있어요.');
+            const savedHouse = await submitSurvey();
+            if (!savedHouse) return;
+        }
         saveLastResult();
         renderResult({ animate: true });
         setScreen('result-screen');
-        void submitSurvey();
     }
 
     function formatSeconds(milliseconds) {
@@ -761,6 +774,16 @@
 
     function hasDetailedAccess() {
         return IS_LOCAL_QA || Boolean(bandAuthUser && bandAuthUser.isTargetMember === true);
+    }
+
+    function choosePreviewHouse() {
+        const counts = Object.fromEntries(Core.HOUSE_KEYS.map(key => [
+            key,
+            Math.max(0, Number(cohortSummary.houseCounts?.[key]) || 0)
+        ]));
+        const minimum = Math.min(...Object.values(counts));
+        const candidates = Core.HOUSE_KEYS.filter(key => counts[key] === minimum);
+        return candidates[Math.floor(Math.random() * candidates.length)] || Core.HOUSE_KEYS[0];
     }
 
     function resultSpeedPresentation() {
@@ -863,6 +886,35 @@
 
         bindRenderedResultActions();
         resultExperienceCleanup = setupResultStory();
+    }
+
+    function renderResultTeaser(profile) {
+        element('result-content').innerHTML = `
+            <div class="cw-result-teaser">
+                <header class="cw-story-topbar">
+                    <button type="button" data-action="go-home" aria-label="홈으로 돌아가기">← <span>홈</span></button>
+                    <div><small>결과 미리보기</small><strong>${escapeHtml(result.code)}</strong></div>
+                </header>
+                <main class="cw-result-teaser-main">
+                    <div class="cw-result-teaser-character" aria-hidden="true">
+                        <img src="${escapeHtml(typeCharacterPath(result.code))}" width="360" height="520" alt="" loading="eager" decoding="async">
+                    </div>
+                    <div class="cw-result-teaser-copy">
+                        <small>당신의 유형</small>
+                        <strong>${escapeHtml(result.code)}</strong>
+                        <p>${escapeHtml(profile.title || result.typeName)}</p>
+                    </div>
+                    <section class="cw-result-teaser-lock" aria-labelledby="result-unlock-title">
+                        <img src="assets/band-app-icon-official.png?v=20260801-logo-v2" width="46" height="46" alt="">
+                        <div>
+                            <strong id="result-unlock-title">성향 분석과 내 기숙사 확인하기</strong>
+                            <span>BAND 회원 인증 후 전체 결과가 바로 열려요.</span>
+                        </div>
+                        <button type="button" data-action="unlock-detail">BAND 인증하기</button>
+                    </section>
+                </main>
+            </div>`;
+        bindRenderedResultActions();
     }
 
     function bindRenderedResultActions() {
@@ -1056,8 +1108,12 @@
         resultExperienceCleanup?.();
         resultExperienceCleanup = null;
         const profile = Core.getResultProfile(result.code);
-        const house = Core.HOUSE_META[assignedHouseKey] || { name: 'CREO', accent: '#10b981' };
         element('result-screen')?.classList.add('is-depth-view');
+        if (!hasDetailedAccess()) {
+            renderResultTeaser(profile);
+            return;
+        }
+        const house = Core.HOUSE_META[assignedHouseKey] || { name: '배정 중', accent: '#16814b' };
         renderUnifiedResult(profile, house);
     }
 
@@ -1084,9 +1140,9 @@
     }
 
     async function submitSurvey() {
-        if (IS_QA_MODE || !result || !surveySessionId || saveInFlight || !hasDetailedAccess()) return;
+        if (IS_QA_MODE || !result || !surveySessionId || saveInFlight || !hasDetailedAccess()) return assignedHouseKey;
         const signature = JSON.stringify({ session: surveySessionId, answers, selectedMbti, band: bandAuthUser?.id || '', member: bandAuthUser?.isTargetMember || false });
-        if (signature === lastSavedSignature) return;
+        if (signature === lastSavedSignature) return assignedHouseKey;
         saveInFlight = true;
         try {
             const participantKey = await hashSessionId(surveySessionId);
@@ -1096,8 +1152,6 @@
                 crebtiType: result.code,
                 knownMbti: selectedMbti || null,
                 axisScores: result.letters,
-                assignedHouseKey,
-                houseId: assignedHouseKey,
                 answers: answers.slice(),
                 answerLabels: questions.map((question, index) => {
                     const scores = Core.answerLetters(question, answers[index]);
@@ -1143,9 +1197,17 @@
                 const payload = await saved.json().catch(() => ({}));
                 throw new Error(payload.error || '설문 결과를 저장하지 못했습니다.');
             }
+            const payload = await saved.json().catch(() => ({}));
+            const savedHouse = String(payload.assignedHouseKey || payload.houseId || '').toUpperCase();
+            if (!Core.HOUSE_KEYS.includes(savedHouse)) throw new Error('기숙사 배정 결과를 확인하지 못했습니다.');
+            assignedHouseKey = savedHouse;
             lastSavedSignature = signature;
+            cohortSummary.houseCounts[savedHouse] = (Number(cohortSummary.houseCounts[savedHouse]) || 0) + 1;
+            return savedHouse;
         } catch (error) {
             console.error('[Crewart survey save]', error);
+            toast(error.message || '기숙사를 배정하지 못했어요. 잠시 후 다시 시도해 주세요.', true);
+            return '';
         } finally {
             saveInFlight = false;
         }
@@ -1183,6 +1245,7 @@
         document.querySelectorAll('[data-band-join]').forEach(link => { link.href = bandTargetUrl; });
         updateBandState();
         updatePersistentActions();
+        if (!element('intro-screen').hidden) renderHome();
         if (result && !element('result-screen').hidden) renderResult();
     }
 
@@ -2163,7 +2226,7 @@
                 fastest: null,
                 slowest: null
             };
-            assignedHouseKey = Core.chooseTendencyHouse(result);
+            assignedHouseKey = choosePreviewHouse();
             renderResult({ animate: false });
             setScreen('result-screen');
         } else {

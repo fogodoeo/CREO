@@ -1488,17 +1488,6 @@
         };
     }
 
-    function chooseTendencyHouse(result) {
-        const code = String(result?.code || '').toUpperCase();
-        const codeKey = `${code[1] || ''}${code[2] || ''}`;
-        if (HOUSE_KEYS.includes(codeKey)) return codeKey;
-        const letters = result?.letters || {};
-        const perception = Number(letters.S) > Number(letters.N) ? 'S' : 'N';
-        const decision = Number(letters.T) > Number(letters.F) ? 'T' : 'F';
-        return `${perception}${decision}`;
-    }
-
-
     function loadQuestionnaireFile(questionsFile, resultsFile) {
         if (typeof fetch !== 'function' || typeof document === 'undefined') return Promise.resolve(null);
         const questionsUrl = new URL(questionsFile, document.baseURI).href;
@@ -1947,7 +1936,6 @@
         buildMbtiComparison,
         buildTimingStats,
         buildSpeedBenchmark,
-        chooseTendencyHouse,
         median,
         average,
         ready,
