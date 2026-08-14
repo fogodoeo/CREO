@@ -821,9 +821,14 @@
                         <div class="cw-story-progress" aria-hidden="true"><i data-story-progress></i></div>
                         <div class="cw-story-stage" aria-live="polite">
                             <section class="cw-story-scene is-axis" data-story-scene="axis">
-                                <div class="cw-story-heading"><small>당신의 성향 축</small><h1>선택의 방향을 읽는 중</h1></div>
+                                <div class="cw-story-result-hero">
+                                    <div class="cw-story-result-character" aria-hidden="true">
+                                        <img src="${escapeHtml(typeCharacterPath(result.code))}" width="360" height="520" alt="" loading="eager" decoding="async">
+                                    </div>
+                                    <div class="cw-story-result-type"><small>당신의 유형</small><strong>${escapeHtml(result.code)}</strong><em>${escapeHtml(profile.title || result.typeName)}</em></div>
+                                </div>
+                                <div class="cw-story-heading"><h1>선택의 방향을 읽는 중</h1></div>
                                 <div class="cw-story-axis-chart">${axisMarkup}</div>
-                                <div class="cw-story-mbti"><span>결국, 당신의 유형은</span><strong>${escapeHtml(result.code)}</strong><em>${escapeHtml(profile.title || result.typeName)}</em></div>
                             </section>
 
                             <section class="cw-story-scene is-profile" data-story-scene="profile">
@@ -838,8 +843,8 @@
                             </section>
 
                             <section class="cw-story-scene is-time" data-story-scene="time">
-                                <small>평균 문항 시간</small>
-                                <strong>${escapeHtml(averageResponseTime)}</strong>
+                                <small data-time-label>응답 시간 계산 중</small>
+                                <strong data-time-value data-final-time="${escapeHtml(averageResponseTime)}">--.-초</strong>
                                 <span>${timingStats?.validCount > 0 ? `${timingStats.validCount}개 문항 기준` : '테스트 완료 후 기록됩니다.'}</span>
                             </section>
 
@@ -876,10 +881,38 @@
         const progressNode = root.querySelector('[data-story-progress]');
         const axisRows = [...root.querySelectorAll('[data-axis-target]')];
         const scenes = Object.fromEntries([...root.querySelectorAll('[data-story-scene]')].map(node => [node.dataset.storyScene, node]));
+        const timeValueNode = root.querySelector('[data-time-value]');
+        const timeLabelNode = root.querySelector('[data-time-label]');
         const clamp = value => Math.max(0, Math.min(1, value));
         const segment = (value, start, end) => clamp((value - start) / (end - start));
         let frame = 0;
         let activeScene = '';
+        let timeShuffleTimer = 0;
+
+        const settleTimeValue = () => {
+            if (!timeValueNode) return;
+            timeValueNode.textContent = timeValueNode.dataset.finalTime || '측정 전';
+            timeValueNode.classList.remove('is-shuffling');
+            if (timeLabelNode) timeLabelNode.textContent = '평균 문항 시간';
+        };
+        const startTimeShuffle = () => {
+            if (!timeValueNode) return;
+            window.clearInterval(timeShuffleTimer);
+            let ticks = 0;
+            timeValueNode.classList.add('is-shuffling');
+            if (timeLabelNode) timeLabelNode.textContent = '응답 시간 계산 중';
+            timeValueNode.textContent = `${(3 + Math.random() * 10).toFixed(1)}초`;
+            timeShuffleTimer = window.setInterval(() => {
+                ticks += 1;
+                if (ticks >= 9) {
+                    window.clearInterval(timeShuffleTimer);
+                    timeShuffleTimer = 0;
+                    settleTimeValue();
+                    return;
+                }
+                timeValueNode.textContent = `${(3 + Math.random() * 10).toFixed(1)}초`;
+            }, 70);
+        };
 
         const sync = () => {
             frame = 0;
@@ -887,7 +920,6 @@
             const range = Math.max(1, root.offsetHeight - window.innerHeight);
             const progress = clamp(-rect.top / range);
             const axisProgress = segment(progress, .02, .17);
-            const mbtiProgress = segment(progress, .22, .27);
             const profileIn = segment(progress, .35, .37);
             const profileOut = 1 - segment(progress, .59, .62);
             const timeIn = segment(progress, .64, .66);
@@ -903,7 +935,6 @@
 
             root.style.setProperty('--story-progress', progress);
             root.style.setProperty('--axis-progress', axisProgress);
-            root.style.setProperty('--mbti-progress', mbtiProgress);
             root.style.setProperty('--axis-opacity', axisOpacity);
             root.style.setProperty('--profile-opacity', profileOpacity);
             root.style.setProperty('--strength-progress', strengthProgress);
@@ -927,6 +958,12 @@
             if (nextScene !== activeScene) {
                 activeScene = nextScene;
                 Object.entries(scenes).forEach(([name, node]) => node.setAttribute('aria-hidden', String(name !== activeScene)));
+                if (activeScene === 'time') startTimeShuffle();
+                else if (timeShuffleTimer) {
+                    window.clearInterval(timeShuffleTimer);
+                    timeShuffleTimer = 0;
+                    settleTimeValue();
+                }
             }
             root.classList.toggle('is-share-ready', shareProgress >= .98);
         };
@@ -939,6 +976,7 @@
         return () => {
             window.removeEventListener('scroll', scheduleSync);
             window.removeEventListener('resize', scheduleSync);
+            window.clearInterval(timeShuffleTimer);
             if (frame) cancelAnimationFrame(frame);
         };
     }
@@ -2074,6 +2112,16 @@
         const previewCode = (urlParams.get('preview') || urlParams.get('mbti') || urlParams.get('type') || '').toUpperCase();
         if (previewCode && Core.MBTI_TYPES.includes(previewCode)) {
             result = buildPreviewResult(previewCode);
+            timingStats = {
+                validCount: 12,
+                totalMs: 100800,
+                averageMs: 8400,
+                medianMs: 8100,
+                axisMedians: {},
+                style: { key: 'balanced', label: '균형 잡힌 선택' },
+                fastest: null,
+                slowest: null
+            };
             assignedHouseKey = Core.chooseTendencyHouse(result);
             renderResult({ animate: false });
             setScreen('result-screen');
