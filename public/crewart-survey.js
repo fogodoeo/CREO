@@ -162,7 +162,8 @@
     let preparedSaveUrl = '';
     let preparedKakaoShareFile = null;
     let preparedKakaoShareUrl = '';
-    let resultViewVersion = (() => { try { return localStorage.getItem('crewart_result_view_version') || 'v2'; } catch (_) { return 'v2'; } })();
+    let resultViewVersion = new URLSearchParams(window.location.search).get('report') === 'deep' ? 'v2' : 'v1';
+    let resultExperienceCleanup = null;
 
     function element(id) {
         return document.getElementById(id);
@@ -1149,10 +1150,238 @@
         return Core.buildMbtiComparison(selectedMbti, result.code);
     }
 
+    function resultViewFromLocation() {
+        return new URLSearchParams(window.location.search).get('report') === 'deep' ? 'v2' : 'v1';
+    }
+
+    function changeResultView(version, options = {}) {
+        const nextVersion = version === 'v2' ? 'v2' : 'v1';
+        resultViewVersion = nextVersion;
+        if (!options.fromHistory) {
+            const url = new URL(window.location.href);
+            if (nextVersion === 'v2') url.searchParams.set('report', 'deep');
+            else url.searchParams.delete('report');
+            try { history.pushState(tabHistoryState('result'), document.title, url); } catch (_) { }
+        }
+        renderResult({ animate: false });
+        requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: options.instant ? 'auto' : 'smooth' }));
+    }
+
+    function buildDeepReportSteps(profile, house) {
+        const bestMatch = profile.bestMatch
+            ? `${profile.bestMatch.mbti} · ${profile.bestMatch.title}`
+            : '서로 다른 방식도 천천히 맞춰갈 수 있어요.';
+        const cautiousMatch = profile.worstMatch
+            ? `${profile.worstMatch.mbti} 유형과는 판단 속도를 맞춰보세요.`
+            : '다른 기준을 먼저 확인하면 오해를 줄일 수 있어요.';
+        return [
+            {
+                kicker: '성향',
+                title: profile.title || result.typeName,
+                body: profile.summary || TYPE_READINGS[result.code] || '당신의 선택에서 반복된 성향을 정리했습니다.',
+                note: profile.subtitle || `${result.code} 결과의 핵심 흐름`
+            },
+            {
+                kicker: '강점',
+                title: '가장 자연스럽게 잘하는 것',
+                body: profile.superpower || '관찰한 내용을 자신만의 방식으로 정리해 다음 행동으로 연결합니다.',
+                note: '억지로 바꾸기보다 잘하는 방식을 선명하게'
+            },
+            {
+                kicker: '주의점',
+                title: '한 번 더 확인할 지점',
+                body: profile.weakness || '익숙한 판단이 빨라질수록 지금 달라진 조건을 한 번 더 확인해보세요.',
+                note: '강점이 과해질 때 생기는 빈틈'
+            },
+            {
+                kicker: '궁합',
+                title: '함께할 때 편안한 유형',
+                body: bestMatch,
+                note: cautiousMatch
+            },
+            {
+                kicker: '가이드',
+                title: '오늘 바로 해볼 한 가지',
+                body: profile.actionItem || '지금 떠오른 크레 한 마리의 최근 변화를 짧게 기록해보세요.',
+                note: `당신의 기숙사는 ${house.name} 입니다.`
+            }
+        ];
+    }
+
+    function renderDeepResult(options, profile, house) {
+        const steps = buildDeepReportSteps(profile, house);
+        const firstStep = steps[0];
+        const characterPath = typeCharacterPath(result.code);
+        const stepMarkup = steps.map((step, index) => `
+            <li class="cw-depth-step${index === 0 ? ' is-active' : ''}" data-depth-step="${index}">
+                <span class="cw-depth-step-number">${String(index + 1).padStart(2, '0')}</span>
+                <div>
+                    <small>${escapeHtml(step.kicker)}</small>
+                    <h3>${escapeHtml(step.title)}</h3>
+                    <p>${escapeHtml(step.body)}</p>
+                </div>
+            </li>`).join('');
+        const dotMarkup = steps.map((step, index) => `
+            <button type="button" class="cw-depth-dot${index === 0 ? ' is-active' : ''}" data-depth-target="${index}" aria-label="${escapeHtml(`${index + 1}. ${step.kicker}`)}"></button>`).join('');
+
+        element('result-content').innerHTML = `
+            <div class="cw-depth-page" style="--house-accent:${escapeHtml(house.accent)}">
+                <header class="cw-depth-topbar">
+                    <button type="button" class="cw-depth-back" data-action="set-result-version" data-version="v1" aria-label="기본 결과로 돌아가기">← <span>기본 결과</span></button>
+                    <div><small>심층 리포트</small><strong>${escapeHtml(result.code)}</strong></div>
+                </header>
+
+                <section class="cw-depth-intro" aria-labelledby="cw-depth-title">
+                    <div class="cw-depth-intro-visual" aria-hidden="true">
+                        <span>${escapeHtml(result.code)}</span>
+                        <img src="${escapeHtml(characterPath)}" width="360" height="520" alt="" loading="eager" decoding="async">
+                    </div>
+                    <div class="cw-depth-intro-copy">
+                        <small>${escapeHtml(house.name)} 기숙사</small>
+                        <h1 id="cw-depth-title">${escapeHtml(profile.title || result.typeName)}</h1>
+                        <p>${escapeHtml(profile.subtitle || '선택 속에 반복해서 나타난 당신만의 돌봄 방식을 살펴봅니다.')}</p>
+                    </div>
+                    <button type="button" class="cw-depth-scroll-cue" data-depth-start><span>스크롤해서 읽기</span><i aria-hidden="true">↓</i></button>
+                </section>
+
+                <section class="cw-depth-scrolly" data-depth-scrolly aria-label="심층 결과 5단계">
+                    <aside class="cw-depth-stage" aria-live="polite">
+                        <div class="cw-depth-stage-progress"><i data-depth-progress></i></div>
+                        <div class="cw-depth-stage-head">
+                            <span data-depth-count>01 / 05</span>
+                            <nav class="cw-depth-dots" aria-label="심층 결과 단계">${dotMarkup}</nav>
+                        </div>
+                        <div class="cw-depth-stage-art" aria-hidden="true">
+                            <span>${escapeHtml(result.code)}</span>
+                            <img src="${escapeHtml(characterPath)}" width="180" height="260" alt="">
+                        </div>
+                        <div class="cw-depth-stage-content" data-depth-content>
+                            <small data-depth-kicker>${escapeHtml(firstStep.kicker)}</small>
+                            <h2 data-depth-title>${escapeHtml(firstStep.title)}</h2>
+                            <p data-depth-body>${escapeHtml(firstStep.body)}</p>
+                            <footer data-depth-note>${escapeHtml(firstStep.note)}</footer>
+                        </div>
+                    </aside>
+                    <ol class="cw-depth-steps">${stepMarkup}</ol>
+                </section>
+
+                <footer class="cw-depth-outro">
+                    <div class="cw-depth-house"><span>당신의 기숙사는</span><strong>${escapeHtml(house.name)}</strong><span>입니다.</span></div>
+                    <div class="cw-depth-actions">
+                        <button type="button" data-action="save-image">결과 이미지 저장</button>
+                        <button type="button" data-action="share">카카오톡 공유</button>
+                    </div>
+                    <button type="button" class="cw-depth-basic-link" data-action="set-result-version" data-version="v1">기본 결과 다시 보기</button>
+                    <small>© 2026 CREO. All rights reserved.</small>
+                </footer>
+            </div>`;
+
+        bindRenderedResultActions();
+        resultExperienceCleanup = setupDeepScrollytelling(steps);
+    }
+
+    function bindRenderedResultActions() {
+        element('result-content').querySelectorAll('[data-action="set-result-version"]').forEach(button => {
+            button.addEventListener('click', event => changeResultView(event.currentTarget.dataset.version));
+        });
+        element('result-content').querySelectorAll('[data-action="share"]').forEach(button => button.addEventListener('click', shareResult));
+        element('result-content').querySelectorAll('[data-action="save-image"]').forEach(button => button.addEventListener('click', saveResultImage));
+        element('result-content').querySelector('[data-action="unlock-detail"]')?.addEventListener('click', handleUnlockDetail);
+        element('result-content').querySelector('[data-action="open-band"]')?.addEventListener('click', openBandTarget);
+        element('result-content').querySelectorAll('[data-report-toggle]').forEach(button => button.addEventListener('click', toggleReportDisclosure));
+    }
+
+    function setupDeepScrollytelling(steps) {
+        const root = element('result-content').querySelector('[data-depth-scrolly]');
+        const stage = root?.querySelector('.cw-depth-stage');
+        const stepNodes = [...(root?.querySelectorAll('[data-depth-step]') || [])];
+        const dots = [...(root?.querySelectorAll('[data-depth-target]') || [])];
+        const startButton = element('result-content').querySelector('[data-depth-start]');
+        if (!root || !stage || !stepNodes.length) return () => { };
+
+        const countNode = stage.querySelector('[data-depth-count]');
+        const kickerNode = stage.querySelector('[data-depth-kicker]');
+        const titleNode = stage.querySelector('[data-depth-title]');
+        const bodyNode = stage.querySelector('[data-depth-body]');
+        const noteNode = stage.querySelector('[data-depth-note]');
+        const contentNode = stage.querySelector('[data-depth-content]');
+        const progressNode = stage.querySelector('[data-depth-progress]');
+        let activeIndex = -1;
+        let frame = 0;
+
+        const activate = index => {
+            const nextIndex = Math.max(0, Math.min(steps.length - 1, index));
+            if (nextIndex === activeIndex) return;
+            activeIndex = nextIndex;
+            const step = steps[nextIndex];
+            countNode.textContent = `${String(nextIndex + 1).padStart(2, '0')} / ${String(steps.length).padStart(2, '0')}`;
+            kickerNode.textContent = step.kicker;
+            titleNode.textContent = step.title;
+            bodyNode.textContent = step.body;
+            noteNode.textContent = step.note;
+            contentNode.classList.remove('is-entering');
+            void contentNode.offsetWidth;
+            contentNode.classList.add('is-entering');
+            stepNodes.forEach((node, nodeIndex) => node.classList.toggle('is-active', nodeIndex === nextIndex));
+            dots.forEach((dot, dotIndex) => {
+                dot.classList.toggle('is-active', dotIndex === nextIndex);
+                if (dotIndex === nextIndex) dot.setAttribute('aria-current', 'step');
+                else dot.removeAttribute('aria-current');
+            });
+        };
+
+        const sync = () => {
+            frame = 0;
+            const focusLine = window.innerHeight * 0.56;
+            let nearestIndex = 0;
+            let nearestDistance = Number.POSITIVE_INFINITY;
+            stepNodes.forEach((node, index) => {
+                const rect = node.getBoundingClientRect();
+                const distance = Math.abs(rect.top + rect.height * 0.45 - focusLine);
+                if (distance < nearestDistance) {
+                    nearestDistance = distance;
+                    nearestIndex = index;
+                }
+            });
+            activate(nearestIndex);
+            const rootRect = root.getBoundingClientRect();
+            const scrollRange = Math.max(1, rootRect.height - window.innerHeight);
+            const progress = Math.max(0, Math.min(1, -rootRect.top / scrollRange));
+            if (progressNode) progressNode.style.transform = `scaleX(${progress})`;
+        };
+        const scheduleSync = () => {
+            if (!frame) frame = requestAnimationFrame(sync);
+        };
+        const observer = typeof IntersectionObserver === 'function'
+            ? new IntersectionObserver(scheduleSync, { rootMargin: '-30% 0px -40%', threshold: [0, 0.01, 0.5] })
+            : null;
+        stepNodes.forEach(node => observer?.observe(node));
+        dots.forEach(dot => dot.addEventListener('click', () => stepNodes[Number(dot.dataset.depthTarget)]?.scrollIntoView({ behavior: 'smooth', block: 'center' })));
+        startButton?.addEventListener('click', () => stepNodes[0]?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
+        window.addEventListener('scroll', scheduleSync, { passive: true });
+        window.addEventListener('resize', scheduleSync);
+        activate(0);
+        scheduleSync();
+
+        return () => {
+            observer?.disconnect();
+            window.removeEventListener('scroll', scheduleSync);
+            window.removeEventListener('resize', scheduleSync);
+            if (frame) cancelAnimationFrame(frame);
+        };
+    }
+
     function renderResult(options = {}) {
+        resultExperienceCleanup?.();
+        resultExperienceCleanup = null;
         const profile = Core.getResultProfile(result.code);
         const isV2 = resultViewVersion === 'v2';
         const house = Core.HOUSE_META[assignedHouseKey] || { name: 'CREO', accent: '#10b981' };
+        element('result-screen')?.classList.toggle('is-depth-view', isV2);
+        if (isV2) {
+            renderDeepResult(options, profile, house);
+            return;
+        }
         const detail = BAND_INTEGRATION_ENABLED && hasDetailedAccess()
             ? `${renderMemberDetail()}${renderSpeedCard()}${renderHouseCard()}`
             : renderLockedDetail();
@@ -1164,78 +1393,8 @@
         const resultCodeFrontSlots = renderResultCodeSlots(resultCodeLetters.slice(2), 2);
         const characterState = options.animate ? 'is-pending' : 'is-revealed';
         const characterPath = typeCharacterPath(result.code);
-        const activeTitle = isV2 ? (profile.title || result.typeName) : result.typeName;
-
-        const v2DeckHtml = isV2 ? `
-            <nav class="cw-scrolly-tabs" role="tablist" aria-label="결과 분석 단계">
-                <button type="button" class="cw-scrolly-tab is-active" data-step-target="0"><span>01 성향</span></button>
-                <button type="button" class="cw-scrolly-tab" data-step-target="1"><span>02 솔루션</span></button>
-                <button type="button" class="cw-scrolly-tab" data-step-target="2"><span>03 궁합</span></button>
-                <button type="button" class="cw-scrolly-tab" data-step-target="3"><span>04 가이드</span></button>
-            </nav>
-            <div class="cw-scrolly-deck" id="cw-scrolly-deck">
-                <!-- Panel 0: 성향 분석 -->
-                <section class="cw-step-panel is-active" data-step-panel="0">
-                    <div class="cw-agency-caption-block">
-                        <h1 class="cw-result-type-name" data-final-name="${escapeHtml(activeTitle)}">
-                            <strong class="cw-agency-caption-handle">crewart_${escapeHtml(result.code.toLowerCase())}</strong>
-                            ${escapeHtml(activeTitle)}
-                        </h1>
-                        ${profile.subtitle ? `<p class="cw-result-subtitle">${escapeHtml(profile.subtitle)}</p>` : ''}
-                    </div>
-                    ${profile.summary ? `<div class="cw-agency-card is-summary-card">
-                        <div class="cw-step-badge"><span>01</span> 성향 분석</div>
-                        <div class="cw-result-summary-box"><p>${escapeHtml(profile.summary)}</p></div>
-                    </div>` : ''}
-                </section>
-
-                <!-- Panel 1: 사육 솔루션 (강점 & 주의점) -->
-                <section class="cw-step-panel" data-step-panel="1">
-                    <div class="cw-step-badge"><span>02</span> 사육 솔루션</div>
-                    <div class="cw-agency-bento-grid cw-agency-split-2">
-                        ${profile.superpower ? `<article class="cw-agency-card is-strength">
-                            <header class="cw-agency-card-head"><span class="cw-agency-tag is-strength-tag">사육 강점</span></header>
-                            <p class="cw-agency-card-text">${escapeHtml(profile.superpower)}</p>
-                        </article>` : ''}
-                        ${profile.weakness ? `<article class="cw-agency-card is-caution">
-                            <header class="cw-agency-card-head"><span class="cw-agency-tag is-caution-tag">사육 주의점</span></header>
-                            <p class="cw-agency-card-text">${escapeHtml(profile.weakness)}</p>
-                        </article>` : ''}
-                    </div>
-                </section>
-
-                <!-- Panel 2: 집사 궁합 -->
-                <section class="cw-step-panel" data-step-panel="2">
-                    <div class="cw-step-badge"><span>03</span> 집사 매칭</div>
-                    <div class="cw-agency-bento-grid cw-agency-split-2">
-                        ${profile.bestMatch ? `<article class="cw-agency-card is-match-best">
-                            <span class="cw-agency-match-label">환상의 짝꿍</span>
-                            <strong class="cw-agency-match-tag">@${escapeHtml(profile.bestMatch.mbti)}</strong>
-                            <p class="cw-agency-match-desc">${escapeHtml(profile.bestMatch.title)}</p>
-                        </article>` : ''}
-                        ${profile.worstMatch ? `<article class="cw-agency-card is-match-worst">
-                            <span class="cw-agency-match-label">주의할 짝꿍</span>
-                            <strong class="cw-agency-match-tag">@${escapeHtml(profile.worstMatch.mbti)}</strong>
-                            <p class="cw-agency-match-desc">${escapeHtml(profile.worstMatch.title)}</p>
-                        </article>` : ''}
-                    </div>
-                </section>
-
-                <!-- Panel 3: 오늘의 가이드 & 선언 -->
-                <section class="cw-step-panel" data-step-panel="3">
-                    <div class="cw-step-badge"><span>04</span> 오늘의 가이드</div>
-                    ${profile.actionItem ? `<article class="cw-agency-card is-tip-card">
-                        <div class="cw-agency-tip-head">
-                            <span class="cw-agency-tip-dot" style="background:${escapeHtml(house.accent)}"></span>
-                            <strong>오늘의 사육 팁</strong>
-                        </div>
-                        <p class="cw-agency-tip-body">${escapeHtml(profile.actionItem)}</p>
-                    </article>` : ''}
-                    ${detail}
-                    ${renderHouseDeclaration()}
-                </section>
-            </div>
-        ` : `
+        const activeTitle = result.typeName;
+        const basicDeckHtml = `
             <div class="cw-agency-caption-block">
                 <h1 class="cw-result-type-name" data-final-name="${escapeHtml(activeTitle)}">
                     ${escapeHtml(activeTitle)}
@@ -1247,18 +1406,8 @@
 
         element('result-content').innerHTML = `
             <div class="cw-result-wrap" style="--house-accent:${escapeHtml(house.accent)}">
-                <div class="cw-scrolly-container ${isV2 ? 'is-scrolly-active' : 'is-scrolly-static'}" id="cw-scrolly-container">
-                    <!-- Invisible Scroll Triggers to drive in-place panel morphing -->
-                    ${isV2 ? `
-                    <div class="cw-scrolly-scroll-track" id="cw-scrolly-track" aria-hidden="true">
-                        <div class="cw-scrolly-milestone" data-step-trigger="0"></div>
-                        <div class="cw-scrolly-milestone" data-step-trigger="1"></div>
-                        <div class="cw-scrolly-milestone" data-step-trigger="2"></div>
-                        <div class="cw-scrolly-milestone" data-step-trigger="3"></div>
-                    </div>` : ''}
-
-                    <!-- Pinned Scrollytelling Stage -->
-                    <article class="cw-result-report cw-scrolly-stage ${isV2 ? 'is-v2-mode' : 'is-v1-mode'}">
+                <div class="cw-basic-result-container">
+                    <article class="cw-result-report cw-basic-result-report">
                         <!-- Profile Header -->
                         <header class="cw-agency-header">
                             <div class="cw-agency-profile">
@@ -1273,14 +1422,9 @@
                                     <span class="cw-agency-subhead">${escapeHtml(house.name)} 기숙사 · 크레와트</span>
                                 </div>
                             </div>
-                            <div class="cw-result-version-switcher" role="group" aria-label="결과 모드 전환">
-                                <button type="button" class="cw-version-tab ${!isV2 ? 'is-active' : ''}" data-action="set-result-version" data-version="v1">
-                                    <span>기본</span>
-                                </button>
-                                <button type="button" class="cw-version-tab ${isV2 ? 'is-active' : ''}" data-action="set-result-version" data-version="v2">
-                                    <span>심층</span>
-                                </button>
-                            </div>
+                            <button type="button" class="cw-depth-entry-button" data-action="set-result-version" data-version="v2">
+                                <span>심층 리포트</span><i aria-hidden="true">→</i>
+                            </button>
                         </header>
 
                         <!-- Pinned Hero Visual Stage -->
@@ -1309,9 +1453,8 @@
                             <span class="cw-agency-house-tag" style="background:${escapeHtml(house.accent)}">${escapeHtml(house.name)} 기숙사</span>
                         </div>
 
-                        <!-- Scrollytelling Dynamic Story Content Deck -->
-                        <div class="cw-scrolly-deck-wrap">
-                            ${v2DeckHtml}
+                        <div class="cw-basic-result-body">
+                            ${basicDeckHtml}
                         </div>
 
                         <!-- Footer -->
@@ -1332,82 +1475,9 @@
                 </div>
             </div>`;
 
-        element('result-content').querySelectorAll('[data-action="set-result-version"]').forEach(button => {
-            button.addEventListener('click', event => {
-                const targetVer = event.currentTarget.dataset.version;
-                if (targetVer && (targetVer === 'v1' || targetVer === 'v2')) {
-                    resultViewVersion = targetVer;
-                    try { localStorage.setItem('crewart_result_view_version', targetVer); } catch (_) { }
-                    renderResult({ animate: false });
-                }
-            });
-        });
-        element('result-content').querySelectorAll('[data-action="share"]').forEach(btn => btn.addEventListener('click', shareResult));
-        element('result-content').querySelectorAll('[data-action="save-image"]').forEach(btn => btn.addEventListener('click', saveResultImage));
-        element('result-content').querySelector('[data-action="unlock-detail"]')?.addEventListener('click', handleUnlockDetail);
-        element('result-content').querySelector('[data-action="open-band"]')?.addEventListener('click', openBandTarget);
-        element('result-content').querySelectorAll('[data-report-toggle]').forEach(button => {
-            button.addEventListener('click', toggleReportDisclosure);
-        });
-
-        if (isV2) setupActiveScrollytelling();
+        bindRenderedResultActions();
         if (options.animate) playResultMeasurementAnimation(element('result-content').querySelector('.cw-result-wrap'));
         setupResultScrollHint();
-    }
-
-    function setupActiveScrollytelling() {
-        const tabs = element('result-content').querySelectorAll('[data-step-target]');
-        const panels = element('result-content').querySelectorAll('[data-step-panel]');
-        const triggers = element('result-content').querySelectorAll('[data-step-trigger]');
-        if (!panels.length) return;
-
-        let activeStep = 0;
-
-        function setStep(stepIndex, shouldScroll = false) {
-            const idx = Math.max(0, Math.min(panels.length - 1, stepIndex));
-            activeStep = idx;
-
-            tabs.forEach(tab => {
-                tab.classList.toggle('is-active', Number(tab.dataset.stepTarget) === idx);
-            });
-            panels.forEach(panel => {
-                panel.classList.toggle('is-active', Number(panel.dataset.stepPanel) === idx);
-            });
-
-            if (shouldScroll && triggers[idx]) {
-                const rect = triggers[idx].getBoundingClientRect();
-                const targetY = window.scrollY + rect.top - 80;
-                window.scrollTo({ top: targetY, behavior: 'smooth' });
-            }
-        }
-
-        tabs.forEach(tab => {
-            tab.addEventListener('click', () => {
-                const target = Number(tab.dataset.stepTarget);
-                setStep(target, true);
-            });
-        });
-
-        let scrollPending = false;
-        function onScrollSync() {
-            if (scrollPending) return;
-            scrollPending = true;
-            requestAnimationFrame(() => {
-                scrollPending = false;
-                if (!triggers.length) return;
-                const viewThreshold = window.innerHeight * 0.45;
-                let currentActive = 0;
-                triggers.forEach((trigger, index) => {
-                    const rect = trigger.getBoundingClientRect();
-                    if (rect.top <= viewThreshold) {
-                        currentActive = index;
-                    }
-                });
-                setStep(currentActive, false);
-            });
-        }
-
-        window.addEventListener('scroll', onScrollSync, { passive: true });
     }
 
     function setupResultScrollHint() {
@@ -2503,6 +2573,7 @@
             button.addEventListener('click', () => navigateToTab(button.dataset.nav));
         });
         window.addEventListener('popstate', event => {
+            resultViewVersion = resultViewFromLocation();
             const tab = event.state?.[APP_HISTORY_KEY];
             navigateToTab(APP_TABS.includes(tab) ? tab : 'home', { fromHistory: true });
         });
@@ -2524,6 +2595,18 @@
         });
     }
 
+    function buildPreviewResult(code) {
+        const axisPairs = ['EI', 'SN', 'TF', 'JP'];
+        const letters = {};
+        const axes = axisPairs.map((axis, index) => {
+            const dominant = code[index];
+            letters[axis[0]] = dominant === axis[0] ? 4 : 1;
+            letters[axis[1]] = dominant === axis[1] ? 4 : 1;
+            return { axis, dominant };
+        });
+        return { code, typeName: Core.TYPE_NAMES[code] || '크레 집사', letters, axes };
+    }
+
     function initialize() {
         if (!Core || !Array.isArray(Core.QUESTIONS) || Core.QUESTIONS.length < 1) {
             toast('테스트 데이터를 불러오지 못했어요.', true);
@@ -2535,7 +2618,7 @@
         const urlParams = new URLSearchParams(window.location.search);
         const previewCode = (urlParams.get('preview') || urlParams.get('mbti') || urlParams.get('type') || '').toUpperCase();
         if (previewCode && Core.MBTI_TYPES.includes(previewCode)) {
-            result = { code: previewCode, typeName: Core.TYPE_NAMES[previewCode] || '크레 집사' };
+            result = buildPreviewResult(previewCode);
             assignedHouseKey = Core.chooseTendencyHouse(result);
             renderResult({ animate: false });
             setScreen('result-screen');
