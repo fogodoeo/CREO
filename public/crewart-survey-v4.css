@@ -1265,3 +1265,57 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
         font-size: 13px;
     }
 }
+
+.cw-result-empty {
+    display: grid;
+    place-items: center;
+    text-align: center;
+    padding: 60px 24px;
+    margin: 40px auto;
+    max-width: 440px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 18px;
+    box-shadow: 0 4px 20px rgba(15, 23, 42, 0.04);
+}
+
+.cw-result-empty p {
+    margin: 0 0 8px;
+    color: #6b7280;
+    font-size: 12px;
+    font-weight: 750;
+    letter-spacing: 0.12em;
+}
+
+.cw-result-empty h1 {
+    margin: 0 0 12px;
+    color: #111827;
+    font-size: 22px;
+    font-weight: 850;
+}
+
+.cw-result-empty span {
+    display: block;
+    margin-bottom: 24px;
+    color: #4b5563;
+    font-size: 14.5px;
+    line-height: 1.6;
+    word-break: keep-all;
+}
+
+.cw-result-empty button {
+    padding: 13px 28px;
+    border: 0;
+    border-radius: 12px;
+    background: #111827;
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.cw-result-empty button:hover {
+    background: #000000;
+    transform: translateY(-1px);
+}

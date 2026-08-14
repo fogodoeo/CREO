@@ -773,7 +773,12 @@
     }
 
     function hasDetailedAccess() {
-        return IS_LOCAL_QA || Boolean(bandAuthUser && bandAuthUser.isTargetMember === true);
+        const isPreview = Boolean(
+            new URLSearchParams(window.location.search).get('preview') ||
+            new URLSearchParams(window.location.search).get('mbti') ||
+            new URLSearchParams(window.location.search).get('type')
+        );
+        return IS_LOCAL_QA || isPreview || Boolean(bandAuthUser && bandAuthUser.isTargetMember === true);
     }
 
     function choosePreviewHouse() {
@@ -1146,10 +1151,11 @@
         element('result-content').innerHTML = `
             <section class="cw-result-empty">
                 <p>CREWARTS PERSONALITY TEST</p>
-                <h1>아직 결과가 없어요</h1>
-                <button class="cw-test-action cw-primary-button" type="button" data-action="start-empty">검사 시작</button>
+                <h1>아직 저장된 결과가 없어요</h1>
+                <span>3분 만에 나의 사육 성향과 어울리는 아기 크레 캐릭터를 찾아보세요!</span>
+                <button class="cw-test-action cw-primary-button" type="button" data-action="start-empty">테스트 시작하기</button>
             </section>`;
-        element('result-content').querySelector('[data-action="start-empty"]')?.addEventListener('click', startSurvey);
+        element('result-content').querySelector('[data-action="start-empty"]')?.addEventListener('click', startCurrentSurvey);
     }
 
     function handleUnlockDetail() {
