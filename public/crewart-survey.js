@@ -1167,64 +1167,71 @@
         const activeTitle = isV2 ? (profile.title || result.typeName) : result.typeName;
 
         const powerGridHtml = isV2 && (profile.superpower || profile.weakness)
-            ? `<div class="cw-bento-grid cw-bento-split-2" aria-label="사육 강점 및 주의점">
-                    ${profile.superpower ? `<article class="cw-bento-card is-strength">
-                        <header class="cw-bento-card-header">
-                            <span class="cw-bento-tag is-strength-tag">사육 강점</span>
-                        </header>
-                        <p class="cw-bento-card-body">${escapeHtml(profile.superpower)}</p>
-                    </article>` : ''}
-                    ${profile.weakness ? `<article class="cw-bento-card is-caution">
-                        <header class="cw-bento-card-header">
-                            <span class="cw-bento-tag is-caution-tag">사육 주의점</span>
-                        </header>
-                        <p class="cw-bento-card-body">${escapeHtml(profile.weakness)}</p>
-                    </article>` : ''}
+            ? `<div class="cw-story-step is-step-2" aria-label="사육 강점 및 주의점">
+                    <div class="cw-step-badge"><span>02</span> 사육 솔루션</div>
+                    <div class="cw-agency-bento-grid cw-agency-split-2">
+                        ${profile.superpower ? `<article class="cw-agency-card is-strength">
+                            <header class="cw-agency-card-head">
+                                <span class="cw-agency-tag is-strength-tag">사육 강점</span>
+                            </header>
+                            <p class="cw-agency-card-text">${escapeHtml(profile.superpower)}</p>
+                        </article>` : ''}
+                        ${profile.weakness ? `<article class="cw-agency-card is-caution">
+                            <header class="cw-agency-card-head">
+                                <span class="cw-agency-tag is-caution-tag">사육 주의점</span>
+                            </header>
+                            <p class="cw-agency-card-text">${escapeHtml(profile.weakness)}</p>
+                        </article>` : ''}
+                    </div>
                </div>`
             : '';
 
         const matchGridHtml = isV2 && (profile.bestMatch || profile.worstMatch)
-            ? `<div class="cw-bento-grid cw-bento-split-2" aria-label="성향 궁합 분석">
-                    ${profile.bestMatch ? `<article class="cw-bento-card is-match-best">
-                        <span class="cw-bento-match-label">환상의 짝꿍</span>
-                        <strong class="cw-bento-match-mbti">@${escapeHtml(profile.bestMatch.mbti)}</strong>
-                        <p class="cw-bento-match-desc">${escapeHtml(profile.bestMatch.title)}</p>
-                    </article>` : ''}
-                    ${profile.worstMatch ? `<article class="cw-bento-card is-match-worst">
-                        <span class="cw-bento-match-label">주의할 짝꿍</span>
-                        <strong class="cw-bento-match-mbti">@${escapeHtml(profile.worstMatch.mbti)}</strong>
-                        <p class="cw-bento-match-desc">${escapeHtml(profile.worstMatch.title)}</p>
-                    </article>` : ''}
+            ? `<div class="cw-story-step is-step-3" aria-label="성향 궁합 매칭">
+                    <div class="cw-step-badge"><span>03</span> 집사 매칭</div>
+                    <div class="cw-agency-bento-grid cw-agency-split-2">
+                        ${profile.bestMatch ? `<article class="cw-agency-card is-match-best">
+                            <span class="cw-agency-match-label">환상의 짝꿍</span>
+                            <strong class="cw-agency-match-tag">@${escapeHtml(profile.bestMatch.mbti)}</strong>
+                            <p class="cw-agency-match-desc">${escapeHtml(profile.bestMatch.title)}</p>
+                        </article>` : ''}
+                        ${profile.worstMatch ? `<article class="cw-agency-card is-match-worst">
+                            <span class="cw-agency-match-label">주의할 짝꿍</span>
+                            <strong class="cw-agency-match-tag">@${escapeHtml(profile.worstMatch.mbti)}</strong>
+                            <p class="cw-agency-match-desc">${escapeHtml(profile.worstMatch.title)}</p>
+                        </article>` : ''}
+                    </div>
                </div>`
             : '';
 
         const actionItemHtml = isV2 && profile.actionItem
-            ? `<div class="cw-bento-grid" aria-label="오늘의 팁">
-                    <article class="cw-bento-card is-tip-card">
-                        <div class="cw-bento-tip-header">
-                            <span class="cw-bento-tip-pill" style="background:${escapeHtml(house.accent)}"></span>
+            ? `<div class="cw-story-step is-step-4" aria-label="오늘의 가이드">
+                    <div class="cw-step-badge"><span>04</span> 오늘의 가이드</div>
+                    <article class="cw-agency-card is-tip-card">
+                        <div class="cw-agency-tip-head">
+                            <span class="cw-agency-tip-dot" style="background:${escapeHtml(house.accent)}"></span>
                             <strong>오늘의 사육 팁</strong>
                         </div>
-                        <p class="cw-bento-tip-text">${escapeHtml(profile.actionItem)}</p>
+                        <p class="cw-agency-tip-body">${escapeHtml(profile.actionItem)}</p>
                     </article>
                </div>`
             : '';
 
         element('result-content').innerHTML = `
             <div class="cw-result-wrap" style="--house-accent:${escapeHtml(house.accent)}">
-                <article class="cw-result-report cw-bento-feed-card ${isV2 ? 'is-v2-mode' : 'is-v1-mode'}">
-                    <!-- 1. Instagram Story Style Header -->
-                    <header class="cw-insta-header">
-                        <div class="cw-insta-profile">
-                            <div class="cw-insta-story-ring" style="--story-color:${escapeHtml(house.accent)}">
-                                <div class="cw-insta-avatar">${escapeHtml(result.code.slice(0, 2))}</div>
+                <article class="cw-result-report cw-agency-post-card ${isV2 ? 'is-v2-mode' : 'is-v1-mode'}">
+                    <!-- Agency Style Profile Header -->
+                    <header class="cw-agency-header">
+                        <div class="cw-agency-profile">
+                            <div class="cw-agency-story-ring" style="--story-color:${escapeHtml(house.accent)}">
+                                <div class="cw-agency-avatar">${escapeHtml(result.code.slice(0, 2))}</div>
                             </div>
-                            <div class="cw-insta-user-meta">
-                                <div class="cw-insta-username-row">
-                                    <strong class="cw-insta-username">crewart_${escapeHtml(result.code.toLowerCase())}</strong>
-                                    <span class="cw-insta-verified-badge" aria-label="공식 인증">✓</span>
+                            <div class="cw-agency-meta">
+                                <div class="cw-agency-name-row">
+                                    <strong class="cw-agency-username">crewart_${escapeHtml(result.code.toLowerCase())}</strong>
+                                    <span class="cw-agency-badge" aria-label="공식 인증">✓</span>
                                 </div>
-                                <span class="cw-insta-location">${escapeHtml(house.name)} 기숙사 · 크레와트</span>
+                                <span class="cw-agency-subhead">${escapeHtml(house.name)} 기숙사 · 크레와트</span>
                             </div>
                         </div>
                         <div class="cw-result-version-switcher" role="group" aria-label="결과 모드 전환">
@@ -1237,8 +1244,8 @@
                         </div>
                     </header>
 
-                    <!-- 2. Hero Visual Canvas (Bento Hero Module) -->
-                    <section class="cw-result-identity cw-bento-hero-media">
+                    <!-- Pinned Hero Visual Stage -->
+                    <section class="cw-result-identity cw-agency-hero">
                         <div class="cw-type-poster" data-final-code="${escapeHtml(result.code)}">
                             <span class="cw-visually-hidden">${escapeHtml(result.code)}</span>
                             <strong class="cw-result-code cw-result-code-back" aria-hidden="true">${resultCodeBackSlots}</strong>
@@ -1250,37 +1257,52 @@
                         </div>
                     </section>
 
-                    <!-- 3. Instagram Quick Action Bar -->
-                    <div class="cw-insta-action-bar">
-                        <div class="cw-insta-icons-left">
-                            <button class="cw-insta-icon-btn" type="button" data-action="save-image" aria-label="결과 이미지 저장">
+                    <!-- Instagram Quick Interaction Bar -->
+                    <div class="cw-agency-action-bar">
+                        <div class="cw-agency-quick-icons">
+                            <button class="cw-agency-icon-btn" type="button" data-action="save-image" aria-label="결과 이미지 저장">
                                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                             </button>
-                            <button class="cw-insta-icon-btn" type="button" data-action="share" aria-label="카카오톡 공유">
+                            <button class="cw-agency-icon-btn" type="button" data-action="share" aria-label="카카오톡 공유">
                                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
                             </button>
                         </div>
-                        <span class="cw-insta-house-badge" style="background:${escapeHtml(house.accent)}">${escapeHtml(house.name)} 기숙사</span>
+                        <span class="cw-agency-house-tag" style="background:${escapeHtml(house.accent)}">${escapeHtml(house.name)} 기숙사</span>
                     </div>
 
-                    <!-- 4. Main Feed Caption (Bento Headline) -->
-                    <section class="cw-bento-caption-section">
-                        <h1 class="cw-result-type-name" data-final-name="${escapeHtml(activeTitle)}">
-                            <strong class="cw-insta-caption-author">crewart_${escapeHtml(result.code.toLowerCase())}</strong>
-                            ${escapeHtml(activeTitle)}
-                        </h1>
-                        ${isV2 && profile.subtitle ? `<p class="cw-result-subtitle">${escapeHtml(profile.subtitle)}</p>` : ''}
-                        ${isV2 && profile.summary ? `<div class="cw-bento-card is-summary-card"><p>${escapeHtml(profile.summary)}</p></div>` : ''}
+                    <!-- Scrollytelling Story Flow -->
+                    <section class="cw-agency-story-flow">
+                        <div class="cw-agency-caption-block">
+                            <h1 class="cw-result-type-name" data-final-name="${escapeHtml(activeTitle)}">
+                                <strong class="cw-agency-caption-handle">crewart_${escapeHtml(result.code.toLowerCase())}</strong>
+                                ${escapeHtml(activeTitle)}
+                            </h1>
+                            ${isV2 && profile.subtitle ? `<p class="cw-result-subtitle">${escapeHtml(profile.subtitle)}</p>` : ''}
+                        </div>
+
+                        <!-- Step 01: 성향 분석 -->
+                        ${isV2 && profile.summary ? `
+                        <div class="cw-story-step is-step-1">
+                            <div class="cw-step-badge"><span>01</span> 성향 분석</div>
+                            <div class="cw-agency-card is-summary-card">
+                                <div class="cw-result-summary-box"><p>${escapeHtml(profile.summary)}</p></div>
+                            </div>
+                        </div>` : ''}
+
+                        <!-- Step 02: 사육 강점/약점 -->
+                        ${powerGridHtml}
+
+                        <!-- Step 03: 성향 궁합 -->
+                        ${matchGridHtml}
+
+                        <!-- Step 04: 사육 가이드 -->
+                        ${actionItemHtml}
+
+                        ${detail}
+                        ${renderHouseDeclaration()}
                     </section>
 
-                    <!-- 5. Modular Bento Grid Blocks (심층 피드 콘텐츠) -->
-                    ${powerGridHtml}
-                    ${matchGridHtml}
-                    ${actionItemHtml}
-                    ${detail}
-                    ${renderHouseDeclaration()}
-
-                    <!-- 6. Share Footer -->
+                    <!-- Footer -->
                     <footer class="cw-report-footer">
                         <section class="cw-share-section" aria-label="결과 공유">
                             <button class="cw-share-action is-save" type="button" data-action="save-image">

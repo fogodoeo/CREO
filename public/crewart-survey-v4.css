@@ -651,12 +651,13 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 
 
 
+
 /* ==========================================================================
-   2026 MODERN BENTO GRID + INSTAGRAM FEED DESIGN SYSTEM
+   AGENCY-GRADE SCROLLYTELLING & BENTO STORY CARD SYSTEM
    ========================================================================== */
 .cw-result {
     padding: max(8px, calc(env(safe-area-inset-top) + 6px)) 12px max(118px, calc(env(safe-area-inset-bottom) + 100px));
-    background: #f4f5f7;
+    background: #f2f4f7;
 }
 
 .cw-result-wrap {
@@ -664,32 +665,32 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     margin: 0 auto;
 }
 
-.cw-bento-feed-card {
+.cw-agency-post-card {
     overflow: hidden;
-    padding: 0 0 20px;
+    padding: 0 0 24px;
     border: 1px solid #e5e7eb;
-    border-radius: 16px;
+    border-radius: 18px;
     background: #ffffff;
-    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.03);
+    box-shadow: 0 8px 30px -4px rgba(15, 23, 42, 0.06), 0 2px 6px -1px rgba(15, 23, 42, 0.02);
 }
 
-/* 1. Header Bar */
-.cw-insta-header {
+/* 1. Profile Header */
+.cw-agency-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 14px 16px;
-    border-bottom: 1px solid #f0f2f5;
+    padding: 14px 18px;
+    border-bottom: 1px solid #f1f5f9;
     background: #ffffff;
 }
 
-.cw-insta-profile {
+.cw-agency-profile {
     display: flex;
     align-items: center;
-    gap: 11px;
+    gap: 12px;
 }
 
-.cw-insta-story-ring {
+.cw-agency-story-ring {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -698,41 +699,42 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     padding: 2px;
     border: 2px solid var(--story-color, #10b981);
     border-radius: 50%;
+    transition: transform 0.2s ease;
 }
 
-.cw-insta-avatar {
+.cw-agency-avatar {
     display: grid;
     place-items: center;
     width: 100%;
     height: 100%;
     border-radius: 50%;
-    background: #18181b;
+    background: #0f172a;
     color: #ffffff;
     font-size: 11.5px;
     font-weight: 850;
     letter-spacing: -0.02em;
 }
 
-.cw-insta-user-meta {
+.cw-agency-meta {
     display: flex;
     flex-direction: column;
     gap: 1px;
 }
 
-.cw-insta-username-row {
+.cw-agency-name-row {
     display: flex;
     align-items: center;
     gap: 4px;
 }
 
-.cw-insta-username {
+.cw-agency-username {
     color: #0f172a;
     font-size: 14px;
     font-weight: 750;
     line-height: 1.2;
 }
 
-.cw-insta-verified-badge {
+.cw-agency-badge {
     display: inline-grid;
     place-items: center;
     width: 14px;
@@ -744,7 +746,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     font-weight: 900;
 }
 
-.cw-insta-location {
+.cw-agency-subhead {
     color: #64748b;
     font-size: 11.5px;
     font-weight: 500;
@@ -764,7 +766,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 5px 12px;
+    padding: 5px 13px;
     border: 0;
     border-radius: 9999px;
     background: transparent;
@@ -781,21 +783,21 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     box-shadow: 0 2px 6px rgba(15, 23, 42, 0.15);
 }
 
-/* 2. Hero Visual Canvas */
-.cw-bento-hero-media {
+/* 2. Hero Visual Stage */
+.cw-agency-hero {
     position: relative;
     display: grid;
-    padding: 12px 0 16px;
+    padding: 14px 0 18px;
     justify-items: center;
     background: #fafbfc;
-    border-bottom: 1px solid #f0f2f5;
+    border-bottom: 1px solid #f1f5f9;
 }
 
 .cw-type-poster {
     position: relative;
     isolation: isolate;
     width: 100%;
-    height: clamp(200px, 52vw, 275px);
+    height: clamp(205px, 53vw, 280px);
 }
 
 .cw-result-code {
@@ -822,26 +824,26 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     z-index: 2;
     bottom: 0;
     left: 50%;
-    width: clamp(140px, 40%, 205px);
+    width: clamp(140px, 40%, 210px);
     height: 100%;
     transform: translateX(-50%);
 }
 
 /* 3. Action Bar */
-.cw-insta-action-bar {
+.cw-agency-action-bar {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 14px 16px 6px;
+    padding: 14px 18px 8px;
 }
 
-.cw-insta-icons-left {
+.cw-agency-quick-icons {
     display: flex;
     align-items: center;
     gap: 16px;
 }
 
-.cw-insta-icon-btn {
+.cw-agency-icon-btn {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -855,13 +857,13 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     transition: transform 0.12s ease, color 0.12s ease;
 }
 
-.cw-insta-icon-btn:hover {
+.cw-agency-icon-btn:hover {
     color: #000000;
     transform: scale(1.12);
 }
 
-.cw-insta-house-badge {
-    padding: 4px 10px;
+.cw-agency-house-tag {
+    padding: 4px 11px;
     border-radius: 9999px;
     color: #ffffff;
     font-size: 11px;
@@ -869,22 +871,26 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     letter-spacing: -0.01em;
 }
 
-/* 4. Caption Area */
-.cw-bento-caption-section {
-    padding: 6px 16px 10px;
+/* 4. Story Flow & Steps */
+.cw-agency-story-flow {
+    padding: 6px 18px 0;
+}
+
+.cw-agency-caption-block {
+    margin-bottom: 12px;
 }
 
 .cw-result-type-name {
     margin: 4px 0 0;
     color: #0f172a;
-    font-size: 16px;
+    font-size: 16.5px;
     font-weight: 700;
     line-height: 1.5;
     word-break: keep-all;
     text-align: left;
 }
 
-.cw-insta-caption-author {
+.cw-agency-caption-handle {
     font-weight: 800;
     color: #000000;
     margin-right: 6px;
@@ -893,42 +899,76 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-result-subtitle {
     margin: 6px 0 0;
     color: #64748b;
-    font-size: 13px;
+    font-size: 13.5px;
     font-weight: 500;
     line-height: 1.5;
     word-break: keep-all;
     text-align: left;
 }
 
-/* 5. 2026 Bento Grid Modular System */
-.cw-bento-grid {
-    display: grid;
-    gap: 10px;
-    margin: 10px 16px 0;
+/* Scrollytelling Step Header */
+.cw-story-step {
+    margin-top: 14px;
+    animation: cw-step-fade 0.4s ease forwards;
 }
 
-.cw-bento-split-2 {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+@keyframes cw-step-fade {
+    from {
+        opacity: 0.85;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
-.cw-bento-card {
-    padding: 13px 15px;
+.cw-step-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+    color: #0f172a;
+    font-size: 11.5px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+}
+
+.cw-step-badge span {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: #0f172a;
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 850;
+    line-height: 1.3;
+}
+
+/* Bento Card System */
+.cw-agency-card {
+    padding: 14px 16px;
     border: 1px solid #f1f5f9;
-    border-radius: 12px;
+    border-radius: 14px;
     background: #f8fafc;
     transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-.cw-bento-card:hover {
+.cw-agency-card:hover {
     transform: translateY(-1px);
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.03);
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
 }
 
-/* Summary Card */
-.cw-bento-card.is-summary-card {
-    margin-top: 10px;
-    border-left: 3px solid var(--house-accent, #0f172a);
+/* Step 1: Summary Card */
+.cw-agency-card.is-summary-card {
+    border-left: 3.5px solid var(--house-accent, #0f172a);
     background: #f8fafc;
+}
+
+.cw-result-summary-box {
+    margin: 0;
+    padding: 0;
+    background: transparent;
     color: #334155;
     font-size: 13.5px;
     font-weight: 450;
@@ -937,37 +977,46 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     word-break: keep-all;
 }
 
-.cw-bento-card.is-summary-card p {
+.cw-result-summary-box p {
     margin: 0;
 }
 
-/* Strength & Caution Bento */
-.cw-bento-card.is-strength {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-top: 3px solid #10b981;
+/* Step 2: Split 2 */
+.cw-agency-bento-grid {
+    display: grid;
+    gap: 10px;
 }
 
-.cw-bento-card.is-caution {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-top: 3px solid #f97316;
+.cw-agency-split-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.cw-bento-card-header {
+.cw-agency-card.is-strength {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-top: 3.5px solid #10b981;
+}
+
+.cw-agency-card.is-caution {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-top: 3.5px solid #f97316;
+}
+
+.cw-agency-card-head {
     margin-bottom: 6px;
 }
 
-.cw-bento-tag {
+.cw-agency-tag {
     font-size: 11px;
     font-weight: 800;
     letter-spacing: -0.01em;
 }
 
-.cw-bento-tag.is-strength-tag { color: #059669; }
-.cw-bento-tag.is-caution-tag { color: #ea580c; }
+.cw-agency-tag.is-strength-tag { color: #059669; }
+.cw-agency-tag.is-caution-tag { color: #ea580c; }
 
-.cw-bento-card-body {
+.cw-agency-card-text {
     margin: 0;
     color: #334155;
     font-size: 12.5px;
@@ -976,16 +1025,16 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     word-break: keep-all;
 }
 
-/* Matches Bento */
-.cw-bento-card.is-match-best,
-.cw-bento-card.is-match-worst {
+/* Step 3: Matches */
+.cw-agency-card.is-match-best,
+.cw-agency-card.is-match-worst {
     background: #ffffff;
     border: 1px solid #e2e8f0;
     text-align: center;
     word-break: keep-all;
 }
 
-.cw-bento-match-label {
+.cw-agency-match-label {
     display: block;
     color: #64748b;
     font-size: 11px;
@@ -993,7 +1042,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     margin-bottom: 3px;
 }
 
-.cw-bento-match-mbti {
+.cw-agency-match-tag {
     display: block;
     color: #0284c7;
     font-size: 17px;
@@ -1001,7 +1050,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     line-height: 1.18;
 }
 
-.cw-bento-match-desc {
+.cw-agency-match-desc {
     margin: 4px 0 0;
     color: #475569;
     font-size: 11.5px;
@@ -1009,32 +1058,32 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     line-height: 1.38;
 }
 
-/* Tip Card Bento */
-.cw-bento-card.is-tip-card {
+/* Step 4: Tip */
+.cw-agency-card.is-tip-card {
     background: #ffffff;
     border: 1px solid #e2e8f0;
 }
 
-.cw-bento-tip-header {
+.cw-agency-tip-head {
     display: flex;
     align-items: center;
     gap: 7px;
     margin-bottom: 5px;
 }
 
-.cw-bento-tip-pill {
+.cw-agency-tip-dot {
     width: 6px;
     height: 6px;
     border-radius: 50%;
 }
 
-.cw-bento-tip-header strong {
+.cw-agency-tip-head strong {
     color: #0f172a;
     font-size: 12px;
     font-weight: 800;
 }
 
-.cw-bento-tip-text {
+.cw-agency-tip-body {
     margin: 0;
     color: #475569;
     font-size: 13px;
@@ -1043,20 +1092,13 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     word-break: keep-all;
 }
 
-/* House Declaration & Details */
-.cw-house-declaration,
-.cw-detail-gate,
-.cw-report-footer {
-    margin-left: 16px;
-    margin-right: 16px;
-}
-
+/* House Declaration */
 .cw-house-declaration {
     margin-top: 14px;
-    padding: 14px 10px;
+    padding: 15px 12px;
     border: 1px solid #e2e8f0;
     border-left: 4px solid var(--house-accent, #0f172a);
-    border-radius: 10px;
+    border-radius: 12px;
     background: #f8fafc;
     text-align: center;
 }
@@ -1076,9 +1118,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 
 /* Footer & Buttons */
 .cw-report-footer {
-    margin-top: 16px;
-    padding-top: 14px;
-    border-top: 1px solid #f0f2f5;
+    margin: 18px 18px 0;
+    padding-top: 16px;
+    border-top: 1px solid #f1f5f9;
 }
 
 .cw-share-section {
@@ -1087,7 +1129,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 
 .cw-share-action {
     border: 1px solid #e2e8f0;
-    border-radius: 10px;
+    border-radius: 12px;
     background: #ffffff;
     color: #0f172a;
     font-size: 13px;
@@ -1106,10 +1148,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 }
 
 @media (max-width: 520px) {
-    .cw-bento-feed-card {
-        border-radius: 12px;
+    .cw-agency-post-card {
+        border-radius: 14px;
     }
-    .cw-bento-split-2 {
+    .cw-agency-split-2 {
         grid-template-columns: 1fr;
     }
 }
