@@ -1256,6 +1256,10 @@
                     </footer>
                 </article>
                 <small class="cw-result-copyright cw-result-copyright-outside">© 2026 CREO. All rights reserved.</small>
+                <button class="cw-scroll-hint" id="result-scroll-hint" type="button" aria-label="아래로 스크롤하여 더 보기">
+                    <span>스크롤</span>
+                    <span class="cw-scroll-arrow" aria-hidden="true">↓</span>
+                </button>
             </div>`;
         element('result-content').querySelectorAll('[data-action="set-result-version"]').forEach(button => {
             button.addEventListener('click', event => {
@@ -1275,6 +1279,27 @@
             button.addEventListener('click', toggleReportDisclosure);
         });
         if (options.animate) playResultMeasurementAnimation(element('result-content').querySelector('.cw-result-wrap'));
+        setupResultScrollHint();
+    }
+
+    
+    function setupResultScrollHint() {
+        const hint = element('result-scroll-hint');
+        if (!hint) return;
+        const checkScroll = () => {
+            const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
+            const maxScroll = (document.documentElement.scrollHeight || 0) - window.innerHeight;
+            if (scrollY > 60 || maxScroll <= 60) {
+                hint.classList.add('is-hidden');
+            } else {
+                hint.classList.remove('is-hidden');
+            }
+        };
+        window.addEventListener('scroll', checkScroll, { passive: true });
+        hint.addEventListener('click', () => {
+            window.scrollBy({ top: Math.min(380, window.innerHeight * 0.55), behavior: 'smooth' });
+        });
+        setTimeout(checkScroll, 120);
     }
 
     function renderEmptyResult() {
