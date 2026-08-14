@@ -223,7 +223,7 @@ test('new CDCUP overlays and shipping retain compatibility with the established 
     const shipping = fs.readFileSync(path.join(__dirname, '..', 'public', 'shipping.html'), 'utf8');
     for (const source of [live, control]) {
         assert.match(source, /getBroadcastItemsCached/);
-        assert.match(source, /CreoBroadcastProfiles\.usesLegacyEngine/);
+        assert.match(source, /CreoBroadcastProfiles\.usesLegacyData/);
         assert.doesNotMatch(source, /channelId\s*===\s*['"]cdcup['"]/);
     }
     assert.match(control, /profile\.defaultState/);

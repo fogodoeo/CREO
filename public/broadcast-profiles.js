@@ -35,7 +35,11 @@
     }
 
     function usesLegacyEngine(channel, profile = resolve(channel)) {
-        return true;
+        return profile?.engine === 'legacy-layout';
+    }
+
+    function usesLegacyData(channel) {
+        return channel?.dataAdapter === 'legacy-cdcup';
     }
 
     function usesSharedStudio(channel, profile = resolve(channel)) {
@@ -74,18 +78,26 @@
     function studioFrame(channel, view) {
         const profile = resolve(channel);
         const layout = String(view || '').match(/^layout-([123])$/);
-        if (!layout) return `settings.html?module=${channelId(channel)}&channel=${channelId(channel)}&embedded=1`;
-        return `preview.html?module=${channelId(channel)}&page=${layout[1]}&embedded=1`;
+        if (!usesLegacyEngine(channel, profile)) {
+            const page = layout ? layout[1] : '1';
+            return `auction-control.html?channel=${channelId(channel)}&page=${page}&embedded=1${layout ? '' : '&view=settings'}`;
+        }
+        const renderer = encodeURIComponent(profile.rendererModule || 'cdcup');
+        if (!layout) return `settings.html?module=${renderer}&channel=${channelId(channel)}&embedded=1`;
+        return `preview.html?module=${renderer}&channel=${channelId(channel)}&page=${layout[1]}&embedded=1`;
     }
 
     function broadcastTarget(channel, page) {
         const selectedPage = validPage(page);
-        return `broadcast.html?page=${selectedPage}&module=${channelId(channel)}&direct=1`;
+        const profile = resolve(channel);
+        if (!usesLegacyEngine(channel, profile)) return `auction-live.html?channel=${channelId(channel)}&page=${selectedPage}`;
+        const renderer = encodeURIComponent(profile.rendererModule || 'cdcup');
+        return `broadcast.html?page=${selectedPage}&module=${renderer}&channel=${channelId(channel)}&direct=1`;
     }
 
-    register({ id: 'standard', brandMark: 'C', studioAccent: '#55d18a', studioAccentInk: '#092514', legacyEngine: true, sharedStudio: true, page3Renderer: 'scoreboard', page3Label: '집계', page3Slots: ['scoreboard'], page3SettingsSections: ['scoreboard'], settings: { compatibilityModes: false, assets: true } });
-    register({ id: 'cdcup-tournament', brandMark: 'C', studioAccent: '#5f8cff', studioAccentInk: '#07132f', legacyEngine: true, sharedStudio: true, page3Renderer: 'tournament', page3Label: '대진표', page3Slots: ['bracket', 'teamTotals', 'qualifiers'], page3SettingsSections: ['bracket', 'teamTotals'], settings: { compatibilityModes: true, assets: true } });
-    register({ id: 'crewart-academy', brandMark: 'W', studioAccent: '#ddb960', studioAccentInk: '#211604', legacyEngine: true, sharedStudio: true, page3Renderer: 'academy', page3Label: '기숙사 점수', page3Slots: ['groupScoreboard'], page3SettingsSections: ['houseScoreboard'], assetPack: 'crewart', settings: { compatibilityModes: false, assets: true }, defaultState: { page1BannerOn: false, page2BannerOn: false, notice: 'CREWARTS LIVE', noticeDetail: 'R · G · B · Y', page1Ticker: '크레아트 라이브 · 기숙사 점수판', page2Ticker: 'R · G · B · Y' } });
+    register({ id: 'standard', engine: 'platform', brandMark: 'C', studioAccent: '#55d18a', studioAccentInk: '#092514', sharedStudio: true, page3Renderer: 'scoreboard', page3Label: '집계', page3Slots: ['scoreboard'], page3SettingsSections: ['scoreboard'], settings: { compatibilityModes: false, assets: true } });
+    register({ id: 'cdcup-tournament', engine: 'legacy-layout', rendererModule: 'cdcup', brandMark: 'C', studioAccent: '#5f8cff', studioAccentInk: '#07132f', sharedStudio: true, page3Renderer: 'tournament', page3Label: '대진표', page3Slots: ['bracket', 'teamTotals', 'qualifiers'], page3SettingsSections: ['bracket', 'teamTotals'], settings: { compatibilityModes: true, assets: true } });
+    register({ id: 'crewart-academy', engine: 'legacy-layout', rendererModule: 'crewart', brandMark: 'W', studioAccent: '#ddb960', studioAccentInk: '#211604', sharedStudio: true, page3Renderer: 'academy', page3Label: '기숙사 점수', page3Slots: ['groupScoreboard'], page3SettingsSections: ['houseScoreboard'], assetPack: 'crewart', settings: { compatibilityModes: false, assets: true }, defaultState: { page1BannerOn: false, page2BannerOn: false, notice: 'CREWARTS LIVE', noticeDetail: 'R · G · B · Y', page1Ticker: '크레아트 라이브 · 기숙사 점수판', page2Ticker: 'R · G · B · Y' } });
 
-    return Object.freeze({ SHARED_PAGE_CONTRACTS, SHARED_SETTINGS_CONTRACT, broadcastTarget, defaultState, pageContract, register, resolve, settingsContract, studioFrame, usesLegacyEngine, usesSharedStudio });
+    return Object.freeze({ SHARED_PAGE_CONTRACTS, SHARED_SETTINGS_CONTRACT, broadcastTarget, defaultState, pageContract, register, resolve, settingsContract, studioFrame, usesLegacyData, usesLegacyEngine, usesSharedStudio });
 });

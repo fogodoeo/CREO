@@ -1011,6 +1011,7 @@
             if (!timeValueNode) return;
             timeValueNode.textContent = timeValueNode.dataset.finalTime || '측정 전';
             timeValueNode.classList.remove('is-shuffling');
+            timeValueNode.classList.add('is-settled');
             if (timeLabelNode) timeLabelNode.textContent = '평균 문항 시간';
             timeShuffleSettled = true;
             scheduleSync();
@@ -1022,6 +1023,7 @@
             window.clearInterval(timeShuffleTimer);
             let ticks = 0;
             timeValueNode.classList.add('is-shuffling');
+            timeValueNode.classList.remove('is-settled');
             if (timeLabelNode) timeLabelNode.textContent = '응답 시간 계산 중';
             timeValueNode.textContent = `${(3 + Math.random() * 10).toFixed(1)}초`;
             timeShuffleTimer = window.setInterval(() => {
@@ -1033,7 +1035,7 @@
                     return;
                 }
                 timeValueNode.textContent = `${(3 + Math.random() * 10).toFixed(1)}초`;
-            }, 70);
+            }, 65);
         };
 
         const sync = () => {

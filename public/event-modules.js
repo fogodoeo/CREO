@@ -228,6 +228,12 @@
         return houseId && byId[houseId] ? byId[houseId] : null;
     }
 
+    function resolveItemHouse(item, houses) {
+        const direct = normalizePerson(item && (item.groupId || item.teamCode || item.teamName));
+        if (!direct) return null;
+        return (houses || []).find(house => [house.id, house.name].some(value => normalizePerson(value) === direct)) || null;
+    }
+
     function resolveCrewartItemResult(item, config) {
         if (!item) return null;
         const includeOnlyCrewart = String(config && config.crewart_score_scope || 'crewart').toLowerCase() !== 'all';
@@ -236,7 +242,8 @@
         const houses = parseHouseConfig(config && config.crewart_houses);
         const participantMap = parseParticipantMap(config && config.crewart_participants, houses);
         const byId = Object.fromEntries(houses.map(house => [house.id, house]));
-        const houseId = keys.map(key => participantMap[key]).find(Boolean);
+        const directHouse = resolveItemHouse(item, houses);
+        const houseId = directHouse?.id || keys.map(key => participantMap[key]).find(Boolean);
         if (!houseId || !byId[houseId]) return null;
         const amount = amountToNumber(item.sold_price || item.soldPrice);
         return {
@@ -267,7 +274,8 @@
             if (!isSoldItem(item)) return;
             if (includeOnlyCrewart && itemAuctionType(item) !== 'crewart') return;
             const keys = candidateWinnerKeys(item);
-            const houseId = keys.map(key => participantMap[key]).find(Boolean);
+            const directHouse = resolveItemHouse(item, houses);
+            const houseId = directHouse?.id || keys.map(key => participantMap[key]).find(Boolean);
             const amount = amountToNumber(item.sold_price || item.soldPrice);
             if (!houseId || !byId[houseId]) {
                 unassigned.push({ item, amount });

@@ -112,6 +112,8 @@ test('duplicating a legacy channel keeps its broadcast profile but starts on iso
         legacy: { items: true, managementUrl: '/legacy.html', controlUrl: '/legacy-control.html' }
     });
     const api = createPlatformApi({ repository, logger: { error() {} } });
+    await call(api, 'PUT', '/api/platform/channels/alpha/broadcast-state', { hostName1: '공통 진행자', page1Ticker: '복제 자막' });
+    await call(api, 'PUT', '/api/platform/channels/alpha/broadcast-config', { patch: { ticker: '복제 자막', bracket_full_show: '1' } });
     const response = await call(api, 'POST', '/api/platform/channels/alpha/duplicate', {
         channel: { id: 'alpha-copy', name: '알파 복제' },
         expectedVersion: repository.catalog.version
@@ -124,6 +126,31 @@ test('duplicating a legacy channel keeps its broadcast profile but starts on iso
     const workspace = await call(api, 'GET', '/api/platform/channels/alpha-copy/workspace');
     assert.deepEqual(workspace.json().items, []);
     assert.deepEqual(workspace.json().vendors, []);
+    assert.equal(workspace.json().broadcast.hostName1, '공통 진행자');
+    const copiedConfig = await call(api, 'GET', '/api/platform/channels/alpha-copy/broadcast-config', null, '');
+    assert.equal(copiedConfig.json().config.ticker, '복제 자막');
+    assert.equal(copiedConfig.json().config.bracket_full_show, '1');
+});
+
+test('channel broadcast layout config is public-read, admin-write, isolated, and sanitized', async () => {
+    const repository = new MemoryRepository();
+    const api = createPlatformApi({ repository, logger: { error() {} } });
+    const denied = await call(api, 'PUT', '/api/platform/channels/alpha/broadcast-config', { patch: { ticker: '거부' } }, '');
+    assert.equal(denied.status, 401);
+    let response = await call(api, 'PUT', '/api/platform/channels/alpha/broadcast-config', {
+        patch: { ticker: '알파 자막', bracket_full_show: 1, admin_pw: '노출 금지', 'bad key': '제외' }
+    });
+    assert.equal(response.status, 200);
+    assert.equal(response.json().config.ticker, '알파 자막');
+    assert.equal(response.json().config.bracket_full_show, '1');
+    assert.equal(response.json().config.admin_pw, undefined);
+    response = await call(api, 'PUT', '/api/platform/channels/alpha/broadcast-config', { patch: { ticker: null } });
+    assert.equal(response.json().config.ticker, undefined);
+    const alpha = await call(api, 'GET', '/api/platform/channels/alpha/broadcast-config', null, '');
+    const beta = await call(api, 'GET', '/api/platform/channels/beta/broadcast-config', null, '');
+    assert.equal(alpha.status, 200);
+    assert.equal(alpha.json().config.bracket_full_show, '1');
+    assert.deepEqual(beta.json().config, {});
 });
 
 test('an item cannot reference a vendor from another channel', async () => {

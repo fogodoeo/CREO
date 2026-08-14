@@ -21,6 +21,8 @@ const ADMIN_COOKIE = 'creo_admin_session';
 const ADMIN_SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 const ADMIN_LOGIN_WINDOW_MS = 10 * 60 * 1000;
 const ADMIN_LOGIN_ATTEMPTS = 6;
+const BROADCAST_CONFIG_ID = 'broadcast-config';
+const BROADCAST_CONFIG_KEY = /^[a-z0-9][a-z0-9_:-]{0,79}$/i;
 
 function replyJson(res, status, value, headers = {}) {
     const body = Buffer.from(JSON.stringify(value));
@@ -62,6 +64,34 @@ function numberValue(value, fallback = 0) {
 function booleanValue(value, fallback = true) {
     if (value === undefined || value === null || value === '') return fallback;
     return value === true || value === 1 || value === '1' || value === 'true' || value === 'on';
+}
+
+function sanitizeBroadcastConfigPatch(input = {}) {
+    const patch = {};
+    let totalLength = 0;
+    for (const [rawKey, rawValue] of Object.entries(input && typeof input === 'object' ? input : {}).slice(0, 800)) {
+        const key = String(rawKey || '').trim();
+        if (!BROADCAST_CONFIG_KEY.test(key) || key === 'admin_pw') continue;
+        if (rawValue === null) {
+            patch[key] = null;
+            continue;
+        }
+        const value = typeof rawValue === 'string' ? rawValue : JSON.stringify(rawValue);
+        if (value.length > 120_000) continue;
+        totalLength += key.length + value.length;
+        if (totalLength > 420_000) break;
+        patch[key] = value;
+    }
+    return patch;
+}
+
+function mergeBroadcastConfig(current = {}, patch = {}) {
+    const next = { ...(current && typeof current === 'object' ? current : {}) };
+    Object.entries(sanitizeBroadcastConfigPatch(patch)).forEach(([key, value]) => {
+        if (value === null) delete next[key];
+        else next[key] = value;
+    });
+    return next;
 }
 
 function isBroadcastableChannel(channel) {
@@ -570,6 +600,9 @@ function createPlatformApi({ repository, logger = console } = {}) {
                     return true;
                 }
                 if (data.broadcast?.id === 'state') await repository.deleteRecord(channelId, 'broadcast', 'state');
+                if (await repository.getRecord(channelId, 'setting', BROADCAST_CONFIG_ID)) {
+                    await repository.deleteRecord(channelId, 'setting', BROADCAST_CONFIG_ID);
+                }
                 const saved = await repository.saveCatalog(
                     catalog.channels.filter((entry) => entry.id !== channelId),
                     url.searchParams.has('expectedVersion') ? url.searchParams.get('expectedVersion') : catalog.version
@@ -610,6 +643,31 @@ function createPlatformApi({ repository, logger = console } = {}) {
                         });
                     })
                 });
+                return true;
+            }
+
+            if (segments.length === 3 && segments[2] === 'broadcast-config' && method === 'GET') {
+                const stored = await repository.getRecord(channelId, 'setting', BROADCAST_CONFIG_ID);
+                replyJson(res, 200, {
+                    channelId,
+                    revision: channelRevision(channelId),
+                    config: stored?.values && typeof stored.values === 'object' ? stored.values : {}
+                });
+                return true;
+            }
+
+            if (segments.length === 3 && segments[2] === 'broadcast-config' && method === 'PUT') {
+                if (!await requireAdmin(req, res)) return true;
+                const body = await readJson(req);
+                const stored = await repository.getRecord(channelId, 'setting', BROADCAST_CONFIG_ID);
+                const values = mergeBroadcastConfig(stored?.values, body.patch);
+                const record = await repository.upsertRecord(channelId, 'setting', {
+                    id: BROADCAST_CONFIG_ID,
+                    values,
+                    revision: Date.now()
+                });
+                touchChannel(channelId);
+                replyJson(res, 200, { channelId, config: record.values, revision: record.revision });
                 return true;
             }
 
@@ -658,6 +716,26 @@ function createPlatformApi({ repository, logger = console } = {}) {
                     const sourceVendors = await repository.listRecords(channelId, 'vendor');
                     for (const vendor of sourceVendors) {
                         await repository.upsertRecord(checked.value.id, 'vendor', { ...vendor, id: recordId('ven'), channelId: checked.value.id });
+                    }
+                }
+                if (body.copyBroadcastConfig !== false) {
+                    const [sourceState, sourceConfig] = await Promise.all([
+                        repository.getRecord(channelId, 'broadcast', 'state'),
+                        repository.getRecord(channelId, 'setting', BROADCAST_CONFIG_ID)
+                    ]);
+                    if (sourceState) {
+                        await repository.upsertRecord(checked.value.id, 'broadcast', {
+                            ...sourceState,
+                            id: 'state',
+                            revision: Date.now()
+                        });
+                    }
+                    if (sourceConfig?.values) {
+                        await repository.upsertRecord(checked.value.id, 'setting', {
+                            id: BROADCAST_CONFIG_ID,
+                            values: mergeBroadcastConfig({}, sourceConfig.values),
+                            revision: Date.now()
+                        });
                     }
                 }
                 touchChannel(checked.value.id);
@@ -806,4 +884,4 @@ function createPlatformApi({ repository, logger = console } = {}) {
     return { handle, isAdmin, workspace };
 }
 
-module.exports = { createPlatformApi, readJson, sanitizeRecord, validateRecord };
+module.exports = { createPlatformApi, mergeBroadcastConfig, readJson, sanitizeBroadcastConfigPatch, sanitizeRecord, validateRecord };

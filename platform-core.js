@@ -1,5 +1,7 @@
 'use strict';
 
+const ChannelRuntime = require('./public/channel-runtime');
+
 const CHANNEL_STATUSES = Object.freeze(['draft', 'active', 'paused', 'archived']);
 const BROADCAST_TEMPLATES = Object.freeze(['classic', 'tournament', 'academy']);
 const CHANNEL_TEMPLATES = Object.freeze(['standard', 'team', 'community', 'minimal']);
@@ -303,21 +305,7 @@ function recordId(prefix = 'rec') {
 
 function channelLinks(channelId) {
     const id = normalizeChannelId(channelId) || 'cdcup';
-    const query = `channel=${encodeURIComponent(id)}`;
-    return {
-        home: `/?${query}`,
-        workspace: `/channel-workspace.html?${query}`,
-        control: `/broadcast-studio.html?${query}`,
-        preview: `/broadcast-router.html?event=${encodeURIComponent(id)}&page=1`,
-        live: `/broadcast-router.html?event=${encodeURIComponent(id)}&page=1&live=1`,
-        shipping: `/shipping.html?${query}`,
-        shippingStatus: `/shipping-status.html?${query}`,
-        shippingCompanies: `/shipping-status.html?${query}&view=company`,
-        shippingRates: `/shipping-rates.html?${query}`,
-        archives: `/channel-archives.html?${query}`,
-        rankings: `/channel-archives.html?${query}&view=current`,
-        settings: `/channel-manager.html?${query}`
-    };
+    return ChannelRuntime.channelRoutes(id);
 }
 
 function publicItem(item = {}) {

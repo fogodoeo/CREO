@@ -1,0 +1,211 @@
+(function (root, factory) {
+    'use strict';
+    const api = factory();
+    if (typeof module === 'object' && module.exports) module.exports = api;
+    else {
+        root.CreoChannelBroadcastBridge = api;
+        api.install(root);
+    }
+})(typeof window !== 'undefined' ? window : globalThis, function () {
+    'use strict';
+
+    const BRIDGED_FUNCTIONS = Object.freeze([
+        'enrichBroadcastItem',
+        'getActiveItem',
+        'getAuctionPulse',
+        'getBroadcastItems',
+        'getBroadcastItemsCached',
+        'getBroadcastItemsLite',
+        'getConfigMap',
+        'getItems',
+        'getRuntimeConfigMap',
+        'updateConfigs'
+    ]);
+
+    function normalizeId(value) {
+        return String(value || '').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 32);
+    }
+
+    function legacyStatus(value) {
+        return ({ waiting: '대기', live: '진행중', sold: '낙찰', passed: '유찰' })[String(value || '')]
+            || String(value || '대기');
+    }
+
+    function inManwon(value) {
+        const amount = Number(value) || 0;
+        return amount >= 10_000 ? amount / 10_000 : amount;
+    }
+
+    function toLegacyItem(item = {}, rendererModule = 'cdcup') {
+        return {
+            row: item.id,
+            id: item.id,
+            num: Number(item.lotNumber) || 0,
+            name: item.name || '',
+            displayName: item.name || '',
+            company: item.vendorName || '',
+            price: inManwon(item.startPrice),
+            startPrice: inManwon(item.startPrice),
+            sold_price: inManwon(item.soldPrice),
+            soldPrice: inManwon(item.soldPrice),
+            winner: item.winnerAlias || '',
+            status: legacyStatus(item.status),
+            note: item.note || '',
+            announce: item.note || '',
+            photoItem: item.photoUrl || '',
+            photoSire: '',
+            photoDam: '',
+            photoSibling: '',
+            teamCode: item.groupId || '',
+            teamName: item.teamName || item.groupId || '',
+            groupId: item.groupId || '',
+            category: item.category || '',
+            auctionType: rendererModule === 'crewart' ? 'crewart' : (item.category || ''),
+            points: Number(item.points) || 0,
+            bid_log: '[]',
+            bidLog: '[]',
+            checklist: '',
+            checklist_parsed: '',
+            hiddenPhotos: [],
+            _broadcastPhotosLoaded: true,
+            updated_at: item.updatedAt || '',
+            updatedAt: item.updatedAt || ''
+        };
+    }
+
+    function defaultConfig(channel, rendererModule) {
+        const defaults = channel?.broadcastDefaults || {};
+        const map = {
+            active_event_module: rendererModule,
+            badge_text: channel?.shortName || channel?.name || '',
+            ticker: defaults.page1Ticker || '',
+            notice_text: defaults.notice || '',
+            notice_detail: defaults.noticeDetail || ''
+        };
+        if (rendererModule === 'crewart') {
+            map.crewart_ticker = defaults.page1Ticker || defaults.page2Ticker || '';
+            map.crewart_badge_text = channel?.shortName || channel?.name || 'CREWARTS';
+            map.crewart_score_scope = 'crewart';
+            if (Array.isArray(channel?.groups) && channel.groups.length) {
+                map.crewart_houses = channel.groups.map(group => [
+                    group.name || group.shortName || group.id,
+                    group.color || '#4b5563',
+                    group.color || '#d6b25e'
+                ].join('|')).join('\n');
+            }
+        }
+        return map;
+    }
+
+    function install(target) {
+        if (!target?.location || typeof target.fetch !== 'function') return null;
+        const params = new URLSearchParams(target.location.search || '');
+        const channelId = normalizeId(params.get('channel') || params.get('event'));
+        const rendererModule = normalizeId(params.get('module')) || 'cdcup';
+        if (!channelId) return null;
+
+        const originals = Object.fromEntries(BRIDGED_FUNCTIONS.map(name => [name, target[name]]));
+        let contextPromise = null;
+        let broadcastCache = null;
+        let broadcastCacheAt = 0;
+        let configCache = null;
+        let configCacheAt = 0;
+        let lastPulseRevision = '';
+
+        async function request(path, options = {}) {
+            const response = await target.fetch(`/api/platform/${path}`, {
+                credentials: 'same-origin',
+                cache: 'no-store',
+                ...options,
+                headers: {
+                    ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+                    ...(options.headers || {})
+                }
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.error || `채널 방송 연결 오류 ${response.status}`);
+            return payload;
+        }
+
+        async function context() {
+            if (!contextPromise) {
+                contextPromise = request(`channels/${encodeURIComponent(channelId)}`)
+                    .then(payload => ({ channel: payload.channel, platform: payload.channel?.dataAdapter !== 'legacy-cdcup' }));
+            }
+            return contextPromise;
+        }
+
+        async function delegated(name, args, platformHandler) {
+            const current = await context();
+            if (!current.platform) {
+                if (typeof originals[name] !== 'function') throw new Error(`${name} is not available`);
+                return originals[name](...args);
+            }
+            return platformHandler(current);
+        }
+
+        async function loadBroadcast(force = false, maxAgeMs = 900) {
+            const now = Date.now();
+            if (!force && broadcastCache && now - broadcastCacheAt < Math.max(350, Number(maxAgeMs) || 900)) return broadcastCache;
+            broadcastCache = await request(`channels/${encodeURIComponent(channelId)}/broadcast`);
+            broadcastCacheAt = now;
+            return broadcastCache;
+        }
+
+        async function legacyItems(force = false, maxAgeMs = 900) {
+            const payload = await loadBroadcast(force, maxAgeMs);
+            return (payload.items || []).map(item => toLegacyItem(item, rendererModule));
+        }
+
+        async function loadConfig(force = false) {
+            const now = Date.now();
+            if (!force && configCache && now - configCacheAt < 750) return configCache;
+            const current = await context();
+            const payload = await request(`channels/${encodeURIComponent(channelId)}/broadcast-config`);
+            configCache = {
+                ...defaultConfig(current.channel, rendererModule),
+                ...(payload.config || {}),
+                active_event_module: rendererModule
+            };
+            configCacheAt = now;
+            return configCache;
+        }
+
+        target.getRuntimeConfigMap = (...args) => delegated('getRuntimeConfigMap', args, () => loadConfig(Boolean(args[0])));
+        target.getConfigMap = (...args) => delegated('getConfigMap', args, () => loadConfig(Boolean(args[0])));
+        target.updateConfigs = (...args) => delegated('updateConfigs', args, async () => {
+            const patch = { ...(args[0] || {}), active_event_module: rendererModule };
+            delete patch.admin_pw;
+            const payload = await request(`channels/${encodeURIComponent(channelId)}/broadcast-config`, {
+                method: 'PUT',
+                body: JSON.stringify({ patch })
+            });
+            configCache = { ...defaultConfig((await context()).channel, rendererModule), ...(payload.config || {}), active_event_module: rendererModule };
+            configCacheAt = Date.now();
+            return payload;
+        });
+        target.getItems = (...args) => delegated('getItems', args, () => legacyItems(Boolean(args[0])));
+        target.getBroadcastItems = (...args) => delegated('getBroadcastItems', args, () => legacyItems(Boolean(args[0])));
+        target.getBroadcastItemsLite = (...args) => delegated('getBroadcastItemsLite', args, () => legacyItems(Boolean(args[0])));
+        target.getBroadcastItemsCached = (...args) => delegated('getBroadcastItemsCached', args, () => legacyItems(Boolean(args[0]), args[1]));
+        target.getActiveItem = (...args) => delegated('getActiveItem', args, async () => {
+            const items = await legacyItems(Boolean(args[0]));
+            return items.find(item => item.status === '진행중') || null;
+        });
+        target.enrichBroadcastItem = (...args) => delegated('enrichBroadcastItem', args, () => args[0] ? { ...args[0], hiddenPhotos: [] } : null);
+        target.getAuctionPulse = (...args) => delegated('getAuctionPulse', args, async () => {
+            const payload = await request(`channels/${encodeURIComponent(channelId)}/broadcast-pulse`);
+            const revision = String(payload.revision ?? '');
+            if (lastPulseRevision && revision !== lastPulseRevision) {
+                broadcastCacheAt = 0;
+                configCacheAt = 0;
+            }
+            lastPulseRevision = revision;
+            return { id: channelId, status: '', updatedAt: revision };
+        });
+
+        return Object.freeze({ channelId, rendererModule, context, loadBroadcast, loadConfig, originals });
+    }
+
+    return Object.freeze({ BRIDGED_FUNCTIONS, defaultConfig, install, legacyStatus, normalizeId, toLegacyItem });
+});
