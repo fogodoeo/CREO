@@ -840,7 +840,7 @@
             <header class="cw-report-section-head">
                 <button class="cw-report-section-toggle" type="button" data-report-toggle data-report-label="${escapeHtml(korean)}" aria-label="${escapeHtml(`${korean} 자세히 보기`)}" aria-expanded="false" aria-controls="${escapeHtml(controls)}">
                     <strong class="cw-report-section-title">${escapeHtml(korean)}</strong>
-                    <span class="cw-report-section-action"><em data-report-action>자세히 보기</em><i aria-hidden="true">＋</i></span>
+                    <span class="cw-report-section-action"><em data-report-action>자세히 보기</em></span>
                 </button>
             </header>`;
     }
@@ -939,11 +939,7 @@
         return `
                 <article class="cw-axis-detail" data-axis-result data-final-pole="${firstSelected ? 'left' : 'right'}">
                     <header><h3>${escapeHtml(copy.title)}</h3></header>
-                    <div class="cw-axis-poles">
-                        <div class="cw-axis-pole is-left${firstSelected ? ' is-selected' : ''}" data-pole="left"><strong>${escapeHtml(first)}</strong></div>
-                        <div class="cw-axis-pole is-right${firstSelected ? '' : ' is-selected'}" data-pole="right"><strong>${escapeHtml(second)}</strong></div>
-                    </div>
-                    <div class="cw-position-scale cw-axis-scale" aria-label="${escapeHtml(copy.title)}: ${escapeHtml(first)} ${escapeHtml(copy.left)}, ${escapeHtml(second)} ${escapeHtml(copy.right)} 중 ${escapeHtml(axisResult.dominant)} 쪽">
+                    <div class="cw-position-scale cw-axis-scale" aria-label="${escapeHtml(`${copy.title}: ${copy.left}와 ${copy.right} 중 ${firstSelected ? copy.left : copy.right} 쪽`)}">
                         <span class="cw-scale-marker" data-final-position="${position}" style="--position:${position}%" aria-hidden="true"></span>
                         <div class="cw-scale-line"><i aria-hidden="true"></i></div>
                     </div>
@@ -990,7 +986,7 @@
         const house = Core.HOUSE_META[assignedHouseKey];
         return `
             <section class="cw-house-declaration" style="--house-accent:${escapeHtml(house.accent)}" aria-label="${escapeHtml(`당신의 기숙사는 ${house.name} 입니다.`)}">
-                <p>당신의 기숙사는 <strong data-measure-house data-final-text="${escapeHtml(house.name)}">${escapeHtml(house.name)}</strong> 입니다.</p>
+                <p><span>당신의 기숙사는</span><strong data-measure-house data-final-text="${escapeHtml(house.name)}">${escapeHtml(house.name)}</strong><span>입니다.</span></p>
             </section>`;
     }
 
@@ -1034,7 +1030,7 @@
         relation?.classList.add('is-measure-pending');
         axisCards.forEach(card => {
             card.classList.add('is-cycling');
-            card.querySelectorAll('[data-pole], [data-pole-copy]').forEach(pole => pole.classList.remove('is-selected'));
+            card.querySelectorAll('[data-pole-copy]').forEach(copy => copy.classList.remove('is-selected'));
         });
         speedValues.forEach(node => {
             node.textContent = '측정 중…';
@@ -1047,7 +1043,6 @@
                 const startedAt = performance.now();
                 slot.classList.add('is-cycling');
                 const axisCard = axisCards[index];
-                const axisPoles = [...(axisCard?.querySelectorAll('[data-pole]') || [])];
                 const axisCopies = [...(axisCard?.querySelectorAll('[data-pole-copy]') || [])];
                 const cycleSlot = () => {
                     if (!container.isConnected) return;
@@ -1055,7 +1050,6 @@
                         slot.textContent = slot.dataset.finalLetter;
                         slot.classList.remove('is-cycling');
                         slot.classList.add('is-settled');
-                        axisPoles.forEach(pole => pole.classList.toggle('is-selected', pole.dataset.pole === axisCard?.dataset.finalPole));
                         axisCopies.forEach(copy => copy.classList.toggle('is-selected', copy.dataset.poleCopy === axisCard?.dataset.finalPole));
                         axisCard?.classList.remove('is-cycling');
                         axisCard?.classList.add('is-settled');
@@ -1063,7 +1057,6 @@
                     }
                     const candidate = tick % 2;
                     slot.textContent = letterPairs[index][candidate];
-                    axisPoles.forEach((pole, poleIndex) => pole.classList.toggle('is-selected', poleIndex === candidate));
                     axisCopies.forEach((copy, copyIndex) => copy.classList.toggle('is-selected', copyIndex === candidate));
                     tick += 1;
                     setTimeout(cycleSlot, tickDelays[index]);
@@ -1148,8 +1141,6 @@
         const opening = panel.hidden;
         panel.hidden = !opening;
         button.setAttribute('aria-expanded', String(opening));
-        const icon = button.querySelector('i');
-        if (icon) icon.textContent = opening ? '−' : '＋';
         const action = button.querySelector('[data-report-action]');
         if (action) action.textContent = opening ? '접기' : '자세히 보기';
         button.setAttribute('aria-label', `${button.dataset.reportLabel || ''} ${opening ? '접기' : '자세히 보기'}`.trim());
@@ -1767,22 +1758,14 @@
                 context.fillText(copy.title, x + width / 2, y + 28);
 
                 context.textAlign = 'left';
-                context.fillStyle = firstSelected ? '#202421' : '#9a9e9a';
-                context.font = `${firstSelected ? 800 : 550} 24px ${font}`;
-                context.fillText(first, x + 24, y + 65);
-                context.textAlign = 'right';
-                context.fillStyle = firstSelected ? '#9a9e9a' : '#202421';
-                context.font = `${firstSelected ? 550 : 800} 24px ${font}`;
-                context.fillText(second, x + width - 24, y + 65);
-                context.textAlign = 'left';
-                drawShareScale(context, x + 24, y + 96, width - 48, position);
+                drawShareScale(context, x + 24, y + 78, width - 48, position);
                 context.fillStyle = firstSelected ? '#202421' : '#9a9e9a';
                 context.font = `${firstSelected ? 800 : 550} 16px ${font}`;
-                context.fillText(copy.left, x + 24, y + 126);
+                context.fillText(copy.left, x + 24, y + 111);
                 context.textAlign = 'right';
                 context.fillStyle = firstSelected ? '#9a9e9a' : '#202421';
                 context.font = `${firstSelected ? 550 : 800} 16px ${font}`;
-                context.fillText(copy.right, x + width - 24, y + 126);
+                context.fillText(copy.right, x + width - 24, y + 111);
                 context.textAlign = 'left';
             });
 
