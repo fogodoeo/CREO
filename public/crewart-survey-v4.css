@@ -648,92 +648,131 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 
 
 
+
 /* ==========================================================================
-   CREWARTS MODERN FLAT EDITORIAL RESULT STYLES (KOREAN ONLY, HOUSE COLOR ACCENT)
+   CREWARTS INSTAGRAM FEED CLEAN STYLE (MODERN INSTA FEED UX)
    ========================================================================== */
 .cw-result {
-    padding: max(8px, calc(env(safe-area-inset-top) + 6px)) 12px max(120px, calc(env(safe-area-inset-bottom) + 104px));
-    background: #f4f4f5;
+    padding: max(6px, calc(env(safe-area-inset-top) + 4px)) 10px max(118px, calc(env(safe-area-inset-bottom) + 100px));
+    background: #fafafa;
 }
 
 .cw-result-wrap {
-    width: min(100%, 620px);
+    width: min(100%, 580px);
     margin: 0 auto;
 }
 
-.cw-result-report {
+.cw-insta-card {
     overflow: hidden;
-    padding: clamp(16px, 3.5vw, 28px);
-    border: 1px solid #18181b;
-    border-top: 5px solid var(--house-accent, #18181b);
-    border-radius: 0px;
+    padding: 0 0 20px;
+    border: 1px solid #dbdbdb;
+    border-radius: 4px;
     background: #ffffff;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
 }
 
-/* Top Bar */
-.cw-result-top-bar {
+/* 1. Header Bar */
+.cw-insta-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding-bottom: 12px;
-    border-bottom: 1px solid #e4e4e7;
-    margin-bottom: 4px;
+    padding: 12px 16px;
+    border-bottom: 1px solid #efefef;
 }
 
-.cw-result-house-badge {
-    display: inline-flex;
+.cw-insta-author {
+    display: flex;
     align-items: center;
-    padding: 3px 9px;
-    background: var(--house-accent, #18181b);
+    gap: 10px;
+}
+
+.cw-insta-avatar-ring {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    padding: 2px;
+    border: 2px solid var(--story-color, #18181b);
+    border-radius: 50%;
+}
+
+.cw-insta-avatar-letter {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: #18181b;
     color: #ffffff;
     font-size: 11px;
-    font-weight: 800;
-    letter-spacing: -0.01em;
+    font-weight: 850;
+    letter-spacing: -0.02em;
+}
+
+.cw-insta-author-info {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.cw-insta-handle {
+    color: #262626;
+    font-size: 13px;
+    font-weight: 750;
+    line-height: 1.2;
+}
+
+.cw-insta-subhead {
+    color: #8e8e8e;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.2;
 }
 
 .cw-result-version-switcher {
     display: inline-flex;
     align-items: center;
-    border: 1px solid #18181b;
-    border-radius: 0px;
-    background: #ffffff;
+    border: 1px solid #dbdbdb;
+    border-radius: 3px;
+    background: #fafafa;
 }
 
 .cw-version-tab {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 4px 11px;
+    padding: 4px 10px;
     border: 0;
-    border-radius: 0px;
+    border-radius: 2px;
     background: transparent;
-    color: #71717a;
+    color: #8e8e8e;
     font-size: 11px;
-    font-weight: 750;
+    font-weight: 700;
     cursor: pointer;
     transition: all 0.12s ease;
 }
 
 .cw-version-tab.is-active {
-    background: #18181b;
+    background: #262626;
     color: #ffffff;
 }
 
-/* Identity */
-.cw-result-identity {
+/* 2. Media Post */
+.cw-insta-media {
     position: relative;
     display: grid;
-    padding: 10px 0 20px;
+    padding: 8px 0 12px;
     justify-items: center;
-    border-bottom: 1px solid #e4e4e7;
+    background: #fbfbfb;
+    border-bottom: 1px solid #efefef;
 }
 
 .cw-type-poster {
     position: relative;
     isolation: isolate;
     width: 100%;
-    height: clamp(190px, 46vw, 260px);
+    height: clamp(190px, 48vw, 260px);
 }
 
 .cw-result-code {
@@ -742,18 +781,18 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     z-index: 1;
     display: flex;
     align-items: center;
-    color: #18181b;
-    font-size: clamp(72px, 20vw, 116px);
+    color: #262626;
+    font-size: clamp(70px, 20vw, 114px);
     font-weight: 850;
     line-height: 0.78;
     letter-spacing: -0.06em;
-    opacity: 0.10;
+    opacity: 0.08;
     transform: translateY(-50%);
     user-select: none;
 }
 
-.cw-result-code-back { left: clamp(16px, 12%, 64px); }
-.cw-result-code-front { right: clamp(16px, 12%, 64px); }
+.cw-result-code-back { left: clamp(16px, 12%, 60px); }
+.cw-result-code-front { right: clamp(16px, 12%, 60px); }
 
 .cw-character-reveal {
     position: absolute;
@@ -765,38 +804,85 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     transform: translateX(-50%);
 }
 
+/* 3. Action Bar */
+.cw-insta-action-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px 6px;
+}
+
+.cw-insta-quick-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.cw-insta-action-icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #262626;
+    cursor: pointer;
+    transition: transform 0.1s ease, color 0.1s ease;
+}
+
+.cw-insta-action-icon-btn:hover {
+    color: #000000;
+    transform: scale(1.08);
+}
+
+.cw-insta-house-tag {
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+}
+
+/* 4. Caption Area */
+.cw-insta-caption-box {
+    padding: 6px 16px 14px;
+}
+
 .cw-result-type-name {
-    position: relative;
-    z-index: 3;
-    margin: 8px 0 0;
-    color: #09090b;
-    font-size: clamp(20px, 4.6vw, 26px);
-    font-weight: 850;
-    line-height: 1.25;
-    letter-spacing: -0.03em;
-    text-align: center;
+    margin: 4px 0 0;
+    color: #262626;
+    font-size: 15.5px;
+    font-weight: 600;
+    line-height: 1.45;
     word-break: keep-all;
+    text-align: left;
+}
+
+.cw-insta-caption-handle {
+    font-weight: 800;
+    color: #000000;
+    margin-right: 4px;
 }
 
 .cw-result-subtitle {
-    margin: 6px 0 0;
-    color: #71717a;
+    margin: 4px 0 0;
+    color: #737373;
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 500;
     line-height: 1.45;
-    text-align: center;
     word-break: keep-all;
+    text-align: left;
 }
 
 .cw-result-summary-box {
-    margin: 16px 0 0;
-    padding: 14px 16px;
-    border-left: 3px solid var(--house-accent, #18181b);
-    background: #fafafa;
-    color: #27272a;
-    font-size: 13.5px;
-    font-weight: 500;
-    line-height: 1.68;
+    margin: 12px 0 0;
+    padding: 12px 14px;
+    border-left: 2px solid var(--house-accent, #262626);
+    background: #f8f8f8;
+    color: #333333;
+    font-size: 13px;
+    font-weight: 450;
+    line-height: 1.62;
     text-align: left;
     word-break: keep-all;
 }
@@ -805,50 +891,61 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     margin: 0;
 }
 
-/* 2-Column Split: 사육 강점 / 주의점 */
+/* 5. Sub-Cards (Feed Comment / Highlight Style) */
+.cw-result-power-grid,
+.cw-result-match-grid,
+.cw-result-action-card,
+.cw-house-declaration,
+.cw-report-footer,
+.cw-detail-gate {
+    margin-left: 16px;
+    margin-right: 16px;
+}
+
 .cw-result-power-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-    margin-top: 16px;
+    gap: 10px;
+    margin-top: 12px;
 }
 
 .cw-power-card {
-    padding: 14px 15px;
-    border: 1px solid #e4e4e7;
-    background: #ffffff;
+    padding: 12px 14px;
+    border: 1px solid #efefef;
+    border-radius: 4px;
+    background: #fafafa;
     word-break: keep-all;
 }
 
 .cw-power-tag {
     display: block;
-    margin-bottom: 8px;
-    padding-bottom: 6px;
-    border-bottom: 1px solid #f4f4f5;
-    color: #18181b;
-    font-size: 12px;
-    font-weight: 800;
+    margin-bottom: 6px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #e5e5e5;
+    color: #262626;
+    font-size: 11.5px;
+    font-weight: 750;
 }
 
 .cw-power-card p {
     margin: 0;
-    color: #3f3f46;
-    font-size: 13px;
-    font-weight: 500;
-    line-height: 1.6;
+    color: #404040;
+    font-size: 12.5px;
+    font-weight: 450;
+    line-height: 1.55;
 }
 
-/* 2-Column Split: 환상의 짝꿍 / 주의할 짝꿍 */
 .cw-result-match-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-    margin-top: 12px;
+    gap: 10px;
+    margin-top: 10px;
 }
 
 .cw-match-card {
-    padding: 14px 12px;
-    border: 1px solid #e4e4e7;
+    padding: 12px 14px;
+    border: 1px solid #efefef;
+    border-radius: 4px;
     background: #fafafa;
     text-align: center;
     word-break: keep-all;
@@ -856,93 +953,100 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 
 .cw-match-tag {
     display: block;
-    margin-bottom: 4px;
-    color: #71717a;
+    margin-bottom: 3px;
+    color: #8e8e8e;
     font-size: 11px;
-    font-weight: 750;
+    font-weight: 700;
 }
 
 .cw-match-mbti {
     display: block;
-    color: #09090b;
-    font-size: 19px;
-    font-weight: 900;
-    letter-spacing: -0.02em;
+    color: #000000;
+    font-size: 18px;
+    font-weight: 850;
     line-height: 1.15;
 }
 
 .cw-match-title {
-    margin: 4px 0 0;
-    color: #3f3f46;
-    font-size: 12px;
-    font-weight: 600;
-    line-height: 1.4;
+    margin: 3px 0 0;
+    color: #525252;
+    font-size: 11.5px;
+    font-weight: 550;
+    line-height: 1.35;
 }
 
-/* 오늘의 팁 */
 .cw-result-action-card {
-    margin-top: 12px;
-    padding: 13px 15px;
-    border: 1px solid #e4e4e7;
+    margin-top: 10px;
+    padding: 12px 14px;
+    border: 1px solid #efefef;
+    border-radius: 4px;
     background: #ffffff;
 }
 
 .cw-action-label {
     display: block;
-    margin-bottom: 4px;
-    color: #18181b;
+    margin-bottom: 3px;
+    color: #262626;
     font-size: 11.5px;
-    font-weight: 800;
+    font-weight: 750;
 }
 
 .cw-action-text {
     margin: 0;
-    color: #3f3f46;
-    font-size: 13px;
+    color: #525252;
+    font-size: 12.5px;
     font-weight: 500;
-    line-height: 1.55;
+    line-height: 1.5;
     word-break: keep-all;
 }
 
-/* 기숙사 선언 */
+/* House Declaration */
 .cw-house-declaration {
-    margin-top: 16px;
-    padding: 18px 8px;
-    border: 1px solid #18181b;
-    border-left: 6px solid var(--house-accent, #18181b);
-    background: #ffffff;
+    margin-top: 14px;
+    padding: 14px 10px;
+    border: 1px solid #efefef;
+    border-left: 4px solid var(--house-accent, #262626);
+    border-radius: 2px;
+    background: #fafafa;
     text-align: center;
 }
 
 .cw-house-declaration p {
-    color: #18181b;
-    font-size: clamp(14px, 3.5vw, 17px);
-    font-weight: 800;
-    letter-spacing: -0.02em;
+    color: #262626;
+    font-size: 13.5px;
+    font-weight: 750;
+    line-height: 1.2;
 }
 
 .cw-house-declaration strong {
-    color: var(--house-accent, #18181b);
-    font-size: clamp(22px, 5.8vw, 34px);
-    font-weight: 900;
-    letter-spacing: 0.02em;
+    color: var(--house-accent, #262626);
+    font-size: 18px;
+    font-weight: 850;
 }
 
+/* Footer & Buttons */
 .cw-report-footer {
-    margin-top: 18px;
+    margin-top: 16px;
     padding-top: 14px;
-    border-top: 1px solid #18181b;
+    border-top: 1px solid #efefef;
+}
+
+.cw-share-section {
+    padding: 0;
 }
 
 .cw-share-action {
-    border: 1px solid #18181b;
+    border: 1px solid #dbdbdb;
+    border-radius: 4px;
     background: #ffffff;
-    color: #18181b;
-    font-weight: 750;
+    color: #262626;
+    font-size: 12px;
+    font-weight: 700;
 }
 
 .cw-share-action:hover {
-    background: #18181b;
+    background: #262626;
+    border-color: #262626;
     color: #ffffff;
 }
 
@@ -951,58 +1055,17 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 }
 
 @media (max-width: 520px) {
+    .cw-insta-card {
+        border-left: 0;
+        border-right: 0;
+        border-radius: 0;
+    }
+    .cw-result {
+        padding-left: 0;
+        padding-right: 0;
+    }
     .cw-result-power-grid,
     .cw-result-match-grid {
         grid-template-columns: 1fr;
-    }
-}
-
-/* ==========================================================================
-   MODERN MINIMALIST SCROLL HINT (FLOATING BOTTOM GUIDE)
-   ========================================================================== */
-.cw-scroll-hint {
-    position: fixed;
-    bottom: max(66px, calc(env(safe-area-inset-bottom) + 54px));
-    left: 50%;
-    transform: translateX(-50%);
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 6px 13px;
-    border: 1px solid #18181b;
-    border-radius: 0px;
-    background: #ffffff;
-    color: #18181b;
-    font-size: 11px;
-    font-weight: 800;
-    letter-spacing: 0.04em;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.09);
-    z-index: 35;
-    cursor: pointer;
-    opacity: 1;
-    transition: opacity 0.22s ease, transform 0.22s ease;
-    animation: cw-scroll-bounce 1.6s ease-in-out infinite;
-}
-
-.cw-scroll-arrow {
-    display: inline-block;
-    font-size: 11px;
-    font-weight: 900;
-    line-height: 1;
-    transform: translateY(1px);
-}
-
-.cw-scroll-hint.is-hidden {
-    opacity: 0;
-    transform: translate(-50%, 8px);
-    pointer-events: none;
-}
-
-@keyframes cw-scroll-bounce {
-    0%, 100% {
-        transform: translate(-50%, 0);
-    }
-    50% {
-        transform: translate(-50%, 4px);
     }
 }

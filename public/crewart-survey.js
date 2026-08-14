@@ -1209,10 +1209,17 @@
 
         element('result-content').innerHTML = `
             <div class="cw-result-wrap" style="--house-accent:${escapeHtml(house.accent)}">
-                <article class="cw-result-report ${isV2 ? 'is-v2-mode' : 'is-v1-mode'}">
-                    <header class="cw-result-top-bar">
-                        <div class="cw-result-house-badge">
-                            <span>${escapeHtml(house.name)} 기숙사</span>
+                <article class="cw-result-report cw-insta-card ${isV2 ? 'is-v2-mode' : 'is-v1-mode'}">
+                    <!-- Instagram Post Header -->
+                    <header class="cw-insta-header">
+                        <div class="cw-insta-author">
+                            <div class="cw-insta-avatar-ring" style="--story-color:${escapeHtml(house.accent)}">
+                                <span class="cw-insta-avatar-letter">${escapeHtml(result.code.slice(0, 2))}</span>
+                            </div>
+                            <div class="cw-insta-author-info">
+                                <strong class="cw-insta-handle">${escapeHtml(result.code)} · ${escapeHtml(house.name)}</strong>
+                                <span class="cw-insta-subhead">크레와트 사육소</span>
+                            </div>
                         </div>
                         <div class="cw-result-version-switcher" role="group" aria-label="결과 모드 전환">
                             <button type="button" class="cw-version-tab ${!isV2 ? 'is-active' : ''}" data-action="set-result-version" data-version="v1">
@@ -1223,7 +1230,9 @@
                             </button>
                         </div>
                     </header>
-                    <section class="cw-result-identity">
+
+                    <!-- Instagram Main Media Frame -->
+                    <section class="cw-result-identity cw-insta-media">
                         <div class="cw-type-poster" data-final-code="${escapeHtml(result.code)}">
                             <span class="cw-visually-hidden">${escapeHtml(result.code)}</span>
                             <strong class="cw-result-code cw-result-code-back" aria-hidden="true">${resultCodeBackSlots}</strong>
@@ -1233,15 +1242,38 @@
                             </figure>
                             <strong class="cw-result-code cw-result-code-front" aria-hidden="true">${resultCodeFrontSlots}</strong>
                         </div>
-                        <h1 class="cw-result-type-name" data-final-name="${escapeHtml(activeTitle)}">${escapeHtml(activeTitle)}</h1>
+                    </section>
+
+                    <!-- Instagram Action Bar -->
+                    <div class="cw-insta-action-bar">
+                        <div class="cw-insta-quick-actions">
+                            <button class="cw-insta-action-icon-btn" type="button" data-action="save-image" aria-label="결과 이미지 저장">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                            </button>
+                            <button class="cw-insta-action-icon-btn" type="button" data-action="share" aria-label="카카오톡 공유">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                            </button>
+                        </div>
+                        <span class="cw-insta-house-tag" style="color:${escapeHtml(house.accent)}">${escapeHtml(house.name)} 기숙사</span>
+                    </div>
+
+                    <!-- Instagram Feed Caption -->
+                    <section class="cw-insta-caption-box">
+                        <h1 class="cw-result-type-name" data-final-name="${escapeHtml(activeTitle)}">
+                            <strong class="cw-insta-caption-handle">${escapeHtml(result.code)}</strong> ${escapeHtml(activeTitle)}
+                        </h1>
                         ${isV2 && profile.subtitle ? `<p class="cw-result-subtitle">${escapeHtml(profile.subtitle)}</p>` : ''}
                         ${isV2 && profile.summary ? `<div class="cw-result-summary-box"><p>${escapeHtml(profile.summary)}</p></div>` : ''}
                     </section>
+
+                    <!-- Feed Content Cards -->
                     ${powerGridHtml}
                     ${matchGridHtml}
                     ${actionItemHtml}
                     ${detail}
                     ${renderHouseDeclaration()}
+
+                    <!-- Main Share Buttons Footer -->
                     <footer class="cw-report-footer">
                         <section class="cw-share-section" aria-label="결과 공유">
                             <button class="cw-share-action is-save" type="button" data-action="save-image">
@@ -1256,10 +1288,6 @@
                     </footer>
                 </article>
                 <small class="cw-result-copyright cw-result-copyright-outside">© 2026 CREO. All rights reserved.</small>
-                <button class="cw-scroll-hint" id="result-scroll-hint" type="button" aria-label="아래로 스크롤하여 더 보기">
-                    <span>스크롤</span>
-                    <span class="cw-scroll-arrow" aria-hidden="true">↓</span>
-                </button>
             </div>`;
         element('result-content').querySelectorAll('[data-action="set-result-version"]').forEach(button => {
             button.addEventListener('click', event => {
