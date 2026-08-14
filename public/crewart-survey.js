@@ -1337,8 +1337,8 @@
         });
         element('result-content').querySelector('[data-action="unlock-detail"]')?.addEventListener('click', handleUnlockDetail);
         element('result-content').querySelector('[data-action="open-band"]')?.addEventListener('click', openBandTarget);
-        element('result-content').querySelector('[data-action="share"]')?.addEventListener('click', shareResult);
-        element('result-content').querySelector('[data-action="save-image"]')?.addEventListener('click', saveResultImage);
+        element('result-content').querySelectorAll('[data-action="share"]').forEach(btn => btn.addEventListener('click', shareResult));
+        element('result-content').querySelectorAll('[data-action="save-image"]').forEach(btn => btn.addEventListener('click', saveResultImage));
         element('result-content').querySelectorAll('[data-report-toggle]').forEach(button => {
             button.addEventListener('click', toggleReportDisclosure);
         });
@@ -2469,7 +2469,16 @@
         setupIntroVideo();
         try { LEGACY_RESULT_STORAGE_KEYS.forEach(key => localStorage.removeItem(key)); } catch (_) { }
         bindEvents();
-        renderHome();
+        const urlParams = new URLSearchParams(window.location.search);
+        const previewCode = (urlParams.get('preview') || urlParams.get('mbti') || urlParams.get('type') || '').toUpperCase();
+        if (previewCode && Core.MBTI_TYPES.includes(previewCode)) {
+            result = { code: previewCode, typeName: Core.TYPE_NAMES[previewCode] || '크레 집사' };
+            assignedHouseKey = Core.chooseTendencyHouse(result);
+            renderResult({ animate: false });
+            setScreen('result-screen');
+        } else {
+            renderHome();
+        }
         updatePersistentActions();
         replaceTabHistory(navigationTabForStage());
         syncThemeColor('intro-screen');
