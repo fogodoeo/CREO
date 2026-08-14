@@ -563,7 +563,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /KAKAO_JS_KEY/);
     assert.match(script, /const SURVEY_URL = 'https:\/\/creok\.onrender\.com\/crewart-survey\.html'/);
     assert.doesNotMatch(script, /const SURVEY_URL = new URL\([^\n]*document\.baseURI/);
-    assert.match(html, /crewart-survey\.js\?v=20260815-compact-nav-v11/);
+    assert.match(html, /crewart-survey\.js\?v=20260815-balanced-layout-v13/);
     assert.match(script, /function renderUnifiedResult\(profile, house\)/);
     assert.doesNotMatch(script, /resultViewVersion|resultViewFromLocation|changeResultView|report=deep|set-result-version/);
     assert.match(script, /function renderResult\(options = \{\}\)[\s\S]*renderUnifiedResult\(profile, house\);/);
@@ -583,8 +583,10 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /window\.removeEventListener\('scroll', scheduleSync\)/);
     assert.match(script, /resultExperienceCleanup\?\.\(\)/);
     assert.match(script, /function buildPreviewResult\(code\)/);
-    assert.match(css, /\.cw-depth-stage\s*\{[^}]*position:\s*sticky[^}]*height:\s*min\(640px, calc\(100svh - 36px\)\)/);
-    assert.match(css, /\.cw-depth-step\s*\{[^}]*min-height:\s*clamp\(360px, 56svh, 520px\)/);
+    assert.match(css, /\.cw-depth-scrolly\s*\{[^}]*width:\s*min\(100%, 960px\)[^}]*gap:\s*42px/);
+    assert.match(css, /\.cw-depth-stage\s*\{[^}]*position:\s*sticky[^}]*height:\s*min\(520px, calc\(100svh - 110px\)\)/);
+    assert.match(css, /\.cw-depth-step\s*\{[^}]*min-height:\s*clamp\(340px, 50svh, 460px\)/);
+    assert.match(css, /\.cw-depth-step > article\s*\{[^}]*border-radius:\s*20px[^}]*background:\s*#fff/);
     assert.match(css, /@media \(max-width: 760px\)[\s\S]*\.cw-depth-stage\s*\{[^}]*position:\s*sticky|@media \(max-width: 760px\)[\s\S]*\.cw-depth-stage\s*\{[^}]*top:\s*10px/);
     assert.match(css, /\.cw-depth-stage-content\.is-entering/);
     assert.match(css, /html\s*\{[^}]*overflow-x:\s*clip/);
@@ -625,8 +627,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /class="cw-depth-intro-visual"/);
     assert.match(script, /class="cw-depth-stage-art"/);
     assert.match(script, /typeCharacterPath\(result\.code\)/);
-    assert.match(html, /crewart-survey-core\.js\?v=20260815-compact-nav-v11/);
-    assert.match(html, /crewart-survey-v4\.css\?v=20260815-compact-nav-v11/);
+    assert.match(html, /crewart-survey-core\.js\?v=20260815-balanced-layout-v13/);
+    assert.match(html, /crewart-survey-v4\.css\?v=20260815-balanced-layout-v13/);
     assert.match(html, /id="start-button"[^>]*>[\s\S]*시작하기/);
     assert.match(html, /id="home-retest"[^>]*>다시 시작/);
     assert.doesNotMatch(html, /start-button-v2|home-retest-v1|Ver 1 시작|Ver 2 시작/);

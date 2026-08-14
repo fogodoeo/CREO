@@ -935,9 +935,11 @@
         preloadResultScenes(steps);
         const stepMarkup = steps.map((step, index) => `
             <li class="cw-depth-step${index === 0 ? ' is-active' : ''}" data-depth-step="${index}">
-                <span class="cw-depth-step-number">${String(index + 1).padStart(2, '0')}</span>
                 <article>
-                    <small>${escapeHtml(step.kicker)}</small>
+                    <div class="cw-depth-step-meta">
+                        <span class="cw-depth-step-number">${String(index + 1).padStart(2, '0')}</span>
+                        <small>${escapeHtml(step.kicker)}</small>
+                    </div>
                     <h3>${escapeHtml(step.title)}</h3>
                     <p>${escapeHtml(step.body)}</p>
                     <footer>${escapeHtml(step.note)}</footer>
