@@ -788,24 +788,31 @@
 
     function resultSpeedPresentation() {
         if (!timingStats?.style) return null;
-        const valid = timingStats.validCount > 0;
-        const median = valid ? formatSeconds(timingStats.medianMs) : '-';
+        const valid = timingStats.validCount > 0 && timingStats.averageMs > 0;
+        const value = valid ? formatSeconds(timingStats.averageMs) : '-';
         const samples = cohortSummary.timingMedians.map(Number)
             .filter(value => value >= Core.MIN_RESPONSE_MS && value <= Core.MAX_RESPONSE_MS);
-        const averageMs = samples.length ? samples.reduce((sum, value) => sum + value, 0) / samples.length : timingStats.medianMs;
-        const relative = valid && averageMs > 0 ? Math.log2(timingStats.medianMs / averageMs) : 0;
+        const cohortAverageMs = samples.length ? samples.reduce((sum, sample) => sum + sample, 0) / samples.length : timingStats.averageMs;
+        const relative = valid && cohortAverageMs > 0 ? Math.log2(timingStats.averageMs / cohortAverageMs) : 0;
         const position = Math.max(7, Math.min(93, 50 + relative * 25));
         const comparison = samples.length
-            ? `평균 ${formatSeconds(averageMs)} · ${samples.length}명`
-            : '평균 데이터 준비 중';
-        return { median, position, comparison };
+            ? `참여자 평균 ${formatSeconds(cohortAverageMs)} · ${samples.length}명 기준`
+            : '참여자 비교 데이터 준비 중';
+        const label = position <= 38
+            ? '빠르게 고르는 편'
+            : position >= 62
+                ? '신중하게 고르는 편'
+                : '균형 있게 고르는 편';
+        return { value, position, comparison, label };
     }
 
     function renderUnifiedResult(profile, house) {
         const strengthStatement = profile.superpower || profile.summary || TYPE_READINGS[result.code] || '관찰한 내용을 자신만의 방식으로 정리해 다음 행동으로 연결합니다.';
         const bestMatchCode = profile.bestMatch?.mbti || '좋은 조합';
         const bestMatchTitle = profile.bestMatch?.title || '서로 다른 방식도 천천히 맞춰갈 수 있어요.';
-        const averageResponseTime = timingStats?.averageMs > 0 ? formatSeconds(timingStats.averageMs) : '측정 전';
+        const worstMatchCode = profile.worstMatch?.mbti || '다른 조합';
+        const worstMatchTitle = profile.worstMatch?.title || '속도와 기준이 달라 천천히 맞춰가야 해요.';
+        const speed = resultSpeedPresentation() || { value: '측정 전', position: 50, comparison: '비교 데이터 준비 중', label: '측정 전' };
         const axisRows = result.axes.map(axisResult => {
             const copy = AXIS_REPORT_COPY[axisResult.axis];
             const first = axisResult.axis[0];
@@ -839,29 +846,34 @@
                         <div class="cw-story-stage" aria-live="polite">
                             <section class="cw-story-scene is-axis" data-story-scene="axis">
                                 <div class="cw-story-result-hero">
+                                    <strong class="cw-story-result-code" aria-label="${escapeHtml(result.code)}">${escapeHtml(result.code)}</strong>
                                     <div class="cw-story-result-character" aria-hidden="true">
                                         <img src="${escapeHtml(typeCharacterPath(result.code))}" width="360" height="520" alt="" loading="eager" decoding="async">
                                     </div>
-                                    <div class="cw-story-result-type"><small>당신의 유형</small><strong>${escapeHtml(result.code)}</strong><em>${escapeHtml(profile.title || result.typeName)}</em></div>
+                                    <p class="cw-story-result-title">${escapeHtml(profile.title || result.typeName)}</p>
                                 </div>
                                 <div class="cw-story-axis-chart">${axisMarkup}</div>
                             </section>
 
                             <section class="cw-story-scene is-profile" data-story-scene="profile">
                                 <article class="cw-story-card is-strength">
-                                    <small>당신의 핵심 강점</small>
                                     <strong>${escapeHtml(strengthStatement)}</strong>
                                 </article>
                                 <article class="cw-story-card is-match">
-                                    <div><small>가장 편안한 유형</small><strong>${escapeHtml(bestMatchCode)}</strong></div>
-                                    <p>${escapeHtml(bestMatchTitle)}</p>
+                                    <div class="cw-story-match-type is-good"><small>좋은 상성</small><strong>${escapeHtml(bestMatchCode)}</strong><p>${escapeHtml(bestMatchTitle)}</p></div>
+                                    <div class="cw-story-match-type is-bad"><small>나쁜 상성</small><strong>${escapeHtml(worstMatchCode)}</strong><p>${escapeHtml(worstMatchTitle)}</p></div>
                                 </article>
                             </section>
 
                             <section class="cw-story-scene is-time" data-story-scene="time">
                                 <small data-time-label>응답 시간 계산 중</small>
-                                <strong data-time-value data-final-time="${escapeHtml(averageResponseTime)}">--.-초</strong>
-                                <span>${timingStats?.validCount > 0 ? `${timingStats.validCount}개 문항 기준` : '테스트 완료 후 기록됩니다.'}</span>
+                                <strong data-time-value data-final-time="${escapeHtml(speed.value)}">--.-초</strong>
+                                <div class="cw-story-speed" style="--speed-position:${speed.position}%">
+                                    <div><span>빠른 선택</span><span>신중한 선택</span></div>
+                                    <i aria-hidden="true"><b></b></i>
+                                    <strong>${escapeHtml(speed.label)}</strong>
+                                    <small>${escapeHtml(speed.comparison)}</small>
+                                </div>
                             </section>
 
                             <section class="cw-story-scene is-house" data-story-scene="house">
@@ -871,10 +883,10 @@
                                         <button type="button" class="cw-story-kakao" data-action="share"><img src="assets/kakaolink_btn_medium.png" width="24" height="24" alt=""><span data-action-label>카카오톡 공유</span></button>
                                         <button type="button" class="cw-story-save" data-action="save-image"><i aria-hidden="true">↓</i><span data-action-label>이미지 저장</span></button>
                                     </div>
-                                    ${BAND_INTEGRATION_ENABLED ? `<button type="button" class="cw-story-band${bandAuthUser?.isTargetMember === true ? ' is-connected' : ''}" data-action="join-band" data-band-prompt>
+                                    ${BAND_INTEGRATION_ENABLED ? `<a class="cw-story-band" data-band-prompt href="${escapeHtml(bandTargetUrl)}" target="_blank" rel="noopener noreferrer">
                                         <img src="assets/band-app-icon-official.png?v=20260801-logo-v2" width="40" height="40" alt="">
-                                        <span><small>${bandAuthUser?.isTargetMember === true ? 'MEMBER CONNECTED' : '결과를 저장하고 함께 이야기해요'}</small><strong>${bandAuthUser?.isTargetMember === true ? 'BAND 연결 완료' : 'BAND 참여하기'}</strong></span><i aria-hidden="true">→</i>
-                                    </button>` : ''}
+                                        <strong>BAND로 가기</strong><i aria-hidden="true">→</i>
+                                    </a>` : ''}
                                 </div>
                                 <small class="cw-story-credit">© 2026 CREO. All rights reserved.</small>
                             </section>
@@ -896,12 +908,13 @@
                     <div><small>결과 미리보기</small><strong>${escapeHtml(result.code)}</strong></div>
                 </header>
                 <main class="cw-result-teaser-main">
-                    <div class="cw-result-teaser-character" aria-hidden="true">
-                        <img src="${escapeHtml(typeCharacterPath(result.code))}" width="360" height="520" alt="" loading="eager" decoding="async">
+                    <div class="cw-result-teaser-hero">
+                        <strong aria-label="${escapeHtml(result.code)}">${escapeHtml(result.code)}</strong>
+                        <div class="cw-result-teaser-character" aria-hidden="true">
+                            <img src="${escapeHtml(typeCharacterPath(result.code))}" width="360" height="520" alt="" loading="eager" decoding="async">
+                        </div>
                     </div>
                     <div class="cw-result-teaser-copy">
-                        <small>당신의 유형</small>
-                        <strong>${escapeHtml(result.code)}</strong>
                         <p>${escapeHtml(profile.title || result.typeName)}</p>
                     </div>
                     <section class="cw-result-teaser-lock" aria-labelledby="result-unlock-title">
@@ -922,7 +935,6 @@
         element('result-content').querySelectorAll('[data-action="share"]').forEach(button => button.addEventListener('click', shareResult));
         element('result-content').querySelectorAll('[data-action="save-image"]').forEach(button => button.addEventListener('click', saveResultImage));
         element('result-content').querySelectorAll('[data-action="unlock-detail"]').forEach(button => button.addEventListener('click', handleUnlockDetail));
-        element('result-content').querySelector('[data-action="join-band"]')?.addEventListener('click', () => navigateToTab('band', { memberOptions: { revealResult: true } }));
     }
 
     function setupResultStory() {
