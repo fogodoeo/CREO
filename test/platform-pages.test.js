@@ -563,7 +563,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /KAKAO_JS_KEY/);
     assert.match(script, /const SURVEY_URL = 'https:\/\/creok\.onrender\.com\/crewart-survey\.html'/);
     assert.doesNotMatch(script, /const SURVEY_URL = new URL\([^\n]*document\.baseURI/);
-    assert.match(html, /crewart-survey\.js\?v=20260815-balanced-layout-v13/);
+    assert.match(html, /crewart-survey\.js\?v=20260815-axis-motion-v15/);
     assert.match(script, /function renderUnifiedResult\(profile, house\)/);
     assert.doesNotMatch(script, /resultViewVersion|resultViewFromLocation|changeResultView|report=deep|set-result-version/);
     assert.match(script, /function renderResult\(options = \{\}\)[\s\S]*renderUnifiedResult\(profile, house\);/);
@@ -597,6 +597,11 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.doesNotMatch(css, /body\.cw-result-experience \.cw-bottom-nav\s*\{/);
     assert.match(script, /railTitle: '한 문장으로 보는 나'/);
     assert.match(script, /keywords: axisFacts/);
+    assert.match(script, /axisRows,/);
+    assert.match(script, /class="cw-depth-axis-chart"/);
+    assert.match(script, /--axis-position:\$\{axis\.position\}%/);
+    assert.match(css, /\.cw-depth-step\.is-active \.cw-depth-axis-track b\s*\{[^}]*animation:\s*cw-depth-axis-point/);
+    assert.match(css, /@keyframes cw-depth-axis-point\s*\{[\s\S]*left:\s*var\(--axis-position\)/);
     assert.doesNotMatch(script, /facts:\s*axisFacts/);
     assert.match(script, /steps\.push\(\{[\s\S]*kicker: '성향 지표'[\s\S]*visual: 'axes'[\s\S]*\}\);[\s\S]*if \(!hasDetailedAccess\(\)\)/);
     assert.match(script, /function resultScenePath\(scene\)/);
@@ -627,8 +632,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /class="cw-depth-intro-visual"/);
     assert.match(script, /class="cw-depth-stage-art"/);
     assert.match(script, /typeCharacterPath\(result\.code\)/);
-    assert.match(html, /crewart-survey-core\.js\?v=20260815-balanced-layout-v13/);
-    assert.match(html, /crewart-survey-v4\.css\?v=20260815-balanced-layout-v13/);
+    assert.match(html, /crewart-survey-core\.js\?v=20260815-axis-motion-v15/);
+    assert.match(html, /crewart-survey-v4\.css\?v=20260815-axis-motion-v15/);
     assert.match(html, /id="start-button"[^>]*>[\s\S]*시작하기/);
     assert.match(html, /id="home-retest"[^>]*>다시 시작/);
     assert.doesNotMatch(html, /start-button-v2|home-retest-v1|Ver 1 시작|Ver 2 시작/);

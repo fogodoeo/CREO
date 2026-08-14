@@ -1051,6 +1051,88 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     word-break: keep-all;
 }
 
+.cw-depth-axis-chart {
+    display: grid;
+    margin-top: 24px;
+    gap: 18px;
+}
+
+.cw-depth-axis-row header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.cw-depth-axis-row header strong {
+    color: #252a26;
+    font-size: 12px;
+    font-weight: 820;
+}
+
+.cw-depth-axis-row header span {
+    color: var(--house-accent, #16814b);
+    font-size: 11px;
+    font-weight: 820;
+}
+
+.cw-depth-axis-track {
+    position: relative;
+    height: 4px;
+    margin-top: 11px;
+    border-radius: 999px;
+    background: #dfe2dd;
+}
+
+.cw-depth-axis-track i {
+    position: absolute;
+    top: -4px;
+    bottom: -4px;
+    left: 50%;
+    width: 1px;
+    background: #aeb3ae;
+    transform: translateX(-50%);
+}
+
+.cw-depth-axis-track b {
+    position: absolute;
+    z-index: 1;
+    top: 50%;
+    left: 50%;
+    width: 15px;
+    height: 15px;
+    border: 4px solid #fff;
+    border-radius: 50%;
+    background: var(--house-accent, #16814b);
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--house-accent, #16814b) 30%, transparent);
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(.72);
+}
+
+.cw-depth-step.is-active .cw-depth-axis-track b {
+    animation: cw-depth-axis-point .78s cubic-bezier(.18, .8, .2, 1) var(--axis-delay) both;
+}
+
+@keyframes cw-depth-axis-point {
+    from { left: 50%; opacity: 0; transform: translate(-50%, -50%) scale(.72); }
+    28% { opacity: 1; }
+    to { left: var(--axis-position); opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+.cw-depth-axis-ends {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 7px;
+    color: #929792;
+    font-size: 10px;
+    font-weight: 650;
+}
+
+.cw-depth-axis-ends .is-selected {
+    color: #343a35;
+    font-weight: 820;
+}
+
 .cw-depth-step footer {
     margin-top: 19px;
     padding-top: 14px;
@@ -1203,6 +1285,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     }
     .cw-depth-step h3 { font-size: 22px; }
     .cw-depth-step p { margin-top: 13px; font-size: 14px; line-height: 1.68; }
+    .cw-depth-axis-chart { margin-top: 18px; gap: 14px; }
+    .cw-depth-axis-row header strong { font-size: 11px; }
+    .cw-depth-axis-row header span { font-size: 10px; }
     .cw-depth-step footer { margin-top: 14px; padding-top: 11px; }
     .cw-depth-step .cw-depth-unlock { min-height: 40px; margin-top: 14px; }
     .cw-depth-outro { min-height: 68svh; padding: 80px 8px max(56px, calc(env(safe-area-inset-bottom) + 36px)); }
@@ -1223,4 +1308,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     .cw-depth-dot::after,
     .cw-depth-step,
     .cw-depth-stage-progress i { transition: none; }
+    .cw-depth-step.is-active .cw-depth-axis-track b {
+        left: var(--axis-position);
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+        animation: none;
+    }
 }

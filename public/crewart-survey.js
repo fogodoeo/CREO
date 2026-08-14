@@ -862,11 +862,23 @@
             }
         ];
 
-        const axisFacts = result.axes.map(axisResult => {
+        const axisRows = result.axes.map(axisResult => {
             const copy = AXIS_REPORT_COPY[axisResult.axis];
-            const dominant = axisResult.dominant === axisResult.axis[0] ? copy?.left : copy?.right;
-            return `${copy?.title || axisResult.axis} · ${dominant || axisResult.dominant}`;
+            const first = axisResult.axis[0];
+            const second = axisResult.axis[1];
+            const secondCount = Number(result.letters[second]) || 0;
+            const position = Math.max(8, Math.min(92, (secondCount / (Core.AXIS_SCORE_TOTAL || 5)) * 100));
+            const firstSelected = axisResult.dominant === first;
+            return {
+                title: copy?.title || axisResult.axis,
+                left: copy?.left || first,
+                right: copy?.right || second,
+                selected: firstSelected ? (copy?.left || first) : (copy?.right || second),
+                firstSelected,
+                position
+            };
         });
+        const axisFacts = axisRows.map(axis => `${axis.title} · ${axis.selected}`);
         steps.push({
             kicker: '성향 지표',
             railTitle: '네 가지 선택 축',
@@ -874,8 +886,9 @@
             body: '네 가지 축을 실제 선택 장면의 의미로 바꿔 읽었습니다. 어느 한쪽의 점수가 아니라 지금 가장 자연스럽게 사용한 판단 방식을 보여줍니다.',
             note: '생각 정리 · 관찰 초점 · 선택 기준 · 사육 방식',
             keywords: axisFacts,
+            axisRows,
             visual: 'axes',
-            kind: 'metrics'
+            kind: 'axes'
         });
 
         if (!hasDetailedAccess()) {
@@ -933,7 +946,20 @@
         const characterPath = typeCharacterPath(result.code);
         const firstScenePath = resultScenePath(firstStep.visual);
         preloadResultScenes(steps);
-        const stepMarkup = steps.map((step, index) => `
+        const stepMarkup = steps.map((step, index) => {
+            const axisMarkup = step.axisRows ? `
+                <div class="cw-depth-axis-chart" aria-label="성향 축 방향표">
+                    ${step.axisRows.map((axis, axisIndex) => `
+                        <div class="cw-depth-axis-row" role="img" aria-label="${escapeHtml(`${axis.title}: ${axis.selected}`)}" style="--axis-position:${axis.position}%;--axis-delay:${axisIndex * 110}ms">
+                            <header><strong>${escapeHtml(axis.title)}</strong><span>${escapeHtml(axis.selected)}</span></header>
+                            <div class="cw-depth-axis-track" aria-hidden="true"><i></i><b></b></div>
+                            <div class="cw-depth-axis-ends" aria-hidden="true">
+                                <span class="${axis.firstSelected ? 'is-selected' : ''}">${escapeHtml(axis.left)}</span>
+                                <span class="${axis.firstSelected ? '' : 'is-selected'}">${escapeHtml(axis.right)}</span>
+                            </div>
+                        </div>`).join('')}
+                </div>` : '';
+            return `
             <li class="cw-depth-step${index === 0 ? ' is-active' : ''}" data-depth-step="${index}">
                 <article>
                     <div class="cw-depth-step-meta">
@@ -942,10 +968,12 @@
                     </div>
                     <h3>${escapeHtml(step.title)}</h3>
                     <p>${escapeHtml(step.body)}</p>
+                    ${axisMarkup}
                     <footer>${escapeHtml(step.note)}</footer>
                     ${step.locked ? `<button class="cw-depth-unlock" type="button" data-action="unlock-detail" ${step.unlockAvailable ? '' : 'disabled'}>회원 확인 <span aria-hidden="true">${step.unlockAvailable ? '→' : '·'}</span></button>` : ''}
                 </article>
-            </li>`).join('');
+            </li>`;
+        }).join('');
         const dotMarkup = steps.map((step, index) => `
             <button type="button" class="cw-depth-dot${index === 0 ? ' is-active' : ''}" data-depth-target="${index}" aria-label="${escapeHtml(`${index + 1}. ${step.kicker}`)}"></button>`).join('');
 
@@ -2206,10 +2234,13 @@
     function buildPreviewResult(code) {
         const axisPairs = ['EI', 'SN', 'TF', 'JP'];
         const letters = {};
+        const axisTotal = Core.AXIS_SCORE_TOTAL || 5;
+        const dominantScore = Math.max(1, Math.round(axisTotal * .8));
+        const supportingScore = Math.max(0, axisTotal - dominantScore);
         const axes = axisPairs.map((axis, index) => {
             const dominant = code[index];
-            letters[axis[0]] = dominant === axis[0] ? 4 : 1;
-            letters[axis[1]] = dominant === axis[1] ? 4 : 1;
+            letters[axis[0]] = dominant === axis[0] ? dominantScore : supportingScore;
+            letters[axis[1]] = dominant === axis[1] ? dominantScore : supportingScore;
             return { axis, dominant };
         });
         return { code, typeName: Core.TYPE_NAMES[code] || '크레 집사', letters, axes };
