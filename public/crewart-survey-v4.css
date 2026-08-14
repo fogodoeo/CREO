@@ -838,15 +838,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-depth-stage-head {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-end;
     margin-top: 17px;
-}
-
-.cw-depth-stage-head > span {
-    color: #656b66;
-    font-size: 12px;
-    font-weight: 800;
-    font-variant-numeric: tabular-nums;
 }
 
 .cw-depth-dots {
@@ -1000,13 +993,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     top: 74px;
 }
 
-.cw-depth-step-number {
-    color: var(--house-accent, #16814b);
-    font-size: 11px;
-    font-weight: 850;
-    font-variant-numeric: tabular-nums;
-}
-
 .cw-depth-step > article {
     width: 100%;
     min-height: 340px;
@@ -1025,7 +1011,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     transform: translateY(0) scale(1);
 }
 
-.cw-depth-step.is-active .cw-depth-step-meta,
 .cw-depth-step.is-active h3,
 .cw-depth-step.is-active p,
 .cw-depth-step.is-active footer {
@@ -1082,26 +1067,69 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 
 .cw-depth-hook.is-match {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    align-items: end;
-    gap: 18px;
+    grid-template-columns: minmax(0, 1.25fr) minmax(130px, .75fr);
+    align-items: stretch;
+    gap: 16px;
 }
 
-.cw-depth-hook.is-match strong {
+.cw-depth-hook.is-match .cw-depth-hook-primary {
+    display: grid;
+    align-content: end;
+}
+
+.cw-depth-hook.is-match .cw-depth-hook-primary strong {
     color: var(--house-accent, #16814b);
-    font-size: clamp(60px, 7.8vw, 92px);
+    font-size: clamp(58px, 7vw, 82px);
     line-height: .8;
     letter-spacing: -.075em;
 }
 
-.cw-depth-hook.is-match span {
+.cw-depth-hook.is-match .cw-depth-hook-primary span {
     max-width: 18ch;
-    padding-bottom: 2px;
+    margin-top: 17px;
     color: #4d534e;
     font-size: 13px;
     font-weight: 750;
     line-height: 1.45;
     word-break: keep-all;
+}
+
+.cw-depth-hook-secondary {
+    display: grid;
+    min-width: 0;
+    padding: 16px;
+    align-content: end;
+    border: 1px solid #e3e6e1;
+    border-radius: 14px;
+    background: #f6f7f5;
+}
+
+.cw-depth-hook-secondary small {
+    color: #737974;
+    font-size: 10px;
+    font-weight: 780;
+    line-height: 1.35;
+}
+
+.cw-depth-hook-secondary strong {
+    margin-top: 12px;
+    color: #343a35;
+    font-size: clamp(30px, 3.6vw, 42px);
+    line-height: .9;
+    letter-spacing: -.06em;
+}
+
+.cw-depth-hook-secondary span {
+    display: -webkit-box;
+    margin-top: 12px;
+    overflow: hidden;
+    color: #747a75;
+    font-size: 10px;
+    font-weight: 650;
+    line-height: 1.45;
+    word-break: keep-all;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
 }
 
 .cw-depth-step.is-active .cw-depth-hook.is-strength::before {
@@ -1112,18 +1140,16 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     animation: cw-depth-strength-reveal .66s cubic-bezier(.16, .82, .2, 1) 110ms both;
 }
 
-.cw-depth-step.is-active .cw-depth-hook.is-match strong {
+.cw-depth-step.is-active .cw-depth-hook.is-match .cw-depth-hook-primary strong {
     animation: cw-depth-code-in .62s cubic-bezier(.16, .82, .2, 1) 80ms both;
 }
 
-.cw-depth-step.is-active .cw-depth-hook.is-match span {
+.cw-depth-step.is-active .cw-depth-hook.is-match .cw-depth-hook-primary span {
     animation: cw-depth-copy-in .48s cubic-bezier(.18, .78, .2, 1) 190ms both;
 }
 
-.cw-depth-step-meta {
-    display: flex;
-    align-items: center;
-    gap: 10px;
+.cw-depth-step.is-active .cw-depth-hook-secondary {
+    animation: cw-depth-secondary-in .58s cubic-bezier(.16, .82, .2, 1) 160ms both;
 }
 
 .cw-depth-step small {
@@ -1300,6 +1326,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     to { opacity: 1; transform: translateY(0) scale(1); letter-spacing: -.075em; }
 }
 
+@keyframes cw-depth-secondary-in {
+    from { opacity: 0; transform: translateY(14px) scale(.96); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 .cw-depth-axis-ends {
     display: flex;
     justify-content: space-between;
@@ -1473,9 +1504,13 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     .cw-depth-hook { margin-top: 16px; }
     .cw-depth-hook.is-strength { padding-left: 14px; }
     .cw-depth-hook.is-strength strong { font-size: clamp(23px, 7vw, 32px); }
-    .cw-depth-hook.is-match { grid-template-columns: 1fr; gap: 10px; }
-    .cw-depth-hook.is-match strong { font-size: clamp(54px, 18vw, 76px); }
-    .cw-depth-hook.is-match span { max-width: 26ch; font-size: 12px; }
+    .cw-depth-step.is-compatibility.has-hook h3 { color: #202421; font-size: 20px; }
+    .cw-depth-hook.is-match { grid-template-columns: minmax(0, 1.15fr) minmax(112px, .85fr); gap: 10px; }
+    .cw-depth-hook.is-match .cw-depth-hook-primary strong { font-size: clamp(48px, 15vw, 68px); }
+    .cw-depth-hook.is-match .cw-depth-hook-primary span { margin-top: 12px; font-size: 11px; }
+    .cw-depth-hook-secondary { padding: 12px; }
+    .cw-depth-hook-secondary strong { font-size: clamp(27px, 9vw, 36px); }
+    .cw-depth-hook-secondary span { display: none; }
     .cw-depth-step p { margin-top: 13px; font-size: 14px; line-height: 1.68; }
     .cw-depth-axis-chart { margin-top: 18px; gap: 14px; }
     .cw-depth-axis-score { margin-top: 17px; padding-bottom: 15px; }
@@ -1496,15 +1531,15 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 @media (prefers-reduced-motion: reduce) {
     .cw-depth-stage-content.is-entering,
     .cw-depth-stage-art img.is-entering,
-    .cw-depth-step.is-active .cw-depth-step-meta,
     .cw-depth-step.is-active h3,
     .cw-depth-step.is-active p,
     .cw-depth-step.is-active footer,
     .cw-depth-step.is-active .cw-depth-axis-score,
     .cw-depth-step.is-active .cw-depth-hook.is-strength::before,
     .cw-depth-step.is-active .cw-depth-hook.is-strength strong,
-    .cw-depth-step.is-active .cw-depth-hook.is-match strong,
-    .cw-depth-step.is-active .cw-depth-hook.is-match span,
+    .cw-depth-step.is-active .cw-depth-hook.is-match .cw-depth-hook-primary strong,
+    .cw-depth-step.is-active .cw-depth-hook.is-match .cw-depth-hook-primary span,
+    .cw-depth-step.is-active .cw-depth-hook-secondary,
     .cw-depth-scroll-cue i { animation: none; }
     .cw-depth-dot::after,
     .cw-depth-step,

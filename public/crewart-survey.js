@@ -817,9 +817,8 @@
         const strengthStatement = profile.superpower || profile.summary || TYPE_READINGS[result.code] || '관찰한 내용을 자신만의 방식으로 정리해 다음 행동으로 연결합니다.';
         const bestMatchCode = profile.bestMatch?.mbti || '좋은 조합';
         const bestMatchTitle = profile.bestMatch?.title || '서로 다른 방식도 천천히 맞춰갈 수 있어요.';
-        const cautiousMatch = profile.worstMatch
-            ? `${profile.worstMatch.mbti} 유형과는 판단 속도를 맞춰보세요.`
-            : '다른 기준을 먼저 확인하면 오해를 줄일 수 있어요.';
+        const cautiousMatchCode = profile.worstMatch?.mbti || '다른 기준';
+        const cautiousMatchTitle = profile.worstMatch?.title || '서로의 판단 속도를 먼저 맞춰보세요.';
         const steps = [
             {
                 kicker: '나의 방식',
@@ -834,11 +833,18 @@
             {
                 kicker: '궁합',
                 railTitle: '편한 조합과 어려운 조합',
-                title: '함께할 때 편안한 유형',
+                title: '당신과 가장 편안한 유형',
                 body: '',
-                note: cautiousMatch,
-                keywords: [profile.bestMatch?.mbti, profile.worstMatch?.mbti, '관계 리듬'].filter(Boolean),
-                hook: { kind: 'match', value: bestMatchCode, detail: bestMatchTitle },
+                note: '',
+                keywords: [`내 결과 ${result.code}`, `편안함 ${bestMatchCode}`, `조율 ${cautiousMatchCode}`],
+                hook: {
+                    kind: 'match',
+                    value: bestMatchCode,
+                    detail: bestMatchTitle,
+                    secondaryLabel: '호흡을 맞춰볼 유형',
+                    secondaryValue: cautiousMatchCode,
+                    secondaryDetail: cautiousMatchTitle
+                },
                 visual: 'compatibility'
             }
         ];
@@ -909,8 +915,16 @@
         const stepMarkup = steps.map((step, index) => {
             const hookMarkup = step.hook ? `
                 <div class="cw-depth-hook is-${escapeHtml(step.hook.kind)}">
-                    <strong>${escapeHtml(step.hook.value)}</strong>
-                    ${step.hook.detail ? `<span>${escapeHtml(step.hook.detail)}</span>` : ''}
+                    <div class="cw-depth-hook-primary">
+                        <strong>${escapeHtml(step.hook.value)}</strong>
+                        ${step.hook.detail ? `<span>${escapeHtml(step.hook.detail)}</span>` : ''}
+                    </div>
+                    ${step.hook.secondaryValue ? `
+                        <div class="cw-depth-hook-secondary">
+                            <small>${escapeHtml(step.hook.secondaryLabel)}</small>
+                            <strong>${escapeHtml(step.hook.secondaryValue)}</strong>
+                            ${step.hook.secondaryDetail ? `<span>${escapeHtml(step.hook.secondaryDetail)}</span>` : ''}
+                        </div>` : ''}
                 </div>` : '';
             const axisScoreMarkup = step.axisScore ? `
                 <div class="cw-depth-axis-score" aria-label="가장 선명한 방향 ${escapeHtml(step.axisScore.label)} ${step.axisScore.value}%">
@@ -932,10 +946,6 @@
             return `
             <li class="cw-depth-step is-${escapeHtml(step.visual)}${step.hook ? ' has-hook' : ''}${index === 0 ? ' is-active' : ''}${step.kind === 'axes' ? ' is-axis-hold' : ''}" data-depth-step="${index}">
                 <article>
-                    <div class="cw-depth-step-meta">
-                        <span class="cw-depth-step-number">${String(index + 1).padStart(2, '0')}</span>
-                        <small>${escapeHtml(step.kicker)}</small>
-                    </div>
                     <h3>${escapeHtml(step.title)}</h3>
                     ${hookMarkup}
                     ${step.body ? `<p>${escapeHtml(step.body)}</p>` : ''}
@@ -972,7 +982,6 @@
                     <aside class="cw-depth-stage" aria-live="polite">
                         <div class="cw-depth-stage-progress"><i data-depth-progress></i></div>
                         <div class="cw-depth-stage-head">
-                            <span data-depth-count>01 / ${String(steps.length).padStart(2, '0')}</span>
                             <nav class="cw-depth-dots" aria-label="결과 리포트 단계">${dotMarkup}</nav>
                         </div>
                         <div class="cw-depth-stage-art" aria-hidden="true">
@@ -1020,7 +1029,6 @@
         const startButton = element('result-content').querySelector('[data-depth-start]');
         if (!root || !stage || !stepNodes.length) return () => { };
 
-        const countNode = stage.querySelector('[data-depth-count]');
         const kickerNode = stage.querySelector('[data-depth-kicker]');
         const titleNode = stage.querySelector('[data-depth-title]');
         const factsNode = stage.querySelector('[data-depth-facts]');
@@ -1036,7 +1044,6 @@
             if (nextIndex === activeIndex) return;
             activeIndex = nextIndex;
             const step = steps[nextIndex];
-            countNode.textContent = `${String(nextIndex + 1).padStart(2, '0')} / ${String(steps.length).padStart(2, '0')}`;
             kickerNode.textContent = step.kicker;
             titleNode.textContent = step.railTitle;
             const keywords = step.keywords || [];

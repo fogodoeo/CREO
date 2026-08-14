@@ -563,7 +563,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /KAKAO_JS_KEY/);
     assert.match(script, /const SURVEY_URL = 'https:\/\/creok\.onrender\.com\/crewart-survey\.html'/);
     assert.doesNotMatch(script, /const SURVEY_URL = new URL\([^\n]*document\.baseURI/);
-    assert.match(html, /crewart-survey\.js\?v=20260815-card-hooks-v19/);
+    assert.match(html, /crewart-survey\.js\?v=20260815-direct-cards-v20/);
     assert.match(script, /function renderUnifiedResult\(profile, house\)/);
     assert.doesNotMatch(script, /resultViewVersion|resultViewFromLocation|changeResultView|report=deep|set-result-version/);
     assert.match(script, /function renderResult\(options = \{\}\)[\s\S]*renderUnifiedResult\(profile, house\);/);
@@ -572,6 +572,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.doesNotMatch(script, /kicker: '(?:강점과 주의점|상세 결과|기숙사 이야기)'/);
     assert.doesNotMatch(script, /kicker: '(?:주의점|가이드)'/);
     assert.match(script, /function setupResultScrollytelling\(steps\)/);
+    assert.doesNotMatch(script, /data-depth-count|cw-depth-step-meta|cw-depth-step-number/);
+    assert.match(css, /\.cw-depth-stage-head\s*\{[^}]*justify-content:\s*flex-end/);
     assert.match(script, /<h2 data-depth-title>\$\{escapeHtml\(firstStep\.railTitle\)\}<\/h2>/);
     assert.match(script, /class="cw-depth-keyword-label" data-depth-keyword-label>핵심 키워드/);
     assert.match(script, /step\.body \? `<p>\$\{escapeHtml\(step\.body\)\}<\/p>` : ''/);
@@ -610,10 +612,15 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(css, /\.cw-depth-axis-score strong\s*\{[^}]*font-size:\s*clamp\(48px, 6vw, 72px\)[^}]*font-variant-numeric:\s*tabular-nums/);
     assert.match(css, /@keyframes cw-depth-metric-in/);
     assert.match(script, /hook: \{ kind: 'strength', value: strengthStatement \}/);
-    assert.match(script, /hook: \{ kind: 'match', value: bestMatchCode, detail: bestMatchTitle \}/);
+    assert.match(script, /secondaryLabel: '호흡을 맞춰볼 유형'/);
+    assert.match(script, /secondaryValue: cautiousMatchCode/);
+    assert.match(script, /title: '당신과 가장 편안한 유형'/);
+    assert.match(script, /`내 결과 \$\{result\.code\}`[\s\S]*`편안함 \$\{bestMatchCode\}`[\s\S]*`조율 \$\{cautiousMatchCode\}`/);
     assert.match(script, /class="cw-depth-hook is-\$\{escapeHtml\(step\.hook\.kind\)\}"/);
     assert.match(css, /\.cw-depth-hook\.is-strength strong\s*\{[^}]*font-size:\s*clamp\(26px, 3\.2vw, 40px\)/);
-    assert.match(css, /\.cw-depth-hook\.is-match strong\s*\{[^}]*font-size:\s*clamp\(60px, 7\.8vw, 92px\)/);
+    assert.match(css, /\.cw-depth-hook\.is-match \.cw-depth-hook-primary strong\s*\{[^}]*font-size:\s*clamp\(58px, 7vw, 82px\)/);
+    assert.match(css, /\.cw-depth-hook-secondary\s*\{[^}]*background:\s*#f6f7f5/);
+    assert.match(css, /@keyframes cw-depth-secondary-in/);
     assert.match(css, /@keyframes cw-depth-strength-reveal/);
     assert.match(css, /@keyframes cw-depth-code-in/);
     assert.match(script, /class="cw-depth-axis-chart"/);
@@ -660,8 +667,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /class="cw-depth-intro-visual"/);
     assert.match(script, /class="cw-depth-stage-art"/);
     assert.match(script, /typeCharacterPath\(result\.code\)/);
-    assert.match(html, /crewart-survey-core\.js\?v=20260815-card-hooks-v19/);
-    assert.match(html, /crewart-survey-v4\.css\?v=20260815-card-hooks-v19/);
+    assert.match(html, /crewart-survey-core\.js\?v=20260815-direct-cards-v20/);
+    assert.match(html, /crewart-survey-v4\.css\?v=20260815-direct-cards-v20/);
     assert.match(html, /id="start-button"[^>]*>[\s\S]*시작하기/);
     assert.match(html, /id="home-retest"[^>]*>다시 시작/);
     assert.doesNotMatch(html, /start-button-v2|home-retest-v1|Ver 1 시작|Ver 2 시작/);
