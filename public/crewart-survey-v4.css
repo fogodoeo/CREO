@@ -889,7 +889,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     min-height: 170px;
     flex: .8 1 auto;
     place-items: center;
-    opacity: .94;
+    opacity: 1;
 }
 
 .cw-depth-stage-art span {
@@ -908,8 +908,13 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     height: min(100%, 250px);
     object-fit: contain;
     object-position: center bottom;
-    mix-blend-mode: multiply;
-    transition: opacity .18s ease;
+    filter: drop-shadow(0 12px 18px rgba(26, 31, 27, .12));
+    mix-blend-mode: normal;
+    opacity: 1;
+}
+
+.cw-depth-stage-art img.is-entering {
+    animation: cw-depth-art-in .52s cubic-bezier(.18, .78, .2, 1) both;
 }
 
 .cw-depth-stage-content {
@@ -1010,7 +1015,26 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     border-radius: 20px;
     background: #fff;
     box-shadow: 0 12px 34px rgba(23, 26, 24, .055);
+    transform: translateY(18px) scale(.988);
+    transition: border-color .35s ease, box-shadow .35s ease, transform .45s cubic-bezier(.18, .78, .2, 1);
 }
+
+.cw-depth-step.is-active > article {
+    border-color: color-mix(in srgb, var(--house-accent, #16814b) 20%, #dfe1dc);
+    box-shadow: 0 18px 42px rgba(23, 26, 24, .085);
+    transform: translateY(0) scale(1);
+}
+
+.cw-depth-step.is-active .cw-depth-step-meta,
+.cw-depth-step.is-active h3,
+.cw-depth-step.is-active p,
+.cw-depth-step.is-active footer {
+    animation: cw-depth-copy-in .44s cubic-bezier(.18, .78, .2, 1) both;
+}
+
+.cw-depth-step.is-active h3 { animation-delay: 45ms; }
+.cw-depth-step.is-active p { animation-delay: 90ms; }
+.cw-depth-step.is-active footer { animation-delay: 135ms; }
 
 .cw-depth-step-meta {
     display: flex;
@@ -1048,23 +1072,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     gap: 18px;
 }
 
-.cw-depth-axis-row header {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 16px;
-}
-
-.cw-depth-axis-row header strong {
-    color: #252a26;
-    font-size: 12px;
-    font-weight: 820;
-}
-
 .cw-depth-axis-track {
     position: relative;
     height: 4px;
-    margin-top: 11px;
+    margin-top: 0;
     border-radius: 999px;
     background: #dfe2dd;
 }
@@ -1125,6 +1136,16 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 
 @keyframes cw-depth-axis-fill {
     to { transform: scaleX(1); }
+}
+
+@keyframes cw-depth-art-in {
+    from { opacity: 0; transform: translateY(12px) scale(.94) rotate(-1deg); }
+    to { opacity: 1; transform: translateY(0) scale(1) rotate(0); }
+}
+
+@keyframes cw-depth-copy-in {
+    from { opacity: 0; transform: translateY(9px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .cw-depth-axis-ends {
@@ -1254,7 +1275,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
         right: 18px;
         width: 105px;
         min-height: 116px;
-        opacity: .34;
+        opacity: 1;
     }
     .cw-depth-stage-art span { display: none; }
     .cw-depth-stage-art img { width: auto; max-width: 100%; height: 100%; }
@@ -1298,7 +1319,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     .cw-depth-step h3 { font-size: 22px; }
     .cw-depth-step p { margin-top: 13px; font-size: 14px; line-height: 1.68; }
     .cw-depth-axis-chart { margin-top: 18px; gap: 14px; }
-    .cw-depth-axis-row header strong { font-size: 11px; }
     .cw-depth-step footer { margin-top: 14px; padding-top: 11px; }
     .cw-depth-outro { min-height: 68svh; padding: 80px 8px max(56px, calc(env(safe-area-inset-bottom) + 36px)); }
 }
@@ -1314,6 +1334,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 
 @media (prefers-reduced-motion: reduce) {
     .cw-depth-stage-content.is-entering,
+    .cw-depth-stage-art img.is-entering,
+    .cw-depth-step.is-active .cw-depth-step-meta,
+    .cw-depth-step.is-active h3,
+    .cw-depth-step.is-active p,
+    .cw-depth-step.is-active footer,
     .cw-depth-scroll-cue i { animation: none; }
     .cw-depth-dot::after,
     .cw-depth-step,

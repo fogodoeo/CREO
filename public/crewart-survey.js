@@ -902,7 +902,6 @@
                 <div class="cw-depth-axis-chart" aria-label="성향 축 방향표">
                     ${step.axisRows.map((axis, axisIndex) => `
                         <div class="cw-depth-axis-row${axis.firstSelected ? ' is-left' : ' is-right'}" role="img" aria-label="${escapeHtml(`${axis.title}: ${axis.selected}`)}" style="--axis-position:${axis.position}%;--axis-fill-start:${axis.fillStart}%;--axis-fill-width:${axis.fillWidth}%;--axis-delay:${axisIndex * 110}ms">
-                            <header><strong>${escapeHtml(axis.title)}</strong></header>
                             <div class="cw-depth-axis-track" aria-hidden="true"><i></i><b></b></div>
                             <div class="cw-depth-axis-ends" aria-hidden="true">
                                 <span class="${axis.firstSelected ? 'is-selected' : ''}">${escapeHtml(axis.left)}</span>
@@ -911,7 +910,7 @@
                         </div>`).join('')}
                 </div>` : '';
             return `
-            <li class="cw-depth-step${index === 0 ? ' is-active' : ''}${step.kind === 'axes' ? ' is-axis-hold' : ''}" data-depth-step="${index}">
+            <li class="cw-depth-step is-${escapeHtml(step.visual)}${index === 0 ? ' is-active' : ''}${step.kind === 'axes' ? ' is-axis-hold' : ''}" data-depth-step="${index}">
                 <article>
                     <div class="cw-depth-step-meta">
                         <span class="cw-depth-step-number">${String(index + 1).padStart(2, '0')}</span>
@@ -1027,6 +1026,9 @@
             factsNode.hidden = !keywords.length;
             if (keywordLabelNode) keywordLabelNode.hidden = !keywords.length;
             visualNode.src = resultScenePath(step.visual);
+            visualNode.classList.remove('is-entering');
+            void visualNode.offsetWidth;
+            visualNode.classList.add('is-entering');
             contentNode.dataset.kind = step.kind || 'story';
             contentNode.classList.remove('is-entering');
             void contentNode.offsetWidth;
