@@ -650,26 +650,27 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 
 
 
+
 /* ==========================================================================
-   CREWARTS TRUE INSTAGRAM FEED POST DESIGN (HIGH READABILITY & ZERO FLUFF)
+   2026 MODERN BENTO GRID + INSTAGRAM FEED DESIGN SYSTEM
    ========================================================================== */
 .cw-result {
-    padding: max(6px, calc(env(safe-area-inset-top) + 4px)) 10px max(118px, calc(env(safe-area-inset-bottom) + 100px));
-    background: #f0f2f5;
+    padding: max(8px, calc(env(safe-area-inset-top) + 6px)) 12px max(118px, calc(env(safe-area-inset-bottom) + 100px));
+    background: #f4f5f7;
 }
 
 .cw-result-wrap {
-    width: min(100%, 540px);
+    width: min(100%, 520px);
     margin: 0 auto;
 }
 
-.cw-insta-card {
+.cw-bento-feed-card {
     overflow: hidden;
     padding: 0 0 20px;
-    border: 1px solid #dbdbdb;
-    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
     background: #ffffff;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.03);
 }
 
 /* 1. Header Bar */
@@ -677,25 +678,25 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 12px 14px;
-    border-bottom: 1px solid #efefef;
+    padding: 14px 16px;
+    border-bottom: 1px solid #f0f2f5;
     background: #ffffff;
 }
 
 .cw-insta-profile {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 11px;
 }
 
 .cw-insta-story-ring {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
+    width: 42px;
+    height: 42px;
     padding: 2px;
-    border: 2px solid var(--story-color, #18181b);
+    border: 2px solid var(--story-color, #10b981);
     border-radius: 50%;
 }
 
@@ -707,7 +708,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     border-radius: 50%;
     background: #18181b;
     color: #ffffff;
-    font-size: 11px;
+    font-size: 11.5px;
     font-weight: 850;
     letter-spacing: -0.02em;
 }
@@ -725,8 +726,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 }
 
 .cw-insta-username {
-    color: #262626;
-    font-size: 13.5px;
+    color: #0f172a;
+    font-size: 14px;
     font-weight: 750;
     line-height: 1.2;
 }
@@ -734,18 +735,18 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-insta-verified-badge {
     display: inline-grid;
     place-items: center;
-    width: 13px;
-    height: 13px;
+    width: 14px;
+    height: 14px;
     border-radius: 50%;
-    background: #0095f6;
+    background: #0284c7;
     color: #ffffff;
-    font-size: 8.5px;
+    font-size: 9px;
     font-weight: 900;
 }
 
 .cw-insta-location {
-    color: #8e8e8e;
-    font-size: 11px;
+    color: #64748b;
+    font-size: 11.5px;
     font-weight: 500;
     line-height: 1.2;
 }
@@ -753,9 +754,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-result-version-switcher {
     display: inline-flex;
     align-items: center;
-    border: 1px solid #dbdbdb;
-    border-radius: 20px;
-    background: #f8f8f8;
+    border: 1px solid #e2e8f0;
+    border-radius: 9999px;
+    background: #f8fafc;
     padding: 2px;
 }
 
@@ -763,38 +764,38 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 4px 11px;
+    padding: 5px 12px;
     border: 0;
-    border-radius: 16px;
+    border-radius: 9999px;
     background: transparent;
-    color: #8e8e8e;
+    color: #64748b;
     font-size: 11px;
     font-weight: 750;
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .cw-version-tab.is-active {
-    background: #262626;
+    background: #0f172a;
     color: #ffffff;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.15);
 }
 
-/* 2. Photo Media Viewport */
-.cw-insta-media {
+/* 2. Hero Visual Canvas */
+.cw-bento-hero-media {
     position: relative;
     display: grid;
-    padding: 10px 0 14px;
+    padding: 12px 0 16px;
     justify-items: center;
-    background: #fafafa;
-    border-bottom: 1px solid #efefef;
+    background: #fafbfc;
+    border-bottom: 1px solid #f0f2f5;
 }
 
 .cw-type-poster {
     position: relative;
     isolation: isolate;
     width: 100%;
-    height: clamp(195px, 50vw, 270px);
+    height: clamp(200px, 52vw, 275px);
 }
 
 .cw-result-code {
@@ -803,25 +804,25 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     z-index: 1;
     display: flex;
     align-items: center;
-    color: #262626;
-    font-size: clamp(72px, 21vw, 120px);
-    font-weight: 850;
+    color: #0f172a;
+    font-size: clamp(74px, 22vw, 122px);
+    font-weight: 900;
     line-height: 0.78;
     letter-spacing: -0.06em;
-    opacity: 0.08;
+    opacity: 0.07;
     transform: translateY(-50%);
     user-select: none;
 }
 
-.cw-result-code-back { left: clamp(14px, 11%, 58px); }
-.cw-result-code-front { right: clamp(14px, 11%, 58px); }
+.cw-result-code-back { left: clamp(14px, 11%, 56px); }
+.cw-result-code-front { right: clamp(14px, 11%, 56px); }
 
 .cw-character-reveal {
     position: absolute;
     z-index: 2;
     bottom: 0;
     left: 50%;
-    width: clamp(135px, 38%, 200px);
+    width: clamp(140px, 40%, 205px);
     height: 100%;
     transform: translateX(-50%);
 }
@@ -831,53 +832,53 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 12px 14px 6px;
+    padding: 14px 16px 6px;
 }
 
 .cw-insta-icons-left {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 16px;
 }
 
-.cw-insta-action-icon-btn {
+.cw-insta-icon-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 24px;
-    height: 24px;
+    width: 26px;
+    height: 26px;
     padding: 0;
     border: 0;
     background: transparent;
-    color: #262626;
+    color: #0f172a;
     cursor: pointer;
-    transition: transform 0.1s ease, color 0.1s ease;
+    transition: transform 0.12s ease, color 0.12s ease;
 }
 
-.cw-insta-action-icon-btn:hover {
+.cw-insta-icon-btn:hover {
     color: #000000;
-    transform: scale(1.1);
+    transform: scale(1.12);
 }
 
-.cw-insta-house-pill {
-    padding: 3px 9px;
-    border: 1px solid;
-    border-radius: 12px;
+.cw-insta-house-badge {
+    padding: 4px 10px;
+    border-radius: 9999px;
+    color: #ffffff;
     font-size: 11px;
     font-weight: 800;
     letter-spacing: -0.01em;
 }
 
 /* 4. Caption Area */
-.cw-insta-caption-area {
-    padding: 6px 14px 12px;
+.cw-bento-caption-section {
+    padding: 6px 16px 10px;
 }
 
 .cw-result-type-name {
     margin: 4px 0 0;
-    color: #262626;
-    font-size: 15.5px;
-    font-weight: 650;
+    color: #0f172a;
+    font-size: 16px;
+    font-weight: 700;
     line-height: 1.5;
     word-break: keep-all;
     text-align: left;
@@ -886,155 +887,159 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-insta-caption-author {
     font-weight: 800;
     color: #000000;
-    margin-right: 5px;
+    margin-right: 6px;
 }
 
 .cw-result-subtitle {
     margin: 6px 0 0;
-    color: #737373;
+    color: #64748b;
     font-size: 13px;
     font-weight: 500;
-    line-height: 1.48;
+    line-height: 1.5;
     word-break: keep-all;
     text-align: left;
 }
 
-.cw-result-summary-box {
-    margin: 12px 0 0;
-    padding: 12px 14px;
-    border-left: 2.5px solid var(--house-accent, #262626);
-    background: #f8f8f8;
-    color: #333333;
-    font-size: 13px;
-    font-weight: 450;
-    line-height: 1.65;
-    text-align: left;
-    word-break: keep-all;
-}
-
-.cw-result-summary-box p {
-    margin: 0;
-}
-
-/* 5. Instagram Feed Blocks */
-.cw-insta-feed-block {
-    margin: 10px 14px 0;
-}
-
-/* Powers Block (Strength / Caution) */
-.cw-insta-powers {
+/* 5. 2026 Bento Grid Modular System */
+.cw-bento-grid {
     display: grid;
-    gap: 8px;
+    gap: 10px;
+    margin: 10px 16px 0;
 }
 
-.cw-insta-power-row {
-    padding: 11px 13px;
-    border: 1px solid #efefef;
-    border-radius: 6px;
-    background: #ffffff;
-}
-
-.cw-insta-power-row.is-strength {
-    border-left: 3px solid #16a34a;
-}
-
-.cw-insta-power-row.is-caution {
-    border-left: 3px solid #ea580c;
-}
-
-.cw-insta-power-pill {
-    display: inline-block;
-    color: #262626;
-    font-size: 11.5px;
-    font-weight: 800;
-    margin-bottom: 4px;
-}
-
-.cw-insta-power-desc {
-    margin: 0;
-    color: #404040;
-    font-size: 12.5px;
-    font-weight: 450;
-    line-height: 1.55;
-    word-break: keep-all;
-}
-
-/* Matches Block (Tagged Accounts) */
-.cw-insta-matches {
-    display: grid;
+.cw-bento-split-2 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
 }
 
-.cw-insta-match-item {
-    padding: 11px 12px;
-    border: 1px solid #efefef;
-    border-radius: 6px;
-    background: #ffffff;
+.cw-bento-card {
+    padding: 13px 15px;
+    border: 1px solid #f1f5f9;
+    border-radius: 12px;
+    background: #f8fafc;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.cw-bento-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.03);
+}
+
+/* Summary Card */
+.cw-bento-card.is-summary-card {
+    margin-top: 10px;
+    border-left: 3px solid var(--house-accent, #0f172a);
+    background: #f8fafc;
+    color: #334155;
+    font-size: 13.5px;
+    font-weight: 450;
+    line-height: 1.68;
+    text-align: left;
     word-break: keep-all;
 }
 
-.cw-insta-match-badge {
-    display: block;
-    color: #8e8e8e;
-    font-size: 10.5px;
-    font-weight: 700;
-    margin-bottom: 4px;
+.cw-bento-card.is-summary-card p {
+    margin: 0;
 }
 
-.cw-insta-match-text {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
+/* Strength & Caution Bento */
+.cw-bento-card.is-strength {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-top: 3px solid #10b981;
 }
 
-.cw-insta-match-tag {
-    color: #0095f6;
-    font-size: 15px;
+.cw-bento-card.is-caution {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-top: 3px solid #f97316;
+}
+
+.cw-bento-card-header {
+    margin-bottom: 6px;
+}
+
+.cw-bento-tag {
+    font-size: 11px;
     font-weight: 800;
-    line-height: 1.2;
+    letter-spacing: -0.01em;
 }
 
-.cw-insta-match-text span {
-    color: #525252;
-    font-size: 11.5px;
+.cw-bento-tag.is-strength-tag { color: #059669; }
+.cw-bento-tag.is-caution-tag { color: #ea580c; }
+
+.cw-bento-card-body {
+    margin: 0;
+    color: #334155;
+    font-size: 12.5px;
     font-weight: 500;
-    line-height: 1.35;
+    line-height: 1.58;
+    word-break: keep-all;
 }
 
-/* Tip Card */
-.cw-insta-tip-card {
-    padding: 11px 13px;
-    border: 1px solid #efefef;
-    border-radius: 6px;
-    background: #fafafa;
+/* Matches Bento */
+.cw-bento-card.is-match-best,
+.cw-bento-card.is-match-worst {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    text-align: center;
+    word-break: keep-all;
 }
 
-.cw-insta-tip-header {
+.cw-bento-match-label {
+    display: block;
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 700;
+    margin-bottom: 3px;
+}
+
+.cw-bento-match-mbti {
+    display: block;
+    color: #0284c7;
+    font-size: 17px;
+    font-weight: 850;
+    line-height: 1.18;
+}
+
+.cw-bento-match-desc {
+    margin: 4px 0 0;
+    color: #475569;
+    font-size: 11.5px;
+    font-weight: 550;
+    line-height: 1.38;
+}
+
+/* Tip Card Bento */
+.cw-bento-card.is-tip-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+}
+
+.cw-bento-tip-header {
     display: flex;
     align-items: center;
-    gap: 6px;
-    margin-bottom: 4px;
+    gap: 7px;
+    margin-bottom: 5px;
 }
 
-.cw-insta-tip-dot {
+.cw-bento-tip-pill {
     width: 6px;
     height: 6px;
     border-radius: 50%;
 }
 
-.cw-insta-tip-header strong {
-    color: #262626;
-    font-size: 11.5px;
+.cw-bento-tip-header strong {
+    color: #0f172a;
+    font-size: 12px;
     font-weight: 800;
 }
 
-.cw-insta-tip-body {
+.cw-bento-tip-text {
     margin: 0;
-    color: #525252;
-    font-size: 12.5px;
+    color: #475569;
+    font-size: 13px;
     font-weight: 500;
-    line-height: 1.5;
+    line-height: 1.55;
     word-break: keep-all;
 }
 
@@ -1042,38 +1047,38 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-house-declaration,
 .cw-detail-gate,
 .cw-report-footer {
-    margin-left: 14px;
-    margin-right: 14px;
+    margin-left: 16px;
+    margin-right: 16px;
 }
 
 .cw-house-declaration {
-    margin-top: 12px;
-    padding: 13px 10px;
-    border: 1px solid #efefef;
-    border-left: 4px solid var(--house-accent, #262626);
-    border-radius: 4px;
-    background: #ffffff;
+    margin-top: 14px;
+    padding: 14px 10px;
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid var(--house-accent, #0f172a);
+    border-radius: 10px;
+    background: #f8fafc;
     text-align: center;
 }
 
 .cw-house-declaration p {
-    color: #262626;
+    color: #0f172a;
     font-size: 13.5px;
     font-weight: 750;
     line-height: 1.2;
 }
 
 .cw-house-declaration strong {
-    color: var(--house-accent, #262626);
-    font-size: 17px;
+    color: var(--house-accent, #0f172a);
+    font-size: 18px;
     font-weight: 850;
 }
 
 /* Footer & Buttons */
 .cw-report-footer {
-    margin-top: 14px;
-    padding-top: 12px;
-    border-top: 1px solid #efefef;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid #f0f2f5;
 }
 
 .cw-share-section {
@@ -1081,17 +1086,18 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 }
 
 .cw-share-action {
-    border: 1px solid #dbdbdb;
-    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
     background: #ffffff;
-    color: #262626;
-    font-size: 12.5px;
-    font-weight: 700;
+    color: #0f172a;
+    font-size: 13px;
+    font-weight: 750;
+    transition: all 0.15s ease;
 }
 
 .cw-share-action:hover {
-    background: #262626;
-    border-color: #262626;
+    background: #0f172a;
+    border-color: #0f172a;
     color: #ffffff;
 }
 
@@ -1100,16 +1106,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 }
 
 @media (max-width: 520px) {
-    .cw-insta-card {
-        border-left: 0;
-        border-right: 0;
-        border-radius: 0;
+    .cw-bento-feed-card {
+        border-radius: 12px;
     }
-    .cw-result {
-        padding-left: 0;
-        padding-right: 0;
-    }
-    .cw-insta-matches {
+    .cw-bento-split-2 {
         grid-template-columns: 1fr;
     }
 }

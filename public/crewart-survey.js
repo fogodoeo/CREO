@@ -1152,7 +1152,7 @@
     function renderResult(options = {}) {
         const profile = Core.getResultProfile(result.code);
         const isV2 = resultViewVersion === 'v2';
-        const house = Core.HOUSE_META[assignedHouseKey] || { name: 'CREO', accent: '#18181b' };
+        const house = Core.HOUSE_META[assignedHouseKey] || { name: 'CREO', accent: '#10b981' };
         const detail = BAND_INTEGRATION_ENABLED && hasDetailedAccess()
             ? `${renderMemberDetail()}${renderSpeedCard()}${renderHouseCard()}`
             : renderLockedDetail();
@@ -1167,51 +1167,53 @@
         const activeTitle = isV2 ? (profile.title || result.typeName) : result.typeName;
 
         const powerGridHtml = isV2 && (profile.superpower || profile.weakness)
-            ? `<div class="cw-insta-feed-block cw-insta-powers" aria-label="사육 강점 및 주의점">
-                    ${profile.superpower ? `<div class="cw-insta-power-row is-strength">
-                        <span class="cw-insta-power-pill">사육 강점</span>
-                        <p class="cw-insta-power-desc">${escapeHtml(profile.superpower)}</p>
-                    </div>` : ''}
-                    ${profile.weakness ? `<div class="cw-insta-power-row is-caution">
-                        <span class="cw-insta-power-pill">사육 주의점</span>
-                        <p class="cw-insta-power-desc">${escapeHtml(profile.weakness)}</p>
-                    </div>` : ''}
+            ? `<div class="cw-bento-grid cw-bento-split-2" aria-label="사육 강점 및 주의점">
+                    ${profile.superpower ? `<article class="cw-bento-card is-strength">
+                        <header class="cw-bento-card-header">
+                            <span class="cw-bento-tag is-strength-tag">사육 강점</span>
+                        </header>
+                        <p class="cw-bento-card-body">${escapeHtml(profile.superpower)}</p>
+                    </article>` : ''}
+                    ${profile.weakness ? `<article class="cw-bento-card is-caution">
+                        <header class="cw-bento-card-header">
+                            <span class="cw-bento-tag is-caution-tag">사육 주의점</span>
+                        </header>
+                        <p class="cw-bento-card-body">${escapeHtml(profile.weakness)}</p>
+                    </article>` : ''}
                </div>`
             : '';
 
         const matchGridHtml = isV2 && (profile.bestMatch || profile.worstMatch)
-            ? `<div class="cw-insta-feed-block cw-insta-matches" aria-label="성향 궁합 태그">
-                    ${profile.bestMatch ? `<div class="cw-insta-match-item is-best">
-                        <span class="cw-insta-match-badge">환상의 짝꿍</span>
-                        <div class="cw-insta-match-text">
-                            <strong class="cw-insta-match-tag">@${escapeHtml(profile.bestMatch.mbti)}</strong>
-                            <span>${escapeHtml(profile.bestMatch.title)}</span>
-                        </div>
-                    </div>` : ''}
-                    ${profile.worstMatch ? `<div class="cw-insta-match-item is-worst">
-                        <span class="cw-insta-match-badge">주의할 짝꿍</span>
-                        <div class="cw-insta-match-text">
-                            <strong class="cw-insta-match-tag">@${escapeHtml(profile.worstMatch.mbti)}</strong>
-                            <span>${escapeHtml(profile.worstMatch.title)}</span>
-                        </div>
-                    </div>` : ''}
+            ? `<div class="cw-bento-grid cw-bento-split-2" aria-label="성향 궁합 분석">
+                    ${profile.bestMatch ? `<article class="cw-bento-card is-match-best">
+                        <span class="cw-bento-match-label">환상의 짝꿍</span>
+                        <strong class="cw-bento-match-mbti">@${escapeHtml(profile.bestMatch.mbti)}</strong>
+                        <p class="cw-bento-match-desc">${escapeHtml(profile.bestMatch.title)}</p>
+                    </article>` : ''}
+                    ${profile.worstMatch ? `<article class="cw-bento-card is-match-worst">
+                        <span class="cw-bento-match-label">주의할 짝꿍</span>
+                        <strong class="cw-bento-match-mbti">@${escapeHtml(profile.worstMatch.mbti)}</strong>
+                        <p class="cw-bento-match-desc">${escapeHtml(profile.worstMatch.title)}</p>
+                    </article>` : ''}
                </div>`
             : '';
 
         const actionItemHtml = isV2 && profile.actionItem
-            ? `<div class="cw-insta-feed-block cw-insta-tip-card" aria-label="오늘의 팁">
-                    <div class="cw-insta-tip-header">
-                        <span class="cw-insta-tip-dot" style="background:${escapeHtml(house.accent)}"></span>
-                        <strong>오늘의 사육 팁</strong>
-                    </div>
-                    <p class="cw-insta-tip-body">${escapeHtml(profile.actionItem)}</p>
+            ? `<div class="cw-bento-grid" aria-label="오늘의 팁">
+                    <article class="cw-bento-card is-tip-card">
+                        <div class="cw-bento-tip-header">
+                            <span class="cw-bento-tip-pill" style="background:${escapeHtml(house.accent)}"></span>
+                            <strong>오늘의 사육 팁</strong>
+                        </div>
+                        <p class="cw-bento-tip-text">${escapeHtml(profile.actionItem)}</p>
+                    </article>
                </div>`
             : '';
 
         element('result-content').innerHTML = `
             <div class="cw-result-wrap" style="--house-accent:${escapeHtml(house.accent)}">
-                <article class="cw-result-report cw-insta-card ${isV2 ? 'is-v2-mode' : 'is-v1-mode'}">
-                    <!-- Instagram Header Bar -->
+                <article class="cw-result-report cw-bento-feed-card ${isV2 ? 'is-v2-mode' : 'is-v1-mode'}">
+                    <!-- 1. Instagram Story Style Header -->
                     <header class="cw-insta-header">
                         <div class="cw-insta-profile">
                             <div class="cw-insta-story-ring" style="--story-color:${escapeHtml(house.accent)}">
@@ -1222,7 +1224,7 @@
                                     <strong class="cw-insta-username">crewart_${escapeHtml(result.code.toLowerCase())}</strong>
                                     <span class="cw-insta-verified-badge" aria-label="공식 인증">✓</span>
                                 </div>
-                                <span class="cw-insta-location">${escapeHtml(house.name)} 기숙사 · 크레와트 사육소</span>
+                                <span class="cw-insta-location">${escapeHtml(house.name)} 기숙사 · 크레와트</span>
                             </div>
                         </div>
                         <div class="cw-result-version-switcher" role="group" aria-label="결과 모드 전환">
@@ -1235,8 +1237,8 @@
                         </div>
                     </header>
 
-                    <!-- Instagram Main Photo Canvas -->
-                    <section class="cw-result-identity cw-insta-media">
+                    <!-- 2. Hero Visual Canvas (Bento Hero Module) -->
+                    <section class="cw-result-identity cw-bento-hero-media">
                         <div class="cw-type-poster" data-final-code="${escapeHtml(result.code)}">
                             <span class="cw-visually-hidden">${escapeHtml(result.code)}</span>
                             <strong class="cw-result-code cw-result-code-back" aria-hidden="true">${resultCodeBackSlots}</strong>
@@ -1248,7 +1250,7 @@
                         </div>
                     </section>
 
-                    <!-- Instagram Quick Action Bar -->
+                    <!-- 3. Instagram Quick Action Bar -->
                     <div class="cw-insta-action-bar">
                         <div class="cw-insta-icons-left">
                             <button class="cw-insta-icon-btn" type="button" data-action="save-image" aria-label="결과 이미지 저장">
@@ -1258,29 +1260,27 @@
                                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
                             </button>
                         </div>
-                        <span class="cw-insta-house-pill" style="border-color:${escapeHtml(house.accent)}; color:${escapeHtml(house.accent)}">${escapeHtml(house.name)} 기숙사</span>
+                        <span class="cw-insta-house-badge" style="background:${escapeHtml(house.accent)}">${escapeHtml(house.name)} 기숙사</span>
                     </div>
 
-                    <!-- Instagram Caption & Feed Story -->
-                    <section class="cw-insta-caption-area">
-                        <div class="cw-insta-main-caption">
-                            <h1 class="cw-result-type-name" data-final-name="${escapeHtml(activeTitle)}">
-                                <strong class="cw-insta-caption-author">crewart_${escapeHtml(result.code.toLowerCase())}</strong>
-                                ${escapeHtml(activeTitle)}
-                            </h1>
-                        </div>
+                    <!-- 4. Main Feed Caption (Bento Headline) -->
+                    <section class="cw-bento-caption-section">
+                        <h1 class="cw-result-type-name" data-final-name="${escapeHtml(activeTitle)}">
+                            <strong class="cw-insta-caption-author">crewart_${escapeHtml(result.code.toLowerCase())}</strong>
+                            ${escapeHtml(activeTitle)}
+                        </h1>
                         ${isV2 && profile.subtitle ? `<p class="cw-result-subtitle">${escapeHtml(profile.subtitle)}</p>` : ''}
-                        ${isV2 && profile.summary ? `<div class="cw-result-summary-box"><p>${escapeHtml(profile.summary)}</p></div>` : ''}
+                        ${isV2 && profile.summary ? `<div class="cw-bento-card is-summary-card"><p>${escapeHtml(profile.summary)}</p></div>` : ''}
                     </section>
 
-                    <!-- Instagram Feed Content Cards -->
+                    <!-- 5. Modular Bento Grid Blocks (심층 피드 콘텐츠) -->
                     ${powerGridHtml}
                     ${matchGridHtml}
                     ${actionItemHtml}
                     ${detail}
                     ${renderHouseDeclaration()}
 
-                    <!-- Main Share Footer -->
+                    <!-- 6. Share Footer -->
                     <footer class="cw-report-footer">
                         <section class="cw-share-section" aria-label="결과 공유">
                             <button class="cw-share-action is-save" type="button" data-action="save-image">
