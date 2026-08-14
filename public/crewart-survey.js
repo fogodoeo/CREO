@@ -8,8 +8,6 @@
     const KAKAO_JS_KEY = 'db7ffc8d6b9b7601b792ed69be4658fc';
     const TYPE_CHARACTER_ROOT = 'assets/crewart-types/';
     const TYPE_CHARACTER_VERSION = '20260802-character-v1';
-    const RESULT_SCENE_ROOT = 'assets/crewart-result-scenes/';
-    const RESULT_SCENE_VERSION = '20260815-scenes-v1';
     const MEMBERSHIP_STORAGE_KEY = 'crewart_band_member_access_v1';
     const MEMBERSHIP_PHONE_STORAGE_KEY = 'crewart_band_member_phone_mask_v1';
     const LAST_RESULT_STORAGE_KEY = 'crewart_last_result_v2';
@@ -115,18 +113,6 @@
     function typeCharacterPath(code) {
         const normalized = String(code || '').toLowerCase();
         return `${TYPE_CHARACTER_ROOT}crewart-type-${normalized}.png?v=${TYPE_CHARACTER_VERSION}`;
-    }
-
-    function resultScenePath(scene) {
-        return `${RESULT_SCENE_ROOT}${scene}.webp?v=${RESULT_SCENE_VERSION}`;
-    }
-
-    function preloadResultScenes(steps) {
-        [...new Set(steps.map(step => step.visual).filter(Boolean))].forEach(scene => {
-            const image = new Image();
-            image.decoding = 'async';
-            image.src = resultScenePath(scene);
-        });
     }
 
     function maskPhone(phone) {
@@ -798,57 +784,11 @@
         return { median, position, comparison };
     }
 
-    function timingEntryLabel(entry) {
-        if (!entry) return '측정 정보 없음';
-        const question = questions.find(item => item.id === entry.questionId)
-            || Core.QUESTIONS.find(item => item.id === entry.questionId);
-        const label = question?.label || AXIS_REPORT_COPY[entry.axis]?.title || '선택 문항';
-        return `${label} · ${formatSeconds(entry.elapsedMs)}`;
-    }
-
-    function speedPositionCopy(position, hasBenchmark) {
-        if (!hasBenchmark) return '아직 전체 참여자 기준이 충분하지 않아 이번 응답 안에서의 선택 리듬만 제시합니다.';
-        if (position <= 35) return '전체 참여자보다 빠르게 첫 판단을 확정했습니다. 직감적인 선택 리듬이 비교적 선명합니다.';
-        if (position >= 65) return '전체 참여자보다 한 번 더 비교한 뒤 선택했습니다. 숙고하는 리듬이 비교적 선명합니다.';
-        return '전체 참여자 평균과 가까운 속도입니다. 직감과 확인 사이에서 비교적 균형 있게 선택했습니다.';
-    }
-
-    function buildResultReportSteps(profile, house) {
+    function renderUnifiedResult(profile, house) {
         const strengthStatement = profile.superpower || profile.summary || TYPE_READINGS[result.code] || '관찰한 내용을 자신만의 방식으로 정리해 다음 행동으로 연결합니다.';
         const bestMatchCode = profile.bestMatch?.mbti || '좋은 조합';
         const bestMatchTitle = profile.bestMatch?.title || '서로 다른 방식도 천천히 맞춰갈 수 있어요.';
-        const cautiousMatchCode = profile.worstMatch?.mbti || '다른 기준';
-        const cautiousMatchTitle = profile.worstMatch?.title || '서로의 판단 속도를 먼저 맞춰보세요.';
-        const steps = [
-            {
-                kicker: '나의 방식',
-                railTitle: '자연스럽게 잘하는 것',
-                title: '당신의 핵심 강점',
-                body: '',
-                note: profile.weakness ? `한 번 더 볼 것 · ${profile.weakness}` : '',
-                keywords: [result.code, house.name],
-                hook: { kind: 'strength', value: strengthStatement },
-                visual: 'personality'
-            },
-            {
-                kicker: '궁합',
-                railTitle: '편한 조합과 어려운 조합',
-                title: '당신과 가장 편안한 유형',
-                body: '',
-                note: '',
-                keywords: [`내 결과 ${result.code}`, `편안함 ${bestMatchCode}`, `조율 ${cautiousMatchCode}`],
-                hook: {
-                    kind: 'match',
-                    value: bestMatchCode,
-                    detail: bestMatchTitle,
-                    secondaryLabel: '호흡을 맞춰볼 유형',
-                    secondaryValue: cautiousMatchCode,
-                    secondaryDetail: cautiousMatchTitle
-                },
-                visual: 'compatibility'
-            }
-        ];
-
+        const averageResponseTime = timingStats?.averageMs > 0 ? formatSeconds(timingStats.averageMs) : '측정 전';
         const axisRows = result.axes.map(axisResult => {
             const copy = AXIS_REPORT_COPY[axisResult.axis];
             const first = axisResult.axis[0];
@@ -861,168 +801,65 @@
                 left: copy?.left || first,
                 right: copy?.right || second,
                 selected: firstSelected ? (copy?.left || first) : (copy?.right || second),
-                firstSelected,
-                position,
-                fillStart: Math.min(50, position),
-                fillWidth: Math.abs(position - 50)
+                position
             };
         });
-        const strongestAxis = axisRows.reduce((strongest, axis) => {
-            const strength = Math.round(Math.max(axis.position, 100 - axis.position));
-            return !strongest || strength > strongest.value
-                ? { value: strength, label: axis.selected }
-                : strongest;
-        }, null);
-        steps.push({
-            kicker: '성향 지표',
-            railTitle: '선택이 기운 방향',
-            title: '내 선택은 이쪽',
-            body: '',
-            note: '',
-            keywords: [],
-            axisRows,
-            axisScore: strongestAxis,
-            visual: 'axes',
-            kind: 'axes'
-        });
-
-        if (!hasDetailedAccess()) return steps;
-
-        const speed = resultSpeedPresentation();
-        if (speed) {
-            steps.push({
-                kicker: '응답 리듬',
-                railTitle: '결정하는 나의 속도',
-                title: timingStats.style.label,
-                body: speedPositionCopy(speed.position, cohortSummary.timingMedians.length > 0),
-                note: `${timingEntryLabel(timingStats.fastest)} · ${timingEntryLabel(timingStats.slowest)}`,
-                keywords: [`문항당 ${speed.median}`, speed.comparison],
-                visual: 'speed',
-                kind: 'metrics'
-            });
-        }
-
-        return steps;
-    }
-
-    function renderUnifiedResult(profile, house) {
-        const steps = buildResultReportSteps(profile, house);
-        const firstStep = steps[0];
-        const firstKeywords = firstStep.keywords || [];
-        const characterPath = typeCharacterPath(result.code);
-        const firstScenePath = resultScenePath(firstStep.visual);
-        preloadResultScenes(steps);
-        const stepMarkup = steps.map((step, index) => {
-            const hookMarkup = step.hook ? `
-                <div class="cw-depth-hook is-${escapeHtml(step.hook.kind)}">
-                    <div class="cw-depth-hook-primary">
-                        <strong>${escapeHtml(step.hook.value)}</strong>
-                        ${step.hook.detail ? `<span>${escapeHtml(step.hook.detail)}</span>` : ''}
-                    </div>
-                    ${step.hook.secondaryValue ? `
-                        <div class="cw-depth-hook-secondary">
-                            <small>${escapeHtml(step.hook.secondaryLabel)}</small>
-                            <strong>${escapeHtml(step.hook.secondaryValue)}</strong>
-                            ${step.hook.secondaryDetail ? `<span>${escapeHtml(step.hook.secondaryDetail)}</span>` : ''}
-                        </div>` : ''}
-                </div>` : '';
-            const axisScoreMarkup = step.axisScore ? `
-                <div class="cw-depth-axis-score" aria-label="가장 선명한 방향 ${escapeHtml(step.axisScore.label)} ${step.axisScore.value}%">
-                    <span>가장 선명한 방향</span>
-                    <strong>${step.axisScore.value}<small>%</small></strong>
-                    <em>${escapeHtml(step.axisScore.label)}</em>
-                </div>` : '';
-            const axisMarkup = step.axisRows ? `
-                <div class="cw-depth-axis-chart" aria-label="성향 축 방향표">
-                    ${step.axisRows.map((axis, axisIndex) => `
-                        <div class="cw-depth-axis-row${axis.firstSelected ? ' is-left' : ' is-right'}" role="img" aria-label="${escapeHtml(`${axis.title}: ${axis.selected}`)}" style="--axis-position:${axis.position}%;--axis-fill-start:${axis.fillStart}%;--axis-fill-width:${axis.fillWidth}%;--axis-delay:${axisIndex * 110}ms">
-                            <div class="cw-depth-axis-track" aria-hidden="true"><i></i><b></b></div>
-                            <div class="cw-depth-axis-ends" aria-hidden="true">
-                                <span class="${axis.firstSelected ? 'is-selected' : ''}">${escapeHtml(axis.left)}</span>
-                                <span class="${axis.firstSelected ? '' : 'is-selected'}">${escapeHtml(axis.right)}</span>
-                            </div>
-                        </div>`).join('')}
-                </div>` : '';
-            return `
-            <li class="cw-depth-step is-${escapeHtml(step.visual)}${step.hook ? ' has-hook' : ''}${index === 0 ? ' is-active' : ''}${step.kind === 'axes' ? ' is-axis-hold' : ''}" data-depth-step="${index}" style="--depth-index:${index}">
-                <section class="cw-depth-mobile-summary" aria-label="${escapeHtml(step.kicker)} 요약">
-                    <small>${escapeHtml(step.kicker)}</small>
-                    <div class="cw-depth-mobile-summary-art" aria-hidden="true">
-                        <span>${escapeHtml(result.code)}</span>
-                        <img src="${escapeHtml(resultScenePath(step.visual))}" width="600" height="900" alt="" loading="lazy" decoding="async">
-                    </div>
-                    <h2>${escapeHtml(step.railTitle)}</h2>
-                    ${(step.keywords || []).length ? `
-                        <div class="cw-depth-mobile-summary-facts">
-                            ${(step.keywords || []).map(keyword => `<span>${escapeHtml(keyword)}</span>`).join('')}
-                        </div>` : ''}
-                </section>
-                <article>
-                    <h3>${escapeHtml(step.title)}</h3>
-                    ${hookMarkup}
-                    ${step.body ? `<p>${escapeHtml(step.body)}</p>` : ''}
-                    ${axisScoreMarkup}
-                    ${axisMarkup}
-                    ${step.note ? `<footer>${escapeHtml(step.note)}</footer>` : ''}
-                </article>
-            </li>`;
-        }).join('');
-        const dotMarkup = steps.map((step, index) => `
-            <button type="button" class="cw-depth-dot${index === 0 ? ' is-active' : ''}" data-depth-target="${index}" aria-label="${escapeHtml(`${index + 1}. ${step.kicker}`)}"></button>`).join('');
+        const axisMarkup = axisRows.map(axis => `
+            <div class="cw-story-axis-row" data-axis-target="${axis.position}" role="img" aria-label="${escapeHtml(`${axis.title}: ${axis.selected}`)}">
+                <div class="cw-story-axis-labels"><span>${escapeHtml(axis.left)}</span><small>${escapeHtml(axis.title)}</small><span>${escapeHtml(axis.right)}</span></div>
+                <div class="cw-story-axis-track" aria-hidden="true"><i></i><b></b></div>
+            </div>`).join('');
 
         element('result-content').innerHTML = `
-            <div class="cw-depth-page" style="--house-accent:${escapeHtml(house.accent)}">
-                <header class="cw-depth-topbar">
-                    <button type="button" class="cw-depth-back" data-action="go-home" aria-label="홈으로 돌아가기">← <span>홈</span></button>
-                    <div><small>결과 리포트</small><strong>${escapeHtml(result.code)}</strong></div>
-                </header>
+            <div class="cw-story-page" style="--house-accent:${escapeHtml(house.accent)}">
+                <section class="cw-story-track" data-result-story aria-label="스크롤로 확인하는 결과 리포트">
+                    <div class="cw-story-sticky">
+                        <header class="cw-story-topbar">
+                            <button type="button" data-action="go-home" aria-label="홈으로 돌아가기">← <span>홈</span></button>
+                            <div><small>결과 리포트</small><strong>${escapeHtml(result.code)}</strong></div>
+                        </header>
+                        <div class="cw-story-progress" aria-hidden="true"><i data-story-progress></i></div>
+                        <div class="cw-story-stage" aria-live="polite">
+                            <section class="cw-story-scene is-axis" data-story-scene="axis">
+                                <div class="cw-story-heading"><small>당신의 성향 축</small><h1>선택의 방향을 읽는 중</h1></div>
+                                <div class="cw-story-axis-chart">${axisMarkup}</div>
+                                <div class="cw-story-mbti"><span>결국, 당신의 유형은</span><strong>${escapeHtml(result.code)}</strong><em>${escapeHtml(profile.title || result.typeName)}</em></div>
+                            </section>
 
-                <section class="cw-depth-intro" aria-labelledby="cw-depth-title">
-                    <div class="cw-depth-intro-visual" aria-hidden="true">
-                        <span>${escapeHtml(result.code)}</span>
-                        <img src="${escapeHtml(characterPath)}" width="360" height="520" alt="" loading="eager" decoding="async">
+                            <section class="cw-story-scene is-profile" data-story-scene="profile">
+                                <article class="cw-story-card is-strength">
+                                    <small>당신의 핵심 강점</small>
+                                    <strong>${escapeHtml(strengthStatement)}</strong>
+                                </article>
+                                <article class="cw-story-card is-match">
+                                    <div><small>가장 편안한 유형</small><strong>${escapeHtml(bestMatchCode)}</strong></div>
+                                    <p>${escapeHtml(bestMatchTitle)}</p>
+                                </article>
+                            </section>
+
+                            <section class="cw-story-scene is-time" data-story-scene="time">
+                                <small>평균 문항 시간</small>
+                                <strong>${escapeHtml(averageResponseTime)}</strong>
+                                <span>${timingStats?.validCount > 0 ? `${timingStats.validCount}개 문항 기준` : '테스트 완료 후 기록됩니다.'}</span>
+                            </section>
+
+                            <section class="cw-story-scene is-house" data-story-scene="house">
+                                <div class="cw-story-house-line"><span>당신의 기숙사는</span><strong>${escapeHtml(house.name)}</strong><span>입니다.</span></div>
+                                <div class="cw-story-final-actions">
+                                    <button type="button" class="cw-story-kakao" data-action="share">카카오톡 공유하기</button>
+                                    <button type="button" class="cw-story-save" data-action="save-image">결과 이미지 저장</button>
+                                    ${!hasDetailedAccess() && BAND_INTEGRATION_ENABLED && bandAuthConfigured ? '<button type="button" class="cw-story-unlock" data-action="unlock-detail">회원 상세 보기</button>' : ''}
+                                </div>
+                                <small class="cw-story-credit">© 2026 CREO. All rights reserved.</small>
+                            </section>
+                        </div>
+                        <div class="cw-story-cue" aria-hidden="true"><span>계속 스크롤</span><i>↓</i></div>
                     </div>
-                    <div class="cw-depth-intro-copy">
-                        <small>${escapeHtml(house.name)} 기숙사</small>
-                        <h1 id="cw-depth-title">${escapeHtml(profile.title || result.typeName)}</h1>
-                        <p>${escapeHtml(profile.subtitle || '선택 속에 반복해서 나타난 당신만의 돌봄 방식을 살펴봅니다.')}</p>
-                    </div>
-                    <button type="button" class="cw-depth-scroll-cue" data-depth-start><span>스크롤해서 읽기</span><i aria-hidden="true">↓</i></button>
                 </section>
-
-                <section class="cw-depth-scrolly" data-depth-scrolly aria-label="결과 리포트 ${steps.length}단계">
-                    <aside class="cw-depth-stage" aria-live="polite">
-                        <div class="cw-depth-stage-progress"><i data-depth-progress></i></div>
-                        <div class="cw-depth-stage-head">
-                            <nav class="cw-depth-dots" aria-label="결과 리포트 단계">${dotMarkup}</nav>
-                        </div>
-                        <div class="cw-depth-stage-art" aria-hidden="true">
-                            <span>${escapeHtml(result.code)}</span>
-                            <img src="${escapeHtml(firstScenePath)}" width="600" height="900" alt="" data-depth-visual>
-                        </div>
-                        <div class="cw-depth-stage-content" data-depth-content>
-                            <small data-depth-kicker>${escapeHtml(firstStep.kicker)}</small>
-                            <h2 data-depth-title>${escapeHtml(firstStep.railTitle)}</h2>
-                            <span class="cw-depth-keyword-label" data-depth-keyword-label>핵심 키워드</span>
-                            <div class="cw-depth-stage-facts" data-depth-facts>${firstKeywords.map(keyword => `<span>${escapeHtml(keyword)}</span>`).join('')}</div>
-                        </div>
-                    </aside>
-                    <ol class="cw-depth-steps">${stepMarkup}</ol>
-                </section>
-
-                <footer class="cw-depth-outro">
-                    <div class="cw-depth-house"><span>당신의 기숙사는</span><strong>${escapeHtml(house.name)}</strong><span>입니다.</span></div>
-                    <div class="cw-depth-actions">
-                        ${!hasDetailedAccess() && BAND_INTEGRATION_ENABLED && bandAuthConfigured ? '<button type="button" data-action="unlock-detail">회원 상세 보기</button>' : ''}
-                        <button type="button" data-action="save-image">결과 이미지 저장</button>
-                        <button type="button" data-action="share">카카오톡 공유</button>
-                    </div>
-                    <small>© 2026 CREO. All rights reserved.</small>
-                </footer>
             </div>`;
 
         bindRenderedResultActions();
-        resultExperienceCleanup = setupResultScrollytelling(steps);
+        resultExperienceCleanup = setupResultStory();
     }
 
     function bindRenderedResultActions() {
@@ -1033,90 +870,73 @@
         element('result-content').querySelector('[data-action="open-band"]')?.addEventListener('click', openBandTarget);
     }
 
-    function setupResultScrollytelling(steps) {
-        const root = element('result-content').querySelector('[data-depth-scrolly]');
-        const stage = root?.querySelector('.cw-depth-stage');
-        const stepNodes = [...(root?.querySelectorAll('[data-depth-step]') || [])];
-        const dots = [...(root?.querySelectorAll('[data-depth-target]') || [])];
-        const startButton = element('result-content').querySelector('[data-depth-start]');
-        if (!root || !stage || !stepNodes.length) return () => { };
-
-        const kickerNode = stage.querySelector('[data-depth-kicker]');
-        const titleNode = stage.querySelector('[data-depth-title]');
-        const factsNode = stage.querySelector('[data-depth-facts]');
-        const keywordLabelNode = stage.querySelector('[data-depth-keyword-label]');
-        const contentNode = stage.querySelector('[data-depth-content]');
-        const visualNode = stage.querySelector('[data-depth-visual]');
-        const progressNode = stage.querySelector('[data-depth-progress]');
-        let activeIndex = -1;
+    function setupResultStory() {
+        const root = element('result-content').querySelector('[data-result-story]');
+        if (!root) return () => { };
+        const progressNode = root.querySelector('[data-story-progress]');
+        const axisRows = [...root.querySelectorAll('[data-axis-target]')];
+        const scenes = Object.fromEntries([...root.querySelectorAll('[data-story-scene]')].map(node => [node.dataset.storyScene, node]));
+        const clamp = value => Math.max(0, Math.min(1, value));
+        const segment = (value, start, end) => clamp((value - start) / (end - start));
         let frame = 0;
-
-        const activate = index => {
-            const nextIndex = Math.max(0, Math.min(steps.length - 1, index));
-            if (nextIndex === activeIndex) return;
-            activeIndex = nextIndex;
-            const step = steps[nextIndex];
-            kickerNode.textContent = step.kicker;
-            titleNode.textContent = step.railTitle;
-            const keywords = step.keywords || [];
-            factsNode.replaceChildren(...keywords.map(keyword => {
-                const node = document.createElement('span');
-                node.textContent = keyword;
-                return node;
-            }));
-            factsNode.hidden = !keywords.length;
-            if (keywordLabelNode) keywordLabelNode.hidden = !keywords.length;
-            visualNode.src = resultScenePath(step.visual);
-            visualNode.classList.remove('is-entering');
-            void visualNode.offsetWidth;
-            visualNode.classList.add('is-entering');
-            contentNode.dataset.kind = step.kind || 'story';
-            contentNode.classList.remove('is-entering');
-            void contentNode.offsetWidth;
-            contentNode.classList.add('is-entering');
-            stepNodes.forEach((node, nodeIndex) => node.classList.toggle('is-active', nodeIndex === nextIndex));
-            dots.forEach((dot, dotIndex) => {
-                dot.classList.toggle('is-active', dotIndex === nextIndex);
-                if (dotIndex === nextIndex) dot.setAttribute('aria-current', 'step');
-                else dot.removeAttribute('aria-current');
-            });
-        };
+        let activeScene = '';
 
         const sync = () => {
             frame = 0;
-            const focusLine = window.innerHeight * 0.56;
-            let nearestIndex = 0;
-            let nearestDistance = Number.POSITIVE_INFINITY;
-            stepNodes.forEach((node, index) => {
-                const rect = node.getBoundingClientRect();
-                const distance = Math.abs(rect.top + rect.height * 0.45 - focusLine);
-                if (distance < nearestDistance) {
-                    nearestDistance = distance;
-                    nearestIndex = index;
-                }
-            });
-            activate(nearestIndex);
-            const rootRect = root.getBoundingClientRect();
-            const scrollRange = Math.max(1, rootRect.height - window.innerHeight);
-            const progress = Math.max(0, Math.min(1, -rootRect.top / scrollRange));
+            const rect = root.getBoundingClientRect();
+            const range = Math.max(1, root.offsetHeight - window.innerHeight);
+            const progress = clamp(-rect.top / range);
+            const axisProgress = segment(progress, .015, .19);
+            const mbtiProgress = segment(progress, .17, .29);
+            const profileIn = segment(progress, .33, .39);
+            const profileOut = 1 - segment(progress, .61, .67);
+            const timeIn = segment(progress, .62, .69);
+            const timeOut = 1 - segment(progress, .76, .82);
+            const houseProgress = segment(progress, .77, .91);
+            const shareProgress = segment(progress, .9, .985);
+            const axisOpacity = 1 - segment(progress, .34, .4);
+            const profileOpacity = Math.min(profileIn, profileOut);
+            const timeOpacity = Math.min(timeIn, timeOut);
+            const houseOpacity = segment(progress, .78, .84);
+            const strengthProgress = segment(progress, .34, .43);
+            const matchProgress = segment(progress, .44, .55);
+
+            root.style.setProperty('--story-progress', progress);
+            root.style.setProperty('--axis-progress', axisProgress);
+            root.style.setProperty('--mbti-progress', mbtiProgress);
+            root.style.setProperty('--axis-opacity', axisOpacity);
+            root.style.setProperty('--profile-opacity', profileOpacity);
+            root.style.setProperty('--strength-progress', strengthProgress);
+            root.style.setProperty('--match-progress', matchProgress);
+            root.style.setProperty('--time-opacity', timeOpacity);
+            root.style.setProperty('--time-progress', timeIn);
+            root.style.setProperty('--house-opacity', houseOpacity);
+            root.style.setProperty('--house-progress', houseProgress);
+            root.style.setProperty('--share-progress', shareProgress);
             if (progressNode) progressNode.style.transform = `scaleX(${progress})`;
+
+            axisRows.forEach(row => {
+                const target = Number(row.dataset.axisTarget) || 50;
+                const current = 50 + (target - 50) * axisProgress;
+                row.style.setProperty('--axis-current', `${current}%`);
+                row.style.setProperty('--axis-fill-left', `${Math.min(50, current)}%`);
+                row.style.setProperty('--axis-fill-width', `${Math.abs(current - 50)}%`);
+            });
+
+            const nextScene = progress < .38 ? 'axis' : progress < .66 ? 'profile' : progress < .81 ? 'time' : 'house';
+            if (nextScene !== activeScene) {
+                activeScene = nextScene;
+                Object.entries(scenes).forEach(([name, node]) => node.setAttribute('aria-hidden', String(name !== activeScene)));
+            }
+            root.classList.toggle('is-share-ready', shareProgress >= .98);
         };
         const scheduleSync = () => {
             if (!frame) frame = requestAnimationFrame(sync);
         };
-        const observer = typeof IntersectionObserver === 'function'
-            ? new IntersectionObserver(scheduleSync, { rootMargin: '-30% 0px -40%', threshold: [0, 0.01, 0.5] })
-            : null;
-        stepNodes.forEach(node => observer?.observe(node));
-        dots.forEach(dot => dot.addEventListener('click', () => stepNodes[Number(dot.dataset.depthTarget)]?.scrollIntoView({ behavior: 'smooth', block: 'center' })));
-        startButton?.addEventListener('click', () => stepNodes[0]?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
         window.addEventListener('scroll', scheduleSync, { passive: true });
         window.addEventListener('resize', scheduleSync);
-        activate(0);
-        scheduleSync();
-
+        sync();
         return () => {
-            observer?.disconnect();
             window.removeEventListener('scroll', scheduleSync);
             window.removeEventListener('resize', scheduleSync);
             if (frame) cancelAnimationFrame(frame);
