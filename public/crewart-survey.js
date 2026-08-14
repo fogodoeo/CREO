@@ -944,8 +944,11 @@
                         </div>`).join('')}
                 </div>` : '';
             return `
-            <li class="cw-depth-step is-${escapeHtml(step.visual)}${step.hook ? ' has-hook' : ''}${index === 0 ? ' is-active' : ''}${step.kind === 'axes' ? ' is-axis-hold' : ''}" data-depth-step="${index}">
+            <li class="cw-depth-step is-${escapeHtml(step.visual)}${step.hook ? ' has-hook' : ''}${index === 0 ? ' is-active' : ''}${step.kind === 'axes' ? ' is-axis-hold' : ''}" data-depth-step="${index}" style="--depth-index:${index}">
                 <article>
+                    <div class="cw-depth-card-visual" aria-hidden="true">
+                        <img src="${escapeHtml(resultScenePath(step.visual))}" width="600" height="900" alt="" loading="lazy" decoding="async">
+                    </div>
                     <h3>${escapeHtml(step.title)}</h3>
                     ${hookMarkup}
                     ${step.body ? `<p>${escapeHtml(step.body)}</p>` : ''}
