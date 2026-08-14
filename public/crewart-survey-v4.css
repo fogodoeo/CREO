@@ -267,13 +267,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-result-section, .cw-report-house { overflow: hidden; border: 1px solid #dfe1dc; border-radius: 12px; background: var(--cw-surface-soft); box-shadow: none; }
 .cw-detail-gate, .cw-share-section { border-radius: 0; background: transparent; box-shadow: none; }
 .cw-report-section-head { padding: 0; border: 0; }
-.cw-report-section-toggle { display: grid; grid-template-columns: 22px 1fr auto; align-items: center; gap: 7px; width: 100%; min-height: 44px; padding: 9px 10px 5px; border: 0; border-radius: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; transition: background .16s ease; }
-.cw-report-section-toggle > span:first-child { color: #979b97; font-size: 8px; font-weight: 730; font-variant-numeric: tabular-nums; }
-.cw-report-section-toggle > span:nth-child(2) { display: block; }
-.cw-report-section-toggle small { color: var(--cw-ink); font-size: 9px; font-weight: 760; letter-spacing: .1em; }
-.cw-report-section-action { display: inline-flex; align-items: center; justify-content: flex-end; gap: 5px; color: var(--cw-ink); }
-.cw-report-section-action em { color: var(--cw-muted); font-size: 8px; font-style: normal; font-weight: 700; }
-.cw-report-section-toggle i { display: grid; width: 20px; height: 20px; place-items: center; border: 1px solid #c9ccc7; border-radius: 50%; color: var(--cw-ink); font-size: 13px; font-style: normal; font-weight: 650; line-height: 1; }
+.cw-report-section-toggle { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; width: 100%; min-height: 62px; padding: 12px 14px; border: 0; border-radius: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; transition: background .16s ease; }
+.cw-report-section-toggle:hover { background: rgba(32, 36, 33, .035); }
+.cw-report-section-title { color: var(--cw-ink); font-size: 16px; font-weight: 800; line-height: 1.25; letter-spacing: -.02em; }
+.cw-report-section-action { display: inline-flex; align-items: center; justify-content: flex-end; gap: 9px; color: var(--cw-ink); }
+.cw-report-section-action em { color: #555c57; font-size: 14px; font-style: normal; font-weight: 800; white-space: nowrap; }
+.cw-report-section-toggle i { display: grid; width: 32px; height: 32px; place-items: center; border: 1.5px solid #aeb4ae; border-radius: 50%; color: var(--cw-ink); font-size: 22px; font-style: normal; font-weight: 600; line-height: 1; }
 .cw-result-section.is-expanded, .cw-report-house.is-expanded { border-color: #b9cbc1; background: #f4f8f5; }
 .cw-result-section.is-expanded .cw-report-section-toggle, .cw-report-house.is-expanded .cw-report-section-toggle { background: transparent; }
 .cw-report-section-toggle:focus-visible { outline: 2px solid var(--cw-green); outline-offset: 6px; }
@@ -314,14 +313,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-report-house { margin-top: 18px; padding: 0 10px 10px; }
 .cw-report-house .cw-report-section-head { padding-bottom: 0; border-top: 0; border-bottom: 0; }
 .cw-report-house .cw-report-section-head { margin: 0 -10px; }
-.cw-house-assignment { display: flex; align-items: center; gap: 11px; margin-top: 0; padding: 5px 0 0; border: 0; border-radius: 0; background: transparent; }
-.cw-house-assignment > b { display: grid; flex: 0 0 auto; width: 38px; height: 38px; place-items: center; border: 1px solid var(--house-accent, var(--cw-green)); border-radius: 50%; color: var(--house-accent, var(--cw-green)); font-size: 15px; font-weight: 800; }
-.cw-house-assignment > div { display: grid; gap: 2px; }
-.cw-house-assignment small { color: var(--cw-muted); font-size: 7px; font-weight: 730; letter-spacing: .13em; }
-.cw-house-assignment strong { min-width: 84px; overflow: hidden; color: var(--cw-ink); font-size: 16px; font-weight: 800; letter-spacing: .08em; }
-.cw-house-assignment strong > span { display: block; }
-.cw-house-assignment strong > span.is-house-rolling { animation: cw-house-roll .13s ease-out both; }
-.cw-house-assignment strong > span.is-settled { animation: cw-code-settle .34s cubic-bezier(.2,.8,.2,1) both; }
+.cw-house-declaration { margin-top: 22px; padding: clamp(30px, 7vw, 48px) 16px; border-top: 3px solid var(--house-accent, var(--cw-green)); border-bottom: 3px solid var(--house-accent, var(--cw-green)); background: color-mix(in srgb, var(--house-accent, var(--cw-green)) 5%, #fff); text-align: center; }
+.cw-house-declaration p { margin: 0; color: var(--cw-ink); font-size: clamp(24px, 5vw, 38px); font-weight: 850; line-height: 1.35; letter-spacing: -.04em; word-break: keep-all; }
+.cw-house-declaration strong { display: inline-block; min-width: 2.8em; margin: 0 .12em; color: var(--house-accent, var(--cw-green)); font-size: clamp(48px, 12vw, 82px); font-weight: 900; line-height: 1; letter-spacing: .06em; vertical-align: -.08em; }
+.cw-house-declaration strong.is-house-rolling { animation: cw-house-roll .13s ease-out both; }
+.cw-house-declaration strong.is-settled { animation: cw-code-settle .34s cubic-bezier(.2,.8,.2,1) both; }
 
 .cw-report-disclosure { margin: 4px 0 9px; padding: 13px 6px; border: 0; border-top: 1px solid var(--cw-line); border-bottom: 1px solid var(--cw-line); border-radius: 0; background: transparent; animation: cw-disclosure-in .2s ease both; }
 .cw-report-disclosure[hidden] { display: none; }
@@ -505,16 +501,16 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 @media (max-width: 420px) {
     .cw-result { padding-right: 9px; padding-left: 9px; }
     .cw-result-report { padding: 11px; }
-    .cw-report-section-toggle > span:first-child { font-size: 9.5px; }
-    .cw-report-section-toggle small { font-size: 10.5px; }
-    .cw-report-section-action em { font-size: 9.5px; }
+    .cw-report-section-toggle { min-height: 64px; padding: 12px; }
+    .cw-report-section-title { font-size: 16px; }
+    .cw-report-section-action em { font-size: 15px; }
+    .cw-report-section-toggle i { width: 34px; height: 34px; font-size: 23px; }
     .cw-axis-detail header h3 { font-size: 12px; }
         .cw-axis-pole strong { font-size: 13.5px; transform: translateY(-2px); }
     .cw-axis-meanings, .cw-scale-labels { font-size: 9.5px; }
     .cw-speed-head strong { font-size: 16px; }
     .cw-speed-head span { font-size: 9.5px; }
-    .cw-house-assignment small { font-size: 8.5px; }
-    .cw-house-assignment strong { font-size: 17px; }
+    .cw-house-declaration { padding-right: 10px; padding-left: 10px; }
     .cw-axis-insight header strong, .cw-speed-disclosure header strong, .cw-house-disclosure > strong { font-size: 14px; }
     .cw-axis-insight header span, .cw-speed-disclosure header span { font-size: 10.5px; }
     .cw-axis-insight p, .cw-speed-disclosure p, .cw-house-disclosure p, .cw-report-disclosure .cw-detail-lead { font-size: 11.5px; }
@@ -645,11 +641,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-speed-scenes span { color: #353b37; font-size: 12px; font-weight: 700; line-height: 1.45; word-break: keep-all; }
 .cw-speed-reading > footer { display: flex; justify-content: space-between; gap: 10px; margin-top: 13px; padding-top: 10px; border-top: 1px solid #e1e3df; color: #7b817c; font-size: 10px; }
 
-/* 03 · 기숙사는 측정표 대신 배정 카드와 세계관 설명으로 구분합니다. */
-.cw-house-assignment { margin-top: 5px; padding: 13px 14px; border: 1px solid #dfe2dd; border-radius: 10px; background: var(--cw-surface-soft); }
-.cw-house-assignment > b { width: 44px; height: 44px; border-width: 1.5px; font-size: 17px; }
-.cw-house-assignment small { color: #737a74; font-size: 9px; }
-.cw-house-assignment strong { font-size: 19px; letter-spacing: .06em; }
+/* 기숙사 상세 설명은 결과 하단의 배정 선언과 분리합니다. */
 .cw-house-reading > strong { display: block; color: var(--house-accent, var(--cw-ink)); font-size: 17px; font-weight: 800; line-height: 1.4; letter-spacing: -.025em; word-break: keep-all; }
 .cw-house-reading > p { margin: 8px 0 0; color: #444b46; font-size: 15px; font-weight: 500; line-height: 1.76; letter-spacing: -.015em; word-break: keep-all; }
 .cw-house-reading > footer { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }

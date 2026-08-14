@@ -563,7 +563,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /KAKAO_JS_KEY/);
     assert.match(script, /const SURVEY_URL = 'https:\/\/creok\.onrender\.com\/crewart-survey\.html'/);
     assert.doesNotMatch(script, /const SURVEY_URL = new URL\([^\n]*document\.baseURI/);
-    assert.match(html, /crewart-survey\.js\?v=20260814-survey-v2-taplock/);
+    assert.match(html, /crewart-survey\.js\?v=20260814-survey-clean-result/);
     assert.match(script, /Kakao\.Share\.uploadImage/);
     assert.match(script, /Kakao\.Share\.sendDefault/);
     assert.match(script, /function sharePreparedNativeResult/);
@@ -588,7 +588,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /cw-result-code cw-result-code-front/);
     assert.match(script, /class="cw-type-poster"/);
     assert.match(html, /crewart-survey-core\.js\?v=20260814-survey-v2-default-lock3s/);
-    assert.match(html, /crewart-survey-v4\.css\?v=20260814-survey-white-start/);
+    assert.match(html, /crewart-survey-v4\.css\?v=20260814-survey-clean-result/);
     assert.match(html, /id="start-button"[^>]*>[\s\S]*시작하기/);
     assert.match(html, /id="home-retest"[^>]*>다시 시작/);
     assert.doesNotMatch(html, /start-button-v2|home-retest-v1|Ver 1 시작|Ver 2 시작/);
@@ -668,9 +668,10 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /class="cw-axis-meanings"/);
     assert.match(script, /data-pole-copy="left"/);
     assert.match(script, /data-report-toggle data-report-label=/);
-    assert.match(script, /data-report-action>자세히/);
-    assert.match(script, /action\.textContent = opening \? '접기' : '자세히'/);
-    assert.doesNotMatch(script, /<strong>\$\{escapeHtml\(korean\)\}<\/strong>/);
+    assert.match(script, /data-report-action>자세히 보기/);
+    assert.match(script, /action\.textContent = opening \? '접기' : '자세히 보기'/);
+    assert.match(script, /class="cw-report-section-title">\$\{escapeHtml\(korean\)\}<\/strong>/);
+    assert.doesNotMatch(script, /TRAIT AXES|RESPONSE PAC(?:E|ING)|HOUSE ASSIGNMENT|ASSIGNED HOUSE|TYPE CHARACTER|MEMBER ACCESS/);
     assert.match(script, /'axes-report-detail'/);
     assert.match(script, /'speed-report-detail'/);
     assert.match(script, /'house-report-detail'/);
@@ -678,7 +679,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /<div class="cw-axis-detail-list">\$\{axisCards\}<\/div>\s*<div class="cw-report-disclosure cw-type-reading-wrap" id="axes-report-detail" hidden>\$\{renderTypeReading\(\)\}<\/div>/);
     assert.match(script, /function renderAxisGraph\(axisResult\)/);
     assert.match(script, /<div class="cw-speed-summary">[\s\S]*id="speed-report-detail" hidden>/);
-    assert.match(script, /<div class="cw-house-assignment">[\s\S]*id="house-report-detail" hidden>/);
+    assert.match(script, /function renderHouseDeclaration\(\)[\s\S]*class="cw-house-declaration"[\s\S]*당신의 기숙사는[\s\S]*입니다\./);
+    assert.match(script, /\$\{detail\}\s*\$\{renderHouseDeclaration\(\)\}/);
     assert.doesNotMatch(script, /내 선택에서 보인 모습|주된 방향 ·|함께 나타난 방향 ·/);
     assert.doesNotMatch(script, /function selectedAxisEvidence\(axisResult\)|axisEvidence:\s*Object\.fromEntries|resultAxisEvidence/);
     assert.match(script, /const HOUSE_READINGS = Object\.freeze\(\{/);
@@ -698,7 +700,11 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(css, /\.cw-speed-reading > p\s*\{[^}]*font-size:\s*15px[^}]*line-height:\s*1\.72/);
     assert.match(css, /\.cw-report-house\s*\{[^}]*margin-top:\s*18px/);
     assert.match(css, /\.cw-report-house \.cw-report-section-head\s*\{[^}]*border-bottom:\s*0/);
-    assert.match(css, /\.cw-house-assignment\s*\{[^}]*border:\s*1px solid[^}]*background:\s*var\(--cw-surface-soft\)/);
+    assert.doesNotMatch(css, /\.cw-house-assignment/);
+    assert.match(css, /\.cw-house-declaration\s*\{[^}]*border-top:\s*3px solid[^}]*text-align:\s*center/);
+    assert.match(css, /\.cw-house-declaration strong\s*\{[^}]*font-size:\s*clamp\(48px, 12vw, 82px\)/);
+    assert.match(css, /\.cw-report-section-action em\s*\{[^}]*font-size:\s*14px[^}]*font-weight:\s*800/);
+    assert.match(css, /\.cw-report-section-toggle i\s*\{[^}]*width:\s*32px[^}]*height:\s*32px[^}]*font-size:\s*22px/);
     assert.match(css, /\.cw-house-reading > p\s*\{[^}]*font-size:\s*15px[^}]*line-height:\s*1\.76/);
     assert.match(css, /\.cw-report-disclosure\[hidden\]\s*\{[^}]*display:\s*none/);
     assert.match(script, /data-axis-result data-final-pole=/);

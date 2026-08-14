@@ -835,13 +835,12 @@
         return true;
     }
 
-    function renderReportSectionHead(index, english, korean, controls) {
+    function renderReportSectionHead(korean, controls) {
         return `
             <header class="cw-report-section-head">
                 <button class="cw-report-section-toggle" type="button" data-report-toggle data-report-label="${escapeHtml(korean)}" aria-label="${escapeHtml(`${korean} 자세히 보기`)}" aria-expanded="false" aria-controls="${escapeHtml(controls)}">
-                    <span>${escapeHtml(index)}</span>
-                    <span><small>${escapeHtml(english)}</small></span>
-                    <span class="cw-report-section-action"><em data-report-action>자세히</em><i aria-hidden="true">＋</i></span>
+                    <strong class="cw-report-section-title">${escapeHtml(korean)}</strong>
+                    <span class="cw-report-section-action"><em data-report-action>자세히 보기</em><i aria-hidden="true">＋</i></span>
                 </button>
             </header>`;
     }
@@ -891,7 +890,7 @@
         const { median, position, comparison } = presentation;
         return `
             <section class="cw-result-section cw-speed-card">
-                ${renderReportSectionHead('02', 'RESPONSE PACING', '응답 리듬', 'speed-report-detail')}
+                ${renderReportSectionHead('응답 리듬', 'speed-report-detail')}
                 <div class="cw-speed-summary">
                     <header class="cw-speed-head">
                         <strong data-measure-speed data-final-text="문항당 ${escapeHtml(median)}">문항당 ${escapeHtml(median)}</strong>
@@ -959,7 +958,7 @@
         const axisCards = result.axes.map(axisResult => renderAxisGraph(axisResult)).join('');
         return `
             <section class="cw-result-section cw-member-detail">
-                ${renderReportSectionHead('01', 'TRAIT AXES', '성향 지표', 'axes-report-detail')}
+                ${renderReportSectionHead('성향 지표', 'axes-report-detail')}
                 <div class="cw-axis-detail-list">${axisCards}</div>
                 <div class="cw-report-disclosure cw-type-reading-wrap" id="axes-report-detail" hidden>${renderTypeReading()}</div>
             </section>`;
@@ -973,11 +972,7 @@
         const tfCopy = tfAxis?.dominant === 'T' ? AXIS_REPORT_COPY.TF.left : AXIS_REPORT_COPY.TF.right;
         return `
             <section class="cw-report-house" style="--house-accent:${escapeHtml(house.accent)}">
-                ${renderReportSectionHead('03', 'HOUSE ASSIGNMENT', '기숙사', 'house-report-detail')}
-                <div class="cw-house-assignment">
-                    <b aria-hidden="true">${escapeHtml(house.seal)}</b>
-                    <div><small>ASSIGNED HOUSE</small><strong aria-label="${escapeHtml(house.name)}"><span data-measure-house data-final-text="${escapeHtml(house.name)}">${escapeHtml(house.name)}</span></strong></div>
-                </div>
+                ${renderReportSectionHead('기숙사 이야기', 'house-report-detail')}
                 <div class="cw-report-disclosure cw-house-disclosure" id="house-report-detail" hidden>
                     <article class="cw-house-reading">
                         <strong>${escapeHtml(HOUSE_REPORT_COPY[assignedHouseKey] || '')}</strong>
@@ -991,6 +986,14 @@
             </section>`;
     }
 
+    function renderHouseDeclaration() {
+        const house = Core.HOUSE_META[assignedHouseKey];
+        return `
+            <section class="cw-house-declaration" style="--house-accent:${escapeHtml(house.accent)}" aria-label="${escapeHtml(`당신의 기숙사는 ${house.name} 입니다.`)}">
+                <p>당신의 기숙사는 <strong data-measure-house data-final-text="${escapeHtml(house.name)}">${escapeHtml(house.name)}</strong> 입니다.</p>
+            </section>`;
+    }
+
     function renderLockedDetail() {
         const configured = BAND_INTEGRATION_ENABLED && bandAuthConfigured;
         const label = configured ? '회원 확인' : '확인 준비 중';
@@ -1000,7 +1003,6 @@
                 <div class="cw-detail-preview" aria-hidden="true" inert>${renderMemberDetail()}${renderSpeedCard()}${renderHouseCard()}</div>
                 <div class="cw-detail-shade" aria-hidden="true"></div>
                 <div class="cw-detail-unlock">
-                    <small>MEMBER ACCESS</small>
                     <h2>상세 결과 잠김</h2>
                     <button class="cw-band-cta" type="button" data-action="unlock-detail" ${configured ? '' : 'disabled'}><span>${escapeHtml(label)}</span><b aria-hidden="true">→</b></button>
                     <small class="cw-lock-status">${escapeHtml(status)}</small>
@@ -1149,7 +1151,7 @@
         const icon = button.querySelector('i');
         if (icon) icon.textContent = opening ? '−' : '＋';
         const action = button.querySelector('[data-report-action]');
-        if (action) action.textContent = opening ? '접기' : '자세히';
+        if (action) action.textContent = opening ? '접기' : '자세히 보기';
         button.setAttribute('aria-label', `${button.dataset.reportLabel || ''} ${opening ? '접기' : '자세히 보기'}`.trim());
         button.closest('.cw-result-section, .cw-report-house')?.classList.toggle('is-expanded', opening);
     }
@@ -1179,7 +1181,7 @@
                             <span class="cw-visually-hidden">${escapeHtml(result.code)}</span>
                             <strong class="cw-result-code cw-result-code-back" aria-hidden="true">${resultCodeBackSlots}</strong>
                             <figure class="cw-character-reveal ${characterState}" data-character-reveal>
-                                <div class="cw-character-placeholder" aria-hidden="true"><span>?</span><small>TYPE CHARACTER</small></div>
+                                <div class="cw-character-placeholder" aria-hidden="true"><span>?</span></div>
                                 <img src="${escapeHtml(characterPath)}" width="360" height="520" alt="${escapeHtml(`${result.code} ${result.typeName} 아기 크레 캐릭터`)}" loading="eager" decoding="async">
                             </figure>
                             <strong class="cw-result-code cw-result-code-front" aria-hidden="true">${resultCodeFrontSlots}</strong>
@@ -1187,6 +1189,7 @@
                         <h1 class="cw-result-type-name" data-final-name="${escapeHtml(result.typeName)}">${escapeHtml(result.typeName)}</h1>
                     </section>
                     ${detail}
+                    ${renderHouseDeclaration()}
                     <footer class="cw-report-footer">
                         <section class="cw-share-section" aria-label="결과 공유">
                             <button class="cw-share-action is-save" type="button" data-action="save-image">
@@ -1671,18 +1674,10 @@
         context.fill();
     }
 
-    function drawShareSectionLabel(context, number, english, korean, x, y, width, font, drawLine = true) {
-        context.fillStyle = '#989d98';
-        context.font = `700 15px ${font}`;
-        context.fillText(number, x, y);
-        context.fillStyle = '#707570';
-        context.font = `700 13px ${font}`;
-        context.fillText(english, x + 38, y);
+    function drawShareSectionLabel(context, korean, x, y, width, font, drawLine = true) {
         context.fillStyle = '#202421';
         context.font = `800 24px ${font}`;
-        context.textAlign = 'right';
-        context.fillText(korean, x + width, y);
-        context.textAlign = 'left';
+        context.fillText(korean, x, y);
         if (drawLine) {
             context.fillStyle = '#565a56';
             context.fillRect(x, y + 14, width, 2);
@@ -1746,7 +1741,7 @@
         context.fillRect(contentX, 558, contentWidth, 2);
 
         if (hasDetailedAccess()) {
-            drawShareSectionLabel(context, '01', 'TRAIT AXES', '성향 지표', contentX, 600, contentWidth, font, false);
+            drawShareSectionLabel(context, '성향 지표', contentX, 600, contentWidth, font, false);
             result.axes.forEach((axisResult, index) => {
                 const copy = AXIS_REPORT_COPY[axisResult.axis];
                 const first = axisResult.axis[0];
@@ -1792,7 +1787,7 @@
             });
 
             const speed = resultSpeedPresentation();
-            drawShareSectionLabel(context, '02', 'RESPONSE PACE', '선택 속도', contentX, 974, contentWidth, font);
+            drawShareSectionLabel(context, '선택 속도', contentX, 974, contentWidth, font);
             drawRoundedRect(context, contentX, 1010, contentWidth, 104, 12);
             context.fillStyle = '#f6f6f3';
             context.fill();
@@ -1818,7 +1813,7 @@
             context.textAlign = 'left';
 
             const house = Core.HOUSE_META[assignedHouseKey];
-            drawShareSectionLabel(context, '03', 'HOUSE ASSIGNMENT', '기숙사', contentX, 1184, contentWidth, font);
+            drawShareSectionLabel(context, '기숙사', contentX, 1184, contentWidth, font);
             drawRoundedRect(context, contentX, 1220, contentWidth, 84, 12);
             context.fillStyle = '#f6f6f3';
             context.fill();
@@ -1835,12 +1830,9 @@
             context.textAlign = 'center';
             context.fillText(house?.seal || assignedHouseKey[0], contentX + 46, 1270);
             context.textAlign = 'left';
-            context.fillStyle = '#707570';
-            context.font = `700 12px ${font}`;
-            context.fillText('ASSIGNED HOUSE', contentX + 88, 1254);
             context.fillStyle = '#202421';
-            context.font = `800 27px ${font}`;
-            context.fillText(house?.name || assignedHouseKey, contentX + 88, 1282);
+            context.font = `800 30px ${font}`;
+            context.fillText(`당신의 기숙사는 ${house?.name || assignedHouseKey} 입니다.`, contentX + 88, 1272);
         } else {
             drawRoundedRect(context, contentX, 640, contentWidth, 636, 14);
             context.fillStyle = '#f3f4f1';
