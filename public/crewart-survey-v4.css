@@ -165,7 +165,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-home-house strong { color: #fff; font-size: 15px; font-weight: 700; letter-spacing: .08em; }
 .cw-home-result-actions { display: grid; width: min(100%, var(--cw-action-width)); margin: 38px auto 0; gap: 10px; }
 .cw-home-result-actions .cw-test-action { width: 100%; }
-.cw-v2-button { box-shadow: 0 4px 15px rgba(225,29,72,.3); }
 .cw-intro.has-result .cw-intro-heading { flex: 0; min-height: 0; padding: 8px 0 32px; }
 .cw-intro.has-result .cw-wordmark { font-size: 22px; letter-spacing: .08em; }
 .cw-intro.has-result .cw-intro-heading h1 small { margin-top: 7px; font-size: 9px; letter-spacing: .2em; }
@@ -191,20 +190,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-test-action:hover { border-color: #aeb3ae; background: #fafaf8; }
 .cw-home-start .cw-test-action { width: 100%; border-color: rgba(255, 255, 255, .42); background: rgba(255, 255, 255, .96); }
 .cw-home-start .cw-test-action:hover { border-color: #fff; background: #fff; }
-.cw-home-start .cw-test-action.cw-v2-button,
-.cw-home-start .cw-test-action.cw-v2-button:disabled {
-    border-color: transparent;
-    background: linear-gradient(135deg, #e11d48, #f97316);
-    color: #fff;
-}
-.cw-home-start .cw-test-action.cw-v2-button:hover,
-.cw-home-start .cw-test-action.cw-v2-button:focus-visible,
-.cw-home-start .cw-test-action.cw-v2-button:active {
-    border-color: transparent;
-    background: linear-gradient(135deg, #be123c, #ea580c);
-    color: #fff;
-}
-.cw-home-start .cw-test-action.cw-v2-button:disabled { cursor: default; opacity: .62; }
 
 .cw-test { padding: max(73px, calc(env(safe-area-inset-top) + 68px)) 16px 42px; }
 .cw-progress-head { display: grid; grid-template-columns: 46px 1fr 46px; align-items: center; gap: 10px; }

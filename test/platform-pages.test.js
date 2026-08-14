@@ -588,7 +588,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /cw-result-code cw-result-code-front/);
     assert.match(script, /class="cw-type-poster"/);
     assert.match(html, /crewart-survey-core\.js\?v=20260814-survey-v2-default-lock3s/);
-    assert.match(html, /crewart-survey-v4\.css\?v=20260814-survey-v2-taplock/);
+    assert.match(html, /crewart-survey-v4\.css\?v=20260814-survey-white-start/);
     assert.match(html, /id="start-button"[^>]*>[\s\S]*시작하기/);
     assert.match(html, /id="home-retest"[^>]*>다시 시작/);
     assert.doesNotMatch(html, /start-button-v2|home-retest-v1|Ver 1 시작|Ver 2 시작/);
@@ -601,7 +601,9 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.doesNotMatch(script, /data-choice="\$\{index\}"[^>]*aria-disabled/);
     assert.match(script, /button\.dataset\.timeLocked = String\(locked\)/);
     assert.match(script, /choiceLockAttempted[\s\S]*아직 선택할 수 없어요/);
-    assert.match(css, /\.cw-home-start \.cw-test-action\.cw-v2-button:hover,[\s\S]*\.cw-home-start \.cw-test-action\.cw-v2-button:focus-visible,[\s\S]*background:\s*linear-gradient\(135deg, #be123c, #ea580c\)/);
+    assert.doesNotMatch(html, /cw-v2-button/);
+    assert.doesNotMatch(css, /cw-v2-button|linear-gradient\(135deg, #e11d48, #f97316\)/);
+    assert.match(css, /\.cw-home-start \.cw-test-action\s*\{[^}]*background:\s*rgba\(255, 255, 255, \.96\)/);
     assert.match(script, /네 답 모두 괜찮습니다\. 평소 먼저 손이 가는 쪽을 골라주세요\./);
     assert.match(script, /두 답이 끌리면 실제 그 순간 가장 먼저 할 행동을 선택해주세요\./);
     assert.doesNotMatch(html, /question-illustration|question-image/);
