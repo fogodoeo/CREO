@@ -649,16 +649,17 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 
 
 
+
 /* ==========================================================================
-   CREWARTS INSTAGRAM FEED CLEAN STYLE (MODERN INSTA FEED UX)
+   CREWARTS TRUE INSTAGRAM FEED POST DESIGN (HIGH READABILITY & ZERO FLUFF)
    ========================================================================== */
 .cw-result {
     padding: max(6px, calc(env(safe-area-inset-top) + 4px)) 10px max(118px, calc(env(safe-area-inset-bottom) + 100px));
-    background: #fafafa;
+    background: #f0f2f5;
 }
 
 .cw-result-wrap {
-    width: min(100%, 580px);
+    width: min(100%, 540px);
     margin: 0 auto;
 }
 
@@ -666,9 +667,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     overflow: hidden;
     padding: 0 0 20px;
     border: 1px solid #dbdbdb;
-    border-radius: 4px;
+    border-radius: 8px;
     background: #ffffff;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 /* 1. Header Bar */
@@ -676,28 +677,29 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 12px 16px;
+    padding: 12px 14px;
     border-bottom: 1px solid #efefef;
+    background: #ffffff;
 }
 
-.cw-insta-author {
+.cw-insta-profile {
     display: flex;
     align-items: center;
     gap: 10px;
 }
 
-.cw-insta-avatar-ring {
+.cw-insta-story-ring {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 38px;
-    height: 38px;
+    width: 40px;
+    height: 40px;
     padding: 2px;
     border: 2px solid var(--story-color, #18181b);
     border-radius: 50%;
 }
 
-.cw-insta-avatar-letter {
+.cw-insta-avatar {
     display: grid;
     place-items: center;
     width: 100%;
@@ -710,20 +712,38 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     letter-spacing: -0.02em;
 }
 
-.cw-insta-author-info {
+.cw-insta-user-meta {
     display: flex;
     flex-direction: column;
     gap: 1px;
 }
 
-.cw-insta-handle {
+.cw-insta-username-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.cw-insta-username {
     color: #262626;
-    font-size: 13px;
+    font-size: 13.5px;
     font-weight: 750;
     line-height: 1.2;
 }
 
-.cw-insta-subhead {
+.cw-insta-verified-badge {
+    display: inline-grid;
+    place-items: center;
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    background: #0095f6;
+    color: #ffffff;
+    font-size: 8.5px;
+    font-weight: 900;
+}
+
+.cw-insta-location {
     color: #8e8e8e;
     font-size: 11px;
     font-weight: 500;
@@ -734,37 +754,39 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     display: inline-flex;
     align-items: center;
     border: 1px solid #dbdbdb;
-    border-radius: 3px;
-    background: #fafafa;
+    border-radius: 20px;
+    background: #f8f8f8;
+    padding: 2px;
 }
 
 .cw-version-tab {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 4px 10px;
+    padding: 4px 11px;
     border: 0;
-    border-radius: 2px;
+    border-radius: 16px;
     background: transparent;
     color: #8e8e8e;
     font-size: 11px;
-    font-weight: 700;
+    font-weight: 750;
     cursor: pointer;
-    transition: all 0.12s ease;
+    transition: all 0.15s ease;
 }
 
 .cw-version-tab.is-active {
     background: #262626;
     color: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
-/* 2. Media Post */
+/* 2. Photo Media Viewport */
 .cw-insta-media {
     position: relative;
     display: grid;
-    padding: 8px 0 12px;
+    padding: 10px 0 14px;
     justify-items: center;
-    background: #fbfbfb;
+    background: #fafafa;
     border-bottom: 1px solid #efefef;
 }
 
@@ -772,7 +794,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     position: relative;
     isolation: isolate;
     width: 100%;
-    height: clamp(190px, 48vw, 260px);
+    height: clamp(195px, 50vw, 270px);
 }
 
 .cw-result-code {
@@ -782,7 +804,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     display: flex;
     align-items: center;
     color: #262626;
-    font-size: clamp(70px, 20vw, 114px);
+    font-size: clamp(72px, 21vw, 120px);
     font-weight: 850;
     line-height: 0.78;
     letter-spacing: -0.06em;
@@ -791,15 +813,15 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     user-select: none;
 }
 
-.cw-result-code-back { left: clamp(16px, 12%, 60px); }
-.cw-result-code-front { right: clamp(16px, 12%, 60px); }
+.cw-result-code-back { left: clamp(14px, 11%, 58px); }
+.cw-result-code-front { right: clamp(14px, 11%, 58px); }
 
 .cw-character-reveal {
     position: absolute;
     z-index: 2;
     bottom: 0;
     left: 50%;
-    width: clamp(130px, 36%, 190px);
+    width: clamp(135px, 38%, 200px);
     height: 100%;
     transform: translateX(-50%);
 }
@@ -809,21 +831,21 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 16px 6px;
+    padding: 12px 14px 6px;
 }
 
-.cw-insta-quick-actions {
+.cw-insta-icons-left {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 14px;
 }
 
 .cw-insta-action-icon-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
+    width: 24px;
+    height: 24px;
     padding: 0;
     border: 0;
     background: transparent;
@@ -834,42 +856,45 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 
 .cw-insta-action-icon-btn:hover {
     color: #000000;
-    transform: scale(1.08);
+    transform: scale(1.1);
 }
 
-.cw-insta-house-tag {
-    font-size: 12px;
+.cw-insta-house-pill {
+    padding: 3px 9px;
+    border: 1px solid;
+    border-radius: 12px;
+    font-size: 11px;
     font-weight: 800;
     letter-spacing: -0.01em;
 }
 
 /* 4. Caption Area */
-.cw-insta-caption-box {
-    padding: 6px 16px 14px;
+.cw-insta-caption-area {
+    padding: 6px 14px 12px;
 }
 
 .cw-result-type-name {
     margin: 4px 0 0;
     color: #262626;
     font-size: 15.5px;
-    font-weight: 600;
-    line-height: 1.45;
+    font-weight: 650;
+    line-height: 1.5;
     word-break: keep-all;
     text-align: left;
 }
 
-.cw-insta-caption-handle {
+.cw-insta-caption-author {
     font-weight: 800;
     color: #000000;
-    margin-right: 4px;
+    margin-right: 5px;
 }
 
 .cw-result-subtitle {
-    margin: 4px 0 0;
+    margin: 6px 0 0;
     color: #737373;
     font-size: 13px;
     font-weight: 500;
-    line-height: 1.45;
+    line-height: 1.48;
     word-break: keep-all;
     text-align: left;
 }
@@ -877,12 +902,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-result-summary-box {
     margin: 12px 0 0;
     padding: 12px 14px;
-    border-left: 2px solid var(--house-accent, #262626);
+    border-left: 2.5px solid var(--house-accent, #262626);
     background: #f8f8f8;
     color: #333333;
     font-size: 13px;
     font-weight: 450;
-    line-height: 1.62;
+    line-height: 1.65;
     text-align: left;
     word-break: keep-all;
 }
@@ -891,107 +916,120 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     margin: 0;
 }
 
-/* 5. Sub-Cards (Feed Comment / Highlight Style) */
-.cw-result-power-grid,
-.cw-result-match-grid,
-.cw-result-action-card,
-.cw-house-declaration,
-.cw-report-footer,
-.cw-detail-gate {
-    margin-left: 16px;
-    margin-right: 16px;
+/* 5. Instagram Feed Blocks */
+.cw-insta-feed-block {
+    margin: 10px 14px 0;
 }
 
-.cw-result-power-grid {
+/* Powers Block (Strength / Caution) */
+.cw-insta-powers {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-    margin-top: 12px;
+    gap: 8px;
 }
 
-.cw-power-card {
-    padding: 12px 14px;
+.cw-insta-power-row {
+    padding: 11px 13px;
     border: 1px solid #efefef;
-    border-radius: 4px;
-    background: #fafafa;
-    word-break: keep-all;
+    border-radius: 6px;
+    background: #ffffff;
 }
 
-.cw-power-tag {
-    display: block;
-    margin-bottom: 6px;
-    padding-bottom: 4px;
-    border-bottom: 1px solid #e5e5e5;
+.cw-insta-power-row.is-strength {
+    border-left: 3px solid #16a34a;
+}
+
+.cw-insta-power-row.is-caution {
+    border-left: 3px solid #ea580c;
+}
+
+.cw-insta-power-pill {
+    display: inline-block;
     color: #262626;
     font-size: 11.5px;
-    font-weight: 750;
+    font-weight: 800;
+    margin-bottom: 4px;
 }
 
-.cw-power-card p {
+.cw-insta-power-desc {
     margin: 0;
     color: #404040;
     font-size: 12.5px;
     font-weight: 450;
     line-height: 1.55;
-}
-
-.cw-result-match-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-    margin-top: 10px;
-}
-
-.cw-match-card {
-    padding: 12px 14px;
-    border: 1px solid #efefef;
-    border-radius: 4px;
-    background: #fafafa;
-    text-align: center;
     word-break: keep-all;
 }
 
-.cw-match-tag {
+/* Matches Block (Tagged Accounts) */
+.cw-insta-matches {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.cw-insta-match-item {
+    padding: 11px 12px;
+    border: 1px solid #efefef;
+    border-radius: 6px;
+    background: #ffffff;
+    word-break: keep-all;
+}
+
+.cw-insta-match-badge {
     display: block;
-    margin-bottom: 3px;
     color: #8e8e8e;
-    font-size: 11px;
+    font-size: 10.5px;
     font-weight: 700;
+    margin-bottom: 4px;
 }
 
-.cw-match-mbti {
-    display: block;
-    color: #000000;
-    font-size: 18px;
-    font-weight: 850;
-    line-height: 1.15;
+.cw-insta-match-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
 }
 
-.cw-match-title {
-    margin: 3px 0 0;
+.cw-insta-match-tag {
+    color: #0095f6;
+    font-size: 15px;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.cw-insta-match-text span {
     color: #525252;
     font-size: 11.5px;
-    font-weight: 550;
+    font-weight: 500;
     line-height: 1.35;
 }
 
-.cw-result-action-card {
-    margin-top: 10px;
-    padding: 12px 14px;
+/* Tip Card */
+.cw-insta-tip-card {
+    padding: 11px 13px;
     border: 1px solid #efefef;
-    border-radius: 4px;
-    background: #ffffff;
+    border-radius: 6px;
+    background: #fafafa;
 }
 
-.cw-action-label {
-    display: block;
-    margin-bottom: 3px;
+.cw-insta-tip-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+}
+
+.cw-insta-tip-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+
+.cw-insta-tip-header strong {
     color: #262626;
     font-size: 11.5px;
-    font-weight: 750;
+    font-weight: 800;
 }
 
-.cw-action-text {
+.cw-insta-tip-body {
     margin: 0;
     color: #525252;
     font-size: 12.5px;
@@ -1000,14 +1038,21 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     word-break: keep-all;
 }
 
-/* House Declaration */
+/* House Declaration & Details */
+.cw-house-declaration,
+.cw-detail-gate,
+.cw-report-footer {
+    margin-left: 14px;
+    margin-right: 14px;
+}
+
 .cw-house-declaration {
-    margin-top: 14px;
-    padding: 14px 10px;
+    margin-top: 12px;
+    padding: 13px 10px;
     border: 1px solid #efefef;
     border-left: 4px solid var(--house-accent, #262626);
-    border-radius: 2px;
-    background: #fafafa;
+    border-radius: 4px;
+    background: #ffffff;
     text-align: center;
 }
 
@@ -1020,14 +1065,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 
 .cw-house-declaration strong {
     color: var(--house-accent, #262626);
-    font-size: 18px;
+    font-size: 17px;
     font-weight: 850;
 }
 
 /* Footer & Buttons */
 .cw-report-footer {
-    margin-top: 16px;
-    padding-top: 14px;
+    margin-top: 14px;
+    padding-top: 12px;
     border-top: 1px solid #efefef;
 }
 
@@ -1037,10 +1082,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 
 .cw-share-action {
     border: 1px solid #dbdbdb;
-    border-radius: 4px;
+    border-radius: 6px;
     background: #ffffff;
     color: #262626;
-    font-size: 12px;
+    font-size: 12.5px;
     font-weight: 700;
 }
 
@@ -1064,8 +1109,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
         padding-left: 0;
         padding-right: 0;
     }
-    .cw-result-power-grid,
-    .cw-result-match-grid {
+    .cw-insta-matches {
         grid-template-columns: 1fr;
     }
 }

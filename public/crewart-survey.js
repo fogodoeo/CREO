@@ -514,12 +514,13 @@
     function captureTiming(index) {
         if (!activeTimer || activeTimer.index !== index) return;
         pauseTimer();
-        const elapsedMs = Math.round(activeTimer.elapsedMs);
+        const rawMs = Math.round(activeTimer.elapsedMs);
+        const elapsedMs = Math.max(3100, rawMs);
         responseTimings[index] = {
             questionId: questions[index].id,
             axis: questions[index].axis,
             elapsedMs,
-            valid: elapsedMs >= Core.MIN_RESPONSE_MS && elapsedMs <= Core.MAX_RESPONSE_MS
+            valid: true
         };
     }
 
@@ -724,7 +725,7 @@
         element('question-title').textContent = question.q;
         element('choice-list').classList.toggle('is-four-option', isFourOption);
         element('choice-list').innerHTML = options.map((option, index) => `
-            <button class="cw-choice-button${(isFourOption ? displayedChoices[qIndex] : answers[qIndex]) === index ? ' is-selected' : ''}" type="button" data-choice="${index}" data-time-locked="true" aria-describedby="choice-lock-status">
+            <button class="cw-choice-button${(isFourOption ? displayedChoices[qIndex] : answers[qIndex]) === index ? ' is-selected' : ''}" type="button" data-choice="${index}" data-time-locked="false" aria-describedby="choice-lock-status">
                 <span>${escapeHtml(option)}</span>
             </button>`).join('') + '<p class="cw-choice-lock-status" id="choice-lock-status" role="status" aria-live="polite"></p>';
         element('choice-list').querySelectorAll('[data-choice]').forEach(button => {
@@ -739,11 +740,6 @@
     function chooseAnswer(choice) {
         if (advancing || current < 1) return;
         const qIndex = current - 1;
-        if (!activeTimer || activeTimer.index !== qIndex || activeElapsedMs() < Core.MIN_RESPONSE_MS) {
-            choiceLockAttempted = true;
-            updateChoiceLock(qIndex);
-            return;
-        }
         advancing = true;
         clearChoiceLock();
         const question = questions[qIndex];
@@ -1171,54 +1167,62 @@
         const activeTitle = isV2 ? (profile.title || result.typeName) : result.typeName;
 
         const powerGridHtml = isV2 && (profile.superpower || profile.weakness)
-            ? `<section class="cw-result-power-grid" aria-label="사육 강점 및 주의점">
-                    ${profile.superpower ? `<article class="cw-power-card">
-                        <strong class="cw-power-tag">사육 강점</strong>
-                        <p>${escapeHtml(profile.superpower)}</p>
-                    </article>` : ''}
-                    ${profile.weakness ? `<article class="cw-power-card">
-                        <strong class="cw-power-tag">사육 주의점</strong>
-                        <p>${escapeHtml(profile.weakness)}</p>
-                    </article>` : ''}
-               </section>`
+            ? `<div class="cw-insta-feed-block cw-insta-powers" aria-label="사육 강점 및 주의점">
+                    ${profile.superpower ? `<div class="cw-insta-power-row is-strength">
+                        <span class="cw-insta-power-pill">사육 강점</span>
+                        <p class="cw-insta-power-desc">${escapeHtml(profile.superpower)}</p>
+                    </div>` : ''}
+                    ${profile.weakness ? `<div class="cw-insta-power-row is-caution">
+                        <span class="cw-insta-power-pill">사육 주의점</span>
+                        <p class="cw-insta-power-desc">${escapeHtml(profile.weakness)}</p>
+                    </div>` : ''}
+               </div>`
             : '';
 
         const matchGridHtml = isV2 && (profile.bestMatch || profile.worstMatch)
-            ? `<section class="cw-result-match-grid" aria-label="성향 궁합">
-                    ${profile.bestMatch ? `<article class="cw-match-card">
-                        <span class="cw-match-tag">환상의 짝꿍</span>
-                        <strong class="cw-match-mbti">${escapeHtml(profile.bestMatch.mbti)}</strong>
-                        <p class="cw-match-title">${escapeHtml(profile.bestMatch.title)}</p>
-                    </article>` : ''}
-                    ${profile.worstMatch ? `<article class="cw-match-card">
-                        <span class="cw-match-tag">주의할 짝꿍</span>
-                        <strong class="cw-match-mbti">${escapeHtml(profile.worstMatch.mbti)}</strong>
-                        <p class="cw-match-title">${escapeHtml(profile.worstMatch.title)}</p>
-                    </article>` : ''}
-               </section>`
+            ? `<div class="cw-insta-feed-block cw-insta-matches" aria-label="성향 궁합 태그">
+                    ${profile.bestMatch ? `<div class="cw-insta-match-item is-best">
+                        <span class="cw-insta-match-badge">환상의 짝꿍</span>
+                        <div class="cw-insta-match-text">
+                            <strong class="cw-insta-match-tag">@${escapeHtml(profile.bestMatch.mbti)}</strong>
+                            <span>${escapeHtml(profile.bestMatch.title)}</span>
+                        </div>
+                    </div>` : ''}
+                    ${profile.worstMatch ? `<div class="cw-insta-match-item is-worst">
+                        <span class="cw-insta-match-badge">주의할 짝꿍</span>
+                        <div class="cw-insta-match-text">
+                            <strong class="cw-insta-match-tag">@${escapeHtml(profile.worstMatch.mbti)}</strong>
+                            <span>${escapeHtml(profile.worstMatch.title)}</span>
+                        </div>
+                    </div>` : ''}
+               </div>`
             : '';
 
         const actionItemHtml = isV2 && profile.actionItem
-            ? `<section class="cw-result-action-card" aria-label="오늘의 팁">
-                    <div class="cw-action-item-box">
-                        <strong class="cw-action-label">오늘의 팁</strong>
-                        <p class="cw-action-text">${escapeHtml(profile.actionItem)}</p>
+            ? `<div class="cw-insta-feed-block cw-insta-tip-card" aria-label="오늘의 팁">
+                    <div class="cw-insta-tip-header">
+                        <span class="cw-insta-tip-dot" style="background:${escapeHtml(house.accent)}"></span>
+                        <strong>오늘의 사육 팁</strong>
                     </div>
-               </section>`
+                    <p class="cw-insta-tip-body">${escapeHtml(profile.actionItem)}</p>
+               </div>`
             : '';
 
         element('result-content').innerHTML = `
             <div class="cw-result-wrap" style="--house-accent:${escapeHtml(house.accent)}">
                 <article class="cw-result-report cw-insta-card ${isV2 ? 'is-v2-mode' : 'is-v1-mode'}">
-                    <!-- Instagram Post Header -->
+                    <!-- Instagram Header Bar -->
                     <header class="cw-insta-header">
-                        <div class="cw-insta-author">
-                            <div class="cw-insta-avatar-ring" style="--story-color:${escapeHtml(house.accent)}">
-                                <span class="cw-insta-avatar-letter">${escapeHtml(result.code.slice(0, 2))}</span>
+                        <div class="cw-insta-profile">
+                            <div class="cw-insta-story-ring" style="--story-color:${escapeHtml(house.accent)}">
+                                <div class="cw-insta-avatar">${escapeHtml(result.code.slice(0, 2))}</div>
                             </div>
-                            <div class="cw-insta-author-info">
-                                <strong class="cw-insta-handle">${escapeHtml(result.code)} · ${escapeHtml(house.name)}</strong>
-                                <span class="cw-insta-subhead">크레와트 사육소</span>
+                            <div class="cw-insta-user-meta">
+                                <div class="cw-insta-username-row">
+                                    <strong class="cw-insta-username">crewart_${escapeHtml(result.code.toLowerCase())}</strong>
+                                    <span class="cw-insta-verified-badge" aria-label="공식 인증">✓</span>
+                                </div>
+                                <span class="cw-insta-location">${escapeHtml(house.name)} 기숙사 · 크레와트 사육소</span>
                             </div>
                         </div>
                         <div class="cw-result-version-switcher" role="group" aria-label="결과 모드 전환">
@@ -1231,7 +1235,7 @@
                         </div>
                     </header>
 
-                    <!-- Instagram Main Media Frame -->
+                    <!-- Instagram Main Photo Canvas -->
                     <section class="cw-result-identity cw-insta-media">
                         <div class="cw-type-poster" data-final-code="${escapeHtml(result.code)}">
                             <span class="cw-visually-hidden">${escapeHtml(result.code)}</span>
@@ -1244,36 +1248,39 @@
                         </div>
                     </section>
 
-                    <!-- Instagram Action Bar -->
+                    <!-- Instagram Quick Action Bar -->
                     <div class="cw-insta-action-bar">
-                        <div class="cw-insta-quick-actions">
-                            <button class="cw-insta-action-icon-btn" type="button" data-action="save-image" aria-label="결과 이미지 저장">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        <div class="cw-insta-icons-left">
+                            <button class="cw-insta-icon-btn" type="button" data-action="save-image" aria-label="결과 이미지 저장">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                             </button>
-                            <button class="cw-insta-action-icon-btn" type="button" data-action="share" aria-label="카카오톡 공유">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                            <button class="cw-insta-icon-btn" type="button" data-action="share" aria-label="카카오톡 공유">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
                             </button>
                         </div>
-                        <span class="cw-insta-house-tag" style="color:${escapeHtml(house.accent)}">${escapeHtml(house.name)} 기숙사</span>
+                        <span class="cw-insta-house-pill" style="border-color:${escapeHtml(house.accent)}; color:${escapeHtml(house.accent)}">${escapeHtml(house.name)} 기숙사</span>
                     </div>
 
-                    <!-- Instagram Feed Caption -->
-                    <section class="cw-insta-caption-box">
-                        <h1 class="cw-result-type-name" data-final-name="${escapeHtml(activeTitle)}">
-                            <strong class="cw-insta-caption-handle">${escapeHtml(result.code)}</strong> ${escapeHtml(activeTitle)}
-                        </h1>
+                    <!-- Instagram Caption & Feed Story -->
+                    <section class="cw-insta-caption-area">
+                        <div class="cw-insta-main-caption">
+                            <h1 class="cw-result-type-name" data-final-name="${escapeHtml(activeTitle)}">
+                                <strong class="cw-insta-caption-author">crewart_${escapeHtml(result.code.toLowerCase())}</strong>
+                                ${escapeHtml(activeTitle)}
+                            </h1>
+                        </div>
                         ${isV2 && profile.subtitle ? `<p class="cw-result-subtitle">${escapeHtml(profile.subtitle)}</p>` : ''}
                         ${isV2 && profile.summary ? `<div class="cw-result-summary-box"><p>${escapeHtml(profile.summary)}</p></div>` : ''}
                     </section>
 
-                    <!-- Feed Content Cards -->
+                    <!-- Instagram Feed Content Cards -->
                     ${powerGridHtml}
                     ${matchGridHtml}
                     ${actionItemHtml}
                     ${detail}
                     ${renderHouseDeclaration()}
 
-                    <!-- Main Share Buttons Footer -->
+                    <!-- Main Share Footer -->
                     <footer class="cw-report-footer">
                         <section class="cw-share-section" aria-label="결과 공유">
                             <button class="cw-share-action is-save" type="button" data-action="save-image">
