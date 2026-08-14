@@ -40,6 +40,9 @@ class FakeRepository {
         this.writes.push(...rows);
         rows.forEach((row) => this.rows.set(row.key, row.value));
     }
+    async deleteRow(key) {
+        this.rows.delete(key);
+    }
 }
 
 function request(method, body = '', headers = {}) {
@@ -75,7 +78,7 @@ function validSubmission() {
     const calculated = Core.scoreAnswers(prepared, answers);
     assert.equal(calculated.code, target);
     const axisScores = calculated.letters;
-    const totalMs = Core.QUESTIONS.length * 1800;
+    const totalMs = Core.QUESTIONS.length * 3200;
     return {
         participantKey: 'a'.repeat(24),
         creMbti: calculated.code,
@@ -97,7 +100,7 @@ function validSubmission() {
                 score: letters[0] || '',
                 secondaryScore: letters[1] || '',
                 signalScores: Core.answerScoreMap(question, choice),
-                responseMs: 1800,
+                responseMs: 3200,
                 timingValid: true,
                 label: '서버에 저장하면 안 되는 선택지 원문'
             };
@@ -105,9 +108,9 @@ function validSubmission() {
         timingStats: {
             validCount: Core.QUESTIONS.length,
             totalMs,
-            averageMs: 1800,
-            medianMs: 1800,
-            axisMedians: { EI: 1800, SN: 1800, TF: 1800, JP: 1800 },
+            averageMs: 3200,
+            medianMs: 3200,
+            axisMedians: { EI: 3200, SN: 3200, TF: 3200, JP: 3200 },
             style: 'instinct'
         },
         questionVersion: Core.SURVEY_VERSION,
@@ -121,7 +124,7 @@ test('bootstrap returns version-matched content and aggregate data only', async 
     const managed = { version: Core.SURVEY_VERSION, questions: [{ id: 'Q01', q: '관리 문항' }] };
     const legacy = [{
         participantKey: 'legacy-person', questionVersion: Core.SURVEY_VERSION,
-        assignedHouseKey: 'NT', timingStats: { medianMs: 2400 }, name: '비공개 이름'
+        assignedHouseKey: 'NT', timingStats: { medianMs: 3400 }, name: '비공개 이름'
     }];
     const repository = new FakeRepository({
         [CONTENT_KEY]: JSON.stringify(managed),
@@ -129,7 +132,7 @@ test('bootstrap returns version-matched content and aggregate data only', async 
         [LEGACY_RESPONSES_KEY]: JSON.stringify(legacy),
         [`${RESPONSE_PREFIX}${'b'.repeat(24)}`]: JSON.stringify({
             participantKey: 'new-person', questionVersion: Core.SURVEY_VERSION,
-            assignedHouseKey: 'SF', timingStats: { medianMs: 1800 }, bandProfileName: '숨길 이름', answers: [0, 1]
+            assignedHouseKey: 'SF', timingStats: { medianMs: 3200 }, bandProfileName: '숨길 이름', answers: [0, 1]
         }),
         [`${RESPONSE_PREFIX}${'c'.repeat(24)}`]: JSON.stringify({
             participantKey: 'old-version', questionVersion: 'cre-mbti-v1.0',
@@ -150,7 +153,7 @@ test('bootstrap returns version-matched content and aggregate data only', async 
     const payload = JSON.parse(response.body);
     assert.equal(payload.content.version, Core.SURVEY_VERSION);
     assert.deepEqual(payload.cohort.houseCounts, { SF: 1, ST: 0, NT: 1, NF: 0 });
-    assert.deepEqual(payload.cohort.timingMedians, [2400, 1800]);
+    assert.deepEqual(payload.cohort.timingMedians, [3400, 3200]);
     assert.equal(payload.cohort.sampleSize, 2);
     assert.equal(response.body.includes('비공개 이름'), false);
     assert.equal(response.body.includes('숨길 이름'), false);
@@ -270,8 +273,8 @@ test('response storage requires a valid BAND session and strips personal fields'
     assert.equal('label' in stored.answerLabels[0], false);
     assert.equal(repository.writes[0].value.includes('member_random_session_subject'), false);
     assert.equal(stored.timingStats.validCount, Core.QUESTIONS.length);
-    assert.equal(stored.timingStats.medianMs, 1800);
-    assert.equal(stored.timingStats.style, 'instinct');
+    assert.equal(stored.timingStats.medianMs, 3200);
+    assert.equal(stored.timingStats.style, 'balanced');
     assert.equal(stored.answerLabels[0].timingValid, true);
 });
 
@@ -298,6 +301,54 @@ test('thoughtful mobile responses remain valid for up to ninety seconds per ques
     assert.equal(stored.timingStats.validCount, Core.QUESTIONS.length);
     assert.equal(stored.timingStats.medianMs, 60000);
     assert.equal(stored.answerLabels.every((answer) => answer.timingValid), true);
+});
+
+test('responses faster than the three-second reading lock are rejected', async () => {
+    const repository = new FakeRepository();
+    const api = createCrewartSurveyApi({
+        repository,
+        bandMembership: { config: { sessionSecret: SECRET } },
+        now: () => NOW
+    });
+    const submission = validSubmission();
+    submission.answerLabels[0].responseMs = Core.MIN_RESPONSE_MS - 1;
+    const response = new CapturedResponse();
+    await api.handle(
+        request('POST', JSON.stringify({ response: submission }), { authorization: `Bearer ${memberToken()}` }),
+        response,
+        new URL('https://creok.example.com/api/crewart-survey/responses')
+    );
+    assert.equal(response.status, 422);
+    assert.match(JSON.parse(response.body).error, /최소 3초/);
+    assert.equal(repository.writes.length, 0);
+});
+
+test('only an administrator can clear survey responses without deleting question content', async () => {
+    const responseKey = `${RESPONSE_PREFIX}${'d'.repeat(24)}`;
+    const repository = new FakeRepository({
+        [CONTENT_KEY]: JSON.stringify({ version: Core.SURVEY_VERSION, questions: [] }),
+        [LEGACY_RESPONSES_KEY]: JSON.stringify([{ participantKey: 'legacy' }]),
+        [responseKey]: JSON.stringify({ participantKey: 'd'.repeat(24) })
+    });
+    const api = createCrewartSurveyApi({
+        repository,
+        bandMembership: { config: { sessionSecret: SECRET } },
+        isAdmin: async (req) => req.headers['x-creo-admin'] === 'secret',
+        now: () => NOW
+    });
+    const url = new URL('https://creok.example.com/api/crewart-survey/responses');
+    const unauthorized = new CapturedResponse();
+    await api.handle(request('DELETE'), unauthorized, url);
+    assert.equal(unauthorized.status, 401);
+    assert.equal(repository.rows.has(responseKey), true);
+
+    const cleared = new CapturedResponse();
+    await api.handle(request('DELETE', '', { 'x-creo-admin': 'secret' }), cleared, url);
+    assert.equal(cleared.status, 200);
+    assert.deepEqual(JSON.parse(cleared.body), { cleared: true, deleted: 1 });
+    assert.equal(repository.rows.has(responseKey), false);
+    assert.equal(repository.rows.has(LEGACY_RESPONSES_KEY), false);
+    assert.equal(repository.rows.has(CONTENT_KEY), true);
 });
 
 test('tampered result codes are rejected before storage', async () => {

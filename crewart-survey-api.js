@@ -144,7 +144,7 @@ function sanitizeSubmission(input, nowIso) {
             ) return null;
             const signalScores = Core.answerScoreMap(question, choiceIndex);
             const scoreLetters = Core.answerLetters(question, choiceIndex);
-            const responseMs = exactInteger(answer?.responseMs, 0, 90000) ?? 0;
+            const responseMs = exactInteger(answer?.responseMs, 0, Core.MAX_RESPONSE_MS) ?? 0;
             seenQuestionIds.add(questionId);
             Object.entries(signalScores).forEach(([letter, points]) => { scoreCounts[letter] += points; });
             return {
@@ -157,12 +157,17 @@ function sanitizeSubmission(input, nowIso) {
                 secondaryScore: scoreLetters[1] || '',
                 signalScores,
                 responseMs,
-                timingValid: responseMs >= 400 && responseMs <= 90000
+                timingValid: responseMs >= Core.MIN_RESPONSE_MS && responseMs <= Core.MAX_RESPONSE_MS
             };
         })
         .filter(Boolean);
     if (answerLabels.length !== Core.QUESTIONS.length) {
         const error = new Error('문항별 응답 형식이 올바르지 않습니다.');
+        error.status = 422;
+        throw error;
+    }
+    if (answerLabels.some((answer) => !answer.timingValid)) {
+        const error = new Error(`각 문항은 최소 ${Core.MIN_RESPONSE_MS / 1000}초 이상 확인해 주세요.`);
         error.status = 422;
         throw error;
     }
@@ -269,7 +274,7 @@ function aggregateResponses(rows, legacyValue) {
         const house = cleanText(response.assignedHouseKey || response.houseId, 2).toUpperCase();
         if (house in houseCounts) houseCounts[house] += 1;
         const median = Number(response?.timingStats?.medianMs);
-        if (Number.isFinite(median) && median >= 400 && median <= 90000) timingMedians.push(Math.round(median));
+        if (Number.isFinite(median) && median >= Core.MIN_RESPONSE_MS && median <= Core.MAX_RESPONSE_MS) timingMedians.push(Math.round(median));
         sampleSize += 1;
     }
     const aggregate = { houseCounts, timingMedians: timingMedians.slice(-RESPONSE_LIMIT), sampleSize };
@@ -382,6 +387,25 @@ function createCrewartSurveyApi(options = {}) {
                 replyJson(res, 200, { saved: true, content, contentUpdatedAt: updatedAt });
                 return true;
             }
+            if (url.pathname === '/api/crewart-survey/responses' && req.method === 'DELETE') {
+                if (typeof isAdmin !== 'function' || !await isAdmin(req)) {
+                    replyJson(res, 401, { error: '관리자 인증이 필요합니다.' });
+                    return true;
+                }
+                let deleted = 0;
+                while (true) {
+                    const responseRows = await repository.listRowsByPrefix(RESPONSE_PREFIX, RESPONSE_LIMIT);
+                    if (!responseRows.length) break;
+                    for (let index = 0; index < responseRows.length; index += 25) {
+                        await Promise.all(responseRows.slice(index, index + 25).map((row) => repository.deleteRow(row.key)));
+                    }
+                    deleted += responseRows.length;
+                }
+                await repository.deleteRow(LEGACY_RESPONSES_KEY);
+                bootstrapCache = null;
+                replyJson(res, 200, { cleared: true, deleted });
+                return true;
+            }
             if (url.pathname === '/api/crewart-survey/responses' && req.method === 'POST') {
                 const secret = String(bandMembership?.config?.sessionSecret || '');
                 if (secret.length < 32) {
@@ -411,7 +435,7 @@ function createCrewartSurveyApi(options = {}) {
                     cohort.identities.add(response.participantKey);
                     if (!alreadyCounted) {
                         cohort.houseCounts[response.assignedHouseKey] += 1;
-                        if (response.timingStats.medianMs >= 400) {
+                        if (response.timingStats.medianMs >= Core.MIN_RESPONSE_MS) {
                             cohort.timingMedians.push(response.timingStats.medianMs);
                             cohort.timingMedians = cohort.timingMedians.slice(-RESPONSE_LIMIT);
                         }

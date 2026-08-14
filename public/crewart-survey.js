@@ -10,8 +10,9 @@
     const TYPE_CHARACTER_VERSION = '20260802-character-v1';
     const MEMBERSHIP_STORAGE_KEY = 'crewart_band_member_access_v1';
     const MEMBERSHIP_PHONE_STORAGE_KEY = 'crewart_band_member_phone_mask_v1';
-    const LAST_RESULT_STORAGE_KEY = 'crewart_last_result_v1';
-    const LAST_RESULT_VERSION = 1;
+    const LAST_RESULT_STORAGE_KEY = 'crewart_last_result_v2';
+    const LEGACY_RESULT_STORAGE_KEYS = Object.freeze(['crewart_last_result_v1']);
+    const LAST_RESULT_VERSION = 2;
     const LEGACY_RESULT_QUESTION_VERSIONS = Object.freeze([
         'crewart-tendency-v8.1',
         'crewart-tendency-v8.0'
@@ -140,6 +141,7 @@
     let saveInFlight = false;
     let lastSavedSignature = '';
     let toastTimer = null;
+    let choiceLockTimer = null;
 
     let bandAuthReady = false;
     let bandAuthConfigured = false;
@@ -472,7 +474,7 @@
                 ])),
                 timingMedians: (Array.isArray(payload.cohort?.timingMedians)
                     ? payload.cohort.timingMedians
-                    : []).map(Number).filter(value => value >= 400 && value <= 90000),
+                    : []).map(Number).filter(value => value >= Core.MIN_RESPONSE_MS && value <= Core.MAX_RESPONSE_MS),
                 sampleSize: Math.max(0, Number(payload.cohort?.sampleSize) || 0)
             };
         } catch (error) {
@@ -487,6 +489,7 @@
     }
 
     function startTimer(index) {
+        clearChoiceLock();
         activeTimer = {
             index,
             elapsedMs: 0,
@@ -513,11 +516,51 @@
             questionId: questions[index].id,
             axis: questions[index].axis,
             elapsedMs,
-            valid: elapsedMs >= 400 && elapsedMs <= 90000
+            valid: elapsedMs >= Core.MIN_RESPONSE_MS && elapsedMs <= Core.MAX_RESPONSE_MS
         };
     }
 
+    function activeElapsedMs() {
+        if (!activeTimer) return 0;
+        const visibleMs = activeTimer.visibleAt === null ? 0 : performance.now() - activeTimer.visibleAt;
+        return activeTimer.elapsedMs + visibleMs;
+    }
+
+    function clearChoiceLock() {
+        if (choiceLockTimer === null) return;
+        window.clearInterval(choiceLockTimer);
+        choiceLockTimer = null;
+    }
+
+    function updateChoiceLock(index) {
+        if (!activeTimer || activeTimer.index !== index || current !== index + 1) {
+            clearChoiceLock();
+            return;
+        }
+        const remainingMs = Math.max(0, Core.MIN_RESPONSE_MS - activeElapsedMs());
+        const locked = remainingMs > 0;
+        element('choice-list').querySelectorAll('[data-choice]').forEach(button => {
+            button.disabled = locked;
+            button.setAttribute('aria-disabled', String(locked));
+        });
+        const status = element('choice-lock-status');
+        if (status) {
+            status.textContent = locked
+                ? `${Math.max(1, Math.ceil(remainingMs / 1000))}초 후 선택할 수 있어요`
+                : '이제 선택할 수 있어요';
+            status.classList.toggle('is-ready', !locked);
+        }
+        if (!locked) clearChoiceLock();
+    }
+
+    function startChoiceLock(index) {
+        updateChoiceLock(index);
+        if (choiceLockTimer !== null) return;
+        choiceLockTimer = window.setInterval(() => updateChoiceLock(index), 100);
+    }
+
     function startSurvey() {
+        clearChoiceLock();
         questions = Core.prepareQuestions();
         answers = [];
         displayedChoices = [];
@@ -601,6 +644,7 @@
         if ((stage === 'questions' || stage === 'mbti')
             && !window.confirm('진행 중인 테스트를 닫고 처음 화면으로 갈까요?\n\nBAND 회원 확인 상태와 이전에 저장한 결과는 유지됩니다.')) return;
         pauseTimer();
+        clearChoiceLock();
         activeTimer = null;
         questions = [];
         answers = [];
@@ -628,6 +672,8 @@
         card.classList.toggle('is-guide', current === 0);
         element('q0-copyright').hidden = current !== 0;
         if (current === 0) {
+            clearChoiceLock();
+            activeTimer = null;
             element('progress-text').textContent = `0 / ${questions.length}`;
             element('progress-axis').textContent = '안내사항';
             element('progress-bar').style.width = '0%';
@@ -672,21 +718,27 @@
         element('question-title').textContent = question.q;
         element('choice-list').classList.toggle('is-four-option', isFourOption);
         element('choice-list').innerHTML = options.map((option, index) => `
-            <button class="cw-choice-button${(isFourOption ? displayedChoices[qIndex] : answers[qIndex]) === index ? ' is-selected' : ''}" type="button" data-choice="${index}">
+            <button class="cw-choice-button${(isFourOption ? displayedChoices[qIndex] : answers[qIndex]) === index ? ' is-selected' : ''}" type="button" data-choice="${index}" disabled aria-disabled="true">
                 <span>${escapeHtml(option)}</span>
-            </button>`).join('');
+            </button>`).join('') + '<p class="cw-choice-lock-status" id="choice-lock-status" role="status" aria-live="polite"></p>';
         element('choice-list').querySelectorAll('[data-choice]').forEach(button => {
             button.addEventListener('click', () => chooseAnswer(Number(button.dataset.choice)));
         });
         card.classList.remove('is-changing');
         requestAnimationFrame(() => card.classList.add('is-changing'));
         startTimer(qIndex);
+        startChoiceLock(qIndex);
     }
 
     function chooseAnswer(choice) {
         if (advancing || current < 1) return;
-        advancing = true;
         const qIndex = current - 1;
+        if (!activeTimer || activeTimer.index !== qIndex || activeElapsedMs() < Core.MIN_RESPONSE_MS) {
+            updateChoiceLock(qIndex);
+            return;
+        }
+        advancing = true;
+        clearChoiceLock();
         const question = questions[qIndex];
         displayedChoices[qIndex] = choice;
         answers[qIndex] = choice;
@@ -718,6 +770,7 @@
     }
 
     function finishQuestions() {
+        clearChoiceLock();
         activeTimer = null;
         const missing = questions.findIndex((_, index) => answers[index] === undefined);
         if (missing >= 0) {
@@ -800,7 +853,8 @@
         if (!timingStats?.style) return null;
         const valid = timingStats.validCount > 0;
         const median = valid ? formatSeconds(timingStats.medianMs) : '-';
-        const samples = cohortSummary.timingMedians.map(Number).filter(value => value >= 400 && value <= 90000);
+        const samples = cohortSummary.timingMedians.map(Number)
+            .filter(value => value >= Core.MIN_RESPONSE_MS && value <= Core.MAX_RESPONSE_MS);
         const averageMs = samples.length ? samples.reduce((sum, value) => sum + value, 0) / samples.length : timingStats.medianMs;
         const relative = valid && averageMs > 0 ? Math.log2(timingStats.medianMs / averageMs) : 0;
         const position = Math.max(7, Math.min(93, 50 + relative * 25));
@@ -2200,8 +2254,8 @@
         document.querySelector('meta[name="theme-color"]')?.setAttribute('content', color);
     }
 
-    async function startSurveyVersion(ver) {
-        const file = ver === 'v24' ? 'crewart-survey-questions-v24.json' : 'crewart-survey-questions-v28.json';
+    async function startCurrentSurvey() {
+        const file = Core.getSurveyVersion('v2').questionsFile;
         if (Core?.loadQuestionnaireFile) {
             try {
                 await Core.loadQuestionnaireFile(file);
@@ -2213,10 +2267,8 @@
     }
 
     function bindEvents() {
-        element('start-button')?.addEventListener('click', () => startSurveyVersion('v24'));
-        element('start-button-v2')?.addEventListener('click', () => startSurveyVersion('v28'));
-        element('home-retest')?.addEventListener('click', () => startSurveyVersion('v28'));
-        element('home-retest-v1')?.addEventListener('click', () => startSurveyVersion('v24'));
+        element('start-button')?.addEventListener('click', startCurrentSurvey);
+        element('home-retest')?.addEventListener('click', startCurrentSurvey);
         element('auth-phone-edit')?.addEventListener('click', editMembershipAccess);
         element('auth-phone-clear')?.addEventListener('click', clearMembershipAccess);
         element('member-check-form')?.addEventListener('submit', verifyMembershipPhone);
@@ -2274,19 +2326,17 @@
             return;
         }
         setupIntroVideo();
+        try { LEGACY_RESULT_STORAGE_KEYS.forEach(key => localStorage.removeItem(key)); } catch (_) { }
         bindEvents();
         renderHome();
         updatePersistentActions();
         replaceTabHistory(navigationTabForStage());
         syncThemeColor('intro-screen');
         const start = element('start-button');
-        const startV2 = element('start-button-v2');
         if (start) start.disabled = true;
-        if (startV2) startV2.disabled = true;
         playWordmark();
         void loadConfig().finally(() => {
             if (start) start.disabled = false;
-            if (startV2) startV2.disabled = false;
         });
         if (!BAND_INTEGRATION_ENABLED) {
             bandAuthReady = false;

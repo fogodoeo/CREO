@@ -486,7 +486,7 @@ test('CREWARTS home shows the saved result and only a masked authenticated phone
         assert.match(html, new RegExp(`id=["']${id}["']`));
     }
     assert.match(html, /MY CREWART PROFILE/);
-    assert.match(html, /Ver 2 다시 시작/);
+    assert.match(html, /다시 시작/);
     assert.match(html, /data-nav="home"[\s\S]*data-nav="result"[\s\S]*data-nav="band"/);
     assert.doesNotMatch(html, /최근 결과|home-result-open|cw-home-panel|cw-home-member/);
     assert.match(script, /crewart_band_member_phone_mask_v1/);
@@ -563,7 +563,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /KAKAO_JS_KEY/);
     assert.match(script, /const SURVEY_URL = 'https:\/\/creok\.onrender\.com\/crewart-survey\.html'/);
     assert.doesNotMatch(script, /const SURVEY_URL = new URL\([^\n]*document\.baseURI/);
-    assert.match(html, /crewart-survey\.js\?v=20260814-survey-v28-visible-start/);
+    assert.match(html, /crewart-survey\.js\?v=20260814-survey-v2-default-lock3s/);
     assert.match(script, /Kakao\.Share\.uploadImage/);
     assert.match(script, /Kakao\.Share\.sendDefault/);
     assert.match(script, /function sharePreparedNativeResult/);
@@ -587,12 +587,16 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /cw-result-code cw-result-code-back/);
     assert.match(script, /cw-result-code cw-result-code-front/);
     assert.match(script, /class="cw-type-poster"/);
-    assert.match(html, /crewart-survey-core\.js\?v=20260814-survey-v28-visible-start/);
-    assert.match(html, /crewart-survey-v4\.css\?v=20260814-survey-v28-visible-start/);
-    assert.match(html, /id="start-button-v2"[^>]*>[\s\S]*Ver 2 시작/);
-    assert.match(html, /id="home-retest"[^>]*>Ver 2 다시 시작/);
-    assert.match(html, /id="home-retest-v1"[^>]*>Ver 1 다시 시작/);
-    assert.match(script, /element\('home-retest-v1'\).*startSurveyVersion\('v24'\)/);
+    assert.match(html, /crewart-survey-core\.js\?v=20260814-survey-v2-default-lock3s/);
+    assert.match(html, /crewart-survey-v4\.css\?v=20260814-survey-v2-default-lock3s/);
+    assert.match(html, /id="start-button"[^>]*>[\s\S]*시작하기/);
+    assert.match(html, /id="home-retest"[^>]*>다시 시작/);
+    assert.doesNotMatch(html, /start-button-v2|home-retest-v1|Ver 1 시작|Ver 2 시작/);
+    assert.match(script, /function startCurrentSurvey\(\)[\s\S]*Core\.getSurveyVersion\('v2'\)\.questionsFile/);
+    assert.doesNotMatch(script, /startSurveyVersion|start-button-v2|home-retest-v1/);
+    assert.match(script, /Core\.MIN_RESPONSE_MS/);
+    assert.match(script, /초 후 선택할 수 있어요/);
+    assert.match(css, /\.cw-choice-button:disabled/);
     assert.match(css, /\.cw-v2-button\s*\{[^}]*linear-gradient/);
     assert.match(script, /네 답 모두 괜찮습니다\. 평소 먼저 손이 가는 쪽을 골라주세요\./);
     assert.match(script, /두 답이 끌리면 실제 그 순간 가장 먼저 할 행동을 선택해주세요\./);

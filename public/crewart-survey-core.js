@@ -16,7 +16,7 @@
             resultsVersion: 'crewart-results-v1-legacy',
             questionsFile: 'crewart-survey-questions-v24.json',
             resultsFile: null,
-            active: true,
+            active: false,
             legacy: true
         },
         v2: {
@@ -47,6 +47,8 @@
     let AXIS_SCORE_TOTAL = 15;
     let PRIMARY_SIGNAL_POINTS = 3;
     let SECONDARY_SIGNAL_POINTS = 2;
+    const MIN_RESPONSE_MS = 3000;
+    const MAX_RESPONSE_MS = 90000;
     const AXES = ['EI', 'SN', 'TF', 'JP'];
     const HOUSE_KEYS = ['SF', 'ST', 'NT', 'NF'];
     const MBTI_TYPES = [
@@ -423,7 +425,9 @@
             questionId: entry?.questionId || questions[index]?.id || '',
             axis: entry?.axis || questions[index]?.axis || '',
             elapsedMs: Math.round(Number(entry?.elapsedMs) || 0),
-            valid: entry?.valid !== false && Number(entry?.elapsedMs) >= 400 && Number(entry?.elapsedMs) <= 90000
+            valid: entry?.valid !== false
+                && Number(entry?.elapsedMs) >= MIN_RESPONSE_MS
+                && Number(entry?.elapsedMs) <= MAX_RESPONSE_MS
         }));
         const valid = normalized.filter(entry => entry.valid);
         const values = valid.map(entry => entry.elapsedMs);
@@ -451,7 +455,8 @@
     }
 
     function buildSpeedBenchmark(medianMs, sampleValues) {
-        const samples = (sampleValues || []).map(Number).filter(value => value >= 400 && value <= 90000);
+        const samples = (sampleValues || []).map(Number)
+            .filter(value => value >= MIN_RESPONSE_MS && value <= MAX_RESPONSE_MS);
         if (samples.length < 10) {
             return {
                 ready: false,
@@ -548,6 +553,8 @@
         HOUSE_KEYS,
         HOUSE_META,
         MBTI_TYPES,
+        MIN_RESPONSE_MS,
+        MAX_RESPONSE_MS,
         QUESTIONS,
         AXIS_META,
         TYPE_NAMES,
