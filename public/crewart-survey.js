@@ -742,8 +742,7 @@
     }
 
     function showResult(skipMbti) {
-        console.log('[showResult] called, result:', Boolean(result), 'skipMbti:', skipMbti, 'selectedMbti:', selectedMbti);
-        if (!result) { console.warn('[showResult] no result, returning'); return; }
+        if (!result) return;
         if (!selectedMbti && !skipMbti) {
             toast('평소 유형을 고르거나 건너뛰기를 눌러주세요.', true);
             return;
@@ -752,13 +751,10 @@
     }
 
     async function completeResultReveal() {
-        console.log('[completeResultReveal] called, hasDetailedAccess:', hasDetailedAccess());
         showingStoredResult = false;
         if (!hasDetailedAccess()) {
-            console.log('[completeResultReveal] no detailed access, rendering teaser');
             renderResult({ animate: true });
             setScreen('result-screen');
-            console.log('[completeResultReveal] setScreen done');
             return;
         }
         if (!assignedHouseKey && IS_LOCAL_QA) assignedHouseKey = choosePreviewHouse();
@@ -962,7 +958,7 @@
         const timeValueNode = root.querySelector('[data-time-value]');
         const timeLabelNode = root.querySelector('[data-time-label]');
         const speedNode = root.querySelector('.cw-story-speed');
-        const targetSpeedPosition = Number(speed.position) || 50;
+        const targetSpeedPosition = speedNode ? (parseFloat(speedNode.style.getPropertyValue('--speed-position')) || 50) : 50;
         if (speedNode) speedNode.style.setProperty('--speed-position', '50%');
         const bandPromptNode = root.querySelector('[data-band-prompt]');
         const clamp = value => Math.max(0, Math.min(1, value));
