@@ -652,8 +652,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 
 
 
+
 /* ==========================================================================
-   AGENCY-GRADE SCROLLYTELLING & BENTO STORY CARD SYSTEM
+   AGENCY-GRADE SCROLLYTELLING & BENTO STORY CARD SYSTEM (DESKTOP & MOBILE)
    ========================================================================== */
 .cw-result {
     padding: max(8px, calc(env(safe-area-inset-top) + 6px)) 12px max(118px, calc(env(safe-area-inset-bottom) + 100px));
@@ -661,8 +662,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 }
 
 .cw-result-wrap {
-    width: min(100%, 520px);
+    width: min(100%, 540px);
     margin: 0 auto;
+    transition: width 0.3s ease;
 }
 
 .cw-agency-post-card {
@@ -672,6 +674,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     border-radius: 18px;
     background: #ffffff;
     box-shadow: 0 8px 30px -4px rgba(15, 23, 42, 0.06), 0 2px 6px -1px rgba(15, 23, 42, 0.02);
+}
+
+.cw-agency-desktop-grid {
+    display: grid;
+    grid-template-columns: 1fr;
 }
 
 /* 1. Profile Header */
@@ -1118,7 +1125,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 
 /* Footer & Buttons */
 .cw-report-footer {
-    margin: 18px 18px 0;
+    margin: 18px 0 0;
     padding-top: 16px;
     border-top: 1px solid #f1f5f9;
 }
@@ -1145,6 +1152,40 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 
 .cw-share-action:hover img {
     filter: invert(1);
+}
+
+/* ==========================================================================
+   DESKTOP RESPONSIVE SPLIT-STICKY SCROLLYTELLING (MIN-WIDTH: 860px)
+   ========================================================================== */
+@media (min-width: 860px) {
+    .cw-result-wrap {
+        width: min(100%, 980px);
+    }
+
+    .cw-agency-desktop-grid {
+        display: grid;
+        grid-template-columns: 440px 1fr;
+        gap: 0;
+    }
+
+    .cw-agency-stage-col {
+        border-right: 1px solid #f1f5f9;
+        background: #ffffff;
+    }
+
+    .cw-agency-stage-sticky {
+        position: sticky;
+        top: 24px;
+    }
+
+    .cw-agency-story-col {
+        padding-bottom: 12px;
+        background: #ffffff;
+    }
+
+    .cw-agency-story-flow {
+        padding: 18px 24px 0;
+    }
 }
 
 @media (max-width: 520px) {

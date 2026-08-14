@@ -1220,101 +1220,108 @@
         element('result-content').innerHTML = `
             <div class="cw-result-wrap" style="--house-accent:${escapeHtml(house.accent)}">
                 <article class="cw-result-report cw-agency-post-card ${isV2 ? 'is-v2-mode' : 'is-v1-mode'}">
-                    <!-- Agency Style Profile Header -->
-                    <header class="cw-agency-header">
-                        <div class="cw-agency-profile">
-                            <div class="cw-agency-story-ring" style="--story-color:${escapeHtml(house.accent)}">
-                                <div class="cw-agency-avatar">${escapeHtml(result.code.slice(0, 2))}</div>
-                            </div>
-                            <div class="cw-agency-meta">
-                                <div class="cw-agency-name-row">
-                                    <strong class="cw-agency-username">crewart_${escapeHtml(result.code.toLowerCase())}</strong>
-                                    <span class="cw-agency-badge" aria-label="공식 인증">✓</span>
+                    <!-- Responsive Grid: Desktop Split Sticky + Mobile Single Stack -->
+                    <div class="cw-agency-desktop-grid">
+                        <!-- Left Column: Pinned Hero Visual on Desktop -->
+                        <aside class="cw-agency-stage-col">
+                            <div class="cw-agency-stage-sticky">
+                                <header class="cw-agency-header">
+                                    <div class="cw-agency-profile">
+                                        <div class="cw-agency-story-ring" style="--story-color:${escapeHtml(house.accent)}">
+                                            <div class="cw-agency-avatar">${escapeHtml(result.code.slice(0, 2))}</div>
+                                        </div>
+                                        <div class="cw-agency-meta">
+                                            <div class="cw-agency-name-row">
+                                                <strong class="cw-agency-username">crewart_${escapeHtml(result.code.toLowerCase())}</strong>
+                                                <span class="cw-agency-badge" aria-label="공식 인증">✓</span>
+                                            </div>
+                                            <span class="cw-agency-subhead">${escapeHtml(house.name)} 기숙사 · 크레와트</span>
+                                        </div>
+                                    </div>
+                                    <div class="cw-result-version-switcher" role="group" aria-label="결과 모드 전환">
+                                        <button type="button" class="cw-version-tab ${!isV2 ? 'is-active' : ''}" data-action="set-result-version" data-version="v1">
+                                            <span>기본</span>
+                                        </button>
+                                        <button type="button" class="cw-version-tab ${isV2 ? 'is-active' : ''}" data-action="set-result-version" data-version="v2">
+                                            <span>심층</span>
+                                        </button>
+                                    </div>
+                                </header>
+
+                                <section class="cw-result-identity cw-agency-hero">
+                                    <div class="cw-type-poster" data-final-code="${escapeHtml(result.code)}">
+                                        <span class="cw-visually-hidden">${escapeHtml(result.code)}</span>
+                                        <strong class="cw-result-code cw-result-code-back" aria-hidden="true">${resultCodeBackSlots}</strong>
+                                        <figure class="cw-character-reveal ${characterState}" data-character-reveal>
+                                            <div class="cw-character-placeholder" aria-hidden="true"><span>?</span></div>
+                                            <img src="${escapeHtml(characterPath)}" width="360" height="520" alt="${escapeHtml(`${result.code} ${activeTitle} 아기 크레 캐릭터`)}" loading="eager" decoding="async">
+                                        </figure>
+                                        <strong class="cw-result-code cw-result-code-front" aria-hidden="true">${resultCodeFrontSlots}</strong>
+                                    </div>
+                                </section>
+
+                                <div class="cw-agency-action-bar">
+                                    <div class="cw-agency-quick-icons">
+                                        <button class="cw-agency-icon-btn" type="button" data-action="save-image" aria-label="결과 이미지 저장">
+                                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                                        </button>
+                                        <button class="cw-agency-icon-btn" type="button" data-action="share" aria-label="카카오톡 공유">
+                                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                                        </button>
+                                    </div>
+                                    <span class="cw-agency-house-tag" style="background:${escapeHtml(house.accent)}">${escapeHtml(house.name)} 기숙사</span>
                                 </div>
-                                <span class="cw-agency-subhead">${escapeHtml(house.name)} 기숙사 · 크레와트</span>
                             </div>
-                        </div>
-                        <div class="cw-result-version-switcher" role="group" aria-label="결과 모드 전환">
-                            <button type="button" class="cw-version-tab ${!isV2 ? 'is-active' : ''}" data-action="set-result-version" data-version="v1">
-                                <span>기본</span>
-                            </button>
-                            <button type="button" class="cw-version-tab ${isV2 ? 'is-active' : ''}" data-action="set-result-version" data-version="v2">
-                                <span>심층</span>
-                            </button>
-                        </div>
-                    </header>
+                        </aside>
 
-                    <!-- Pinned Hero Visual Stage -->
-                    <section class="cw-result-identity cw-agency-hero">
-                        <div class="cw-type-poster" data-final-code="${escapeHtml(result.code)}">
-                            <span class="cw-visually-hidden">${escapeHtml(result.code)}</span>
-                            <strong class="cw-result-code cw-result-code-back" aria-hidden="true">${resultCodeBackSlots}</strong>
-                            <figure class="cw-character-reveal ${characterState}" data-character-reveal>
-                                <div class="cw-character-placeholder" aria-hidden="true"><span>?</span></div>
-                                <img src="${escapeHtml(characterPath)}" width="360" height="520" alt="${escapeHtml(`${result.code} ${activeTitle} 아기 크레 캐릭터`)}" loading="eager" decoding="async">
-                            </figure>
-                            <strong class="cw-result-code cw-result-code-front" aria-hidden="true">${resultCodeFrontSlots}</strong>
-                        </div>
-                    </section>
+                        <!-- Right Column: Scrollytelling Story Flow -->
+                        <main class="cw-agency-story-col">
+                            <section class="cw-agency-story-flow">
+                                <div class="cw-agency-caption-block">
+                                    <h1 class="cw-result-type-name" data-final-name="${escapeHtml(activeTitle)}">
+                                        <strong class="cw-agency-caption-handle">crewart_${escapeHtml(result.code.toLowerCase())}</strong>
+                                        ${escapeHtml(activeTitle)}
+                                    </h1>
+                                    ${isV2 && profile.subtitle ? `<p class="cw-result-subtitle">${escapeHtml(profile.subtitle)}</p>` : ''}
+                                </div>
 
-                    <!-- Instagram Quick Interaction Bar -->
-                    <div class="cw-agency-action-bar">
-                        <div class="cw-agency-quick-icons">
-                            <button class="cw-agency-icon-btn" type="button" data-action="save-image" aria-label="결과 이미지 저장">
-                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                            </button>
-                            <button class="cw-agency-icon-btn" type="button" data-action="share" aria-label="카카오톡 공유">
-                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                            </button>
-                        </div>
-                        <span class="cw-agency-house-tag" style="background:${escapeHtml(house.accent)}">${escapeHtml(house.name)} 기숙사</span>
+                                <!-- Step 01: 성향 분석 -->
+                                ${isV2 && profile.summary ? `
+                                <div class="cw-story-step is-step-1">
+                                    <div class="cw-step-badge"><span>01</span> 성향 분석</div>
+                                    <div class="cw-agency-card is-summary-card">
+                                        <div class="cw-result-summary-box"><p>${escapeHtml(profile.summary)}</p></div>
+                                    </div>
+                                </div>` : ''}
+
+                                <!-- Step 02: 사육 강점/약점 -->
+                                ${powerGridHtml}
+
+                                <!-- Step 03: 성향 궁합 -->
+                                ${matchGridHtml}
+
+                                <!-- Step 04: 사육 가이드 -->
+                                ${actionItemHtml}
+
+                                ${detail}
+                                ${renderHouseDeclaration()}
+
+                                <!-- Footer -->
+                                <footer class="cw-report-footer">
+                                    <section class="cw-share-section" aria-label="결과 공유">
+                                        <button class="cw-share-action is-save" type="button" data-action="save-image">
+                                            <span class="cw-share-save-mark" aria-hidden="true">↓</span>
+                                            <strong data-action-label>결과 이미지 저장</strong>
+                                        </button>
+                                        <button class="cw-share-action is-kakao" type="button" data-action="share">
+                                            <img src="assets/kakaolink_btn_medium.png" width="24" height="24" alt="">
+                                            <strong data-action-label>카카오톡 공유</strong>
+                                        </button>
+                                    </section>
+                                </footer>
+                            </section>
+                        </main>
                     </div>
-
-                    <!-- Scrollytelling Story Flow -->
-                    <section class="cw-agency-story-flow">
-                        <div class="cw-agency-caption-block">
-                            <h1 class="cw-result-type-name" data-final-name="${escapeHtml(activeTitle)}">
-                                <strong class="cw-agency-caption-handle">crewart_${escapeHtml(result.code.toLowerCase())}</strong>
-                                ${escapeHtml(activeTitle)}
-                            </h1>
-                            ${isV2 && profile.subtitle ? `<p class="cw-result-subtitle">${escapeHtml(profile.subtitle)}</p>` : ''}
-                        </div>
-
-                        <!-- Step 01: 성향 분석 -->
-                        ${isV2 && profile.summary ? `
-                        <div class="cw-story-step is-step-1">
-                            <div class="cw-step-badge"><span>01</span> 성향 분석</div>
-                            <div class="cw-agency-card is-summary-card">
-                                <div class="cw-result-summary-box"><p>${escapeHtml(profile.summary)}</p></div>
-                            </div>
-                        </div>` : ''}
-
-                        <!-- Step 02: 사육 강점/약점 -->
-                        ${powerGridHtml}
-
-                        <!-- Step 03: 성향 궁합 -->
-                        ${matchGridHtml}
-
-                        <!-- Step 04: 사육 가이드 -->
-                        ${actionItemHtml}
-
-                        ${detail}
-                        ${renderHouseDeclaration()}
-                    </section>
-
-                    <!-- Footer -->
-                    <footer class="cw-report-footer">
-                        <section class="cw-share-section" aria-label="결과 공유">
-                            <button class="cw-share-action is-save" type="button" data-action="save-image">
-                                <span class="cw-share-save-mark" aria-hidden="true">↓</span>
-                                <strong data-action-label>결과 이미지 저장</strong>
-                            </button>
-                            <button class="cw-share-action is-kakao" type="button" data-action="share">
-                                <img src="assets/kakaolink_btn_medium.png" width="24" height="24" alt="">
-                                <strong data-action-label>카카오톡 공유</strong>
-                            </button>
-                        </section>
-                    </footer>
                 </article>
                 <small class="cw-result-copyright cw-result-copyright-outside">© 2026 CREO. All rights reserved.</small>
             </div>`;
