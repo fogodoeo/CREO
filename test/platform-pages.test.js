@@ -569,7 +569,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /KAKAO_JS_KEY/);
     assert.match(script, /const SURVEY_URL = 'https:\/\/creok\.onrender\.com\/crewart-survey\.html'/);
     assert.doesNotMatch(script, /const SURVEY_URL = new URL\([^\n]*document\.baseURI/);
-    assert.match(html, /crewart-survey\.js\?v=20260815-character-card-v29/);
+    assert.match(html, /crewart-survey\.js\?v=20260815-mobile-resilience-v30/);
     assert.match(script, /function renderUnifiedResult\(profile, house\)/);
     assert.doesNotMatch(script, /resultViewVersion|resultViewFromLocation|changeResultView|report=deep|set-result-version/);
     assert.match(script, /function renderResult\(options = \{\}\)[\s\S]*renderUnifiedResult\(profile, house\);/);
@@ -604,6 +604,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /window\.addEventListener\('wheel', blockTimeSceneScroll, \{ passive: false \}\)/);
     assert.match(script, /window\.addEventListener\('touchmove', blockTimeSceneScroll, \{ passive: false \}\)/);
     assert.match(script, /timeShuffleStarted && !timeShuffleSettled[\s\S]*TIME_SCENE_LOCK/);
+    assert.match(script, /window\.scrollTo\(\{ top: lockY, behavior: 'auto' \}\)/);
+    assert.doesNotMatch(script, /behavior:\s*'instant'/);
     assert.match(script, /data-time-value data-final-time=/);
     assert.match(script, /timeLabelNode\.textContent = '평균 문항 시간'/);
     assert.match(script, /row\.style\.setProperty\('--axis-current'/);
@@ -621,12 +623,16 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(css, /\.cw-story-scene\.is-time > strong\s*\{[^}]*font-size:\s*clamp\(82px, 18vw, 164px\)/);
     assert.match(css, /\.cw-story-house-line\s*\{[^}]*white-space:\s*nowrap[^}]*var\(--house-progress\)/);
     assert.match(css, /\.cw-story-track\.is-share-ready \.cw-story-kakao\s*\{[^}]*animation:\s*cw-story-share-ready/);
+    assert.match(css, /\.cw-story-final-actions\s*\{[^}]*pointer-events:\s*none/);
+    assert.match(css, /\.cw-story-track\.is-share-ready \.cw-story-final-actions\s*\{[^}]*pointer-events:\s*auto/);
     assert.match(css, /@keyframes cw-story-share-ready/);
     assert.doesNotMatch(css, /cw-story-share-ready[^;]*infinite/);
     assert.doesNotMatch(css, /\.cw-story-card\.is-strength\s*\{[^}]*translate|\.cw-story-card\.is-match\s*\{[^}]*translate/);
     assert.doesNotMatch(script, /cw-depth-stage|cw-depth-step|cw-depth-mobile-summary|data-depth-scrolly/);
     assert.match(css, /html\s*\{[^}]*overflow-x:\s*clip/);
     assert.match(css, /body\s*\{[^}]*overflow-x:\s*clip/);
+    assert.match(css, /button,\s*a\s*\{[^}]*touch-action:\s*manipulation/);
+    assert.match(css, /@media \(max-height:\s*520px\) and \(min-width:\s*560px\)[\s\S]*\.cw-kakao-dialog-sheet/);
     assert.match(script, /classList\.add\('is-depth-view'\)/);
     assert.match(css, /\.cw-result\.is-depth-view\s*\{[^}]*width:\s*100%[^}]*max-width:\s*none/);
     assert.match(script, /classList\.toggle\('cw-result-experience', screenId === 'result-screen' && Boolean\(result\)\)/);
@@ -653,7 +659,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /function typeCharacterPath\(code\)/);
     assert.match(script, /TYPE_CHARACTER_ROOT = 'assets\/crewart-types\/'/);
     assert.match(html, /crewart-survey-core\.js\?v=20260815-result-sequence-v26/);
-    assert.match(html, /crewart-survey-v4\.css\?v=20260815-character-card-v29/);
+    assert.match(html, /crewart-survey-v4\.css\?v=20260815-mobile-resilience-v30/);
     assert.match(html, /id="start-button"[^>]*>[\s\S]*시작하기/);
     assert.match(html, /id="home-retest"[^>]*>다시 시작/);
     assert.doesNotMatch(html, /start-button-v2|home-retest-v1|Ver 1 시작|Ver 2 시작/);

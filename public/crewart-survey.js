@@ -329,7 +329,7 @@
         }
         updatePersistentActions();
         syncThemeColor(screenId);
-        window.scrollTo({ top: 0, behavior: 'instant' });
+        window.scrollTo({ top: 0, behavior: 'auto' });
     }
 
     function syncMemberKeyboardState(options = {}) {
@@ -905,7 +905,7 @@
         const holdTimeScene = () => {
             if (!timeShuffleStarted || timeShuffleSettled) return;
             const lockY = storyProgressToScrollY(TIME_SCENE_LOCK);
-            if (Math.abs(window.scrollY - lockY) > 1) window.scrollTo({ top: lockY, behavior: 'instant' });
+            if (Math.abs(window.scrollY - lockY) > 1) window.scrollTo({ top: lockY, behavior: 'auto' });
         };
         const blockTimeSceneScroll = event => {
             if (!timeShuffleStarted || timeShuffleSettled) return;
