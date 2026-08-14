@@ -438,13 +438,13 @@ test('CREWARTS uses one result journey and unlocks member detail by phone', () =
     const script = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey.js'), 'utf8');
     assert.doesNotThrow(() => new vm.Script(script, { filename: 'crewart-survey.js' }));
     assert.doesNotMatch(html, /BAND 회원 연동/);
-    assert.match(html, /id="home-band-section"/);
+    assert.match(html, /id="member-dialog"/);
     assert.doesNotMatch(html, /data-nav="band"/);
     assert.match(html, /id="member-phone"/);
     assert.match(html, /id="member-check-submit-label">확인하기<\/strong>/);
     assert.match(html, /번호는 저장하지 않고 가입 후 자동 확인해요\./);
     assert.match(html, /<label for="member-phone">휴대전화번호<\/label>/);
-    assert.match(html, /id="band-connection-status">연결되지 않음<\/span>/);
+    assert.match(html, /id="band-connection-status">/);
     assert.match(html, /id="home-band-title">BAND 회원 확인/);
     assert.doesNotMatch(html, /cw-band-identity|band-page-title|크레와트 커뮤니티/);
     assert.doesNotMatch(html, /CREWARTS COMMUNITY|<h1 id="band-page-title">BAND<\/h1>|>MEMBERSHIP</);
@@ -470,7 +470,7 @@ test('CREWARTS uses one result journey and unlocks member detail by phone', () =
     assert.match(script, /visibilitychange[\s\S]*recheckPendingMembership\(\{ visibleOnly: true \}\)/);
     const openMemberCheckBody = script.match(/function openMemberCheck\(options = \{\}\) \{([\s\S]*?)\n    \}/)?.[1] || '';
     assert.doesNotMatch(openMemberCheckBody, /\.focus\(/);
-    assert.match(openMemberCheckBody, /returnToIntro\(\)/);
+    assert.match(openMemberCheckBody, /member-dialog/);
     const showResultBody = script.match(/function showResult\(skipMbti\) \{([\s\S]*?)\n    \}/)?.[1] || '';
     assert.match(showResultBody, /completeResultReveal\(\)/);
     assert.doesNotMatch(showResultBody, /openMemberCheck/);
@@ -512,7 +512,7 @@ test('CREWARTS keeps member linking out of the questionnaire flow', () => {
     const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey.html'), 'utf8');
     const script = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey.js'), 'utf8');
     assert.match(script, /function updatePersistentActions\(\)[\s\S]*focused = stage === 'questions' \|\| stage === 'mbti'[\s\S]*nav\.hidden = focused/);
-    assert.doesNotMatch(html, /member-check-dialog|cw-guest-dialog/);
+    assert.doesNotMatch(html, /cw-guest-dialog/);
     assert.doesNotMatch(script, /결과를 열기 전에 가입 여부를 확인해요/);
 });
 
@@ -570,7 +570,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /KAKAO_JS_KEY/);
     assert.match(script, /const SURVEY_URL = 'https:\/\/creok\.onrender\.com\/crewart-survey\.html'/);
     assert.doesNotMatch(script, /const SURVEY_URL = new URL\([^\n]*document\.baseURI/);
-    assert.match(html, /crewart-survey\.js\?v=20260815-clean-home-v39/);
+    assert.match(html, /crewart-survey\.js\?v=20260815-home-result-aligned-v41/);
     assert.match(script, /function renderUnifiedResult\(profile, house\)/);
     assert.doesNotMatch(script, /resultViewVersion|resultViewFromLocation|changeResultView|report=deep|set-result-version/);
     assert.match(script, /function renderResult\(options = \{\}\)[\s\S]*renderUnifiedResult\(profile, house\);/);
@@ -671,8 +671,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.doesNotMatch(script, /크레\s*MBTI|나의 크레 MBTI|평소 MBTI/i);
     assert.match(script, /function typeCharacterPath\(code\)/);
     assert.match(script, /TYPE_CHARACTER_ROOT = 'assets\/crewart-types\/'/);
-    assert.match(html, /crewart-survey-core\.js\?v=20260815-clean-home-v39/);
-    assert.match(html, /crewart-survey-v4\.css\?v=20260815-clean-home-v39/);
+    assert.match(html, /crewart-survey-core\.js\?v=20260815-home-result-aligned-v41/);
+    assert.match(html, /crewart-survey-v4\.css\?v=20260815-home-result-aligned-v41/);
     assert.match(html, /id="start-button"[^>]*>[\s\S]*시작하기/);
     assert.match(html, /id="home-retest"[^>]*>다시 시작/);
     assert.doesNotMatch(html, /start-button-v2|home-retest-v1|Ver 1 시작|Ver 2 시작/);

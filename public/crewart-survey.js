@@ -230,13 +230,24 @@
         if (form) form.hidden = authenticated && !editingMembership;
         if (verified) verified.hidden = !authenticated || editingMembership;
         if (number) number.textContent = bandAuthPhoneMask || '확인된 회원';
-        if (connection) connection.textContent = ({
-            connected: '연결됨',
-            editing: '번호 변경 중',
-            pending: '가입 승인 확인 중',
-            disconnected: '연결되지 않음',
-            loading: '상태 확인 중'
-        })[state];
+        const homeButton = element('home-auth-button');
+        const homeTitle = element('home-band-title');
+        const homeStatus = element('band-connection-status');
+        if (authenticated && bandAuthPhoneMask) {
+            if (homeTitle) homeTitle.textContent = bandAuthPhoneMask;
+            if (homeStatus) homeStatus.textContent = 'BAND 회원 확인 완료 · 정상 연결';
+            if (homeButton) {
+                homeButton.textContent = '관리';
+                homeButton.classList.add('is-connected');
+            }
+        } else {
+            if (homeTitle) homeTitle.textContent = 'BAND 회원 확인';
+            if (homeStatus) homeStatus.textContent = '인증 후 기숙사 배정과 전체 분석이 열려요.';
+            if (homeButton) {
+                homeButton.textContent = '인증하기';
+                homeButton.classList.remove('is-connected');
+            }
+        }
         if (bandScreen) bandScreen.dataset.membershipState = state;
         const navStatus = element('band-nav-status');
         navStatus?.classList.toggle('is-verified', authenticated);
@@ -522,6 +533,14 @@
         renderQuestion();
     }
 
+    function closeMemberCheck() {
+        const dialog = element('member-dialog');
+        if (dialog) {
+            if (typeof dialog.close === 'function') dialog.close();
+            else dialog.removeAttribute('open');
+        }
+    }
+
     function openMemberCheck(options = {}) {
         pendingResultReveal = Boolean(options.revealResult);
         const status = element('member-check-status');
@@ -544,11 +563,14 @@
         if (submitLabel) submitLabel.textContent = '확인하기';
         if (!hasDetailedAccess()) editingMembership = false;
         updateBandState();
-        returnToIntro();
-        requestAnimationFrame(() => {
-            const section = element('home-band-section');
-            if (section) section.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        });
+        const dialog = element('member-dialog');
+        if (dialog && !dialog.open) {
+            if (typeof dialog.showModal === 'function') {
+                dialog.showModal();
+            } else {
+                dialog.setAttribute('open', '');
+            }
+        }
     }
 
     function editMembershipAccess() {
@@ -1424,6 +1446,7 @@
         pendingResultReveal = false;
         setTimeout(() => {
             if (phoneInput) phoneInput.value = '';
+            closeMemberCheck();
             if (reveal) completeResultReveal();
             else toast('회원 확인이 완료됐어요.');
         }, 350);
@@ -2175,6 +2198,11 @@
     function bindEvents() {
         element('start-button')?.addEventListener('click', startCurrentSurvey);
         element('home-retest')?.addEventListener('click', startCurrentSurvey);
+        element('home-auth-button')?.addEventListener('click', () => openMemberCheck());
+        element('member-dialog-close')?.addEventListener('click', closeMemberCheck);
+        element('member-dialog')?.addEventListener('click', event => {
+            if (event.target === event.currentTarget) closeMemberCheck();
+        });
         element('auth-phone-edit')?.addEventListener('click', editMembershipAccess);
         element('auth-phone-clear')?.addEventListener('click', clearMembershipAccess);
         element('member-check-form')?.addEventListener('submit', verifyMembershipPhone);
