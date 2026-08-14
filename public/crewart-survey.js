@@ -1153,6 +1153,8 @@
     }
 
     function renderResult(options = {}) {
+        const profile = Core.getResultProfile(result.code);
+        const house = Core.HOUSE_META[assignedHouseKey] || { name: 'CREO', accent: '#f0b85a' };
         const detail = BAND_INTEGRATION_ENABLED && hasDetailedAccess()
             ? `${renderMemberDetail()}${renderSpeedCard()}${renderHouseCard()}`
             : renderLockedDetail();
@@ -1164,21 +1166,75 @@
         const resultCodeFrontSlots = renderResultCodeSlots(resultCodeLetters.slice(2), 2);
         const characterState = options.animate ? 'is-pending' : 'is-revealed';
         const characterPath = typeCharacterPath(result.code);
+
+        const traitsHtml = Array.isArray(profile.traits) && profile.traits.length
+            ? `<section class="cw-result-traits-card">
+                    <h3 class="cw-card-section-title"><span class="cw-card-icon" aria-hidden="true">🔍</span> 집사 팩폭 특징</h3>
+                    <ul class="cw-traits-list">
+                        ${profile.traits.map(t => `<li><span class="cw-trait-check" aria-hidden="true">✓</span><span>${escapeHtml(t)}</span></li>`).join('')}
+                    </ul>
+               </section>`
+            : '';
+
+        const powerGridHtml = (profile.superpower || profile.weakness)
+            ? `<section class="cw-result-power-grid">
+                    ${profile.superpower ? `<article class="cw-power-card is-superpower"><div class="cw-power-badge">⚡ 사육 강점</div><p>${escapeHtml(profile.superpower)}</p></article>` : ''}
+                    ${profile.weakness ? `<article class="cw-power-card is-weakness"><div class="cw-power-badge">💔 주의할 점</div><p>${escapeHtml(profile.weakness)}</p></article>` : ''}
+               </section>`
+            : '';
+
+        const matchGridHtml = (profile.bestMatch || profile.worstMatch)
+            ? `<section class="cw-result-match-grid">
+                    ${profile.bestMatch ? `<article class="cw-match-card is-best">
+                        <div class="cw-match-tag"><span aria-hidden="true">💖</span> 환상의 짝꿍</div>
+                        <strong class="cw-match-mbti">${escapeHtml(profile.bestMatch.mbti)}</strong>
+                        <p class="cw-match-title">${escapeHtml(profile.bestMatch.title)}</p>
+                    </article>` : ''}
+                    ${profile.worstMatch ? `<article class="cw-match-card is-worst">
+                        <div class="cw-match-tag"><span aria-hidden="true">💔</span> 주의할 짝꿍</div>
+                        <strong class="cw-match-mbti">${escapeHtml(profile.worstMatch.mbti)}</strong>
+                        <p class="cw-match-title">${escapeHtml(profile.worstMatch.title)}</p>
+                    </article>` : ''}
+               </section>`
+            : '';
+
+        const actionItemHtml = profile.actionItem
+            ? `<section class="cw-result-action-card">
+                    <div class="cw-action-item-box">
+                        <span class="cw-action-icon" aria-hidden="true">💡</span>
+                        <div>
+                            <small class="cw-action-label">TODAY'S KEEPER TIP</small>
+                            <p class="cw-action-text">${escapeHtml(profile.actionItem)}</p>
+                        </div>
+                    </div>
+               </section>`
+            : '';
+
         element('result-content').innerHTML = `
-            <div class="cw-result-wrap">
+            <div class="cw-result-wrap" style="--house-accent:${escapeHtml(house.accent)}">
                 <article class="cw-result-report">
                     <section class="cw-result-identity">
+                        <div class="cw-result-house-badge">
+                            <span class="cw-badge-dot" aria-hidden="true"></span>
+                            <span>${escapeHtml(house.name)} 기숙사</span>
+                        </div>
                         <div class="cw-type-poster" data-final-code="${escapeHtml(result.code)}">
                             <span class="cw-visually-hidden">${escapeHtml(result.code)}</span>
                             <strong class="cw-result-code cw-result-code-back" aria-hidden="true">${resultCodeBackSlots}</strong>
                             <figure class="cw-character-reveal ${characterState}" data-character-reveal>
                                 <div class="cw-character-placeholder" aria-hidden="true"><span>?</span></div>
-                                <img src="${escapeHtml(characterPath)}" width="360" height="520" alt="${escapeHtml(`${result.code} ${result.typeName} 아기 크레 캐릭터`)}" loading="eager" decoding="async">
+                                <img src="${escapeHtml(characterPath)}" width="360" height="520" alt="${escapeHtml(`${result.code} ${profile.title || result.typeName} 아기 크레 캐릭터`)}" loading="eager" decoding="async">
                             </figure>
                             <strong class="cw-result-code cw-result-code-front" aria-hidden="true">${resultCodeFrontSlots}</strong>
                         </div>
-                        <h1 class="cw-result-type-name" data-final-name="${escapeHtml(result.typeName)}">${escapeHtml(result.typeName)}</h1>
+                        <h1 class="cw-result-type-name" data-final-name="${escapeHtml(profile.title || result.typeName)}">${escapeHtml(profile.title || result.typeName)}</h1>
+                        ${profile.subtitle ? `<p class="cw-result-subtitle">${escapeHtml(profile.subtitle)}</p>` : ''}
+                        ${profile.summary ? `<div class="cw-result-summary-box"><p>${escapeHtml(profile.summary)}</p></div>` : ''}
                     </section>
+                    ${traitsHtml}
+                    ${powerGridHtml}
+                    ${matchGridHtml}
+                    ${actionItemHtml}
                     ${detail}
                     ${renderHouseDeclaration()}
                     <footer class="cw-report-footer">
