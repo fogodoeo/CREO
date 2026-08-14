@@ -1470,28 +1470,38 @@
     }
 
     function drawShareScale(context, x, y, width, position, color = '#202421') {
-        context.fillStyle = '#cfd2cd';
-        context.fillRect(x, y, width, 4);
-        context.fillStyle = '#8f948f';
-        context.fillRect(x + width / 2 - 1, y - 6, 2, 16);
         const markerX = x + width * (Math.max(0, Math.min(100, position)) / 100);
-        context.beginPath();
-        context.moveTo(markerX, y - 13);
-        context.lineTo(markerX - 8, y - 23);
-        context.lineTo(markerX + 8, y - 23);
-        context.closePath();
-        context.fillStyle = color;
+        const fillX = Math.min(x + width / 2, markerX);
+        const fillWidth = Math.max(6, Math.abs(markerX - (x + width / 2)));
+        context.fillStyle = '#dfe2dd';
+        drawRoundedRect(context, x, y, width, 8, 4);
         context.fill();
+        context.fillStyle = color;
+        drawRoundedRect(context, fillX, y, fillWidth, 8, 4);
+        context.fill();
+        context.fillStyle = '#a6aaa5';
+        context.fillRect(x + width / 2 - 1, y - 7, 2, 22);
+        context.beginPath();
+        context.arc(markerX, y + 4, 13, 0, Math.PI * 2);
+        context.fillStyle = '#ffffff';
+        context.fill();
+        context.lineWidth = 7;
+        context.strokeStyle = color;
+        context.stroke();
     }
 
-    function drawShareSectionLabel(context, korean, x, y, width, font, drawLine = true) {
-        context.fillStyle = '#202421';
-        context.font = `800 24px ${font}`;
-        context.fillText(korean, x, y);
-        if (drawLine) {
-            context.fillStyle = '#565a56';
-            context.fillRect(x, y + 14, width, 2);
+    function fitShareText(context, text, maxWidth, startSize, minSize, weight, font) {
+        let size = startSize;
+        while (size > minSize) {
+            context.font = `${weight} ${size}px ${font}`;
+            if (context.measureText(text).width <= maxWidth) break;
+            size -= 2;
         }
+        return size;
+    }
+
+    function shareAccentInk(house) {
+        return ['G', 'Y'].includes(house?.seal) ? '#172019' : '#ffffff';
     }
 
     function shareFileName() {
@@ -1510,153 +1520,117 @@
         canvas.height = 1440;
         const context = canvas.getContext('2d');
         const font = '"Pretendard Variable", Pretendard, sans-serif';
-        const pageX = 48;
-        const pageY = 38;
-        const pageWidth = 984;
-        const pageHeight = 1364;
-        const contentX = 88;
-        const contentWidth = 904;
+        if (!context) throw new Error('이미지 생성 기능을 사용할 수 없습니다.');
+        const house = Core.HOUSE_META[assignedHouseKey] || { name: assignedHouseKey || 'CREWARTS', seal: 'C', accent: '#16814b' };
+        const accent = house.accent || '#16814b';
+        const accentInk = shareAccentInk(house);
+        const pageX = 36;
+        const pageY = 36;
+        const pageWidth = 1008;
+        const pageHeight = 1368;
+        const contentX = 86;
+        const contentWidth = 908;
 
-        context.fillStyle = '#ecece8';
+        context.fillStyle = '#e8e9e4';
         context.fillRect(0, 0, canvas.width, canvas.height);
-        drawRoundedRect(context, pageX, pageY, pageWidth, pageHeight, 12);
-        context.fillStyle = '#ffffff';
+        drawRoundedRect(context, pageX, pageY, pageWidth, pageHeight, 34);
+        context.fillStyle = '#fbfbf8';
         context.fill();
-        context.strokeStyle = '#d2d3cd';
+        context.strokeStyle = '#d6d8d2';
         context.lineWidth = 2;
         context.stroke();
 
-        context.fillStyle = '#2b302c';
-        context.font = `790 188px ${font}`;
-        context.textBaseline = 'alphabetic';
-        context.fillText(result.code.slice(0, 2), 145, 360);
-        context.fillText(result.code.slice(2), 650, 360);
+        context.save();
+        drawRoundedRect(context, pageX, pageY, pageWidth, pageHeight, 34);
+        context.clip();
+        context.fillStyle = accent;
+        context.fillRect(pageX, pageY, pageWidth, 14);
+        context.globalAlpha = .07;
+        context.beginPath();
+        context.arc(210, 390, 330, 0, Math.PI * 2);
+        context.fill();
+        context.restore();
+
+        context.fillStyle = '#252a26';
+        context.font = `860 27px ${font}`;
+        context.fillText('CREWARTS', contentX, 105);
+        context.fillStyle = '#858a85';
+        context.font = `720 14px ${font}`;
+        context.fillText('PERSONALITY RESULT', contentX, 132);
+
+        const houseBadgeWidth = 300;
+        const houseBadgeX = pageX + pageWidth - houseBadgeWidth - 44;
+        drawRoundedRect(context, houseBadgeX, 66, houseBadgeWidth, 112, 22);
+        context.fillStyle = accent;
+        context.fill();
+        context.fillStyle = accentInk;
+        context.font = `760 15px ${font}`;
+        context.fillText('YOUR HOUSE', houseBadgeX + 24, 102);
+        fitShareText(context, house.name, houseBadgeWidth - 48, 47, 34, 920, font);
+        context.fillText(house.name, houseBadgeX + 24, 151);
+
+        context.fillStyle = '#e0e2dc';
+        context.fillRect(contentX, 211, contentWidth, 2);
 
         try {
             const character = await loadShareImage(new URL(typeCharacterPath(result.code), document.baseURI).toString());
-            drawShareImageContain(context, character, 362, 72, 356, 452);
+            drawShareImageContain(context, character, 82, 240, 410, 500);
         } catch (_) {
-            context.fillStyle = '#f1f2ef';
+            context.fillStyle = '#eff0ec';
             context.beginPath();
-            context.arc(540, 286, 144, 0, Math.PI * 2);
+            context.arc(288, 480, 170, 0, Math.PI * 2);
             context.fill();
         }
 
-        context.fillStyle = '#17617b';
-        context.font = `800 42px ${font}`;
-        context.textAlign = 'center';
-        context.fillText(result.typeName, 540, 530);
+        context.fillStyle = '#7c827d';
+        context.font = `780 18px ${font}`;
+        context.fillText('당신의 유형', 520, 340);
+        context.fillStyle = accent;
+        fitShareText(context, result.code, 470, 154, 104, 940, font);
+        context.textBaseline = 'alphabetic';
+        context.fillText(result.code, 520, 486);
+        context.fillStyle = '#343a36';
+        fitShareText(context, result.typeName, 450, 34, 24, 820, font);
+        context.fillText(result.typeName, 524, 545);
+
+        context.fillStyle = '#232824';
+        context.font = `880 30px ${font}`;
+        context.fillText('성향 좌표', contentX, 784);
+        context.fillStyle = '#838883';
+        context.font = `680 18px ${font}`;
+        context.textAlign = 'right';
+        context.fillText('모든 축의 최종 선택 방향', contentX + contentWidth, 784);
         context.textAlign = 'left';
-        context.fillStyle = '#d5d7d2';
-        context.fillRect(contentX, 558, contentWidth, 2);
 
-        if (hasDetailedAccess()) {
-            drawShareSectionLabel(context, '성향 지표', contentX, 600, contentWidth, font, false);
-            result.axes.forEach((axisResult, index) => {
-                const copy = AXIS_REPORT_COPY[axisResult.axis];
-                const first = axisResult.axis[0];
-                const second = axisResult.axis[1];
-                const secondCount = Number(result.letters[second]) || 0;
-                const position = Math.max(0, Math.min(100, (secondCount / (Core.AXIS_SCORE_TOTAL || 5)) * 100));
-                const firstSelected = axisResult.dominant === first;
-                const x = contentX + (index % 2) * 458;
-                const y = 636 + Math.floor(index / 2) * 151;
-                const width = 446;
-                const height = 136;
+        result.axes.forEach((axisResult, index) => {
+            const copy = AXIS_REPORT_COPY[axisResult.axis];
+            const first = axisResult.axis[0];
+            const second = axisResult.axis[1];
+            const secondCount = Number(result.letters[second]) || 0;
+            const position = Math.max(0, Math.min(100, (secondCount / (Core.AXIS_SCORE_TOTAL || 5)) * 100));
+            const firstSelected = axisResult.dominant === first;
+            const y = 846 + index * 124;
 
-                drawRoundedRect(context, x, y, width, height, 12);
-                context.fillStyle = '#f6f6f3';
-                context.fill();
-                context.strokeStyle = '#dfe1dc';
-                context.lineWidth = 2;
-                context.stroke();
-
-                context.fillStyle = '#202421';
-                context.font = `750 20px ${font}`;
-                context.textAlign = 'center';
-                context.fillText(copy.title, x + width / 2, y + 28);
-
-                context.textAlign = 'left';
-                drawShareScale(context, x + 24, y + 78, width - 48, position);
-                context.fillStyle = firstSelected ? '#202421' : '#9a9e9a';
-                context.font = `${firstSelected ? 800 : 550} 16px ${font}`;
-                context.fillText(copy.left, x + 24, y + 111);
-                context.textAlign = 'right';
-                context.fillStyle = firstSelected ? '#9a9e9a' : '#202421';
-                context.font = `${firstSelected ? 550 : 800} 16px ${font}`;
-                context.fillText(copy.right, x + width - 24, y + 111);
-                context.textAlign = 'left';
-            });
-
-            const speed = resultSpeedPresentation();
-            drawShareSectionLabel(context, '선택 속도', contentX, 974, contentWidth, font);
-            drawRoundedRect(context, contentX, 1010, contentWidth, 104, 12);
-            context.fillStyle = '#f6f6f3';
-            context.fill();
-            context.strokeStyle = '#dfe1dc';
-            context.lineWidth = 2;
-            context.stroke();
-            context.fillStyle = '#202421';
-            context.font = `800 26px ${font}`;
-            context.fillText(speed ? `문항당 ${speed.median}` : '측정 정보 없음', contentX + 24, 1047);
-            context.fillStyle = '#737873';
-            context.font = `650 16px ${font}`;
+            context.fillStyle = firstSelected ? '#252a26' : '#858a85';
+            context.font = `${firstSelected ? 820 : 650} 25px ${font}`;
+            context.fillText(copy.left, contentX, y);
+            context.textAlign = 'center';
+            context.fillStyle = '#878c87';
+            context.font = `720 18px ${font}`;
+            context.fillText(copy.title, 540, y);
             context.textAlign = 'right';
-            context.fillText(speed?.comparison || '', contentX + contentWidth - 24, 1047);
+            context.fillStyle = firstSelected ? '#858a85' : '#252a26';
+            context.font = `${firstSelected ? 650 : 820} 25px ${font}`;
+            context.fillText(copy.right, contentX + contentWidth, y);
             context.textAlign = 'left';
-            drawShareScale(context, contentX + 24, 1084, contentWidth - 48, speed?.position ?? 50);
-            context.fillStyle = '#737873';
-            context.font = `700 14px ${font}`;
-            context.fillText('빠름', contentX + 24, 1106);
-            context.textAlign = 'center';
-            context.fillText('평균', 540, 1106);
-            context.textAlign = 'right';
-            context.fillText('신중', contentX + contentWidth - 24, 1106);
-            context.textAlign = 'left';
-
-            const house = Core.HOUSE_META[assignedHouseKey];
-            drawShareSectionLabel(context, '기숙사', contentX, 1184, contentWidth, font);
-            drawRoundedRect(context, contentX, 1220, contentWidth, 84, 12);
-            context.fillStyle = '#f6f6f3';
-            context.fill();
-            context.strokeStyle = '#dfe1dc';
-            context.lineWidth = 2;
-            context.stroke();
-            context.beginPath();
-            context.arc(contentX + 46, 1262, 25, 0, Math.PI * 2);
-            context.strokeStyle = house?.accent || '#16814b';
-            context.lineWidth = 3;
-            context.stroke();
-            context.fillStyle = house?.accent || '#16814b';
-            context.font = `800 22px ${font}`;
-            context.textAlign = 'center';
-            context.fillText(house?.seal || assignedHouseKey[0], contentX + 46, 1270);
-            context.textAlign = 'left';
-            context.fillStyle = '#202421';
-            context.font = `800 30px ${font}`;
-            context.fillText(`당신의 기숙사는 ${house?.name || assignedHouseKey} 입니다.`, contentX + 88, 1272);
-        } else {
-            drawRoundedRect(context, contentX, 640, contentWidth, 636, 14);
-            context.fillStyle = '#f3f4f1';
-            context.fill();
-            context.strokeStyle = '#dfe1dc';
-            context.lineWidth = 2;
-            context.stroke();
-            context.fillStyle = '#202421';
-            context.font = `800 31px ${font}`;
-            context.textAlign = 'center';
-            context.fillText('상세 결과 잠김', 540, 930);
-            context.fillStyle = '#737873';
-            context.font = `650 20px ${font}`;
-            context.fillText('BAND 회원 확인 후 결과에서 볼 수 있어요', 540, 972);
-            context.textAlign = 'left';
-        }
+            drawShareScale(context, contentX, y + 35, contentWidth, position, accent);
+        });
 
         context.fillStyle = '#737873';
         context.font = `650 14px ${font}`;
-        context.fillText('© 2026 CREO · ALL RIGHTS RESERVED', contentX, 1384);
+        context.fillText('© 2026 CREO · ALL RIGHTS RESERVED', contentX, 1370);
         context.textAlign = 'right';
-        context.fillText('creok.onrender.com', contentX + contentWidth, 1384);
+        context.fillText('creok.onrender.com', contentX + contentWidth, 1370);
         context.textAlign = 'left';
 
         const blob = await canvasBlob(canvas);
@@ -1817,6 +1791,29 @@
             || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     }
 
+    function isMobileDevice() {
+        return Boolean(navigator.userAgentData?.mobile)
+            || isAppleMobileDevice()
+            || /Android|Mobile|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    }
+
+    function canNativeShareFile(file) {
+        if (!file || typeof navigator.share !== 'function' || typeof navigator.canShare !== 'function') return false;
+        try {
+            return navigator.canShare({ files: [file] });
+        } catch (_) {
+            return false;
+        }
+    }
+
+    function openShareImageForLongPress(file) {
+        const url = URL.createObjectURL(file);
+        const opened = window.open(url, '_blank');
+        if (opened) opened.opener = null;
+        window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+        return Boolean(opened);
+    }
+
     function normalizedShareFileName(value) {
         const fallback = result ? `CREWARTS_${result.code}_${result.typeName}` : 'CREWARTS_RESULT';
         const base = String(value || fallback)
@@ -1836,21 +1833,27 @@
     }
 
     function saveDestinationPresentation() {
+        if (isMobileDevice() && canNativeShareFile(preparedSaveFile)) {
+            return {
+                destination: isAppleMobileDevice() ? '사진 앱 또는 파일 앱' : '기기 저장 또는 공유',
+                help: isAppleMobileDevice()
+                    ? '공유 메뉴에서 ‘이미지 저장’ 또는 ‘파일에 저장’을 선택해요.'
+                    : '기기의 공유 메뉴에서 사진·파일 앱 또는 저장 위치를 선택해요.',
+                action: '저장 방법 선택'
+            };
+        }
+        if (isAppleMobileDevice()) {
+            return {
+                destination: '이미지를 크게 열어 저장',
+                help: '열린 이미지를 길게 눌러 ‘사진에 저장’을 선택해요.',
+                action: '이미지 크게 열기'
+            };
+        }
         if (typeof window.showSaveFilePicker === 'function') {
             return {
                 destination: '저장할 폴더 직접 선택',
                 help: '저장 버튼을 누르면 기기의 폴더 선택 창이 열려요.',
                 action: '저장 위치 선택'
-            };
-        }
-        if (isAppleMobileDevice()
-            && navigator.share
-            && preparedSaveFile
-            && navigator.canShare?.({ files: [preparedSaveFile] })) {
-            return {
-                destination: '사진 앱 또는 파일 앱',
-                help: '공유 메뉴에서 ‘이미지 저장’ 또는 ‘파일에 저장’을 선택해요.',
-                action: '저장 방법 선택'
             };
         }
         return {
@@ -1904,7 +1907,13 @@
         button.disabled = true;
         label.textContent = '저장 중';
         try {
-            if (typeof window.showSaveFilePicker === 'function') {
+            if (isMobileDevice() && canNativeShareFile(file)) {
+                toast('공유 메뉴에서 저장 위치를 선택해주세요.');
+                await navigator.share({ files: [file], title: 'CREWARTS 성향 결과' });
+            } else if (isAppleMobileDevice()) {
+                if (!openShareImageForLongPress(file)) throw new Error('이미지 창을 열 수 없습니다.');
+                toast('이미지를 길게 눌러 사진에 저장해주세요.');
+            } else if (typeof window.showSaveFilePicker === 'function') {
                 const handle = await window.showSaveFilePicker({
                     suggestedName: file.name,
                     types: [{
@@ -1916,9 +1925,6 @@
                 await writable.write(file);
                 await writable.close();
                 toast(`${handle.name || file.name} 파일을 저장했어요.`);
-            } else if (isAppleMobileDevice() && navigator.share && navigator.canShare?.({ files: [file] })) {
-                toast('공유 메뉴에서 저장 위치를 선택해주세요.');
-                await navigator.share({ files: [file], title: 'CREWARTS 성향 결과' });
             } else {
                 downloadShareFile(file);
                 toast('브라우저 다운로드 폴더에 저장했어요.');
