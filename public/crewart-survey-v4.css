@@ -1323,7 +1323,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 
 
 
-/* ── Result-Aligned Home Design & Member Modal Dialog ── */
+
+/* ── Solid White Minimal Home Design & Modal Dialog (NO Glassmorphism) ── */
 .cw-intro {
     position: relative;
     display: flex;
@@ -1340,7 +1341,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     display: flex;
     flex: 1;
     flex-direction: column;
-    width: min(100%, 460px);
+    width: min(100%, 440px);
     min-height: 0;
     margin: 0 auto;
     opacity: 0;
@@ -1352,8 +1353,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-intro-heading {
     display: grid;
     flex: 1;
-    min-height: 200px;
-    padding: 24px 0 20px;
+    min-height: 190px;
+    padding: 20px 0;
     place-content: center;
     justify-items: center;
     text-align: center;
@@ -1362,91 +1363,89 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-wordmark {
     display: block;
     font-family: inherit;
-    color: #fff;
+    color: #ffffff;
     font-size: clamp(38px, 11vw, 56px);
     font-weight: 850;
     line-height: 1;
     letter-spacing: .02em;
-    text-shadow: 0 4px 28px rgba(0, 0, 0, .35);
+    text-shadow: 0 4px 20px rgba(0, 0, 0, .3);
 }
 
 .cw-intro-heading h1 small {
     display: block;
-    margin-top: 12px;
+    margin-top: 10px;
     color: rgba(255, 255, 255, .75);
-    font-size: 12px;
+    font-size: 11.5px;
     font-weight: 700;
-    letter-spacing: .22em;
+    letter-spacing: .2em;
 }
 
 .cw-intro-copy {
-    margin: 18px auto 0;
-    padding: 6px 16px;
+    margin: 16px auto 0;
+    padding: 5px 14px;
     border-radius: 999px;
-    background: rgba(255, 255, 255, .08);
-    border: 1px solid rgba(255, 255, 255, .12);
-    color: rgba(255, 255, 255, .8);
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: .02em;
+    background: #ffffff;
+    border: 1px solid #e5e7e2;
+    color: #202622;
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: .01em;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .08);
 }
 
 .cw-home-start {
     display: grid;
     width: 100%;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
 }
 
 .cw-home-start .cw-test-action {
     width: 100%;
-    height: 54px;
-    border: 1px solid rgba(255, 255, 255, .42);
-    border-radius: 16px;
-    background: rgba(255, 255, 255, .96);
+    height: 52px;
+    border: 1px solid #e2e4df;
+    border-radius: 14px;
+    background: #ffffff;
     color: #1a1f1b;
     font-size: 17px;
     font-weight: 850;
     letter-spacing: -.01em;
-    box-shadow: 0 12px 32px rgba(0, 0, 0, .28);
-    transition: transform .15s ease, background .15s ease, border-color .15s ease;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, .14);
+    transition: transform .12s ease, background .12s ease;
 }
 .cw-home-start .cw-test-action:hover:not(:disabled) {
     transform: translateY(-1px);
-    background: #fff;
-    border-color: #fff;
+    background: #fafaf8;
 }
 .cw-home-start .cw-test-action:active:not(:disabled) {
     transform: translateY(0);
 }
 
-/* Home BAND Lock / Auth Card (Mirrors Result Teaser Lock Card) */
+/* Home Solid White Card (NO Glassmorphism) */
 .cw-home-auth-card {
     display: grid;
     width: 100%;
     margin: 0 auto;
-    padding: 13px 16px;
-    grid-template-columns: 40px minmax(0, 1fr) auto;
+    padding: 12px 16px;
+    grid-template-columns: 38px minmax(0, 1fr) auto;
     align-items: center;
     gap: 12px;
-    border: 1px solid rgba(255, 255, 255, .14);
-    border-radius: 18px;
-    background: rgba(18, 24, 20, .78);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    box-shadow: 0 14px 40px rgba(0, 0, 0, .28);
+    border: 1px solid #e2e4df;
+    border-radius: 16px;
+    background: #ffffff;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, .12);
     text-align: left;
 }
 .cw-home-auth-card > img {
-    border-radius: 10px;
+    border-radius: 9px;
     flex-shrink: 0;
 }
 .cw-home-auth-card > div {
     display: grid;
     min-width: 0;
-    gap: 2px;
+    gap: 1px;
 }
 .cw-home-auth-card strong {
-    color: #fff;
+    color: #171a18;
     font-size: 14px;
     font-weight: 800;
     line-height: 1.3;
@@ -1455,7 +1454,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     text-overflow: ellipsis;
 }
 .cw-home-auth-card span {
-    color: rgba(255, 255, 255, .6);
+    color: #6b7280;
     font-size: 11.5px;
     font-weight: 600;
     line-height: 1.35;
@@ -1464,33 +1463,29 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     text-overflow: ellipsis;
 }
 .cw-home-auth-card button {
-    min-height: 38px;
-    padding: 0 15px;
+    min-height: 36px;
+    padding: 0 14px;
     border: 0;
-    border-radius: 11px;
+    border-radius: 10px;
     background: #16814b;
-    color: #fff;
+    color: #ffffff;
     font-family: inherit;
     font-size: 13px;
     font-weight: 800;
     white-space: nowrap;
     cursor: pointer;
-    transition: background .15s ease, transform .15s ease;
+    transition: background .12s ease;
 }
 .cw-home-auth-card button:hover {
-    background: #199456;
-    transform: translateY(-1px);
+    background: #147242;
 }
 .cw-home-auth-card button.is-connected {
-    background: rgba(255, 255, 255, .12);
-    border: 1px solid rgba(255, 255, 255, .18);
-    color: #fff;
-}
-.cw-home-auth-card button.is-connected:hover {
-    background: rgba(255, 255, 255, .18);
+    background: #f4f4f1;
+    border: 1px solid #d4d6d0;
+    color: #171a18;
 }
 
-/* Modal Dialog */
+/* Modal Dialog (Solid White Minimal, NO Glassmorphism) */
 .cw-member-dialog {
     position: fixed;
     inset: 0;
@@ -1510,26 +1505,24 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     display: none;
 }
 .cw-member-dialog::backdrop {
-    background: rgba(10, 14, 11, .72);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    background: rgba(0, 0, 0, .48);
 }
 
 .cw-member-dialog-sheet {
     display: grid;
     gap: 14px;
-    width: min(100%, 420px);
-    padding: 24px;
-    border-radius: 20px;
-    background: #202522;
-    border: 1px solid rgba(255, 255, 255, .14);
-    box-shadow: 0 24px 60px rgba(0, 0, 0, .45);
-    color: #fff;
-    animation: cw-dialog-pop .22s cubic-bezier(.2,.8,.2,1) both;
+    width: min(100%, 400px);
+    padding: 22px;
+    border-radius: 18px;
+    background: #ffffff;
+    border: 1px solid #e2e4df;
+    box-shadow: 0 20px 48px rgba(0, 0, 0, .18);
+    color: #171a18;
+    animation: cw-dialog-pop .18s ease-out both;
 }
 
 @keyframes cw-dialog-pop {
-    from { opacity: 0; transform: scale(.95) translateY(10px); }
+    from { opacity: 0; transform: scale(.96) translateY(8px); }
     to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
@@ -1542,45 +1535,46 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 
 .cw-member-dialog-head h3 {
     margin: 0;
-    font-size: 17px;
+    font-size: 16.5px;
     font-weight: 800;
-    color: #fff;
+    color: #171a18;
     letter-spacing: -.02em;
 }
 
 .cw-member-dialog-sub {
-    margin: 4px 0 0;
+    margin: 3px 0 0;
     font-size: 12px;
-    color: rgba(255, 255, 255, .6);
+    color: #6b7280;
+    font-weight: 500;
 }
 
 .cw-dialog-close {
-    width: 32px;
-    height: 32px;
-    border: 0;
+    width: 30px;
+    height: 30px;
+    border: 1px solid #e2e4df;
     border-radius: 50%;
-    background: rgba(255, 255, 255, .08);
-    color: rgba(255, 255, 255, .7);
-    font-size: 16px;
+    background: #f7f7f4;
+    color: #555555;
+    font-size: 15px;
     cursor: pointer;
     display: grid;
     place-items: center;
-    transition: background .15s ease;
+    transition: background .12s ease;
 }
 .cw-dialog-close:hover {
-    background: rgba(255, 255, 255, .16);
-    color: #fff;
+    background: #eef0eb;
+    color: #111111;
 }
 
 .cw-member-dialog .cw-member-form {
     display: grid;
-    gap: 8px;
+    gap: 6px;
 }
 
 .cw-member-dialog .cw-member-form label {
     font-size: 12px;
-    font-weight: 650;
-    color: rgba(255, 255, 255, .7);
+    font-weight: 700;
+    color: #374151;
 }
 
 .cw-member-dialog .cw-member-input-group {
@@ -1591,43 +1585,43 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-member-dialog .cw-member-input-group input {
     flex: 1;
     min-width: 0;
-    height: 46px;
-    padding: 0 14px;
-    border: 1px solid rgba(255, 255, 255, .16);
-    border-radius: 12px;
-    background: rgba(0, 0, 0, .35);
-    color: #fff;
+    height: 44px;
+    padding: 0 13px;
+    border: 1px solid #d4d6d0;
+    border-radius: 10px;
+    background: #f7f7f4;
+    color: #171a18;
     font-family: inherit;
-    font-size: 15px;
+    font-size: 14.5px;
     font-weight: 600;
     outline: none;
-    transition: border-color .15s ease, background .15s ease;
+    transition: border-color .12s ease, background .12s ease;
 }
 .cw-member-dialog .cw-member-input-group input::placeholder {
-    color: rgba(255, 255, 255, .32);
+    color: #9ca3af;
 }
 .cw-member-dialog .cw-member-input-group input:focus {
     border-color: #16814b;
-    background: rgba(0, 0, 0, .5);
+    background: #ffffff;
 }
 
 .cw-member-dialog .cw-member-input-group .cw-dialog-band-button {
     flex: 0 0 auto;
-    height: 46px;
-    padding: 0 18px;
+    height: 44px;
+    padding: 0 16px;
     border: 0;
-    border-radius: 12px;
+    border-radius: 10px;
     background: #16814b;
-    color: #fff;
+    color: #ffffff;
     font-family: inherit;
-    font-size: 14px;
+    font-size: 13.5px;
     font-weight: 750;
     cursor: pointer;
     white-space: nowrap;
-    transition: background .15s ease;
+    transition: background .12s ease;
 }
 .cw-member-dialog .cw-member-input-group .cw-dialog-band-button:hover {
-    background: #199456;
+    background: #147242;
 }
 .cw-member-dialog .cw-member-input-group .cw-dialog-band-button.is-recheck {
     background: #2563eb;
@@ -1635,71 +1629,71 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 
 .cw-member-dialog .cw-member-form small {
     font-size: 11.5px;
-    color: rgba(255, 255, 255, .45);
+    color: #6b7280;
 }
 
 .cw-member-dialog .cw-band-verified {
     display: grid;
-    gap: 12px;
-    padding-top: 4px;
+    gap: 10px;
+    padding-top: 2px;
 }
 
 .cw-member-dialog .cw-band-verified header {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 9px;
 }
 
 .cw-member-dialog .cw-band-verified header > span {
     display: grid;
-    width: 26px;
-    height: 26px;
+    width: 24px;
+    height: 24px;
     place-items: center;
     border-radius: 50%;
     background: #16814b;
-    color: #fff;
-    font-size: 14px;
+    color: #ffffff;
+    font-size: 13px;
     font-weight: 800;
 }
 
 .cw-member-dialog .cw-band-verified header small {
     display: block;
-    font-size: 10px;
-    color: rgba(255, 255, 255, .5);
-    letter-spacing: .1em;
+    font-size: 9.5px;
+    color: #6b7280;
+    letter-spacing: .08em;
 }
 
 .cw-member-dialog .cw-band-verified header strong {
-    font-size: 14px;
+    font-size: 13.5px;
     font-weight: 750;
-    color: #fff;
+    color: #171a18;
 }
 
 .cw-member-dialog .cw-band-verified dl {
     display: grid;
-    gap: 8px;
+    gap: 6px;
     margin: 0;
-    padding: 12px 14px;
-    border-radius: 12px;
-    background: rgba(0, 0, 0, .28);
-    border: 1px solid rgba(255, 255, 255, .08);
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: #f7f7f4;
+    border: 1px solid #e5e7e2;
 }
 
 .cw-member-dialog .cw-band-verified dl > div {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 13px;
+    font-size: 12.5px;
 }
 
 .cw-member-dialog .cw-band-verified dt {
-    color: rgba(255, 255, 255, .55);
+    color: #6b7280;
 }
 
 .cw-member-dialog .cw-band-verified dd {
     margin: 0;
     font-weight: 700;
-    color: #fff;
+    color: #171a18;
 }
 
 .cw-member-dialog .cw-band-account-actions {
@@ -1709,86 +1703,84 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 
 .cw-member-dialog .cw-band-account-actions button {
     flex: 1;
-    height: 38px;
-    border: 1px solid rgba(255, 255, 255, .14);
-    border-radius: 10px;
-    background: rgba(255, 255, 255, .06);
-    color: rgba(255, 255, 255, .88);
+    height: 36px;
+    border: 1px solid #d4d6d0;
+    border-radius: 9px;
+    background: #ffffff;
+    color: #374151;
     font-family: inherit;
-    font-size: 13px;
+    font-size: 12.5px;
     font-weight: 700;
     cursor: pointer;
-    transition: background .15s ease, border-color .15s ease;
+    transition: background .12s ease;
 }
 .cw-member-dialog .cw-band-account-actions button:hover {
-    background: rgba(255, 255, 255, .12);
-    border-color: rgba(255, 255, 255, .24);
+    background: #f4f4f1;
 }
 
 .cw-member-dialog .cw-member-status {
-    padding: 10px 14px;
-    border-radius: 10px;
-    font-size: 12.5px;
+    padding: 9px 12px;
+    border-radius: 9px;
+    font-size: 12px;
     font-weight: 600;
     line-height: 1.4;
 }
 .cw-member-dialog .cw-member-status.is-error {
-    background: rgba(239, 68, 68, .18);
-    border: 1px solid rgba(239, 68, 68, .32);
-    color: #fca5a5;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #b91c1c;
 }
 .cw-member-dialog .cw-member-status.is-success {
-    background: rgba(34, 197, 94, .18);
-    border: 1px solid rgba(34, 197, 94, .32);
-    color: #86efac;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    color: #15803d;
 }
 .cw-member-dialog .cw-member-status.is-action {
-    background: rgba(37, 99, 235, .18);
-    border: 1px solid rgba(37, 99, 235, .32);
-    color: #93c5fd;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1d4ed8;
 }
 
 .cw-member-dialog .cw-member-join {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 12px 16px;
-    border-radius: 14px;
-    background: rgba(255, 255, 255, .05);
-    border: 1px solid rgba(255, 255, 255, .1);
-    color: #fff;
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: #f7f7f4;
+    border: 1px solid #e5e7e2;
+    color: #171a18;
     text-decoration: none;
-    transition: background .15s ease, border-color .15s ease;
+    transition: background .12s ease;
 }
 .cw-member-dialog .cw-member-join:hover {
-    background: rgba(255, 255, 255, .09);
-    border-color: rgba(255, 255, 255, .2);
+    background: #eeeee9;
 }
 .cw-member-dialog .cw-member-join.is-recommended {
-    border-color: rgba(34, 197, 94, .4);
-    background: rgba(34, 197, 94, .12);
+    border-color: #86efac;
+    background: #f0fdf4;
 }
 
 .cw-member-dialog .cw-member-join-copy {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
 }
 
 .cw-member-dialog .cw-member-join-copy img {
-    border-radius: 8px;
+    border-radius: 7px;
     flex-shrink: 0;
 }
 
 .cw-member-dialog .cw-member-join-copy small {
     display: block;
-    font-size: 10px;
-    color: rgba(255, 255, 255, .45);
-    letter-spacing: .08em;
+    font-size: 9.5px;
+    color: #6b7280;
+    letter-spacing: .06em;
 }
 
 .cw-member-dialog .cw-member-join-copy strong {
-    font-size: 13.5px;
+    font-size: 13px;
     font-weight: 750;
-    color: #fff;
+    color: #171a18;
 }

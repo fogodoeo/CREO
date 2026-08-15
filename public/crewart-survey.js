@@ -235,16 +235,16 @@
         const homeStatus = element('band-connection-status');
         if (authenticated && bandAuthPhoneMask) {
             if (homeTitle) homeTitle.textContent = bandAuthPhoneMask;
-            if (homeStatus) homeStatus.textContent = 'BAND 회원 확인 완료 · 정상 연결';
+            if (homeStatus) homeStatus.textContent = '확인 완료';
             if (homeButton) {
                 homeButton.textContent = '관리';
                 homeButton.classList.add('is-connected');
             }
         } else {
             if (homeTitle) homeTitle.textContent = 'BAND 회원 확인';
-            if (homeStatus) homeStatus.textContent = '인증 후 기숙사 배정과 전체 분석이 열려요.';
+            if (homeStatus) homeStatus.textContent = '기숙사 배정 · 전체 분석';
             if (homeButton) {
-                homeButton.textContent = '인증하기';
+                homeButton.textContent = '확인';
                 homeButton.classList.remove('is-connected');
             }
         }
