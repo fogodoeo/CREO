@@ -351,7 +351,7 @@
             }
         } else {
             if (startSpan) startSpan.textContent = '테스트 시작하기';
-            if (homeTitle) homeTitle.textContent = 'BAND로 계속하기';
+            if (homeTitle) homeTitle.textContent = 'BAND 로그인';
             if (homeButton) {
                 homeButton.classList.remove('is-connected');
             }
@@ -909,10 +909,12 @@
     }
 
     function hasDetailedAccess() {
+        const searchParams = new URLSearchParams(window.location.search);
+        if (IS_LOCAL_QA && searchParams.get('guest') === '1') return false;
         const isPreview = Boolean(
-            new URLSearchParams(window.location.search).get('preview') ||
-            new URLSearchParams(window.location.search).get('mbti') ||
-            new URLSearchParams(window.location.search).get('type')
+            searchParams.get('preview') ||
+            searchParams.get('mbti') ||
+            searchParams.get('type')
         );
         return IS_LOCAL_QA || isPreview || Boolean(bandAuthUser && bandAuthUser.isTargetMember === true);
     }
@@ -947,7 +949,8 @@
         return { value, position, comparison, label };
     }
 
-    function renderUnifiedResult(profile, house) {
+    function renderUnifiedResult(profile, house, options = {}) {
+        const locked = options.locked === true;
         const strengthStatement = profile.superpower || profile.summary || TYPE_READINGS[result.code] || '관찰한 내용을 자신만의 방식으로 정리해 다음 행동으로 연결합니다.';
         const bestMatchCode = profile.bestMatch?.mbti || '좋은 조합';
         const bestMatchTitle = profile.bestMatch?.title || '서로 다른 방식도 천천히 맞춰갈 수 있어요.';
@@ -993,7 +996,7 @@
 
         element('result-content').innerHTML = `
             <div class="cw-story-page" style="--house-accent:${escapeHtml(house.accent)}">
-                <section class="cw-story-track" data-result-story aria-label="스크롤로 확인하는 결과 리포트">
+                <section class="cw-story-track${locked ? ' is-guest-locked' : ''}" data-result-story aria-label="${locked ? 'BAND 로그인 후 전체 결과 확인' : '스크롤로 확인하는 결과 리포트'}">
                     <div class="cw-story-sticky">
                         <header class="cw-story-topbar">
                             <button type="button" data-action="go-home" aria-label="홈으로 돌아가기">← <span>홈</span></button>
@@ -1048,45 +1051,16 @@
                                 <small class="cw-story-credit">© 2026 CREO. All rights reserved.</small>
                             </section>
                         </div>
-                        <div class="cw-story-cue" aria-hidden="true"><span>스크롤</span><i><b></b><b></b></i></div>
+                        ${locked ? `<button class="cw-story-login-gate" type="button" data-action="unlock-detail">
+                            <img src="assets/band-app-icon-official.png?v=20260801-logo-v2" width="32" height="32" alt="">
+                            <strong>BAND 로그인하고 전체 결과 보기</strong><i aria-hidden="true">→</i>
+                        </button>` : '<div class="cw-story-cue" aria-hidden="true"><span>스크롤</span><i><b></b><b></b></i></div>'}
                     </div>
                 </section>
             </div>`;
 
         bindRenderedResultActions();
         resultExperienceCleanup = setupResultStory();
-    }
-
-    function renderResultTeaser(profile) {
-        const guestHouseKey = `${result.code?.[1] || ''}${result.code?.[2] || ''}`;
-        const guestHouse = Core.HOUSE_META[guestHouseKey] || Core.HOUSE_META[Core.HOUSE_KEYS[0]];
-        element('result-content').innerHTML = `
-            <div class="cw-result-teaser">
-                <header class="cw-story-topbar">
-                    <button type="button" data-action="go-home" aria-label="홈으로 돌아가기">← <span>홈</span></button>
-                    <div><strong>성향 결과</strong></div>
-                </header>
-                <main class="cw-result-teaser-main">
-                    <div class="cw-result-teaser-hero is-guest-code" data-guest-house="${escapeHtml(guestHouse.name)}" style="--guest-house-accent:${escapeHtml(guestHouse.accent)}">
-                        <strong aria-label="${escapeHtml(result.code)}">${escapeHtml(result.code)}</strong>
-                        <div class="cw-result-teaser-character" aria-hidden="true">
-                            <img src="${escapeHtml(typeCharacterPath(result.code))}" width="360" height="520" alt="" loading="eager" decoding="async">
-                        </div>
-                    </div>
-                    <div class="cw-result-teaser-copy">
-                        <p>${escapeHtml(profile.title || result.typeName)}</p>
-                    </div>
-                    <section class="cw-result-teaser-lock" aria-labelledby="result-unlock-title">
-                        <img src="assets/band-app-icon-official.png?v=20260801-logo-v2" width="46" height="46" alt="">
-                        <div>
-                            <strong id="result-unlock-title">성향 분석 · 기숙사</strong>
-                            <span>BAND 회원에게 전체 결과를 제공해요.</span>
-                        </div>
-                        <button type="button" data-action="unlock-detail">BAND 인증하기</button>
-                    </section>
-                </main>
-            </div>`;
-        bindRenderedResultActions();
     }
 
     function bindRenderedResultActions() {
@@ -1099,6 +1073,7 @@
     function setupResultStory() {
         const root = element('result-content').querySelector('[data-result-story]');
         if (!root) return () => { };
+        const guestLocked = root.classList.contains('is-guest-locked');
         const progressNode = root.querySelector('[data-story-progress]');
         const axisRows = [...root.querySelectorAll('[data-axis-target]')];
         const scenes = Object.fromEntries([...root.querySelectorAll('[data-story-scene]')].map(node => [node.dataset.storyScene, node]));
@@ -1192,6 +1167,12 @@
             if (Math.abs(window.scrollY - lockY) > 1) window.scrollTo({ top: lockY, behavior: 'auto' });
         };
         const blockTimeSceneScroll = event => {
+            if (guestLocked) {
+                event.preventDefault();
+                const lockY = storyProgressToScrollY(0);
+                if (Math.abs(window.scrollY - lockY) > 1) window.scrollTo({ top: lockY, behavior: 'auto' });
+                return;
+            }
             if (!heroCodeSettled) {
                 event.preventDefault();
                 const lockY = storyProgressToScrollY(0);
@@ -1203,6 +1184,10 @@
             holdTimeScene();
         };
         const blockTimeSceneKeys = event => {
+            if (guestLocked && ['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', 'Home', 'End', ' '].includes(event.key)) {
+                event.preventDefault();
+                return;
+            }
             if (!heroCodeSettled && ['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', 'Home', 'End', ' '].includes(event.key)) {
                 event.preventDefault();
                 return;
@@ -1308,8 +1293,8 @@
             const rect = root.getBoundingClientRect();
             const range = Math.max(1, root.offsetHeight - window.innerHeight);
             const measuredProgress = clamp(-rect.top / range);
-            const rawProgress = heroCodeSettled ? measuredProgress : 0;
-            if (!heroCodeSettled && measuredProgress > 0) {
+            const rawProgress = heroCodeSettled && !guestLocked ? measuredProgress : 0;
+            if ((!heroCodeSettled || guestLocked) && measuredProgress > 0) {
                 const lockY = storyProgressToScrollY(0);
                 if (Math.abs(window.scrollY - lockY) > 1) window.scrollTo({ top: lockY, behavior: 'auto' });
             }
@@ -1388,50 +1373,19 @@
         };
     }
 
-    function playResultRevealAnimation() {
-        const root = element('result-content');
-        if (!root) return;
-        if (root.querySelector('[data-result-story]')) return;
-        const hero = root.querySelector('.cw-story-result-hero, .cw-result-teaser-hero');
-        const codeNode = root.querySelector('.cw-story-result-code, .cw-result-teaser-hero > strong');
-        const copyWrapper = root.querySelector('.cw-result-teaser-copy');
-        if (!hero || !codeNode || !result?.code) return;
-
-        hero.classList.add('is-revealing');
-        if (copyWrapper) copyWrapper.classList.add('is-revealing');
-        codeNode.classList.add('is-cycling');
-        codeNode.textContent = '????';
-
-        const placeholders = ['????', '····', '????'];
-        let idx = 0;
-        const cycleInterval = setInterval(() => {
-            idx = (idx + 1) % placeholders.length;
-            codeNode.textContent = placeholders[idx];
-        }, 120);
-
-        setTimeout(() => {
-            clearInterval(cycleInterval);
-            codeNode.textContent = result.code;
-            codeNode.classList.remove('is-cycling');
-            codeNode.classList.add('is-settled');
-            hero.classList.remove('is-revealing');
-            if (copyWrapper) copyWrapper.classList.remove('is-revealing');
-        }, 600);
-    }
-
     function renderResult(options = {}) {
         resultExperienceCleanup?.();
         resultExperienceCleanup = null;
         const profile = Core.getResultProfile(result.code);
         element('result-screen')?.classList.add('is-depth-view');
         if (!hasDetailedAccess()) {
-            renderResultTeaser(profile);
-            if (options.animate) playResultRevealAnimation();
+            const guestHouseKey = `${result.code?.[1] || ''}${result.code?.[2] || ''}`;
+            const guestHouse = Core.HOUSE_META[guestHouseKey] || Core.HOUSE_META[Core.HOUSE_KEYS[0]];
+            renderUnifiedResult(profile, guestHouse, { locked: true });
             return;
         }
         const house = Core.HOUSE_META[assignedHouseKey] || { name: 'ASSIGNING', accent: '#16814b' };
         renderUnifiedResult(profile, house);
-        if (options.animate) playResultRevealAnimation();
     }
 
     function renderEmptyResult() {
