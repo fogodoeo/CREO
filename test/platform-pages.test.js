@@ -548,7 +548,9 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /canvas\.height = 1440/);
     assert.match(script, /function drawShareHouseBadge[\s\S]*YOUR HOUSE/);
     assert.match(script, /function createResultShareFile\(\)[\s\S]*resultShareAxes\(\)\.forEach/);
-    assert.match(script, /drawShareScale\(context, contentX, y \+ 35, contentWidth, position, accent\)/);
+    assert.match(script, /drawShareScale\(context, contentX, y \+ 57, contentWidth, position, accent\)/);
+    assert.doesNotMatch(script, /성향 좌표|모든 축의 최종 선택 방향/);
+    assert.match(css, /grid-template-areas:[\s\S]*"title title"[\s\S]*"left right"/);
     assert.match(script, /function canNativeShareFile\(file\)/);
     assert.match(script, /isMobileDevice\(\) && canNativeShareFile\(file\)[\s\S]*navigator\.share\(\{ files: \[file\]/);
     assert.match(script, /function openShareImageForLongPress\(file\)/);
@@ -589,7 +591,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.doesNotMatch(html, /내 공유 성과|<header><span aria-hidden="true">✓<\/span>/);
     assert.match(css, /\.cw-intro-tagline\s*\{[^}]*white-space:\s*nowrap/);
     assert.match(css, /\.cw-member-dialog \.cw-member-input-group\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) 68px/);
-    assert.match(html, /crewart-survey\.js\?v=20260815-character-reveal-v77/);
+    assert.match(html, /crewart-survey-v4\.css\?v=20260815-axis-hierarchy-v78/);
+    assert.match(html, /crewart-survey\.js\?v=20260815-axis-hierarchy-v78/);
     assert.match(script, /function renderUnifiedResult\(profile, house, options = \{\}\)/);
     assert.doesNotMatch(script, /resultViewVersion|resultViewFromLocation|changeResultView|report=deep|set-result-version/);
     assert.match(script, /function renderResult\(options = \{\}\)[\s\S]*renderUnifiedResult\(profile, house\);/);
@@ -704,7 +707,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /function typeCharacterPath\(code\)/);
     assert.match(script, /TYPE_CHARACTER_ROOT = 'assets\/crewart-types\/'/);
     assert.match(html, /crewart-survey-core\.js\?v=20260815-character-reveal-v77/);
-    assert.match(html, /crewart-survey-v4\.css\?v=20260815-character-reveal-v77/);
+    assert.match(html, /crewart-survey-v4\.css\?v=20260815-axis-hierarchy-v78/);
     assert.match(script, /position: firstSelected \? Math\.min\(rawPosition, 34\) : Math\.max\(rawPosition, 66\)/);
     assert.match(html, /id="start-button"[^>]*>[\s\S]*테스트 시작하기/);
     assert.match(html, /id="home-retest"[^>]*>다시 테스트하기/);

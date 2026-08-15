@@ -2002,31 +2002,25 @@
         fitShareText(context, result.typeName, 450, 34, 24, 820, font);
         context.fillText(result.typeName, 524, 545);
 
-        context.fillStyle = '#232824';
-        context.font = `880 30px ${font}`;
-        context.fillText('성향 좌표', contentX, 784);
-        context.fillStyle = '#838883';
-        context.font = `680 18px ${font}`;
-        context.textAlign = 'right';
-        context.fillText('모든 축의 최종 선택 방향', contentX + contentWidth, 784);
-        context.textAlign = 'left';
-
         resultShareAxes().forEach(({ copy, position, firstSelected }, index) => {
-            const y = 846 + index * 124;
+            const y = 800 + index * 126;
 
-            context.fillStyle = firstSelected ? '#252a26' : '#858a85';
-            context.font = `${firstSelected ? 820 : 650} 25px ${font}`;
-            context.fillText(copy.left, contentX, y);
             context.textAlign = 'center';
             context.fillStyle = '#878c87';
-            context.font = `720 18px ${font}`;
+            context.font = `720 17px ${font}`;
             context.fillText(copy.title, 540, y);
+
+            const labelY = y + 31;
+            context.textAlign = 'left';
+            context.fillStyle = firstSelected ? '#252a26' : '#858a85';
+            context.font = `${firstSelected ? 840 : 650} ${firstSelected ? 27 : 22}px ${font}`;
+            context.fillText(copy.left, contentX, labelY);
             context.textAlign = 'right';
             context.fillStyle = firstSelected ? '#858a85' : '#252a26';
-            context.font = `${firstSelected ? 650 : 820} 25px ${font}`;
-            context.fillText(copy.right, contentX + contentWidth, y);
+            context.font = `${firstSelected ? 650 : 840} ${firstSelected ? 22 : 27}px ${font}`;
+            context.fillText(copy.right, contentX + contentWidth, labelY);
             context.textAlign = 'left';
-            drawShareScale(context, contentX, y + 35, contentWidth, position, accent);
+            drawShareScale(context, contentX, y + 57, contentWidth, position, accent);
         });
 
         context.fillStyle = '#737873';

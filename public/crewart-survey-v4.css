@@ -951,33 +951,44 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 
 .cw-story-axis-labels {
     display: grid;
-    grid-template-columns: 1fr auto 1fr;
-    align-items: end;
-    margin-bottom: 10px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+        "title title"
+        "left right";
+    align-items: baseline;
+    margin-bottom: 8px;
+    gap: 3px 12px;
     color: #8c928d;
-    font-size: 14px;
     font-weight: 600;
 }
 
 .cw-story-axis-labels span {
+    grid-area: left;
     color: #8c928d;
+    font-size: 13px;
     font-weight: 600;
-    transition: color .12s ease;
+    line-height: 1.35;
+    transition: color .12s ease, font-size .12s ease, font-weight .12s ease;
 }
 
 /* Dominant label color darkens in direct sync with scroll bar travel */
 .cw-story-axis-labels span.is-dominant {
     color: color-mix(in srgb, #171a18 calc(var(--axis-progress, 0) * 100%), #8c928d);
-    font-weight: 750;
+    font-size: 15px;
+    font-weight: 820;
 }
 
 .cw-story-axis-labels small {
+    grid-area: title;
     color: #9ca3af;
-    font-size: 13px;
-    font-weight: 700;
+    font-size: 11.5px;
+    font-weight: 720;
+    line-height: 1.2;
+    letter-spacing: .025em;
     text-align: center;
 }
 .cw-story-axis-labels span:last-child {
+    grid-area: right;
     text-align: right;
 }
 
@@ -1325,7 +1336,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     .cw-story-result-character img { height: 155px; max-height: 155px; }
     .cw-story-result-code { font-size: clamp(74px, 22vw, 100px); }
     .cw-story-result-title { margin-top: 10px; font-size: 16.5px; }
-    .cw-story-axis-labels { font-size: 12.5px; }
+    .cw-story-axis-labels span { font-size: 12.5px; }
+    .cw-story-axis-labels span.is-dominant { font-size: 14.5px; }
+    .cw-story-axis-labels small { font-size: 11px; }
     .cw-story-axis-chart { margin-top: 15px; gap: 14px; }
     .cw-story-card { padding: 16px 18px; }
     .cw-story-card.is-strength > strong { font-size: 23px; }
@@ -1385,11 +1398,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-story-speed > i b { position: absolute; z-index: 1; top: 50%; left: var(--speed-position); width: 21px; height: 21px; border: 5px solid #fff; border-radius: 50%; background: var(--house-accent, #16814b); box-shadow: 0 4px 15px color-mix(in srgb, var(--house-accent, #16814b) 32%, transparent); transform: translate(-50%, -50%); transition: left 0.75s cubic-bezier(0.34, 1.45, 0.64, 1); }
 
 @media (max-width: 520px) {
-    .cw-story-axis-labels {
-        font-size: 14px;
-    }
+    .cw-story-axis-labels span { font-size: 13px; }
+    .cw-story-axis-labels span.is-dominant { font-size: 15px; }
     .cw-story-axis-labels small {
-        font-size: 13px;
+        font-size: 11.5px;
     }
     .cw-story-speed > div {
         font-size: 13.5px;
@@ -1403,6 +1415,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     .cw-story-topbar small {
         font-size: 13px;
     }
+}
+
+@media (max-width: 520px) and (max-height: 680px) {
+    .cw-story-axis-labels span { font-size: 12.5px; }
+    .cw-story-axis-labels span.is-dominant { font-size: 14.5px; }
+    .cw-story-axis-labels small { font-size: 11px; }
 }
 
 .cw-result-empty {
