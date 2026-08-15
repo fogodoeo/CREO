@@ -20,7 +20,7 @@
     <script src="assets/vendor/kakao-2.8.1.min.js"></script>
     <script src="crewart-survey-core.js?v=20260815-random-timing-v80"></script>
     <!-- Share-link target is cache-busted so KakaoTalk never reuses the old root URL. -->
-    <script src="crewart-survey.js?v=20260815-result-first-v89" defer></script>
+    <script src="crewart-survey.js?v=20260815-share-dialog-v91" defer></script>
 </head>
 
 <body>
@@ -194,12 +194,11 @@
             </header>
             <div class="cw-kakao-preview"><img id="kakao-share-preview" alt="카카오톡에 전송할 결과 카드 미리보기"></div>
             <ol class="cw-kakao-steps">
-                <li><b>1</b><span>공유창 열기</span></li>
-                <li><b>2</b><span>카카오톡 선택</span></li>
+                <li><b>1</b><span>결과 이미지 확인</span></li>
+                <li><b>2</b><span>카카오톡 공유하기</span></li>
                 <li><b>3</b><span>친구·채팅방 선택</span></li>
             </ol>
-            <button class="cw-kakao-open" id="kakao-share-confirm" type="button"><span data-action-label>공유창
-                    열기</span></button>
+            <button class="cw-kakao-open" id="kakao-share-confirm" type="button"><span data-action-label>카카오톡 공유하기</span></button>
         </form>
     </dialog>
 

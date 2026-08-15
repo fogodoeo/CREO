@@ -100,6 +100,7 @@
     let preparedSaveUrl = '';
     let preparedKakaoShareFile = null;
     let preparedKakaoShareUrl = '';
+    let preparedKakaoImageUrl = '';
     let resultExperienceCleanup = null;
     let referralId = '';
 
@@ -2161,19 +2162,45 @@
 
     async function openKakaoShareGuide(event, file = null) {
         const button = event?.currentTarget || null;
+        const dialog = element('kakao-share-dialog');
+        const confirm = element('kakao-share-confirm');
+        clearPreparedKakaoShare();
+        if (confirm) {
+            confirm.disabled = true;
+            confirm.querySelector('[data-action-label]').textContent = '결과 이미지 준비 중';
+        }
+        if (dialog && !dialog.open) {
+            try {
+                if (typeof dialog.showModal === 'function') dialog.showModal();
+                else dialog.setAttribute('open', '');
+            } catch (error) {
+                console.warn('[Crewart Kakao dialog fallback]', error);
+                dialog.setAttribute('open', '');
+            }
+        }
         setShareButtonBusy(button, true, '공유 준비 중');
         try {
             const nextFile = file || await createKakaoShareFile();
-            clearPreparedKakaoShare();
             preparedKakaoShareFile = nextFile;
             preparedKakaoShareUrl = URL.createObjectURL(nextFile);
             element('kakao-share-preview').src = preparedKakaoShareUrl;
-            const dialog = element('kakao-share-dialog');
-            if (!dialog.open) dialog.showModal();
+            if (initializeKakaoSdk()) {
+                try {
+                    preparedKakaoImageUrl = await uploadKakaoShareImage(nextFile);
+                } catch (error) {
+                    console.warn('[Crewart Kakao image upload fallback]', error);
+                }
+            }
         } catch (error) {
             console.error('[Crewart Kakao preview]', error);
             toast('공유할 이미지를 만들지 못했어요. 다시 시도해주세요.', true);
         } finally {
+            if (confirm) {
+                confirm.disabled = !preparedKakaoShareFile;
+                confirm.querySelector('[data-action-label]').textContent = preparedKakaoImageUrl
+                    ? '카카오톡 공유하기'
+                    : '기기 공유창 열기';
+            }
             setShareButtonBusy(button, false);
         }
     }
@@ -2182,7 +2209,26 @@
         if (preparedKakaoShareUrl) URL.revokeObjectURL(preparedKakaoShareUrl);
         preparedKakaoShareUrl = '';
         preparedKakaoShareFile = null;
+        preparedKakaoImageUrl = '';
         element('kakao-share-preview')?.removeAttribute('src');
+    }
+
+    function resultKakaoTemplate(imageUrl, shareUrl, title, text) {
+        return {
+            objectType: 'feed',
+            content: {
+                title,
+                description: text,
+                imageUrl,
+                imageWidth: 1080,
+                imageHeight: 1440,
+                link: { mobileWebUrl: shareUrl, webUrl: shareUrl }
+            },
+            buttons: [{
+                title: '나도 알아보기',
+                link: { mobileWebUrl: shareUrl, webUrl: shareUrl }
+            }]
+        };
     }
 
     async function sharePreparedNativeResult(event) {
@@ -2193,6 +2239,11 @@
         const shareUrl = createTrackedShareUrl();
 
         try {
+            if (preparedKakaoImageUrl && initializeKakaoSdk()) {
+                window.Kakao.Share.sendDefault(resultKakaoTemplate(preparedKakaoImageUrl, shareUrl, title, text));
+                element('kakao-share-dialog')?.close('share');
+                return;
+            }
             const shareFile = preparedKakaoShareFile || await createResultShareFile();
             element('kakao-share-dialog')?.close('share');
             if (navigator.share && navigator.canShare?.({ files: [shareFile] })) {
@@ -2227,41 +2278,8 @@
     }
 
     async function shareResult(event) {
-        const button = event?.currentTarget;
-        const title = `${result.code} · ${result.typeName}`;
-        const text = `나는 크레 앞에서 어떤 유형일까?\n${Core.QUESTIONS.length}문항 약 3분`;
-        let shareFile = null;
-        setShareButtonBusy(button, true, '카카오톡 여는 중');
-        const shareUrl = createTrackedShareUrl();
-
-        try {
-            shareFile = await createKakaoShareFile();
-            if (!initializeKakaoSdk()) throw new Error('Kakao SDK is unavailable');
-            const imageUrl = await uploadKakaoShareImage(shareFile);
-            await window.Kakao.Share.sendDefault({
-                objectType: 'feed',
-                content: {
-                    title,
-                    description: text,
-                    imageUrl,
-                    imageWidth: 1080,
-                    imageHeight: 1440,
-                    link: { mobileWebUrl: shareUrl, webUrl: shareUrl }
-                },
-                buttons: [{
-                    title: '나도 알아보기',
-                    link: { mobileWebUrl: shareUrl, webUrl: shareUrl }
-                }]
-            });
-            return;
-        } catch (error) {
-            if (error?.name === 'AbortError') return;
-            console.error('[Crewart Kakao direct share]', error);
-            await openKakaoShareGuide(null, shareFile);
-            toast('카카오톡 직접 연결이 어려워 기기 공유로 전환했어요.');
-        } finally {
-            setShareButtonBusy(button, false);
-        }
+        if (!result) return;
+        await openKakaoShareGuide(event);
     }
 
     function restoreShareableResult() {

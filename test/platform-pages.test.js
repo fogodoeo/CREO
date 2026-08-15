@@ -569,9 +569,10 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(html, /id="result-save-confirm"/);
     assert.match(html, /id="kakao-share-dialog"/);
     assert.match(html, /id="kakao-share-preview"/);
-    assert.match(html, /공유창 열기[\s\S]*카카오톡 선택[\s\S]*친구·채팅방 선택/);
+    assert.match(html, /결과 이미지 확인[\s\S]*카카오톡 공유하기[\s\S]*친구·채팅방 선택/);
     assert.match(script, /function savePreparedResultImage/);
-    assert.match(script, /function openKakaoShareGuide/);
+    assert.match(script, /function openKakaoShareGuide[\s\S]*dialog\.showModal\(\)[\s\S]*await createKakaoShareFile\(\)[\s\S]*await uploadKakaoShareImage\(nextFile\)/);
+    assert.match(script, /function shareResult\(event\)[\s\S]*await openKakaoShareGuide\(event\)/);
     assert.match(script, /window\.showSaveFilePicker/);
     assert.match(script, /suggestedName: file\.name/);
     assert.match(script, /공유 앱에서 카카오톡을 선택해주세요/);
@@ -598,7 +599,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(css, /\.cw-intro-tagline\s*\{[^}]*white-space:\s*nowrap/);
     assert.match(css, /\.cw-member-dialog \.cw-member-input-group\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) 68px/);
     assert.match(html, /crewart-survey-v4\.css\?v=20260815-band-share-v87/);
-    assert.match(html, /crewart-survey\.js\?v=20260815-result-first-v89/);
+    assert.match(html, /crewart-survey\.js\?v=20260815-share-dialog-v91/);
     assert.match(script, /function renderUnifiedResult\(profile, house, options = \{\}\)/);
     assert.doesNotMatch(script, /resultViewVersion|resultViewFromLocation|changeResultView|report=deep|set-result-version/);
     assert.match(script, /function renderResult\(options = \{\}\)[\s\S]*renderUnifiedResult\(profile, house\);/);
@@ -706,7 +707,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.doesNotMatch(css, /\.cw-scrolly-scroll-track|\.cw-scrolly-milestone|\.cw-step-panel/);
     assert.match(script, /Kakao\.Share\.uploadImage/);
     assert.match(script, /Kakao\.Share\.sendDefault/);
-    assert.match(script, /function sharePreparedNativeResult/);
+    assert.match(script, /function sharePreparedNativeResult[\s\S]*preparedKakaoImageUrl[\s\S]*Kakao\.Share\.sendDefault\(resultKakaoTemplate/);
     assert.match(html, /assets\/vendor\/kakao-2\.8\.1\.min\.js/);
     assert.match(css, /\.cw-save-dialog::backdrop/);
     assert.match(css, /\.cw-kakao-preview\s*\{[^}]*aspect-ratio:\s*3\s*\/\s*4/);
