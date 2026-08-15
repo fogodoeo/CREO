@@ -922,12 +922,15 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 }
 
 .cw-story-axis-labels span {
-    transition: color .15s ease, font-weight .15s ease;
+    color: #8c928d;
+    font-weight: 600;
+    transition: color .12s ease;
 }
 
+/* Dominant label color darkens in direct sync with scroll bar travel */
 .cw-story-axis-labels span.is-dominant {
-    color: #171a18;
-    font-weight: 850;
+    color: color-mix(in srgb, #171a18 calc(var(--axis-progress, 0) * 100%), #8c928d);
+    font-weight: 750;
 }
 
 .cw-story-axis-labels small {

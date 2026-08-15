@@ -851,9 +851,20 @@
             const copy = AXIS_REPORT_COPY[axisResult.axis];
             const first = axisResult.axis[0];
             const second = axisResult.axis[1];
+            const firstCount = Number(result.letters[first]) || 0;
             const secondCount = Number(result.letters[second]) || 0;
-            const position = Math.max(8, Math.min(92, (secondCount / (Core.AXIS_SCORE_TOTAL || 5)) * 100));
+            const totalCount = firstCount + secondCount || 1;
             const isLeftDominant = axisResult.dominant === first;
+            
+            // Calculate ratio with minimum clear offset so it always deflects distinctly
+            const dominantRatio = isLeftDominant ? firstCount / totalCount : secondCount / totalCount;
+            const normalizedRatio = Math.max(0.62, Math.min(0.92, dominantRatio));
+            
+            // Left dominant moves to 20%~32%, Right dominant moves to 68%~80%
+            const position = isLeftDominant
+                ? Math.round(50 - (normalizedRatio - 0.5) * 65)
+                : Math.round(50 + (normalizedRatio - 0.5) * 65);
+
             return {
                 title: copy?.title || axisResult.axis,
                 left: copy?.left || first,
