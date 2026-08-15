@@ -80,7 +80,8 @@ function summarizeReferrals(rows) {
         shared: entries.filter((entry) => entry.sharedAt).length,
         landed: entries.filter((entry) => entry.landedAt).length,
         bandClicked: entries.filter((entry) => entry.bandClickedAt).length,
-        verified: entries.filter((entry) => entry.verifiedAt).length
+        verified: entries.reduce((sum, entry) => sum + (Number(entry.verifiedCount) || (entry.verifiedAt ? 1 : 0)), 0),
+        convertedLinks: entries.filter((entry) => entry.verifiedAt).length
     };
     return {
         counts,
@@ -402,7 +403,11 @@ function createCrewartSurveyApi(options = {}) {
             const key = `${REFERRAL_PREFIX}${shareId}`;
             const rows = await repository.getRowsByKeys([key]);
             const previous = jsonParse(rows[0]?.value, {});
-            if (previous[timestampField]) return previous;
+            const verifiedSubjects = Array.isArray(previous.verifiedSubjects)
+                ? previous.verifiedSubjects.map((subject) => cleanText(subject, 80)).filter(Boolean)
+                : [];
+            if (eventName === 'verified' && verifiedSubjects.includes(authenticatedSubject)) return previous;
+            if (eventName !== 'verified' && previous[timestampField]) return previous;
             const nowIso = new Date(now()).toISOString();
             const next = {
                 shareId,
@@ -412,6 +417,12 @@ function createCrewartSurveyApi(options = {}) {
                 [timestampField]: nowIso,
                 updatedAt: nowIso
             };
+            if (eventName === 'verified') {
+                next.verifiedAt = previous.verifiedAt || nowIso;
+                next.lastVerifiedAt = nowIso;
+                next.verifiedSubjects = [...verifiedSubjects, cleanText(authenticatedSubject, 80)].slice(-500);
+                next.verifiedCount = next.verifiedSubjects.length;
+            }
             await repository.upsertRows([{ key, value: JSON.stringify(next) }]);
             return next;
         });

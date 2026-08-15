@@ -55,10 +55,10 @@ function request(method, body = '', headers = {}) {
     return req;
 }
 
-function memberToken() {
+function memberToken(subject = 'member_random_session_subject') {
     return signToken({
         typ: SESSION_TYPE,
-        sub: 'member_random_session_subject',
+        sub: subject,
         iat: Math.floor(NOW / 1000),
         exp: Math.floor(NOW / 1000) + 3600
     }, SECRET);
@@ -476,6 +476,16 @@ test('referral events are idempotent and verified conversion requires member aut
         authorization: `Bearer ${memberToken()}`
     }), verified, url);
     assert.equal(verified.status, 202);
+    const duplicate = new CapturedResponse();
+    await api.handle(request('POST', JSON.stringify({ shareId, event: 'verified' }), {
+        authorization: `Bearer ${memberToken()}`
+    }), duplicate, url);
+    assert.equal(duplicate.status, 202);
+    const secondMember = new CapturedResponse();
+    await api.handle(request('POST', JSON.stringify({ shareId, event: 'verified' }), {
+        authorization: `Bearer ${memberToken('member_second_session_subject')}`
+    }), secondMember, url);
+    assert.equal(secondMember.status, 202);
 
     const record = JSON.parse(repository.rows.get(`${REFERRAL_PREFIX}${shareId}`));
     assert.equal(record.source, 'kakao');
@@ -483,6 +493,7 @@ test('referral events are idempotent and verified conversion requires member aut
     assert.equal(record.landedAt, new Date(NOW).toISOString());
     assert.equal(record.bandClickedAt, new Date(NOW).toISOString());
     assert.equal(record.verifiedAt, new Date(NOW).toISOString());
+    assert.equal(record.verifiedCount, 2);
 });
 
 test('referral summary is admin-only and reports unique link conversion', async () => {
@@ -511,7 +522,7 @@ test('referral summary is admin-only and reports unique link conversion', async 
     await api.handle(request('GET', '', { 'x-creo-admin': 'secret' }), response, url);
     assert.equal(response.status, 200);
     const payload = JSON.parse(response.body);
-    assert.deepEqual(payload.counts, { shared: 1, landed: 1, bandClicked: 0, verified: 1 });
+    assert.deepEqual(payload.counts, { shared: 1, landed: 1, bandClicked: 0, verified: 1, convertedLinks: 1 });
     assert.equal(payload.verifiedConversionRate, 100);
     assert.equal(payload.entries[0].shareId, shareId);
 });
