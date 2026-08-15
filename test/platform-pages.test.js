@@ -441,7 +441,7 @@ test('CREWARTS uses one result journey and unlocks member detail by phone', () =
     assert.match(html, /id="member-dialog"/);
     assert.match(html, /data-nav="band"/);
     assert.match(html, /id="member-phone"/);
-    assert.match(html, /id="member-check-submit-label">확인하기<\/strong>/);
+    assert.match(html, /id="member-check-submit-label">확인<\/strong>/);
     assert.doesNotMatch(html, /입력하신 번호는 가입 확인 외에 저장되지 않아요\./);
     assert.match(html, /<label class="cw-visually-hidden" for="member-phone">휴대전화번호<\/label>/);
     assert.match(html, /id="band-connection-status"/);
@@ -580,8 +580,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(html, /id="band-share-verified">0명/);
     assert.match(html, /id="auth-phone-edit"[\s\S]*id="auth-phone-clear"/);
     assert.match(css, /\.cw-intro-tagline\s*\{[^}]*white-space:\s*nowrap/);
-    assert.match(css, /\.cw-member-dialog \.cw-member-input-group\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
-    assert.match(html, /crewart-survey\.js\?v=20260815-ui-polish-v65/);
+    assert.match(css, /\.cw-member-dialog \.cw-member-input-group\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) 68px/);
+    assert.match(html, /crewart-survey\.js\?v=20260815-member-scroll-v67/);
     assert.match(script, /function renderUnifiedResult\(profile, house\)/);
     assert.doesNotMatch(script, /resultViewVersion|resultViewFromLocation|changeResultView|report=deep|set-result-version/);
     assert.match(script, /function renderResult\(options = \{\}\)[\s\S]*renderUnifiedResult\(profile, house\);/);
@@ -604,7 +604,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /profile\.worstMatch\?\.mbti/);
     assert.match(script, /평균 문항 시간/);
     assert.match(script, /<span>나의 기숙사<\/span><strong data-house-name/);
-    assert.match(script, /\['레드', '그린', '블루', '옐로우', finalHouse\]/);
+    assert.match(script, /\['RED', 'GREEN', 'BLUE', 'YELLOW', finalHouse\]/);
     assert.doesNotMatch(script, /결과 미리보기|당신의 기숙사는|>SCROLL</);
     assert.match(script, /data-action="share"[\s\S]*카카오톡 공유/);
     assert.match(script, /function resultSpeedPresentation\(\)[\s\S]*빠르게 고르는 편[\s\S]*신중하게 고르는 편/);
@@ -684,8 +684,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.doesNotMatch(script, /크레\s*MBTI|나의 크레 MBTI|평소 MBTI/i);
     assert.match(script, /function typeCharacterPath\(code\)/);
     assert.match(script, /TYPE_CHARACTER_ROOT = 'assets\/crewart-types\/'/);
-    assert.match(html, /crewart-survey-core\.js\?v=20260815-ui-polish-v65/);
-    assert.match(html, /crewart-survey-v4\.css\?v=20260815-ui-polish-v65/);
+    assert.match(html, /crewart-survey-core\.js\?v=20260815-member-scroll-v67/);
+    assert.match(html, /crewart-survey-v4\.css\?v=20260815-member-scroll-v67/);
     assert.match(html, /id="start-button"[^>]*>[\s\S]*테스트 시작하기/);
     assert.match(html, /id="home-retest"[^>]*>다시 테스트하기/);
     assert.doesNotMatch(html, /start-button-v2|home-retest-v1|Ver 1 시작|Ver 2 시작/);
@@ -765,7 +765,9 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.doesNotMatch(script, /class="cw-axis-poles"|class="cw-axis-pole/);
     assert.doesNotMatch(script, /<i aria-hidden="true">＋<\/i>/);
     assert.doesNotMatch(script, /TRAIT AXES|RESPONSE PAC(?:E|ING)|HOUSE ASSIGNMENT|ASSIGNED HOUSE|TYPE CHARACTER|MEMBER ACCESS/);
-    assert.match(script, /class="cw-story-house-line"[\s\S]*나의 기숙사[\s\S]*\$\{escapeHtml\(house\.korean \|\| house\.name\)\}/);
+    assert.match(script, /class="cw-story-house-line"[\s\S]*나의 기숙사[\s\S]*\$\{escapeHtml\(house\.name\)\}/);
+    assert.match(css, /\.cw-story-cue\s*\{[^}]*bottom:\s*max\(108px, calc\(env\(safe-area-inset-bottom\) \+ 98px\)\)/);
+    assert.match(css, /@keyframes cw-story-cue-drop/);
     assert.doesNotMatch(script, /내 선택에서 보인 모습|주된 방향 ·|함께 나타난 방향 ·/);
     assert.doesNotMatch(script, /function selectedAxisEvidence\(axisResult\)|axisEvidence:\s*Object\.fromEntries|resultAxisEvidence/);
     assert.doesNotMatch(script, /const HOUSE_(?:READINGS|REPORT_COPY)/);

@@ -288,7 +288,7 @@
         element('home-result-heading').textContent = snapshot.result.typeName;
         const housePanel = element('home-house-name')?.closest('.cw-home-house');
         if (housePanel) housePanel.hidden = !detailed;
-        element('home-house-name').textContent = house ? `${house.korean} 기숙사` : '';
+        element('home-house-name').textContent = house ? house.name : '';
         card.style.setProperty('--house-accent', house?.accent || '#16814b');
     }
 
@@ -668,7 +668,7 @@
             submit.disabled = false;
             submit.classList.remove('is-recheck');
         }
-        if (submitLabel) submitLabel.textContent = '확인하기';
+        if (submitLabel) submitLabel.textContent = '확인';
         if (!hasDetailedAccess()) editingMembership = false;
         updateBandState();
         const dialog = element('member-dialog');
@@ -1034,7 +1034,7 @@
                             </section>
 
                             <section class="cw-story-scene is-house" data-story-scene="house">
-                                <div class="cw-story-house-line"><span>나의 기숙사</span><strong data-house-name data-final-house="${escapeHtml(house.korean || house.name)}">${escapeHtml(house.korean || house.name)}</strong></div>
+                                <div class="cw-story-house-line"><span>나의 기숙사</span><strong data-house-name data-final-house="${escapeHtml(house.name)}">${escapeHtml(house.name)}</strong></div>
                                 <div class="cw-story-final-actions">
                                     <div class="cw-story-share-row">
                                         <button type="button" class="cw-story-kakao" data-action="share"><img src="assets/kakaolink_btn_medium.png" width="24" height="24" alt=""><span data-action-label>카카오톡 공유</span></button>
@@ -1205,7 +1205,7 @@
             houseRollStarted = true;
             houseRollSettled = false;
             const finalHouse = houseNameNode.dataset.finalHouse || '';
-            const houseList = ['레드', '그린', '블루', '옐로우', finalHouse].filter(Boolean);
+            const houseList = ['RED', 'GREEN', 'BLUE', 'YELLOW', finalHouse].filter(Boolean);
             let hIndex = 0;
             houseNameNode.textContent = '······';
             houseNameNode.classList.add('is-rolling');
@@ -1390,7 +1390,7 @@
             if (options.animate) playResultRevealAnimation();
             return;
         }
-        const house = Core.HOUSE_META[assignedHouseKey] || { name: '배정 중', accent: '#16814b' };
+        const house = Core.HOUSE_META[assignedHouseKey] || { name: 'ASSIGNING', accent: '#16814b' };
         renderUnifiedResult(profile, house);
         if (options.animate) playResultRevealAnimation();
     }

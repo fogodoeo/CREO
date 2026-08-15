@@ -2036,9 +2036,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-member-dialog-sheet { gap: 16px; }
 .cw-member-dialog-sub,
 .cw-member-dialog .cw-member-form > small { display: none; }
-.cw-member-dialog .cw-member-input-group { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.cw-member-dialog .cw-member-input-group { display: grid; grid-template-columns: minmax(0, 1fr) 68px; align-items: stretch; gap: 8px; }
 .cw-member-dialog .cw-member-input-group input,
-.cw-member-dialog .cw-member-input-group .cw-dialog-band-button { width: 100%; height: 46px; padding: 0 12px; }
+.cw-member-dialog .cw-member-input-group .cw-dialog-band-button { box-sizing: border-box; width: 100%; height: 46px; min-height: 46px; margin-top: 0; padding: 0 12px; }
 .cw-member-dialog .cw-member-join { min-height: 54px; margin-top: 0; padding: 8px 12px; }
 .cw-member-dialog .cw-member-join-copy { gap: 10px; }
 .cw-member-dialog .cw-member-join-copy strong { font-size: 13px; }
@@ -2148,7 +2148,32 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-result-teaser-lock button { min-height: 48px; font-size: 14px; }
 .cw-story-axis-labels span { color: #747b75; }
 .cw-story-axis-labels small { color: #858c86; }
-.cw-story-cue { bottom: max(82px, calc(env(safe-area-inset-bottom) + 72px)); font-size: 11px; text-transform: none; }
+.cw-story-cue {
+    bottom: max(108px, calc(env(safe-area-inset-bottom) + 98px));
+    gap: 7px;
+    padding: 8px 13px 9px;
+    border: 1px solid #dfe3de;
+    border-radius: 18px;
+    background: #fbfbf8;
+    color: #444c47;
+    font-size: 11.5px;
+    box-shadow: 0 8px 22px rgba(35, 45, 39, .11);
+    text-transform: none;
+}
+.cw-story-cue i { width: 22px; height: 22px; }
+.cw-story-cue b {
+    left: 5px;
+    width: 11px;
+    height: 11px;
+    border-color: #3f4842;
+    animation: cw-story-cue-drop 1.2s cubic-bezier(.4, 0, .2, 1) infinite;
+}
+.cw-story-cue b:last-child { top: 7px; animation-delay: .14s; }
+@keyframes cw-story-cue-drop {
+    0% { opacity: .16; transform: translateY(-4px) rotate(45deg); }
+    45% { opacity: 1; }
+    100% { opacity: .12; transform: translateY(5px) rotate(45deg); }
+}
 .cw-story-house-line {
     display: grid;
     justify-items: center;
