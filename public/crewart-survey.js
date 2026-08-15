@@ -886,11 +886,7 @@
                                     </div>
                                     <p class="cw-story-result-title">${escapeHtml(profile.title || result.typeName)}</p>
                                 </div>
-                                <div class="cw-story-axis-indicator" aria-hidden="true">
-                                    <span>SCROLL</span>
-                                    <i class="cw-scroll-chevron"></i>
-                                </div>
-                                <div class="cw-story-axis-chart">${axisMarkup}</div>
+                                                                <div class="cw-story-axis-chart">${axisMarkup}</div>
                             </section>
 
                             <section class="cw-story-scene is-profile" data-story-scene="profile">
@@ -929,7 +925,7 @@
                                 <small class="cw-story-credit">© 2026 CREO. All rights reserved.</small>
                             </section>
                         </div>
-                        <div class="cw-story-cue" aria-hidden="true"><span>아래로 스크롤</span><i><b></b><b></b></i></div>
+                        <div class="cw-story-cue" aria-hidden="true"><span>SCROLL</span><i><b></b><b></b></i></div>
                     </div>
                 </section>
             </div>`;
@@ -1097,6 +1093,7 @@
                 ? TIME_SCENE_LOCK
                 : rawProgress;
             latestProgress = progress;
+            root.style.setProperty('--story-progress', progress);
             const axisProgress = segment(progress, .02, .17);
             const profileIn = segment(progress, .35, .37);
             const profileOut = 1 - segment(progress, .59, .62);
