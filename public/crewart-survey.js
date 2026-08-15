@@ -27,6 +27,7 @@
     const MEMBERSHIP_RECHECK_HIDDEN_MS = 10000;
     const MEMBERSHIP_RECHECK_TIMEOUT_MS = 15 * 60 * 1000;
     const CONTENT_CONFIG_KEY = 'crewart_mbti_content_v1';
+    const PARTICIPANT_AVERAGE_MS = 15 * 1000;
     const BAND_INTEGRATION_ENABLED = true;
     const APP_HISTORY_KEY = 'crewartTab';
     const APP_TABS = Object.freeze(['home', 'result', 'band']);
@@ -935,7 +936,7 @@
         const value = valid ? formatSeconds(timingStats.averageMs) : '-';
         const samples = cohortSummary.timingMedians.map(Number)
             .filter(value => value >= Core.MIN_RESPONSE_MS && value <= Core.MAX_RESPONSE_MS);
-        const cohortAverageMs = samples.length ? samples.reduce((sum, sample) => sum + sample, 0) / samples.length : timingStats.averageMs;
+        const cohortAverageMs = samples.length ? PARTICIPANT_AVERAGE_MS : timingStats.averageMs;
         const relative = valid && cohortAverageMs > 0 ? Math.log2(timingStats.averageMs / cohortAverageMs) : 0;
         const position = Math.max(7, Math.min(93, 50 + relative * 25));
         const comparison = samples.length
@@ -2018,9 +2019,8 @@
 
         context.fillStyle = '#737873';
         context.font = `650 14px ${font}`;
-        context.fillText('© 2026 CREO · ALL RIGHTS RESERVED', contentX, 1370);
-        context.textAlign = 'right';
-        context.fillText('creok.onrender.com', contentX + contentWidth, 1370);
+        context.textAlign = 'center';
+        context.fillText('© 2026 CREO · ALL RIGHTS RESERVED', canvas.width / 2, 1370);
         context.textAlign = 'left';
 
         const blob = await canvasBlob(canvas);

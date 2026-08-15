@@ -79,10 +79,11 @@ test('prepared surveys keep option ids and graded score maps aligned while shuff
         state = (1664525 * state + 1013904223) >>> 0;
         return state / 2 ** 32;
     };
+    const firstQuestionIds = new Set();
     for (let run = 0; run < 100; run += 1) {
         const prepared = Core.prepareQuestions(rng);
         assert.equal(prepared.length, Core.QUESTIONS.length);
-        assert.equal(prepared[0].id, 'Q01');
+        firstQuestionIds.add(prepared[0].id);
         prepared.forEach((question, index) => {
             if (index > 0) assert.notEqual(question.axis, prepared[index - 1].axis);
             assert.notDeepEqual(question.optionIds, Core.QUESTIONS.find(item => item.id === question.id).optionIds);
@@ -97,11 +98,13 @@ test('prepared surveys keep option ids and graded score maps aligned while shuff
             });
         });
     }
+    assert.ok(firstQuestionIds.size > 1, 'the first question should vary between survey runs');
+    assert.ok([...firstQuestionIds].some(id => id !== 'Q01'), 'Q01 should not be pinned to the first position');
 });
 
 test('weighted scoring recovers all sixteen intended profiles', () => {
     const prepared = Core.prepareQuestions(() => 0.42);
-    assert.equal(prepared[0].id, 'Q01');
+    assert.equal(prepared.length, Core.QUESTIONS.length);
     for (const target of Core.MBTI_TYPES) {
         const answers = prepared.map(question => {
             const targetLetters = [question.axis, question.secondaryAxis]

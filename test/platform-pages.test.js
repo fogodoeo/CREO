@@ -593,7 +593,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(css, /\.cw-intro-tagline\s*\{[^}]*white-space:\s*nowrap/);
     assert.match(css, /\.cw-member-dialog \.cw-member-input-group\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) 68px/);
     assert.match(html, /crewart-survey-v4\.css\?v=20260815-axis-minimal-v79/);
-    assert.match(html, /crewart-survey\.js\?v=20260815-axis-minimal-v79/);
+    assert.match(html, /crewart-survey\.js\?v=20260815-random-timing-v80/);
     assert.match(script, /function renderUnifiedResult\(profile, house, options = \{\}\)/);
     assert.doesNotMatch(script, /resultViewVersion|resultViewFromLocation|changeResultView|report=deep|set-result-version/);
     assert.match(script, /function renderResult\(options = \{\}\)[\s\S]*renderUnifiedResult\(profile, house\);/);
@@ -707,7 +707,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.doesNotMatch(script, /크레\s*MBTI|나의 크레 MBTI|평소 MBTI/i);
     assert.match(script, /function typeCharacterPath\(code\)/);
     assert.match(script, /TYPE_CHARACTER_ROOT = 'assets\/crewart-types\/'/);
-    assert.match(html, /crewart-survey-core\.js\?v=20260815-character-reveal-v77/);
+    assert.match(html, /crewart-survey-core\.js\?v=20260815-random-timing-v80/);
     assert.match(html, /crewart-survey-v4\.css\?v=20260815-axis-minimal-v79/);
     assert.match(script, /position: firstSelected \? Math\.min\(rawPosition, 34\) : Math\.max\(rawPosition, 66\)/);
     assert.match(html, /id="start-button"[^>]*>[\s\S]*테스트 시작하기/);
@@ -736,6 +736,10 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(html, /© 2026 CREO\. All rights reserved\./);
     assert.match(html, /class="cw-q0-copyright" id="q0-copyright" hidden>© 2026 CREO\. All rights reserved\./);
     assert.match(script, /© 2026 CREO · ALL RIGHTS RESERVED/);
+    assert.match(script, /const PARTICIPANT_AVERAGE_MS = 15 \* 1000/);
+    assert.match(script, /const cohortAverageMs = samples\.length \? PARTICIPANT_AVERAGE_MS : timingStats\.averageMs/);
+    assert.match(script, /context\.textAlign = 'center';\s*context\.fillText\('© 2026 CREO · ALL RIGHTS RESERVED', canvas\.width \/ 2, 1370\)/);
+    assert.doesNotMatch(script, /context\.fillText\('creok\.onrender\.com'/);
     assert.match(script, /class="cw-story-scene is-house"/);
     assert.doesNotMatch(script, /성향을 이해하기 위한 참고 결과입니다/);
     assert.match(script, /class="cw-story-credit">© 2026 CREO\. All rights reserved\.<\/small>/);

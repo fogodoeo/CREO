@@ -1322,20 +1322,23 @@
         let ordered = questions;
         for (let attempt = 0; attempt < 200; attempt += 1) {
             const candidate = shuffle(questions, rng);
-            const previewStartsFirst = !questions.some(question => question.scorePairs) || candidate[0]?.id === 'Q01';
-            if (previewStartsFirst && candidate.every((question, index) => index === 0 || candidate[index - 1].axis !== question.axis)) {
+            if (candidate.every((question, index) => index === 0 || candidate[index - 1].axis !== question.axis)) {
                 ordered = candidate;
                 break;
             }
         }
         if (ordered === questions) {
-            const remaining = questions.filter(question => question.id !== 'Q01');
-            const first = questions.find(question => question.id === 'Q01');
-            ordered = first ? [first] : [];
+            const remaining = shuffle(questions, rng);
+            ordered = [];
             while (remaining.length) {
                 const previousAxis = ordered[ordered.length - 1]?.axis;
-                let nextIndex = remaining.findIndex(question => question.axis !== previousAxis);
-                if (nextIndex < 0) nextIndex = 0;
+                const candidates = remaining
+                    .map((question, index) => ({ question, index }))
+                    .filter(item => item.question.axis !== previousAxis);
+                const pool = candidates.length
+                    ? candidates
+                    : remaining.map((question, index) => ({ question, index }));
+                const nextIndex = pool[randomInt(pool.length, rng)].index;
                 ordered.push(remaining.splice(nextIndex, 1)[0]);
             }
         }
