@@ -589,7 +589,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.doesNotMatch(html, /내 공유 성과|<header><span aria-hidden="true">✓<\/span>/);
     assert.match(css, /\.cw-intro-tagline\s*\{[^}]*white-space:\s*nowrap/);
     assert.match(css, /\.cw-member-dialog \.cw-member-input-group\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) 68px/);
-    assert.match(html, /crewart-survey\.js\?v=20260815-guest-result-v76/);
+    assert.match(html, /crewart-survey\.js\?v=20260815-character-reveal-v77/);
     assert.match(script, /function renderUnifiedResult\(profile, house, options = \{\}\)/);
     assert.doesNotMatch(script, /resultViewVersion|resultViewFromLocation|changeResultView|report=deep|set-result-version/);
     assert.match(script, /function renderResult\(options = \{\}\)[\s\S]*renderUnifiedResult\(profile, house\);/);
@@ -625,6 +625,9 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /function setupResultStory\(\)[\s\S]*randomizeHeroPreview[\s\S]*Math\.round\(18 \+ Math\.random\(\) \* 64\)/);
     assert.match(script, /heroShuffleTicks >= 10[\s\S]*settleHeroCode\(\)/);
     assert.match(script, /heroCharacterNode\.src = typeCharacterPath\(finalCode\)/);
+    assert.doesNotMatch(script, /heroCharacterNode\.src = typeCharacterPath\(previewCode\)/);
+    assert.match(css, /\.cw-story-track\.is-code-cycling \.cw-story-result-character img\s*\{[^}]*opacity:\s*0[^}]*scale\(\.88\)/);
+    assert.match(css, /\.cw-story-track\.is-code-settled \.cw-story-result-character img\s*\{[^}]*opacity:\s*1[^}]*scale\(1\)/);
     assert.match(script, /root\.classList\.add\('is-intro-settled'\)/);
     assert.doesNotMatch(script, /rawProgress >= \.055[^\n]*settleHeroCode/);
     assert.doesNotMatch(script, /mbtiProgress|cw-story-mbti/);
@@ -700,8 +703,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.doesNotMatch(script, /크레\s*MBTI|나의 크레 MBTI|평소 MBTI/i);
     assert.match(script, /function typeCharacterPath\(code\)/);
     assert.match(script, /TYPE_CHARACTER_ROOT = 'assets\/crewart-types\/'/);
-    assert.match(html, /crewart-survey-core\.js\?v=20260815-guest-result-v76/);
-    assert.match(html, /crewart-survey-v4\.css\?v=20260815-guest-result-v76/);
+    assert.match(html, /crewart-survey-core\.js\?v=20260815-character-reveal-v77/);
+    assert.match(html, /crewart-survey-v4\.css\?v=20260815-character-reveal-v77/);
     assert.match(script, /position: firstSelected \? Math\.min\(rawPosition, 34\) : Math\.max\(rawPosition, 66\)/);
     assert.match(html, /id="start-button"[^>]*>[\s\S]*테스트 시작하기/);
     assert.match(html, /id="home-retest"[^>]*>다시 테스트하기/);

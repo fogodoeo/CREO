@@ -1116,7 +1116,6 @@
         const randomizeHeroPreview = () => {
             const previewCode = randomType();
             heroCodeNode.textContent = previewCode;
-            if (heroCharacterNode && heroShuffleTicks % 2 === 0) heroCharacterNode.src = typeCharacterPath(previewCode);
             axisRows.forEach(row => setAxisPosition(row, Math.round(18 + Math.random() * 64)));
         };
         const settleHeroCode = () => {

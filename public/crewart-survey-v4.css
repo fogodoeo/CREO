@@ -916,8 +916,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     filter: drop-shadow(0 12px 18px rgba(26, 31, 27, .11));
     transition: opacity .2s ease, transform .28s cubic-bezier(.2,.8,.2,1);
 }
-.cw-story-track.is-code-cycling .cw-story-result-character img { opacity: .78; transform: scale(.985); }
-.cw-story-track.is-code-settled .cw-story-result-character img { opacity: 1; transform: scale(1); }
+.cw-story-track.is-code-cycling .cw-story-result-character img { opacity: 0; transform: scale(.88) translateY(8px); }
+.cw-story-track.is-code-settled .cw-story-result-character img { opacity: 1; transform: scale(1) translateY(0); }
 
 .cw-story-result-code {
     position: absolute;
