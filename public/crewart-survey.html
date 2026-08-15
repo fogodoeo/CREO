@@ -16,11 +16,11 @@
     <link
         href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
         rel="stylesheet">
-    <link rel="stylesheet" href="crewart-survey-v4.css?v=20260815-scroll-cue-v49">
+    <link rel="stylesheet" href="crewart-survey-v4.css?v=20260815-unboxed-home-v50">
     <script src="assets/vendor/kakao-2.8.1.min.js"></script>
-    <script src="crewart-survey-core.js?v=20260815-scroll-cue-v49"></script>
+    <script src="crewart-survey-core.js?v=20260815-unboxed-home-v50"></script>
     <!-- Share-link target is cache-busted so KakaoTalk never reuses the old root URL. -->
-    <script src="crewart-survey.js?v=20260815-scroll-cue-v49" defer></script>
+    <script src="crewart-survey.js?v=20260815-unboxed-home-v50" defer></script>
 </head>
 
 <body>
@@ -61,20 +61,17 @@
 
                 <section class="cw-home-start" id="home-start-card">
                     <button class="cw-test-action cw-primary-button" id="start-button" type="button" disabled><span>시작하기</span></button>
-                </section>
-
-                <section class="cw-home-auth-card" id="home-auth-card" aria-labelledby="home-band-title">
-                    <img src="assets/band-app-icon-official.png?v=20260801-logo-v2" width="38" height="38" alt="">
-                    <div>
-                        <strong id="home-band-title">BAND 회원 확인</strong>
-                        <span id="band-connection-status">기숙사 배정 · 전체 분석</span>
+                    <div class="cw-home-auth-inline" id="home-auth-card" aria-labelledby="home-band-title">
+                        <img src="assets/band-app-icon-official.png?v=20260801-logo-v2" width="22" height="22" alt="">
+                        <span id="home-band-title">BAND 회원 확인 시 기숙사 배정 · 전체 분석</span>
+                        <span id="band-connection-status"></span>
+                        <button type="button" id="home-auth-button">확인</button>
                     </div>
-                    <button type="button" id="home-auth-button">확인</button>
                 </section>
             </div>
         </section>
 
-        <!-- BAND Member Verification Modal Dialog (Solid White Minimal) -->
+        <!-- BAND Member Verification Modal Dialog -->
         <dialog class="cw-member-dialog" id="member-dialog" aria-labelledby="dialog-band-title">
             <div class="cw-member-dialog-sheet">
                 <header class="cw-member-dialog-head">

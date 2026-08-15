@@ -232,17 +232,18 @@
         if (number) number.textContent = bandAuthPhoneMask || '확인된 회원';
         const homeButton = element('home-auth-button');
         const homeTitle = element('home-band-title');
-        const homeStatus = element('band-connection-status');
-        if (authenticated && bandAuthPhoneMask) {
-            if (homeTitle) homeTitle.textContent = bandAuthPhoneMask;
-            if (homeStatus) homeStatus.textContent = '확인 완료';
+        const startButton = element('start-button');
+        const startSpan = startButton?.querySelector('span');
+        if (authenticated) {
+            if (startSpan) startSpan.textContent = '다시하기';
+            if (homeTitle) homeTitle.textContent = bandAuthPhoneMask ? `BAND 회원 확인 완료 · ${bandAuthPhoneMask}` : 'BAND 회원 확인 완료';
             if (homeButton) {
                 homeButton.textContent = '관리';
                 homeButton.classList.add('is-connected');
             }
         } else {
-            if (homeTitle) homeTitle.textContent = 'BAND 회원 확인';
-            if (homeStatus) homeStatus.textContent = '기숙사 배정 · 전체 분석';
+            if (startSpan) startSpan.textContent = '시작하기';
+            if (homeTitle) homeTitle.textContent = 'BAND 회원 확인 시 기숙사 배정 · 전체 분석';
             if (homeButton) {
                 homeButton.textContent = '확인';
                 homeButton.classList.remove('is-connected');
@@ -879,8 +880,8 @@
                         <div class="cw-story-stage" aria-live="polite">
                             <section class="cw-story-scene is-axis" data-story-scene="axis">
                                 <div class="cw-story-result-hero">
-                                    <strong class="cw-story-result-code" aria-label="${escapeHtml(result.code)}">${escapeHtml(result.code)}</strong>
                                     <div class="cw-story-result-character" aria-hidden="true">
+                                        <strong class="cw-story-result-code" aria-label="${escapeHtml(result.code)}">${escapeHtml(result.code)}</strong>
                                         <img src="${escapeHtml(typeCharacterPath(result.code))}" width="360" height="520" alt="" loading="eager" decoding="async">
                                     </div>
                                     <p class="cw-story-result-title">${escapeHtml(profile.title || result.typeName)}</p>
