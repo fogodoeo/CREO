@@ -2311,6 +2311,48 @@
         }
     }
 
+    async function shareBandReferral(event) {
+        const button = event?.currentTarget;
+        const shareUrl = createTrackedShareUrl();
+        const title = '크레와트 성향 테스트';
+        const description = '크레를 고르고 돌보는 나의 방식을 알아보세요.';
+        setShareButtonBusy(button, true, '카카오톡 여는 중');
+
+        try {
+            if (!initializeKakaoSdk()) throw new Error('Kakao SDK is unavailable');
+            await window.Kakao.Share.sendDefault({
+                objectType: 'feed',
+                content: {
+                    title,
+                    description,
+                    imageUrl: 'https://creok.onrender.com/assets/crewart-cave-mobile.webp',
+                    imageWidth: 1080,
+                    imageHeight: 1440,
+                    link: { mobileWebUrl: shareUrl, webUrl: shareUrl }
+                },
+                buttons: [{
+                    title: '나도 알아보기',
+                    link: { mobileWebUrl: shareUrl, webUrl: shareUrl }
+                }]
+            });
+        } catch (error) {
+            if (error?.name === 'AbortError') return;
+            console.error('[Crewart BAND referral share]', error);
+            try {
+                if (typeof navigator.share === 'function') {
+                    await navigator.share({ title, text: description, url: shareUrl });
+                    return;
+                }
+                await navigator.clipboard.writeText(shareUrl);
+                toast('공유 링크를 복사했어요.');
+            } catch (fallbackError) {
+                if (fallbackError?.name !== 'AbortError') toast('공유를 열지 못했어요. 다시 시도해주세요.', true);
+            }
+        } finally {
+            setShareButtonBusy(button, false);
+        }
+    }
+
     if (IS_LOCAL_QA) {
             window.CrewartShareQA = Object.freeze({
                 createResultShareFile,
@@ -2353,6 +2395,7 @@
         });
         element('auth-phone-edit')?.addEventListener('click', editMembershipAccess);
         element('auth-phone-clear')?.addEventListener('click', clearMembershipAccess);
+        element('band-share-button')?.addEventListener('click', shareBandReferral);
         element('member-check-form')?.addEventListener('submit', verifyMembershipPhone);
         element('member-phone')?.addEventListener('input', formatMemberPhone);
         element('member-phone')?.addEventListener('focus', () => syncMemberKeyboardState());

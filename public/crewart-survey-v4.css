@@ -2010,6 +2010,25 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-band-share-stats > header small { color: var(--cw-muted); font-size: 10px; font-weight: 700; }
 .cw-band-share-stats h2 { margin: 0; font-size: 16px; font-weight: 830; }
 .cw-band-share-stats > header > strong { color: var(--cw-green-dark); font-size: 29px; font-weight: 920; line-height: 1; font-variant-numeric: tabular-nums; }
+.cw-band-share-button {
+    display: flex;
+    width: 100%;
+    min-height: 48px;
+    padding: 0 16px;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 1px solid #f0d900;
+    border-radius: 13px;
+    background: #fee500;
+    color: #191600;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 820;
+    cursor: pointer;
+}
+.cw-band-share-button img { flex: 0 0 auto; border-radius: 6px; }
+.cw-band-share-button:disabled { cursor: wait; opacity: .68; }
 .cw-band-share-stats dl { display: grid; margin: 0; border-top: 1px solid var(--cw-line); }
 .cw-band-share-stats dl > div { display: flex; min-height: 44px; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--cw-line); }
 .cw-band-share-stats dt { color: var(--cw-muted); font-size: 11px; font-weight: 620; }
