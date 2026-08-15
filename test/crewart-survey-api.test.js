@@ -460,7 +460,7 @@ test('referral events are idempotent and verified conversion requires member aut
         bandMembership: { config: { sessionSecret: SECRET } },
         now: () => NOW
     });
-    const url = new URL('https://creok.example.com/api/crewart-survey/referrals');
+    const url = new URL('https://creok.example.com/api/crewart-survey/shares');
     const shareId = 'abc123def456abc123def456abc123de';
     for (const event of ['share', 'landing', 'landing', 'band_click']) {
         const response = new CapturedResponse();
@@ -502,7 +502,7 @@ test('referral summary is admin-only and reports unique link conversion', async 
         isAdmin: async (req) => req.headers['x-creo-admin'] === 'secret',
         now: () => NOW
     });
-    const url = new URL('https://creok.example.com/api/crewart-survey/referrals');
+    const url = new URL('https://creok.example.com/api/crewart-survey/shares');
     const unauthorized = new CapturedResponse();
     await api.handle(request('GET'), unauthorized, url);
     assert.equal(unauthorized.status, 401);

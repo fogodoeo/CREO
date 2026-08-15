@@ -574,7 +574,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /searchParams\.set\('src', 'kakao'\)[\s\S]*searchParams\.set\('sid', id\)/);
     assert.match(script, /trackReferral\('verified', \{ authenticated: true \}\)/);
     assert.match(script, /keepalive:\s*true/);
-    assert.match(html, /crewart-survey\.js\?v=20260815-home-polish-v59/);
+    assert.match(html, /crewart-survey\.js\?v=20260815-share-tracking-v60/);
     assert.match(script, /function renderUnifiedResult\(profile, house\)/);
     assert.doesNotMatch(script, /resultViewVersion|resultViewFromLocation|changeResultView|report=deep|set-result-version/);
     assert.match(script, /function renderResult\(options = \{\}\)[\s\S]*renderUnifiedResult\(profile, house\);/);
@@ -675,8 +675,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.doesNotMatch(script, /크레\s*MBTI|나의 크레 MBTI|평소 MBTI/i);
     assert.match(script, /function typeCharacterPath\(code\)/);
     assert.match(script, /TYPE_CHARACTER_ROOT = 'assets\/crewart-types\/'/);
-    assert.match(html, /crewart-survey-core\.js\?v=20260815-home-polish-v59/);
-    assert.match(html, /crewart-survey-v4\.css\?v=20260815-home-polish-v59/);
+    assert.match(html, /crewart-survey-core\.js\?v=20260815-share-tracking-v60/);
+    assert.match(html, /crewart-survey-v4\.css\?v=20260815-share-tracking-v60/);
     assert.match(html, /id="start-button"[^>]*>[\s\S]*성향 테스트 시작/);
     assert.match(html, /id="home-retest"[^>]*>다시 시작/);
     assert.doesNotMatch(html, /start-button-v2|home-retest-v1|Ver 1 시작|Ver 2 시작/);

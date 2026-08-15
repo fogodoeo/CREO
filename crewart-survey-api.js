@@ -430,7 +430,7 @@ function createCrewartSurveyApi(options = {}) {
                 });
                 return true;
             }
-            if (url.pathname === '/api/crewart-survey/referrals' && req.method === 'POST') {
+            if (url.pathname === '/api/crewart-survey/shares' && req.method === 'POST') {
                 const body = await readJson(req);
                 let authenticatedSubject = '';
                 if (cleanText(body?.event, 24) === 'verified') {
@@ -445,7 +445,7 @@ function createCrewartSurveyApi(options = {}) {
                 replyJson(res, 202, { accepted: true });
                 return true;
             }
-            if (url.pathname === '/api/crewart-survey/referrals' && req.method === 'GET') {
+            if (url.pathname === '/api/crewart-survey/shares' && req.method === 'GET') {
                 if (typeof isAdmin !== 'function' || !await isAdmin(req)) {
                     replyJson(res, 401, { error: '관리자 인증이 필요합니다.' });
                     return true;

@@ -5,7 +5,7 @@
     const SURVEY_URL = 'https://creok.onrender.com/crewart-survey.html';
     const DEFAULT_BAND_URL = 'https://www.band.us/band/101992972/post';
     const BAND_MEMBER_API = '/api/band-membership';
-    const REFERRAL_API = '/api/crewart-survey/referrals';
+    const REFERRAL_API = '/api/crewart-survey/shares';
     const REFERRAL_STORAGE_KEY = 'crewart_referral_source_v1';
     const KAKAO_JS_KEY = 'db7ffc8d6b9b7601b792ed69be4658fc';
     const TYPE_CHARACTER_ROOT = 'assets/crewart-types/';
