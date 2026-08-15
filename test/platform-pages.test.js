@@ -583,7 +583,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.doesNotMatch(script, /OWN_SHARE_IDS_STORAGE_KEY|loadOwnShareIds/);
     assert.match(script, /function loadReferralMetrics\(\)[\s\S]*Authorization: `Bearer \$\{bandAuthToken\}`/);
     assert.match(html, /id="band-share-state"[^>]*hidden[\s\S]*id="band-share-verified">0명/);
-    assert.match(html, /id="band-share-button"[\s\S]*kakaolink_btn_medium\.png[\s\S]*카카오톡 공유/);
+    assert.match(html, /id="band-share-button"[\s\S]*kakaolink_btn_medium\.png[\s\S]*카카오톡 공유하기/);
+    assert.doesNotMatch(html, /만든 공유 링크|방문이 확인된 링크|이 기기에서 만든 공유 링크의 성과|band-share-created|band-share-landed|band-share-empty/);
     assert.match(html, /id="auth-phone-edit"[\s\S]*id="auth-phone-clear"/);
     assert.match(html, /id="band-share-title">내 링크로 BAND 인증 완료<\/h2>/);
     assert.match(script, /function shareBandReferral\(event\)[\s\S]*!bandAuthToken \|\| !bandAuthUser\?\.isTargetMember[\s\S]*openMemberCheck\(\)[\s\S]*createTrackedShareUrl\(\)[\s\S]*Kakao\.Share\.sendDefault/);
@@ -593,8 +594,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.doesNotMatch(html, /내 공유 성과|<header><span aria-hidden="true">✓<\/span>/);
     assert.match(css, /\.cw-intro-tagline\s*\{[^}]*white-space:\s*nowrap/);
     assert.match(css, /\.cw-member-dialog \.cw-member-input-group\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) 68px/);
-    assert.match(html, /crewart-survey-v4\.css\?v=20260815-result-login-v86/);
-    assert.match(html, /crewart-survey\.js\?v=20260815-result-login-v86/);
+    assert.match(html, /crewart-survey-v4\.css\?v=20260815-band-share-v87/);
+    assert.match(html, /crewart-survey\.js\?v=20260815-band-share-v87/);
     assert.match(script, /function renderUnifiedResult\(profile, house, options = \{\}\)/);
     assert.doesNotMatch(script, /resultViewVersion|resultViewFromLocation|changeResultView|report=deep|set-result-version/);
     assert.match(script, /function renderResult\(options = \{\}\)[\s\S]*renderUnifiedResult\(profile, house\);/);
@@ -713,7 +714,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /function typeCharacterPath\(code\)/);
     assert.match(script, /TYPE_CHARACTER_ROOT = 'assets\/crewart-types\/'/);
     assert.match(html, /crewart-survey-core\.js\?v=20260815-random-timing-v80/);
-    assert.match(html, /crewart-survey-v4\.css\?v=20260815-result-login-v86/);
+    assert.match(html, /crewart-survey-v4\.css\?v=20260815-band-share-v87/);
     assert.match(script, /position: firstSelected \? Math\.min\(rawPosition, 34\) : Math\.max\(rawPosition, 66\)/);
     assert.match(html, /id="start-button"[^>]*>[\s\S]*테스트 시작하기/);
     assert.match(html, /id="home-retest"[^>]*>다시 테스트하기/);

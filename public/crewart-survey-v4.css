@@ -2070,11 +2070,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 }
 .cw-band-share-button img { flex: 0 0 auto; border-radius: 6px; }
 .cw-band-share-button:disabled { cursor: wait; opacity: .68; }
-.cw-band-share-stats dl { display: grid; margin: 0; border-top: 1px solid var(--cw-line); }
-.cw-band-share-stats dl > div { display: flex; min-height: 44px; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--cw-line); }
-.cw-band-share-stats dt { color: var(--cw-muted); font-size: 11px; font-weight: 620; }
-.cw-band-share-stats dd { margin: 0; font-size: 12px; font-weight: 780; font-variant-numeric: tabular-nums; }
-.cw-band-share-stats > p { margin: -3px 0 0; color: #929792; font-size: 10px; line-height: 1.5; }
 .cw-member-dialog-sheet { gap: 16px; }
 .cw-member-dialog-sub,
 .cw-member-dialog .cw-member-form > small { display: none; }

@@ -150,16 +150,8 @@
     function updateReferralMetricsDisplay(payload) {
         const counts = payload?.counts || {};
         const verified = Math.max(0, Number(counts.verified) || 0);
-        const shared = Math.max(0, Number(counts.shared) || 0);
-        const landed = Math.max(0, Number(counts.landed) || 0);
         const verifiedNode = element('band-share-verified');
-        const sharedNode = element('band-share-created');
-        const landedNode = element('band-share-landed');
-        const emptyNode = element('band-share-empty');
         if (verifiedNode) verifiedNode.textContent = `${verified.toLocaleString('ko-KR')}명`;
-        if (sharedNode) sharedNode.textContent = `${shared.toLocaleString('ko-KR')}개`;
-        if (landedNode) landedNode.textContent = `${landed.toLocaleString('ko-KR')}개`;
-        if (emptyNode) emptyNode.hidden = shared > 0;
     }
 
     async function loadReferralMetrics() {
