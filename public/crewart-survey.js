@@ -2264,10 +2264,26 @@
         }
     }
 
+    function restoreShareableResult() {
+        if (Core.MBTI_TYPES.includes(result?.code) && Core.HOUSE_KEYS.includes(assignedHouseKey)) return true;
+        const snapshot = loadLastResult();
+        if (!snapshot) return false;
+        result = snapshot.result;
+        assignedHouseKey = snapshot.assignedHouseKey;
+        selectedMbti = snapshot.selectedMbti || '';
+        timingStats = snapshot.timingStats || null;
+        resultSavedAt = snapshot.savedAt || '';
+        return true;
+    }
+
     async function shareBandReferral(event) {
         const button = event?.currentTarget;
         if (!bandAuthToken || !bandAuthUser?.isTargetMember) {
             openMemberCheck();
+            return;
+        }
+        if (restoreShareableResult()) {
+            await shareResult(event);
             return;
         }
         const shareUrl = createTrackedShareUrl();

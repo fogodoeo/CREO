@@ -587,7 +587,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.doesNotMatch(html, /만든 공유 링크|방문이 확인된 링크|이 기기에서 만든 공유 링크의 성과|band-share-created|band-share-landed|band-share-empty/);
     assert.match(html, /id="auth-phone-edit"[\s\S]*id="auth-phone-clear"/);
     assert.match(html, /id="band-share-title">내 링크로 BAND 인증 완료<\/h2>/);
-    assert.match(script, /function shareBandReferral\(event\)[\s\S]*!bandAuthToken \|\| !bandAuthUser\?\.isTargetMember[\s\S]*openMemberCheck\(\)[\s\S]*createTrackedShareUrl\(\)[\s\S]*Kakao\.Share\.sendDefault/);
+    assert.match(script, /function restoreShareableResult\(\)[\s\S]*loadLastResult\(\)[\s\S]*result = snapshot\.result[\s\S]*assignedHouseKey = snapshot\.assignedHouseKey/);
+    assert.match(script, /function shareBandReferral\(event\)[\s\S]*!bandAuthToken \|\| !bandAuthUser\?\.isTargetMember[\s\S]*openMemberCheck\(\)[\s\S]*restoreShareableResult\(\)[\s\S]*await shareResult\(event\)[\s\S]*createTrackedShareUrl\(\)[\s\S]*Kakao\.Share\.sendDefault/);
     assert.match(script, /function updateBandState\(\)[\s\S]*const shareState = element\('band-share-state'\)[\s\S]*shareState\.hidden = !authenticated/);
     assert.match(script, /element\('band-share-button'\)\?\.addEventListener\('click', shareBandReferral\)/);
     assert.match(css, /\.cw-band-share-button\s*\{[^}]*background:\s*#fee500/);
@@ -595,7 +596,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(css, /\.cw-intro-tagline\s*\{[^}]*white-space:\s*nowrap/);
     assert.match(css, /\.cw-member-dialog \.cw-member-input-group\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) 68px/);
     assert.match(html, /crewart-survey-v4\.css\?v=20260815-band-share-v87/);
-    assert.match(html, /crewart-survey\.js\?v=20260815-band-share-v87/);
+    assert.match(html, /crewart-survey\.js\?v=20260815-band-result-share-v88/);
     assert.match(script, /function renderUnifiedResult\(profile, house, options = \{\}\)/);
     assert.doesNotMatch(script, /resultViewVersion|resultViewFromLocation|changeResultView|report=deep|set-result-version/);
     assert.match(script, /function renderResult\(options = \{\}\)[\s\S]*renderUnifiedResult\(profile, house\);/);
