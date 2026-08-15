@@ -16,11 +16,11 @@
     <link
         href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
         rel="stylesheet">
-    <link rel="stylesheet" href="crewart-survey-v4.css?v=20260815-share-tracking-v60">
+    <link rel="stylesheet" href="crewart-survey-v4.css?v=20260815-band-tab-v61">
     <script src="assets/vendor/kakao-2.8.1.min.js"></script>
-    <script src="crewart-survey-core.js?v=20260815-share-tracking-v60"></script>
+    <script src="crewart-survey-core.js?v=20260815-band-tab-v61"></script>
     <!-- Share-link target is cache-busted so KakaoTalk never reuses the old root URL. -->
-    <script src="crewart-survey.js?v=20260815-share-tracking-v60" defer></script>
+    <script src="crewart-survey.js?v=20260815-band-tab-v61" defer></script>
 </head>
 
 <body>
@@ -61,13 +61,13 @@
                 </section>
 
                 <section class="cw-home-start" id="home-start-card">
-                    <button class="cw-test-action cw-primary-button" id="start-button" type="button" disabled><span>성향 테스트 시작</span></button>
-                    <div class="cw-home-auth-inline" id="home-auth-card" aria-labelledby="home-band-title">
-                        <img src="assets/band-app-icon-official.png?v=20260801-logo-v2" width="22" height="22" alt="">
-                        <span id="home-band-title">회원 확인 후 기숙사와 전체 분석 보기</span>
-                        <span id="band-connection-status"></span>
-                        <button type="button" id="home-auth-button">회원 확인</button>
-                    </div>
+                    <button class="cw-test-action cw-primary-button" id="start-button" type="button" disabled><span>테스트 시작하기</span></button>
+                    <button class="cw-home-band-login" id="home-auth-button" type="button">
+                        <img src="assets/band-app-icon-official.png?v=20260801-logo-v2" width="30" height="30" alt="">
+                        <span><small>회원 전용</small><strong id="home-band-title">BAND로 계속하기</strong></span>
+                        <i aria-hidden="true">→</i>
+                    </button>
+                    <span id="band-connection-status" hidden></span>
                 </section>
                 <p class="cw-home-copyright">© 2026 CREO. All rights reserved.</p>
             </div>
@@ -78,44 +78,21 @@
             <div class="cw-member-dialog-sheet">
                 <header class="cw-member-dialog-head">
                     <div>
-                        <h3 id="dialog-band-title">BAND 회원 확인</h3>
-                        <p class="cw-member-dialog-sub">가입 여부 확인</p>
+                        <h3 id="dialog-band-title">BAND 가입 여부 확인</h3>
                     </div>
                     <button class="cw-dialog-close" id="member-dialog-close" type="button" aria-label="닫기">✕</button>
                 </header>
 
                 <form class="cw-member-form" id="member-check-form">
-                    <label for="member-phone">휴대전화번호</label>
+                    <label class="cw-visually-hidden" for="member-phone">휴대전화번호</label>
                     <div class="cw-member-input-group">
                         <input id="member-phone" name="phone" type="tel" inputmode="numeric" autocomplete="tel"
-                            maxlength="13" placeholder="010-1234-5678" aria-describedby="member-phone-help" required>
+                            maxlength="13" placeholder="010-1234-5678" required>
                         <button class="cw-dialog-band-button" id="member-check-submit" type="submit">
                             <strong id="member-check-submit-label">확인하기</strong>
                         </button>
                     </div>
-                    <small id="member-phone-help">입력하신 번호는 가입 확인 외에 저장되지 않아요.</small>
                 </form>
-
-                <div class="cw-band-verified" id="band-verified-state" hidden>
-                    <header>
-                        <span aria-hidden="true">✓</span>
-                        <div><small>STATUS</small><strong>회원 확인 완료</strong></div>
-                    </header>
-                    <dl>
-                        <div>
-                            <dt>휴대전화번호</dt>
-                            <dd id="auth-phone-number">확인된 회원</dd>
-                        </div>
-                        <div>
-                            <dt>연결 상태</dt>
-                            <dd><i aria-hidden="true"></i> 정상</dd>
-                        </div>
-                    </dl>
-                    <div class="cw-band-account-actions">
-                        <button id="auth-phone-edit" type="button">번호 변경</button>
-                        <button id="auth-phone-clear" type="button">연결 해제</button>
-                    </div>
-                </div>
 
                 <div class="cw-member-status" id="member-check-status" role="status" aria-live="polite" hidden>
                 </div>
@@ -125,7 +102,7 @@
                     <span class="cw-member-join-copy">
                         <img src="assets/band-app-icon-official.png?v=20260801-logo-v2" alt="" width="28"
                             height="28">
-                        <span><small>COMMUNITY</small><strong>BAND 가입하기</strong></span>
+                        <strong>BAND 가입하기</strong>
                     </span>
                     <span aria-hidden="true">→</span>
                 </a>
@@ -164,12 +141,48 @@
         <section class="cw-screen cw-result" id="result-screen" hidden>
             <div id="result-content"></div>
         </section>
+
+        <section class="cw-screen cw-band-page" id="band-screen" hidden>
+            <div class="cw-band-page-inner">
+                <header class="cw-band-page-head">
+                    <img src="assets/band-app-icon-official.png?v=20260801-logo-v2" width="52" height="52" alt="">
+                    <div><small>회원 연결</small><h1>BAND</h1></div>
+                </header>
+
+                <section class="cw-band-login-card" id="band-login-state">
+                    <div><strong>BAND로 계속하기</strong><span>가입한 전화번호로 간편하게 확인하세요.</span></div>
+                    <button type="button" id="band-login-button">회원 확인</button>
+                </section>
+
+                <section class="cw-band-account-card" id="band-account-state" hidden>
+                    <header><span aria-hidden="true">✓</span><div><small>연결됨</small><strong id="auth-phone-number">확인된 회원</strong></div></header>
+                    <div class="cw-band-account-actions">
+                        <button id="auth-phone-edit" type="button">번호 변경</button>
+                        <button id="auth-phone-clear" type="button">연결 해제</button>
+                    </div>
+                </section>
+
+                <section class="cw-band-share-stats" aria-labelledby="band-share-title">
+                    <header><div><small>내 공유 성과</small><h2 id="band-share-title">BAND 인증 완료</h2></div><strong id="band-share-verified">0명</strong></header>
+                    <dl>
+                        <div><dt>만든 공유 링크</dt><dd id="band-share-created">0개</dd></div>
+                        <div><dt>방문이 확인된 링크</dt><dd id="band-share-landed">0개</dd></div>
+                    </dl>
+                    <p id="band-share-empty">이 기기에서 만든 공유 링크의 성과가 표시됩니다.</p>
+                </section>
+
+                <a class="cw-band-page-join" data-band-join href="https://www.band.us/band/101992972/post" target="_blank" rel="noopener noreferrer">
+                    <span><img src="assets/band-app-icon-official.png?v=20260801-logo-v2" width="30" height="30" alt=""><strong>BAND 가입하기</strong></span><i aria-hidden="true">→</i>
+                </a>
+            </div>
+        </section>
     </main>
 
     <nav class="cw-bottom-nav" id="app-nav" aria-label="주요 메뉴" hidden>
         <div>
             <button type="button" data-nav="home"><span>홈</span></button>
             <button type="button" data-nav="result"><span>결과</span></button>
+            <button type="button" data-nav="band"><span>BAND</span><i id="band-nav-status" aria-hidden="true"></i></button>
         </div>
     </nav>
 

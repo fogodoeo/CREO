@@ -526,3 +526,36 @@ test('referral summary is admin-only and reports unique link conversion', async 
     assert.equal(payload.verifiedConversionRate, 100);
     assert.equal(payload.entries[0].shareId, shareId);
 });
+
+test('owners can read aggregate counts for only their unguessable share ids', async () => {
+    const ownId = 'feed1234567890abcdef1234567890ab';
+    const otherId = 'beef1234567890abcdef1234567890ab';
+    const repository = new FakeRepository({
+        [`${REFERRAL_PREFIX}${ownId}`]: JSON.stringify({
+            shareId: ownId,
+            sharedAt: '2026-08-01T00:00:00.000Z',
+            landedAt: '2026-08-01T00:01:00.000Z',
+            verifiedAt: '2026-08-01T00:03:00.000Z',
+            verifiedCount: 3,
+            verifiedSubjects: ['private-a', 'private-b', 'private-c']
+        }),
+        [`${REFERRAL_PREFIX}${otherId}`]: JSON.stringify({
+            shareId: otherId,
+            sharedAt: '2026-08-01T00:00:00.000Z',
+            verifiedAt: '2026-08-01T00:03:00.000Z',
+            verifiedCount: 9
+        })
+    });
+    const api = createCrewartSurveyApi({ repository, bandMembership: { config: { sessionSecret: SECRET } }, now: () => NOW });
+    const response = new CapturedResponse();
+    await api.handle(
+        request('GET'),
+        response,
+        new URL(`https://creok.example.com/api/crewart-survey/shares?ids=${ownId}`)
+    );
+    assert.equal(response.status, 200);
+    const payload = JSON.parse(response.body);
+    assert.deepEqual(payload.counts, { shared: 1, landed: 1, bandClicked: 0, verified: 3, convertedLinks: 1 });
+    assert.equal(response.body.includes('private-a'), false);
+    assert.equal(response.body.includes(otherId), false);
+});

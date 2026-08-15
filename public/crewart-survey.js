@@ -7,6 +7,7 @@
     const BAND_MEMBER_API = '/api/band-membership';
     const REFERRAL_API = '/api/crewart-survey/shares';
     const REFERRAL_STORAGE_KEY = 'crewart_referral_source_v1';
+    const OWN_SHARE_IDS_STORAGE_KEY = 'crewart_own_share_ids_v1';
     const KAKAO_JS_KEY = 'db7ffc8d6b9b7601b792ed69be4658fc';
     const TYPE_CHARACTER_ROOT = 'assets/crewart-types/';
     const TYPE_CHARACTER_VERSION = '20260815-character-webp-v2';
@@ -28,7 +29,7 @@
     const CONTENT_CONFIG_KEY = 'crewart_mbti_content_v1';
     const BAND_INTEGRATION_ENABLED = true;
     const APP_HISTORY_KEY = 'crewartTab';
-    const APP_TABS = Object.freeze(['home', 'result']);
+    const APP_TABS = Object.freeze(['home', 'result', 'band']);
     const AXIS_REPORT_COPY = Object.freeze({
         EI: { title: '생각 정리', left: '함께 정리', right: '혼자 정리' },
         SN: { title: '관찰 초점', left: '현재 정보', right: '성장 가능성' },
@@ -141,8 +142,58 @@
 
     function createTrackedShareUrl() {
         const id = createReferralId();
+        rememberOwnShareId(id);
         trackReferral('share', { id });
         return referralShareUrl(id);
+    }
+
+    function loadOwnShareIds() {
+        try {
+            const ids = JSON.parse(localStorage.getItem(OWN_SHARE_IDS_STORAGE_KEY) || '[]');
+            return Array.isArray(ids) ? [...new Set(ids.map(validReferralId).filter(Boolean))].slice(-80) : [];
+        } catch (_) {
+            return [];
+        }
+    }
+
+    function rememberOwnShareId(id) {
+        const normalized = validReferralId(id);
+        if (!normalized) return;
+        const ids = loadOwnShareIds().filter(value => value !== normalized);
+        ids.push(normalized);
+        try { localStorage.setItem(OWN_SHARE_IDS_STORAGE_KEY, JSON.stringify(ids.slice(-80))); } catch (_) { }
+        updateReferralMetricsDisplay({ counts: { shared: ids.length, landed: 0, verified: 0 } });
+    }
+
+    function updateReferralMetricsDisplay(payload) {
+        const counts = payload?.counts || {};
+        const ownCount = loadOwnShareIds().length;
+        const verified = Math.max(0, Number(counts.verified) || 0);
+        const shared = Math.max(ownCount, Number(counts.shared) || 0);
+        const landed = Math.max(0, Number(counts.landed) || 0);
+        const verifiedNode = element('band-share-verified');
+        const sharedNode = element('band-share-created');
+        const landedNode = element('band-share-landed');
+        const emptyNode = element('band-share-empty');
+        if (verifiedNode) verifiedNode.textContent = `${verified.toLocaleString('ko-KR')}명`;
+        if (sharedNode) sharedNode.textContent = `${shared.toLocaleString('ko-KR')}개`;
+        if (landedNode) landedNode.textContent = `${landed.toLocaleString('ko-KR')}개`;
+        if (emptyNode) emptyNode.hidden = shared > 0;
+    }
+
+    async function loadReferralMetrics() {
+        const ids = loadOwnShareIds();
+        updateReferralMetricsDisplay({ counts: { shared: ids.length, landed: 0, verified: 0 } });
+        if (!ids.length) return;
+        try {
+            const url = new URL(REFERRAL_API, location.origin);
+            url.searchParams.set('ids', ids.join(','));
+            const response = await bandFetch(url.toString(), { cache: 'no-store' });
+            if (!response.ok) throw new Error('share metrics unavailable');
+            updateReferralMetricsDisplay(await response.json());
+        } catch (error) {
+            console.error('[Crewart share metrics]', error);
+        }
     }
 
     function initializeReferral() {
@@ -269,10 +320,11 @@
 
     function updateBandState() {
         const form = element('member-check-form');
-        const verified = element('band-verified-state');
+        const verified = element('band-account-state');
+        const loginState = element('band-login-state');
         const number = element('auth-phone-number');
         const connection = element('band-connection-status');
-        const bandScreen = element('home-band-section');
+        const bandScreen = element('band-screen');
         const authenticated = Boolean(bandAuthUser?.isTargetMember);
         const state = authenticated && editingMembership
             ? 'editing'
@@ -284,24 +336,23 @@
                         ? 'disconnected'
                         : 'loading';
         if (form) form.hidden = authenticated && !editingMembership;
-        if (verified) verified.hidden = !authenticated || editingMembership;
+        if (verified) verified.hidden = !authenticated;
+        if (loginState) loginState.hidden = authenticated;
         if (number) number.textContent = bandAuthPhoneMask || '확인된 회원';
         const homeButton = element('home-auth-button');
         const homeTitle = element('home-band-title');
         const startButton = element('start-button');
         const startSpan = startButton?.querySelector('span');
         if (authenticated) {
-            if (startSpan) startSpan.textContent = '다시 검사하기';
-            if (homeTitle) homeTitle.textContent = bandAuthPhoneMask ? `BAND 회원 확인 완료 · ${bandAuthPhoneMask}` : 'BAND 회원 확인 완료';
+            if (startSpan) startSpan.textContent = '다시 테스트하기';
+            if (homeTitle) homeTitle.textContent = bandAuthPhoneMask ? `BAND 연결됨 · ${bandAuthPhoneMask}` : 'BAND 연결됨';
             if (homeButton) {
-                homeButton.textContent = '관리';
                 homeButton.classList.add('is-connected');
             }
         } else {
-            if (startSpan) startSpan.textContent = '성향 테스트 시작';
-            if (homeTitle) homeTitle.textContent = '회원 확인 후 기숙사와 전체 분석 보기';
+            if (startSpan) startSpan.textContent = '테스트 시작하기';
+            if (homeTitle) homeTitle.textContent = 'BAND로 계속하기';
             if (homeButton) {
-                homeButton.textContent = '회원 확인';
                 homeButton.classList.remove('is-connected');
             }
         }
@@ -375,7 +426,7 @@
     }
 
     function setScreen(screenId) {
-        ['intro-screen', 'question-screen', 'mbti-screen', 'result-screen'].forEach(id => {
+        ['intro-screen', 'question-screen', 'mbti-screen', 'result-screen', 'band-screen'].forEach(id => {
             const screen = element(id);
             const active = id === screenId;
             screen.hidden = !active;
@@ -400,10 +451,10 @@
 
     function syncMemberKeyboardState(options = {}) {
         const input = element('member-phone');
-        const screen = element('home-band-section');
+        const screen = element('member-dialog');
         const viewport = window.visualViewport;
         const viewportHeight = Math.round(viewport?.height || window.innerHeight || document.documentElement.clientHeight);
-        const focused = Boolean(input && screen && !screen.hidden && document.activeElement === input);
+        const focused = Boolean(input && screen?.open && document.activeElement === input);
         document.documentElement.style.setProperty('--cw-visual-viewport-height', `${viewportHeight}px`);
         document.body.classList.toggle('cw-keyboard-open', focused);
         screen?.classList.toggle('is-keyboard-open', focused);
@@ -639,7 +690,7 @@
             status.textContent = '';
             status.classList.remove('is-error', 'is-success', 'is-action');
         }
-        updateBandState();
+        openMemberCheck();
         requestAnimationFrame(() => {
             const input = element('member-phone');
             if (!input) return;
@@ -1016,6 +1067,9 @@
                 <main class="cw-result-teaser-main">
                     <div class="cw-result-teaser-hero is-guest-code">
                         <strong aria-label="${escapeHtml(result.code)}">${escapeHtml(result.code)}</strong>
+                        <div class="cw-result-teaser-character" aria-hidden="true">
+                            <img src="${escapeHtml(typeCharacterPath(result.code))}" width="360" height="520" alt="" loading="eager" decoding="async">
+                        </div>
                     </div>
                     <div class="cw-result-teaser-copy">
                         <p>${escapeHtml(profile.title || result.typeName)}</p>
@@ -1441,6 +1495,7 @@
 
     function currentStage() {
 
+        if (!element('band-screen').hidden) return 'band';
         if (!element('result-screen').hidden) return 'result';
         if (!element('mbti-screen').hidden) return 'mbti';
         if (!element('question-screen').hidden) return 'questions';
@@ -1527,6 +1582,11 @@
             } else restoreLastResult({ animate: true });
             return;
         }
+        if (tab === 'band') {
+            setScreen('band-screen');
+            updateBandState();
+            void loadReferralMetrics();
+        }
     }
 
     async function initBandMembership() {
@@ -1603,6 +1663,7 @@
             } catch (_) { }
         }
         trackReferral('verified', { authenticated: true });
+        void loadReferralMetrics();
         if (status) {
             status.hidden = true;
             status.textContent = '';
@@ -1745,7 +1806,7 @@
     }
 
     function handleMemberJoinReturn() {
-        if (currentStage() === 'band') {
+        if (element('member-dialog')?.open) {
             const status = element('member-check-status');
             if (status) {
                 status.hidden = false;
@@ -2367,7 +2428,11 @@
     function bindEvents() {
         element('start-button')?.addEventListener('click', startCurrentSurvey);
         element('home-retest')?.addEventListener('click', startCurrentSurvey);
-        element('home-auth-button')?.addEventListener('click', () => openMemberCheck());
+        element('home-auth-button')?.addEventListener('click', () => {
+            if (hasDetailedAccess()) navigateToTab('band');
+            else openMemberCheck();
+        });
+        element('band-login-button')?.addEventListener('click', () => openMemberCheck());
         element('member-dialog-close')?.addEventListener('click', closeMemberCheck);
         element('member-dialog')?.addEventListener('click', event => {
             if (event.target === event.currentTarget) closeMemberCheck();
@@ -2485,6 +2550,7 @@
         } else {
             void initBandMembership();
         }
+        void loadReferralMetrics();
     }
 
     Promise.resolve(Core?.ready)

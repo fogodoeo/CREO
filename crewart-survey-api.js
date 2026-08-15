@@ -457,6 +457,20 @@ function createCrewartSurveyApi(options = {}) {
                 return true;
             }
             if (url.pathname === '/api/crewart-survey/shares' && req.method === 'GET') {
+                const requestedIds = [...new Set(String(url.searchParams.get('ids') || '')
+                    .split(',')
+                    .map(normalizeReferralId)
+                    .filter(Boolean))]
+                    .slice(0, 80);
+                if (requestedIds.length) {
+                    const rows = await repository.getRowsByKeys(requestedIds.map((id) => `${REFERRAL_PREFIX}${id}`));
+                    const summary = summarizeReferrals(rows);
+                    replyJson(res, 200, {
+                        counts: summary.counts,
+                        verifiedConversionRate: summary.verifiedConversionRate
+                    });
+                    return true;
+                }
                 if (typeof isAdmin !== 'function' || !await isAdmin(req)) {
                     replyJson(res, 401, { error: '관리자 인증이 필요합니다.' });
                     return true;
