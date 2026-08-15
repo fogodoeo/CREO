@@ -885,6 +885,10 @@
                                     </div>
                                     <p class="cw-story-result-title">${escapeHtml(profile.title || result.typeName)}</p>
                                 </div>
+                                <div class="cw-story-axis-indicator" aria-hidden="true">
+                                    <span>SCROLL</span>
+                                    <i class="cw-scroll-chevron"></i>
+                                </div>
                                 <div class="cw-story-axis-chart">${axisMarkup}</div>
                             </section>
 
