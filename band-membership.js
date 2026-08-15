@@ -254,7 +254,8 @@ function createBandMembership(options = {}) {
             user: {
                 id: payload.sub,
                 name: 'BAND 회원',
-                isTargetMember: true
+                isTargetMember: true,
+                memberScoped: Boolean(payload.mid)
             },
             targetBandUrl: config.targetBandUrl,
             expiresAt: new Date(payload.exp * 1000).toISOString()
@@ -321,7 +322,8 @@ function createBandMembership(options = {}) {
                     typ: SESSION_TYPE,
                     iat: issuedAt,
                     exp: issuedAt + config.sessionTtlSec,
-                    sub: sessionSubject()
+                    sub: sessionSubject(),
+                    mid: publicSubject(phone, config.sessionSecret)
                 };
                 const token = signToken(payload, config.sessionSecret);
                 sendJson(res, 200, sessionResponse(payload, token));

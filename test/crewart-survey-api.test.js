@@ -9,9 +9,11 @@ const {
     CONTENT_UPDATED_KEY,
     LEGACY_RESPONSES_KEY,
     REFERRAL_PREFIX,
+    REFERRAL_OWNER_PREFIX,
     RESPONSE_PREFIX,
     chooseLeastPopulatedHouse,
-    createCrewartSurveyApi
+    createCrewartSurveyApi,
+    normalizeTimingMedians
 } = require('../crewart-survey-api');
 const Core = require('../public/crewart-survey-core');
 
@@ -55,10 +57,11 @@ function request(method, body = '', headers = {}) {
     return req;
 }
 
-function memberToken(subject = 'member_random_session_subject') {
+function memberToken(subject = 'member_random_session_subject', memberId = subject) {
     return signToken({
         typ: SESSION_TYPE,
         sub: subject,
+        mid: memberId,
         iat: Math.floor(NOW / 1000),
         exp: Math.floor(NOW / 1000) + 3600
     }, SECRET);
@@ -153,7 +156,8 @@ test('bootstrap returns version-matched content and aggregate data only', async 
     const payload = JSON.parse(response.body);
     assert.equal(payload.content.version, Core.SURVEY_VERSION);
     assert.deepEqual(payload.cohort.houseCounts, { SF: 1, ST: 0, NT: 1, NF: 0 });
-    assert.deepEqual(payload.cohort.timingMedians, [3400, 3200]);
+    assert.deepEqual(payload.cohort.timingMedians, [15455, 14545]);
+    assert.equal(payload.cohort.timingMedians.reduce((sum, value) => sum + value, 0) / payload.cohort.timingMedians.length, 15000);
     assert.equal(payload.cohort.sampleSize, 2);
     assert.equal(response.body.includes('비공개 이름'), false);
     assert.equal(response.body.includes('숨길 이름'), false);
@@ -464,7 +468,8 @@ test('referral events are idempotent and verified conversion requires member aut
     const shareId = 'abc123def456abc123def456abc123de';
     for (const event of ['share', 'landing', 'landing', 'band_click']) {
         const response = new CapturedResponse();
-        await api.handle(request('POST', JSON.stringify({ shareId, event, source: 'kakao' })), response, url);
+        const headers = event === 'share' ? { authorization: `Bearer ${memberToken()}` } : {};
+        await api.handle(request('POST', JSON.stringify({ shareId, event, source: 'kakao' }), headers), response, url);
         assert.equal(response.status, 202);
     }
     const unauthorized = new CapturedResponse();
@@ -494,6 +499,9 @@ test('referral events are idempotent and verified conversion requires member aut
     assert.equal(record.bandClickedAt, new Date(NOW).toISOString());
     assert.equal(record.verifiedAt, new Date(NOW).toISOString());
     assert.equal(record.verifiedCount, 2);
+    assert.equal(record.ownerMemberKey, 'member_random_session_subject');
+    const owner = JSON.parse(repository.rows.get(`${REFERRAL_OWNER_PREFIX}member_random_session_subject`));
+    assert.deepEqual(owner.shareIds, [shareId]);
 });
 
 test('referral summary is admin-only and reports unique link conversion', async () => {
@@ -527,35 +535,49 @@ test('referral summary is admin-only and reports unique link conversion', async 
     assert.equal(payload.entries[0].shareId, shareId);
 });
 
-test('owners can read aggregate counts for only their unguessable share ids', async () => {
+test('share metrics follow the verified member across random browser sessions', async () => {
     const ownId = 'feed1234567890abcdef1234567890ab';
-    const otherId = 'beef1234567890abcdef1234567890ab';
-    const repository = new FakeRepository({
-        [`${REFERRAL_PREFIX}${ownId}`]: JSON.stringify({
-            shareId: ownId,
-            sharedAt: '2026-08-01T00:00:00.000Z',
-            landedAt: '2026-08-01T00:01:00.000Z',
-            verifiedAt: '2026-08-01T00:03:00.000Z',
-            verifiedCount: 3,
-            verifiedSubjects: ['private-a', 'private-b', 'private-c']
-        }),
-        [`${REFERRAL_PREFIX}${otherId}`]: JSON.stringify({
-            shareId: otherId,
-            sharedAt: '2026-08-01T00:00:00.000Z',
-            verifiedAt: '2026-08-01T00:03:00.000Z',
-            verifiedCount: 9
-        })
-    });
+    const stableMemberId = 'member_stable_phone_identity';
+    const repository = new FakeRepository();
     const api = createCrewartSurveyApi({ repository, bandMembership: { config: { sessionSecret: SECRET } }, now: () => NOW });
+    const url = new URL('https://creok.example.com/api/crewart-survey/shares');
+    const created = new CapturedResponse();
+    await api.handle(request('POST', JSON.stringify({ shareId: ownId, event: 'share', source: 'kakao' }), {
+        authorization: `Bearer ${memberToken('random_session_one', stableMemberId)}`
+    }), created, url);
+    assert.equal(created.status, 202);
+    const landed = new CapturedResponse();
+    await api.handle(request('POST', JSON.stringify({ shareId: ownId, event: 'landing', source: 'kakao' })), landed, url);
+    const verified = new CapturedResponse();
+    await api.handle(request('POST', JSON.stringify({ shareId: ownId, event: 'verified', source: 'kakao' }), {
+        authorization: `Bearer ${memberToken('visitor_session', 'visitor_stable_identity')}`
+    }), verified, url);
+
     const response = new CapturedResponse();
     await api.handle(
-        request('GET'),
+        request('GET', '', { authorization: `Bearer ${memberToken('random_session_two', stableMemberId)}` }),
         response,
-        new URL(`https://creok.example.com/api/crewart-survey/shares?ids=${ownId}`)
+        url
     );
     assert.equal(response.status, 200);
     const payload = JSON.parse(response.body);
-    assert.deepEqual(payload.counts, { shared: 1, landed: 1, bandClicked: 0, verified: 3, convertedLinks: 1 });
-    assert.equal(response.body.includes('private-a'), false);
-    assert.equal(response.body.includes(otherId), false);
+    assert.deepEqual(payload.counts, { shared: 1, landed: 1, bandClicked: 0, verified: 1, convertedLinks: 1 });
+    assert.equal(response.body.includes(stableMemberId), false);
+
+    const otherMember = new CapturedResponse();
+    await api.handle(request('GET', '', {
+        authorization: `Bearer ${memberToken('other_session', 'other_stable_identity')}`
+    }), otherMember, url);
+    assert.deepEqual(JSON.parse(otherMember.body).counts, { shared: 0, landed: 0, bandClicked: 0, verified: 0, convertedLinks: 0 });
+
+    const browserOnly = new CapturedResponse();
+    await api.handle(request('GET'), browserOnly, new URL(`https://creok.example.com/api/crewart-survey/shares?ids=${ownId}`));
+    assert.equal(browserOnly.status, 401);
+});
+
+test('participant timing values are normalized to an exact fifteen-second average', () => {
+    const values = normalizeTimingMedians([3100, 3100, 4037, 9301, 90000]);
+    assert.equal(values.length, 5);
+    assert.equal(values.reduce((sum, value) => sum + value, 0), 75000);
+    assert.ok(values.every((value) => value >= Core.MIN_RESPONSE_MS && value <= Core.MAX_RESPONSE_MS));
 });

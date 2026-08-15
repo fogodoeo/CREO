@@ -78,10 +78,12 @@ test('member lookup stays server-side and returns a pseudonymous short session',
     const payload = JSON.parse(response.body);
     assert.equal(payload.member, true);
     assert.equal(payload.user.isTargetMember, true);
+    assert.equal(payload.user.memberScoped, true);
     assert.equal(response.body.includes('01012345678'), false);
     const tokenPayload = verifyToken(payload.token, SESSION_SECRET, NOW);
     assert.equal(tokenPayload.typ, SESSION_TYPE);
     assert.match(tokenPayload.sub, /^member_[A-Za-z0-9_-]{32}$/);
+    assert.match(tokenPayload.mid, /^member_[A-Za-z0-9_-]{32}$/);
 });
 
 test('an unknown number returns only the join destination', async () => {
@@ -104,7 +106,7 @@ test('an unknown number returns only the join destination', async () => {
     });
 });
 
-test('the same phone receives unlinkable random membership sessions', async () => {
+test('the same phone keeps a stable anonymous member scope across random sessions', async () => {
     const membership = createBandMembership({
         env: { ...ENV, BAND_MEMBER_RATE_LIMIT_ATTEMPTS: '20' },
         now: () => NOW,
@@ -112,6 +114,7 @@ test('the same phone receives unlinkable random membership sessions', async () =
         logger: { error() {} }
     });
     const subjects = [];
+    const memberIds = [];
     for (let index = 0; index < 2; index += 1) {
         const response = new CapturedResponse();
         await membership.handle(
@@ -120,10 +123,13 @@ test('the same phone receives unlinkable random membership sessions', async () =
             new URL('https://creok.example.com/api/band-membership/verify')
         );
         const payload = JSON.parse(response.body);
-        subjects.push(verifyToken(payload.token, SESSION_SECRET, NOW).sub);
+        const session = verifyToken(payload.token, SESSION_SECRET, NOW);
+        subjects.push(session.sub);
+        memberIds.push(session.mid);
         assert.equal(response.body.includes('01012345678'), false);
     }
     assert.notEqual(subjects[0], subjects[1]);
+    assert.equal(memberIds[0], memberIds[1]);
 });
 
 test('a zero attempt limit disables throttling during testing', async () => {

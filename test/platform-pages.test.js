@@ -580,8 +580,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /searchParams\.set\('src', 'kakao'\)[\s\S]*searchParams\.set\('sid', id\)/);
     assert.match(script, /trackReferral\('verified', \{ authenticated: true \}\)/);
     assert.match(script, /keepalive:\s*true/);
-    assert.match(script, /OWN_SHARE_IDS_STORAGE_KEY/);
-    assert.match(script, /function loadReferralMetrics\(\)[\s\S]*searchParams\.set\('ids', ids\.join\(','\)\)/);
+    assert.doesNotMatch(script, /OWN_SHARE_IDS_STORAGE_KEY|loadOwnShareIds/);
+    assert.match(script, /function loadReferralMetrics\(\)[\s\S]*Authorization: `Bearer \$\{bandAuthToken\}`/);
     assert.match(html, /id="band-share-verified">0명/);
     assert.match(html, /id="band-share-button"[\s\S]*kakaolink_btn_medium\.png[\s\S]*카카오톡 공유/);
     assert.match(html, /id="auth-phone-edit"[\s\S]*id="auth-phone-clear"/);
@@ -593,7 +593,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(css, /\.cw-intro-tagline\s*\{[^}]*white-space:\s*nowrap/);
     assert.match(css, /\.cw-member-dialog \.cw-member-input-group\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) 68px/);
     assert.match(html, /crewart-survey-v4\.css\?v=20260815-axis-minimal-v79/);
-    assert.match(html, /crewart-survey\.js\?v=20260815-random-timing-v80/);
+    assert.match(html, /crewart-survey\.js\?v=20260815-member-metrics-v81/);
     assert.match(script, /function renderUnifiedResult\(profile, house, options = \{\}\)/);
     assert.doesNotMatch(script, /resultViewVersion|resultViewFromLocation|changeResultView|report=deep|set-result-version/);
     assert.match(script, /function renderResult\(options = \{\}\)[\s\S]*renderUnifiedResult\(profile, house\);/);
@@ -736,8 +736,9 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(html, /© 2026 CREO\. All rights reserved\./);
     assert.match(html, /class="cw-q0-copyright" id="q0-copyright" hidden>© 2026 CREO\. All rights reserved\./);
     assert.match(script, /© 2026 CREO · ALL RIGHTS RESERVED/);
-    assert.match(script, /const PARTICIPANT_AVERAGE_MS = 15 \* 1000/);
-    assert.match(script, /const cohortAverageMs = samples\.length \? PARTICIPANT_AVERAGE_MS : timingStats\.averageMs/);
+    assert.match(script, /const cohortAverageMs = samples\.length \? samples\.reduce\(\(sum, sample\) => sum \+ sample, 0\) \/ samples\.length : timingStats\.averageMs/);
+    assert.doesNotMatch(script, /OWN_SHARE_IDS_STORAGE_KEY|loadOwnShareIds|searchParams\.set\('ids'/);
+    assert.match(script, /headers: \{ Authorization: `Bearer \$\{bandAuthToken\}` \}/);
     assert.match(script, /context\.textAlign = 'center';\s*context\.fillText\('© 2026 CREO · ALL RIGHTS RESERVED', canvas\.width \/ 2, 1370\)/);
     assert.doesNotMatch(script, /context\.fillText\('creok\.onrender\.com'/);
     assert.match(script, /class="cw-story-scene is-house"/);

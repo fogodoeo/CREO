@@ -10,7 +10,10 @@ const LEGACY_RESPONSES_KEY = 'crewart_survey_responses';
 const RESPONSE_PREFIX = 'crewart_survey_response_entry_';
 const RESPONSE_LIMIT = 500;
 const REFERRAL_PREFIX = 'crewart_referral_v1_';
+const REFERRAL_OWNER_PREFIX = 'crewart_referral_owner_v1_';
 const REFERRAL_LIMIT = 1000;
+const REFERRAL_OWNER_LINK_LIMIT = 80;
+const PARTICIPANT_AVERAGE_MS = 15 * 1000;
 const REFERRAL_EVENTS = Object.freeze({
     share: 'sharedAt',
     landing: 'landedAt',
@@ -72,6 +75,45 @@ function validDate(value, fallback) {
 function normalizeReferralId(value) {
     const id = cleanText(value, 64);
     return /^[a-zA-Z0-9_-]{16,64}$/.test(id) ? id : '';
+}
+
+function memberIdentity(session) {
+    return cleanText(session?.mid, 80);
+}
+
+function normalizeTimingMedians(values) {
+    const samples = (values || []).map(Number)
+        .filter((value) => Number.isFinite(value) && value >= Core.MIN_RESPONSE_MS && value <= Core.MAX_RESPONSE_MS)
+        .map(Math.round);
+    if (!samples.length) return [];
+    const sourceAverage = samples.reduce((sum, value) => sum + value, 0) / samples.length;
+    const targetTotal = PARTICIPANT_AVERAGE_MS * samples.length;
+    const adjusted = samples.map((value) => Math.max(
+        Core.MIN_RESPONSE_MS,
+        Math.min(Core.MAX_RESPONSE_MS, Math.round(value * PARTICIPANT_AVERAGE_MS / sourceAverage))
+    ));
+    let difference = targetTotal - adjusted.reduce((sum, value) => sum + value, 0);
+    while (difference !== 0) {
+        const direction = Math.sign(difference);
+        const candidates = adjusted
+            .map((value, index) => ({ value, index }))
+            .filter((item) => direction > 0 ? item.value < Core.MAX_RESPONSE_MS : item.value > Core.MIN_RESPONSE_MS);
+        if (!candidates.length) break;
+        const share = Math.max(1, Math.floor(Math.abs(difference) / candidates.length));
+        let changed = 0;
+        for (const item of candidates) {
+            if (difference === 0) break;
+            const capacity = direction > 0
+                ? Core.MAX_RESPONSE_MS - adjusted[item.index]
+                : adjusted[item.index] - Core.MIN_RESPONSE_MS;
+            const amount = Math.min(Math.abs(difference), share, capacity);
+            adjusted[item.index] += direction * amount;
+            difference -= direction * amount;
+            changed += amount;
+        }
+        if (!changed) break;
+    }
+    return adjusted;
 }
 
 function summarizeReferrals(rows) {
@@ -312,10 +354,20 @@ function aggregateResponses(rows, legacyValue) {
         if (Number.isFinite(median) && median >= Core.MIN_RESPONSE_MS && median <= Core.MAX_RESPONSE_MS) timingMedians.push(Math.round(median));
         sampleSize += 1;
     }
-    const aggregate = { houseCounts, timingMedians: timingMedians.slice(-RESPONSE_LIMIT), sampleSize };
+    const rawTimingMedians = timingMedians.slice(-RESPONSE_LIMIT);
+    const aggregate = {
+        houseCounts,
+        timingMedians: normalizeTimingMedians(rawTimingMedians),
+        sampleSize
+    };
     Object.defineProperty(aggregate, 'identities', {
         value: new Set(responses.keys()),
         enumerable: false
+    });
+    Object.defineProperty(aggregate, 'rawTimingMedians', {
+        value: rawTimingMedians,
+        enumerable: false,
+        writable: true
     });
     return aggregate;
 }
@@ -385,7 +437,7 @@ function createCrewartSurveyApi(options = {}) {
         return pending;
     }
 
-    async function recordReferral(input, authenticatedSubject = '') {
+    async function recordReferral(input, authenticatedMemberKey = '') {
         const shareId = normalizeReferralId(input?.shareId);
         const eventName = cleanText(input?.event, 24);
         const timestampField = REFERRAL_EVENTS[eventName];
@@ -394,19 +446,20 @@ function createCrewartSurveyApi(options = {}) {
             error.status = 422;
             throw error;
         }
-        if (eventName === 'verified' && !authenticatedSubject) {
+        if ((eventName === 'share' || eventName === 'verified') && !authenticatedMemberKey) {
             const error = new Error('BAND 회원 확인이 필요합니다.');
             error.status = 401;
             throw error;
         }
         return serializeReferral(async () => {
             const key = `${REFERRAL_PREFIX}${shareId}`;
-            const rows = await repository.getRowsByKeys([key]);
-            const previous = jsonParse(rows[0]?.value, {});
+            const ownerKey = eventName === 'share' ? `${REFERRAL_OWNER_PREFIX}${authenticatedMemberKey}` : '';
+            const rows = await repository.getRowsByKeys([key, ownerKey].filter(Boolean));
+            const previous = jsonParse(rows.find((row) => row.key === key)?.value, {});
             const verifiedSubjects = Array.isArray(previous.verifiedSubjects)
                 ? previous.verifiedSubjects.map((subject) => cleanText(subject, 80)).filter(Boolean)
                 : [];
-            if (eventName === 'verified' && verifiedSubjects.includes(authenticatedSubject)) return previous;
+            if (eventName === 'verified' && verifiedSubjects.includes(authenticatedMemberKey)) return previous;
             if (eventName !== 'verified' && previous[timestampField]) return previous;
             const nowIso = new Date(now()).toISOString();
             const next = {
@@ -420,10 +473,27 @@ function createCrewartSurveyApi(options = {}) {
             if (eventName === 'verified') {
                 next.verifiedAt = previous.verifiedAt || nowIso;
                 next.lastVerifiedAt = nowIso;
-                next.verifiedSubjects = [...verifiedSubjects, cleanText(authenticatedSubject, 80)].slice(-500);
+                next.verifiedSubjects = [...verifiedSubjects, authenticatedMemberKey].slice(-500);
                 next.verifiedCount = next.verifiedSubjects.length;
             }
-            await repository.upsertRows([{ key, value: JSON.stringify(next) }]);
+            const updates = [{ key, value: JSON.stringify(next) }];
+            if (eventName === 'share') {
+                next.ownerMemberKey = authenticatedMemberKey;
+                updates[0].value = JSON.stringify(next);
+                const ownerRecord = jsonParse(rows.find((row) => row.key === ownerKey)?.value, {});
+                const shareIds = Array.isArray(ownerRecord.shareIds)
+                    ? ownerRecord.shareIds.map(normalizeReferralId).filter(Boolean)
+                    : [];
+                updates.push({
+                    key: ownerKey,
+                    value: JSON.stringify({
+                        memberKey: authenticatedMemberKey,
+                        shareIds: [...new Set([...shareIds, shareId])].slice(-REFERRAL_OWNER_LINK_LIMIT),
+                        updatedAt: nowIso
+                    })
+                });
+            }
+            await repository.upsertRows(updates);
             return next;
         });
     }
@@ -443,27 +513,43 @@ function createCrewartSurveyApi(options = {}) {
             }
             if (url.pathname === '/api/crewart-survey/shares' && req.method === 'POST') {
                 const body = await readJson(req);
-                let authenticatedSubject = '';
-                if (cleanText(body?.event, 24) === 'verified') {
+                let authenticatedMemberKey = '';
+                if (bearerToken(req)) {
                     const secret = String(bandMembership?.config?.sessionSecret || '');
-                    try { authenticatedSubject = verifyToken(bearerToken(req), secret, now()).sub; }
+                    try {
+                        authenticatedMemberKey = memberIdentity(verifyToken(bearerToken(req), secret, now()));
+                        if (!authenticatedMemberKey) throw new Error('member scope unavailable');
+                    }
                     catch {
                         replyJson(res, 401, { error: 'BAND 회원 확인 시간이 만료됐어요.' });
                         return true;
                     }
                 }
-                await recordReferral(body, authenticatedSubject);
+                await recordReferral(body, authenticatedMemberKey);
                 replyJson(res, 202, { accepted: true });
                 return true;
             }
             if (url.pathname === '/api/crewart-survey/shares' && req.method === 'GET') {
-                const requestedIds = [...new Set(String(url.searchParams.get('ids') || '')
-                    .split(',')
-                    .map(normalizeReferralId)
-                    .filter(Boolean))]
-                    .slice(0, 80);
-                if (requestedIds.length) {
-                    const rows = await repository.getRowsByKeys(requestedIds.map((id) => `${REFERRAL_PREFIX}${id}`));
+                if (bearerToken(req)) {
+                    const secret = String(bandMembership?.config?.sessionSecret || '');
+                    let authenticatedMemberKey = '';
+                    try {
+                        authenticatedMemberKey = memberIdentity(verifyToken(bearerToken(req), secret, now()));
+                        if (!authenticatedMemberKey) throw new Error('member scope unavailable');
+                    }
+                    catch {
+                        replyJson(res, 401, { error: 'BAND 회원 확인 시간이 만료됐어요.' });
+                        return true;
+                    }
+                    const ownerKey = `${REFERRAL_OWNER_PREFIX}${authenticatedMemberKey}`;
+                    const ownerRows = await repository.getRowsByKeys([ownerKey]);
+                    const owner = jsonParse(ownerRows[0]?.value, {});
+                    const ownedIds = Array.isArray(owner.shareIds)
+                        ? [...new Set(owner.shareIds.map(normalizeReferralId).filter(Boolean))].slice(-REFERRAL_OWNER_LINK_LIMIT)
+                        : [];
+                    const rows = ownedIds.length
+                        ? await repository.getRowsByKeys(ownedIds.map((id) => `${REFERRAL_PREFIX}${id}`))
+                        : [];
                     const summary = summarizeReferrals(rows);
                     replyJson(res, 200, {
                         counts: summary.counts,
@@ -585,8 +671,9 @@ function createCrewartSurveyApi(options = {}) {
                         if (!alreadyCounted) {
                             cohort.houseCounts[assignedHouseKey] += 1;
                             if (assigned.timingStats.medianMs >= Core.MIN_RESPONSE_MS) {
-                                cohort.timingMedians.push(assigned.timingStats.medianMs);
-                                cohort.timingMedians = cohort.timingMedians.slice(-RESPONSE_LIMIT);
+                                cohort.rawTimingMedians.push(assigned.timingStats.medianMs);
+                                cohort.rawTimingMedians = cohort.rawTimingMedians.slice(-RESPONSE_LIMIT);
+                                cohort.timingMedians = normalizeTimingMedians(cohort.rawTimingMedians);
                             }
                             cohort.sampleSize += 1;
                         } else {
@@ -623,10 +710,12 @@ module.exports = {
     HOUSE_ASSIGNMENT_VERSION,
     LEGACY_RESPONSES_KEY,
     REFERRAL_PREFIX,
+    REFERRAL_OWNER_PREFIX,
     RESPONSE_PREFIX,
     aggregateResponses,
     chooseLeastPopulatedHouse,
     createCrewartSurveyApi,
+    normalizeTimingMedians,
     sanitizeManagedContent,
     sanitizeSubmission,
     summarizeReferrals

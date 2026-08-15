@@ -7,7 +7,6 @@
     const BAND_MEMBER_API = '/api/band-membership';
     const REFERRAL_API = '/api/crewart-survey/shares';
     const REFERRAL_STORAGE_KEY = 'crewart_referral_source_v1';
-    const OWN_SHARE_IDS_STORAGE_KEY = 'crewart_own_share_ids_v1';
     const KAKAO_JS_KEY = 'db7ffc8d6b9b7601b792ed69be4658fc';
     const TYPE_CHARACTER_ROOT = 'assets/crewart-types/';
     const TYPE_CHARACTER_VERSION = '20260815-character-webp-v2';
@@ -27,7 +26,6 @@
     const MEMBERSHIP_RECHECK_HIDDEN_MS = 10000;
     const MEMBERSHIP_RECHECK_TIMEOUT_MS = 15 * 60 * 1000;
     const CONTENT_CONFIG_KEY = 'crewart_mbti_content_v1';
-    const PARTICIPANT_AVERAGE_MS = 15 * 1000;
     const BAND_INTEGRATION_ENABLED = true;
     const APP_HISTORY_KEY = 'crewartTab';
     const APP_TABS = Object.freeze(['home', 'result', 'band']);
@@ -131,46 +129,28 @@
         const id = validReferralId(options.id || referralId);
         if (!id) return;
         const headers = { 'Content-Type': 'application/json' };
-        if (options.authenticated && bandAuthToken) headers.Authorization = `Bearer ${bandAuthToken}`;
+        if (bandAuthToken) headers.Authorization = `Bearer ${bandAuthToken}`;
         void fetch(REFERRAL_API, {
             method: 'POST',
             cache: 'no-store',
             keepalive: true,
             headers,
             body: JSON.stringify({ shareId: id, event: eventName, source: 'kakao' })
+        }).then(response => {
+            if (eventName === 'share' && response.ok) void loadReferralMetrics();
         }).catch(() => undefined);
     }
 
     function createTrackedShareUrl() {
         const id = createReferralId();
-        rememberOwnShareId(id);
         trackReferral('share', { id });
         return referralShareUrl(id);
     }
 
-    function loadOwnShareIds() {
-        try {
-            const ids = JSON.parse(localStorage.getItem(OWN_SHARE_IDS_STORAGE_KEY) || '[]');
-            return Array.isArray(ids) ? [...new Set(ids.map(validReferralId).filter(Boolean))].slice(-80) : [];
-        } catch (_) {
-            return [];
-        }
-    }
-
-    function rememberOwnShareId(id) {
-        const normalized = validReferralId(id);
-        if (!normalized) return;
-        const ids = loadOwnShareIds().filter(value => value !== normalized);
-        ids.push(normalized);
-        try { localStorage.setItem(OWN_SHARE_IDS_STORAGE_KEY, JSON.stringify(ids.slice(-80))); } catch (_) { }
-        updateReferralMetricsDisplay({ counts: { shared: ids.length, landed: 0, verified: 0 } });
-    }
-
     function updateReferralMetricsDisplay(payload) {
         const counts = payload?.counts || {};
-        const ownCount = loadOwnShareIds().length;
         const verified = Math.max(0, Number(counts.verified) || 0);
-        const shared = Math.max(ownCount, Number(counts.shared) || 0);
+        const shared = Math.max(0, Number(counts.shared) || 0);
         const landed = Math.max(0, Number(counts.landed) || 0);
         const verifiedNode = element('band-share-verified');
         const sharedNode = element('band-share-created');
@@ -183,13 +163,13 @@
     }
 
     async function loadReferralMetrics() {
-        const ids = loadOwnShareIds();
-        updateReferralMetricsDisplay({ counts: { shared: ids.length, landed: 0, verified: 0 } });
-        if (!ids.length) return;
+        updateReferralMetricsDisplay({ counts: { shared: 0, landed: 0, verified: 0 } });
+        if (!bandAuthToken || !bandAuthUser?.isTargetMember) return;
         try {
-            const url = new URL(REFERRAL_API, location.origin);
-            url.searchParams.set('ids', ids.join(','));
-            const response = await bandFetch(url.toString(), { cache: 'no-store' });
+            const response = await bandFetch(REFERRAL_API, {
+                cache: 'no-store',
+                headers: { Authorization: `Bearer ${bandAuthToken}` }
+            });
             if (!response.ok) throw new Error('share metrics unavailable');
             updateReferralMetricsDisplay(await response.json());
         } catch (error) {
@@ -936,7 +916,7 @@
         const value = valid ? formatSeconds(timingStats.averageMs) : '-';
         const samples = cohortSummary.timingMedians.map(Number)
             .filter(value => value >= Core.MIN_RESPONSE_MS && value <= Core.MAX_RESPONSE_MS);
-        const cohortAverageMs = samples.length ? PARTICIPANT_AVERAGE_MS : timingStats.averageMs;
+        const cohortAverageMs = samples.length ? samples.reduce((sum, sample) => sum + sample, 0) / samples.length : timingStats.averageMs;
         const relative = valid && cohortAverageMs > 0 ? Math.log2(timingStats.averageMs / cohortAverageMs) : 0;
         const position = Math.max(7, Math.min(93, 50 + relative * 25));
         const comparison = samples.length
@@ -1600,6 +1580,7 @@
             bandTargetUrl = memberConfig.targetBandUrl || DEFAULT_BAND_URL;
             if (bandAuthConfigured && bandAuthToken) {
                 const session = await verifyBandSession(bandAuthToken);
+                if (session.user?.memberScoped !== true) throw new Error('member-scoped session required');
                 bandAuthUser = session.user || null;
                 bandTargetUrl = session.targetBandUrl || bandTargetUrl;
             }
@@ -1615,6 +1596,7 @@
         } finally {
             bandAuthReady = true;
             updateBandUi();
+            void loadReferralMetrics();
         }
     }
 
