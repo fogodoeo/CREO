@@ -85,6 +85,7 @@ test('prepared surveys keep option ids and graded score maps aligned while shuff
         assert.equal(prepared[0].id, 'Q01');
         prepared.forEach((question, index) => {
             if (index > 0) assert.notEqual(question.axis, prepared[index - 1].axis);
+            assert.notDeepEqual(question.optionIds, Core.QUESTIONS.find(item => item.id === question.id).optionIds);
             question.options.forEach((option, choice) => {
                 assert.ok(option);
                 const source = Core.QUESTIONS.find(item => item.id === question.id);

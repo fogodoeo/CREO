@@ -1999,7 +1999,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 }
 .cw-band-account-card { display: grid; padding: 18px; gap: 16px; }
 .cw-band-account-card > header { display: flex; align-items: center; gap: 11px; }
-.cw-band-account-card > header > span { display: grid; width: 32px; height: 32px; place-items: center; border-radius: 50%; background: var(--cw-green-soft); color: var(--cw-green-dark); font-weight: 900; }
 .cw-band-account-card > header div { display: grid; gap: 1px; }
 .cw-band-account-card > header small { color: var(--cw-green); font-size: 9px; font-weight: 750; }
 .cw-band-account-card > header strong { font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; }
@@ -2056,8 +2055,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     top: 50%;
     left: 50%;
     width: 100%;
-    color: #171a18;
-    font-size: clamp(78px, 22vw, 140px);
+    color: var(--guest-house-accent, #16814b);
+    font-size: clamp(104px, 28vw, 180px);
+    font-weight: 920;
+    letter-spacing: -.075em;
+    opacity: .3;
     text-align: center;
     transform: translate(-50%, -50%);
 }
@@ -2192,9 +2194,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     background: transparent;
     box-shadow: none;
 }
-.cw-result-empty p { color: var(--cw-green); font-size: 12px; letter-spacing: .04em; }
-.cw-result-empty h1 { margin-bottom: 10px; font-size: 24px; }
-.cw-result-empty span { max-width: 25ch; margin-bottom: 22px; color: #656c66; font-size: 15px; }
+.cw-result-empty h1 { margin-bottom: 10px; font-size: 24px; white-space: nowrap; }
+.cw-result-empty span { max-width: none; margin-bottom: 22px; color: #656c66; font-size: clamp(10.5px, 3.35vw, 15px); letter-spacing: -.035em; white-space: nowrap; }
 .cw-result-empty button { min-height: 50px; padding: 0 24px; font-size: 15px; }
 
 @media (max-width: 420px) {

@@ -1058,6 +1058,8 @@
     }
 
     function renderResultTeaser(profile) {
+        const guestHouseKey = `${result.code?.[1] || ''}${result.code?.[2] || ''}`;
+        const guestHouse = Core.HOUSE_META[guestHouseKey] || Core.HOUSE_META[Core.HOUSE_KEYS[0]];
         element('result-content').innerHTML = `
             <div class="cw-result-teaser">
                 <header class="cw-story-topbar">
@@ -1065,7 +1067,7 @@
                     <div><strong>성향 결과</strong></div>
                 </header>
                 <main class="cw-result-teaser-main">
-                    <div class="cw-result-teaser-hero is-guest-code">
+                    <div class="cw-result-teaser-hero is-guest-code" data-guest-house="${escapeHtml(guestHouse.name)}" style="--guest-house-accent:${escapeHtml(guestHouse.accent)}">
                         <strong aria-label="${escapeHtml(result.code)}">${escapeHtml(result.code)}</strong>
                         <div class="cw-result-teaser-character" aria-hidden="true">
                             <img src="${escapeHtml(typeCharacterPath(result.code))}" width="360" height="520" alt="" loading="eager" decoding="async">
@@ -1398,7 +1400,6 @@
     function renderEmptyResult() {
         element('result-content').innerHTML = `
             <section class="cw-result-empty">
-                <p>결과</p>
                 <h1>아직 결과가 없어요</h1>
                 <span>테스트를 완료하면 이곳에서 언제든 다시 볼 수 있어요.</span>
                 <button class="cw-test-action cw-primary-button" type="button" data-action="start-empty">테스트 시작하기</button>

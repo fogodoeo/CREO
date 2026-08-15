@@ -1298,14 +1298,19 @@
         });
 
         questions.filter(question => question.scorePairs).forEach(question => {
-            const choices = shuffle(question.options.map((option, index) => ({
+            let choices = shuffle(question.options.map((option, index) => ({
                 option,
+                originalIndex: index,
                 optionId: question.optionIds?.[index],
                 optionScore: question.optionScores?.[index],
                 score: question.scores[index],
                 pair: question.scorePairs[index],
                 weight: question.scoreWeights?.[index]
             })), rng);
+            if (choices.every((item, index) => item.originalIndex === index)) {
+                const offset = 1 + randomInt(choices.length - 1, rng);
+                choices = choices.slice(offset).concat(choices.slice(0, offset));
+            }
             question.options = choices.map(item => item.option);
             question.optionIds = choices.map(item => item.optionId);
             question.optionScores = choices.map(item => ({ ...item.optionScore }));

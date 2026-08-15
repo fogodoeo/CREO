@@ -16,11 +16,11 @@
     <link
         href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
         rel="stylesheet">
-    <link rel="stylesheet" href="crewart-survey-v4.css?v=20260815-share-card-v69">
+    <link rel="stylesheet" href="crewart-survey-v4.css?v=20260815-result-band-v70">
     <script src="assets/vendor/kakao-2.8.1.min.js"></script>
-    <script src="crewart-survey-core.js?v=20260815-share-card-v69"></script>
+    <script src="crewart-survey-core.js?v=20260815-result-band-v70"></script>
     <!-- Share-link target is cache-busted so KakaoTalk never reuses the old root URL. -->
-    <script src="crewart-survey.js?v=20260815-share-card-v69" defer></script>
+    <script src="crewart-survey.js?v=20260815-result-band-v70" defer></script>
 </head>
 
 <body>
@@ -155,7 +155,7 @@
                 </section>
 
                 <section class="cw-band-account-card" id="band-account-state" hidden>
-                    <header><span aria-hidden="true">✓</span><div><small>연결됨</small><strong id="auth-phone-number">확인된 회원</strong></div></header>
+                    <header><div><small>연결됨</small><strong id="auth-phone-number">확인된 회원</strong></div></header>
                     <div class="cw-band-account-actions">
                         <button id="auth-phone-edit" type="button">번호 변경</button>
                         <button id="auth-phone-clear" type="button">연결 해제</button>
@@ -163,7 +163,7 @@
                 </section>
 
                 <section class="cw-band-share-stats" aria-labelledby="band-share-title">
-                    <header><div><small>내 공유 성과</small><h2 id="band-share-title">BAND 인증 완료</h2></div><strong id="band-share-verified">0명</strong></header>
+                    <header><div><h2 id="band-share-title">내 링크로 BAND 인증 완료</h2></div><strong id="band-share-verified">0명</strong></header>
                     <dl>
                         <div><dt>만든 공유 링크</dt><dd id="band-share-created">0개</dd></div>
                         <div><dt>방문이 확인된 링크</dt><dd id="band-share-landed">0개</dd></div>
