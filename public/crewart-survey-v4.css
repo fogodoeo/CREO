@@ -847,6 +847,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 }
 
 .cw-story-scene.is-axis {
+    align-content: start;
+    padding-top: clamp(6px, 2svh, 18px);
     opacity: var(--axis-opacity);
     transform: translateY(calc((1 - var(--axis-opacity)) * -12px));
 }
@@ -875,7 +877,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     position: relative;
     display: grid;
     width: min(100%, 620px);
-    margin: 0 auto 28px;
+    margin: 0 auto clamp(10px, 2svh, 18px);
     justify-items: center;
 }
 
@@ -918,7 +920,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     user-select: none;
     white-space: nowrap;
 }
-.cw-story-result-title { position: relative; z-index: 2; max-width: 24ch; margin: 20px auto 0; color: #171a18; font-size: clamp(17px, 4.8vw, 21px); font-weight: 820; line-height: 1.4; text-align: center; word-break: keep-all; text-wrap: balance; }
+.cw-story-result-title { position: relative; z-index: 2; max-width: 24ch; margin: 8px auto 0; color: #171a18; font-size: clamp(17px, 4.8vw, 21px); font-weight: 820; line-height: 1.4; text-align: center; word-break: keep-all; text-wrap: balance; }
 
 .cw-story-axis-chart {
     display: grid;
@@ -1843,4 +1845,24 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     font-size: 13px;
     font-weight: 750;
     color: #171a18;
+}
+
+/* ── Speed Scene Dominant Highlight ─────────────────── */
+.cw-story-speed > div span {
+    color: #8c928d;
+    font-weight: 600;
+    transition: color .2s ease, font-weight .2s ease;
+}
+.cw-story-speed.is-settled > div span.is-dominant {
+    color: #171a18;
+    font-weight: 850;
+}
+
+/* ── House Scene Reveal Animation ──────────────────── */
+.cw-story-house-line strong.is-rolling {
+    animation: cw-code-flicker .14s ease-in-out infinite alternate;
+    opacity: .7;
+}
+.cw-story-house-line strong.is-settled {
+    animation: cw-house-roll .4s cubic-bezier(.2,.8,.2,1) both;
 }

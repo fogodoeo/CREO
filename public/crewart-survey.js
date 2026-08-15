@@ -919,7 +919,7 @@
                                 <small data-time-label>응답 시간 계산 중</small>
                                 <strong data-time-value data-final-time="${escapeHtml(speed.value)}">--.-초</strong>
                                 <div class="cw-story-speed" style="--speed-position:${speed.position}%">
-                                    <div><span>빠른 선택</span><span>신중한 선택</span></div>
+                                    <div><span class="${speed.position <= 45 ? 'is-dominant' : ''}">빠른 선택</span><span class="${speed.position >= 55 ? 'is-dominant' : ''}">신중한 선택</span></div>
                                     <i aria-hidden="true"><b></b></i>
                                     <strong>${escapeHtml(speed.label)}</strong>
                                     <small>${escapeHtml(speed.comparison)}</small>
@@ -927,7 +927,7 @@
                             </section>
 
                             <section class="cw-story-scene is-house" data-story-scene="house">
-                                <div class="cw-story-house-line"><span>당신의 기숙사는</span><strong>${escapeHtml(house.name)}</strong><span>입니다.</span></div>
+                                <div class="cw-story-house-line"><span>당신의 기숙사는</span><strong data-house-name data-final-house="${escapeHtml(house.name)}">${escapeHtml(house.name)}</strong><span>입니다.</span></div>
                                 <div class="cw-story-final-actions">
                                     <div class="cw-story-share-row">
                                         <button type="button" class="cw-story-kakao" data-action="share"><img src="assets/kakaolink_btn_medium.png" width="24" height="24" alt=""><span data-action-label>카카오톡 공유</span></button>
@@ -1060,6 +1060,33 @@
             if (touchStartY - endY > 18) revealBandPrompt();
         };
 
+        const houseNameNode = root.querySelector('[data-house-name]');
+        let houseRollStarted = false;
+        let houseRollSettled = false;
+
+        const startHouseRoll = () => {
+            if (!houseNameNode || houseRollStarted) return;
+            houseRollStarted = true;
+            houseRollSettled = false;
+            const finalHouse = houseNameNode.dataset.finalHouse || '';
+            const houseList = ['RED', 'GREEN', 'BLUE', 'YELLOW', finalHouse].filter(Boolean);
+            let hIndex = 0;
+            houseNameNode.textContent = '······';
+            houseNameNode.classList.add('is-rolling');
+            const hTimer = setInterval(() => {
+                hIndex += 1;
+                if (hIndex >= houseList.length) {
+                    clearInterval(hTimer);
+                    houseNameNode.textContent = finalHouse;
+                    houseNameNode.classList.remove('is-rolling');
+                    houseNameNode.classList.add('is-settled');
+                    houseRollSettled = true;
+                    return;
+                }
+                houseNameNode.textContent = houseList[hIndex];
+            }, 80);
+        };
+
         const settleTimeValue = () => {
             if (!timeValueNode) return;
             timeValueNode.textContent = timeValueNode.dataset.finalTime || '측정 전';
@@ -1105,6 +1132,7 @@
             const range = Math.max(1, root.offsetHeight - window.innerHeight);
             const rawProgress = clamp(-rect.top / range);
             if (rawProgress >= TIME_SCENE_START && !timeShuffleStarted) startTimeShuffle();
+            if (rawProgress >= .78 && !houseRollStarted) startHouseRoll();
             const progress = timeShuffleStarted && !timeShuffleSettled
                 ? TIME_SCENE_LOCK
                 : rawProgress;
