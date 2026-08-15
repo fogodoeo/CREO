@@ -1005,7 +1005,7 @@
                                 <div class="cw-story-result-hero">
                                     <div class="cw-story-result-character" aria-hidden="true">
                                         <strong class="cw-story-result-code" data-final-code="${escapeHtml(result.code)}">????</strong>
-                                        <img src="${escapeHtml(typeCharacterPath(result.code))}" width="360" height="520" alt="" loading="eager" decoding="async">
+                                        <img data-story-character src="${escapeHtml(typeCharacterPath(result.code))}" width="360" height="520" alt="" loading="eager" decoding="async">
                                     </div>
                                     <p class="cw-story-result-title">${escapeHtml(profile.title || result.typeName)}</p>
                                 </div>
@@ -1105,6 +1105,7 @@
         const timeValueNode = root.querySelector('[data-time-value]');
         const timeLabelNode = root.querySelector('[data-time-label]');
         const heroCodeNode = root.querySelector('[data-final-code]');
+        const heroCharacterNode = root.querySelector('[data-story-character]');
         const topCodeNode = root.querySelector('[data-story-top-code]');
         const speedNode = root.querySelector('.cw-story-speed');
         const targetSpeedPosition = speedNode ? (parseFloat(speedNode.style.getPropertyValue('--speed-position')) || 50) : 50;
@@ -1116,6 +1117,7 @@
         let activeScene = '';
         let timeShuffleTimer = 0;
         let heroShuffleTimer = 0;
+        let heroShuffleTicks = 0;
         let bandPromptTimer = 0;
         let latestProgress = 0;
         let touchStartY = 0;
@@ -1127,6 +1129,21 @@
         const TIME_SCENE_LOCK = .7;
 
         const randomType = () => Core.MBTI_TYPES[Math.floor(Math.random() * Core.MBTI_TYPES.length)] || '????';
+        const setAxisPosition = (row, position) => {
+            const current = Math.max(16, Math.min(84, Number(position) || 50));
+            row.style.setProperty('--axis-current', `${current}%`);
+            row.style.setProperty('--axis-fill-left', `${Math.min(50, current)}%`);
+            row.style.setProperty('--axis-fill-width', `${Math.abs(current - 50)}%`);
+            const labels = row.querySelectorAll('.cw-story-axis-labels span');
+            labels[0]?.classList.toggle('is-dominant', current < 50);
+            labels[1]?.classList.toggle('is-dominant', current >= 50);
+        };
+        const randomizeHeroPreview = () => {
+            const previewCode = randomType();
+            heroCodeNode.textContent = previewCode;
+            if (heroCharacterNode && heroShuffleTicks % 2 === 0) heroCharacterNode.src = typeCharacterPath(previewCode);
+            axisRows.forEach(row => setAxisPosition(row, Math.round(18 + Math.random() * 64)));
+        };
         const settleHeroCode = () => {
             if (!heroCodeNode || heroCodeSettled) return;
             heroCodeSettled = true;
@@ -1135,20 +1152,32 @@
             const finalCode = heroCodeNode.dataset.finalCode || result.code;
             heroCodeNode.textContent = finalCode;
             heroCodeNode.setAttribute('aria-label', finalCode);
+            if (heroCharacterNode) heroCharacterNode.src = typeCharacterPath(finalCode);
+            axisRows.forEach(row => setAxisPosition(row, Number(row.dataset.axisTarget) || 50));
+            root.style.setProperty('--axis-progress', 1);
             heroCodeNode.classList.remove('is-cycling');
             heroCodeNode.classList.add('is-settled');
             if (topCodeNode) topCodeNode.textContent = finalCode;
             root.classList.remove('is-code-cycling');
             root.classList.add('is-code-settled');
+            root.classList.add('is-intro-settled');
+            scheduleSync();
         };
         const startHeroShuffle = () => {
             if (!heroCodeNode || heroCodeSettled || heroShuffleTimer) return;
             root.classList.add('is-code-cycling');
             heroCodeNode.classList.add('is-cycling');
-            heroCodeNode.textContent = randomType();
+            root.style.setProperty('--axis-progress', 1);
+            heroShuffleTicks = 0;
+            randomizeHeroPreview();
             heroShuffleTimer = window.setInterval(() => {
-                heroCodeNode.textContent = randomType();
-            }, 110);
+                heroShuffleTicks += 1;
+                if (heroShuffleTicks >= 10) {
+                    settleHeroCode();
+                    return;
+                }
+                randomizeHeroPreview();
+            }, 105);
         };
 
         const storyProgressToScrollY = progress => {
@@ -1163,11 +1192,21 @@
             if (Math.abs(window.scrollY - lockY) > 1) window.scrollTo({ top: lockY, behavior: 'auto' });
         };
         const blockTimeSceneScroll = event => {
+            if (!heroCodeSettled) {
+                event.preventDefault();
+                const lockY = storyProgressToScrollY(0);
+                if (Math.abs(window.scrollY - lockY) > 1) window.scrollTo({ top: lockY, behavior: 'auto' });
+                return;
+            }
             if (!timeShuffleStarted || timeShuffleSettled) return;
             event.preventDefault();
             holdTimeScene();
         };
         const blockTimeSceneKeys = event => {
+            if (!heroCodeSettled && ['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', 'Home', 'End', ' '].includes(event.key)) {
+                event.preventDefault();
+                return;
+            }
             if (!timeShuffleStarted || timeShuffleSettled) {
                 if (['ArrowDown', 'PageDown', 'End', ' '].includes(event.key)) revealBandPrompt();
                 return;
@@ -1268,9 +1307,13 @@
             frame = 0;
             const rect = root.getBoundingClientRect();
             const range = Math.max(1, root.offsetHeight - window.innerHeight);
-            const rawProgress = clamp(-rect.top / range);
+            const measuredProgress = clamp(-rect.top / range);
+            const rawProgress = heroCodeSettled ? measuredProgress : 0;
+            if (!heroCodeSettled && measuredProgress > 0) {
+                const lockY = storyProgressToScrollY(0);
+                if (Math.abs(window.scrollY - lockY) > 1) window.scrollTo({ top: lockY, behavior: 'auto' });
+            }
             root.style.setProperty('--hero-progress', segment(rawProgress, 0, .08));
-            if (rawProgress >= .055) settleHeroCode();
             if (rawProgress >= TIME_SCENE_START && !timeShuffleStarted) startTimeShuffle();
             if (rawProgress >= .78 && !houseRollStarted) startHouseRoll();
             const progress = timeShuffleStarted && !timeShuffleSettled
@@ -1278,7 +1321,7 @@
                 : rawProgress;
             latestProgress = progress;
             root.style.setProperty('--story-progress', progress);
-            const axisProgress = segment(progress, .02, .17);
+            const axisProgress = heroCodeSettled ? 1 : 0;
             const profileIn = segment(progress, .35, .37);
             const profileOut = 1 - segment(progress, .59, .62);
             const timeIn = segment(progress, .64, .66);
@@ -1305,13 +1348,7 @@
             root.style.setProperty('--share-progress', shareProgress);
             if (progressNode) progressNode.style.transform = `scaleX(${progress})`;
 
-            axisRows.forEach(row => {
-                const target = Number(row.dataset.axisTarget) || 50;
-                const current = 50 + (target - 50) * axisProgress;
-                row.style.setProperty('--axis-current', `${current}%`);
-                row.style.setProperty('--axis-fill-left', `${Math.min(50, current)}%`);
-                row.style.setProperty('--axis-fill-width', `${Math.abs(current - 50)}%`);
-            });
+            if (heroCodeSettled) axisRows.forEach(row => setAxisPosition(row, Number(row.dataset.axisTarget) || 50));
 
             const nextScene = progress < .35 ? 'axis' : progress < TIME_SCENE_START ? 'profile' : progress < .81 ? 'time' : 'house';
             if (nextScene !== activeScene) {

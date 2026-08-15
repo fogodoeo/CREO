@@ -589,7 +589,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.doesNotMatch(html, /내 공유 성과|<header><span aria-hidden="true">✓<\/span>/);
     assert.match(css, /\.cw-intro-tagline\s*\{[^}]*white-space:\s*nowrap/);
     assert.match(css, /\.cw-member-dialog \.cw-member-input-group\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) 68px/);
-    assert.match(html, /crewart-survey\.js\?v=20260815-band-cleanup-v73/);
+    assert.match(html, /crewart-survey\.js\?v=20260815-auto-result-v74/);
     assert.match(script, /function renderUnifiedResult\(profile, house\)/);
     assert.doesNotMatch(script, /resultViewVersion|resultViewFromLocation|changeResultView|report=deep|set-result-version/);
     assert.match(script, /function renderResult\(options = \{\}\)[\s\S]*renderUnifiedResult\(profile, house\);/);
@@ -602,6 +602,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /class="cw-story-scene is-house"/);
     assert.match(script, /class="cw-story-result-hero"/);
     assert.match(script, /class="cw-story-result-character"/);
+    assert.match(script, /data-story-character/);
     assert.match(script, /typeCharacterPath\(result\.code\)/);
     assert.match(script, /class="cw-story-result-code"/);
     assert.match(script, /class="cw-story-result-title"/);
@@ -620,7 +621,12 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /function resultSpeedPresentation\(\)[\s\S]*빠르게 고르는 편[\s\S]*신중하게 고르는 편/);
     assert.match(script, /class="cw-story-speed" style="--speed-position:\$\{speed\.position\}%"/);
     assert.match(script, /빠른 선택[\s\S]*신중한 선택/);
-    assert.match(script, /const axisProgress = segment\(progress, \.02, \.17\)/);
+    assert.match(script, /const axisProgress = heroCodeSettled \? 1 : 0/);
+    assert.match(script, /function setupResultStory\(\)[\s\S]*randomizeHeroPreview[\s\S]*Math\.round\(18 \+ Math\.random\(\) \* 64\)/);
+    assert.match(script, /heroShuffleTicks >= 10[\s\S]*settleHeroCode\(\)/);
+    assert.match(script, /heroCharacterNode\.src = typeCharacterPath\(finalCode\)/);
+    assert.match(script, /root\.classList\.add\('is-intro-settled'\)/);
+    assert.doesNotMatch(script, /rawProgress >= \.055[^\n]*settleHeroCode/);
     assert.doesNotMatch(script, /mbtiProgress|cw-story-mbti/);
     assert.match(script, /const strengthProgress = segment\(progress, \.36, \.38\)/);
     assert.match(script, /const matchProgress = segment\(progress, \.44, \.47\)/);
@@ -694,8 +700,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.doesNotMatch(script, /크레\s*MBTI|나의 크레 MBTI|평소 MBTI/i);
     assert.match(script, /function typeCharacterPath\(code\)/);
     assert.match(script, /TYPE_CHARACTER_ROOT = 'assets\/crewart-types\/'/);
-    assert.match(html, /crewart-survey-core\.js\?v=20260815-band-cleanup-v73/);
-    assert.match(html, /crewart-survey-v4\.css\?v=20260815-band-cleanup-v73/);
+    assert.match(html, /crewart-survey-core\.js\?v=20260815-auto-result-v74/);
+    assert.match(html, /crewart-survey-v4\.css\?v=20260815-auto-result-v74/);
     assert.match(script, /position: firstSelected \? Math\.min\(rawPosition, 34\) : Math\.max\(rawPosition, 66\)/);
     assert.match(html, /id="start-button"[^>]*>[\s\S]*테스트 시작하기/);
     assert.match(html, /id="home-retest"[^>]*>다시 테스트하기/);
@@ -781,6 +787,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /class="cw-story-house-line"[\s\S]*나의 기숙사[\s\S]*\$\{escapeHtml\(house\.name\)\}/);
     assert.match(css, /\.cw-story-cue\s*\{[^}]*bottom:\s*max\(108px, calc\(env\(safe-area-inset-bottom\) \+ 98px\)\)/);
     assert.match(css, /\.cw-story-cue\s*\{[^}]*padding:\s*0[^}]*border:\s*0[^}]*background:\s*transparent[^}]*box-shadow:\s*none/);
+    assert.match(css, /\.cw-story-track:not\(\.is-intro-settled\) \.cw-story-cue\s*\{[^}]*opacity:\s*0/);
     assert.match(css, /@keyframes cw-story-cue-drop/);
     assert.doesNotMatch(script, /내 선택에서 보인 모습|주된 방향 ·|함께 나타난 방향 ·/);
     assert.doesNotMatch(script, /function selectedAxisEvidence\(axisResult\)|axisEvidence:\s*Object\.fromEntries|resultAxisEvidence/);
