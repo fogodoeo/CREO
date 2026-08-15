@@ -952,18 +952,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-story-axis-labels {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-areas:
-        "title title"
-        "left right";
     align-items: baseline;
     margin-bottom: 8px;
-    gap: 3px 12px;
+    gap: 12px;
     color: #8c928d;
     font-weight: 600;
 }
 
 .cw-story-axis-labels span {
-    grid-area: left;
     color: #8c928d;
     font-size: 13px;
     font-weight: 600;
@@ -978,17 +974,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     font-weight: 820;
 }
 
-.cw-story-axis-labels small {
-    grid-area: title;
-    color: #9ca3af;
-    font-size: 11.5px;
-    font-weight: 720;
-    line-height: 1.2;
-    letter-spacing: .025em;
-    text-align: center;
-}
 .cw-story-axis-labels span:last-child {
-    grid-area: right;
     text-align: right;
 }
 
@@ -1273,8 +1259,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     .cw-story-result-code { font-size: clamp(82px, 23.5vw, 125px); }
     .cw-story-result-title { margin-top: 18px; font-size: 19px; }
     .cw-story-axis-chart { gap: clamp(17px, 2.5svh, 22px); }
-    .cw-story-axis-labels { font-size: 12px; }
-    .cw-story-axis-labels small { font-size: 11px; }
+    .cw-story-axis-labels span { font-size: 12px; }
+    .cw-story-axis-labels span.is-dominant { font-size: 14px; }
     .cw-story-scene.is-profile { width: min(calc(100% - 28px), 560px); gap: 10px; }
     .cw-story-card { padding: 20px; border-radius: 18px; }
     .cw-story-card.is-strength > strong { font-size: clamp(24px, 7.1vw, 31px); }
@@ -1338,7 +1324,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     .cw-story-result-title { margin-top: 10px; font-size: 16.5px; }
     .cw-story-axis-labels span { font-size: 12.5px; }
     .cw-story-axis-labels span.is-dominant { font-size: 14.5px; }
-    .cw-story-axis-labels small { font-size: 11px; }
     .cw-story-axis-chart { margin-top: 15px; gap: 14px; }
     .cw-story-card { padding: 16px 18px; }
     .cw-story-card.is-strength > strong { font-size: 23px; }
@@ -1400,9 +1385,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 @media (max-width: 520px) {
     .cw-story-axis-labels span { font-size: 13px; }
     .cw-story-axis-labels span.is-dominant { font-size: 15px; }
-    .cw-story-axis-labels small {
-        font-size: 11.5px;
-    }
     .cw-story-speed > div {
         font-size: 13.5px;
     }
@@ -1420,7 +1402,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 @media (max-width: 520px) and (max-height: 680px) {
     .cw-story-axis-labels span { font-size: 12.5px; }
     .cw-story-axis-labels span.is-dominant { font-size: 14.5px; }
-    .cw-story-axis-labels small { font-size: 11px; }
 }
 
 .cw-result-empty {
@@ -2208,7 +2189,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-result-teaser-lock span { font-size: 13px; }
 .cw-result-teaser-lock button { min-height: 48px; font-size: 14px; }
 .cw-story-axis-labels span { color: #747b75; }
-.cw-story-axis-labels small { color: #858c86; }
 .cw-story-cue {
     bottom: max(108px, calc(env(safe-area-inset-bottom) + 98px));
     gap: 7px;

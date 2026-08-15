@@ -988,7 +988,6 @@
             <div class="cw-story-axis-row" data-axis-target="${axis.position}" role="img" aria-label="${escapeHtml(`${axis.title}: ${axis.selected}`)}">
                 <div class="cw-story-axis-labels">
                     <span class="${axis.isLeftDominant ? 'is-dominant' : ''}">${escapeHtml(axis.left)}</span>
-                    <small>${escapeHtml(axis.title)}</small>
                     <span class="${!axis.isLeftDominant ? 'is-dominant' : ''}">${escapeHtml(axis.right)}</span>
                 </div>
                 <div class="cw-story-axis-track" aria-hidden="true"><i></i><b></b></div>
@@ -2005,22 +2004,16 @@
         resultShareAxes().forEach(({ copy, position, firstSelected }, index) => {
             const y = 800 + index * 126;
 
-            context.textAlign = 'center';
-            context.fillStyle = '#878c87';
-            context.font = `720 17px ${font}`;
-            context.fillText(copy.title, 540, y);
-
-            const labelY = y + 31;
             context.textAlign = 'left';
             context.fillStyle = firstSelected ? '#252a26' : '#858a85';
             context.font = `${firstSelected ? 840 : 650} ${firstSelected ? 27 : 22}px ${font}`;
-            context.fillText(copy.left, contentX, labelY);
+            context.fillText(copy.left, contentX, y);
             context.textAlign = 'right';
             context.fillStyle = firstSelected ? '#858a85' : '#252a26';
             context.font = `${firstSelected ? 650 : 840} ${firstSelected ? 22 : 27}px ${font}`;
-            context.fillText(copy.right, contentX + contentWidth, labelY);
+            context.fillText(copy.right, contentX + contentWidth, y);
             context.textAlign = 'left';
-            drawShareScale(context, contentX, y + 57, contentWidth, position, accent);
+            drawShareScale(context, contentX, y + 35, contentWidth, position, accent);
         });
 
         context.fillStyle = '#737873';
