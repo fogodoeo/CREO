@@ -690,12 +690,15 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 }
 .cw-result-teaser-hero > strong {
     position: absolute;
+    top: 40%;
+    left: 50%;
     color: rgba(22, 129, 75, .16);
     font-size: clamp(140px, 30vw, 210px);
     font-weight: 950;
     line-height: .8;
     letter-spacing: .06em;
     margin-left: .06em;
+    transform: translate(-50%, -50%);
 }
 .cw-result-teaser-character { position: relative; z-index: 1; display: grid; height: 100%; place-items: center; }
 .cw-result-teaser-character img {
@@ -872,7 +875,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 
 .cw-story-result-code {
     position: absolute;
-    top: 50%;
+    top: 40%;
     left: 50%;
     color: color-mix(in srgb, var(--house-accent, #16814b) 24%, transparent);
     font-size: clamp(148px, 26vw, 210px);
@@ -880,7 +883,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     line-height: .8;
     letter-spacing: .06em;
     margin-left: .06em;
-    transform: translate(-50%, -55%);
+    transform: translate(-50%, -50%);
 }
 .cw-story-result-title { position: relative; z-index: 2; max-width: 36ch; margin: 24px 0 0; color: #303531; font-size: 21px; font-weight: 820; line-height: 1.45; text-align: center; word-break: keep-all; }
 
