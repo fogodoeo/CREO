@@ -1033,16 +1033,10 @@
                                 <small class="cw-story-credit">© 2026 CREO. All rights reserved.</small>
                             </section>
                         </div>
-                        ${locked ? `<div class="cw-story-login-prompt">
-                            <div class="cw-story-login-copy">
-                                <span aria-hidden="true">잠금</span>
-                                <p><strong>전체 결과가 잠겨 있어요</strong><small>BAND 로그인 후 상세 성향 · 기숙사 · 결과 공유를 확인하세요.</small></p>
-                            </div>
-                            <button class="cw-story-login-gate" type="button" data-action="unlock-detail">
-                                <img src="assets/band-app-icon-official.png?v=20260801-logo-v2" width="32" height="32" alt="">
-                                <strong>BAND 로그인하고 전체 결과 보기</strong><i aria-hidden="true">→</i>
-                            </button>
-                        </div>` : '<div class="cw-story-cue" aria-hidden="true"><span>스크롤</span><i><b></b><b></b></i></div>'}
+                        ${locked ? `<button class="cw-story-login-gate" type="button" data-action="unlock-detail">
+                            <img src="assets/band-app-icon-official.png?v=20260801-logo-v2" width="32" height="32" alt="">
+                            <strong>BAND 로그인하고 전체 결과 보기</strong><i aria-hidden="true">→</i>
+                        </button>` : '<div class="cw-story-cue" aria-hidden="true"><span>스크롤</span><i><b></b><b></b></i></div>'}
                     </div>
                 </section>
             </div>`;
