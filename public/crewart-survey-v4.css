@@ -2073,10 +2073,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     pointer-events: none;
 }
 .cw-result-teaser-hero.is-guest-code .cw-result-teaser-character img {
-    width: auto;
+    width: 90%;
     height: 100%;
-    max-width: 90%;
-    max-height: 100%;
+    max-width: none;
+    max-height: none;
     object-fit: contain;
 }
 

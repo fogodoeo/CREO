@@ -581,7 +581,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(html, /id="auth-phone-edit"[\s\S]*id="auth-phone-clear"/);
     assert.match(css, /\.cw-intro-tagline\s*\{[^}]*white-space:\s*nowrap/);
     assert.match(css, /\.cw-member-dialog \.cw-member-input-group\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
-    assert.match(html, /crewart-survey\.js\?v=20260815-band-tab-v62/);
+    assert.match(html, /crewart-survey\.js\?v=20260815-band-tab-v63/);
     assert.match(script, /function renderUnifiedResult\(profile, house\)/);
     assert.doesNotMatch(script, /resultViewVersion|resultViewFromLocation|changeResultView|report=deep|set-result-version/);
     assert.match(script, /function renderResult\(options = \{\}\)[\s\S]*renderUnifiedResult\(profile, house\);/);
@@ -682,8 +682,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.doesNotMatch(script, /크레\s*MBTI|나의 크레 MBTI|평소 MBTI/i);
     assert.match(script, /function typeCharacterPath\(code\)/);
     assert.match(script, /TYPE_CHARACTER_ROOT = 'assets\/crewart-types\/'/);
-    assert.match(html, /crewart-survey-core\.js\?v=20260815-band-tab-v62/);
-    assert.match(html, /crewart-survey-v4\.css\?v=20260815-band-tab-v62/);
+    assert.match(html, /crewart-survey-core\.js\?v=20260815-band-tab-v63/);
+    assert.match(html, /crewart-survey-v4\.css\?v=20260815-band-tab-v63/);
     assert.match(html, /id="start-button"[^>]*>[\s\S]*테스트 시작하기/);
     assert.match(html, /id="home-retest"[^>]*>다시 시작/);
     assert.doesNotMatch(html, /start-button-v2|home-retest-v1|Ver 1 시작|Ver 2 시작/);
@@ -738,6 +738,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.doesNotMatch(script, /Core\.chooseTendencyHouse\(result\)/);
     assert.match(script, /function renderResultTeaser\(profile\)/);
     assert.match(script, /cw-result-teaser-character[\s\S]*typeCharacterPath\(result\.code\)/);
+    assert.match(css, /\.cw-result-teaser-hero\.is-guest-code \.cw-result-teaser-character img\s*\{[^}]*width:\s*90%[^}]*height:\s*100%[^}]*object-fit:\s*contain/);
     assert.match(script, /성향 분석과 내 기숙사 확인하기/);
     assert.match(script, /BAND 회원 인증 후 전체 결과가 바로 열려요/);
     assert.match(script, /if \(!hasDetailedAccess\(\)\)\s*\{[\s\S]*renderResultTeaser\(profile\)/);
