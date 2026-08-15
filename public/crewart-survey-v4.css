@@ -694,7 +694,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     font-size: clamp(140px, 30vw, 210px);
     font-weight: 950;
     line-height: .8;
-    letter-spacing: -.085em;
+    letter-spacing: .06em;
+    margin-left: .06em;
 }
 .cw-result-teaser-character { position: relative; z-index: 1; display: grid; height: 100%; place-items: center; }
 .cw-result-teaser-character img {
@@ -877,7 +878,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     font-size: clamp(148px, 26vw, 210px);
     font-weight: 950;
     line-height: .8;
-    letter-spacing: -.085em;
+    letter-spacing: .06em;
+    margin-left: .06em;
     transform: translate(-50%, -55%);
 }
 .cw-story-result-title { position: relative; z-index: 2; max-width: 36ch; margin: 24px 0 0; color: #303531; font-size: 21px; font-weight: 820; line-height: 1.45; text-align: center; word-break: keep-all; }
@@ -1783,4 +1785,37 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     font-size: 13px;
     font-weight: 750;
     color: #171a18;
+}
+
+/* ── Result Character & MBTI Reveal Sequence ────────── */
+.cw-story-result-hero.is-revealing .cw-story-result-character img,
+.cw-result-teaser-hero.is-revealing .cw-result-teaser-character img {
+    filter: blur(8px) grayscale(75%) brightness(0.65);
+    transform: scale(0.93);
+}
+
+.cw-story-result-character img,
+.cw-result-teaser-character img {
+    transition: filter 0.5s ease, transform 0.5s cubic-bezier(0.34, 1.25, 0.64, 1);
+}
+
+.cw-story-result-hero.is-revealing .cw-story-result-title,
+.cw-result-teaser-copy.is-revealing p {
+    opacity: 0;
+    transform: translateY(8px);
+}
+
+.cw-story-result-title,
+.cw-result-teaser-copy p {
+    transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.cw-story-result-code.is-cycling,
+.cw-result-teaser-hero > strong.is-cycling {
+    animation: cw-code-flicker 0.16s ease-in-out infinite alternate;
+}
+
+.cw-story-result-code.is-settled,
+.cw-result-teaser-hero > strong.is-settled {
+    animation: cw-code-settle 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }

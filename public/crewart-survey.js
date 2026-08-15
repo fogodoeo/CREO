@@ -1162,6 +1162,36 @@
         };
     }
 
+    function playResultRevealAnimation() {
+        const root = element('result-content');
+        if (!root) return;
+        const hero = root.querySelector('.cw-story-result-hero, .cw-result-teaser-hero');
+        const codeNode = root.querySelector('.cw-story-result-code, .cw-result-teaser-hero > strong');
+        const copyWrapper = root.querySelector('.cw-result-teaser-copy');
+        if (!hero || !codeNode || !result?.code) return;
+
+        hero.classList.add('is-revealing');
+        if (copyWrapper) copyWrapper.classList.add('is-revealing');
+        codeNode.classList.add('is-cycling');
+        codeNode.textContent = '????';
+
+        const placeholders = ['????', '····', '????'];
+        let idx = 0;
+        const cycleInterval = setInterval(() => {
+            idx = (idx + 1) % placeholders.length;
+            codeNode.textContent = placeholders[idx];
+        }, 120);
+
+        setTimeout(() => {
+            clearInterval(cycleInterval);
+            codeNode.textContent = result.code;
+            codeNode.classList.remove('is-cycling');
+            codeNode.classList.add('is-settled');
+            hero.classList.remove('is-revealing');
+            if (copyWrapper) copyWrapper.classList.remove('is-revealing');
+        }, 600);
+    }
+
     function renderResult(options = {}) {
         resultExperienceCleanup?.();
         resultExperienceCleanup = null;
@@ -1169,10 +1199,12 @@
         element('result-screen')?.classList.add('is-depth-view');
         if (!hasDetailedAccess()) {
             renderResultTeaser(profile);
+            if (options.animate) playResultRevealAnimation();
             return;
         }
         const house = Core.HOUSE_META[assignedHouseKey] || { name: '배정 중', accent: '#16814b' };
         renderUnifiedResult(profile, house);
+        if (options.animate) playResultRevealAnimation();
     }
 
     function renderEmptyResult() {
