@@ -1897,10 +1897,12 @@
             const first = axisResult.axis[0];
             const second = axisResult.axis[1];
             const secondCount = Number(result.letters[second]) || 0;
+            const firstSelected = axisResult.dominant === first;
+            const rawPosition = Math.max(0, Math.min(100, (secondCount / (Core.AXIS_SCORE_TOTAL || 5)) * 100));
             return {
                 copy,
-                firstSelected: axisResult.dominant === first,
-                position: Math.max(0, Math.min(100, (secondCount / (Core.AXIS_SCORE_TOTAL || 5)) * 100))
+                firstSelected,
+                position: firstSelected ? Math.min(rawPosition, 34) : Math.max(rawPosition, 66)
             };
         });
     }
@@ -2048,97 +2050,8 @@
     }
 
     async function createKakaoShareFile() {
-        if (!result) throw new Error('공유할 결과가 없습니다.');
-        await document.fonts?.ready;
-
-        const canvas = document.createElement('canvas');
-        canvas.width = 1200;
-        canvas.height = 800;
-        const context = canvas.getContext('2d');
-        const font = '"Pretendard Variable", Pretendard, sans-serif';
-        if (!context) throw new Error('이미지 생성 기능을 사용할 수 없습니다.');
-        const house = Core.HOUSE_META[assignedHouseKey] || { name: assignedHouseKey || 'CREWARTS', seal: 'C', accent: '#16814b' };
-        const accent = house?.accent || '#17617b';
-
-        context.fillStyle = accent;
-        context.fillRect(0, 0, canvas.width, canvas.height);
-
-        drawRoundedRect(context, 24, 24, 1152, 752, 34);
-        context.fillStyle = '#fbfbf8';
-        context.fill();
-        context.strokeStyle = '#d8dad4';
-        context.lineWidth = 2;
-        context.stroke();
-
-        context.save();
-        drawRoundedRect(context, 24, 24, 1152, 752, 34);
-        context.clip();
-        context.fillStyle = accent;
-        context.fillRect(24, 24, 1152, 12);
-        context.restore();
-
-        context.fillStyle = '#222724';
-        context.font = `860 25px ${font}`;
-        context.textAlign = 'left';
-        context.fillText('CREWARTS', 64, 77);
-        context.fillStyle = '#7b807b';
-        context.font = `720 13px ${font}`;
-        context.fillText('PERSONALITY RESULT', 64, 100);
-        drawShareHouseBadge(context, house, 914, 50, 222, 82, font);
-
-        drawRoundedRect(context, 54, 148, 1092, 570, 30);
-        context.save();
-        context.globalAlpha = .075;
-        context.fillStyle = accent;
-        context.fill();
-        context.restore();
-        context.strokeStyle = `${accent}55`;
-        context.lineWidth = 2;
-        context.stroke();
-
-        try {
-            const character = await loadShareImage(new URL(typeCharacterPath(result.code), document.baseURI).toString());
-            drawShareImageContain(context, character, 78, 176, 402, 500);
-        } catch (_) {
-            context.fillStyle = '#eceee8';
-            context.beginPath();
-            context.arc(278, 420, 170, 0, Math.PI * 2);
-            context.fill();
-        }
-
-        context.fillStyle = '#767c77';
-        context.font = `760 16px ${font}`;
-        context.fillText('당신의 유형', 520, 224);
-        context.fillStyle = accent;
-        fitShareText(context, result.code, 576, 150, 104, 940, font);
-        context.fillText(result.code, 516, 366);
-        context.fillStyle = '#303632';
-        fitShareText(context, result.typeName, 560, 29, 22, 820, font);
-        context.fillText(result.typeName, 522, 412);
-
-        resultShareAxes().forEach(({ copy, position, firstSelected }, index) => {
-            const y = 472 + index * 56;
-            context.fillStyle = firstSelected ? '#282d29' : '#8a8f8a';
-            context.font = `${firstSelected ? 800 : 650} 15px ${font}`;
-            context.fillText(copy.left, 520, y);
-            context.textAlign = 'right';
-            context.fillStyle = firstSelected ? '#8a8f8a' : '#282d29';
-            context.font = `${firstSelected ? 650 : 800} 15px ${font}`;
-            context.fillText(copy.right, 1100, y);
-            context.textAlign = 'left';
-            drawShareScale(context, 520, y + 16, 580, position, accent, .62);
-        });
-        context.textAlign = 'left';
-
-        context.fillStyle = '#858a85';
-        context.font = `650 11px ${font}`;
-        context.fillText('© 2026 CREO · ALL RIGHTS RESERVED', 54, 750);
-        context.textAlign = 'right';
-        context.fillText('creok.onrender.com', 1146, 750);
-        context.textAlign = 'left';
-
-        const blob = await canvasBlob(canvas);
-        return new File([blob], `CREWARTS_${result.code}_KAKAO.png`, { type: 'image/png' });
+        const resultFile = await createResultShareFile();
+        return new File([resultFile], `CREWARTS_${result.code}_KAKAO.png`, { type: 'image/png' });
     }
 
     function downloadShareFile(file) {
@@ -2377,8 +2290,8 @@
                     title,
                     description: text,
                     imageUrl,
-                    imageWidth: 1200,
-                    imageHeight: 800,
+                    imageWidth: 1080,
+                    imageHeight: 1440,
                     link: { mobileWebUrl: shareUrl, webUrl: shareUrl }
                 },
                 buttons: [{
