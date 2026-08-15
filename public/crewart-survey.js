@@ -853,18 +853,23 @@
             const second = axisResult.axis[1];
             const secondCount = Number(result.letters[second]) || 0;
             const position = Math.max(8, Math.min(92, (secondCount / (Core.AXIS_SCORE_TOTAL || 5)) * 100));
-            const firstSelected = axisResult.dominant === first;
+            const isLeftDominant = axisResult.dominant === first;
             return {
                 title: copy?.title || axisResult.axis,
                 left: copy?.left || first,
                 right: copy?.right || second,
-                selected: firstSelected ? (copy?.left || first) : (copy?.right || second),
+                selected: isLeftDominant ? (copy?.left || first) : (copy?.right || second),
+                isLeftDominant,
                 position
             };
         });
         const axisMarkup = axisRows.map(axis => `
             <div class="cw-story-axis-row" data-axis-target="${axis.position}" role="img" aria-label="${escapeHtml(`${axis.title}: ${axis.selected}`)}">
-                <div class="cw-story-axis-labels"><span>${escapeHtml(axis.left)}</span><small>${escapeHtml(axis.title)}</small><span>${escapeHtml(axis.right)}</span></div>
+                <div class="cw-story-axis-labels">
+                    <span class="${axis.isLeftDominant ? 'is-dominant' : ''}">${escapeHtml(axis.left)}</span>
+                    <small>${escapeHtml(axis.title)}</small>
+                    <span class="${!axis.isLeftDominant ? 'is-dominant' : ''}">${escapeHtml(axis.right)}</span>
+                </div>
                 <div class="cw-story-axis-track" aria-hidden="true"><i></i><b></b></div>
             </div>`).join('');
 

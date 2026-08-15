@@ -711,7 +711,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     filter: drop-shadow(0 16px 24px rgba(26, 31, 27, .12));
 }
 .cw-result-teaser-copy { display: grid; justify-items: center; }
-.cw-result-teaser-copy p { max-width: 34ch; margin: 12px 0 0; color: #303531; font-size: 21px; font-weight: 820; line-height: 1.45; word-break: keep-all; }
+.cw-result-teaser-copy p { max-width: 24ch; margin: 12px auto 0; color: #171a18; font-size: 21px; font-weight: 820; line-height: 1.4; text-align: center; word-break: keep-all; text-wrap: balance; }
 
 .cw-result-teaser-lock {
     display: grid;
@@ -890,7 +890,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     transform: translate(-50%, -50%);
     pointer-events: none;
 }
-.cw-story-result-title { position: relative; z-index: 2; max-width: 36ch; margin: 24px 0 0; color: #303531; font-size: 21px; font-weight: 820; line-height: 1.45; text-align: center; word-break: keep-all; }
+.cw-story-result-title { position: relative; z-index: 2; max-width: 24ch; margin: 20px auto 0; color: #171a18; font-size: 21px; font-weight: 820; line-height: 1.4; text-align: center; word-break: keep-all; text-wrap: balance; }
 
 .cw-story-axis-chart {
     display: grid;
@@ -904,13 +904,29 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     grid-template-columns: 1fr auto 1fr;
     align-items: end;
     margin-bottom: 10px;
-    color: #737974;
+    color: #8c928d;
     font-size: 14px;
-    font-weight: 730;
+    font-weight: 600;
 }
 
-.cw-story-axis-labels small { color: #6b7280; font-size: 13px; font-weight: 700; text-align: center; }
-.cw-story-axis-labels span:last-child { text-align: right; }
+.cw-story-axis-labels span {
+    transition: color .15s ease, font-weight .15s ease;
+}
+
+.cw-story-axis-labels span.is-dominant {
+    color: #171a18;
+    font-weight: 850;
+}
+
+.cw-story-axis-labels small {
+    color: #9ca3af;
+    font-size: 13px;
+    font-weight: 700;
+    text-align: center;
+}
+.cw-story-axis-labels span:last-child {
+    text-align: right;
+}
 
 .cw-story-axis-track {
     position: relative;
