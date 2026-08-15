@@ -303,6 +303,7 @@
         const form = element('member-check-form');
         const verified = element('band-account-state');
         const loginState = element('band-login-state');
+        const shareState = element('band-share-state');
         const number = element('auth-phone-number');
         const connection = element('band-connection-status');
         const bandScreen = element('band-screen');
@@ -319,6 +320,7 @@
         if (form) form.hidden = authenticated && !editingMembership;
         if (verified) verified.hidden = !authenticated;
         if (loginState) loginState.hidden = authenticated;
+        if (shareState) shareState.hidden = !authenticated;
         if (number) number.textContent = bandAuthPhoneMask || '확인된 회원';
         const homeButton = element('home-auth-button');
         const homeTitle = element('home-band-title');
@@ -2278,6 +2280,10 @@
 
     async function shareBandReferral(event) {
         const button = event?.currentTarget;
+        if (!bandAuthToken || !bandAuthUser?.isTargetMember) {
+            openMemberCheck();
+            return;
+        }
         const shareUrl = createTrackedShareUrl();
         const title = '크레와트 성향 테스트';
         const description = '크레를 고르고 돌보는 나의 방식을 알아보세요.';

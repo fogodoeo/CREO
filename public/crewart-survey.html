@@ -20,7 +20,7 @@
     <script src="assets/vendor/kakao-2.8.1.min.js"></script>
     <script src="crewart-survey-core.js?v=20260815-random-timing-v80"></script>
     <!-- Share-link target is cache-busted so KakaoTalk never reuses the old root URL. -->
-    <script src="crewart-survey.js?v=20260815-login-gate-v84" defer></script>
+    <script src="crewart-survey.js?v=20260815-member-share-v85" defer></script>
 </head>
 
 <body>
@@ -162,7 +162,7 @@
                     </div>
                 </section>
 
-                <section class="cw-band-share-stats" aria-labelledby="band-share-title">
+                <section class="cw-band-share-stats" id="band-share-state" aria-labelledby="band-share-title" hidden>
                     <header><div><h2 id="band-share-title">내 링크로 BAND 인증 완료</h2></div><strong id="band-share-verified">0명</strong></header>
                     <button class="cw-band-share-button" id="band-share-button" type="button">
                         <img src="assets/kakaolink_btn_medium.png" width="24" height="24" alt=""><span data-action-label>카카오톡 공유</span>
