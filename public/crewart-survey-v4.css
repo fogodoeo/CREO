@@ -842,12 +842,28 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     margin: auto;
     align-content: center;
     pointer-events: none;
+    transition: opacity .32s ease, transform .38s cubic-bezier(.2,.8,.2,1);
+    will-change: opacity, transform;
 }
 
-.cw-story-scene.is-axis { opacity: var(--axis-opacity); }
-.cw-story-scene.is-profile { opacity: var(--profile-opacity); }
-.cw-story-scene.is-time { opacity: var(--time-opacity); text-align: center; }
-.cw-story-scene.is-house { opacity: var(--house-opacity); text-align: center; }
+.cw-story-scene.is-axis {
+    opacity: var(--axis-opacity);
+    transform: translateY(calc((1 - var(--axis-opacity)) * -12px));
+}
+.cw-story-scene.is-profile {
+    opacity: var(--profile-opacity);
+    transform: translateY(calc((1 - var(--profile-opacity)) * 14px));
+}
+.cw-story-scene.is-time {
+    opacity: var(--time-opacity);
+    transform: translateY(calc((1 - var(--time-opacity)) * 14px));
+    text-align: center;
+}
+.cw-story-scene.is-house {
+    opacity: var(--house-opacity);
+    transform: translateY(calc((1 - var(--house-opacity)) * 14px));
+    text-align: center;
+}
 
 .cw-story-scene.is-time > small {
     color: var(--house-accent, #16814b);
@@ -1180,7 +1196,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     .cw-result-teaser-lock { grid-template-columns: 42px minmax(0, 1fr); padding: 14px; border-radius: 18px; }
     .cw-result-teaser-lock > img { width: 42px; height: 42px; }
     .cw-result-teaser-lock button { grid-column: 1 / -1; width: 100%; }
-    .cw-story-track { height: 680svh; }
+    .cw-story-track { height: 720svh; }
     .cw-story-topbar { padding: 0 14px; }
     .cw-story-scene { width: min(calc(100% - 28px), 560px); }
     .cw-story-result-hero { width: min(100%, 390px); margin-bottom: clamp(20px, 3svh, 30px); }
