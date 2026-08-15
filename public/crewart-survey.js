@@ -997,7 +997,7 @@
                     <div class="cw-story-sticky">
                         <header class="cw-story-topbar">
                             <button type="button" data-action="go-home" aria-label="홈으로 돌아가기">← <span>홈</span></button>
-                            <div><small>결과 리포트</small><strong data-story-top-code>분석 중</strong></div>
+                            <div><small>성향 결과</small><strong data-story-top-code>분석 중</strong></div>
                         </header>
                         <div class="cw-story-progress" aria-hidden="true"><i data-story-progress></i></div>
                         <div class="cw-story-stage" aria-live="polite">
@@ -1034,7 +1034,7 @@
                             </section>
 
                             <section class="cw-story-scene is-house" data-story-scene="house">
-                                <div class="cw-story-house-line"><span>당신의 기숙사는</span><strong data-house-name data-final-house="${escapeHtml(house.name)}">${escapeHtml(house.name)}</strong><span>입니다.</span></div>
+                                <div class="cw-story-house-line"><span>나의 기숙사</span><strong data-house-name data-final-house="${escapeHtml(house.korean || house.name)}">${escapeHtml(house.korean || house.name)}</strong></div>
                                 <div class="cw-story-final-actions">
                                     <div class="cw-story-share-row">
                                         <button type="button" class="cw-story-kakao" data-action="share"><img src="assets/kakaolink_btn_medium.png" width="24" height="24" alt=""><span data-action-label>카카오톡 공유</span></button>
@@ -1048,7 +1048,7 @@
                                 <small class="cw-story-credit">© 2026 CREO. All rights reserved.</small>
                             </section>
                         </div>
-                        <div class="cw-story-cue" aria-hidden="true"><span>SCROLL</span><i><b></b><b></b></i></div>
+                        <div class="cw-story-cue" aria-hidden="true"><span>스크롤</span><i><b></b><b></b></i></div>
                     </div>
                 </section>
             </div>`;
@@ -1062,7 +1062,7 @@
             <div class="cw-result-teaser">
                 <header class="cw-story-topbar">
                     <button type="button" data-action="go-home" aria-label="홈으로 돌아가기">← <span>홈</span></button>
-                    <div><small>결과 미리보기</small><strong>${escapeHtml(result.code)}</strong></div>
+                    <div><strong>성향 결과</strong></div>
                 </header>
                 <main class="cw-result-teaser-main">
                     <div class="cw-result-teaser-hero is-guest-code">
@@ -1077,8 +1077,8 @@
                     <section class="cw-result-teaser-lock" aria-labelledby="result-unlock-title">
                         <img src="assets/band-app-icon-official.png?v=20260801-logo-v2" width="46" height="46" alt="">
                         <div>
-                            <strong id="result-unlock-title">성향 분석과 내 기숙사 확인하기</strong>
-                            <span>BAND 회원 인증 후 전체 결과가 바로 열려요.</span>
+                            <strong id="result-unlock-title">성향 분석 · 기숙사</strong>
+                            <span>BAND 회원에게 전체 결과를 제공해요.</span>
                         </div>
                         <button type="button" data-action="unlock-detail">BAND 인증하기</button>
                     </section>
@@ -1205,7 +1205,7 @@
             houseRollStarted = true;
             houseRollSettled = false;
             const finalHouse = houseNameNode.dataset.finalHouse || '';
-            const houseList = ['RED', 'GREEN', 'BLUE', 'YELLOW', finalHouse].filter(Boolean);
+            const houseList = ['레드', '그린', '블루', '옐로우', finalHouse].filter(Boolean);
             let hIndex = 0;
             houseNameNode.textContent = '······';
             houseNameNode.classList.add('is-rolling');
@@ -1398,9 +1398,9 @@
     function renderEmptyResult() {
         element('result-content').innerHTML = `
             <section class="cw-result-empty">
-                <p>CREWARTS PERSONALITY TEST</p>
-                <h1>아직 저장된 결과가 없어요</h1>
-                <span>3분 만에 나의 사육 성향과 어울리는 아기 크레 캐릭터를 찾아보세요!</span>
+                <p>결과</p>
+                <h1>아직 결과가 없어요</h1>
+                <span>테스트를 완료하면 이곳에서 언제든 다시 볼 수 있어요.</span>
                 <button class="cw-test-action cw-primary-button" type="button" data-action="start-empty">테스트 시작하기</button>
             </section>`;
         element('result-content').querySelector('[data-action="start-empty"]')?.addEventListener('click', startCurrentSurvey);
