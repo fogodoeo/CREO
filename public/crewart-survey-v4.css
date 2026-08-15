@@ -691,7 +691,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-result-teaser-hero > strong {
     position: absolute;
     color: rgba(22, 129, 75, .16);
-    font-size: clamp(112px, 24vw, 176px);
+    font-size: clamp(140px, 30vw, 210px);
     font-weight: 950;
     line-height: .8;
     letter-spacing: -.085em;
@@ -707,7 +707,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     filter: drop-shadow(0 16px 24px rgba(26, 31, 27, .12));
 }
 .cw-result-teaser-copy { display: grid; justify-items: center; }
-.cw-result-teaser-copy p { max-width: 34ch; margin: 12px 0 0; color: #303531; font-size: 17px; font-weight: 820; line-height: 1.45; word-break: keep-all; }
+.cw-result-teaser-copy p { max-width: 34ch; margin: 12px 0 0; color: #303531; font-size: 21px; font-weight: 820; line-height: 1.45; word-break: keep-all; }
 
 .cw-result-teaser-lock {
     display: grid;
@@ -874,13 +874,13 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     top: 50%;
     left: 50%;
     color: color-mix(in srgb, var(--house-accent, #16814b) 24%, transparent);
-    font-size: clamp(118px, 18vw, 174px);
+    font-size: clamp(148px, 26vw, 210px);
     font-weight: 950;
     line-height: .8;
     letter-spacing: -.085em;
     transform: translate(-50%, -55%);
 }
-.cw-story-result-title { position: relative; z-index: 2; max-width: 36ch; margin: 24px 0 0; color: #303531; font-size: 18px; font-weight: 820; line-height: 1.45; text-align: center; word-break: keep-all; }
+.cw-story-result-title { position: relative; z-index: 2; max-width: 36ch; margin: 24px 0 0; color: #303531; font-size: 21px; font-weight: 820; line-height: 1.45; text-align: center; word-break: keep-all; }
 
 .cw-story-axis-chart {
     display: grid;
@@ -1109,8 +1109,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     .cw-result-teaser-main { width: min(calc(100% - 28px), 480px); padding-top: 74px; }
     .cw-result-teaser-hero { height: clamp(220px, 34svh, 290px); }
     .cw-result-teaser-character img { height: clamp(220px, 34svh, 290px); max-height: clamp(220px, 34svh, 290px); }
-    .cw-result-teaser-hero > strong { font-size: clamp(104px, 34vw, 140px); }
-    .cw-result-teaser-copy p { margin-top: 8px; font-size: 16px; }
+    .cw-result-teaser-hero > strong { font-size: clamp(130px, 40vw, 175px); }
+    .cw-result-teaser-copy p { margin-top: 8px; font-size: 19px; }
     .cw-result-teaser-lock { grid-template-columns: 42px minmax(0, 1fr); padding: 14px; border-radius: 18px; }
     .cw-result-teaser-lock > img { width: 42px; height: 42px; }
     .cw-result-teaser-lock button { grid-column: 1 / -1; width: 100%; }
@@ -1120,8 +1120,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     .cw-story-result-hero { width: min(100%, 390px); margin-bottom: clamp(20px, 3svh, 30px); }
     .cw-story-result-character { height: 190px; }
     .cw-story-result-character img { width: auto; max-width: none; height: 190px; max-height: 190px; }
-    .cw-story-result-code { font-size: clamp(104px, 35vw, 138px); }
-    .cw-story-result-title { margin-top: 18px; font-size: 16px; }
+    .cw-story-result-code { font-size: clamp(130px, 40vw, 175px); }
+    .cw-story-result-title { margin-top: 18px; font-size: 19px; }
     .cw-story-axis-chart { gap: clamp(17px, 2.5svh, 22px); }
     .cw-story-axis-labels { font-size: 12px; }
     .cw-story-axis-labels small { font-size: 11px; }
@@ -1178,14 +1178,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     .cw-result-teaser-main { padding-top: 66px; padding-bottom: 18px; }
     .cw-result-teaser-hero { height: 170px; }
     .cw-result-teaser-character img { height: 170px; max-height: 170px; }
-    .cw-result-teaser-hero > strong { font-size: 92px; }
-    .cw-result-teaser-copy p { margin-top: 6px; font-size: 13px; }
+    .cw-result-teaser-hero > strong { font-size: 115px; }
+    .cw-result-teaser-copy p { margin-top: 6px; font-size: 16px; }
     .cw-result-teaser-lock { margin-top: 18px; }
     .cw-story-result-hero { margin-bottom: 8px; }
     .cw-story-result-character { height: 155px; }
     .cw-story-result-character img { height: 155px; max-height: 155px; }
-    .cw-story-result-code { font-size: clamp(90px, 27vw, 114px); }
-    .cw-story-result-title { margin-top: 10px; font-size: 14px; }
+    .cw-story-result-code { font-size: clamp(110px, 32vw, 138px); }
+    .cw-story-result-title { margin-top: 10px; font-size: 16.5px; }
     .cw-story-axis-labels { font-size: 12.5px; }
     .cw-story-axis-chart { margin-top: 15px; gap: 14px; }
     .cw-story-card { padding: 16px 18px; }
