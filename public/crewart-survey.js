@@ -100,7 +100,6 @@
     let preparedSaveUrl = '';
     let preparedKakaoShareFile = null;
     let preparedKakaoShareUrl = '';
-    let preparedKakaoShareGuest = false;
     let resultExperienceCleanup = null;
     let referralId = '';
 
@@ -1032,14 +1031,14 @@
                                 <small class="cw-story-credit">© 2026 CREO. All rights reserved.</small>
                             </section>
                         </div>
-                        ${locked ? `<div class="cw-story-guest-actions">
-                            <button class="cw-story-guest-share" type="button" data-action="guest-share">
-                                <img src="assets/kakaolink_btn_medium.png" width="28" height="28" alt="">
-                                <strong>카카오톡 공유</strong>
-                            </button>
-                            <button class="cw-story-login-gate" type="button" data-action="unlock-detail" aria-label="BAND 로그인하고 전체 결과 보기">
+                        ${locked ? `<div class="cw-story-login-prompt">
+                            <div class="cw-story-login-copy">
+                                <span aria-hidden="true">잠금</span>
+                                <p><strong>전체 결과가 잠겨 있어요</strong><small>BAND 로그인 후 상세 성향 · 기숙사 · 결과 공유를 확인하세요.</small></p>
+                            </div>
+                            <button class="cw-story-login-gate" type="button" data-action="unlock-detail">
                                 <img src="assets/band-app-icon-official.png?v=20260801-logo-v2" width="32" height="32" alt="">
-                                <strong>BAND 로그인</strong><i aria-hidden="true">→</i>
+                                <strong>BAND 로그인하고 전체 결과 보기</strong><i aria-hidden="true">→</i>
                             </button>
                         </div>` : '<div class="cw-story-cue" aria-hidden="true"><span>스크롤</span><i><b></b><b></b></i></div>'}
                     </div>
@@ -1053,7 +1052,6 @@
     function bindRenderedResultActions() {
         element('result-content').querySelector('[data-action="go-home"]')?.addEventListener('click', () => navigateToTab('home'));
         element('result-content').querySelectorAll('[data-action="share"]').forEach(button => button.addEventListener('click', shareResult));
-        element('result-content').querySelectorAll('[data-action="guest-share"]').forEach(button => button.addEventListener('click', shareGuestResult));
         element('result-content').querySelectorAll('[data-action="save-image"]').forEach(button => button.addEventListener('click', saveResultImage));
         element('result-content').querySelectorAll('[data-action="unlock-detail"]').forEach(button => button.addEventListener('click', handleUnlockDetail));
     }
@@ -1908,10 +1906,9 @@
         return `CREWARTS_${result.code}_${typeName}.png`;
     }
 
-    async function createResultShareFile(options = {}) {
+    async function createResultShareFile() {
         if (!result) throw new Error('저장할 결과가 없습니다.');
         await document.fonts?.ready;
-        const guest = options.guest === true;
 
         const canvas = document.createElement('canvas');
         canvas.width = 1080;
@@ -1919,9 +1916,7 @@
         const context = canvas.getContext('2d');
         const font = '"Pretendard Variable", Pretendard, sans-serif';
         if (!context) throw new Error('이미지 생성 기능을 사용할 수 없습니다.');
-        const guestHouseKey = `${result.code?.[1] || ''}${result.code?.[2] || ''}`;
-        const house = Core.HOUSE_META[guest ? guestHouseKey : assignedHouseKey]
-            || { name: assignedHouseKey || 'CREWARTS', seal: 'C', accent: '#16814b' };
+        const house = Core.HOUSE_META[assignedHouseKey] || { name: assignedHouseKey || 'CREWARTS', seal: 'C', accent: '#16814b' };
         const accent = house.accent || '#16814b';
         const pageX = 36;
         const pageY = 36;
@@ -1952,70 +1947,48 @@
 
         context.fillStyle = '#252a26';
         context.font = `860 27px ${font}`;
-        context.textAlign = guest ? 'center' : 'left';
-        context.fillText('CREWARTS', guest ? canvas.width / 2 : contentX, 105);
+        context.fillText('CREWARTS', contentX, 105);
         context.fillStyle = '#858a85';
         context.font = `720 14px ${font}`;
-        context.fillText('PERSONALITY RESULT', guest ? canvas.width / 2 : contentX, 132);
-        context.textAlign = 'left';
+        context.fillText('PERSONALITY RESULT', contentX, 132);
 
-        if (guest) {
-            context.fillStyle = '#e0e2dc';
-            context.fillRect(contentX, 176, contentWidth, 2);
-            context.fillStyle = accent;
-            fitShareText(context, result.code, 820, 172, 112, 940, font);
-            context.textAlign = 'center';
-            context.textBaseline = 'alphabetic';
-            context.fillText(result.code, canvas.width / 2, 384);
-            context.textAlign = 'left';
-            try {
-                const character = await loadShareImage(new URL(typeCharacterPath(result.code), document.baseURI).toString());
-                drawShareImageContain(context, character, 260, 294, 560, 438);
-            } catch (_) {
-                context.fillStyle = '#eff0ec';
-                context.beginPath();
-                context.arc(canvas.width / 2, 500, 170, 0, Math.PI * 2);
-                context.fill();
-            }
-        } else {
-            const houseBadgeWidth = 300;
-            const houseBadgeX = pageX + pageWidth - houseBadgeWidth - 44;
-            drawShareHouseBadge(context, house, houseBadgeX, 66, houseBadgeWidth, 112, font);
+        const houseBadgeWidth = 300;
+        const houseBadgeX = pageX + pageWidth - houseBadgeWidth - 44;
+        drawShareHouseBadge(context, house, houseBadgeX, 66, houseBadgeWidth, 112, font);
 
-            context.fillStyle = '#e0e2dc';
-            context.fillRect(contentX, 211, contentWidth, 2);
+        context.fillStyle = '#e0e2dc';
+        context.fillRect(contentX, 211, contentWidth, 2);
 
-            drawRoundedRect(context, 66, 232, 948, 500, 32);
-            context.save();
-            context.globalAlpha = .075;
-            context.fillStyle = accent;
+        drawRoundedRect(context, 66, 232, 948, 500, 32);
+        context.save();
+        context.globalAlpha = .075;
+        context.fillStyle = accent;
+        context.fill();
+        context.restore();
+        context.strokeStyle = `${accent}55`;
+        context.lineWidth = 2;
+        context.stroke();
+
+        try {
+            const character = await loadShareImage(new URL(typeCharacterPath(result.code), document.baseURI).toString());
+            drawShareImageContain(context, character, 82, 240, 410, 500);
+        } catch (_) {
+            context.fillStyle = '#eff0ec';
+            context.beginPath();
+            context.arc(288, 480, 170, 0, Math.PI * 2);
             context.fill();
-            context.restore();
-            context.strokeStyle = `${accent}55`;
-            context.lineWidth = 2;
-            context.stroke();
-
-            try {
-                const character = await loadShareImage(new URL(typeCharacterPath(result.code), document.baseURI).toString());
-                drawShareImageContain(context, character, 82, 240, 410, 500);
-            } catch (_) {
-                context.fillStyle = '#eff0ec';
-                context.beginPath();
-                context.arc(288, 480, 170, 0, Math.PI * 2);
-                context.fill();
-            }
-
-            context.fillStyle = '#7c827d';
-            context.font = `780 18px ${font}`;
-            context.fillText('당신의 유형', 520, 340);
-            context.fillStyle = accent;
-            fitShareText(context, result.code, 470, 154, 104, 940, font);
-            context.textBaseline = 'alphabetic';
-            context.fillText(result.code, 520, 486);
-            context.fillStyle = '#343a36';
-            fitShareText(context, result.typeName, 450, 34, 24, 820, font);
-            context.fillText(result.typeName, 524, 545);
         }
+
+        context.fillStyle = '#7c827d';
+        context.font = `780 18px ${font}`;
+        context.fillText('당신의 유형', 520, 340);
+        context.fillStyle = accent;
+        fitShareText(context, result.code, 470, 154, 104, 940, font);
+        context.textBaseline = 'alphabetic';
+        context.fillText(result.code, 520, 486);
+        context.fillStyle = '#343a36';
+        fitShareText(context, result.typeName, 450, 34, 24, 820, font);
+        context.fillText(result.typeName, 524, 545);
 
         resultShareAxes().forEach(({ copy, position, firstSelected }, index) => {
             const y = 800 + index * 126;
@@ -2042,8 +2015,8 @@
         return new File([blob], shareFileName(), { type: 'image/png' });
     }
 
-    async function createKakaoShareFile(options = {}) {
-        const resultFile = await createResultShareFile(options);
+    async function createKakaoShareFile() {
+        const resultFile = await createResultShareFile();
         return new File([resultFile], `CREWARTS_${result.code}_KAKAO.png`, { type: 'image/png' });
     }
 
@@ -2198,15 +2171,13 @@
         }
     }
 
-    async function openKakaoShareGuide(event, file = null, options = {}) {
+    async function openKakaoShareGuide(event, file = null) {
         const button = event?.currentTarget || null;
-        const guest = options.guest === true;
         setShareButtonBusy(button, true, '공유 준비 중');
         try {
-            const nextFile = file || await createKakaoShareFile({ guest });
+            const nextFile = file || await createKakaoShareFile();
             clearPreparedKakaoShare();
             preparedKakaoShareFile = nextFile;
-            preparedKakaoShareGuest = guest;
             preparedKakaoShareUrl = URL.createObjectURL(nextFile);
             element('kakao-share-preview').src = preparedKakaoShareUrl;
             const dialog = element('kakao-share-dialog');
@@ -2223,20 +2194,18 @@
         if (preparedKakaoShareUrl) URL.revokeObjectURL(preparedKakaoShareUrl);
         preparedKakaoShareUrl = '';
         preparedKakaoShareFile = null;
-        preparedKakaoShareGuest = false;
         element('kakao-share-preview')?.removeAttribute('src');
     }
 
     async function sharePreparedNativeResult(event) {
         const button = event?.currentTarget;
-        const guest = preparedKakaoShareGuest;
-        const title = guest ? `${result.code} · 크레와트 성향 결과` : `${result.code} · ${result.typeName}`;
+        const title = `${result.code} · ${result.typeName}`;
         const text = `나는 크레 앞에서 어떤 유형일까?\n${Core.QUESTIONS.length}문항 약 3분`;
         setShareButtonBusy(button, true, '공유 준비 중');
-        const shareUrl = guest ? SURVEY_URL : createTrackedShareUrl();
+        const shareUrl = createTrackedShareUrl();
 
         try {
-            const shareFile = preparedKakaoShareFile || await createResultShareFile({ guest });
+            const shareFile = preparedKakaoShareFile || await createResultShareFile();
             element('kakao-share-dialog')?.close('share');
             if (navigator.share && navigator.canShare?.({ files: [shareFile] })) {
                 await navigator.share({
@@ -2269,17 +2238,16 @@
         }
     }
 
-    async function shareResult(event, options = {}) {
+    async function shareResult(event) {
         const button = event?.currentTarget;
-        const guest = options.guest === true;
-        const title = guest ? `${result.code} · 크레와트 성향 결과` : `${result.code} · ${result.typeName}`;
+        const title = `${result.code} · ${result.typeName}`;
         const text = `나는 크레 앞에서 어떤 유형일까?\n${Core.QUESTIONS.length}문항 약 3분`;
         let shareFile = null;
         setShareButtonBusy(button, true, '카카오톡 여는 중');
-        const shareUrl = guest ? SURVEY_URL : createTrackedShareUrl();
+        const shareUrl = createTrackedShareUrl();
 
         try {
-            shareFile = await createKakaoShareFile({ guest });
+            shareFile = await createKakaoShareFile();
             if (!initializeKakaoSdk()) throw new Error('Kakao SDK is unavailable');
             const imageUrl = await uploadKakaoShareImage(shareFile);
             await window.Kakao.Share.sendDefault({
@@ -2301,15 +2269,11 @@
         } catch (error) {
             if (error?.name === 'AbortError') return;
             console.error('[Crewart Kakao direct share]', error);
-            await openKakaoShareGuide(null, shareFile, { guest });
+            await openKakaoShareGuide(null, shareFile);
             toast('카카오톡 직접 연결이 어려워 기기 공유로 전환했어요.');
         } finally {
             setShareButtonBusy(button, false);
         }
-    }
-
-    function shareGuestResult(event) {
-        return shareResult(event, { guest: true });
     }
 
     async function shareBandReferral(event) {
