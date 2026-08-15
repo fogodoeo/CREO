@@ -1182,6 +1182,43 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-story-track.is-guest-locked .cw-story-scene.is-profile,
 .cw-story-track.is-guest-locked .cw-story-scene.is-time,
 .cw-story-track.is-guest-locked .cw-story-scene.is-house { display: none; }
+.cw-story-track.is-guest-locked .cw-story-scene.is-axis {
+    transform: translateY(calc(-24px + (1 - var(--axis-opacity)) * -12px));
+}
+.cw-story-guest-actions {
+    position: absolute;
+    z-index: 26;
+    right: 12px;
+    bottom: max(92px, calc(env(safe-area-inset-bottom) + 82px));
+    left: 12px;
+    display: grid;
+    width: min(calc(100% - 24px), 390px);
+    margin: auto;
+    grid-template-columns: minmax(0, .9fr) minmax(0, 1.35fr);
+    gap: 8px;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(8px);
+    transition: opacity .24s ease, transform .32s cubic-bezier(.2,.8,.2,1);
+}
+.cw-story-track.is-intro-settled .cw-story-guest-actions { opacity: 1; pointer-events: auto; transform: none; }
+.cw-story-guest-share {
+    display: grid;
+    width: 100%;
+    min-height: 58px;
+    padding: 8px 10px;
+    grid-template-columns: 28px minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+    border: 1px solid #e4cb00;
+    border-radius: 17px;
+    background: #fee500;
+    box-shadow: 0 12px 28px rgba(121, 105, 0, .17);
+    color: #191919;
+    cursor: pointer;
+}
+.cw-story-guest-share img { border-radius: 8px; }
+.cw-story-guest-share strong { overflow: hidden; font-size: clamp(11px, 3.2vw, 13px); font-weight: 850; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
 .cw-story-login-gate {
     position: absolute;
     z-index: 26;
@@ -1208,6 +1245,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     transition: opacity .24s ease, transform .32s cubic-bezier(.2,.8,.2,1);
 }
 .cw-story-track.is-intro-settled .cw-story-login-gate { opacity: 1; pointer-events: auto; transform: none; }
+.cw-story-guest-actions .cw-story-login-gate {
+    position: static;
+    width: 100%;
+    margin: 0;
+    opacity: 1;
+    pointer-events: auto;
+    transform: none;
+}
 .cw-story-login-gate img { border-radius: 8px; }
 .cw-story-login-gate strong { overflow: hidden; font-size: clamp(11.5px, 3.5vw, 14px); font-weight: 830; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
 .cw-story-login-gate i { color: #16814b; font-size: 19px; font-style: normal; }
