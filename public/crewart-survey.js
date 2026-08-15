@@ -1491,7 +1491,7 @@
             }
             if (status) {
                 status.hidden = false;
-                status.textContent = '가입 후 돌아오면 같은 번호로 자동 확인해요.';
+                status.textContent = '아직 가입되지 않은 번호예요. BAND 가입 후 돌아오면 바로 연결돼요.';
                 status.classList.remove('is-error', 'is-success');
                 status.classList.add('is-action');
             }
@@ -1543,7 +1543,7 @@
         try {
             const payload = await requestPhoneMembership(phoneDigits);
             if (!payload.member) {
-                status.textContent = '가입 후 돌아오면 같은 번호로 자동 확인해요.';
+                status.textContent = '아직 가입되지 않은 번호예요. BAND 가입 후 돌아오면 바로 연결돼요.';
                 status.classList.remove('is-error', 'is-success');
                 status.classList.add('is-action');
                 pendingMemberPhone = phoneDigits;
