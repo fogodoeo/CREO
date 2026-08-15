@@ -11,6 +11,7 @@ const RESPONSE_PREFIX = 'crewart_survey_response_entry_';
 const RESPONSE_LIMIT = 500;
 const REFERRAL_PREFIX = 'crewart_referral_v1_';
 const REFERRAL_OWNER_PREFIX = 'crewart_referral_owner_v1_';
+const REFERRAL_MEMBER_PREFIX = 'crewart_referral_member_v1_';
 const REFERRAL_LIMIT = 1000;
 const REFERRAL_OWNER_LINK_LIMIT = 80;
 const PARTICIPANT_AVERAGE_MS = 15 * 1000;
@@ -441,7 +442,8 @@ function createCrewartSurveyApi(options = {}) {
         const shareId = normalizeReferralId(input?.shareId);
         const eventName = cleanText(input?.event, 24);
         const timestampField = REFERRAL_EVENTS[eventName];
-        if (!shareId || !timestampField) {
+        const isMemberVerification = eventName === 'verified';
+        if ((!shareId && !isMemberVerification) || !timestampField) {
             const error = new Error('공유 추적 정보 형식이 올바르지 않습니다.');
             error.status = 422;
             throw error;
@@ -452,16 +454,55 @@ function createCrewartSurveyApi(options = {}) {
             throw error;
         }
         return serializeReferral(async () => {
-            const key = `${REFERRAL_PREFIX}${shareId}`;
+            const key = shareId ? `${REFERRAL_PREFIX}${shareId}` : '';
             const ownerKey = eventName === 'share' ? `${REFERRAL_OWNER_PREFIX}${authenticatedMemberKey}` : '';
-            const rows = await repository.getRowsByKeys([key, ownerKey].filter(Boolean));
+            const memberKey = isMemberVerification ? `${REFERRAL_MEMBER_PREFIX}${authenticatedMemberKey}` : '';
+            const rows = await repository.getRowsByKeys([key, ownerKey, memberKey].filter(Boolean));
             const previous = jsonParse(rows.find((row) => row.key === key)?.value, {});
+            const existingMemberClaim = jsonParse(rows.find((row) => row.key === memberKey)?.value, null);
             const verifiedSubjects = Array.isArray(previous.verifiedSubjects)
                 ? previous.verifiedSubjects.map((subject) => cleanText(subject, 80)).filter(Boolean)
                 : [];
-            if (eventName === 'verified' && verifiedSubjects.includes(authenticatedMemberKey)) return previous;
+            if (isMemberVerification && existingMemberClaim) return existingMemberClaim;
             if (eventName !== 'verified' && previous[timestampField]) return previous;
             const nowIso = new Date(now()).toISOString();
+
+            if (isMemberVerification) {
+                const ownerMemberKey = cleanText(previous.ownerMemberKey, 80);
+                const alreadyOnThisLink = verifiedSubjects.includes(authenticatedMemberKey);
+                const attributable = Boolean(
+                    shareId
+                    && previous.sharedAt
+                    && ownerMemberKey
+                    && ownerMemberKey !== authenticatedMemberKey
+                );
+                const memberClaim = {
+                    firstVerifiedAt: nowIso,
+                    attributed: attributable,
+                    shareId: attributable ? shareId : '',
+                    ownerMemberKey: attributable ? ownerMemberKey : ''
+                };
+                const updates = [{ key: memberKey, value: JSON.stringify(memberClaim) }];
+
+                if (attributable && !alreadyOnThisLink) {
+                    const next = {
+                        shareId,
+                        source: cleanText(input?.source, 24) || previous.source || 'kakao',
+                        createdAt: previous.createdAt || nowIso,
+                        ...previous,
+                        verifiedAt: previous.verifiedAt || nowIso,
+                        lastVerifiedAt: nowIso,
+                        updatedAt: nowIso,
+                        verifiedSubjects: [...verifiedSubjects, authenticatedMemberKey].slice(-500)
+                    };
+                    next.verifiedCount = next.verifiedSubjects.length;
+                    updates.unshift({ key, value: JSON.stringify(next) });
+                }
+
+                await repository.upsertRows(updates);
+                return memberClaim;
+            }
+
             const next = {
                 shareId,
                 source: cleanText(input?.source, 24) || 'kakao',
@@ -470,12 +511,6 @@ function createCrewartSurveyApi(options = {}) {
                 [timestampField]: nowIso,
                 updatedAt: nowIso
             };
-            if (eventName === 'verified') {
-                next.verifiedAt = previous.verifiedAt || nowIso;
-                next.lastVerifiedAt = nowIso;
-                next.verifiedSubjects = [...verifiedSubjects, authenticatedMemberKey].slice(-500);
-                next.verifiedCount = next.verifiedSubjects.length;
-            }
             const updates = [{ key, value: JSON.stringify(next) }];
             if (eventName === 'share') {
                 next.ownerMemberKey = authenticatedMemberKey;
@@ -710,6 +745,7 @@ module.exports = {
     HOUSE_ASSIGNMENT_VERSION,
     LEGACY_RESPONSES_KEY,
     REFERRAL_PREFIX,
+    REFERRAL_MEMBER_PREFIX,
     REFERRAL_OWNER_PREFIX,
     RESPONSE_PREFIX,
     aggregateResponses,

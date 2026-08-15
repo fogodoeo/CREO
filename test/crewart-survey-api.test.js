@@ -8,6 +8,7 @@ const {
     CONTENT_KEY,
     CONTENT_UPDATED_KEY,
     LEGACY_RESPONSES_KEY,
+    REFERRAL_MEMBER_PREFIX,
     REFERRAL_PREFIX,
     REFERRAL_OWNER_PREFIX,
     RESPONSE_PREFIX,
@@ -478,17 +479,17 @@ test('referral events are idempotent and verified conversion requires member aut
 
     const verified = new CapturedResponse();
     await api.handle(request('POST', JSON.stringify({ shareId, event: 'verified' }), {
-        authorization: `Bearer ${memberToken()}`
+        authorization: `Bearer ${memberToken('visitor_one_session', 'visitor_one_identity')}`
     }), verified, url);
     assert.equal(verified.status, 202);
     const duplicate = new CapturedResponse();
     await api.handle(request('POST', JSON.stringify({ shareId, event: 'verified' }), {
-        authorization: `Bearer ${memberToken()}`
+        authorization: `Bearer ${memberToken('visitor_one_session_two', 'visitor_one_identity')}`
     }), duplicate, url);
     assert.equal(duplicate.status, 202);
     const secondMember = new CapturedResponse();
     await api.handle(request('POST', JSON.stringify({ shareId, event: 'verified' }), {
-        authorization: `Bearer ${memberToken('member_second_session_subject')}`
+        authorization: `Bearer ${memberToken('visitor_two_session', 'visitor_two_identity')}`
     }), secondMember, url);
     assert.equal(secondMember.status, 202);
 
@@ -500,8 +501,78 @@ test('referral events are idempotent and verified conversion requires member aut
     assert.equal(record.verifiedAt, new Date(NOW).toISOString());
     assert.equal(record.verifiedCount, 2);
     assert.equal(record.ownerMemberKey, 'member_random_session_subject');
+    assert.equal(JSON.parse(repository.rows.get(`${REFERRAL_MEMBER_PREFIX}visitor_one_identity`)).shareId, shareId);
+    assert.equal(JSON.parse(repository.rows.get(`${REFERRAL_MEMBER_PREFIX}visitor_two_identity`)).shareId, shareId);
     const owner = JSON.parse(repository.rows.get(`${REFERRAL_OWNER_PREFIX}member_random_session_subject`));
     assert.deepEqual(owner.shareIds, [shareId]);
+});
+
+test('verified referral conversion uses global first-touch attribution and excludes repeat or self verification', async () => {
+    const repository = new FakeRepository();
+    const api = createCrewartSurveyApi({
+        repository,
+        bandMembership: { config: { sessionSecret: SECRET } },
+        now: () => NOW
+    });
+    const url = new URL('https://creok.example.com/api/crewart-survey/shares');
+    const firstShareId = 'first1234567890abcdef1234567890ab';
+    const secondShareId = 'second1234567890abcdef1234567890a';
+
+    for (const [shareId, ownerId] of [[firstShareId, 'owner_first'], [secondShareId, 'owner_second']]) {
+        const response = new CapturedResponse();
+        await api.handle(request('POST', JSON.stringify({ shareId, event: 'share', source: 'kakao' }), {
+            authorization: `Bearer ${memberToken(`session_${ownerId}`, ownerId)}`
+        }), response, url);
+        assert.equal(response.status, 202);
+    }
+
+    const firstTouch = new CapturedResponse();
+    await api.handle(request('POST', JSON.stringify({ shareId: firstShareId, event: 'verified' }), {
+        authorization: `Bearer ${memberToken('visitor_session_one', 'visitor_phone_identity')}`
+    }), firstTouch, url);
+    assert.equal(firstTouch.status, 202);
+
+    const repeatedOnAnotherLink = new CapturedResponse();
+    await api.handle(request('POST', JSON.stringify({ shareId: secondShareId, event: 'verified' }), {
+        authorization: `Bearer ${memberToken('visitor_session_two', 'visitor_phone_identity')}`
+    }), repeatedOnAnotherLink, url);
+    assert.equal(repeatedOnAnotherLink.status, 202);
+
+    const selfVerification = new CapturedResponse();
+    await api.handle(request('POST', JSON.stringify({ shareId: secondShareId, event: 'verified' }), {
+        authorization: `Bearer ${memberToken('owner_second_session', 'owner_second')}`
+    }), selfVerification, url);
+    assert.equal(selfVerification.status, 202);
+
+    const priorDirectVerification = new CapturedResponse();
+    await api.handle(request('POST', JSON.stringify({ event: 'verified' }), {
+        authorization: `Bearer ${memberToken('direct_session', 'prior_direct_member')}`
+    }), priorDirectVerification, url);
+    assert.equal(priorDirectVerification.status, 202);
+    const directMemberOnReferral = new CapturedResponse();
+    await api.handle(request('POST', JSON.stringify({ shareId: firstShareId, event: 'verified' }), {
+        authorization: `Bearer ${memberToken('direct_session_two', 'prior_direct_member')}`
+    }), directMemberOnReferral, url);
+    assert.equal(directMemberOnReferral.status, 202);
+
+    const firstRecord = JSON.parse(repository.rows.get(`${REFERRAL_PREFIX}${firstShareId}`));
+    const secondRecord = JSON.parse(repository.rows.get(`${REFERRAL_PREFIX}${secondShareId}`));
+    assert.equal(firstRecord.verifiedCount, 1);
+    assert.equal(secondRecord.verifiedCount || 0, 0);
+    assert.equal(JSON.parse(repository.rows.get(`${REFERRAL_MEMBER_PREFIX}visitor_phone_identity`)).shareId, firstShareId);
+    assert.equal(JSON.parse(repository.rows.get(`${REFERRAL_MEMBER_PREFIX}owner_second`)).attributed, false);
+    assert.equal(JSON.parse(repository.rows.get(`${REFERRAL_MEMBER_PREFIX}prior_direct_member`)).attributed, false);
+
+    const firstOwnerMetrics = new CapturedResponse();
+    await api.handle(request('GET', '', {
+        authorization: `Bearer ${memberToken('owner_first_metrics', 'owner_first')}`
+    }), firstOwnerMetrics, url);
+    assert.equal(JSON.parse(firstOwnerMetrics.body).counts.verified, 1);
+    const secondOwnerMetrics = new CapturedResponse();
+    await api.handle(request('GET', '', {
+        authorization: `Bearer ${memberToken('owner_second_metrics', 'owner_second')}`
+    }), secondOwnerMetrics, url);
+    assert.equal(JSON.parse(secondOwnerMetrics.body).counts.verified, 0);
 });
 
 test('referral summary is admin-only and reports unique link conversion', async () => {

@@ -128,7 +128,7 @@
 
     function trackReferral(eventName, options = {}) {
         const id = validReferralId(options.id || referralId);
-        if (!id) return;
+        if (!id && eventName !== 'verified') return;
         const headers = { 'Content-Type': 'application/json' };
         if (bandAuthToken) headers.Authorization = `Bearer ${bandAuthToken}`;
         void fetch(REFERRAL_API, {
@@ -684,6 +684,8 @@
         bandAuthPhoneMask = '';
         editingMembership = false;
         try {
+            localStorage.removeItem(MEMBERSHIP_STORAGE_KEY);
+            localStorage.removeItem(MEMBERSHIP_PHONE_STORAGE_KEY);
             sessionStorage.removeItem(MEMBERSHIP_STORAGE_KEY);
             sessionStorage.removeItem(MEMBERSHIP_PHONE_STORAGE_KEY);
         } catch (_) { }
@@ -1557,11 +1559,19 @@
 
     async function initBandMembership() {
         try {
-            bandAuthToken = sessionStorage.getItem(MEMBERSHIP_STORAGE_KEY) || '';
-            bandAuthPhoneMask = sessionStorage.getItem(MEMBERSHIP_PHONE_STORAGE_KEY) || '';
+            bandAuthToken = localStorage.getItem(MEMBERSHIP_STORAGE_KEY)
+                || sessionStorage.getItem(MEMBERSHIP_STORAGE_KEY)
+                || '';
+            bandAuthPhoneMask = localStorage.getItem(MEMBERSHIP_PHONE_STORAGE_KEY)
+                || sessionStorage.getItem(MEMBERSHIP_PHONE_STORAGE_KEY)
+                || '';
+            if (bandAuthToken) localStorage.setItem(MEMBERSHIP_STORAGE_KEY, bandAuthToken);
+            if (bandAuthPhoneMask) localStorage.setItem(MEMBERSHIP_PHONE_STORAGE_KEY, bandAuthPhoneMask);
+            sessionStorage.removeItem(MEMBERSHIP_STORAGE_KEY);
+            sessionStorage.removeItem(MEMBERSHIP_PHONE_STORAGE_KEY);
             if (bandAuthToken && !bandAuthPhoneMask) {
                 bandAuthToken = '';
-                sessionStorage.removeItem(MEMBERSHIP_STORAGE_KEY);
+                localStorage.removeItem(MEMBERSHIP_STORAGE_KEY);
             }
         } catch (_) {
             bandAuthToken = '';
@@ -1585,6 +1595,8 @@
             bandAuthToken = '';
             bandAuthPhoneMask = '';
             try {
+                localStorage.removeItem(MEMBERSHIP_STORAGE_KEY);
+                localStorage.removeItem(MEMBERSHIP_PHONE_STORAGE_KEY);
                 sessionStorage.removeItem(MEMBERSHIP_STORAGE_KEY);
                 sessionStorage.removeItem(MEMBERSHIP_PHONE_STORAGE_KEY);
             } catch (_) { }
@@ -1626,8 +1638,10 @@
         editingMembership = false;
         if (bandAuthToken) {
             try {
-                sessionStorage.setItem(MEMBERSHIP_STORAGE_KEY, bandAuthToken);
-                if (bandAuthPhoneMask) sessionStorage.setItem(MEMBERSHIP_PHONE_STORAGE_KEY, bandAuthPhoneMask);
+                localStorage.setItem(MEMBERSHIP_STORAGE_KEY, bandAuthToken);
+                if (bandAuthPhoneMask) localStorage.setItem(MEMBERSHIP_PHONE_STORAGE_KEY, bandAuthPhoneMask);
+                sessionStorage.removeItem(MEMBERSHIP_STORAGE_KEY);
+                sessionStorage.removeItem(MEMBERSHIP_PHONE_STORAGE_KEY);
             } catch (_) { }
         }
         trackReferral('verified', { authenticated: true });
