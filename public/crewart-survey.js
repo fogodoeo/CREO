@@ -5,9 +5,11 @@
     const SURVEY_URL = 'https://creok.onrender.com/crewart-survey.html';
     const DEFAULT_BAND_URL = 'https://www.band.us/band/101992972/post';
     const BAND_MEMBER_API = '/api/band-membership';
+    const REFERRAL_API = '/api/crewart-survey/referrals';
+    const REFERRAL_STORAGE_KEY = 'crewart_referral_source_v1';
     const KAKAO_JS_KEY = 'db7ffc8d6b9b7601b792ed69be4658fc';
     const TYPE_CHARACTER_ROOT = 'assets/crewart-types/';
-    const TYPE_CHARACTER_VERSION = '20260802-character-v1';
+    const TYPE_CHARACTER_VERSION = '20260815-character-webp-v2';
     const MEMBERSHIP_STORAGE_KEY = 'crewart_band_member_access_v1';
     const MEMBERSHIP_PHONE_STORAGE_KEY = 'crewart_band_member_phone_mask_v1';
     const LAST_RESULT_STORAGE_KEY = 'crewart_last_result_v3';
@@ -99,6 +101,61 @@
     let preparedKakaoShareFile = null;
     let preparedKakaoShareUrl = '';
     let resultExperienceCleanup = null;
+    let referralId = '';
+
+    function validReferralId(value) {
+        const normalized = String(value || '').trim();
+        return /^[a-zA-Z0-9_-]{16,64}$/.test(normalized) ? normalized : '';
+    }
+
+    function createReferralId() {
+        if (globalThis.crypto?.randomUUID) return crypto.randomUUID().replace(/-/g, '');
+        if (globalThis.crypto?.getRandomValues) {
+            const bytes = new Uint8Array(18);
+            globalThis.crypto.getRandomValues(bytes);
+            return Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
+        }
+        return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 24)}`;
+    }
+
+    function referralShareUrl(id) {
+        const url = new URL(SURVEY_URL);
+        url.searchParams.set('src', 'kakao');
+        url.searchParams.set('sid', id);
+        return url.toString();
+    }
+
+    function trackReferral(eventName, options = {}) {
+        const id = validReferralId(options.id || referralId);
+        if (!id) return;
+        const headers = { 'Content-Type': 'application/json' };
+        if (options.authenticated && bandAuthToken) headers.Authorization = `Bearer ${bandAuthToken}`;
+        void fetch(REFERRAL_API, {
+            method: 'POST',
+            cache: 'no-store',
+            keepalive: true,
+            headers,
+            body: JSON.stringify({ shareId: id, event: eventName, source: 'kakao' })
+        }).catch(() => undefined);
+    }
+
+    function createTrackedShareUrl() {
+        const id = createReferralId();
+        trackReferral('share', { id });
+        return referralShareUrl(id);
+    }
+
+    function initializeReferral() {
+        const params = new URLSearchParams(window.location.search);
+        const incoming = params.get('src') === 'kakao' ? validReferralId(params.get('sid')) : '';
+        if (incoming) {
+            referralId = incoming;
+            try { sessionStorage.setItem(REFERRAL_STORAGE_KEY, incoming); } catch (_) { }
+            trackReferral('landing');
+            return;
+        }
+        try { referralId = validReferralId(sessionStorage.getItem(REFERRAL_STORAGE_KEY)); } catch (_) { }
+    }
 
     function element(id) {
         return document.getElementById(id);
@@ -112,7 +169,7 @@
 
     function typeCharacterPath(code) {
         const normalized = String(code || '').toLowerCase();
-        return `${TYPE_CHARACTER_ROOT}crewart-type-${normalized}.png?v=${TYPE_CHARACTER_VERSION}`;
+        return `${TYPE_CHARACTER_ROOT}crewart-type-${normalized}.webp?v=${TYPE_CHARACTER_VERSION}`;
     }
 
     function maskPhone(phone) {
@@ -180,8 +237,7 @@
         element('home-result-heading').textContent = snapshot.result.typeName;
         const housePanel = element('home-house-name')?.closest('.cw-home-house');
         if (housePanel) housePanel.hidden = !detailed;
-        element('home-house-seal').textContent = house?.seal || '';
-        element('home-house-name').textContent = house?.name || '';
+        element('home-house-name').textContent = house ? `${house.korean} 기숙사` : '';
         card.style.setProperty('--house-accent', house?.accent || '#16814b');
     }
 
@@ -235,17 +291,17 @@
         const startButton = element('start-button');
         const startSpan = startButton?.querySelector('span');
         if (authenticated) {
-            if (startSpan) startSpan.textContent = '다시하기';
+            if (startSpan) startSpan.textContent = '다시 검사하기';
             if (homeTitle) homeTitle.textContent = bandAuthPhoneMask ? `BAND 회원 확인 완료 · ${bandAuthPhoneMask}` : 'BAND 회원 확인 완료';
             if (homeButton) {
                 homeButton.textContent = '관리';
                 homeButton.classList.add('is-connected');
             }
         } else {
-            if (startSpan) startSpan.textContent = '시작하기';
-            if (homeTitle) homeTitle.textContent = 'BAND 회원 확인 시 기숙사 배정 · 전체 분석';
+            if (startSpan) startSpan.textContent = '성향 테스트 시작';
+            if (homeTitle) homeTitle.textContent = '회원 확인 후 기숙사와 전체 분석 보기';
             if (homeButton) {
-                homeButton.textContent = '확인';
+                homeButton.textContent = '회원 확인';
                 homeButton.classList.remove('is-connected');
             }
         }
@@ -855,11 +911,11 @@
             const secondCount = Number(result.letters[second]) || 0;
             const totalCount = firstCount + secondCount || 1;
             const isLeftDominant = axisResult.dominant === first;
-            
+
             // Calculate ratio with minimum clear offset so it always deflects distinctly
             const dominantRatio = isLeftDominant ? firstCount / totalCount : secondCount / totalCount;
             const normalizedRatio = Math.max(0.62, Math.min(0.92, dominantRatio));
-            
+
             // Left dominant moves to 20%~32%, Right dominant moves to 68%~80%
             const position = isLeftDominant
                 ? Math.round(50 - (normalizedRatio - 0.5) * 65)
@@ -890,14 +946,14 @@
                     <div class="cw-story-sticky">
                         <header class="cw-story-topbar">
                             <button type="button" data-action="go-home" aria-label="홈으로 돌아가기">← <span>홈</span></button>
-                            <div><small>결과 리포트</small><strong>${escapeHtml(result.code)}</strong></div>
+                            <div><small>결과 리포트</small><strong data-story-top-code>분석 중</strong></div>
                         </header>
                         <div class="cw-story-progress" aria-hidden="true"><i data-story-progress></i></div>
                         <div class="cw-story-stage" aria-live="polite">
                             <section class="cw-story-scene is-axis" data-story-scene="axis">
                                 <div class="cw-story-result-hero">
                                     <div class="cw-story-result-character" aria-hidden="true">
-                                        <strong class="cw-story-result-code" aria-label="${escapeHtml(result.code)}">${escapeHtml(result.code)}</strong>
+                                        <strong class="cw-story-result-code" data-final-code="${escapeHtml(result.code)}">????</strong>
                                         <img src="${escapeHtml(typeCharacterPath(result.code))}" width="360" height="520" alt="" loading="eager" decoding="async">
                                     </div>
                                     <p class="cw-story-result-title">${escapeHtml(profile.title || result.typeName)}</p>
@@ -958,11 +1014,8 @@
                     <div><small>결과 미리보기</small><strong>${escapeHtml(result.code)}</strong></div>
                 </header>
                 <main class="cw-result-teaser-main">
-                    <div class="cw-result-teaser-hero">
+                    <div class="cw-result-teaser-hero is-guest-code">
                         <strong aria-label="${escapeHtml(result.code)}">${escapeHtml(result.code)}</strong>
-                        <div class="cw-result-teaser-character" aria-hidden="true">
-                            <img src="${escapeHtml(typeCharacterPath(result.code))}" width="360" height="520" alt="" loading="eager" decoding="async">
-                        </div>
                     </div>
                     <div class="cw-result-teaser-copy">
                         <p>${escapeHtml(profile.title || result.typeName)}</p>
@@ -995,6 +1048,8 @@
         const scenes = Object.fromEntries([...root.querySelectorAll('[data-story-scene]')].map(node => [node.dataset.storyScene, node]));
         const timeValueNode = root.querySelector('[data-time-value]');
         const timeLabelNode = root.querySelector('[data-time-label]');
+        const heroCodeNode = root.querySelector('[data-final-code]');
+        const topCodeNode = root.querySelector('[data-story-top-code]');
         const speedNode = root.querySelector('.cw-story-speed');
         const targetSpeedPosition = speedNode ? (parseFloat(speedNode.style.getPropertyValue('--speed-position')) || 50) : 50;
         if (speedNode) speedNode.style.setProperty('--speed-position', '50%');
@@ -1004,14 +1059,41 @@
         let frame = 0;
         let activeScene = '';
         let timeShuffleTimer = 0;
+        let heroShuffleTimer = 0;
         let bandPromptTimer = 0;
         let latestProgress = 0;
         let touchStartY = 0;
         let bandPromptAnnounced = false;
         let timeShuffleStarted = false;
         let timeShuffleSettled = false;
+        let heroCodeSettled = false;
         const TIME_SCENE_START = .63;
         const TIME_SCENE_LOCK = .7;
+
+        const randomType = () => Core.MBTI_TYPES[Math.floor(Math.random() * Core.MBTI_TYPES.length)] || '????';
+        const settleHeroCode = () => {
+            if (!heroCodeNode || heroCodeSettled) return;
+            heroCodeSettled = true;
+            window.clearInterval(heroShuffleTimer);
+            heroShuffleTimer = 0;
+            const finalCode = heroCodeNode.dataset.finalCode || result.code;
+            heroCodeNode.textContent = finalCode;
+            heroCodeNode.setAttribute('aria-label', finalCode);
+            heroCodeNode.classList.remove('is-cycling');
+            heroCodeNode.classList.add('is-settled');
+            if (topCodeNode) topCodeNode.textContent = finalCode;
+            root.classList.remove('is-code-cycling');
+            root.classList.add('is-code-settled');
+        };
+        const startHeroShuffle = () => {
+            if (!heroCodeNode || heroCodeSettled || heroShuffleTimer) return;
+            root.classList.add('is-code-cycling');
+            heroCodeNode.classList.add('is-cycling');
+            heroCodeNode.textContent = randomType();
+            heroShuffleTimer = window.setInterval(() => {
+                heroCodeNode.textContent = randomType();
+            }, 110);
+        };
 
         const storyProgressToScrollY = progress => {
             const rect = root.getBoundingClientRect();
@@ -1131,6 +1213,8 @@
             const rect = root.getBoundingClientRect();
             const range = Math.max(1, root.offsetHeight - window.innerHeight);
             const rawProgress = clamp(-rect.top / range);
+            root.style.setProperty('--hero-progress', segment(rawProgress, 0, .08));
+            if (rawProgress >= .055) settleHeroCode();
             if (rawProgress >= TIME_SCENE_START && !timeShuffleStarted) startTimeShuffle();
             if (rawProgress >= .78 && !houseRollStarted) startHouseRoll();
             const progress = timeShuffleStarted && !timeShuffleSettled
@@ -1192,6 +1276,8 @@
         window.addEventListener('touchstart', handleEndTouchStart, { passive: true });
         window.addEventListener('touchend', handleEndTouchEnd, { passive: true });
         window.addEventListener('keydown', blockTimeSceneKeys);
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) settleHeroCode();
+        else startHeroShuffle();
         sync();
         return () => {
             window.removeEventListener('scroll', scheduleSync);
@@ -1203,6 +1289,7 @@
             window.removeEventListener('touchend', handleEndTouchEnd);
             window.removeEventListener('keydown', blockTimeSceneKeys);
             window.clearInterval(timeShuffleTimer);
+            window.clearInterval(heroShuffleTimer);
             window.clearTimeout(bandPromptTimer);
             if (frame) cancelAnimationFrame(frame);
         };
@@ -1211,6 +1298,7 @@
     function playResultRevealAnimation() {
         const root = element('result-content');
         if (!root) return;
+        if (root.querySelector('[data-result-story]')) return;
         const hero = root.querySelector('.cw-story-result-hero, .cw-result-teaser-hero');
         const codeNode = root.querySelector('.cw-story-result-code, .cw-result-teaser-hero > strong');
         const copyWrapper = root.querySelector('.cw-result-teaser-copy');
@@ -1514,6 +1602,7 @@
                 if (bandAuthPhoneMask) sessionStorage.setItem(MEMBERSHIP_PHONE_STORAGE_KEY, bandAuthPhoneMask);
             } catch (_) { }
         }
+        trackReferral('verified', { authenticated: true });
         if (status) {
             status.hidden = true;
             status.textContent = '';
@@ -2173,6 +2262,7 @@
         const title = `${result.code} · ${result.typeName}`;
         const text = `나는 크레 앞에서 어떤 유형일까?\n${Core.QUESTIONS.length}문항 약 3분`;
         setShareButtonBusy(button, true, '공유 준비 중');
+        const shareUrl = createTrackedShareUrl();
 
         try {
             const shareFile = preparedKakaoShareFile || await createResultShareFile();
@@ -2181,27 +2271,27 @@
                 await navigator.share({
                     files: [shareFile],
                     title,
-                    text: `${text}\n${SURVEY_URL}`
+                    text: `${text}\n${shareUrl}`
                 });
                 return;
             }
             if (navigator.share) {
                 downloadShareFile(shareFile);
                 toast('이미지는 저장했어요. 공유 앱에서 카카오톡을 선택해주세요.');
-                await navigator.share({ title, text, url: SURVEY_URL });
+                await navigator.share({ title, text, url: shareUrl });
                 return;
             }
             downloadShareFile(shareFile);
-            await navigator.clipboard.writeText(`${text}\n${SURVEY_URL}`);
+            await navigator.clipboard.writeText(`${text}\n${shareUrl}`);
             toast('이미지 저장과 링크 복사를 완료했어요.');
         } catch (error) {
             if (error?.name === 'AbortError') return;
             console.error('[Crewart result share]', error);
             try {
-                await navigator.clipboard.writeText(`${text}\n${SURVEY_URL}`);
+                await navigator.clipboard.writeText(`${text}\n${shareUrl}`);
                 toast('공유 링크를 복사했어요.');
             } catch (_) {
-                window.prompt('아래 내용을 복사해주세요.', `${text}\n${SURVEY_URL}`);
+                window.prompt('아래 내용을 복사해주세요.', `${text}\n${shareUrl}`);
             }
         } finally {
             setShareButtonBusy(button, false);
@@ -2214,6 +2304,7 @@
         const text = `나는 크레 앞에서 어떤 유형일까?\n${Core.QUESTIONS.length}문항 약 3분`;
         let shareFile = null;
         setShareButtonBusy(button, true, '카카오톡 여는 중');
+        const shareUrl = createTrackedShareUrl();
 
         try {
             shareFile = await createKakaoShareFile();
@@ -2227,11 +2318,11 @@
                     imageUrl,
                     imageWidth: 1200,
                     imageHeight: 800,
-                    link: { mobileWebUrl: SURVEY_URL, webUrl: SURVEY_URL }
+                    link: { mobileWebUrl: shareUrl, webUrl: shareUrl }
                 },
                 buttons: [{
                     title: '나도 알아보기',
-                    link: { mobileWebUrl: SURVEY_URL, webUrl: SURVEY_URL }
+                    link: { mobileWebUrl: shareUrl, webUrl: shareUrl }
                 }]
             });
             return;
@@ -2290,6 +2381,9 @@
             setTimeout(() => syncMemberKeyboardState({ ensureVisible: false }), 80);
         });
         element('member-join-link')?.addEventListener('click', handleMemberJoinReturn);
+        document.addEventListener('click', event => {
+            if (event.target.closest?.('[data-band-join], [data-band-prompt]')) trackReferral('band_click');
+        });
         element('question-back').addEventListener('click', previousQuestion);
         element('mbti-unknown').addEventListener('click', () => {
             selectedMbti = '';
@@ -2353,6 +2447,7 @@
             return;
         }
         setupIntroVideo();
+        initializeReferral();
         try { LEGACY_RESULT_STORAGE_KEYS.forEach(key => localStorage.removeItem(key)); } catch (_) { }
         bindEvents();
         const urlParams = new URLSearchParams(window.location.search);

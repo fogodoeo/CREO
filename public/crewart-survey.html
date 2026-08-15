@@ -16,11 +16,11 @@
     <link
         href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
         rel="stylesheet">
-    <link rel="stylesheet" href="crewart-survey-v4.css?v=20260815-suspense-suite-v57">
+    <link rel="stylesheet" href="crewart-survey-v4.css?v=20260815-home-polish-v59">
     <script src="assets/vendor/kakao-2.8.1.min.js"></script>
-    <script src="crewart-survey-core.js?v=20260815-suspense-suite-v57"></script>
+    <script src="crewart-survey-core.js?v=20260815-home-polish-v59"></script>
     <!-- Share-link target is cache-busted so KakaoTalk never reuses the old root URL. -->
-    <script src="crewart-survey.js?v=20260815-suspense-suite-v57" defer></script>
+    <script src="crewart-survey.js?v=20260815-home-polish-v59" defer></script>
 </head>
 
 <body>
@@ -43,16 +43,17 @@
                         </video>
                     </div>
                     <h1><span class="cw-wordmark is-pending" id="crewart-wordmark">CREWARTS</span><small>PERSONALITY TEST</small></h1>
-                    <p class="cw-intro-copy">12문항 · 약 3분 · 제작 CREO</p>
+                    <p class="cw-intro-tagline">크레를 고르고 돌보는 나의 방식을 알아보세요.</p>
+                    <p class="cw-intro-copy">12문항 · 약 3분</p>
                 </header>
 
                 <section class="cw-home-result" id="home-result-card" hidden aria-labelledby="home-result-heading">
-                    <p class="cw-home-profile-kicker">MY CREWART PROFILE</p>
+                    <p class="cw-home-profile-kicker">나의 크레 성향</p>
                     <strong id="home-result-code">—</strong>
                     <h2 id="home-result-heading">성향 결과</h2>
                     <div class="cw-home-house">
-                        <span id="home-house-seal">C</span>
-                        <div><small>HOUSE</small><strong id="home-house-name">BLUE</strong></div>
+                        <span id="home-house-swatch" aria-hidden="true"></span>
+                        <div><small>나의 기숙사</small><strong id="home-house-name">파랑 기숙사</strong></div>
                     </div>
                     <div class="cw-home-result-actions">
                         <button class="cw-test-action cw-primary-button" id="home-retest" type="button">다시 시작</button>
@@ -60,14 +61,15 @@
                 </section>
 
                 <section class="cw-home-start" id="home-start-card">
-                    <button class="cw-test-action cw-primary-button" id="start-button" type="button" disabled><span>시작하기</span></button>
+                    <button class="cw-test-action cw-primary-button" id="start-button" type="button" disabled><span>성향 테스트 시작</span></button>
                     <div class="cw-home-auth-inline" id="home-auth-card" aria-labelledby="home-band-title">
                         <img src="assets/band-app-icon-official.png?v=20260801-logo-v2" width="22" height="22" alt="">
-                        <span id="home-band-title">BAND 회원 확인 시 기숙사 배정 · 전체 분석</span>
+                        <span id="home-band-title">회원 확인 후 기숙사와 전체 분석 보기</span>
                         <span id="band-connection-status"></span>
-                        <button type="button" id="home-auth-button">확인</button>
+                        <button type="button" id="home-auth-button">회원 확인</button>
                     </div>
                 </section>
+                <p class="cw-home-copyright">© 2026 CREO. All rights reserved.</p>
             </div>
         </section>
 

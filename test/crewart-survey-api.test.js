@@ -8,6 +8,7 @@ const {
     CONTENT_KEY,
     CONTENT_UPDATED_KEY,
     LEGACY_RESPONSES_KEY,
+    REFERRAL_PREFIX,
     RESPONSE_PREFIX,
     chooseLeastPopulatedHouse,
     createCrewartSurveyApi
@@ -450,4 +451,67 @@ test('resubmitting one participant replaces the row without double-counting the 
     }
     assert.equal(repository.rows.size, 1);
     assert.equal((await api.bootstrap()).cohort.sampleSize, 1);
+});
+
+test('referral events are idempotent and verified conversion requires member auth', async () => {
+    const repository = new FakeRepository();
+    const api = createCrewartSurveyApi({
+        repository,
+        bandMembership: { config: { sessionSecret: SECRET } },
+        now: () => NOW
+    });
+    const url = new URL('https://creok.example.com/api/crewart-survey/referrals');
+    const shareId = 'abc123def456abc123def456abc123de';
+    for (const event of ['share', 'landing', 'landing', 'band_click']) {
+        const response = new CapturedResponse();
+        await api.handle(request('POST', JSON.stringify({ shareId, event, source: 'kakao' })), response, url);
+        assert.equal(response.status, 202);
+    }
+    const unauthorized = new CapturedResponse();
+    await api.handle(request('POST', JSON.stringify({ shareId, event: 'verified' })), unauthorized, url);
+    assert.equal(unauthorized.status, 401);
+
+    const verified = new CapturedResponse();
+    await api.handle(request('POST', JSON.stringify({ shareId, event: 'verified' }), {
+        authorization: `Bearer ${memberToken()}`
+    }), verified, url);
+    assert.equal(verified.status, 202);
+
+    const record = JSON.parse(repository.rows.get(`${REFERRAL_PREFIX}${shareId}`));
+    assert.equal(record.source, 'kakao');
+    assert.equal(record.sharedAt, new Date(NOW).toISOString());
+    assert.equal(record.landedAt, new Date(NOW).toISOString());
+    assert.equal(record.bandClickedAt, new Date(NOW).toISOString());
+    assert.equal(record.verifiedAt, new Date(NOW).toISOString());
+});
+
+test('referral summary is admin-only and reports unique link conversion', async () => {
+    const shareId = '1234567890abcdef1234567890abcdef';
+    const repository = new FakeRepository({
+        [`${REFERRAL_PREFIX}${shareId}`]: JSON.stringify({
+            shareId,
+            sharedAt: '2026-08-01T00:00:00.000Z',
+            landedAt: '2026-08-01T00:01:00.000Z',
+            verifiedAt: '2026-08-01T00:03:00.000Z',
+            updatedAt: '2026-08-01T00:03:00.000Z'
+        })
+    });
+    const api = createCrewartSurveyApi({
+        repository,
+        bandMembership: { config: { sessionSecret: SECRET } },
+        isAdmin: async (req) => req.headers['x-creo-admin'] === 'secret',
+        now: () => NOW
+    });
+    const url = new URL('https://creok.example.com/api/crewart-survey/referrals');
+    const unauthorized = new CapturedResponse();
+    await api.handle(request('GET'), unauthorized, url);
+    assert.equal(unauthorized.status, 401);
+
+    const response = new CapturedResponse();
+    await api.handle(request('GET', '', { 'x-creo-admin': 'secret' }), response, url);
+    assert.equal(response.status, 200);
+    const payload = JSON.parse(response.body);
+    assert.deepEqual(payload.counts, { shared: 1, landed: 1, bandClicked: 0, verified: 1 });
+    assert.equal(payload.verifiedConversionRate, 100);
+    assert.equal(payload.entries[0].shareId, shareId);
 });

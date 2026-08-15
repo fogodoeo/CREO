@@ -100,7 +100,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     border-radius: var(--cw-control-radius-compact);
     background: rgba(255, 255, 255, .96);
     box-shadow: var(--cw-shadow);
-    
+
     font-size: 12px;
     font-weight: var(--cw-weight-medium);
     cursor: pointer;
@@ -161,10 +161,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-home-result > strong { font-size: clamp(62px, 18vw, 96px); font-weight: 820; line-height: .9; letter-spacing: -.025em; text-shadow: 0 8px 32px rgba(0, 0, 0, .22); }
 .cw-home-result h2 { margin: 13px 0 0; color: rgba(255, 255, 255, .78); font-size: 17px; font-weight: 650; letter-spacing: -.02em; }
 .cw-home-house { display: inline-flex; margin: 34px auto 0; padding: 13px 17px 13px 13px; align-items: center; gap: 12px; border: 1px solid rgba(255, 255, 255, .22); border-radius: 16px; background: rgba(8, 12, 9, .2); text-align: left;  }
-.cw-home-house > span { display: grid; width: 38px; height: 38px; place-items: center; border: 1px solid rgba(255, 255, 255, .32); border-radius: 50%; color: var(--house-accent, #fff); font-size: 17px; font-weight: 800; }
+.cw-home-house > span { display: block; width: 34px; height: 34px; border: 3px solid rgba(255, 255, 255, .72); border-radius: 50%; background: var(--house-accent, #fff); box-shadow: 0 0 0 1px rgba(0, 0, 0, .12), 0 8px 18px rgba(0, 0, 0, .16); }
 .cw-home-house div { display: grid; gap: 2px; }
-.cw-home-house small { color: rgba(255, 255, 255, .5); font-size: 9px; font-weight: 700; letter-spacing: .17em; }
-.cw-home-house strong { color: #fff; font-size: 15px; font-weight: 700; letter-spacing: .08em; }
+.cw-home-house small { color: rgba(255, 255, 255, .58); font-size: 10px; font-weight: 700; letter-spacing: 0; }
+.cw-home-house strong { color: #fff; font-size: 16px; font-weight: 750; letter-spacing: -.02em; }
 .cw-home-result-actions { display: grid; width: min(100%, var(--cw-action-width)); margin: 38px auto 0; gap: 10px; }
 .cw-home-result-actions .cw-test-action { width: 100%; }
 .cw-intro.has-result .cw-intro-heading { flex: 0; min-height: 0; padding: 8px 0 32px; }
@@ -720,6 +720,22 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 }
 .cw-result-teaser-copy { display: grid; justify-items: center; }
 .cw-result-teaser-copy p { max-width: 24ch; margin: 12px auto 0; color: #171a18; font-size: clamp(17px, 4.8vw, 21px); font-weight: 820; line-height: 1.4; text-align: center; word-break: keep-all; text-wrap: balance; }
+.cw-result-teaser-hero.is-guest-code { height: auto; min-height: clamp(150px, 28svh, 230px); }
+.cw-result-teaser-hero.is-guest-code > strong {
+    position: relative;
+    top: auto;
+    left: auto;
+    z-index: 1;
+    width: auto;
+    color: #111311;
+    font-size: clamp(82px, 24vw, 148px);
+    font-weight: 950;
+    line-height: .88;
+    letter-spacing: -.045em;
+    margin-left: 0;
+    transform: none;
+    text-shadow: 0 1px 0 #fff;
+}
 
 .cw-result-teaser-lock {
     display: grid;
@@ -1417,16 +1433,26 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     min-height: 100dvh;
     overflow: hidden;
     isolation: isolate;
-    padding: max(32px, calc(env(safe-area-inset-top) + 20px)) 20px max(92px, calc(env(safe-area-inset-bottom) + 80px));
+    padding: max(28px, calc(env(safe-area-inset-top) + 18px)) 20px max(88px, calc(env(safe-area-inset-bottom) + 76px));
     background: #242724;
 }
+.cw-intro::after {
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    display: block;
+    background: linear-gradient(180deg, rgba(12, 15, 12, .26), rgba(12, 15, 12, .05) 42%, rgba(10, 13, 10, .62));
+    content: "";
+    pointer-events: none;
+}
+.cw-intro-video { filter: blur(4px) saturate(.82) brightness(.72); }
 
 .cw-intro-content {
     position: relative;
     display: flex;
     flex: 1;
     flex-direction: column;
-    width: min(100%, 440px);
+    width: min(100%, 460px);
     min-height: 0;
     margin: 0 auto;
     opacity: 0;
@@ -1438,8 +1464,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-intro-heading {
     display: grid;
     flex: 1;
-    min-height: 190px;
-    padding: 20px 0;
+    min-height: 220px;
+    padding: 24px 0 18px;
     place-content: center;
     justify-items: center;
     text-align: center;
@@ -1465,23 +1491,35 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     letter-spacing: .2em;
 }
 
+.cw-intro-tagline {
+    max-width: 24ch;
+    margin: 22px auto 0;
+    color: rgba(255, 255, 255, .9);
+    font-size: 15px;
+    font-weight: 680;
+    line-height: 1.55;
+    letter-spacing: -.02em;
+    word-break: keep-all;
+}
+
 .cw-intro-copy {
-    margin: 16px auto 0;
-    padding: 5px 14px;
-    border-radius: 999px;
-    background: #ffffff;
-    border: 1px solid #e5e7e2;
-    color: #202622;
-    font-size: 12.5px;
-    font-weight: 700;
-    letter-spacing: .01em;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, .08);
+    margin: 10px auto 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: rgba(255, 255, 255, .64);
+    font-size: 12px;
+    font-weight: 620;
+    letter-spacing: .015em;
+    box-shadow: none;
 }
 
 .cw-home-start {
     display: grid;
     width: 100%;
-    margin-bottom: 12px;
+    margin-bottom: 0;
+    gap: 0;
 }
 
 .cw-home-start .cw-test-action {
@@ -1512,8 +1550,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     justify-content: center;
     gap: 8px;
     width: 100%;
-    margin-top: 12px;
-    padding: 0 4px;
+    margin-top: 14px;
+    padding: 14px 2px 0;
+    border-top: 1px solid rgba(255, 255, 255, .18);
     color: rgba(255, 255, 255, .82);
     font-size: 12px;
     font-weight: 600;
@@ -1531,7 +1570,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     white-space: nowrap;
 }
 .cw-home-auth-inline button {
-    padding: 3px 10px;
+    padding: 5px 10px;
     border: 1px solid rgba(255, 255, 255, .28);
     border-radius: 6px;
     background: rgba(255, 255, 255, .15);
@@ -1543,6 +1582,15 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     white-space: nowrap;
     transition: background .12s ease;
 }
+.cw-home-copyright {
+    margin: 13px auto 0;
+    color: rgba(255, 255, 255, .43);
+    font-size: 9px;
+    font-weight: 560;
+    letter-spacing: .025em;
+    text-align: center;
+}
+.cw-intro.has-result .cw-intro-tagline { display: none; }
 .cw-home-auth-inline button:hover {
     background: rgba(255, 255, 255, .25);
 }

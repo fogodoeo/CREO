@@ -445,7 +445,7 @@ test('CREWARTS uses one result journey and unlocks member detail by phone', () =
     assert.match(html, /입력하신 번호는 가입 확인 외에 저장되지 않아요\./);
     assert.match(html, /<label for="member-phone">휴대전화번호<\/label>/);
     assert.match(html, /id="band-connection-status">/);
-    assert.match(html, /id="home-band-title">BAND 회원 확인/);
+    assert.match(html, /id="home-band-title">회원 확인 후 기숙사와 전체 분석 보기/);
     assert.doesNotMatch(html, /cw-band-identity|band-page-title|크레와트 커뮤니티/);
     assert.doesNotMatch(html, /CREWARTS COMMUNITY|<h1 id="band-page-title">BAND<\/h1>|>MEMBERSHIP</);
     assert.doesNotMatch(html, /BAND 가입 번호를 확인할게요|가입 승인된 BAND 프로필|설문 답변·결과와 함께 저장되지 않습니다/);
@@ -482,10 +482,10 @@ test('CREWARTS uses one result journey and unlocks member detail by phone', () =
 test('CREWARTS home shows the saved result and only a masked authenticated phone', () => {
     const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey.html'), 'utf8');
     const script = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey.js'), 'utf8');
-    for (const id of ['auth-phone-number', 'auth-phone-edit', 'auth-phone-clear', 'home-result-card', 'home-retest', 'home-house-seal', 'home-house-name', 'app-nav']) {
+    for (const id of ['auth-phone-number', 'auth-phone-edit', 'auth-phone-clear', 'home-result-card', 'home-retest', 'home-house-swatch', 'home-house-name', 'app-nav']) {
         assert.match(html, new RegExp(`id=["']${id}["']`));
     }
-    assert.match(html, /MY CREWART PROFILE/);
+    assert.match(html, /나의 크레 성향/);
     assert.match(html, /다시 시작/);
     assert.match(html, /data-nav="home"[\s\S]*data-nav="result"/);
     assert.doesNotMatch(html, /data-nav="band"/);
@@ -570,7 +570,11 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /KAKAO_JS_KEY/);
     assert.match(script, /const SURVEY_URL = 'https:\/\/creok\.onrender\.com\/crewart-survey\.html'/);
     assert.doesNotMatch(script, /const SURVEY_URL = new URL\([^\n]*document\.baseURI/);
-    assert.match(html, /crewart-survey\.js\?v=20260815-suspense-suite-v57/);
+    assert.match(script, /function createTrackedShareUrl\(\)[\s\S]*createReferralId\(\)[\s\S]*trackReferral\('share'/);
+    assert.match(script, /searchParams\.set\('src', 'kakao'\)[\s\S]*searchParams\.set\('sid', id\)/);
+    assert.match(script, /trackReferral\('verified', \{ authenticated: true \}\)/);
+    assert.match(script, /keepalive:\s*true/);
+    assert.match(html, /crewart-survey\.js\?v=20260815-home-polish-v59/);
     assert.match(script, /function renderUnifiedResult\(profile, house\)/);
     assert.doesNotMatch(script, /resultViewVersion|resultViewFromLocation|changeResultView|report=deep|set-result-version/);
     assert.match(script, /function renderResult\(options = \{\}\)[\s\S]*renderUnifiedResult\(profile, house\);/);
@@ -671,9 +675,9 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.doesNotMatch(script, /크레\s*MBTI|나의 크레 MBTI|평소 MBTI/i);
     assert.match(script, /function typeCharacterPath\(code\)/);
     assert.match(script, /TYPE_CHARACTER_ROOT = 'assets\/crewart-types\/'/);
-    assert.match(html, /crewart-survey-core\.js\?v=20260815-suspense-suite-v57/);
-    assert.match(html, /crewart-survey-v4\.css\?v=20260815-suspense-suite-v57/);
-    assert.match(html, /id="start-button"[^>]*>[\s\S]*시작하기/);
+    assert.match(html, /crewart-survey-core\.js\?v=20260815-home-polish-v59/);
+    assert.match(html, /crewart-survey-v4\.css\?v=20260815-home-polish-v59/);
+    assert.match(html, /id="start-button"[^>]*>[\s\S]*성향 테스트 시작/);
     assert.match(html, /id="home-retest"[^>]*>다시 시작/);
     assert.doesNotMatch(html, /start-button-v2|home-retest-v1|Ver 1 시작|Ver 2 시작/);
     assert.match(script, /function startCurrentSurvey\(\)[\s\S]*Core\.getSurveyVersion\('v2'\)\.questionsFile/);
@@ -710,13 +714,14 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(html, /property="og:url" content="https:\/\/creok\.onrender\.com\/crewart-survey\.html"/);
     assert.match(html, /rel="canonical" href="https:\/\/creok\.onrender\.com\/crewart-survey\.html"/);
     assert.deepEqual(
-        fs.readdirSync(characterDirectory).filter(file => file.endsWith('.png')).sort(),
-        characterCodes.map(code => `crewart-type-${code}.png`).sort()
+        fs.readdirSync(characterDirectory).filter(file => file.endsWith('.webp')).sort(),
+        characterCodes.map(code => `crewart-type-${code}.webp`).sort()
     );
     characterCodes.forEach(code => {
-        const png = fs.readFileSync(path.join(characterDirectory, `crewart-type-${code}.png`));
-        assert.equal(png.subarray(1, 4).toString('ascii'), 'PNG');
-        assert.equal(png[25], 6, `${code} character should be RGBA PNG`);
+        const webp = fs.readFileSync(path.join(characterDirectory, `crewart-type-${code}.webp`));
+        assert.equal(webp.subarray(0, 4).toString('ascii'), 'RIFF');
+        assert.equal(webp.subarray(8, 12).toString('ascii'), 'WEBP');
+        assert.ok(webp.length < 250_000, `${code} character should stay lightweight`);
     });
     assert.match(script, /root\.style\.setProperty\('--axis-progress', axisProgress\)/);
     assert.doesNotMatch(script, /dot\.addEventListener\('click'/);

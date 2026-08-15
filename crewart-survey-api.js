@@ -9,6 +9,14 @@ const CONTENT_UPDATED_KEY = 'crewart_mbti_content_updated_at';
 const LEGACY_RESPONSES_KEY = 'crewart_survey_responses';
 const RESPONSE_PREFIX = 'crewart_survey_response_entry_';
 const RESPONSE_LIMIT = 500;
+const REFERRAL_PREFIX = 'crewart_referral_v1_';
+const REFERRAL_LIMIT = 1000;
+const REFERRAL_EVENTS = Object.freeze({
+    share: 'sharedAt',
+    landing: 'landedAt',
+    band_click: 'bandClickedAt',
+    verified: 'verifiedAt'
+});
 const HOUSE_ASSIGNMENT_VERSION = 'balanced-v1';
 const MBTI_PATTERN = /^[EI][SN][TF][JP]$/;
 const AXIS_PAIRS = [['E', 'I'], ['S', 'N'], ['T', 'F'], ['J', 'P']];
@@ -59,6 +67,26 @@ function exactInteger(value, minimum, maximum) {
 function validDate(value, fallback) {
     const time = Date.parse(String(value || ''));
     return Number.isFinite(time) ? new Date(time).toISOString() : fallback;
+}
+
+function normalizeReferralId(value) {
+    const id = cleanText(value, 64);
+    return /^[a-zA-Z0-9_-]{16,64}$/.test(id) ? id : '';
+}
+
+function summarizeReferrals(rows) {
+    const entries = rows.map((row) => jsonParse(row.value, null)).filter(Boolean);
+    const counts = {
+        shared: entries.filter((entry) => entry.sharedAt).length,
+        landed: entries.filter((entry) => entry.landedAt).length,
+        bandClicked: entries.filter((entry) => entry.bandClickedAt).length,
+        verified: entries.filter((entry) => entry.verifiedAt).length
+    };
+    return {
+        counts,
+        verifiedConversionRate: counts.landed ? Math.round((counts.verified / counts.landed) * 1000) / 10 : 0,
+        entries: entries.sort((left, right) => String(right.updatedAt).localeCompare(String(left.updatedAt)))
+    };
 }
 
 function normalizeAxisScores(input) {
@@ -303,6 +331,7 @@ function createCrewartSurveyApi(options = {}) {
     let bootstrapCache = null;
     let bootstrapRequest = null;
     let assignmentQueue = Promise.resolve();
+    let referralQueue = Promise.resolve();
     if (!repository) throw new Error('repository is required');
 
     function allowSubmission(subject) {
@@ -349,6 +378,45 @@ function createCrewartSurveyApi(options = {}) {
         return pending;
     }
 
+    function serializeReferral(task) {
+        const pending = referralQueue.then(task, task);
+        referralQueue = pending.catch(() => undefined);
+        return pending;
+    }
+
+    async function recordReferral(input, authenticatedSubject = '') {
+        const shareId = normalizeReferralId(input?.shareId);
+        const eventName = cleanText(input?.event, 24);
+        const timestampField = REFERRAL_EVENTS[eventName];
+        if (!shareId || !timestampField) {
+            const error = new Error('공유 추적 정보 형식이 올바르지 않습니다.');
+            error.status = 422;
+            throw error;
+        }
+        if (eventName === 'verified' && !authenticatedSubject) {
+            const error = new Error('BAND 회원 확인이 필요합니다.');
+            error.status = 401;
+            throw error;
+        }
+        return serializeReferral(async () => {
+            const key = `${REFERRAL_PREFIX}${shareId}`;
+            const rows = await repository.getRowsByKeys([key]);
+            const previous = jsonParse(rows[0]?.value, {});
+            if (previous[timestampField]) return previous;
+            const nowIso = new Date(now()).toISOString();
+            const next = {
+                shareId,
+                source: cleanText(input?.source, 24) || 'kakao',
+                createdAt: previous.createdAt || nowIso,
+                ...previous,
+                [timestampField]: nowIso,
+                updatedAt: nowIso
+            };
+            await repository.upsertRows([{ key, value: JSON.stringify(next) }]);
+            return next;
+        });
+    }
+
     async function handle(req, res, url) {
         if (!url.pathname.startsWith('/api/crewart-survey/')) return false;
         if (!requestOriginAllowed(req)) {
@@ -360,6 +428,30 @@ function createCrewartSurveyApi(options = {}) {
                 replyJson(res, 200, await bootstrap(), {
                     'Cache-Control': 'public, max-age=15, stale-while-revalidate=45'
                 });
+                return true;
+            }
+            if (url.pathname === '/api/crewart-survey/referrals' && req.method === 'POST') {
+                const body = await readJson(req);
+                let authenticatedSubject = '';
+                if (cleanText(body?.event, 24) === 'verified') {
+                    const secret = String(bandMembership?.config?.sessionSecret || '');
+                    try { authenticatedSubject = verifyToken(bearerToken(req), secret, now()).sub; }
+                    catch {
+                        replyJson(res, 401, { error: 'BAND 회원 확인 시간이 만료됐어요.' });
+                        return true;
+                    }
+                }
+                await recordReferral(body, authenticatedSubject);
+                replyJson(res, 202, { accepted: true });
+                return true;
+            }
+            if (url.pathname === '/api/crewart-survey/referrals' && req.method === 'GET') {
+                if (typeof isAdmin !== 'function' || !await isAdmin(req)) {
+                    replyJson(res, 401, { error: '관리자 인증이 필요합니다.' });
+                    return true;
+                }
+                const rows = await repository.listRowsByPrefix(REFERRAL_PREFIX, REFERRAL_LIMIT);
+                replyJson(res, 200, summarizeReferrals(rows));
                 return true;
             }
             if (url.pathname === '/api/crewart-survey/content' && req.method === 'GET') {
@@ -505,10 +597,12 @@ module.exports = {
     CONTENT_UPDATED_KEY,
     HOUSE_ASSIGNMENT_VERSION,
     LEGACY_RESPONSES_KEY,
+    REFERRAL_PREFIX,
     RESPONSE_PREFIX,
     aggregateResponses,
     chooseLeastPopulatedHouse,
     createCrewartSurveyApi,
     sanitizeManagedContent,
-    sanitizeSubmission
+    sanitizeSubmission,
+    summarizeReferrals
 };
