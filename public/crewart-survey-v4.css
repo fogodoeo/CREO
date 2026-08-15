@@ -1177,7 +1177,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     .cw-result-teaser-lock { grid-template-columns: 42px minmax(0, 1fr); padding: 14px; border-radius: 18px; }
     .cw-result-teaser-lock > img { width: 42px; height: 42px; }
     .cw-result-teaser-lock button { grid-column: 1 / -1; width: 100%; }
-    .cw-story-track { height: 480svh; }
+    .cw-story-track { height: 680svh; }
     .cw-story-topbar { padding: 0 14px; }
     .cw-story-scene { width: min(calc(100% - 28px), 560px); }
     .cw-story-result-hero { width: min(100%, 390px); margin-bottom: clamp(20px, 3svh, 30px); }
