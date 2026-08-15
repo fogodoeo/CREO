@@ -498,6 +498,8 @@ test('CREWARTS home shows the saved result and only a masked authenticated phone
     assert.match(script, /if \(bandAuthToken && !bandAuthPhoneMask\)[\s\S]*removeItem\(MEMBERSHIP_STORAGE_KEY\)/);
     assert.match(script, /function saveLastResult/);
     assert.match(script, /function restoreLastResult/);
+    assert.match(script, /function initialize\(\)[\s\S]*else if \(loadLastResult\(\)\)[\s\S]*restoreLastResult\(\{ animate: false \}\)[\s\S]*else \{[\s\S]*renderHome\(\)/);
+    assert.match(script, /replaceTabHistory\(navigationTabForStage\(\)\)[\s\S]*syncThemeColor\(`\$\{currentStage\(\)\}-screen`\)/);
     assert.match(script, /function editMembershipAccess\(\)[\s\S]*editingMembership = true[\s\S]*openMemberCheck\(\)/);
     assert.match(script, /function clearMembershipAccess\(\)[\s\S]*removeItem\(MEMBERSHIP_STORAGE_KEY\)[\s\S]*removeItem\(MEMBERSHIP_PHONE_STORAGE_KEY\)/);
     assert.doesNotMatch(script, /확인된 회원으로 결과를 바로 볼 수 있어요/);
@@ -596,7 +598,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(css, /\.cw-intro-tagline\s*\{[^}]*white-space:\s*nowrap/);
     assert.match(css, /\.cw-member-dialog \.cw-member-input-group\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) 68px/);
     assert.match(html, /crewart-survey-v4\.css\?v=20260815-band-share-v87/);
-    assert.match(html, /crewart-survey\.js\?v=20260815-band-result-share-v88/);
+    assert.match(html, /crewart-survey\.js\?v=20260815-result-first-v89/);
     assert.match(script, /function renderUnifiedResult\(profile, house, options = \{\}\)/);
     assert.doesNotMatch(script, /resultViewVersion|resultViewFromLocation|changeResultView|report=deep|set-result-version/);
     assert.match(script, /function renderResult\(options = \{\}\)[\s\S]*renderUnifiedResult\(profile, house\);/);

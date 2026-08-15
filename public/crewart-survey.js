@@ -2462,12 +2462,14 @@
             assignedHouseKey = choosePreviewHouse();
             renderResult({ animate: false });
             setScreen('result-screen');
+        } else if (loadLastResult()) {
+            restoreLastResult({ animate: false });
         } else {
             renderHome();
         }
         updatePersistentActions();
         replaceTabHistory(navigationTabForStage());
-        syncThemeColor('intro-screen');
+        syncThemeColor(`${currentStage()}-screen`);
         const start = element('start-button');
         if (start) start.disabled = true;
         playWordmark();
