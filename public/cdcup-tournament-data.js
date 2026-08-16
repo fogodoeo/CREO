@@ -204,7 +204,28 @@
         return standings.map((group, index) => ({ ...group, rank: index + 1, advancing: hasResults && index < 2 }));
     }
 
+    function savedFinalStageEntrants(map) {
+        try {
+            const parsed = JSON.parse(map?.tournament_finalists_4 || 'null');
+            const rows = Array.isArray(parsed) ? parsed : (Array.isArray(parsed?.entrants) ? parsed.entrants : []);
+            if (rows.length !== 8) return [];
+            return rows.map((entry, index) => ({
+                name: String(entry?.name || entry?.member || '').trim(),
+                amount: 0,
+                sourceGroupCode: String(entry?.sourceGroupCode || entry?.groupCode || entry?.code || '').trim().toUpperCase(),
+                sourceGroupName: String(entry?.sourceGroupName || entry?.groupName || '').trim(),
+                sourceGroupRank: Number(entry?.sourceGroupRank) || 0,
+                seed: index + 1,
+                anonymousCode: String.fromCharCode(65 + index)
+            })).filter(entry => entry.name);
+        } catch (_) {
+            return [];
+        }
+    }
+
     function finalStageEntrants(map, items) {
+        const saved = savedFinalStageEntrants(map || {});
+        if (saved.length === 8) return saved;
         return stageGroupStandings(map || {}, items || [], 8)
             .filter(group => group.advancing)
             .flatMap(group => group.members.map(member => ({
@@ -212,16 +233,23 @@
                 sourceGroupCode: group.code,
                 sourceGroupName: group.name,
                 sourceGroupRank: group.rank
-            })));
+            })))
+            .map((entry, index) => ({
+                ...entry,
+                seed: index + 1,
+                anonymousCode: String.fromCharCode(65 + index)
+            }));
     }
 
     function finalIndividualStandings(map, items, stage = 4) {
         const entrants = finalStageEntrants(map || {}, items || []);
         const roundAmounts = buildRoundAmounts(map || {}, items || []);
-        return entrants.map(entrant => ({
+        const rows = entrants.map(entrant => ({
             ...entrant,
             amount: roundAmount(roundAmounts, entrant.name, stage) || 0
-        })).sort((a, b) => b.amount - a.amount || a.name.localeCompare(b.name, 'ko'))
+        }));
+        const hasResults = rows.some(entrant => entrant.amount > 0);
+        return rows.sort((a, b) => (hasResults ? b.amount - a.amount : 0) || a.seed - b.seed)
             .map((entrant, index) => ({ ...entrant, rank: index + 1, winner: index === 0 && entrant.amount > 0 }));
     }
 
@@ -255,6 +283,7 @@
         buildRoundAmounts,
         parseStageGroups,
         stageGroupStandings,
+        savedFinalStageEntrants,
         finalStageEntrants,
         finalIndividualStandings,
         isLegacySeason,

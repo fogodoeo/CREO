@@ -1674,6 +1674,9 @@ async function archiveAndPrepareMedalDay(title, pw) {
         await updateConfigs({
             active_tournament: '4',
             bracket_view_round: '4',
+            bracket_full_blind: '1',
+            bracket_full_show: '1',
+            bracket_live_show: '0',
             blind_totals_stage: '4',
             blind_totals_show: '1',
             tournament_format: 'three-round-team-final',

@@ -25,7 +25,7 @@
     </script>
     <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
     <script src="channel-broadcast-bridge.js?v=20260815-channel-isolation-v1"></script>
-    <script src="cdcup-tournament-data.js?v=20260809-three-round-v2"></script>
+    <script src="cdcup-tournament-data.js?v=20260817-round3-grid-v1"></script>
     <script src="event-modules.js?v=20260710-crebti3"></script>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet">
@@ -659,6 +659,14 @@
         .t-stage-group-members { display:flex; flex-wrap:wrap; gap:5px; }
         .t-stage-group-member { padding:4px 7px; border-radius:6px; background:#f1f5f9; color:#334155; font-size:11px; font-weight:700; }
         .t-stage-group-member.leader { background:#fff7ed; color:#9a3412; }
+        .t-stage-groups.t-final-grid { grid-template-columns:repeat(4,minmax(0,1fr)); }
+        .t-final-grid .t-stage-group { min-height:92px; display:flex; flex-direction:column; justify-content:space-between; }
+        .t-final-grid .t-stage-group-head { margin:0; align-items:flex-start; }
+        .t-final-grid .t-final-code { display:block; margin-bottom:5px; color:#2563eb; font-size:10px; font-weight:950; letter-spacing:.14em; }
+        .t-final-grid .t-final-rank { flex:0 0 auto; min-width:34px; text-align:right; color:#0f172a; font-size:18px; font-weight:950; }
+        .t-final-grid .t-final-amount { margin-top:10px; color:#64748b; font-size:11px; font-weight:850; text-align:right; }
+        .t-final-grid .t-stage-group:first-child { border-color:#d9b05c; background:#fffbeb; box-shadow:0 0 0 1px rgba(217,176,92,.16); }
+        @media (max-width:1100px){.t-stage-groups.t-final-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
         @media (max-width:900px){.t-stage-groups{grid-template-columns:1fr}}
 
         .t-header {
@@ -3530,7 +3538,7 @@
             if (tScale === 4 && String(tConfigMap.tournament_format || '') === 'three-round-team-final') {
                 const finalists = window.CdcupTournamentData?.finalIndividualStandings?.(tConfigMap, tAllItems, 4) || [];
                 tree.innerHTML = finalists.length
-                    ? `<div class="t-stage-groups" style="grid-column:1/-1;width:100%;">${finalists.map(entry => `<article class="t-stage-group"><div class="t-stage-group-head"><strong>${entry.rank}위 · ${tEsc(entry.name)}</strong><span>${Number(entry.amount || 0).toLocaleString('ko-KR')}만원</span></div><div class="t-stage-group-members"><span class="t-stage-group-member leader">${tEsc(entry.sourceGroupName)} · 개인전</span></div></article>`).join('')}</div>`
+                    ? `<div class="t-stage-groups t-final-grid" style="grid-column:1/-1;width:100%;">${finalists.map(entry => `<article class="t-stage-group"><div class="t-stage-group-head"><div><span class="t-final-code">ENTRY ${tEsc(entry.anonymousCode || '')}</span><strong>${tEsc(entry.name)}</strong></div><span class="t-final-rank">${entry.rank}위</span></div><div class="t-final-amount">${Number(entry.amount || 0).toLocaleString('ko-KR')}만원</div></article>`).join('')}</div>`
                     : '<div class="t-item-empty" style="grid-column:1/-1;">2라운드 합산 결과가 입력되면 상위 2팀 소속 8개 업체가 자동 표시됩니다.</div>';
                 tRenderItemSetup();
                 return;

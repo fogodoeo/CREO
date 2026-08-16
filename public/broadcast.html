@@ -3617,6 +3617,70 @@
             background: rgba(255, 255, 255, var(--full-card-opacity, .045)) !important;
         }
         #bracket-page-tree-full .sports-results-grid { gap: calc(var(--bracket-fs) * .65); }
+        #bracket-page-tree-full .sports-results-grid.individual-ranking-grid {
+            grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+            grid-template-rows: repeat(2, minmax(0, 1fr));
+            min-height: min(66vh, 650px);
+        }
+        #bracket-page-tree-full .individual-standing-card {
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            min-width: 0;
+            padding: calc(var(--bracket-fs) * .92);
+            border: 1px solid rgba(195,154,74,.2) !important;
+            background:
+                linear-gradient(145deg, rgba(255,255,255,.062), rgba(255,255,255,.026)) !important;
+        }
+        #bracket-page-tree-full .individual-standing-card.is-current {
+            border-color: var(--cdcup-gold) !important;
+            background: linear-gradient(145deg, rgba(195,154,74,.16), rgba(255,255,255,.035)) !important;
+        }
+        #bracket-page-tree-full .individual-rank {
+            color: rgba(255,255,255,.48);
+            font-size: clamp(28px, calc(var(--bracket-fs) * 2.55), 54px);
+            font-weight: 950;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: -.06em;
+            line-height: 1;
+        }
+        #bracket-page-tree-full .individual-standing-card.is-current .individual-rank { color: var(--cdcup-gold-light); }
+        #bracket-page-tree-full .individual-identity {
+            align-self: center;
+            min-width: 0;
+        }
+        #bracket-page-tree-full .individual-entry-code {
+            display: block;
+            margin-bottom: calc(var(--bracket-fs) * .38);
+            color: var(--cdcup-gold);
+            font-size: clamp(10px, calc(var(--bracket-fs) * .66), 15px);
+            font-weight: 900;
+            letter-spacing: .18em;
+        }
+        #bracket-page-tree-full .individual-name {
+            display: block;
+            overflow: hidden;
+            color: #fff;
+            font-size: clamp(20px, calc(var(--bracket-fs) * 1.7), 38px);
+            font-weight: 930;
+            letter-spacing: -.035em;
+            line-height: 1.16;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        #bracket-page-tree-full .individual-amount {
+            display: flex;
+            align-items: baseline;
+            justify-content: flex-end;
+            gap: calc(var(--bracket-fs) * .22);
+            color: var(--cdcup-gold-light);
+            font-variant-numeric: tabular-nums;
+        }
+        #bracket-page-tree-full .individual-amount strong {
+            font-size: clamp(28px, calc(var(--bracket-fs) * 2.25), 48px);
+            font-weight: 950;
+            letter-spacing: -.055em;
+        }
+        #bracket-page-tree-full .individual-amount small { color: rgba(255,255,255,.48); font-size:.45em; font-weight:800; }
         #bracket-page-tree-full .sports-match-meta {
             min-height: calc(var(--bracket-fs) * 2.7);
             padding-inline: calc(var(--bracket-fs) * .9);
@@ -3699,6 +3763,15 @@
             }
             #bracket-page-tree-full .sports-results-board { padding: 8px; }
             #bracket-page-tree-full .sports-results-grid { grid-template-columns: 1fr !important; gap: 7px; }
+            #bracket-page-tree-full .sports-results-grid.individual-ranking-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                grid-template-rows: repeat(4, minmax(0, 1fr));
+                min-height: 82vh;
+            }
+            #bracket-page-tree-full .individual-standing-card { padding: 10px; }
+            #bracket-page-tree-full .individual-rank { font-size: 25px; }
+            #bracket-page-tree-full .individual-name { font-size: 18px; }
+            #bracket-page-tree-full .individual-amount strong { font-size: 24px; }
             #bracket-page-tree-full .sports-match-meta { min-height: 34px; padding-inline: 11px; font-size: 18px; }
             #bracket-page-tree-full .team-progress-member { min-height: 30px; padding: 5px 10px; font-size: 15px; }
         }
@@ -4045,6 +4118,21 @@
                 return groups.length ? { ...parsed, groups } : null;
             } catch (_) {
                 return null;
+            }
+        }
+
+        function parseBroadcastFinalists(configMap) {
+            try {
+                const parsed = JSON.parse(configMap?.tournament_finalists_4 || 'null');
+                const rows = Array.isArray(parsed) ? parsed : (Array.isArray(parsed?.entrants) ? parsed.entrants : []);
+                if (rows.length !== 8) return [];
+                return rows.map((entry, index) => ({
+                    name: String(entry?.name || entry?.member || '').trim(),
+                    anonymousCode: String.fromCharCode(65 + index),
+                    seed: index + 1
+                })).filter(entry => entry.name);
+            } catch (_) {
+                return [];
             }
         }
 
@@ -7616,6 +7704,10 @@
                 && tree.querySelector('.sports-results-board')) {
                 return;
             }
+            const previousPositions = new Map([...tree.querySelectorAll('.individual-standing-card[data-entrant]')].map(card => [
+                card.dataset.entrant,
+                card.getBoundingClientRect()
+            ]));
             const isFirstRender = tree.dataset.threeRoundRendered !== '1';
             const board = document.createElement('section');
             board.className = 'sports-results-board' + (isFirstRender ? ' animate-in' : '');
@@ -7643,28 +7735,50 @@
                     grid.appendChild(card);
                 });
             } else {
-                const groups = parseBroadcastStageGroups(map || {}, 8)?.groups || [];
-                const teamTotals = {};
-                const roundTwoItems = scopeTournamentItems(items || [], 8);
-                roundTwoItems.forEach(item => {
-                    const name = String(item.company || '').trim();
-                    teamTotals[name] = (teamTotals[name] || 0) + (isSoldForTotals(item) ? amount(item) : 0);
-                });
-                const entrants = groups.map(group => ({ ...group, total: group.members.reduce((sum, name) => sum + (teamTotals[name] || 0), 0) }))
-                    .sort((a, b) => b.total - a.total || a.code.localeCompare(b.code, 'en')).slice(0, 2)
-                    .flatMap(group => group.members.map(name => ({ name, groupName: group.name, total: totals[name] || 0 })))
-                    .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name, 'ko'));
-                grid.style.gridTemplateColumns = 'repeat(2,minmax(0,1fr))';
+                let entrants = parseBroadcastFinalists(map || {});
+                if (!entrants.length) {
+                    const groups = parseBroadcastStageGroups(map || {}, 8)?.groups || [];
+                    let savedRoundAmounts = {};
+                    try { savedRoundAmounts = JSON.parse(map?.tournament_round_amounts_8 || '{}') || {}; } catch (_) {}
+                    entrants = groups.map(group => ({
+                        ...group,
+                        total: group.members.reduce((sum, name) => sum + Number(savedRoundAmounts[name] || 0), 0)
+                    })).sort((a, b) => b.total - a.total || a.code.localeCompare(b.code, 'en')).slice(0, 2)
+                        .flatMap(group => group.members.map(name => ({ name })))
+                        .map((entry, index) => ({ ...entry, anonymousCode: String.fromCharCode(65 + index), seed: index + 1 }));
+                }
+                entrants = entrants.map(entry => ({ ...entry, total: totals[entry.name] || 0 }));
+                const hasIndividualResults = entrants.some(entry => entry.total > 0);
+                entrants.sort((a, b) => (hasIndividualResults ? b.total - a.total : 0) || a.seed - b.seed);
+                grid.classList.add('individual-ranking-grid');
                 entrants.forEach((entry, index) => {
                     const card = document.createElement('article');
-                    card.className = 'sports-match-card' + (index === 0 && entry.total > 0 ? ' is-current' : '');
-                    card.innerHTML = `<div class="sports-match-meta"><strong>${hideCompanies ? `진출 업체 ${index + 1}` : esc(entry.name)}</strong><strong class="team-progress-amount">${formatBlindTotalAmount(entry.total)}만원</strong></div>`;
+                    card.className = 'sports-match-card individual-standing-card' + (index === 0 && entry.total > 0 ? ' is-current' : '');
+                    card.dataset.entrant = entry.anonymousCode;
+                    card.style.setProperty('--match-index', index);
+                    card.innerHTML = `<span class="individual-rank">${index + 1}</span><div class="individual-identity"><small class="individual-entry-code">ENTRY ${esc(entry.anonymousCode)}</small><strong class="individual-name">${hideCompanies ? `업체 ${esc(entry.anonymousCode)}` : esc(entry.name)}</strong></div><div class="individual-amount"><strong>${formatBlindTotalAmount(entry.total)}</strong><small>만원</small></div>`;
                     grid.appendChild(card);
                 });
                 if (!entrants.length) grid.innerHTML = '<div class="blind-total-empty" style="grid-column:1/-1">2라운드 결과 집계 후 진출 업체가 표시됩니다.</div>';
             }
             board.appendChild(grid);
             tree.replaceChildren(board);
+            if (!isFirstRender && previousPositions.size && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                requestAnimationFrame(() => {
+                    grid.querySelectorAll('.individual-standing-card[data-entrant]').forEach(card => {
+                        const previous = previousPositions.get(card.dataset.entrant);
+                        if (!previous || typeof card.animate !== 'function') return;
+                        const current = card.getBoundingClientRect();
+                        const x = previous.left - current.left;
+                        const y = previous.top - current.top;
+                        if (Math.abs(x) < 1 && Math.abs(y) < 1) return;
+                        card.animate([
+                            { transform: `translate(${x}px, ${y}px)`, zIndex: 3 },
+                            { transform: 'translate(0, 0)', zIndex: 1 }
+                        ], { duration: 560, easing: 'cubic-bezier(.16,1,.3,1)' });
+                    });
+                });
+            }
             tree.dataset.threeRoundSignature = resultSignature;
             tree.dataset.threeRoundRendered = '1';
         }

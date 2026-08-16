@@ -78,3 +78,30 @@ test('third-round entrants come only from the current top two second-round group
     const entrants = data.finalStageEntrants(map, []);
     assert.deepEqual(Array.from(entrants, entry => entry.name), ['B1', 'B2', 'B3', 'B4', 'C1', 'C2', 'C3', 'C4']);
 });
+
+test('archived third-round entrants keep stable A-H identities and reorder only by individual totals', () => {
+    const data = loadTournamentData();
+    const entrants = Array.from({ length: 8 }, (_, index) => ({ member: `업체${index + 1}` }));
+    const map = {
+        tournament_season: '2',
+        active_tournament: '4',
+        tournament_finalists_4: JSON.stringify({ entrants }),
+        tournament_round_amounts_4: JSON.stringify({ 업체6: 80, 업체2: 50, 업체8: 20 })
+    };
+    const seeded = data.finalStageEntrants(map, []);
+    assert.deepEqual(Array.from(seeded, entry => entry.anonymousCode), ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']);
+    const standings = data.finalIndividualStandings(map, [], 4);
+    assert.deepEqual(Array.from(standings, entry => entry.name), ['업체6', '업체2', '업체8', '업체1', '업체3', '업체4', '업체5', '업체7']);
+    assert.equal(standings[0].anonymousCode, 'F');
+    assert.equal(standings[1].anonymousCode, 'B');
+});
+
+test('third-round entrants stay in A-H order before the first result', () => {
+    const data = loadTournamentData();
+    const entrants = Array.from({ length: 8 }, (_, index) => ({ member: `참가${index + 1}` }));
+    const standings = data.finalIndividualStandings({
+        active_tournament: '4',
+        tournament_finalists_4: JSON.stringify({ entrants })
+    }, [], 4);
+    assert.deepEqual(Array.from(standings, entry => entry.anonymousCode), ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']);
+});
