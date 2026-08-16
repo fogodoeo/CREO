@@ -606,7 +606,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.doesNotMatch(html, /내 공유 성과|<header><span aria-hidden="true">✓<\/span>/);
     assert.match(css, /\.cw-intro-tagline\s*\{[^}]*white-space:\s*nowrap/);
     assert.match(css, /\.cw-member-dialog \.cw-member-input-group\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) 68px/);
-    assert.match(html, /crewart-survey-v4\.css\?v=20260816-home-actions-v89/);
+    assert.match(html, /crewart-survey-v4\.css\?v=20260817-home-actions-v90/);
     assert.match(html, /crewart-survey\.js\?v=20260816-band-home-actions-v94/);
     assert.match(script, /function renderUnifiedResult\(profile, house, options = \{\}\)/);
     assert.doesNotMatch(script, /resultViewVersion|resultViewFromLocation|changeResultView|report=deep|set-result-version/);
@@ -726,10 +726,13 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /function typeCharacterPath\(code\)/);
     assert.match(script, /TYPE_CHARACTER_ROOT = 'assets\/crewart-types\/'/);
     assert.match(html, /crewart-survey-core\.js\?v=20260815-random-timing-v80/);
-    assert.match(html, /crewart-survey-v4\.css\?v=20260816-home-actions-v89/);
+    assert.match(html, /crewart-survey-v4\.css\?v=20260817-home-actions-v90/);
     assert.match(script, /position: firstSelected \? Math\.min\(rawPosition, 34\) : Math\.max\(rawPosition, 66\)/);
     assert.match(html, /id="start-button"[^>]*>[\s\S]*테스트 시작/);
     assert.match(html, /id="home-auth-button"[^>]*>[\s\S]*회원 확인 후 전체 분석 보기/);
+    assert.match(html, /id="home-auth-button"[^>]*>[\s\S]*band-app-icon-official\.png/);
+    const startButtonMarkup = html.match(/<button[^>]*id="start-button"[^>]*>[\s\S]*?<\/button>/)?.[0] || '';
+    assert.doesNotMatch(startButtonMarkup, /→|<i\b/);
     assert.match(html, /id="band-login-button"[^>]*>[\s\S]*회원 확인 후 전체 분석 보기/);
     assert.doesNotMatch(html, /id="band-login-button"[^>]*>\s*회원 확인\s*<\/button>/);
     assert.match(html, /id="home-retest"[^>]*>다시 테스트하기/);
@@ -745,7 +748,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /choiceLockAttempted[\s\S]*아직 선택할 수 없어요/);
     assert.doesNotMatch(html, /cw-v2-button/);
     assert.doesNotMatch(css, /cw-v2-button|linear-gradient\(135deg, #e11d48, #f97316\)/);
-    assert.match(css, /\.cw-home-start \.cw-test-action\s*\{[^}]*background:\s*rgba\(255, 255, 255, \.96\)/);
+    assert.match(css, /\.cw-home-start \.cw-test-action,\s*\.cw-home-result-actions \.cw-test-action\s*\{[^}]*background:\s*#111411/);
+    assert.match(css, /\.cw-home-analysis-link\s*\{[^}]*border:\s*1px solid rgba\(255, 255, 255, \.46\)[^}]*background:\s*transparent/);
     assert.match(script, /네 답 모두 괜찮습니다\. 평소 먼저 손이 가는 쪽을 골라주세요\./);
     assert.match(script, /두 답이 끌리면 실제 그 순간 가장 먼저 할 행동을 선택해주세요\./);
     assert.doesNotMatch(html, /question-illustration|question-image/);
