@@ -320,14 +320,14 @@
         const startButton = element('start-button');
         const startSpan = startButton?.querySelector('span');
         if (authenticated) {
-            if (startSpan) startSpan.textContent = '다시 테스트하기';
-            if (homeTitle) homeTitle.textContent = bandAuthPhoneMask ? `BAND 연결됨 · ${bandAuthPhoneMask}` : 'BAND 연결됨';
+            if (startSpan) startSpan.textContent = '테스트 시작';
+            if (homeTitle) homeTitle.textContent = result ? '전체 분석 보기' : 'BAND 연결됨';
             if (homeButton) {
                 homeButton.classList.add('is-connected');
             }
         } else {
-            if (startSpan) startSpan.textContent = '테스트 시작하기';
-            if (homeTitle) homeTitle.textContent = 'BAND 로그인';
+            if (startSpan) startSpan.textContent = '테스트 시작';
+            if (homeTitle) homeTitle.textContent = '회원 확인 후 전체 분석 보기';
             if (homeButton) {
                 homeButton.classList.remove('is-connected');
             }
@@ -1014,7 +1014,7 @@
                             </section>
 
                             <section class="cw-story-scene is-house" data-story-scene="house">
-                                <div class="cw-story-house-line"><span>나의 기숙사</span><strong data-house-name data-final-house="${escapeHtml(house.name)}">${escapeHtml(house.name)}</strong></div>
+                                <div class="cw-story-house-line"><span>당신의 기숙사는</span><strong data-house-name data-house-size="${house.name.length <= 4 ? 'short' : house.name.length === 5 ? 'medium' : 'long'}" data-final-house="${escapeHtml(house.name)}">${escapeHtml(house.name)}</strong></div>
                                 <div class="cw-story-final-actions">
                                     <div class="cw-story-share-row">
                                         <button type="button" class="cw-story-kakao" data-action="share"><img src="assets/kakaolink_btn_medium.png" width="24" height="24" alt=""><span data-action-label>카카오톡 공유</span></button>
@@ -2390,7 +2390,8 @@
         element('start-button')?.addEventListener('click', startCurrentSurvey);
         element('home-retest')?.addEventListener('click', startCurrentSurvey);
         element('home-auth-button')?.addEventListener('click', () => {
-            if (hasDetailedAccess()) navigateToTab('band');
+            if (hasDetailedAccess() && result) navigateToTab('result');
+            else if (hasDetailedAccess()) navigateToTab('band');
             else openMemberCheck();
         });
         element('band-login-button')?.addEventListener('click', () => openMemberCheck());

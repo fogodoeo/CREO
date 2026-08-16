@@ -445,7 +445,7 @@ test('CREWARTS uses one result journey and unlocks member detail by phone', () =
     assert.doesNotMatch(html, /입력하신 번호는 가입 확인 외에 저장되지 않아요\./);
     assert.match(html, /<label class="cw-visually-hidden" for="member-phone">휴대전화번호<\/label>/);
     assert.match(html, /id="band-connection-status"/);
-    assert.match(html, /id="home-band-title">BAND 로그인/);
+    assert.match(html, /id="home-band-title">회원 확인 후 전체 분석 보기/);
     assert.match(html, /id="dialog-band-title">BAND 가입 여부 확인/);
     assert.doesNotMatch(html, /cw-band-identity|band-page-title|크레와트 커뮤니티/);
     assert.doesNotMatch(html, /CREWARTS COMMUNITY|<h1 id="band-page-title">BAND<\/h1>|>MEMBERSHIP</);
@@ -598,8 +598,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.doesNotMatch(html, /내 공유 성과|<header><span aria-hidden="true">✓<\/span>/);
     assert.match(css, /\.cw-intro-tagline\s*\{[^}]*white-space:\s*nowrap/);
     assert.match(css, /\.cw-member-dialog \.cw-member-input-group\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) 68px/);
-    assert.match(html, /crewart-survey-v4\.css\?v=20260815-band-share-v87/);
-    assert.match(html, /crewart-survey\.js\?v=20260816-band-101878670-v93/);
+    assert.match(html, /crewart-survey-v4\.css\?v=20260816-home-actions-v89/);
+    assert.match(html, /crewart-survey\.js\?v=20260816-band-home-actions-v94/);
     assert.match(script, /function renderUnifiedResult\(profile, house, options = \{\}\)/);
     assert.doesNotMatch(script, /resultViewVersion|resultViewFromLocation|changeResultView|report=deep|set-result-version/);
     assert.match(script, /function renderResult\(options = \{\}\)[\s\S]*renderUnifiedResult\(profile, house\);/);
@@ -622,9 +622,9 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /나쁜 상성/);
     assert.match(script, /profile\.worstMatch\?\.mbti/);
     assert.match(script, /평균 문항 시간/);
-    assert.match(script, /<span>나의 기숙사<\/span><strong data-house-name/);
+    assert.match(script, /<span>당신의 기숙사는<\/span><strong data-house-name/);
     assert.match(script, /\['RED', 'GREEN', 'BLUE', 'YELLOW', finalHouse\]/);
-    assert.doesNotMatch(script, /결과 미리보기|당신의 기숙사는|>SCROLL</);
+    assert.doesNotMatch(script, /결과 미리보기|>SCROLL</);
     assert.match(script, /data-action="share"[\s\S]*카카오톡 공유/);
     assert.doesNotMatch(script, /data-action="guest-share"|shareGuestResult|preparedKakaoShareGuest/);
     assert.match(script, /class="cw-story-login-gate"[\s\S]*BAND 로그인하고 전체 결과 보기/);
@@ -718,9 +718,12 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /function typeCharacterPath\(code\)/);
     assert.match(script, /TYPE_CHARACTER_ROOT = 'assets\/crewart-types\/'/);
     assert.match(html, /crewart-survey-core\.js\?v=20260815-random-timing-v80/);
-    assert.match(html, /crewart-survey-v4\.css\?v=20260815-band-share-v87/);
+    assert.match(html, /crewart-survey-v4\.css\?v=20260816-home-actions-v89/);
     assert.match(script, /position: firstSelected \? Math\.min\(rawPosition, 34\) : Math\.max\(rawPosition, 66\)/);
-    assert.match(html, /id="start-button"[^>]*>[\s\S]*테스트 시작하기/);
+    assert.match(html, /id="start-button"[^>]*>[\s\S]*테스트 시작/);
+    assert.match(html, /id="home-auth-button"[^>]*>[\s\S]*회원 확인 후 전체 분석 보기/);
+    assert.match(html, /id="band-login-button"[^>]*>[\s\S]*회원 확인 후 전체 분석 보기/);
+    assert.doesNotMatch(html, /id="band-login-button"[^>]*>\s*회원 확인\s*<\/button>/);
     assert.match(html, /id="home-retest"[^>]*>다시 테스트하기/);
     assert.doesNotMatch(html, /start-button-v2|home-retest-v1|Ver 1 시작|Ver 2 시작/);
     assert.match(script, /function startCurrentSurvey\(\)[\s\S]*Core\.getSurveyVersion\('v2'\)\.questionsFile/);
@@ -806,7 +809,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.doesNotMatch(script, /class="cw-axis-poles"|class="cw-axis-pole/);
     assert.doesNotMatch(script, /<i aria-hidden="true">＋<\/i>/);
     assert.doesNotMatch(script, /TRAIT AXES|RESPONSE PAC(?:E|ING)|HOUSE ASSIGNMENT|ASSIGNED HOUSE|TYPE CHARACTER|MEMBER ACCESS/);
-    assert.match(script, /class="cw-story-house-line"[\s\S]*나의 기숙사[\s\S]*\$\{escapeHtml\(house\.name\)\}/);
+    assert.match(script, /class="cw-story-house-line"[\s\S]*당신의 기숙사는[\s\S]*\$\{escapeHtml\(house\.name\)\}/);
+    assert.match(css, /data-house-size="short"[\s\S]*font-size:\s*clamp\(92px, 25vw, 144px\)/);
     assert.match(css, /\.cw-story-cue\s*\{[^}]*bottom:\s*max\(108px, calc\(env\(safe-area-inset-bottom\) \+ 98px\)\)/);
     assert.match(css, /\.cw-story-cue\s*\{[^}]*padding:\s*0[^}]*border:\s*0[^}]*background:\s*transparent[^}]*box-shadow:\s*none/);
     assert.match(css, /\.cw-story-track:not\(\.is-intro-settled\) \.cw-story-cue\s*\{[^}]*opacity:\s*0/);
