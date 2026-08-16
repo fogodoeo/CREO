@@ -1027,8 +1027,8 @@
                                 <div class="cw-story-final-actions">
                                     <div class="cw-story-share-row">
                                         <button type="button" class="cw-story-kakao" data-action="share"><img src="assets/kakaolink_btn_medium.png" width="24" height="24" alt=""><span data-action-label>카카오톡 공유</span></button>
-                                        <button type="button" class="cw-story-link" data-action="share-link"><i aria-hidden="true">↗</i><span data-action-label>링크 공유</span></button>
-                                        <button type="button" class="cw-story-save" data-action="save-image"><i aria-hidden="true">↓</i><span data-action-label>이미지 저장</span></button>
+                                        <button type="button" class="cw-story-link" data-action="share-link"><i aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M10.4 13.6a4 4 0 0 0 5.7 0l2.1-2.1a4 4 0 0 0-5.7-5.7l-1.2 1.2M13.6 10.4a4 4 0 0 0-5.7 0l-2.1 2.1a4 4 0 0 0 5.7 5.7l1.2-1.2"/></svg></i><span data-action-label>링크 공유</span></button>
+                                        <button type="button" class="cw-story-save" data-action="save-image"><i aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 20h14"/></svg></i><span data-action-label>이미지 저장</span></button>
                                     </div>
                                     ${BAND_INTEGRATION_ENABLED ? `<a class="cw-story-band" data-band-prompt href="${escapeHtml(bandTargetUrl)}" target="_blank" rel="noopener noreferrer">
                                         <img src="assets/band-app-icon-official.png?v=20260801-logo-v2" width="40" height="40" alt="">

@@ -2389,3 +2389,64 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-story-house-line strong[data-house-size="short"] { font-size: clamp(92px, 25vw, 144px); }
 .cw-story-house-line strong[data-house-size="medium"] { font-size: clamp(60px, 18vw, 110px); }
 .cw-story-house-line strong[data-house-size="long"] { font-size: clamp(48px, 15vw, 88px); }
+
+/* Share actions: one clear primary action with quieter utilities. */
+.cw-story-share-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+}
+.cw-story-final-actions button {
+    min-height: 48px;
+    padding: 0 16px;
+    border-radius: 15px;
+    font-size: 13.5px;
+}
+.cw-story-final-actions .cw-story-kakao {
+    grid-column: 1 / -1;
+    min-height: 56px;
+    font-size: 15px;
+    box-shadow: 0 9px 24px rgba(64, 56, 0, .10);
+}
+.cw-story-final-actions .cw-story-link,
+.cw-story-final-actions .cw-story-save {
+    border-color: #d9dcd7;
+    background: rgba(255, 255, 255, .84);
+    color: #252a26;
+    box-shadow: 0 6px 18px rgba(24, 31, 27, .045);
+}
+.cw-story-link i,
+.cw-story-save i {
+    width: 20px;
+    height: 20px;
+    border: 0;
+    border-radius: 0;
+}
+.cw-story-link svg,
+.cw-story-save svg,
+.cw-band-link-share-button svg {
+    display: block;
+    width: 19px;
+    height: 19px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.cw-band-share-actions {
+    grid-template-columns: minmax(0, 1.12fr) minmax(0, .88fr);
+    gap: 9px;
+}
+.cw-band-share-button,
+.cw-band-link-share-button {
+    min-height: 50px;
+    border-radius: 15px;
+}
+.cw-band-share-button { box-shadow: 0 8px 20px rgba(64, 56, 0, .08); }
+.cw-band-link-share-button { box-shadow: 0 6px 18px rgba(24, 31, 27, .04); }
+.cw-band-link-share-button i {
+    width: 20px;
+    height: 20px;
+    border: 0;
+    border-radius: 0;
+}
