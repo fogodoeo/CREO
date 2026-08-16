@@ -2450,3 +2450,40 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     border: 0;
     border-radius: 0;
 }
+
+/* Keep utility actions visually light and separate external BAND navigation. */
+.cw-story-final-actions .cw-story-link,
+.cw-story-final-actions .cw-story-save {
+    min-height: 44px;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+}
+.cw-story-final-actions .cw-story-link:hover,
+.cw-story-final-actions .cw-story-save:hover { background: rgba(24, 31, 27, .045); }
+.cw-story-final-actions .cw-story-save { position: relative; }
+.cw-story-final-actions .cw-story-save::before {
+    position: absolute;
+    top: 13px;
+    bottom: 13px;
+    left: -5px;
+    width: 1px;
+    background: #dfe1dc;
+    content: "";
+}
+.cw-story-final-actions .cw-story-band { margin-top: 15px; }
+.cw-story-credit { margin-top: 31px; }
+
+.cw-band-share-actions {
+    grid-template-columns: minmax(0, 1.22fr) minmax(0, .78fr);
+    align-items: center;
+}
+.cw-band-link-share-button {
+    min-height: 44px;
+    padding-right: 8px;
+    padding-left: 8px;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+}
+.cw-band-link-share-button:hover { background: rgba(24, 31, 27, .045); }
