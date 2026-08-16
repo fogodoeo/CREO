@@ -11,6 +11,7 @@ const { createBandOAuth } = require('./band-oauth');
 const { createBandMembership } = require('./band-membership');
 const { createCrewartSurveyApi } = require('./crewart-survey-api');
 const { createPlatformApi } = require('./platform-api');
+const { createCdcupRoundsApi } = require('./cdcup-rounds-api');
 const { SupabaseConfigRepository } = require('./platform-repository');
 const { SQLitePlatformRepository } = require('./sqlite-platform-repository');
 
@@ -27,6 +28,10 @@ const platformRepository = platformStorageMode === 'supabase'
         mirror: process.env.CREO_SUPABASE_MIRROR_ENABLED === 'false' ? null : supabasePlatformRepository
     });
 const platformApi = createPlatformApi({ repository: platformRepository });
+const cdcupRoundsApi = createCdcupRoundsApi({
+    repository: supabasePlatformRepository,
+    isAdmin: platformApi.isAdmin
+});
 const crewartSurveyApi = createCrewartSurveyApi({
     repository: supabasePlatformRepository,
     bandMembership,
@@ -209,6 +214,12 @@ const server = http.createServer(async (req, res) => {
 
         if (url.pathname.startsWith('/api/crewart-survey/')) {
             if (await crewartSurveyApi.handle(req, res, url)) return;
+            sendJson(res, 404, { error: 'Not found' });
+            return;
+        }
+
+        if (url.pathname.startsWith('/api/cdcup/rounds/')) {
+            if (await cdcupRoundsApi.handle(req, res, url)) return;
             sendJson(res, 404, { error: 'Not found' });
             return;
         }
