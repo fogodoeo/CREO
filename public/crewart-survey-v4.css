@@ -2314,11 +2314,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     padding: 0 18px;
     align-items: center;
     justify-content: center;
-    border: 1px solid #111411;
+    border: 1px solid #fff;
     border-radius: 14px;
-    background: #111411;
-    color: #fff;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, .16);
+    background: #fff;
+    color: #111411;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, .14);
     font-family: inherit;
     font-size: 16px;
     font-weight: 820;
@@ -2327,8 +2327,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 }
 .cw-home-start .cw-test-action:hover:not(:disabled),
 .cw-home-result-actions .cw-test-action:hover:not(:disabled) {
-    border-color: #050605;
-    background: #050605;
+    border-color: #f2f3ef;
+    background: #f2f3ef;
 }
 .cw-home-analysis-link {
     display: grid;
@@ -2338,9 +2338,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     grid-template-columns: 28px minmax(0, 1fr) 28px;
     align-items: center;
     gap: 10px;
-    border: 1px solid rgba(255, 255, 255, .46);
+    border: 1px solid var(--cw-green);
     border-radius: 14px;
-    background: transparent;
+    background: var(--cw-green);
     color: #fff;
     font-family: inherit;
     font-size: 13px;
@@ -2352,9 +2352,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
 .cw-home-analysis-link::after { width: 28px; content: ''; }
 .cw-home-analysis-link img { display: block; border-radius: 7px; }
 .cw-home-analysis-link span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cw-home-analysis-link:hover { border-color: rgba(255, 255, 255, .68); background: rgba(255, 255, 255, .07); }
+.cw-home-analysis-link:hover { border-color: var(--cw-green-dark); background: var(--cw-green-dark); }
 .cw-home-start .cw-test-action:disabled { opacity: .55; }
-.cw-home-analysis-link.is-connected { border-color: rgba(255, 255, 255, .58); color: #fff; }
+.cw-home-analysis-link.is-connected { border-color: var(--cw-green-dark); background: var(--cw-green-dark); color: #fff; }
 
 .cw-band-login-card { display: block; padding: 0; }
 .cw-band-login-card .cw-band-login-link {

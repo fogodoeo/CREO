@@ -320,14 +320,14 @@
         const startButton = element('start-button');
         const startSpan = startButton?.querySelector('span');
         if (authenticated) {
-            if (startSpan) startSpan.textContent = '테스트 시작';
+            if (startSpan) startSpan.textContent = '테스트 하기';
             if (homeTitle) homeTitle.textContent = result ? '전체 분석 보기' : 'BAND 연결됨';
             if (homeButton) {
                 homeButton.classList.add('is-connected');
             }
         } else {
-            if (startSpan) startSpan.textContent = '테스트 시작';
-            if (homeTitle) homeTitle.textContent = '회원 확인 후 전체 분석 보기';
+            if (startSpan) startSpan.textContent = '테스트 하기';
+            if (homeTitle) homeTitle.textContent = 'BAND 가입여부 확인';
             if (homeButton) {
                 homeButton.classList.remove('is-connected');
             }

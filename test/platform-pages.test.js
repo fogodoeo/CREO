@@ -453,7 +453,7 @@ test('CREWARTS uses one result journey and unlocks member detail by phone', () =
     assert.doesNotMatch(html, /입력하신 번호는 가입 확인 외에 저장되지 않아요\./);
     assert.match(html, /<label class="cw-visually-hidden" for="member-phone">휴대전화번호<\/label>/);
     assert.match(html, /id="band-connection-status"/);
-    assert.match(html, /id="home-band-title">회원 확인 후 전체 분석 보기/);
+    assert.match(html, /id="home-band-title">BAND 가입여부 확인/);
     assert.match(html, /id="dialog-band-title">BAND 가입 여부 확인/);
     assert.doesNotMatch(html, /cw-band-identity|band-page-title|크레와트 커뮤니티/);
     assert.doesNotMatch(html, /CREWARTS COMMUNITY|<h1 id="band-page-title">BAND<\/h1>|>MEMBERSHIP</);
@@ -606,8 +606,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.doesNotMatch(html, /내 공유 성과|<header><span aria-hidden="true">✓<\/span>/);
     assert.match(css, /\.cw-intro-tagline\s*\{[^}]*white-space:\s*nowrap/);
     assert.match(css, /\.cw-member-dialog \.cw-member-input-group\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) 68px/);
-    assert.match(html, /crewart-survey-v4\.css\?v=20260817-home-actions-v90/);
-    assert.match(html, /crewart-survey\.js\?v=20260816-band-home-actions-v94/);
+    assert.match(html, /crewart-survey-v4\.css\?v=20260817-home-actions-v91/);
+    assert.match(html, /crewart-survey\.js\?v=20260817-band-home-actions-v95/);
     assert.match(script, /function renderUnifiedResult\(profile, house, options = \{\}\)/);
     assert.doesNotMatch(script, /resultViewVersion|resultViewFromLocation|changeResultView|report=deep|set-result-version/);
     assert.match(script, /function renderResult\(options = \{\}\)[\s\S]*renderUnifiedResult\(profile, house\);/);
@@ -726,10 +726,10 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /function typeCharacterPath\(code\)/);
     assert.match(script, /TYPE_CHARACTER_ROOT = 'assets\/crewart-types\/'/);
     assert.match(html, /crewart-survey-core\.js\?v=20260815-random-timing-v80/);
-    assert.match(html, /crewart-survey-v4\.css\?v=20260817-home-actions-v90/);
+    assert.match(html, /crewart-survey-v4\.css\?v=20260817-home-actions-v91/);
     assert.match(script, /position: firstSelected \? Math\.min\(rawPosition, 34\) : Math\.max\(rawPosition, 66\)/);
-    assert.match(html, /id="start-button"[^>]*>[\s\S]*테스트 시작/);
-    assert.match(html, /id="home-auth-button"[^>]*>[\s\S]*회원 확인 후 전체 분석 보기/);
+    assert.match(html, /id="start-button"[^>]*>[\s\S]*테스트 하기/);
+    assert.match(html, /id="home-auth-button"[^>]*>[\s\S]*BAND 가입여부 확인/);
     assert.match(html, /id="home-auth-button"[^>]*>[\s\S]*band-app-icon-official\.png/);
     const startButtonMarkup = html.match(/<button[^>]*id="start-button"[^>]*>[\s\S]*?<\/button>/)?.[0] || '';
     assert.doesNotMatch(startButtonMarkup, /→|<i\b/);
@@ -748,8 +748,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /choiceLockAttempted[\s\S]*아직 선택할 수 없어요/);
     assert.doesNotMatch(html, /cw-v2-button/);
     assert.doesNotMatch(css, /cw-v2-button|linear-gradient\(135deg, #e11d48, #f97316\)/);
-    assert.match(css, /\.cw-home-start \.cw-test-action,\s*\.cw-home-result-actions \.cw-test-action\s*\{[^}]*background:\s*#111411/);
-    assert.match(css, /\.cw-home-analysis-link\s*\{[^}]*border:\s*1px solid rgba\(255, 255, 255, \.46\)[^}]*background:\s*transparent/);
+    assert.match(css, /\.cw-home-start \.cw-test-action,\s*\.cw-home-result-actions \.cw-test-action\s*\{[^}]*background:\s*#fff[^}]*color:\s*#111411/);
+    assert.match(css, /\.cw-home-analysis-link\s*\{[^}]*border:\s*1px solid var\(--cw-green\)[^}]*background:\s*var\(--cw-green\)/);
     assert.match(script, /네 답 모두 괜찮습니다\. 평소 먼저 손이 가는 쪽을 골라주세요\./);
     assert.match(script, /두 답이 끌리면 실제 그 순간 가장 먼저 할 행동을 선택해주세요\./);
     assert.doesNotMatch(html, /question-illustration|question-image/);
