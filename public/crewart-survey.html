@@ -16,11 +16,11 @@
     <link
         href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
         rel="stylesheet">
-    <link rel="stylesheet" href="crewart-survey-v4.css?v=20260817-home-actions-v91">
+    <link rel="stylesheet" href="crewart-survey-v4.css?v=20260817-home-actions-v92">
     <script src="assets/vendor/kakao-2.8.1.min.js"></script>
     <script src="crewart-survey-core.js?v=20260815-random-timing-v80"></script>
     <!-- Share-link target is cache-busted so KakaoTalk never reuses the old root URL. -->
-    <script src="crewart-survey.js?v=20260817-band-home-actions-v95" defer></script>
+    <script src="crewart-survey.js?v=20260817-band-home-actions-v96" defer></script>
 </head>
 
 <body>
@@ -55,13 +55,11 @@
                         <span id="home-house-swatch" aria-hidden="true"></span>
                         <div><small>나의 기숙사</small><strong id="home-house-name">BLUE</strong></div>
                     </div>
-                    <div class="cw-home-result-actions">
-                        <button class="cw-test-action cw-primary-button" id="home-retest" type="button">다시 테스트하기</button>
-                    </div>
                 </section>
 
                 <section class="cw-home-start" id="home-start-card">
                     <button class="cw-test-action cw-primary-button" id="start-button" type="button" disabled><span>테스트 하기</span></button>
+                    <button class="cw-test-action cw-primary-button" id="home-retest" type="button" hidden>다시 테스트하기</button>
                     <button class="cw-home-analysis-link" id="home-auth-button" type="button">
                         <img src="assets/band-app-icon-official.png?v=20260801-logo-v2" alt="" width="28" height="28">
                         <span id="home-band-title">BAND 가입여부 확인</span>

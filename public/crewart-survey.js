@@ -250,10 +250,14 @@
         const snapshot = loadLastResult();
         const card = element('home-result-card');
         const startCard = element('home-start-card');
+        const startButton = element('start-button');
+        const retestButton = element('home-retest');
         const intro = element('intro-screen');
         if (!card || !startCard) return;
         card.hidden = !snapshot;
-        startCard.hidden = Boolean(snapshot);
+        startCard.hidden = false;
+        if (startButton) startButton.hidden = Boolean(snapshot);
+        if (retestButton) retestButton.hidden = !snapshot;
         intro?.classList.toggle('has-result', Boolean(snapshot));
         if (!snapshot) return;
         const detailed = hasDetailedAccess();
@@ -321,7 +325,7 @@
         const startSpan = startButton?.querySelector('span');
         if (authenticated) {
             if (startSpan) startSpan.textContent = '테스트 하기';
-            if (homeTitle) homeTitle.textContent = result ? '전체 분석 보기' : 'BAND 연결됨';
+            if (homeTitle) homeTitle.textContent = 'BAND 연결됨';
             if (homeButton) {
                 homeButton.classList.add('is-connected');
             }

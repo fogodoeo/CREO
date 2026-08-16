@@ -2305,8 +2305,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     justify-items: center;
     gap: 10px;
 }
-.cw-home-start .cw-test-action,
-.cw-home-result-actions .cw-test-action {
+.cw-home-start .cw-test-action {
     display: flex;
     width: 100%;
     height: 50px;
@@ -2325,8 +2324,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     letter-spacing: -.02em;
     cursor: pointer;
 }
-.cw-home-start .cw-test-action:hover:not(:disabled),
-.cw-home-result-actions .cw-test-action:hover:not(:disabled) {
+.cw-home-start .cw-test-action:hover:not(:disabled) {
     border-color: #f2f3ef;
     background: #f2f3ef;
 }
