@@ -607,7 +607,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(css, /\.cw-intro-tagline\s*\{[^}]*white-space:\s*nowrap/);
     assert.match(css, /\.cw-member-dialog \.cw-member-input-group\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) 68px/);
     assert.match(html, /crewart-survey-v4\.css\?v=20260817-home-actions-v92/);
-    assert.match(html, /crewart-survey\.js\?v=20260817-band-home-actions-v96/);
+    assert.match(html, /crewart-survey\.js\?v=20260817-three-second-lock-v97/);
     assert.match(script, /function renderUnifiedResult\(profile, house, options = \{\}\)/);
     assert.doesNotMatch(script, /resultViewVersion|resultViewFromLocation|changeResultView|report=deep|set-result-version/);
     assert.match(script, /function renderResult\(options = \{\}\)[\s\S]*renderUnifiedResult\(profile, house\);/);
@@ -750,6 +750,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.doesNotMatch(script, /data-choice="\$\{index\}"[^>]*aria-disabled/);
     assert.match(script, /button\.dataset\.timeLocked = String\(locked\)/);
     assert.match(script, /choiceLockAttempted[\s\S]*아직 선택할 수 없어요/);
+    assert.match(script, /function chooseAnswer\(choice\)[\s\S]*activeElapsedMs\(\) < Core\.MIN_RESPONSE_MS[\s\S]*choiceLockAttempted = true[\s\S]*return/);
     assert.doesNotMatch(html, /cw-v2-button/);
     assert.doesNotMatch(css, /cw-v2-button|linear-gradient\(135deg, #e11d48, #f97316\)/);
     assert.match(css, /\.cw-home-start \.cw-test-action\s*\{[^}]*background:\s*#fff[^}]*color:\s*#111411/);

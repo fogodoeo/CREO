@@ -791,6 +791,11 @@
     function chooseAnswer(choice) {
         if (advancing || current < 1) return;
         const qIndex = current - 1;
+        if (activeElapsedMs() < Core.MIN_RESPONSE_MS) {
+            choiceLockAttempted = true;
+            updateChoiceLock(qIndex);
+            return;
+        }
         advancing = true;
         clearChoiceLock();
         const question = questions[qIndex];
