@@ -33,6 +33,27 @@ test('server-side round transition selects all members of the top two teams', ()
     assert.deepEqual(finalists.map((entry) => entry.member), ['B1', 'B2', 'B3', 'B4', 'C1', 'C2', 'C3', 'C4']);
 });
 
+test('public round state exposes broadcast fields without admin or archive secrets', async () => {
+    const repository = {
+        async request(path) {
+            if (path.startsWith('items?select=')) return [{ id: 1, company: '업체A', status: '대기' }];
+            if (path.startsWith('config?select=')) return [{ key: 'active_tournament', value: '4' }];
+            throw new Error(`unexpected request ${path}`);
+        },
+        async upsertRows() {}
+    };
+    let status = 0;
+    let body = '';
+    const api = createCdcupRoundsApi({ repository, isAdmin: async () => false });
+    const response = { writeHead(value) { status = value; }, end(value) { body = Buffer.from(value || '').toString('utf8'); } };
+    await api.handle({ method: 'GET', headers: {} }, response, new URL('https://example.test/api/cdcup/rounds/public-state'));
+    assert.equal(status, 200);
+    assert.deepEqual(JSON.parse(body), {
+        items: [{ id: 1, company: '업체A', status: '대기' }],
+        config: { active_tournament: '4' }
+    });
+});
+
 test('round transition archives before deleting and prepares an anonymous eight-person final', async () => {
     const calls = [];
     const items = roundItems();

@@ -240,6 +240,24 @@ function _writeBroadcastStorage(key, value) {
     } catch (_) {}
 }
 
+let _legacyPublicStateCache = null;
+let _legacyPublicStateCacheAt = 0;
+let _legacyPublicStateRequest = null;
+async function _getLegacyPublicState(force = false) {
+    if (!force && _legacyPublicStateCache && Date.now() - _legacyPublicStateCacheAt < 1500) return _legacyPublicStateCache;
+    if (_legacyPublicStateRequest) return _legacyPublicStateRequest;
+    _legacyPublicStateRequest = fetch('/api/cdcup/rounds/public-state', { headers: { Accept: 'application/json' } })
+        .then(async response => {
+            if (!response.ok) throw new Error(`CDCUP state ${response.status}`);
+            const state = await response.json();
+            _legacyPublicStateCache = state && typeof state === 'object' ? state : { items: [], config: {} };
+            _legacyPublicStateCacheAt = Date.now();
+            return _legacyPublicStateCache;
+        })
+        .finally(() => { _legacyPublicStateRequest = null; });
+    return _legacyPublicStateRequest;
+}
+
 async function _sbFetch(path, options = {}) {
     if (Date.now() < _supabaseUnavailableUntil) {
         const error = new Error('Supabase quota cooldown active');
@@ -482,7 +500,13 @@ let _broadcastLiteReady = false;
 const _broadcastPhotoCache = new Map();
 
 async function getBroadcastItemsLite() {
-    const rows = await _sbFetch(`items?select=${BROADCAST_LITE_COLUMNS}&order=num.asc`);
+    let rows;
+    try {
+        rows = await _sbFetch(`items?select=${BROADCAST_LITE_COLUMNS}&order=num.asc`);
+    } catch (error) {
+        const state = await _getLegacyPublicState(true);
+        rows = state.items || [];
+    }
     const items = (rows || []).map(_mapBroadcastItem);
     _writeBroadcastStorage('items', items);
     return items;
@@ -1482,9 +1506,17 @@ async function getRuntimeConfigMap(force = false) {
         _writeBroadcastStorage('config', _runtimeConfigCache);
         return _runtimeConfigCache;
         } catch (error) {
-            if (!_runtimeConfigCache) {
-                _runtimeConfigCache = _mergeCrewartSurveyEntries(_readBroadcastStorage('config', {}));
+            try {
+                const state = await _getLegacyPublicState(true);
+                _runtimeConfigCache = _mergeCrewartSurveyEntries(state.config || {});
                 _runtimeConfigCacheAt = Date.now();
+                _runtimeConfigVersion = String(_runtimeConfigCache[RUNTIME_CONFIG_VERSION_KEY] || '');
+                _writeBroadcastStorage('config', _runtimeConfigCache);
+            } catch (_) {
+                if (!_runtimeConfigCache) {
+                    _runtimeConfigCache = _mergeCrewartSurveyEntries(_readBroadcastStorage('config', {}));
+                    _runtimeConfigCacheAt = Date.now();
+                }
             }
             return _runtimeConfigCache;
         }

@@ -107,6 +107,17 @@ function createCdcupRoundsApi({ repository, isAdmin }) {
     if (typeof isAdmin !== 'function') throw new Error('CDCUP rounds admin verifier is required');
 
     async function handle(req, res, url) {
+        if (url.pathname === '/api/cdcup/rounds/public-state' && req.method === 'GET') {
+            const [items, configRows] = await Promise.all([
+                repository.request('items?select=id,company,num,name,start_price,note,announce,status,sold_price,winner,start_time,bid_log,checklist,checklist_parsed,sire_id,dam_id,shipping_type,shipping_company,shipping_region,shipping_cost,updated_at&order=num.asc'),
+                repository.request('config?select=key,value&and=(key.neq.admin_pw,key.not.like.shipping_log_*,key.not.like.shipping_rate_*,key.not.like.auction_archive_*)')
+            ]);
+            replyJson(res, 200, {
+                items: items || [],
+                config: Object.fromEntries((configRows || []).map((row) => [row.key, row.value]))
+            });
+            return true;
+        }
         if (url.pathname !== '/api/cdcup/rounds/prepare-three') return false;
         if (req.method !== 'POST') {
             replyJson(res, 405, { error: 'Method not allowed' });
