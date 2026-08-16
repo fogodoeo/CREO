@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { createCdcupRoundsApi, roundTwoFinalists } = require('../cdcup-rounds-api');
+const { createCdcupRoundsApi, roundTwoFinalists, reseedRoundThreeFinalists } = require('../cdcup-rounds-api');
 
 function groupsConfig() {
     return JSON.stringify({
@@ -20,17 +20,30 @@ function roundItems() {
         num: groupIndex * 4 + index + 1,
         company: `${code}${index + 1}`,
         status: '완료',
-        sold_price: code === 'B' ? 30 : (code === 'C' ? 20 : 10),
+        sold_price: code === 'B' ? 40 - index * 5 : (code === 'C' ? 24 - index : 10),
         checklist: '_auction:tournament|_stage:8'
     })));
 }
 
-test('server-side round transition selects all members of the top two teams', () => {
+test('server-side round transition selects top-team members and seeds lowest individual total from A to H', () => {
     const finalists = roundTwoFinalists({
         active_tournament: '8',
         tournament_stage_groups_8: groupsConfig()
     }, roundItems());
-    assert.deepEqual(finalists.map((entry) => entry.member), ['B1', 'B2', 'B3', 'B4', 'C1', 'C2', 'C3', 'C4']);
+    assert.deepEqual(finalists.map((entry) => entry.member), ['C4', 'C3', 'C2', 'C1', 'B4', 'B3', 'B2', 'B1']);
+    assert.deepEqual(finalists.map((entry) => entry.anonymousCode), ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']);
+    assert.deepEqual(finalists.map((entry) => entry.roundTwoAmount), [21, 22, 23, 24, 25, 30, 35, 40]);
+});
+
+test('saved round-three finalists can be reseeded from archived round-two totals', () => {
+    const entrants = ['B1', 'B2', 'B3', 'B4', 'C1', 'C2', 'C3', 'C4'].map((member) => ({ member, code: member.charAt(0) }));
+    const finalists = reseedRoundThreeFinalists({
+        tournament_finalists_4: JSON.stringify({ entrants }),
+        tournament_round_amounts_8: JSON.stringify({ B1: 40, B2: 35, B3: 30, B4: 25, C1: 24, C2: 23, C3: 22, C4: 21 })
+    });
+    assert.deepEqual(finalists.map((entry) => `${entry.anonymousCode}:${entry.member}`), [
+        'A:C4', 'B:C3', 'C:C2', 'D:C1', 'E:B4', 'F:B3', 'G:B2', 'H:B1'
+    ]);
 });
 
 test('public round state exposes broadcast fields without admin or archive secrets', async () => {
@@ -99,7 +112,7 @@ test('round transition archives before deleting and prepares an anonymous eight-
     assert.equal(JSON.parse(written.tournament_finalists_4).entrants.length, 8);
     assert.deepEqual(JSON.parse(written.tournament_round_amounts_8), {
         A1: 10, A2: 10, A3: 10, A4: 10,
-        B1: 30, B2: 30, B3: 30, B4: 30,
-        C1: 20, C2: 20, C3: 20, C4: 20
+        B1: 40, B2: 35, B3: 30, B4: 25,
+        C1: 24, C2: 23, C3: 22, C4: 21
     });
 });

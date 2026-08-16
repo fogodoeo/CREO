@@ -63,8 +63,10 @@ function parseTournamentFinalists(configMap, items = []) {
         if (rows.length === 8) {
             return rows.map((entry, index) => ({
                 member: String(entry?.member || entry?.name || '').trim(),
-                code: String(entry?.groupCode || entry?.code || '').trim().toUpperCase(),
+                code: String.fromCharCode(65 + index),
+                sourceGroupCode: String(entry?.sourceGroupCode || entry?.groupCode || entry?.code || '').trim().toUpperCase(),
                 sourceGroupName: String(entry?.sourceGroupName || entry?.groupName || '').trim(),
+                roundTwoAmount: Number(entry?.roundTwoAmount || 0),
                 seed: index + 1
             })).filter(entry => entry.member);
         }
@@ -93,12 +95,18 @@ function parseTournamentFinalists(configMap, items = []) {
         total: group.members.reduce((sum, member) => sum + (totals[member] || 0), 0)
     })).sort((a, b) => b.total - a.total || a.code.localeCompare(b.code, 'en'))
         .slice(0, 2)
-        .flatMap(group => group.members.map((member, index) => ({
+        .flatMap(group => group.members.map((member) => ({
             member,
-            code: group.code,
+            sourceGroupCode: group.code,
             sourceGroupName: group.name,
+            roundTwoAmount: Number(totals[member] || 0)
+        })))
+        .sort((a, b) => a.roundTwoAmount - b.roundTwoAmount || a.member.localeCompare(b.member, 'ko'))
+        .map((entry, index) => ({
+            ...entry,
+            code: String.fromCharCode(65 + index),
             seed: index + 1
-        })));
+        }));
 }
 
 function resolveTournamentFinalist(configMap, company, items = []) {
@@ -987,15 +995,22 @@ async function registerBatch(itemsArray) {
                 throw new Error(`현재 ${phase}가 아닙니다: ${String(data.company || '업체 미입력')}`);
             }
             nextTeamSlot[assignment.code] = (nextTeamSlot[assignment.code] || 0) + 1;
+            if (activeStage === 4 && nextTeamSlot[assignment.code] > 3) {
+                throw new Error(`${assignment.member} 업체는 3라운드 개체를 최대 3개까지 등록할 수 있습니다.`);
+            }
             data.company = assignment.member;
             data.teamCode = assignment.code;
             data.tournamentStage = activeStage;
             data.tournamentCode = `${assignment.code}${nextTeamSlot[assignment.code]}`;
+            if (activeStage === 4) {
+                data.publicNumber = (nextTeamSlot[assignment.code] - 1) * 8 + assignment.seed;
+            }
             return data;
         });
 
         const payloads = prepared.map((d, idx) => {
-            const num = maxNum + idx + 1;
+            const isRoundThreeItem = Number(d.tournamentStage) === 4 && /^[A-H][1-3]$/.test(String(d.tournamentCode || ''));
+            const num = isRoundThreeItem ? Number(d.publicNumber) : maxNum + idx + 1;
             const checklist = mergeItemAuctionMeta(d.checklist || '', {
                 auctionType: d.auctionType || AUCTION_TYPES.TOURNAMENT,
                 tournamentCode: d.tournamentCode || '',
@@ -1141,7 +1156,14 @@ async function rebuildTournamentItems(assignments, pw) {
     const rounds = Math.max(...assignmentRows.map(item => Number(item.code.slice(1)) || 1));
     const matchCount = Math.ceil(letters.length / 2);
     const publicOrder = [];
-    if (tournamentStage === 2 && matchCount === 2) {
+    if (tournamentStage === 4) {
+        // 3라운드 개인전은 A1~H1, A2~H2, A3~H3 순서로 세 바퀴를 돈다.
+        for (let round = 1; round <= rounds; round++) {
+            letters.forEach(letter => {
+                if (byCode[letter + round]) publicOrder.push(byCode[letter + round]);
+            });
+        }
+    } else if (tournamentStage === 2 && matchCount === 2) {
         // 메달 결정전은 3·4위전(C·D)을 먼저 끝낸 뒤 결승(A·B)을 진행한다.
         [1, 0].forEach(group => {
             for (let round = 1; round <= rounds; round++) {

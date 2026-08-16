@@ -76,7 +76,8 @@ test('third-round entrants come only from the current top two second-round group
         tournament_round_amounts_8: JSON.stringify({ A1: 10, A2: 10, A3: 10, A4: 10, B1: 30, B2: 30, B3: 30, B4: 30, C1: 20, C2: 20, C3: 20, C4: 20 })
     };
     const entrants = data.finalStageEntrants(map, []);
-    assert.deepEqual(Array.from(entrants, entry => entry.name), ['B1', 'B2', 'B3', 'B4', 'C1', 'C2', 'C3', 'C4']);
+    assert.deepEqual(Array.from(entrants, entry => entry.name), ['C1', 'C2', 'C3', 'C4', 'B1', 'B2', 'B3', 'B4']);
+    assert.deepEqual(Array.from(entrants, entry => entry.anonymousCode), ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']);
 });
 
 test('archived third-round entrants keep stable A-H identities and reorder only by individual totals', () => {

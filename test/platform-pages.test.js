@@ -308,7 +308,10 @@ test('CDCUP three-round format assigns round-two teams and round-three finalists
     assert.match(broadcast, /individual-ranking-grid/);
     assert.match(broadcast, /individual-stage-board/);
     assert.match(broadcast, /repeat\(4, minmax\(0, 1fr\)\)/);
-    assert.match(broadcast, /ENTRY \$\{esc\(entry\.anonymousCode\)\}/);
+    assert.match(broadcast, /hideCompanies \? esc\(entry\.anonymousCode\) : esc\(entry\.name\)/);
+    assert.match(bridge, /A1~H1, A2~H2, A3~H3/);
+    assert.match(bridge, /최대 3개까지 등록/);
+    assert.match(registration, /업체당 3개체/);
     assert.match(broadcast, /sports-match-card\.is-qualified/);
     assert.match(broadcast, /hideCompanies: String\(map\?\.bracket_full_blind/);
     assert.match(broadcast, /업체 \$\{memberIndex \+ 1\}/);

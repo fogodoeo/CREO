@@ -23,9 +23,9 @@
             location.replace(`broadcast-studio.html?channel=${encodeURIComponent(channel)}&view=layout-${page}`);
         })();
     </script>
-    <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
+    <script src="supabase-bridge.js?v=20260817-round3-order-v1"></script>
     <script src="channel-broadcast-bridge.js?v=20260815-channel-isolation-v1"></script>
-    <script src="cdcup-tournament-data.js?v=20260817-round3-grid-v1"></script>
+    <script src="cdcup-tournament-data.js?v=20260817-round3-order-v1"></script>
     <script src="event-modules.js?v=20260710-crebti3"></script>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet">
@@ -3658,11 +3658,11 @@
                     return result;
                 }, {});
                 const desc = document.getElementById('t-item-setup-desc');
-                if (desc) desc.textContent = '2라운드 상위 2팀의 8개 업체만 등록할 수 있으며, 업체별 낙찰금으로 최종 순위를 계산합니다.';
+                if (desc) desc.textContent = '2라운드 개인 낙찰합계가 낮은 업체부터 A~H를 배정합니다. 업체당 3개체, A1~H1 → A2~H2 → A3~H3 순서입니다.';
                 grid.innerHTML = finalists.length
-                    ? finalists.map((entry, index) => `<article class="t-item-team ready"><div class="t-item-team-head"><span class="t-item-team-letter">${index + 1}</span><div class="t-item-team-name"><strong>${tEsc(entry.name)}</strong><span>${tEsc(entry.sourceGroupName)} · ${counts[entry.name] || 0}개체</span></div></div></article>`).join('')
+                    ? finalists.map((entry, index) => `<article class="t-item-team ready"><div class="t-item-team-head"><span class="t-item-team-letter">${tEsc(entry.anonymousCode || String.fromCharCode(65 + index))}</span><div class="t-item-team-name"><strong>${tEsc(entry.name)}</strong><span>${counts[entry.name] || 0}/3개체</span></div></div></article>`).join('')
                     : '<div class="t-item-empty" style="grid-column:1/-1;">2라운드 낙찰 결과가 입력되면 상위 2팀 소속 8개 업체가 자동 표시됩니다.</div>';
-                progress.textContent = finalists.length ? `${finalItems.length}개체 · 8개 업체 개인전` : '2라운드 결과 집계 중';
+                progress.textContent = finalists.length ? `${finalItems.length}/24개체 · 8개 업체 개인전` : '2라운드 결과 집계 중';
                 applyBtn.disabled = true;
                 applyBtn.textContent = '자동 진출 적용 중';
                 return;

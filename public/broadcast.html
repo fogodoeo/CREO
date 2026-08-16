@@ -25,7 +25,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <script src="supabase-bridge.js?v=20260817-round3-server-state-v2"></script>
+    <script src="supabase-bridge.js?v=20260817-round3-order-v1"></script>
     <script src="channel-broadcast-bridge.js?v=20260815-channel-isolation-v1"></script>
     <script src="event-modules.js?v=20260710-crebti3"></script>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
@@ -3631,10 +3631,14 @@
             max-height: 100%;
         }
         #bracket-page-tree-full .individual-standing-card {
-            display: grid;
-            grid-template-rows: auto 1fr auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: calc(var(--bracket-fs) * .72);
             min-width: 0;
             padding: calc(var(--bracket-fs) * .92);
+            text-align: center;
             border: 1px solid rgba(195,154,74,.2) !important;
             background:
                 linear-gradient(145deg, rgba(255,255,255,.062), rgba(255,255,255,.026)) !important;
@@ -3643,32 +3647,12 @@
             border-color: var(--cdcup-gold) !important;
             background: linear-gradient(145deg, rgba(195,154,74,.16), rgba(255,255,255,.035)) !important;
         }
-        #bracket-page-tree-full .individual-rank {
-            color: rgba(255,255,255,.48);
-            font-size: clamp(28px, calc(var(--bracket-fs) * 2.55), 54px);
-            font-weight: 950;
-            font-variant-numeric: tabular-nums;
-            letter-spacing: -.06em;
-            line-height: 1;
-        }
-        #bracket-page-tree-full .individual-standing-card.is-current .individual-rank { color: var(--cdcup-gold-light); }
-        #bracket-page-tree-full .individual-identity {
-            align-self: center;
-            min-width: 0;
-        }
-        #bracket-page-tree-full .individual-entry-code {
-            display: block;
-            margin-bottom: calc(var(--bracket-fs) * .38);
-            color: var(--cdcup-gold);
-            font-size: clamp(10px, calc(var(--bracket-fs) * .66), 15px);
-            font-weight: 900;
-            letter-spacing: .18em;
-        }
         #bracket-page-tree-full .individual-name {
             display: block;
+            width: 100%;
             overflow: hidden;
             color: #fff;
-            font-size: clamp(20px, calc(var(--bracket-fs) * 1.7), 38px);
+            font-size: clamp(22px, calc(var(--bracket-fs) * 1.85), 42px);
             font-weight: 930;
             letter-spacing: -.035em;
             line-height: 1.16;
@@ -3676,19 +3660,14 @@
             white-space: nowrap;
         }
         #bracket-page-tree-full .individual-amount {
-            display: flex;
-            align-items: baseline;
-            justify-content: flex-end;
-            gap: calc(var(--bracket-fs) * .22);
+            display: block;
+            width: 100%;
             color: var(--cdcup-gold-light);
-            font-variant-numeric: tabular-nums;
-        }
-        #bracket-page-tree-full .individual-amount strong {
-            font-size: clamp(28px, calc(var(--bracket-fs) * 2.25), 48px);
+            font-size: clamp(34px, calc(var(--bracket-fs) * 2.7), 58px);
             font-weight: 950;
+            font-variant-numeric: tabular-nums;
             letter-spacing: -.055em;
         }
-        #bracket-page-tree-full .individual-amount small { color: rgba(255,255,255,.48); font-size:.45em; font-weight:800; }
         #bracket-page-tree-full .sports-match-meta {
             min-height: calc(var(--bracket-fs) * 2.7);
             padding-inline: calc(var(--bracket-fs) * .9);
@@ -3777,9 +3756,8 @@
                 min-height: 0;
             }
             #bracket-page-tree-full .individual-standing-card { padding: 10px; }
-            #bracket-page-tree-full .individual-rank { font-size: 25px; }
-            #bracket-page-tree-full .individual-name { font-size: 18px; }
-            #bracket-page-tree-full .individual-amount strong { font-size: 24px; }
+            #bracket-page-tree-full .individual-name { font-size: clamp(17px, 5.2vw, 22px); }
+            #bracket-page-tree-full .individual-amount { font-size: clamp(25px, 8vw, 34px); }
             #bracket-page-tree-full .sports-match-meta { min-height: 34px; padding-inline: 11px; font-size: 18px; }
             #bracket-page-tree-full .team-progress-member { min-height: 30px; padding: 5px 10px; font-size: 15px; }
         }
@@ -7752,7 +7730,8 @@
                         ...group,
                         total: group.members.reduce((sum, name) => sum + Number(savedRoundAmounts[name] || 0), 0)
                     })).sort((a, b) => b.total - a.total || a.code.localeCompare(b.code, 'en')).slice(0, 2)
-                        .flatMap(group => group.members.map(name => ({ name })))
+                        .flatMap(group => group.members.map(name => ({ name, roundTwoAmount: Number(savedRoundAmounts[name] || 0) })))
+                        .sort((a, b) => a.roundTwoAmount - b.roundTwoAmount || a.name.localeCompare(b.name, 'ko'))
                         .map((entry, index) => ({ ...entry, anonymousCode: String.fromCharCode(65 + index), seed: index + 1 }));
                 }
                 entrants = entrants.map(entry => ({ ...entry, total: totals[entry.name] || 0 }));
@@ -7764,7 +7743,7 @@
                     card.className = 'sports-match-card individual-standing-card' + (index === 0 && entry.total > 0 ? ' is-current' : '');
                     card.dataset.entrant = entry.anonymousCode;
                     card.style.setProperty('--match-index', index);
-                    card.innerHTML = `<span class="individual-rank">${index + 1}</span><div class="individual-identity"><small class="individual-entry-code">ENTRY ${esc(entry.anonymousCode)}</small><strong class="individual-name">${hideCompanies ? `업체 ${esc(entry.anonymousCode)}` : esc(entry.name)}</strong></div><div class="individual-amount"><strong>${formatBlindTotalAmount(entry.total)}</strong><small>만원</small></div>`;
+                    card.innerHTML = `<strong class="individual-name">${hideCompanies ? esc(entry.anonymousCode) : esc(entry.name)}</strong><strong class="individual-amount">${formatBlindTotalAmount(entry.total)}</strong>`;
                     grid.appendChild(card);
                 });
                 if (!entrants.length) grid.innerHTML = '<div class="blind-total-empty" style="grid-column:1/-1">2라운드 결과 집계 후 진출 업체가 표시됩니다.</div>';

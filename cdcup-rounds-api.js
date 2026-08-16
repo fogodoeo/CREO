@@ -44,6 +44,31 @@ function parseGroups(configMap) {
     }
 }
 
+function parseRoundAmounts(configMap, stage) {
+    try {
+        const parsed = JSON.parse(configMap[`tournament_round_amounts_${stage}`] || '{}');
+        return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+    } catch {
+        return {};
+    }
+}
+
+function sortFinalistsByAmount(entries, amounts) {
+    return (entries || []).map((entry, sourceIndex) => ({
+        ...entry,
+        sourceGroupCode: String(entry?.sourceGroupCode || entry?.groupCode || entry?.code || '').trim().toUpperCase(),
+        roundTwoAmount: Number(amounts?.[entry?.member] || 0),
+        sourceIndex
+    })).sort((a, b) => a.roundTwoAmount - b.roundTwoAmount
+        || a.member.localeCompare(b.member, 'ko')
+        || a.sourceIndex - b.sourceIndex)
+        .map(({ sourceIndex, ...entry }, index) => ({
+            ...entry,
+            anonymousCode: String.fromCharCode(65 + index),
+            seed: index + 1
+        }));
+}
+
 function roundTwoFinalists(configMap, items) {
     const activeStage = Number.parseInt(configMap.active_tournament, 10) || 0;
     const totals = {};
@@ -58,16 +83,33 @@ function roundTwoFinalists(configMap, items) {
         soldCount += 1;
     }
     if (!soldCount) return [];
-    return parseGroups(configMap).map((group) => ({
+    const qualified = parseGroups(configMap).map((group) => ({
         ...group,
         total: group.members.reduce((sum, name) => sum + Number(totals[name] || 0), 0)
     })).sort((a, b) => b.total - a.total || a.code.localeCompare(b.code, 'en'))
         .slice(0, 2)
         .flatMap((group) => group.members.map((member) => ({
             member,
-            code: group.code,
+            sourceGroupCode: group.code,
             sourceGroupName: group.name
         })));
+    return sortFinalistsByAmount(qualified, totals);
+}
+
+function reseedRoundThreeFinalists(configMap) {
+    let rows = [];
+    try {
+        const parsed = JSON.parse(configMap.tournament_finalists_4 || 'null');
+        rows = Array.isArray(parsed) ? parsed : (Array.isArray(parsed?.entrants) ? parsed.entrants : []);
+    } catch {}
+    const entrants = rows.map((entry) => ({
+        ...entry,
+        member: String(entry?.member || entry?.name || '').trim(),
+        sourceGroupCode: String(entry?.sourceGroupCode || entry?.groupCode || entry?.code || '').trim().toUpperCase(),
+        sourceGroupName: String(entry?.sourceGroupName || entry?.groupName || '').trim()
+    })).filter((entry) => entry.member);
+    if (entrants.length !== 8 || new Set(entrants.map((entry) => entry.member)).size !== 8) return [];
+    return sortFinalistsByAmount(entrants, parseRoundAmounts(configMap, 8));
 }
 
 function archiveSummary(snapshot) {
@@ -118,13 +160,32 @@ function createCdcupRoundsApi({ repository, isAdmin }) {
             });
             return true;
         }
-        if (url.pathname !== '/api/cdcup/rounds/prepare-three') return false;
+        if (!['/api/cdcup/rounds/prepare-three', '/api/cdcup/rounds/reseed-three'].includes(url.pathname)) return false;
         if (req.method !== 'POST') {
             replyJson(res, 405, { error: 'Method not allowed' });
             return true;
         }
         if (!await isAdmin(req)) {
             replyJson(res, 401, { error: '관리자 인증이 필요합니다.' });
+            return true;
+        }
+
+        if (url.pathname === '/api/cdcup/rounds/reseed-three') {
+            const configRows = await repository.request('config?select=key,value');
+            const configMap = Object.fromEntries((configRows || []).map((row) => [row.key, row.value]));
+            const finalists = reseedRoundThreeFinalists(configMap);
+            if (finalists.length !== 8) {
+                replyJson(res, 409, { error: '저장된 3라운드 진출 업체 8곳을 다시 배정하지 못했습니다.' });
+                return true;
+            }
+            await repository.upsertRows([
+                { key: 'tournament_finalists_4', value: JSON.stringify({ entrants: finalists }) },
+                { key: 'runtime_config_version', value: `${Date.now().toString(36)}-${crypto.randomBytes(4).toString('hex')}` }
+            ]);
+            replyJson(res, 200, {
+                success: true,
+                finalists: finalists.map((entry) => ({ code: entry.anonymousCode, amount: entry.roundTwoAmount }))
+            });
             return true;
         }
 
@@ -212,4 +273,4 @@ function createCdcupRoundsApi({ repository, isAdmin }) {
     return { handle };
 }
 
-module.exports = { createCdcupRoundsApi, roundTwoFinalists, archiveSummary };
+module.exports = { createCdcupRoundsApi, roundTwoFinalists, reseedRoundThreeFinalists, archiveSummary };

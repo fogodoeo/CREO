@@ -215,6 +215,7 @@
                 sourceGroupCode: String(entry?.sourceGroupCode || entry?.groupCode || entry?.code || '').trim().toUpperCase(),
                 sourceGroupName: String(entry?.sourceGroupName || entry?.groupName || '').trim(),
                 sourceGroupRank: Number(entry?.sourceGroupRank) || 0,
+                roundTwoAmount: parseAmount(entry?.roundTwoAmount),
                 seed: index + 1,
                 anonymousCode: String.fromCharCode(65 + index)
             })).filter(entry => entry.name);
@@ -234,6 +235,7 @@
                 sourceGroupName: group.name,
                 sourceGroupRank: group.rank
             })))
+            .sort((a, b) => a.amount - b.amount || a.name.localeCompare(b.name, 'ko'))
             .map((entry, index) => ({
                 ...entry,
                 seed: index + 1,

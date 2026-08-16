@@ -6,8 +6,8 @@
   <meta name="theme-color" content="#050911">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <title>2026 CDCUP 공식 토너먼트 대진표</title>
-  <script src="supabase-bridge.js?v=20260817-round3-server-state-v2"></script>
-  <script src="cdcup-tournament-data.js?v=20260817-round3-grid-v1"></script>
+  <script src="supabase-bridge.js?v=20260817-round3-order-v1"></script>
+  <script src="cdcup-tournament-data.js?v=20260817-round3-order-v1"></script>
   <style>
     @font-face{font-family:Pretendard;src:local("Pretendard");font-weight:100 900}
     :root{
@@ -78,15 +78,11 @@
     body.team-stage .round.r4{opacity:1}
     .r4 .final-ranking{top:52px;height:735px!important;border-color:rgba(205,165,72,.52);display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:43px repeat(2,minmax(0,1fr))}
     .r4 .final-ranking .match-label{grid-column:1/-1;height:auto;padding:0 16px;font-size:11px;color:var(--gold-soft)}
-    .r4 .final-ranking .final-standing{height:auto;display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;gap:12px;padding:20px 12px 17px;border-right:1px solid rgba(132,145,163,.12);border-bottom:1px solid rgba(132,145,163,.12)}
+    .r4 .final-ranking .final-standing{height:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:15px;padding:18px 12px;border-right:1px solid rgba(132,145,163,.12);border-bottom:1px solid rgba(132,145,163,.12);text-align:center}
     .r4 .final-ranking .final-standing:nth-child(5),.r4 .final-ranking .final-standing:nth-child(9){border-right:0}
     .r4 .final-ranking .final-standing:nth-child(n+6){border-bottom:0}
-    .final-rank{color:var(--dim);font-size:26px;font-weight:950;font-variant-numeric:tabular-nums;letter-spacing:-.06em;line-height:1}
-    .final-standing.win .final-rank{color:var(--gold-soft)}
-    .final-standing-copy{min-width:0;width:100%}
-    .final-standing-copy small{display:block;margin-bottom:6px;color:var(--gold);font-size:7px;font-weight:900;letter-spacing:.14em}
-    .final-standing-copy strong{display:block;overflow:hidden;color:var(--white);font-size:14px;font-weight:950;line-height:1.2;text-overflow:ellipsis;white-space:nowrap}
-    .final-standing .amount{align-self:flex-end;color:var(--gold-soft);font-size:8px}.final-standing .amount b{font-size:15px}
+    .final-standing-name{display:block;width:100%;overflow:hidden;color:var(--white);font-size:18px;font-weight:950;line-height:1.2;text-overflow:ellipsis;white-space:nowrap}
+    .r4 .final-ranking .final-standing .amount{color:var(--gold-soft);font-size:25px;font-weight:950;line-height:1;font-variant-numeric:tabular-nums}
     .group-advance{color:var(--green)!important;font-weight:950}.group-wait{color:var(--muted)!important}
     .r4 .match{height:125px}.r4 .match-label{height:29px;font-size:10px}.r4 .team{height:47px;grid-template-columns:39px minmax(0,1fr) auto;gap:12px;padding:0 13px}.r4 .team-logo{width:34px;height:34px}.r4 .team-main{display:block}.r4 .team-main strong{display:block;font-size:17px}.r4 .team-main small{display:block;margin-top:2px;font-size:8px}.r4 .amount{font-size:9px}.r4 .amount b{font-size:13px}.r4 .m1{top:165px}.r4 .m2{top:545px}
     .final .match{height:181px;border-color:rgba(205,165,72,.52);background:linear-gradient(135deg,rgba(18,30,44,.99),rgba(9,16,26,.99))}.final .m1{top:206px}.final .m2{top:524px}.final .match-label{height:36px;padding:0 15px;font-size:11px;color:var(--gold-soft)}.final .team{height:72px;grid-template-columns:54px minmax(0,1fr) auto;gap:15px;padding:0 16px}.final .team-logo{width:47px;height:47px}.final .team-main{display:block}.final .team-main strong{display:block;font-size:23px;color:var(--white)}.final .team-main small{display:block;margin-top:4px;font-size:10px}.final .amount{font-size:10px;color:var(--muted)}.final .amount b{font-size:15px}.final .team.finalist{background:linear-gradient(90deg,rgba(205,165,72,.09),transparent 78%)}
@@ -268,9 +264,9 @@
       if(Array.isArray(match.standings)){
         const rows=match.standings.length?match.standings.map((entry,standingIndex)=>{
           const code=entry.anonymousCode||String.fromCharCode(65+standingIndex);
-          const displayName=HIDE_FINAL_COMPANIES?`업체 ${code}`:entry.name;
-          const amount=`<span class="amount"><b>${Number(entry.amount||0).toLocaleString('ko-KR')}</b>만원</span>`;
-          return `<div class="team final-standing${entry.winner?' win':''}" data-team="${escapeHtml(entry.name)}"><span class="final-rank">${standingIndex+1}</span><span class="final-standing-copy"><small>ENTRY ${escapeHtml(code)}</small><strong>${escapeHtml(displayName)}</strong></span>${amount}</div>`;
+          const displayName=HIDE_FINAL_COMPANIES?code:entry.name;
+          const amount=`<span class="amount">${Number(entry.amount||0).toLocaleString('ko-KR')}</span>`;
+          return `<div class="team final-standing${entry.winner?' win':''}" data-team="${escapeHtml(entry.name)}"><strong class="final-standing-name">${escapeHtml(displayName)}</strong>${amount}</div>`;
         }).join(''):'<div class="team"><span></span><span class="team-main"><strong>2라운드 결과 집계 후 진출 업체가 표시됩니다</strong></span><span></span></div>';
         return `<article class="match final-ranking m${index+1}" id="${match.id}" data-round="${round.round}"><div class="match-label"><span>${escapeHtml(match.label)}</span><span>${match.standings.some(entry=>entry.winner)?'우승 확정':'진출 8개 업체'}</span></div>${rows}</article>`;
       }
