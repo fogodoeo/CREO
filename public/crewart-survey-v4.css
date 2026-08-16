@@ -2471,7 +2471,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visibl
     background: #dfe1dc;
     content: "";
 }
-.cw-story-final-actions .cw-story-band { margin-top: 15px; }
+.cw-story-final-actions .cw-story-band { margin-top: 29px; }
 .cw-story-credit { margin-top: 31px; }
 
 .cw-band-share-actions {
