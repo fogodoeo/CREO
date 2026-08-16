@@ -594,7 +594,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.doesNotMatch(script, /OWN_SHARE_IDS_STORAGE_KEY|loadOwnShareIds/);
     assert.match(script, /function loadReferralMetrics\(\)[\s\S]*Authorization: `Bearer \$\{bandAuthToken\}`/);
     assert.match(html, /id="band-share-state"[^>]*hidden[\s\S]*id="band-share-verified">0명/);
-    assert.match(html, /id="band-share-button"[\s\S]*kakaolink_btn_medium\.png[\s\S]*카카오톡 공유하기/);
+    assert.match(html, /id="band-share-button"[\s\S]*kakaolink_btn_medium\.png[\s\S]*카카오톡 공유/);
+    assert.match(html, /id="band-link-share-button"[\s\S]*링크 공유/);
     assert.doesNotMatch(html, /만든 공유 링크|방문이 확인된 링크|이 기기에서 만든 공유 링크의 성과|band-share-created|band-share-landed|band-share-empty/);
     assert.match(html, /id="auth-phone-edit"[\s\S]*id="auth-phone-clear"/);
     assert.match(html, /id="band-share-title">내 링크로 BAND 인증 완료<\/h2>/);
@@ -602,12 +603,14 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /function shareBandReferral\(event\)[\s\S]*!bandAuthToken \|\| !bandAuthUser\?\.isTargetMember[\s\S]*openMemberCheck\(\)[\s\S]*restoreShareableResult\(\)[\s\S]*await shareResult\(event\)[\s\S]*createTrackedShareUrl\(\)[\s\S]*Kakao\.Share\.sendDefault/);
     assert.match(script, /function updateBandState\(\)[\s\S]*const shareState = element\('band-share-state'\)[\s\S]*shareState\.hidden = !authenticated/);
     assert.match(script, /element\('band-share-button'\)\?\.addEventListener\('click', shareBandReferral\)/);
+    assert.match(script, /element\('band-link-share-button'\)\?\.addEventListener\('click', shareBandLink\)/);
     assert.match(css, /\.cw-band-share-button\s*\{[^}]*background:\s*#fee500/);
+    assert.match(css, /\.cw-band-share-actions\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
     assert.doesNotMatch(html, /내 공유 성과|<header><span aria-hidden="true">✓<\/span>/);
     assert.match(css, /\.cw-intro-tagline\s*\{[^}]*white-space:\s*nowrap/);
     assert.match(css, /\.cw-member-dialog \.cw-member-input-group\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) 68px/);
-    assert.match(html, /crewart-survey-v4\.css\?v=20260817-home-actions-v92/);
-    assert.match(html, /crewart-survey\.js\?v=20260817-three-second-lock-v97/);
+    assert.match(html, /crewart-survey-v4\.css\?v=20260817-share-actions-v93/);
+    assert.match(html, /crewart-survey\.js\?v=20260817-share-actions-v98/);
     assert.match(script, /function renderUnifiedResult\(profile, house, options = \{\}\)/);
     assert.doesNotMatch(script, /resultViewVersion|resultViewFromLocation|changeResultView|report=deep|set-result-version/);
     assert.match(script, /function renderResult\(options = \{\}\)[\s\S]*renderUnifiedResult\(profile, house\);/);
@@ -634,6 +637,9 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /\['RED', 'GREEN', 'BLUE', 'YELLOW', finalHouse\]/);
     assert.doesNotMatch(script, /결과 미리보기|>SCROLL</);
     assert.match(script, /data-action="share"[\s\S]*카카오톡 공유/);
+    assert.match(script, /data-action="share-link"[\s\S]*링크 공유[\s\S]*data-action="save-image"[\s\S]*이미지 저장/);
+    assert.match(script, /function copyTrackedShareLink\(event\)[\s\S]*navigator\.clipboard\?\.writeText[\s\S]*공유 링크를 복사했어요/);
+    assert.match(css, /\.cw-story-share-row\s*\{[^}]*grid-template-columns:\s*repeat\(3, minmax\(0, 1fr\)\)/);
     assert.doesNotMatch(script, /data-action="guest-share"|shareGuestResult|preparedKakaoShareGuest/);
     assert.match(script, /class="cw-story-login-gate"[\s\S]*BAND 로그인하고 전체 결과 보기/);
     assert.doesNotMatch(script, /전체 결과가 잠겨 있어요|상세 성향 · 기숙사 · 결과 공유|cw-story-login-prompt|cw-story-login-copy/);
@@ -726,7 +732,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /function typeCharacterPath\(code\)/);
     assert.match(script, /TYPE_CHARACTER_ROOT = 'assets\/crewart-types\/'/);
     assert.match(html, /crewart-survey-core\.js\?v=20260815-random-timing-v80/);
-    assert.match(html, /crewart-survey-v4\.css\?v=20260817-home-actions-v92/);
+    assert.match(html, /crewart-survey-v4\.css\?v=20260817-share-actions-v93/);
     assert.match(script, /position: firstSelected \? Math\.min\(rawPosition, 34\) : Math\.max\(rawPosition, 66\)/);
     assert.match(html, /id="start-button"[^>]*>[\s\S]*테스트 하기/);
     assert.match(html, /id="home-auth-button"[^>]*>[\s\S]*BAND 가입여부 확인/);

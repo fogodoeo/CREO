@@ -1027,6 +1027,7 @@
                                 <div class="cw-story-final-actions">
                                     <div class="cw-story-share-row">
                                         <button type="button" class="cw-story-kakao" data-action="share"><img src="assets/kakaolink_btn_medium.png" width="24" height="24" alt=""><span data-action-label>카카오톡 공유</span></button>
+                                        <button type="button" class="cw-story-link" data-action="share-link"><i aria-hidden="true">↗</i><span data-action-label>링크 공유</span></button>
                                         <button type="button" class="cw-story-save" data-action="save-image"><i aria-hidden="true">↓</i><span data-action-label>이미지 저장</span></button>
                                     </div>
                                     ${BAND_INTEGRATION_ENABLED ? `<a class="cw-story-band" data-band-prompt href="${escapeHtml(bandTargetUrl)}" target="_blank" rel="noopener noreferrer">
@@ -1052,6 +1053,7 @@
     function bindRenderedResultActions() {
         element('result-content').querySelector('[data-action="go-home"]')?.addEventListener('click', () => navigateToTab('home'));
         element('result-content').querySelectorAll('[data-action="share"]').forEach(button => button.addEventListener('click', shareResult));
+        element('result-content').querySelectorAll('[data-action="share-link"]').forEach(button => button.addEventListener('click', shareResultLink));
         element('result-content').querySelectorAll('[data-action="save-image"]').forEach(button => button.addEventListener('click', saveResultImage));
         element('result-content').querySelectorAll('[data-action="unlock-detail"]').forEach(button => button.addEventListener('click', handleUnlockDetail));
     }
@@ -2305,6 +2307,27 @@
         await openKakaoShareGuide(event);
     }
 
+    async function copyTrackedShareLink(event) {
+        const button = event?.currentTarget;
+        const shareUrl = createTrackedShareUrl();
+        setShareButtonBusy(button, true, '복사 중');
+        try {
+            if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(shareUrl);
+            else window.prompt('아래 링크를 복사해주세요.', shareUrl);
+            toast('공유 링크를 복사했어요.');
+        } catch (error) {
+            console.error('[Crewart link share]', error);
+            window.prompt('아래 링크를 복사해주세요.', shareUrl);
+        } finally {
+            setShareButtonBusy(button, false);
+        }
+    }
+
+    async function shareResultLink(event) {
+        if (!result && !restoreShareableResult()) return;
+        await copyTrackedShareLink(event);
+    }
+
     function restoreShareableResult() {
         if (Core.MBTI_TYPES.includes(result?.code) && Core.HOUSE_KEYS.includes(assignedHouseKey)) return true;
         const snapshot = loadLastResult();
@@ -2367,6 +2390,14 @@
         }
     }
 
+    async function shareBandLink(event) {
+        if (!bandAuthToken || !bandAuthUser?.isTargetMember) {
+            openMemberCheck();
+            return;
+        }
+        await copyTrackedShareLink(event);
+    }
+
     if (IS_LOCAL_QA) {
             window.CrewartShareQA = Object.freeze({
                 createResultShareFile,
@@ -2411,6 +2442,7 @@
         element('auth-phone-edit')?.addEventListener('click', editMembershipAccess);
         element('auth-phone-clear')?.addEventListener('click', clearMembershipAccess);
         element('band-share-button')?.addEventListener('click', shareBandReferral);
+        element('band-link-share-button')?.addEventListener('click', shareBandLink);
         element('member-check-form')?.addEventListener('submit', verifyMembershipPhone);
         element('member-phone')?.addEventListener('input', formatMemberPhone);
         element('member-phone')?.addEventListener('focus', () => syncMemberKeyboardState());

@@ -16,11 +16,11 @@
     <link
         href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
         rel="stylesheet">
-    <link rel="stylesheet" href="crewart-survey-v4.css?v=20260817-home-actions-v92">
+    <link rel="stylesheet" href="crewart-survey-v4.css?v=20260817-share-actions-v93">
     <script src="assets/vendor/kakao-2.8.1.min.js"></script>
     <script src="crewart-survey-core.js?v=20260815-random-timing-v80"></script>
     <!-- Share-link target is cache-busted so KakaoTalk never reuses the old root URL. -->
-    <script src="crewart-survey.js?v=20260817-three-second-lock-v97" defer></script>
+    <script src="crewart-survey.js?v=20260817-share-actions-v98" defer></script>
 </head>
 
 <body>
@@ -162,9 +162,14 @@
 
                 <section class="cw-band-share-stats" id="band-share-state" aria-labelledby="band-share-title" hidden>
                     <header><div><h2 id="band-share-title">내 링크로 BAND 인증 완료</h2></div><strong id="band-share-verified">0명</strong></header>
-                    <button class="cw-band-share-button" id="band-share-button" type="button">
-                        <img src="assets/kakaolink_btn_medium.png" width="24" height="24" alt=""><span data-action-label>카카오톡 공유하기</span>
-                    </button>
+                    <div class="cw-band-share-actions">
+                        <button class="cw-band-share-button" id="band-share-button" type="button">
+                            <img src="assets/kakaolink_btn_medium.png" width="24" height="24" alt=""><span data-action-label>카카오톡 공유</span>
+                        </button>
+                        <button class="cw-band-link-share-button" id="band-link-share-button" type="button">
+                            <i aria-hidden="true">↗</i><span data-action-label>링크 공유</span>
+                        </button>
+                    </div>
                 </section>
 
             </div>
