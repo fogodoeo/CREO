@@ -16,7 +16,7 @@ const ENV = {
     SUPABASE_URL: 'https://project.supabase.co',
     SUPABASE_SERVICE_ROLE_KEY: 'service-role-secret',
     BAND_MEMBER_SESSION_SECRET: SESSION_SECRET,
-    BAND_MEMBER_TARGET_BAND_URL: 'https://www.band.us/band/101992972/post',
+    BAND_MEMBER_TARGET_BAND_URL: 'https://www.band.us/band/101878670/post',
     BAND_MEMBER_ALLOWED_ORIGINS: 'https://creok.example.com'
 };
 

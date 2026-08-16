@@ -80,11 +80,11 @@ test('HTTP server exposes the CREO hub, survey assets, health, and membership co
     assert.equal(configResponse.status, 200);
     const config = await configResponse.json();
     assert.equal(config.configured, false);
-    assert.equal(config.targetBandNo, '101992972');
+    assert.equal(config.targetBandNo, '101878670');
 
     const memberConfigResponse = await fetch(`http://127.0.0.1:${port}/api/band-membership/config`);
     assert.equal(memberConfigResponse.status, 200);
     const memberConfig = await memberConfigResponse.json();
     assert.equal(memberConfig.configured, false);
-    assert.match(memberConfig.targetBandUrl, /band\/101992972/);
+    assert.match(memberConfig.targetBandUrl, /band\/101878670/);
 });

@@ -74,7 +74,7 @@ function loadConfig(env = process.env) {
     const publicBaseUrl = trimSlash(
         env.BAND_OAUTH_PUBLIC_URL || env.RENDER_EXTERNAL_URL || 'https://creok.onrender.com'
     );
-    const targetBandNo = String(env.BAND_OAUTH_TARGET_BAND_NO || '101992972').trim();
+    const targetBandNo = String(env.BAND_OAUTH_TARGET_BAND_NO || '101878670').trim();
     const returnUrl = String(
         env.BAND_OAUTH_RETURN_URL || 'https://creok.onrender.com/crewart-survey.html'
     ).trim();

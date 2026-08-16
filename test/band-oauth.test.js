@@ -22,8 +22,8 @@ const ENV = {
     BAND_OAUTH_REDIRECT_URI: 'https://creok.example.com/api/band-oauth/callback',
     BAND_OAUTH_RETURN_URL: 'https://survey.example.com/crewart-survey.html',
     BAND_OAUTH_ALLOWED_RETURN_URLS: 'https://legacy.example.com/crewart-survey.html',
-    BAND_OAUTH_TARGET_BAND_NO: '101992972',
-    BAND_OAUTH_TARGET_BAND_URL: 'https://www.band.us/band/101992972/post'
+    BAND_OAUTH_TARGET_BAND_NO: '101878670',
+    BAND_OAUTH_TARGET_BAND_URL: 'https://www.band.us/band/101878670/post'
 };
 
 class CapturedResponse {
