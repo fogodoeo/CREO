@@ -1185,6 +1185,11 @@
                         <input type="number" id="bracket-full-font-input" oninput="previewBracketFontSize('bracket_full', this.value)" onchange="updateBracketFontSize('bracket_full', this.value)" class="cdcup-input" style="padding: 2px 6px; width: 52px; height: 28px; font-size: 11px; font-weight: 700; border-radius: 4px;" min="8" max="60" value="14">
                         <span style="font-size: 11px; font-weight: 700; color: var(--text-muted);">px</span>
                     </div>
+                    <div class="switch-container" id="toggle-bracket-full-opacity-group" style="display:none; gap: 7px; align-items: center; border-left: 1px solid var(--border); padding-left: 12px; margin-left: 6px;">
+                        <span style="font-weight: 700;">개인 카드 배경:</span>
+                        <input type="range" id="bracket-full-opacity-input" min="0" max="100" step="5" value="90" oninput="previewBracketFullCardOpacity(this.value)" onchange="updateBracketFullCardOpacity(this.value)" onwheel="wheelBracketFullCardOpacity(event)" style="width:86px; accent-color:#d9b05c;">
+                        <strong id="bracket-full-opacity-value" style="min-width:32px; font-size:11px; color:var(--text-muted);">90%</strong>
+                    </div>
                     <div class="switch-container" id="toggle-bracket-live-font-group" style="display:none; gap: 6px; align-items: center; border-left: 1px solid var(--border); padding-left: 12px; margin-left: 6px;">
                         <span style="font-weight: 700;">실시간 폰트:</span>
                         <input type="number" id="bracket-live-font-input" oninput="previewBracketFontSize('bracket_live', this.value)" onchange="updateBracketFontSize('bracket_live', this.value)" class="cdcup-input" style="padding: 2px 6px; width: 52px; height: 28px; font-size: 11px; font-weight: 700; border-radius: 4px;" min="8" max="60" value="14">
@@ -1488,6 +1493,7 @@
                     'toggle-bracket-scale-group',
                     'toggle-bracket-live-font-group',
                     'toggle-bracket-live-opacity-group',
+                    'toggle-bracket-full-opacity-group',
                     'toggle-bracket-title-show-group',
                     'toggle-battle-ann-show-group'
                 ].forEach(id => {
@@ -1497,6 +1503,7 @@
                 setDisplay('toggle-bracket-team-details-group', !isCrewart);
                 setDisplay('toggle-bracket-mode-group', !isCrewart);
                 setDisplay('toggle-bracket-full-font-group', true);
+                setDisplay('toggle-bracket-full-opacity-group', !isCrewart);
                 setDisplay('toggle-blind-totals-show-group', false);
                 setDisplay('toggle-event-match-show-group', false);
                 setDisplay('toggle-blind-totals-font-group', false);
@@ -1623,6 +1630,7 @@
             document.getElementById('toggle-bracket-scale-group').style.display = 'none';
             document.getElementById('toggle-bracket-mode-group').style.display = isInitialCrewart ? 'none' : '';
             document.getElementById('toggle-bracket-full-font-group').style.display = '';
+            document.getElementById('toggle-bracket-full-opacity-group').style.display = isInitialCrewart ? 'none' : '';
             document.getElementById('toggle-bracket-live-font-group').style.display = 'none';
             document.getElementById('toggle-bracket-live-opacity-group').style.display = 'none';
             document.getElementById('toggle-blind-totals-font-group').style.display = 'none';
@@ -1713,7 +1721,7 @@
             elements.bracket_full = {
                 el: document.getElementById('draggable-bracket-full'),
                 top: "5%", left: "20%", right: "auto", bottom: "auto",
-                show: "1", width: "60%", height: "65%"
+                show: "1", width: "60%", height: "65%", fontSize: "14", cardOpacity: "90"
             };
             elements.bracket_live = {
                 el: document.getElementById('draggable-bracket-live'),
@@ -1792,6 +1800,29 @@
         function updateBracketFontSize(key, val) {
             previewBracketFontSize(key, val);
             saveCoordinates(false);
+        }
+
+        function previewBracketFullCardOpacity(val) {
+            const parsed = parseInt(val, 10);
+            const opacity = Math.max(0, Math.min(100, Number.isFinite(parsed) ? parsed : 90));
+            if (elements.bracket_full) elements.bracket_full.cardOpacity = String(opacity);
+            const valueEl = document.getElementById('bracket-full-opacity-value');
+            if (valueEl) valueEl.textContent = opacity + '%';
+            postPreviewConfigPatch({ bracket_full_card_opacity: String(opacity) });
+        }
+
+        function updateBracketFullCardOpacity(val) {
+            previewBracketFullCardOpacity(val);
+            saveCoordinates(false);
+        }
+
+        function wheelBracketFullCardOpacity(event) {
+            event.preventDefault();
+            const input = event.currentTarget;
+            const step = parseInt(input.step || '5', 10) || 5;
+            const current = parseInt(input.value || '90', 10) || 0;
+            input.value = String(Math.max(0, Math.min(100, current + (event.deltaY < 0 ? step : -step))));
+            updateBracketFullCardOpacity(input.value);
         }
 
         function previewBracketOpacity(val) {
@@ -2009,9 +2040,15 @@
                     elements.bracket_full.width = cfg.bracket_full_width || cfg.bracket_width || '60%';
                     elements.bracket_full.height = cfg.bracket_full_height || cfg.bracket_height || '65%';
                     elements.bracket_full.fontSize = cfg.bracket_full_font_size || cfg.bracket_font_size || '14';
+                    elements.bracket_full.cardOpacity = cfg.bracket_full_card_opacity ?? '90';
                     
                     const fullFontInput = document.getElementById('bracket-full-font-input');
                     if (fullFontInput) fullFontInput.value = elements.bracket_full.fontSize;
+                    const fullOpacityInput = document.getElementById('bracket-full-opacity-input');
+                    if (fullOpacityInput) {
+                        fullOpacityInput.value = elements.bracket_full.cardOpacity;
+                        previewBracketFullCardOpacity(elements.bracket_full.cardOpacity);
+                    }
                 }
                 if (elements.bracket_live) {
                     elements.bracket_live.top = cfg.bracket_live_top || '0px';
@@ -2815,6 +2852,7 @@
                     configMap['bracket_full_show'] = elements.bracket_full.show;
                     configMap['bracket_full_font_size'] = elements.bracket_full.fontSize || '14';
                     configMap['bracket_font_size'] = elements.bracket_full.fontSize || '14';
+                    configMap['bracket_full_card_opacity'] = elements.bracket_full.cardOpacity || '90';
                 }
                 if (elements.bracket_live) {
                     configMap['bracket_live_top'] = elements.bracket_live.top;
@@ -2976,8 +3014,14 @@
                     elements.bracket_full.show = resetIsCrewart ? "1" : "0";
                     elements.bracket_full.width = "100%";
                     elements.bracket_full.height = "calc(100% - 120px)";
+                    elements.bracket_full.fontSize = "14";
+                    elements.bracket_full.cardOpacity = "90";
                     elements.bracket_full.el.style.width = '100%';
                     elements.bracket_full.el.style.height = 'calc(100% - 120px)';
+                    const fullFontInput = document.getElementById('bracket-full-font-input');
+                    if (fullFontInput) fullFontInput.value = '14';
+                    const fullOpacityInput = document.getElementById('bracket-full-opacity-input');
+                    if (fullOpacityInput) { fullOpacityInput.value = '90'; previewBracketFullCardOpacity('90'); }
                     document.getElementById('toggle-bracket-full-show').checked = resetIsCrewart;
                     applyVisualState('bracket_full');
                 }

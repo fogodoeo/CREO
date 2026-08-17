@@ -312,6 +312,11 @@ test('CDCUP three-round format assigns round-two teams and round-three finalists
     assert.match(broadcast, /grid-template-columns: minmax\(0, 1fr\) auto/);
     assert.match(broadcast, /displayName\.trim\(\)\.split\(\/\\s\+\/\)/);
     assert.match(broadcast, /class="individual-name-line"/);
+    assert.match(broadcast, /grid-template-rows: repeat\(2, auto\)/);
+    assert.match(broadcast, /font-size: calc\(var\(--bracket-fs\) \* 1\.55\)/);
+    assert.match(broadcast, /--individual-card-opacity/);
+    assert.match(preview, /id="bracket-full-opacity-input"/);
+    assert.match(preview, /bracket_full_card_opacity/);
     assert.match(bridge, /A1~H1, A2~H2, A3~H3/);
     assert.match(bridge, /최대 3개까지 등록/);
     assert.match(registration, /업체당 3개체/);

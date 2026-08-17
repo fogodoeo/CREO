@@ -3619,33 +3619,42 @@
         #bracket-page-tree-full .sports-results-grid { gap: calc(var(--bracket-fs) * .65); }
         #bracket-page-tree-full .sports-results-grid.individual-ranking-grid {
             grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-            grid-template-rows: repeat(2, minmax(0, 1fr));
-            flex: 1 1 auto;
+            grid-template-rows: repeat(2, auto);
+            align-content: center;
+            gap: calc(var(--bracket-fs) * 1.05);
+            flex: 0 0 auto;
             min-height: 0;
         }
         #bracket-page-tree-full .sports-results-board.individual-stage-board {
             display: flex;
             flex-direction: column;
             width: 100%;
-            height: 100%;
+            height: auto;
             max-height: 100%;
+            padding: 0 !important;
+            overflow: visible;
+            border: 0 !important;
+            background: transparent !important;
+            box-shadow: none !important;
         }
         #bracket-page-tree-full .individual-standing-card {
             display: grid;
             grid-template-columns: minmax(0, 1fr) auto;
             align-items: center;
-            gap: clamp(7px, calc(var(--bracket-fs) * .68), 18px);
+            gap: calc(var(--bracket-fs) * .72);
             min-width: 0;
             min-height: 0;
-            padding: clamp(8px, calc(var(--bracket-fs) * .92), 20px);
+            padding: calc(var(--bracket-fs) * .55) calc(var(--bracket-fs) * .72);
             text-align: left;
-            border: 1px solid rgba(195,154,74,.2) !important;
-            background:
-                linear-gradient(145deg, rgba(255,255,255,.062), rgba(255,255,255,.026)) !important;
+            border: 1px solid rgba(195,154,74,.34) !important;
+            border-radius: calc(var(--bracket-fs) * .62) !important;
+            background: rgba(27, 29, 33, var(--individual-card-opacity, .9)) !important;
+            box-shadow: 0 calc(var(--bracket-fs) * .45) calc(var(--bracket-fs) * 1.2) rgba(0,0,0,.24) !important;
+            will-change: transform;
         }
         #bracket-page-tree-full .individual-standing-card.is-current {
             border-color: var(--cdcup-gold) !important;
-            background: linear-gradient(145deg, rgba(195,154,74,.16), rgba(255,255,255,.035)) !important;
+            background: rgba(49, 43, 31, var(--individual-card-opacity, .9)) !important;
         }
         #bracket-page-tree-full .individual-name {
             display: flex;
@@ -3654,13 +3663,14 @@
             align-items: flex-start;
             justify-content: center;
             color: #fff;
-            font-size: clamp(14px, calc(var(--bracket-fs) * 1.38), 32px);
+            font-size: calc(var(--bracket-fs) * 1.55);
             font-weight: 930;
             letter-spacing: -.035em;
             line-height: 1.08;
         }
         #bracket-page-tree-full .individual-name-line {
             display: block;
+            width: 100%;
             max-width: 100%;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -3670,7 +3680,7 @@
             display: block;
             min-width: max-content;
             color: var(--cdcup-gold-light);
-            font-size: clamp(19px, calc(var(--bracket-fs) * 2.05), 46px);
+            font-size: calc(var(--bracket-fs) * 2.25);
             font-weight: 950;
             font-variant-numeric: tabular-nums;
             letter-spacing: -.055em;
@@ -3762,15 +3772,9 @@
             #bracket-page-tree-full .sports-results-grid { grid-template-columns: 1fr !important; gap: 7px; }
             #bracket-page-tree-full .sports-results-grid.individual-ranking-grid {
                 grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-                grid-template-rows: repeat(4, minmax(0, 1fr));
+                grid-template-rows: repeat(4, auto);
                 min-height: 0;
             }
-            #bracket-page-tree-full .individual-standing-card {
-                gap: clamp(6px, 2vw, 10px);
-                padding: clamp(7px, 2.4vw, 10px);
-            }
-            #bracket-page-tree-full .individual-name { font-size: clamp(13px, 4vw, 18px); }
-            #bracket-page-tree-full .individual-amount { font-size: clamp(18px, 6vw, 27px); }
             #bracket-page-tree-full .sports-match-meta { min-height: 34px; padding-inline: 11px; font-size: 18px; }
             #bracket-page-tree-full .team-progress-member { min-height: 30px; padding: 5px 10px; font-size: 15px; }
         }
@@ -7410,6 +7414,9 @@
                 const boardOpacityRaw = parseInt(map.blind_totals_opacity ?? '90', 10);
                 const boardOpacity = Math.max(0, Math.min(100,
                     Number.isFinite(boardOpacityRaw) ? boardOpacityRaw : 90)) / 100;
+                const individualCardOpacityRaw = parseInt(map.bracket_full_card_opacity ?? '90', 10);
+                const individualCardOpacity = Math.max(0, Math.min(100,
+                    Number.isFinite(individualCardOpacityRaw) ? individualCardOpacityRaw : 90)) / 100;
                 treeFull.style.position = 'absolute';
                 treeFull.style.zIndex = '20';
                 treeFull.style.top = fullTop;
@@ -7420,6 +7427,7 @@
                 treeFull.style.setProperty('--bracket-fs', fullFontSize + 'px');
                 treeFull.style.setProperty('--full-board-opacity', String(boardOpacity));
                 treeFull.style.setProperty('--full-card-opacity', String(boardOpacity * 0.05));
+                treeFull.style.setProperty('--individual-card-opacity', String(individualCardOpacity));
             }
             if (treeLive) {
                 treeLive.style.position = 'absolute';
