@@ -723,6 +723,11 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /Kakao\.Share\.sendDefault/);
     assert.match(script, /function sharePreparedNativeResult[\s\S]*preparedKakaoImageUrl[\s\S]*Kakao\.Share\.sendDefault\(resultKakaoTemplate/);
     assert.match(html, /assets\/vendor\/kakao-2\.8\.1\.min\.js/);
+    assert.match(html, /property="og:image" content="https:\/\/creok\.onrender\.com\/assets\/crewart-link-preview\.jpg\?v=20260817-og-v1"/);
+    assert.match(html, /property="og:image:type" content="image\/jpeg"/);
+    assert.match(html, /property="og:image:width" content="1280"/);
+    assert.match(html, /property="og:image:height" content="1280"/);
+    assert.match(html, /name="twitter:card" content="summary_large_image"/);
     assert.match(css, /\.cw-save-dialog::backdrop/);
     assert.match(css, /\.cw-kakao-preview\s*\{[^}]*aspect-ratio:\s*3\s*\/\s*4/);
     assert.match(css, /\.cw-save-preview img\s*\{[^}]*position:\s*absolute[^}]*object-fit:\s*contain/);
