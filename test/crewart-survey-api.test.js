@@ -157,8 +157,8 @@ test('bootstrap returns version-matched content and aggregate data only', async 
     const payload = JSON.parse(response.body);
     assert.equal(payload.content.version, Core.SURVEY_VERSION);
     assert.deepEqual(payload.cohort.houseCounts, { SF: 1, ST: 0, NT: 1, NF: 0 });
-    assert.deepEqual(payload.cohort.timingMedians, [15455, 14545]);
-    assert.equal(payload.cohort.timingMedians.reduce((sum, value) => sum + value, 0) / payload.cohort.timingMedians.length, 15000);
+    assert.deepEqual(payload.cohort.timingMedians, [3400, 3200]);
+    assert.equal(payload.cohort.timingMedians.reduce((sum, value) => sum + value, 0) / payload.cohort.timingMedians.length, 3300);
     assert.equal(payload.cohort.sampleSize, 2);
     assert.equal(response.body.includes('비공개 이름'), false);
     assert.equal(response.body.includes('숨길 이름'), false);
@@ -646,9 +646,9 @@ test('share metrics follow the verified member across random browser sessions', 
     assert.equal(browserOnly.status, 401);
 });
 
-test('participant timing values are normalized to an exact fifteen-second average', () => {
-    const values = normalizeTimingMedians([3100, 3100, 4037, 9301, 90000]);
-    assert.equal(values.length, 5);
-    assert.equal(values.reduce((sum, value) => sum + value, 0), 75000);
-    assert.ok(values.every((value) => value >= Core.MIN_RESPONSE_MS && value <= Core.MAX_RESPONSE_MS));
+test('participant timing values stay actual and exclude three seconds or less', () => {
+    const values = normalizeTimingMedians([0, 2999, 3000, 3100, 4037, 9301, 90000, 90001]);
+    assert.equal(values.length, 4);
+    assert.deepEqual(values, [3100, 4037, 9301, 90000]);
+    assert.ok(values.every((value) => value > Core.MIN_RESPONSE_MS && value <= Core.MAX_RESPONSE_MS));
 });

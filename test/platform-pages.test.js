@@ -610,7 +610,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(css, /\.cw-intro-tagline\s*\{[^}]*white-space:\s*nowrap/);
     assert.match(css, /\.cw-member-dialog \.cw-member-input-group\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) 68px/);
     assert.match(html, /crewart-survey-v4\.css\?v=20260817-share-polish-v96/);
-    assert.match(html, /crewart-survey\.js\?v=20260817-band-target-v100/);
+    assert.match(html, /crewart-survey\.js\?v=20260817-real-timing-v101/);
     assert.match(script, /function renderUnifiedResult\(profile, house, options = \{\}\)/);
     assert.doesNotMatch(script, /resultViewVersion|resultViewFromLocation|changeResultView|report=deep|set-result-version/);
     assert.match(script, /function renderResult\(options = \{\}\)[\s\S]*renderUnifiedResult\(profile, house\);/);
@@ -780,6 +780,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(html, /class="cw-q0-copyright" id="q0-copyright" hidden>© 2026 CREO\. All rights reserved\./);
     assert.match(script, /© 2026 CREO · ALL RIGHTS RESERVED/);
     assert.match(script, /const cohortAverageMs = samples\.length \? samples\.reduce\(\(sum, sample\) => sum \+ sample, 0\) \/ samples\.length : timingStats\.averageMs/);
+    assert.match(script, /참여자 \$\{samples\.length\}명 · 평균 \$\{formatSeconds\(cohortAverageMs\)\}/);
+    assert.doesNotMatch(script, /Math\.max\(3100, rawMs\)/);
     assert.doesNotMatch(script, /OWN_SHARE_IDS_STORAGE_KEY|loadOwnShareIds|searchParams\.set\('ids'/);
     assert.match(script, /headers: \{ Authorization: `Bearer \$\{bandAuthToken\}` \}/);
     assert.match(script, /context\.textAlign = 'center';\s*context\.fillText\('© 2026 CREO · ALL RIGHTS RESERVED', canvas\.width \/ 2, 1370\)/);

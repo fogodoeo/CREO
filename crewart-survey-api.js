@@ -14,7 +14,6 @@ const REFERRAL_OWNER_PREFIX = 'crewart_referral_owner_v1_';
 const REFERRAL_MEMBER_PREFIX = 'crewart_referral_member_v1_';
 const REFERRAL_LIMIT = 1000;
 const REFERRAL_OWNER_LINK_LIMIT = 80;
-const PARTICIPANT_AVERAGE_MS = 15 * 1000;
 const REFERRAL_EVENTS = Object.freeze({
     share: 'sharedAt',
     landing: 'landedAt',
@@ -83,38 +82,11 @@ function memberIdentity(session) {
 }
 
 function normalizeTimingMedians(values) {
-    const samples = (values || []).map(Number)
-        .filter((value) => Number.isFinite(value) && value >= Core.MIN_RESPONSE_MS && value <= Core.MAX_RESPONSE_MS)
-        .map(Math.round);
-    if (!samples.length) return [];
-    const sourceAverage = samples.reduce((sum, value) => sum + value, 0) / samples.length;
-    const targetTotal = PARTICIPANT_AVERAGE_MS * samples.length;
-    const adjusted = samples.map((value) => Math.max(
-        Core.MIN_RESPONSE_MS,
-        Math.min(Core.MAX_RESPONSE_MS, Math.round(value * PARTICIPANT_AVERAGE_MS / sourceAverage))
-    ));
-    let difference = targetTotal - adjusted.reduce((sum, value) => sum + value, 0);
-    while (difference !== 0) {
-        const direction = Math.sign(difference);
-        const candidates = adjusted
-            .map((value, index) => ({ value, index }))
-            .filter((item) => direction > 0 ? item.value < Core.MAX_RESPONSE_MS : item.value > Core.MIN_RESPONSE_MS);
-        if (!candidates.length) break;
-        const share = Math.max(1, Math.floor(Math.abs(difference) / candidates.length));
-        let changed = 0;
-        for (const item of candidates) {
-            if (difference === 0) break;
-            const capacity = direction > 0
-                ? Core.MAX_RESPONSE_MS - adjusted[item.index]
-                : adjusted[item.index] - Core.MIN_RESPONSE_MS;
-            const amount = Math.min(Math.abs(difference), share, capacity);
-            adjusted[item.index] += direction * amount;
-            difference -= direction * amount;
-            changed += amount;
-        }
-        if (!changed) break;
-    }
-    return adjusted;
+    return (values || [])
+        .map(Number)
+        .filter(Number.isFinite)
+        .map(Math.round)
+        .filter((value) => value > Core.MIN_RESPONSE_MS && value <= Core.MAX_RESPONSE_MS);
 }
 
 function summarizeReferrals(rows) {
@@ -352,7 +324,7 @@ function aggregateResponses(rows, legacyValue) {
         const house = cleanText(response.assignedHouseKey || response.houseId, 2).toUpperCase();
         if (house in houseCounts) houseCounts[house] += 1;
         const median = Number(response?.timingStats?.medianMs);
-        if (Number.isFinite(median) && median >= Core.MIN_RESPONSE_MS && median <= Core.MAX_RESPONSE_MS) timingMedians.push(Math.round(median));
+        if (Number.isFinite(median) && median > Core.MIN_RESPONSE_MS && median <= Core.MAX_RESPONSE_MS) timingMedians.push(Math.round(median));
         sampleSize += 1;
     }
     const rawTimingMedians = timingMedians.slice(-RESPONSE_LIMIT);
@@ -705,7 +677,8 @@ function createCrewartSurveyApi(options = {}) {
                         cohort.identities.add(assigned.participantKey);
                         if (!alreadyCounted) {
                             cohort.houseCounts[assignedHouseKey] += 1;
-                            if (assigned.timingStats.medianMs >= Core.MIN_RESPONSE_MS) {
+                            if (assigned.timingStats.medianMs > Core.MIN_RESPONSE_MS
+                                && assigned.timingStats.medianMs <= Core.MAX_RESPONSE_MS) {
                                 cohort.rawTimingMedians.push(assigned.timingStats.medianMs);
                                 cohort.rawTimingMedians = cohort.rawTimingMedians.slice(-RESPONSE_LIMIT);
                                 cohort.timingMedians = normalizeTimingMedians(cohort.rawTimingMedians);

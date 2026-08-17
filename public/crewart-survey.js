@@ -510,7 +510,7 @@
                 ])),
                 timingMedians: (Array.isArray(payload.cohort?.timingMedians)
                     ? payload.cohort.timingMedians
-                    : []).map(Number).filter(value => value >= Core.MIN_RESPONSE_MS && value <= Core.MAX_RESPONSE_MS),
+                    : []).map(Number).filter(value => value > Core.MIN_RESPONSE_MS && value <= Core.MAX_RESPONSE_MS),
                 sampleSize: Math.max(0, Number(payload.cohort?.sampleSize) || 0)
             };
         } catch (error) {
@@ -549,7 +549,7 @@
         if (!activeTimer || activeTimer.index !== index) return;
         pauseTimer();
         const rawMs = Math.round(activeTimer.elapsedMs);
-        const elapsedMs = Math.max(3100, rawMs);
+        const elapsedMs = rawMs;
         responseTimings[index] = {
             questionId: questions[index].id,
             axis: questions[index].axis,
@@ -921,12 +921,12 @@
         const valid = timingStats.validCount > 0 && timingStats.averageMs > 0;
         const value = valid ? formatSeconds(timingStats.averageMs) : '-';
         const samples = cohortSummary.timingMedians.map(Number)
-            .filter(value => value >= Core.MIN_RESPONSE_MS && value <= Core.MAX_RESPONSE_MS);
+            .filter(value => value > Core.MIN_RESPONSE_MS && value <= Core.MAX_RESPONSE_MS);
         const cohortAverageMs = samples.length ? samples.reduce((sum, sample) => sum + sample, 0) / samples.length : timingStats.averageMs;
         const relative = valid && cohortAverageMs > 0 ? Math.log2(timingStats.averageMs / cohortAverageMs) : 0;
         const position = Math.max(7, Math.min(93, 50 + relative * 25));
         const comparison = samples.length
-            ? `참여자 평균 ${formatSeconds(cohortAverageMs)} · ${samples.length}명 기준`
+            ? `참여자 ${samples.length}명 · 평균 ${formatSeconds(cohortAverageMs)}`
             : '참여자 비교 데이터 준비 중';
         const label = position <= 38
             ? '빠르게 고르는 편'
