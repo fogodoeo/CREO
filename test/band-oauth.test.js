@@ -23,7 +23,7 @@ const ENV = {
     BAND_OAUTH_RETURN_URL: 'https://survey.example.com/crewart-survey.html',
     BAND_OAUTH_ALLOWED_RETURN_URLS: 'https://legacy.example.com/crewart-survey.html',
     BAND_OAUTH_TARGET_BAND_NO: '101878670',
-    BAND_OAUTH_TARGET_BAND_URL: 'https://www.band.us/band/101878670/post'
+    BAND_OAUTH_TARGET_BAND_URL: 'https://band.us/n/a5a7b3F8Rfw91'
 };
 
 class CapturedResponse {

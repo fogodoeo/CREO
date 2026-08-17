@@ -3,7 +3,7 @@
 
     const Core = window.CrewartSurveyCore;
     const SURVEY_URL = 'https://creok.onrender.com/crewart-survey.html';
-    const DEFAULT_BAND_URL = 'https://www.band.us/band/101878670/post';
+    const DEFAULT_BAND_URL = 'https://band.us/n/a5a7b3F8Rfw91';
     const BAND_MEMBER_API = '/api/band-membership';
     const REFERRAL_API = '/api/crewart-survey/shares';
     const REFERRAL_STORAGE_KEY = 'crewart_referral_source_v1';
