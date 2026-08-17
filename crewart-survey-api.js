@@ -320,7 +320,6 @@ function aggregateResponses(rows, legacyValue) {
     const timingMedians = [];
     let sampleSize = 0;
     for (const response of responses.values()) {
-        if (response?.questionVersion !== Core.SURVEY_VERSION) continue;
         const house = cleanText(response.assignedHouseKey || response.houseId, 2).toUpperCase();
         if (house in houseCounts) houseCounts[house] += 1;
         const median = Number(response?.timingStats?.medianMs);

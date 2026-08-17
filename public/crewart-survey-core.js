@@ -5,7 +5,7 @@
 }(typeof globalThis !== 'undefined' ? globalThis : this, function () {
     'use strict';
 
-    let SURVEY_VERSION = 'crewart-tendency-v28.0-pasamo-ultimate';
+    let SURVEY_VERSION = 'crewart-tendency-v29.0-calibrated';
 
     const SURVEY_VERSION_REGISTRY = {
         v1: {
@@ -27,13 +27,24 @@
             resultsVersion: 'crewart-results-v28.0-pasamo-ultimate',
             questionsFile: 'crewart-survey-questions-v28.json',
             resultsFile: 'crewart-survey-results-v28.json',
+            active: false,
+            legacy: true
+        },
+        v3: {
+            id: 'v3',
+            versionKey: 'v29',
+            displayName: 'Ver 3',
+            questionVersion: 'crewart-tendency-v29.0-calibrated',
+            resultsVersion: 'crewart-results-v28.0-pasamo-ultimate',
+            questionsFile: 'crewart-survey-questions-v29.json',
+            resultsFile: 'crewart-survey-results-v28.json',
             active: true,
             legacy: false
         }
     };
 
     function getSurveyVersion(keyOrId) {
-        if (!keyOrId) return SURVEY_VERSION_REGISTRY.v2;
+        if (!keyOrId) return SURVEY_VERSION_REGISTRY.v3;
         const normalized = String(keyOrId).trim().toLowerCase();
         if (SURVEY_VERSION_REGISTRY[normalized]) return SURVEY_VERSION_REGISTRY[normalized];
         for (const reg of Object.values(SURVEY_VERSION_REGISTRY)) {
@@ -41,7 +52,7 @@
                 return reg;
             }
         }
-        return SURVEY_VERSION_REGISTRY.v2;
+        return SURVEY_VERSION_REGISTRY.v3;
     }
 
     let AXIS_SCORE_TOTAL = 15;
@@ -58,8 +69,8 @@
         'ESTJ', 'ESFJ', 'ENFJ', 'ENTJ'
     ];
 
-    // This inline set remains only as a compatibility fallback. The deployed v24
-    // questionnaire and its graded, single-axis signals load from the JSON spec below.
+    // This inline set remains only as an initialization fallback. The active
+    // questionnaire and its graded signals load from the versioned JSON spec below.
     const QUESTIONS = [
         { id: 'Q01', axis: 'TF', secondaryAxis: 'JP', facet: 'selection', label: '두 개체 중 하나를 고를 때', q: '둘 중 하나를 정하기 위해 마지막으로 하는 일은?', options: ['두 개체 사진을 한 화면에 놓고 본다', '한 마리씩 따로 다시 살펴본다', '잠깐 다른 곳을 본 뒤 다시 돌아온다', '각각 마음에 드는 점을 하나씩 짚어본다'], scores: ['T', 'T', 'F', 'F'], scorePairs: [['T', 'J'], ['T', 'P'], ['F', 'P'], ['F', 'J']], scoreWeights: [[3, 2], [3, 2], [3, 2], [3, 2]] },
         { id: 'Q02', axis: 'JP', secondaryAxis: 'EI', facet: 'orientation', label: '찾던 부스가 보이지 않을 때', q: '먼저 어떻게 할까?', options: ['안내 요원에게 위치를 묻는다', '온라인 지도를 다시 확인한다', '주변 부스를 보며 근처부터 찾아본다', '다음에 볼 부스로 갔다가 나중에 돌아온다'], scores: ['J', 'J', 'P', 'P'], scorePairs: [['J', 'E'], ['J', 'I'], ['P', 'E'], ['P', 'I']], scoreWeights: [[3, 2], [3, 2], [3, 2], [3, 2]] },
@@ -75,18 +86,18 @@
         { id: 'Q12', axis: 'SN', secondaryAxis: 'TF', facet: 'name-card', label: '이름표 시안 중 하나를 고를 때', q: '두 시안을 처음 비교하는 방식은?', options: ['글자 크기와 사진 배치의 차이를 본다', '매일 볼 때 어느 쪽이 더 마음에 들지 본다', '사육장 전체 분위기와 어떻게 이어질지 본다', '나중에 사진이나 장식을 바꿔도 어울릴지 본다'], scores: ['S', 'S', 'N', 'N'], scorePairs: [['S', 'T'], ['S', 'F'], ['N', 'F'], ['N', 'T']], scoreWeights: [[3, 2], [3, 2], [3, 2], [3, 2]] }
     ];
 
-    let QUESTIONNAIRE_FILE = 'crewart-survey-questions-v28.json';
+    let QUESTIONNAIRE_FILE = 'crewart-survey-questions-v29.json';
 
-    const DEFAULT_QUESTIONS_SPEC_V28 = {
-  "version": "crewart-tendency-v28.0-pasamo-ultimate",
-  "title": "크레와트 성향 테스트 — Pasamo Ultimate Edition (v28.0)",
+    const DEFAULT_QUESTIONS_SPEC_V29 = {
+  "version": "crewart-tendency-v29.0-calibrated",
+  "title": "크레와트 성향 테스트 — 문항 균형 보정판 (v29.0)",
   "editorGuide": {
-    "rule": "P0 psychometric invariants strictly enforced: question text length between 75 and 115 characters, option text length between 23 and 38 characters. Required keeper context keywords included."
+    "rule": "문항은 30~80자, 선택지는 15~32자로 유지한다. 크레 집사가 실제로 겪는 장면을 사용하고, 정답처럼 보이는 표현은 피한다."
   },
   "scoring": {
     "method": "graded_forced_choice",
     "strongSignalPoints": 3,
-    "supportingSignalPoints": 1,
+    "supportingSignalPoints": 2,
     "primaryQuestionsPerAxis": 3,
     "secondaryQuestionsPerAxis": 3,
     "displayScoresToUser": false
@@ -103,37 +114,37 @@
       "axis": "TF",
       "secondaryAxis": "JP",
       "label": "마감 직전 경매 개체 선택",
-      "q": "밴드 경매 마감 10초 전! 찜해둔 두 아이 중 딱 하나만 입찰한다면?",
+      "q": "밴드 경매 마감 직전, 마지막까지 고민한 두 아이 중 하나를 선택해야 한다면?",
       "options": [
-        "부모 혈통이랑 모프 정보부터 냉정하게 따져본다",
-        "지금 체중이랑 밥 잘 먹는지 건강 상태부터 체크한다",
-        "파업 사진 다시 보며 처음 심장 뛰었던 아이로 직진!",
-        "지금 놓치면 며칠 동안 눈에 밟힐 원픽에 올인한다"
+        "미리 정한 혈통과 건강 기준에 더 맞는 아이로 결정한다",
+        "처음 세운 우선순위와 지금 끌리는 점을 함께 비교한다",
+        "사진을 번갈아 보며 조금 더 마음이 가는 쪽을 고른다",
+        "잠시 화면에서 눈을 떼도 계속 떠오르는 아이를 선택한다"
       ],
       "optionScores": [
         {
           "T": 3,
           "F": 0,
-          "J": 1,
+          "J": 2,
           "P": 0
         },
         {
           "T": 2,
           "F": 1,
-          "J": 1,
+          "J": 2,
           "P": 0
         },
         {
           "T": 1,
           "F": 2,
           "J": 0,
-          "P": 1
+          "P": 2
         },
         {
           "T": 0,
           "F": 3,
           "J": 0,
-          "P": 1
+          "P": 2
         }
       ],
       "scorePairs": [
@@ -157,19 +168,19 @@
       "scoreWeights": [
         [
           3,
-          1
+          2
         ],
         [
           2,
-          1
+          2
         ],
         [
           2,
-          1
+          2
         ],
         [
           3,
-          1
+          2
         ]
       ],
       "optionIds": [
@@ -195,26 +206,26 @@
         {
           "J": 3,
           "P": 0,
-          "E": 1,
+          "E": 2,
           "I": 0
         },
         {
           "J": 2,
           "P": 1,
           "E": 0,
-          "I": 1
+          "I": 2
         },
         {
           "J": 1,
           "P": 2,
-          "E": 1,
+          "E": 2,
           "I": 0
         },
         {
           "J": 0,
           "P": 3,
           "E": 0,
-          "I": 1
+          "I": 2
         }
       ],
       "scorePairs": [
@@ -238,19 +249,19 @@
       "scoreWeights": [
         [
           3,
-          1
+          2
         ],
         [
           2,
-          1
+          2
         ],
         [
           2,
-          1
+          2
         ],
         [
           3,
-          1
+          2
         ]
       ],
       "optionIds": [
@@ -265,37 +276,37 @@
       "axis": "TF",
       "secondaryAxis": "JP",
       "label": "성장 기록 자랑글과 사진 선택",
-      "q": "폭풍 성장한 아이의 성장 기록을 올릴 때, 썸네일로 고를 인생샷은?",
+      "q": "폭풍 성장한 아이의 성장 기록에 대표 사진 한 장만 올린다면, 무엇을 고를까?",
       "options": [
-        "등 핀이랑 옆구리 발색이 완벽하게 나온 고화질 샷",
-        "아기 때 쪼꼬미 시절 vs 지금 뚱크레 체중 비교 샷",
-        "손 위에서 똘망똘망 눈 마주쳐주는 심쿵 교감 샷",
-        "유리벽에 찰떡처럼 엉뚱하게 붙어있는 귀여운 엽사 샷"
+        "같은 각도와 조명이라 성장 차이가 또렷하게 보이는 사진",
+        "최근 체중과 특징을 함께 설명하기 가장 편한 사진",
+        "그날 유난히 눈길을 끌었던 자연스러운 순간의 사진",
+        "볼 때마다 이 아이답다고 느껴지는 가장 애정 가는 사진"
       ],
       "optionScores": [
         {
           "T": 3,
           "F": 0,
-          "J": 1,
+          "J": 2,
           "P": 0
         },
         {
           "T": 2,
           "F": 1,
-          "J": 1,
+          "J": 2,
           "P": 0
         },
         {
           "T": 1,
           "F": 2,
           "J": 0,
-          "P": 1
+          "P": 2
         },
         {
           "T": 0,
           "F": 3,
           "J": 0,
-          "P": 1
+          "P": 2
         }
       ],
       "scorePairs": [
@@ -319,19 +330,19 @@
       "scoreWeights": [
         [
           3,
-          1
+          2
         ],
         [
           2,
-          1
+          2
         ],
         [
           2,
-          1
+          2
         ],
         [
           3,
-          1
+          2
         ]
       ],
       "optionIds": [
@@ -357,26 +368,26 @@
         {
           "E": 3,
           "I": 0,
-          "S": 1,
+          "S": 2,
           "N": 0
         },
         {
           "E": 2,
           "I": 1,
-          "S": 1,
+          "S": 2,
           "N": 0
         },
         {
           "E": 1,
           "I": 2,
           "S": 0,
-          "N": 1
+          "N": 2
         },
         {
           "E": 0,
           "I": 3,
           "S": 0,
-          "N": 1
+          "N": 2
         }
       ],
       "scorePairs": [
@@ -400,19 +411,19 @@
       "scoreWeights": [
         [
           3,
-          1
+          2
         ],
         [
           2,
-          1
+          2
         ],
         [
           2,
-          1
+          2
         ],
         [
           3,
-          1
+          2
         ]
       ],
       "optionIds": [
@@ -438,26 +449,26 @@
         {
           "S": 3,
           "N": 0,
-          "T": 1,
+          "T": 2,
           "F": 0
         },
         {
           "S": 2,
           "N": 1,
-          "T": 1,
+          "T": 2,
           "F": 0
         },
         {
           "S": 1,
           "N": 2,
           "T": 0,
-          "F": 1
+          "F": 2
         },
         {
           "S": 0,
           "N": 3,
           "T": 0,
-          "F": 1
+          "F": 2
         }
       ],
       "scorePairs": [
@@ -481,19 +492,19 @@
       "scoreWeights": [
         [
           3,
-          1
+          2
         ],
         [
           2,
-          1
+          2
         ],
         [
           2,
-          1
+          2
         ],
         [
           3,
-          1
+          2
         ]
       ],
       "optionIds": [
@@ -519,26 +530,26 @@
         {
           "S": 3,
           "N": 0,
-          "T": 1,
+          "T": 2,
           "F": 0
         },
         {
           "S": 2,
           "N": 1,
-          "T": 1,
+          "T": 2,
           "F": 0
         },
         {
           "S": 1,
           "N": 2,
           "T": 0,
-          "F": 1
+          "F": 2
         },
         {
           "S": 0,
           "N": 3,
           "T": 0,
-          "F": 1
+          "F": 2
         }
       ],
       "scorePairs": [
@@ -562,19 +573,19 @@
       "scoreWeights": [
         [
           3,
-          1
+          2
         ],
         [
           2,
-          1
+          2
         ],
         [
           2,
-          1
+          2
         ],
         [
           3,
-          1
+          2
         ]
       ],
       "optionIds": [
@@ -600,26 +611,26 @@
         {
           "J": 3,
           "P": 0,
-          "E": 1,
+          "E": 2,
           "I": 0
         },
         {
           "J": 2,
           "P": 1,
           "E": 0,
-          "I": 1
+          "I": 2
         },
         {
           "J": 1,
           "P": 2,
-          "E": 1,
+          "E": 2,
           "I": 0
         },
         {
           "J": 0,
           "P": 3,
           "E": 0,
-          "I": 1
+          "I": 2
         }
       ],
       "scorePairs": [
@@ -643,19 +654,19 @@
       "scoreWeights": [
         [
           3,
-          1
+          2
         ],
         [
           2,
-          1
+          2
         ],
         [
           2,
-          1
+          2
         ],
         [
           3,
-          1
+          2
         ]
       ],
       "optionIds": [
@@ -670,37 +681,37 @@
       "axis": "JP",
       "secondaryAxis": "SN",
       "label": "스마트폰 사진과 사육 팁 정리",
-      "q": "폰 용량이 꽉 찰 정도로 쌓인 크레 사진과 사육 팁, 내 정리 스타일은?",
+      "q": "폰에 쌓인 크레 사진과 사육 팁을 나중에도 쉽게 찾으려면, 나는 어떻게 정리할까?",
       "options": [
-        "아이별 폴더 만들어서 날짜·체중순으로 칼같이 정리",
-        "핵심 사육 팁이랑 유전 정보만 따로 모아 앨범화하기",
-        "파업 인생샷 위주로 즐겨찾기(하트) 꾹꾹 눌러두기",
-        "정리 없이 그냥 그때그때 눈에 띄는 귀여운 사진 모으기"
+        "아이별 폴더에 날짜와 체중이 보이도록 바로 나눠 저장한다",
+        "다시 볼 주제별 앨범을 만들고 핵심 사진부터 넣어둔다",
+        "최근 사진부터 훑으며 필요한 것만 즐겨찾기로 표시한다",
+        "전체를 보다가 비슷한 분위기의 사진끼리 자연스럽게 묶는다"
       ],
       "optionScores": [
         {
           "J": 3,
           "P": 0,
-          "S": 1,
+          "S": 2,
           "N": 0
         },
         {
           "J": 2,
           "P": 1,
           "S": 0,
-          "N": 1
+          "N": 2
         },
         {
           "J": 1,
           "P": 2,
-          "S": 1,
+          "S": 2,
           "N": 0
         },
         {
           "J": 0,
           "P": 3,
           "S": 0,
-          "N": 1
+          "N": 2
         }
       ],
       "scorePairs": [
@@ -724,19 +735,19 @@
       "scoreWeights": [
         [
           3,
-          1
+          2
         ],
         [
           2,
-          1
+          2
         ],
         [
           2,
-          1
+          2
         ],
         [
           3,
-          1
+          2
         ]
       ],
       "optionIds": [
@@ -751,37 +762,37 @@
       "axis": "EI",
       "secondaryAxis": "SN",
       "label": "집사 모임 오프라인 대화",
-      "q": "집사 모임이나 뒤풀이 테이블에서 크레 수다가 터졌을 때 내 모습은?",
+      "q": "집사 모임에서 처음 듣는 사육 이야기가 나오면, 나는 어떻게 대화에 참여할까?",
       "options": [
-        "\"요즘 이 모프 핫하잖아요!\" 화제 꺼내며 대화 주도하기",
-        "\"헐 대박 진짜요?!\" 폭풍 맞장구치며 분위기 띄우기",
-        "다른 집사님들의 생생한 사육 경험담 조용히 경청하기",
-        "조용히 듣다가 궁금했던 유전 질문이나 생각 툭 던지기"
+        "내 경험도 바로 꺼내며 비슷한 사례가 있었는지 이야기한다",
+        "떠오른 가능성을 질문으로 던지며 여러 사람의 생각을 잇는다",
+        "구체적인 사육 조건을 들으며 필요한 부분만 확인한다",
+        "일단 끝까지 듣고 혼자 정리한 뒤 궁금한 한 가지를 묻는다"
       ],
       "optionScores": [
         {
           "E": 3,
           "I": 0,
-          "S": 1,
+          "S": 2,
           "N": 0
         },
         {
           "E": 2,
           "I": 1,
           "S": 0,
-          "N": 1
+          "N": 2
         },
         {
           "E": 1,
           "I": 2,
-          "S": 1,
+          "S": 2,
           "N": 0
         },
         {
           "E": 0,
           "I": 3,
           "S": 0,
-          "N": 1
+          "N": 2
         }
       ],
       "scorePairs": [
@@ -805,19 +816,19 @@
       "scoreWeights": [
         [
           3,
-          1
+          2
         ],
         [
           2,
-          1
+          2
         ],
         [
           2,
-          1
+          2
         ],
         [
           3,
-          1
+          2
         ]
       ],
       "optionIds": [
@@ -832,37 +843,37 @@
       "axis": "TF",
       "secondaryAxis": "EI",
       "label": "동료 집사의 입양 고민 상담",
-      "q": "친한 집사가 사진 2장을 보내며 \"둘 중 누가 나아?\" 묻는다면?",
+      "q": "친한 집사가 크레 사진 두 장을 보내며 둘 중 누가 나은지 묻는다면?",
       "options": [
-        "\"핀이랑 발색 대비 분양가 보면 이쪽이 훨씬 괜찮네\"",
-        "\"부모 혈통이랑 현재 체중, 건강 상태 꼼꼼히 따져봐\"",
-        "\"그래서 네 심장이 먼저 쿵쿵 뛴 애는 누구야?!\"",
-        "\"어떤 아이든 네 가족이 되면 최고의 도마뱀이 될 거야\""
+        "사진에서 보이는 장단점을 하나씩 말하고 내 선택도 덧붙인다",
+        "체중과 건강, 혈통 정보를 더 받아본 뒤 비교해서 답한다",
+        "친구가 각각 어디에 끌렸는지 먼저 묻고 같이 골라본다",
+        "두 사진을 천천히 보며 오래 마음에 남는 쪽을 말한다"
       ],
       "optionScores": [
         {
           "T": 3,
           "F": 0,
-          "E": 1,
+          "E": 2,
           "I": 0
         },
         {
           "T": 2,
           "F": 1,
           "E": 0,
-          "I": 1
+          "I": 2
         },
         {
           "T": 1,
           "F": 2,
-          "E": 1,
+          "E": 2,
           "I": 0
         },
         {
           "T": 0,
           "F": 3,
           "E": 0,
-          "I": 1
+          "I": 2
         }
       ],
       "scorePairs": [
@@ -886,19 +897,19 @@
       "scoreWeights": [
         [
           3,
-          1
+          2
         ],
         [
           2,
-          1
+          2
         ],
         [
           2,
-          1
+          2
         ],
         [
           3,
-          1
+          2
         ]
       ],
       "optionIds": [
@@ -913,37 +924,37 @@
       "axis": "EI",
       "secondaryAxis": "JP",
       "label": "사육장 청소 후 심야 힐링",
-      "q": "청소와 슈푸 급여까지 무사히 마친 늦은 밤, 나만의 힐링 시간은?",
+      "q": "모든 사육장 관리를 끝냈는데 예상보다 30분의 여유가 생겼다면, 나는 어떻게 쉴까?",
       "options": [
-        "단체방이나 SNS에 인증샷 올리고 사람들과 수다 떨기",
-        "커뮤니티 인기글이나 재밌는 숏폼 보며 댓글 달기",
-        "방 불 끄고 잔잔한 음악 틀어놓고 조용히 멍때리기",
-        "아늑한 침대에 누워서 넷플릭스나 유튜브 보며 뒹굴거리기"
+        "친한 집사에게 연락해 근황을 나누고 다음 만남도 정한다",
+        "단체방에 오늘 사진을 올리고 이어지는 대화에 참여한다",
+        "혼자 급여와 체중 기록을 정리하고 다음 관리 순서를 적는다",
+        "사육장 앞에 조용히 앉아 눈에 들어오는 아이를 바라본다"
       ],
       "optionScores": [
         {
           "E": 3,
           "I": 0,
-          "J": 1,
+          "J": 2,
           "P": 0
         },
         {
           "E": 2,
           "I": 1,
           "J": 0,
-          "P": 1
+          "P": 2
         },
         {
           "E": 1,
           "I": 2,
-          "J": 1,
+          "J": 2,
           "P": 0
         },
         {
           "E": 0,
           "I": 3,
           "J": 0,
-          "P": 1
+          "P": 2
         }
       ],
       "scorePairs": [
@@ -967,19 +978,19 @@
       "scoreWeights": [
         [
           3,
-          1
+          2
         ],
         [
           2,
-          1
+          2
         ],
         [
           2,
-          1
+          2
         ],
         [
           3,
-          1
+          2
         ]
       ],
       "optionIds": [
@@ -994,37 +1005,37 @@
       "axis": "SN",
       "secondaryAxis": "TF",
       "label": "사육장 야간 활동 관찰",
-      "q": "불 꺼진 밤, 사육장 안에서 신나게 벽 타고 활보하는 아이를 볼 때 내 시선은?",
+      "q": "불 꺼진 밤, 평소와 다른 움직임을 보이는 아이를 발견했다면 먼저 어디에 주목할까?",
       "options": [
-        "백업이랑 벽면을 오가는 점프력과 움직임을 관찰한다",
-        "다리를 절거나 탈피 껍질 남은 곳은 없는지 체크한다",
-        "낮과 달리 밤에 살아나는 야생의 카리스마에 몰입한다",
-        "어두운 밤에 혼자 뽈뽈거리는 게 너무 귀엽고 힐링된다"
+        "발 디딤과 점프처럼 지금 보이는 움직임을 구체적으로 본다",
+        "탈피와 먹이, 온도 기록이 오늘 행동과 이어지는지 본다",
+        "이 행동이 아이의 적응 변화와 어떤 관련인지 살펴본다",
+        "앞으로 반복될 패턴인지 생각하며 전체 흐름을 천천히 읽는다"
       ],
       "optionScores": [
         {
           "S": 3,
           "N": 0,
-          "T": 1,
+          "T": 2,
           "F": 0
         },
         {
           "S": 2,
           "N": 1,
-          "T": 1,
+          "T": 2,
           "F": 0
         },
         {
           "S": 1,
           "N": 2,
           "T": 0,
-          "F": 1
+          "F": 2
         },
         {
           "S": 0,
           "N": 3,
           "T": 0,
-          "F": 1
+          "F": 2
         }
       ],
       "scorePairs": [
@@ -1048,19 +1059,19 @@
       "scoreWeights": [
         [
           3,
-          1
+          2
         ],
         [
           2,
-          1
+          2
         ],
         [
           2,
-          1
+          2
         ],
         [
           3,
-          1
+          2
         ]
       ],
       "optionIds": [
@@ -1190,9 +1201,9 @@
             })
             .then(spec => { applyQuestionnaireSpec(spec); readyResolve(); })
             .catch(error => {
-                console.warn('[Core.ready] Fetch failed, applying embedded v28 fallback spec:', error);
+                console.warn('[Core.ready] Fetch failed, applying embedded v29 fallback spec:', error);
                 try {
-                    applyQuestionnaireSpec(DEFAULT_QUESTIONS_SPEC_V28);
+                    applyQuestionnaireSpec(DEFAULT_QUESTIONS_SPEC_V29);
                 } catch (_) { }
                 readyResolve();
             });
@@ -1506,7 +1517,7 @@
             })
             .catch(error => {
                 console.warn('[loadQuestionnaireFile] Fallback to embedded spec:', error);
-                return DEFAULT_QUESTIONS_SPEC_V28;
+                return DEFAULT_QUESTIONS_SPEC_V29;
             });
 
         const fetchResults = resultsFile

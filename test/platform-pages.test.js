@@ -610,7 +610,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(css, /\.cw-intro-tagline\s*\{[^}]*white-space:\s*nowrap/);
     assert.match(css, /\.cw-member-dialog \.cw-member-input-group\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) 68px/);
     assert.match(html, /crewart-survey-v4\.css\?v=20260817-share-polish-v96/);
-    assert.match(html, /crewart-survey\.js\?v=20260817-band-home-v102/);
+    assert.match(html, /crewart-survey\.js\?v=20260817-calibrated-v103/);
     assert.match(script, /function renderUnifiedResult\(profile, house, options = \{\}\)/);
     assert.doesNotMatch(script, /resultViewVersion|resultViewFromLocation|changeResultView|report=deep|set-result-version/);
     assert.match(script, /function renderResult\(options = \{\}\)[\s\S]*renderUnifiedResult\(profile, house\);/);
@@ -736,7 +736,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.doesNotMatch(script, /크레\s*MBTI|나의 크레 MBTI|평소 MBTI/i);
     assert.match(script, /function typeCharacterPath\(code\)/);
     assert.match(script, /TYPE_CHARACTER_ROOT = 'assets\/crewart-types\/'/);
-    assert.match(html, /crewart-survey-core\.js\?v=20260815-random-timing-v80/);
+    assert.match(html, /crewart-survey-core\.js\?v=20260817-calibrated-v29/);
     assert.match(html, /crewart-survey-v4\.css\?v=20260817-share-polish-v96/);
     assert.match(script, /position: firstSelected \? Math\.min\(rawPosition, 34\) : Math\.max\(rawPosition, 66\)/);
     assert.match(html, /id="start-button"[^>]*>[\s\S]*테스트 하기/);

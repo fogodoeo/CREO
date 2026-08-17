@@ -156,10 +156,10 @@ test('bootstrap returns version-matched content and aggregate data only', async 
     assert.equal(response.status, 200);
     const payload = JSON.parse(response.body);
     assert.equal(payload.content.version, Core.SURVEY_VERSION);
-    assert.deepEqual(payload.cohort.houseCounts, { SF: 1, ST: 0, NT: 1, NF: 0 });
+    assert.deepEqual(payload.cohort.houseCounts, { SF: 1, ST: 0, NT: 2, NF: 0 });
     assert.deepEqual(payload.cohort.timingMedians, [3400, 3200]);
     assert.equal(payload.cohort.timingMedians.reduce((sum, value) => sum + value, 0) / payload.cohort.timingMedians.length, 3300);
-    assert.equal(payload.cohort.sampleSize, 2);
+    assert.equal(payload.cohort.sampleSize, 3);
     assert.equal(response.body.includes('비공개 이름'), false);
     assert.equal(response.body.includes('숨길 이름'), false);
     assert.equal(response.body.includes('answers'), false);

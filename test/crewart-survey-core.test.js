@@ -6,7 +6,7 @@ const path = require('node:path');
 const fs = require('node:fs');
 const Core = require('../public/crewart-survey-core');
 
-const specPath = path.join(__dirname, '../public/crewart-survey-questions-v28.json');
+const specPath = path.join(__dirname, '../public/crewart-survey-questions-v29.json');
 const resultsSpecPath = path.join(__dirname, '../public/crewart-survey-results-v28.json');
 if (fs.existsSync(specPath)) {
     const spec = JSON.parse(fs.readFileSync(specPath, 'utf8'));
@@ -102,24 +102,34 @@ test('prepared surveys keep option ids and graded score maps aligned while shuff
     assert.ok([...firstQuestionIds].some(id => id !== 'Q01'), 'Q01 should not be pinned to the first position');
 });
 
-test('weighted scoring recovers all sixteen intended profiles', () => {
-    const prepared = Core.prepareQuestions(() => 0.42);
-    assert.equal(prepared.length, Core.QUESTIONS.length);
+test('weighted scoring keeps all sixteen intended profiles reachable', () => {
+    let states = new Map([['0,0,0,0', []]]);
+    Core.QUESTIONS.forEach(question => {
+        const next = new Map();
+        for (const [key, answers] of states) {
+            const differences = key.split(',').map(Number);
+            question.optionScores.forEach((score, choice) => {
+                const updated = differences.map((difference, index) => {
+                    const axis = Core.AXES[index];
+                    return difference + (Number(score[axis[0]]) || 0) - (Number(score[axis[1]]) || 0);
+                });
+                const updatedKey = updated.join(',');
+                if (!next.has(updatedKey)) next.set(updatedKey, [...answers, choice]);
+            });
+        }
+        states = next;
+    });
+
+    const answersByType = new Map();
+    for (const [key, answers] of states) {
+        const code = key.split(',').map((difference, index) => (
+            Number(difference) > 0 ? Core.AXES[index][0] : Core.AXES[index][1]
+        )).join('');
+        if (!answersByType.has(code)) answersByType.set(code, answers);
+    }
     for (const target of Core.MBTI_TYPES) {
-        const answers = prepared.map(question => {
-            const targetLetters = [question.axis, question.secondaryAxis]
-                .map(axis => target[Core.AXES.indexOf(axis)]);
-            const utility = score => targetLetters.reduce((sum, letter, axisIndex) => {
-                const axis = axisIndex === 0 ? question.axis : question.secondaryAxis;
-                const opposite = axis[0] === letter ? axis[1] : axis[0];
-                return sum + score[letter] - score[opposite];
-            }, 0);
-            return question.optionScores
-                .map(utility)
-                .reduce((best, value, index, values) => value > values[best] ? index : best, 0);
-        });
-        assert.ok(answers.every(answer => answer >= 0));
-        const result = Core.scoreAnswers(prepared, answers);
+        assert.ok(answersByType.has(target), `${target} must remain reachable`);
+        const result = Core.scoreAnswers(Core.QUESTIONS, answersByType.get(target));
         assert.equal(result.code, target);
         Core.AXES.forEach(axis => {
             assert.equal(result.letters[axis[0]] + result.letters[axis[1]], Core.AXIS_SCORE_TOTAL);
@@ -128,6 +138,7 @@ test('weighted scoring recovers all sixteen intended profiles', () => {
 });
 
 test('differential supporting axis model maintains signal distribution and pole invariants', () => {
+    assert.equal(Core.AXIS_SCORE_TOTAL % 2, 1, 'each axis total must be odd so a score tie is impossible');
     for (const question of Core.QUESTIONS) {
         const primaryPair = question.axis;
         const secondaryPair = question.secondaryAxis;
@@ -138,6 +149,27 @@ test('differential supporting axis model maintains signal distribution and pole 
             assert.ok(secLeft > 0 || secRight > 0);
         });
     }
+});
+
+test('uniform random choices do not structurally favor either MBTI pole', () => {
+    let state = 0x1a2b3c4d;
+    const rng = () => {
+        state = (1664525 * state + 1013904223) >>> 0;
+        return state / 2 ** 32;
+    };
+    const leftCounts = Object.fromEntries(Core.AXES.map(axis => [axis, 0]));
+    const runs = 50000;
+    for (let run = 0; run < runs; run += 1) {
+        const answers = Core.QUESTIONS.map(() => Math.floor(rng() * 4));
+        const result = Core.scoreAnswers(Core.QUESTIONS, answers);
+        Core.AXES.forEach((axis, index) => {
+            if (result.code[index] === axis[0]) leftCounts[axis] += 1;
+        });
+    }
+    Core.AXES.forEach(axis => {
+        const leftRatio = leftCounts[axis] / runs;
+        assert.ok(leftRatio >= 0.48 && leftRatio <= 0.52, `${axis} left-pole ratio ${leftRatio} is structurally biased`);
+    });
 });
 
 test('house assignments use the unified RGBY team names', () => {

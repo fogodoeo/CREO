@@ -16,6 +16,7 @@
     const LEGACY_RESULT_STORAGE_KEYS = Object.freeze(['crewart_last_result_v1', 'crewart_last_result_v2']);
     const LAST_RESULT_VERSION = 3;
     const LEGACY_RESULT_QUESTION_VERSIONS = Object.freeze([
+        'crewart-tendency-v28.0-pasamo-ultimate',
         'crewart-tendency-v8.1',
         'crewart-tendency-v8.0'
     ]);
