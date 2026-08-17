@@ -82,13 +82,14 @@ class SupabaseConfigRepository {
             .filter((row) => row.value !== null);
     }
 
-    async listRowsByPrefix(prefix, limit = 500) {
+    async listRowsByPrefix(prefix, limit = 500, offset = 0) {
         const safePrefix = String(prefix || '').slice(0, 120);
         if (!safePrefix) return [];
         const safeLimit = Math.max(1, Math.min(1000, Number(limit) || 500));
+        const safeOffset = Math.max(0, Math.floor(Number(offset) || 0));
         const pattern = encodeURIComponent(`${safePrefix}*`);
         const rows = await this.request(
-            `config?select=key,value&key=like.${pattern}&order=key.asc&limit=${safeLimit}`
+            `config?select=key,value&key=like.${pattern}&order=key.asc&limit=${safeLimit}&offset=${safeOffset}`
         ) || [];
         return rows
             .filter((row) => String(row.key || '').startsWith(safePrefix))

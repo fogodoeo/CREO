@@ -61,6 +61,8 @@
     let cohortSummary = {
         houseCounts: Object.fromEntries(Core.HOUSE_KEYS.map(key => [key, 0])),
         timingMedians: [],
+        timingAverageMs: 0,
+        timingSampleSize: 0,
         sampleSize: 0
     };
     let questions = [];
@@ -77,7 +79,7 @@
     let timingStats = null;
     let activeTimer = null;
     let advancing = false;
-    let saveInFlight = false;
+    let saveInFlight = null;
     let lastSavedSignature = '';
     let toastTimer = null;
     let choiceLockTimer = null;
@@ -504,14 +506,17 @@
                 crewart_mbti_content_updated_at: payload.contentUpdatedAt || null
             };
             applyManagedContent(payload.content);
+            const timingMedians = (Array.isArray(payload.cohort?.timingMedians)
+                ? payload.cohort.timingMedians
+                : []).map(Number).filter(value => value > Core.MIN_RESPONSE_MS && value <= Core.MAX_RESPONSE_MS);
             cohortSummary = {
                 houseCounts: Object.fromEntries(Core.HOUSE_KEYS.map(key => [
                     key,
                     Math.max(0, Number(payload.cohort?.houseCounts?.[key]) || 0)
                 ])),
-                timingMedians: (Array.isArray(payload.cohort?.timingMedians)
-                    ? payload.cohort.timingMedians
-                    : []).map(Number).filter(value => value > Core.MIN_RESPONSE_MS && value <= Core.MAX_RESPONSE_MS),
+                timingMedians,
+                timingAverageMs: Math.max(0, Number(payload.cohort?.timingAverageMs) || 0),
+                timingSampleSize: Math.max(0, Number(payload.cohort?.timingSampleSize) || timingMedians.length),
                 sampleSize: Math.max(0, Number(payload.cohort?.sampleSize) || 0)
             };
         } catch (error) {
@@ -520,6 +525,8 @@
             cohortSummary = {
                 houseCounts: Object.fromEntries(Core.HOUSE_KEYS.map(key => [key, 0])),
                 timingMedians: [],
+                timingAverageMs: 0,
+                timingSampleSize: 0,
                 sampleSize: 0
             };
         }
@@ -870,6 +877,7 @@
     async function completeResultReveal() {
         showingStoredResult = false;
         if (!hasDetailedAccess()) {
+            void submitSurvey({ silent: true });
             renderResult({ animate: true });
             setScreen('result-screen');
             return;
@@ -923,11 +931,16 @@
         const value = valid ? formatSeconds(timingStats.averageMs) : '-';
         const samples = cohortSummary.timingMedians.map(Number)
             .filter(value => value > Core.MIN_RESPONSE_MS && value <= Core.MAX_RESPONSE_MS);
-        const cohortAverageMs = samples.length ? samples.reduce((sum, sample) => sum + sample, 0) / samples.length : timingStats.averageMs;
+        const cohortAverageMs = cohortSummary.timingAverageMs > Core.MIN_RESPONSE_MS
+            ? cohortSummary.timingAverageMs
+            : samples.length
+                ? samples.reduce((sum, sample) => sum + sample, 0) / samples.length
+                : timingStats.averageMs;
+        const cohortSampleSize = cohortSummary.timingSampleSize || samples.length;
         const relative = valid && cohortAverageMs > 0 ? Math.log2(timingStats.averageMs / cohortAverageMs) : 0;
         const position = Math.max(7, Math.min(93, 50 + relative * 25));
-        const comparison = samples.length
-            ? `참여자 ${samples.length}명 · 평균 ${formatSeconds(cohortAverageMs)}`
+        const comparison = cohortSampleSize
+            ? `참여자 ${cohortSampleSize}명 · 평균 ${formatSeconds(cohortAverageMs)}`
             : '참여자 비교 데이터 준비 중';
         const label = position <= 38
             ? '빠르게 고르는 편'
@@ -1399,77 +1412,96 @@
         openMemberCheck({ revealResult: true });
     }
 
-    async function submitSurvey() {
-        if (IS_QA_MODE || !result || !surveySessionId || saveInFlight || !hasDetailedAccess()) return assignedHouseKey;
-        const signature = JSON.stringify({ session: surveySessionId, answers, selectedMbti, band: bandAuthUser?.id || '', member: bandAuthUser?.isTargetMember || false });
+    async function submitSurvey(options = {}) {
+        if (IS_QA_MODE || !result || !surveySessionId) return assignedHouseKey;
+        if (saveInFlight) {
+            await saveInFlight.catch(() => undefined);
+            return submitSurvey(options);
+        }
+        const memberVerified = Boolean(bandAuthToken && bandAuthUser?.isTargetMember);
+        const signature = JSON.stringify({ session: surveySessionId, answers, selectedMbti, band: bandAuthUser?.id || '', member: memberVerified });
         if (signature === lastSavedSignature) return assignedHouseKey;
-        saveInFlight = true;
-        try {
-            const participantKey = await hashSessionId(surveySessionId);
-            const response = {
-                participantKey,
-                creMbti: result.code,
-                crebtiType: result.code,
-                knownMbti: selectedMbti || null,
-                axisScores: result.letters,
-                answers: answers.slice(),
-                answerLabels: questions.map((question, index) => {
-                    const scores = Core.answerLetters(question, answers[index]);
-                    return {
-                        questionId: question.id,
-                        axis: question.axis,
-                        secondaryAxis: question.secondaryAxis || '',
-                        choiceId: question.optionIds?.[answers[index]] || '',
-                        displayedPosition: answers[index] + 1,
-                        score: scores[0],
-                        secondaryScore: scores[1] || '',
-                        signalScores: Core.answerScoreMap(question, answers[index]),
-                        responseMs: responseTimings[index]?.elapsedMs || null,
-                        timingValid: Boolean(responseTimings[index]?.valid)
-                    };
-                }),
-                responseTimes: responseTimings.slice(),
-                timingStats: {
-                    validCount: timingStats.validCount,
-                    totalMs: timingStats.totalMs,
-                    averageMs: timingStats.averageMs,
-                    medianMs: timingStats.medianMs,
-                    axisMedians: timingStats.axisMedians,
-                    style: timingStats.style.key,
-                    fastest: timingStats.fastest,
-                    slowest: timingStats.slowest
-                },
-                questionVersion: Core.SURVEY_VERSION,
-                questionContentUpdatedAt: config.crewart_mbti_content_updated_at || null,
-                createdAt: sessionCreatedAt,
-                syncedAt: new Date().toISOString()
-            };
-            const saved = await bandFetch('/api/crewart-survey/responses', {
-                method: 'POST',
-                cache: 'no-store',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${bandAuthToken}`
-                },
-                body: JSON.stringify({ response })
-            });
-            if (!saved.ok) {
+        const saveOperation = (async () => {
+            try {
+                const participantKey = await hashSessionId(surveySessionId);
+                const response = {
+                    participantKey,
+                    creMbti: result.code,
+                    crebtiType: result.code,
+                    knownMbti: selectedMbti || null,
+                    axisScores: result.letters,
+                    answers: answers.slice(),
+                    answerLabels: questions.map((question, index) => {
+                        const scores = Core.answerLetters(question, answers[index]);
+                        return {
+                            questionId: question.id,
+                            axis: question.axis,
+                            secondaryAxis: question.secondaryAxis || '',
+                            choiceId: question.optionIds?.[answers[index]] || '',
+                            displayedPosition: answers[index] + 1,
+                            score: scores[0],
+                            secondaryScore: scores[1] || '',
+                            signalScores: Core.answerScoreMap(question, answers[index]),
+                            responseMs: responseTimings[index]?.elapsedMs || null,
+                            timingValid: Boolean(responseTimings[index]?.valid)
+                        };
+                    }),
+                    responseTimes: responseTimings.slice(),
+                    timingStats: {
+                        validCount: timingStats.validCount,
+                        totalMs: timingStats.totalMs,
+                        averageMs: timingStats.averageMs,
+                        medianMs: timingStats.medianMs,
+                        axisMedians: timingStats.axisMedians,
+                        style: timingStats.style.key,
+                        fastest: timingStats.fastest,
+                        slowest: timingStats.slowest
+                    },
+                    questionVersion: Core.SURVEY_VERSION,
+                    questionContentUpdatedAt: config.crewart_mbti_content_updated_at || null,
+                    createdAt: sessionCreatedAt,
+                    syncedAt: new Date().toISOString()
+                };
+                const headers = { 'Content-Type': 'application/json' };
+                if (memberVerified) headers.Authorization = `Bearer ${bandAuthToken}`;
+                const saved = await bandFetch('/api/crewart-survey/responses', {
+                    method: 'POST',
+                    cache: 'no-store',
+                    keepalive: true,
+                    headers,
+                    body: JSON.stringify({ response })
+                });
+                if (!saved.ok) {
+                    const payload = await saved.json().catch(() => ({}));
+                    throw new Error(payload.error || '설문 결과를 저장하지 못했습니다.');
+                }
                 const payload = await saved.json().catch(() => ({}));
-                throw new Error(payload.error || '설문 결과를 저장하지 못했습니다.');
+                const savedHouse = String(payload.assignedHouseKey || payload.houseId || '').toUpperCase();
+                if (memberVerified) {
+                    if (payload.memberVerified !== true || !Core.HOUSE_KEYS.includes(savedHouse)) {
+                        throw new Error('기숙사 배정 결과를 확인하지 못했습니다.');
+                    }
+                    const hadAssignedHouse = Core.HOUSE_KEYS.includes(assignedHouseKey);
+                    assignedHouseKey = savedHouse;
+                    if (!hadAssignedHouse) {
+                        cohortSummary.houseCounts[savedHouse] = (Number(cohortSummary.houseCounts[savedHouse]) || 0) + 1;
+                    }
+                }
+                lastSavedSignature = signature;
+                return assignedHouseKey;
+            } catch (error) {
+                console.error('[Crewart survey save]', error);
+                if (!options.silent) {
+                    toast(error.message || '결과를 저장하지 못했어요. 잠시 후 다시 시도해 주세요.', true);
+                }
+                return '';
             }
-            const payload = await saved.json().catch(() => ({}));
-            const savedHouse = String(payload.assignedHouseKey || payload.houseId || '').toUpperCase();
-            if (!Core.HOUSE_KEYS.includes(savedHouse)) throw new Error('기숙사 배정 결과를 확인하지 못했습니다.');
-            assignedHouseKey = savedHouse;
-            lastSavedSignature = signature;
-            cohortSummary.houseCounts[savedHouse] = (Number(cohortSummary.houseCounts[savedHouse]) || 0) + 1;
-            return savedHouse;
-        } catch (error) {
-            console.error('[Crewart survey save]', error);
-            toast(error.message || '기숙사를 배정하지 못했어요. 잠시 후 다시 시도해 주세요.', true);
-            return '';
+        })();
+        saveInFlight = saveOperation;
+        try {
+            return await saveOperation;
         } finally {
-            saveInFlight = false;
+            if (saveInFlight === saveOperation) saveInFlight = null;
         }
     }
 
@@ -2416,10 +2448,10 @@
     }
 
     async function startCurrentSurvey() {
-        const file = Core.getSurveyVersion('v2').questionsFile;
+        const activeVersion = Core.getSurveyVersion();
         if (Core?.loadQuestionnaireFile) {
             try {
-                await Core.loadQuestionnaireFile(file);
+                await Core.loadQuestionnaireFile(activeVersion.questionsFile, activeVersion.resultsFile);
             } catch (err) {
                 console.error('[Survey load version error]', err);
             }

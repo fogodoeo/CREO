@@ -8,7 +8,8 @@ const CONTENT_KEY = 'crewart_mbti_content_v1';
 const CONTENT_UPDATED_KEY = 'crewart_mbti_content_updated_at';
 const LEGACY_RESPONSES_KEY = 'crewart_survey_responses';
 const RESPONSE_PREFIX = 'crewart_survey_response_entry_';
-const RESPONSE_LIMIT = 500;
+const RESPONSE_PAGE_SIZE = 1000;
+const TIMING_SAMPLE_LIMIT = 500;
 const REFERRAL_PREFIX = 'crewart_referral_v1_';
 const REFERRAL_OWNER_PREFIX = 'crewart_referral_owner_v1_';
 const REFERRAL_MEMBER_PREFIX = 'crewart_referral_member_v1_';
@@ -127,7 +128,8 @@ function codeFromScores(scores) {
         + (scores.J > scores.P ? 'J' : 'P');
 }
 
-function sanitizeSubmission(input, nowIso) {
+function sanitizeSubmission(input, nowIso, options = {}) {
+    const memberVerified = options.memberVerified === true;
     const participantKey = cleanText(input?.participantKey, 48).toLowerCase();
     if (!/^[a-f0-9]{24}$/.test(participantKey)) {
         const error = new Error('참여 세션 형식이 올바르지 않습니다.');
@@ -222,9 +224,9 @@ function sanitizeSubmission(input, nowIso) {
     })), []);
     return {
         participantKey,
-        participationMode: 'official',
+        participationMode: memberVerified ? 'official' : 'anonymous',
         anonymous: true,
-        memberVerified: true,
+        memberVerified,
         creMbti,
         crebtiType: creMbti,
         knownMbti: knownMbti || null,
@@ -317,19 +319,24 @@ function aggregateResponses(rows, legacyValue) {
         responses.set(responseIdentity(response, row.key || `entry-${index}`), response);
     });
     const houseCounts = Object.fromEntries(Core.HOUSE_KEYS.map((key) => [key, 0]));
-    const timingMedians = [];
+    const timingAverages = [];
     let sampleSize = 0;
     for (const response of responses.values()) {
         const house = cleanText(response.assignedHouseKey || response.houseId, 2).toUpperCase();
         if (house in houseCounts) houseCounts[house] += 1;
-        const median = Number(response?.timingStats?.medianMs);
-        if (Number.isFinite(median) && median > Core.MIN_RESPONSE_MS && median <= Core.MAX_RESPONSE_MS) timingMedians.push(Math.round(median));
+        const average = Number(response?.timingStats?.averageMs ?? response?.timingStats?.medianMs);
+        if (Number.isFinite(average) && average > Core.MIN_RESPONSE_MS && average <= Core.MAX_RESPONSE_MS) {
+            timingAverages.push(Math.round(average));
+        }
         sampleSize += 1;
     }
-    const rawTimingMedians = timingMedians.slice(-RESPONSE_LIMIT);
+    const timingTotalMs = timingAverages.reduce((sum, value) => sum + value, 0);
+    const rawTimingMedians = timingAverages.slice(-TIMING_SAMPLE_LIMIT);
     const aggregate = {
         houseCounts,
         timingMedians: normalizeTimingMedians(rawTimingMedians),
+        timingAverageMs: timingAverages.length ? Math.round(timingTotalMs / timingAverages.length) : 0,
+        timingSampleSize: timingAverages.length,
         sampleSize
     };
     Object.defineProperty(aggregate, 'identities', {
@@ -338,6 +345,11 @@ function aggregateResponses(rows, legacyValue) {
     });
     Object.defineProperty(aggregate, 'rawTimingMedians', {
         value: rawTimingMedians,
+        enumerable: false,
+        writable: true
+    });
+    Object.defineProperty(aggregate, 'rawTimingTotalMs', {
+        value: timingTotalMs,
         enumerable: false,
         writable: true
     });
@@ -369,10 +381,21 @@ function createCrewartSurveyApi(options = {}) {
         return true;
     }
 
+    async function listAllResponseRows() {
+        const rows = [];
+        let offset = 0;
+        while (true) {
+            const page = await repository.listRowsByPrefix(RESPONSE_PREFIX, RESPONSE_PAGE_SIZE, offset);
+            rows.push(...page);
+            if (page.length < RESPONSE_PAGE_SIZE) return rows;
+            offset += page.length;
+        }
+    }
+
     async function buildBootstrap() {
         const [namedRows, responseRows] = await Promise.all([
             repository.getRowsByKeys([CONTENT_KEY, CONTENT_UPDATED_KEY, LEGACY_RESPONSES_KEY]),
-            repository.listRowsByPrefix(RESPONSE_PREFIX, RESPONSE_LIMIT)
+            listAllResponseRows()
         ]);
         const map = new Map(namedRows.map((row) => [row.key, row.value]));
         const managed = jsonParse(map.get(CONTENT_KEY), null);
@@ -617,7 +640,7 @@ function createCrewartSurveyApi(options = {}) {
                 }
                 let deleted = 0;
                 while (true) {
-                    const responseRows = await repository.listRowsByPrefix(RESPONSE_PREFIX, RESPONSE_LIMIT);
+                    const responseRows = await repository.listRowsByPrefix(RESPONSE_PREFIX, RESPONSE_PAGE_SIZE);
                     if (!responseRows.length) break;
                     for (let index = 0; index < responseRows.length; index += 25) {
                         await Promise.all(responseRows.slice(index, index + 25).map((row) => repository.deleteRow(row.key)));
@@ -631,56 +654,76 @@ function createCrewartSurveyApi(options = {}) {
             }
             if (url.pathname === '/api/crewart-survey/responses' && req.method === 'POST') {
                 const secret = String(bandMembership?.config?.sessionSecret || '');
-                if (secret.length < 32) {
-                    replyJson(res, 503, { error: '설문 저장 기능을 준비하고 있습니다.' });
-                    return true;
+                const token = bearerToken(req);
+                let session = null;
+                if (token) {
+                    if (secret.length < 32) {
+                        replyJson(res, 503, { error: '설문 저장 기능을 준비하고 있습니다.' });
+                        return true;
+                    }
+                    try { session = verifyToken(token, secret, now()); }
+                    catch {
+                        replyJson(res, 401, { error: 'BAND 회원 확인 시간이 만료됐어요.' });
+                        return true;
+                    }
                 }
-                let session;
-                try { session = verifyToken(bearerToken(req), secret, now()); }
-                catch {
-                    replyJson(res, 401, { error: 'BAND 회원 확인 시간이 만료됐어요.' });
-                    return true;
-                }
-                if (!allowSubmission(session.sub)) {
+                const body = await readJson(req);
+                const nowIso = new Date(now()).toISOString();
+                const sanitized = sanitizeSubmission(body.response, nowIso, { memberVerified: Boolean(session) });
+                const submissionSubject = session?.sub || `anonymous:${sanitized.participantKey}`;
+                if (!allowSubmission(submissionSubject)) {
                     replyJson(res, 429, { error: '짧은 시간에 저장된 테스트가 많습니다.' });
                     return true;
                 }
-                const body = await readJson(req);
                 const response = await serializeAssignment(async () => {
-                    const nowIso = new Date(now()).toISOString();
-                    const sanitized = sanitizeSubmission(body.response, nowIso);
                     const responseKey = `${RESPONSE_PREFIX}${sanitized.participantKey}`;
                     const previousRows = await repository.getRowsByKeys([responseKey]);
                     const previous = jsonParse(previousRows[0]?.value, null);
                     const previousHouse = cleanText(previous?.assignedHouseKey || previous?.houseId, 2).toUpperCase();
-                    const current = await bootstrap();
-                    const keepPreviousHouse = previous?.houseAssignmentVersion === HOUSE_ASSIGNMENT_VERSION
-                        && Core.HOUSE_KEYS.includes(previousHouse);
-                    const allocationCounts = { ...current.cohort.houseCounts };
-                    if (!keepPreviousHouse && Core.HOUSE_KEYS.includes(previousHouse)) {
-                        allocationCounts[previousHouse] = Math.max(0, Number(allocationCounts[previousHouse]) - 1);
+                    let assigned;
+                    if (!session) {
+                        if (previous?.memberVerified === true) return previous;
+                        assigned = {
+                            ...sanitized,
+                            assignedHouseKey: '',
+                            houseId: '',
+                            houseAssignmentVersion: null
+                        };
+                    } else {
+                        const current = await bootstrap();
+                        const keepPreviousHouse = previous?.houseAssignmentVersion === HOUSE_ASSIGNMENT_VERSION
+                            && Core.HOUSE_KEYS.includes(previousHouse);
+                        const allocationCounts = { ...current.cohort.houseCounts };
+                        if (!keepPreviousHouse && Core.HOUSE_KEYS.includes(previousHouse)) {
+                            allocationCounts[previousHouse] = Math.max(0, Number(allocationCounts[previousHouse]) - 1);
+                        }
+                        const assignedHouseKey = keepPreviousHouse
+                            ? previousHouse
+                            : chooseLeastPopulatedHouse(allocationCounts, random);
+                        assigned = {
+                            ...sanitized,
+                            assignedHouseKey,
+                            houseId: assignedHouseKey,
+                            houseAssignmentVersion: HOUSE_ASSIGNMENT_VERSION
+                        };
                     }
-                    const assignedHouseKey = keepPreviousHouse
-                        ? previousHouse
-                        : chooseLeastPopulatedHouse(allocationCounts, random);
-                    const assigned = {
-                        ...sanitized,
-                        assignedHouseKey,
-                        houseId: assignedHouseKey,
-                        houseAssignmentVersion: HOUSE_ASSIGNMENT_VERSION
-                    };
                     await repository.upsertRows([{ key: responseKey, value: JSON.stringify(assigned) }]);
                     if (bootstrapCache) {
                         const cohort = bootstrapCache.value.cohort;
                         const alreadyCounted = cohort.identities.has(assigned.participantKey);
                         cohort.identities.add(assigned.participantKey);
                         if (!alreadyCounted) {
-                            cohort.houseCounts[assignedHouseKey] += 1;
-                            if (assigned.timingStats.medianMs > Core.MIN_RESPONSE_MS
-                                && assigned.timingStats.medianMs <= Core.MAX_RESPONSE_MS) {
-                                cohort.rawTimingMedians.push(assigned.timingStats.medianMs);
-                                cohort.rawTimingMedians = cohort.rawTimingMedians.slice(-RESPONSE_LIMIT);
+                            if (Core.HOUSE_KEYS.includes(assigned.assignedHouseKey)) {
+                                cohort.houseCounts[assigned.assignedHouseKey] += 1;
+                            }
+                            if (assigned.timingStats.averageMs > Core.MIN_RESPONSE_MS
+                                && assigned.timingStats.averageMs <= Core.MAX_RESPONSE_MS) {
+                                cohort.rawTimingMedians.push(assigned.timingStats.averageMs);
+                                cohort.rawTimingMedians = cohort.rawTimingMedians.slice(-TIMING_SAMPLE_LIMIT);
                                 cohort.timingMedians = normalizeTimingMedians(cohort.rawTimingMedians);
+                                cohort.rawTimingTotalMs += assigned.timingStats.averageMs;
+                                cohort.timingSampleSize += 1;
+                                cohort.timingAverageMs = Math.round(cohort.rawTimingTotalMs / cohort.timingSampleSize);
                             }
                             cohort.sampleSize += 1;
                         } else {
@@ -691,8 +734,9 @@ function createCrewartSurveyApi(options = {}) {
                 });
                 replyJson(res, 201, {
                     saved: true,
-                    assignedHouseKey: response.assignedHouseKey,
-                    houseId: response.assignedHouseKey
+                    memberVerified: response.memberVerified === true,
+                    assignedHouseKey: Core.HOUSE_KEYS.includes(response.assignedHouseKey) ? response.assignedHouseKey : '',
+                    houseId: Core.HOUSE_KEYS.includes(response.assignedHouseKey) ? response.assignedHouseKey : ''
                 });
                 return true;
             }

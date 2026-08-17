@@ -37,9 +37,12 @@ class FakeRepository {
         this.namedReads += 1;
         return keys.filter((key) => this.rows.has(key)).map((key) => ({ key, value: this.rows.get(key) }));
     }
-    async listRowsByPrefix(prefix) {
+    async listRowsByPrefix(prefix, limit = 500, offset = 0) {
         this.prefixReads += 1;
-        return Array.from(this.rows, ([key, value]) => ({ key, value })).filter((row) => row.key.startsWith(prefix));
+        return Array.from(this.rows, ([key, value]) => ({ key, value }))
+            .filter((row) => row.key.startsWith(prefix))
+            .sort((left, right) => left.key.localeCompare(right.key))
+            .slice(offset, offset + limit);
     }
     async upsertRows(rows) {
         this.writes.push(...rows);
@@ -128,7 +131,7 @@ test('bootstrap returns version-matched content and aggregate data only', async 
     const managed = { version: Core.SURVEY_VERSION, questions: [{ id: 'Q01', q: '관리 문항' }] };
     const legacy = [{
         participantKey: 'legacy-person', questionVersion: Core.SURVEY_VERSION,
-        assignedHouseKey: 'NT', timingStats: { medianMs: 3400 }, name: '비공개 이름'
+        assignedHouseKey: 'NT', timingStats: { averageMs: 3600, medianMs: 3400 }, name: '비공개 이름'
     }];
     const repository = new FakeRepository({
         [CONTENT_KEY]: JSON.stringify(managed),
@@ -136,7 +139,7 @@ test('bootstrap returns version-matched content and aggregate data only', async 
         [LEGACY_RESPONSES_KEY]: JSON.stringify(legacy),
         [`${RESPONSE_PREFIX}${'b'.repeat(24)}`]: JSON.stringify({
             participantKey: 'new-person', questionVersion: Core.SURVEY_VERSION,
-            assignedHouseKey: 'SF', timingStats: { medianMs: 3200 }, bandProfileName: '숨길 이름', answers: [0, 1]
+            assignedHouseKey: 'SF', timingStats: { averageMs: 3300, medianMs: 3200 }, bandProfileName: '숨길 이름', answers: [0, 1]
         }),
         [`${RESPONSE_PREFIX}${'c'.repeat(24)}`]: JSON.stringify({
             participantKey: 'old-version', questionVersion: 'cre-mbti-v1.0',
@@ -157,8 +160,9 @@ test('bootstrap returns version-matched content and aggregate data only', async 
     const payload = JSON.parse(response.body);
     assert.equal(payload.content.version, Core.SURVEY_VERSION);
     assert.deepEqual(payload.cohort.houseCounts, { SF: 1, ST: 0, NT: 2, NF: 0 });
-    assert.deepEqual(payload.cohort.timingMedians, [3400, 3200]);
-    assert.equal(payload.cohort.timingMedians.reduce((sum, value) => sum + value, 0) / payload.cohort.timingMedians.length, 3300);
+    assert.deepEqual(payload.cohort.timingMedians, [3600, 3300]);
+    assert.equal(payload.cohort.timingAverageMs, 3450);
+    assert.equal(payload.cohort.timingSampleSize, 2);
     assert.equal(payload.cohort.sampleSize, 3);
     assert.equal(response.body.includes('비공개 이름'), false);
     assert.equal(response.body.includes('숨길 이름'), false);
@@ -171,6 +175,26 @@ test('bootstrap returns version-matched content and aggregate data only', async 
     );
     assert.equal(repository.namedReads, 1);
     assert.equal(repository.prefixReads, 1);
+});
+
+test('bootstrap paginates and counts more than one thousand stored completions', async () => {
+    const rows = {};
+    for (let index = 0; index < 1005; index += 1) {
+        const participantKey = index.toString(16).padStart(24, '0');
+        rows[`${RESPONSE_PREFIX}${participantKey}`] = JSON.stringify({
+            participantKey,
+            assignedHouseKey: Core.HOUSE_KEYS[index % Core.HOUSE_KEYS.length],
+            timingStats: { averageMs: 4000 + (index % 2) * 1000 }
+        });
+    }
+    const repository = new FakeRepository(rows);
+    const api = createCrewartSurveyApi({ repository, now: () => NOW });
+    const cohort = (await api.bootstrap()).cohort;
+    assert.equal(cohort.sampleSize, 1005);
+    assert.equal(cohort.timingSampleSize, 1005);
+    assert.equal(cohort.timingAverageMs, 4500);
+    assert.equal(Object.values(cohort.houseCounts).reduce((sum, count) => sum + count, 0), 1005);
+    assert.equal(repository.prefixReads, 2);
 });
 
 test('old managed question versions cannot override the deployed questionnaire', async () => {
@@ -232,24 +256,23 @@ test('question content management requires admin auth and stores copy-only field
     assert.equal(rejected.status, 422);
 });
 
-test('response storage requires a valid BAND session and strips personal fields', async () => {
+test('anonymous results save without BAND login and upgrade in place after verification', async () => {
     const repository = new FakeRepository();
     const api = createCrewartSurveyApi({
         repository,
         bandMembership: { config: { sessionSecret: SECRET } },
         now: () => NOW
     });
-    const unauthorized = new CapturedResponse();
+    const invalidSession = new CapturedResponse();
     await api.handle(
-        request('POST', JSON.stringify({ response: validSubmission() })),
-        unauthorized,
+        request('POST', JSON.stringify({ response: validSubmission() }), { authorization: 'Bearer invalid' }),
+        invalidSession,
         new URL('https://creok.example.com/api/crewart-survey/responses')
     );
-    assert.equal(unauthorized.status, 401);
+    assert.equal(invalidSession.status, 401);
 
-    const accepted = new CapturedResponse();
-    const acceptedSubmission = validSubmission();
-    acceptedSubmission.timingStats = {
+    const submission = validSubmission();
+    submission.timingStats = {
         validCount: 0,
         totalMs: 0,
         averageMs: 0,
@@ -257,32 +280,77 @@ test('response storage requires a valid BAND session and strips personal fields'
         axisMedians: { EI: 30000, SN: 30000, TF: 30000, JP: 30000 },
         style: 'deliberate'
     };
-    acceptedSubmission.answerLabels[0].timingValid = false;
+    submission.answerLabels[0].timingValid = false;
+    const anonymous = new CapturedResponse();
     await api.handle(
-        request('POST', JSON.stringify({ response: acceptedSubmission }), {
+        request('POST', JSON.stringify({ response: submission })),
+        anonymous,
+        new URL('https://creok.example.com/api/crewart-survey/responses')
+    );
+    assert.equal(anonymous.status, 201);
+    assert.equal(repository.writes.length, 1);
+    assert.equal(repository.writes[0].key, `${RESPONSE_PREFIX}${'a'.repeat(24)}`);
+    const anonymousStored = JSON.parse(repository.writes[0].value);
+    assert.equal(anonymousStored.participationMode, 'anonymous');
+    assert.equal(anonymousStored.memberVerified, false);
+    assert.equal(anonymousStored.assignedHouseKey, '');
+    assert.deepEqual(JSON.parse(anonymous.body), {
+        saved: true,
+        memberVerified: false,
+        assignedHouseKey: '',
+        houseId: ''
+    });
+    assert.equal(anonymousStored.anonymous, true);
+    assert.equal('bandProfileName' in anonymousStored, false);
+    assert.equal('phone' in anonymousStored, false);
+    assert.equal('surveySessionId' in anonymousStored, false);
+    assert.equal('label' in anonymousStored.answerLabels[0], false);
+    assert.equal(anonymousStored.timingStats.validCount, Core.QUESTIONS.length);
+    assert.equal(anonymousStored.timingStats.medianMs, 3200);
+    assert.equal(anonymousStored.timingStats.style, 'balanced');
+    assert.equal(anonymousStored.answerLabels[0].timingValid, true);
+    const anonymousCohort = (await api.bootstrap()).cohort;
+    assert.equal(anonymousCohort.sampleSize, 1);
+    assert.deepEqual(anonymousCohort.houseCounts, { SF: 0, ST: 0, NT: 0, NF: 0 });
+
+    const verified = new CapturedResponse();
+    await api.handle(
+        request('POST', JSON.stringify({ response: submission }), {
             authorization: `Bearer ${memberToken()}`,
             origin: 'https://creok.example.com'
         }),
-        accepted,
+        verified,
         new URL('https://creok.example.com/api/crewart-survey/responses')
     );
-    assert.equal(accepted.status, 201);
-    assert.equal(repository.writes.length, 1);
-    assert.equal(repository.writes[0].key, `${RESPONSE_PREFIX}${'a'.repeat(24)}`);
-    const stored = JSON.parse(repository.writes[0].value);
+    assert.equal(verified.status, 201);
+    assert.equal(repository.writes.length, 2);
+    const stored = JSON.parse(repository.rows.get(`${RESPONSE_PREFIX}${'a'.repeat(24)}`));
+    assert.equal(stored.participationMode, 'official');
     assert.equal(stored.memberVerified, true);
     assert.equal(Core.HOUSE_KEYS.includes(stored.assignedHouseKey), true);
-    assert.equal(JSON.parse(accepted.body).assignedHouseKey, stored.assignedHouseKey);
-    assert.equal(stored.anonymous, true);
-    assert.equal('bandProfileName' in stored, false);
-    assert.equal('phone' in stored, false);
-    assert.equal('surveySessionId' in stored, false);
-    assert.equal('label' in stored.answerLabels[0], false);
+    assert.equal(JSON.parse(verified.body).assignedHouseKey, stored.assignedHouseKey);
     assert.equal(repository.writes[0].value.includes('member_random_session_subject'), false);
-    assert.equal(stored.timingStats.validCount, Core.QUESTIONS.length);
-    assert.equal(stored.timingStats.medianMs, 3200);
-    assert.equal(stored.timingStats.style, 'balanced');
-    assert.equal(stored.answerLabels[0].timingValid, true);
+    const verifiedCohort = (await api.bootstrap()).cohort;
+    assert.equal(verifiedCohort.sampleSize, 1);
+    assert.equal(Object.values(verifiedCohort.houseCounts).reduce((sum, count) => sum + count, 0), 1);
+});
+
+test('anonymous completion storage remains available without BAND session configuration', async () => {
+    const repository = new FakeRepository();
+    const api = createCrewartSurveyApi({
+        repository,
+        bandMembership: { config: { sessionSecret: '' } },
+        now: () => NOW
+    });
+    const response = new CapturedResponse();
+    await api.handle(
+        request('POST', JSON.stringify({ response: validSubmission() })),
+        response,
+        new URL('https://creok.example.com/api/crewart-survey/responses')
+    );
+    assert.equal(response.status, 201);
+    assert.equal(JSON.parse(response.body).memberVerified, false);
+    assert.equal(repository.writes.length, 1);
 });
 
 test('thoughtful mobile responses remain valid for up to ninety seconds per question', async () => {

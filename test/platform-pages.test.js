@@ -486,7 +486,10 @@ test('CREWARTS uses one result journey and unlocks member detail by phone', () =
     assert.match(showResultBody, /completeResultReveal\(\)/);
     assert.doesNotMatch(showResultBody, /openMemberCheck/);
     assert.match(script, /function handleUnlockDetail\(\)[\s\S]*openMemberCheck\(\{ revealResult: true \}\)/);
-    assert.match(script, /function submitSurvey\(\)[\s\S]*!hasDetailedAccess\(\)/);
+    assert.match(script, /if \(!hasDetailedAccess\(\)\)\s*\{[\s\S]*void submitSurvey\(\{ silent: true \}\)/);
+    assert.match(script, /function submitSurvey\(options = \{\}\)[\s\S]*const memberVerified = Boolean\(bandAuthToken && bandAuthUser\?\.isTargetMember\)/);
+    assert.match(script, /const activeVersion = Core\.getSurveyVersion\(\)[\s\S]*loadQuestionnaireFile\(activeVersion\.questionsFile, activeVersion\.resultsFile\)/);
+    assert.doesNotMatch(script, /getSurveyVersion\('v2'\)/);
     assert.doesNotMatch(script, /BAND_OAUTH_API|beginBandLogin/);
 });
 
@@ -610,7 +613,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(css, /\.cw-intro-tagline\s*\{[^}]*white-space:\s*nowrap/);
     assert.match(css, /\.cw-member-dialog \.cw-member-input-group\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) 68px/);
     assert.match(html, /crewart-survey-v4\.css\?v=20260817-share-polish-v96/);
-    assert.match(html, /crewart-survey\.js\?v=20260817-calibrated-v103/);
+    assert.match(html, /crewart-survey\.js\?v=20260817-anonymous-save-v104/);
     assert.match(script, /function renderUnifiedResult\(profile, house, options = \{\}\)/);
     assert.doesNotMatch(script, /resultViewVersion|resultViewFromLocation|changeResultView|report=deep|set-result-version/);
     assert.match(script, /function renderResult\(options = \{\}\)[\s\S]*renderUnifiedResult\(profile, house\);/);
@@ -754,7 +757,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /retestButton\.hidden = !snapshot/);
     assert.match(script, /homeTitle\.textContent = 'BAND 연결됨'/);
     assert.doesNotMatch(html, /start-button-v2|home-retest-v1|Ver 1 시작|Ver 2 시작/);
-    assert.match(script, /function startCurrentSurvey\(\)[\s\S]*Core\.getSurveyVersion\('v2'\)\.questionsFile/);
+    assert.match(script, /function startCurrentSurvey\(\)[\s\S]*Core\.getSurveyVersion\(\)[\s\S]*activeVersion\.questionsFile/);
     assert.doesNotMatch(script, /startSurveyVersion|start-button-v2|home-retest-v1/);
     assert.match(script, /Core\.MIN_RESPONSE_MS/);
     assert.match(script, /초 후 선택할 수 있어요/);
@@ -779,8 +782,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(html, /© 2026 CREO\. All rights reserved\./);
     assert.match(html, /class="cw-q0-copyright" id="q0-copyright" hidden>© 2026 CREO\. All rights reserved\./);
     assert.match(script, /© 2026 CREO · ALL RIGHTS RESERVED/);
-    assert.match(script, /const cohortAverageMs = samples\.length \? samples\.reduce\(\(sum, sample\) => sum \+ sample, 0\) \/ samples\.length : timingStats\.averageMs/);
-    assert.match(script, /참여자 \$\{samples\.length\}명 · 평균 \$\{formatSeconds\(cohortAverageMs\)\}/);
+    assert.match(script, /const cohortAverageMs = cohortSummary\.timingAverageMs > Core\.MIN_RESPONSE_MS/);
+    assert.match(script, /참여자 \$\{cohortSampleSize\}명 · 평균 \$\{formatSeconds\(cohortAverageMs\)\}/);
     assert.doesNotMatch(script, /Math\.max\(3100, rawMs\)/);
     assert.doesNotMatch(script, /OWN_SHARE_IDS_STORAGE_KEY|loadOwnShareIds|searchParams\.set\('ids'/);
     assert.match(script, /headers: \{ Authorization: `Bearer \$\{bandAuthToken\}` \}/);

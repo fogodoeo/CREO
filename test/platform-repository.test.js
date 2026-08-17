@@ -23,7 +23,7 @@ test('legacy non-platform keys remain compatible', () => {
     assert.equal(readStoredValue('admin_pw', 'plain', 'secret'), 'plain');
 });
 
-test('survey prefix reads request only matching key/value rows with a hard limit', async () => {
+test('survey prefix reads request only the requested key/value page', async () => {
     let requestedUrl = '';
     const repository = new SupabaseConfigRepository({
         url: 'https://example.supabase.co',
@@ -36,10 +36,11 @@ test('survey prefix reads request only matching key/value rows with a hard limit
             ]), { status: 200, headers: { 'Content-Type': 'application/json' } });
         }
     });
-    const rows = await repository.listRowsByPrefix('crewart_survey_response_entry_', 25);
+    const rows = await repository.listRowsByPrefix('crewart_survey_response_entry_', 25, 50);
     assert.deepEqual(rows.map((row) => row.key), ['crewart_survey_response_entry_a']);
     assert.match(requestedUrl, /select=key,value/);
     assert.match(requestedUrl, /key=like\.crewart_survey_response_entry_\*/);
     assert.match(requestedUrl, /limit=25/);
+    assert.match(requestedUrl, /offset=50/);
     assert.doesNotMatch(requestedUrl, /select=\*/);
 });
