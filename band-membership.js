@@ -3,7 +3,7 @@
 const { createHmac, randomBytes, timingSafeEqual } = require('node:crypto');
 
 const SESSION_TYPE = 'band_phone_membership';
-const DEFAULT_TARGET_BAND_URL = 'https://band.us/n/a5a7b3F8Rfw91';
+const DEFAULT_TARGET_BAND_URL = 'https://www.band.us/band/101878670/post';
 
 function normalizePhone(value) {
     let digits = String(value || '').replace(/\D/g, '');

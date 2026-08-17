@@ -610,7 +610,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(css, /\.cw-intro-tagline\s*\{[^}]*white-space:\s*nowrap/);
     assert.match(css, /\.cw-member-dialog \.cw-member-input-group\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) 68px/);
     assert.match(html, /crewart-survey-v4\.css\?v=20260817-share-polish-v96/);
-    assert.match(html, /crewart-survey\.js\?v=20260817-real-timing-v101/);
+    assert.match(html, /crewart-survey\.js\?v=20260817-band-home-v102/);
     assert.match(script, /function renderUnifiedResult\(profile, house, options = \{\}\)/);
     assert.doesNotMatch(script, /resultViewVersion|resultViewFromLocation|changeResultView|report=deep|set-result-version/);
     assert.match(script, /function renderResult\(options = \{\}\)[\s\S]*renderUnifiedResult\(profile, house\);/);
@@ -741,8 +741,8 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(script, /position: firstSelected \? Math\.min\(rawPosition, 34\) : Math\.max\(rawPosition, 66\)/);
     assert.match(html, /id="start-button"[^>]*>[\s\S]*테스트 하기/);
     assert.match(html, /id="home-auth-button"[^>]*>[\s\S]*BAND 가입여부 확인/);
-    assert.match(html, /href="https:\/\/band\.us\/n\/a5a7b3F8Rfw91"/);
-    assert.match(script, /DEFAULT_BAND_URL = 'https:\/\/band\.us\/n\/a5a7b3F8Rfw91'/);
+    assert.match(html, /href="https:\/\/www\.band\.us\/band\/101878670\/post"/);
+    assert.match(script, /DEFAULT_BAND_URL = 'https:\/\/www\.band\.us\/band\/101878670\/post'/);
     assert.match(html, /id="home-auth-button"[^>]*>[\s\S]*band-app-icon-official\.png/);
     const startButtonMarkup = html.match(/<button[^>]*id="start-button"[^>]*>[\s\S]*?<\/button>/)?.[0] || '';
     assert.doesNotMatch(startButtonMarkup, /→|<i\b/);

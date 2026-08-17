@@ -86,5 +86,5 @@ test('HTTP server exposes the CREO hub, survey assets, health, and membership co
     assert.equal(memberConfigResponse.status, 200);
     const memberConfig = await memberConfigResponse.json();
     assert.equal(memberConfig.configured, false);
-    assert.equal(memberConfig.targetBandUrl, 'https://band.us/n/a5a7b3F8Rfw91');
+    assert.equal(memberConfig.targetBandUrl, 'https://www.band.us/band/101878670/post');
 });
