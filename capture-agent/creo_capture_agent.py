@@ -22,6 +22,7 @@ import sys
 import threading
 import time
 from typing import Any
+import uuid
 
 import requests
 from PIL import Image, ImageOps
@@ -33,7 +34,8 @@ LOG_PATH = APP_DIR / "capture-agent.log"
 DEFAULT_CONFIG: dict[str, Any] = {
     "enabled": True,
     "service_url": "https://creok.onrender.com",
-    "channel_id": "cdcup",
+    "channel_id": "auto",
+    "agent_id": "",
     "agent_token": "",
     "agent_name": socket.gethostname(),
     "screenshot_directory": str(Path.home() / "Videos"),
@@ -76,6 +78,13 @@ def load_config() -> dict[str, Any]:
             config.update(stored)
     except (FileNotFoundError, json.JSONDecodeError, OSError):
         pass
+    if not str(config.get("agent_id") or "").strip():
+        config["agent_id"] = f"{socket.gethostname()}-{uuid.uuid4().hex}"
+        try:
+            APP_DIR.mkdir(parents=True, exist_ok=True)
+            CONFIG_PATH.write_text(json.dumps(config, ensure_ascii=False, indent=2), encoding="utf-8")
+        except OSError:
+            pass
     return config
 
 
@@ -236,15 +245,32 @@ class CaptureAgent:
     def connection_test(self) -> str:
         response = self.request("GET", "/api/capture/agent-check")
         payload = response.json()
-        return f"연결 성공 · 저장소 {payload.get('storage', {}).get('backend', '-')}"
+        return (
+            f"연결 성공 · 현재 경매 {payload.get('activeChannel') or '-'} · "
+            f"저장소 {payload.get('storage', {}).get('backend', '-')}"
+        )
+
+    def activate(self) -> str:
+        response = self.request(
+            "POST",
+            "/api/capture/agents/activate",
+            json={
+                "channelId": str(self.config.get("channel_id") or "auto"),
+                "agentId": str(self.config.get("agent_id") or ""),
+                "agentName": str(self.config.get("agent_name") or socket.gethostname()),
+            },
+        )
+        payload = response.json()
+        return f"이 PC가 {payload.get('channelId') or '-'} 경매의 활성 캡처 본체입니다."
 
     def lease_job(self) -> dict[str, Any] | None:
         response = self.request(
             "POST",
             "/api/capture/jobs/next",
             json={
-                "channelId": str(self.config.get("channel_id") or "cdcup"),
-                "agentId": str(self.config.get("agent_name") or socket.gethostname()),
+                "channelId": str(self.config.get("channel_id") or "auto"),
+                "agentId": str(self.config.get("agent_id") or ""),
+                "agentName": str(self.config.get("agent_name") or socket.gethostname()),
             },
         )
         return response.json().get("job")
@@ -265,7 +291,7 @@ class CaptureAgent:
             "POST",
             f"/api/capture/jobs/{job['id']}/upload",
             json={
-                "channelId": str(self.config.get("channel_id") or "cdcup"),
+                "channelId": str(job.get("channelId") or self.config.get("channel_id") or "auto"),
                 "mimeType": "image/webp",
                 "imageBase64": base64.b64encode(image).decode("ascii"),
                 "width": width,
@@ -280,7 +306,7 @@ class CaptureAgent:
                 "POST",
                 f"/api/capture/jobs/{job['id']}/fail",
                 json={
-                    "channelId": str(self.config.get("channel_id") or "cdcup"),
+                    "channelId": str(job.get("channelId") or self.config.get("channel_id") or "auto"),
                     "error": str(error)[:500],
                 },
             )
@@ -334,7 +360,8 @@ def configure() -> None:
     variables: dict[str, tk.Variable] = {
         "enabled": tk.BooleanVar(value=bool(config.get("enabled", True))),
         "service_url": tk.StringVar(value=config.get("service_url", "")),
-        "channel_id": tk.StringVar(value=config.get("channel_id", "cdcup")),
+        "channel_id": tk.StringVar(value=config.get("channel_id", "auto")),
+        "agent_id": tk.StringVar(value=config.get("agent_id", "")),
         "agent_token": tk.StringVar(value=config.get("agent_token", "")),
         "agent_name": tk.StringVar(value=config.get("agent_name", socket.gethostname())),
         "screenshot_directory": tk.StringVar(value=config.get("screenshot_directory", "")),
@@ -358,7 +385,7 @@ def configure() -> None:
             ttk.Button(line, text="찾기", command=lambda: variables[key].set(filedialog.askdirectory(initialdir=variables[key].get()) or variables[key].get())).pack(side="left", padx=(6, 0))
 
     row("CREO 서버 주소", "service_url")
-    row("채널 ID", "channel_id")
+    row("경매 채널 (auto = 현재 활성 경매)", "channel_id")
     row("캡처 토큰 또는 관리자 비밀번호", "agent_token", secret=True)
     row("본체 이름", "agent_name")
     row("PRISM 녹화·스크린샷 저장 폴더", "screenshot_directory", browse=True)
@@ -381,6 +408,7 @@ def configure() -> None:
             "enabled": bool(variables["enabled"].get()),
             "service_url": str(variables["service_url"].get()).strip().rstrip("/"),
             "channel_id": str(variables["channel_id"].get()).strip(),
+            "agent_id": str(variables["agent_id"].get()).strip(),
             "agent_token": str(variables["agent_token"].get()).strip(),
             "agent_name": str(variables["agent_name"].get()).strip() or socket.gethostname(),
             "screenshot_directory": str(variables["screenshot_directory"].get()).strip(),
@@ -419,6 +447,19 @@ def configure() -> None:
         except Exception as error:
             status.configure(text=f"연결 실패: {error}", foreground="#c2410c")
 
+    def activate_this_pc() -> None:
+        next_config = save(False)
+        if not next_config:
+            return
+        status.configure(text="활성 캡처 본체로 전환 중...")
+        root.update_idletasks()
+        try:
+            message = CaptureAgent(next_config, setup_logging()).activate()
+            status.configure(text=message, foreground="#16803c")
+            messagebox.showinfo("CREO", message)
+        except Exception as error:
+            status.configure(text=f"본체 전환 실패: {error}", foreground="#c2410c")
+
     def test_capture() -> None:
         next_config = save(False)
         if not next_config:
@@ -440,6 +481,7 @@ def configure() -> None:
     actions.pack(fill="x", pady=(12, 0))
     ttk.Button(actions, text="연결 테스트", command=test_connection).pack(side="left")
     ttk.Button(actions, text="캡처 테스트", command=test_capture).pack(side="left", padx=6)
+    ttk.Button(actions, text="이 PC를 활성 본체로", command=activate_this_pc).pack(side="left")
     ttk.Button(actions, text="저장", command=lambda: save(True)).pack(side="right")
     root.mainloop()
 

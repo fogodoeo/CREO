@@ -6,7 +6,7 @@ const { Readable } = require('node:stream');
 const { createCaptureApi, captureIdFor } = require('../capture-api');
 
 class MemoryRepository {
-    constructor() { this.records = new Map(); }
+    constructor() { this.records = new Map(); this.active = 'cdcup'; }
     key(channel, type, id) { return `${channel}:${type}:${id}`; }
     async getRecord(channel, type, id) { return structuredClone(this.records.get(this.key(channel, type, id)) || null); }
     async listRecords(channel, type) {
@@ -20,6 +20,7 @@ class MemoryRepository {
         this.records.set(this.key(channel, type, value.id), record);
         return structuredClone(record);
     }
+    async getActiveChannel() { return this.active; }
 }
 
 class MemoryStorage {
@@ -106,4 +107,47 @@ test('capture endpoints reject unauthenticated job creation and support idempote
     assert.equal(duplicate.status, 200);
     assert.equal(duplicate.json().duplicate, true);
     assert.equal((await repository.listRecords('cdcup', 'capture')).length, 1);
+});
+
+test('auto channel follows the active auction and only the selected computer leases jobs', async () => {
+    const repository = new MemoryRepository();
+    repository.active = 'event-night';
+    const api = createCaptureApi({
+        repository,
+        storage: new MemoryStorage(),
+        isAdmin: async (req) => req.headers['x-creo-admin'] === 'secret',
+        logger: { warn() {} }
+    });
+
+    let response = await call(api, 'POST', '/api/capture/jobs', {
+        channelId: 'auto', itemId: 'event_1', itemName: '첫 개체', eventKey: 'event-1'
+    });
+    assert.equal(response.status, 201);
+    assert.equal(response.json().job.channelId, 'event-night');
+
+    response = await call(api, 'POST', '/api/capture/jobs/next', {
+        channelId: 'auto', agentId: 'pc-a-id', agentName: '방송 본체 A'
+    });
+    assert.equal(response.json().active, true);
+    assert.equal(response.json().job.channelId, 'event-night');
+
+    await call(api, 'POST', '/api/capture/jobs', {
+        channelId: 'auto', itemId: 'event_2', itemName: '둘째 개체', eventKey: 'event-2'
+    });
+    response = await call(api, 'POST', '/api/capture/jobs/next', {
+        channelId: 'auto', agentId: 'pc-b-id', agentName: '예비 본체 B'
+    });
+    assert.equal(response.json().active, false);
+    assert.equal(response.json().job, null);
+
+    response = await call(api, 'POST', '/api/capture/agents/activate', {
+        channelId: 'auto', agentId: 'pc-b-id', agentName: '예비 본체 B'
+    });
+    assert.equal(response.json().active, true);
+    assert.equal(response.json().channelId, 'event-night');
+    response = await call(api, 'POST', '/api/capture/jobs/next', {
+        channelId: 'auto', agentId: 'pc-b-id', agentName: '예비 본체 B'
+    });
+    assert.equal(response.json().job.itemId, 'event_2');
+    assert.equal(response.json().activeAgentId, 'pc-b-id');
 });

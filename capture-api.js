@@ -6,6 +6,8 @@ const { MIME_EXTENSIONS } = require('./capture-storage');
 
 const CAPTURE_BODY_LIMIT = 4 * 1024 * 1024;
 const AGENT_LEASE_MS = 30_000;
+const AGENT_ONLINE_MS = 15_000;
+const ACTIVE_AGENT_RECORD_ID = 'capture-active-agent';
 const JOB_STATUSES = new Set(['pending', 'capturing', 'complete', 'error']);
 
 function replyJson(res, status, value, headers = {}) {
@@ -65,11 +67,12 @@ function cleanItemId(value) {
 }
 
 function publicCapture(record, origin = '') {
-    const channelId = normalizeChannelId(record.channelId) || 'cdcup';
+    const channelId = normalizeChannelId(record.channelId) || 'auction';
     const token = cleanText(record.shareToken, 80);
     const base = String(origin || '').replace(/\/+$/, '');
     return {
         id: record.id,
+        channelId,
         itemId: record.itemId,
         itemNumber: Number(record.itemNumber) || 0,
         itemName: record.itemName || '',
@@ -92,8 +95,8 @@ function requestOrigin(req) {
     return `${protocol}://${req.headers.host || 'localhost'}`;
 }
 
-function normalizeJob(input = {}) {
-    const channelId = normalizeChannelId(input.channelId || 'cdcup');
+function normalizeJob(input = {}, resolvedChannelId = '') {
+    const channelId = normalizeChannelId(resolvedChannelId || input.channelId);
     const itemId = cleanItemId(input.itemId);
     if (!channelId) throw Object.assign(new Error('채널 ID가 올바르지 않습니다.'), { status: 400 });
     if (!itemId) throw Object.assign(new Error('개체 ID가 필요합니다.'), { status: 400 });
@@ -110,6 +113,57 @@ function normalizeJob(input = {}) {
 function createCaptureApi({ repository, storage, isAdmin, logger = console } = {}) {
     if (!repository || !storage) throw new Error('capture repository and storage are required');
     const configuredAgentToken = String(process.env.CREO_CAPTURE_AGENT_TOKEN || '');
+    const onlineAgents = new Map();
+    const startedAt = Date.now();
+
+    async function resolveChannelId(value) {
+        const requested = String(value || '').trim().toLowerCase();
+        if (requested && requested !== 'auto') return normalizeChannelId(requested);
+        return normalizeChannelId(await repository.getActiveChannel()) || '';
+    }
+
+    function channelAgents(channelId) {
+        if (!onlineAgents.has(channelId)) onlineAgents.set(channelId, new Map());
+        return onlineAgents.get(channelId);
+    }
+
+    async function activeAgentRecord(channelId) {
+        return repository.getRecord(channelId, 'setting', ACTIVE_AGENT_RECORD_ID);
+    }
+
+    async function activateAgent(channelId, agent) {
+        const now = new Date().toISOString();
+        const record = await repository.upsertRecord(channelId, 'setting', {
+            id: ACTIVE_AGENT_RECORD_ID,
+            agentId: agent.agentId,
+            agentName: agent.agentName,
+            activatedAt: now
+        });
+        return record;
+    }
+
+    async function registerAgent(channelId, body = {}, forceActive = false) {
+        const agentId = cleanText(body.agentId || 'capture-agent', 100);
+        const agentName = cleanText(body.agentName || agentId, 100);
+        if (!agentId) throw Object.assign(new Error('캡처 본체 ID가 필요합니다.'), { status: 400 });
+        const now = Date.now();
+        const agents = channelAgents(channelId);
+        agents.set(agentId, { agentId, agentName, lastSeenAt: now });
+        let selected = await activeAgentRecord(channelId);
+        const selectedOnline = selected?.agentId ? agents.get(selected.agentId) : null;
+        const selectedExpired = selected?.agentId && (!selectedOnline || now - selectedOnline.lastSeenAt > AGENT_ONLINE_MS);
+        const restartGrace = now - startedAt < AGENT_ONLINE_MS;
+        if (forceActive || !selected?.agentId || (selectedExpired && !restartGrace)) {
+            selected = await activateAgent(channelId, { agentId, agentName });
+        }
+        return {
+            agentId,
+            agentName,
+            active: selected?.agentId === agentId,
+            activeAgentId: selected?.agentId || '',
+            activeAgentName: selected?.agentName || selected?.agentId || ''
+        };
+    }
 
     async function isAgent(req) {
         const supplied = req.headers['x-creo-capture-token'];
@@ -135,9 +189,11 @@ function createCaptureApi({ repository, storage, isAdmin, logger = console } = {
             const method = req.method || 'GET';
 
             if (segments.length === 1 && segments[0] === 'bootstrap' && method === 'GET') {
+                const activeChannel = await resolveChannelId('auto');
                 replyJson(res, 200, {
                     serviceUrl: requestOrigin(req),
-                    defaultChannel: 'cdcup',
+                    defaultChannel: 'auto',
+                    activeChannel,
                     storage: storage.health()
                 });
                 return true;
@@ -145,13 +201,46 @@ function createCaptureApi({ repository, storage, isAdmin, logger = console } = {
 
             if (segments.length === 1 && segments[0] === 'agent-check' && method === 'GET') {
                 if (!await requireAgent(req, res)) return true;
-                replyJson(res, 200, { authenticated: true, storage: storage.health() });
+                replyJson(res, 200, {
+                    authenticated: true,
+                    activeChannel: await resolveChannelId('auto'),
+                    storage: storage.health()
+                });
+                return true;
+            }
+
+            if (segments.length === 2 && segments[0] === 'agents' && segments[1] === 'activate' && method === 'POST') {
+                if (!await requireAgent(req, res)) return true;
+                const body = await readJson(req, 64 * 1024);
+                const channelId = await resolveChannelId(body.channelId);
+                if (!channelId) throw Object.assign(new Error('활성 경매 채널을 찾을 수 없습니다.'), { status: 400 });
+                const agent = await registerAgent(channelId, body, true);
+                replyJson(res, 200, { channelId, ...agent });
+                return true;
+            }
+
+            if (segments.length === 2 && segments[0] === 'agents' && method === 'GET') {
+                if (!await requireAgent(req, res)) return true;
+                const channelId = await resolveChannelId(segments[1]);
+                if (!channelId) throw Object.assign(new Error('경매 채널을 찾을 수 없습니다.'), { status: 400 });
+                const selected = await activeAgentRecord(channelId);
+                const now = Date.now();
+                const agents = [...channelAgents(channelId).values()].map((agent) => ({
+                    agentId: agent.agentId,
+                    agentName: agent.agentName,
+                    active: selected?.agentId === agent.agentId,
+                    online: now - agent.lastSeenAt <= AGENT_ONLINE_MS,
+                    lastSeenAt: new Date(agent.lastSeenAt).toISOString()
+                }));
+                replyJson(res, 200, { channelId, activeAgentId: selected?.agentId || '', agents });
                 return true;
             }
 
             if (segments.length === 1 && segments[0] === 'jobs' && method === 'POST') {
                 if (!await requireAgent(req, res)) return true;
-                const input = normalizeJob(await readJson(req, 256 * 1024));
+                const body = await readJson(req, 256 * 1024);
+                const channelId = await resolveChannelId(body.channelId);
+                const input = normalizeJob(body, channelId);
                 const id = captureIdFor(input.channelId, input.itemId);
                 const current = await repository.getRecord(input.channelId, 'capture', id);
                 if (current?.eventKey && input.eventKey && current.eventKey === input.eventKey && current.status !== 'error') {
@@ -178,9 +267,13 @@ function createCaptureApi({ repository, storage, isAdmin, logger = console } = {
             if (segments.length === 2 && segments[0] === 'jobs' && segments[1] === 'next' && method === 'POST') {
                 if (!await requireAgent(req, res)) return true;
                 const body = await readJson(req, 64 * 1024);
-                const channelId = normalizeChannelId(body.channelId || 'cdcup');
-                const agentId = cleanText(body.agentId || 'capture-agent', 80);
+                const channelId = await resolveChannelId(body.channelId);
                 if (!channelId) throw Object.assign(new Error('채널 ID가 올바르지 않습니다.'), { status: 400 });
+                const agent = await registerAgent(channelId, body);
+                if (!agent.active) {
+                    replyJson(res, 200, { job: null, channelId, ...agent });
+                    return true;
+                }
                 const now = Date.now();
                 const records = await repository.listRecords(channelId, 'capture');
                 const job = records
@@ -193,21 +286,21 @@ function createCaptureApi({ repository, storage, isAdmin, logger = console } = {
                 const leased = await repository.upsertRecord(channelId, 'capture', {
                     ...job,
                     status: 'capturing',
-                    agentId,
+                    agentId: agent.agentId,
                     attempts: (Number(job.attempts) || 0) + 1,
                     leaseUntil: new Date(now + AGENT_LEASE_MS).toISOString(),
                     error: ''
                 });
-                replyJson(res, 200, { job: publicCapture(leased, requestOrigin(req)) });
+                replyJson(res, 200, { job: publicCapture(leased, requestOrigin(req)), channelId, ...agent });
                 return true;
             }
 
             if (segments.length === 3 && segments[0] === 'jobs' && segments[2] === 'upload' && method === 'POST') {
                 if (!await requireAgent(req, res)) return true;
-                const channelId = normalizeChannelId((await Promise.resolve(segments[1] && url.searchParams.get('channel'))) || 'cdcup');
+                const channelId = await resolveChannelId((await Promise.resolve(segments[1] && url.searchParams.get('channel'))) || 'auto');
                 const jobId = cleanItemId(segments[1]);
                 const body = await readJson(req);
-                const actualChannelId = normalizeChannelId(body.channelId || channelId || 'cdcup');
+                const actualChannelId = await resolveChannelId(body.channelId || channelId || 'auto');
                 const current = actualChannelId && await repository.getRecord(actualChannelId, 'capture', jobId);
                 if (!current) throw Object.assign(new Error('캡처 작업을 찾을 수 없습니다.'), { status: 404 });
                 const mimeType = String(body.mimeType || 'image/webp').toLowerCase();
@@ -236,7 +329,7 @@ function createCaptureApi({ repository, storage, isAdmin, logger = console } = {
             if (segments.length === 3 && segments[0] === 'jobs' && segments[2] === 'fail' && method === 'POST') {
                 if (!await requireAgent(req, res)) return true;
                 const body = await readJson(req, 64 * 1024);
-                const channelId = normalizeChannelId(body.channelId || 'cdcup');
+                const channelId = await resolveChannelId(body.channelId || 'auto');
                 const jobId = cleanItemId(segments[1]);
                 const current = channelId && await repository.getRecord(channelId, 'capture', jobId);
                 if (!current) throw Object.assign(new Error('캡처 작업을 찾을 수 없습니다.'), { status: 404 });
