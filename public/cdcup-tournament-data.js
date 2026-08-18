@@ -149,7 +149,7 @@
                 ? current
                 : (Object.keys(stored).length
                     ? stored
-                    : archivedStageAmounts(map || {}, stage, expectedTeams));
+                    : (activeStage === stage ? {} : archivedStageAmounts(map || {}, stage, expectedTeams)));
         });
         return result;
     }
@@ -227,6 +227,7 @@
     function finalStageEntrants(map, items) {
         const saved = savedFinalStageEntrants(map || {});
         if (saved.length === 8) return saved;
+        if ((Number.parseInt(map?.active_tournament, 10) || 0) === 4) return [];
         return stageGroupStandings(map || {}, items || [], 8)
             .filter(group => group.advancing)
             .flatMap(group => group.members.map(member => ({

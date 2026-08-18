@@ -106,3 +106,37 @@ test('third-round entrants stay in A-H order before the first result', () => {
     }, [], 4);
     assert.deepEqual(Array.from(standings, entry => entry.anonymousCode), ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']);
 });
+
+test('an active third round never imports totals from a previous archived round', () => {
+    const data = loadTournamentData();
+    const entrants = Array.from({ length: 8 }, (_, index) => ({ member: `현재업체${index + 1}` }));
+    const oldSnapshot = {
+        items: [{ company: '과거업체', status: '낙찰', sold_price: 999, checklist: '_auction:tournament|_stage:4' }]
+    };
+    const map = {
+        active_tournament: '4',
+        tournament_finalists_4: JSON.stringify({ entrants }),
+        tournament_round_amounts_4: '{}',
+        auction_archive_index: JSON.stringify([{ id: 'old-final' }]),
+        'auction_archive_old-final': JSON.stringify(oldSnapshot)
+    };
+    const amounts = data.buildRoundAmounts(map, []);
+    assert.deepEqual({ ...amounts[4] }, {});
+    const standings = data.finalIndividualStandings(map, [], 4);
+    assert.equal(standings.every((entry) => entry.amount === 0), true);
+});
+
+test('an active third round never reconstructs a missing finalist snapshot from round two', () => {
+    const data = loadTournamentData();
+    const map = {
+        active_tournament: '4',
+        tournament_stage_groups_8: JSON.stringify({
+            groups: [
+                { code: 'A', members: ['과거1', '과거2', '과거3', '과거4'] },
+                { code: 'B', members: ['과거5', '과거6', '과거7', '과거8'] }
+            ]
+        }),
+        tournament_round_amounts_8: JSON.stringify({ 과거1: 10, 과거2: 20, 과거3: 30, 과거4: 40, 과거5: 50, 과거6: 60, 과거7: 70, 과거8: 80 })
+    };
+    assert.deepEqual(Array.from(data.finalStageEntrants(map, [])), []);
+});

@@ -297,8 +297,19 @@ test('legacy broadcast bridge survives Supabase quota exhaustion with cached or 
     assert.match(cdcup, /document\.getElementById\("info-sub"\)\.textContent = showCompanyInline[\s\S]*\? publicCompanyName/);
 });
 
+test('CDCUP third-round preparation delegates one server transaction that also creates the auction list', () => {
+    const bridge = fs.readFileSync(path.join(__dirname, '..', 'public', 'supabase-bridge.js'), 'utf8');
+    const start = bridge.indexOf('async function archiveAndPrepareMedalDay');
+    const end = bridge.indexOf('async function archiveAndResetAuction', start);
+    const source = bridge.slice(start, end);
+    assert.match(source, /\/api\/cdcup\/rounds\/prepare-three/);
+    assert.match(source, /X-Creo-Admin/);
+    assert.doesNotMatch(source, /items\?id=gt\.0/);
+});
+
 test('CDCUP three-round format assigns round-two teams and round-three finalists', () => {
     const bridge = fs.readFileSync(path.join(__dirname, '..', 'public', 'supabase-bridge.js'), 'utf8');
+    const roundsApi = fs.readFileSync(path.join(__dirname, '..', 'cdcup-rounds-api.js'), 'utf8');
     const registration = fs.readFileSync(path.join(__dirname, '..', 'public', 'cdcup-index.html'), 'utf8');
     const preview = fs.readFileSync(path.join(__dirname, '..', 'public', 'preview.html'), 'utf8');
     const broadcast = fs.readFileSync(path.join(__dirname, '..', 'public', 'broadcast.html'), 'utf8');
@@ -310,7 +321,8 @@ test('CDCUP three-round format assigns round-two teams and round-three finalists
     assert.match(bridge, /function parseTournamentFinalists/);
     assert.match(bridge, /3라운드 진출 업체/);
     assert.match(bridge, /tournament_finalists_4/);
-    assert.match(bridge, /active_tournament: '4'/);
+    assert.match(roundsApi, /key: 'active_tournament', value: '4'/);
+    assert.match(roundsApi, /roundThreeAuctionItems\(finalists\)/);
     assert.match(registration, /id="tournament-company-options"/);
     assert.match(registration, /function applyTournamentCompanyOptions/);
     assert.match(registration, /3라운드 목록 준비/);

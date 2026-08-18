@@ -25,7 +25,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <script src="supabase-bridge.js?v=20260817-round3-order-v1"></script>
+    <script src="supabase-bridge.js?v=20260819-round3-seed-v2"></script>
     <script src="channel-broadcast-bridge.js?v=20260815-channel-isolation-v1"></script>
     <script src="event-modules.js?v=20260819-creyon-layout-v1"></script>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
@@ -7777,7 +7777,7 @@
                 });
             } else {
                 let entrants = parseBroadcastFinalists(map || {});
-                if (!entrants.length) {
+                if (!entrants.length && (Number.parseInt(map?.active_tournament, 10) || 0) !== 4) {
                     const groups = parseBroadcastStageGroups(map || {}, 8)?.groups || [];
                     let savedRoundAmounts = {};
                     try { savedRoundAmounts = JSON.parse(map?.tournament_round_amounts_8 || '{}') || {}; } catch (_) {}

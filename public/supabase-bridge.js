@@ -72,9 +72,12 @@ function parseTournamentFinalists(configMap, items = []) {
         }
     } catch (_) {}
 
+    const activeStage = Number.parseInt(configMap?.active_tournament, 10) || 0;
+    // 3라운드가 시작된 뒤에는 확정 스냅샷만 신뢰한다. 누락된 값을
+    // 이전 2라운드 그룹/금액에서 다시 만들면 진행 중 배정이 바뀔 수 있다.
+    if (activeStage === 4) return [];
     const groups = parseTournamentStageGroups(configMap, 8);
     if (!groups) return [];
-    const activeStage = Number.parseInt(configMap?.active_tournament, 10) || 0;
     const totals = {};
     let resultCount = 0;
     (items || []).forEach(item => {
@@ -1708,39 +1711,17 @@ async function createAuctionArchive(title, pw) {
 
 async function archiveAndPrepareMedalDay(title, pw) {
     if (!(await verifyAdmin(pw))) return { success: false, error: '비밀번호 불일치' };
-    const active = await _sbFetch('items?status=eq.진행중&select=id&limit=1');
-    if (active && active.length) return { success: false, error: '진행 중인 경매를 먼저 종료해주세요.' };
     try {
-        const [currentItems, configMap] = await Promise.all([
-            _sbFetch('items?select=company,status,sold_price,checklist'),
-            getConfigMap()
-        ]);
-        const finalists = parseTournamentFinalists(configMap, currentItems || []);
-        if (String(configMap?.tournament_format || '') === 'three-round-team-final' && finalists.length !== 8) {
-            return { success: false, error: '2라운드 낙찰 결과를 먼저 입력해주세요. 상위 2팀의 8개 업체가 확정되어야 합니다.' };
-        }
-        // 2라운드 기록을 보관하고 상위 2팀의 8개 업체를 확정한 뒤 현재 목록만 비운다.
-        const archive = await _createAuctionArchive(title);
-        await _sbFetch('items?id=gt.0', {
-            method: 'DELETE',
-            headers: { ..._sbHeaders, 'Prefer': 'return=minimal' }
+        const response = await fetch('/api/cdcup/rounds/prepare-three', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Creo-Admin': String(pw || '') },
+            body: JSON.stringify({ title: String(title || '').trim() })
         });
-        await updateConfigs({
-            active_tournament: '4',
-            bracket_view_round: '4',
-            bracket_full_blind: '1',
-            bracket_full_show: '1',
-            bracket_live_show: '0',
-            blind_totals_stage: '4',
-            blind_totals_show: '1',
-            tournament_format: 'three-round-team-final',
-            tournament_finalists_4: JSON.stringify({ entrants: finalists }),
-            tournament_round_amounts_4: '{}',
-            event_match_show: '0',
-            battle_current_match: '',
-            battle_state: ''
-        });
-        return { success: true, archive };
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) return { success: false, error: payload.error || '3라운드 목록을 준비하지 못했습니다.' };
+        _runtimeConfigCache = null;
+        _runtimeConfigCacheAt = 0;
+        return payload;
     } catch (error) {
         console.error('archiveAndPrepareMedalDay error:', error);
         return { success: false, error: '3라운드 목록 준비 중 오류가 발생했습니다: ' + error.message };

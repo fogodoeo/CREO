@@ -14,6 +14,14 @@ function replyJson(res, status, value) {
     res.end(payload);
 }
 
+async function readJson(req) {
+    if (!req || typeof req[Symbol.asyncIterator] !== 'function') return {};
+    const chunks = [];
+    for await (const chunk of req) chunks.push(chunk);
+    if (!chunks.length) return {};
+    try { return JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { return {}; }
+}
+
 function checklistMeta(row) {
     const pairs = {};
     String(row?.checklist || '').split('|').forEach((part) => {
@@ -22,7 +30,10 @@ function checklistMeta(row) {
     });
     return {
         auctionType: String(pairs._auction || '').toLowerCase(),
-        tournamentStage: Number.parseInt(pairs._stage, 10) || 0
+        tournamentStage: Number.parseInt(pairs._stage, 10) || 0,
+        tournamentCode: String(pairs._slot || '').trim().toUpperCase(),
+        teamCode: String(pairs._team || '').trim().toUpperCase(),
+        publicNumber: Number.parseInt(pairs._label, 10) || 0
     };
 }
 
@@ -112,6 +123,67 @@ function reseedRoundThreeFinalists(configMap) {
     return sortFinalistsByAmount(entrants, parseRoundAmounts(configMap, 8));
 }
 
+function roundThreeAuctionItems(finalists) {
+    if (!Array.isArray(finalists) || finalists.length !== 8
+        || new Set(finalists.map((entry) => String(entry?.member || '').trim())).size !== 8) {
+        throw new Error('3라운드 진출 업체 8곳이 확정되지 않았습니다.');
+    }
+    return [1, 2, 3].flatMap((slot) => finalists.map((entry, index) => {
+        const code = String.fromCharCode(65 + index);
+        const publicNumber = (slot - 1) * 8 + index + 1;
+        const tournamentCode = `${code}${slot}`;
+        return {
+            company: String(entry.member || '').trim(),
+            num: publicNumber,
+            name: `${code}${String(slot).padStart(2, '0')}`,
+            start_price: '',
+            note: '',
+            announce: '',
+            photo_item: '',
+            photo_sire: '',
+            photo_dam: '',
+            photo_sibling: '',
+            status: '대기',
+            sold_price: '',
+            winner: '',
+            winner_phone: '',
+            start_time: '',
+            bid_log: '',
+            checklist: `_auction:tournament|_label:${publicNumber}|_stage:4|_slot:${tournamentCode}|_team:${code}`,
+            checklist_parsed: '',
+            sire_id: null,
+            dam_id: null
+        };
+    }));
+}
+
+function validateExistingRoundThreeItems(items, expected) {
+    const expectedByCode = new Map(expected.map((item) => [checklistMeta(item).tournamentCode, item]));
+    const existingByCode = new Map();
+    for (const item of items || []) {
+        const meta = checklistMeta(item);
+        if (meta.auctionType !== 'tournament' || meta.tournamentStage !== 4 || !expectedByCode.has(meta.tournamentCode)) {
+            throw new Error('현재 목록에 3라운드 외 개체가 남아 있습니다. 이전 회차 개체를 먼저 별도 보관해 주세요.');
+        }
+        if (existingByCode.has(meta.tournamentCode)) throw new Error(`3라운드 슬롯 ${meta.tournamentCode}가 중복되어 있습니다.`);
+        const planned = expectedByCode.get(meta.tournamentCode);
+        if (String(item.company || '').trim() !== planned.company) {
+            throw new Error(`${meta.tournamentCode} 업체가 확정된 A~H 배정과 다릅니다.`);
+        }
+        existingByCode.set(meta.tournamentCode, item);
+    }
+    return existingByCode;
+}
+
+async function insertRoundThreeItems(repository, rows) {
+    if (!rows.length) return;
+    await repository.request('items', {
+        method: 'POST',
+        headers: { Prefer: 'return=minimal' },
+        body: JSON.stringify(rows)
+    });
+}
+
 function archiveSummary(snapshot) {
     const activeStage = Number.parseInt(snapshot.configs.active_tournament, 10) || 0;
     const stageCounts = {};
@@ -160,13 +232,48 @@ function createCdcupRoundsApi({ repository, isAdmin }) {
             });
             return true;
         }
-        if (!['/api/cdcup/rounds/prepare-three', '/api/cdcup/rounds/reseed-three'].includes(url.pathname)) return false;
+        if (!['/api/cdcup/rounds/prepare-three', '/api/cdcup/rounds/reseed-three', '/api/cdcup/rounds/seed-three-items'].includes(url.pathname)) return false;
         if (req.method !== 'POST') {
             replyJson(res, 405, { error: 'Method not allowed' });
             return true;
         }
         if (!await isAdmin(req)) {
             replyJson(res, 401, { error: '관리자 인증이 필요합니다.' });
+            return true;
+        }
+
+        if (url.pathname === '/api/cdcup/rounds/seed-three-items') {
+            const [items, configRows] = await Promise.all([
+                repository.request('items?select=*&order=num.asc'),
+                repository.request('config?select=key,value')
+            ]);
+            const configMap = Object.fromEntries((configRows || []).map((row) => [row.key, row.value]));
+            if ((Number.parseInt(configMap.active_tournament, 10) || 0) !== 4) {
+                replyJson(res, 409, { error: '현재 운영 회차가 3라운드가 아닙니다.' });
+                return true;
+            }
+            const finalists = reseedRoundThreeFinalists(configMap);
+            if (finalists.length !== 8) {
+                replyJson(res, 409, { error: '저장된 3라운드 진출 업체 8곳을 확인하지 못했습니다.' });
+                return true;
+            }
+            try {
+                const planned = roundThreeAuctionItems(finalists);
+                const existing = validateExistingRoundThreeItems(items || [], planned);
+                const missing = planned.filter((item) => !existing.has(checklistMeta(item).tournamentCode));
+                await insertRoundThreeItems(repository, missing);
+                await repository.upsertRows([
+                    { key: 'runtime_config_version', value: `${Date.now().toString(36)}-${crypto.randomBytes(4).toString('hex')}` }
+                ]);
+                replyJson(res, 200, {
+                    success: true,
+                    created: missing.length,
+                    total: planned.length,
+                    order: planned.map((item) => ({ num: item.num, code: item.name, company: item.company }))
+                });
+            } catch (error) {
+                replyJson(res, 409, { error: error.message });
+            }
             return true;
         }
 
@@ -189,6 +296,7 @@ function createCdcupRoundsApi({ repository, isAdmin }) {
             return true;
         }
 
+        const body = await readJson(req);
         const [items, parents, configRows] = await Promise.all([
             repository.request('items?select=*&order=num.asc'),
             repository.request('parents?select=*'),
@@ -217,7 +325,7 @@ function createCdcupRoundsApi({ repository, isAdmin }) {
         const snapshot = {
             version: 1,
             id,
-            title: 'CDCUP 시즌2 · 2라운드 종료',
+            title: String(body.title || 'CDCUP 시즌2 · 2라운드 종료').trim().slice(0, 80) || 'CDCUP 시즌2 · 2라운드 종료',
             createdAt: now.toISOString(),
             items: items || [],
             parents: parents || [],
@@ -256,6 +364,8 @@ function createCdcupRoundsApi({ repository, isAdmin }) {
             method: 'DELETE',
             headers: { Prefer: 'return=minimal' }
         });
+        const roundThreeItems = roundThreeAuctionItems(finalists);
+        await insertRoundThreeItems(repository, roundThreeItems);
         replyJson(res, 200, {
             success: true,
             archive: {
@@ -265,7 +375,8 @@ function createCdcupRoundsApi({ repository, isAdmin }) {
                 soldCount: summary.soldCount,
                 totalSoldAmount: summary.totalSoldAmount
             },
-            finalists: finalists.map((entry, index) => ({ code: String.fromCharCode(65 + index), member: entry.member }))
+            finalists: finalists.map((entry, index) => ({ code: String.fromCharCode(65 + index), member: entry.member })),
+            createdItems: roundThreeItems.length
         });
         return true;
     }
@@ -273,4 +384,4 @@ function createCdcupRoundsApi({ repository, isAdmin }) {
     return { handle };
 }
 
-module.exports = { createCdcupRoundsApi, roundTwoFinalists, reseedRoundThreeFinalists, archiveSummary };
+module.exports = { createCdcupRoundsApi, roundTwoFinalists, reseedRoundThreeFinalists, roundThreeAuctionItems, validateExistingRoundThreeItems, archiveSummary };
