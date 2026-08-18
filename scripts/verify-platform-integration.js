@@ -29,12 +29,12 @@ async function main() {
         let catalog = await request('channels');
         await request('channels', {
             method: 'POST',
-            body: JSON.stringify({ channel: { id: idA, name: '검증 A', status: 'draft' }, expectedVersion: catalog.version })
+            body: JSON.stringify({ channel: { id: idA, name: '검증 A', status: 'paused' }, expectedVersion: catalog.version })
         });
         catalog = await request('channels');
         await request('channels', {
             method: 'POST',
-            body: JSON.stringify({ channel: { id: idB, name: '검증 B', status: 'draft' }, expectedVersion: catalog.version })
+            body: JSON.stringify({ channel: { id: idB, name: '검증 B', status: 'paused' }, expectedVersion: catalog.version })
         });
         await request(`channels/${idA}/vendors`, { method: 'POST', body: JSON.stringify({ record: { id: 'same_vendor', name: 'A 업체' } }) });
         await request(`channels/${idB}/vendors`, { method: 'POST', body: JSON.stringify({ record: { id: 'same_vendor', name: 'B 업체' } }) });
@@ -51,15 +51,21 @@ async function main() {
             && beta.shipments.length === 0;
         if (!passed) throw new Error('channel isolation verification failed');
         await request('active-channel', { method: 'PUT', body: JSON.stringify({ channelId: idA }) });
-        await request(`channels/${idA}/broadcast-state`, {
+        await request(`channels/${idA}/auction-transition`, {
             method: 'PUT',
-            body: JSON.stringify({ activeItemId: 'item_one', mode: 'live', page: 1, headline: '검증' })
+            body: JSON.stringify({ itemId: 'item_one', status: 'live', mode: 'live', state: { page: 1, headline: '검증' } })
         });
-        const broadcast = await request(`channels/${idA}/broadcast`);
-        if (broadcast.state.activeItemId !== 'item_one' || broadcast.items[0]?.name !== 'A 개체') {
+        const [broadcast, operator] = await Promise.all([
+            request(`channels/${idA}/broadcast`),
+            request('operator-context')
+        ]);
+        if (broadcast.state.activeItemId !== 'item_one'
+            || broadcast.items[0]?.name !== 'A 개체'
+            || operator.activeChannelId !== idA
+            || operator.workspace?.items?.[0]?.status !== 'live') {
             throw new Error('broadcast state verification failed');
         }
-        console.log('integration=PASS channels=2 vendors-isolated items-isolated shipments-isolated broadcast-switched');
+        console.log('integration=PASS channels=2 vendors-isolated items-isolated shipments-isolated operator-context auction-transition');
     } finally {
         try { await request('active-channel', { method: 'PUT', body: JSON.stringify({ channelId: originalActive }) }); } catch (_) {}
         for (const [channel, collection, id] of [

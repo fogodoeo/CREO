@@ -148,6 +148,24 @@ test('shared workspace builds real select fields for channel groups and auction 
     assert.doesNotMatch(workspace, /setLive[\s\S]{0,500}broadcast-state/);
 });
 
+test('every non-survey operational page has a real document title', () => {
+    const pages = fs.readdirSync(path.join(__dirname, '..', 'public'))
+        .filter((name) => name.endsWith('.html') && !name.startsWith('crewart-survey'));
+    for (const page of pages) {
+        const html = fs.readFileSync(path.join(__dirname, '..', 'public', page), 'utf8');
+        const head = html.slice(0, html.search(/<\/head>/i));
+        assert.match(head, /<title>\s*[^<\s][^<]*<\/title>/i, `${page} needs a non-empty <title>`);
+    }
+});
+
+test('operator UI examples do not embed real tournament participant names', () => {
+    const preview = fs.readFileSync(path.join(__dirname, '..', 'public', 'preview.html'), 'utf8');
+    for (const participant of ['렙소디', '베누스', '디어렙 청주', '미야게코', '니코게코']) {
+        assert.doesNotMatch(preview, new RegExp(participant));
+    }
+    assert.match(preview, /업체 A&#10;업체 B&#10;업체 C/);
+});
+
 test('the new broadcast implements three independent camera overlays', () => {
     const live = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-live.html'), 'utf8');
     const metal = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-skin-metal.css'), 'utf8');

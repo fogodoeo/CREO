@@ -127,7 +127,10 @@ test('round transition archives before deleting and prepares an anonymous eight-
     const written = Object.fromEntries(calls[upsertIndex].rows.map((row) => [row.key, row.value]));
     assert.equal(written.active_tournament, '4');
     assert.equal(written.bracket_full_blind, '1');
-    assert.equal(JSON.parse(written.tournament_finalists_4).entrants.length, 8);
+    const finalistSnapshot = JSON.parse(written.tournament_finalists_4);
+    assert.equal(finalistSnapshot.entrants.length, 8);
+    assert.equal(written.tournament_run_id_4, finalistSnapshot.runId);
+    assert.equal(finalistSnapshot.sourceArchiveId, finalistSnapshot.runId);
     assert.deepEqual(JSON.parse(written.tournament_round_amounts_8), {
         A1: 10, A2: 10, A3: 10, A4: 10,
         B1: 40, B2: 35, B3: 30, B4: 25,
@@ -149,7 +152,8 @@ test('round-three recovery endpoint fills only missing slots and never mixes pre
     const inserts = [];
     const configRows = [
         { key: 'active_tournament', value: '4' },
-        { key: 'tournament_finalists_4', value: JSON.stringify({ entrants }) },
+        { key: 'tournament_run_id_4', value: 'round-current' },
+        { key: 'tournament_finalists_4', value: JSON.stringify({ runId: 'round-current', entrants }) },
         { key: 'tournament_round_amounts_8', value: JSON.stringify(Object.fromEntries(entrants.map((row, index) => [row.member, index + 1]))) }
     ];
     const repository = {
@@ -187,4 +191,59 @@ test('round-three recovery endpoint fills only missing slots and never mixes pre
     await mixedApi.handle({ method: 'POST', headers: {} }, response, new URL('https://example.test/api/cdcup/rounds/seed-three-items'));
     assert.equal(status, 409);
     assert.match(JSON.parse(body).error, /이전 회차/);
+});
+
+test('round-three recovery refuses an unbound historical finalist snapshot when items are missing', async () => {
+    const entrants = Array.from({ length: 8 }, (_, index) => ({ member: `업체${index + 1}` }));
+    const configRows = [
+        { key: 'active_tournament', value: '4' },
+        { key: 'tournament_finalists_4', value: JSON.stringify({ entrants }) },
+        { key: 'tournament_round_amounts_8', value: '{}' }
+    ];
+    let inserted = false;
+    const repository = {
+        async request(path, options = {}) {
+            if (path.startsWith('items?select=')) return [];
+            if (path.startsWith('config?select=')) return configRows;
+            if (path === 'items' && options.method === 'POST') inserted = true;
+            return null;
+        },
+        async upsertRows() {}
+    };
+    const api = createCdcupRoundsApi({ repository, isAdmin: async () => true });
+    let status = 0;
+    let body = '';
+    const response = { writeHead(value) { status = value; }, end(value) { body = Buffer.from(value || '').toString('utf8'); } };
+    await api.handle({ method: 'POST', headers: {} }, response, new URL('https://example.test/api/cdcup/rounds/seed-three-items'));
+    assert.equal(status, 409);
+    assert.equal(inserted, false);
+    assert.match(JSON.parse(body).error, /과거 명단/);
+});
+
+test('a complete legacy round-three list is adopted without recreating or changing its order', async () => {
+    const entrants = Array.from({ length: 8 }, (_, index) => ({ member: `업체${index + 1}` }));
+    const planned = roundThreeAuctionItems(entrants);
+    const upserts = [];
+    const repository = {
+        async request(path) {
+            if (path.startsWith('items?select=')) return planned;
+            if (path.startsWith('config?select=')) return [
+                { key: 'active_tournament', value: '4' },
+                { key: 'tournament_finalists_4', value: JSON.stringify({ entrants }) },
+                { key: 'tournament_round_amounts_8', value: '{}' }
+            ];
+            throw new Error(`unexpected request ${path}`);
+        },
+        async upsertRows(rows) { upserts.push(...rows); }
+    };
+    const api = createCdcupRoundsApi({ repository, isAdmin: async () => true });
+    let status = 0;
+    let body = '';
+    const response = { writeHead(value) { status = value; }, end(value) { body = Buffer.from(value || '').toString('utf8'); } };
+    await api.handle({ method: 'POST', headers: {} }, response, new URL('https://example.test/api/cdcup/rounds/seed-three-items'));
+    assert.equal(status, 200);
+    assert.equal(JSON.parse(body).created, 0);
+    const written = Object.fromEntries(upserts.map((row) => [row.key, row.value]));
+    assert.match(written.tournament_run_id_4, /^legacy-/);
+    assert.equal(JSON.parse(written.tournament_finalists_4).runId, written.tournament_run_id_4);
 });

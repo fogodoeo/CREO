@@ -123,6 +123,19 @@ function reseedRoundThreeFinalists(configMap) {
     return sortFinalistsByAmount(entrants, parseRoundAmounts(configMap, 8));
 }
 
+function roundThreeSnapshot(configMap) {
+    try {
+        const parsed = JSON.parse(configMap.tournament_finalists_4 || 'null');
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return { runId: '', entrants: [] };
+        return {
+            runId: String(parsed.runId || parsed.sourceArchiveId || '').trim(),
+            entrants: Array.isArray(parsed.entrants) ? parsed.entrants : []
+        };
+    } catch {
+        return { runId: '', entrants: [] };
+    }
+}
+
 function roundThreeAuctionItems(finalists) {
     if (!Array.isArray(finalists) || finalists.length !== 8
         || new Set(finalists.map((entry) => String(entry?.member || '').trim())).size !== 8) {
@@ -261,10 +274,25 @@ function createCdcupRoundsApi({ repository, isAdmin }) {
                 const planned = roundThreeAuctionItems(finalists);
                 const existing = validateExistingRoundThreeItems(items || [], planned);
                 const missing = planned.filter((item) => !existing.has(checklistMeta(item).tournamentCode));
+                const savedSnapshot = roundThreeSnapshot(configMap);
+                const activeRunId = String(configMap.tournament_run_id_4 || '').trim();
+                if (missing.length && (!activeRunId || savedSnapshot.runId !== activeRunId)) {
+                    throw new Error('현재 3라운드 회차 ID를 확인할 수 없어 과거 명단으로 목록을 복구하지 않습니다. 2라운드 종료 절차에서 새 3라운드를 준비해 주세요.');
+                }
                 await insertRoundThreeItems(repository, missing);
-                await repository.upsertRows([
+                const configUpdates = [
                     { key: 'runtime_config_version', value: `${Date.now().toString(36)}-${crypto.randomBytes(4).toString('hex')}` }
-                ]);
+                ];
+                // 이미 완성된 구형 3라운드 목록은 한 번만 현재 회차로 채택한다.
+                // 목록이 비었거나 일부만 남은 상태에서는 과거 확정 명단을 절대 재사용하지 않는다.
+                if (!activeRunId && missing.length === 0) {
+                    const migratedRunId = `legacy-${crypto.randomBytes(8).toString('hex')}`;
+                    configUpdates.push(
+                        { key: 'tournament_run_id_4', value: migratedRunId },
+                        { key: 'tournament_finalists_4', value: JSON.stringify({ runId: migratedRunId, entrants: savedSnapshot.entrants }) }
+                    );
+                }
+                await repository.upsertRows(configUpdates);
                 replyJson(res, 200, {
                     success: true,
                     created: missing.length,
@@ -350,7 +378,8 @@ function createCdcupRoundsApi({ repository, isAdmin }) {
             { key: 'blind_totals_stage', value: '4' },
             { key: 'blind_totals_show', value: '1' },
             { key: 'tournament_format', value: 'three-round-team-final' },
-            { key: 'tournament_finalists_4', value: JSON.stringify({ entrants: finalists }) },
+            { key: 'tournament_run_id_4', value: id },
+            { key: 'tournament_finalists_4', value: JSON.stringify({ runId: id, sourceArchiveId: id, entrants: finalists }) },
             { key: 'tournament_round_amounts_4', value: '{}' },
             { key: 'event_match_show', value: '0' },
             { key: 'battle_current_match', value: '' },
