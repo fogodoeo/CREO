@@ -20,6 +20,7 @@ class MemoryRepository {
         this.records.set(this.key(channel, type, value.id), record);
         return structuredClone(record);
     }
+    async deleteRecord(channel, type, id) { this.records.delete(this.key(channel, type, id)); }
     async getActiveChannel() { return this.active; }
 }
 
@@ -28,6 +29,7 @@ class MemoryStorage {
     health() { return { backend: 'memory' }; }
     async put(path, buffer, mimeType) { this.objects.set(path, { buffer: Buffer.from(buffer), mimeType }); }
     async get(path) { return this.objects.get(path)?.buffer || null; }
+    async delete(path) { this.objects.delete(path); }
 }
 
 class ResponseCapture {
@@ -88,6 +90,12 @@ test('capture job is leased, uploaded, listed and served by item id', async () =
     assert.equal(image.status, 200);
     assert.equal(image.headers['Content-Type'], 'image/webp');
     assert.deepEqual(image.rawBody, bytes);
+
+    const removed = await call(api, 'DELETE', `/api/capture/channel/cdcup/${jobId}`);
+    assert.equal(removed.status, 200);
+    assert.equal(removed.json().deleted, true);
+    assert.equal((await repository.listRecords('cdcup', 'capture')).length, 0);
+    assert.equal(storage.objects.size, 0);
 });
 
 test('capture endpoints reject unauthenticated job creation and support idempotent events', async () => {

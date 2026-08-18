@@ -353,6 +353,18 @@ function createCaptureApi({ repository, storage, isAdmin, logger = console } = {
                 return true;
             }
 
+            if (segments.length === 3 && segments[0] === 'channel' && method === 'DELETE') {
+                if (!await requireAgent(req, res)) return true;
+                const channelId = await resolveChannelId(segments[1]);
+                const jobId = cleanItemId(segments[2]);
+                const current = channelId && await repository.getRecord(channelId, 'capture', jobId);
+                if (!current) throw Object.assign(new Error('캡처 기록을 찾을 수 없습니다.'), { status: 404 });
+                if (current.objectPath) await storage.delete(current.objectPath);
+                await repository.deleteRecord(channelId, 'capture', jobId);
+                replyJson(res, 200, { deleted: true, channelId, id: jobId });
+                return true;
+            }
+
             if (segments.length === 3 && segments[0] === 'retry' && method === 'POST') {
                 if (!await requireAgent(req, res)) return true;
                 const channelId = normalizeChannelId(segments[1]);

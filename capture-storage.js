@@ -118,6 +118,26 @@ class CaptureStorage {
         }
     }
 
+    async delete(objectPath) {
+        const object = safeObjectPath(objectPath);
+        if (this.remote) {
+            await this.ensureBucket();
+            const response = await fetch(`${this.supabaseUrl}/storage/v1/object/${encodeURIComponent(this.bucket)}/${encodedObjectPath(object)}`, {
+                method: 'DELETE',
+                headers: this.headers()
+            });
+            if (!response.ok && response.status !== 404) {
+                const detail = await response.text().catch(() => '');
+                throw new Error(`Capture delete failed (${response.status}): ${detail.slice(0, 160)}`);
+            }
+            return;
+        }
+        const target = path.resolve(this.localDir, object);
+        if (target !== this.localDir && !target.startsWith(`${this.localDir}${path.sep}`)) throw new Error('Invalid local capture path');
+        try { await fs.unlink(target); }
+        catch (error) { if (error.code !== 'ENOENT') throw error; }
+    }
+
     health() {
         return { backend: this.remote ? 'supabase' : 'local', bucket: this.remote ? this.bucket : null };
     }
