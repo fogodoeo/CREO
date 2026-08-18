@@ -1,0 +1,20 @@
+{
+  "name": "creo-marble-roulette",
+  "version": "1.0.0",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "prebuild": "node scripts/clean-dist.mjs",
+    "postbuild": "node scripts/finalize-dist.mjs",
+    "check": "tsc --noEmit",
+    "build": "parcel build index.html --dist-dir ../public/roulette --public-url /roulette/ --no-source-maps --no-cache"
+  },
+  "dependencies": {
+    "box2d-wasm": "^7.0.0"
+  },
+  "devDependencies": {
+    "@parcel/transformer-sass": "^2.16.4",
+    "parcel": "^2.16.4",
+    "typescript": "^5.6.3"
+  }
+}

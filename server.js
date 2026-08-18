@@ -64,6 +64,7 @@ const CONTENT_TYPES = {
     '.png': 'image/png',
     '.svg': 'image/svg+xml; charset=utf-8',
     '.txt': 'text/plain; charset=utf-8',
+    '.wasm': 'application/wasm',
     '.webm': 'video/webm',
     '.webp': 'image/webp',
     '.woff': 'font/woff',

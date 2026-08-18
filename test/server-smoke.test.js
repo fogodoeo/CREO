@@ -56,6 +56,24 @@ test('HTTP server exposes the CREO hub, survey assets, health, and membership co
     assert.match(surveyResponse.headers.get('content-type'), /^text\/html/);
     assert.match(await surveyResponse.text(), /크레와트 성향 테스트/);
 
+    const rouletteResponse = await fetch(`http://127.0.0.1:${port}/roulette/`);
+    assert.equal(rouletteResponse.status, 200);
+    assert.match(rouletteResponse.headers.get('content-type'), /^text\/html/);
+    const rouletteHtml = await rouletteResponse.text();
+    assert.match(rouletteHtml, /MARBLE DRAW/);
+    assert.doesNotMatch(rouletteHtml, /umami|google-analytics|marblerouletteshop/i);
+
+    const rouletteLicenseResponse = await fetch(`http://127.0.0.1:${port}/roulette/LICENSE.txt`);
+    assert.equal(rouletteLicenseResponse.status, 200);
+    assert.match(await rouletteLicenseResponse.text(), /MIT License[\s\S]*Copyright \(c\) 2023 LazyGyu/);
+
+    const rouletteIndexFiles = require('node:fs').readdirSync(path.join(__dirname, '..', 'public', 'roulette'));
+    const rouletteWasm = rouletteIndexFiles.find((file) => file.endsWith('.wasm'));
+    assert.ok(rouletteWasm);
+    const rouletteWasmResponse = await fetch(`http://127.0.0.1:${port}/roulette/${rouletteWasm}`);
+    assert.equal(rouletteWasmResponse.status, 200);
+    assert.equal(rouletteWasmResponse.headers.get('content-type'), 'application/wasm');
+
     const retiredManagerResponse = await fetch(
         `http://127.0.0.1:${port}/crewart-survey-manager.html`,
         { redirect: 'manual' }
