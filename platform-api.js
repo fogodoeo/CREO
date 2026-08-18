@@ -23,6 +23,12 @@ const ADMIN_LOGIN_WINDOW_MS = 10 * 60 * 1000;
 const ADMIN_LOGIN_ATTEMPTS = 6;
 const BROADCAST_CONFIG_ID = 'broadcast-config';
 const BROADCAST_CONFIG_KEY = /^[a-z0-9][a-z0-9_:-]{0,79}$/i;
+const SHIPPING_RATE_CONFIG_KEYS = Object.freeze({
+    '도도시': 'shipping_rate_dodosi',
+    '파르게': 'shipping_rate_parge',
+    '랩팡': 'shipping_rate_wrapang'
+});
+const RUNTIME_CONFIG_VERSION_KEY = 'runtime_config_version';
 
 function replyJson(res, status, value, headers = {}) {
     const body = Buffer.from(JSON.stringify(value));
@@ -327,7 +333,7 @@ function validateRecord(type, record, workspace) {
     return errors;
 }
 
-function createPlatformApi({ repository, logger = console } = {}) {
+function createPlatformApi({ repository, logger = console, refreshShippingRateFn = refreshShippingRate } = {}) {
     if (!repository) throw new Error('repository is required');
     const mutationLocks = new Map();
     const channelRevisions = new Map();
@@ -474,7 +480,18 @@ function createPlatformApi({ repository, logger = console } = {}) {
             if (segments.length === 2 && segments[0] === 'shipping-rates' && segments[1] === 'refresh' && method === 'POST') {
                 if (!await requireAdmin(req, res)) return true;
                 const body = await readJson(req);
-                replyJson(res, 200, await refreshShippingRate(cleanText(body.company), { force: body.force === true }));
+                const company = cleanText(body.company);
+                const configKey = SHIPPING_RATE_CONFIG_KEYS[company];
+                if (!configKey) {
+                    replyJson(res, 422, { error: '지원하지 않는 배송사입니다.' });
+                    return true;
+                }
+                const result = await refreshShippingRateFn(company, { force: body.force === true });
+                await repository.upsertRows([
+                    { key: configKey, value: JSON.stringify(result.payload) },
+                    { key: RUNTIME_CONFIG_VERSION_KEY, value: `${Date.now().toString(36)}-${crypto.randomBytes(4).toString('hex')}` }
+                ]);
+                replyJson(res, 200, { ...result, persisted: true });
                 return true;
             }
 

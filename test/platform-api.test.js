@@ -21,10 +21,31 @@ class MemoryRepository {
     async getRecord(channel, type, id) { return structuredClone(this.records.get(this.key(channel, type, id)) || null); }
     async upsertRecord(channel, type, value) { const record = { ...value, channelId: channel }; this.records.set(this.key(channel, type, value.id), record); return structuredClone(record); }
     async deleteRecord(channel, type, id) { this.records.delete(this.key(channel, type, id)); }
+    async upsertRows(rows) { for (const row of rows) this.records.set(`config:${row.key}`, { ...row }); }
     async health() { return { ok: true }; }
     async getActiveChannel() { return this.active; }
     async setActiveChannel(value) { this.active = value; return value; }
 }
+
+test('shipping rate refresh persists the collected public data before replying', async () => {
+    const repository = new MemoryRepository();
+    const payload = { updated: '2026-08-19', source: 'test', data: { 수도권: [{ shop: '테스트 거점', cost: 19000 }] } };
+    const api = createPlatformApi({
+        repository,
+        logger: { error() {} },
+        refreshShippingRateFn: async (company, options) => {
+            assert.equal(company, '파르게');
+            assert.equal(options.force, true);
+            return { company, count: 1, payload, cached: false };
+        }
+    });
+
+    const response = await call(api, 'POST', '/api/platform/shipping-rates/refresh', { company: '파르게', force: true });
+    assert.equal(response.status, 200);
+    assert.equal(response.json().persisted, true);
+    assert.deepEqual(JSON.parse(repository.records.get('config:shipping_rate_parge').value), payload);
+    assert.ok(repository.records.get('config:runtime_config_version').value);
+});
 
 class ResponseCapture {
     writeHead(status, headers) { this.status = status; this.headers = headers; }
