@@ -115,7 +115,8 @@ export class Marble {
     skin: CanvasImageSource | undefined,
     viewPort: { x: number; y: number; w: number; h: number; zoom: number },
     theme: ColorTheme,
-    simpleLabel: boolean = false
+    simpleLabel: boolean = false,
+    showLabel: boolean = true
   ) {
     this.theme = theme;
     const viewPortHw = viewPort.w / viewPort.zoom / 2;
@@ -134,7 +135,7 @@ export class Marble {
     if (isMinimap) {
       this._renderMinimap(ctx);
     } else {
-      this._renderNormal(ctx, zoom, outline, skin, simpleLabel);
+      this._renderNormal(ctx, zoom, outline, skin, simpleLabel, showLabel);
     }
     ctx.setTransform(transform);
   }
@@ -155,7 +156,8 @@ export class Marble {
     zoom: number,
     outline: boolean,
     skin?: CanvasImageSource,
-    simpleLabel: boolean = false
+    simpleLabel: boolean = false,
+    showLabel: boolean = true
   ) {
     const hs = this.size / 2;
 
@@ -175,7 +177,7 @@ export class Marble {
 
     ctx.shadowColor = '';
     ctx.shadowBlur = 0;
-    this._drawName(ctx, zoom, simpleLabel);
+    if (showLabel) this._drawName(ctx, zoom, simpleLabel);
 
     if (outline) {
       this._drawOutline(ctx, 2 / zoom);
@@ -184,6 +186,25 @@ export class Marble {
     if (options.useSkills) {
       this._renderCoolTime(ctx, zoom);
     }
+  }
+
+  renderLabel(
+    ctx: CanvasRenderingContext2D,
+    zoom: number,
+    viewPort: { x: number; y: number; w: number; h: number; zoom: number },
+    simpleLabel: boolean = false
+  ) {
+    const viewPortHw = viewPort.w / viewPort.zoom / 2;
+    const viewPortHh = viewPort.h / viewPort.zoom / 2;
+    if (
+      this.x < viewPort.x - viewPortHw ||
+      this.x > viewPort.x + viewPortHw ||
+      this.y < viewPort.y - viewPortHh - this.size / 2 ||
+      this.y > viewPort.y + viewPortHh
+    ) {
+      return;
+    }
+    this._drawName(ctx, zoom, simpleLabel);
   }
 
   private _drawName(ctx: CanvasRenderingContext2D, zoom: number, simpleLabel: boolean) {

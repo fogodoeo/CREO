@@ -12,6 +12,7 @@ export class Minimap implements UIObject {
   private top = 10;
   private ctx!: CanvasRenderingContext2D;
   private lastParams: RenderParameters | null = null;
+  private readonly broadcastMode = new URLSearchParams(location.search).get('broadcast') === '1';
 
   private _onViewportChangeHandler: ((pos?: VectorLike) => void) | null = null;
   private boundingBox: Rect;
@@ -64,7 +65,7 @@ export class Minimap implements UIObject {
     if (!ctx) return;
     const { stage } = params;
     if (!stage) return;
-    const broadcastMode = new URLSearchParams(location.search).get('broadcast') === '1';
+    const broadcastMode = this.broadcastMode;
     const uiScale = broadcastMode ? ctx.canvas.width / 720 : 1;
     this.top = broadcastMode ? 64 * uiScale : 10;
     const availableHeight = Math.max(120, ctx.canvas.height - this.top - 12);
@@ -98,7 +99,7 @@ export class Minimap implements UIObject {
   private drawViewport(params: RenderParameters) {
     this.ctx.save();
     const { camera, size } = params;
-    const broadcastSceneZoom = new URLSearchParams(location.search).get('broadcast') === '1' ? 1.18 : 1;
+    const broadcastSceneZoom = this.broadcastMode ? 1.18 : 1;
     const zoom = camera.zoom * initialZoom * broadcastSceneZoom;
     const w = size.x / zoom;
     const h = size.y / zoom;

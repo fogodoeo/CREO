@@ -25,9 +25,10 @@ export type RenderParameters = {
 };
 
 const MAX_DISPLAY_WIDTH = 1920;
+const BROADCAST_DISPLAY_WIDTH = 1920;
 const BROADCAST_SCENE_WIDTHS = {
-  performance: 1280,
-  balanced: 1600,
+  performance: 960,
+  balanced: 1280,
   high: 1920,
 } as const;
 const COMPACT_SCENE_WIDTH = 480;
@@ -40,6 +41,8 @@ export class RouletteRenderer {
   protected _sceneCanvas!: HTMLCanvasElement;
   protected ctx!: CanvasRenderingContext2D;
   private _displayCtx!: CanvasRenderingContext2D;
+  private readonly _broadcastMode = new URLSearchParams(location.search).get('broadcast') === '1';
+  private _lastProgressSignature = '';
   public sizeFactor = 1;
 
   protected _theme: ColorTheme = Themes.dark;
@@ -61,7 +64,7 @@ export class RouletteRenderer {
   }
 
   async init() {
-    const broadcastMode = new URLSearchParams(location.search).get('broadcast') === '1';
+    const broadcastMode = this._broadcastMode;
     this._canvas = document.createElement('canvas');
     this._canvas.width = canvasWidth;
     this._canvas.height = canvasHeight;
@@ -69,17 +72,12 @@ export class RouletteRenderer {
       alpha: false,
     }) as CanvasRenderingContext2D;
 
-    if (broadcastMode) {
-      this._sceneCanvas = this._canvas;
-      this.ctx = this._displayCtx;
-    } else {
-      this._sceneCanvas = document.createElement('canvas');
-      this._sceneCanvas.width = canvasWidth;
-      this._sceneCanvas.height = canvasHeight;
-      this.ctx = this._sceneCanvas.getContext('2d', {
-        alpha: false,
-      }) as CanvasRenderingContext2D;
-    }
+    this._sceneCanvas = document.createElement('canvas');
+    this._sceneCanvas.width = canvasWidth;
+    this._sceneCanvas.height = canvasHeight;
+    this.ctx = this._sceneCanvas.getContext('2d', {
+      alpha: false,
+    }) as CanvasRenderingContext2D;
 
     const host = document.querySelector<HTMLElement>('[data-roulette-canvas-host]') ?? document.body;
     host.appendChild(this._canvas);
@@ -91,11 +89,11 @@ export class RouletteRenderer {
       const searchParams = new URLSearchParams(location.search);
       const broadcastQuality = searchParams.get('quality');
       const broadcastWidth =
-        broadcastQuality === 'performance'
-          ? BROADCAST_SCENE_WIDTHS.performance
+        broadcastQuality === 'high'
+          ? BROADCAST_SCENE_WIDTHS.high
           : broadcastQuality === 'balanced'
             ? BROADCAST_SCENE_WIDTHS.balanced
-            : BROADCAST_SCENE_WIDTHS.high;
+            : BROADCAST_SCENE_WIDTHS.performance;
       const compactPortrait = !broadcastMode && realSize.width < 760 && realSize.height > realSize.width * 1.15;
       let width = broadcastMode
         ? broadcastWidth
@@ -110,11 +108,12 @@ export class RouletteRenderer {
       }
       this._sceneCanvas.width = width;
       this._sceneCanvas.height = height;
-      this.sizeFactor = width / realSize.width;
+      this._canvas.dataset.worldSize = `${Math.round(width)}x${Math.round(height)}`;
 
-      const displayWidth = broadcastMode ? broadcastWidth : Math.min(realSize.width, MAX_DISPLAY_WIDTH);
+      const displayWidth = broadcastMode ? BROADCAST_DISPLAY_WIDTH : Math.min(realSize.width, MAX_DISPLAY_WIDTH);
       this._canvas.width = displayWidth;
       this._canvas.height = (displayWidth / realSize.width) * realSize.height;
+      this.sizeFactor = (broadcastMode ? displayWidth : width) / realSize.width;
     };
 
     const resizeObserver = new ResizeObserver(resizing);
@@ -131,16 +130,19 @@ export class RouletteRenderer {
   protected onAfterScene(): void {}
 
   render(renderParameters: RenderParameters, uiObjects: UIObject[]) {
-    this._canvas.dataset.finished = String(renderParameters.winners.length);
-    this._canvas.dataset.remaining = String(renderParameters.marbles.length);
-    this._canvas.dataset.total = String(renderParameters.winners.length + renderParameters.marbles.length);
+    const progressSignature = `${renderParameters.winners.length}:${renderParameters.marbles.length}`;
+    if (progressSignature !== this._lastProgressSignature) {
+      this._lastProgressSignature = progressSignature;
+      this._canvas.dataset.finished = String(renderParameters.winners.length);
+      this._canvas.dataset.remaining = String(renderParameters.marbles.length);
+      this._canvas.dataset.total = String(renderParameters.winners.length + renderParameters.marbles.length);
+    }
     this._theme = renderParameters.theme;
     this.ctx.fillStyle = this._theme.background;
     this.ctx.fillRect(0, 0, this._sceneCanvas.width, this._sceneCanvas.height);
 
     this.ctx.save();
-    const broadcastMode = new URLSearchParams(location.search).get('broadcast') === '1';
-    if (broadcastMode) {
+    if (this._broadcastMode) {
       this.ctx.translate(this._sceneCanvas.width / 2, this._sceneCanvas.height / 2);
       this.ctx.scale(BROADCAST_SCENE_ZOOM, BROADCAST_SCENE_ZOOM);
       this.ctx.translate(-this._sceneCanvas.width / 2, -this._sceneCanvas.height / 2);
@@ -158,16 +160,44 @@ export class RouletteRenderer {
     });
     this.ctx.restore();
     this.onAfterScene();
-
-    uiObjects.forEach((obj) =>
-      obj.render(this.ctx, renderParameters, this._sceneCanvas.width, this._sceneCanvas.height)
-    );
     renderParameters.particleManager.render(this.ctx);
-    this.renderWinner(renderParameters);
 
-    if (this._sceneCanvas !== this._canvas) {
+    if (this._broadcastMode) {
+      this._displayCtx.imageSmoothingEnabled = true;
+      this._displayCtx.imageSmoothingQuality = 'high';
+      this._displayCtx.drawImage(this._sceneCanvas, 0, 0, this._canvas.width, this._canvas.height);
+      this.renderBroadcastLabels(renderParameters);
+      uiObjects.forEach((obj) =>
+        obj.render(this._displayCtx, renderParameters, this._canvas.width, this._canvas.height)
+      );
+      this.renderWinner(renderParameters, this._displayCtx, this._canvas.width, this._canvas.height, true);
+    } else {
+      uiObjects.forEach((obj) =>
+        obj.render(this.ctx, renderParameters, this._sceneCanvas.width, this._sceneCanvas.height)
+      );
+      this.renderWinner(renderParameters, this.ctx, this._sceneCanvas.width, this._sceneCanvas.height, false);
       this._displayCtx.drawImage(this._sceneCanvas, 0, 0, this._canvas.width, this._canvas.height);
     }
+  }
+
+  private renderBroadcastLabels({ marbles, camera, size }: RenderParameters) {
+    const displayScale = this._canvas.width / this._sceneCanvas.width;
+    const viewPort = { x: camera.x, y: camera.y, w: size.x, h: size.y, zoom: camera.zoom * initialZoom };
+
+    this._displayCtx.save();
+    this._displayCtx.scale(displayScale, displayScale);
+    this._displayCtx.translate(this._sceneCanvas.width / 2, this._sceneCanvas.height / 2);
+    this._displayCtx.scale(BROADCAST_SCENE_ZOOM, BROADCAST_SCENE_ZOOM);
+    this._displayCtx.translate(-this._sceneCanvas.width / 2, -this._sceneCanvas.height / 2);
+    this._displayCtx.scale(initialZoom, initialZoom);
+    this._displayCtx.translate(-camera.x * camera.zoom, -camera.y * camera.zoom);
+    this._displayCtx.scale(camera.zoom, camera.zoom);
+    this._displayCtx.translate(
+      this._sceneCanvas.width / (initialZoom * 2 * camera.zoom),
+      this._sceneCanvas.height / (initialZoom * 2 * camera.zoom)
+    );
+    marbles.forEach((marble) => marble.renderLabel(this._displayCtx, camera.zoom * initialZoom, viewPort));
+    this._displayCtx.restore();
   }
 
   private renderEntities(entities: MapEntityState[]) {
@@ -232,30 +262,34 @@ export class RouletteRenderer {
         this.getMarbleImage(marble.name),
         viewPort,
         this._theme,
-        useSimpleLabels
+        useSimpleLabels,
+        !this._broadcastMode
       );
     });
   }
 
-  private renderWinner({ winner, theme }: RenderParameters) {
+  private renderWinner(
+    { winner, theme }: RenderParameters,
+    ctx: CanvasRenderingContext2D,
+    width: number,
+    height: number,
+    scaleForBroadcast: boolean
+  ) {
     if (!winner) return;
-    this.ctx.save();
-    this.ctx.fillStyle = theme.winnerBackground;
-    this.ctx.fillRect(
-      this._sceneCanvas.width / 2,
-      this._sceneCanvas.height - winnerAreaHeight,
-      this._sceneCanvas.width / 2,
-      winnerAreaHeight
-    );
+    const scale = scaleForBroadcast ? width / canvasWidth : 1;
+    const resultAreaHeight = winnerAreaHeight * scale;
+    ctx.save();
+    ctx.fillStyle = theme.winnerBackground;
+    ctx.fillRect(width / 2, height - resultAreaHeight, width / 2, resultAreaHeight);
 
     // Draw marble image or colored circle
-    const marbleSize = 100;
-    const marbleCenterX = this._sceneCanvas.width - marbleSize / 2 - 20;
-    const marbleCenterY = this._sceneCanvas.height - winnerAreaHeight / 2;
+    const marbleSize = 100 * scale;
+    const marbleCenterX = width - marbleSize / 2 - 20 * scale;
+    const marbleCenterY = height - resultAreaHeight / 2;
     const marbleImage = this.getMarbleImage(winner.name);
 
     if (marbleImage) {
-      this.ctx.drawImage(
+      ctx.drawImage(
         marbleImage,
         marbleCenterX - marbleSize / 2,
         marbleCenterY - marbleSize / 2,
@@ -263,30 +297,32 @@ export class RouletteRenderer {
         marbleSize
       );
     } else {
-      this.ctx.beginPath();
-      this.ctx.arc(marbleCenterX, marbleCenterY, marbleSize / 2, 0, Math.PI * 2);
-      this.ctx.fillStyle = `hsl(${winner.hue} 100% ${theme.marbleLightness})`;
-      this.ctx.fill();
+      ctx.beginPath();
+      ctx.arc(marbleCenterX, marbleCenterY, marbleSize / 2, 0, Math.PI * 2);
+      ctx.fillStyle = `hsl(${winner.hue} 100% ${theme.marbleLightness})`;
+      ctx.fill();
     }
 
-    this.ctx.fillStyle = theme.winnerText;
-    this.ctx.strokeStyle = theme.winnerOutline;
+    ctx.fillStyle = theme.winnerText;
+    ctx.strokeStyle = theme.winnerOutline;
 
-    this.ctx.font = 'bold 48px sans-serif';
-    this.ctx.textAlign = 'right';
-    this.ctx.lineWidth = 4;
-    const textRightX = marbleCenterX - marbleSize / 2 - 20;
+    ctx.font = `bold ${48 * scale}px sans-serif`;
+    ctx.textAlign = 'right';
+    ctx.lineWidth = 4 * scale;
+    const textRightX = marbleCenterX - marbleSize / 2 - 20 * scale;
+    const winnerLabelY = height - 120 * scale + WINNER_TEXT_OFFSET * scale;
     if (theme.winnerOutline) {
-      this.ctx.strokeText(options.winnerLabel, textRightX, this._sceneCanvas.height - 120 + WINNER_TEXT_OFFSET);
+      ctx.strokeText(options.winnerLabel, textRightX, winnerLabelY);
     }
 
-    this.ctx.fillText(options.winnerLabel, textRightX, this._sceneCanvas.height - 120 + WINNER_TEXT_OFFSET);
-    this.ctx.font = 'bold 72px sans-serif';
-    this.ctx.fillStyle = `hsl(${winner.hue} 100% ${theme.marbleLightness})`;
+    ctx.fillText(options.winnerLabel, textRightX, winnerLabelY);
+    ctx.font = `bold ${72 * scale}px sans-serif`;
+    ctx.fillStyle = `hsl(${winner.hue} 100% ${theme.marbleLightness})`;
+    const winnerNameY = height - 55 * scale + WINNER_TEXT_OFFSET * scale;
     if (theme.winnerOutline) {
-      this.ctx.strokeText(winner.name, textRightX, this._sceneCanvas.height - 55 + WINNER_TEXT_OFFSET);
+      ctx.strokeText(winner.name, textRightX, winnerNameY);
     }
-    this.ctx.fillText(winner.name, textRightX, this._sceneCanvas.height - 55 + WINNER_TEXT_OFFSET);
-    this.ctx.restore();
+    ctx.fillText(winner.name, textRightX, winnerNameY);
+    ctx.restore();
   }
 }

@@ -17,6 +17,7 @@ export class RankRenderer implements UIObject {
   private marbles: Marble[] = [];
   private winnerRank: number = -1;
   private messageHandler?: (msg: string) => void;
+  private readonly broadcastMode = new URLSearchParams(location.search).get('broadcast') === '1';
 
   @bound
   onWheel(e: WheelEvent) {
@@ -61,7 +62,7 @@ export class RankRenderer implements UIObject {
     width: number,
     height: number
   ) {
-    const broadcastMode = new URLSearchParams(location.search).get('broadcast') === '1';
+    const broadcastMode = this.broadcastMode;
     const uiScale = broadcastMode ? width / 720 : 1;
     this.layoutFontHeight = this.fontHeight * uiScale;
     const hudHeight = broadcastMode ? 54 * uiScale : 0;
