@@ -291,6 +291,8 @@ test('legacy broadcast bridge survives Supabase quota exhaustion with cached or 
     assert.match(bridge, /_readBroadcastStorage\('items', \[\]\)/);
     assert.match(bridge, /_readBroadcastStorage\('config', \{\}\)/);
     assert.match(cdcup, /await _refreshBroadcastFromItems\(\[\]\)/);
+    assert.match(cdcup, /document\.getElementById\("info-name"\)\.textContent = cleanInfoName/);
+    assert.match(cdcup, /document\.getElementById\("info-sub"\)\.textContent = showCompanyInline[\s\S]*\? publicCompanyName/);
 });
 
 test('CDCUP three-round format assigns round-two teams and round-three finalists', () => {
