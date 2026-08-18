@@ -9,11 +9,24 @@ Copy-Item -LiteralPath (Join-Path $sourceRoot 'creo_capture_agent.py') -Destinat
 Copy-Item -LiteralPath (Join-Path $sourceRoot 'requirements.txt') -Destination (Join-Path $installRoot 'requirements.txt') -Force
 
 $pythonCommand = Get-Command py -ErrorAction SilentlyContinue
+if ($null -eq $pythonCommand) { $pythonCommand = Get-Command python -ErrorAction SilentlyContinue }
 if ($null -eq $pythonCommand) {
-    $pythonCommand = Get-Command python -ErrorAction SilentlyContinue
+    $pythonCandidate = Get-ChildItem -Path (Join-Path $env:LOCALAPPDATA 'Programs\Python') -Filter python.exe -Recurse -ErrorAction SilentlyContinue |
+        Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    if ($null -ne $pythonCandidate) { $pythonCommand = Get-Command $pythonCandidate.FullName }
 }
 if ($null -eq $pythonCommand) {
-    throw 'Python 3가 필요합니다. python.org에서 Python을 설치한 뒤 다시 실행해주세요.'
+    $wingetCommand = Get-Command winget -ErrorAction SilentlyContinue
+    if ($null -eq $wingetCommand) {
+        throw 'Python 3가 없고 자동 설치 도구(winget)도 없습니다. Python 3를 설치한 뒤 다시 실행해주세요.'
+    }
+    Write-Host 'Python 3가 없어 사용자 계정에 자동 설치합니다.' -ForegroundColor Yellow
+    & $wingetCommand.Source install --id Python.Python.3.12 --exact --scope user --silent --accept-package-agreements --accept-source-agreements
+    if ($LASTEXITCODE -ne 0) { throw 'Python 자동 설치에 실패했습니다.' }
+    $pythonCandidate = Get-ChildItem -Path (Join-Path $env:LOCALAPPDATA 'Programs\Python') -Filter python.exe -Recurse -ErrorAction SilentlyContinue |
+        Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    if ($null -eq $pythonCandidate) { throw '설치된 Python 실행 파일을 찾지 못했습니다.' }
+    $pythonCommand = Get-Command $pythonCandidate.FullName
 }
 
 if ($pythonCommand.Name -eq 'py.exe') {
