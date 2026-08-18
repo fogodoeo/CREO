@@ -25,6 +25,11 @@ export type RenderParameters = {
 };
 
 const MAX_DISPLAY_WIDTH = 1920;
+const BROADCAST_SCENE_WIDTHS = {
+  performance: 720,
+  balanced: 960,
+  high: 1280,
+} as const;
 const COMPACT_SCENE_WIDTH = 480;
 const COMPACT_SCENE_PIXEL_BUDGET = 520_000;
 const WINNER_TEXT_OFFSET = 30;
@@ -76,10 +81,21 @@ export class RouletteRenderer {
       const realSize = entries ? entries[0].contentRect : this._canvas.getBoundingClientRect();
       if (realSize.width <= 0 || realSize.height <= 0) return;
 
-      const compactPortrait = realSize.width < 760 && realSize.height > realSize.width * 1.15;
-      let width = compactPortrait
-        ? Math.max(realSize.width, Math.min(COMPACT_SCENE_WIDTH, realSize.width * 1.5))
-        : Math.max(realSize.width / 2, 640);
+      const searchParams = new URLSearchParams(location.search);
+      const broadcastMode = searchParams.get('broadcast') === '1';
+      const broadcastQuality = searchParams.get('quality');
+      const broadcastWidth =
+        broadcastQuality === 'high'
+          ? BROADCAST_SCENE_WIDTHS.high
+          : broadcastQuality === 'balanced'
+            ? BROADCAST_SCENE_WIDTHS.balanced
+            : BROADCAST_SCENE_WIDTHS.performance;
+      const compactPortrait = !broadcastMode && realSize.width < 760 && realSize.height > realSize.width * 1.15;
+      let width = broadcastMode
+        ? broadcastWidth
+        : compactPortrait
+          ? Math.max(realSize.width, Math.min(COMPACT_SCENE_WIDTH, realSize.width * 1.5))
+          : Math.max(realSize.width / 2, 640);
       let height = (width / realSize.width) * realSize.height;
       if (compactPortrait && width * height > COMPACT_SCENE_PIXEL_BUDGET) {
         const budgetScale = Math.sqrt(COMPACT_SCENE_PIXEL_BUDGET / (width * height));
@@ -186,7 +202,10 @@ export class RouletteRenderer {
 
   private renderMarbles({ marbles, camera, winnerRank, winners, size }: RenderParameters) {
     const winnerIndex = winnerRank - winners.length;
-    const useSimpleLabels = size.x < 560 && marbles.length + winners.length > 48;
+    const totalCount = marbles.length + winners.length;
+    const broadcastMode = new URLSearchParams(location.search).get('broadcast') === '1';
+    const useSimpleLabels = size.x < 560 && totalCount > 48;
+    const reduceBroadcastLabels = broadcastMode && totalCount > 48;
 
     const viewPort = { x: camera.x, y: camera.y, w: size.x, h: size.y, zoom: camera.zoom * initialZoom };
     marbles.forEach((marble, i) => {
@@ -198,7 +217,8 @@ export class RouletteRenderer {
         this.getMarbleImage(marble.name),
         viewPort,
         this._theme,
-        useSimpleLabels
+        useSimpleLabels,
+        reduceBroadcastLabels && i !== winnerIndex
       );
     });
   }

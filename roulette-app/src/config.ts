@@ -1,6 +1,6 @@
 import type { ColorTheme } from './types/ColorTheme';
 
-export const APP_VERSION = '1.1.0';
+export const APP_VERSION = '1.2.0';
 
 export type WinnerMode = 'first' | 'last' | 'rank';
 

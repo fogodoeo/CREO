@@ -49,7 +49,9 @@ test('mobile roulette exposes its version and uses a compact 60 Hz render budget
     const renderer = fs.readFileSync(path.join(appRoot, 'src', 'rouletteRenderer.ts'), 'utf8');
 
     assert.match(html, /id="versionBadge"/);
-    assert.match(config, /APP_VERSION = '1\.1\.0'/);
+    assert.match(config, /APP_VERSION = '1\.2\.0'/);
     assert.match(roulette, /_updateInterval = 1000 \/ 60/);
     assert.match(renderer, /COMPACT_SCENE_PIXEL_BUDGET = 520_000/);
+    assert.match(renderer, /performance: 720/);
+    assert.match(renderer, /balanced: 960/);
 });

@@ -1102,6 +1102,64 @@ details.control-section summary span {
   }
 }
 
+@media (min-width: 768px) and (min-aspect-ratio: 4 / 3) {
+  html.broadcast-mode .panel-open .canvas-host,
+  html.broadcast-mode .panel-open .stage-help {
+    width: 100%;
+  }
+
+  html.broadcast-mode .panel-open .stage-header {
+    right: calc(20px + var(--safe-right));
+  }
+
+  html.broadcast-mode .control-panel {
+    top: 50%;
+    right: auto;
+    bottom: auto;
+    left: 50%;
+    width: min(560px, calc(100vw - 64px));
+    height: min(88dvh, 660px);
+    transform: translate(-50%, -47%) scale(0.985);
+    border: 1px solid rgba(255, 255, 255, 0.13);
+    border-radius: 20px;
+    opacity: 0;
+    box-shadow: 0 36px 120px rgba(0, 0, 0, 0.62);
+    transition:
+      transform 180ms ease,
+      opacity 180ms ease,
+      visibility 0s linear 180ms;
+  }
+
+  html.broadcast-mode .panel-open .control-panel {
+    visibility: visible;
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+    pointer-events: auto;
+    transition-delay: 0s;
+  }
+
+  html.broadcast-mode .panel-open .panel-backdrop {
+    visibility: visible;
+    background: rgba(2, 7, 13, 0.72);
+    opacity: 1;
+  }
+
+  html.broadcast-mode #fullscreenButton {
+    display: none;
+  }
+
+  html.broadcast-mode .is-running #openPanelButton {
+    display: none;
+  }
+
+  html.broadcast-mode .is-running .control-panel,
+  html.broadcast-mode .is-running .panel-backdrop {
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

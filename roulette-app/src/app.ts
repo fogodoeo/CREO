@@ -5,6 +5,9 @@ import type { ColorTheme } from './types/ColorTheme';
 import { createSecureSeed, setRandomSeed } from './utils/random';
 import { parseName } from './utils/utils';
 
+const isBroadcastMode = new URLSearchParams(location.search).get('broadcast') === '1';
+document.documentElement.classList.toggle('broadcast-mode', isBroadcastMode);
+
 type RoundContext = {
   seed: string;
   entries: string[];
