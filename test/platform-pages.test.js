@@ -144,6 +144,8 @@ test('shared workspace builds real select fields for channel groups and auction 
     assert.match(workspace, /field\('groupId',term\('group','그룹'\),record\?\.groupId,'select'/);
     assert.match(workspace, /field\('status','상태',record\?\.status,'select'/);
     assert.match(workspace, /field\('winnerAlias','방송용 낙찰자명'/);
+    assert.match(workspace, /auction-transition/);
+    assert.doesNotMatch(workspace, /setLive[\s\S]{0,500}broadcast-state/);
 });
 
 test('the new broadcast implements three independent camera overlays', () => {
@@ -408,6 +410,7 @@ test('broadcast control manages reusable banners, sponsors, and vendor logos', (
         assert.match(control, new RegExp(`name="${positionField}"`));
     }
     assert.match(control, /function updatePositionWarnings/);
+    assert.match(control, /auction-transition/);
     assert.match(live, /function scoreboardRows/);
     assert.match(control, /seedCrewartAssets/);
     assert.match(live, /CREWART_DEFAULT_ASSETS/);

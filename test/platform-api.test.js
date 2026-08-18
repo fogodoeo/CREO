@@ -287,6 +287,87 @@ test('public active-channel lookup heals a stale deleted pointer', async () => {
     assert.equal(repository.active, 'alpha');
 });
 
+test('operator context binds the monitor to one authenticated active-channel contract', async () => {
+    const repository = new MemoryRepository();
+    const api = createPlatformApi({ repository, logger: { error() {} } });
+    await call(api, 'POST', '/api/platform/channels/alpha/items', { record: { id: 'item_one', lotNumber: 1, name: '첫 개체' } });
+    const rejected = await call(api, 'GET', '/api/platform/operator-context', null, '');
+    assert.equal(rejected.status, 401);
+    const response = await call(api, 'GET', '/api/platform/operator-context');
+    assert.equal(response.status, 200);
+    assert.equal(response.json().activeChannelId, 'alpha');
+    assert.equal(response.json().adapter, 'platform');
+    assert.equal(response.json().workspace.items[0].id, 'item_one');
+});
+
+test('auction transition keeps item status, active channel, and broadcast state in sync', async () => {
+    const repository = new MemoryRepository();
+    const api = createPlatformApi({ repository, logger: { error() {} } });
+    await call(api, 'POST', '/api/platform/channels/alpha/items', { record: { id: 'item_one', lotNumber: 1, name: '첫 개체' } });
+    await call(api, 'POST', '/api/platform/channels/alpha/items', { record: { id: 'item_two', lotNumber: 2, name: '둘째 개체' } });
+
+    let response = await call(api, 'PUT', '/api/platform/channels/alpha/auction-transition', {
+        itemId: 'item_one', status: 'live', mode: 'live', state: { page: 2 }
+    });
+    assert.equal(response.status, 200);
+    assert.equal(response.json().item.status, 'live');
+    assert.equal(response.json().state.activeItemId, 'item_one');
+    assert.equal(response.json().state.mode, 'live');
+
+    response = await call(api, 'PUT', '/api/platform/channels/alpha/auction-transition', {
+        itemId: 'item_two', status: 'live', mode: 'live', state: { page: 2 }
+    });
+    assert.equal(response.status, 200);
+    assert.equal((await repository.getRecord('alpha', 'item', 'item_one')).status, 'waiting');
+    assert.equal((await repository.getRecord('alpha', 'item', 'item_two')).status, 'live');
+
+    response = await call(api, 'PUT', '/api/platform/channels/alpha/auction-transition', {
+        itemId: 'item_two', status: 'sold', mode: 'sold', item: { soldPrice: 180000, winnerAlias: '낙찰자' }
+    });
+    assert.equal(response.status, 200);
+    assert.equal(response.json().item.soldPrice, 180000);
+    assert.equal(response.json().item.winnerAlias, '낙찰자');
+    assert.equal(response.json().state.mode, 'sold');
+    assert.equal(repository.active, 'alpha');
+
+    response = await call(api, 'PUT', '/api/platform/channels/alpha/auction-transition', {
+        itemId: 'item_two', status: 'waiting', mode: 'standby'
+    });
+    assert.equal(response.status, 200);
+    assert.equal(response.json().item.status, 'waiting');
+    assert.equal(response.json().state.mode, 'standby');
+
+    response = await call(api, 'PUT', '/api/platform/channels/alpha/auction-transition', {
+        mode: 'standby', state: { activeItemId: '' }
+    });
+    assert.equal(response.status, 200);
+    assert.equal(response.json().state.activeItemId, '');
+});
+
+test('auction transitions remain isolated when two channels reuse the same item id', async () => {
+    const repository = new MemoryRepository();
+    const api = createPlatformApi({ repository, logger: { error() {} } });
+    const catalog = await call(api, 'GET', '/api/platform/channels');
+    const revision = catalog.json().revision;
+    await call(api, 'PUT', '/api/platform/channels', {
+        revision,
+        channels: [
+            ...catalog.json().channels,
+            { id: 'beta', name: '두 번째 채널', dataAdapter: 'platform', status: 'ready' }
+        ]
+    });
+    await call(api, 'POST', '/api/platform/channels/alpha/items', { record: { id: 'shared_item', lotNumber: 1, name: '알파 개체' } });
+    await call(api, 'POST', '/api/platform/channels/beta/items', { record: { id: 'shared_item', lotNumber: 1, name: '베타 개체' } });
+
+    const response = await call(api, 'PUT', '/api/platform/channels/beta/auction-transition', {
+        itemId: 'shared_item', status: 'live', mode: 'live', state: { page: 2 }
+    });
+    assert.equal(response.status, 200);
+    assert.equal((await repository.getRecord('beta', 'item', 'shared_item')).status, 'live');
+    assert.equal((await repository.getRecord('alpha', 'item', 'shared_item')).status, 'waiting');
+    assert.equal(repository.active, 'beta');
+});
+
 test('referenced vendors and items cannot be deleted out from under shipments', async () => {
     const repository = new MemoryRepository();
     const api = createPlatformApi({ repository, logger: { error() {} } });

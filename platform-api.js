@@ -429,6 +429,19 @@ function createPlatformApi({ repository, logger = console, refreshShippingRateFn
         return { vendors, items, shipments, assets, broadcast: broadcast || { id: 'state', mode: 'standby', page: 1 } };
     }
 
+    async function activeChannelContext() {
+        const catalog = await loadCatalog();
+        const storedId = await repository.getActiveChannel();
+        const channel = catalog.channels.find((candidate) => candidate.id === storedId && isBroadcastableChannel(candidate))
+            || catalog.channels.find((candidate) => isBroadcastableChannel(candidate))
+            || catalog.channels.find((candidate) => candidate.status !== 'archived')
+            || catalog.channels[0]
+            || null;
+        const channelId = channel?.id || '';
+        if (channelId && channelId !== storedId) await repository.setActiveChannel(channelId);
+        return { catalog, channelId, channel };
+    }
+
     async function handle(req, res, url) {
         if (!url.pathname.startsWith('/api/platform/')) return false;
         try {
@@ -496,19 +509,20 @@ function createPlatformApi({ repository, logger = console, refreshShippingRateFn
             }
 
             if (segments.length === 1 && segments[0] === 'active-channel' && method === 'GET') {
-                const catalog = await loadCatalog();
-                const storedId = await repository.getActiveChannel();
-                const active = catalog.channels.find((candidate) => candidate.id === storedId && isBroadcastableChannel(candidate))
-                    || catalog.channels.find((candidate) => isBroadcastableChannel(candidate))
-                    || catalog.channels.find((candidate) => candidate.status !== 'archived')
-                    || catalog.channels[0]
-                    || null;
-                const channelId = active?.id || '';
-                // A stale active-channel pointer can survive a deleted temporary
-                // channel. Heal it on read so the universal broadcast route never
-                // points at a non-existent channel again.
-                if (channelId && channelId !== storedId) await repository.setActiveChannel(channelId);
+                const { channelId } = await activeChannelContext();
                 replyJson(res, 200, { channelId });
+                return true;
+            }
+
+            if (segments.length === 1 && segments[0] === 'operator-context' && method === 'GET') {
+                if (!await requireAdmin(req, res)) return true;
+                const { channelId, channel } = await activeChannelContext();
+                replyJson(res, 200, {
+                    activeChannelId: channelId,
+                    channel: channel ? { ...channel, links: channelLinks(channel.id) } : null,
+                    adapter: channel?.dataAdapter || '',
+                    workspace: channel && channel.dataAdapter !== 'legacy-cdcup' ? await workspace(channelId) : null
+                });
                 return true;
             }
 
@@ -685,6 +699,62 @@ function createPlatformApi({ repository, logger = console, refreshShippingRateFn
                 });
                 touchChannel(channelId);
                 replyJson(res, 200, { channelId, config: record.values, revision: record.revision });
+                return true;
+            }
+
+            if (segments.length === 3 && segments[2] === 'auction-transition' && method === 'PUT') {
+                if (!await requireAdmin(req, res)) return true;
+                if (channel.dataAdapter === 'legacy-cdcup') {
+                    replyJson(res, 409, { error: 'CDCUP 레거시 경매는 기존 운영 어댑터에서 변경해 주세요.' });
+                    return true;
+                }
+                const body = await readJson(req);
+                await withMutationLock(`channel:${channelId}`, async () => {
+                    const data = await workspace(channelId);
+                    const itemId = cleanText(body.itemId || body.item?.id, 64);
+                    const current = data.items.find((item) => item.id === itemId) || null;
+                    const requestedStatus = ['waiting', 'live', 'sold', 'passed'].includes(body.status) ? body.status : '';
+                    const requestedMode = ['standby', 'live', 'sold'].includes(body.mode) ? body.mode : (requestedStatus === 'live' ? 'live' : requestedStatus === 'sold' ? 'sold' : 'standby');
+                    if ((requestedStatus || requestedMode !== 'standby') && !current) {
+                        replyJson(res, 404, { error: '전환할 개체를 현재 채널에서 찾을 수 없습니다.' });
+                        return;
+                    }
+
+                    if (requestedStatus === 'live') {
+                        for (const other of data.items.filter((item) => item.id !== itemId && item.status === 'live')) {
+                            await repository.upsertRecord(channelId, 'item', { ...other, status: 'waiting' });
+                        }
+                    }
+
+                    let savedItem = current;
+                    if (current && (requestedStatus || (body.item && typeof body.item === 'object'))) {
+                        const candidate = sanitizeRecord('item', {
+                            ...current,
+                            ...(body.item && typeof body.item === 'object' ? body.item : {}),
+                            ...(requestedStatus ? { status: requestedStatus } : {}),
+                            id: current.id
+                        }, current);
+                        const errors = validateRecord('item', candidate, { ...data, groups: channel.groups || [] });
+                        if (errors.length) {
+                            replyJson(res, 422, { error: errors.join(' '), errors });
+                            return;
+                        }
+                        savedItem = await repository.upsertRecord(channelId, 'item', candidate);
+                    }
+
+                    const hasExplicitActiveItem = body.state && typeof body.state === 'object'
+                        && Object.prototype.hasOwnProperty.call(body.state, 'activeItemId');
+                    const nextState = sanitizeBroadcastState({
+                        ...(data.broadcast || {}),
+                        ...(body.state && typeof body.state === 'object' ? body.state : {}),
+                        activeItemId: hasExplicitActiveItem ? body.state.activeItemId : (itemId || data.broadcast?.activeItemId || ''),
+                        mode: requestedMode
+                    });
+                    const savedState = await repository.upsertRecord(channelId, 'broadcast', nextState);
+                    await repository.setActiveChannel(channelId);
+                    touchChannel(channelId);
+                    replyJson(res, 200, { channelId, item: savedItem, state: savedState });
+                });
                 return true;
             }
 
