@@ -53,7 +53,14 @@ class CaptureStorage {
             headers: this.headers()
         });
         if (current.ok) return;
-        if (current.status !== 404) throw new Error(`Capture bucket check failed (${current.status})`);
+        const currentDetail = await current.text().catch(() => '');
+        // Supabase Storage currently reports a missing bucket as HTTP 400 with
+        // a nested 404/not-found error body. Older versions returned HTTP 404.
+        const missingBucket = current.status === 404
+            || (current.status === 400 && /(?:bucket[^\n]*not[ _-]*found|not[ _-]*found[^\n]*bucket|\"statusCode\"\s*:\s*\"?404)/i.test(currentDetail));
+        if (!missingBucket) {
+            throw new Error(`Capture bucket check failed (${current.status}): ${currentDetail.slice(0, 160)}`);
+        }
         const created = await fetch(`${this.supabaseUrl}/storage/v1/bucket`, {
             method: 'POST',
             headers: this.headers({ 'Content-Type': 'application/json' }),
