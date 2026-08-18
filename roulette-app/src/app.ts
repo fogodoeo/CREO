@@ -36,6 +36,7 @@ type PublicApi = {
   prepare: (seed?: string) => Promise<void>;
   start: () => Promise<void>;
   getHistory: () => RoundRecord[];
+  getProgress: () => { finished: number; remaining: number; total: number };
 };
 
 declare global {
@@ -327,10 +328,10 @@ async function prepareRound(seed = createSecureSeed()): Promise<void> {
   const winnerMode = currentWinnerMode();
   options.candidateLabel =
     winnerMode === 'last'
-      ? '마지막 생존 유력'
+      ? '현재 마지막'
       : winnerMode === 'rank'
         ? `${options.winningRank + 1}위 당첨 유력`
-        : '현재 당첨 유력';
+        : '현재 선두';
 
   roulette.setAutoRecording(options.autoRecording);
   roulette.setSpeed(Number(dom.speed.value) || 1);
@@ -677,6 +678,7 @@ window.CreoMarbleRoulette = {
   prepare: prepareRound,
   start: startRound,
   getHistory: () => history.slice(),
+  getProgress: () => roulette.getProgress(),
 };
 
 void initialize();

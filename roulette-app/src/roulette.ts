@@ -139,6 +139,7 @@ export class Roulette extends EventTarget {
 
   private _updateMarbles(deltaTime: number) {
     if (!this._stage) return;
+    const finishedIds = new Set<number>();
 
     for (let i = 0; i < this._marbles.length; i++) {
       const marble = this._marbles[i];
@@ -149,6 +150,7 @@ export class Roulette extends EventTarget {
       }
       if (marble.y > this._stage.goalY) {
         this._winners.push(marble);
+        finishedIds.add(marble.id);
         if (this._isRunning && this._winners.length === this._winnerRank + 1) {
           this.dispatchEvent(new CustomEvent('goal', { detail: { winner: marble.name } }));
           this._winner = marble;
@@ -183,7 +185,7 @@ export class Roulette extends EventTarget {
     this._timeScale = this._calcTimeScale();
 
     const goalY = this._stage.goalY;
-    this._marbles = this._marbles.filter((marble) => marble.y <= goalY);
+    this._marbles = this._marbles.filter((marble) => !finishedIds.has(marble.id) && marble.y <= goalY);
   }
 
   private _calcTimeScale(): number {
@@ -444,6 +446,14 @@ export class Roulette extends EventTarget {
 
   public getCount() {
     return this._marbles.length;
+  }
+
+  public getProgress() {
+    return {
+      finished: this._winners.length,
+      remaining: this._marbles.length,
+      total: this._winners.length + this._marbles.length,
+    };
   }
 
   public getMaps() {

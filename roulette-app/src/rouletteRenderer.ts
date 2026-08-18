@@ -26,9 +26,9 @@ export type RenderParameters = {
 
 const MAX_DISPLAY_WIDTH = 1920;
 const BROADCAST_SCENE_WIDTHS = {
-  performance: 720,
-  balanced: 960,
-  high: 1280,
+  performance: 1280,
+  balanced: 1600,
+  high: 1920,
 } as const;
 const COMPACT_SCENE_WIDTH = 480;
 const COMPACT_SCENE_PIXEL_BUDGET = 520_000;
@@ -61,6 +61,7 @@ export class RouletteRenderer {
   }
 
   async init() {
+    const broadcastMode = new URLSearchParams(location.search).get('broadcast') === '1';
     this._canvas = document.createElement('canvas');
     this._canvas.width = canvasWidth;
     this._canvas.height = canvasHeight;
@@ -68,12 +69,17 @@ export class RouletteRenderer {
       alpha: false,
     }) as CanvasRenderingContext2D;
 
-    this._sceneCanvas = document.createElement('canvas');
-    this._sceneCanvas.width = canvasWidth;
-    this._sceneCanvas.height = canvasHeight;
-    this.ctx = this._sceneCanvas.getContext('2d', {
-      alpha: false,
-    }) as CanvasRenderingContext2D;
+    if (broadcastMode) {
+      this._sceneCanvas = this._canvas;
+      this.ctx = this._displayCtx;
+    } else {
+      this._sceneCanvas = document.createElement('canvas');
+      this._sceneCanvas.width = canvasWidth;
+      this._sceneCanvas.height = canvasHeight;
+      this.ctx = this._sceneCanvas.getContext('2d', {
+        alpha: false,
+      }) as CanvasRenderingContext2D;
+    }
 
     const host = document.querySelector<HTMLElement>('[data-roulette-canvas-host]') ?? document.body;
     host.appendChild(this._canvas);
@@ -83,14 +89,13 @@ export class RouletteRenderer {
       if (realSize.width <= 0 || realSize.height <= 0) return;
 
       const searchParams = new URLSearchParams(location.search);
-      const broadcastMode = searchParams.get('broadcast') === '1';
       const broadcastQuality = searchParams.get('quality');
       const broadcastWidth =
-        broadcastQuality === 'high'
-          ? BROADCAST_SCENE_WIDTHS.high
+        broadcastQuality === 'performance'
+          ? BROADCAST_SCENE_WIDTHS.performance
           : broadcastQuality === 'balanced'
             ? BROADCAST_SCENE_WIDTHS.balanced
-            : BROADCAST_SCENE_WIDTHS.performance;
+            : BROADCAST_SCENE_WIDTHS.high;
       const compactPortrait = !broadcastMode && realSize.width < 760 && realSize.height > realSize.width * 1.15;
       let width = broadcastMode
         ? broadcastWidth
@@ -107,7 +112,7 @@ export class RouletteRenderer {
       this._sceneCanvas.height = height;
       this.sizeFactor = width / realSize.width;
 
-      const displayWidth = Math.min(realSize.width, MAX_DISPLAY_WIDTH);
+      const displayWidth = broadcastMode ? broadcastWidth : Math.min(realSize.width, MAX_DISPLAY_WIDTH);
       this._canvas.width = displayWidth;
       this._canvas.height = (displayWidth / realSize.width) * realSize.height;
     };
@@ -126,6 +131,9 @@ export class RouletteRenderer {
   protected onAfterScene(): void {}
 
   render(renderParameters: RenderParameters, uiObjects: UIObject[]) {
+    this._canvas.dataset.finished = String(renderParameters.winners.length);
+    this._canvas.dataset.remaining = String(renderParameters.marbles.length);
+    this._canvas.dataset.total = String(renderParameters.winners.length + renderParameters.marbles.length);
     this._theme = renderParameters.theme;
     this.ctx.fillStyle = this._theme.background;
     this.ctx.fillRect(0, 0, this._sceneCanvas.width, this._sceneCanvas.height);
@@ -157,7 +165,9 @@ export class RouletteRenderer {
     renderParameters.particleManager.render(this.ctx);
     this.renderWinner(renderParameters);
 
-    this._displayCtx.drawImage(this._sceneCanvas, 0, 0, this._canvas.width, this._canvas.height);
+    if (this._sceneCanvas !== this._canvas) {
+      this._displayCtx.drawImage(this._sceneCanvas, 0, 0, this._canvas.width, this._canvas.height);
+    }
   }
 
   private renderEntities(entities: MapEntityState[]) {
@@ -210,9 +220,7 @@ export class RouletteRenderer {
   private renderMarbles({ marbles, camera, winnerRank, winners, size }: RenderParameters) {
     const winnerIndex = winnerRank - winners.length;
     const totalCount = marbles.length + winners.length;
-    const broadcastMode = new URLSearchParams(location.search).get('broadcast') === '1';
     const useSimpleLabels = size.x < 560 && totalCount > 48;
-    const reduceBroadcastLabels = broadcastMode && totalCount > 48;
 
     const viewPort = { x: camera.x, y: camera.y, w: size.x, h: size.y, zoom: camera.zoom * initialZoom };
     marbles.forEach((marble, i) => {
@@ -224,8 +232,7 @@ export class RouletteRenderer {
         this.getMarbleImage(marble.name),
         viewPort,
         this._theme,
-        useSimpleLabels,
-        reduceBroadcastLabels && i !== winnerIndex
+        useSimpleLabels
       );
     });
   }

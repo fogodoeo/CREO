@@ -42,16 +42,19 @@ test('production roulette includes Box2D runtimes and stays within a small stati
     assert.ok(totalBytes < 1_500_000, `bundle is unexpectedly large: ${totalBytes} bytes`);
 });
 
-test('roulette exposes its version and keeps compact rendering with the smooth upstream physics step', () => {
+test('roulette exposes its version and keeps native broadcast rendering with the smooth upstream physics step', () => {
     const html = fs.readFileSync(path.join(appRoot, 'index.html'), 'utf8');
     const config = fs.readFileSync(path.join(appRoot, 'src', 'config.ts'), 'utf8');
     const roulette = fs.readFileSync(path.join(appRoot, 'src', 'roulette.ts'), 'utf8');
     const renderer = fs.readFileSync(path.join(appRoot, 'src', 'rouletteRenderer.ts'), 'utf8');
 
     assert.match(html, /id="versionBadge"/);
-    assert.match(config, /APP_VERSION = '1\.3\.0'/);
+    assert.match(config, /APP_VERSION = '1\.4\.0'/);
     assert.match(roulette, /_updateInterval = 10/);
+    assert.match(roulette, /!finishedIds\.has\(marble\.id\)/);
     assert.match(renderer, /COMPACT_SCENE_PIXEL_BUDGET = 520_000/);
-    assert.match(renderer, /performance: 720/);
-    assert.match(renderer, /balanced: 960/);
+    assert.match(renderer, /performance: 1280/);
+    assert.match(renderer, /balanced: 1600/);
+    assert.match(renderer, /high: 1920/);
+    assert.match(renderer, /this\._sceneCanvas = this\._canvas/);
 });

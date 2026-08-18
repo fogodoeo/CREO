@@ -9,6 +9,7 @@ export class RankRenderer implements UIObject {
   private _currentY = 0;
   private _targetY = 0;
   private fontHeight = 16;
+  private layoutFontHeight = 16;
   private _userMoved = 0;
   private _currentWinner = -1;
   private maxY = 0;
@@ -61,12 +62,17 @@ export class RankRenderer implements UIObject {
     height: number
   ) {
     const broadcastMode = new URLSearchParams(location.search).get('broadcast') === '1';
-    const hudHeight = broadcastMode ? 54 : 0;
-    const listTop = broadcastMode ? hudHeight + 8 : 20;
-    const startX = width - 8;
+    const uiScale = broadcastMode ? width / 720 : 1;
+    this.layoutFontHeight = this.fontHeight * uiScale;
+    const hudHeight = broadcastMode ? 54 * uiScale : 0;
+    const listTop = broadcastMode ? hudHeight + 8 * uiScale : 20;
+    const startX = width - 8 * uiScale;
     const visibleListHeight = height - listTop;
-    const startY = Math.max(-this.fontHeight, this._currentY - visibleListHeight / 2);
-    this.maxY = Math.max(0, (marbles.length + winners.length) * this.fontHeight + this.fontHeight);
+    const startY = Math.max(-this.layoutFontHeight, this._currentY - visibleListHeight / 2);
+    this.maxY = Math.max(
+      0,
+      (marbles.length + winners.length) * this.layoutFontHeight + this.layoutFontHeight
+    );
     this._currentWinner = winners.length;
 
     this.winners = winners;
@@ -85,16 +91,21 @@ export class RankRenderer implements UIObject {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
       ctx.fillStyle = 'rgba(255, 255, 255, 0.58)';
-      ctx.font = '700 8pt sans-serif';
-      ctx.fillText(winner ? '당첨 확정' : options.candidateLabel, width / 2, 7);
+      ctx.font = `700 ${8 * uiScale}pt sans-serif`;
+      ctx.fillText(winner ? '당첨 확정' : options.candidateLabel, width / 2, 7 * uiScale);
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 17pt sans-serif';
-      ctx.fillText(candidate?.name ?? '준비 중', width / 2, 24, Math.max(180, width - 420));
+      ctx.font = `bold ${17 * uiScale}pt sans-serif`;
+      ctx.fillText(
+        candidate?.name ?? '준비 중',
+        width / 2,
+        24 * uiScale,
+        Math.max(180 * uiScale, width - 420 * uiScale)
+      );
 
       ctx.textAlign = 'right';
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 18pt sans-serif';
-      ctx.fillText(`${winners.length} / ${totalCount}`, width - 10, 15);
+      ctx.font = `bold ${18 * uiScale}pt sans-serif`;
+      ctx.fillText(`${winners.length} / ${totalCount}`, width - 10 * uiScale, 15 * uiScale);
     } else {
       ctx.textAlign = 'right';
       ctx.font = '10pt sans-serif';
@@ -103,17 +114,22 @@ export class RankRenderer implements UIObject {
     }
 
     ctx.beginPath();
-    ctx.rect(width - (broadcastMode ? 190 : 150), listTop, width, Math.max(0, visibleListHeight));
+    ctx.rect(
+      width - (broadcastMode ? 190 * uiScale : 150),
+      listTop,
+      width,
+      Math.max(0, visibleListHeight)
+    );
     ctx.clip();
 
     ctx.translate(0, -startY);
-    ctx.font = 'bold 11pt sans-serif';
+    ctx.font = `bold ${11 * uiScale}pt sans-serif`;
     if (theme.rankStroke) {
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 2 * uiScale;
       ctx.strokeStyle = theme.rankStroke;
     }
     winners.forEach((marble: { hue: number; name: string }, rank: number) => {
-      const y = rank * this.fontHeight;
+      const y = rank * this.layoutFontHeight;
       if (y >= startY && y <= startY + visibleListHeight) {
         ctx.fillStyle = `hsl(${marble.hue} 100% ${theme.marbleLightness}%)`;
         if (!useSimpleLabels) {
@@ -122,9 +138,9 @@ export class RankRenderer implements UIObject {
         ctx.fillText(`${rank === winnerRank ? '☆' : '\u2714'} ${marble.name} #${rank + 1}`, startX, listTop + y);
       }
     });
-    ctx.font = '10pt sans-serif';
+    ctx.font = `${10 * uiScale}pt sans-serif`;
     marbles.forEach((marble: { hue: number; name: string }, rank: number) => {
-      const y = (rank + winners.length) * this.fontHeight;
+      const y = (rank + winners.length) * this.layoutFontHeight;
       if (y >= startY && y <= startY + visibleListHeight) {
         ctx.fillStyle = `hsl(${marble.hue} 100% ${theme.marbleLightness}%)`;
         if (!useSimpleLabels) ctx.strokeText(`${marble.name} #${rank + 1 + winners.length}`, startX, listTop + y);
@@ -141,7 +157,7 @@ export class RankRenderer implements UIObject {
     if (this._userMoved > 0) {
       this._userMoved -= deltaTime;
     } else {
-      this._targetY = this._currentWinner * this.fontHeight + this.fontHeight;
+      this._targetY = this._currentWinner * this.layoutFontHeight + this.layoutFontHeight;
     }
     if (this._currentY !== this._targetY) {
       this._currentY += (this._targetY - this._currentY) * (deltaTime / 250);
