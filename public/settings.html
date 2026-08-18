@@ -29,7 +29,7 @@
     </script>
     <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
     <script src="channel-broadcast-bridge.js?v=20260815-channel-isolation-v1"></script>
-    <script src="event-modules.js?v=20260710-crebti3"></script>
+    <script src="event-modules.js?v=20260819-creyon-layout-v1"></script>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet">
     <link rel="stylesheet" href="common.css?v=20260707-nav-dropdown2">
@@ -313,6 +313,7 @@
                     <select id="cfg-active-event-module" onchange="onEventModuleChanged(this.value)">
                         <option value="cdcup">CDCUP · 토너먼트</option>
                         <option value="crewart">크레와트 · 기숙사 점수전</option>
+                        <option value="creyon">CREYON · 라이브 경매</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -479,15 +480,21 @@
 
         function broadcastPreviewSrc(page, moduleId) {
             const p = ['1', '2', '3'].includes(String(page)) ? String(page) : '1';
-            return `broadcast.html?page=${p}&module=${encodeURIComponent(moduleId || 'cdcup')}&v=20260713-round-code-map-v1`;
+            const query = new URLSearchParams({ page: p, module: moduleId || 'cdcup', direct: '1', v: '20260819-creyon-layout-v1' });
+            const channel = new URLSearchParams(location.search).get('channel');
+            if (channel) query.set('channel', channel);
+            return `broadcast.html?${query.toString()}`;
         }
 
         function updatePreviewPageLinks(moduleId) {
             const id = moduleId || activeModuleId();
-            const label = id === 'crewart' ? '크레와트' : 'CDCUP';
+            const label = id === 'crewart' ? '크레와트' : (id === 'creyon' ? 'CREYON' : 'CDCUP');
             document.querySelectorAll('[data-preview-page]').forEach(link => {
                 const page = link.getAttribute('data-preview-page') || '1';
-                link.href = `preview.html?module=${id}&page=${page}`;
+                const query = new URLSearchParams({ module: id, page, embedded: '1' });
+                const channel = new URLSearchParams(location.search).get('channel');
+                if (channel) query.set('channel', channel);
+                link.href = `preview.html?${query.toString()}`;
                 link.textContent = `${label} ${page}P 배치기`;
             });
             const navPreview = document.getElementById('nav-preview-link');

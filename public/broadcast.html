@@ -27,7 +27,7 @@
     <meta http-equiv="Expires" content="0">
     <script src="supabase-bridge.js?v=20260817-round3-order-v1"></script>
     <script src="channel-broadcast-bridge.js?v=20260815-channel-isolation-v1"></script>
-    <script src="event-modules.js?v=20260710-crebti3"></script>
+    <script src="event-modules.js?v=20260819-creyon-layout-v1"></script>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link
         href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
@@ -3779,6 +3779,7 @@
             #bracket-page-tree-full .team-progress-member { min-height: 30px; padding: 5px 10px; font-size: 15px; }
         }
     </style>
+    <link rel="stylesheet" href="broadcast-creyon.css?v=20260819-layout-v1">
 </head>
 
 <body>
@@ -7539,6 +7540,36 @@
                 return;
             }
 
+            if (eventModule.id === 'creyon') {
+                hideBlindTeamTotals();
+                if (treeLive) {
+                    treeLive.classList.remove('visible');
+                    treeLive.innerHTML = '';
+                }
+                const ann = document.getElementById('battle-announcement-overlay');
+                if (ann) ann.style.display = 'none';
+                const matchupCard = document.getElementById('battle-matchup-card');
+                if (matchupCard) matchupCard.style.display = 'none';
+                if (treeFull) {
+                    const creyonItems = window.latestItemsList || [];
+                    const soldItems = creyonItems.filter(isSoldForTotals);
+                    const totalAmount = soldItems.reduce((sum, item) => sum + readSoldAmount(item), 0);
+                    const liveItem = creyonItems.find(isActiveForTotals);
+                    treeFull.innerHTML = `
+                        <section class="creyon-status-board">
+                            <header><span>HIGH QUALITY CRESTED GECKO</span><strong>CREYON LIVE</strong></header>
+                            <div class="creyon-status-grid">
+                                <article><span>현재 개체</span><strong>${liveItem ? esc(liveItem.name || liveItem.displayName || '-') : '대기 중'}</strong></article>
+                                <article><span>낙찰 완료</span><strong>${soldItems.length}<small> / ${creyonItems.length}</small></strong></article>
+                                <article><span>낙찰 합계</span><strong>${formatBlindTotalAmount(totalAmount)}<small> 만원</small></strong></article>
+                            </div>
+                            <footer>CREYON · LIVE AUCTION STATUS</footer>
+                        </section>`;
+                    treeFull.classList.toggle('visible', masterShow && fullShow);
+                }
+                return;
+            }
+
             if (isCdcupBlindTotalsMode(map)) {
                 hideBlindTeamTotals();
                 // treeFull (전체 결과표) 렌더링 — bracket_full_blind가 업체명 마스킹 처리
@@ -7711,6 +7742,7 @@
                 && tree.querySelector('.sports-results-board')) {
                 return;
             }
+
             const previousPositions = new Map([...tree.querySelectorAll('.individual-standing-card[data-entrant]')].map(card => [
                 card.dataset.entrant,
                 card.getBoundingClientRect()

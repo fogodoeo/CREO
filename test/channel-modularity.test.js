@@ -81,6 +81,17 @@ test('CREWART uses the shared CDCUP layout and settings surfaces without changin
     assert.match(Profiles.broadcastTarget(academy, 1), /^broadcast\.html\?page=1&module=crewart&channel=crewart&direct=1$/);
 });
 
+test('CREYON uses the shared placement editor with an isolated metal renderer', () => {
+    const creyon = channel('auction-260810', { dataAdapter: 'platform', broadcastProfile: 'creyon-metal' });
+    assert.equal(Profiles.resolve(creyon).rendererModule, 'creyon');
+    assert.equal(Profiles.pageContract(creyon, 3).id, 'status');
+    assert.match(Profiles.studioFrame(creyon, 'layout-1'), /^preview\.html\?module=creyon&channel=auction-260810&page=1&embedded=1$/);
+    assert.match(Profiles.studioFrame(creyon, 'layout-2'), /^preview\.html\?module=creyon&channel=auction-260810&page=2&embedded=1$/);
+    assert.match(Profiles.studioFrame(creyon, 'layout-3'), /^preview\.html\?module=creyon&channel=auction-260810&page=3&embedded=1$/);
+    assert.match(Profiles.studioFrame(creyon, 'settings'), /^settings\.html\?module=creyon&channel=auction-260810&embedded=1$/);
+    assert.match(Profiles.broadcastTarget(creyon, 2), /^broadcast\.html\?page=2&module=creyon&channel=auction-260810&direct=1$/);
+});
+
 test('standard channels use the maintained platform controller and renderer', () => {
     const standard = channel('plain-auction');
     assert.match(Profiles.studioFrame(standard, 'layout-2'), /^auction-control\.html\?channel=plain-auction&page=2&embedded=1$/);

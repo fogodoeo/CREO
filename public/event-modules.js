@@ -50,6 +50,28 @@
                 broadcastAccent: '#D6B25E',
                 darkPanel: 'rgba(20, 14, 35, 0.94)'
             }
+        },
+        creyon: {
+            id: 'creyon',
+            title: 'CREYON',
+            adminTitle: 'CREYON 방송 관리자',
+            navIcon: 'Y',
+            scoreLabel: '현재 개체',
+            unitLabel: '만원',
+            participantLabel: '입찰자',
+            groupLabel: '업체',
+            itemLabel: '개체',
+            page3Label: '방송 현황',
+            scoreboardLabel: 'CREYON LIVE',
+            rankingMode: 'auction-status',
+            theme: {
+                accent: '#9b9083',
+                accentSoft: 'rgba(180, 169, 154, 0.12)',
+                accentText: '#d9d0c4',
+                gold: '#c4a979',
+                broadcastAccent: '#d8c7aa',
+                darkPanel: 'rgba(27, 25, 23, 0.9)'
+            }
         }
     });
 

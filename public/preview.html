@@ -26,7 +26,7 @@
     <script src="supabase-bridge.js?v=20260817-round3-order-v1"></script>
     <script src="channel-broadcast-bridge.js?v=20260815-channel-isolation-v1"></script>
     <script src="cdcup-tournament-data.js?v=20260817-round3-order-v1"></script>
-    <script src="event-modules.js?v=20260710-crebti3"></script>
+    <script src="event-modules.js?v=20260819-creyon-layout-v1"></script>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" rel="stylesheet">
     <link rel="stylesheet" href="common.css?v=20260707-nav-dropdown2">
@@ -987,6 +987,7 @@
             <select id="preview-event-module-select" onchange="changeEventModule(this.value)">
                 <option value="cdcup">CDCUP · 토너먼트</option>
                 <option value="crewart">크레와트 · 기숙사 점수전</option>
+                <option value="creyon">CREYON · 라이브 경매</option>
             </select>
         </div>
         <!-- 대진용 배치기 배경 미리보기 선택 옵션 -->
@@ -1408,21 +1409,34 @@
 
         function broadcastPreviewSrc(page, moduleId) {
             const p = normalizePreviewPage(page);
-            return `broadcast.html?page=${p}&module=${encodeURIComponent(moduleId || 'cdcup')}&v=${broadcastAssetVersion}`;
+            const query = new URLSearchParams({ page: p, module: moduleId || 'cdcup', direct: '1', v: broadcastAssetVersion });
+            const channel = params.get('channel');
+            if (channel) query.set('channel', channel);
+            return `broadcast.html?${query.toString()}`;
         }
 
         function updatePreviewTabs(moduleId) {
             const id = moduleId || getActiveAuctionEventModule(previewConfigMap).id;
-            const label = id === 'crewart' ? '크레와트' : 'CDCUP';
+            const label = id === 'crewart' ? '크레와트' : (id === 'creyon' ? 'CREYON' : 'CDCUP');
             document.querySelectorAll('[data-preview-page]').forEach(link => {
                 const page = normalizePreviewPage(link.getAttribute('data-preview-page'));
-                link.href = `preview.html?module=${id}&page=${page}`;
+                const query = new URLSearchParams({ module: id, page, embedded: '1' });
+                if (params.get('channel')) query.set('channel', params.get('channel'));
+                link.href = `preview.html?${query.toString()}`;
                 link.textContent = `${label} ${page}P 배치기`;
             });
             const settingsLink = document.querySelector('.cdcup-tabs a[href^="settings.html"]');
-            if (settingsLink) settingsLink.href = `settings.html?module=${id}`;
+            if (settingsLink) {
+                const query = new URLSearchParams({ module: id, embedded: '1' });
+                if (params.get('channel')) query.set('channel', params.get('channel'));
+                settingsLink.href = `settings.html?${query.toString()}`;
+            }
             const navPreview = document.getElementById('nav-preview-link');
-            if (navPreview) navPreview.href = `preview.html?module=${id}&page=${pageNum}`;
+            if (navPreview) {
+                const query = new URLSearchParams({ module: id, page: pageNum, embedded: '1' });
+                if (params.get('channel')) query.set('channel', params.get('channel'));
+                navPreview.href = `preview.html?${query.toString()}`;
+            }
         }
 
         function updatePreviewUrlModule(moduleId) {
@@ -1450,25 +1464,27 @@
                 : '1P 진행, 2P 개체·실시간 입찰, 3P 전체 진행표로 각각 독립 송출합니다.';
 
             const isCrewart = module.id === 'crewart';
+            const isCreyon = module.id === 'creyon';
+            const isCdcup = module.id === 'cdcup';
             document.body.classList.toggle('event-crewart-preview', isCrewart);
             const fullLabel = document.querySelector('#draggable-bracket-full .element-label');
-            if (fullLabel) fullLabel.textContent = isCrewart ? '기숙사 점수판 (R·G·B·Y)' : '전체 대진표';
+            if (fullLabel) fullLabel.textContent = isCrewart ? '기숙사 점수판 (R·G·B·Y)' : (isCreyon ? '방송 현황 패널' : '전체 대진표');
             const liveLabel = document.querySelector('#draggable-bracket-live .element-label');
             if (liveLabel) liveLabel.textContent = isCrewart ? '보조 점수판' : '실시간 대진';
             const p3Tab = document.getElementById('btn-tab-p3');
-            if (p3Tab) p3Tab.textContent = isCrewart ? '기숙사 점수 3P' : '3P 배치표';
+            if (p3Tab) p3Tab.textContent = isCrewart ? '기숙사 점수 3P' : (isCreyon ? '방송 현황 3P' : '3P 배치표');
 
             if (pageNum === '2') {
-                document.getElementById('draggable-live-bidders').style.display = '';
-                document.getElementById('toggle-live-bidders-show-group').style.display = '';
-                document.getElementById('toggle-live-bidders-mode-group').style.display = '';
-                document.getElementById('toggle-live-bidders-font-group').style.display = '';
+                document.getElementById('draggable-live-bidders').style.display = isCreyon ? 'none' : '';
+                document.getElementById('toggle-live-bidders-show-group').style.display = isCreyon ? 'none' : '';
+                document.getElementById('toggle-live-bidders-mode-group').style.display = isCreyon ? 'none' : '';
+                document.getElementById('toggle-live-bidders-font-group').style.display = isCreyon ? 'none' : '';
             }
 
             if (pageNum === '3') {
                 const pageTitle = document.getElementById('page-title');
-                if (pageTitle) pageTitle.textContent = isCrewart ? '기숙사 점수판 (3P) 실시간 레이아웃 배치표' : '전체 대진표 (3P) 실시간 레이아웃 배치표';
-                document.getElementById('tournament-dashboard')?.classList.toggle('active', !isCrewart);
+                if (pageTitle) pageTitle.textContent = isCrewart ? '기숙사 점수판 (3P) 실시간 레이아웃 배치표' : (isCreyon ? '방송 현황 (3P) 실시간 레이아웃 배치표' : '전체 대진표 (3P) 실시간 레이아웃 배치표');
+                document.getElementById('tournament-dashboard')?.classList.toggle('active', isCdcup);
                 document.getElementById('crewart-dashboard')?.classList.toggle('active', isCrewart);
                 if (isCrewart) refreshCrewartPreview();
 
@@ -1499,9 +1515,9 @@
                 ].forEach(id => {
                     setDisplay(id, false);
                 });
-                setDisplay('toggle-bracket-full-blind-group', !isCrewart);
-                setDisplay('toggle-bracket-team-details-group', !isCrewart);
-                setDisplay('toggle-bracket-mode-group', !isCrewart);
+                setDisplay('toggle-bracket-full-blind-group', isCdcup);
+                setDisplay('toggle-bracket-team-details-group', isCdcup);
+                setDisplay('toggle-bracket-mode-group', isCdcup);
                 setDisplay('toggle-bracket-full-font-group', true);
                 setDisplay('toggle-bracket-full-opacity-group', !isCrewart);
                 setDisplay('toggle-blind-totals-show-group', false);
@@ -1523,9 +1539,13 @@
                 setDisplay('battle-ann-coords', false);
                 setDisplay('blind-totals-coords', false);
                 const fullToggleLabel = document.querySelector('#toggle-bracket-full-show-group span');
-                if (fullToggleLabel) fullToggleLabel.textContent = isCrewart ? '기숙사 점수판' : '전체 대진표';
+                if (fullToggleLabel) fullToggleLabel.textContent = isCrewart ? '기숙사 점수판' : (isCreyon ? '방송 현황 패널' : '전체 대진표');
+                const fullFontLabel = document.querySelector('#toggle-bracket-full-font-group span');
+                if (fullFontLabel) fullFontLabel.textContent = isCreyon ? '패널 폰트:' : '진행표 폰트:';
+                const fullOpacityLabel = document.querySelector('#toggle-bracket-full-opacity-group span');
+                if (fullOpacityLabel) fullOpacityLabel.textContent = isCreyon ? '패널 배경:' : '개인 카드 배경:';
                 const coords = document.getElementById('bracket-coords');
-                if (coords && coords.firstChild) coords.firstChild.textContent = (isCrewart ? '기숙사 점수판: Top ' : '전체 대진표: Top ');
+                if (coords && coords.firstChild) coords.firstChild.textContent = (isCrewart ? '기숙사 점수판: Top ' : (isCreyon ? '방송 현황: Top ' : '전체 대진표: Top '));
                 try { focusBracketLayer('bracket_full'); } catch (e) {}
             }
         }
@@ -1572,20 +1592,22 @@
         } else if (pageNum === '3') {
             document.getElementById('btn-tab-p3')?.classList.add('active');
             const isCrewart = initialModuleId === 'crewart';
-            if (pageTitle) pageTitle.textContent = isCrewart ? '기숙사 점수판 (3P) 실시간 레이아웃 배치표' : '전체 대진표 (3P) 실시간 레이아웃 배치표';
+            const isCreyon = initialModuleId === 'creyon';
+            if (pageTitle) pageTitle.textContent = isCrewart ? '기숙사 점수판 (3P) 실시간 레이아웃 배치표' : (isCreyon ? '방송 현황 (3P) 실시간 레이아웃 배치표' : '전체 대진표 (3P) 실시간 레이아웃 배치표');
             frame.src = broadcastPreviewSrc('3', initialModuleId);
             const bgSel = document.getElementById('bracket-bg-selector-group');
             if (bgSel) bgSel.style.display = 'none';
-            document.getElementById('tournament-dashboard')?.classList.toggle('active', !isCrewart);
+            document.getElementById('tournament-dashboard')?.classList.toggle('active', !isCrewart && !isCreyon);
             document.getElementById('crewart-dashboard')?.classList.toggle('active', isCrewart);
             if (isCrewart) refreshCrewartPreview();
         } else {
             document.getElementById('btn-tab-p2')?.classList.add('active');
             if (pageTitle) pageTitle.textContent = "개체용 (2P) 실시간 레이아웃 배치기";
             frame.src = broadcastPreviewSrc('2', initialModuleId); // Default page2 layout
-            document.getElementById('toggle-live-bidders-show-group').style.display = '';
-            document.getElementById('toggle-live-bidders-mode-group').style.display = '';
-            document.getElementById('toggle-live-bidders-font-group').style.display = '';
+            const isCreyon = initialModuleId === 'creyon';
+            document.getElementById('toggle-live-bidders-show-group').style.display = isCreyon ? 'none' : '';
+            document.getElementById('toggle-live-bidders-mode-group').style.display = isCreyon ? 'none' : '';
+            document.getElementById('toggle-live-bidders-font-group').style.display = isCreyon ? 'none' : '';
             document.getElementById('toggle-live-bidders-switch-group').style.display = 'none';
         }
 
@@ -1600,9 +1622,10 @@
         }
 
         if (pageNum === '2') {
+            const isInitialCreyon = initialModuleId === 'creyon';
             document.getElementById('draggable-info').style.display = '';
             document.getElementById('draggable-photo').style.display = '';
-            document.getElementById('draggable-live-bidders').style.display = '';
+            document.getElementById('draggable-live-bidders').style.display = isInitialCreyon ? 'none' : '';
             document.getElementById('toggle-photo-show-group').style.display = '';
             document.getElementById('info-coords').style.display = '';
             document.getElementById('photo-coords').style.display = '';
@@ -1611,6 +1634,8 @@
         // PAGE3 전용 요소 표시 + 배너/자막 숨김 (3P는 오버레이 전용)
         if (pageNum === '3') {
             const isInitialCrewart = initialModuleId === 'crewart';
+            const isInitialCreyon = initialModuleId === 'creyon';
+            const isInitialCdcup = initialModuleId === 'cdcup';
             // P3는 전체 진행표 전용 편집기다. 입찰자/팀합산 패널은 2P와 분리한다.
             document.getElementById('draggable-bracket-full').style.display = '';
             document.getElementById('draggable-bracket-live').style.display = 'none';
@@ -1619,8 +1644,8 @@
             document.getElementById('draggable-blind-totals').style.display = 'none';
             document.getElementById('toggle-bracket-full-show-group').style.display = '';
             document.getElementById('toggle-bracket-live-show-group').style.display = 'none';
-            document.getElementById('toggle-bracket-full-blind-group').style.display = isInitialCrewart ? 'none' : '';
-            document.getElementById('toggle-bracket-team-details-group').style.display = isInitialCrewart ? 'none' : '';
+            document.getElementById('toggle-bracket-full-blind-group').style.display = isInitialCdcup ? '' : 'none';
+            document.getElementById('toggle-bracket-team-details-group').style.display = isInitialCdcup ? '' : 'none';
             document.getElementById('toggle-bracket-title-show-group').style.display = 'none'; // Hidden per user request
             document.getElementById('toggle-battle-ann-show-group').style.display = 'none';
             document.getElementById('toggle-blind-totals-show-group').style.display = 'none';
@@ -1628,7 +1653,7 @@
             document.getElementById('toggle-live-bidders-switch-group').style.display = 'none';
             document.getElementById('toggle-live-bidders-mode-group').style.display = 'none';
             document.getElementById('toggle-bracket-scale-group').style.display = 'none';
-            document.getElementById('toggle-bracket-mode-group').style.display = isInitialCrewart ? 'none' : '';
+            document.getElementById('toggle-bracket-mode-group').style.display = isInitialCdcup ? '' : 'none';
             document.getElementById('toggle-bracket-full-font-group').style.display = '';
             document.getElementById('toggle-bracket-full-opacity-group').style.display = isInitialCrewart ? 'none' : '';
             document.getElementById('toggle-bracket-live-font-group').style.display = 'none';
@@ -1650,6 +1675,18 @@
             document.getElementById('toggle-banner-show')?.closest('.switch-container')?.style.setProperty('display', 'none');
             document.getElementById('banner-coords-group').style.display = 'none';
             document.getElementById('ticker-coords-group').style.display = 'none';
+            if (isInitialCreyon) {
+                const fullLabel = document.querySelector('#draggable-bracket-full .element-label');
+                if (fullLabel) fullLabel.textContent = '방송 현황 패널';
+                const fullToggleLabel = document.querySelector('#toggle-bracket-full-show-group span');
+                if (fullToggleLabel) fullToggleLabel.textContent = '방송 현황 패널';
+                const fullFontLabel = document.querySelector('#toggle-bracket-full-font-group span');
+                if (fullFontLabel) fullFontLabel.textContent = '패널 폰트:';
+                const fullOpacityLabel = document.querySelector('#toggle-bracket-full-opacity-group span');
+                if (fullOpacityLabel) fullOpacityLabel.textContent = '패널 배경:';
+                const coords = document.getElementById('bracket-coords');
+                if (coords && coords.firstChild) coords.firstChild.textContent = '방송 현황: Top ';
+            }
         }
 
         // 페이지별 config 접두사 (PAGE2는 p2_, PAGE3는 p3_)

@@ -1,0 +1,266 @@
+/* CREYON legacy-layout broadcast skin.
+ * The camera/background remains visible; only movable broadcast panels are styled here.
+ */
+body[data-event-module="creyon"] {
+    --creyon-ink: #171615;
+    --creyon-graphite: #272522;
+    --creyon-steel: #8e877e;
+    --creyon-champagne: #d8c7aa;
+    --creyon-muted: #b8aea0;
+    --creyon-line: rgba(216, 199, 170, .46);
+    --creyon-panel: linear-gradient(112deg, rgba(30, 29, 27, .96), rgba(67, 63, 58, .91) 52%, rgba(26, 25, 23, .97));
+    --creyon-brush: repeating-linear-gradient(90deg, rgba(255,255,255,.018) 0 1px, transparent 1px 4px);
+}
+
+body[data-event-module="creyon"] .scoreboard-wrap {
+    filter: drop-shadow(0 12px 26px rgba(0, 0, 0, .34));
+}
+
+body[data-event-module="creyon"] .top-bar,
+body[data-event-module="creyon"] .host-nametag .nt-inner,
+body[data-event-module="creyon"] .hc-rules-card {
+    border: 1px solid var(--creyon-line);
+    border-radius: 3px;
+    background: var(--creyon-brush), var(--creyon-panel);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, .16),
+        inset 0 -1px 0 rgba(0, 0, 0, .42),
+        0 14px 32px rgba(0, 0, 0, .28);
+}
+
+body[data-event-module="creyon"] .top-bar::before,
+body[data-event-module="creyon"] .host-nametag .nt-inner::before,
+body[data-event-module="creyon"] .hc-rules-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 3px;
+    background: linear-gradient(180deg, #d8473f 0 17%, #ed8b4a 17% 34%, #e9c848 34% 51%, #68a65c 51% 68%, #3a82ad 68% 84%, #76559a 84%);
+    pointer-events: none;
+}
+
+body[data-event-module="creyon"] .top-bar .accent-bar,
+body[data-event-module="creyon"] .host-nametag .nt-accent {
+    width: 3px;
+    min-width: 3px;
+    background: linear-gradient(180deg, #d8473f 0 17%, #ed8b4a 17% 34%, #e9c848 34% 51%, #68a65c 51% 68%, #3a82ad 68% 84%, #76559a 84%);
+    box-shadow: none;
+}
+
+body[data-event-module="creyon"] .top-bar .name-section,
+body[data-event-module="creyon"] .top-bar .traits,
+body[data-event-module="creyon"] .host-nametag .nt-body {
+    background: transparent !important;
+}
+
+body[data-event-module="creyon"] .scoreboard-wrap .top-bar-label {
+    color: var(--creyon-champagne);
+    font-weight: 850;
+    letter-spacing: .16em;
+    text-shadow: 0 2px 12px rgba(0,0,0,.7);
+}
+
+body[data-event-module="creyon"] .top-bar .name,
+body[data-event-module="creyon"] .host-nametag .nt-name,
+body[data-event-module="creyon"] .hc-name {
+    color: #f5f1eb;
+    font-weight: 900;
+    letter-spacing: -.035em;
+    text-shadow: 0 2px 8px rgba(0,0,0,.52);
+}
+
+body[data-event-module="creyon"] .top-bar .sub,
+body[data-event-module="creyon"] .host-nametag .nt-role,
+body[data-event-module="creyon"] #host-nametag-2 .nt-role,
+body[data-event-module="creyon"] .hc-sub {
+    color: var(--creyon-champagne);
+    font-weight: 760;
+    letter-spacing: .08em;
+}
+
+body[data-event-module="creyon"] .top-bar .traits {
+    border-left-color: rgba(216, 199, 170, .18);
+}
+
+body[data-event-module="creyon"] .top-bar .pill,
+body[data-event-module="creyon"] .top-bar .pill.pill-accent,
+body[data-event-module="creyon"] .top-bar .pill.pill-info,
+body[data-event-module="creyon"] .top-bar .pill.pill-quiz,
+body[data-event-module="creyon"] .hc-traits .t {
+    border: 1px solid rgba(216, 199, 170, .28);
+    border-radius: 2px;
+    background: rgba(10, 10, 9, .24);
+    color: #ede7de;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
+}
+
+body[data-event-module="creyon"] .sub-photo img,
+body[data-event-module="creyon"] .photo-stack.two-photos .sub-photo.slot-secondary img,
+body[data-event-module="creyon"] .hc-photo {
+    border: 1px solid rgba(216, 199, 170, .58);
+    border-radius: 3px;
+    background: #1d1b19;
+    box-shadow:
+        0 0 0 1px rgba(18,17,15,.75),
+        0 15px 34px rgba(0,0,0,.34),
+        inset 0 1px 0 rgba(255,255,255,.1);
+}
+
+body[data-event-module="creyon"] .sub-photo .label {
+    border: 1px solid rgba(216, 199, 170, .42);
+    border-radius: 2px;
+    background: rgba(30, 28, 25, .9);
+    color: var(--creyon-champagne);
+    letter-spacing: .08em;
+}
+
+body[data-event-module="creyon"] .hc-header {
+    border: 1px solid rgba(216, 199, 170, .38);
+    border-radius: 3px;
+    background: var(--creyon-brush), linear-gradient(112deg, rgba(31,29,27,.94), rgba(71,66,60,.88));
+    box-shadow: 0 14px 32px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.12);
+}
+
+body[data-event-module="creyon"] .hc-bottom-bar {
+    border-top: 1px solid rgba(216, 199, 170, .42);
+    background: var(--creyon-brush), linear-gradient(90deg, rgba(22,21,19,.96), rgba(61,57,52,.93), rgba(22,21,19,.96)) !important;
+    box-shadow: 0 -10px 28px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.08);
+}
+
+body[data-event-module="creyon"] .hc-bottom-bar::before {
+    background: linear-gradient(90deg, transparent, rgba(216,199,170,.72), transparent);
+}
+
+body[data-event-module="creyon"] .hc-bottom-bar::after {
+    height: 2px;
+    background: linear-gradient(90deg, #d8473f, #ed8b4a, #e9c848, #68a65c, #3a82ad, #76559a);
+    opacity: .82;
+}
+
+body[data-event-module="creyon"] .ticker-card-text {
+    color: #f5f1eb;
+    font-weight: 780;
+    text-shadow: 0 2px 7px rgba(0,0,0,.65);
+}
+
+body[data-event-module="creyon"] .sale-mode-card,
+body[data-event-module="creyon"] .auction-motion-overlay.is-sold .auction-sold-content,
+body[data-event-module="creyon"] .blind-sold-popup-card {
+    border: 1px solid rgba(216, 199, 170, .62);
+    border-radius: 3px;
+    background: var(--creyon-brush), linear-gradient(125deg, rgba(25,24,22,.985), rgba(78,72,65,.97), rgba(25,24,22,.985));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.16), 0 26px 80px rgba(0,0,0,.55);
+}
+
+body[data-event-module="creyon"] .sale-mode-kicker,
+body[data-event-module="creyon"] .auction-sold-turn,
+body[data-event-module="creyon"] .blind-sold-popup-eyebrow {
+    color: var(--creyon-champagne);
+    letter-spacing: .18em;
+}
+
+body[data-event-module="creyon"] .sale-mode-title,
+body[data-event-module="creyon"] .auction-sold-winner,
+body[data-event-module="creyon"] .blind-sold-popup-winner {
+    color: #f8f4ee;
+}
+
+body[data-event-module="creyon"] .auction-sold-price,
+body[data-event-module="creyon"] .blind-sold-popup-price {
+    color: var(--creyon-champagne);
+}
+
+body[data-event-module="creyon"] #p2-live-bidders-overlay,
+body[data-event-module="creyon"] #live-bidders-overlay {
+    display: none !important;
+}
+
+body[data-event-module="creyon"] .creyon-status-board {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: clamp(14px, 2.4vh, 30px);
+    padding: clamp(26px, 4vw, 72px);
+    border: 1px solid rgba(216, 199, 170, .55);
+    border-radius: 3px;
+    background:
+        linear-gradient(115deg, rgba(255,255,255,.035), transparent 28% 72%, rgba(255,255,255,.025)),
+        var(--creyon-brush),
+        linear-gradient(125deg,
+            rgba(24,23,21,var(--full-board-opacity, .9)),
+            rgba(83,77,70,var(--full-board-opacity, .9)),
+            rgba(23,22,20,var(--full-board-opacity, .9)));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.18), inset 0 -1px 0 rgba(0,0,0,.5), 0 24px 70px rgba(0,0,0,.42);
+    color: #f5f1eb;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+body[data-event-module="creyon"] .creyon-status-board::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 4px;
+    background: linear-gradient(180deg, #d8473f 0 17%, #ed8b4a 17% 34%, #e9c848 34% 51%, #68a65c 51% 68%, #3a82ad 68% 84%, #76559a 84%);
+}
+
+body[data-event-module="creyon"] .creyon-status-board header span,
+body[data-event-module="creyon"] .creyon-status-board footer,
+body[data-event-module="creyon"] .creyon-status-grid article > span {
+    color: var(--creyon-champagne);
+    font-size: clamp(10px, .9vw, 17px);
+    font-weight: 780;
+    letter-spacing: .16em;
+}
+
+body[data-event-module="creyon"] .creyon-status-board header strong {
+    display: block;
+    margin-top: .2em;
+    font-size: clamp(42px, 6.2vw, 110px);
+    font-weight: 930;
+    letter-spacing: -.055em;
+    line-height: .96;
+}
+
+body[data-event-module="creyon"] .creyon-status-grid {
+    display: grid;
+    grid-template-columns: 1.5fr .72fr 1fr;
+    border-top: 1px solid rgba(216,199,170,.24);
+    border-bottom: 1px solid rgba(216,199,170,.24);
+}
+
+body[data-event-module="creyon"] .creyon-status-grid article {
+    min-width: 0;
+    padding: clamp(16px, 2.4vw, 42px);
+    border-right: 1px solid rgba(216,199,170,.18);
+    background: rgba(12,11,10,.12);
+}
+
+body[data-event-module="creyon"] .creyon-status-grid article:last-child { border-right: 0; }
+
+body[data-event-module="creyon"] .creyon-status-grid strong {
+    display: block;
+    margin-top: .35em;
+    overflow: hidden;
+    color: #f8f4ee;
+    font-size: clamp(24px, 3.25vw, 60px);
+    font-weight: 900;
+    letter-spacing: -.045em;
+    line-height: 1.05;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+body[data-event-module="creyon"] .creyon-status-grid small {
+    color: var(--creyon-muted);
+    font-size: .42em;
+    font-weight: 720;
+}
+
+@media (max-width: 760px) {
+    body[data-event-module="creyon"] .creyon-status-grid { grid-template-columns: 1fr; }
+    body[data-event-module="creyon"] .creyon-status-grid article { border-right: 0; border-bottom: 1px solid rgba(216,199,170,.18); }
+    body[data-event-module="creyon"] .creyon-status-grid article:last-child { border-bottom: 0; }
+}
