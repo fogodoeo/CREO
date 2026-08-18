@@ -62,7 +62,7 @@
             groupLabel: '업체',
             itemLabel: '개체',
             page3Label: '방송 현황',
-            scoreboardLabel: 'CREYON LIVE',
+            scoreboardLabel: 'CREYON',
             rankingMode: 'auction-status',
             theme: {
                 accent: '#9b9083',

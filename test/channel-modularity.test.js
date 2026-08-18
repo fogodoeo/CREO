@@ -90,6 +90,8 @@ test('CREYON uses the shared placement editor with an isolated metal renderer', 
     assert.match(Profiles.studioFrame(creyon, 'layout-3'), /^preview\.html\?module=creyon&channel=auction-260810&page=3&embedded=1$/);
     assert.match(Profiles.studioFrame(creyon, 'settings'), /^settings\.html\?module=creyon&channel=auction-260810&embedded=1$/);
     assert.match(Profiles.broadcastTarget(creyon, 2), /^broadcast\.html\?page=2&module=creyon&channel=auction-260810&direct=1$/);
+    assert.equal(Profiles.resolve(creyon).defaultState.notice, 'CREYON');
+    assert.doesNotMatch(JSON.stringify(Profiles.resolve(creyon).defaultState), /CREYON LIVE/);
 });
 
 test('standard channels use the maintained platform controller and renderer', () => {

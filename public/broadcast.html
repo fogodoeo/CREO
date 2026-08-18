@@ -7557,13 +7557,13 @@
                     const liveItem = creyonItems.find(isActiveForTotals);
                     treeFull.innerHTML = `
                         <section class="creyon-status-board">
-                            <header><span>HIGH QUALITY CRESTED GECKO</span><strong>CREYON LIVE</strong></header>
+                            <header><span>HIGH QUALITY CRESTED GECKO</span><strong>CREYON</strong></header>
                             <div class="creyon-status-grid">
                                 <article><span>현재 개체</span><strong>${liveItem ? esc(liveItem.name || liveItem.displayName || '-') : '대기 중'}</strong></article>
                                 <article><span>낙찰 완료</span><strong>${soldItems.length}<small> / ${creyonItems.length}</small></strong></article>
                                 <article><span>낙찰 합계</span><strong>${formatBlindTotalAmount(totalAmount)}<small> 만원</small></strong></article>
                             </div>
-                            <footer>CREYON · LIVE AUCTION STATUS</footer>
+                            <footer>CREYON</footer>
                         </section>`;
                     treeFull.classList.toggle('visible', masterShow && fullShow);
                 }
