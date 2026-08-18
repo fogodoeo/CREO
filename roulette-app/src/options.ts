@@ -3,6 +3,7 @@ class Options {
   winningRank = 0;
   autoRecording = false;
   winnerLabel = '당첨';
+  candidateLabel = '현재 당첨 유력';
 }
 
 const options = new Options();

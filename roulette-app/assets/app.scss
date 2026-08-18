@@ -1148,6 +1148,21 @@ details.control-section summary span {
     display: none;
   }
 
+  html.broadcast-mode .status-pill {
+    display: none;
+  }
+
+  html.broadcast-mode .version-badge {
+    position: fixed;
+    top: calc(5px + var(--safe-top));
+    right: calc(9px + var(--safe-right));
+    color: rgba(255, 255, 255, 0.62);
+  }
+
+  html.broadcast-mode .stage-help {
+    display: none;
+  }
+
   html.broadcast-mode .is-running #openPanelButton {
     display: none;
   }

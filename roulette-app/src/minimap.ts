@@ -8,6 +8,8 @@ import type { UIObject } from './UIObject';
 import { bound } from './utils/bound.decorator';
 
 export class Minimap implements UIObject {
+  private scale = 4;
+  private top = 10;
   private ctx!: CanvasRenderingContext2D;
   private lastParams: RenderParameters | null = null;
 
@@ -52,8 +54,8 @@ export class Minimap implements UIObject {
     };
     if (this._onViewportChangeHandler) {
       this._onViewportChangeHandler({
-        x: this.mousePosition.x / 4,
-        y: this.mousePosition.y / 4,
+        x: this.mousePosition.x / this.scale,
+        y: this.mousePosition.y / this.scale,
       });
     }
   }
@@ -62,15 +64,21 @@ export class Minimap implements UIObject {
     if (!ctx) return;
     const { stage } = params;
     if (!stage) return;
-    this.boundingBox.h = stage.goalY * 4;
+    const broadcastMode = new URLSearchParams(location.search).get('broadcast') === '1';
+    this.top = broadcastMode ? 64 : 10;
+    const availableHeight = Math.max(120, ctx.canvas.height - this.top - 12);
+    this.scale = Math.min(4, availableHeight / stage.goalY);
+    this.boundingBox.y = this.top;
+    this.boundingBox.w = 26 * this.scale;
+    this.boundingBox.h = stage.goalY * this.scale;
 
     this.lastParams = params;
 
     this.ctx = ctx;
     ctx.save();
     ctx.fillStyle = params.theme.minimapBackground;
-    ctx.translate(10, 10);
-    ctx.scale(4, 4);
+    ctx.translate(this.boundingBox.x, this.boundingBox.y);
+    ctx.scale(this.scale, this.scale);
     ctx.fillRect(0, 0, 26, stage.goalY);
 
     this.ctx.lineWidth = 3 / (params.camera.zoom + initialZoom);
@@ -89,7 +97,8 @@ export class Minimap implements UIObject {
   private drawViewport(params: RenderParameters) {
     this.ctx.save();
     const { camera, size } = params;
-    const zoom = camera.zoom * initialZoom;
+    const broadcastSceneZoom = new URLSearchParams(location.search).get('broadcast') === '1' ? 1.18 : 1;
+    const zoom = camera.zoom * initialZoom * broadcastSceneZoom;
     const w = size.x / zoom;
     const h = size.y / zoom;
     this.ctx.strokeStyle = params.theme.minimapViewport;

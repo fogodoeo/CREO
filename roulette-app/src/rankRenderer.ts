@@ -1,4 +1,5 @@
 import type { Marble } from './marble';
+import options from './options';
 import type { RenderParameters } from './rouletteRenderer';
 import type { Rect } from './types/rect.type';
 import type { MouseEventArgs, UIObject } from './UIObject';
@@ -55,12 +56,16 @@ export class RankRenderer implements UIObject {
 
   render(
     ctx: CanvasRenderingContext2D,
-    { winners, marbles, winnerRank, theme }: RenderParameters,
+    { winners, marbles, winnerRank, winner, theme }: RenderParameters,
     width: number,
     height: number
   ) {
-    const startX = width - 5;
-    const startY = Math.max(-this.fontHeight, this._currentY - height / 2);
+    const broadcastMode = new URLSearchParams(location.search).get('broadcast') === '1';
+    const hudHeight = broadcastMode ? 54 : 0;
+    const listTop = broadcastMode ? hudHeight + 8 : 20;
+    const startX = width - 8;
+    const visibleListHeight = height - listTop;
+    const startY = Math.max(-this.fontHeight, this._currentY - visibleListHeight / 2);
     this.maxY = Math.max(0, (marbles.length + winners.length) * this.fontHeight + this.fontHeight);
     this._currentWinner = winners.length;
 
@@ -70,13 +75,35 @@ export class RankRenderer implements UIObject {
     const useSimpleLabels = width < 560 && marbles.length + winners.length > 48;
 
     ctx.save();
-    ctx.textAlign = 'right';
-    ctx.font = '10pt sans-serif';
-    ctx.fillStyle = '#666';
-    ctx.fillText(`${winners.length} / ${winners.length + marbles.length}`, width - 5, this.fontHeight);
+    if (broadcastMode) {
+      const totalCount = winners.length + marbles.length;
+      const targetIndex = Math.max(0, winnerRank - winners.length);
+      const candidate = winner ?? winners[winnerRank] ?? marbles[targetIndex];
+      ctx.fillStyle = 'rgba(4, 10, 18, 0.9)';
+      ctx.fillRect(0, 0, width, hudHeight);
+
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.58)';
+      ctx.font = '700 8pt sans-serif';
+      ctx.fillText(winner ? '당첨 확정' : options.candidateLabel, width / 2, 7);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 17pt sans-serif';
+      ctx.fillText(candidate?.name ?? '준비 중', width / 2, 24, Math.max(180, width - 420));
+
+      ctx.textAlign = 'right';
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 18pt sans-serif';
+      ctx.fillText(`${winners.length} / ${totalCount}`, width - 10, 15);
+    } else {
+      ctx.textAlign = 'right';
+      ctx.font = '10pt sans-serif';
+      ctx.fillStyle = '#666';
+      ctx.fillText(`${winners.length} / ${winners.length + marbles.length}`, width - 5, this.fontHeight);
+    }
 
     ctx.beginPath();
-    ctx.rect(width - 150, this.fontHeight + 2, width, this.maxY);
+    ctx.rect(width - (broadcastMode ? 190 : 150), listTop, width, Math.max(0, visibleListHeight));
     ctx.clip();
 
     ctx.translate(0, -startY);
@@ -87,21 +114,21 @@ export class RankRenderer implements UIObject {
     }
     winners.forEach((marble: { hue: number; name: string }, rank: number) => {
       const y = rank * this.fontHeight;
-      if (y >= startY && y <= startY + ctx.canvas.height) {
+      if (y >= startY && y <= startY + visibleListHeight) {
         ctx.fillStyle = `hsl(${marble.hue} 100% ${theme.marbleLightness}%)`;
         if (!useSimpleLabels) {
-          ctx.strokeText(`${rank === winnerRank ? '☆' : '\u2714'} ${marble.name} #${rank + 1}`, startX, 20 + y);
+          ctx.strokeText(`${rank === winnerRank ? '☆' : '\u2714'} ${marble.name} #${rank + 1}`, startX, listTop + y);
         }
-        ctx.fillText(`${rank === winnerRank ? '☆' : '\u2714'} ${marble.name} #${rank + 1}`, startX, 20 + y);
+        ctx.fillText(`${rank === winnerRank ? '☆' : '\u2714'} ${marble.name} #${rank + 1}`, startX, listTop + y);
       }
     });
     ctx.font = '10pt sans-serif';
     marbles.forEach((marble: { hue: number; name: string }, rank: number) => {
       const y = (rank + winners.length) * this.fontHeight;
-      if (y >= startY && y <= startY + ctx.canvas.height) {
+      if (y >= startY && y <= startY + visibleListHeight) {
         ctx.fillStyle = `hsl(${marble.hue} 100% ${theme.marbleLightness}%)`;
-        if (!useSimpleLabels) ctx.strokeText(`${marble.name} #${rank + 1 + winners.length}`, startX, 20 + y);
-        ctx.fillText(`${marble.name} #${rank + 1 + winners.length}`, startX, 20 + y);
+        if (!useSimpleLabels) ctx.strokeText(`${marble.name} #${rank + 1 + winners.length}`, startX, listTop + y);
+        ctx.fillText(`${marble.name} #${rank + 1 + winners.length}`, startX, listTop + y);
       }
     });
     ctx.restore();

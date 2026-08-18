@@ -49,7 +49,7 @@ test('roulette exposes its version and keeps compact rendering with the smooth u
     const renderer = fs.readFileSync(path.join(appRoot, 'src', 'rouletteRenderer.ts'), 'utf8');
 
     assert.match(html, /id="versionBadge"/);
-    assert.match(config, /APP_VERSION = '1\.2\.1'/);
+    assert.match(config, /APP_VERSION = '1\.3\.0'/);
     assert.match(roulette, /_updateInterval = 10/);
     assert.match(renderer, /COMPACT_SCENE_PIXEL_BUDGET = 520_000/);
     assert.match(renderer, /performance: 720/);

@@ -324,6 +324,13 @@ async function prepareRound(seed = createSecureSeed()): Promise<void> {
   options.autoRecording = dom.recording.checked;
   options.winnerLabel = dom.winnerLabel.value.trim() || DEFAULT_CONFIG.winnerLabel;
   options.winningRank = winningRank(summary.balls) - 1;
+  const winnerMode = currentWinnerMode();
+  options.candidateLabel =
+    winnerMode === 'last'
+      ? '마지막 생존 유력'
+      : winnerMode === 'rank'
+        ? `${options.winningRank + 1}위 당첨 유력`
+        : '현재 당첨 유력';
 
   roulette.setAutoRecording(options.autoRecording);
   roulette.setSpeed(Number(dom.speed.value) || 1);
@@ -348,7 +355,7 @@ async function prepareRound(seed = createSecureSeed()): Promise<void> {
   };
   preparedFingerprint = fingerprint(entries);
   setStatus('ready', `${summary.balls}개 공 준비 완료`);
-  showToast(`시드 ${seed.slice(0, 8)} · 공 배치 완료`);
+  if (!isBroadcastMode) showToast(`시드 ${seed.slice(0, 8)} · 공 배치 완료`);
 }
 
 async function startRound(): Promise<void> {

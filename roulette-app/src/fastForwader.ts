@@ -17,32 +17,12 @@ export class FastForwader implements UIObject {
 
   update(_deltaTime: number): void {}
 
-  render(ctx: CanvasRenderingContext2D, _params: RenderParameters, width: number, height: number): void {
+  render(_ctx: CanvasRenderingContext2D, _params: RenderParameters, width: number, height: number): void {
     this.bound.w = width / 2;
     this.bound.h = height / 2;
     this.bound.x = this.bound.w / 2;
     this.bound.y = this.bound.h / 2;
 
-    const centerX = this.bound.x + this.bound.w / 2;
-    const centerY = this.bound.y + this.bound.h / 2;
-
-    if (this.isEnabled) {
-      ctx.save();
-      ctx.globalAlpha = 0.5;
-      ctx.fillStyle = 'white';
-      ctx.strokeStyle = 'black';
-      ctx.lineWidth = 6;
-      for (const offset of [-58, 26]) {
-        ctx.beginPath();
-        ctx.moveTo(centerX + offset - 34, centerY - 70);
-        ctx.lineTo(centerX + offset + 42, centerY);
-        ctx.lineTo(centerX + offset - 34, centerY + 70);
-        ctx.closePath();
-        ctx.stroke();
-        ctx.fill();
-      }
-      ctx.restore();
-    }
   }
 
   getBoundingBox(): Rect | null {

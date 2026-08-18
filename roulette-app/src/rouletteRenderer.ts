@@ -32,6 +32,7 @@ const BROADCAST_SCENE_WIDTHS = {
 } as const;
 const COMPACT_SCENE_WIDTH = 480;
 const COMPACT_SCENE_PIXEL_BUDGET = 520_000;
+const BROADCAST_SCENE_ZOOM = 1.18;
 const WINNER_TEXT_OFFSET = 30;
 
 export class RouletteRenderer {
@@ -130,6 +131,12 @@ export class RouletteRenderer {
     this.ctx.fillRect(0, 0, this._sceneCanvas.width, this._sceneCanvas.height);
 
     this.ctx.save();
+    const broadcastMode = new URLSearchParams(location.search).get('broadcast') === '1';
+    if (broadcastMode) {
+      this.ctx.translate(this._sceneCanvas.width / 2, this._sceneCanvas.height / 2);
+      this.ctx.scale(BROADCAST_SCENE_ZOOM, BROADCAST_SCENE_ZOOM);
+      this.ctx.translate(-this._sceneCanvas.width / 2, -this._sceneCanvas.height / 2);
+    }
     this.ctx.scale(initialZoom, initialZoom);
     this.ctx.textAlign = 'left';
     this.ctx.textBaseline = 'top';
