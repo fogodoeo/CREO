@@ -26,6 +26,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
+    <script src="auction-contract.js?v=20260819-contract-v1"></script>
     <script src="supabase-bridge.js?v=20260819-round3-seed-v2"></script>
     <script src="channel-broadcast-bridge.js?v=20260815-channel-isolation-v1"></script>
     <script src="event-modules.js?v=20260819-creyon-layout-v1"></script>
@@ -3955,8 +3956,7 @@
             
             let completed = 0;
             progressItems.forEach(it => {
-                const status = (it.status || '').trim();
-                if (status.indexOf('낙찰') >= 0 || status.indexOf('유찰') >= 0) {
+                if (CreoAuctionContract.isTerminalStatus(it.status)) {
                     completed++;
                 }
             });
@@ -5841,8 +5841,7 @@
 
         function isSoldForTotals(item) {
             const status = String(item?.status || '').trim();
-            return status.includes('낙찰')
-                || ['완료', 'sold'].includes(status)
+            return CreoAuctionContract.isSoldStatus(status)
                 || (readSoldAmount(item) > 0 && String(item?.winner || '').trim());
         }
 
@@ -6719,7 +6718,7 @@
                 const soldItem = (window.latestItemsList || []).find(candidate =>
                     saleModeItemKey(candidate) === _saleModeOverlayState.activeKey
                     && String(candidate?.winner || '').trim()
-                    && ['낙찰', '완료', 'sold'].includes(String(candidate?.status || '').trim())
+                    && CreoAuctionContract.isSoldStatus(candidate?.status)
                 );
                 if (soldItem) {
                     if (!_saleModeOverlayState.resultUntil) {
@@ -7712,7 +7711,6 @@
         }
 
         function renderThreeRoundResults(tree, stage, map, items) {
-            const amount = item => Number(String(item?.sold_price ?? item?.soldPrice ?? 0).replace(/[^0-9.-]/g, '')) || 0;
             const scoped = scopeTournamentItems(items || [], stage);
             const totals = {};
             const completedCounts = {};
@@ -7722,8 +7720,7 @@
                 if (!company) return;
                 totals[company] = (totals[company] || 0) + readLiveTotalAmount(item);
                 itemCounts[company] = (itemCounts[company] || 0) + 1;
-                const status = String(item?.status || '').trim();
-                const isCompleted = isSoldForTotals(item) || status.includes('유찰');
+                const isCompleted = CreoAuctionContract.isTerminalStatus(item?.status);
                 completedCounts[company] = (completedCounts[company] || 0) + (isCompleted ? 1 : 0);
             });
             const stageGroups = parseBroadcastStageGroups(map || {}, 8);
@@ -7876,7 +7873,7 @@
                 return '';
             }
 
-            const isAuctionDone = item => item && ['완료', 'sold', '낙찰', '유찰'].includes(item.status);
+            const isAuctionDone = item => item && CreoAuctionContract.isTerminalStatus(item.status);
             const toPrice = item => Number.parseFloat(item?.sold_price || item?.soldPrice || 0) || 0;
             const matchCount = tournamentStageMatchCount(scale);
             // 개체 경매 화면의 블라인드 정책과 분리한다. 전체 대진은
@@ -8292,8 +8289,7 @@
             }
             let rpm = Math.max(...Object.values(roundsByGroup));
 
-            const doneStatuses = new Set(['완료', 'sold', '낙찰', '유찰']);
-            const isDone = item => Boolean(item && doneStatuses.has(item.status));
+            const isDone = item => Boolean(item && CreoAuctionContract.isTerminalStatus(item.status));
             const getItemKey = item => String(item?.row || getCleanCode(item) || item?.name || '').trim();
 
             // 상태 전이를 한 곳에서 소비한다. 같은 낙찰 이벤트는 렌더 횟수와 무관하게 정확히 한 번만 재생된다.
@@ -8311,8 +8307,8 @@
                     if (!key) return;
                     const previousStatus = auctionState.itemStatus.get(key) || '';
                     const currentStatus = item.status || '';
-                    if (currentStatus === '낙찰' && previousStatus !== '낙찰') newSoldItems.push(item);
-                    if (currentStatus !== '낙찰') auctionState.playedEvents.delete(key + '|낙찰');
+                    if (CreoAuctionContract.isSoldStatus(currentStatus) && !CreoAuctionContract.isSoldStatus(previousStatus)) newSoldItems.push(item);
+                    if (!CreoAuctionContract.isSoldStatus(currentStatus)) auctionState.playedEvents.delete(key + '|낙찰');
                     auctionState.itemStatus.set(key, currentStatus);
                 });
             }
@@ -8764,7 +8760,7 @@
                 for (let r = 1; r <= roundsPerMatch; r++) {
                     const lIt = leftItems[r];
                     const rIt = rightItems[r];
-                    if (lIt && rIt && (lIt.status === '완료' || lIt.status === 'sold' || lIt.status === '낙찰' || lIt.status === '유찰') && (rIt.status === '완료' || rIt.status === 'sold' || rIt.status === '낙찰' || rIt.status === '유찰')) {
+                    if (lIt && rIt && CreoAuctionContract.isTerminalStatus(lIt.status) && CreoAuctionContract.isTerminalStatus(rIt.status)) {
                         const lPrice = parseFloat(lIt.sold_price || lIt.soldPrice || 0);
                         const rPrice = parseFloat(rIt.sold_price || rIt.soldPrice || 0);
                         if (lPrice > rPrice) {
@@ -8797,7 +8793,7 @@
                     displaySub = `${leftLetter}팀 VS ${rightLetter}팀 대결 (현재 스코어 ${leftScore} : ${rightScore})`;
                     
                     const oppItem = slotType === 'left' ? rightItems[roundNum] : leftItems[roundNum];
-                    if (oppItem && (oppItem.status === '완료' || oppItem.status === 'sold' || oppItem.status === '낙찰' || oppItem.status === '유찰')) {
+                    if (oppItem && CreoAuctionContract.isTerminalStatus(oppItem.status)) {
                         displayContent = `${roundNum}라운드 후공 진행 중: <span style="color:#f87171;">${teamLetter}팀</span>`;
                         displaySub = `선공 ${opponentLetter}팀의 기록에 도전 중! (현재 스코어 ${leftScore} : ${rightScore})`;
                     }
@@ -8848,7 +8844,6 @@
 
             const leftL = teamToLetter[match.left?.trim()] || 'A';
             const rightL = teamToLetter[match.right?.trim()] || 'B';
-            const doneStatuses = new Set(['완료', 'sold', '낙찰', '유찰']);
             let leftTotal = 0;
             let rightTotal = 0;
             const roundsPerMatch = getTournamentMatchRoundCount(
@@ -8859,8 +8854,8 @@
             for (let r = 1; r <= roundsPerMatch; r++) {
                 const leftItem = findItemByCode(items, leftL + r);
                 const rightItem = findItemByCode(items, rightL + r);
-                if (leftItem && doneStatuses.has(leftItem.status)) leftTotal += Number.parseFloat(leftItem.sold_price || leftItem.soldPrice || 0) || 0;
-                if (rightItem && doneStatuses.has(rightItem.status)) rightTotal += Number.parseFloat(rightItem.sold_price || rightItem.soldPrice || 0) || 0;
+                if (leftItem && CreoAuctionContract.isTerminalStatus(leftItem.status)) leftTotal += CreoAuctionContract.parseAmount(leftItem.sold_price || leftItem.soldPrice);
+                if (rightItem && CreoAuctionContract.isTerminalStatus(rightItem.status)) rightTotal += CreoAuctionContract.parseAmount(rightItem.sold_price || rightItem.soldPrice);
             }
             const winnerText = leftTotal > rightTotal ? `${leftL}팀` : (rightTotal > leftTotal ? `${rightL}팀` : '무승부');
 

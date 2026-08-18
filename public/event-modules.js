@@ -6,6 +6,9 @@
 (function (global) {
     'use strict';
 
+    const AuctionContract = global.CreoAuctionContract;
+    if (!AuctionContract) throw new Error('auction-contract.js must load before event-modules.js');
+
     const MODULES = Object.freeze({
         cdcup: {
             id: 'cdcup',
@@ -207,14 +210,11 @@
     }
 
     function amountToNumber(value) {
-        const raw = String(value == null ? '' : value).replace(/,/g, '');
-        const match = raw.match(/-?\d+(?:\.\d+)?/);
-        return match ? Number(match[0]) || 0 : 0;
+        return AuctionContract.parseAmount(value);
     }
 
     function isSoldItem(item) {
-        const status = String(item && item.status || '').trim();
-        return ['완료', 'sold', '낙찰'].includes(status) || status.indexOf('낙찰') >= 0;
+        return AuctionContract.isSoldStatus(item && item.status);
     }
 
     function itemAuctionType(item) {

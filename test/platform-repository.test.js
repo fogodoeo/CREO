@@ -23,6 +23,23 @@ test('legacy non-platform keys remain compatible', () => {
     assert.equal(readStoredValue('admin_pw', 'plain', 'secret'), 'plain');
 });
 
+test('server storage never falls back to a hardcoded Supabase project', async () => {
+    const previousUrl = process.env.SUPABASE_URL;
+    const previousServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const previousAnonKey = process.env.SUPABASE_ANON_KEY;
+    delete process.env.SUPABASE_URL;
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    delete process.env.SUPABASE_ANON_KEY;
+    try {
+        const repository = new SupabaseConfigRepository({ fetchImpl: async () => { throw new Error('must not fetch'); } });
+        await assert.rejects(repository.request('config?select=key,value'), /credentials are not configured/);
+    } finally {
+        if (previousUrl === undefined) delete process.env.SUPABASE_URL; else process.env.SUPABASE_URL = previousUrl;
+        if (previousServiceKey === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY; else process.env.SUPABASE_SERVICE_ROLE_KEY = previousServiceKey;
+        if (previousAnonKey === undefined) delete process.env.SUPABASE_ANON_KEY; else process.env.SUPABASE_ANON_KEY = previousAnonKey;
+    }
+});
+
 test('survey prefix reads request only the requested key/value page', async () => {
     let requestedUrl = '';
     const repository = new SupabaseConfigRepository({

@@ -8,6 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>CREO - 배송/수령 정보 등록</title>
     <script src="platform-client.js?v=20260803-admin-session-v2"></script>
+    <script src="auction-contract.js?v=20260819-contract-v1"></script>
     <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
     <script src="channel-adapters.js?v=20260813-modular-v1"></script>
     <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard-dynamic-subset.css" />
@@ -3350,7 +3351,7 @@ ${wrapangDuplicateNote}`;
 
                 console.log('[INIT] Step 4: Loading items...');
                 const [items] = await Promise.all([loadShippingItems(), loadCaptureRecords()]);
-                allItems = (items || []).filter(it => it.status && it.status.indexOf('낙찰') >= 0);
+                allItems = (items || []).filter(it => CreoAuctionContract.isSoldStatus(it.status));
                 console.log('[INIT] Step 5: Got', allItems.length, 'items, isAdminMode:', isAdminMode);
 
                 if (isAdminMode) {
@@ -3846,7 +3847,7 @@ ${wrapangDuplicateNote}`;
             if (button) { button.disabled = true; button.textContent = '갱신 중...'; }
             try {
                 const items = await loadShippingItems();
-                allItems = (items || []).filter(item => item.status && item.status.indexOf('낙찰') >= 0);
+                allItems = (items || []).filter(item => CreoAuctionContract.isSoldStatus(item.status));
                 renderRegistrationOverview();
                 showToast('전체 등록 현황을 갱신했습니다.');
             } catch (error) {
@@ -4682,7 +4683,7 @@ ${wrapangDuplicateNote}`;
                 showToast(`${winnerName}님의 배송 정보가 저장되었습니다!`);
 
                 const items = await loadShippingItems();
-                allItems = (items || []).filter(it => it.status && it.status.indexOf('낙찰') >= 0);
+                allItems = (items || []).filter(it => CreoAuctionContract.isSoldStatus(it.status));
                 renderGrid();
             } catch (err) {
                 console.error(err);

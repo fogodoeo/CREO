@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>회차 관리 · CREO</title>
+  <script src="auction-contract.js?v=20260819-contract-v1"></script>
   <script src="platform-client.js?v=20260803-admin-session-v2"></script>
   <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
   <script src="channel-adapters.js?v=20260813-ranking-v2"></script>
@@ -28,8 +29,8 @@
     const toast=message=>{const el=$('toast');el.textContent=message;el.classList.add('show');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('show'),2400)};
     const date=value=>{const d=new Date(value);return Number.isNaN(d.getTime())?'-':d.toLocaleString('ko-KR')};
     const number=value=>Number(value||0).toLocaleString('ko-KR');
-    const sold=item=>item.status==='sold'||Number(item.soldPrice)>0;
-    const legacyRows=(rows,configs={})=>(rows||[]).map(row=>{const meta=typeof getItemAuctionMeta==='function'?getItemAuctionMeta(row):{};const group=CdcupTournamentData.parseStageGroups(configs,8)?.groups?.find(entry=>entry.code===meta.teamCode);return {...row,row:row.row||row.id,soldPrice:Number(row.soldPrice??row.sold_price)||0,vendorName:row.company||row.vendorName||'',teamName:group?.name||meta.teamCode||'',groupId:meta.teamCode||'',status:['완료','낙찰','sold'].includes(String(row.status||'').trim())?'sold':row.status}});
+    const sold=item=>CreoAuctionContract.isSoldStatus(item.status)||Number(item.soldPrice)>0;
+    const legacyRows=(rows,configs={})=>(rows||[]).map(row=>{const meta=typeof getItemAuctionMeta==='function'?getItemAuctionMeta(row):{};const group=CdcupTournamentData.parseStageGroups(configs,8)?.groups?.find(entry=>entry.code===meta.teamCode);return {...row,row:row.row||row.id,soldPrice:Number(row.soldPrice??row.sold_price)||0,vendorName:row.company||row.vendorName||'',teamName:group?.name||meta.teamCode||'',groupId:meta.teamCode||'',status:CreoAuctionContract.isSoldStatus(row.status)?'sold':row.status}});
     function boardMarkup(board){const rows=board.rows||[];return `<section class="board"><header><h3>${esc(board.name||'종합 순위표')}</h3><span>${esc(board.metric==='points'?'점수':board.metric==='soldCount'?'수량':'낙찰 금액')}</span></header><table><tbody>${rows.length?rows.map((row,index)=>`<tr><td>${index+1}</td><td><b>${esc(row.name||row.key||'-')}</b></td><td class="num">${number(row.total)}${esc(board.unit||'')}</td><td class="num">${Number(row.count)||0}건</td></tr>`).join(''):'<tr><td>집계 데이터 없음</td></tr>'}</tbody></table></section>`}
     function roundMarkup(configs,items){if(!isLegacy())return '';const amounts=CdcupTournamentData.buildRoundAmounts(configs||{},items||[]);const labels={16:'1라운드',8:'2라운드',4:'3라운드'};const cards=[16,8,4].map(stage=>{const rows=Object.entries(amounts[stage]||{}).sort((a,b)=>Number(b[1])-Number(a[1]));return `<section class="round"><h4>${labels[stage]}</h4><table><tbody>${rows.length?rows.map(([name,amount],index)=>`<tr><td>${index+1}</td><td>${esc(name)}</td><td class="num"><b>${number(amount)}만원</b></td></tr>`).join(''):'<tr><td>아직 입력된 결과가 없습니다.</td></tr>'}</tbody></table></section>`}).join('');return `<h3 class="subhead">라운드 정보</h3><div class="rounds">${cards}</div>`}
     function itemsMarkup(items){if(!items?.length)return '';return `<h3 class="subhead">회차 내역</h3><div class="table-wrap"><table><thead><tr><th>번호</th><th>업체</th><th>항목</th><th>상태</th><th class="num">낙찰가</th></tr></thead><tbody>${items.map(item=>`<tr><td>${Number(item.lotNumber??item.num)||'-'}</td><td>${esc(item.vendorName||item.company||'-')}</td><td>${esc(item.name||'-')}</td><td>${esc(item.status||'-')}</td><td class="num">${number(item.soldPrice??item.sold_price)}</td></tr>`).join('')}</tbody></table></div>`}

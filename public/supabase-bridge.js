@@ -86,7 +86,7 @@ function parseTournamentFinalists(configMap, items = []) {
         const itemStage = Number(meta.tournamentStage) || 0;
         if (meta.auctionType !== AUCTION_TYPES.TOURNAMENT
             || (itemStage !== 8 && !(activeStage === 8 && itemStage === 0))
-            || !['완료', 'sold', '낙찰'].includes(status)) return;
+            || !CreoAuctionContract.isSoldStatus(status)) return;
         const name = String(item?.company || '').trim();
         const amount = Number(String(item?.sold_price ?? item?.soldPrice ?? 0).replace(/[^0-9.-]/g, '')) || 0;
         totals[name] = (totals[name] || 0) + amount;
@@ -1602,7 +1602,7 @@ function _archiveWonAmount(row) {
 function _archiveSummary(snapshot) {
     const items = snapshot?.items || [];
     const activeStage = Number.parseInt(snapshot?.configs?.active_tournament, 10) || 0;
-    const sold = items.filter(item => ['완료', 'sold', '낙찰'].includes(String(item.status || '').trim()));
+    const sold = items.filter(item => CreoAuctionContract.isSoldStatus(item.status));
     const stageCounts = {};
     const roundAmounts = {};
     items.forEach(item => {
@@ -1616,7 +1616,7 @@ function _archiveSummary(snapshot) {
         if (company
             && meta.auctionType === AUCTION_TYPES.TOURNAMENT
             && [2, 4, 8, 16].includes(tournamentStage)
-            && ['완료', 'sold', '낙찰'].includes(String(item.status || '').trim())) {
+            && CreoAuctionContract.isSoldStatus(item.status)) {
             const stage = String(tournamentStage);
             if (!roundAmounts[stage]) roundAmounts[stage] = {};
             roundAmounts[stage][company] = (roundAmounts[stage][company] || 0) + _archiveWonAmount(item);

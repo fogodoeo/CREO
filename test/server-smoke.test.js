@@ -86,6 +86,11 @@ test('HTTP server exposes the CREO hub, survey assets, health, and membership co
     assert.match(scriptResponse.headers.get('content-type'), /^text\/javascript/);
     assert.match(scriptResponse.headers.get('cache-control'), /max-age=86400/);
 
+    const contractResponse = await fetch(`http://127.0.0.1:${port}/auction-contract.js`);
+    assert.equal(contractResponse.status, 200);
+    assert.match(contractResponse.headers.get('content-type'), /^text\/javascript/);
+    assert.match(await contractResponse.text(), /CreoAuctionContract/);
+
     const videoResponse = await fetch(`http://127.0.0.1:${port}/assets/crewarts-sealing-wax.mp4`, {
         headers: { Range: 'bytes=0-99' }
     });

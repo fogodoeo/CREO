@@ -1,8 +1,7 @@
 'use strict';
 
 const crypto = require('node:crypto');
-
-const SOLD_STATUSES = new Set(['완료', 'sold', '낙찰']);
+const AuctionContract = require('./public/auction-contract');
 
 function replyJson(res, status, value) {
     const payload = Buffer.from(JSON.stringify(value));
@@ -22,23 +21,8 @@ async function readJson(req) {
     try { return JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { return {}; }
 }
 
-function checklistMeta(row) {
-    const pairs = {};
-    String(row?.checklist || '').split('|').forEach((part) => {
-        const index = part.indexOf(':');
-        if (index > 0) pairs[part.slice(0, index)] = part.slice(index + 1);
-    });
-    return {
-        auctionType: String(pairs._auction || '').toLowerCase(),
-        tournamentStage: Number.parseInt(pairs._stage, 10) || 0,
-        tournamentCode: String(pairs._slot || '').trim().toUpperCase(),
-        teamCode: String(pairs._team || '').trim().toUpperCase(),
-        publicNumber: Number.parseInt(pairs._label, 10) || 0
-    };
-}
-
 function soldAmount(row) {
-    return Number.parseFloat(String(row?.sold_price ?? '').replace(/[^0-9.-]/g, '')) || 0;
+    return AuctionContract.parseAmount(row?.sold_price);
 }
 
 function parseGroups(configMap) {
@@ -85,9 +69,9 @@ function roundTwoFinalists(configMap, items) {
     const totals = {};
     let soldCount = 0;
     for (const item of items || []) {
-        const meta = checklistMeta(item);
+        const meta = AuctionContract.checklistMeta(item);
         const stage = meta.tournamentStage || (meta.auctionType === 'tournament' ? activeStage : 0);
-        if (meta.auctionType !== 'tournament' || stage !== 8 || !SOLD_STATUSES.has(String(item.status || '').trim())) continue;
+        if (meta.auctionType !== 'tournament' || stage !== 8 || !AuctionContract.isSoldStatus(item.status)) continue;
         const company = String(item.company || '').trim();
         if (!company) continue;
         totals[company] = (totals[company] || 0) + soldAmount(item);
@@ -126,13 +110,14 @@ function reseedRoundThreeFinalists(configMap) {
 function roundThreeSnapshot(configMap) {
     try {
         const parsed = JSON.parse(configMap.tournament_finalists_4 || 'null');
-        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return { runId: '', entrants: [] };
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return { runId: '', sourceArchiveId: '', entrants: [] };
         return {
             runId: String(parsed.runId || parsed.sourceArchiveId || '').trim(),
+            sourceArchiveId: String(parsed.sourceArchiveId || '').trim(),
             entrants: Array.isArray(parsed.entrants) ? parsed.entrants : []
         };
     } catch {
-        return { runId: '', entrants: [] };
+        return { runId: '', sourceArchiveId: '', entrants: [] };
     }
 }
 
@@ -171,10 +156,10 @@ function roundThreeAuctionItems(finalists) {
 }
 
 function validateExistingRoundThreeItems(items, expected) {
-    const expectedByCode = new Map(expected.map((item) => [checklistMeta(item).tournamentCode, item]));
+    const expectedByCode = new Map(expected.map((item) => [AuctionContract.checklistMeta(item).tournamentCode, item]));
     const existingByCode = new Map();
     for (const item of items || []) {
-        const meta = checklistMeta(item);
+        const meta = AuctionContract.checklistMeta(item);
         if (meta.auctionType !== 'tournament' || meta.tournamentStage !== 4 || !expectedByCode.has(meta.tournamentCode)) {
             throw new Error('현재 목록에 3라운드 외 개체가 남아 있습니다. 이전 회차 개체를 먼저 별도 보관해 주세요.');
         }
@@ -203,11 +188,11 @@ function archiveSummary(snapshot) {
     const roundAmounts = {};
     const sold = [];
     for (const item of snapshot.items) {
-        const meta = checklistMeta(item);
+        const meta = AuctionContract.checklistMeta(item);
         const stage = meta.tournamentStage || (meta.auctionType === 'tournament' ? activeStage : 0);
         const label = meta.auctionType === 'tournament' ? (stage ? `${stage}강` : '토너먼트') : (meta.auctionType || '기타');
         stageCounts[label] = (stageCounts[label] || 0) + 1;
-        if (!SOLD_STATUSES.has(String(item.status || '').trim())) continue;
+        if (!AuctionContract.isSoldStatus(item.status)) continue;
         sold.push(item);
         const company = String(item.company || '').trim();
         if (meta.auctionType === 'tournament' && [2, 4, 8, 16].includes(stage) && company) {
@@ -227,6 +212,24 @@ function archiveSummary(snapshot) {
     };
 }
 
+// The legacy CDCUP workspace shares the config table with other channels and
+// services. Only keys that the public CDCUP broadcast/control pages consume may
+// cross this unauthenticated endpoint boundary.
+function isPublicCdcupConfigKey(key) {
+    const value = String(key || '').trim();
+    if (!value) return false;
+    if (new Set([
+        'active_event_module',
+        'active_tournament',
+        'auction_animation_enabled',
+        'badge_text',
+        'hiddenPhotos',
+        'runtime_config_version',
+        'ticker'
+    ]).has(value)) return true;
+    return /^(?:banner(?:\d+|_)|battle_|blind_totals_|bracket_|event_|host_|live_|nametag(?:\d+|_)|p2_|p3_|page2_|rule(?:\d+|s_)|scoreboard_|team_logo\d+|ticker_|tournament_)/.test(value);
+}
+
 function createCdcupRoundsApi({ repository, isAdmin }) {
     if (!repository || typeof repository.request !== 'function' || typeof repository.upsertRows !== 'function') {
         throw new Error('CDCUP rounds repository is required');
@@ -237,11 +240,13 @@ function createCdcupRoundsApi({ repository, isAdmin }) {
         if (url.pathname === '/api/cdcup/rounds/public-state' && req.method === 'GET') {
             const [items, configRows] = await Promise.all([
                 repository.request('items?select=id,company,num,name,start_price,note,announce,status,sold_price,winner,start_time,bid_log,checklist,checklist_parsed,sire_id,dam_id,shipping_type,shipping_company,shipping_region,shipping_cost,updated_at&order=num.asc'),
-                repository.request('config?select=key,value&and=(key.neq.admin_pw,key.not.like.shipping_log_*,key.not.like.shipping_rate_*,key.not.like.auction_archive_*)')
+                repository.request('config?select=key,value')
             ]);
             replyJson(res, 200, {
                 items: items || [],
-                config: Object.fromEntries((configRows || []).map((row) => [row.key, row.value]))
+                config: Object.fromEntries((configRows || [])
+                    .filter((row) => isPublicCdcupConfigKey(row.key))
+                    .map((row) => [row.key, row.value]))
             });
             return true;
         }
@@ -273,7 +278,7 @@ function createCdcupRoundsApi({ repository, isAdmin }) {
             try {
                 const planned = roundThreeAuctionItems(finalists);
                 const existing = validateExistingRoundThreeItems(items || [], planned);
-                const missing = planned.filter((item) => !existing.has(checklistMeta(item).tournamentCode));
+                const missing = planned.filter((item) => !existing.has(AuctionContract.checklistMeta(item).tournamentCode));
                 const savedSnapshot = roundThreeSnapshot(configMap);
                 const activeRunId = String(configMap.tournament_run_id_4 || '').trim();
                 if (missing.length && (!activeRunId || savedSnapshot.runId !== activeRunId)) {
@@ -308,13 +313,23 @@ function createCdcupRoundsApi({ repository, isAdmin }) {
         if (url.pathname === '/api/cdcup/rounds/reseed-three') {
             const configRows = await repository.request('config?select=key,value');
             const configMap = Object.fromEntries((configRows || []).map((row) => [row.key, row.value]));
+            const snapshot = roundThreeSnapshot(configMap);
+            const activeRunId = String(configMap.tournament_run_id_4 || '').trim();
+            if (!activeRunId || snapshot.runId !== activeRunId) {
+                replyJson(res, 409, { error: '현재 3라운드 회차 ID와 진출 명단이 일치하지 않아 재배정하지 않습니다.' });
+                return true;
+            }
             const finalists = reseedRoundThreeFinalists(configMap);
             if (finalists.length !== 8) {
                 replyJson(res, 409, { error: '저장된 3라운드 진출 업체 8곳을 다시 배정하지 못했습니다.' });
                 return true;
             }
             await repository.upsertRows([
-                { key: 'tournament_finalists_4', value: JSON.stringify({ entrants: finalists }) },
+                { key: 'tournament_finalists_4', value: JSON.stringify({
+                    runId: activeRunId,
+                    sourceArchiveId: snapshot.sourceArchiveId || activeRunId,
+                    entrants: finalists
+                }) },
                 { key: 'runtime_config_version', value: `${Date.now().toString(36)}-${crypto.randomBytes(4).toString('hex')}` }
             ]);
             replyJson(res, 200, {

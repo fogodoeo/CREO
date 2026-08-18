@@ -6,11 +6,6 @@ const { DEFAULT_CHANNELS, channelKey, normalizeChannel, normalizeChannelId } = r
 const CATALOG_KEY = 'creo_v2::catalog';
 const ACTIVE_CHANNEL_KEY = 'creo_v2::active_channel';
 const ALLOWED_RECORD_TYPES = new Set(['vendor', 'item', 'shipment', 'setting', 'broadcast', 'asset', 'archive', 'capture']);
-const FALLBACK_SUPABASE_URL = 'https://iuwqjeecwepqyqqlzprf.supabase.co';
-const FALLBACK_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml1d3FqZWVjd2VwcXlxcWx6cHJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyMTA3OTIsImV4cCI6MjA5Nzc4Njc5Mn0.psiAk4cqzjHqT6gP46m6nQM97nNsLEgc-a7K8BEAd_Y';
-
-const DEFAULT_ADMIN_SECRET = '1234';
-
 function jsonParse(value, fallback = null) {
     try { return JSON.parse(value); } catch { return fallback; }
 }
@@ -43,20 +38,21 @@ function readStoredValue(key, stored, secret) {
 
 class SupabaseConfigRepository {
     constructor(options = {}) {
-        this.url = String(options.url || process.env.SUPABASE_URL || FALLBACK_SUPABASE_URL).replace(/\/$/, '');
+        this.url = String(options.url || process.env.SUPABASE_URL || '').replace(/\/$/, '');
         this.key = String(
             options.key
             || process.env.SUPABASE_SERVICE_ROLE_KEY
             || process.env.SUPABASE_ANON_KEY
-            || FALLBACK_SUPABASE_ANON_KEY
+            || ''
         );
         this.fetch = options.fetchImpl || globalThis.fetch;
-        this.adminSecret = String(options.adminSecret || process.env.CREO_ADMIN_SECRET || DEFAULT_ADMIN_SECRET);
+        this.adminSecret = String(options.adminSecret || process.env.CREO_ADMIN_SECRET || '');
         this.integritySecret = String(options.integritySecret || process.env.CREO_DATA_SIGNING_SECRET || this.adminSecret);
         if (!this.fetch) throw new Error('fetch is required');
     }
 
     async request(pathname, options = {}) {
+        if (!this.url || !this.key) throw new Error('Supabase server credentials are not configured');
         const response = await this.fetch(`${this.url}/rest/v1/${pathname}`, {
             ...options,
             headers: {
@@ -212,7 +208,7 @@ class SupabaseConfigRepository {
 
     async health() {
         const catalog = await this.getCatalog();
-        return { ok: true, channels: catalog.channels.length, catalogVersion: catalog.version };
+        return { ok: true, channels: catalog.channels.length, catalogVersion: catalog.version, adminConfigured: Boolean(this.adminSecret) };
     }
 }
 

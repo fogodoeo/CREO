@@ -148,6 +148,22 @@ test('shared workspace builds real select fields for channel groups and auction 
     assert.doesNotMatch(workspace, /setLive[\s\S]{0,500}broadcast-state/);
 });
 
+test('operational pages load the shared auction contract before legacy data scripts', () => {
+    const files = fs.readdirSync(path.join(__dirname, '..', 'public')).filter((file) => file.endsWith('.html'));
+    for (const file of files) {
+        const source = fs.readFileSync(path.join(__dirname, '..', 'public', file), 'utf8');
+        const dependentIndexes = [
+            source.indexOf('supabase-bridge.js'),
+            source.indexOf('event-modules.js'),
+            source.indexOf('cdcup-tournament-data.js')
+        ].filter((index) => index >= 0);
+        if (!dependentIndexes.length) continue;
+        const contractIndex = source.indexOf('auction-contract.js');
+        assert.ok(contractIndex >= 0, `${file} must load auction-contract.js`);
+        assert.ok(dependentIndexes.every((index) => contractIndex < index), `${file} must load the contract first`);
+    }
+});
+
 test('every non-survey operational page has a real document title', () => {
     const pages = fs.readdirSync(path.join(__dirname, '..', 'public'))
         .filter((name) => name.endsWith('.html') && !name.startsWith('crewart-survey'));

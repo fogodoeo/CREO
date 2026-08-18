@@ -7,6 +7,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
+    <script src="auction-contract.js?v=20260819-contract-v1"></script>
     <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
     <style>
         @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
@@ -567,9 +568,9 @@
         function buildResultRow(it, showCompany) {
             var st = it.status || '';
             var statusCls = '', statusText = '';
-            if (st.indexOf('낙찰') >= 0) { statusCls = 'status-sold'; statusText = '낙찰'; }
-            else if (st.indexOf('유찰') >= 0) { statusCls = 'status-unsold'; statusText = '유찰'; }
-            else if (st.indexOf('취소') >= 0) { statusCls = 'status-unsold'; statusText = '취소'; }
+            if (CreoAuctionContract.isSoldStatus(st)) { statusCls = 'status-sold'; statusText = '낙찰'; }
+            else if (CreoAuctionContract.normalizeStatus(st) === CreoAuctionContract.STATUS.PASSED) { statusCls = 'status-unsold'; statusText = '유찰'; }
+            else if (CreoAuctionContract.normalizeStatus(st) === CreoAuctionContract.STATUS.CANCELLED) { statusCls = 'status-unsold'; statusText = '취소'; }
             else if (st.indexOf('진행') >= 0) { statusCls = ''; statusText = '진행중'; }
             var w = parseWinner(it.winner);
             var shortName = truncatePrintName(it.name, 10);
@@ -590,8 +591,8 @@
         function renderAll(items) {
             var today = new Date();
             var dateStr = today.getFullYear() + '.' + (today.getMonth() + 1) + '.' + today.getDate();
-            var sold = items.filter(function (it) { return it.status && it.status.indexOf('낙찰') >= 0; });
-            var unsold = items.filter(function (it) { return it.status && it.status.indexOf('유찰') >= 0; });
+            var sold = items.filter(function (it) { return CreoAuctionContract.isSoldStatus(it.status); });
+            var unsold = items.filter(function (it) { return CreoAuctionContract.normalizeStatus(it.status) === CreoAuctionContract.STATUS.PASSED; });
             var totalSales = 0;
             sold.forEach(function (it) { totalSales += parseFloat(it.soldPrice || 0) || 0; });
 
@@ -737,7 +738,7 @@
             var companyOrder = window._companyOrder || [];
 
             // 전화번호 기준 구매자 그룹핑
-            var soldItems = items.filter(function (it) { return it.status && it.status.indexOf('낙찰') >= 0; });
+            var soldItems = items.filter(function (it) { return CreoAuctionContract.isSoldStatus(it.status); });
             var buyerMap = {};
             soldItems.forEach(function (it) {
                 var w = parseWinner(it.winner);
@@ -814,7 +815,7 @@
                 var list = companyMap[company] || [];
                 if (list.length === 0) return;
 
-                var companySold = list.filter(function (it) { return it.status && it.status.indexOf('낙찰') >= 0; });
+                var companySold = list.filter(function (it) { return CreoAuctionContract.isSoldStatus(it.status); });
                 var companySales = 0;
                 companySold.forEach(function (it) { companySales += parseFloat(it.soldPrice || 0) || 0; });
 
@@ -837,9 +838,9 @@
 
                     var st = it.status || '';
                     var statusCls = '', statusText = '';
-                    if (st.indexOf('낙찰') >= 0) { statusCls = 'status-sold'; statusText = '낙찰'; }
-                    else if (st.indexOf('유찰') >= 0) { statusCls = 'status-unsold'; statusText = '유찰'; }
-                    else if (st.indexOf('취소') >= 0) { statusCls = 'status-unsold'; statusText = '취소'; }
+                    if (CreoAuctionContract.isSoldStatus(st)) { statusCls = 'status-sold'; statusText = '낙찰'; }
+                    else if (CreoAuctionContract.normalizeStatus(st) === CreoAuctionContract.STATUS.PASSED) { statusCls = 'status-unsold'; statusText = '유찰'; }
+                    else if (CreoAuctionContract.normalizeStatus(st) === CreoAuctionContract.STATUS.CANCELLED) { statusCls = 'status-unsold'; statusText = '취소'; }
 
                     chtml += '<tr' + (clsList.length ? ' class="' + clsList.join(' ') + '"' : '') + ' data-phone="' + phone + '">';
                     if (idx === 0) {

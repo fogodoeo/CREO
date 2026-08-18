@@ -8,6 +8,7 @@ const vm = require('node:vm');
 
 function loadTournamentData() {
     const window = {
+        CreoAuctionContract: require('../public/auction-contract'),
         getItemAuctionMeta(item) {
             const stage = String(item.checklist || '').match(/_stage:([^|]+)/)?.[1] || '';
             return { auctionType: 'tournament', tournamentStage: Number.parseInt(stage, 10) || 0 };

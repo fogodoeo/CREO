@@ -63,7 +63,14 @@ test('public round state exposes broadcast fields without admin or archive secre
     const repository = {
         async request(path) {
             if (path.startsWith('items?select=')) return [{ id: 1, company: '업체A', status: '대기' }];
-            if (path.startsWith('config?select=')) return [{ key: 'active_tournament', value: '4' }];
+            if (path.startsWith('config?select=')) return [
+                { key: 'active_tournament', value: '4' },
+                { key: 'tournament_run_id_4', value: 'current-run' },
+                { key: 'crewart_survey_response_entry_private', value: '{"phone":"010"}' },
+                { key: 'creo_v2::another-channel::item::1', value: '{"name":"other"}' },
+                { key: 'shipping_log_1', value: '{"address":"private"}' },
+                { key: 'admin_pw', value: 'secret' }
+            ];
             throw new Error(`unexpected request ${path}`);
         },
         async upsertRows() {}
@@ -76,8 +83,46 @@ test('public round state exposes broadcast fields without admin or archive secre
     assert.equal(status, 200);
     assert.deepEqual(JSON.parse(body), {
         items: [{ id: 1, company: '업체A', status: '대기' }],
-        config: { active_tournament: '4' }
+        config: { active_tournament: '4', tournament_run_id_4: 'current-run' }
     });
+});
+
+test('round-three reseed keeps the current run binding and refuses an unbound historical snapshot', async () => {
+    const entrants = Array.from({ length: 8 }, (_, index) => ({ member: `업체${index + 1}` }));
+    const writes = [];
+    let configRows = [
+        { key: 'tournament_run_id_4', value: 'run-current' },
+        { key: 'tournament_finalists_4', value: JSON.stringify({ runId: 'run-current', sourceArchiveId: 'archive-current', entrants }) },
+        { key: 'tournament_round_amounts_8', value: '{}' }
+    ];
+    const repository = {
+        async request(path) {
+            if (path.startsWith('config?select=')) return configRows;
+            throw new Error(`unexpected request ${path}`);
+        },
+        async upsertRows(rows) { writes.push(...rows); }
+    };
+    const api = createCdcupRoundsApi({ repository, isAdmin: async () => true });
+    let status = 0;
+    let body = '';
+    const response = { writeHead(value) { status = value; }, end(value) { body = Buffer.from(value || '').toString('utf8'); } };
+
+    await api.handle({ method: 'POST', headers: {} }, response, new URL('https://example.test/api/cdcup/rounds/reseed-three'));
+    assert.equal(status, 200);
+    const saved = JSON.parse(writes.find((row) => row.key === 'tournament_finalists_4').value);
+    assert.equal(saved.runId, 'run-current');
+    assert.equal(saved.sourceArchiveId, 'archive-current');
+
+    configRows = [
+        { key: 'tournament_run_id_4', value: 'run-new' },
+        { key: 'tournament_finalists_4', value: JSON.stringify({ runId: 'run-old', entrants }) },
+        { key: 'tournament_round_amounts_8', value: '{}' }
+    ];
+    status = 0;
+    body = '';
+    await api.handle({ method: 'POST', headers: {} }, response, new URL('https://example.test/api/cdcup/rounds/reseed-three'));
+    assert.equal(status, 409);
+    assert.match(JSON.parse(body).error, /회차 ID/);
 });
 
 test('round transition archives before deleting and prepares an anonymous eight-person final', async () => {

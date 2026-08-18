@@ -1,13 +1,10 @@
 (function (global) {
     'use strict';
 
-    const SOLD_STATUSES = new Set(['완료', 'sold', '낙찰']);
+    const AuctionContract = global.CreoAuctionContract;
+    if (!AuctionContract) throw new Error('auction-contract.js must load before cdcup-tournament-data.js');
     const ROUND_SCALES = Object.freeze([16, 8, 4, 2]);
-
-    function parseAmount(value) {
-        const normalized = String(value ?? '').replace(/,/g, '').replace(/[^0-9.-]/g, '');
-        return Number.parseFloat(normalized) || 0;
-    }
+    const parseAmount = AuctionContract.parseAmount;
 
     function parseBracket(map, scale) {
         try {
@@ -18,22 +15,10 @@
         }
     }
 
-    function checklistMeta(item) {
-        const pairs = {};
-        String(item?.checklist || '').split('|').forEach(part => {
-            const index = part.indexOf(':');
-            if (index > 0) pairs[part.slice(0, index)] = part.slice(index + 1);
-        });
-        return {
-            auctionType: String(pairs._auction || '').toLowerCase(),
-            tournamentStage: Number.parseInt(pairs._stage, 10) || 0
-        };
-    }
-
     function itemMeta(item) {
         return typeof global.getItemAuctionMeta === 'function'
             ? global.getItemAuctionMeta(item || {})
-            : checklistMeta(item);
+            : AuctionContract.checklistMeta(item);
     }
 
     function isTournamentItem(item) {
@@ -42,7 +27,7 @@
     }
 
     function isSoldItem(item) {
-        return SOLD_STATUSES.has(String(item?.status || '').trim());
+        return AuctionContract.isSoldStatus(item?.status);
     }
 
     function storedWinner(match) {

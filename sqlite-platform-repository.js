@@ -8,8 +8,6 @@ const { DEFAULT_CHANNELS, channelKey, normalizeChannel, normalizeChannelId } = r
 const { CATALOG_KEY, ACTIVE_CHANNEL_KEY } = require('./platform-repository');
 
 const RECORD_TYPES = new Set(['vendor', 'item', 'shipment', 'setting', 'broadcast', 'asset', 'archive', 'capture']);
-const DEFAULT_ADMIN_SECRET = '1234';
-
 function parseJson(value, fallback = null) {
     try { return JSON.parse(value); } catch { return fallback; }
 }
@@ -24,7 +22,7 @@ class SQLitePlatformRepository {
     constructor(options = {}) {
         this.dataDir = path.resolve(options.dataDir || process.env.CREO_DATA_DIR || path.join(__dirname, 'storage'));
         this.dbPath = path.resolve(options.dbPath || path.join(this.dataDir, 'creo-platform.sqlite'));
-        this.adminSecret = String(options.adminSecret || process.env.CREO_ADMIN_SECRET || DEFAULT_ADMIN_SECRET);
+        this.adminSecret = String(options.adminSecret || process.env.CREO_ADMIN_SECRET || '');
         this.mirror = options.mirror || null;
         this.durable = options.durable ?? Boolean(process.env.CREO_DATA_DIR);
         this.outboxTimer = null;
@@ -307,6 +305,7 @@ class SQLitePlatformRepository {
             backend: 'sqlite',
             durable: this.durable,
             databasePath: this.dbPath,
+            adminConfigured: Boolean(this.adminSecret),
             channels: (await this.getCatalog()).channels.length,
             catalogVersion: (await this.getCatalog()).version,
             outboxPending: Number(this.statements.outboxCount.get().count || 0),

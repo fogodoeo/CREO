@@ -8,6 +8,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
+    <script src="auction-contract.js?v=20260819-contract-v1"></script>
     <script src="supabase-bridge.js?v=20260819-round3-seed-v2"></script>
     <script src="event-modules.js?v=20260806-vendor-title"></script>
     <script src="assets/vendor/xlsx.mini.min.js?v=0.18.5"></script>
@@ -3766,20 +3767,20 @@
         }
 
         function getStatusClass(s) {
-            s = (s || '').toString();
-            if (s.indexOf('진행') >= 0 || s.indexOf('경매') >= 0) return 'st-active';
-            if (s.indexOf('낙찰') >= 0) return 'st-sold';
-            if (s.indexOf('유찰') >= 0) return 'st-fail';
-            if (s.indexOf('취소') >= 0) return 'st-cancel';
+            const normalized = CreoAuctionContract.normalizeStatus(s);
+            if (normalized === CreoAuctionContract.STATUS.LIVE) return 'st-active';
+            if (normalized === CreoAuctionContract.STATUS.SOLD) return 'st-sold';
+            if (normalized === CreoAuctionContract.STATUS.PASSED) return 'st-fail';
+            if (normalized === CreoAuctionContract.STATUS.CANCELLED) return 'st-cancel';
             return 'st-wait';
         }
 
         function getStatusColor(s) {
-            s = (s || '').toString();
-            if (s.indexOf('진행') >= 0 || s.indexOf('경매') >= 0) return '#0A84FF';
-            if (s.indexOf('낙찰') >= 0) return '#30D158';
-            if (s.indexOf('유찰') >= 0) return '#FF9F0A';
-            if (s.indexOf('취소') >= 0) return '#FF453A';
+            const normalized = CreoAuctionContract.normalizeStatus(s);
+            if (normalized === CreoAuctionContract.STATUS.LIVE) return '#0A84FF';
+            if (normalized === CreoAuctionContract.STATUS.SOLD) return '#30D158';
+            if (normalized === CreoAuctionContract.STATUS.PASSED) return '#FF9F0A';
+            if (normalized === CreoAuctionContract.STATUS.CANCELLED) return '#FF453A';
             return '#8E8E93';
         }
 
@@ -4893,8 +4894,8 @@
         }
 
         function renderPrint(items) {
-            var sold = items.filter(function (it) { return it.status && it.status.indexOf('낙찰') >= 0; });
-            var unsold = items.filter(function (it) { return it.status && it.status.indexOf('유찰') >= 0; });
+            var sold = items.filter(function (it) { return CreoAuctionContract.isSoldStatus(it.status); });
+            var unsold = items.filter(function (it) { return CreoAuctionContract.normalizeStatus(it.status) === CreoAuctionContract.STATUS.PASSED; });
             var total = 0; sold.forEach(function (it) { total += parseFloat(it.soldPrice || 0) || 0; });
             var today = new Date(); var dateStr = today.getFullYear() + '.' + String(today.getMonth() + 1).padStart(2, '0') + '.' + String(today.getDate()).padStart(2, '0');
 
@@ -5122,7 +5123,7 @@
             selectedCo = selectedCompanies[0] || '';
 
             // 전체 낙찰 통계
-            var allSold = items.filter(function (it) { return it.status && it.status.indexOf('낙찰') >= 0; });
+            var allSold = items.filter(function (it) { return CreoAuctionContract.isSoldStatus(it.status); });
             var totalAmt = 0; allSold.forEach(function (it) { totalAmt += parseFloat(it.soldPrice || 0) || 0; });
 
             // 메타 업데이트
@@ -5174,7 +5175,7 @@
                 sold.forEach(function (it) {
                     var w = parseWinnerP(it.winner);
                     var st = it.status || '';
-                    var sx = st.indexOf('낙찰') >= 0 ? '낙찰' : st;
+                    var sx = CreoAuctionContract.isSoldStatus(st) ? '낙찰' : st;
                     var shortName = truncatePrintListName(it.name, 10);
                     ch += '<tr class="pc-selected-row">';
                     ch += '<td class="pnum">' + auctionNumber(it) + '</td>';
@@ -5267,7 +5268,7 @@
                     var isOtherCo = selectedCo && co !== selectedCo;
 
                     var st = it.status || '', sc = '', sx = '';
-                    if (st.indexOf('낙찰') >= 0) { sc = 'color:#C84A31;'; sx = '낙찰'; }
+                    if (CreoAuctionContract.isSoldStatus(st)) { sc = 'color:#C84A31;'; sx = '낙찰'; }
 
                     var cls = '';
                     if (isOtherCo) cls += 'pc-other-row';

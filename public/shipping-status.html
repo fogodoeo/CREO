@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <title>배송 등록 조회 | CREO</title>
+    <script src="auction-contract.js?v=20260819-contract-v1"></script>
     <script src="platform-client.js?v=20260803-admin-session-v2"></script>
     <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
     <script src="channel-adapters.js?v=20260813-modular-v1"></script>
@@ -414,7 +415,7 @@
         function showToast(text){const t=document.getElementById('toast');t.textContent=text;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2400);}
         async function loadData() {
             document.getElementById('loading').style.display='grid';
-            try { const adapter=await ensureShippingAdapter();const [items, logs]=await Promise.all([adapter.loadShippingItems(shippingAdapterContext), adapter.id==='legacy-cdcup'&&typeof getShippingAuditLogs==='function'?getShippingAuditLogs(120):Promise.resolve([])]); auditLogs=logs||[]; soldItems=(items||[]).filter(i=>String(i.status||'').includes('낙찰')||i.status==='sold'||Number(i.soldPrice||i.sold_price)>0); buildGroups(); buildCompanyGroups(); renderStats(); renderWinnerDirectory(''); renderCompanies(''); renderAuditLogs(); openMode(activeMode,true); }
+            try { const adapter=await ensureShippingAdapter();const [items, logs]=await Promise.all([adapter.loadShippingItems(shippingAdapterContext), adapter.id==='legacy-cdcup'&&typeof getShippingAuditLogs==='function'?getShippingAuditLogs(120):Promise.resolve([])]); auditLogs=logs||[]; soldItems=(items||[]).filter(i=>CreoAuctionContract.isSoldStatus(i.status)||Number(i.soldPrice||i.sold_price)>0); buildGroups(); buildCompanyGroups(); renderStats(); renderWinnerDirectory(''); renderCompanies(''); renderAuditLogs(); openMode(activeMode,true); }
             catch(e){ console.error(e); document.getElementById('mode-'+activeMode).innerHTML='<div class="empty">데이터를 불러오지 못했습니다.</div>'; }
             finally { document.getElementById('loading').style.display='none'; }
         }

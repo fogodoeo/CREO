@@ -6,6 +6,8 @@
 })(typeof window !== 'undefined' ? window : globalThis, function (root) {
     'use strict';
 
+    const AuctionContract = root.CreoAuctionContract || (typeof require === 'function' ? require('./auction-contract') : null);
+    if (!AuctionContract) throw new Error('auction-contract.js must load before channel-adapters.js');
     const registry = new Map();
     const api = () => {
         if (!root.CreoPlatform?.api) throw new Error('CREO platform client is not available');
@@ -21,11 +23,7 @@
     }
 
     function legacyStatus(value) {
-        const status = String(value || '');
-        if (status.includes('낙찰')) return 'sold';
-        if (status.includes('진행')) return 'live';
-        if (status.includes('유찰')) return 'passed';
-        return 'waiting';
+        return AuctionContract.normalizeStatus(value);
     }
 
     function legacyWorkspace(channel, rows) {
@@ -59,7 +57,7 @@
     function platformShippingItems(workspace) {
         const vendors = new Map((workspace.vendors || []).map(vendor => [vendor.id, vendor]));
         const shipments = new Map((workspace.shipments || []).map(shipment => [shipment.itemId, shipment]));
-        return (workspace.items || []).filter(item => item.status === 'sold' || Number(item.soldPrice) > 0).map(item => {
+        return (workspace.items || []).filter(item => AuctionContract.isSoldStatus(item.status) || Number(item.soldPrice) > 0).map(item => {
             const shipment = shipments.get(item.id);
             return {
                 ...item, row: item.id, num: item.lotNumber, company: vendors.get(item.vendorId)?.name || item.vendorName || '', name: item.name || '개체',
