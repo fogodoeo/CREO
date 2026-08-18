@@ -78,6 +78,14 @@ test('channel builder configuration normalizes reusable groups, scoreboards, and
     assert.equal(channel.pages.unsafe, undefined);
 });
 
+test('brushed metal is a reusable channel overlay skin', () => {
+    const channel = normalizeChannel({
+        id: 'metal-auction', name: 'Metal Auction', overlay: { skin: 'metal', layout: 'balanced' }
+    });
+    assert.equal(channel.overlay.skin, 'metal');
+    assert.equal(channel.overlay.layout, 'balanced');
+});
+
 test('core archive and ranking routes cannot be replaced by channel page overrides', () => {
     const channel = normalizeChannel({
         id: 'route-test', name: 'Route Test',

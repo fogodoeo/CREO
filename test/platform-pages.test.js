@@ -148,6 +148,7 @@ test('shared workspace builds real select fields for channel groups and auction 
 
 test('the new broadcast implements three independent camera overlays', () => {
     const live = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-live.html'), 'utf8');
+    const metal = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-skin-metal.css'), 'utf8');
     assert.match(live, /1P · HOST/);
     assert.match(live, /2P · ITEM/);
     assert.match(live, /LIVE AUCTION TOTAL/);
@@ -164,6 +165,11 @@ test('the new broadcast implements three independent camera overlays', () => {
     assert.match(live, /function scoreboardRows\(channel,items,board\)/);
     assert.match(live, /function boardValue\(row,board,unit\)/);
     assert.match(live, /function placed\(value\)/);
+    assert.match(live, /auction-skin-metal\.css/);
+    assert.match(metal, /body\[data-skin="metal"\] \.host-card/);
+    assert.match(metal, /body\[data-skin="metal"\] \.item-copy/);
+    assert.match(metal, /body\[data-skin="metal"\] \.sold-notice/);
+    assert.match(metal, /--brand-spectrum/);
     assert.match(live, /data-pos/);
     assert.match(live, /data-zone/);
     assert.match(live, /팀별 낙찰금액/);
