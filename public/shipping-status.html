@@ -125,7 +125,7 @@
 <body>
     <main class="app">
         <header class="hero">
-            <nav class="topbar"><h1>전체조회</h1><button class="refresh" type="button" onclick="reloadData(this)">새로고침</button></nav>
+            <nav class="topbar"><h1 id="shipping-status-title">전체조회</h1><button class="refresh" type="button" onclick="reloadData(this)">새로고침</button></nav>
             <div class="stats" id="stats"></div>
         </header>
 
@@ -186,7 +186,15 @@
             const channel = (await CreoPlatform.api(`channels/${encodeURIComponent(SHIPPING_CHANNEL_ID)}`)).channel;
             shippingAdapter = CreoChannelAdapters.resolve(channel);
             shippingAdapterContext = { channel };
+            syncShippingChannelUi(channel);
             return shippingAdapter;
+        }
+
+        function syncShippingChannelUi(channel) {
+            const label = String(channel?.name || SHIPPING_CHANNEL_ID).trim();
+            const title = document.getElementById('shipping-status-title');
+            if (title) title.textContent = `${label} 전체조회`;
+            document.title = `${label} · 배송 조회`;
         }
 
         async function syncAdminNavigation() {

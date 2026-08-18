@@ -2455,7 +2455,7 @@
         <!-- 낙찰자 셀프서비스 입력 레이아웃 (?buyer=1 모드) -->
         <div id="buyer-view" style="display: none; width: 100%;">
             <div class="header">
-                <h1>낙찰 배송 정보 등록</h1>
+                <h1 id="shipping-buyer-title">낙찰 배송 정보 등록</h1>
                 <p>성함과 연락처를 입력해 배송지 또는 수령 방식을 직접 신청해 주세요.</p>
             </div>
 
@@ -2861,6 +2861,7 @@
             const channel = (await CreoPlatform.api(`channels/${encodeURIComponent(SHIPPING_CHANNEL_ID)}`)).channel;
             shippingAdapter = CreoChannelAdapters.resolve(channel);
             shippingAdapterContext = { channel };
+            syncShippingChannelUi(channel);
             return shippingAdapter;
         }
 
@@ -3050,12 +3051,15 @@
             }
         }, 5000);
 
-        function syncShippingChannelUi() {
-            const label = SHIPPING_CHANNEL_ID.toUpperCase();
+        function syncShippingChannelUi(channel = shippingAdapterContext?.channel) {
+            const label = String(channel?.name || SHIPPING_CHANNEL_ID).trim();
             const channelLabel = document.getElementById('shipping-channel-label');
             const dialogTitle = document.getElementById('shipping-company-dialog-title');
+            const buyerTitle = document.getElementById('shipping-buyer-title');
             if (channelLabel) channelLabel.textContent = `${label} 배송관리`;
             if (dialogTitle) dialogTitle.textContent = `${label} 배송관리`;
+            if (buyerTitle) buyerTitle.textContent = `${label} 배송 정보 등록`;
+            document.title = `${label} · 배송관리`;
             document.querySelectorAll('.app-bottom-nav a').forEach(link => {
                 const url = new URL(link.getAttribute('href'), window.location.href);
                 url.searchParams.set('channel', SHIPPING_CHANNEL_ID);

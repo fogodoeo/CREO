@@ -244,6 +244,9 @@ test('new CDCUP overlays and shipping retain compatibility with the established 
     assert.match(shipping, /saveShippingItem/);
     assert.match(shipping, /SHIPPING_COMPANY_STORAGE_KEY/);
     assert.match(shipping, /id="shipping-channel-home"/);
+    assert.match(shipping, /channel\?\.name \|\| SHIPPING_CHANNEL_ID/);
+    assert.match(shipping, /document\.title = `\$\{label\} · 배송관리`/);
+    assert.match(shipping, /id="shipping-buyer-title"/);
     assert.doesNotMatch(shipping, /id="shipping-workspace-link"/);
     assert.match(shipping, /if \(!SHIPPING_CHANNEL_ID\) location\.replace\('\/'\)/);
     assert.doesNotMatch(shipping, /get\('channel'\) \|\| 'cdcup'/);
@@ -254,6 +257,8 @@ test('new CDCUP overlays and shipping retain compatibility with the established 
     assert.match(shippingStatus, /id="mode-company"/);
     assert.match(shippingStatus, /function renderCompanies/);
     assert.match(shippingStatus, /buildCompanyGroups\(\)/);
+    assert.match(shippingStatus, /id="shipping-status-title"/);
+    assert.match(shippingStatus, /document\.title = `\$\{label\} · 배송 조회`/);
     assert.doesNotMatch(shippingStatus, /shipping-workspace-link/);
     assert.match(shippingStatus, /if \(!SHIPPING_CHANNEL_ID\) location\.replace\('\/'\)/);
     const companies = fs.readFileSync(path.join(__dirname, '..', 'public', 'shipping-companies.html'), 'utf8');
