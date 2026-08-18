@@ -243,6 +243,15 @@ function createCaptureApi({ repository, storage, isAdmin, logger = console } = {
                 const input = normalizeJob(body, channelId);
                 const id = captureIdFor(input.channelId, input.itemId);
                 const current = await repository.getRecord(input.channelId, 'capture', id);
+                if (body.skipIfCaptured === true && current && ['pending', 'capturing', 'complete'].includes(current.status)) {
+                    replyJson(res, 200, {
+                        job: publicCapture(current, requestOrigin(req)),
+                        duplicate: true,
+                        skipped: true,
+                        reason: 'existing-capture'
+                    });
+                    return true;
+                }
                 if (current?.eventKey && input.eventKey && current.eventKey === input.eventKey && current.status !== 'error') {
                     replyJson(res, 200, { job: publicCapture(current, requestOrigin(req)), duplicate: true });
                     return true;

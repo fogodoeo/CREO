@@ -117,6 +117,36 @@ test('capture endpoints reject unauthenticated job creation and support idempote
     assert.equal((await repository.listRecords('cdcup', 'capture')).length, 1);
 });
 
+test('sold capture skips an existing manual capture instead of overwriting it', async () => {
+    const repository = new MemoryRepository();
+    const storage = new MemoryStorage();
+    const api = createCaptureApi({
+        repository,
+        storage,
+        isAdmin: async (req) => req.headers['x-creo-admin'] === 'secret',
+        logger: { warn() {} }
+    });
+
+    let response = await call(api, 'POST', '/api/capture/jobs', {
+        channelId: 'cdcup', itemId: 'manual_7', itemName: '수동 캡처 개체', eventKey: 'manual-1'
+    });
+    const jobId = response.json().job.id;
+    await call(api, 'POST', '/api/capture/jobs/next', { channelId: 'cdcup', agentId: 'main-pc' });
+    response = await call(api, 'POST', `/api/capture/jobs/${jobId}/upload`, {
+        channelId: 'cdcup', mimeType: 'image/webp', imageBase64: Buffer.from('manual-image').toString('base64')
+    });
+    assert.equal(response.json().capture.status, 'complete');
+
+    response = await call(api, 'POST', '/api/capture/jobs', {
+        channelId: 'cdcup', itemId: 'manual_7', itemName: '수동 캡처 개체', eventKey: 'sold-1', skipIfCaptured: true
+    });
+    assert.equal(response.status, 200);
+    assert.equal(response.json().skipped, true);
+    assert.equal(response.json().reason, 'existing-capture');
+    assert.equal(response.json().job.status, 'complete');
+    assert.equal((await storage.get('cdcup/' + jobId + '.webp')).toString(), 'manual-image');
+});
+
 test('auto channel follows the active auction and only the selected computer leases jobs', async () => {
     const repository = new MemoryRepository();
     repository.active = 'event-night';
