@@ -695,6 +695,70 @@ details.control-section summary span {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent), transparent 78%);
 }
 
+.design-option {
+  display: grid;
+  gap: 7px;
+}
+
+.design-option-label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.marble-style-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.marble-style-options input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.marble-style-options label > span {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.marble-style-options input:checked + span {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent), transparent 91%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent), transparent 70%);
+}
+
+.marble-preview {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+}
+
+.marble-preview.glass {
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  background:
+    radial-gradient(circle at 30% 24%, #fff 0 7%, transparent 9%),
+    radial-gradient(circle at 34% 30%, #f8ffff 0, #70ddf4 19%, #2472d0 50%, #122c78 78%, #061432 100%);
+  box-shadow: inset -3px -4px 6px rgba(0, 0, 0, 0.38), 0 2px 5px rgba(47, 157, 255, 0.34);
+}
+
+.marble-preview.flat {
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  background: #54a7ff;
+}
+
 .field input[type='color'] {
   width: 100%;
   height: 44px;

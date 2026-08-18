@@ -297,10 +297,7 @@ export class RouletteRenderer {
         marbleSize
       );
     } else {
-      ctx.beginPath();
-      ctx.arc(marbleCenterX, marbleCenterY, marbleSize / 2, 0, Math.PI * 2);
-      ctx.fillStyle = `hsl(${winner.hue} 100% ${theme.marbleLightness})`;
-      ctx.fill();
+      winner.renderResultBody(ctx, marbleCenterX, marbleCenterY, marbleSize);
     }
 
     ctx.fillStyle = theme.winnerText;

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang=ko><script type=importmap>{"imports":{"2n1iG":"/roulette/Box2D.simd.dd31b167.wasm","dCFCZ":"/roulette/Box2D.c070dc91.js","j5PHo":"/roulette/Box2D.b9b16b27.wasm","lvCWQ":"/roulette/Box2D.simd.e96537a5.js"}}</script><meta charset=UTF-8><meta name=viewport content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name=theme-color content=#07111f><meta name=description content="채널과 행사에 관계없이 사용할 수 있는 공용 마블 추첨기"><meta property=og:type content=website><meta property=og:title content="MARBLE DRAW"><meta property=og:description content="공이 달리고, 결과가 남는 라이브 추첨"><title>MARBLE DRAW</title><link rel=stylesheet href=/roulette/roulette-app.8372c6ff.css><body>
+<!DOCTYPE html><html lang=ko><script type=importmap>{"imports":{"2n1iG":"/roulette/Box2D.simd.dd31b167.wasm","dCFCZ":"/roulette/Box2D.c070dc91.js","j5PHo":"/roulette/Box2D.b9b16b27.wasm","lvCWQ":"/roulette/Box2D.simd.e96537a5.js"}}</script><meta charset=UTF-8><meta name=viewport content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name=theme-color content=#07111f><meta name=description content="채널과 행사에 관계없이 사용할 수 있는 공용 마블 추첨기"><meta property=og:type content=website><meta property=og:title content="MARBLE DRAW"><meta property=og:description content="공이 달리고, 결과가 남는 라이브 추첨"><title>MARBLE DRAW</title><link rel=stylesheet href=/roulette/roulette-app.b3044325.css><body>
     <main class=app-shell id=appShell>
       <section class=stage aria-label="마블 추첨 화면">
         <div id=canvasHost class=canvas-host data-roulette-canvas-host></div>
@@ -19,7 +19,7 @@
             <button class=panel-button id=openPanelButton type=button aria-controls=controlPanel aria-expanded=true>
               설정
             </button>
-            <span class=version-badge id=versionBadge>v1.5.0</span>
+            <span class=version-badge id=versionBadge>v1.6.0</span>
           </div>
         </header>
 
@@ -126,6 +126,13 @@
                   <label><input type=radio name=theme value=arena><span class="arena theme-swatch">아레나</span></label>
                   <label><input type=radio name=theme value=clean><span class="clean theme-swatch">클린</span></label>
                 </div>
+                <div class=design-option>
+                  <span class=design-option-label>구슬 스타일</span>
+                  <div class=marble-style-options>
+                    <label><input type=radio name=marbleStyle value=glass checked><span><i class="glass marble-preview"></i>유리 구슬</span></label>
+                    <label><input type=radio name=marbleStyle value=flat><span><i class="flat marble-preview"></i>기본 구슬</span></label>
+                  </div>
+                </div>
                 <div class=field-grid>
                   <label class=field>
                     <span>강조색</span>
@@ -189,4 +196,4 @@
     </dialog>
 
     <div class=toast id=toast role=status aria-live=polite></div>
-    <script type=module src=/roulette/roulette-app.9336296b.js></script>
+    <script type=module src=/roulette/roulette-app.ed1f3bad.js></script>

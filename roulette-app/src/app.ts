@@ -1,4 +1,12 @@
-import { APP_VERSION, DEFAULT_CONFIG, STORAGE_KEYS, THEME_PRESETS, type AppConfig, type WinnerMode } from './config';
+import {
+  APP_VERSION,
+  DEFAULT_CONFIG,
+  STORAGE_KEYS,
+  THEME_PRESETS,
+  type AppConfig,
+  type MarbleStyle,
+  type WinnerMode,
+} from './config';
 import options from './options';
 import { Roulette } from './roulette';
 import type { ColorTheme } from './types/ColorTheme';
@@ -125,6 +133,7 @@ function loadConfig(): AppConfig {
   const merged = { ...DEFAULT_CONFIG, ...stored };
   if (!THEME_PRESETS[merged.themePreset]) merged.themePreset = DEFAULT_CONFIG.themePreset;
   if (!['first', 'last', 'rank'].includes(merged.winnerMode)) merged.winnerMode = DEFAULT_CONFIG.winnerMode;
+  if (!['glass', 'flat'].includes(merged.marbleStyle)) merged.marbleStyle = DEFAULT_CONFIG.marbleStyle;
   if (![0.75, 1, 1.5, 2].includes(Number(merged.defaultSpeed))) merged.defaultSpeed = DEFAULT_CONFIG.defaultSpeed;
   if (!/^#[0-9a-f]{6}$/i.test(merged.accentColor)) merged.accentColor = DEFAULT_CONFIG.accentColor;
   return merged;
@@ -167,6 +176,7 @@ function applyUrlParameters(base: AppConfig): { config: AppConfig; entries?: str
   const map = Number(params.get('map'));
   const speed = Number(params.get('speed'));
   const mode = params.get('mode');
+  const marbleStyle = params.get('marbleStyle');
   const rank = Number(params.get('rank'));
 
   if (title) next.eventTitle = title.slice(0, 40);
@@ -176,6 +186,7 @@ function applyUrlParameters(base: AppConfig): { config: AppConfig; entries?: str
   if (Number.isInteger(map) && map >= 0) next.defaultMap = map;
   if ([0.75, 1, 1.5, 2].includes(speed)) next.defaultSpeed = speed;
   if (mode && ['first', 'last', 'rank'].includes(mode)) next.winnerMode = mode as WinnerMode;
+  if (marbleStyle && ['glass', 'flat'].includes(marbleStyle)) next.marbleStyle = marbleStyle as MarbleStyle;
   if (Number.isInteger(rank) && rank > 0) next.winningRank = rank;
 
   const entries = params.get('entries') ?? params.get('names') ?? undefined;
@@ -191,6 +202,11 @@ function currentThemeName(): keyof typeof THEME_PRESETS {
   const selected = document.querySelector<HTMLInputElement>('input[name="theme"]:checked');
   const name = selected?.value ?? 'midnight';
   return (THEME_PRESETS[name] ? name : 'midnight') as keyof typeof THEME_PRESETS;
+}
+
+function currentMarbleStyle(): MarbleStyle {
+  const selected = document.querySelector<HTMLInputElement>('input[name="marbleStyle"]:checked');
+  return selected?.value === 'flat' ? 'flat' : 'glass';
 }
 
 function cloneTheme(theme: ColorTheme): ColorTheme {
@@ -272,6 +288,7 @@ function collectConfig(): AppConfig {
     useSkills: dom.skills.checked,
     autoRecording: dom.recording.checked,
     themePreset: currentThemeName(),
+    marbleStyle: currentMarbleStyle(),
     accentColor: dom.accent.value,
   };
 }
@@ -284,6 +301,7 @@ function persistInputs(): void {
 
 function applyRuntimeAppearance(): void {
   updateBrand();
+  options.marbleStyle = currentMarbleStyle();
   if (roulette && engineReady) roulette.setTheme(activeTheme());
   persistInputs();
 }
@@ -304,6 +322,7 @@ function fingerprint(entries: string[]): string {
     rank: dom.winningRank.value,
     skills: dom.skills.checked,
     theme: currentThemeName(),
+    marbleStyle: currentMarbleStyle(),
     accent: dom.accent.value,
   });
 }
@@ -324,6 +343,7 @@ async function prepareRound(seed = createSecureSeed()): Promise<void> {
   options.useSkills = dom.skills.checked;
   options.autoRecording = dom.recording.checked;
   options.winnerLabel = dom.winnerLabel.value.trim() || DEFAULT_CONFIG.winnerLabel;
+  options.marbleStyle = currentMarbleStyle();
   options.winningRank = winningRank(summary.balls) - 1;
   const winnerMode = currentWinnerMode();
   options.candidateLabel =
@@ -476,6 +496,7 @@ async function copyText(value: string): Promise<void> {
 
 function applyConfigToControls(next: AppConfig): void {
   config = { ...DEFAULT_CONFIG, ...next };
+  options.marbleStyle = config.marbleStyle;
   dom.eventTitle.value = config.eventTitle;
   dom.channelName.value = config.channelName;
   dom.speed.value = String(config.defaultSpeed);
@@ -486,6 +507,7 @@ function applyConfigToControls(next: AppConfig): void {
   dom.accent.value = config.accentColor;
   document.querySelector<HTMLInputElement>(`input[name="winnerMode"][value="${config.winnerMode}"]`)!.checked = true;
   document.querySelector<HTMLInputElement>(`input[name="theme"][value="${config.themePreset}"]`)!.checked = true;
+  document.querySelector<HTMLInputElement>(`input[name="marbleStyle"][value="${config.marbleStyle}"]`)!.checked = true;
   if (dom.map.options.length) dom.map.value = String(config.defaultMap);
   updateRankVisibility();
   updateBrand();
@@ -531,6 +553,12 @@ function bindEvents(): void {
     });
   });
   document.querySelectorAll<HTMLInputElement>('input[name="theme"]').forEach((input) => {
+    input.addEventListener('change', () => {
+      applyRuntimeAppearance();
+      preparedFingerprint = '';
+    });
+  });
+  document.querySelectorAll<HTMLInputElement>('input[name="marbleStyle"]').forEach((input) => {
     input.addEventListener('change', () => {
       applyRuntimeAppearance();
       preparedFingerprint = '';

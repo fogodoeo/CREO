@@ -49,7 +49,7 @@ test('roulette exposes its version and keeps native broadcast rendering with the
     const renderer = fs.readFileSync(path.join(appRoot, 'src', 'rouletteRenderer.ts'), 'utf8');
 
     assert.match(html, /id="versionBadge"/);
-    assert.match(config, /APP_VERSION = '1\.5\.0'/);
+    assert.match(config, /APP_VERSION = '1\.6\.0'/);
     assert.match(roulette, /_updateInterval = 10/);
     assert.match(roulette, /!finishedIds\.has\(marble\.id\)/);
     assert.match(renderer, /COMPACT_SCENE_PIXEL_BUDGET = 520_000/);
@@ -58,4 +58,7 @@ test('roulette exposes its version and keeps native broadcast rendering with the
     assert.match(renderer, /high: 1920/);
     assert.match(renderer, /BROADCAST_DISPLAY_WIDTH = 1920/);
     assert.match(renderer, /renderBroadcastLabels/);
+    const marble = fs.readFileSync(path.join(appRoot, 'src', 'marble.ts'), 'utf8');
+    assert.match(marble, /_getGlassSprite/);
+    assert.match(marble, /createRadialGradient/);
 });

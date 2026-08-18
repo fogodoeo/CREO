@@ -8,6 +8,8 @@ import { random } from './utils/random';
 import { rad } from './utils/utils';
 import { Vector } from './utils/Vector';
 
+const glassSpriteCache = new Map<string, HTMLCanvasElement>();
+
 export class Marble {
   type = 'marble' as const;
   name: string = '';
@@ -171,6 +173,8 @@ export class Marble {
         ctx.rotate(this.angle);
         ctx.drawImage(skin, -hs, -hs, hs * 2, hs * 2);
       });
+    } else if (options.marbleStyle === 'glass') {
+      this._drawGlassBody(ctx, this.x, this.y, this.size);
     } else {
       this._drawMarbleBody(ctx, false);
     }
@@ -205,6 +209,103 @@ export class Marble {
       return;
     }
     this._drawName(ctx, zoom, simpleLabel);
+  }
+
+  renderResultBody(ctx: CanvasRenderingContext2D, x: number, y: number, diameter: number) {
+    if (options.marbleStyle === 'glass') {
+      this._drawGlassBody(ctx, x, y, diameter);
+      return;
+    }
+    ctx.beginPath();
+    ctx.arc(x, y, diameter / 2, 0, Math.PI * 2);
+    ctx.fillStyle = `hsl(${this.hue} 100% ${this.theme.marbleLightness}%)`;
+    ctx.fill();
+  }
+
+  private _drawGlassBody(ctx: CanvasRenderingContext2D, x: number, y: number, diameter: number) {
+    const sprite = this._getGlassSprite();
+    const spriteSize = diameter * 1.38;
+    ctx.drawImage(sprite, x - spriteSize / 2, y - spriteSize / 2, spriteSize, spriteSize);
+    if (this.impact > 0) {
+      ctx.save();
+      ctx.globalAlpha = Math.min(0.7, this.impact / 600);
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(x, y, diameter * 0.42, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  private _getGlassSprite(): HTMLCanvasElement {
+    const lightness = Math.round(this.theme.marbleLightness);
+    const cachedHue = Math.round(this.hue / 8) * 8;
+    const key = `${cachedHue}:${lightness}`;
+    const cached = glassSpriteCache.get(key);
+    if (cached) return cached;
+
+    const sprite = document.createElement('canvas');
+    sprite.width = 96;
+    sprite.height = 96;
+    const ctx = sprite.getContext('2d') as CanvasRenderingContext2D;
+    const cx = 48;
+    const cy = 48;
+    const radius = 36;
+
+    ctx.save();
+    ctx.shadowColor = `hsla(${cachedHue} 95% 56% / 0.42)`;
+    ctx.shadowBlur = 10;
+    ctx.shadowOffsetY = 4;
+    const glass = ctx.createRadialGradient(31, 27, 3, 51, 52, 41);
+    glass.addColorStop(0, 'rgba(255, 255, 255, 0.98)');
+    glass.addColorStop(0.1, `hsl(${cachedHue} 88% 92%)`);
+    glass.addColorStop(0.28, `hsl(${cachedHue} 92% ${Math.min(88, lightness + 12)}%)`);
+    glass.addColorStop(0.62, `hsl(${cachedHue} 88% ${Math.max(28, lightness - 12)}%)`);
+    glass.addColorStop(0.86, `hsl(${cachedHue} 92% ${Math.max(15, lightness - 32)}%)`);
+    glass.addColorStop(1, `hsl(${cachedHue} 96% 8%)`);
+    ctx.fillStyle = glass;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius - 1, 0, Math.PI * 2);
+    ctx.clip();
+
+    const lowerGlow = ctx.createRadialGradient(55, 70, 1, 54, 68, 25);
+    lowerGlow.addColorStop(0, 'rgba(255, 255, 255, 0.62)');
+    lowerGlow.addColorStop(0.3, `hsla(${cachedHue} 100% 82% / 0.34)`);
+    lowerGlow.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    ctx.fillStyle = lowerGlow;
+    ctx.fillRect(22, 42, 58, 40);
+
+    ctx.translate(34, 29);
+    ctx.rotate(-0.58);
+    const highlight = ctx.createRadialGradient(-3, -2, 1, 0, 0, 16);
+    highlight.addColorStop(0, 'rgba(255, 255, 255, 0.98)');
+    highlight.addColorStop(0.46, 'rgba(255, 255, 255, 0.55)');
+    highlight.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    ctx.fillStyle = highlight;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 14, 7, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.52)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius - 1, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(3, 8, 24, 0.58)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius + 1, 0.18, Math.PI * 0.96);
+    ctx.stroke();
+
+    glassSpriteCache.set(key, sprite);
+    return sprite;
   }
 
   private _drawName(ctx: CanvasRenderingContext2D, zoom: number, simpleLabel: boolean) {

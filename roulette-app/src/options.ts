@@ -4,6 +4,7 @@ class Options {
   autoRecording = false;
   winnerLabel = '당첨';
   candidateLabel = '현재 선두';
+  marbleStyle: 'glass' | 'flat' = 'glass';
 }
 
 const options = new Options();

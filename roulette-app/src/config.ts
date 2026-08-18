@@ -1,8 +1,9 @@
 import type { ColorTheme } from './types/ColorTheme';
 
-export const APP_VERSION = '1.5.0';
+export const APP_VERSION = '1.6.0';
 
 export type WinnerMode = 'first' | 'last' | 'rank';
+export type MarbleStyle = 'glass' | 'flat';
 
 export type AppConfig = {
   appName: string;
@@ -17,6 +18,7 @@ export type AppConfig = {
   useSkills: boolean;
   autoRecording: boolean;
   themePreset: keyof typeof THEME_PRESETS;
+  marbleStyle: MarbleStyle;
   accentColor: string;
   maxHistory: number;
 };
@@ -91,6 +93,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   useSkills: false,
   autoRecording: false,
   themePreset: 'midnight',
+  marbleStyle: 'glass',
   accentColor: '#f2c66d',
   maxHistory: 50,
 };
