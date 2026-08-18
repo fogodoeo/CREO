@@ -25,7 +25,10 @@ export class Roulette extends EventTarget {
   private _lastTime: number = 0;
   private _elapsed: number = 0;
 
-  private _updateInterval = 10;
+  // A 60 Hz fixed step matches the fastest frame cadence most phones can show.
+  // The upstream 10 ms step calculates 100 physics frames per second and can
+  // make collision-heavy scenes miss visible animation frames on mobile CPUs.
+  private _updateInterval = 1000 / 60;
   private _timeScale = 1;
   private _speed = 1;
 
@@ -108,6 +111,7 @@ export class Roulette extends EventTarget {
 
     const interval = (this._updateInterval / 1000) * this._timeScale;
 
+    let stepped = false;
     while (this._elapsed >= this._updateInterval) {
       this.physics.step(interval);
       this._updateMarbles(this._updateInterval);
@@ -115,9 +119,10 @@ export class Roulette extends EventTarget {
       this._updateEffects(this._updateInterval);
       this._elapsed -= this._updateInterval;
       this._uiObjects.forEach((obj) => obj.update(this._updateInterval));
+      stepped = true;
     }
 
-    if (this._marbles.length > 1) {
+    if (stepped && this._marbles.length > 1) {
       this._marbles.sort((a, b) => b.y - a.y);
     }
 

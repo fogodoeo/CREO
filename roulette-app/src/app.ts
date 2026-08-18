@@ -1,4 +1,4 @@
-import { DEFAULT_CONFIG, STORAGE_KEYS, THEME_PRESETS, type AppConfig, type WinnerMode } from './config';
+import { APP_VERSION, DEFAULT_CONFIG, STORAGE_KEYS, THEME_PRESETS, type AppConfig, type WinnerMode } from './config';
 import options from './options';
 import { Roulette } from './roulette';
 import type { ColorTheme } from './types/ColorTheme';
@@ -61,6 +61,7 @@ const dom = {
   openPanel: element<HTMLButtonElement>('openPanelButton'),
   closePanel: element<HTMLButtonElement>('closePanelButton'),
   fullscreen: element<HTMLButtonElement>('fullscreenButton'),
+  versionBadge: element<HTMLElement>('versionBadge'),
   brandName: element<HTMLElement>('brandName'),
   brandTitle: element<HTMLElement>('brandTitle'),
   brandChannel: element<HTMLElement>('brandChannel'),
@@ -617,6 +618,7 @@ async function waitForEngine(): Promise<void> {
 }
 
 async function initialize(): Promise<void> {
+  dom.versionBadge.textContent = `v${APP_VERSION}`;
   bindEvents();
   const urlState = applyUrlParameters(config);
   applyConfigToControls(urlState.config);
@@ -656,7 +658,7 @@ async function initialize(): Promise<void> {
 }
 
 window.CreoMarbleRoulette = {
-  version: '1.0.0',
+  version: APP_VERSION,
   configure,
   setEntries(entries) {
     dom.entries.value = Array.isArray(entries) ? entries.join('\n') : entries;

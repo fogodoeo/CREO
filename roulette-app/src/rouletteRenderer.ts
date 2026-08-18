@@ -25,6 +25,8 @@ export type RenderParameters = {
 };
 
 const MAX_DISPLAY_WIDTH = 1920;
+const COMPACT_SCENE_WIDTH = 480;
+const COMPACT_SCENE_PIXEL_BUDGET = 520_000;
 const WINNER_TEXT_OFFSET = 30;
 
 export class RouletteRenderer {
@@ -74,8 +76,16 @@ export class RouletteRenderer {
       const realSize = entries ? entries[0].contentRect : this._canvas.getBoundingClientRect();
       if (realSize.width <= 0 || realSize.height <= 0) return;
 
-      const width = Math.max(realSize.width / 2, 640);
-      const height = (width / realSize.width) * realSize.height;
+      const compactPortrait = realSize.width < 760 && realSize.height > realSize.width * 1.15;
+      let width = compactPortrait
+        ? Math.max(realSize.width, Math.min(COMPACT_SCENE_WIDTH, realSize.width * 1.5))
+        : Math.max(realSize.width / 2, 640);
+      let height = (width / realSize.width) * realSize.height;
+      if (compactPortrait && width * height > COMPACT_SCENE_PIXEL_BUDGET) {
+        const budgetScale = Math.sqrt(COMPACT_SCENE_PIXEL_BUDGET / (width * height));
+        width = Math.max(realSize.width, width * budgetScale);
+        height = (width / realSize.width) * realSize.height;
+      }
       this._sceneCanvas.width = width;
       this._sceneCanvas.height = height;
       this.sizeFactor = width / realSize.width;
@@ -176,6 +186,7 @@ export class RouletteRenderer {
 
   private renderMarbles({ marbles, camera, winnerRank, winners, size }: RenderParameters) {
     const winnerIndex = winnerRank - winners.length;
+    const useSimpleLabels = size.x < 560 && marbles.length + winners.length > 48;
 
     const viewPort = { x: camera.x, y: camera.y, w: size.x, h: size.y, zoom: camera.zoom * initialZoom };
     marbles.forEach((marble, i) => {
@@ -186,7 +197,8 @@ export class RouletteRenderer {
         false,
         this.getMarbleImage(marble.name),
         viewPort,
-        this._theme
+        this._theme,
+        useSimpleLabels
       );
     });
   }

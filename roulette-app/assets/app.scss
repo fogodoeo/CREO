@@ -146,10 +146,24 @@ summary:focus-visible {
 }
 
 .stage-actions {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
   pointer-events: auto;
+}
+
+.version-badge {
+  position: absolute;
+  top: calc(100% + 5px);
+  right: 1px;
+  color: rgba(255, 255, 255, 0.48);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .status-pill {

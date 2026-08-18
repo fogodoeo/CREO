@@ -114,7 +114,8 @@ export class Marble {
     isMinimap: boolean = false,
     skin: CanvasImageSource | undefined,
     viewPort: { x: number; y: number; w: number; h: number; zoom: number },
-    theme: ColorTheme
+    theme: ColorTheme,
+    simpleLabel: boolean = false
   ) {
     this.theme = theme;
     const viewPortHw = viewPort.w / viewPort.zoom / 2;
@@ -133,7 +134,7 @@ export class Marble {
     if (isMinimap) {
       this._renderMinimap(ctx);
     } else {
-      this._renderNormal(ctx, zoom, outline, skin);
+      this._renderNormal(ctx, zoom, outline, skin, simpleLabel);
     }
     ctx.setTransform(transform);
   }
@@ -149,7 +150,13 @@ export class Marble {
     ctx.fill();
   }
 
-  private _renderNormal(ctx: CanvasRenderingContext2D, zoom: number, outline: boolean, skin?: CanvasImageSource) {
+  private _renderNormal(
+    ctx: CanvasRenderingContext2D,
+    zoom: number,
+    outline: boolean,
+    skin?: CanvasImageSource,
+    simpleLabel: boolean = false
+  ) {
     const hs = this.size / 2;
 
     ctx.fillStyle = `hsl(${this.hue} 100% ${this.theme.marbleLightness + 25 * Math.min(1, this.impact / 500)}%)`;
@@ -168,7 +175,7 @@ export class Marble {
 
     ctx.shadowColor = '';
     ctx.shadowBlur = 0;
-    this._drawName(ctx, zoom);
+    this._drawName(ctx, zoom, simpleLabel);
 
     if (outline) {
       this._drawOutline(ctx, 2 / zoom);
@@ -179,7 +186,7 @@ export class Marble {
     }
   }
 
-  private _drawName(ctx: CanvasRenderingContext2D, zoom: number) {
+  private _drawName(ctx: CanvasRenderingContext2D, zoom: number, simpleLabel: boolean) {
     transformGuard(ctx, () => {
       ctx.font = `12pt sans-serif`;
       ctx.strokeStyle = 'black';
@@ -188,7 +195,7 @@ export class Marble {
       ctx.shadowBlur = 0;
       ctx.translate(this.x, this.y + 0.25);
       ctx.scale(1 / zoom, 1 / zoom);
-      ctx.strokeText(this.name, 0, 0);
+      if (!simpleLabel) ctx.strokeText(this.name, 0, 0);
       ctx.fillText(this.name, 0, 0);
     });
   }
