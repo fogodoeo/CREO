@@ -214,6 +214,7 @@ function setStatus(state: 'loading' | 'ready' | 'running' | 'complete' | 'error'
 }
 
 function openPanel(): void {
+  if (running) return;
   dom.appShell.classList.add('panel-open');
   dom.openPanel.setAttribute('aria-expanded', 'true');
   if (window.matchMedia('(max-width: 760px)').matches) document.body.classList.add('lock-scroll');
@@ -354,6 +355,8 @@ async function startRound(): Promise<void> {
 
   currentRound.startedAt = Date.now();
   running = true;
+  dom.appShell.classList.add('is-running');
+  dom.openPanel.disabled = true;
   dom.shuffle.disabled = true;
   dom.start.disabled = true;
   dom.stageHelp.classList.add('visible');
@@ -386,6 +389,8 @@ async function completeRound(winner: string): Promise<void> {
     entriesHash: await sha256(currentRound.entries.join('\n')),
   };
   running = false;
+  dom.appShell.classList.remove('is-running');
+  dom.openPanel.disabled = false;
   lastRecord = record;
   history.unshift(record);
   history = history.slice(0, config.maxHistory);
