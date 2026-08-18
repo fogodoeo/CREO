@@ -42,15 +42,15 @@ test('production roulette includes Box2D runtimes and stays within a small stati
     assert.ok(totalBytes < 1_500_000, `bundle is unexpectedly large: ${totalBytes} bytes`);
 });
 
-test('mobile roulette exposes its version and uses a compact 60 Hz render budget', () => {
+test('roulette exposes its version and keeps compact rendering with the smooth upstream physics step', () => {
     const html = fs.readFileSync(path.join(appRoot, 'index.html'), 'utf8');
     const config = fs.readFileSync(path.join(appRoot, 'src', 'config.ts'), 'utf8');
     const roulette = fs.readFileSync(path.join(appRoot, 'src', 'roulette.ts'), 'utf8');
     const renderer = fs.readFileSync(path.join(appRoot, 'src', 'rouletteRenderer.ts'), 'utf8');
 
     assert.match(html, /id="versionBadge"/);
-    assert.match(config, /APP_VERSION = '1\.2\.0'/);
-    assert.match(roulette, /_updateInterval = 1000 \/ 60/);
+    assert.match(config, /APP_VERSION = '1\.2\.1'/);
+    assert.match(roulette, /_updateInterval = 10/);
     assert.match(renderer, /COMPACT_SCENE_PIXEL_BUDGET = 520_000/);
     assert.match(renderer, /performance: 720/);
     assert.match(renderer, /balanced: 960/);
