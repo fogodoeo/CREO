@@ -2357,6 +2357,17 @@
         .app-bottom-nav:not(.rates-unlocked) { grid-template-columns:repeat(3,1fr); }
         .app-bottom-nav.rates-unlocked { grid-template-columns:repeat(4,1fr); }
         .app-bottom-nav.rates-unlocked .admin-only-nav { display:flex; }
+        .editor-capture-strip { display:flex; gap:8px; margin-top:10px; overflow-x:auto; padding:2px 0 3px; scrollbar-width:thin; }
+        .editor-capture-strip[hidden] { display:none; }
+        .editor-capture-card { position:relative; flex:0 0 104px; height:76px; overflow:hidden; border:1px solid #E4E4E7; border-radius:10px; background:#F4F4F5; }
+        .editor-capture-card img { width:100%; height:100%; object-fit:cover; display:block; }
+        .editor-capture-card span { position:absolute; right:5px; bottom:5px; left:5px; overflow:hidden; padding:3px 5px; border-radius:5px; background:rgba(9,9,11,.74); color:#FFF; font-size:9px; font-weight:800; text-overflow:ellipsis; white-space:nowrap; }
+        .editor-capture-card-wrap { position:relative; flex:0 0 104px; }
+        .editor-capture-card-wrap .editor-capture-card { display:block; width:104px; }
+        .editor-capture-card-wrap .editor-capture-retry { position:absolute; top:5px; right:5px; z-index:2; margin:0; padding:3px 6px; border-color:rgba(255,255,255,.7); background:rgba(9,9,11,.7); color:#FFF; font-size:8px; }
+        .editor-capture-state { display:flex; align-items:center; gap:7px; min-height:46px; padding:8px 10px; border:1px dashed #D4D4D8; border-radius:10px; color:#71717A; font-size:10px; font-weight:750; }
+        .editor-capture-state.error { border-color:#FECACA; background:#FEF2F2; color:#B91C1C; }
+        .editor-capture-retry { margin-left:auto; padding:5px 8px; border:1px solid currentColor; border-radius:7px; background:#FFF; color:inherit; font:inherit; cursor:pointer; }
         .shipping-admin-modal { position:fixed; inset:0; z-index:2500; display:grid; place-items:center; padding:18px; background:rgba(24,24,27,.48); backdrop-filter:blur(6px); }
         .shipping-admin-modal[hidden] { display:none; }
         .shipping-admin-card { width:min(350px,100%); padding:22px; border:1px solid #E4E4E7; border-radius:14px; background:#FFF; box-shadow:var(--shadow-md); }
@@ -2620,6 +2631,7 @@
                     <div id="editor-info-objects" style="font-size: 14.5px; color: #334155; font-weight: 750; line-height: 1.4; word-break: break-all;">
                         개체 정보
                     </div>
+                    <div class="editor-capture-strip" id="editor-capture-strip" hidden aria-label="낙찰 개체 캡처"></div>
                 </div>
             </div>
             <div class="modal-body" style="display: flex; flex-direction: column; gap: 16px; padding: 20px 24px;">
@@ -2701,7 +2713,7 @@
                     </div>
                 </div>
                 <div class="editor-footer-actions">
-                    <button class="editor-copy-action" id="editor-info-copy-btn" type="button">문구 복사</button>
+                    <button class="editor-copy-action" id="editor-info-copy-btn" type="button">사진 포함 문자</button>
                     <button class="editor-save-action" type="button" onclick="saveWinnerEditor()">저장</button>
                 </div>
             </div>
@@ -2719,6 +2731,9 @@
         const SHIPPING_COMPANY_STORAGE_KEY = `creo_shipping_company_${SHIPPING_CHANNEL_ID}`;
         let shippingAdapter = null;
         let shippingAdapterContext = null;
+        let captureRecordsByItemId = new Map();
+        let currentCaptureSms = null;
+        let captureClipboardPromise = null;
         const MOBILE_SHIPPING_HISTORY = window.matchMedia('(max-width: 820px)').matches;
         let restoringMobileShippingHistory = false;
 
@@ -2858,6 +2873,182 @@
             const adapter = await ensureShippingAdapter();
             return adapter.saveShippingItem(shippingAdapterContext, row, shippingData, auditMeta);
         }
+
+        function captureItemId(item) {
+            return String(item?._platformItemId || item?.row || item?.id || '').trim();
+        }
+
+        async function captureApi(path, options = {}) {
+            const admin = CreoPlatform.getAdmin?.() || '';
+            const headerAdmin = admin && admin !== 'session' ? admin : '';
+            const response = await fetch(`/api/capture/${String(path).replace(/^\/+/, '')}`, {
+                ...options,
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(headerAdmin ? { 'X-Creo-Admin': headerAdmin, 'X-Creo-Capture-Token': headerAdmin } : {}),
+                    ...(options.headers || {})
+                }
+            });
+            let payload = null;
+            try { payload = await response.json(); } catch (_) {}
+            if (!response.ok) {
+                const error = new Error(payload?.error || `캡처 요청 실패 (${response.status})`);
+                error.status = response.status;
+                throw error;
+            }
+            return payload;
+        }
+
+        async function loadCaptureRecords() {
+            try {
+                const payload = await captureApi(`channel/${encodeURIComponent(SHIPPING_CHANNEL_ID)}`);
+                captureRecordsByItemId = new Map((payload.captures || []).map(record => [String(record.itemId), record]));
+            } catch (error) {
+                console.warn('[Capture] list failed:', error);
+                captureRecordsByItemId = new Map();
+            }
+        }
+
+        function captureForItem(item) {
+            return captureRecordsByItemId.get(captureItemId(item)) || null;
+        }
+
+        function completedCaptures(items) {
+            return (items || []).map(item => ({ item, capture: captureForItem(item) }))
+                .filter(entry => entry.capture?.status === 'complete' && entry.capture.imageUrl);
+        }
+
+        function captureMessageLinks(items) {
+            const links = completedCaptures(items).map(({ item, capture }) => {
+                const label = auctionItemLabel(item, { includeTeam: false });
+                return `- ${label}: ${capture.shareUrl}`;
+            });
+            return links.length ? `\n\n[개체 사진]\n${links.join('\n')}` : '';
+        }
+
+        function loadImageElement(url) {
+            return new Promise((resolve, reject) => {
+                const image = new Image();
+                image.onload = () => resolve(image);
+                image.onerror = () => reject(new Error('개체 사진을 불러오지 못했습니다.'));
+                image.src = url;
+            });
+        }
+
+        async function buildCaptureClipboardImage(items) {
+            const entries = completedCaptures(items);
+            if (!entries.length) return null;
+            const images = await Promise.all(entries.map(entry => loadImageElement(entry.capture.imageUrl)));
+            const columns = Math.min(2, images.length);
+            const rows = Math.ceil(images.length / columns);
+            const cellWidth = columns === 1 ? 1080 : 600;
+            const cellHeight = columns === 1 ? 810 : 450;
+            const canvas = document.createElement('canvas');
+            canvas.width = cellWidth * columns;
+            canvas.height = cellHeight * rows;
+            const context = canvas.getContext('2d');
+            context.fillStyle = '#111315';
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            images.forEach((image, index) => {
+                const column = index % columns;
+                const row = Math.floor(index / columns);
+                const x = column * cellWidth;
+                const y = row * cellHeight;
+                const scale = Math.min(cellWidth / image.naturalWidth, cellHeight / image.naturalHeight);
+                const width = image.naturalWidth * scale;
+                const height = image.naturalHeight * scale;
+                context.drawImage(image, x + (cellWidth - width) / 2, y + (cellHeight - height) / 2, width, height);
+                const label = auctionItemLabel(entries[index].item, { includeTeam: false });
+                context.fillStyle = 'rgba(0,0,0,.72)';
+                context.fillRect(x, y + cellHeight - 52, cellWidth, 52);
+                context.fillStyle = '#fff';
+                context.font = '700 24px sans-serif';
+                context.textBaseline = 'middle';
+                context.fillText(label, x + 18, y + cellHeight - 26, cellWidth - 36);
+            });
+            return new Promise((resolve, reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('사진 묶음을 만들지 못했습니다.')), 'image/png'));
+        }
+
+        function primeCaptureClipboard(items) {
+            captureClipboardPromise = buildCaptureClipboardImage(items).catch(error => {
+                console.warn('[Capture] clipboard image prepare failed:', error);
+                return null;
+            });
+            return captureClipboardPromise;
+        }
+
+        async function sendCaptureSms() {
+            const payload = currentCaptureSms;
+            if (!payload?.phone) {
+                showToast('연락처가 없습니다.', true);
+                return;
+            }
+            let copied = false;
+            if (payload.hasCapture && navigator.clipboard?.write && window.ClipboardItem) {
+                try {
+                    const imagePromise = captureClipboardPromise || primeCaptureClipboard(payload.items);
+                    await navigator.clipboard.write([new ClipboardItem({ 'image/png': imagePromise.then(blob => {
+                        if (!blob) throw new Error('복사할 사진이 없습니다.');
+                        return blob;
+                    }) })]);
+                    copied = true;
+                } catch (error) {
+                    console.warn('[Capture] image clipboard failed:', error);
+                }
+            }
+            const separator = /iPhone|iPad|iPod/i.test(navigator.userAgent) ? '&' : '?';
+            const href = `sms:${payload.phone}${separator}body=${encodeURIComponent(payload.message)}`;
+            if (payload.hasCapture) {
+                showToast(copied ? '사진을 복사했습니다. 문자창에서 붙여넣기 해주세요.' : '사진 링크를 문구에 넣었습니다.');
+            }
+            setTimeout(() => { window.location.href = href; }, copied ? 280 : 0);
+        }
+
+        async function retryCapture(recordId) {
+            try {
+                await captureApi(`retry/${encodeURIComponent(SHIPPING_CHANNEL_ID)}/${encodeURIComponent(recordId)}`, { method: 'POST', body: '{}' });
+                showToast('재촬영을 요청했습니다.');
+                await loadCaptureRecords();
+                const state = winnerStateMap[activeEditorWinner];
+                if (state) renderEditorCaptures(state.allItems.filter(item => (item.company || '').trim() === activeSellerCompany));
+            } catch (error) {
+                showToast(error.status === 401 ? '관리자 로그인 후 재촬영할 수 있습니다.' : error.message, true);
+            }
+        }
+
+        function renderEditorCaptures(items) {
+            const strip = document.getElementById('editor-capture-strip');
+            if (!strip) return;
+            const entries = (items || []).map(item => ({ item, capture: captureForItem(item) })).filter(entry => entry.capture);
+            strip.hidden = !entries.length;
+            strip.innerHTML = entries.map(({ item, capture }) => {
+                const label = escapeOverviewHtml(auctionItemLabel(item, { includeTeam: false }));
+                if (capture.status === 'complete' && capture.imageUrl) {
+                    return `<div class="editor-capture-card-wrap"><a class="editor-capture-card" href="${escapeOverviewHtml(capture.shareUrl)}" target="_blank" rel="noopener"><img src="${escapeOverviewHtml(capture.imageUrl)}" alt="${label}"><span>${label}</span></a><button class="editor-capture-retry" type="button" data-capture-retry="${escapeOverviewHtml(capture.id)}">재촬영</button></div>`;
+                }
+                if (capture.status === 'error') {
+                    return `<div class="editor-capture-state error">캡처 실패<button class="editor-capture-retry" type="button" data-capture-retry="${escapeOverviewHtml(capture.id)}">재촬영</button></div>`;
+                }
+                return `<div class="editor-capture-state">${capture.status === 'capturing' ? '사진 촬영 중' : '촬영 대기 중'}</div>`;
+            }).join('');
+            strip.querySelectorAll('[data-capture-retry]').forEach(button => button.onclick = () => retryCapture(button.dataset.captureRetry));
+        }
+
+        setInterval(async () => {
+            if (document.hidden || !activeEditorWinner) return;
+            const state = winnerStateMap[activeEditorWinner];
+            if (!state) return;
+            await loadCaptureRecords();
+            const items = state.allItems.filter(item => (item.company || '').trim() === activeSellerCompany);
+            renderEditorCaptures(items);
+            primeCaptureClipboard(items);
+            if (currentCaptureSms) {
+                currentCaptureSms.items = items;
+                currentCaptureSms.hasCapture = completedCaptures(items).length > 0;
+                currentCaptureSms.message = currentCaptureSms.baseMessage + captureMessageLinks(items);
+            }
+        }, 5000);
 
         function syncShippingChannelUi() {
             const label = SHIPPING_CHANNEL_ID.toUpperCase();
@@ -3154,7 +3345,7 @@ ${wrapangDuplicateNote}`;
                 }
 
                 console.log('[INIT] Step 4: Loading items...');
-                const items = await loadShippingItems();
+                const [items] = await Promise.all([loadShippingItems(), loadCaptureRecords()]);
                 allItems = (items || []).filter(it => it.status && it.status.indexOf('낙찰') >= 0);
                 console.log('[INIT] Step 5: Got', allItems.length, 'items, isAdminMode:', isAdminMode);
 
@@ -3983,6 +4174,8 @@ ${wrapangDuplicateNote}`;
                     return `${name}${priceText}`;
                 }).join(', ');
                 document.getElementById('editor-info-objects').textContent = objectNames;
+                renderEditorCaptures(currentCoItems);
+                primeCaptureClipboard(currentCoItems);
 
                 // Set Segmented Control Active Button
                 setEditorShippingType(editorShippingState.type === '직접수령' ? '픽업' : (editorShippingState.type === '배송' ? (['도도시', '파르게', '랩팡'].includes(editorShippingState.company) ? '업체 배송' : '기타') : '미설정'), true);
@@ -4360,7 +4553,7 @@ ${wrapangDuplicateNote}`;
                 smsShipInfo = '미설정';
             }
 
-            const totalMessage = buildVendorPaymentMessage({
+            const baseMessage = buildVendorPaymentMessage({
                 winnerName,
                 selectedCompany: selectedCo,
                 selectedItems: groupItems,
@@ -4371,19 +4564,32 @@ ${wrapangDuplicateNote}`;
                 shippingShare: shipCost,
                 totalShipping
             });
+            const totalMessage = baseMessage + captureMessageLinks(groupItems);
+
+            currentCaptureSms = {
+                phone: cleanPhone,
+                baseMessage,
+                message: totalMessage,
+                items: groupItems,
+                hasCapture: completedCaptures(groupItems).length > 0
+            };
 
             if (smsBtn) {
                 if (cleanPhone) {
-                    const separator = /iPhone|iPad|iPod/i.test(navigator.userAgent) ? '&' : '?';
-                    smsBtn.href = `sms:${cleanPhone}${separator}body=${encodeURIComponent(totalMessage)}`;
+                    smsBtn.href = '#';
+                    smsBtn.onclick = event => { event.preventDefault(); sendCaptureSms(); };
+                    smsBtn.title = currentCaptureSms.hasCapture ? '사진과 안내 문자를 준비합니다' : '안내 문자 보내기';
                     smsBtn.style.display = 'inline-flex';
                 } else {
                     smsBtn.removeAttribute('href');
+                    smsBtn.onclick = null;
                     smsBtn.style.display = 'none';
                 }
             }
             if (copyBtn) {
-                copyBtn.onclick = () => openMessagePreview(totalMessage);
+                copyBtn.textContent = currentCaptureSms.hasCapture ? '사진 포함 문자' : '안내 문자';
+                copyBtn.onclick = sendCaptureSms;
+                copyBtn.disabled = !cleanPhone;
                 copyBtn.style.display = 'inline-flex';
             }
             } catch (pricingErr) {

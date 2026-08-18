@@ -11,3 +11,6 @@ storage/
 *.sqlite-shm
 *.sqlite-wal
 supabase/.temp/
+__pycache__/
+*.pyc
+public/downloads/creo-capture-agent.zip

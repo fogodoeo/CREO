@@ -7,7 +7,7 @@ const { DatabaseSync } = require('node:sqlite');
 const { DEFAULT_CHANNELS, channelKey, normalizeChannel, normalizeChannelId } = require('./platform-core');
 const { CATALOG_KEY, ACTIVE_CHANNEL_KEY } = require('./platform-repository');
 
-const RECORD_TYPES = new Set(['vendor', 'item', 'shipment', 'setting', 'broadcast', 'asset', 'archive']);
+const RECORD_TYPES = new Set(['vendor', 'item', 'shipment', 'setting', 'broadcast', 'asset', 'archive', 'capture']);
 const DEFAULT_ADMIN_SECRET = '1234';
 
 function parseJson(value, fallback = null) {

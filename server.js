@@ -11,6 +11,8 @@ const { createBandOAuth } = require('./band-oauth');
 const { createBandMembership } = require('./band-membership');
 const { createCrewartSurveyApi } = require('./crewart-survey-api');
 const { createPlatformApi } = require('./platform-api');
+const { createCaptureApi } = require('./capture-api');
+const { CaptureStorage } = require('./capture-storage');
 const { createCdcupRoundsApi } = require('./cdcup-rounds-api');
 const { SupabaseConfigRepository } = require('./platform-repository');
 const { SQLitePlatformRepository } = require('./sqlite-platform-repository');
@@ -28,6 +30,12 @@ const platformRepository = platformStorageMode === 'supabase'
         mirror: process.env.CREO_SUPABASE_MIRROR_ENABLED === 'false' ? null : supabasePlatformRepository
     });
 const platformApi = createPlatformApi({ repository: platformRepository });
+const captureStorage = new CaptureStorage();
+const captureApi = createCaptureApi({
+    repository: platformRepository,
+    storage: captureStorage,
+    isAdmin: platformApi.isAdmin
+});
 const cdcupRoundsApi = createCdcupRoundsApi({
     repository: supabasePlatformRepository,
     isAdmin: platformApi.isAdmin
@@ -225,8 +233,18 @@ const server = http.createServer(async (req, res) => {
             return;
         }
 
+        if (url.pathname.startsWith('/api/capture/')) {
+            if (await captureApi.handleApi(req, res, url)) return;
+            sendJson(res, 404, { error: 'Not found' });
+            return;
+        }
+
         if (url.pathname.startsWith('/api/platform/')) {
             if (await platformApi.handle(req, res, url)) return;
+        }
+
+        if (url.pathname.startsWith('/capture/')) {
+            if (await captureApi.handleSharePage(req, res, url)) return;
         }
 
         if (url.pathname === '/health' && req.method === 'GET') {
@@ -240,6 +258,7 @@ const server = http.createServer(async (req, res) => {
                 bandOAuthConfigured: bandOAuth.config.configured,
                 bandMembershipConfigured: bandMembership.config.configured,
                 platform,
+                capture: captureStorage.health(),
                 now: new Date().toISOString()
             });
             return;
