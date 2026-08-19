@@ -14,12 +14,12 @@
         <small>PRISM · 배송페이지 연동</small>
         <h1>낙찰 개체 자동 캡처</h1>
         <p>어떤 경매든 현재 활성 채널을 자동으로 따라가며, 낙찰 완료와 동시에 본체에서 사진을 만들고 해당 배송페이지의 개체에 연결합니다.</p>
-        <a class="download" href="downloads/creo-capture-agent-v1.2.1.zip" download>본체용 캡처 에이전트 v1.2.1 받기</a>
+        <a class="download" href="downloads/creo-capture-agent-v1.2.2.zip" download>본체용 캡처 에이전트 v1.2.2 받기</a>
         <div class="status" id="status">서버 상태 확인 중</div>
     </section>
     <section class="steps">
         <article class="step"><span class="number">1</span><div><h2>PRISM 단축키 지정</h2><p>PRISM 설정 → 단축키에서 <b>출력 스크린샷</b>을 <span class="key">F3</span>으로 지정하고, 출력에서 스크린샷 저장 경로를 확인합니다. F3을 녹화 시작·종료에 지정하면 사진 파일이 생기지 않아 연동되지 않습니다.</p></div></article>
-        <article class="step"><span class="number">2</span><div><h2>본체 에이전트 설치</h2><p>압축을 풀고 <b>INSTALL.cmd</b>를 실행합니다. Python은 필요 없습니다. 서버 주소, 관리자 비밀번호 또는 전용 캡처 토큰, PRISM 저장 폴더를 입력하고 경매 채널은 <span class="key">auto</span>로 둡니다.</p><ul><li><b>진단</b>으로 서버·폴더·인증·단축키를 확인합니다.</li><li>PRISM을 켠 상태로 <b>캡처 테스트</b>를 누릅니다.</li><li>실제 송출 컴퓨터에서 <b>이 PC를 활성 본체로</b>를 누릅니다.</li></ul></div></article>
+        <article class="step"><span class="number">2</span><div><h2>본체 에이전트 설치</h2><p>압축을 풀고 <b>INSTALL.cmd</b>를 실행합니다. Python은 필요 없습니다. 캡처 인증값에는 관리자 비밀번호를 입력하고, PRISM 저장 폴더를 선택한 뒤 경매 채널은 <span class="key">auto</span>로 둡니다.</p><ul><li><b>진단</b>으로 서버·폴더·인증·단축키를 확인합니다.</li><li>PRISM을 켠 상태로 <b>캡처 테스트</b>를 누릅니다.</li><li><b>이 PC를 활성 본체로</b>를 누른 뒤 <b>저장하고 닫기</b>를 누릅니다.</li></ul></div></article>
         <article class="step"><span class="number">3</span><div><h2>노트북 경매 앱 설정</h2><p>경매 앱 → 설정 → 낙찰 자동 캡처에서 기능을 켜고 경매 채널을 <span class="key">auto</span>로 둡니다. 이후 컨트롤타워에서 활성 경매를 바꾸면 사진과 배송 데이터도 해당 경매로 자동 분리됩니다.</p></div></article>
         <article class="step"><span class="number">4</span><div><h2>실전 동작 확인</h2><p>테스트 개체를 낙찰 처리하면 배송페이지에 촬영 대기 → 촬영 중 → 사진 순서로 표시됩니다. 사진의 <b>재촬영</b> 버튼으로 언제든 새 이미지로 교체할 수 있습니다.</p></div></article>
         <article class="step"><span class="number">5</span><div><h2>사진 포함 문자</h2><p>업체가 배송페이지에서 <b>사진 포함 문자</b>를 누르면 개체 사진이 클립보드에 준비되고 해당 고객 번호와 안내 문구가 입력된 문자창이 열립니다. 문자창에서 붙여넣기 후 전송하면 됩니다.</p></div></article>

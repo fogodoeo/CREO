@@ -1,4 +1,8 @@
 $ErrorActionPreference = 'Stop'
+trap {
+    Write-Host ('Installation failed: ' + $_.Exception.Message) -ForegroundColor Red
+    exit 1
+}
 
 $installRoot = Join-Path $env:LOCALAPPDATA 'CREO\CaptureAgent'
 $sourceRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -25,18 +29,21 @@ Write-Host 'Opening CREO Capture Agent settings...' -ForegroundColor Cyan
 Write-Host 'Use F3 for PRISM Output Screenshot, run Diagnostics and Capture Test, then save.' -ForegroundColor Cyan
 & $installedExe --configure
 
-if (-not (Test-Path -LiteralPath $configPath -PathType Leaf)) {
-    throw 'Settings were not saved. Run INSTALL.cmd again.'
+$configurationReady = $false
+$config = $null
+if (Test-Path -LiteralPath $configPath -PathType Leaf) {
+    $config = Get-Content -Raw -Encoding UTF8 -LiteralPath $configPath | ConvertFrom-Json
 }
-
-$config = Get-Content -Raw -Encoding UTF8 -LiteralPath $configPath | ConvertFrom-Json
-if ([string]::IsNullOrWhiteSpace([string]$config.agent_token)) {
-    throw 'Capture token or admin password is missing.'
+if ($null -eq $config) {
+    Write-Host 'Settings are not complete. Use the desktop Settings shortcut after installation.' -ForegroundColor Yellow
+} elseif ([string]::IsNullOrWhiteSpace([string]$config.agent_token)) {
+    Write-Host 'Admin password is empty. It can be entered later from Capture Settings.' -ForegroundColor Yellow
+} elseif (-not (Test-Path -LiteralPath ([string]$config.screenshot_directory) -PathType Container)) {
+    Write-Host 'PRISM screenshot folder was not found. Select it later from Capture Settings.' -ForegroundColor Yellow
+} else {
+    $configurationReady = $true
 }
-if (-not (Test-Path -LiteralPath ([string]$config.screenshot_directory) -PathType Container)) {
-    throw 'The configured PRISM screenshot folder was not found.'
-}
-if ([string]$config.hotkey -ne 'f3') {
+if (($null -ne $config) -and ([string]$config.hotkey -ne 'f3')) {
     Write-Host ('Warning: configured hotkey is ' + [string]$config.hotkey + ', not F3.') -ForegroundColor Yellow
 }
 
@@ -84,8 +91,12 @@ $folderLink.Arguments = '"' + $installRoot + '"'
 $folderLink.WorkingDirectory = $installRoot
 $folderLink.Save()
 
-Start-Process -FilePath $installedExe -WorkingDirectory $installRoot -WindowStyle Hidden
+if ($configurationReady) {
+    Start-Process -FilePath $installedExe -WorkingDirectory $installRoot -WindowStyle Hidden
+} else {
+    Write-Host 'Agent was installed but not started because setup is incomplete.' -ForegroundColor Yellow
+}
 
 Write-Host ''
-Write-Host 'CREO Capture Agent v1.2.1 installed successfully. Python is not required.' -ForegroundColor Green
+Write-Host 'CREO Capture Agent v1.2.2 installed successfully. Python is not required.' -ForegroundColor Green
 Write-Host 'Debug log and diagnostic status shortcuts were created on the desktop.' -ForegroundColor Green

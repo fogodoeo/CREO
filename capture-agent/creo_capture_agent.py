@@ -33,7 +33,7 @@ APP_DIR = Path(os.environ.get("LOCALAPPDATA", Path.home())) / "CREO" / "CaptureA
 CONFIG_PATH = APP_DIR / "config.json"
 LOG_PATH = APP_DIR / "capture-agent.log"
 DIAGNOSTICS_PATH = APP_DIR / "diagnostics.json"
-AGENT_VERSION = "1.2.1"
+AGENT_VERSION = "1.2.2"
 DEFAULT_CONFIG: dict[str, Any] = {
     "config_version": 2,
     "enabled": True,
@@ -649,7 +649,7 @@ def configure() -> None:
     }
     ttk.Checkbutton(frame, text="자동 캡처 사용", variable=variables["enabled"]).pack(anchor="w", pady=(0, 12))
 
-    def row(label: str, key: str, secret: bool = False, browse: bool = False) -> None:
+    def row(label: str, key: str, secret: bool = False, browse: bool = False) -> ttk.Entry:
         ttk.Label(frame, text=label).pack(anchor="w", pady=(7, 3))
         line = ttk.Frame(frame)
         line.pack(fill="x")
@@ -675,10 +675,18 @@ def configure() -> None:
             ttk.Button(line, text="자동 찾기", command=auto_detect_directory).pack(side="left", padx=(6, 0))
             ttk.Button(line, text="선택", command=browse_directory).pack(side="left", padx=(4, 0))
             ttk.Button(line, text="열기", command=open_directory).pack(side="left", padx=(4, 0))
+        return entry
 
     row("CREO 서버 주소", "service_url")
     row("경매 채널 (auto = 현재 활성 경매)", "channel_id")
-    row("캡처 토큰 또는 관리자 비밀번호", "agent_token", secret=True)
+    token_entry = row("캡처 인증값 (관리자 비밀번호 입력)", "agent_token", secret=True)
+    show_token = tk.BooleanVar(value=False)
+    ttk.Checkbutton(
+        frame,
+        text="입력값 표시",
+        variable=show_token,
+        command=lambda: token_entry.configure(show="" if show_token.get() else "*"),
+    ).pack(anchor="w", pady=(3, 0))
     row("본체 이름", "agent_name")
     row("PRISM 녹화·스크린샷 저장 폴더", "screenshot_directory", browse=True)
     ttk.Label(
@@ -737,6 +745,41 @@ def configure() -> None:
         except Exception as error:
             messagebox.showerror("설정 오류", str(error))
             return None
+
+    def save_draft() -> None:
+        """Preserve credentials and editable fields even before validation is complete."""
+        draft = load_config()
+        draft["enabled"] = bool(variables["enabled"].get())
+        for key in ("service_url", "channel_id", "agent_id", "agent_token", "agent_name", "screenshot_directory", "hotkey"):
+            draft[key] = str(variables[key].get()).strip()
+        for key, converter in (
+            ("capture_delay_ms", int),
+            ("screenshot_timeout_sec", float),
+            ("poll_interval_sec", float),
+            ("max_width", int),
+            ("webp_quality", int),
+        ):
+            try:
+                draft[key] = converter(variables[key].get())
+            except (TypeError, ValueError):
+                pass
+        try:
+            crop = [float(value.strip()) for value in str(variables["crop_percent"].get()).split(",")]
+            if len(crop) == 4:
+                draft["crop_percent"] = crop
+        except ValueError:
+            pass
+        save_config(draft)
+
+    def save_and_close() -> None:
+        if save(False):
+            root.destroy()
+
+    def close_and_preserve() -> None:
+        try:
+            save_draft()
+        finally:
+            root.destroy()
 
     def test_connection() -> None:
         next_config = save(False)
@@ -818,7 +861,8 @@ def configure() -> None:
     save_actions = ttk.Frame(actions)
     save_actions.pack(fill="x", pady=(8, 0))
     ttk.Button(save_actions, text="이 PC를 활성 본체로", command=activate_this_pc).pack(side="left")
-    ttk.Button(save_actions, text="저장", command=lambda: save(True)).pack(side="right")
+    ttk.Button(save_actions, text="저장하고 닫기", command=save_and_close).pack(side="right")
+    root.protocol("WM_DELETE_WINDOW", close_and_preserve)
     root.mainloop()
 
 
