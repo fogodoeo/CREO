@@ -25,7 +25,7 @@ class CaptureAgentTests(unittest.TestCase):
                 agent.APP_DIR = root
                 agent.CONFIG_PATH = root / "config.json"
                 agent.CONFIG_PATH.write_text(
-                    json.dumps({"config_version": 1, "hotkey": "ctrl+shift+f12", "agent_id": "test"}),
+                    json.dumps({"config_version": 2, "hotkey": "Ctrl + Shift + F12", "agent_id": "test"}),
                     encoding="utf-8",
                 )
                 config = agent.load_config()

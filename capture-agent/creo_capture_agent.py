@@ -33,7 +33,7 @@ APP_DIR = Path(os.environ.get("LOCALAPPDATA", Path.home())) / "CREO" / "CaptureA
 CONFIG_PATH = APP_DIR / "config.json"
 LOG_PATH = APP_DIR / "capture-agent.log"
 DIAGNOSTICS_PATH = APP_DIR / "diagnostics.json"
-AGENT_VERSION = "1.2.2"
+AGENT_VERSION = "1.2.3"
 DEFAULT_CONFIG: dict[str, Any] = {
     "config_version": 2,
     "enabled": True,
@@ -150,11 +150,12 @@ def load_config() -> dict[str, Any]:
             config.update(stored)
     except (FileNotFoundError, json.JSONDecodeError, OSError):
         pass
-    # v1.1 used Ctrl+Shift+F12. Existing installations using that untouched
-    # default migrate to the new operator-selected F3 key automatically.
+    # v1.1 used Ctrl+Shift+F12. Some installations were already marked as
+    # config v2 before the new F3 default arrived, so migrate this exact legacy
+    # value regardless of the stored config version.
+    if str(config.get("hotkey") or "").strip().lower().replace(" ", "") == "ctrl+shift+f12":
+        config["hotkey"] = "f3"
     if int(config.get("config_version") or 0) < 2:
-        if str(config.get("hotkey") or "").strip().lower() == "ctrl+shift+f12":
-            config["hotkey"] = "f3"
         config["config_version"] = 2
     if not str(config.get("agent_id") or "").strip():
         config["agent_id"] = f"{socket.gethostname()}-{uuid.uuid4().hex}"

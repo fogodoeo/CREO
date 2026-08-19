@@ -176,7 +176,7 @@ test('every non-survey operational page has a real document title', () => {
 
 test('capture setup distributes the no-Python F3 agent with diagnostics', () => {
     const setup = fs.readFileSync(path.join(__dirname, '..', 'public', 'capture-setup.html'), 'utf8');
-    assert.match(setup, /creo-capture-agent-v1\.2\.2\.zip/);
+    assert.match(setup, /creo-capture-agent-v1\.2\.3\.zip/);
     assert.match(setup, /출력 스크린샷<\/b>을 <span class="key">F3<\/span>/);
     assert.match(setup, /INSTALL\.cmd/);
     assert.match(setup, /CREO Capture Diagnostics/);
