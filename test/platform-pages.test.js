@@ -174,6 +174,15 @@ test('every non-survey operational page has a real document title', () => {
     }
 });
 
+test('capture setup distributes the no-Python F3 agent with diagnostics', () => {
+    const setup = fs.readFileSync(path.join(__dirname, '..', 'public', 'capture-setup.html'), 'utf8');
+    assert.match(setup, /creo-capture-agent-v1\.2\.0\.zip/);
+    assert.match(setup, /출력 스크린샷<\/b>을 <span class="key">F3<\/span>/);
+    assert.match(setup, /INSTALL\.cmd/);
+    assert.match(setup, /CREO Capture Diagnostics/);
+    assert.doesNotMatch(setup, /Ctrl \+ Shift \+ F12|install\.bat/);
+});
+
 test('operator UI examples do not embed real tournament participant names', () => {
     const preview = fs.readFileSync(path.join(__dirname, '..', 'public', 'preview.html'), 'utf8');
     for (const participant of ['렙소디', '베누스', '디어렙 청주', '미야게코', '니코게코']) {

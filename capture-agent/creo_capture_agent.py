@@ -32,7 +32,10 @@ from PIL import Image, ImageOps
 APP_DIR = Path(os.environ.get("LOCALAPPDATA", Path.home())) / "CREO" / "CaptureAgent"
 CONFIG_PATH = APP_DIR / "config.json"
 LOG_PATH = APP_DIR / "capture-agent.log"
+DIAGNOSTICS_PATH = APP_DIR / "diagnostics.json"
+AGENT_VERSION = "1.2.0"
 DEFAULT_CONFIG: dict[str, Any] = {
+    "config_version": 2,
     "enabled": True,
     "service_url": "https://creok.onrender.com",
     "channel_id": "auto",
@@ -40,7 +43,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "agent_token": "",
     "agent_name": socket.gethostname(),
     "screenshot_directory": str(Path.home() / "Videos"),
-    "hotkey": "ctrl+shift+f12",
+    "hotkey": "f3",
     "capture_delay_ms": 250,
     "screenshot_timeout_sec": 12,
     "poll_interval_sec": 1.0,
@@ -140,19 +143,26 @@ KEYEVENTF_KEYUP = 0x0002
 
 def load_config() -> dict[str, Any]:
     config = dict(DEFAULT_CONFIG)
+    stored: dict[str, Any] = {}
     try:
         stored = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
         if isinstance(stored, dict):
             config.update(stored)
     except (FileNotFoundError, json.JSONDecodeError, OSError):
         pass
+    # v1.1 used Ctrl+Shift+F12. Existing installations using that untouched
+    # default migrate to the new operator-selected F3 key automatically.
+    if int(config.get("config_version") or 0) < 2:
+        if str(config.get("hotkey") or "").strip().lower() == "ctrl+shift+f12":
+            config["hotkey"] = "f3"
+        config["config_version"] = 2
     if not str(config.get("agent_id") or "").strip():
         config["agent_id"] = f"{socket.gethostname()}-{uuid.uuid4().hex}"
-        try:
-            APP_DIR.mkdir(parents=True, exist_ok=True)
-            CONFIG_PATH.write_text(json.dumps(config, ensure_ascii=False, indent=2), encoding="utf-8")
-        except OSError:
-            pass
+    try:
+        APP_DIR.mkdir(parents=True, exist_ok=True)
+        CONFIG_PATH.write_text(json.dumps(config, ensure_ascii=False, indent=2), encoding="utf-8")
+    except OSError:
+        pass
     return config
 
 
@@ -161,13 +171,37 @@ def save_config(config: dict[str, Any]) -> None:
     CONFIG_PATH.write_text(json.dumps(config, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
+def write_diagnostics(phase: str, **values: Any) -> None:
+    APP_DIR.mkdir(parents=True, exist_ok=True)
+    payload: dict[str, Any] = {}
+    try:
+        stored = json.loads(DIAGNOSTICS_PATH.read_text(encoding="utf-8"))
+        if isinstance(stored, dict):
+            payload.update(stored)
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        pass
+    payload.update(values)
+    payload.update({
+        "version": AGENT_VERSION,
+        "phase": phase,
+        "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+    })
+    temporary = DIAGNOSTICS_PATH.with_suffix(".tmp")
+    try:
+        temporary.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        temporary.replace(DIAGNOSTICS_PATH)
+    except OSError:
+        pass
+
+
 def setup_logging() -> logging.Logger:
     APP_DIR.mkdir(parents=True, exist_ok=True)
     logger = logging.getLogger("creo-capture-agent")
     if logger.handlers:
         return logger
-    logger.setLevel(logging.INFO)
-    handler = RotatingFileHandler(LOG_PATH, maxBytes=1_000_000, backupCount=3, encoding="utf-8")
+    logger.setLevel(logging.DEBUG)
+    handler = RotatingFileHandler(LOG_PATH, maxBytes=2_000_000, backupCount=5, encoding="utf-8")
+    handler.setLevel(logging.DEBUG)
     handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
     logger.addHandler(handler)
     if sys.stdout and not sys.stdout.closed:
@@ -179,7 +213,7 @@ def setup_logging() -> logging.Logger:
 
 def auth_headers(config: dict[str, Any]) -> dict[str, str]:
     token = str(config.get("agent_token") or "").strip()
-    headers = {"Content-Type": "application/json", "User-Agent": "CREO-Capture-Agent/1.0"}
+    headers = {"Content-Type": "application/json", "User-Agent": f"CREO-Capture-Agent/{AGENT_VERSION}"}
     if token:
         headers["X-Creo-Capture-Token"] = token
         headers["X-Creo-Admin"] = token
@@ -301,7 +335,26 @@ class CaptureAgent:
     def request(self, method: str, path: str, **kwargs: Any) -> requests.Response:
         headers = dict(auth_headers(self.config))
         headers.update(kwargs.pop("headers", {}) or {})
-        response = self.session.request(method, api_url(self.config, path), headers=headers, timeout=20, **kwargs)
+        started = time.monotonic()
+        self.logger.debug("HTTP start: %s %s", method, path)
+        try:
+            response = self.session.request(method, api_url(self.config, path), headers=headers, timeout=20, **kwargs)
+        except Exception as error:
+            self.logger.error(
+                "HTTP transport failed: %s %s elapsed_ms=%s error=%s",
+                method,
+                path,
+                round((time.monotonic() - started) * 1000),
+                error,
+            )
+            raise
+        self.logger.debug(
+            "HTTP done: %s %s status=%s elapsed_ms=%s",
+            method,
+            path,
+            response.status_code,
+            round((time.monotonic() - started) * 1000),
+        )
         if response.status_code >= 400:
             try:
                 message = response.json().get("error")
@@ -311,8 +364,15 @@ class CaptureAgent:
         return response
 
     def connection_test(self) -> str:
+        self.logger.info("Connection test started: service=%s", self.config.get("service_url"))
         response = self.request("GET", "/api/capture/agent-check")
         payload = response.json()
+        write_diagnostics(
+            "connection_ok",
+            active_channel=payload.get("activeChannel") or "",
+            storage_backend=payload.get("storage", {}).get("backend", ""),
+            last_error="",
+        )
         return (
             f"연결 성공 · 현재 경매 {payload.get('activeChannel') or '-'} · "
             f"저장소 {payload.get('storage', {}).get('backend', '-')}"
@@ -329,6 +389,13 @@ class CaptureAgent:
             },
         )
         payload = response.json()
+        write_diagnostics(
+            "agent_activated",
+            active_channel=payload.get("channelId") or "",
+            agent_id=str(self.config.get("agent_id") or ""),
+            agent_name=str(self.config.get("agent_name") or ""),
+            last_error="",
+        )
         return f"이 PC가 {payload.get('channelId') or '-'} 경매의 활성 캡처 본체입니다."
 
     def lease_job(self) -> dict[str, Any] | None:
@@ -348,11 +415,43 @@ class CaptureAgent:
         if not directory.is_dir():
             raise RuntimeError(f"스크린샷 폴더를 찾을 수 없습니다: {directory}")
         before = image_files(directory)
+        self.logger.info(
+            "Capture prepare: folder=%s files=%s hotkey=%s delay_ms=%s timeout_sec=%s",
+            directory,
+            len(before),
+            self.config.get("hotkey"),
+            self.config.get("capture_delay_ms"),
+            self.config.get("screenshot_timeout_sec"),
+        )
+        write_diagnostics(
+            "capture_preparing",
+            screenshot_directory=str(directory),
+            screenshot_directory_exists=True,
+            image_files_before=len(before),
+            hotkey=str(self.config.get("hotkey") or ""),
+            last_error="",
+        )
         delay = max(0, int(self.config.get("capture_delay_ms") or 0)) / 1000
         if delay:
             time.sleep(delay)
-        send_hotkey(str(self.config.get("hotkey") or "ctrl+shift+f12"))
-        return wait_for_screenshot(directory, before, float(self.config.get("screenshot_timeout_sec") or 12))
+        hotkey = str(self.config.get("hotkey") or "f3")
+        send_hotkey(hotkey)
+        self.logger.info("Hotkey sent: %s", hotkey)
+        write_diagnostics("hotkey_sent", hotkey=hotkey)
+        screenshot = wait_for_screenshot(directory, before, float(self.config.get("screenshot_timeout_sec") or 12))
+        try:
+            stat = screenshot.stat()
+            screenshot_size = stat.st_size
+        except OSError:
+            screenshot_size = 0
+        self.logger.info("Screenshot detected: path=%s size=%s", screenshot, screenshot_size)
+        write_diagnostics(
+            "screenshot_detected",
+            screenshot_path=str(screenshot),
+            screenshot_size=screenshot_size,
+            last_error="",
+        )
+        return screenshot
 
     def upload(self, job: dict[str, Any], image: bytes, width: int, height: int) -> None:
         self.request(
@@ -367,8 +466,15 @@ class CaptureAgent:
                 "capturedAt": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
             },
         )
+        self.logger.info("Upload accepted: job=%s bytes=%s", job.get("id"), len(image))
 
     def fail(self, job: dict[str, Any], error: Exception) -> None:
+        write_diagnostics(
+            "capture_failed",
+            last_job_id=str(job.get("id") or ""),
+            last_item_number=str(job.get("itemNumber") or ""),
+            last_error=f"{type(error).__name__}: {error}",
+        )
         try:
             self.request(
                 "POST",
@@ -383,18 +489,59 @@ class CaptureAgent:
 
     def process_job(self, job: dict[str, Any]) -> None:
         self.logger.info("Capture start: %s %s", job.get("itemNumber"), job.get("itemName"))
+        write_diagnostics(
+            "job_received",
+            last_job_id=str(job.get("id") or ""),
+            last_item_number=str(job.get("itemNumber") or ""),
+            last_item_name=str(job.get("itemName") or ""),
+            last_error="",
+        )
         try:
             screenshot = self.capture_file()
             image, width, height = compress_capture(screenshot, self.config)
             self.upload(job, image, width, height)
             self.logger.info("Capture complete: %s (%sx%s, %s bytes)", job.get("id"), width, height, len(image))
+            write_diagnostics(
+                "capture_complete",
+                last_job_id=str(job.get("id") or ""),
+                last_capture_width=width,
+                last_capture_height=height,
+                last_upload_bytes=len(image),
+                last_success_at=time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+                last_error="",
+            )
         except Exception as error:
             self.logger.exception("Capture failed: %s", error)
             self.fail(job, error)
 
     def run(self) -> None:
-        self.logger.info("Agent started: channel=%s agent=%s", self.config.get("channel_id"), self.config.get("agent_name"))
+        directory = Path(str(self.config.get("screenshot_directory") or "")).expanduser()
+        self.logger.info(
+            "Agent started: version=%s channel=%s agent=%s id=%s enabled=%s hotkey=%s folder=%s folder_exists=%s token_present=%s",
+            AGENT_VERSION,
+            self.config.get("channel_id"),
+            self.config.get("agent_name"),
+            self.config.get("agent_id"),
+            self.config.get("enabled"),
+            self.config.get("hotkey"),
+            directory,
+            directory.is_dir(),
+            bool(str(self.config.get("agent_token") or "").strip()),
+        )
+        write_diagnostics(
+            "agent_started",
+            channel_id=str(self.config.get("channel_id") or ""),
+            agent_id=str(self.config.get("agent_id") or ""),
+            agent_name=str(self.config.get("agent_name") or ""),
+            enabled=bool(self.config.get("enabled", True)),
+            hotkey=str(self.config.get("hotkey") or ""),
+            screenshot_directory=str(directory),
+            screenshot_directory_exists=directory.is_dir(),
+            token_present=bool(str(self.config.get("agent_token") or "").strip()),
+            last_error="",
+        )
         failures = 0
+        last_heartbeat = 0.0
         while not self.stop_event.is_set():
             if not self.config.get("enabled", True):
                 self.stop_event.wait(3)
@@ -402,16 +549,72 @@ class CaptureAgent:
             try:
                 job = self.lease_job()
                 failures = 0
+                if time.monotonic() - last_heartbeat >= 60:
+                    self.logger.info("Agent heartbeat: polling ok channel=%s", self.config.get("channel_id"))
+                    write_diagnostics("polling", last_poll_ok_at=time.strftime("%Y-%m-%dT%H:%M:%S%z"), last_error="")
+                    last_heartbeat = time.monotonic()
                 if job:
                     self.process_job(job)
                     continue
             except Exception as error:
                 failures += 1
                 self.logger.warning("Agent poll failed: %s", error)
+                write_diagnostics(
+                    "poll_failed",
+                    poll_failures=failures,
+                    last_error=f"{type(error).__name__}: {error}",
+                )
             interval = max(0.5, min(10.0, float(self.config.get("poll_interval_sec") or 1.0)))
             if failures:
                 interval = min(30.0, interval * (2 ** min(failures, 5)))
             self.stop_event.wait(interval)
+
+
+def diagnostic_report(config: dict[str, Any], logger: logging.Logger) -> str:
+    directory = Path(str(config.get("screenshot_directory") or "")).expanduser()
+    lines = [
+        f"버전: {AGENT_VERSION}",
+        f"에이전트: {config.get('agent_name') or '-'}",
+        f"채널: {config.get('channel_id') or '-'}",
+        f"단축키: {config.get('hotkey') or '-'}",
+        f"저장 폴더: {directory}",
+        f"폴더 확인: {'정상' if directory.is_dir() else '찾을 수 없음'}",
+        f"인증값: {'입력됨' if str(config.get('agent_token') or '').strip() else '없음'}",
+    ]
+    errors: list[str] = []
+    try:
+        parse_hotkey(str(config.get("hotkey") or ""))
+        lines.append("단축키 형식: 정상")
+    except Exception as error:
+        errors.append(f"단축키: {error}")
+    if directory.is_dir():
+        try:
+            files = image_files(directory)
+            lines.append(f"현재 이미지 파일: {len(files)}개")
+            if files:
+                latest = max(files, key=lambda path: files[path][0])
+                lines.append(f"최근 이미지: {latest.name}")
+        except Exception as error:
+            errors.append(f"폴더 읽기: {error}")
+    else:
+        errors.append("PRISM 저장 폴더를 찾을 수 없습니다.")
+    try:
+        lines.append(CaptureAgent(config, logger).connection_test())
+    except Exception as error:
+        errors.append(f"서버 연결: {error}")
+    if errors:
+        lines.extend(["", "확인할 문제:", *[f"- {error}" for error in errors]])
+    else:
+        lines.extend(["", "기본 진단 정상 · 다음으로 캡처 테스트를 실행하세요."])
+    report = "\n".join(lines)
+    logger.info("Diagnostics completed: ok=%s\n%s", not errors, report)
+    write_diagnostics(
+        "diagnostics_failed" if errors else "diagnostics_ok",
+        diagnostic_ok=not errors,
+        diagnostic_report=report,
+        last_error="; ".join(errors),
+    )
+    return report
 
 
 def configure() -> None:
@@ -424,7 +627,7 @@ def configure() -> None:
         config["screenshot_directory"] = str(detect_prism_screenshot_directory(config.get("screenshot_directory")))
     root = tk.Tk()
     root.title("CREO 캡처 에이전트 설정")
-    root.geometry("610x690")
+    root.geometry("640x740")
     root.minsize(570, 620)
     frame = ttk.Frame(root, padding=20)
     frame.pack(fill="both", expand=True)
@@ -436,7 +639,7 @@ def configure() -> None:
         "agent_token": tk.StringVar(value=config.get("agent_token", "")),
         "agent_name": tk.StringVar(value=config.get("agent_name", socket.gethostname())),
         "screenshot_directory": tk.StringVar(value=config.get("screenshot_directory", "")),
-        "hotkey": tk.StringVar(value=config.get("hotkey", "ctrl+shift+f12")),
+        "hotkey": tk.StringVar(value=config.get("hotkey", "f3")),
         "capture_delay_ms": tk.StringVar(value=str(config.get("capture_delay_ms", 250))),
         "screenshot_timeout_sec": tk.StringVar(value=str(config.get("screenshot_timeout_sec", 12))),
         "poll_interval_sec": tk.StringVar(value=str(config.get("poll_interval_sec", 1.0))),
@@ -483,7 +686,12 @@ def configure() -> None:
         text="PRISM이 실제 스크린샷을 저장하는 폴더입니다. 날짜별 하위 폴더도 자동 감지합니다.",
         foreground="#64748b",
     ).pack(anchor="w", pady=(3, 2))
-    row("PRISM 출력 스크린샷 단축키", "hotkey")
+    row("PRISM 출력 스크린샷 단축키 (F3)", "hotkey")
+    ttk.Label(
+        frame,
+        text="PRISM에서 F3을 반드시 '출력 스크린샷'에 지정하세요. 녹화 시작/종료에 지정하면 이미지가 생성되지 않습니다.",
+        foreground="#b45309",
+    ).pack(anchor="w", pady=(3, 2))
     row("캡처 지연(ms)", "capture_delay_ms")
     row("파일 생성 대기(초)", "screenshot_timeout_sec")
     row("서버 확인 간격(초)", "poll_interval_sec")
@@ -499,6 +707,7 @@ def configure() -> None:
         if len(crop) != 4:
             raise ValueError("크롭 영역은 숫자 4개로 입력해주세요.")
         return {
+            "config_version": 2,
             "enabled": bool(variables["enabled"].get()),
             "service_url": str(variables["service_url"].get()).strip().rstrip("/"),
             "channel_id": str(variables["channel_id"].get()).strip(),
@@ -567,16 +776,49 @@ def configure() -> None:
             preview = APP_DIR / "capture-test.webp"
             preview.write_bytes(image)
             status.configure(text=f"캡처 성공 · {width}×{height} · {len(image) // 1024}KB", foreground="#16803c")
+            write_diagnostics(
+                "capture_test_ok",
+                screenshot_path=str(screenshot),
+                preview_path=str(preview),
+                last_capture_width=width,
+                last_capture_height=height,
+                last_upload_bytes=len(image),
+                last_error="",
+            )
             os.startfile(preview)
         except Exception as error:
+            setup_logging().exception("Capture test failed: %s", error)
+            write_diagnostics("capture_test_failed", last_error=f"{type(error).__name__}: {error}")
             status.configure(text=f"캡처 실패: {error}", foreground="#c2410c")
+
+    def run_diagnostics() -> None:
+        next_config = save(False)
+        if not next_config:
+            return
+        status.configure(text="진단 실행 중...")
+        root.update_idletasks()
+        report = diagnostic_report(next_config, setup_logging())
+        ok = "확인할 문제:" not in report
+        status.configure(text="진단 정상" if ok else "진단에서 문제 발견", foreground="#16803c" if ok else "#c2410c")
+        messagebox.showinfo("CREO 캡처 진단", report)
+
+    def open_logs() -> None:
+        APP_DIR.mkdir(parents=True, exist_ok=True)
+        LOG_PATH.touch(exist_ok=True)
+        os.startfile(APP_DIR)
 
     actions = ttk.Frame(frame)
     actions.pack(fill="x", pady=(12, 0))
-    ttk.Button(actions, text="연결 테스트", command=test_connection).pack(side="left")
-    ttk.Button(actions, text="캡처 테스트", command=test_capture).pack(side="left", padx=6)
-    ttk.Button(actions, text="이 PC를 활성 본체로", command=activate_this_pc).pack(side="left")
-    ttk.Button(actions, text="저장", command=lambda: save(True)).pack(side="right")
+    test_actions = ttk.Frame(actions)
+    test_actions.pack(fill="x")
+    ttk.Button(test_actions, text="연결 테스트", command=test_connection).pack(side="left")
+    ttk.Button(test_actions, text="캡처 테스트", command=test_capture).pack(side="left", padx=6)
+    ttk.Button(test_actions, text="진단", command=run_diagnostics).pack(side="left")
+    ttk.Button(test_actions, text="로그 폴더", command=open_logs).pack(side="left", padx=6)
+    save_actions = ttk.Frame(actions)
+    save_actions.pack(fill="x", pady=(8, 0))
+    ttk.Button(save_actions, text="이 PC를 활성 본체로", command=activate_this_pc).pack(side="left")
+    ttk.Button(save_actions, text="저장", command=lambda: save(True)).pack(side="right")
     root.mainloop()
 
 
@@ -595,12 +837,19 @@ def main() -> int:
     parser.add_argument("--configure", action="store_true")
     parser.add_argument("--test-connection", action="store_true")
     parser.add_argument("--test-capture", action="store_true")
+    parser.add_argument("--diagnose", action="store_true")
     args = parser.parse_args()
     if args.configure:
         configure()
         return 0
     config = load_config()
     agent = CaptureAgent(config, setup_logging())
+    if args.diagnose:
+        report = diagnostic_report(config, setup_logging())
+        print(report)
+        if os.name == "nt":
+            ctypes.windll.user32.MessageBoxW(0, report, "CREO 캡처 진단", 0x40)
+        return 0
     if args.test_connection:
         print(agent.connection_test())
         return 0
@@ -619,5 +868,25 @@ def main() -> int:
     return 0
 
 
+def entrypoint() -> int:
+    try:
+        return main()
+    except Exception as error:
+        logger = setup_logging()
+        logger.exception("Agent fatal error: %s", error)
+        write_diagnostics("fatal_error", last_error=f"{type(error).__name__}: {error}")
+        if os.name == "nt":
+            try:
+                ctypes.windll.user32.MessageBoxW(
+                    0,
+                    f"CREO 캡처 에이전트 오류\n\n{error}\n\n로그: {LOG_PATH}",
+                    "CREO 캡처 에이전트",
+                    0x10,
+                )
+            except Exception:
+                pass
+        return 1
+
+
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(entrypoint())
