@@ -200,8 +200,8 @@
         }
         .draggable-live-bidders .bid-preview-list { display: grid; gap: 5px; width: 100%; pointer-events: none; }
         .draggable-live-bidders .bid-preview-row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 6px; padding: 5px 7px; border-left: 3px solid rgba(217,176,92,.75); background: rgba(15,20,29,.9); color: #f8fafc; font-size: 10px; }
-        .draggable-live-bidders .bid-preview-row:nth-child(2) { opacity: .26; }
-        .draggable-live-bidders .bid-preview-row:nth-child(3) { opacity: .06; }
+        .draggable-live-bidders .bid-preview-row:nth-child(2) { opacity: .94; }
+        .draggable-live-bidders .bid-preview-row:nth-child(3) { opacity: .86; }
         .draggable-live-bidders .bid-preview-row b:last-child { color: #e7c776; }
 
         .draggable-photo {
@@ -1174,6 +1174,11 @@
                         <input type="number" id="live-bidders-font-input" onchange="updateLiveBiddersFontSize(this.value)" class="cdcup-input" style="padding:2px 6px; width:52px; height:28px; font-size:11px; font-weight:700; border-radius:4px;" min="10" max="48" value="20">
                         <span style="font-size:11px; font-weight:700; color:var(--text-muted);">px</span>
                     </div>
+                    <div class="switch-container" id="toggle-live-bidders-opacity-group" style="display:none; gap:7px; align-items:center; border-left:1px solid var(--border); padding-left:12px; margin-left:6px;">
+                        <span style="font-weight:700;">입찰명단 투명도:</span>
+                        <input type="range" id="live-bidders-opacity-input" min="0" max="100" step="1" value="94" oninput="previewLiveBiddersOpacity(this.value)" onchange="updateLiveBiddersOpacity(this.value)" style="width:86px; accent-color:#d9b05c;">
+                        <strong id="live-bidders-opacity-value" style="min-width:32px; font-size:11px; color:var(--text-muted);">94%</strong>
+                    </div>
                     <div class="switch-container" id="toggle-bracket-scale-group" style="display:none; gap: 6px; align-items: center; border-left: 1px solid var(--border); padding-left: 12px; margin-left: 6px;">
                         <span style="font-weight: 700;">대진표 크기:</span>
                         <select id="bracket-scale-select" onchange="changeBracketScale(this.value)" class="cdcup-input" style="padding: 2px 6px; width: auto; height: 28px; font-size: 11px; font-weight: 700; border-radius: 4px;">
@@ -1480,6 +1485,7 @@
                 document.getElementById('toggle-live-bidders-show-group').style.display = isCreyon ? 'none' : '';
                 document.getElementById('toggle-live-bidders-mode-group').style.display = isCreyon ? 'none' : '';
                 document.getElementById('toggle-live-bidders-font-group').style.display = isCreyon ? 'none' : '';
+                document.getElementById('toggle-live-bidders-opacity-group').style.display = isCreyon ? 'none' : '';
             }
 
             if (pageNum === '3') {
@@ -1534,6 +1540,7 @@
                 setDisplay('toggle-live-bidders-show-group', false);
                 setDisplay('toggle-live-bidders-switch-group', false);
                 setDisplay('toggle-live-bidders-mode-group', false);
+                setDisplay('toggle-live-bidders-opacity-group', false);
                 setDisplay('bracket-coords', true);
                 setDisplay('bracket-live-coords', false);
                 setDisplay('bracket-title-coords', false);
@@ -1609,6 +1616,7 @@
             document.getElementById('toggle-live-bidders-show-group').style.display = isCreyon ? 'none' : '';
             document.getElementById('toggle-live-bidders-mode-group').style.display = isCreyon ? 'none' : '';
             document.getElementById('toggle-live-bidders-font-group').style.display = isCreyon ? 'none' : '';
+            document.getElementById('toggle-live-bidders-opacity-group').style.display = isCreyon ? 'none' : '';
             document.getElementById('toggle-live-bidders-switch-group').style.display = 'none';
         }
 
@@ -1653,6 +1661,7 @@
             document.getElementById('toggle-live-bidders-show-group').style.display = 'none';
             document.getElementById('toggle-live-bidders-switch-group').style.display = 'none';
             document.getElementById('toggle-live-bidders-mode-group').style.display = 'none';
+            document.getElementById('toggle-live-bidders-opacity-group').style.display = 'none';
             document.getElementById('toggle-bracket-scale-group').style.display = 'none';
             document.getElementById('toggle-bracket-mode-group').style.display = isInitialCdcup ? '' : 'none';
             document.getElementById('toggle-bracket-full-font-group').style.display = '';
@@ -2036,6 +2045,12 @@
                     elements.live_bidders.show = cfg.live_bidders_show !== undefined ? String(cfg.live_bidders_show) : '1';
                     const biddersFontInput = document.getElementById('live-bidders-font-input');
                     if (biddersFontInput) biddersFontInput.value = elements.live_bidders.fontSize;
+                    const biddersOpacity = cfg.live_bidders_opacity ?? '94';
+                    const biddersOpacityInput = document.getElementById('live-bidders-opacity-input');
+                    if (biddersOpacityInput) {
+                        biddersOpacityInput.value = biddersOpacity;
+                        previewLiveBiddersOpacity(biddersOpacity);
+                    }
                 }
 
                 // Load Nametag 1 & 2 values (PAGE1 only)
@@ -2868,6 +2883,7 @@
             if (pageNum === '2') {
                 configMap.live_bidders_show = document.getElementById('toggle-live-bidders-show')?.checked ? '1' : '0';
                 configMap.live_bidders_mode = document.getElementById('live-bidders-mode-select')?.value || 'top';
+                configMap.live_bidders_opacity = document.getElementById('live-bidders-opacity-input')?.value || '94';
                 if (elements.live_bidders) {
                     configMap.p2_live_bidders_top = elements.live_bidders.top;
                     configMap.p2_live_bidders_left = elements.live_bidders.left;
@@ -3020,6 +3036,13 @@
                 elements.photo.el.style.height = '60%';
                 document.getElementById('toggle-photo-show').checked = true;
                 applyVisualState('photo');
+            }
+            if (elements.live_bidders) {
+                const biddersOpacityInput = document.getElementById('live-bidders-opacity-input');
+                if (biddersOpacityInput) {
+                    biddersOpacityInput.value = '94';
+                    previewLiveBiddersOpacity('94');
+                }
             }
 
             if (elements.nametag1) {
@@ -4144,6 +4167,21 @@
             if (input) input.value = String(fontSize);
             postPreviewConfigPatch({ p2_live_bidders_font_size: String(fontSize) });
             saveCoordinates(true);
+        }
+
+        function previewLiveBiddersOpacity(val) {
+            const parsed = parseInt(val, 10);
+            const opacity = Math.max(0, Math.min(100, Number.isFinite(parsed) ? parsed : 94));
+            const input = document.getElementById('live-bidders-opacity-input');
+            const valueEl = document.getElementById('live-bidders-opacity-value');
+            if (input) input.value = String(opacity);
+            if (valueEl) valueEl.textContent = opacity + '%';
+            postPreviewConfigPatch({ live_bidders_opacity: String(opacity) });
+        }
+
+        function updateLiveBiddersOpacity(val) {
+            previewLiveBiddersOpacity(val);
+            saveCoordinates(false);
         }
 
         // Initial Initialization

@@ -328,7 +328,9 @@ test('legacy broadcast bridge survives Supabase quota exhaustion with cached or 
     assert.match(bridge, /_readBroadcastStorage\('config', \{\}\)/);
     assert.match(cdcup, /await _refreshBroadcastFromItems\(\[\]\)/);
     assert.match(cdcup, /document\.getElementById\("info-name"\)\.textContent = cleanInfoName/);
-    assert.match(cdcup, /document\.getElementById\("info-sub"\)\.textContent = showCompanyInline[\s\S]*\? publicCompanyName/);
+    assert.match(cdcup, /infoCompany\.textContent = publicCompanyName/);
+    assert.match(cdcup, /infoCompany\.hidden = isHost \|\| !showCompanyInline/);
+    assert.match(cdcup, /document\.getElementById\("info-sub"\)\.textContent = presentation\.label/);
 });
 
 test('CDCUP third-round preparation delegates one server transaction that also creates the auction list', () => {
@@ -429,9 +431,9 @@ test('CDCUP three-round format assigns round-two teams and round-three finalists
     assert.match(broadcast, /animateLeaderboardRows\(listEl, beforePositions, '\.p2-live-bidder-row\[data-bidder-key\]'/);
     assert.match(broadcast, /@keyframes p2-bidder-row-enter/);
     assert.match(broadcast, /--p2-row-opacity/);
-    assert.match(broadcast, /const rankOpacity = \[1, \.26, \.06, \.035/);
+    assert.match(broadcast, /const rankOpacity = \[1, \.94, \.86, \.78/);
     assert.doesNotMatch(broadcast, /<span class="p2-live-bidder-rank">/);
-    assert.match(preview, /\.bid-preview-row:nth-child\(3\) \{ opacity: \.06; \}/);
+    assert.match(preview, /\.bid-preview-row:nth-child\(3\) \{ opacity: \.86; \}/);
     assert.match(preview, /activeDragKey === 'banner' \? 24 : 32/);
     assert.match(broadcast, /function freeBannerEdgeCss/);
     assert.match(broadcast, /container\.style\.right = freeBannerEdgeCss\(layout\.right, 'x'\)/);
