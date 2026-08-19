@@ -33,7 +33,7 @@ APP_DIR = Path(os.environ.get("LOCALAPPDATA", Path.home())) / "CREO" / "CaptureA
 CONFIG_PATH = APP_DIR / "config.json"
 LOG_PATH = APP_DIR / "capture-agent.log"
 DIAGNOSTICS_PATH = APP_DIR / "diagnostics.json"
-AGENT_VERSION = "1.2.0"
+AGENT_VERSION = "1.2.1"
 DEFAULT_CONFIG: dict[str, Any] = {
     "config_version": 2,
     "enabled": True,

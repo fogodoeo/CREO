@@ -1,11 +1,13 @@
 @echo off
-chcp 65001 >nul
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0install.ps1"
+setlocal
+"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0install.ps1"
 if errorlevel 1 (
   echo.
-  echo 설치 중 오류가 발생했습니다.
+  echo Installation failed. Review the error shown above.
   pause
   exit /b 1
 )
 echo.
+echo Installation finished.
 pause
+endlocal

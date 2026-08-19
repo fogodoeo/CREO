@@ -87,5 +87,5 @@ $folderLink.Save()
 Start-Process -FilePath $installedExe -WorkingDirectory $installRoot -WindowStyle Hidden
 
 Write-Host ''
-Write-Host 'CREO Capture Agent v1.2.0 installed successfully. Python is not required.' -ForegroundColor Green
+Write-Host 'CREO Capture Agent v1.2.1 installed successfully. Python is not required.' -ForegroundColor Green
 Write-Host 'Debug log and diagnostic status shortcuts were created on the desktop.' -ForegroundColor Green
