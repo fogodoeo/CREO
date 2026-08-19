@@ -279,7 +279,7 @@ test('new CDCUP overlays and shipping retain compatibility with the established 
     assert.match(live, /class="vendor-tag"/);
     assert.match(live, /class="vendor-tag">\[\$\{esc\(item\.vendorName\)\}\]<\/span>/);
     assert.match(live, /\.item-name strong,\.vendor-tag\{[\s\S]{0,180}color:#fff;font-size:23px;font-weight:800/);
-    assert.match(live, /rankOpacity=\[1,\.94,\.86,\.78,\.70,\.64,\.58,\.52\]/);
+    assert.match(live, /rankOpacity=\[1,\.90,\.86,\.78,\.70,\.64,\.58,\.52\]/);
     assert.match(channelShipping, /location\.replace\(target\.pathname\+target\.search\)/);
     assert.match(channelShipping, /shipping\.html/);
     assert.doesNotMatch(channelShipping, /<a\b|id="channel-select"|id="manage-link"|id="control-link"/);
@@ -454,7 +454,7 @@ test('CDCUP three-round format assigns round-two teams and round-three finalists
     assert.match(broadcast, /animateLeaderboardRows\(listEl, beforePositions, '\.p2-live-bidder-row\[data-bidder-key\]'/);
     assert.match(broadcast, /@keyframes p2-bidder-row-enter/);
     assert.match(broadcast, /--p2-row-opacity/);
-    assert.match(broadcast, /const rankOpacity = \[1, \.94, \.86, \.78/);
+    assert.match(broadcast, /const rankOpacity = \[1, \.90, \.86, \.78/);
     assert.doesNotMatch(broadcast, /<span class="p2-live-bidder-rank">/);
     assert.match(preview, /\.bid-preview-row:nth-child\(3\) \{ opacity: \.86; \}/);
     assert.match(preview, /activeDragKey === 'banner' \? 24 : 32/);

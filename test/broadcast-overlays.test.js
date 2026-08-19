@@ -22,7 +22,7 @@ test('live bidder background opacity is configurable and lower ranks remain read
     assert.match(preview, /id="live-bidders-opacity-input"/);
     assert.match(preview, /configMap\.live_bidders_opacity/);
     assert.match(broadcast, /cfg\.live_bidders_opacity \?\? '94'/);
-    assert.match(broadcast, /\[1, \.94, \.86, \.78, \.70, \.64, \.58, \.52\]/);
+    assert.match(broadcast, /\[1, \.90, \.86, \.78, \.70, \.64, \.58, \.52\]/);
     assert.doesNotMatch(broadcast, /isCdcup\s*&&\s*isPage2/);
     assert.doesNotMatch(preview, /isCreyon\s*\?\s*'none'\s*:\s*''/);
 });
