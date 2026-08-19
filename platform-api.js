@@ -929,7 +929,16 @@ function createPlatformApi({ repository, logger = console, refreshShippingRateFn
                         return;
                     }
                     const data = await workspace(channelId);
-                    const record = sanitizeRecord(type, { ...body.record, id: current.id }, current);
+                    const incoming = { ...body.record, id: current.id };
+                    // Ordinary item edits must not end a live auction. Older
+                    // monitor clients send a full cached record when editing
+                    // the name/checklist, and that cache can still say
+                    // `waiting`. Auction status changes belong exclusively to
+                    // the locked auction-transition route above.
+                    if (type === 'item' && current.status === 'live') {
+                        incoming.status = 'live';
+                    }
+                    const record = sanitizeRecord(type, incoming, current);
                     const errors = validateRecord(type, record, { ...data, groups: channel.groups || [] });
                     if (errors.length) {
                         replyJson(res, 422, { error: errors.join(' '), errors });

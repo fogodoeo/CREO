@@ -344,6 +344,26 @@ test('auction transition keeps item status, active channel, and broadcast state 
     assert.equal(response.json().state.activeItemId, '');
 });
 
+test('ordinary item edits cannot downgrade a live auction with stale cached status', async () => {
+    const repository = new MemoryRepository();
+    const api = createPlatformApi({ repository, logger: { error() {} } });
+    await call(api, 'POST', '/api/platform/channels/alpha/items', {
+        record: { id: 'item_one', lotNumber: 1, name: '첫 개체', status: 'waiting' }
+    });
+    await call(api, 'PUT', '/api/platform/channels/alpha/auction-transition', {
+        itemId: 'item_one', status: 'live', mode: 'live', state: { page: 2 }
+    });
+
+    const response = await call(api, 'PUT', '/api/platform/channels/alpha/items/item_one', {
+        record: { id: 'item_one', lotNumber: 1, name: '수정된 개체', status: 'waiting' }
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(response.json().record.name, '수정된 개체');
+    assert.equal(response.json().record.status, 'live');
+    assert.equal((await repository.getRecord('alpha', 'item', 'item_one')).status, 'live');
+});
+
 test('auction transitions remain isolated when two channels reuse the same item id', async () => {
     const repository = new MemoryRepository();
     const api = createPlatformApi({ repository, logger: { error() {} } });
