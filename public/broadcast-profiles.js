@@ -12,7 +12,14 @@
 
     const SHARED_PAGE_CONTRACTS = Object.freeze({
         1: Object.freeze({ id: 'host', label: '진행', slots: Object.freeze(['channel', 'hosts', 'notice', 'ticker', 'banner']) }),
-        2: Object.freeze({ id: 'item', label: '경매', slots: Object.freeze(['item', 'vendor', 'photo', 'price', 'sold', 'ticker', 'banner']) })
+        2: Object.freeze({ id: 'item', label: '경매', slots: Object.freeze(['item', 'vendorTag', 'liveBidders', 'photo', 'price', 'sold', 'ticker', 'banner']) })
+    });
+
+    const SHARED_PAGE2_DEFAULTS = Object.freeze({
+        page2VendorTagOn: true,
+        page2BiddersOn: true,
+        page2BiddersOpacity: 94,
+        page2BiddersPosition: 'top-left'
     });
 
     const SHARED_SETTINGS_CONTRACT = Object.freeze({
@@ -20,7 +27,7 @@
         sections: Object.freeze([
             Object.freeze({ id: 'hosts', label: '진행진', fields: Object.freeze(['hostName1', 'hostRole1', 'hostName2', 'hostRole2']) }),
             Object.freeze({ id: 'page1', label: '1P 진행 화면', fields: Object.freeze(['page1HostsOn', 'page1NoticeOn', 'page1TickerOn', 'page1BannerOn']) }),
-            Object.freeze({ id: 'page2', label: '2P 개체 화면', fields: Object.freeze(['page2InfoOn', 'page2PhotoOn', 'page2PriceOn', 'page2SoldOn', 'page2TickerOn', 'page2BannerOn']) })
+            Object.freeze({ id: 'page2', label: '2P 개체 화면', fields: Object.freeze(['page2InfoOn', 'page2VendorTagOn', 'page2BiddersOn', 'page2BiddersOpacity', 'page2BiddersPosition', 'page2PhotoOn', 'page2PriceOn', 'page2SoldOn', 'page2TickerOn', 'page2BannerOn']) })
         ])
     });
 
@@ -70,6 +77,7 @@
     function defaultState(channel) {
         const profile = resolve(channel);
         return Object.freeze({
+            ...SHARED_PAGE2_DEFAULTS,
             ...(profile.defaultState || {}),
             ...(channel?.broadcastDefaults || {})
         });
@@ -100,5 +108,5 @@
     register({ id: 'crewart-academy', engine: 'legacy-layout', rendererModule: 'crewart', brandMark: 'W', studioAccent: '#ddb960', studioAccentInk: '#211604', sharedStudio: true, page3Renderer: 'academy', page3Label: '기숙사 점수', page3Slots: ['groupScoreboard'], page3SettingsSections: ['houseScoreboard'], assetPack: 'crewart', settings: { compatibilityModes: false, assets: true }, defaultState: { page1BannerOn: false, page2BannerOn: false, notice: 'CREWARTS LIVE', noticeDetail: 'R · G · B · Y', page1Ticker: '크레아트 라이브 · 기숙사 점수판', page2Ticker: 'R · G · B · Y' } });
     register({ id: 'creyon-metal', engine: 'legacy-layout', rendererModule: 'creyon', brandMark: 'Y', studioAccent: '#c4a979', studioAccentInk: '#211f1c', sharedStudio: true, page3Renderer: 'status', page3Label: '방송 현황', page3Slots: ['statusBoard'], page3SettingsSections: ['statusBoard'], assetPack: 'creyon', settings: { compatibilityModes: false, assets: true }, defaultState: { page1BannerOn: false, page2BannerOn: false, notice: 'CREYON', noticeDetail: 'HIGH QUALITY CRESTED GECKO', page1Ticker: 'CREYON', page2Ticker: 'HIGH QUALITY CRESTED GECKO' } });
 
-    return Object.freeze({ SHARED_PAGE_CONTRACTS, SHARED_SETTINGS_CONTRACT, broadcastTarget, defaultState, pageContract, register, resolve, settingsContract, studioFrame, usesLegacyData, usesLegacyEngine, usesSharedStudio });
+    return Object.freeze({ SHARED_PAGE_CONTRACTS, SHARED_PAGE2_DEFAULTS, SHARED_SETTINGS_CONTRACT, broadcastTarget, defaultState, pageContract, register, resolve, settingsContract, studioFrame, usesLegacyData, usesLegacyEngine, usesSharedStudio });
 });

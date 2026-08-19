@@ -308,6 +308,25 @@ function channelLinks(channelId) {
     return ChannelRuntime.channelRoutes(id);
 }
 
+function publicBidLog(item = {}) {
+    const raw = item.bidLog ?? item.bid_log ?? item.attributes?.bid_log ?? [];
+    let rows = raw;
+    if (typeof raw === 'string') {
+        try { rows = JSON.parse(raw); } catch (_) { rows = []; }
+    }
+    if (!Array.isArray(rows)) return [];
+    return rows.slice(-100).map((bid) => ({
+        name: cleanText(bid?.name || bid?.bidder || bid?.winner, 80),
+        bidder_key: cleanText(bid?.bidder_key || bid?.bidderKey || '', 80),
+        region: cleanText(bid?.region || '', 40),
+        amount: Math.max(0, Number(bid?.amount ?? bid?.price) || 0),
+        time: cleanText(bid?.time || '', 40),
+        timestamp: cleanText(bid?.timestamp || '', 60),
+        created_at: cleanText(bid?.created_at || bid?.createdAt || '', 60),
+        isQuiz: bid?.isQuiz === true
+    })).filter((bid) => bid.name || bid.bidder_key || bid.amount || bid.isQuiz);
+}
+
 function publicItem(item = {}) {
     return {
         id: cleanText(item.id, 64),
@@ -325,7 +344,8 @@ function publicItem(item = {}) {
         soldPrice: Number(item.soldPrice) || 0,
         status: cleanText(item.status || 'waiting', 24),
         note: cleanText(item.note, 240),
-        photoUrl: cleanText(item.photoUrl, 500)
+        photoUrl: cleanText(item.photoUrl, 500),
+        bidLog: publicBidLog(item)
     };
 }
 
@@ -343,6 +363,7 @@ module.exports = {
     normalizeChannel,
     normalizeChannelId,
     publicItem,
+    publicBidLog,
     recordId,
     validateChannel
 };

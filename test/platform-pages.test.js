@@ -269,6 +269,15 @@ test('new CDCUP overlays and shipping retain compatibility with the established 
         assert.doesNotMatch(source, /channelId\s*===\s*['"]cdcup['"]/);
     }
     assert.match(control, /profile\.defaultState/);
+    assert.match(control, /ensureSharedPage2Controls/);
+    assert.match(control, /name="page2VendorTagOn"/);
+    assert.match(control, /name="page2BiddersOn"/);
+    assert.match(control, /name="page2BiddersOpacity"/);
+    assert.match(control, /name="page2BiddersPosition"/);
+    assert.match(live, /function pageTwoBidders/);
+    assert.match(live, /function bidAmountLabel\(value\)\{const amount=Number\(value\)\|\|0;/);
+    assert.match(live, /class="vendor-tag"/);
+    assert.match(live, /rankOpacity=\[1,\.94,\.86,\.78,\.70,\.64,\.58,\.52\]/);
     assert.match(channelShipping, /location\.replace\(target\.pathname\+target\.search\)/);
     assert.match(channelShipping, /shipping\.html/);
     assert.doesNotMatch(channelShipping, /<a\b|id="channel-select"|id="manage-link"|id="control-link"/);

@@ -165,6 +165,8 @@ function sanitizeBroadcastState(input = {}) {
     const extraMode = ['bracket', 'ranking', 'status', 'vendor', 'team'].includes(input.extraMode) ? input.extraMode : 'vendor';
     const positions = ['auto', 'top-left', 'top-center', 'top-right', 'middle-left', 'center', 'middle-right', 'bottom-left', 'bottom-center', 'bottom-right'];
     const position = (value, fallback = 'auto') => positions.includes(value) ? value : fallback;
+    const bidderOpacityRaw = Number.parseInt(input.page2BiddersOpacity, 10);
+    const bidderOpacity = Number.isFinite(bidderOpacityRaw) ? Math.max(0, Math.min(100, bidderOpacityRaw)) : 94;
     return {
         id: 'state',
         activeItemId: cleanText(input.activeItemId, 64),
@@ -187,6 +189,10 @@ function sanitizeBroadcastState(input = {}) {
         page1BannerPosition: position(input.page1BannerPosition),
         page1TickerPosition: ['auto', 'top', 'bottom'].includes(input.page1TickerPosition) ? input.page1TickerPosition : 'auto',
         page2InfoOn: booleanValue(input.page2InfoOn),
+        page2VendorTagOn: booleanValue(input.page2VendorTagOn),
+        page2BiddersOn: booleanValue(input.page2BiddersOn),
+        page2BiddersOpacity: bidderOpacity,
+        page2BiddersPosition: position(input.page2BiddersPosition, 'top-left'),
         page2PhotoOn: booleanValue(input.page2PhotoOn),
         page2PriceOn: booleanValue(input.page2PriceOn),
         page2SoldOn: booleanValue(input.page2SoldOn),

@@ -7067,9 +7067,8 @@
             if (!panel) return;
             const isPage2 = !document.body.classList.contains('host-mode')
                 && !document.body.classList.contains('bracket-page');
-            const isCdcup = (document.body.dataset.eventModule || 'cdcup') === 'cdcup';
             const isEnabled = String(map?.live_bidders_show ?? '1') !== '0';
-            const rows = isPage2 && isCdcup && isEnabled ? buildLiveBidRows(map, activeItem) : [];
+            const rows = isPage2 && isEnabled ? buildLiveBidRows(map, activeItem) : [];
             if (!activeItem || !isAuctionActiveItem(activeItem) || rows.length === 0) {
                 panel.classList.remove('visible');
                 panel.replaceChildren();

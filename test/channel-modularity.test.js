@@ -37,6 +37,7 @@ test('1P and 2P use one contract while 3P is selected by broadcast profile', () 
 
     assert.strictEqual(Profiles.pageContract(standard, 1), Profiles.pageContract(tournament, 1));
     assert.strictEqual(Profiles.pageContract(tournament, 2), Profiles.pageContract(academy, 2));
+    assert.deepEqual(Profiles.pageContract(standard, 2).slots, ['item', 'vendorTag', 'liveBidders', 'photo', 'price', 'sold', 'ticker', 'banner']);
     assert.equal(Profiles.pageContract(standard, 3).id, 'scoreboard');
     assert.equal(Profiles.pageContract(tournament, 3).id, 'tournament');
     assert.equal(Profiles.pageContract(academy, 3).id, 'academy');
@@ -99,6 +100,19 @@ test('standard channels use the maintained platform controller and renderer', ()
     assert.match(Profiles.studioFrame(standard, 'layout-2'), /^auction-control\.html\?channel=plain-auction&page=2&embedded=1$/);
     assert.match(Profiles.broadcastTarget(standard, 3), /^auction-live\.html\?channel=plain-auction&page=3$/);
     assert.equal(Profiles.usesLegacyEngine(standard), false);
+    assert.deepEqual(Profiles.SHARED_PAGE2_DEFAULTS, {
+        page2VendorTagOn: true,
+        page2BiddersOn: true,
+        page2BiddersOpacity: 94,
+        page2BiddersPosition: 'top-left'
+    });
+    for (const profile of ['standard', 'cdcup-tournament', 'crewart-academy', 'creyon-metal']) {
+        const state = Profiles.defaultState(channel(`shared-${profile}`, { broadcastProfile: profile }));
+        assert.equal(state.page2VendorTagOn, true);
+        assert.equal(state.page2BiddersOn, true);
+        assert.equal(state.page2BiddersOpacity, 94);
+        assert.equal(state.page2BiddersPosition, 'top-left');
+    }
 });
 
 test('legacy CDCUP rows and platform workspaces expose a common isolated model', async (t) => {
@@ -131,7 +145,7 @@ test('legacy-layout bridge keeps renderer identity separate from platform channe
     const responses = {
         '/api/platform/channels/academy-copy': { channel: channel('academy-copy', { broadcastProfile: 'crewart-academy', groups: [{ id: 'r', name: 'R', color: '#aa0000' }] }) },
         '/api/platform/channels/academy-copy/broadcast-config': { config: { ticker: '채널 전용 자막' }, revision: 2 },
-        '/api/platform/channels/academy-copy/broadcast': { items: [{ id: 'item_1', lotNumber: 7, name: '개체', vendorName: '업체', startPrice: 100000, soldPrice: 250000, status: 'sold', winnerAlias: '낙찰자', groupId: 'r' }] },
+        '/api/platform/channels/academy-copy/broadcast': { items: [{ id: 'item_1', lotNumber: 7, name: '개체', vendorName: '업체', startPrice: 100000, soldPrice: 250000, status: 'sold', winnerAlias: '낙찰자', groupId: 'r', bidLog: [{ name: '입찰자', amount: 30, phone: '01012345678' }] }] },
         '/api/platform/channels/academy-copy/broadcast-pulse': { revision: 3 }
     };
     const target = {
@@ -161,8 +175,11 @@ test('legacy-layout bridge keeps renderer identity separate from platform channe
     assert.equal(items[0].row, 'item_1');
     assert.equal(items[0].sold_price, 25);
     assert.equal(items[0].auctionType, 'crewart');
+    assert.deepEqual(JSON.parse(items[0].bid_log), [{ name: '입찰자', amount: 30, phone: '01012345678' }]);
     assert.equal(config.active_event_module, 'crewart');
     assert.equal(config.crewart_houses, 'R|#aa0000|#aa0000');
+    assert.equal(config.live_bidders_show, '1');
+    assert.equal(config.live_bidders_opacity, '94');
     const update = calls.find(call => call.options.method === 'PUT');
     assert.equal(JSON.parse(update.options.body).patch.admin_pw, undefined);
     assert.equal(JSON.parse(update.options.body).patch.active_event_module, 'crewart');

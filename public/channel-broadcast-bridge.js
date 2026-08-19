@@ -36,7 +36,13 @@
         return amount >= 10_000 ? amount / 10_000 : amount;
     }
 
+    function legacyBidLog(item = {}) {
+        const source = Array.isArray(item.bidLog) ? item.bidLog : [];
+        return JSON.stringify(source.slice(-100));
+    }
+
     function toLegacyItem(item = {}, rendererModule = 'cdcup') {
+        const bidLog = legacyBidLog(item);
         return {
             row: item.id,
             id: item.id,
@@ -62,8 +68,8 @@
             category: item.category || '',
             auctionType: rendererModule === 'crewart' ? 'crewart' : (item.category || ''),
             points: Number(item.points) || 0,
-            bid_log: '[]',
-            bidLog: '[]',
+            bid_log: bidLog,
+            bidLog,
             checklist: '',
             checklist_parsed: '',
             hiddenPhotos: [],
@@ -80,7 +86,10 @@
             badge_text: channel?.shortName || channel?.name || '',
             ticker: defaults.page1Ticker || '',
             notice_text: defaults.notice || '',
-            notice_detail: defaults.noticeDetail || ''
+            notice_detail: defaults.noticeDetail || '',
+            live_bidders_show: '1',
+            live_bidders_mode: 'top',
+            live_bidders_opacity: '94'
         };
         if (rendererModule === 'crewart') {
             map.crewart_ticker = defaults.page1Ticker || defaults.page2Ticker || '';
@@ -207,5 +216,5 @@
         return Object.freeze({ channelId, rendererModule, context, loadBroadcast, loadConfig, originals });
     }
 
-    return Object.freeze({ BRIDGED_FUNCTIONS, defaultConfig, install, legacyStatus, normalizeId, toLegacyItem });
+    return Object.freeze({ BRIDGED_FUNCTIONS, defaultConfig, install, legacyBidLog, legacyStatus, normalizeId, toLegacyItem });
 });

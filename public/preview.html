@@ -1481,11 +1481,11 @@
             if (p3Tab) p3Tab.textContent = isCrewart ? '기숙사 점수 3P' : (isCreyon ? '방송 현황 3P' : '3P 배치표');
 
             if (pageNum === '2') {
-                document.getElementById('draggable-live-bidders').style.display = isCreyon ? 'none' : '';
-                document.getElementById('toggle-live-bidders-show-group').style.display = isCreyon ? 'none' : '';
-                document.getElementById('toggle-live-bidders-mode-group').style.display = isCreyon ? 'none' : '';
-                document.getElementById('toggle-live-bidders-font-group').style.display = isCreyon ? 'none' : '';
-                document.getElementById('toggle-live-bidders-opacity-group').style.display = isCreyon ? 'none' : '';
+                document.getElementById('draggable-live-bidders').style.display = '';
+                document.getElementById('toggle-live-bidders-show-group').style.display = '';
+                document.getElementById('toggle-live-bidders-mode-group').style.display = '';
+                document.getElementById('toggle-live-bidders-font-group').style.display = '';
+                document.getElementById('toggle-live-bidders-opacity-group').style.display = '';
             }
 
             if (pageNum === '3') {
@@ -1612,11 +1612,10 @@
             document.getElementById('btn-tab-p2')?.classList.add('active');
             if (pageTitle) pageTitle.textContent = "개체용 (2P) 실시간 레이아웃 배치기";
             frame.src = broadcastPreviewSrc('2', initialModuleId); // Default page2 layout
-            const isCreyon = initialModuleId === 'creyon';
-            document.getElementById('toggle-live-bidders-show-group').style.display = isCreyon ? 'none' : '';
-            document.getElementById('toggle-live-bidders-mode-group').style.display = isCreyon ? 'none' : '';
-            document.getElementById('toggle-live-bidders-font-group').style.display = isCreyon ? 'none' : '';
-            document.getElementById('toggle-live-bidders-opacity-group').style.display = isCreyon ? 'none' : '';
+            document.getElementById('toggle-live-bidders-show-group').style.display = '';
+            document.getElementById('toggle-live-bidders-mode-group').style.display = '';
+            document.getElementById('toggle-live-bidders-font-group').style.display = '';
+            document.getElementById('toggle-live-bidders-opacity-group').style.display = '';
             document.getElementById('toggle-live-bidders-switch-group').style.display = 'none';
         }
 
@@ -1631,10 +1630,9 @@
         }
 
         if (pageNum === '2') {
-            const isInitialCreyon = initialModuleId === 'creyon';
             document.getElementById('draggable-info').style.display = '';
             document.getElementById('draggable-photo').style.display = '';
-            document.getElementById('draggable-live-bidders').style.display = isInitialCreyon ? 'none' : '';
+            document.getElementById('draggable-live-bidders').style.display = '';
             document.getElementById('toggle-photo-show-group').style.display = '';
             document.getElementById('info-coords').style.display = '';
             document.getElementById('photo-coords').style.display = '';
