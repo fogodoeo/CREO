@@ -3643,10 +3643,13 @@
         #bracket-page-tree-full .sports-results-grid.individual-ranking-grid {
             grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
             grid-template-rows: repeat(2, auto);
-            align-content: center;
-            gap: calc(var(--bracket-fs) * 1.05);
+            align-content: start;
+            align-items: stretch;
+            gap: 10px;
             flex: 0 0 auto;
             min-height: 0;
+            container-type: inline-size;
+            container-name: individual-rankings;
         }
         #bracket-page-tree-full .sports-results-board.individual-stage-board {
             display: flex;
@@ -3662,12 +3665,12 @@
         }
         #bracket-page-tree-full .individual-standing-card {
             display: grid;
-            grid-template-columns: minmax(0, 1fr) auto;
+            grid-template-columns: minmax(0, 1fr) minmax(3.2ch, auto);
             align-items: center;
-            gap: calc(var(--bracket-fs) * .72);
+            gap: 8px;
             min-width: 0;
-            min-height: 0;
-            padding: calc(var(--bracket-fs) * .55) calc(var(--bracket-fs) * .72);
+            min-height: calc(var(--bracket-fs) * 2.5);
+            padding: calc(var(--bracket-fs) * .25) calc(var(--bracket-fs) * .27);
             text-align: left;
             border: 1px solid rgba(195,154,74,.34) !important;
             border-radius: calc(var(--bracket-fs) * .62) !important;
@@ -3686,30 +3689,46 @@
             align-items: flex-start;
             justify-content: center;
             color: #fff;
-            font-size: calc(var(--bracket-fs) * 1.55);
+            font-size: calc(var(--bracket-fs) * .95);
             font-weight: 930;
             letter-spacing: -.035em;
-            line-height: 1.08;
+            line-height: 1.06;
         }
         #bracket-page-tree-full .individual-name-line {
             display: block;
             width: 100%;
             max-width: 100%;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
+            overflow: visible;
+            overflow-wrap: anywhere;
+            text-overflow: clip;
+            white-space: normal;
+            word-break: keep-all;
         }
         #bracket-page-tree-full .individual-amount {
             display: block;
-            min-width: max-content;
+            min-width: 3.2ch;
             color: var(--cdcup-gold-light);
-            font-size: calc(var(--bracket-fs) * 2.25);
+            font-size: calc(var(--bracket-fs) * 1.25);
             font-weight: 950;
             font-variant-numeric: tabular-nums;
             letter-spacing: -.055em;
             line-height: 1;
             text-align: right;
             white-space: nowrap;
+        }
+        @container individual-rankings (max-width: 900px) {
+            #bracket-page-tree-full .individual-standing-card {
+                grid-template-columns: minmax(0, 1fr);
+                grid-template-rows: auto auto;
+                align-content: center;
+                row-gap: 4px;
+            }
+            #bracket-page-tree-full .individual-name {
+                width: 100%;
+            }
+            #bracket-page-tree-full .individual-amount {
+                justify-self: end;
+            }
         }
         #bracket-page-tree-full .sports-match-meta {
             min-height: calc(var(--bracket-fs) * 2.7);
@@ -3794,8 +3813,8 @@
             #bracket-page-tree-full .sports-results-board { padding: 8px; }
             #bracket-page-tree-full .sports-results-grid { grid-template-columns: 1fr !important; gap: 7px; }
             #bracket-page-tree-full .sports-results-grid.individual-ranking-grid {
-                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-                grid-template-rows: repeat(4, auto);
+                grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+                grid-template-rows: repeat(2, auto);
                 min-height: 0;
             }
             #bracket-page-tree-full .sports-match-meta { min-height: 34px; padding-inline: 11px; font-size: 18px; }
