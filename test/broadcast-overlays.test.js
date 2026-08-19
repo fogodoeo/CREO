@@ -12,6 +12,9 @@ test('public page two renders the seller as a separate tag left of the item name
     assert.match(broadcast, /id="info-company"[\s\S]{0,160}id="info-name"/);
     assert.match(broadcast, /configuredBlindMode === '0' \? 'public' : 'blind'/);
     assert.match(broadcast, /infoCompany\.hidden = isHost \|\| !showCompanyInline/);
+    assert.match(broadcast, /infoCompany\.textContent = `\[\$\{publicCompanyName\}\]`/);
+    assert.match(broadcast, /\.top-bar \.company-tag \{[\s\S]{0,360}font-size: var\(--sb-name-size, 33px\)/);
+    assert.doesNotMatch(broadcast, /\.top-bar \.company-tag \{[\s\S]{0,360}(?:border:|background:|padding:)/);
     assert.match(broadcast, /gap: clamp\(11px, 1\.1vw, 17px\)/);
 });
 

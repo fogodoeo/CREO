@@ -216,19 +216,13 @@
         }
 
         .top-bar .company-tag {
-            display: inline-flex;
+            display: inline-block;
             flex: 0 0 auto;
-            align-items: center;
-            min-height: 1.85em;
-            padding: 0.18em 0.62em;
-            border: 1px solid rgba(255, 168, 0, 0.42);
-            border-radius: 4px;
-            background: rgba(255, 107, 0, 0.15);
-            color: #ffbd4a;
-            font-size: calc(var(--sb-name-size, 33px) * 0.48);
-            font-weight: 850;
-            letter-spacing: 0.01em;
-            line-height: 1;
+            color: #FFFFFF;
+            font-size: var(--sb-name-size, 33px);
+            font-weight: 800;
+            letter-spacing: -0.01em;
+            line-height: normal;
             white-space: nowrap;
         }
 
@@ -5252,7 +5246,7 @@
             // 공개 화면은 팀 슬롯과 분리된 숫자 라벨만 사용한다.
             const publicAuctionName = [cleanInfoName, publicCompanyName].filter(Boolean).join(' · ');
             if (infoCompany) {
-                infoCompany.textContent = publicCompanyName;
+                infoCompany.textContent = `[${publicCompanyName}]`;
                 infoCompany.hidden = isHost || !showCompanyInline;
             }
             document.getElementById("info-name").textContent = cleanInfoName;

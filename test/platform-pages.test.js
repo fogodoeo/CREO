@@ -277,6 +277,8 @@ test('new CDCUP overlays and shipping retain compatibility with the established 
     assert.match(live, /function pageTwoBidders/);
     assert.match(live, /function bidAmountLabel\(value\)\{const amount=Number\(value\)\|\|0;/);
     assert.match(live, /class="vendor-tag"/);
+    assert.match(live, /class="vendor-tag">\[\$\{esc\(item\.vendorName\)\}\]<\/span>/);
+    assert.match(live, /\.item-name strong,\.vendor-tag\{[\s\S]{0,180}color:#fff;font-size:23px;font-weight:800/);
     assert.match(live, /rankOpacity=\[1,\.94,\.86,\.78,\.70,\.64,\.58,\.52\]/);
     assert.match(channelShipping, /location\.replace\(target\.pathname\+target\.search\)/);
     assert.match(channelShipping, /shipping\.html/);
@@ -337,7 +339,7 @@ test('legacy broadcast bridge survives Supabase quota exhaustion with cached or 
     assert.match(bridge, /_readBroadcastStorage\('config', \{\}\)/);
     assert.match(cdcup, /await _refreshBroadcastFromItems\(\[\]\)/);
     assert.match(cdcup, /document\.getElementById\("info-name"\)\.textContent = cleanInfoName/);
-    assert.match(cdcup, /infoCompany\.textContent = publicCompanyName/);
+    assert.match(cdcup, /infoCompany\.textContent = `\[\$\{publicCompanyName\}\]`/);
     assert.match(cdcup, /infoCompany\.hidden = isHost \|\| !showCompanyInline/);
     assert.match(cdcup, /document\.getElementById\("info-sub"\)\.textContent = presentation\.label/);
 });
