@@ -3678,9 +3678,22 @@
             box-shadow: 0 calc(var(--bracket-fs) * .45) calc(var(--bracket-fs) * 1.2) rgba(0,0,0,.24) !important;
             will-change: transform;
         }
-        #bracket-page-tree-full .individual-standing-card.is-current {
+        #bracket-page-tree-full .individual-standing-card.is-live-vendor {
             border-color: var(--cdcup-gold) !important;
             background: rgba(49, 43, 31, var(--individual-card-opacity, .9)) !important;
+            outline: 2px solid rgba(235, 196, 108, .88);
+            outline-offset: 0;
+            animation: individual-live-vendor-glow 2.4s ease-in-out infinite;
+        }
+        @keyframes individual-live-vendor-glow {
+            0%, 100% { filter: brightness(1.03) drop-shadow(0 0 5px rgba(224, 184, 91, .34)); }
+            50% { filter: brightness(1.12) drop-shadow(0 0 12px rgba(242, 207, 126, .68)); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            #bracket-page-tree-full .individual-standing-card.is-live-vendor {
+                animation: none;
+                filter: brightness(1.08) drop-shadow(0 0 8px rgba(224, 184, 91, .5));
+            }
         }
         #bracket-page-tree-full .individual-name {
             display: flex;
@@ -7763,6 +7776,8 @@
 
         function renderThreeRoundResults(tree, stage, map, items) {
             const scoped = scopeTournamentItems(items || [], stage);
+            const activeTournamentItem = scoped.find(item => isAuctionActiveItem(item));
+            const activeCompanyKey = normalizeBlindTeamKey(activeTournamentItem?.company || '');
             const totals = {};
             const completedCounts = {};
             const itemCounts = {};
@@ -7782,6 +7797,7 @@
                 finalists: String(map?.tournament_finalists_4 || ''),
                 hideCompanies: String(map?.bracket_full_blind ?? '1'),
                 showTeamDetails,
+                activeCompanyKey,
                 rows: Object.keys({ ...totals, ...itemCounts }).sort().map(name => [
                     name,
                     totals[name] || 0,
@@ -7844,7 +7860,9 @@
                 grid.classList.add('individual-ranking-grid');
                 entrants.forEach((entry, index) => {
                     const card = document.createElement('article');
-                    card.className = 'sports-match-card individual-standing-card' + (index === 0 && entry.total > 0 ? ' is-current' : '');
+                    const isLiveVendor = Boolean(activeCompanyKey) && normalizeBlindTeamKey(entry.name) === activeCompanyKey;
+                    card.className = 'sports-match-card individual-standing-card' + (isLiveVendor ? ' is-live-vendor' : '');
+                    if (isLiveVendor) card.setAttribute('aria-current', 'true');
                     card.dataset.entrant = entry.anonymousCode;
                     card.style.setProperty('--match-index', index);
                     const displayName = hideCompanies ? String(entry.anonymousCode || '') : String(entry.name || '');

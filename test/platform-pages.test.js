@@ -395,6 +395,11 @@ test('CDCUP three-round format assigns round-two teams and round-three finalists
     assert.match(broadcast, /container-name: individual-rankings/);
     assert.match(broadcast, /@container individual-rankings \(max-width: 900px\)/);
     assert.match(broadcast, /@container individual-rankings[\s\S]{0,320}grid-template-columns: minmax\(0, 1fr\)/);
+    assert.match(broadcast, /const activeTournamentItem = scoped\.find\(item => isAuctionActiveItem\(item\)\)/);
+    assert.match(broadcast, /activeCompanyKey/);
+    assert.match(broadcast, /isLiveVendor \? ' is-live-vendor' : ''/);
+    assert.doesNotMatch(broadcast, /index === 0 && entry\.total > 0 \? ' is-current'/);
+    assert.match(broadcast, /@keyframes individual-live-vendor-glow/);
     assert.match(broadcast, /--individual-card-opacity/);
     assert.match(preview, /id="bracket-full-opacity-input"/);
     assert.match(preview, /bracket_full_card_opacity/);
