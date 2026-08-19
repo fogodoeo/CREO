@@ -17,6 +17,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 import os
 from pathlib import Path
+import re
 import socket
 import sys
 import threading
@@ -47,6 +48,73 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "webp_quality": 82,
     "crop_percent": [0.0, 0.0, 100.0, 100.0],
 }
+
+
+def _existing_directory(value: Any) -> Path | None:
+    text = os.path.expandvars(str(value or "").strip().strip('"'))
+    if not text:
+        return None
+    candidate = Path(text).expanduser()
+    return candidate if candidate.is_dir() else None
+
+
+def detect_prism_screenshot_directory(current: Any = "") -> Path:
+    """Find PRISM/OBS's configured output folder, then fall back to common folders."""
+    current_directory = _existing_directory(current)
+    profile_roots: list[Path] = []
+    for environment_name in ("APPDATA", "LOCALAPPDATA"):
+        base = _existing_directory(os.environ.get(environment_name))
+        if not base:
+            continue
+        for name in ("PRISMLiveStudio", "PRISM Live Studio", "PRISM", "obs-studio"):
+            candidate = base / name
+            if candidate.is_dir():
+                profile_roots.append(candidate)
+
+    config_candidates: list[Path] = []
+    for root in profile_roots:
+        try:
+            config_candidates.extend(root.rglob("basic.ini"))
+        except OSError:
+            continue
+    config_candidates.sort(key=lambda path: path.stat().st_mtime_ns if path.exists() else 0, reverse=True)
+    path_keys = ("FilePath", "RecFilePath", "FFFilePath", "Path")
+    for config_path in config_candidates:
+        text = ""
+        for encoding in ("utf-8-sig", "cp949", "utf-16"):
+            try:
+                text = config_path.read_text(encoding=encoding)
+                break
+            except (UnicodeError, OSError):
+                continue
+        for key in path_keys:
+            match = re.search(rf"(?im)^\s*{re.escape(key)}\s*=\s*(.+?)\s*$", text)
+            if match:
+                detected = _existing_directory(match.group(1).replace("/", os.sep))
+                if detected:
+                    return detected
+
+    common_candidates = [
+        Path.home() / "Videos" / "PRISM Live Studio",
+        Path.home() / "Videos" / "PRISM",
+        Path.home() / "Pictures" / "PRISM Live Studio",
+        Path.home() / "Pictures" / "PRISM",
+        Path.home() / "Videos",
+        Path.home() / "Pictures",
+    ]
+    one_drive = _existing_directory(os.environ.get("OneDrive"))
+    if one_drive:
+        common_candidates = [
+            one_drive / "Videos" / "PRISM Live Studio",
+            one_drive / "Pictures" / "PRISM Live Studio",
+            one_drive / "Videos",
+            one_drive / "Pictures",
+            *common_candidates,
+        ]
+    for candidate in common_candidates:
+        if candidate.is_dir():
+            return candidate
+    return current_directory or Path.home()
 
 VK_CODES = {
     "ctrl": 0x11,
@@ -156,7 +224,7 @@ def image_files(directory: Path) -> dict[Path, tuple[int, int]]:
     if not directory.exists():
         return result
     for pattern in ("*.png", "*.jpg", "*.jpeg", "*.webp"):
-        for candidate in directory.glob(pattern):
+        for candidate in directory.rglob(pattern):
             try:
                 stat = candidate.stat()
                 result[candidate] = (stat.st_mtime_ns, stat.st_size)
@@ -351,6 +419,9 @@ def configure() -> None:
     from tkinter import filedialog, messagebox, ttk
 
     config = load_config()
+    configured_directory = _existing_directory(config.get("screenshot_directory"))
+    if not configured_directory or config.get("screenshot_directory") == DEFAULT_CONFIG["screenshot_directory"]:
+        config["screenshot_directory"] = str(detect_prism_screenshot_directory(config.get("screenshot_directory")))
     root = tk.Tk()
     root.title("CREO 캡처 에이전트 설정")
     root.geometry("610x690")
@@ -382,13 +453,36 @@ def configure() -> None:
         entry = ttk.Entry(line, textvariable=variables[key], show="*" if secret else "")
         entry.pack(side="left", fill="x", expand=True)
         if browse:
-            ttk.Button(line, text="찾기", command=lambda: variables[key].set(filedialog.askdirectory(initialdir=variables[key].get()) or variables[key].get())).pack(side="left", padx=(6, 0))
+            def browse_directory() -> None:
+                initial = _existing_directory(variables[key].get()) or Path.home()
+                selected = filedialog.askdirectory(initialdir=str(initial), title="PRISM 스크린샷 저장 폴더 선택")
+                if selected:
+                    variables[key].set(selected)
+
+            def auto_detect_directory() -> None:
+                variables[key].set(str(detect_prism_screenshot_directory(variables[key].get())))
+
+            def open_directory() -> None:
+                selected = _existing_directory(variables[key].get())
+                if selected:
+                    os.startfile(selected)
+                else:
+                    messagebox.showerror("폴더 오류", "현재 입력된 저장 폴더를 찾을 수 없습니다.")
+
+            ttk.Button(line, text="자동 찾기", command=auto_detect_directory).pack(side="left", padx=(6, 0))
+            ttk.Button(line, text="선택", command=browse_directory).pack(side="left", padx=(4, 0))
+            ttk.Button(line, text="열기", command=open_directory).pack(side="left", padx=(4, 0))
 
     row("CREO 서버 주소", "service_url")
     row("경매 채널 (auto = 현재 활성 경매)", "channel_id")
     row("캡처 토큰 또는 관리자 비밀번호", "agent_token", secret=True)
     row("본체 이름", "agent_name")
     row("PRISM 녹화·스크린샷 저장 폴더", "screenshot_directory", browse=True)
+    ttk.Label(
+        frame,
+        text="PRISM이 실제 스크린샷을 저장하는 폴더입니다. 날짜별 하위 폴더도 자동 감지합니다.",
+        foreground="#64748b",
+    ).pack(anchor="w", pady=(3, 2))
     row("PRISM 출력 스크린샷 단축키", "hotkey")
     row("캡처 지연(ms)", "capture_delay_ms")
     row("파일 생성 대기(초)", "screenshot_timeout_sec")
