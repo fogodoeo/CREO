@@ -290,6 +290,8 @@ test('new CDCUP overlays and shipping retain compatibility with the established 
     assert.match(shipping, /adapter\.saveShippingItem/);
     assert.match(shipping, /saveShippingItem/);
     assert.match(shipping, /SHIPPING_COMPANY_STORAGE_KEY/);
+    assert.match(shipping, /const getWrapangCost = cost => Math\.round\(Number\(cost\) \|\| 0\)/);
+    assert.doesNotMatch(shipping, /WRAPANG_DISCOUNT_RATE|getDiscountedWrapangCost|랩팡.{0,20}할인|할인.{0,20}랩팡/);
     assert.match(shipping, /id="shipping-channel-home"/);
     assert.match(shipping, /channel\?\.name \|\| SHIPPING_CHANNEL_ID/);
     assert.match(shipping, /document\.title = `\$\{label\} · 배송관리`/);
