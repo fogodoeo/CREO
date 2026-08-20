@@ -167,6 +167,10 @@ function sanitizeBroadcastState(input = {}) {
     const position = (value, fallback = 'auto') => positions.includes(value) ? value : fallback;
     const bidderOpacityRaw = Number.parseInt(input.page2BiddersOpacity, 10);
     const bidderOpacity = Number.isFinite(bidderOpacityRaw) ? Math.max(0, Math.min(100, bidderOpacityRaw)) : 94;
+    const bidderFontSizeRaw = Number.parseInt(input.page2BiddersFontSize, 10);
+    const bidderFontSize = Number.isFinite(bidderFontSizeRaw) ? Math.max(10, Math.min(64, bidderFontSizeRaw)) : 20;
+    const itemFontSizeRaw = Number.parseInt(input.page2ItemFontSize, 10);
+    const itemFontSize = Number.isFinite(itemFontSizeRaw) ? Math.max(16, Math.min(96, itemFontSizeRaw)) : 33;
     return {
         id: 'state',
         activeItemId: cleanText(input.activeItemId, 64),
@@ -194,7 +198,9 @@ function sanitizeBroadcastState(input = {}) {
         page2VendorTagOn: booleanValue(input.page2VendorTagOn),
         page2BiddersOn: booleanValue(input.page2BiddersOn),
         page2BiddersOpacity: bidderOpacity,
+        page2BiddersFontSize: bidderFontSize,
         page2BiddersPosition: position(input.page2BiddersPosition, 'top-left'),
+        page2ItemFontSize: itemFontSize,
         page2PhotoOn: booleanValue(input.page2PhotoOn),
         page2PriceOn: booleanValue(input.page2PriceOn),
         page2SoldOn: booleanValue(input.page2SoldOn),

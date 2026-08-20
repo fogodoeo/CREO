@@ -306,6 +306,8 @@ test('new CDCUP overlays and shipping retain compatibility with the established 
     assert.match(control, /name="page2VendorTagOn"/);
     assert.match(control, /name="page2BiddersOn"/);
     assert.match(control, /name="page2BiddersOpacity"/);
+    assert.match(control, /name="page2BiddersFontSize"/);
+    assert.match(control, /name="page2ItemFontSize"/);
     assert.match(control, /name="page2BiddersPosition"/);
     assert.match(live, /function pageTwoBidders/);
     assert.match(live, /function bidAmountLabel\(value\)\{const amount=Number\(value\)\|\|0;/);
@@ -496,7 +498,12 @@ test('CDCUP three-round format assigns round-two teams and round-three finalists
     assert.match(broadcast, /'--p2-bidders-height': normalizeCssLength\(cfg\.p2_live_bidders_height\) \|\| '42vh'/);
     assert.match(preview, /id="draggable-live-bidders"/);
     assert.match(preview, /id="live-bidders-font-input"/);
+    assert.match(preview, /id="item-font-input"/);
+    assert.match(preview, /p2_item_font_size/);
+    assert.match(preview, /function previewLiveBiddersFontSize/);
+    assert.match(preview, /function previewItemFontSize/);
     assert.match(preview, /configMap\.p2_live_bidders_font_size/);
+    assert.match(broadcast, /cfg\.p2_item_font_size \|\| cfg\.scoreboard_name_fontsize/);
     assert.match(broadcast, /const _p2LiveBiddersRankState = \{ itemKey: '', initialized: false \}/);
     assert.match(broadcast, /captureLeaderboardPositions\(listEl, '\.p2-live-bidder-row\[data-bidder-key\]'/);
     assert.match(broadcast, /animateLeaderboardRows\(listEl, beforePositions, '\.p2-live-bidder-row\[data-bidder-key\]'/);

@@ -92,7 +92,10 @@
             notice_detail: defaults.noticeDetail || '',
             live_bidders_show: '1',
             live_bidders_mode: 'top',
-            live_bidders_opacity: '94'
+            live_bidders_opacity: '94',
+            p2_live_bidders_font_size: '20',
+            p2_item_font_size: '33',
+            scoreboard_name_fontsize: '33'
         };
         if (rendererModule === 'crewart') {
             map.crewart_ticker = defaults.page1Ticker || defaults.page2Ticker || '';

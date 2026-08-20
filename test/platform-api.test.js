@@ -541,7 +541,7 @@ test('broadcast state stores independent 1P, 2P, and 3P overlay controls', async
         page1BannerUrl: 'https://example.com/banner.png', page1HostsPosition: 'bottom-left',
         page1TickerPosition: 'top', page2SoldOn: true, page2PhotoPosition: 'middle-right',
         page2PricePosition: 'bottom-left', page2VendorTagOn: true, page2BiddersOn: true,
-        page2BiddersOpacity: 87, page2BiddersPosition: 'middle-left', page3On: true, extraMode: 'team', page3Title: '팀별 낙찰금액',
+        page2BiddersOpacity: 87, page2BiddersFontSize: 26, page2ItemFontSize: 44, page2BiddersPosition: 'middle-left', page3On: true, extraMode: 'team', page3Title: '팀별 낙찰금액',
         page3BoardPosition: 'right', page3QuizPosition: 'bottom',
         quizOn: true, quizStatus: 'open', quizQuestion: '첫 번째 문제',
         quizWinner: '참가자 A', quizAnswer: '정답',
@@ -562,6 +562,8 @@ test('broadcast state stores independent 1P, 2P, and 3P overlay controls', async
     assert.equal(state.page2VendorTagOn, true);
     assert.equal(state.page2BiddersOn, true);
     assert.equal(state.page2BiddersOpacity, 87);
+    assert.equal(state.page2BiddersFontSize, 26);
+    assert.equal(state.page2ItemFontSize, 44);
     assert.equal(state.page2BiddersPosition, 'middle-left');
     assert.equal(state.page3On, true);
     assert.equal(state.page3BoardPosition, 'right');

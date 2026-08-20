@@ -4951,7 +4951,8 @@
             // 스코어보드 폰트 크기, 투명도, 대회명 적용
             const sbWrap = document.getElementById('scoreboard-wrap');
             if (sbWrap) {
-                if (cfg.scoreboard_name_fontsize) sbWrap.style.setProperty('--sb-name-size', cfg.scoreboard_name_fontsize + 'px');
+                const itemFontSize = Math.max(16, Math.min(96, parseInt(cfg.p2_item_font_size || cfg.scoreboard_name_fontsize || '33', 10) || 33));
+                sbWrap.style.setProperty('--sb-name-size', itemFontSize + 'px');
                 if (cfg.scoreboard_pill_fontsize) sbWrap.style.setProperty('--sb-pill-size', cfg.scoreboard_pill_fontsize + 'px');
                 // 대회명 라벨 폰트 크기 (직접 스타일)
                 const labelEl = document.getElementById('auction-progress');
@@ -5703,7 +5704,8 @@
                 // 스코어보드 폰트 크기, 투명도, 대회명 실시간 반영
                 const sbWrap = document.getElementById('scoreboard-wrap');
                 if (sbWrap) {
-                    if (cfg.scoreboard_name_fontsize) sbWrap.style.setProperty('--sb-name-size', cfg.scoreboard_name_fontsize + 'px');
+                    const itemFontSize = Math.max(16, Math.min(96, parseInt(cfg.p2_item_font_size || cfg.scoreboard_name_fontsize || '33', 10) || 33));
+                    sbWrap.style.setProperty('--sb-name-size', itemFontSize + 'px');
                     if (cfg.scoreboard_pill_fontsize) sbWrap.style.setProperty('--sb-pill-size', cfg.scoreboard_pill_fontsize + 'px');
                     const labelEl = document.getElementById('auction-progress');
                     if (labelEl) {

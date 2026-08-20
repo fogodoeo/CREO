@@ -201,6 +201,17 @@
             border-color: #7dd3fc;
             background: rgba(14, 165, 233, 0.23);
         }
+        .draggable-info .info-preview-name {
+            max-width: 92%;
+            overflow: hidden;
+            color: #f8fafc;
+            font-size: 18px;
+            font-weight: 900;
+            letter-spacing: -.03em;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            pointer-events: none;
+        }
 
         .draggable-live-bidders {
             width: 29%;
@@ -1060,6 +1071,7 @@
 
                 <!-- PAGE2 개체정보 위치 -->
                 <div class="draggable-element draggable-info" id="draggable-info" data-type="info" style="display:none;">
+                    <div class="info-preview-name" id="info-preview-name">A01 · 개체명</div>
                     <div class="element-label">개체정보</div>
                 </div>
 
@@ -1195,7 +1207,12 @@
                     </div>
                     <div class="switch-container" id="toggle-live-bidders-font-group" style="display:none; gap:6px; align-items:center; border-left:1px solid var(--border); padding-left:12px; margin-left:6px;">
                         <span style="font-weight:700;">입찰 폰트:</span>
-                        <input type="number" id="live-bidders-font-input" onchange="updateLiveBiddersFontSize(this.value)" class="cdcup-input" style="padding:2px 6px; width:52px; height:28px; font-size:11px; font-weight:700; border-radius:4px;" min="10" max="48" value="20">
+                        <input type="number" id="live-bidders-font-input" oninput="previewLiveBiddersFontSize(this.value)" onchange="updateLiveBiddersFontSize(this.value)" class="cdcup-input" style="padding:2px 6px; width:52px; height:28px; font-size:11px; font-weight:700; border-radius:4px;" min="10" max="64" value="20">
+                        <span style="font-size:11px; font-weight:700; color:var(--text-muted);">px</span>
+                    </div>
+                    <div class="switch-container" id="toggle-item-font-group" style="display:none; gap:6px; align-items:center; border-left:1px solid var(--border); padding-left:12px; margin-left:6px;">
+                        <span style="font-weight:700;">개체 폰트:</span>
+                        <input type="number" id="item-font-input" oninput="previewItemFontSize(this.value)" onchange="updateItemFontSize(this.value)" class="cdcup-input" style="padding:2px 6px; width:52px; height:28px; font-size:11px; font-weight:700; border-radius:4px;" min="16" max="96" value="33">
                         <span style="font-size:11px; font-weight:700; color:var(--text-muted);">px</span>
                     </div>
                     <div class="switch-container" id="toggle-live-bidders-opacity-group" style="display:none; gap:7px; align-items:center; border-left:1px solid var(--border); padding-left:12px; margin-left:6px;">
@@ -1510,6 +1527,7 @@
                 document.getElementById('toggle-live-bidders-show-group').style.display = '';
                 document.getElementById('toggle-live-bidders-mode-group').style.display = '';
                 document.getElementById('toggle-live-bidders-font-group').style.display = '';
+                document.getElementById('toggle-item-font-group').style.display = '';
                 document.getElementById('toggle-live-bidders-opacity-group').style.display = '';
             }
 
@@ -1640,6 +1658,7 @@
             document.getElementById('toggle-live-bidders-show-group').style.display = '';
             document.getElementById('toggle-live-bidders-mode-group').style.display = '';
             document.getElementById('toggle-live-bidders-font-group').style.display = '';
+            document.getElementById('toggle-item-font-group').style.display = '';
             document.getElementById('toggle-live-bidders-opacity-group').style.display = '';
             document.getElementById('toggle-live-bidders-switch-group').style.display = 'none';
         }
@@ -1761,7 +1780,7 @@
             elements.info = {
                 el: document.getElementById('draggable-info'),
                 top: '3%', left: 'auto', right: '2%', bottom: 'auto',
-                show: '1', width: '42%', height: '16%'
+                show: '1', width: '42%', height: '16%', fontSize: '33'
             };
             elements.photo = {
                 el: document.getElementById('draggable-photo'),
@@ -2053,6 +2072,9 @@
                     elements.info.left = cfg.p2_info_left || 'auto';
                     elements.info.right = cfg.p2_info_right || '2%';
                     elements.info.bottom = cfg.p2_info_bottom || 'auto';
+                    elements.info.fontSize = cfg.p2_item_font_size || cfg.scoreboard_name_fontsize || '33';
+                    const itemFontInput = document.getElementById('item-font-input');
+                    if (itemFontInput) itemFontInput.value = elements.info.fontSize;
                 }
                 if (elements.photo) {
                     elements.photo.top = cfg.page2_photo_top || 'auto';
@@ -2444,6 +2466,15 @@
                 data.el.classList.add('hidden-state');
             } else {
                 data.el.classList.remove('hidden-state');
+            }
+            if (key === 'info') {
+                const previewName = document.getElementById('info-preview-name');
+                if (previewName) previewName.style.fontSize = Math.max(9, (Number(data.fontSize) || 33) * .55) + 'px';
+            }
+            if (key === 'live_bidders') {
+                data.el.querySelectorAll('.bid-preview-row').forEach(row => {
+                    row.style.fontSize = Math.max(8, (Number(data.fontSize) || 20) * .55) + 'px';
+                });
             }
         }
 
@@ -2935,6 +2966,8 @@
                 configMap.p2_info_left = elements.info.left;
                 configMap.p2_info_right = elements.info.right;
                 configMap.p2_info_bottom = elements.info.bottom;
+                configMap.p2_item_font_size = elements.info.fontSize || '33';
+                configMap.scoreboard_name_fontsize = elements.info.fontSize || '33';
             }
             if (elements.photo) {
                 configMap.page2_photo_top = elements.photo.top;
@@ -3099,6 +3132,9 @@
                 elements.info.left = 'auto';
                 elements.info.right = '2%';
                 elements.info.bottom = 'auto';
+                elements.info.fontSize = '33';
+                const itemFontInput = document.getElementById('item-font-input');
+                if (itemFontInput) itemFontInput.value = '33';
                 applyVisualState('info');
             }
             if (elements.photo) {
@@ -3115,6 +3151,10 @@
                 applyVisualState('photo');
             }
             if (elements.live_bidders) {
+                elements.live_bidders.fontSize = '20';
+                const biddersFontInput = document.getElementById('live-bidders-font-input');
+                if (biddersFontInput) biddersFontInput.value = '20';
+                applyVisualState('live_bidders');
                 const biddersOpacityInput = document.getElementById('live-bidders-opacity-input');
                 if (biddersOpacityInput) {
                     biddersOpacityInput.value = '94';
@@ -4246,12 +4286,30 @@
         function updateLiveBiddersMode(val) {
             saveCoordinates(true);
         }
-        function updateLiveBiddersFontSize(val) {
-            const fontSize = Math.max(10, Math.min(48, parseInt(val || '20', 10) || 20));
+        function previewLiveBiddersFontSize(val) {
+            const fontSize = Math.max(10, Math.min(64, parseInt(val || '20', 10) || 20));
             if (elements.live_bidders) elements.live_bidders.fontSize = String(fontSize);
+            if (elements.live_bidders) applyVisualState('live_bidders');
+            postPreviewConfigPatch({ p2_live_bidders_font_size: String(fontSize) });
+            return fontSize;
+        }
+        function updateLiveBiddersFontSize(val) {
+            const fontSize = previewLiveBiddersFontSize(val);
             const input = document.getElementById('live-bidders-font-input');
             if (input) input.value = String(fontSize);
-            postPreviewConfigPatch({ p2_live_bidders_font_size: String(fontSize) });
+            saveCoordinates(true);
+        }
+        function previewItemFontSize(val) {
+            const fontSize = Math.max(16, Math.min(96, parseInt(val || '33', 10) || 33));
+            if (elements.info) elements.info.fontSize = String(fontSize);
+            if (elements.info) applyVisualState('info');
+            postPreviewConfigPatch({ p2_item_font_size: String(fontSize), scoreboard_name_fontsize: String(fontSize) });
+            return fontSize;
+        }
+        function updateItemFontSize(val) {
+            const fontSize = previewItemFontSize(val);
+            const input = document.getElementById('item-font-input');
+            if (input) input.value = String(fontSize);
             saveCoordinates(true);
         }
 

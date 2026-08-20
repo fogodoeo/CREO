@@ -124,6 +124,8 @@ test('standard channels use the maintained platform controller and renderer', ()
         page2VendorTagOn: true,
         page2BiddersOn: true,
         page2BiddersOpacity: 94,
+        page2BiddersFontSize: 20,
+        page2ItemFontSize: 33,
         page2BiddersPosition: 'top-left'
     });
     for (const profile of ['standard', 'cdcup-tournament', 'crewart-academy', 'creyon-metal']) {
@@ -131,6 +133,8 @@ test('standard channels use the maintained platform controller and renderer', ()
         assert.equal(state.page2VendorTagOn, true);
         assert.equal(state.page2BiddersOn, true);
         assert.equal(state.page2BiddersOpacity, 94);
+        assert.equal(state.page2BiddersFontSize, 20);
+        assert.equal(state.page2ItemFontSize, 33);
         assert.equal(state.page2BiddersPosition, 'top-left');
     }
 });
