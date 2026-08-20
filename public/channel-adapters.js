@@ -59,8 +59,13 @@
         const shipments = new Map((workspace.shipments || []).map(shipment => [shipment.itemId, shipment]));
         return (workspace.items || []).filter(item => AuctionContract.isSoldStatus(item.status) || Number(item.soldPrice) > 0).map(item => {
             const shipment = shipments.get(item.id);
+            const storedChecklist = String(item.checklist || item.attributes?.checklist || '').trim();
+            const checklist = /(^|\|)_auction:[^|]+/.test(storedChecklist)
+                ? storedChecklist
+                : [storedChecklist, '_auction:extra'].filter(Boolean).join('|');
             return {
                 ...item, row: item.id, num: item.lotNumber, company: vendors.get(item.vendorId)?.name || item.vendorName || '', name: item.name || '개체',
+                checklist,
                 winner: item.winnerName || item.winnerAlias || '', winner_phone: item.winnerPhone || '', sold_price: (Number(item.soldPrice) || 0) / 10000,
                 soldPrice: (Number(item.soldPrice) || 0) / 10000, status: shipment?.status === 'complete' ? '낙찰-입금완료' : ['ready', 'shipped'].includes(shipment?.status) ? '낙찰-연락완료' : '낙찰-대기',
                 shipping_type: shipment ? (shipment.method === 'pickup' ? '직접수령' : '배송') : '', shipping_company: shipment?.carrier || '', shipping_region: shipment?.address || '', shipping_cost: Number(shipment?.cost) || 0,

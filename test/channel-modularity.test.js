@@ -189,6 +189,21 @@ test('legacy CDCUP rows and platform workspaces expose a common isolated model',
     assert.deepEqual(calls, ['channels/alpha/workspace', 'channels/beta/workspace']);
 });
 
+test('platform shipping items do not infer tournament teams from A01/B01-style names', () => {
+    const rows = Adapters.platformShippingItems({
+        vendors: [{ id: 'vendor_jjunine', name: '쭌이네' }],
+        shipments: [],
+        items: [
+            { id: 'item_b01', lotNumber: 22, name: 'B01', vendorId: 'vendor_jjunine', status: 'sold', soldPrice: 100000 },
+            { id: 'item_explicit', lotNumber: 23, name: 'B02', vendorId: 'vendor_jjunine', status: 'sold', soldPrice: 100000, attributes: { checklist: 'weight:42|_auction:tournament|_team:B' } }
+        ]
+    });
+
+    assert.equal(rows[0].company, '쭌이네');
+    assert.equal(rows[0].checklist, '_auction:extra');
+    assert.equal(rows[1].checklist, 'weight:42|_auction:tournament|_team:B');
+});
+
 test('legacy-layout bridge keeps renderer identity separate from platform channel data', async () => {
     const calls = [];
     const responses = {
