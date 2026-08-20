@@ -205,6 +205,39 @@ test('legacy-layout bridge keeps renderer identity separate from platform channe
     assert.equal(JSON.parse(update.options.body).patch.active_event_module, 'crewart');
 });
 
+test('platform pickup shipping keeps the selected channel pickup location', async (t) => {
+    const previous = global.CreoPlatform;
+    t.after(() => { global.CreoPlatform = previous; });
+    let savedRecord = null;
+    global.CreoPlatform = {
+        api: async (path, options) => {
+            savedRecord = JSON.parse(options.body).record;
+            return { record: { ...savedRecord, id: 'shipment_one' } };
+        }
+    };
+    const adapter = Adapters.resolve(channel('creyon'));
+    const context = {
+        channel: channel('creyon'),
+        workspace: {
+            vendors: [{ id: 'vendor_one', name: '크레용 본점' }],
+            items: [{ id: 'item_one', lotNumber: 1, name: '테스트 개체', vendorId: 'vendor_one', winnerName: '낙찰자' }],
+            shipments: []
+        }
+    };
+
+    await adapter.saveShippingItem(context, 'item_one', {
+        shipping_type: '직접수령',
+        shipping_region: '크레용 대구지점',
+        shipping_company: '사용하지 않음',
+        shipping_cost: 19000
+    });
+
+    assert.equal(savedRecord.method, 'pickup');
+    assert.equal(savedRecord.address, '크레용 대구지점');
+    assert.equal(savedRecord.carrier, '');
+    assert.equal(savedRecord.cost, 0);
+});
+
 test('embedded layout editors notify the studio when their admin session expires', async () => {
     const messages = [];
     const parent = { postMessage: (...args) => messages.push(args) };

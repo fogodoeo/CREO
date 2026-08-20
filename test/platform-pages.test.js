@@ -140,6 +140,7 @@ test('channel creation starts with a safe generated id and protects unsaved edit
     assert.match(manager, /scrollbar-width:none/);
     assert.match(manager, /shipping-pickup-locations/);
     assert.match(manager, /shippingDefaults:\{pickupLocations:/);
+    assert.match(manager, /channels\?includeArchived=1/);
     assert.match(manager, /function syncFeatureUi/);
     assert.match(manager, /data-key="topN"/);
     assert.match(manager, /id="broadcast-default-notice"/);
@@ -246,7 +247,7 @@ test('the new broadcast implements three independent camera overlays', () => {
 test('established CDCUP registration, list, print, and round archive remain intact', () => {
     const operations = fs.readFileSync(path.join(__dirname, '..', 'public', 'cdcup-index.html'), 'utf8');
     for (const label of ['개체 등록', '개체 목록', '인쇄', '회차 기록']) assert.match(operations, new RegExp(label));
-    assert.match(operations, /channel-shipping\.html\?channel=cdcup/);
+    assert.match(operations, /shipping\.html\?channel=cdcup/);
     assert.match(operations, /vendor-mode/);
     assert.match(operations, /id="admin-archive-tab"/);
     assert.match(operations, /href="shipping\.html"/);
@@ -268,6 +269,10 @@ test('established CDCUP registration, list, print, and round archive remain inta
 
 test('CDCUP opens on sortable shipping completion results without auction number columns', () => {
     const operations = fs.readFileSync(path.join(__dirname, '..', 'public', 'cdcup-index.html'), 'utf8');
+    const summary = fs.readFileSync(path.join(__dirname, '..', 'public', 'summary.html'), 'utf8');
+    assert.match(operations, /href="shipping\.html\?channel=cdcup"/);
+    assert.match(summary, /href="shipping\.html\?channel=cdcup"/);
+    assert.doesNotMatch(operations + summary, /href="channel-shipping\.html\?channel=cdcup"/);
     assert.match(operations, /<button class="cdcup-tab tab-btn active" onclick="showTab\('print',this\)">인쇄<\/button>/);
     assert.match(operations, /if \(!openInitialTabFromUrl\(\)\) showTab\('print'\)/);
     assert.match(operations, /id="print-sub-presult" class="print-sub active"/);
@@ -317,6 +322,8 @@ test('new CDCUP overlays and shipping retain compatibility with the established 
     assert.match(shipping, /adapter\.loadShippingItems/);
     assert.match(shipping, /adapter\.saveShippingItem/);
     assert.match(shipping, /saveShippingItem/);
+    assert.match(shipping, /openShippingAdminLogin\(\{ required: true \}\)/);
+    assert.match(shipping, /await initializeShipping\(\)/);
     assert.match(shipping, /SHIPPING_COMPANY_STORAGE_KEY/);
     assert.match(shipping, /const getWrapangCost = cost => Math\.round\(Number\(cost\) \|\| 0\)/);
     assert.doesNotMatch(shipping, /WRAPANG_DISCOUNT_RATE|getDiscountedWrapangCost|랩팡.{0,20}할인|할인.{0,20}랩팡/);

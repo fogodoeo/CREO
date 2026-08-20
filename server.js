@@ -143,19 +143,19 @@ function parseRange(value, size) {
     return { start, end };
 }
 
-function isBroadcastableChannel(channel) {
-    return channel?.status === 'active' && channel?.features?.broadcast !== false;
+function isOperationalChannel(channel, feature) {
+    return channel?.status === 'active' && channel?.features?.[feature] !== false;
 }
 
-async function canonicalBroadcastStudioLocation(url) {
+async function canonicalOperationalChannelLocation(url, feature) {
     if (!url.searchParams.has('channel')) return '';
     const requestedId = normalizeChannelId(url.searchParams.get('channel'));
     const catalog = await platformRepository.getCatalog();
     const requested = catalog.channels.find((channel) => channel.id === requestedId);
-    if (isBroadcastableChannel(requested)) return '';
+    if (isOperationalChannel(requested, feature)) return '';
     const activeId = normalizeChannelId(await platformRepository.getActiveChannel());
-    const target = catalog.channels.find((channel) => channel.id === activeId && isBroadcastableChannel(channel))
-        || catalog.channels.find((channel) => isBroadcastableChannel(channel));
+    const target = catalog.channels.find((channel) => channel.id === activeId && isOperationalChannel(channel, feature))
+        || catalog.channels.find((channel) => isOperationalChannel(channel, feature));
     if (!target) return '';
     const params = new URLSearchParams(url.searchParams);
     params.set('channel', target.id);
@@ -296,13 +296,16 @@ const server = http.createServer(async (req, res) => {
             return;
         }
 
-        if (
-            (req.method === 'GET' || req.method === 'HEAD')
-            && url.pathname === '/broadcast-studio.html'
-        ) {
+        const operationalFeature = new Map([
+            ['/broadcast-studio.html', 'broadcast'],
+            ['/shipping.html', 'shipping'],
+            ['/shipping-status.html', 'shipping'],
+            ['/shipping-rates.html', 'shipping']
+        ]).get(url.pathname);
+        if ((req.method === 'GET' || req.method === 'HEAD') && operationalFeature) {
             let location = '';
-            try { location = await canonicalBroadcastStudioLocation(url); }
-            catch (error) { console.error('[server] studio channel canonicalization failed:', error.message); }
+            try { location = await canonicalOperationalChannelLocation(url, operationalFeature); }
+            catch (error) { console.error('[server] channel canonicalization failed:', error.message); }
             if (location) {
                 writeHeaders(res, 307, { Location: location, 'Cache-Control': 'no-store' });
                 res.end();

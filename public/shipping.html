@@ -2536,8 +2536,8 @@
     </nav>
     <section class="shipping-admin-modal" id="shipping-admin-modal" hidden>
         <form class="shipping-admin-card" id="shipping-admin-form">
-            <h2>관리자 로그인</h2>
-            <p>비밀번호가 확인되면 요금표 메뉴가 표시됩니다.</p>
+            <h2 id="shipping-admin-title">관리자 로그인</h2>
+            <p id="shipping-admin-note">비밀번호가 확인되면 요금표 메뉴가 표시됩니다.</p>
             <input id="shipping-admin-password" type="password" autocomplete="current-password" placeholder="관리자 비밀번호" required>
             <button type="submit">로그인</button>
             <div class="shipping-admin-error" id="shipping-admin-error"></div>
@@ -2759,11 +2759,23 @@
             document.body.dataset.shippingAdmin = authenticated ? 'true' : 'false';
         }
 
-        function openShippingAdminLogin() {
+        let shippingLoginRequired = false;
+        let shippingInitializing = false;
+
+        function openShippingAdminLogin(options = {}) {
             const modal = document.getElementById('shipping-admin-modal');
             const error = document.getElementById('shipping-admin-error');
+            const title = document.getElementById('shipping-admin-title');
+            const note = document.getElementById('shipping-admin-note');
+            if (title) title.textContent = options.required ? '배송관리 로그인' : '관리자 로그인';
+            if (note) note.textContent = options.required
+                ? '크레용 배송 자료를 불러오려면 관리자 로그인이 필요합니다.'
+                : '비밀번호가 확인되면 요금표 메뉴가 표시됩니다.';
             if (error) error.textContent = '';
-            if (modal) modal.hidden = false;
+            if (modal) {
+                modal.dataset.required = options.required ? 'true' : 'false';
+                modal.hidden = false;
+            }
             pushMobileShippingView('admin-login');
             requestAnimationFrame(() => document.getElementById('shipping-admin-password')?.focus());
         }
@@ -2779,6 +2791,7 @@
         document.getElementById('shipping-admin-button')?.addEventListener('click', openCompanySelectModal);
         document.getElementById('shipping-admin-modal')?.addEventListener('click', event => {
             if (event.target === event.currentTarget) {
+                if (event.currentTarget.dataset.required === 'true') return;
                 event.currentTarget.hidden = true;
                 closeMobileShippingView('admin-login');
             }
@@ -2792,8 +2805,14 @@
                 CreoPlatform.setAdmin(input.value);
                 if (!await CreoPlatform.verifyAdmin(input.value)) throw new Error('비밀번호가 맞지 않습니다.');
                 input.value = '';
-                document.getElementById('shipping-admin-modal').hidden = true;
+                const modal = document.getElementById('shipping-admin-modal');
+                modal.hidden = true;
+                modal.dataset.required = 'false';
                 setShippingAdminState(true);
+                if (shippingLoginRequired) {
+                    shippingLoginRequired = false;
+                    await initializeShipping();
+                }
             } catch (failure) {
                 CreoPlatform.setAdmin('');
                 if (error) error.textContent = failure.message || '로그인하지 못했습니다.';
@@ -3223,7 +3242,9 @@
         }
 
         // 초기화 로딩
-        window.addEventListener('DOMContentLoaded', async () => {
+        async function initializeShipping() {
+            if (shippingInitializing) return;
+            shippingInitializing = true;
             syncShippingChannelUi();
             showLoading(true, '데이터를 불러오는 중...');
             try {
@@ -3320,11 +3341,18 @@
             } catch (err) {
                 console.error('[INIT] CRASH:', err);
                 console.error('[INIT] Stack:', err.stack);
-                showToast('로딩 실패: ' + err.message, true);
+                if (err.status === 401 && isAdminMode) {
+                    shippingLoginRequired = true;
+                    openShippingAdminLogin({ required: true });
+                } else {
+                    showToast('로딩 실패: ' + err.message, true);
+                }
             } finally {
                 showLoading(false);
+                shippingInitializing = false;
             }
-        });
+        }
+        window.addEventListener('DOMContentLoaded', initializeShipping);
 
         let activeSellerCompany = '';
         let tempSelectedCompany = '';

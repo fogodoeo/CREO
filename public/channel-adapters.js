@@ -95,7 +95,7 @@
             const record = {
                 ...(current || {}), itemId: item.id, itemName: item.name || '', itemLotNumber: Number(item.lotNumber) || 0,
                 itemVendorName: vendor?.name || item.vendorName || '', vendorId: item.vendorId || '', recipientName: item.winnerName || item.winnerAlias || '', recipientPhone: item.winnerPhone || '',
-                method: pickup ? 'pickup' : 'delivery', address: pickup ? '' : (shippingData.shipping_region || ''), carrier: pickup ? '' : (shippingData.shipping_company || ''),
+                method: pickup ? 'pickup' : 'delivery', address: shippingData.shipping_region || '', carrier: pickup ? '' : (shippingData.shipping_company || ''),
                 cost: pickup ? 0 : (Number(shippingData.shipping_cost) || 0), status: current?.status || 'pending', note: current?.note || ''
             };
             const saved = await this.saveRecord(context, 'shipments', record, current?.id || '');

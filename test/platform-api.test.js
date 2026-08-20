@@ -97,6 +97,21 @@ test('admin login exchanges the password for an HttpOnly session and logout revo
     assert.equal(expired.json().authenticated, false);
 });
 
+test('operational channel lists hide archived channels unless the admin manager requests them', async () => {
+    const repository = new MemoryRepository();
+    repository.catalog.channels[1].status = 'archived';
+    const api = createPlatformApi({ repository, logger: { error() {} } });
+
+    const operational = await call(api, 'GET', '/api/platform/channels');
+    assert.deepEqual(operational.json().channels.map(channel => channel.id), ['alpha']);
+
+    const manager = await call(api, 'GET', '/api/platform/channels?includeArchived=1');
+    assert.deepEqual(manager.json().channels.map(channel => channel.id), ['alpha', 'beta']);
+
+    const publicAttempt = await call(api, 'GET', '/api/platform/channels?includeArchived=1', null, '');
+    assert.deepEqual(publicAttempt.json().channels.map(channel => channel.id), ['alpha']);
+});
+
 test('signed admin sessions survive an API restart but reject another secret or a tampered token', async () => {
     const repository = new MemoryRepository();
     const options = { repository, logger: { error() {} }, adminSessionSecret: 'stable-deploy-secret' };

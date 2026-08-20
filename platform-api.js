@@ -629,8 +629,9 @@ function createPlatformApi({
             if (segments.length === 1 && segments[0] === 'channels' && method === 'GET') {
                 const catalog = await loadCatalog();
                 const admin = await isAdmin(req);
+                const includeInactive = admin && url.searchParams.get('includeArchived') === '1';
                 const channels = catalog.channels
-                    .filter((channel) => admin || channel.status === 'active')
+                    .filter((channel) => includeInactive || channel.status === 'active')
                     .map((channel) => ({ ...channel, links: channelLinks(channel.id) }));
                 replyJson(res, 200, { ...catalog, channels });
                 return true;

@@ -91,6 +91,16 @@ test('HTTP server exposes the CREO hub, survey assets, health, and membership co
     assert.match(studioLocation, /channel=(?!missing-old-channel)[a-z0-9-]+/);
     assert.match(studioLocation, /view=layout-1/);
 
+    const staleShippingResponse = await fetch(
+        `http://127.0.0.1:${port}/shipping.html?channel=missing-old-channel&changeCompany=1`,
+        { redirect: 'manual' }
+    );
+    assert.equal(staleShippingResponse.status, 307);
+    const shippingLocation = staleShippingResponse.headers.get('location');
+    assert.match(shippingLocation, /^\/shipping\.html\?/);
+    assert.match(shippingLocation, /channel=(?!missing-old-channel)[a-z0-9-]+/);
+    assert.match(shippingLocation, /changeCompany=1/);
+
     const scriptResponse = await fetch(`http://127.0.0.1:${port}/crewart-survey.js`);
     assert.equal(scriptResponse.status, 200);
     assert.match(scriptResponse.headers.get('content-type'), /^text\/javascript/);
