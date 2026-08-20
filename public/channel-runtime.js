@@ -10,6 +10,7 @@
     const ROUTES = Object.freeze({
         home: Object.freeze({ path: '/', query: 'channel', label: '채널홈' }),
         workspace: Object.freeze({ path: '/channel-workspace.html', query: 'channel', label: '운영', feature: 'auction' }),
+        print: Object.freeze({ path: '/print.html', query: 'channel', label: '인쇄', feature: 'auction' }),
         shipping: Object.freeze({ path: '/shipping.html', query: 'channel', label: '배송', feature: 'shipping' }),
         shippingStatus: Object.freeze({ path: '/shipping-status.html', query: 'channel', label: '전체조회', feature: 'shipping' }),
         shippingCompanies: Object.freeze({ path: '/shipping-status.html', query: 'channel', label: '업체별 조회', feature: 'shipping', defaults: { view: 'company' } }),

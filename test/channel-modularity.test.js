@@ -29,6 +29,7 @@ test('one route registry preserves the selected channel on every shared page', (
     }
     assert.equal(Runtime.preserveChannel('/shipping.html?mode=all', 'winter-cup'), '/shipping.html?mode=all&channel=winter-cup');
     assert.equal(routes.captures, '/capture-gallery.html?channel=summer-cup');
+    assert.equal(routes.print, '/print.html?channel=summer-cup');
 });
 
 test('1P and 2P use one contract while 3P is selected by broadcast profile', () => {

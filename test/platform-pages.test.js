@@ -359,6 +359,28 @@ test('new CDCUP overlays and shipping retain compatibility with the established 
     assert.doesNotMatch(companies, /CreoChannelAdapters\.resolve|adapter\.loadShippingItems|<main/);
 });
 
+test('all auction channels share the CDCUP-style print forms without sharing channel data', () => {
+    const home = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+    const workspace = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-workspace.html'), 'utf8');
+    const print = fs.readFileSync(path.join(__dirname, '..', 'public', 'print.html'), 'utf8');
+    assert.match(home, /id="quick-print"/);
+    assert.match(home, /print\.href=runtime\.url\('print'\)/);
+    assert.match(home, /경매 리스트 · 낙찰 결과 · 구매자별/);
+    assert.match(workspace, /id="print-link"/);
+    assert.match(workspace, /`print\.html\?\$\{q\}`/);
+    assert.match(print, /platform-client\.js/);
+    assert.match(print, /channel-adapters\.js/);
+    assert.match(print, /function platformPrintItems\(workspace\)/);
+    assert.match(print, /channels\/['"]? \+ encodeURIComponent\(PRINT_CHANNEL_ID\) \+ ['"]?\/workspace/);
+    assert.match(print, />경매 리스트<\/button>/);
+    assert.match(print, />낙찰 결과<\/button>/);
+    assert.match(print, />구매자별<\/button>/);
+    assert.match(print, /function toggleOrientation\(\)/);
+    assert.match(print, /shippingText\(it\)/);
+    assert.match(print, /id="print-login"/);
+    assert.doesNotMatch(print, /channelId\s*===\s*['"]creyon['"]/);
+});
+
 test('episode management expands round details and aggregate rankings in one place', () => {
     const studio = fs.readFileSync(path.join(__dirname, '..', 'public', 'broadcast-studio.html'), 'utf8');
     const archives = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-archives.html'), 'utf8');

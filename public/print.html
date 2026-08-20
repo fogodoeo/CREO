@@ -3,11 +3,14 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>CDCUP 인쇄</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+    <title>경매 인쇄 · CREO</title>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <script src="auction-contract.js?v=20260819-contract-v1"></script>
+    <script src="platform-client.js?v=20260803-admin-session-v2"></script>
+    <script src="channel-adapters.js?v=20260821-shared-print-v1"></script>
     <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
     <style>
         @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
@@ -27,9 +30,49 @@
 
         .tab-bar {
             display: flex;
+            align-items: center;
             gap: 8px;
             margin-bottom: 20px;
+            flex-wrap: wrap;
         }
+
+        .channel-chip {
+            display: inline-flex;
+            min-height: 40px;
+            align-items: center;
+            padding: 0 14px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            background: #fff;
+            color: #334155;
+            font-size: 13px;
+            font-weight: 850;
+        }
+
+        .workspace-link {
+            display: inline-flex;
+            min-height: 40px;
+            align-items: center;
+            padding: 0 14px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            color: #475569;
+            font-size: 12px;
+            font-weight: 750;
+            text-decoration: none;
+        }
+
+        .control-group { display:flex;align-items:center;gap:6px;margin-left:auto;font-size:12px;color:#666; }
+        .orientation-btn { padding:10px 14px;border:2px solid #ddd;border-radius:8px;background:#f5f5f5;color:#444;font-size:12px;font-weight:750;cursor:pointer; }
+        .login-gate { position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:20px;background:#f5f6f8; }
+        .login-gate[hidden] { display:none; }
+        .login-card { width:min(390px,100%);padding:26px;border:1px solid #d8dde5;border-radius:16px;background:#fff;box-shadow:0 24px 70px #0f172a24; }
+        .login-card h2 { margin:0;font-size:21px; }
+        .login-card p { margin:8px 0 18px;color:#64748b;font-size:13px; }
+        .login-card form { display:flex;gap:8px; }
+        .login-card input { flex:1;min-width:0;height:42px;padding:0 11px;border:1px solid #cbd5e1;border-radius:8px;font:inherit; }
+        .login-card button { height:42px;padding:0 16px;border:0;border-radius:8px;background:#2563eb;color:#fff;font-weight:800; }
+        .login-error { min-height:18px;margin-top:8px;color:#dc2626;font-size:12px; }
 
         .tab-btn {
             padding: 10px 24px;
@@ -420,25 +463,39 @@
             .conn-line {
                 display: none !important;
             }
+
+            .login-gate { display:none !important; }
+        }
+
+        @media (max-width: 860px) {
+            body { padding:12px; }
+            .tab-bar { align-items:stretch; }
+            .tab-btn { flex:1;padding:9px 10px; }
+            .control-group { width:100%;margin-left:0;flex-wrap:wrap; }
+            .print-btn { margin-left:0; }
+            .channel-chip,.workspace-link { flex:1;justify-content:center; }
         }
     </style>
 </head>
 
 <body>
     <div class="tab-bar">
-        <button class="tab-btn active" onclick="showTab('list')">경매 리스트</button>
-        <button class="tab-btn" onclick="showTab('results')">낙찰 결과</button>
-        <button class="tab-btn" onclick="showTab('company')">업체별 낙찰결과</button>
-        <span style="display:flex;align-items:center;gap:6px;margin-left:16px;font-size:12px;color:#666;">
+        <span class="channel-chip" id="print-channel-name">채널 확인 중</span>
+        <a class="workspace-link" id="workspace-link" href="#">등록 · 목록</a>
+        <button class="tab-btn" onclick="showTab('list',this)">경매 리스트</button>
+        <button class="tab-btn active" onclick="showTab('results',this)">낙찰 결과</button>
+        <button class="tab-btn" onclick="showTab('company',this)">구매자별</button>
+        <span class="control-group">
             글씨 <input type="range" id="ctrl-font" min="7" max="16" value="13" style="width:80px;"
                 oninput="applySettings()"><span id="lbl-font">13</span>pt
             &nbsp;행높이 <input type="range" id="ctrl-pad" min="1" max="8" value="3" style="width:60px;"
                 oninput="applySettings()"><span id="lbl-pad">3</span>px
         </span>
+        <button class="orientation-btn" id="orientation-btn" type="button" onclick="toggleOrientation()">가로</button>
         <button class="print-btn" onclick="window.print()">인쇄</button>
     </div>
 
-    <div class="tab-content active" id="tab-list">
+    <div class="tab-content" id="tab-list">
         <div class="header">
             <h1>경매 리스트</h1>
             <div class="meta"><span id="list-date"></span><span class="count" id="list-count"></span></div>
@@ -448,7 +505,7 @@
         </div>
     </div>
 
-    <div class="tab-content" id="tab-results">
+    <div class="tab-content active" id="tab-results">
         <div class="header">
             <h1>낙찰 결과</h1>
             <div class="meta"><span id="result-date"></span><span class="count" id="result-count"></span></div>
@@ -470,12 +527,16 @@
         </div>
     </div>
 
+    <section class="login-gate" id="print-login" hidden>
+        <div class="login-card"><h2>운영자 확인</h2><p id="print-login-description">인쇄 자료를 불러오려면 관리자 비밀번호를 입력해 주세요.</p><form id="print-login-form"><input id="print-password" type="password" autocomplete="current-password" required><button type="submit">확인</button></form><div class="login-error" id="print-login-error"></div></div>
+    </section>
+
     <script>
-        function showTab(name) {
+        function showTab(name, button) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
             document.getElementById('tab-' + name).classList.add('active');
-            event.target.classList.add('active');
+            if (button) button.classList.add('active');
             setTimeout(initResize, 50);
             if (name === 'company') {
                 setTimeout(function () { drawConnectionLines(window._phoneRowMap, window._phoneColors); }, 100);
@@ -562,6 +623,15 @@
             return ph;
         }
 
+        function shippingText(it) {
+            var method = String(it.shipping_type || '').trim();
+            var carrier = String(it.shipping_company || '').trim();
+            var location = String(it.shipping_region || '').replace(/\s*\[(?:메모|요청):[^\]]+\]\s*$/, '').trim();
+            if (method === '직접수령') return location ? '직접수령 · ' + location : '직접수령';
+            if (method !== '배송') return '-';
+            return [carrier, location].filter(Boolean).join(' · ') || '배송';
+        }
+
         var headersAll = '<th>번호</th><th>구분</th><th>이름</th><th>업체</th><th>낙찰가</th><th>낙찰자</th><th>연락처</th><th>배송</th><th>상태</th>';
         var headersList = '<th>번호</th><th>구분</th><th>이름</th><th>업체</th><th>정보</th>';
 
@@ -571,7 +641,7 @@
             if (CreoAuctionContract.isSoldStatus(st)) { statusCls = 'status-sold'; statusText = '낙찰'; }
             else if (CreoAuctionContract.normalizeStatus(st) === CreoAuctionContract.STATUS.PASSED) { statusCls = 'status-unsold'; statusText = '유찰'; }
             else if (CreoAuctionContract.normalizeStatus(st) === CreoAuctionContract.STATUS.CANCELLED) { statusCls = 'status-unsold'; statusText = '취소'; }
-            else if (st.indexOf('진행') >= 0) { statusCls = ''; statusText = '진행중'; }
+            else if (CreoAuctionContract.normalizeStatus(st) === CreoAuctionContract.STATUS.LIVE) { statusCls = ''; statusText = '진행중'; }
             var w = parseWinner(it.winner);
             var shortName = truncatePrintName(it.name, 10);
             var r = '<tr>';
@@ -582,7 +652,7 @@
             r += '<td class="col-result-price">' + (it.soldPrice ? fmtPrice(it.soldPrice) : '') + '</td>';
             r += '<td class="col-winner">' + w.name + '</td>';
             r += '<td class="col-phone">' + fmtPhone(w.phone) + '</td>';
-            r += '<td class="col-ship"></td>';
+            r += '<td class="col-ship">' + shippingText(it) + '</td>';
             r += '<td class="col-status ' + statusCls + '">' + statusText + '</td>';
             r += '</tr>';
             return r;
@@ -650,15 +720,110 @@
             setTimeout(initResize, 100);
         }
 
-        // 데이터 로드
-        (async function() {
+        var PRINT_CHANNEL_ID = String(new URLSearchParams(location.search).get('channel') || 'cdcup').toLowerCase().replace(/[^a-z0-9-]/g, '') || 'cdcup';
+        var printChannel = null;
+
+        function platformWinner(item) {
+            var name = String(item.winnerName || item.winnerAlias || '').trim();
+            var phone = String(item.winnerPhone || '').replace(/[^0-9]/g, '');
+            var embedded = name.replace(/[^0-9]/g, '');
+            return phone && embedded.indexOf(phone) < 0 ? [name, phone].filter(Boolean).join(' / ') : name;
+        }
+
+        function platformChecklist(item) {
+            var checklist = String(item.checklist || (item.attributes && item.attributes.checklist) || '').trim();
+            return /(^|\|)_auction:[^|]+/.test(checklist) ? checklist : [checklist, '_auction:extra'].filter(Boolean).join('|');
+        }
+
+        function platformPrintItems(workspace) {
+            var vendors = new Map((workspace.vendors || []).map(function (vendor) { return [vendor.id, vendor]; }));
+            var shipments = new Map((workspace.shipments || []).map(function (shipment) { return [shipment.itemId, shipment]; }));
+            return (workspace.items || []).slice().sort(function (a, b) { return Number(a.lotNumber) - Number(b.lotNumber); }).map(function (item) {
+                var shipment = shipments.get(item.id);
+                return {
+                    id: item.id,
+                    row: item.id,
+                    num: Number(item.lotNumber) || 0,
+                    name: item.name || '개체',
+                    company: (vendors.get(item.vendorId) || {}).name || item.vendorName || '',
+                    soldPrice: (Number(item.soldPrice) || 0) / 10000,
+                    winner: platformWinner(item),
+                    winner_phone: item.winnerPhone || '',
+                    status: item.status || 'waiting',
+                    checklist: platformChecklist(item),
+                    note: item.note || '',
+                    shipping_type: shipment ? (shipment.method === 'pickup' ? '직접수령' : '배송') : '',
+                    shipping_company: shipment && shipment.carrier || '',
+                    shipping_region: shipment && shipment.address || ''
+                };
+            });
+        }
+
+        function syncPrintChannel(channel) {
+            printChannel = channel;
+            var label = String(channel.name || channel.shortName || PRINT_CHANNEL_ID).trim();
+            document.getElementById('print-channel-name').textContent = label;
+            document.title = label + ' 인쇄 · CREO';
+            var workspace = channel.legacy && channel.legacy.managementUrl
+                ? channel.legacy.managementUrl
+                : (channel.links && channel.links.workspace || '/channel-workspace.html');
+            var url = new URL(workspace, location.href);
+            url.searchParams.set('channel', PRINT_CHANNEL_ID);
+            document.getElementById('workspace-link').href = url.pathname + url.search;
+            document.getElementById('print-login-description').textContent = label + ' 인쇄 자료를 불러오려면 관리자 비밀번호를 입력해 주세요.';
+        }
+
+        function renderPrintError(error) {
+            var message = String(error && error.message || '인쇄 자료를 불러오지 못했습니다.');
+            ['list-body', 'result-body', 'company-body'].forEach(function (id) {
+                document.getElementById(id).innerHTML = '<div class="loading" style="color:#dc2626"></div>';
+                document.getElementById(id).firstElementChild.textContent = '오류: ' + message;
+            });
+        }
+
+        async function loadPrintData() {
+            var payload = await CreoPlatform.api('channels/' + encodeURIComponent(PRINT_CHANNEL_ID));
+            var channel = payload.channel;
+            if (!channel) throw new Error('인쇄할 채널을 찾을 수 없습니다.');
+            syncPrintChannel(channel);
+            if (channel.dataAdapter === 'legacy-cdcup' || (channel.legacy && channel.legacy.items)) return getItems();
+            var workspace = await CreoPlatform.api('channels/' + encodeURIComponent(PRINT_CHANNEL_ID) + '/workspace');
+            return platformPrintItems(workspace);
+        }
+
+        async function initializePrint() {
             try {
-                const items = await getItems();
-                renderAll(items);
-            } catch(err) {
-                document.getElementById('result-body').innerHTML = '<div class="loading" style="color:red">오류: ' + err.message + '</div>';
+                var items = await loadPrintData();
+                document.getElementById('print-login').hidden = true;
+                renderAll(items || []);
+                applySettings();
+            } catch (error) {
+                if (error && error.status === 401) {
+                    document.getElementById('print-login').hidden = false;
+                    requestAnimationFrame(function () { document.getElementById('print-password').focus(); });
+                    return;
+                }
+                renderPrintError(error);
             }
-        })();
+        }
+
+        document.getElementById('print-login-form').addEventListener('submit', async function (event) {
+            event.preventDefault();
+            var input = document.getElementById('print-password');
+            var error = document.getElementById('print-login-error');
+            error.textContent = '';
+            try {
+                CreoPlatform.setAdmin(input.value);
+                if (!await CreoPlatform.verifyAdmin(input.value)) throw new Error('비밀번호가 맞지 않습니다.');
+                input.value = '';
+                await initializePrint();
+            } catch (failure) {
+                CreoPlatform.setAdmin('');
+                error.textContent = failure.message || '로그인하지 못했습니다.';
+            }
+        });
+
+        initializePrint();
 
         function applySettings() {
             var fs = document.getElementById('ctrl-font').value;
@@ -667,6 +832,19 @@
             document.getElementById('lbl-pad').textContent = pd;
             document.querySelectorAll('table').forEach(function (t) { t.style.fontSize = fs + 'pt'; });
             document.querySelectorAll('td').forEach(function (d) { d.style.padding = pd + 'px 4px'; });
+        }
+
+        var printLandscape = false;
+        function toggleOrientation() {
+            printLandscape = !printLandscape;
+            var style = document.getElementById('print-page-orientation');
+            if (!style) {
+                style = document.createElement('style');
+                style.id = 'print-page-orientation';
+                document.head.appendChild(style);
+            }
+            style.textContent = '@media print{@page{size:' + (printLandscape ? 'landscape' : 'portrait') + ';margin:8mm 5mm}}';
+            document.getElementById('orientation-btn').textContent = printLandscape ? '세로' : '가로';
         }
 
         // ── 컬럼 리사이즈 ──
@@ -856,7 +1034,7 @@
                     chtml += '<td class="col-result-price">' + (it.soldPrice ? fmtPrice(it.soldPrice) : '') + '</td>';
                     chtml += '<td class="col-winner">' + w.name + '</td>';
                     chtml += '<td class="col-phone">' + fmtPhone(w.phone) + '</td>';
-                    chtml += '<td class="col-ship"></td>';
+                    chtml += '<td class="col-ship">' + shippingText(it) + '</td>';
                     chtml += '<td class="col-status ' + statusCls + '">' + statusText + '</td>';
                     chtml += '</tr>';
                     rowIndex++;
