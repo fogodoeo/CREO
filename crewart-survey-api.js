@@ -653,6 +653,58 @@ function createCrewartSurveyApi(options = {}) {
                 replyJson(res, 200, { cleared: true, deleted });
                 return true;
             }
+            if (url.pathname === '/api/crewart-survey/house-link' && req.method === 'POST') {
+                const secret = String(bandMembership?.config?.sessionSecret || '');
+                const token = bearerToken(req);
+                let session = null;
+                try { session = secret.length >= 32 && token ? verifyToken(token, secret, now()) : null; }
+                catch { session = null; }
+                if (!session?.mid) {
+                    replyJson(res, 401, { error: 'BAND 회원 확인이 필요합니다.' });
+                    return true;
+                }
+                if (!allowSubmission(`house-link:${session.sub}`)) {
+                    replyJson(res, 429, { error: '연결 확인 요청이 너무 많습니다.' });
+                    return true;
+                }
+                const body = await readJson(req);
+                const houseKey = cleanText(body.houseKey, 2).toUpperCase();
+                const resultCode = cleanText(body.resultCode, 4).toUpperCase();
+                const scoreKeys = ['E', 'I', 'S', 'N', 'T', 'F', 'J', 'P'];
+                const axisScores = Object.fromEntries(scoreKeys.map(key => [key, Number(body.axisScores?.[key])]));
+                const timing = {
+                    validCount: Number(body.timingStats?.validCount),
+                    totalMs: Number(body.timingStats?.totalMs),
+                    averageMs: Number(body.timingStats?.averageMs),
+                    medianMs: Number(body.timingStats?.medianMs)
+                };
+                const proofValid = Core.HOUSE_KEYS.includes(houseKey)
+                    && Core.MBTI_TYPES.includes(resultCode)
+                    && Object.values(axisScores).every(Number.isFinite)
+                    && Object.values(timing).every(Number.isFinite);
+                if (!proofValid) {
+                    replyJson(res, 422, { error: '저장된 설문 결과를 확인할 수 없습니다.' });
+                    return true;
+                }
+                const matches = (await listAllResponseRows()).map(row => jsonParse(row.value, null)).filter(response => {
+                    if (!response || response.memberVerified !== true) return false;
+                    if (cleanText(response.assignedHouseKey || response.houseId, 2).toUpperCase() !== houseKey) return false;
+                    if (cleanText(response.creMbti || response.crebtiType, 4).toUpperCase() !== resultCode) return false;
+                    if (scoreKeys.some(key => Number(response.axisScores?.[key]) !== axisScores[key])) return false;
+                    return Object.entries(timing).every(([key, value]) => Number(response.timingStats?.[key]) === value);
+                });
+                if (matches.length !== 1 || typeof crewartHouseService?.linkSurveyAssignment !== 'function') {
+                    replyJson(res, 409, { error: '기존 설문 결과를 자동 연결하지 못했습니다. 테스트를 다시 완료해 주세요.' });
+                    return true;
+                }
+                await crewartHouseService.linkSurveyAssignment(
+                    session.mid,
+                    houseKey,
+                    matches[0].participantKey
+                );
+                replyJson(res, 200, { linked: true, houseKey });
+                return true;
+            }
             if (url.pathname === '/api/crewart-survey/responses' && req.method === 'POST') {
                 const secret = String(bandMembership?.config?.sessionSecret || '');
                 const token = bearerToken(req);

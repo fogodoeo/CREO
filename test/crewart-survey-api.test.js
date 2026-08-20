@@ -365,6 +365,76 @@ test('anonymous completion storage remains available without BAND session config
     assert.equal(repository.writes.length, 1);
 });
 
+test('a verified member can privately reconnect one unique pre-migration survey result', async () => {
+    const stored = {
+        ...validSubmission(),
+        memberVerified: true,
+        participationMode: 'official',
+        assignedHouseKey: 'NT',
+        houseId: 'NT'
+    };
+    const repository = new FakeRepository({
+        [`${RESPONSE_PREFIX}${stored.participantKey}`]: JSON.stringify(stored)
+    });
+    const linked = [];
+    const api = createCrewartSurveyApi({
+        repository,
+        bandMembership: { config: { sessionSecret: SECRET } },
+        crewartHouseService: {
+            async linkSurveyAssignment(memberKey, houseKey, participantKey) {
+                linked.push({ memberKey, houseKey, participantKey });
+            }
+        },
+        now: () => NOW
+    });
+    const response = new CapturedResponse();
+    await api.handle(request('POST', JSON.stringify({
+        houseKey: 'NT',
+        resultCode: stored.creMbti,
+        axisScores: stored.axisScores,
+        timingStats: stored.timingStats
+    }), {
+        authorization: `Bearer ${memberToken('legacy-session', 'stable-member-key')}`
+    }), response, new URL('https://creok.example.com/api/crewart-survey/house-link'));
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(JSON.parse(response.body), { linked: true, houseKey: 'NT' });
+    assert.deepEqual(linked, [{
+        memberKey: 'stable-member-key', houseKey: 'NT', participantKey: stored.participantKey
+    }]);
+});
+
+test('legacy survey linking rejects unauthenticated or ambiguous claims', async () => {
+    const stored = {
+        ...validSubmission(), memberVerified: true, assignedHouseKey: 'SF', houseId: 'SF'
+    };
+    const second = { ...stored, participantKey: 'b'.repeat(24) };
+    const repository = new FakeRepository({
+        [`${RESPONSE_PREFIX}${stored.participantKey}`]: JSON.stringify(stored),
+        [`${RESPONSE_PREFIX}${second.participantKey}`]: JSON.stringify(second)
+    });
+    const api = createCrewartSurveyApi({
+        repository,
+        bandMembership: { config: { sessionSecret: SECRET } },
+        crewartHouseService: { async linkSurveyAssignment() { throw new Error('must not link'); } },
+        now: () => NOW
+    });
+    const body = JSON.stringify({
+        houseKey: 'SF', resultCode: stored.creMbti,
+        axisScores: stored.axisScores, timingStats: stored.timingStats
+    });
+    const unauthenticated = new CapturedResponse();
+    await api.handle(request('POST', body), unauthenticated,
+        new URL('https://creok.example.com/api/crewart-survey/house-link'));
+    assert.equal(unauthenticated.status, 401);
+
+    const ambiguous = new CapturedResponse();
+    await api.handle(request('POST', body, {
+        authorization: `Bearer ${memberToken('legacy-session', 'stable-member-key')}`
+    }), ambiguous, new URL('https://creok.example.com/api/crewart-survey/house-link'));
+    assert.equal(ambiguous.status, 409);
+});
+
 test('thoughtful mobile responses remain valid for up to ninety seconds per question', async () => {
     const repository = new FakeRepository();
     const api = createCrewartSurveyApi({

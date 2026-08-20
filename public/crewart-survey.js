@@ -12,6 +12,7 @@
     const TYPE_CHARACTER_VERSION = '20260815-character-webp-v2';
     const MEMBERSHIP_STORAGE_KEY = 'crewart_band_member_access_v1';
     const MEMBERSHIP_PHONE_STORAGE_KEY = 'crewart_band_member_phone_mask_v1';
+    const HOUSE_LINK_STORAGE_KEY = 'crewart_house_link_v1';
     const LAST_RESULT_STORAGE_KEY = 'crewart_last_result_v3';
     const LEGACY_RESULT_STORAGE_KEYS = Object.freeze(['crewart_last_result_v1', 'crewart_last_result_v2']);
     const LAST_RESULT_VERSION = 3;
@@ -170,6 +171,36 @@
             updateReferralMetricsDisplay(await response.json());
         } catch (error) {
             console.error('[Crewart share metrics]', error);
+        }
+    }
+
+    async function linkStoredHouseResult() {
+        const snapshot = loadLastResult();
+        if (!snapshot || !bandAuthToken || !bandAuthUser?.isTargetMember) return false;
+        const linkMarker = `${bandAuthUser.id || 'member'}:${snapshot.savedAt || snapshot.assignedHouseKey}`;
+        try {
+            if (localStorage.getItem(HOUSE_LINK_STORAGE_KEY) === linkMarker) return true;
+            const response = await bandFetch('/api/crewart-survey/house-link', {
+                method: 'POST',
+                cache: 'no-store',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${bandAuthToken}`
+                },
+                body: JSON.stringify({
+                    houseKey: snapshot.assignedHouseKey,
+                    resultCode: snapshot.result.code,
+                    axisScores: snapshot.result.letters,
+                    timingStats: snapshot.timingStats
+                })
+            });
+            if (!response.ok) return false;
+            const payload = await response.json().catch(() => ({}));
+            if (payload.linked !== true) return false;
+            localStorage.setItem(HOUSE_LINK_STORAGE_KEY, linkMarker);
+            return true;
+        } catch (_) {
+            return false;
         }
     }
 
@@ -1632,6 +1663,7 @@
                 if (session.user?.memberScoped !== true) throw new Error('member-scoped session required');
                 bandAuthUser = session.user || null;
                 bandTargetUrl = session.targetBandUrl || bandTargetUrl;
+                void linkStoredHouseResult();
             }
         } catch (error) {
             console.error('[Crewart BAND membership]', error);
@@ -1690,6 +1722,7 @@
         }
         trackReferral('verified', { authenticated: true });
         void loadReferralMetrics();
+        void linkStoredHouseResult();
         if (status) {
             status.hidden = true;
             status.textContent = '';
