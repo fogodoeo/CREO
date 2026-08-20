@@ -258,9 +258,15 @@ test('question content management requires admin auth and stores copy-only field
 
 test('anonymous results save without BAND login and upgrade in place after verification', async () => {
     const repository = new FakeRepository();
+    const linkedAssignments = [];
     const api = createCrewartSurveyApi({
         repository,
         bandMembership: { config: { sessionSecret: SECRET } },
+        crewartHouseService: {
+            async linkSurveyAssignment(memberKey, houseKey, participantKey) {
+                linkedAssignments.push({ memberKey, houseKey, participantKey });
+            }
+        },
         now: () => NOW
     });
     const invalidSession = new CapturedResponse();
@@ -288,6 +294,7 @@ test('anonymous results save without BAND login and upgrade in place after verif
         new URL('https://creok.example.com/api/crewart-survey/responses')
     );
     assert.equal(anonymous.status, 201);
+    assert.equal(linkedAssignments.length, 0);
     assert.equal(repository.writes.length, 1);
     assert.equal(repository.writes[0].key, `${RESPONSE_PREFIX}${'a'.repeat(24)}`);
     const anonymousStored = JSON.parse(repository.writes[0].value);
@@ -329,6 +336,11 @@ test('anonymous results save without BAND login and upgrade in place after verif
     assert.equal(stored.memberVerified, true);
     assert.equal(Core.HOUSE_KEYS.includes(stored.assignedHouseKey), true);
     assert.equal(JSON.parse(verified.body).assignedHouseKey, stored.assignedHouseKey);
+    assert.deepEqual(linkedAssignments, [{
+        memberKey: 'member_random_session_subject',
+        houseKey: stored.assignedHouseKey,
+        participantKey: 'a'.repeat(24)
+    }]);
     assert.equal(repository.writes[0].value.includes('member_random_session_subject'), false);
     const verifiedCohort = (await api.bootstrap()).cohort;
     assert.equal(verifiedCohort.sampleSize, 1);

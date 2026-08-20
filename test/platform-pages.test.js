@@ -607,7 +607,8 @@ test('broadcast control manages reusable banners, sponsors, and vendor logos', (
         assert.ok(fs.existsSync(path.join(__dirname, '..', 'public', 'assets', 'crewart-broadcast', asset)));
     }
     const crewartModules = fs.readFileSync(path.join(__dirname, '..', 'public', 'event-modules.js'), 'utf8');
-    assert.match(crewartModules, /CREWARTS HOUSE CUP/);
+    assert.match(crewartModules, /CREWARTS HOUSE AUCTION/);
+    assert.match(crewartModules, /팀별 낙찰금 합계/);
     assert.match(crewartModules, /houseOrder = \{R:0,G:1,B:2,Y:3\}/);
     assert.match(crewartLive, /class="cw-house-key"><b>R<\/b><b>G<\/b><b>B<\/b><b>Y<\/b>/);
 });

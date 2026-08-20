@@ -359,6 +359,7 @@ function aggregateResponses(rows, legacyValue) {
 function createCrewartSurveyApi(options = {}) {
     const repository = options.repository;
     const bandMembership = options.bandMembership;
+    const crewartHouseService = options.crewartHouseService;
     const isAdmin = options.isAdmin;
     const logger = options.logger || console;
     const now = options.now || Date.now;
@@ -707,7 +708,19 @@ function createCrewartSurveyApi(options = {}) {
                             houseAssignmentVersion: HOUSE_ASSIGNMENT_VERSION
                         };
                     }
-                    await repository.upsertRows([{ key: responseKey, value: JSON.stringify(assigned) }]);
+                    const writes = [repository.upsertRows([{ key: responseKey, value: JSON.stringify(assigned) }])];
+                    if (
+                        session?.mid
+                        && Core.HOUSE_KEYS.includes(assigned.assignedHouseKey)
+                        && typeof crewartHouseService?.linkSurveyAssignment === 'function'
+                    ) {
+                        writes.push(crewartHouseService.linkSurveyAssignment(
+                            session.mid,
+                            assigned.assignedHouseKey,
+                            assigned.participantKey
+                        ));
+                    }
+                    await Promise.all(writes);
                     if (bootstrapCache) {
                         const cohort = bootstrapCache.value.cohort;
                         const alreadyCounted = cohort.identities.has(assigned.participantKey);

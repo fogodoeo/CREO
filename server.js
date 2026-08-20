@@ -10,6 +10,7 @@ const path = require('node:path');
 const { createBandOAuth } = require('./band-oauth');
 const { createBandMembership } = require('./band-membership');
 const { createCrewartSurveyApi } = require('./crewart-survey-api');
+const { createCrewartHouseService } = require('./crewart-house-service');
 const { createPlatformApi } = require('./platform-api');
 const { createCaptureApi } = require('./capture-api');
 const { CaptureStorage } = require('./capture-storage');
@@ -30,7 +31,11 @@ const platformRepository = platformStorageMode === 'supabase'
     : new SQLitePlatformRepository({
         mirror: process.env.CREO_SUPABASE_MIRROR_ENABLED === 'false' ? null : supabasePlatformRepository
     });
-const platformApi = createPlatformApi({ repository: platformRepository });
+const crewartHouseService = createCrewartHouseService({
+    repository: supabasePlatformRepository,
+    secret: bandMembership.config.sessionSecret
+});
+const platformApi = createPlatformApi({ repository: platformRepository, crewartHouseService });
 const captureStorage = new CaptureStorage();
 const captureApi = createCaptureApi({
     repository: platformRepository,
@@ -44,6 +49,7 @@ const cdcupRoundsApi = createCdcupRoundsApi({
 const crewartSurveyApi = createCrewartSurveyApi({
     repository: supabasePlatformRepository,
     bandMembership,
+    crewartHouseService,
     isAdmin: platformApi.isAdmin
 });
 

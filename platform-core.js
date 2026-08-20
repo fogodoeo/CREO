@@ -79,8 +79,9 @@ const DEFAULT_CHANNELS = Object.freeze([
             Object.freeze({ id: 'y', name: 'Y', shortName: 'Y', color: '#b07d20', logoUrl: '', sortOrder: 4 })
         ]),
         scoreboards: Object.freeze([
-            Object.freeze({ id: 'houses', name: '기숙사 컵', dimension: 'group', metric: 'points', unit: '점', topN: 4 })
+            Object.freeze({ id: 'houses', name: '팀별 낙찰금 합계', dimension: 'winner', metric: 'amount', unit: '만원', topN: 4 })
         ]),
+        audienceCompetition: Object.freeze({ enabled: true, assignment: 'survey-random', metric: 'soldPrice' }),
         overlay: Object.freeze({ skin: 'heritage', layout: 'left' }),
         broadcastDefaults: Object.freeze({
             notice: 'CREWARTS LIVE',
@@ -223,6 +224,15 @@ function normalizeShippingDefaults(value = {}, fallback = {}) {
     };
 }
 
+function normalizeAudienceCompetition(value = {}, fallback = {}) {
+    const source = { ...(fallback || {}), ...(value || {}) };
+    return {
+        enabled: source.enabled === true,
+        assignment: source.assignment === 'survey-random' ? 'survey-random' : 'none',
+        metric: source.metric === 'soldPrice' ? 'soldPrice' : 'soldPrice'
+    };
+}
+
 function normalizeChannel(input = {}, fallback = {}) {
     const source = { ...fallback, ...input };
     const id = normalizeChannelId(source.id || source.slug || source.name);
@@ -265,6 +275,7 @@ function normalizeChannel(input = {}, fallback = {}) {
         terminology: normalizeTerminology(input.terminology || source.terminology, fallback.terminology),
         groups: normalizeGroups(input.groups ?? source.groups, fallback.groups),
         scoreboards: normalizeScoreboards(input.scoreboards ?? source.scoreboards, fallback.scoreboards),
+        audienceCompetition: normalizeAudienceCompetition(input.audienceCompetition ?? source.audienceCompetition, fallback.audienceCompetition),
         overlay: normalizeOverlay(input.overlay || source.overlay, fallback.overlay),
         broadcastDefaults: normalizeBroadcastDefaults(input.broadcastDefaults ?? source.broadcastDefaults, fallback.broadcastDefaults),
         shippingDefaults: normalizeShippingDefaults(input.shippingDefaults ?? source.shippingDefaults, fallback.shippingDefaults),
@@ -340,7 +351,13 @@ function publicItemAttributes(item = {}) {
         photo_sire: cleanText(attributes.photo_sire, 600),
         photo_dam: cleanText(attributes.photo_dam, 600),
         photo_sibling: cleanText(attributes.photo_sibling, 600),
-        start_time: cleanText(attributes.start_time, 80)
+        start_time: cleanText(attributes.start_time, 80),
+        crewart_house_key: ['R', 'G', 'B', 'Y'].includes(cleanText(attributes.crewart_house_key, 8).toUpperCase())
+            ? cleanText(attributes.crewart_house_key, 8).toUpperCase()
+            : '',
+        crewart_house_source: ['survey', 'random'].includes(cleanText(attributes.crewart_house_source, 16))
+            ? cleanText(attributes.crewart_house_source, 16)
+            : ''
     };
 }
 
@@ -398,6 +415,7 @@ module.exports = {
     channelLinks,
     cleanText,
     normalizeBroadcastDefaults,
+    normalizeAudienceCompetition,
     normalizeChannel,
     normalizeChannelId,
     normalizeShippingDefaults,

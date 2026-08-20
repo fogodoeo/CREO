@@ -100,7 +100,10 @@ test('CREYON uses the shared placement editor with an isolated metal renderer', 
 
     const bridged = BroadcastBridge.toLegacyItem({
         id: 'live_item', name: 'A12', vendorName: '쭌이네', status: 'live', bidLog: [{ name: '입찰자', bidder_key: 'bidder-1', amount: 42, region: '서울' }],
-        attributes: { checklist: 'gender:M|weight:42', photo_sire: '/sire.webp', start_time: '2026-08-20T10:00:00Z' }
+        attributes: {
+            checklist: 'gender:M|weight:42', photo_sire: '/sire.webp', start_time: '2026-08-20T10:00:00Z',
+            crewart_house_key: 'G', crewart_house_source: 'survey'
+        }
     }, 'creyon');
     assert.equal(bridged.status, '진행중');
     assert.deepEqual(JSON.parse(bridged.bid_log), [{ name: '입찰자', bidder_key: 'bidder-1', amount: 42, region: '서울' }]);
@@ -111,6 +114,8 @@ test('CREYON uses the shared placement editor with an isolated metal renderer', 
     assert.equal(bridged.checklist, 'gender:M|weight:42|_auction:extra|_visibility:public');
     assert.equal(bridged.photoSire, '/sire.webp');
     assert.equal(bridged.start_time, '2026-08-20T10:00:00Z');
+    assert.equal(bridged.crewartHouseKey, 'G');
+    assert.equal(bridged.crewartHouseSource, 'survey');
 
     const explicitTournament = BroadcastBridge.toLegacyItem({
         id: 'tournament_item',

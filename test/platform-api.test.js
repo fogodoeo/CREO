@@ -451,6 +451,66 @@ test('auction transition keeps item status, active channel, and broadcast state 
     assert.equal(response.json().state.activeItemId, '');
 });
 
+test('audience competition freezes the winning viewer house when an item is sold', async () => {
+    const repository = new MemoryRepository();
+    repository.catalog.channels[0] = normalizeChannel({
+        ...repository.catalog.channels[0],
+        audienceCompetition: { enabled: true, assignment: 'survey-random', metric: 'soldPrice' },
+        groups: [
+            { id: 'group-red', name: 'RED', color: '#df5a4b' },
+            { id: 'group-green', name: 'GREEN', color: '#5f9667' },
+            { id: 'group-blue', name: 'BLUE', color: '#4f7fc8' },
+            { id: 'group-yellow', name: 'YELLOW', color: '#d9a83e' }
+        ]
+    });
+    const calls = [];
+    const crewartHouseService = {
+        async resolveWinnerAssignment(input) {
+            calls.push(input);
+            return { houseKey: 'B', source: 'survey' };
+        }
+    };
+    const api = createPlatformApi({ repository, crewartHouseService, logger: { error() {} } });
+    const created = await call(api, 'POST', '/api/platform/channels/alpha/items', {
+        record: { id: 'item_house', lotNumber: 1, name: '경매 개체', groupId: 'group-red' }
+    });
+    assert.equal(created.status, 201, created.body);
+
+    const response = await call(api, 'PUT', '/api/platform/channels/alpha/auction-transition', {
+        itemId: 'item_house', status: 'sold', mode: 'sold',
+        item: { soldPrice: 100000, winnerPhone: '01042150831', winnerAlias: '배원직' }
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].phone, '01042150831');
+    assert.equal(calls[0].winnerAlias, '배원직');
+    assert.equal(response.json().item.attributes.crewart_house_key, 'B');
+    assert.equal(response.json().item.attributes.crewart_house_source, 'survey');
+    const broadcast = await call(api, 'GET', '/api/platform/channels/alpha/broadcast', null, '');
+    assert.equal(broadcast.json().items[0].attributes.crewart_house_key, 'B');
+    assert.equal(broadcast.json().items[0].winnerPhone, undefined);
+});
+
+test('ordinary channels never assign an audience house during a sale', async () => {
+    const repository = new MemoryRepository();
+    let calls = 0;
+    const api = createPlatformApi({
+        repository,
+        crewartHouseService: { async resolveWinnerAssignment() { calls += 1; return { houseKey: 'R', source: 'random' }; } },
+        logger: { error() {} }
+    });
+    await call(api, 'POST', '/api/platform/channels/alpha/items', {
+        record: { id: 'ordinary_item', lotNumber: 1, name: '일반 경매 개체' }
+    });
+    const response = await call(api, 'PUT', '/api/platform/channels/alpha/auction-transition', {
+        itemId: 'ordinary_item', status: 'sold', mode: 'sold', item: { soldPrice: 50000, winnerAlias: '낙찰자' }
+    });
+    assert.equal(response.status, 200);
+    assert.equal(calls, 0);
+    assert.equal(response.json().item.attributes?.crewart_house_key, undefined);
+});
+
 test('ordinary item edits cannot downgrade a live auction with stale cached status', async () => {
     const repository = new MemoryRepository();
     const api = createPlatformApi({ repository, logger: { error() {} } });

@@ -351,6 +351,7 @@ function createPlatformApi({
     repository,
     logger = console,
     refreshShippingRateFn = refreshShippingRate,
+    crewartHouseService = null,
     adminSessionSecret = process.env.CREO_ADMIN_SECRET || crypto.randomBytes(32).toString('hex'),
     adminSessionTtlMs = ADMIN_SESSION_TTL_MS
 } = {}) {
@@ -832,12 +833,37 @@ function createPlatformApi({
 
                     let savedItem = current;
                     if (current && (requestedStatus || (body.item && typeof body.item === 'object'))) {
-                        const candidate = sanitizeRecord('item', {
+                        let candidate = sanitizeRecord('item', {
                             ...current,
                             ...(body.item && typeof body.item === 'object' ? body.item : {}),
                             ...(requestedStatus ? { status: requestedStatus } : {}),
                             id: current.id
                         }, current);
+                        const audienceCompetition = channel.audienceCompetition || {};
+                        const fixedHouseKey = cleanText(candidate.attributes?.crewart_house_key, 8).toUpperCase();
+                        if (
+                            requestedStatus === 'sold'
+                            && audienceCompetition.enabled === true
+                            && audienceCompetition.assignment === 'survey-random'
+                            && !['R', 'G', 'B', 'Y'].includes(fixedHouseKey)
+                            && typeof crewartHouseService?.resolveWinnerAssignment === 'function'
+                        ) {
+                            const assignment = await crewartHouseService.resolveWinnerAssignment({
+                                channelId,
+                                itemId: current.id,
+                                phone: candidate.winnerPhone,
+                                winnerName: candidate.winnerName,
+                                winnerAlias: candidate.winnerAlias
+                            });
+                            candidate = {
+                                ...candidate,
+                                attributes: {
+                                    ...(candidate.attributes || {}),
+                                    crewart_house_key: cleanText(assignment?.houseKey, 8).toUpperCase(),
+                                    crewart_house_source: assignment?.source === 'survey' ? 'survey' : 'random'
+                                }
+                            };
+                        }
                         const errors = validateRecord('item', candidate, { ...data, groups: channel.groups || [] });
                         if (errors.length) {
                             replyJson(res, 422, { error: errors.join(' '), errors });

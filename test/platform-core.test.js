@@ -3,6 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
+    DEFAULT_CHANNELS,
     channelKey,
     channelLinks,
     normalizeChannel,
@@ -46,6 +47,8 @@ test('public broadcast items never expose winner or shipping contact data', () =
         id: 'item_1', lotNumber: 3, name: '테스트 개체', winnerName: '홍길동',
         winnerPhone: '01012345678', shippingAddress: '서울', soldPrice: 20, teamName: 'RED',
         attributes: {
+            crewart_house_key: 'B',
+            crewart_house_source: 'survey',
             bid_log: JSON.stringify([{ name: '입찰자', bidder_key: 'bidder-1', amount: 31, phone: '01099999999' }]),
             checklist: 'gender:M|weight:42|sale_mode:quiz|quiz_question_b64:question|quiz_answer_b64:secret|sale_config_b64:secret-config',
             photo_sire: '/sire.webp'
@@ -63,7 +66,29 @@ test('public broadcast items never expose winner or shipping contact data', () =
     assert.equal('phone' in item.bidLog[0], false);
     assert.equal(item.attributes.checklist, 'gender:M|weight:42|sale_mode:quiz|quiz_question_b64:question');
     assert.equal(item.attributes.photo_sire, '/sire.webp');
+    assert.equal(item.attributes.crewart_house_key, 'B');
+    assert.equal(item.attributes.crewart_house_source, 'survey');
     assert.doesNotMatch(JSON.stringify(item), /secret/);
+});
+
+test('CREWART defaults define viewer-color sold amount competition as channel capability', () => {
+    const crewart = DEFAULT_CHANNELS.find(channel => channel.id === 'crewart');
+    assert.deepEqual(crewart.audienceCompetition, {
+        enabled: true,
+        assignment: 'survey-random',
+        metric: 'soldPrice'
+    });
+    assert.deepEqual(crewart.scoreboards[0], {
+        id: 'houses', name: '팀별 낙찰금 합계', dimension: 'winner',
+        metric: 'amount', unit: '만원', topN: 4
+    });
+    const disabled = normalizeChannel({
+        id: 'invalid-audience-mode', name: 'invalid',
+        audienceCompetition: { enabled: true, assignment: 'item-group', metric: 'points' }
+    });
+    assert.deepEqual(disabled.audienceCompetition, {
+        enabled: true, assignment: 'none', metric: 'soldPrice'
+    });
 });
 
 test('channel builder configuration normalizes reusable groups, scoreboards, and overlays', () => {
