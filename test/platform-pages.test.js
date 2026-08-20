@@ -354,6 +354,15 @@ test('episode management expands round details and aggregate rankings in one pla
     assert.match(archives, /현재 회차 저장/);
 });
 
+test('broadcast studio handles expired embedded editor sessions without exposing credentials', () => {
+    const studio = fs.readFileSync(path.join(__dirname, '..', 'public', 'broadcast-studio.html'), 'utf8');
+    const bridge = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-broadcast-bridge.js'), 'utf8');
+    assert.match(bridge, /response\.status === 401/);
+    assert.match(bridge, /postMessage\(\{ type: 'creo-admin-required' \}/);
+    assert.match(studio, /event\.origin!==location\.origin/);
+    assert.match(studio, /관리자 인증이 만료되었습니다\. 다시 로그인해 주세요\./);
+});
+
 test('legacy broadcast bridge survives Supabase quota exhaustion with cached or standby data', () => {
     const bridge = fs.readFileSync(path.join(__dirname, '..', 'public', 'supabase-bridge.js'), 'utf8');
     const cdcup = fs.readFileSync(path.join(__dirname, '..', 'public', 'broadcast.html'), 'utf8');

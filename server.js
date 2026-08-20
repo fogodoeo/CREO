@@ -1,4 +1,4 @@
-// Build: 20260815-hotfix-v36
+// Build: 20260820-hotfix-v37
 'use strict';
 
 require('./load-local-env')();
@@ -14,6 +14,7 @@ const { createPlatformApi } = require('./platform-api');
 const { createCaptureApi } = require('./capture-api');
 const { CaptureStorage } = require('./capture-storage');
 const { createCdcupRoundsApi } = require('./cdcup-rounds-api');
+const { normalizeChannelId } = require('./platform-core');
 const { SupabaseConfigRepository } = require('./platform-repository');
 const { SQLitePlatformRepository } = require('./sqlite-platform-repository');
 
@@ -140,6 +141,25 @@ function parseRange(value, size) {
         return null;
     }
     return { start, end };
+}
+
+function isBroadcastableChannel(channel) {
+    return channel?.status === 'active' && channel?.features?.broadcast !== false;
+}
+
+async function canonicalBroadcastStudioLocation(url) {
+    if (!url.searchParams.has('channel')) return '';
+    const requestedId = normalizeChannelId(url.searchParams.get('channel'));
+    const catalog = await platformRepository.getCatalog();
+    const requested = catalog.channels.find((channel) => channel.id === requestedId);
+    if (isBroadcastableChannel(requested)) return '';
+    const activeId = normalizeChannelId(await platformRepository.getActiveChannel());
+    const target = catalog.channels.find((channel) => channel.id === activeId && isBroadcastableChannel(channel))
+        || catalog.channels.find((channel) => isBroadcastableChannel(channel));
+    if (!target) return '';
+    const params = new URLSearchParams(url.searchParams);
+    params.set('channel', target.id);
+    return `${url.pathname}?${params.toString()}`;
 }
 
 async function serveStatic(req, res, url) {
@@ -274,6 +294,20 @@ const server = http.createServer(async (req, res) => {
             });
             res.end();
             return;
+        }
+
+        if (
+            (req.method === 'GET' || req.method === 'HEAD')
+            && url.pathname === '/broadcast-studio.html'
+        ) {
+            let location = '';
+            try { location = await canonicalBroadcastStudioLocation(url); }
+            catch (error) { console.error('[server] studio channel canonicalization failed:', error.message); }
+            if (location) {
+                writeHeaders(res, 307, { Location: location, 'Cache-Control': 'no-store' });
+                res.end();
+                return;
+            }
         }
 
         if ((req.method === 'GET' || req.method === 'HEAD') && await serveStatic(req, res, url)) {

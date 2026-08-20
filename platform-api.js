@@ -341,12 +341,20 @@ function validateRecord(type, record, workspace) {
     return errors;
 }
 
-function createPlatformApi({ repository, logger = console, refreshShippingRateFn = refreshShippingRate } = {}) {
+function createPlatformApi({
+    repository,
+    logger = console,
+    refreshShippingRateFn = refreshShippingRate,
+    adminSessionSecret = process.env.CREO_ADMIN_SECRET || crypto.randomBytes(32).toString('hex'),
+    adminSessionTtlMs = ADMIN_SESSION_TTL_MS
+} = {}) {
     if (!repository) throw new Error('repository is required');
+    const sessionSecret = String(adminSessionSecret || crypto.randomBytes(32).toString('hex'));
+    const sessionTtlMs = Math.max(60_000, Number(adminSessionTtlMs) || ADMIN_SESSION_TTL_MS);
     const mutationLocks = new Map();
     const channelRevisions = new Map();
     const knownChannelIds = new Set(DEFAULT_CHANNELS.map((channel) => channel.id));
-    const adminSessions = new Map();
+    const revokedAdminSessions = new Map();
     const adminLoginAttempts = new Map();
     let revisionSequence = 0;
 
@@ -382,29 +390,49 @@ function createPlatformApi({ repository, logger = console, refreshShippingRateFn
         }
     }
     function pruneAdminState(now = Date.now()) {
-        for (const [key, expiresAt] of adminSessions) {
-            if (expiresAt <= now) adminSessions.delete(key);
+        for (const [key, expiresAt] of revokedAdminSessions) {
+            if (expiresAt <= now) revokedAdminSessions.delete(key);
         }
         for (const [key, attempt] of adminLoginAttempts) {
             if (attempt.resetAt <= now) adminLoginAttempts.delete(key);
         }
     }
 
+    function signAdminSession(now = Date.now()) {
+        const issuedAt = Math.floor(now);
+        const expiresAt = issuedAt + sessionTtlMs;
+        const unsigned = `v1.${issuedAt}.${expiresAt}.${crypto.randomBytes(18).toString('base64url')}`;
+        const signature = crypto.createHmac('sha256', sessionSecret).update(unsigned).digest('base64url');
+        return `${unsigned}.${signature}`;
+    }
+
+    function verifyAdminSession(token, now = Date.now()) {
+        const parts = String(token || '').split('.');
+        if (parts.length !== 5 || parts[0] !== 'v1') return null;
+        const issuedAt = Number(parts[1]);
+        const expiresAt = Number(parts[2]);
+        if (!Number.isSafeInteger(issuedAt) || !Number.isSafeInteger(expiresAt)) return null;
+        if (issuedAt > now + 5 * 60 * 1000 || expiresAt <= now || expiresAt < issuedAt || expiresAt - issuedAt > sessionTtlMs) return null;
+        const unsigned = parts.slice(0, 4).join('.');
+        const expected = crypto.createHmac('sha256', sessionSecret).update(unsigned).digest('base64url');
+        const suppliedBuffer = Buffer.from(parts[4]);
+        const expectedBuffer = Buffer.from(expected);
+        if (suppliedBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(suppliedBuffer, expectedBuffer)) return null;
+        return { expiresAt };
+    }
+
     function hasAdminSession(req, now = Date.now()) {
         const token = cookieValue(req, ADMIN_COOKIE);
         if (!token) return false;
         const key = sessionKey(token);
-        const expiresAt = adminSessions.get(key) || 0;
-        if (expiresAt <= now) {
-            adminSessions.delete(key);
-            return false;
-        }
-        return true;
+        if ((revokedAdminSessions.get(key) || 0) > now) return false;
+        return Boolean(verifyAdminSession(token, now));
     }
 
-    function revokeAdminSession(req) {
+    function revokeAdminSession(req, now = Date.now()) {
         const token = cookieValue(req, ADMIN_COOKIE);
-        if (token) adminSessions.delete(sessionKey(token));
+        const session = verifyAdminSession(token, now);
+        if (session) revokedAdminSessions.set(sessionKey(token), session.expiresAt);
     }
 
     function loginAttempt(address, now = Date.now()) {
@@ -488,10 +516,9 @@ function createPlatformApi({ repository, logger = console, refreshShippingRateFn
                     return true;
                 }
                 adminLoginAttempts.delete(address);
-                const token = crypto.randomBytes(32).toString('base64url');
-                adminSessions.set(sessionKey(token), now + ADMIN_SESSION_TTL_MS);
+                const token = signAdminSession(now);
                 replyJson(res, 200, { authenticated: true }, {
-                    'Set-Cookie': adminCookie(token, req, ADMIN_SESSION_TTL_MS / 1000)
+                    'Set-Cookie': adminCookie(token, req, sessionTtlMs / 1000)
                 });
                 return true;
             }

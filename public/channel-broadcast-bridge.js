@@ -140,6 +140,9 @@
                 }
             });
             const payload = await response.json().catch(() => ({}));
+            if (response.status === 401 && target.parent && target.parent !== target && target.location.origin) {
+                target.parent.postMessage({ type: 'creo-admin-required' }, target.location.origin);
+            }
             if (!response.ok) throw new Error(payload.error || `채널 방송 연결 오류 ${response.status}`);
             return payload;
         }

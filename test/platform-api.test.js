@@ -97,6 +97,27 @@ test('admin login exchanges the password for an HttpOnly session and logout revo
     assert.equal(expired.json().authenticated, false);
 });
 
+test('signed admin sessions survive an API restart but reject another secret or a tampered token', async () => {
+    const repository = new MemoryRepository();
+    const options = { repository, logger: { error() {} }, adminSessionSecret: 'stable-deploy-secret' };
+    const firstApi = createPlatformApi(options);
+    const headers = { 'x-forwarded-for': '203.0.113.10', 'x-forwarded-proto': 'https' };
+    const login = await call(firstApi, 'POST', '/api/platform/auth/login', { password: 'secret' }, '', headers);
+    const cookie = login.headers['Set-Cookie'].split(';')[0];
+
+    const restartedApi = createPlatformApi(options);
+    const restarted = await call(restartedApi, 'GET', '/api/platform/admin-check', null, '', { ...headers, cookie });
+    assert.equal(restarted.json().authenticated, true);
+
+    const otherApi = createPlatformApi({ ...options, adminSessionSecret: 'different-secret' });
+    const rejected = await call(otherApi, 'GET', '/api/platform/admin-check', null, '', { ...headers, cookie });
+    assert.equal(rejected.json().authenticated, false);
+
+    const tamperedCookie = `${cookie.slice(0, -1)}${cookie.endsWith('a') ? 'b' : 'a'}`;
+    const tampered = await call(restartedApi, 'GET', '/api/platform/admin-check', null, '', { ...headers, cookie: tamperedCookie });
+    assert.equal(tampered.json().authenticated, false);
+});
+
 test('admin login throttles repeated incorrect passwords', async () => {
     const repository = new MemoryRepository();
     const api = createPlatformApi({ repository, logger: { error() {} } });

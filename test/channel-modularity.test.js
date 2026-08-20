@@ -204,3 +204,16 @@ test('legacy-layout bridge keeps renderer identity separate from platform channe
     assert.equal(JSON.parse(update.options.body).patch.admin_pw, undefined);
     assert.equal(JSON.parse(update.options.body).patch.active_event_module, 'crewart');
 });
+
+test('embedded layout editors notify the studio when their admin session expires', async () => {
+    const messages = [];
+    const parent = { postMessage: (...args) => messages.push(args) };
+    const target = {
+        location: { search: '?channel=alpha&module=creyon', origin: 'https://creo.test' },
+        parent,
+        fetch: async () => ({ status: 401, ok: false, json: async () => ({ error: '관리자 인증이 필요합니다.' }) })
+    };
+    BroadcastBridge.install(target);
+    await assert.rejects(target.getConfigMap(), /관리자 인증이 필요합니다/);
+    assert.deepEqual(messages, [[{ type: 'creo-admin-required' }, 'https://creo.test']]);
+});
