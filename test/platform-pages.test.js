@@ -506,6 +506,8 @@ test('CDCUP three-round format assigns round-two teams and round-three finalists
     assert.match(broadcast, /cfg\.p2_item_font_size \|\| cfg\.scoreboard_name_fontsize/);
     assert.match(broadcast, /Math\.round\(itemFontSize \* 0\.56\)/);
     assert.match(broadcast, /--sb-detail-size/);
+    assert.match(broadcast, /render\(item \|\| getPage2HeldItem\(items\)\)/);
+    assert.match(broadcast, /if \(item\) lastRenderedItem = JSON\.parse\(JSON\.stringify\(item\)\)/);
     assert.match(broadcast, /const _p2LiveBiddersRankState = \{ itemKey: '', initialized: false \}/);
     assert.match(broadcast, /captureLeaderboardPositions\(listEl, '\.p2-live-bidder-row\[data-bidder-key\]'/);
     assert.match(broadcast, /animateLeaderboardRows\(listEl, beforePositions, '\.p2-live-bidder-row\[data-bidder-key\]'/);

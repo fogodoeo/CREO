@@ -5443,6 +5443,21 @@
             return isAuctionActiveStatus(item?.status);
         }
 
+        function getPage2HeldItem(items) {
+            if (isHostMode || isBracketPageTemp) return null;
+            const rows = Array.isArray(items) ? items : [];
+            if (lastRenderedItem) {
+                const lastId = String(lastRenderedItem.id || lastRenderedItem.row || '');
+                const current = rows.find(candidate =>
+                    String(candidate.id || candidate.row || '') === lastId
+                );
+                if (current) return current;
+                return lastRenderedItem;
+            }
+            const completed = rows.filter(candidate => CreoAuctionContract.isTerminalStatus(candidate?.status));
+            return completed.length ? completed[completed.length - 1] : null;
+        }
+
         async function smartRefresh(prefetchedItems) {
             if (document.hidden && !isDirectBroadcastSource) return;
             maybeRefreshHostConfig(false);
@@ -5454,7 +5469,7 @@
                 const active = items.find(candidate => isAuctionActiveItem(candidate));
                 const item = active ? await enrichBroadcastItem(active) : null;
                 hasActive = !!item;
-                render(item);
+                render(item || getPage2HeldItem(items));
             } catch (err) {
                 console.error("smartRefresh error", err);
                 throw err;
@@ -5462,8 +5477,8 @@
         }
         const _origRender = render;
         render = function (item) {
-            hasActive = !!item;
-            lastRenderedItem = item ? JSON.parse(JSON.stringify(item)) : null;
+            hasActive = !!item && isAuctionActiveItem(item);
+            if (item) lastRenderedItem = JSON.parse(JSON.stringify(item));
             _origRender(item);
             renderSaleModeOverlay(item);
         };
