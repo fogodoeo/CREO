@@ -508,6 +508,8 @@ test('CDCUP three-round format assigns round-two teams and round-three finalists
     assert.match(broadcast, /--sb-detail-size/);
     assert.match(broadcast, /render\(item \|\| getPage2HeldItem\(items\)\)/);
     assert.match(broadcast, /if \(item\) lastRenderedItem = JSON\.parse\(JSON\.stringify\(item\)\)/);
+    assert.doesNotMatch(broadcast, /!activeItem \|\| !isAuctionActiveItem\(activeItem\) \|\| rows\.length === 0/);
+    assert.match(broadcast, /if \(!activeItem\) return;[\s\S]{0,180}if \(rows\.length === 0\)/);
     assert.match(broadcast, /const _p2LiveBiddersRankState = \{ itemKey: '', initialized: false \}/);
     assert.match(broadcast, /captureLeaderboardPositions\(listEl, '\.p2-live-bidder-row\[data-bidder-key\]'/);
     assert.match(broadcast, /animateLeaderboardRows\(listEl, beforePositions, '\.p2-live-bidder-row\[data-bidder-key\]'/);

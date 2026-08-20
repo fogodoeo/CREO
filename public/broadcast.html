@@ -7143,10 +7143,19 @@
                 && !document.body.classList.contains('bracket-page');
             const isEnabled = String(map?.live_bidders_show ?? '1') !== '0';
             const rows = isPage2 && isEnabled ? buildLiveBidRows(map, activeItem) : [];
-            if (!activeItem || !isAuctionActiveItem(activeItem) || rows.length === 0) {
+            if (!isPage2 || !isEnabled) {
                 panel.classList.remove('visible');
                 panel.replaceChildren();
                 _p2LiveBiddersRankState.itemKey = '';
+                _p2LiveBiddersRankState.initialized = false;
+                return;
+            }
+            if (!activeItem) return;
+            if (rows.length === 0) {
+                if (!isAuctionActiveItem(activeItem)) return;
+                panel.classList.remove('visible');
+                panel.replaceChildren();
+                _p2LiveBiddersRankState.itemKey = String(activeItem.id || activeItem.row || activeItem.num || activeItem.name || 'active');
                 _p2LiveBiddersRankState.initialized = false;
                 return;
             }
