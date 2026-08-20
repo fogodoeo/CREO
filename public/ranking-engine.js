@@ -29,6 +29,24 @@
                 } else if (board.dimension === 'category') {
                     key = item.category || key;
                     name = item.category || name;
+                } else if (board.dimension === 'winnerHouse') {
+                    const houseKey = String(
+                        item.crewartHouseKey
+                        || item.crewart_house_key
+                        || item.attributes?.crewart_house_key
+                        || ''
+                    ).trim().toUpperCase();
+                    const group = [...groups.values()].find(candidate => {
+                        const tokens = [candidate.id, candidate.name, candidate.shortName]
+                            .map(value => String(value || '').trim().toUpperCase());
+                        return tokens.includes(houseKey) || tokens.includes(({
+                            R: 'RED', G: 'GREEN', B: 'BLUE', Y: 'YELLOW'
+                        })[houseKey]);
+                    });
+                    key = houseKey || key;
+                    name = group?.shortName || group?.name || houseKey || name;
+                    color = group?.color || '';
+                    logoUrl = group?.logoUrl || '';
                 } else {
                     key = item.winnerAlias || item.winnerName || key;
                     name = item.winnerAlias || item.winnerName || name;

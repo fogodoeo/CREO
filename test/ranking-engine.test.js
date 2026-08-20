@@ -28,3 +28,25 @@ test('ranking engine excludes unsold rows and enforces each board top limit', ()
     ])[0].rows;
     assert.deepEqual(rows.map((row) => [row.name, row.total, row.count]), [['B', 2, 2]]);
 });
+
+test('winner house rankings aggregate sold amounts by the viewer color frozen on each item', () => {
+    const channel = {
+        groups: [
+            { id: 'house-red', name: 'RED', shortName: 'R', color: '#aa0000' },
+            { id: 'house-blue', name: 'BLUE', shortName: 'B', color: '#0000aa' }
+        ],
+        scoreboards: [{
+            id: 'houses', name: '팀별 낙찰금 합계', dimension: 'winnerHouse',
+            metric: 'soldAmount', unit: '만원', topN: 4
+        }]
+    };
+    const board = rankingsForChannel(channel, [
+        { status: 'sold', soldPrice: 100000, groupId: 'house-red', attributes: { crewart_house_key: 'B' } },
+        { status: 'sold', soldPrice: 70000, crewartHouseKey: 'B' },
+        { status: 'sold', soldPrice: 50000, crewartHouseKey: 'R' }
+    ])[0];
+    assert.deepEqual(board.rows.map(row => ({ key: row.key, total: row.total })), [
+        { key: 'B', total: 170000 },
+        { key: 'R', total: 50000 }
+    ]);
+});

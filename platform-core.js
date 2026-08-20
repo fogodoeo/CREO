@@ -7,7 +7,7 @@ const BROADCAST_TEMPLATES = Object.freeze(['classic', 'tournament', 'academy']);
 const CHANNEL_TEMPLATES = Object.freeze(['standard', 'team', 'community', 'minimal']);
 const OVERLAY_SKINS = Object.freeze(['clean', 'sport', 'heritage', 'minimal', 'metal']);
 const OVERLAY_LAYOUTS = Object.freeze(['left', 'right', 'balanced']);
-const SCOREBOARD_DIMENSIONS = Object.freeze(['vendor', 'group', 'category', 'winner']);
+const SCOREBOARD_DIMENSIONS = Object.freeze(['vendor', 'group', 'category', 'winner', 'winnerHouse']);
 const SCOREBOARD_METRICS = Object.freeze(['soldAmount', 'soldCount', 'points']);
 const DATA_ADAPTERS = Object.freeze(['platform', 'legacy-cdcup']);
 const CHANNEL_ID_PATTERN = /^[a-z0-9][a-z0-9-]{1,31}$/;
@@ -79,7 +79,7 @@ const DEFAULT_CHANNELS = Object.freeze([
             Object.freeze({ id: 'y', name: 'Y', shortName: 'Y', color: '#b07d20', logoUrl: '', sortOrder: 4 })
         ]),
         scoreboards: Object.freeze([
-            Object.freeze({ id: 'houses', name: '팀별 낙찰금 합계', dimension: 'winner', metric: 'amount', unit: '만원', topN: 4 })
+            Object.freeze({ id: 'houses', name: '팀별 낙찰금 합계', dimension: 'winnerHouse', metric: 'soldAmount', unit: '만원', topN: 4 })
         ]),
         audienceCompetition: Object.freeze({ enabled: true, assignment: 'survey-random', metric: 'soldPrice' }),
         overlay: Object.freeze({ skin: 'heritage', layout: 'left' }),
@@ -252,6 +252,17 @@ function normalizeChannel(input = {}, fallback = {}) {
     const broadcastProfile = normalizeChannelId(source.broadcastProfile)
         || normalizeChannelId(fallback.broadcastProfile)
         || 'standard';
+    const audienceCompetition = normalizeAudienceCompetition(
+        input.audienceCompetition ?? source.audienceCompetition,
+        fallback.audienceCompetition
+    );
+    const normalizedScoreboards = normalizeScoreboards(input.scoreboards ?? source.scoreboards, fallback.scoreboards);
+    const scoreboards = audienceCompetition.enabled && audienceCompetition.assignment === 'survey-random'
+        ? [
+            { id: 'houses', name: '팀별 낙찰금 합계', dimension: 'winnerHouse', metric: 'soldAmount', unit: '만원', topN: 4 },
+            ...normalizedScoreboards.filter(board => board.id !== 'houses')
+        ].slice(0, 12)
+        : normalizedScoreboards;
     return {
         id,
         name: cleanText(source.name, 48),
@@ -274,8 +285,8 @@ function normalizeChannel(input = {}, fallback = {}) {
         features: normalizeFeatures(features),
         terminology: normalizeTerminology(input.terminology || source.terminology, fallback.terminology),
         groups: normalizeGroups(input.groups ?? source.groups, fallback.groups),
-        scoreboards: normalizeScoreboards(input.scoreboards ?? source.scoreboards, fallback.scoreboards),
-        audienceCompetition: normalizeAudienceCompetition(input.audienceCompetition ?? source.audienceCompetition, fallback.audienceCompetition),
+        scoreboards,
+        audienceCompetition,
         overlay: normalizeOverlay(input.overlay || source.overlay, fallback.overlay),
         broadcastDefaults: normalizeBroadcastDefaults(input.broadcastDefaults ?? source.broadcastDefaults, fallback.broadcastDefaults),
         shippingDefaults: normalizeShippingDefaults(input.shippingDefaults ?? source.shippingDefaults, fallback.shippingDefaults),

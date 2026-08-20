@@ -79,8 +79,8 @@ test('CREWART defaults define viewer-color sold amount competition as channel ca
         metric: 'soldPrice'
     });
     assert.deepEqual(crewart.scoreboards[0], {
-        id: 'houses', name: '팀별 낙찰금 합계', dimension: 'winner',
-        metric: 'amount', unit: '만원', topN: 4
+        id: 'houses', name: '팀별 낙찰금 합계', dimension: 'winnerHouse',
+        metric: 'soldAmount', unit: '만원', topN: 4
     });
     const disabled = normalizeChannel({
         id: 'invalid-audience-mode', name: 'invalid',
@@ -88,6 +88,18 @@ test('CREWART defaults define viewer-color sold amount competition as channel ca
     });
     assert.deepEqual(disabled.audienceCompetition, {
         enabled: true, assignment: 'none', metric: 'soldPrice'
+    });
+});
+
+test('viewer house competition upgrades a stale points board without using a channel id', () => {
+    const normalized = normalizeChannel({
+        id: 'any-community-auction', name: '어떤 팀전',
+        audienceCompetition: { enabled: true, assignment: 'survey-random', metric: 'soldPrice' },
+        scoreboards: [{ id: 'houses', name: '예전 점수', dimension: 'group', metric: 'points', unit: '점', topN: 4 }]
+    });
+    assert.deepEqual(normalized.scoreboards[0], {
+        id: 'houses', name: '팀별 낙찰금 합계', dimension: 'winnerHouse',
+        metric: 'soldAmount', unit: '만원', topN: 4
     });
 });
 
