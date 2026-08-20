@@ -138,6 +138,8 @@ test('channel creation starts with a safe generated id and protects unsaved edit
     assert.match(manager, /function canDiscard\(\)/);
     assert.match(manager, /beforeunload/);
     assert.match(manager, /scrollbar-width:none/);
+    assert.match(manager, /shipping-pickup-locations/);
+    assert.match(manager, /shippingDefaults:\{pickupLocations:/);
     assert.match(manager, /function syncFeatureUi/);
     assert.match(manager, /data-key="topN"/);
     assert.match(manager, /id="broadcast-default-notice"/);
@@ -182,6 +184,13 @@ test('every non-survey operational page has a real document title', () => {
         const head = html.slice(0, html.search(/<\/head>/i));
         assert.match(head, /<title>\s*[^<\s][^<]*<\/title>/i, `${page} needs a non-empty <title>`);
     }
+});
+
+test('shipping pickup locations follow channel configuration without channel-id branches', () => {
+    const shipping = fs.readFileSync(path.join(__dirname, '..', 'public', 'shipping.html'), 'utf8');
+    assert.match(shipping, /channel\?\.shippingDefaults\?\.pickupLocations/);
+    assert.match(shipping, /channelPickupLocations\.map/);
+    assert.doesNotMatch(shipping, /SHIPPING_CHANNEL_ID\s*===\s*['"]creyon['"]/);
 });
 
 test('capture setup distributes the no-Python F3 agent with diagnostics', () => {

@@ -214,6 +214,15 @@ function normalizeBroadcastDefaults(value = {}, fallback = {}) {
     };
 }
 
+function normalizeShippingDefaults(value = {}, fallback = {}) {
+    const source = value && typeof value === 'object' ? value : fallback;
+    const fallbackLocations = Array.isArray(fallback?.pickupLocations) ? fallback.pickupLocations : [];
+    const locations = Array.isArray(source?.pickupLocations) ? source.pickupLocations : fallbackLocations;
+    return {
+        pickupLocations: [...new Set(locations.map((location) => cleanText(location, 60)).filter(Boolean))].slice(0, 24)
+    };
+}
+
 function normalizeChannel(input = {}, fallback = {}) {
     const source = { ...fallback, ...input };
     const id = normalizeChannelId(source.id || source.slug || source.name);
@@ -258,6 +267,7 @@ function normalizeChannel(input = {}, fallback = {}) {
         scoreboards: normalizeScoreboards(input.scoreboards ?? source.scoreboards, fallback.scoreboards),
         overlay: normalizeOverlay(input.overlay || source.overlay, fallback.overlay),
         broadcastDefaults: normalizeBroadcastDefaults(input.broadcastDefaults ?? source.broadcastDefaults, fallback.broadcastDefaults),
+        shippingDefaults: normalizeShippingDefaults(input.shippingDefaults ?? source.shippingDefaults, fallback.shippingDefaults),
         legacy: legacy && typeof legacy === 'object'
             ? {
                 items: Boolean(legacy.items),
@@ -390,6 +400,7 @@ module.exports = {
     normalizeBroadcastDefaults,
     normalizeChannel,
     normalizeChannelId,
+    normalizeShippingDefaults,
     publicChecklist,
     publicItem,
     publicItemAttributes,

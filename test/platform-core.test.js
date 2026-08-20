@@ -76,6 +76,7 @@ test('channel builder configuration normalizes reusable groups, scoreboards, and
         overlay: { skin: 'sport', layout: 'right' },
         dataAdapter: 'platform',
         broadcastProfile: 'cdcup-tournament',
+        shippingDefaults: { pickupLocations: ['크레용 대구지점', ' 크레용 대구지점 ', '크레용 양산지점'] },
         pages: { survey: '/survey.html', unsafe: 'javascript:alert(1)' }
     });
     assert.equal(channel.logoUrl, '/logo.png');
@@ -87,6 +88,7 @@ test('channel builder configuration normalizes reusable groups, scoreboards, and
     assert.equal(channel.overlay.layout, 'right');
     assert.equal(channel.dataAdapter, 'platform');
     assert.equal(channel.broadcastProfile, 'cdcup-tournament');
+    assert.deepEqual(channel.shippingDefaults.pickupLocations, ['크레용 대구지점', '크레용 양산지점']);
     assert.equal(channel.pages.survey, '/survey.html');
     assert.equal(channel.pages.unsafe, undefined);
 });

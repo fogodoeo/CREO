@@ -3022,6 +3022,8 @@
 
         function syncShippingChannelUi(channel = shippingAdapterContext?.channel) {
             const label = String(channel?.name || SHIPPING_CHANNEL_ID).trim();
+            const locations = channel?.shippingDefaults?.pickupLocations;
+            channelPickupLocations = Object.freeze(Array.isArray(locations) && locations.length ? [...locations] : [...DEFAULT_PICKUP_LOCATIONS]);
             const channelLabel = document.getElementById('shipping-channel-label');
             const dialogTitle = document.getElementById('shipping-company-dialog-title');
             const buyerTitle = document.getElementById('shipping-buyer-title');
@@ -3472,24 +3474,25 @@
             return { region: location, hub: '', memo };
         }
 
-        const PICKUP_LOCATIONS = Object.freeze([
+        const DEFAULT_PICKUP_LOCATIONS = Object.freeze([
             '대구 크레오',
             '대구 렙타일아트뮤지엄',
             '구미 렙타일아트뮤지엄'
         ]);
+        let channelPickupLocations = DEFAULT_PICKUP_LOCATIONS;
 
         function renderPickupLocations(target) {
             const state = target === 'buyer' ? buyerShippingState : editorShippingState;
             const container = document.querySelector(`[data-pickup-target="${target}"]`);
             if (!container || !state) return;
-            container.innerHTML = PICKUP_LOCATIONS.map(location => `
+            container.innerHTML = channelPickupLocations.map(location => `
                 <button type="button" class="pickup-location-btn${state.region === location ? ' active' : ''}"
                     aria-pressed="${state.region === location}" onclick="selectPickupLocation('${target}', '${location}')">${location}</button>
             `).join('');
         }
 
         function selectPickupLocation(target, location) {
-            if (!PICKUP_LOCATIONS.includes(location)) return;
+            if (!channelPickupLocations.includes(location)) return;
             const state = target === 'buyer' ? buyerShippingState : editorShippingState;
             state.region = location;
             state.hub = '';
@@ -4546,7 +4549,7 @@
                 return;
             }
 
-            if (editorShippingState.type === '직접수령' && !PICKUP_LOCATIONS.includes(editorShippingState.region)) {
+            if (editorShippingState.type === '직접수령' && !channelPickupLocations.includes(editorShippingState.region)) {
                 showToast('직수령 장소를 선택해 주세요.', true);
                 return;
             }
@@ -5365,7 +5368,7 @@
                 return;
             }
 
-            if (buyerShippingState.type === '직접수령' && !PICKUP_LOCATIONS.includes(buyerShippingState.region)) {
+            if (buyerShippingState.type === '직접수령' && !channelPickupLocations.includes(buyerShippingState.region)) {
                 showToast('직수령 장소를 선택해 주세요.', true);
                 return;
             }
