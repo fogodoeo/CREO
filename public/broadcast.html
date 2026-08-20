@@ -5435,8 +5435,7 @@
 
         let hasActive = false;
         function isAuctionActiveStatus(status) {
-            const value = String(status || '').trim().toLowerCase();
-            return value === 'active' || value.includes('진행') || value.includes('경매');
+            return CreoAuctionContract.isLiveStatus(status);
         }
 
         function isAuctionActiveItem(item) {
