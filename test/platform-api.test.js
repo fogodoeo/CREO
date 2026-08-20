@@ -269,10 +269,81 @@ test('universal broadcast channel can only switch to a catalog channel', async (
     const repository = new MemoryRepository();
     const api = createPlatformApi({ repository, logger: { error() {} } });
     let response = await call(api, 'PUT', '/api/platform/active-channel', { channelId: 'beta' });
+    assert.equal(response.status, 409);
+    assert.equal(response.json().code, 'ACTIVE_CHANNEL_CHANGED');
+    assert.equal(repository.active, 'alpha');
+    response = await call(api, 'PUT', '/api/platform/active-channel', {
+        channelId: 'beta', expectedCurrentChannelId: 'alpha', confirmChannelId: 'beta'
+    });
     assert.equal(response.status, 200);
     assert.equal(repository.active, 'beta');
-    response = await call(api, 'PUT', '/api/platform/active-channel', { channelId: 'missing' });
+    response = await call(api, 'PUT', '/api/platform/active-channel', {
+        channelId: 'alpha', expectedCurrentChannelId: 'alpha', confirmChannelId: 'alpha'
+    });
+    assert.equal(response.status, 409);
+    assert.equal(response.json().code, 'ACTIVE_CHANNEL_CHANGED');
+    assert.equal(repository.active, 'beta');
+    response = await call(api, 'PUT', '/api/platform/active-channel', {
+        channelId: 'missing', expectedCurrentChannelId: 'beta', confirmChannelId: 'missing'
+    });
     assert.equal(response.status, 422);
+    assert.equal(repository.active, 'beta');
+});
+
+test('active platform auction locks the global channel until the auction ends', async () => {
+    const repository = new MemoryRepository();
+    const api = createPlatformApi({ repository, logger: { error() {} } });
+    await call(api, 'POST', '/api/platform/channels/alpha/items', {
+        record: { id: 'item_live', lotNumber: 1, name: '진행 개체' }
+    });
+    let response = await call(api, 'PUT', '/api/platform/channels/alpha/auction-transition', {
+        itemId: 'item_live', status: 'live', mode: 'live', state: { page: 2 }
+    });
+    assert.equal(response.status, 200);
+    response = await call(api, 'PUT', '/api/platform/active-channel', {
+        channelId: 'beta', expectedCurrentChannelId: 'alpha', confirmChannelId: 'beta'
+    });
+    assert.equal(response.status, 409);
+    assert.equal(response.json().code, 'ACTIVE_AUCTION_LOCKED');
+    assert.equal(repository.active, 'alpha');
+    response = await call(api, 'PUT', '/api/platform/channels/alpha/auction-transition', {
+        itemId: 'item_live', status: 'sold', mode: 'sold', item: { soldPrice: 100000 }
+    });
+    assert.equal(response.status, 200);
+    response = await call(api, 'PUT', '/api/platform/active-channel', {
+        channelId: 'beta', expectedCurrentChannelId: 'alpha', confirmChannelId: 'beta'
+    });
+    assert.equal(response.status, 200);
+    assert.equal(repository.active, 'beta');
+});
+
+test('simultaneous channel switches serialize and reject the stale operator', async () => {
+    const repository = new MemoryRepository();
+    const api = createPlatformApi({ repository, logger: { error() {} } });
+    let markFirstEntered;
+    let releaseFirst;
+    const firstEntered = new Promise((resolve) => { markFirstEntered = resolve; });
+    const firstRelease = new Promise((resolve) => { releaseFirst = resolve; });
+    const setActiveChannel = repository.setActiveChannel.bind(repository);
+    repository.setActiveChannel = async (value) => {
+        if (value === 'beta') {
+            markFirstEntered();
+            await firstRelease;
+        }
+        return setActiveChannel(value);
+    };
+    const firstPromise = call(api, 'PUT', '/api/platform/active-channel', {
+        channelId: 'beta', expectedCurrentChannelId: 'alpha', confirmChannelId: 'beta'
+    });
+    await firstEntered;
+    const stalePromise = call(api, 'PUT', '/api/platform/active-channel', {
+        channelId: 'alpha', expectedCurrentChannelId: 'alpha', confirmChannelId: 'alpha'
+    });
+    releaseFirst();
+    const [first, stale] = await Promise.all([firstPromise, stalePromise]);
+    assert.equal(first.status, 200);
+    assert.equal(stale.status, 409);
+    assert.equal(stale.json().code, 'ACTIVE_CHANNEL_CHANGED');
     assert.equal(repository.active, 'beta');
 });
 
@@ -378,6 +449,18 @@ test('auction transitions remain isolated when two channels reuse the same item 
     });
     await call(api, 'POST', '/api/platform/channels/alpha/items', { record: { id: 'shared_item', lotNumber: 1, name: '알파 개체' } });
     await call(api, 'POST', '/api/platform/channels/beta/items', { record: { id: 'shared_item', lotNumber: 1, name: '베타 개체' } });
+
+    let rejected = await call(api, 'PUT', '/api/platform/channels/beta/auction-transition', {
+        itemId: 'shared_item', status: 'live', mode: 'live', state: { page: 2 }
+    });
+    assert.equal(rejected.status, 409);
+    assert.equal(rejected.json().code, 'ACTIVE_CHANNEL_CHANGED');
+    assert.equal((await repository.getRecord('beta', 'item', 'shared_item')).status, 'waiting');
+
+    let switchResponse = await call(api, 'PUT', '/api/platform/active-channel', {
+        channelId: 'beta', expectedCurrentChannelId: 'alpha', confirmChannelId: 'beta'
+    });
+    assert.equal(switchResponse.status, 200);
 
     const response = await call(api, 'PUT', '/api/platform/channels/beta/auction-transition', {
         itemId: 'shared_item', status: 'live', mode: 'live', state: { page: 2 }

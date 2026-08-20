@@ -102,7 +102,11 @@ test('broadcast studio uses shared profiles instead of channel-specific branches
     assert.doesNotMatch(studio, /channel\?\.id\s*===\s*['"](?:cdcup|crewart)['"]/);
     assert.match(studio, /broadcast-router\.html\?event=/);
     assert.match(studio, /CreoPlatform\.api\('active-channel',[\s\S]{0,180}method:'PUT'/);
-    assert.match(studio, /requested\|\|current\.channelId\|\|channels\[0\]\.id/);
+    assert.match(studio, /expectedCurrentChannelId:activeChannel\.id/);
+    assert.match(studio, /confirmChannelId:next\.id/);
+    assert.match(studio, /channel-switch-button/);
+    assert.match(studio, /select\.addEventListener\('change',markPending\)/);
+    assert.match(studio, /currentChannel=channels\.find\(channel=>channel\.id===current\.channelId\)\|\|channels\[0\]/);
     assert.match(studio, /channel\.status==='active'&&channel\.features\?\.broadcast!==false/);
     assert.match(studio, /capture-gallery\.html\?channel=/);
     assert.match(studio, /진행 · 1P/);

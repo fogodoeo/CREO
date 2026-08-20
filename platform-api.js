@@ -101,7 +101,7 @@ function mergeBroadcastConfig(current = {}, patch = {}) {
 }
 
 function isBroadcastableChannel(channel) {
-    return channel?.status === 'active' || channel?.status === 'paused';
+    return channel?.status === 'active' && channel?.features?.broadcast !== false;
 }
 
 function publicArchive(record = {}) {
@@ -437,6 +437,22 @@ function createPlatformApi({ repository, logger = console, refreshShippingRateFn
         return { vendors, items, shipments, assets, broadcast: broadcast || { id: 'state', mode: 'standby', page: 1 } };
     }
 
+    async function channelSwitchBlocker(channel) {
+        if (!channel?.id) return null;
+        const [broadcast, items] = await Promise.all([
+            repository.getRecord(channel.id, 'broadcast', 'state'),
+            channel.dataAdapter === 'platform' ? repository.listRecords(channel.id, 'item') : Promise.resolve([])
+        ]);
+        const liveItem = items.find((item) => item.status === 'live') || null;
+        if (broadcast?.mode !== 'live' && !liveItem) return null;
+        return {
+            channelId: channel.id,
+            channelName: channel.name,
+            itemId: liveItem?.id || broadcast?.activeItemId || '',
+            itemName: liveItem?.name || ''
+        };
+    }
+
     async function activeChannelContext() {
         const catalog = await loadCatalog();
         const storedId = await repository.getActiveChannel();
@@ -537,13 +553,49 @@ function createPlatformApi({ repository, logger = console, refreshShippingRateFn
             if (segments.length === 1 && segments[0] === 'active-channel' && method === 'PUT') {
                 if (!await requireAdmin(req, res)) return true;
                 const body = await readJson(req);
-                const catalog = await loadCatalog();
+                await withMutationLock('active-channel', async () => {
+                const { catalog, channelId: currentChannelId, channel: currentChannel } = await activeChannelContext();
                 const channelId = normalizeChannelId(body.channelId);
                 if (!catalog.channels.some((channel) => channel.id === channelId && isBroadcastableChannel(channel))) {
                     replyJson(res, 422, { error: '운영 가능한 채널을 선택해 주세요.' });
                     return true;
                 }
-                replyJson(res, 200, { channelId: await repository.setActiveChannel(channelId) });
+                if (channelId === currentChannelId) {
+                    replyJson(res, 200, { channelId, previousChannelId: currentChannelId, unchanged: true });
+                    return true;
+                }
+                if (normalizeChannelId(body.expectedCurrentChannelId) !== currentChannelId) {
+                    replyJson(res, 409, {
+                        error: '다른 화면에서 운영 채널이 이미 변경되었습니다. 새로고침 후 다시 확인해 주세요.',
+                        code: 'ACTIVE_CHANNEL_CHANGED',
+                        channelId: currentChannelId
+                    });
+                    return true;
+                }
+                if (normalizeChannelId(body.confirmChannelId) !== channelId) {
+                    replyJson(res, 409, {
+                        error: '채널 전환 확인값이 없습니다. 방송제어에서 전환 버튼을 다시 눌러 주세요.',
+                        code: 'CHANNEL_SWITCH_CONFIRMATION_REQUIRED',
+                        channelId: currentChannelId
+                    });
+                    return true;
+                }
+                const blocker = await channelSwitchBlocker(currentChannel);
+                if (blocker) {
+                    replyJson(res, 409, {
+                        error: `${blocker.channelName || blocker.channelId} 경매가 진행 중이라 채널을 전환할 수 없습니다. 현재 경매를 먼저 종료해 주세요.`,
+                        code: 'ACTIVE_AUCTION_LOCKED',
+                        channelId: currentChannelId,
+                        lock: blocker
+                    });
+                    return true;
+                }
+                replyJson(res, 200, {
+                    channelId: await repository.setActiveChannel(channelId),
+                    previousChannelId: currentChannelId,
+                    unchanged: false
+                });
+                });
                 return true;
             }
 
@@ -717,6 +769,16 @@ function createPlatformApi({ repository, logger = console, refreshShippingRateFn
                     return true;
                 }
                 const body = await readJson(req);
+                await withMutationLock('active-channel', async () => {
+                    const active = await activeChannelContext();
+                    if (active.channelId !== channelId) {
+                        replyJson(res, 409, {
+                            error: '현재 운영 채널이 변경되었습니다. 경매 목록을 새로고침한 뒤 다시 시도해 주세요.',
+                            code: 'ACTIVE_CHANNEL_CHANGED',
+                            channelId: active.channelId
+                        });
+                        return;
+                    }
                 await withMutationLock(`channel:${channelId}`, async () => {
                     const data = await workspace(channelId);
                     const itemId = cleanText(body.itemId || body.item?.id, 64);
@@ -762,6 +824,7 @@ function createPlatformApi({ repository, logger = console, refreshShippingRateFn
                     await repository.setActiveChannel(channelId);
                     touchChannel(channelId);
                     replyJson(res, 200, { channelId, item: savedItem, state: savedState });
+                });
                 });
                 return true;
             }
