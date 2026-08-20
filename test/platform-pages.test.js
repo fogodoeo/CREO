@@ -331,7 +331,9 @@ test('new CDCUP overlays and shipping retain compatibility with the established 
     assert.doesNotMatch(shipping, /WRAPANG_DISCOUNT_RATE|getDiscountedWrapangCost|랩팡.{0,20}할인|할인.{0,20}랩팡/);
     assert.match(shipping, /\['도도시', '파르게', '랩팡'\]\.includes\(shippingCompany\)/);
     assert.doesNotMatch(shipping, /WRAPANG_PAYMENT_ACCOUNT|isWrapangCentralPayment|랩팡 직접입금|랩팡 합배송비|중복 입금/);
-    assert.match(shipping, /id="shipping-channel-home"/);
+    assert.doesNotMatch(shipping, /id="shipping-channel-home"|>채널홈</);
+    assert.match(shipping, /openShippingAdminLogin\(\{ required: true \}\)/);
+    assert.match(shipping, /배송업체 로그인/);
     assert.match(shipping, /channel\?\.name \|\| SHIPPING_CHANNEL_ID/);
     assert.match(shipping, /document\.title = `\$\{label\} · 배송관리`/);
     assert.match(shipping, /id="shipping-buyer-title"/);
@@ -347,6 +349,9 @@ test('new CDCUP overlays and shipping retain compatibility with the established 
     assert.match(shippingStatus, /buildCompanyGroups\(\)/);
     assert.match(shippingStatus, /id="shipping-status-title"/);
     assert.match(shippingStatus, /document\.title = `\$\{label\} · 배송 조회`/);
+    assert.match(shippingStatus, /shipping-access\.js/);
+    assert.match(shippingStatus, /CreoShippingAccess\.require\(\)/);
+    assert.doesNotMatch(shippingStatus, /id="shipping-channel-home"|>채널홈</);
     assert.doesNotMatch(shippingStatus, /shipping-workspace-link/);
     assert.match(shippingStatus, /if \(!SHIPPING_CHANNEL_ID\) location\.replace\('\/'\)/);
     const companies = fs.readFileSync(path.join(__dirname, '..', 'public', 'shipping-companies.html'), 'utf8');

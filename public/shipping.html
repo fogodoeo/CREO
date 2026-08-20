@@ -2334,8 +2334,8 @@
         .company-admin-key:hover { border-color:#A1A1AA; background:#FAFAFA; color:#18181B; }
         .company-admin-key svg { width:19px; height:19px; fill:currentColor; }
         .app-bottom-nav .admin-only-nav { display:none; }
-        .app-bottom-nav:not(.rates-unlocked) { grid-template-columns:repeat(3,1fr); }
-        .app-bottom-nav.rates-unlocked { grid-template-columns:repeat(4,1fr); }
+        .app-bottom-nav:not(.rates-unlocked) { grid-template-columns:repeat(2,1fr); }
+        .app-bottom-nav.rates-unlocked { grid-template-columns:repeat(3,1fr); }
         .app-bottom-nav.rates-unlocked .admin-only-nav { display:flex; }
         .editor-capture-strip { display:flex; gap:8px; margin-top:10px; overflow-x:auto; padding:2px 0 3px; scrollbar-width:thin; }
         .editor-capture-strip[hidden] { display:none; }
@@ -2529,7 +2529,6 @@
     </div>
 
     <nav class="app-bottom-nav" aria-label="CREO 공통 페이지 이동">
-        <a id="shipping-channel-home" href="/">채널홈</a>
         <a class="active" href="shipping.html" aria-current="page">배송관리</a>
         <a href="shipping-status.html">전체조회</a>
         <a class="admin-only-nav" id="shipping-rates-nav" href="shipping-rates.html">요금표</a>
@@ -2693,7 +2692,6 @@
         const SHIPPING_CHANNEL_ID = String(new URLSearchParams(window.location.search).get('channel') || '')
             .toLowerCase().replace(/[^a-z0-9-]/g, '');
         if (!SHIPPING_CHANNEL_ID) location.replace('/');
-        document.getElementById('shipping-channel-home').href = `/?channel=${encodeURIComponent(SHIPPING_CHANNEL_ID)}`;
         document.querySelectorAll('a[href="shipping-rates.html"]').forEach(link => {
             link.href = `shipping-rates.html?channel=${encodeURIComponent(SHIPPING_CHANNEL_ID)}`;
         });
@@ -2718,17 +2716,8 @@
         }
 
         if (MOBILE_SHIPPING_HISTORY) {
-            if (!document.referrer) {
-                history.replaceState({ creoShippingExit:true }, '', location.href);
-                history.pushState({ creoShippingView:'base' }, '', location.href);
-            } else {
-                history.replaceState({ creoShippingView:'base' }, '', location.href);
-            }
+            history.replaceState({ creoShippingView:'base' }, '', location.href);
             window.addEventListener('popstate', event => {
-                if (event.state?.creoShippingExit) {
-                    location.replace('/');
-                    return;
-                }
                 restoringMobileShippingHistory = true;
                 const target = event.state?.creoShippingView || 'base';
                 const searchInput = document.getElementById('editor-hub-search');
@@ -2767,9 +2756,9 @@
             const error = document.getElementById('shipping-admin-error');
             const title = document.getElementById('shipping-admin-title');
             const note = document.getElementById('shipping-admin-note');
-            if (title) title.textContent = options.required ? '배송관리 로그인' : '관리자 로그인';
+            if (title) title.textContent = options.required ? '배송업체 로그인' : '관리자 로그인';
             if (note) note.textContent = options.required
-                ? '크레용 배송 자료를 불러오려면 관리자 로그인이 필요합니다.'
+                ? '현재 채널의 배송 자료를 불러오려면 비밀번호를 입력하세요.'
                 : '비밀번호가 확인되면 요금표 메뉴가 표시됩니다.';
             if (error) error.textContent = '';
             if (modal) {
