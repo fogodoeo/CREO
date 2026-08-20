@@ -25,7 +25,7 @@
     const SHARED_SETTINGS_CONTRACT = Object.freeze({
         pages: Object.freeze(['1', '2']),
         sections: Object.freeze([
-            Object.freeze({ id: 'hosts', label: '진행진', fields: Object.freeze(['hostName1', 'hostRole1', 'hostName2', 'hostRole2']) }),
+            Object.freeze({ id: 'hosts', label: '진행진', fields: Object.freeze(['hostName1', 'hostRole1', 'hostName2', 'hostRole2', 'hostName3', 'hostRole3']) }),
             Object.freeze({ id: 'page1', label: '1P 진행 화면', fields: Object.freeze(['page1HostsOn', 'page1NoticeOn', 'page1TickerOn', 'page1BannerOn']) }),
             Object.freeze({ id: 'page2', label: '2P 개체 화면', fields: Object.freeze(['page2InfoOn', 'page2VendorTagOn', 'page2BiddersOn', 'page2BiddersOpacity', 'page2BiddersPosition', 'page2PhotoOn', 'page2PriceOn', 'page2SoldOn', 'page2TickerOn', 'page2BannerOn']) })
         ])

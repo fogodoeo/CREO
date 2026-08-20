@@ -28,6 +28,7 @@ test('one route registry preserves the selected channel on every shared page', (
         assert.match(href, new RegExp(parameter));
     }
     assert.equal(Runtime.preserveChannel('/shipping.html?mode=all', 'winter-cup'), '/shipping.html?mode=all&channel=winter-cup');
+    assert.equal(routes.captures, '/capture-gallery.html?channel=summer-cup');
 });
 
 test('1P and 2P use one contract while 3P is selected by broadcast profile', () => {
@@ -93,6 +94,25 @@ test('CREYON uses the shared placement editor with an isolated metal renderer', 
     assert.match(Profiles.broadcastTarget(creyon, 2), /^broadcast\.html\?page=2&module=creyon&channel=auction-260810&direct=1$/);
     assert.equal(Profiles.resolve(creyon).defaultState.notice, 'CREYON');
     assert.doesNotMatch(JSON.stringify(Profiles.resolve(creyon).defaultState), /CREYON LIVE/);
+    const hosts = Profiles.settingsContract(creyon).shared.sections.find(section => section.id === 'hosts');
+    assert.deepEqual(hosts.fields, ['hostName1', 'hostRole1', 'hostName2', 'hostRole2', 'hostName3', 'hostRole3']);
+
+    const bridged = BroadcastBridge.toLegacyItem({
+        id: 'live_item', status: 'live', bidLog: [{ name: '입찰자', bidder_key: 'bidder-1', amount: 42, region: '서울' }],
+        attributes: { checklist: 'gender:M|weight:42', photo_sire: '/sire.webp', start_time: '2026-08-20T10:00:00Z' }
+    }, 'creyon');
+    assert.equal(bridged.status, '진행중');
+    assert.deepEqual(JSON.parse(bridged.bid_log), [{ name: '입찰자', bidder_key: 'bidder-1', amount: 42, region: '서울' }]);
+    assert.equal(bridged.checklist, 'gender:M|weight:42');
+    assert.equal(bridged.photoSire, '/sire.webp');
+    assert.equal(bridged.start_time, '2026-08-20T10:00:00Z');
+});
+
+test('non-CDCUP legacy-layout URLs fail closed when their channel is missing', async () => {
+    const target = { location: { search: '?module=creyon' }, fetch: async () => ({ ok: true, json: async () => ({}) }) };
+    const bridge = BroadcastBridge.install(target);
+    assert.equal(bridge.guarded, true);
+    await assert.rejects(target.getBroadcastItemsLite(), /송출 채널이 지정되지 않았습니다/);
 });
 
 test('standard channels use the maintained platform controller and renderer', () => {

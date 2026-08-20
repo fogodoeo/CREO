@@ -43,6 +43,7 @@
 
     function toLegacyItem(item = {}, rendererModule = 'cdcup') {
         const bidLog = legacyBidLog(item);
+        const attributes = item.attributes && typeof item.attributes === 'object' ? item.attributes : {};
         return {
             row: item.id,
             id: item.id,
@@ -57,11 +58,11 @@
             winner: item.winnerAlias || '',
             status: legacyStatus(item.status),
             note: item.note || '',
-            announce: item.note || '',
+            announce: attributes.announce || item.note || '',
             photoItem: item.photoUrl || '',
-            photoSire: '',
-            photoDam: '',
-            photoSibling: '',
+            photoSire: attributes.photo_sire || '',
+            photoDam: attributes.photo_dam || '',
+            photoSibling: attributes.photo_sibling || '',
             teamCode: item.groupId || '',
             teamName: item.teamName || item.groupId || '',
             groupId: item.groupId || '',
@@ -70,10 +71,12 @@
             points: Number(item.points) || 0,
             bid_log: bidLog,
             bidLog,
-            checklist: '',
+            checklist: attributes.checklist || '',
             checklist_parsed: '',
             hiddenPhotos: [],
             _broadcastPhotosLoaded: true,
+            start_time: attributes.start_time || '',
+            startTime: attributes.start_time || '',
             updated_at: item.updatedAt || '',
             updatedAt: item.updatedAt || ''
         };
@@ -111,7 +114,12 @@
         const params = new URLSearchParams(target.location.search || '');
         const channelId = normalizeId(params.get('channel') || params.get('event'));
         const rendererModule = normalizeId(params.get('module')) || 'cdcup';
-        if (!channelId) return null;
+        if (!channelId) {
+            if (rendererModule === 'cdcup') return null;
+            const missingChannel = () => Promise.reject(new Error(`${rendererModule.toUpperCase()} 송출 채널이 지정되지 않았습니다.`));
+            BRIDGED_FUNCTIONS.forEach(name => { target[name] = missingChannel; });
+            return Object.freeze({ channelId: '', rendererModule, guarded: true });
+        }
 
         const originals = Object.fromEntries(BRIDGED_FUNCTIONS.map(name => [name, target[name]]));
         let contextPromise = null;

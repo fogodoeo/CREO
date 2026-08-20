@@ -17,6 +17,7 @@ const PAGES = [
     'shipping-companies.html',
     'shipping-rates.html',
     'broadcast-router.html',
+    'capture-gallery.html',
     'ranking.html',
     'channel-rankings.html',
     'broadcast.html',
@@ -71,6 +72,7 @@ test('home is an operational channel launcher without duplicate management route
     assert.match(hub, /id="quick-rounds"/);
     assert.doesNotMatch(hub, /id="quick-rankings"/);
     assert.match(hub, /id="quick-broadcast"/);
+    assert.match(hub, /id="quick-captures"/);
     assert.match(hub, /id="quick-settings"/);
     assert.match(hub, /id="quick-design"/);
     assert.match(hub, /function workspaceUrl\(c\)/);
@@ -98,7 +100,10 @@ test('broadcast studio uses shared profiles instead of channel-specific branches
     assert.match(studio, /CreoBroadcastProfiles\.studioFrame/);
     assert.match(studio, /CreoBroadcastProfiles\.resolve/);
     assert.doesNotMatch(studio, /channel\?\.id\s*===\s*['"](?:cdcup|crewart)['"]/);
-    assert.match(studio, /CreoBroadcastProfiles\.broadcastTarget/);
+    assert.match(studio, /broadcast-router\.html\?event=/);
+    assert.match(studio, /CreoPlatform\.api\('active-channel',[\s\S]{0,180}method:'PUT'/);
+    assert.match(studio, /requested\|\|current\.channelId\|\|channels\[0\]\.id/);
+    assert.match(studio, /capture-gallery\.html\?channel=/);
     assert.match(studio, /진행 · 1P/);
     assert.match(studio, /경매 · 2P/);
     assert.match(studio, /집계 · 3P/);

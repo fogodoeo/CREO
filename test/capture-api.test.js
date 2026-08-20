@@ -90,6 +90,8 @@ test('capture job is leased, uploaded, listed and served by item id', async () =
     assert.equal(image.status, 200);
     assert.equal(image.headers['Content-Type'], 'image/webp');
     assert.deepEqual(image.rawBody, bytes);
+    const download = await call(api, 'GET', `${imageUrl.pathname}?download=1`, null, false);
+    assert.match(download.headers['Content-Disposition'], /^attachment; filename="capture-17-/);
 
     const removed = await call(api, 'DELETE', `/api/capture/channel/cdcup/${jobId}`);
     assert.equal(removed.status, 200);

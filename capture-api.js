@@ -408,6 +408,9 @@ function createCaptureApi({ repository, storage, isAdmin, logger = console } = {
                     'Content-Type': record.mimeType || 'image/webp',
                     'Content-Length': image.length,
                     'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
+                    ...(url.searchParams.get('download') === '1' ? {
+                        'Content-Disposition': `attachment; filename="capture-${Number(record.itemNumber) || 0}-${record.id}.${String(record.objectPath || '').split('.').pop() || 'webp'}"`
+                    } : {}),
                     'X-Content-Type-Options': 'nosniff'
                 });
                 res.end(image);

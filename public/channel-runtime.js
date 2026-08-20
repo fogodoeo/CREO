@@ -17,6 +17,7 @@
         archives: Object.freeze({ path: '/channel-archives.html', query: 'channel', label: '회차', feature: 'auction' }),
         rankings: Object.freeze({ path: '/channel-archives.html', query: 'channel', label: 'RANKING', feature: 'scoreboards', defaults: { view: 'current' } }),
         control: Object.freeze({ path: '/broadcast-studio.html', query: 'channel', label: '방송', feature: 'broadcast' }),
+        captures: Object.freeze({ path: '/capture-gallery.html', query: 'channel', label: '캡처' }),
         settings: Object.freeze({ path: '/channel-manager.html', query: 'channel', label: '설정' }),
         preview: Object.freeze({ path: '/broadcast-router.html', query: 'event', label: '미리보기', feature: 'broadcast', defaults: { page: 1 } }),
         live: Object.freeze({ path: '/broadcast-router.html', query: 'event', label: '송출', feature: 'broadcast', defaults: { page: 1, live: 1 } })

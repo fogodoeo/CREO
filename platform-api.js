@@ -176,6 +176,8 @@ function sanitizeBroadcastState(input = {}) {
         hostRole1: cleanText(input.hostRole1, 40),
         hostName2: cleanText(input.hostName2, 60),
         hostRole2: cleanText(input.hostRole2, 40),
+        hostName3: cleanText(input.hostName3, 60),
+        hostRole3: cleanText(input.hostRole3, 40),
         notice: cleanText(input.notice || input.headline, 160),
         noticeDetail: cleanText(input.noticeDetail, 200),
         page1NoticeOn: booleanValue(input.page1NoticeOn),

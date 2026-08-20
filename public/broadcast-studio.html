@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
     <script src="platform-client.js?v=20260803-admin-session-v2" defer></script>
-    <script src="broadcast-profiles.js?v=20260819-creyon-layout-v1" defer></script>
+    <script src="broadcast-profiles.js?v=20260820-three-hosts-v1" defer></script>
     <style>
         :root{color-scheme:dark;--bg:#0b0d10;--panel:#111419;--panel-2:#171b21;--line:#292f38;--line-strong:#3b4350;--text:#f4f5f7;--muted:#8e97a4;--accent:#e3b75d;--accent-ink:#171106;--danger:#ff9090}
         *{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden;background:var(--bg);color:var(--text);font-family:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,sans-serif}button,input,select,a{font:inherit}.studio[hidden],.login[hidden],[hidden]{display:none!important}
@@ -41,7 +41,7 @@
         <a class="brand" href="/"><span class="brand-mark">C</span><span class="brand-copy"><strong>CREO</strong><small>BROADCAST STUDIO</small></span></a>
         <div class="channel-wrap"><label class="channel-label" for="channel-select">CHANNEL</label><select class="channel" id="channel-select" aria-label="방송 채널"></select></div>
         <div class="status"><span class="status-dot"></span><strong id="engine-label">방송 제어 연결됨</strong></div>
-        <div class="top-actions"><a href="/">메인</a></div>
+        <div class="top-actions"><a id="capture-library" href="capture-gallery.html">캡처</a><a href="/">메인</a></div>
     </header>
     <section class="commandbar" aria-label="방송 화면 구성">
         <nav class="workspace-tools" aria-label="배치 및 설정">
@@ -57,17 +57,17 @@
 <script>
 document.addEventListener('DOMContentLoaded',()=>{
     const $=id=>document.getElementById(id),gate=$('login-gate'),studio=$('studio'),form=$('login-form'),password=$('admin-password'),submit=$('login-submit'),error=$('login-error'),select=$('channel-select'),frame=$('control-frame');
-    let channels=[],activeChannel=null;
-    const initialParams=new URLSearchParams(location.search),requested=String(initialParams.get('channel')||'cdcup').toLowerCase().replace(/[^a-z0-9-]/g,''),requestedView=String(initialParams.get('view')||'layout-1');
+    let channels=[],activeChannel=null,activationSequence=0;
+    const initialParams=new URLSearchParams(location.search),requested=String(initialParams.get('channel')||'').toLowerCase().replace(/[^a-z0-9-]/g,''),requestedView=String(initialParams.get('view')||'layout-1');
     let activeView=/^(layout-[123]|settings)$/.test(requestedView)?requestedView:'layout-1';
     const esc=value=>CreoPlatform.escapeHtml(value);
     function frameUrl(channel,view){return CreoBroadcastProfiles.studioFrame(channel,view)}
-    function liveUrl(channel,page){return CreoBroadcastProfiles.broadcastTarget(channel,page)}
+    function liveUrl(channel,page){return `broadcast-router.html?event=${encodeURIComponent(channel.id)}&page=${page}`}
     function showView(view){activeView=/^(layout-[123]|settings)$/.test(view)?view:'layout-1';document.querySelectorAll('[data-view]').forEach(button=>button.classList.toggle('active',button.dataset.view===activeView));if(!activeChannel)return;const src=frameUrl(activeChannel,activeView);if(frame.getAttribute('src')!==src)frame.src=src;const label=activeView==='settings'?'방송 설정':activeView.replace('layout-','')+'P 배치';frame.title=`${activeChannel.name} ${label}`;history.replaceState(null,'',`broadcast-studio.html?channel=${encodeURIComponent(activeChannel.id)}&view=${encodeURIComponent(activeView)}`)}
-    function activate(id){activeChannel=channels.find(row=>row.id===id)||channels[0];if(!activeChannel)return;const profile=CreoBroadcastProfiles.resolve(activeChannel),page3Label=profile.page3Label||'집계';select.value=activeChannel.id;studio.dataset.channel=activeChannel.id;studio.dataset.broadcastProfile=profile.id;studio.style.setProperty('--accent',profile.studioAccent||activeChannel.theme?.secondary||'#e3b75d');studio.style.setProperty('--accent-ink',profile.studioAccentInk||activeChannel.theme?.background||'#171106');$('engine-label').textContent='배치 시스템 연결됨';studio.querySelector('.brand-mark').textContent=profile.brandMark||'C';$('layout-3-button').querySelector('span').textContent=`${page3Label} 배치`;for(let page=1;page<=3;page++)$('live-'+page).href=liveUrl(activeChannel,page);$('live-3').textContent=`${page3Label} · 3P`;showView(activeView)}
-    async function load(){const data=await CreoPlatform.api('channels');channels=data.channels||[];select.innerHTML=channels.map(channel=>`<option value="${esc(channel.id)}">${esc(channel.name)}</option>`).join('');if(!channels.length)throw new Error('사용 가능한 채널이 없습니다.');gate.hidden=true;studio.hidden=false;activate(requested)}
+    async function activate(id){const next=channels.find(row=>row.id===id)||channels[0];if(!next)return;const sequence=++activationSequence;select.disabled=true;$('engine-label').textContent=`${next.name} 운영 채널 전환 중`;try{await CreoPlatform.api('active-channel',{method:'PUT',body:JSON.stringify({channelId:next.id})});if(sequence!==activationSequence)return;activeChannel=next;const profile=CreoBroadcastProfiles.resolve(activeChannel),page3Label=profile.page3Label||'집계';select.value=activeChannel.id;studio.dataset.channel=activeChannel.id;studio.dataset.broadcastProfile=profile.id;studio.style.setProperty('--accent',profile.studioAccent||activeChannel.theme?.secondary||'#e3b75d');studio.style.setProperty('--accent-ink',profile.studioAccentInk||activeChannel.theme?.background||'#171106');$('engine-label').textContent=`운영 채널 · ${activeChannel.name}`;studio.querySelector('.brand-mark').textContent=profile.brandMark||'C';$('layout-3-button').querySelector('span').textContent=`${page3Label} 배치`;for(let page=1;page<=3;page++)$('live-'+page).href=liveUrl(activeChannel,page);$('live-3').textContent=`${page3Label} · 3P`;$('capture-library').href=`capture-gallery.html?channel=${encodeURIComponent(activeChannel.id)}`;showView(activeView)}catch(failure){if(sequence===activationSequence)$('engine-label').textContent=failure.message||'운영 채널 전환 실패';throw failure}finally{if(sequence===activationSequence)select.disabled=false}}
+    async function load(){const [data,current]=await Promise.all([CreoPlatform.api('channels'),CreoPlatform.api('active-channel')]);channels=data.channels||[];select.innerHTML=channels.map(channel=>`<option value="${esc(channel.id)}">${esc(channel.name)}</option>`).join('');if(!channels.length)throw new Error('사용 가능한 채널이 없습니다.');gate.hidden=true;studio.hidden=false;await activate(requested||current.channelId||channels[0].id)}
     function showLogin(message=''){studio.hidden=true;gate.hidden=false;error.textContent=message;submit.disabled=false;password.disabled=false;requestAnimationFrame(()=>password.focus({preventScroll:true}))}
-    select.addEventListener('change',()=>activate(select.value));
+    select.addEventListener('change',()=>activate(select.value).catch(failure=>{error.textContent=failure.message||'운영 채널을 전환하지 못했습니다.'}));
     document.querySelectorAll('[data-view]').forEach(button=>button.addEventListener('click',()=>showView(button.dataset.view)));
     form.addEventListener('submit',async event=>{event.preventDefault();const value=password.value;if(!value)return;submit.disabled=true;password.disabled=true;error.textContent='';try{CreoPlatform.setAdmin(value);if(!await CreoPlatform.verifyAdmin(value))throw new Error('비밀번호가 맞지 않습니다.');password.value='';await load()}catch(failure){CreoPlatform.setAdmin('');showLogin(failure.message||'로그인하지 못했습니다.')}});
     (async()=>{try{if(await CreoPlatform.verifyAdmin())return await load()}catch(_){}showLogin()})();

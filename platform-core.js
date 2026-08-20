@@ -202,6 +202,8 @@ function normalizeBroadcastDefaults(value = {}, fallback = {}) {
         hostRole1: text('hostRole1', 40),
         hostName2: text('hostName2', 60),
         hostRole2: text('hostRole2', 40),
+        hostName3: text('hostName3', 60),
+        hostRole3: text('hostRole3', 40),
         notice: text('notice', 160),
         noticeDetail: text('noticeDetail', 200),
         page1Ticker: text('page1Ticker'),
@@ -308,6 +310,30 @@ function channelLinks(channelId) {
     return ChannelRuntime.channelRoutes(id);
 }
 
+function publicChecklist(value) {
+    const protectedKeys = new Set(['quiz_answer_b64', 'sale_config_b64']);
+    return String(value || '')
+        .split('|')
+        .slice(0, 120)
+        .map((part) => String(part || '').trim())
+        .filter(Boolean)
+        .filter((part) => !protectedKeys.has(String(part.split(':', 1)[0] || '').trim().toLowerCase()))
+        .join('|')
+        .slice(0, 12_000);
+}
+
+function publicItemAttributes(item = {}) {
+    const attributes = item.attributes && typeof item.attributes === 'object' ? item.attributes : {};
+    return {
+        checklist: publicChecklist(attributes.checklist),
+        announce: cleanText(attributes.announce, 1000),
+        photo_sire: cleanText(attributes.photo_sire, 600),
+        photo_dam: cleanText(attributes.photo_dam, 600),
+        photo_sibling: cleanText(attributes.photo_sibling, 600),
+        start_time: cleanText(attributes.start_time, 80)
+    };
+}
+
 function publicBidLog(item = {}) {
     const raw = item.bidLog ?? item.bid_log ?? item.attributes?.bid_log ?? [];
     let rows = raw;
@@ -345,6 +371,8 @@ function publicItem(item = {}) {
         status: cleanText(item.status || 'waiting', 24),
         note: cleanText(item.note, 240),
         photoUrl: cleanText(item.photoUrl, 500),
+        updatedAt: cleanText(item.updatedAt, 80),
+        attributes: publicItemAttributes(item),
         bidLog: publicBidLog(item)
     };
 }
@@ -362,7 +390,9 @@ module.exports = {
     normalizeBroadcastDefaults,
     normalizeChannel,
     normalizeChannelId,
+    publicChecklist,
     publicItem,
+    publicItemAttributes,
     publicBidLog,
     recordId,
     validateChannel

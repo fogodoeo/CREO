@@ -170,7 +170,6 @@ body[data-event-module="creyon"] .blind-sold-popup-price {
     color: var(--creyon-champagne);
 }
 
-body[data-event-module="creyon"] #p2-live-bidders-overlay,
 body[data-event-module="creyon"] #live-bidders-overlay {
     display: none !important;
 }

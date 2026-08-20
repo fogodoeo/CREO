@@ -418,7 +418,7 @@ test('broadcast state stores independent 1P, 2P, and 3P overlay controls', async
     const api = createPlatformApi({ repository, logger: { error() {} } });
     const response = await call(api, 'PUT', '/api/platform/channels/alpha/broadcast-state', {
         activeItemId: 'item_1', mode: 'sold', page: 2,
-        hostName1: '진행자', page1TickerOn: false, page1BannerOn: true,
+        hostName1: '진행자', hostName3: '게스트', hostRole3: '전문가', page1TickerOn: false, page1BannerOn: true,
         page1BannerUrl: 'https://example.com/banner.png', page1HostsPosition: 'bottom-left',
         page1TickerPosition: 'top', page2SoldOn: true, page2PhotoPosition: 'middle-right',
         page2PricePosition: 'bottom-left', page2VendorTagOn: true, page2BiddersOn: true,
@@ -431,6 +431,8 @@ test('broadcast state stores independent 1P, 2P, and 3P overlay controls', async
     assert.equal(response.status, 200);
     const state = response.json().state;
     assert.equal(state.hostName1, '진행자');
+    assert.equal(state.hostName3, '게스트');
+    assert.equal(state.hostRole3, '전문가');
     assert.equal(state.page1TickerOn, false);
     assert.equal(state.page1BannerOn, true);
     assert.equal(state.page1HostsPosition, 'bottom-left');

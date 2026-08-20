@@ -28,7 +28,7 @@
     <meta http-equiv="Expires" content="0">
     <script src="auction-contract.js?v=20260819-contract-v1"></script>
     <script src="supabase-bridge.js?v=20260819-round3-seed-v2"></script>
-    <script src="channel-broadcast-bridge.js?v=20260815-channel-isolation-v1"></script>
+    <script src="channel-broadcast-bridge.js?v=20260820-channel-guard-v1"></script>
     <script src="event-modules.js?v=20260819-creyon-layout-v1"></script>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link
@@ -1069,6 +1069,7 @@
         }
         #host-nametag-1 .nt-accent { background: #2563eb; }
         #host-nametag-2 .nt-accent { background: #8b5cf6; }
+        #host-nametag-3 .nt-accent { background: #ec4899; }
         .host-nametag .nt-role {
             border: 1px solid rgba(96,165,250,0.24);
             border-radius: 3px;
@@ -3834,7 +3835,7 @@
             #bracket-page-tree-full .team-progress-member { min-height: 30px; padding: 5px 10px; font-size: 15px; }
         }
     </style>
-    <link rel="stylesheet" href="broadcast-creyon.css?v=20260819-layout-v1">
+    <link rel="stylesheet" href="broadcast-creyon.css?v=20260820-live-bidders-v1">
 </head>
 
 <body>
@@ -3925,6 +3926,15 @@
                 <div class="nt-body">
                     <span class="nt-name" id="nt-name-2"></span>
                     <span class="nt-role" id="nt-role-2"></span>
+                </div>
+            </div>
+        </div>
+        <div class="host-nametag" id="host-nametag-3" style="display:none;">
+            <div class="nt-inner">
+                <div class="nt-accent"></div>
+                <div class="nt-body">
+                    <span class="nt-name" id="nt-name-3"></span>
+                    <span class="nt-role" id="nt-role-3"></span>
                 </div>
             </div>
         </div>
@@ -4865,26 +4875,21 @@
         };
 
         function syncNametagWidths(cfg) {
-            const tag1 = document.getElementById('host-nametag-1');
-            const tag2 = document.getElementById('host-nametag-2');
-            if (tag1 && tag2) {
-                tag1.style.removeProperty('width');
-                tag2.style.removeProperty('width');
+            const tags = [1, 2, 3]
+                .map(index => document.getElementById('host-nametag-' + index))
+                .filter(Boolean);
+            tags.forEach(tag => tag.style.removeProperty('width'));
 
-                const isShow1 = (cfg.host_name1 || '').trim() && cfg.nametag1_show !== '0';
-                const isShow2 = (cfg.host_name2 || '').trim() && cfg.nametag2_show !== '0';
-                const ntWidthCfg = cfg.nametag_width || cfg.nametag1_width || cfg.nametag2_width || '';
-                const hasExplicitWidth = ntWidthCfg && ntWidthCfg !== 'auto' && ntWidthCfg !== 'initial' && ntWidthCfg !== 'unset';
+            const visibleTags = tags.filter((tag, index) => {
+                const number = index + 1;
+                return (cfg['host_name' + number] || '').trim() && cfg['nametag' + number + '_show'] !== '0';
+            });
+            const ntWidthCfg = cfg.nametag_width || cfg.nametag1_width || cfg.nametag2_width || cfg.nametag3_width || '';
+            const hasExplicitWidth = ntWidthCfg && ntWidthCfg !== 'auto' && ntWidthCfg !== 'initial' && ntWidthCfg !== 'unset';
 
-                if (isShow1 && isShow2 && !hasExplicitWidth) {
-                    const w1 = tag1.offsetWidth;
-                    const w2 = tag2.offsetWidth;
-                    const maxW = Math.max(w1, w2);
-                    if (maxW > 0) {
-                        tag1.style.width = maxW + 'px';
-                        tag2.style.width = maxW + 'px';
-                    }
-                }
+            if (visibleTags.length > 1 && !hasExplicitWidth) {
+                const maxW = Math.max(...visibleTags.map(tag => tag.offsetWidth));
+                if (maxW > 0) visibleTags.forEach(tag => { tag.style.width = maxW + 'px'; });
             }
         }
 
@@ -5062,7 +5067,15 @@
                 if (ntH && ntH !== 'auto') el.style.height = ntH;
             }
             applyNTPos(document.getElementById('host-nametag-1'), 'nametag1_', '3%', '6%');
-            applyNTPos(document.getElementById('host-nametag-2'), 'nametag2_', 'auto', '6%', '3%');
+            applyNTPos(document.getElementById('host-nametag-2'), 'nametag2_', '42%', '6%');
+            applyNTPos(document.getElementById('host-nametag-3'), 'nametag3_', 'auto', '6%', '3%');
+            if ((cfg.host_name3 || '').trim() && !hasPlacementValue(cfg.nametag3_left) && !hasPlacementValue(cfg.nametag3_right)) {
+                const middleTag = document.getElementById('host-nametag-2');
+                if (middleTag) {
+                    middleTag.style.removeProperty('right');
+                    middleTag.style.left = safeEdgeCss('42%', 'x');
+                }
+            }
 
             // Apply nametag font size
             const ntFontSize = parseInt(cfg.nametag_font_size, 10) || 22;
@@ -5115,7 +5128,7 @@
             }
 
             // 진행자 네임택 렌더링 (show 상태 존중)
-            for (let i = 1; i <= 2; i++) {
+            for (let i = 1; i <= 3; i++) {
                 const name = (cfg['host_name' + i] || '').trim();
                 const role = (cfg['host_role' + i] || '').trim();
                 const tag = document.getElementById('host-nametag-' + i);
@@ -5752,7 +5765,15 @@
                         if (ntHeight && ntHeight !== 'auto') el.style.height = ntHeight;
                     }
                     applyNTPos2(document.getElementById('host-nametag-1'), 'nametag1_', '3%', '6%');
-                    applyNTPos2(document.getElementById('host-nametag-2'), 'nametag2_', 'auto', '6%', '3%');
+                    applyNTPos2(document.getElementById('host-nametag-2'), 'nametag2_', '42%', '6%');
+                    applyNTPos2(document.getElementById('host-nametag-3'), 'nametag3_', 'auto', '6%', '3%');
+                    if ((cfg.host_name3 || '').trim() && !hasPlacementValue(cfg.nametag3_left) && !hasPlacementValue(cfg.nametag3_right)) {
+                        const middleTag = document.getElementById('host-nametag-2');
+                        if (middleTag) {
+                            middleTag.style.removeProperty('right');
+                            middleTag.style.left = safeEdgeCss('42%', 'x');
+                        }
+                    }
 
                     // 진행자 네임택 실시간 텍스트 및 폰트 크기 적용
                     const ntFontSize = parseInt(cfg.nametag_font_size, 10) || 22;
@@ -5761,7 +5782,7 @@
                         el.style.setProperty('--nt-role-font-size', Math.round(ntFontSize * 0.55) + 'px');
                     });
 
-                    for (let i = 1; i <= 2; i++) {
+                    for (let i = 1; i <= 3; i++) {
                         const name = (cfg['host_name' + i] || '').trim();
                         const role = (cfg['host_role' + i] || '').trim();
                         const tag = document.getElementById('host-nametag-' + i);
@@ -6713,6 +6734,10 @@
                 label = visibility === 'blind' ? '블라인드 퀴즈' : '퀴즈 이벤트';
             } else {
                 label = visibility === 'blind' ? '블라인드 경매' : '공개 경매';
+            }
+            const moduleId = getActiveAuctionEventModule(map || {}).id;
+            if (moduleId === 'creyon' && competition === 'single' && visibility === 'public' && !isQuiz) {
+                label = '';
             }
             return {
                 saleMode: saleMeta.mode,

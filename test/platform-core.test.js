@@ -45,7 +45,11 @@ test('public broadcast items never expose winner or shipping contact data', () =
     const item = publicItem({
         id: 'item_1', lotNumber: 3, name: '테스트 개체', winnerName: '홍길동',
         winnerPhone: '01012345678', shippingAddress: '서울', soldPrice: 20, teamName: 'RED',
-        attributes: { bid_log: JSON.stringify([{ name: '입찰자', bidder_key: 'bidder-1', amount: 31, phone: '01099999999' }]) }
+        attributes: {
+            bid_log: JSON.stringify([{ name: '입찰자', bidder_key: 'bidder-1', amount: 31, phone: '01099999999' }]),
+            checklist: 'gender:M|weight:42|sale_mode:quiz|quiz_question_b64:question|quiz_answer_b64:secret|sale_config_b64:secret-config',
+            photo_sire: '/sire.webp'
+        }
     });
     assert.equal(item.name, '테스트 개체');
     assert.equal(item.soldPrice, 20);
@@ -57,6 +61,9 @@ test('public broadcast items never expose winner or shipping contact data', () =
         time: '', timestamp: '', created_at: '', isQuiz: false
     }]);
     assert.equal('phone' in item.bidLog[0], false);
+    assert.equal(item.attributes.checklist, 'gender:M|weight:42|sale_mode:quiz|quiz_question_b64:question');
+    assert.equal(item.attributes.photo_sire, '/sire.webp');
+    assert.doesNotMatch(JSON.stringify(item), /secret/);
 });
 
 test('channel builder configuration normalizes reusable groups, scoreboards, and overlays', () => {
@@ -90,6 +97,15 @@ test('brushed metal is a reusable channel overlay skin', () => {
     });
     assert.equal(channel.overlay.skin, 'metal');
     assert.equal(channel.overlay.layout, 'balanced');
+});
+
+test('channel broadcast defaults preserve all three hosts', () => {
+    const channel = normalizeChannel({
+        id: 'three-hosts', name: 'Three Hosts',
+        broadcastDefaults: { hostName1: 'A', hostName2: 'B', hostName3: 'C', hostRole3: 'Guest' }
+    });
+    assert.equal(channel.broadcastDefaults.hostName3, 'C');
+    assert.equal(channel.broadcastDefaults.hostRole3, 'Guest');
 });
 
 test('core archive and ranking routes cannot be replaced by channel page overrides', () => {
