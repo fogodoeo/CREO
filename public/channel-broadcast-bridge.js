@@ -98,6 +98,23 @@
         };
     }
 
+    function toLegacyBroadcastItems(payload = {}, rendererModule = 'cdcup') {
+        const items = (payload.items || []).map(item => toLegacyItem(item, rendererModule));
+        const state = payload.state && typeof payload.state === 'object' ? payload.state : null;
+        if (!state) return items;
+
+        const mode = String(state.mode || 'standby').toLowerCase();
+        const activeItemId = String(state.activeItemId || '');
+        return items.map(item => {
+            const itemId = String(item.id || item.row || '');
+            const matchesState = Boolean(activeItemId) && itemId === activeItemId;
+            if (mode === 'live' && matchesState) return { ...item, status: '진행중' };
+            if (mode === 'sold' && matchesState) return { ...item, status: '낙찰' };
+            if (item.status === '진행중') return { ...item, status: '대기' };
+            return item;
+        });
+    }
+
     function defaultConfig(channel, rendererModule) {
         const defaults = channel?.broadcastDefaults || {};
         const map = {
@@ -193,7 +210,7 @@
 
         async function legacyItems(force = false, maxAgeMs = 900) {
             const payload = await loadBroadcast(force, maxAgeMs);
-            return (payload.items || []).map(item => toLegacyItem(item, rendererModule));
+            return toLegacyBroadcastItems(payload, rendererModule);
         }
 
         async function loadConfig(force = false) {
@@ -246,5 +263,5 @@
         return Object.freeze({ channelId, rendererModule, context, loadBroadcast, loadConfig, originals });
     }
 
-    return Object.freeze({ BRIDGED_FUNCTIONS, defaultConfig, install, legacyBidLog, legacyStatus, normalizeId, toLegacyItem });
+    return Object.freeze({ BRIDGED_FUNCTIONS, defaultConfig, install, legacyBidLog, legacyStatus, normalizeId, toLegacyBroadcastItems, toLegacyItem });
 });

@@ -28,7 +28,7 @@
     <meta http-equiv="Expires" content="0">
     <script src="auction-contract.js?v=20260819-contract-v1"></script>
     <script src="supabase-bridge.js?v=20260819-round3-seed-v2"></script>
-    <script src="channel-broadcast-bridge.js?v=20260820-platform-metadata-v1"></script>
+    <script src="channel-broadcast-bridge.js?v=20260821-active-state-v2"></script>
     <script src="event-modules.js?v=20260819-creyon-layout-v1"></script>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link
@@ -7147,7 +7147,8 @@
             const isPage2 = !document.body.classList.contains('host-mode')
                 && !document.body.classList.contains('bracket-page');
             const isEnabled = String(map?.live_bidders_show ?? '1') !== '0';
-            const rows = isPage2 && isEnabled ? buildLiveBidRows(map, activeItem) : [];
+            const isLiveItem = Boolean(activeItem) && isAuctionActiveItem(activeItem);
+            const rows = isPage2 && isEnabled && isLiveItem ? buildLiveBidRows(map, activeItem) : [];
             if (!isPage2 || !isEnabled) {
                 panel.classList.remove('visible');
                 panel.replaceChildren();
@@ -7155,7 +7156,13 @@
                 _p2LiveBiddersRankState.initialized = false;
                 return;
             }
-            if (!activeItem) return;
+            if (!activeItem || !isLiveItem) {
+                panel.classList.remove('visible');
+                panel.replaceChildren();
+                _p2LiveBiddersRankState.itemKey = '';
+                _p2LiveBiddersRankState.initialized = false;
+                return;
+            }
             if (rows.length === 0) {
                 if (!isAuctionActiveItem(activeItem)) return;
                 panel.classList.remove('visible');

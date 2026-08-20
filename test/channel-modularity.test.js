@@ -250,6 +250,24 @@ test('legacy-layout bridge keeps renderer identity separate from platform channe
     assert.equal(JSON.parse(update.options.body).patch.active_event_module, 'crewart');
 });
 
+test('legacy-layout P2 follows authoritative broadcast state instead of stale item statuses', () => {
+    const rows = BroadcastBridge.toLegacyBroadcastItems({
+        state: { mode: 'live', activeItemId: 'item_new' },
+        items: [
+            { id: 'item_old', name: '이전 개체', status: 'live' },
+            { id: 'item_new', name: '현재 개체', status: 'waiting' }
+        ]
+    }, 'crewart');
+    assert.equal(rows.find(item => item.id === 'item_old').status, '대기');
+    assert.equal(rows.find(item => item.id === 'item_new').status, '진행중');
+
+    const standby = BroadcastBridge.toLegacyBroadcastItems({
+        state: { mode: 'standby', activeItemId: '' },
+        items: [{ id: 'stale_live', name: '오래된 진행값', status: 'live' }]
+    }, 'crewart');
+    assert.equal(standby[0].status, '대기');
+});
+
 test('platform pickup shipping keeps the selected channel pickup location', async (t) => {
     const previous = global.CreoPlatform;
     t.after(() => { global.CreoPlatform = previous; });
