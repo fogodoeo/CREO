@@ -98,14 +98,22 @@ test('CREYON uses the shared placement editor with an isolated metal renderer', 
     assert.deepEqual(hosts.fields, ['hostName1', 'hostRole1', 'hostName2', 'hostRole2', 'hostName3', 'hostRole3']);
 
     const bridged = BroadcastBridge.toLegacyItem({
-        id: 'live_item', status: 'live', bidLog: [{ name: '입찰자', bidder_key: 'bidder-1', amount: 42, region: '서울' }],
+        id: 'live_item', name: 'A12', vendorName: '쭌이네', status: 'live', bidLog: [{ name: '입찰자', bidder_key: 'bidder-1', amount: 42, region: '서울' }],
         attributes: { checklist: 'gender:M|weight:42', photo_sire: '/sire.webp', start_time: '2026-08-20T10:00:00Z' }
     }, 'creyon');
     assert.equal(bridged.status, '진행중');
     assert.deepEqual(JSON.parse(bridged.bid_log), [{ name: '입찰자', bidder_key: 'bidder-1', amount: 42, region: '서울' }]);
-    assert.equal(bridged.checklist, 'gender:M|weight:42');
+    assert.equal(bridged.company, '쭌이네');
+    assert.equal(bridged.vendorName, '쭌이네');
+    assert.equal(bridged.checklist, 'gender:M|weight:42|_auction:extra');
     assert.equal(bridged.photoSire, '/sire.webp');
     assert.equal(bridged.start_time, '2026-08-20T10:00:00Z');
+
+    const explicitTournament = BroadcastBridge.toLegacyItem({
+        id: 'tournament_item',
+        attributes: { checklist: 'gender:F|_auction:tournament' }
+    }, 'creyon');
+    assert.equal(explicitTournament.checklist, 'gender:F|_auction:tournament');
 });
 
 test('non-CDCUP legacy-layout URLs fail closed when their channel is missing', async () => {

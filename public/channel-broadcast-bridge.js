@@ -44,6 +44,12 @@
     function toLegacyItem(item = {}, rendererModule = 'cdcup') {
         const bidLog = legacyBidLog(item);
         const attributes = item.attributes && typeof item.attributes === 'object' ? item.attributes : {};
+        const rawChecklist = String(attributes.checklist || '').trim();
+        const checklist = /(^|\|)\s*_auction\s*:/i.test(rawChecklist)
+            ? rawChecklist
+            : [rawChecklist, `_auction:${rendererModule === 'crewart' ? 'crewart' : 'extra'}`]
+                .filter(Boolean)
+                .join('|');
         return {
             row: item.id,
             id: item.id,
@@ -51,6 +57,7 @@
             name: item.name || '',
             displayName: item.name || '',
             company: item.vendorName || '',
+            vendorName: item.vendorName || '',
             price: inManwon(item.startPrice),
             startPrice: inManwon(item.startPrice),
             sold_price: inManwon(item.soldPrice),
@@ -71,7 +78,7 @@
             points: Number(item.points) || 0,
             bid_log: bidLog,
             bidLog,
-            checklist: attributes.checklist || '',
+            checklist,
             checklist_parsed: '',
             hiddenPhotos: [],
             _broadcastPhotosLoaded: true,

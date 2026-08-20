@@ -5277,7 +5277,7 @@
 
             // 공개 화면에는 업체를 특정할 수 있는 팀 코드(A1/C2 등)를 노출하지 않는다.
             let cleanInfoName = getAuctionItemDisplayLabel(item) || origName;
-            const publicCompanyName = String(item.company || '').trim();
+            const publicCompanyName = String(item.company || item.vendorName || '').trim();
             const presentation = getBroadcastPresentation(item, window.latestConfigMap || {});
             const showCompanyInline = presentation.showCompany && Boolean(publicCompanyName);
             const infoCompany = document.getElementById('info-company');
