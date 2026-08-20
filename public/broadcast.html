@@ -272,7 +272,7 @@
             align-items: center;
             padding: 3px 10px;
             border-radius: 4px;
-            font-size: var(--sb-pill-size, 18.7px);
+            font-size: var(--sb-pill-size, calc(var(--sb-name-size, 33px) * 0.56));
             font-weight: 600;
             white-space: nowrap;
             background: rgba(255, 255, 255, 0.08);
@@ -392,7 +392,7 @@
             margin-top: 3px;
             overflow: hidden;
             color: rgba(245, 241, 232, 0.72);
-            font-size: clamp(14.3px, 1.595vw, 19.8px);
+            font-size: var(--sb-detail-size, calc(var(--sb-name-size, 33px) * 0.44));
             font-weight: 700;
             line-height: 1.2;
             letter-spacing: -0.02em;
@@ -4953,7 +4953,10 @@
             if (sbWrap) {
                 const itemFontSize = Math.max(16, Math.min(96, parseInt(cfg.p2_item_font_size || cfg.scoreboard_name_fontsize || '33', 10) || 33));
                 sbWrap.style.setProperty('--sb-name-size', itemFontSize + 'px');
-                if (cfg.scoreboard_pill_fontsize) sbWrap.style.setProperty('--sb-pill-size', cfg.scoreboard_pill_fontsize + 'px');
+                const pillFontSize = Math.max(18, Math.min(54, parseInt(cfg.scoreboard_pill_fontsize, 10) || Math.round(itemFontSize * 0.56)));
+                const detailFontSize = Math.max(16, Math.min(44, Math.round(itemFontSize * 0.44)));
+                sbWrap.style.setProperty('--sb-pill-size', pillFontSize + 'px');
+                sbWrap.style.setProperty('--sb-detail-size', detailFontSize + 'px');
                 // 대회명 라벨 폰트 크기 (직접 스타일)
                 const labelEl = document.getElementById('auction-progress');
                 if (labelEl) {
@@ -5706,7 +5709,10 @@
                 if (sbWrap) {
                     const itemFontSize = Math.max(16, Math.min(96, parseInt(cfg.p2_item_font_size || cfg.scoreboard_name_fontsize || '33', 10) || 33));
                     sbWrap.style.setProperty('--sb-name-size', itemFontSize + 'px');
-                    if (cfg.scoreboard_pill_fontsize) sbWrap.style.setProperty('--sb-pill-size', cfg.scoreboard_pill_fontsize + 'px');
+                    const pillFontSize = Math.max(18, Math.min(54, parseInt(cfg.scoreboard_pill_fontsize, 10) || Math.round(itemFontSize * 0.56)));
+                    const detailFontSize = Math.max(16, Math.min(44, Math.round(itemFontSize * 0.44)));
+                    sbWrap.style.setProperty('--sb-pill-size', pillFontSize + 'px');
+                    sbWrap.style.setProperty('--sb-detail-size', detailFontSize + 'px');
                     const labelEl = document.getElementById('auction-progress');
                     if (labelEl) {
                         if (cfg.scoreboard_label_fontsize) labelEl.style.fontSize = Math.max(26, Number(cfg.scoreboard_label_fontsize) + 4) + 'px';
