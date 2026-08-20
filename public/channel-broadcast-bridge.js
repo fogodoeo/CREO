@@ -45,11 +45,19 @@
         const bidLog = legacyBidLog(item);
         const attributes = item.attributes && typeof item.attributes === 'object' ? item.attributes : {};
         const rawChecklist = String(attributes.checklist || '').trim();
-        const checklist = /(^|\|)\s*_auction\s*:/i.test(rawChecklist)
-            ? rawChecklist
-            : [rawChecklist, `_auction:${rendererModule === 'crewart' ? 'crewart' : 'extra'}`]
-                .filter(Boolean)
-                .join('|');
+        const storedAuctionType = String((rawChecklist.match(/(?:^|\|)\s*_auction\s*:\s*([^|]+)/i) || [])[1] || '').trim().toLowerCase();
+        const validAuctionTypes = ['tournament', 'solo', 'event', 'extra', 'crewart'];
+        const auctionType = validAuctionTypes.includes(storedAuctionType)
+            ? storedAuctionType
+            : (rendererModule === 'crewart' ? 'crewart' : 'extra');
+        const checklistParts = [rawChecklist];
+        if (!validAuctionTypes.includes(storedAuctionType)) checklistParts.push(`_auction:${auctionType}`);
+        const storedVisibility = String((rawChecklist.match(/(?:^|\|)\s*_visibility\s*:\s*([^|]+)/i) || [])[1] || '').trim().toLowerCase();
+        const visibilityMode = ['public', 'blind'].includes(storedVisibility)
+            ? storedVisibility
+            : (auctionType === 'tournament' ? '' : 'public');
+        if (visibilityMode && visibilityMode !== storedVisibility) checklistParts.push(`_visibility:${visibilityMode}`);
+        const checklist = checklistParts.filter(Boolean).join('|');
         return {
             row: item.id,
             id: item.id,
@@ -74,7 +82,8 @@
             teamName: item.teamName || item.groupId || '',
             groupId: item.groupId || '',
             category: item.category || '',
-            auctionType: rendererModule === 'crewart' ? 'crewart' : (item.category || ''),
+            auctionType,
+            visibilityMode,
             points: Number(item.points) || 0,
             bid_log: bidLog,
             bidLog,

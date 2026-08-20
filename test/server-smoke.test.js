@@ -104,7 +104,7 @@ test('HTTP server exposes the CREO hub, survey assets, health, and membership co
     const scriptResponse = await fetch(`http://127.0.0.1:${port}/crewart-survey.js`);
     assert.equal(scriptResponse.status, 200);
     assert.match(scriptResponse.headers.get('content-type'), /^text\/javascript/);
-    assert.match(scriptResponse.headers.get('cache-control'), /max-age=86400/);
+    assert.equal(scriptResponse.headers.get('cache-control'), 'no-cache');
 
     const contractResponse = await fetch(`http://127.0.0.1:${port}/auction-contract.js`);
     assert.equal(contractResponse.status, 200);

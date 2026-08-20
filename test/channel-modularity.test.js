@@ -105,7 +105,9 @@ test('CREYON uses the shared placement editor with an isolated metal renderer', 
     assert.deepEqual(JSON.parse(bridged.bid_log), [{ name: '입찰자', bidder_key: 'bidder-1', amount: 42, region: '서울' }]);
     assert.equal(bridged.company, '쭌이네');
     assert.equal(bridged.vendorName, '쭌이네');
-    assert.equal(bridged.checklist, 'gender:M|weight:42|_auction:extra');
+    assert.equal(bridged.auctionType, 'extra');
+    assert.equal(bridged.visibilityMode, 'public');
+    assert.equal(bridged.checklist, 'gender:M|weight:42|_auction:extra|_visibility:public');
     assert.equal(bridged.photoSire, '/sire.webp');
     assert.equal(bridged.start_time, '2026-08-20T10:00:00Z');
 
@@ -114,6 +116,21 @@ test('CREYON uses the shared placement editor with an isolated metal renderer', 
         attributes: { checklist: 'gender:F|_auction:tournament' }
     }, 'creyon');
     assert.equal(explicitTournament.checklist, 'gender:F|_auction:tournament');
+
+    const explicitBlind = BroadcastBridge.toLegacyItem({
+        id: 'blind_item',
+        attributes: { checklist: '_auction:extra|_visibility:blind' }
+    }, 'creyon');
+    assert.equal(explicitBlind.visibilityMode, 'blind');
+    assert.equal(explicitBlind.checklist, '_auction:extra|_visibility:blind');
+
+    const malformedMetadata = BroadcastBridge.toLegacyItem({
+        id: 'malformed_item', name: 'B22', vendorName: '쭌이네',
+        attributes: { checklist: '_auction:unknown|_visibility:unknown' }
+    }, 'creyon');
+    assert.equal(malformedMetadata.auctionType, 'extra');
+    assert.equal(malformedMetadata.visibilityMode, 'public');
+    assert.match(malformedMetadata.checklist, /_auction:extra\|_visibility:public$/);
 });
 
 test('non-CDCUP legacy-layout URLs fail closed when their channel is missing', async () => {

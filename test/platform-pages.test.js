@@ -390,6 +390,8 @@ test('legacy broadcast bridge survives Supabase quota exhaustion with cached or 
     assert.match(cdcup, /await _refreshBroadcastFromItems\(\[\]\)/);
     assert.match(cdcup, /document\.getElementById\("info-name"\)\.textContent = cleanInfoName/);
     assert.match(cdcup, /String\(item\.company \|\| item\.vendorName \|\| ''\)\.trim\(\)/);
+    assert.match(cdcup, /if \(meta\.auctionType !== AUCTION_TYPES\.TOURNAMENT\) return ''/);
+    assert.match(cdcup, /itemAuctionMeta\.auctionType === AUCTION_TYPES\.TOURNAMENT/);
     assert.match(cdcup, /infoCompany\.textContent = `\[\$\{publicCompanyName\}\]`/);
     assert.match(cdcup, /infoCompany\.hidden = isHost \|\| !showCompanyInline/);
     assert.match(cdcup, /document\.getElementById\("info-sub"\)\.textContent = presentation\.label/);

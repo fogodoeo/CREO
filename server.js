@@ -101,7 +101,7 @@ function sendJson(res, status, value) {
 
 function cacheControlFor(filePath) {
     const extension = path.extname(filePath).toLowerCase();
-    if (extension === '.html' || extension === '.htm' || extension === '.json') {
+    if (['.html', '.htm', '.json', '.js', '.css'].includes(extension)) {
         return 'no-cache';
     }
     if (/\.(?:avif|gif|ico|jpe?g|mp4|ogg|png|svg|webm|webp|woff2?)$/i.test(extension)) {

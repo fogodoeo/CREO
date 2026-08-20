@@ -28,7 +28,7 @@
     <meta http-equiv="Expires" content="0">
     <script src="auction-contract.js?v=20260819-contract-v1"></script>
     <script src="supabase-bridge.js?v=20260819-round3-seed-v2"></script>
-    <script src="channel-broadcast-bridge.js?v=20260820-channel-guard-v2"></script>
+    <script src="channel-broadcast-bridge.js?v=20260820-platform-metadata-v1"></script>
     <script src="event-modules.js?v=20260819-creyon-layout-v1"></script>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link
@@ -4064,6 +4064,7 @@
         function getCleanCode(item) {
             if (!item) return '';
             const meta = getItemAuctionMeta(item);
+            if (meta.auctionType !== AUCTION_TYPES.TOURNAMENT) return '';
             const metaCode = String(item.tournamentCode || meta.tournamentCode || '').trim().toUpperCase();
             // 라운드가 바뀌면 같은 업체의 팀 문자가 달라질 수 있다.
             // 저장된 과거 코드보다 현재 활성 대진표의 업체→팀 매핑을 우선한다.
@@ -4135,6 +4136,7 @@
             if (!items || !code) return null;
             const target = code.trim().toUpperCase();
             return items.find(i => {
+                if (getItemAuctionMeta(i).auctionType !== AUCTION_TYPES.TOURNAMENT) return false;
                 if (getCleanCode(i) === target) return true;
                 const numStr = String(i.num || '').trim().toUpperCase();
                 if (numStr === target) return true;
@@ -5246,9 +5248,13 @@
 
             const origName = item.displayName || item.name || "";
             let displayName = origName;
+            const itemAuctionMeta = getItemAuctionMeta(item);
             
             // Check for tournament team mapping to find company name
-            if (window.latestConfigMap && window.latestConfigMap.active_tournament && window.latestConfigMap.active_tournament !== 'none') {
+            if (itemAuctionMeta.auctionType === AUCTION_TYPES.TOURNAMENT
+                && window.latestConfigMap
+                && window.latestConfigMap.active_tournament
+                && window.latestConfigMap.active_tournament !== 'none') {
                 const activeScale = window.latestConfigMap.active_tournament;
                 const matchObj = origName.trim().match(/^([A-Pa-p])\s*[-_]?\s*([1-9]\d*)$/i);
                 if (matchObj) {
