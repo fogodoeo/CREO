@@ -689,6 +689,53 @@ test('CREWART live assignment backtest preserves cutoff, FIFO sequence, idempote
     assert.notEqual(nextSession.json().state.audienceSessionId, started.json().state.audienceSessionId);
 });
 
+test('CREWART assignment endpoint restores one reveal after broadcast enrichment wins the race', async () => {
+    const repository = new MemoryRepository();
+    repository.catalog.channels[0] = normalizeChannel({
+        ...repository.catalog.channels[0],
+        audienceCompetition: { enabled: true, assignment: 'survey-random', metric: 'soldPrice' }
+    });
+    const crewartHouseService = createCrewartHouseService({
+        repository,
+        secret: 'platform-audience-race-secret-longer-than-thirty-two-characters',
+        logger: { warn() {} }
+    });
+    const api = createPlatformApi({ repository, crewartHouseService, logger: { error() {}, warn() {} } });
+    await repository.upsertRecord('alpha', 'item', {
+        id: 'race-live', lotNumber: 1, name: '배정 경합 테스트', status: 'live',
+        attributes: {
+            bid_log: JSON.stringify([{
+                name: '경합 입찰자', bidder_key: 'race-user', amount: 7,
+                message_key: 'race-message', bid_sequence: 77
+            }])
+        }
+    });
+    const started = await call(api, 'PUT', '/api/platform/channels/alpha/auction-transition', {
+        itemId: 'race-live', status: 'live', mode: 'live', state: { page: 2 }
+    });
+    assert.equal(started.status, 200, started.body);
+
+    const enrichedFirst = await call(api, 'GET', '/api/platform/channels/alpha/broadcast', null, '');
+    assert.match(enrichedFirst.json().items[0].bidLog[0].crewart_house_key, /^[RGBY]$/);
+    assert.equal(enrichedFirst.json().audience.events.length, 0);
+
+    const assignment = await call(api, 'POST', '/api/platform/channels/alpha/audience-assignment', {
+        itemId: 'race-live', bidder_key: 'race-user', name: '경합 입찰자', amount: 7,
+        message_key: 'race-message', bid_sequence: 77
+    });
+    assert.equal(assignment.status, 200, assignment.body);
+    assert.equal(assignment.json().isNewRandom, true);
+
+    await call(api, 'POST', '/api/platform/channels/alpha/audience-assignment', {
+        itemId: 'race-live', bidder_key: 'race-user', name: '경합 입찰자', amount: 7,
+        message_key: 'race-message', bid_sequence: 77
+    });
+    const broadcast = await call(api, 'GET', '/api/platform/channels/alpha/broadcast', null, '');
+    assert.equal(broadcast.json().audience.events.length, 1);
+    assert.equal(broadcast.json().audience.events[0].sequence, 1);
+    assert.equal(broadcast.json().audience.events[0].houseKey, assignment.json().houseKey);
+});
+
 test('ordinary channels never assign an audience house during a sale', async () => {
     const repository = new MemoryRepository();
     let calls = 0;

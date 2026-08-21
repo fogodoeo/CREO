@@ -657,7 +657,12 @@ function createPlatformApi({
     }
 
     async function appendAudienceReveal(channelId, session, input, assignment) {
-        if (!assignment?.isNew || assignment.source !== 'random') return null;
+        if (assignment?.source !== 'random') return null;
+        const requestSequence = Math.max(0, Number.parseInt(input.bid_sequence || input.bidSequence, 10) || 0);
+        const assignmentSequence = Math.max(0, Number.parseInt(assignment.assignmentSequence, 10) || 0);
+        const ownsAssignment = Boolean(assignment.isNew)
+            || (requestSequence > 0 && requestSequence === assignmentSequence);
+        if (!ownsAssignment) return null;
         const stored = await repository.getRecord(channelId, 'setting', AUDIENCE_REVEALS_ID);
         const current = stored?.sessionId === session.sessionId
             ? stored
