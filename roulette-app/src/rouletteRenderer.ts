@@ -118,7 +118,7 @@ export class RouletteRenderer {
         ? broadcastWidth
         : compactPortrait
           ? Math.max(realSize.width, Math.min(COMPACT_SCENE_WIDTH, realSize.width * 1.5))
-          : Math.max(realSize.width / 2, 640);
+          : Math.min(MAX_DISPLAY_WIDTH, Math.max(realSize.width, 960));
       let height = (width / realSize.width) * realSize.height;
       if (compactPortrait && width * height > COMPACT_SCENE_PIXEL_BUDGET) {
         const budgetScale = Math.sqrt(COMPACT_SCENE_PIXEL_BUDGET / (width * height));

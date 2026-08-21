@@ -1,5 +1,6 @@
 import type { Marble } from './marble';
 import options from './options';
+import { selectCandidateRanks } from './candidateRanking.js';
 import type { RenderParameters } from './rouletteRenderer';
 import type { Rect } from './types/rect.type';
 import type { MouseEventArgs, UIObject } from './UIObject';
@@ -18,6 +19,7 @@ export class RankRenderer implements UIObject {
   private winnerRank: number = -1;
   private messageHandler?: (msg: string) => void;
   private readonly broadcastMode = new URLSearchParams(location.search).get('broadcast') === '1';
+  private readonly hudFont = "'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
 
   @bound
   onWheel(e: WheelEvent) {
@@ -65,7 +67,7 @@ export class RankRenderer implements UIObject {
     const broadcastMode = this.broadcastMode;
     const uiScale = broadcastMode ? width / 720 : 1;
     this.layoutFontHeight = this.fontHeight * uiScale;
-    const hudHeight = 54 * uiScale;
+    const hudHeight = 66 * uiScale;
     const listTop = hudHeight + 8 * uiScale;
     const startX = width - 8 * uiScale;
     const visibleListHeight = height - listTop;
@@ -83,9 +85,10 @@ export class RankRenderer implements UIObject {
 
     ctx.save();
     const totalCount = winners.length + marbles.length;
-    const targetIndex = Math.max(0, winnerRank - winners.length);
-    const candidate = winner ?? winners[winnerRank] ?? marbles[targetIndex];
+    const candidates = selectCandidateRanks([...winners, ...marbles], winnerRank, 3);
     const academySkin = document.documentElement.dataset.rouletteTheme === 'academy';
+    ctx.canvas.dataset.candidateRanks = candidates.map(({ rank }) => rank).join(',');
+    ctx.canvas.dataset.candidateNames = candidates.map(({ candidate }) => candidate.name).join('|');
     ctx.fillStyle = academySkin ? 'rgba(14, 20, 18, 0.94)' : 'rgba(4, 10, 18, 0.9)';
     ctx.fillRect(0, 0, width, hudHeight);
     if (academySkin) {
@@ -96,20 +99,34 @@ export class RankRenderer implements UIObject {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     ctx.fillStyle = academySkin ? '#d4bd86' : 'rgba(255, 255, 255, 0.58)';
-    ctx.font = `700 ${8 * uiScale}pt ${academySkin ? "Georgia, 'Times New Roman', serif" : 'sans-serif'}`;
-    ctx.fillText(winner ? '당첨 확정' : options.candidateLabel, width / 2, 7 * uiScale);
-    ctx.fillStyle = academySkin ? '#f4ecd9' : '#ffffff';
-    ctx.font = `bold ${17 * uiScale}pt ${academySkin ? "Georgia, 'Times New Roman', serif" : 'sans-serif'}`;
-    ctx.fillText(
-      candidate?.name ?? '준비 중',
-      width / 2,
-      24 * uiScale,
-      Math.max(180 * uiScale, width - 420 * uiScale)
-    );
+    ctx.font = `750 ${8 * uiScale}pt ${this.hudFont}`;
+    ctx.fillText(winner ? '당첨 확정' : `${options.candidateLabel} 3인`, width / 2, 6 * uiScale);
+
+    const candidateAreaWidth = Math.max(240 * uiScale, Math.min(540 * uiScale, width - 260 * uiScale));
+    const slotWidth = candidateAreaWidth / Math.max(1, candidates.length);
+    const candidateStartX = width / 2 - candidateAreaWidth / 2;
+    candidates.forEach(({ candidate, rank }, index) => {
+      const x = candidateStartX + slotWidth * (index + 0.5);
+      const primary = index === 0;
+      ctx.fillStyle = academySkin
+        ? primary
+          ? '#f4ecd9'
+          : 'rgba(244, 236, 217, 0.7)'
+        : primary
+          ? '#ffffff'
+          : 'rgba(255, 255, 255, 0.68)';
+      ctx.font = `${primary ? 850 : 700} ${(primary ? 13 : 11) * uiScale}pt ${this.hudFont}`;
+      ctx.fillText(`#${rank} ${candidate.name}`, x, 27 * uiScale, slotWidth - 8 * uiScale);
+    });
+    if (candidates.length === 0) {
+      ctx.fillStyle = academySkin ? '#f4ecd9' : '#ffffff';
+      ctx.font = `800 ${13 * uiScale}pt ${this.hudFont}`;
+      ctx.fillText('준비 중', width / 2, 27 * uiScale);
+    }
 
     ctx.textAlign = 'right';
     ctx.fillStyle = academySkin ? '#f4ecd9' : '#ffffff';
-    ctx.font = `bold ${18 * uiScale}pt sans-serif`;
+    ctx.font = `800 ${18 * uiScale}pt ${this.hudFont}`;
     ctx.fillText(`${winners.length} / ${totalCount}`, width - 10 * uiScale, 15 * uiScale);
 
     ctx.beginPath();

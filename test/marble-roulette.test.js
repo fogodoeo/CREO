@@ -39,7 +39,7 @@ test('production roulette includes Box2D runtimes and stays within a small stati
     const files = fs.readdirSync(publicRoot);
     assert.ok(files.some((file) => file.endsWith('.wasm')), 'Box2D wasm must be emitted');
     const totalBytes = files.reduce((sum, file) => sum + fs.statSync(path.join(publicRoot, file)).size, 0);
-    assert.ok(totalBytes < 1_500_000, `bundle is unexpectedly large: ${totalBytes} bytes`);
+    assert.ok(totalBytes < 3_750_000, `bundle is unexpectedly large: ${totalBytes} bytes`);
 });
 
 test('roulette exposes its version and keeps native broadcast rendering with the smooth upstream physics step', () => {
@@ -53,6 +53,7 @@ test('roulette exposes its version and keeps native broadcast rendering with the
     assert.match(roulette, /_updateInterval = 10/);
     assert.match(roulette, /!finishedIds\.has\(marble\.id\)/);
     assert.match(renderer, /COMPACT_SCENE_PIXEL_BUDGET = 520_000/);
+    assert.match(renderer, /Math\.min\(MAX_DISPLAY_WIDTH, Math\.max\(realSize\.width, 960\)\)/);
     assert.match(renderer, /performance: 960/);
     assert.match(renderer, /balanced: 1280/);
     assert.match(renderer, /high: 1920/);
@@ -117,9 +118,41 @@ test('pinball stage stays clean while candidate and controls remain in their ope
     assert.doesNotMatch(html, /화면 중앙을 누르고 있으면|추첨 진행 중/);
     assert.match(app, /'1위 당첨 유력'/);
     assert.match(app, /'마지막 당첨 유력'/);
-    assert.match(rankRenderer, /const hudHeight = 54 \* uiScale/);
+    assert.match(rankRenderer, /const hudHeight = 66 \* uiScale/);
     assert.doesNotMatch(rankRenderer, /const hudHeight = broadcastMode \?/);
     assert.match(minimap, /const controlsReserve = 62 \* uiScale/);
+    assert.match(minimap, /this\.top = 76 \* uiScale/);
     assert.match(styles, /bottom: calc\(14px \+ var\(--safe-bottom\)\)/);
     assert.match(styles, /left: calc\(20px \+ var\(--safe-left\)\)/);
+    assert.match(styles, /PretendardVariable\.woff2/);
+
+    const font = fs.readFileSync(path.join(appRoot, 'assets', 'PretendardVariable.woff2'));
+    assert.equal(font.subarray(0, 4).toString('ascii'), 'wOF2');
+    assert.ok(font.length > 1_000_000, 'full Korean variable font must be shipped locally');
+    assert.match(fs.readFileSync(path.join(appRoot, 'PRETENDARD-LICENSE.txt'), 'utf8'), /SIL OPEN FONT LICENSE/);
+    assert.match(fs.readFileSync(path.join(publicRoot, 'PRETENDARD-LICENSE.txt'), 'utf8'), /SIL OPEN FONT LICENSE/);
+});
+
+test('candidate bar selects three unique people nearest to the configured winning rank', () => {
+    const { selectCandidateRanks } = require(path.join(appRoot, 'src', 'candidateRanking.js'));
+    const ranked = [
+        { name: '가' },
+        { name: '가' },
+        { name: '나' },
+        { name: '다' },
+        { name: '라' },
+    ];
+
+    assert.deepEqual(
+        selectCandidateRanks(ranked, 0).map(({ candidate, rank }) => [candidate.name, rank]),
+        [['가', 1], ['나', 3], ['다', 4]],
+    );
+    assert.deepEqual(
+        selectCandidateRanks(ranked, ranked.length - 1).map(({ candidate, rank }) => [candidate.name, rank]),
+        [['라', 5], ['다', 4], ['나', 3]],
+    );
+    assert.deepEqual(
+        selectCandidateRanks(ranked, 2).map(({ candidate, rank }) => [candidate.name, rank]),
+        [['나', 3], ['가', 2], ['다', 4]],
+    );
 });
