@@ -1,6 +1,7 @@
 import type { Marble } from './marble';
 import { selectCandidateRanks } from './candidateRanking.js';
 import type { RenderParameters } from './rouletteRenderer';
+import { HUD_CONTENT_GAP, HUD_HEIGHT } from './rouletteUiLayout';
 import type { Rect } from './types/rect.type';
 import type { MouseEventArgs, UIObject } from './UIObject';
 import { bound } from './utils/bound.decorator';
@@ -8,7 +9,6 @@ import { bound } from './utils/bound.decorator';
 export class RankRenderer implements UIObject {
   private _currentY = 0;
   private _targetY = 0;
-  private fontHeight = 16;
   private layoutFontHeight = 16;
   private _userMoved = 0;
   private _currentWinner = -1;
@@ -17,7 +17,6 @@ export class RankRenderer implements UIObject {
   private marbles: Marble[] = [];
   private winnerRank: number = -1;
   private messageHandler?: (msg: string) => void;
-  private readonly broadcastMode = new URLSearchParams(location.search).get('broadcast') === '1';
   private readonly hudFont = "'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
 
   @bound
@@ -59,16 +58,17 @@ export class RankRenderer implements UIObject {
 
   render(
     ctx: CanvasRenderingContext2D,
-    { winners, marbles, winnerRank, winner, theme }: RenderParameters,
+    { winners, marbles, winnerRank }: RenderParameters,
     width: number,
     height: number
   ) {
-    const broadcastMode = this.broadcastMode;
     const uiScale = Math.max(1, width / 720);
-    this.layoutFontHeight = this.fontHeight * uiScale;
-    const hudHeight = 80 * uiScale;
-    const listTop = hudHeight + 8 * uiScale;
-    const startX = width - 8 * uiScale;
+    this.layoutFontHeight = 24 * uiScale;
+    const hudHeight = HUD_HEIGHT * uiScale;
+    const listTop = hudHeight + HUD_CONTENT_GAP * uiScale;
+    const rankPanelRight = width - 10 * uiScale;
+    const rankPanelWidth = 142 * uiScale;
+    const rankPanelLeft = rankPanelRight - rankPanelWidth;
     const visibleListHeight = height - listTop;
     const startY = Math.max(-this.layoutFontHeight, this._currentY - visibleListHeight / 2);
     this.maxY = Math.max(
@@ -103,8 +103,7 @@ export class RankRenderer implements UIObject {
     candidates.forEach(({ candidate }, index) => {
       const x = candidateStartX + slotWidth * (index + 0.5);
       ctx.fillStyle = academySkin ? '#f4ecd9' : '#ffffff';
-      ctx.font = `850 ${20 * uiScale}pt ${this.hudFont}`;
-      ctx.fillText(candidate.name, x, hudHeight / 2, slotWidth - 14 * uiScale);
+      this.drawFittedText(ctx, candidate.name, x, hudHeight / 2, slotWidth - 14 * uiScale, 20 * uiScale, 13 * uiScale);
     });
 
     ctx.textAlign = 'right';
@@ -112,41 +111,104 @@ export class RankRenderer implements UIObject {
     ctx.font = `850 ${21 * uiScale}pt ${this.hudFont}`;
     ctx.fillText(`${winners.length} / ${totalCount}`, width - 10 * uiScale, hudHeight / 2);
 
+    ctx.fillStyle = academySkin ? 'rgba(8, 14, 12, 0.78)' : 'rgba(3, 8, 14, 0.74)';
+    ctx.fillRect(rankPanelLeft, listTop, rankPanelWidth, Math.max(0, visibleListHeight));
     ctx.beginPath();
-    ctx.rect(
-      width - (broadcastMode ? 190 * uiScale : 150),
-      listTop,
-      width,
-      Math.max(0, visibleListHeight)
-    );
+    ctx.rect(rankPanelLeft, listTop, rankPanelWidth, Math.max(0, visibleListHeight));
     ctx.clip();
 
     ctx.translate(0, -startY);
-    ctx.font = `bold ${11 * uiScale}pt sans-serif`;
-    if (theme.rankStroke) {
-      ctx.lineWidth = 2 * uiScale;
-      ctx.strokeStyle = theme.rankStroke;
-    }
     winners.forEach((marble: { hue: number; name: string }, rank: number) => {
       const y = rank * this.layoutFontHeight;
       if (y >= startY && y <= startY + visibleListHeight) {
-        ctx.fillStyle = `hsl(${marble.hue} 100% ${theme.marbleLightness}%)`;
-        if (!useSimpleLabels) {
-          ctx.strokeText(`${rank === winnerRank ? '☆' : '\u2714'} ${marble.name} #${rank + 1}`, startX, listTop + y);
-        }
-        ctx.fillText(`${rank === winnerRank ? '☆' : '\u2714'} ${marble.name} #${rank + 1}`, startX, listTop + y);
+        this.drawRankRow(ctx, marble, rank, rank === winnerRank, listTop + y, rankPanelLeft, rankPanelWidth, uiScale, academySkin);
       }
     });
-    ctx.font = `${10 * uiScale}pt sans-serif`;
     marbles.forEach((marble: { hue: number; name: string }, rank: number) => {
       const y = (rank + winners.length) * this.layoutFontHeight;
       if (y >= startY && y <= startY + visibleListHeight) {
-        ctx.fillStyle = `hsl(${marble.hue} 100% ${theme.marbleLightness}%)`;
-        if (!useSimpleLabels) ctx.strokeText(`${marble.name} #${rank + 1 + winners.length}`, startX, listTop + y);
-        ctx.fillText(`${marble.name} #${rank + 1 + winners.length}`, startX, listTop + y);
+        this.drawRankRow(
+          ctx,
+          marble,
+          rank + winners.length,
+          false,
+          listTop + y,
+          rankPanelLeft,
+          rankPanelWidth,
+          uiScale,
+          academySkin,
+          useSimpleLabels
+        );
       }
     });
     ctx.restore();
+  }
+
+  private drawFittedText(
+    ctx: CanvasRenderingContext2D,
+    text: string,
+    x: number,
+    y: number,
+    maxWidth: number,
+    preferredSize: number,
+    minimumSize: number
+  ) {
+    let fontSize = preferredSize;
+    ctx.font = `850 ${fontSize}pt ${this.hudFont}`;
+    while (fontSize > minimumSize && ctx.measureText(text).width > maxWidth) {
+      fontSize -= 1;
+      ctx.font = `850 ${fontSize}pt ${this.hudFont}`;
+    }
+    ctx.fillText(this.ellipsize(ctx, text, maxWidth), x, y);
+  }
+
+  private ellipsize(ctx: CanvasRenderingContext2D, text: string, maxWidth: number) {
+    if (ctx.measureText(text).width <= maxWidth) return text;
+    const characters = Array.from(text);
+    while (characters.length > 1 && ctx.measureText(`${characters.join('')}…`).width > maxWidth) {
+      characters.pop();
+    }
+    return `${characters.join('')}…`;
+  }
+
+  private drawRankRow(
+    ctx: CanvasRenderingContext2D,
+    marble: { hue: number; name: string },
+    rank: number,
+    isWinner: boolean,
+    rowTop: number,
+    panelLeft: number,
+    panelWidth: number,
+    uiScale: number,
+    academySkin: boolean,
+    compact = false
+  ) {
+    const inset = 4 * uiScale;
+    const rowHeight = this.layoutFontHeight - 2 * uiScale;
+    const rowCenter = rowTop + this.layoutFontHeight / 2;
+    ctx.fillStyle = academySkin ? 'rgba(244, 236, 217, 0.07)' : 'rgba(255, 255, 255, 0.07)';
+    ctx.fillRect(panelLeft + inset, rowTop + uiScale, panelWidth - inset * 2, rowHeight);
+    ctx.fillStyle = `hsl(${marble.hue} 92% 58%)`;
+    ctx.fillRect(panelLeft + inset, rowTop + uiScale, 3 * uiScale, rowHeight);
+
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = isWinner && academySkin ? '#d4bd86' : 'rgba(244, 236, 217, 0.72)';
+    ctx.font = `800 ${compact ? 10 * uiScale : 11 * uiScale}pt ${this.hudFont}`;
+    ctx.fillText(`#${rank + 1}`, panelLeft + 12 * uiScale, rowCenter);
+
+    const nameX = panelLeft + 45 * uiScale;
+    const nameWidth = panelWidth - 53 * uiScale;
+    ctx.fillStyle = '#ffffff';
+    this.drawFittedText(
+      ctx,
+      marble.name,
+      nameX,
+      rowCenter,
+      nameWidth,
+      (compact ? 11 : 13) * uiScale,
+      9 * uiScale
+    );
   }
 
   update(deltaTime: number) {

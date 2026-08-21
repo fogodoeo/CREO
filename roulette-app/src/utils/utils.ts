@@ -1,28 +1,12 @@
 import { random } from './random';
+import { parseParticipantName } from '../participantName.js';
 
 export function rad(degree: number) {
   return (Math.PI * degree) / 180;
 }
 
-function getRegexValue(regex: RegExp, str: string) {
-  const result = regex.exec(str);
-  return result ? result[1] : '';
-}
-
 export function parseName(nameStr: string) {
-  const weightRegex = /\/(\d+)/;
-  const countRegex = /\*(\d+)/;
-  const hasWeight = weightRegex.test(nameStr);
-  const hasCount = countRegex.test(nameStr);
-  const name = getRegexValue(/^\s*([^/*]+)?/, nameStr);
-  if (!name) return null;
-  const weight = Math.max(1, hasWeight ? parseInt(getRegexValue(weightRegex, nameStr), 10) : 1);
-  const count = Math.max(1, hasCount ? parseInt(getRegexValue(countRegex, nameStr), 10) : 1);
-  return {
-    name,
-    weight,
-    count,
-  };
+  return parseParticipantName(nameStr);
 }
 
 export function pad(v: number) {

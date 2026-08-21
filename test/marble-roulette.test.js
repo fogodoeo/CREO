@@ -57,7 +57,8 @@ test('roulette exposes its version and keeps native broadcast rendering with the
     assert.match(renderer, /Math\.min\(MAX_DISPLAY_WIDTH, Math\.max\(realSize\.width, 960\)\)/);
     assert.match(renderer, /SCENE_DISPLAY_ZOOM = 1\.3/);
     assert.match(marble, /diameter \* 1\.6/);
-    assert.match(marble, /800 16pt 'Pretendard Variable'/);
+    assert.match(marble, /let fontSize = 16/);
+    assert.match(marble, /const maxWidth = 112/);
     assert.match(renderer, /performance: 960/);
     assert.match(renderer, /balanced: 1280/);
     assert.match(renderer, /high: 1920/);
@@ -121,13 +122,14 @@ test('pinball stage stays clean while candidate and controls remain in their ope
     assert.doesNotMatch(html, /화면 중앙을 누르고 있으면|추첨 진행 중/);
     assert.doesNotMatch(app, /당첨 유력|candidateLabel/);
     assert.match(rankRenderer, /const uiScale = Math\.max\(1, width \/ 720\)/);
-    assert.match(rankRenderer, /const hudHeight = 80 \* uiScale/);
-    assert.match(rankRenderer, /850 \$\{20 \* uiScale\}pt/);
-    assert.match(rankRenderer, /ctx\.fillText\(candidate\.name/);
+    assert.match(rankRenderer, /const hudHeight = HUD_HEIGHT \* uiScale/);
+    assert.match(rankRenderer, /candidate\.name, x, hudHeight \/ 2, slotWidth - 14 \* uiScale, 20 \* uiScale/);
     assert.doesNotMatch(rankRenderer, /당첨 유력|`#\$\{rank\}/);
     assert.doesNotMatch(rankRenderer, /const hudHeight = broadcastMode \?/);
-    assert.match(minimap, /const controlsReserve = 62 \* uiScale/);
-    assert.match(minimap, /this\.top = 90 \* uiScale/);
+    assert.match(rankRenderer, /rankPanelWidth = 142 \* uiScale/);
+    assert.match(rankRenderer, /drawFittedText/);
+    assert.match(minimap, /CONTROLS_RESERVE_HEIGHT \* uiScale/);
+    assert.match(minimap, /this\.top = \(HUD_HEIGHT \+ HUD_CONTENT_GAP\) \* uiScale/);
     assert.match(minimap, /camera\.zoom \* initialZoom \* SCENE_DISPLAY_ZOOM/);
     assert.match(styles, /bottom: calc\(14px \+ var\(--safe-bottom\)\)/);
     assert.match(styles, /left: calc\(20px \+ var\(--safe-left\)\)/);
@@ -162,4 +164,24 @@ test('candidate bar selects three unique people nearest to the configured winnin
         selectCandidateRanks(ranked, 2).map(({ candidate, rank }) => [candidate.name, rank]),
         [['나', 3], ['가', 2], ['다', 4]],
     );
+});
+
+test('participant parser preserves BAND names and only consumes trailing draw modifiers', () => {
+    const { parseParticipantName } = require(path.join(appRoot, 'src', 'participantName.js'));
+
+    assert.deepEqual(parseParticipantName('김동욱 대표 / 크레용 본점'), {
+        name: '김동욱 대표 / 크레용 본점',
+        weight: 1,
+        count: 1,
+    });
+    assert.deepEqual(parseParticipantName('쭌이네*3/5'), {
+        name: '쭌이네',
+        weight: 5,
+        count: 3,
+    });
+    assert.deepEqual(parseParticipantName('별명*포함/이름'), {
+        name: '별명*포함/이름',
+        weight: 1,
+        count: 1,
+    });
 });

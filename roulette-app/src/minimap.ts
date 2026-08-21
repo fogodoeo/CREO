@@ -1,5 +1,6 @@
 import { initialZoom } from './data/constants';
 import { SCENE_DISPLAY_ZOOM, type RenderParameters } from './rouletteRenderer';
+import { CONTROLS_RESERVE_HEIGHT, HUD_CONTENT_GAP, HUD_HEIGHT } from './rouletteUiLayout';
 import type { ColorTheme } from './types/ColorTheme';
 import type { MapEntityState } from './types/MapEntity.type';
 import type { Rect } from './types/rect.type';
@@ -67,8 +68,9 @@ export class Minimap implements UIObject {
     if (!stage) return;
     const broadcastMode = this.broadcastMode;
     const uiScale = broadcastMode ? ctx.canvas.width / 720 : 1;
-    this.top = 90 * uiScale;
-    const controlsReserve = 62 * uiScale;
+    this.top = (HUD_HEIGHT + HUD_CONTENT_GAP) * uiScale;
+    this.boundingBox.x = 10 * uiScale;
+    const controlsReserve = CONTROLS_RESERVE_HEIGHT * uiScale;
     const availableHeight = Math.max(120, ctx.canvas.height - this.top - controlsReserve);
     this.scale = broadcastMode ? availableHeight / stage.goalY : Math.min(4, availableHeight / stage.goalY);
     this.boundingBox.y = this.top;
