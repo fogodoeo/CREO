@@ -140,6 +140,16 @@
         .p2-live-bidder-name { min-width: 0; overflow: hidden; color: #f8fafc; font-size: var(--p2-bid-fs); font-weight: 850; text-overflow: ellipsis; white-space: nowrap; }
         .p2-live-bidder-name small { margin-left: 12px; color: #94a3b8; font-size: 1em; font-weight: 700; }
         .p2-live-bidder-amount { margin-left: 12px; color: #e7c776; font-size: var(--p2-bid-fs); font-weight: 950; font-variant-numeric: tabular-nums; }
+        body[data-event-module="crewart"] .p2-live-bidder-row[data-house] {
+            border-left-color: var(--p2-house-color);
+            background: linear-gradient(100deg,
+                rgba(var(--p2-house-rgb), var(--p2-bidders-opacity)),
+                rgba(var(--p2-house-rgb), calc(var(--p2-bidders-opacity) * .7)));
+            box-shadow: 0 7px 20px rgba(0,0,0,.28), inset 0 0 0 1px rgba(255,255,255,.1);
+        }
+        body[data-event-module="crewart"] .p2-live-bidder-row[data-house] .p2-live-bidder-name,
+        body[data-event-module="crewart"] .p2-live-bidder-row[data-house] .p2-live-bidder-name small,
+        body[data-event-module="crewart"] .p2-live-bidder-row[data-house] .p2-live-bidder-amount { color: var(--p2-house-ink); }
         @keyframes p2-bidder-row-enter {
             from { opacity: 0; transform: translateY(-12px) scale(.985); }
             to { opacity: var(--p2-row-opacity, 1); transform: translateY(0) scale(1); }
@@ -7091,6 +7101,19 @@
             return value.toLocaleString('ko-KR', { maximumFractionDigits: 1 });
         }
 
+        const CREWART_BIDDER_HOUSE_PALETTE = Object.freeze({
+            R: { color: '#c64b52', rgb: '198,75,82', ink: '#ffffff' },
+            G: { color: '#328b5b', rgb: '50,139,91', ink: '#ffffff' },
+            B: { color: '#3c73bd', rgb: '60,115,189', ink: '#ffffff' },
+            Y: { color: '#d2a33a', rgb: '210,163,58', ink: '#17130b' }
+        });
+
+        function normalizeCrewartBidderHouse(value) {
+            const raw = String(value || '').trim().toUpperCase();
+            return ({ RED: 'R', GREEN: 'G', BLUE: 'B', YELLOW: 'Y' })[raw]
+                || (CREWART_BIDDER_HOUSE_PALETTE[raw] ? raw : '');
+        }
+
         function buildLiveBidRows(map, activeItem) {
             const bids = getBidLogRows(activeItem);
             const mode = map?.live_bidders_mode || 'top';
@@ -7111,6 +7134,7 @@
                             name: rawName,
                             region: bid.region || bid.location || bid.area || '',
                             amount,
+                            houseKey: normalizeCrewartBidderHouse(bid.crewart_house_key || bid.crewartHouseKey),
                             isQuiz,
                             sortTime,
                             index
@@ -7132,6 +7156,7 @@
                     name: rawName,
                     region: bid.region || bid.location || bid.area || '',
                     amount: normalizeBidAmount(bid.amount !== undefined && bid.amount !== null ? bid.amount : bid.price),
+                    houseKey: normalizeCrewartBidderHouse(bid.crewart_house_key || bid.crewartHouseKey),
                     isQuiz,
                     sortTime: bidSortTime(bid, index),
                     index
@@ -7206,9 +7231,22 @@
                     rowEl.dataset.bidderKey = key;
                 }
                 rowEl.dataset.rank = String(index + 1);
+                const houseKey = normalizeCrewartBidderHouse(bid.houseKey);
+                const housePalette = CREWART_BIDDER_HOUSE_PALETTE[houseKey];
+                if (housePalette) {
+                    rowEl.dataset.house = houseKey;
+                    rowEl.style.setProperty('--p2-house-color', housePalette.color);
+                    rowEl.style.setProperty('--p2-house-rgb', housePalette.rgb);
+                    rowEl.style.setProperty('--p2-house-ink', housePalette.ink);
+                } else {
+                    delete rowEl.dataset.house;
+                    rowEl.style.removeProperty('--p2-house-color');
+                    rowEl.style.removeProperty('--p2-house-rgb');
+                    rowEl.style.removeProperty('--p2-house-ink');
+                }
                 const rankOpacity = [1, .90, .86, .78, .70, .64, .58, .52][index] ?? .48;
                 rowEl.style.setProperty('--p2-row-opacity', String(rankOpacity));
-                const cacheKey = `${identity.name}|${identity.region}|${amount}|${index + 1}`;
+                const cacheKey = `${identity.name}|${identity.region}|${amount}|${index + 1}|${houseKey}`;
                 if (rowEl.dataset.lastCache !== cacheKey) {
                     rowEl.dataset.lastCache = cacheKey;
                     rowEl.innerHTML = `

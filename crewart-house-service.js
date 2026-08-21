@@ -56,19 +56,27 @@ function deterministicRandomHouse(identity, secret) {
 function createCrewartHouseService({ repository, secret, now = () => Date.now(), logger = console } = {}) {
     if (!repository) throw new Error('repository is required');
     const assignmentSecret = String(secret || '');
+    const assignmentCache = new Map();
 
-    async function read(identity) {
-        const key = assignmentKey(identity, assignmentSecret);
-        const rows = await repository.getRowsByKeys([key]);
-        const row = rows?.[0];
+    function assignmentFromRow(row, identity) {
         if (!row?.value) return null;
         try {
             const parsed = JSON.parse(row.value);
             const houseKey = normalizeHouseKey(parsed.houseKey);
-            return houseKey ? { ...parsed, houseKey, key } : null;
+            if (!houseKey) return null;
+            const assignment = { ...parsed, houseKey, key: row.key };
+            assignmentCache.set(identity, assignment);
+            return assignment;
         } catch (_) {
             return null;
         }
+    }
+
+    async function read(identity) {
+        if (assignmentCache.has(identity)) return assignmentCache.get(identity);
+        const key = assignmentKey(identity, assignmentSecret);
+        const rows = await repository.getRowsByKeys([key]);
+        return assignmentFromRow(rows?.[0], identity);
     }
 
     async function write(identity, assignment) {
@@ -82,7 +90,9 @@ function createCrewartHouseService({ repository, secret, now = () => Date.now(),
         };
         if (!value.houseKey) throw new Error('valid house key is required');
         await repository.upsertRows([{ key, value: JSON.stringify(value) }]);
-        return { ...value, key };
+        const saved = { ...value, key };
+        assignmentCache.set(identity, saved);
+        return saved;
     }
 
     async function linkSurveyAssignment(memberKey, houseKey, participantKey = '') {
@@ -117,7 +127,55 @@ function createCrewartHouseService({ repository, secret, now = () => Date.now(),
         }
     }
 
-    return Object.freeze({ linkSurveyAssignment, resolveWinnerAssignment });
+    async function resolveBidderAssignments(inputs = []) {
+        const entries = (Array.isArray(inputs) ? inputs : []).map((input) => {
+            const identity = assignmentIdentity(input, assignmentSecret);
+            return { input, identity, key: assignmentKey(identity, assignmentSecret) };
+        });
+        const unique = new Map(entries.map((entry) => [entry.identity, entry]));
+        const unresolved = [...unique.values()].filter((entry) => !assignmentCache.has(entry.identity));
+
+        if (unresolved.length) {
+            let storedRows = [];
+            try {
+                storedRows = await repository.getRowsByKeys(unresolved.map((entry) => entry.key));
+            } catch (error) {
+                logger.warn?.('[crewart-house] bidder assignment lookup unavailable; using stable fallback', error?.message || error);
+            }
+            const storedByKey = new Map((storedRows || []).map((row) => [row.key, row]));
+            unresolved.forEach((entry) => assignmentFromRow(storedByKey.get(entry.key), entry.identity));
+
+            const missing = unresolved.filter((entry) => !assignmentCache.has(entry.identity));
+            if (missing.length) {
+                const pending = missing.map((entry) => {
+                    const value = {
+                        version: 1,
+                        houseKey: deterministicRandomHouse(entry.identity, assignmentSecret),
+                        source: 'random',
+                        participantKey: '',
+                        updatedAt: new Date(now()).toISOString()
+                    };
+                    return { ...entry, value, row: { key: entry.key, value: JSON.stringify(value) } };
+                });
+                let persisted = true;
+                try {
+                    await repository.upsertRows(pending.map((entry) => entry.row));
+                } catch (error) {
+                    persisted = false;
+                    logger.warn?.('[crewart-house] bidder assignment persistence unavailable; broadcast can continue', error?.message || error);
+                }
+                pending.forEach((entry) => assignmentCache.set(entry.identity, {
+                    ...entry.value,
+                    key: entry.key,
+                    ...(persisted ? {} : { persisted: false })
+                }));
+            }
+        }
+
+        return entries.map((entry) => assignmentCache.get(entry.identity));
+    }
+
+    return Object.freeze({ linkSurveyAssignment, resolveBidderAssignments, resolveWinnerAssignment });
 }
 
 module.exports = {

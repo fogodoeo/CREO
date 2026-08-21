@@ -49,7 +49,7 @@ test('public broadcast items never expose winner or shipping contact data', () =
         attributes: {
             crewart_house_key: 'B',
             crewart_house_source: 'survey',
-            bid_log: JSON.stringify([{ name: '입찰자', bidder_key: 'bidder-1', amount: 31, phone: '01099999999' }]),
+            bid_log: JSON.stringify([{ name: '입찰자', bidder_key: 'bidder-1', amount: 31, phone: '01099999999', crewart_house_key: 'G', crewart_house_source: 'survey' }]),
             checklist: 'gender:M|weight:42|sale_mode:quiz|quiz_question_b64:question|quiz_answer_b64:secret|sale_config_b64:secret-config',
             photo_sire: '/sire.webp'
         }
@@ -61,7 +61,8 @@ test('public broadcast items never expose winner or shipping contact data', () =
     assert.equal('shippingAddress' in item, false);
     assert.deepEqual(item.bidLog, [{
         name: '입찰자', bidder_key: 'bidder-1', region: '', amount: 31,
-        time: '', timestamp: '', created_at: '', isQuiz: false
+        time: '', timestamp: '', created_at: '', isQuiz: false,
+        crewart_house_key: 'G', crewart_house_source: 'survey'
     }]);
     assert.equal('phone' in item.bidLog[0], false);
     assert.equal(item.attributes.checklist, 'gender:M|weight:42|sale_mode:quiz|quiz_question_b64:question');

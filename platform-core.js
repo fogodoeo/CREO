@@ -379,16 +379,24 @@ function publicBidLog(item = {}) {
         try { rows = JSON.parse(raw); } catch (_) { rows = []; }
     }
     if (!Array.isArray(rows)) return [];
-    return rows.slice(-100).map((bid) => ({
-        name: cleanText(bid?.name || bid?.bidder || bid?.winner, 80),
-        bidder_key: cleanText(bid?.bidder_key || bid?.bidderKey || '', 80),
-        region: cleanText(bid?.region || '', 40),
-        amount: Math.max(0, Number(bid?.amount ?? bid?.price) || 0),
-        time: cleanText(bid?.time || '', 40),
-        timestamp: cleanText(bid?.timestamp || '', 60),
-        created_at: cleanText(bid?.created_at || bid?.createdAt || '', 60),
-        isQuiz: bid?.isQuiz === true
-    })).filter((bid) => bid.name || bid.bidder_key || bid.amount || bid.isQuiz);
+    return rows.slice(-100).map((bid) => {
+        const houseKey = cleanText(bid?.crewart_house_key || bid?.crewartHouseKey, 8).toUpperCase();
+        const houseSource = cleanText(bid?.crewart_house_source || bid?.crewartHouseSource, 16);
+        return {
+            name: cleanText(bid?.name || bid?.bidder || bid?.winner, 80),
+            bidder_key: cleanText(bid?.bidder_key || bid?.bidderKey || '', 80),
+            region: cleanText(bid?.region || '', 40),
+            amount: Math.max(0, Number(bid?.amount ?? bid?.price) || 0),
+            time: cleanText(bid?.time || '', 40),
+            timestamp: cleanText(bid?.timestamp || '', 60),
+            created_at: cleanText(bid?.created_at || bid?.createdAt || '', 60),
+            isQuiz: bid?.isQuiz === true,
+            ...(['R', 'G', 'B', 'Y'].includes(houseKey) ? {
+                crewart_house_key: houseKey,
+                crewart_house_source: houseSource === 'survey' ? 'survey' : 'random'
+            } : {})
+        };
+    }).filter((bid) => bid.name || bid.bidder_key || bid.amount || bid.isQuiz);
 }
 
 function publicItem(item = {}) {

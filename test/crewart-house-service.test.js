@@ -60,6 +60,31 @@ test('verified survey assignment replaces a prior random assignment for the same
     assert.equal(resolved.source, 'survey');
 });
 
+test('live bidders resolve in one batch and reuse the same cached assignments', async () => {
+    const repository = new MemoryConfigRepository();
+    let reads = 0;
+    let writes = 0;
+    const originalRead = repository.getRowsByKeys.bind(repository);
+    const originalWrite = repository.upsertRows.bind(repository);
+    repository.getRowsByKeys = async (keys) => { reads += 1; return originalRead(keys); };
+    repository.upsertRows = async (rows) => { writes += 1; return originalWrite(rows); };
+    const service = createCrewartHouseService({ repository, secret: SECRET, now: () => 0 });
+    const inputs = [
+        { channelId: 'crewart', itemId: 'item-1', phone: '01011112222', winnerAlias: '첫번째' },
+        { channelId: 'crewart', itemId: 'item-1', phone: '01033334444', winnerAlias: '두번째' },
+        { channelId: 'crewart', itemId: 'item-1', phone: '01011112222', winnerAlias: '첫번째' }
+    ];
+
+    const first = await service.resolveBidderAssignments(inputs);
+    const second = await service.resolveBidderAssignments(inputs);
+
+    assert.equal(reads, 1);
+    assert.equal(writes, 1);
+    assert.equal(first[0].houseKey, first[2].houseKey);
+    assert.deepEqual(second.map(row => row.houseKey), first.map(row => row.houseKey));
+    assert.ok(first.every(row => /^[RGBY]$/.test(row.houseKey)));
+});
+
 test('a temporary assignment-store outage never blocks a sale', async () => {
     const repository = {
         async getRowsByKeys() { throw new Error('temporary outage'); },

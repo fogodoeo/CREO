@@ -309,6 +309,68 @@ function sanitizeRecord(type, input = {}, current = {}) {
     throw new Error('Unsupported record type');
 }
 
+function rawItemBidLog(item = {}) {
+    const raw = item.bidLog ?? item.bid_log ?? item.attributes?.bid_log ?? [];
+    if (Array.isArray(raw)) return raw.slice(-100);
+    if (typeof raw !== 'string') return [];
+    try {
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed.slice(-100) : [];
+    } catch (_) {
+        return [];
+    }
+}
+
+async function enrichCrewartBidderHouses(channel, item, crewartHouseService, logger = console) {
+    const competition = channel?.audienceCompetition || {};
+    if (
+        competition.enabled !== true
+        || competition.assignment !== 'survey-random'
+        || !crewartHouseService
+    ) return item;
+
+    const bids = rawItemBidLog(item);
+    if (!bids.length) return item;
+    const inputs = bids.map((bid, index) => {
+        const bidderKey = cleanText(bid?.bidder_key || bid?.bidderKey || '', 80);
+        const explicitMemberKey = cleanText(
+            bid?.member_key || bid?.memberKey || bid?.band_member_key || bid?.bandMemberKey || '',
+            80
+        );
+        const phone = bid?.phone || bid?.bidder_phone || bid?.bidderPhone || bid?.phone_number || bid?.phoneNumber || '';
+        return {
+            channelId: channel.id,
+            itemId: item.id,
+            memberKey: phone ? '' : (explicitMemberKey || (/^member_[a-z0-9_-]+$/i.test(bidderKey) ? bidderKey : '')),
+            phone,
+            winnerName: bid?.name || bid?.bidder || bid?.winner || '',
+            winnerAlias: bidderKey || bid?.name || `bidder-${index + 1}`
+        };
+    });
+
+    try {
+        const assignments = typeof crewartHouseService.resolveBidderAssignments === 'function'
+            ? await crewartHouseService.resolveBidderAssignments(inputs)
+            : await Promise.all(inputs.map((input) => crewartHouseService.resolveWinnerAssignment(input)));
+        return {
+            ...item,
+            bidLog: bids.map((bid, index) => {
+                const assignment = assignments[index];
+                const houseKey = cleanText(assignment?.houseKey, 8).toUpperCase();
+                if (!['R', 'G', 'B', 'Y'].includes(houseKey)) return bid;
+                return {
+                    ...bid,
+                    crewart_house_key: houseKey,
+                    crewart_house_source: assignment?.source === 'survey' ? 'survey' : 'random'
+                };
+            })
+        };
+    } catch (error) {
+        logger.warn?.('[platform] live bidder house assignment unavailable', error?.message || error);
+        return item;
+    }
+}
+
 function validateRecord(type, record, workspace) {
     const errors = [];
     if (type === 'vendor') {
@@ -748,6 +810,13 @@ function createPlatformApi({
             if (segments.length === 3 && segments[2] === 'broadcast' && method === 'GET') {
                 const data = await workspace(channelId);
                 const vendors = new Map(data.vendors.map((vendor) => [vendor.id, vendor]));
+                const activeItemId = cleanText(data.broadcast?.activeItemId, 64);
+                const broadcastItems = await Promise.all(data.items.map(async (item) => {
+                    const isActiveItem = item.status === 'live' || (activeItemId && item.id === activeItemId);
+                    return isActiveItem
+                        ? enrichCrewartBidderHouses(channel, item, crewartHouseService, logger)
+                        : item;
+                }));
                 replyJson(res, 200, {
                     revision: channelRevision(channelId),
                     channel,
@@ -759,7 +828,7 @@ function createPlatformApi({
                         .filter((asset) => asset.active !== false)
                         .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name, 'ko'))
                         .map(({ id, name, kind, page, targetName, imageUrl, linkUrl, sortOrder }) => ({ id, name, kind, page, targetName, imageUrl, linkUrl, sortOrder })),
-                    items: data.items.map((item) => {
+                    items: broadcastItems.map((item) => {
                         const vendor = vendors.get(item.vendorId);
                         return publicItem({
                             ...item,

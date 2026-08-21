@@ -492,6 +492,51 @@ test('audience competition freezes the winning viewer house when an item is sold
     assert.equal(broadcast.json().items[0].winnerPhone, undefined);
 });
 
+test('CREWART public broadcast adds only house colors to live bidders', async () => {
+    const repository = new MemoryRepository();
+    repository.catalog.channels[0] = normalizeChannel({
+        ...repository.catalog.channels[0],
+        audienceCompetition: { enabled: true, assignment: 'survey-random', metric: 'soldPrice' }
+    });
+    const calls = [];
+    const api = createPlatformApi({
+        repository,
+        crewartHouseService: {
+            async resolveBidderAssignments(inputs) {
+                calls.push(inputs);
+                return [
+                    { houseKey: 'B', source: 'survey' },
+                    { houseKey: 'Y', source: 'random' }
+                ];
+            }
+        },
+        logger: { error() {}, warn() {} }
+    });
+    await call(api, 'POST', '/api/platform/channels/alpha/items', {
+        record: {
+            id: 'live_house_item', lotNumber: 1, name: '실시간 개체', status: 'waiting',
+            attributes: { bid_log: JSON.stringify([
+                { name: '설문참여자', bidder_key: 'member_verified', phone: '01011112222', amount: 30 },
+                { name: '미참여자', bidder_key: 'viewer-random', phone: '01033334444', amount: 28 }
+            ]) }
+        }
+    });
+    await call(api, 'PUT', '/api/platform/channels/alpha/auction-transition', {
+        itemId: 'live_house_item', status: 'live', mode: 'live', state: { page: 2 }
+    });
+
+    const response = await call(api, 'GET', '/api/platform/channels/alpha/broadcast', null, '');
+    const bids = response.json().items[0].bidLog;
+
+    assert.equal(response.status, 200);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0][0].phone, '01011112222');
+    assert.deepEqual(bids.map(bid => [bid.crewart_house_key, bid.crewart_house_source]), [
+        ['B', 'survey'], ['Y', 'random']
+    ]);
+    assert.ok(bids.every(bid => !('phone' in bid)));
+});
+
 test('ordinary channels never assign an audience house during a sale', async () => {
     const repository = new MemoryRepository();
     let calls = 0;

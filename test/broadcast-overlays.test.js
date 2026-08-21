@@ -29,6 +29,13 @@ test('live bidder background opacity is configurable and lower ranks remain read
     assert.doesNotMatch(preview, /isCreyon\s*\?\s*'none'\s*:\s*''/);
 });
 
+test('CREWART page two colors each live bidder card with the resolved viewer house', () => {
+    assert.match(broadcast, /body\[data-event-module="crewart"\] \.p2-live-bidder-row\[data-house\]/);
+    assert.match(broadcast, /CREWART_BIDDER_HOUSE_PALETTE/);
+    assert.match(broadcast, /bid\.crewart_house_key \|\| bid\.crewartHouseKey/);
+    assert.match(broadcast, /rowEl\.dataset\.house = houseKey/);
+});
+
 test('all shared legacy layouts support three nametags', () => {
     assert.match(settings, /id="cfg-host-name3"/);
     assert.match(settings, /host_name3:/);
