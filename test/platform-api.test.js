@@ -470,9 +470,17 @@ test('audience competition freezes the winning viewer house when an item is sold
             return { houseKey: 'B', source: 'survey' };
         }
     };
-    const api = createPlatformApi({ repository, crewartHouseService, logger: { error() {} } });
+    const api = createPlatformApi({
+        repository,
+        crewartHouseService,
+        bandMembership: { async resolveMemberSubject() { return 'member_linked_from_band'; } },
+        logger: { error() {} }
+    });
     const created = await call(api, 'POST', '/api/platform/channels/alpha/items', {
-        record: { id: 'item_house', lotNumber: 1, name: '경매 개체', groupId: 'group-red' }
+        record: {
+            id: 'item_house', lotNumber: 1, name: '경매 개체', groupId: 'group-red',
+            attributes: { bid_log: JSON.stringify([{ name: '배원직', bidder_key: 'band-user-1', amount: 10 }]) }
+        }
     });
     assert.equal(created.status, 201, created.body);
 
@@ -485,6 +493,7 @@ test('audience competition freezes the winning viewer house when an item is sold
     assert.equal(calls.length, 1);
     assert.equal(calls[0].phone, '01042150831');
     assert.equal(calls[0].winnerAlias, '배원직');
+    assert.equal(calls[0].memberKey, 'member_linked_from_band');
     assert.equal(response.json().item.attributes.crewart_house_key, 'B');
     assert.equal(response.json().item.attributes.crewart_house_source, 'survey');
     const broadcast = await call(api, 'GET', '/api/platform/channels/alpha/broadcast', null, '');
@@ -499,6 +508,7 @@ test('CREWART public broadcast adds only house colors to live bidders', async ()
         audienceCompetition: { enabled: true, assignment: 'survey-random', metric: 'soldPrice' }
     });
     const calls = [];
+    const memberLookups = [];
     const api = createPlatformApi({
         repository,
         crewartHouseService: {
@@ -510,14 +520,20 @@ test('CREWART public broadcast adds only house colors to live bidders', async ()
                 ];
             }
         },
+        bandMembership: {
+            async resolveMemberSubject(input) {
+                memberLookups.push(input);
+                return input.bandMemberKey === 'viewer-random' ? 'member_from_band_key' : '';
+            }
+        },
         logger: { error() {}, warn() {} }
     });
     await call(api, 'POST', '/api/platform/channels/alpha/items', {
         record: {
             id: 'live_house_item', lotNumber: 1, name: '실시간 개체', status: 'waiting',
             attributes: { bid_log: JSON.stringify([
-                { name: '설문참여자', bidder_key: 'member_verified', phone: '01011112222', amount: 30 },
-                { name: '미참여자', bidder_key: 'viewer-random', phone: '01033334444', amount: 28 }
+                { name: '설문참여자/서울/11112222', bidder_key: 'band-survey', amount: 30 },
+                { name: '미참여자', bidder_key: 'viewer-random', amount: 28 }
             ]) }
         }
     });
@@ -531,6 +547,8 @@ test('CREWART public broadcast adds only house colors to live bidders', async ()
     assert.equal(response.status, 200);
     assert.equal(calls.length, 1);
     assert.equal(calls[0][0].phone, '01011112222');
+    assert.equal(calls[0][1].memberKey, 'member_from_band_key');
+    assert.deepEqual(memberLookups.map(input => input.bandMemberKey), ['viewer-random']);
     assert.deepEqual(bids.map(bid => [bid.crewart_house_key, bid.crewart_house_source]), [
         ['B', 'survey'], ['Y', 'random']
     ]);

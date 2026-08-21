@@ -39,6 +39,8 @@ function loadConfig(env = process.env) {
     const table = validIdentifier(env.BAND_MEMBER_TABLE, 'band_members');
     const phoneColumn = validIdentifier(env.BAND_MEMBER_PHONE_COLUMN, 'phone_normalized');
     const activeColumn = validIdentifier(env.BAND_MEMBER_ACTIVE_COLUMN, 'is_active');
+    const memberKeyColumn = validIdentifier(env.BAND_MEMBER_KEY_COLUMN, 'band_member_key');
+    const displayNameColumn = validIdentifier(env.BAND_MEMBER_NAME_COLUMN, 'display_name');
     const targetBandUrl = String(
         env.BAND_MEMBER_TARGET_BAND_URL
         || env.BAND_OAUTH_TARGET_BAND_URL
@@ -55,6 +57,8 @@ function loadConfig(env = process.env) {
         table,
         phoneColumn,
         activeColumn,
+        memberKeyColumn,
+        displayNameColumn,
         targetBandUrl,
         allowedOrigins,
         sessionTtlSec: positiveInteger(env.BAND_MEMBER_SESSION_TTL_SEC, 7200, 300, 86400),
@@ -199,6 +203,7 @@ function createBandMembership(options = {}) {
     const allowAttempt = createRateLimiter(config, now);
     const memberCache = new Map();
     const memberLookups = new Map();
+    const identityCache = new Map();
 
     function cachedMember(phone) {
         const cached = memberCache.get(phone);
@@ -245,6 +250,55 @@ function createBandMembership(options = {}) {
         })().finally(() => memberLookups.delete(phone));
         memberLookups.set(phone, lookup);
         return lookup;
+    }
+
+    async function lookupMemberSubject(column, value) {
+        const cleanValue = String(value || '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120);
+        if (!config.configured || !fetchImpl || !column || !cleanValue) return '';
+        const cacheKey = `${column}:${cleanValue}`;
+        const cached = identityCache.get(cacheKey);
+        if (cached && cached.expiresAt > now()) return cached.subject;
+
+        const query = new URL(`${config.url}/rest/v1/${config.table}`);
+        query.searchParams.set('select', `${config.phoneColumn},${column}`);
+        query.searchParams.set(column, `eq.${cleanValue}`);
+        query.searchParams.set(config.activeColumn, 'eq.true');
+        query.searchParams.set('limit', '2');
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), config.requestTimeoutMs);
+        let subject = '';
+        try {
+            const response = await fetchImpl(query, {
+                headers: {
+                    apikey: config.serviceRoleKey,
+                    Authorization: `Bearer ${config.serviceRoleKey}`,
+                    Accept: 'application/json'
+                },
+                signal: controller.signal
+            });
+            if (!response.ok) throw new Error(`Supabase ${response.status}`);
+            const rows = await response.json();
+            const phones = [...new Set((Array.isArray(rows) ? rows : [])
+                .map((row) => normalizePhone(row?.[config.phoneColumn]))
+                .filter(Boolean))];
+            if (phones.length === 1) subject = publicSubject(phones[0], config.sessionSecret);
+        } finally {
+            clearTimeout(timer);
+        }
+        identityCache.set(cacheKey, {
+            subject,
+            expiresAt: now() + (subject ? config.positiveCacheMs : config.negativeCacheMs)
+        });
+        return subject;
+    }
+
+    async function resolveMemberSubject(input = {}) {
+        if (!config.configured) return '';
+        const phone = normalizePhone(input.phone);
+        if (phone) return publicSubject(phone, config.sessionSecret);
+        const byBandKey = await lookupMemberSubject(config.memberKeyColumn, input.bandMemberKey);
+        if (byBandKey) return byBandKey;
+        return lookupMemberSubject(config.displayNameColumn, input.displayName);
     }
 
     function sessionResponse(payload, token = '') {
@@ -349,7 +403,7 @@ function createBandMembership(options = {}) {
         return true;
     }
 
-    return { config, handle, lookupMember };
+    return { config, handle, lookupMember, resolveMemberSubject };
 }
 
 module.exports = {

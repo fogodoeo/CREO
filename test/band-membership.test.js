@@ -3,6 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { Readable } = require('node:stream');
+const { createHmac } = require('node:crypto');
 const {
     SESSION_TYPE,
     createBandMembership,
@@ -130,6 +131,33 @@ test('the same phone keeps a stable anonymous member scope across random session
     }
     assert.notEqual(subjects[0], subjects[1]);
     assert.equal(memberIds[0], memberIds[1]);
+});
+
+test('BAND chat user keys resolve to the same private member scope as phone verification', async () => {
+    let fetchCount = 0;
+    const membership = createBandMembership({
+        env: ENV,
+        now: () => NOW,
+        fetchImpl: async (url) => {
+            fetchCount += 1;
+            const query = new URL(url);
+            assert.equal(query.searchParams.get('band_member_key'), 'eq.band-user-123');
+            return jsonResponse([{ phone_normalized: '01012345678', band_member_key: 'band-user-123' }]);
+        },
+        logger: { error() {} }
+    });
+
+    const first = await membership.resolveMemberSubject({ bandMemberKey: 'band-user-123', displayName: '홍길동' });
+    const second = await membership.resolveMemberSubject({ bandMemberKey: 'band-user-123', displayName: '홍길동' });
+    const expected = `member_${createHmac('sha256', SESSION_SECRET)
+        .update('band-phone:01012345678')
+        .digest('base64url')
+        .slice(0, 32)}`;
+
+    assert.equal(first, expected);
+    assert.equal(second, expected);
+    assert.equal(fetchCount, 1);
+    assert.doesNotMatch(first, /01012345678/);
 });
 
 test('a zero attempt limit disables throttling during testing', async () => {

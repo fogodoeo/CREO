@@ -3,6 +3,7 @@
 const crypto = require('node:crypto');
 const { refreshShippingRate } = require('./shipping-rate-refresh');
 const { rankingsForChannel } = require('./public/ranking-engine');
+const { normalizePhone } = require('./band-membership');
 
 const {
     DEFAULT_CHANNELS,
@@ -321,7 +322,50 @@ function rawItemBidLog(item = {}) {
     }
 }
 
-async function enrichCrewartBidderHouses(channel, item, crewartHouseService, logger = console) {
+function phoneFromBid(bid = {}) {
+    const explicit = normalizePhone(
+        bid.phone || bid.bidder_phone || bid.bidderPhone || bid.phone_number || bid.phoneNumber || ''
+    );
+    if (explicit) return explicit;
+    const text = String(bid.name || bid.bidder || bid.winner || '');
+    const matches = text.match(/(?<!\d)(?:010[\s.-]?\d{4}[\s.-]?\d{4}|\d{8})(?!\d)/g) || [];
+    for (const match of matches) {
+        const normalized = normalizePhone(/^\d{8}$/.test(match) ? `010${match}` : match);
+        if (normalized) return normalized;
+    }
+    return '';
+}
+
+async function bidderMemberKey(bid, bandMembership) {
+    if (typeof bandMembership?.resolveMemberSubject !== 'function') return '';
+    const bidderKey = cleanText(bid?.bidder_key || bid?.bidderKey || '', 80);
+    try {
+        return cleanText(await bandMembership.resolveMemberSubject({
+            phone: phoneFromBid(bid),
+            bandMemberKey: bidderKey,
+            displayName: bid?.name || bid?.bidder || bid?.winner || ''
+        }), 80);
+    } catch (_) {
+        return '';
+    }
+}
+
+async function winnerMemberKey(item, bandMembership) {
+    if (typeof bandMembership?.resolveMemberSubject !== 'function') return '';
+    const bids = rawItemBidLog(item);
+    if (!bids.length) return '';
+    const winnerValues = [item?.winnerAlias, item?.winnerName]
+        .map((value) => cleanText(value, 80).toLowerCase())
+        .filter(Boolean);
+    const winnerBid = bids.find((bid) => {
+        const name = cleanText(bid?.name || bid?.bidder || bid?.winner, 80).toLowerCase();
+        const key = cleanText(bid?.bidder_key || bid?.bidderKey, 80).toLowerCase();
+        return winnerValues.includes(name) || winnerValues.includes(key);
+    }) || bids[0];
+    return bidderMemberKey({ ...winnerBid, phone: item?.winnerPhone || phoneFromBid(winnerBid) }, bandMembership);
+}
+
+async function enrichCrewartBidderHouses(channel, item, crewartHouseService, bandMembership, logger = console) {
     const competition = channel?.audienceCompetition || {};
     if (
         competition.enabled !== true
@@ -331,22 +375,23 @@ async function enrichCrewartBidderHouses(channel, item, crewartHouseService, log
 
     const bids = rawItemBidLog(item);
     if (!bids.length) return item;
-    const inputs = bids.map((bid, index) => {
+    const inputs = await Promise.all(bids.map(async (bid, index) => {
         const bidderKey = cleanText(bid?.bidder_key || bid?.bidderKey || '', 80);
         const explicitMemberKey = cleanText(
             bid?.member_key || bid?.memberKey || bid?.band_member_key || bid?.bandMemberKey || '',
             80
         );
-        const phone = bid?.phone || bid?.bidder_phone || bid?.bidderPhone || bid?.phone_number || bid?.phoneNumber || '';
+        const phone = phoneFromBid(bid);
+        const resolvedMemberKey = phone ? '' : await bidderMemberKey(bid, bandMembership);
         return {
             channelId: channel.id,
             itemId: item.id,
-            memberKey: phone ? '' : (explicitMemberKey || (/^member_[a-z0-9_-]+$/i.test(bidderKey) ? bidderKey : '')),
+            memberKey: phone ? '' : (explicitMemberKey || resolvedMemberKey || (/^member_[a-z0-9_-]+$/i.test(bidderKey) ? bidderKey : '')),
             phone,
             winnerName: bid?.name || bid?.bidder || bid?.winner || '',
             winnerAlias: bidderKey || bid?.name || `bidder-${index + 1}`
         };
-    });
+    }));
 
     try {
         const assignments = typeof crewartHouseService.resolveBidderAssignments === 'function'
@@ -414,6 +459,7 @@ function createPlatformApi({
     logger = console,
     refreshShippingRateFn = refreshShippingRate,
     crewartHouseService = null,
+    bandMembership = null,
     adminSessionSecret = process.env.CREO_ADMIN_SECRET || crypto.randomBytes(32).toString('hex'),
     adminSessionTtlMs = ADMIN_SESSION_TTL_MS
 } = {}) {
@@ -814,7 +860,7 @@ function createPlatformApi({
                 const broadcastItems = await Promise.all(data.items.map(async (item) => {
                     const isActiveItem = item.status === 'live' || (activeItemId && item.id === activeItemId);
                     return isActiveItem
-                        ? enrichCrewartBidderHouses(channel, item, crewartHouseService, logger)
+                        ? enrichCrewartBidderHouses(channel, item, crewartHouseService, bandMembership, logger)
                         : item;
                 }));
                 replyJson(res, 200, {
@@ -917,9 +963,11 @@ function createPlatformApi({
                             && !['R', 'G', 'B', 'Y'].includes(fixedHouseKey)
                             && typeof crewartHouseService?.resolveWinnerAssignment === 'function'
                         ) {
+                            const memberKey = await winnerMemberKey(candidate, bandMembership);
                             const assignment = await crewartHouseService.resolveWinnerAssignment({
                                 channelId,
                                 itemId: current.id,
+                                memberKey,
                                 phone: candidate.winnerPhone,
                                 winnerName: candidate.winnerName,
                                 winnerAlias: candidate.winnerAlias

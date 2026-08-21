@@ -35,7 +35,7 @@ const crewartHouseService = createCrewartHouseService({
     repository: supabasePlatformRepository,
     secret: bandMembership.config.sessionSecret
 });
-const platformApi = createPlatformApi({ repository: platformRepository, crewartHouseService });
+const platformApi = createPlatformApi({ repository: platformRepository, crewartHouseService, bandMembership });
 const captureStorage = new CaptureStorage();
 const captureApi = createCaptureApi({
     repository: platformRepository,
