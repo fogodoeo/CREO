@@ -50,8 +50,11 @@ test('roulette exposes its version and keeps native broadcast rendering with the
     const marble = fs.readFileSync(path.join(appRoot, 'src', 'marble.ts'), 'utf8');
 
     assert.doesNotMatch(html, /id="versionBadge"/);
-    assert.match(config, /APP_VERSION = '1\.8\.0'/);
+    assert.match(config, /APP_VERSION = '1\.9\.0'/);
     assert.match(roulette, /_updateInterval = 10/);
+    assert.match(roulette, /_renderFps: 60 \| 120 = 60/);
+    assert.match(roulette, /this\._renderElapsed %= renderInterval/);
+    assert.match(roulette, /public setRenderFps\(value: number\)/);
     assert.match(roulette, /!finishedIds\.has\(marble\.id\)/);
     assert.match(renderer, /COMPACT_SCENE_PIXEL_BUDGET = 520_000/);
     assert.match(renderer, /Math\.min\(MAX_DISPLAY_WIDTH, Math\.max\(realSize\.width, 960\)\)/);
@@ -88,6 +91,7 @@ test('pinball separates an authenticated laptop controller from a clean fixed br
     assert.match(html, /id="remoteSessionSection"/);
     assert.match(html, /id="broadcastSourceInput"/);
     assert.match(html, /id="resetBroadcastSessionButton"/);
+    assert.match(html, /id="renderFpsSelect"/);
     assert.match(app, /isRemoteDisplay = isBroadcastMode && Boolean\(remoteChannelId\)/);
     assert.match(app, /pinball-session/);
     assert.match(app, /broadcast-pulse/);
@@ -96,6 +100,7 @@ test('pinball separates an authenticated laptop controller from a clean fixed br
     assert.match(app, /sendRemoteCommand\('prepare'\)/);
     assert.match(app, /sendRemoteCommand\('start'\)/);
     assert.match(app, /acknowledgeRemoteResult/);
+    assert.match(app, /renderFps: Number\(dom\.renderFps\.value\) === 120 \? 120 : 60/);
     assert.match(styles, /html\.remote-display-mode \.stage-header/);
 });
 

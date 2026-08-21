@@ -173,7 +173,7 @@ test('pinball broadcast sessions are channel-isolated, persistent, and suppress 
     const prepareBody = {
         action: 'prepare', requestId: 'prepare_request_001', expectedRevision: 0,
         seed: 'stable-seed-001', entries: ['김상정*2', '배원직'],
-        config: { eventTitle: '크레와트', themePreset: 'academy', defaultSpeed: 1.5, autoRecording: true }
+        config: { eventTitle: '크레와트', themePreset: 'academy', defaultSpeed: 1.5, renderFps: 120, autoRecording: true }
     };
     const denied = await call(api, 'PUT', '/api/platform/channels/alpha/pinball-session', prepareBody, '');
     assert.equal(denied.status, 401);
@@ -184,6 +184,7 @@ test('pinball broadcast sessions are channel-isolated, persistent, and suppress 
     assert.equal(prepared.phase, 'prepared');
     assert.equal(prepared.ballCount, 3);
     assert.equal(prepared.config.themePreset, 'academy');
+    assert.equal(prepared.config.renderFps, 120);
     assert.equal(prepared.config.autoRecording, false);
     assert.equal(prepared.revision, 1);
 

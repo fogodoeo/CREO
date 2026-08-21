@@ -24,6 +24,8 @@ export class Roulette extends EventTarget {
 
   private _lastTime: number = 0;
   private _elapsed: number = 0;
+  private _renderElapsed: number = 0;
+  private _renderFps: 60 | 120 = 60;
 
   // Keep the upstream 10 ms fixed step. A 16.67 ms physics step combined with
   // millisecond wall-clock timestamps can alternate between skipped and
@@ -103,7 +105,9 @@ export class Roulette extends EventTarget {
     if (!this._lastTime) this._lastTime = Date.now();
     const currentTime = Date.now();
 
-    this._elapsed += (currentTime - this._lastTime) * this._speed * this.fastForwarder.speed;
+    const wallDelta = Math.max(0, Math.min(100, currentTime - this._lastTime));
+    this._elapsed += wallDelta * this._speed * this.fastForwarder.speed;
+    this._renderElapsed += wallDelta;
     if (this._elapsed > 100) {
       this._elapsed %= 100;
     }
@@ -133,7 +137,11 @@ export class Roulette extends EventTarget {
       });
     }
 
-    this._render();
+    const renderInterval = 1000 / this._renderFps;
+    if (this._renderElapsed >= renderInterval) {
+      this._renderElapsed %= renderInterval;
+      this._render();
+    }
     window.requestAnimationFrame(this._update);
   }
 
@@ -446,6 +454,11 @@ export class Roulette extends EventTarget {
 
   public getCount() {
     return this._marbles.length;
+  }
+
+  public setRenderFps(value: number) {
+    this._renderFps = value === 120 ? 120 : 60;
+    this._renderElapsed = 1000 / this._renderFps;
   }
 
   public getProgress() {

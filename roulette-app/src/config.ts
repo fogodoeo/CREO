@@ -1,6 +1,6 @@
 import type { ColorTheme } from './types/ColorTheme';
 
-export const APP_VERSION = '1.8.0';
+export const APP_VERSION = '1.9.0';
 
 export type WinnerMode = 'first' | 'last' | 'rank';
 export type MarbleStyle = 'glass' | 'flat';
@@ -13,6 +13,7 @@ export type AppConfig = {
   defaultEntries: string;
   defaultMap: number;
   defaultSpeed: number;
+  renderFps: 60 | 120;
   winnerMode: WinnerMode;
   winningRank: number;
   useSkills: boolean;
@@ -106,6 +107,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   defaultEntries: '참가자 A\n참가자 B\n참가자 C\n참가자 D',
   defaultMap: 0,
   defaultSpeed: 1,
+  renderFps: 60,
   winnerMode: 'first',
   winningRank: 1,
   useSkills: false,

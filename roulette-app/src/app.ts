@@ -107,6 +107,7 @@ const dom = {
   entriesFile: element<HTMLInputElement>('entriesFileInput'),
   map: element<HTMLSelectElement>('mapSelect'),
   speed: element<HTMLSelectElement>('speedSelect'),
+  renderFps: element<HTMLSelectElement>('renderFpsSelect'),
   rankField: element<HTMLElement>('rankField'),
   winningRank: element<HTMLInputElement>('winningRankInput'),
   skills: element<HTMLInputElement>('skillsInput'),
@@ -156,6 +157,7 @@ function loadConfig(): AppConfig {
   if (!['first', 'last', 'rank'].includes(merged.winnerMode)) merged.winnerMode = DEFAULT_CONFIG.winnerMode;
   if (!['glass', 'flat'].includes(merged.marbleStyle)) merged.marbleStyle = DEFAULT_CONFIG.marbleStyle;
   if (![0.75, 1, 1.5, 2].includes(Number(merged.defaultSpeed))) merged.defaultSpeed = DEFAULT_CONFIG.defaultSpeed;
+  if (![60, 120].includes(Number(merged.renderFps))) merged.renderFps = DEFAULT_CONFIG.renderFps;
   if (!/^#[0-9a-f]{6}$/i.test(merged.accentColor)) merged.accentColor = DEFAULT_CONFIG.accentColor;
   return merged;
 }
@@ -203,6 +205,7 @@ function applyUrlParameters(base: AppConfig): { config: AppConfig; entries?: str
   const accent = params.get('accent');
   const map = Number(params.get('map'));
   const speed = Number(params.get('speed'));
+  const renderFps = Number(params.get('fps'));
   const mode = params.get('mode');
   const marbleStyle = params.get('marbleStyle');
   const rank = Number(params.get('rank'));
@@ -216,6 +219,7 @@ function applyUrlParameters(base: AppConfig): { config: AppConfig; entries?: str
   if (accent && /^#[0-9a-f]{6}$/i.test(accent)) next.accentColor = accent;
   if (Number.isInteger(map) && map >= 0) next.defaultMap = map;
   if ([0.75, 1, 1.5, 2].includes(speed)) next.defaultSpeed = speed;
+  if ([60, 120].includes(renderFps)) next.renderFps = renderFps as 60 | 120;
   if (mode && ['first', 'last', 'rank'].includes(mode)) next.winnerMode = mode as WinnerMode;
   if (marbleStyle && ['glass', 'flat'].includes(marbleStyle)) next.marbleStyle = marbleStyle as MarbleStyle;
   if (Number.isInteger(rank) && rank > 0) next.winningRank = rank;
@@ -310,6 +314,7 @@ function collectConfig(): AppConfig {
     winnerLabel: dom.winnerLabel.value.trim() || DEFAULT_CONFIG.winnerLabel,
     defaultMap: Number(dom.map.value) || 0,
     defaultSpeed: Number(dom.speed.value) || 1,
+    renderFps: Number(dom.renderFps.value) === 120 ? 120 : 60,
     winnerMode: currentWinnerMode(),
     winningRank: Math.max(1, Number(dom.winningRank.value) || 1),
     useSkills: dom.skills.checked,
@@ -330,6 +335,7 @@ function applyRuntimeAppearance(): void {
   updateBrand();
   options.marbleStyle = currentMarbleStyle();
   if (roulette && engineReady) roulette.setTheme(activeTheme());
+  if (roulette && engineReady) roulette.setRenderFps(Number(dom.renderFps.value));
   persistInputs();
 }
 
@@ -345,6 +351,7 @@ function fingerprint(entries: string[]): string {
     entries,
     map: dom.map.value,
     speed: dom.speed.value,
+    renderFps: dom.renderFps.value,
     winnerMode: currentWinnerMode(),
     rank: dom.winningRank.value,
     skills: dom.skills.checked,
@@ -379,6 +386,7 @@ async function prepareRound(seed = createSecureSeed()): Promise<void> {
 
   roulette.setAutoRecording(options.autoRecording);
   roulette.setSpeed(Number(dom.speed.value) || 1);
+  roulette.setRenderFps(Number(dom.renderFps.value));
   roulette.setTheme(activeTheme());
   roulette.setMap(Number(dom.map.value) || 0);
   setRandomSeed(seed);
@@ -680,6 +688,7 @@ function applyConfigToControls(next: AppConfig): void {
   dom.eventTitle.value = config.eventTitle;
   dom.channelName.value = config.channelName;
   dom.speed.value = String(config.defaultSpeed);
+  dom.renderFps.value = String(config.renderFps);
   dom.winningRank.value = String(config.winningRank);
   dom.skills.checked = config.useSkills;
   dom.recording.checked = config.autoRecording;
@@ -719,9 +728,10 @@ function bindEvents(): void {
   for (const input of [dom.eventTitle, dom.channelName, dom.winnerLabel]) {
     input.addEventListener('input', applyRuntimeAppearance);
   }
-  for (const input of [dom.map, dom.speed, dom.winningRank, dom.skills, dom.recording]) {
+  for (const input of [dom.map, dom.speed, dom.renderFps, dom.winningRank, dom.skills, dom.recording]) {
     input.addEventListener('change', () => {
       if (input === dom.winningRank) updateRankVisibility();
+      if (input === dom.renderFps && engineReady) roulette.setRenderFps(Number(dom.renderFps.value));
       updateCounts();
       persistInputs();
     });

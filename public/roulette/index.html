@@ -100,7 +100,15 @@
                     <option value=2>매우 빠르게 · 2×</option>
                   </select>
                 </label>
+                <label class=field>
+                  <span>화면 프레임</span>
+                  <select id=renderFpsSelect>
+                    <option value=60>60 FPS · 안정</option>
+                    <option value=120>120 FPS · 시험</option>
+                  </select>
+                </label>
               </div>
+              <p class=field-help>120 FPS는 PRISM과 모니터가 120Hz 이상으로 구동될 때만 실제 차이가 보입니다.</p>
               <fieldset class=winner-fieldset>
                 <legend>당첨 기준</legend>
                 <div class=segmented id=winnerModeGroup>
@@ -205,4 +213,4 @@
     </dialog>
 
     <div class=toast id=toast role=status aria-live=polite></div>
-    <script type=module src=/roulette/roulette-app.21caef7e.js></script>
+    <script type=module src=/roulette/roulette-app.78e00c0a.js></script>

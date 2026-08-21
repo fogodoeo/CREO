@@ -255,6 +255,7 @@ function sanitizePinballConfig(input = {}) {
         winnerLabel: cleanText(input.winnerLabel, 12) || '당첨',
         defaultMap: Number.isFinite(map) ? Math.max(0, Math.min(20, map)) : 0,
         defaultSpeed: [0.75, 1, 1.5, 2].includes(speed) ? speed : 1,
+        renderFps: Number(input.renderFps) === 120 ? 120 : 60,
         winnerMode: ['first', 'last', 'rank'].includes(input.winnerMode) ? input.winnerMode : 'first',
         winningRank: Number.isFinite(rank) ? Math.max(1, Math.min(500, rank)) : 1,
         useSkills: booleanValue(input.useSkills, false),
