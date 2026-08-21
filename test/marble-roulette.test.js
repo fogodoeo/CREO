@@ -48,7 +48,7 @@ test('roulette exposes its version and keeps native broadcast rendering with the
     const roulette = fs.readFileSync(path.join(appRoot, 'src', 'roulette.ts'), 'utf8');
     const renderer = fs.readFileSync(path.join(appRoot, 'src', 'rouletteRenderer.ts'), 'utf8');
 
-    assert.match(html, /id="versionBadge"/);
+    assert.doesNotMatch(html, /id="versionBadge"/);
     assert.match(config, /APP_VERSION = '1\.8\.0'/);
     assert.match(roulette, /_updateInterval = 10/);
     assert.match(roulette, /!finishedIds\.has\(marble\.id\)/);
@@ -91,13 +91,35 @@ test('academy pinball skin changes both physics colors and application chrome', 
     assert.match(styles, /html\[data-roulette-theme='academy'\]/);
     assert.match(styles, /\.theme-swatch\.academy/);
     assert.match(styles, /html\[data-roulette-theme='academy'\] \.result-dialog/);
-    for (const asset of ['wand-v1.png', 'rune-stone-v1.png', 'finish-gate-v1.png']) {
-        assert.equal(fs.existsSync(path.join(root, 'public', 'assets', 'pinball-academy', asset)), true, `${asset} must exist`);
+    for (const asset of ['wand-v2.png', 'rune-stone-v2.png', 'finish-gate-v2.png']) {
+        const assetPath = path.join(root, 'public', 'assets', 'pinball-academy', asset);
+        assert.equal(fs.existsSync(assetPath), true, `${asset} must exist`);
+        const png = fs.readFileSync(assetPath);
+        assert.equal(png[25], 6, `${asset} must be an RGBA PNG rather than a baked background image`);
     }
     assert.match(physics, /motion: entity\.type/);
-    assert.match(renderer, /entity\.motion === 'kinematic'/);
-    assert.match(renderer, /loadGeneratedCutout\(ACADEMY_ASSET_URLS\.wand/);
-    assert.match(renderer, /brightness >= 235 \? 0/);
+    assert.match(renderer, /entity\.motion === 'kinematic' \|\| w >= h \* 2\.4/);
+    assert.match(renderer, /wand-v2\.png/);
+    assert.doesNotMatch(renderer, /loadGeneratedCutout/);
     assert.match(renderer, /renderAcademyFinish\(renderParameters\.stage\)/);
     assert.match(renderer, /'\/assets\/crewart-crest-v2\.webp'/);
+});
+
+test('pinball stage stays clean while candidate and controls remain in their operational positions', () => {
+    const html = fs.readFileSync(path.join(appRoot, 'index.html'), 'utf8');
+    const app = fs.readFileSync(path.join(appRoot, 'src', 'app.ts'), 'utf8');
+    const rankRenderer = fs.readFileSync(path.join(appRoot, 'src', 'rankRenderer.ts'), 'utf8');
+    const minimap = fs.readFileSync(path.join(appRoot, 'src', 'minimap.ts'), 'utf8');
+    const styles = fs.readFileSync(path.join(appRoot, 'assets', 'app.scss'), 'utf8');
+
+    assert.doesNotMatch(html, /id="stageHelp"|class="brand-lockup"|class="version-badge"/);
+    assert.match(html, /class="sr-only" id="statusPill"/);
+    assert.doesNotMatch(html, /화면 중앙을 누르고 있으면|추첨 진행 중/);
+    assert.match(app, /'1위 당첨 유력'/);
+    assert.match(app, /'마지막 당첨 유력'/);
+    assert.match(rankRenderer, /const hudHeight = 54 \* uiScale/);
+    assert.doesNotMatch(rankRenderer, /const hudHeight = broadcastMode \?/);
+    assert.match(minimap, /const controlsReserve = 62 \* uiScale/);
+    assert.match(styles, /bottom: calc\(14px \+ var\(--safe-bottom\)\)/);
+    assert.match(styles, /left: calc\(20px \+ var\(--safe-left\)\)/);
 });

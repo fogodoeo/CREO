@@ -17,14 +17,9 @@
         <div id="canvasHost" class="canvas-host" data-roulette-canvas-host></div>
 
         <header class="stage-header">
-          <div class="brand-lockup">
-            <span class="brand-kicker" id="brandName">MARBLE DRAW</span>
-            <strong class="brand-title" id="brandTitle">공정하고 즐거운 추첨</strong>
-            <span class="brand-channel" id="brandChannel" hidden></span>
-          </div>
           <div class="stage-actions">
-            <span class="status-pill" id="statusPill" data-state="loading">
-              <i aria-hidden="true"></i><span id="statusText">엔진 준비 중</span>
+            <span class="sr-only" id="statusPill" data-state="loading" aria-live="polite">
+              <span id="statusText">엔진 준비 중</span>
             </span>
             <button class="icon-button" id="fullscreenButton" type="button" aria-label="전체 화면" title="전체 화면">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" /></svg>
@@ -32,15 +27,8 @@
             <button class="panel-button" id="openPanelButton" type="button" aria-controls="controlPanel" aria-expanded="true">
               설정
             </button>
-            <span class="version-badge" id="versionBadge">v1.8.0</span>
           </div>
         </header>
-
-        <div class="stage-help" id="stageHelp">
-          <span>화면 중앙을 누르고 있으면 2배속</span>
-          <span aria-hidden="true">·</span>
-          <span>우측 순위를 두 번 누르면 결과 복사</span>
-        </div>
 
         <aside class="control-panel" id="controlPanel" aria-label="추첨 설정">
           <div class="panel-head">

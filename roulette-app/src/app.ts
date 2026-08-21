@@ -73,13 +73,8 @@ const dom = {
   openPanel: element<HTMLButtonElement>('openPanelButton'),
   closePanel: element<HTMLButtonElement>('closePanelButton'),
   fullscreen: element<HTMLButtonElement>('fullscreenButton'),
-  versionBadge: element<HTMLElement>('versionBadge'),
-  brandName: element<HTMLElement>('brandName'),
-  brandTitle: element<HTMLElement>('brandTitle'),
-  brandChannel: element<HTMLElement>('brandChannel'),
   statusPill: element<HTMLElement>('statusPill'),
   statusText: element<HTMLElement>('statusText'),
-  stageHelp: element<HTMLElement>('stageHelp'),
   eventTitle: element<HTMLInputElement>('eventTitleInput'),
   channelName: element<HTMLInputElement>('channelNameInput'),
   entries: element<HTMLTextAreaElement>('entriesInput'),
@@ -251,15 +246,10 @@ function closePanel(): void {
 }
 
 function updateBrand(): void {
-  dom.brandName.textContent = config.appName;
-  dom.brandTitle.textContent = dom.eventTitle.value.trim() || DEFAULT_CONFIG.eventTitle;
-  const channel = dom.channelName.value.trim();
-  dom.brandChannel.textContent = channel;
-  dom.brandChannel.hidden = !channel;
   dom.resultLabel.textContent = dom.winnerLabel.value.trim() || DEFAULT_CONFIG.winnerLabel;
   document.documentElement.style.setProperty('--accent', dom.accent.value);
   document.documentElement.dataset.rouletteTheme = String(currentThemeName());
-  document.title = `${dom.brandTitle.textContent} · ${config.appName}`;
+  document.title = `${dom.eventTitle.value.trim() || DEFAULT_CONFIG.eventTitle} · ${config.appName}`;
 }
 
 function updateCounts(): void {
@@ -276,7 +266,14 @@ function updateCounts(): void {
 }
 
 function updateRankVisibility(): void {
-  dom.rankField.hidden = currentWinnerMode() !== 'rank';
+  const winnerMode = currentWinnerMode();
+  dom.rankField.hidden = winnerMode !== 'rank';
+  options.candidateLabel =
+    winnerMode === 'last'
+      ? '마지막 당첨 유력'
+      : winnerMode === 'rank'
+        ? `${Math.max(1, Number(dom.winningRank.value) || 1)}위 당첨 유력`
+        : '1위 당첨 유력';
 }
 
 function collectConfig(): AppConfig {
@@ -349,13 +346,7 @@ async function prepareRound(seed = createSecureSeed()): Promise<void> {
   options.winnerLabel = dom.winnerLabel.value.trim() || DEFAULT_CONFIG.winnerLabel;
   options.marbleStyle = currentMarbleStyle();
   options.winningRank = winningRank(summary.balls) - 1;
-  const winnerMode = currentWinnerMode();
-  options.candidateLabel =
-    winnerMode === 'last'
-      ? '현재 마지막'
-      : winnerMode === 'rank'
-        ? `${options.winningRank + 1}위 당첨 유력`
-        : '현재 선두';
+  updateRankVisibility();
 
   roulette.setAutoRecording(options.autoRecording);
   roulette.setSpeed(Number(dom.speed.value) || 1);
@@ -395,7 +386,6 @@ async function startRound(): Promise<void> {
   dom.openPanel.disabled = true;
   dom.shuffle.disabled = true;
   dom.start.disabled = true;
-  dom.stageHelp.classList.add('visible');
   closePanel();
   setStatus('running', '추첨 진행 중');
   roulette.start();
@@ -432,7 +422,6 @@ async function completeRound(winner: string): Promise<void> {
   history = history.slice(0, config.maxHistory);
   saveHistory();
   updateCounts();
-  dom.stageHelp.classList.remove('visible');
   setStatus('complete', `${winner} 당첨`);
 
   dom.resultLabel.textContent = dom.winnerLabel.value.trim() || DEFAULT_CONFIG.winnerLabel;
@@ -545,6 +534,7 @@ function bindEvents(): void {
   }
   for (const input of [dom.map, dom.speed, dom.winningRank, dom.skills, dom.recording]) {
     input.addEventListener('change', () => {
+      if (input === dom.winningRank) updateRankVisibility();
       updateCounts();
       persistInputs();
     });
@@ -662,7 +652,6 @@ async function waitForEngine(): Promise<void> {
 }
 
 async function initialize(): Promise<void> {
-  dom.versionBadge.textContent = `v${APP_VERSION}`;
   bindEvents();
   const urlState = applyUrlParameters(config);
   applyConfigToControls(urlState.config);

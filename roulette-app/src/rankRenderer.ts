@@ -65,8 +65,8 @@ export class RankRenderer implements UIObject {
     const broadcastMode = this.broadcastMode;
     const uiScale = broadcastMode ? width / 720 : 1;
     this.layoutFontHeight = this.fontHeight * uiScale;
-    const hudHeight = broadcastMode ? 54 * uiScale : 0;
-    const listTop = broadcastMode ? hudHeight + 8 * uiScale : 20;
+    const hudHeight = 54 * uiScale;
+    const listTop = hudHeight + 8 * uiScale;
     const startX = width - 8 * uiScale;
     const visibleListHeight = height - listTop;
     const startY = Math.max(-this.layoutFontHeight, this._currentY - visibleListHeight / 2);
@@ -82,37 +82,35 @@ export class RankRenderer implements UIObject {
     const useSimpleLabels = width < 560 && marbles.length + winners.length > 48;
 
     ctx.save();
-    if (broadcastMode) {
-      const totalCount = winners.length + marbles.length;
-      const targetIndex = Math.max(0, winnerRank - winners.length);
-      const candidate = winner ?? winners[winnerRank] ?? marbles[targetIndex];
-      ctx.fillStyle = 'rgba(4, 10, 18, 0.9)';
-      ctx.fillRect(0, 0, width, hudHeight);
-
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'top';
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.58)';
-      ctx.font = `700 ${8 * uiScale}pt sans-serif`;
-      ctx.fillText(winner ? '당첨 확정' : options.candidateLabel, width / 2, 7 * uiScale);
-      ctx.fillStyle = '#ffffff';
-      ctx.font = `bold ${17 * uiScale}pt sans-serif`;
-      ctx.fillText(
-        candidate?.name ?? '준비 중',
-        width / 2,
-        24 * uiScale,
-        Math.max(180 * uiScale, width - 420 * uiScale)
-      );
-
-      ctx.textAlign = 'right';
-      ctx.fillStyle = '#ffffff';
-      ctx.font = `bold ${18 * uiScale}pt sans-serif`;
-      ctx.fillText(`${winners.length} / ${totalCount}`, width - 10 * uiScale, 15 * uiScale);
-    } else {
-      ctx.textAlign = 'right';
-      ctx.font = '10pt sans-serif';
-      ctx.fillStyle = '#666';
-      ctx.fillText(`${winners.length} / ${winners.length + marbles.length}`, width - 5, this.fontHeight);
+    const totalCount = winners.length + marbles.length;
+    const targetIndex = Math.max(0, winnerRank - winners.length);
+    const candidate = winner ?? winners[winnerRank] ?? marbles[targetIndex];
+    const academySkin = document.documentElement.dataset.rouletteTheme === 'academy';
+    ctx.fillStyle = academySkin ? 'rgba(14, 20, 18, 0.94)' : 'rgba(4, 10, 18, 0.9)';
+    ctx.fillRect(0, 0, width, hudHeight);
+    if (academySkin) {
+      ctx.fillStyle = 'rgba(212, 189, 134, 0.55)';
+      ctx.fillRect(0, hudHeight - Math.max(1, uiScale), width, Math.max(1, uiScale));
     }
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = academySkin ? '#d4bd86' : 'rgba(255, 255, 255, 0.58)';
+    ctx.font = `700 ${8 * uiScale}pt ${academySkin ? "Georgia, 'Times New Roman', serif" : 'sans-serif'}`;
+    ctx.fillText(winner ? '당첨 확정' : options.candidateLabel, width / 2, 7 * uiScale);
+    ctx.fillStyle = academySkin ? '#f4ecd9' : '#ffffff';
+    ctx.font = `bold ${17 * uiScale}pt ${academySkin ? "Georgia, 'Times New Roman', serif" : 'sans-serif'}`;
+    ctx.fillText(
+      candidate?.name ?? '준비 중',
+      width / 2,
+      24 * uiScale,
+      Math.max(180 * uiScale, width - 420 * uiScale)
+    );
+
+    ctx.textAlign = 'right';
+    ctx.fillStyle = academySkin ? '#f4ecd9' : '#ffffff';
+    ctx.font = `bold ${18 * uiScale}pt sans-serif`;
+    ctx.fillText(`${winners.length} / ${totalCount}`, width - 10 * uiScale, 15 * uiScale);
 
     ctx.beginPath();
     ctx.rect(

@@ -36,9 +36,9 @@ const COMPACT_SCENE_PIXEL_BUDGET = 520_000;
 const BROADCAST_SCENE_ZOOM = 1.18;
 const WINNER_TEXT_OFFSET = 30;
 const ACADEMY_ASSET_URLS = {
-  wand: '/assets/pinball-academy/wand-v1.png',
-  rune: '/assets/pinball-academy/rune-stone-v1.png',
-  gate: '/assets/pinball-academy/finish-gate-v1.png',
+  wand: '/assets/pinball-academy/wand-v2.png',
+  rune: '/assets/pinball-academy/rune-stone-v2.png',
+  gate: '/assets/pinball-academy/finish-gate-v2.png',
   crest: '/assets/crewart-crest-v2.webp',
 } as const;
 
@@ -49,40 +49,6 @@ function loadImage(src: string): HTMLImageElement {
   return image;
 }
 
-type CutoutAsset = {
-  image: HTMLImageElement;
-  source: HTMLCanvasElement | null;
-};
-
-function loadGeneratedCutout(src: string, maxEdge: number): CutoutAsset {
-  const asset: CutoutAsset = { image: loadImage(src), source: null };
-  asset.image.addEventListener('load', () => {
-    const scale = Math.min(1, maxEdge / Math.max(asset.image.naturalWidth, asset.image.naturalHeight));
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.max(1, Math.round(asset.image.naturalWidth * scale));
-    canvas.height = Math.max(1, Math.round(asset.image.naturalHeight * scale));
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    if (!ctx) return;
-    ctx.drawImage(asset.image, 0, 0, canvas.width, canvas.height);
-    const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    for (let offset = 0; offset < pixels.data.length; offset += 4) {
-      const red = pixels.data[offset];
-      const green = pixels.data[offset + 1];
-      const blue = pixels.data[offset + 2];
-      const high = Math.max(red, green, blue);
-      const low = Math.min(red, green, blue);
-      const brightness = (red + green + blue) / 3;
-      if (high - low <= 10 && brightness >= 205) {
-        pixels.data[offset + 3] = brightness >= 235 ? 0 : Math.round(((235 - brightness) / 30) * 255);
-      }
-    }
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.putImageData(pixels, 0, 0);
-    asset.source = canvas;
-  });
-  return asset;
-}
-
 export class RouletteRenderer {
   protected _canvas!: HTMLCanvasElement;
   protected _sceneCanvas!: HTMLCanvasElement;
@@ -91,9 +57,9 @@ export class RouletteRenderer {
   private readonly _broadcastMode = new URLSearchParams(location.search).get('broadcast') === '1';
   private _lastProgressSignature = '';
   private readonly _academyAssets = {
-    wand: loadGeneratedCutout(ACADEMY_ASSET_URLS.wand, 768),
-    rune: loadGeneratedCutout(ACADEMY_ASSET_URLS.rune, 640),
-    gate: loadGeneratedCutout(ACADEMY_ASSET_URLS.gate, 768),
+    wand: loadImage(ACADEMY_ASSET_URLS.wand),
+    rune: loadImage(ACADEMY_ASSET_URLS.rune),
+    gate: loadImage(ACADEMY_ASSET_URLS.gate),
     crest: loadImage(ACADEMY_ASSET_URLS.crest),
   };
   public sizeFactor = 1;
@@ -281,20 +247,18 @@ export class RouletteRenderer {
           const w = shape.width * 2;
           const h = shape.height * 2;
           this.ctx.rotate(shape.rotation);
-          if (this.isAcademySkin() && entity.motion === 'kinematic' && this.cutoutReady(this._academyAssets.wand)) {
+          const useAcademyWand = entity.motion === 'kinematic' || w >= h * 2.4;
+          if (this.isAcademySkin() && useAcademyWand && this.imageReady(this._academyAssets.wand)) {
             this.ctx.shadowBlur = 8;
             this.ctx.shadowColor = 'rgba(212, 189, 134, 0.55)';
-            this.ctx.drawImage(this._academyAssets.wand.source!, -w * 0.72, -w * 0.45, w * 1.44, w * 0.9);
-          } else if (
-            this.isAcademySkin() &&
-            shape.width <= 0.35 &&
-            shape.height <= 0.35 &&
-            this.cutoutReady(this._academyAssets.rune)
-          ) {
-            const size = Math.max(w, h) * 3;
+            const wandWidth = Math.max(w * 1.08, h * 4.8);
+            const wandHeight = Math.max(h * 0.85, wandWidth * 0.055);
+            this.ctx.drawImage(this._academyAssets.wand, -wandWidth / 2, -wandHeight / 2, wandWidth, wandHeight);
+          } else if (this.isAcademySkin() && this.imageReady(this._academyAssets.rune)) {
+            const size = Math.max(w, h) * (Math.max(w, h) <= 0.7 ? 2.8 : 1.18);
             this.ctx.shadowBlur = 5;
             this.ctx.shadowColor = 'rgba(212, 189, 134, 0.42)';
-            this.ctx.drawImage(this._academyAssets.rune.source!, -size / 2, -size / 2, size, size);
+            this.ctx.drawImage(this._academyAssets.rune, -size / 2, -size / 2, size, size);
           } else {
             this.ctx.fillRect(-w / 2, -h / 2, w, h);
             this.ctx.strokeRect(-w / 2, -h / 2, w, h);
@@ -302,11 +266,11 @@ export class RouletteRenderer {
           break;
         }
         case 'circle': {
-          if (this.isAcademySkin() && this.cutoutReady(this._academyAssets.rune)) {
+          if (this.isAcademySkin() && this.imageReady(this._academyAssets.rune)) {
             const size = shape.radius * 2.55;
             this.ctx.shadowBlur = 7;
             this.ctx.shadowColor = 'rgba(212, 189, 134, 0.48)';
-            this.ctx.drawImage(this._academyAssets.rune.source!, -size / 2, -size / 2, size, size);
+            this.ctx.drawImage(this._academyAssets.rune, -size / 2, -size / 2, size, size);
           } else {
             this.ctx.beginPath();
             this.ctx.arc(0, 0, shape.radius, 0, Math.PI * 2, false);
@@ -329,12 +293,8 @@ export class RouletteRenderer {
     return image.complete && image.naturalWidth > 0;
   }
 
-  private cutoutReady(asset: CutoutAsset): boolean {
-    return Boolean(asset.source);
-  }
-
   private renderAcademyFinish(stage: StageDef): void {
-    if (!this.isAcademySkin() || !this.cutoutReady(this._academyAssets.gate)) return;
+    if (!this.isAcademySkin() || !this.imageReady(this._academyAssets.gate)) return;
     const nearGoal = [...(stage.adBoards ?? [])]
       .reverse()
       .find((board) => Math.abs(stage.goalY - board.y) <= 25);
@@ -347,7 +307,7 @@ export class RouletteRenderer {
     this.ctx.globalAlpha = 0.94;
     this.ctx.shadowBlur = 12;
     this.ctx.shadowColor = 'rgba(212, 189, 134, 0.28)';
-    this.ctx.drawImage(this._academyAssets.gate.source!, x - width / 2, y - height / 2, width, height);
+    this.ctx.drawImage(this._academyAssets.gate, x - width / 2, y - height / 2, width, height);
     if (this.imageReady(this._academyAssets.crest)) {
       const crestWidth = width * 0.2;
       const crestHeight = crestWidth * 1.18;

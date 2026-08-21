@@ -99,12 +99,9 @@ summary:focus-visible {
 .stage-header {
   position: fixed;
   z-index: 30;
-  top: calc(18px + var(--safe-top));
-  right: calc(20px + var(--safe-right));
-  left: calc(22px + var(--safe-left));
+  inset: 0;
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
   gap: 20px;
   pointer-events: none;
 }
@@ -146,11 +143,19 @@ summary:focus-visible {
 }
 
 .stage-actions {
-  position: relative;
+  position: fixed;
+  bottom: calc(14px + var(--safe-bottom));
+  left: calc(20px + var(--safe-left));
   display: flex;
   align-items: center;
   gap: 8px;
   pointer-events: auto;
+}
+
+.brand-lockup,
+.stage-help,
+.version-badge {
+  display: none;
 }
 
 .version-badge {
@@ -1048,6 +1053,15 @@ html[data-roulette-theme='academy'] .stage-help {
   box-shadow: inset 0 0 0 1px rgba(244, 236, 217, 0.025), 0 14px 38px rgba(0, 0, 0, 0.24);
 }
 
+html[data-roulette-theme='academy'] .stage-actions .icon-button,
+html[data-roulette-theme='academy'] .stage-actions .panel-button {
+  min-height: 36px;
+  border-color: rgba(212, 189, 134, 0.28);
+  background: rgba(14, 20, 18, 0.92);
+  color: #e9e0cf;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+}
+
 html[data-roulette-theme='academy'] .brand-lockup {
   position: relative;
   padding: 11px 15px 12px;
@@ -1169,9 +1183,7 @@ html[data-roulette-theme='academy'] .result-meta {
 
 @media (max-width: 760px) {
   .stage-header {
-    top: calc(10px + var(--safe-top));
-    right: calc(10px + var(--safe-right));
-    left: calc(10px + var(--safe-left));
+    inset: 0;
     gap: 8px;
   }
 
@@ -1194,6 +1206,8 @@ html[data-roulette-theme='academy'] .result-meta {
   }
 
   .stage-actions {
+    bottom: calc(10px + var(--safe-bottom));
+    left: calc(12px + var(--safe-left));
     gap: 5px;
   }
 
