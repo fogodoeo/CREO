@@ -4069,8 +4069,10 @@
             if (window._totalItemsCount > 0) {
                 const currentOrder = Math.min(window._completedItemsCount + 1, window._totalItemsCount);
                 labelEl.textContent = `${currentOrder}/${window._totalItemsCount}`;
+                labelEl.style.removeProperty('display');
             } else {
                 labelEl.textContent = '';
+                labelEl.style.display = 'none';
             }
         }
 
@@ -7173,8 +7175,27 @@
             queuedIds: new Set(),
             pendingBidderKeys: new Set(),
             revealedBidderKeys: new Set(),
+            generation: 0,
             pageStartedAt: Date.now()
         };
+
+        function resetCrewartRevealState(nextSessionId = '') {
+            const state = _p2CrewartRevealState;
+            state.generation += 1;
+            state.sessionId = String(nextSessionId || '');
+            state.cursor = 0;
+            state.initialized = false;
+            state.playing = false;
+            state.queue = [];
+            state.queuedIds.clear();
+            state.pendingBidderKeys.clear();
+            state.revealedBidderKeys.clear();
+            const overlay = document.getElementById('p2-house-reveal-overlay');
+            if (overlay) {
+                overlay.classList.remove('visible');
+                overlay.replaceChildren();
+            }
+        }
 
         function p2RevealStorageKey(sessionId) {
             return `crewart:p2-house-reveal:${String(sessionId || '')}`;
@@ -7213,6 +7234,8 @@
             if (!overlay) return;
             const event = state.queue.shift();
             state.playing = true;
+            const generation = state.generation;
+            const sessionId = state.sessionId;
             const finalHouse = normalizeCrewartBidderHouse(event.houseKey) || 'R';
             const houses = ['R', 'G', 'B', 'Y'];
             const labels = { R: '빨강', G: '초록', B: '파랑', Y: '노랑' };
@@ -7242,11 +7265,13 @@
                 track.style.transform = `translateY(-${(reel.length - 1) * 54}px)`;
             }));
             setTimeout(() => {
+                if (state.generation !== generation || state.sessionId !== sessionId) return;
                 state.pendingBidderKeys.delete(event.bidderKey);
                 state.revealedBidderKeys.add(event.bidderKey);
                 revealCrewartBidderRow(event.bidderKey, finalHouse);
                 writeP2RevealCursor(state.sessionId, event.sequence);
                 setTimeout(() => {
+                    if (state.generation !== generation || state.sessionId !== sessionId) return;
                     overlay.classList.remove('visible');
                     state.playing = false;
                     runNextCrewartReveal();
@@ -7255,19 +7280,18 @@
         }
 
         function processCrewartAudienceReveals(audience) {
-            if (getActiveAuctionEventModule(window.latestConfigMap || {}).id !== 'crewart') return;
+            const isCrewart = getActiveAuctionEventModule(window.latestConfigMap || {}).id === 'crewart';
             const sessionId = String(audience?.sessionId || '');
+            const state = _p2CrewartRevealState;
+            if (!isCrewart || !sessionId) {
+                if (state.sessionId || state.playing || state.queue.length) resetCrewartRevealState();
+                return;
+            }
             const events = Array.isArray(audience?.events)
                 ? audience.events.slice().sort((a, b) => Number(a.sequence) - Number(b.sequence))
                 : [];
-            if (!sessionId) return;
-            const state = _p2CrewartRevealState;
             if (state.sessionId !== sessionId) {
-                state.sessionId = sessionId;
-                state.queue = [];
-                state.queuedIds.clear();
-                state.pendingBidderKeys.clear();
-                state.revealedBidderKeys.clear();
+                resetCrewartRevealState(sessionId);
                 const storedCursor = readP2RevealCursor(sessionId);
                 if (storedCursor !== null) {
                     state.cursor = storedCursor;
@@ -7284,6 +7308,12 @@
                 }
                 events.filter((event) => Number(event.sequence) <= state.cursor)
                     .forEach((event) => state.revealedBidderKeys.add(String(event.bidderKey || '')));
+                const queuedOnLoad = new Set(events
+                    .filter((event) => Number(event.sequence) > state.cursor)
+                    .map((event) => String(event.bidderKey || '')));
+                (Array.isArray(audience?.revealedBidderKeys) ? audience.revealedBidderKeys : [])
+                    .filter((bidderKey) => !queuedOnLoad.has(String(bidderKey || '')))
+                    .forEach((bidderKey) => state.revealedBidderKeys.add(String(bidderKey || '')));
                 state.initialized = true;
             }
             for (const event of events) {
@@ -7318,6 +7348,7 @@
                             region: bid.region || bid.location || bid.area || '',
                             amount,
                             houseKey: normalizeCrewartBidderHouse(bid.crewart_house_key || bid.crewartHouseKey),
+                            assignmentPending: bid.crewart_assignment_pending === true,
                             isQuiz,
                             sortTime,
                             index
@@ -7340,6 +7371,7 @@
                     region: bid.region || bid.location || bid.area || '',
                     amount: normalizeBidAmount(bid.amount !== undefined && bid.amount !== null ? bid.amount : bid.price),
                     houseKey: normalizeCrewartBidderHouse(bid.crewart_house_key || bid.crewartHouseKey),
+                    assignmentPending: bid.crewart_assignment_pending === true,
                     isQuiz,
                     sortTime: bidSortTime(bid, index),
                     index
@@ -7417,7 +7449,9 @@
                 const houseKey = normalizeCrewartBidderHouse(bid.houseKey);
                 const housePalette = CREWART_BIDDER_HOUSE_PALETTE[houseKey];
                 rowEl.dataset.assignedHouse = houseKey;
-                if (housePalette && !_p2CrewartRevealState.pendingBidderKeys.has(key)) {
+                const assignmentPending = bid.assignmentPending
+                    || _p2CrewartRevealState.pendingBidderKeys.has(key);
+                if (housePalette && !assignmentPending) {
                     rowEl.dataset.house = houseKey;
                     rowEl.style.setProperty('--p2-house-color', housePalette.color);
                     rowEl.style.setProperty('--p2-house-rgb', housePalette.rgb);

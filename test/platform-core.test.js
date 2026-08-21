@@ -45,6 +45,7 @@ test('channel configuration is normalized and duplicate ids are rejected', () =>
 test('public broadcast items never expose winner or shipping contact data', () => {
     const item = publicItem({
         id: 'item_1', lotNumber: 3, name: '테스트 개체', winnerName: '홍길동',
+        winnerAlias: '홍길동/대구/01012345678',
         winnerPhone: '01012345678', shippingAddress: '서울', soldPrice: 20, teamName: 'RED',
         attributes: {
             crewart_house_key: 'B',
@@ -59,6 +60,7 @@ test('public broadcast items never expose winner or shipping contact data', () =
     assert.equal(item.teamName, 'RED');
     assert.equal('winnerPhone' in item, false);
     assert.equal('shippingAddress' in item, false);
+    assert.equal(item.winnerAlias, '홍길동/대구');
     assert.equal(item.bidLog.length, 1);
     assert.deepEqual({ ...item.bidLog[0], bidder_key: '<private>' }, {
         name: '입찰자', bidder_key: '<private>', region: '', amount: 31,

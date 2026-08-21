@@ -373,6 +373,16 @@ function publicItemAttributes(item = {}) {
     };
 }
 
+function publicBidderName(value) {
+    return cleanText(value, 120)
+        .replace(/(?<!\d)010[\s.-]?\d{3,4}[\s.-]?\d{4}(?!\d)/g, '')
+        .replace(/(^|[\s/|·])\d{8,13}(?=$|[\s/|·])/g, '$1')
+        .replace(/[\s/|·]+$/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 80);
+}
+
 function publicBidLog(item = {}) {
     const raw = item.bidLog ?? item.bid_log ?? item.attributes?.bid_log ?? [];
     let rows = raw;
@@ -387,13 +397,7 @@ function publicBidLog(item = {}) {
         const bidderKey = rawBidderKey
             ? `bidder_${crypto.createHash('sha256').update(rawBidderKey).digest('base64url').slice(0, 18)}`
             : '';
-        const bidderName = cleanText(bid?.name || bid?.bidder || bid?.winner, 120)
-            .replace(/(?<!\d)010[\s.-]?\d{3,4}[\s.-]?\d{4}(?!\d)/g, '')
-            .replace(/(^|[\s/|·])\d{8,13}(?=$|[\s/|·])/g, '$1')
-            .replace(/[\s/|·]+$/g, '')
-            .replace(/\s+/g, ' ')
-            .trim()
-            .slice(0, 80);
+        const bidderName = publicBidderName(bid?.name || bid?.bidder || bid?.winner);
         return {
             name: bidderName,
             bidder_key: bidderKey,
@@ -408,7 +412,8 @@ function publicBidLog(item = {}) {
             ...(['R', 'G', 'B', 'Y'].includes(houseKey) ? {
                 crewart_house_key: houseKey,
                 crewart_house_source: houseSource === 'survey' ? 'survey' : 'random'
-            } : {})
+            } : {}),
+            ...(bid?.crewart_assignment_pending === true ? { crewart_assignment_pending: true } : {})
         };
     }).filter((bid) => bid.name || bid.bidder_key || bid.amount || bid.isQuiz);
 }
@@ -424,7 +429,7 @@ function publicItem(item = {}) {
         groupId: cleanText(item.groupId, 64),
         category: cleanText(item.category, 60),
         points: Number(item.points) || 0,
-        winnerAlias: cleanText(item.winnerAlias, 80),
+        winnerAlias: publicBidderName(item.winnerAlias),
         vendorLogoUrl: cleanText(item.vendorLogoUrl, 500),
         startPrice: Number(item.startPrice) || 0,
         soldPrice: Number(item.soldPrice) || 0,

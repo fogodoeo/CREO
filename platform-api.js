@@ -651,6 +651,7 @@ function createPlatformApi({
             sessionId,
             sequence: 0,
             events: [],
+            revealedBidderKeys: [],
             updatedAt: nowIso
         });
         return { state: saved, session: { sessionId, lockedAt: nowIso }, created: true };
@@ -666,10 +667,14 @@ function createPlatformApi({
         const stored = await repository.getRecord(channelId, 'setting', AUDIENCE_REVEALS_ID);
         const current = stored?.sessionId === session.sessionId
             ? stored
-            : { id: AUDIENCE_REVEALS_ID, sessionId: session.sessionId, sequence: 0, events: [] };
+            : { id: AUDIENCE_REVEALS_ID, sessionId: session.sessionId, sequence: 0, events: [], revealedBidderKeys: [] };
         const bidderKey = cleanText(input.bidder_key || input.bidderKey, 120);
         const safeBidderKey = publicBidderKey(bidderKey || input.name);
-        if ((Array.isArray(current.events) ? current.events : []).some((event) => event.bidderKey === safeBidderKey)) return null;
+        const revealedBidderKeys = [...new Set([
+            ...(Array.isArray(current.revealedBidderKeys) ? current.revealedBidderKeys : []),
+            ...(Array.isArray(current.events) ? current.events.map((event) => event?.bidderKey) : [])
+        ].map((value) => cleanText(value, 64)).filter(Boolean))];
+        if (revealedBidderKeys.includes(safeBidderKey)) return null;
         const sequence = Math.max(0, Number.parseInt(current.sequence, 10) || 0) + 1;
         const messageKey = cleanText(input.message_key || input.messageKey, 180);
         const event = {
@@ -691,6 +696,7 @@ function createPlatformApi({
             sessionId: session.sessionId,
             sequence,
             events,
+            revealedBidderKeys: [...revealedBidderKeys, safeBidderKey].slice(-1000),
             updatedAt: new Date().toISOString()
         });
         return event;
@@ -779,7 +785,7 @@ function createPlatformApi({
 
     async function audienceRevealPayload(channelId, state = {}) {
         const session = activeAudienceSession(state);
-        if (!session) return { sessionId: '', lockedAt: '', sequence: 0, events: [] };
+        if (!session) return { sessionId: '', lockedAt: '', sequence: 0, events: [], revealedBidderKeys: [] };
         const stored = await repository.getRecord(channelId, 'setting', AUDIENCE_REVEALS_ID);
         const events = stored?.sessionId === session.sessionId && Array.isArray(stored.events)
             ? stored.events.slice(-100).map((event) => ({
@@ -795,11 +801,18 @@ function createPlatformApi({
                 assignedAt: cleanText(event.assignedAt, 80)
             })).filter((event) => event.id && event.houseKey)
             : [];
+        const revealedBidderKeys = stored?.sessionId === session.sessionId
+            ? [...new Set([
+                ...(Array.isArray(stored?.revealedBidderKeys) ? stored.revealedBidderKeys : []),
+                ...events.map((event) => event.bidderKey)
+            ].map((value) => cleanText(value, 64)).filter(Boolean))].slice(-1000)
+            : [];
         return {
             sessionId: session.sessionId,
             lockedAt: session.lockedAt,
             sequence: Math.max(0, Number.parseInt(stored?.sequence, 10) || 0),
-            events
+            events,
+            revealedBidderKeys
         };
     }
 
@@ -1132,13 +1145,14 @@ function createPlatformApi({
                 const activeItemId = cleanText(data.broadcast?.activeItemId, 64);
                 const audience = audienceCompetitionEnabled(channel)
                     ? await audienceRevealPayload(channelId, data.broadcast)
-                    : { sessionId: '', lockedAt: '', sequence: 0, events: [] };
+                    : { sessionId: '', lockedAt: '', sequence: 0, events: [], revealedBidderKeys: [] };
                 const broadcastItems = await Promise.all(data.items.map(async (item) => {
                     const isActiveItem = item.status === 'live' || (activeItemId && item.id === activeItemId);
                     return isActiveItem
                         ? enrichCrewartBidderHouses(channel, item, crewartHouseService, bandMembership, data.broadcast, logger)
                         : item;
                 }));
+                const revealedBidderKeys = new Set(audience.revealedBidderKeys || []);
                 replyJson(res, 200, {
                     revision: channelRevision(channelId),
                     channel,
@@ -1153,12 +1167,20 @@ function createPlatformApi({
                         .map(({ id, name, kind, page, targetName, imageUrl, linkUrl, sortOrder }) => ({ id, name, kind, page, targetName, imageUrl, linkUrl, sortOrder })),
                     items: broadcastItems.map((item) => {
                         const vendor = vendors.get(item.vendorId);
-                        return publicItem({
+                        const publicRecord = publicItem({
                             ...item,
                             vendorName: vendor?.name || item.vendorName,
                             vendorLogoUrl: vendor?.logoUrl || item.vendorLogoUrl,
                             groupId: item.groupId || vendor?.groupId || ''
                         });
+                        publicRecord.bidLog = publicRecord.bidLog.map((bid) => {
+                            const pending = bid.crewart_house_source === 'random'
+                                && !revealedBidderKeys.has(bid.bidder_key);
+                            if (pending) return { ...bid, crewart_assignment_pending: true };
+                            const { crewart_assignment_pending, ...readyBid } = bid;
+                            return readyBid;
+                        });
+                        return publicRecord;
                     })
                 });
                 return true;
@@ -1431,6 +1453,15 @@ function createPlatformApi({
                     const body = await readJson(req);
                     await withMutationLock(`channel:${channelId}`, async () => {
                         const data = await workspace(channelId);
+                        const liveItem = data.items.find((item) => item.status === 'live') || null;
+                        if (data.broadcast?.mode === 'live' || liveItem) {
+                            replyJson(res, 409, {
+                                error: '진행 중인 경매를 종료한 뒤 회차를 저장해 주세요.',
+                                code: 'AUCTION_LIVE',
+                                itemId: liveItem?.id || data.broadcast?.activeItemId || ''
+                            });
+                            return;
+                        }
                         const sold = data.items.filter((item) => item.status === 'sold' || Number(item.soldPrice) > 0);
                         const record = await repository.upsertRecord(channelId, 'archive', {
                             id: recordId('arc'),

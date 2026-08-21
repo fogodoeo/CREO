@@ -554,6 +554,8 @@ test('CREWART public broadcast adds only house colors to live bidders', async ()
     assert.deepEqual(bids.map(bid => [bid.crewart_house_key, bid.crewart_house_source]), [
         ['B', 'survey'], ['Y', 'random']
     ]);
+    assert.equal(bids[0].crewart_assignment_pending, undefined);
+    assert.equal(bids[1].crewart_assignment_pending, true);
     assert.ok(bids.every(bid => !('phone' in bid)));
 });
 
@@ -648,6 +650,7 @@ test('CREWART live assignment backtest preserves cutoff, FIFO sequence, idempote
 
     const broadcast = await call(api, 'GET', '/api/platform/channels/alpha/broadcast', null, '');
     assert.deepEqual(broadcast.json().audience.events.map(event => event.sequence), [1, 2]);
+    assert.equal(broadcast.json().audience.revealedBidderKeys.length, 2);
     assert.equal(broadcast.json().audience.events[0].name, '늦은설문/대구');
     assert.equal(broadcast.json().audience.events[1].name, '동시입찰자/부산');
     assert.doesNotMatch(JSON.stringify(broadcast.json()), /01012345678|burst-user|late-user/);
@@ -667,6 +670,17 @@ test('CREWART live assignment backtest preserves cutoff, FIFO sequence, idempote
     assert.equal(reopened.json().item.attributes.crewart_house_key, '');
     assert.equal(reopened.json().item.attributes.crewart_house_source, '');
     assert.equal(reopened.json().state.audienceSessionId, started.json().state.audienceSessionId);
+
+    const rejectedArchive = await call(api, 'POST', '/api/platform/channels/alpha/archives', { title: '진행 중 저장 시도' });
+    assert.equal(rejectedArchive.status, 409, rejectedArchive.body);
+    assert.equal(rejectedArchive.json().code, 'AUCTION_LIVE');
+    assert.equal((await repository.getRecord('alpha', 'broadcast', 'state')).audienceSessionStatus, 'active');
+
+    const ended = await call(api, 'PUT', '/api/platform/channels/alpha/auction-transition', {
+        itemId: 'live_backtest', status: 'sold', mode: 'sold',
+        item: { soldPrice: 80000, winnerAlias: '동시입찰자/부산/01012345678' }
+    });
+    assert.equal(ended.status, 200, ended.body);
 
     const archived = await call(api, 'POST', '/api/platform/channels/alpha/archives', { title: '방송 회차 종료' });
     assert.equal(archived.status, 201, archived.body);
@@ -717,6 +731,7 @@ test('CREWART assignment endpoint restores one reveal after broadcast enrichment
 
     const enrichedFirst = await call(api, 'GET', '/api/platform/channels/alpha/broadcast', null, '');
     assert.match(enrichedFirst.json().items[0].bidLog[0].crewart_house_key, /^[RGBY]$/);
+    assert.equal(enrichedFirst.json().items[0].bidLog[0].crewart_assignment_pending, true);
     assert.equal(enrichedFirst.json().audience.events.length, 0);
 
     const assignment = await call(api, 'POST', '/api/platform/channels/alpha/audience-assignment', {
@@ -732,8 +747,10 @@ test('CREWART assignment endpoint restores one reveal after broadcast enrichment
     });
     const broadcast = await call(api, 'GET', '/api/platform/channels/alpha/broadcast', null, '');
     assert.equal(broadcast.json().audience.events.length, 1);
+    assert.equal(broadcast.json().audience.revealedBidderKeys.length, 1);
     assert.equal(broadcast.json().audience.events[0].sequence, 1);
     assert.equal(broadcast.json().audience.events[0].houseKey, assignment.json().houseKey);
+    assert.equal(broadcast.json().items[0].bidLog[0].crewart_assignment_pending, undefined);
 });
 
 test('ordinary channels never assign an audience house during a sale', async () => {

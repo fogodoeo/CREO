@@ -48,6 +48,9 @@ test('CREWART new bidders use a two-second persistent FIFO reel without blocking
     assert.match(broadcast, /writeP2RevealCursor\(state\.sessionId, event\.sequence\)/);
     assert.match(broadcast, /sessionStorage\.setItem\(p2RevealStorageKey\(sessionId\)/);
     assert.match(broadcast, /pendingBidderKeys\.has\(key\)/);
+    assert.match(broadcast, /bid\.crewart_assignment_pending === true/);
+    assert.match(broadcast, /state\.generation !== generation \|\| state\.sessionId !== sessionId/);
+    assert.match(broadcast, /resetCrewartRevealState\(sessionId\)/);
     assert.match(broadcast, /processCrewartAudienceReveals\(window\.__creoAudience \|\| null\)/);
 });
 
@@ -73,4 +76,5 @@ test('page two hides debug status on success and enlarges the common item progre
     assert.doesNotMatch(router, /params\.get\('debug'\).*classList\.add\('debug'\)/);
     assert.equal((broadcast.match(/font-size: clamp\(40px, 2\.6vw, 54px\)/g) || []).length, 2);
     assert.equal((broadcast.match(/Math\.max\(40, Number\(cfg\.scoreboard_label_fontsize\) \+ 10\)/g) || []).length, 2);
+    assert.match(broadcast, /labelEl\.style\.display = 'none'/);
 });
