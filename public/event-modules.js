@@ -531,6 +531,9 @@
             }
 
             /* CREWARTS minimal ranked house cards */
+            body[data-event-module="crewart"].bracket-page #bracket-page-tree-full {
+                inset:0 !important;width:100% !important;height:100% !important;padding:0 !important;
+            }
             .crewart-scoreboard,
             .crewart-scoreboard.is-compact {
                 min-width:0;max-width:100%;flex:1 1 0;display:flex;align-items:flex-end;justify-content:flex-start;
