@@ -536,7 +536,7 @@
             }
             .crewart-scoreboard,
             .crewart-scoreboard.is-compact {
-                min-width:0;max-width:100%;flex:1 1 0;display:flex;align-items:flex-end;justify-content:flex-start;
+                min-width:0;max-width:100%;flex:1 1 0;display:flex;flex-direction:row;align-items:flex-end;justify-content:flex-start;
                 padding:0 0 clamp(28px,4vh,54px) clamp(32px,3vw,58px);border:0;background:transparent;color:#fff;overflow:hidden;
             }
             .crewart-scoreboard::before,
@@ -544,7 +544,7 @@
             .crewart-house-card::before,
             .crewart-house-card::after { display:none; }
             .crewart-house-list {
-                position:relative;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+                position:relative;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));flex:0 0 calc(100% + clamp(42px,3vw,64px));
                 width:calc(100% + clamp(42px,3vw,64px));max-width:none;gap:clamp(10px,.8vw,16px);margin:0;
             }
             .crewart-house-card,
