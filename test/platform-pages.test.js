@@ -76,6 +76,9 @@ test('home is an operational channel launcher without duplicate management route
     assert.match(hub, /id="quick-settings"/);
     assert.match(hub, /id="quick-design"/);
     assert.match(hub, /function workspaceUrl\(c\)/);
+    assert.match(hub, /Promise\.all\(\[CreoPlatform\.api\('channels'\),CreoPlatform\.api\('active-channel'\)\]\)/);
+    assert.match(hub, /initialId=channels\.some\(channel=>channel\.id===requested\)\?requested:operatingChannelId/);
+    assert.match(hub, /c\.id===operatingChannelId\?' · 현재 운영':''/);
     assert.match(hub, /runtime\.url\('shipping'\)/);
     assert.match(hub, /rounds\.href=runtime\.url\('archives'\)/);
     assert.doesNotMatch(hub, /runtime\.extension\('archives'\)/);
