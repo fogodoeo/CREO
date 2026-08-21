@@ -1415,6 +1415,23 @@ html[data-roulette-theme='academy'] .result-meta {
   }
 }
 
+html.remote-display-mode .stage-header,
+html.remote-display-mode .control-panel,
+html.remote-display-mode .panel-backdrop,
+html.remote-display-mode .result-button {
+  display: none !important;
+}
+
+.remote-session .field-help {
+  margin-bottom: 0;
+}
+
+.remote-session input[readonly] {
+  color: rgba(255, 255, 255, 0.78);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

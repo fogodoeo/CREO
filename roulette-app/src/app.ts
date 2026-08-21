@@ -13,8 +13,27 @@ import type { ColorTheme } from './types/ColorTheme';
 import { createSecureSeed, setRandomSeed } from './utils/random';
 import { parseName } from './utils/utils';
 
-const isBroadcastMode = new URLSearchParams(location.search).get('broadcast') === '1';
+const queryParameters = new URLSearchParams(location.search);
+const isBroadcastMode = queryParameters.get('broadcast') === '1';
+const remoteChannelId = /^[a-z0-9][a-z0-9_-]{1,63}$/i.test(queryParameters.get('channel') || '')
+  ? String(queryParameters.get('channel'))
+  : '';
+const isRemoteDisplay = isBroadcastMode && Boolean(remoteChannelId);
+const isRemoteController = !isBroadcastMode && Boolean(remoteChannelId);
 document.documentElement.classList.toggle('broadcast-mode', isBroadcastMode);
+document.documentElement.classList.toggle('remote-display-mode', isRemoteDisplay);
+
+type RemoteSession = {
+  revision: number;
+  phase: 'idle' | 'prepared' | 'running' | 'complete';
+  runId: string;
+  command: { id: string; type: 'reset' | 'prepare' | 'start'; issuedAt: string | null } | null;
+  entries: string[];
+  config: Partial<AppConfig> | null;
+  seed: string;
+  ballCount: number;
+  result?: { winner: string; completedAt: string | null } | null;
+};
 
 type RoundContext = {
   seed: string;
@@ -113,6 +132,12 @@ const dom = {
   replay: element<HTMLButtonElement>('replayButton'),
   newRound: element<HTMLButtonElement>('newRoundButton'),
   toast: element<HTMLElement>('toast'),
+  remoteSection: element<HTMLElement>('remoteSessionSection'),
+  remoteStatus: element<HTMLElement>('remoteSessionStatus'),
+  broadcastSource: element<HTMLInputElement>('broadcastSourceInput'),
+  copyBroadcastSource: element<HTMLButtonElement>('copyBroadcastSourceButton'),
+  resetBroadcastSession: element<HTMLButtonElement>('resetBroadcastSessionButton'),
+  privacyNotice: element<HTMLElement>('privacyNotice'),
 };
 
 function safeJsonParse<T>(value: string | null, fallback: T): T {
@@ -145,6 +170,13 @@ let currentRound: RoundContext | null = null;
 let lastRecord: RoundRecord | null = null;
 let running = false;
 let toastTimer = 0;
+let remoteRevision = 0;
+let remotePhase: RemoteSession['phase'] = 'idle';
+let remotePreparedRunId = '';
+let remoteAppliedCommandId = '';
+let remoteStartCommandId = '';
+let remoteApplyQueue = Promise.resolve();
+let remoteCommandPending = false;
 
 function parseEntries(value = dom.entries.value): string[] {
   return value
@@ -166,7 +198,7 @@ function applyUrlParameters(base: AppConfig): { config: AppConfig; entries?: str
   const params = new URLSearchParams(location.search);
   const next = { ...base };
   const title = params.get('title');
-  const channel = params.get('channel');
+  const channel = params.get('channelName') || (!remoteChannelId ? params.get('channel') : '');
   const theme = params.get('theme');
   const accent = params.get('accent');
   const map = Number(params.get('map'));
@@ -258,9 +290,9 @@ function updateCounts(): void {
   dom.personCount.textContent = String(people);
   dom.ballCount.textContent = String(balls);
   dom.startBallCount.textContent = `${balls}개 공`;
-  const valid = engineReady && balls >= 2 && balls <= 500 && !running;
+  const valid = engineReady && balls >= 2 && balls <= 500 && !running && !remoteCommandPending;
   dom.shuffle.disabled = !valid;
-  dom.start.disabled = !valid;
+  dom.start.disabled = !valid || (isRemoteController && remotePhase !== 'prepared');
   dom.winningRank.max = String(Math.max(1, balls));
   if (balls > 500) setStatus('error', '공은 최대 500개까지');
   preparedFingerprint = '';
@@ -429,6 +461,7 @@ async function completeRound(winner: string): Promise<void> {
   dom.resultDuration.textContent = formatDuration(record.durationMs);
   dom.resultButton.hidden = false;
   window.dispatchEvent(new CustomEvent('creo:roulette:result', { detail: record }));
+  if (isRemoteDisplay) void acknowledgeRemoteResult(winner);
 }
 
 function formatDuration(durationMs: number): string {
@@ -483,6 +516,162 @@ async function copyText(value: string): Promise<void> {
   area.select();
   document.execCommand('copy');
   area.remove();
+}
+
+function remoteSessionUrl(suffix = ''): string {
+  return `/api/platform/channels/${encodeURIComponent(remoteChannelId)}/pinball-session${suffix}`;
+}
+
+function remoteSourceUrl(): string {
+  const url = new URL('/roulette/', location.origin);
+  url.searchParams.set('channel', remoteChannelId);
+  url.searchParams.set('broadcast', '1');
+  return url.toString();
+}
+
+function newRequestId(): string {
+  return `pinball_${crypto.randomUUID().replaceAll('-', '')}`;
+}
+
+async function remoteRequest(path: string, init: RequestInit = {}): Promise<{ session: RemoteSession; duplicate?: boolean }> {
+  const response = await fetch(path, {
+    cache: 'no-store',
+    credentials: 'same-origin',
+    ...init,
+    headers: { 'Content-Type': 'application/json', ...(init.headers || {}) },
+  });
+  const payload = await response.json().catch(() => ({})) as { error?: string; session?: RemoteSession; duplicate?: boolean };
+  if (!response.ok || !payload.session) {
+    if (payload.session) updateRemoteSnapshot(payload.session);
+    throw new Error(payload.error || `송출 서버 응답 오류 (${response.status})`);
+  }
+  return { session: payload.session, duplicate: payload.duplicate };
+}
+
+function updateRemoteSnapshot(session: RemoteSession): void {
+  remoteRevision = Math.max(0, Number(session.revision) || 0);
+  remotePhase = session.phase;
+  const status = session.phase === 'prepared'
+    ? `${session.ballCount.toLocaleString('ko-KR')}개 공 · 송출 배치 완료`
+    : session.phase === 'running'
+      ? '송출 화면에서 추첨 진행 중'
+      : session.phase === 'complete'
+        ? `${session.result?.winner || '결과'} · 추첨 완료`
+        : '송출 화면 연결 대기';
+  dom.remoteStatus.textContent = status;
+  updateCounts();
+}
+
+async function sendRemoteCommand(action: 'reset' | 'prepare' | 'start'): Promise<RemoteSession> {
+  if (remoteCommandPending) throw new Error('이전 송출 명령을 처리하고 있습니다.');
+  remoteCommandPending = true;
+  updateCounts();
+  const body: Record<string, unknown> = {
+    action,
+    requestId: newRequestId(),
+    expectedRevision: remoteRevision,
+  };
+  try {
+    if (action === 'prepare') {
+      const entries = parseEntries();
+      const summary = entrySummary(entries);
+      if (summary.balls < 2) throw new Error('공을 2개 이상 입력해주세요.');
+      if (summary.balls > 500) throw new Error('공은 최대 500개까지 지원합니다.');
+      if (entries.some((entry) => (parseName(entry)?.name.length ?? 0) > 40)) throw new Error('참가자 이름은 40자 이하로 입력해주세요.');
+      persistInputs();
+      Object.assign(body, { entries, config: collectConfig(), seed: createSecureSeed() });
+    }
+    const response = await remoteRequest(remoteSessionUrl(), { method: 'PUT', body: JSON.stringify(body) });
+    updateRemoteSnapshot(response.session);
+    return response.session;
+  } finally {
+    remoteCommandPending = false;
+    updateCounts();
+  }
+}
+
+async function acknowledgeRemoteResult(winner: string): Promise<void> {
+  if (!remotePreparedRunId || !remoteStartCommandId) return;
+  try {
+    const response = await remoteRequest(remoteSessionUrl('/complete'), {
+      method: 'POST',
+      body: JSON.stringify({ runId: remotePreparedRunId, commandId: remoteStartCommandId, winner }),
+    });
+    updateRemoteSnapshot(response.session);
+  } catch (error) {
+    console.error('Pinball result acknowledgement failed', error);
+  }
+}
+
+async function applyRemoteSession(session: RemoteSession): Promise<void> {
+  updateRemoteSnapshot(session);
+  if (!session.command || session.command.id === remoteAppliedCommandId) return;
+  if (session.command.type === 'reset') {
+    remotePreparedRunId = '';
+    remoteStartCommandId = '';
+    remoteAppliedCommandId = session.command.id;
+    setStatus('ready', '노트북에서 공 배치를 기다리는 중');
+    return;
+  }
+  if (session.command.type === 'prepare') {
+    configure(session.config || {});
+    window.CreoMarbleRoulette.setEntries(session.entries);
+    await prepareRound(session.seed);
+    remotePreparedRunId = session.runId;
+    remoteStartCommandId = '';
+    remoteAppliedCommandId = session.command.id;
+    closePanel();
+    return;
+  }
+  if (session.command.type === 'start') {
+    if (remotePreparedRunId !== session.runId) {
+      configure(session.config || {});
+      window.CreoMarbleRoulette.setEntries(session.entries);
+      await prepareRound(session.seed);
+      remotePreparedRunId = session.runId;
+    }
+    remoteStartCommandId = session.command.id;
+    await startRound();
+    remoteAppliedCommandId = session.command.id;
+  }
+}
+
+async function fetchRemoteSession(): Promise<RemoteSession> {
+  const response = await remoteRequest(remoteSessionUrl());
+  if (isRemoteDisplay) {
+    remoteApplyQueue = remoteApplyQueue.then(() => applyRemoteSession(response.session)).catch((error) => {
+      console.error('Pinball remote command failed', error);
+      setStatus('error', error instanceof Error ? error.message : '송출 명령 적용 실패');
+    });
+    await remoteApplyQueue;
+  } else {
+    updateRemoteSnapshot(response.session);
+  }
+  return response.session;
+}
+
+function startRemotePolling(): void {
+  let lastPulse = -1;
+  const poll = async (): Promise<void> => {
+    try {
+      const response = await fetch(`/api/platform/channels/${encodeURIComponent(remoteChannelId)}/broadcast-pulse`, {
+        cache: 'no-store',
+        credentials: 'same-origin',
+      });
+      if (!response.ok) throw new Error(`송출 연결 오류 (${response.status})`);
+      const payload = await response.json() as { revision?: number };
+      const pulse = Number(payload.revision) || 0;
+      if (lastPulse < 0 || pulse !== lastPulse) {
+        lastPulse = pulse;
+        await fetchRemoteSession();
+      }
+    } catch (error) {
+      if (isRemoteController) dom.remoteStatus.textContent = error instanceof Error ? error.message : '송출 서버 연결 끊김';
+    } finally {
+      window.setTimeout(poll, 450);
+    }
+  };
+  void poll();
 }
 
 function applyConfigToControls(next: AppConfig): void {
@@ -581,8 +770,30 @@ function bindEvents(): void {
     showToast(`${file.name}을 불러왔습니다.`);
   });
 
-  dom.shuffle.addEventListener('click', () => prepareRound().catch((error: Error) => showToast(error.message)));
-  dom.start.addEventListener('click', () => startRound().catch((error: Error) => showToast(error.message)));
+  dom.shuffle.addEventListener('click', () => {
+    const action = isRemoteController ? sendRemoteCommand('prepare') : prepareRound();
+    void action.then(() => {
+      if (isRemoteController) showToast('송출 화면에 공을 배치했습니다.');
+    }).catch((error: Error) => showToast(error.message));
+  });
+  dom.start.addEventListener('click', () => {
+    const action = isRemoteController ? sendRemoteCommand('start') : startRound();
+    void action.then(() => {
+      if (isRemoteController) {
+        showToast('송출 화면에서 추첨을 시작했습니다.');
+        closePanel();
+      }
+    }).catch((error: Error) => showToast(error.message));
+  });
+
+  dom.copyBroadcastSource.addEventListener('click', async () => {
+    await copyText(dom.broadcastSource.value);
+    showToast('PRISM 송출 주소를 복사했습니다.');
+  });
+  dom.resetBroadcastSession.addEventListener('click', () => {
+    if (remotePhase === 'running' && !window.confirm('송출 화면의 진행 상태를 초기화할까요? 실제 핀볼 화면은 새로고침해야 할 수 있습니다.')) return;
+    void sendRemoteCommand('reset').then(() => showToast('송출 상태를 초기화했습니다.')).catch((error: Error) => showToast(error.message));
+  });
 
   dom.exportPreset.addEventListener('click', () => {
     persistInputs();
@@ -662,7 +873,16 @@ async function initialize(): Promise<void> {
   dom.entries.value = urlState.entries || localStorage.getItem(STORAGE_KEYS.entries) || config.defaultEntries;
   renderHistory();
   updateCounts();
-  openPanel();
+  if (!isRemoteDisplay) openPanel();
+  else closePanel();
+
+  if (isRemoteController) {
+    dom.remoteSection.hidden = false;
+    dom.broadcastSource.value = remoteSourceUrl();
+    dom.privacyNotice.textContent = '브로드캐스트 모드에서는 참가자 이름과 추첨 설정이 선택한 채널 세션에 저장됩니다.';
+    dom.shuffle.textContent = '송출에 공 배치';
+    dom.start.querySelector('span')!.textContent = '송출 추첨 시작';
+  }
 
   roulette = new Roulette();
   roulette.addEventListener('goal', (event) => {
@@ -686,7 +906,8 @@ async function initialize(): Promise<void> {
     dom.map.value = String(Math.min(config.defaultMap, Math.max(0, maps.length - 1)));
     roulette.setTheme(activeTheme());
     updateCounts();
-    setStatus('ready', '참가자를 입력해주세요');
+    setStatus('ready', isRemoteDisplay ? '노트북에서 공 배치를 기다리는 중' : '참가자를 입력해주세요');
+    if (remoteChannelId) startRemotePolling();
   } catch (error) {
     console.error(error);
     setStatus('error', '엔진 로드 실패');

@@ -23,6 +23,7 @@ const ADMIN_SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 const ADMIN_LOGIN_WINDOW_MS = 10 * 60 * 1000;
 const ADMIN_LOGIN_ATTEMPTS = 6;
 const BROADCAST_CONFIG_ID = 'broadcast-config';
+const PINBALL_SESSION_ID = 'pinball-session';
 const AUDIENCE_REVEALS_ID = 'crewart-audience-reveals';
 const BROADCAST_CONFIG_KEY = /^[a-z0-9][a-z0-9_:-]{0,79}$/i;
 const SHIPPING_RATE_CONFIG_KEYS = Object.freeze({
@@ -232,6 +233,70 @@ function sanitizeBroadcastState(input = {}) {
         audienceSessionStatus: ['active', 'closed'].includes(input.audienceSessionStatus) ? input.audienceSessionStatus : '',
         audienceSessionLockedAt: cleanText(input.audienceSessionLockedAt, 80),
         audienceSessionEndedAt: cleanText(input.audienceSessionEndedAt, 80)
+    };
+}
+
+function pinballEntryCount(entry) {
+    const match = String(entry || '').match(/(?:\*(\d+))?(?:\/(?:\d+(?:\.\d+)?))?\s*$/);
+    return Math.max(1, Math.min(500, Number.parseInt(match?.[1], 10) || 1));
+}
+
+function pinballEntryName(entry) {
+    return cleanText(String(entry || '').replace(/(?:\*\d+)?(?:\/(?:\d+(?:\.\d+)?))?\s*$/, '').trim(), 120);
+}
+
+function sanitizePinballConfig(input = {}) {
+    const speed = Number(input.defaultSpeed);
+    const map = Number.parseInt(input.defaultMap, 10);
+    const rank = Number.parseInt(input.winningRank, 10);
+    return {
+        eventTitle: cleanText(input.eventTitle, 40) || '공정하고 즐거운 추첨',
+        channelName: cleanText(input.channelName, 30),
+        winnerLabel: cleanText(input.winnerLabel, 12) || '당첨',
+        defaultMap: Number.isFinite(map) ? Math.max(0, Math.min(20, map)) : 0,
+        defaultSpeed: [0.75, 1, 1.5, 2].includes(speed) ? speed : 1,
+        winnerMode: ['first', 'last', 'rank'].includes(input.winnerMode) ? input.winnerMode : 'first',
+        winningRank: Number.isFinite(rank) ? Math.max(1, Math.min(500, rank)) : 1,
+        useSkills: booleanValue(input.useSkills, false),
+        autoRecording: false,
+        themePreset: ['academy', 'midnight', 'arena', 'clean'].includes(input.themePreset) ? input.themePreset : 'midnight',
+        marbleStyle: ['glass', 'flat'].includes(input.marbleStyle) ? input.marbleStyle : 'glass',
+        accentColor: /^#[0-9a-f]{6}$/i.test(String(input.accentColor || '')) ? String(input.accentColor) : '#f2c66d'
+    };
+}
+
+function sanitizePinballEntries(input) {
+    if (!Array.isArray(input)) return { entries: [], ballCount: 0, error: '참가자 목록이 필요합니다.' };
+    const entries = input.slice(0, 500).map((entry) => cleanText(entry, 120)).filter(Boolean);
+    const ballCount = entries.reduce((sum, entry) => sum + pinballEntryCount(entry), 0);
+    if (ballCount < 2) return { entries, ballCount, error: '공을 2개 이상 입력해 주세요.' };
+    if (ballCount > 500) return { entries, ballCount, error: '공은 최대 500개까지 지원합니다.' };
+    return { entries, ballCount, error: '' };
+}
+
+function publicPinballSession(record) {
+    if (!record) {
+        return { id: PINBALL_SESSION_ID, revision: 0, phase: 'idle', runId: '', command: null, entries: [], config: null, seed: '', updatedAt: null };
+    }
+    return {
+        id: PINBALL_SESSION_ID,
+        revision: Math.max(0, Number(record.revision) || 0),
+        phase: ['idle', 'prepared', 'running', 'complete'].includes(record.phase) ? record.phase : 'idle',
+        runId: cleanText(record.runId, 80),
+        command: record.command && typeof record.command === 'object' ? {
+            id: cleanText(record.command.id, 80),
+            type: ['reset', 'prepare', 'start'].includes(record.command.type) ? record.command.type : 'reset',
+            issuedAt: record.command.issuedAt || null
+        } : null,
+        entries: Array.isArray(record.entries) ? record.entries.map((entry) => cleanText(entry, 120)).filter(Boolean) : [],
+        config: record.config ? sanitizePinballConfig(record.config) : null,
+        seed: cleanText(record.seed, 96),
+        ballCount: Math.max(0, Math.min(500, Number(record.ballCount) || 0)),
+        result: record.result && typeof record.result === 'object' ? {
+            winner: cleanText(record.result.winner, 120),
+            completedAt: record.result.completedAt || null
+        } : null,
+        updatedAt: record.updatedAt || null
     };
 }
 
@@ -1073,6 +1138,9 @@ function createPlatformApi({
                 if (await repository.getRecord(channelId, 'setting', BROADCAST_CONFIG_ID)) {
                     await repository.deleteRecord(channelId, 'setting', BROADCAST_CONFIG_ID);
                 }
+                if (await repository.getRecord(channelId, 'setting', PINBALL_SESSION_ID)) {
+                    await repository.deleteRecord(channelId, 'setting', PINBALL_SESSION_ID);
+                }
                 const saved = await repository.saveCatalog(
                     catalog.channels.filter((entry) => entry.id !== channelId),
                     url.searchParams.has('expectedVersion') ? url.searchParams.get('expectedVersion') : catalog.version
@@ -1397,6 +1465,144 @@ function createPlatformApi({
                 }
                 touchChannel(checked.value.id);
                 replyJson(res, 201, { channel: checked.value, catalogVersion: saved.version });
+                return true;
+            }
+
+            if (segments.length === 3 && segments[2] === 'pinball-session' && method === 'GET') {
+                const record = await repository.getRecord(channelId, 'setting', PINBALL_SESSION_ID);
+                replyJson(res, 200, { channelId, session: publicPinballSession(record) });
+                return true;
+            }
+
+            if (segments.length === 3 && segments[2] === 'pinball-session' && method === 'PUT') {
+                if (!await requireAdmin(req, res)) return true;
+                const body = await readJson(req);
+                const action = ['reset', 'prepare', 'start'].includes(body.action) ? body.action : '';
+                const requestId = cleanText(body.requestId, 80);
+                if (!action || !/^[a-z0-9][a-z0-9_-]{7,79}$/i.test(requestId)) {
+                    replyJson(res, 422, { error: '유효한 핀볼 명령과 요청 ID가 필요합니다.' });
+                    return true;
+                }
+                await withMutationLock(`pinball:${channelId}`, async () => {
+                    const current = await repository.getRecord(channelId, 'setting', PINBALL_SESSION_ID);
+                    if (current?.lastRequestId === requestId) {
+                        replyJson(res, 200, { channelId, session: publicPinballSession(current), duplicate: true });
+                        return;
+                    }
+                    const currentRevision = Math.max(0, Number(current?.revision) || 0);
+                    if (body.expectedRevision !== undefined && Number(body.expectedRevision) !== currentRevision) {
+                        replyJson(res, 409, {
+                            error: '다른 제어 화면에서 핀볼 설정이 변경되었습니다. 현재 상태를 다시 확인해 주세요.',
+                            code: 'PINBALL_REVISION_CONFLICT',
+                            session: publicPinballSession(current)
+                        });
+                        return;
+                    }
+
+                    const now = new Date().toISOString();
+                    let next;
+                    if (action === 'reset') {
+                        next = {
+                            id: PINBALL_SESSION_ID,
+                            revision: currentRevision + 1,
+                            phase: 'idle',
+                            runId: '',
+                            command: { id: crypto.randomUUID(), type: 'reset', issuedAt: now },
+                            entries: [],
+                            config: null,
+                            seed: '',
+                            ballCount: 0,
+                            lastRequestId: requestId,
+                            updatedAt: now
+                        };
+                    } else if (action === 'prepare') {
+                        if (current?.phase === 'running') {
+                            replyJson(res, 409, { error: '현재 추첨이 끝난 뒤 다음 공을 배치해 주세요.', code: 'PINBALL_ALREADY_RUNNING' });
+                            return;
+                        }
+                        const checked = sanitizePinballEntries(body.entries);
+                        if (checked.error) {
+                            replyJson(res, 422, { error: checked.error });
+                            return;
+                        }
+                        const seed = cleanText(body.seed, 96);
+                        if (!seed) {
+                            replyJson(res, 422, { error: '추첨 시드가 필요합니다.' });
+                            return;
+                        }
+                        next = {
+                            id: PINBALL_SESSION_ID,
+                            revision: currentRevision + 1,
+                            phase: 'prepared',
+                            runId: crypto.randomUUID(),
+                            command: { id: crypto.randomUUID(), type: 'prepare', issuedAt: now },
+                            entries: checked.entries,
+                            config: sanitizePinballConfig(body.config),
+                            seed,
+                            ballCount: checked.ballCount,
+                            lastRequestId: requestId,
+                            updatedAt: now
+                        };
+                    } else {
+                        if (!current || !current.runId || !Array.isArray(current.entries) || current.entries.length === 0) {
+                            replyJson(res, 409, { error: '먼저 참가자와 공을 송출 화면에 배치해 주세요.', code: 'PINBALL_NOT_PREPARED' });
+                            return;
+                        }
+                        if (current.phase === 'running') {
+                            replyJson(res, 200, { channelId, session: publicPinballSession(current), duplicate: true });
+                            return;
+                        }
+                        if (current.phase !== 'prepared') {
+                            replyJson(res, 409, { error: '현재 핀볼 세션을 시작할 수 없습니다.', code: 'PINBALL_INVALID_PHASE' });
+                            return;
+                        }
+                        next = {
+                            ...current,
+                            revision: currentRevision + 1,
+                            phase: 'running',
+                            command: { id: crypto.randomUUID(), type: 'start', issuedAt: now },
+                            lastRequestId: requestId,
+                            updatedAt: now
+                        };
+                    }
+                    const saved = await repository.upsertRecord(channelId, 'setting', next);
+                    touchChannel(channelId);
+                    replyJson(res, 200, { channelId, session: publicPinballSession(saved), duplicate: false });
+                });
+                return true;
+            }
+
+            if (segments.length === 4 && segments[2] === 'pinball-session' && segments[3] === 'complete' && method === 'POST') {
+                const body = await readJson(req);
+                const runId = cleanText(body.runId, 80);
+                const commandId = cleanText(body.commandId, 80);
+                const winner = cleanText(body.winner, 120);
+                await withMutationLock(`pinball:${channelId}`, async () => {
+                    const current = await repository.getRecord(channelId, 'setting', PINBALL_SESSION_ID);
+                    if (current?.phase === 'complete' && current.runId === runId) {
+                        replyJson(res, 200, { channelId, session: publicPinballSession(current), duplicate: true });
+                        return;
+                    }
+                    if (!current || current.phase !== 'running' || current.runId !== runId || current.command?.id !== commandId) {
+                        replyJson(res, 409, { error: '현재 실행 중인 핀볼 추첨과 일치하지 않습니다.', code: 'PINBALL_RUN_MISMATCH' });
+                        return;
+                    }
+                    const participantNames = new Set((current.entries || []).map(pinballEntryName).filter(Boolean));
+                    if (!winner || !participantNames.has(winner)) {
+                        replyJson(res, 422, { error: '현재 참가자 목록에 없는 결과입니다.' });
+                        return;
+                    }
+                    const now = new Date().toISOString();
+                    const saved = await repository.upsertRecord(channelId, 'setting', {
+                        ...current,
+                        revision: Math.max(0, Number(current.revision) || 0) + 1,
+                        phase: 'complete',
+                        result: { winner, completedAt: now },
+                        updatedAt: now
+                    });
+                    touchChannel(channelId);
+                    replyJson(res, 200, { channelId, session: publicPinballSession(saved), duplicate: false });
+                });
                 return true;
             }
 

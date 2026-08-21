@@ -45,6 +45,22 @@
           </div>
 
           <div class="panel-scroll">
+            <section class="control-section remote-session" id="remoteSessionSection" hidden>
+              <div class="section-title">
+                <h2>브로드캐스트 송출</h2>
+                <span id="remoteSessionStatus">연결 확인 중</span>
+              </div>
+              <label class="field">
+                <span>PRISM 브라우저 소스 URL</span>
+                <input id="broadcastSourceInput" type="text" readonly />
+              </label>
+              <div class="text-actions">
+                <button id="copyBroadcastSourceButton" type="button">송출 주소 복사</button>
+                <button id="resetBroadcastSessionButton" type="button">송출 상태 초기화</button>
+              </div>
+              <p class="field-help">노트북에서 공 배치·추첨 시작을 누르면 이 주소의 송출 화면이 실행됩니다.</p>
+            </section>
+
             <section class="control-section">
               <div class="section-title">
                 <h2>행사 정보</h2>
@@ -166,7 +182,7 @@
             </details>
 
             <div class="license-note">
-              <span>브라우저 안에서만 처리되며 참가자 목록은 서버로 전송되지 않습니다.</span>
+              <span id="privacyNotice">단독 모드에서는 참가자 목록이 이 브라우저 안에서만 처리됩니다.</span>
               <a href="./LICENSE.txt" target="_blank" rel="noopener">MIT 오픈소스 고지</a>
               <a href="./PRETENDARD-LICENSE.txt" target="_blank" rel="noopener">Pretendard 폰트 고지</a>
             </div>

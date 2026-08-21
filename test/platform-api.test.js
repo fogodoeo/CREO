@@ -161,6 +161,104 @@ test('vendor records with identical ids remain isolated by channel', async () =>
     assert.equal(beta.json().vendors[0].name, '베타 업체');
 });
 
+test('pinball broadcast sessions are channel-isolated, persistent, and suppress duplicate commands', async () => {
+    const repository = new MemoryRepository();
+    const options = { repository, logger: { error() {} }, adminSessionSecret: 'pinball-test-secret' };
+    const api = createPlatformApi(options);
+
+    let response = await call(api, 'GET', '/api/platform/channels/alpha/pinball-session', null, '');
+    assert.equal(response.status, 200);
+    assert.equal(response.json().session.phase, 'idle');
+
+    const prepareBody = {
+        action: 'prepare', requestId: 'prepare_request_001', expectedRevision: 0,
+        seed: 'stable-seed-001', entries: ['김상정*2', '배원직'],
+        config: { eventTitle: '크레와트', themePreset: 'academy', defaultSpeed: 1.5, autoRecording: true }
+    };
+    const denied = await call(api, 'PUT', '/api/platform/channels/alpha/pinball-session', prepareBody, '');
+    assert.equal(denied.status, 401);
+
+    response = await call(api, 'PUT', '/api/platform/channels/alpha/pinball-session', prepareBody);
+    assert.equal(response.status, 200);
+    const prepared = response.json().session;
+    assert.equal(prepared.phase, 'prepared');
+    assert.equal(prepared.ballCount, 3);
+    assert.equal(prepared.config.themePreset, 'academy');
+    assert.equal(prepared.config.autoRecording, false);
+    assert.equal(prepared.revision, 1);
+
+    const duplicate = await call(api, 'PUT', '/api/platform/channels/alpha/pinball-session', prepareBody);
+    assert.equal(duplicate.status, 200);
+    assert.equal(duplicate.json().duplicate, true);
+    assert.equal(duplicate.json().session.runId, prepared.runId);
+    assert.equal(duplicate.json().session.revision, 1);
+
+    const beta = await call(api, 'GET', '/api/platform/channels/beta/pinball-session', null, '');
+    assert.equal(beta.json().session.phase, 'idle');
+    assert.deepEqual(beta.json().session.entries, []);
+
+    const restartedApi = createPlatformApi(options);
+    const afterRestart = await call(restartedApi, 'GET', '/api/platform/channels/alpha/pinball-session', null, '');
+    assert.equal(afterRestart.json().session.runId, prepared.runId);
+    assert.deepEqual(afterRestart.json().session.entries, ['김상정*2', '배원직']);
+});
+
+test('pinball lifecycle rejects stale concurrent changes and accepts an idempotent result', async () => {
+    const repository = new MemoryRepository();
+    const api = createPlatformApi({ repository, logger: { error() {} } });
+    const preparedResponse = await call(api, 'PUT', '/api/platform/channels/alpha/pinball-session', {
+        action: 'prepare', requestId: 'prepare_lifecycle_001', expectedRevision: 0,
+        seed: 'lifecycle-seed', entries: ['김상정*2', '배원직'], config: {}
+    });
+    const prepared = preparedResponse.json().session;
+
+    const [first, stale] = await Promise.all([
+        call(api, 'PUT', '/api/platform/channels/alpha/pinball-session', {
+            action: 'start', requestId: 'start_lifecycle_001', expectedRevision: prepared.revision
+        }),
+        call(api, 'PUT', '/api/platform/channels/alpha/pinball-session', {
+            action: 'prepare', requestId: 'prepare_lifecycle_002', expectedRevision: prepared.revision,
+            seed: 'unsafe-overwrite', entries: ['다른 사람', '또 다른 사람'], config: {}
+        })
+    ]);
+    assert.deepEqual([first.status, stale.status].sort(), [200, 409]);
+    const running = (first.status === 200 ? first : stale).json().session;
+    assert.equal(running.phase, 'running');
+
+    const retry = await call(api, 'PUT', '/api/platform/channels/alpha/pinball-session', {
+        action: 'start', requestId: 'start_lifecycle_001', expectedRevision: prepared.revision
+    });
+    assert.equal(retry.status, 200);
+    assert.equal(retry.json().duplicate, true);
+    assert.equal(retry.json().session.command.id, running.command.id);
+
+    const invalidWinner = await call(api, 'POST', '/api/platform/channels/alpha/pinball-session/complete', {
+        runId: running.runId, commandId: running.command.id, winner: '목록에 없음'
+    }, '');
+    assert.equal(invalidWinner.status, 422);
+
+    const completed = await call(api, 'POST', '/api/platform/channels/alpha/pinball-session/complete', {
+        runId: running.runId, commandId: running.command.id, winner: '김상정'
+    }, '');
+    assert.equal(completed.status, 200);
+    assert.equal(completed.json().session.phase, 'complete');
+    assert.equal(completed.json().session.result.winner, '김상정');
+
+    const duplicateCompletion = await call(api, 'POST', '/api/platform/channels/alpha/pinball-session/complete', {
+        runId: running.runId, commandId: running.command.id, winner: '김상정'
+    }, '');
+    assert.equal(duplicateCompletion.status, 200);
+    assert.equal(duplicateCompletion.json().duplicate, true);
+
+    const nextRound = await call(api, 'PUT', '/api/platform/channels/alpha/pinball-session', {
+        action: 'prepare', requestId: 'prepare_lifecycle_003', expectedRevision: completed.json().session.revision,
+        seed: 'next-round', entries: ['새 참가자', '두 번째'], config: {}
+    });
+    assert.equal(nextRound.status, 200);
+    assert.equal(nextRound.json().session.phase, 'prepared');
+    assert.notEqual(nextRound.json().session.runId, running.runId);
+});
+
 test('duplicating a legacy channel keeps its broadcast profile but starts on isolated platform data', async () => {
     const repository = new MemoryRepository();
     repository.catalog.channels[0] = normalizeChannel({

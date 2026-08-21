@@ -76,7 +76,27 @@ test('global pinball launcher exposes reusable skins and carries the selected ch
     assert.match(main, /value="academy">마법학교/);
     assert.match(main, /creo_pinball_skin_v1/);
     assert.match(main, /new URLSearchParams\(\{theme:pinballSkin\.value\}\)/);
-    assert.match(main, /params\.set\('channel',activeChannel\.name\)/);
+    assert.match(main, /params\.set\('channel',activeChannel\.id\)/);
+    assert.match(main, /params\.set\('channelName',activeChannel\.name\)/);
+});
+
+test('pinball separates an authenticated laptop controller from a clean fixed broadcast source', () => {
+    const html = fs.readFileSync(path.join(appRoot, 'index.html'), 'utf8');
+    const app = fs.readFileSync(path.join(appRoot, 'src', 'app.ts'), 'utf8');
+    const styles = fs.readFileSync(path.join(appRoot, 'assets', 'app.scss'), 'utf8');
+
+    assert.match(html, /id="remoteSessionSection"/);
+    assert.match(html, /id="broadcastSourceInput"/);
+    assert.match(html, /id="resetBroadcastSessionButton"/);
+    assert.match(app, /isRemoteDisplay = isBroadcastMode && Boolean\(remoteChannelId\)/);
+    assert.match(app, /pinball-session/);
+    assert.match(app, /broadcast-pulse/);
+    assert.match(app, /remoteApplyQueue = remoteApplyQueue\.then/);
+    assert.match(app, /session\.command\.id === remoteAppliedCommandId/);
+    assert.match(app, /sendRemoteCommand\('prepare'\)/);
+    assert.match(app, /sendRemoteCommand\('start'\)/);
+    assert.match(app, /acknowledgeRemoteResult/);
+    assert.match(styles, /html\.remote-display-mode \.stage-header/);
 });
 
 test('academy pinball skin changes both physics colors and application chrome', () => {
