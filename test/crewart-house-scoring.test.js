@@ -98,8 +98,10 @@ test('P3 board presents only four house cards and their amount numbers', () => {
     assert.doesNotMatch(html, /crewart-score-head|crewart-house-stats|crewart-house-sigil|<small>|POINTS|기숙사 미지정/);
 
     const source = fs.readFileSync(path.join(__dirname, '..', 'public', 'event-modules.js'), 'utf8');
-    assert.match(source, /\.crewart-house-list \{[\s\S]*?grid-template-columns:minmax\(0,1fr\)/);
-    assert.match(source, /\.crewart-house-card,[\s\S]*?width:100%;height:clamp\(76px,12vh,130px\)/);
+    assert.match(source, /\.crewart-house-list \{[\s\S]*?grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
+    assert.match(source, /\.crewart-house-card,[\s\S]*?width:100%;height:clamp\(104px,17vh,184px\)/);
+    assert.match(source, /\.crewart-scoreboard\.is-compact \{[\s\S]*?align-items:flex-end/);
+    assert.match(source, /\.crewart-house-card:last-child \.crewart-house-score \{[\s\S]*?transform:translateX\(\.18em\)/);
 });
 
 test('P3 reorders cards by amount and keeps RGBY order for ties', () => {

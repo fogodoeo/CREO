@@ -37,13 +37,13 @@ test('CREWART page two colors each live bidder card with the resolved viewer hou
     assert.match(broadcast, /Y: \{ color: '#d2a33a', rgb: '210,163,58', ink: '#ffffff' \}/);
 });
 
-test('CREWART new bidders use a short persistent FIFO reel without blocking bid rows', () => {
+test('CREWART new bidders use a two-second persistent FIFO reel without blocking bid rows', () => {
     assert.match(broadcast, /id="p2-house-reveal-overlay"/);
     assert.match(broadcast, /class="p2-house-reveal-window"/);
     assert.match(broadcast, /state\.queue\.push\(\{ \.\.\.event, sequence \}\)/);
     assert.match(broadcast, /state\.queue\.shift\(\)/);
-    assert.match(broadcast, /const duration = reducedMotion \? 0 : \(compact \? 700 : 1200\)/);
-    assert.match(broadcast, /const hold = compact \? 280 : 520/);
+    assert.match(broadcast, /const duration = reducedMotion \? 0 : 2000/);
+    assert.match(broadcast, /const hold = 360/);
     assert.match(broadcast, /latestAssignedAt >= state\.pageStartedAt - 15000/);
     assert.match(broadcast, /writeP2RevealCursor\(state\.sessionId, event\.sequence\)/);
     assert.match(broadcast, /sessionStorage\.setItem\(p2RevealStorageKey\(sessionId\)/);
@@ -60,8 +60,17 @@ test('all shared legacy layouts support three nametags', () => {
     assert.match(broadcast, /for \(let i = 1; i <= 3; i\+\+\)/);
 });
 
-test('CREYON page two hides the public-auction label but shows synchronized live bidders', () => {
-    assert.match(broadcast, /moduleId === 'creyon'[\s\S]{0,180}label = ''/);
+test('all public single-auction page two layouts hide the public-auction label', () => {
+    assert.match(broadcast, /competition === 'single' && visibility === 'public' && !isQuiz[\s\S]{0,80}label = ''/);
+    assert.doesNotMatch(broadcast, /moduleId === 'creyon'[\s\S]{0,180}label = ''/);
     assert.doesNotMatch(creyonCss, /#p2-live-bidders-overlay[\s\S]{0,100}display:\s*none\s*!important/);
     assert.match(broadcast, /renderPage2LiveBidders\(item, window\.latestConfigMap \|\| \{\}\)/);
+});
+
+test('page two hides debug status on success and enlarges the common item progress counter', () => {
+    const router = fs.readFileSync(path.join(__dirname, '..', 'public', 'broadcast-router.html'), 'utf8');
+    assert.match(router, /body\.has-error \.status\{display:block\}/);
+    assert.doesNotMatch(router, /params\.get\('debug'\).*classList\.add\('debug'\)/);
+    assert.equal((broadcast.match(/font-size: clamp\(40px, 2\.6vw, 54px\)/g) || []).length, 2);
+    assert.equal((broadcast.match(/Math\.max\(40, Number\(cfg\.scoreboard_label_fontsize\) \+ 10\)/g) || []).length, 2);
 });

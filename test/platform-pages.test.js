@@ -522,8 +522,8 @@ test('CDCUP three-round format assigns round-two teams and round-three finalists
     assert.match(broadcast, /containerEl\.style\.setProperty\('visibility', 'hidden', 'important'\)/);
     assert.doesNotMatch(broadcast, /id="current-item-progress"/);
     assert.match(broadcast, /#auction-progress\.auction-progress\s*\{\s*display: inline-flex/);
-    assert.match(broadcast, /min-height: 42px;[\s\S]*font-size: var\(--sb-label-size, 26px\)/);
-    assert.match(broadcast, /Math\.max\(26, Number\(cfg\.scoreboard_label_fontsize\) \+ 4\)/);
+    assert.match(broadcast, /min-height: 56px;[\s\S]*font-size: clamp\(40px, 2\.6vw, 54px\)/);
+    assert.match(broadcast, /Math\.max\(40, Number\(cfg\.scoreboard_label_fontsize\) \+ 10\)/);
     assert.doesNotMatch(broadcast, /<div class="p2-live-bidders-head">/);
     assert.match(broadcast, /function applyPage2LiveBiddersPlacement\(cfg\)/);
     assert.match(broadcast, /height: var\(--p2-bidders-height, 42vh\)/);

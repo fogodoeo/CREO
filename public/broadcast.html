@@ -29,7 +29,7 @@
     <script src="auction-contract.js?v=20260819-contract-v1"></script>
     <script src="supabase-bridge.js?v=20260819-round3-seed-v2"></script>
     <script src="channel-broadcast-bridge.js?v=20260821-active-state-v2"></script>
-    <script src="event-modules.js?v=20260821-crewart-p3-reveal-v5"></script>
+    <script src="event-modules.js?v=20260821-crewart-p3-layout-v6"></script>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link
         href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
@@ -215,7 +215,7 @@
             left: 24px;
             z-index: 21;
             color: #60a5fa;
-            font-size: var(--sb-label-size, 24px);
+            font-size: clamp(40px, 2.6vw, 54px);
             font-weight: 950;
             font-variant-numeric: tabular-nums;
             letter-spacing: 0.06em;
@@ -2620,15 +2620,15 @@
         #auction-progress.auction-progress {
             display: inline-flex;
             align-items: center;
-            min-height: 42px;
-            padding: 0 16px;
+            min-height: 56px;
+            padding: 0 18px;
             border: 1px solid rgba(195,154,74,0.38);
             border-radius: 3px;
             background: rgba(14,15,17,0.88);
             box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 8px 24px rgba(0,0,0,0.22);
             color: #e4c887 !important;
             font-family: 'Pretendard', sans-serif;
-            font-size: var(--sb-label-size, 26px);
+            font-size: clamp(40px, 2.6vw, 54px);
             font-weight: 850;
             font-variant-numeric: tabular-nums;
             font-feature-settings: 'tnum' 1;
@@ -5022,7 +5022,7 @@
                 // 대회명 라벨 폰트 크기 (직접 스타일)
                 const labelEl = document.getElementById('auction-progress');
                 if (labelEl) {
-                    if (cfg.scoreboard_label_fontsize) labelEl.style.fontSize = Math.max(26, Number(cfg.scoreboard_label_fontsize) + 4) + 'px';
+                    if (cfg.scoreboard_label_fontsize) labelEl.style.fontSize = Math.max(40, Number(cfg.scoreboard_label_fontsize) + 10) + 'px';
                     window._baseScoreboardLabel = cfg.scoreboard_label || eventModule.scoreboardLabel || window._baseScoreboardLabel;
                     updateProgressText();
                 }
@@ -5796,7 +5796,7 @@
                     sbWrap.style.setProperty('--sb-detail-size', detailFontSize + 'px');
                     const labelEl = document.getElementById('auction-progress');
                     if (labelEl) {
-                        if (cfg.scoreboard_label_fontsize) labelEl.style.fontSize = Math.max(26, Number(cfg.scoreboard_label_fontsize) + 4) + 'px';
+                        if (cfg.scoreboard_label_fontsize) labelEl.style.fontSize = Math.max(40, Number(cfg.scoreboard_label_fontsize) + 10) + 'px';
                         if (cfg.scoreboard_label !== undefined && cfg.scoreboard_label !== '') {
                             window._baseScoreboardLabel = cfg.scoreboard_label;
                             updateProgressText();
@@ -6824,8 +6824,7 @@
             } else {
                 label = visibility === 'blind' ? '블라인드 경매' : '공개 경매';
             }
-            const moduleId = getActiveAuctionEventModule(map || {}).id;
-            if (moduleId === 'creyon' && competition === 'single' && visibility === 'public' && !isQuiz) {
+            if (competition === 'single' && visibility === 'public' && !isQuiz) {
                 label = '';
             }
             return {
@@ -7234,9 +7233,8 @@
             overlay.classList.add('visible');
             const track = overlay.querySelector('.p2-house-reveal-track');
             const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
-            const compact = state.queue.length >= 3;
-            const duration = reducedMotion ? 0 : (compact ? 700 : 1200);
-            const hold = compact ? 280 : 520;
+            const duration = reducedMotion ? 0 : 2000;
+            const hold = 360;
             track.style.transition = 'none';
             track.style.transform = 'translateY(0)';
             requestAnimationFrame(() => requestAnimationFrame(() => {

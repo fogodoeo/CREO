@@ -533,21 +533,21 @@
             /* CREWARTS minimal ranked house cards */
             .crewart-scoreboard,
             .crewart-scoreboard.is-compact {
-                min-width:0;max-width:100%;flex:1 1 0;display:grid;grid-template-columns:minmax(0,1fr);align-content:center;justify-items:stretch;
-                padding:2.2vh 2.2vw;border:0;background:#080a0d;color:#fff;overflow:hidden;
+                min-width:0;max-width:100%;flex:1 1 0;display:flex;align-items:flex-end;justify-content:flex-start;
+                padding:0 0 clamp(28px,4vh,54px) clamp(32px,3vw,58px);border:0;background:transparent;color:#fff;overflow:hidden;
             }
             .crewart-scoreboard::before,
             .crewart-scoreboard::after,
             .crewart-house-card::before,
             .crewart-house-card::after { display:none; }
             .crewart-house-list {
-                position:relative;display:grid;grid-template-columns:minmax(0,1fr);
-                width:100%;max-width:1720px;gap:clamp(10px,1.15vh,18px);margin:0 auto;
+                position:relative;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+                width:calc(100% + clamp(42px,3vw,64px));max-width:none;gap:clamp(10px,.8vw,16px);margin:0;
             }
             .crewart-house-card,
             .crewart-scoreboard.is-compact .crewart-house-card {
                 display:grid;grid-template-columns:1fr;grid-template-rows:1fr;place-items:center;gap:0;
-                min-width:0;width:100%;height:clamp(76px,12vh,130px);min-height:0;padding:10px 32px;
+                min-width:0;width:100%;height:clamp(104px,17vh,184px);min-height:0;padding:12px 22px;
                 border:1px solid rgba(255,255,255,.14);border-radius:clamp(14px,1.05vw,22px);
                 background:var(--house);box-shadow:0 18px 50px rgba(0,0,0,.24);
                 clip-path:none;overflow:hidden;text-align:center;transition:transform .35s ease,box-shadow .35s ease;
@@ -555,14 +555,17 @@
             .crewart-house-score {
                 position:static;display:block;grid-column:1;grid-row:1;justify-self:center;align-self:center;
                 margin:0;color:var(--house-ink);font-family:'Pretendard Variable',Pretendard,sans-serif;
-                max-width:100%;font-size:clamp(48px,5vw,96px);font-weight:900;line-height:1;letter-spacing:-.045em;
+                max-width:100%;font-size:clamp(42px,4.35vw,84px);font-weight:900;line-height:1;letter-spacing:-.055em;
                 font-variant-numeric:tabular-nums;text-shadow:none;white-space:nowrap;
             }
+            .crewart-house-card:last-child .crewart-house-score {
+                justify-self:end;transform:translateX(.18em);
+            }
             @media (max-width:720px) {
-                .crewart-scoreboard,.crewart-scoreboard.is-compact { padding:18px 12px;overflow:auto; }
-                .crewart-house-list { grid-template-columns:1fr;gap:9px; }
-                .crewart-house-card,.crewart-scoreboard.is-compact .crewart-house-card { height:clamp(78px,16vh,116px);min-height:0;border-radius:14px; }
-                .crewart-house-score { font-size:clamp(46px,14vw,78px); }
+                .crewart-scoreboard,.crewart-scoreboard.is-compact { padding:0 0 18px 12px; }
+                .crewart-house-list { grid-template-columns:repeat(4,minmax(0,1fr));gap:6px; }
+                .crewart-house-card,.crewart-scoreboard.is-compact .crewart-house-card { height:86px;min-height:0;padding:8px;border-radius:12px; }
+                .crewart-house-score { font-size:clamp(22px,7vw,46px); }
             }
         `;
         document.head.appendChild(style);
