@@ -9,6 +9,8 @@ const broadcast = fs.readFileSync(path.join(__dirname, '..', 'public', 'broadcas
 const preview = fs.readFileSync(path.join(__dirname, '..', 'public', 'preview.html'), 'utf8');
 const creyonCss = fs.readFileSync(path.join(__dirname, '..', 'public', 'broadcast-creyon.css'), 'utf8');
 const crewartCss = fs.readFileSync(path.join(__dirname, '..', 'public', 'broadcast-crewart.css'), 'utf8');
+const crewartLiveBanner = fs.readFileSync(path.join(__dirname, '..', 'public', 'assets', 'crewart-broadcast', 'crewart-live-banner.svg'), 'utf8');
+const crewartHouseBanner = fs.readFileSync(path.join(__dirname, '..', 'public', 'assets', 'crewart-broadcast', 'crewart-house-banner.svg'), 'utf8');
 const settings = fs.readFileSync(path.join(__dirname, '..', 'public', 'settings.html'), 'utf8');
 
 test('public page two renders the seller as a separate tag left of the item name', () => {
@@ -45,6 +47,14 @@ test('CREWART broadcast plates use an isolated modern-antique skin', () => {
     assert.match(crewartCss, /body\[data-event-module="crewart"\] \.hc-bottom-bar/);
     assert.match(crewartCss, /body\[data-event-module="crewart"\] \.p2-live-bidder-row\[data-house\]/);
     assert.doesNotMatch(crewartCss, /(^|\n)\s*(?:\.|#)[a-z0-9_-]+/i);
+});
+
+test('CREWART default image banners follow the same restrained vector system', () => {
+    assert.match(crewartLiveBanner, /Modern antique CREWART broadcast banner/);
+    assert.match(crewartLiveBanner, /font-family="Pretendard,Arial,sans-serif"/);
+    assert.match(crewartHouseBanner, /Modern minimal four-house banner/);
+    assert.match(crewartHouseBanner, /#642f39[\s\S]*#2f6b4c[\s\S]*#355f95[\s\S]*#b78b2f/);
+    assert.doesNotMatch(crewartLiveBanner + crewartHouseBanner, /crewarts-crest|Georgia,serif|medieval/i);
 });
 
 test('CREWART new bidders use a two-second persistent FIFO reel without blocking bid rows', () => {

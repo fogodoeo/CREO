@@ -1,17 +1,38 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="460" viewBox="0 0 1600 460" role="img" aria-labelledby="title desc">
-  <title id="title">CREWARTS live</title><desc id="desc">CREWARTS broadcast banner</desc>
+  <title id="title">CREWART live</title>
+  <desc id="desc">Modern antique CREWART broadcast banner</desc>
   <defs>
-    <linearGradient id="bg" x2="0" y2="1"><stop stop-color="#3a291b"/><stop offset="1" stop-color="#130a05"/></linearGradient>
-    <linearGradient id="paper" x2="0" y2="1"><stop stop-color="#f5e3b5"/><stop offset="1" stop-color="#cda867"/></linearGradient>
-    <linearGradient id="gold" x2="1"><stop stop-color="#7e4d18"/><stop offset=".5" stop-color="#f1d58d"/><stop offset="1" stop-color="#84521b"/></linearGradient>
-    <filter id="shadow"><feDropShadow dx="0" dy="15" stdDeviation="12" flood-opacity=".58"/></filter>
+    <linearGradient id="surface" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#1b2021"/>
+      <stop offset="1" stop-color="#0e1112"/>
+    </linearGradient>
+    <linearGradient id="brass" x1="0" y1="0" x2="1" y2="0">
+      <stop stop-color="#75633f"/>
+      <stop offset=".5" stop-color="#d4bd86"/>
+      <stop offset="1" stop-color="#75633f"/>
+    </linearGradient>
+    <pattern id="grain" width="56" height="56" patternUnits="userSpaceOnUse">
+      <path d="M56 0H0v56" fill="none" stroke="#f2ead8" stroke-opacity=".025"/>
+    </pattern>
+    <filter id="lift" x="-20%" y="-30%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="18" stdDeviation="20" flood-opacity=".34"/>
+    </filter>
   </defs>
-  <rect width="1600" height="460" rx="24" fill="url(#bg)"/>
-  <path d="M0 120h1600M0 240h1600M0 360h1600M300 0v460M610 0v460M920 0v460M1230 0v460" stroke="#f0cf82" stroke-opacity=".06" stroke-width="3"/>
-  <rect x="22" y="22" width="1556" height="416" rx="14" fill="none" stroke="url(#gold)" stroke-width="4"/>
-  <image href="crewarts-crest.png" x="92" y="26" width="350" height="408" preserveAspectRatio="xMidYMid meet" filter="url(#shadow)"/>
-  <g filter="url(#shadow)"><path d="M445 86h1005l48 50-48 238H445l38-145z" fill="url(#paper)" stroke="url(#gold)" stroke-width="7"/><path d="M474 111h940l38 37-31 198H474l30-118z" fill="none" stroke="#6c421f" stroke-opacity=".36" stroke-width="3"/></g>
-  <text x="545" y="182" fill="#71471f" font-family="Georgia,serif" font-size="26" font-weight="700" letter-spacing="9">CREO BROADCAST</text>
-  <text x="535" y="286" fill="#2c180e" font-family="Georgia,serif" font-size="100" font-weight="700">CREWARTS LIVE</text>
-  <text x="545" y="336" fill="#6d4929" font-family="Georgia,serif" font-size="25" font-weight="700" letter-spacing="7">HOUSE CUP · R  G  B  Y</text>
+  <rect width="1600" height="460" rx="32" fill="url(#surface)"/>
+  <rect width="1600" height="460" rx="32" fill="url(#grain)"/>
+  <rect x="22" y="22" width="1556" height="416" rx="22" fill="none" stroke="#b59a62" stroke-opacity=".46" stroke-width="2"/>
+  <rect x="34" y="34" width="1532" height="392" rx="16" fill="none" stroke="#d4bd86" stroke-opacity=".09"/>
+  <g filter="url(#lift)">
+    <rect x="86" y="84" width="1428" height="292" rx="20" fill="#141819" fill-opacity=".94" stroke="#b59a62" stroke-opacity=".32"/>
+    <rect x="86" y="84" width="7" height="292" rx="3.5" fill="url(#brass)"/>
+  </g>
+  <text x="144" y="151" fill="#b59a62" font-family="Pretendard,Arial,sans-serif" font-size="23" font-weight="700" letter-spacing="8">CREO BROADCAST  ·  LIVE AUCTION</text>
+  <text x="136" y="279" fill="#f2ead8" font-family="Pretendard,Arial,sans-serif" font-size="112" font-weight="800" letter-spacing="-5">CREWART</text>
+  <text x="140" y="332" fill="#bdb4a2" font-family="Pretendard,Arial,sans-serif" font-size="28" font-weight="600" letter-spacing="3">HOUSE HONOUR  ·  R G B Y</text>
+  <g transform="translate(1125 142)">
+    <rect width="70" height="176" rx="12" fill="#642f39"/><text x="35" y="108" text-anchor="middle" fill="#fff" font-family="Pretendard,Arial,sans-serif" font-size="48" font-weight="800">R</text>
+    <rect x="82" width="70" height="176" rx="12" fill="#2f6b4c"/><text x="117" y="108" text-anchor="middle" fill="#fff" font-family="Pretendard,Arial,sans-serif" font-size="48" font-weight="800">G</text>
+    <rect x="164" width="70" height="176" rx="12" fill="#355f95"/><text x="199" y="108" text-anchor="middle" fill="#fff" font-family="Pretendard,Arial,sans-serif" font-size="48" font-weight="800">B</text>
+    <rect x="246" width="70" height="176" rx="12" fill="#b78b2f"/><text x="281" y="108" text-anchor="middle" fill="#fff" font-family="Pretendard,Arial,sans-serif" font-size="48" font-weight="800">Y</text>
+  </g>
 </svg>
