@@ -69,7 +69,7 @@ export class Minimap implements UIObject {
     const broadcastMode = this.broadcastMode;
     const uiScale = broadcastMode ? ctx.canvas.width / 720 : 1;
     this.top = (HUD_HEIGHT + HUD_CONTENT_GAP) * uiScale;
-    this.boundingBox.x = 10 * uiScale;
+    this.boundingBox.x = 4 * uiScale;
     const controlsReserve = CONTROLS_RESERVE_HEIGHT * uiScale;
     const availableHeight = Math.max(120, ctx.canvas.height - this.top - controlsReserve);
     this.scale = broadcastMode ? availableHeight / stage.goalY : Math.min(4, availableHeight / stage.goalY);

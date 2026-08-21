@@ -33,7 +33,7 @@ const BROADCAST_SCENE_WIDTHS = {
 } as const;
 const COMPACT_SCENE_WIDTH = 480;
 const COMPACT_SCENE_PIXEL_BUDGET = 520_000;
-export const SCENE_DISPLAY_ZOOM = 1.3;
+export const SCENE_DISPLAY_ZOOM = 1.5;
 const WINNER_TEXT_OFFSET = 30;
 const ACADEMY_ASSET_URLS = {
   wand: '/assets/pinball-academy/wand-v2.png',

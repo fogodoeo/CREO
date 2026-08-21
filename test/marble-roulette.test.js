@@ -55,7 +55,7 @@ test('roulette exposes its version and keeps native broadcast rendering with the
     assert.match(roulette, /!finishedIds\.has\(marble\.id\)/);
     assert.match(renderer, /COMPACT_SCENE_PIXEL_BUDGET = 520_000/);
     assert.match(renderer, /Math\.min\(MAX_DISPLAY_WIDTH, Math\.max\(realSize\.width, 960\)\)/);
-    assert.match(renderer, /SCENE_DISPLAY_ZOOM = 1\.3/);
+    assert.match(renderer, /SCENE_DISPLAY_ZOOM = 1\.5/);
     assert.match(marble, /diameter \* 1\.6/);
     assert.match(marble, /let fontSize = 16/);
     assert.match(marble, /const maxWidth = 112/);
@@ -123,11 +123,13 @@ test('pinball stage stays clean while candidate and controls remain in their ope
     assert.doesNotMatch(app, /당첨 유력|candidateLabel/);
     assert.match(rankRenderer, /const uiScale = Math\.max\(1, width \/ 720\)/);
     assert.match(rankRenderer, /const hudHeight = HUD_HEIGHT \* uiScale/);
-    assert.match(rankRenderer, /candidate\.name, x, hudHeight \/ 2, slotWidth - 14 \* uiScale, 20 \* uiScale/);
+    assert.match(rankRenderer, /drawCandidateLabel\(ctx, candidate/);
     assert.doesNotMatch(rankRenderer, /당첨 유력|`#\$\{rank\}/);
     assert.doesNotMatch(rankRenderer, /const hudHeight = broadcastMode \?/);
-    assert.match(rankRenderer, /rankPanelWidth = 142 \* uiScale/);
+    assert.match(rankRenderer, /rankPanelRight = width/);
+    assert.match(rankRenderer, /rankPanelWidth = 114 \* uiScale/);
     assert.match(rankRenderer, /drawFittedText/);
+    assert.match(rankRenderer, /ctx\.arc\(startX \+ radius/);
     assert.match(minimap, /CONTROLS_RESERVE_HEIGHT \* uiScale/);
     assert.match(minimap, /this\.top = \(HUD_HEIGHT \+ HUD_CONTENT_GAP\) \* uiScale/);
     assert.match(minimap, /camera\.zoom \* initialZoom \* SCENE_DISPLAY_ZOOM/);

@@ -63,11 +63,11 @@ export class RankRenderer implements UIObject {
     height: number
   ) {
     const uiScale = Math.max(1, width / 720);
-    this.layoutFontHeight = 24 * uiScale;
+    this.layoutFontHeight = 19 * uiScale;
     const hudHeight = HUD_HEIGHT * uiScale;
     const listTop = hudHeight + HUD_CONTENT_GAP * uiScale;
-    const rankPanelRight = width - 10 * uiScale;
-    const rankPanelWidth = 142 * uiScale;
+    const rankPanelRight = width;
+    const rankPanelWidth = 114 * uiScale;
     const rankPanelLeft = rankPanelRight - rankPanelWidth;
     const visibleListHeight = height - listTop;
     const startY = Math.max(-this.layoutFontHeight, this._currentY - visibleListHeight / 2);
@@ -97,19 +97,18 @@ export class RankRenderer implements UIObject {
 
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    const candidateAreaWidth = Math.max(300 * uiScale, Math.min(600 * uiScale, width - 210 * uiScale));
+    const candidateAreaWidth = Math.max(280 * uiScale, Math.min(480 * uiScale, width - 190 * uiScale));
     const slotWidth = candidateAreaWidth / Math.max(1, candidates.length);
     const candidateStartX = width / 2 - candidateAreaWidth / 2;
     candidates.forEach(({ candidate }, index) => {
       const x = candidateStartX + slotWidth * (index + 0.5);
-      ctx.fillStyle = academySkin ? '#f4ecd9' : '#ffffff';
-      this.drawFittedText(ctx, candidate.name, x, hudHeight / 2, slotWidth - 14 * uiScale, 20 * uiScale, 13 * uiScale);
+      this.drawCandidateLabel(ctx, candidate, x, hudHeight / 2, slotWidth - 8 * uiScale, uiScale, academySkin);
     });
 
     ctx.textAlign = 'right';
     ctx.fillStyle = academySkin ? '#f4ecd9' : '#ffffff';
-    ctx.font = `850 ${21 * uiScale}pt ${this.hudFont}`;
-    ctx.fillText(`${winners.length} / ${totalCount}`, width - 10 * uiScale, hudHeight / 2);
+    ctx.font = `850 ${17 * uiScale}pt ${this.hudFont}`;
+    ctx.fillText(`${winners.length} / ${totalCount}`, width - 6 * uiScale, hudHeight / 2);
 
     ctx.fillStyle = academySkin ? 'rgba(8, 14, 12, 0.78)' : 'rgba(3, 8, 14, 0.74)';
     ctx.fillRect(rankPanelLeft, listTop, rankPanelWidth, Math.max(0, visibleListHeight));
@@ -153,13 +152,56 @@ export class RankRenderer implements UIObject {
     preferredSize: number,
     minimumSize: number
   ) {
+    const fitted = this.fitText(ctx, text, maxWidth, preferredSize, minimumSize);
+    ctx.fillText(fitted, x, y);
+  }
+
+  private fitText(
+    ctx: CanvasRenderingContext2D,
+    text: string,
+    maxWidth: number,
+    preferredSize: number,
+    minimumSize: number
+  ) {
     let fontSize = preferredSize;
     ctx.font = `850 ${fontSize}pt ${this.hudFont}`;
     while (fontSize > minimumSize && ctx.measureText(text).width > maxWidth) {
       fontSize -= 1;
       ctx.font = `850 ${fontSize}pt ${this.hudFont}`;
     }
-    ctx.fillText(this.ellipsize(ctx, text, maxWidth), x, y);
+    return this.ellipsize(ctx, text, maxWidth);
+  }
+
+  private drawCandidateLabel(
+    ctx: CanvasRenderingContext2D,
+    candidate: { hue: number; name: string },
+    centerX: number,
+    centerY: number,
+    maxWidth: number,
+    uiScale: number,
+    academySkin: boolean
+  ) {
+    const radius = 5 * uiScale;
+    const gap = 5 * uiScale;
+    const textMaxWidth = Math.max(30 * uiScale, maxWidth - radius * 2 - gap);
+    const label = this.fitText(ctx, candidate.name, textMaxWidth, 16 * uiScale, 11 * uiScale);
+    const textWidth = ctx.measureText(label).width;
+    const groupWidth = radius * 2 + gap + textWidth;
+    const startX = centerX - groupWidth / 2;
+
+    ctx.save();
+    ctx.fillStyle = `hsl(${candidate.hue} 92% 58%)`;
+    ctx.beginPath();
+    ctx.arc(startX + radius, centerY, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.72)';
+    ctx.beginPath();
+    ctx.arc(startX + radius * 0.68, centerY - radius * 0.35, radius * 0.25, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.textAlign = 'left';
+    ctx.fillStyle = academySkin ? '#f4ecd9' : '#ffffff';
+    ctx.fillText(label, startX + radius * 2 + gap, centerY);
+    ctx.restore();
   }
 
   private ellipsize(ctx: CanvasRenderingContext2D, text: string, maxWidth: number) {
@@ -183,22 +225,24 @@ export class RankRenderer implements UIObject {
     academySkin: boolean,
     compact = false
   ) {
-    const inset = 4 * uiScale;
-    const rowHeight = this.layoutFontHeight - 2 * uiScale;
+    const inset = 2 * uiScale;
+    const rowHeight = this.layoutFontHeight - uiScale;
     const rowCenter = rowTop + this.layoutFontHeight / 2;
     ctx.fillStyle = academySkin ? 'rgba(244, 236, 217, 0.07)' : 'rgba(255, 255, 255, 0.07)';
-    ctx.fillRect(panelLeft + inset, rowTop + uiScale, panelWidth - inset * 2, rowHeight);
+    ctx.fillRect(panelLeft + inset, rowTop + uiScale * 0.5, panelWidth - inset, rowHeight);
     ctx.fillStyle = `hsl(${marble.hue} 92% 58%)`;
-    ctx.fillRect(panelLeft + inset, rowTop + uiScale, 3 * uiScale, rowHeight);
+    ctx.beginPath();
+    ctx.arc(panelLeft + 37 * uiScale, rowCenter, 4 * uiScale, 0, Math.PI * 2);
+    ctx.fill();
 
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'left';
     ctx.fillStyle = isWinner && academySkin ? '#d4bd86' : 'rgba(244, 236, 217, 0.72)';
-    ctx.font = `800 ${compact ? 10 * uiScale : 11 * uiScale}pt ${this.hudFont}`;
-    ctx.fillText(`#${rank + 1}`, panelLeft + 12 * uiScale, rowCenter);
+    ctx.font = `800 ${compact ? 8 * uiScale : 9 * uiScale}pt ${this.hudFont}`;
+    ctx.fillText(`#${rank + 1}`, panelLeft + 7 * uiScale, rowCenter);
 
-    const nameX = panelLeft + 45 * uiScale;
-    const nameWidth = panelWidth - 53 * uiScale;
+    const nameX = panelLeft + 44 * uiScale;
+    const nameWidth = panelWidth - 47 * uiScale;
     ctx.fillStyle = '#ffffff';
     this.drawFittedText(
       ctx,
@@ -206,8 +250,8 @@ export class RankRenderer implements UIObject {
       nameX,
       rowCenter,
       nameWidth,
-      (compact ? 11 : 13) * uiScale,
-      9 * uiScale
+      (compact ? 9 : 10.5) * uiScale,
+      8 * uiScale
     );
   }
 
