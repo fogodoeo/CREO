@@ -33,7 +33,7 @@ const BROADCAST_SCENE_WIDTHS = {
 } as const;
 const COMPACT_SCENE_WIDTH = 480;
 const COMPACT_SCENE_PIXEL_BUDGET = 520_000;
-const BROADCAST_SCENE_ZOOM = 1.18;
+export const SCENE_DISPLAY_ZOOM = 1.3;
 const WINNER_TEXT_OFFSET = 30;
 const ACADEMY_ASSET_URLS = {
   wand: '/assets/pinball-academy/wand-v2.png',
@@ -161,11 +161,9 @@ export class RouletteRenderer {
     this.ctx.fillRect(0, 0, this._sceneCanvas.width, this._sceneCanvas.height);
 
     this.ctx.save();
-    if (this._broadcastMode) {
-      this.ctx.translate(this._sceneCanvas.width / 2, this._sceneCanvas.height / 2);
-      this.ctx.scale(BROADCAST_SCENE_ZOOM, BROADCAST_SCENE_ZOOM);
-      this.ctx.translate(-this._sceneCanvas.width / 2, -this._sceneCanvas.height / 2);
-    }
+    this.ctx.translate(this._sceneCanvas.width / 2, this._sceneCanvas.height / 2);
+    this.ctx.scale(SCENE_DISPLAY_ZOOM, SCENE_DISPLAY_ZOOM);
+    this.ctx.translate(-this._sceneCanvas.width / 2, -this._sceneCanvas.height / 2);
     this.ctx.scale(initialZoom, initialZoom);
     this.ctx.textAlign = 'left';
     this.ctx.textBaseline = 'top';
@@ -207,7 +205,7 @@ export class RouletteRenderer {
     this._displayCtx.save();
     this._displayCtx.scale(displayScale, displayScale);
     this._displayCtx.translate(this._sceneCanvas.width / 2, this._sceneCanvas.height / 2);
-    this._displayCtx.scale(BROADCAST_SCENE_ZOOM, BROADCAST_SCENE_ZOOM);
+    this._displayCtx.scale(SCENE_DISPLAY_ZOOM, SCENE_DISPLAY_ZOOM);
     this._displayCtx.translate(-this._sceneCanvas.width / 2, -this._sceneCanvas.height / 2);
     this._displayCtx.scale(initialZoom, initialZoom);
     this._displayCtx.translate(-camera.x * camera.zoom, -camera.y * camera.zoom);

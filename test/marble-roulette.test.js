@@ -47,6 +47,7 @@ test('roulette exposes its version and keeps native broadcast rendering with the
     const config = fs.readFileSync(path.join(appRoot, 'src', 'config.ts'), 'utf8');
     const roulette = fs.readFileSync(path.join(appRoot, 'src', 'roulette.ts'), 'utf8');
     const renderer = fs.readFileSync(path.join(appRoot, 'src', 'rouletteRenderer.ts'), 'utf8');
+    const marble = fs.readFileSync(path.join(appRoot, 'src', 'marble.ts'), 'utf8');
 
     assert.doesNotMatch(html, /id="versionBadge"/);
     assert.match(config, /APP_VERSION = '1\.8\.0'/);
@@ -54,12 +55,14 @@ test('roulette exposes its version and keeps native broadcast rendering with the
     assert.match(roulette, /!finishedIds\.has\(marble\.id\)/);
     assert.match(renderer, /COMPACT_SCENE_PIXEL_BUDGET = 520_000/);
     assert.match(renderer, /Math\.min\(MAX_DISPLAY_WIDTH, Math\.max\(realSize\.width, 960\)\)/);
+    assert.match(renderer, /SCENE_DISPLAY_ZOOM = 1\.3/);
+    assert.match(marble, /diameter \* 1\.6/);
+    assert.match(marble, /800 16pt 'Pretendard Variable'/);
     assert.match(renderer, /performance: 960/);
     assert.match(renderer, /balanced: 1280/);
     assert.match(renderer, /high: 1920/);
     assert.match(renderer, /BROADCAST_DISPLAY_WIDTH = 1920/);
     assert.match(renderer, /renderBroadcastLabels/);
-    const marble = fs.readFileSync(path.join(appRoot, 'src', 'marble.ts'), 'utf8');
     assert.match(marble, /_getGlassSprite/);
     assert.match(marble, /createRadialGradient/);
 });
@@ -116,12 +119,16 @@ test('pinball stage stays clean while candidate and controls remain in their ope
     assert.doesNotMatch(html, /id="stageHelp"|class="brand-lockup"|class="version-badge"/);
     assert.match(html, /class="sr-only" id="statusPill"/);
     assert.doesNotMatch(html, /화면 중앙을 누르고 있으면|추첨 진행 중/);
-    assert.match(app, /'1위 당첨 유력'/);
-    assert.match(app, /'마지막 당첨 유력'/);
-    assert.match(rankRenderer, /const hudHeight = 66 \* uiScale/);
+    assert.doesNotMatch(app, /당첨 유력|candidateLabel/);
+    assert.match(rankRenderer, /const uiScale = Math\.max\(1, width \/ 720\)/);
+    assert.match(rankRenderer, /const hudHeight = 80 \* uiScale/);
+    assert.match(rankRenderer, /850 \$\{20 \* uiScale\}pt/);
+    assert.match(rankRenderer, /ctx\.fillText\(candidate\.name/);
+    assert.doesNotMatch(rankRenderer, /당첨 유력|`#\$\{rank\}/);
     assert.doesNotMatch(rankRenderer, /const hudHeight = broadcastMode \?/);
     assert.match(minimap, /const controlsReserve = 62 \* uiScale/);
-    assert.match(minimap, /this\.top = 76 \* uiScale/);
+    assert.match(minimap, /this\.top = 90 \* uiScale/);
+    assert.match(minimap, /camera\.zoom \* initialZoom \* SCENE_DISPLAY_ZOOM/);
     assert.match(styles, /bottom: calc\(14px \+ var\(--safe-bottom\)\)/);
     assert.match(styles, /left: calc\(20px \+ var\(--safe-left\)\)/);
     assert.match(styles, /PretendardVariable\.woff2/);

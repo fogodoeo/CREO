@@ -1,5 +1,4 @@
 import type { Marble } from './marble';
-import options from './options';
 import { selectCandidateRanks } from './candidateRanking.js';
 import type { RenderParameters } from './rouletteRenderer';
 import type { Rect } from './types/rect.type';
@@ -65,9 +64,9 @@ export class RankRenderer implements UIObject {
     height: number
   ) {
     const broadcastMode = this.broadcastMode;
-    const uiScale = broadcastMode ? width / 720 : 1;
+    const uiScale = Math.max(1, width / 720);
     this.layoutFontHeight = this.fontHeight * uiScale;
-    const hudHeight = 66 * uiScale;
+    const hudHeight = 80 * uiScale;
     const listTop = hudHeight + 8 * uiScale;
     const startX = width - 8 * uiScale;
     const visibleListHeight = height - listTop;
@@ -97,37 +96,21 @@ export class RankRenderer implements UIObject {
     }
 
     ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    ctx.fillStyle = academySkin ? '#d4bd86' : 'rgba(255, 255, 255, 0.58)';
-    ctx.font = `750 ${8 * uiScale}pt ${this.hudFont}`;
-    ctx.fillText(winner ? '당첨 확정' : `${options.candidateLabel} 3인`, width / 2, 6 * uiScale);
-
-    const candidateAreaWidth = Math.max(240 * uiScale, Math.min(540 * uiScale, width - 260 * uiScale));
+    ctx.textBaseline = 'middle';
+    const candidateAreaWidth = Math.max(300 * uiScale, Math.min(600 * uiScale, width - 210 * uiScale));
     const slotWidth = candidateAreaWidth / Math.max(1, candidates.length);
     const candidateStartX = width / 2 - candidateAreaWidth / 2;
-    candidates.forEach(({ candidate, rank }, index) => {
+    candidates.forEach(({ candidate }, index) => {
       const x = candidateStartX + slotWidth * (index + 0.5);
-      const primary = index === 0;
-      ctx.fillStyle = academySkin
-        ? primary
-          ? '#f4ecd9'
-          : 'rgba(244, 236, 217, 0.7)'
-        : primary
-          ? '#ffffff'
-          : 'rgba(255, 255, 255, 0.68)';
-      ctx.font = `${primary ? 850 : 700} ${(primary ? 13 : 11) * uiScale}pt ${this.hudFont}`;
-      ctx.fillText(`#${rank} ${candidate.name}`, x, 27 * uiScale, slotWidth - 8 * uiScale);
-    });
-    if (candidates.length === 0) {
       ctx.fillStyle = academySkin ? '#f4ecd9' : '#ffffff';
-      ctx.font = `800 ${13 * uiScale}pt ${this.hudFont}`;
-      ctx.fillText('준비 중', width / 2, 27 * uiScale);
-    }
+      ctx.font = `850 ${20 * uiScale}pt ${this.hudFont}`;
+      ctx.fillText(candidate.name, x, hudHeight / 2, slotWidth - 14 * uiScale);
+    });
 
     ctx.textAlign = 'right';
     ctx.fillStyle = academySkin ? '#f4ecd9' : '#ffffff';
-    ctx.font = `800 ${18 * uiScale}pt ${this.hudFont}`;
-    ctx.fillText(`${winners.length} / ${totalCount}`, width - 10 * uiScale, 15 * uiScale);
+    ctx.font = `850 ${21 * uiScale}pt ${this.hudFont}`;
+    ctx.fillText(`${winners.length} / ${totalCount}`, width - 10 * uiScale, hudHeight / 2);
 
     ctx.beginPath();
     ctx.rect(

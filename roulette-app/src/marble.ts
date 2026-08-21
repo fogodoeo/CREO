@@ -224,7 +224,7 @@ export class Marble {
 
   private _drawGlassBody(ctx: CanvasRenderingContext2D, x: number, y: number, diameter: number) {
     const sprite = this._getGlassSprite();
-    const spriteSize = diameter * 1.38;
+    const spriteSize = diameter * 1.6;
     ctx.drawImage(sprite, x - spriteSize / 2, y - spriteSize / 2, spriteSize, spriteSize);
     if (this.impact > 0) {
       ctx.save();
@@ -310,7 +310,7 @@ export class Marble {
 
   private _drawName(ctx: CanvasRenderingContext2D, zoom: number, simpleLabel: boolean) {
     transformGuard(ctx, () => {
-      ctx.font = `12pt sans-serif`;
+      ctx.font = `800 16pt 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
       ctx.strokeStyle = 'black';
       ctx.lineWidth = 2;
       ctx.fillStyle = this.color;

@@ -266,14 +266,7 @@ function updateCounts(): void {
 }
 
 function updateRankVisibility(): void {
-  const winnerMode = currentWinnerMode();
-  dom.rankField.hidden = winnerMode !== 'rank';
-  options.candidateLabel =
-    winnerMode === 'last'
-      ? '마지막 당첨 유력'
-      : winnerMode === 'rank'
-        ? `${Math.max(1, Number(dom.winningRank.value) || 1)}위 당첨 유력`
-        : '1위 당첨 유력';
+  dom.rankField.hidden = currentWinnerMode() !== 'rank';
 }
 
 function collectConfig(): AppConfig {
