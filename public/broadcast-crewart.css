@@ -1,0 +1,317 @@
+/* CREWART broadcast skin: restrained modern antique, scoped to this event only. */
+body[data-event-module="crewart"] {
+    --cw-ink: #101315;
+    --cw-ink-soft: rgba(18, 22, 23, 0.94);
+    --cw-ink-glass: rgba(16, 19, 20, 0.88);
+    --cw-ivory: #f2ead8;
+    --cw-ivory-muted: #bdb4a2;
+    --cw-brass: #b59a62;
+    --cw-brass-light: #d4bd86;
+    --cw-brass-line: rgba(181, 154, 98, 0.46);
+    --cw-oxblood: #642f39;
+    --cw-shadow: 0 18px 46px rgba(0, 0, 0, 0.34);
+}
+
+/* Shared plate language */
+body[data-event-module="crewart"] .top-bar,
+body[data-event-module="crewart"] .host-nametag .nt-inner,
+body[data-event-module="crewart"] .hc-rules-card,
+body[data-event-module="crewart"] .sale-mode-card,
+body[data-event-module="crewart"] .p2-house-reveal-shell {
+    border: 1px solid var(--cw-brass-line);
+    border-radius: 12px 3px 12px 3px;
+    background:
+        linear-gradient(145deg, rgba(255, 255, 255, 0.035), transparent 42%),
+        var(--cw-ink-glass);
+    color: var(--cw-ivory);
+    box-shadow:
+        var(--cw-shadow),
+        inset 0 1px 0 rgba(255, 255, 255, 0.055),
+        inset 0 0 0 1px rgba(181, 154, 98, 0.055);
+    backdrop-filter: blur(14px) saturate(0.82);
+    -webkit-backdrop-filter: blur(14px) saturate(0.82);
+}
+
+/* P2 lot plate */
+body[data-event-module="crewart"] .scoreboard-wrap {
+    filter: drop-shadow(0 14px 22px rgba(0, 0, 0, 0.18));
+}
+
+body[data-event-module="crewart"] .top-bar {
+    position: relative;
+    overflow: hidden;
+}
+
+body[data-event-module="crewart"] .top-bar::after,
+body[data-event-module="crewart"] .host-nametag .nt-inner::before,
+body[data-event-module="crewart"] .hc-rules-card::before {
+    content: '';
+    position: absolute;
+    inset: 6px;
+    border: 1px solid rgba(212, 189, 134, 0.09);
+    border-radius: 7px 1px 7px 1px;
+    pointer-events: none;
+}
+
+body[data-event-module="crewart"] .top-bar .accent-bar,
+body[data-event-module="crewart"] .host-nametag .nt-accent {
+    display: block !important;
+    order: -1;
+    width: 4px;
+    flex: 0 0 4px;
+    background: linear-gradient(180deg, var(--cw-brass-light), #806c43) !important;
+}
+
+body[data-event-module="crewart"] .top-bar .name-section,
+body[data-event-module="crewart"] .top-bar .traits,
+body[data-event-module="crewart"] .host-nametag .nt-body {
+    position: relative;
+    z-index: 1;
+    background: transparent;
+}
+
+body[data-event-module="crewart"] .top-bar .name-section {
+    padding: 11px 18px 12px 19px;
+}
+
+body[data-event-module="crewart"] .top-bar .company-tag {
+    color: var(--cw-brass-light);
+    font-size: calc(var(--sb-name-size, 33px) * 0.66);
+    font-weight: 760;
+    letter-spacing: -0.025em;
+}
+
+body[data-event-module="crewart"] .top-bar .name {
+    color: var(--cw-ivory);
+    font-weight: 840;
+    letter-spacing: -0.045em;
+}
+
+body[data-event-module="crewart"] .top-bar .sub {
+    color: var(--cw-ivory-muted);
+    font-weight: 620;
+}
+
+body[data-event-module="crewart"] .top-bar .traits {
+    border-left: 1px solid rgba(181, 154, 98, 0.16);
+    padding: 11px 14px;
+}
+
+body[data-event-module="crewart"] .top-bar .pill,
+body[data-event-module="crewart"] .top-bar .pill.pill-accent,
+body[data-event-module="crewart"] .top-bar .pill.pill-info,
+body[data-event-module="crewart"] .host-nametag .nt-role,
+body[data-event-module="crewart"] #host-nametag-2 .nt-role {
+    border: 1px solid rgba(181, 154, 98, 0.2);
+    border-radius: 999px;
+    background: rgba(181, 154, 98, 0.075);
+    color: #d8cfbd !important;
+    font-weight: 690;
+}
+
+body[data-event-module="crewart"] #auction-progress.auction-progress {
+    min-height: 58px;
+    padding: 0 18px 2px;
+    border: 1px solid var(--cw-brass-line);
+    border-radius: 12px 3px 12px 3px;
+    background:
+        linear-gradient(145deg, rgba(255, 255, 255, 0.035), transparent 48%),
+        rgba(16, 19, 20, 0.9);
+    color: var(--cw-brass-light) !important;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25), inset 0 0 0 5px rgba(181, 154, 98, 0.035);
+    font-weight: 810;
+    letter-spacing: -0.045em;
+}
+
+/* Live bidder stack: clear house identity without flat, high-saturation blocks. */
+body[data-event-module="crewart"] .p2-live-bidders-head {
+    margin: 0 0 9px 2px;
+    color: var(--cw-brass-light);
+    font-weight: 760;
+    letter-spacing: 0.04em;
+}
+
+body[data-event-module="crewart"] .p2-live-bidders-head::before {
+    width: 5px;
+    height: 5px;
+    background: var(--cw-brass-light);
+    box-shadow: 0 0 0 4px rgba(181, 154, 98, 0.11);
+}
+
+body[data-event-module="crewart"] .p2-live-bidder-row {
+    min-height: calc(var(--p2-bid-fs) * 2.24);
+    padding: 6px 12px;
+    overflow: hidden;
+    border: 1px solid rgba(181, 154, 98, 0.18);
+    border-left: 4px solid var(--cw-brass);
+    border-radius: 9px 2px 9px 2px;
+    background:
+        linear-gradient(110deg, rgba(255, 255, 255, 0.025), transparent 44%),
+        rgba(16, 19, 20, var(--p2-bidders-opacity));
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.035);
+}
+
+body[data-event-module="crewart"] .p2-live-bidder-row[data-house] {
+    border-color: color-mix(in srgb, var(--p2-house-color) 68%, rgba(181, 154, 98, 0.22));
+    border-left-color: var(--p2-house-color);
+    background:
+        linear-gradient(105deg,
+            color-mix(in srgb, var(--p2-house-color) 58%, rgba(16, 19, 20, var(--p2-bidders-opacity))),
+            color-mix(in srgb, var(--p2-house-color) 23%, rgba(16, 19, 20, var(--p2-bidders-opacity))) 76%),
+        rgba(16, 19, 20, var(--p2-bidders-opacity));
+    box-shadow: 0 9px 22px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.075);
+}
+
+body[data-event-module="crewart"] .p2-live-bidder-row[data-house] .p2-live-bidder-name,
+body[data-event-module="crewart"] .p2-live-bidder-row[data-house] .p2-live-bidder-name small,
+body[data-event-module="crewart"] .p2-live-bidder-row[data-house] .p2-live-bidder-amount {
+    color: #fff !important;
+    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.22);
+}
+
+body[data-event-module="crewart"] .p2-live-bidder-name { color: var(--cw-ivory); font-weight: 790; }
+body[data-event-module="crewart"] .p2-live-bidder-name small { color: var(--cw-ivory-muted); font-weight: 590; }
+body[data-event-module="crewart"] .p2-live-bidder-amount { color: var(--cw-brass-light); font-weight: 830; }
+
+/* Fast house draw */
+body[data-event-module="crewart"] .p2-house-reveal-shell {
+    height: 60px;
+    border-radius: 13px 3px 13px 3px;
+}
+
+body[data-event-module="crewart"] .p2-house-reveal-person {
+    color: var(--cw-ivory);
+    font-weight: 780;
+}
+
+body[data-event-module="crewart"] .p2-house-reveal-window {
+    height: 56px;
+    border-left-color: var(--cw-brass-line);
+}
+
+body[data-event-module="crewart"] .p2-house-reveal-color {
+    height: 56px;
+    color: #fff;
+    font-weight: 840;
+    letter-spacing: 0.04em;
+}
+
+/* P1 nameplates */
+body[data-event-module="crewart"] .host-nametag .nt-inner {
+    position: relative;
+    overflow: hidden;
+}
+
+body[data-event-module="crewart"] .host-nametag .nt-body {
+    gap: 15px;
+    padding: 11px 20px 11px 16px;
+}
+
+body[data-event-module="crewart"] .host-nametag .nt-name {
+    color: var(--cw-ivory);
+    font-weight: 790;
+    letter-spacing: -0.035em;
+}
+
+body[data-event-module="crewart"] .host-nametag .nt-role {
+    padding: 4px 10px;
+    color: var(--cw-brass-light) !important;
+    font-weight: 680;
+    letter-spacing: -0.01em;
+    text-transform: none;
+}
+
+/* Bottom caption banner */
+body[data-event-module="crewart"] .hc-bottom-bar {
+    min-height: 92px;
+    border-top: 1px solid var(--cw-brass-line);
+    background:
+        linear-gradient(90deg, rgba(181, 154, 98, 0.055), transparent 25%, transparent 75%, rgba(181, 154, 98, 0.055)),
+        rgba(16, 19, 20, 0.93) !important;
+    box-shadow: 0 -16px 40px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.045);
+    backdrop-filter: blur(14px) saturate(0.78);
+    -webkit-backdrop-filter: blur(14px) saturate(0.78);
+}
+
+body[data-event-module="crewart"] .hc-bottom-bar::before {
+    inset: 8px 12px;
+    border: 1px solid rgba(181, 154, 98, 0.08);
+    background: none;
+}
+
+body[data-event-module="crewart"] .hc-bottom-bar::after {
+    left: 50%;
+    width: min(300px, 24vw);
+    height: 1px;
+    transform: translateX(-50%);
+    background: linear-gradient(90deg, transparent, var(--cw-brass-light), transparent);
+    opacity: 0.72;
+}
+
+body[data-event-module="crewart"] .ticker-card-text {
+    color: var(--cw-ivory);
+    font-weight: 710;
+    letter-spacing: -0.035em;
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.32);
+}
+
+body[data-event-module="crewart"] .ticker-card-text span {
+    border: 1px solid rgba(181, 154, 98, 0.24);
+    border-radius: 999px;
+    background: var(--cw-oxblood);
+    color: #f7ecdc !important;
+    font-weight: 780;
+}
+
+body[data-event-module="crewart"] .ticker-sponsor-img {
+    filter: grayscale(0.1) sepia(0.12) drop-shadow(0 3px 8px rgba(0, 0, 0, 0.5));
+}
+
+/* Image banners remain user-controlled; only the broadcast frame is themed. */
+body[data-event-module="crewart"] .hc-banner-float .banner-item-wrap {
+    border: 1px solid rgba(181, 154, 98, 0.55);
+    border-radius: 15px 3px 15px 3px;
+    background: var(--cw-ink);
+    box-shadow: 0 22px 58px rgba(0, 0, 0, 0.38), 0 0 0 6px rgba(16, 19, 20, 0.2);
+}
+
+body[data-event-module="crewart"] .hc-banner-float .banner-item-wrap::after {
+    inset: 7px;
+    height: auto;
+    border: 1px solid rgba(212, 189, 134, 0.19);
+    border-radius: 9px 1px 9px 1px;
+    background: none;
+}
+
+body[data-event-module="crewart"] .hc-banner-float .banner-bg-blur {
+    filter: blur(30px) brightness(0.44) saturate(0.72);
+}
+
+/* Rules and centered notice cards */
+body[data-event-module="crewart"] .hc-rules-card { position: relative; overflow: hidden; }
+body[data-event-module="crewart"] .hc-rule-row + .hc-rule-row { border-top-color: rgba(181, 154, 98, 0.12); }
+body[data-event-module="crewart"] .hc-rule-label { color: var(--cw-brass-light); font-weight: 760; }
+body[data-event-module="crewart"] .hc-rule-value { color: var(--cw-ivory); font-weight: 620; }
+
+body[data-event-module="crewart"] .sale-mode-card {
+    border-radius: 18px 4px 18px 4px;
+    background:
+        radial-gradient(circle at 50% 0%, rgba(181, 154, 98, 0.14), transparent 42%),
+        linear-gradient(145deg, rgba(255, 255, 255, 0.025), transparent 44%),
+        rgba(16, 19, 20, 0.95);
+}
+
+body[data-event-module="crewart"] .sale-mode-card::before {
+    border-color: rgba(212, 189, 134, 0.12);
+    border-radius: 11px 2px 11px 2px;
+}
+
+body[data-event-module="crewart"] .sale-mode-kicker { color: var(--cw-brass-light); font-weight: 780; }
+body[data-event-module="crewart"] .sale-mode-title { color: var(--cw-ivory); font-weight: 850; text-shadow: none; }
+body[data-event-module="crewart"] .sale-mode-subtitle { color: var(--cw-ivory-muted); font-weight: 650; }
+
+@media (max-width: 720px) {
+    body[data-event-module="crewart"] .hc-bottom-bar { min-height: 76px; }
+    body[data-event-module="crewart"] .top-bar .name-section { padding-inline: 13px; }
+    body[data-event-module="crewart"] .host-nametag .nt-body { gap: 9px; padding-inline: 12px; }
+}

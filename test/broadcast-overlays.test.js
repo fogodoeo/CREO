@@ -8,6 +8,7 @@ const path = require('node:path');
 const broadcast = fs.readFileSync(path.join(__dirname, '..', 'public', 'broadcast.html'), 'utf8');
 const preview = fs.readFileSync(path.join(__dirname, '..', 'public', 'preview.html'), 'utf8');
 const creyonCss = fs.readFileSync(path.join(__dirname, '..', 'public', 'broadcast-creyon.css'), 'utf8');
+const crewartCss = fs.readFileSync(path.join(__dirname, '..', 'public', 'broadcast-crewart.css'), 'utf8');
 const settings = fs.readFileSync(path.join(__dirname, '..', 'public', 'settings.html'), 'utf8');
 
 test('public page two renders the seller as a separate tag left of the item name', () => {
@@ -35,6 +36,15 @@ test('CREWART page two colors each live bidder card with the resolved viewer hou
     assert.match(broadcast, /bid\.crewart_house_key \|\| bid\.crewartHouseKey/);
     assert.match(broadcast, /rowEl\.dataset\.house = houseKey/);
     assert.match(broadcast, /Y: \{ color: '#d2a33a', rgb: '210,163,58', ink: '#ffffff' \}/);
+});
+
+test('CREWART broadcast plates use an isolated modern-antique skin', () => {
+    assert.match(broadcast, /broadcast-crewart\.css\?v=20260822-modern-antique-v1/);
+    assert.match(crewartCss, /body\[data-event-module="crewart"\] \{[\s\S]{0,500}--cw-brass:/);
+    assert.match(crewartCss, /body\[data-event-module="crewart"\] \.host-nametag \.nt-inner/);
+    assert.match(crewartCss, /body\[data-event-module="crewart"\] \.hc-bottom-bar/);
+    assert.match(crewartCss, /body\[data-event-module="crewart"\] \.p2-live-bidder-row\[data-house\]/);
+    assert.doesNotMatch(crewartCss, /(^|\n)\s*(?:\.|#)[a-z0-9_-]+/i);
 });
 
 test('CREWART new bidders use a two-second persistent FIFO reel without blocking bid rows', () => {
