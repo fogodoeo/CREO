@@ -66,6 +66,7 @@ test('home is an operational channel launcher without duplicate management route
     assert.match(hub, /CreoPlatform\.verifyAdmin\(\)/);
     assert.match(hub, /CreoPlatform\.logout\(\)/);
     assert.match(hub, /id="quick-workspace"/);
+    assert.doesNotMatch(hub, /id="quick-print"|<strong>인쇄 페이지<\/strong>|print\.href=runtime\.url\('print'\)/);
     assert.match(hub, /id="quick-survey"[^>]*href="crewart-survey\.html"[^>]*hidden/);
     assert.match(hub, /id="quick-shipping"/);
     assert.doesNotMatch(hub, /id="quick-companies"|shipping-companies\.html/);
@@ -86,7 +87,6 @@ test('home is an operational channel launcher without duplicate management route
     assert.doesNotMatch(hub, /shipping\.href=`channel-shipping\.html/);
     assert.match(hub, /runtime\.extension\('survey'\)/);
     assert.match(hub, /runtime\.url\('control'\)/);
-    assert.match(hub, /<strong>인쇄 페이지<\/strong>/);
     assert.doesNotMatch(hub, /id="quick-archives"|전체 채널|현장 운영|방송 열기/);
     assert.doesNotMatch(hub, /모든 경매 운영을|한곳에서\.|채널은 완전히|공통 도구|관리하기/);
 });
@@ -362,13 +362,11 @@ test('new CDCUP overlays and shipping retain compatibility with the established 
     assert.doesNotMatch(companies, /CreoChannelAdapters\.resolve|adapter\.loadShippingItems|<main/);
 });
 
-test('all auction channels share the CDCUP-style print forms without sharing channel data', () => {
+test('print forms remain available inside the shared registration workspace without a duplicate home shortcut', () => {
     const home = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
     const workspace = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-workspace.html'), 'utf8');
     const print = fs.readFileSync(path.join(__dirname, '..', 'public', 'print.html'), 'utf8');
-    assert.match(home, /id="quick-print"/);
-    assert.match(home, /print\.href=runtime\.url\('print'\)/);
-    assert.match(home, /경매 리스트 · 낙찰 결과 · 구매자별/);
+    assert.doesNotMatch(home, /id="quick-print"|인쇄 페이지|print\.href=runtime\.url\('print'\)/);
     assert.match(workspace, /id="print-link"/);
     assert.match(workspace, /`print\.html\?\$\{q\}`/);
     assert.match(print, /platform-client\.js/);
