@@ -120,7 +120,7 @@ export class RankRenderer implements UIObject {
     winners.forEach((marble: { hue: number; name: string }, rank: number) => {
       const y = rank * this.layoutFontHeight;
       if (y >= startY && y <= startY + visibleListHeight) {
-        this.drawRankRow(ctx, marble, rank, rank === winnerRank, listTop + y, rankPanelLeft, rankPanelWidth, uiScale, academySkin);
+        this.drawRankRow(ctx, marble, rank, listTop + y, rankPanelLeft, rankPanelWidth, uiScale, academySkin);
       }
     });
     marbles.forEach((marble: { hue: number; name: string }, rank: number) => {
@@ -130,7 +130,6 @@ export class RankRenderer implements UIObject {
           ctx,
           marble,
           rank + winners.length,
-          false,
           listTop + y,
           rankPanelLeft,
           rankPanelWidth,
@@ -215,9 +214,8 @@ export class RankRenderer implements UIObject {
 
   private drawRankRow(
     ctx: CanvasRenderingContext2D,
-    marble: { hue: number; name: string },
+    marble: { name: string },
     rank: number,
-    isWinner: boolean,
     rowTop: number,
     panelLeft: number,
     panelWidth: number,
@@ -230,19 +228,15 @@ export class RankRenderer implements UIObject {
     const rowCenter = rowTop + this.layoutFontHeight / 2;
     ctx.fillStyle = academySkin ? 'rgba(244, 236, 217, 0.07)' : 'rgba(255, 255, 255, 0.07)';
     ctx.fillRect(panelLeft + inset, rowTop + uiScale * 0.5, panelWidth - inset, rowHeight);
-    ctx.fillStyle = `hsl(${marble.hue} 92% 58%)`;
-    ctx.beginPath();
-    ctx.arc(panelLeft + 37 * uiScale, rowCenter, 4 * uiScale, 0, Math.PI * 2);
-    ctx.fill();
 
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'left';
-    ctx.fillStyle = isWinner && academySkin ? '#d4bd86' : 'rgba(244, 236, 217, 0.72)';
+    ctx.fillStyle = academySkin ? 'rgba(244, 236, 217, 0.72)' : 'rgba(255, 255, 255, 0.72)';
     ctx.font = `800 ${compact ? 8 * uiScale : 9 * uiScale}pt ${this.hudFont}`;
     ctx.fillText(`#${rank + 1}`, panelLeft + 7 * uiScale, rowCenter);
 
-    const nameX = panelLeft + 44 * uiScale;
-    const nameWidth = panelWidth - 47 * uiScale;
+    const nameX = panelLeft + 31 * uiScale;
+    const nameWidth = panelWidth - 34 * uiScale;
     ctx.fillStyle = '#ffffff';
     this.drawFittedText(
       ctx,

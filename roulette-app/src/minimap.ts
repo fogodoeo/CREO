@@ -10,6 +10,7 @@ import { bound } from './utils/bound.decorator';
 
 export class Minimap implements UIObject {
   private scale = 4;
+  private scaleX = 4;
   private top = 10;
   private ctx!: CanvasRenderingContext2D;
   private lastParams: RenderParameters | null = null;
@@ -56,7 +57,7 @@ export class Minimap implements UIObject {
     };
     if (this._onViewportChangeHandler) {
       this._onViewportChangeHandler({
-        x: this.mousePosition.x / this.scale,
+        x: this.mousePosition.x / this.scaleX,
         y: this.mousePosition.y / this.scale,
       });
     }
@@ -73,8 +74,9 @@ export class Minimap implements UIObject {
     const controlsReserve = CONTROLS_RESERVE_HEIGHT * uiScale;
     const availableHeight = Math.max(120, ctx.canvas.height - this.top - controlsReserve);
     this.scale = broadcastMode ? availableHeight / stage.goalY : Math.min(4, availableHeight / stage.goalY);
+    this.scaleX = this.scale * (broadcastMode ? 1.55 : 1);
     this.boundingBox.y = this.top;
-    this.boundingBox.w = 26 * this.scale;
+    this.boundingBox.w = 26 * this.scaleX;
     this.boundingBox.h = stage.goalY * this.scale;
 
     this.lastParams = params;
@@ -83,7 +85,7 @@ export class Minimap implements UIObject {
     ctx.save();
     ctx.fillStyle = params.theme.minimapBackground;
     ctx.translate(this.boundingBox.x, this.boundingBox.y);
-    ctx.scale(this.scale, this.scale);
+    ctx.scale(this.scaleX, this.scale);
     ctx.fillRect(0, 0, 26, stage.goalY);
 
     this.ctx.lineWidth = 3 / (params.camera.zoom + initialZoom);
