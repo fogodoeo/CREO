@@ -34,6 +34,7 @@ test('CREWART page two colors each live bidder card with the resolved viewer hou
     assert.match(broadcast, /CREWART_BIDDER_HOUSE_PALETTE/);
     assert.match(broadcast, /bid\.crewart_house_key \|\| bid\.crewartHouseKey/);
     assert.match(broadcast, /rowEl\.dataset\.house = houseKey/);
+    assert.match(broadcast, /Y: \{ color: '#d2a33a', rgb: '210,163,58', ink: '#ffffff' \}/);
 });
 
 test('all shared legacy layouts support three nametags', () => {
