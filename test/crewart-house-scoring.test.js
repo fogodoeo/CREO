@@ -48,6 +48,44 @@ test('P3 totals use the frozen winning viewer color, never the item or vendor gr
     assert.equal(result.houses[0].name, 'BLUE');
 });
 
+test('P3 includes only the current live highest bid and moves it between houses without double counting', () => {
+    const module = loadModule();
+    const config = { crewart_score_scope: 'all' };
+    const sold = {
+        id: 'sold-blue', status: 'sold', sold_price: 10, crewartHouseKey: 'B',
+        bid_log: JSON.stringify([{ amount: 10, crewart_house_key: 'B' }])
+    };
+    const live = {
+        id: 'live-one', status: 'live', sold_price: 0,
+        bid_log: JSON.stringify([
+            { name: '초록 입찰자', amount: 12, crewart_house_key: 'G' },
+            { name: '빨강 입찰자', amount: 11, crewart_house_key: 'R' }
+        ])
+    };
+
+    const first = module.buildCrewartHouseScores([sold, live], config);
+    const firstByName = Object.fromEntries(first.houses.map(row => [row.name, row.amount]));
+    assert.equal(firstByName.BLUE, 10);
+    assert.equal(firstByName.GREEN, 12);
+    assert.equal(firstByName.RED, 0);
+
+    live.bid_log = JSON.stringify([
+        { name: '파랑 입찰자', amount: 14, crewart_house_key: 'B' },
+        { name: '초록 입찰자', amount: 12, crewart_house_key: 'G' }
+    ]);
+    const moved = module.buildCrewartHouseScores([sold, live], config);
+    const movedByName = Object.fromEntries(moved.houses.map(row => [row.name, row.amount]));
+    assert.equal(movedByName.BLUE, 24);
+    assert.equal(movedByName.GREEN, 0);
+
+    live.status = 'sold';
+    live.sold_price = 14;
+    live.crewartHouseKey = 'B';
+    const finalized = module.buildCrewartHouseScores([sold, live], config);
+    const finalizedByName = Object.fromEntries(finalized.houses.map(row => [row.name, row.amount]));
+    assert.equal(finalizedByName.BLUE, 24);
+});
+
 test('P3 board presents only four house cards and their amount numbers', () => {
     const module = loadModule();
     const html = module.renderCrewartHouseBoardHTML([

@@ -226,13 +226,46 @@
 
     function candidateWinnerKeys(item) {
         const values = [item && item.winner, item && item.winner_name, item && item.bidder];
-        try {
-            const bids = JSON.parse(item && (item.bid_log || item.bidLog) || '[]');
-            if (Array.isArray(bids) && bids[0]) {
-                values.push(bids[0].name, bids[0].bidder_key);
-            }
-        } catch (_) {}
+        const bids = itemBidRows(item);
+        if (bids[0]) values.push(bids[0].name, bids[0].bidder_key);
         return values.flatMap(winnerNameCandidates).filter(Boolean);
+    }
+
+    function itemBidRows(item) {
+        const raw = item && (item.bid_log ?? item.bidLog);
+        if (Array.isArray(raw)) return raw.filter(bid => bid && typeof bid === 'object');
+        try {
+            const parsed = JSON.parse(raw || '[]');
+            return Array.isArray(parsed) ? parsed.filter(bid => bid && typeof bid === 'object') : [];
+        } catch (_) {
+            return [];
+        }
+    }
+
+    function currentHighestBid(item) {
+        if (!AuctionContract.isLiveStatus(item && item.status)) return null;
+        return itemBidRows(item).reduce((highest, bid) => {
+            const amount = amountToNumber(bid.amount ?? bid.price ?? bid.bidAmount);
+            if (!highest || amount > highest.amount) return { bid, amount };
+            return highest;
+        }, null);
+    }
+
+    function resolveCrewartBidHouse(bid, houses, participantMap) {
+        const direct = String(bid?.crewart_house_key || bid?.crewartHouseKey || '').trim().toUpperCase();
+        const key = ({ RED: 'R', GREEN: 'G', BLUE: 'B', YELLOW: 'Y' })[direct] || direct;
+        if (['R', 'G', 'B', 'Y'].includes(key)) {
+            const fixed = (houses || []).find(house => {
+                const name = String(house.name || house.id || '').trim().toUpperCase();
+                return (({ RED: 'R', GREEN: 'G', BLUE: 'B', YELLOW: 'Y' })[name] || name.slice(0, 1)) === key;
+            });
+            if (fixed) return fixed;
+        }
+        const candidateKeys = [bid?.name, bid?.bidder, bid?.winner, bid?.bidder_key, bid?.bidderKey]
+            .flatMap(winnerNameCandidates)
+            .filter(Boolean);
+        const houseId = candidateKeys.map(candidate => participantMap[candidate]).find(Boolean);
+        return (houses || []).find(house => house.id === houseId) || null;
     }
 
     function crewartPointsForAmount(amount, config) {
@@ -305,21 +338,29 @@
         const unassigned = [];
 
         (items || []).forEach(item => {
-            if (!isSoldItem(item)) return;
+            const sold = isSoldItem(item);
+            const highest = sold ? null : currentHighestBid(item);
+            if (!sold && !highest) return;
             if (includeOnlyCrewart && itemAuctionType(item) !== 'crewart') return;
-            const keys = candidateWinnerKeys(item);
-            const directHouse = resolveFixedWinnerHouse(item, houses);
+            const keys = sold ? candidateWinnerKeys(item) : [];
+            const directHouse = sold
+                ? resolveFixedWinnerHouse(item, houses)
+                : resolveCrewartBidHouse(highest.bid, houses, participantMap);
             const houseId = directHouse?.id || keys.map(key => participantMap[key]).find(Boolean);
-            const amount = amountToNumber(item.sold_price || item.soldPrice);
+            const amount = sold
+                ? amountToNumber(item.sold_price || item.soldPrice)
+                : highest.amount;
             if (!houseId || !byId[houseId]) {
-                unassigned.push({ item, amount });
+                unassigned.push({ item, amount, provisional: !sold });
                 return;
             }
             const row = byId[houseId];
             row.amount += amount;
             row.points += amount;
-            row.soldCount += 1;
-            if (item.winner) row.winners.push(String(item.winner));
+            if (sold) {
+                row.soldCount += 1;
+                if (item.winner) row.winners.push(String(item.winner));
+            }
         });
 
         rows.sort((a, b) => b.amount - a.amount || a.sortOrder - b.sortOrder);
