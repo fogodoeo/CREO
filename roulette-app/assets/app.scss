@@ -239,6 +239,25 @@ summary:focus-visible {
   color: #fff;
 }
 
+.result-button {
+  animation: result-button-arrive 380ms 1.2s both;
+}
+
+.result-button[hidden] {
+  display: none;
+}
+
+@keyframes result-button-arrive {
+  from {
+    transform: translateY(7px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
 .icon-button svg {
   width: 19px;
   height: 19px;

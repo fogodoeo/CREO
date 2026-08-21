@@ -71,6 +71,7 @@ const dom = {
   panel: element<HTMLElement>('controlPanel'),
   panelBackdrop: element<HTMLButtonElement>('panelBackdrop'),
   openPanel: element<HTMLButtonElement>('openPanelButton'),
+  resultButton: element<HTMLButtonElement>('resultButton'),
   closePanel: element<HTMLButtonElement>('closePanelButton'),
   fullscreen: element<HTMLButtonElement>('fullscreenButton'),
   statusPill: element<HTMLElement>('statusPill'),
@@ -333,6 +334,9 @@ async function prepareRound(seed = createSecureSeed()): Promise<void> {
     throw new Error('참가자 이름은 40자 이하로 입력해주세요.');
   }
 
+  dom.resultButton.hidden = true;
+  if (dom.resultDialog.open) dom.resultDialog.close();
+
   persistInputs();
   options.useSkills = dom.skills.checked;
   options.autoRecording = dom.recording.checked;
@@ -374,6 +378,7 @@ async function startRound(): Promise<void> {
   if (!currentRound) return;
 
   currentRound.startedAt = Date.now();
+  dom.resultButton.hidden = true;
   running = true;
   dom.appShell.classList.add('is-running');
   dom.openPanel.disabled = true;
@@ -422,7 +427,7 @@ async function completeRound(winner: string): Promise<void> {
   dom.resultEvent.textContent = [record.eventTitle, record.channelName].filter(Boolean).join(' · ');
   dom.resultSeed.textContent = record.seed;
   dom.resultDuration.textContent = formatDuration(record.durationMs);
-  if (!dom.resultDialog.open) dom.resultDialog.showModal();
+  dom.resultButton.hidden = false;
   window.dispatchEvent(new CustomEvent('creo:roulette:result', { detail: record }));
 }
 
@@ -617,13 +622,19 @@ function bindEvents(): void {
     await copyText(text);
     showToast('결과를 복사했습니다.');
   });
+  dom.resultButton.addEventListener('click', () => {
+    if (!lastRecord || dom.resultDialog.open) return;
+    dom.resultDialog.showModal();
+  });
   dom.replay.addEventListener('click', async () => {
     if (!lastRecord) return;
+    dom.resultButton.hidden = true;
     dom.resultDialog.close();
     await prepareRound(lastRecord.seed);
     await startRound();
   });
   dom.newRound.addEventListener('click', async () => {
+    dom.resultButton.hidden = true;
     dom.resultDialog.close();
     await prepareRound();
     openPanel();

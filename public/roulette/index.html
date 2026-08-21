@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang=ko><script type=importmap>{"imports":{"2n1iG":"/roulette/Box2D.simd.dd31b167.wasm","dCFCZ":"/roulette/Box2D.c070dc91.js","j5PHo":"/roulette/Box2D.b9b16b27.wasm","lvCWQ":"/roulette/Box2D.simd.e96537a5.js"}}</script><meta charset=UTF-8><meta name=viewport content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name=theme-color content=#07111f><meta name=description content="채널과 행사에 관계없이 사용할 수 있는 공용 마블 추첨기"><meta property=og:type content=website><meta property=og:title content="MARBLE DRAW"><meta property=og:description content="공이 달리고, 결과가 남는 라이브 추첨"><title>MARBLE DRAW</title><link rel=stylesheet href=/roulette/roulette-app.89619ccb.css><body>
+<!DOCTYPE html><html lang=ko><script type=importmap>{"imports":{"2n1iG":"/roulette/Box2D.simd.dd31b167.wasm","dCFCZ":"/roulette/Box2D.c070dc91.js","j5PHo":"/roulette/Box2D.b9b16b27.wasm","lvCWQ":"/roulette/Box2D.simd.e96537a5.js"}}</script><meta charset=UTF-8><meta name=viewport content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name=theme-color content=#07111f><meta name=description content="채널과 행사에 관계없이 사용할 수 있는 공용 마블 추첨기"><meta property=og:type content=website><meta property=og:title content="MARBLE DRAW"><meta property=og:description content="공이 달리고, 결과가 남는 라이브 추첨"><title>MARBLE DRAW</title><link rel=stylesheet href=/roulette/roulette-app.f3bde446.css><body>
     <main class=app-shell id=appShell>
       <section class=stage aria-label="마블 추첨 화면">
         <div id=canvasHost class=canvas-host data-roulette-canvas-host></div>
@@ -13,6 +13,9 @@
             </button>
             <button class=panel-button id=openPanelButton type=button aria-controls=controlPanel aria-expanded=true>
               설정
+            </button>
+            <button class="panel-button result-button" id=resultButton type=button aria-controls=resultDialog hidden>
+              결과
             </button>
           </div>
         </header>
@@ -186,4 +189,4 @@
     </dialog>
 
     <div class=toast id=toast role=status aria-live=polite></div>
-    <script type=module src=/roulette/roulette-app.4a31af85.js></script>
+    <script type=module src=/roulette/roulette-app.8b1ef97c.js></script>

@@ -131,6 +131,10 @@ test('pinball stage stays clean while candidate and controls remain in their ope
     assert.match(rankRenderer, /drawFittedText/);
     assert.match(rankRenderer, /ctx\.arc\(startX \+ radius/);
     assert.doesNotMatch(rankRenderer, /ctx\.arc\(panelLeft/);
+    assert.match(rankRenderer, /confirmed \? '#ffffff'/);
+    assert.match(rankRenderer, /if \(winners\.length > 0\)/);
+    assert.match(rankRenderer, /winners\.length \* this\.layoutFontHeight/);
+    assert.match(rankRenderer, /ctx\.lineTo\(rankPanelRight/);
     assert.match(minimap, /this\.scaleX = this\.scale \* \(broadcastMode \? 1\.55 : 1\)/);
     assert.match(minimap, /CONTROLS_RESERVE_HEIGHT \* uiScale/);
     assert.match(minimap, /this\.top = \(HUD_HEIGHT \+ HUD_CONTENT_GAP\) \* uiScale/);
@@ -144,6 +148,18 @@ test('pinball stage stays clean while candidate and controls remain in their ope
     assert.ok(font.length > 1_000_000, 'full Korean variable font must be shipped locally');
     assert.match(fs.readFileSync(path.join(appRoot, 'PRETENDARD-LICENSE.txt'), 'utf8'), /SIL OPEN FONT LICENSE/);
     assert.match(fs.readFileSync(path.join(publicRoot, 'PRETENDARD-LICENSE.txt'), 'utf8'), /SIL OPEN FONT LICENSE/);
+});
+
+test('result modal waits behind a lower-left result button after the winner effect', () => {
+    const html = fs.readFileSync(path.join(appRoot, 'index.html'), 'utf8');
+    const app = fs.readFileSync(path.join(appRoot, 'src', 'app.ts'), 'utf8');
+    const styles = fs.readFileSync(path.join(appRoot, 'assets', 'app.scss'), 'utf8');
+
+    assert.match(html, /id="openPanelButton"[\s\S]*id="resultButton"/);
+    assert.match(app, /dom\.resultButton\.hidden = false/);
+    assert.match(app, /dom\.resultButton\.addEventListener\('click'[\s\S]*dom\.resultDialog\.showModal\(\)/);
+    assert.doesNotMatch(app, /if \(!dom\.resultDialog\.open\) dom\.resultDialog\.showModal\(\)/);
+    assert.match(styles, /result-button-arrive 380ms 1\.2s both/);
 });
 
 test('candidate bar selects three unique people nearest to the configured winning rank', () => {

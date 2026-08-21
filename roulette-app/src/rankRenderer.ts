@@ -120,7 +120,7 @@ export class RankRenderer implements UIObject {
     winners.forEach((marble: { hue: number; name: string }, rank: number) => {
       const y = rank * this.layoutFontHeight;
       if (y >= startY && y <= startY + visibleListHeight) {
-        this.drawRankRow(ctx, marble, rank, listTop + y, rankPanelLeft, rankPanelWidth, uiScale, academySkin);
+        this.drawRankRow(ctx, marble, rank, true, listTop + y, rankPanelLeft, rankPanelWidth, uiScale, academySkin);
       }
     });
     marbles.forEach((marble: { hue: number; name: string }, rank: number) => {
@@ -130,6 +130,7 @@ export class RankRenderer implements UIObject {
           ctx,
           marble,
           rank + winners.length,
+          false,
           listTop + y,
           rankPanelLeft,
           rankPanelWidth,
@@ -139,6 +140,15 @@ export class RankRenderer implements UIObject {
         );
       }
     });
+    if (winners.length > 0) {
+      const boundaryY = listTop + winners.length * this.layoutFontHeight;
+      ctx.strokeStyle = academySkin ? 'rgba(244, 236, 217, 0.88)' : 'rgba(255, 255, 255, 0.86)';
+      ctx.lineWidth = 1.25 * uiScale;
+      ctx.beginPath();
+      ctx.moveTo(rankPanelLeft + 5 * uiScale, boundaryY);
+      ctx.lineTo(rankPanelRight - 3 * uiScale, boundaryY);
+      ctx.stroke();
+    }
     ctx.restore();
   }
 
@@ -216,6 +226,7 @@ export class RankRenderer implements UIObject {
     ctx: CanvasRenderingContext2D,
     marble: { name: string },
     rank: number,
+    confirmed: boolean,
     rowTop: number,
     panelLeft: number,
     panelWidth: number,
@@ -231,13 +242,13 @@ export class RankRenderer implements UIObject {
 
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'left';
-    ctx.fillStyle = academySkin ? 'rgba(244, 236, 217, 0.72)' : 'rgba(255, 255, 255, 0.72)';
+    ctx.fillStyle = confirmed ? '#ffffff' : 'rgba(255, 255, 255, 0.48)';
     ctx.font = `800 ${compact ? 8 * uiScale : 9 * uiScale}pt ${this.hudFont}`;
     ctx.fillText(`#${rank + 1}`, panelLeft + 7 * uiScale, rowCenter);
 
     const nameX = panelLeft + 31 * uiScale;
     const nameWidth = panelWidth - 34 * uiScale;
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = confirmed ? '#ffffff' : 'rgba(255, 255, 255, 0.78)';
     this.drawFittedText(
       ctx,
       marble.name,
