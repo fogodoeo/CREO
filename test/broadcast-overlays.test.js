@@ -42,8 +42,10 @@ test('CREWART new bidders use a short persistent FIFO reel without blocking bid 
     assert.match(broadcast, /class="p2-house-reveal-window"/);
     assert.match(broadcast, /state\.queue\.push\(\{ \.\.\.event, sequence \}\)/);
     assert.match(broadcast, /state\.queue\.shift\(\)/);
-    assert.match(broadcast, /const duration = reducedMotion \? 0 : \(compact \? 300 : 560\)/);
-    assert.match(broadcast, /const hold = compact \? 100 : 170/);
+    assert.match(broadcast, /const duration = reducedMotion \? 0 : \(compact \? 700 : 1200\)/);
+    assert.match(broadcast, /const hold = compact \? 280 : 520/);
+    assert.match(broadcast, /latestAssignedAt >= state\.pageStartedAt - 15000/);
+    assert.match(broadcast, /writeP2RevealCursor\(state\.sessionId, event\.sequence\)/);
     assert.match(broadcast, /sessionStorage\.setItem\(p2RevealStorageKey\(sessionId\)/);
     assert.match(broadcast, /pendingBidderKeys\.has\(key\)/);
     assert.match(broadcast, /processCrewartAudienceReveals\(window\.__creoAudience \|\| null\)/);

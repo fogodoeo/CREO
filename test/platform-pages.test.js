@@ -55,6 +55,8 @@ test('the universal broadcast route delegates renderer selection to channel prof
     assert.match(router, /broadcast-profiles\.js/);
     assert.match(router, /\/api\/platform\/channels\//);
     assert.match(router, /CreoBroadcastProfiles\.broadcastTarget/);
+    assert.match(router, /const preview=params\.get\('preview'\)===['"]1['"]/);
+    assert.match(router, /const channelId=preview\?\(normalize\(params\.get\('event'\)\)\|\|activeChannelId\):activeChannelId/);
     assert.doesNotMatch(router, /channelId?\s*===\s*['"](?:cdcup|crewart)['"]/);
 });
 

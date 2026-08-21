@@ -29,7 +29,7 @@
     <script src="auction-contract.js?v=20260819-contract-v1"></script>
     <script src="supabase-bridge.js?v=20260819-round3-seed-v2"></script>
     <script src="channel-broadcast-bridge.js?v=20260821-active-state-v2"></script>
-    <script src="event-modules.js?v=20260821-crewart-live-highest-v4"></script>
+    <script src="event-modules.js?v=20260821-crewart-p3-reveal-v5"></script>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link
         href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
@@ -7235,8 +7235,8 @@
             const track = overlay.querySelector('.p2-house-reveal-track');
             const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
             const compact = state.queue.length >= 3;
-            const duration = reducedMotion ? 0 : (compact ? 300 : 560);
-            const hold = compact ? 100 : 170;
+            const duration = reducedMotion ? 0 : (compact ? 700 : 1200);
+            const hold = compact ? 280 : 520;
             track.style.transition = 'none';
             track.style.transform = 'translateY(0)';
             requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -7247,6 +7247,7 @@
                 state.pendingBidderKeys.delete(event.bidderKey);
                 state.revealedBidderKeys.add(event.bidderKey);
                 revealCrewartBidderRow(event.bidderKey, finalHouse);
+                writeP2RevealCursor(state.sessionId, event.sequence);
                 setTimeout(() => {
                     overlay.classList.remove('visible');
                     state.playing = false;
@@ -7273,12 +7274,13 @@
                 if (storedCursor !== null) {
                     state.cursor = storedCursor;
                 } else {
-                    const recent = events.filter((event) => {
-                        const assignedAt = Date.parse(event.assignedAt || '');
-                        return Number.isFinite(assignedAt) && assignedAt >= state.pageStartedAt - 1200;
-                    });
-                    state.cursor = recent.length
-                        ? Math.max(0, Number(recent[0].sequence) - 1)
+                    const latest = events[events.length - 1] || null;
+                    const latestAssignedAt = Date.parse(latest?.assignedAt || '');
+                    const canResumeLatest = latest
+                        && Number.isFinite(latestAssignedAt)
+                        && latestAssignedAt >= state.pageStartedAt - 15000;
+                    state.cursor = canResumeLatest
+                        ? Math.max(0, Number(latest.sequence) - 1)
                         : events.reduce((max, event) => Math.max(max, Number(event.sequence) || 0), 0);
                     writeP2RevealCursor(sessionId, state.cursor);
                 }
@@ -7293,7 +7295,6 @@
                 state.pendingBidderKeys.add(String(event.bidderKey || ''));
                 state.queue.push({ ...event, sequence });
                 state.cursor = sequence;
-                writeP2RevealCursor(sessionId, state.cursor);
             }
             runNextCrewartReveal();
         }

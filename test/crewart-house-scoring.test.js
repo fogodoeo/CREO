@@ -89,13 +89,17 @@ test('P3 includes only the current live highest bid and moves it between houses 
 test('P3 board presents only four house cards and their amount numbers', () => {
     const module = loadModule();
     const html = module.renderCrewartHouseBoardHTML([
-        { status: 'sold', sold_price: 18, crewartHouseKey: 'R', winner: '낙찰자' }
+        { status: 'sold', sold_price: 10_000_000, crewartHouseKey: 'R', winner: '낙찰자' }
     ], { crewart_score_scope: 'all' });
 
     assert.equal((html.match(/class="crewart-house-card"/g) || []).length, 4);
-    assert.match(html, /<strong class="crewart-house-score">18<\/strong>/);
+    assert.match(html, /<strong class="crewart-house-score">10,000,000<\/strong>/);
     assert.match(html, /data-house="Y"[^>]*--house:#d2a33a;--house-ink:#ffffff;/);
     assert.doesNotMatch(html, /crewart-score-head|crewart-house-stats|crewart-house-sigil|<small>|POINTS|기숙사 미지정/);
+
+    const source = fs.readFileSync(path.join(__dirname, '..', 'public', 'event-modules.js'), 'utf8');
+    assert.match(source, /\.crewart-house-list \{[\s\S]*?grid-template-columns:minmax\(0,1fr\)/);
+    assert.match(source, /\.crewart-house-card,[\s\S]*?width:100%;height:clamp\(76px,12vh,130px\)/);
 });
 
 test('P3 reorders cards by amount and keeps RGBY order for ties', () => {
