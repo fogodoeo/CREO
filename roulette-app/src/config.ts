@@ -1,6 +1,6 @@
 import type { ColorTheme } from './types/ColorTheme';
 
-export const APP_VERSION = '1.6.0';
+export const APP_VERSION = '1.7.0';
 
 export type WinnerMode = 'first' | 'last' | 'rank';
 export type MarbleStyle = 'glass' | 'flat';
@@ -24,6 +24,24 @@ export type AppConfig = {
 };
 
 export const THEME_PRESETS: Record<string, ColorTheme> = {
+  academy: {
+    background: '#101614',
+    marbleLightness: 68,
+    marbleWinningBorder: '#f4ecd9',
+    skillColor: '#f4ecd9',
+    coolTimeIndicator: '#d4bd86',
+    entity: {
+      box: { fill: '#315545', outline: '#86a795', bloom: '#315545', bloomRadius: 7 },
+      circle: { fill: '#d4bd86', outline: '#f2dfac', bloom: '#a98a50', bloomRadius: 8 },
+      polyline: { fill: '#eee5d3', outline: '#b49a65', bloom: '#78643e', bloomRadius: 5 },
+    },
+    rankStroke: '#101614',
+    minimapBackground: '#18201d',
+    minimapViewport: '#d4bd86',
+    winnerText: '#f4ecd9',
+    winnerOutline: '#101614',
+    winnerBackground: 'rgba(16, 22, 20, 0.9)',
+  },
   midnight: {
     background: '#07111f',
     marbleLightness: 72,

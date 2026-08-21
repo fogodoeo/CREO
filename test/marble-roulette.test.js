@@ -49,7 +49,7 @@ test('roulette exposes its version and keeps native broadcast rendering with the
     const renderer = fs.readFileSync(path.join(appRoot, 'src', 'rouletteRenderer.ts'), 'utf8');
 
     assert.match(html, /id="versionBadge"/);
-    assert.match(config, /APP_VERSION = '1\.6\.0'/);
+    assert.match(config, /APP_VERSION = '1\.7\.0'/);
     assert.match(roulette, /_updateInterval = 10/);
     assert.match(roulette, /!finishedIds\.has\(marble\.id\)/);
     assert.match(renderer, /COMPACT_SCENE_PIXEL_BUDGET = 520_000/);
@@ -61,4 +61,32 @@ test('roulette exposes its version and keeps native broadcast rendering with the
     const marble = fs.readFileSync(path.join(appRoot, 'src', 'marble.ts'), 'utf8');
     assert.match(marble, /_getGlassSprite/);
     assert.match(marble, /createRadialGradient/);
+});
+
+test('global pinball launcher exposes reusable skins and carries the selected channel', () => {
+    const main = fs.readFileSync(path.join(root, 'public', 'index.html'), 'utf8');
+
+    assert.match(main, /id="quick-pinball-skin"/);
+    assert.match(main, /id="quick-pinball"/);
+    assert.match(main, /value="academy">마법학교/);
+    assert.match(main, /creo_pinball_skin_v1/);
+    assert.match(main, /new URLSearchParams\(\{theme:pinballSkin\.value\}\)/);
+    assert.match(main, /params\.set\('channel',activeChannel\.name\)/);
+});
+
+test('academy pinball skin changes both physics colors and application chrome', () => {
+    const html = fs.readFileSync(path.join(appRoot, 'index.html'), 'utf8');
+    const config = fs.readFileSync(path.join(appRoot, 'src', 'config.ts'), 'utf8');
+    const app = fs.readFileSync(path.join(appRoot, 'src', 'app.ts'), 'utf8');
+    const styles = fs.readFileSync(path.join(appRoot, 'assets', 'app.scss'), 'utf8');
+
+    assert.match(html, /name="theme" value="academy"/);
+    assert.match(html, /theme-swatch academy">마법학교/);
+    assert.match(config, /academy:\s*\{/);
+    assert.match(config, /background: '#101614'/);
+    assert.match(app, /dataset\.rouletteTheme = String\(currentThemeName\(\)\)/);
+    assert.match(app, /next\.accentColor = THEME_PRESETS\[theme\]\.coolTimeIndicator/);
+    assert.match(styles, /html\[data-roulette-theme='academy'\]/);
+    assert.match(styles, /\.theme-swatch\.academy/);
+    assert.match(styles, /html\[data-roulette-theme='academy'\] \.result-dialog/);
 });

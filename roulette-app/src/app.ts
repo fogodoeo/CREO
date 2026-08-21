@@ -181,7 +181,10 @@ function applyUrlParameters(base: AppConfig): { config: AppConfig; entries?: str
 
   if (title) next.eventTitle = title.slice(0, 40);
   if (channel) next.channelName = channel.slice(0, 30);
-  if (theme && THEME_PRESETS[theme]) next.themePreset = theme;
+  if (theme && THEME_PRESETS[theme]) {
+    next.themePreset = theme;
+    next.accentColor = THEME_PRESETS[theme].coolTimeIndicator;
+  }
   if (accent && /^#[0-9a-f]{6}$/i.test(accent)) next.accentColor = accent;
   if (Number.isInteger(map) && map >= 0) next.defaultMap = map;
   if ([0.75, 1, 1.5, 2].includes(speed)) next.defaultSpeed = speed;
@@ -255,6 +258,7 @@ function updateBrand(): void {
   dom.brandChannel.hidden = !channel;
   dom.resultLabel.textContent = dom.winnerLabel.value.trim() || DEFAULT_CONFIG.winnerLabel;
   document.documentElement.style.setProperty('--accent', dom.accent.value);
+  document.documentElement.dataset.rouletteTheme = String(currentThemeName());
   document.title = `${dom.brandTitle.textContent} · ${config.appName}`;
 }
 
@@ -554,6 +558,7 @@ function bindEvents(): void {
   });
   document.querySelectorAll<HTMLInputElement>('input[name="theme"]').forEach((input) => {
     input.addEventListener('change', () => {
+      if (input.checked && THEME_PRESETS[input.value]) dom.accent.value = THEME_PRESETS[input.value].coolTimeIndicator;
       applyRuntimeAppearance();
       preparedFingerprint = '';
     });
