@@ -59,11 +59,15 @@ test('public broadcast items never expose winner or shipping contact data', () =
     assert.equal(item.teamName, 'RED');
     assert.equal('winnerPhone' in item, false);
     assert.equal('shippingAddress' in item, false);
-    assert.deepEqual(item.bidLog, [{
-        name: '입찰자', bidder_key: 'bidder-1', region: '', amount: 31,
-        time: '', timestamp: '', created_at: '', isQuiz: false,
+    assert.equal(item.bidLog.length, 1);
+    assert.deepEqual({ ...item.bidLog[0], bidder_key: '<private>' }, {
+        name: '입찰자', bidder_key: '<private>', region: '', amount: 31,
+        time: '', timestamp: '', created_at: '', bid_sequence: 0,
+        crewart_assignment_sequence: 0, isQuiz: false,
         crewart_house_key: 'G', crewart_house_source: 'survey'
-    }]);
+    });
+    assert.match(item.bidLog[0].bidder_key, /^bidder_/);
+    assert.notEqual(item.bidLog[0].bidder_key, 'bidder-1');
     assert.equal('phone' in item.bidLog[0], false);
     assert.equal(item.attributes.checklist, 'gender:M|weight:42|sale_mode:quiz|quiz_question_b64:question');
     assert.equal(item.attributes.photo_sire, '/sire.webp');

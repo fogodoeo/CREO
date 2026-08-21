@@ -23,6 +23,7 @@ const ADMIN_SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 const ADMIN_LOGIN_WINDOW_MS = 10 * 60 * 1000;
 const ADMIN_LOGIN_ATTEMPTS = 6;
 const BROADCAST_CONFIG_ID = 'broadcast-config';
+const AUDIENCE_REVEALS_ID = 'crewart-audience-reveals';
 const BROADCAST_CONFIG_KEY = /^[a-z0-9][a-z0-9_:-]{0,79}$/i;
 const SHIPPING_RATE_CONFIG_KEYS = Object.freeze({
     '도도시': 'shipping_rate_dodosi',
@@ -226,7 +227,11 @@ function sanitizeBroadcastState(input = {}) {
         quizStatus: ['ready', 'open', 'closed'].includes(input.quizStatus) ? input.quizStatus : 'ready',
         quizQuestion: cleanText(input.quizQuestion, 180),
         quizWinner: cleanText(input.quizWinner, 80),
-        quizAnswer: cleanText(input.quizAnswer, 80)
+        quizAnswer: cleanText(input.quizAnswer, 80),
+        audienceSessionId: cleanText(input.audienceSessionId, 80),
+        audienceSessionStatus: ['active', 'closed'].includes(input.audienceSessionStatus) ? input.audienceSessionStatus : '',
+        audienceSessionLockedAt: cleanText(input.audienceSessionLockedAt, 80),
+        audienceSessionEndedAt: cleanText(input.audienceSessionEndedAt, 80)
     };
 }
 
@@ -350,22 +355,37 @@ async function bidderMemberKey(bid, bandMembership) {
     }
 }
 
-async function winnerMemberKey(item, bandMembership) {
-    if (typeof bandMembership?.resolveMemberSubject !== 'function') return '';
+function winningBid(item) {
     const bids = rawItemBidLog(item);
-    if (!bids.length) return '';
+    if (!bids.length) return null;
     const winnerValues = [item?.winnerAlias, item?.winnerName]
         .map((value) => cleanText(value, 80).toLowerCase())
         .filter(Boolean);
-    const winnerBid = bids.find((bid) => {
+    return bids.find((bid) => {
         const name = cleanText(bid?.name || bid?.bidder || bid?.winner, 80).toLowerCase();
         const key = cleanText(bid?.bidder_key || bid?.bidderKey, 80).toLowerCase();
         return winnerValues.includes(name) || winnerValues.includes(key);
     }) || bids[0];
+}
+
+async function winnerMemberKey(item, bandMembership) {
+    if (typeof bandMembership?.resolveMemberSubject !== 'function') return '';
+    const winnerBid = winningBid(item);
+    if (!winnerBid) return '';
     return bidderMemberKey({ ...winnerBid, phone: item?.winnerPhone || phoneFromBid(winnerBid) }, bandMembership);
 }
 
-async function enrichCrewartBidderHouses(channel, item, crewartHouseService, bandMembership, logger = console) {
+function winnerHouseSnapshot(item) {
+    const bid = winningBid(item);
+    const houseKey = cleanText(bid?.crewart_house_key || bid?.crewartHouseKey, 8).toUpperCase();
+    if (!['R', 'G', 'B', 'Y'].includes(houseKey)) return null;
+    return {
+        houseKey,
+        source: cleanText(bid?.crewart_house_source || bid?.crewartHouseSource, 16) === 'survey' ? 'survey' : 'random'
+    };
+}
+
+async function enrichCrewartBidderHouses(channel, item, crewartHouseService, bandMembership, audienceSession, logger = console) {
     const competition = channel?.audienceCompetition || {};
     if (
         competition.enabled !== true
@@ -386,6 +406,9 @@ async function enrichCrewartBidderHouses(channel, item, crewartHouseService, ban
         return {
             channelId: channel.id,
             itemId: item.id,
+            sessionId: cleanText(audienceSession?.audienceSessionId, 80),
+            lockedAt: cleanText(audienceSession?.audienceSessionLockedAt, 80),
+            assignmentSequence: Math.max(0, Number.parseInt(bid?.bid_sequence || bid?.bidSequence, 10) || 0),
             memberKey: phone ? '' : (explicitMemberKey || resolvedMemberKey || (/^member_[a-z0-9_-]+$/i.test(bidderKey) ? bidderKey : '')),
             phone,
             winnerName: bid?.name || bid?.bidder || bid?.winner || '',
@@ -414,6 +437,28 @@ async function enrichCrewartBidderHouses(channel, item, crewartHouseService, ban
         logger.warn?.('[platform] live bidder house assignment unavailable', error?.message || error);
         return item;
     }
+}
+
+function audienceCompetitionEnabled(channel) {
+    const competition = channel?.audienceCompetition || {};
+    return competition.enabled === true
+        && competition.assignment === 'survey-random'
+        && competition.metric === 'soldPrice';
+}
+
+function publicBidderKey(value) {
+    const raw = cleanText(value, 160);
+    return raw ? `bidder_${crypto.createHash('sha256').update(raw).digest('base64url').slice(0, 18)}` : '';
+}
+
+function publicBidderName(value) {
+    return cleanText(value, 120)
+        .replace(/(?<!\d)010[\s.-]?\d{3,4}[\s.-]?\d{4}(?!\d)/g, '')
+        .replace(/(^|[\s/|·])\d{8,13}(?=$|[\s/|·])/g, '$1')
+        .replace(/[\s/|·]+$/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 80);
 }
 
 function validateRecord(type, record, workspace) {
@@ -578,6 +623,179 @@ function createPlatformApi({
             repository.getRecord(channelId, 'broadcast', 'state')
         ]);
         return { vendors, items, shipments, assets, broadcast: broadcast || { id: 'state', mode: 'standby', page: 1 } };
+    }
+
+    function activeAudienceSession(state = {}) {
+        if (state.audienceSessionStatus !== 'active' || !cleanText(state.audienceSessionId, 80)) return null;
+        return {
+            sessionId: cleanText(state.audienceSessionId, 80),
+            lockedAt: cleanText(state.audienceSessionLockedAt, 80)
+        };
+    }
+
+    async function ensureAudienceSession(channelId, channel, state = {}) {
+        const existing = activeAudienceSession(state);
+        if (existing || !audienceCompetitionEnabled(channel)) return { state, session: existing, created: false };
+        const nowIso = new Date().toISOString();
+        const sessionId = `cw_${Date.now().toString(36)}_${crypto.randomBytes(6).toString('base64url')}`;
+        const nextState = sanitizeBroadcastState({
+            ...state,
+            audienceSessionId: sessionId,
+            audienceSessionStatus: 'active',
+            audienceSessionLockedAt: nowIso,
+            audienceSessionEndedAt: ''
+        });
+        const saved = await repository.upsertRecord(channelId, 'broadcast', nextState);
+        await repository.upsertRecord(channelId, 'setting', {
+            id: AUDIENCE_REVEALS_ID,
+            sessionId,
+            sequence: 0,
+            events: [],
+            updatedAt: nowIso
+        });
+        return { state: saved, session: { sessionId, lockedAt: nowIso }, created: true };
+    }
+
+    async function appendAudienceReveal(channelId, session, input, assignment) {
+        if (!assignment?.isNew || assignment.source !== 'random') return null;
+        const stored = await repository.getRecord(channelId, 'setting', AUDIENCE_REVEALS_ID);
+        const current = stored?.sessionId === session.sessionId
+            ? stored
+            : { id: AUDIENCE_REVEALS_ID, sessionId: session.sessionId, sequence: 0, events: [] };
+        const bidderKey = cleanText(input.bidder_key || input.bidderKey, 120);
+        const safeBidderKey = publicBidderKey(bidderKey || input.name);
+        if ((Array.isArray(current.events) ? current.events : []).some((event) => event.bidderKey === safeBidderKey)) return null;
+        const sequence = Math.max(0, Number.parseInt(current.sequence, 10) || 0) + 1;
+        const messageKey = cleanText(input.message_key || input.messageKey, 180);
+        const event = {
+            id: `reveal_${crypto.createHash('sha256').update(`${session.sessionId}:${messageKey || bidderKey}:${sequence}`).digest('base64url').slice(0, 20)}`,
+            sequence,
+            bidderKey: safeBidderKey,
+            name: publicBidderName(input.name || input.bidder || input.winner),
+            region: cleanText(input.region, 40),
+            amount: Math.max(0, Number(input.amount) || 0),
+            houseKey: cleanText(assignment.houseKey, 8).toUpperCase(),
+            assignedAt: cleanText(assignment.assignedAt || new Date().toISOString(), 80)
+        };
+        const events = [...(Array.isArray(current.events) ? current.events : []), event]
+            .sort((a, b) => Number(a.sequence) - Number(b.sequence))
+            .slice(-100);
+        await repository.upsertRecord(channelId, 'setting', {
+            ...current,
+            id: AUDIENCE_REVEALS_ID,
+            sessionId: session.sessionId,
+            sequence,
+            events,
+            updatedAt: new Date().toISOString()
+        });
+        return event;
+    }
+
+    async function resolveAudienceBidder(channelId, channel, state, input = {}) {
+        if (!audienceCompetitionEnabled(channel) || typeof crewartHouseService?.resolveWinnerAssignment !== 'function') {
+            return { assignment: null, reveal: null, state, session: null };
+        }
+        const ensured = await ensureAudienceSession(channelId, channel, state);
+        const phone = phoneFromBid(input);
+        const memberKey = phone ? '' : await bidderMemberKey(input, bandMembership);
+        const assignment = await crewartHouseService.resolveWinnerAssignment({
+            channelId,
+            itemId: cleanText(input.itemId, 64),
+            sessionId: ensured.session.sessionId,
+            lockedAt: ensured.session.lockedAt,
+            assignmentSequence: Math.max(0, Number.parseInt(input.bid_sequence || input.bidSequence, 10) || 0),
+            memberKey,
+            phone,
+            winnerName: input.name || input.bidder || input.winner || '',
+            winnerAlias: input.bidder_key || input.bidderKey || input.name || ''
+        });
+        const reveal = await appendAudienceReveal(channelId, ensured.session, input, assignment);
+        return { assignment, reveal, state: ensured.state, session: ensured.session };
+    }
+
+    async function decorateCrewartBidLog(channelId, channel, state, item) {
+        const bids = rawItemBidLog(item);
+        if (!bids.length || !audienceCompetitionEnabled(channel) || typeof crewartHouseService?.resolveBidderAssignments !== 'function') {
+            return { item, state };
+        }
+        const ensured = await ensureAudienceSession(channelId, channel, state);
+        const ordered = bids.map((bid, index) => ({ bid, index })).sort((a, b) => {
+            const aSeq = Math.max(0, Number.parseInt(a.bid?.bid_sequence || a.bid?.bidSequence, 10) || 0);
+            const bSeq = Math.max(0, Number.parseInt(b.bid?.bid_sequence || b.bid?.bidSequence, 10) || 0);
+            return (aSeq - bSeq) || (a.index - b.index);
+        });
+        const inputs = await Promise.all(ordered.map(async ({ bid, index }) => {
+            const phone = phoneFromBid(bid);
+            const explicitMemberKey = cleanText(
+                bid?.member_key || bid?.memberKey || bid?.band_member_key || bid?.bandMemberKey || '',
+                80
+            );
+            const bidderKey = cleanText(bid?.bidder_key || bid?.bidderKey, 80);
+            const resolvedMemberKey = phone ? '' : await bidderMemberKey(bid, bandMembership);
+            return {
+                channelId,
+                itemId: item.id,
+                sessionId: ensured.session.sessionId,
+                lockedAt: ensured.session.lockedAt,
+                assignmentSequence: Math.max(0, Number.parseInt(bid?.bid_sequence || bid?.bidSequence, 10) || index + 1),
+                memberKey: phone ? '' : (explicitMemberKey || resolvedMemberKey || (/^member_[a-z0-9_-]+$/i.test(bidderKey) ? bidderKey : '')),
+                phone,
+                winnerName: bid?.name || bid?.bidder || bid?.winner || '',
+                winnerAlias: bidderKey || bid?.name || `bidder-${index + 1}`
+            };
+        }));
+        const assignments = await crewartHouseService.resolveBidderAssignments(inputs);
+        const decoratedByIndex = new Map();
+        for (let orderedIndex = 0; orderedIndex < ordered.length; orderedIndex += 1) {
+            const { bid, index } = ordered[orderedIndex];
+            const assignment = assignments[orderedIndex];
+            const decorated = {
+                ...bid,
+                crewart_house_key: cleanText(assignment?.houseKey, 8).toUpperCase(),
+                crewart_house_source: assignment?.source === 'survey' ? 'survey' : 'random',
+                crewart_assignment_session: ensured.session.sessionId,
+                crewart_assignment_sequence: Math.max(0, Number.parseInt(assignment?.assignmentSequence, 10) || inputs[orderedIndex].assignmentSequence)
+            };
+            decoratedByIndex.set(index, decorated);
+            await appendAudienceReveal(channelId, ensured.session, decorated, assignment);
+        }
+        const decoratedBids = bids.map((bid, index) => decoratedByIndex.get(index) || bid);
+        return {
+            state: ensured.state,
+            item: {
+                ...item,
+                attributes: {
+                    ...(item.attributes || {}),
+                    bid_log: JSON.stringify(decoratedBids)
+                }
+            }
+        };
+    }
+
+    async function audienceRevealPayload(channelId, state = {}) {
+        const session = activeAudienceSession(state);
+        if (!session) return { sessionId: '', lockedAt: '', sequence: 0, events: [] };
+        const stored = await repository.getRecord(channelId, 'setting', AUDIENCE_REVEALS_ID);
+        const events = stored?.sessionId === session.sessionId && Array.isArray(stored.events)
+            ? stored.events.slice(-100).map((event) => ({
+                id: cleanText(event.id, 64),
+                sequence: Math.max(0, Number.parseInt(event.sequence, 10) || 0),
+                bidderKey: cleanText(event.bidderKey, 64),
+                name: publicBidderName(event.name),
+                region: cleanText(event.region, 40),
+                amount: Math.max(0, Number(event.amount) || 0),
+                houseKey: ['R', 'G', 'B', 'Y'].includes(cleanText(event.houseKey, 8).toUpperCase())
+                    ? cleanText(event.houseKey, 8).toUpperCase()
+                    : '',
+                assignedAt: cleanText(event.assignedAt, 80)
+            })).filter((event) => event.id && event.houseKey)
+            : [];
+        return {
+            sessionId: session.sessionId,
+            lockedAt: session.lockedAt,
+            sequence: Math.max(0, Number.parseInt(stored?.sequence, 10) || 0),
+            events
+        };
     }
 
     async function channelSwitchBlocker(channel) {
@@ -853,19 +1071,73 @@ function createPlatformApi({
                 return true;
             }
 
+            if (segments.length === 3 && segments[2] === 'audience-assignment' && method === 'POST') {
+                if (!await requireAdmin(req, res)) return true;
+                const body = await readJson(req);
+                await withMutationLock(`channel:${channelId}`, async () => {
+                    const activeId = await repository.getActiveChannel();
+                    if (activeId !== channelId) {
+                        replyJson(res, 409, {
+                            error: '현재 운영 채널이 변경되었습니다. 입찰을 다시 확인해 주세요.',
+                            code: 'ACTIVE_CHANNEL_CHANGED',
+                            channelId: activeId || ''
+                        });
+                        return;
+                    }
+                    const data = await workspace(channelId);
+                    const itemId = cleanText(body.itemId, 64);
+                    const item = data.items.find((entry) => entry.id === itemId);
+                    if (!item || (item.status !== 'live' && data.broadcast?.activeItemId !== itemId)) {
+                        replyJson(res, 409, { error: '현재 진행 중인 개체의 입찰이 아닙니다.', code: 'ITEM_NOT_LIVE' });
+                        return;
+                    }
+                    if (data.broadcast?.audienceSessionStatus === 'closed') {
+                        replyJson(res, 409, { error: '종료된 방송 회차입니다. 새 방송을 시작한 뒤 입찰해 주세요.', code: 'AUDIENCE_SESSION_CLOSED' });
+                        return;
+                    }
+                    const result = await resolveAudienceBidder(channelId, channel, data.broadcast, {
+                        ...body,
+                        itemId
+                    });
+                    const assignment = result.assignment;
+                    if (!assignment?.houseKey) {
+                        replyJson(res, 503, { error: '기숙사 배정을 확정하지 못했습니다.', code: 'ASSIGNMENT_UNAVAILABLE' });
+                        return;
+                    }
+                    touchChannel(channelId);
+                    const requestSequence = Math.max(0, Number.parseInt(body.bid_sequence || body.bidSequence, 10) || 0);
+                    const assignmentSequence = Math.max(0, Number.parseInt(assignment.assignmentSequence, 10) || 0);
+                    replyJson(res, 200, {
+                        channelId,
+                        itemId,
+                        sessionId: result.session?.sessionId || '',
+                        houseKey: cleanText(assignment.houseKey, 8).toUpperCase(),
+                        source: assignment.source === 'survey' ? 'survey' : 'random',
+                        isNewRandom: assignment.source !== 'survey'
+                            && (Boolean(result.reveal) || (requestSequence > 0 && requestSequence === assignmentSequence)),
+                        revealSequence: Math.max(0, Number.parseInt(result.reveal?.sequence, 10) || 0)
+                    });
+                });
+                return true;
+            }
+
             if (segments.length === 3 && segments[2] === 'broadcast' && method === 'GET') {
                 const data = await workspace(channelId);
                 const vendors = new Map(data.vendors.map((vendor) => [vendor.id, vendor]));
                 const activeItemId = cleanText(data.broadcast?.activeItemId, 64);
+                const audience = audienceCompetitionEnabled(channel)
+                    ? await audienceRevealPayload(channelId, data.broadcast)
+                    : { sessionId: '', lockedAt: '', sequence: 0, events: [] };
                 const broadcastItems = await Promise.all(data.items.map(async (item) => {
                     const isActiveItem = item.status === 'live' || (activeItemId && item.id === activeItemId);
                     return isActiveItem
-                        ? enrichCrewartBidderHouses(channel, item, crewartHouseService, bandMembership, logger)
+                        ? enrichCrewartBidderHouses(channel, item, crewartHouseService, bandMembership, data.broadcast, logger)
                         : item;
                 }));
                 replyJson(res, 200, {
                     revision: channelRevision(channelId),
                     channel,
+                    audience,
                     state: data.broadcast ? {
                         ...data.broadcast,
                         quizAnswer: data.broadcast.quizStatus === 'closed' ? data.broadcast.quizAnswer : ''
@@ -935,9 +1207,13 @@ function createPlatformApi({
                     const current = data.items.find((item) => item.id === itemId) || null;
                     const requestedStatus = ['waiting', 'live', 'sold', 'passed'].includes(body.status) ? body.status : '';
                     const requestedMode = ['standby', 'live', 'sold'].includes(body.mode) ? body.mode : (requestedStatus === 'live' ? 'live' : requestedStatus === 'sold' ? 'sold' : 'standby');
+                    let audienceState = data.broadcast;
                     if ((requestedStatus || requestedMode !== 'standby') && !current) {
                         replyJson(res, 404, { error: '전환할 개체를 현재 채널에서 찾을 수 없습니다.' });
                         return;
+                    }
+                    if (requestedStatus === 'live' && audienceCompetitionEnabled(channel)) {
+                        audienceState = (await ensureAudienceSession(channelId, channel, audienceState)).state;
                     }
 
                     if (requestedStatus === 'live') {
@@ -954,6 +1230,21 @@ function createPlatformApi({
                             ...(requestedStatus ? { status: requestedStatus } : {}),
                             id: current.id
                         }, current);
+                        if (requestedStatus === 'live' && candidate.attributes) {
+                            candidate = {
+                                ...candidate,
+                                attributes: {
+                                    ...candidate.attributes,
+                                    crewart_house_key: '',
+                                    crewart_house_source: ''
+                                }
+                            };
+                        }
+                        if (requestedStatus !== 'live' && audienceCompetitionEnabled(channel)) {
+                            const decorated = await decorateCrewartBidLog(channelId, channel, audienceState, candidate);
+                            candidate = decorated.item;
+                            audienceState = decorated.state;
+                        }
                         const audienceCompetition = channel.audienceCompetition || {};
                         const fixedHouseKey = cleanText(candidate.attributes?.crewart_house_key, 8).toUpperCase();
                         if (
@@ -963,10 +1254,14 @@ function createPlatformApi({
                             && !['R', 'G', 'B', 'Y'].includes(fixedHouseKey)
                             && typeof crewartHouseService?.resolveWinnerAssignment === 'function'
                         ) {
-                            const memberKey = await winnerMemberKey(candidate, bandMembership);
-                            const assignment = await crewartHouseService.resolveWinnerAssignment({
+                            const snapshot = winnerHouseSnapshot(candidate);
+                            const session = activeAudienceSession(audienceState);
+                            const memberKey = snapshot ? '' : await winnerMemberKey(candidate, bandMembership);
+                            const assignment = snapshot || await crewartHouseService.resolveWinnerAssignment({
                                 channelId,
                                 itemId: current.id,
+                                sessionId: session?.sessionId || '',
+                                lockedAt: session?.lockedAt || '',
                                 memberKey,
                                 phone: candidate.winnerPhone,
                                 winnerName: candidate.winnerName,
@@ -992,7 +1287,7 @@ function createPlatformApi({
                     const hasExplicitActiveItem = body.state && typeof body.state === 'object'
                         && Object.prototype.hasOwnProperty.call(body.state, 'activeItemId');
                     const nextState = sanitizeBroadcastState({
-                        ...(data.broadcast || {}),
+                        ...(audienceState || {}),
                         ...(body.state && typeof body.state === 'object' ? body.state : {}),
                         activeItemId: hasExplicitActiveItem ? body.state.activeItemId : (itemId || data.broadcast?.activeItemId || ''),
                         mode: requestedMode
@@ -1081,12 +1376,15 @@ function createPlatformApi({
             if (segments.length === 3 && segments[2] === 'broadcast-state' && method === 'PUT') {
                 if (!await requireAdmin(req, res)) return true;
                 const body = await readJson(req);
-                const record = await repository.upsertRecord(channelId, 'broadcast', {
-                    ...sanitizeBroadcastState(body),
-                    revision: Date.now()
+                await withMutationLock(`channel:${channelId}`, async () => {
+                    const current = await repository.getRecord(channelId, 'broadcast', 'state');
+                    const record = await repository.upsertRecord(channelId, 'broadcast', {
+                        ...sanitizeBroadcastState({ ...(current || {}), ...body }),
+                        revision: Date.now()
+                    });
+                    touchChannel(channelId);
+                    replyJson(res, 200, { state: record });
                 });
-                touchChannel(channelId);
-                replyJson(res, 200, { state: record });
                 return true;
             }
 
@@ -1126,22 +1424,31 @@ function createPlatformApi({
                 }
                 if (segments.length === 3 && method === 'POST') {
                     const body = await readJson(req);
-                    const data = await workspace(channelId);
-                    const sold = data.items.filter((item) => item.status === 'sold' || Number(item.soldPrice) > 0);
-                    const record = await repository.upsertRecord(channelId, 'archive', {
-                        id: recordId('arc'),
-                        title: cleanText(body.title || `${channel.name} ${new Date().toLocaleDateString('ko-KR')}`, 80),
-                        createdAt: new Date().toISOString(),
-                        itemCount: data.items.length,
-                        soldCount: sold.length,
-                        totalSoldAmount: sold.reduce((sum, item) => sum + (Number(item.soldPrice) || 0), 0),
-                        scoreboardCount: channel.scoreboards?.length || 0,
-                        scoreboards: rankingsForChannel(channel, data.items),
-                        groups: channel.groups || [],
-                        items: data.items
+                    await withMutationLock(`channel:${channelId}`, async () => {
+                        const data = await workspace(channelId);
+                        const sold = data.items.filter((item) => item.status === 'sold' || Number(item.soldPrice) > 0);
+                        const record = await repository.upsertRecord(channelId, 'archive', {
+                            id: recordId('arc'),
+                            title: cleanText(body.title || `${channel.name} ${new Date().toLocaleDateString('ko-KR')}`, 80),
+                            createdAt: new Date().toISOString(),
+                            itemCount: data.items.length,
+                            soldCount: sold.length,
+                            totalSoldAmount: sold.reduce((sum, item) => sum + (Number(item.soldPrice) || 0), 0),
+                            scoreboardCount: channel.scoreboards?.length || 0,
+                            scoreboards: rankingsForChannel(channel, data.items),
+                            groups: channel.groups || [],
+                            items: data.items
+                        });
+                        if (activeAudienceSession(data.broadcast)) {
+                            await repository.upsertRecord(channelId, 'broadcast', sanitizeBroadcastState({
+                                ...data.broadcast,
+                                audienceSessionStatus: 'closed',
+                                audienceSessionEndedAt: new Date().toISOString()
+                            }));
+                        }
+                        touchChannel(channelId);
+                        replyJson(res, 201, { archive: archiveDetail(record) });
                     });
-                    touchChannel(channelId);
-                    replyJson(res, 201, { archive: archiveDetail(record) });
                     return true;
                 }
                 if (segments.length === 4 && method === 'GET') {
@@ -1180,7 +1487,11 @@ function createPlatformApi({
                     if (type === 'item' && current.status === 'live') {
                         incoming.status = 'live';
                     }
-                    const record = sanitizeRecord(type, incoming, current);
+                    let record = sanitizeRecord(type, incoming, current);
+                    if (type === 'item' && current.status === 'live' && audienceCompetitionEnabled(channel)) {
+                        const decorated = await decorateCrewartBidLog(channelId, channel, data.broadcast, record);
+                        record = decorated.item;
+                    }
                     const errors = validateRecord(type, record, { ...data, groups: channel.groups || [] });
                     if (errors.length) {
                         replyJson(res, 422, { error: errors.join(' '), errors });

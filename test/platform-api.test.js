@@ -5,6 +5,7 @@ const assert = require('node:assert/strict');
 const { Readable } = require('node:stream');
 const { createPlatformApi } = require('../platform-api');
 const { normalizeChannel } = require('../platform-core');
+const { createCrewartHouseService } = require('../crewart-house-service');
 
 class MemoryRepository {
     constructor() {
@@ -21,6 +22,7 @@ class MemoryRepository {
     async getRecord(channel, type, id) { return structuredClone(this.records.get(this.key(channel, type, id)) || null); }
     async upsertRecord(channel, type, value) { const record = { ...value, channelId: channel }; this.records.set(this.key(channel, type, value.id), record); return structuredClone(record); }
     async deleteRecord(channel, type, id) { this.records.delete(this.key(channel, type, id)); }
+    async getRowsByKeys(keys) { return keys.map(key => this.records.get(`config:${key}`)).filter(Boolean).map(row => ({ ...row })); }
     async upsertRows(rows) { for (const row of rows) this.records.set(`config:${row.key}`, { ...row }); }
     async health() { return { ok: true }; }
     async getActiveChannel() { return this.active; }
@@ -553,6 +555,138 @@ test('CREWART public broadcast adds only house colors to live bidders', async ()
         ['B', 'survey'], ['Y', 'random']
     ]);
     assert.ok(bids.every(bid => !('phone' in bid)));
+});
+
+test('CREWART live assignment backtest preserves cutoff, FIFO sequence, idempotency, privacy, and sold snapshots', async () => {
+    const repository = new MemoryRepository();
+    repository.catalog.channels[0] = normalizeChannel({
+        ...repository.catalog.channels[0],
+        audienceCompetition: { enabled: true, assignment: 'survey-random', metric: 'soldPrice' }
+    });
+    let serviceNow = Date.now() - 10_000;
+    const crewartHouseService = createCrewartHouseService({
+        repository,
+        secret: 'platform-audience-backtest-secret-longer-than-thirty-two-characters',
+        now: () => serviceNow,
+        logger: { warn() {} }
+    });
+    await crewartHouseService.linkSurveyAssignment('member_survey-user', 'G', 'survey-before-broadcast');
+    const api = createPlatformApi({
+        repository,
+        crewartHouseService,
+        bandMembership: {
+            async resolveMemberSubject(input) { return input.bandMemberKey ? `member_${input.bandMemberKey}` : ''; }
+        },
+        logger: { error() {}, warn() {} }
+    });
+    await call(api, 'POST', '/api/platform/channels/alpha/items', {
+        record: { id: 'live_backtest', lotNumber: 1, name: '백테스트 개체' }
+    });
+    const started = await call(api, 'PUT', '/api/platform/channels/alpha/auction-transition', {
+        itemId: 'live_backtest', status: 'live', mode: 'live', state: { page: 2 }
+    });
+    assert.equal(started.status, 200, started.body);
+    assert.equal(started.json().state.audienceSessionStatus, 'active');
+    assert.ok(started.json().state.audienceSessionId);
+    assert.ok(started.json().state.audienceSessionLockedAt);
+
+    const partialStateSave = await call(api, 'PUT', '/api/platform/channels/alpha/broadcast-state', { page: 3 });
+    assert.equal(partialStateSave.status, 200, partialStateSave.body);
+    assert.equal(partialStateSave.json().state.audienceSessionId, started.json().state.audienceSessionId);
+    assert.equal(partialStateSave.json().state.audienceSessionLockedAt, started.json().state.audienceSessionLockedAt);
+    assert.equal(partialStateSave.json().state.audienceSessionStatus, 'active');
+
+    serviceNow = Date.now();
+    const surveyed = await call(api, 'POST', '/api/platform/channels/alpha/audience-assignment', {
+        itemId: 'live_backtest', bidder_key: 'survey-user', name: '설문참여자/서울', amount: 3,
+        message_key: 'message-survey', bid_sequence: 1
+    });
+    assert.equal(surveyed.status, 200, surveyed.body);
+    assert.equal(surveyed.json().houseKey, 'G');
+    assert.equal(surveyed.json().source, 'survey');
+    assert.equal(surveyed.json().isNewRandom, false);
+
+    serviceNow = Date.now() + 10_000;
+    await crewartHouseService.linkSurveyAssignment('member_late-user', 'B', 'survey-after-broadcast');
+    const late = await call(api, 'POST', '/api/platform/channels/alpha/audience-assignment', {
+        itemId: 'live_backtest', bidder_key: 'late-user', name: '늦은설문/대구', amount: 4,
+        message_key: 'message-late', bid_sequence: 2
+    });
+    assert.equal(late.json().source, 'random');
+    assert.equal(late.json().isNewRandom, true);
+
+    const burst = await Promise.all([1, 2, 3, 4].map(index => call(
+        api,
+        'POST',
+        '/api/platform/channels/alpha/audience-assignment',
+        {
+            itemId: 'live_backtest', bidder_key: 'burst-user', name: '동시입찰자/부산/01012345678',
+            amount: 4 + index, message_key: `message-burst-${index}`, bid_sequence: 10 + index
+        }
+    )));
+    assert.ok(burst.every(response => response.status === 200));
+    assert.equal(new Set(burst.map(response => response.json().houseKey)).size, 1);
+    assert.equal(burst.filter(response => response.json().isNewRandom).length, 1);
+
+    const current = await repository.getRecord('alpha', 'item', 'live_backtest');
+    const updated = await call(api, 'PUT', '/api/platform/channels/alpha/items/live_backtest', {
+        record: {
+            ...current,
+            attributes: {
+                ...(current.attributes || {}),
+                bid_log: JSON.stringify([{
+                    name: '동시입찰자/부산/01012345678', bidder_key: 'burst-user', amount: 8,
+                    message_key: 'message-burst-4', bid_sequence: 14
+                }])
+            }
+        }
+    });
+    assert.equal(updated.status, 200, updated.body);
+    const storedBid = JSON.parse(updated.json().record.attributes.bid_log)[0];
+    assert.equal(storedBid.crewart_house_key, burst[0].json().houseKey);
+    assert.equal(storedBid.crewart_house_source, 'random');
+
+    const broadcast = await call(api, 'GET', '/api/platform/channels/alpha/broadcast', null, '');
+    assert.deepEqual(broadcast.json().audience.events.map(event => event.sequence), [1, 2]);
+    assert.equal(broadcast.json().audience.events[0].name, '늦은설문/대구');
+    assert.equal(broadcast.json().audience.events[1].name, '동시입찰자/부산');
+    assert.doesNotMatch(JSON.stringify(broadcast.json()), /01012345678|burst-user|late-user/);
+    assert.match(broadcast.json().items[0].bidLog[0].bidder_key, /^bidder_/);
+
+    const sold = await call(api, 'PUT', '/api/platform/channels/alpha/auction-transition', {
+        itemId: 'live_backtest', status: 'sold', mode: 'sold',
+        item: { soldPrice: 80000, winnerAlias: '동시입찰자/부산/01012345678' }
+    });
+    assert.equal(sold.status, 200, sold.body);
+    assert.equal(sold.json().item.attributes.crewart_house_key, burst[0].json().houseKey);
+    assert.equal(sold.json().item.attributes.crewart_house_source, 'random');
+
+    const reopened = await call(api, 'PUT', '/api/platform/channels/alpha/auction-transition', {
+        itemId: 'live_backtest', status: 'live', mode: 'live'
+    });
+    assert.equal(reopened.json().item.attributes.crewart_house_key, '');
+    assert.equal(reopened.json().item.attributes.crewart_house_source, '');
+    assert.equal(reopened.json().state.audienceSessionId, started.json().state.audienceSessionId);
+
+    const archived = await call(api, 'POST', '/api/platform/channels/alpha/archives', { title: '방송 회차 종료' });
+    assert.equal(archived.status, 201, archived.body);
+    const closedState = await repository.getRecord('alpha', 'broadcast', 'state');
+    assert.equal(closedState.audienceSessionStatus, 'closed');
+
+    const lateArchivedBid = await call(api, 'POST', '/api/platform/channels/alpha/audience-assignment', {
+        itemId: 'live_backtest', bidder_key: 'after-archive', name: '종료후입찰/서울', amount: 9,
+        message_key: 'message-after-archive', bid_sequence: 99
+    });
+    assert.equal(lateArchivedBid.status, 409, lateArchivedBid.body);
+    assert.equal(lateArchivedBid.json().code, 'AUDIENCE_SESSION_CLOSED');
+    assert.equal((await repository.getRecord('alpha', 'broadcast', 'state')).audienceSessionStatus, 'closed');
+
+    const nextSession = await call(api, 'PUT', '/api/platform/channels/alpha/auction-transition', {
+        itemId: 'live_backtest', status: 'live', mode: 'live'
+    });
+    assert.equal(nextSession.status, 200, nextSession.body);
+    assert.equal(nextSession.json().state.audienceSessionStatus, 'active');
+    assert.notEqual(nextSession.json().state.audienceSessionId, started.json().state.audienceSessionId);
 });
 
 test('ordinary channels never assign an audience house during a sale', async () => {

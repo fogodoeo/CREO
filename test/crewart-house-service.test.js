@@ -108,3 +108,89 @@ test('a temporary assignment-store outage never blocks a sale', async () => {
     assert.equal(first.persisted, false);
     assert.ok(warnings.length >= 2);
 });
+
+test('a session locks survey assignments at broadcast start and never changes them mid-broadcast', async () => {
+    const repository = new MemoryConfigRepository();
+    let now = Date.parse('2026-08-21T09:00:00.000Z');
+    const phone = '01012345678';
+    const memberKey = memberKeyForPhone(phone, SECRET);
+    const service = createCrewartHouseService({ repository, secret: SECRET, now: () => now });
+    await service.linkSurveyAssignment(memberKey, 'R', 'survey-before-start');
+
+    const session = { sessionId: 'broadcast-1', lockedAt: '2026-08-21T09:00:01.000Z' };
+    now = Date.parse('2026-08-21T09:00:02.000Z');
+    const first = await service.resolveWinnerAssignment({ ...session, channelId: 'crewart', phone });
+    assert.equal(first.houseKey, 'R');
+    assert.equal(first.source, 'survey');
+    assert.equal(first.isNew, true);
+
+    now = Date.parse('2026-08-21T09:00:03.000Z');
+    await service.linkSurveyAssignment(memberKey, 'B', 'late-survey-edit');
+    const later = await service.resolveWinnerAssignment({ ...session, channelId: 'crewart', phone });
+    assert.equal(later.houseKey, 'R');
+    assert.equal(later.source, 'survey');
+    assert.equal(later.isNew, false);
+});
+
+test('a survey submitted after the cutoff cannot replace the session random house', async () => {
+    const repository = new MemoryConfigRepository();
+    let now = Date.parse('2026-08-21T09:00:02.000Z');
+    const phone = '01077778888';
+    const service = createCrewartHouseService({ repository, secret: SECRET, now: () => now });
+    await service.linkSurveyAssignment(memberKeyForPhone(phone, SECRET), 'G', 'late-participant');
+
+    const input = {
+        sessionId: 'broadcast-cutoff', lockedAt: '2026-08-21T09:00:01.000Z',
+        channelId: 'crewart', phone
+    };
+    const assigned = await service.resolveWinnerAssignment(input);
+    assert.equal(assigned.source, 'random');
+    assert.match(assigned.houseKey, /^[RGBY]$/);
+
+    now += 60_000;
+    await service.linkSurveyAssignment(memberKeyForPhone(phone, SECRET), 'Y', 'later-edit');
+    const repeated = await service.resolveWinnerAssignment(input);
+    assert.equal(repeated.houseKey, assigned.houseKey);
+    assert.equal(repeated.source, 'random');
+});
+
+test('session assignments survive a service restart and a new broadcast gets an isolated draw', async () => {
+    const repository = new MemoryConfigRepository();
+    const input = { channelId: 'crewart', winnerAlias: 'band-user-stable' };
+    const firstService = createCrewartHouseService({ repository, secret: SECRET, now: () => 1000 });
+    const first = await firstService.resolveWinnerAssignment({
+        ...input, sessionId: 'broadcast-a', lockedAt: '1970-01-01T00:00:00.500Z'
+    });
+    assert.equal(first.isNew, true);
+
+    const restarted = createCrewartHouseService({ repository, secret: SECRET, now: () => 2000 });
+    const restored = await restarted.resolveWinnerAssignment({
+        ...input, sessionId: 'broadcast-a', lockedAt: '1970-01-01T00:00:00.500Z'
+    });
+    const nextBroadcast = await restarted.resolveWinnerAssignment({
+        ...input, sessionId: 'broadcast-b', lockedAt: '1970-01-01T00:00:01.500Z'
+    });
+
+    assert.equal(restored.houseKey, first.houseKey);
+    assert.equal(restored.isNew, false);
+    assert.equal(nextBroadcast.isNew, true);
+    assert.notEqual(nextBroadcast.key, restored.key);
+});
+
+test('session assignment lookup fails closed instead of silently randomizing a surveyed bidder', async () => {
+    const service = createCrewartHouseService({
+        repository: {
+            async getRowsByKeys() { throw new Error('assignment store offline'); },
+            async upsertRows() { throw new Error('must not write'); }
+        },
+        secret: SECRET,
+        logger: { warn() {} }
+    });
+    await assert.rejects(
+        service.resolveWinnerAssignment({
+            sessionId: 'broadcast-fail-closed', lockedAt: new Date().toISOString(),
+            channelId: 'crewart', winnerAlias: 'unknown'
+        }),
+        /assignment store offline/
+    );
+});

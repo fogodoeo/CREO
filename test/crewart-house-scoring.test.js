@@ -56,6 +56,7 @@ test('P3 board presents only four house cards and their amount numbers', () => {
 
     assert.equal((html.match(/class="crewart-house-card"/g) || []).length, 4);
     assert.match(html, /<strong class="crewart-house-score">18<\/strong>/);
+    assert.match(html, /data-house="Y"[^>]*--house:#d2a33a;--house-ink:#ffffff;/);
     assert.doesNotMatch(html, /crewart-score-head|crewart-house-stats|crewart-house-sigil|<small>|POINTS|기숙사 미지정/);
 });
 

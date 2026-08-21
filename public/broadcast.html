@@ -29,7 +29,7 @@
     <script src="auction-contract.js?v=20260819-contract-v1"></script>
     <script src="supabase-bridge.js?v=20260819-round3-seed-v2"></script>
     <script src="channel-broadcast-bridge.js?v=20260821-active-state-v2"></script>
-    <script src="event-modules.js?v=20260821-crewart-minimal-rank-v2"></script>
+    <script src="event-modules.js?v=20260821-crewart-minimal-rank-v3"></script>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link
         href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
@@ -129,6 +129,55 @@
             pointer-events: none;
         }
         #p2-live-bidders-overlay.visible { display: block; }
+        #p2-house-reveal-overlay {
+            position: absolute;
+            z-index: 46;
+            top: 5.2%;
+            left: 50%;
+            width: min(620px, 48vw);
+            transform: translateX(-50%);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity .14s ease;
+        }
+        #p2-house-reveal-overlay.visible { opacity: 1; }
+        .p2-house-reveal-shell {
+            display: grid;
+            grid-template-columns: minmax(120px, .72fr) minmax(220px, 1.28fr);
+            align-items: center;
+            height: 58px;
+            overflow: hidden;
+            border: 2px solid rgba(255,255,255,.78);
+            border-radius: 16px;
+            background: rgba(8,12,18,.9);
+            box-shadow: 0 14px 34px rgba(0,0,0,.34), inset 0 0 0 1px rgba(255,255,255,.08);
+        }
+        .p2-house-reveal-person {
+            min-width: 0;
+            padding: 0 16px;
+            color: #fff;
+            font-size: clamp(18px, 1.55vw, 26px);
+            font-weight: 900;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .p2-house-reveal-window { height: 54px; overflow: hidden; border-left: 1px solid rgba(255,255,255,.22); }
+        .p2-house-reveal-track { will-change: transform; }
+        .p2-house-reveal-color {
+            display: grid;
+            place-items: center;
+            height: 54px;
+            color: #fff;
+            font-size: clamp(17px, 1.4vw, 23px);
+            font-weight: 950;
+            letter-spacing: .08em;
+            text-shadow: 0 1px 5px rgba(0,0,0,.34);
+        }
+        .p2-house-reveal-color[data-house="R"] { background: #c64b52; }
+        .p2-house-reveal-color[data-house="G"] { background: #328b5b; }
+        .p2-house-reveal-color[data-house="B"] { background: #3c73bd; }
+        .p2-house-reveal-color[data-house="Y"] { background: #d2a33a; }
         .p2-live-bidders-head { display: flex; align-items: center; gap: 9px; margin: 0 0 7px 3px; color: #d9b05c; font-size: calc(var(--p2-bid-fs) * .78); font-weight: 900; letter-spacing: .08em; }
         .p2-live-bidders-head::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #ef4444; box-shadow: 0 0 10px rgba(239,68,68,.72); }
         .p2-live-bidders-count { margin-left: auto; color: rgba(248,250,252,.65); font-size: .9em; letter-spacing: 0; }
@@ -3863,6 +3912,7 @@
     <div class="broadcast" id="broadcast">
         <span class="top-bar-label auction-progress" id="auction-progress"></span>
         <aside id="p2-live-bidders-overlay" aria-live="polite"></aside>
+        <aside id="p2-house-reveal-overlay" aria-live="polite"></aside>
         <div class="scoreboard-wrap" id="scoreboard-wrap">
             <div class="top-bar" id="top-bar">
                 <div class="name-section">
@@ -5567,6 +5617,7 @@
         }
 
         async function _refreshBroadcastFromItems(items) {
+            processCrewartAudienceReveals(window.__creoAudience || null);
             if (isBracketPageTemp) {
                 await refreshBracketPage(items);
             } else {
@@ -7114,6 +7165,139 @@
                 || (CREWART_BIDDER_HOUSE_PALETTE[raw] ? raw : '');
         }
 
+        const _p2CrewartRevealState = {
+            sessionId: '',
+            cursor: 0,
+            initialized: false,
+            playing: false,
+            queue: [],
+            queuedIds: new Set(),
+            pendingBidderKeys: new Set(),
+            revealedBidderKeys: new Set(),
+            pageStartedAt: Date.now()
+        };
+
+        function p2RevealStorageKey(sessionId) {
+            return `crewart:p2-house-reveal:${String(sessionId || '')}`;
+        }
+
+        function readP2RevealCursor(sessionId) {
+            try {
+                const value = Number.parseInt(sessionStorage.getItem(p2RevealStorageKey(sessionId)), 10);
+                return Number.isFinite(value) && value >= 0 ? value : null;
+            } catch (_) {
+                return null;
+            }
+        }
+
+        function writeP2RevealCursor(sessionId, sequence) {
+            try { sessionStorage.setItem(p2RevealStorageKey(sessionId), String(sequence)); } catch (_) {}
+        }
+
+        function revealCrewartBidderRow(bidderKey, houseKey) {
+            const list = document.querySelector('.p2-live-bidders-list');
+            if (!list) return;
+            const row = Array.from(list.querySelectorAll('.p2-live-bidder-row[data-bidder-key]'))
+                .find((candidate) => candidate.dataset.bidderKey === bidderKey);
+            const palette = CREWART_BIDDER_HOUSE_PALETTE[normalizeCrewartBidderHouse(houseKey)];
+            if (!row || !palette) return;
+            row.dataset.house = normalizeCrewartBidderHouse(houseKey);
+            row.style.setProperty('--p2-house-color', palette.color);
+            row.style.setProperty('--p2-house-rgb', palette.rgb);
+            row.style.setProperty('--p2-house-ink', palette.ink);
+        }
+
+        function runNextCrewartReveal() {
+            const state = _p2CrewartRevealState;
+            if (state.playing || !state.queue.length) return;
+            const overlay = document.getElementById('p2-house-reveal-overlay');
+            if (!overlay) return;
+            const event = state.queue.shift();
+            state.playing = true;
+            const finalHouse = normalizeCrewartBidderHouse(event.houseKey) || 'R';
+            const houses = ['R', 'G', 'B', 'Y'];
+            const labels = { R: '빨강', G: '초록', B: '파랑', Y: '노랑' };
+            const reel = [];
+            for (let index = 0; index < 11; index += 1) reel.push(houses[index % houses.length]);
+            while (reel[reel.length - 1] === finalHouse) reel.push(houses[reel.length % houses.length]);
+            reel.push(finalHouse);
+            const amount = Number(event.amount) > 0 ? ` · ${formatLiveBidAmount(event.amount)}만` : '';
+            overlay.innerHTML = `
+                <div class="p2-house-reveal-shell">
+                    <div class="p2-house-reveal-person">${esc(event.name || '신규 입찰자')}${amount}</div>
+                    <div class="p2-house-reveal-window">
+                        <div class="p2-house-reveal-track">
+                            ${reel.map(house => `<div class="p2-house-reveal-color" data-house="${house}">${labels[house]}</div>`).join('')}
+                        </div>
+                    </div>
+                </div>`;
+            overlay.classList.add('visible');
+            const track = overlay.querySelector('.p2-house-reveal-track');
+            const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+            const compact = state.queue.length >= 3;
+            const duration = reducedMotion ? 0 : (compact ? 300 : 560);
+            const hold = compact ? 100 : 170;
+            track.style.transition = 'none';
+            track.style.transform = 'translateY(0)';
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                track.style.transition = `transform ${duration}ms cubic-bezier(.12,.72,.18,1)`;
+                track.style.transform = `translateY(-${(reel.length - 1) * 54}px)`;
+            }));
+            setTimeout(() => {
+                state.pendingBidderKeys.delete(event.bidderKey);
+                state.revealedBidderKeys.add(event.bidderKey);
+                revealCrewartBidderRow(event.bidderKey, finalHouse);
+                setTimeout(() => {
+                    overlay.classList.remove('visible');
+                    state.playing = false;
+                    runNextCrewartReveal();
+                }, hold);
+            }, duration);
+        }
+
+        function processCrewartAudienceReveals(audience) {
+            if (getActiveAuctionEventModule(window.latestConfigMap || {}).id !== 'crewart') return;
+            const sessionId = String(audience?.sessionId || '');
+            const events = Array.isArray(audience?.events)
+                ? audience.events.slice().sort((a, b) => Number(a.sequence) - Number(b.sequence))
+                : [];
+            if (!sessionId) return;
+            const state = _p2CrewartRevealState;
+            if (state.sessionId !== sessionId) {
+                state.sessionId = sessionId;
+                state.queue = [];
+                state.queuedIds.clear();
+                state.pendingBidderKeys.clear();
+                state.revealedBidderKeys.clear();
+                const storedCursor = readP2RevealCursor(sessionId);
+                if (storedCursor !== null) {
+                    state.cursor = storedCursor;
+                } else {
+                    const recent = events.filter((event) => {
+                        const assignedAt = Date.parse(event.assignedAt || '');
+                        return Number.isFinite(assignedAt) && assignedAt >= state.pageStartedAt - 1200;
+                    });
+                    state.cursor = recent.length
+                        ? Math.max(0, Number(recent[0].sequence) - 1)
+                        : events.reduce((max, event) => Math.max(max, Number(event.sequence) || 0), 0);
+                    writeP2RevealCursor(sessionId, state.cursor);
+                }
+                events.filter((event) => Number(event.sequence) <= state.cursor)
+                    .forEach((event) => state.revealedBidderKeys.add(String(event.bidderKey || '')));
+                state.initialized = true;
+            }
+            for (const event of events) {
+                const sequence = Math.max(0, Number(event.sequence) || 0);
+                if (!event.id || sequence <= state.cursor || state.queuedIds.has(event.id)) continue;
+                state.queuedIds.add(event.id);
+                state.pendingBidderKeys.add(String(event.bidderKey || ''));
+                state.queue.push({ ...event, sequence });
+                state.cursor = sequence;
+                writeP2RevealCursor(sessionId, state.cursor);
+            }
+            runNextCrewartReveal();
+        }
+
         function buildLiveBidRows(map, activeItem) {
             const bids = getBidLogRows(activeItem);
             const mode = map?.live_bidders_mode || 'top';
@@ -7233,7 +7417,8 @@
                 rowEl.dataset.rank = String(index + 1);
                 const houseKey = normalizeCrewartBidderHouse(bid.houseKey);
                 const housePalette = CREWART_BIDDER_HOUSE_PALETTE[houseKey];
-                if (housePalette) {
+                rowEl.dataset.assignedHouse = houseKey;
+                if (housePalette && !_p2CrewartRevealState.pendingBidderKeys.has(key)) {
                     rowEl.dataset.house = houseKey;
                     rowEl.style.setProperty('--p2-house-color', housePalette.color);
                     rowEl.style.setProperty('--p2-house-rgb', housePalette.rgb);

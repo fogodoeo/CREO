@@ -37,6 +37,18 @@ test('CREWART page two colors each live bidder card with the resolved viewer hou
     assert.match(broadcast, /Y: \{ color: '#d2a33a', rgb: '210,163,58', ink: '#ffffff' \}/);
 });
 
+test('CREWART new bidders use a short persistent FIFO reel without blocking bid rows', () => {
+    assert.match(broadcast, /id="p2-house-reveal-overlay"/);
+    assert.match(broadcast, /class="p2-house-reveal-window"/);
+    assert.match(broadcast, /state\.queue\.push\(\{ \.\.\.event, sequence \}\)/);
+    assert.match(broadcast, /state\.queue\.shift\(\)/);
+    assert.match(broadcast, /const duration = reducedMotion \? 0 : \(compact \? 300 : 560\)/);
+    assert.match(broadcast, /const hold = compact \? 100 : 170/);
+    assert.match(broadcast, /sessionStorage\.setItem\(p2RevealStorageKey\(sessionId\)/);
+    assert.match(broadcast, /pendingBidderKeys\.has\(key\)/);
+    assert.match(broadcast, /processCrewartAudienceReveals\(window\.__creoAudience \|\| null\)/);
+});
+
 test('all shared legacy layouts support three nametags', () => {
     assert.match(settings, /id="cfg-host-name3"/);
     assert.match(settings, /host_name3:/);

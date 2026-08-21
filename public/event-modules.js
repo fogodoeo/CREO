@@ -350,7 +350,7 @@
                 R: ['#c64b52', '#ffffff'],
                 G: ['#328b5b', '#ffffff'],
                 B: ['#3c73bd', '#ffffff'],
-                Y: ['#d2a33a', '#17130b']
+                Y: ['#d2a33a', '#ffffff']
             }[sigil] || [row.color, '#ffffff'];
             const amount = Math.round(row.amount).toLocaleString('ko-KR');
             return `

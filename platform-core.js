@@ -1,5 +1,6 @@
 'use strict';
 
+const crypto = require('node:crypto');
 const ChannelRuntime = require('./public/channel-runtime');
 
 const CHANNEL_STATUSES = Object.freeze(['draft', 'active', 'paused', 'archived']);
@@ -382,14 +383,27 @@ function publicBidLog(item = {}) {
     return rows.slice(-100).map((bid) => {
         const houseKey = cleanText(bid?.crewart_house_key || bid?.crewartHouseKey, 8).toUpperCase();
         const houseSource = cleanText(bid?.crewart_house_source || bid?.crewartHouseSource, 16);
+        const rawBidderKey = cleanText(bid?.bidder_key || bid?.bidderKey || '', 160);
+        const bidderKey = rawBidderKey
+            ? `bidder_${crypto.createHash('sha256').update(rawBidderKey).digest('base64url').slice(0, 18)}`
+            : '';
+        const bidderName = cleanText(bid?.name || bid?.bidder || bid?.winner, 120)
+            .replace(/(?<!\d)010[\s.-]?\d{3,4}[\s.-]?\d{4}(?!\d)/g, '')
+            .replace(/(^|[\s/|·])\d{8,13}(?=$|[\s/|·])/g, '$1')
+            .replace(/[\s/|·]+$/g, '')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .slice(0, 80);
         return {
-            name: cleanText(bid?.name || bid?.bidder || bid?.winner, 80),
-            bidder_key: cleanText(bid?.bidder_key || bid?.bidderKey || '', 80),
+            name: bidderName,
+            bidder_key: bidderKey,
             region: cleanText(bid?.region || '', 40),
             amount: Math.max(0, Number(bid?.amount ?? bid?.price) || 0),
             time: cleanText(bid?.time || '', 40),
             timestamp: cleanText(bid?.timestamp || '', 60),
             created_at: cleanText(bid?.created_at || bid?.createdAt || '', 60),
+            bid_sequence: Math.max(0, Number.parseInt(bid?.bid_sequence || bid?.bidSequence, 10) || 0),
+            crewart_assignment_sequence: Math.max(0, Number.parseInt(bid?.crewart_assignment_sequence, 10) || 0),
             isQuiz: bid?.isQuiz === true,
             ...(['R', 'G', 'B', 'Y'].includes(houseKey) ? {
                 crewart_house_key: houseKey,

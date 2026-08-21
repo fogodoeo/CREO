@@ -206,6 +206,7 @@
             const now = Date.now();
             if (!force && broadcastCache && now - broadcastCacheAt < Math.max(350, Number(maxAgeMs) || 900)) return broadcastCache;
             broadcastCache = await request(`channels/${encodeURIComponent(channelId)}/broadcast`);
+            target.__creoAudience = broadcastCache?.audience || null;
             broadcastCacheAt = now;
             return broadcastCache;
         }
