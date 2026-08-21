@@ -49,7 +49,7 @@ test('roulette exposes its version and keeps native broadcast rendering with the
     const renderer = fs.readFileSync(path.join(appRoot, 'src', 'rouletteRenderer.ts'), 'utf8');
 
     assert.match(html, /id="versionBadge"/);
-    assert.match(config, /APP_VERSION = '1\.7\.0'/);
+    assert.match(config, /APP_VERSION = '1\.8\.0'/);
     assert.match(roulette, /_updateInterval = 10/);
     assert.match(roulette, /!finishedIds\.has\(marble\.id\)/);
     assert.match(renderer, /COMPACT_SCENE_PIXEL_BUDGET = 520_000/);
@@ -78,6 +78,8 @@ test('academy pinball skin changes both physics colors and application chrome', 
     const html = fs.readFileSync(path.join(appRoot, 'index.html'), 'utf8');
     const config = fs.readFileSync(path.join(appRoot, 'src', 'config.ts'), 'utf8');
     const app = fs.readFileSync(path.join(appRoot, 'src', 'app.ts'), 'utf8');
+    const renderer = fs.readFileSync(path.join(appRoot, 'src', 'rouletteRenderer.ts'), 'utf8');
+    const physics = fs.readFileSync(path.join(appRoot, 'src', 'physics-box2d.ts'), 'utf8');
     const styles = fs.readFileSync(path.join(appRoot, 'assets', 'app.scss'), 'utf8');
 
     assert.match(html, /name="theme" value="academy"/);
@@ -89,4 +91,13 @@ test('academy pinball skin changes both physics colors and application chrome', 
     assert.match(styles, /html\[data-roulette-theme='academy'\]/);
     assert.match(styles, /\.theme-swatch\.academy/);
     assert.match(styles, /html\[data-roulette-theme='academy'\] \.result-dialog/);
+    for (const asset of ['wand-v1.png', 'rune-stone-v1.png', 'finish-gate-v1.png']) {
+        assert.equal(fs.existsSync(path.join(root, 'public', 'assets', 'pinball-academy', asset)), true, `${asset} must exist`);
+    }
+    assert.match(physics, /motion: entity\.type/);
+    assert.match(renderer, /entity\.motion === 'kinematic'/);
+    assert.match(renderer, /loadGeneratedCutout\(ACADEMY_ASSET_URLS\.wand/);
+    assert.match(renderer, /brightness >= 235 \? 0/);
+    assert.match(renderer, /renderAcademyFinish\(renderParameters\.stage\)/);
+    assert.match(renderer, /'\/assets\/crewart-crest-v2\.webp'/);
 });

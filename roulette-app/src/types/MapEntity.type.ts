@@ -46,6 +46,7 @@ export interface MapEntityState {
   x: number;
   y: number;
   angle: number;
+  motion: MapEntity['type'];
   shape: EntityShape;
   life: number;
 }

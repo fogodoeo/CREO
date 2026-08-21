@@ -1,6 +1,6 @@
 import type { ColorTheme } from './types/ColorTheme';
 
-export const APP_VERSION = '1.7.0';
+export const APP_VERSION = '1.8.0';
 
 export type WinnerMode = 'first' | 'last' | 'rank';
 export type MarbleStyle = 'glass' | 'flat';

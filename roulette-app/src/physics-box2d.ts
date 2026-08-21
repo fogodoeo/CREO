@@ -88,6 +88,7 @@ export class Box2dPhysics implements IPhysics {
         x: entity.position.x,
         y: entity.position.y,
         angle: 0,
+        motion: entity.type,
         shape: entity.shape,
         life: entity.props.life ?? -1,
       });
