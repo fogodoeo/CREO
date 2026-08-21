@@ -562,7 +562,7 @@
                 font-variant-numeric:tabular-nums;text-shadow:none;white-space:nowrap;
             }
             .crewart-house-card:last-child .crewart-house-score {
-                justify-self:end;transform:translateX(.18em);
+                justify-self:end;transform:translateX(-.22em);
             }
             @media (max-width:720px) {
                 .crewart-scoreboard,.crewart-scoreboard.is-compact { padding:0 0 18px 12px; }
