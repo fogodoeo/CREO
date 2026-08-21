@@ -48,23 +48,29 @@ test('P3 totals use the frozen winning viewer color, never the item or vendor gr
     assert.equal(result.houses[0].name, 'BLUE');
 });
 
-test('P3 board presents sold amount totals and assignment rules without legacy points', () => {
+test('P3 board presents only four house cards and their amount numbers', () => {
     const module = loadModule();
     const html = module.renderCrewartHouseBoardHTML([
         { status: 'sold', sold_price: 18, crewartHouseKey: 'R', winner: '낙찰자' }
     ], { crewart_score_scope: 'all' });
 
-    assert.match(html, /팀별 낙찰금 합계/);
-    assert.match(html, /설문 배정 · 미참여 랜덤/);
-    assert.match(html, /18<small>만원<\/small>/);
-    assert.match(html, /낙찰 1건/);
-    assert.doesNotMatch(html, /POINTS|기숙사 미지정/);
+    assert.equal((html.match(/class="crewart-house-card"/g) || []).length, 4);
+    assert.match(html, /<strong class="crewart-house-score">18<\/strong>/);
+    assert.doesNotMatch(html, /crewart-score-head|crewart-house-stats|crewart-house-sigil|<small>|POINTS|기숙사 미지정/);
 });
 
-test('P3 gives tied houses the same rank and does not highlight an empty leader', () => {
+test('P3 reorders cards by amount and keeps RGBY order for ties', () => {
     const module = loadModule();
     const result = module.buildCrewartHouseScores([], { crewart_score_scope: 'all' });
     assert.deepEqual(Array.from(result.houses, row => row.rank), [1, 1, 1, 1]);
-    const html = module.renderCrewartHouseBoardHTML([], { crewart_score_scope: 'all' });
-    assert.doesNotMatch(html, /is-leading/);
+    assert.deepEqual(Array.from(result.houses, row => row.name), ['RED', 'GREEN', 'BLUE', 'YELLOW']);
+
+    const html = module.renderCrewartHouseBoardHTML([
+        { status: 'sold', sold_price: 118, crewartHouseKey: 'R' },
+        { status: 'sold', sold_price: 50, crewartHouseKey: 'G' },
+        { status: 'sold', sold_price: 140, crewartHouseKey: 'B' },
+        { status: 'sold', sold_price: 90, crewartHouseKey: 'Y' }
+    ], { crewart_score_scope: 'all' });
+    const order = ['B', 'R', 'Y', 'G'].map(house => html.indexOf(`data-house="${house}"`));
+    assert.ok(order.every((position, index) => index === 0 || order[index - 1] < position));
 });
