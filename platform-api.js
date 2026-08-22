@@ -28,6 +28,7 @@ const AUDIENCE_REVEALS_ID = 'crewart-audience-reveals';
 const CREWART_ROULETTE_ID = 'crewart-contribution-roulette';
 const CREWART_ROULETTE_DURATION_MS = 2000;
 const CREWART_ROULETTE_HOLD_MS = 360;
+const CREWART_ROULETTE_REPLAY_COOLDOWN_MS = 8000;
 const CREWART_ROULETTE_OUTCOMES = Object.freeze([
     Object.freeze({ multiplier: 0.25, weight: 20 }),
     Object.freeze({ multiplier: 0.5, weight: 30 }),
@@ -1417,7 +1418,13 @@ function createPlatformApi({
                             });
                             touchChannel(channelId);
                         }
-                        if (itemEvents.some((event) => event.replay === true)) {
+                        const latestItemEvent = itemEvents[itemEvents.length - 1] || existing;
+                        const latestRequestedAt = Date.parse(String(latestItemEvent.requestedAt || latestItemEvent.startedAt || ''));
+                        if (
+                            latestItemEvent.replay === true
+                            && Number.isFinite(latestRequestedAt)
+                            && Date.now() - latestRequestedAt < CREWART_ROULETTE_REPLAY_COOLDOWN_MS
+                        ) {
                             replyJson(res, 200, { duplicate: true, event: publicCrewartRouletteEvent(existing) });
                             return;
                         }

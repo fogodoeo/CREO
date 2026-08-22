@@ -913,6 +913,12 @@ test('CREWART contribution roulette is winner-only, idempotent, persistent, and 
     assert.equal(duplicate.json().duplicate, true);
     assert.equal(duplicate.json().event.id, replay.json().event.id);
 
+    const throttledReplay = await call(api, 'POST', '/api/platform/channels/alpha/audience-roulette', {
+        itemId: 'roulette_item', bidder_key: 'winner-user', message_key: 'third-command'
+    });
+    assert.equal(throttledReplay.status, 200, throttledReplay.body);
+    assert.equal(throttledReplay.json().duplicate, true);
+
     const stored = await repository.getRecord('alpha', 'item', 'roulette_item');
     assert.equal(stored.soldPrice, 150000);
     assert.equal(stored.attributes.crewart_contribution_base, 150000);
