@@ -320,6 +320,30 @@
             background: rgba(217, 176, 92, 0.24);
         }
 
+        .draggable-contribution-roulette {
+            width: 76%;
+            height: 13%;
+            overflow: hidden;
+            background: linear-gradient(145deg,rgba(18,15,24,.92),rgba(30,23,31,.92));
+            border: 2px dashed #e0c27e;
+            border-radius: 12px;
+            box-shadow: 0 0 18px rgba(224,194,126,.36);
+        }
+        .draggable-contribution-roulette:hover {
+            border-color: #f4d894;
+            background: linear-gradient(145deg,rgba(18,15,24,.98),rgba(30,23,31,.98));
+        }
+        .draggable-contribution-roulette .roulette-preview {
+            display:grid;
+            grid-template-columns:.9fr 1.1fr;
+            width:100%;
+            height:100%;
+            color:#f8f3e8;
+            pointer-events:none;
+        }
+        .draggable-contribution-roulette .roulette-preview-name { display:grid; place-items:center; font-size:16px; font-weight:950; }
+        .draggable-contribution-roulette .roulette-preview-value { display:grid; place-items:center; border-left:1px solid rgba(224,194,126,.3); background:#3c73bd; font-size:28px; font-weight:950; }
+
         /* Draggable Banner */
         .draggable-banner {
             width: auto;
@@ -1122,6 +1146,11 @@
                     <div class="element-label">자동 좌측 영역 · 팀합산 8팀씩 순환 ↔ 실시간 입찰</div>
                     <div class="resize-handle resize-handle-se" id="resize-blind-totals" title="크기 조절" style="border-color: #d9b05c;"></div>
                 </div>
+                <div class="draggable-element draggable-contribution-roulette" id="draggable-contribution-roulette" data-type="contribution_roulette" style="display:none; z-index:42;">
+                    <div class="roulette-preview"><div class="roulette-preview-name">낙찰 기여도 룰렛</div><div class="roulette-preview-value">×2</div></div>
+                    <div class="element-label" style="position:absolute;left:8px;top:8px;">별도 이동·크기 조절</div>
+                    <div class="resize-handle resize-handle-se" id="resize-contribution-roulette" title="크기 조절" style="border-color:#e0c27e;"></div>
+                </div>
                 <div class="p3-auto-ticker-guide">입찰 중 자동 전환 · 팀합산 하단 티커</div>
             </div>
         </div>
@@ -1547,6 +1576,7 @@
                 setDisplay('draggable-bracket-title', false);
                 setDisplay('draggable-battle-ann', false);
                 setDisplay('draggable-blind-totals', false);
+                setDisplay('draggable-contribution-roulette', isCrewart);
                 setDisplay('draggable-banner', false);
                 setDisplay('draggable-ticker', false);
                 setDisplay('toggle-banner-show-group', false);
@@ -1834,6 +1864,11 @@
                 el: document.getElementById('draggable-blind-totals'),
                 top: "10%", left: "2%", right: "auto", bottom: "auto",
                 show: "1", width: "42%", height: "24%", fontSize: "14", opacity: "0"
+            };
+            elements.contribution_roulette = {
+                el: document.getElementById('draggable-contribution-roulette'),
+                top: "36%", left: "12%", right: "auto", bottom: "auto",
+                show: "1", width: "76%", height: "13%"
             };
         }
 
@@ -2234,6 +2269,14 @@
                     const eventMatchToggle = document.getElementById('toggle-event-match-show');
                     if (eventMatchToggle) eventMatchToggle.checked = eventMatchShow === '1';
                 }
+                if (elements.contribution_roulette) {
+                    elements.contribution_roulette.top = cfg.p3_contribution_roulette_top || '36%';
+                    elements.contribution_roulette.left = cfg.p3_contribution_roulette_left || '12%';
+                    elements.contribution_roulette.right = cfg.p3_contribution_roulette_right || 'auto';
+                    elements.contribution_roulette.bottom = cfg.p3_contribution_roulette_bottom || 'auto';
+                    elements.contribution_roulette.width = cfg.p3_contribution_roulette_width || '76%';
+                    elements.contribution_roulette.height = cfg.p3_contribution_roulette_height || '13%';
+                }
 
                 // 실시간 입찰자는 2P 개체 화면의 독립 오버레이다.
                 const liveBiddersShow = cfg.live_bidders_show !== undefined ? String(cfg.live_bidders_show) : '1';
@@ -2260,6 +2303,7 @@
                 if (elements.bracket_title) applyVisualState('bracket_title');
                 if (elements.battle_ann) applyVisualState('battle_ann');
                 if (elements.blind_totals) applyVisualState('blind_totals');
+                if (elements.contribution_roulette) applyVisualState('contribution_roulette');
 
                 // Update switch checkboxes
                 document.getElementById('toggle-banner-show').checked = elements.banner.show === "1";
@@ -2327,6 +2371,10 @@
                 if (elements.battle_ann) {
                     elements.battle_ann.el.style.width = convertToPercent(elements.battle_ann.width);
                     elements.battle_ann.el.style.height = convertToPercent(elements.battle_ann.height);
+                }
+                if (elements.contribution_roulette) {
+                    elements.contribution_roulette.el.style.width = convertToPercent(elements.contribution_roulette.width);
+                    elements.contribution_roulette.el.style.height = convertToPercent(elements.contribution_roulette.height);
                 }
                 if (elements.blind_totals) {
                     elements.blind_totals.el.style.width = convertToPercent(elements.blind_totals.width);
@@ -2639,6 +2687,11 @@
             if (resizeBlindTotals) {
                 resizeBlindTotals.addEventListener('mousedown', (e) => startResize(e, 'blind_totals'));
                 resizeBlindTotals.addEventListener('touchstart', (e) => startResize(e, 'blind_totals'), { passive: false });
+            }
+            const resizeContributionRoulette = document.getElementById('resize-contribution-roulette');
+            if (resizeContributionRoulette) {
+                resizeContributionRoulette.addEventListener('mousedown', (e) => startResize(e, 'contribution_roulette'));
+                resizeContributionRoulette.addEventListener('touchstart', (e) => startResize(e, 'contribution_roulette'), { passive: false });
             }
         }
 
@@ -3037,6 +3090,14 @@
                     configMap['battle_ann_width'] = elements.battle_ann.width;
                     configMap['battle_ann_height'] = elements.battle_ann.height;
                     configMap['battle_ann_show'] = elements.battle_ann.show;
+                }
+                if (elements.contribution_roulette) {
+                    configMap.p3_contribution_roulette_top = elements.contribution_roulette.top;
+                    configMap.p3_contribution_roulette_left = elements.contribution_roulette.left;
+                    configMap.p3_contribution_roulette_right = elements.contribution_roulette.right;
+                    configMap.p3_contribution_roulette_bottom = elements.contribution_roulette.bottom;
+                    configMap.p3_contribution_roulette_width = elements.contribution_roulette.width;
+                    configMap.p3_contribution_roulette_height = elements.contribution_roulette.height;
                 }
                 const currentPreviewModule = document.getElementById('preview-event-module-select')?.value || initialModuleId;
                 if (currentPreviewModule !== 'crewart') {

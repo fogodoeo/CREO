@@ -92,11 +92,23 @@ test('CREWART P3 contribution roulette is a two-second FIFO reveal with a persis
     assert.match(broadcast, /broadcastMode && broadcastMode !== 'sold'/);
     assert.match(broadcast, /showCrewartRouletteReady\(\)/);
     assert.match(broadcast, /showCrewartRouletteResult\(event\)/);
+    assert.match(broadcast, /id="p3-contribution-result-popup"/);
+    assert.match(broadcast, /showCrewartRouletteResultPopup\(event\)/);
+    assert.match(broadcast, /p3-contribution-result-multiplier/);
     assert.match(broadcast, /String\(latest\.itemId \|\| ''\) === activeItemId/);
     assert.match(broadcast, /직전 낙찰자의 입력을 기다리는 중/);
     assert.match(broadcast, /formatCrewartWon\(event\.baseAmount\)\} → \$\{formatCrewartWon\(event\.contributionAmount\)/);
     assert.match(broadcast, /processCrewartContributionRoulette\(window\.__creoAudience \|\| null\)/);
     assert.doesNotMatch(broadcast, /룰렛.*sendMessage|sendMessage.*룰렛/);
+});
+
+test('CREWART P3 contribution roulette has an independent saved placement target', () => {
+    assert.match(preview, /id="draggable-contribution-roulette"/);
+    assert.match(preview, /data-type="contribution_roulette"/);
+    assert.match(preview, /configMap\.p3_contribution_roulette_top/);
+    assert.match(preview, /configMap\.p3_contribution_roulette_width/);
+    assert.match(broadcast, /map\.p3_contribution_roulette_top \|\| '36%'/);
+    assert.match(broadcast, /map\.p3_contribution_roulette_width \|\| '76%'/);
 });
 
 test('all shared legacy layouts support three nametags', () => {
