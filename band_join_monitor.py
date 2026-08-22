@@ -44,7 +44,7 @@ from typing import Any, Iterable, Mapping, Optional
 
 
 APP_NAME = "BAND 가입 신청 모니터"
-VERSION = "0.3.6"
+VERSION = "0.3.7"
 DEFAULT_CONFIG_FILE = "band_join_monitor_config.json"
 DOM_SIGNAL_BINDING = "__bandJoinMonitorSignal"
 BAND_NO_RE = re.compile(r"/band/(\d+)")
@@ -2192,8 +2192,19 @@ class BandJoinMonitor:
         )
         self._bootstrap_cookie_source = "none"
         self.bootstrap_cookies = self._read_bootstrap_cookies()
-        self._bootstrap_cookie_count = len(self.bootstrap_cookies)
         self._bootstrap_marker_path = profile_dir / ".creo-bootstrap-sha256"
+        self._session_snapshot_path = profile_dir / ".creo-session-cookies.json"
+        self._bootstrap_env_fingerprint = (
+            self._bootstrap_fingerprint() if self.bootstrap_cookies else ""
+        )
+        self._bootstrap_from_snapshot = False
+        self._last_session_snapshot_digest = ""
+        persisted_cookies = self._read_session_cookie_snapshot()
+        if persisted_cookies:
+            self.bootstrap_cookies = persisted_cookies
+            self._bootstrap_cookie_source = "snapshot"
+            self._bootstrap_from_snapshot = True
+        self._bootstrap_cookie_count = len(self.bootstrap_cookies)
         self._installed_cookie_count = 0
         self._user_agent_mode = "browser-default"
         self._session_page = ""
@@ -2351,6 +2362,145 @@ class BandJoinMonitor:
         ).encode("utf-8")
         return hashlib.sha256(serialized).hexdigest()
 
+    def _read_session_cookie_snapshot(self) -> list[dict[str, Any]]:
+        if not self._bootstrap_env_fingerprint:
+            return []
+        try:
+            payload = json.loads(
+                self._session_snapshot_path.read_text(encoding="utf-8")
+            )
+        except (OSError, TypeError, ValueError, json.JSONDecodeError):
+            return []
+        if not isinstance(payload, Mapping):
+            return []
+        if str(payload.get("bootstrap_fingerprint", "")) != (
+            self._bootstrap_env_fingerprint
+        ):
+            return []
+        raw_cookies = payload.get("cookies", [])
+        if not isinstance(raw_cookies, list):
+            return []
+        cookies: list[dict[str, Any]] = []
+        for raw_cookie in raw_cookies:
+            if not isinstance(raw_cookie, Mapping):
+                continue
+            name = str(raw_cookie.get("name", "")).strip()
+            domain = str(raw_cookie.get("domain", "")).strip().lower()
+            normalized_domain = domain.lstrip(".")
+            if (
+                not name
+                or not domain
+                or (
+                    normalized_domain != "band.us"
+                    and not normalized_domain.endswith(".band.us")
+                )
+            ):
+                continue
+            cookie: dict[str, Any] = {
+                "name": name,
+                "value": str(raw_cookie.get("value", "")),
+                "domain": domain,
+                "path": str(raw_cookie.get("path", "/")) or "/",
+                "secure": bool(raw_cookie.get("secure", True)),
+                "httpOnly": bool(raw_cookie.get("httpOnly", False)),
+            }
+            same_site = str(raw_cookie.get("sameSite", ""))
+            if same_site in {"Strict", "Lax", "None"}:
+                cookie["sameSite"] = same_site
+            try:
+                expires = float(raw_cookie.get("expires", -1))
+            except (TypeError, ValueError):
+                expires = -1
+            if expires > 0:
+                cookie["expires"] = expires
+            cookies.append(cookie)
+        if cookies:
+            serialized = json.dumps(
+                cookies, ensure_ascii=True, sort_keys=True, separators=(",", ":")
+            ).encode("utf-8")
+            self._last_session_snapshot_digest = hashlib.sha256(
+                serialized
+            ).hexdigest()
+        return cookies
+
+    def _persist_session_cookie_snapshot(self, connection: CDPConnection) -> None:
+        if not self._bootstrap_env_fingerprint:
+            return
+        try:
+            result = connection.call("Network.getAllCookies", timeout=3)
+        except Exception as exc:
+            self.logger.info(
+                "BAND 세션 스냅샷 대기: %s", safe_for_log(exc)
+            )
+            return
+        raw_cookies = result.get("cookies", [])
+        if not isinstance(raw_cookies, list):
+            return
+        cookies: list[dict[str, Any]] = []
+        for raw_cookie in raw_cookies:
+            if not isinstance(raw_cookie, Mapping):
+                continue
+            name = str(raw_cookie.get("name", "")).strip()
+            domain = str(raw_cookie.get("domain", "")).strip().lower()
+            normalized_domain = domain.lstrip(".")
+            if (
+                not name
+                or not domain
+                or (
+                    normalized_domain != "band.us"
+                    and not normalized_domain.endswith(".band.us")
+                )
+            ):
+                continue
+            cookie: dict[str, Any] = {
+                "name": name,
+                "value": str(raw_cookie.get("value", "")),
+                "domain": domain,
+                "path": str(raw_cookie.get("path", "/")) or "/",
+                "secure": bool(raw_cookie.get("secure", True)),
+                "httpOnly": bool(raw_cookie.get("httpOnly", False)),
+            }
+            same_site = str(raw_cookie.get("sameSite", ""))
+            if same_site in {"Strict", "Lax", "None"}:
+                cookie["sameSite"] = same_site
+            try:
+                expires = float(raw_cookie.get("expires", -1))
+            except (TypeError, ValueError):
+                expires = -1
+            if expires > 0:
+                cookie["expires"] = expires
+            cookies.append(cookie)
+        if not cookies:
+            return
+        serialized_cookies = json.dumps(
+            cookies, ensure_ascii=True, sort_keys=True, separators=(",", ":")
+        ).encode("utf-8")
+        digest = hashlib.sha256(serialized_cookies).hexdigest()
+        if digest == self._last_session_snapshot_digest:
+            return
+        payload = {
+            "version": 1,
+            "bootstrap_fingerprint": self._bootstrap_env_fingerprint,
+            "cookies": cookies,
+        }
+        try:
+            self._session_snapshot_path.parent.mkdir(parents=True, exist_ok=True)
+            temporary = self._session_snapshot_path.with_suffix(".tmp")
+            temporary.write_text(
+                json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+                encoding="utf-8",
+            )
+            try:
+                temporary.chmod(0o600)
+            except OSError:
+                pass
+            temporary.replace(self._session_snapshot_path)
+            self._last_session_snapshot_digest = digest
+        except OSError as exc:
+            self.logger.warning(
+                "BAND 세션 스냅샷 저장 실패: %s", safe_for_log(exc)
+            )
+
     def _persisted_bootstrap_matches(self, fingerprint: str) -> bool:
         cookies_path = self.chrome.profile_dir / "Default" / "Cookies"
         if not cookies_path.is_file():
@@ -2378,8 +2528,13 @@ class BandJoinMonitor:
     def _install_bootstrap_cookies(self, connection: CDPConnection) -> int:
         if not self.bootstrap_cookies:
             return 0
-        fingerprint = self._bootstrap_fingerprint()
-        if self._persisted_bootstrap_matches(fingerprint):
+        fingerprint = (
+            self._bootstrap_env_fingerprint or self._bootstrap_fingerprint()
+        )
+        if (
+            not self._bootstrap_from_snapshot
+            and self._persisted_bootstrap_matches(fingerprint)
+        ):
             persisted_count = len(self.bootstrap_cookies)
             self.logger.info(
                 "Persistent Disk의 BAND 로그인 세션을 유지합니다."
@@ -3507,6 +3662,11 @@ class BandJoinMonitor:
             )
         elif "/applications" in page_url.lower() and self.state == "LOGIN_REQUIRED":
             self.set_state("CONNECTED", "BAND 로그인 세션이 복구되었습니다.")
+        if (
+            "/applications" in page_url.lower()
+            and not bool(value.get("login_required"))
+        ):
+            self._persist_session_cookie_snapshot(connection)
 
     def _periodic_dom_tasks(self, connection: CDPConnection) -> None:
         now = time.monotonic()

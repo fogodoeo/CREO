@@ -1224,6 +1224,131 @@ class FollowUpQuestionTests(unittest.TestCase):
             )
             monitor.stop()
 
+    def test_rotated_band_cookies_are_restored_from_private_snapshot(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory, mock.patch.dict(
+            os.environ,
+            {"BAND_COOKIE_HEADER": "band_session=bootstrap-session"},
+            clear=False,
+        ):
+            config = dict(DEFAULT_CONFIG)
+            config.update(
+                {
+                    "chrome_profile_dir": temporary_directory,
+                    "state_file": str(Path(temporary_directory) / "state.json"),
+                    "log_file": str(Path(temporary_directory) / "monitor.log"),
+                    "runtime_status_file": str(
+                        Path(temporary_directory) / "runtime.json"
+                    ),
+                    "diagnostic_file": str(
+                        Path(temporary_directory) / "diagnostics.jsonl"
+                    ),
+                }
+            )
+            first_monitor = BandJoinMonitor(config, Path(temporary_directory))
+            first_connection = _CookieConnection(
+                returned_cookies=[
+                    {
+                        "name": "band_session",
+                        "value": "rotated-session",
+                        "domain": ".band.us",
+                        "path": "/",
+                        "secure": True,
+                        "httpOnly": False,
+                    },
+                    {
+                        "name": "unrelated",
+                        "value": "must-not-persist",
+                        "domain": ".example.com",
+                        "path": "/",
+                    },
+                ]
+            )
+            first_monitor._install_bootstrap_cookies(first_connection)
+            first_monitor._persist_session_cookie_snapshot(first_connection)
+            cookies_path = Path(temporary_directory) / "Default" / "Cookies"
+            cookies_path.parent.mkdir(parents=True, exist_ok=True)
+            cookies_path.write_bytes(b"sqlite-placeholder")
+            first_monitor.stop()
+
+            with mock.patch.dict(
+                os.environ,
+                {"BAND_COOKIE_HEADER": "band_session=bootstrap-session"},
+                clear=False,
+            ):
+                restarted_monitor = BandJoinMonitor(
+                    config, Path(temporary_directory)
+                )
+            restarted_connection = _CookieConnection()
+            installed = restarted_monitor._install_bootstrap_cookies(
+                restarted_connection
+            )
+
+            self.assertEqual(installed, 1)
+            self.assertEqual(
+                restarted_connection.cookies[0]["value"], "rotated-session"
+            )
+            self.assertEqual(
+                restarted_monitor._bootstrap_cookie_source, "snapshot"
+            )
+            methods = [method for method, _params in restarted_connection.calls]
+            self.assertEqual(
+                methods,
+                ["Network.clearBrowserCookies", "Network.setCookie"],
+            )
+            snapshot_text = restarted_monitor._session_snapshot_path.read_text(
+                encoding="utf-8"
+            )
+            self.assertNotIn("must-not-persist", snapshot_text)
+            restarted_monitor.stop()
+
+    def test_changed_bootstrap_ignores_old_session_snapshot(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            config = dict(DEFAULT_CONFIG)
+            config.update(
+                {
+                    "chrome_profile_dir": temporary_directory,
+                    "state_file": str(Path(temporary_directory) / "state.json"),
+                    "log_file": str(Path(temporary_directory) / "monitor.log"),
+                    "runtime_status_file": str(
+                        Path(temporary_directory) / "runtime.json"
+                    ),
+                    "diagnostic_file": str(
+                        Path(temporary_directory) / "diagnostics.jsonl"
+                    ),
+                }
+            )
+            with mock.patch.dict(
+                os.environ,
+                {"BAND_COOKIE_HEADER": "band_session=old-bootstrap"},
+                clear=False,
+            ):
+                old_monitor = BandJoinMonitor(config, Path(temporary_directory))
+            old_connection = _CookieConnection(
+                returned_cookies=[
+                    {
+                        "name": "band_session",
+                        "value": "old-rotated-session",
+                        "domain": ".band.us",
+                        "path": "/",
+                    }
+                ]
+            )
+            old_monitor._persist_session_cookie_snapshot(old_connection)
+            old_monitor.stop()
+
+            with mock.patch.dict(
+                os.environ,
+                {"BAND_COOKIE_HEADER": "band_session=new-bootstrap"},
+                clear=False,
+            ):
+                new_monitor = BandJoinMonitor(config, Path(temporary_directory))
+
+            self.assertEqual(new_monitor._bootstrap_cookie_source, "header")
+            self.assertEqual(
+                new_monitor.bootstrap_cookies[0]["value"], "new-bootstrap"
+            )
+            new_monitor.stop()
+
     def test_runtime_status_file_contains_no_applicant_data(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             monitor = self._monitor(temp_dir)
@@ -1464,9 +1589,10 @@ class _FollowUpConnection:
 
 
 class _CookieConnection:
-    def __init__(self):
+    def __init__(self, returned_cookies=None):
         self.cookies = []
         self.calls = []
+        self.returned_cookies = list(returned_cookies or [])
 
     def call(self, method, params=None, timeout=8):
         self.calls.append((method, dict(params or {})))
@@ -1479,6 +1605,8 @@ class _CookieConnection:
         if method == "Network.setCookie":
             self.cookies.append(dict(params or {}))
             return {"success": True}
+        if method == "Network.getAllCookies":
+            return {"cookies": list(self.returned_cookies)}
         return {}
 
 
