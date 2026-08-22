@@ -74,6 +74,17 @@ test('CREWART new bidders use a two-second persistent FIFO reel without blocking
     assert.match(broadcast, /processCrewartAudienceReveals\(window\.__creoAudience \|\| null\)/);
 });
 
+test('CREWART P3 contribution roulette is a two-second FIFO reveal with delayed score refresh', () => {
+    assert.match(broadcast, /id="p3-contribution-roulette-overlay"/);
+    assert.match(broadcast, /class="p3-contribution-roulette-window"/);
+    assert.match(broadcast, /state\.queue\.push\(\{ \.\.\.event, sequence \}\)/);
+    assert.match(broadcast, /const duration = 2000/);
+    assert.match(broadcast, /writeP3RouletteCursor\(sessionId, event\.sequence\)/);
+    assert.match(broadcast, /refreshCrewartContributionBoard\(\)/);
+    assert.match(broadcast, /processCrewartContributionRoulette\(window\.__creoAudience \|\| null\)/);
+    assert.doesNotMatch(broadcast, /룰렛.*sendMessage|sendMessage.*룰렛/);
+});
+
 test('all shared legacy layouts support three nametags', () => {
     assert.match(settings, /id="cfg-host-name3"/);
     assert.match(settings, /host_name3:/);

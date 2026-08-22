@@ -5,7 +5,8 @@ const assert = require('node:assert/strict');
 const {
     createCrewartHouseService,
     memberKeyForPhone,
-    normalizeHouseKey
+    normalizeHouseKey,
+    deterministicWeightedHouse
 } = require('../crewart-house-service');
 
 const SECRET = 'crewart-house-test-secret-longer-than-thirty-two-characters';
@@ -25,6 +26,17 @@ test('survey house codes map to the four public auction colors', () => {
         ['SF', 'ST', 'NT', 'NF'].map(normalizeHouseKey),
         ['R', 'G', 'B', 'Y']
     );
+});
+
+test('weighted fallback never assigns the current leader and follows the 10/30/60 slots', () => {
+    const counts = { R: 0, G: 0, B: 0, Y: 0 };
+    for (let index = 0; index < 4000; index += 1) {
+        counts[deterministicWeightedHouse(`viewer-${index}`, SECRET, { R: 0, G: 10, B: 30, Y: 60 })] += 1;
+    }
+    assert.equal(counts.R, 0);
+    assert.ok(counts.G > 300 && counts.G < 500, JSON.stringify(counts));
+    assert.ok(counts.B > 1050 && counts.B < 1350, JSON.stringify(counts));
+    assert.ok(counts.Y > 2200 && counts.Y < 2600, JSON.stringify(counts));
 });
 
 test('nonparticipants receive a stable privacy-safe random house', async () => {

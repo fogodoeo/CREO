@@ -3,7 +3,12 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { Readable } = require('node:stream');
-const { createPlatformApi } = require('../platform-api');
+const {
+    CREWART_ROULETTE_OUTCOMES,
+    createPlatformApi,
+    crewartAssignmentWeights,
+    floorContribution
+} = require('../platform-api');
 const { normalizeChannel } = require('../platform-core');
 const { createCrewartHouseService } = require('../crewart-house-service');
 
@@ -67,6 +72,30 @@ async function call(api, method, pathname, body, admin = 'secret', headers = {})
     await api.handle(req(method, body, admin, headers), response, new URL(`https://creo.test${pathname}`));
     return response;
 }
+
+test('CREWART weighted assignment excludes the leader and roulette has a 1.2 expected multiplier', () => {
+    const weights = crewartAssignmentWeights([
+        { status: 'sold', soldPrice: 100, attributes: { crewart_house_key: 'R' } },
+        { status: 'sold', soldPrice: 80, attributes: { crewart_house_key: 'G' } },
+        { status: 'sold', soldPrice: 50, attributes: { crewart_house_key: 'B' } },
+        { status: 'sold', soldPrice: 10, attributes: { crewart_house_key: 'Y' } }
+    ]);
+    assert.deepEqual(weights, { R: 0, G: 10, B: 30, Y: 60 });
+    assert.deepEqual(crewartAssignmentWeights([]), { R: 25, G: 25, B: 25, Y: 25 });
+    assert.deepEqual(crewartAssignmentWeights([
+        { status: 'live', attributes: { bid_log: JSON.stringify([{ amount: 10, crewart_house_key: 'R' }]) } },
+        { status: 'sold', soldPrice: 80000, attributes: { crewart_house_key: 'G' } },
+        { status: 'sold', soldPrice: 50000, attributes: { crewart_house_key: 'B' } },
+        { status: 'sold', soldPrice: 10000, attributes: { crewart_house_key: 'Y' } }
+    ]), { R: 0, G: 10, B: 30, Y: 60 });
+    const expected = CREWART_ROULETTE_OUTCOMES.reduce(
+        (sum, outcome) => sum + outcome.multiplier * outcome.weight / 100,
+        0
+    );
+    assert.equal(expected, 1.2);
+    assert.equal(floorContribution(150000, 0.25), 30000);
+    assert.equal(floorContribution(150000, 0.5), 70000);
+});
 
 test('admin login exchanges the password for an HttpOnly session and logout revokes it', async () => {
     const repository = new MemoryRepository();
@@ -800,6 +829,92 @@ test('CREWART live assignment backtest preserves cutoff, FIFO sequence, idempote
     assert.equal(nextSession.status, 200, nextSession.body);
     assert.equal(nextSession.json().state.audienceSessionStatus, 'active');
     assert.notEqual(nextSession.json().state.audienceSessionId, started.json().state.audienceSessionId);
+});
+
+test('CREWART contribution roulette is winner-only, idempotent, persistent, and settlement-safe', async () => {
+    const repository = new MemoryRepository();
+    repository.catalog.channels[0] = normalizeChannel({
+        ...repository.catalog.channels[0],
+        audienceCompetition: { enabled: true, assignment: 'survey-random', metric: 'soldPrice' }
+    });
+    const crewartHouseService = createCrewartHouseService({
+        repository,
+        secret: 'platform-roulette-test-secret-longer-than-thirty-two-characters',
+        logger: { warn() {} }
+    });
+    const api = createPlatformApi({ repository, crewartHouseService, logger: { error() {}, warn() {} } });
+    await call(api, 'POST', '/api/platform/channels/alpha/items', {
+        record: {
+            id: 'roulette_item', lotNumber: 1, name: '룰렛 개체', status: 'waiting',
+            attributes: {
+                bid_log: JSON.stringify([{
+                    name: '직전낙찰자/대구', bidder_key: 'winner-user', amount: 15,
+                    message_key: 'winning-bid', bid_sequence: 1,
+                    crewart_house_key: 'R', crewart_house_source: 'survey'
+                }])
+            }
+        }
+    });
+    await call(api, 'PUT', '/api/platform/channels/alpha/auction-transition', {
+        itemId: 'roulette_item', status: 'live', mode: 'live', state: { page: 2 }
+    });
+    const sold = await call(api, 'PUT', '/api/platform/channels/alpha/auction-transition', {
+        itemId: 'roulette_item', status: 'sold', mode: 'sold',
+        item: { soldPrice: 150000, winnerAlias: '직전낙찰자/대구' }
+    });
+    assert.equal(sold.status, 200, sold.body);
+    assert.equal(sold.json().item.soldPrice, 150000);
+    assert.equal(sold.json().item.attributes.crewart_contribution_amount, 150000);
+
+    const rejected = await call(api, 'POST', '/api/platform/channels/alpha/audience-roulette', {
+        itemId: 'roulette_item', bidder_key: 'another-user', message_key: 'wrong-command'
+    });
+    assert.equal(rejected.status, 403, rejected.body);
+
+    const first = await call(api, 'POST', '/api/platform/channels/alpha/audience-roulette', {
+        itemId: 'roulette_item', bidder_key: 'winner-user', message_key: 'roulette-command'
+    });
+    assert.equal(first.status, 201, first.body);
+    assert.equal(first.json().duplicate, false);
+    assert.ok([0.25, 0.5, 1, 2, 5].includes(first.json().event.multiplier));
+    assert.equal(
+        first.json().event.contributionAmount,
+        floorContribution(150000, first.json().event.multiplier)
+    );
+    assert.equal(first.json().soldPrice, 150000);
+
+    const duplicate = await call(api, 'POST', '/api/platform/channels/alpha/audience-roulette', {
+        itemId: 'roulette_item', bidder_key: 'winner-user', message_key: 'another-command'
+    });
+    assert.equal(duplicate.status, 200, duplicate.body);
+    assert.equal(duplicate.json().duplicate, true);
+    assert.equal(duplicate.json().event.id, first.json().event.id);
+
+    const stored = await repository.getRecord('alpha', 'item', 'roulette_item');
+    assert.equal(stored.soldPrice, 150000);
+    assert.equal(stored.attributes.crewart_contribution_base, 150000);
+    assert.equal(stored.attributes.crewart_contribution_amount, first.json().event.contributionAmount);
+    assert.equal(stored.attributes.crewart_roulette_status, 'completed');
+
+    const broadcast = await call(api, 'GET', '/api/platform/channels/alpha/broadcast', null, '');
+    assert.equal(broadcast.json().audience.roulette.events.length, 1);
+    assert.equal(broadcast.json().items[0].soldPrice, 150000);
+    assert.equal(
+        broadcast.json().items[0].attributes.crewart_contribution_amount,
+        first.json().event.contributionAmount
+    );
+
+    await call(api, 'POST', '/api/platform/channels/alpha/items', {
+        record: { id: 'next_item', lotNumber: 2, name: '다음 개체' }
+    });
+    await call(api, 'PUT', '/api/platform/channels/alpha/auction-transition', {
+        itemId: 'next_item', status: 'live', mode: 'live', state: { page: 2 }
+    });
+    const closed = await call(api, 'POST', '/api/platform/channels/alpha/audience-roulette', {
+        itemId: 'roulette_item', bidder_key: 'winner-user', message_key: 'too-late'
+    });
+    assert.equal(closed.status, 409, closed.body);
+    assert.equal(closed.json().code, 'ROULETTE_WINDOW_CLOSED');
 });
 
 test('CREWART assignment endpoint restores one reveal after broadcast enrichment wins the race', async () => {

@@ -63,7 +63,7 @@ test('public broadcast items never expose winner or shipping contact data', () =
     assert.equal(item.winnerAlias, '홍길동/대구');
     assert.equal(item.bidLog.length, 1);
     assert.deepEqual({ ...item.bidLog[0], bidder_key: '<private>' }, {
-        name: '입찰자', bidder_key: '<private>', region: '', amount: 31,
+        name: '입찰자', bidder_key: '<private>', region: '', amount: 31, amount_won: 310000,
         time: '', timestamp: '', created_at: '', bid_sequence: 0,
         crewart_assignment_sequence: 0, isQuiz: false,
         crewart_house_key: 'G', crewart_house_source: 'survey'

@@ -61,6 +61,28 @@ function deterministicRandomHouse(identity, secret) {
     return HOUSE_KEYS[digest.readUInt32BE(0) % HOUSE_KEYS.length];
 }
 
+function normalizeHouseWeights(input = {}) {
+    const weights = Object.fromEntries(HOUSE_KEYS.map((key) => [
+        key,
+        Math.max(0, Number(input?.[key]) || 0)
+    ]));
+    const total = HOUSE_KEYS.reduce((sum, key) => sum + weights[key], 0);
+    if (total > 0) return { weights, total };
+    return { weights: Object.fromEntries(HOUSE_KEYS.map((key) => [key, 1])), total: HOUSE_KEYS.length };
+}
+
+function deterministicWeightedHouse(identity, secret, inputWeights = {}) {
+    const { weights, total } = normalizeHouseWeights(inputWeights);
+    const digest = Buffer.from(identityHash(`weighted:${identity}`, secret), 'hex');
+    const unit = digest.readUInt32BE(0) / 0x100000000;
+    let cursor = unit * total;
+    for (const key of HOUSE_KEYS) {
+        cursor -= weights[key];
+        if (cursor < 0 && weights[key] > 0) return key;
+    }
+    return HOUSE_KEYS.find((key) => weights[key] > 0) || deterministicRandomHouse(identity, secret);
+}
+
 function timestampMs(value) {
     const parsed = Date.parse(String(value || ''));
     return Number.isFinite(parsed) ? parsed : 0;
@@ -180,7 +202,11 @@ function createCrewartHouseService({ repository, secret, now = () => Date.now(),
                         sessionId,
                         houseKey: surveyBeforeLock
                             ? surveyHouse
-                            : deterministicRandomHouse(`session:${sessionId}:${entry.identity}`, assignmentSecret),
+                            : deterministicWeightedHouse(
+                                `session:${sessionId}:${entry.identity}`,
+                                assignmentSecret,
+                                entry.input?.houseWeights
+                            ),
                         source: surveyBeforeLock ? 'survey' : 'random',
                         participantKey: surveyBeforeLock ? clean(survey.participantKey, 48) : '',
                         assignedAt,
@@ -280,7 +306,7 @@ function createCrewartHouseService({ repository, secret, now = () => Date.now(),
                 const pending = missing.map((entry) => {
                     const value = {
                         version: 1,
-                        houseKey: deterministicRandomHouse(entry.identity, assignmentSecret),
+                        houseKey: deterministicWeightedHouse(entry.identity, assignmentSecret, entry.input?.houseWeights),
                         source: 'random',
                         participantKey: '',
                         updatedAt: new Date(now()).toISOString()
@@ -321,6 +347,7 @@ module.exports = {
     assignmentKey,
     createCrewartHouseService,
     deterministicRandomHouse,
+    deterministicWeightedHouse,
     memberKeyForPhone,
     normalizeHouseKey,
     sessionAssignmentKey

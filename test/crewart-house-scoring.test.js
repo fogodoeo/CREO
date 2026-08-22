@@ -86,6 +86,41 @@ test('P3 includes only the current live highest bid and moves it between houses 
     assert.equal(finalizedByName.BLUE, 24);
 });
 
+test('P3 uses the public won amount for platform live bids without changing the legacy amount field', () => {
+    const module = loadModule();
+    const item = {
+        id: 'platform-live', status: 'live',
+        bidLog: [{ name: '입찰자', amount: 15, amount_won: 150000, crewart_house_key: 'R' }]
+    };
+    const result = module.buildCrewartHouseScores([item], { crewart_score_scope: 'all' });
+    const red = result.houses.find(row => row.name === 'RED');
+    assert.equal(red.amount, 150000);
+    assert.equal(item.bidLog[0].amount, 15);
+});
+
+test('P3 uses contribution only after reveal while sold price remains unchanged', () => {
+    const module = loadModule();
+    const item = {
+        id: 'roulette-red', status: 'sold', soldPrice: 150000, crewartHouseKey: 'R',
+        attributes: {
+            crewart_house_key: 'R',
+            crewart_contribution_base: 150000,
+            crewart_contribution_multiplier: 2,
+            crewart_contribution_amount: 300000,
+            crewart_contribution_effective_at: new Date(Date.now() + 60000).toISOString(),
+            crewart_roulette_status: 'completed'
+        }
+    };
+    let result = module.buildCrewartHouseScores([item], { crewart_score_scope: 'all' });
+    assert.equal(result.houses.find(row => row.name === 'RED').amount, 150000);
+    assert.equal(item.soldPrice, 150000);
+
+    item.attributes.crewart_contribution_effective_at = new Date(Date.now() - 1000).toISOString();
+    result = module.buildCrewartHouseScores([item], { crewart_score_scope: 'all' });
+    assert.equal(result.houses.find(row => row.name === 'RED').amount, 300000);
+    assert.equal(item.soldPrice, 150000);
+});
+
 test('P3 board presents only four house cards and their amount numbers', () => {
     const module = loadModule();
     const html = module.renderCrewartHouseBoardHTML([

@@ -300,6 +300,20 @@
         }) || null;
     }
 
+    function crewartContributionAmount(item, nowMs) {
+        const soldAmount = amountToNumber(item && (item.sold_price || item.soldPrice));
+        const attributes = item?.attributes && typeof item.attributes === 'object' ? item.attributes : {};
+        const effectiveAt = Date.parse(String(attributes.crewart_contribution_effective_at || ''));
+        const contribution = Number(attributes.crewart_contribution_amount);
+        if (
+            Number.isFinite(effectiveAt)
+            && effectiveAt <= (Number(nowMs) || Date.now())
+            && Number.isFinite(contribution)
+            && contribution >= 0
+        ) return contribution;
+        return soldAmount;
+    }
+
     function resolveCrewartItemResult(item, config) {
         if (!item) return null;
         const includeOnlyCrewart = String(config && config.crewart_score_scope || 'crewart').toLowerCase() !== 'all';
@@ -311,7 +325,7 @@
         const directHouse = resolveFixedWinnerHouse(item, houses);
         const houseId = directHouse?.id || keys.map(key => participantMap[key]).find(Boolean);
         if (!houseId || !byId[houseId]) return null;
-        const amount = amountToNumber(item.sold_price || item.soldPrice);
+        const amount = crewartContributionAmount(item);
         return {
             house: byId[houseId],
             amount,
@@ -348,8 +362,8 @@
                 : resolveCrewartBidHouse(highest.bid, houses, participantMap);
             const houseId = directHouse?.id || keys.map(key => participantMap[key]).find(Boolean);
             const amount = sold
-                ? amountToNumber(item.sold_price || item.soldPrice)
-                : highest.amount;
+                ? crewartContributionAmount(item)
+                : amountToNumber(highest.bid.amount_won ?? highest.bid.amountWon) || highest.amount;
             if (!houseId || !byId[houseId]) {
                 unassigned.push({ item, amount, provisional: !sold });
                 return;
@@ -747,6 +761,7 @@
     global.renderCrewartHouseBoardHTML = renderCrewartHouseBoardHTML;
     global.resolveCrewartWinnerHouse = resolveCrewartWinnerHouse;
     global.resolveCrewartItemResult = resolveCrewartItemResult;
+    global.crewartContributionAmount = crewartContributionAmount;
     global.crewartPointsForAmount = crewartPointsForAmount;
     global.initAuctionNavDropdowns = initNavDropdowns;
 

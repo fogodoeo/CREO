@@ -25,6 +25,16 @@ const ADMIN_LOGIN_ATTEMPTS = 6;
 const BROADCAST_CONFIG_ID = 'broadcast-config';
 const PINBALL_SESSION_ID = 'pinball-session';
 const AUDIENCE_REVEALS_ID = 'crewart-audience-reveals';
+const CREWART_ROULETTE_ID = 'crewart-contribution-roulette';
+const CREWART_ROULETTE_DURATION_MS = 2000;
+const CREWART_ROULETTE_HOLD_MS = 360;
+const CREWART_ROULETTE_OUTCOMES = Object.freeze([
+    Object.freeze({ multiplier: 0.25, weight: 20 }),
+    Object.freeze({ multiplier: 0.5, weight: 20 }),
+    Object.freeze({ multiplier: 1, weight: 30 }),
+    Object.freeze({ multiplier: 2, weight: 25 }),
+    Object.freeze({ multiplier: 5, weight: 5 })
+]);
 const BROADCAST_CONFIG_KEY = /^[a-z0-9][a-z0-9_:-]{0,79}$/i;
 const SHIPPING_RATE_CONFIG_KEYS = Object.freeze({
     '도도시': 'shipping_rate_dodosi',
@@ -393,6 +403,89 @@ function rawItemBidLog(item = {}) {
     }
 }
 
+function contributionAmountForItem(item = {}, atMs = Date.now()) {
+    const soldPrice = Math.max(0, Number(item.soldPrice) || 0);
+    const attributes = item.attributes && typeof item.attributes === 'object' ? item.attributes : {};
+    const effectiveAt = Date.parse(String(attributes.crewart_contribution_effective_at || ''));
+    const contribution = Number(attributes.crewart_contribution_amount);
+    if (Number.isFinite(effectiveAt) && effectiveAt <= atMs && Number.isFinite(contribution) && contribution >= 0) {
+        return contribution;
+    }
+    return soldPrice;
+}
+
+function itemHouseKey(item = {}) {
+    const key = cleanText(item.attributes?.crewart_house_key || item.crewartHouseKey, 8).toUpperCase();
+    return ['R', 'G', 'B', 'Y'].includes(key) ? key : '';
+}
+
+function liveHighestHouseBid(item = {}) {
+    if (item.status !== 'live') return null;
+    const bids = rawItemBidLog(item)
+        .map((bid, index) => {
+            const amount = Math.max(0, Number(bid?.amount) || 0);
+            const explicitAmountWon = Number(bid?.amount_won ?? bid?.amountWon);
+            return {
+                bid,
+                index,
+                amount: Number.isFinite(explicitAmountWon) && explicitAmountWon >= 0
+                    ? explicitAmountWon
+                    : amount * 10000
+            };
+        })
+        .sort((left, right) => right.amount - left.amount || left.index - right.index);
+    const top = bids[0];
+    if (!top?.amount) return null;
+    const houseKey = cleanText(top.bid?.crewart_house_key || top.bid?.crewartHouseKey, 8).toUpperCase();
+    return ['R', 'G', 'B', 'Y'].includes(houseKey) ? { houseKey, amount: top.amount } : null;
+}
+
+function crewartHouseTotals(items = [], atMs = Date.now()) {
+    const totals = { R: 0, G: 0, B: 0, Y: 0 };
+    for (const item of Array.isArray(items) ? items : []) {
+        if (item.status === 'sold') {
+            const houseKey = itemHouseKey(item);
+            if (houseKey) totals[houseKey] += contributionAmountForItem(item, atMs);
+            continue;
+        }
+        const live = liveHighestHouseBid(item);
+        if (live) totals[live.houseKey] += live.amount;
+    }
+    return totals;
+}
+
+function crewartAssignmentWeights(items = [], atMs = Date.now()) {
+    const totals = crewartHouseTotals(items, atMs);
+    const values = Object.values(totals);
+    if (!values.some((value) => value > 0)) return { R: 25, G: 25, B: 25, Y: 25 };
+    const slots = [0, 10, 30, 60];
+    const rows = Object.keys(totals)
+        .map((houseKey) => ({ houseKey, amount: totals[houseKey] }))
+        .sort((left, right) => right.amount - left.amount || left.houseKey.localeCompare(right.houseKey));
+    const weights = {};
+    for (let cursor = 0; cursor < rows.length;) {
+        let end = cursor + 1;
+        while (end < rows.length && rows[end].amount === rows[cursor].amount) end += 1;
+        const sharedWeight = slots.slice(cursor, end).reduce((sum, weight) => sum + weight, 0) / (end - cursor);
+        for (let index = cursor; index < end; index += 1) weights[rows[index].houseKey] = sharedWeight;
+        cursor = end;
+    }
+    return weights;
+}
+
+function chooseCrewartRouletteMultiplier(randomInt = crypto.randomInt) {
+    let cursor = randomInt(100);
+    for (const outcome of CREWART_ROULETTE_OUTCOMES) {
+        cursor -= outcome.weight;
+        if (cursor < 0) return outcome.multiplier;
+    }
+    return 1;
+}
+
+function floorContribution(amount, multiplier) {
+    return Math.max(0, Math.floor((Math.max(0, Number(amount) || 0) * multiplier) / 10000) * 10000);
+}
+
 function phoneFromBid(bid = {}) {
     const explicit = normalizePhone(
         bid.phone || bid.bidder_phone || bid.bidderPhone || bid.phone_number || bid.phoneNumber || ''
@@ -451,7 +544,7 @@ function winnerHouseSnapshot(item) {
     };
 }
 
-async function enrichCrewartBidderHouses(channel, item, crewartHouseService, bandMembership, audienceSession, logger = console) {
+async function enrichCrewartBidderHouses(channel, item, crewartHouseService, bandMembership, audienceSession, houseWeights, logger = console) {
     const competition = channel?.audienceCompetition || {};
     if (
         competition.enabled !== true
@@ -478,7 +571,8 @@ async function enrichCrewartBidderHouses(channel, item, crewartHouseService, ban
             memberKey: phone ? '' : (explicitMemberKey || resolvedMemberKey || (/^member_[a-z0-9_-]+$/i.test(bidderKey) ? bidderKey : '')),
             phone,
             winnerName: bid?.name || bid?.bidder || bid?.winner || '',
-            winnerAlias: bidderKey || bid?.name || `bidder-${index + 1}`
+            winnerAlias: bidderKey || bid?.name || `bidder-${index + 1}`,
+            houseWeights
         };
     }));
 
@@ -720,6 +814,13 @@ function createPlatformApi({
             revealedBidderKeys: [],
             updatedAt: nowIso
         });
+        await repository.upsertRecord(channelId, 'setting', {
+            id: CREWART_ROULETTE_ID,
+            sessionId,
+            sequence: 0,
+            events: [],
+            updatedAt: nowIso
+        });
         return { state: saved, session: { sessionId, lockedAt: nowIso }, created: true };
     }
 
@@ -784,7 +885,8 @@ function createPlatformApi({
             memberKey,
             phone,
             winnerName: input.name || input.bidder || input.winner || '',
-            winnerAlias: input.bidder_key || input.bidderKey || input.name || ''
+            winnerAlias: input.bidder_key || input.bidderKey || input.name || '',
+            houseWeights: input.houseWeights
         });
         const reveal = await appendAudienceReveal(channelId, ensured.session, input, assignment);
         return { assignment, reveal, state: ensured.state, session: ensured.session };
@@ -796,6 +898,7 @@ function createPlatformApi({
             return { item, state };
         }
         const ensured = await ensureAudienceSession(channelId, channel, state);
+        const assignmentWeights = crewartAssignmentWeights((await workspace(channelId)).items);
         const ordered = bids.map((bid, index) => ({ bid, index })).sort((a, b) => {
             const aSeq = Math.max(0, Number.parseInt(a.bid?.bid_sequence || a.bid?.bidSequence, 10) || 0);
             const bSeq = Math.max(0, Number.parseInt(b.bid?.bid_sequence || b.bid?.bidSequence, 10) || 0);
@@ -818,7 +921,8 @@ function createPlatformApi({
                 memberKey: phone ? '' : (explicitMemberKey || resolvedMemberKey || (/^member_[a-z0-9_-]+$/i.test(bidderKey) ? bidderKey : '')),
                 phone,
                 winnerName: bid?.name || bid?.bidder || bid?.winner || '',
-                winnerAlias: bidderKey || bid?.name || `bidder-${index + 1}`
+                winnerAlias: bidderKey || bid?.name || `bidder-${index + 1}`,
+                houseWeights: assignmentWeights
             };
         }));
         const assignments = await crewartHouseService.resolveBidderAssignments(inputs);
@@ -879,6 +983,39 @@ function createPlatformApi({
             sequence: Math.max(0, Number.parseInt(stored?.sequence, 10) || 0),
             events,
             revealedBidderKeys
+        };
+    }
+
+    function publicCrewartRouletteEvent(event = {}) {
+        const multiplier = Number(event.multiplier);
+        return {
+            id: cleanText(event.id, 80),
+            sequence: Math.max(0, Number.parseInt(event.sequence, 10) || 0),
+            itemId: cleanText(event.itemId, 64),
+            lotNumber: Math.max(0, Number.parseInt(event.lotNumber, 10) || 0),
+            winner: publicBidderName(event.winner),
+            houseKey: ['R', 'G', 'B', 'Y'].includes(cleanText(event.houseKey, 8).toUpperCase())
+                ? cleanText(event.houseKey, 8).toUpperCase()
+                : '',
+            baseAmount: Math.max(0, Number(event.baseAmount) || 0),
+            multiplier: [0.25, 0.5, 1, 2, 5].includes(multiplier) ? multiplier : 1,
+            contributionAmount: Math.max(0, Number(event.contributionAmount) || 0),
+            startedAt: cleanText(event.startedAt, 80),
+            revealAt: cleanText(event.revealAt, 80)
+        };
+    }
+
+    async function crewartRoulettePayload(channelId, state = {}) {
+        const session = activeAudienceSession(state);
+        if (!session) return { sessionId: '', sequence: 0, events: [] };
+        const stored = await repository.getRecord(channelId, 'setting', CREWART_ROULETTE_ID);
+        const events = stored?.sessionId === session.sessionId && Array.isArray(stored.events)
+            ? stored.events.slice(-100).map(publicCrewartRouletteEvent).filter((event) => event.id && event.itemId && event.houseKey)
+            : [];
+        return {
+            sessionId: session.sessionId,
+            sequence: Math.max(0, Number.parseInt(stored?.sequence, 10) || 0),
+            events
         };
     }
 
@@ -1172,7 +1309,7 @@ function createPlatformApi({
                         return;
                     }
                     const data = await workspace(channelId);
-                    const itemId = cleanText(body.itemId, 64);
+                    const itemId = cleanText(body.itemId || data.broadcast?.activeItemId, 64);
                     const item = data.items.find((entry) => entry.id === itemId);
                     if (!item || (item.status !== 'live' && data.broadcast?.activeItemId !== itemId)) {
                         replyJson(res, 409, { error: '현재 진행 중인 개체의 입찰이 아닙니다.', code: 'ITEM_NOT_LIVE' });
@@ -1184,7 +1321,8 @@ function createPlatformApi({
                     }
                     const result = await resolveAudienceBidder(channelId, channel, data.broadcast, {
                         ...body,
-                        itemId
+                        itemId,
+                        houseWeights: crewartAssignmentWeights(data.items)
                     });
                     const assignment = result.assignment;
                     if (!assignment?.houseKey) {
@@ -1208,6 +1346,133 @@ function createPlatformApi({
                 return true;
             }
 
+            if (segments.length === 3 && segments[2] === 'audience-roulette' && method === 'POST') {
+                if (!await requireAdmin(req, res)) return true;
+                const body = await readJson(req);
+                await withMutationLock(`channel:${channelId}`, async () => {
+                    const activeId = await repository.getActiveChannel();
+                    if (activeId !== channelId) {
+                        replyJson(res, 409, { error: '현재 운영 채널이 변경되었습니다.', code: 'ACTIVE_CHANNEL_CHANGED' });
+                        return;
+                    }
+                    const data = await workspace(channelId);
+                    if (!audienceCompetitionEnabled(channel)) {
+                        replyJson(res, 409, { error: '크레와트 기숙사 경매에서만 사용할 수 있습니다.', code: 'ROULETTE_DISABLED' });
+                        return;
+                    }
+                    const session = activeAudienceSession(data.broadcast);
+                    if (!session) {
+                        replyJson(res, 409, { error: '진행 중인 크레와트 방송 회차가 없습니다.', code: 'AUDIENCE_SESSION_CLOSED' });
+                        return;
+                    }
+                    const itemId = cleanText(body.itemId || data.broadcast?.activeItemId, 64);
+                    const item = data.items.find((entry) => entry.id === itemId) || null;
+                    if (
+                        !item
+                        || item.status !== 'sold'
+                        || data.broadcast?.activeItemId !== itemId
+                        || data.broadcast?.mode !== 'sold'
+                    ) {
+                        replyJson(res, 409, { error: '직전 낙찰 건의 룰렛 참여 시간이 아닙니다.', code: 'ROULETTE_WINDOW_CLOSED' });
+                        return;
+                    }
+                    const winning = winningBid(item);
+                    const expectedBidderKey = cleanText(winning?.bidder_key || winning?.bidderKey || '', 120);
+                    const requestedBidderKey = cleanText(body.bidder_key || body.bidderKey, 120);
+                    if (!expectedBidderKey || !requestedBidderKey || expectedBidderKey !== requestedBidderKey) {
+                        replyJson(res, 403, { error: '직전 낙찰자만 룰렛에 참여할 수 있습니다.', code: 'ROULETTE_NOT_WINNER' });
+                        return;
+                    }
+
+                    const stored = await repository.getRecord(channelId, 'setting', CREWART_ROULETTE_ID);
+                    const current = stored?.sessionId === session.sessionId
+                        ? stored
+                        : { id: CREWART_ROULETTE_ID, sessionId: session.sessionId, sequence: 0, events: [] };
+                    const events = Array.isArray(current.events) ? current.events.slice(-100) : [];
+                    const existing = events.find((event) => event.itemId === itemId);
+                    if (existing) {
+                        const attrs = item.attributes && typeof item.attributes === 'object' ? item.attributes : {};
+                        if (attrs.crewart_roulette_event_id !== existing.id) {
+                            await repository.upsertRecord(channelId, 'item', {
+                                ...item,
+                                attributes: {
+                                    ...attrs,
+                                    crewart_contribution_base: existing.baseAmount,
+                                    crewart_contribution_multiplier: existing.multiplier,
+                                    crewart_contribution_amount: existing.contributionAmount,
+                                    crewart_contribution_effective_at: existing.revealAt,
+                                    crewart_roulette_status: 'completed',
+                                    crewart_roulette_event_id: existing.id
+                                }
+                            });
+                            touchChannel(channelId);
+                        }
+                        replyJson(res, 200, { duplicate: true, event: publicCrewartRouletteEvent(existing) });
+                        return;
+                    }
+
+                    const sequence = Math.max(0, Number.parseInt(current.sequence, 10) || 0) + 1;
+                    const nowMs = Date.now();
+                    const lastRevealMs = events.reduce((max, event) => {
+                        const parsed = Date.parse(String(event?.revealAt || ''));
+                        return Number.isFinite(parsed) ? Math.max(max, parsed) : max;
+                    }, 0);
+                    const startedAtMs = Math.max(nowMs, lastRevealMs + CREWART_ROULETTE_HOLD_MS);
+                    const revealAtMs = startedAtMs + CREWART_ROULETTE_DURATION_MS;
+                    const multiplier = chooseCrewartRouletteMultiplier();
+                    const baseAmount = Math.max(0, Number(item.soldPrice) || 0);
+                    const contributionAmount = floorContribution(baseAmount, multiplier);
+                    const messageKey = cleanText(body.message_key || body.messageKey, 180);
+                    const event = {
+                        id: `roulette_${crypto.createHash('sha256').update(`${session.sessionId}:${itemId}:${messageKey || requestedBidderKey}`).digest('base64url').slice(0, 24)}`,
+                        sequence,
+                        itemId,
+                        lotNumber: Math.max(0, Number.parseInt(item.lotNumber, 10) || 0),
+                        winner: item.winnerAlias || item.winnerName || winning?.name || '',
+                        bidderKey: requestedBidderKey,
+                        houseKey: itemHouseKey(item) || cleanText(winning?.crewart_house_key, 8).toUpperCase(),
+                        baseAmount,
+                        multiplier,
+                        contributionAmount,
+                        startedAt: new Date(startedAtMs).toISOString(),
+                        revealAt: new Date(revealAtMs).toISOString(),
+                        requestedAt: new Date(nowMs).toISOString(),
+                        messageKey
+                    };
+                    if (!['R', 'G', 'B', 'Y'].includes(event.houseKey)) {
+                        replyJson(res, 409, { error: '낙찰자의 기숙사 배정이 완료되지 않았습니다.', code: 'ROULETTE_HOUSE_MISSING' });
+                        return;
+                    }
+                    await repository.upsertRecord(channelId, 'setting', {
+                        ...current,
+                        id: CREWART_ROULETTE_ID,
+                        sessionId: session.sessionId,
+                        sequence,
+                        events: [...events, event].slice(-100),
+                        updatedAt: new Date(nowMs).toISOString()
+                    });
+                    const savedItem = await repository.upsertRecord(channelId, 'item', {
+                        ...item,
+                        attributes: {
+                            ...(item.attributes || {}),
+                            crewart_contribution_base: baseAmount,
+                            crewart_contribution_multiplier: multiplier,
+                            crewart_contribution_amount: contributionAmount,
+                            crewart_contribution_effective_at: event.revealAt,
+                            crewart_roulette_status: 'completed',
+                            crewart_roulette_event_id: event.id
+                        }
+                    });
+                    touchChannel(channelId);
+                    replyJson(res, 201, {
+                        duplicate: false,
+                        event: publicCrewartRouletteEvent(event),
+                        soldPrice: savedItem.soldPrice
+                    });
+                });
+                return true;
+            }
+
             if (segments.length === 3 && segments[2] === 'broadcast' && method === 'GET') {
                 const data = await workspace(channelId);
                 const vendors = new Map(data.vendors.map((vendor) => [vendor.id, vendor]));
@@ -1215,10 +1480,21 @@ function createPlatformApi({
                 const audience = audienceCompetitionEnabled(channel)
                     ? await audienceRevealPayload(channelId, data.broadcast)
                     : { sessionId: '', lockedAt: '', sequence: 0, events: [], revealedBidderKeys: [] };
+                if (audienceCompetitionEnabled(channel)) {
+                    audience.roulette = await crewartRoulettePayload(channelId, data.broadcast);
+                }
                 const broadcastItems = await Promise.all(data.items.map(async (item) => {
                     const isActiveItem = item.status === 'live' || (activeItemId && item.id === activeItemId);
                     return isActiveItem
-                        ? enrichCrewartBidderHouses(channel, item, crewartHouseService, bandMembership, data.broadcast, logger)
+                        ? enrichCrewartBidderHouses(
+                            channel,
+                            item,
+                            crewartHouseService,
+                            bandMembership,
+                            data.broadcast,
+                            crewartAssignmentWeights(data.items),
+                            logger
+                        )
                         : item;
                 }));
                 const revealedBidderKeys = new Set(audience.revealedBidderKeys || []);
@@ -1332,7 +1608,13 @@ function createPlatformApi({
                                 attributes: {
                                     ...candidate.attributes,
                                     crewart_house_key: '',
-                                    crewart_house_source: ''
+                                    crewart_house_source: '',
+                                    crewart_contribution_base: 0,
+                                    crewart_contribution_multiplier: 1,
+                                    crewart_contribution_amount: 0,
+                                    crewart_contribution_effective_at: '',
+                                    crewart_roulette_status: 'unused',
+                                    crewart_roulette_event_id: ''
                                 }
                             };
                         }
@@ -1369,6 +1651,25 @@ function createPlatformApi({
                                     ...(candidate.attributes || {}),
                                     crewart_house_key: cleanText(assignment?.houseKey, 8).toUpperCase(),
                                     crewart_house_source: assignment?.source === 'survey' ? 'survey' : 'random'
+                                }
+                            };
+                        }
+                        if (
+                            requestedStatus === 'sold'
+                            && audienceCompetitionEnabled(channel)
+                            && current.status !== 'sold'
+                        ) {
+                            const baseContribution = Math.max(0, Number(candidate.soldPrice) || 0);
+                            candidate = {
+                                ...candidate,
+                                attributes: {
+                                    ...(candidate.attributes || {}),
+                                    crewart_contribution_base: baseContribution,
+                                    crewart_contribution_multiplier: 1,
+                                    crewart_contribution_amount: baseContribution,
+                                    crewart_contribution_effective_at: '',
+                                    crewart_roulette_status: 'unused',
+                                    crewart_roulette_event_id: ''
                                 }
                             };
                         }
@@ -1782,4 +2083,17 @@ function createPlatformApi({
     return { handle, isAdmin, workspace };
 }
 
-module.exports = { createPlatformApi, mergeBroadcastConfig, readJson, sanitizeBroadcastConfigPatch, sanitizeRecord, validateRecord };
+module.exports = {
+    CREWART_ROULETTE_OUTCOMES,
+    chooseCrewartRouletteMultiplier,
+    contributionAmountForItem,
+    createPlatformApi,
+    crewartAssignmentWeights,
+    crewartHouseTotals,
+    floorContribution,
+    mergeBroadcastConfig,
+    readJson,
+    sanitizeBroadcastConfigPatch,
+    sanitizeRecord,
+    validateRecord
+};

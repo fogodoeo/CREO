@@ -29,7 +29,7 @@
     <script src="auction-contract.js?v=20260819-contract-v1"></script>
     <script src="supabase-bridge.js?v=20260819-round3-seed-v2"></script>
     <script src="channel-broadcast-bridge.js?v=20260821-active-state-v2"></script>
-    <script src="event-modules.js?v=20260821-crewart-p3-layout-v9"></script>
+    <script src="event-modules.js?v=20260822-crewart-contribution-v1"></script>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link
         href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
@@ -178,6 +178,40 @@
         .p2-house-reveal-color[data-house="G"] { background: #328b5b; }
         .p2-house-reveal-color[data-house="B"] { background: #3c73bd; }
         .p2-house-reveal-color[data-house="Y"] { background: #d2a33a; }
+        #p3-contribution-roulette-overlay {
+            position: fixed;
+            z-index: 72;
+            left: 50%;
+            top: 42%;
+            width: min(920px, 76vw);
+            transform: translate(-50%, -50%) scale(.98);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .16s ease, transform .24s cubic-bezier(.16,1,.3,1);
+        }
+        #p3-contribution-roulette-overlay.visible { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        .p3-contribution-roulette-shell {
+            display: grid;
+            grid-template-columns: minmax(240px,.9fr) minmax(360px,1.1fr);
+            align-items: center;
+            min-height: 132px;
+            overflow: hidden;
+            border: 2px solid rgba(224,194,126,.72);
+            border-radius: 24px;
+            background: linear-gradient(145deg,rgba(18,15,24,.97),rgba(30,23,31,.96));
+            box-shadow: 0 28px 80px rgba(0,0,0,.52), inset 0 0 0 1px rgba(255,255,255,.06);
+            font-family: 'Pretendard',sans-serif;
+        }
+        .p3-contribution-roulette-person { min-width:0; padding:22px 28px; color:#f8f3e8; }
+        .p3-contribution-roulette-person strong { display:block; overflow:hidden; font-size:clamp(30px,3vw,48px); font-weight:950; text-overflow:ellipsis; white-space:nowrap; }
+        .p3-contribution-roulette-person span { display:block; margin-top:7px; color:#cbb98e; font-size:clamp(18px,1.45vw,25px); font-weight:800; }
+        .p3-contribution-roulette-window { height:128px; overflow:hidden; border-left:1px solid rgba(224,194,126,.28); }
+        .p3-contribution-roulette-track { will-change:transform; }
+        .p3-contribution-roulette-value { display:grid; place-items:center; height:128px; color:#fff; font-size:clamp(54px,6vw,92px); font-weight:950; font-variant-numeric:tabular-nums; letter-spacing:-.06em; text-shadow:0 4px 18px rgba(0,0,0,.42); }
+        .p3-contribution-roulette-value[data-house="R"] { background:#c64b52; }
+        .p3-contribution-roulette-value[data-house="G"] { background:#328b5b; }
+        .p3-contribution-roulette-value[data-house="B"] { background:#3c73bd; }
+        .p3-contribution-roulette-value[data-house="Y"] { background:#d2a33a; }
         .p2-live-bidders-head { display: flex; align-items: center; gap: 9px; margin: 0 0 7px 3px; color: #d9b05c; font-size: calc(var(--p2-bid-fs) * .78); font-weight: 900; letter-spacing: .08em; }
         .p2-live-bidders-head::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #ef4444; box-shadow: 0 0 10px rgba(239,68,68,.72); }
         .p2-live-bidders-count { margin-left: auto; color: rgba(248,250,252,.65); font-size: .9em; letter-spacing: 0; }
@@ -3914,6 +3948,7 @@
         <span class="top-bar-label auction-progress" id="auction-progress"></span>
         <aside id="p2-live-bidders-overlay" aria-live="polite"></aside>
         <aside id="p2-house-reveal-overlay" aria-live="polite"></aside>
+        <aside id="p3-contribution-roulette-overlay" aria-live="polite"></aside>
         <div class="scoreboard-wrap" id="scoreboard-wrap">
             <div class="top-bar" id="top-bar">
                 <div class="name-section">
@@ -5621,6 +5656,7 @@
 
         async function _refreshBroadcastFromItems(items) {
             processCrewartAudienceReveals(window.__creoAudience || null);
+            processCrewartContributionRoulette(window.__creoAudience || null);
             if (isBracketPageTemp) {
                 await refreshBracketPage(items);
             } else {
@@ -7326,6 +7362,136 @@
                 state.cursor = sequence;
             }
             runNextCrewartReveal();
+        }
+
+        const _p3CrewartRouletteState = {
+            sessionId: '', cursor: 0, playing: false, queue: [], queuedIds: new Set(), generation: 0
+        };
+
+        function p3RouletteStorageKey(sessionId) {
+            return `crewart:p3-contribution-roulette:${String(sessionId || '')}`;
+        }
+
+        function resetCrewartRouletteState(sessionId = '') {
+            const state = _p3CrewartRouletteState;
+            state.generation += 1;
+            state.sessionId = String(sessionId || '');
+            state.cursor = 0;
+            state.playing = false;
+            state.queue = [];
+            state.queuedIds.clear();
+            const overlay = document.getElementById('p3-contribution-roulette-overlay');
+            if (overlay) { overlay.classList.remove('visible'); overlay.replaceChildren(); }
+        }
+
+        function writeP3RouletteCursor(sessionId, sequence) {
+            try { sessionStorage.setItem(p3RouletteStorageKey(sessionId), String(sequence)); } catch (_) {}
+        }
+
+        function formatCrewartWon(value) {
+            const won = Math.max(0, Number(value) || 0);
+            return `${Math.floor(won / 10000).toLocaleString('ko-KR')}만원`;
+        }
+
+        function refreshCrewartContributionBoard() {
+            if (getActiveAuctionEventModule(window.latestConfigMap || {}).id !== 'crewart') return;
+            const tree = document.getElementById('bracket-page-tree-full');
+            if (tree && typeof renderCrewartHouseBoardHTML === 'function') {
+                tree.innerHTML = renderCrewartHouseBoardHTML(window.latestItemsList || [], window.latestConfigMap || {});
+            }
+        }
+
+        function runNextCrewartRoulette() {
+            const state = _p3CrewartRouletteState;
+            if (state.playing || !state.queue.length) return;
+            const event = state.queue.shift();
+            const overlay = document.getElementById('p3-contribution-roulette-overlay');
+            if (!overlay) return;
+            state.playing = true;
+            const generation = state.generation;
+            const sessionId = state.sessionId;
+            const begin = () => {
+                if (state.generation !== generation || state.sessionId !== sessionId) return;
+                const values = [0.25, 0.5, 1, 2, 5];
+                const finalValue = Number(event.multiplier) || 1;
+                const reel = [];
+                for (let index = 0; index < 15; index += 1) reel.push(values[index % values.length]);
+                while (reel[reel.length - 1] === finalValue) reel.push(values[reel.length % values.length]);
+                reel.push(finalValue);
+                const houseKey = normalizeCrewartBidderHouse(event.houseKey) || 'R';
+                overlay.innerHTML = `
+                    <div class="p3-contribution-roulette-shell">
+                        <div class="p3-contribution-roulette-person">
+                            <strong>${esc(event.winner || '직전 낙찰자')}</strong>
+                            <span>${formatCrewartWon(event.baseAmount)} 기여도 배수</span>
+                        </div>
+                        <div class="p3-contribution-roulette-window">
+                            <div class="p3-contribution-roulette-track">
+                                ${reel.map(value => `<div class="p3-contribution-roulette-value" data-house="${houseKey}">×${value}</div>`).join('')}
+                            </div>
+                        </div>
+                    </div>`;
+                overlay.classList.add('visible');
+                const track = overlay.querySelector('.p3-contribution-roulette-track');
+                const duration = 2000;
+                track.style.transition = 'none';
+                track.style.transform = 'translateY(0)';
+                requestAnimationFrame(() => requestAnimationFrame(() => {
+                    track.style.transition = `transform ${duration}ms cubic-bezier(.12,.72,.18,1)`;
+                    track.style.transform = `translateY(-${(reel.length - 1) * 128}px)`;
+                }));
+                setTimeout(() => {
+                    if (state.generation !== generation || state.sessionId !== sessionId) return;
+                    writeP3RouletteCursor(sessionId, event.sequence);
+                    refreshCrewartContributionBoard();
+                    setTimeout(() => {
+                        if (state.generation !== generation || state.sessionId !== sessionId) return;
+                        overlay.classList.remove('visible');
+                        state.playing = false;
+                        runNextCrewartRoulette();
+                    }, 900);
+                }, duration);
+            };
+            const startDelay = Math.max(0, Date.parse(String(event.startedAt || '')) - Date.now());
+            if (startDelay > 30) setTimeout(begin, startDelay);
+            else begin();
+        }
+
+        function processCrewartContributionRoulette(audience) {
+            const roulette = audience?.roulette || null;
+            const isCrewartP3 = document.body.classList.contains('bracket-page')
+                && getActiveAuctionEventModule(window.latestConfigMap || {}).id === 'crewart';
+            const sessionId = String(roulette?.sessionId || '');
+            const state = _p3CrewartRouletteState;
+            if (!isCrewartP3 || !sessionId) {
+                if (state.sessionId || state.playing || state.queue.length) resetCrewartRouletteState();
+                return;
+            }
+            const events = Array.isArray(roulette?.events)
+                ? roulette.events.slice().sort((left, right) => Number(left.sequence) - Number(right.sequence))
+                : [];
+            if (state.sessionId !== sessionId) {
+                resetCrewartRouletteState(sessionId);
+                let stored = null;
+                try { stored = Number.parseInt(sessionStorage.getItem(p3RouletteStorageKey(sessionId)), 10); } catch (_) {}
+                if (Number.isFinite(stored) && stored >= 0) state.cursor = stored;
+                else {
+                    const latest = events[events.length - 1] || null;
+                    const startedAt = Date.parse(String(latest?.startedAt || ''));
+                    state.cursor = latest && Number.isFinite(startedAt) && startedAt >= Date.now() - 15000
+                        ? Math.max(0, Number(latest.sequence) - 1)
+                        : events.reduce((max, event) => Math.max(max, Number(event.sequence) || 0), 0);
+                    writeP3RouletteCursor(sessionId, state.cursor);
+                }
+            }
+            for (const event of events) {
+                const sequence = Math.max(0, Number(event.sequence) || 0);
+                if (!event.id || sequence <= state.cursor || state.queuedIds.has(event.id)) continue;
+                state.queuedIds.add(event.id);
+                state.queue.push({ ...event, sequence });
+                state.cursor = sequence;
+            }
+            runNextCrewartRoulette();
         }
 
         function buildLiveBidRows(map, activeItem) {

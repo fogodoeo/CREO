@@ -357,6 +357,9 @@ function publicChecklist(value) {
 
 function publicItemAttributes(item = {}) {
     const attributes = item.attributes && typeof item.attributes === 'object' ? item.attributes : {};
+    const contributionMultiplier = Number(attributes.crewart_contribution_multiplier);
+    const contributionAmount = Number(attributes.crewart_contribution_amount);
+    const contributionBase = Number(attributes.crewart_contribution_base);
     return {
         checklist: publicChecklist(attributes.checklist),
         announce: cleanText(attributes.announce, 1000),
@@ -369,7 +372,19 @@ function publicItemAttributes(item = {}) {
             : '',
         crewart_house_source: ['survey', 'random'].includes(cleanText(attributes.crewart_house_source, 16))
             ? cleanText(attributes.crewart_house_source, 16)
-            : ''
+            : '',
+        crewart_contribution_base: Number.isFinite(contributionBase) && contributionBase >= 0 ? contributionBase : 0,
+        crewart_contribution_multiplier: [0.25, 0.5, 1, 2, 5].includes(contributionMultiplier)
+            ? contributionMultiplier
+            : 1,
+        crewart_contribution_amount: Number.isFinite(contributionAmount) && contributionAmount >= 0
+            ? contributionAmount
+            : 0,
+        crewart_contribution_effective_at: cleanText(attributes.crewart_contribution_effective_at, 80),
+        crewart_roulette_status: ['unused', 'pending', 'completed'].includes(cleanText(attributes.crewart_roulette_status, 16))
+            ? cleanText(attributes.crewart_roulette_status, 16)
+            : 'unused',
+        crewart_roulette_event_id: cleanText(attributes.crewart_roulette_event_id, 80)
     };
 }
 
@@ -391,6 +406,11 @@ function publicBidLog(item = {}) {
     }
     if (!Array.isArray(rows)) return [];
     return rows.slice(-100).map((bid) => {
+        const amount = Math.max(0, Number(bid?.amount ?? bid?.price) || 0);
+        const explicitAmountWon = Number(bid?.amount_won ?? bid?.amountWon);
+        const amountWon = Number.isFinite(explicitAmountWon) && explicitAmountWon >= 0
+            ? explicitAmountWon
+            : amount * 10000;
         const houseKey = cleanText(bid?.crewart_house_key || bid?.crewartHouseKey, 8).toUpperCase();
         const houseSource = cleanText(bid?.crewart_house_source || bid?.crewartHouseSource, 16);
         const rawBidderKey = cleanText(bid?.bidder_key || bid?.bidderKey || '', 160);
@@ -402,7 +422,8 @@ function publicBidLog(item = {}) {
             name: bidderName,
             bidder_key: bidderKey,
             region: cleanText(bid?.region || '', 40),
-            amount: Math.max(0, Number(bid?.amount ?? bid?.price) || 0),
+            amount,
+            amount_won: amountWon,
             time: cleanText(bid?.time || '', 40),
             timestamp: cleanText(bid?.timestamp || '', 60),
             created_at: cleanText(bid?.created_at || bid?.createdAt || '', 60),
