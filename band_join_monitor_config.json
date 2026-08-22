@@ -13,7 +13,7 @@
   "applications_safety_refresh_seconds": 60,
   "auto_approve_enabled": true,
   "auto_reject_enabled": true,
-  "dom_read_enabled": false,
+  "dom_read_enabled": true,
   "dom_action_enabled": true,
   "poll_fallback_seconds": 3,
   "dom_event_poll_seconds": 0.1,
