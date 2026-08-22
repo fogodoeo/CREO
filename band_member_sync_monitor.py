@@ -551,11 +551,15 @@ class SyncedBandJoinMonitor(BaseBandJoinMonitor):
             )
             value = monitor_module.runtime_value(result)
         except Exception as exc:
+            failure = (
+                f"roster_read_failed:{type(exc).__name__}:"
+                f"{monitor_module.safe_for_log(exc, 90)}"
+            )
             self.logger.warning(
                 "BAND 전체 멤버 명단 대조 실패: %s",
                 monitor_module.safe_for_log(exc),
             )
-            self._record_roster_reconcile("roster_read_failed", False)
+            self._record_roster_reconcile(failure, False)
             return False
         finally:
             connection.close()
