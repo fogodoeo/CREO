@@ -1301,6 +1301,43 @@ class FollowUpQuestionTests(unittest.TestCase):
             self.assertNotIn("must-not-persist", snapshot_text)
             restarted_monitor.stop()
 
+    def test_direct_login_cookies_are_exported_without_bootstrap(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            config = dict(DEFAULT_CONFIG)
+            config.update(
+                {
+                    "chrome_profile_dir": temporary_directory,
+                    "state_file": str(Path(temporary_directory) / "state.json"),
+                    "log_file": str(Path(temporary_directory) / "monitor.log"),
+                    "runtime_status_file": str(
+                        Path(temporary_directory) / "runtime.json"
+                    ),
+                    "diagnostic_file": str(
+                        Path(temporary_directory) / "diagnostics.jsonl"
+                    ),
+                }
+            )
+            monitor = BandJoinMonitor(config, Path(temporary_directory))
+            connection = _CookieConnection(
+                returned_cookies=[
+                    {
+                        "name": "band_session",
+                        "value": "direct-session",
+                        "domain": ".band.us",
+                        "path": "/",
+                    }
+                ]
+            )
+
+            monitor._persist_session_cookie_snapshot(connection)
+
+            payload = json.loads(
+                monitor._session_snapshot_path.read_text(encoding="utf-8")
+            )
+            self.assertEqual(payload["bootstrap_fingerprint"], "direct-login")
+            self.assertEqual(payload["cookies"][0]["value"], "direct-session")
+            monitor.stop()
+
     def test_changed_bootstrap_ignores_old_session_snapshot(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             config = dict(DEFAULT_CONFIG)

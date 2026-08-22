@@ -44,7 +44,7 @@ from typing import Any, Iterable, Mapping, Optional
 
 
 APP_NAME = "BAND 가입 신청 모니터"
-VERSION = "0.3.7"
+VERSION = "0.3.8"
 DEFAULT_CONFIG_FILE = "band_join_monitor_config.json"
 DOM_SIGNAL_BINDING = "__bandJoinMonitorSignal"
 BAND_NO_RE = re.compile(r"/band/(\d+)")
@@ -2424,8 +2424,6 @@ class BandJoinMonitor:
         return cookies
 
     def _persist_session_cookie_snapshot(self, connection: CDPConnection) -> None:
-        if not self._bootstrap_env_fingerprint:
-            return
         try:
             result = connection.call("Network.getAllCookies", timeout=3)
         except Exception as exc:
@@ -2480,7 +2478,12 @@ class BandJoinMonitor:
             return
         payload = {
             "version": 1,
-            "bootstrap_fingerprint": self._bootstrap_env_fingerprint,
+            # A direct login in the dedicated local Chrome has no environment
+            # bootstrap.  Still export that complete, internally consistent
+            # BAND cookie jar so it can become the next Render bootstrap.
+            "bootstrap_fingerprint": (
+                self._bootstrap_env_fingerprint or "direct-login"
+            ),
             "cookies": cookies,
         }
         try:
