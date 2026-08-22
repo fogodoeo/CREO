@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import signal
+import sqlite3
 import subprocess
 import sys
 import threading
@@ -21,6 +22,7 @@ IS_RENDER = any(
     for name in ("RENDER", "RENDER_SERVICE_ID", "RENDER_EXTERNAL_URL")
 )
 PERSISTENT_ROOT = Path("/var/data/band-monitor") if IS_RENDER else ROOT / ".band-monitor"
+PLATFORM_PERSISTENT_ROOT = Path("/var/data/creo-platform")
 STATUS_PATH = Path(
     os.environ.get("BAND_MONITOR_STATUS_FILE", str(PERSISTENT_ROOT / "runtime.json"))
 )
@@ -115,11 +117,54 @@ def write_disabled_status() -> None:
         print(f"[render-supervisor] status write failed: {exc}", flush=True)
 
 
+def prepare_platform_storage(environment: dict[str, str]) -> Optional[Path]:
+    """Point platform SQLite at the Render disk and migrate the legacy DB once."""
+    configured = environment.get("CREO_DATA_DIR", "").strip()
+    if configured:
+        target_directory = Path(configured)
+    elif IS_RENDER:
+        target_directory = PLATFORM_PERSISTENT_ROOT
+        environment["CREO_DATA_DIR"] = str(target_directory)
+    else:
+        return None
+
+    target_directory.mkdir(parents=True, exist_ok=True)
+    target_database = target_directory / "creo-platform.sqlite"
+    legacy_database = ROOT / "storage" / "creo-platform.sqlite"
+    if target_database.exists() or not legacy_database.is_file():
+        return target_database
+
+    temporary_database = target_directory / "creo-platform.sqlite.migrating"
+    try:
+        if temporary_database.exists():
+            temporary_database.unlink()
+        source = sqlite3.connect(f"file:{legacy_database.as_posix()}?mode=ro", uri=True)
+        destination = sqlite3.connect(temporary_database)
+        try:
+            source.backup(destination)
+            integrity = destination.execute("PRAGMA integrity_check").fetchone()
+            if not integrity or integrity[0] != "ok":
+                raise RuntimeError("platform SQLite migration integrity check failed")
+        finally:
+            destination.close()
+            source.close()
+        temporary_database.replace(target_database)
+        print(
+            f"[render-supervisor] platform SQLite migrated to {target_database}",
+            flush=True,
+        )
+    finally:
+        if temporary_database.exists():
+            temporary_database.unlink()
+    return target_database
+
+
 def start_node() -> subprocess.Popen[bytes]:
     environment = os.environ.copy()
     environment.pop("BAND_COOKIE_HEADER", None)
     environment.pop("BAND_COOKIE_JSON", None)
     environment.setdefault("NODE_OPTIONS", "--max-old-space-size=192")
+    prepare_platform_storage(environment)
     command = ["node", str(ROOT / "server.js")]
     print(f"[render-supervisor] starting web app: {' '.join(command)}", flush=True)
     return subprocess.Popen(command, cwd=ROOT, env=environment)

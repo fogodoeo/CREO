@@ -12,7 +12,7 @@ CREO 멀티 경매 운영 허브와 CREWARTS 설문 서비스입니다.
 
 신규 채널 데이터는 `creo_v2::<channel_id>::...` 이름공간으로 분리됩니다. 자세한 설계와 운영 절차는 [멀티 경매 플랫폼 설계](docs/platform-architecture.md)를 참고하세요.
 
-운영 데이터의 기본 저장소는 SQLite입니다. Render Persistent Disk가 연결된 환경에서는 SQLite와 outbox가 영구 보존됩니다. 현재처럼 Disk가 없는 환경에서는 SQLite를 빠른 실행 캐시로 사용하고, 각 변경을 응답 전에 Supabase 미러로 즉시 전송 시도합니다. 성공한 변경은 재배포 뒤 채널·업체·개체·배송·방송 상태·브랜드 자산까지 미러에서 다시 복구되며, 실패한 전송은 `/health`의 `platform.outboxPending`과 `platform.mirrorError`에서 확인할 수 있습니다. `platform.durable`로 실제 Disk 연결 여부를 확인할 수 있습니다.
+운영 데이터의 기본 저장소는 SQLite입니다. Render에서는 Persistent Disk의 `/var/data/creo-platform`을 자동으로 사용하며, 최초 전환 때 기존 SQLite가 있으면 무결성 검사 후 한 번만 이관합니다. SQLite와 outbox는 디스크에 영구 보존되고 Supabase 미러도 함께 유지됩니다. Disk를 사용하지 않는 로컬 환경에서는 SQLite를 빠른 실행 캐시로 사용하고, 각 변경을 응답 전에 Supabase 미러로 즉시 전송 시도합니다. 성공한 변경은 재배포 뒤 채널·업체·개체·배송·방송 상태·브랜드 자산까지 미러에서 다시 복구되며, 실패한 전송은 `/health`의 `platform.outboxPending`과 `platform.mirrorError`에서 확인할 수 있습니다. `platform.durable`와 `platform.databasePath`로 실제 저장 위치를 확인할 수 있습니다.
 
 ## 기존 공개 화면
 
