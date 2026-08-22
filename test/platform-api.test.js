@@ -279,15 +279,28 @@ test('pinball lifecycle rejects stale concurrent changes and accepts an idempote
     }, '');
     assert.equal(invalidWinner.status, 422);
 
+    const incompleteRanking = await call(api, 'POST', '/api/platform/channels/alpha/pinball-session/complete', {
+        runId: running.runId, commandId: running.command.id, winner: '김상정',
+        standings: [{ rank: 1, name: '김상정', finished: true }]
+    }, '');
+    assert.equal(incompleteRanking.status, 422);
+
     const completed = await call(api, 'POST', '/api/platform/channels/alpha/pinball-session/complete', {
-        runId: running.runId, commandId: running.command.id, winner: '김상정'
+        runId: running.runId, commandId: running.command.id, winner: '김상정',
+        standings: [
+            { rank: 1, name: '김상정', finished: true },
+            { rank: 2, name: '배원직', finished: false },
+            { rank: 3, name: '김상정', finished: false }
+        ]
     }, '');
     assert.equal(completed.status, 200);
     assert.equal(completed.json().session.phase, 'complete');
     assert.equal(completed.json().session.result.winner, '김상정');
+    assert.deepEqual(completed.json().session.result.standings.map((row) => row.rank), [1, 2, 3]);
 
     const duplicateCompletion = await call(api, 'POST', '/api/platform/channels/alpha/pinball-session/complete', {
-        runId: running.runId, commandId: running.command.id, winner: '김상정'
+        runId: running.runId, commandId: running.command.id, winner: '김상정',
+        standings: completed.json().session.result.standings
     }, '');
     assert.equal(duplicateCompletion.status, 200);
     assert.equal(duplicateCompletion.json().duplicate, true);
@@ -299,6 +312,9 @@ test('pinball lifecycle rejects stale concurrent changes and accepts an idempote
     assert.equal(nextRound.status, 200);
     assert.equal(nextRound.json().session.phase, 'prepared');
     assert.notEqual(nextRound.json().session.runId, running.runId);
+    assert.equal(nextRound.json().session.result, null);
+    assert.equal(nextRound.json().session.history[0].runId, running.runId);
+    assert.equal(nextRound.json().session.history[0].standings.length, 3);
 });
 
 test('duplicating a legacy channel keeps its broadcast profile but starts on isolated platform data', async () => {

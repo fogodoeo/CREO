@@ -285,9 +285,41 @@ function sanitizePinballEntries(input) {
     return { entries, ballCount, error: '' };
 }
 
+function sanitizePinballStandings(input) {
+    if (!Array.isArray(input)) return [];
+    return input.slice(0, 500).map((standing, index) => ({
+        rank: Math.max(1, Math.min(500, Number.parseInt(standing?.rank, 10) || index + 1)),
+        name: cleanText(standing?.name, 120),
+        finished: standing?.finished === true
+    })).filter((standing) => standing.name).sort((left, right) => left.rank - right.rank);
+}
+
+function publicPinballResult(input) {
+    if (!input || typeof input !== 'object') return null;
+    return {
+        runId: cleanText(input.runId, 80),
+        winner: cleanText(input.winner, 120),
+        completedAt: input.completedAt || null,
+        standings: sanitizePinballStandings(input.standings)
+    };
+}
+
 function publicPinballSession(record) {
     if (!record) {
-        return { id: PINBALL_SESSION_ID, revision: 0, phase: 'idle', runId: '', command: null, entries: [], config: null, seed: '', updatedAt: null };
+        return {
+            id: PINBALL_SESSION_ID,
+            revision: 0,
+            phase: 'idle',
+            runId: '',
+            command: null,
+            entries: [],
+            config: null,
+            seed: '',
+            ballCount: 0,
+            result: null,
+            history: [],
+            updatedAt: null
+        };
     }
     return {
         id: PINBALL_SESSION_ID,
@@ -303,10 +335,10 @@ function publicPinballSession(record) {
         config: record.config ? sanitizePinballConfig(record.config) : null,
         seed: cleanText(record.seed, 96),
         ballCount: Math.max(0, Math.min(500, Number(record.ballCount) || 0)),
-        result: record.result && typeof record.result === 'object' ? {
-            winner: cleanText(record.result.winner, 120),
-            completedAt: record.result.completedAt || null
-        } : null,
+        result: publicPinballResult(record.result),
+        history: Array.isArray(record.resultHistory)
+            ? record.resultHistory.slice(0, 50).map(publicPinballResult).filter(Boolean)
+            : [],
         updatedAt: record.updatedAt || null
     };
 }
@@ -1813,6 +1845,7 @@ function createPlatformApi({
                             config: null,
                             seed: '',
                             ballCount: 0,
+                            resultHistory: Array.isArray(current?.resultHistory) ? current.resultHistory : [],
                             lastRequestId: requestId,
                             updatedAt: now
                         };
@@ -1841,6 +1874,7 @@ function createPlatformApi({
                             config: sanitizePinballConfig(body.config),
                             seed,
                             ballCount: checked.ballCount,
+                            resultHistory: Array.isArray(current?.resultHistory) ? current.resultHistory : [],
                             lastRequestId: requestId,
                             updatedAt: now
                         };
@@ -1878,6 +1912,7 @@ function createPlatformApi({
                 const runId = cleanText(body.runId, 80);
                 const commandId = cleanText(body.commandId, 80);
                 const winner = cleanText(body.winner, 120);
+                const standings = sanitizePinballStandings(body.standings);
                 await withMutationLock(`pinball:${channelId}`, async () => {
                     const current = await repository.getRecord(channelId, 'setting', PINBALL_SESSION_ID);
                     if (current?.phase === 'complete' && current.runId === runId) {
@@ -1893,12 +1928,28 @@ function createPlatformApi({
                         replyJson(res, 422, { error: '현재 참가자 목록에 없는 결과입니다.' });
                         return;
                     }
+                    const expectedRanks = Array.from({ length: current.ballCount }, (_, index) => index + 1);
+                    if (
+                        standings.length !== current.ballCount
+                        || standings.some((standing, index) => standing.rank !== expectedRanks[index] || !participantNames.has(standing.name))
+                        || !standings.some((standing) => standing.name === winner)
+                    ) {
+                        replyJson(res, 422, { error: '현재 참가자와 일치하는 전체 핀볼 순위가 필요합니다.' });
+                        return;
+                    }
                     const now = new Date().toISOString();
+                    const result = { runId, winner, completedAt: now, standings };
+                    const resultHistory = [
+                        result,
+                        ...(Array.isArray(current.resultHistory) ? current.resultHistory : [])
+                            .filter((entry) => cleanText(entry?.runId, 80) !== runId)
+                    ].slice(0, 50);
                     const saved = await repository.upsertRecord(channelId, 'setting', {
                         ...current,
                         revision: Math.max(0, Number(current.revision) || 0) + 1,
                         phase: 'complete',
-                        result: { winner, completedAt: now },
+                        result,
+                        resultHistory,
                         updatedAt: now
                     });
                     touchChannel(channelId);

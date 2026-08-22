@@ -23,6 +23,14 @@ const isRemoteController = !isBroadcastMode && Boolean(remoteChannelId);
 document.documentElement.classList.toggle('broadcast-mode', isBroadcastMode);
 document.documentElement.classList.toggle('remote-display-mode', isRemoteDisplay);
 
+type PinballStanding = { rank: number; name: string; finished: boolean };
+type PinballResult = {
+  runId: string;
+  winner: string;
+  completedAt: string | null;
+  standings: PinballStanding[];
+};
+
 type RemoteSession = {
   revision: number;
   phase: 'idle' | 'prepared' | 'running' | 'complete';
@@ -32,7 +40,8 @@ type RemoteSession = {
   config: Partial<AppConfig> | null;
   seed: string;
   ballCount: number;
-  result?: { winner: string; completedAt: string | null } | null;
+  result?: PinballResult | null;
+  history?: PinballResult[];
 };
 
 type RoundContext = {
@@ -54,6 +63,7 @@ type RoundRecord = RoundContext & {
   completedAt: string;
   durationMs: number;
   entriesHash: string;
+  standings: PinballStanding[];
 };
 
 type PublicApi = {
@@ -64,6 +74,7 @@ type PublicApi = {
   start: () => Promise<void>;
   getHistory: () => RoundRecord[];
   getProgress: () => { finished: number; remaining: number; total: number };
+  getStandings: () => PinballStanding[];
 };
 
 declare global {
@@ -138,6 +149,11 @@ const dom = {
   broadcastSource: element<HTMLInputElement>('broadcastSourceInput'),
   copyBroadcastSource: element<HTMLButtonElement>('copyBroadcastSourceButton'),
   resetBroadcastSession: element<HTMLButtonElement>('resetBroadcastSessionButton'),
+  remoteResult: element<HTMLElement>('remoteResult'),
+  remoteResultWinner: element<HTMLElement>('remoteResultWinner'),
+  remoteResultStandings: element<HTMLOListElement>('remoteResultStandings'),
+  copyRemoteResult: element<HTMLButtonElement>('copyRemoteResultButton'),
+  exportRemoteResult: element<HTMLButtonElement>('exportRemoteResultButton'),
   privacyNotice: element<HTMLElement>('privacyNotice'),
 };
 
@@ -179,6 +195,7 @@ let remoteAppliedCommandId = '';
 let remoteStartCommandId = '';
 let remoteApplyQueue = Promise.resolve();
 let remoteCommandPending = false;
+let lastRemoteResult: PinballResult | null = null;
 
 function parseEntries(value = dom.entries.value): string[] {
   return value
@@ -444,6 +461,7 @@ function saveHistory(): void {
 async function completeRound(winner: string): Promise<void> {
   if (!currentRound || !running) return;
   const durationMs = Math.max(0, Date.now() - currentRound.startedAt);
+  const standings = roulette.getStandings();
   const record: RoundRecord = {
     ...currentRound,
     id: `${new Date().toISOString()}-${currentRound.seed.slice(0, 8)}`,
@@ -451,6 +469,7 @@ async function completeRound(winner: string): Promise<void> {
     completedAt: new Date().toISOString(),
     durationMs,
     entriesHash: await sha256(currentRound.entries.join('\n')),
+    standings,
   };
   running = false;
   dom.appShell.classList.remove('is-running');
@@ -469,7 +488,7 @@ async function completeRound(winner: string): Promise<void> {
   dom.resultDuration.textContent = formatDuration(record.durationMs);
   dom.resultButton.hidden = false;
   window.dispatchEvent(new CustomEvent('creo:roulette:result', { detail: record }));
-  if (isRemoteDisplay) void acknowledgeRemoteResult(winner);
+  if (isRemoteDisplay) void acknowledgeRemoteResult(record);
 }
 
 function formatDuration(durationMs: number): string {
@@ -526,6 +545,14 @@ async function copyText(value: string): Promise<void> {
   area.remove();
 }
 
+function remoteResultText(result: PinballResult | null): string {
+  if (!result) return '';
+  return [
+    `당첨: ${result.winner}`,
+    ...(result.standings || []).map((standing) => `${standing.rank}위\t${standing.name}`),
+  ].join('\n');
+}
+
 function remoteSessionUrl(suffix = ''): string {
   return `/api/platform/channels/${encodeURIComponent(remoteChannelId)}/pinball-session${suffix}`;
 }
@@ -567,6 +594,16 @@ function updateRemoteSnapshot(session: RemoteSession): void {
         ? `${session.result?.winner || '결과'} · 추첨 완료`
         : '송출 화면 연결 대기';
   dom.remoteStatus.textContent = status;
+  lastRemoteResult = session.result || session.history?.[0] || null;
+  dom.remoteResult.hidden = !lastRemoteResult;
+  dom.remoteResultWinner.textContent = lastRemoteResult?.winner || '';
+  dom.remoteResultStandings.replaceChildren();
+  for (const standing of lastRemoteResult?.standings || []) {
+    const row = document.createElement('li');
+    row.value = standing.rank;
+    row.textContent = standing.name;
+    dom.remoteResultStandings.append(row);
+  }
   updateCounts();
 }
 
@@ -598,12 +635,17 @@ async function sendRemoteCommand(action: 'reset' | 'prepare' | 'start'): Promise
   }
 }
 
-async function acknowledgeRemoteResult(winner: string): Promise<void> {
+async function acknowledgeRemoteResult(record: RoundRecord): Promise<void> {
   if (!remotePreparedRunId || !remoteStartCommandId) return;
   try {
     const response = await remoteRequest(remoteSessionUrl('/complete'), {
       method: 'POST',
-      body: JSON.stringify({ runId: remotePreparedRunId, commandId: remoteStartCommandId, winner }),
+      body: JSON.stringify({
+        runId: remotePreparedRunId,
+        commandId: remoteStartCommandId,
+        winner: record.winner,
+        standings: record.standings,
+      }),
     });
     updateRemoteSnapshot(response.session);
   } catch (error) {
@@ -800,6 +842,19 @@ function bindEvents(): void {
     await copyText(dom.broadcastSource.value);
     showToast('PRISM 송출 주소를 복사했습니다.');
   });
+  dom.copyRemoteResult.addEventListener('click', async () => {
+    if (!lastRemoteResult) return;
+    await copyText(remoteResultText(lastRemoteResult));
+    showToast('최근 순위를 복사했습니다.');
+  });
+  dom.exportRemoteResult.addEventListener('click', () => {
+    if (!lastRemoteResult) return;
+    downloadJson(`pinball-result-${lastRemoteResult.runId || 'latest'}.json`, {
+      version: 1,
+      channelId: remoteChannelId,
+      result: lastRemoteResult,
+    });
+  });
   dom.resetBroadcastSession.addEventListener('click', () => {
     if (remotePhase === 'running' && !window.confirm('송출 화면의 진행 상태를 초기화할까요? 실제 핀볼 화면은 새로고침해야 할 수 있습니다.')) return;
     void sendRemoteCommand('reset').then(() => showToast('송출 상태를 초기화했습니다.')).catch((error: Error) => showToast(error.message));
@@ -936,6 +991,7 @@ window.CreoMarbleRoulette = {
   start: startRound,
   getHistory: () => history.slice(),
   getProgress: () => roulette.getProgress(),
+  getStandings: () => roulette.getStandings(),
 };
 
 void initialize();

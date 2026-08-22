@@ -469,6 +469,14 @@ export class Roulette extends EventTarget {
     };
   }
 
+  public getStandings() {
+    return [...this._winners, ...this._marbles].map((marble, index) => ({
+      rank: index + 1,
+      name: marble.name,
+      finished: index < this._winners.length,
+    }));
+  }
+
   public getMaps() {
     return stages.map((stage, index) => {
       return {

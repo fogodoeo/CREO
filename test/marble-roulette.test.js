@@ -91,6 +91,9 @@ test('pinball separates an authenticated laptop controller from a clean fixed br
     assert.match(html, /id="remoteSessionSection"/);
     assert.match(html, /id="broadcastSourceInput"/);
     assert.match(html, /id="resetBroadcastSessionButton"/);
+    assert.match(html, /id="remoteResultStandings"/);
+    assert.match(html, /id="copyRemoteResultButton"/);
+    assert.match(html, /id="exportRemoteResultButton"/);
     assert.match(html, /id="renderFpsSelect"/);
     assert.match(app, /isRemoteDisplay = isBroadcastMode && Boolean\(remoteChannelId\)/);
     assert.match(app, /pinball-session/);
@@ -100,6 +103,9 @@ test('pinball separates an authenticated laptop controller from a clean fixed br
     assert.match(app, /sendRemoteCommand\('prepare'\)/);
     assert.match(app, /sendRemoteCommand\('start'\)/);
     assert.match(app, /acknowledgeRemoteResult/);
+    assert.match(app, /standings: record\.standings/);
+    assert.match(app, /session\.result \|\| session\.history\?\.\[0\]/);
+    assert.match(app, /getStandings: \(\) => roulette\.getStandings\(\)/);
     assert.match(app, /renderFps: Number\(dom\.renderFps\.value\) === 120 \? 120 : 60/);
     assert.match(styles, /html\.remote-display-mode \.stage-header/);
 });
