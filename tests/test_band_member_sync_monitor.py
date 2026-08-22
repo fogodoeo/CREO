@@ -3,12 +3,16 @@ from __future__ import annotations
 import json
 import logging
 import os
+from pathlib import Path
+import tempfile
+import threading
 from types import SimpleNamespace
 import unittest
 from unittest import mock
 
 from band_member_sync_monitor import (
     BaseBandJoinMonitor,
+    MemberSyncOutbox,
     SupabaseMemberDirectory,
     SyncedBandJoinMonitor,
 )
@@ -70,121 +74,216 @@ class SupabaseMemberDirectoryTests(unittest.TestCase):
 
 
 class SyncedMonitorHookTests(unittest.TestCase):
-    def test_only_successful_approval_is_synced(self) -> None:
+    def _bare_monitor(self, outbox_path: Path) -> SyncedBandJoinMonitor:
         monitor = object.__new__(SyncedBandJoinMonitor)
         monitor.logger = logging.getLogger("test")
-        monitor.profile_matcher = mock.Mock()
-        monitor.profile_matcher.match.return_value = SimpleNamespace(
-            eligible=True,
-            phone="01012345678",
-            name="홍길동",
-        )
-        monitor.phone_matcher = mock.Mock()
-        monitor.phone_matcher.match.return_value = SimpleNamespace(
-            eligible=True,
-            phone="01012345678",
-        )
-        monitor.member_directory = mock.Mock()
-        monitor.member_directory.upsert.return_value = (True, "synced")
-        request = SimpleNamespace(
-            display_name="홍길동 01012345678",
-            applicant_key="member-1",
-            request_id="member-1",
-            verified_phone="01012345678",
-            phone_verified=True,
-        )
+        monitor._last_member_sync = None
+        monitor._member_sync_results = {}
+        monitor.member_sync_outbox = MemberSyncOutbox(outbox_path, monitor.logger)
+        monitor.member_sync_interval_seconds = 300
+        monitor._member_sync_run_lock = threading.RLock()
+        monitor.stop_event = threading.Event()
+        return monitor
 
-        with mock.patch.object(
-            BaseBandJoinMonitor,
-            "perform_action",
-            return_value=(True, "승인 완료"),
-        ):
-            success, _message = monitor.perform_action(request, "approve")
-        self.assertTrue(success)
-        monitor.member_directory.upsert.assert_called_once_with(
-            phone="01012345678",
-            display_name="홍길동",
-            member_key="member-1",
-        )
+    def test_only_successful_approval_is_synced(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            monitor = self._bare_monitor(Path(directory) / "outbox.json")
+            monitor.profile_matcher = mock.Mock()
+            monitor.profile_matcher.match.return_value = SimpleNamespace(
+                eligible=True,
+                phone="01012345678",
+                name="홍길동",
+            )
+            monitor.phone_matcher = mock.Mock()
+            monitor.phone_matcher.match.return_value = SimpleNamespace(
+                eligible=True,
+                phone="01012345678",
+            )
+            monitor.member_directory = mock.Mock()
+            monitor.member_directory.upsert.return_value = (True, "synced")
+            request = SimpleNamespace(
+                display_name="홍길동 01012345678",
+                applicant_key="member-1",
+                request_id="member-1",
+                verified_phone="01012345678",
+                phone_verified=True,
+            )
 
-        monitor.member_directory.reset_mock()
-        with mock.patch.object(
-            BaseBandJoinMonitor,
-            "perform_action",
-            return_value=(True, "거절 완료"),
-        ):
-            monitor.perform_action(request, "reject")
-        monitor.member_directory.upsert.assert_not_called()
+            with mock.patch.object(
+                BaseBandJoinMonitor,
+                "perform_action",
+                return_value=(True, "승인 완료"),
+            ):
+                success, _message = monitor.perform_action(request, "approve")
+            self.assertTrue(success)
+            monitor.member_directory.upsert.assert_called_once_with(
+                phone="01012345678",
+                display_name="홍길동",
+                member_key="member-1",
+            )
+            self.assertEqual(monitor.member_sync_outbox.count(), 0)
+
+            monitor.member_directory.reset_mock()
+            with mock.patch.object(
+                BaseBandJoinMonitor,
+                "perform_action",
+                return_value=(True, "거절 완료"),
+            ):
+                monitor.perform_action(request, "reject")
+            monitor.member_directory.upsert.assert_not_called()
 
     def test_unavailable_verified_phone_is_never_synced(self) -> None:
-        monitor = object.__new__(SyncedBandJoinMonitor)
-        monitor.logger = logging.getLogger("test")
-        monitor.profile_matcher = mock.Mock()
-        monitor.profile_matcher.match.return_value = SimpleNamespace(
-            eligible=True,
-            phone="01012345678",
-            name="홍길동",
-        )
-        monitor.phone_matcher = mock.Mock()
-        monitor.phone_matcher.match.return_value = SimpleNamespace(
-            eligible=False,
-            phone="01099998888",
-        )
-        monitor.member_directory = mock.Mock()
-        request = SimpleNamespace(
-            display_name="홍길동 01012345678",
-            applicant_key="member-1",
-            request_id="member-1",
-            verified_phone="01099998888",
-            phone_verified=True,
-        )
+        with tempfile.TemporaryDirectory() as directory:
+            monitor = self._bare_monitor(Path(directory) / "outbox.json")
+            monitor.profile_matcher = mock.Mock()
+            monitor.profile_matcher.match.return_value = SimpleNamespace(
+                eligible=True,
+                phone="01012345678",
+                name="홍길동",
+            )
+            monitor.phone_matcher = mock.Mock()
+            monitor.phone_matcher.match.return_value = SimpleNamespace(
+                eligible=False,
+                phone="01099998888",
+            )
+            monitor.member_directory = mock.Mock()
+            request = SimpleNamespace(
+                display_name="홍길동 01012345678",
+                applicant_key="member-1",
+                request_id="member-1",
+                verified_phone="01099998888",
+                phone_verified=True,
+            )
 
-        with mock.patch.object(
-            BaseBandJoinMonitor,
-            "perform_action",
-            return_value=(True, "승인 완료"),
-        ):
-            success, _message = monitor.perform_action(request, "approve")
-        self.assertTrue(success)
-        monitor.member_directory.upsert.assert_not_called()
+            with mock.patch.object(
+                BaseBandJoinMonitor,
+                "perform_action",
+                return_value=(True, "승인 완료"),
+            ):
+                success, _message = monitor.perform_action(request, "approve")
+            self.assertTrue(success)
+            monitor.member_directory.upsert.assert_not_called()
+            self.assertEqual(monitor.member_sync_outbox.count(), 0)
 
     def test_accepted_mismatched_numbers_sync_as_two_local_membership_aliases(self) -> None:
-        monitor = object.__new__(SyncedBandJoinMonitor)
-        monitor.logger = logging.getLogger("test")
-        monitor._member_sync_results = {}
-        monitor.profile_matcher = mock.Mock()
-        monitor.profile_matcher.match.return_value = SimpleNamespace(
-            eligible=True,
-            phone="01012345678",
-            name="홍길동",
-        )
-        monitor.phone_matcher = mock.Mock()
-        monitor.phone_matcher.match.return_value = SimpleNamespace(
-            eligible=True,
-            phone="01099998888",
-        )
-        monitor.member_directory = mock.Mock()
-        monitor.member_directory.upsert.return_value = (True, "synced")
-        request = SimpleNamespace(
-            stable_key="mismatch-alias",
-            display_name="홍길동 01012345678",
-            applicant_key="member-1",
-            request_id="member-1",
-            verified_phone="01099998888",
-            phone_verified=True,
-        )
-        with mock.patch.object(
-            BaseBandJoinMonitor,
-            "perform_action",
-            return_value=(True, "승인 완료"),
-        ):
-            success, _message = monitor.perform_action(request, "approve")
-        self.assertTrue(success)
-        self.assertEqual(monitor.member_directory.upsert.call_count, 2)
-        self.assertEqual(
-            {call.kwargs["phone"] for call in monitor.member_directory.upsert.call_args_list},
-            {"01012345678", "01099998888"},
-        )
+        with tempfile.TemporaryDirectory() as directory:
+            monitor = self._bare_monitor(Path(directory) / "outbox.json")
+            monitor.profile_matcher = mock.Mock()
+            monitor.profile_matcher.match.return_value = SimpleNamespace(
+                eligible=True,
+                phone="01012345678",
+                name="홍길동",
+            )
+            monitor.phone_matcher = mock.Mock()
+            monitor.phone_matcher.match.return_value = SimpleNamespace(
+                eligible=True,
+                phone="01099998888",
+            )
+            monitor.member_directory = mock.Mock()
+            monitor.member_directory.upsert.return_value = (True, "synced")
+            request = SimpleNamespace(
+                stable_key="mismatch-alias",
+                display_name="홍길동 01012345678",
+                applicant_key="member-1",
+                request_id="member-1",
+                verified_phone="01099998888",
+                phone_verified=True,
+            )
+            with mock.patch.object(
+                BaseBandJoinMonitor,
+                "perform_action",
+                return_value=(True, "승인 완료"),
+            ):
+                success, _message = monitor.perform_action(request, "approve")
+            self.assertTrue(success)
+            self.assertEqual(monitor.member_directory.upsert.call_count, 2)
+            self.assertEqual(
+                {
+                    call.kwargs["phone"]
+                    for call in monitor.member_directory.upsert.call_args_list
+                },
+                {"01012345678", "01099998888"},
+            )
+
+    def test_failed_sync_is_retried_after_restart(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            outbox_path = Path(directory) / "outbox.json"
+            monitor = self._bare_monitor(outbox_path)
+            monitor.profile_matcher = mock.Mock()
+            monitor.profile_matcher.match.return_value = SimpleNamespace(
+                eligible=True,
+                phone="01012345678",
+                name="홍길동",
+            )
+            monitor.phone_matcher = mock.Mock()
+            monitor.phone_matcher.match.return_value = SimpleNamespace(
+                eligible=True,
+                phone="01012345678",
+            )
+            monitor.member_directory = mock.Mock()
+            monitor.member_directory.upsert.return_value = (False, "temporary")
+            request = SimpleNamespace(
+                stable_key="a" * 64,
+                display_name="홍길동 01012345678",
+                applicant_key="member-1",
+                request_id="member-1",
+                application_time="2026-08-22T00:00:00Z",
+            )
+            with mock.patch.object(
+                BaseBandJoinMonitor,
+                "perform_action",
+                return_value=(True, "승인 완료"),
+            ):
+                success, message = monitor.perform_action(request, "approve")
+            self.assertTrue(success)
+            self.assertIn("주기적으로 다시 시도", message)
+            self.assertEqual(monitor.member_sync_outbox.count(), 1)
+
+            restarted = self._bare_monitor(outbox_path)
+            restarted.member_directory = mock.Mock()
+            restarted.member_directory.upsert.return_value = (True, "synced")
+            restarted._sync_pending_members()
+
+            restarted.member_directory.upsert.assert_called_once_with(
+                phone="01012345678",
+                display_name="홍길동",
+                member_key="member-1",
+            )
+            self.assertEqual(restarted.member_sync_outbox.count(), 0)
+            self.assertEqual(MemberSyncOutbox(outbox_path, restarted.logger).count(), 0)
+
+    def test_duplicate_queue_input_collapses_to_one_durable_record(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "outbox.json"
+            outbox = MemberSyncOutbox(path, logging.getLogger("test"))
+            for _ in range(3):
+                self.assertTrue(
+                    outbox.enqueue(
+                        "b" * 64,
+                        phones=["01012345678"],
+                        display_name="홍길동",
+                        member_key="member-1",
+                    )
+                )
+            self.assertEqual(outbox.count(), 1)
+            self.assertEqual(MemberSyncOutbox(path, logging.getLogger("test")).count(), 1)
+
+    def test_runtime_status_exposes_queue_health_without_member_pii(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            monitor = self._bare_monitor(Path(directory) / "outbox.json")
+            monitor.member_directory = SimpleNamespace(enabled=True, configured=True)
+            monitor.member_sync_outbox.enqueue(
+                "c" * 64,
+                phones=["01012345678"],
+                display_name="홍길동",
+                member_key="member-1",
+            )
+            status = monitor.runtime_status_extras()
+            serialized = json.dumps(status, ensure_ascii=False)
+            self.assertEqual(status["member_sync"]["pending"], 1)
+            self.assertTrue(status["member_sync"]["outbox_persistent"])
+            self.assertNotIn("01012345678", serialized)
+            self.assertNotIn("홍길동", serialized)
 
 
 if __name__ == "__main__":

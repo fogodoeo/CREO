@@ -34,6 +34,14 @@ def enabled(name: str, default: bool = False) -> bool:
     return value.strip().lower() in TRUE_VALUES
 
 
+def member_sync_interval_seconds() -> int:
+    try:
+        supplied = float(os.environ.get("BAND_MEMBER_SYNC_INTERVAL_SECONDS", "300"))
+    except ValueError:
+        supplied = 300
+    return max(5, int(supplied))
+
+
 def write_disabled_status() -> None:
     try:
         STATUS_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -92,6 +100,9 @@ def write_disabled_status() -> None:
                 "enabled": sync_enabled,
                 "configured": sync_configured,
                 "last_result": None,
+                "pending": 0,
+                "interval_seconds": member_sync_interval_seconds(),
+                "outbox_persistent": True,
             },
         }
         temporary = STATUS_PATH.with_suffix(STATUS_PATH.suffix + ".tmp")

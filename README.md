@@ -58,7 +58,7 @@ npm start
 
 CREOK Starter에서는 기존 승인 엔진을 별도 Python 프로세스로 실행합니다. Chrome 프로필과 중복 처리 상태는 Persistent Disk의 `/var/data/band-monitor` 아래에만 저장합니다. 모니터가 종료되면 감독 프로세스가 다시 시작하지만 Node 웹서버는 계속 실행됩니다. 재배포 중 접수된 신청은 BAND의 미처리 목록을 다시 조회해 처리합니다.
 
-운영 전에는 Render Environment에서 `BAND_MONITOR_ENABLED=true`, `BAND_CHROME_HEADLESS=true`, `BAND_START_URL`, 회원 명단 동기화 변수와 로그인 세션 Secret을 설정합니다. 새 CREOK 배포가 `CONNECTED`로 1분 이상 유지된 것을 확인하기 전에는 기존 승인 모니터를 동시에 켜지 않습니다.
+운영 전에는 Render Environment에서 `BAND_MONITOR_ENABLED=true`, `BAND_CHROME_HEADLESS=true`, `BAND_START_URL`, 회원 명단 동기화 변수와 로그인 세션 Secret을 설정합니다. 승인 직후 회원 명단 저장에 실패한 항목은 Persistent Disk의 비공개 대기열에 남고 기본 300초 간격으로 자동 재시도합니다. 간격은 `BAND_MEMBER_SYNC_INTERVAL_SECONDS`로 조정할 수 있습니다. 새 CREOK 배포가 `CONNECTED`로 1분 이상 유지된 것을 확인하기 전에는 기존 승인 모니터를 동시에 켜지 않습니다.
 
 ## CREWARTS BAND 회원 확인
 
