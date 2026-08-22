@@ -5,6 +5,7 @@ const assert = require('node:assert/strict');
 const { Readable } = require('node:stream');
 const {
     CREWART_ROULETTE_OUTCOMES,
+    chooseCrewartRouletteMultiplier,
     createPlatformApi,
     crewartAssignmentWeights,
     floorContribution
@@ -73,7 +74,7 @@ async function call(api, method, pathname, body, admin = 'secret', headers = {})
     return response;
 }
 
-test('CREWART weighted assignment excludes the leader and roulette has a 1.2 expected multiplier', () => {
+test('CREWART weighted assignment excludes the leader and roulette follows the configured outcome table', () => {
     const weights = crewartAssignmentWeights([
         { status: 'sold', soldPrice: 100, attributes: { crewart_house_key: 'R' } },
         { status: 'sold', soldPrice: 80, attributes: { crewart_house_key: 'G' } },
@@ -92,7 +93,18 @@ test('CREWART weighted assignment excludes the leader and roulette has a 1.2 exp
         (sum, outcome) => sum + outcome.multiplier * outcome.weight / 100,
         0
     );
-    assert.equal(expected, 1.2);
+    assert.ok(Math.abs(expected - 1.55) < Number.EPSILON * 4);
+    assert.deepEqual(CREWART_ROULETTE_OUTCOMES, [
+        { multiplier: 0.25, weight: 20 },
+        { multiplier: 0.5, weight: 30 },
+        { multiplier: 2, weight: 25 },
+        { multiplier: 3, weight: 15 },
+        { multiplier: 4, weight: 10 }
+    ]);
+    assert.deepEqual(
+        [0, 19, 20, 49, 50, 74, 75, 89, 90, 99].map((value) => chooseCrewartRouletteMultiplier(() => value)),
+        [0.25, 0.25, 0.5, 0.5, 2, 2, 3, 3, 4, 4]
+    );
     assert.equal(floorContribution(150000, 0.25), 30000);
     assert.equal(floorContribution(150000, 0.5), 70000);
 });
@@ -876,7 +888,7 @@ test('CREWART contribution roulette is winner-only, idempotent, persistent, and 
     });
     assert.equal(first.status, 201, first.body);
     assert.equal(first.json().duplicate, false);
-    assert.ok([0.25, 0.5, 1, 2, 5].includes(first.json().event.multiplier));
+    assert.ok([0.25, 0.5, 2, 3, 4].includes(first.json().event.multiplier));
     assert.equal(
         first.json().event.contributionAmount,
         floorContribution(150000, first.json().event.multiplier)

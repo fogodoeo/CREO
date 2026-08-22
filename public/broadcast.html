@@ -29,7 +29,7 @@
     <script src="auction-contract.js?v=20260819-contract-v1"></script>
     <script src="supabase-bridge.js?v=20260819-round3-seed-v2"></script>
     <script src="channel-broadcast-bridge.js?v=20260821-active-state-v2"></script>
-    <script src="event-modules.js?v=20260822-crewart-contribution-v1"></script>
+    <script src="event-modules.js?v=20260822-crewart-contribution-v2"></script>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link
         href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
@@ -7412,7 +7412,7 @@
             const sessionId = state.sessionId;
             const begin = () => {
                 if (state.generation !== generation || state.sessionId !== sessionId) return;
-                const values = [0.25, 0.5, 1, 2, 5];
+                const values = [0.25, 0.5, 2, 3, 4];
                 const finalValue = Number(event.multiplier) || 1;
                 const reel = [];
                 for (let index = 0; index < 15; index += 1) reel.push(values[index % values.length]);

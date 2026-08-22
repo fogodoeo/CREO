@@ -30,10 +30,10 @@ const CREWART_ROULETTE_DURATION_MS = 2000;
 const CREWART_ROULETTE_HOLD_MS = 360;
 const CREWART_ROULETTE_OUTCOMES = Object.freeze([
     Object.freeze({ multiplier: 0.25, weight: 20 }),
-    Object.freeze({ multiplier: 0.5, weight: 20 }),
-    Object.freeze({ multiplier: 1, weight: 30 }),
+    Object.freeze({ multiplier: 0.5, weight: 30 }),
     Object.freeze({ multiplier: 2, weight: 25 }),
-    Object.freeze({ multiplier: 5, weight: 5 })
+    Object.freeze({ multiplier: 3, weight: 15 }),
+    Object.freeze({ multiplier: 4, weight: 10 })
 ]);
 const BROADCAST_CONFIG_KEY = /^[a-z0-9][a-z0-9_:-]{0,79}$/i;
 const SHIPPING_RATE_CONFIG_KEYS = Object.freeze({
@@ -998,7 +998,7 @@ function createPlatformApi({
                 ? cleanText(event.houseKey, 8).toUpperCase()
                 : '',
             baseAmount: Math.max(0, Number(event.baseAmount) || 0),
-            multiplier: [0.25, 0.5, 1, 2, 5].includes(multiplier) ? multiplier : 1,
+            multiplier: [0.25, 0.5, 2, 3, 4].includes(multiplier) ? multiplier : 1,
             contributionAmount: Math.max(0, Number(event.contributionAmount) || 0),
             startedAt: cleanText(event.startedAt, 80),
             revealAt: cleanText(event.revealAt, 80)

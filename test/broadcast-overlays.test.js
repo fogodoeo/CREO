@@ -79,6 +79,7 @@ test('CREWART P3 contribution roulette is a two-second FIFO reveal with delayed 
     assert.match(broadcast, /class="p3-contribution-roulette-window"/);
     assert.match(broadcast, /state\.queue\.push\(\{ \.\.\.event, sequence \}\)/);
     assert.match(broadcast, /const duration = 2000/);
+    assert.match(broadcast, /const values = \[0\.25, 0\.5, 2, 3, 4\]/);
     assert.match(broadcast, /writeP3RouletteCursor\(sessionId, event\.sequence\)/);
     assert.match(broadcast, /refreshCrewartContributionBoard\(\)/);
     assert.match(broadcast, /processCrewartContributionRoulette\(window\.__creoAudience \|\| null\)/);

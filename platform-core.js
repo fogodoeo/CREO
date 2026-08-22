@@ -374,7 +374,7 @@ function publicItemAttributes(item = {}) {
             ? cleanText(attributes.crewart_house_source, 16)
             : '',
         crewart_contribution_base: Number.isFinite(contributionBase) && contributionBase >= 0 ? contributionBase : 0,
-        crewart_contribution_multiplier: [0.25, 0.5, 1, 2, 5].includes(contributionMultiplier)
+        crewart_contribution_multiplier: [0.25, 0.5, 1, 2, 3, 4].includes(contributionMultiplier)
             ? contributionMultiplier
             : 1,
         crewart_contribution_amount: Number.isFinite(contributionAmount) && contributionAmount >= 0
