@@ -24,7 +24,10 @@ const PORT = Number(process.env.PORT || 10000);
 const HOST = process.env.HOST || '0.0.0.0';
 const PUBLIC_DIR = path.resolve(__dirname, 'public');
 const bandOAuth = createBandOAuth();
-const bandMembership = createBandMembership();
+let platformApi;
+const bandMembership = createBandMembership({
+    isAdmin: (req) => platformApi?.isAdmin(req) || false
+});
 const readBandMonitorStatus = createBandMonitorStatusReader();
 const supabasePlatformRepository = new SupabaseConfigRepository();
 const platformStorageMode = String(process.env.CREO_PLATFORM_STORAGE || 'sqlite').toLowerCase();
@@ -37,7 +40,7 @@ const crewartHouseService = createCrewartHouseService({
     repository: supabasePlatformRepository,
     secret: bandMembership.config.sessionSecret
 });
-const platformApi = createPlatformApi({ repository: platformRepository, crewartHouseService, bandMembership });
+platformApi = createPlatformApi({ repository: platformRepository, crewartHouseService, bandMembership });
 const captureStorage = new CaptureStorage();
 const captureApi = createCaptureApi({
     repository: platformRepository,

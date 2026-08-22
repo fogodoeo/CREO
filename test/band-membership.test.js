@@ -107,6 +107,56 @@ test('an unknown number returns only the join destination', async () => {
     });
 });
 
+test('an authenticated admin can repair a member missed at a deploy boundary', async () => {
+    const calls = [];
+    const membership = createBandMembership({
+        env: ENV,
+        now: () => NOW,
+        isAdmin: async (req) => req.headers['x-creo-admin'] === 'secret',
+        fetchImpl: async (url, options) => {
+            calls.push({ url: new URL(url), options });
+            return jsonResponse(null, 201);
+        },
+        logger: { error() {} }
+    });
+
+    const unauthorized = new CapturedResponse();
+    await membership.handle(
+        request('POST', JSON.stringify({ phone: '01022222222', displayName: '테스트' })),
+        unauthorized,
+        new URL('https://creok.example.com/api/band-membership/admin-sync')
+    );
+    assert.equal(unauthorized.status, 401);
+    assert.equal(calls.length, 0);
+
+    const synced = new CapturedResponse();
+    await membership.handle(
+        request('POST', JSON.stringify({ phone: '01022222222', displayName: '테스트' }), {
+            'x-creo-admin': 'secret'
+        }),
+        synced,
+        new URL('https://creok.example.com/api/band-membership/admin-sync')
+    );
+    assert.equal(synced.status, 200);
+    assert.deepEqual(JSON.parse(synced.body), { ok: true, synced: true });
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].url.searchParams.get('on_conflict'), 'phone_normalized');
+    assert.equal(calls[0].options.method, 'POST');
+    const stored = JSON.parse(calls[0].options.body);
+    assert.equal(stored.phone_normalized, '01022222222');
+    assert.equal(stored.display_name, '테스트');
+    assert.equal(stored.is_active, true);
+
+    const verified = new CapturedResponse();
+    await membership.handle(
+        request('POST', JSON.stringify({ phone: '01022222222' }), { host: 'creok.example.com' }),
+        verified,
+        new URL('https://creok.example.com/api/band-membership/verify')
+    );
+    assert.equal(JSON.parse(verified.body).member, true);
+    assert.equal(calls.length, 1, 'successful sync should prime the positive lookup cache');
+});
+
 test('the same phone keeps a stable anonymous member scope across random sessions', async () => {
     const membership = createBandMembership({
         env: { ...ENV, BAND_MEMBER_RATE_LIMIT_ATTEMPTS: '20' },

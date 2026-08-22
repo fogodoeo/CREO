@@ -200,6 +200,7 @@ function createBandMembership(options = {}) {
     const fetchImpl = options.fetchImpl || globalThis.fetch;
     const now = options.now || Date.now;
     const logger = options.logger || console;
+    const isAdmin = options.isAdmin;
     const allowAttempt = createRateLimiter(config, now);
     const memberCache = new Map();
     const memberLookups = new Map();
@@ -250,6 +251,47 @@ function createBandMembership(options = {}) {
         })().finally(() => memberLookups.delete(phone));
         memberLookups.set(phone, lookup);
         return lookup;
+    }
+
+    async function upsertMember({ phone, displayName = '', memberKey = '' }) {
+        const normalizedPhone = normalizePhone(phone);
+        if (!normalizedPhone) throw new Error('invalid phone');
+        const cleanName = String(displayName || '')
+            .replace(/[\u0000-\u001f\u007f]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .slice(0, 120);
+        const cleanMemberKey = String(memberKey || '')
+            .replace(/[\u0000-\u001f\u007f]/g, '')
+            .trim()
+            .slice(0, 160);
+        const query = new URL(`${config.url}/rest/v1/${config.table}`);
+        query.searchParams.set('on_conflict', config.phoneColumn);
+        const nowIso = new Date(now()).toISOString();
+        const body = {
+            [config.phoneColumn]: normalizedPhone,
+            [config.activeColumn]: true,
+            [config.displayNameColumn]: cleanName || null,
+            [config.memberKeyColumn]: cleanMemberKey || null,
+            updated_at: nowIso
+        };
+        const response = await fetchImpl(query, {
+            method: 'POST',
+            headers: {
+                apikey: config.serviceRoleKey,
+                Authorization: `Bearer ${config.serviceRoleKey}`,
+                'Content-Type': 'application/json',
+                Prefer: 'resolution=merge-duplicates,return=minimal'
+            },
+            body: JSON.stringify(body)
+        });
+        if (!response.ok) throw new Error(`Supabase ${response.status}`);
+        memberCache.set(normalizedPhone, {
+            member: true,
+            expiresAt: now() + config.positiveCacheMs
+        });
+        identityCache.clear();
+        return true;
     }
 
     async function lookupMemberSubject(column, value) {
@@ -347,6 +389,36 @@ function createBandMembership(options = {}) {
             return true;
         }
 
+        if (url.pathname === '/api/band-membership/admin-sync' && req.method === 'POST') {
+            if (typeof isAdmin !== 'function' || !await isAdmin(req)) {
+                sendJson(res, 401, { error: '관리자 인증이 필요합니다.' });
+                return true;
+            }
+            let input;
+            try { input = await readSmallJson(req); }
+            catch {
+                sendJson(res, 400, { error: '회원 정보를 확인해주세요.' });
+                return true;
+            }
+            const phone = normalizePhone(input.phone);
+            if (!phone) {
+                sendJson(res, 400, { error: '010으로 시작하는 휴대전화번호 11자리를 입력해주세요.' });
+                return true;
+            }
+            try {
+                await upsertMember({
+                    phone,
+                    displayName: input.displayName,
+                    memberKey: input.memberKey
+                });
+                sendJson(res, 200, { ok: true, synced: true });
+            } catch (error) {
+                logger.error?.('[band-membership] admin sync failed:', error.message);
+                sendJson(res, 502, { error: '회원 명단에 등록하지 못했어요.' });
+            }
+            return true;
+        }
+
         if (url.pathname === '/api/band-membership/verify' && req.method === 'POST') {
             let input;
             try { input = await readSmallJson(req); }
@@ -403,7 +475,7 @@ function createBandMembership(options = {}) {
         return true;
     }
 
-    return { config, handle, lookupMember, resolveMemberSubject };
+    return { config, handle, lookupMember, upsertMember, resolveMemberSubject };
 }
 
 module.exports = {
