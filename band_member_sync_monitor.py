@@ -496,47 +496,45 @@ class SyncedBandJoinMonitor(BaseBandJoinMonitor):
               if (/010[^0-9]*\d/.test(value)) profiles.add(value);
             });
           };
-          const candidates = [
+          const scrollTargets = () => [...new Set([
             document.scrollingElement,
             ...document.querySelectorAll('main *')
-          ].filter(Boolean).filter(
+          ])].filter(Boolean).filter(
             (element) => Number(element.scrollHeight) > Number(element.clientHeight) + 80
           );
-          const scroller = candidates.sort(
-            (left, right) =>
-              (right.scrollHeight - right.clientHeight) -
-              (left.scrollHeight - left.clientHeight)
-          )[0] || document.scrollingElement;
-          const setTop = (value) => {
-            if (scroller === document.scrollingElement) window.scrollTo(0, value);
-            else scroller.scrollTop = value;
-          };
-          const top = () => scroller === document.scrollingElement
-            ? window.scrollY
-            : scroller.scrollTop;
-          setTop(0);
-          await wait(150);
+          window.scrollTo(0, 0);
+          scrollTargets().forEach((element) => {
+            if (element === document.scrollingElement) return;
+            try { element.scrollTop = 0; } catch (_error) {}
+          });
+          await wait(250);
           let stable = 0;
           let before = -1;
           let loops = 0;
-          for (; loops < 120 && stable < 5; loops += 1) {
+          for (; loops < 150 && stable < 12; loops += 1) {
             collect();
             stable = profiles.size === before ? stable + 1 : 0;
             before = profiles.size;
-            const viewport = Number(scroller.clientHeight || window.innerHeight || 600);
-            setTop(Math.min(
-              top() + Math.max(400, viewport * 0.85),
-              Number(scroller.scrollHeight)
-            ));
-            await wait(100);
-            if (top() + viewport >= Number(scroller.scrollHeight) - 5) {
-              setTop(Number(scroller.scrollHeight));
-              await wait(120);
-              collect();
-              if (profiles.size === before) stable += 1;
+            const viewport = Number(window.innerHeight || 600);
+            window.scrollBy(0, Math.max(400, viewport * 0.85));
+            for (const element of scrollTargets()) {
+              if (element === document.scrollingElement) continue;
+              const step = Math.max(400, Number(element.clientHeight || viewport) * 0.85);
+              try {
+                element.scrollTop = Math.min(
+                  Number(element.scrollTop) + step,
+                  Number(element.scrollHeight)
+                );
+              } catch (_error) {}
             }
+            await wait(180);
           }
-          setTop(0);
+          collect();
+          window.scrollTo(0, 0);
+          scrollTargets().forEach((element) => {
+            if (element === document.scrollingElement) return;
+            try { element.scrollTop = 0; } catch (_error) {}
+          });
           resolve({ok: profiles.size > 0, profiles: [...profiles], loops});
         })
         """
@@ -551,7 +549,7 @@ class SyncedBandJoinMonitor(BaseBandJoinMonitor):
                     "returnByValue": True,
                     "awaitPromise": True,
                 },
-                timeout=25,
+                timeout=35,
             )
             value = monitor_module.runtime_value(result)
         except Exception as exc:
