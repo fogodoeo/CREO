@@ -1227,6 +1227,30 @@ test('monitor item creation fails closed when the active channel changes', async
     assert.equal(activeCreate.status, 201, activeCreate.body);
 });
 
+test('monitor item creation allocates consecutive lot numbers inside the channel lock', async () => {
+    const repository = new MemoryRepository();
+    const api = createPlatformApi({ repository, logger: { error() {} } });
+    await call(api, 'POST', '/api/platform/channels/alpha/items', {
+        record: { id: 'existing_item', lotNumber: 4, name: '기존 개체' }
+    });
+    const [first, second] = await Promise.all([
+        call(api, 'POST', '/api/platform/channels/alpha/items', {
+            requireActiveChannel: true, allocateNextLot: true,
+            record: { id: 'auto_item_a', lotNumber: 999, name: '자동 개체 A' }
+        }),
+        call(api, 'POST', '/api/platform/channels/alpha/items', {
+            requireActiveChannel: true, allocateNextLot: true,
+            record: { id: 'auto_item_b', lotNumber: 999, name: '자동 개체 B' }
+        })
+    ]);
+    assert.equal(first.status, 201, first.body);
+    assert.equal(second.status, 201, second.body);
+    const lots = (await repository.listRecords('alpha', 'item'))
+        .map((item) => item.lotNumber)
+        .sort((a, b) => a - b);
+    assert.deepEqual(lots, [4, 5, 6]);
+});
+
 test('brand assets are channel-scoped and only active assets reach the public overlay', async () => {
     const repository = new MemoryRepository();
     const api = createPlatformApi({ repository, logger: { error() {} } });

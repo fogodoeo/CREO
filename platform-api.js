@@ -1944,7 +1944,14 @@ function createPlatformApi({
                         }
                     }
                     const data = await workspace(channelId);
-                    const record = sanitizeRecord(type, body.record);
+                    let record = sanitizeRecord(type, body.record);
+                    if (type === 'item' && body.allocateNextLot === true) {
+                        const nextLotNumber = data.items.reduce(
+                            (maximum, item) => Math.max(maximum, Number(item.lotNumber) || 0),
+                            0
+                        ) + 1;
+                        record = { ...record, lotNumber: nextLotNumber };
+                    }
                     const errors = validateRecord(type, record, { ...data, groups: channel.groups || [] });
                     if (errors.length) {
                         replyJson(res, 422, { error: errors.join(' '), errors });
