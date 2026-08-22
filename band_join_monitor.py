@@ -44,7 +44,7 @@ from typing import Any, Iterable, Mapping, Optional
 
 
 APP_NAME = "BAND 가입 신청 모니터"
-VERSION = "0.3.4"
+VERSION = "0.3.5"
 DEFAULT_CONFIG_FILE = "band_join_monitor_config.json"
 DOM_SIGNAL_BINDING = "__bandJoinMonitorSignal"
 BAND_NO_RE = re.compile(r"/band/(\d+)")
@@ -2319,10 +2319,17 @@ class BandJoinMonitor:
             name = name.strip()
             if not name or name.lower() in ignored:
                 continue
+            normalized_value = value.strip()
+            if (
+                len(normalized_value) >= 2
+                and normalized_value[0] == '"'
+                and normalized_value[-1] == '"'
+            ):
+                normalized_value = normalized_value[1:-1]
             cookies.append(
                 {
                     "name": name,
-                    "value": value.strip(),
+                    "value": normalized_value,
                     "domain": ".band.us",
                     "path": "/",
                     "secure": True,

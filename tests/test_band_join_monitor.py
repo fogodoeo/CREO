@@ -1145,6 +1145,33 @@ class FollowUpQuestionTests(unittest.TestCase):
             self.assertEqual(monitor._bootstrap_cookie_source, "json")
             monitor.stop()
 
+    def test_bootstrap_cookie_header_removes_http_quote_delimiters(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config = json.loads(json.dumps(DEFAULT_CONFIG))
+            config["log_file"] = str(Path(temp_dir) / "monitor.log")
+            config["state_file"] = str(Path(temp_dir) / "state.json")
+            config["diagnostic_file"] = str(Path(temp_dir) / "diagnostic.jsonl")
+            with mock.patch.dict(
+                os.environ,
+                {
+                    "BAND_COOKIE_HEADER": (
+                        'plain=plain-value; quoted="token/with=padding"'
+                    )
+                },
+                clear=False,
+            ):
+                monitor = BandJoinMonitor(config, Path(temp_dir))
+
+            connection = _CookieConnection()
+            monitor._install_bootstrap_cookies(connection)  # type: ignore[arg-type]
+
+            values = {
+                cookie["name"]: cookie["value"] for cookie in connection.cookies
+            }
+            self.assertEqual(values["plain"], "plain-value")
+            self.assertEqual(values["quoted"], "token/with=padding")
+            monitor.stop()
+
     def test_same_bootstrap_does_not_overwrite_persisted_chrome_session(self) -> None:
         secret = "persisted-session-secret"
         with tempfile.TemporaryDirectory() as temporary_directory, mock.patch.dict(
