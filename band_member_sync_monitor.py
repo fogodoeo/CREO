@@ -14,7 +14,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from typing import Any
+from typing import Any, Mapping
 
 import band_join_monitor as monitor_module
 

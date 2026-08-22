@@ -386,6 +386,52 @@ class SyncedMonitorHookTests(unittest.TestCase):
             )
             self.assertEqual(monitor.member_directory.upsert_many.call_count, 2)
 
+    def test_browser_roster_result_reaches_the_directory_reconciler(self) -> None:
+        class FakeConnection:
+            def __init__(self, *_args, **_kwargs):
+                self.closed = False
+
+            def connect(self):
+                return None
+
+            def call(self, method, _params=None, timeout=8):
+                del timeout
+                if method == "Runtime.evaluate":
+                    return {
+                        "result": {
+                            "value": {
+                                "ok": True,
+                                "profiles": ["홍길동/서울/01012345678"],
+                            }
+                        }
+                    }
+                return {}
+
+            def close(self):
+                self.closed = True
+
+        with tempfile.TemporaryDirectory() as directory:
+            monitor = self._bare_monitor(Path(directory) / "outbox.json")
+            monitor.member_directory = mock.Mock(configured=True)
+            monitor.member_directory.upsert_many.return_value = (True, "synced")
+            monitor.profile_matcher = mock.Mock()
+            monitor.profile_matcher.match.return_value = SimpleNamespace(
+                eligible=True,
+                phone="01012345678",
+            )
+            monitor._member_roster_tab = mock.Mock(
+                return_value={"webSocketDebuggerUrl": "ws://127.0.0.1/member"}
+            )
+
+            with mock.patch.object(
+                __import__("band_member_sync_monitor").monitor_module,
+                "CDPConnection",
+                FakeConnection,
+            ):
+                self.assertTrue(monitor._reconcile_member_roster())
+            monitor.member_directory.upsert_many.assert_called_once()
+            self.assertEqual(monitor._last_roster_reconcile["result"], "synced")
+
 
 if __name__ == "__main__":
     unittest.main()
