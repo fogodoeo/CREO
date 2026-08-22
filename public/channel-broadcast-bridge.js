@@ -95,6 +95,7 @@
             startTime: attributes.start_time || '',
             updated_at: item.updatedAt || '',
             updatedAt: item.updatedAt || '',
+            attributes: { ...attributes },
             crewartHouseKey: attributes.crewart_house_key || '',
             crewartHouseSource: attributes.crewart_house_source || ''
         };
