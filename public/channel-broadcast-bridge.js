@@ -207,6 +207,7 @@
             if (!force && broadcastCache && now - broadcastCacheAt < Math.max(350, Number(maxAgeMs) || 900)) return broadcastCache;
             broadcastCache = await request(`channels/${encodeURIComponent(channelId)}/broadcast`);
             target.__creoAudience = broadcastCache?.audience || null;
+            target.__creoBroadcastState = broadcastCache?.state || null;
             broadcastCacheAt = now;
             return broadcastCache;
         }

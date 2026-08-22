@@ -6,6 +6,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const broadcast = fs.readFileSync(path.join(__dirname, '..', 'public', 'broadcast.html'), 'utf8');
+const channelBridge = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-broadcast-bridge.js'), 'utf8');
 const preview = fs.readFileSync(path.join(__dirname, '..', 'public', 'preview.html'), 'utf8');
 const creyonCss = fs.readFileSync(path.join(__dirname, '..', 'public', 'broadcast-creyon.css'), 'utf8');
 const crewartCss = fs.readFileSync(path.join(__dirname, '..', 'public', 'broadcast-crewart.css'), 'utf8');
@@ -74,7 +75,7 @@ test('CREWART new bidders use a two-second persistent FIFO reel without blocking
     assert.match(broadcast, /processCrewartAudienceReveals\(window\.__creoAudience \|\| null\)/);
 });
 
-test('CREWART P3 contribution roulette is a two-second FIFO reveal with delayed score refresh', () => {
+test('CREWART P3 contribution roulette is a two-second FIFO reveal with a persistent result panel', () => {
     assert.match(broadcast, /id="p3-contribution-roulette-overlay"/);
     assert.match(broadcast, /class="p3-contribution-roulette-window"/);
     assert.match(broadcast, /state\.queue\.push\(\{ \.\.\.event, sequence \}\)/);
@@ -82,6 +83,13 @@ test('CREWART P3 contribution roulette is a two-second FIFO reveal with delayed 
     assert.match(broadcast, /const values = \[0\.25, 0\.5, 2, 3, 4\]/);
     assert.match(broadcast, /writeP3RouletteCursor\(sessionId, event\.sequence\)/);
     assert.match(broadcast, /refreshCrewartContributionBoard\(\)/);
+    assert.match(channelBridge, /target\.__creoBroadcastState = broadcastCache\?\.state \|\| null/);
+    assert.match(broadcast, /broadcastMode && broadcastMode !== 'sold'/);
+    assert.match(broadcast, /showCrewartRouletteReady\(\)/);
+    assert.match(broadcast, /showCrewartRouletteResult\(event\)/);
+    assert.match(broadcast, /String\(latest\.itemId \|\| ''\) === activeItemId/);
+    assert.match(broadcast, /직전 낙찰자의 입력을 기다리는 중/);
+    assert.match(broadcast, /formatCrewartWon\(event\.baseAmount\)\} → \$\{formatCrewartWon\(event\.contributionAmount\)/);
     assert.match(broadcast, /processCrewartContributionRoulette\(window\.__creoAudience \|\| null\)/);
     assert.doesNotMatch(broadcast, /룰렛.*sendMessage|sendMessage.*룰렛/);
 });

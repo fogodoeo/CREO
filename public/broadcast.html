@@ -28,7 +28,7 @@
     <meta http-equiv="Expires" content="0">
     <script src="auction-contract.js?v=20260819-contract-v1"></script>
     <script src="supabase-bridge.js?v=20260819-round3-seed-v2"></script>
-    <script src="channel-broadcast-bridge.js?v=20260821-active-state-v2"></script>
+    <script src="channel-broadcast-bridge.js?v=20260823-roulette-state-v1"></script>
     <script src="event-modules.js?v=20260822-crewart-contribution-v2"></script>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link
@@ -212,6 +212,12 @@
         .p3-contribution-roulette-value[data-house="G"] { background:#328b5b; }
         .p3-contribution-roulette-value[data-house="B"] { background:#3c73bd; }
         .p3-contribution-roulette-value[data-house="Y"] { background:#d2a33a; }
+        .p3-contribution-roulette-value[data-house="READY"] {
+            background:linear-gradient(135deg,rgba(86,72,104,.96),rgba(42,34,53,.98));
+            color:#e8dcc0;
+            font-size:clamp(34px,4vw,62px);
+            letter-spacing:.06em;
+        }
         .p2-live-bidders-head { display: flex; align-items: center; gap: 9px; margin: 0 0 7px 3px; color: #d9b05c; font-size: calc(var(--p2-bid-fs) * .78); font-weight: 900; letter-spacing: .08em; }
         .p2-live-bidders-head::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #ef4444; box-shadow: 0 0 10px rgba(239,68,68,.72); }
         .p2-live-bidders-count { margin-left: auto; color: rgba(248,250,252,.65); font-size: .9em; letter-spacing: 0; }
@@ -7393,6 +7399,49 @@
             return `${Math.floor(won / 10000).toLocaleString('ko-KR')}만원`;
         }
 
+        function visibleCrewartWinner(value) {
+            return String(value || '').replace(/[\u200b-\u200f\u2060\ufeff]/gi, '').trim() || '직전 낙찰자';
+        }
+
+        function showCrewartRouletteReady() {
+            const overlay = document.getElementById('p3-contribution-roulette-overlay');
+            if (!overlay) return;
+            overlay.innerHTML = `
+                <div class="p3-contribution-roulette-shell">
+                    <div class="p3-contribution-roulette-person">
+                        <strong>기여도 룰렛</strong>
+                        <span>직전 낙찰자의 입력을 기다리는 중</span>
+                    </div>
+                    <div class="p3-contribution-roulette-window">
+                        <div class="p3-contribution-roulette-value" data-house="READY">READY</div>
+                    </div>
+                </div>`;
+            overlay.classList.add('visible');
+        }
+
+        function showCrewartRouletteResult(event) {
+            const overlay = document.getElementById('p3-contribution-roulette-overlay');
+            if (!overlay || !event) return;
+            const houseKey = normalizeCrewartBidderHouse(event.houseKey) || 'R';
+            const multiplier = Number(event.multiplier) || 1;
+            overlay.innerHTML = `
+                <div class="p3-contribution-roulette-shell">
+                    <div class="p3-contribution-roulette-person">
+                        <strong>${esc(visibleCrewartWinner(event.winner))}</strong>
+                        <span>${formatCrewartWon(event.baseAmount)} → ${formatCrewartWon(event.contributionAmount)} 기여도</span>
+                    </div>
+                    <div class="p3-contribution-roulette-window">
+                        <div class="p3-contribution-roulette-value" data-house="${houseKey}">×${multiplier}</div>
+                    </div>
+                </div>`;
+            overlay.classList.add('visible');
+        }
+
+        function hideCrewartRoulettePanel() {
+            const overlay = document.getElementById('p3-contribution-roulette-overlay');
+            if (overlay) overlay.classList.remove('visible');
+        }
+
         function refreshCrewartContributionBoard() {
             if (getActiveAuctionEventModule(window.latestConfigMap || {}).id !== 'crewart') return;
             const tree = document.getElementById('bracket-page-tree-full');
@@ -7444,9 +7493,9 @@
                     if (state.generation !== generation || state.sessionId !== sessionId) return;
                     writeP3RouletteCursor(sessionId, event.sequence);
                     refreshCrewartContributionBoard();
+                    showCrewartRouletteResult(event);
                     setTimeout(() => {
                         if (state.generation !== generation || state.sessionId !== sessionId) return;
-                        overlay.classList.remove('visible');
                         state.playing = false;
                         runNextCrewartRoulette();
                     }, 900);
@@ -7462,6 +7511,9 @@
             const isCrewartP3 = document.body.classList.contains('bracket-page')
                 && getActiveAuctionEventModule(window.latestConfigMap || {}).id === 'crewart';
             const sessionId = String(roulette?.sessionId || '');
+            const broadcastState = window.__creoBroadcastState || {};
+            const broadcastMode = String(broadcastState.mode || '').toLowerCase();
+            const activeItemId = String(broadcastState.activeItemId || '');
             const state = _p3CrewartRouletteState;
             if (!isCrewartP3 || !sessionId) {
                 if (state.sessionId || state.playing || state.queue.length) resetCrewartRouletteState();
@@ -7484,6 +7536,15 @@
                     writeP3RouletteCursor(sessionId, state.cursor);
                 }
             }
+            if (broadcastMode && broadcastMode !== 'sold') {
+                if (state.playing || state.queue.length) {
+                    state.generation += 1;
+                    state.playing = false;
+                    state.queue = [];
+                }
+                hideCrewartRoulettePanel();
+                return;
+            }
             for (const event of events) {
                 const sequence = Math.max(0, Number(event.sequence) || 0);
                 if (!event.id || sequence <= state.cursor || state.queuedIds.has(event.id)) continue;
@@ -7492,6 +7553,14 @@
                 state.cursor = sequence;
             }
             runNextCrewartRoulette();
+            if (!state.playing && !state.queue.length) {
+                const latest = events[events.length - 1] || null;
+                if (latest && (!activeItemId || String(latest.itemId || '') === activeItemId)) {
+                    showCrewartRouletteResult(latest);
+                } else {
+                    showCrewartRouletteReady();
+                }
+            }
         }
 
         function buildLiveBidRows(map, activeItem) {
