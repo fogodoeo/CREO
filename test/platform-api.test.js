@@ -923,6 +923,29 @@ test('CREWART contribution roulette is winner-only, idempotent, persistent, and 
         first.json().event.contributionAmount
     );
 
+    const reopened = await call(api, 'PUT', '/api/platform/channels/alpha/auction-transition', {
+        itemId: 'roulette_item', status: 'live', mode: 'live', state: { page: 2 }
+    });
+    assert.equal(reopened.status, 200, reopened.body);
+    assert.equal(reopened.json().item.attributes.crewart_roulette_event_id, '');
+    const resold = await call(api, 'PUT', '/api/platform/channels/alpha/auction-transition', {
+        itemId: 'roulette_item', status: 'sold', mode: 'sold',
+        item: { soldPrice: 150000, winnerAlias: '직전낙찰자/대구' }
+    });
+    assert.equal(resold.status, 200, resold.body);
+    const secondLifecycle = await call(api, 'POST', '/api/platform/channels/alpha/audience-roulette', {
+        itemId: 'roulette_item', bidder_key: 'winner-user', message_key: 'roulette-command-next-lifecycle'
+    });
+    assert.equal(secondLifecycle.status, 201, secondLifecycle.body);
+    assert.equal(secondLifecycle.json().duplicate, false);
+    assert.notEqual(secondLifecycle.json().event.id, first.json().event.id);
+    const secondLifecycleDuplicate = await call(api, 'POST', '/api/platform/channels/alpha/audience-roulette', {
+        itemId: 'roulette_item', bidder_key: 'winner-user', message_key: 'roulette-command-next-lifecycle-duplicate'
+    });
+    assert.equal(secondLifecycleDuplicate.status, 200, secondLifecycleDuplicate.body);
+    assert.equal(secondLifecycleDuplicate.json().duplicate, true);
+    assert.equal(secondLifecycleDuplicate.json().event.id, secondLifecycle.json().event.id);
+
     await call(api, 'POST', '/api/platform/channels/alpha/items', {
         record: { id: 'next_item', lotNumber: 2, name: '다음 개체' }
     });

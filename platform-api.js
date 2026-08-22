@@ -1390,33 +1390,23 @@ function createPlatformApi({
                         ? stored
                         : { id: CREWART_ROULETTE_ID, sessionId: session.sessionId, sequence: 0, events: [] };
                     const events = Array.isArray(current.events) ? current.events.slice(-100) : [];
+                    const attrs = item.attributes && typeof item.attributes === 'object' ? item.attributes : {};
+                    const activeRouletteEventId = cleanText(attrs.crewart_roulette_event_id, 80);
                     const messageKey = cleanText(body.message_key || body.messageKey, 180);
                     const repeatedMessage = messageKey
                         ? events.find((event) => cleanText(event.messageKey, 180) === messageKey)
                         : null;
-                    if (repeatedMessage) {
+                    if (repeatedMessage && repeatedMessage.id === activeRouletteEventId) {
                         replyJson(res, 200, { duplicate: true, event: publicCrewartRouletteEvent(repeatedMessage) });
                         return;
                     }
-                    const itemEvents = events.filter((event) => event.itemId === itemId);
-                    const existing = itemEvents[0] || null;
+                    // The same QA lot can be reopened and sold again. The item attribute is
+                    // cleared on the live transition, so it is the lifecycle idempotency key;
+                    // an older event for the same item must not block the new sold lifecycle.
+                    const existing = activeRouletteEventId
+                        ? events.find((event) => event.id === activeRouletteEventId) || null
+                        : null;
                     if (existing) {
-                        const attrs = item.attributes && typeof item.attributes === 'object' ? item.attributes : {};
-                        if (attrs.crewart_roulette_event_id !== existing.id) {
-                            await repository.upsertRecord(channelId, 'item', {
-                                ...item,
-                                attributes: {
-                                    ...attrs,
-                                    crewart_contribution_base: existing.baseAmount,
-                                    crewart_contribution_multiplier: existing.multiplier,
-                                    crewart_contribution_amount: existing.contributionAmount,
-                                    crewart_contribution_effective_at: existing.revealAt,
-                                    crewart_roulette_status: 'completed',
-                                    crewart_roulette_event_id: existing.id
-                                }
-                            });
-                            touchChannel(channelId);
-                        }
                         replyJson(res, 200, { duplicate: true, event: publicCrewartRouletteEvent(existing) });
                         return;
                     }

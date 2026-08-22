@@ -58,21 +58,16 @@ test('CREWART default image banners follow the same restrained vector system', (
     assert.doesNotMatch(crewartLiveBanner + crewartHouseBanner, /crewarts-crest|Georgia,serif|medieval/i);
 });
 
-test('CREWART new bidders use a two-second persistent FIFO reel without blocking bid rows', () => {
-    assert.match(broadcast, /id="p2-house-reveal-overlay"/);
-    assert.match(broadcast, /class="p2-house-reveal-window"/);
-    assert.match(broadcast, /state\.queue\.push\(\{ \.\.\.event, sequence \}\)/);
-    assert.match(broadcast, /state\.queue\.shift\(\)/);
-    assert.match(broadcast, /const duration = reducedMotion \? 0 : 2000/);
-    assert.match(broadcast, /const hold = 360/);
-    assert.match(broadcast, /latestAssignedAt >= state\.pageStartedAt - 15000/);
-    assert.match(broadcast, /writeP2RevealCursor\(state\.sessionId, event\.sequence\)/);
-    assert.match(broadcast, /sessionStorage\.setItem\(p2RevealStorageKey\(sessionId\)/);
-    assert.match(broadcast, /pendingBidderKeys\.has\(key\)/);
-    assert.match(broadcast, /bid\.crewart_assignment_pending === true/);
-    assert.match(broadcast, /state\.generation !== generation \|\| state\.sessionId !== sessionId/);
-    assert.match(broadcast, /resetCrewartRevealState\(sessionId\)/);
-    assert.match(broadcast, /processCrewartAudienceReveals\(window\.__creoAudience \|\| null\)/);
+test('CREWART new bidder assignment is directed to the shared P3 FIFO, never the P2 overlay', () => {
+    assert.doesNotMatch(broadcast, /processCrewartAudienceReveals\(window\.__creoAudience \|\| null\)/);
+    assert.match(broadcast, /function runCrewartAssignmentOnP3\(event, done\)/);
+    assert.match(broadcast, /kind: 'assignment'/);
+    assert.match(broadcast, /kind: 'contribution'/);
+    assert.match(broadcast, /p3AssignmentStorageKey\(sessionId\)/);
+    assert.match(broadcast, /writeP3AssignmentCursor\(sessionId, event\.sequence\)/);
+    assert.match(broadcast, /state\.queue\.sort/);
+    assert.match(broadcast, /event\.kind === 'assignment'/);
+    assert.match(broadcast, /const duration = window\.matchMedia[^\n]+\? 0 : 2000/);
 });
 
 test('CREWART P3 contribution roulette uses an idle plate, two-second reel, and three clean result scenes', () => {
@@ -83,13 +78,13 @@ test('CREWART P3 contribution roulette uses an idle plate, two-second reel, and 
     );
     assert.match(broadcast, /#p3-contribution-roulette-overlay \{[\s\S]{0,120}z-index: 10020/);
     assert.match(broadcast, /class="p3-contribution-roulette-window"/);
-    assert.match(broadcast, /state\.queue\.push\(\{ \.\.\.event, sequence \}\)/);
+    assert.match(broadcast, /state\.queue\.push\(\{ \.\.\.event, kind: 'contribution', sequence \}\)/);
     assert.match(broadcast, /const duration = 2000/);
     assert.match(broadcast, /const values = \[0\.25, 0\.5, 2, 3, 4\]/);
     assert.match(broadcast, /writeP3RouletteCursor\(sessionId, event\.sequence\)/);
     assert.match(broadcast, /refreshCrewartContributionBoard\(\)/);
     assert.match(channelBridge, /target\.__creoBroadcastState = broadcastCache\?\.state \|\| null/);
-    assert.match(broadcast, /broadcastMode && broadcastMode !== 'sold'/);
+    assert.doesNotMatch(broadcast, /broadcastMode && broadcastMode !== 'sold'/);
     assert.match(broadcast, /showCrewartRouletteReady\(\)/);
     assert.match(broadcast, /showCrewartRouletteResult\(event\)/);
     assert.match(broadcast, /id="p3-contribution-result-popup"/);

@@ -5696,7 +5696,6 @@
         }
 
         async function _refreshBroadcastFromItems(items) {
-            processCrewartAudienceReveals(window.__creoAudience || null);
             processCrewartContributionRoulette(window.__creoAudience || null);
             if (isBracketPageTemp) {
                 await refreshBracketPage(items);
@@ -7406,11 +7405,16 @@
         }
 
         const _p3CrewartRouletteState = {
-            sessionId: '', cursor: 0, playing: false, queue: [], queuedIds: new Set(), generation: 0
+            sessionId: '', cursor: 0, revealCursor: 0,
+            playing: false, queue: [], queuedIds: new Set(), generation: 0
         };
 
         function p3RouletteStorageKey(sessionId) {
             return `crewart:p3-contribution-roulette:${String(sessionId || '')}`;
+        }
+
+        function p3AssignmentStorageKey(sessionId) {
+            return `crewart:p3-house-assignment:${String(sessionId || '')}`;
         }
 
         function resetCrewartRouletteState(sessionId = '') {
@@ -7418,6 +7422,7 @@
             state.generation += 1;
             state.sessionId = String(sessionId || '');
             state.cursor = 0;
+            state.revealCursor = 0;
             state.playing = false;
             state.queue = [];
             state.queuedIds.clear();
@@ -7429,6 +7434,10 @@
 
         function writeP3RouletteCursor(sessionId, sequence) {
             try { sessionStorage.setItem(p3RouletteStorageKey(sessionId), String(sequence)); } catch (_) {}
+        }
+
+        function writeP3AssignmentCursor(sessionId, sequence) {
+            try { sessionStorage.setItem(p3AssignmentStorageKey(sessionId), String(sequence)); } catch (_) {}
         }
 
         function formatCrewartScore(value) {
@@ -7514,6 +7523,47 @@
             }
         }
 
+        function runCrewartAssignmentOnP3(event, done) {
+            const state = _p3CrewartRouletteState;
+            const overlay = document.getElementById('p3-contribution-roulette-overlay');
+            if (!overlay) { done(); return; }
+            const generation = state.generation;
+            const sessionId = state.sessionId;
+            const finalHouse = normalizeCrewartBidderHouse(event.houseKey) || 'R';
+            const houses = ['R', 'G', 'B', 'Y'];
+            const labels = { R: 'RED', G: 'GREEN', B: 'BLUE', Y: 'YELLOW' };
+            const reel = [];
+            for (let index = 0; index < 15; index += 1) reel.push(houses[index % houses.length]);
+            while (reel[reel.length - 1] === finalHouse) reel.push(houses[reel.length % houses.length]);
+            reel.push(finalHouse);
+            overlay.innerHTML = `
+                <div class="p3-contribution-roulette-shell">
+                    <div class="p3-contribution-roulette-person">
+                        <strong>${esc(visibleCrewartWinner(event.name || '신규 입찰자'))}</strong>
+                    </div>
+                    <div class="p3-contribution-roulette-window">
+                        <div class="p3-contribution-roulette-track">
+                            ${reel.map(house => `<div class="p3-contribution-roulette-value" data-house="${house}">${labels[house]}</div>`).join('')}
+                        </div>
+                    </div>
+                </div>`;
+            overlay.classList.add('visible');
+            const slotHeight = syncCrewartRouletteSlotHeight();
+            const track = overlay.querySelector('.p3-contribution-roulette-track');
+            const duration = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ? 0 : 2000;
+            track.style.transition = 'none';
+            track.style.transform = 'translateY(0)';
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                track.style.transition = `transform ${duration}ms cubic-bezier(.12,.72,.18,1)`;
+                track.style.transform = `translateY(-${(reel.length - 1) * slotHeight}px)`;
+            }));
+            setTimeout(() => {
+                if (state.generation !== generation || state.sessionId !== sessionId) return;
+                writeP3AssignmentCursor(sessionId, event.sequence);
+                setTimeout(done, 700);
+            }, duration);
+        }
+
         function runNextCrewartRoulette() {
             const state = _p3CrewartRouletteState;
             if (state.playing || !state.queue.length) return;
@@ -7523,6 +7573,15 @@
             state.playing = true;
             const generation = state.generation;
             const sessionId = state.sessionId;
+            if (event.kind === 'assignment') {
+                runCrewartAssignmentOnP3(event, () => {
+                    if (state.generation !== generation || state.sessionId !== sessionId) return;
+                    showCrewartRouletteReady();
+                    state.playing = false;
+                    runNextCrewartRoulette();
+                });
+                return;
+            }
             const begin = () => {
                 if (state.generation !== generation || state.sessionId !== sessionId) return;
                 const values = [0.25, 0.5, 2, 3, 4];
@@ -7575,9 +7634,7 @@
             const roulette = audience?.roulette || null;
             const isCrewartP3 = document.body.classList.contains('bracket-page')
                 && getActiveAuctionEventModule(window.latestConfigMap || {}).id === 'crewart';
-            const sessionId = String(roulette?.sessionId || '');
-            const broadcastState = window.__creoBroadcastState || {};
-            const broadcastMode = String(broadcastState.mode || '').toLowerCase();
+            const sessionId = String(audience?.sessionId || roulette?.sessionId || '');
             const state = _p3CrewartRouletteState;
             if (!isCrewartP3) {
                 if (state.sessionId || state.playing || state.queue.length) resetCrewartRouletteState();
@@ -7589,39 +7646,58 @@
                 showCrewartRouletteReady();
                 return;
             }
-            const events = Array.isArray(roulette?.events)
+            const rouletteEvents = Array.isArray(roulette?.events)
                 ? roulette.events.filter((event) => event?.replay !== true).slice().sort((left, right) => Number(left.sequence) - Number(right.sequence))
+                : [];
+            const assignmentEvents = Array.isArray(audience?.events)
+                ? audience.events.slice().sort((left, right) => Number(left.sequence) - Number(right.sequence))
                 : [];
             if (state.sessionId !== sessionId) {
                 resetCrewartRouletteState(sessionId);
-                let stored = null;
-                try { stored = Number.parseInt(sessionStorage.getItem(p3RouletteStorageKey(sessionId)), 10); } catch (_) {}
-                if (Number.isFinite(stored) && stored >= 0) state.cursor = stored;
+                let storedRoulette = null;
+                let storedAssignment = null;
+                try {
+                    storedRoulette = Number.parseInt(sessionStorage.getItem(p3RouletteStorageKey(sessionId)), 10);
+                    storedAssignment = Number.parseInt(sessionStorage.getItem(p3AssignmentStorageKey(sessionId)), 10);
+                } catch (_) {}
+                if (Number.isFinite(storedRoulette) && storedRoulette >= 0) state.cursor = storedRoulette;
                 else {
-                    const latest = events[events.length - 1] || null;
+                    const latest = rouletteEvents[rouletteEvents.length - 1] || null;
                     const startedAt = Date.parse(String(latest?.startedAt || ''));
                     state.cursor = latest && Number.isFinite(startedAt) && startedAt >= Date.now() - 15000
                         ? Math.max(0, Number(latest.sequence) - 1)
-                        : events.reduce((max, event) => Math.max(max, Number(event.sequence) || 0), 0);
+                        : rouletteEvents.reduce((max, event) => Math.max(max, Number(event.sequence) || 0), 0);
                     writeP3RouletteCursor(sessionId, state.cursor);
                 }
-            }
-            if (broadcastMode && broadcastMode !== 'sold') {
-                if (state.playing || state.queue.length) {
-                    state.generation += 1;
-                    state.playing = false;
-                    state.queue = [];
+                if (Number.isFinite(storedAssignment) && storedAssignment >= 0) state.revealCursor = storedAssignment;
+                else {
+                    const latest = assignmentEvents[assignmentEvents.length - 1] || null;
+                    const assignedAt = Date.parse(String(latest?.assignedAt || ''));
+                    state.revealCursor = latest && Number.isFinite(assignedAt) && assignedAt >= Date.now() - 15000
+                        ? Math.max(0, Number(latest.sequence) - 1)
+                        : assignmentEvents.reduce((max, event) => Math.max(max, Number(event.sequence) || 0), 0);
+                    writeP3AssignmentCursor(sessionId, state.revealCursor);
                 }
-                showCrewartRouletteReady();
-                return;
             }
-            for (const event of events) {
+            for (const event of assignmentEvents) {
                 const sequence = Math.max(0, Number(event.sequence) || 0);
-                if (!event.id || sequence <= state.cursor || state.queuedIds.has(event.id)) continue;
-                state.queuedIds.add(event.id);
-                state.queue.push({ ...event, sequence });
+                if (!event.id || sequence <= state.revealCursor || state.queuedIds.has(`assignment:${event.id}`)) continue;
+                state.queuedIds.add(`assignment:${event.id}`);
+                state.queue.push({ ...event, kind: 'assignment', sequence });
+                state.revealCursor = sequence;
+            }
+            for (const event of rouletteEvents) {
+                const sequence = Math.max(0, Number(event.sequence) || 0);
+                if (!event.id || sequence <= state.cursor || state.queuedIds.has(`contribution:${event.id}`)) continue;
+                state.queuedIds.add(`contribution:${event.id}`);
+                state.queue.push({ ...event, kind: 'contribution', sequence });
                 state.cursor = sequence;
             }
+            state.queue.sort((left, right) => {
+                const leftAt = Date.parse(String(left.assignedAt || left.startedAt || '')) || 0;
+                const rightAt = Date.parse(String(right.assignedAt || right.startedAt || '')) || 0;
+                return leftAt - rightAt || String(left.id).localeCompare(String(right.id));
+            });
             runNextCrewartRoulette();
             if (!state.playing && !state.queue.length) {
                 showCrewartRouletteReady();
