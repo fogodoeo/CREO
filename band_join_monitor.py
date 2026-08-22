@@ -44,7 +44,7 @@ from typing import Any, Iterable, Mapping, Optional
 
 
 APP_NAME = "BAND 가입 신청 모니터"
-VERSION = "0.3.3"
+VERSION = "0.3.4"
 DEFAULT_CONFIG_FILE = "band_join_monitor_config.json"
 DOM_SIGNAL_BINDING = "__bandJoinMonitorSignal"
 BAND_NO_RE = re.compile(r"/band/(\d+)")
@@ -2193,6 +2193,7 @@ class BandJoinMonitor:
         self._bootstrap_cookie_source = "none"
         self.bootstrap_cookies = self._read_bootstrap_cookies()
         self._bootstrap_cookie_count = len(self.bootstrap_cookies)
+        self._bootstrap_marker_path = profile_dir / ".creo-bootstrap-sha256"
         self._installed_cookie_count = 0
         self._user_agent_mode = "browser-default"
         self._session_page = ""
@@ -2330,9 +2331,62 @@ class BandJoinMonitor:
             )
         return cookies
 
+    def _bootstrap_fingerprint(self) -> str:
+        normalized = [
+            {
+                "name": str(cookie.get("name", "")),
+                "value": str(cookie.get("value", "")),
+                "domain": str(cookie.get("domain", "")),
+                "path": str(cookie.get("path", "/")),
+            }
+            for cookie in self.bootstrap_cookies
+        ]
+        normalized.sort(
+            key=lambda cookie: (
+                cookie["domain"], cookie["path"], cookie["name"]
+            )
+        )
+        serialized = json.dumps(
+            normalized, ensure_ascii=True, separators=(",", ":")
+        ).encode("utf-8")
+        return hashlib.sha256(serialized).hexdigest()
+
+    def _persisted_bootstrap_matches(self, fingerprint: str) -> bool:
+        cookies_path = self.chrome.profile_dir / "Default" / "Cookies"
+        if not cookies_path.is_file():
+            return False
+        try:
+            stored = self._bootstrap_marker_path.read_text(
+                encoding="ascii"
+            ).strip()
+        except OSError:
+            return False
+        return bool(stored and stored == fingerprint)
+
+    def _store_bootstrap_fingerprint(self, fingerprint: str) -> None:
+        try:
+            self._bootstrap_marker_path.parent.mkdir(parents=True, exist_ok=True)
+            temporary = self._bootstrap_marker_path.with_suffix(".tmp")
+            temporary.write_text(f"{fingerprint}\n", encoding="ascii")
+            temporary.replace(self._bootstrap_marker_path)
+        except OSError as exc:
+            self.logger.warning(
+                "BAND 세션 부트스트랩 표식 저장 실패: %s",
+                safe_for_log(exc),
+            )
+
     def _install_bootstrap_cookies(self, connection: CDPConnection) -> int:
         if not self.bootstrap_cookies:
             return 0
+        fingerprint = self._bootstrap_fingerprint()
+        if self._persisted_bootstrap_matches(fingerprint):
+            persisted_count = len(self.bootstrap_cookies)
+            self.logger.info(
+                "Persistent Disk의 BAND 로그인 세션을 유지합니다."
+            )
+            self._installed_cookie_count = persisted_count
+            self.bootstrap_cookies.clear()
+            return persisted_count
         try:
             connection.call("Network.clearBrowserCookies", timeout=3)
         except Exception:
@@ -2370,6 +2424,8 @@ class BandJoinMonitor:
             installed,
         )
         self._installed_cookie_count = installed
+        if installed == len(self.bootstrap_cookies):
+            self._store_bootstrap_fingerprint(fingerprint)
         self.bootstrap_cookies.clear()
         return installed
 

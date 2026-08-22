@@ -1145,6 +1145,85 @@ class FollowUpQuestionTests(unittest.TestCase):
             self.assertEqual(monitor._bootstrap_cookie_source, "json")
             monitor.stop()
 
+    def test_same_bootstrap_does_not_overwrite_persisted_chrome_session(self) -> None:
+        secret = "persisted-session-secret"
+        with tempfile.TemporaryDirectory() as temporary_directory, mock.patch.dict(
+            os.environ,
+            {"BAND_COOKIE_HEADER": f"band_session={secret}"},
+            clear=False,
+        ):
+            config = dict(DEFAULT_CONFIG)
+            config.update(
+                {
+                    "chrome_profile_dir": temporary_directory,
+                    "state_file": str(Path(temporary_directory) / "state.json"),
+                    "log_file": str(Path(temporary_directory) / "monitor.log"),
+                    "runtime_status_file": str(
+                        Path(temporary_directory) / "runtime.json"
+                    ),
+                    "diagnostic_file": str(
+                        Path(temporary_directory) / "diagnostics.jsonl"
+                    ),
+                }
+            )
+            monitor = BandJoinMonitor(config, Path(temporary_directory))
+            cookies_path = Path(temporary_directory) / "Default" / "Cookies"
+            cookies_path.parent.mkdir(parents=True, exist_ok=True)
+            cookies_path.write_bytes(b"sqlite-placeholder")
+            monitor._store_bootstrap_fingerprint(
+                monitor._bootstrap_fingerprint()
+            )
+            connection = mock.Mock()
+
+            installed = monitor._install_bootstrap_cookies(connection)
+
+            self.assertEqual(installed, 1)
+            connection.call.assert_not_called()
+            self.assertEqual(monitor._installed_cookie_count, 1)
+            marker = monitor._bootstrap_marker_path.read_text(encoding="ascii")
+            self.assertNotIn(secret, marker)
+            monitor.stop()
+
+    def test_changed_bootstrap_replaces_persisted_chrome_session(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory, mock.patch.dict(
+            os.environ,
+            {"BAND_COOKIE_HEADER": "band_session=new-session"},
+            clear=False,
+        ):
+            config = dict(DEFAULT_CONFIG)
+            config.update(
+                {
+                    "chrome_profile_dir": temporary_directory,
+                    "state_file": str(Path(temporary_directory) / "state.json"),
+                    "log_file": str(Path(temporary_directory) / "monitor.log"),
+                    "runtime_status_file": str(
+                        Path(temporary_directory) / "runtime.json"
+                    ),
+                    "diagnostic_file": str(
+                        Path(temporary_directory) / "diagnostics.jsonl"
+                    ),
+                }
+            )
+            monitor = BandJoinMonitor(config, Path(temporary_directory))
+            cookies_path = Path(temporary_directory) / "Default" / "Cookies"
+            cookies_path.parent.mkdir(parents=True, exist_ok=True)
+            cookies_path.write_bytes(b"sqlite-placeholder")
+            monitor._bootstrap_marker_path.write_text(
+                "old-fingerprint\n", encoding="ascii"
+            )
+            connection = mock.Mock()
+            connection.call.return_value = {"success": True}
+
+            installed = monitor._install_bootstrap_cookies(connection)
+
+            self.assertEqual(installed, 1)
+            methods = [call.args[0] for call in connection.call.call_args_list]
+            self.assertEqual(
+                methods,
+                ["Network.clearBrowserCookies", "Network.setCookie"],
+            )
+            monitor.stop()
+
     def test_runtime_status_file_contains_no_applicant_data(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             monitor = self._monitor(temp_dir)
