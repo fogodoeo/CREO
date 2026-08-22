@@ -134,8 +134,8 @@ test('P3 board presents only four house cards and their amount numbers', () => {
 
     const source = fs.readFileSync(path.join(__dirname, '..', 'public', 'event-modules.js'), 'utf8');
     assert.match(source, /\.crewart-house-list \{[\s\S]*?grid-template-columns:repeat\(4,minmax\(0,1fr\)\);flex:0 0 calc\(100% \+ clamp\(42px,3vw,64px\)\)/);
-    assert.match(source, /\.crewart-house-card,[\s\S]*?width:100%;height:clamp\(104px,17vh,184px\)/);
-    assert.match(source, /body\[data-event-module="crewart"\]\.bracket-page #bracket-page-tree-full \{[\s\S]*?inset:0 !important;width:100% !important;height:100% !important/);
+    assert.match(source, /\.crewart-house-card,[\s\S]*?width:100%;height:min\(100%,clamp\(104px,17vh,184px\)\)/);
+    assert.doesNotMatch(source, /body\[data-event-module="crewart"\]\.bracket-page #bracket-page-tree-full \{[\s\S]*?inset:0 !important;width:100% !important;height:100% !important/);
     assert.match(source, /\.crewart-scoreboard\.is-compact \{[\s\S]*?flex-direction:row;align-items:flex-end/);
     assert.match(source, /\.crewart-house-card:last-child \.crewart-house-score \{[\s\S]*?transform:translateX\(-\.22em\)/);
 });

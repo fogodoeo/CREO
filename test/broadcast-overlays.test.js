@@ -107,8 +107,11 @@ test('CREWART P3 contribution roulette has an independent saved placement target
     assert.match(preview, /data-type="contribution_roulette"/);
     assert.match(preview, /configMap\.p3_contribution_roulette_top/);
     assert.match(preview, /configMap\.p3_contribution_roulette_width/);
+    assert.match(preview, /resizeTarget === 'contribution_roulette'/);
     assert.match(broadcast, /map\.p3_contribution_roulette_top \|\| '36%'/);
     assert.match(broadcast, /map\.p3_contribution_roulette_width \|\| '76%'/);
+    assert.match(broadcast, /map\.p3_contribution_roulette_height \|\| '13%'/);
+    assert.match(broadcast, /events\.filter\(\(event\) => event\?\.replay !== true\)/);
 });
 
 test('all shared legacy layouts support three nametags', () => {

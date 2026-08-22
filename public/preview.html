@@ -2776,6 +2776,13 @@
                     elements.bracket_full.height = ((newH / containerRect.height) * 100).toFixed(1) + '%';
                     elements.bracket_full.el.style.width = convertToPercent(elements.bracket_full.width);
                     elements.bracket_full.el.style.height = convertToPercent(elements.bracket_full.height);
+                } else if (resizeTarget === 'contribution_roulette' && elements.contribution_roulette) {
+                    const newW = Math.max(180, resizeStartW + dx);
+                    const newH = Math.max(72, resizeStartH + dy);
+                    elements.contribution_roulette.width = ((newW / containerRect.width) * 100).toFixed(1) + '%';
+                    elements.contribution_roulette.height = ((newH / containerRect.height) * 100).toFixed(1) + '%';
+                    elements.contribution_roulette.el.style.width = convertToPercent(elements.contribution_roulette.width);
+                    elements.contribution_roulette.el.style.height = convertToPercent(elements.contribution_roulette.height);
                 } else if (resizeTarget === 'bracket_live' && elements.bracket_live) {
                     const newW = Math.max(100, resizeStartW + dx);
                     const newH = Math.max(100, resizeStartH + dy);

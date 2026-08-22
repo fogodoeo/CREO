@@ -28,7 +28,6 @@ const AUDIENCE_REVEALS_ID = 'crewart-audience-reveals';
 const CREWART_ROULETTE_ID = 'crewart-contribution-roulette';
 const CREWART_ROULETTE_DURATION_MS = 2000;
 const CREWART_ROULETTE_HOLD_MS = 360;
-const CREWART_ROULETTE_REPLAY_COOLDOWN_MS = 8000;
 const CREWART_ROULETTE_OUTCOMES = Object.freeze([
     Object.freeze({ multiplier: 0.25, weight: 20 }),
     Object.freeze({ multiplier: 0.5, weight: 30 }),
@@ -1418,49 +1417,7 @@ function createPlatformApi({
                             });
                             touchChannel(channelId);
                         }
-                        const latestItemEvent = itemEvents[itemEvents.length - 1] || existing;
-                        const latestRequestedAt = Date.parse(String(latestItemEvent.requestedAt || latestItemEvent.startedAt || ''));
-                        if (
-                            latestItemEvent.replay === true
-                            && Number.isFinite(latestRequestedAt)
-                            && Date.now() - latestRequestedAt < CREWART_ROULETTE_REPLAY_COOLDOWN_MS
-                        ) {
-                            replyJson(res, 200, { duplicate: true, event: publicCrewartRouletteEvent(existing) });
-                            return;
-                        }
-                        const sequence = Math.max(0, Number.parseInt(current.sequence, 10) || 0) + 1;
-                        const nowMs = Date.now();
-                        const lastRevealMs = events.reduce((max, event) => {
-                            const parsed = Date.parse(String(event?.revealAt || ''));
-                            return Number.isFinite(parsed) ? Math.max(max, parsed) : max;
-                        }, 0);
-                        const startedAtMs = Math.max(nowMs, lastRevealMs + CREWART_ROULETTE_HOLD_MS);
-                        const replayEvent = {
-                            ...existing,
-                            id: `roulette_${crypto.createHash('sha256').update(`${session.sessionId}:${itemId}:replay:${messageKey || requestedBidderKey}`).digest('base64url').slice(0, 24)}`,
-                            sequence,
-                            replay: true,
-                            replayOf: existing.id,
-                            startedAt: new Date(startedAtMs).toISOString(),
-                            revealAt: new Date(startedAtMs + CREWART_ROULETTE_DURATION_MS).toISOString(),
-                            requestedAt: new Date(nowMs).toISOString(),
-                            messageKey
-                        };
-                        await repository.upsertRecord(channelId, 'setting', {
-                            ...current,
-                            id: CREWART_ROULETTE_ID,
-                            sessionId: session.sessionId,
-                            sequence,
-                            events: [...events, replayEvent].slice(-100),
-                            updatedAt: new Date(nowMs).toISOString()
-                        });
-                        touchChannel(channelId);
-                        replyJson(res, 201, {
-                            duplicate: false,
-                            replay: true,
-                            event: publicCrewartRouletteEvent(replayEvent),
-                            soldPrice: item.soldPrice
-                        });
+                        replyJson(res, 200, { duplicate: true, event: publicCrewartRouletteEvent(existing) });
                         return;
                     }
 

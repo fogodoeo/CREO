@@ -185,7 +185,7 @@
             left: 12%;
             top: 36%;
             width: 76%;
-            height: auto;
+            height: 13%;
             transform: scale(.98);
             transform-origin: center;
             opacity: 0;
@@ -197,7 +197,9 @@
             display: grid;
             grid-template-columns: minmax(240px,.9fr) minmax(360px,1.1fr);
             align-items: center;
-            min-height: 132px;
+            width: 100%;
+            height: 100%;
+            min-height: 72px;
             overflow: hidden;
             border: 2px solid rgba(224,194,126,.72);
             border-radius: 24px;
@@ -208,9 +210,9 @@
         .p3-contribution-roulette-person { min-width:0; padding:22px 28px; color:#f8f3e8; }
         .p3-contribution-roulette-person strong { display:block; overflow:hidden; font-size:clamp(30px,3vw,48px); font-weight:950; text-overflow:ellipsis; white-space:nowrap; }
         .p3-contribution-roulette-person span { display:block; margin-top:7px; color:#cbb98e; font-size:clamp(18px,1.45vw,25px); font-weight:800; }
-        .p3-contribution-roulette-window { height:128px; overflow:hidden; border-left:1px solid rgba(224,194,126,.28); }
+        .p3-contribution-roulette-window { height:100%; overflow:hidden; border-left:1px solid rgba(224,194,126,.28); }
         .p3-contribution-roulette-track { will-change:transform; }
-        .p3-contribution-roulette-value { display:grid; place-items:center; height:128px; color:#fff; font-size:clamp(54px,6vw,92px); font-weight:950; font-variant-numeric:tabular-nums; letter-spacing:-.06em; text-shadow:0 4px 18px rgba(0,0,0,.42); }
+        .p3-contribution-roulette-value { display:grid; place-items:center; height:var(--p3-roulette-slot-height,128px); color:#fff; font-size:clamp(54px,6vw,92px); font-weight:950; font-variant-numeric:tabular-nums; letter-spacing:-.06em; text-shadow:0 4px 18px rgba(0,0,0,.42); }
         .p3-contribution-roulette-value[data-house="R"] { background:#c64b52; }
         .p3-contribution-roulette-value[data-house="G"] { background:#328b5b; }
         .p3-contribution-roulette-value[data-house="B"] { background:#3c73bd; }
@@ -7445,6 +7447,14 @@
             return String(value || '').replace(/[\u200b-\u200f\u2060\ufeff]/gi, '').trim() || '직전 낙찰자';
         }
 
+        function syncCrewartRouletteSlotHeight() {
+            const overlay = document.getElementById('p3-contribution-roulette-overlay');
+            if (!overlay) return 128;
+            const height = Math.max(72, Math.min(260, Math.round(overlay.getBoundingClientRect().height || 128)));
+            overlay.style.setProperty('--p3-roulette-slot-height', `${height}px`);
+            return height;
+        }
+
         function showCrewartRouletteReady() {
             const overlay = document.getElementById('p3-contribution-roulette-overlay');
             if (!overlay) return;
@@ -7459,6 +7469,7 @@
                     </div>
                 </div>`;
             overlay.classList.add('visible');
+            syncCrewartRouletteSlotHeight();
         }
 
         function showCrewartRouletteResult(event) {
@@ -7477,6 +7488,7 @@
                     </div>
                 </div>`;
             overlay.classList.add('visible');
+            syncCrewartRouletteSlotHeight();
         }
 
         function showCrewartRouletteResultPopup(event) {
@@ -7542,13 +7554,14 @@
                         </div>
                     </div>`;
                 overlay.classList.add('visible');
+                const slotHeight = syncCrewartRouletteSlotHeight();
                 const track = overlay.querySelector('.p3-contribution-roulette-track');
                 const duration = 2000;
                 track.style.transition = 'none';
                 track.style.transform = 'translateY(0)';
                 requestAnimationFrame(() => requestAnimationFrame(() => {
                     track.style.transition = `transform ${duration}ms cubic-bezier(.12,.72,.18,1)`;
-                    track.style.transform = `translateY(-${(reel.length - 1) * 128}px)`;
+                    track.style.transform = `translateY(-${(reel.length - 1) * slotHeight}px)`;
                 }));
                 setTimeout(() => {
                     if (state.generation !== generation || state.sessionId !== sessionId) return;
@@ -7582,7 +7595,7 @@
                 return;
             }
             const events = Array.isArray(roulette?.events)
-                ? roulette.events.slice().sort((left, right) => Number(left.sequence) - Number(right.sequence))
+                ? roulette.events.filter((event) => event?.replay !== true).slice().sort((left, right) => Number(left.sequence) - Number(right.sequence))
                 : [];
             if (state.sessionId !== sessionId) {
                 resetCrewartRouletteState(sessionId);
@@ -8074,7 +8087,7 @@
                     right: map.p3_contribution_roulette_right || 'auto',
                     bottom: map.p3_contribution_roulette_bottom || 'auto',
                     width: map.p3_contribution_roulette_width || '76%',
-                    height: map.p3_contribution_roulette_height || 'auto'
+                    height: map.p3_contribution_roulette_height || '13%'
                 };
                 Object.entries(placement).forEach(([key, value]) => {
                     contributionRoulette.style[key] = value === 'auto' ? '' : normalizeCssLength(value) || value;

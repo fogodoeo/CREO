@@ -895,29 +895,19 @@ test('CREWART contribution roulette is winner-only, idempotent, persistent, and 
     );
     assert.equal(first.json().soldPrice, 150000);
 
-    const replay = await call(api, 'POST', '/api/platform/channels/alpha/audience-roulette', {
-        itemId: 'roulette_item', bidder_key: 'winner-user', message_key: 'another-command'
-    });
-    assert.equal(replay.status, 201, replay.body);
-    assert.equal(replay.json().duplicate, false);
-    assert.equal(replay.json().replay, true);
-    assert.equal(replay.json().event.replay, true);
-    assert.notEqual(replay.json().event.id, first.json().event.id);
-    assert.equal(replay.json().event.multiplier, first.json().event.multiplier);
-    assert.equal(replay.json().event.contributionAmount, first.json().event.contributionAmount);
-
     const duplicate = await call(api, 'POST', '/api/platform/channels/alpha/audience-roulette', {
         itemId: 'roulette_item', bidder_key: 'winner-user', message_key: 'another-command'
     });
     assert.equal(duplicate.status, 200, duplicate.body);
     assert.equal(duplicate.json().duplicate, true);
-    assert.equal(duplicate.json().event.id, replay.json().event.id);
+    assert.equal(duplicate.json().event.id, first.json().event.id);
 
-    const throttledReplay = await call(api, 'POST', '/api/platform/channels/alpha/audience-roulette', {
+    const anotherDuplicate = await call(api, 'POST', '/api/platform/channels/alpha/audience-roulette', {
         itemId: 'roulette_item', bidder_key: 'winner-user', message_key: 'third-command'
     });
-    assert.equal(throttledReplay.status, 200, throttledReplay.body);
-    assert.equal(throttledReplay.json().duplicate, true);
+    assert.equal(anotherDuplicate.status, 200, anotherDuplicate.body);
+    assert.equal(anotherDuplicate.json().duplicate, true);
+    assert.equal(anotherDuplicate.json().event.id, first.json().event.id);
 
     const stored = await repository.getRecord('alpha', 'item', 'roulette_item');
     assert.equal(stored.soldPrice, 150000);
@@ -926,7 +916,7 @@ test('CREWART contribution roulette is winner-only, idempotent, persistent, and 
     assert.equal(stored.attributes.crewart_roulette_status, 'completed');
 
     const broadcast = await call(api, 'GET', '/api/platform/channels/alpha/broadcast', null, '');
-    assert.equal(broadcast.json().audience.roulette.events.length, 2);
+    assert.equal(broadcast.json().audience.roulette.events.length, 1);
     assert.equal(broadcast.json().items[0].soldPrice, 150000);
     assert.equal(
         broadcast.json().items[0].attributes.crewart_contribution_amount,

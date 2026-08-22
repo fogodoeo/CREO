@@ -546,12 +546,12 @@
 
             /* CREWARTS minimal ranked house cards */
             body[data-event-module="crewart"].bracket-page #bracket-page-tree-full {
-                inset:0 !important;width:100% !important;height:100% !important;padding:0 !important;
+                padding:0 !important;
             }
             .crewart-scoreboard,
             .crewart-scoreboard.is-compact {
                 min-width:0;max-width:100%;flex:1 1 0;display:flex;flex-direction:row;align-items:flex-end;justify-content:flex-start;
-                padding:0 0 clamp(28px,4vh,54px) clamp(32px,3vw,58px);border:0;background:transparent;color:#fff;overflow:hidden;
+                width:100%;height:100%;box-sizing:border-box;padding:0 0 clamp(28px,4vh,54px) clamp(32px,3vw,58px);border:0;background:transparent;color:#fff;overflow:hidden;
             }
             .crewart-scoreboard::before,
             .crewart-scoreboard::after,
@@ -559,12 +559,12 @@
             .crewart-house-card::after { display:none; }
             .crewart-house-list {
                 position:relative;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));flex:0 0 calc(100% + clamp(42px,3vw,64px));
-                width:calc(100% + clamp(42px,3vw,64px));max-width:none;gap:clamp(10px,.8vw,16px);margin:0;
+                width:calc(100% + clamp(42px,3vw,64px));height:100%;max-width:none;gap:clamp(10px,.8vw,16px);margin:0;align-items:end;
             }
             .crewart-house-card,
             .crewart-scoreboard.is-compact .crewart-house-card {
                 display:grid;grid-template-columns:1fr;grid-template-rows:1fr;place-items:center;gap:0;
-                min-width:0;width:100%;height:clamp(104px,17vh,184px);min-height:0;padding:12px 22px;
+                min-width:0;width:100%;height:min(100%,clamp(104px,17vh,184px));min-height:0;padding:12px 22px;
                 border:1px solid rgba(255,255,255,.14);border-radius:clamp(14px,1.05vw,22px);
                 background:var(--house);box-shadow:0 18px 50px rgba(0,0,0,.24);
                 clip-path:none;overflow:hidden;text-align:center;transition:transform .35s ease,box-shadow .35s ease;
