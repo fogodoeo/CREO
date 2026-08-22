@@ -85,6 +85,12 @@ test('CREWART defaults define viewer-color sold amount competition as channel ca
         assignment: 'survey-random',
         metric: 'soldPrice'
     });
+    assert.deepEqual(crewart.settlementDiscount, {
+        enabled: true,
+        rule: 'winner-house',
+        ratePercent: 10,
+        excludeShipping: true
+    });
     assert.deepEqual(crewart.scoreboards[0], {
         id: 'houses', name: '팀별 낙찰금 합계', dimension: 'winnerHouse',
         metric: 'soldAmount', unit: '만원', topN: 4

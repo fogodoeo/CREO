@@ -83,6 +83,7 @@ const DEFAULT_CHANNELS = Object.freeze([
             Object.freeze({ id: 'houses', name: '팀별 낙찰금 합계', dimension: 'winnerHouse', metric: 'soldAmount', unit: '만원', topN: 4 })
         ]),
         audienceCompetition: Object.freeze({ enabled: true, assignment: 'survey-random', metric: 'soldPrice' }),
+        settlementDiscount: Object.freeze({ enabled: true, rule: 'winner-house', ratePercent: 10, excludeShipping: true }),
         overlay: Object.freeze({ skin: 'heritage', layout: 'left' }),
         broadcastDefaults: Object.freeze({
             notice: 'CREWARTS LIVE',
@@ -234,6 +235,18 @@ function normalizeAudienceCompetition(value = {}, fallback = {}) {
     };
 }
 
+function normalizeSettlementDiscount(value = {}, fallback = {}) {
+    const source = { ...(fallback || {}), ...(value || {}) };
+    const rule = ['none', 'winner-house', 'top-vendor', 'top-buyer'].includes(source.rule) ? source.rule : 'none';
+    const ratePercent = Math.max(0, Math.min(100, Number(source.ratePercent) || 0));
+    return {
+        enabled: source.enabled === true && rule !== 'none' && ratePercent > 0,
+        rule,
+        ratePercent,
+        excludeShipping: true
+    };
+}
+
 function normalizeChannel(input = {}, fallback = {}) {
     const source = { ...fallback, ...input };
     const id = normalizeChannelId(source.id || source.slug || source.name);
@@ -288,6 +301,7 @@ function normalizeChannel(input = {}, fallback = {}) {
         groups: normalizeGroups(input.groups ?? source.groups, fallback.groups),
         scoreboards,
         audienceCompetition,
+        settlementDiscount: normalizeSettlementDiscount(input.settlementDiscount ?? source.settlementDiscount, fallback.settlementDiscount),
         overlay: normalizeOverlay(input.overlay || source.overlay, fallback.overlay),
         broadcastDefaults: normalizeBroadcastDefaults(input.broadcastDefaults ?? source.broadcastDefaults, fallback.broadcastDefaults),
         shippingDefaults: normalizeShippingDefaults(input.shippingDefaults ?? source.shippingDefaults, fallback.shippingDefaults),
@@ -475,6 +489,7 @@ module.exports = {
     cleanText,
     normalizeBroadcastDefaults,
     normalizeAudienceCompetition,
+    normalizeSettlementDiscount,
     normalizeChannel,
     normalizeChannelId,
     normalizeShippingDefaults,

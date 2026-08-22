@@ -145,6 +145,10 @@ test('channel creation starts with a safe generated id and protects unsaved edit
     assert.match(manager, /scrollbar-width:none/);
     assert.match(manager, /shipping-pickup-locations/);
     assert.match(manager, /shippingDefaults:\{pickupLocations:/);
+    assert.match(manager, /id="settlement-discount-enabled"/);
+    assert.match(manager, /id="settlement-discount-rule"/);
+    assert.match(manager, /id="settlement-discount-rate"/);
+    assert.match(manager, /settlementDiscount:\{enabled:/);
     assert.match(manager, /channels\?includeArchived=1/);
     assert.match(manager, /function syncFeatureUi/);
     assert.match(manager, /data-key="topN"/);
@@ -326,6 +330,10 @@ test('new CDCUP overlays and shipping retain compatibility with the established 
     assert.match(shipping, /SHIPPING_CHANNEL_ID/);
     assert.match(shipping, /channel-adapters\.js/);
     assert.match(shipping, /CreoChannelAdapters\.resolve/);
+    assert.match(shipping, /settlement-discount\.js/);
+    assert.match(shipping, /function settlementDiscountFor/);
+    assert.match(shipping, /settlement\.payableAuctionAmount \+ shippingShare/);
+    assert.match(shipping, /settlement\.payableAuctionAmount \+ totalShipping/);
     assert.match(shipping, /adapter\.loadShippingItems/);
     assert.match(shipping, /adapter\.saveShippingItem/);
     assert.match(shipping, /saveShippingItem/);

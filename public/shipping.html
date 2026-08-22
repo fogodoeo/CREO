@@ -10,7 +10,8 @@
     <script src="platform-client.js?v=20260803-admin-session-v2"></script>
     <script src="auction-contract.js?v=20260819-contract-v1"></script>
     <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
-    <script src="channel-adapters.js?v=20260823-channel-isolation-v2"></script>
+    <script src="channel-adapters.js?v=20260823-channel-isolation-v3"></script>
+    <script src="settlement-discount.js?v=20260823-v1"></script>
     <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard-dynamic-subset.css" />
     <style>
         /* ══════════════════════════════════════
@@ -1708,6 +1709,10 @@
             margin-bottom: 11px;
         }
 
+        .editor-total-strip.has-discount {
+            grid-template-columns: 0.9fr 0.85fr 0.85fr 1.2fr;
+        }
+
         .editor-total-item {
             min-width: 0;
             padding: 8px 9px;
@@ -2512,6 +2517,10 @@
                         <span>총 낙찰 금액</span>
                         <span id="b-summary-bid" style="font-weight: 700;">0만</span>
                     </div>
+                    <div id="b-summary-discount-row" hidden style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px; font-weight: 700; color: #166534;">
+                        <span id="b-summary-discount-label">1위 할인</span>
+                        <span id="b-summary-discount">-0원</span>
+                    </div>
                     <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; font-weight: 500;">
                         <span>배송비</span>
                         <span id="b-summary-ship" style="font-weight: 700;">0원</span>
@@ -2670,6 +2679,10 @@
                     <div class="editor-total-item">
                         <span>낙찰금액</span>
                         <strong id="editor-summary-bid">0원</strong>
+                    </div>
+                    <div class="editor-total-item" id="editor-summary-discount-item" hidden>
+                        <span id="editor-summary-discount-label">1위 할인</span>
+                        <strong id="editor-summary-discount">-0원</strong>
                     </div>
                     <div class="editor-total-item">
                         <span>배송금액</span>
@@ -3050,14 +3063,46 @@
         const getWrapangCost = cost => Math.round(Number(cost) || 0);
 
         function auctionItemWon(item) {
-            return (parseFloat(item.soldPrice || item.sold_price) || 0) * 10000;
+            return window.CreoSettlementDiscount?.amountWon(item)
+                ?? ((parseFloat(item.soldPrice || item.sold_price) || 0) * 10000);
+        }
+
+        function settlementGroupOrder() {
+            const groups = shippingAdapterContext?.channel?.groups;
+            if (!Array.isArray(groups) || !groups.length) return ['R', 'G', 'B', 'Y'];
+            const aliases = { RED: 'R', GREEN: 'G', BLUE: 'B', YELLOW: 'Y', 빨강: 'R', 초록: 'G', 파랑: 'B', 노랑: 'Y' };
+            const order = groups.map(group => {
+                const candidates = [group?.shortName, group?.name, group?.id];
+                for (const candidate of candidates) {
+                    const value = String(candidate || '').trim().toUpperCase();
+                    if (['R', 'G', 'B', 'Y'].includes(value)) return value;
+                    if (aliases[value]) return aliases[value];
+                    const first = value.slice(0, 1);
+                    if (['R', 'G', 'B', 'Y'].includes(first)) return first;
+                }
+                return '';
+            }).filter(Boolean);
+            return order.length ? [...new Set(order)] : ['R', 'G', 'B', 'Y'];
+        }
+
+        function settlementDiscountFor(selectedItems, settlementItems = allItems) {
+            if (!window.CreoSettlementDiscount) {
+                const originalAmount = (selectedItems || []).reduce((sum, item) => sum + auctionItemWon(item), 0);
+                return { originalAmount, payableAuctionAmount: originalAmount, discountAmount: 0, label: '' };
+            }
+            return window.CreoSettlementDiscount.calculate(
+                shippingAdapterContext?.channel?.settlementDiscount,
+                selectedItems,
+                settlementItems,
+                { groupOrder: settlementGroupOrder() }
+            );
         }
 
         function paymentSmsItemLine(item) {
             return `- ${auctionItemLabel(item, { includeTeam: true })} / ${auctionItemWon(item).toLocaleString()}원`;
         }
 
-        function otherCompanyPaymentText(allItems, selectedCompany) {
+        function otherCompanyPaymentText(allItems, selectedCompany, settlementItems) {
             const grouped = {};
             (allItems || []).forEach(item => {
                 const company = String(item.company || '').trim();
@@ -3070,8 +3115,9 @@
             const lines = companies.map(company => {
                 const items = grouped[company];
                 const names = items.map(item => auctionItemLabel(item, { includeTeam: true })).join(', ');
-                const bid = items.reduce((sum, item) => sum + auctionItemWon(item), 0);
-                return `- ${company}: ${names} / ${bid.toLocaleString()}원`;
+                const settlement = settlementDiscountFor(items, settlementItems);
+                const discountText = settlement.discountAmount > 0 ? ` / 할인 -${settlement.discountAmount.toLocaleString()}원` : '';
+                return `- ${company}: ${names} / ${settlement.payableAuctionAmount.toLocaleString()}원${discountText}`;
             });
             const contactText=companies.length===1
                 ? `${companies[0]} 낙찰분은 ${companies[0]}의 연락을 받으신 후 결제해 주세요.`
@@ -3082,12 +3128,13 @@
         function buildVendorPaymentMessage(options) {
             const {
                 selectedCompany, selectedItems, allItems, shippingType,
-                shippingCompany, shippingInfo, shippingShare, totalShipping
+                shippingCompany, shippingInfo, shippingShare, totalShipping, settlementItems
             } = options;
             const sellerCompanies = [...new Set((allItems || []).map(item => String(item.company || '').trim()).filter(Boolean))];
-            const bid = (selectedItems || []).reduce((sum, item) => sum + auctionItemWon(item), 0);
+            const settlement = settlementDiscountFor(selectedItems, settlementItems);
+            const bid = settlement.originalAmount;
             const itemLines = (selectedItems || []).map(paymentSmsItemLine).join('\n');
-            const others = otherCompanyPaymentText(allItems, selectedCompany);
+            const others = otherCompanyPaymentText(allItems, selectedCompany, settlementItems);
             const splitShipping = shippingType === '배송' && ['도도시', '파르게', '랩팡'].includes(shippingCompany);
             const hasShippingMethod = shippingType === '배송' || shippingType === '직접수령';
             const selectedItemCount=(selectedItems || []).length;
@@ -3102,8 +3149,11 @@
                 deliverySection=`[배송]\n${shippingInfo}\n배송비: ${shippingShare.toLocaleString()}원`;
             }
             const paymentLines = [`낙찰금: ${bid.toLocaleString()}원`];
+            if (settlement.discountAmount > 0) {
+                paymentLines.push(`${settlement.label}(${settlement.policy.ratePercent}%): -${settlement.discountAmount.toLocaleString()}원`);
+            }
             if (hasShippingMethod) paymentLines.push(`배송비: ${shippingShare.toLocaleString()}원`);
-            paymentLines.push(`합계: ${(bid + shippingShare).toLocaleString()}원`);
+            paymentLines.push(`합계: ${(settlement.payableAuctionAmount + shippingShare).toLocaleString()}원`);
 
             const messageSections = [
                 `[${selectedCompany} 낙찰]\n${itemLines}`
@@ -3945,10 +3995,12 @@
                         ? (totalShipping > 0 ? calculatedShippingCost : savedShippingCost)
                         : 0;
                     
-                    const grandTotal = (totalBid * 10000) + shippingCost;
+                    const settlement = settlementDiscountFor(groupItems, allItems);
+                    const grandTotal = settlement.payableAuctionAmount + shippingCost;
                     
                     state.totalBid = totalBid;
                     state.totalShipping = shippingCost;
+                    state.discountAmount = settlement.discountAmount;
                     state.grandTotal = grandTotal;
 
                     // Gecko names list
@@ -4395,11 +4447,11 @@
             const companyRows = canShowCompanies ? orderedCompanies.map(co => {
                 const items = state.allItems.filter(it => (it.company || '').trim() === co);
                 const bidWon = items.reduce((sum, it) => {
-                    const bid = parseInt(String(it.sold_price).replace(/[^0-9]/g, '')) || 0;
-                    return sum + (bid * 10000);
+                    return sum + auctionItemWon(it);
                 }, 0);
+                const settlement = settlementDiscountFor(items, allItems);
                 const shippingShare = allocations[co] || 0;
-                const collectTotal = bidWon + shippingShare;
+                const collectTotal = settlement.payableAuctionAmount + shippingShare;
                 const objectNames = items.map(it => {
                     return auctionItemLabel(it, { includeTeam: true });
                 }).join(' · ');
@@ -4415,6 +4467,7 @@
                         <div class="breakdown-objects">개체 ${items.length}개 (${pct}% 부담) · ${objectNames}</div>
                         <div class="breakdown-money-grid">
                             <div><span>낙찰금액</span><strong>${bidWon.toLocaleString()}원</strong></div>
+                            ${settlement.discountAmount > 0 ? `<div><span>${settlement.label}</span><strong>-${settlement.discountAmount.toLocaleString()}원</strong></div>` : ''}
                             <div><span>배분 배송비</span><strong>${shippingShare.toLocaleString()}원</strong></div>
                             <div class="company-collect"><span>받을 금액</span><strong>${collectTotal.toLocaleString()}원</strong></div>
                         </div>
@@ -4470,9 +4523,15 @@
                 : 0;
             const shippingAllocations = splitShippingCostByCompany(sellerCos, totalShipping, state.allItems);
             const shipCost = editorShippingState.type === '배송' ? (shippingAllocations[selectedCo] || 0) : 0;
-            const grandTotal = (totalBid * 10000) + shipCost;
+            const settlement = settlementDiscountFor(groupItems, allItems);
+            const grandTotal = settlement.payableAuctionAmount + shipCost;
 
-            document.getElementById('editor-summary-bid').textContent = (totalBid * 10000).toLocaleString() + '원';
+            document.getElementById('editor-summary-bid').textContent = settlement.originalAmount.toLocaleString() + '원';
+            const discountItem = document.getElementById('editor-summary-discount-item');
+            discountItem.hidden = settlement.discountAmount <= 0;
+            discountItem.parentElement.classList.toggle('has-discount', settlement.discountAmount > 0);
+            document.getElementById('editor-summary-discount-label').textContent = settlement.label || '1위 할인';
+            document.getElementById('editor-summary-discount').textContent = `-${settlement.discountAmount.toLocaleString()}원`;
             document.getElementById('editor-summary-ship').textContent = shipCost.toLocaleString() + '원';
             document.getElementById('editor-summary-total').textContent = grandTotal.toLocaleString() + '원';
             renderEditorShippingBreakdown(state, selectedCo, baseCost, totalShipping, shippingAllocations, comp || '배송');
@@ -4519,7 +4578,8 @@
                 shippingCompany: comp,
                 shippingInfo: smsShipInfo,
                 shippingShare: shipCost,
-                totalShipping
+                totalShipping,
+                settlementItems: allItems
             });
             const totalMessage = baseMessage + captureMessageLinks(groupItems);
 
@@ -5369,10 +5429,16 @@
                 }
             }
 
-            document.getElementById('b-summary-bid').textContent = totalBid + '만';
+            const settlement = settlementDiscountFor(buyerFoundItems, allItems);
+            document.getElementById('b-summary-bid').textContent = settlement.originalAmount.toLocaleString() + '원';
+            const discountRow = document.getElementById('b-summary-discount-row');
+            discountRow.hidden = settlement.discountAmount <= 0;
+            discountRow.style.display = settlement.discountAmount > 0 ? 'flex' : 'none';
+            document.getElementById('b-summary-discount-label').textContent = settlement.label || '1위 할인';
+            document.getElementById('b-summary-discount').textContent = `-${settlement.discountAmount.toLocaleString()}원`;
             document.getElementById('b-summary-ship').textContent = totalShipping.toLocaleString() + '원';
             
-            const grandTotalWon = (totalBid * 10000) + totalShipping;
+            const grandTotalWon = settlement.payableAuctionAmount + totalShipping;
             document.getElementById('b-summary-total').textContent = grandTotalWon.toLocaleString() + '원';
         }
 
