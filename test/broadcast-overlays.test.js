@@ -77,6 +77,11 @@ test('CREWART new bidders use a two-second persistent FIFO reel without blocking
 
 test('CREWART P3 contribution roulette is a two-second FIFO reveal with a persistent result panel', () => {
     assert.match(broadcast, /id="p3-contribution-roulette-overlay"/);
+    assert.ok(
+        broadcast.indexOf('id="p3-contribution-roulette-overlay"') > broadcast.indexOf('id="bracket-page-container"'),
+        'the P3 roulette must live outside the hidden page 1/2 broadcast container'
+    );
+    assert.match(broadcast, /#p3-contribution-roulette-overlay \{[\s\S]{0,120}z-index: 10020/);
     assert.match(broadcast, /class="p3-contribution-roulette-window"/);
     assert.match(broadcast, /state\.queue\.push\(\{ \.\.\.event, sequence \}\)/);
     assert.match(broadcast, /const duration = 2000/);

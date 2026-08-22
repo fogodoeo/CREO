@@ -180,7 +180,7 @@
         .p2-house-reveal-color[data-house="Y"] { background: #d2a33a; }
         #p3-contribution-roulette-overlay {
             position: fixed;
-            z-index: 72;
+            z-index: 10020;
             left: 50%;
             top: 42%;
             width: min(920px, 76vw);
@@ -3954,7 +3954,6 @@
         <span class="top-bar-label auction-progress" id="auction-progress"></span>
         <aside id="p2-live-bidders-overlay" aria-live="polite"></aside>
         <aside id="p2-house-reveal-overlay" aria-live="polite"></aside>
-        <aside id="p3-contribution-roulette-overlay" aria-live="polite"></aside>
         <div class="scoreboard-wrap" id="scoreboard-wrap">
             <div class="top-bar" id="top-bar">
                 <div class="name-section">
@@ -4060,6 +4059,7 @@
         <!-- 실시간 경기 스코어보드 (Live Match) -->
         <div id="bracket-page-tree-live" class="bracket-tree-view" style="display:flex; justify-content:center; align-items:center; gap:60px; padding:20px; box-sizing:border-box;"></div>
     </div>
+    <aside id="p3-contribution-roulette-overlay" aria-live="polite"></aside>
     <div id="p3-switching-container" aria-live="polite">
         <div id="blind-team-total-overlay"></div>
         <div id="live-bidders-overlay"></div>
