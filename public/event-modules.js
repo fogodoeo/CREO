@@ -402,12 +402,12 @@
             const rawName = String(row.name || row.id || '?').trim().toUpperCase();
             const sigil = ({RED:'R',GREEN:'G',BLUE:'B',YELLOW:'Y'})[rawName] || rawName.slice(0, 1) || '?';
             const housePalette = {
-                R: ['#c64b52', '#ffffff'],
-                G: ['#328b5b', '#ffffff'],
-                B: ['#3c73bd', '#ffffff'],
-                Y: ['#d2a33a', '#ffffff']
-            }[sigil] || [row.color, '#ffffff'];
-            const amount = Math.round(row.amount).toLocaleString('ko-KR');
+                R: ['#6f1f2a', '#f7ead0'],
+                G: ['#174936', '#f7ead0'],
+                B: ['#1d3f68', '#f7ead0'],
+                Y: ['#80631f', '#fff0c8']
+            }[sigil] || [row.color, '#f7ead0'];
+            const amount = Math.floor(Math.max(0, Number(row.amount) || 0) / 10000).toLocaleString('ko-KR');
             return `
                 <article class="crewart-house-card" data-house="${escapeHtml(sigil)}" data-rank="${row.rank}"
                     aria-label="${escapeHtml(sigil)} 기숙사 ${amount}만원"
@@ -551,38 +551,38 @@
             .crewart-scoreboard,
             .crewart-scoreboard.is-compact {
                 min-width:0;max-width:100%;flex:1 1 0;display:flex;flex-direction:row;align-items:flex-end;justify-content:flex-start;
-                width:100%;height:100%;box-sizing:border-box;padding:0 0 clamp(28px,4vh,54px) clamp(32px,3vw,58px);border:0;background:transparent;color:#fff;overflow:hidden;
+                width:100%;height:100%;box-sizing:border-box;padding:0;border:0;background:transparent;color:#f7ead0;overflow:hidden;
             }
             .crewart-scoreboard::before,
             .crewart-scoreboard::after,
             .crewart-house-card::before,
             .crewart-house-card::after { display:none; }
             .crewart-house-list {
-                position:relative;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));flex:0 0 calc(100% + clamp(42px,3vw,64px));
-                width:calc(100% + clamp(42px,3vw,64px));height:100%;max-width:none;gap:clamp(10px,.8vw,16px);margin:0;align-items:end;
+                position:relative;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));flex:1 1 100%;
+                width:100%;height:100%;max-width:100%;gap:clamp(8px,.7vw,14px);margin:0;align-items:end;
             }
             .crewart-house-card,
             .crewart-scoreboard.is-compact .crewart-house-card {
                 display:grid;grid-template-columns:1fr;grid-template-rows:1fr;place-items:center;gap:0;
-                min-width:0;width:100%;height:min(100%,clamp(104px,17vh,184px));min-height:0;padding:12px 22px;
-                border:1px solid rgba(255,255,255,.14);border-radius:clamp(14px,1.05vw,22px);
-                background:var(--house);box-shadow:0 18px 50px rgba(0,0,0,.24);
+                min-width:0;width:100%;height:100%;min-height:0;padding:12px 18px;
+                border:1px solid rgba(214,178,103,.72);border-radius:clamp(10px,.8vw,18px);
+                background:
+                    radial-gradient(circle at 50% 12%,rgba(255,239,196,.14),transparent 42%),
+                    linear-gradient(155deg,color-mix(in srgb,var(--house) 92%,#120d12),color-mix(in srgb,var(--house) 58%,#09070a));
+                box-shadow:inset 0 0 0 1px rgba(255,242,205,.07),inset 0 -18px 32px rgba(0,0,0,.22),0 14px 34px rgba(0,0,0,.28);
                 clip-path:none;overflow:hidden;text-align:center;transition:transform .35s ease,box-shadow .35s ease;
             }
             .crewart-house-score {
                 position:static;display:block;grid-column:1;grid-row:1;justify-self:center;align-self:center;
                 margin:0;color:var(--house-ink);font-family:'Pretendard Variable',Pretendard,sans-serif;
-                max-width:100%;font-size:clamp(42px,4.35vw,84px);font-weight:900;line-height:1;letter-spacing:-.055em;
-                font-variant-numeric:tabular-nums;text-shadow:none;white-space:nowrap;
-            }
-            .crewart-house-card:last-child .crewart-house-score {
-                justify-self:end;transform:translateX(-.22em);
+                max-width:100%;font-size:clamp(26px,calc(var(--bracket-fs,14px) * 4.5),104px);font-weight:900;line-height:1;letter-spacing:-.045em;
+                font-variant-numeric:tabular-nums;text-shadow:0 2px 14px rgba(0,0,0,.42);white-space:nowrap;
             }
             @media (max-width:720px) {
-                .crewart-scoreboard,.crewart-scoreboard.is-compact { padding:0 0 18px 12px; }
+                .crewart-scoreboard,.crewart-scoreboard.is-compact { padding:0; }
                 .crewart-house-list { grid-template-columns:repeat(4,minmax(0,1fr));gap:6px; }
-                .crewart-house-card,.crewart-scoreboard.is-compact .crewart-house-card { height:86px;min-height:0;padding:8px;border-radius:12px; }
-                .crewart-house-score { font-size:clamp(22px,7vw,46px); }
+                .crewart-house-card,.crewart-scoreboard.is-compact .crewart-house-card { height:100%;min-height:0;padding:8px;border-radius:10px; }
+                .crewart-house-score { font-size:clamp(20px,calc(var(--bracket-fs,14px) * 3.4),70px); }
             }
         `;
         document.head.appendChild(style);

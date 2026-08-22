@@ -128,16 +128,21 @@ test('P3 board presents only four house cards and their amount numbers', () => {
     ], { crewart_score_scope: 'all' });
 
     assert.equal((html.match(/class="crewart-house-card"/g) || []).length, 4);
-    assert.match(html, /<strong class="crewart-house-score">10,000,000<\/strong>/);
-    assert.match(html, /data-house="Y"[^>]*--house:#d2a33a;--house-ink:#ffffff;/);
+    assert.match(html, /<strong class="crewart-house-score">1,000<\/strong>/);
+    assert.match(html, /data-house="Y"[^>]*--house:#80631f;--house-ink:#fff0c8;/);
+    const threeManwon = module.renderCrewartHouseBoardHTML([
+        { status: 'sold', sold_price: 30_000, crewartHouseKey: 'R' }
+    ], { crewart_score_scope: 'all' });
+    assert.match(threeManwon, /<strong class="crewart-house-score">3<\/strong>/);
+    assert.doesNotMatch(threeManwon, /<strong class="crewart-house-score">30,000<\/strong>/);
     assert.doesNotMatch(html, /crewart-score-head|crewart-house-stats|crewart-house-sigil|<small>|POINTS|기숙사 미지정/);
 
     const source = fs.readFileSync(path.join(__dirname, '..', 'public', 'event-modules.js'), 'utf8');
-    assert.match(source, /\.crewart-house-list \{[\s\S]*?grid-template-columns:repeat\(4,minmax\(0,1fr\)\);flex:0 0 calc\(100% \+ clamp\(42px,3vw,64px\)\)/);
-    assert.match(source, /\.crewart-house-card,[\s\S]*?width:100%;height:min\(100%,clamp\(104px,17vh,184px\)\)/);
+    assert.match(source, /\.crewart-house-list \{[\s\S]*?grid-template-columns:repeat\(4,minmax\(0,1fr\)\);flex:1 1 100%/);
+    assert.match(source, /\.crewart-house-card,[\s\S]*?width:100%;height:100%/);
     assert.doesNotMatch(source, /body\[data-event-module="crewart"\]\.bracket-page #bracket-page-tree-full \{[\s\S]*?inset:0 !important;width:100% !important;height:100% !important/);
     assert.match(source, /\.crewart-scoreboard\.is-compact \{[\s\S]*?flex-direction:row;align-items:flex-end/);
-    assert.match(source, /\.crewart-house-card:last-child \.crewart-house-score \{[\s\S]*?transform:translateX\(-\.22em\)/);
+    assert.doesNotMatch(source, /width:calc\(100% \+ clamp\(42px,3vw,64px\)\)|translateX\(-\.22em\)/);
 });
 
 test('P3 reorders cards by amount and keeps RGBY order for ties', () => {

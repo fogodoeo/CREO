@@ -75,7 +75,7 @@ test('CREWART new bidders use a two-second persistent FIFO reel without blocking
     assert.match(broadcast, /processCrewartAudienceReveals\(window\.__creoAudience \|\| null\)/);
 });
 
-test('CREWART P3 contribution roulette is a two-second FIFO reveal with a persistent result panel', () => {
+test('CREWART P3 contribution roulette uses an idle plate, two-second reel, and three clean result scenes', () => {
     assert.match(broadcast, /id="p3-contribution-roulette-overlay"/);
     assert.ok(
         broadcast.indexOf('id="p3-contribution-roulette-overlay"') > broadcast.indexOf('id="bracket-page-container"'),
@@ -94,10 +94,15 @@ test('CREWART P3 contribution roulette is a two-second FIFO reveal with a persis
     assert.match(broadcast, /showCrewartRouletteResult\(event\)/);
     assert.match(broadcast, /id="p3-contribution-result-popup"/);
     assert.match(broadcast, /showCrewartRouletteResultPopup\(event\)/);
-    assert.match(broadcast, /p3-contribution-result-multiplier/);
-    assert.match(broadcast, /String\(latest\.itemId \|\| ''\) === activeItemId/);
-    assert.match(broadcast, /직전 낙찰자의 입력을 기다리는 중/);
-    assert.match(broadcast, /formatCrewartWon\(event\.baseAmount\)\} → \$\{formatCrewartWon\(event\.contributionAmount\)/);
+    assert.match(broadcast, /p3-contribution-result-scene is-current/);
+    assert.match(broadcast, /p3-contribution-result-scene is-final/);
+    assert.match(broadcast, /formatCrewartScore\(event\.baseAmount\)/);
+    assert.match(broadcast, /×\$\{multiplier\}/);
+    assert.match(broadcast, /formatCrewartScore\(event\.contributionAmount\)/);
+    assert.match(broadcast, /setTimeout\(\(\) => activate\(1\), 760\)/);
+    assert.match(broadcast, /setTimeout\(\(\) => activate\(2\), 1520\)/);
+    assert.match(broadcast, /p3-contribution-roulette-shell" aria-hidden="true"/);
+    assert.doesNotMatch(broadcast, /직전 낙찰자의 입력을 기다리는 중|p3-contribution-result-name|p3-contribution-result-amount/);
     assert.match(broadcast, /processCrewartContributionRoulette\(window\.__creoAudience \|\| null\)/);
     assert.doesNotMatch(broadcast, /룰렛.*sendMessage|sendMessage.*룰렛/);
 });
@@ -107,10 +112,13 @@ test('CREWART P3 contribution roulette has an independent saved placement target
     assert.match(preview, /data-type="contribution_roulette"/);
     assert.match(preview, /configMap\.p3_contribution_roulette_top/);
     assert.match(preview, /configMap\.p3_contribution_roulette_width/);
+    assert.match(preview, /p3_contribution_roulette_font_size/);
+    assert.match(preview, /id="contribution-roulette-font-input"/);
     assert.match(preview, /resizeTarget === 'contribution_roulette'/);
     assert.match(broadcast, /map\.p3_contribution_roulette_top \|\| '36%'/);
     assert.match(broadcast, /map\.p3_contribution_roulette_width \|\| '76%'/);
     assert.match(broadcast, /map\.p3_contribution_roulette_height \|\| '13%'/);
+    assert.match(broadcast, /map\.p3_contribution_roulette_font_size \|\| '36'/);
     assert.match(broadcast, /events\.filter\(\(event\) => event\?\.replay !== true\)/);
 });
 
