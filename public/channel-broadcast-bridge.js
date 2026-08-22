@@ -44,19 +44,28 @@
     function toLegacyItem(item = {}, rendererModule = 'cdcup') {
         const bidLog = legacyBidLog(item);
         const attributes = item.attributes && typeof item.attributes === 'object' ? item.attributes : {};
+        const isCrewart = rendererModule === 'crewart';
         const rawChecklist = String(attributes.checklist || '').trim();
+        const safeChecklist = isCrewart
+            ? rawChecklist.split('|').map(part => part.trim()).filter(Boolean)
+                .filter(part => !/^_(?:auction|visibility|slot|team|stage)\s*:/i.test(part)).join('|')
+            : rawChecklist;
         const storedAuctionType = String((rawChecklist.match(/(?:^|\|)\s*_auction\s*:\s*([^|]+)/i) || [])[1] || '').trim().toLowerCase();
         const validAuctionTypes = ['tournament', 'solo', 'event', 'extra', 'crewart'];
-        const auctionType = validAuctionTypes.includes(storedAuctionType)
+        const auctionType = isCrewart
+            ? 'crewart'
+            : validAuctionTypes.includes(storedAuctionType)
             ? storedAuctionType
-            : (rendererModule === 'crewart' ? 'crewart' : 'extra');
-        const checklistParts = [rawChecklist];
-        if (!validAuctionTypes.includes(storedAuctionType)) checklistParts.push(`_auction:${auctionType}`);
+            : 'extra';
+        const checklistParts = [safeChecklist];
+        if (isCrewart || !validAuctionTypes.includes(storedAuctionType)) checklistParts.push(`_auction:${auctionType}`);
         const storedVisibility = String((rawChecklist.match(/(?:^|\|)\s*_visibility\s*:\s*([^|]+)/i) || [])[1] || '').trim().toLowerCase();
-        const visibilityMode = ['public', 'blind'].includes(storedVisibility)
+        const visibilityMode = isCrewart
+            ? 'public'
+            : ['public', 'blind'].includes(storedVisibility)
             ? storedVisibility
             : (auctionType === 'tournament' ? '' : 'public');
-        if (visibilityMode && visibilityMode !== storedVisibility) checklistParts.push(`_visibility:${visibilityMode}`);
+        if (visibilityMode && (isCrewart || visibilityMode !== storedVisibility)) checklistParts.push(`_visibility:${visibilityMode}`);
         const checklist = checklistParts.filter(Boolean).join('|');
         return {
             row: item.id,
@@ -78,9 +87,9 @@
             photoSire: attributes.photo_sire || '',
             photoDam: attributes.photo_dam || '',
             photoSibling: attributes.photo_sibling || '',
-            teamCode: item.groupId || '',
-            teamName: item.teamName || item.groupId || '',
-            groupId: item.groupId || '',
+            teamCode: isCrewart ? '' : (item.groupId || ''),
+            teamName: isCrewart ? '' : (item.teamName || item.groupId || ''),
+            groupId: isCrewart ? '' : (item.groupId || ''),
             category: item.category || '',
             auctionType,
             visibilityMode,

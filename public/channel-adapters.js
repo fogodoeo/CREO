@@ -54,15 +54,23 @@
         return { channel, vendors, items, shipments, assets: [], broadcast: { id: 'state', mode: 'standby', page: 1 }, adapter: 'legacy-cdcup', readOnly: { vendors: true, items: true } };
     }
 
-    function platformShippingItems(workspace) {
+    function platformChecklist(item, channel) {
+        const stored = String(item.checklist || item.attributes?.checklist || '').trim();
+        if (channel?.features?.tournament === true) {
+            return /(^|\|)_auction:[^|]+/.test(stored) ? stored : [stored, '_auction:extra'].filter(Boolean).join('|');
+        }
+        const visible = stored.split('|').map(part => part.trim()).filter(Boolean)
+            .filter(part => !/^_(?:auction|visibility|slot|team|stage)\s*:/i.test(part));
+        const auctionType = channel?.broadcastProfile === 'crewart-academy' ? 'crewart' : 'extra';
+        return [...visible, `_auction:${auctionType}`, '_visibility:public'].join('|');
+    }
+
+    function platformShippingItems(workspace, channel = workspace?.channel) {
         const vendors = new Map((workspace.vendors || []).map(vendor => [vendor.id, vendor]));
         const shipments = new Map((workspace.shipments || []).map(shipment => [shipment.itemId, shipment]));
         return (workspace.items || []).filter(item => AuctionContract.isSoldStatus(item.status) || Number(item.soldPrice) > 0).map(item => {
             const shipment = shipments.get(item.id);
-            const storedChecklist = String(item.checklist || item.attributes?.checklist || '').trim();
-            const checklist = /(^|\|)_auction:[^|]+/.test(storedChecklist)
-                ? storedChecklist
-                : [storedChecklist, '_auction:extra'].filter(Boolean).join('|');
+            const checklist = platformChecklist(item, channel);
             return {
                 ...item, row: item.id, num: item.lotNumber, company: vendors.get(item.vendorId)?.name || item.vendorName || '', name: item.name || '개체',
                 checklist,
@@ -88,7 +96,7 @@
         },
         async loadShippingItems(context) {
             context.workspace = await this.loadWorkspace(context);
-            return platformShippingItems(context.workspace);
+            return platformShippingItems(context.workspace, context.channel);
         },
         async saveShippingItem(context, itemId, shippingData) {
             if (!context.workspace) context.workspace = await this.loadWorkspace(context);
@@ -149,5 +157,5 @@
 
     register(platform);
     register(legacyCdcup);
-    return Object.freeze({ legacyWorkspace, platformShippingItems, register, resolve });
+    return Object.freeze({ legacyWorkspace, platformChecklist, platformShippingItems, register, resolve });
 });

@@ -373,7 +373,8 @@ test('print forms remain available inside the shared registration workspace with
     assert.match(workspace, /`print\.html\?\$\{q\}`/);
     assert.match(print, /platform-client\.js/);
     assert.match(print, /channel-adapters\.js/);
-    assert.match(print, /function platformPrintItems\(workspace\)/);
+    assert.match(print, /function platformPrintItems\(workspace, channel\)/);
+    assert.match(print, /CreoChannelAdapters\.platformChecklist\(item, channel\)/);
     assert.match(print, /channels\/['"]? \+ encodeURIComponent\(PRINT_CHANNEL_ID\) \+ ['"]?\/workspace/);
     assert.match(print, />경매 리스트<\/button>/);
     assert.match(print, />낙찰 결과<\/button>/);

@@ -206,11 +206,29 @@ test('platform shipping items do not infer tournament teams from A01/B01-style n
             { id: 'item_b01', lotNumber: 22, name: 'B01', vendorId: 'vendor_jjunine', status: 'sold', soldPrice: 100000 },
             { id: 'item_explicit', lotNumber: 23, name: 'B02', vendorId: 'vendor_jjunine', status: 'sold', soldPrice: 100000, attributes: { checklist: 'weight:42|_auction:tournament|_team:B' } }
         ]
-    });
+    }, channel('crewart', { broadcastProfile: 'crewart-academy', features: { tournament: false } }));
 
     assert.equal(rows[0].company, '쭌이네');
-    assert.equal(rows[0].checklist, '_auction:extra');
-    assert.equal(rows[1].checklist, 'weight:42|_auction:tournament|_team:B');
+    assert.equal(rows[0].checklist, '_auction:crewart|_visibility:public');
+    assert.equal(rows[1].checklist, 'weight:42|_auction:crewart|_visibility:public');
+});
+
+test('CREWART broadcast strips copied CDCUP metadata even when the item is named A01', () => {
+    const bridged = BroadcastBridge.toLegacyItem({
+        id: 'item_a01',
+        lotNumber: 1,
+        name: 'A01',
+        groupId: 'A',
+        teamName: 'A팀',
+        attributes: { checklist: 'weight:42|_auction:tournament|_visibility:blind|_stage:4|_slot:A1|_team:A' }
+    }, 'crewart');
+
+    assert.equal(bridged.auctionType, 'crewart');
+    assert.equal(bridged.visibilityMode, 'public');
+    assert.equal(bridged.teamCode, '');
+    assert.equal(bridged.teamName, '');
+    assert.equal(bridged.groupId, '');
+    assert.equal(bridged.checklist, 'weight:42|_auction:crewart|_visibility:public');
 });
 
 test('legacy-layout bridge keeps renderer identity separate from platform channel data', async () => {
