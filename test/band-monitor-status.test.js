@@ -35,6 +35,19 @@ test('normalizes runtime status without exposing cookies, phones, or applicant d
             pending: 3,
             interval_seconds: 300,
             outbox_persistent: true,
+            roster_reconcile: {
+                enabled: true,
+                interval_seconds: 60,
+                last_result: {
+                    result: 'synced',
+                    success: true,
+                    scanned: 302,
+                    eligible: 290,
+                    synced: 1,
+                    at: '2026-08-22T05:00:10.000Z',
+                    display_name: '홍길동'
+                }
+            },
             phone: '01012345678',
             display_name: '홍길동'
         }
@@ -50,6 +63,9 @@ test('normalizes runtime status without exposing cookies, phones, or applicant d
     assert.equal(status.member_sync.pending, 3);
     assert.equal(status.member_sync.interval_seconds, 300);
     assert.equal(status.member_sync.outbox_persistent, true);
+    assert.equal(status.member_sync.roster_reconcile.enabled, true);
+    assert.equal(status.member_sync.roster_reconcile.last_result.scanned, 302);
+    assert.equal(status.member_sync.roster_reconcile.last_result.synced, 1);
     assert.doesNotMatch(JSON.stringify(status), /never-public|홍길동|01012345678/);
 });
 

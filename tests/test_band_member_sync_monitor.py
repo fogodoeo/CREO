@@ -72,6 +72,33 @@ class SupabaseMemberDirectoryTests(unittest.TestCase):
         self.assertTrue(ok)
         self.assertEqual(detail, "disabled")
 
+    def test_roster_batch_upsert_preserves_existing_join_timestamps(self) -> None:
+        environment = {
+            "BAND_MEMBER_SYNC_ENABLED": "true",
+            "SUPABASE_URL": "https://project.supabase.co",
+            "SUPABASE_SERVICE_ROLE_KEY": "service-role-secret",
+        }
+        with mock.patch.dict(os.environ, environment, clear=False):
+            directory = SupabaseMemberDirectory(logging.getLogger("test"))
+        with mock.patch("urllib.request.urlopen", return_value=_Response()) as opened:
+            ok, detail = directory.upsert_many(
+                [
+                    {
+                        "phone": "01012345678",
+                        "display_name": "홍길동/서울/01012345678",
+                        "member_key": "",
+                    }
+                ]
+            )
+
+        self.assertTrue(ok)
+        self.assertEqual(detail, "synced")
+        payload = json.loads(opened.call_args.args[0].data.decode("utf-8"))
+        self.assertEqual(len(payload), 1)
+        self.assertEqual(payload[0]["phone_normalized"], "01012345678")
+        self.assertNotIn("joined_at", payload[0])
+        self.assertNotIn("band_member_key", payload[0])
+
 
 class SyncedMonitorHookTests(unittest.TestCase):
     def _bare_monitor(self, outbox_path: Path) -> SyncedBandJoinMonitor:
@@ -83,6 +110,10 @@ class SyncedMonitorHookTests(unittest.TestCase):
         monitor.member_sync_interval_seconds = 300
         monitor._member_sync_run_lock = threading.RLock()
         monitor.stop_event = threading.Event()
+        monitor.member_reconcile_enabled = True
+        monitor.member_reconcile_interval_seconds = 60
+        monitor._last_roster_snapshot = {}
+        monitor._last_roster_reconcile = None
         return monitor
 
     def test_only_successful_approval_is_synced(self) -> None:
@@ -284,6 +315,76 @@ class SyncedMonitorHookTests(unittest.TestCase):
             self.assertTrue(status["member_sync"]["outbox_persistent"])
             self.assertNotIn("01012345678", serialized)
             self.assertNotIn("홍길동", serialized)
+
+    def test_roster_reconcile_backfills_manual_approvals_once_and_is_idempotent(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            monitor = self._bare_monitor(Path(directory) / "outbox.json")
+            monitor.profile_matcher = mock.Mock()
+            matches = {
+                "홍길동/서울/01012345678": SimpleNamespace(
+                    eligible=True,
+                    phone="01012345678",
+                ),
+                "전화번호없음": SimpleNamespace(eligible=False, phone=""),
+            }
+            monitor.profile_matcher.match.side_effect = matches.__getitem__
+            monitor.member_directory = mock.Mock()
+            monitor.member_directory.upsert_many.return_value = (True, "synced")
+
+            profiles = ["홍길동/서울/01012345678", "전화번호없음"]
+            self.assertEqual(monitor._reconcile_roster_profiles(profiles), (True, "synced"))
+            monitor.member_directory.upsert_many.assert_called_once_with(
+                [
+                    {
+                        "phone": "01012345678",
+                        "display_name": "홍길동/서울/01012345678",
+                        "member_key": "",
+                    }
+                ]
+            )
+            self.assertEqual(
+                monitor._reconcile_roster_profiles(profiles),
+                (True, "unchanged"),
+            )
+            self.assertEqual(monitor.member_directory.upsert_many.call_count, 1)
+            self.assertEqual(monitor._last_roster_reconcile["eligible"], 1)
+            self.assertNotIn("홍길동", json.dumps(monitor.runtime_status_extras(), ensure_ascii=False))
+
+            restarted = self._bare_monitor(Path(directory) / "restarted-outbox.json")
+            restarted.profile_matcher = monitor.profile_matcher
+            restarted.member_directory = mock.Mock()
+            restarted.member_directory.upsert_many.return_value = (True, "synced")
+            self.assertEqual(
+                restarted._reconcile_roster_profiles(profiles),
+                (True, "synced"),
+            )
+            restarted.member_directory.upsert_many.assert_called_once()
+
+    def test_failed_roster_reconcile_retries_the_same_member(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            monitor = self._bare_monitor(Path(directory) / "outbox.json")
+            monitor.profile_matcher = mock.Mock()
+            monitor.profile_matcher.match.return_value = SimpleNamespace(
+                eligible=True,
+                phone="01012345678",
+            )
+            monitor.member_directory = mock.Mock()
+            monitor.member_directory.upsert_many.side_effect = [
+                (False, "temporary"),
+                (True, "synced"),
+            ]
+            profiles = ["홍길동/서울/01012345678"]
+
+            self.assertEqual(
+                monitor._reconcile_roster_profiles(profiles),
+                (False, "temporary"),
+            )
+            self.assertEqual(monitor._last_roster_snapshot, {})
+            self.assertEqual(
+                monitor._reconcile_roster_profiles(profiles),
+                (True, "synced"),
+            )
+            self.assertEqual(monitor.member_directory.upsert_many.call_count, 2)
 
 
 if __name__ == "__main__":

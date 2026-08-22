@@ -42,6 +42,12 @@ function normalizeBandMonitorStatus(value, now = Date.now()) {
     const lastSync = memberSync.last_result && typeof memberSync.last_result === 'object'
         ? memberSync.last_result
         : null;
+    const rosterReconcile = memberSync.roster_reconcile && typeof memberSync.roster_reconcile === 'object'
+        ? memberSync.roster_reconcile
+        : {};
+    const lastRosterReconcile = rosterReconcile.last_result && typeof rosterReconcile.last_result === 'object'
+        ? rosterReconcile.last_result
+        : null;
     const safeCount = (key) => Math.max(0, Math.min(100000, Number.parseInt(applications[key], 10) || 0));
     const updatedAt = cleanText(source.updated_at, 80);
     const updatedMs = Date.parse(updatedAt);
@@ -110,7 +116,22 @@ function normalizeBandMonitorStatus(value, now = Date.now()) {
                 result: cleanText(lastSync.result, 60),
                 success: Boolean(lastSync.success),
                 at: cleanText(lastSync.at, 80) || null
-            } : null
+            } : null,
+            roster_reconcile: {
+                enabled: Boolean(rosterReconcile.enabled),
+                interval_seconds: Math.max(30, Math.min(
+                    86400,
+                    Number.parseInt(rosterReconcile.interval_seconds, 10) || 60
+                )),
+                last_result: lastRosterReconcile ? {
+                    result: cleanText(lastRosterReconcile.result, 60),
+                    success: Boolean(lastRosterReconcile.success),
+                    scanned: Math.max(0, Math.min(100000, Number.parseInt(lastRosterReconcile.scanned, 10) || 0)),
+                    eligible: Math.max(0, Math.min(100000, Number.parseInt(lastRosterReconcile.eligible, 10) || 0)),
+                    synced: Math.max(0, Math.min(100000, Number.parseInt(lastRosterReconcile.synced, 10) || 0)),
+                    at: cleanText(lastRosterReconcile.at, 80) || null
+                } : null
+            }
         }
     };
 }

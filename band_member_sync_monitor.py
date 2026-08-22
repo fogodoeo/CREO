@@ -228,6 +228,56 @@ class SupabaseMemberDirectory:
                 time.sleep(0.5 * (attempt + 1))
         return False, f"Supabase 동기화 실패: {last_error}"
 
+    def upsert_many(
+        self,
+        members: list[dict[str, str]],
+    ) -> tuple[bool, str]:
+        """Reconcile a BAND roster snapshot without rewriting join timestamps."""
+        if not self.enabled:
+            return True, "disabled"
+        if not self.configured:
+            return False, "Supabase 회원 명단 환경변수가 준비되지 않았습니다."
+        rows: list[dict[str, Any]] = []
+        now = dt.datetime.now(dt.timezone.utc).isoformat()
+        for member in members:
+            phone = monitor_module.normalize_phone(member.get("phone", ""))
+            if not re.fullmatch(r"010\d{8}", phone):
+                continue
+            row: dict[str, Any] = {
+                "phone_normalized": phone,
+                "display_name": str(member.get("display_name", ""))[:120],
+                "is_active": True,
+                "updated_at": now,
+            }
+            member_key = str(member.get("member_key", ""))[:160]
+            if member_key:
+                row["band_member_key"] = member_key
+            rows.append(row)
+        if not rows:
+            return True, "unchanged"
+
+        query = urllib.parse.urlencode({"on_conflict": "phone_normalized"})
+        endpoint = f"{self.url}/rest/v1/{self.table}?{query}"
+        request = urllib.request.Request(
+            endpoint,
+            data=json.dumps(rows, ensure_ascii=False).encode("utf-8"),
+            method="POST",
+            headers={
+                "apikey": self.service_role_key,
+                "Authorization": f"Bearer {self.service_role_key}",
+                "Content-Type": "application/json; charset=utf-8",
+                "Prefer": "resolution=merge-duplicates,return=minimal",
+            },
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=self.timeout) as response:
+                status = int(getattr(response, "status", 200))
+            return (True, "synced") if 200 <= status < 300 else (False, f"HTTP {status}")
+        except urllib.error.HTTPError as exc:
+            return False, f"HTTP {exc.code}"
+        except (OSError, urllib.error.URLError) as exc:
+            return False, type(exc).__name__
+
 
 class SyncedBandJoinMonitor(BaseBandJoinMonitor):
     def __init__(self, *args: Any, **kwargs: Any):
@@ -251,6 +301,19 @@ class SyncedBandJoinMonitor(BaseBandJoinMonitor):
         self.member_sync_interval_seconds = max(5.0, supplied_interval)
         self._member_sync_run_lock = threading.RLock()
         self._member_sync_worker: threading.Thread | None = None
+        self.member_reconcile_enabled = enabled(
+            "BAND_MEMBER_RECONCILE_ENABLED",
+            True,
+        )
+        try:
+            supplied_reconcile_interval = float(
+                os.environ.get("BAND_MEMBER_RECONCILE_INTERVAL_SECONDS", "60")
+            )
+        except ValueError:
+            supplied_reconcile_interval = 60
+        self.member_reconcile_interval_seconds = max(30.0, supplied_reconcile_interval)
+        self._last_roster_snapshot: dict[str, str] = {}
+        self._last_roster_reconcile: dict[str, Any] | None = None
 
     def start(self) -> None:
         if self._member_sync_worker and self._member_sync_worker.is_alive():
@@ -272,8 +335,16 @@ class SyncedBandJoinMonitor(BaseBandJoinMonitor):
 
     def _member_sync_loop(self) -> None:
         self._sync_pending_members()
-        while not self.stop_event.wait(self.member_sync_interval_seconds):
-            self._sync_pending_members()
+        next_pending = time.monotonic() + self.member_sync_interval_seconds
+        next_reconcile = time.monotonic() + 5.0
+        while not self.stop_event.wait(1.0):
+            current = time.monotonic()
+            if current >= next_pending:
+                self._sync_pending_members()
+                next_pending = current + self.member_sync_interval_seconds
+            if self.member_reconcile_enabled and current >= next_reconcile:
+                self._reconcile_member_roster()
+                next_reconcile = current + self.member_reconcile_interval_seconds
 
     def runtime_status_extras(self) -> dict[str, Any]:
         directory = getattr(self, "member_directory", None)
@@ -293,8 +364,204 @@ class SyncedBandJoinMonitor(BaseBandJoinMonitor):
                 "outbox_persistent": bool(
                     getattr(getattr(self, "member_sync_outbox", None), "last_save_ok", True)
                 ),
+                "roster_reconcile": {
+                    "enabled": bool(getattr(self, "member_reconcile_enabled", False)),
+                    "interval_seconds": int(
+                        getattr(self, "member_reconcile_interval_seconds", 60)
+                    ),
+                    "last_result": getattr(self, "_last_roster_reconcile", None),
+                },
             }
         }
+
+    def _record_roster_reconcile(
+        self,
+        result: str,
+        success: bool,
+        *,
+        scanned: int = 0,
+        eligible: int = 0,
+        synced: int = 0,
+    ) -> None:
+        self._last_roster_reconcile = {
+            "result": result,
+            "success": success,
+            "scanned": max(0, int(scanned)),
+            "eligible": max(0, int(eligible)),
+            "synced": max(0, int(synced)),
+            "at": dt.datetime.now(dt.timezone.utc).isoformat(),
+        }
+
+    def _reconcile_roster_profiles(self, profiles: list[str]) -> tuple[bool, str]:
+        snapshot: dict[str, str] = {}
+        for display_name in profiles:
+            clean_name = re.sub(r"\s+", " ", str(display_name or "")).strip()[:120]
+            profile = self.profile_matcher.match(clean_name)
+            if profile.eligible and profile.phone:
+                snapshot[profile.phone] = clean_name
+        if not snapshot:
+            self._record_roster_reconcile(
+                "no_valid_profiles",
+                False,
+                scanned=len(profiles),
+            )
+            return False, "no_valid_profiles"
+
+        changed = [
+            {
+                "phone": phone,
+                "display_name": display_name,
+                "member_key": "",
+            }
+            for phone, display_name in snapshot.items()
+            if self._last_roster_snapshot.get(phone) != display_name
+        ]
+        if not changed and snapshot == self._last_roster_snapshot:
+            self._record_roster_reconcile(
+                "unchanged",
+                True,
+                scanned=len(profiles),
+                eligible=len(snapshot),
+            )
+            return True, "unchanged"
+
+        ok, detail = self.member_directory.upsert_many(changed)
+        if ok:
+            self._last_roster_snapshot = snapshot
+        self._record_roster_reconcile(
+            detail,
+            ok,
+            scanned=len(profiles),
+            eligible=len(snapshot),
+            synced=len(changed) if ok else 0,
+        )
+        return ok, detail
+
+    def _member_roster_tab(self) -> dict[str, Any] | None:
+        band_no = self._band_no()
+        if not band_no:
+            return None
+        member_path = f"/band/{band_no}/member"
+        for tab in self.chrome.list_tabs():
+            if tab.get("type") != "page":
+                continue
+            if member_path in str(tab.get("url", "")) and tab.get("webSocketDebuggerUrl"):
+                return tab
+        return self.chrome.open_tab(f"https://www.band.us{member_path}")
+
+    def _reconcile_member_roster(self) -> bool:
+        if not self.member_directory.configured:
+            self._record_roster_reconcile("not_configured", False)
+            return False
+        tab = self._member_roster_tab()
+        websocket_url = str((tab or {}).get("webSocketDebuggerUrl", ""))
+        if not websocket_url:
+            self._record_roster_reconcile("member_tab_unavailable", False)
+            return False
+        connection = CDPConnection(websocket_url, max_event_queue=100)
+        script = r"""
+        new Promise(async (resolve) => {
+          const wait = (ms) => new Promise((done) => setTimeout(done, ms));
+          const deadline = Date.now() + 10000;
+          while (
+            Date.now() < deadline &&
+            !document.querySelector('main [data-viewname="DMemberListItemView"]')
+          ) {
+            await wait(200);
+          }
+          if (/\/login(?:[/?#]|$)/i.test(location.pathname)) {
+            resolve({ok: false, reason: 'login_required'});
+            return;
+          }
+          const profiles = new Set();
+          const collect = () => {
+            document.querySelectorAll(
+              'main [data-viewname="DMemberListItemView"]'
+            ).forEach((row) => {
+              const value = String(
+                row.querySelector('.ellipsis')?.textContent ||
+                row.querySelector('img[alt]')?.getAttribute('alt') || ''
+              ).replace(/\s+/g, ' ').trim();
+              if (/010[^0-9]*\d/.test(value)) profiles.add(value);
+            });
+          };
+          const candidates = [
+            document.scrollingElement,
+            ...document.querySelectorAll('main *')
+          ].filter(Boolean).filter(
+            (element) => Number(element.scrollHeight) > Number(element.clientHeight) + 80
+          );
+          const scroller = candidates.sort(
+            (left, right) =>
+              (right.scrollHeight - right.clientHeight) -
+              (left.scrollHeight - left.clientHeight)
+          )[0] || document.scrollingElement;
+          const setTop = (value) => {
+            if (scroller === document.scrollingElement) window.scrollTo(0, value);
+            else scroller.scrollTop = value;
+          };
+          const top = () => scroller === document.scrollingElement
+            ? window.scrollY
+            : scroller.scrollTop;
+          setTop(0);
+          await wait(150);
+          let stable = 0;
+          let before = -1;
+          let loops = 0;
+          for (; loops < 120 && stable < 5; loops += 1) {
+            collect();
+            stable = profiles.size === before ? stable + 1 : 0;
+            before = profiles.size;
+            const viewport = Number(scroller.clientHeight || window.innerHeight || 600);
+            setTop(Math.min(
+              top() + Math.max(400, viewport * 0.85),
+              Number(scroller.scrollHeight)
+            ));
+            await wait(100);
+            if (top() + viewport >= Number(scroller.scrollHeight) - 5) {
+              setTop(Number(scroller.scrollHeight));
+              await wait(120);
+              collect();
+              if (profiles.size === before) stable += 1;
+            }
+          }
+          setTop(0);
+          resolve({ok: profiles.size > 0, profiles: [...profiles], loops});
+        })
+        """
+        try:
+            connection.connect()
+            connection.call("Runtime.enable")
+            connection.call("Page.enable")
+            result = connection.call(
+                "Runtime.evaluate",
+                {
+                    "expression": script,
+                    "returnByValue": True,
+                    "awaitPromise": True,
+                },
+                timeout=25,
+            )
+            value = runtime_value(result)
+        except Exception as exc:
+            self.logger.warning(
+                "BAND 전체 멤버 명단 대조 실패: %s",
+                safe_for_log(exc),
+            )
+            self._record_roster_reconcile("roster_read_failed", False)
+            return False
+        finally:
+            connection.close()
+        if not isinstance(value, Mapping) or not value.get("ok"):
+            reason = value.get("reason", "roster_empty") if isinstance(value, Mapping) else "roster_empty"
+            self._record_roster_reconcile(str(reason), False)
+            return False
+        ok, detail = self._reconcile_roster_profiles(
+            [str(item) for item in value.get("profiles", [])]
+        )
+        if ok and detail == "synced":
+            self.logger.info("BAND 전체 멤버 명단을 Supabase와 대조했습니다.")
+        return ok
 
     def _record_member_sync(
         self, result: str, success: bool, request: Any | None = None
