@@ -1000,6 +1000,7 @@ function createPlatformApi({
             baseAmount: Math.max(0, Number(event.baseAmount) || 0),
             multiplier: [0.25, 0.5, 2, 3, 4].includes(multiplier) ? multiplier : 1,
             contributionAmount: Math.max(0, Number(event.contributionAmount) || 0),
+            replay: event.replay === true,
             startedAt: cleanText(event.startedAt, 80),
             revealAt: cleanText(event.revealAt, 80)
         };
@@ -1389,7 +1390,16 @@ function createPlatformApi({
                         ? stored
                         : { id: CREWART_ROULETTE_ID, sessionId: session.sessionId, sequence: 0, events: [] };
                     const events = Array.isArray(current.events) ? current.events.slice(-100) : [];
-                    const existing = events.find((event) => event.itemId === itemId);
+                    const messageKey = cleanText(body.message_key || body.messageKey, 180);
+                    const repeatedMessage = messageKey
+                        ? events.find((event) => cleanText(event.messageKey, 180) === messageKey)
+                        : null;
+                    if (repeatedMessage) {
+                        replyJson(res, 200, { duplicate: true, event: publicCrewartRouletteEvent(repeatedMessage) });
+                        return;
+                    }
+                    const itemEvents = events.filter((event) => event.itemId === itemId);
+                    const existing = itemEvents[0] || null;
                     if (existing) {
                         const attrs = item.attributes && typeof item.attributes === 'object' ? item.attributes : {};
                         if (attrs.crewart_roulette_event_id !== existing.id) {
@@ -1407,7 +1417,43 @@ function createPlatformApi({
                             });
                             touchChannel(channelId);
                         }
-                        replyJson(res, 200, { duplicate: true, event: publicCrewartRouletteEvent(existing) });
+                        if (itemEvents.some((event) => event.replay === true)) {
+                            replyJson(res, 200, { duplicate: true, event: publicCrewartRouletteEvent(existing) });
+                            return;
+                        }
+                        const sequence = Math.max(0, Number.parseInt(current.sequence, 10) || 0) + 1;
+                        const nowMs = Date.now();
+                        const lastRevealMs = events.reduce((max, event) => {
+                            const parsed = Date.parse(String(event?.revealAt || ''));
+                            return Number.isFinite(parsed) ? Math.max(max, parsed) : max;
+                        }, 0);
+                        const startedAtMs = Math.max(nowMs, lastRevealMs + CREWART_ROULETTE_HOLD_MS);
+                        const replayEvent = {
+                            ...existing,
+                            id: `roulette_${crypto.createHash('sha256').update(`${session.sessionId}:${itemId}:replay:${messageKey || requestedBidderKey}`).digest('base64url').slice(0, 24)}`,
+                            sequence,
+                            replay: true,
+                            replayOf: existing.id,
+                            startedAt: new Date(startedAtMs).toISOString(),
+                            revealAt: new Date(startedAtMs + CREWART_ROULETTE_DURATION_MS).toISOString(),
+                            requestedAt: new Date(nowMs).toISOString(),
+                            messageKey
+                        };
+                        await repository.upsertRecord(channelId, 'setting', {
+                            ...current,
+                            id: CREWART_ROULETTE_ID,
+                            sessionId: session.sessionId,
+                            sequence,
+                            events: [...events, replayEvent].slice(-100),
+                            updatedAt: new Date(nowMs).toISOString()
+                        });
+                        touchChannel(channelId);
+                        replyJson(res, 201, {
+                            duplicate: false,
+                            replay: true,
+                            event: publicCrewartRouletteEvent(replayEvent),
+                            soldPrice: item.soldPrice
+                        });
                         return;
                     }
 
@@ -1422,7 +1468,6 @@ function createPlatformApi({
                     const multiplier = chooseCrewartRouletteMultiplier();
                     const baseAmount = Math.max(0, Number(item.soldPrice) || 0);
                     const contributionAmount = floorContribution(baseAmount, multiplier);
-                    const messageKey = cleanText(body.message_key || body.messageKey, 180);
                     const event = {
                         id: `roulette_${crypto.createHash('sha256').update(`${session.sessionId}:${itemId}:${messageKey || requestedBidderKey}`).digest('base64url').slice(0, 24)}`,
                         sequence,
