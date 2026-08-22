@@ -28,6 +28,15 @@ test('normalizes runtime status without exposing cookies, phones, or applicant d
             cookie_source: 'snapshot',
             target_url: 'https://www.band.us/band/101878670/applications',
             raw_cookie: 'never-public'
+        },
+        member_sync: {
+            enabled: true,
+            configured: true,
+            pending: 3,
+            interval_seconds: 300,
+            outbox_persistent: true,
+            phone: '01012345678',
+            display_name: '홍길동'
         }
     }, now);
 
@@ -38,6 +47,9 @@ test('normalizes runtime status without exposing cookies, phones, or applicant d
     assert.equal(status.applications.queued, 0);
     assert.equal(status.auth_session.cookie_source, 'snapshot');
     assert.equal(status.auth_session.target_url, 'https://www.band.us/band/101878670/applications');
+    assert.equal(status.member_sync.pending, 3);
+    assert.equal(status.member_sync.interval_seconds, 300);
+    assert.equal(status.member_sync.outbox_persistent, true);
     assert.doesNotMatch(JSON.stringify(status), /never-public|홍길동|01012345678/);
 });
 

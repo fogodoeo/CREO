@@ -100,6 +100,12 @@ function normalizeBandMonitorStatus(value, now = Date.now()) {
         member_sync: {
             enabled: Boolean(memberSync.enabled),
             configured: Boolean(memberSync.configured),
+            pending: Math.max(0, Math.min(100000, Number.parseInt(memberSync.pending, 10) || 0)),
+            interval_seconds: Math.max(5, Math.min(
+                86400,
+                Number.parseInt(memberSync.interval_seconds, 10) || 300
+            )),
+            outbox_persistent: memberSync.outbox_persistent !== false,
             last_result: lastSync ? {
                 result: cleanText(lastSync.result, 60),
                 success: Boolean(lastSync.success),
