@@ -25,7 +25,7 @@ test('normalizes runtime status without exposing cookies, phones, or applicant d
         auth_session: {
             cookie_count: 12,
             installed_cookie_count: 12,
-            cookie_source: 'json',
+            cookie_source: 'snapshot',
             target_url: 'https://www.band.us/band/101878670/applications',
             raw_cookie: 'never-public'
         }
@@ -36,7 +36,7 @@ test('normalizes runtime status without exposing cookies, phones, or applicant d
     assert.equal(status.age_seconds, 20);
     assert.equal(status.detail, '신청자 010-****-5678 확인');
     assert.equal(status.applications.queued, 0);
-    assert.equal(status.auth_session.cookie_source, 'json');
+    assert.equal(status.auth_session.cookie_source, 'snapshot');
     assert.equal(status.auth_session.target_url, 'https://www.band.us/band/101878670/applications');
     assert.doesNotMatch(JSON.stringify(status), /never-public|홍길동|01012345678/);
 });

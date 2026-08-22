@@ -68,7 +68,7 @@ function normalizeBandMonitorStatus(value, now = Date.now()) {
         auth_session: {
             cookie_count: Math.max(0, Math.min(50, Number.parseInt(authSession.cookie_count, 10) || 0)),
             installed_cookie_count: Math.max(0, Math.min(50, Number.parseInt(authSession.installed_cookie_count, 10) || 0)),
-            cookie_source: ['json', 'header'].includes(cookieSource) ? cookieSource : 'none',
+            cookie_source: ['json', 'header', 'snapshot'].includes(cookieSource) ? cookieSource : 'none',
             user_agent_mode: cleanText(authSession.user_agent_mode, 40),
             page: cleanText(authSession.page, 180),
             target_url: safeAuthTarget
