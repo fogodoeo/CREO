@@ -1932,6 +1932,17 @@ function createPlatformApi({
             if (segments.length === 3 && method === 'POST' && segments[2] !== 'archives') {
                 await withMutationLock(`channel:${channelId}`, async () => {
                     const body = await readJson(req);
+                    if (type === 'item' && body.requireActiveChannel === true) {
+                        const activeId = await repository.getActiveChannel();
+                        if (activeId !== channelId) {
+                            replyJson(res, 409, {
+                                error: '현재 운영 채널이 변경되었습니다. 개체 목록을 새로고침해 주세요.',
+                                code: 'ACTIVE_CHANNEL_CHANGED',
+                                channelId: activeId || ''
+                            });
+                            return;
+                        }
+                    }
                     const data = await workspace(channelId);
                     const record = sanitizeRecord(type, body.record);
                     const errors = validateRecord(type, record, { ...data, groups: channel.groups || [] });

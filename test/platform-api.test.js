@@ -1206,6 +1206,27 @@ test('simultaneous writes cannot create duplicate lot numbers in one channel', a
     assert.equal((await repository.listRecords('alpha', 'item')).length, 1);
 });
 
+test('monitor item creation fails closed when the active channel changes', async () => {
+    const repository = new MemoryRepository();
+    const api = createPlatformApi({ repository, logger: { error() {} } });
+    const switched = await call(api, 'PUT', '/api/platform/active-channel', {
+        channelId: 'beta', expectedCurrentChannelId: 'alpha', confirmChannelId: 'beta'
+    });
+    assert.equal(switched.status, 200, switched.body);
+    const staleCreate = await call(api, 'POST', '/api/platform/channels/alpha/items', {
+        requireActiveChannel: true,
+        record: { id: 'stale_item', lotNumber: 9, name: '잘못된 채널 개체' }
+    });
+    assert.equal(staleCreate.status, 409, staleCreate.body);
+    assert.equal(staleCreate.json().code, 'ACTIVE_CHANNEL_CHANGED');
+    assert.equal((await repository.listRecords('alpha', 'item')).length, 0);
+    const activeCreate = await call(api, 'POST', '/api/platform/channels/beta/items', {
+        requireActiveChannel: true,
+        record: { id: 'active_item', lotNumber: 9, name: '현재 채널 개체' }
+    });
+    assert.equal(activeCreate.status, 201, activeCreate.body);
+});
+
 test('brand assets are channel-scoped and only active assets reach the public overlay', async () => {
     const repository = new MemoryRepository();
     const api = createPlatformApi({ repository, logger: { error() {} } });
