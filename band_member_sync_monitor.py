@@ -343,7 +343,14 @@ class SyncedBandJoinMonitor(BaseBandJoinMonitor):
                 self._sync_pending_members()
                 next_pending = current + self.member_sync_interval_seconds
             if self.member_reconcile_enabled and current >= next_reconcile:
-                self._reconcile_member_roster()
+                try:
+                    self._reconcile_member_roster()
+                except Exception as exc:
+                    self.logger.error(
+                        "BAND 전체 멤버 대조 예외: %s",
+                        monitor_module.safe_for_log(exc),
+                    )
+                    self._record_roster_reconcile("unexpected_error", False)
                 next_reconcile = current + self.member_reconcile_interval_seconds
 
     def runtime_status_extras(self) -> dict[str, Any]:
@@ -458,7 +465,7 @@ class SyncedBandJoinMonitor(BaseBandJoinMonitor):
         if not websocket_url:
             self._record_roster_reconcile("member_tab_unavailable", False)
             return False
-        connection = CDPConnection(websocket_url, max_event_queue=100)
+        connection = monitor_module.CDPConnection(websocket_url, max_event_queue=100)
         script = r"""
         new Promise(async (resolve) => {
           const wait = (ms) => new Promise((done) => setTimeout(done, ms));
@@ -542,11 +549,11 @@ class SyncedBandJoinMonitor(BaseBandJoinMonitor):
                 },
                 timeout=25,
             )
-            value = runtime_value(result)
+            value = monitor_module.runtime_value(result)
         except Exception as exc:
             self.logger.warning(
                 "BAND 전체 멤버 명단 대조 실패: %s",
-                safe_for_log(exc),
+                monitor_module.safe_for_log(exc),
             )
             self._record_roster_reconcile("roster_read_failed", False)
             return False
