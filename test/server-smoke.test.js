@@ -5,6 +5,8 @@ const assert = require('node:assert/strict');
 const { spawn } = require('node:child_process');
 const net = require('node:net');
 const path = require('node:path');
+const fs = require('node:fs/promises');
+const os = require('node:os');
 
 async function freePort() {
     return new Promise((resolve, reject) => {
@@ -34,18 +36,46 @@ async function waitForHealth(url, timeoutMs = 8000) {
 
 test('HTTP server exposes the CREO hub, survey assets, health, and membership config', async (t) => {
     const port = await freePort();
+    const statusDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'creo-band-status-'));
+    const statusFile = path.join(statusDirectory, 'runtime.json');
+    await fs.writeFile(statusFile, JSON.stringify({
+        version: 'test',
+        updated_at: new Date().toISOString(),
+        state: 'CONNECTED',
+        connected: true,
+        monitor_enabled: true,
+        applications: { queued: 2 }
+    }), 'utf8');
     const child = spawn(process.execPath, ['server.js'], {
         cwd: path.join(__dirname, '..'),
-        env: { ...process.env, PORT: String(port), HOST: '127.0.0.1' },
+        env: {
+            ...process.env,
+            PORT: String(port),
+            HOST: '127.0.0.1',
+            BAND_MONITOR_STATUS_FILE: statusFile
+        },
         stdio: ['ignore', 'pipe', 'pipe']
     });
     t.after(() => child.kill());
+    t.after(() => fs.rm(statusDirectory, { recursive: true, force: true }));
 
     const healthResponse = await waitForHealth(`http://127.0.0.1:${port}/health`);
     const health = await healthResponse.json();
     assert.equal(health.ok, true);
     assert.equal(health.service, 'creo');
     assert.equal(health.publicSiteReady, true);
+    assert.equal(health.bandMonitor.state, 'CONNECTED');
+    assert.equal(health.bandMonitor.applications.queued, 2);
+
+    const monitorStatusResponse = await fetch(`http://127.0.0.1:${port}/api/band-monitor/status`);
+    assert.equal(monitorStatusResponse.status, 200);
+    const monitorStatus = await monitorStatusResponse.json();
+    assert.equal(monitorStatus.monitor.state, 'CONNECTED');
+    assert.equal(monitorStatus.monitor.applications.queued, 2);
+
+    const monitorPageResponse = await fetch(`http://127.0.0.1:${port}/band-monitor.html`);
+    assert.equal(monitorPageResponse.status, 200);
+    assert.match(await monitorPageResponse.text(), /승인봇 상태판/);
 
     const homeResponse = await fetch(`http://127.0.0.1:${port}/`);
     assert.equal(homeResponse.status, 200);

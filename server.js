@@ -9,6 +9,7 @@ const fsp = require('node:fs/promises');
 const path = require('node:path');
 const { createBandOAuth } = require('./band-oauth');
 const { createBandMembership } = require('./band-membership');
+const { createBandMonitorStatusReader } = require('./band-monitor-status');
 const { createCrewartSurveyApi } = require('./crewart-survey-api');
 const { createCrewartHouseService } = require('./crewart-house-service');
 const { createPlatformApi } = require('./platform-api');
@@ -24,6 +25,7 @@ const HOST = process.env.HOST || '0.0.0.0';
 const PUBLIC_DIR = path.resolve(__dirname, 'public');
 const bandOAuth = createBandOAuth();
 const bandMembership = createBandMembership();
+const readBandMonitorStatus = createBandMonitorStatusReader();
 const supabasePlatformRepository = new SupabaseConfigRepository();
 const platformStorageMode = String(process.env.CREO_PLATFORM_STORAGE || 'sqlite').toLowerCase();
 const platformRepository = platformStorageMode === 'supabase'
@@ -247,6 +249,15 @@ const server = http.createServer(async (req, res) => {
             return;
         }
 
+        if (url.pathname === '/api/band-monitor/status' && req.method === 'GET') {
+            sendJson(res, 200, {
+                ok: true,
+                now: new Date().toISOString(),
+                monitor: await readBandMonitorStatus()
+            });
+            return;
+        }
+
         if (url.pathname.startsWith('/api/crewart-survey/')) {
             if (await crewartSurveyApi.handle(req, res, url)) return;
             sendJson(res, 404, { error: 'Not found' });
@@ -283,6 +294,7 @@ const server = http.createServer(async (req, res) => {
                 publicSiteReady: true,
                 bandOAuthConfigured: bandOAuth.config.configured,
                 bandMembershipConfigured: bandMembership.config.configured,
+                bandMonitor: await readBandMonitorStatus(),
                 platform,
                 capture: captureStorage.health(),
                 now: new Date().toISOString()

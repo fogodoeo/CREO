@@ -22,6 +22,8 @@ CREO 멀티 경매 운영 허브와 CREWARTS 설문 서비스입니다.
 - `/api/band-membership/*` — 전화번호 기반 BAND 회원 명단 확인
 - `/api/crewart-survey/*` — 버전이 맞는 문항과 비식별 집계 조회, 회원 확인 후 익명 응답 저장
 - `/api/band-oauth/*` — NAVER BAND OAuth 브리지
+- `/band-monitor.html` — BAND 가입 승인 모니터 상태판
+- `/api/band-monitor/status` — 개인정보가 제거된 승인 모니터 상태
 - `/health` — Render 상태와 플랫폼 저장소 확인
 
 `public/`의 이미지와 영상은 브라우저 캐시와 HTTP Range 요청을 지원합니다.
@@ -46,11 +48,17 @@ npm start
 
 - Runtime: Node
 - Build command: `npm install`
-- Start command: `npm start`
+- Start command: `npm start` (`render_start.py`가 Node 서버와 승인 모니터를 각각 감독)
 - Health check: `/health`
 - Public URL: `https://creok.onrender.com`
 
 환경변수는 `.env.example`을 기준으로 설정합니다. BAND client secret, session secret, `CREO_ADMIN_SECRET`, Supabase service-role 키는 Render Environment에만 저장하고 Git에 커밋하지 않습니다.
+
+## BAND 가입 승인 모니터
+
+CREOK Starter에서는 기존 승인 엔진을 별도 Python 프로세스로 실행합니다. Chrome 프로필과 중복 처리 상태는 Persistent Disk의 `/var/data/band-monitor` 아래에만 저장합니다. 모니터가 종료되면 감독 프로세스가 다시 시작하지만 Node 웹서버는 계속 실행됩니다. 재배포 중 접수된 신청은 BAND의 미처리 목록을 다시 조회해 처리합니다.
+
+운영 전에는 Render Environment에서 `BAND_MONITOR_ENABLED=true`, `BAND_CHROME_HEADLESS=true`, `BAND_START_URL`, 회원 명단 동기화 변수와 로그인 세션 Secret을 설정합니다. 새 CREOK 배포가 `CONNECTED`로 1분 이상 유지된 것을 확인하기 전에는 기존 승인 모니터를 동시에 켜지 않습니다.
 
 ## CREWARTS BAND 회원 확인
 

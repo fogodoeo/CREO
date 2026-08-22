@@ -13,4 +13,5 @@ storage/
 supabase/.temp/
 __pycache__/
 *.pyc
+.band-monitor/
 public/downloads/creo-capture-agent.zip
