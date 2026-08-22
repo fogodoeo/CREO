@@ -346,11 +346,15 @@ class SyncedBandJoinMonitor(BaseBandJoinMonitor):
                 try:
                     self._reconcile_member_roster()
                 except Exception as exc:
+                    failure = (
+                        f"unexpected_error:{type(exc).__name__}:"
+                        f"{monitor_module.safe_for_log(exc, 90)}"
+                    )
                     self.logger.error(
                         "BAND 전체 멤버 대조 예외: %s",
                         monitor_module.safe_for_log(exc),
                     )
-                    self._record_roster_reconcile("unexpected_error", False)
+                    self._record_roster_reconcile(failure, False)
                 next_reconcile = current + self.member_reconcile_interval_seconds
 
     def runtime_status_extras(self) -> dict[str, Any]:
