@@ -403,10 +403,10 @@
             const rawName = String(row.name || row.id || '?').trim().toUpperCase();
             const sigil = ({RED:'R',GREEN:'G',BLUE:'B',YELLOW:'Y'})[rawName] || rawName.slice(0, 1) || '?';
             const housePalette = {
-                R: ['#6f1f2a', '#f7ead0'],
-                G: ['#174936', '#f7ead0'],
-                B: ['#1d3f68', '#f7ead0'],
-                Y: ['#80631f', '#fff0c8']
+                R: ['#8b2635', '#fff7e8'],
+                G: ['#236549', '#fff7e8'],
+                B: ['#2b568c', '#fff7e8'],
+                Y: ['#9b741f', '#fff7e8']
             }[sigil] || [row.color, '#f7ead0'];
             const amount = Math.floor(Math.max(0, Number(row.amount) || 0) / 10000).toLocaleString('ko-KR');
             return `
@@ -567,8 +567,8 @@
                 display:grid;grid-template-columns:1fr;grid-template-rows:1fr;align-items:center;justify-items:end;gap:0;
                 min-width:0;width:100%;height:100%;min-height:0;padding:8px 16px;
                 border:0;border-radius:8px;
-                background:color-mix(in srgb,var(--house) 30%,rgba(10,12,14,.74));
-                box-shadow:none;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+                background:var(--house);
+                box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;
                 clip-path:none;overflow:hidden;text-align:right;transition:background-color .25s ease,opacity .25s ease;
             }
             .crewart-house-score {

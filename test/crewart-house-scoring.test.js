@@ -149,7 +149,7 @@ test('P3 board presents only four house cards and their amount numbers', () => {
 
     assert.equal((html.match(/class="crewart-house-card"/g) || []).length, 4);
     assert.match(html, /<strong class="crewart-house-score">1,000<\/strong>/);
-    assert.match(html, /data-house="Y"[^>]*--house:#80631f;--house-ink:#fff0c8;/);
+    assert.match(html, /data-house="Y"[^>]*--house:#9b741f;--house-ink:#fff7e8;/);
     const threeManwon = module.renderCrewartHouseBoardHTML([
         { status: 'sold', sold_price: 30_000, crewartHouseKey: 'R' }
     ], { crewart_score_scope: 'all' });
@@ -162,7 +162,8 @@ test('P3 board presents only four house cards and their amount numbers', () => {
     assert.match(source, /\.crewart-house-card,[\s\S]*?width:100%;height:100%/);
     assert.match(source, /align-items:center;justify-items:end/);
     assert.match(source, /border:0;border-radius:8px/);
-    assert.match(source, /background:color-mix\(in srgb,var\(--house\) 30%,rgba\(10,12,14,\.74\)\)/);
+    assert.match(source, /background:var\(--house\)/);
+    assert.match(source, /backdrop-filter:none;-webkit-backdrop-filter:none/);
     assert.match(source, /justify-self:end;align-self:center/);
     assert.match(source, /box-shadow:none/);
     assert.doesNotMatch(source, /body\[data-event-module="crewart"\]\.bracket-page #bracket-page-tree-full \{[\s\S]*?inset:0 !important;width:100% !important;height:100% !important/);

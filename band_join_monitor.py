@@ -2849,6 +2849,11 @@ class BandJoinMonitor:
             except Exception as exc:
                 if not self.stop_event.is_set():
                     self.set_state("DISCONNECTED", safe_for_log(exc))
+                    if isinstance(exc, TimeoutError) and "CDP " in str(exc):
+                        self.logger.warning(
+                            "CDP 초기화 응답이 멈춰 Chrome을 재시작합니다."
+                        )
+                        self.chrome.stop()
                     self.logger.error(
                         "연결 루프 오류: %s\n%s",
                         safe_for_log(exc),

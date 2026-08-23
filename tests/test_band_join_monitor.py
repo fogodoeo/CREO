@@ -716,6 +716,7 @@ class ChromeSelectionTests(unittest.TestCase):
             config["diagnostic_file"] = str(Path(temp_dir) / "diagnostic.jsonl")
             monitor = BandJoinMonitor(config, Path(temp_dir))
             connection = _TimeoutConnection()
+            connection.connect = lambda: None  # type: ignore[attr-defined]
             chrome_restarts = []
             monitor.chrome.stop = lambda: chrome_restarts.append(True)  # type: ignore[method-assign]
 
@@ -731,6 +732,35 @@ class ChromeSelectionTests(unittest.TestCase):
             monitor._full_dom_scan(connection)  # type: ignore[arg-type]
             self.assertEqual(connection.close_count, 2)
             self.assertEqual(chrome_restarts, [True])
+            monitor.stop()
+
+    def test_supervisor_restarts_chrome_when_initial_cdp_enable_times_out(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config = json.loads(json.dumps(DEFAULT_CONFIG))
+            config["log_file"] = str(Path(temp_dir) / "monitor.log")
+            config["state_file"] = str(Path(temp_dir) / "state.json")
+            config["runtime_status_file"] = str(Path(temp_dir) / "runtime.json")
+            config["diagnostic_file"] = str(Path(temp_dir) / "diagnostic.jsonl")
+            monitor = BandJoinMonitor(config, Path(temp_dir))
+            connection = _TimeoutConnection()
+            connection.connect = lambda: None  # type: ignore[attr-defined]
+            chrome_restarts = []
+            monitor.chrome.ensure_running = lambda: True  # type: ignore[method-assign]
+            monitor.chrome.list_tabs = lambda: [{  # type: ignore[method-assign]
+                "type": "page",
+                "url": "https://www.band.us/band/101878670/applications",
+                "webSocketDebuggerUrl": "ws://example.test/devtools/page/1",
+            }]
+            monitor.chrome.stop = lambda: chrome_restarts.append(True)  # type: ignore[method-assign]
+
+            with mock.patch("band_join_monitor.CDPConnection", return_value=connection), mock.patch.object(
+                monitor.stop_event, "wait", side_effect=lambda _delay: monitor.stop_event.set()
+            ):
+                monitor._supervisor_loop()
+
+            self.assertEqual(chrome_restarts, [True])
+            self.assertEqual(monitor.state, "DISCONNECTED")
+            self.assertIn("응답 시간 초과", monitor.state_detail)
             monitor.stop()
 
     def test_notification_change_reloads_applications_page(self) -> None:

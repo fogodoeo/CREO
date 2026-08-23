@@ -715,6 +715,62 @@ test('CREWART public broadcast adds only house colors to live bidders', async ()
     assert.ok(bids.every(bid => !('phone' in bid)));
 });
 
+test('CREWART operator can idempotently correct a wrongly randomized bidder house', async () => {
+    const repository = new MemoryRepository();
+    repository.catalog.channels[0] = normalizeChannel({
+        ...repository.catalog.channels[0],
+        audienceCompetition: { enabled: true, assignment: 'survey-random', metric: 'soldPrice' }
+    });
+    const crewartHouseService = createCrewartHouseService({
+        repository,
+        secret: 'platform-operator-override-secret-longer-than-thirty-two-characters',
+        now: () => Date.parse('2026-08-23T11:20:00.000Z'),
+        logger: { warn() {} }
+    });
+    const api = createPlatformApi({ repository, crewartHouseService, logger: { error() {}, warn() {} } });
+    await call(api, 'POST', '/api/platform/channels/alpha/items', {
+        record: { id: 'override-live', lotNumber: 2, name: 'A02' }
+    });
+    await call(api, 'PUT', '/api/platform/channels/alpha/auction-transition', {
+        itemId: 'override-live', status: 'live', mode: 'live', state: { page: 2 }
+    });
+    const bid = {
+        name: '인천/박찬영/01053995774', bidder_key: 'raw-band-user-key', amount: 12,
+        message_key: 'override-bid', bid_sequence: 12
+    };
+    const assigned = await call(api, 'POST', '/api/platform/channels/alpha/audience-assignment', {
+        itemId: 'override-live', ...bid
+    });
+    assert.equal(assigned.status, 200, assigned.body);
+    const item = await repository.getRecord('alpha', 'item', 'override-live');
+    await call(api, 'PUT', '/api/platform/channels/alpha/items/override-live', {
+        record: { ...item, attributes: { ...(item.attributes || {}), bid_log: JSON.stringify([bid]) } }
+    });
+
+    const unauthorized = await call(api, 'POST', '/api/platform/channels/alpha/audience-assignment-override', {
+        bidder_key: 'raw-band-user-key', houseKey: 'G'
+    }, 'wrong');
+    assert.equal(unauthorized.status, 401);
+
+    const corrected = await call(api, 'POST', '/api/platform/channels/alpha/audience-assignment-override', {
+        bidder_key: 'raw-band-user-key', houseKey: 'G'
+    });
+    const duplicate = await call(api, 'POST', '/api/platform/channels/alpha/audience-assignment-override', {
+        bidder_key: 'raw-band-user-key', houseKey: 'G'
+    });
+    assert.equal(corrected.status, 200, corrected.body);
+    assert.equal(corrected.json().houseKey, 'G');
+    assert.equal(corrected.json().updatedItems, 1);
+    assert.equal(duplicate.status, 200, duplicate.body);
+    assert.equal(duplicate.json().duplicate, true);
+
+    const broadcast = await call(api, 'GET', '/api/platform/channels/alpha/broadcast', null, '');
+    assert.equal(broadcast.json().items[0].bidLog[0].crewart_house_key, 'G');
+    assert.equal(broadcast.json().items[0].bidLog[0].crewart_house_source, 'survey');
+    assert.equal(broadcast.json().audience.events[0].houseKey, 'G');
+    assert.doesNotMatch(JSON.stringify(broadcast.json()), /01053995774|raw-band-user-key/);
+});
+
 test('CREWART live assignment backtest preserves cutoff, FIFO sequence, idempotency, privacy, and sold snapshots', async () => {
     const repository = new MemoryRepository();
     repository.catalog.channels[0] = normalizeChannel({

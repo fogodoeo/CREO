@@ -166,6 +166,35 @@ test('a survey submitted after the cutoff cannot replace the session random hous
     assert.equal(repeated.source, 'random');
 });
 
+test('an operator correction replaces the current and future house once without replaying', async () => {
+    const repository = new MemoryConfigRepository();
+    let writes = 0;
+    const upsert = repository.upsertRows.bind(repository);
+    repository.upsertRows = async (rows) => { writes += 1; return upsert(rows); };
+    const service = createCrewartHouseService({ repository, secret: SECRET, now: () => 1234 });
+    const input = { channelId: 'crewart', itemId: 'A02', phone: '01053995774', assignmentSequence: 9 };
+    const session = { sessionId: 'broadcast-live', lockedAt: '2026-08-23T11:14:12.000Z' };
+
+    const random = await service.resolveWinnerAssignment({ ...input, ...session });
+    assert.equal(random.source, 'random');
+    const beforeCorrectionWrites = writes;
+    const corrected = await service.overrideSessionAssignment(input, session, 'GREEN');
+    const duplicate = await service.overrideSessionAssignment(input, session, 'G');
+    const restarted = createCrewartHouseService({ repository, secret: SECRET, now: () => 5678 });
+    const duplicateAfterRestart = await restarted.overrideSessionAssignment(input, session, 'G');
+    const current = await service.resolveWinnerAssignment({ ...input, ...session });
+    const future = await service.resolveWinnerAssignment({ ...input, sessionId: '', lockedAt: '', itemId: 'A03' });
+
+    assert.equal(corrected.houseKey, 'G');
+    assert.equal(corrected.source, 'survey');
+    assert.equal(current.houseKey, 'G');
+    assert.equal(future.houseKey, 'G');
+    assert.equal(duplicate.duplicate, true);
+    assert.equal(duplicateAfterRestart.duplicate, true);
+    assert.equal(writes, beforeCorrectionWrites + 1);
+    assert.doesNotMatch(JSON.stringify([...repository.rows]), /01053995774/);
+});
+
 test('session assignments survive a service restart and a new broadcast gets an isolated draw', async () => {
     const repository = new MemoryConfigRepository();
     const input = { channelId: 'crewart', winnerAlias: 'band-user-stable' };

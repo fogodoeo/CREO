@@ -243,6 +243,64 @@ function createCrewartHouseService({ repository, secret, now = () => Date.now(),
         return write(identity, { houseKey, participantKey, source: 'survey' });
     }
 
+    async function overrideSessionAssignment(input = {}, session = {}, requestedHouseKey = '') {
+        const sessionId = clean(session.sessionId, 80);
+        const lockedAt = clean(session.lockedAt, 80);
+        const houseKey = normalizeHouseKey(requestedHouseKey);
+        if (!sessionId) throw new Error('active audience session is required');
+        if (!houseKey) throw new Error('valid house key is required');
+
+        const identity = assignmentIdentity(input, assignmentSecret);
+        const cacheKey = sessionCacheKey(sessionId, identity);
+        let existing = sessionAssignmentCache.get(cacheKey);
+        if (!existing) {
+            const storedRows = await repository.getRowsByKeys([
+                sessionAssignmentKey(sessionId, identity, assignmentSecret)
+            ]);
+            existing = sessionAssignmentFromRow(storedRows?.[0], sessionId, identity);
+        }
+        if (existing?.operatorOverride === true && existing.houseKey === houseKey) {
+            return { ...existing, duplicate: true };
+        }
+
+        const assignedAt = new Date(now()).toISOString();
+        const value = {
+            version: 1,
+            sessionId,
+            houseKey,
+            source: 'survey',
+            participantKey: '',
+            assignedAt,
+            lockedAt,
+            assignmentSequence: Math.max(0, Number.parseInt(input.assignmentSequence, 10) || 0),
+            operatorOverride: true
+        };
+        const sessionKey = sessionAssignmentKey(sessionId, identity, assignmentSecret);
+        await repository.upsertRows([
+            { key: assignmentKey(identity, assignmentSecret), value: JSON.stringify({
+                version: 1,
+                houseKey,
+                source: 'survey',
+                participantKey: '',
+                updatedAt: assignedAt,
+                operatorOverride: true
+            }) },
+            { key: sessionKey, value: JSON.stringify(value) }
+        ]);
+        const saved = { ...value, key: sessionKey };
+        assignmentCache.set(identity, {
+            version: 1,
+            houseKey,
+            source: 'survey',
+            participantKey: '',
+            updatedAt: assignedAt,
+            operatorOverride: true,
+            key: assignmentKey(identity, assignmentSecret)
+        });
+        sessionAssignmentCache.set(cacheKey, saved);
+        return saved;
+    }
+
     async function resolveWinnerAssignment(input = {}) {
         if (clean(input.sessionId, 80)) {
             const [assignment] = await resolveSessionAssignments([input], {
@@ -333,6 +391,7 @@ function createCrewartHouseService({ repository, secret, now = () => Date.now(),
 
     return Object.freeze({
         linkSurveyAssignment,
+        overrideSessionAssignment,
         resolveBidderAssignments,
         resolveSessionAssignments,
         resolveWinnerAssignment

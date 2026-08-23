@@ -47,7 +47,7 @@ test('CREWART page two colors each live bidder card with the resolved viewer hou
 
 test('CREWART broadcast plates use an isolated modern-antique skin', () => {
     assert.match(broadcast, /broadcast-crewart\.css\?v=20260823-flat-reel-v5/);
-    assert.match(broadcast, /event-modules\.js\?v=20260823-crewart-flat-board-v4/);
+    assert.match(broadcast, /event-modules\.js\?v=20260823-crewart-flat-board-v5/);
     assert.match(crewartCss, /body\[data-event-module="crewart"\] \{[\s\S]{0,500}--cw-brass:/);
     assert.match(crewartCss, /body\[data-event-module="crewart"\] \.host-nametag \.nt-inner/);
     assert.match(crewartCss, /body\[data-event-module="crewart"\] \.hc-bottom-bar/);

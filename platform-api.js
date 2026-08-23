@@ -1398,6 +1398,125 @@ function createPlatformApi({
                 return true;
             }
 
+            if (segments.length === 3 && segments[2] === 'audience-assignment-override' && method === 'POST') {
+                if (!await requireAdmin(req, res)) return true;
+                const body = await readJson(req);
+                await withMutationLock(`channel:${channelId}`, async () => {
+                    const activeId = await repository.getActiveChannel();
+                    if (activeId !== channelId) {
+                        replyJson(res, 409, { error: '현재 운영 채널이 변경되었습니다.', code: 'ACTIVE_CHANNEL_CHANGED' });
+                        return;
+                    }
+                    const data = await workspace(channelId);
+                    const session = activeAudienceSession(data.broadcast);
+                    if (!audienceCompetitionEnabled(channel) || !session) {
+                        replyJson(res, 409, { error: '진행 중인 크레와트 방송 회차가 없습니다.', code: 'AUDIENCE_SESSION_CLOSED' });
+                        return;
+                    }
+                    if (typeof crewartHouseService?.overrideSessionAssignment !== 'function') {
+                        replyJson(res, 503, { error: '기숙사 교정 기능을 사용할 수 없습니다.', code: 'ASSIGNMENT_OVERRIDE_UNAVAILABLE' });
+                        return;
+                    }
+                    const requestedHouseKey = cleanText(body.houseKey, 8).toUpperCase();
+                    if (!['R', 'G', 'B', 'Y'].includes(requestedHouseKey)) {
+                        replyJson(res, 422, { error: '기숙사 색상을 확인해 주세요.', code: 'INVALID_HOUSE' });
+                        return;
+                    }
+                    const requestedBidderKey = cleanText(body.bidder_key || body.bidderKey, 120);
+                    const requestedPhone = normalizePhone(body.phone);
+                    let matchedBid = null;
+                    let matchedItem = null;
+                    for (const item of data.items) {
+                        const bid = rawItemBidLog(item).find((entry) => {
+                            const bidderKey = cleanText(entry?.bidder_key || entry?.bidderKey, 120);
+                            const phone = phoneFromBid(entry);
+                            return (requestedBidderKey && bidderKey === requestedBidderKey)
+                                || (requestedPhone && phone === requestedPhone);
+                        });
+                        if (bid) { matchedBid = bid; matchedItem = item; break; }
+                    }
+                    if (!matchedBid) {
+                        replyJson(res, 404, { error: '해당 입찰자를 찾지 못했습니다.', code: 'BIDDER_NOT_FOUND' });
+                        return;
+                    }
+                    const phone = phoneFromBid(matchedBid);
+                    const memberKey = phone ? '' : await bidderMemberKey(matchedBid, bandMembership);
+                    const assignment = await crewartHouseService.overrideSessionAssignment({
+                        channelId,
+                        itemId: matchedItem?.id || '',
+                        memberKey,
+                        phone,
+                        winnerName: matchedBid.name || matchedBid.bidder || matchedBid.winner || '',
+                        winnerAlias: matchedBid.bidder_key || matchedBid.bidderKey || matchedBid.name || '',
+                        assignmentSequence: Math.max(0, Number.parseInt(
+                            matchedBid.crewart_assignment_sequence || matchedBid.bid_sequence || matchedBid.bidSequence,
+                            10
+                        ) || 0)
+                    }, session, requestedHouseKey);
+
+                    const canonicalBidderKey = cleanText(matchedBid.bidder_key || matchedBid.bidderKey, 120);
+                    let updatedItems = 0;
+                    for (const item of data.items) {
+                        const bids = rawItemBidLog(item);
+                        let changed = false;
+                        const nextBids = bids.map((bid) => {
+                            const sameBidder = canonicalBidderKey
+                                ? cleanText(bid?.bidder_key || bid?.bidderKey, 120) === canonicalBidderKey
+                                : (phone && phoneFromBid(bid) === phone);
+                            if (!sameBidder) return bid;
+                            if (
+                                cleanText(bid?.crewart_house_key || bid?.crewartHouseKey, 8).toUpperCase() === requestedHouseKey
+                                && cleanText(bid?.crewart_house_source || bid?.crewartHouseSource, 16) === 'survey'
+                            ) return bid;
+                            changed = true;
+                            return { ...bid, crewart_house_key: requestedHouseKey, crewart_house_source: 'survey' };
+                        });
+                        if (!changed) continue;
+                        const attributes = {
+                            ...(item.attributes || {}),
+                            bid_log: JSON.stringify(nextBids)
+                        };
+                        const winner = winningBid({ ...item, attributes });
+                        const winnerMatches = canonicalBidderKey
+                            ? cleanText(winner?.bidder_key || winner?.bidderKey, 120) === canonicalBidderKey
+                            : (phone && phoneFromBid(winner || {}) === phone);
+                        if (item.status === 'sold' && winnerMatches) {
+                            attributes.crewart_house_key = requestedHouseKey;
+                            attributes.crewart_house_source = 'survey';
+                        }
+                        await repository.upsertRecord(channelId, 'item', { ...item, attributes });
+                        updatedItems += 1;
+                    }
+
+                    const revealState = await repository.getRecord(channelId, 'setting', AUDIENCE_REVEALS_ID);
+                    const safeBidderKey = publicBidderKey(canonicalBidderKey || matchedBid.name);
+                    if (revealState?.sessionId === session.sessionId && safeBidderKey) {
+                        let revealChanged = false;
+                        const events = (Array.isArray(revealState.events) ? revealState.events : []).map((event) => (
+                            event?.bidderKey === safeBidderKey && event?.houseKey !== requestedHouseKey
+                                ? (revealChanged = true, { ...event, houseKey: requestedHouseKey })
+                                : event
+                        ));
+                        if (revealChanged) {
+                            await repository.upsertRecord(channelId, 'setting', {
+                                ...revealState,
+                                id: AUDIENCE_REVEALS_ID,
+                                events,
+                                updatedAt: new Date().toISOString()
+                            });
+                        }
+                    }
+                    touchChannel(channelId);
+                    replyJson(res, 200, {
+                        corrected: true,
+                        duplicate: assignment?.duplicate === true,
+                        houseKey: requestedHouseKey,
+                        updatedItems
+                    });
+                });
+                return true;
+            }
+
             if (segments.length === 3 && segments[2] === 'audience-roulette' && method === 'POST') {
                 if (!await requireAdmin(req, res)) return true;
                 const body = await readJson(req);
