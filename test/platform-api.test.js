@@ -1007,7 +1007,8 @@ test('CREWART assignment endpoint restores one reveal after broadcast enrichment
         lockedAt: started.json().state.audienceSessionLockedAt,
         winnerName: '경합 입찰자',
         winnerAlias: 'race-user',
-        assignmentSequence: 11
+        // Simulate a broadcast read warming the assignment before a real bid.
+        assignmentSequence: 0
     });
 
     const enrichedFirst = await call(api, 'GET', '/api/platform/channels/alpha/broadcast', null, '');

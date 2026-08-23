@@ -861,8 +861,11 @@ function createPlatformApi({
         const requestSequence = Math.max(0, Number.parseInt(input.bid_sequence || input.bidSequence, 10) || 0);
         const assignmentSequence = Math.max(0, Number.parseInt(assignment.assignmentSequence, 10) || 0);
         const assignmentSessionId = cleanText(assignment.sessionId, 80);
+        // A broadcast read can warm the session assignment cache before the
+        // desktop assignment POST arrives. Those warmed rows have sequence 0;
+        // the first real bid must still create exactly one public reveal.
         const ownsAssignment = Boolean(assignment.isNew)
-            || (requestSequence > 0 && assignmentSequence > 0 && requestSequence >= assignmentSequence);
+            || (requestSequence > 0 && (assignmentSequence === 0 || requestSequence >= assignmentSequence));
         if ((assignmentSessionId && assignmentSessionId !== session.sessionId) || !ownsAssignment) return null;
         const stored = await repository.getRecord(channelId, 'setting', AUDIENCE_REVEALS_ID);
         const current = stored?.sessionId === session.sessionId

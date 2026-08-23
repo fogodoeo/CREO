@@ -128,6 +128,11 @@ test('CREWART P3 contribution roulette has an independent saved placement target
     assert.match(broadcast, /events\.filter\(\(event\) => event\?\.replay !== true\)/);
 });
 
+test('CREWART P3 recovers recent assignment and contribution events after a source reload', () => {
+    assert.match(broadcast, /startedAt >= Date\.now\(\) - 120000/);
+    assert.match(broadcast, /assignedAt >= Date\.now\(\) - 120000/);
+});
+
 test('all shared legacy layouts support three nametags', () => {
     assert.match(settings, /id="cfg-host-name3"/);
     assert.match(settings, /host_name3:/);

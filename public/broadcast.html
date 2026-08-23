@@ -7754,7 +7754,7 @@
                 else {
                     const latest = rouletteEvents[rouletteEvents.length - 1] || null;
                     const startedAt = Date.parse(String(latest?.startedAt || ''));
-                    state.cursor = latest && Number.isFinite(startedAt) && startedAt >= Date.now() - 15000
+                    state.cursor = latest && Number.isFinite(startedAt) && startedAt >= Date.now() - 120000
                         ? Math.max(0, Number(latest.sequence) - 1)
                         : rouletteEvents.reduce((max, event) => Math.max(max, Number(event.sequence) || 0), 0);
                     writeP3RouletteCursor(sessionId, state.cursor);
@@ -7763,7 +7763,7 @@
                 else {
                     const latest = assignmentEvents[assignmentEvents.length - 1] || null;
                     const assignedAt = Date.parse(String(latest?.assignedAt || ''));
-                    state.revealCursor = latest && Number.isFinite(assignedAt) && assignedAt >= Date.now() - 15000
+                    state.revealCursor = latest && Number.isFinite(assignedAt) && assignedAt >= Date.now() - 120000
                         ? Math.max(0, Number(latest.sequence) - 1)
                         : assignmentEvents.reduce((max, event) => Math.max(max, Number(event.sequence) || 0), 0);
                     writeP3AssignmentCursor(sessionId, state.revealCursor);
