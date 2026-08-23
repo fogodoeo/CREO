@@ -79,6 +79,8 @@
             startPrice: inManwon(item.startPrice),
             sold_price: inManwon(item.soldPrice),
             soldPrice: inManwon(item.soldPrice),
+            sold_price_won: Number(item.soldPrice) || 0,
+            soldPriceWon: Number(item.soldPrice) || 0,
             winner: item.winnerAlias || '',
             status: legacyStatus(item.status),
             note: item.note || '',

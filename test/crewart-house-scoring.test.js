@@ -6,6 +6,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const AuctionContract = require('../public/auction-contract');
+const BroadcastBridge = require('../public/channel-broadcast-bridge');
 
 function loadModule() {
     const window = {
@@ -119,6 +120,25 @@ test('P3 uses contribution only after reveal while sold price remains unchanged'
     result = module.buildCrewartHouseScores([item], { crewart_score_scope: 'all' });
     assert.equal(result.houses.find(row => row.name === 'RED').amount, 300000);
     assert.equal(item.soldPrice, 150000);
+});
+
+test('P3 keeps a bridged one-manwon sold item at one before roulette reveal', () => {
+    const module = loadModule();
+    const item = BroadcastBridge.toLegacyItem({
+        id: 'buy-now-yellow',
+        status: 'sold',
+        soldPrice: 10_000,
+        attributes: {
+            crewart_house_key: 'Y',
+            crewart_roulette_status: 'unused',
+            crewart_contribution_effective_at: ''
+        }
+    }, 'crewart');
+
+    const result = module.buildCrewartHouseScores([item], { crewart_score_scope: 'all' });
+    assert.equal(result.houses.find(row => row.name === 'YELLOW').amount, 10_000);
+    const html = module.renderCrewartHouseBoardHTML([item], { crewart_score_scope: 'all' });
+    assert.match(html, /data-house="Y"[\s\S]*?<strong class="crewart-house-score">1<\/strong>/);
 });
 
 test('P3 board presents only four house cards and their amount numbers', () => {

@@ -301,7 +301,8 @@
     }
 
     function crewartContributionAmount(item, nowMs) {
-        const soldAmount = amountToNumber(item && (item.sold_price || item.soldPrice));
+        const publicWonAmount = amountToNumber(item && (item.sold_price_won ?? item.soldPriceWon));
+        const soldAmount = publicWonAmount || amountToNumber(item && (item.sold_price || item.soldPrice));
         const attributes = item?.attributes && typeof item.attributes === 'object' ? item.attributes : {};
         const effectiveAt = Date.parse(String(attributes.crewart_contribution_effective_at || ''));
         const contribution = Number(attributes.crewart_contribution_amount);

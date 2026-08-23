@@ -231,6 +231,20 @@ test('CREWART broadcast strips copied CDCUP metadata even when the item is named
     assert.equal(bridged.checklist, 'weight:42|_auction:crewart|_visibility:public');
 });
 
+test('CREWART bridge preserves the public won amount beside the legacy manwon field', () => {
+    const bridged = BroadcastBridge.toLegacyItem({
+        id: 'item_one_manwon',
+        soldPrice: 10_000,
+        status: 'sold',
+        attributes: { crewart_house_key: 'Y' }
+    }, 'crewart');
+
+    assert.equal(bridged.sold_price, 1);
+    assert.equal(bridged.soldPrice, 1);
+    assert.equal(bridged.sold_price_won, 10_000);
+    assert.equal(bridged.soldPriceWon, 10_000);
+});
+
 test('legacy-layout bridge keeps renderer identity separate from platform channel data', async () => {
     const calls = [];
     const responses = {
