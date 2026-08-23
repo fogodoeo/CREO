@@ -236,3 +236,17 @@ test('participant parser preserves BAND names and only consumes trailing draw mo
         count: 1,
     });
 });
+
+test('academy pinball entries aggregate sold winners by each full 100,000 won and omit smaller totals', () => {
+    const { auctionWinnerEntries } = require(path.join(appRoot, 'src', 'auctionEntries.js'));
+    assert.deepEqual(auctionWinnerEntries([
+        { status: 'sold', winnerAlias: '김상정 대구', soldPrice: 90000 },
+        { status: 'sold', winnerAlias: '김상정   대구', soldPrice: 120000 },
+        { status: '완료', winnerAlias: '배원직', soldPrice: 320000 },
+        { status: 'waiting', winnerAlias: '대기자', soldPrice: 900000 },
+        { status: 'sold', winnerAlias: '10만 미만', soldPrice: 99999 },
+    ]), [
+        '배원직*3',
+        '김상정 대구*2',
+    ]);
+});

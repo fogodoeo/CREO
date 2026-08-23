@@ -12,6 +12,7 @@ import { Roulette } from './roulette';
 import type { ColorTheme } from './types/ColorTheme';
 import { createSecureSeed, setRandomSeed } from './utils/random';
 import { parseName } from './utils/utils';
+import { auctionWinnerEntries } from './auctionEntries.js';
 
 const queryParameters = new URLSearchParams(location.search);
 const isBroadcastMode = queryParameters.get('broadcast') === '1';
@@ -20,6 +21,7 @@ const remoteChannelId = /^[a-z0-9][a-z0-9_-]{1,63}$/i.test(queryParameters.get('
   : '';
 const isRemoteDisplay = isBroadcastMode && Boolean(remoteChannelId);
 const isRemoteController = !isBroadcastMode && Boolean(remoteChannelId);
+const autoLoadAuctionWinners = isRemoteController && queryParameters.get('theme') === 'academy';
 document.documentElement.classList.toggle('broadcast-mode', isBroadcastMode);
 document.documentElement.classList.toggle('remote-display-mode', isRemoteDisplay);
 
@@ -112,6 +114,7 @@ const dom = {
   personCount: element<HTMLElement>('personCount'),
   ballCount: element<HTMLElement>('ballCount'),
   startBallCount: element<HTMLElement>('startBallCount'),
+  syncWinners: element<HTMLButtonElement>('syncWinnersButton'),
   sample: element<HTMLButtonElement>('sampleButton'),
   importEntries: element<HTMLButtonElement>('importEntriesButton'),
   clearEntries: element<HTMLButtonElement>('clearEntriesButton'),
@@ -211,6 +214,29 @@ function entrySummary(entries = parseEntries()): { people: number; balls: number
     if (parsed) balls += Math.max(1, parsed.count);
   }
   return { people: entries.length, balls };
+}
+
+async function syncAuctionWinnerEntries(showEmptyMessage = true): Promise<void> {
+  if (!remoteChannelId) return;
+  dom.syncWinners.disabled = true;
+  try {
+    const response = await fetch(`/api/platform/channels/${encodeURIComponent(remoteChannelId)}/broadcast`, {
+      cache: 'no-store',
+      credentials: 'same-origin',
+    });
+    const payload = await response.json().catch(() => ({})) as { items?: Array<Record<string, unknown>>; error?: string };
+    if (!response.ok) throw new Error(payload.error || `낙찰 내역 응답 오류 (${response.status})`);
+    const entries = auctionWinnerEntries(payload.items || [], 100000);
+    dom.entries.value = entries.join('\n');
+    localStorage.setItem(STORAGE_KEYS.entries, dom.entries.value);
+    updateCounts();
+    if (entries.length) showToast(`${entries.length}명 · 10만원당 공 1개`);
+    else if (showEmptyMessage) showToast('10만원 이상 낙찰자가 없습니다.');
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : '낙찰자를 불러오지 못했습니다.');
+  } finally {
+    dom.syncWinners.disabled = false;
+  }
 }
 
 function applyUrlParameters(base: AppConfig): { config: AppConfig; entries?: string } {
@@ -807,6 +833,7 @@ function bindEvents(): void {
     dom.entries.value = '참가자 A*2\n참가자 B\n참가자 C*3\n참가자 D\n참가자 E';
     updateCounts();
   });
+  dom.syncWinners.addEventListener('click', () => void syncAuctionWinnerEntries());
   dom.clearEntries.addEventListener('click', () => {
     dom.entries.value = '';
     updateCounts();
@@ -942,12 +969,15 @@ async function initialize(): Promise<void> {
   else closePanel();
 
   if (isRemoteController) {
+    dom.syncWinners.hidden = false;
     dom.remoteSection.hidden = false;
     dom.broadcastSource.value = remoteSourceUrl();
     dom.privacyNotice.textContent = '브로드캐스트 모드에서는 참가자 이름과 추첨 설정이 선택한 채널 세션에 저장됩니다.';
     dom.shuffle.textContent = '송출에 공 배치';
     dom.start.querySelector('span')!.textContent = '송출 추첨 시작';
   }
+
+  if (autoLoadAuctionWinners) await syncAuctionWinnerEntries(false);
 
   roulette = new Roulette();
   roulette.addEventListener('goal', (event) => {
