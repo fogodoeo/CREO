@@ -82,6 +82,14 @@ test('CREWART integrated broadcast resolves its namespaced lower-third text', ()
     assert.match(broadcast, /renderTickerCards = function \(cfg\) \{\s*cfg = resolveTickerConfig\(cfg\)/);
 });
 
+test('shared legacy banners play uploaded MP4 files to completion before rotating', () => {
+    assert.match(broadcast, /function isVideoBannerUrl\(value\)/);
+    assert.match(broadcast, /document\.createElement\(isVideo \? 'video' : 'img'\)/);
+    assert.match(broadcast, /mainMedia\.muted = true/);
+    assert.match(broadcast, /video\.onended = wraps\.length > 1 \? advance : null/);
+    assert.match(broadcast, /window\._bannerRotateTimer = setTimeout\(advance, interval\)/);
+});
+
 test('CREWART P3 contribution roulette uses one premium frame, a two-second reel, and two clean result scenes', () => {
     assert.match(broadcast, /id="p3-contribution-roulette-overlay"/);
     assert.ok(

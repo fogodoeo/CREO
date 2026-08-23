@@ -4890,11 +4890,21 @@
             }
         }
 
+        function isVideoBannerUrl(value) {
+            const raw = String(value || '').trim();
+            if (/^data:video\/mp4/i.test(raw)) return true;
+            try { return new URL(raw, window.location.href).pathname.toLowerCase().endsWith('.mp4'); }
+            catch (_) { return raw.split(/[?#]/, 1)[0].toLowerCase().endsWith('.mp4'); }
+        }
+
         function startBannerRotation(wraps, interval) {
             if (window._bannerRotateTimer) {
-                clearInterval(window._bannerRotateTimer);
+                clearTimeout(window._bannerRotateTimer);
                 window._bannerRotateTimer = null;
             }
+
+            window._bannerRotationGeneration = (window._bannerRotationGeneration || 0) + 1;
+            const generation = window._bannerRotationGeneration;
 
             if (!wraps.length) {
                 window._bannerCurrentIdx = 0;
@@ -4904,13 +4914,39 @@
             const currentIdx = typeof window._bannerCurrentIdx === 'number' ? window._bannerCurrentIdx : 0;
             window._bannerCurrentIdx = Math.max(0, Math.min(currentIdx, wraps.length - 1));
 
-            wraps.forEach(function (wrap, idx) {
-                wrap.classList.toggle('show', idx === window._bannerCurrentIdx && wrap.style.display !== 'none');
-            });
+            function showCurrent() {
+                if (window._bannerRotationGeneration !== generation) return;
+                wraps.forEach(function (wrap, idx) {
+                    const video = wrap.querySelector('video.banner-img-main');
+                    const active = idx === window._bannerCurrentIdx && wrap.style.display !== 'none';
+                    wrap.classList.toggle('show', active);
+                    if (!active && video) {
+                        video.pause();
+                        video.onended = null;
+                    }
+                });
 
-            if (wraps.length <= 1) return;
+                const current = wraps[window._bannerCurrentIdx];
+                const video = current?.querySelector('video.banner-img-main');
+                if (video) {
+                    video.loop = wraps.length <= 1;
+                    video.currentTime = 0;
+                    video.onended = wraps.length > 1 ? advance : null;
+                    const playResult = video.play();
+                    if (playResult?.catch && wraps.length > 1) {
+                        playResult.catch(() => {
+                            if (window._bannerRotationGeneration === generation) {
+                                window._bannerRotateTimer = setTimeout(advance, interval);
+                            }
+                        });
+                    }
+                    return;
+                }
+                if (wraps.length > 1) window._bannerRotateTimer = setTimeout(advance, interval);
+            }
 
-            window._bannerRotateTimer = setInterval(function () {
+            function advance() {
+                if (window._bannerRotationGeneration !== generation) return;
                 const prevIdx = window._bannerCurrentIdx;
                 let nextIdx = (prevIdx + 1) % wraps.length;
                 let guard = 0;
@@ -4923,7 +4959,10 @@
                 setTimeout(() => wraps[prevIdx].classList.remove('exit'), 800);
                 wraps[nextIdx].classList.add('show');
                 window._bannerCurrentIdx = nextIdx;
-            }, interval);
+                showCurrent();
+            }
+
+            showCurrent();
         }
 
         renderImageBanners = function (cfg) {
@@ -4957,9 +4996,10 @@
             const bannerShowOff = cfg[bp + 'banner_show'] === '0' || container.dataset.bannerHiddenByToggle === '1' || isBracketPage;
             if (bannerHidden || bannerShowOff || !urls.length) {
                 if (window._bannerRotateTimer) {
-                    clearInterval(window._bannerRotateTimer);
+                    clearTimeout(window._bannerRotateTimer);
                     window._bannerRotateTimer = null;
                 }
+                window._bannerRotationGeneration = (window._bannerRotationGeneration || 0) + 1;
                 container.innerHTML = '';
                 container.classList.remove('banner-active');
                 window._bannerRenderState = null;
@@ -4990,7 +5030,7 @@
             }
 
             if (window._bannerRotateTimer) {
-                clearInterval(window._bannerRotateTimer);
+                clearTimeout(window._bannerRotateTimer);
                 window._bannerRotateTimer = null;
             }
             container.innerHTML = '';
@@ -4998,6 +5038,7 @@
 
             const nextWraps = [];
             urls.forEach(function (url, i) {
+                const isVideo = isVideoBannerUrl(url);
                 const wrap = document.createElement('div');
                 wrap.className = 'banner-item-wrap';
                 wrap.style.setProperty('--banner-w', maxW);
@@ -5005,19 +5046,30 @@
 
                 const blurBg = document.createElement('div');
                 blurBg.className = 'banner-bg-blur';
-                blurBg.style.backgroundImage = 'url(' + JSON.stringify(url) + ')';
+                if (isVideo) blurBg.style.display = 'none';
+                else blurBg.style.backgroundImage = 'url(' + JSON.stringify(url) + ')';
 
-                const mainImg = document.createElement('img');
-                mainImg.className = 'banner-img-main';
-                mainImg.src = url;
+                const mainMedia = document.createElement(isVideo ? 'video' : 'img');
+                mainMedia.className = 'banner-img-main';
+                mainMedia.src = url;
+                if (isVideo) {
+                    mainMedia.muted = true;
+                    mainMedia.defaultMuted = true;
+                    mainMedia.autoplay = true;
+                    mainMedia.playsInline = true;
+                    mainMedia.preload = 'auto';
+                    mainMedia.disablePictureInPicture = true;
+                }
 
                 wrap.appendChild(blurBg);
-                wrap.appendChild(mainImg);
+                wrap.appendChild(mainMedia);
 
-                mainImg.onload = function () {
+                const onReady = function () {
                     if (i === 0 && window._bannerCurrentIdx === 0) wrap.classList.add('show');
                 };
-                mainImg.onerror = function () { wrap.style.display = 'none'; };
+                if (isVideo) mainMedia.onloadeddata = onReady;
+                else mainMedia.onload = onReady;
+                mainMedia.onerror = function () { wrap.style.display = 'none'; };
                 container.appendChild(wrap);
                 nextWraps.push(wrap);
             });

@@ -577,6 +577,8 @@ test('broadcast control manages reusable banners, sponsors, and vendor logos', (
     assert.match(live, /function vendorLogo/);
     assert.match(live, /ticker-sponsors/);
     assert.match(live, /Math\.floor\(Date\.now\(\)\/6000\)/);
+    assert.match(live, /function isVideoAsset\(url\)/);
+    assert.match(live, /muted autoplay loop playsinline preload="auto"/);
     assert.match(control, /crewartSampleAssets/);
     assert.doesNotMatch(control, /quiz-section|name="quizQuestion"|돌발 퀴즈/);
     assert.match(control, /value="vendor">업체별 금액/);
@@ -602,6 +604,9 @@ test('broadcast control manages reusable banners, sponsors, and vendor logos', (
     assert.doesNotMatch(legacySettings, /embedded-crewart \[data-control-scope="cdcup"\]/);
     assert.match(legacySettings, /m\.crewart_ticker = m\.ticker/);
     assert.match(legacySettings, /delete m\.ticker/);
+    assert.match(legacySettings, /accept="image\/\*,video\/mp4,\.mp4"/);
+    assert.match(legacySettings, /const uploadFile = isMp4 \? file : await resizeImage\(file\)/);
+    assert.match(legacySettings, /await updateConfigs\(\{ \['banner' \+ idx\]: publicUrl \}\)/);
     assert.match(preview, /activeDragKey === 'contribution_roulette'/);
     assert.match(preview, /background: rgba\(10,12,14,\.86\)/);
     const cdcupBroadcast = fs.readFileSync(path.join(__dirname, '..', 'public', 'broadcast.html'), 'utf8');

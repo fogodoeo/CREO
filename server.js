@@ -15,6 +15,8 @@ const { createCrewartHouseService } = require('./crewart-house-service');
 const { createPlatformApi } = require('./platform-api');
 const { createCaptureApi } = require('./capture-api');
 const { CaptureStorage } = require('./capture-storage');
+const { createBroadcastAssetApi } = require('./broadcast-asset-api');
+const { BroadcastAssetStorage } = require('./broadcast-asset-storage');
 const { createCdcupRoundsApi } = require('./cdcup-rounds-api');
 const { normalizeChannelId } = require('./platform-core');
 const { SupabaseConfigRepository } = require('./platform-repository');
@@ -45,6 +47,11 @@ const captureStorage = new CaptureStorage();
 const captureApi = createCaptureApi({
     repository: platformRepository,
     storage: captureStorage,
+    isAdmin: platformApi.isAdmin
+});
+const broadcastAssetStorage = new BroadcastAssetStorage();
+const broadcastAssetApi = createBroadcastAssetApi({
+    storage: broadcastAssetStorage,
     isAdmin: platformApi.isAdmin
 });
 const cdcupRoundsApi = createCdcupRoundsApi({
@@ -283,6 +290,10 @@ const server = http.createServer(async (req, res) => {
             if (await platformApi.handle(req, res, url)) return;
         }
 
+        if (url.pathname.startsWith('/api/broadcast-assets/')) {
+            if (await broadcastAssetApi.handle(req, res, url)) return;
+        }
+
         if (url.pathname.startsWith('/capture/')) {
             if (await captureApi.handleSharePage(req, res, url)) return;
         }
@@ -300,6 +311,7 @@ const server = http.createServer(async (req, res) => {
                 bandMonitor: await readBandMonitorStatus(),
                 platform,
                 capture: captureStorage.health(),
+                broadcastAssets: broadcastAssetStorage.health(),
                 now: new Date().toISOString()
             });
             return;
