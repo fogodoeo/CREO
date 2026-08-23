@@ -642,6 +642,8 @@ test('broadcast control automatically optimizes oversized MP4 banners before upl
     assert.match(settings, /await compressMp4Banner\(file/);
     assert.match(settings, /if \(alreadyCompact\) return file/);
     assert.match(settings, /blob\.size >= file\.size \* 0\.95/);
+    assert.match(settings, /file\.size > 100 \* 1024 \* 1024/);
+    assert.match(settings, /uploadFile\.size > 8 \* 1024 \* 1024/);
 });
 
 test('broadcast setup keeps live operations separate and removes dead legacy controls', () => {
