@@ -92,7 +92,7 @@ const DEFAULT_CHANNELS = Object.freeze([
             page2Ticker: 'R · G · B · Y',
             page3Title: '기숙사 컵'
         }),
-        legacy: Object.freeze({ items: false, managementUrl: '/channel-workspace.html?channel=crewart', controlUrl: '/broadcast-studio.html?channel=crewart' })
+        legacy: Object.freeze({ items: true, managementUrl: '/cdcup-index.html?module=crewart&channel=crewart', controlUrl: '/broadcast-studio.html?channel=crewart' })
     })
 ]);
 
