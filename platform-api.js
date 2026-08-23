@@ -1398,6 +1398,54 @@ function createPlatformApi({
                 return true;
             }
 
+            if (segments.length === 3 && segments[2] === 'audience-assignment-audit' && method === 'GET') {
+                if (!await requireAdmin(req, res)) return true;
+                const data = await workspace(channelId);
+                const session = activeAudienceSession(data.broadcast);
+                if (!audienceCompetitionEnabled(channel) || !session) {
+                    replyJson(res, 409, { error: '진행 중인 크레와트 방송 회차가 없습니다.', code: 'AUDIENCE_SESSION_CLOSED' });
+                    return true;
+                }
+                if (typeof crewartHouseService?.getSurveyAssignment !== 'function') {
+                    replyJson(res, 503, { error: '설문 배정 대조 기능을 사용할 수 없습니다.', code: 'ASSIGNMENT_AUDIT_UNAVAILABLE' });
+                    return true;
+                }
+                const bidders = new Map();
+                for (const item of data.items) {
+                    for (const bid of rawItemBidLog(item)) {
+                        const bidderKey = cleanText(bid?.bidder_key || bid?.bidderKey, 120);
+                        const phone = phoneFromBid(bid);
+                        const name = cleanText(bid?.name || bid?.bidder || bid?.winner, 120);
+                        const identity = bidderKey || phone || name.toLowerCase();
+                        if (identity) bidders.set(identity, { bid, bidderKey, phone, name });
+                    }
+                }
+                const rows = [];
+                for (const entry of bidders.values()) {
+                    const memberKey = await bidderMemberKey(entry.bid, bandMembership);
+                    const survey = await crewartHouseService.getSurveyAssignment({
+                        channelId,
+                        sessionId: session.sessionId,
+                        memberKey,
+                        phone: entry.phone,
+                        winnerName: entry.name,
+                        winnerAlias: entry.bidderKey || entry.name
+                    });
+                    const currentHouseKey = cleanText(entry.bid?.crewart_house_key || entry.bid?.crewartHouseKey, 8).toUpperCase();
+                    const surveyHouseKey = cleanText(survey?.houseKey, 8).toUpperCase();
+                    rows.push({
+                        bidderKey: entry.bidderKey,
+                        name: publicBidderName(entry.name),
+                        currentHouseKey: ['R', 'G', 'B', 'Y'].includes(currentHouseKey) ? currentHouseKey : '',
+                        currentSource: cleanText(entry.bid?.crewart_house_source || entry.bid?.crewartHouseSource, 16),
+                        surveyHouseKey: ['R', 'G', 'B', 'Y'].includes(surveyHouseKey) ? surveyHouseKey : '',
+                        matchedByMember: Boolean(memberKey && surveyHouseKey)
+                    });
+                }
+                replyJson(res, 200, { channelId, sessionId: session.sessionId, rows });
+                return true;
+            }
+
             if (segments.length === 3 && segments[2] === 'audience-assignment-override' && method === 'POST') {
                 if (!await requireAdmin(req, res)) return true;
                 const body = await readJson(req);

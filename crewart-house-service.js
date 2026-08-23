@@ -243,6 +243,12 @@ function createCrewartHouseService({ repository, secret, now = () => Date.now(),
         return write(identity, { houseKey, participantKey, source: 'survey' });
     }
 
+    async function getSurveyAssignment(input = {}) {
+        const identity = assignmentIdentity(input, assignmentSecret);
+        const assignment = await read(identity);
+        return assignment?.source === 'survey' ? assignment : null;
+    }
+
     async function overrideSessionAssignment(input = {}, session = {}, requestedHouseKey = '') {
         const sessionId = clean(session.sessionId, 80);
         const lockedAt = clean(session.lockedAt, 80);
@@ -390,6 +396,7 @@ function createCrewartHouseService({ repository, secret, now = () => Date.now(),
     }
 
     return Object.freeze({
+        getSurveyAssignment,
         linkSurveyAssignment,
         overrideSessionAssignment,
         resolveBidderAssignments,

@@ -676,11 +676,15 @@ test('CREWART public broadcast adds only house colors to live bidders', async ()
                     { houseKey: 'B', source: 'survey' },
                     { houseKey: 'Y', source: 'random' }
                 ];
+            },
+            async getSurveyAssignment(input) {
+                return input.memberKey === 'member_from_phone' ? { houseKey: 'B', source: 'survey' } : null;
             }
         },
         bandMembership: {
             async resolveMemberSubject(input) {
                 memberLookups.push(input);
+                if (input.phone === '01011112222') return 'member_from_phone';
                 return input.bandMemberKey === 'viewer-random' ? 'member_from_band_key' : '';
             }
         },
@@ -713,6 +717,14 @@ test('CREWART public broadcast adds only house colors to live bidders', async ()
     assert.equal(bids[0].crewart_assignment_pending, undefined);
     assert.equal(bids[1].crewart_assignment_pending, true);
     assert.ok(bids.every(bid => !('phone' in bid)));
+
+    const audit = await call(api, 'GET', '/api/platform/channels/alpha/audience-assignment-audit');
+    assert.equal(audit.status, 200, audit.body);
+    const auditedSurveyBidder = audit.json().rows.find(row => row.name.includes('설문참여자'));
+    assert.equal(auditedSurveyBidder.currentHouseKey, '');
+    assert.equal(auditedSurveyBidder.surveyHouseKey, 'B');
+    assert.equal(auditedSurveyBidder.matchedByMember, true);
+    assert.ok(memberLookups.some(input => input.phone === '01011112222'));
 });
 
 test('CREWART operator can idempotently correct a wrongly randomized bidder house', async () => {
