@@ -93,16 +93,16 @@ test('CREWART weighted assignment excludes the leader and roulette follows the c
         (sum, outcome) => sum + outcome.multiplier * outcome.weight / 100,
         0
     );
-    assert.ok(Math.abs(expected - 1.55) < Number.EPSILON * 4);
+    assert.ok(Math.abs(expected - 1.925) < Number.EPSILON * 4);
     assert.deepEqual(CREWART_ROULETTE_OUTCOMES, [
-        { multiplier: 0.25, weight: 20 },
-        { multiplier: 0.5, weight: 30 },
-        { multiplier: 2, weight: 25 },
-        { multiplier: 3, weight: 15 },
+        { multiplier: 0.25, weight: 10 },
+        { multiplier: 0.5, weight: 20 },
+        { multiplier: 2, weight: 40 },
+        { multiplier: 3, weight: 20 },
         { multiplier: 4, weight: 10 }
     ]);
     assert.deepEqual(
-        [0, 19, 20, 49, 50, 74, 75, 89, 90, 99].map((value) => chooseCrewartRouletteMultiplier(() => value)),
+        [0, 9, 10, 29, 30, 69, 70, 89, 90, 99].map((value) => chooseCrewartRouletteMultiplier(() => value)),
         [0.25, 0.25, 0.5, 0.5, 2, 2, 3, 3, 4, 4]
     );
     assert.equal(floorContribution(150000, 0.25), 30000);

@@ -29,10 +29,10 @@ const CREWART_ROULETTE_ID = 'crewart-contribution-roulette';
 const CREWART_ROULETTE_DURATION_MS = 4500;
 const CREWART_ROULETTE_HOLD_MS = 360;
 const CREWART_ROULETTE_OUTCOMES = Object.freeze([
-    Object.freeze({ multiplier: 0.25, weight: 20 }),
-    Object.freeze({ multiplier: 0.5, weight: 30 }),
-    Object.freeze({ multiplier: 2, weight: 25 }),
-    Object.freeze({ multiplier: 3, weight: 15 }),
+    Object.freeze({ multiplier: 0.25, weight: 10 }),
+    Object.freeze({ multiplier: 0.5, weight: 20 }),
+    Object.freeze({ multiplier: 2, weight: 40 }),
+    Object.freeze({ multiplier: 3, weight: 20 }),
     Object.freeze({ multiplier: 4, weight: 10 })
 ]);
 const BROADCAST_CONFIG_KEY = /^[a-z0-9][a-z0-9_:-]{0,79}$/i;
