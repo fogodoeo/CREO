@@ -160,8 +160,10 @@ test('P3 board presents only four house cards and their amount numbers', () => {
     const source = fs.readFileSync(path.join(__dirname, '..', 'public', 'event-modules.js'), 'utf8');
     assert.match(source, /\.crewart-house-list \{[\s\S]*?grid-template-columns:1fr;grid-template-rows:repeat\(4,minmax\(0,1fr\)\);flex:1 1 100%/);
     assert.match(source, /\.crewart-house-card,[\s\S]*?width:100%;height:100%/);
-    assert.match(source, /border-left:5px solid var\(--house\)/);
-    assert.match(source, /background:color-mix\(in srgb,var\(--house\) 30%,rgba\(10,12,14,\.78\)\)/);
+    assert.match(source, /align-items:center;justify-items:end/);
+    assert.match(source, /border:0;border-radius:8px/);
+    assert.match(source, /background:color-mix\(in srgb,var\(--house\) 30%,rgba\(10,12,14,\.74\)\)/);
+    assert.match(source, /justify-self:end;align-self:center/);
     assert.match(source, /box-shadow:none/);
     assert.doesNotMatch(source, /body\[data-event-module="crewart"\]\.bracket-page #bracket-page-tree-full \{[\s\S]*?inset:0 !important;width:100% !important;height:100% !important/);
     assert.match(source, /\.crewart-scoreboard\.is-compact \{[\s\S]*?flex-direction:column;align-items:stretch/);

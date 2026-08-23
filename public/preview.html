@@ -324,14 +324,14 @@
             width: 76%;
             height: 13%;
             overflow: hidden;
-            background: radial-gradient(circle at 50% 0,rgba(214,178,103,.1),transparent 48%),linear-gradient(145deg,#09080b,#171219);
-            border: 2px dashed #e0c27e;
-            border-radius: 12px;
-            box-shadow: 0 0 18px rgba(224,194,126,.36);
+            background: rgba(10,12,14,.86);
+            border: 1px dashed rgba(224,194,126,.58);
+            border-radius: 9px;
+            box-shadow: none;
         }
         .draggable-contribution-roulette:hover {
             border-color: #f4d894;
-            background: linear-gradient(145deg,rgba(18,15,24,.98),rgba(30,23,31,.98));
+            background: rgba(10,12,14,.92);
         }
         .draggable-contribution-roulette .roulette-preview {
             display:grid;
@@ -2851,9 +2851,9 @@
             const maxX = containerRect.width - el.offsetWidth;
             let maxY = containerRect.height - el.offsetHeight;
 
-            if (activeDragKey === 'bracket_full' || activeDragKey === 'bracket_live' || activeDragKey === 'banner') {
+            if (activeDragKey === 'bracket_full' || activeDragKey === 'bracket_live' || activeDragKey === 'banner' || activeDragKey === 'contribution_roulette') {
                 // 대진표와 배너는 일부를 송출 화면 밖으로 빼서 가장자리를 정확히 맞출 수 있다.
-                const minVisible = activeDragKey === 'banner' ? 24 : 32;
+                const minVisible = activeDragKey === 'banner' ? 24 : (activeDragKey === 'contribution_roulette' ? 20 : 32);
                 x = Math.max(-el.offsetWidth + minVisible, Math.min(x, containerRect.width - minVisible));
                 y = Math.max(-el.offsetHeight + minVisible, Math.min(y, containerRect.height - minVisible));
             } else {

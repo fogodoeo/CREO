@@ -562,7 +562,7 @@ test('CDCUP three-round format assigns round-two teams and round-three finalists
     assert.match(broadcast, /const rankOpacity = \[1, \.90, \.86, \.78/);
     assert.doesNotMatch(broadcast, /<span class="p2-live-bidder-rank">/);
     assert.match(preview, /\.bid-preview-row:nth-child\(3\) \{ opacity: \.86; \}/);
-    assert.match(preview, /activeDragKey === 'banner' \? 24 : 32/);
+    assert.match(preview, /activeDragKey === 'banner' \? 24 : \(activeDragKey === 'contribution_roulette' \? 20 : 32\)/);
     assert.match(broadcast, /function freeBannerEdgeCss/);
     assert.match(broadcast, /container\.style\.right = freeBannerEdgeCss\(layout\.right, 'x'\)/);
 });
@@ -595,12 +595,15 @@ test('broadcast control manages reusable banners, sponsors, and vendor logos', (
     assert.match(crewartLive, /Number\(cfg\.ticker_interval\)/);
     assert.match(crewartLive, /crewart_ticker/);
     const legacySettings = fs.readFileSync(path.join(__dirname, '..', 'public', 'settings.html'), 'utf8');
+    const preview = fs.readFileSync(path.join(__dirname, '..', 'public', 'preview.html'), 'utf8');
     assert.doesNotMatch(legacySettings, /id="live-quiz-card"|id="cfg-live-quiz-question"|돌발 퀴즈/);
     assert.match(legacySettings, /<details class="advanced-panel" open>/);
     assert.match(legacySettings, /html\.embedded #event-module-card\{display:none\}/);
     assert.doesNotMatch(legacySettings, /embedded-crewart \[data-control-scope="cdcup"\]/);
     assert.match(legacySettings, /m\.crewart_ticker = m\.ticker/);
     assert.match(legacySettings, /delete m\.ticker/);
+    assert.match(preview, /activeDragKey === 'contribution_roulette'/);
+    assert.match(preview, /background: rgba\(10,12,14,\.86\)/);
     const cdcupBroadcast = fs.readFileSync(path.join(__dirname, '..', 'public', 'broadcast.html'), 'utf8');
     const cdcupBracket = fs.readFileSync(path.join(__dirname, '..', 'public', 'tournament-bracket.html'), 'utf8');
     assert.match(legacySettings, /const TEAM_LOGO_LIMIT = 64/);

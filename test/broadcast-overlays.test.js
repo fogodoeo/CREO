@@ -46,7 +46,8 @@ test('CREWART page two colors each live bidder card with the resolved viewer hou
 });
 
 test('CREWART broadcast plates use an isolated modern-antique skin', () => {
-    assert.match(broadcast, /broadcast-crewart\.css\?v=20260823-compact-p3-v4/);
+    assert.match(broadcast, /broadcast-crewart\.css\?v=20260823-flat-reel-v5/);
+    assert.match(broadcast, /event-modules\.js\?v=20260823-crewart-flat-board-v4/);
     assert.match(crewartCss, /body\[data-event-module="crewart"\] \{[\s\S]{0,500}--cw-brass:/);
     assert.match(crewartCss, /body\[data-event-module="crewart"\] \.host-nametag \.nt-inner/);
     assert.match(crewartCss, /body\[data-event-module="crewart"\] \.hc-bottom-bar/);
@@ -72,6 +73,13 @@ test('CREWART new bidder assignment is directed to the shared P3 FIFO, never the
     assert.match(broadcast, /state\.queue\.sort/);
     assert.match(broadcast, /event\.kind === 'assignment'/);
     assert.match(broadcast, /const duration = window\.matchMedia[^\n]+\? 0 : 2000/);
+});
+
+test('CREWART integrated broadcast resolves its namespaced lower-third text', () => {
+    assert.match(broadcast, /function resolveTickerConfig\(cfg\)/);
+    assert.match(broadcast, /crewart_ticker[\s\S]{0,180}source\.ticker/);
+    assert.match(broadcast, /crewart_ticker_interval[\s\S]{0,180}source\.ticker_interval/);
+    assert.match(broadcast, /renderTickerCards = function \(cfg\) \{\s*cfg = resolveTickerConfig\(cfg\)/);
 });
 
 test('CREWART P3 contribution roulette uses one premium frame, a two-second reel, and two clean result scenes', () => {
@@ -125,6 +133,8 @@ test('CREWART P3 contribution roulette has an independent saved placement target
     assert.match(broadcast, /map\.p3_contribution_roulette_width \|\| \(isCrewartModule \? '53%' : '76%'\)/);
     assert.match(broadcast, /map\.p3_contribution_roulette_height \|\| \(isCrewartModule \? '7%' : '13%'\)/);
     assert.match(broadcast, /map\.p3_contribution_roulette_font_size \|\| '36'/);
+    assert.match(broadcast, /contributionRoulette\.style\.setProperty\('--p3-roulette-font-size',[\s\S]{0,120}syncCrewartRouletteSlotHeight\(\)/);
+    assert.match(broadcast, /contributionRoulette\.style\[key\] = value === 'auto' \? 'auto'/);
     assert.match(broadcast, /map\.bracket_full_top \|\| map\.bracket_top \|\| \(isCrewartModule \? '60%' : '5%'\)/);
     assert.match(broadcast, /map\.bracket_full_left \|\| map\.bracket_left \|\| \(isCrewartModule \? '79%' : '20%'\)/);
     assert.match(broadcast, /map\.bracket_full_width \|\| map\.bracket_width \|\| \(isCrewartModule \? '18%' : '60%'\)/);
@@ -149,6 +159,9 @@ test('CREWART P3 idle roulette plate shows the current highest bidder and assign
     assert.doesNotMatch(broadcast, /formatLiveBidAmount\(bid\.amount\).*만원 입찰/);
     assert.match(crewartCss, /\.p3-contribution-roulette-shell\.has-bid-amount\s*\{[\s\S]{0,180}grid-template-columns:\s*minmax\(0, 1\.15fr\)\s+minmax\(110px, \.32fr\)\s+minmax\(240px, \.78fr\)/);
     assert.match(crewartCss, /\.p3-contribution-roulette-amount\s*\{[\s\S]{0,260}place-items:\s*center/);
+    assert.match(crewartCss, /\.p3-contribution-roulette-value\[data-house="R"\]\s*\{ background: var\(--cw-reel-r\); \}/);
+    assert.match(crewartCss, /\.p3-contribution-roulette-shell::before \{[\s\S]{0,40}display: none/);
+    assert.doesNotMatch(crewartCss, /\.p3-contribution-roulette-value\[data-house="R"\][^}]*linear-gradient/);
     assert.match(broadcast, /const houseLabel = \(\{ R: 'RED', G: 'GREEN', B: 'BLUE', Y: 'YELLOW' \}\)\[houseKey\] \|\| '배정 중'/);
     assert.match(broadcast, /if \(Array\.isArray\(items\)\) window\.latestItemsList = items;[\s\S]{0,100}processCrewartContributionRoulette/);
     assert.match(broadcast, /'p3-live-bid'/);

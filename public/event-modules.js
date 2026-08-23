@@ -564,15 +564,15 @@
             }
             .crewart-house-card,
             .crewart-scoreboard.is-compact .crewart-house-card {
-                display:grid;grid-template-columns:1fr;grid-template-rows:1fr;place-items:center;gap:0;
+                display:grid;grid-template-columns:1fr;grid-template-rows:1fr;align-items:center;justify-items:end;gap:0;
                 min-width:0;width:100%;height:100%;min-height:0;padding:8px 16px;
-                border:1px solid color-mix(in srgb,var(--house) 50%,rgba(255,255,255,.18));border-left:5px solid var(--house);border-radius:8px;
-                background:color-mix(in srgb,var(--house) 30%,rgba(10,12,14,.78));
+                border:0;border-radius:8px;
+                background:color-mix(in srgb,var(--house) 30%,rgba(10,12,14,.74));
                 box-shadow:none;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
-                clip-path:none;overflow:hidden;text-align:center;transition:background-color .25s ease,opacity .25s ease;
+                clip-path:none;overflow:hidden;text-align:right;transition:background-color .25s ease,opacity .25s ease;
             }
             .crewart-house-score {
-                position:static;display:block;grid-column:1;grid-row:1;justify-self:center;align-self:center;
+                position:static;display:block;grid-column:1;grid-row:1;justify-self:end;align-self:center;
                 margin:0;color:var(--house-ink);font-family:'Pretendard Variable',Pretendard,sans-serif;
                 max-width:100%;font-size:clamp(26px,calc(var(--bracket-fs,14px) * 4.5),104px);font-weight:900;line-height:1;letter-spacing:-.045em;
                 font-variant-numeric:tabular-nums;text-shadow:none;white-space:nowrap;

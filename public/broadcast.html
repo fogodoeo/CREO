@@ -29,7 +29,7 @@
     <script src="auction-contract.js?v=20260819-contract-v1"></script>
     <script src="supabase-bridge.js?v=20260819-round3-seed-v2"></script>
     <script src="channel-broadcast-bridge.js?v=20260823-crewart-audience-v5"></script>
-    <script src="event-modules.js?v=20260823-crewart-vertical-board-v3"></script>
+    <script src="event-modules.js?v=20260823-crewart-flat-board-v4"></script>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link
         href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
@@ -3971,7 +3971,7 @@
         }
     </style>
     <link rel="stylesheet" href="broadcast-creyon.css?v=20260820-live-bidders-v1">
-    <link rel="stylesheet" href="broadcast-crewart.css?v=20260823-compact-p3-v4">
+    <link rel="stylesheet" href="broadcast-crewart.css?v=20260823-flat-reel-v5">
 </head>
 
 <body>
@@ -4393,6 +4393,20 @@
             return [text];
         }
 
+        function resolveTickerConfig(cfg) {
+            const source = cfg || {};
+            if (getActiveAuctionEventModule(source).id !== 'crewart') return source;
+            return {
+                ...source,
+                ticker: Object.prototype.hasOwnProperty.call(source, 'crewart_ticker')
+                    ? source.crewart_ticker
+                    : source.ticker,
+                ticker_interval: Object.prototype.hasOwnProperty.call(source, 'crewart_ticker_interval')
+                    ? source.crewart_ticker_interval
+                    : source.ticker_interval
+            };
+        }
+
         function resetTickerMotion() {
             if (window._tickerRaf) {
                 cancelAnimationFrame(window._tickerRaf);
@@ -4432,6 +4446,7 @@
         }
 
         function renderTickerCardsLegacy(cfg) {
+            cfg = resolveTickerConfig(cfg);
             const bottomBar = document.querySelector('.hc-bottom-bar');
             const stage = document.getElementById('hc-ticker-stage');
 
@@ -4509,6 +4524,7 @@
         }
 
         renderTickerCards = function (cfg) {
+            cfg = resolveTickerConfig(cfg);
             const bottomBar = document.querySelector('.hc-bottom-bar');
             const stage = document.getElementById('hc-ticker-stage');
             if (!bottomBar || !stage) return;
@@ -8285,9 +8301,12 @@
                     height: map.p3_contribution_roulette_height || (isCrewartModule ? '7%' : '13%')
                 };
                 Object.entries(placement).forEach(([key, value]) => {
-                    contributionRoulette.style[key] = value === 'auto' ? '' : normalizeCssLength(value) || value;
+                    // CSS 기본 좌표(top/left)가 남으면 bottom/right 저장값과 충돌한다.
+                    // auto도 인라인으로 명시해 배치기에서 선택한 기준축을 그대로 적용한다.
+                    contributionRoulette.style[key] = value === 'auto' ? 'auto' : normalizeCssLength(value) || value;
                 });
                 contributionRoulette.style.setProperty('--p3-roulette-font-size', `${rouletteFontSize}px`);
+                syncCrewartRouletteSlotHeight();
             }
             if (eventModule.id === 'cdcup' && isBracketPage) {
                 // 3P는 전체 진행표 전용이다. 2P 입찰자 팝업 및 과거 팀합산 패널과 독립시킨다.
