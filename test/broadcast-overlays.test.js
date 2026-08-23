@@ -46,7 +46,7 @@ test('CREWART page two colors each live bidder card with the resolved viewer hou
 });
 
 test('CREWART broadcast plates use an isolated modern-antique skin', () => {
-    assert.match(broadcast, /broadcast-crewart\.css\?v=20260823-premium-reel-v2/);
+    assert.match(broadcast, /broadcast-crewart\.css\?v=20260823-bidder-reel-v3/);
     assert.match(crewartCss, /body\[data-event-module="crewart"\] \{[\s\S]{0,500}--cw-brass:/);
     assert.match(crewartCss, /body\[data-event-module="crewart"\] \.host-nametag \.nt-inner/);
     assert.match(crewartCss, /body\[data-event-module="crewart"\] \.hc-bottom-bar/);
@@ -136,7 +136,12 @@ test('CREWART P3 recovers recent assignment and contribution events after a sour
 test('CREWART P3 idle roulette plate shows the current highest bidder and assigned house', () => {
     assert.match(broadcast, /function currentCrewartP3HighestBid\(\)/);
     assert.match(broadcast, /live_bidders_mode: 'top'/);
-    assert.match(broadcast, /formatLiveBidAmount\(bid\.amount\).*만원 입찰/);
+    assert.match(broadcast, /p3-contribution-roulette-shell is-live-bid has-bid-amount/);
+    assert.match(broadcast, /p3-contribution-roulette-amount">\$\{formatLiveBidAmount\(bid\.amount\)\}/);
+    assert.match(broadcast, /p3-contribution-roulette-shell has-bid-amount[\s\S]{0,400}formatLiveBidAmount\(event\.amount\)/);
+    assert.doesNotMatch(broadcast, /formatLiveBidAmount\(bid\.amount\).*만원 입찰/);
+    assert.match(crewartCss, /\.p3-contribution-roulette-shell\.has-bid-amount\s*\{[\s\S]{0,180}grid-template-columns:\s*minmax\(0, 1\.15fr\)\s+minmax\(110px, \.32fr\)\s+minmax\(240px, \.78fr\)/);
+    assert.match(crewartCss, /\.p3-contribution-roulette-amount\s*\{[\s\S]{0,260}place-items:\s*center/);
     assert.match(broadcast, /const houseLabel = \(\{ R: 'RED', G: 'GREEN', B: 'BLUE', Y: 'YELLOW' \}\)\[houseKey\] \|\| '배정 중'/);
     assert.match(broadcast, /if \(Array\.isArray\(items\)\) window\.latestItemsList = items;[\s\S]{0,100}processCrewartContributionRoulette/);
     assert.match(broadcast, /'p3-live-bid'/);
