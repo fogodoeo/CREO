@@ -47,15 +47,18 @@ function auctionWinnerEntries(items, unitAmount = 100000, options = {}) {
   for (const item of Array.isArray(items) ? items : []) {
     const status = String(item?.status || '').trim().toLowerCase();
     const name = String(item?.winnerAlias || item?.winnerName || '').replace(/\s+/g, ' ').trim();
-    const amount = Math.max(0, Math.floor(Number(item?.soldPrice) || 0));
-    if (!SOLD_STATUSES.has(status) || !name || amount <= 0) continue;
+    const soldPrice = Math.max(0, Math.floor(Number(item?.soldPrice) || 0));
+    if (!SOLD_STATUSES.has(status) || !name || soldPrice <= 0) continue;
     
     if (targetHouse) {
       const itemHouse = String(item?.attributes?.crewart_house_key || item?.groupId || '').toUpperCase();
       if (itemHouse !== targetHouse) continue;
     }
     
-    totals.set(name, (totals.get(name) || 0) + amount);
+    const contrib = Math.max(0, Math.floor(Number(item?.attributes?.crewart_contribution_amount) || 0));
+    const effectiveAmount = contrib > 0 ? contrib : soldPrice;
+    
+    totals.set(name, (totals.get(name) || 0) + effectiveAmount);
   }
 
   return [...totals.entries()]
