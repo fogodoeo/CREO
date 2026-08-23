@@ -5780,6 +5780,38 @@
             });
         }
 
+        let _crewartAudiencePollTimer = null;
+        let _crewartAudiencePollRunning = false;
+
+        function _scheduleCrewartAudiencePoll(delay = 350) {
+            if (_crewartAudiencePollTimer) clearTimeout(_crewartAudiencePollTimer);
+            _crewartAudiencePollTimer = setTimeout(_crewartAudiencePollTick, delay);
+        }
+
+        async function _crewartAudiencePollTick() {
+            if (_crewartAudiencePollRunning) return;
+            _crewartAudiencePollRunning = true;
+            try {
+                if (typeof window.getCrewartAudience === 'function') {
+                    const audience = await window.getCrewartAudience();
+                    window.__creoAudience = audience || null;
+                    processCrewartContributionRoulette(window.__creoAudience);
+                }
+            } catch (error) {
+                console.error('CREWART audience event poll error', error);
+            } finally {
+                _crewartAudiencePollRunning = false;
+                const interval = document.hidden && !isDirectBroadcastSource ? 3000 : 350;
+                _scheduleCrewartAudiencePoll(interval);
+            }
+        }
+
+        function startCrewartAudiencePolling() {
+            const moduleId = String(params.get('module') || params.get('event') || '').trim().toLowerCase();
+            if (!isBracketPageTemp || moduleId !== 'crewart' || _crewartAudiencePollTimer) return;
+            _scheduleCrewartAudiencePoll(0);
+        }
+
         // 브라우저 내 즉시 동기 (웹 → 방송)
         try {
             const bc = new BroadcastChannel('auction-photos');
@@ -6052,6 +6084,7 @@
             // document.getElementById('bracket-page-container').style.display = 'block';
         }
         startAuctionAdaptivePolling();
+        startCrewartAudiencePolling();
 
         // 전역 개체 캐시 fallback 확보
         window.latestItemsList = window.latestItemsList || [];

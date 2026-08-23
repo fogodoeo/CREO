@@ -860,9 +860,10 @@ function createPlatformApi({
         if (assignment?.source !== 'random') return null;
         const requestSequence = Math.max(0, Number.parseInt(input.bid_sequence || input.bidSequence, 10) || 0);
         const assignmentSequence = Math.max(0, Number.parseInt(assignment.assignmentSequence, 10) || 0);
+        const assignmentSessionId = cleanText(assignment.sessionId, 80);
         const ownsAssignment = Boolean(assignment.isNew)
-            || (requestSequence > 0 && requestSequence === assignmentSequence);
-        if (!ownsAssignment) return null;
+            || (requestSequence > 0 && assignmentSequence > 0 && requestSequence >= assignmentSequence);
+        if ((assignmentSessionId && assignmentSessionId !== session.sessionId) || !ownsAssignment) return null;
         const stored = await repository.getRecord(channelId, 'setting', AUDIENCE_REVEALS_ID);
         const current = stored?.sessionId === session.sessionId
             ? stored
@@ -1325,6 +1326,21 @@ function createPlatformApi({
             if (segments.length === 3 && segments[2] === 'workspace' && method === 'GET') {
                 if (!await requireAdmin(req, res)) return true;
                 replyJson(res, 200, { channel, ...(await workspace(channelId)) });
+                return true;
+            }
+
+            if (segments.length === 3 && segments[2] === 'audience' && method === 'GET') {
+                const data = await workspace(channelId);
+                const audience = audienceCompetitionEnabled(channel)
+                    ? await audienceRevealPayload(channelId, data.broadcast)
+                    : { sessionId: '', lockedAt: '', sequence: 0, events: [], revealedBidderKeys: [] };
+                if (audienceCompetitionEnabled(channel)) {
+                    audience.roulette = await crewartRoulettePayload(channelId, data.broadcast);
+                }
+                replyJson(res, 200, {
+                    revision: channelRevision(channelId),
+                    audience
+                });
                 return true;
             }
 

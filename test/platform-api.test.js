@@ -1001,6 +1001,15 @@ test('CREWART assignment endpoint restores one reveal after broadcast enrichment
     });
     assert.equal(started.status, 200, started.body);
 
+    await crewartHouseService.resolveWinnerAssignment({
+        channelId: 'alpha',
+        sessionId: started.json().state.audienceSessionId,
+        lockedAt: started.json().state.audienceSessionLockedAt,
+        winnerName: '경합 입찰자',
+        winnerAlias: 'race-user',
+        assignmentSequence: 11
+    });
+
     const enrichedFirst = await call(api, 'GET', '/api/platform/channels/alpha/broadcast', null, '');
     assert.match(enrichedFirst.json().items[0].bidLog[0].crewart_house_key, /^[RGBY]$/);
     assert.equal(enrichedFirst.json().items[0].bidLog[0].crewart_assignment_pending, true);
@@ -1023,6 +1032,11 @@ test('CREWART assignment endpoint restores one reveal after broadcast enrichment
     assert.equal(broadcast.json().audience.events[0].sequence, 1);
     assert.equal(broadcast.json().audience.events[0].houseKey, assignment.json().houseKey);
     assert.equal(broadcast.json().items[0].bidLog[0].crewart_assignment_pending, undefined);
+
+    const audienceOnly = await call(api, 'GET', '/api/platform/channels/alpha/audience', null, '');
+    assert.equal(audienceOnly.status, 200, audienceOnly.body);
+    assert.equal(audienceOnly.json().audience.events.length, 1);
+    assert.equal(audienceOnly.json().audience.events[0].houseKey, assignment.json().houseKey);
 });
 
 test('ordinary channels never assign an audience house during a sale', async () => {

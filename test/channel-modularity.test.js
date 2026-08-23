@@ -237,6 +237,7 @@ test('legacy-layout bridge keeps renderer identity separate from platform channe
         '/api/platform/channels/academy-copy': { channel: channel('academy-copy', { broadcastProfile: 'crewart-academy', groups: [{ id: 'r', name: 'R', color: '#aa0000' }] }) },
         '/api/platform/channels/academy-copy/broadcast-config': { config: { ticker: '채널 전용 자막' }, revision: 2 },
         '/api/platform/channels/academy-copy/broadcast': { items: [{ id: 'item_1', lotNumber: 7, name: '개체', vendorName: '업체', startPrice: 100000, soldPrice: 250000, status: 'sold', winnerAlias: '낙찰자', groupId: 'r', bidLog: [{ name: '입찰자', amount: 30, phone: '01012345678' }] }] },
+        '/api/platform/channels/academy-copy/audience': { audience: { sessionId: 'session-1', events: [], roulette: { events: [] } } },
         '/api/platform/channels/academy-copy/broadcast-pulse': { revision: 3 }
     };
     const target = {
@@ -260,6 +261,7 @@ test('legacy-layout bridge keeps renderer identity separate from platform channe
     const bridge = BroadcastBridge.install(target);
     const items = await target.getItems();
     const config = await target.getConfigMap();
+    const audience = await target.getCrewartAudience();
     await target.updateConfigs({ ticker: '수정 자막', admin_pw: '제외' });
     assert.equal(bridge.channelId, 'academy-copy');
     assert.equal(bridge.rendererModule, 'crewart');
@@ -271,6 +273,8 @@ test('legacy-layout bridge keeps renderer identity separate from platform channe
     assert.equal(config.crewart_houses, 'R|#aa0000|#aa0000');
     assert.equal(config.live_bidders_show, '1');
     assert.equal(config.live_bidders_opacity, '94');
+    assert.equal(audience.sessionId, 'session-1');
+    assert.equal(target.__creoAudience.sessionId, 'session-1');
     const update = calls.find(call => call.options.method === 'PUT');
     assert.equal(JSON.parse(update.options.body).patch.admin_pw, undefined);
     assert.equal(JSON.parse(update.options.body).patch.active_event_module, 'crewart');

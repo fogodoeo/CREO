@@ -100,6 +100,9 @@ test('CREWART P3 contribution roulette uses one premium frame, a two-second reel
     assert.match(broadcast, /p3-contribution-roulette-shell" aria-hidden="true"/);
     assert.doesNotMatch(broadcast, /직전 낙찰자의 입력을 기다리는 중|p3-contribution-result-name|p3-contribution-result-amount/);
     assert.match(broadcast, /processCrewartContributionRoulette\(window\.__creoAudience \|\| null\)/);
+    assert.match(broadcast, /function startCrewartAudiencePolling\(\)/);
+    assert.match(broadcast, /await window\.getCrewartAudience\(\)/);
+    assert.match(channelBridge, /channels\/\$\{encodeURIComponent\(channelId\)\}\/audience/);
     assert.doesNotMatch(broadcast, /룰렛.*sendMessage|sendMessage.*룰렛/);
     assert.match(crewartCss, /one premium frame shared by house and contribution reels/);
     assert.match(crewartCss, /\.p2-house-reveal-shell,[\s\S]{0,120}\.p3-contribution-roulette-shell/);

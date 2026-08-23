@@ -222,6 +222,12 @@
             return broadcastCache;
         }
 
+        async function loadAudience() {
+            const payload = await request(`channels/${encodeURIComponent(channelId)}/audience`);
+            target.__creoAudience = payload?.audience || null;
+            return target.__creoAudience;
+        }
+
         async function legacyItems(force = false, maxAgeMs = 900) {
             const payload = await loadBroadcast(force, maxAgeMs);
             return toLegacyBroadcastItems(payload, rendererModule);
@@ -273,8 +279,12 @@
             lastPulseRevision = revision;
             return { id: channelId, status: '', updatedAt: revision };
         });
+        target.getCrewartAudience = async () => {
+            const current = await context();
+            return current.platform ? loadAudience() : null;
+        };
 
-        return Object.freeze({ channelId, rendererModule, context, loadBroadcast, loadConfig, originals });
+        return Object.freeze({ channelId, rendererModule, context, loadBroadcast, loadAudience, loadConfig, originals });
     }
 
     return Object.freeze({ BRIDGED_FUNCTIONS, defaultConfig, install, legacyBidLog, legacyStatus, normalizeId, toLegacyBroadcastItems, toLegacyItem });
