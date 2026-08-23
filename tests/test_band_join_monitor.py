@@ -685,6 +685,32 @@ class ChromeSelectionTests(unittest.TestCase):
             self.assertEqual(monitor.state, "FALLBACK")
             monitor.stop()
 
+    def test_repeated_dom_scan_timeouts_reconnect_then_restart_chrome(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config = json.loads(json.dumps(DEFAULT_CONFIG))
+            config["log_file"] = str(Path(temp_dir) / "monitor.log")
+            config["state_file"] = str(Path(temp_dir) / "state.json")
+            config["runtime_status_file"] = str(Path(temp_dir) / "runtime.json")
+            config["diagnostic_file"] = str(Path(temp_dir) / "diagnostic.jsonl")
+            monitor = BandJoinMonitor(config, Path(temp_dir))
+            connection = _TimeoutConnection()
+            chrome_restarts = []
+            monitor.chrome.stop = lambda: chrome_restarts.append(True)  # type: ignore[method-assign]
+
+            monitor._full_dom_scan(connection)  # type: ignore[arg-type]
+            self.assertEqual(connection.close_count, 0)
+            self.assertIn("응답 시간 초과", monitor.state_detail)
+
+            monitor._full_dom_scan(connection)  # type: ignore[arg-type]
+            self.assertEqual(connection.close_count, 1)
+            self.assertEqual(chrome_restarts, [])
+
+            monitor._full_dom_scan(connection)  # type: ignore[arg-type]
+            monitor._full_dom_scan(connection)  # type: ignore[arg-type]
+            self.assertEqual(connection.close_count, 2)
+            self.assertEqual(chrome_restarts, [True])
+            monitor.stop()
+
     def test_notification_change_reloads_applications_page(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             config = json.loads(json.dumps(DEFAULT_CONFIG))
@@ -1610,6 +1636,17 @@ class _RecordingConnection:
     def call(self, method, params=None, timeout=8):
         self.calls.append((method, params, timeout))
         return {}
+
+
+class _TimeoutConnection:
+    def __init__(self):
+        self.close_count = 0
+
+    def call(self, method, params=None, timeout=8):
+        raise TimeoutError(f"CDP {method} 응답 시간 초과 ({timeout:.1f}초)")
+
+    def close(self):
+        self.close_count += 1
 
 
 class _FollowUpConnection:

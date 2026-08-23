@@ -44,7 +44,7 @@ from typing import Any, Iterable, Mapping, Optional
 
 
 APP_NAME = "BAND 가입 신청 모니터"
-VERSION = "0.3.16"
+VERSION = "0.3.17"
 DEFAULT_CONFIG_FILE = "band_join_monitor_config.json"
 DOM_SIGNAL_BINDING = "__bandJoinMonitorSignal"
 BAND_NO_RE = re.compile(r"/band/(\d+)")
@@ -68,7 +68,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "dom_read_enabled": True,
     "dom_action_enabled": False,
     "poll_fallback_seconds": 3,
-    "dom_event_poll_seconds": 0.1,
+    "dom_event_poll_seconds": 0.5,
     "approval_delay_seconds": 2,
     "action_rate_limit_seconds": 0,
     "diagnostic_mode": False,
@@ -1261,6 +1261,12 @@ class CDPConnection:
         try:
             self.websocket.send_text(json.dumps(message, separators=(",", ":")))
             response = waiter.get(timeout=timeout)
+        except queue.Empty as exc:
+            with self._pending_lock:
+                self._pending.pop(message_id, None)
+            raise TimeoutError(
+                f"CDP {method} 응답 시간 초과 ({timeout:.1f}초)"
+            ) from exc
         except Exception:
             with self._pending_lock:
                 self._pending.pop(message_id, None)
@@ -2261,6 +2267,7 @@ class BandJoinMonitor:
         self._last_safety_refresh = time.monotonic()
         self._dom_install_needed = True
         self._last_action: Optional[dict[str, Any]] = None
+        self._consecutive_dom_scan_timeouts = 0
 
     def _read_bootstrap_cookies(self) -> list[dict[str, Any]]:
         serialized = os.environ.pop("BAND_COOKIE_JSON", "").strip()
@@ -3807,9 +3814,29 @@ class BandJoinMonitor:
                 timeout=3,
             )
             rows = runtime_value(result)
+        except TimeoutError as exc:
+            self._consecutive_dom_scan_timeouts += 1
+            failures = self._consecutive_dom_scan_timeouts
+            self.set_state(
+                "FALLBACK",
+                f"DOM 목록 확인 지연 ({failures}회): {safe_for_log(exc)}",
+            )
+            if failures == 2:
+                self.logger.warning(
+                    "BAND DOM 응답 지연이 반복되어 CDP 연결을 새로 엽니다."
+                )
+                connection.close()
+            elif failures >= 4:
+                self.logger.warning(
+                    "BAND DOM 응답 지연이 재연결 후에도 반복되어 Chrome을 재시작합니다."
+                )
+                self.chrome.stop()
+                connection.close()
+            return []
         except Exception as exc:
             self.set_state("FALLBACK", f"DOM 목록 확인 실패: {safe_for_log(exc)}")
             return []
+        self._consecutive_dom_scan_timeouts = 0
         requests = self.dom_parser.parse_rows(rows)
         self._accept_requests(requests)
         active_keys = {request.stable_key for request in requests}

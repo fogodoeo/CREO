@@ -16,7 +16,7 @@
   "dom_read_enabled": true,
   "dom_action_enabled": true,
   "poll_fallback_seconds": 3,
-  "dom_event_poll_seconds": 0.1,
+  "dom_event_poll_seconds": 0.5,
   "approval_delay_seconds": 0.5,
   "action_rate_limit_seconds": 0,
   "diagnostic_mode": false,
