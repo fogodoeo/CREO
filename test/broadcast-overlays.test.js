@@ -125,9 +125,12 @@ test('CREWART P3 contribution roulette has an independent saved placement target
     assert.match(broadcast, /map\.p3_contribution_roulette_width \|\| \(isCrewartModule \? '53%' : '76%'\)/);
     assert.match(broadcast, /map\.p3_contribution_roulette_height \|\| \(isCrewartModule \? '7%' : '13%'\)/);
     assert.match(broadcast, /map\.p3_contribution_roulette_font_size \|\| '36'/);
-    assert.match(broadcast, /map\.bracket_full_height \|\| map\.bracket_height \|\| \(isCrewartModule \? '9%' : '65%'\)/);
+    assert.match(broadcast, /map\.bracket_full_top \|\| map\.bracket_top \|\| \(isCrewartModule \? '60%' : '5%'\)/);
+    assert.match(broadcast, /map\.bracket_full_left \|\| map\.bracket_left \|\| \(isCrewartModule \? '79%' : '20%'\)/);
+    assert.match(broadcast, /map\.bracket_full_width \|\| map\.bracket_width \|\| \(isCrewartModule \? '18%' : '60%'\)/);
+    assert.match(broadcast, /map\.bracket_full_height \|\| map\.bracket_height \|\| \(isCrewartModule \? '36%' : '65%'\)/);
     assert.match(crewartCss, /\.p3-contribution-roulette-shell \{ width: 100%; height: 100%; min-height: 68px; \}/);
-    assert.match(preview, /compactCrewart \? '9%' : '65%'/);
+    assert.match(preview, /compactCrewart \? '36%' : '65%'/);
     assert.match(preview, /compactCrewart \? '7%' : '13%'/);
     assert.match(broadcast, /events\.filter\(\(event\) => event\?\.replay !== true\)/);
 });

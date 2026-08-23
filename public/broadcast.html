@@ -29,7 +29,7 @@
     <script src="auction-contract.js?v=20260819-contract-v1"></script>
     <script src="supabase-bridge.js?v=20260819-round3-seed-v2"></script>
     <script src="channel-broadcast-bridge.js?v=20260823-crewart-audience-v5"></script>
-    <script src="event-modules.js?v=20260822-crewart-contribution-v2"></script>
+    <script src="event-modules.js?v=20260823-crewart-vertical-board-v3"></script>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link
         href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
@@ -8310,10 +8310,10 @@
             const treeFull = document.getElementById('bracket-page-tree-full');
             const treeLive = document.getElementById('bracket-page-tree-live');
 
-            const fullTop = map.bracket_full_top || map.bracket_top || (isCrewartModule ? '79%' : '5%');
-            const fullLeft = map.bracket_full_left || map.bracket_left || (isCrewartModule ? '29%' : '20%');
-            const fullWidth = map.bracket_full_width || map.bracket_width || (isCrewartModule ? '41%' : '60%');
-            const fullHeight = map.bracket_full_height || map.bracket_height || (isCrewartModule ? '9%' : '65%');
+            const fullTop = map.bracket_full_top || map.bracket_top || (isCrewartModule ? '60%' : '5%');
+            const fullLeft = map.bracket_full_left || map.bracket_left || (isCrewartModule ? '79%' : '20%');
+            const fullWidth = map.bracket_full_width || map.bracket_width || (isCrewartModule ? '18%' : '60%');
+            const fullHeight = map.bracket_full_height || map.bracket_height || (isCrewartModule ? '36%' : '65%');
             const fullFontSize = map.bracket_full_font_size || map.bracket_font_size || '14';
 
             const liveTop = map.bracket_live_top || '0px';

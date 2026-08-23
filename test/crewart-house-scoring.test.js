@@ -158,10 +158,13 @@ test('P3 board presents only four house cards and their amount numbers', () => {
     assert.doesNotMatch(html, /crewart-score-head|crewart-house-stats|crewart-house-sigil|<small>|POINTS|기숙사 미지정/);
 
     const source = fs.readFileSync(path.join(__dirname, '..', 'public', 'event-modules.js'), 'utf8');
-    assert.match(source, /\.crewart-house-list \{[\s\S]*?grid-template-columns:repeat\(4,minmax\(0,1fr\)\);flex:1 1 100%/);
+    assert.match(source, /\.crewart-house-list \{[\s\S]*?grid-template-columns:1fr;grid-template-rows:repeat\(4,minmax\(0,1fr\)\);flex:1 1 100%/);
     assert.match(source, /\.crewart-house-card,[\s\S]*?width:100%;height:100%/);
+    assert.match(source, /border-left:5px solid var\(--house\)/);
+    assert.match(source, /background:color-mix\(in srgb,var\(--house\) 30%,rgba\(10,12,14,\.78\)\)/);
+    assert.match(source, /box-shadow:none/);
     assert.doesNotMatch(source, /body\[data-event-module="crewart"\]\.bracket-page #bracket-page-tree-full \{[\s\S]*?inset:0 !important;width:100% !important;height:100% !important/);
-    assert.match(source, /\.crewart-scoreboard\.is-compact \{[\s\S]*?flex-direction:row;align-items:flex-end/);
+    assert.match(source, /\.crewart-scoreboard\.is-compact \{[\s\S]*?flex-direction:column;align-items:stretch/);
     assert.doesNotMatch(source, /width:calc\(100% \+ clamp\(42px,3vw,64px\)\)|translateX\(-\.22em\)/);
 });
 

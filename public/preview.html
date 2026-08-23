@@ -2198,13 +2198,13 @@
                 // Load Bracket values (PAGE3 only)
                 if (elements.bracket_full) {
                     const compactCrewart = String(cfg.active_event_module || '').toLowerCase() === 'crewart';
-                    elements.bracket_full.top = cfg.bracket_full_top || cfg.bracket_top || (compactCrewart ? '79%' : '5%');
-                    elements.bracket_full.left = cfg.bracket_full_left || cfg.bracket_left || (compactCrewart ? '29%' : '20%');
+                    elements.bracket_full.top = cfg.bracket_full_top || cfg.bracket_top || (compactCrewart ? '60%' : '5%');
+                    elements.bracket_full.left = cfg.bracket_full_left || cfg.bracket_left || (compactCrewart ? '79%' : '20%');
                     elements.bracket_full.right = cfg.bracket_full_right || 'auto';
                     elements.bracket_full.bottom = cfg.bracket_full_bottom || 'auto';
                     elements.bracket_full.show = cfg.bracket_full_show !== undefined ? String(cfg.bracket_full_show) : '1';
-                    elements.bracket_full.width = cfg.bracket_full_width || cfg.bracket_width || (compactCrewart ? '41%' : '60%');
-                    elements.bracket_full.height = cfg.bracket_full_height || cfg.bracket_height || (compactCrewart ? '9%' : '65%');
+                    elements.bracket_full.width = cfg.bracket_full_width || cfg.bracket_width || (compactCrewart ? '18%' : '60%');
+                    elements.bracket_full.height = cfg.bracket_full_height || cfg.bracket_height || (compactCrewart ? '36%' : '65%');
                     elements.bracket_full.fontSize = cfg.bracket_full_font_size || cfg.bracket_font_size || '14';
                     elements.bracket_full.cardOpacity = cfg.bracket_full_card_opacity ?? '90';
                     
