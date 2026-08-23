@@ -211,6 +211,7 @@
         .p3-contribution-roulette-shell::after { content:'';position:absolute;inset:7px;border:1px solid rgba(219,183,106,.18);border-radius:8px;pointer-events:none; }
         .p3-contribution-roulette-person { display:grid;place-items:center;min-width:0;padding:14px 24px;color:#f4e6c3; }
         .p3-contribution-roulette-person strong { display:block;max-width:100%;overflow:hidden;font-size:clamp(18px,var(--p3-roulette-font-size,36px),80px);font-weight:900;text-overflow:ellipsis;white-space:nowrap;letter-spacing:-.04em; }
+        .p3-contribution-roulette-person small { display:block;margin-top:.14em;color:#c9ae75;font-size:clamp(13px,calc(var(--p3-roulette-font-size,36px) * .46),34px);font-weight:850;letter-spacing:-.025em; }
         .p3-contribution-roulette-window { height:100%;overflow:hidden;border-left:1px solid rgba(205,168,91,.42);background:rgba(255,255,255,.018); }
         .p3-contribution-roulette-track { will-change:transform; }
         .p3-contribution-roulette-value { display:grid;place-items:center;height:var(--p3-roulette-slot-height,128px);color:#fff2cf;font-size:clamp(30px,calc(var(--p3-roulette-font-size,36px) * 1.7),132px);font-weight:950;font-variant-numeric:tabular-nums;letter-spacing:-.055em;text-shadow:0 4px 18px rgba(0,0,0,.48); }
@@ -5696,6 +5697,7 @@
         }
 
         async function _refreshBroadcastFromItems(items) {
+            if (Array.isArray(items)) window.latestItemsList = items;
             processCrewartContributionRoulette(window.__creoAudience || null);
             if (isBracketPageTemp) {
                 await refreshBracketPage(items);
@@ -7509,10 +7511,34 @@
             return height;
         }
 
+        function currentCrewartP3HighestBid() {
+            const activeItem = (window.latestItemsList || []).find(item => isAuctionActiveItem(item)) || null;
+            if (!activeItem) return null;
+            return buildLiveBidRows({ ...(window.latestConfigMap || {}), live_bidders_mode: 'top' }, activeItem)[0] || null;
+        }
+
         function showCrewartRouletteReady() {
             const overlay = document.getElementById('p3-contribution-roulette-overlay');
             if (!overlay) return;
-            overlay.innerHTML = '<div class="p3-contribution-roulette-shell" aria-hidden="true"></div>';
+            const bid = currentCrewartP3HighestBid();
+            if (!bid) {
+                overlay.innerHTML = '<div class="p3-contribution-roulette-shell" aria-hidden="true"></div>';
+            } else {
+                const identity = parseBidderIdentity(bid.name, bid.region);
+                const houseKey = normalizeCrewartBidderHouse(bid.houseKey);
+                const houseLabel = ({ R: 'RED', G: 'GREEN', B: 'BLUE', Y: 'YELLOW' })[houseKey] || '배정 중';
+                const houseAttribute = houseKey ? ` data-house="${houseKey}"` : '';
+                overlay.innerHTML = `
+                    <div class="p3-contribution-roulette-shell is-live-bid">
+                        <div class="p3-contribution-roulette-person">
+                            <strong>${esc(identity.name)}${identity.region ? ` ${esc(identity.region)}` : ''}</strong>
+                            <small>${formatLiveBidAmount(bid.amount)}만원 입찰</small>
+                        </div>
+                        <div class="p3-contribution-roulette-window">
+                            <div class="p3-contribution-roulette-value"${houseAttribute}>${houseLabel}</div>
+                        </div>
+                    </div>`;
+            }
             overlay.classList.add('visible');
             syncCrewartRouletteSlotHeight();
         }
@@ -7691,13 +7717,22 @@
             const previewMode = String(params.get('roulettePreview') || '');
             const isLocalPreview = ['127.0.0.1', 'localhost'].includes(location.hostname)
                 && params.get('debug') === '1'
-                && ['p3-assignment', 'p3-contribution', 'p3-result'].includes(previewMode);
+                && ['p3-assignment', 'p3-contribution', 'p3-result', 'p3-live-bid'].includes(previewMode);
             if (isLocalPreview) {
                 const state = _p3CrewartRouletteState;
                 if (!state.previewStarted) {
                     resetCrewartRouletteState('local-preview');
                     state.previewStarted = true;
-                    if (previewMode === 'p3-assignment') {
+                    if (previewMode === 'p3-live-bid') {
+                        window.latestItemsList = [{
+                            id: 'local-live-item', status: '진행중',
+                            bid_log: JSON.stringify([{
+                                name: '김상정/대구', amount: 1,
+                                bidder_key: 'local-bidder', crewart_house_key: 'R'
+                            }])
+                        }];
+                        showCrewartRouletteReady();
+                    } else if (previewMode === 'p3-assignment') {
                         state.playing = true;
                         runCrewartAssignmentOnP3({
                             id: 'local-p3-assignment', sequence: 1,

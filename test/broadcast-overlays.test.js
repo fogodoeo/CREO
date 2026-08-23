@@ -133,6 +133,15 @@ test('CREWART P3 recovers recent assignment and contribution events after a sour
     assert.match(broadcast, /assignedAt >= Date\.now\(\) - 120000/);
 });
 
+test('CREWART P3 idle roulette plate shows the current highest bidder and assigned house', () => {
+    assert.match(broadcast, /function currentCrewartP3HighestBid\(\)/);
+    assert.match(broadcast, /live_bidders_mode: 'top'/);
+    assert.match(broadcast, /formatLiveBidAmount\(bid\.amount\).*만원 입찰/);
+    assert.match(broadcast, /const houseLabel = \(\{ R: 'RED', G: 'GREEN', B: 'BLUE', Y: 'YELLOW' \}\)\[houseKey\] \|\| '배정 중'/);
+    assert.match(broadcast, /if \(Array\.isArray\(items\)\) window\.latestItemsList = items;[\s\S]{0,100}processCrewartContributionRoulette/);
+    assert.match(broadcast, /'p3-live-bid'/);
+});
+
 test('all shared legacy layouts support three nametags', () => {
     assert.match(settings, /id="cfg-host-name3"/);
     assert.match(settings, /host_name3:/);
