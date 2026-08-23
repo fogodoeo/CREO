@@ -163,7 +163,8 @@ def start_node() -> subprocess.Popen[bytes]:
     environment = os.environ.copy()
     environment.pop("BAND_COOKIE_HEADER", None)
     environment.pop("BAND_COOKIE_JSON", None)
-    environment.setdefault("NODE_OPTIONS", "--max-old-space-size=192")
+    environment.setdefault("NODE_OPTIONS", "--max-old-space-size=128")
+    environment.setdefault("MALLOC_ARENA_MAX", "2")
     prepare_platform_storage(environment)
     command = ["node", str(ROOT / "server.js")]
     print(f"[render-supervisor] starting web app: {' '.join(command)}", flush=True)
@@ -232,6 +233,7 @@ def resolve_chrome_executable(
 def start_band_monitor() -> subprocess.Popen[bytes]:
     environment = os.environ.copy()
     environment["PYTHONUNBUFFERED"] = "1"
+    environment.setdefault("MALLOC_ARENA_MAX", "2")
     PERSISTENT_ROOT.mkdir(parents=True, exist_ok=True)
     environment.setdefault(
         "BAND_CHROME_PROFILE_DIR", str(PERSISTENT_ROOT / "chrome-profile")

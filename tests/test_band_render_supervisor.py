@@ -31,7 +31,8 @@ class RenderSupervisorTests(unittest.TestCase):
         self.assertEqual(Path(command[1]).name, "server.js")
         self.assertNotIn("BAND_COOKIE_HEADER", environment)
         self.assertNotIn("BAND_COOKIE_JSON", environment)
-        self.assertEqual(environment["NODE_OPTIONS"], "--max-old-space-size=192")
+        self.assertEqual(environment["NODE_OPTIONS"], "--max-old-space-size=128")
+        self.assertEqual(environment["MALLOC_ARENA_MAX"], "2")
         self.assertEqual(
             Path(environment["CREO_DATA_DIR"]),
             Path(temporary_directory) / "platform",
@@ -110,6 +111,7 @@ class RenderSupervisorTests(unittest.TestCase):
             self.assertEqual(Path(command[1]).name, "band_member_sync_monitor.py")
             self.assertIn("--daemon", command)
             self.assertEqual(environment["BAND_CHROME_EXECUTABLE"], "/fake/chrome")
+            self.assertEqual(environment["MALLOC_ARENA_MAX"], "2")
             self.assertEqual(
                 Path(environment["BAND_CHROME_PROFILE_DIR"]),
                 persistent_root / "chrome-profile",

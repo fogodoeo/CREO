@@ -1434,14 +1434,18 @@ class ChromeManager:
                     "--disable-component-update",
                     "--disable-default-apps",
                     "--disable-sync",
+                    "--disable-breakpad",
+                    "--disable-crash-reporter",
+                    "--mute-audio",
+                    "--no-zygote",
                     "--metrics-recording-only",
                     "--renderer-process-limit=1",
-                    "--disk-cache-size=16777216",
+                    "--disk-cache-size=4194304",
                     "--media-cache-size=1",
                     "--window-size=800,600",
-                    "--js-flags=--max-old-space-size=128",
+                    "--js-flags=--max-old-space-size=64",
                     "--disable-features=Translate,MediaRouter,OptimizationHints,"
-                    "GlobalMediaControls,AutofillServerCommunication",
+                    "GlobalMediaControls,AutofillServerCommunication,BackForwardCache",
                 ]
             )
         else:

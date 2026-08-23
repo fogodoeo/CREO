@@ -37,6 +37,28 @@ FIXTURE_DIR = Path(__file__).parent / "fixtures"
 
 
 class ChromeManagerTests(unittest.TestCase):
+    def test_headless_launch_uses_the_render_memory_budget(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            manager = ChromeManager(
+                port=9333,
+                executable="chrome",
+                profile_dir=Path(temporary_directory),
+                start_url="https://www.band.us/",
+                headless=True,
+                extra_args=[],
+                logger=mock.Mock(),
+            )
+            with mock.patch.object(manager, "ready", side_effect=[False, True]), mock.patch.object(
+                manager, "find_executable", return_value=Path("chrome")
+            ), mock.patch("band_join_monitor.subprocess.Popen") as popen:
+                self.assertTrue(manager.ensure_running(wait_seconds=0.1))
+
+            command = popen.call_args.args[0]
+            self.assertIn("--renderer-process-limit=1", command)
+            self.assertIn("--js-flags=--max-old-space-size=64", command)
+            self.assertIn("--disk-cache-size=4194304", command)
+            self.assertIn("--no-zygote", command)
+
     def test_clears_stale_profile_locks_from_persistent_disk(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             profile_dir = Path(temporary_directory)
