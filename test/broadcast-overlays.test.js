@@ -42,7 +42,7 @@ test('CREWART page two colors each live bidder card with the resolved viewer hou
 });
 
 test('CREWART broadcast plates use an isolated modern-antique skin', () => {
-    assert.match(broadcast, /broadcast-crewart\.css\?v=20260822-modern-antique-v1/);
+    assert.match(broadcast, /broadcast-crewart\.css\?v=20260823-premium-reel-v2/);
     assert.match(crewartCss, /body\[data-event-module="crewart"\] \{[\s\S]{0,500}--cw-brass:/);
     assert.match(crewartCss, /body\[data-event-module="crewart"\] \.host-nametag \.nt-inner/);
     assert.match(crewartCss, /body\[data-event-module="crewart"\] \.hc-bottom-bar/);
@@ -70,7 +70,7 @@ test('CREWART new bidder assignment is directed to the shared P3 FIFO, never the
     assert.match(broadcast, /const duration = window\.matchMedia[^\n]+\? 0 : 2000/);
 });
 
-test('CREWART P3 contribution roulette uses an idle plate, two-second reel, and three clean result scenes', () => {
+test('CREWART P3 contribution roulette uses one premium frame, a two-second reel, and two clean result scenes', () => {
     assert.match(broadcast, /id="p3-contribution-roulette-overlay"/);
     assert.ok(
         broadcast.indexOf('id="p3-contribution-roulette-overlay"') > broadcast.indexOf('id="bracket-page-container"'),
@@ -89,17 +89,21 @@ test('CREWART P3 contribution roulette uses an idle plate, two-second reel, and 
     assert.match(broadcast, /showCrewartRouletteResult\(event\)/);
     assert.match(broadcast, /id="p3-contribution-result-popup"/);
     assert.match(broadcast, /showCrewartRouletteResultPopup\(event\)/);
-    assert.match(broadcast, /p3-contribution-result-scene is-current/);
-    assert.match(broadcast, /p3-contribution-result-scene is-final/);
+    assert.match(broadcast, /p3-contribution-result-equation is-current/);
+    assert.match(broadcast, /p3-contribution-result-final/);
+    assert.match(broadcast, /R: 'RED팀'/);
     assert.match(broadcast, /formatCrewartScore\(event\.baseAmount\)/);
     assert.match(broadcast, /×\$\{multiplier\}/);
     assert.match(broadcast, /formatCrewartScore\(event\.contributionAmount\)/);
-    assert.match(broadcast, /setTimeout\(\(\) => activate\(1\), 760\)/);
-    assert.match(broadcast, /setTimeout\(\(\) => activate\(2\), 1520\)/);
+    assert.match(broadcast, /setTimeout\(\(\) => activate\(1\), 1120\)/);
+    assert.doesNotMatch(broadcast, /activate\(2\)/);
     assert.match(broadcast, /p3-contribution-roulette-shell" aria-hidden="true"/);
     assert.doesNotMatch(broadcast, /직전 낙찰자의 입력을 기다리는 중|p3-contribution-result-name|p3-contribution-result-amount/);
     assert.match(broadcast, /processCrewartContributionRoulette\(window\.__creoAudience \|\| null\)/);
     assert.doesNotMatch(broadcast, /룰렛.*sendMessage|sendMessage.*룰렛/);
+    assert.match(crewartCss, /one premium frame shared by house and contribution reels/);
+    assert.match(crewartCss, /\.p2-house-reveal-shell,[\s\S]{0,120}\.p3-contribution-roulette-shell/);
+    assert.match(crewartCss, /\.p3-contribution-result-equation,[\s\S]{0,120}\.p3-contribution-result-final/);
 });
 
 test('CREWART P3 contribution roulette has an independent saved placement target', () => {

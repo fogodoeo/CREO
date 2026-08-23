@@ -3969,7 +3969,7 @@
         }
     </style>
     <link rel="stylesheet" href="broadcast-creyon.css?v=20260820-live-bidders-v1">
-    <link rel="stylesheet" href="broadcast-crewart.css?v=20260822-modern-antique-v1">
+    <link rel="stylesheet" href="broadcast-crewart.css?v=20260823-premium-reel-v2">
 </head>
 
 <body>
@@ -7315,15 +7315,14 @@
             const sessionId = state.sessionId;
             const finalHouse = normalizeCrewartBidderHouse(event.houseKey) || 'R';
             const houses = ['R', 'G', 'B', 'Y'];
-            const labels = { R: '빨강', G: '초록', B: '파랑', Y: '노랑' };
+            const labels = { R: 'RED', G: 'GREEN', B: 'BLUE', Y: 'YELLOW' };
             const reel = [];
             for (let index = 0; index < 11; index += 1) reel.push(houses[index % houses.length]);
             while (reel[reel.length - 1] === finalHouse) reel.push(houses[reel.length % houses.length]);
             reel.push(finalHouse);
-            const amount = Number(event.amount) > 0 ? ` · ${formatLiveBidAmount(event.amount)}만` : '';
             overlay.innerHTML = `
                 <div class="p2-house-reveal-shell">
-                    <div class="p2-house-reveal-person">${esc(event.name || '신규 입찰자')}${amount}</div>
+                    <div class="p2-house-reveal-person"><strong>${esc(visibleCrewartWinner(event.name || '신규 입찰자'))}</strong></div>
                     <div class="p2-house-reveal-window">
                         <div class="p2-house-reveal-track">
                             ${reel.map(house => `<div class="p2-house-reveal-color" data-house="${house}">${labels[house]}</div>`).join('')}
@@ -7332,6 +7331,8 @@
                 </div>`;
             overlay.classList.add('visible');
             const track = overlay.querySelector('.p2-house-reveal-track');
+            const slotHeight = Math.max(60, Math.round(overlay.querySelector('.p2-house-reveal-window')?.getBoundingClientRect().height || 76));
+            overlay.style.setProperty('--cw-reel-slot-height', `${slotHeight}px`);
             const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
             const duration = reducedMotion ? 0 : 2000;
             const hold = 360;
@@ -7339,10 +7340,11 @@
             track.style.transform = 'translateY(0)';
             requestAnimationFrame(() => requestAnimationFrame(() => {
                 track.style.transition = `transform ${duration}ms cubic-bezier(.12,.72,.18,1)`;
-                track.style.transform = `translateY(-${(reel.length - 1) * 54}px)`;
+                track.style.transform = `translateY(-${(reel.length - 1) * slotHeight}px)`;
             }));
             setTimeout(() => {
                 if (state.generation !== generation || state.sessionId !== sessionId) return;
+                overlay.querySelector('.p2-house-reveal-shell')?.classList.add('is-settled');
                 state.pendingBidderKeys.delete(event.bidderKey);
                 state.revealedBidderKeys.add(event.bidderKey);
                 revealCrewartBidderRow(event.bidderKey, finalHouse);
@@ -7357,6 +7359,22 @@
         }
 
         function processCrewartAudienceReveals(audience) {
+            const previewMode = String(params.get('roulettePreview') || '');
+            const isLocalPreview = ['127.0.0.1', 'localhost'].includes(location.hostname)
+                && params.get('debug') === '1'
+                && previewMode === 'p2-assignment';
+            if (isLocalPreview) {
+                if (!_p2CrewartRevealState.previewStarted) {
+                    resetCrewartRevealState('local-preview');
+                    _p2CrewartRevealState.previewStarted = true;
+                    _p2CrewartRevealState.queue.push({
+                        id: 'local-p2-assignment', sequence: 1, bidderKey: 'local-bidder',
+                        name: '김상정 대구', houseKey: 'R', amount: 30000
+                    });
+                    runNextCrewartReveal();
+                }
+                return;
+            }
             const isCrewart = getActiveAuctionEventModule(window.latestConfigMap || {}).id === 'crewart';
             const sessionId = String(audience?.sessionId || '');
             const state = _p2CrewartRevealState;
@@ -7454,6 +7472,7 @@
             if (!overlay) return 128;
             const height = Math.max(72, Math.min(260, Math.round(overlay.getBoundingClientRect().height || 128)));
             overlay.style.setProperty('--p3-roulette-slot-height', `${height}px`);
+            overlay.style.setProperty('--cw-reel-slot-height', `${height}px`);
             return height;
         }
 
@@ -7488,26 +7507,29 @@
             if (!popup || !event) return;
             const houseKey = normalizeCrewartBidderHouse(event.houseKey) || 'R';
             const multiplier = Number(event.multiplier) || 1;
+            const houseLabel = ({ R: 'RED팀', G: 'GREEN팀', B: 'BLUE팀', Y: 'YELLOW팀' })[houseKey] || 'RED팀';
             popup.innerHTML = `
                 <div class="p3-contribution-result-card" data-house="${houseKey}">
-                    <div class="p3-contribution-result-scene is-current">${formatCrewartScore(event.baseAmount)}</div>
-                    <div class="p3-contribution-result-scene">×${multiplier}</div>
-                    <div class="p3-contribution-result-scene is-final" data-house="${houseKey}">${formatCrewartScore(event.contributionAmount)}</div>
+                    <div class="p3-contribution-result-equation is-current">
+                        <span class="p3-contribution-result-house">${houseLabel}</span>
+                        <strong class="p3-contribution-result-base">${formatCrewartScore(event.baseAmount)}</strong>
+                        <strong class="p3-contribution-result-multiplier">×${multiplier}</strong>
+                    </div>
+                    <div class="p3-contribution-result-final"><strong>${formatCrewartScore(event.contributionAmount)}</strong></div>
                 </div>`;
             popup.classList.add('visible');
             const generation = _p3CrewartRouletteState.generation;
-            const scenes = Array.from(popup.querySelectorAll('.p3-contribution-result-scene'));
+            const scenes = Array.from(popup.querySelectorAll('.p3-contribution-result-equation, .p3-contribution-result-final'));
             const activate = (index) => {
                 if (_p3CrewartRouletteState.generation !== generation) return;
                 scenes.forEach((scene, sceneIndex) => scene.classList.toggle('is-current', sceneIndex === index));
-                if (index === 2) refreshCrewartContributionBoard();
+                if (index === 1) refreshCrewartContributionBoard();
             };
-            setTimeout(() => activate(1), 760);
-            setTimeout(() => activate(2), 1520);
+            setTimeout(() => activate(1), 1120);
             setTimeout(() => {
                 if (_p3CrewartRouletteState.generation !== generation) return;
                 popup.classList.remove('visible');
-            }, 2760);
+            }, 3100);
         }
 
         function hideCrewartRoulettePanel() {
@@ -7559,6 +7581,7 @@
             }));
             setTimeout(() => {
                 if (state.generation !== generation || state.sessionId !== sessionId) return;
+                overlay.querySelector('.p3-contribution-roulette-shell')?.classList.add('is-settled');
                 writeP3AssignmentCursor(sessionId, event.sequence);
                 setTimeout(done, 700);
             }, duration);
@@ -7616,13 +7639,14 @@
                     if (state.generation !== generation || state.sessionId !== sessionId) return;
                     writeP3RouletteCursor(sessionId, event.sequence);
                     showCrewartRouletteResult(event);
+                    overlay.querySelector('.p3-contribution-roulette-shell')?.classList.add('is-settled');
                     showCrewartRouletteResultPopup(event);
                     setTimeout(() => {
                         if (state.generation !== generation || state.sessionId !== sessionId) return;
                         showCrewartRouletteReady();
                         state.playing = false;
                         runNextCrewartRoulette();
-                    }, 2900);
+                    }, 3240);
                 }, duration);
             };
             const startDelay = Math.max(0, Date.parse(String(event.startedAt || '')) - Date.now());
@@ -7631,6 +7655,39 @@
         }
 
         function processCrewartContributionRoulette(audience) {
+            const previewMode = String(params.get('roulettePreview') || '');
+            const isLocalPreview = ['127.0.0.1', 'localhost'].includes(location.hostname)
+                && params.get('debug') === '1'
+                && ['p3-assignment', 'p3-contribution', 'p3-result'].includes(previewMode);
+            if (isLocalPreview) {
+                const state = _p3CrewartRouletteState;
+                if (!state.previewStarted) {
+                    resetCrewartRouletteState('local-preview');
+                    state.previewStarted = true;
+                    if (previewMode === 'p3-assignment') {
+                        state.playing = true;
+                        runCrewartAssignmentOnP3({
+                            id: 'local-p3-assignment', sequence: 1,
+                            name: '김상정 대구', houseKey: 'R'
+                        }, () => { state.playing = false; });
+                    } else {
+                        const event = {
+                            id: 'local-p3-contribution', sequence: 1, kind: 'contribution',
+                            winner: '김상정 대구', houseKey: 'R', multiplier: 3,
+                            baseAmount: 200000, contributionAmount: 600000,
+                            startedAt: new Date().toISOString()
+                        };
+                        if (previewMode === 'p3-result') {
+                            showCrewartRouletteResult(event);
+                            showCrewartRouletteResultPopup(event);
+                        } else {
+                            state.queue.push(event);
+                            runNextCrewartRoulette();
+                        }
+                    }
+                }
+                return;
+            }
             const roulette = audience?.roulette || null;
             const isCrewartP3 = document.body.classList.contains('bracket-page')
                 && getActiveAuctionEventModule(window.latestConfigMap || {}).id === 'crewart';

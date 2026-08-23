@@ -10,6 +10,10 @@ body[data-event-module="crewart"] {
     --cw-brass-line: rgba(181, 154, 98, 0.46);
     --cw-oxblood: #642f39;
     --cw-shadow: 0 18px 46px rgba(0, 0, 0, 0.34);
+    --cw-reel-r: #8f2938;
+    --cw-reel-g: #18553b;
+    --cw-reel-b: #214f82;
+    --cw-reel-y: #9b741d;
 }
 
 /* Shared plate language */
@@ -173,27 +177,230 @@ body[data-event-module="crewart"] .p2-live-bidder-name { color: var(--cw-ivory);
 body[data-event-module="crewart"] .p2-live-bidder-name small { color: var(--cw-ivory-muted); font-weight: 590; }
 body[data-event-module="crewart"] .p2-live-bidder-amount { color: var(--cw-brass-light); font-weight: 830; }
 
-/* Fast house draw */
-body[data-event-module="crewart"] .p2-house-reveal-shell {
-    height: 60px;
-    border-radius: 13px 3px 13px 3px;
+/* CREWART draw instrument: one premium frame shared by house and contribution reels. */
+body[data-event-module="crewart"] #p2-house-reveal-overlay {
+    top: 4.4%;
+    width: min(720px, 55vw);
 }
 
-body[data-event-module="crewart"] .p2-house-reveal-person {
+body[data-event-module="crewart"] .p2-house-reveal-shell,
+body[data-event-module="crewart"] .p3-contribution-roulette-shell {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1.45fr) minmax(210px, .8fr);
+    align-items: stretch;
+    overflow: hidden;
+    border: 1px solid rgba(212, 189, 134, .72);
+    border-radius: 16px 3px 16px 3px;
+    background:
+        radial-gradient(circle at 18% -80%, rgba(212, 189, 134, .13), transparent 58%),
+        linear-gradient(112deg, rgba(255,255,255,.035), transparent 34%),
+        rgba(9, 11, 12, .97);
+    box-shadow:
+        0 24px 62px rgba(0, 0, 0, .46),
+        inset 0 1px 0 rgba(255, 255, 255, .055),
+        inset 0 0 0 7px rgba(181, 154, 98, .025);
     color: var(--cw-ivory);
-    font-weight: 780;
+    font-family: 'Pretendard', sans-serif;
+    isolation: isolate;
 }
 
-body[data-event-module="crewart"] .p2-house-reveal-window {
-    height: 56px;
-    border-left-color: var(--cw-brass-line);
+body[data-event-module="crewart"] .p2-house-reveal-shell { height: 76px; }
+body[data-event-module="crewart"] .p3-contribution-roulette-shell { width: 100%; height: 100%; min-height: 84px; }
+
+body[data-event-module="crewart"] .p2-house-reveal-shell::before,
+body[data-event-module="crewart"] .p3-contribution-roulette-shell::before {
+    content: '';
+    position: absolute;
+    inset: 7px;
+    z-index: 4;
+    border: 1px solid rgba(212, 189, 134, .13);
+    border-radius: 9px 1px 9px 1px;
+    pointer-events: none;
 }
 
-body[data-event-module="crewart"] .p2-house-reveal-color {
-    height: 56px;
-    color: #fff;
+body[data-event-module="crewart"] .p2-house-reveal-shell::after,
+body[data-event-module="crewart"] .p3-contribution-roulette-shell::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    background:
+        linear-gradient(90deg, var(--cw-brass-light), transparent 18%) top left / 92px 1px no-repeat,
+        linear-gradient(180deg, var(--cw-brass-light), transparent 70%) top left / 1px 34px no-repeat,
+        linear-gradient(270deg, var(--cw-brass-light), transparent 18%) bottom right / 92px 1px no-repeat,
+        linear-gradient(0deg, var(--cw-brass-light), transparent 70%) bottom right / 1px 34px no-repeat;
+    opacity: .74;
+    pointer-events: none;
+}
+
+body[data-event-module="crewart"] .p2-house-reveal-person,
+body[data-event-module="crewart"] .p3-contribution-roulette-person {
+    position: relative;
+    z-index: 2;
+    display: grid;
+    align-items: center;
+    min-width: 0;
+    padding: 0 clamp(20px, 2.2vw, 38px);
+    color: var(--cw-ivory);
+}
+
+body[data-event-module="crewart"] .p2-house-reveal-person strong,
+body[data-event-module="crewart"] .p3-contribution-roulette-person strong {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    color: #f7f0e1;
+    font-size: clamp(22px, var(--p3-roulette-font-size, 2.2vw), 58px);
     font-weight: 840;
-    letter-spacing: 0.04em;
+    letter-spacing: -.045em;
+    line-height: 1;
+    text-overflow: ellipsis;
+    text-shadow: 0 3px 18px rgba(0,0,0,.42);
+    white-space: nowrap;
+}
+
+body[data-event-module="crewart"] .p2-house-reveal-person strong { font-size: clamp(22px, 1.75vw, 31px); }
+
+body[data-event-module="crewart"] .p2-house-reveal-window,
+body[data-event-module="crewart"] .p3-contribution-roulette-window {
+    position: relative;
+    z-index: 2;
+    height: 100%;
+    overflow: hidden;
+    border-left: 1px solid rgba(212, 189, 134, .34);
+    background: rgba(255,255,255,.012);
+    box-shadow: inset 18px 0 34px rgba(0,0,0,.18);
+}
+
+body[data-event-module="crewart"] .p2-house-reveal-window::before,
+body[data-event-module="crewart"] .p3-contribution-roulette-window::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    background:
+        linear-gradient(180deg, rgba(5,6,7,.76), transparent 23%, transparent 77%, rgba(5,6,7,.76)),
+        linear-gradient(90deg, rgba(212,189,134,.08), transparent 18%, transparent 82%, rgba(212,189,134,.08));
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.025);
+    pointer-events: none;
+}
+
+body[data-event-module="crewart"] .p2-house-reveal-track,
+body[data-event-module="crewart"] .p3-contribution-roulette-track { will-change: transform; }
+
+body[data-event-module="crewart"] .p2-house-reveal-color,
+body[data-event-module="crewart"] .p3-contribution-roulette-value {
+    display: grid;
+    place-items: center;
+    height: var(--cw-reel-slot-height, 76px);
+    color: #fff;
+    font-size: clamp(25px, calc(var(--p3-roulette-font-size, 36px) * 1.55), 112px);
+    font-weight: 920;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -.035em;
+    line-height: 1;
+    text-shadow: 0 3px 16px rgba(0,0,0,.38);
+}
+
+body[data-event-module="crewart"] .p2-house-reveal-color { font-size: clamp(21px, 1.6vw, 30px); letter-spacing: .02em; }
+body[data-event-module="crewart"] .p2-house-reveal-color[data-house="R"],
+body[data-event-module="crewart"] .p3-contribution-roulette-value[data-house="R"] { background: linear-gradient(115deg, #4a131d, var(--cw-reel-r) 60%, #591722); }
+body[data-event-module="crewart"] .p2-house-reveal-color[data-house="G"],
+body[data-event-module="crewart"] .p3-contribution-roulette-value[data-house="G"] { background: linear-gradient(115deg, #0c2d20, var(--cw-reel-g) 60%, #0e3525); }
+body[data-event-module="crewart"] .p2-house-reveal-color[data-house="B"],
+body[data-event-module="crewart"] .p3-contribution-roulette-value[data-house="B"] { background: linear-gradient(115deg, #102a47, var(--cw-reel-b) 60%, #14345a); }
+body[data-event-module="crewart"] .p2-house-reveal-color[data-house="Y"],
+body[data-event-module="crewart"] .p3-contribution-roulette-value[data-house="Y"] { background: linear-gradient(115deg, #4f390a, var(--cw-reel-y) 60%, #5e450e); }
+
+body[data-event-module="crewart"] .p2-house-reveal-shell.is-settled,
+body[data-event-module="crewart"] .p3-contribution-roulette-shell.is-settled {
+    border-color: rgba(232, 208, 151, .94);
+    box-shadow: 0 28px 74px rgba(0,0,0,.52), 0 0 30px rgba(181,154,98,.13), inset 0 1px 0 rgba(255,255,255,.08);
+}
+
+/* Contribution result: one equation, then the final score only. */
+body[data-event-module="crewart"] #p3-contribution-result-popup {
+    background: radial-gradient(circle at center, rgba(5,6,7,.7), rgba(5,6,7,.08) 62%, transparent 78%);
+}
+
+body[data-event-module="crewart"] .p3-contribution-result-card {
+    width: min(760px, 76vw);
+    aspect-ratio: 2.05;
+    border: 1px solid rgba(212,189,134,.82);
+    border-radius: 20px 4px 20px 4px;
+    background:
+        radial-gradient(circle at 50% -35%, rgba(212,189,134,.18), transparent 58%),
+        linear-gradient(145deg, rgba(255,255,255,.025), transparent 42%),
+        rgb(9, 11, 12);
+    box-shadow: 0 52px 150px rgba(0,0,0,.76), inset 0 0 0 8px rgba(181,154,98,.025);
+}
+
+body[data-event-module="crewart"] .p3-contribution-result-card::before {
+    content: '';
+    position: absolute;
+    inset: 12px;
+    border: 1px solid rgba(212,189,134,.16);
+    border-radius: 11px 2px 11px 2px;
+}
+
+body[data-event-module="crewart"] .p3-contribution-result-equation,
+body[data-event-module="crewart"] .p3-contribution-result-final {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(18px, 2.2vw, 38px);
+    opacity: 0;
+    transform: translateY(12px) scale(.94);
+    transition: opacity .24s ease, transform .52s cubic-bezier(.16,1,.3,1);
+}
+
+body[data-event-module="crewart"] .p3-contribution-result-equation.is-current,
+body[data-event-module="crewart"] .p3-contribution-result-final.is-current { opacity: 1; transform: translateY(0) scale(1); }
+
+body[data-event-module="crewart"] .p3-contribution-result-house {
+    padding: .42em .7em .46em;
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    color: var(--cw-brass-light);
+    font-size: clamp(22px, 2.35vw, 42px);
+    font-weight: 820;
+    letter-spacing: -.035em;
+}
+
+body[data-event-module="crewart"] .p3-contribution-result-base,
+body[data-event-module="crewart"] .p3-contribution-result-multiplier {
+    color: #f7f0e1;
+    font-size: clamp(56px, 6.4vw, 112px);
+    font-weight: 930;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -.065em;
+}
+
+body[data-event-module="crewart"] .p3-contribution-result-multiplier { color: var(--cw-brass-light); }
+
+body[data-event-module="crewart"] .p3-contribution-result-final strong {
+    color: #f7f0e1;
+    font-size: clamp(132px, 17vw, 290px);
+    font-weight: 940;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -.08em;
+    line-height: .82;
+    text-shadow: 0 12px 48px rgba(0,0,0,.52);
+}
+
+body[data-event-module="crewart"] .p3-contribution-result-card[data-house="R"] .p3-contribution-result-house { color: #d36b76; }
+body[data-event-module="crewart"] .p3-contribution-result-card[data-house="G"] .p3-contribution-result-house { color: #67ad89; }
+body[data-event-module="crewart"] .p3-contribution-result-card[data-house="B"] .p3-contribution-result-house { color: #73a1dc; }
+body[data-event-module="crewart"] .p3-contribution-result-card[data-house="Y"] .p3-contribution-result-house { color: #e0b95a; }
+
+@media (max-width: 760px) {
+    body[data-event-module="crewart"] #p2-house-reveal-overlay { width: min(92vw, 620px); }
+    body[data-event-module="crewart"] .p2-house-reveal-shell,
+    body[data-event-module="crewart"] .p3-contribution-roulette-shell { grid-template-columns: minmax(0, 1.3fr) minmax(150px, .7fr); }
+    body[data-event-module="crewart"] .p3-contribution-result-card { width: 88vw; }
 }
 
 /* P1 nameplates */
