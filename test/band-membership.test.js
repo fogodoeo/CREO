@@ -8,6 +8,7 @@ const {
     SESSION_TYPE,
     createBandMembership,
     normalizePhone,
+    profileNameCandidates,
     verifyToken
 } = require('../band-membership');
 
@@ -45,8 +46,15 @@ function jsonResponse(value, status = 200) {
 test('Korean mobile numbers are normalized without retaining formatting', () => {
     assert.equal(normalizePhone('010-1234-5678'), '01012345678');
     assert.equal(normalizePhone('+82 10 1234 5678'), '01012345678');
+    assert.equal(normalizePhone('12345678'), '01012345678');
     assert.equal(normalizePhone('02-1234-5678'), '');
     assert.equal(normalizePhone('0101234567'), '');
+});
+
+test('BAND profile candidates preserve the full profile and recover slash-separated names', () => {
+    assert.deepEqual(profileNameCandidates('홍길동/서울/12345678'), [
+        '홍길동/서울/12345678', '홍길동/서울', '홍길동 서울', '홍길동', '서울'
+    ]);
 });
 
 test('member lookup stays server-side and returns a pseudonymous short session', async () => {
@@ -191,6 +199,7 @@ test('BAND chat user keys resolve to the same private member scope as phone veri
         fetchImpl: async (url) => {
             fetchCount += 1;
             const query = new URL(url);
+            if (query.searchParams.has('display_name')) return jsonResponse([]);
             assert.equal(query.searchParams.get('band_member_key'), 'eq.band-user-123');
             return jsonResponse([{ phone_normalized: '01012345678', band_member_key: 'band-user-123' }]);
         },
@@ -206,8 +215,33 @@ test('BAND chat user keys resolve to the same private member scope as phone veri
 
     assert.equal(first, expected);
     assert.equal(second, expected);
-    assert.equal(fetchCount, 1);
+    assert.equal(fetchCount, 2);
     assert.doesNotMatch(first, /01012345678/);
+});
+
+test('slash-separated auction profiles resolve through the BAND display name before a fallback key', async () => {
+    const lookedUpNames = [];
+    const membership = createBandMembership({
+        env: ENV,
+        now: () => NOW,
+        fetchImpl: async (url) => {
+            const query = new URL(url);
+            const name = query.searchParams.get('display_name')?.replace(/^eq\./, '') || '';
+            lookedUpNames.push(name);
+            return name === '홍길동'
+                ? jsonResponse([{ phone_normalized: '01012345678', display_name: '홍길동' }])
+                : jsonResponse([]);
+        },
+        logger: { error() {} }
+    });
+
+    const subject = await membership.resolveMemberSubject({ displayName: '홍길동/서울' });
+    const expected = `member_${createHmac('sha256', SESSION_SECRET)
+        .update('band-phone:01012345678')
+        .digest('base64url')
+        .slice(0, 32)}`;
+    assert.equal(subject, expected);
+    assert.deepEqual(lookedUpNames, ['홍길동/서울', '홍길동 서울', '홍길동']);
 });
 
 test('a zero attempt limit disables throttling during testing', async () => {

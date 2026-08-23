@@ -144,8 +144,8 @@ SENSITIVE_KEY_RE = re.compile(
     r"(authorization|cookie|token|secret|password|passwd|credential|session)",
     re.IGNORECASE,
 )
-PHONE_RE = re.compile(r"(?<!\d)010(?:[\s./_-]*\d){8}(?!\d)")
-PHONE_ANY_RE = re.compile(r"(?<!\d)01[016789](?:[\s./_-]*\d){7,8}(?!\d)")
+PHONE_RE = re.compile(r"(?<!\d)(?:010(?:[\s./_-]*\d){8}|\d(?:[\s./_-]*\d){7})(?!\d)")
+PHONE_ANY_RE = re.compile(r"(?<!\d)(?:01[016789](?:[\s./_-]*\d){7,8}|\d(?:[\s./_-]*\d){7})(?!\d)")
 HANGUL_NAME_RE = re.compile(r"^[가-힣]{2,5}$")
 JOIN_TERMS = (
     "join",
@@ -246,6 +246,8 @@ def normalize_phone(value: Any) -> str:
     digits = re.sub(r"\D", "", str(value or ""))
     if digits.startswith("82") and len(digits) == 12:
         digits = f"0{digits[2:]}"
+    if len(digits) == 8:
+        digits = f"010{digits}"
     return digits if re.fullmatch(r"010\d{8}", digits) else ""
 
 
@@ -394,7 +396,7 @@ class ProfileRuleMatcher:
         match = PHONE_RE.search(text)
         if not match:
             return "", text
-        digits = re.sub(r"\D", "", match.group(0))
+        digits = normalize_phone(match.group(0))
         remaining = text[: match.start()] + " " + text[match.end() :]
         return digits, remaining
 
@@ -1869,7 +1871,7 @@ DOM_MONITOR_SCRIPT = r"""
       .split(/\r?\n/)
       .map(clean)
       .filter((line) => line && !actionWords.test(line));
-    const phoneLine = lines.find((line) => /010(?:[\s./_-]*\d){8}/.test(line));
+    const phoneLine = lines.find((line) => /(?:010(?:[\s./_-]*\d){8}|(?:^|\D)\d(?:[\s./_-]*\d){7}(?:$|\D))/.test(line));
     return phoneLine || lines[0] || "";
   }
 
@@ -3156,6 +3158,7 @@ class BandJoinMonitor:
               const asPhone = (value) => {{
                 let digits = clean(value).replace(/\\D/g, "");
                 if (digits.startsWith("82") && digits.length === 12) digits = `0${{digits.slice(2)}}`;
+                if (digits.length === 8) digits = `010${{digits}}`;
                 return /^010\\d{{8}}$/.test(digits) ? digits : "";
               }};
               const visit = (node, depth = 0) => {{
@@ -3391,6 +3394,7 @@ class BandJoinMonitor:
               const asPhone = (value) => {{
                 let digits = clean(value).replace(/\\D/g, "");
                 if (digits.startsWith("82") && digits.length === 12) digits = `0${{digits.slice(2)}}`;
+                if (digits.length === 8) digits = `010${{digits}}`;
                 return /^010\\d{{8}}$/.test(digits) ? digits : "";
               }};
               const visit = (node, depth = 0) => {{

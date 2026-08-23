@@ -100,6 +100,7 @@ class ProfileRuleMatcherTests(unittest.TestCase):
             "김상정 010-4028-8600",
             "김상정/전북/01040288600",
             "전북 김상정 01040288600",
+            "김상정/전북/40288600",
         ]
         for example in examples:
             with self.subTest(example=example):

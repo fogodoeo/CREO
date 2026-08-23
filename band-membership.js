@@ -8,7 +8,30 @@ const DEFAULT_TARGET_BAND_URL = 'https://www.band.us/band/101878670/post';
 function normalizePhone(value) {
     let digits = String(value || '').replace(/\D/g, '');
     if (digits.startsWith('82') && digits.length === 12) digits = `0${digits.slice(2)}`;
+    if (digits.length === 8) digits = `010${digits}`;
     return /^010\d{8}$/.test(digits) ? digits : '';
+}
+
+function profileNameCandidates(value) {
+    const raw = String(value || '')
+        .replace(/[\u200b-\u200f\u2060\ufeff]/g, '')
+        .replace(/[\u0000-\u001f\u007f]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 120);
+    if (!raw) return [];
+    const withoutPhone = raw
+        .replace(/(?<!\d)010[\s./_-]*\d{4}[\s./_-]*\d{4}(?!\d)/g, ' ')
+        .replace(/(?<!\d)\d{8}(?!\d)/g, ' ')
+        .replace(/\s+/g, ' ')
+        .replace(/[\/|·\s]+$/g, '')
+        .trim();
+    const candidates = [raw, withoutPhone];
+    if (withoutPhone) {
+        candidates.push(withoutPhone.replace(/[\/|·]+/g, ' ').replace(/\s+/g, ' ').trim());
+        candidates.push(...withoutPhone.split(/[\/|·]+/g).map((part) => part.trim()));
+    }
+    return [...new Set(candidates.filter(Boolean))].slice(0, 8);
 }
 
 function positiveInteger(value, fallback, minimum, maximum) {
@@ -338,9 +361,13 @@ function createBandMembership(options = {}) {
         if (!config.configured) return '';
         const phone = normalizePhone(input.phone);
         if (phone) return publicSubject(phone, config.sessionSecret);
+        for (const displayName of profileNameCandidates(input.displayName)) {
+            const byDisplayName = await lookupMemberSubject(config.displayNameColumn, displayName);
+            if (byDisplayName) return byDisplayName;
+        }
         const byBandKey = await lookupMemberSubject(config.memberKeyColumn, input.bandMemberKey);
         if (byBandKey) return byBandKey;
-        return lookupMemberSubject(config.displayNameColumn, input.displayName);
+        return '';
     }
 
     function sessionResponse(payload, token = '') {
@@ -483,6 +510,7 @@ module.exports = {
     createBandMembership,
     loadConfig,
     normalizePhone,
+    profileNameCandidates,
     signToken,
     verifyToken
 };
