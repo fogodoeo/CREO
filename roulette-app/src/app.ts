@@ -12,7 +12,7 @@ import { Roulette } from './roulette';
 import type { ColorTheme } from './types/ColorTheme';
 import { createSecureSeed, setRandomSeed } from './utils/random';
 import { parseName } from './utils/utils';
-import { auctionWinnerEntries } from './auctionEntries.js';
+import { auctionWinnerEntries, getLeadingHouseKey, HOUSE_NAMES } from './auctionEntries.js';
 
 const queryParameters = new URLSearchParams(location.search);
 const isBroadcastMode = queryParameters.get('broadcast') === '1';
@@ -226,12 +226,21 @@ async function syncAuctionWinnerEntries(showEmptyMessage = true): Promise<void> 
     });
     const payload = await response.json().catch(() => ({})) as { items?: Array<Record<string, unknown>>; error?: string };
     if (!response.ok) throw new Error(payload.error || `낙찰 내역 응답 오류 (${response.status})`);
-    const entries = auctionWinnerEntries(payload.items || [], 100000);
+    const entries = auctionWinnerEntries(payload.items || [], 100000, {
+      theme: queryParameters.get('theme'),
+      house: queryParameters.get('house'),
+      isAcademy: queryParameters.get('theme') === 'academy',
+    });
     dom.entries.value = entries.join('\n');
     localStorage.setItem(STORAGE_KEYS.entries, dom.entries.value);
     updateCounts();
-    if (entries.length) showToast(`${entries.length}명 · 10만원당 공 1개`);
-    else if (showEmptyMessage) showToast('10만원 이상 낙찰자가 없습니다.');
+    if (entries.length) {
+      const champKey = getLeadingHouseKey(payload.items || []);
+      const houseName = champKey ? (HOUSE_NAMES[champKey] || champKey) : '';
+      showToast(houseName ? `우승 기숙사 [${houseName}] ${entries.length}명 · 10만원당 공 1개` : `${entries.length}명 · 10만원당 공 1개`);
+    } else if (showEmptyMessage) {
+      showToast('10만원 이상 낙찰자가 없습니다.');
+    }
   } catch (error) {
     showToast(error instanceof Error ? error.message : '낙찰자를 불러오지 못했습니다.');
   } finally {
