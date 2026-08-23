@@ -348,7 +348,7 @@ function updateCounts(): void {
   dom.startBallCount.textContent = `${balls}개 공`;
   const valid = engineReady && balls >= 2 && balls <= 500 && !running && !remoteCommandPending;
   dom.shuffle.disabled = !valid;
-  dom.start.disabled = !valid || (isRemoteController && remotePhase !== 'prepared');
+  dom.start.disabled = !valid;
   dom.winningRank.max = String(Math.max(1, balls));
   if (balls > 500) setStatus('error', '공은 최대 500개까지');
   preparedFingerprint = '';
@@ -859,18 +859,13 @@ function bindEvents(): void {
   });
 
   dom.shuffle.addEventListener('click', () => {
-    const action = isRemoteController ? sendRemoteCommand('prepare') : prepareRound();
-    void action.then(() => {
-      if (isRemoteController) showToast('송출 화면에 공을 배치했습니다.');
+    void prepareRound().then(() => {
+      if (isRemoteController) void sendRemoteCommand('prepare').catch(console.error);
     }).catch((error: Error) => showToast(error.message));
   });
   dom.start.addEventListener('click', () => {
-    const action = isRemoteController ? sendRemoteCommand('start') : startRound();
-    void action.then(() => {
-      if (isRemoteController) {
-        showToast('송출 화면에서 추첨을 시작했습니다.');
-        closePanel();
-      }
+    void startRound().then(() => {
+      if (isRemoteController) void sendRemoteCommand('start').catch(console.error);
     }).catch((error: Error) => showToast(error.message));
   });
 
@@ -1010,7 +1005,14 @@ async function initialize(): Promise<void> {
     dom.map.value = String(Math.min(config.defaultMap, Math.max(0, maps.length - 1)));
     roulette.setTheme(activeTheme());
     updateCounts();
-    setStatus('ready', isRemoteDisplay ? '노트북에서 공 배치를 기다리는 중' : '참가자를 입력해주세요');
+    if (entrySummary().balls >= 2) {
+      try {
+        await prepareRound();
+      } catch (err) {
+        console.error('Auto-prepare failed:', err);
+      }
+    }
+    setStatus('ready', isRemoteDisplay ? '노트북에서 공 배치를 기다리는 중' : '추첨 준비 완료');
     if (remoteChannelId) startRemotePolling();
   } catch (error) {
     console.error(error);
