@@ -14,6 +14,10 @@ const crewartLiveBanner = fs.readFileSync(path.join(__dirname, '..', 'public', '
 const crewartHouseBanner = fs.readFileSync(path.join(__dirname, '..', 'public', 'assets', 'crewart-broadcast', 'crewart-house-banner.svg'), 'utf8');
 const settings = fs.readFileSync(path.join(__dirname, '..', 'public', 'settings.html'), 'utf8');
 
+test('broadcast cache-busts the bridge that carries CREWART audience events', () => {
+    assert.match(broadcast, /channel-broadcast-bridge\.js\?v=20260823-crewart-audience-v4/);
+});
+
 test('public page two renders the seller as a separate tag left of the item name', () => {
     assert.match(broadcast, /id="info-company"[\s\S]{0,160}id="info-name"/);
     assert.match(broadcast, /configuredBlindMode === '0' \? 'public' : 'blind'/);
