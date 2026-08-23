@@ -46,7 +46,7 @@ test('CREWART page two colors each live bidder card with the resolved viewer hou
 });
 
 test('CREWART broadcast plates use an isolated modern-antique skin', () => {
-    assert.match(broadcast, /broadcast-crewart\.css\?v=20260823-bidder-reel-v3/);
+    assert.match(broadcast, /broadcast-crewart\.css\?v=20260823-compact-p3-v4/);
     assert.match(crewartCss, /body\[data-event-module="crewart"\] \{[\s\S]{0,500}--cw-brass:/);
     assert.match(crewartCss, /body\[data-event-module="crewart"\] \.host-nametag \.nt-inner/);
     assert.match(crewartCss, /body\[data-event-module="crewart"\] \.hc-bottom-bar/);
@@ -121,10 +121,14 @@ test('CREWART P3 contribution roulette has an independent saved placement target
     assert.match(preview, /p3_contribution_roulette_font_size/);
     assert.match(preview, /id="contribution-roulette-font-input"/);
     assert.match(preview, /resizeTarget === 'contribution_roulette'/);
-    assert.match(broadcast, /map\.p3_contribution_roulette_top \|\| '36%'/);
-    assert.match(broadcast, /map\.p3_contribution_roulette_width \|\| '76%'/);
-    assert.match(broadcast, /map\.p3_contribution_roulette_height \|\| '13%'/);
+    assert.match(broadcast, /map\.p3_contribution_roulette_top \|\| \(isCrewartModule \? '2%' : '36%'\)/);
+    assert.match(broadcast, /map\.p3_contribution_roulette_width \|\| \(isCrewartModule \? '53%' : '76%'\)/);
+    assert.match(broadcast, /map\.p3_contribution_roulette_height \|\| \(isCrewartModule \? '7%' : '13%'\)/);
     assert.match(broadcast, /map\.p3_contribution_roulette_font_size \|\| '36'/);
+    assert.match(broadcast, /map\.bracket_full_height \|\| map\.bracket_height \|\| \(isCrewartModule \? '9%' : '65%'\)/);
+    assert.match(crewartCss, /\.p3-contribution-roulette-shell \{ width: 100%; height: 100%; min-height: 68px; \}/);
+    assert.match(preview, /compactCrewart \? '9%' : '65%'/);
+    assert.match(preview, /compactCrewart \? '7%' : '13%'/);
     assert.match(broadcast, /events\.filter\(\(event\) => event\?\.replay !== true\)/);
 });
 

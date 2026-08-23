@@ -3971,7 +3971,7 @@
         }
     </style>
     <link rel="stylesheet" href="broadcast-creyon.css?v=20260820-live-bidders-v1">
-    <link rel="stylesheet" href="broadcast-crewart.css?v=20260823-bidder-reel-v3">
+    <link rel="stylesheet" href="broadcast-crewart.css?v=20260823-compact-p3-v4">
 </head>
 
 <body>
@@ -8272,16 +8272,17 @@
             window._teamToLetterMap = globalTeamToLetter;
 
             const eventModule = applyAuctionEventModule(map);
+            const isCrewartModule = eventModule.id === 'crewart';
             const contributionRoulette = document.getElementById('p3-contribution-roulette-overlay');
             if (contributionRoulette) {
                 const rouletteFontSize = Math.max(16, Math.min(80, Number.parseInt(map.p3_contribution_roulette_font_size || '36', 10) || 36));
                 const placement = {
-                    top: map.p3_contribution_roulette_top || '36%',
-                    left: map.p3_contribution_roulette_left || '12%',
-                    right: map.p3_contribution_roulette_right || 'auto',
+                    top: map.p3_contribution_roulette_top || (isCrewartModule ? '2%' : '36%'),
+                    left: map.p3_contribution_roulette_left || (isCrewartModule ? 'auto' : '12%'),
+                    right: map.p3_contribution_roulette_right || (isCrewartModule ? '7%' : 'auto'),
                     bottom: map.p3_contribution_roulette_bottom || 'auto',
-                    width: map.p3_contribution_roulette_width || '76%',
-                    height: map.p3_contribution_roulette_height || '13%'
+                    width: map.p3_contribution_roulette_width || (isCrewartModule ? '53%' : '76%'),
+                    height: map.p3_contribution_roulette_height || (isCrewartModule ? '7%' : '13%')
                 };
                 Object.entries(placement).forEach(([key, value]) => {
                     contributionRoulette.style[key] = value === 'auto' ? '' : normalizeCssLength(value) || value;
@@ -8309,10 +8310,10 @@
             const treeFull = document.getElementById('bracket-page-tree-full');
             const treeLive = document.getElementById('bracket-page-tree-live');
 
-            const fullTop = map.bracket_full_top || map.bracket_top || '5%';
-            const fullLeft = map.bracket_full_left || map.bracket_left || '20%';
-            const fullWidth = map.bracket_full_width || map.bracket_width || '60%';
-            const fullHeight = map.bracket_full_height || map.bracket_height || '65%';
+            const fullTop = map.bracket_full_top || map.bracket_top || (isCrewartModule ? '79%' : '5%');
+            const fullLeft = map.bracket_full_left || map.bracket_left || (isCrewartModule ? '29%' : '20%');
+            const fullWidth = map.bracket_full_width || map.bracket_width || (isCrewartModule ? '41%' : '60%');
+            const fullHeight = map.bracket_full_height || map.bracket_height || (isCrewartModule ? '9%' : '65%');
             const fullFontSize = map.bracket_full_font_size || map.bracket_font_size || '14';
 
             const liveTop = map.bracket_live_top || '0px';

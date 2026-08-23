@@ -2197,13 +2197,14 @@
 
                 // Load Bracket values (PAGE3 only)
                 if (elements.bracket_full) {
-                    elements.bracket_full.top = cfg.bracket_full_top || cfg.bracket_top || '5%';
-                    elements.bracket_full.left = cfg.bracket_full_left || cfg.bracket_left || '20%';
+                    const compactCrewart = String(cfg.active_event_module || '').toLowerCase() === 'crewart';
+                    elements.bracket_full.top = cfg.bracket_full_top || cfg.bracket_top || (compactCrewart ? '79%' : '5%');
+                    elements.bracket_full.left = cfg.bracket_full_left || cfg.bracket_left || (compactCrewart ? '29%' : '20%');
                     elements.bracket_full.right = cfg.bracket_full_right || 'auto';
                     elements.bracket_full.bottom = cfg.bracket_full_bottom || 'auto';
                     elements.bracket_full.show = cfg.bracket_full_show !== undefined ? String(cfg.bracket_full_show) : '1';
-                    elements.bracket_full.width = cfg.bracket_full_width || cfg.bracket_width || '60%';
-                    elements.bracket_full.height = cfg.bracket_full_height || cfg.bracket_height || '65%';
+                    elements.bracket_full.width = cfg.bracket_full_width || cfg.bracket_width || (compactCrewart ? '41%' : '60%');
+                    elements.bracket_full.height = cfg.bracket_full_height || cfg.bracket_height || (compactCrewart ? '9%' : '65%');
                     elements.bracket_full.fontSize = cfg.bracket_full_font_size || cfg.bracket_font_size || '14';
                     elements.bracket_full.cardOpacity = cfg.bracket_full_card_opacity ?? '90';
                     
@@ -2278,12 +2279,13 @@
                     if (eventMatchToggle) eventMatchToggle.checked = eventMatchShow === '1';
                 }
                 if (elements.contribution_roulette) {
-                    elements.contribution_roulette.top = cfg.p3_contribution_roulette_top || '36%';
-                    elements.contribution_roulette.left = cfg.p3_contribution_roulette_left || '12%';
-                    elements.contribution_roulette.right = cfg.p3_contribution_roulette_right || 'auto';
+                    const compactCrewart = String(cfg.active_event_module || '').toLowerCase() === 'crewart';
+                    elements.contribution_roulette.top = cfg.p3_contribution_roulette_top || (compactCrewart ? '2%' : '36%');
+                    elements.contribution_roulette.left = cfg.p3_contribution_roulette_left || (compactCrewart ? 'auto' : '12%');
+                    elements.contribution_roulette.right = cfg.p3_contribution_roulette_right || (compactCrewart ? '7%' : 'auto');
                     elements.contribution_roulette.bottom = cfg.p3_contribution_roulette_bottom || 'auto';
-                    elements.contribution_roulette.width = cfg.p3_contribution_roulette_width || '76%';
-                    elements.contribution_roulette.height = cfg.p3_contribution_roulette_height || '13%';
+                    elements.contribution_roulette.width = cfg.p3_contribution_roulette_width || (compactCrewart ? '53%' : '76%');
+                    elements.contribution_roulette.height = cfg.p3_contribution_roulette_height || (compactCrewart ? '7%' : '13%');
                     elements.contribution_roulette.fontSize = cfg.p3_contribution_roulette_font_size || '36';
                     const rouletteFontInput = document.getElementById('contribution-roulette-font-input');
                     if (rouletteFontInput) rouletteFontInput.value = elements.contribution_roulette.fontSize;
