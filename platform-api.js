@@ -26,7 +26,7 @@ const BROADCAST_CONFIG_ID = 'broadcast-config';
 const PINBALL_SESSION_ID = 'pinball-session';
 const AUDIENCE_REVEALS_ID = 'crewart-audience-reveals';
 const CREWART_ROULETTE_ID = 'crewart-contribution-roulette';
-const CREWART_ROULETTE_DURATION_MS = 2000;
+const CREWART_ROULETTE_DURATION_MS = 4500;
 const CREWART_ROULETTE_HOLD_MS = 360;
 const CREWART_ROULETTE_OUTCOMES = Object.freeze([
     Object.freeze({ multiplier: 0.25, weight: 20 }),

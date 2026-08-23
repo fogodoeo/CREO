@@ -904,6 +904,10 @@ test('CREWART contribution roulette is winner-only, idempotent, persistent, and 
     });
     assert.equal(first.status, 201, first.body);
     assert.equal(first.json().duplicate, false);
+    assert.equal(
+        Date.parse(first.json().event.revealAt) - Date.parse(first.json().event.startedAt),
+        4500
+    );
     assert.ok([0.25, 0.5, 2, 3, 4].includes(first.json().event.multiplier));
     assert.equal(
         first.json().event.contributionAmount,

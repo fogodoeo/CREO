@@ -72,7 +72,8 @@ test('CREWART new bidder assignment is directed to the shared P3 FIFO, never the
     assert.match(broadcast, /writeP3AssignmentCursor\(sessionId, event\.sequence\)/);
     assert.match(broadcast, /state\.queue\.sort/);
     assert.match(broadcast, /event\.kind === 'assignment'/);
-    assert.match(broadcast, /const duration = window\.matchMedia[^\n]+\? 0 : 2000/);
+    assert.match(broadcast, /const CREWART_ASSIGNMENT_SPIN_MS = 2800/);
+    assert.match(broadcast, /\? 0 : CREWART_ASSIGNMENT_SPIN_MS/);
 });
 
 test('CREWART integrated broadcast resolves its namespaced lower-third text', () => {
@@ -90,7 +91,7 @@ test('shared legacy banners play uploaded MP4 files to completion before rotatin
     assert.match(broadcast, /window\._bannerRotateTimer = setTimeout\(advance, interval\)/);
 });
 
-test('CREWART P3 contribution roulette uses one premium frame, a two-second reel, and two clean result scenes', () => {
+test('CREWART P3 contribution roulette uses one premium frame, a deliberate 4.5-second reel, and two clean result scenes', () => {
     assert.match(broadcast, /id="p3-contribution-roulette-overlay"/);
     assert.ok(
         broadcast.indexOf('id="p3-contribution-roulette-overlay"') > broadcast.indexOf('id="bracket-page-container"'),
@@ -99,7 +100,9 @@ test('CREWART P3 contribution roulette uses one premium frame, a two-second reel
     assert.match(broadcast, /#p3-contribution-roulette-overlay \{[\s\S]{0,120}z-index: 10020/);
     assert.match(broadcast, /class="p3-contribution-roulette-window"/);
     assert.match(broadcast, /state\.queue\.push\(\{ \.\.\.event, kind: 'contribution', sequence \}\)/);
-    assert.match(broadcast, /const duration = 2000/);
+    assert.match(broadcast, /const CREWART_CONTRIBUTION_SPIN_MS = 4500/);
+    assert.match(broadcast, /\? 0 : CREWART_CONTRIBUTION_SPIN_MS/);
+    assert.match(broadcast, /p3-roulette-lock/);
     assert.match(broadcast, /const values = \[0\.25, 0\.5, 2, 3, 4\]/);
     assert.match(broadcast, /writeP3RouletteCursor\(sessionId, event\.sequence\)/);
     assert.match(broadcast, /refreshCrewartContributionBoard\(\)/);

@@ -215,6 +215,7 @@
         .p3-contribution-roulette-amount { display:grid;place-items:center;height:100%;border-left:1px solid rgba(205,168,91,.42);color:#f4e6c3;font-size:clamp(28px,calc(var(--p3-roulette-font-size,36px) * 1.35),100px);font-weight:950;font-variant-numeric:tabular-nums;letter-spacing:-.055em; }
         .p3-contribution-roulette-window { height:100%;overflow:hidden;border-left:1px solid rgba(205,168,91,.42);background:rgba(255,255,255,.018); }
         .p3-contribution-roulette-track { will-change:transform; }
+        .p3-contribution-roulette-shell.is-settled { animation:p3-roulette-lock .2s cubic-bezier(.2,.8,.2,1); }
         .p3-contribution-roulette-value { display:grid;place-items:center;height:var(--p3-roulette-slot-height,128px);color:#fff2cf;font-size:clamp(30px,calc(var(--p3-roulette-font-size,36px) * 1.7),132px);font-weight:950;font-variant-numeric:tabular-nums;letter-spacing:-.055em;text-shadow:0 4px 18px rgba(0,0,0,.48); }
         .p3-contribution-roulette-value[data-house="R"] { background:linear-gradient(145deg,#6f1f2a,#341117); }
         .p3-contribution-roulette-value[data-house="G"] { background:linear-gradient(145deg,#174936,#0d281e); }
@@ -283,6 +284,11 @@
             0% { filter: brightness(1.16); }
             45% { filter: brightness(1.05); }
             100% { filter: brightness(1); }
+        }
+        @keyframes p3-roulette-lock {
+            0% { transform:translateY(-2px); filter:brightness(1.12); }
+            45% { transform:translateY(1px); filter:brightness(1.05); }
+            100% { transform:translateY(0); filter:brightness(1); }
         }
 
         .auction-progress {
@@ -4392,7 +4398,6 @@
 
             return [text];
         }
-
         function resolveTickerConfig(cfg) {
             const source = cfg || {};
             if (getActiveAuctionEventModule(source).id !== 'crewart') return source;
@@ -7526,6 +7531,8 @@
             runNextCrewartReveal();
         }
 
+        const CREWART_ASSIGNMENT_SPIN_MS = 2800;
+        const CREWART_CONTRIBUTION_SPIN_MS = 4500;
         const _p3CrewartRouletteState = {
             sessionId: '', cursor: 0, revealCursor: 0,
             playing: false, queue: [], queuedIds: new Set(), generation: 0
@@ -7683,7 +7690,7 @@
             const houses = ['R', 'G', 'B', 'Y'];
             const labels = { R: 'RED', G: 'GREEN', B: 'BLUE', Y: 'YELLOW' };
             const reel = [];
-            for (let index = 0; index < 15; index += 1) reel.push(houses[index % houses.length]);
+            for (let index = 0; index < 23; index += 1) reel.push(houses[index % houses.length]);
             while (reel[reel.length - 1] === finalHouse) reel.push(houses[reel.length % houses.length]);
             reel.push(finalHouse);
             overlay.innerHTML = `
@@ -7701,7 +7708,7 @@
             overlay.classList.add('visible');
             const slotHeight = syncCrewartRouletteSlotHeight();
             const track = overlay.querySelector('.p3-contribution-roulette-track');
-            const duration = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ? 0 : 2000;
+            const duration = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ? 0 : CREWART_ASSIGNMENT_SPIN_MS;
             track.style.transition = 'none';
             track.style.transform = 'translateY(0)';
             requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -7739,7 +7746,7 @@
                 const values = [0.25, 0.5, 2, 3, 4];
                 const finalValue = Number(event.multiplier) || 1;
                 const reel = [];
-                for (let index = 0; index < 15; index += 1) reel.push(values[index % values.length]);
+                for (let index = 0; index < 36; index += 1) reel.push(values[index % values.length]);
                 while (reel[reel.length - 1] === finalValue) reel.push(values[reel.length % values.length]);
                 reel.push(finalValue);
                 const houseKey = normalizeCrewartBidderHouse(event.houseKey) || 'R';
@@ -7757,7 +7764,7 @@
                 overlay.classList.add('visible');
                 const slotHeight = syncCrewartRouletteSlotHeight();
                 const track = overlay.querySelector('.p3-contribution-roulette-track');
-                const duration = 2000;
+                const duration = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ? 0 : CREWART_CONTRIBUTION_SPIN_MS;
                 track.style.transition = 'none';
                 track.style.transform = 'translateY(0)';
                 requestAnimationFrame(() => requestAnimationFrame(() => {
