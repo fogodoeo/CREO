@@ -55,10 +55,7 @@ function auctionWinnerEntries(items, unitAmount = 100000, options = {}) {
       if (itemHouse !== targetHouse) continue;
     }
     
-    const contrib = Math.max(0, Math.floor(Number(item?.attributes?.crewart_contribution_amount) || 0));
-    const effectiveAmount = contrib > 0 ? contrib : soldPrice;
-    
-    totals.set(name, (totals.get(name) || 0) + effectiveAmount);
+    totals.set(name, (totals.get(name) || 0) + soldPrice);
   }
 
   return [...totals.entries()]
