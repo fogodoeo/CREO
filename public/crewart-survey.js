@@ -59,6 +59,7 @@
     const IS_QA_MODE = IS_LOCAL_QA;
 
     let config = {};
+    let surveyAcceptingResponses = false;
     let cohortSummary = {
         houseCounts: Object.fromEntries(Core.HOUSE_KEYS.map(key => [key, 0])),
         timingMedians: [],
@@ -550,9 +551,11 @@
                 timingSampleSize: Math.max(0, Number(payload.cohort?.timingSampleSize) || timingMedians.length),
                 sampleSize: Math.max(0, Number(payload.cohort?.sampleSize) || 0)
             };
+            surveyAcceptingResponses = payload.acceptingResponses === true;
         } catch (error) {
             console.error('[Crewart config]', error);
             config = {};
+            surveyAcceptingResponses = false;
             cohortSummary = {
                 houseCounts: Object.fromEntries(Core.HOUSE_KEYS.map(key => [key, 0])),
                 timingMedians: [],
@@ -2481,6 +2484,10 @@
     }
 
     async function startCurrentSurvey() {
+        if (!surveyAcceptingResponses) {
+            showToast('신규 테스트 응시가 마감되었습니다.');
+            return;
+        }
         const activeVersion = Core.getSurveyVersion();
         if (Core?.loadQuestionnaireFile) {
             try {
@@ -2614,7 +2621,15 @@
         if (start) start.disabled = true;
         playWordmark();
         void loadConfig().finally(() => {
-            if (start) start.disabled = false;
+            if (start) {
+                start.disabled = !surveyAcceptingResponses;
+                start.querySelector('span').textContent = surveyAcceptingResponses ? '테스트 하기' : '테스트 마감';
+            }
+            const retest = element('home-retest');
+            if (retest) {
+                retest.disabled = !surveyAcceptingResponses;
+                retest.textContent = surveyAcceptingResponses ? '다시 테스트하기' : '테스트 마감';
+            }
         });
         if (!BAND_INTEGRATION_ENABLED) {
             bandAuthReady = false;

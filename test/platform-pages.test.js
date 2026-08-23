@@ -715,6 +715,18 @@ test('CREWARTS uses one result journey and unlocks member detail by phone', () =
     assert.doesNotMatch(script, /BAND_OAUTH_API|beginBandLogin/);
 });
 
+test('CREWARTS closed survey disables retakes in the client and rejects saves on the server', () => {
+    const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey.html'), 'utf8');
+    const script = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey.js'), 'utf8');
+    const api = fs.readFileSync(path.join(__dirname, '..', 'crewart-survey-api.js'), 'utf8');
+    const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+    assert.match(html, /crewart-survey\.js\?v=20260823-survey-closed-v106/);
+    assert.match(script, /surveyAcceptingResponses = payload\.acceptingResponses === true/);
+    assert.match(script, /start\.disabled = !surveyAcceptingResponses/);
+    assert.match(api, /if \(!currentSurvey\.acceptingResponses\)[\s\S]{0,180}신규 테스트 응시가 마감되었습니다/);
+    assert.match(server, /defaultAcceptingResponses: false/);
+});
+
 test('CREWARTS home shows the saved result and only a masked authenticated phone', () => {
     const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey.html'), 'utf8');
     const script = fs.readFileSync(path.join(__dirname, '..', 'public', 'crewart-survey.js'), 'utf8');
@@ -835,7 +847,7 @@ test('CREWARTS personality test uses minimal copy, Pretendard, and official shar
     assert.match(css, /\.cw-intro-tagline\s*\{[^}]*white-space:\s*nowrap/);
     assert.match(css, /\.cw-member-dialog \.cw-member-input-group\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) 68px/);
     assert.match(html, /crewart-survey-v4\.css\?v=20260817-share-polish-v96/);
-    assert.match(html, /crewart-survey\.js\?v=20260821-house-link-v105/);
+    assert.match(html, /crewart-survey\.js\?v=20260823-survey-closed-v106/);
     assert.match(script, /function renderUnifiedResult\(profile, house, options = \{\}\)/);
     assert.doesNotMatch(script, /resultViewVersion|resultViewFromLocation|changeResultView|report=deep|set-result-version/);
     assert.match(script, /function renderResult\(options = \{\}\)[\s\S]*renderUnifiedResult\(profile, house\);/);

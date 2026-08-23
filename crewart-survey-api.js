@@ -6,6 +6,7 @@ const Core = require('./public/crewart-survey-core');
 
 const CONTENT_KEY = 'crewart_mbti_content_v1';
 const CONTENT_UPDATED_KEY = 'crewart_mbti_content_updated_at';
+const SURVEY_STATE_KEY = 'crewart_survey_state_v1';
 const LEGACY_RESPONSES_KEY = 'crewart_survey_responses';
 const RESPONSE_PREFIX = 'crewart_survey_response_entry_';
 const RESPONSE_PAGE_SIZE = 1000;
@@ -364,6 +365,7 @@ function createCrewartSurveyApi(options = {}) {
     const logger = options.logger || console;
     const now = options.now || Date.now;
     const random = typeof options.random === 'function' ? options.random : Math.random;
+    const defaultAcceptingResponses = options.defaultAcceptingResponses !== false;
     const cacheMs = Math.max(5000, Math.min(300000, Number(options.cacheMs) || 60000));
     const submissionAttempts = new Map();
     let bootstrapCache = null;
@@ -395,14 +397,18 @@ function createCrewartSurveyApi(options = {}) {
 
     async function buildBootstrap() {
         const [namedRows, responseRows] = await Promise.all([
-            repository.getRowsByKeys([CONTENT_KEY, CONTENT_UPDATED_KEY, LEGACY_RESPONSES_KEY]),
+            repository.getRowsByKeys([CONTENT_KEY, CONTENT_UPDATED_KEY, LEGACY_RESPONSES_KEY, SURVEY_STATE_KEY]),
             listAllResponseRows()
         ]);
         const map = new Map(namedRows.map((row) => [row.key, row.value]));
         const managed = jsonParse(map.get(CONTENT_KEY), null);
         const content = managed?.version === Core.SURVEY_VERSION ? managed : null;
+        const surveyState = jsonParse(map.get(SURVEY_STATE_KEY), null);
         return {
             questionVersion: Core.SURVEY_VERSION,
+            acceptingResponses: typeof surveyState?.acceptingResponses === 'boolean'
+                ? surveyState.acceptingResponses
+                : defaultAcceptingResponses,
             content,
             contentUpdatedAt: content ? validDate(map.get(CONTENT_UPDATED_KEY), null) : null,
             cohort: aggregateResponses(responseRows, map.get(LEGACY_RESPONSES_KEY))
@@ -653,6 +659,34 @@ function createCrewartSurveyApi(options = {}) {
                 replyJson(res, 200, { cleared: true, deleted });
                 return true;
             }
+            if (url.pathname === '/api/crewart-survey/state' && req.method === 'GET') {
+                if (typeof isAdmin !== 'function' || !await isAdmin(req)) {
+                    replyJson(res, 401, { error: '관리자 인증이 필요합니다.' });
+                    return true;
+                }
+                const current = await bootstrap();
+                replyJson(res, 200, { acceptingResponses: current.acceptingResponses });
+                return true;
+            }
+            if (url.pathname === '/api/crewart-survey/state' && req.method === 'PUT') {
+                if (typeof isAdmin !== 'function' || !await isAdmin(req)) {
+                    replyJson(res, 401, { error: '관리자 인증이 필요합니다.' });
+                    return true;
+                }
+                const body = await readJson(req);
+                if (typeof body.acceptingResponses !== 'boolean') {
+                    replyJson(res, 422, { error: '응시 가능 상태가 올바르지 않습니다.' });
+                    return true;
+                }
+                const state = {
+                    acceptingResponses: body.acceptingResponses,
+                    updatedAt: new Date(now()).toISOString()
+                };
+                await repository.upsertRows([{ key: SURVEY_STATE_KEY, value: JSON.stringify(state) }]);
+                bootstrapCache = null;
+                replyJson(res, 200, state);
+                return true;
+            }
             if (url.pathname === '/api/crewart-survey/house-link' && req.method === 'POST') {
                 const secret = String(bandMembership?.config?.sessionSecret || '');
                 const token = bearerToken(req);
@@ -706,6 +740,11 @@ function createCrewartSurveyApi(options = {}) {
                 return true;
             }
             if (url.pathname === '/api/crewart-survey/responses' && req.method === 'POST') {
+                const currentSurvey = await bootstrap();
+                if (!currentSurvey.acceptingResponses) {
+                    replyJson(res, 409, { error: '신규 테스트 응시가 마감되었습니다.' });
+                    return true;
+                }
                 const secret = String(bandMembership?.config?.sessionSecret || '');
                 const token = bearerToken(req);
                 let session = null;
@@ -823,6 +862,7 @@ function createCrewartSurveyApi(options = {}) {
 module.exports = {
     CONTENT_KEY,
     CONTENT_UPDATED_KEY,
+    SURVEY_STATE_KEY,
     HOUSE_ASSIGNMENT_VERSION,
     LEGACY_RESPONSES_KEY,
     REFERRAL_PREFIX,

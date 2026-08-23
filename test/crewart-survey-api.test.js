@@ -12,6 +12,7 @@ const {
     REFERRAL_PREFIX,
     REFERRAL_OWNER_PREFIX,
     RESPONSE_PREFIX,
+    SURVEY_STATE_KEY,
     chooseLeastPopulatedHouse,
     createCrewartSurveyApi,
     normalizeTimingMedians
@@ -175,6 +176,45 @@ test('bootstrap returns version-matched content and aggregate data only', async 
     );
     assert.equal(repository.namedReads, 1);
     assert.equal(repository.prefixReads, 1);
+});
+
+test('closed survey preserves existing results, rejects new submissions, and can be reopened by an admin', async () => {
+    const existingKey = `${RESPONSE_PREFIX}${'e'.repeat(24)}`;
+    const repository = new FakeRepository({
+        [existingKey]: JSON.stringify({ participantKey: 'existing', questionVersion: Core.SURVEY_VERSION })
+    });
+    const api = createCrewartSurveyApi({
+        repository,
+        now: () => NOW,
+        defaultAcceptingResponses: false,
+        isAdmin: async () => true
+    });
+
+    const bootstrap = new CapturedResponse();
+    await api.handle(request('GET'), bootstrap, new URL('https://creok.example.com/api/crewart-survey/bootstrap'));
+    assert.equal(JSON.parse(bootstrap.body).acceptingResponses, false);
+
+    const rejected = new CapturedResponse();
+    await api.handle(
+        request('POST', JSON.stringify({ response: validSubmission() }), { 'content-type': 'application/json' }),
+        rejected,
+        new URL('https://creok.example.com/api/crewart-survey/responses')
+    );
+    assert.equal(rejected.status, 409);
+    assert.equal(repository.rows.has(existingKey), true);
+
+    const reopened = new CapturedResponse();
+    await api.handle(
+        request('PUT', JSON.stringify({ acceptingResponses: true }), { 'content-type': 'application/json' }),
+        reopened,
+        new URL('https://creok.example.com/api/crewart-survey/state')
+    );
+    assert.equal(reopened.status, 200);
+    assert.equal(JSON.parse(repository.rows.get(SURVEY_STATE_KEY)).acceptingResponses, true);
+
+    const reopenedBootstrap = new CapturedResponse();
+    await api.handle(request('GET'), reopenedBootstrap, new URL('https://creok.example.com/api/crewart-survey/bootstrap'));
+    assert.equal(JSON.parse(reopenedBootstrap.body).acceptingResponses, true);
 });
 
 test('bootstrap paginates and counts more than one thousand stored completions', async () => {

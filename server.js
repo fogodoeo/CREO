@@ -62,7 +62,8 @@ const crewartSurveyApi = createCrewartSurveyApi({
     repository: supabasePlatformRepository,
     bandMembership,
     crewartHouseService,
-    isAdmin: platformApi.isAdmin
+    isAdmin: platformApi.isAdmin,
+    defaultAcceptingResponses: false
 });
 
 const SECURITY_HEADERS = {
