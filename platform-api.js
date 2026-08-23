@@ -1508,9 +1508,10 @@ function createPlatformApi({
                         const bids = rawItemBidLog(item);
                         let changed = false;
                         const nextBids = bids.map((bid) => {
-                            const sameBidder = canonicalBidderKey
-                                ? cleanText(bid?.bidder_key || bid?.bidderKey, 120) === canonicalBidderKey
-                                : (phone && phoneFromBid(bid) === phone);
+                            const sameBidder = Boolean(
+                                canonicalBidderKey
+                                && cleanText(bid?.bidder_key || bid?.bidderKey, 120) === canonicalBidderKey
+                            ) || Boolean(phone && phoneFromBid(bid) === phone);
                             if (!sameBidder) return bid;
                             if (
                                 cleanText(bid?.crewart_house_key || bid?.crewartHouseKey, 8).toUpperCase() === requestedHouseKey

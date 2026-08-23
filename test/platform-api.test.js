@@ -750,13 +750,20 @@ test('CREWART operator can idempotently correct a wrongly randomized bidder hous
         name: '인천/박찬영/01053995774', bidder_key: 'raw-band-user-key', amount: 12,
         message_key: 'override-bid', bid_sequence: 12
     };
+    const duplicateProfileBid = {
+        ...bid,
+        bidder_key: '인천/박찬영/01053995774',
+        amount: 10,
+        message_key: 'override-bid-profile',
+        bid_sequence: 11
+    };
     const assigned = await call(api, 'POST', '/api/platform/channels/alpha/audience-assignment', {
         itemId: 'override-live', ...bid
     });
     assert.equal(assigned.status, 200, assigned.body);
     const item = await repository.getRecord('alpha', 'item', 'override-live');
     await call(api, 'PUT', '/api/platform/channels/alpha/items/override-live', {
-        record: { ...item, attributes: { ...(item.attributes || {}), bid_log: JSON.stringify([bid]) } }
+        record: { ...item, attributes: { ...(item.attributes || {}), bid_log: JSON.stringify([bid, duplicateProfileBid]) } }
     });
 
     const unauthorized = await call(api, 'POST', '/api/platform/channels/alpha/audience-assignment-override', {
@@ -779,6 +786,8 @@ test('CREWART operator can idempotently correct a wrongly randomized bidder hous
     const broadcast = await call(api, 'GET', '/api/platform/channels/alpha/broadcast', null, '');
     assert.equal(broadcast.json().items[0].bidLog[0].crewart_house_key, 'G');
     assert.equal(broadcast.json().items[0].bidLog[0].crewart_house_source, 'survey');
+    assert.equal(broadcast.json().items[0].bidLog[1].crewart_house_key, 'G');
+    assert.equal(broadcast.json().items[0].bidLog[1].crewart_house_source, 'survey');
     assert.equal(broadcast.json().audience.events[0].houseKey, 'G');
     assert.doesNotMatch(JSON.stringify(broadcast.json()), /01053995774|raw-band-user-key/);
 });
