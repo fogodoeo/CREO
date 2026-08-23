@@ -605,7 +605,7 @@ test('broadcast control manages reusable banners, sponsors, and vendor logos', (
     assert.match(legacySettings, /m\.crewart_ticker = m\.ticker/);
     assert.match(legacySettings, /delete m\.ticker/);
     assert.match(legacySettings, /accept="image\/\*,video\/mp4,\.mp4"/);
-    assert.match(legacySettings, /const uploadFile = isMp4 \? file : await resizeImage\(file\)/);
+    assert.match(legacySettings, /\? await compressMp4Banner\(file/);
     assert.match(legacySettings, /await updateConfigs\(\{ \['banner' \+ idx\]: publicUrl \}\)/);
     assert.match(preview, /activeDragKey === 'contribution_roulette'/);
     assert.match(preview, /background: rgba\(10,12,14,\.86\)/);
@@ -631,6 +631,17 @@ test('broadcast control manages reusable banners, sponsors, and vendor logos', (
     assert.match(crewartModules, /class="crewart-house-card"/);
     assert.match(crewartModules, /data-rank="\$\{row\.rank\}"/);
     assert.match(crewartLive, /class="cw-house-key"><b>R<\/b><b>G<\/b><b>B<\/b><b>Y<\/b>/);
+});
+
+test('broadcast control automatically optimizes oversized MP4 banners before upload', () => {
+    const settings = fs.readFileSync(path.join(__dirname, '..', 'public', 'settings.html'), 'utf8');
+    assert.match(settings, /MP4_BANNER_TARGET = Object\.freeze\(\{ width: 480, height: 320, fps: 30, bitrate: 700000 \}\)/);
+    assert.match(settings, /MediaRecorder\.isTypeSupported/);
+    assert.match(settings, /dataset\.mp4Compression = mp4RecorderType\(\) \? 'supported' : 'original-fallback'/);
+    assert.match(settings, /canvas\.captureStream\(MP4_BANNER_TARGET\.fps\)/);
+    assert.match(settings, /await compressMp4Banner\(file/);
+    assert.match(settings, /if \(alreadyCompact\) return file/);
+    assert.match(settings, /blob\.size >= file\.size \* 0\.95/);
 });
 
 test('broadcast setup keeps live operations separate and removes dead legacy controls', () => {

@@ -661,6 +661,125 @@
             });
         }
 
+        const MP4_BANNER_TARGET = Object.freeze({ width: 480, height: 320, fps: 30, bitrate: 700000 });
+
+        function mp4RecorderType() {
+            if (typeof MediaRecorder === 'undefined') return '';
+            return [
+                'video/mp4;codecs=avc1.42E01E',
+                'video/mp4;codecs=avc1',
+                'video/mp4'
+            ].find(type => MediaRecorder.isTypeSupported(type)) || '';
+        }
+
+        async function readVideoInfo(file) {
+            const url = URL.createObjectURL(file);
+            const video = document.createElement('video');
+            video.preload = 'metadata';
+            video.muted = true;
+            video.playsInline = true;
+            try {
+                await new Promise((resolve, reject) => {
+                    video.onloadedmetadata = resolve;
+                    video.onerror = () => reject(new Error('MP4 정보를 읽을 수 없습니다.'));
+                    video.src = url;
+                });
+                return { video, url, width: video.videoWidth, height: video.videoHeight, duration: video.duration };
+            } catch (error) {
+                URL.revokeObjectURL(url);
+                throw error;
+            }
+        }
+
+        async function compressMp4Banner(file, onProgress) {
+            const info = await readVideoInfo(file);
+            const { video, url, width, height, duration } = info;
+            try {
+                const alreadyCompact = file.size <= 1.5 * 1024 * 1024
+                    && width <= MP4_BANNER_TARGET.width
+                    && height <= MP4_BANNER_TARGET.height;
+                if (alreadyCompact) return file;
+
+                const recorderType = mp4RecorderType();
+                if (!recorderType || !Number.isFinite(duration) || duration <= 0 || duration > 90) return file;
+
+                const canvas = document.createElement('canvas');
+                canvas.width = MP4_BANNER_TARGET.width;
+                canvas.height = MP4_BANNER_TARGET.height;
+                const context = canvas.getContext('2d', { alpha: false });
+                if (!context || typeof canvas.captureStream !== 'function') return file;
+
+                const stream = canvas.captureStream(MP4_BANNER_TARGET.fps);
+                const recorder = new MediaRecorder(stream, {
+                    mimeType: recorderType,
+                    videoBitsPerSecond: MP4_BANNER_TARGET.bitrate
+                });
+                const chunks = [];
+                recorder.ondataavailable = event => { if (event.data && event.data.size) chunks.push(event.data); };
+
+                const scale = Math.min(canvas.width / width, canvas.height / height);
+                const drawWidth = Math.round(width * scale);
+                const drawHeight = Math.round(height * scale);
+                const drawX = Math.round((canvas.width - drawWidth) / 2);
+                const drawY = Math.round((canvas.height - drawHeight) / 2);
+                let drawTimer = null;
+                let progressTimer = null;
+                let watchdogTimer = null;
+
+                const stopped = new Promise((resolve, reject) => {
+                    recorder.onstop = resolve;
+                    recorder.onerror = () => reject(new Error('MP4 자동 최적화에 실패했습니다.'));
+                });
+                const drawFrame = () => {
+                    context.fillStyle = '#000';
+                    context.fillRect(0, 0, canvas.width, canvas.height);
+                    context.drawImage(video, drawX, drawY, drawWidth, drawHeight);
+                };
+                const finish = () => {
+                    clearInterval(drawTimer);
+                    clearInterval(progressTimer);
+                    drawFrame();
+                    if (recorder.state !== 'inactive') recorder.stop();
+                };
+
+                video.currentTime = 0;
+                video.onended = finish;
+                try {
+                    await video.play();
+                    recorder.start(1000);
+                    drawFrame();
+                    drawTimer = setInterval(drawFrame, 1000 / MP4_BANNER_TARGET.fps);
+                    progressTimer = setInterval(() => {
+                        if (typeof onProgress === 'function') onProgress(Math.min(99, Math.round((video.currentTime / duration) * 100)));
+                    }, 250);
+                    const watchdog = new Promise((_, reject) => {
+                        watchdogTimer = setTimeout(() => reject(new Error('MP4 자동 최적화 시간이 초과되었습니다.')), duration * 1000 + 15000);
+                    });
+                    await Promise.race([stopped, watchdog]);
+                } finally {
+                    clearInterval(drawTimer);
+                    clearInterval(progressTimer);
+                    clearTimeout(watchdogTimer);
+                    if (recorder.state !== 'inactive') recorder.stop();
+                    stream.getTracks().forEach(track => track.stop());
+                }
+
+                if (!chunks.length) return file;
+                const blob = new Blob(chunks, { type: 'video/mp4' });
+                if (!blob.size || blob.size >= file.size * 0.95) return file;
+                const baseName = file.name.replace(/\.mp4$/i, '') || 'banner';
+                return new File([blob], baseName + '-480x320.mp4', { type: 'video/mp4', lastModified: Date.now() });
+            } catch (error) {
+                console.warn('MP4 automatic compression skipped:', error);
+                return file;
+            } finally {
+                video.pause();
+                video.removeAttribute('src');
+                video.load();
+                URL.revokeObjectURL(url);
+            }
+        }
+
         async function fileToBase64(file) {
             const bytes = new Uint8Array(await file.arrayBuffer());
             let binary = '';
@@ -768,10 +887,15 @@
                 if (!isImage && !isMp4) { toast('이미지 또는 MP4 파일만 업로드 가능합니다', true); return; }
                 if (isMp4 && file.size > 8 * 1024 * 1024) { toast('MP4는 8MB 이하만 업로드 가능합니다', true); return; }
                 if (isImage && file.size > 25 * 1024 * 1024) { toast('이미지는 25MB 이하만 업로드 가능합니다', true); return; }
-                dropzone.innerHTML = '<span class="uploading">' + (isMp4 ? 'MP4 준비 중...' : '이미지 리사이징 중...') + '</span>';
+                dropzone.innerHTML = '<span class="uploading">' + (isMp4 ? 'MP4 자동 최적화 준비 중...' : '이미지 리사이징 중...') + '</span>';
                 try {
                     console.log('Original file size:', (file.size / 1024).toFixed(1) + 'KB');
-                    const uploadFile = isMp4 ? file : await resizeImage(file);
+                    const uploadFile = isMp4
+                        ? await compressMp4Banner(file, percent => {
+                            const status = dropzone.querySelector('.uploading');
+                            if (status) status.textContent = 'MP4 자동 최적화 중... ' + percent + '%';
+                        })
+                        : await resizeImage(file);
                     console.log('Upload file size:', (uploadFile.size / 1024).toFixed(1) + 'KB');
                     
                     dropzone.innerHTML = '<span class="uploading">업로드 중...</span>';
@@ -1239,6 +1363,7 @@
         }
 
         window.addEventListener('DOMContentLoaded', () => {
+            document.documentElement.dataset.mp4Compression = mp4RecorderType() ? 'supported' : 'original-fallback';
             loadPwStatus();
             loadPhotoState();
             loadAll();
