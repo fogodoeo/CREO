@@ -411,7 +411,7 @@ function sanitizeRecord(type, input = {}, current = {}) {
         return {
             ...base,
             name: cleanText(input.name, 80),
-            kind: ['banner', 'sponsor', 'vendor'].includes(input.kind) ? input.kind : 'banner',
+            kind: ['banner', 'sponsor', 'vendor', 'dice'].includes(input.kind) ? input.kind : 'banner',
             page: ['1', '2', 'all'].includes(String(input.page)) ? String(input.page) : 'all',
             targetName: cleanText(input.targetName, 80),
             imageUrl: cleanText(input.imageUrl, 600),
@@ -438,6 +438,11 @@ function rawItemBidLog(item = {}) {
 function contributionAmountForItem(item = {}, atMs = Date.now()) {
     const soldPrice = Math.max(0, Number(item.soldPrice) || 0);
     const attributes = item.attributes && typeof item.attributes === 'object' ? item.attributes : {};
+    const audienceEffectiveAt = Date.parse(String(attributes.audience_contribution_effective_at || ''));
+    const audienceContribution = Number(attributes.audience_contribution_amount);
+    if (Number.isFinite(audienceEffectiveAt) && audienceEffectiveAt <= atMs && Number.isFinite(audienceContribution) && audienceContribution >= 0) {
+        return audienceContribution;
+    }
     const effectiveAt = Date.parse(String(attributes.crewart_contribution_effective_at || ''));
     const contribution = Number(attributes.crewart_contribution_amount);
     if (Number.isFinite(effectiveAt) && effectiveAt <= atMs && Number.isFinite(contribution) && contribution >= 0) {
@@ -552,11 +557,15 @@ function winningBid(item) {
     const winnerValues = [item?.winnerAlias, item?.winnerName]
         .map((value) => cleanText(value, 80).toLowerCase())
         .filter(Boolean);
-    return bids.find((bid) => {
+    const matches = bids.filter((bid) => {
         const name = cleanText(bid?.name || bid?.bidder || bid?.winner, 80).toLowerCase();
         const key = cleanText(bid?.bidder_key || bid?.bidderKey, 80).toLowerCase();
         return winnerValues.includes(name) || winnerValues.includes(key);
-    }) || bids[0];
+    });
+    const candidates = matches.length ? matches : bids;
+    return candidates
+        .map((bid, index) => ({ bid, index, amount: Math.max(0, Number(bid?.amount) || 0) }))
+        .sort((left, right) => right.amount - left.amount || right.index - left.index)[0]?.bid || null;
 }
 
 async function winnerMemberKey(item, bandMembership) {
@@ -574,6 +583,43 @@ function winnerHouseSnapshot(item) {
         houseKey,
         source: cleanText(bid?.crewart_house_source || bid?.crewartHouseSource, 16) === 'survey' ? 'survey' : 'random'
     };
+}
+
+function phoneParityCompetitionEnabled(channel) {
+    const competition = channel?.audienceCompetition || {};
+    return competition.enabled === true
+        && competition.assignment === 'phone-parity'
+        && competition.metric === 'soldPrice';
+}
+
+async function resolveWinnerPhone(item, bandMembership) {
+    const bid = winningBid(item) || {};
+    const explicit = normalizePhone(item?.winnerPhone || phoneFromBid(bid))
+        || phoneFromBid({ name: `${item?.winnerAlias || ''} ${item?.winnerName || ''}` });
+    if (explicit) return explicit;
+    if (typeof bandMembership?.resolveMemberIdentity !== 'function') return '';
+    try {
+        const identity = await bandMembership.resolveMemberIdentity({
+            bandMemberKey: bid?.bidder_key || bid?.bidderKey || '',
+            displayName: bid?.name || bid?.bidder || item?.winnerAlias || item?.winnerName || ''
+        });
+        return normalizePhone(identity?.phone);
+    } catch (_) {
+        return '';
+    }
+}
+
+async function resolvePhoneParityWinner(item, bandMembership) {
+    const phone = await resolveWinnerPhone(item, bandMembership);
+    if (!phone) return null;
+    const lastDigit = Number.parseInt(phone.slice(-1), 10);
+    if (!Number.isInteger(lastDigit)) return null;
+    return { groupKey: lastDigit % 2 === 0 ? 'even' : 'odd', source: 'phone' };
+}
+
+function normalizedDiceFace(value) {
+    const face = Number.parseInt(value, 10);
+    return Number.isInteger(face) && face >= 1 && face <= 6 ? face : 1;
 }
 
 async function enrichCrewartBidderHouses(channel, item, crewartHouseService, bandMembership, audienceSession, houseWeights, logger = console) {
@@ -687,6 +733,7 @@ function validateRecord(type, record, workspace) {
         if (!record.name) errors.push('자산 이름을 입력해 주세요.');
         if (!record.imageUrl) errors.push('이미지 URL을 입력해 주세요.');
         if (record.kind === 'vendor' && !record.targetName) errors.push('로고를 연결할 업체명을 입력해 주세요.');
+        if (record.kind === 'dice' && !/^[1-6]$/.test(record.targetName)) errors.push('주사위 영상은 눈금 1~6 중 하나에 연결해 주세요.');
     }
     return errors;
 }
@@ -697,6 +744,7 @@ function createPlatformApi({
     refreshShippingRateFn = refreshShippingRate,
     crewartHouseService = null,
     bandMembership = null,
+    diceRoll = () => crypto.randomInt(1, 7),
     adminSessionSecret = process.env.CREO_ADMIN_SECRET || crypto.randomBytes(32).toString('hex'),
     adminSessionTtlMs = ADMIN_SESSION_TTL_MS
 } = {}) {
@@ -1832,7 +1880,18 @@ function createPlatformApi({
                                     crewart_contribution_amount: 0,
                                     crewart_contribution_effective_at: '',
                                     crewart_roulette_status: 'unused',
-                                    crewart_roulette_event_id: ''
+                                    crewart_roulette_event_id: '',
+                                    audience_group_key: '',
+                                    audience_group_source: '',
+                                    audience_contribution_base: 0,
+                                    audience_contribution_multiplier: 1,
+                                    audience_contribution_amount: 0,
+                                    audience_contribution_effective_at: '',
+                                    audience_dice_face: 0,
+                                    audience_dice_status: 'unused',
+                                    audience_dice_event_id: '',
+                                    audience_dice_started_at: '',
+                                    audience_dice_reveal_at: ''
                                 }
                             };
                         }
@@ -1888,6 +1947,36 @@ function createPlatformApi({
                                     crewart_contribution_effective_at: '',
                                     crewart_roulette_status: 'unused',
                                     crewart_roulette_event_id: ''
+                                }
+                            };
+                        }
+                        if (
+                            requestedStatus === 'sold'
+                            && phoneParityCompetitionEnabled(channel)
+                            && current.status !== 'sold'
+                        ) {
+                            const assignment = await resolvePhoneParityWinner(candidate, bandMembership);
+                            const face = normalizedDiceFace(diceRoll());
+                            const baseContribution = Math.max(0, Number(candidate.soldPrice) || 0);
+                            const startedAtMs = Date.now();
+                            const startedAt = new Date(startedAtMs).toISOString();
+                            const revealAt = new Date(startedAtMs + 6000).toISOString();
+                            const eventId = `dice_${crypto.createHash('sha256').update(`${channelId}:${current.id}:${startedAt}`).digest('base64url').slice(0, 24)}`;
+                            candidate = {
+                                ...candidate,
+                                attributes: {
+                                    ...(candidate.attributes || {}),
+                                    audience_group_key: assignment?.groupKey || '',
+                                    audience_group_source: assignment?.source || '',
+                                    audience_contribution_base: baseContribution,
+                                    audience_contribution_multiplier: face,
+                                    audience_contribution_amount: baseContribution * face,
+                                    audience_contribution_effective_at: revealAt,
+                                    audience_dice_face: face,
+                                    audience_dice_status: 'rolling',
+                                    audience_dice_event_id: eventId,
+                                    audience_dice_started_at: startedAt,
+                                    audience_dice_reveal_at: revealAt
                                 }
                             };
                         }

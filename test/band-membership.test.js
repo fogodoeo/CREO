@@ -326,3 +326,24 @@ test('foreign browser origins and missing server credentials are rejected', asyn
     );
     assert.equal(response.status, 503);
 });
+
+test('member identity resolves one profile to a phone and fails closed for duplicate profiles', async () => {
+    const membership = createBandMembership({
+        env: ENV,
+        now: () => NOW,
+        fetchImpl: async (url) => {
+            const query = new URL(url);
+            const name = String(query.searchParams.get('display_name') || '').replace(/^eq\./, '');
+            if (name === '한명') return jsonResponse([{ phone_normalized: '01012345679', display_name: '한명', band_member_key: 'one' }]);
+            if (name === '동명이인') return jsonResponse([
+                { phone_normalized: '01011112222', display_name: '동명이인', band_member_key: 'a' },
+                { phone_normalized: '01033334444', display_name: '동명이인', band_member_key: 'b' }
+            ]);
+            return jsonResponse([]);
+        },
+        logger: { error() {} }
+    });
+    assert.equal((await membership.resolveMemberIdentity({ displayName: '한명/대구' })).phone, '01012345679');
+    assert.equal(await membership.resolveMemberIdentity({ displayName: '동명이인' }), null);
+    assert.equal((await membership.resolveMemberIdentity({ phone: '12345678' })).phone, '01012345678');
+});

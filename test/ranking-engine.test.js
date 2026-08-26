@@ -50,3 +50,20 @@ test('winner house rankings aggregate sold amounts by the viewer color frozen on
         { key: 'R', total: 50000 }
     ]);
 });
+
+test('winner group rankings expose sold totals immediately and dice points only after reveal', () => {
+    const channel = {
+        groups: [{ id: 'odd', name: '홀팀' }, { id: 'even', name: '짝팀' }],
+        scoreboards: [
+            { id: 'sales', name: '낙찰', dimension: 'winnerGroup', metric: 'soldAmount', unit: '원' },
+            { id: 'points', name: '기여도', dimension: 'winnerGroup', metric: 'points', unit: '점' }
+        ]
+    };
+    const items = [
+        { status: 'sold', soldPrice: 40, attributes: { audience_group_key: 'odd', audience_contribution_amount: 200, audience_contribution_effective_at: '2000-01-01T00:00:00.000Z' } },
+        { status: 'sold', soldPrice: 30, attributes: { audience_group_key: 'even', audience_contribution_amount: 180, audience_contribution_effective_at: '2999-01-01T00:00:00.000Z' } }
+    ];
+    const [sales, points] = rankingsForChannel(channel, items);
+    assert.deepEqual(sales.rows.map(row => [row.key, row.total]), [['odd', 40], ['even', 30]]);
+    assert.deepEqual(points.rows.map(row => [row.key, row.total]), [['odd', 200], ['even', 0]]);
+});

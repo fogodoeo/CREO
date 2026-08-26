@@ -8,7 +8,7 @@ const BROADCAST_TEMPLATES = Object.freeze(['classic', 'tournament', 'academy']);
 const CHANNEL_TEMPLATES = Object.freeze(['standard', 'team', 'community', 'minimal']);
 const OVERLAY_SKINS = Object.freeze(['clean', 'sport', 'heritage', 'minimal', 'metal']);
 const OVERLAY_LAYOUTS = Object.freeze(['left', 'right', 'balanced']);
-const SCOREBOARD_DIMENSIONS = Object.freeze(['vendor', 'group', 'category', 'winner', 'winnerHouse']);
+const SCOREBOARD_DIMENSIONS = Object.freeze(['vendor', 'group', 'category', 'winner', 'winnerHouse', 'winnerGroup']);
 const SCOREBOARD_METRICS = Object.freeze(['soldAmount', 'soldCount', 'points']);
 const DATA_ADAPTERS = Object.freeze(['platform', 'legacy-cdcup']);
 const CHANNEL_ID_PATTERN = /^[a-z0-9][a-z0-9-]{1,31}$/;
@@ -93,6 +93,47 @@ const DEFAULT_CHANNELS = Object.freeze([
             page3Title: '기숙사 컵'
         }),
         legacy: Object.freeze({ items: true, managementUrl: '/cdcup-index.html?module=crewart&channel=crewart', controlUrl: '/broadcast-studio.html?channel=crewart' })
+    }),
+    Object.freeze({
+        id: 'basic',
+        name: 'BASIC',
+        shortName: 'BASIC',
+        description: '단일 업체 라이브 경매',
+        logoUrl: '',
+        status: 'active',
+        broadcastTemplate: 'classic',
+        dataAdapter: 'platform',
+        broadcastProfile: 'basic-dice',
+        pages: Object.freeze({}),
+        templateId: 'standard',
+        theme: Object.freeze({
+            primary: '#171b22',
+            secondary: '#f4b544',
+            background: '#07090d',
+            surface: '#151922',
+            text: '#f8fafc'
+        }),
+        features: Object.freeze({ catalog: true, vendors: true, auction: true, shipping: true, broadcast: true, groups: true, scoreboards: true, quiz: false, sponsors: true, tournament: false, survey: false, ranking: true }),
+        terminology: Object.freeze({ item: '개체', vendor: '업체', group: '팀', round: '회차', scoreboard: '홀짝팀' }),
+        groups: Object.freeze([
+            Object.freeze({ id: 'odd', name: '홀팀', shortName: '홀', color: '#ef4444', logoUrl: '', sortOrder: 1 }),
+            Object.freeze({ id: 'even', name: '짝팀', shortName: '짝', color: '#3b82f6', logoUrl: '', sortOrder: 2 })
+        ]),
+        scoreboards: Object.freeze([
+            Object.freeze({ id: 'team-sales', name: '홀짝팀 낙찰 합계', dimension: 'winnerGroup', metric: 'soldAmount', unit: '원', topN: 2 }),
+            Object.freeze({ id: 'team-contribution', name: '홀짝팀 기여도', dimension: 'winnerGroup', metric: 'points', unit: '점', topN: 2 })
+        ]),
+        audienceCompetition: Object.freeze({ enabled: true, assignment: 'phone-parity', metric: 'soldPrice', contribution: 'dice' }),
+        settlementDiscount: Object.freeze({ enabled: false, rule: 'none', ratePercent: 0, excludeShipping: true }),
+        overlay: Object.freeze({ skin: 'clean', layout: 'balanced' }),
+        broadcastDefaults: Object.freeze({
+            notice: 'BASIC LIVE',
+            noticeDetail: '홀팀 VS 짝팀',
+            page1Ticker: 'BASIC LIVE',
+            page2Ticker: '실시간 경매',
+            page3Title: '홀팀 VS 짝팀'
+        }),
+        legacy: Object.freeze({ items: false, managementUrl: '', controlUrl: '/broadcast-studio.html?channel=basic' })
     })
 ]);
 
@@ -228,10 +269,14 @@ function normalizeShippingDefaults(value = {}, fallback = {}) {
 
 function normalizeAudienceCompetition(value = {}, fallback = {}) {
     const source = { ...(fallback || {}), ...(value || {}) };
+    const assignment = ['survey-random', 'phone-parity'].includes(source.assignment)
+        ? source.assignment
+        : 'none';
     return {
         enabled: source.enabled === true,
-        assignment: source.assignment === 'survey-random' ? 'survey-random' : 'none',
-        metric: source.metric === 'soldPrice' ? 'soldPrice' : 'soldPrice'
+        assignment,
+        metric: 'soldPrice',
+        ...(source.contribution === 'dice' ? { contribution: 'dice' } : {})
     };
 }
 
@@ -374,6 +419,11 @@ function publicItemAttributes(item = {}) {
     const contributionMultiplier = Number(attributes.crewart_contribution_multiplier);
     const contributionAmount = Number(attributes.crewart_contribution_amount);
     const contributionBase = Number(attributes.crewart_contribution_base);
+    const audienceContributionMultiplier = Number(attributes.audience_contribution_multiplier);
+    const audienceContributionAmount = Number(attributes.audience_contribution_amount);
+    const audienceContributionBase = Number(attributes.audience_contribution_base);
+    const audienceGroupKey = cleanText(attributes.audience_group_key, 16).toLowerCase();
+    const diceFace = Number.parseInt(attributes.audience_dice_face, 10);
     return {
         checklist: publicChecklist(attributes.checklist),
         announce: cleanText(attributes.announce, 1000),
@@ -398,7 +448,24 @@ function publicItemAttributes(item = {}) {
         crewart_roulette_status: ['unused', 'pending', 'completed'].includes(cleanText(attributes.crewart_roulette_status, 16))
             ? cleanText(attributes.crewart_roulette_status, 16)
             : 'unused',
-        crewart_roulette_event_id: cleanText(attributes.crewart_roulette_event_id, 80)
+        crewart_roulette_event_id: cleanText(attributes.crewart_roulette_event_id, 80),
+        audience_group_key: ['odd', 'even'].includes(audienceGroupKey) ? audienceGroupKey : '',
+        audience_group_source: cleanText(attributes.audience_group_source, 20) === 'phone' ? 'phone' : '',
+        audience_contribution_base: Number.isFinite(audienceContributionBase) && audienceContributionBase >= 0 ? audienceContributionBase : 0,
+        audience_contribution_multiplier: Number.isInteger(audienceContributionMultiplier) && audienceContributionMultiplier >= 1 && audienceContributionMultiplier <= 6
+            ? audienceContributionMultiplier
+            : 1,
+        audience_contribution_amount: Number.isFinite(audienceContributionAmount) && audienceContributionAmount >= 0
+            ? audienceContributionAmount
+            : 0,
+        audience_contribution_effective_at: cleanText(attributes.audience_contribution_effective_at, 80),
+        audience_dice_face: Number.isInteger(diceFace) && diceFace >= 1 && diceFace <= 6 ? diceFace : 0,
+        audience_dice_status: ['unused', 'rolling', 'completed'].includes(cleanText(attributes.audience_dice_status, 16))
+            ? cleanText(attributes.audience_dice_status, 16)
+            : 'unused',
+        audience_dice_event_id: cleanText(attributes.audience_dice_event_id, 80),
+        audience_dice_started_at: cleanText(attributes.audience_dice_started_at, 80),
+        audience_dice_reveal_at: cleanText(attributes.audience_dice_reveal_at, 80)
     };
 }
 

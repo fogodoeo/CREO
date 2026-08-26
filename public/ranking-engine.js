@@ -29,11 +29,11 @@
                 } else if (board.dimension === 'category') {
                     key = item.category || key;
                     name = item.category || name;
-                } else if (board.dimension === 'winnerHouse') {
+                } else if (board.dimension === 'winnerHouse' || board.dimension === 'winnerGroup') {
                     const houseKey = String(
-                        item.crewartHouseKey
-                        || item.crewart_house_key
-                        || item.attributes?.crewart_house_key
+                        (board.dimension === 'winnerGroup'
+                            ? item.audienceGroupKey || item.audience_group_key || item.attributes?.audience_group_key
+                            : item.crewartHouseKey || item.crewart_house_key || item.attributes?.crewart_house_key)
                         || ''
                     ).trim().toUpperCase();
                     const group = [...groups.values()].find(candidate => {
@@ -43,7 +43,7 @@
                             R: 'RED', G: 'GREEN', B: 'BLUE', Y: 'YELLOW'
                         })[houseKey]);
                     });
-                    key = houseKey || key;
+                    key = board.dimension === 'winnerGroup' ? (group?.id || houseKey || key) : (houseKey || key);
                     name = group?.shortName || group?.name || houseKey || name;
                     color = group?.color || '';
                     logoUrl = group?.logoUrl || '';
@@ -53,7 +53,14 @@
                 }
                 const row = rows.get(key) || { key, name, count: 0, total: 0, color, logoUrl };
                 row.count += 1;
-                row.total += board.metric === 'soldCount' ? 1 : board.metric === 'points' ? Number(item.points) || 0 : Number(item.soldPrice) || 0;
+                const contributionEffectiveAt = Date.parse(String(item.attributes?.audience_contribution_effective_at || ''));
+                const audienceContribution = Number(item.attributes?.audience_contribution_amount);
+                const contributionPoints = Number.isFinite(contributionEffectiveAt)
+                    && contributionEffectiveAt <= Date.now()
+                    && Number.isFinite(audienceContribution)
+                    ? audienceContribution
+                    : Number(item.points) || 0;
+                row.total += board.metric === 'soldCount' ? 1 : board.metric === 'points' ? contributionPoints : Number(item.soldPrice) || 0;
                 rows.set(key, row);
             }
             return {

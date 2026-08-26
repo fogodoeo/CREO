@@ -195,3 +195,17 @@ test('an existing channel can intentionally remove every scoreboard', () => {
     assert.equal(updated.features.scoreboards, false);
     assert.deepEqual(updated.scoreboards, []);
 });
+
+test('BASIC defaults keep phone parity and dice contribution separate from settlement', () => {
+    const basic = DEFAULT_CHANNELS.find(channel => channel.id === 'basic');
+    assert.equal(basic.broadcastProfile, 'basic-dice');
+    assert.deepEqual(basic.groups.map(group => group.id), ['odd', 'even']);
+    assert.deepEqual(basic.scoreboards.map(board => [board.dimension, board.metric]), [
+        ['winnerGroup', 'soldAmount'],
+        ['winnerGroup', 'points']
+    ]);
+    assert.deepEqual(basic.audienceCompetition, {
+        enabled: true, assignment: 'phone-parity', metric: 'soldPrice', contribution: 'dice'
+    });
+    assert.equal(basic.settlementDiscount.enabled, false);
+});

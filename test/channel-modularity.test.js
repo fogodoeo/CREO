@@ -45,6 +45,16 @@ test('1P and 2P use one contract while 3P is selected by broadcast profile', () 
     assert.equal(Profiles.pageContract(academy, 3).id, 'academy');
 });
 
+test('BASIC uses the platform renderer with a dedicated dice team page', () => {
+    const basic = channel('basic', { broadcastProfile: 'basic-dice' });
+    const profile = Profiles.resolve(basic);
+    assert.equal(profile.engine, 'platform');
+    assert.equal(profile.settings.diceAssets, true);
+    assert.equal(Profiles.pageContract(basic, 3).id, 'dice-teams');
+    assert.equal(Profiles.defaultState(basic).page3On, true);
+    assert.match(Profiles.broadcastTarget(basic, 3), /^auction-live\.html\?channel=basic&page=3$/);
+});
+
 test('shared settings keep channel content overrides separate from profile structure', () => {
     const academy = channel('academy-copy', {
         broadcastProfile: 'crewart-academy',

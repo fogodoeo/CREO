@@ -237,7 +237,7 @@
 
         async function loadConfig(force = false) {
             const now = Date.now();
-            if (!force && configCache && now - configCacheAt < 750) return configCache;
+            if (!force && configCache && now - configCacheAt < 2500) return configCache;
             const current = await context();
             const payload = await request(`channels/${encodeURIComponent(channelId)}/broadcast-config`);
             configCache = {

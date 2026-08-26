@@ -55,6 +55,68 @@ test('shipping rate refresh persists the collected public data before replying',
     assert.ok(repository.records.get('config:runtime_config_version').value);
 });
 
+test('BASIC sold transition assigns phone parity and rolls dice exactly once per lifecycle', async () => {
+    const repository = new MemoryRepository();
+    repository.catalog.channels[0] = normalizeChannel({
+        ...repository.catalog.channels[0],
+        broadcastProfile: 'basic-dice',
+        groups: [{ id: 'odd', name: '홀팀' }, { id: 'even', name: '짝팀' }],
+        scoreboards: [
+            { id: 'sales', name: '낙찰', dimension: 'winnerGroup', metric: 'soldAmount' },
+            { id: 'points', name: '기여도', dimension: 'winnerGroup', metric: 'points' }
+        ],
+        audienceCompetition: { enabled: true, assignment: 'phone-parity', metric: 'soldPrice', contribution: 'dice' }
+    });
+    let rolls = 0;
+    const api = createPlatformApi({ repository, diceRoll: () => { rolls += 1; return 5; }, logger: { error() {}, warn() {} } });
+    await call(api, 'POST', '/api/platform/channels/alpha/items', {
+        record: {
+            id: 'basic_item', lotNumber: 1, name: '단일 업체 개체', vendorName: '단일 업체', status: 'waiting',
+            attributes: { bid_log: JSON.stringify([{ name: '홀수낙찰자/12345679', bidder_key: 'winner', amount: 40 }]) }
+        }
+    });
+    await call(api, 'PUT', '/api/platform/channels/alpha/auction-transition', {
+        itemId: 'basic_item', status: 'live', mode: 'live'
+    });
+    const sold = await call(api, 'PUT', '/api/platform/channels/alpha/auction-transition', {
+        itemId: 'basic_item', status: 'sold', mode: 'sold', item: { soldPrice: 40, winnerAlias: '홀수낙찰자/12345679' }
+    });
+    assert.equal(sold.status, 200, sold.body);
+    assert.equal(sold.json().item.soldPrice, 40);
+    assert.equal(sold.json().item.attributes.audience_group_key, 'odd');
+    assert.equal(sold.json().item.attributes.audience_dice_face, 5);
+    assert.equal(sold.json().item.attributes.audience_contribution_amount, 200);
+    assert.equal(rolls, 1);
+    const eventId = sold.json().item.attributes.audience_dice_event_id;
+
+    const duplicate = await call(api, 'PUT', '/api/platform/channels/alpha/auction-transition', {
+        itemId: 'basic_item', status: 'sold', mode: 'sold', item: { soldPrice: 40, winnerAlias: '홀수낙찰자/12345679' }
+    });
+    assert.equal(duplicate.json().item.attributes.audience_dice_event_id, eventId);
+    assert.equal(rolls, 1);
+
+    const restartedApi = createPlatformApi({ repository, diceRoll: () => { rolls += 1; return 6; }, logger: { error() {}, warn() {} } });
+    const afterRestart = await call(restartedApi, 'PUT', '/api/platform/channels/alpha/auction-transition', {
+        itemId: 'basic_item', status: 'sold', mode: 'sold'
+    });
+    assert.equal(afterRestart.json().item.attributes.audience_dice_event_id, eventId);
+    assert.equal(rolls, 1);
+
+    await call(restartedApi, 'PUT', '/api/platform/channels/alpha/auction-transition', {
+        itemId: 'basic_item', status: 'live', mode: 'live', item: {
+            attributes: { bid_log: JSON.stringify([{ name: '짝수낙찰자/12345678', bidder_key: 'winner-even', amount: 30 }]) }
+        }
+    });
+    const resold = await call(restartedApi, 'PUT', '/api/platform/channels/alpha/auction-transition', {
+        itemId: 'basic_item', status: 'sold', mode: 'sold', item: { soldPrice: 30, winnerAlias: '짝수낙찰자/12345678' }
+    });
+    assert.equal(resold.json().item.attributes.audience_group_key, 'even');
+    assert.equal(resold.json().item.attributes.audience_dice_face, 6);
+    assert.equal(resold.json().item.attributes.audience_contribution_amount, 180);
+    assert.notEqual(resold.json().item.attributes.audience_dice_event_id, eventId);
+    assert.equal(rolls, 2);
+});
+
 class ResponseCapture {
     writeHead(status, headers) { this.status = status; this.headers = headers; }
     end(body = '') { this.body = String(body); }

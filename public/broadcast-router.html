@@ -11,7 +11,7 @@
         .status{display:none;position:fixed;top:14px;left:14px;z-index:2;padding:9px 11px;border:1px solid #ffffff26;background:#000b;color:#fff;font:800 12px/1.2 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
         body.has-error .status{display:block}
 </style>
-<script src="broadcast-profiles.js?v=20260820-three-hosts-v1"></script>
+<script src="broadcast-profiles.js?v=20260827-basic-dice-v1"></script>
 </head>
 <body>
 <iframe id="broadcast-frame" title="CREO 송출 화면" allowtransparency="true"></iframe>
@@ -22,7 +22,8 @@ function normalize(value){const id=String(value||'').toLowerCase().replace(/[^a-
 function page(){return ['1','2','3'].includes(params.get('page'))?params.get('page'):'1'}
 async function channelConfig(id){if(channelCache.has(id))return channelCache.get(id);const response=await fetch(`/api/platform/channels/${encodeURIComponent(id)}`,{cache:'no-store'});if(!response.ok)throw new Error(`채널 설정 오류 ${response.status}`);const channel=(await response.json()).channel;channelCache.set(id,channel);return channel}
 async function refresh(){try{const preview=params.get('preview')==='1';const response=await fetch('/api/platform/active-channel',{cache:'no-store'});if(!response.ok)throw new Error(`채널 연결 오류 ${response.status}`);const activeChannelId=normalize((await response.json()).channelId);const channelId=preview?(normalize(params.get('event'))||activeChannelId):activeChannelId;if(!channelId)throw new Error('운영 채널이 없습니다.');const selectedPage=page(),channel=await channelConfig(channelId);if(channelId!==lastChannel||selectedPage!==lastPage){frame.src=CreoBroadcastProfiles.broadcastTarget(channel,selectedPage);lastChannel=channelId;lastPage=selectedPage;statusEl.textContent=`${channel.name||channelId} · ${selectedPage}P ${preview?'미리보기':'운영 잠금 송출 중'}`}document.body.classList.remove('has-error')}catch(error){statusEl.textContent=error.message||String(error);document.body.classList.add('has-error')}}
-refresh();setInterval(refresh,1000);
+let refreshTimer=null;function scheduleRefresh(delay){clearTimeout(refreshTimer);refreshTimer=setTimeout(async()=>{if(!document.hidden)await refresh();scheduleRefresh(document.hidden?10000:2500)},delay)}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){void refresh();scheduleRefresh(2500)}});void refresh().finally(()=>scheduleRefresh(2500));
 </script>
 </body>
 </html>

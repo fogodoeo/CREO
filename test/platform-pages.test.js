@@ -234,7 +234,8 @@ test('the new broadcast implements three independent camera overlays', () => {
     assert.match(live, /if\(!s\.page3On\)return''/);
     assert.match(live, /background:transparent/);
     assert.match(live, /broadcast-pulse/);
-    assert.match(live, /setInterval\(pollPulse,350\)/);
+    assert.match(live, /function schedulePulse/);
+    assert.match(live, /mode==='live'\?700:2500/);
     assert.match(live, /function teamStats\(items\)/);
     assert.match(live, /function scoreboardRows\(channel,items,board\)/);
     assert.match(live, /function boardValue\(row,board,unit\)/);
@@ -644,6 +645,20 @@ test('broadcast control automatically optimizes oversized MP4 banners before upl
     assert.match(settings, /blob\.size >= file\.size \* 0\.95/);
     assert.match(settings, /file\.size > 100 \* 1024 \* 1024/);
     assert.match(settings, /uploadFile\.size > 8 \* 1024 \* 1024/);
+});
+
+test('BASIC control uploads six dice videos and P3 renders parity totals without changing sold price', () => {
+    const control = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-control.html'), 'utf8');
+    const live = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-live.html'), 'utf8');
+    assert.match(control, /value="dice"/);
+    assert.match(control, /주사위 눈금 \(1~6\)/);
+    assert.match(control, /\/api\/broadcast-assets\//);
+    assert.match(control, /file\.size>8\*1024\*1024/);
+    assert.match(live, /function renderDiceTeamsPageThree/);
+    assert.match(live, /audience_group_key/);
+    assert.match(live, /audience_contribution_amount/);
+    assert.match(live, /kind==='dice'/);
+    assert.match(live, /기여도 반영/);
 });
 
 test('broadcast setup keeps live operations separate and removes dead legacy controls', () => {

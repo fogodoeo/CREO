@@ -228,6 +228,7 @@ function createBandMembership(options = {}) {
     const memberCache = new Map();
     const memberLookups = new Map();
     const identityCache = new Map();
+    const identityDetailCache = new Map();
 
     function cachedMember(phone) {
         const cached = memberCache.get(phone);
@@ -314,7 +315,66 @@ function createBandMembership(options = {}) {
             expiresAt: now() + config.positiveCacheMs
         });
         identityCache.clear();
+        identityDetailCache.clear();
         return true;
+    }
+
+    async function lookupMemberIdentity(column, value) {
+        const cleanValue = String(value || '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120);
+        if (!config.configured || !fetchImpl || !column || !cleanValue) return null;
+        const cacheKey = `${column}:${cleanValue}`;
+        const cached = identityDetailCache.get(cacheKey);
+        if (cached && cached.expiresAt > now()) return cached.identity;
+
+        const query = new URL(`${config.url}/rest/v1/${config.table}`);
+        query.searchParams.set('select', `${config.phoneColumn},${config.memberKeyColumn},${config.displayNameColumn}`);
+        query.searchParams.set(column, `eq.${cleanValue}`);
+        query.searchParams.set(config.activeColumn, 'eq.true');
+        query.searchParams.set('limit', '2');
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), config.requestTimeoutMs);
+        let identity = null;
+        try {
+            const response = await fetchImpl(query, {
+                headers: {
+                    apikey: config.serviceRoleKey,
+                    Authorization: `Bearer ${config.serviceRoleKey}`,
+                    Accept: 'application/json'
+                },
+                signal: controller.signal
+            });
+            if (!response.ok) throw new Error(`Supabase ${response.status}`);
+            const payload = await response.json();
+            const sourceRows = Array.isArray(payload) ? payload : [];
+            const phones = [...new Set(sourceRows.map((row) => normalizePhone(row?.[config.phoneColumn])).filter(Boolean))];
+            if (phones.length === 1) {
+                const row = sourceRows.find((entry) => normalizePhone(entry?.[config.phoneColumn]) === phones[0]) || {};
+                identity = {
+                    phone: phones[0],
+                    subject: publicSubject(phones[0], config.sessionSecret),
+                    displayName: String(row?.[config.displayNameColumn] || '').trim().slice(0, 120),
+                    memberKey: String(row?.[config.memberKeyColumn] || '').trim().slice(0, 160)
+                };
+            }
+        } finally {
+            clearTimeout(timer);
+        }
+        identityDetailCache.set(cacheKey, {
+            identity,
+            expiresAt: now() + (identity ? config.positiveCacheMs : config.negativeCacheMs)
+        });
+        return identity;
+    }
+
+    async function resolveMemberIdentity(input = {}) {
+        if (!config.configured) return null;
+        const phone = normalizePhone(input.phone);
+        if (phone) return { phone, subject: publicSubject(phone, config.sessionSecret), displayName: '', memberKey: '' };
+        for (const displayName of profileNameCandidates(input.displayName)) {
+            const byDisplayName = await lookupMemberIdentity(config.displayNameColumn, displayName);
+            if (byDisplayName) return byDisplayName;
+        }
+        return lookupMemberIdentity(config.memberKeyColumn, input.bandMemberKey);
     }
 
     async function lookupMemberSubject(column, value) {
@@ -502,7 +562,7 @@ function createBandMembership(options = {}) {
         return true;
     }
 
-    return { config, handle, lookupMember, upsertMember, resolveMemberSubject };
+    return { config, handle, lookupMember, upsertMember, resolveMemberSubject, resolveMemberIdentity };
 }
 
 module.exports = {
