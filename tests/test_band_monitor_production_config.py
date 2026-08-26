@@ -4,6 +4,19 @@ from pathlib import Path
 
 
 class BandMonitorProductionConfigTests(unittest.TestCase):
+    def test_automatic_membership_actions_stay_disabled(self) -> None:
+        repository_root = Path(__file__).resolve().parents[1]
+        config = json.loads(
+            (repository_root / "band_join_monitor_config.json").read_text(
+                encoding="utf-8"
+            )
+        )
+
+        self.assertIs(config.get("monitor_enabled"), True)
+        self.assertIs(config.get("auto_approve_enabled"), False)
+        self.assertIs(config.get("auto_reject_enabled"), False)
+        self.assertIs(config.get("dom_action_enabled"), False)
+
     def test_dom_fallback_stays_enabled_for_missed_api_notifications(self) -> None:
         repository_root = Path(__file__).resolve().parents[1]
         config = json.loads(
