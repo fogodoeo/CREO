@@ -445,6 +445,7 @@
     let receiverRetryTimer = null;
     let activeCall = null;
     let receiverOfferStream = null;
+    let receiverOfferCanvas = null;
     let receiverAudioContext = null;
     let receiverOscillator = null;
 
@@ -688,6 +689,16 @@
 
     function createEmptyStream() {
       if (receiverOfferStream) return receiverOfferStream;
+      receiverOfferCanvas = document.createElement('canvas');
+      receiverOfferCanvas.width = 2;
+      receiverOfferCanvas.height = 2;
+      const canvasContext = receiverOfferCanvas.getContext('2d');
+      canvasContext.fillStyle = '#000';
+      canvasContext.fillRect(0, 0, 2, 2);
+      if (typeof receiverOfferCanvas.captureStream === 'function') {
+        receiverOfferStream = receiverOfferCanvas.captureStream(1);
+        return receiverOfferStream;
+      }
       try {
         receiverAudioContext = new (window.AudioContext || window.webkitAudioContext)();
         receiverOscillator = receiverAudioContext.createOscillator();
@@ -713,6 +724,7 @@
       }
       receiverOfferStream?.getTracks().forEach(track => track.stop());
       receiverOfferStream = null;
+      receiverOfferCanvas = null;
       try { receiverOscillator?.stop(); } catch (_) {}
       receiverOscillator = null;
       receiverAudioContext?.close().catch(() => {});

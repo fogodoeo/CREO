@@ -79,6 +79,8 @@ test('phone camera waits for a user tap before requesting mobile permission', ()
         assert.doesNotMatch(source, /targetIdMonitor/);
         assert.match(source, /receiverRetryTimer = setTimeout\(\(\) => connectToStreamer\(receiverTargetId\), 2500\)/);
         assert.match(source, /if \(receiverOfferStream\) return receiverOfferStream/);
+        assert.match(source, /receiverOfferCanvas\.captureStream\(1\)/);
+        assert.match(source, /receiverOfferStream\?\.getTracks\(\)\.forEach\(track => track\.stop\(\)\)/);
         assert.match(source, /function stopReceiverMode\(\)/);
     }
 });
