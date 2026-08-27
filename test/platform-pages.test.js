@@ -391,10 +391,14 @@ test('new platform channels use the shared three-page arranger and CDCUP registr
     assert.match(editor, /p3-board/);
     assert.match(editor, /p3-effect/);
     assert.match(editor, /p3-banner/);
-    assert.match(editor, /id="content"[^>]*>문구·내용/);
-    assert.match(editor, /type:'creo-open-studio-view',view:'settings'/);
-    assert.match(studio, /event\.data\?\.type==='creo-open-studio-view'/);
+    assert.match(editor, /id="content"[^>]*>아래 설정/);
+    assert.match(editor, /id="settings-frame"/);
+    assert.match(editor, /auction-control\.html\?channel=.*compact=1/);
+    assert.match(editor, /creo-broadcast-settings-saved/);
+    assert.match(editor, /p2-progress/);
     assert.match(live, /dataset\.layoutSlot=slot/);
+    assert.match(live, /class="item-progress glass"/);
+    assert.match(live, /남은 \$\{remaining\}/);
     assert.match(live, /\[data-layout-slot\]\[data-layout-custom="1"\]>\*\{zoom:var\(--layout-font-scale,1\)\}/);
     assert.doesNotMatch(live, /transform:none!important;zoom:var\(--layout-font-scale/);
     assert.match(live, /state\.page3BannerOn=true/);
@@ -719,6 +723,9 @@ test('broadcast setup keeps live operations separate and removes dead legacy con
     assert.match(control, /경매 화면 <small>2P<\/small>/);
     assert.match(control, /집계 화면 <small>3P<\/small>/);
     assert.match(control, /변경 저장/);
+    assert.match(control, /compactPageFields/);
+    assert.match(control, /if\(compactMode\)\{saved=await CreoPlatform\.api\(`channels\/\$\{encodeURIComponent\(channelId\)\}\/broadcast-state`/);
+    assert.match(control, /page2ProgressOn/);
     assert.match(workspace, /id="live-panel"/);
     assert.match(workspace, /id="live-item"/);
     assert.match(workspace, /function setLive/);

@@ -186,7 +186,7 @@ function sanitizeBroadcastState(input = {}) {
     const itemFontSize = Number.isFinite(itemFontSizeRaw) ? Math.max(16, Math.min(96, itemFontSizeRaw)) : 33;
     const allowedLayoutSlots = new Set([
         'p1-brand', 'p1-page-label', 'p1-hosts', 'p1-notice', 'p1-banner', 'p1-ticker',
-        'p2-brand', 'p2-page-label', 'p2-header', 'p2-info', 'p2-bidders', 'p2-photo', 'p2-price', 'p2-sold', 'p2-banner', 'p2-ticker',
+        'p2-brand', 'p2-page-label', 'p2-progress', 'p2-header', 'p2-info', 'p2-bidders', 'p2-photo', 'p2-price', 'p2-sold', 'p2-banner', 'p2-ticker',
         'p3-board', 'p3-effect', 'p3-banner'
     ]);
     const clampLayoutNumber = (value, min, max, fallback) => {
@@ -230,6 +230,7 @@ function sanitizeBroadcastState(input = {}) {
         page1BannerPosition: position(input.page1BannerPosition),
         page1TickerPosition: ['auto', 'top', 'bottom'].includes(input.page1TickerPosition) ? input.page1TickerPosition : 'auto',
         page2InfoOn: booleanValue(input.page2InfoOn),
+        page2ProgressOn: booleanValue(input.page2ProgressOn),
         page2VendorTagOn: booleanValue(input.page2VendorTagOn),
         page2BiddersOn: booleanValue(input.page2BiddersOn),
         page2BiddersOpacity: bidderOpacity,
@@ -1770,6 +1771,18 @@ function createPlatformApi({
                 const activeItemId = cleanText(data.broadcast?.activeItemId, 64);
                 const requestedPageRaw = Number.parseInt(url.searchParams.get('page'), 10);
                 const requestedPage = [1, 2, 3].includes(requestedPageRaw) ? requestedPageRaw : 0;
+                const orderedItems = data.items.slice().sort((a, b) => Number(a.lotNumber) - Number(b.lotNumber) || String(a.id).localeCompare(String(b.id)));
+                const completedItem = (item) => Number(item.soldPrice) > 0 || ['sold', 'completed', 'complete', 'passed', 'cancelled'].includes(String(item.status || '').toLowerCase());
+                const completedCount = orderedItems.filter(completedItem).length;
+                const activeIndex = orderedItems.findIndex((item) => item.id === activeItemId || item.status === 'live');
+                const totalItems = orderedItems.length;
+                const currentItem = totalItems ? Math.max(1, Math.min(totalItems, activeIndex >= 0 ? activeIndex + 1 : completedCount + 1)) : 0;
+                const itemProgress = {
+                    current: currentItem,
+                    total: totalItems,
+                    completed: completedCount,
+                    remaining: Math.max(0, totalItems - completedCount)
+                };
                 const pageItems = requestedPage === 1
                     ? []
                     : requestedPage === 2
@@ -1807,6 +1820,7 @@ function createPlatformApi({
                     revision: channelRevision(channelId),
                     channel,
                     audience,
+                    itemProgress,
                     state: data.broadcast ? {
                         ...data.broadcast,
                         quizAnswer: data.broadcast.quizStatus === 'closed' ? data.broadcast.quizAnswer : ''

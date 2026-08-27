@@ -806,6 +806,7 @@ test('page-scoped broadcast payloads keep PRISM overlays channel-local and compa
     const pageThree = await call(api, 'GET', '/api/platform/channels/alpha/broadcast?page=3', null, '');
     assert.deepEqual(pageOne.json().items, []);
     assert.deepEqual(pageTwo.json().items.map((item) => item.id), ['active']);
+    assert.deepEqual(pageTwo.json().itemProgress, { current: 2, total: 3, completed: 1, remaining: 2 });
     assert.deepEqual(pageThree.json().items.map((item) => item.id).sort(), ['active', 'sold']);
     assert.equal(JSON.stringify(pageThree.json()).includes('foreign'), false);
     assert.equal(JSON.stringify(pageThree.json()).includes('large.webp'), false);
@@ -1314,7 +1315,7 @@ test('broadcast state stores independent 1P, 2P, and 3P overlay controls', async
         hostName1: '진행자', hostName3: '게스트', hostRole3: '전문가', page1TickerOn: false, page1BannerOn: true,
         page1BannerUrl: 'https://example.com/banner.png', page1HostsPosition: 'bottom-left',
         page1TickerPosition: 'top', page2SoldOn: true, page2PhotoPosition: 'middle-right',
-        page2PricePosition: 'bottom-left', page2VendorTagOn: true, page2BiddersOn: true,
+        page2PricePosition: 'bottom-left', page2ProgressOn: false, page2VendorTagOn: true, page2BiddersOn: true,
         page2BiddersOpacity: 87, page2BiddersFontSize: 26, page2ItemFontSize: 44, page2BiddersPosition: 'middle-left', page3On: true, extraMode: 'team', page3Title: '팀별 낙찰금액',
         page3BoardPosition: 'right', page3QuizPosition: 'bottom',
         page3BannerOn: true, page3BannerUrl: 'https://example.com/page3.mp4',
@@ -1322,6 +1323,7 @@ test('broadcast state stores independent 1P, 2P, and 3P overlay controls', async
         quizWinner: '참가자 A', quizAnswer: '정답',
         layoutPlacements: {
             'p1-hosts': { x: 9.5, y: 12, width: 42, height: 18, fontScale: 1.25 },
+            'p2-progress': { x: 4, y: 4, width: 18, height: 9, fontScale: 1.4 },
             'p3-effect': { x: -20, y: 120, width: 200, height: 1, fontScale: 9 },
             'p3-banner': { x: 12, y: 70, width: 30, height: 20, fontScale: 1 },
             'unknown-slot': { x: 10, y: 10, width: 10, height: 10 }
@@ -1340,6 +1342,7 @@ test('broadcast state stores independent 1P, 2P, and 3P overlay controls', async
     assert.equal(state.page2SoldOn, true);
     assert.equal(state.page2PhotoPosition, 'middle-right');
     assert.equal(state.page2PricePosition, 'bottom-left');
+    assert.equal(state.page2ProgressOn, false);
     assert.equal(state.page2VendorTagOn, true);
     assert.equal(state.page2BiddersOn, true);
     assert.equal(state.page2BiddersOpacity, 87);
@@ -1357,6 +1360,7 @@ test('broadcast state stores independent 1P, 2P, and 3P overlay controls', async
     assert.equal(state.page3BannerOn, true);
     assert.equal(state.page3BannerUrl, 'https://example.com/page3.mp4');
     assert.deepEqual(state.layoutPlacements['p1-hosts'], { x: 9.5, y: 12, width: 42, height: 18, fontScale: 1.25 });
+    assert.deepEqual(state.layoutPlacements['p2-progress'], { x: 4, y: 4, width: 18, height: 9, fontScale: 1.4 });
     assert.deepEqual(state.layoutPlacements['p3-effect'], { x: 0, y: 96, width: 100, height: 4, fontScale: 2.5 });
     assert.deepEqual(state.layoutPlacements['p3-banner'], { x: 12, y: 70, width: 30, height: 20, fontScale: 1 });
     assert.equal(state.layoutPlacements['unknown-slot'], undefined);
