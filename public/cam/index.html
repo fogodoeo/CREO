@@ -469,18 +469,61 @@
     // BULLETPROOF CAMERA ACQUISITION WITH 3-TIER FALLBACK
     // ─────────────────────────────────────────────────────────────
     async function acquireCameraStream(facing) {
-      // Direct user gesture triggered
       try {
         return await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: facing ? { ideal: facing } : 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
-          audio: false // Video only for max permission compatibility
-        });
-      } catch (e1) {
-        console.warn('Fallback to any video camera...', e1);
-        return await navigator.mediaDevices.getUserMedia({
-          video: true,
+          video: {
+            facingMode: { ideal: facing || 'environment' },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+            frameRate: { ideal: 30, max: 30 }
+          },
           audio: false
         });
+      } catch (e1) {
+        console.warn('Fallback to 720p camera...', e1);
+      }
+      try {
+        return await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: facing || 'environment' },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            frameRate: { ideal: 30, max: 30 }
+          },
+          audio: false
+        });
+      } catch (e2) {
+        console.warn('Fallback to any video camera...', e2);
+        return await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      }
+    }
+
+    function streamQualityLabel(stream) {
+      const settings = stream?.getVideoTracks?.()[0]?.getSettings?.() || {};
+      const width = Number(settings.width) || 0;
+      const height = Number(settings.height) || 0;
+      const fps = Math.round(Number(settings.frameRate) || 0);
+      if (!width || !height) return '화질 확인 중';
+      return `${width}×${height}${fps ? ` ${fps}fps` : ''}`;
+    }
+
+    async function applyOutboundVideoQuality(call) {
+      const peerConnection = call?.peerConnection;
+      const videoTrack = localStream?.getVideoTracks?.()[0];
+      const sender = peerConnection?.getSenders?.().find(item => item.track?.kind === 'video');
+      if (!sender || !videoTrack) return;
+      const settings = videoTrack.getSettings?.() || {};
+      const pixels = (Number(settings.width) || 1280) * (Number(settings.height) || 720);
+      const maxBitrate = pixels >= 1900000 ? 6000000 : pixels >= 900000 ? 3500000 : 2000000;
+      try {
+        const parameters = sender.getParameters();
+        if (!parameters.encodings?.length) parameters.encodings = [{}];
+        parameters.encodings[0].maxBitrate = maxBitrate;
+        parameters.encodings[0].maxFramerate = 30;
+        parameters.encodings[0].scaleResolutionDownBy = 1;
+        await sender.setParameters(parameters);
+      } catch (error) {
+        console.warn('Video quality tuning skipped:', error);
       }
     }
 
@@ -510,7 +553,7 @@
         await nativeVideo.play();
         
         hideLoading();
-        hudStatus.textContent = '🔴 라이브 송출 중 (720p 30fps)';
+        hudStatus.textContent = `🔴 카메라 준비 · ${streamQualityLabel(localStream)}`;
         hudDot.style.background = 'var(--green)';
       } catch (err) {
         console.error('Camera Error:', err);
@@ -537,11 +580,13 @@
         });
 
         currentPeer.on('open', (id) => {
-          hudStatus.textContent = `🔴 송출 중 (#${getCh()})`;
+          hudStatus.textContent = `🔴 송출 중 (#${getCh()}) · ${streamQualityLabel(localStream)}`;
         });
 
         currentPeer.on('call', (call) => {
           call.answer(localStream);
+          void applyOutboundVideoQuality(call);
+          setTimeout(() => void applyOutboundVideoQuality(call), 800);
         });
         currentPeer.on('error', (err) => {
           console.error('Sender Peer Error:', err);
@@ -663,7 +708,10 @@
         hideLoading();
         nativeVideo.srcObject = remoteStream;
         nativeVideo.play().catch(() => {});
-        hudStatus.textContent = `📲 폰 카메라 수신 중 (#${getCh()})`;
+        hudStatus.textContent = `📲 폰 카메라 수신 중 (#${getCh()}) · ${streamQualityLabel(remoteStream)}`;
+        setTimeout(() => {
+          if (nativeVideo.srcObject === remoteStream) hudStatus.textContent = `📲 폰 카메라 수신 중 (#${getCh()}) · ${streamQualityLabel(remoteStream)}`;
+        }, 1000);
         hudDot.style.background = 'var(--cyan)';
       });
       call.on('error', () => failReceiverCall(call, '폰 카메라 송출을 기다리는 중...'));
