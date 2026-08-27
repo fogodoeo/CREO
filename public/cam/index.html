@@ -294,6 +294,10 @@
       gap: 6px;
     }
 
+    .perm-card[data-state="request"] { border-color: rgba(51, 255, 153, 0.45); }
+    .perm-card[data-state="request"] h3 { color: var(--green); }
+    .perm-card p { margin: 0; color: #cbd5e1; font-size: 13px; line-height: 1.6; }
+
     .perm-card ol {
       padding-left: 20px;
       font-size: 13px;
@@ -334,14 +338,15 @@
       <p id="loadingText" style="font-size: 14px; font-weight: 700; color: #cbd5e1;">카메라 연결 중...</p>
       
       <!-- Permission Help Guide when Blocked -->
-      <div class="perm-card" id="permCard">
-        <h3>🔒 카메라 권한 차단 해제 안내</h3>
-        <ol>
+      <div class="perm-card" id="permCard" data-state="request">
+        <h3 id="permTitle">📷 카메라 권한이 필요합니다</h3>
+        <p id="permInitialCopy">아래 버튼을 누른 뒤 브라우저 권한창에서 <b>허용</b>을 선택해주세요.</p>
+        <ol id="permBlockedCopy" hidden>
           <li>주소창 좌측의 <b>[🔒 자물쇠]</b> 또는 <b>[⚙️ 설정]</b> 터치</li>
           <li><b>[권한]</b> ➔ <b>[카메라]</b>를 <b>[허용]</b>으로 변경</li>
           <li>아래 <b>[다시 시도]</b> 버튼 터치</li>
         </ol>
-        <button class="perm-btn" onclick="retryCamera()">✓ 권한 허용 후 다시 시도</button>
+        <button class="perm-btn" id="permButton" onclick="retryCamera()">카메라 권한 허용</button>
       </div>
     </div>
 
@@ -422,6 +427,10 @@
     const loadingText = document.getElementById('loadingText');
     const loadingSpinner = document.getElementById('loadingSpinner');
     const permCard = document.getElementById('permCard');
+    const permTitle = document.getElementById('permTitle');
+    const permInitialCopy = document.getElementById('permInitialCopy');
+    const permBlockedCopy = document.getElementById('permBlockedCopy');
+    const permButton = document.getElementById('permButton');
     const cameraControls = document.getElementById('cameraControls');
     const audioBtn = document.getElementById('audioBtn');
     const hudTop = document.getElementById('hudTop');
@@ -430,6 +439,7 @@
     let localStream = null;
     let currentFacingMode = 'environment';
     let isAudioEnabled = true;
+    let cameraRequestInFlight = false;
 
     function getCh() {
       return (chInput.value.trim() || 'ongdong').toLowerCase();
@@ -440,6 +450,7 @@
     }
 
     function updateQrs() {
+      if (!window.QRCode) return;
       QRCode.toCanvas(qrPhone, `${getDomainBase()}?mode=cam&ch=${getCh()}`, { width: 58, margin: 0, color: { dark: '#06080c', light: '#ffffff' } });
       QRCode.toCanvas(qrTablet, `${getDomainBase()}?mode=tablet&ch=${getCh()}`, { width: 58, margin: 0, color: { dark: '#06080c', light: '#ffffff' } });
     }
@@ -469,12 +480,21 @@
     // 1. PURE NATIVE CAMERA PUSH (PHONE)
     // ─────────────────────────────────────────────────────────────
     async function startNativePhoneCam() {
+      if (cameraRequestInFlight) return;
       showViewport('카메라 켜는 중...');
       permCard.style.display = 'none';
       loadingSpinner.style.display = 'block';
       cameraControls.style.display = 'flex';
       nativeVideo.muted = true;
 
+      if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+        showCameraPermissionGate(true);
+        loadingText.textContent = 'HTTPS 보안 연결에서만 카메라를 사용할 수 있습니다.';
+        return;
+      }
+
+      cameraRequestInFlight = true;
+      permButton.disabled = true;
       try {
         localStream = await acquireCameraStream(currentFacingMode);
         nativeVideo.srcObject = localStream;
@@ -483,8 +503,18 @@
         hideLoading();
         hudStatus.textContent = '🔴 라이브 송출 중 (720p 30fps)';
         hudDot.style.background = 'var(--green)';
+      } catch (err) {
+        console.error('Camera Error:', err);
+        showCameraPermissionGate(true);
+        loadingText.textContent = err?.name === 'NotFoundError' ? '사용 가능한 카메라를 찾지 못했습니다.' : '카메라 권한을 허용해주세요.';
+        return;
+      } finally {
+        cameraRequestInFlight = false;
+        permButton.disabled = false;
+      }
 
-        // PeerJS Streamer Initialization
+      try {
+        if (!window.Peer) throw new Error('송출 연결 모듈을 불러오지 못했습니다.');
         const peerId = `creok_${getCh()}_cam`;
         if (currentPeer) currentPeer.destroy();
 
@@ -504,17 +534,28 @@
         currentPeer.on('call', (call) => {
           call.answer(localStream);
         });
-
       } catch (err) {
-        console.error('Camera Error:', err);
-        loadingSpinner.style.display = 'none';
-        loadingText.textContent = '카메라 권한이 차단되어 있습니다.';
-        permCard.style.display = 'flex';
+        console.error('Streaming Error:', err);
+        hudStatus.textContent = '카메라 연결됨 · 송출 연결 재시도 필요';
+        hudDot.style.background = 'var(--gold)';
       }
     }
 
     function retryCamera() {
-      startNativePhoneCam();
+      void startNativePhoneCam();
+    }
+
+    function showCameraPermissionGate(blocked = false) {
+      showViewport(blocked ? '카메라 권한을 허용해주세요.' : '버튼을 눌러 카메라를 연결해주세요.');
+      loadingSpinner.style.display = 'none';
+      cameraControls.style.display = 'none';
+      permCard.dataset.state = blocked ? 'blocked' : 'request';
+      permTitle.textContent = blocked ? '🔒 카메라 권한 차단 해제 안내' : '📷 카메라 권한이 필요합니다';
+      permInitialCopy.hidden = blocked;
+      permBlockedCopy.hidden = !blocked;
+      permButton.textContent = blocked ? '권한 허용 후 다시 시도' : '카메라 권한 허용';
+      permButton.disabled = false;
+      permCard.style.display = 'flex';
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -682,10 +723,9 @@
       const mode = p.get('mode') || p.get('action');
       const ch = p.get('ch') || p.get('channel');
       if (ch) chInput.value = ch;
-      updateQrs();
 
       if (mode === 'cam' || mode === 'phone') {
-        startNativePhoneCam();
+        showCameraPermissionGate(false);
       } else if (mode === 'tablet' || mode === 'monitor') {
         startNativeTabletMonitor(false);
       } else if (mode === 'obs') {
@@ -693,6 +733,7 @@
       } else if (mode === 'pc') {
         startNativePcPush();
       }
+      updateQrs();
     });
   </script>
 </body>

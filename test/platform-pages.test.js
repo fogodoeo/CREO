@@ -18,6 +18,8 @@ const PAGES = [
     'shipping-companies.html',
     'shipping-rates.html',
     'broadcast-router.html',
+    'cam.html',
+    'cam/index.html',
     'capture-gallery.html',
     'ranking.html',
     'channel-rankings.html',
@@ -59,6 +61,19 @@ test('the universal broadcast route delegates renderer selection to channel prof
     assert.match(router, /const preview=params\.get\('preview'\)===['"]1['"]/);
     assert.match(router, /const channelId=preview\?\(normalize\(params\.get\('event'\)\)\|\|activeChannelId\):activeChannelId/);
     assert.doesNotMatch(router, /channelId?\s*===\s*['"](?:cdcup|crewart)['"]/);
+});
+
+test('phone camera waits for a user tap before requesting mobile permission', () => {
+    for (const file of ['cam.html', 'cam/index.html']) {
+        const source = fs.readFileSync(path.join(__dirname, '..', 'public', file), 'utf8');
+        assert.match(source, /id="permButton"[^>]*onclick="retryCamera\(\)"/);
+        assert.match(source, /function showCameraPermissionGate\(blocked = false\)/);
+        assert.match(source, /if \(!window\.QRCode\) return/);
+        assert.match(source, /if \(mode === 'cam' \|\| mode === 'phone'\) \{\s*showCameraPermissionGate\(false\)/);
+        assert.doesNotMatch(source, /if \(mode === 'cam' \|\| mode === 'phone'\) \{\s*startNativePhoneCam\(\)/);
+        assert.ok(source.lastIndexOf('showCameraPermissionGate(false)') < source.lastIndexOf('updateQrs();'));
+        assert.match(source, /Streaming Error:[\s\S]*카메라 연결됨 · 송출 연결 재시도 필요/);
+    }
 });
 
 test('home is an operational channel launcher without duplicate management routes', () => {

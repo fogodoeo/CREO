@@ -207,6 +207,10 @@ async function serveStatic(req, res, url) {
         ETag: etag,
         'Last-Modified': stat.mtime.toUTCString()
     };
+    const relativePublicPath = path.relative(PUBLIC_DIR, filePath).split(path.sep).join('/');
+    if (relativePublicPath === 'cam.html' || relativePublicPath === 'cam/index.html') {
+        commonHeaders['Permissions-Policy'] = 'camera=(self), microphone=(self), geolocation=()';
+    }
 
     if (!req.headers.range && req.headers['if-none-match'] === etag) {
         writeHeaders(res, 304, commonHeaders);
