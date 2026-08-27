@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>CREOK CAM — 100% 순수 자체 WebRTC 방송 엔진</title>
+  <title>CREOK CAM</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;900&family=Pretendard:wght@600;800;900&display=swap" rel="stylesheet">
@@ -41,7 +41,6 @@
       overflow: hidden;
     }
 
-    /* Main Dashboard */
     .wrap {
       width: 100%;
       max-width: 480px;
@@ -151,6 +150,7 @@
       cursor: pointer;
     }
 
+    .qr-box:active { transform: scale(0.97); }
     .qr-img {
       background: #fff;
       padding: 4px;
@@ -168,9 +168,7 @@
     .qr-text h4 { font-size: 13px; font-weight: 800; color: #fff; }
     .qr-text span { font-size: 11px; color: #64748b; font-weight: 600; }
 
-    /* ─────────────────────────────────────────────────────────────
-       100% PURE IN-BROWSER NATIVE WebRTC VIDEO VIEWPORT
-       ───────────────────────────────────────────────────────────── */
+    /* Viewport */
     .viewport-box {
       display: none;
       position: fixed;
@@ -181,19 +179,9 @@
       z-index: 99999;
     }
 
-    .viewport-box.active {
-      display: block;
-    }
+    .viewport-box.active { display: block; }
+    .native-video { width: 100%; height: 100%; object-fit: cover; display: block; background: #000; }
 
-    .native-video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-      background: #000;
-    }
-
-    /* Floating Studio HUD */
     .hud-top {
       position: absolute;
       top: 16px;
@@ -259,7 +247,6 @@
     .hud-btn:active { transform: scale(0.94); }
     .hud-btn.danger { background: rgba(255, 51, 102, 0.85); border-color: var(--pink); }
 
-    /* Loading Spinner */
     .loading-overlay {
       position: absolute;
       inset: 0;
@@ -268,7 +255,7 @@
       align-items: center;
       justify-content: center;
       gap: 14px;
-      background: rgba(0, 0, 0, 0.85);
+      background: rgba(0, 0, 0, 0.88);
       z-index: 9999;
     }
 
@@ -286,10 +273,9 @@
 </head>
 <body>
 
-  <!-- 100% NATIVE IN-PAGE WebRTC VIEWPORT (No External Redirects!) -->
+  <!-- Native Video Viewport -->
   <div id="viewportBox" class="viewport-box">
     
-    <!-- Top Status HUD -->
     <div class="hud-top" id="hudTop">
       <div class="hud-status">
         <span class="hud-dot" id="hudDot"></span>
@@ -298,16 +284,13 @@
       <button class="hud-btn danger" onclick="stopNativeSession()">✕ 종료</button>
     </div>
 
-    <!-- Loading Indicator -->
     <div id="loadingOverlay" class="loading-overlay">
       <div class="spinner"></div>
-      <p id="loadingText" style="font-size: 14px; font-weight: 700; color: #cbd5e1;">WebRTC 연결 중...</p>
+      <p id="loadingText" style="font-size: 14px; font-weight: 700; color: #cbd5e1;">카메라 연결 중...</p>
     </div>
 
-    <!-- Native HTML5 Video Element -->
-    <video id="nativeVideo" class="native-video" autoplay playsinline></video>
+    <video id="nativeVideo" class="native-video" autoplay playsinline muted></video>
 
-    <!-- Bottom Floating Camera Controls (For Phone Push Mode) -->
     <div class="hud-controls" id="cameraControls" style="display: none;">
       <button class="hud-btn" onclick="flipCamera()">🔄 카메라 전환</button>
       <button class="hud-btn" onclick="toggleAudio()" id="audioBtn">🎤 마이크 ON</button>
@@ -315,10 +298,9 @@
 
   </div>
 
-  <!-- Main Dashboard View -->
+  <!-- Main Dashboard -->
   <div class="wrap" id="mainWrap">
     
-    <!-- Top Bar -->
     <div class="top-bar">
       <div class="logo">CREOK CAM</div>
       <div class="channel-wrap">
@@ -327,36 +309,30 @@
       </div>
     </div>
 
-    <!-- 4 Clean Giant Buttons -->
+    <!-- 4 Action Buttons -->
     <div class="grid">
-      
-      <!-- 1. Phone Camera (Native 720p Push on this page) -->
       <div class="btn green" onclick="startNativePhoneCam()">
         <div class="icon">📱</div>
         <div class="title">폰 카메라 송출</div>
       </div>
 
-      <!-- 2. Tablet Monitor (Native 0s WebRTC Receiver on this page) -->
       <div class="btn cyan" onclick="startNativeTabletMonitor()">
         <div class="icon">📲</div>
         <div class="title">태블릿 모니터</div>
       </div>
 
-      <!-- 3. PC Screen / Virtual Cam Push -->
       <div class="btn purple" onclick="startNativePcPush()">
         <div class="icon">🖥️</div>
         <div class="title">PC 화면 송출</div>
       </div>
 
-      <!-- 4. OBS Link Copy -->
       <div class="btn gold" onclick="copyObsUrl()">
         <div class="icon">📋</div>
         <div class="title">OBS 링크 복사</div>
       </div>
-
     </div>
 
-    <!-- Compact Dual QR Grid -->
+    <!-- Dual QRs -->
     <div class="qr-grid">
       <div class="qr-box" onclick="startNativePhoneCam()">
         <div class="qr-img"><canvas id="qrPhone"></canvas></div>
@@ -394,9 +370,8 @@
 
     let currentPeer = null;
     let localStream = null;
-    let currentFacingMode = 'environment'; // Back camera by default
+    let currentFacingMode = 'environment';
     let isAudioEnabled = true;
-    let activeCall = null;
 
     function getCh() {
       return (chInput.value.trim() || 'ongdong').toLowerCase();
@@ -414,30 +389,60 @@
     chInput.addEventListener('input', updateQrs);
 
     // ─────────────────────────────────────────────────────────────
-    // 1. PURE NATIVE CAMERA PUSH (PHONE) — 100% IN-PAGE
+    // BULLETPROOF CAMERA ACQUISITION WITH 3-TIER FALLBACK
     // ─────────────────────────────────────────────────────────────
-    async function startNativePhoneCam() {
-      showViewport('카메라 권한 확인 중...');
-      cameraControls.style.display = 'flex';
-      nativeVideo.muted = true; // Prevent echo on sender
-
+    async function acquireCameraStream(facing) {
+      // Tier 1: Back camera + Audio + 720p
       try {
-        localStream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: { ideal: currentFacingMode },
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-            frameRate: { ideal: 30 }
-          },
+        return await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: facing }, width: { ideal: 1280 }, height: { ideal: 720 } },
           audio: true
         });
+      } catch (e1) {
+        console.warn('Tier 1 failed (Audio/Resolution constraint), trying without audio...', e1);
+      }
 
+      // Tier 2: Back camera ONLY without audio (fixes mic permission conflict)
+      try {
+        return await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: facing } },
+          audio: false
+        });
+      } catch (e2) {
+        console.warn('Tier 2 failed (Facing mode constraint), trying universal video...', e2);
+      }
+
+      // Tier 3: Universal fallback (Any available camera on device)
+      return await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: false
+      });
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // 1. PURE NATIVE CAMERA PUSH (PHONE)
+    // ─────────────────────────────────────────────────────────────
+    async function startNativePhoneCam() {
+      // Check HTTPS Security Context
+      if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+        alert('카메라 실행은 HTTPS 보안 연결에서만 작동합니다.\nhttps:// 로 접속해 주세요!');
+        return;
+      }
+
+      showViewport('카메라 켜는 중...');
+      cameraControls.style.display = 'flex';
+      nativeVideo.muted = true;
+
+      try {
+        localStream = await acquireCameraStream(currentFacingMode);
         nativeVideo.srcObject = localStream;
+        await nativeVideo.play();
+        
         hideLoading();
         hudStatus.textContent = '🔴 라이브 송출 중 (720p 30fps)';
         hudDot.style.background = 'var(--green)';
 
-        // Initialize PeerJS Streamer Server with Google STUN
+        // PeerJS Streamer Initialization
         const peerId = `creok_${getCh()}_cam`;
         if (currentPeer) currentPeer.destroy();
 
@@ -455,29 +460,29 @@
         });
 
         currentPeer.on('call', (call) => {
-          call.answer(localStream); // Answer receiver with our live camera stream
+          call.answer(localStream);
         });
 
         currentPeer.on('error', (err) => {
-          console.warn('Peer notice:', err);
+          console.warn('Peer:', err);
         });
 
       } catch (err) {
-        alert(`카메라 실행 실패: ${err.message}\n카메라 권한을 허용해 주세요.`);
+        alert(`카메라 실행 실패: ${err.name || err.message}\n브라우저 설정에서 카메라 권한을 [허용]해 주세요!`);
         stopNativeSession();
       }
     }
 
     // ─────────────────────────────────────────────────────────────
-    // 2. PURE NATIVE MONITOR RECEIVER (TABLET / OBS) — 100% IN-PAGE
+    // 2. PURE NATIVE MONITOR RECEIVER (TABLET / OBS)
     // ─────────────────────────────────────────────────────────────
     function startNativeTabletMonitor(isObsMode = false) {
-      showViewport('방송 스트림 연결 중...');
+      showViewport('방송 스트림 찾는 중...');
       cameraControls.style.display = 'none';
-      nativeVideo.muted = false; // Enable audio on monitor
+      nativeVideo.muted = false;
 
       if (isObsMode) {
-        hudTop.style.display = 'none'; // Pure clean output for OBS
+        hudTop.style.display = 'none';
       } else {
         hudTop.style.display = 'flex';
       }
@@ -500,28 +505,28 @@
     function connectToStreamer(targetIdMonitor, targetIdCam) {
       loadingText.textContent = `신호 찾는 중... (#${getCh()})`;
       
-      // Connect to PC Monitor first, or fallback to Phone Cam directly
-      let call = currentPeer.call(targetIdMonitor, createEmptyStream());
+      const emptyStream = createEmptyStream();
+      let call = currentPeer.call(targetIdMonitor, emptyStream);
       
       call.on('stream', (remoteStream) => {
         hideLoading();
         nativeVideo.srcObject = remoteStream;
+        nativeVideo.play().catch(() => {});
         hudStatus.textContent = '📲 실시간 모니터링 중 (0초 지연)';
         hudDot.style.background = 'var(--cyan)';
       });
 
       call.on('error', () => {
-        // Fallback to phone camera feed directly
-        call = currentPeer.call(targetIdCam, createEmptyStream());
+        call = currentPeer.call(targetIdCam, emptyStream);
         call.on('stream', (remoteStream) => {
           hideLoading();
           nativeVideo.srcObject = remoteStream;
+          nativeVideo.play().catch(() => {});
           hudStatus.textContent = '📲 게코 카메라 수신 중';
           hudDot.style.background = 'var(--cyan)';
         });
       });
 
-      // Retry loop if broadcast hasn't started yet
       setTimeout(() => {
         if (!nativeVideo.srcObject) {
           loadingText.textContent = '송출 대기 중... (카메라 켜지면 자동 재생)';
@@ -531,19 +536,23 @@
     }
 
     function createEmptyStream() {
-      const ctx = new AudioContext();
-      const osc = ctx.createOscillator();
-      const dst = osc.connect(ctx.createMediaStreamDestination());
-      osc.start();
-      const track = dst.stream.getAudioTracks()[0];
-      return new MediaStream([track]);
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const dst = ctx.createMediaStreamDestination();
+        osc.connect(dst);
+        osc.start();
+        return new MediaStream([dst.stream.getAudioTracks()[0]]);
+      } catch (e) {
+        return new MediaStream();
+      }
     }
 
     // ─────────────────────────────────────────────────────────────
-    // 3. PURE NATIVE PC SCREEN PUSH (OBS VIRTUAL CAM)
+    // 3. PC SCREEN PUSH
     // ─────────────────────────────────────────────────────────────
     async function startNativePcPush() {
-      showViewport('PC 화면/가상카메라 선택 중...');
+      showViewport('PC 화면 선택 중...');
       cameraControls.style.display = 'none';
 
       try {
@@ -553,6 +562,7 @@
         });
 
         nativeVideo.srcObject = localStream;
+        await nativeVideo.play();
         hideLoading();
         hudStatus.textContent = '🖥️ PC 방송 화면 송출 중';
 
@@ -570,7 +580,7 @@
     }
 
     // ─────────────────────────────────────────────────────────────
-    // CAMERA CONTROLS (FLIP / MUTE)
+    // CONTROLS & UTILS
     // ─────────────────────────────────────────────────────────────
     async function flipCamera() {
       currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
@@ -621,7 +631,6 @@
       }).catch(() => alert(`OBS URL: ${url}`));
     }
 
-    // Auto-Routing: ?mode=cam / ?mode=tablet / ?mode=obs
     window.addEventListener('DOMContentLoaded', () => {
       const p = new URLSearchParams(window.location.search);
       const mode = p.get('mode') || p.get('action');
