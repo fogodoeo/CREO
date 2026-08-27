@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>CREOK CAM</title>
+  <title>CREOK CAM — 무선 방송 &amp; 모니터링 엔진</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;900&family=Pretendard:wght@600;800;900&display=swap" rel="stylesheet">
@@ -12,12 +12,13 @@
   <style>
     :root {
       --bg: #06080c;
-      --card: rgba(16, 21, 32, 0.92);
+      --card: rgba(16, 21, 32, 0.94);
       --border: rgba(255, 255, 255, 0.12);
       --green: #00e676;
       --cyan: #00d2ff;
       --purple: #a855f7;
       --gold: #f59e0b;
+      --pink: #ff3366;
     }
 
     * {
@@ -36,14 +37,18 @@
       align-items: center;
       justify-content: center;
       padding: 16px;
+      overflow: hidden;
     }
 
+    /* Main Dashboard View */
     .wrap {
       width: 100%;
       max-width: 480px;
       display: flex;
       flex-direction: column;
       gap: 14px;
+      z-index: 10;
+      transition: opacity 0.2s, transform 0.2s;
     }
 
     /* Top Bar */
@@ -51,7 +56,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 6px 4px;
+      padding: 4px 2px;
     }
 
     .logo {
@@ -111,7 +116,6 @@
       gap: 10px;
       transition: all 0.18s ease;
       user-select: none;
-      text-decoration: none;
     }
 
     .btn:active {
@@ -201,10 +205,107 @@
       color: #64748b;
       font-weight: 600;
     }
+
+    /* ─────────────────────────────────────────────────────────────
+       100% IN-PAGE EMBEDDED STREAM VIEWER (No External Redirects!)
+       ───────────────────────────────────────────────────────────── */
+    .inpage-stream-box {
+      display: none;
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      background: #000;
+      z-index: 99999;
+    }
+
+    .inpage-stream-box.active {
+      display: block;
+    }
+
+    .inpage-iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
+    }
+
+    /* Floating In-Page Studio HUD */
+    .stream-hud {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      right: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      pointer-events: none;
+      z-index: 100000;
+    }
+
+    .hud-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(6, 8, 12, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 800;
+      color: #fff;
+      backdrop-filter: blur(12px);
+    }
+
+    .live-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--pink);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--pink);
+      animation: blink 1.2s infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    .hud-close-btn {
+      pointer-events: auto;
+      background: rgba(6, 8, 12, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #fff;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      backdrop-filter: blur(12px);
+      transition: all 0.2s;
+    }
+
+    .hud-close-btn:hover, .hud-close-btn:active {
+      background: var(--pink);
+      border-color: var(--pink);
+    }
   </style>
 </head>
 <body>
 
+  <!-- 100% IN-PAGE EMBEDDED STREAM ENGINE (Stay on creok.onrender.com/cam!) -->
+  <div id="inpageStreamBox" class="inpage-stream-box">
+    <div class="stream-hud" id="streamHud">
+      <div class="hud-badge">
+        <span class="live-dot"></span>
+        <span id="hudStatusText">CREOK LIVE 720p</span>
+      </div>
+      <button class="hud-close-btn" onclick="closeInpageStream()">✕ 메인으로</button>
+    </div>
+    <iframe id="inpageIframe" class="inpage-iframe" allow="camera; microphone; display-capture; autoplay; fullscreen" allowfullscreen></iframe>
+  </div>
+
+  <!-- Main Dashboard -->
   <div class="wrap" id="mainWrap">
     
     <!-- Top Bar -->
@@ -216,29 +317,29 @@
       </div>
     </div>
 
-    <!-- 4 Clean Giant Buttons (100% Zero-Step Instant Autostart) -->
+    <!-- 4 Clean Giant Buttons -->
     <div class="grid">
       
-      <!-- 1. Phone Camera: Bypasses ALL menus, starts back camera 720p instantly -->
-      <div class="btn green" onclick="launchPhoneCam()">
+      <!-- 1. Phone Camera (In-page 720p / 30fps) -->
+      <div class="btn green" onclick="openInpagePush()">
         <div class="icon">📱</div>
         <div class="title">폰 카메라 송출</div>
       </div>
 
-      <!-- 2. Tablet Monitor: Bypasses ALL menus, plays video immediately -->
-      <div class="btn cyan" onclick="launchTabletView()">
+      <!-- 2. Tablet Monitor (In-page 0s Monitor) -->
+      <div class="btn cyan" onclick="openInpageTablet()">
         <div class="icon">📲</div>
         <div class="title">태블릿 모니터</div>
       </div>
 
-      <!-- 3. PC Virtual Cam Push: Starts PC stream instantly -->
-      <div class="btn purple" onclick="launchPcPush()">
+      <!-- 3. PC Virtual Cam Push -->
+      <div class="btn purple" onclick="openInpagePcPush()">
         <div class="icon">🖥️</div>
         <div class="title">PC 화면 송출</div>
       </div>
 
-      <!-- 4. OBS Link Copy: 1-Click Copy -->
-      <div class="btn gold" onclick="copyObsCamUrl()">
+      <!-- 4. OBS Link Copy -->
+      <div class="btn gold" onclick="copyObsUrl()">
         <div class="icon">📋</div>
         <div class="title">OBS 링크 복사</div>
       </div>
@@ -247,19 +348,19 @@
 
     <!-- Compact Dual QR Grid -->
     <div class="qr-grid">
-      <div class="qr-box" onclick="launchPhoneCam()">
+      <div class="qr-box" onclick="openInpagePush()">
         <div class="qr-img"><canvas id="qrPhone"></canvas></div>
         <div class="qr-text">
           <h4>폰 카메라 QR</h4>
-          <span>스캔 즉시 송출</span>
+          <span>스캔 시 송출</span>
         </div>
       </div>
 
-      <div class="qr-box" onclick="launchTabletView()">
+      <div class="qr-box" onclick="openInpageTablet()">
         <div class="qr-img"><canvas id="qrTablet"></canvas></div>
         <div class="qr-text">
           <h4>태블릿 QR</h4>
-          <span>스캔 즉시 재생</span>
+          <span>스캔 시 수신</span>
         </div>
       </div>
     </div>
@@ -270,59 +371,94 @@
     const chInput = document.getElementById('channelInput');
     const qrPhone = document.getElementById('qrPhone');
     const qrTablet = document.getElementById('qrTablet');
+    const mainWrap = document.getElementById('mainWrap');
+    const inpageStreamBox = document.getElementById('inpageStreamBox');
+    const inpageIframe = document.getElementById('inpageIframe');
+    const hudStatusText = document.getElementById('hudStatusText');
+    const streamHud = document.getElementById('streamHud');
 
     function getCh() {
       return (chInput.value.trim() || 'ongdong').toLowerCase();
     }
 
-    // 100% ZERO-STEP AUTOSTART URLS:
-    // &webcam: Tells VDO.Ninja to select webcam immediately (skips source selection screen)
-    // &autostart: Immediately activates without showing start prompt
-    // &facing=back: Automatically selects back/rear environment camera
-    // &cleanoutput: Strips away all settings menus/UI
-    // &quality=2 &fps=30: 720p 30fps ultra stable
-    function getPhoneCamUrl() {
+    // Native Embedded WebRTC Engine URLs
+    function getPushEngineUrl() {
       return `https://vdo.ninja/?push=${getCh()}_cam&webcam&facing=back&quality=2&fps=30&codec=h264&buffer=0&autostart&cleanoutput`;
     }
 
-    function getTabletViewUrl() {
+    function getTabletEngineUrl() {
       return `https://vdo.ninja/?view=${getCh()}_monitor&autoplay&cleanoutput&buffer=0&cover`;
     }
 
-    function getPcPushUrl() {
+    function getPcEngineUrl() {
       return `https://vdo.ninja/?push=${getCh()}_monitor&webcam&quality=2&fps=30&codec=h264&buffer=0&autostart&cleanoutput`;
     }
 
-    function getObsCamUrl() {
+    function getObsEngineUrl() {
       return `https://vdo.ninja/?view=${getCh()}_cam&cleanoutput&buffer=0&cover`;
     }
 
-    // Render Clean QRs
+    // Direct QR Links (Points directly to our domain with ?action=... so it stays in creok.onrender.com!)
+    function getDomainBase() {
+      return window.location.origin + window.location.pathname;
+    }
+
     function updateQrs() {
-      QRCode.toCanvas(qrPhone, getPhoneCamUrl(), { width: 58, margin: 0, color: { dark: '#06080c', light: '#ffffff' } });
-      QRCode.toCanvas(qrTablet, getTabletViewUrl(), { width: 58, margin: 0, color: { dark: '#06080c', light: '#ffffff' } });
+      const phoneDirectUrl = `${getDomainBase()}?action=phone&ch=${getCh()}`;
+      const tabletDirectUrl = `${getDomainBase()}?action=tablet&ch=${getCh()}`;
+      QRCode.toCanvas(qrPhone, phoneDirectUrl, { width: 58, margin: 0, color: { dark: '#06080c', light: '#ffffff' } });
+      QRCode.toCanvas(qrTablet, tabletDirectUrl, { width: 58, margin: 0, color: { dark: '#06080c', light: '#ffffff' } });
     }
 
     chInput.addEventListener('input', updateQrs);
 
-    // Instant One-Click Launchers
-    function launchPhoneCam() {
-      window.location.href = getPhoneCamUrl();
+    // ─────────────────────────────────────────────────────────────
+    // 100% IN-PAGE EMBEDDED API ACTIONS (Never leaves our page!)
+    // ─────────────────────────────────────────────────────────────
+    function openInpagePush() {
+      hudStatusText.textContent = '🔴 카메라 송출 중 (720p 30fps)';
+      streamHud.style.display = 'flex';
+      inpageIframe.src = getPushEngineUrl();
+      mainWrap.style.display = 'none';
+      inpageStreamBox.classList.add('active');
     }
 
-    function launchTabletView() {
-      window.location.href = getTabletViewUrl();
+    function openInpageTablet() {
+      hudStatusText.textContent = '📲 실시간 모니터링 수신 중';
+      streamHud.style.display = 'flex';
+      inpageIframe.src = getTabletEngineUrl();
+      mainWrap.style.display = 'none';
+      inpageStreamBox.classList.add('active');
     }
 
-    function launchPcPush() {
-      window.location.href = getPcPushUrl();
+    function openInpagePcPush() {
+      hudStatusText.textContent = '🖥️ PC 화면 송출 중 (가상카메라)';
+      streamHud.style.display = 'flex';
+      inpageIframe.src = getPcEngineUrl();
+      mainWrap.style.display = 'none';
+      inpageStreamBox.classList.add('active');
     }
 
-    function copyObsCamUrl() {
-      const url = getObsCamUrl();
+    function openInpageObsMode() {
+      // Clean pure feed for OBS Browser Source (Hides all HUD)
+      streamHud.style.display = 'none';
+      inpageIframe.src = getObsEngineUrl();
+      mainWrap.style.display = 'none';
+      inpageStreamBox.classList.add('active');
+    }
+
+    function closeInpageStream() {
+      inpageIframe.src = '';
+      inpageStreamBox.classList.remove('active');
+      mainWrap.style.display = 'flex';
+    }
+
+    function copyObsUrl() {
+      // Provides OBS link directly on our own domain or engine
+      const url = `${getDomainBase()}?action=obs&ch=${getCh()}`;
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(url).then(() => {
-          alert('OBS 브라우저 소스 링크 복사 완료!');
+          alert(`[OBS 브라우저 소스 링크 복사 완료]\n${url}`);
         }).catch(() => fallbackCopy(url));
       } else {
         fallbackCopy(url);
@@ -336,10 +472,10 @@
       ta.select();
       document.execCommand('copy');
       document.body.removeChild(ta);
-      alert('OBS 브라우저 소스 링크 복사 완료!');
+      alert(`[OBS 브라우저 소스 링크 복사 완료]\n${text}`);
     }
 
-    // Auto routing (?action=phone / ?action=tablet)
+    // Auto-Routing: When accessing creok.onrender.com/cam?action=phone
     window.addEventListener('DOMContentLoaded', () => {
       const p = new URLSearchParams(window.location.search);
       const action = p.get('action');
@@ -347,9 +483,15 @@
       if (ch) chInput.value = ch;
       updateQrs();
 
-      if (action === 'phone' || action === 'cam') launchPhoneCam();
-      else if (action === 'tablet' || action === 'monitor') launchTabletView();
-      else if (action === 'pc') launchPcPush();
+      if (action === 'phone' || action === 'cam') {
+        openInpagePush();
+      } else if (action === 'tablet' || action === 'monitor') {
+        openInpageTablet();
+      } else if (action === 'pc') {
+        openInpagePcPush();
+      } else if (action === 'obs') {
+        openInpageObsMode();
+      }
     });
   </script>
 </body>
