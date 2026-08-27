@@ -440,6 +440,13 @@
     let currentFacingMode = 'environment';
     let isAudioEnabled = true;
     let cameraRequestInFlight = false;
+    let receiverModeActive = false;
+    let receiverTargetId = '';
+    let receiverRetryTimer = null;
+    let activeCall = null;
+    let receiverOfferStream = null;
+    let receiverAudioContext = null;
+    let receiverOscillator = null;
 
     function getCh() {
       return (chInput.value.trim() || 'ongdong').toLowerCase();
@@ -481,6 +488,7 @@
     // ─────────────────────────────────────────────────────────────
     async function startNativePhoneCam() {
       if (cameraRequestInFlight) return;
+      stopReceiverMode();
       showViewport('카메라 켜는 중...');
       permCard.style.display = 'none';
       loadingSpinner.style.display = 'block';
@@ -534,6 +542,15 @@
         currentPeer.on('call', (call) => {
           call.answer(localStream);
         });
+        currentPeer.on('error', (err) => {
+          console.error('Sender Peer Error:', err);
+          hudStatus.textContent = err?.type === 'unavailable-id' ? '같은 채널의 폰 송출이 이미 켜져 있습니다.' : '카메라 연결됨 · 송출 서버 연결 오류';
+          hudDot.style.background = 'var(--gold)';
+        });
+        currentPeer.on('disconnected', () => {
+          hudStatus.textContent = '송출 서버 재연결 중...';
+          try { currentPeer?.reconnect(); } catch (_) {}
+        });
       } catch (err) {
         console.error('Streaming Error:', err);
         hudStatus.textContent = '카메라 연결됨 · 송출 연결 재시도 필요';
@@ -562,6 +579,9 @@
     // 2. PURE NATIVE MONITOR RECEIVER (TABLET / OBS)
     // ─────────────────────────────────────────────────────────────
     function startNativeTabletMonitor(isObsMode = false) {
+      stopReceiverMode();
+      receiverModeActive = true;
+      receiverTargetId = `creok_${getCh()}_cam`;
       showViewport('방송 스트림 찾는 중...');
       permCard.style.display = 'none';
       loadingSpinner.style.display = 'block';
@@ -574,6 +594,11 @@
         hudTop.style.display = 'flex';
       }
 
+      if (!window.Peer) {
+        loadingSpinner.style.display = 'none';
+        loadingText.textContent = '송출 연결 모듈을 불러오지 못했습니다. 새로고침해주세요.';
+        return;
+      }
       if (currentPeer) currentPeer.destroy();
       currentPeer = new Peer({
         config: {
@@ -585,60 +610,120 @@
       });
 
       currentPeer.on('open', () => {
-        connectToStreamer(`creok_${getCh()}_monitor`, `creok_${getCh()}_cam`);
+        connectToStreamer(receiverTargetId);
+      });
+      currentPeer.on('error', (err) => {
+        if (!receiverModeActive) return;
+        console.warn('Receiver Peer Error:', err);
+        if (activeCall) failReceiverCall(activeCall, '폰 카메라 송출을 기다리는 중...');
+        else scheduleReceiverRetry('폰 카메라 송출을 기다리는 중...');
+      });
+      currentPeer.on('disconnected', () => {
+        if (!receiverModeActive) return;
+        loadingText.textContent = '연결 서버 재접속 중...';
+        try { currentPeer?.reconnect(); } catch (_) {}
+        scheduleReceiverRetry('연결 서버 재접속 중...');
       });
     }
 
-    function connectToStreamer(targetIdMonitor, targetIdCam) {
+    function connectToStreamer(targetId = receiverTargetId) {
+      if (!receiverModeActive) return;
+      clearTimeout(receiverRetryTimer);
+      receiverRetryTimer = null;
       loadingText.textContent = `신호 찾는 중... (#${getCh()})`;
-      
-      const emptyStream = createEmptyStream();
-      let call = currentPeer.call(targetIdMonitor, emptyStream);
-      
+      loadingOverlay.style.display = 'flex';
+      loadingSpinner.style.display = 'block';
+      if (!currentPeer?.open) {
+        scheduleReceiverRetry('연결 서버를 기다리는 중...');
+        return;
+      }
+      if (activeCall) {
+        const previousCall = activeCall;
+        activeCall = null;
+        try { previousCall.close(); } catch (_) {}
+      }
+      let call;
+      try {
+        call = currentPeer.call(targetId, createEmptyStream());
+      } catch (error) {
+        console.warn('Receiver Call Error:', error);
+        scheduleReceiverRetry('폰 카메라 송출을 기다리는 중...');
+        return;
+      }
+      if (!call) {
+        scheduleReceiverRetry('폰 카메라 송출을 기다리는 중...');
+        return;
+      }
+      activeCall = call;
       call.on('stream', (remoteStream) => {
+        if (!receiverModeActive || activeCall !== call) return;
+        clearTimeout(receiverRetryTimer);
+        receiverRetryTimer = null;
         hideLoading();
         nativeVideo.srcObject = remoteStream;
         nativeVideo.play().catch(() => {});
-        hudStatus.textContent = '📲 실시간 모니터링 중 (0초 지연)';
+        hudStatus.textContent = `📲 폰 카메라 수신 중 (#${getCh()})`;
         hudDot.style.background = 'var(--cyan)';
       });
+      call.on('error', () => failReceiverCall(call, '폰 카메라 송출을 기다리는 중...'));
+      call.on('close', () => failReceiverCall(call, '폰 카메라 연결이 끊겨 재연결 중...'));
+      receiverRetryTimer = setTimeout(() => failReceiverCall(call, '폰 카메라 송출을 기다리는 중...'), 4500);
+    }
 
-      call.on('error', () => {
-        call = currentPeer.call(targetIdCam, emptyStream);
-        call.on('stream', (remoteStream) => {
-          hideLoading();
-          nativeVideo.srcObject = remoteStream;
-          nativeVideo.play().catch(() => {});
-          hudStatus.textContent = '📲 게코 카메라 수신 중';
-          hudDot.style.background = 'var(--cyan)';
-        });
-      });
+    function failReceiverCall(call, message) {
+      if (!receiverModeActive || activeCall !== call) return;
+      activeCall = null;
+      try { call.close(); } catch (_) {}
+      scheduleReceiverRetry(message);
+    }
 
-      setTimeout(() => {
-        if (!nativeVideo.srcObject) {
-          loadingText.textContent = '송출 대기 중... (카메라 켜지면 자동 재생)';
-          setTimeout(() => connectToStreamer(targetIdMonitor, targetIdCam), 3000);
-        }
-      }, 4000);
+    function scheduleReceiverRetry(message) {
+      if (!receiverModeActive) return;
+      clearTimeout(receiverRetryTimer);
+      loadingText.textContent = message;
+      loadingOverlay.style.display = 'flex';
+      loadingSpinner.style.display = 'block';
+      receiverRetryTimer = setTimeout(() => connectToStreamer(receiverTargetId), 2500);
     }
 
     function createEmptyStream() {
+      if (receiverOfferStream) return receiverOfferStream;
       try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = ctx.createOscillator();
-        const dst = ctx.createMediaStreamDestination();
-        osc.connect(dst);
-        osc.start();
-        return new MediaStream([dst.stream.getAudioTracks()[0]]);
+        receiverAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+        receiverOscillator = receiverAudioContext.createOscillator();
+        const dst = receiverAudioContext.createMediaStreamDestination();
+        receiverOscillator.connect(dst);
+        receiverOscillator.start();
+        receiverOfferStream = new MediaStream([dst.stream.getAudioTracks()[0]]);
       } catch (e) {
-        return new MediaStream();
+        receiverOfferStream = new MediaStream();
       }
+      return receiverOfferStream;
+    }
+
+    function stopReceiverMode() {
+      receiverModeActive = false;
+      receiverTargetId = '';
+      clearTimeout(receiverRetryTimer);
+      receiverRetryTimer = null;
+      if (activeCall) {
+        const call = activeCall;
+        activeCall = null;
+        try { call.close(); } catch (_) {}
+      }
+      receiverOfferStream?.getTracks().forEach(track => track.stop());
+      receiverOfferStream = null;
+      try { receiverOscillator?.stop(); } catch (_) {}
+      receiverOscillator = null;
+      receiverAudioContext?.close().catch(() => {});
+      receiverAudioContext = null;
     }
 
     // ─────────────────────────────────────────────────────────────
     // 3. PC SCREEN PUSH
     // ─────────────────────────────────────────────────────────────
     async function startNativePcPush() {
+      stopReceiverMode();
       showViewport('PC 화면 선택 중...');
       cameraControls.style.display = 'none';
 
@@ -697,6 +782,7 @@
     }
 
     function stopNativeSession() {
+      stopReceiverMode();
       if (localStream) {
         localStream.getTracks().forEach(t => t.stop());
         localStream = null;

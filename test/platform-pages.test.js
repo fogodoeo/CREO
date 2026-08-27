@@ -73,6 +73,13 @@ test('phone camera waits for a user tap before requesting mobile permission', ()
         assert.doesNotMatch(source, /if \(mode === 'cam' \|\| mode === 'phone'\) \{\s*startNativePhoneCam\(\)/);
         assert.ok(source.lastIndexOf('showCameraPermissionGate(false)') < source.lastIndexOf('updateQrs();'));
         assert.match(source, /Streaming Error:[\s\S]*카메라 연결됨 · 송출 연결 재시도 필요/);
+        assert.match(source, /receiverTargetId = `creok_\$\{getCh\(\)\}_cam`/);
+        assert.match(source, /connectToStreamer\(receiverTargetId\)/);
+        assert.match(source, /currentPeer\.call\(targetId, createEmptyStream\(\)\)/);
+        assert.doesNotMatch(source, /targetIdMonitor/);
+        assert.match(source, /receiverRetryTimer = setTimeout\(\(\) => connectToStreamer\(receiverTargetId\), 2500\)/);
+        assert.match(source, /if \(receiverOfferStream\) return receiverOfferStream/);
+        assert.match(source, /function stopReceiverMode\(\)/);
     }
 });
 
