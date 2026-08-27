@@ -389,7 +389,11 @@ test('duplicating a legacy channel keeps its broadcast profile but starts on iso
         legacy: { items: true, managementUrl: '/legacy.html', controlUrl: '/legacy-control.html' }
     });
     const api = createPlatformApi({ repository, logger: { error() {} } });
-    await call(api, 'PUT', '/api/platform/channels/alpha/broadcast-state', { hostName1: '공통 진행자', page1Ticker: '복제 자막' });
+    await call(api, 'PUT', '/api/platform/channels/alpha/broadcast-state', {
+        hostName1: '공통 진행자', page1Ticker: '복제 자막', activeItemId: 'source-live-item', mode: 'live',
+        audienceSessionId: 'source-session', audienceSessionStatus: 'active', audienceSessionLockedAt: '2026-08-27T00:00:00.000Z',
+        quizStatus: 'closed', quizWinner: '이전 당첨자', quizAnswer: '이전 정답'
+    });
     await call(api, 'PUT', '/api/platform/channels/alpha/broadcast-config', { patch: { ticker: '복제 자막', bracket_full_show: '1' } });
     const response = await call(api, 'POST', '/api/platform/channels/alpha/duplicate', {
         channel: { id: 'alpha-copy', name: '알파 복제' },
@@ -404,9 +408,72 @@ test('duplicating a legacy channel keeps its broadcast profile but starts on iso
     assert.deepEqual(workspace.json().items, []);
     assert.deepEqual(workspace.json().vendors, []);
     assert.equal(workspace.json().broadcast.hostName1, '공통 진행자');
+    assert.equal(workspace.json().broadcast.activeItemId, '');
+    assert.equal(workspace.json().broadcast.mode, 'standby');
+    assert.equal(workspace.json().broadcast.audienceSessionId, '');
+    assert.equal(workspace.json().broadcast.audienceSessionStatus, '');
+    assert.equal(workspace.json().broadcast.quizStatus, 'ready');
+    assert.equal(workspace.json().broadcast.quizWinner, '');
     const copiedConfig = await call(api, 'GET', '/api/platform/channels/alpha-copy/broadcast-config', null, '');
     assert.equal(copiedConfig.json().config.ticker, '복제 자막');
     assert.equal(copiedConfig.json().config.bracket_full_show, '1');
+});
+
+test('a newly created channel stays isolated through registration, layout, live auction, and broadcast reads', async () => {
+    const repository = new MemoryRepository();
+    const api = createPlatformApi({ repository, logger: { error() {} } });
+    const created = await call(api, 'POST', '/api/platform/channels', {
+        channel: { id: 'new-auction', name: '신규 경매', shortName: '신규', status: 'active', dataAdapter: 'platform', broadcastProfile: 'standard' },
+        expectedVersion: repository.catalog.version
+    });
+    assert.equal(created.status, 201, created.body);
+
+    await call(api, 'POST', '/api/platform/channels/new-auction/vendors', {
+        record: { id: 'new-vendor', name: '신규 업체' }
+    });
+    await call(api, 'POST', '/api/platform/channels/new-auction/items', {
+        record: { id: 'shared-item', lotNumber: 1, name: '신규 채널 개체', vendorId: 'new-vendor', status: 'waiting' }
+    });
+    await call(api, 'POST', '/api/platform/channels/alpha/items', {
+        record: { id: 'shared-item', lotNumber: 1, name: '기존 채널 개체', status: 'waiting' }
+    });
+    await call(api, 'PUT', '/api/platform/channels/new-auction/broadcast-config', {
+        patch: { 'layout:p2': JSON.stringify({ slots: { 'p2-info': { x: 10, y: 12, width: 45, height: 24 } } }) }
+    });
+    await call(api, 'PUT', '/api/platform/channels/new-auction/broadcast-state', {
+        page: 2, page2ProgressOn: true, page2Ticker: '신규 채널 자막',
+        layoutPlacements: { 'p2-info': { x: 10, y: 12, width: 45, height: 24, fontScale: 1.2 } }
+    });
+
+    const switched = await call(api, 'PUT', '/api/platform/active-channel', {
+        channelId: 'new-auction', expectedCurrentChannelId: 'alpha', confirmChannelId: 'new-auction'
+    });
+    assert.equal(switched.status, 200, switched.body);
+    const live = await call(api, 'PUT', '/api/platform/channels/new-auction/auction-transition', {
+        itemId: 'shared-item', status: 'live', mode: 'live', state: { page: 2 }
+    });
+    assert.equal(live.status, 200, live.body);
+
+    const [workspace, broadcast, config, alphaWorkspace, catalog] = await Promise.all([
+        call(api, 'GET', '/api/platform/channels/new-auction/workspace'),
+        call(api, 'GET', '/api/platform/channels/new-auction/broadcast', null, ''),
+        call(api, 'GET', '/api/platform/channels/new-auction/broadcast-config', null, ''),
+        call(api, 'GET', '/api/platform/channels/alpha/workspace'),
+        call(api, 'GET', '/api/platform/channels')
+    ]);
+    assert.deepEqual(workspace.json().vendors.map((row) => row.name), ['신규 업체']);
+    assert.deepEqual(workspace.json().items.map((row) => row.name), ['신규 채널 개체']);
+    assert.equal(workspace.json().broadcast.activeItemId, 'shared-item');
+    assert.equal(broadcast.json().items[0].name, '신규 채널 개체');
+    assert.equal(broadcast.json().state.page2Ticker, '신규 채널 자막');
+    assert.deepEqual(broadcast.json().state.layoutPlacements['p2-info'], { x: 10, y: 12, width: 45, height: 24, fontScale: 1.2 });
+    assert.match(config.json().config['layout:p2'], /p2-info/);
+    assert.equal(alphaWorkspace.json().items[0].name, '기존 채널 개체');
+    assert.equal(alphaWorkspace.json().items[0].status, 'waiting');
+    const newChannel = catalog.json().channels.find((channel) => channel.id === 'new-auction');
+    assert.equal(newChannel.links.workspace, '/cdcup-index.html?channel=new-auction');
+    assert.equal(newChannel.links.control, '/broadcast-studio.html?channel=new-auction');
+    assert.equal(newChannel.links.shipping, '/shipping.html?channel=new-auction');
 });
 
 test('channel broadcast layout config is public-read, admin-write, isolated, and sanitized', async () => {

@@ -24,7 +24,10 @@ let isRemoteController = !isBroadcastMode && Boolean(remoteChannelId);
 let autoLoadAuctionWinners = isRemoteController && queryParameters.get('theme') === 'academy';
 
 async function resolveActivePinballChannel(): Promise<void> {
-  if (remoteChannelId || isBroadcastMode) return;
+  // A broadcast display is tied to the session URL that the controller created.
+  // The shared controller, however, must always follow the server-side operating
+  // lock so an old tab/query cannot import winners from a previous channel.
+  if (isBroadcastMode) return;
   try {
     const response = await fetch('/api/platform/active-channel', { cache: 'no-store', credentials: 'same-origin' });
     const payload = await response.json().catch(() => ({})) as { channelId?: string };

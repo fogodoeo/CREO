@@ -2115,8 +2115,22 @@ function createPlatformApi({
                         repository.getRecord(channelId, 'setting', BROADCAST_CONFIG_ID)
                     ]);
                     if (sourceState) {
+                        // A duplicated channel may reuse presentation text and placements, but it
+                        // must never inherit the source auction/audience lifecycle. In particular,
+                        // activeItemId can point at an item that was intentionally not copied.
                         await repository.upsertRecord(checked.value.id, 'broadcast', {
-                            ...sourceState,
+                            ...sanitizeBroadcastState({
+                                ...sourceState,
+                                activeItemId: '',
+                                mode: 'standby',
+                                audienceSessionId: '',
+                                audienceSessionStatus: '',
+                                audienceSessionLockedAt: '',
+                                audienceSessionEndedAt: '',
+                                quizStatus: 'ready',
+                                quizWinner: '',
+                                quizAnswer: ''
+                            }),
                             id: 'state',
                             revision: Date.now()
                         });

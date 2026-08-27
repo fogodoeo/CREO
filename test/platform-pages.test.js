@@ -708,6 +708,8 @@ test('common pinball resolves winners from the operating channel rather than the
     assert.match(hub, /operatingChannel=catalog\.channels\.find\(channel=>channel\.id===operatingChannelId\)/);
     assert.match(pinball, /async function resolveActivePinballChannel/);
     assert.match(pinball, /fetch\('\/api\/platform\/active-channel'/);
+    assert.match(pinball, /if \(isBroadcastMode\) return;/);
+    assert.doesNotMatch(pinball, /if \(remoteChannelId \|\| isBroadcastMode\) return;/);
     assert.match(pinball, /await resolveActivePinballChannel\(\)/);
     assert.match(pinball, /channels\/\$\{encodeURIComponent\(remoteChannelId\)\}\/broadcast/);
 });
@@ -724,7 +726,7 @@ test('broadcast setup keeps live operations separate and removes dead legacy con
     assert.match(control, /집계 화면 <small>3P<\/small>/);
     assert.match(control, /변경 저장/);
     assert.match(control, /compactPageFields/);
-    assert.match(control, /if\(compactMode\)\{saved=await CreoPlatform\.api\(`channels\/\$\{encodeURIComponent\(channelId\)\}\/broadcast-state`/);
+    assert.match(control, /if\(compactMode\)\{saved=await CreoPlatform\.api\(`channels\/\$\{encodeURIComponent\(requestedChannelId\)\}\/broadcast-state`/);
     assert.match(control, /page2ProgressOn/);
     assert.match(workspace, /id="live-panel"/);
     assert.match(workspace, /id="live-item"/);
@@ -782,6 +784,21 @@ test('CREWARTS uses one result journey and unlocks member detail by phone', () =
     assert.match(script, /const activeVersion = Core\.getSurveyVersion\(\)[\s\S]*loadQuestionnaireFile\(activeVersion\.questionsFile, activeVersion\.resultsFile\)/);
     assert.doesNotMatch(script, /getSurveyVersion\('v2'\)/);
     assert.doesNotMatch(script, /BAND_OAUTH_API|beginBandLogin/);
+});
+
+test('shared registration workspace rejects stale cross-channel responses', () => {
+    const workspace = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-workspace.html'), 'utf8');
+    const control = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-control.html'), 'utf8');
+    assert.match(workspace, /workspaceLoadSequence/);
+    assert.match(workspace, /requestedChannelId=channelId/);
+    assert.match(workspace, /sequence!==workspaceLoadSequence\|\|requestedChannelId!==channelId/);
+    assert.match(workspace, /response\.channel\?\.id!==requestedChannelId/);
+    assert.match(workspace, /editing=\{type,id:record\?\.id\|\|'',channelId\}/);
+    assert.match(workspace, /editing\.channelId!==channelId/);
+    assert.doesNotMatch(workspace, /get\('channel'\)\|\|['"]cdcup['"]/);
+    assert.match(control, /workspaceLoadSequence/);
+    assert.match(control, /nextWorkspace\.channel\?\.id!==requestedChannelId/);
+    assert.match(control, /if\(requestedChannelId!==channelId\)return/);
 });
 
 test('CREWARTS closed survey disables retakes in the client and rejects saves on the server', () => {

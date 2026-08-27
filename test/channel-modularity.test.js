@@ -43,6 +43,10 @@ test('1P and 2P use one contract while 3P is selected by broadcast profile', () 
     assert.equal(Profiles.pageContract(standard, 3).id, 'scoreboard');
     assert.equal(Profiles.pageContract(tournament, 3).id, 'tournament');
     assert.equal(Profiles.pageContract(academy, 3).id, 'academy');
+    for (const page of [1, 2, 3]) {
+        assert.match(Profiles.studioFrame(standard, `layout-${page}`), new RegExp(`^platform-layout-editor\\.html\\?channel=standard-cup&page=${page}&embedded=1$`));
+        assert.match(Profiles.broadcastTarget(standard, page), new RegExp(`^auction-live\\.html\\?channel=standard-cup&page=${page}$`));
+    }
 });
 
 test('BASIC uses the platform renderer with a dedicated dice team page', () => {
