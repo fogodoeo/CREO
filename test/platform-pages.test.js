@@ -625,6 +625,9 @@ test('broadcast control manages reusable banners, sponsors, and vendor logos', (
     assert.match(control, /value="team">그룹별 금액/);
     assert.match(control, /name="scoreboardId"/);
     assert.match(control, /data-open-banner-assets/);
+    assert.match(control, /배너를 저장하고 송출에 표시했습니다/);
+    assert.doesNotMatch(control, /name="page1BannerOn"/);
+    assert.doesNotMatch(control, /name="page2BannerOn"/);
     assert.match(control, /name="page1TickerInterval"/);
     assert.match(control, /name="page2TickerInterval"/);
     assert.match(control, /video\/quicktime/);
