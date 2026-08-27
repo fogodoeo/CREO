@@ -254,8 +254,10 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 14px;
-      background: rgba(0, 0, 0, 0.88);
+      padding: 24px;
+      text-align: center;
+      gap: 16px;
+      background: rgba(6, 8, 12, 0.95);
       z-index: 9999;
     }
 
@@ -269,6 +271,48 @@
     }
 
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Permission Help Card */
+    .perm-card {
+      display: none;
+      background: var(--card);
+      border: 1px solid rgba(255, 51, 102, 0.4);
+      border-radius: 18px;
+      padding: 20px;
+      max-width: 360px;
+      flex-direction: column;
+      gap: 12px;
+      text-align: left;
+    }
+
+    .perm-card h3 {
+      color: var(--pink);
+      font-size: 16px;
+      font-weight: 900;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .perm-card ol {
+      padding-left: 20px;
+      font-size: 13px;
+      color: #cbd5e1;
+      line-height: 1.6;
+    }
+
+    .perm-btn {
+      background: var(--green);
+      color: #000;
+      border: none;
+      padding: 12px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 900;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 6px;
+    }
   </style>
 </head>
 <body>
@@ -284,9 +328,21 @@
       <button class="hud-btn danger" onclick="stopNativeSession()">✕ 종료</button>
     </div>
 
+    <!-- Loading & Permission Handler -->
     <div id="loadingOverlay" class="loading-overlay">
-      <div class="spinner"></div>
+      <div class="spinner" id="loadingSpinner"></div>
       <p id="loadingText" style="font-size: 14px; font-weight: 700; color: #cbd5e1;">카메라 연결 중...</p>
+      
+      <!-- Permission Help Guide when Blocked -->
+      <div class="perm-card" id="permCard">
+        <h3>🔒 카메라 권한 차단 해제 안내</h3>
+        <ol>
+          <li>주소창 좌측의 <b>[🔒 자물쇠]</b> 또는 <b>[⚙️ 설정]</b> 터치</li>
+          <li><b>[권한]</b> ➔ <b>[카메라]</b>를 <b>[허용]</b>으로 변경</li>
+          <li>아래 <b>[다시 시도]</b> 버튼 터치</li>
+        </ol>
+        <button class="perm-btn" onclick="retryCamera()">✓ 권한 허용 후 다시 시도</button>
+      </div>
     </div>
 
     <video id="nativeVideo" class="native-video" autoplay playsinline muted></video>
@@ -364,6 +420,8 @@
     const hudDot = document.getElementById('hudDot');
     const loadingOverlay = document.getElementById('loadingOverlay');
     const loadingText = document.getElementById('loadingText');
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    const permCard = document.getElementById('permCard');
     const cameraControls = document.getElementById('cameraControls');
     const audioBtn = document.getElementById('audioBtn');
     const hudTop = document.getElementById('hudTop');
@@ -392,44 +450,28 @@
     // BULLETPROOF CAMERA ACQUISITION WITH 3-TIER FALLBACK
     // ─────────────────────────────────────────────────────────────
     async function acquireCameraStream(facing) {
-      // Tier 1: Back camera + Audio + 720p
+      // Direct user gesture triggered
       try {
         return await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: facing }, width: { ideal: 1280 }, height: { ideal: 720 } },
-          audio: true
+          video: { facingMode: facing ? { ideal: facing } : 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: false // Video only for max permission compatibility
         });
       } catch (e1) {
-        console.warn('Tier 1 failed (Audio/Resolution constraint), trying without audio...', e1);
-      }
-
-      // Tier 2: Back camera ONLY without audio (fixes mic permission conflict)
-      try {
+        console.warn('Fallback to any video camera...', e1);
         return await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: facing } },
+          video: true,
           audio: false
         });
-      } catch (e2) {
-        console.warn('Tier 2 failed (Facing mode constraint), trying universal video...', e2);
       }
-
-      // Tier 3: Universal fallback (Any available camera on device)
-      return await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: false
-      });
     }
 
     // ─────────────────────────────────────────────────────────────
     // 1. PURE NATIVE CAMERA PUSH (PHONE)
     // ─────────────────────────────────────────────────────────────
     async function startNativePhoneCam() {
-      // Check HTTPS Security Context
-      if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
-        alert('카메라 실행은 HTTPS 보안 연결에서만 작동합니다.\nhttps:// 로 접속해 주세요!');
-        return;
-      }
-
       showViewport('카메라 켜는 중...');
+      permCard.style.display = 'none';
+      loadingSpinner.style.display = 'block';
       cameraControls.style.display = 'flex';
       nativeVideo.muted = true;
 
@@ -463,14 +505,16 @@
           call.answer(localStream);
         });
 
-        currentPeer.on('error', (err) => {
-          console.warn('Peer:', err);
-        });
-
       } catch (err) {
-        alert(`카메라 실행 실패: ${err.name || err.message}\n브라우저 설정에서 카메라 권한을 [허용]해 주세요!`);
-        stopNativeSession();
+        console.error('Camera Error:', err);
+        loadingSpinner.style.display = 'none';
+        loadingText.textContent = '카메라 권한이 차단되어 있습니다.';
+        permCard.style.display = 'flex';
       }
+    }
+
+    function retryCamera() {
+      startNativePhoneCam();
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -478,6 +522,8 @@
     // ─────────────────────────────────────────────────────────────
     function startNativeTabletMonitor(isObsMode = false) {
       showViewport('방송 스트림 찾는 중...');
+      permCard.style.display = 'none';
+      loadingSpinner.style.display = 'block';
       cameraControls.style.display = 'none';
       nativeVideo.muted = false;
 
