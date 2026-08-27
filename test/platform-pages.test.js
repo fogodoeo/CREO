@@ -319,9 +319,9 @@ test('new CDCUP overlays and shipping retain compatibility with the established 
     assert.match(control, /name="page2VendorTagOn"/);
     assert.match(control, /name="page2BiddersOn"/);
     assert.match(control, /name="page2BiddersOpacity"/);
-    assert.match(control, /name="page2BiddersFontSize"/);
-    assert.match(control, /name="page2ItemFontSize"/);
-    assert.match(control, /name="page2BiddersPosition"/);
+    assert.match(control, /function ensureUnifiedLayoutSettings/);
+    assert.match(control, /위치·크기·폰트는 2P 배치에서 조절/);
+    assert.match(control, /next\.page2ItemFontSize=33;next\.page2BiddersFontSize=20/);
     assert.match(live, /function pageTwoBidders/);
     assert.match(live, /function bidAmountLabel\(value\)\{const amount=Number\(value\)\|\|0;/);
     assert.match(live, /bidLog:\[\{name:'입찰자',region:'지역',amount:10\}\]/);
@@ -390,10 +390,15 @@ test('new platform channels use the shared three-page arranger and CDCUP registr
     assert.match(editor, /broadcast-state/);
     assert.match(editor, /p3-board/);
     assert.match(editor, /p3-effect/);
+    assert.match(editor, /p3-banner/);
     assert.match(editor, /id="content"[^>]*>문구·내용/);
     assert.match(editor, /type:'creo-open-studio-view',view:'settings'/);
     assert.match(studio, /event\.data\?\.type==='creo-open-studio-view'/);
     assert.match(live, /dataset\.layoutSlot=slot/);
+    assert.match(live, /\[data-layout-slot\]\[data-layout-custom="1"\]>\*\{zoom:var\(--layout-font-scale,1\)\}/);
+    assert.doesNotMatch(live, /transform:none!important;zoom:var\(--layout-font-scale/);
+    assert.match(live, /state\.page3BannerOn=true/);
+    assert.match(live, /layout-banner-placeholder/);
     assert.match(live, /editorMode\)void refreshFull\(\)/);
     assert.match(runtime, /workspace:[\s\S]{0,120}path: '\/cdcup-index\.html'/);
     assert.match(legacyEntry, /channel-workspace\.html\?channel=/);
@@ -605,7 +610,7 @@ test('broadcast control manages reusable banners, sponsors, and vendor logos', (
     assert.match(live, /ticker-sponsors/);
     assert.match(live, /Math\.floor\(Date\.now\(\)\/6000\)/);
     assert.match(live, /function isVideoAsset\(url\)/);
-    assert.match(live, /muted autoplay loop playsinline preload="auto"/);
+    assert.match(live, /muted autoplay loop playsinline preload="metadata"/);
     assert.match(control, /crewartSampleAssets/);
     assert.doesNotMatch(control, /quiz-section|name="quizQuestion"|돌발 퀴즈/);
     assert.match(control, /value="vendor">업체별 금액/);

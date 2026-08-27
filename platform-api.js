@@ -185,9 +185,9 @@ function sanitizeBroadcastState(input = {}) {
     const itemFontSizeRaw = Number.parseInt(input.page2ItemFontSize, 10);
     const itemFontSize = Number.isFinite(itemFontSizeRaw) ? Math.max(16, Math.min(96, itemFontSizeRaw)) : 33;
     const allowedLayoutSlots = new Set([
-        'p1-hosts', 'p1-notice', 'p1-banner', 'p1-ticker',
-        'p2-header', 'p2-info', 'p2-bidders', 'p2-photo', 'p2-price', 'p2-sold', 'p2-banner', 'p2-ticker',
-        'p3-board', 'p3-effect'
+        'p1-brand', 'p1-page-label', 'p1-hosts', 'p1-notice', 'p1-banner', 'p1-ticker',
+        'p2-brand', 'p2-page-label', 'p2-header', 'p2-info', 'p2-bidders', 'p2-photo', 'p2-price', 'p2-sold', 'p2-banner', 'p2-ticker',
+        'p3-board', 'p3-effect', 'p3-banner'
     ]);
     const clampLayoutNumber = (value, min, max, fallback) => {
         const number = Number(value);
@@ -251,6 +251,8 @@ function sanitizeBroadcastState(input = {}) {
         page2BannerPosition: position(input.page2BannerPosition),
         page2TickerPosition: ['auto', 'top', 'bottom'].includes(input.page2TickerPosition) ? input.page2TickerPosition : 'auto',
         page3On: booleanValue(input.page3On, false),
+        page3BannerOn: booleanValue(input.page3BannerOn, false),
+        page3BannerUrl: cleanText(input.page3BannerUrl, 600),
         extraMode,
         scoreboardId: cleanText(input.scoreboardId, 64),
         page3Title: cleanText(input.page3Title || input.headline, 120),
@@ -1813,7 +1815,7 @@ function createPlatformApi({
                         .filter((asset) => asset.active !== false)
                         .filter((asset) => !requestedPage
                             || (requestedPage === 3
-                                ? asset.kind === 'dice'
+                                ? asset.kind === 'dice' || (asset.kind === 'banner' && (asset.page === 'all' || asset.page === '3'))
                                 : (asset.page === 'all' || asset.page === String(requestedPage))))
                         .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name, 'ko'))
                         .map(({ id, name, kind, page, targetName, imageUrl, linkUrl, sortOrder }) => ({ id, name, kind, page, targetName, imageUrl, linkUrl, sortOrder })),

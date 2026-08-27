@@ -796,6 +796,9 @@ test('page-scoped broadcast payloads keep PRISM overlays channel-local and compa
     await repository.upsertRecord('alpha', 'item', { id: 'active', lotNumber: 2, name: '진행', status: 'live', bidLog: [{ name: '입찰자', amount: 3 }] });
     await repository.upsertRecord('alpha', 'item', { id: 'sold', lotNumber: 3, name: '낙찰', status: 'sold', soldPrice: 100000 });
     await repository.upsertRecord('beta', 'item', { id: 'foreign', lotNumber: 1, name: '다른 채널', status: 'sold', soldPrice: 999999 });
+    await repository.upsertRecord('alpha', 'asset', { id: 'p1-banner', name: '1P 배너', kind: 'banner', page: '1', imageUrl: 'https://example.com/p1.mp4', active: true });
+    await repository.upsertRecord('alpha', 'asset', { id: 'p3-banner', name: '3P 배너', kind: 'banner', page: '3', imageUrl: 'https://example.com/p3.mp4', active: true });
+    await repository.upsertRecord('alpha', 'asset', { id: 'dice-1', name: '주사위 1', kind: 'dice', page: '3', targetName: '1', imageUrl: 'https://example.com/dice1.mp4', active: true });
     await call(api, 'PUT', '/api/platform/channels/alpha/broadcast-state', { activeItemId: 'active', mode: 'live' });
 
     const pageOne = await call(api, 'GET', '/api/platform/channels/alpha/broadcast?page=1', null, '');
@@ -806,6 +809,7 @@ test('page-scoped broadcast payloads keep PRISM overlays channel-local and compa
     assert.deepEqual(pageThree.json().items.map((item) => item.id).sort(), ['active', 'sold']);
     assert.equal(JSON.stringify(pageThree.json()).includes('foreign'), false);
     assert.equal(JSON.stringify(pageThree.json()).includes('large.webp'), false);
+    assert.deepEqual(pageThree.json().assets.map((asset) => asset.id).sort(), ['dice-1', 'p3-banner']);
 });
 
 test('CREWART operator can idempotently correct a wrongly randomized bidder house', async () => {
@@ -1313,11 +1317,13 @@ test('broadcast state stores independent 1P, 2P, and 3P overlay controls', async
         page2PricePosition: 'bottom-left', page2VendorTagOn: true, page2BiddersOn: true,
         page2BiddersOpacity: 87, page2BiddersFontSize: 26, page2ItemFontSize: 44, page2BiddersPosition: 'middle-left', page3On: true, extraMode: 'team', page3Title: '팀별 낙찰금액',
         page3BoardPosition: 'right', page3QuizPosition: 'bottom',
+        page3BannerOn: true, page3BannerUrl: 'https://example.com/page3.mp4',
         quizOn: true, quizStatus: 'open', quizQuestion: '첫 번째 문제',
         quizWinner: '참가자 A', quizAnswer: '정답',
         layoutPlacements: {
             'p1-hosts': { x: 9.5, y: 12, width: 42, height: 18, fontScale: 1.25 },
             'p3-effect': { x: -20, y: 120, width: 200, height: 1, fontScale: 9 },
+            'p3-banner': { x: 12, y: 70, width: 30, height: 20, fontScale: 1 },
             'unknown-slot': { x: 10, y: 10, width: 10, height: 10 }
         },
         ignoredSecret: 'must-not-persist'
@@ -1348,8 +1354,11 @@ test('broadcast state stores independent 1P, 2P, and 3P overlay controls', async
     assert.equal(state.quizStatus, 'open');
     assert.equal(state.quizQuestion, '첫 번째 문제');
     assert.equal(state.quizWinner, '참가자 A');
+    assert.equal(state.page3BannerOn, true);
+    assert.equal(state.page3BannerUrl, 'https://example.com/page3.mp4');
     assert.deepEqual(state.layoutPlacements['p1-hosts'], { x: 9.5, y: 12, width: 42, height: 18, fontScale: 1.25 });
     assert.deepEqual(state.layoutPlacements['p3-effect'], { x: 0, y: 96, width: 100, height: 4, fontScale: 2.5 });
+    assert.deepEqual(state.layoutPlacements['p3-banner'], { x: 12, y: 70, width: 30, height: 20, fontScale: 1 });
     assert.equal(state.layoutPlacements['unknown-slot'], undefined);
     assert.equal(state.ignoredSecret, undefined);
 });

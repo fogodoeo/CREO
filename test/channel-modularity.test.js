@@ -61,8 +61,9 @@ test('shared settings keep channel content overrides separate from profile struc
         broadcastDefaults: { notice: 'Academy live', page1Ticker: 'RGBY', page3Title: 'House cup' }
     });
     const contract = Profiles.settingsContract(academy);
-    assert.deepEqual(contract.shared.pages, ['1', '2']);
+    assert.deepEqual(contract.shared.pages, ['1', '2', '3']);
     assert.ok(contract.shared.sections.some(section => section.id === 'page1'));
+    assert.ok(contract.shared.sections.some(section => section.id === 'page3'));
     assert.equal(contract.page3.id, 'academy');
     const state = Profiles.defaultState(academy);
     assert.equal(state.notice, 'Academy live');
