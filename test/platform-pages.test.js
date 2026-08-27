@@ -411,6 +411,17 @@ test('new platform channels use the shared three-page arranger and CDCUP registr
     assert.match(legacyEntry, /channel-workspace\.html\?channel=/);
 });
 
+test('broadcast live updates reconcile changed regions without rebuilding the whole stage', () => {
+    const live = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-live.html'), 'utf8');
+    assert.match(live, /const renderSources=new WeakMap\(\)/);
+    assert.match(live, /function reconcileStage\(markup\)/);
+    assert.match(live, /renderSources\.get\(current\)!==source/);
+    assert.match(live, /reconcileRenderChildren\(current,next\)/);
+    assert.match(live, /releaseRenderMedia\(current\)/);
+    assert.match(live, /reconcileStage\(markup\)/);
+    assert.doesNotMatch(live, /stage\.innerHTML\s*=/);
+});
+
 test('print forms remain available inside the shared registration workspace without a duplicate home shortcut', () => {
     const home = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
     const workspace = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-workspace.html'), 'utf8');
