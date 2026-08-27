@@ -8,7 +8,8 @@ const ASSET_MIME_EXTENSIONS = Object.freeze({
     'image/jpeg': 'jpg',
     'image/png': 'png',
     'image/webp': 'webp',
-    'video/mp4': 'mp4'
+    'video/mp4': 'mp4',
+    'video/quicktime': 'mov'
 });
 
 function safePart(value) {

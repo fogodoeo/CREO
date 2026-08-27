@@ -466,7 +466,7 @@ test('a newly created channel stays isolated through registration, layout, live 
     assert.equal(workspace.json().broadcast.activeItemId, 'shared-item');
     assert.equal(broadcast.json().items[0].name, '신규 채널 개체');
     assert.equal(broadcast.json().state.page2Ticker, '신규 채널 자막');
-    assert.deepEqual(broadcast.json().state.layoutPlacements['p2-info'], { x: 10, y: 12, width: 45, height: 24, fontScale: 1.2 });
+    assert.deepEqual(broadcast.json().state.layoutPlacements['p2-info'], { x: 10, y: 12, width: 45, height: 24, fontScale: 1.2, opacity: 100, visible: true });
     assert.match(config.json().config['layout:p2'], /p2-info/);
     assert.equal(alphaWorkspace.json().items[0].name, '기존 채널 개체');
     assert.equal(alphaWorkspace.json().items[0].status, 'waiting');
@@ -1380,6 +1380,7 @@ test('broadcast state stores independent 1P, 2P, and 3P overlay controls', async
     const response = await call(api, 'PUT', '/api/platform/channels/alpha/broadcast-state', {
         activeItemId: 'item_1', mode: 'sold', page: 2,
         hostName1: '진행자', hostName3: '게스트', hostRole3: '전문가', page1TickerOn: false, page1BannerOn: true,
+        page1Ticker: '첫 안내\n둘째 안내', page1TickerInterval: 7, page2TickerInterval: 9,
         page1BannerUrl: 'https://example.com/banner.png', page1HostsPosition: 'bottom-left',
         page1TickerPosition: 'top', page2SoldOn: true, page2PhotoPosition: 'middle-right',
         page2PricePosition: 'bottom-left', page2ProgressOn: false, page2VendorTagOn: true, page2BiddersOn: true,
@@ -1389,7 +1390,7 @@ test('broadcast state stores independent 1P, 2P, and 3P overlay controls', async
         quizOn: true, quizStatus: 'open', quizQuestion: '첫 번째 문제',
         quizWinner: '참가자 A', quizAnswer: '정답',
         layoutPlacements: {
-            'p1-hosts': { x: 9.5, y: 12, width: 42, height: 18, fontScale: 1.25 },
+            'p1-hosts': { x: 9.5, y: 12, width: 42, height: 18, fontScale: 1.25, opacity: 72, visible: false },
             'p2-progress': { x: 4, y: 4, width: 18, height: 9, fontScale: 1.4 },
             'p3-effect': { x: -20, y: 120, width: 200, height: 1, fontScale: 9 },
             'p3-banner': { x: 12, y: 70, width: 30, height: 20, fontScale: 1 },
@@ -1403,6 +1404,9 @@ test('broadcast state stores independent 1P, 2P, and 3P overlay controls', async
     assert.equal(state.hostName3, '게스트');
     assert.equal(state.hostRole3, '전문가');
     assert.equal(state.page1TickerOn, false);
+    assert.equal(state.page1Ticker, '첫 안내\n둘째 안내');
+    assert.equal(state.page1TickerInterval, 7);
+    assert.equal(state.page2TickerInterval, 9);
     assert.equal(state.page1BannerOn, true);
     assert.equal(state.page1HostsPosition, 'bottom-left');
     assert.equal(state.page1TickerPosition, 'top');
@@ -1426,10 +1430,10 @@ test('broadcast state stores independent 1P, 2P, and 3P overlay controls', async
     assert.equal(state.quizWinner, '참가자 A');
     assert.equal(state.page3BannerOn, true);
     assert.equal(state.page3BannerUrl, 'https://example.com/page3.mp4');
-    assert.deepEqual(state.layoutPlacements['p1-hosts'], { x: 9.5, y: 12, width: 42, height: 18, fontScale: 1.25 });
-    assert.deepEqual(state.layoutPlacements['p2-progress'], { x: 4, y: 4, width: 18, height: 9, fontScale: 1.4 });
-    assert.deepEqual(state.layoutPlacements['p3-effect'], { x: 0, y: 96, width: 100, height: 4, fontScale: 2.5 });
-    assert.deepEqual(state.layoutPlacements['p3-banner'], { x: 12, y: 70, width: 30, height: 20, fontScale: 1 });
+    assert.deepEqual(state.layoutPlacements['p1-hosts'], { x: 9.5, y: 12, width: 42, height: 18, fontScale: 1.25, opacity: 72, visible: false });
+    assert.deepEqual(state.layoutPlacements['p2-progress'], { x: 4, y: 4, width: 18, height: 9, fontScale: 1.4, opacity: 100, visible: true });
+    assert.deepEqual(state.layoutPlacements['p3-effect'], { x: 0, y: 96, width: 100, height: 4, fontScale: 2.5, opacity: 100, visible: true });
+    assert.deepEqual(state.layoutPlacements['p3-banner'], { x: 12, y: 70, width: 30, height: 20, fontScale: 1, opacity: 100, visible: true });
     assert.equal(state.layoutPlacements['unknown-slot'], undefined);
     assert.equal(state.ignoredSecret, undefined);
 });

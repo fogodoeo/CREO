@@ -58,7 +58,7 @@ test('admin uploads an MP4 banner and receives its public URL', async () => {
     assert.deepEqual(saved[0].buffer, bytes);
 });
 
-test('banner uploads require admin auth and reject unsupported media', async () => {
+test('banner uploads require admin auth and accept MOV while rejecting unsupported media', async () => {
     const storage = { async put() { throw new Error('must not upload'); }, async localFile() { return null; } };
     const api = createBroadcastAssetApi({ storage, isAdmin: async () => false, logger: { error() {} } });
     let response = await call(api, 'POST', '/api/broadcast-assets/crewart', {
@@ -66,9 +66,16 @@ test('banner uploads require admin auth and reject unsupported media', async () 
     }, false);
     assert.equal(response.status, 401);
 
-    const adminApi = createBroadcastAssetApi({ storage, isAdmin: async () => true, logger: { error() {} } });
+    const saved = [];
+    const adminApi = createBroadcastAssetApi({ storage: { async put(...args) { saved.push(args); return { url: 'https://cdn.test/sample.mov' }; }, async localFile() { return null; } }, isAdmin: async () => true, logger: { error() {} } });
     response = await call(adminApi, 'POST', '/api/broadcast-assets/crewart', {
         mimeType: 'video/quicktime', dataBase64: Buffer.from('x').toString('base64')
+    });
+    assert.equal(response.status, 201);
+    assert.match(saved[0][1], /\.mov$/);
+    assert.equal(saved[0][3], 'video/quicktime');
+    response = await call(adminApi, 'POST', '/api/broadcast-assets/crewart', {
+        mimeType: 'application/pdf', dataBase64: Buffer.from('x').toString('base64')
     });
     assert.equal(response.status, 400);
 });

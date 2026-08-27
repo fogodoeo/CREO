@@ -185,14 +185,22 @@ function sanitizeBroadcastState(input = {}) {
     const itemFontSizeRaw = Number.parseInt(input.page2ItemFontSize, 10);
     const itemFontSize = Number.isFinite(itemFontSizeRaw) ? Math.max(16, Math.min(96, itemFontSizeRaw)) : 33;
     const allowedLayoutSlots = new Set([
-        'p1-brand', 'p1-page-label', 'p1-hosts', 'p1-notice', 'p1-banner', 'p1-ticker',
-        'p2-brand', 'p2-page-label', 'p2-progress', 'p2-header', 'p2-info', 'p2-bidders', 'p2-photo', 'p2-price', 'p2-sold', 'p2-banner', 'p2-ticker',
+        'p1-hosts', 'p1-banner', 'p1-ticker',
+        'p2-progress', 'p2-info', 'p2-bidders', 'p2-photo', 'p2-price', 'p2-sold', 'p2-banner', 'p2-ticker',
         'p3-board', 'p3-effect', 'p3-banner'
     ]);
     const clampLayoutNumber = (value, min, max, fallback) => {
         const number = Number(value);
         return Number.isFinite(number) ? Math.max(min, Math.min(max, number)) : fallback;
     };
+    const multilineText = (value, maxLength = 1200) => String(value ?? '')
+        .replace(/\r\n?/g, '\n')
+        .replace(/[\u0000-\u0009\u000b-\u001f\u007f]/g, ' ')
+        .split('\n')
+        .map((line) => line.replace(/\s+/g, ' ').trim())
+        .filter(Boolean)
+        .join('\n')
+        .slice(0, maxLength);
     const layoutPlacements = {};
     if (input.layoutPlacements && typeof input.layoutPlacements === 'object' && !Array.isArray(input.layoutPlacements)) {
         for (const [slot, raw] of Object.entries(input.layoutPlacements)) {
@@ -202,7 +210,9 @@ function sanitizeBroadcastState(input = {}) {
                 y: clampLayoutNumber(raw.y, 0, 96, 4),
                 width: clampLayoutNumber(raw.width, 4, 100, 40),
                 height: clampLayoutNumber(raw.height, 4, 100, 20),
-                fontScale: clampLayoutNumber(raw.fontScale, 0.5, 2.5, 1)
+                fontScale: clampLayoutNumber(raw.fontScale, 0.5, 2.5, 1),
+                opacity: clampLayoutNumber(raw.opacity, 0, 100, 100),
+                visible: raw.visible !== false
             };
         }
     }
@@ -223,7 +233,8 @@ function sanitizeBroadcastState(input = {}) {
         page1HostsOn: booleanValue(input.page1HostsOn),
         page1TickerOn: booleanValue(input.page1TickerOn),
         page1BannerOn: booleanValue(input.page1BannerOn, false),
-        page1Ticker: cleanText(input.page1Ticker || input.ticker, 220),
+        page1Ticker: multilineText(input.page1Ticker || input.ticker, 1200),
+        page1TickerInterval: clampLayoutNumber(input.page1TickerInterval, 1, 30, 5),
         page1BannerUrl: cleanText(input.page1BannerUrl, 600),
         page1HostsPosition: position(input.page1HostsPosition),
         page1NoticePosition: position(input.page1NoticePosition),
@@ -242,7 +253,8 @@ function sanitizeBroadcastState(input = {}) {
         page2SoldOn: booleanValue(input.page2SoldOn),
         page2TickerOn: booleanValue(input.page2TickerOn),
         page2BannerOn: booleanValue(input.page2BannerOn, false),
-        page2Ticker: cleanText(input.page2Ticker || input.ticker, 220),
+        page2Ticker: multilineText(input.page2Ticker || input.ticker, 1200),
+        page2TickerInterval: clampLayoutNumber(input.page2TickerInterval, 1, 30, 5),
         page2BannerUrl: cleanText(input.page2BannerUrl, 600),
         page2HeaderPosition: position(input.page2HeaderPosition),
         page2InfoPosition: position(input.page2InfoPosition),

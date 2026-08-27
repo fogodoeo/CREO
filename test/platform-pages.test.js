@@ -226,8 +226,8 @@ test('operator UI examples do not embed real tournament participant names', () =
 test('the new broadcast implements three independent camera overlays', () => {
     const live = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-live.html'), 'utf8');
     const metal = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-skin-metal.css'), 'utf8');
-    assert.match(live, /1P · HOST/);
-    assert.match(live, /2P · ITEM/);
+    assert.doesNotMatch(live, /1P · HOST/);
+    assert.doesNotMatch(live, /2P · ITEM/);
     assert.match(live, /LIVE AUCTION TOTAL/);
     assert.match(live, /function pageOne/);
     assert.match(live, /function pageTwo/);
@@ -320,7 +320,7 @@ test('new CDCUP overlays and shipping retain compatibility with the established 
     assert.match(control, /name="page2BiddersOn"/);
     assert.match(control, /name="page2BiddersOpacity"/);
     assert.match(control, /function ensureUnifiedLayoutSettings/);
-    assert.match(control, /위치·크기·폰트는 2P 배치에서 조절/);
+    assert.match(control, /위치·크기·전체 투명도는 위 배치 화면에서 조절/);
     assert.match(control, /next\.page2ItemFontSize=33;next\.page2BiddersFontSize=20/);
     assert.match(live, /function pageTwoBidders/);
     assert.match(live, /function bidAmountLabel\(value\)\{const amount=Number\(value\)\|\|0;/);
@@ -391,7 +391,10 @@ test('new platform channels use the shared three-page arranger and CDCUP registr
     assert.match(editor, /p3-board/);
     assert.match(editor, /p3-effect/);
     assert.match(editor, /p3-banner/);
-    assert.match(editor, /id="content"[^>]*>아래 설정/);
+    assert.match(editor, /id="content"[^>]*>내용 설정/);
+    assert.match(editor, /id="opacity"/);
+    assert.match(editor, /id="visible"/);
+    assert.match(editor, /id="banners"/);
     assert.match(editor, /id="settings-frame"/);
     assert.match(editor, /auction-control\.html\?channel=.*compact=1/);
     assert.match(editor, /creo-broadcast-settings-saved/);
@@ -611,7 +614,8 @@ test('broadcast control manages reusable banners, sponsors, and vendor logos', (
     }
     assert.match(live, /function pageAssets/);
     assert.match(live, /function vendorLogo/);
-    assert.match(live, /ticker-sponsors/);
+    assert.doesNotMatch(live, /ticker-sponsors/);
+    assert.match(live, /split\(\/\\r\?\\n\/\)/);
     assert.match(live, /Math\.floor\(Date\.now\(\)\/6000\)/);
     assert.match(live, /function isVideoAsset\(url\)/);
     assert.match(live, /muted autoplay loop playsinline preload="metadata"/);
@@ -620,9 +624,10 @@ test('broadcast control manages reusable banners, sponsors, and vendor logos', (
     assert.match(control, /value="vendor">업체별 금액/);
     assert.match(control, /value="team">그룹별 금액/);
     assert.match(control, /name="scoreboardId"/);
-    for (const positionField of ['page1HostsPosition', 'page1NoticePosition', 'page1BannerPosition', 'page2HeaderPosition', 'page2InfoPosition', 'page2PhotoPosition', 'page2PricePosition', 'page2SoldPosition', 'page2BannerPosition', 'page3BoardPosition']) {
-        assert.match(control, new RegExp(`name="${positionField}"`));
-    }
+    assert.match(control, /data-open-banner-assets/);
+    assert.match(control, /name="page1TickerInterval"/);
+    assert.match(control, /name="page2TickerInterval"/);
+    assert.match(control, /video\/quicktime/);
     assert.match(control, /function updatePositionWarnings/);
     assert.match(control, /auction-transition/);
     assert.match(live, /function scoreboardRows/);

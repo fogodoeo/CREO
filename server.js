@@ -87,6 +87,7 @@ const CONTENT_TYPES = {
     '.map': 'application/json; charset=utf-8',
     '.md': 'text/markdown; charset=utf-8',
     '.mp4': 'video/mp4',
+    '.mov': 'video/quicktime',
     '.ogg': 'audio/ogg',
     '.pdf': 'application/pdf',
     '.png': 'image/png',

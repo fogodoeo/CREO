@@ -62,7 +62,7 @@ function createBroadcastAssetApi({ storage, isAdmin, logger = console } = {}) {
                 const body = await readJson(req);
                 const mimeType = String(body.mimeType || '').toLowerCase();
                 const extension = ASSET_MIME_EXTENSIONS[mimeType];
-                if (!extension) throw Object.assign(new Error('이미지 또는 MP4만 업로드할 수 있습니다.'), { status: 400 });
+                if (!extension) throw Object.assign(new Error('이미지, MP4 또는 MOV만 업로드할 수 있습니다.'), { status: 400 });
                 const buffer = Buffer.from(String(body.dataBase64 || ''), 'base64');
                 if (!buffer.length) throw Object.assign(new Error('업로드할 파일이 없습니다.'), { status: 400 });
                 if (buffer.length > FILE_LIMIT) throw Object.assign(new Error('파일은 8MB 이하여야 합니다.'), { status: 413 });
