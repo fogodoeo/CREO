@@ -111,6 +111,7 @@
       gap: 10px;
       transition: all 0.18s ease;
       user-select: none;
+      text-decoration: none;
     }
 
     .btn:active {
@@ -215,28 +216,28 @@
       </div>
     </div>
 
-    <!-- 4 Clean Giant Buttons -->
+    <!-- 4 Clean Giant Buttons (100% Zero-Step Instant Autostart) -->
     <div class="grid">
       
-      <!-- 1. Phone Camera (720p / 30fps / Back Cam / Universal) -->
+      <!-- 1. Phone Camera: Bypasses ALL menus, starts back camera 720p instantly -->
       <div class="btn green" onclick="launchPhoneCam()">
         <div class="icon">📱</div>
         <div class="title">폰 카메라 송출</div>
       </div>
 
-      <!-- 2. Tablet Monitor (Direct Native 0s View) -->
+      <!-- 2. Tablet Monitor: Bypasses ALL menus, plays video immediately -->
       <div class="btn cyan" onclick="launchTabletView()">
         <div class="icon">📲</div>
         <div class="title">태블릿 모니터</div>
       </div>
 
-      <!-- 3. PC Virtual Cam Push -->
+      <!-- 3. PC Virtual Cam Push: Starts PC stream instantly -->
       <div class="btn purple" onclick="launchPcPush()">
         <div class="icon">🖥️</div>
         <div class="title">PC 화면 송출</div>
       </div>
 
-      <!-- 4. OBS Link Copy -->
+      <!-- 4. OBS Link Copy: 1-Click Copy -->
       <div class="btn gold" onclick="copyObsCamUrl()">
         <div class="icon">📋</div>
         <div class="title">OBS 링크 복사</div>
@@ -250,7 +251,7 @@
         <div class="qr-img"><canvas id="qrPhone"></canvas></div>
         <div class="qr-text">
           <h4>폰 카메라 QR</h4>
-          <span>스캔 시 송출</span>
+          <span>스캔 즉시 송출</span>
         </div>
       </div>
 
@@ -258,7 +259,7 @@
         <div class="qr-img"><canvas id="qrTablet"></canvas></div>
         <div class="qr-text">
           <h4>태블릿 QR</h4>
-          <span>스캔 시 수신</span>
+          <span>스캔 즉시 재생</span>
         </div>
       </div>
     </div>
@@ -274,17 +275,22 @@
       return (chInput.value.trim() || 'ongdong').toLowerCase();
     }
 
-    // 720p Stable & Universal URLs
+    // 100% ZERO-STEP AUTOSTART URLS:
+    // &webcam: Tells VDO.Ninja to select webcam immediately (skips source selection screen)
+    // &autostart: Immediately activates without showing start prompt
+    // &facing=back: Automatically selects back/rear environment camera
+    // &cleanoutput: Strips away all settings menus/UI
+    // &quality=2 &fps=30: 720p 30fps ultra stable
     function getPhoneCamUrl() {
-      return `https://vdo.ninja/?push=${getCh()}_cam&facing=back&quality=2&fps=30&codec=h264&buffer=0&autostart`;
+      return `https://vdo.ninja/?push=${getCh()}_cam&webcam&facing=back&quality=2&fps=30&codec=h264&buffer=0&autostart&cleanoutput`;
     }
 
     function getTabletViewUrl() {
-      return `https://vdo.ninja/?view=${getCh()}_monitor&cleanoutput&buffer=0&cover&autoplay`;
+      return `https://vdo.ninja/?view=${getCh()}_monitor&autoplay&cleanoutput&buffer=0&cover`;
     }
 
     function getPcPushUrl() {
-      return `https://vdo.ninja/?push=${getCh()}_monitor&quality=2&fps=30&codec=h264&buffer=0&autostart`;
+      return `https://vdo.ninja/?push=${getCh()}_monitor&webcam&quality=2&fps=30&codec=h264&buffer=0&autostart&cleanoutput`;
     }
 
     function getObsCamUrl() {
@@ -299,7 +305,7 @@
 
     chInput.addEventListener('input', updateQrs);
 
-    // Direct Instant Launch Actions
+    // Instant One-Click Launchers
     function launchPhoneCam() {
       window.location.href = getPhoneCamUrl();
     }
