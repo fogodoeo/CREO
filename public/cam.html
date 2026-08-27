@@ -3,23 +3,21 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>CREOK LIVE CAM — 원클릭 무선 방송 & 모니터링 시스템</title>
+  <title>CREOK CAM</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800;900&family=Pretendard:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;900&family=Pretendard:wght@600;800;900&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
   
   <style>
     :root {
-      --bg-dark: #07090e;
-      --card-bg: rgba(15, 20, 32, 0.88);
-      --card-border: rgba(255, 255, 255, 0.12);
-      --neon-green: #00e676;
-      --neon-cyan: #00d2ff;
-      --neon-purple: #9d4edd;
-      --gold: #ffc107;
-      --text-main: #ffffff;
-      --text-muted: #8e9bb0;
+      --bg: #06080c;
+      --card: rgba(16, 21, 32, 0.9);
+      --border: rgba(255, 255, 255, 0.1);
+      --green: #00e676;
+      --cyan: #00d2ff;
+      --purple: #a855f7;
+      --gold: #f59e0b;
     }
 
     * {
@@ -27,120 +25,58 @@
       margin: 0;
       padding: 0;
       -webkit-tap-highlight-color: transparent;
+      font-family: 'Pretendard', sans-serif;
     }
 
     body {
-      background-color: var(--bg-dark);
-      color: var(--text-main);
-      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+      background: var(--bg);
+      color: #fff;
       min-height: 100vh;
       display: flex;
-      flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 20px 16px;
-      position: relative;
+      padding: 16px;
     }
 
-    /* Ambient Spotlight Background */
-    body::before {
-      content: '';
-      position: absolute;
-      width: 650px;
-      height: 650px;
-      background: radial-gradient(circle, rgba(0, 230, 118, 0.14) 0%, rgba(0, 210, 255, 0.06) 45%, transparent 70%);
-      top: -180px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 0;
-      pointer-events: none;
-    }
-
-    .container {
+    .wrap {
       width: 100%;
-      max-width: 640px;
-      z-index: 1;
+      max-width: 480px;
       display: flex;
       flex-direction: column;
-      gap: 18px;
+      gap: 14px;
     }
 
-    /* Header */
-    .header {
-      text-align: center;
-      margin-bottom: 4px;
-    }
-
-    .brand-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: rgba(0, 230, 118, 0.12);
-      border: 1px solid rgba(0, 230, 118, 0.35);
-      padding: 6px 16px;
-      border-radius: 20px;
-      font-size: 13px;
-      font-weight: 800;
-      color: var(--neon-green);
-      letter-spacing: 0.5px;
-      margin-bottom: 12px;
-      text-transform: uppercase;
-    }
-
-    .pulse-dot {
-      width: 8px;
-      height: 8px;
-      background: var(--neon-green);
-      border-radius: 50%;
-      box-shadow: 0 0 10px var(--neon-green);
-      animation: pulse 1.8s infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.4; transform: scale(0.8); }
-    }
-
-    .header h1 {
-      font-family: 'Outfit', sans-serif;
-      font-size: 34px;
-      font-weight: 900;
-      letter-spacing: -0.5px;
-      background: linear-gradient(135deg, #ffffff 40%, var(--neon-cyan) 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      margin-bottom: 4px;
-    }
-
-    .header p {
-      color: var(--text-muted);
-      font-size: 14px;
-      font-weight: 600;
-    }
-
-    /* Channel Settings Bar */
-    .channel-box {
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 16px;
-      padding: 14px 18px;
+    /* Top Bar */
+    .top-bar {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      backdrop-filter: blur(12px);
+      padding: 6px 4px;
     }
 
-    .channel-left {
+    .logo {
+      font-family: 'Outfit', sans-serif;
+      font-size: 24px;
+      font-weight: 900;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #fff, var(--cyan));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .channel-wrap {
       display: flex;
       align-items: center;
-      gap: 10px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 6px 12px;
+      gap: 4px;
     }
 
-    .channel-label {
-      font-size: 12px;
-      color: var(--text-muted);
-      font-weight: 700;
-      text-transform: uppercase;
+    .channel-wrap span {
+      color: #64748b;
+      font-weight: 800;
     }
 
     .channel-input {
@@ -148,248 +84,120 @@
       border: none;
       color: #fff;
       font-family: 'Outfit', sans-serif;
-      font-size: 18px;
+      font-size: 15px;
       font-weight: 800;
+      width: 90px;
       outline: none;
-      width: 150px;
-      border-bottom: 2px dashed rgba(255, 255, 255, 0.25);
-      transition: border-color 0.2s;
     }
 
-    .channel-input:focus {
-      border-bottom-color: var(--neon-cyan);
-    }
-
-    /* Main Action Flow (1. Phone Push / 2. Tablet Monitor) */
-    .section-title {
-      font-size: 13px;
-      font-weight: 800;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      margin-bottom: -6px;
-      margin-left: 4px;
-    }
-
-    .action-grid {
+    /* 4 Giant Action Buttons */
+    .grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 14px;
+      gap: 10px;
     }
 
-    @media (max-width: 520px) {
-      .action-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    .action-btn {
-      background: var(--card-bg);
-      border: 2px solid var(--card-border);
-      border-radius: 20px;
-      padding: 22px 18px;
+    .btn {
+      background: var(--card);
+      border: 2px solid var(--border);
+      border-radius: 18px;
+      padding: 20px 14px;
       cursor: pointer;
       display: flex;
       flex-direction: column;
-      align-items: flex-start;
-      gap: 12px;
-      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-      position: relative;
-      overflow: hidden;
-      backdrop-filter: blur(16px);
-      text-decoration: none;
-      color: inherit;
-    }
-
-    .action-btn::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(circle at center, rgba(255,255,255,0.08) 0%, transparent 70%);
-      opacity: 0;
-      transition: opacity 0.3s;
-    }
-
-    .action-btn:hover::after {
-      opacity: 1;
-    }
-
-    /* Phone Cam Push Button */
-    .action-btn.cam-push {
-      border-color: rgba(0, 230, 118, 0.35);
-    }
-    .action-btn.cam-push:hover {
-      transform: translateY(-4px);
-      border-color: var(--neon-green);
-      box-shadow: 0 12px 30px rgba(0, 230, 118, 0.25);
-    }
-    .action-btn.cam-push .icon-circle {
-      background: linear-gradient(135deg, rgba(0, 230, 118, 0.25), rgba(0, 230, 118, 0.05));
-      border: 1px solid var(--neon-green);
-      color: var(--neon-green);
-    }
-
-    /* Tablet Monitor View Button */
-    .action-btn.tablet-view {
-      border-color: rgba(0, 210, 255, 0.35);
-    }
-    .action-btn.tablet-view:hover {
-      transform: translateY(-4px);
-      border-color: var(--neon-cyan);
-      box-shadow: 0 12px 30px rgba(0, 210, 255, 0.25);
-    }
-    .action-btn.tablet-view .icon-circle {
-      background: linear-gradient(135deg, rgba(0, 210, 255, 0.25), rgba(0, 210, 255, 0.05));
-      border: 1px solid var(--neon-cyan);
-      color: var(--neon-cyan);
-    }
-
-    /* PC Program Push Button */
-    .action-btn.pc-push {
-      border-color: rgba(157, 78, 221, 0.35);
-    }
-    .action-btn.pc-push:hover {
-      transform: translateY(-4px);
-      border-color: var(--neon-purple);
-      box-shadow: 0 12px 30px rgba(157, 78, 221, 0.25);
-    }
-    .action-btn.pc-push .icon-circle {
-      background: linear-gradient(135deg, rgba(157, 78, 221, 0.25), rgba(157, 78, 221, 0.05));
-      border: 1px solid var(--neon-purple);
-      color: var(--neon-purple);
-    }
-
-    /* OBS Cam View Button */
-    .action-btn.obs-view {
-      border-color: rgba(255, 193, 7, 0.35);
-    }
-    .action-btn.obs-view:hover {
-      transform: translateY(-4px);
-      border-color: var(--gold);
-      box-shadow: 0 12px 30px rgba(255, 193, 7, 0.25);
-    }
-    .action-btn.obs-view .icon-circle {
-      background: linear-gradient(135deg, rgba(255, 193, 7, 0.25), rgba(255, 193, 7, 0.05));
-      border: 1px solid var(--gold);
-      color: var(--gold);
-    }
-
-    .btn-top {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      width: 100%;
-    }
-
-    .icon-circle {
-      width: 52px;
-      height: 52px;
-      border-radius: 16px;
-      display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 24px;
+      text-align: center;
+      gap: 10px;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    .badge-pill {
-      font-size: 11px;
-      font-weight: 800;
-      padding: 4px 10px;
-      border-radius: 10px;
-      text-transform: uppercase;
+    .btn:active {
+      transform: scale(0.96);
     }
 
-    .cam-push .badge-pill { background: rgba(0, 230, 118, 0.15); color: var(--neon-green); }
-    .tablet-view .badge-pill { background: rgba(0, 210, 255, 0.15); color: var(--neon-cyan); }
-    .pc-push .badge-pill { background: rgba(157, 78, 221, 0.15); color: var(--neon-purple); }
-    .obs-view .badge-pill { background: rgba(255, 193, 7, 0.15); color: var(--gold); }
+    .btn .icon {
+      font-size: 32px;
+      line-height: 1;
+    }
 
-    .btn-text h3 {
-      font-size: 19px;
+    .btn .title {
+      font-size: 17px;
       font-weight: 900;
-      color: #fff;
-      margin-bottom: 4px;
+      letter-spacing: -0.3px;
     }
 
-    .btn-text p {
-      font-size: 13px;
-      color: var(--text-muted);
-      line-height: 1.4;
-    }
+    .btn.green { border-color: rgba(0, 230, 118, 0.35); }
+    .btn.green:hover, .btn.green:active { border-color: var(--green); background: rgba(0, 230, 118, 0.08); }
+    .btn.green .title { color: var(--green); }
 
-    /* Dual QR Pairing Grid */
-    .qr-pair-grid {
+    .btn.cyan { border-color: rgba(0, 210, 255, 0.35); }
+    .btn.cyan:hover, .btn.cyan:active { border-color: var(--cyan); background: rgba(0, 210, 255, 0.08); }
+    .btn.cyan .title { color: var(--cyan); }
+
+    .btn.purple { border-color: rgba(168, 85, 247, 0.35); }
+    .btn.purple:hover, .btn.purple:active { border-color: var(--purple); background: rgba(168, 85, 247, 0.08); }
+    .btn.purple .title { color: var(--purple); }
+
+    .btn.gold { border-color: rgba(245, 158, 11, 0.35); }
+    .btn.gold:hover, .btn.gold:active { border-color: var(--gold); background: rgba(245, 158, 11, 0.08); }
+    .btn.gold .title { color: var(--gold); }
+
+    /* Compact QR Grid */
+    .qr-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 14px;
+      gap: 10px;
     }
 
-    @media (max-width: 520px) {
-      .qr-pair-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    .qr-card {
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 18px;
-      padding: 16px;
+    .qr-box {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 12px;
       display: flex;
       align-items: center;
-      gap: 14px;
-      backdrop-filter: blur(12px);
+      gap: 10px;
+      cursor: pointer;
     }
 
-    .qr-wrap {
+    .qr-img {
       background: #fff;
-      padding: 6px;
-      border-radius: 12px;
-      width: 76px;
-      height: 76px;
+      padding: 4px;
+      border-radius: 8px;
+      width: 58px;
+      height: 58px;
+      flex-shrink: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      flex-shrink: 0;
     }
 
-    .qr-wrap canvas {
+    .qr-img canvas {
       width: 100% !important;
       height: 100% !important;
     }
 
-    .qr-desc h4 {
-      font-size: 14px;
+    .qr-text {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .qr-text h4 {
+      font-size: 13px;
       font-weight: 800;
       color: #fff;
-      margin-bottom: 2px;
     }
 
-    .qr-desc p {
+    .qr-text span {
       font-size: 11px;
-      color: var(--text-muted);
-      line-height: 1.3;
-      margin-bottom: 6px;
+      color: #64748b;
+      font-weight: 600;
     }
 
-    .tiny-btn {
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      color: #fff;
-      padding: 4px 8px;
-      border-radius: 6px;
-      font-size: 11px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .tiny-btn:hover {
-      background: rgba(255, 255, 255, 0.2);
-    }
-
-    /* Fullscreen Player Container */
-    .stream-frame-container {
+    /* Fullscreen View Container */
+    .fullscreen-box {
       display: none;
       position: fixed;
       inset: 0;
@@ -399,252 +207,172 @@
       z-index: 9999;
     }
 
-    .stream-iframe {
+    .fullscreen-box iframe {
       width: 100%;
       height: 100%;
       border: none;
     }
 
-    .exit-btn {
+    .close-btn {
       position: absolute;
-      top: 14px;
-      right: 14px;
-      background: rgba(10, 15, 25, 0.85);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      top: 12px;
+      right: 12px;
+      background: rgba(0,0,0,0.8);
+      border: 1px solid rgba(255,255,255,0.2);
       color: #fff;
-      padding: 8px 14px;
-      border-radius: 20px;
+      padding: 6px 12px;
+      border-radius: 16px;
       font-size: 12px;
       font-weight: 800;
       cursor: pointer;
-      backdrop-filter: blur(10px);
       z-index: 10000;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-    }
-
-    .exit-btn:hover {
-      background: rgba(255, 51, 102, 0.9);
-      border-color: var(--neon-pink);
     }
   </style>
 </head>
 <body>
 
-  <!-- Fullscreen Iframe for Tablet & OBS Monitoring -->
-  <div id="streamContainer" class="stream-frame-container">
-    <button class="exit-btn" onclick="exitStreamMode()">✕ 메인 메뉴로</button>
-    <iframe id="streamIframe" class="stream-iframe" allow="camera; microphone; display-capture; autoplay" allowfullscreen></iframe>
+  <!-- Fullscreen Player for Tablet/OBS -->
+  <div id="fullView" class="fullscreen-box">
+    <button class="close-btn" onclick="closeFullView()">✕ 닫기</button>
+    <iframe id="streamIframe" allow="camera; microphone; display-capture; autoplay" allowfullscreen></iframe>
   </div>
 
-  <div class="container" id="mainContainer">
+  <div class="wrap" id="mainWrap">
     
-    <!-- Header -->
-    <header class="header">
-      <div class="brand-badge">
-        <span class="pulse-dot"></span>
-        CREOK 3-WAY BROADCAST ENGINE
+    <!-- Top Bar -->
+    <div class="top-bar">
+      <div class="logo">CREOK CAM</div>
+      <div class="channel-wrap">
+        <span>#</span>
+        <input type="text" id="channelInput" class="channel-input" value="ongdong" placeholder="채널">
       </div>
-      <h1>ONE-CLICK CAM</h1>
-      <p>0.05초 초저지연 스마트폰 무선 카메라 &amp; 태블릿 모니터링</p>
-    </header>
-
-    <!-- Channel Setting -->
-    <div class="channel-box">
-      <div class="channel-left">
-        <span class="channel-label">방송 채널</span>
-        <input type="text" id="channelInput" class="channel-input" value="ongdong" placeholder="채널명">
-      </div>
-      <button class="tiny-btn" onclick="alert('채널명이 실시간 적용되었습니다!')">
-        ✓ 채널 고정
-      </button>
     </div>
 
-    <!-- Section 1: Main 1-Click Operations -->
-    <span class="section-title">⚡ 1초 원클릭 실행 (딸깍 버튼)</span>
-    <div class="action-grid">
+    <!-- 4 Clean Giant Buttons -->
+    <div class="grid">
       
-      <!-- 1. Phone Camera Push (Forces Back Camera + Max Quality + Zero Delay) -->
-      <div class="action-btn cam-push" onclick="startPhonePush()">
-        <div class="btn-top">
-          <div class="icon-circle">📱</div>
-          <span class="badge-pill">스마트폰 전용</span>
-        </div>
-        <div class="btn-text">
-          <h3>후면 카메라 송출</h3>
-          <p>폰 후면 4K 카메라로 게코 초근접 무선 송출 (딜레이 0.05초)</p>
-        </div>
+      <!-- 1. Phone Camera (720p / 30fps / Back Cam / No Overheat) -->
+      <div class="btn green" onclick="launchPhoneCam()">
+        <div class="icon">📱</div>
+        <div class="title">폰 카메라 송출</div>
       </div>
 
-      <!-- 2. Tablet Monitor View (0 Delay Final Program Feed) -->
-      <div class="action-btn tablet-view" onclick="startTabletView()">
-        <div class="btn-top">
-          <div class="icon-circle">📲</div>
-          <span class="badge-pill">태블릿 전용</span>
-        </div>
-        <div class="btn-text">
-          <h3>태블릿 모니터링</h3>
-          <p>사촌형/패널용 0.05초 실시간 최종 완성 화면 모니터링</p>
-        </div>
+      <!-- 2. Tablet Monitor (0s Delay) -->
+      <div class="btn cyan" onclick="launchTabletView()">
+        <div class="icon">📲</div>
+        <div class="title">태블릿 모니터</div>
       </div>
 
-      <!-- 3. PC Program Feed Push (OBS Virtual Cam -> Tablet) -->
-      <div class="action-btn pc-push" onclick="startPcProgramPush()">
-        <div class="btn-top">
-          <div class="icon-circle">🖥️</div>
-          <span class="badge-pill">PC 본체 전용</span>
-        </div>
-        <div class="btn-text">
-          <h3>PC 화면 송출 (가상카메라)</h3>
-          <p>프리즘 완성 화면을 태블릿으로 무선 전송 (가상카메라/화면공유)</p>
-        </div>
+      <!-- 3. PC Virtual Cam Push -->
+      <div class="btn purple" onclick="launchPcPush()">
+        <div class="icon">🖥️</div>
+        <div class="title">PC 화면 송출</div>
       </div>
 
-      <!-- 4. OBS Camera View (Copy Link for OBS Browser Source) -->
-      <div class="action-btn obs-view" onclick="copyObsCamLink()">
-        <div class="btn-top">
-          <div class="icon-circle">📺</div>
-          <span class="badge-pill">OBS 복사용</span>
-        </div>
-        <div class="btn-text">
-          <h3>OBS 카메라 링크 복사</h3>
-          <p>프리즘/OBS 브라우저 소스에 넣을 게코 카메라 수신 URL</p>
-        </div>
+      <!-- 4. OBS Link Copy -->
+      <div class="btn gold" onclick="copyObsCamUrl()">
+        <div class="icon">📋</div>
+        <div class="title">OBS 링크 복사</div>
       </div>
 
     </div>
 
-    <!-- Section 2: Dual QR Pairing Section -->
-    <span class="section-title">📲 원터치 QR 스캔 페어링</span>
-    <div class="qr-pair-grid">
-      
-      <!-- QR 1: Phone Push QR -->
-      <div class="qr-card">
-        <div class="qr-wrap">
-          <canvas id="qrPhonePush"></canvas>
-        </div>
-        <div class="qr-desc">
-          <h4>📱 스마트폰 카메라 QR</h4>
-          <p>폰으로 스캔 시 후면 카메라 즉시 송출</p>
-          <button class="tiny-btn" onclick="copyPhonePushUrl()">🔗 링크 복사</button>
+    <!-- Compact Dual QR Grid -->
+    <div class="qr-grid">
+      <div class="qr-box" onclick="launchPhoneCam()">
+        <div class="qr-img"><canvas id="qrPhone"></canvas></div>
+        <div class="qr-text">
+          <h4>폰 카메라 QR</h4>
+          <span>스캔 시 송출</span>
         </div>
       </div>
 
-      <!-- QR 2: Tablet View QR -->
-      <div class="qr-card">
-        <div class="qr-wrap">
-          <canvas id="qrTabletView"></canvas>
-        </div>
-        <div class="qr-desc">
-          <h4>📲 태블릿 모니터 QR</h4>
-          <p>태블릿으로 스캔 시 0초 모니터 즉시 수신</p>
-          <button class="tiny-btn" onclick="copyTabletViewUrl()">🔗 링크 복사</button>
+      <div class="qr-box" onclick="launchTabletView()">
+        <div class="qr-img"><canvas id="qrTablet"></canvas></div>
+        <div class="qr-text">
+          <h4>태블릿 QR</h4>
+          <span>스캔 시 수신</span>
         </div>
       </div>
-
     </div>
 
   </div>
 
   <script>
-    const channelInput = document.getElementById('channelInput');
-    const qrPhonePush = document.getElementById('qrPhonePush');
-    const qrTabletView = document.getElementById('qrTabletView');
-    const mainContainer = document.getElementById('mainContainer');
-    const streamContainer = document.getElementById('streamContainer');
+    const chInput = document.getElementById('channelInput');
+    const qrPhone = document.getElementById('qrPhone');
+    const qrTablet = document.getElementById('qrTablet');
+    const mainWrap = document.getElementById('mainWrap');
+    const fullView = document.getElementById('fullView');
     const streamIframe = document.getElementById('streamIframe');
 
-    // 1. URLs Generation
-    function getChannel() {
-      return (channelInput.value.trim() || 'ongdong').toLowerCase();
+    function getCh() {
+      return (chInput.value.trim() || 'ongdong').toLowerCase();
     }
 
-    // Phone Camera Push: Forces Back camera (&facing=back), Ultra Quality (&quality=0&fps=60&scale=100), Zero Delay (&buffer=0), H.264
-    function getPhonePushUrl() {
-      const ch = getChannel();
-      return `https://vdo.ninja/?push=${ch}_cam&facing=back&quality=0&fps=60&scale=100&codec=h264&buffer=0&webgl&autostart`;
+    // 720p Stable & Universal (No Camera Overconstrained Error)
+    function getPhoneCamUrl() {
+      return `https://vdo.ninja/?push=${getCh()}_cam&facing=back&quality=2&fps=30&codec=h264&buffer=0&autostart`;
     }
 
-    // OBS Gecko Camera View: Receives phone camera clean
-    function getObsCamViewUrl() {
-      const ch = getChannel();
-      return `https://vdo.ninja/?view=${ch}_cam&cleanoutput&buffer=0&cover`;
-    }
-
-    // PC Program Feed Push: Pushes PC OBS Virtual Cam / Screen to Tablet
-    function getPcProgramPushUrl() {
-      const ch = getChannel();
-      return `https://vdo.ninja/?push=${ch}_monitor&quality=0&fps=60&scale=100&codec=h264&buffer=0&webgl&autostart`;
-    }
-
-    // Tablet Monitor View: Receives PC Virtual Cam stream cleanly
     function getTabletViewUrl() {
-      const ch = getChannel();
-      return `https://vdo.ninja/?view=${ch}_monitor&cleanoutput&buffer=0&cover`;
+      return `https://vdo.ninja/?view=${getCh()}_monitor&cleanoutput&buffer=0&cover`;
     }
 
-    // 2. Generate Dynamic Dual QRs
-    function updateAllQrs() {
-      QRCode.toCanvas(qrPhonePush, getPhonePushUrl(), { width: 76, margin: 0, color: { dark: '#07090e', light: '#ffffff' } });
-      QRCode.toCanvas(qrTabletView, getTabletViewUrl(), { width: 76, margin: 0, color: { dark: '#07090e', light: '#ffffff' } });
+    function getPcPushUrl() {
+      return `https://vdo.ninja/?push=${getCh()}_monitor&quality=2&fps=30&codec=h264&buffer=0&autostart`;
     }
 
-    channelInput.addEventListener('input', updateAllQrs);
-
-    // 3. One-Click Action Launchers
-    function startPhonePush() {
-      window.location.href = getPhonePushUrl();
+    function getObsCamUrl() {
+      return `https://vdo.ninja/?view=${getCh()}_cam&cleanoutput&buffer=0&cover`;
     }
 
-    function startTabletView() {
-      mainContainer.style.display = 'none';
-      streamContainer.style.display = 'block';
+    // Render Clean QRs
+    function updateQrs() {
+      QRCode.toCanvas(qrPhone, getPhoneCamUrl(), { width: 58, margin: 0, color: { dark: '#06080c', light: '#ffffff' } });
+      QRCode.toCanvas(qrTablet, getTabletViewUrl(), { width: 58, margin: 0, color: { dark: '#06080c', light: '#ffffff' } });
+    }
+
+    chInput.addEventListener('input', updateQrs);
+
+    // Actions
+    function launchPhoneCam() {
+      window.location.href = getPhoneCamUrl();
+    }
+
+    function launchTabletView() {
+      mainWrap.style.display = 'none';
+      fullView.style.display = 'block';
       streamIframe.src = getTabletViewUrl();
     }
 
-    function startPcProgramPush() {
-      window.location.href = getPcProgramPushUrl();
+    function launchPcPush() {
+      window.location.href = getPcPushUrl();
     }
 
-    function copyObsCamLink() {
-      navigator.clipboard.writeText(getObsCamViewUrl()).then(() => {
-        alert(`[OBS 카메라 링크 복사 완료!]\n프리즘/OBS [브라우저 소스] URL에 붙여넣으세요:\n${getObsCamViewUrl()}`);
+    function copyObsCamUrl() {
+      navigator.clipboard.writeText(getObsCamUrl()).then(() => {
+        alert('OBS 브라우저 소스 링크 복사 완료!');
       });
     }
 
-    function copyPhonePushUrl() {
-      navigator.clipboard.writeText(getPhonePushUrl()).then(() => {
-        alert(`[스마트폰 후면 카메라 송출 링크 복사 완료!]`);
-      });
-    }
-
-    function copyTabletViewUrl() {
-      navigator.clipboard.writeText(getTabletViewUrl()).then(() => {
-        alert(`[태블릿 모니터링 수신 링크 복사 완료!]`);
-      });
-    }
-
-    function exitStreamMode() {
+    function closeFullView() {
       streamIframe.src = '';
-      streamContainer.style.display = 'none';
-      mainContainer.style.display = 'flex';
+      fullView.style.display = 'none';
+      mainWrap.style.display = 'flex';
     }
 
-    // 4. Auto-Routing via URL Params (e.g. ?action=phone / ?action=tablet)
+    // Auto routing (?action=phone / ?action=tablet)
     window.addEventListener('DOMContentLoaded', () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const action = urlParams.get('action');
-      const ch = urlParams.get('ch') || urlParams.get('channel');
-      
-      if (ch) channelInput.value = ch;
-      updateAllQrs();
+      const p = new URLSearchParams(window.location.search);
+      const action = p.get('action');
+      const ch = p.get('ch') || p.get('channel');
+      if (ch) chInput.value = ch;
+      updateQrs();
 
-      if (action === 'phone' || action === 'cam') {
-        startPhonePush();
-      } else if (action === 'tablet' || action === 'monitor') {
-        startTabletView();
-      } else if (action === 'pc') {
-        startPcProgramPush();
-      }
+      if (action === 'phone' || action === 'cam') launchPhoneCam();
+      else if (action === 'tablet' || action === 'monitor') launchTabletView();
+      else if (action === 'pc') launchPcPush();
     });
   </script>
 </body>
