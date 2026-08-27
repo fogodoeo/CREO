@@ -79,8 +79,8 @@ test('global pinball launcher exposes reusable skins and carries the selected ch
     assert.match(main, /value="academy">마법학교/);
     assert.match(main, /creo_pinball_skin_v1/);
     assert.match(main, /new URLSearchParams\(\{theme:pinballSkin\.value\}\)/);
-    assert.match(main, /params\.set\('channel',activeChannel\.id\)/);
-    assert.match(main, /params\.set\('channelName',activeChannel\.name\)/);
+    assert.match(main, /params\.set\('channel',operatingChannel\.id\)/);
+    assert.match(main, /params\.set\('channelName',operatingChannel\.name\)/);
 });
 
 test('pinball separates an authenticated laptop controller from a clean fixed broadcast source', () => {

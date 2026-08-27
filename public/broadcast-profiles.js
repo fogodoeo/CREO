@@ -44,7 +44,7 @@
     }
 
     function usesLegacyEngine(channel, profile = resolve(channel)) {
-        return profile?.engine === 'legacy-layout';
+        return profile?.engine === 'legacy-layout' && usesLegacyData(channel);
     }
 
     function usesLegacyData(channel) {
@@ -89,8 +89,8 @@
         const profile = resolve(channel);
         const layout = String(view || '').match(/^layout-([123])$/);
         if (!usesLegacyEngine(channel, profile)) {
-            const page = layout ? layout[1] : '1';
-            return `auction-control.html?channel=${channelId(channel)}&page=${page}&embedded=1${layout ? '' : '&view=settings'}`;
+            if (layout) return `platform-layout-editor.html?channel=${channelId(channel)}&page=${layout[1]}&embedded=1`;
+            return `auction-control.html?channel=${channelId(channel)}&page=1&embedded=1&view=settings`;
         }
         const renderer = encodeURIComponent(profile.rendererModule || 'cdcup');
         if (!layout) return `settings.html?module=${renderer}&channel=${channelId(channel)}&embedded=1`;

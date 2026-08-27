@@ -184,6 +184,28 @@ function sanitizeBroadcastState(input = {}) {
     const bidderFontSize = Number.isFinite(bidderFontSizeRaw) ? Math.max(10, Math.min(64, bidderFontSizeRaw)) : 20;
     const itemFontSizeRaw = Number.parseInt(input.page2ItemFontSize, 10);
     const itemFontSize = Number.isFinite(itemFontSizeRaw) ? Math.max(16, Math.min(96, itemFontSizeRaw)) : 33;
+    const allowedLayoutSlots = new Set([
+        'p1-hosts', 'p1-notice', 'p1-banner', 'p1-ticker',
+        'p2-header', 'p2-info', 'p2-bidders', 'p2-photo', 'p2-price', 'p2-sold', 'p2-banner', 'p2-ticker',
+        'p3-board', 'p3-effect'
+    ]);
+    const clampLayoutNumber = (value, min, max, fallback) => {
+        const number = Number(value);
+        return Number.isFinite(number) ? Math.max(min, Math.min(max, number)) : fallback;
+    };
+    const layoutPlacements = {};
+    if (input.layoutPlacements && typeof input.layoutPlacements === 'object' && !Array.isArray(input.layoutPlacements)) {
+        for (const [slot, raw] of Object.entries(input.layoutPlacements)) {
+            if (!allowedLayoutSlots.has(slot) || !raw || typeof raw !== 'object' || Array.isArray(raw)) continue;
+            layoutPlacements[slot] = {
+                x: clampLayoutNumber(raw.x, 0, 96, 4),
+                y: clampLayoutNumber(raw.y, 0, 96, 4),
+                width: clampLayoutNumber(raw.width, 4, 100, 40),
+                height: clampLayoutNumber(raw.height, 4, 100, 20),
+                fontScale: clampLayoutNumber(raw.fontScale, 0.5, 2.5, 1)
+            };
+        }
+    }
     return {
         id: 'state',
         activeItemId: cleanText(input.activeItemId, 64),
@@ -242,7 +264,8 @@ function sanitizeBroadcastState(input = {}) {
         audienceSessionId: cleanText(input.audienceSessionId, 80),
         audienceSessionStatus: ['active', 'closed'].includes(input.audienceSessionStatus) ? input.audienceSessionStatus : '',
         audienceSessionLockedAt: cleanText(input.audienceSessionLockedAt, 80),
-        audienceSessionEndedAt: cleanText(input.audienceSessionEndedAt, 80)
+        audienceSessionEndedAt: cleanText(input.audienceSessionEndedAt, 80),
+        layoutPlacements
     };
 }
 
@@ -1743,13 +1766,27 @@ function createPlatformApi({
                 const data = await workspace(channelId);
                 const vendors = new Map(data.vendors.map((vendor) => [vendor.id, vendor]));
                 const activeItemId = cleanText(data.broadcast?.activeItemId, 64);
-                const audience = audienceCompetitionEnabled(channel)
+                const requestedPageRaw = Number.parseInt(url.searchParams.get('page'), 10);
+                const requestedPage = [1, 2, 3].includes(requestedPageRaw) ? requestedPageRaw : 0;
+                const pageItems = requestedPage === 1
+                    ? []
+                    : requestedPage === 2
+                        ? data.items.filter((item) => item.id === activeItemId || item.status === 'live')
+                        : requestedPage === 3
+                            ? data.items.filter((item) => item.id === activeItemId
+                                || item.status === 'sold'
+                                || Number(item.soldPrice) > 0
+                                || Number(item.points) > 0
+                                || item.attributes?.audience_dice_event_id
+                                || item.attributes?.crewart_roulette_event_id)
+                            : data.items;
+                const audience = audienceCompetitionEnabled(channel) && requestedPage !== 1
                     ? await audienceRevealPayload(channelId, data.broadcast)
                     : { sessionId: '', lockedAt: '', sequence: 0, events: [], revealedBidderKeys: [] };
-                if (audienceCompetitionEnabled(channel)) {
+                if (audienceCompetitionEnabled(channel) && requestedPage !== 1) {
                     audience.roulette = await crewartRoulettePayload(channelId, data.broadcast);
                 }
-                const broadcastItems = await Promise.all(data.items.map(async (item) => {
+                const broadcastItems = await Promise.all(pageItems.map(async (item) => {
                     const isActiveItem = item.status === 'live' || (activeItemId && item.id === activeItemId);
                     return isActiveItem
                         ? enrichCrewartBidderHouses(
@@ -1774,6 +1811,10 @@ function createPlatformApi({
                     } : data.broadcast,
                     assets: data.assets
                         .filter((asset) => asset.active !== false)
+                        .filter((asset) => !requestedPage
+                            || (requestedPage === 3
+                                ? asset.kind === 'dice'
+                                : (asset.page === 'all' || asset.page === String(requestedPage))))
                         .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name, 'ko'))
                         .map(({ id, name, kind, page, targetName, imageUrl, linkUrl, sortOrder }) => ({ id, name, kind, page, targetName, imageUrl, linkUrl, sortOrder })),
                     items: broadcastItems.map((item) => {

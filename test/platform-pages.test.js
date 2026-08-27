@@ -10,6 +10,7 @@ const PAGES = [
     'index.html',
     'channel-manager.html',
     'channel-workspace.html',
+    'platform-layout-editor.html',
     'auction-control.html',
     'broadcast-studio.html',
     'auction-live.html',
@@ -162,11 +163,13 @@ test('channel creation starts with a safe generated id and protects unsaved edit
 
 test('shared workspace builds real select fields for channel groups and auction state', () => {
     const workspace = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-workspace.html'), 'utf8');
-    assert.match(workspace, /color-scheme:dark/);
+    assert.match(workspace, /color-scheme:light/);
     assert.match(workspace, /field\('groupId',term\('group','그룹'\),record\?\.groupId,'select'/);
     assert.match(workspace, /field\('status','상태',record\?\.status,'select'/);
     assert.match(workspace, /field\('winnerAlias','방송용 낙찰자명'/);
     assert.match(workspace, /auction-transition/);
+    assert.match(workspace, /등록 채널 주소가 올바르지 않습니다/);
+    assert.doesNotMatch(workspace, /requested:\(catalog\.channels\[0\]/);
     assert.doesNotMatch(workspace, /setLive[\s\S]{0,500}broadcast-state/);
 });
 
@@ -321,6 +324,7 @@ test('new CDCUP overlays and shipping retain compatibility with the established 
     assert.match(control, /name="page2BiddersPosition"/);
     assert.match(live, /function pageTwoBidders/);
     assert.match(live, /function bidAmountLabel\(value\)\{const amount=Number\(value\)\|\|0;/);
+    assert.match(live, /bidLog:\[\{name:'입찰자',region:'지역',amount:10\}\]/);
     assert.match(live, /class="vendor-tag"/);
     assert.match(live, /class="vendor-tag">\[\$\{esc\(item\.vendorName\)\}\]<\/span>/);
     assert.match(live, /\.item-name strong,\.vendor-tag\{[\s\S]{0,180}color:#fff;font-size:23px;font-weight:800/);
@@ -371,6 +375,28 @@ test('new CDCUP overlays and shipping retain compatibility with the established 
     const companies = fs.readFileSync(path.join(__dirname, '..', 'public', 'shipping-companies.html'), 'utf8');
     assert.match(companies, /shipping-status\.html\?channel=\$\{encodeURIComponent\(channel\)\}&view=company/);
     assert.doesNotMatch(companies, /CreoChannelAdapters\.resolve|adapter\.loadShippingItems|<main/);
+});
+
+test('new platform channels use the shared three-page arranger and CDCUP registration entry', () => {
+    const profiles = fs.readFileSync(path.join(__dirname, '..', 'public', 'broadcast-profiles.js'), 'utf8');
+    const editor = fs.readFileSync(path.join(__dirname, '..', 'public', 'platform-layout-editor.html'), 'utf8');
+    const live = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-live.html'), 'utf8');
+    const studio = fs.readFileSync(path.join(__dirname, '..', 'public', 'broadcast-studio.html'), 'utf8');
+    const runtime = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-runtime.js'), 'utf8');
+    const legacyEntry = fs.readFileSync(path.join(__dirname, '..', 'public', 'cdcup-index.html'), 'utf8');
+    assert.match(profiles, /platform-layout-editor\.html\?channel=/);
+    assert.match(editor, /요소를 끌어 이동/);
+    assert.match(editor, /layoutPlacements/);
+    assert.match(editor, /broadcast-state/);
+    assert.match(editor, /p3-board/);
+    assert.match(editor, /p3-effect/);
+    assert.match(editor, /id="content"[^>]*>문구·내용/);
+    assert.match(editor, /type:'creo-open-studio-view',view:'settings'/);
+    assert.match(studio, /event\.data\?\.type==='creo-open-studio-view'/);
+    assert.match(live, /dataset\.layoutSlot=slot/);
+    assert.match(live, /editorMode\)void refreshFull\(\)/);
+    assert.match(runtime, /workspace:[\s\S]{0,120}path: '\/cdcup-index\.html'/);
+    assert.match(legacyEntry, /channel-workspace\.html\?channel=/);
 });
 
 test('print forms remain available inside the shared registration workspace without a duplicate home shortcut', () => {
@@ -652,6 +678,12 @@ test('BASIC control uploads six dice videos and P3 renders parity totals without
     const live = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-live.html'), 'utf8');
     assert.match(control, /value="dice"/);
     assert.match(control, /주사위 눈금 \(1~6\)/);
+    assert.match(control, /section\.id='dice-video-section'/);
+    assert.match(control, /Array\.from\(\{length:6\}/);
+    assert.match(control, /function optimizeDiceVideo/);
+    assert.match(control, /width:960,height:540,fps:30,bitrate:1200000/);
+    assert.match(control, /optimized\.size>8\*1024\*1024/);
+    assert.match(control, /방송 채널 주소가 올바르지 않습니다/);
     assert.match(control, /\/api\/broadcast-assets\//);
     assert.match(control, /file\.size>8\*1024\*1024/);
     assert.match(live, /function renderDiceTeamsPageThree/);
@@ -659,6 +691,16 @@ test('BASIC control uploads six dice videos and P3 renders parity totals without
     assert.match(live, /audience_contribution_amount/);
     assert.match(live, /kind==='dice'/);
     assert.match(live, /기여도 반영/);
+});
+
+test('common pinball resolves winners from the operating channel rather than the dashboard selection', () => {
+    const hub = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+    const pinball = fs.readFileSync(path.join(__dirname, '..', 'roulette-app', 'src', 'app.ts'), 'utf8');
+    assert.match(hub, /operatingChannel=catalog\.channels\.find\(channel=>channel\.id===operatingChannelId\)/);
+    assert.match(pinball, /async function resolveActivePinballChannel/);
+    assert.match(pinball, /fetch\('\/api\/platform\/active-channel'/);
+    assert.match(pinball, /await resolveActivePinballChannel\(\)/);
+    assert.match(pinball, /channels\/\$\{encodeURIComponent\(remoteChannelId\)\}\/broadcast/);
 });
 
 test('broadcast setup keeps live operations separate and removes dead legacy controls', () => {

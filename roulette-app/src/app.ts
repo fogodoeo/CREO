@@ -16,14 +16,27 @@ import { auctionWinnerEntries, getLeadingHouseKey, HOUSE_NAMES } from './auction
 
 const queryParameters = new URLSearchParams(location.search);
 const isBroadcastMode = queryParameters.get('broadcast') === '1';
-const remoteChannelId = /^[a-z0-9][a-z0-9_-]{1,63}$/i.test(queryParameters.get('channel') || '')
+let remoteChannelId = /^[a-z0-9][a-z0-9_-]{1,63}$/i.test(queryParameters.get('channel') || '')
   ? String(queryParameters.get('channel'))
   : '';
-const isRemoteDisplay = isBroadcastMode && Boolean(remoteChannelId);
-const isRemoteController = !isBroadcastMode && Boolean(remoteChannelId);
-const autoLoadAuctionWinners = isRemoteController && queryParameters.get('theme') === 'academy';
-document.documentElement.classList.toggle('broadcast-mode', isBroadcastMode);
-document.documentElement.classList.toggle('remote-display-mode', isRemoteDisplay);
+let isRemoteDisplay = isBroadcastMode && Boolean(remoteChannelId);
+let isRemoteController = !isBroadcastMode && Boolean(remoteChannelId);
+let autoLoadAuctionWinners = isRemoteController && queryParameters.get('theme') === 'academy';
+
+async function resolveActivePinballChannel(): Promise<void> {
+  if (remoteChannelId || isBroadcastMode) return;
+  try {
+    const response = await fetch('/api/platform/active-channel', { cache: 'no-store', credentials: 'same-origin' });
+    const payload = await response.json().catch(() => ({})) as { channelId?: string };
+    const candidate = String(payload.channelId || '');
+    if (response.ok && /^[a-z0-9][a-z0-9_-]{1,63}$/i.test(candidate)) remoteChannelId = candidate;
+  } catch (_) {
+    // The common pinball page still works locally when the active channel cannot be read.
+  }
+  isRemoteDisplay = isBroadcastMode && Boolean(remoteChannelId);
+  isRemoteController = !isBroadcastMode && Boolean(remoteChannelId);
+  autoLoadAuctionWinners = isRemoteController && queryParameters.get('theme') === 'academy';
+}
 
 type PinballStanding = { rank: number; name: string; finished: boolean };
 type PinballResult = {
@@ -963,6 +976,9 @@ async function waitForEngine(): Promise<void> {
 }
 
 async function initialize(): Promise<void> {
+  await resolveActivePinballChannel();
+  document.documentElement.classList.toggle('broadcast-mode', isBroadcastMode);
+  document.documentElement.classList.toggle('remote-display-mode', isRemoteDisplay);
   bindEvents();
   const urlState = applyUrlParameters(config);
   applyConfigToControls(urlState.config);

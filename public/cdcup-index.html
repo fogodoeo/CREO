@@ -3,6 +3,16 @@
 
 <head>
     <meta charset="utf-8">
+    <script>
+        (() => {
+            const params = new URLSearchParams(location.search);
+            const channel = String(params.get('channel') || '').toLowerCase().replace(/[^a-z0-9-]/g, '');
+            if (channel && channel !== 'cdcup' && !params.get('module')) {
+                const tab = params.get('tab') || 'items';
+                location.replace(`channel-workspace.html?channel=${encodeURIComponent(channel)}&tab=${encodeURIComponent(tab)}&cdcup=1`);
+            }
+        })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>CDCUP 경매 관리</title>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">

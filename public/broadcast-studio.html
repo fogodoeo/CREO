@@ -72,7 +72,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     select.addEventListener('change',markPending);
     switchButton.addEventListener('click',()=>activate(select.value).catch(()=>{}));
     document.querySelectorAll('[data-view]').forEach(button=>button.addEventListener('click',()=>showView(button.dataset.view)));
-    window.addEventListener('message',event=>{if(event.origin!==location.origin||event.source!==frame.contentWindow||event.data?.type!=='creo-admin-required')return;reauthRequired=true;showLogin('관리자 인증이 만료되었습니다. 다시 로그인해 주세요.');});
+    window.addEventListener('message',event=>{if(event.origin!==location.origin||event.source!==frame.contentWindow)return;if(event.data?.type==='creo-open-studio-view'&&event.data.view==='settings'){showView('settings');return}if(event.data?.type==='creo-admin-required'){reauthRequired=true;showLogin('관리자 인증이 만료되었습니다. 다시 로그인해 주세요.')}});
     form.addEventListener('submit',async event=>{event.preventDefault();const value=password.value;if(!value)return;submit.disabled=true;password.disabled=true;error.textContent='';try{CreoPlatform.setAdmin(value);if(!await CreoPlatform.verifyAdmin(value))throw new Error('비밀번호가 맞지 않습니다.');password.value='';await load();if(reauthRequired){reauthRequired=false;frame.contentWindow?.location.reload()}}catch(failure){CreoPlatform.setAdmin('');showLogin(failure.message||'로그인하지 못했습니다.')}});
     (async()=>{try{if(await CreoPlatform.verifyAdmin())return await load()}catch(_){}showLogin()})();
 });

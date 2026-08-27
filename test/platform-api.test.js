@@ -789,6 +789,25 @@ test('CREWART public broadcast adds only house colors to live bidders', async ()
     assert.ok(memberLookups.some(input => input.phone === '01011112222'));
 });
 
+test('page-scoped broadcast payloads keep PRISM overlays channel-local and compact', async () => {
+    const repository = new MemoryRepository();
+    const api = createPlatformApi({ repository, logger: { error() {} } });
+    await repository.upsertRecord('alpha', 'item', { id: 'waiting', lotNumber: 1, name: '대기', status: 'waiting', photoUrl: 'large.webp' });
+    await repository.upsertRecord('alpha', 'item', { id: 'active', lotNumber: 2, name: '진행', status: 'live', bidLog: [{ name: '입찰자', amount: 3 }] });
+    await repository.upsertRecord('alpha', 'item', { id: 'sold', lotNumber: 3, name: '낙찰', status: 'sold', soldPrice: 100000 });
+    await repository.upsertRecord('beta', 'item', { id: 'foreign', lotNumber: 1, name: '다른 채널', status: 'sold', soldPrice: 999999 });
+    await call(api, 'PUT', '/api/platform/channels/alpha/broadcast-state', { activeItemId: 'active', mode: 'live' });
+
+    const pageOne = await call(api, 'GET', '/api/platform/channels/alpha/broadcast?page=1', null, '');
+    const pageTwo = await call(api, 'GET', '/api/platform/channels/alpha/broadcast?page=2', null, '');
+    const pageThree = await call(api, 'GET', '/api/platform/channels/alpha/broadcast?page=3', null, '');
+    assert.deepEqual(pageOne.json().items, []);
+    assert.deepEqual(pageTwo.json().items.map((item) => item.id), ['active']);
+    assert.deepEqual(pageThree.json().items.map((item) => item.id).sort(), ['active', 'sold']);
+    assert.equal(JSON.stringify(pageThree.json()).includes('foreign'), false);
+    assert.equal(JSON.stringify(pageThree.json()).includes('large.webp'), false);
+});
+
 test('CREWART operator can idempotently correct a wrongly randomized bidder house', async () => {
     const repository = new MemoryRepository();
     repository.catalog.channels[0] = normalizeChannel({
@@ -1296,6 +1315,11 @@ test('broadcast state stores independent 1P, 2P, and 3P overlay controls', async
         page3BoardPosition: 'right', page3QuizPosition: 'bottom',
         quizOn: true, quizStatus: 'open', quizQuestion: '첫 번째 문제',
         quizWinner: '참가자 A', quizAnswer: '정답',
+        layoutPlacements: {
+            'p1-hosts': { x: 9.5, y: 12, width: 42, height: 18, fontScale: 1.25 },
+            'p3-effect': { x: -20, y: 120, width: 200, height: 1, fontScale: 9 },
+            'unknown-slot': { x: 10, y: 10, width: 10, height: 10 }
+        },
         ignoredSecret: 'must-not-persist'
     });
     assert.equal(response.status, 200);
@@ -1324,6 +1348,9 @@ test('broadcast state stores independent 1P, 2P, and 3P overlay controls', async
     assert.equal(state.quizStatus, 'open');
     assert.equal(state.quizQuestion, '첫 번째 문제');
     assert.equal(state.quizWinner, '참가자 A');
+    assert.deepEqual(state.layoutPlacements['p1-hosts'], { x: 9.5, y: 12, width: 42, height: 18, fontScale: 1.25 });
+    assert.deepEqual(state.layoutPlacements['p3-effect'], { x: 0, y: 96, width: 100, height: 4, fontScale: 2.5 });
+    assert.equal(state.layoutPlacements['unknown-slot'], undefined);
     assert.equal(state.ignoredSecret, undefined);
 });
 
