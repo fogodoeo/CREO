@@ -85,6 +85,10 @@ test('phone camera waits for a user tap before requesting mobile permission', ()
         assert.match(source, /width: \{ ideal: 1920 \}/);
         assert.match(source, /height: \{ ideal: 1080 \}/);
         assert.match(source, /function streamQualityLabel\(stream\)/);
+        assert.match(source, /id="hudQuality">해상도 확인 중<\/span>/);
+        assert.match(source, /nativeVideo\.videoWidth/);
+        assert.match(source, /function watchStreamQuality\(stream\)/);
+        assert.match(source, /qualityRefreshTimer = setInterval\(refresh, 1000\)/);
         assert.match(source, /parameters\.encodings\[0\]\.maxBitrate = maxBitrate/);
         assert.match(source, /pixels >= 1900000 \? 6000000/);
         assert.doesNotMatch(source, /라이브 송출 중 \(720p 30fps\)/);

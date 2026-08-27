@@ -206,6 +206,21 @@
       backdrop-filter: blur(12px);
     }
 
+    .hud-copy {
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      gap: 2px;
+      line-height: 1.2;
+    }
+
+    .hud-quality {
+      color: var(--cyan);
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
     .hud-dot {
       width: 8px;
       height: 8px;
@@ -327,7 +342,10 @@
     <div class="hud-top" id="hudTop">
       <div class="hud-status">
         <span class="hud-dot" id="hudDot"></span>
-        <span id="hudStatus">연결 중...</span>
+        <span class="hud-copy">
+          <span id="hudStatus">연결 중...</span>
+          <span class="hud-quality" id="hudQuality">해상도 확인 중</span>
+        </span>
       </div>
       <button class="hud-btn danger" onclick="stopNativeSession()">✕ 종료</button>
     </div>
@@ -422,6 +440,7 @@
     const viewportBox = document.getElementById('viewportBox');
     const nativeVideo = document.getElementById('nativeVideo');
     const hudStatus = document.getElementById('hudStatus');
+    const hudQuality = document.getElementById('hudQuality');
     const hudDot = document.getElementById('hudDot');
     const loadingOverlay = document.getElementById('loadingOverlay');
     const loadingText = document.getElementById('loadingText');
@@ -448,6 +467,7 @@
     let receiverOfferCanvas = null;
     let receiverAudioContext = null;
     let receiverOscillator = null;
+    let qualityRefreshTimer = null;
 
     function getCh() {
       return (chInput.value.trim() || 'ongdong').toLowerCase();
@@ -500,11 +520,24 @@
 
     function streamQualityLabel(stream) {
       const settings = stream?.getVideoTracks?.()[0]?.getSettings?.() || {};
-      const width = Number(settings.width) || 0;
-      const height = Number(settings.height) || 0;
+      const isPlayingThisStream = nativeVideo.srcObject === stream;
+      const width = Number(settings.width) || (isPlayingThisStream ? nativeVideo.videoWidth : 0) || 0;
+      const height = Number(settings.height) || (isPlayingThisStream ? nativeVideo.videoHeight : 0) || 0;
       const fps = Math.round(Number(settings.frameRate) || 0);
       if (!width || !height) return '화질 확인 중';
       return `${width}×${height}${fps ? ` ${fps}fps` : ''}`;
+    }
+
+    function watchStreamQuality(stream) {
+      clearInterval(qualityRefreshTimer);
+      const refresh = () => {
+        if (nativeVideo.srcObject !== stream) return;
+        hudQuality.textContent = streamQualityLabel(stream);
+      };
+      refresh();
+      nativeVideo.addEventListener('loadedmetadata', refresh, { once: true });
+      nativeVideo.addEventListener('resize', refresh, { once: true });
+      qualityRefreshTimer = setInterval(refresh, 1000);
     }
 
     async function applyOutboundVideoQuality(call) {
@@ -551,9 +584,10 @@
         localStream = await acquireCameraStream(currentFacingMode);
         nativeVideo.srcObject = localStream;
         await nativeVideo.play();
+        watchStreamQuality(localStream);
         
         hideLoading();
-        hudStatus.textContent = `🔴 카메라 준비 · ${streamQualityLabel(localStream)}`;
+        hudStatus.textContent = '🔴 카메라 준비';
         hudDot.style.background = 'var(--green)';
       } catch (err) {
         console.error('Camera Error:', err);
@@ -580,7 +614,7 @@
         });
 
         currentPeer.on('open', (id) => {
-          hudStatus.textContent = `🔴 송출 중 (#${getCh()}) · ${streamQualityLabel(localStream)}`;
+          hudStatus.textContent = `🔴 송출 중 (#${getCh()})`;
         });
 
         currentPeer.on('call', (call) => {
@@ -708,10 +742,8 @@
         hideLoading();
         nativeVideo.srcObject = remoteStream;
         nativeVideo.play().catch(() => {});
-        hudStatus.textContent = `📲 폰 카메라 수신 중 (#${getCh()}) · ${streamQualityLabel(remoteStream)}`;
-        setTimeout(() => {
-          if (nativeVideo.srcObject === remoteStream) hudStatus.textContent = `📲 폰 카메라 수신 중 (#${getCh()}) · ${streamQualityLabel(remoteStream)}`;
-        }, 1000);
+        watchStreamQuality(remoteStream);
+        hudStatus.textContent = `📲 폰 카메라 수신 중 (#${getCh()})`;
         hudDot.style.background = 'var(--cyan)';
       });
       call.on('error', () => failReceiverCall(call, '폰 카메라 송출을 기다리는 중...'));
@@ -795,6 +827,7 @@
 
         nativeVideo.srcObject = localStream;
         await nativeVideo.play();
+        watchStreamQuality(localStream);
         hideLoading();
         hudStatus.textContent = '🖥️ PC 방송 화면 송출 중';
 
@@ -843,6 +876,9 @@
 
     function stopNativeSession() {
       stopReceiverMode();
+      clearInterval(qualityRefreshTimer);
+      qualityRefreshTimer = null;
+      hudQuality.textContent = '해상도 확인 중';
       if (localStream) {
         localStream.getTracks().forEach(t => t.stop());
         localStream = null;
