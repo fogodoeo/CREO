@@ -12,8 +12,8 @@
   <style>
     :root {
       --bg: #06080c;
-      --card: rgba(16, 21, 32, 0.9);
-      --border: rgba(255, 255, 255, 0.1);
+      --card: rgba(16, 21, 32, 0.92);
+      --border: rgba(255, 255, 255, 0.12);
       --green: #00e676;
       --cyan: #00d2ff;
       --purple: #a855f7;
@@ -101,7 +101,7 @@
       background: var(--card);
       border: 2px solid var(--border);
       border-radius: 18px;
-      padding: 20px 14px;
+      padding: 22px 14px;
       cursor: pointer;
       display: flex;
       flex-direction: column;
@@ -109,15 +109,16 @@
       justify-content: center;
       text-align: center;
       gap: 10px;
-      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      transition: all 0.18s ease;
+      user-select: none;
     }
 
     .btn:active {
-      transform: scale(0.96);
+      transform: scale(0.95);
     }
 
     .btn .icon {
-      font-size: 32px;
+      font-size: 34px;
       line-height: 1;
     }
 
@@ -127,20 +128,20 @@
       letter-spacing: -0.3px;
     }
 
-    .btn.green { border-color: rgba(0, 230, 118, 0.35); }
-    .btn.green:hover, .btn.green:active { border-color: var(--green); background: rgba(0, 230, 118, 0.08); }
+    .btn.green { border-color: rgba(0, 230, 118, 0.4); }
+    .btn.green:hover, .btn.green:active { border-color: var(--green); background: rgba(0, 230, 118, 0.12); }
     .btn.green .title { color: var(--green); }
 
-    .btn.cyan { border-color: rgba(0, 210, 255, 0.35); }
-    .btn.cyan:hover, .btn.cyan:active { border-color: var(--cyan); background: rgba(0, 210, 255, 0.08); }
+    .btn.cyan { border-color: rgba(0, 210, 255, 0.4); }
+    .btn.cyan:hover, .btn.cyan:active { border-color: var(--cyan); background: rgba(0, 210, 255, 0.12); }
     .btn.cyan .title { color: var(--cyan); }
 
-    .btn.purple { border-color: rgba(168, 85, 247, 0.35); }
-    .btn.purple:hover, .btn.purple:active { border-color: var(--purple); background: rgba(168, 85, 247, 0.08); }
+    .btn.purple { border-color: rgba(168, 85, 247, 0.4); }
+    .btn.purple:hover, .btn.purple:active { border-color: var(--purple); background: rgba(168, 85, 247, 0.12); }
     .btn.purple .title { color: var(--purple); }
 
-    .btn.gold { border-color: rgba(245, 158, 11, 0.35); }
-    .btn.gold:hover, .btn.gold:active { border-color: var(--gold); background: rgba(245, 158, 11, 0.08); }
+    .btn.gold { border-color: rgba(245, 158, 11, 0.4); }
+    .btn.gold:hover, .btn.gold:active { border-color: var(--gold); background: rgba(245, 158, 11, 0.12); }
     .btn.gold .title { color: var(--gold); }
 
     /* Compact QR Grid */
@@ -159,6 +160,10 @@
       align-items: center;
       gap: 10px;
       cursor: pointer;
+    }
+
+    .qr-box:active {
+      transform: scale(0.97);
     }
 
     .qr-img {
@@ -195,47 +200,9 @@
       color: #64748b;
       font-weight: 600;
     }
-
-    /* Fullscreen View Container */
-    .fullscreen-box {
-      display: none;
-      position: fixed;
-      inset: 0;
-      width: 100vw;
-      height: 100vh;
-      background: #000;
-      z-index: 9999;
-    }
-
-    .fullscreen-box iframe {
-      width: 100%;
-      height: 100%;
-      border: none;
-    }
-
-    .close-btn {
-      position: absolute;
-      top: 12px;
-      right: 12px;
-      background: rgba(0,0,0,0.8);
-      border: 1px solid rgba(255,255,255,0.2);
-      color: #fff;
-      padding: 6px 12px;
-      border-radius: 16px;
-      font-size: 12px;
-      font-weight: 800;
-      cursor: pointer;
-      z-index: 10000;
-    }
   </style>
 </head>
 <body>
-
-  <!-- Fullscreen Player for Tablet/OBS -->
-  <div id="fullView" class="fullscreen-box">
-    <button class="close-btn" onclick="closeFullView()">✕ 닫기</button>
-    <iframe id="streamIframe" allow="camera; microphone; display-capture; autoplay" allowfullscreen></iframe>
-  </div>
 
   <div class="wrap" id="mainWrap">
     
@@ -251,13 +218,13 @@
     <!-- 4 Clean Giant Buttons -->
     <div class="grid">
       
-      <!-- 1. Phone Camera (720p / 30fps / Back Cam / No Overheat) -->
+      <!-- 1. Phone Camera (720p / 30fps / Back Cam / Universal) -->
       <div class="btn green" onclick="launchPhoneCam()">
         <div class="icon">📱</div>
         <div class="title">폰 카메라 송출</div>
       </div>
 
-      <!-- 2. Tablet Monitor (0s Delay) -->
+      <!-- 2. Tablet Monitor (Direct Native 0s View) -->
       <div class="btn cyan" onclick="launchTabletView()">
         <div class="icon">📲</div>
         <div class="title">태블릿 모니터</div>
@@ -302,21 +269,18 @@
     const chInput = document.getElementById('channelInput');
     const qrPhone = document.getElementById('qrPhone');
     const qrTablet = document.getElementById('qrTablet');
-    const mainWrap = document.getElementById('mainWrap');
-    const fullView = document.getElementById('fullView');
-    const streamIframe = document.getElementById('streamIframe');
 
     function getCh() {
       return (chInput.value.trim() || 'ongdong').toLowerCase();
     }
 
-    // 720p Stable & Universal (No Camera Overconstrained Error)
+    // 720p Stable & Universal URLs
     function getPhoneCamUrl() {
       return `https://vdo.ninja/?push=${getCh()}_cam&facing=back&quality=2&fps=30&codec=h264&buffer=0&autostart`;
     }
 
     function getTabletViewUrl() {
-      return `https://vdo.ninja/?view=${getCh()}_monitor&cleanoutput&buffer=0&cover`;
+      return `https://vdo.ninja/?view=${getCh()}_monitor&cleanoutput&buffer=0&cover&autoplay`;
     }
 
     function getPcPushUrl() {
@@ -335,15 +299,13 @@
 
     chInput.addEventListener('input', updateQrs);
 
-    // Actions
+    // Direct Instant Launch Actions
     function launchPhoneCam() {
       window.location.href = getPhoneCamUrl();
     }
 
     function launchTabletView() {
-      mainWrap.style.display = 'none';
-      fullView.style.display = 'block';
-      streamIframe.src = getTabletViewUrl();
+      window.location.href = getTabletViewUrl();
     }
 
     function launchPcPush() {
@@ -351,15 +313,24 @@
     }
 
     function copyObsCamUrl() {
-      navigator.clipboard.writeText(getObsCamUrl()).then(() => {
-        alert('OBS 브라우저 소스 링크 복사 완료!');
-      });
+      const url = getObsCamUrl();
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(() => {
+          alert('OBS 브라우저 소스 링크 복사 완료!');
+        }).catch(() => fallbackCopy(url));
+      } else {
+        fallbackCopy(url);
+      }
     }
 
-    function closeFullView() {
-      streamIframe.src = '';
-      fullView.style.display = 'none';
-      mainWrap.style.display = 'flex';
+    function fallbackCopy(text) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      alert('OBS 브라우저 소스 링크 복사 완료!');
     }
 
     // Auto routing (?action=phone / ?action=tablet)
