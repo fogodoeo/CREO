@@ -60,6 +60,10 @@ test('page two omits the photo plate when the active item has no image', () => {
 test('BASIC P3 waits for the dice video and shows only live contribution totals', () => {
     const source = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-live.html'), 'utf8');
     assert.match(source, /video\.addEventListener\('ended',finish/);
+    assert.match(source, /video\.addEventListener\('timeupdate'/);
+    assert.match(source, /video\.currentTime>=video\.duration-\.18/);
+    assert.match(source, /video\.style\.visibility='hidden'/);
+    assert.doesNotMatch(source, /diceRevealAtByEvent/);
     assert.match(source, /function finishDiceVideo\(eventId\)/);
     assert.match(source, /function liveParityContribution\(items\)/);
     assert.match(source, /live\?\.group===group\.id\?live\.amount:0/);

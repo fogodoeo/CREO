@@ -153,12 +153,12 @@ function renderAcademyPageThree(channel,state,items){const board=(channel.scoreb
 function odometer(value,key,fromZero=false){const amount=Math.max(0,Math.round(Number(value)||0));return`<span class="odometer" role="img" aria-label="${money(amount)}" data-odometer-key="${esc(key)}" data-odometer-value="${amount}"${fromZero?' data-odometer-from-zero="1"':''}>${money(amount)}</span>`}
 function hydrateOdometers(){for(const element of stage.querySelectorAll('.odometer[data-odometer-value]')){const key=element.dataset.odometerKey,target=Math.max(0,Number.parseInt(element.dataset.odometerValue,10)||0),hasPrevious=odometerHistory.has(key),previous=element.dataset.odometerFromZero==='1'&&!hasPrevious?0:(hasPrevious?odometerHistory.get(key):target),width=Math.max(String(previous).length,String(target).length),from=String(previous).padStart(width,'0'),to=String(target).padStart(width,'0'),changed=previous!==target;let html='';for(let index=0;index<width;index++){if(index>0&&(width-index)%3===0)html+='<span class="odometer-separator" aria-hidden="true">,</span>';const start=Number(from[index]),finish=Number(to[index])+(Number(to[index])<start?10:0),delay=(width-index-1)*55;html+=`<span class="odometer-column" aria-hidden="true"><span class="odometer-track" style="--from:${start};--to:${finish};--delay:${delay}ms">${Array.from({length:20},(_,digit)=>`<span class="odometer-digit">${digit%10}</span>`).join('')}</span></span>`}element.innerHTML=html;element.setAttribute('aria-label',money(target));odometerHistory.set(key,target);if(changed||element.dataset.odometerFromZero==='1')requestAnimationFrame(()=>element.classList.add('is-running'))}}
 function latestDiceItem(items){return(items||[]).filter(item=>item.attributes?.audience_dice_event_id).sort((a,b)=>Date.parse(b.attributes.audience_dice_started_at||0)-Date.parse(a.attributes.audience_dice_started_at||0))[0]||null}
-const activeDiceVideos=new Set(),finishedDiceVideos=new Set(),diceResultStartedAt=new Map(),diceRevealAtByEvent=new Map(),diceHideTimers=new Map();
+const activeDiceVideos=new Set(),finishedDiceVideos=new Set(),diceResultStartedAt=new Map(),diceHideTimers=new Map();
 function diceFallbackDeadline(started,reveal){return Math.max(Number.isFinite(started)?started+30000:0,Number.isFinite(reveal)?reveal+24000:0)}
 function renderDiceOverlay(items,assets){
     const item=latestDiceItem(items);
     if(!item)return editorMode?'<div class="dice-overlay editor-effect-placeholder"><div class="dice-overlay-card"><div class="dice-result"><small>낙찰 · 주사위 연출</small><h2>낙찰자 × 주사위</h2><b>기여도</b></div></div></div>':'';
-    const attr=item.attributes||{},eventId=String(attr.audience_dice_event_id||''),started=Date.parse(attr.audience_dice_started_at||''),reveal=Date.parse(attr.audience_dice_reveal_at||''),now=Date.now(),resultStarted=diceResultStartedAt.get(eventId),fallbackDeadline=diceFallbackDeadline(started,reveal);if(Number.isFinite(reveal))diceRevealAtByEvent.set(eventId,reveal);
+    const attr=item.attributes||{},eventId=String(attr.audience_dice_event_id||''),started=Date.parse(attr.audience_dice_started_at||''),reveal=Date.parse(attr.audience_dice_reveal_at||''),now=Date.now(),resultStarted=diceResultStartedAt.get(eventId),fallbackDeadline=diceFallbackDeadline(started,reveal);
     const face=Math.max(1,Math.min(6,Number(attr.audience_dice_face)||1)),base=Number(attr.audience_contribution_base)||0,total=Number(attr.audience_contribution_amount)||base*face,name=item.winnerAlias||item.winnerName||'낙찰자',team=(attr.audience_group_key==='odd'?'홀팀':attr.audience_group_key==='even'?'짝팀':'팀 확인중'),asset=(assets||[]).find(row=>row.kind==='dice'&&String(row.targetName)===String(face));
     const videoStillPlaying=asset?.imageUrl&&activeDiceVideos.has(eventId)&&!finishedDiceVideos.has(eventId)&&now<fallbackDeadline;
     const rolling=videoStillPlaying||(!activeDiceVideos.has(eventId)&&Number.isFinite(reveal)&&now<reveal);
@@ -193,8 +193,6 @@ function reconcileRenderChildren(parent,nextParent){
 function reconcileStage(markup){const template=document.createElement('template');template.innerHTML=markup;reconcileRenderChildren(stage,template.content)}
 function finishDiceVideo(eventId){
     if(!eventId||finishedDiceVideos.has(eventId))return;
-    const revealAt=diceRevealAtByEvent.get(eventId),delay=Number.isFinite(revealAt)?revealAt-Date.now():0;
-    if(delay>30){const guard=diceHideTimers.get(eventId);if(guard)clearTimeout(guard);diceHideTimers.set(eventId,setTimeout(()=>{diceHideTimers.delete(eventId);finishDiceVideo(eventId)},delay));return}
     finishedDiceVideos.add(eventId);diceResultStartedAt.set(eventId,Date.now());
     const guard=diceHideTimers.get(eventId);if(guard)clearTimeout(guard);
     if(latestData)render(latestData);
@@ -203,7 +201,10 @@ function finishDiceVideo(eventId){
 function wireDiceVideos(){
     for(const video of stage.querySelectorAll('.dice-video:not([data-dice-wired])')){
         video.dataset.diceWired='1';const eventId=String(video.dataset.diceEvent||'');
-        const finish=()=>finishDiceVideo(eventId);video.addEventListener('ended',finish,{once:true});video.addEventListener('error',finish,{once:true});
+        let settled=false,endPoll=null;const finish=()=>{if(settled)return;settled=true;if(endPoll)clearInterval(endPoll);video.style.visibility='hidden';finishDiceVideo(eventId)};
+        const reachedEnd=()=>video.ended||(Number.isFinite(video.duration)&&video.duration>0&&video.currentTime>=video.duration-.18);
+        video.addEventListener('ended',finish,{once:true});video.addEventListener('error',finish,{once:true});video.addEventListener('timeupdate',()=>{if(reachedEnd())finish()});
+        endPoll=setInterval(()=>{if(!video.isConnected){clearInterval(endPoll);return}if(reachedEnd())finish()},100);
         const armGuard=()=>{const seconds=Number.isFinite(video.duration)&&video.duration>0?Math.max(2,video.duration-video.currentTime+1.5):30;const previous=diceHideTimers.get(eventId);if(previous)clearTimeout(previous);diceHideTimers.set(eventId,setTimeout(finish,Math.min(32000,seconds*1000)))};
         if(video.readyState>=1)armGuard();else video.addEventListener('loadedmetadata',armGuard,{once:true});
         video.play().catch(()=>{});
