@@ -77,12 +77,19 @@ test('BASIC P3 waits for the dice video and shows only live contribution totals'
     assert.doesNotMatch(source, /diceRevealAtByEvent/);
     assert.match(source, /function finishDiceVideo\(eventId\)/);
     assert.match(source, /function refreshDiceTeamBoard\(data\)/);
-    assert.match(source, /dice-result-strip">낙찰금 × \$\{face\}/);
+    assert.match(source, /dice-result-strip"><span>낙찰금 ×<\/span><b>\$\{face\}/);
     assert.match(source, /function liveParityContribution\(items\)/);
     assert.match(source, /live\?\.group===group\.id\?live\.amount:0/);
     assert.match(source, /points:scoreUnits\(raw\)/);
     assert.match(source, /videoActive&&Number\.isFinite\(effectiveAt\)/);
     assert.match(source, /current\.querySelector\('\.dice-result-strip'\)/);
+    assert.match(source, /function animateScoreCounter\(element,key,target,previous\)/);
+    assert.match(source, /duration=Math\.min\(1600,Math\.max\(420,distance\*48\)\)/);
+    assert.match(source, /value=previous\+direction\*step/);
+    assert.match(source, /element\.closest\('\.dice-team-card'\)/);
+    assert.match(source, /width:min\(1240px,92vw\);height:min\(820px,84vh\)/);
+    assert.match(source, /<strong><b>\$\{esc\(name\)\}<\/b><small>낙찰<\/small><\/strong>/);
+    assert.match(source, /<div class="dice-result-strip"><span>낙찰금 ×<\/span><b>\$\{face\}<\/b><\/div>/);
     const renderer = source.slice(
         source.indexOf('function diceTeamBoardMarkup'),
         source.indexOf('function profilePageThree')
@@ -794,7 +801,7 @@ test('BASIC control uploads six dice videos and P3 renders parity totals without
     assert.match(live, /audience_group_key/);
     assert.match(live, /audience_contribution_amount/);
     assert.match(live, /kind==='dice'/);
-    assert.match(live, /dice-result-strip">낙찰금 × \$\{face\}/);
+    assert.match(live, /dice-result-strip"><span>낙찰금 ×<\/span><b>\$\{face\}/);
     assert.match(profiles, /id: 'basic-dice'[\s\S]{0,900}page2Price: false, page2InfoLayout: 'inline-traits', soldEffectPage: 3/);
     assert.match(control, /data-page2-price-control/);
     assert.match(control, /profile\.settings\?\.soldEffectPage===3/);
