@@ -1865,6 +1865,8 @@ function createPlatformApi({
                 }
                 const broadcastItems = await Promise.all(pageItems.map(async (item) => {
                     const isActiveItem = item.status === 'live' || (activeItemId && item.id === activeItemId);
+                    const missingParityGroup = item.status === 'sold'
+                        && !['odd', 'even'].includes(cleanText(item.attributes?.audience_group_key, 16).toLowerCase());
                     let enrichedItem = isActiveItem
                         ? enrichCrewartBidderHouses(
                             channel,
@@ -1877,7 +1879,7 @@ function createPlatformApi({
                         )
                         : item;
                     enrichedItem = await enrichedItem;
-                    if (isActiveItem && phoneParityCompetitionEnabled(channel)) {
+                    if ((isActiveItem || missingParityGroup) && phoneParityCompetitionEnabled(channel)) {
                         enrichedItem = await enrichPhoneParityBidderGroups(channel, enrichedItem, bandMembership);
                     }
                     return enrichedItem;
