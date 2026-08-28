@@ -18,7 +18,6 @@
       --cyan: #00d2ff;
       --purple: #a855f7;
       --gold: #f59e0b;
-      --pink: #ff3366;
     }
 
     * {
@@ -182,16 +181,16 @@
       </div>
     </div>
 
-    <!-- 4 Clean Giant Buttons -->
+    <!-- 4 Action Buttons -->
     <div class="grid">
       
-      <!-- 1. Phone Camera (Direct Top-Level Hardware Access - 100% Camera Detected!) -->
+      <!-- 1. Phone Camera: Clean & Stable (Zero Loops) -->
       <div class="btn green" onclick="launchPhoneCam()">
         <div class="icon">📱</div>
         <div class="title">폰 카메라 송출</div>
       </div>
 
-      <!-- 2. Tablet Monitor (0s Delay Realtime Monitor) -->
+      <!-- 2. Tablet Monitor -->
       <div class="btn cyan" onclick="launchTabletView()">
         <div class="icon">📲</div>
         <div class="title">태블릿 모니터</div>
@@ -217,7 +216,7 @@
         <div class="qr-img"><canvas id="qrPhone"></canvas></div>
         <div class="qr-text">
           <h4>폰 카메라 QR</h4>
-          <span>스캔 즉시 송출</span>
+          <span>스캔 시 송출</span>
         </div>
       </div>
 
@@ -225,7 +224,7 @@
         <div class="qr-img"><canvas id="qrTablet"></canvas></div>
         <div class="qr-text">
           <h4>태블릿 QR</h4>
-          <span>스캔 즉시 수신</span>
+          <span>스캔 시 수신</span>
         </div>
       </div>
     </div>
@@ -241,28 +240,24 @@
       return (chInput.value.trim() || 'ongdong').toLowerCase();
     }
 
-    // 100% Reliable Top-Level Direct URLs (Zero Iframe Sandbox Blocking!)
-    // &webcam: Directly opens camera
-    // &facing=back: Automatically selects rear camera
-    // &quality=2 &fps=30: 720p 30fps stable
-    // &autostart &cleanoutput: 0 clicks, clean fullscreen
+    // Clean, Battle-Tested Standard URLs that NEVER loop or drop
     function getPhoneCamUrl() {
-      return `https://vdo.ninja/?push=${getCh()}_cam&webcam&facing=back&quality=2&fps=30&codec=h264&buffer=0&autostart&cleanoutput`;
+      return `https://vdo.ninja/?push=${getCh()}_cam&webcam&facing=back`;
     }
 
     function getTabletViewUrl() {
-      return `https://vdo.ninja/?view=${getCh()}_monitor&autoplay&cleanoutput&buffer=0&cover`;
+      return `https://vdo.ninja/?view=${getCh()}_monitor&autoplay&cleanoutput&buffer=0`;
     }
 
     function getPcPushUrl() {
-      return `https://vdo.ninja/?push=${getCh()}_monitor&webcam&quality=2&fps=30&codec=h264&buffer=0&autostart&cleanoutput`;
+      return `https://vdo.ninja/?push=${getCh()}_monitor&webcam`;
     }
 
     function getObsCamUrl() {
-      return `https://vdo.ninja/?view=${getCh()}_cam&cleanoutput&buffer=0&cover`;
+      return `https://vdo.ninja/?view=${getCh()}_cam&cleanoutput`;
     }
 
-    // Update Direct QRs
+    // Update QRs
     function updateQrs() {
       QRCode.toCanvas(qrPhone, getPhoneCamUrl(), { width: 58, margin: 0, color: { dark: '#06080c', light: '#ffffff' } });
       QRCode.toCanvas(qrTablet, getTabletViewUrl(), { width: 58, margin: 0, color: { dark: '#06080c', light: '#ffffff' } });
@@ -270,7 +265,7 @@
 
     chInput.addEventListener('input', updateQrs);
 
-    // Direct Instant Launchers (Bypasses all iframe security sandboxes)
+    // Direct Instant Launchers (Clean 1-Tap)
     function launchPhoneCam() {
       window.location.href = getPhoneCamUrl();
     }
@@ -290,17 +285,8 @@
       }).catch(() => alert(`OBS URL:\n${url}`));
     }
 
-    // Auto-Routing: ?mode=cam / ?mode=tablet
     window.addEventListener('DOMContentLoaded', () => {
-      const p = new URLSearchParams(window.location.search);
-      const mode = p.get('mode') || p.get('action');
-      const ch = p.get('ch') || p.get('channel');
-      if (ch) chInput.value = ch;
       updateQrs();
-
-      if (mode === 'cam' || mode === 'phone') launchPhoneCam();
-      else if (mode === 'tablet' || mode === 'monitor') launchTabletView();
-      else if (mode === 'pc') launchPcPush();
     });
   </script>
 </body>
