@@ -51,6 +51,12 @@ test('platform client script is valid JavaScript', () => {
     assert.match(source, /async function logout/);
 });
 
+test('page two omits the photo plate when the active item has no image', () => {
+    const source = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-live.html'), 'utf8');
+    assert.match(source, /page2PhotoOn!==false&&item\.photoUrl\?/);
+    assert.doesNotMatch(source, /photo-empty/);
+});
+
 test('the universal broadcast route delegates renderer selection to channel profiles', () => {
     const router = fs.readFileSync(path.join(__dirname, '..', 'public', 'broadcast-router.html'), 'utf8');
     assert.doesNotMatch(router, /supabase-bridge|active_event_module|getRuntimeConfigMap/i);
