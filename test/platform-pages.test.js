@@ -18,6 +18,8 @@ const PAGES = [
     'shipping-companies.html',
     'shipping-rates.html',
     'broadcast-router.html',
+    'cam.html',
+    'cam/index.html',
     'capture-gallery.html',
     'ranking.html',
     'channel-rankings.html',
@@ -59,6 +61,38 @@ test('the universal broadcast route delegates renderer selection to channel prof
     assert.match(router, /const preview=params\.get\('preview'\)===['"]1['"]/);
     assert.match(router, /const channelId=preview\?\(normalize\(params\.get\('event'\)\)\|\|activeChannelId\):activeChannelId/);
     assert.doesNotMatch(router, /channelId?\s*===\s*['"](?:cdcup|crewart)['"]/);
+});
+
+test('phone camera waits for a user tap before requesting mobile permission', () => {
+    for (const file of ['cam.html', 'cam/index.html']) {
+        const source = fs.readFileSync(path.join(__dirname, '..', 'public', file), 'utf8');
+        assert.match(source, /id="permButton"[^>]*onclick="retryCamera\(\)"/);
+        assert.match(source, /function showCameraPermissionGate\(blocked = false\)/);
+        assert.match(source, /if \(!window\.QRCode\) return/);
+        assert.match(source, /if \(mode === 'cam' \|\| mode === 'phone'\) \{\s*showCameraPermissionGate\(false\)/);
+        assert.doesNotMatch(source, /if \(mode === 'cam' \|\| mode === 'phone'\) \{\s*startNativePhoneCam\(\)/);
+        assert.ok(source.lastIndexOf('showCameraPermissionGate(false)') < source.lastIndexOf('updateQrs();'));
+        assert.match(source, /Streaming Error:[\s\S]*카메라 연결됨 · 송출 연결 재시도 필요/);
+        assert.match(source, /receiverTargetId = `creok_\$\{getCh\(\)\}_cam`/);
+        assert.match(source, /connectToStreamer\(receiverTargetId\)/);
+        assert.match(source, /currentPeer\.call\(targetId, createEmptyStream\(\)\)/);
+        assert.doesNotMatch(source, /targetIdMonitor/);
+        assert.match(source, /receiverRetryTimer = setTimeout\(\(\) => connectToStreamer\(receiverTargetId\), 2500\)/);
+        assert.match(source, /if \(receiverOfferStream\) return receiverOfferStream/);
+        assert.match(source, /receiverOfferCanvas\.captureStream\(1\)/);
+        assert.match(source, /receiverOfferStream\?\.getTracks\(\)\.forEach\(track => track\.stop\(\)\)/);
+        assert.match(source, /function stopReceiverMode\(\)/);
+        assert.match(source, /width: \{ ideal: 1920 \}/);
+        assert.match(source, /height: \{ ideal: 1080 \}/);
+        assert.match(source, /function streamQualityLabel\(stream\)/);
+        assert.match(source, /id="hudQuality">해상도 확인 중<\/span>/);
+        assert.match(source, /nativeVideo\.videoWidth/);
+        assert.match(source, /function watchStreamQuality\(stream\)/);
+        assert.match(source, /qualityRefreshTimer = setInterval\(refresh, 1000\)/);
+        assert.match(source, /parameters\.encodings\[0\]\.maxBitrate = maxBitrate/);
+        assert.match(source, /pixels >= 1900000 \? 6000000/);
+        assert.doesNotMatch(source, /라이브 송출 중 \(720p 30fps\)/);
+    }
 });
 
 test('home is an operational channel launcher without duplicate management routes', () => {

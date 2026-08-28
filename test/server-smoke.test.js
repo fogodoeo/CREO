@@ -81,6 +81,12 @@ test('HTTP server exposes the CREO hub, survey assets, health, and membership co
     assert.equal(homeResponse.status, 200);
     assert.match(await homeResponse.text(), /CREO/);
 
+    const cameraResponse = await fetch(`http://127.0.0.1:${port}/cam.html`);
+    assert.equal(cameraResponse.status, 200);
+    assert.equal(cameraResponse.headers.get('permissions-policy'), 'camera=(self), microphone=(self), geolocation=()');
+    assert.match(await cameraResponse.text(), /카메라 권한 허용/);
+    assert.equal(homeResponse.headers.get('permissions-policy'), 'camera=(), microphone=(), geolocation=()');
+
     const surveyResponse = await fetch(`http://127.0.0.1:${port}/crewart-survey.html`);
     assert.equal(surveyResponse.status, 200);
     assert.match(surveyResponse.headers.get('content-type'), /^text\/html/);
