@@ -466,6 +466,23 @@ body[data-event-module="crewart"] .p3-contribution-roulette-shell {
     -webkit-backdrop-filter: blur(20px) saturate(0.95);
 }
 
+body[data-event-module="crewart"] .p3-contribution-roulette-shell { width: 100%; height: 100%; min-height: 68px; }
+
+body[data-event-module="crewart"] .p3-contribution-roulette-shell.has-bid-amount {
+    grid-template-columns: minmax(0, 1.15fr) minmax(110px, .32fr) minmax(240px, .78fr);
+}
+
+body[data-event-module="crewart"] .p3-contribution-roulette-amount {
+    display: grid;
+    place-items: center;
+    min-width: 0;
+    color: #fffaf0;
+    font-family: var(--font-hp-title);
+    font-size: clamp(24px, calc(var(--p3-roulette-font-size, 36px) * 1.05), 72px);
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+}
+
 body[data-event-module="crewart"] .p2-house-reveal-shell::before,
 body[data-event-module="crewart"] .p3-contribution-roulette-shell::before {
     content: '';
@@ -476,6 +493,8 @@ body[data-event-module="crewart"] .p3-contribution-roulette-shell::before {
     border-radius: 11px 2px 11px 2px;
     pointer-events: none;
 }
+
+body[data-event-module="crewart"] .p3-contribution-roulette-shell::before { display: none; }
 
 body[data-event-module="crewart"] .p2-house-reveal-shell::after,
 body[data-event-module="crewart"] .p3-contribution-roulette-shell::after {
@@ -579,37 +598,41 @@ body[data-event-module="crewart"] .p2-house-reveal-color {
     letter-spacing: 0.04em;
 }
 
-body[data-event-module="crewart"] .p2-house-reveal-color[data-house="R"],
-body[data-event-module="crewart"] .p3-contribution-roulette-value[data-house="R"] {
+body[data-event-module="crewart"] .p2-house-reveal-color[data-house="R"] {
     background:
         radial-gradient(circle at 50% 50%, rgba(255, 50, 75, 0.35), transparent 70%),
         linear-gradient(115deg, #4a1019, var(--cw-reel-r) 60%, #5e1420);
     box-shadow: inset 0 0 28px rgba(220, 20, 60, 0.4);
 }
 
-body[data-event-module="crewart"] .p2-house-reveal-color[data-house="G"],
-body[data-event-module="crewart"] .p3-contribution-roulette-value[data-house="G"] {
+body[data-event-module="crewart"] .p3-contribution-roulette-value[data-house="R"] { background: var(--cw-reel-r); }
+
+body[data-event-module="crewart"] .p2-house-reveal-color[data-house="G"] {
     background:
         radial-gradient(circle at 50% 50%, rgba(50, 220, 120, 0.35), transparent 70%),
         linear-gradient(115deg, #0a291c, var(--cw-reel-g) 60%, #0e3a28);
     box-shadow: inset 0 0 28px rgba(46, 204, 113, 0.4);
 }
 
-body[data-event-module="crewart"] .p2-house-reveal-color[data-house="B"],
-body[data-event-module="crewart"] .p3-contribution-roulette-value[data-house="B"] {
+body[data-event-module="crewart"] .p3-contribution-roulette-value[data-house="G"] { background: var(--cw-reel-g); }
+
+body[data-event-module="crewart"] .p2-house-reveal-color[data-house="B"] {
     background:
         radial-gradient(circle at 50% 50%, rgba(60, 140, 255, 0.35), transparent 70%),
         linear-gradient(115deg, #0e2642, var(--cw-reel-b) 60%, #153964);
     box-shadow: inset 0 0 28px rgba(52, 152, 219, 0.4);
 }
 
-body[data-event-module="crewart"] .p2-house-reveal-color[data-house="Y"],
-body[data-event-module="crewart"] .p3-contribution-roulette-value[data-house="Y"] {
+body[data-event-module="crewart"] .p3-contribution-roulette-value[data-house="B"] { background: var(--cw-reel-b); }
+
+body[data-event-module="crewart"] .p2-house-reveal-color[data-house="Y"] {
     background:
         radial-gradient(circle at 50% 50%, rgba(255, 200, 50, 0.35), transparent 70%),
         linear-gradient(115deg, #473206, var(--cw-reel-y) 60%, #61450a);
     box-shadow: inset 0 0 28px rgba(241, 196, 15, 0.4);
 }
+
+body[data-event-module="crewart"] .p3-contribution-roulette-value[data-house="Y"] { background: var(--cw-reel-y); }
 
 body[data-event-module="crewart"] .p2-house-reveal-shell.is-settled,
 body[data-event-module="crewart"] .p3-contribution-roulette-shell.is-settled {

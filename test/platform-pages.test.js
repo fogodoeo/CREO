@@ -738,6 +738,7 @@ test('broadcast control automatically optimizes oversized MP4 banners before upl
 test('BASIC control uploads six dice videos and P3 renders parity totals without changing sold price', () => {
     const control = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-control.html'), 'utf8');
     const live = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-live.html'), 'utf8');
+    const profiles = fs.readFileSync(path.join(__dirname, '..', 'public', 'broadcast-profiles.js'), 'utf8');
     assert.match(control, /value="dice"/);
     assert.match(control, /주사위 눈금 \(1~6\)/);
     assert.match(control, /section\.id='dice-video-section'/);
@@ -753,6 +754,17 @@ test('BASIC control uploads six dice videos and P3 renders parity totals without
     assert.match(live, /audience_contribution_amount/);
     assert.match(live, /kind==='dice'/);
     assert.match(live, /기여도 반영/);
+    assert.match(profiles, /id: 'basic-dice'[\s\S]{0,700}page2Price: false, soldEffectPage: 3/);
+    assert.match(control, /data-page2-price-control/);
+    assert.match(control, /profile\.settings\?\.soldEffectPage===3/);
+    assert.match(live, /profile\.settings\?\.page2Price!==false/);
+    assert.match(live, /profile\.settings\?\.soldEffectPage!==3/);
+    assert.match(live, /function hydrateOdometers\(\)/);
+    assert.match(live, /data-odometer-value/);
+    assert.match(live, /class="team-delta">\+\$\{odometer/);
+    assert.match(live, /background:color-mix\(in srgb,var\(--team-color\) 88%,#111827\)/);
+    assert.doesNotMatch(live, /host-card\.muted/);
+    assert.match(live, /style="--host-count:\$\{hostRows\.length\}"/);
 });
 
 test('common pinball resolves winners from the operating channel rather than the dashboard selection', () => {
