@@ -833,6 +833,11 @@ test('BASIC control uploads six dice videos and P3 renders parity totals without
     assert.doesNotMatch(live, /host-card\.muted/);
     assert.match(live, /data-host-index="\$\{row\.slot\}"/);
     assert.match(live, /'p1-host-1':'.host-card\[data-host-index="1"\]'/);
+    assert.match(live, /function resolvedLayoutPlacements\(state\)/);
+    assert.match(live, /legacy=placements\['p1-hosts'\]/);
+    assert.match(live, /if\(placements\[slot\]\)return;placements\[slot\]=\{\.\.\.legacy/);
+    assert.match(live, /placements:appliedPlacements/);
+    assert.match(live, /\.host-card\.host-slot\{position:absolute;right:auto;bottom:94px;left:calc\(100% - var\(--safe-x\) - 280px\)/);
     assert.match(live, /host-name/);
     assert.match(live, /host-role/);
 });
