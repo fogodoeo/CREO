@@ -92,6 +92,10 @@ test('BASIC P3 waits for the dice video and shows only live contribution totals'
     assert.match(source, /width:min\(1240px,92vw\);height:min\(690px,72vh\)/);
     assert.match(source, /\.dice-team-board\{[^}]*z-index:30[^}]*height:clamp\(82px,11vh,110px\)/);
     assert.match(source, /content=row\.group\.id==='even'\?score\+label:label\+score/);
+    assert.match(source, /background:color-mix\(in srgb,var\(--team-color\) 16%,#111720\)/);
+    assert.match(source, /\.dice-result-strip\{[^}]*border-left:5px solid #c4a363[^}]*background:#121820/);
+    assert.match(source, /\.dice-overlay-card\.has-result-strip::after\{[^}]*background:transparent/);
+    assert.match(source, /transform:translateY\(-10vh\)/);
     assert.match(source, /<strong><b>\$\{esc\(name\)\}<\/b><small>낙찰<\/small><\/strong>/);
     assert.match(source, /<div class="dice-result-strip"><span>낙찰금 ×<\/span><b>\$\{face\}<\/b><\/div>/);
     const renderer = source.slice(
