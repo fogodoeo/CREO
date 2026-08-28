@@ -184,7 +184,7 @@
     <!-- 4 Action Buttons -->
     <div class="grid">
       
-      <!-- 1. Phone Camera: Clean & Stable (Zero Loops) -->
+      <!-- 1. Phone Camera: Clean & Stable -->
       <div class="btn green" onclick="launchPhoneCam()">
         <div class="icon">📱</div>
         <div class="title">폰 카메라 송출</div>
@@ -280,9 +280,23 @@
 
     function copyObsUrl() {
       const url = getObsCamUrl();
-      navigator.clipboard.writeText(url).then(() => {
-        alert(`[OBS 브라우저 소스 링크 복사 완료]\n${url}`);
-      }).catch(() => alert(`OBS URL:\n${url}`));
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(() => {
+          alert('[OBS 브라우저 소스 링크 복사 완료]\n' + url);
+        }).catch(() => fallbackCopy(url));
+      } else {
+        fallbackCopy(url);
+      }
+    }
+
+    function fallbackCopy(text) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      alert('[OBS 브라우저 소스 링크 복사 완료]\n' + text);
     }
 
     window.addEventListener('DOMContentLoaded', () => {
