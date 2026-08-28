@@ -78,6 +78,11 @@ test('BASIC sold transition assigns phone parity and rolls dice exactly once per
     await call(api, 'PUT', '/api/platform/channels/alpha/auction-transition', {
         itemId: 'basic_item', status: 'live', mode: 'live'
     });
+    const liveBroadcast = await call(api, 'GET', '/api/platform/channels/alpha/broadcast?page=3', null, '');
+    const liveBid = liveBroadcast.json().items[0].bidLog[0];
+    assert.equal(liveBid.audience_group_key, 'odd');
+    assert.equal(liveBid.audience_group_source, 'phone');
+    assert.equal(liveBid.amount_won, 400000);
     const sold = await call(api, 'PUT', '/api/platform/channels/alpha/auction-transition', {
         itemId: 'basic_item', status: 'sold', mode: 'sold', item: { soldPrice: 40, winnerAlias: '홀수낙찰자/12345679' }
     });
@@ -115,6 +120,18 @@ test('BASIC sold transition assigns phone parity and rolls dice exactly once per
     assert.equal(resold.json().item.attributes.audience_contribution_amount, 180);
     assert.notEqual(resold.json().item.attributes.audience_dice_event_id, eventId);
     assert.equal(rolls, 2);
+
+    await call(restartedApi, 'PUT', '/api/platform/channels/alpha/auction-transition', {
+        itemId: 'basic_item', status: 'live', mode: 'live', item: {
+            attributes: { bid_log: JSON.stringify([{ name: '리더', bidder_key: 'leader-stable-key', amount: 10 }]) }
+        }
+    });
+    const fallbackSold = await call(restartedApi, 'PUT', '/api/platform/channels/alpha/auction-transition', {
+        itemId: 'basic_item', status: 'sold', mode: 'sold', item: { soldPrice: 10, winnerAlias: 'leader-stable-key' }
+    });
+    assert.ok(['odd', 'even'].includes(fallbackSold.json().item.attributes.audience_group_key));
+    assert.equal(fallbackSold.json().item.attributes.audience_group_source, 'fallback');
+    assert.equal(rolls, 3);
 });
 
 class ResponseCapture {

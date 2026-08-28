@@ -649,10 +649,60 @@ async function resolveWinnerPhone(item, bandMembership) {
 
 async function resolvePhoneParityWinner(item, bandMembership) {
     const phone = await resolveWinnerPhone(item, bandMembership);
-    if (!phone) return null;
-    const lastDigit = Number.parseInt(phone.slice(-1), 10);
-    if (!Number.isInteger(lastDigit)) return null;
-    return { groupKey: lastDigit % 2 === 0 ? 'even' : 'odd', source: 'phone' };
+    if (phone) {
+        const lastDigit = Number.parseInt(phone.slice(-1), 10);
+        if (Number.isInteger(lastDigit)) {
+            return { groupKey: lastDigit % 2 === 0 ? 'even' : 'odd', source: 'phone' };
+        }
+    }
+    // A BAND profile can temporarily be absent from the membership mirror (for
+    // example the leader account or a just-joined member). Keep that bidder on
+    // one stable side instead of dropping the live score entirely. A later
+    // resolvable phone always wins over this fallback.
+    const bid = winningBid(item) || {};
+    const stableKey = cleanText(
+        bid?.bidder_key || bid?.bidderKey || bid?.name || bid?.bidder
+            || item?.winnerAlias || item?.winnerName || '',
+        160
+    );
+    if (!stableKey) return null;
+    const parity = crypto.createHash('sha256').update(`phone-parity:${stableKey}`).digest()[0] % 2;
+    return { groupKey: parity === 0 ? 'even' : 'odd', source: 'fallback' };
+}
+
+async function enrichPhoneParityBidderGroups(channel, item, bandMembership) {
+    if (!phoneParityCompetitionEnabled(channel)) return item;
+    const bids = rawItemBidLog(item);
+    if (!bids.length) return item;
+    const winning = winningBid({ ...item, bidLog: bids });
+    const winnerIndex = Math.max(0, bids.indexOf(winning));
+    const assignment = await resolvePhoneParityWinner({
+        ...item,
+        winnerAlias: winning?.bidder_key || winning?.bidderKey || winning?.name || '',
+        winnerName: winning?.name || winning?.bidder || '',
+        bidLog: [winning]
+    }, bandMembership);
+    return {
+        ...item,
+        bidLog: bids.map((bid, index) => {
+            if (index !== winnerIndex) return bid;
+            if (!['odd', 'even'].includes(assignment?.groupKey)) return bid;
+            return {
+                ...bid,
+                audience_group_key: assignment.groupKey,
+                audience_group_source: assignment.source === 'phone' ? 'phone' : 'fallback'
+            };
+        }),
+        ...(item.status === 'sold' && !['odd', 'even'].includes(cleanText(item.attributes?.audience_group_key, 16).toLowerCase())
+            ? {
+                attributes: {
+                    ...(item.attributes || {}),
+                    audience_group_key: assignment?.groupKey || '',
+                    audience_group_source: assignment?.source || ''
+                }
+            }
+            : {})
+    };
 }
 
 function normalizedDiceFace(value) {
@@ -1815,7 +1865,7 @@ function createPlatformApi({
                 }
                 const broadcastItems = await Promise.all(pageItems.map(async (item) => {
                     const isActiveItem = item.status === 'live' || (activeItemId && item.id === activeItemId);
-                    return isActiveItem
+                    let enrichedItem = isActiveItem
                         ? enrichCrewartBidderHouses(
                             channel,
                             item,
@@ -1826,6 +1876,11 @@ function createPlatformApi({
                             logger
                         )
                         : item;
+                    enrichedItem = await enrichedItem;
+                    if (isActiveItem && phoneParityCompetitionEnabled(channel)) {
+                        enrichedItem = await enrichPhoneParityBidderGroups(channel, enrichedItem, bandMembership);
+                    }
+                    return enrichedItem;
                 }));
                 const revealedBidderKeys = new Set(audience.revealedBidderKeys || []);
                 replyJson(res, 200, {

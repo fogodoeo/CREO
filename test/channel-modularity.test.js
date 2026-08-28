@@ -55,7 +55,9 @@ test('BASIC uses the platform renderer with a dedicated dice team page', () => {
     assert.equal(profile.engine, 'platform');
     assert.equal(profile.settings.diceAssets, true);
     assert.equal(Profiles.pageContract(basic, 3).id, 'dice-teams');
+    assert.deepEqual(Profiles.pageContract(basic, 3).slots, ['teamContribution', 'dice']);
     assert.equal(Profiles.defaultState(basic).page3On, true);
+    assert.equal(Profiles.defaultState(basic).scoreboardId, 'team-contribution');
     assert.match(Profiles.broadcastTarget(basic, 3), /^auction-live\.html\?channel=basic&page=3$/);
 });
 

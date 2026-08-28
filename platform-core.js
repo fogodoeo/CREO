@@ -450,7 +450,9 @@ function publicItemAttributes(item = {}) {
             : 'unused',
         crewart_roulette_event_id: cleanText(attributes.crewart_roulette_event_id, 80),
         audience_group_key: ['odd', 'even'].includes(audienceGroupKey) ? audienceGroupKey : '',
-        audience_group_source: cleanText(attributes.audience_group_source, 20) === 'phone' ? 'phone' : '',
+        audience_group_source: ['phone', 'fallback'].includes(cleanText(attributes.audience_group_source, 20))
+            ? cleanText(attributes.audience_group_source, 20)
+            : '',
         audience_contribution_base: Number.isFinite(audienceContributionBase) && audienceContributionBase >= 0 ? audienceContributionBase : 0,
         audience_contribution_multiplier: Number.isInteger(audienceContributionMultiplier) && audienceContributionMultiplier >= 1 && audienceContributionMultiplier <= 6
             ? audienceContributionMultiplier
@@ -494,6 +496,8 @@ function publicBidLog(item = {}) {
             : amount * 10000;
         const houseKey = cleanText(bid?.crewart_house_key || bid?.crewartHouseKey, 8).toUpperCase();
         const houseSource = cleanText(bid?.crewart_house_source || bid?.crewartHouseSource, 16);
+        const audienceGroupKey = cleanText(bid?.audience_group_key || bid?.audienceGroupKey, 16).toLowerCase();
+        const audienceGroupSource = cleanText(bid?.audience_group_source || bid?.audienceGroupSource, 20).toLowerCase();
         const rawBidderKey = cleanText(bid?.bidder_key || bid?.bidderKey || '', 160);
         const bidderKey = rawBidderKey
             ? `bidder_${crypto.createHash('sha256').update(rawBidderKey).digest('base64url').slice(0, 18)}`
@@ -514,6 +518,10 @@ function publicBidLog(item = {}) {
             ...(['R', 'G', 'B', 'Y'].includes(houseKey) ? {
                 crewart_house_key: houseKey,
                 crewart_house_source: houseSource === 'survey' ? 'survey' : 'random'
+            } : {}),
+            ...(['odd', 'even'].includes(audienceGroupKey) ? {
+                audience_group_key: audienceGroupKey,
+                audience_group_source: audienceGroupSource === 'phone' ? 'phone' : 'fallback'
             } : {}),
             ...(bid?.crewart_assignment_pending === true ? { crewart_assignment_pending: true } : {})
         };

@@ -57,6 +57,21 @@ test('page two omits the photo plate when the active item has no image', () => {
     assert.doesNotMatch(source, /photo-empty/);
 });
 
+test('BASIC P3 waits for the dice video and shows only live contribution totals', () => {
+    const source = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-live.html'), 'utf8');
+    assert.match(source, /video\.addEventListener\('ended',finish/);
+    assert.match(source, /function finishDiceVideo\(eventId\)/);
+    assert.match(source, /function liveParityContribution\(items\)/);
+    assert.match(source, /live\?\.group===group\.id\?live\.amount:0/);
+    const renderer = source.slice(
+        source.indexOf('function renderDiceTeamsPageThree'),
+        source.indexOf('function profilePageThree')
+    );
+    assert.doesNotMatch(renderer, /낙찰합계|team-sales|dice-team-metric/);
+    assert.match(renderer, /<strong>\$\{odometer\(row\.points/);
+    assert.match(renderer, /<h2>\$\{esc\(row\.group\.shortName/);
+});
+
 test('the universal broadcast route delegates renderer selection to channel profiles', () => {
     const router = fs.readFileSync(path.join(__dirname, '..', 'public', 'broadcast-router.html'), 'utf8');
     assert.doesNotMatch(router, /supabase-bridge|active_event_module|getRuntimeConfigMap/i);
@@ -767,8 +782,13 @@ test('BASIC control uploads six dice videos and P3 renders parity totals without
     assert.match(live, /profile\.settings\?\.soldEffectPage!==3/);
     assert.match(live, /function hydrateOdometers\(\)/);
     assert.match(live, /data-odometer-value/);
-    assert.match(live, /class="team-delta">\+\$\{odometer/);
-    assert.match(live, /background:color-mix\(in srgb,var\(--team-color\) 88%,#111827\)/);
+    assert.match(live, /class="team-delta">\+\$\{money/);
+    assert.match(live, /background:color-mix\(in srgb,var\(--team-color\) 94%,#111827\)/);
+    assert.match(live, /function liveParityContribution\(items\)/);
+    assert.doesNotMatch(
+        live.slice(live.indexOf('function renderDiceTeamsPageThree'), live.indexOf('function profilePageThree')),
+        /낙찰합계|team-sales|dice-team-metric/
+    );
     assert.doesNotMatch(live, /host-card\.muted/);
     assert.match(live, /style="--host-count:\$\{hostRows\.length\}"/);
 });
