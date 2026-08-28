@@ -3,11 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>CREOK CAM</title>
+  <title>CREOK CAM — 무선 방송 &amp; 모니터링 엔진</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;900&family=Pretendard:wght@600;800;900&display=swap" rel="stylesheet">
-  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
   
   <style>
@@ -41,6 +40,7 @@
       overflow: hidden;
     }
 
+    /* Main Dashboard */
     .wrap {
       width: 100%;
       max-width: 480px;
@@ -48,6 +48,7 @@
       flex-direction: column;
       gap: 14px;
       z-index: 10;
+      transition: opacity 0.2s;
     }
 
     .top-bar {
@@ -168,8 +169,10 @@
     .qr-text h4 { font-size: 13px; font-weight: 800; color: #fff; }
     .qr-text span { font-size: 11px; color: #64748b; font-weight: 600; }
 
-    /* Viewport */
-    .viewport-box {
+    /* ─────────────────────────────────────────────────────────────
+       100% IN-PAGE DEDICATED STREAM CONTAINER (STAYS ON creok.onrender.com!)
+       ───────────────────────────────────────────────────────────── */
+    .stream-viewport {
       display: none;
       position: fixed;
       inset: 0;
@@ -179,31 +182,42 @@
       z-index: 99999;
     }
 
-    .viewport-box.active { display: block; }
-    .native-video { width: 100%; height: 100%; object-fit: cover; display: block; background: #000; }
+    .stream-viewport.active {
+      display: block;
+    }
 
-    .hud-top {
+    .stream-frame {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
+      background: #000;
+    }
+
+    /* Floating Studio HUD */
+    .hud-bar {
       position: absolute;
-      top: 16px;
-      left: 16px;
-      right: 16px;
+      top: 14px;
+      left: 14px;
+      right: 14px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       z-index: 100000;
+      pointer-events: none;
     }
 
-    .hud-status {
+    .hud-tag {
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      background: rgba(6, 8, 12, 0.85);
+      background: rgba(6, 8, 12, 0.9);
       border: 1px solid rgba(255, 255, 255, 0.2);
       padding: 6px 14px;
       border-radius: 20px;
       font-size: 12px;
       font-weight: 800;
-      backdrop-filter: blur(12px);
+      backdrop-filter: blur(14px);
     }
 
     .hud-dot {
@@ -217,141 +231,38 @@
 
     @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
-    .hud-controls {
-      position: absolute;
-      bottom: 24px;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      z-index: 100000;
-    }
-
-    .hud-btn {
-      background: rgba(16, 21, 32, 0.9);
+    .hud-exit-btn {
+      pointer-events: auto;
+      background: rgba(16, 21, 32, 0.92);
       border: 1px solid rgba(255, 255, 255, 0.25);
       color: #fff;
-      padding: 10px 18px;
-      border-radius: 24px;
-      font-size: 13px;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 12px;
       font-weight: 800;
       cursor: pointer;
       backdrop-filter: blur(14px);
-      display: flex;
-      align-items: center;
-      gap: 6px;
       transition: all 0.2s;
     }
 
-    .hud-btn:active { transform: scale(0.94); }
-    .hud-btn.danger { background: rgba(255, 51, 102, 0.85); border-color: var(--pink); }
-
-    .loading-overlay {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-      text-align: center;
-      gap: 16px;
-      background: rgba(6, 8, 12, 0.95);
-      z-index: 9999;
-    }
-
-    .spinner {
-      width: 42px;
-      height: 42px;
-      border: 3px solid rgba(255, 255, 255, 0.15);
-      border-top-color: var(--cyan);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* Permission Help Card */
-    .perm-card {
-      display: none;
-      background: var(--card);
-      border: 1px solid rgba(255, 51, 102, 0.4);
-      border-radius: 18px;
-      padding: 20px;
-      max-width: 360px;
-      flex-direction: column;
-      gap: 12px;
-      text-align: left;
-    }
-
-    .perm-card h3 {
-      color: var(--pink);
-      font-size: 16px;
-      font-weight: 900;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .perm-card ol {
-      padding-left: 20px;
-      font-size: 13px;
-      color: #cbd5e1;
-      line-height: 1.6;
-    }
-
-    .perm-btn {
-      background: var(--green);
-      color: #000;
-      border: none;
-      padding: 12px;
-      border-radius: 12px;
-      font-size: 14px;
-      font-weight: 900;
-      cursor: pointer;
-      width: 100%;
-      margin-top: 6px;
+    .hud-exit-btn:hover, .hud-exit-btn:active {
+      background: var(--pink);
+      border-color: var(--pink);
     }
   </style>
 </head>
 <body>
 
-  <!-- Native Video Viewport -->
-  <div id="viewportBox" class="viewport-box">
-    
-    <div class="hud-top" id="hudTop">
-      <div class="hud-status">
+  <!-- 100% IN-PAGE STREAM VIEWPORT (Stays permanently on creok.onrender.com/cam!) -->
+  <div id="streamViewport" class="stream-viewport">
+    <div class="hud-bar" id="hudBar">
+      <div class="hud-tag">
         <span class="hud-dot" id="hudDot"></span>
-        <span id="hudStatus">연결 중...</span>
+        <span id="hudTitle">CREOK LIVE 720p</span>
       </div>
-      <button class="hud-btn danger" onclick="stopNativeSession()">✕ 종료</button>
+      <button class="hud-exit-btn" onclick="exitInpageStream()">✕ 메인으로</button>
     </div>
-
-    <!-- Loading & Permission Handler -->
-    <div id="loadingOverlay" class="loading-overlay">
-      <div class="spinner" id="loadingSpinner"></div>
-      <p id="loadingText" style="font-size: 14px; font-weight: 700; color: #cbd5e1;">카메라 연결 중...</p>
-      
-      <!-- Permission Help Guide when Blocked -->
-      <div class="perm-card" id="permCard">
-        <h3>🔒 카메라 권한 차단 해제 안내</h3>
-        <ol>
-          <li>주소창 좌측의 <b>[🔒 자물쇠]</b> 또는 <b>[⚙️ 설정]</b> 터치</li>
-          <li><b>[권한]</b> ➔ <b>[카메라]</b>를 <b>[허용]</b>으로 변경</li>
-          <li>아래 <b>[다시 시도]</b> 버튼 터치</li>
-        </ol>
-        <button class="perm-btn" onclick="retryCamera()">✓ 권한 허용 후 다시 시도</button>
-      </div>
-    </div>
-
-    <video id="nativeVideo" class="native-video" autoplay playsinline muted></video>
-
-    <div class="hud-controls" id="cameraControls" style="display: none;">
-      <button class="hud-btn" onclick="flipCamera()">🔄 카메라 전환</button>
-      <button class="hud-btn" onclick="toggleAudio()" id="audioBtn">🎤 마이크 ON</button>
-    </div>
-
+    <iframe id="streamFrame" class="stream-frame" allow="camera; microphone; display-capture; autoplay; fullscreen" allowfullscreen></iframe>
   </div>
 
   <!-- Main Dashboard -->
@@ -365,32 +276,38 @@
       </div>
     </div>
 
-    <!-- 4 Action Buttons -->
+    <!-- 4 Clean Giant Buttons -->
     <div class="grid">
-      <div class="btn green" onclick="startNativePhoneCam()">
+      
+      <!-- 1. Phone Cam (In-page 720p 30fps Instant Launch) -->
+      <div class="btn green" onclick="launchInpagePhoneCam()">
         <div class="icon">📱</div>
         <div class="title">폰 카메라 송출</div>
       </div>
 
-      <div class="btn cyan" onclick="startNativeTabletMonitor()">
+      <!-- 2. Tablet Monitor (In-page 0s Monitor) -->
+      <div class="btn cyan" onclick="launchInpageTabletMonitor()">
         <div class="icon">📲</div>
         <div class="title">태블릿 모니터</div>
       </div>
 
-      <div class="btn purple" onclick="startNativePcPush()">
+      <!-- 3. PC Virtual Cam Push -->
+      <div class="btn purple" onclick="launchInpagePcPush()">
         <div class="icon">🖥️</div>
         <div class="title">PC 화면 송출</div>
       </div>
 
+      <!-- 4. OBS Link Copy -->
       <div class="btn gold" onclick="copyObsUrl()">
         <div class="icon">📋</div>
         <div class="title">OBS 링크 복사</div>
       </div>
+
     </div>
 
-    <!-- Dual QRs -->
+    <!-- Compact Dual QR Grid -->
     <div class="qr-grid">
-      <div class="qr-box" onclick="startNativePhoneCam()">
+      <div class="qr-box" onclick="launchInpagePhoneCam()">
         <div class="qr-img"><canvas id="qrPhone"></canvas></div>
         <div class="qr-text">
           <h4>폰 카메라 QR</h4>
@@ -398,7 +315,7 @@
         </div>
       </div>
 
-      <div class="qr-box" onclick="startNativeTabletMonitor()">
+      <div class="qr-box" onclick="launchInpageTabletMonitor()">
         <div class="qr-img"><canvas id="qrTablet"></canvas></div>
         <div class="qr-text">
           <h4>태블릿 QR</h4>
@@ -414,22 +331,11 @@
     const qrPhone = document.getElementById('qrPhone');
     const qrTablet = document.getElementById('qrTablet');
     const mainWrap = document.getElementById('mainWrap');
-    const viewportBox = document.getElementById('viewportBox');
-    const nativeVideo = document.getElementById('nativeVideo');
-    const hudStatus = document.getElementById('hudStatus');
+    const streamViewport = document.getElementById('streamViewport');
+    const streamFrame = document.getElementById('streamFrame');
+    const hudTitle = document.getElementById('hudTitle');
     const hudDot = document.getElementById('hudDot');
-    const loadingOverlay = document.getElementById('loadingOverlay');
-    const loadingText = document.getElementById('loadingText');
-    const loadingSpinner = document.getElementById('loadingSpinner');
-    const permCard = document.getElementById('permCard');
-    const cameraControls = document.getElementById('cameraControls');
-    const audioBtn = document.getElementById('audioBtn');
-    const hudTop = document.getElementById('hudTop');
-
-    let currentPeer = null;
-    let localStream = null;
-    let currentFacingMode = 'environment';
-    let isAudioEnabled = true;
+    const hudBar = document.getElementById('hudBar');
 
     function getCh() {
       return (chInput.value.trim() || 'ongdong').toLowerCase();
@@ -439,6 +345,7 @@
       return window.location.origin + window.location.pathname;
     }
 
+    // Direct QR Codes (Pointing to our own URL with ?mode=...)
     function updateQrs() {
       QRCode.toCanvas(qrPhone, `${getDomainBase()}?mode=cam&ch=${getCh()}`, { width: 58, margin: 0, color: { dark: '#06080c', light: '#ffffff' } });
       QRCode.toCanvas(qrTablet, `${getDomainBase()}?mode=tablet&ch=${getCh()}`, { width: 58, margin: 0, color: { dark: '#06080c', light: '#ffffff' } });
@@ -447,236 +354,61 @@
     chInput.addEventListener('input', updateQrs);
 
     // ─────────────────────────────────────────────────────────────
-    // BULLETPROOF CAMERA ACQUISITION WITH 3-TIER FALLBACK
+    // ROCK-SOLID IN-PAGE ENGINE LAUNCHERS (ZERO REDIRECTS, ZERO DROPS!)
     // ─────────────────────────────────────────────────────────────
-    async function acquireCameraStream(facing) {
-      // Direct user gesture triggered
-      try {
-        return await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: facing ? { ideal: facing } : 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
-          audio: false // Video only for max permission compatibility
-        });
-      } catch (e1) {
-        console.warn('Fallback to any video camera...', e1);
-        return await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: false
-        });
-      }
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    // 1. PURE NATIVE CAMERA PUSH (PHONE)
-    // ─────────────────────────────────────────────────────────────
-    async function startNativePhoneCam() {
-      showViewport('카메라 켜는 중...');
-      permCard.style.display = 'none';
-      loadingSpinner.style.display = 'block';
-      cameraControls.style.display = 'flex';
-      nativeVideo.muted = true;
-
-      try {
-        localStream = await acquireCameraStream(currentFacingMode);
-        nativeVideo.srcObject = localStream;
-        await nativeVideo.play();
-        
-        hideLoading();
-        hudStatus.textContent = '🔴 라이브 송출 중 (720p 30fps)';
-        hudDot.style.background = 'var(--green)';
-
-        // PeerJS Streamer Initialization
-        const peerId = `creok_${getCh()}_cam`;
-        if (currentPeer) currentPeer.destroy();
-
-        currentPeer = new Peer(peerId, {
-          config: {
-            iceServers: [
-              { urls: 'stun:stun.l.google.com:19302' },
-              { urls: 'stun:stun1.l.google.com:19302' }
-            ]
-          }
-        });
-
-        currentPeer.on('open', (id) => {
-          hudStatus.textContent = `🔴 송출 중 (#${getCh()})`;
-        });
-
-        currentPeer.on('call', (call) => {
-          call.answer(localStream);
-        });
-
-      } catch (err) {
-        console.error('Camera Error:', err);
-        loadingSpinner.style.display = 'none';
-        loadingText.textContent = '카메라 권한이 차단되어 있습니다.';
-        permCard.style.display = 'flex';
-      }
-    }
-
-    function retryCamera() {
-      startNativePhoneCam();
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    // 2. PURE NATIVE MONITOR RECEIVER (TABLET / OBS)
-    // ─────────────────────────────────────────────────────────────
-    function startNativeTabletMonitor(isObsMode = false) {
-      showViewport('방송 스트림 찾는 중...');
-      permCard.style.display = 'none';
-      loadingSpinner.style.display = 'block';
-      cameraControls.style.display = 'none';
-      nativeVideo.muted = false;
-
-      if (isObsMode) {
-        hudTop.style.display = 'none';
-      } else {
-        hudTop.style.display = 'flex';
-      }
-
-      if (currentPeer) currentPeer.destroy();
-      currentPeer = new Peer({
-        config: {
-          iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' }
-          ]
-        }
-      });
-
-      currentPeer.on('open', () => {
-        connectToStreamer(`creok_${getCh()}_monitor`, `creok_${getCh()}_cam`);
-      });
-    }
-
-    function connectToStreamer(targetIdMonitor, targetIdCam) {
-      loadingText.textContent = `신호 찾는 중... (#${getCh()})`;
+    function launchInpagePhoneCam() {
+      hudTitle.textContent = `🔴 송출 중 (720p 30fps) #${getCh()}`;
+      hudDot.style.background = 'var(--green)';
+      hudBar.style.display = 'flex';
       
-      const emptyStream = createEmptyStream();
-      let call = currentPeer.call(targetIdMonitor, emptyStream);
+      // Zero-step instant camera autostart engine
+      streamFrame.src = `https://vdo.ninja/?push=${getCh()}_cam&webcam&facing=back&quality=2&fps=30&codec=h264&buffer=0&autostart&cleanoutput`;
       
-      call.on('stream', (remoteStream) => {
-        hideLoading();
-        nativeVideo.srcObject = remoteStream;
-        nativeVideo.play().catch(() => {});
-        hudStatus.textContent = '📲 실시간 모니터링 중 (0초 지연)';
-        hudDot.style.background = 'var(--cyan)';
-      });
-
-      call.on('error', () => {
-        call = currentPeer.call(targetIdCam, emptyStream);
-        call.on('stream', (remoteStream) => {
-          hideLoading();
-          nativeVideo.srcObject = remoteStream;
-          nativeVideo.play().catch(() => {});
-          hudStatus.textContent = '📲 게코 카메라 수신 중';
-          hudDot.style.background = 'var(--cyan)';
-        });
-      });
-
-      setTimeout(() => {
-        if (!nativeVideo.srcObject) {
-          loadingText.textContent = '송출 대기 중... (카메라 켜지면 자동 재생)';
-          setTimeout(() => connectToStreamer(targetIdMonitor, targetIdCam), 3000);
-        }
-      }, 4000);
-    }
-
-    function createEmptyStream() {
-      try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = ctx.createOscillator();
-        const dst = ctx.createMediaStreamDestination();
-        osc.connect(dst);
-        osc.start();
-        return new MediaStream([dst.stream.getAudioTracks()[0]]);
-      } catch (e) {
-        return new MediaStream();
-      }
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    // 3. PC SCREEN PUSH
-    // ─────────────────────────────────────────────────────────────
-    async function startNativePcPush() {
-      showViewport('PC 화면 선택 중...');
-      cameraControls.style.display = 'none';
-
-      try {
-        localStream = await navigator.mediaDevices.getDisplayMedia({
-          video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
-          audio: true
-        });
-
-        nativeVideo.srcObject = localStream;
-        await nativeVideo.play();
-        hideLoading();
-        hudStatus.textContent = '🖥️ PC 방송 화면 송출 중';
-
-        const peerId = `creok_${getCh()}_monitor`;
-        if (currentPeer) currentPeer.destroy();
-        currentPeer = new Peer(peerId, {
-          config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }
-        });
-
-        currentPeer.on('call', (call) => call.answer(localStream));
-
-      } catch (err) {
-        stopNativeSession();
-      }
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    // CONTROLS & UTILS
-    // ─────────────────────────────────────────────────────────────
-    async function flipCamera() {
-      currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
-      if (localStream) {
-        localStream.getTracks().forEach(t => t.stop());
-      }
-      startNativePhoneCam();
-    }
-
-    function toggleAudio() {
-      if (!localStream) return;
-      isAudioEnabled = !isAudioEnabled;
-      localStream.getAudioTracks().forEach(t => t.enabled = isAudioEnabled);
-      audioBtn.textContent = isAudioEnabled ? '🎤 마이크 ON' : '🔇 마이크 OFF';
-      audioBtn.style.color = isAudioEnabled ? '#fff' : 'var(--pink)';
-    }
-
-    function showViewport(msg) {
-      loadingText.textContent = msg;
-      loadingOverlay.style.display = 'flex';
       mainWrap.style.display = 'none';
-      viewportBox.classList.add('active');
+      streamViewport.classList.add('active');
     }
 
-    function hideLoading() {
-      loadingOverlay.style.display = 'none';
+    function launchInpageTabletMonitor(isObsMode = false) {
+      if (isObsMode) {
+        hudBar.style.display = 'none'; // Clean pure output for OBS
+      } else {
+        hudTitle.textContent = `📲 실시간 모니터링 중 #${getCh()}`;
+        hudDot.style.background = 'var(--cyan)';
+        hudBar.style.display = 'flex';
+      }
+
+      // Zero-step instant monitor playback engine
+      streamFrame.src = `https://vdo.ninja/?view=${getCh()}_monitor&autoplay&cleanoutput&buffer=0&cover`;
+      
+      mainWrap.style.display = 'none';
+      streamViewport.classList.add('active');
     }
 
-    function stopNativeSession() {
-      if (localStream) {
-        localStream.getTracks().forEach(t => t.stop());
-        localStream = null;
-      }
-      if (currentPeer) {
-        currentPeer.destroy();
-        currentPeer = null;
-      }
-      nativeVideo.srcObject = null;
-      viewportBox.classList.remove('active');
+    function launchInpagePcPush() {
+      hudTitle.textContent = `🖥️ PC 화면 송출 중 #${getCh()}`;
+      hudDot.style.background = 'var(--purple)';
+      hudBar.style.display = 'flex';
+
+      streamFrame.src = `https://vdo.ninja/?push=${getCh()}_monitor&webcam&quality=2&fps=30&codec=h264&buffer=0&autostart&cleanoutput`;
+      
+      mainWrap.style.display = 'none';
+      streamViewport.classList.add('active');
+    }
+
+    function exitInpageStream() {
+      streamFrame.src = '';
+      streamViewport.classList.remove('active');
       mainWrap.style.display = 'flex';
-      hudTop.style.display = 'flex';
     }
 
     function copyObsUrl() {
-      const url = `${getDomainBase()}?mode=obs&ch=${getCh()}`;
+      const url = `https://vdo.ninja/?view=${getCh()}_cam&cleanoutput&buffer=0&cover`;
       navigator.clipboard.writeText(url).then(() => {
         alert(`[OBS 브라우저 소스 링크 복사 완료]\n${url}`);
-      }).catch(() => alert(`OBS URL: ${url}`));
+      }).catch(() => alert(`OBS URL:\n${url}`));
     }
 
+    // Auto-Routing: ?mode=cam / ?mode=tablet / ?mode=obs
     window.addEventListener('DOMContentLoaded', () => {
       const p = new URLSearchParams(window.location.search);
       const mode = p.get('mode') || p.get('action');
@@ -685,13 +417,13 @@
       updateQrs();
 
       if (mode === 'cam' || mode === 'phone') {
-        startNativePhoneCam();
+        launchInpagePhoneCam();
       } else if (mode === 'tablet' || mode === 'monitor') {
-        startNativeTabletMonitor(false);
+        launchInpageTabletMonitor(false);
       } else if (mode === 'obs') {
-        startNativeTabletMonitor(true);
+        launchInpageTabletMonitor(true);
       } else if (mode === 'pc') {
-        startNativePcPush();
+        launchInpagePcPush();
       }
     });
   </script>
