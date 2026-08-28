@@ -26,7 +26,7 @@
 <div class="toast" id="toast"></div>
 <script>
 const params=new URLSearchParams(location.search),channelId=String(params.get('channel')||'').replace(/[^a-z0-9-]/g,''),page=Math.max(1,Math.min(3,Number(params.get('page'))||1));
-const $=id=>document.getElementById(id),frame=$('frame'),settingsFrame=$('settings-frame'),slotSelect=$('slot'),labels={'p1-hosts':'진행자','p1-banner':'배너','p1-ticker':'줄별 순환 자막','p2-progress':'현재 / 전체 진행률','p2-info':'개체 정보','p2-bidders':'실시간 입찰자','p2-photo':'개체 사진','p2-price':'가격','p2-sold':'낙찰 알림','p2-banner':'배너','p2-ticker':'줄별 순환 자막','p3-board':'집계판','p3-effect':'주사위·결과 연출','p3-banner':'배너'};
+const $=id=>document.getElementById(id),frame=$('frame'),settingsFrame=$('settings-frame'),slotSelect=$('slot'),labels={'p1-host-1':'네임텍 1','p1-host-2':'네임텍 2','p1-host-3':'네임텍 3','p1-banner':'배너','p1-ticker':'줄별 순환 자막','p2-progress':'현재 / 전체 진행률','p2-info':'개체 정보','p2-bidders':'실시간 입찰자','p2-photo':'개체 사진','p2-price':'가격','p2-sold':'낙찰 알림','p2-banner':'배너','p2-ticker':'줄별 순환 자막','p3-board':'집계판','p3-effect':'주사위·결과 연출','p3-banner':'배너'};
 let placements={},selectedSlot='',drag=null,layoutDirty=false;
 function toast(message){const el=$('toast');el.textContent=message;el.classList.add('show');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('show'),2200)}
 function clamp(value,min,max){return Math.max(min,Math.min(max,Number(value)||0))}

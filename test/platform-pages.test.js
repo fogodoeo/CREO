@@ -66,6 +66,8 @@ test('BASIC page two reuses the one-line item and traits formula', () => {
     assert.match(source, /function pageTwoInfoTraits\(item\)/);
     assert.match(source, /profile\.settings\?\.page2InfoLayout==='inline-traits'/);
     assert.match(source, /\.item-copy\.is-inline-info[^}]*display:flex[^}]*white-space:nowrap/);
+    assert.doesNotMatch(source.slice(source.indexOf('function pageTwoInlineInfo'), source.indexOf('function pageTwo(')), /LOT /);
+    assert.match(source, /item-inline-identity">\$\{vendorTag\}<h1>/);
 });
 
 test('BASIC P3 waits for the dice video and shows only live contribution totals', () => {
@@ -87,7 +89,9 @@ test('BASIC P3 waits for the dice video and shows only live contribution totals'
     assert.match(source, /duration=Math\.min\(1600,Math\.max\(420,distance\*48\)\)/);
     assert.match(source, /value=previous\+direction\*step/);
     assert.match(source, /element\.closest\('\.dice-team-card'\)/);
-    assert.match(source, /width:min\(1240px,92vw\);height:min\(820px,84vh\)/);
+    assert.match(source, /width:min\(1240px,92vw\);height:min\(690px,72vh\)/);
+    assert.match(source, /\.dice-team-board\{[^}]*z-index:30[^}]*height:clamp\(82px,11vh,110px\)/);
+    assert.match(source, /content=row\.group\.id==='even'\?score\+label:label\+score/);
     assert.match(source, /<strong><b>\$\{esc\(name\)\}<\/b><small>낙찰<\/small><\/strong>/);
     assert.match(source, /<div class="dice-result-strip"><span>낙찰금 ×<\/span><b>\$\{face\}<\/b><\/div>/);
     const renderer = source.slice(
@@ -408,7 +412,7 @@ test('new CDCUP overlays and shipping retain compatibility with the established 
     assert.match(live, /function bidAmountLabel\(value\)\{const amount=Number\(value\)\|\|0;/);
     assert.match(live, /bidLog:\[\{name:'입찰자',region:'지역',amount:10\}\]/);
     assert.match(live, /class="vendor-tag"/);
-    assert.match(live, /class="vendor-tag">\[\$\{esc\(item\.vendorName\)\}\]<\/span>/);
+    assert.match(live, /class="vendor-tag">\$\{esc\(item\.vendorName\)\}<\/span>/);
     assert.match(live, /\.item-name strong,\.vendor-tag\{[\s\S]{0,180}color:#fff;font-size:23px;font-weight:800/);
     assert.match(live, /rankOpacity=\[1,\.90,\.86,\.78,\.70,\.64,\.58,\.52\]/);
     assert.match(channelShipping, /location\.replace\(target\.pathname\+target\.search\)/);
@@ -481,9 +485,13 @@ test('new platform channels use the shared three-page arranger and CDCUP registr
     assert.match(editor, /auction-control\.html\?channel=.*compact=1/);
     assert.match(editor, /creo-broadcast-settings-saved/);
     assert.match(editor, /p2-progress/);
+    assert.match(editor, /'p1-host-1':'네임텍 1'/);
+    assert.match(editor, /'p1-host-2':'네임텍 2'/);
+    assert.match(editor, /'p1-host-3':'네임텍 3'/);
     assert.match(live, /dataset\.layoutSlot=slot/);
     assert.match(live, /class="item-progress glass"/);
-    assert.match(live, /남은 \$\{remaining\}/);
+    assert.doesNotMatch(live, /남은 \$\{remaining\}/);
+    assert.match(live, /<strong>\$\{current\}\/\$\{total\}<\/strong><\/div>/);
     assert.match(live, /\[data-layout-slot\]\[data-layout-custom="1"\]>\*\{zoom:var\(--layout-font-scale,1\)\}/);
     assert.doesNotMatch(live, /transform:none!important;zoom:var\(--layout-font-scale/);
     assert.match(live, /state\.page3BannerOn=true/);
@@ -810,14 +818,17 @@ test('BASIC control uploads six dice videos and P3 renders parity totals without
     assert.match(live, /function hydrateOdometers\(\)/);
     assert.match(live, /data-odometer-value/);
     assert.match(live, /class="team-delta">\+\$\{delta\}/);
-    assert.match(live, /background:color-mix\(in srgb,var\(--team-color\) 94%,#111827\)/);
+    assert.match(live, /background:color-mix\(in srgb,var\(--team-color\) 96%,#111827\)/);
     assert.match(live, /function liveParityContribution\(items\)/);
     assert.doesNotMatch(
         live.slice(live.indexOf('function renderDiceTeamsPageThree'), live.indexOf('function profilePageThree')),
         /낙찰합계|team-sales|dice-team-metric/
     );
     assert.doesNotMatch(live, /host-card\.muted/);
-    assert.match(live, /style="--host-count:\$\{hostRows\.length\}"/);
+    assert.match(live, /data-host-index="\$\{row\.slot\}"/);
+    assert.match(live, /'p1-host-1':'.host-card\[data-host-index="1"\]'/);
+    assert.match(live, /host-name/);
+    assert.match(live, /host-role/);
 });
 
 test('common pinball resolves winners from the operating channel rather than the dashboard selection', () => {
