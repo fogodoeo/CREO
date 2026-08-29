@@ -22,6 +22,8 @@ export interface IPhysics {
 
   impact(id: number): void;
 
+  bounceAllUpward(forceY?: number): void;
+
   start(): void;
 
   step(deltaSeconds: number): void;

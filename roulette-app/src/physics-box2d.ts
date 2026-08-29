@@ -151,6 +151,14 @@ export class Box2dPhysics implements IPhysics {
     });
   }
 
+    bounceAllUpward(forceY = -18): void {
+    Object.values(this.marbleMap).forEach((body) => {
+      const randX = (Math.random() - 0.5) * 8;
+      body.SetLinearVelocity(new this.Box2D.b2Vec2(randX, forceY));
+      body.ApplyLinearImpulseToCenter(new this.Box2D.b2Vec2(randX * 0.5, forceY * 0.4), true);
+    });
+  }
+
   impact(id: number): void {
     const src = this.marbleMap[id];
     if (!src) return;

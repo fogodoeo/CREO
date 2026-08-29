@@ -22,6 +22,7 @@ export type RenderParameters = {
   winner: Marble | null;
   size: VectorLike;
   theme: ColorTheme;
+  top5Banner?: boolean;
 };
 
 const MAX_DISPLAY_WIDTH = 1920;
@@ -39,6 +40,7 @@ const LIONGECKO_ASSET_URLS = {
   wand: '/assets/pinball-liongecko/gold-wand.png',
   rune: '/assets/pinball-liongecko/gold-bumper.png',
   gate: '/assets/pinball-liongecko/finish-gate.png',
+  billboard: '/assets/pinball-ryangecko/ryan-billboard.png',
   crest: '/assets/pinball-liongecko/lion-crest.png',
 } as const;
 
@@ -67,6 +69,7 @@ export class RouletteRenderer {
     wand: loadImage(LIONGECKO_ASSET_URLS.wand),
     rune: loadImage(LIONGECKO_ASSET_URLS.rune),
     gate: loadImage(LIONGECKO_ASSET_URLS.gate),
+    billboard: loadImage(LIONGECKO_ASSET_URLS.billboard),
     crest: loadImage(LIONGECKO_ASSET_URLS.crest),
   };
   private readonly _academyAssets = {
@@ -184,6 +187,7 @@ export class RouletteRenderer {
     this.ctx.lineWidth = 3 / (renderParameters.camera.zoom + initialZoom);
     renderParameters.camera.renderScene(this.ctx, () => {
       this.onBeforeEntities();
+      this.renderAdBoards(renderParameters.stage);
       this.renderLionGeckoFinish(renderParameters.stage);
       this.renderAcademyFinish(renderParameters.stage);
       this.renderEntities(renderParameters.entities);
@@ -331,7 +335,62 @@ export class RouletteRenderer {
     return image.complete && image.naturalWidth > 0;
   }
 
-    private renderLionGeckoFinish(stage: StageDef): void {
+      private renderAdBoards(stage: StageDef): void {
+    if (!this.isLionGeckoSkin() || !this.imageReady(this._lionGeckoAssets.billboard)) return;
+    const boards = stage.adBoards ?? [];
+    boards.forEach((board) => {
+      if (Math.abs(stage.goalY - board.y) <= 25) return;
+      const width = board.w ?? 9;
+      const height = board.h ?? (width * 0.55);
+      this.ctx.save();
+      this.ctx.globalAlpha = 0.95;
+      this.ctx.shadowBlur = 16;
+      this.ctx.shadowColor = 'rgba(255, 255, 255, 0.45)';
+      this.ctx.drawImage(
+        this._lionGeckoAssets.billboard,
+        board.x - width / 2,
+        board.y - height / 2,
+        width,
+        height
+      );
+      this.ctx.restore();
+    });
+  }
+
+  private renderTop5Banner(size: VectorLike): void {
+    this.ctx.save();
+    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+    const bannerW = Math.min(540, size.x * 0.85);
+    const bannerH = 52;
+    const bannerX = (size.x - bannerW) / 2;
+    const bannerY = 56;
+
+    // Glowing dark backdrop
+    this.ctx.shadowBlur = 24;
+    this.ctx.shadowColor = 'rgba(255, 255, 255, 0.8)';
+    this.ctx.fillStyle = 'rgba(7, 9, 13, 0.92)';
+    this.ctx.strokeStyle = '#ffffff';
+    this.ctx.lineWidth = 2;
+
+    this.ctx.beginPath();
+    this.ctx.roundRect(bannerX, bannerY, bannerW, bannerH, 12);
+    this.ctx.fill();
+    this.ctx.stroke();
+
+    // Banner Text
+    this.ctx.shadowBlur = 10;
+    this.ctx.shadowColor = '#ffffff';
+    this.ctx.fillStyle = '#ffffff';
+    this.ctx.font = '900 17px "Pretendard Variable", sans-serif';
+    this.ctx.textAlign = 'center';
+    this.ctx.textBaseline = 'middle';
+    this.ctx.fillText('⚡ TOP 5 SUPER BOUNCE! 역전의 기회! ⚡', size.x / 2, bannerY + bannerH / 2);
+
+    this.ctx.restore();
+  }
+
+  private renderLionGeckoFinish(stage: StageDef): void {
     if (!this.isLionGeckoSkin() || !this.imageReady(this._lionGeckoAssets.gate)) return;
     const nearGoal = [...(stage.adBoards ?? [])]
       .reverse()

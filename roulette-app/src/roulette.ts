@@ -37,6 +37,8 @@ export class Roulette extends EventTarget {
   private _winners: Marble[] = [];
   private _particleManager = new ParticleManager();
   private _stage: StageDef | null = null;
+  private _hasTriggeredTop5Bounce = false;
+  private _top5BounceBannerTimer = 0;
 
   protected _camera: Camera = new Camera();
   protected _renderer: RouletteRenderer;
@@ -114,6 +116,10 @@ export class Roulette extends EventTarget {
     this._lastTime = currentTime;
 
     const interval = (this._updateInterval / 1000) * this._timeScale;
+    if (this._top5BounceBannerTimer > 0) {
+      this._top5BounceBannerTimer = Math.max(0, this._top5BounceBannerTimer - deltaTime);
+    }
+
 
     while (this._elapsed >= this._updateInterval) {
       this.physics.step(interval);
@@ -190,6 +196,23 @@ export class Roulette extends EventTarget {
     const targetIndex = this._winnerRank - this._winners.length;
     const topY = this._marbles[targetIndex] ? this._marbles[targetIndex].y : 0;
     this._goalDist = Math.abs(this._stage.zoomY - topY);
+    // Top 5 Sudden Bounce Feature
+    if (
+      this._isRunning &&
+      !this._hasTriggeredTop5Bounce &&
+      this._totalMarbleCount >= 6 &&
+      this._marbles.length <= 5 &&
+      this._marbles.length >= 2
+    ) {
+      this._hasTriggeredTop5Bounce = true;
+      this._top5BounceBannerTimer = 2200;
+      this._marbles.forEach((m) => {
+        this._effects.push(new SkillEffect(m.x, m.y));
+      });
+      this.physics.bounceAllUpward(-19);
+      this.dispatchEvent(new CustomEvent('top5bounce', { detail: { remaining: this._marbles.length } }));
+    }
+
     this._timeScale = this._calcTimeScale();
 
     const goalY = this._stage.goalY;
@@ -231,6 +254,7 @@ export class Roulette extends EventTarget {
       winner: this._winner,
       size: { x: this._renderer.width, y: this._renderer.height },
       theme: this._theme,
+      top5Banner: this._top5BounceBannerTimer > 0,
     };
     this._renderer.render(renderParams, this._uiObjects);
   }
@@ -321,6 +345,8 @@ export class Roulette extends EventTarget {
     this.physics.clearMarbles();
     this._winner = null;
     this._winners = [];
+    this._hasTriggeredTop5Bounce = false;
+    this._top5BounceBannerTimer = 0;
     this._marbles = [];
   }
 
