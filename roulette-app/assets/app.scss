@@ -719,6 +719,18 @@ details.control-section summary span {
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
 }
 
+
+.theme-swatch.ryangecko {
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.25), transparent 60%),
+    linear-gradient(145deg, #1b2028, #07090d 75%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  color: #ffffff;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+}
+
 .theme-swatch.midnight {
   background: linear-gradient(145deg, #183258, #07111f 66%);
 }

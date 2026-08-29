@@ -320,7 +320,7 @@ export class RouletteRenderer {
 
     private isLionGeckoSkin(): boolean {
     const theme = document.documentElement.dataset.rouletteTheme;
-    return theme === 'liongecko' || !theme;
+    return theme === 'ryangecko' || theme === 'liongecko' || !theme;
   }
 
   private isAcademySkin(): boolean {
@@ -347,14 +347,14 @@ export class RouletteRenderer {
     this.ctx.shadowColor = 'rgba(242, 198, 109, 0.45)';
     this.ctx.drawImage(this._lionGeckoAssets.gate, x - width / 2, y - height / 2, width, height);
     if (this.imageReady(this._lionGeckoAssets.crest)) {
-      const crestWidth = width * 0.26;
+      const crestWidth = width * 0.32;
       const crestHeight = crestWidth * 1.0;
-      this.ctx.shadowBlur = 8;
-      this.ctx.shadowColor = 'rgba(255, 215, 0, 0.7)';
+      this.ctx.shadowBlur = 12;
+      this.ctx.shadowColor = 'rgba(255, 255, 255, 0.8)';
       this.ctx.drawImage(
         this._lionGeckoAssets.crest,
         x - crestWidth / 2,
-        y - height * 0.35,
+        y - height * 0.32,
         crestWidth,
         crestHeight
       );
