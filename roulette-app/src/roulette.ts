@@ -206,11 +206,15 @@ export class Roulette extends EventTarget {
     ) {
       this._hasTriggeredTop5Bounce = true;
       this._top5BounceBannerTimer = 2200;
-      this._marbles.forEach((m) => {
-        this._effects.push(new SkillEffect(m.x, m.y));
-      });
-      this.physics.bounceAllUpward(-19);
-      this.dispatchEvent(new CustomEvent('top5bounce', { detail: { remaining: this._marbles.length } }));
+      try {
+        this._marbles.forEach((m) => {
+          this._effects.push(new SkillEffect(m.x, m.y));
+        });
+        this.physics.bounceAllUpward(-12);
+        this.dispatchEvent(new CustomEvent('top5bounce', { detail: { remaining: this._marbles.length } }));
+      } catch (err) {
+        console.warn('top5 bounce trigger error:', err);
+      }
     }
 
     this._timeScale = this._calcTimeScale();

@@ -336,58 +336,70 @@ export class RouletteRenderer {
   }
 
       private renderAdBoards(stage: StageDef): void {
-    if (!this.isLionGeckoSkin() || !this.imageReady(this._lionGeckoAssets.billboard)) return;
-    const boards = stage.adBoards ?? [];
-    boards.forEach((board) => {
-      if (Math.abs(stage.goalY - board.y) <= 25) return;
-      const width = board.w ?? 9;
-      const height = board.h ?? (width * 0.55);
-      this.ctx.save();
-      this.ctx.globalAlpha = 0.95;
-      this.ctx.shadowBlur = 16;
-      this.ctx.shadowColor = 'rgba(255, 255, 255, 0.45)';
-      this.ctx.drawImage(
-        this._lionGeckoAssets.billboard,
-        board.x - width / 2,
-        board.y - height / 2,
-        width,
-        height
-      );
-      this.ctx.restore();
-    });
+    try {
+      if (!this.isLionGeckoSkin() || !this.imageReady(this._lionGeckoAssets.billboard)) return;
+      const boards = stage.adBoards ?? [];
+      boards.forEach((board) => {
+        if (Math.abs(stage.goalY - board.y) <= 25) return;
+        const width = board.w ?? 9;
+        const height = board.h ?? (width * 0.55);
+        this.ctx.save();
+        this.ctx.globalAlpha = 0.95;
+        this.ctx.shadowBlur = 16;
+        this.ctx.shadowColor = 'rgba(255, 255, 255, 0.45)';
+        this.ctx.drawImage(
+          this._lionGeckoAssets.billboard,
+          board.x - width / 2,
+          board.y - height / 2,
+          width,
+          height
+        );
+        this.ctx.restore();
+      });
+    } catch (e) {
+      console.warn('renderAdBoards error:', e);
+    }
   }
 
   private renderTop5Banner(size: VectorLike): void {
-    this.ctx.save();
-    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+    try {
+      this.ctx.save();
+      this.ctx.setTransform(1, 0, 0, 1, 0, 0);
 
-    const bannerW = Math.min(540, size.x * 0.85);
-    const bannerH = 52;
-    const bannerX = (size.x - bannerW) / 2;
-    const bannerY = 56;
+      const bannerW = Math.min(540, size.x * 0.85);
+      const bannerH = 52;
+      const bannerX = (size.x - bannerW) / 2;
+      const bannerY = 56;
 
-    // Glowing dark backdrop
-    this.ctx.shadowBlur = 24;
-    this.ctx.shadowColor = 'rgba(255, 255, 255, 0.8)';
-    this.ctx.fillStyle = 'rgba(7, 9, 13, 0.92)';
-    this.ctx.strokeStyle = '#ffffff';
-    this.ctx.lineWidth = 2;
+      // Glowing dark backdrop
+      this.ctx.shadowBlur = 24;
+      this.ctx.shadowColor = 'rgba(255, 255, 255, 0.8)';
+      this.ctx.fillStyle = 'rgba(7, 9, 13, 0.92)';
+      this.ctx.strokeStyle = '#ffffff';
+      this.ctx.lineWidth = 2;
 
-    this.ctx.beginPath();
-    this.ctx.roundRect(bannerX, bannerY, bannerW, bannerH, 12);
-    this.ctx.fill();
-    this.ctx.stroke();
+      this.ctx.beginPath();
+      if (typeof this.ctx.roundRect === 'function') {
+        this.ctx.roundRect(bannerX, bannerY, bannerW, bannerH, 12);
+      } else {
+        this.ctx.rect(bannerX, bannerY, bannerW, bannerH);
+      }
+      this.ctx.fill();
+      this.ctx.stroke();
 
-    // Banner Text
-    this.ctx.shadowBlur = 10;
-    this.ctx.shadowColor = '#ffffff';
-    this.ctx.fillStyle = '#ffffff';
-    this.ctx.font = '900 17px "Pretendard Variable", sans-serif';
-    this.ctx.textAlign = 'center';
-    this.ctx.textBaseline = 'middle';
-    this.ctx.fillText('⚡ TOP 5 SUPER BOUNCE! 역전의 기회! ⚡', size.x / 2, bannerY + bannerH / 2);
+      // Banner Text
+      this.ctx.shadowBlur = 10;
+      this.ctx.shadowColor = '#ffffff';
+      this.ctx.fillStyle = '#ffffff';
+      this.ctx.font = '900 17px "Pretendard Variable", sans-serif';
+      this.ctx.textAlign = 'center';
+      this.ctx.textBaseline = 'middle';
+      this.ctx.fillText('⚡ TOP 5 SUPER BOUNCE! 역전의 기회! ⚡', size.x / 2, bannerY + bannerH / 2);
 
-    this.ctx.restore();
+      this.ctx.restore();
+    } catch (e) {
+      console.warn('renderTop5Banner error:', e);
+    }
   }
 
   private renderLionGeckoFinish(stage: StageDef): void {
