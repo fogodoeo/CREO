@@ -196,7 +196,7 @@ export class Roulette extends EventTarget {
     const targetIndex = this._winnerRank - this._winners.length;
     const topY = this._marbles[targetIndex] ? this._marbles[targetIndex].y : 0;
     this._goalDist = Math.abs(this._stage.zoomY - topY);
-        // Top 5 Sudden Bounce Feature (Enabled via Toggle)
+            // Top 5 Sudden Bounce Feature (Using 100% Native Engine Impact Skills)
     if (
       options.useTop5Bounce &&
       this._isRunning &&
@@ -206,12 +206,12 @@ export class Roulette extends EventTarget {
     ) {
       this._hasTriggeredTop5Bounce = true;
       this._top5BounceBannerTimer = 2200;
-      const activeIds = this._marbles.map((m) => m.id);
       this._marbles.forEach((m) => {
         this._effects.push(new SkillEffect(m.x, m.y));
+        this.physics.impact(m.id);
+        this.physics.shakeMarble(m.id);
       });
-      this.physics.bounceMarblesUpward(activeIds, -12);
-      this.dispatchEvent(new CustomEvent('top5bounce', { detail: { remaining: activeIds.length } }));
+      this.dispatchEvent(new CustomEvent('top5bounce', { detail: { remaining: this._marbles.length } }));
     }
 
     this._timeScale = this._calcTimeScale();
