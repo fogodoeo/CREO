@@ -129,7 +129,7 @@ const DEFAULT_CHANNELS = Object.freeze([
         broadcastDefaults: Object.freeze({
             notice: 'BASIC LIVE',
             noticeDetail: '홀팀 VS 짝팀',
-            page1Ticker: 'BASIC LIVE',
+            page1Ticker: '실시간 경매',
             page2Ticker: '실시간 경매',
             page3Title: '홀팀 VS 짝팀'
         }),

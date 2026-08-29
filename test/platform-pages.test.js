@@ -91,7 +91,9 @@ test('BASIC P3 waits for the dice video and shows only live contribution totals'
     assert.match(source, /element\.closest\('\.dice-team-card'\)/);
     assert.match(source, /width:min\(1240px,92vw\);height:min\(690px,72vh\)/);
     assert.match(source, /\.dice-team-board\{[^}]*z-index:30[^}]*height:clamp\(82px,11vh,110px\)/);
-    assert.match(source, /content=row\.group\.id==='even'\?score\+label:label\+score/);
+    assert.match(source, /groups=CreoBasicDice\.rankParityGroups/);
+    assert.match(source, /content=CreoBasicDice\.scoreFirstAt\(index\)\?score\+label:label\+score/);
+    assert.match(source, /data-rank="\$\{index\+1\}"/);
     assert.match(source, /background:color-mix\(in srgb,var\(--team-color\) 16%,#111720\)/);
     assert.match(source, /container-type:inline-size/);
     assert.match(source, /font-size:clamp\(34px,22cqw,76px\)/);

@@ -134,6 +134,73 @@ test('BASIC sold transition assigns phone parity and rolls dice exactly once per
     assert.equal(rolls, 3);
 });
 
+test('BASIC default dice roll uses the pre-sale contribution deficit without changing the sold lifecycle', async () => {
+    const repository = new MemoryRepository();
+    repository.catalog.channels[0] = normalizeChannel({
+        ...repository.catalog.channels[0],
+        broadcastProfile: 'basic-dice',
+        groups: [{ id: 'odd', name: '홀팀' }, { id: 'even', name: '짝팀' }],
+        scoreboards: [{ id: 'points', name: '기여도', dimension: 'winnerGroup', metric: 'points' }],
+        audienceCompetition: { enabled: true, assignment: 'phone-parity', metric: 'soldPrice', contribution: 'dice' }
+    });
+    await repository.upsertRecord('alpha', 'item', {
+        id: 'even_leader', lotNumber: 1, name: '기존 짝팀 낙찰', status: 'sold', soldPrice: 100,
+        attributes: { audience_group_key: 'even', audience_contribution_amount: 100 }
+    });
+    const api = createPlatformApi({
+        repository,
+        diceRandomInt: (maximum) => Math.floor(maximum * 0.8),
+        logger: { error() {}, warn() {} }
+    });
+    await call(api, 'POST', '/api/platform/channels/alpha/items', {
+        record: {
+            id: 'odd_challenger', lotNumber: 2, name: '홀팀 도전자', status: 'waiting',
+            attributes: { bid_log: JSON.stringify([{ name: '홀수낙찰자/12345679', bidder_key: 'odd-winner', amount: 40 }]) }
+        }
+    });
+    await call(api, 'PUT', '/api/platform/channels/alpha/auction-transition', {
+        itemId: 'odd_challenger', status: 'live', mode: 'live'
+    });
+    const sold = await call(api, 'PUT', '/api/platform/channels/alpha/auction-transition', {
+        itemId: 'odd_challenger', status: 'sold', mode: 'sold', item: { soldPrice: 40, winnerAlias: '홀수낙찰자/12345679' }
+    });
+    assert.equal(sold.status, 200, sold.body);
+    assert.equal(sold.json().item.attributes.audience_group_key, 'odd');
+    assert.equal(sold.json().item.attributes.audience_dice_face, 6);
+    assert.equal(sold.json().item.attributes.audience_contribution_amount, 240);
+
+    const duplicate = await call(api, 'PUT', '/api/platform/channels/alpha/auction-transition', {
+        itemId: 'odd_challenger', status: 'sold', mode: 'sold'
+    });
+    assert.equal(duplicate.json().item.attributes.audience_dice_face, 6);
+    assert.equal(duplicate.json().item.attributes.audience_contribution_amount, 240);
+});
+
+test('BASIC stores one shared ticker value when either P1 or P2 edits it', async () => {
+    const repository = new MemoryRepository();
+    repository.catalog.channels[0] = normalizeChannel({
+        ...repository.catalog.channels[0],
+        broadcastProfile: 'basic-dice'
+    });
+    const api = createPlatformApi({ repository, logger: { error() {}, warn() {} } });
+    let response = await call(api, 'PUT', '/api/platform/channels/alpha/broadcast-state', {
+        page2Ticker: '두 화면 공통 안내', page2TickerInterval: 8
+    });
+    assert.equal(response.status, 200, response.body);
+    assert.equal(response.json().state.page1Ticker, '두 화면 공통 안내');
+    assert.equal(response.json().state.page2Ticker, '두 화면 공통 안내');
+    assert.equal(response.json().state.page1TickerInterval, 8);
+    assert.equal(response.json().state.page2TickerInterval, 8);
+
+    response = await call(api, 'PUT', '/api/platform/channels/alpha/broadcast-state', {
+        page1Ticker: 'P1에서 다시 수정', page1TickerInterval: 6
+    });
+    assert.equal(response.json().state.page1Ticker, 'P1에서 다시 수정');
+    assert.equal(response.json().state.page2Ticker, 'P1에서 다시 수정');
+    assert.equal(response.json().state.page1TickerInterval, 6);
+    assert.equal(response.json().state.page2TickerInterval, 6);
+});
+
 class ResponseCapture {
     writeHead(status, headers) { this.status = status; this.headers = headers; }
     end(body = '') { this.body = String(body); }

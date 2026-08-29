@@ -3,6 +3,7 @@
 const crypto = require('node:crypto');
 const { refreshShippingRate } = require('./shipping-rate-refresh');
 const { rankingsForChannel } = require('./public/ranking-engine');
+const BasicDice = require('./public/basic-dice-core');
 const { normalizePhone } = require('./band-membership');
 
 const {
@@ -630,6 +631,31 @@ function phoneParityCompetitionEnabled(channel) {
         && competition.metric === 'soldPrice';
 }
 
+function mergeChannelBroadcastState(channel, current = {}, patch = {}) {
+    const next = { ...(current || {}), ...(patch || {}) };
+    if (channel?.broadcastProfile !== 'basic-dice') return next;
+    const owns = (key) => Object.prototype.hasOwnProperty.call(patch || {}, key);
+    const tickerText = owns('page1Ticker')
+        ? patch.page1Ticker
+        : owns('page2Ticker')
+            ? patch.page2Ticker
+            : owns('ticker')
+                ? patch.ticker
+                : current.page1Ticker || current.page2Ticker || '';
+    const tickerInterval = owns('page1TickerInterval')
+        ? patch.page1TickerInterval
+        : owns('page2TickerInterval')
+            ? patch.page2TickerInterval
+            : current.page1TickerInterval || current.page2TickerInterval || 5;
+    return {
+        ...next,
+        page1Ticker: tickerText,
+        page2Ticker: tickerText,
+        page1TickerInterval: tickerInterval,
+        page2TickerInterval: tickerInterval
+    };
+}
+
 async function resolveWinnerPhone(item, bandMembership) {
     const bid = winningBid(item) || {};
     const explicit = normalizePhone(item?.winnerPhone || phoneFromBid(bid))
@@ -832,7 +858,8 @@ function createPlatformApi({
     refreshShippingRateFn = refreshShippingRate,
     crewartHouseService = null,
     bandMembership = null,
-    diceRoll = () => crypto.randomInt(1, 7),
+    diceRoll = null,
+    diceRandomInt = (maximum) => crypto.randomInt(maximum),
     adminSessionSecret = process.env.CREO_ADMIN_SECRET || crypto.randomBytes(32).toString('hex'),
     adminSessionTtlMs = ADMIN_SESSION_TTL_MS
 } = {}) {
@@ -2082,7 +2109,18 @@ function createPlatformApi({
                             && current.status !== 'sold'
                         ) {
                             const assignment = await resolvePhoneParityWinner(candidate, bandMembership);
-                            const face = normalizedDiceFace(diceRoll());
+                            const contributionTotals = BasicDice.contributionTotals(data.items);
+                            const face = normalizedDiceFace(typeof diceRoll === 'function'
+                                ? diceRoll({
+                                    groupKey: assignment?.groupKey || '',
+                                    contributionTotals,
+                                    items: data.items
+                                })
+                                : BasicDice.chooseBalancedDiceFace(
+                                    assignment?.groupKey || '',
+                                    contributionTotals,
+                                    diceRandomInt
+                                ));
                             const baseContribution = Math.max(0, Number(candidate.soldPrice) || 0);
                             const startedAtMs = Date.now();
                             const startedAt = new Date(startedAtMs).toISOString();
@@ -2117,8 +2155,11 @@ function createPlatformApi({
                     const hasExplicitActiveItem = body.state && typeof body.state === 'object'
                         && Object.prototype.hasOwnProperty.call(body.state, 'activeItemId');
                     const nextState = sanitizeBroadcastState({
-                        ...(audienceState || {}),
-                        ...(body.state && typeof body.state === 'object' ? body.state : {}),
+                        ...mergeChannelBroadcastState(
+                            channel,
+                            audienceState || {},
+                            body.state && typeof body.state === 'object' ? body.state : {}
+                        ),
                         activeItemId: hasExplicitActiveItem ? body.state.activeItemId : (itemId || data.broadcast?.activeItemId || ''),
                         mode: requestedMode
                     });
@@ -2380,7 +2421,7 @@ function createPlatformApi({
                 await withMutationLock(`channel:${channelId}`, async () => {
                     const current = await repository.getRecord(channelId, 'broadcast', 'state');
                     const record = await repository.upsertRecord(channelId, 'broadcast', {
-                        ...sanitizeBroadcastState({ ...(current || {}), ...body }),
+                        ...sanitizeBroadcastState(mergeChannelBroadcastState(channel, current || {}, body)),
                         revision: Date.now()
                     });
                     touchChannel(channelId);
