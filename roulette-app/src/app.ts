@@ -110,7 +110,11 @@ const MAP_LABELS: Record<string, string> = {
 
 function element<T extends HTMLElement>(id: string): T {
   const found = document.getElementById(id);
-  if (!found) throw new Error(`필수 화면 요소가 없습니다: #${id}`);
+  if (!found) {
+    console.warn(`Optional DOM element not found: #${id}`);
+    const dummy = document.createElement('div') as unknown as T;
+    return dummy;
+  }
   return found as T;
 }
 
@@ -791,9 +795,12 @@ function applyConfigToControls(next: AppConfig): void {
   dom.recording.checked = config.autoRecording;
   dom.winnerLabel.value = config.winnerLabel;
   dom.accent.value = config.accentColor;
-  document.querySelector<HTMLInputElement>(`input[name="winnerMode"][value="${config.winnerMode}"]`)!.checked = true;
-  document.querySelector<HTMLInputElement>(`input[name="theme"][value="${config.themePreset}"]`)!.checked = true;
-  document.querySelector<HTMLInputElement>(`input[name="marbleStyle"][value="${config.marbleStyle}"]`)!.checked = true;
+  const winnerModeRadio = document.querySelector<HTMLInputElement>(`input[name="winnerMode"][value="${config.winnerMode}"]`);
+  if (winnerModeRadio) winnerModeRadio.checked = true;
+  const themeRadio = document.querySelector<HTMLInputElement>(`input[name="theme"][value="${config.themePreset}"]`);
+  if (themeRadio) themeRadio.checked = true;
+  const marbleStyleRadio = document.querySelector<HTMLInputElement>(`input[name="marbleStyle"][value="${config.marbleStyle}"]`);
+  if (marbleStyleRadio) marbleStyleRadio.checked = true;
   if (dom.map.options.length) dom.map.value = String(config.defaultMap);
   updateRankVisibility();
   updateBrand();
