@@ -709,6 +709,16 @@ details.control-section summary span {
   font-weight: 800;
 }
 
+
+.theme-swatch.liongecko {
+  background:
+    radial-gradient(circle at top right, rgba(242, 198, 109, 0.35), transparent 65%),
+    linear-gradient(145deg, #2b2011, #090b10 70%);
+  border: 1px solid rgba(242, 198, 109, 0.45);
+  color: #fce6a8;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
 .theme-swatch.midnight {
   background: linear-gradient(145deg, #183258, #07111f 66%);
 }

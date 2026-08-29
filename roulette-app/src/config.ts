@@ -25,6 +25,24 @@ export type AppConfig = {
 };
 
 export const THEME_PRESETS: Record<string, ColorTheme> = {
+  liongecko: {
+    background: '#090b10',
+    marbleLightness: 72,
+    marbleWinningBorder: '#ffd700',
+    skillColor: '#f7d884',
+    coolTimeIndicator: '#f2c66d',
+    entity: {
+      box: { fill: '#241b0e', outline: '#f5d372', bloom: '#d4af37', bloomRadius: 14 },
+      circle: { fill: '#f2c66d', outline: '#ffe49e', bloom: '#e5be5a', bloomRadius: 14 },
+      polyline: { fill: '#ffffff', outline: '#e5c158', bloom: '#d4af37', bloomRadius: 10 },
+    },
+    rankStroke: '#090b10',
+    minimapBackground: '#121620',
+    minimapViewport: '#f2c66d',
+    winnerText: '#ffffff',
+    winnerOutline: '#090b10',
+    winnerBackground: 'rgba(9, 11, 16, 0.92)',
+  },
   academy: {
     background: '#101614',
     marbleLightness: 68,
@@ -100,7 +118,7 @@ export const THEME_PRESETS: Record<string, ColorTheme> = {
 };
 
 export const DEFAULT_CONFIG: AppConfig = {
-  appName: 'MARBLE DRAW',
+  appName: 'LION GECKO PINBALL',
   eventTitle: '공정하고 즐거운 추첨',
   channelName: '',
   winnerLabel: '당첨',
@@ -112,7 +130,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   winningRank: 1,
   useSkills: false,
   autoRecording: false,
-  themePreset: 'midnight',
+  themePreset: 'liongecko',
   marbleStyle: 'glass',
   accentColor: '#f2c66d',
   maxHistory: 50,

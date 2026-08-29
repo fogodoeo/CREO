@@ -35,6 +35,13 @@ const COMPACT_SCENE_WIDTH = 480;
 const COMPACT_SCENE_PIXEL_BUDGET = 520_000;
 export const SCENE_DISPLAY_ZOOM = 1.5;
 const WINNER_TEXT_OFFSET = 30;
+const LIONGECKO_ASSET_URLS = {
+  wand: '/assets/pinball-liongecko/gold-wand.png',
+  rune: '/assets/pinball-liongecko/gold-bumper.png',
+  gate: '/assets/pinball-liongecko/finish-gate.png',
+  crest: '/assets/pinball-liongecko/lion-crest.png',
+} as const;
+
 const ACADEMY_ASSET_URLS = {
   wand: '/assets/pinball-academy/wand-v2.png',
   rune: '/assets/pinball-academy/rune-stone-v2.png',
@@ -56,6 +63,12 @@ export class RouletteRenderer {
   private _displayCtx!: CanvasRenderingContext2D;
   private readonly _broadcastMode = new URLSearchParams(location.search).get('broadcast') === '1';
   private _lastProgressSignature = '';
+    private readonly _lionGeckoAssets = {
+    wand: loadImage(LIONGECKO_ASSET_URLS.wand),
+    rune: loadImage(LIONGECKO_ASSET_URLS.rune),
+    gate: loadImage(LIONGECKO_ASSET_URLS.gate),
+    crest: loadImage(LIONGECKO_ASSET_URLS.crest),
+  };
   private readonly _academyAssets = {
     wand: loadImage(ACADEMY_ASSET_URLS.wand),
     rune: loadImage(ACADEMY_ASSET_URLS.rune),
@@ -171,6 +184,7 @@ export class RouletteRenderer {
     this.ctx.lineWidth = 3 / (renderParameters.camera.zoom + initialZoom);
     renderParameters.camera.renderScene(this.ctx, () => {
       this.onBeforeEntities();
+      this.renderLionGeckoFinish(renderParameters.stage);
       this.renderAcademyFinish(renderParameters.stage);
       this.renderEntities(renderParameters.entities);
       this.renderEffects(renderParameters);
@@ -246,12 +260,28 @@ export class RouletteRenderer {
           const h = shape.height * 2;
           this.ctx.rotate(shape.rotation);
           const useAcademyWand = entity.motion === 'kinematic' || w >= h * 2.4;
-          if (this.isAcademySkin() && useAcademyWand && this.imageReady(this._academyAssets.wand)) {
+          if (this.isLionGeckoSkin() && useAcademyWand && this.imageReady(this._lionGeckoAssets.wand)) {
+            this.ctx.shadowBlur = 10;
+            this.ctx.shadowColor = 'rgba(242, 198, 109, 0.6)';
+            const wandWidth = Math.max(w * 1.08, h * 4.8);
+            const wandHeight = Math.max(h * 0.85, wandWidth * 0.055);
+            this.ctx.drawImage(this._lionGeckoAssets.wand, -wandWidth / 2, -wandHeight / 2, wandWidth, wandHeight);
+          } else if (this.isLionGeckoSkin() && this.imageReady(this._lionGeckoAssets.rune)) {
+            const size = Math.max(w, h) * (Math.max(w, h) <= 0.7 ? 2.8 : 1.18);
+            this.ctx.shadowBlur = 8;
+            this.ctx.shadowColor = 'rgba(242, 198, 109, 0.5)';
+            this.ctx.drawImage(this._lionGeckoAssets.rune, -size / 2, -size / 2, size, size);
+          } else if (this.isAcademySkin() && useAcademyWand && this.imageReady(this._academyAssets.wand)) {
             this.ctx.shadowBlur = 8;
             this.ctx.shadowColor = 'rgba(212, 189, 134, 0.55)';
             const wandWidth = Math.max(w * 1.08, h * 4.8);
             const wandHeight = Math.max(h * 0.85, wandWidth * 0.055);
             this.ctx.drawImage(this._academyAssets.wand, -wandWidth / 2, -wandHeight / 2, wandWidth, wandHeight);
+          } else if (this.isLionGeckoSkin() && this.imageReady(this._lionGeckoAssets.rune)) {
+            const size = shape.radius * 2.55;
+            this.ctx.shadowBlur = 10;
+            this.ctx.shadowColor = 'rgba(242, 198, 109, 0.6)';
+            this.ctx.drawImage(this._lionGeckoAssets.rune, -size / 2, -size / 2, size, size);
           } else if (this.isAcademySkin() && this.imageReady(this._academyAssets.rune)) {
             const size = Math.max(w, h) * (Math.max(w, h) <= 0.7 ? 2.8 : 1.18);
             this.ctx.shadowBlur = 5;
@@ -264,7 +294,12 @@ export class RouletteRenderer {
           break;
         }
         case 'circle': {
-          if (this.isAcademySkin() && this.imageReady(this._academyAssets.rune)) {
+          if (this.isLionGeckoSkin() && this.imageReady(this._lionGeckoAssets.rune)) {
+            const size = shape.radius * 2.55;
+            this.ctx.shadowBlur = 10;
+            this.ctx.shadowColor = 'rgba(242, 198, 109, 0.6)';
+            this.ctx.drawImage(this._lionGeckoAssets.rune, -size / 2, -size / 2, size, size);
+          } else if (this.isAcademySkin() && this.imageReady(this._academyAssets.rune)) {
             const size = shape.radius * 2.55;
             this.ctx.shadowBlur = 7;
             this.ctx.shadowColor = 'rgba(212, 189, 134, 0.48)';
@@ -283,12 +318,48 @@ export class RouletteRenderer {
     this.ctx.restore();
   }
 
+    private isLionGeckoSkin(): boolean {
+    const theme = document.documentElement.dataset.rouletteTheme;
+    return theme === 'liongecko' || !theme;
+  }
+
   private isAcademySkin(): boolean {
     return document.documentElement.dataset.rouletteTheme === 'academy';
   }
 
   private imageReady(image: HTMLImageElement): boolean {
     return image.complete && image.naturalWidth > 0;
+  }
+
+    private renderLionGeckoFinish(stage: StageDef): void {
+    if (!this.isLionGeckoSkin() || !this.imageReady(this._lionGeckoAssets.gate)) return;
+    const nearGoal = [...(stage.adBoards ?? [])]
+      .reverse()
+      .find((board) => Math.abs(stage.goalY - board.y) <= 25);
+    const x = nearGoal?.x ?? 13;
+    const y = nearGoal?.y ?? stage.goalY - 6;
+    const width = Math.min(11, Math.max(8, nearGoal?.w ?? 9));
+    const height = width * 0.88;
+
+    this.ctx.save();
+    this.ctx.globalAlpha = 0.98;
+    this.ctx.shadowBlur = 18;
+    this.ctx.shadowColor = 'rgba(242, 198, 109, 0.45)';
+    this.ctx.drawImage(this._lionGeckoAssets.gate, x - width / 2, y - height / 2, width, height);
+    if (this.imageReady(this._lionGeckoAssets.crest)) {
+      const crestWidth = width * 0.26;
+      const crestHeight = crestWidth * 1.0;
+      this.ctx.shadowBlur = 8;
+      this.ctx.shadowColor = 'rgba(255, 215, 0, 0.7)';
+      this.ctx.drawImage(
+        this._lionGeckoAssets.crest,
+        x - crestWidth / 2,
+        y - height * 0.35,
+        crestWidth,
+        crestHeight
+      );
+    }
+    this.ctx.restore();
   }
 
   private renderAcademyFinish(stage: StageDef): void {

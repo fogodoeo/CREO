@@ -10,7 +10,8 @@
     "build": "parcel build index.html --dist-dir ../public/roulette --public-url /roulette/ --no-source-maps --no-cache"
   },
   "dependencies": {
-    "box2d-wasm": "^7.0.0"
+    "box2d-wasm": "^7.0.0",
+    "creo-marble-roulette": "file:"
   },
   "devDependencies": {
     "@parcel/transformer-sass": "^2.16.4",
