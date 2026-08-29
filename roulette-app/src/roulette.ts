@@ -116,9 +116,6 @@ export class Roulette extends EventTarget {
     this._lastTime = currentTime;
 
     const interval = (this._updateInterval / 1000) * this._timeScale;
-    if (this._top5BounceBannerTimer > 0) {
-      this._top5BounceBannerTimer = Math.max(0, this._top5BounceBannerTimer - deltaTime);
-    }
 
 
     while (this._elapsed >= this._updateInterval) {
@@ -193,10 +190,15 @@ export class Roulette extends EventTarget {
       }
     }
 
+        if (this._top5BounceBannerTimer > 0) {
+      this._top5BounceBannerTimer = Math.max(0, this._top5BounceBannerTimer - deltaTime);
+    }
+
     const targetIndex = this._winnerRank - this._winners.length;
     const topY = this._marbles[targetIndex] ? this._marbles[targetIndex].y : 0;
     this._goalDist = Math.abs(this._stage.zoomY - topY);
-            // Top 5 Sudden Bounce Feature (Using 100% Native Engine Impact Skills)
+
+    // Top 5 Sudden Bounce Feature
     if (
       options.useTop5Bounce &&
       this._isRunning &&
