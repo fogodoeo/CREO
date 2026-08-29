@@ -141,6 +141,7 @@ const dom = {
   rankField: element<HTMLElement>('rankField'),
   winningRank: element<HTMLInputElement>('winningRankInput'),
   skills: element<HTMLInputElement>('skillsInput'),
+  top5Bounce: element<HTMLInputElement>('top5BounceInput'),
   recording: element<HTMLInputElement>('recordingInput'),
   accent: element<HTMLInputElement>('accentColorInput'),
   winnerLabel: element<HTMLInputElement>('winnerLabelInput'),
@@ -386,6 +387,7 @@ function collectConfig(): AppConfig {
     winnerMode: currentWinnerMode(),
     winningRank: Math.max(1, Number(dom.winningRank.value) || 1),
     useSkills: dom.skills.checked,
+    useTop5Bounce: dom.top5Bounce.checked,
     autoRecording: dom.recording.checked,
     themePreset: currentThemeName(),
     marbleStyle: currentMarbleStyle(),
@@ -446,6 +448,7 @@ async function prepareRound(seed = createSecureSeed()): Promise<void> {
 
   persistInputs();
   options.useSkills = dom.skills.checked;
+  options.useTop5Bounce = dom.top5Bounce.checked;
   options.autoRecording = dom.recording.checked;
   options.winnerLabel = dom.winnerLabel.value.trim() || DEFAULT_CONFIG.winnerLabel;
   options.marbleStyle = currentMarbleStyle();
@@ -784,6 +787,7 @@ function applyConfigToControls(next: AppConfig): void {
   dom.renderFps.value = String(config.renderFps);
   dom.winningRank.value = String(config.winningRank);
   dom.skills.checked = config.useSkills;
+  dom.top5Bounce.checked = Boolean(config.useTop5Bounce);
   dom.recording.checked = config.autoRecording;
   dom.winnerLabel.value = config.winnerLabel;
   dom.accent.value = config.accentColor;

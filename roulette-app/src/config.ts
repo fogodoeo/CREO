@@ -17,6 +17,7 @@ export type AppConfig = {
   winnerMode: WinnerMode;
   winningRank: number;
   useSkills: boolean;
+  useTop5Bounce: boolean;
   autoRecording: boolean;
   themePreset: keyof typeof THEME_PRESETS;
   marbleStyle: MarbleStyle;
@@ -147,6 +148,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   winnerMode: 'first',
   winningRank: 1,
   useSkills: false,
+  useTop5Bounce: false,
   autoRecording: false,
   themePreset: 'ryangecko',
   marbleStyle: 'glass',
