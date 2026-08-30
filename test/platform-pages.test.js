@@ -76,8 +76,8 @@ test('BASIC page two reuses the one-line item and traits formula', () => {
     assert.match(source, /document\.body\.dataset\.page=String\(page\)/);
     assert.match(source, /itemFont=Math\.max\([^;]+\)\*1\.2,bidderFont=Math\.max\([^;]+\)\*1\.2/);
     assert.match(source, /body\[data-page="2"\] \.item-progress strong\{font-size:clamp\(33\.6px,3\.36vw,50\.4px\)\}/);
-    assert.match(source, /body\[data-page="1"\] \.ticker-badge,body\[data-page="2"\] \.ticker-badge\{font-size:16px\}/);
-    assert.match(source, /body\[data-page="1"\] \.ticker-text,body\[data-page="2"\] \.ticker-text\{font-size:24px\}/);
+    assert.match(source, /body\[data-page="1"\] \.ticker-badge,body\[data-page="2"\] \.ticker-badge\{font-size:var\(--ticker-badge-font-size,16px\)\}/);
+    assert.match(source, /body\[data-page="1"\] \.ticker-text,body\[data-page="2"\] \.ticker-text\{font-size:var\(--ticker-text-font-size,24px\)\}/);
     assert.doesNotMatch(source.slice(source.indexOf('function pageTwoInlineInfo'), source.indexOf('function pageTwo(')), /LOT /);
     assert.match(source, /item-inline-identity">\$\{vendorTag\}<h1>/);
 });
@@ -570,7 +570,11 @@ test('new platform channels use the shared three-page arranger and CDCUP registr
     assert.match(live, /class="item-progress glass"/);
     assert.doesNotMatch(live, /남은 \$\{remaining\}/);
     assert.match(live, /<strong>\$\{current\}\/\$\{total\}<\/strong><\/div>/);
-    assert.match(live, /\[data-layout-slot\]\[data-layout-custom="1"\]>\*\{zoom:var\(--layout-font-scale,1\)\}/);
+    assert.match(live, /\[data-layout-slot\]\[data-layout-custom="1"\]:not\(\[data-layout-slot="p1-ticker"\]\):not\(\[data-layout-slot="p2-ticker"\]\)>\*\{zoom:var\(--layout-font-scale,1\)\}/);
+    assert.match(live, /function applyTickerFontScale\(element,scale\)/);
+    assert.match(live, /--ticker-text-font-size/);
+    assert.match(editor, /tickerPeer=slot==='p1-ticker'\?'p2-ticker'/);
+    assert.match(editor, /글자 크기 · P1\/P2 공용/);
     assert.doesNotMatch(live, /transform:none!important;zoom:var\(--layout-font-scale/);
     assert.match(live, /state\.page3BannerOn=true/);
     assert.match(live, /layout-banner-placeholder/);
