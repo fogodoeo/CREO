@@ -76,7 +76,8 @@ test('BASIC page two reuses the one-line item and traits formula', () => {
     assert.match(source, /document\.body\.dataset\.page=String\(page\)/);
     assert.match(source, /itemFont=Math\.max\([^;]+\)\*1\.2,bidderFont=Math\.max\([^;]+\)\*1\.2/);
     assert.match(source, /body\[data-page="2"\] \.item-progress strong\{font-size:clamp\(33\.6px,3\.36vw,50\.4px\)\}/);
-    assert.match(source, /body\[data-page="2"\] \.ticker-text\{font-size:18px\}/);
+    assert.match(source, /body\[data-page="1"\] \.ticker-badge,body\[data-page="2"\] \.ticker-badge\{font-size:16px\}/);
+    assert.match(source, /body\[data-page="1"\] \.ticker-text,body\[data-page="2"\] \.ticker-text\{font-size:24px\}/);
     assert.doesNotMatch(source.slice(source.indexOf('function pageTwoInlineInfo'), source.indexOf('function pageTwo(')), /LOT /);
     assert.match(source, /item-inline-identity">\$\{vendorTag\}<h1>/);
 });
