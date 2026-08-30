@@ -8,7 +8,7 @@
 
     const GROUP_KEYS = Object.freeze(['odd', 'even']);
     const UNIFORM_WEIGHTS = Object.freeze([100 / 6, 100 / 6, 100 / 6, 100 / 6, 100 / 6, 100 / 6]);
-    const MAX_COMEBACK_WEIGHTS = Object.freeze([8, 10, 13, 18, 23, 28]);
+    const MAX_COMEBACK_WEIGHTS = Object.freeze([4, 6, 9, 15, 27, 39]);
 
     function validGroupKey(value) {
         const key = String(value || '').trim().toLowerCase();

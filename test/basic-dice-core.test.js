@@ -23,14 +23,18 @@ test('dice stays uniform for the leading or tied team and gradually favors high 
 
     const halfDeficit = BasicDice.balancedDiceWeights('odd', { odd: 50, even: 100 });
     const fullDeficit = BasicDice.balancedDiceWeights('odd', { odd: 0, even: 100 });
-    assert.deepEqual(fullDeficit, [8, 10, 13, 18, 23, 28]);
+    assert.deepEqual(fullDeficit, [4, 6, 9, 15, 27, 39]);
+    assert.equal(fullDeficit.slice(4).reduce((sum, value) => sum + value, 0), 66, 'maximum comeback gives 5 or 6 a 66% chance');
+    assert.equal(fullDeficit.slice(3).reduce((sum, value) => sum + value, 0), 81, 'maximum comeback gives 4 through 6 an 81% chance');
     assert.ok(halfDeficit[0] < tied[0]);
     assert.ok(halfDeficit[5] > tied[5]);
     assert.ok(halfDeficit[5] < fullDeficit[5]);
     assert.ok(Math.abs(fullDeficit.reduce((sum, value) => sum + value, 0) - 100) < 1e-9);
 
     const atEightyPercent = (maximum) => Math.floor(maximum * 0.8);
+    const atFiftyPercent = (maximum) => Math.floor(maximum * 0.5);
     assert.equal(BasicDice.chooseBalancedDiceFace('odd', { odd: 100, even: 100 }, atEightyPercent), 5);
+    assert.equal(BasicDice.chooseBalancedDiceFace('odd', { odd: 0, even: 100 }, atFiftyPercent), 5);
     assert.equal(BasicDice.chooseBalancedDiceFace('odd', { odd: 0, even: 100 }, atEightyPercent), 6);
 });
 
