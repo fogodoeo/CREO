@@ -301,18 +301,30 @@ test('shipping pickup locations follow channel configuration without channel-id 
     assert.doesNotMatch(shipping, /SHIPPING_CHANNEL_ID\s*===\s*['"]creyon['"]/);
 });
 
-test('buyer shipping page is lightweight, token based, and offers configured fulfillment choices', () => {
+test('buyer shipping page is lightweight, short-code based, and offers configured fulfillment choices', () => {
     const source = fs.readFileSync(path.join(__dirname, '..', 'public', 'buyer-shipping.html'), 'utf8');
+    const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
     assert.match(source, /id="destinations"/);
-    assert.match(source, /id="parge-region"/);
-    assert.match(source, /id="parge-shop"/);
+    assert.match(source, /id="parge-search"/);
+    assert.match(source, /id="parge-regions"/);
+    assert.match(source, /id="parge-results"/);
+    assert.match(source, /function scoreParge/);
+    assert.match(source, /getChosung/);
+    assert.doesNotMatch(source, /<datalist/i);
+    assert.match(source, /data-payment="card"/);
+    assert.match(source, /별도 결제 링크/);
     assert.match(source, /state\.data\.destinations\|\|\[\]\)\.map/);
     assert.match(source, /new URLSearchParams\(location\.search\)/);
+    assert.match(source, /location\.pathname/);
+    assert.match(source, /params\.get\('code'\)/);
     assert.match(source, /params\.get\('token'\)/);
     assert.match(source, /\/api\/platform\/buyer-shipping/);
     assert.match(source, /visibilitychange/);
     assert.doesNotMatch(source, /setInterval\(/);
     assert.doesNotMatch(source, /<script[^>]+src=/i);
+    assert.match(server, /buyerShippingShortMatch = \/\^\\\/s\\\//);
+    assert.match(server, /new URL\('\/buyer-shipping\.html', url\)/);
+    assert.match(server, /serveStatic\(req, res, buyerPageUrl\)/);
 });
 
 test('capture setup distributes the no-Python F3 agent with diagnostics', () => {

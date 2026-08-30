@@ -8,7 +8,7 @@
     <style>
         :root{color-scheme:light;--ink:#17191d;--muted:#6f737c;--line:#e6e7ea;--soft:#f5f5f3;--gold:#a77a26;--green:#176b49;--red:#a53d38}
         *{box-sizing:border-box}body{margin:0;background:#eeefed;color:var(--ink);font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:-.025em}
-        button,select{font:inherit}.shell{width:min(620px,100%);min-height:100vh;margin:auto;background:#fff}.top{padding:22px 20px 18px;border-bottom:1px solid var(--line)}
+        button,select,input{font:inherit}.shell{width:min(620px,100%);min-height:100vh;margin:auto;background:#fff}.top{padding:22px 20px 18px;border-bottom:1px solid var(--line)}
         .brand{display:flex;align-items:center;justify-content:space-between}.brand b{font-size:13px;letter-spacing:.16em}.brand span{color:var(--muted);font-size:11px;font-weight:750}
         .top h1{margin:20px 0 5px;font-size:25px;line-height:1.2}.top p{margin:0;color:var(--muted);font-size:13px;line-height:1.55}
         .status{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px;padding:12px 14px;border-radius:12px;background:var(--soft);font-size:12px;font-weight:800}
@@ -18,8 +18,10 @@
         .item{display:grid;grid-template-columns:58px 1fr auto;gap:10px;align-items:center;padding:13px 2px;border-bottom:1px solid var(--line);font-size:13px}.item small{color:var(--muted);font-weight:750}.item b{font-size:13px}.item strong{font-size:13px;font-variant-numeric:tabular-nums}
         .cards{display:grid;gap:9px}.choice{width:100%;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:15px;border:1px solid var(--line);border-radius:13px;background:#fff;text-align:left;cursor:pointer}
         .choice b{display:block;font-size:14px}.choice small{display:block;margin-top:3px;color:var(--muted);font-size:11px}.choice i{width:18px;height:18px;border:1.5px solid #babdc4;border-radius:50%}.choice.selected{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}.choice.selected i{border:5px solid var(--ink)}.choice:disabled{opacity:.45;cursor:not-allowed}
-        .parge{display:grid;gap:9px;margin-top:10px;padding:14px;border-radius:13px;background:var(--soft)}.parge[hidden]{display:none}.parge label{color:var(--muted);font-size:11px;font-weight:800}
-        select{width:100%;height:45px;margin-top:5px;padding:0 11px;border:1px solid #d7d8dc;border-radius:10px;background:#fff;color:var(--ink);outline:0}.parge-note{margin:1px 2px 0;color:var(--muted);font-size:11px;line-height:1.5}
+        .parge{display:grid;gap:10px;margin-top:10px;padding:14px;border-radius:13px;background:var(--soft)}.parge[hidden]{display:none}
+        .parge-search{width:100%;height:45px;padding:0 12px;border:1px solid #d7d8dc;border-radius:10px;background:#fff;color:var(--ink);outline:0}.parge-search:focus{border-color:#777b84;box-shadow:0 0 0 3px rgba(23,25,29,.06)}
+        .region-tabs{display:flex;gap:6px;overflow-x:auto;padding:1px 0 3px;scrollbar-width:none}.region-tabs::-webkit-scrollbar{display:none}.region-tab{flex:0 0 auto;height:30px;padding:0 11px;border:1px solid #dcdde0;border-radius:999px;background:#fff;color:var(--muted);font-size:11px;font-weight:800;cursor:pointer}.region-tab.active{border-color:var(--ink);background:var(--ink);color:#fff}
+        .parge-results{display:grid;gap:6px;max-height:280px;overflow:auto}.parge-result{width:100%;display:grid;grid-template-columns:1fr auto;gap:4px 10px;padding:11px 12px;border:1px solid #dedfe2;border-radius:10px;background:#fff;text-align:left;cursor:pointer}.parge-result.selected{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}.parge-result b{font-size:13px}.parge-result strong{grid-row:1/3;grid-column:2;align-self:center;font-size:13px;font-variant-numeric:tabular-nums}.parge-result small{color:var(--muted);font-size:10px}.parge-empty{padding:18px 8px;text-align:center;color:var(--muted);font-size:11px;line-height:1.5}.parge-note{margin:1px 2px 0;color:var(--muted);font-size:11px;line-height:1.5}
         .summary{border-top:1px solid var(--ink)}.sum-row{display:flex;justify-content:space-between;gap:12px;padding:10px 2px;border-bottom:1px solid var(--line);font-size:13px}.sum-row span{color:var(--muted)}.sum-row strong{font-variant-numeric:tabular-nums}.sum-row.discount strong{color:var(--red)}.sum-row.total{padding:15px 2px;font-size:17px}.sum-row.total span{color:var(--ink);font-weight:850}.sum-row.total strong{font-size:22px}
         .account{margin-top:14px;padding:17px;border:1px solid #d9cfba;border-radius:14px;background:#fbf8f1}.account[hidden]{display:none}.account small{display:block;color:#7b6845;font-size:11px;font-weight:850}.account b{display:block;margin-top:8px;font-size:19px;letter-spacing:0}.account span{display:block;margin-top:5px;color:#6e6250;font-size:12px}.account .copy{width:100%;height:42px;margin-top:13px;border:0;border-radius:9px;background:#292820;color:#fff;font-size:12px;font-weight:850;cursor:pointer}
         .privacy{margin-top:20px;color:#8a8d94;font-size:10px;line-height:1.6}.footer{position:fixed;left:50%;bottom:0;z-index:10;width:min(620px,100%);padding:12px 20px calc(12px + env(safe-area-inset-bottom));transform:translateX(-50%);border-top:1px solid var(--line);background:rgba(255,255,255,.95);backdrop-filter:blur(10px)}
@@ -48,8 +50,9 @@
                 <div class="section-head"><h2>1. 배송지 선택</h2></div>
                 <div class="cards" id="destinations"></div>
                 <div class="parge" id="parge" hidden>
-                    <label>지역<select id="parge-region"></select></label>
-                    <label>수령 지점<select id="parge-shop"></select></label>
+                    <input class="parge-search" id="parge-search" autocomplete="off" placeholder="지역 또는 파르게 수령 지점 검색" aria-label="파르게 수령 지점 검색">
+                    <div class="region-tabs" id="parge-regions" aria-label="파르게 지역 필터"></div>
+                    <div class="parge-results" id="parge-results" role="listbox" aria-label="파르게 수령 지점 검색 결과"></div>
                     <p class="parge-note" id="parge-note"></p>
                 </div>
             </section>
@@ -57,7 +60,7 @@
                 <div class="section-head"><h2>2. 입금 방식</h2></div>
                 <div class="cards">
                     <button class="choice" id="pay-bank" type="button" data-payment="bank_transfer"><span><b>계좌이체</b><small id="bank-note">확인 후 입금계좌가 표시됩니다.</small></span><i></i></button>
-                    <button class="choice" id="pay-site" type="button" data-payment="on_site"><span><b>현장 결제</b><small>대구 수령 장소에서 결제합니다.</small></span><i></i></button>
+                    <button class="choice" id="pay-card" type="button" data-payment="card"><span><b>카드결제</b><small>업체에서 별도 결제 링크를 보내드리며 처리가 늦어질 수 있습니다.</small></span><i></i></button>
                 </div>
             </section>
             <section class="section">
@@ -82,6 +85,8 @@
 (() => {
     'use strict';
     const params = new URLSearchParams(location.search);
+    const pathCode = /^\/s\/([A-Za-z0-9_-]{8,24})$/.exec(location.pathname)?.[1] || '';
+    const code = params.get('code') || pathCode;
     const token = params.get('token') || '';
     const requestedApiOrigin = params.get('apiOrigin') || '';
     let apiOrigin = '';
@@ -90,7 +95,7 @@
         if (parsed.protocol === 'https:' || ['localhost','127.0.0.1'].includes(parsed.hostname)) apiOrigin = parsed.origin;
     } catch (_) {}
     const $ = id => document.getElementById(id);
-    const state = { data:null, destinationId:'', paymentMethod:'', pargeRegion:'', pargeShop:'', submitted:false, lastLoadedAt:0, saving:false };
+    const state = { data:null, destinationId:'', paymentMethod:'', pargeRegion:'', pargeShop:'', pargeQuery:'', activePargeRegion:'전체', submitted:false, lastLoadedAt:0, saving:false };
     const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
     const money = value => `${Math.max(0,Math.round(Number(value)||0)).toLocaleString()}원`;
     const apiUrl = () => `${apiOrigin}/api/platform/buyer-shipping`;
@@ -100,8 +105,9 @@
         let lastError;
         for (let attempt=0; attempt<3; attempt+=1) {
             try {
-                const url = method === 'GET' ? `${apiUrl()}?token=${encodeURIComponent(token)}` : apiUrl();
-                const response = await fetch(url, { method, headers:body?{'Content-Type':'application/json'}:{}, body:body?JSON.stringify({...body,token,requestId}):undefined, cache:'no-store' });
+                const credential = code ? `code=${encodeURIComponent(code)}` : `token=${encodeURIComponent(token)}`;
+                const url = method === 'GET' ? `${apiUrl()}?${credential}` : apiUrl();
+                const response = await fetch(url, { method, headers:body?{'Content-Type':'application/json'}:{}, body:body?JSON.stringify({...body,code,token,requestId}):undefined, cache:'no-store' });
                 const payload = await response.json().catch(()=>({}));
                 if (!response.ok) throw Object.assign(new Error(payload.error||`연결 오류 ${response.status}`),{status:response.status});
                 return payload;
@@ -125,9 +131,17 @@
     }
     function totalAmount(){return Number(state.data?.totals?.payableAuctionAmount||0)+shippingAmount()}
 
+    const CHO=['ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ','ㅅ','ㅆ','ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+    const normalizeSearch=value=>String(value||'').replace(/\s+/g,' ').trim().toLowerCase();
+    function getChosung(value){let result='';for(const char of String(value||'')){const code=char.charCodeAt(0);result+=code>=0xAC00&&code<=0xD7A3?CHO[Math.floor((code-0xAC00)/588)]:char}return result}
+    function scoreParge(row,words){let total=0;for(const rawWord of words){const word=({'전북':'전라','전남':'전라','충북':'충청','충남':'충청','경북':'경상','경남':'경상'})[rawWord]||rawWord;let best=0;for(const field of [{value:row.name,weight:3},{value:row.region,weight:2}]){const value=normalizeSearch(field.value);if(/^[ㄱ-ㅎ\s]+$/.test(word)&&getChosung(field.value).includes(word))best=Math.max(best,30*field.weight);if(value===word)best=Math.max(best,100*field.weight);else if(value.startsWith(word))best=Math.max(best,80*field.weight);else if(value.includes(word))best=Math.max(best,50*field.weight)}if(!best)return 0;total+=best}return total}
+    function allPargeRates(){return(state.data?.parge?.regions||[]).flatMap(group=>(group.shops||[]).map(shop=>({region:group.region,name:shop.name,baseCost:Number(shop.baseCost)||0})))}
+    function pargeTotal(rate){if(!rate)return 0;const count=Math.max(1,state.data?.items?.length||1),isJeju=rate.region.includes('제주'),extra=isJeju?state.data.parge.jejuAdditionalFee:state.data.parge.additionalFee;return rate.baseCost+(count-1)*Number(extra||0)}
+
     function statusInfo(status){
         if(status==='paid')return['입금 확인 완료','업체에서 결제를 확인했습니다.','green'];
         if(status==='additional_payment')return['추가 입금 필요',`${money(state.data.payment.additionalDue)} 추가 확인이 필요합니다.`,'red'];
+        if(status==='awaiting_payment'&&state.data?.payment?.method==='card')return['카드결제 링크 대기','업체에서 별도 결제 링크를 보내드립니다.',''];
         if(status==='awaiting_payment')return['입금 확인 대기','입금 후 업체 확인을 기다려 주세요.',''];
         if(status==='on_site')return['현장 결제 예정','수령 장소에서 결제해 주세요.',''];
         return['배송정보 입력 대기','배송지와 입금방식을 선택해 주세요.',''];
@@ -136,29 +150,35 @@
     function renderParge(){
         const visible=selectedDestination()?.type==='parge';$('parge').hidden=!visible;
         if(!visible)return;
-        const groups=state.data.parge.regions||[];
-        $('parge-region').innerHTML='<option value="">지역 선택</option>'+groups.map(group=>`<option value="${esc(group.region)}" ${group.region===state.pargeRegion?'selected':''}>${esc(group.region)}</option>`).join('');
-        const group=groups.find(row=>row.region===state.pargeRegion);
-        $('parge-shop').innerHTML='<option value="">수령 지점 선택</option>'+(group?.shops||[]).map(shop=>`<option value="${esc(shop.name)}" ${shop.name===state.pargeShop?'selected':''}>${esc(shop.name)} · ${money(shop.baseCost)}</option>`).join('');
+        const groups=state.data.parge.regions||[],regionNames=['전체',...groups.map(group=>group.region)];
+        if(!regionNames.includes(state.activePargeRegion))state.activePargeRegion='전체';
+        $('parge-search').value=state.pargeQuery;
+        $('parge-regions').innerHTML=regionNames.map(region=>`<button class="region-tab ${region===state.activePargeRegion?'active':''}" type="button" data-parge-region-filter="${esc(region)}">${esc(region)}</button>`).join('');
+        $('parge-regions').querySelectorAll('[data-parge-region-filter]').forEach(button=>button.onclick=()=>{state.activePargeRegion=button.dataset.pargeRegionFilter;state.pargeQuery='';if(state.pargeRegion!==state.activePargeRegion&&state.activePargeRegion!=='전체'){state.pargeRegion='';state.pargeShop=''}renderParge();renderSummary()});
+        const words=normalizeSearch(state.pargeQuery).split(/\s+/).filter(Boolean);let results=allPargeRates().filter(row=>state.activePargeRegion==='전체'||row.region===state.activePargeRegion);
+        if(words.length)results=results.map(row=>({row,score:scoreParge(row,words)})).filter(entry=>entry.score>0).sort((a,b)=>b.score-a.score||a.row.region.localeCompare(b.row.region,'ko')||a.row.name.localeCompare(b.row.name,'ko')).map(entry=>entry.row);
+        else results.sort((a,b)=>a.region.localeCompare(b.region,'ko')||a.name.localeCompare(b.name,'ko'));
+        results=results.slice(0,30);
+        $('parge-results').innerHTML=results.length?results.map(row=>`<button class="parge-result ${row.region===state.pargeRegion&&row.name===state.pargeShop?'selected':''}" type="button" role="option" aria-selected="${row.region===state.pargeRegion&&row.name===state.pargeShop?'true':'false'}" data-parge-region="${esc(row.region)}" data-parge-shop="${esc(row.name)}"><b>${esc(row.name)}</b><small>${esc(row.region)} · 기본 ${money(row.baseCost)}</small><strong>${money(pargeTotal(row))}</strong></button>`).join(''):'<div class="parge-empty">검색 결과가 없습니다.<br>지역명이나 지점명을 다시 확인해 주세요.</div>';
+        $('parge-results').querySelectorAll('[data-parge-shop]').forEach(button=>button.onclick=()=>{state.pargeRegion=button.dataset.pargeRegion;state.pargeShop=button.dataset.pargeShop;state.pargeQuery=`${state.pargeRegion} ${state.pargeShop}`;renderParge();renderSummary()});
         const isJeju=state.pargeRegion.includes('제주'),extra=isJeju?state.data.parge.jejuAdditionalFee:state.data.parge.additionalFee;
-        $('parge-note').textContent=`첫 개체는 지점 기본요금, 합배송은 추가 개체당 ${money(extra)}입니다.`;
+        $('parge-note').textContent=`검색 결과에서 수령 지점을 눌러 선택해 주세요. 합배송은 추가 개체당 ${money(extra)}입니다.`;
     }
 
     function renderChoices(){
         $('destinations').innerHTML=(state.data.destinations||[]).map(row=>`<button class="choice ${row.id===state.destinationId?'selected':''}" type="button" data-destination="${esc(row.id)}"><span><b>${esc(row.label)}</b><small>${row.type==='parge'?'파르게 수령 지점을 선택합니다.':'배송비 없이 직접 수령합니다.'}</small></span><i></i></button>`).join('');
         $('destinations').querySelectorAll('[data-destination]').forEach(button=>button.onclick=()=>{
             state.destinationId=button.dataset.destination;
-            if(selectedDestination()?.type!=='parge'){state.pargeRegion='';state.pargeShop='';if(state.paymentMethod==='on_site'){} }
-            else if(state.paymentMethod==='on_site')state.paymentMethod='';
+            if(selectedDestination()?.type!=='parge'){state.pargeRegion='';state.pargeShop=''}
             renderChoices();renderParge();renderPayment();renderSummary();
         });
     }
 
     function renderPayment(){
-        const account=state.data.payment.account||{},configured=Boolean(account.bankName&&account.accountNumber&&account.holder),pickup=selectedDestination()?.type==='pickup';
+        const account=state.data.payment.account||{},configured=Boolean(account.bankName&&account.accountNumber&&account.holder);
         $('pay-bank').disabled=!configured;
         $('bank-note').textContent=configured?'확인 후 입금계좌가 표시됩니다.':'업체 계좌정보 등록이 필요합니다.';
-        $('pay-site').disabled=!pickup;
+        $('pay-card').disabled=false;
         for(const button of document.querySelectorAll('[data-payment]'))button.classList.toggle('selected',button.dataset.payment===state.paymentMethod);
     }
 
@@ -176,7 +196,7 @@
 
     function render(){
         const data=state.data,selection=data.selection||{};
-        if(!state.destinationId){state.destinationId=selection.destinationId||'';state.pargeRegion=selection.pargeRegion||'';state.pargeShop=selection.pargeShop||'';state.paymentMethod=selection.paymentMethod||data.payment.method||'';state.submitted=Boolean(data.submittedAt)}
+        if(!state.destinationId){state.destinationId=selection.destinationId||'';state.pargeRegion=selection.pargeRegion||'';state.pargeShop=selection.pargeShop||'';state.pargeQuery=state.pargeShop?`${state.pargeRegion} ${state.pargeShop}`:'';state.paymentMethod=selection.paymentMethod||data.payment.method||'';if(state.paymentMethod==='on_site')state.paymentMethod='';state.submitted=Boolean(data.submittedAt)}
         $('channel-name').textContent=data.channel.name;$('buyer-name').textContent=data.buyer.name;$('vendor-name').textContent=data.vendor.name;$('item-count').textContent=`${data.items.length}개체`;
         $('items').innerHTML=data.items.map(item=>`<div class="item"><small>${String(item.lotNumber).padStart(2,'0')}</small><b>${esc(item.name)}</b><strong>${money(item.soldAmount)}</strong></div>`).join('');
         const [label,detail,tone]=statusInfo(data.payment.status);$('status-label').textContent=label;$('status-detail').textContent=detail;$('status').dataset.tone=tone;
@@ -185,9 +205,9 @@
     }
 
     async function load(silent=false){
-        if(!token||!apiOrigin){showError('배송 링크 주소가 올바르지 않습니다.');return}
+        if((!code&&!token)||!apiOrigin){showError('배송 링크 주소가 올바르지 않습니다.');return}
         if(!silent){$('loading').hidden=false;$('app').hidden=true;$('error').hidden=true}
-        try{state.data=await request();state.destinationId='';state.paymentMethod='';state.pargeRegion='';state.pargeShop='';state.submitted=false;state.lastLoadedAt=Date.now();render()}
+        try{state.data=await request();state.destinationId='';state.paymentMethod='';state.pargeRegion='';state.pargeShop='';state.pargeQuery='';state.activePargeRegion='전체';state.submitted=false;state.lastLoadedAt=Date.now();render()}
         catch(error){showError(error.message||'배송 정보를 불러오지 못했습니다.')}
     }
     function showError(message){$('loading').hidden=true;$('app').hidden=true;$('error').hidden=false;$('error-message').textContent=message}
@@ -197,8 +217,7 @@
         catch(error){alert(error.message||'저장하지 못했습니다.');state.saving=false;renderSummary()}finally{state.saving=false;renderSummary()}
     }
 
-    $('parge-region').onchange=event=>{state.pargeRegion=event.target.value;state.pargeShop='';renderParge();renderSummary()};
-    $('parge-shop').onchange=event=>{state.pargeShop=event.target.value;renderSummary()};
+    $('parge-search').oninput=event=>{state.pargeQuery=event.target.value;const selectedText=normalizeSearch(`${state.pargeRegion} ${state.pargeShop}`);if(selectedText&&normalizeSearch(state.pargeQuery)!==selectedText){state.pargeRegion='';state.pargeShop=''}renderParge();renderSummary()};
     document.querySelectorAll('[data-payment]').forEach(button=>button.onclick=()=>{if(button.disabled)return;state.paymentMethod=button.dataset.payment;renderPayment();renderSummary()});
     $('submit').onclick=save;$('retry').onclick=()=>load();
     $('copy-account').onclick=async()=>{const value=state.data?.payment?.account?.accountNumber||'';try{await navigator.clipboard.writeText(value);$('copy-account').textContent='복사했습니다';setTimeout(()=>$('copy-account').textContent='계좌번호 복사',1400)}catch(_){alert(value)}};

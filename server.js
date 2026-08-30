@@ -335,6 +335,12 @@ const server = http.createServer(async (req, res) => {
             return;
         }
 
+        const buyerShippingShortMatch = /^\/s\/([A-Za-z0-9_-]{8,24})$/.exec(url.pathname);
+        if ((req.method === 'GET' || req.method === 'HEAD') && buyerShippingShortMatch) {
+            const buyerPageUrl = new URL('/buyer-shipping.html', url);
+            if (await serveStatic(req, res, buyerPageUrl)) return;
+        }
+
         const operationalFeature = new Map([
             ['/broadcast-studio.html', 'broadcast'],
             ['/shipping.html', 'shipping'],

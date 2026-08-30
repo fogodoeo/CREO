@@ -92,13 +92,30 @@ test('buyer shipping link isolates one buyer, saves idempotently, confirms payme
     const secret = 'stable-buyer-link-test-secret';
     const api = createPlatformApi({ repository, adminSessionSecret: secret, logger: { error() {}, warn() {} } });
 
-    const link = await call(api, 'POST', '/api/platform/channels/alpha/buyer-shipping-link', { itemId: 'item-a' });
+    const [link, repeatedLink] = await Promise.all([
+        call(api, 'POST', '/api/platform/channels/alpha/buyer-shipping-link', { itemId: 'item-a' }),
+        call(api, 'POST', '/api/platform/channels/alpha/buyer-shipping-link', { itemId: 'item-a' })
+    ]);
     assert.equal(link.status, 200, link.body);
+    assert.equal(repeatedLink.status, 200, repeatedLink.body);
+    assert.equal(repeatedLink.json().url, link.json().url);
     assert.equal(link.json().phone, '01012345678');
-    const token = new URL(link.json().url).searchParams.get('token');
-    assert.ok(token);
+    assert.doesNotMatch(link.json().url, /01012345678/);
+    assert.match(link.json().message, /^\[CREO 파르게 배송 안내\]/);
+    assert.match(link.json().message, /수령 방법과 파르게 지점을 선택/);
+    assert.match(link.json().message, /화면의 최종 금액만 입금/);
+    assert.match(link.json().message, /배송 선택은 링크에서 자동 저장/);
+    assert.match(link.json().message, /같은 링크에서 다시 변경/);
+    assert.match(link.json().message, /문의와 입금 확인은 문자/);
+    assert.ok(link.json().message.endsWith(link.json().url));
+    const shortUrl = new URL(link.json().url);
+    const code = shortUrl.pathname.split('/').at(-1);
+    assert.equal(shortUrl.pathname, `/s/${code}`);
+    assert.match(code, /^[A-Za-z0-9_-]{11}$/);
+    assert.equal(shortUrl.search, '');
+    assert.ok(repository.records.get(`config:buyer_shipping_short_v1_${code}`));
 
-    const initial = await call(api, 'GET', `/api/platform/buyer-shipping?token=${encodeURIComponent(token)}`, null, '');
+    const initial = await call(api, 'GET', `/api/platform/buyer-shipping?code=${encodeURIComponent(code)}`, null, '');
     assert.equal(initial.status, 200, initial.body);
     assert.deepEqual(initial.json().items.map((item) => item.id), ['item-a', 'item-b']);
     assert.deepEqual(initial.json().destinations.map((entry) => entry.label), ['대구 크레오', '대구 크레용 본점', '배송']);
@@ -107,7 +124,7 @@ test('buyer shipping link isolates one buyer, saves idempotently, confirms payme
     assert.doesNotMatch(initial.body, /01012345678|01099998888|private-other-buyer|private-other-vendor/);
 
     const requestId = 'buyer-save-request-1';
-    const saveBody = { token, requestId, destinationId: 'parge', pargeRegion: '수도권', pargeShop: '테스트 파르게', paymentMethod: 'bank_transfer' };
+    const saveBody = { code, requestId, destinationId: 'parge', pargeRegion: '수도권', pargeShop: '테스트 파르게', paymentMethod: 'bank_transfer' };
     const [savedA, savedB] = await Promise.all([
         call(api, 'POST', '/api/platform/buyer-shipping', saveBody, ''),
         call(api, 'POST', '/api/platform/buyer-shipping', saveBody, '')
@@ -129,23 +146,44 @@ test('buyer shipping link isolates one buyer, saves idempotently, confirms payme
     assert.equal(confirmedAgain.json().duplicate, true);
 
     const restartedApi = createPlatformApi({ repository, adminSessionSecret: secret, logger: { error() {}, warn() {} } });
-    const afterRestart = await call(restartedApi, 'GET', `/api/platform/buyer-shipping?token=${encodeURIComponent(token)}`, null, '');
+    const afterRestart = await call(restartedApi, 'GET', `/api/platform/buyer-shipping?code=${encodeURIComponent(code)}`, null, '');
     assert.equal(afterRestart.status, 200, afterRestart.body);
     assert.equal(afterRestart.json().payment.status, 'paid');
+
+    const changedPickup = await call(restartedApi, 'POST', '/api/platform/buyer-shipping', {
+        code, requestId: 'buyer-change-to-pickup', destinationId: 'pickup-2', paymentMethod: 'card'
+    }, '');
+    assert.equal(changedPickup.status, 200, changedPickup.body);
+    assert.equal(changedPickup.json().selection.destinationId, 'pickup-2');
+    assert.equal(changedPickup.json().selection.paymentMethod, 'card');
+    assert.equal(changedPickup.json().totals.shippingAmount, 0);
+
+    const changedBackToParge = await call(restartedApi, 'POST', '/api/platform/buyer-shipping', {
+        code, requestId: 'buyer-change-back-to-parge', destinationId: 'parge', pargeRegion: '수도권',
+        pargeShop: '테스트 파르게', paymentMethod: 'bank_transfer'
+    }, '');
+    assert.equal(changedBackToParge.status, 200, changedBackToParge.body);
+    assert.equal(changedBackToParge.json().selection.destinationId, 'parge');
+    assert.equal(changedBackToParge.json().selection.paymentMethod, 'bank_transfer');
+    assert.equal(changedBackToParge.json().totals.shippingAmount, 26000);
 
     await repository.upsertRecord('alpha', 'item', {
         id: 'item-c', lotNumber: 5, name: 'A03', vendorId: 'vendor-one', vendorName: '라이언게코', status: 'sold', soldPrice: 50000,
         winnerName: '테스트구매자', winnerPhone: '01012345678'
     });
-    const withLaterWin = await call(restartedApi, 'GET', `/api/platform/buyer-shipping?token=${encodeURIComponent(token)}`, null, '');
+    const withLaterWin = await call(restartedApi, 'GET', `/api/platform/buyer-shipping?code=${encodeURIComponent(code)}`, null, '');
     assert.equal(withLaterWin.json().items.length, 3);
     assert.equal(withLaterWin.json().totals.shippingAmount, 33000);
     assert.equal(withLaterWin.json().totals.totalAmount, 383000);
     assert.equal(withLaterWin.json().payment.status, 'additional_payment');
     assert.equal(withLaterWin.json().payment.additionalDue, 57000);
 
-    const badToken = await call(restartedApi, 'GET', `/api/platform/buyer-shipping?token=${encodeURIComponent(`${token}x`)}`, null, '');
-    assert.equal(badToken.status, 401);
+    const badCode = await call(restartedApi, 'GET', `/api/platform/buyer-shipping?code=${encodeURIComponent(`${code}x`)}`, null, '');
+    assert.equal(badCode.status, 401);
+    const shortLinkRow = repository.records.get(`config:buyer_shipping_short_v1_${code}`);
+    shortLinkRow.value = JSON.stringify({ ...JSON.parse(shortLinkRow.value), expiresAt: Date.now() - 1 });
+    const expiredCode = await call(restartedApi, 'GET', `/api/platform/buyer-shipping?code=${encodeURIComponent(code)}`, null, '');
+    assert.equal(expiredCode.status, 401);
     assert.equal((await repository.listRecords('alpha', 'shipment')).length, 2);
 });
 

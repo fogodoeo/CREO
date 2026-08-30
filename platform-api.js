@@ -46,6 +46,7 @@ const SHIPPING_RATE_CONFIG_KEYS = Object.freeze({
 });
 const RUNTIME_CONFIG_VERSION_KEY = 'runtime_config_version';
 const BUYER_SHIPPING_TOKEN_TTL_MS = 14 * 24 * 60 * 60 * 1000;
+const BUYER_SHIPPING_SHORT_KEY_PREFIX = 'buyer_shipping_short_v1_';
 
 function replyJson(res, status, value, headers = {}) {
     const body = Buffer.from(JSON.stringify(value));
@@ -455,7 +456,7 @@ function sanitizeRecord(type, input = {}, current = {}) {
             destinationId: cleanText(input.destinationId, 80),
             pargeRegion: cleanText(input.pargeRegion, 80),
             pargeShop: cleanText(input.pargeShop, 120),
-            paymentMethod: ['bank_transfer', 'on_site'].includes(input.paymentMethod) ? input.paymentMethod : '',
+            paymentMethod: ['bank_transfer', 'card', 'on_site'].includes(input.paymentMethod) ? input.paymentMethod : '',
             paymentStatus: ['awaiting_information', 'awaiting_payment', 'additional_payment', 'paid', 'on_site'].includes(input.paymentStatus)
                 ? input.paymentStatus
                 : '',
@@ -1007,6 +1008,38 @@ function createPlatformApi({
         return payload.channelId && payload.itemId && payload.phoneHash ? payload : null;
     }
 
+    function buyerShippingShortCode(payload) {
+        const stableKey = [payload.channelId, payload.itemId, payload.phoneHash, payload.vendorKey].join(':');
+        return crypto.createHmac('sha256', sessionSecret)
+            .update(`buyer-shipping-short:${stableKey}`)
+            .digest('base64url')
+            .slice(0, 11);
+    }
+
+    async function saveBuyerShippingShortLink(token, payload) {
+        const code = buyerShippingShortCode(payload);
+        await repository.upsertRows([{
+            key: `${BUYER_SHIPPING_SHORT_KEY_PREFIX}${code}`,
+            value: JSON.stringify({ token, expiresAt: payload.expiresAt })
+        }]);
+        return code;
+    }
+
+    async function resolveBuyerShippingCredential({ token = '', code = '' } = {}) {
+        const cleanCode = cleanText(code, 24);
+        if (cleanCode) {
+            if (!/^[A-Za-z0-9_-]{8,24}$/.test(cleanCode)) return '';
+            const rows = await repository.getRowsByKeys([`${BUYER_SHIPPING_SHORT_KEY_PREFIX}${cleanCode}`]);
+            const stored = rows?.[0]?.value;
+            let entry;
+            try { entry = stored ? JSON.parse(stored) : null; }
+            catch { return ''; }
+            if (!entry?.token || Number(entry.expiresAt) <= Date.now()) return '';
+            return verifyBuyerShippingToken(entry.token) ? entry.token : '';
+        }
+        return verifyBuyerShippingToken(token) ? token : '';
+    }
+
     async function pargeRates() {
         let payload = FALLBACK_PARGE_RATES;
         try {
@@ -1182,11 +1215,8 @@ function createPlatformApi({
         } else {
             throw buyerInputError('배송지를 선택해 주세요.');
         }
-        const paymentMethod = ['bank_transfer', 'on_site'].includes(body.paymentMethod) ? body.paymentMethod : '';
+        const paymentMethod = ['bank_transfer', 'card'].includes(body.paymentMethod) ? body.paymentMethod : '';
         if (!paymentMethod) throw buyerInputError('입금 방식을 선택해 주세요.');
-        if (paymentMethod === 'on_site' && selection.destinationType !== 'pickup') {
-            throw buyerInputError('현장 결제는 직접 수령을 선택한 경우에만 가능합니다.');
-        }
         const settlement = bundleSettlement(context);
         const shippingCost = buyerShippingCost(selection, context.bundleItems.length, context.channel, rates);
         const totalAmount = settlement.payableAuctionAmount + shippingCost;
@@ -1194,14 +1224,12 @@ function createPlatformApi({
         const confirmedAmount = context.shipments
             .filter((shipment) => context.bundleItems.some((item) => item.id === shipment.itemId))
             .reduce((maximum, shipment) => Math.max(maximum, Number(shipment.paymentConfirmedAmount) || 0), 0);
-        const paymentStatus = paymentMethod === 'on_site'
-            ? 'on_site'
-            : confirmedAmount > 0 && confirmedAmount < totalAmount
-                ? 'additional_payment'
-                : confirmedAmount >= totalAmount && totalAmount > 0
-                    ? 'paid'
-                    : 'awaiting_payment';
-        const status = paymentStatus === 'paid' ? 'complete' : paymentMethod === 'on_site' ? 'ready' : 'payment_pending';
+        const paymentStatus = confirmedAmount > 0 && confirmedAmount < totalAmount
+            ? 'additional_payment'
+            : confirmedAmount >= totalAmount && totalAmount > 0
+                ? 'paid'
+                : 'awaiting_payment';
+        const status = paymentStatus === 'paid' ? 'complete' : 'payment_pending';
         const now = new Date().toISOString();
         const bundleId = stableBuyerId('bundle', `${context.channel.id}:${vendorKeyForItem(context.bundleItems[0])}:${context.anchorPhone}`);
         const saved = [];
@@ -1729,7 +1757,11 @@ function createPlatformApi({
             }
 
             if (segments.length === 1 && segments[0] === 'buyer-shipping' && method === 'GET') {
-                const context = await buyerBundleContext(url.searchParams.get('token'));
+                const credential = await resolveBuyerShippingCredential({
+                    token: url.searchParams.get('token'),
+                    code: url.searchParams.get('code')
+                });
+                const context = await buyerBundleContext(credential);
                 if (!context) {
                     replyJson(res, 401, { error: '배송 링크가 만료되었거나 올바르지 않습니다.' }, buyerCorsHeaders(req));
                     return true;
@@ -1740,7 +1772,8 @@ function createPlatformApi({
 
             if (segments.length === 1 && segments[0] === 'buyer-shipping' && method === 'POST') {
                 const body = await readJson(req);
-                const context = await buyerBundleContext(body.token);
+                const credential = await resolveBuyerShippingCredential(body);
+                const context = await buyerBundleContext(credential);
                 if (!context) {
                     replyJson(res, 401, { error: '배송 링크가 만료되었거나 올바르지 않습니다.' }, buyerCorsHeaders(req));
                     return true;
@@ -2913,6 +2946,8 @@ function createPlatformApi({
                     return true;
                 }
                 const token = signBuyerShippingToken({ channelId, itemId, phone, vendorKey });
+                const tokenPayload = verifyBuyerShippingToken(token);
+                const shortCode = await saveBuyerShippingShortLink(token, tokenPayload);
                 const apiOrigin = requestOrigin(req);
                 const siteOrigin = configuredBuyerSiteOrigin || apiOrigin;
                 if (!siteOrigin) {
@@ -2921,21 +2956,32 @@ function createPlatformApi({
                 }
                 let buyerUrl;
                 try {
-                    buyerUrl = new URL('/buyer-shipping.html', siteOrigin);
+                    buyerUrl = new URL(`/s/${shortCode}`, siteOrigin);
                 } catch (_) {
                     replyJson(res, 500, { error: '구매자 배송 페이지 주소 설정이 올바르지 않습니다.' });
                     return true;
                 }
-                buyerUrl.searchParams.set('token', token);
                 if (configuredBuyerSiteOrigin && apiOrigin && buyerUrl.origin !== new URL(apiOrigin).origin) {
+                    buyerUrl.pathname = '/buyer-shipping.html';
+                    buyerUrl.searchParams.set('code', shortCode);
                     buyerUrl.searchParams.set('apiOrigin', apiOrigin);
                 }
                 const name = buyerDisplayName(item);
                 replyJson(res, 200, {
                     phone,
                     url: buyerUrl.toString(),
+                    code: shortCode,
                     expiresAt: new Date(Date.now() + BUYER_SHIPPING_TOKEN_TTL_MS).toISOString(),
-                    message: `[CREO] ${name}님\n배송지와 입금방식을 선택해 주세요.\n${buyerUrl}`
+                    message: [
+                        '[CREO 파르게 배송 안내]',
+                        `${name}님, 낙찰 감사합니다.`,
+                        '아래 링크에서 수령 방법과 파르게 지점을 선택해 주세요.',
+                        '화면의 최종 금액만 입금한 뒤 이 번호로 입금 문자를 남겨주세요.',
+                        '배송 선택은 링크에서 자동 저장되며, 문자 확인 후 배송 접수를 진행합니다.',
+                        '선택 내용은 같은 링크에서 다시 변경할 수 있습니다.',
+                        '경매 진행 중에는 통화가 어렵습니다. 문의와 입금 확인은 문자로 부탁드립니다.',
+                        buyerUrl.toString()
+                    ].join('\n')
                 });
                 return true;
             }
