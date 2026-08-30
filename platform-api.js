@@ -302,6 +302,7 @@ function sanitizePinballConfig(input = {}) {
     const speed = Number(input.defaultSpeed);
     const map = Number.parseInt(input.defaultMap, 10);
     const rank = Number.parseInt(input.winningRank, 10);
+    const requestedTheme = input.themePreset === 'liongecko' ? 'ryangecko' : input.themePreset;
     return {
         eventTitle: cleanText(input.eventTitle, 40) || '공정하고 즐거운 추첨',
         channelName: cleanText(input.channelName, 30),
@@ -313,7 +314,7 @@ function sanitizePinballConfig(input = {}) {
         winningRank: Number.isFinite(rank) ? Math.max(1, Math.min(500, rank)) : 1,
         useSkills: booleanValue(input.useSkills, false),
         autoRecording: false,
-        themePreset: ['academy', 'midnight', 'arena', 'clean'].includes(input.themePreset) ? input.themePreset : 'midnight',
+        themePreset: ['ryangecko', 'academy', 'midnight', 'arena', 'clean'].includes(requestedTheme) ? requestedTheme : 'midnight',
         marbleStyle: ['glass', 'flat'].includes(input.marbleStyle) ? input.marbleStyle : 'glass',
         accentColor: /^#[0-9a-f]{6}$/i.test(String(input.accentColor || '')) ? String(input.accentColor) : '#f2c66d'
     };

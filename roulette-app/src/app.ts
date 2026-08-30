@@ -407,6 +407,7 @@ function persistInputs(): void {
 
 function applyRuntimeAppearance(): void {
   updateBrand();
+  if (isRemoteController) dom.broadcastSource.value = remoteSourceUrl();
   options.marbleStyle = currentMarbleStyle();
   if (roulette && engineReady) roulette.setTheme(activeTheme());
   if (roulette && engineReady) roulette.setRenderFps(Number(dom.renderFps.value));
@@ -619,6 +620,7 @@ function remoteSourceUrl(): string {
   const url = new URL('/roulette/', location.origin);
   url.searchParams.set('channel', remoteChannelId);
   url.searchParams.set('broadcast', '1');
+  url.searchParams.set('theme', currentThemeName());
   return url.toString();
 }
 

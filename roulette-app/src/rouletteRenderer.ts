@@ -281,11 +281,6 @@ export class RouletteRenderer {
             const wandWidth = Math.max(w * 1.08, h * 4.8);
             const wandHeight = Math.max(h * 0.85, wandWidth * 0.055);
             this.ctx.drawImage(this._academyAssets.wand, -wandWidth / 2, -wandHeight / 2, wandWidth, wandHeight);
-          } else if (this.isRyanGeckoSkin() && this.imageReady(this._ryanGeckoAssets.rune)) {
-            const size = shape.radius * 2.55;
-            this.ctx.shadowBlur = 10;
-            this.ctx.shadowColor = 'rgba(242, 198, 109, 0.6)';
-            this.ctx.drawImage(this._ryanGeckoAssets.rune, -size / 2, -size / 2, size, size);
           } else if (this.isAcademySkin() && this.imageReady(this._academyAssets.rune)) {
             const size = Math.max(w, h) * (Math.max(w, h) <= 0.7 ? 2.8 : 1.18);
             this.ctx.shadowBlur = 5;

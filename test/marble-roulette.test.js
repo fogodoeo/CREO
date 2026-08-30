@@ -76,8 +76,10 @@ test('global pinball launcher exposes reusable skins and carries the selected ch
 
     assert.match(main, /id="quick-pinball-skin"/);
     assert.match(main, /id="quick-pinball"/);
+    assert.match(main, /value="ryangecko">라이언게코/);
     assert.match(main, /value="academy">마법학교/);
-    assert.match(main, /creo_pinball_skin_v1/);
+    assert.match(main, /creo_pinball_skin_v2_/);
+    assert.match(main, /broadcastProfile==='basic-dice'\?'ryangecko':'academy'/);
     assert.match(main, /new URLSearchParams\(\{theme:pinballSkin\.value\}\)/);
     assert.match(main, /params\.set\('channel',operatingChannel\.id\)/);
     assert.match(main, /params\.set\('channelName',operatingChannel\.name\)/);
@@ -107,6 +109,7 @@ test('pinball separates an authenticated laptop controller from a clean fixed br
     assert.match(app, /session\.result \|\| session\.history\?\.\[0\]/);
     assert.match(app, /getStandings: \(\) => roulette\.getStandings\(\)/);
     assert.match(app, /renderFps: Number\(dom\.renderFps\.value\) === 120 \? 120 : 60/);
+    assert.match(app, /url\.searchParams\.set\('theme', currentThemeName\(\)\)/);
     assert.match(styles, /html\.remote-display-mode \.stage-header/);
 });
 
