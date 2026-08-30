@@ -615,7 +615,14 @@ test('print forms remain available inside the shared registration workspace with
     assert.match(print, />구매자별<\/button>/);
     assert.match(print, />배송 라벨<\/button>/);
     assert.match(print, /id="label-item-list"/);
+    assert.match(print, /id="label-preview-stage"/);
+    assert.match(print, /실제 D10 15×50mm 비율/);
     assert.match(print, /function renderShippingLabels\(items\)/);
+    assert.match(print, /function renderShippingLabelPreview\(\)/);
+    assert.match(print, /function moveShippingLabelPreview\(direction\)/);
+    assert.match(print, /label-paper-destination[\s\S]*?payload\.destination/);
+    assert.match(print, /label-paper-buyer[\s\S]*?payload\.winner_name/);
+    assert.match(print, /label-paper-phone[\s\S]*?fmtPhone\(payload\.winner_phone\)/);
     assert.match(print, /function printSelectedShippingLabels\(\)/);
     assert.match(print, /D10_LABEL_BRIDGE_BASE\s*=\s*['"]http:\/\/127\.0\.0\.1:17876['"]/);
     assert.match(print, /fetchD10Bridge\('\/v1\/labels'/);

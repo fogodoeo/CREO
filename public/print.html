@@ -364,7 +364,7 @@
         .label-workspace {
             display: grid;
             gap: 14px;
-            max-width: 980px;
+            max-width: 1180px;
         }
 
         .label-toolbar {
@@ -398,6 +398,112 @@
 
         .label-selection-summary { margin-left: auto; }
 
+        .label-workspace-body {
+            display: grid;
+            grid-template-columns: minmax(420px, 500px) minmax(0, 1fr);
+            align-items: start;
+            gap: 14px;
+        }
+
+        .label-preview-panel {
+            position: sticky;
+            top: 12px;
+            display: grid;
+            gap: 12px;
+            padding: 18px;
+            border: 1px solid #d8dee8;
+            border-radius: 14px;
+            background: #f8fafc;
+        }
+
+        .label-preview-heading,
+        .label-preview-nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .label-preview-heading strong {
+            color: #0f172a;
+            font-size: 15px;
+            font-weight: 900;
+        }
+
+        .label-preview-heading span,
+        .label-preview-note,
+        .label-preview-counter {
+            color: #64748b;
+            font-size: 11px;
+            font-weight: 750;
+        }
+
+        .label-preview-stage {
+            display: grid;
+            place-items: center;
+            min-height: 196px;
+            padding: 20px 12px;
+            border-radius: 11px;
+            background: #e9edf3;
+        }
+
+        .label-paper {
+            display: grid;
+            grid-template-rows: 34% 29% 27% 10%;
+            width: 100%;
+            aspect-ratio: 10 / 3;
+            overflow: hidden;
+            padding: 7px 24px 0;
+            border: 1px solid #cbd5e1;
+            background: #fff;
+            box-shadow: 0 8px 24px rgba(15, 23, 42, .12);
+            color: #020617;
+            font-family: 'Pretendard', sans-serif;
+            text-align: center;
+        }
+
+        .label-paper-line {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 0;
+            overflow: hidden;
+            line-height: 1;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+
+        .label-paper-destination { font-size: 29px; font-weight: 900; letter-spacing: -.045em; }
+        .label-paper-buyer { font-size: 27px; font-weight: 850; letter-spacing: -.04em; }
+        .label-paper-phone { align-items: flex-start; padding-top: 2px; font-size: 23px; font-weight: 850; letter-spacing: -.025em; }
+        .label-paper-feed-margin { border-top: 1px dashed #e2e8f0; }
+
+        .label-preview-empty {
+            display: grid;
+            place-items: center;
+            width: 100%;
+            aspect-ratio: 10 / 3;
+            border: 1px dashed #94a3b8;
+            border-radius: 4px;
+            background: rgba(255,255,255,.55);
+            color: #64748b;
+            font-size: 13px;
+            font-weight: 800;
+        }
+
+        .label-preview-nav button {
+            min-width: 64px;
+            height: 32px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            background: #fff;
+            color: #334155;
+            font: 800 12px 'Pretendard', sans-serif;
+            cursor: pointer;
+        }
+
+        .label-preview-nav button:disabled { cursor: default; opacity: .4; }
+
         .label-item-list {
             display: grid;
             gap: 8px;
@@ -417,6 +523,7 @@
         }
 
         .label-item:hover { border-color: #94a3b8; }
+        .label-item.is-previewing { border-color:#2563eb; box-shadow:0 0 0 2px rgba(37,99,235,.11); }
         .label-item strong { font-size: 14px; }
         .label-item span { min-width: 0; overflow: hidden; color: #475569; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
         .label-item .label-buyer { color: #0f172a; font-weight: 800; }
@@ -675,6 +782,13 @@
             .label-item { grid-template-columns:24px 62px minmax(0,1fr) 82px; gap:8px; }
             .label-item .label-phone,.label-item .label-destination { grid-column:3 / -1; }
             .label-selection-summary { width:100%;margin-left:0; }
+            .label-workspace-body { grid-template-columns:1fr; }
+            .label-preview-panel { position:static; }
+            .label-preview-stage { min-height:0;padding:14px 8px; }
+            .label-paper { padding-left:16px;padding-right:16px; }
+            .label-paper-destination { font-size:clamp(17px,5vw,29px); }
+            .label-paper-buyer { font-size:clamp(16px,4.7vw,27px); }
+            .label-paper-phone { font-size:clamp(14px,4vw,23px); }
             .settlement-stats { grid-template-columns:repeat(2,minmax(120px,1fr)); }
             .settlement-tools { align-items:stretch; flex-direction:column; }
             .settlement-tools input,.settlement-tools select,.sheets-export-btn { width:100%; min-width:0; }
@@ -758,7 +872,24 @@
                 <span class="label-printer-status" id="label-printer-status">D10 앱 연결 확인 중</span>
                 <span class="label-selection-summary" id="label-selection-summary">0장 선택</span>
             </div>
-            <div class="label-item-list" id="label-item-list"><div class="loading">불러오는 중...</div></div>
+            <div class="label-workspace-body">
+                <section class="label-preview-panel" aria-label="배송 라벨 출력 미리보기">
+                    <div class="label-preview-heading">
+                        <strong>출력 미리보기</strong>
+                        <span>실제 D10 15×50mm 비율</span>
+                    </div>
+                    <div class="label-preview-stage" id="label-preview-stage">
+                        <div class="label-preview-empty">라벨 자료를 불러오는 중입니다.</div>
+                    </div>
+                    <div class="label-preview-nav">
+                        <button id="label-preview-prev" type="button" onclick="moveShippingLabelPreview(-1)">이전</button>
+                        <span class="label-preview-counter" id="label-preview-counter">0 / 0</span>
+                        <button id="label-preview-next" type="button" onclick="moveShippingLabelPreview(1)">다음</button>
+                    </div>
+                    <div class="label-preview-note">회색 외곽선과 하단 점선은 용지·급지 여백 안내이며 실제로 인쇄되지 않습니다.</div>
+                </section>
+                <div class="label-item-list" id="label-item-list"><div class="loading">불러오는 중...</div></div>
+            </div>
         </div>
     </div>
 
@@ -1113,6 +1244,7 @@
                     && Boolean(shippingLabelDestination(it));
             });
             window._shippingLabelItems = eligible;
+            window._shippingLabelPreviewIndex = null;
             var list = document.getElementById('label-item-list');
             if (!eligible.length) {
                 list.innerHTML = '<div class="label-empty">연락처와 수령 거점이 저장된 낙찰 건이 없습니다.</div>';
@@ -1122,9 +1254,9 @@
             list.innerHTML = eligible.map(function (it, index) {
                 var winner = parseWinner(it.winner);
                 var paid = it.payment_status === 'paid';
-                return '<label class="label-item">'
+                return '<label class="label-item" data-label-row-index="' + index + '" onclick="setShippingLabelPreview(' + index + ')">'
                     + '<input class="shipping-label-check" type="checkbox" data-label-index="' + index + '"'
-                    + (paid ? ' checked' : '') + ' onchange="updateShippingLabelSelection()">'
+                    + (paid ? ' checked' : '') + ' onchange="updateShippingLabelSelection(Number(this.dataset.labelIndex))">'
                     + '<strong>' + escapePrintHtml(it.name || auctionNumber(it)) + '</strong>'
                     + '<span class="label-buyer">' + escapePrintHtml(winner.name || '낙찰자') + '</span>'
                     + '<span class="label-phone">' + escapePrintHtml(fmtPhone(winner.phone)) + '</span>'
@@ -1142,18 +1274,83 @@
             }).filter(Boolean);
         }
 
-        function updateShippingLabelSelection() {
+        function updateShippingLabelSelection(preferredIndex) {
             var checks = Array.from(document.querySelectorAll('.shipping-label-check'));
             var selected = checks.filter(function (input) { return input.checked; }).length;
             var selectAll = document.getElementById('label-select-all');
             selectAll.checked = Boolean(checks.length) && selected === checks.length;
             selectAll.indeterminate = selected > 0 && selected < checks.length;
             document.getElementById('label-selection-summary').textContent = selected + '장 선택 / 출력 가능 ' + checks.length + '장';
+            if (Number.isInteger(preferredIndex)) window._shippingLabelPreviewIndex = preferredIndex;
+            renderShippingLabelPreview();
         }
 
         function toggleAllShippingLabels(checked) {
             document.querySelectorAll('.shipping-label-check').forEach(function (input) { input.checked = checked; });
             updateShippingLabelSelection();
+        }
+
+        function shippingLabelPreviewIndexes() {
+            var items = window._shippingLabelItems || [];
+            var selected = Array.from(document.querySelectorAll('.shipping-label-check:checked')).map(function (input) {
+                return Number(input.dataset.labelIndex);
+            }).filter(function (index) { return Number.isInteger(index) && Boolean(items[index]); });
+            if (selected.length) return selected;
+            return items.map(function (_item, index) { return index; });
+        }
+
+        function setShippingLabelPreview(index) {
+            if (!Number.isInteger(index) || !(window._shippingLabelItems || [])[index]) return;
+            window._shippingLabelPreviewIndex = index;
+            renderShippingLabelPreview();
+        }
+
+        function moveShippingLabelPreview(direction) {
+            var indexes = shippingLabelPreviewIndexes();
+            if (!indexes.length) return;
+            var current = indexes.indexOf(Number(window._shippingLabelPreviewIndex));
+            var next = Math.max(0, Math.min(indexes.length - 1, current + Number(direction || 0)));
+            if (current < 0) next = 0;
+            window._shippingLabelPreviewIndex = indexes[next];
+            renderShippingLabelPreview();
+        }
+
+        function renderShippingLabelPreview() {
+            var stage = document.getElementById('label-preview-stage');
+            var counter = document.getElementById('label-preview-counter');
+            var prev = document.getElementById('label-preview-prev');
+            var next = document.getElementById('label-preview-next');
+            if (!stage || !counter || !prev || !next) return;
+
+            var items = window._shippingLabelItems || [];
+            var indexes = shippingLabelPreviewIndexes();
+            var activeIndex = Number(window._shippingLabelPreviewIndex);
+            if (indexes.indexOf(activeIndex) < 0) activeIndex = indexes.length ? indexes[0] : -1;
+            window._shippingLabelPreviewIndex = activeIndex >= 0 ? activeIndex : null;
+
+            document.querySelectorAll('[data-label-row-index]').forEach(function (row) {
+                row.classList.toggle('is-previewing', Number(row.dataset.labelRowIndex) === activeIndex);
+            });
+
+            if (activeIndex < 0 || !items[activeIndex]) {
+                stage.innerHTML = '<div class="label-preview-empty">미리볼 배송 라벨이 없습니다.</div>';
+                counter.textContent = '0 / 0';
+                prev.disabled = true;
+                next.disabled = true;
+                return;
+            }
+
+            var position = indexes.indexOf(activeIndex);
+            var payload = d10ShippingLabelPayload(items[activeIndex]);
+            stage.innerHTML = '<div class="label-paper" title="' + escapePrintHtml(payload.lot_number || '') + '">'
+                + '<div class="label-paper-line label-paper-destination">' + escapePrintHtml(payload.destination || '-') + '</div>'
+                + '<div class="label-paper-line label-paper-buyer">' + escapePrintHtml(payload.winner_name || '-') + '</div>'
+                + '<div class="label-paper-line label-paper-phone">' + escapePrintHtml(fmtPhone(payload.winner_phone) || '-') + '</div>'
+                + '<div class="label-paper-feed-margin" aria-hidden="true"></div>'
+                + '</div>';
+            counter.textContent = (position + 1) + ' / ' + indexes.length + (selectedShippingLabelItems().length ? ' · 선택 라벨' : ' · 출력 가능');
+            prev.disabled = position <= 0;
+            next.disabled = position >= indexes.length - 1;
         }
 
         var D10_LABEL_BRIDGE_BASE = 'http://127.0.0.1:17876';
