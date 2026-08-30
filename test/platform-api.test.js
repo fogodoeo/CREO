@@ -1038,7 +1038,8 @@ test('reopening a paid lot retires only that auction lifecycle shipment and roll
     }]);
     await repository.upsertRecord('alpha', 'item', {
         ...(await repository.getRecord('alpha', 'item', 'shared-lot')),
-        status: 'live', attributes: { bid_log: liveBidLog }
+        status: 'live', soldPrice: 100000, winnerName: '이전 낙찰자',
+        winnerPhone: '01011112222', attributes: { bid_log: liveBidLog }
     });
     await repository.upsertRecord('alpha', 'shipment', {
         id: 'late-stale-payment', itemId: 'shared-lot', status: 'complete', paymentStatus: 'paid'
@@ -1049,7 +1050,11 @@ test('reopening a paid lot retires only that auction lifecycle shipment and roll
     assert.equal(repairedLiveItem.status, 200, repairedLiveItem.body);
     assert.equal(repairedLiveItem.json().shipmentResetCount, 1);
     assert.equal((await repository.listRecords('alpha', 'shipment')).length, 0);
-    assert.equal((await repository.getRecord('alpha', 'item', 'shared-lot')).attributes.bid_log, liveBidLog);
+    const repairedItem = await repository.getRecord('alpha', 'item', 'shared-lot');
+    assert.equal(repairedItem.soldPrice, 0);
+    assert.equal(repairedItem.winnerName, '');
+    assert.equal(repairedItem.winnerPhone, '');
+    assert.equal(repairedItem.attributes.bid_log, liveBidLog);
 
     await repository.upsertRecord('alpha', 'item', {
         ...(await repository.getRecord('alpha', 'item', 'shared-lot')),

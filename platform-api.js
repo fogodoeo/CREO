@@ -2557,10 +2557,16 @@ function createPlatformApi({
                     const current = data.items.find((item) => item.id === itemId) || null;
                     const requestedStatus = ['waiting', 'live', 'sold', 'passed'].includes(body.status) ? body.status : '';
                     const requestedMode = ['standby', 'live', 'sold'].includes(body.mode) ? body.mode : (requestedStatus === 'live' ? 'live' : requestedStatus === 'sold' ? 'sold' : 'standby');
-                    const newAuctionLifecycle = Boolean(current && startsNewAuctionLifecycle(current, requestedStatus));
                     const staleShipments = current && ['waiting', 'live'].includes(requestedStatus)
                         ? data.shipments.filter((shipment) => shipment.itemId === current.id)
                         : [];
+                    const newAuctionLifecycle = Boolean(current && startsNewAuctionLifecycle(current, requestedStatus));
+                    const staleSaleOutcome = Boolean(current && ['waiting', 'live'].includes(requestedStatus) && (
+                        newAuctionLifecycle
+                        || staleShipments.length
+                        || Number(current.soldPrice) > 0
+                        || cleanText(current.winnerName || current.winnerAlias || current.winnerPhone, 160)
+                    ));
                     let audienceState = data.broadcast;
                     if ((requestedStatus || requestedMode !== 'standby') && !current) {
                         replyJson(res, 404, { error: '전환할 개체를 현재 채널에서 찾을 수 없습니다.' });
@@ -2584,7 +2590,7 @@ function createPlatformApi({
                             ...(requestedStatus ? { status: requestedStatus } : {}),
                             id: current.id
                         }, current);
-                        if (newAuctionLifecycle) {
+                        if (staleSaleOutcome) {
                             candidate = {
                                 ...candidate,
                                 soldPrice: 0,
@@ -2593,7 +2599,7 @@ function createPlatformApi({
                                 winnerPhone: '',
                                 attributes: {
                                     ...(candidate.attributes || {}),
-                                    bid_log: '[]'
+                                    ...(newAuctionLifecycle ? { bid_log: '[]' } : {})
                                 }
                             };
                         }
