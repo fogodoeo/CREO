@@ -878,6 +878,10 @@ function isSoldItem(item = {}) {
     return cleanText(item.status, 24) === 'sold' || Number(item.soldPrice) > 0;
 }
 
+function startsNewAuctionLifecycle(item = {}, requestedStatus = '') {
+    return cleanText(item.status, 24) === 'sold' && ['waiting', 'live'].includes(requestedStatus);
+}
+
 function storedWinnerPhone(item = {}) {
     return normalizePhone(item.winnerPhone)
         || phoneFromBid(winningBid(item) || {})
@@ -2553,6 +2557,10 @@ function createPlatformApi({
                     const current = data.items.find((item) => item.id === itemId) || null;
                     const requestedStatus = ['waiting', 'live', 'sold', 'passed'].includes(body.status) ? body.status : '';
                     const requestedMode = ['standby', 'live', 'sold'].includes(body.mode) ? body.mode : (requestedStatus === 'live' ? 'live' : requestedStatus === 'sold' ? 'sold' : 'standby');
+                    const newAuctionLifecycle = Boolean(current && startsNewAuctionLifecycle(current, requestedStatus));
+                    const staleShipments = newAuctionLifecycle
+                        ? data.shipments.filter((shipment) => shipment.itemId === current.id)
+                        : [];
                     let audienceState = data.broadcast;
                     if ((requestedStatus || requestedMode !== 'standby') && !current) {
                         replyJson(res, 404, { error: '전환할 개체를 현재 채널에서 찾을 수 없습니다.' });
@@ -2576,6 +2584,19 @@ function createPlatformApi({
                             ...(requestedStatus ? { status: requestedStatus } : {}),
                             id: current.id
                         }, current);
+                        if (newAuctionLifecycle) {
+                            candidate = {
+                                ...candidate,
+                                soldPrice: 0,
+                                winnerName: '',
+                                winnerAlias: '',
+                                winnerPhone: '',
+                                attributes: {
+                                    ...(candidate.attributes || {}),
+                                    bid_log: '[]'
+                                }
+                            };
+                        }
                         if (requestedStatus === 'live' && candidate.attributes) {
                             candidate = {
                                 ...candidate,
@@ -2720,8 +2741,37 @@ function createPlatformApi({
                     });
                     const savedState = await repository.upsertRecord(channelId, 'broadcast', nextState);
                     await repository.setActiveChannel(channelId);
+                    if (staleShipments.length) {
+                        const deletedShipments = [];
+                        try {
+                            for (const shipment of staleShipments) {
+                                await repository.deleteRecord(channelId, 'shipment', shipment.id);
+                                deletedShipments.push(shipment);
+                            }
+                        } catch (error) {
+                            // Reopening a sold lot and retiring its old payment record is one
+                            // lifecycle change. Restore the previous state if storage rejects
+                            // the shipment cleanup so a paid shipment can never attach to a
+                            // partially reopened auction.
+                            try {
+                                if (current) await repository.upsertRecord(channelId, 'item', current);
+                                if (data.broadcast) await repository.upsertRecord(channelId, 'broadcast', data.broadcast);
+                                for (const shipment of deletedShipments) {
+                                    await repository.upsertRecord(channelId, 'shipment', shipment);
+                                }
+                            } catch (rollbackError) {
+                                logger.error?.('[platform-api] auction lifecycle rollback failed', rollbackError.message);
+                            }
+                            throw error;
+                        }
+                    }
                     touchChannel(channelId);
-                    replyJson(res, 200, { channelId, item: savedItem, state: savedState });
+                    replyJson(res, 200, {
+                        channelId,
+                        item: savedItem,
+                        state: savedState,
+                        shipmentResetCount: staleShipments.length
+                    });
                 });
                 });
                 return true;

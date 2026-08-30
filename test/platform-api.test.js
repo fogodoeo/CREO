@@ -986,6 +986,82 @@ test('auction transition keeps item status, active channel, and broadcast state 
     assert.equal(response.json().state.activeItemId, '');
 });
 
+test('reopening a paid lot retires only that auction lifecycle shipment and rolls back on cleanup failure', async () => {
+    const repository = new MemoryRepository();
+    await repository.upsertRecord('alpha', 'item', {
+        id: 'shared-lot', lotNumber: 1, name: 'A01', status: 'sold', soldPrice: 100000,
+        winnerName: '이전낙찰자', winnerPhone: '01011112222',
+        attributes: { bid_log: JSON.stringify([{ name: '이전낙찰자', amount: 10 }]) }
+    });
+    await repository.upsertRecord('alpha', 'shipment', {
+        id: 'alpha-paid', itemId: 'shared-lot', status: 'complete', paymentStatus: 'paid',
+        paymentConfirmedAmount: 100000, paymentConfirmedAt: '2026-08-30T00:00:00.000Z'
+    });
+    await repository.upsertRecord('beta', 'item', {
+        id: 'shared-lot', lotNumber: 1, name: 'B01', status: 'sold', soldPrice: 200000
+    });
+    await repository.upsertRecord('beta', 'shipment', {
+        id: 'beta-paid', itemId: 'shared-lot', status: 'complete', paymentStatus: 'paid'
+    });
+    const api = createPlatformApi({ repository, logger: { error() {} } });
+
+    const reopened = await Promise.all([
+        call(api, 'PUT', '/api/platform/channels/alpha/auction-transition', {
+            itemId: 'shared-lot', status: 'waiting', mode: 'standby'
+        }),
+        call(api, 'PUT', '/api/platform/channels/alpha/auction-transition', {
+            itemId: 'shared-lot', status: 'waiting', mode: 'standby'
+        })
+    ]);
+    assert.deepEqual(reopened.map((response) => response.status), [200, 200]);
+    assert.equal(reopened.reduce((total, response) => total + response.json().shipmentResetCount, 0), 1);
+    assert.equal((await repository.listRecords('alpha', 'shipment')).length, 0);
+    assert.equal((await repository.listRecords('beta', 'shipment')).length, 1);
+    const resetItem = await repository.getRecord('alpha', 'item', 'shared-lot');
+    assert.equal(resetItem.status, 'waiting');
+    assert.equal(resetItem.soldPrice, 0);
+    assert.equal(resetItem.winnerName, '');
+    assert.equal(resetItem.winnerPhone, '');
+    assert.equal(resetItem.attributes.bid_log, '[]');
+
+    const restartedApi = createPlatformApi({ repository, logger: { error() {} } });
+    const liveAfterRestart = await call(restartedApi, 'PUT', '/api/platform/channels/alpha/auction-transition', {
+        itemId: 'shared-lot', status: 'live', mode: 'live'
+    });
+    assert.equal(liveAfterRestart.status, 200, liveAfterRestart.body);
+    assert.equal(liveAfterRestart.json().shipmentResetCount, 0);
+    assert.equal((await repository.listRecords('alpha', 'shipment')).length, 0);
+
+    await repository.upsertRecord('alpha', 'item', {
+        ...(await repository.getRecord('alpha', 'item', 'shared-lot')),
+        status: 'sold', soldPrice: 120000, winnerName: '새낙찰자', winnerPhone: '01033334444'
+    });
+    await repository.upsertRecord('alpha', 'shipment', {
+        id: 'alpha-paid-again', itemId: 'shared-lot', status: 'complete', paymentStatus: 'paid',
+        paymentConfirmedAmount: 120000, paymentConfirmedAt: '2026-08-30T01:00:00.000Z'
+    });
+    const originalDelete = repository.deleteRecord.bind(repository);
+    let rejectCleanup = true;
+    repository.deleteRecord = async (channelId, type, id) => {
+        if (rejectCleanup && channelId === 'alpha' && type === 'shipment') throw new Error('simulated cleanup failure');
+        return originalDelete(channelId, type, id);
+    };
+    const rejected = await call(restartedApi, 'PUT', '/api/platform/channels/alpha/auction-transition', {
+        itemId: 'shared-lot', status: 'waiting', mode: 'standby'
+    });
+    assert.equal(rejected.status, 500, rejected.body);
+    assert.equal((await repository.getRecord('alpha', 'item', 'shared-lot')).status, 'sold');
+    assert.equal((await repository.getRecord('alpha', 'shipment', 'alpha-paid-again')).paymentStatus, 'paid');
+
+    rejectCleanup = false;
+    const retried = await call(restartedApi, 'PUT', '/api/platform/channels/alpha/auction-transition', {
+        itemId: 'shared-lot', status: 'waiting', mode: 'standby'
+    });
+    assert.equal(retried.status, 200, retried.body);
+    assert.equal(retried.json().shipmentResetCount, 1);
+    assert.equal((await repository.listRecords('alpha', 'shipment')).length, 0);
+});
+
 test('audience competition freezes the winning viewer house when an item is sold', async () => {
     const repository = new MemoryRepository();
     repository.catalog.channels[0] = normalizeChannel({
@@ -1428,7 +1504,18 @@ test('CREWART contribution roulette is winner-only, idempotent, persistent, and 
     assert.equal(reopened.json().item.attributes.crewart_roulette_event_id, '');
     const resold = await call(api, 'PUT', '/api/platform/channels/alpha/auction-transition', {
         itemId: 'roulette_item', status: 'sold', mode: 'sold',
-        item: { soldPrice: 150000, winnerAlias: '직전낙찰자/대구' }
+        item: {
+            soldPrice: 150000,
+            winnerAlias: '직전낙찰자/대구',
+            attributes: {
+                ...(reopened.json().item.attributes || {}),
+                bid_log: JSON.stringify([{
+                    name: '직전낙찰자/대구', bidder_key: 'winner-user', amount: 15,
+                    message_key: 'winning-bid-next-lifecycle', bid_sequence: 2,
+                    crewart_house_key: 'R', crewart_house_source: 'survey'
+                }])
+            }
+        }
     });
     assert.equal(resold.status, 200, resold.body);
     const secondLifecycle = await call(api, 'POST', '/api/platform/channels/alpha/audience-roulette', {
