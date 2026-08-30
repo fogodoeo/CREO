@@ -474,7 +474,11 @@
         }
 
         .label-paper-destination { font-size: 29px; font-weight: 900; letter-spacing: -.045em; }
+        .label-paper-destination.is-long { font-size: 20px; line-height: 1.02; white-space: normal; text-overflow: clip; }
+        .label-paper-destination.is-very-long { font-size: 16px; letter-spacing: -.035em; }
         .label-paper-buyer { font-size: 27px; font-weight: 850; letter-spacing: -.04em; }
+        .label-paper-buyer.is-long { font-size: 20px; }
+        .label-paper-buyer.is-very-long { font-size: 17px; }
         .label-paper-phone { align-items: flex-start; padding-top: 2px; font-size: 23px; font-weight: 850; letter-spacing: -.025em; }
         .label-paper-feed-margin { border-top: 1px dashed #e2e8f0; }
 
@@ -511,9 +515,9 @@
 
         .label-item {
             display: grid;
-            grid-template-columns: 24px 84px minmax(130px,.7fr) minmax(170px,1fr) minmax(220px,1.4fr) 84px;
+            grid-template-columns: 24px 58px minmax(90px,.7fr) minmax(118px,1fr) minmax(170px,1.4fr) 76px;
             align-items: center;
-            gap: 12px;
+            gap: 8px;
             min-height: 58px;
             padding: 10px 14px;
             border: 1px solid #e2e8f0;
@@ -772,6 +776,11 @@
 
         }
 
+        @media (max-width: 1100px) {
+            .label-workspace-body { grid-template-columns:1fr; }
+            .label-preview-panel { position:static; }
+        }
+
         @media (max-width: 860px) {
             body { padding:12px; }
             .tab-bar { align-items:stretch; }
@@ -782,8 +791,6 @@
             .label-item { grid-template-columns:24px 62px minmax(0,1fr) 82px; gap:8px; }
             .label-item .label-phone,.label-item .label-destination { grid-column:3 / -1; }
             .label-selection-summary { width:100%;margin-left:0; }
-            .label-workspace-body { grid-template-columns:1fr; }
-            .label-preview-panel { position:static; }
             .label-preview-stage { min-height:0;padding:14px 8px; }
             .label-paper { padding-left:16px;padding-right:16px; }
             .label-paper-destination { font-size:clamp(17px,5vw,29px); }
@@ -1342,9 +1349,13 @@
 
             var position = indexes.indexOf(activeIndex);
             var payload = d10ShippingLabelPayload(items[activeIndex]);
+            var destinationLength = Array.from(String(payload.destination || '')).length;
+            var buyerLength = Array.from(String(payload.winner_name || '')).length;
+            var destinationClass = destinationLength > 38 ? ' is-long is-very-long' : destinationLength > 20 ? ' is-long' : '';
+            var buyerClass = buyerLength > 18 ? ' is-long is-very-long' : buyerLength > 11 ? ' is-long' : '';
             stage.innerHTML = '<div class="label-paper" title="' + escapePrintHtml(payload.lot_number || '') + '">'
-                + '<div class="label-paper-line label-paper-destination">' + escapePrintHtml(payload.destination || '-') + '</div>'
-                + '<div class="label-paper-line label-paper-buyer">' + escapePrintHtml(payload.winner_name || '-') + '</div>'
+                + '<div class="label-paper-line label-paper-destination' + destinationClass + '">' + escapePrintHtml(payload.destination || '-') + '</div>'
+                + '<div class="label-paper-line label-paper-buyer' + buyerClass + '">' + escapePrintHtml(payload.winner_name || '-') + '</div>'
                 + '<div class="label-paper-line label-paper-phone">' + escapePrintHtml(fmtPhone(payload.winner_phone) || '-') + '</div>'
                 + '<div class="label-paper-feed-margin" aria-hidden="true"></div>'
                 + '</div>';

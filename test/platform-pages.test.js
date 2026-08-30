@@ -623,6 +623,8 @@ test('print forms remain available inside the shared registration workspace with
     assert.match(print, /label-paper-destination[\s\S]*?payload\.destination/);
     assert.match(print, /label-paper-buyer[\s\S]*?payload\.winner_name/);
     assert.match(print, /label-paper-phone[\s\S]*?fmtPhone\(payload\.winner_phone\)/);
+    assert.match(print, /destinationLength > 38[\s\S]*?destinationLength > 20/);
+    assert.match(print, /@media \(max-width: 1100px\)[\s\S]*?label-workspace-body/);
     assert.match(print, /function printSelectedShippingLabels\(\)/);
     assert.match(print, /D10_LABEL_BRIDGE_BASE\s*=\s*['"]http:\/\/127\.0\.0\.1:17876['"]/);
     assert.match(print, /fetchD10Bridge\('\/v1\/labels'/);
