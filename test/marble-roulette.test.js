@@ -110,6 +110,8 @@ test('pinball separates an authenticated laptop controller from a clean fixed br
     assert.match(app, /getStandings: \(\) => roulette\.getStandings\(\)/);
     assert.match(app, /renderFps: Number\(dom\.renderFps\.value\) === 120 \? 120 : 60/);
     assert.match(app, /url\.searchParams\.set\('theme', currentThemeName\(\)\)/);
+    assert.match(app, /isRemoteDisplay && pinnedBroadcastTheme/);
+    assert.match(app, /next\.themePreset = pinnedBroadcastTheme/);
     assert.match(styles, /html\.remote-display-mode \.stage-header/);
 });
 

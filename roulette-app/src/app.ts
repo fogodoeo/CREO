@@ -16,6 +16,10 @@ import { auctionWinnerEntries, getLeadingHouseKey, HOUSE_NAMES } from './auction
 
 const queryParameters = new URLSearchParams(location.search);
 const isBroadcastMode = queryParameters.get('broadcast') === '1';
+const requestedTheme = queryParameters.get('theme');
+const pinnedBroadcastTheme = requestedTheme && THEME_PRESETS[requestedTheme]
+  ? requestedTheme as keyof typeof THEME_PRESETS
+  : null;
 let remoteChannelId = /^[a-z0-9][a-z0-9_-]{1,63}$/i.test(queryParameters.get('channel') || '')
   ? String(queryParameters.get('channel'))
   : '';
@@ -809,7 +813,9 @@ function applyConfigToControls(next: AppConfig): void {
 }
 
 function configure(partial: Partial<AppConfig>): void {
-  applyConfigToControls({ ...collectConfig(), ...partial });
+  const next = { ...collectConfig(), ...partial };
+  if (isRemoteDisplay && pinnedBroadcastTheme) next.themePreset = pinnedBroadcastTheme;
+  applyConfigToControls(next);
   applyRuntimeAppearance();
   preparedFingerprint = '';
 }
