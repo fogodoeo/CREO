@@ -255,6 +255,94 @@
         }
 
         .status-wait {
+
+        .col-item-name {
+            min-width: 140px;
+            font-weight: 500;
+            text-align: left;
+        }
+        .col-item-name .item-code {
+            font-weight: 800;
+            color: #111827;
+        }
+        .col-winner {
+            width: 80px;
+            text-align: center;
+            font-weight: 700;
+        }
+        .col-phone {
+            width: 115px;
+            text-align: center;
+            font-family: monospace;
+            font-size: 9.5pt;
+        }
+        .col-result-price {
+            width: 75px;
+            text-align: right;
+            font-weight: 700;
+        }
+        .col-company {
+            width: 85px;
+            text-align: center;
+        }
+        .col-ship {
+            min-width: 120px;
+            text-align: left;
+            font-size: 9pt;
+        }
+        .col-ship-cost {
+            width: 75px;
+            text-align: right;
+            font-weight: 600;
+            font-size: 9pt;
+            color: #4b5563;
+        }
+        .col-status {
+            width: 85px;
+            text-align: center;
+        }
+
+        /* Status Badges */
+        .badge {
+            display: inline-block;
+            padding: 2px 7px;
+            font-size: 8.5pt;
+            font-weight: 700;
+            border-radius: 4px;
+            white-space: nowrap;
+            letter-spacing: -0.2px;
+        }
+        .badge-paid {
+            background: #dcfce7;
+            color: #15803d;
+            border: 1px solid #86efac;
+        }
+        .badge-waiting {
+            background: #fef3c7;
+            color: #b45309;
+            border: 1px solid #fde68a;
+        }
+        .badge-shipped {
+            background: #e0e7ff;
+            color: #3730a3;
+            border: 1px solid #c7d2fe;
+        }
+        .badge-unsold {
+            background: #f3f4f6;
+            color: #6b7280;
+            border: 1px solid #e5e7eb;
+        }
+        .badge-cancelled {
+            background: #fee2e2;
+            color: #b91c1c;
+            border: 1px solid #fecaca;
+        }
+        .badge-live {
+            background: #eff6ff;
+            color: #1d4ed8;
+            border: 1px solid #bfdbfe;
+        }
+
             color: #aaa;
         }
 
@@ -728,6 +816,45 @@
                 .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
         }
 
+        
+        function formatItemCodeName(it) {
+            var stage = (typeof auctionStageLabel === 'function' ? auctionStageLabel(it) : '').trim();
+            var num = (typeof auctionNumber === 'function' ? auctionNumber(it) : String(it.num || '')).trim();
+            var code = stage ? (stage + (num ? num : '')) : (num ? ('A' + String(num).padStart(2, '0')) : '');
+            var name = truncatePrintName(it.name || '개체', 14);
+            if (code) {
+                return '<strong class="item-code">' + code + '</strong> (' + name + ')';
+            }
+            return name;
+        }
+
+        function fmtShippingCost(cost, method) {
+            if (method === '직접수령' || method === '픽업') return '0원';
+            if (!cost && cost !== 0) return '-';
+            var num = Number(cost);
+            if (isNaN(num) || num === 0) return '-';
+            return num.toLocaleString() + '원';
+        }
+
+        function getStatusBadge(it) {
+            var st = it.status || '';
+            var payStatus = String(it.payment_status || it.paymentStatus || '').toLowerCase();
+            
+            if (CreoAuctionContract.isSoldStatus(st)) {
+                if (payStatus === 'paid' || payStatus.indexOf('완료') >= 0 || payStatus.indexOf('입금완료') >= 0 || payStatus.indexOf('결제완료') >= 0) {
+                    return '<span class="badge badge-paid">결제 완료</span>';
+                }
+                return '<span class="badge badge-waiting">결제 대기</span>';
+            } else if (CreoAuctionContract.normalizeStatus(st) === CreoAuctionContract.STATUS.PASSED) {
+                return '<span class="badge badge-unsold">유찰</span>';
+            } else if (CreoAuctionContract.normalizeStatus(st) === CreoAuctionContract.STATUS.CANCELLED) {
+                return '<span class="badge badge-cancelled">취소</span>';
+            } else if (CreoAuctionContract.normalizeStatus(st) === CreoAuctionContract.STATUS.LIVE) {
+                return '<span class="badge badge-live">진행중</span>';
+            }
+            return '<span class="badge badge-waiting">대기</span>';
+        }
+
         function shippingText(it) {
             var method = String(it.shipping_type || '').trim();
             var carrier = String(it.shipping_company || '').trim();
@@ -875,28 +1002,20 @@
             }
         }
 
-        var headersAll = '<th>번호</th><th>구분</th><th>이름</th><th>업체</th><th>낙찰가</th><th>낙찰자</th><th>연락처</th><th>배송</th><th>상태</th>';
+        var headersAll = '<th>개체명 (번호)</th><th>이름</th><th>전화번호</th><th>낙찰가</th><th>업체</th><th>배송</th><th>배송비</th><th>상태</th>';
         var headersList = '<th>번호</th><th>구분</th><th>이름</th><th>업체</th><th>정보</th>';
 
         function buildResultRow(it, showCompany) {
-            var st = it.status || '';
-            var statusCls = '', statusText = '';
-            if (CreoAuctionContract.isSoldStatus(st)) { statusCls = 'status-sold'; statusText = '낙찰'; }
-            else if (CreoAuctionContract.normalizeStatus(st) === CreoAuctionContract.STATUS.PASSED) { statusCls = 'status-unsold'; statusText = '유찰'; }
-            else if (CreoAuctionContract.normalizeStatus(st) === CreoAuctionContract.STATUS.CANCELLED) { statusCls = 'status-unsold'; statusText = '취소'; }
-            else if (CreoAuctionContract.normalizeStatus(st) === CreoAuctionContract.STATUS.LIVE) { statusCls = ''; statusText = '진행중'; }
             var w = parseWinner(it.winner);
-            var shortName = truncatePrintName(it.name, 10);
             var r = '<tr>';
-            r += '<td class="col-num">' + auctionNumber(it) + '</td>';
-            r += '<td>' + auctionStageLabel(it) + '</td>';
-            r += '<td class="col-name-sm">' + shortName + '</td>';
-            if (showCompany) r += '<td class="col-company">' + (it.company || '') + '</td>';
-            r += '<td class="col-result-price">' + (it.soldPrice ? fmtPrice(it.soldPrice) : '') + '</td>';
-            r += '<td class="col-winner">' + w.name + '</td>';
-            r += '<td class="col-phone">' + fmtPhone(w.phone) + '</td>';
+            r += '<td class="col-item-name">' + formatItemCodeName(it) + '</td>';
+            r += '<td class="col-winner">' + (w.name || '-') + '</td>';
+            r += '<td class="col-phone">' + (fmtPhone(w.phone) || '-') + '</td>';
+            r += '<td class="col-result-price">' + (it.soldPrice ? fmtPrice(it.soldPrice) : '-') + '</td>';
+            if (showCompany) r += '<td class="col-company">' + (it.company || '-') + '</td>';
             r += '<td class="col-ship">' + shippingText(it) + '</td>';
-            r += '<td class="col-status ' + statusCls + '">' + statusText + '</td>';
+            r += '<td class="col-ship-cost">' + fmtShippingCost(it.shipping_cost, it.shipping_type) + '</td>';
+            r += '<td class="col-status">' + getStatusBadge(it) + '</td>';
             r += '</tr>';
             return r;
         }
@@ -1207,7 +1326,7 @@
 
             chtml += '<div class="company-view-wrapper" id="company-wrapper">';
             chtml += '<table id="company-filtered-table">';
-            chtml += '<thead><tr><th>업체</th><th>번호</th><th>구분</th><th>이름</th><th>낙찰가</th><th>낙찰자</th><th>연락처</th><th>배송</th><th>상태</th></tr></thead>';
+            chtml += '<thead><tr><th>업체</th><th>개체명 (번호)</th><th>이름</th><th>전화번호</th><th>낙찰가</th><th>배송</th><th>배송비</th><th>상태</th></tr></thead>';
             chtml += '<tbody>';
 
             var rowIndex = 0;
@@ -1273,14 +1392,13 @@
                         chtml += '<td class="col-company" rowspan="' + list.length + '" style="' + compStyle + '">'
                             + company + '<br><span style="font-size:9pt;font-weight:500;color:#888;">' + fmtPrice(companySales) + '</span></td>';
                     }
-                    chtml += '<td class="col-num">' + auctionNumber(it) + '</td>';
-                    chtml += '<td>' + auctionStageLabel(it) + '</td>';
-                    chtml += '<td class="col-name-sm">' + truncatePrintName(it.name, 10) + '</td>';
-                    chtml += '<td class="col-result-price">' + (it.soldPrice ? fmtPrice(it.soldPrice) : '') + '</td>';
-                    chtml += '<td class="col-winner">' + w.name + '</td>';
-                    chtml += '<td class="col-phone">' + fmtPhone(w.phone) + '</td>';
+                    chtml += '<td class="col-item-name">' + formatItemCodeName(it) + '</td>';
+                    chtml += '<td class="col-winner">' + (w.name || '-') + '</td>';
+                    chtml += '<td class="col-phone">' + (fmtPhone(w.phone) || '-') + '</td>';
+                    chtml += '<td class="col-result-price">' + (it.soldPrice ? fmtPrice(it.soldPrice) : '-') + '</td>';
                     chtml += '<td class="col-ship">' + shippingText(it) + '</td>';
-                    chtml += '<td class="col-status ' + statusCls + '">' + statusText + '</td>';
+                    chtml += '<td class="col-ship-cost">' + fmtShippingCost(it.shipping_cost, it.shipping_type) + '</td>';
+                    chtml += '<td class="col-status">' + getStatusBadge(it) + '</td>';
                     chtml += '</tr>';
                     rowIndex++;
                 });
