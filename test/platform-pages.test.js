@@ -604,6 +604,7 @@ test('print forms remain available inside the shared registration workspace with
     assert.match(workspace, /`print\.html\?\$\{q\}`/);
     assert.match(print, /platform-client\.js/);
     assert.match(print, /channel-adapters\.js/);
+    assert.match(print, /print-shipping-summary\.js/);
     assert.match(print, /function platformPrintItems\(workspace, channel\)/);
     assert.match(print, /CreoChannelAdapters\.platformChecklist\(item, channel\)/);
     assert.match(print, /channels\/['"]? \+ encodeURIComponent\(PRINT_CHANNEL_ID\) \+ ['"]?\/workspace/);
@@ -621,6 +622,11 @@ test('print forms remain available inside the shared registration workspace with
     assert.doesNotMatch(print, /shipping-label-page-size|label-print-mode/);
     assert.doesNotMatch(print, /function printSelectedShippingLabels\([\s\S]*?window\.print\(\)/);
     assert.match(print, /payment_status: shipment && shipment\.paymentStatus/);
+    assert.match(print, /shipping_cost: shipment \? Number\(shipment\.cost\)/);
+    assert.match(print, /buyer_submitted_at: shipment && shipment\.buyerSubmittedAt/);
+    assert.match(print, /payment_requested_amount: shipment \? Number\(shipment\.paymentRequestedAmount\)/);
+    assert.match(print, /CreoPrintShippingSummary\.groupBundles\(summaryItems\)/);
+    assert.match(print, />구글시트로 보내기<\/button>/);
     assert.match(print, /function toggleOrientation\(\)/);
     assert.match(print, /shippingText\(it\)/);
     assert.match(print, /id="print-login"/);
