@@ -817,21 +817,177 @@
         }
 
         
+        function cleanGeckoName(name) {
+            var s = String(name || '').trim();
+            // Remove "일반경매 001", "일반경매001", "[일반경매 001]", "경매 001", "A01" prefixes
+            s = s.replace(/\[?(?:일반|특별|메인|자율)?\s*경매\s*\d+\]?/gi, '');
+            s = s.replace(/\[?[A-Za-z]\s*\d{1,3}\]?/g, '');
+            s = s.replace(/^\s*[-_/:·]\s*/, '');
+            s = s.replace(/\s+/g, ' ').trim();
+            return s || String(name || '개체').trim();
+        }
+
         function formatItemCodeName(it) {
             var stage = (typeof auctionStageLabel === 'function' ? auctionStageLabel(it) : '').trim();
             var num = (typeof auctionNumber === 'function' ? auctionNumber(it) : String(it.num || '')).trim();
             var code = stage ? (stage + (num ? num : '')) : (num ? ('A' + String(num).padStart(2, '0')) : '');
-            var name = truncatePrintName(it.name || '개체', 14);
+            var cleanedName = cleanGeckoName(it.name);
+            var name = truncatePrintName(cleanedName, 14);
             if (code) {
                 return '<strong class="item-code">' + code + '</strong> (' + name + ')';
             }
             return name;
         }
 
-        function fmtShippingCost(cost, method) {
-            if (method === '직접수령' || method === '픽업') return '0원';
-            if (!cost && cost !== 0) return '-';
-            var num = Number(cost);
+        var SHIPPING_DATA = {
+            '파르게': { base: 10000, extra: 7000, jejuExtra: 4000 },
+            '도도시': { base: 10000, extra: 0 },
+            '랩팡': { base: 10000, extra: 7000 }
+        };
+
+        function parseSavedShippingRegion(value) {
+            var raw = String(value || '').trim();
+            var memoMatch = raw.match(/\[(?:메모|요청):\s*([^\]]*)\]/);
+            var memo = memoMatch ? memoMatch[1].trim() : '';
+            var location = raw.replace(/\s*\[(?:메모|요청):[^\]]*\]\s*$/, '').trim();
+            var openIdx = location.indexOf('(');
+            var closeIdx = location.lastIndexOf(')');
+
+            if (openIdx >= 0) {
+                return {
+                    region: location.slice(0, openIdx).trim(),
+                    hub: location.slice(openIdx + 1, closeIdx > openIdx ? closeIdx : location.length).trim(),
+                    memo: memo
+                };
+            }
+            return { region: location, hub: '', memo: memo };
+        }
+
+        function calculateShippingCost(company, type, region, hub, itemCount) {
+            if (type !== '배송') return 0;
+            var baseCost = 10000;
+            if (company === '파르게') {
+                var isJeju = (region || '').indexOf('제주') >= 0;
+                return itemCount <= 1 ? baseCost : baseCost + (itemCount - 1) * (isJeju ? 4000 : 7000);
+            } else if (company === '랩팡') {
+                return itemCount <= 1 ? baseCost :
+                       itemCount <= 4 ? baseCost + (itemCount - 1) * 7000 :
+                       itemCount <= 20 ? baseCost + 28000 : baseCost + 35000;
+            } else if (company === '도도시') {
+                return baseCost;
+            }
+            return baseCost;
+        }
+
+        function splitShippingCostByCompany(companies, totalShipping, winnerAllItems) {
+            var validCompanies = (companies || []).filter(Boolean);
+            var allocations = {};
+            if (validCompanies.length === 0 || totalShipping <= 0) {
+                validCompanies.forEach(function(co) { allocations[co] = 0; });
+                return allocations;
+            }
+
+            var itemCounts = {};
+            var totalItems = 0;
+            validCompanies.forEach(function(co) {
+                var count = (winnerAllItems || []).filter(function(it) { return (it.company || '').trim() === co; }).length;
+                itemCounts[co] = Math.max(count, 1);
+                totalItems += itemCounts[co];
+            });
+
+            var allocated = 0;
+            var shares = [];
+            validCompanies.forEach(function(co) {
+                var share = Math.floor(totalShipping * itemCounts[co] / totalItems);
+                allocations[co] = share;
+                allocated += share;
+                shares.push({ co: co, count: itemCounts[co] });
+            });
+
+            var remainder = totalShipping - allocated;
+            shares.sort(function(a, b) { return b.count - a.count; });
+            for (var i = 0; i < shares.length; i++) {
+                if (remainder <= 0) break;
+                allocations[shares[i].co] += 1;
+                remainder -= 1;
+            }
+            return allocations;
+        }
+
+        function populateCalculatedShipping(items) {
+            var winnerGroups = {};
+            items.forEach(function(it) {
+                var w = parseWinner(it.winner);
+                var key = (w.phone || w.name || '').replace(/[^0-9a-zA-Z가-힣]/g, '');
+                if (!key) return;
+                if (!winnerGroups[key]) winnerGroups[key] = [];
+                winnerGroups[key].push(it);
+            });
+
+            Object.keys(winnerGroups).forEach(function(winnerKey) {
+                var groupItems = winnerGroups[winnerKey];
+                var withShip = groupItems.find(function(it) { return it.shipping_type || it.shipping_company || it.shipping_region; }) || groupItems[0];
+                var type = withShip.shipping_type || '';
+                var company = withShip.shipping_company || '';
+                var rawRegion = withShip.shipping_region || '';
+                var parsed = parseSavedShippingRegion(rawRegion);
+
+                groupItems.forEach(function(it) {
+                    if (!it.shipping_type) it.shipping_type = type;
+                    if (!it.shipping_company) it.shipping_company = company;
+                    if (!it.shipping_region) it.shipping_region = rawRegion;
+                });
+
+                if (type === '직접수령' || type === '픽업') {
+                    groupItems.forEach(function(it) { 
+                        it.shipping_cost = 0; 
+                        it.shipping_display = '0원 (직수령)';
+                    });
+                    return;
+                }
+
+                if (type === '배송') {
+                    var sellerCos = [];
+                    groupItems.forEach(function(it) {
+                        var c = (it.company || '').trim();
+                        if (c && sellerCos.indexOf(c) < 0) sellerCos.push(c);
+                    });
+                    if (sellerCos.length === 0) sellerCos = ['기본'];
+
+                    var totalShipping = 0;
+                    var savedCost = 0;
+                    groupItems.forEach(function(it) { savedCost += (Number(it.shipping_cost) || 0); });
+
+                    if (savedCost > 0) {
+                        totalShipping = savedCost;
+                    } else {
+                        totalShipping = calculateShippingCost(company, type, parsed.region, parsed.hub, groupItems.length);
+                    }
+
+                    var allocations = splitShippingCostByCompany(sellerCos, totalShipping, groupItems);
+
+                    var vendorFirstAssigned = {};
+                    groupItems.forEach(function(it) {
+                        var c = (it.company || '').trim() || '기본';
+                        if (!vendorFirstAssigned[c]) {
+                            var share = allocations[c] || 0;
+                            it.shipping_cost = share;
+                            it.shipping_display = share > 0 ? share.toLocaleString() + '원' : '-';
+                            vendorFirstAssigned[c] = true;
+                        } else {
+                            it.shipping_cost = 0;
+                            it.shipping_display = '<span style="color:#888;font-size:8.5pt;">(합배송)</span>';
+                            it.is_combined_shipping_child = true;
+                        }
+                    });
+                }
+            });
+        }
+
+        function fmtShippingCost(it) {
+            if (it.shipping_display) return it.shipping_display;
+            if (it.shipping_type === '직접수령' || it.shipping_type === '픽업') return '0원 (직수령)';
+            var num = Number(it.shipping_cost);
             if (isNaN(num) || num === 0) return '-';
             return num.toLocaleString() + '원';
         }
@@ -1014,13 +1170,14 @@
             r += '<td class="col-result-price">' + (it.soldPrice ? fmtPrice(it.soldPrice) : '-') + '</td>';
             if (showCompany) r += '<td class="col-company">' + (it.company || '-') + '</td>';
             r += '<td class="col-ship">' + shippingText(it) + '</td>';
-            r += '<td class="col-ship-cost">' + fmtShippingCost(it.shipping_cost, it.shipping_type) + '</td>';
+            r += '<td class="col-ship-cost">' + fmtShippingCost(it) + '</td>';
             r += '<td class="col-status">' + getStatusBadge(it) + '</td>';
             r += '</tr>';
             return r;
         }
 
         function renderAll(items) {
+            populateCalculatedShipping(items || []);
             var today = new Date();
             var dateStr = today.getFullYear() + '.' + (today.getMonth() + 1) + '.' + today.getDate();
             var sold = items.filter(function (it) { return CreoAuctionContract.isSoldStatus(it.status); });
@@ -1397,7 +1554,7 @@
                     chtml += '<td class="col-phone">' + (fmtPhone(w.phone) || '-') + '</td>';
                     chtml += '<td class="col-result-price">' + (it.soldPrice ? fmtPrice(it.soldPrice) : '-') + '</td>';
                     chtml += '<td class="col-ship">' + shippingText(it) + '</td>';
-                    chtml += '<td class="col-ship-cost">' + fmtShippingCost(it.shipping_cost, it.shipping_type) + '</td>';
+                    chtml += '<td class="col-ship-cost">' + fmtShippingCost(it) + '</td>';
                     chtml += '<td class="col-status">' + getStatusBadge(it) + '</td>';
                     chtml += '</tr>';
                     rowIndex++;
