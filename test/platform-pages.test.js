@@ -301,6 +301,17 @@ test('shipping pickup locations follow channel configuration without channel-id 
     assert.doesNotMatch(shipping, /SHIPPING_CHANNEL_ID\s*===\s*['"]creyon['"]/);
 });
 
+test('shipping editor exposes one buyer message action and a subdued payment confirmation', () => {
+    const shipping = fs.readFileSync(path.join(__dirname, '..', 'public', 'shipping.html'), 'utf8');
+    assert.doesNotMatch(shipping, /id="editor-info-call-btn"/);
+    assert.doesNotMatch(shipping, /id="editor-info-sms-btn"/);
+    assert.match(shipping, /id="editor-info-copy-btn"[^>]*>안내 문자<\/button>/);
+    assert.match(shipping, /copyBtn\.onclick\s*=\s*sendBuyerShippingLinkSms/);
+    assert.match(shipping, /class="editor-payment-action" id="editor-payment-confirm-btn"/);
+    assert.match(shipping, /\.editor-payment-action\s*\{[^}]*background:#667085;[^}]*color:#FFF;/);
+    assert.match(shipping, /statusLabel = isPaymentComplete \? '결제 완료' : isBuyerInputComplete \? '입력 완료' : '입력 대기'/);
+});
+
 test('buyer shipping page is lightweight, short-code based, and offers configured fulfillment choices', () => {
     const source = fs.readFileSync(path.join(__dirname, '..', 'public', 'buyer-shipping.html'), 'utf8');
     const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
@@ -320,6 +331,12 @@ test('buyer shipping page is lightweight, short-code based, and offers configure
     assert.match(source, /params\.get\('token'\)/);
     assert.match(source, /\/api\/platform\/buyer-shipping/);
     assert.match(source, /visibilitychange/);
+    assert.match(source, /id="save-result"[^>]*role="status"[^>]*aria-live="polite"/);
+    assert.match(source, /저장되었습니다\./);
+    assert.match(source, /업체에서 확인 후 문자로 연락드리겠습니다\./);
+    assert.match(source, /state\.submitted\?'변경 내용 저장':'배송지와 입금방식 저장'/);
+    assert.match(source, /if\(status==='paid'\)return\['결제 완료'/);
+    assert.match(source, /return\['입력 대기'/);
     assert.doesNotMatch(source, /setInterval\(/);
     assert.doesNotMatch(source, /<script[^>]+src=/i);
     assert.match(server, /buyerShippingShortMatch = \/\^\\\/s\\\//);

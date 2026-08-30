@@ -2967,19 +2967,18 @@ function createPlatformApi({
                     buyerUrl.searchParams.set('apiOrigin', apiOrigin);
                 }
                 const name = buyerDisplayName(item);
+                const vendorName = cleanText(item.vendorName || (await repository.getRecord(channelId, 'vendor', item.vendorId))?.name || '업체', 80);
+                const itemName = cleanText(item.name || `LOT ${Math.max(0, Number(item.lotNumber) || 0)}`, 100);
                 replyJson(res, 200, {
                     phone,
                     url: buyerUrl.toString(),
                     code: shortCode,
                     expiresAt: new Date(Date.now() + BUYER_SHIPPING_TOKEN_TTL_MS).toISOString(),
                     message: [
-                        '[CREO 파르게 배송 안내]',
-                        `${name}님, 낙찰 감사합니다.`,
-                        '아래 링크에서 수령 방법과 파르게 지점을 선택해 주세요.',
-                        '화면의 최종 금액만 입금한 뒤 이 번호로 입금 문자를 남겨주세요.',
-                        '배송 선택은 링크에서 자동 저장되며, 문자 확인 후 배송 접수를 진행합니다.',
-                        '선택 내용은 같은 링크에서 다시 변경할 수 있습니다.',
-                        '경매 진행 중에는 통화가 어렵습니다. 문의와 입금 확인은 문자로 부탁드립니다.',
+                        `${name}님, ${vendorName} ${itemName} 개체 낙찰 감사합니다.`,
+                        '아래 링크에서 수령 방법과 결제 방식을 선택해 주세요.',
+                        '저장 후 화면 안내에 따라 결제를 진행해 주세요.',
+                        '방송 중 통화가 어렵습니다. 문의와 입금 확인은 문자로 부탁드립니다.',
                         buyerUrl.toString()
                     ].join('\n')
                 });

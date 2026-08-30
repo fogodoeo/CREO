@@ -13,6 +13,7 @@
         .top h1{margin:20px 0 5px;font-size:25px;line-height:1.2}.top p{margin:0;color:var(--muted);font-size:13px;line-height:1.55}
         .status{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px;padding:12px 14px;border-radius:12px;background:var(--soft);font-size:12px;font-weight:800}
         .status[data-tone="green"]{background:#edf7f2;color:var(--green)}.status[data-tone="red"]{background:#fbefee;color:var(--red)}
+        .save-result{margin-top:10px;padding:14px;border:1px solid #cfe5da;border-radius:12px;background:#f0f8f4;color:var(--green)}.save-result b{display:block;font-size:14px}.save-result span{display:block;margin-top:4px;font-size:11px;line-height:1.5}
         main{padding:20px 20px 120px}.section{margin-top:26px}.section:first-child{margin-top:0}.section-head{display:flex;align-items:end;justify-content:space-between;margin-bottom:11px}
         .section-head h2{margin:0;font-size:16px}.section-head span{color:var(--muted);font-size:11px}.items{border-top:1px solid var(--ink)}
         .item{display:grid;grid-template-columns:58px 1fr auto;gap:10px;align-items:center;padding:13px 2px;border-bottom:1px solid var(--line);font-size:13px}.item small{color:var(--muted);font-weight:750}.item b{font-size:13px}.item strong{font-size:13px;font-variant-numeric:tabular-nums}
@@ -40,6 +41,7 @@
             <h1><span id="buyer-name"></span>님 배송·입금 안내</h1>
             <p><span id="vendor-name"></span> 낙찰 개체의 수령 방법을 선택해 주세요.</p>
             <div class="status" id="status"><span id="status-label"></span><small id="status-detail"></small></div>
+            <div class="save-result" id="save-result" role="status" aria-live="polite" hidden><b>저장되었습니다.</b><span>선택 내용이 업체에 전달되었습니다. 업체에서 확인 후 문자로 연락드리겠습니다.</span></div>
         </header>
         <main>
             <section class="section">
@@ -95,11 +97,12 @@
         if (parsed.protocol === 'https:' || ['localhost','127.0.0.1'].includes(parsed.hostname)) apiOrigin = parsed.origin;
     } catch (_) {}
     const $ = id => document.getElementById(id);
-    const state = { data:null, destinationId:'', paymentMethod:'', pargeRegion:'', pargeShop:'', pargeQuery:'', activePargeRegion:'전체', submitted:false, lastLoadedAt:0, saving:false };
+    const state = { data:null, destinationId:'', paymentMethod:'', pargeRegion:'', pargeShop:'', pargeQuery:'', activePargeRegion:'전체', submitted:false, saveFeedback:false, lastLoadedAt:0, saving:false };
     const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
     const money = value => `${Math.max(0,Math.round(Number(value)||0)).toLocaleString()}원`;
     const apiUrl = () => `${apiOrigin}/api/platform/buyer-shipping`;
     const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+    function clearSaveFeedback(){state.saveFeedback=false;$('save-result').hidden=true}
 
     async function request(method='GET', body=null, requestId='') {
         let lastError;
@@ -139,12 +142,12 @@
     function pargeTotal(rate){if(!rate)return 0;const count=Math.max(1,state.data?.items?.length||1),isJeju=rate.region.includes('제주'),extra=isJeju?state.data.parge.jejuAdditionalFee:state.data.parge.additionalFee;return rate.baseCost+(count-1)*Number(extra||0)}
 
     function statusInfo(status){
-        if(status==='paid')return['입금 확인 완료','업체에서 결제를 확인했습니다.','green'];
+        if(status==='paid')return['결제 완료','업체에서 결제를 확인했습니다.','green'];
         if(status==='additional_payment')return['추가 입금 필요',`${money(state.data.payment.additionalDue)} 추가 확인이 필요합니다.`,'red'];
-        if(status==='awaiting_payment'&&state.data?.payment?.method==='card')return['카드결제 링크 대기','업체에서 별도 결제 링크를 보내드립니다.',''];
-        if(status==='awaiting_payment')return['입금 확인 대기','입금 후 업체 확인을 기다려 주세요.',''];
+        if(status==='awaiting_payment'&&state.data?.payment?.method==='card')return['입력 완료','업체에서 카드결제 링크를 보내드립니다.',''];
+        if(status==='awaiting_payment')return['입력 완료','입금 후 업체 확인을 기다려 주세요.',''];
         if(status==='on_site')return['현장 결제 예정','수령 장소에서 결제해 주세요.',''];
-        return['배송정보 입력 대기','배송지와 입금방식을 선택해 주세요.',''];
+        return['입력 대기','배송지와 입금방식을 선택해 주세요.',''];
     }
 
     function renderParge(){
@@ -154,13 +157,13 @@
         if(!regionNames.includes(state.activePargeRegion))state.activePargeRegion='전체';
         $('parge-search').value=state.pargeQuery;
         $('parge-regions').innerHTML=regionNames.map(region=>`<button class="region-tab ${region===state.activePargeRegion?'active':''}" type="button" data-parge-region-filter="${esc(region)}">${esc(region)}</button>`).join('');
-        $('parge-regions').querySelectorAll('[data-parge-region-filter]').forEach(button=>button.onclick=()=>{state.activePargeRegion=button.dataset.pargeRegionFilter;state.pargeQuery='';if(state.pargeRegion!==state.activePargeRegion&&state.activePargeRegion!=='전체'){state.pargeRegion='';state.pargeShop=''}renderParge();renderSummary()});
+        $('parge-regions').querySelectorAll('[data-parge-region-filter]').forEach(button=>button.onclick=()=>{clearSaveFeedback();state.activePargeRegion=button.dataset.pargeRegionFilter;state.pargeQuery='';if(state.pargeRegion!==state.activePargeRegion&&state.activePargeRegion!=='전체'){state.pargeRegion='';state.pargeShop=''}renderParge();renderSummary()});
         const words=normalizeSearch(state.pargeQuery).split(/\s+/).filter(Boolean);let results=allPargeRates().filter(row=>state.activePargeRegion==='전체'||row.region===state.activePargeRegion);
         if(words.length)results=results.map(row=>({row,score:scoreParge(row,words)})).filter(entry=>entry.score>0).sort((a,b)=>b.score-a.score||a.row.region.localeCompare(b.row.region,'ko')||a.row.name.localeCompare(b.row.name,'ko')).map(entry=>entry.row);
         else results.sort((a,b)=>a.region.localeCompare(b.region,'ko')||a.name.localeCompare(b.name,'ko'));
         results=results.slice(0,30);
         $('parge-results').innerHTML=results.length?results.map(row=>`<button class="parge-result ${row.region===state.pargeRegion&&row.name===state.pargeShop?'selected':''}" type="button" role="option" aria-selected="${row.region===state.pargeRegion&&row.name===state.pargeShop?'true':'false'}" data-parge-region="${esc(row.region)}" data-parge-shop="${esc(row.name)}"><b>${esc(row.name)}</b><small>${esc(row.region)} · 기본 ${money(row.baseCost)}</small><strong>${money(pargeTotal(row))}</strong></button>`).join(''):'<div class="parge-empty">검색 결과가 없습니다.<br>지역명이나 지점명을 다시 확인해 주세요.</div>';
-        $('parge-results').querySelectorAll('[data-parge-shop]').forEach(button=>button.onclick=()=>{state.pargeRegion=button.dataset.pargeRegion;state.pargeShop=button.dataset.pargeShop;state.pargeQuery=`${state.pargeRegion} ${state.pargeShop}`;renderParge();renderSummary()});
+        $('parge-results').querySelectorAll('[data-parge-shop]').forEach(button=>button.onclick=()=>{clearSaveFeedback();state.pargeRegion=button.dataset.pargeRegion;state.pargeShop=button.dataset.pargeShop;state.pargeQuery=`${state.pargeRegion} ${state.pargeShop}`;renderParge();renderSummary()});
         const isJeju=state.pargeRegion.includes('제주'),extra=isJeju?state.data.parge.jejuAdditionalFee:state.data.parge.additionalFee;
         $('parge-note').textContent=`검색 결과에서 수령 지점을 눌러 선택해 주세요. 합배송은 추가 개체당 ${money(extra)}입니다.`;
     }
@@ -168,7 +171,7 @@
     function renderChoices(){
         $('destinations').innerHTML=(state.data.destinations||[]).map(row=>`<button class="choice ${row.id===state.destinationId?'selected':''}" type="button" data-destination="${esc(row.id)}"><span><b>${esc(row.label)}</b><small>${row.type==='parge'?'파르게 수령 지점을 선택합니다.':'배송비 없이 직접 수령합니다.'}</small></span><i></i></button>`).join('');
         $('destinations').querySelectorAll('[data-destination]').forEach(button=>button.onclick=()=>{
-            state.destinationId=button.dataset.destination;
+            state.destinationId=button.dataset.destination;clearSaveFeedback();
             if(selectedDestination()?.type!=='parge'){state.pargeRegion='';state.pargeShop=''}
             renderChoices();renderParge();renderPayment();renderSummary();
         });
@@ -191,7 +194,7 @@
         if(show){$('account-number').textContent=`${account.bankName} ${account.accountNumber}`;$('account-holder').textContent=`예금주 ${account.holder} · ${money(total)}`}
         const validDestination=selectedDestination()&&(selectedDestination().type!=='parge'||selectedRate());
         $('submit').disabled=state.saving||!validDestination||!state.paymentMethod;
-        $('submit').textContent=state.saving?'저장하고 있습니다…':state.submitted?'선택 내용 다시 확인':'배송지와 입금방식 확인';
+        $('submit').textContent=state.saving?'저장하고 있습니다…':state.submitted?'변경 내용 저장':'배송지와 입금방식 저장';
     }
 
     function render(){
@@ -200,6 +203,7 @@
         $('channel-name').textContent=data.channel.name;$('buyer-name').textContent=data.buyer.name;$('vendor-name').textContent=data.vendor.name;$('item-count').textContent=`${data.items.length}개체`;
         $('items').innerHTML=data.items.map(item=>`<div class="item"><small>${String(item.lotNumber).padStart(2,'0')}</small><b>${esc(item.name)}</b><strong>${money(item.soldAmount)}</strong></div>`).join('');
         const [label,detail,tone]=statusInfo(data.payment.status);$('status-label').textContent=label;$('status-detail').textContent=detail;$('status').dataset.tone=tone;
+        $('save-result').hidden=!state.saveFeedback;
         renderChoices();renderParge();renderPayment();renderSummary();
         $('loading').hidden=true;$('error').hidden=true;$('app').hidden=false;
     }
@@ -207,18 +211,18 @@
     async function load(silent=false){
         if((!code&&!token)||!apiOrigin){showError('배송 링크 주소가 올바르지 않습니다.');return}
         if(!silent){$('loading').hidden=false;$('app').hidden=true;$('error').hidden=true}
-        try{state.data=await request();state.destinationId='';state.paymentMethod='';state.pargeRegion='';state.pargeShop='';state.pargeQuery='';state.activePargeRegion='전체';state.submitted=false;state.lastLoadedAt=Date.now();render()}
+        try{state.data=await request();state.destinationId='';state.paymentMethod='';state.pargeRegion='';state.pargeShop='';state.pargeQuery='';state.activePargeRegion='전체';state.submitted=false;state.saveFeedback=false;state.lastLoadedAt=Date.now();render()}
         catch(error){showError(error.message||'배송 정보를 불러오지 못했습니다.')}
     }
     function showError(message){$('loading').hidden=true;$('app').hidden=true;$('error').hidden=false;$('error-message').textContent=message}
     async function save(){
         if($('submit').disabled)return;state.saving=true;renderSummary();const requestId=crypto.randomUUID?crypto.randomUUID():`${Date.now()}-${Math.random()}`;
-        try{state.data=await request('POST',{destinationId:state.destinationId,pargeRegion:state.pargeRegion,pargeShop:state.pargeShop,paymentMethod:state.paymentMethod},requestId);state.submitted=true;state.lastLoadedAt=Date.now();render();window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'})}
+        try{state.data=await request('POST',{destinationId:state.destinationId,pargeRegion:state.pargeRegion,pargeShop:state.pargeShop,paymentMethod:state.paymentMethod},requestId);state.submitted=true;state.saveFeedback=true;state.lastLoadedAt=Date.now();render();$('save-result').scrollIntoView({behavior:'smooth',block:'center'})}
         catch(error){alert(error.message||'저장하지 못했습니다.');state.saving=false;renderSummary()}finally{state.saving=false;renderSummary()}
     }
 
-    $('parge-search').oninput=event=>{state.pargeQuery=event.target.value;const selectedText=normalizeSearch(`${state.pargeRegion} ${state.pargeShop}`);if(selectedText&&normalizeSearch(state.pargeQuery)!==selectedText){state.pargeRegion='';state.pargeShop=''}renderParge();renderSummary()};
-    document.querySelectorAll('[data-payment]').forEach(button=>button.onclick=()=>{if(button.disabled)return;state.paymentMethod=button.dataset.payment;renderPayment();renderSummary()});
+    $('parge-search').oninput=event=>{state.pargeQuery=event.target.value;clearSaveFeedback();const selectedText=normalizeSearch(`${state.pargeRegion} ${state.pargeShop}`);if(selectedText&&normalizeSearch(state.pargeQuery)!==selectedText){state.pargeRegion='';state.pargeShop=''}renderParge();renderSummary()};
+    document.querySelectorAll('[data-payment]').forEach(button=>button.onclick=()=>{if(button.disabled)return;state.paymentMethod=button.dataset.payment;clearSaveFeedback();renderPayment();renderSummary()});
     $('submit').onclick=save;$('retry').onclick=()=>load();
     $('copy-account').onclick=async()=>{const value=state.data?.payment?.account?.accountNumber||'';try{await navigator.clipboard.writeText(value);$('copy-account').textContent='복사했습니다';setTimeout(()=>$('copy-account').textContent='계좌번호 복사',1400)}catch(_){alert(value)}};
     document.addEventListener('visibilitychange',()=>{if(!document.hidden&&state.data&&Date.now()-state.lastLoadedAt>60000)load(true)});

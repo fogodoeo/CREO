@@ -101,11 +101,9 @@ test('buyer shipping link isolates one buyer, saves idempotently, confirms payme
     assert.equal(repeatedLink.json().url, link.json().url);
     assert.equal(link.json().phone, '01012345678');
     assert.doesNotMatch(link.json().url, /01012345678/);
-    assert.match(link.json().message, /^\[CREO 파르게 배송 안내\]/);
-    assert.match(link.json().message, /수령 방법과 파르게 지점을 선택/);
-    assert.match(link.json().message, /화면의 최종 금액만 입금/);
-    assert.match(link.json().message, /배송 선택은 링크에서 자동 저장/);
-    assert.match(link.json().message, /같은 링크에서 다시 변경/);
+    assert.match(link.json().message, /^테스트구매자님, 라이언게코 A01 개체 낙찰 감사합니다\./);
+    assert.match(link.json().message, /수령 방법과 결제 방식을 선택/);
+    assert.match(link.json().message, /화면 안내에 따라 결제/);
     assert.match(link.json().message, /문의와 입금 확인은 문자/);
     assert.ok(link.json().message.endsWith(link.json().url));
     const shortUrl = new URL(link.json().url);

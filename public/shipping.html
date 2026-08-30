@@ -2325,10 +2325,13 @@
         .registration-badge,.registration-badge.complete,.registration-badge.partial,.registration-badge.mismatch,.status-select.status-waiting,.status-select.status-contacted,.status-select.status-paid { border-color:#D4D4D8 !important; background:#F4F4F5 !important; color:#52525B !important; }
         .action-icon-btn { border-color:#D4D4D8 !important; background:#FFF !important; color:#3F3F46 !important; box-shadow:none !important; filter:grayscale(1); }
         .editor-action-footer { padding:12px 20px 16px; border-color:#E4E4E7; box-shadow:0 -6px 18px rgba(0,0,0,.035); }
-        .editor-footer-actions { display:grid; grid-template-columns:104px minmax(0,1fr); gap:8px; }
+        .editor-footer-actions { display:grid; grid-template-columns:104px 92px minmax(82px,1fr); gap:8px; }
         .editor-copy-action,.editor-save-action { display:flex; align-items:center; justify-content:center; height:44px; border-radius:10px; font-family:inherit; font-size:13px; font-weight:850; text-align:center; cursor:pointer; }
         .editor-copy-action { border:1px solid #D4D4D8; background:#FFF; color:#3F3F46; }
         .editor-copy-action:hover { border-color:#A1A1AA; background:#FAFAFA; }
+        .editor-payment-action { display:flex; align-items:center; justify-content:center; height:38px; align-self:center; padding:0 12px; border:0; border-radius:9px; background:#667085; color:#FFF; font-family:inherit; font-size:11px; font-weight:850; white-space:nowrap; cursor:pointer; }
+        .editor-payment-action:hover:not(:disabled) { background:#475467; }
+        .editor-payment-action:disabled { background:#E4E7EC; color:#98A2B3; cursor:not-allowed; }
         .editor-save-action { border:1px solid var(--accent); background:var(--accent); color:#FFF; }
         .editor-save-action:hover { background:var(--accent-hover); }
         .shipping-admin-login { margin-left:auto; height:36px; padding:0 12px; border:1px solid #D4D4D8; border-radius:9px; background:#FFF; color:#3F3F46; font-family:inherit; font-size:11px; font-weight:850; cursor:pointer; }
@@ -2592,12 +2595,6 @@
                             <div id="editor-info-phone" style="font-size: 14px; color: var(--text-secondary); font-weight: 600; margin-top: 3px;">전화번호</div>
                         </div>
                     </div>
-                    
-                    <!-- 빠른 연락 -->
-                    <div style="display: flex; align-items: center; gap: 6px; margin-right: 24px;">
-                        <a id="editor-info-call-btn" href="#" class="action-icon-btn" title="전화걸기" aria-label="전화걸기" style="width: 40px; height: 40px; font-size: 17px; border-radius: 50%; background: #EFF6FF; border: 1.5px solid #DBEAFE; color: var(--accent); display: flex; align-items: center; justify-content: center; text-decoration: none;">📞</a>
-                        <a id="editor-info-sms-btn" href="#" class="action-icon-btn" title="배송 입력 링크 문자" aria-label="배송 입력 링크 문자" style="width: 40px; height: 40px; font-size: 17px; border-radius: 50%; background: #F0FDF4; border: 1.5px solid #BBE6CB; color: #15803D; display: flex; align-items: center; justify-content: center; text-decoration: none;">💬</a>
-                    </div>
                 </div>
 
                 <!-- 2. 낙찰 개체 정보 영역 (그 아래 깔끔한 라인과 함께) -->
@@ -2694,8 +2691,8 @@
                     </div>
                 </div>
                 <div class="editor-footer-actions">
-                    <button class="editor-copy-action" id="editor-info-copy-btn" type="button">사진 포함 문자</button>
-                    <button class="editor-copy-action" id="editor-payment-confirm-btn" type="button" hidden>입금 확인</button>
+                    <button class="editor-copy-action" id="editor-info-copy-btn" type="button">안내 문자</button>
+                    <button class="editor-payment-action" id="editor-payment-confirm-btn" type="button" hidden>입금 확인</button>
                     <button class="editor-save-action" type="button" onclick="saveWinnerEditor()">저장</button>
                 </div>
             </div>
@@ -4064,12 +4061,11 @@
 
                     const geckoTagsHtml = currentGeckoTagsHtml + otherGeckoTagsHtml;
 
-                    // Status label
-                    const statusLabels = { '낙찰-대기': '대기', '낙찰-연락완료': '연락 완료', '낙찰-입금완료': '입금 완료' };
-                    const statusLabel = statusLabels[state.status] || '대기';
-                    const statusClass = 
-                        state.status === '낙찰-연락완료' ? 'status-contacted' :
-                        state.status === '낙찰-입금완료' ? 'status-paid' : 'status-waiting';
+                    // 구매자 입력과 업체 결제 확인이 같은 3단계 상태로 보이게 한다.
+                    const isPaymentComplete = state.payment_status === 'paid' || state.status === '낙찰-입금완료';
+                    const isBuyerInputComplete = Boolean(state.buyer_submitted_at);
+                    const statusLabel = isPaymentComplete ? '결제 완료' : isBuyerInputComplete ? '입력 완료' : '입력 대기';
+                    const statusClass = isPaymentComplete ? 'status-paid' : isBuyerInputComplete ? 'status-contacted' : 'status-waiting';
 
                     // Shipping description
                     let shipSummaryText = '미설정 (탭하여 설정)';
@@ -4583,22 +4579,10 @@
             document.getElementById('editor-summary-total').textContent = grandTotal.toLocaleString() + '원';
             renderEditorShippingBreakdown(state, selectedCo, baseCost, totalShipping, shippingAllocations, comp || '배송');
 
-            // 상단에는 통화, 전체 문자, 전체 안내문 복사를 제공한다.
-            const callBtn = document.getElementById('editor-info-call-btn');
-            const smsBtn = document.getElementById('editor-info-sms-btn');
+            // 하단 작업 영역에서 배송 입력 링크 문자와 입금 확인을 한 번씩만 제공한다.
             const copyBtn = document.getElementById('editor-info-copy-btn');
             const paymentConfirmBtn = document.getElementById('editor-payment-confirm-btn');
             const cleanPhone = (state.phone || '').replace(/[^0-9]/g, '');
-
-            if (callBtn) {
-                if (cleanPhone) {
-                    callBtn.href = `tel:${cleanPhone}`;
-                    callBtn.style.display = 'inline-flex';
-                } else {
-                    callBtn.removeAttribute('href');
-                    callBtn.style.display = 'none';
-                }
-            }
 
             let smsShipInfo = '';
             if (editorShippingState.type === '직접수령') {
@@ -4639,21 +4623,9 @@
                 hasCapture: completedCaptures(groupItems).length > 0
             };
 
-            if (smsBtn) {
-                if (cleanPhone) {
-                    smsBtn.href = '#';
-                    smsBtn.onclick = event => { event.preventDefault(); sendBuyerShippingLinkSms(); };
-                    smsBtn.title = '배송지·입금방식 입력 링크 문자';
-                    smsBtn.style.display = 'inline-flex';
-                } else {
-                    smsBtn.removeAttribute('href');
-                    smsBtn.onclick = null;
-                    smsBtn.style.display = 'none';
-                }
-            }
             if (copyBtn) {
-                copyBtn.textContent = currentCaptureSms.hasCapture ? '사진 포함 문자' : '안내 문자';
-                copyBtn.onclick = sendCaptureSms;
+                copyBtn.textContent = '안내 문자';
+                copyBtn.onclick = sendBuyerShippingLinkSms;
                 copyBtn.disabled = !cleanPhone;
                 copyBtn.style.display = 'inline-flex';
             }
