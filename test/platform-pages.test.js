@@ -303,12 +303,21 @@ test('shipping pickup locations follow channel configuration without channel-id 
 
 test('shipping editor exposes one buyer message action and a subdued payment confirmation', () => {
     const shipping = fs.readFileSync(path.join(__dirname, '..', 'public', 'shipping.html'), 'utf8');
+    const status = fs.readFileSync(path.join(__dirname, '..', 'public', 'shipping-status.html'), 'utf8');
     assert.doesNotMatch(shipping, /id="editor-info-call-btn"/);
     assert.doesNotMatch(shipping, /id="editor-info-sms-btn"/);
-    assert.match(shipping, /id="editor-info-copy-btn"[^>]*>안내 문자<\/button>/);
+    assert.match(shipping, /id="editor-info-copy-btn"[^>]*>배송 안내<\/button>/);
     assert.match(shipping, /copyBtn\.onclick\s*=\s*sendBuyerShippingLinkSms/);
     assert.match(shipping, /class="editor-payment-action" id="editor-payment-confirm-btn"/);
-    assert.match(shipping, /\.editor-payment-action\s*\{[^}]*background:#667085;[^}]*color:#FFF;/);
+    assert.match(shipping, /\.editor-payment-action\s*\{[^}]*background:#344054;[^}]*color:#FFF;/);
+    assert.match(shipping, /id="editor-label-print-btn"[^>]*>라벨 출력<\/button>/);
+    assert.match(shipping, /@page \{ size:50mm 15mm; margin:0; \}/);
+    assert.match(shipping, /shipping-label-person[^\n]*winnerName/);
+    assert.match(shipping, /shipping-label-destination[^\n]*destination/);
+    assert.doesNotMatch(shipping, /editor-capture-strip|촬영 대기 중|loadCaptureRecords/);
+    assert.doesNotMatch(shipping, /토요일 집하|금요일 집하|hub-result-schedule/);
+    assert.doesNotMatch(shipping, />요금표<|shipping-rates-nav/);
+    assert.doesNotMatch(status, />요금표<|shipping-rates-nav|rates-unlocked/);
     assert.match(shipping, /statusLabel = isPaymentComplete \? '결제 완료' : hasAdditionalPayment \? '추가 결제' : isBuyerInputComplete \? '입력 완료' : '입력 대기'/);
     assert.match(shipping, /itemPaid[\s\S]{0,500}gecko-payment is-paid[\s\S]{0,500}gecko-payment is-additional/);
     assert.match(shipping, /additionalPayment \? '추가 결제 확인' : '결제 확인'/);
@@ -493,7 +502,7 @@ test('new CDCUP overlays and shipping retain compatibility with the established 
     assert.match(shipping, /SHIPPING_COMPANY_STORAGE_KEY/);
     assert.match(shipping, /const getWrapangCost = cost => Math\.round\(Number\(cost\) \|\| 0\)/);
     assert.doesNotMatch(shipping, /WRAPANG_DISCOUNT_RATE|getDiscountedWrapangCost|랩팡.{0,20}할인|할인.{0,20}랩팡/);
-    assert.match(shipping, /\['도도시', '파르게', '랩팡'\]\.includes\(shippingCompany\)/);
+    assert.match(shipping, /\['도도시', '파르게', '랩팡'\]\.includes\((?:shippingCompany|company|editorShippingState\.company)\)/);
     assert.doesNotMatch(shipping, /WRAPANG_PAYMENT_ACCOUNT|isWrapangCentralPayment|랩팡 직접입금|랩팡 합배송비|중복 입금/);
     assert.doesNotMatch(shipping, /id="shipping-channel-home"|>채널홈</);
     assert.match(shipping, /openShippingAdminLogin\(\{ required: true \}\)/);

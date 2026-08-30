@@ -903,6 +903,66 @@ function vendorKeyForItem(item = {}) {
     return cleanText(item.vendorId || item.vendorName, 80);
 }
 
+function buyerSmsItemSummary(items = [], limit = 4) {
+    const names = items.map((item) => cleanText(item?.name || `LOT ${Math.max(0, Number(item?.lotNumber) || 0)}`, 100))
+        .filter(Boolean);
+    const visible = names.slice(0, limit).join('·');
+    return names.length > limit ? `${visible} 외 ${names.length - limit}개` : visible || '낙찰 개체';
+}
+
+function buyerShippingSms({ name, vendorName, context, payload, buyerUrl }) {
+    const paidItemIds = new Set(context.shipments
+        .filter((shipment) => shipment.paymentStatus === 'paid' && shipment.paymentConfirmedAt)
+        .map((shipment) => shipment.itemId));
+    const paidItems = context.bundleItems.filter((item) => paidItemIds.has(item.id));
+    const openItems = context.bundleItems.filter((item) => !paidItemIds.has(item.id));
+    const additionalWin = payload.payment.confirmedAmount > 0 && openItems.length > 0;
+    const additionalPayment = payload.payment.confirmedAmount > 0 && payload.payment.additionalDue > 0;
+    const additional = additionalWin || additionalPayment;
+    const paid = payload.payment.status === 'paid';
+    const submitted = Boolean(payload.submittedAt);
+    const itemSummary = buyerSmsItemSummary(additional && openItems.length ? openItems : context.bundleItems);
+    let mode = 'initial';
+    let lines;
+
+    if (additional) {
+        mode = 'additional';
+        lines = [
+            additionalWin
+                ? `${name}님, ${vendorName} ${itemSummary} 추가 낙찰 감사합니다.`
+                : `${name}님, ${vendorName} 추가 결제 안내입니다.`,
+            paidItems.length ? `기존 결제 완료: ${buyerSmsItemSummary(paidItems)}` : '',
+            `추가 결제 금액: ${payload.payment.additionalDue.toLocaleString('ko-KR')}원`,
+            '아래 링크에서 배송 내역을 확인해 주세요.',
+            '방송 중 통화가 어렵습니다. 결제 후 문자 남겨 주세요.',
+            buyerUrl.toString()
+        ];
+    } else if (paid) {
+        mode = 'paid';
+        lines = [
+            `${name}님, ${vendorName} ${itemSummary} 결제 완료 내역입니다.`,
+            '아래 링크에서 배송 내역을 확인할 수 있습니다.',
+            buyerUrl.toString()
+        ];
+    } else if (submitted) {
+        mode = 'submitted';
+        lines = [
+            `${name}님, ${vendorName} ${itemSummary} 낙찰 안내입니다.`,
+            '배송·결제 정보가 저장되었습니다. 아래 링크에서 확인해 주세요.',
+            '방송 중 통화가 어렵습니다. 결제 후 문자 남겨 주세요.',
+            buyerUrl.toString()
+        ];
+    } else {
+        lines = [
+            `${name}님, ${vendorName} ${itemSummary} 낙찰 감사합니다.`,
+            '배송지와 결제 방법은 아래 링크에서 선택해 주세요.',
+            '방송 중 통화가 어렵습니다. 결제 후 문자 남겨 주세요.',
+            buyerUrl.toString()
+        ];
+    }
+    return { mode, message: lines.filter(Boolean).join('\n'), itemSummary };
+}
+
 function requestOrigin(req) {
     const protocol = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim()
         || (req.socket?.encrypted ? 'https' : 'http');
@@ -2971,19 +3031,21 @@ function createPlatformApi({
                 }
                 const name = buyerDisplayName(item);
                 const vendorName = cleanText(item.vendorName || (await repository.getRecord(channelId, 'vendor', item.vendorId))?.name || '업체', 80);
-                const itemName = cleanText(item.name || `LOT ${Math.max(0, Number(item.lotNumber) || 0)}`, 100);
+                const context = await buyerBundleContext(tokenPayload);
+                if (!context) {
+                    replyJson(res, 404, { error: '구매자 배송 묶음을 찾을 수 없습니다.' });
+                    return true;
+                }
+                const payload = await buyerShippingPayload(context);
+                const sms = buyerShippingSms({ name, vendorName, context, payload, buyerUrl });
                 replyJson(res, 200, {
                     phone,
                     url: buyerUrl.toString(),
                     code: shortCode,
                     expiresAt: new Date(Date.now() + BUYER_SHIPPING_TOKEN_TTL_MS).toISOString(),
-                    message: [
-                        `${name}님, ${vendorName} ${itemName} 개체 낙찰 감사합니다.`,
-                        '아래 링크에서 수령 방법과 결제 방식을 선택해 주세요.',
-                        '저장 후 화면 안내에 따라 결제를 진행해 주세요.',
-                        '방송 중 통화가 어렵습니다. 문의와 입금 확인은 문자로 부탁드립니다.',
-                        buyerUrl.toString()
-                    ].join('\n')
+                    messageMode: sms.mode,
+                    itemSummary: sms.itemSummary,
+                    message: sms.message
                 });
                 return true;
             }

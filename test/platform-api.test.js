@@ -101,10 +101,11 @@ test('buyer shipping link isolates one buyer, saves idempotently, confirms payme
     assert.equal(repeatedLink.json().url, link.json().url);
     assert.equal(link.json().phone, '01012345678');
     assert.doesNotMatch(link.json().url, /01012345678/);
-    assert.match(link.json().message, /^테스트구매자님, 라이언게코 A01 개체 낙찰 감사합니다\./);
-    assert.match(link.json().message, /수령 방법과 결제 방식을 선택/);
-    assert.match(link.json().message, /화면 안내에 따라 결제/);
-    assert.match(link.json().message, /문의와 입금 확인은 문자/);
+    assert.equal(link.json().messageMode, 'initial');
+    assert.equal(link.json().itemSummary, 'A01·A02');
+    assert.match(link.json().message, /^테스트구매자님, 라이언게코 A01·A02 낙찰 감사합니다\./);
+    assert.match(link.json().message, /배송지와 결제 방법은 아래 링크에서 선택/);
+    assert.match(link.json().message, /통화가 어렵습니다\. 결제 후 문자/);
     assert.ok(link.json().message.endsWith(link.json().url));
     const shortUrl = new URL(link.json().url);
     const code = shortUrl.pathname.split('/').at(-1);
@@ -178,6 +179,14 @@ test('buyer shipping link isolates one buyer, saves idempotently, confirms payme
     assert.deepEqual(withLaterWin.json().items.map((item) => [item.id, item.paymentStatus]), [
         ['item-a', 'paid'], ['item-b', 'paid'], ['item-c', '']
     ]);
+    const additionalLink = await call(restartedApi, 'POST', '/api/platform/channels/alpha/buyer-shipping-link', { itemId: 'item-a' });
+    assert.equal(additionalLink.status, 200, additionalLink.body);
+    assert.equal(additionalLink.json().messageMode, 'additional');
+    assert.equal(additionalLink.json().itemSummary, 'A03');
+    assert.match(additionalLink.json().message, /^테스트구매자님, 라이언게코 A03 추가 낙찰 감사합니다\./);
+    assert.match(additionalLink.json().message, /기존 결제 완료: A01·A02/);
+    assert.match(additionalLink.json().message, /추가 결제 금액: 57,000원/);
+    assert.ok(additionalLink.json().message.endsWith(additionalLink.json().url));
 
     const additionalSave = await call(restartedApi, 'POST', '/api/platform/buyer-shipping', {
         code, requestId: 'buyer-save-additional-win', destinationId: 'parge', pargeRegion: '수도권',
@@ -196,6 +205,10 @@ test('buyer shipping link isolates one buyer, saves idempotently, confirms payme
     assert.equal(additionalConfirmed.status, 200, additionalConfirmed.body);
     assert.equal(additionalConfirmed.json().payment.status, 'paid');
     assert.deepEqual(additionalConfirmed.json().items.map((item) => item.paymentStatus), ['paid', 'paid', 'paid']);
+    const paidLink = await call(restartedApi, 'POST', '/api/platform/channels/alpha/buyer-shipping-link', { itemId: 'item-c' });
+    assert.equal(paidLink.status, 200, paidLink.body);
+    assert.equal(paidLink.json().messageMode, 'paid');
+    assert.match(paidLink.json().message, /A01·A02·A03 결제 완료 내역입니다\./);
 
     const badCode = await call(restartedApi, 'GET', `/api/platform/buyer-shipping?code=${encodeURIComponent(`${code}x`)}`, null, '');
     assert.equal(badCode.status, 401);
