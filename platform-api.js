@@ -2558,7 +2558,7 @@ function createPlatformApi({
                     const requestedStatus = ['waiting', 'live', 'sold', 'passed'].includes(body.status) ? body.status : '';
                     const requestedMode = ['standby', 'live', 'sold'].includes(body.mode) ? body.mode : (requestedStatus === 'live' ? 'live' : requestedStatus === 'sold' ? 'sold' : 'standby');
                     const newAuctionLifecycle = Boolean(current && startsNewAuctionLifecycle(current, requestedStatus));
-                    const staleShipments = newAuctionLifecycle
+                    const staleShipments = current && ['waiting', 'live'].includes(requestedStatus)
                         ? data.shipments.filter((shipment) => shipment.itemId === current.id)
                         : [];
                     let audienceState = data.broadcast;

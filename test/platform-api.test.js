@@ -1032,6 +1032,25 @@ test('reopening a paid lot retires only that auction lifecycle shipment and roll
     assert.equal(liveAfterRestart.json().shipmentResetCount, 0);
     assert.equal((await repository.listRecords('alpha', 'shipment')).length, 0);
 
+    const liveBidLog = JSON.stringify([{
+        name: '현재입찰자', bidder_key: 'current-bidder', amount: 11,
+        message_key: 'current-lifecycle-bid', bid_sequence: 1
+    }]);
+    await repository.upsertRecord('alpha', 'item', {
+        ...(await repository.getRecord('alpha', 'item', 'shared-lot')),
+        status: 'live', attributes: { bid_log: liveBidLog }
+    });
+    await repository.upsertRecord('alpha', 'shipment', {
+        id: 'late-stale-payment', itemId: 'shared-lot', status: 'complete', paymentStatus: 'paid'
+    });
+    const repairedLiveItem = await call(restartedApi, 'PUT', '/api/platform/channels/alpha/auction-transition', {
+        itemId: 'shared-lot', status: 'live', mode: 'live'
+    });
+    assert.equal(repairedLiveItem.status, 200, repairedLiveItem.body);
+    assert.equal(repairedLiveItem.json().shipmentResetCount, 1);
+    assert.equal((await repository.listRecords('alpha', 'shipment')).length, 0);
+    assert.equal((await repository.getRecord('alpha', 'item', 'shared-lot')).attributes.bid_log, liveBidLog);
+
     await repository.upsertRecord('alpha', 'item', {
         ...(await repository.getRecord('alpha', 'item', 'shared-lot')),
         status: 'sold', soldPrice: 120000, winnerName: '새낙찰자', winnerPhone: '01033334444'
