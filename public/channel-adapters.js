@@ -77,6 +77,7 @@
                 winner: item.winnerName || item.winnerAlias || '', winner_phone: item.winnerPhone || '', sold_price: (Number(item.soldPrice) || 0) / 10000,
                 soldPrice: (Number(item.soldPrice) || 0) / 10000, soldAmountWon: Number(item.soldPrice) || 0, status: shipment?.status === 'complete' ? '낙찰-입금완료' : ['ready', 'shipped'].includes(shipment?.status) ? '낙찰-연락완료' : '낙찰-대기',
                 shipping_type: shipment ? (shipment.method === 'pickup' ? '직접수령' : '배송') : '', shipping_company: shipment?.carrier || '', shipping_region: shipment?.address || '', shipping_cost: Number(shipment?.cost) || 0,
+                payment_status: shipment?.paymentStatus || '', payment_method: shipment?.paymentMethod || '', buyer_submitted_at: shipment?.buyerSubmittedAt || '', payment_confirmed_amount: Number(shipment?.paymentConfirmedAmount) || 0,
                 _platformItemId: item.id, _platformShipmentId: shipment?.id || ''
             };
         });

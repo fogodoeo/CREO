@@ -2596,7 +2596,7 @@
                     <!-- 빠른 연락 -->
                     <div style="display: flex; align-items: center; gap: 6px; margin-right: 24px;">
                         <a id="editor-info-call-btn" href="#" class="action-icon-btn" title="전화걸기" aria-label="전화걸기" style="width: 40px; height: 40px; font-size: 17px; border-radius: 50%; background: #EFF6FF; border: 1.5px solid #DBEAFE; color: var(--accent); display: flex; align-items: center; justify-content: center; text-decoration: none;">📞</a>
-                        <a id="editor-info-sms-btn" href="#" class="action-icon-btn" title="전체 안내 문자 보내기" aria-label="전체 안내 문자 보내기" style="width: 40px; height: 40px; font-size: 17px; border-radius: 50%; background: #F0FDF4; border: 1.5px solid #BBE6CB; color: #15803D; display: flex; align-items: center; justify-content: center; text-decoration: none;">💬</a>
+                        <a id="editor-info-sms-btn" href="#" class="action-icon-btn" title="배송 입력 링크 문자" aria-label="배송 입력 링크 문자" style="width: 40px; height: 40px; font-size: 17px; border-radius: 50%; background: #F0FDF4; border: 1.5px solid #BBE6CB; color: #15803D; display: flex; align-items: center; justify-content: center; text-decoration: none;">💬</a>
                     </div>
                 </div>
 
@@ -2695,6 +2695,7 @@
                 </div>
                 <div class="editor-footer-actions">
                     <button class="editor-copy-action" id="editor-info-copy-btn" type="button">사진 포함 문자</button>
+                    <button class="editor-copy-action" id="editor-payment-confirm-btn" type="button" hidden>입금 확인</button>
                     <button class="editor-save-action" type="button" onclick="saveWinnerEditor()">저장</button>
                 </div>
             </div>
@@ -2994,6 +2995,48 @@
                 showToast(copied ? '사진을 복사했습니다. 문자창에서 붙여넣기 해주세요.' : '사진 링크를 문구에 넣었습니다.');
             }
             setTimeout(() => { window.location.href = href; }, copied ? 280 : 0);
+        }
+
+        function activeBuyerLinkItem() {
+            const state = winnerStateMap[activeEditorWinner];
+            if (!state) return null;
+            return state.allItems.find(item => (item.company || '').trim() === activeSellerCompany) || state.allItems[0] || null;
+        }
+
+        async function sendBuyerShippingLinkSms() {
+            const item = activeBuyerLinkItem();
+            if (!item) return showToast('낙찰 개체를 찾을 수 없습니다.', true);
+            const itemId = item._platformItemId || item.row || item.id;
+            try {
+                const result = await CreoPlatform.api(`channels/${encodeURIComponent(SHIPPING_CHANNEL_ID)}/buyer-shipping-link`, {
+                    method: 'POST',
+                    body: JSON.stringify({ itemId })
+                });
+                const separator = /iPhone|iPad|iPod/i.test(navigator.userAgent) ? '&' : '?';
+                showToast('배송 입력 링크 문자를 준비했습니다.');
+                window.location.href = `sms:${result.phone}${separator}body=${encodeURIComponent(result.message)}`;
+            } catch (error) {
+                showToast(error.message || '배송 링크 문자를 준비하지 못했습니다.', true);
+            }
+        }
+
+        async function confirmActiveBuyerPayment() {
+            const item = activeBuyerLinkItem();
+            if (!item) return showToast('낙찰 개체를 찾을 수 없습니다.', true);
+            const state = winnerStateMap[activeEditorWinner];
+            if (!confirm(`${state?.winnerName || '낙찰자'}님의 입금을 확인 처리할까요?`)) return;
+            const itemId = item._platformItemId || item.row || item.id;
+            const requestId = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+            try {
+                await CreoPlatform.api(`channels/${encodeURIComponent(SHIPPING_CHANNEL_ID)}/buyer-shipping-payment`, {
+                    method: 'POST',
+                    body: JSON.stringify({ itemId, requestId })
+                });
+                showToast('입금 확인을 완료했습니다.');
+                setTimeout(() => location.reload(), 450);
+            } catch (error) {
+                showToast(error.message || '입금 확인을 처리하지 못했습니다.', true);
+            }
         }
 
         async function retryCapture(recordId) {
@@ -3963,6 +4006,10 @@
                         shipping_hub: parsedHub,
                         phone: group.identity.phone,
                         status: firstSelfItem.status || '낙찰-대기',
+                        payment_status: firstSelfItem.payment_status || '',
+                        payment_method: firstSelfItem.payment_method || '',
+                        buyer_submitted_at: firstSelfItem.buyer_submitted_at || '',
+                        payment_confirmed_amount: Number(firstSelfItem.payment_confirmed_amount) || 0,
                         memo: parsedMemo
                     };
                 });
@@ -4540,6 +4587,7 @@
             const callBtn = document.getElementById('editor-info-call-btn');
             const smsBtn = document.getElementById('editor-info-sms-btn');
             const copyBtn = document.getElementById('editor-info-copy-btn');
+            const paymentConfirmBtn = document.getElementById('editor-payment-confirm-btn');
             const cleanPhone = (state.phone || '').replace(/[^0-9]/g, '');
 
             if (callBtn) {
@@ -4594,8 +4642,8 @@
             if (smsBtn) {
                 if (cleanPhone) {
                     smsBtn.href = '#';
-                    smsBtn.onclick = event => { event.preventDefault(); sendCaptureSms(); };
-                    smsBtn.title = currentCaptureSms.hasCapture ? '사진과 안내 문자를 준비합니다' : '안내 문자 보내기';
+                    smsBtn.onclick = event => { event.preventDefault(); sendBuyerShippingLinkSms(); };
+                    smsBtn.title = '배송지·입금방식 입력 링크 문자';
                     smsBtn.style.display = 'inline-flex';
                 } else {
                     smsBtn.removeAttribute('href');
@@ -4608,6 +4656,13 @@
                 copyBtn.onclick = sendCaptureSms;
                 copyBtn.disabled = !cleanPhone;
                 copyBtn.style.display = 'inline-flex';
+            }
+            if (paymentConfirmBtn) {
+                const paid = state.payment_status === 'paid' || state.status === '낙찰-입금완료';
+                paymentConfirmBtn.hidden = !state.buyer_submitted_at;
+                paymentConfirmBtn.disabled = paid;
+                paymentConfirmBtn.textContent = paid ? '입금 확인됨' : state.payment_status === 'additional_payment' ? '추가입금 확인' : '입금 확인';
+                paymentConfirmBtn.onclick = paid ? null : confirmActiveBuyerPayment;
             }
             } catch (pricingErr) {
                 console.error('[updateEditorPricing ERROR]', pricingErr);

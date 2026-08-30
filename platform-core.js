@@ -125,6 +125,11 @@ const DEFAULT_CHANNELS = Object.freeze([
         ]),
         audienceCompetition: Object.freeze({ enabled: true, assignment: 'phone-parity', metric: 'soldPrice', contribution: 'dice' }),
         settlementDiscount: Object.freeze({ enabled: false, rule: 'none', ratePercent: 0, excludeShipping: true }),
+        shippingDefaults: Object.freeze({
+            pickupLocations: Object.freeze(['대구 크레오', '대구 크레용 본점']),
+            pargeAdditionalFee: 7000,
+            pargeJejuAdditionalFee: 4000
+        }),
         overlay: Object.freeze({ skin: 'clean', layout: 'balanced' }),
         broadcastDefaults: Object.freeze({
             notice: 'BASIC LIVE',
@@ -259,11 +264,18 @@ function normalizeBroadcastDefaults(value = {}, fallback = {}) {
 }
 
 function normalizeShippingDefaults(value = {}, fallback = {}) {
-    const source = value && typeof value === 'object' ? value : fallback;
+    const source = value && typeof value === 'object' ? value : {};
     const fallbackLocations = Array.isArray(fallback?.pickupLocations) ? fallback.pickupLocations : [];
-    const locations = Array.isArray(source?.pickupLocations) ? source.pickupLocations : fallbackLocations;
+    const configuredLocations = Array.isArray(source?.pickupLocations) ? source.pickupLocations : [];
+    const locations = configuredLocations.length ? configuredLocations : fallbackLocations;
+    const fee = (raw, inherited, defaultValue) => {
+        const parsed = Number(raw ?? inherited);
+        return Number.isFinite(parsed) ? Math.max(0, Math.min(100_000, Math.round(parsed))) : defaultValue;
+    };
     return {
-        pickupLocations: [...new Set(locations.map((location) => cleanText(location, 60)).filter(Boolean))].slice(0, 24)
+        pickupLocations: [...new Set(locations.map((location) => cleanText(location, 60)).filter(Boolean))].slice(0, 24),
+        pargeAdditionalFee: fee(source.pargeAdditionalFee, fallback?.pargeAdditionalFee, 7000),
+        pargeJejuAdditionalFee: fee(source.pargeJejuAdditionalFee, fallback?.pargeJejuAdditionalFee, 4000)
     };
 }
 

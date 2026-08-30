@@ -15,6 +15,7 @@ const PAGES = [
     'broadcast-studio.html',
     'auction-live.html',
     'channel-shipping.html',
+    'buyer-shipping.html',
     'shipping-companies.html',
     'shipping-rates.html',
     'broadcast-router.html',
@@ -298,6 +299,20 @@ test('shipping pickup locations follow channel configuration without channel-id 
     assert.match(shipping, /channel\?\.shippingDefaults\?\.pickupLocations/);
     assert.match(shipping, /channelPickupLocations\.map/);
     assert.doesNotMatch(shipping, /SHIPPING_CHANNEL_ID\s*===\s*['"]creyon['"]/);
+});
+
+test('buyer shipping page is lightweight, token based, and offers configured fulfillment choices', () => {
+    const source = fs.readFileSync(path.join(__dirname, '..', 'public', 'buyer-shipping.html'), 'utf8');
+    assert.match(source, /id="destinations"/);
+    assert.match(source, /id="parge-region"/);
+    assert.match(source, /id="parge-shop"/);
+    assert.match(source, /state\.data\.destinations\|\|\[\]\)\.map/);
+    assert.match(source, /new URLSearchParams\(location\.search\)/);
+    assert.match(source, /params\.get\('token'\)/);
+    assert.match(source, /\/api\/platform\/buyer-shipping/);
+    assert.match(source, /visibilitychange/);
+    assert.doesNotMatch(source, /setInterval\(/);
+    assert.doesNotMatch(source, /<script[^>]+src=/i);
 });
 
 test('capture setup distributes the no-Python F3 agent with diagnostics', () => {

@@ -5,6 +5,8 @@ const { refreshShippingRate } = require('./shipping-rate-refresh');
 const { rankingsForChannel } = require('./public/ranking-engine');
 const BasicDice = require('./public/basic-dice-core');
 const { normalizePhone } = require('./band-membership');
+const SettlementDiscount = require('./public/settlement-discount');
+const FALLBACK_PARGE_RATES = require('./public/parge_data.json');
 
 const {
     DEFAULT_CHANNELS,
@@ -43,6 +45,7 @@ const SHIPPING_RATE_CONFIG_KEYS = Object.freeze({
     '랩팡': 'shipping_rate_wrapang'
 });
 const RUNTIME_CONFIG_VERSION_KEY = 'runtime_config_version';
+const BUYER_SHIPPING_TOKEN_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 
 function replyJson(res, status, value, headers = {}) {
     const body = Buffer.from(JSON.stringify(value));
@@ -398,6 +401,9 @@ function sanitizeRecord(type, input = {}, current = {}) {
             name: cleanText(input.name, 80),
             manager: cleanText(input.manager, 60),
             phone: cleanText(input.phone, 30),
+            bankName: cleanText(input.bankName, 40),
+            bankAccount: cleanText(input.bankAccount, 80),
+            bankHolder: cleanText(input.bankHolder, 60),
             logoUrl: cleanText(input.logoUrl, 600),
             groupId: cleanText(input.groupId, 64),
             address: cleanText(input.address, 240),
@@ -443,7 +449,22 @@ function sanitizeRecord(type, input = {}, current = {}) {
             trackingNumber: cleanText(input.trackingNumber, 100),
             cost: Math.max(0, numberValue(input.cost)),
             status: cleanText(input.status || 'pending', 30),
-            note: cleanText(input.note, 500)
+            note: cleanText(input.note, 500),
+            bundleId: cleanText(input.bundleId, 80),
+            destinationType: ['pickup', 'parge'].includes(input.destinationType) ? input.destinationType : '',
+            destinationId: cleanText(input.destinationId, 80),
+            pargeRegion: cleanText(input.pargeRegion, 80),
+            pargeShop: cleanText(input.pargeShop, 120),
+            paymentMethod: ['bank_transfer', 'on_site'].includes(input.paymentMethod) ? input.paymentMethod : '',
+            paymentStatus: ['awaiting_information', 'awaiting_payment', 'additional_payment', 'paid', 'on_site'].includes(input.paymentStatus)
+                ? input.paymentStatus
+                : '',
+            paymentRequestedAmount: Math.max(0, numberValue(input.paymentRequestedAmount)),
+            paymentConfirmedAmount: Math.max(0, numberValue(input.paymentConfirmedAmount)),
+            paymentConfirmedAt: cleanText(input.paymentConfirmedAt, 80),
+            paymentConfirmationRequestId: cleanText(input.paymentConfirmationRequestId, 80),
+            buyerSubmittedAt: cleanText(input.buyerSubmittedAt, 80),
+            buyerRequestId: cleanText(input.buyerRequestId, 80)
         };
     }
     if (type === 'asset') {
@@ -852,6 +873,70 @@ function validateRecord(type, record, workspace) {
     return errors;
 }
 
+function isSoldItem(item = {}) {
+    return cleanText(item.status, 24) === 'sold' || Number(item.soldPrice) > 0;
+}
+
+function storedWinnerPhone(item = {}) {
+    return normalizePhone(item.winnerPhone)
+        || phoneFromBid(winningBid(item) || {})
+        || phoneFromBid({ name: `${item.winnerAlias || ''} ${item.winnerName || ''}` });
+}
+
+function buyerDisplayName(item = {}) {
+    return publicBidderName(item.winnerName || item.winnerAlias || winningBid(item)?.name || '낙찰자') || '낙찰자';
+}
+
+function maskBuyerName(value) {
+    const name = cleanText(value, 80);
+    if (name.length <= 1) return name;
+    if (name.length === 2) return `${name[0]}*`;
+    return `${name[0]}${'*'.repeat(Math.min(3, name.length - 2))}${name.at(-1)}`;
+}
+
+function stableBuyerId(prefix, value) {
+    return `${prefix}_${crypto.createHash('sha256').update(String(value || '')).digest('base64url').slice(0, 20)}`;
+}
+
+function vendorKeyForItem(item = {}) {
+    return cleanText(item.vendorId || item.vendorName, 80);
+}
+
+function requestOrigin(req) {
+    const protocol = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim()
+        || (req.socket?.encrypted ? 'https' : 'http');
+    const host = String(req.headers['x-forwarded-host'] || req.headers.host || '').split(',')[0].trim();
+    return host ? `${protocol}://${host}` : '';
+}
+
+function sanitizePargeRates(payload = FALLBACK_PARGE_RATES) {
+    const groups = payload?.data && typeof payload.data === 'object' ? payload.data : {};
+    return Object.entries(groups).slice(0, 20).map(([region, rows]) => ({
+        region: cleanText(region, 80),
+        shops: (Array.isArray(rows) ? rows : []).slice(0, 300).map((row) => ({
+            name: cleanText(row?.shop, 120),
+            baseCost: Math.max(0, Math.round(Number(row?.cost) || 0))
+        })).filter((row) => row.name && row.baseCost > 0)
+    })).filter((group) => group.region && group.shops.length);
+}
+
+function selectedPargeRate(groups, region, shop) {
+    const group = (groups || []).find((entry) => entry.region === region);
+    return group?.shops?.find((entry) => entry.name === shop) || null;
+}
+
+function buyerShippingCost(selection, itemCount, channel, pargeRates) {
+    if (!selection || selection.destinationType !== 'parge') return 0;
+    const rate = selectedPargeRate(pargeRates, selection.pargeRegion, selection.pargeShop);
+    if (!rate) return 0;
+    const count = Math.max(1, Number.parseInt(itemCount, 10) || 1);
+    const isJeju = String(selection.pargeRegion || '').includes('제주');
+    const extraFee = isJeju
+        ? Number(channel?.shippingDefaults?.pargeJejuAdditionalFee) || 4000
+        : Number(channel?.shippingDefaults?.pargeAdditionalFee) || 7000;
+    return rate.baseCost + Math.max(0, count - 1) * extraFee;
+}
+
 function createPlatformApi({
     repository,
     logger = console,
@@ -871,7 +956,349 @@ function createPlatformApi({
     const knownChannelIds = new Set(DEFAULT_CHANNELS.map((channel) => channel.id));
     const revokedAdminSessions = new Map();
     const adminLoginAttempts = new Map();
+    const configuredBuyerSiteOrigin = String(process.env.CREO_BUYER_SITE_ORIGIN || '').trim().replace(/\/$/, '');
     let revisionSequence = 0;
+
+    function buyerCorsHeaders(req) {
+        const origin = String(req.headers.origin || '').trim();
+        if (!origin || !configuredBuyerSiteOrigin) return {};
+        let allowedOrigin = '';
+        try { allowedOrigin = new URL(configuredBuyerSiteOrigin).origin; }
+        catch { return {}; }
+        if (origin !== allowedOrigin) return {};
+        return {
+            'Access-Control-Allow-Origin': allowedOrigin,
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type',
+            Vary: 'Origin'
+        };
+    }
+
+    function signBuyerShippingToken({ channelId, itemId, phone, vendorKey }, now = Date.now()) {
+        const payload = Buffer.from(JSON.stringify({
+            v: 1,
+            channelId: normalizeChannelId(channelId),
+            itemId: cleanText(itemId, 64),
+            phoneHash: sessionKey(normalizePhone(phone)),
+            vendorKey: cleanText(vendorKey, 80),
+            expiresAt: now + BUYER_SHIPPING_TOKEN_TTL_MS
+        })).toString('base64url');
+        const unsigned = `bs1.${payload}`;
+        const signature = crypto.createHmac('sha256', sessionSecret).update(unsigned).digest('base64url');
+        return `${unsigned}.${signature}`;
+    }
+
+    function verifyBuyerShippingToken(token, now = Date.now()) {
+        const parts = String(token || '').split('.');
+        if (parts.length !== 3 || parts[0] !== 'bs1') return null;
+        const unsigned = parts.slice(0, 2).join('.');
+        const expected = crypto.createHmac('sha256', sessionSecret).update(unsigned).digest('base64url');
+        const suppliedBuffer = Buffer.from(parts[2]);
+        const expectedBuffer = Buffer.from(expected);
+        if (suppliedBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(suppliedBuffer, expectedBuffer)) return null;
+        let payload;
+        try { payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8')); }
+        catch { return null; }
+        if (payload?.v !== 1 || Number(payload.expiresAt) <= now || Number(payload.expiresAt) > now + BUYER_SHIPPING_TOKEN_TTL_MS + 60_000) return null;
+        payload.channelId = normalizeChannelId(payload.channelId);
+        payload.itemId = cleanText(payload.itemId, 64);
+        payload.phoneHash = cleanText(payload.phoneHash, 100);
+        payload.vendorKey = cleanText(payload.vendorKey, 80);
+        return payload.channelId && payload.itemId && payload.phoneHash ? payload : null;
+    }
+
+    async function pargeRates() {
+        let payload = FALLBACK_PARGE_RATES;
+        try {
+            const rows = await repository.getRowsByKeys(['shipping_rate_parge']);
+            const stored = rows?.find((row) => row.key === 'shipping_rate_parge')?.value;
+            const parsed = stored ? JSON.parse(stored) : null;
+            if (parsed?.data && typeof parsed.data === 'object') payload = parsed;
+        } catch (error) {
+            logger.warn?.('[platform-api] stored PARGE rate load failed:', error.message);
+        }
+        return sanitizePargeRates(payload);
+    }
+
+    async function buyerBundleContext(tokenOrPayload) {
+        const token = typeof tokenOrPayload === 'string' ? verifyBuyerShippingToken(tokenOrPayload) : tokenOrPayload;
+        if (!token) return null;
+        const catalog = await loadCatalog();
+        const channel = catalog.channels.find((entry) => entry.id === token.channelId && entry.status === 'active');
+        if (!channel || channel.features?.shipping === false || channel.dataAdapter !== 'platform') return null;
+        const [items, shipments, vendors] = await Promise.all([
+            repository.listRecords(channel.id, 'item'),
+            repository.listRecords(channel.id, 'shipment'),
+            repository.listRecords(channel.id, 'vendor')
+        ]);
+        const anchor = items.find((item) => item.id === token.itemId && isSoldItem(item));
+        if (!anchor || vendorKeyForItem(anchor) !== token.vendorKey) return null;
+        const anchorPhone = storedWinnerPhone(anchor) || await resolveWinnerPhone(anchor, bandMembership);
+        if (!anchorPhone || sessionKey(anchorPhone) !== token.phoneHash) return null;
+        const resolved = await Promise.all(items.filter((item) => isSoldItem(item) && vendorKeyForItem(item) === token.vendorKey)
+            .map(async (item) => ({ item, phone: storedWinnerPhone(item) || await resolveWinnerPhone(item, bandMembership) })));
+        const bundleItems = resolved.filter((entry) => entry.phone === anchorPhone).map((entry) => entry.item)
+            .sort((left, right) => Number(left.lotNumber) - Number(right.lotNumber) || String(left.id).localeCompare(String(right.id)));
+        if (!bundleItems.length) return null;
+        const vendor = vendors.find((entry) => entry.id === anchor.vendorId)
+            || vendors.find((entry) => entry.name === anchor.vendorName)
+            || { id: anchor.vendorId || '', name: anchor.vendorName || '업체' };
+        return { token, catalog, channel, items, shipments, vendor, anchorPhone, bundleItems };
+    }
+
+    function bundleSettlement(context) {
+        const vendorName = context.vendor?.name || context.bundleItems[0]?.vendorName || '';
+        const selected = context.bundleItems.map((item) => ({
+            ...item,
+            soldAmountWon: Math.max(0, Number(item.soldPrice) || 0),
+            company: vendorName,
+            winner: item.winnerName || item.winnerAlias || ''
+        }));
+        const all = context.items.filter(isSoldItem).map((item) => ({
+            ...item,
+            soldAmountWon: Math.max(0, Number(item.soldPrice) || 0),
+            company: item.vendorName || item.vendorId || '',
+            winner: item.winnerName || item.winnerAlias || ''
+        }));
+        return SettlementDiscount.calculate(context.channel.settlementDiscount, selected, all);
+    }
+
+    function latestBundleShipment(context) {
+        const itemIds = new Set(context.bundleItems.map((item) => item.id));
+        return context.shipments.filter((shipment) => itemIds.has(shipment.itemId))
+            .sort((left, right) => String(right.buyerSubmittedAt || right.updatedAt || '').localeCompare(String(left.buyerSubmittedAt || left.updatedAt || '')))[0] || null;
+    }
+
+    function shipmentSelection(shipment) {
+        if (!shipment?.destinationType) return null;
+        return {
+            destinationType: shipment.destinationType,
+            destinationId: shipment.destinationId || '',
+            pargeRegion: shipment.pargeRegion || '',
+            pargeShop: shipment.pargeShop || ''
+        };
+    }
+
+    async function buyerShippingPayload(context) {
+        const rates = await pargeRates();
+        const latest = latestBundleShipment(context);
+        const selection = shipmentSelection(latest);
+        const settlement = bundleSettlement(context);
+        const shippingCost = buyerShippingCost(selection, context.bundleItems.length, context.channel, rates);
+        const totalAmount = settlement.payableAuctionAmount + shippingCost;
+        const bundleShipments = context.shipments.filter((shipment) => context.bundleItems.some((item) => item.id === shipment.itemId));
+        const confirmedAmount = bundleShipments.reduce((maximum, shipment) => Math.max(maximum, Number(shipment.paymentConfirmedAmount) || 0), 0);
+        const missingShipment = context.bundleItems.some((item) => !bundleShipments.some((shipment) => shipment.itemId === item.id));
+        const additionalDue = Math.max(0, totalAmount - confirmedAmount);
+        let paymentStatus = 'awaiting_information';
+        if (latest?.paymentMethod === 'on_site' && confirmedAmount < totalAmount) paymentStatus = 'on_site';
+        else if (confirmedAmount > 0 && additionalDue > 0) paymentStatus = 'additional_payment';
+        else if (totalAmount > 0 && confirmedAmount >= totalAmount && !missingShipment) paymentStatus = 'paid';
+        else if (latest?.buyerSubmittedAt) paymentStatus = 'awaiting_payment';
+        const fixedDestinations = (context.channel.shippingDefaults?.pickupLocations || []).slice(0, 12).map((label, index) => ({
+            id: `pickup-${index + 1}`,
+            type: 'pickup',
+            label
+        }));
+        return {
+            channel: { id: context.channel.id, name: context.channel.name },
+            vendor: { id: context.vendor?.id || '', name: context.vendor?.name || '업체' },
+            buyer: { name: maskBuyerName(buyerDisplayName(context.bundleItems[0])), phoneLast4: context.anchorPhone.slice(-4) },
+            items: context.bundleItems.map((item) => ({
+                id: item.id,
+                lotNumber: Math.max(0, Number(item.lotNumber) || 0),
+                name: cleanText(item.name || '개체', 100),
+                soldAmount: Math.max(0, Number(item.soldPrice) || 0)
+            })),
+            destinations: [
+                ...fixedDestinations,
+                { id: 'parge', type: 'parge', label: '배송', provider: '파르게' }
+            ],
+            parge: {
+                regions: rates,
+                additionalFee: Number(context.channel.shippingDefaults?.pargeAdditionalFee) || 7000,
+                jejuAdditionalFee: Number(context.channel.shippingDefaults?.pargeJejuAdditionalFee) || 4000
+            },
+            selection: selection ? { ...selection, paymentMethod: latest?.paymentMethod || '' } : null,
+            payment: {
+                status: paymentStatus,
+                method: latest?.paymentMethod || '',
+                confirmedAmount,
+                additionalDue,
+                account: {
+                    bankName: cleanText(context.vendor?.bankName, 40),
+                    accountNumber: cleanText(context.vendor?.bankAccount, 80),
+                    holder: cleanText(context.vendor?.bankHolder, 60)
+                }
+            },
+            totals: {
+                auctionAmount: settlement.originalAmount,
+                discountLabel: settlement.label || '',
+                discountAmount: settlement.discountAmount,
+                payableAuctionAmount: settlement.payableAuctionAmount,
+                shippingAmount: shippingCost,
+                totalAmount
+            },
+            submittedAt: latest?.buyerSubmittedAt || '',
+            updatedAt: latest?.updatedAt || ''
+        };
+    }
+
+    function buyerInputError(message, status = 422) {
+        const error = new Error(message);
+        error.status = status;
+        return error;
+    }
+
+    async function saveBuyerShipping(context, body = {}) {
+        const requestId = cleanText(body.requestId, 80);
+        if (requestId.length < 8) throw buyerInputError('저장 요청값이 올바르지 않습니다. 페이지를 새로고침해 주세요.');
+        const latest = latestBundleShipment(context);
+        if (latest?.buyerRequestId === requestId) return { duplicate: true, payload: await buyerShippingPayload(context) };
+        const destinationId = cleanText(body.destinationId, 80);
+        const fixedDestinations = (context.channel.shippingDefaults?.pickupLocations || []).slice(0, 12).map((label, index) => ({
+            id: `pickup-${index + 1}`,
+            label
+        }));
+        const fixed = fixedDestinations.find((entry) => entry.id === destinationId);
+        const rates = await pargeRates();
+        let selection;
+        let method;
+        let carrier;
+        let address;
+        if (fixed) {
+            selection = { destinationType: 'pickup', destinationId: fixed.id, pargeRegion: '', pargeShop: '' };
+            method = 'pickup';
+            carrier = '';
+            address = fixed.label;
+        } else if (destinationId === 'parge') {
+            const pargeRegion = cleanText(body.pargeRegion, 80);
+            const pargeShop = cleanText(body.pargeShop, 120);
+            if (!selectedPargeRate(rates, pargeRegion, pargeShop)) throw buyerInputError('파르게 수령 지점을 다시 선택해 주세요.');
+            selection = { destinationType: 'parge', destinationId: 'parge', pargeRegion, pargeShop };
+            method = 'delivery';
+            carrier = '파르게';
+            address = `${pargeRegion} (${pargeShop})`;
+        } else {
+            throw buyerInputError('배송지를 선택해 주세요.');
+        }
+        const paymentMethod = ['bank_transfer', 'on_site'].includes(body.paymentMethod) ? body.paymentMethod : '';
+        if (!paymentMethod) throw buyerInputError('입금 방식을 선택해 주세요.');
+        if (paymentMethod === 'on_site' && selection.destinationType !== 'pickup') {
+            throw buyerInputError('현장 결제는 직접 수령을 선택한 경우에만 가능합니다.');
+        }
+        const settlement = bundleSettlement(context);
+        const shippingCost = buyerShippingCost(selection, context.bundleItems.length, context.channel, rates);
+        const totalAmount = settlement.payableAuctionAmount + shippingCost;
+        const existingByItem = new Map(context.shipments.map((shipment) => [shipment.itemId, shipment]));
+        const confirmedAmount = context.shipments
+            .filter((shipment) => context.bundleItems.some((item) => item.id === shipment.itemId))
+            .reduce((maximum, shipment) => Math.max(maximum, Number(shipment.paymentConfirmedAmount) || 0), 0);
+        const paymentStatus = paymentMethod === 'on_site'
+            ? 'on_site'
+            : confirmedAmount > 0 && confirmedAmount < totalAmount
+                ? 'additional_payment'
+                : confirmedAmount >= totalAmount && totalAmount > 0
+                    ? 'paid'
+                    : 'awaiting_payment';
+        const status = paymentStatus === 'paid' ? 'complete' : paymentMethod === 'on_site' ? 'ready' : 'payment_pending';
+        const now = new Date().toISOString();
+        const bundleId = stableBuyerId('bundle', `${context.channel.id}:${vendorKeyForItem(context.bundleItems[0])}:${context.anchorPhone}`);
+        const saved = [];
+        for (let index = 0; index < context.bundleItems.length; index += 1) {
+            const item = context.bundleItems[index];
+            const current = existingByItem.get(item.id) || {};
+            const record = sanitizeRecord('shipment', {
+                ...current,
+                id: current.id || stableBuyerId('shipment', `${context.channel.id}:${item.id}`),
+                itemId: item.id,
+                itemName: item.name || '',
+                itemLotNumber: Number(item.lotNumber) || 0,
+                itemVendorName: context.vendor?.name || item.vendorName || '',
+                vendorId: item.vendorId || context.vendor?.id || '',
+                recipientName: buyerDisplayName(item),
+                recipientPhone: context.anchorPhone,
+                method,
+                carrier,
+                address,
+                cost: index === 0 ? shippingCost : 0,
+                status,
+                note: current.note || '',
+                bundleId,
+                ...selection,
+                paymentMethod,
+                paymentStatus,
+                paymentRequestedAmount: totalAmount,
+                paymentConfirmedAmount: confirmedAmount,
+                paymentConfirmedAt: current.paymentConfirmedAt || '',
+                paymentConfirmationRequestId: current.paymentConfirmationRequestId || '',
+                buyerSubmittedAt: now,
+                buyerRequestId: requestId
+            }, current);
+            saved.push(await repository.upsertRecord(context.channel.id, 'shipment', record));
+        }
+        const bundleIds = new Set(context.bundleItems.map((item) => item.id));
+        context.shipments = [...context.shipments.filter((shipment) => !bundleIds.has(shipment.itemId)), ...saved];
+        touchChannel(context.channel.id);
+        return { duplicate: false, payload: await buyerShippingPayload(context) };
+    }
+
+    async function confirmBuyerPayment(context, requestId) {
+        const cleanRequestId = cleanText(requestId, 80);
+        if (cleanRequestId.length < 8) throw buyerInputError('결제 확인 요청값이 올바르지 않습니다.');
+        const latest = latestBundleShipment(context);
+        const selection = shipmentSelection(latest);
+        if (!selection || !latest?.paymentMethod) throw buyerInputError('구매자가 배송지와 입금 방식을 먼저 선택해야 합니다.', 409);
+        const currentBundleShipments = context.shipments.filter((shipment) => context.bundleItems.some((item) => item.id === shipment.itemId));
+        if (currentBundleShipments.length === context.bundleItems.length
+            && currentBundleShipments.every((shipment) => shipment.paymentConfirmationRequestId === cleanRequestId)) {
+            return { duplicate: true, payload: await buyerShippingPayload(context) };
+        }
+        const rates = await pargeRates();
+        const settlement = bundleSettlement(context);
+        const shippingCost = buyerShippingCost(selection, context.bundleItems.length, context.channel, rates);
+        const totalAmount = settlement.payableAuctionAmount + shippingCost;
+        const existingByItem = new Map(context.shipments.map((shipment) => [shipment.itemId, shipment]));
+        const now = new Date().toISOString();
+        const bundleId = latest.bundleId || stableBuyerId('bundle', `${context.channel.id}:${vendorKeyForItem(context.bundleItems[0])}:${context.anchorPhone}`);
+        const saved = [];
+        for (let index = 0; index < context.bundleItems.length; index += 1) {
+            const item = context.bundleItems[index];
+            const current = existingByItem.get(item.id) || {};
+            const record = sanitizeRecord('shipment', {
+                ...current,
+                id: current.id || stableBuyerId('shipment', `${context.channel.id}:${item.id}`),
+                itemId: item.id,
+                itemName: item.name || '',
+                itemLotNumber: Number(item.lotNumber) || 0,
+                itemVendorName: context.vendor?.name || item.vendorName || '',
+                vendorId: item.vendorId || context.vendor?.id || '',
+                recipientName: buyerDisplayName(item),
+                recipientPhone: context.anchorPhone,
+                method: selection.destinationType === 'pickup' ? 'pickup' : 'delivery',
+                carrier: selection.destinationType === 'parge' ? '파르게' : '',
+                address: selection.destinationType === 'parge' ? `${selection.pargeRegion} (${selection.pargeShop})` : latest.address,
+                cost: index === 0 ? shippingCost : 0,
+                status: 'complete',
+                note: current.note || '',
+                bundleId,
+                ...selection,
+                paymentMethod: latest.paymentMethod,
+                paymentStatus: 'paid',
+                paymentRequestedAmount: totalAmount,
+                paymentConfirmedAmount: totalAmount,
+                paymentConfirmedAt: now,
+                paymentConfirmationRequestId: cleanRequestId,
+                buyerSubmittedAt: current.buyerSubmittedAt || latest.buyerSubmittedAt || now,
+                buyerRequestId: current.buyerRequestId || latest.buyerRequestId || ''
+            }, current);
+            saved.push(await repository.upsertRecord(context.channel.id, 'shipment', record));
+        }
+        const bundleIds = new Set(context.bundleItems.map((item) => item.id));
+        context.shipments = [...context.shipments.filter((shipment) => !bundleIds.has(shipment.itemId)), ...saved];
+        touchChannel(context.channel.id);
+        return { duplicate: false, payload: await buyerShippingPayload(context) };
+    }
 
     function channelRevision(channelId) {
         return channelRevisions.get(channelId) || 0;
@@ -1292,6 +1719,38 @@ function createPlatformApi({
 
             if (segments.length === 1 && segments[0] === 'admin-check' && method === 'GET') {
                 replyJson(res, 200, { authenticated: await isAdmin(req) });
+                return true;
+            }
+
+            if (segments.length === 1 && segments[0] === 'buyer-shipping' && method === 'OPTIONS') {
+                res.writeHead(204, buyerCorsHeaders(req));
+                res.end();
+                return true;
+            }
+
+            if (segments.length === 1 && segments[0] === 'buyer-shipping' && method === 'GET') {
+                const context = await buyerBundleContext(url.searchParams.get('token'));
+                if (!context) {
+                    replyJson(res, 401, { error: '배송 링크가 만료되었거나 올바르지 않습니다.' }, buyerCorsHeaders(req));
+                    return true;
+                }
+                replyJson(res, 200, await buyerShippingPayload(context), buyerCorsHeaders(req));
+                return true;
+            }
+
+            if (segments.length === 1 && segments[0] === 'buyer-shipping' && method === 'POST') {
+                const body = await readJson(req);
+                const context = await buyerBundleContext(body.token);
+                if (!context) {
+                    replyJson(res, 401, { error: '배송 링크가 만료되었거나 올바르지 않습니다.' }, buyerCorsHeaders(req));
+                    return true;
+                }
+                await withMutationLock(`buyer-shipping:${context.channel.id}:${context.token.phoneHash}:${context.token.vendorKey}`, async () => {
+                    const freshContext = await buyerBundleContext(context.token);
+                    if (!freshContext) throw buyerInputError('배송 정보를 다시 불러와 주세요.', 409);
+                    const result = await saveBuyerShipping(freshContext, body);
+                    replyJson(res, 200, { ...result.payload, duplicate: result.duplicate }, buyerCorsHeaders(req));
+                });
                 return true;
             }
 
@@ -2430,6 +2889,88 @@ function createPlatformApi({
                 return true;
             }
 
+            if (segments.length === 3 && segments[2] === 'buyer-shipping-link' && method === 'POST') {
+                if (!await requireAdmin(req, res)) return true;
+                if (channel.dataAdapter !== 'platform') {
+                    replyJson(res, 409, { error: '구매자 배송 링크는 신규 채널 자료에서 사용할 수 있습니다.' });
+                    return true;
+                }
+                const body = await readJson(req);
+                const itemId = cleanText(body.itemId, 64);
+                const item = await repository.getRecord(channelId, 'item', itemId);
+                if (!item || !isSoldItem(item)) {
+                    replyJson(res, 404, { error: '낙찰 개체를 찾을 수 없습니다.' });
+                    return true;
+                }
+                const phone = storedWinnerPhone(item) || await resolveWinnerPhone(item, bandMembership);
+                const vendorKey = vendorKeyForItem(item);
+                if (!phone) {
+                    replyJson(res, 422, { error: '낙찰자 전화번호가 없어 문자를 준비할 수 없습니다.' });
+                    return true;
+                }
+                if (!vendorKey) {
+                    replyJson(res, 422, { error: '개체의 업체 정보가 없어 배송 묶음을 만들 수 없습니다.' });
+                    return true;
+                }
+                const token = signBuyerShippingToken({ channelId, itemId, phone, vendorKey });
+                const apiOrigin = requestOrigin(req);
+                const siteOrigin = configuredBuyerSiteOrigin || apiOrigin;
+                if (!siteOrigin) {
+                    replyJson(res, 500, { error: '구매자 배송 페이지 주소를 만들 수 없습니다.' });
+                    return true;
+                }
+                let buyerUrl;
+                try {
+                    buyerUrl = new URL('/buyer-shipping.html', siteOrigin);
+                } catch (_) {
+                    replyJson(res, 500, { error: '구매자 배송 페이지 주소 설정이 올바르지 않습니다.' });
+                    return true;
+                }
+                buyerUrl.searchParams.set('token', token);
+                if (configuredBuyerSiteOrigin && apiOrigin && buyerUrl.origin !== new URL(apiOrigin).origin) {
+                    buyerUrl.searchParams.set('apiOrigin', apiOrigin);
+                }
+                const name = buyerDisplayName(item);
+                replyJson(res, 200, {
+                    phone,
+                    url: buyerUrl.toString(),
+                    expiresAt: new Date(Date.now() + BUYER_SHIPPING_TOKEN_TTL_MS).toISOString(),
+                    message: `[CREO] ${name}님\n배송지와 입금방식을 선택해 주세요.\n${buyerUrl}`
+                });
+                return true;
+            }
+
+            if (segments.length === 3 && segments[2] === 'buyer-shipping-payment' && method === 'POST') {
+                if (!await requireAdmin(req, res)) return true;
+                const body = await readJson(req);
+                const itemId = cleanText(body.itemId, 64);
+                const item = await repository.getRecord(channelId, 'item', itemId);
+                if (!item || !isSoldItem(item)) {
+                    replyJson(res, 404, { error: '낙찰 개체를 찾을 수 없습니다.' });
+                    return true;
+                }
+                const phone = storedWinnerPhone(item) || await resolveWinnerPhone(item, bandMembership);
+                if (!phone) {
+                    replyJson(res, 422, { error: '낙찰자 전화번호가 없습니다.' });
+                    return true;
+                }
+                const tokenPayload = {
+                    v: 1,
+                    channelId,
+                    itemId,
+                    phoneHash: sessionKey(phone),
+                    vendorKey: vendorKeyForItem(item),
+                    expiresAt: Date.now() + BUYER_SHIPPING_TOKEN_TTL_MS
+                };
+                await withMutationLock(`buyer-shipping:${channelId}:${tokenPayload.phoneHash}:${tokenPayload.vendorKey}`, async () => {
+                    const context = await buyerBundleContext(tokenPayload);
+                    if (!context) throw buyerInputError('구매자 배송 묶음을 찾을 수 없습니다.', 404);
+                    const result = await confirmBuyerPayment(context, body.requestId);
+                    replyJson(res, 200, { ...result.payload, duplicate: result.duplicate });
+                });
+                return true;
+            }
+
             const type = segments[2]?.replace(/s$/, '');
             if (segments[2] !== 'archives' && !TYPES.has(type)) {
                 replyJson(res, 404, { error: 'Not found' });
@@ -2600,7 +3141,15 @@ function createPlatformApi({
         } catch (error) {
             logger.error?.('[platform-api]', error.message);
             const status = error.status || (error.code === 'VERSION_CONFLICT' ? 409 : 500);
-            replyJson(res, status, { error: status === 500 ? '운영 데이터 처리 중 오류가 발생했습니다.' : error.message });
+            const errorHeaders = url.pathname === '/api/platform/buyer-shipping'
+                ? buyerCorsHeaders(req)
+                : {};
+            replyJson(
+                res,
+                status,
+                { error: status === 500 ? '운영 데이터 처리 중 오류가 발생했습니다.' : error.message },
+                errorHeaders
+            );
             return true;
         }
     }

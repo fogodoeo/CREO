@@ -55,6 +55,100 @@ test('shipping rate refresh persists the collected public data before replying',
     assert.ok(repository.records.get('config:runtime_config_version').value);
 });
 
+test('buyer shipping link isolates one buyer, saves idempotently, confirms payment, and detects later combined wins', async () => {
+    const repository = new MemoryRepository();
+    repository.catalog.channels[0] = normalizeChannel({
+        ...repository.catalog.channels[0],
+        shippingDefaults: {
+            pickupLocations: ['대구 크레오', '대구 크레용 본점'],
+            pargeAdditionalFee: 7000,
+            pargeJejuAdditionalFee: 4000
+        }
+    });
+    await repository.upsertRows([{
+        key: 'shipping_rate_parge',
+        value: JSON.stringify({ data: { 수도권: [{ shop: '테스트 파르게', cost: 19000 }] } })
+    }]);
+    await repository.upsertRecord('alpha', 'vendor', {
+        id: 'vendor-one', name: '라이언게코', bankName: '테스트은행', bankAccount: '123-456', bankHolder: '라이언게코'
+    });
+    await repository.upsertRecord('alpha', 'vendor', { id: 'vendor-two', name: '다른업체' });
+    await repository.upsertRecord('alpha', 'item', {
+        id: 'item-a', lotNumber: 1, name: 'A01', vendorId: 'vendor-one', vendorName: '라이언게코', status: 'sold', soldPrice: 100000,
+        winnerName: '테스트구매자', winnerPhone: '01012345678'
+    });
+    await repository.upsertRecord('alpha', 'item', {
+        id: 'item-b', lotNumber: 2, name: 'A02', vendorId: 'vendor-one', vendorName: '라이언게코', status: 'sold', soldPrice: 200000,
+        winnerName: '테스트구매자', winnerPhone: '01012345678'
+    });
+    await repository.upsertRecord('alpha', 'item', {
+        id: 'private-other-buyer', lotNumber: 3, name: '비공개', vendorId: 'vendor-one', vendorName: '라이언게코', status: 'sold', soldPrice: 900000,
+        winnerName: '다른구매자', winnerPhone: '01099998888'
+    });
+    await repository.upsertRecord('alpha', 'item', {
+        id: 'private-other-vendor', lotNumber: 4, name: '다른업체개체', vendorId: 'vendor-two', vendorName: '다른업체', status: 'sold', soldPrice: 800000,
+        winnerName: '테스트구매자', winnerPhone: '01012345678'
+    });
+    const secret = 'stable-buyer-link-test-secret';
+    const api = createPlatformApi({ repository, adminSessionSecret: secret, logger: { error() {}, warn() {} } });
+
+    const link = await call(api, 'POST', '/api/platform/channels/alpha/buyer-shipping-link', { itemId: 'item-a' });
+    assert.equal(link.status, 200, link.body);
+    assert.equal(link.json().phone, '01012345678');
+    const token = new URL(link.json().url).searchParams.get('token');
+    assert.ok(token);
+
+    const initial = await call(api, 'GET', `/api/platform/buyer-shipping?token=${encodeURIComponent(token)}`, null, '');
+    assert.equal(initial.status, 200, initial.body);
+    assert.deepEqual(initial.json().items.map((item) => item.id), ['item-a', 'item-b']);
+    assert.deepEqual(initial.json().destinations.map((entry) => entry.label), ['대구 크레오', '대구 크레용 본점', '배송']);
+    assert.equal(initial.json().totals.auctionAmount, 300000);
+    assert.equal(initial.json().buyer.phoneLast4, '5678');
+    assert.doesNotMatch(initial.body, /01012345678|01099998888|private-other-buyer|private-other-vendor/);
+
+    const requestId = 'buyer-save-request-1';
+    const saveBody = { token, requestId, destinationId: 'parge', pargeRegion: '수도권', pargeShop: '테스트 파르게', paymentMethod: 'bank_transfer' };
+    const [savedA, savedB] = await Promise.all([
+        call(api, 'POST', '/api/platform/buyer-shipping', saveBody, ''),
+        call(api, 'POST', '/api/platform/buyer-shipping', saveBody, '')
+    ]);
+    assert.equal(savedA.status, 200, savedA.body);
+    assert.equal(savedB.status, 200, savedB.body);
+    assert.deepEqual([savedA.json().duplicate, savedB.json().duplicate].sort(), [false, true]);
+    assert.equal(savedA.json().totals.shippingAmount, 26000);
+    assert.equal(savedA.json().totals.totalAmount, 326000);
+    assert.equal(savedA.json().payment.status, 'awaiting_payment');
+    assert.equal((await repository.listRecords('alpha', 'shipment')).length, 2);
+
+    const confirmRequestId = 'payment-confirm-request-1';
+    const confirmed = await call(api, 'POST', '/api/platform/channels/alpha/buyer-shipping-payment', { itemId: 'item-a', requestId: confirmRequestId });
+    const confirmedAgain = await call(api, 'POST', '/api/platform/channels/alpha/buyer-shipping-payment', { itemId: 'item-a', requestId: confirmRequestId });
+    assert.equal(confirmed.status, 200, confirmed.body);
+    assert.equal(confirmed.json().payment.status, 'paid');
+    assert.equal(confirmed.json().payment.confirmedAmount, 326000);
+    assert.equal(confirmedAgain.json().duplicate, true);
+
+    const restartedApi = createPlatformApi({ repository, adminSessionSecret: secret, logger: { error() {}, warn() {} } });
+    const afterRestart = await call(restartedApi, 'GET', `/api/platform/buyer-shipping?token=${encodeURIComponent(token)}`, null, '');
+    assert.equal(afterRestart.status, 200, afterRestart.body);
+    assert.equal(afterRestart.json().payment.status, 'paid');
+
+    await repository.upsertRecord('alpha', 'item', {
+        id: 'item-c', lotNumber: 5, name: 'A03', vendorId: 'vendor-one', vendorName: '라이언게코', status: 'sold', soldPrice: 50000,
+        winnerName: '테스트구매자', winnerPhone: '01012345678'
+    });
+    const withLaterWin = await call(restartedApi, 'GET', `/api/platform/buyer-shipping?token=${encodeURIComponent(token)}`, null, '');
+    assert.equal(withLaterWin.json().items.length, 3);
+    assert.equal(withLaterWin.json().totals.shippingAmount, 33000);
+    assert.equal(withLaterWin.json().totals.totalAmount, 383000);
+    assert.equal(withLaterWin.json().payment.status, 'additional_payment');
+    assert.equal(withLaterWin.json().payment.additionalDue, 57000);
+
+    const badToken = await call(restartedApi, 'GET', `/api/platform/buyer-shipping?token=${encodeURIComponent(`${token}x`)}`, null, '');
+    assert.equal(badToken.status, 401);
+    assert.equal((await repository.listRecords('alpha', 'shipment')).length, 2);
+});
+
 test('BASIC sold transition assigns phone parity and rolls dice exactly once per lifecycle', async () => {
     const repository = new MemoryRepository();
     repository.catalog.channels[0] = normalizeChannel({
@@ -210,7 +304,7 @@ class ResponseCapture {
 function req(method, body, admin = 'secret', headers = {}) {
     const request = Readable.from(body ? [Buffer.from(JSON.stringify(body))] : []);
     request.method = method;
-    request.headers = { ...headers, ...(admin ? { 'x-creo-admin': admin } : {}) };
+    request.headers = { host: 'creo.test', ...headers, ...(admin ? { 'x-creo-admin': admin } : {}) };
     return request;
 }
 

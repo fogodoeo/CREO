@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+    <meta name="referrer" content="no-referrer">
+    <title>CREO 배송·입금 안내</title>
+    <style>
+        :root{color-scheme:light;--ink:#17191d;--muted:#6f737c;--line:#e6e7ea;--soft:#f5f5f3;--gold:#a77a26;--green:#176b49;--red:#a53d38}
+        *{box-sizing:border-box}body{margin:0;background:#eeefed;color:var(--ink);font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:-.025em}
+        button,select{font:inherit}.shell{width:min(620px,100%);min-height:100vh;margin:auto;background:#fff}.top{padding:22px 20px 18px;border-bottom:1px solid var(--line)}
+        .brand{display:flex;align-items:center;justify-content:space-between}.brand b{font-size:13px;letter-spacing:.16em}.brand span{color:var(--muted);font-size:11px;font-weight:750}
+        .top h1{margin:20px 0 5px;font-size:25px;line-height:1.2}.top p{margin:0;color:var(--muted);font-size:13px;line-height:1.55}
+        .status{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px;padding:12px 14px;border-radius:12px;background:var(--soft);font-size:12px;font-weight:800}
+        .status[data-tone="green"]{background:#edf7f2;color:var(--green)}.status[data-tone="red"]{background:#fbefee;color:var(--red)}
+        main{padding:20px 20px 120px}.section{margin-top:26px}.section:first-child{margin-top:0}.section-head{display:flex;align-items:end;justify-content:space-between;margin-bottom:11px}
+        .section-head h2{margin:0;font-size:16px}.section-head span{color:var(--muted);font-size:11px}.items{border-top:1px solid var(--ink)}
+        .item{display:grid;grid-template-columns:58px 1fr auto;gap:10px;align-items:center;padding:13px 2px;border-bottom:1px solid var(--line);font-size:13px}.item small{color:var(--muted);font-weight:750}.item b{font-size:13px}.item strong{font-size:13px;font-variant-numeric:tabular-nums}
+        .cards{display:grid;gap:9px}.choice{width:100%;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:15px;border:1px solid var(--line);border-radius:13px;background:#fff;text-align:left;cursor:pointer}
+        .choice b{display:block;font-size:14px}.choice small{display:block;margin-top:3px;color:var(--muted);font-size:11px}.choice i{width:18px;height:18px;border:1.5px solid #babdc4;border-radius:50%}.choice.selected{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}.choice.selected i{border:5px solid var(--ink)}.choice:disabled{opacity:.45;cursor:not-allowed}
+        .parge{display:grid;gap:9px;margin-top:10px;padding:14px;border-radius:13px;background:var(--soft)}.parge[hidden]{display:none}.parge label{color:var(--muted);font-size:11px;font-weight:800}
+        select{width:100%;height:45px;margin-top:5px;padding:0 11px;border:1px solid #d7d8dc;border-radius:10px;background:#fff;color:var(--ink);outline:0}.parge-note{margin:1px 2px 0;color:var(--muted);font-size:11px;line-height:1.5}
+        .summary{border-top:1px solid var(--ink)}.sum-row{display:flex;justify-content:space-between;gap:12px;padding:10px 2px;border-bottom:1px solid var(--line);font-size:13px}.sum-row span{color:var(--muted)}.sum-row strong{font-variant-numeric:tabular-nums}.sum-row.discount strong{color:var(--red)}.sum-row.total{padding:15px 2px;font-size:17px}.sum-row.total span{color:var(--ink);font-weight:850}.sum-row.total strong{font-size:22px}
+        .account{margin-top:14px;padding:17px;border:1px solid #d9cfba;border-radius:14px;background:#fbf8f1}.account[hidden]{display:none}.account small{display:block;color:#7b6845;font-size:11px;font-weight:850}.account b{display:block;margin-top:8px;font-size:19px;letter-spacing:0}.account span{display:block;margin-top:5px;color:#6e6250;font-size:12px}.account .copy{width:100%;height:42px;margin-top:13px;border:0;border-radius:9px;background:#292820;color:#fff;font-size:12px;font-weight:850;cursor:pointer}
+        .privacy{margin-top:20px;color:#8a8d94;font-size:10px;line-height:1.6}.footer{position:fixed;left:50%;bottom:0;z-index:10;width:min(620px,100%);padding:12px 20px calc(12px + env(safe-area-inset-bottom));transform:translateX(-50%);border-top:1px solid var(--line);background:rgba(255,255,255,.95);backdrop-filter:blur(10px)}
+        .submit{width:100%;height:52px;border:0;border-radius:12px;background:#17191d;color:#fff;font-size:14px;font-weight:900;cursor:pointer}.submit:disabled{background:#c7c8cc;cursor:not-allowed}
+        .loading,.error{padding:70px 24px;text-align:center}.loading b,.error b{display:block;font-size:18px}.loading span,.error span{display:block;margin-top:8px;color:var(--muted);font-size:12px;line-height:1.6}.error button{height:40px;margin-top:18px;padding:0 18px;border:0;border-radius:9px;background:#222;color:#fff;font-weight:800}
+        [hidden]{display:none!important}@media(max-width:420px){.top,main{padding-left:16px;padding-right:16px}.footer{padding-left:16px;padding-right:16px}.top h1{font-size:23px}}
+    </style>
+</head>
+<body>
+<div class="shell">
+    <div class="loading" id="loading"><b>낙찰 정보를 확인하고 있습니다</b><span>잠시만 기다려 주세요.</span></div>
+    <div class="error" id="error" hidden><b>페이지를 열 수 없습니다</b><span id="error-message"></span><button type="button" id="retry">다시 시도</button></div>
+    <div id="app" hidden>
+        <header class="top">
+            <div class="brand"><b>CREO</b><span id="channel-name"></span></div>
+            <h1><span id="buyer-name"></span>님 배송·입금 안내</h1>
+            <p><span id="vendor-name"></span> 낙찰 개체의 수령 방법을 선택해 주세요.</p>
+            <div class="status" id="status"><span id="status-label"></span><small id="status-detail"></small></div>
+        </header>
+        <main>
+            <section class="section">
+                <div class="section-head"><h2>낙찰 내역</h2><span id="item-count"></span></div>
+                <div class="items" id="items"></div>
+            </section>
+            <section class="section">
+                <div class="section-head"><h2>1. 배송지 선택</h2></div>
+                <div class="cards" id="destinations"></div>
+                <div class="parge" id="parge" hidden>
+                    <label>지역<select id="parge-region"></select></label>
+                    <label>수령 지점<select id="parge-shop"></select></label>
+                    <p class="parge-note" id="parge-note"></p>
+                </div>
+            </section>
+            <section class="section">
+                <div class="section-head"><h2>2. 입금 방식</h2></div>
+                <div class="cards">
+                    <button class="choice" id="pay-bank" type="button" data-payment="bank_transfer"><span><b>계좌이체</b><small id="bank-note">확인 후 입금계좌가 표시됩니다.</small></span><i></i></button>
+                    <button class="choice" id="pay-site" type="button" data-payment="on_site"><span><b>현장 결제</b><small>대구 수령 장소에서 결제합니다.</small></span><i></i></button>
+                </div>
+            </section>
+            <section class="section">
+                <div class="section-head"><h2>결제 금액</h2></div>
+                <div class="summary">
+                    <div class="sum-row"><span>낙찰금</span><strong id="sum-auction"></strong></div>
+                    <div class="sum-row discount" id="discount-row" hidden><span id="discount-label"></span><strong id="sum-discount"></strong></div>
+                    <div class="sum-row"><span>배송비</span><strong id="sum-shipping"></strong></div>
+                    <div class="sum-row total"><span>입금 금액</span><strong id="sum-total"></strong></div>
+                </div>
+                <div class="account" id="account" hidden>
+                    <small>입금 계좌</small><b id="account-number"></b><span id="account-holder"></span>
+                    <button class="copy" id="copy-account" type="button">계좌번호 복사</button>
+                </div>
+            </section>
+            <p class="privacy">이 링크는 해당 낙찰자의 배송 신청에만 사용할 수 있습니다. 링크를 다른 사람에게 전달하지 마세요.</p>
+        </main>
+        <footer class="footer"><button class="submit" id="submit" type="button" disabled>배송지와 입금방식 확인</button></footer>
+    </div>
+</div>
+<script>
+(() => {
+    'use strict';
+    const params = new URLSearchParams(location.search);
+    const token = params.get('token') || '';
+    const requestedApiOrigin = params.get('apiOrigin') || '';
+    let apiOrigin = '';
+    try {
+        const parsed = requestedApiOrigin ? new URL(requestedApiOrigin) : new URL(location.origin);
+        if (parsed.protocol === 'https:' || ['localhost','127.0.0.1'].includes(parsed.hostname)) apiOrigin = parsed.origin;
+    } catch (_) {}
+    const $ = id => document.getElementById(id);
+    const state = { data:null, destinationId:'', paymentMethod:'', pargeRegion:'', pargeShop:'', submitted:false, lastLoadedAt:0, saving:false };
+    const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+    const money = value => `${Math.max(0,Math.round(Number(value)||0)).toLocaleString()}원`;
+    const apiUrl = () => `${apiOrigin}/api/platform/buyer-shipping`;
+    const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+    async function request(method='GET', body=null, requestId='') {
+        let lastError;
+        for (let attempt=0; attempt<3; attempt+=1) {
+            try {
+                const url = method === 'GET' ? `${apiUrl()}?token=${encodeURIComponent(token)}` : apiUrl();
+                const response = await fetch(url, { method, headers:body?{'Content-Type':'application/json'}:{}, body:body?JSON.stringify({...body,token,requestId}):undefined, cache:'no-store' });
+                const payload = await response.json().catch(()=>({}));
+                if (!response.ok) throw Object.assign(new Error(payload.error||`연결 오류 ${response.status}`),{status:response.status});
+                return payload;
+            } catch (error) {
+                lastError=error;
+                if (error.status && error.status<500) break;
+                if (attempt<2) await wait(700*Math.pow(2,attempt));
+            }
+        }
+        throw lastError||new Error('서버에 연결하지 못했습니다.');
+    }
+
+    function selectedDestination(){return state.data?.destinations?.find(row=>row.id===state.destinationId)||null}
+    function selectedRate(){const group=state.data?.parge?.regions?.find(row=>row.region===state.pargeRegion);return group?.shops?.find(row=>row.name===state.pargeShop)||null}
+    function shippingAmount(){
+        if(selectedDestination()?.type!=='parge')return 0;
+        const rate=selectedRate();if(!rate)return 0;
+        const count=Math.max(1,state.data.items.length),isJeju=state.pargeRegion.includes('제주');
+        const extra=isJeju?state.data.parge.jejuAdditionalFee:state.data.parge.additionalFee;
+        return Number(rate.baseCost)+(count-1)*Number(extra||0);
+    }
+    function totalAmount(){return Number(state.data?.totals?.payableAuctionAmount||0)+shippingAmount()}
+
+    function statusInfo(status){
+        if(status==='paid')return['입금 확인 완료','업체에서 결제를 확인했습니다.','green'];
+        if(status==='additional_payment')return['추가 입금 필요',`${money(state.data.payment.additionalDue)} 추가 확인이 필요합니다.`,'red'];
+        if(status==='awaiting_payment')return['입금 확인 대기','입금 후 업체 확인을 기다려 주세요.',''];
+        if(status==='on_site')return['현장 결제 예정','수령 장소에서 결제해 주세요.',''];
+        return['배송정보 입력 대기','배송지와 입금방식을 선택해 주세요.',''];
+    }
+
+    function renderParge(){
+        const visible=selectedDestination()?.type==='parge';$('parge').hidden=!visible;
+        if(!visible)return;
+        const groups=state.data.parge.regions||[];
+        $('parge-region').innerHTML='<option value="">지역 선택</option>'+groups.map(group=>`<option value="${esc(group.region)}" ${group.region===state.pargeRegion?'selected':''}>${esc(group.region)}</option>`).join('');
+        const group=groups.find(row=>row.region===state.pargeRegion);
+        $('parge-shop').innerHTML='<option value="">수령 지점 선택</option>'+(group?.shops||[]).map(shop=>`<option value="${esc(shop.name)}" ${shop.name===state.pargeShop?'selected':''}>${esc(shop.name)} · ${money(shop.baseCost)}</option>`).join('');
+        const isJeju=state.pargeRegion.includes('제주'),extra=isJeju?state.data.parge.jejuAdditionalFee:state.data.parge.additionalFee;
+        $('parge-note').textContent=`첫 개체는 지점 기본요금, 합배송은 추가 개체당 ${money(extra)}입니다.`;
+    }
+
+    function renderChoices(){
+        $('destinations').innerHTML=(state.data.destinations||[]).map(row=>`<button class="choice ${row.id===state.destinationId?'selected':''}" type="button" data-destination="${esc(row.id)}"><span><b>${esc(row.label)}</b><small>${row.type==='parge'?'파르게 수령 지점을 선택합니다.':'배송비 없이 직접 수령합니다.'}</small></span><i></i></button>`).join('');
+        $('destinations').querySelectorAll('[data-destination]').forEach(button=>button.onclick=()=>{
+            state.destinationId=button.dataset.destination;
+            if(selectedDestination()?.type!=='parge'){state.pargeRegion='';state.pargeShop='';if(state.paymentMethod==='on_site'){} }
+            else if(state.paymentMethod==='on_site')state.paymentMethod='';
+            renderChoices();renderParge();renderPayment();renderSummary();
+        });
+    }
+
+    function renderPayment(){
+        const account=state.data.payment.account||{},configured=Boolean(account.bankName&&account.accountNumber&&account.holder),pickup=selectedDestination()?.type==='pickup';
+        $('pay-bank').disabled=!configured;
+        $('bank-note').textContent=configured?'확인 후 입금계좌가 표시됩니다.':'업체 계좌정보 등록이 필요합니다.';
+        $('pay-site').disabled=!pickup;
+        for(const button of document.querySelectorAll('[data-payment]'))button.classList.toggle('selected',button.dataset.payment===state.paymentMethod);
+    }
+
+    function renderSummary(){
+        const shipping=shippingAmount(),total=totalAmount(),discount=Number(state.data.totals.discountAmount)||0;
+        $('sum-auction').textContent=money(state.data.totals.auctionAmount);$('sum-shipping').textContent=money(shipping);$('sum-total').textContent=money(total);
+        $('discount-row').hidden=!discount;$('discount-label').textContent=state.data.totals.discountLabel||'할인';$('sum-discount').textContent=`-${money(discount)}`;
+        const account=state.data.payment.account||{},show=state.submitted&&state.paymentMethod==='bank_transfer'&&account.accountNumber;
+        $('account').hidden=!show;
+        if(show){$('account-number').textContent=`${account.bankName} ${account.accountNumber}`;$('account-holder').textContent=`예금주 ${account.holder} · ${money(total)}`}
+        const validDestination=selectedDestination()&&(selectedDestination().type!=='parge'||selectedRate());
+        $('submit').disabled=state.saving||!validDestination||!state.paymentMethod;
+        $('submit').textContent=state.saving?'저장하고 있습니다…':state.submitted?'선택 내용 다시 확인':'배송지와 입금방식 확인';
+    }
+
+    function render(){
+        const data=state.data,selection=data.selection||{};
+        if(!state.destinationId){state.destinationId=selection.destinationId||'';state.pargeRegion=selection.pargeRegion||'';state.pargeShop=selection.pargeShop||'';state.paymentMethod=selection.paymentMethod||data.payment.method||'';state.submitted=Boolean(data.submittedAt)}
+        $('channel-name').textContent=data.channel.name;$('buyer-name').textContent=data.buyer.name;$('vendor-name').textContent=data.vendor.name;$('item-count').textContent=`${data.items.length}개체`;
+        $('items').innerHTML=data.items.map(item=>`<div class="item"><small>${String(item.lotNumber).padStart(2,'0')}</small><b>${esc(item.name)}</b><strong>${money(item.soldAmount)}</strong></div>`).join('');
+        const [label,detail,tone]=statusInfo(data.payment.status);$('status-label').textContent=label;$('status-detail').textContent=detail;$('status').dataset.tone=tone;
+        renderChoices();renderParge();renderPayment();renderSummary();
+        $('loading').hidden=true;$('error').hidden=true;$('app').hidden=false;
+    }
+
+    async function load(silent=false){
+        if(!token||!apiOrigin){showError('배송 링크 주소가 올바르지 않습니다.');return}
+        if(!silent){$('loading').hidden=false;$('app').hidden=true;$('error').hidden=true}
+        try{state.data=await request();state.destinationId='';state.paymentMethod='';state.pargeRegion='';state.pargeShop='';state.submitted=false;state.lastLoadedAt=Date.now();render()}
+        catch(error){showError(error.message||'배송 정보를 불러오지 못했습니다.')}
+    }
+    function showError(message){$('loading').hidden=true;$('app').hidden=true;$('error').hidden=false;$('error-message').textContent=message}
+    async function save(){
+        if($('submit').disabled)return;state.saving=true;renderSummary();const requestId=crypto.randomUUID?crypto.randomUUID():`${Date.now()}-${Math.random()}`;
+        try{state.data=await request('POST',{destinationId:state.destinationId,pargeRegion:state.pargeRegion,pargeShop:state.pargeShop,paymentMethod:state.paymentMethod},requestId);state.submitted=true;state.lastLoadedAt=Date.now();render();window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'})}
+        catch(error){alert(error.message||'저장하지 못했습니다.');state.saving=false;renderSummary()}finally{state.saving=false;renderSummary()}
+    }
+
+    $('parge-region').onchange=event=>{state.pargeRegion=event.target.value;state.pargeShop='';renderParge();renderSummary()};
+    $('parge-shop').onchange=event=>{state.pargeShop=event.target.value;renderSummary()};
+    document.querySelectorAll('[data-payment]').forEach(button=>button.onclick=()=>{if(button.disabled)return;state.paymentMethod=button.dataset.payment;renderPayment();renderSummary()});
+    $('submit').onclick=save;$('retry').onclick=()=>load();
+    $('copy-account').onclick=async()=>{const value=state.data?.payment?.account?.accountNumber||'';try{await navigator.clipboard.writeText(value);$('copy-account').textContent='복사했습니다';setTimeout(()=>$('copy-account').textContent='계좌번호 복사',1400)}catch(_){alert(value)}};
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden&&state.data&&Date.now()-state.lastLoadedAt>60000)load(true)});
+    load();
+})();
+</script>
+</body>
+</html>
