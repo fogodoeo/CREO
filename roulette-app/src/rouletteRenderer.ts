@@ -36,12 +36,12 @@ const COMPACT_SCENE_WIDTH = 480;
 const COMPACT_SCENE_PIXEL_BUDGET = 520_000;
 export const SCENE_DISPLAY_ZOOM = 1.5;
 const WINNER_TEXT_OFFSET = 30;
-const LIONGECKO_ASSET_URLS = {
-  wand: '/assets/pinball-liongecko/gold-wand.png',
-  rune: '/assets/pinball-liongecko/gold-bumper.png',
-  gate: '/assets/pinball-liongecko/finish-gate.png',
+const RYANGECKO_ASSET_URLS = {
+  wand: '/assets/pinball-ryangecko/gold-wand.png',
+  rune: '/assets/pinball-ryangecko/gold-bumper.png',
+  gate: '/assets/pinball-ryangecko/finish-gate.png',
   billboard: '/assets/pinball-ryangecko/ryan-billboard.png',
-  crest: '/assets/pinball-liongecko/lion-crest.png',
+  crest: '/assets/pinball-ryangecko/ryan-crest.png',
 } as const;
 
 const ACADEMY_ASSET_URLS = {
@@ -65,12 +65,12 @@ export class RouletteRenderer {
   private _displayCtx!: CanvasRenderingContext2D;
   private readonly _broadcastMode = new URLSearchParams(location.search).get('broadcast') === '1';
   private _lastProgressSignature = '';
-    private readonly _lionGeckoAssets = {
-    wand: loadImage(LIONGECKO_ASSET_URLS.wand),
-    rune: loadImage(LIONGECKO_ASSET_URLS.rune),
-    gate: loadImage(LIONGECKO_ASSET_URLS.gate),
-    billboard: loadImage(LIONGECKO_ASSET_URLS.billboard),
-    crest: loadImage(LIONGECKO_ASSET_URLS.crest),
+    private readonly _ryanGeckoAssets = {
+    wand: loadImage(RYANGECKO_ASSET_URLS.wand),
+    rune: loadImage(RYANGECKO_ASSET_URLS.rune),
+    gate: loadImage(RYANGECKO_ASSET_URLS.gate),
+    billboard: loadImage(RYANGECKO_ASSET_URLS.billboard),
+    crest: loadImage(RYANGECKO_ASSET_URLS.crest),
   };
   private readonly _academyAssets = {
     wand: loadImage(ACADEMY_ASSET_URLS.wand),
@@ -188,7 +188,7 @@ export class RouletteRenderer {
     renderParameters.camera.renderScene(this.ctx, () => {
       this.onBeforeEntities();
       this.renderAdBoards(renderParameters.stage);
-      this.renderLionGeckoFinish(renderParameters.stage);
+      this.renderRyanGeckoFinish(renderParameters.stage);
       this.renderAcademyFinish(renderParameters.stage);
       this.renderEntities(renderParameters.entities);
       this.renderEffects(renderParameters);
@@ -264,28 +264,28 @@ export class RouletteRenderer {
           const h = shape.height * 2;
           this.ctx.rotate(shape.rotation);
           const useAcademyWand = entity.motion === 'kinematic' || w >= h * 2.4;
-          if (this.isLionGeckoSkin() && useAcademyWand && this.imageReady(this._lionGeckoAssets.wand)) {
+          if (this.isRyanGeckoSkin() && useAcademyWand && this.imageReady(this._ryanGeckoAssets.wand)) {
             this.ctx.shadowBlur = 10;
             this.ctx.shadowColor = 'rgba(242, 198, 109, 0.6)';
             const wandWidth = Math.max(w * 1.08, h * 4.8);
             const wandHeight = Math.max(h * 0.85, wandWidth * 0.055);
-            this.ctx.drawImage(this._lionGeckoAssets.wand, -wandWidth / 2, -wandHeight / 2, wandWidth, wandHeight);
-          } else if (this.isLionGeckoSkin() && this.imageReady(this._lionGeckoAssets.rune)) {
+            this.ctx.drawImage(this._ryanGeckoAssets.wand, -wandWidth / 2, -wandHeight / 2, wandWidth, wandHeight);
+          } else if (this.isRyanGeckoSkin() && this.imageReady(this._ryanGeckoAssets.rune)) {
             const size = Math.max(w, h) * (Math.max(w, h) <= 0.7 ? 2.8 : 1.18);
             this.ctx.shadowBlur = 8;
             this.ctx.shadowColor = 'rgba(242, 198, 109, 0.5)';
-            this.ctx.drawImage(this._lionGeckoAssets.rune, -size / 2, -size / 2, size, size);
+            this.ctx.drawImage(this._ryanGeckoAssets.rune, -size / 2, -size / 2, size, size);
           } else if (this.isAcademySkin() && useAcademyWand && this.imageReady(this._academyAssets.wand)) {
             this.ctx.shadowBlur = 8;
             this.ctx.shadowColor = 'rgba(212, 189, 134, 0.55)';
             const wandWidth = Math.max(w * 1.08, h * 4.8);
             const wandHeight = Math.max(h * 0.85, wandWidth * 0.055);
             this.ctx.drawImage(this._academyAssets.wand, -wandWidth / 2, -wandHeight / 2, wandWidth, wandHeight);
-          } else if (this.isLionGeckoSkin() && this.imageReady(this._lionGeckoAssets.rune)) {
+          } else if (this.isRyanGeckoSkin() && this.imageReady(this._ryanGeckoAssets.rune)) {
             const size = shape.radius * 2.55;
             this.ctx.shadowBlur = 10;
             this.ctx.shadowColor = 'rgba(242, 198, 109, 0.6)';
-            this.ctx.drawImage(this._lionGeckoAssets.rune, -size / 2, -size / 2, size, size);
+            this.ctx.drawImage(this._ryanGeckoAssets.rune, -size / 2, -size / 2, size, size);
           } else if (this.isAcademySkin() && this.imageReady(this._academyAssets.rune)) {
             const size = Math.max(w, h) * (Math.max(w, h) <= 0.7 ? 2.8 : 1.18);
             this.ctx.shadowBlur = 5;
@@ -298,11 +298,11 @@ export class RouletteRenderer {
           break;
         }
         case 'circle': {
-          if (this.isLionGeckoSkin() && this.imageReady(this._lionGeckoAssets.rune)) {
+          if (this.isRyanGeckoSkin() && this.imageReady(this._ryanGeckoAssets.rune)) {
             const size = shape.radius * 2.55;
             this.ctx.shadowBlur = 10;
             this.ctx.shadowColor = 'rgba(242, 198, 109, 0.6)';
-            this.ctx.drawImage(this._lionGeckoAssets.rune, -size / 2, -size / 2, size, size);
+            this.ctx.drawImage(this._ryanGeckoAssets.rune, -size / 2, -size / 2, size, size);
           } else if (this.isAcademySkin() && this.imageReady(this._academyAssets.rune)) {
             const size = shape.radius * 2.55;
             this.ctx.shadowBlur = 7;
@@ -322,7 +322,7 @@ export class RouletteRenderer {
     this.ctx.restore();
   }
 
-    private isLionGeckoSkin(): boolean {
+    private isRyanGeckoSkin(): boolean {
     const theme = document.documentElement.dataset.rouletteTheme;
     return theme === 'ryangecko' || theme === 'liongecko' || !theme;
   }
@@ -337,7 +337,7 @@ export class RouletteRenderer {
 
       private renderAdBoards(stage: StageDef): void {
     try {
-      if (!this.isLionGeckoSkin() || !this.imageReady(this._lionGeckoAssets.billboard)) return;
+      if (!this.isRyanGeckoSkin() || !this.imageReady(this._ryanGeckoAssets.billboard)) return;
       const boards = stage.adBoards ?? [];
       boards.forEach((board) => {
         if (Math.abs(stage.goalY - board.y) <= 25) return;
@@ -348,7 +348,7 @@ export class RouletteRenderer {
         this.ctx.shadowBlur = 16;
         this.ctx.shadowColor = 'rgba(255, 255, 255, 0.45)';
         this.ctx.drawImage(
-          this._lionGeckoAssets.billboard,
+          this._ryanGeckoAssets.billboard,
           board.x - width / 2,
           board.y - height / 2,
           width,
@@ -402,8 +402,8 @@ export class RouletteRenderer {
     }
   }
 
-  private renderLionGeckoFinish(stage: StageDef): void {
-    if (!this.isLionGeckoSkin() || !this.imageReady(this._lionGeckoAssets.gate)) return;
+  private renderRyanGeckoFinish(stage: StageDef): void {
+    if (!this.isRyanGeckoSkin() || !this.imageReady(this._ryanGeckoAssets.gate)) return;
     const nearGoal = [...(stage.adBoards ?? [])]
       .reverse()
       .find((board) => Math.abs(stage.goalY - board.y) <= 25);
@@ -416,14 +416,14 @@ export class RouletteRenderer {
     this.ctx.globalAlpha = 0.98;
     this.ctx.shadowBlur = 18;
     this.ctx.shadowColor = 'rgba(242, 198, 109, 0.45)';
-    this.ctx.drawImage(this._lionGeckoAssets.gate, x - width / 2, y - height / 2, width, height);
-    if (this.imageReady(this._lionGeckoAssets.crest)) {
+    this.ctx.drawImage(this._ryanGeckoAssets.gate, x - width / 2, y - height / 2, width, height);
+    if (this.imageReady(this._ryanGeckoAssets.crest)) {
       const crestWidth = width * 0.32;
       const crestHeight = crestWidth * 1.0;
       this.ctx.shadowBlur = 12;
       this.ctx.shadowColor = 'rgba(255, 255, 255, 0.8)';
       this.ctx.drawImage(
-        this._lionGeckoAssets.crest,
+        this._ryanGeckoAssets.crest,
         x - crestWidth / 2,
         y - height * 0.32,
         crestWidth,
