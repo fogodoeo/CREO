@@ -605,6 +605,8 @@ test('print forms remain available inside the shared registration workspace with
     assert.match(print, /platform-client\.js/);
     assert.match(print, /channel-adapters\.js/);
     assert.match(print, /print-shipping-summary\.js/);
+    assert.match(print, /google-sheets-export\.js/);
+    assert.match(print, /accounts\.google\.com\/gsi\/client/);
     assert.match(print, /function platformPrintItems\(workspace, channel\)/);
     assert.match(print, /CreoChannelAdapters\.platformChecklist\(item, channel\)/);
     assert.match(print, /channels\/['"]? \+ encodeURIComponent\(PRINT_CHANNEL_ID\) \+ ['"]?\/workspace/);
@@ -628,7 +630,9 @@ test('print forms remain available inside the shared registration workspace with
     assert.match(print, /CreoPrintShippingSummary\.groupBundles\(summaryItems\)/);
     assert.match(print, /CreoChannelAdapters\.resolve\(channel\)/);
     assert.doesNotMatch(print, /CreoChannelAdapters\.get\(/);
-    assert.match(print, />구글시트로 보내기<\/button>/);
+    assert.match(print, />구글시트 새로 만들기<\/button>/);
+    assert.match(print, /https:\/\/www\.googleapis\.com\/auth\/drive\.file/);
+    assert.match(print, /CreoGoogleSheetsExport\.createSpreadsheet/);
     assert.match(print, /function toggleOrientation\(\)/);
     assert.match(print, /shippingText\(it\)/);
     assert.match(print, /id="print-login"/);

@@ -54,6 +54,10 @@ npm start
 
 환경변수는 `.env.example`을 기준으로 설정합니다. BAND client secret, session secret, `CREO_ADMIN_SECRET`, Supabase service-role 키는 Render Environment에만 저장하고 Git에 커밋하지 않습니다.
 
+### Google Sheets 정산표 자동 생성
+
+`print.html`의 **구글시트 새로 만들기**는 Google Identity Services의 브라우저 토큰 방식으로 동작합니다. Google Cloud에서 Sheets API를 활성화하고 OAuth 2.0 웹 클라이언트의 승인된 JavaScript 원본에 `https://creok.onrender.com`을 추가한 뒤, Render Environment에 `GOOGLE_OAUTH_CLIENT_ID`를 설정하세요. 클라이언트 비밀키와 refresh token은 사용하지 않으며, 사용자가 버튼을 누를 때 `drive.file` 범위만 승인받아 해당 앱이 새로 만든 정산표에만 접근합니다. 설정 전에는 기존처럼 새 빈 시트를 열고 정산표를 클립보드에 복사하는 방식으로 안전하게 대체됩니다.
+
 ## BAND 가입 승인 모니터
 
 CREOK Starter에서는 기존 승인 엔진을 별도 Python 프로세스로 실행합니다. Chrome 프로필과 중복 처리 상태는 Persistent Disk의 `/var/data/band-monitor` 아래에만 저장합니다. 모니터가 종료되면 감독 프로세스가 다시 시작하지만 Node 웹서버는 계속 실행됩니다. 재배포 중 접수된 신청은 BAND의 미처리 목록을 다시 조회해 처리합니다.

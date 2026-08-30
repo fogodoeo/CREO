@@ -52,7 +52,8 @@ test('HTTP server exposes the CREO hub, survey assets, health, and membership co
             ...process.env,
             PORT: String(port),
             HOST: '127.0.0.1',
-            BAND_MONITOR_STATUS_FILE: statusFile
+            BAND_MONITOR_STATUS_FILE: statusFile,
+            GOOGLE_OAUTH_CLIENT_ID: 'test-client.apps.googleusercontent.com'
         },
         stdio: ['ignore', 'pipe', 'pipe']
     });
@@ -72,6 +73,12 @@ test('HTTP server exposes the CREO hub, survey assets, health, and membership co
     const monitorStatus = await monitorStatusResponse.json();
     assert.equal(monitorStatus.monitor.state, 'CONNECTED');
     assert.equal(monitorStatus.monitor.applications.queued, 2);
+
+    const sheetsConfigResponse = await fetch(`http://127.0.0.1:${port}/api/google-sheets/config`);
+    assert.equal(sheetsConfigResponse.status, 200);
+    const sheetsConfig = await sheetsConfigResponse.json();
+    assert.equal(sheetsConfig.configured, true);
+    assert.equal(sheetsConfig.clientId, 'test-client.apps.googleusercontent.com');
 
     const monitorPageResponse = await fetch(`http://127.0.0.1:${port}/band-monitor.html`);
     assert.equal(monitorPageResponse.status, 200);

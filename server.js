@@ -25,6 +25,7 @@ const { SQLitePlatformRepository } = require('./sqlite-platform-repository');
 const PORT = Number(process.env.PORT || 10000);
 const HOST = process.env.HOST || '0.0.0.0';
 const PUBLIC_DIR = path.resolve(__dirname, 'public');
+const GOOGLE_OAUTH_CLIENT_ID = String(process.env.GOOGLE_OAUTH_CLIENT_ID || process.env.GOOGLE_SHEETS_CLIENT_ID || '').trim();
 const bandOAuth = createBandOAuth();
 let platformApi;
 const bandMembership = createBandMembership({
@@ -332,6 +333,14 @@ const server = http.createServer(async (req, res) => {
                 'Cache-Control': 'no-store'
             });
             res.end();
+            return;
+        }
+
+        if (url.pathname === '/api/google-sheets/config' && req.method === 'GET') {
+            sendJson(res, 200, {
+                configured: Boolean(GOOGLE_OAUTH_CLIENT_ID),
+                clientId: GOOGLE_OAUTH_CLIENT_ID
+            });
             return;
         }
 
