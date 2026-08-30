@@ -69,6 +69,10 @@ test('BASIC page two reuses the one-line item and traits formula', () => {
     assert.match(source, /\.item-copy\.is-inline-info[^}]*display:flex[^}]*white-space:nowrap/);
     assert.match(source, /\.item-copy\.is-inline-info\{[^}]*width:max-content;max-width:min\(76vw,1360px\)/);
     assert.match(source, /\.item-copy\.is-inline-info\[data-layout-custom="1"\]\{[^}]*right:calc\(100% - var\(--layout-x\) - var\(--layout-width\)\)!important[^}]*width:max-content!important;max-width:var\(--layout-width\)!important/);
+    assert.match(source, /document\.body\.dataset\.page=String\(page\)/);
+    assert.match(source, /itemFont=Math\.max\([^;]+\)\*1\.2,bidderFont=Math\.max\([^;]+\)\*1\.2/);
+    assert.match(source, /body\[data-page="2"\] \.item-progress strong\{font-size:clamp\(33\.6px,3\.36vw,50\.4px\)\}/);
+    assert.match(source, /body\[data-page="2"\] \.ticker-text\{font-size:18px\}/);
     assert.doesNotMatch(source.slice(source.indexOf('function pageTwoInlineInfo'), source.indexOf('function pageTwo(')), /LOT /);
     assert.match(source, /item-inline-identity">\$\{vendorTag\}<h1>/);
 });
