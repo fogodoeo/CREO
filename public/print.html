@@ -1318,7 +1318,13 @@
 
         function buildShippingSettlement(items) {
             var summaryItems = (items || []).filter(function (it) { return CreoAuctionContract.isSoldStatus(it.status); }).map(function (it) {
-                return Object.assign({}, it, { _winner: parseWinner(it.winner) });
+                var parsed = parseWinner(it.winner);
+                return Object.assign({}, it, {
+                    _winner: {
+                        name: parsed.name || it.winner_name || '',
+                        phone: parsed.phone || it.winner_phone || ''
+                    }
+                });
             });
             window._shippingBundleRows = CreoPrintShippingSummary.groupBundles(summaryItems);
             renderSettlementStats(window._shippingBundleRows);
@@ -1528,7 +1534,7 @@
                 return typeof getItems === 'function' ? getItems() : [];
             }
 
-            var adapter = typeof CreoChannelAdapters !== 'undefined' ? CreoChannelAdapters.get(PRINT_CHANNEL_ID) : null;
+            var adapter = typeof CreoChannelAdapters !== 'undefined' ? CreoChannelAdapters.resolve(channel) : null;
             if (adapter && typeof adapter.loadShippingItems === 'function') {
                 try {
                     return await adapter.loadShippingItems({ channel: channel });

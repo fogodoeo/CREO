@@ -233,6 +233,30 @@ test('platform shipping items do not infer tournament teams from A01/B01-style n
     assert.equal(rows[1].checklist, 'weight:42|_auction:crewart|_visibility:public');
 });
 
+test('platform shipping items expose settlement fields used by print exports', () => {
+    const rows = Adapters.platformShippingItems({
+        vendors: [{ id: 'vendor_ryan', name: '라이언게코' }],
+        shipments: [{
+            id: 'shipment_a01', itemId: 'item_a01', method: 'delivery', carrier: '파르게', address: '대구 크레오', cost: 26000,
+            bundleId: 'bundle_buyer_vendor', status: 'ready', paymentStatus: 'paid', paymentMethod: 'bank_transfer',
+            paymentRequestedAmount: 126000, paymentConfirmedAmount: 126000,
+            buyerSubmittedAt: '2026-08-31T00:00:00.000Z', paymentConfirmedAt: '2026-08-31T00:05:00.000Z'
+        }],
+        items: [{
+            id: 'item_a01', lotNumber: 1, name: 'A01', vendorId: 'vendor_ryan', status: 'sold', soldPrice: 100000,
+            winnerName: '김미옥', winnerPhone: '01012345678'
+        }]
+    }, channel('basic'));
+
+    assert.equal(rows[0].winner_name, '김미옥');
+    assert.equal(rows[0].winner_phone, '01012345678');
+    assert.equal(rows[0].sold_amount_won, 100000);
+    assert.equal(rows[0].shipping_bundle_id, 'bundle_buyer_vendor');
+    assert.equal(rows[0].payment_requested_amount, 126000);
+    assert.equal(rows[0].payment_confirmed_amount, 126000);
+    assert.equal(rows[0].payment_confirmed_at, '2026-08-31T00:05:00.000Z');
+});
+
 test('CREWART broadcast strips copied CDCUP metadata even when the item is named A01', () => {
     const bridged = BroadcastBridge.toLegacyItem({
         id: 'item_a01',

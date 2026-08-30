@@ -626,6 +626,8 @@ test('print forms remain available inside the shared registration workspace with
     assert.match(print, /buyer_submitted_at: shipment && shipment\.buyerSubmittedAt/);
     assert.match(print, /payment_requested_amount: shipment \? Number\(shipment\.paymentRequestedAmount\)/);
     assert.match(print, /CreoPrintShippingSummary\.groupBundles\(summaryItems\)/);
+    assert.match(print, /CreoChannelAdapters\.resolve\(channel\)/);
+    assert.doesNotMatch(print, /CreoChannelAdapters\.get\(/);
     assert.match(print, />구글시트로 보내기<\/button>/);
     assert.match(print, /function toggleOrientation\(\)/);
     assert.match(print, /shippingText\(it\)/);
