@@ -175,6 +175,27 @@ test('buyer shipping link isolates one buyer, saves idempotently, confirms payme
     assert.equal(withLaterWin.json().totals.totalAmount, 383000);
     assert.equal(withLaterWin.json().payment.status, 'additional_payment');
     assert.equal(withLaterWin.json().payment.additionalDue, 57000);
+    assert.deepEqual(withLaterWin.json().items.map((item) => [item.id, item.paymentStatus]), [
+        ['item-a', 'paid'], ['item-b', 'paid'], ['item-c', '']
+    ]);
+
+    const additionalSave = await call(restartedApi, 'POST', '/api/platform/buyer-shipping', {
+        code, requestId: 'buyer-save-additional-win', destinationId: 'parge', pargeRegion: '수도권',
+        pargeShop: '테스트 파르게', paymentMethod: 'bank_transfer'
+    }, '');
+    assert.equal(additionalSave.status, 200, additionalSave.body);
+    assert.equal(additionalSave.json().payment.status, 'additional_payment');
+    assert.equal(additionalSave.json().payment.additionalDue, 57000);
+    const shipmentPaymentStates = Object.fromEntries((await repository.listRecords('alpha', 'shipment'))
+        .map((shipment) => [shipment.itemId, shipment.paymentStatus]));
+    assert.deepEqual(shipmentPaymentStates, { 'item-a': 'paid', 'item-b': 'paid', 'item-c': 'additional_payment' });
+
+    const additionalConfirmed = await call(restartedApi, 'POST', '/api/platform/channels/alpha/buyer-shipping-payment', {
+        itemId: 'item-c', requestId: 'payment-confirm-additional-win'
+    });
+    assert.equal(additionalConfirmed.status, 200, additionalConfirmed.body);
+    assert.equal(additionalConfirmed.json().payment.status, 'paid');
+    assert.deepEqual(additionalConfirmed.json().items.map((item) => item.paymentStatus), ['paid', 'paid', 'paid']);
 
     const badCode = await call(restartedApi, 'GET', `/api/platform/buyer-shipping?code=${encodeURIComponent(`${code}x`)}`, null, '');
     assert.equal(badCode.status, 401);
@@ -182,7 +203,7 @@ test('buyer shipping link isolates one buyer, saves idempotently, confirms payme
     shortLinkRow.value = JSON.stringify({ ...JSON.parse(shortLinkRow.value), expiresAt: Date.now() - 1 });
     const expiredCode = await call(restartedApi, 'GET', `/api/platform/buyer-shipping?code=${encodeURIComponent(code)}`, null, '');
     assert.equal(expiredCode.status, 401);
-    assert.equal((await repository.listRecords('alpha', 'shipment')).length, 2);
+    assert.equal((await repository.listRecords('alpha', 'shipment')).length, 3);
 });
 
 test('BASIC sold transition assigns phone parity and rolls dice exactly once per lifecycle', async () => {

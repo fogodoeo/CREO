@@ -1104,6 +1104,9 @@
             font-size: 11px;
             font-weight: 700;
         }
+        .gecko-payment { padding:2px 5px; border-radius:999px; background:#E4E7EC; color:#667085; font-size:8px; font-weight:900; }
+        .gecko-payment.is-paid { background:#D1FADF; color:#027A48; }
+        .gecko-payment.is-additional { background:#FEF0C7; color:#B54708; }
 
         .winner-card-footer {
             display: flex;
@@ -2332,6 +2335,7 @@
         .editor-payment-action { display:flex; align-items:center; justify-content:center; height:38px; align-self:center; padding:0 12px; border:0; border-radius:9px; background:#667085; color:#FFF; font-family:inherit; font-size:11px; font-weight:850; white-space:nowrap; cursor:pointer; }
         .editor-payment-action:hover:not(:disabled) { background:#475467; }
         .editor-payment-action:disabled { background:#E4E7EC; color:#98A2B3; cursor:not-allowed; }
+        .status-select.status-additional { border:1px solid #FEDF89 !important; background:#FFFAEB !important; color:#B54708 !important; }
         .editor-save-action { border:1px solid var(--accent); background:var(--accent); color:#FFF; }
         .editor-save-action:hover { background:var(--accent-hover); }
         .shipping-admin-login { margin-left:auto; height:36px; padding:0 12px; border:1px solid #D4D4D8; border-radius:9px; background:#FFF; color:#3F3F46; font-family:inherit; font-size:11px; font-weight:850; cursor:pointer; }
@@ -2686,7 +2690,7 @@
                         <strong id="editor-summary-ship">0원</strong>
                     </div>
                     <div class="editor-total-item is-grand-total">
-                        <span>받을 금액</span>
+                        <span id="editor-summary-total-label">받을 금액</span>
                         <strong id="editor-summary-total">0원</strong>
                     </div>
                 </div>
@@ -3021,7 +3025,11 @@
             const item = activeBuyerLinkItem();
             if (!item) return showToast('낙찰 개체를 찾을 수 없습니다.', true);
             const state = winnerStateMap[activeEditorWinner];
-            if (!confirm(`${state?.winnerName || '낙찰자'}님의 입금을 확인 처리할까요?`)) return;
+            const total = Number(state?.grandTotal) || 0;
+            const confirmed = Number(state?.payment_confirmed_amount) || 0;
+            const due = Math.max(0, total - confirmed);
+            const paymentLabel = confirmed > 0 && due > 0 ? `추가 결제 ${due.toLocaleString()}원` : `결제 ${total.toLocaleString()}원`;
+            if (!confirm(`${state?.winnerName || '낙찰자'}님의 ${paymentLabel}을 확인 처리할까요?`)) return;
             const itemId = item._platformItemId || item.row || item.id;
             const requestId = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
             try {
@@ -3986,6 +3994,9 @@
 
                     const sellerCos = [...new Set(winnerAllItems.map(it => (it.company || '').trim()))];
                     const firstSelfItem = groupItems[0];
+                    const groupPaymentStatuses = groupItems.map(item => item.payment_status).filter(Boolean);
+                    const groupSubmittedAt = groupItems.map(item => item.buyer_submitted_at || '').sort().at(-1) || '';
+                    const groupConfirmedAmount = groupItems.reduce((maximum, item) => Math.max(maximum, Number(item.payment_confirmed_amount) || 0), 0);
                     
                     // Set initial state
                     const parsedShipping = parseSavedShippingRegion(firstSelfItem.shipping_region);
@@ -4003,10 +4014,14 @@
                         shipping_hub: parsedHub,
                         phone: group.identity.phone,
                         status: firstSelfItem.status || '낙찰-대기',
-                        payment_status: firstSelfItem.payment_status || '',
+                        payment_status: groupPaymentStatuses.includes('additional_payment')
+                            ? 'additional_payment'
+                            : groupPaymentStatuses.length === groupItems.length && groupPaymentStatuses.every(status => status === 'paid')
+                                ? 'paid'
+                                : firstSelfItem.payment_status || '',
                         payment_method: firstSelfItem.payment_method || '',
-                        buyer_submitted_at: firstSelfItem.buyer_submitted_at || '',
-                        payment_confirmed_amount: Number(firstSelfItem.payment_confirmed_amount) || 0,
+                        buyer_submitted_at: groupSubmittedAt,
+                        payment_confirmed_amount: groupConfirmedAmount,
                         memo: parsedMemo
                     };
                 });
@@ -4051,9 +4066,16 @@
                     const currentCoItems = state.allItems.filter(it => (it.company || '').trim() === selectedCo);
                     const otherCoItems = state.allItems.filter(it => (it.company || '').trim() !== selectedCo);
 
-                    const currentGeckoTagsHtml = currentCoItems.map(it => `
-                        <span class="gecko-tag">${auctionItemLabel(it, { includeTeam: true })}</span>
-                    `).join('');
+                    const currentGeckoTagsHtml = currentCoItems.map(it => {
+                        const itemPaid = it.payment_status === 'paid' || it.status === '낙찰-입금완료';
+                        const itemAdditional = state.payment_confirmed_amount > 0 && !itemPaid;
+                        const paymentBadge = itemPaid
+                            ? '<small class="gecko-payment is-paid">결제 완료</small>'
+                            : itemAdditional
+                                ? '<small class="gecko-payment is-additional">추가 결제</small>'
+                                : '';
+                        return `<span class="gecko-tag">${auctionItemLabel(it, { includeTeam: true })}${paymentBadge}</span>`;
+                    }).join('');
 
                     const otherGeckoTagsHtml = otherCoItems.map(it => `
                         <span class="gecko-tag gecko-tag-dimmed" style="opacity: 0.45; border: 1.5px dashed var(--text-secondary); filter: grayscale(100%);">[${it.company}] ${auctionItemLabel(it, { includeTeam: true })}</span>
@@ -4062,10 +4084,11 @@
                     const geckoTagsHtml = currentGeckoTagsHtml + otherGeckoTagsHtml;
 
                     // 구매자 입력과 업체 결제 확인이 같은 3단계 상태로 보이게 한다.
-                    const isPaymentComplete = state.payment_status === 'paid' || state.status === '낙찰-입금완료';
+                    const hasAdditionalPayment = state.payment_confirmed_amount > 0 && state.payment_confirmed_amount < grandTotal;
+                    const isPaymentComplete = grandTotal > 0 && state.payment_confirmed_amount >= grandTotal;
                     const isBuyerInputComplete = Boolean(state.buyer_submitted_at);
-                    const statusLabel = isPaymentComplete ? '결제 완료' : isBuyerInputComplete ? '입력 완료' : '입력 대기';
-                    const statusClass = isPaymentComplete ? 'status-paid' : isBuyerInputComplete ? 'status-contacted' : 'status-waiting';
+                    const statusLabel = isPaymentComplete ? '결제 완료' : hasAdditionalPayment ? '추가 결제' : isBuyerInputComplete ? '입력 완료' : '입력 대기';
+                    const statusClass = isPaymentComplete ? 'status-paid' : hasAdditionalPayment ? 'status-additional' : isBuyerInputComplete ? 'status-contacted' : 'status-waiting';
 
                     // Shipping description
                     let shipSummaryText = '미설정 (탭하여 설정)';
@@ -4499,6 +4522,10 @@
                     return auctionItemLabel(it, { includeTeam: true });
                 }).join(' · ');
                 const isCurrent = co === selectedCo;
+                const confirmedAmount = isCurrent ? Number(state.payment_confirmed_amount) || 0 : 0;
+                const additionalDue = Math.max(0, collectTotal - confirmedAmount);
+                const collectLabel = confirmedAmount > 0 && additionalDue > 0 ? '추가 결제 금액' : confirmedAmount >= collectTotal && collectTotal > 0 ? '결제 완료' : '받을 금액';
+                const collectDisplay = confirmedAmount > 0 && additionalDue > 0 ? additionalDue : collectTotal;
                 const pct = totalObjectCount > 0 ? Math.round(items.length / totalObjectCount * 100) : 0;
 
                 return `
@@ -4512,7 +4539,7 @@
                             <div><span>낙찰금액</span><strong>${bidWon.toLocaleString()}원</strong></div>
                             ${settlement.discountAmount > 0 ? `<div><span>${settlement.label}</span><strong>-${settlement.discountAmount.toLocaleString()}원</strong></div>` : ''}
                             <div><span>배분 배송비</span><strong>${shippingShare.toLocaleString()}원</strong></div>
-                            <div class="company-collect"><span>받을 금액</span><strong>${collectTotal.toLocaleString()}원</strong></div>
+                            <div class="company-collect"><span>${collectLabel}</span><strong>${collectDisplay.toLocaleString()}원</strong></div>
                         </div>
                     </div>
                 `;
@@ -4576,7 +4603,11 @@
             document.getElementById('editor-summary-discount-label').textContent = settlement.label || '1위 할인';
             document.getElementById('editor-summary-discount').textContent = `-${settlement.discountAmount.toLocaleString()}원`;
             document.getElementById('editor-summary-ship').textContent = shipCost.toLocaleString() + '원';
-            document.getElementById('editor-summary-total').textContent = grandTotal.toLocaleString() + '원';
+            const confirmedAmount = Number(state.payment_confirmed_amount) || 0;
+            const additionalDue = Math.max(0, grandTotal - confirmedAmount);
+            const totalLabel = document.getElementById('editor-summary-total-label');
+            totalLabel.textContent = confirmedAmount > 0 && additionalDue > 0 ? '추가 결제 금액' : confirmedAmount >= grandTotal && grandTotal > 0 ? '결제 완료' : '받을 금액';
+            document.getElementById('editor-summary-total').textContent = (confirmedAmount > 0 && additionalDue > 0 ? additionalDue : grandTotal).toLocaleString() + '원';
             renderEditorShippingBreakdown(state, selectedCo, baseCost, totalShipping, shippingAllocations, comp || '배송');
 
             // 하단 작업 영역에서 배송 입력 링크 문자와 입금 확인을 한 번씩만 제공한다.
@@ -4630,10 +4661,11 @@
                 copyBtn.style.display = 'inline-flex';
             }
             if (paymentConfirmBtn) {
-                const paid = state.payment_status === 'paid' || state.status === '낙찰-입금완료';
+                const paid = grandTotal > 0 && state.payment_confirmed_amount >= grandTotal;
+                const additionalPayment = state.payment_confirmed_amount > 0 && state.payment_confirmed_amount < grandTotal;
                 paymentConfirmBtn.hidden = !state.buyer_submitted_at;
                 paymentConfirmBtn.disabled = paid;
-                paymentConfirmBtn.textContent = paid ? '입금 확인됨' : state.payment_status === 'additional_payment' ? '추가입금 확인' : '입금 확인';
+                paymentConfirmBtn.textContent = paid ? '결제 확인됨' : additionalPayment ? '추가 결제 확인' : '결제 확인';
                 paymentConfirmBtn.onclick = paid ? null : confirmActiveBuyerPayment;
             }
             } catch (pricingErr) {

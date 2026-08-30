@@ -309,7 +309,11 @@ test('shipping editor exposes one buyer message action and a subdued payment con
     assert.match(shipping, /copyBtn\.onclick\s*=\s*sendBuyerShippingLinkSms/);
     assert.match(shipping, /class="editor-payment-action" id="editor-payment-confirm-btn"/);
     assert.match(shipping, /\.editor-payment-action\s*\{[^}]*background:#667085;[^}]*color:#FFF;/);
-    assert.match(shipping, /statusLabel = isPaymentComplete \? '결제 완료' : isBuyerInputComplete \? '입력 완료' : '입력 대기'/);
+    assert.match(shipping, /statusLabel = isPaymentComplete \? '결제 완료' : hasAdditionalPayment \? '추가 결제' : isBuyerInputComplete \? '입력 완료' : '입력 대기'/);
+    assert.match(shipping, /itemPaid[\s\S]{0,500}gecko-payment is-paid[\s\S]{0,500}gecko-payment is-additional/);
+    assert.match(shipping, /additionalPayment \? '추가 결제 확인' : '결제 확인'/);
+    assert.match(shipping, /id="editor-summary-total-label">받을 금액/);
+    assert.match(shipping, /totalLabel\.textContent = confirmedAmount > 0 && additionalDue > 0 \? '추가 결제 금액'/);
 });
 
 test('buyer shipping page is lightweight, short-code based, and offers configured fulfillment choices', () => {
@@ -337,6 +341,10 @@ test('buyer shipping page is lightweight, short-code based, and offers configure
     assert.match(source, /state\.submitted\?'변경 내용 저장':'배송지와 입금방식 저장'/);
     assert.match(source, /if\(status==='paid'\)return\['결제 완료'/);
     assert.match(source, /return\['입력 대기'/);
+    assert.match(source, /기존 결제 확인 금액/);
+    assert.match(source, /additional\?'추가 결제 금액'/);
+    assert.match(source, /item\.paymentStatus==='paid'/);
+    assert.match(source, /if\(status==='additional_payment'\)return\['추가 결제 필요'/);
     assert.doesNotMatch(source, /setInterval\(/);
     assert.doesNotMatch(source, /<script[^>]+src=/i);
     assert.match(server, /buyerShippingShortMatch = \/\^\\\/s\\\//);

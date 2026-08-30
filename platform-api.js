@@ -1141,7 +1141,8 @@ function createPlatformApi({
                 id: item.id,
                 lotNumber: Math.max(0, Number(item.lotNumber) || 0),
                 name: cleanText(item.name || '개체', 100),
-                soldAmount: Math.max(0, Number(item.soldPrice) || 0)
+                soldAmount: Math.max(0, Number(item.soldPrice) || 0),
+                paymentStatus: bundleShipments.find((shipment) => shipment.itemId === item.id)?.paymentStatus || ''
             })),
             destinations: [
                 ...fixedDestinations,
@@ -1236,6 +1237,8 @@ function createPlatformApi({
         for (let index = 0; index < context.bundleItems.length; index += 1) {
             const item = context.bundleItems[index];
             const current = existingByItem.get(item.id) || {};
+            const keepCompletedItem = current.paymentStatus === 'paid' && Boolean(current.paymentConfirmedAt);
+            const itemPaymentStatus = paymentStatus === 'paid' || keepCompletedItem ? 'paid' : paymentStatus;
             const record = sanitizeRecord('shipment', {
                 ...current,
                 id: current.id || stableBuyerId('shipment', `${context.channel.id}:${item.id}`),
@@ -1250,12 +1253,12 @@ function createPlatformApi({
                 carrier,
                 address,
                 cost: index === 0 ? shippingCost : 0,
-                status,
+                status: itemPaymentStatus === 'paid' ? 'complete' : status,
                 note: current.note || '',
                 bundleId,
                 ...selection,
                 paymentMethod,
-                paymentStatus,
+                paymentStatus: itemPaymentStatus,
                 paymentRequestedAmount: totalAmount,
                 paymentConfirmedAmount: confirmedAmount,
                 paymentConfirmedAt: current.paymentConfirmedAt || '',
