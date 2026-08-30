@@ -25,6 +25,25 @@
         return phone;
     }
 
+    function formatKoreanDateTime(value) {
+        if (!value) return '';
+        var date = new Date(value);
+        if (Number.isNaN(date.getTime())) return text(value);
+        var values = {};
+        new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'Asia/Seoul',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            hourCycle: 'h23'
+        }).formatToParts(date).forEach(function (part) {
+            if (part.type !== 'literal') values[part.type] = part.value;
+        });
+        return values.year + '-' + values.month + '-' + values.day + ' ' + values.hour + ':' + values.minute;
+    }
+
     function itemWon(item) {
         if (item.sold_amount_won != null && item.sold_amount_won !== '') return number(item.sold_amount_won);
         return number(item.soldPrice) * 10000;
@@ -137,13 +156,14 @@
             return [
                 row.company, row.buyerName, formatPhone(row.phone), row.itemSummary, row.itemCount, row.combined ? '합배송' : '',
                 row.soldAmountWon, row.shippingCost, row.requestedAmount, row.confirmedAmount,
-                row.inputLabel, row.paymentLabel, row.paymentMethodLabel, row.destination, row.submittedAt
+                row.inputLabel, row.paymentLabel, row.paymentMethodLabel, row.destination, formatKoreanDateTime(row.submittedAt)
             ];
         }));
     }
 
     return {
         bundleKey: bundleKey,
+        formatKoreanDateTime: formatKoreanDateTime,
         groupBundles: groupBundles,
         paymentLabel: paymentLabel,
         paymentMethodLabel: paymentMethodLabel,

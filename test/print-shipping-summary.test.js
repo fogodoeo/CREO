@@ -51,4 +51,11 @@ test('additional payment has priority and sheet export keeps raw numeric amounts
     assert.equal(sheet[0][7], '배송비');
     assert.equal(sheet[1][7], 26000);
     assert.equal(sheet[1][11], '추가 결제');
+    assert.equal(sheet[1][14], '2026-08-31 09:00');
+});
+
+test('sheet input time is always formatted in Korea Standard Time', () => {
+    assert.equal(Summary.formatKoreanDateTime('2026-08-31T14:59:00.000Z'), '2026-08-31 23:59');
+    assert.equal(Summary.formatKoreanDateTime('2026-08-31T15:01:00.000Z'), '2026-09-01 00:01');
+    assert.equal(Summary.formatKoreanDateTime(''), '');
 });
