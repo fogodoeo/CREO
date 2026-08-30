@@ -67,6 +67,8 @@ test('BASIC page two reuses the one-line item and traits formula', () => {
     assert.match(source, /function pageTwoInfoTraits\(item\)/);
     assert.match(source, /profile\.settings\?\.page2InfoLayout==='inline-traits'/);
     assert.match(source, /\.item-copy\.is-inline-info[^}]*display:flex[^}]*white-space:nowrap/);
+    assert.match(source, /\.item-copy\.is-inline-info\{[^}]*width:max-content;max-width:min\(76vw,1360px\)/);
+    assert.match(source, /\.item-copy\.is-inline-info\[data-layout-custom="1"\]\{[^}]*right:calc\(100% - var\(--layout-x\) - var\(--layout-width\)\)!important[^}]*width:max-content!important;max-width:var\(--layout-width\)!important/);
     assert.doesNotMatch(source.slice(source.indexOf('function pageTwoInlineInfo'), source.indexOf('function pageTwo(')), /LOT /);
     assert.match(source, /item-inline-identity">\$\{vendorTag\}<h1>/);
 });
