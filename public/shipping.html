@@ -2327,13 +2327,10 @@
         .registration-badge,.registration-badge.complete,.registration-badge.partial,.registration-badge.mismatch,.status-select.status-waiting,.status-select.status-contacted,.status-select.status-paid { border-color:#D4D4D8 !important; background:#F4F4F5 !important; color:#52525B !important; }
         .action-icon-btn { border-color:#D4D4D8 !important; background:#FFF !important; color:#3F3F46 !important; box-shadow:none !important; filter:grayscale(1); }
         .editor-action-footer { padding:12px 20px 16px; border-color:#E4E4E7; box-shadow:0 -6px 18px rgba(0,0,0,.035); }
-        .editor-footer-actions { display:grid; grid-template-columns:repeat(4,minmax(86px,1fr)); gap:8px; }
-        .editor-copy-action,.editor-label-action,.editor-save-action { display:flex; align-items:center; justify-content:center; height:44px; border-radius:10px; font-family:inherit; font-size:12px; font-weight:850; text-align:center; cursor:pointer; }
+        .editor-footer-actions { display:grid; grid-template-columns:repeat(3,minmax(86px,1fr)); gap:8px; }
+        .editor-copy-action,.editor-save-action { display:flex; align-items:center; justify-content:center; height:44px; border-radius:10px; font-family:inherit; font-size:12px; font-weight:850; text-align:center; cursor:pointer; }
         .editor-copy-action { border:1px solid #D4D4D8; background:#FFF; color:#3F3F46; }
         .editor-copy-action:hover { border-color:#A1A1AA; background:#FAFAFA; }
-        .editor-label-action { border:1px solid #D4D4D8; background:#FFF; color:#3F3F46; }
-        .editor-label-action:hover:not(:disabled) { border-color:#A1A1AA; background:#FAFAFA; }
-        .editor-label-action:disabled { color:#A1A1AA; background:#F4F4F5; cursor:not-allowed; }
         .editor-payment-action { display:flex; align-items:center; justify-content:center; height:44px; padding:0 10px; border:0; border-radius:10px; background:#344054; color:#FFF; font-family:inherit; font-size:12px; font-weight:850; white-space:nowrap; cursor:pointer; }
         .editor-payment-action:hover:not(:disabled) { background:#475467; }
         .editor-payment-action:disabled { background:#E4E7EC; color:#98A2B3; cursor:not-allowed; }
@@ -2370,24 +2367,8 @@
         .app-bottom-nav { position:fixed; left:50%; bottom:max(2px,env(safe-area-inset-bottom)); z-index:1900; display:grid; grid-template-columns:repeat(2,1fr); gap:2px; width:min(410px,calc(100% - 8px)); height:50px; padding:3px; border:1px solid #D4D4D8; border-radius:12px; background:rgba(255,255,255,.97); box-shadow:0 6px 20px rgba(0,0,0,.10); transform:translateX(-50%); backdrop-filter:blur(16px); }
         .app-bottom-nav a,.app-bottom-nav button { display:flex; align-items:center; justify-content:center; min-width:0; border:0; border-radius:10px; background:transparent; color:#64748B; font-family:inherit; font-size:10.5px; font-weight:850; text-decoration:none; white-space:nowrap; cursor:pointer; }
         .app-bottom-nav a.active { background:#2563EB; color:#fff; }
-        .shipping-label-print-root { display:none; }
         @media (max-width:820px) {
-            .editor-footer-actions { grid-template-columns:repeat(2,minmax(0,1fr)); }
-        }
-        @media print {
-            @page { size:50mm 15mm; margin:0; }
-            body > *:not(.shipping-label-print-root) { display:none !important; }
-            .shipping-label-print-root { display:block !important; margin:0; padding:0; }
-            .shipping-label { display:flex; width:50mm; height:15mm; padding:1.4mm 1.8mm; flex-direction:column; justify-content:center; overflow:hidden; color:#000; background:#fff; page-break-after:always; break-after:page; }
-            .shipping-label:last-child { page-break-after:auto; break-after:auto; }
-            .shipping-label-person { display:flex; align-items:baseline; gap:1.5mm; min-width:0; white-space:nowrap; }
-            .shipping-label-person strong { overflow:hidden; font-size:10.5pt; font-weight:900; text-overflow:ellipsis; }
-            .shipping-label-person span { flex:0 0 auto; font-size:8pt; font-weight:750; letter-spacing:-.02em; }
-            .shipping-label-destination { display:flex; align-items:baseline; gap:1.2mm; min-width:0; margin-top:.8mm; white-space:nowrap; }
-            .shipping-label-destination small { flex:0 0 auto; padding:.3mm .8mm; border:.25mm solid #000; border-radius:.8mm; font-size:6.5pt; font-weight:900; }
-            .shipping-label-destination b { overflow:hidden; font-size:8.2pt; font-weight:850; letter-spacing:-.04em; text-overflow:ellipsis; }
-            .shipping-label-destination b.is-long { font-size:7.2pt; }
-            .shipping-label-destination b.is-very-long { font-size:6.2pt; }
+            .editor-footer-actions { grid-template-columns:1fr; }
         }
     </style>
 </head>
@@ -2700,15 +2681,12 @@
                 </div>
                 <div class="editor-footer-actions">
                     <button class="editor-copy-action" id="editor-info-copy-btn" type="button">배송 안내</button>
-                    <button class="editor-label-action" id="editor-label-print-btn" type="button" onclick="printActiveBuyerLabels()">라벨 출력</button>
                     <button class="editor-save-action" type="button" onclick="saveWinnerEditor()">배송 저장</button>
                     <button class="editor-payment-action" id="editor-payment-confirm-btn" type="button" hidden>입금 확인</button>
                 </div>
             </div>
         </div>
     </div>
-    <div class="shipping-label-print-root" id="shipping-label-print-root" aria-hidden="true"></div>
-
     <script>
         const SHIPPING_CHANNEL_ID = String(new URLSearchParams(window.location.search).get('channel') || '')
             .toLowerCase().replace(/[^a-z0-9-]/g, '');
@@ -2869,41 +2847,6 @@
             const state = winnerStateMap[activeEditorWinner];
             if (!state) return null;
             return state.allItems.find(item => (item.company || '').trim() === activeSellerCompany) || state.allItems[0] || null;
-        }
-
-        function activeLabelDestination() {
-            if (editorShippingState.type === '직접수령') return editorShippingState.region || '';
-            if (editorShippingState.type !== '배송') return '';
-            if (editorShippingState.company === '기타') {
-                return document.getElementById('editor-custom-region')?.value.trim() || editorShippingState.region || '';
-            }
-            return [editorShippingState.company, editorShippingState.hub || editorShippingState.region]
-                .filter(Boolean).join(' · ');
-        }
-
-        function printActiveBuyerLabels() {
-            const state = winnerStateMap[activeEditorWinner];
-            if (!state) return showToast('낙찰자를 먼저 선택해 주세요.', true);
-            const items = state.allItems.filter(item => (item.company || '').trim() === activeSellerCompany);
-            const destination = activeLabelDestination();
-            if (!destination) return showToast('수령 거점샵을 먼저 선택해 주세요.', true);
-            const phone = fmtPhone(state.phone) || '연락처 없음';
-            const winnerName = state.winnerName || '낙찰자';
-            const destinationClass = destination.length > 24 ? 'is-very-long' : destination.length > 18 ? 'is-long' : '';
-            const root = document.getElementById('shipping-label-print-root');
-            root.innerHTML = (items.length ? items : [{}]).map(() => `
-                <section class="shipping-label">
-                    <div class="shipping-label-person"><strong>${escapeOverviewHtml(winnerName)}</strong><span>${escapeOverviewHtml(phone)}</span></div>
-                    <div class="shipping-label-destination"><small>수령</small><b class="${destinationClass}">${escapeOverviewHtml(destination)}</b></div>
-                </section>
-            `).join('');
-            root.setAttribute('aria-hidden', 'false');
-            window.addEventListener('afterprint', () => {
-                root.innerHTML = '';
-                root.setAttribute('aria-hidden', 'true');
-            }, { once:true });
-            showToast(`${Math.max(1, items.length)}장 라벨 인쇄를 준비했습니다.`);
-            requestAnimationFrame(() => window.print());
         }
 
         async function sendBuyerShippingLinkSms() {
@@ -4407,7 +4350,6 @@
 
             // 하단 작업 영역에서 배송 입력 링크 문자와 입금 확인을 한 번씩만 제공한다.
             const copyBtn = document.getElementById('editor-info-copy-btn');
-            const labelBtn = document.getElementById('editor-label-print-btn');
             const paymentConfirmBtn = document.getElementById('editor-payment-confirm-btn');
             const cleanPhone = (state.phone || '').replace(/[^0-9]/g, '');
 
@@ -4422,11 +4364,6 @@
                 copyBtn.onclick = sendBuyerShippingLinkSms;
                 copyBtn.disabled = !cleanPhone;
                 copyBtn.style.display = 'inline-flex';
-            }
-            if (labelBtn) {
-                const destination = activeLabelDestination();
-                labelBtn.disabled = !cleanPhone || !destination;
-                labelBtn.title = destination ? `${destination} 라벨 출력` : '수령 거점샵을 먼저 선택해 주세요.';
             }
             if (paymentConfirmBtn) {
                 const paid = grandTotal > 0 && state.payment_confirmed_amount >= grandTotal;

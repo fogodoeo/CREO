@@ -310,10 +310,8 @@ test('shipping editor exposes one buyer message action and a subdued payment con
     assert.match(shipping, /copyBtn\.onclick\s*=\s*sendBuyerShippingLinkSms/);
     assert.match(shipping, /class="editor-payment-action" id="editor-payment-confirm-btn"/);
     assert.match(shipping, /\.editor-payment-action\s*\{[^}]*background:#344054;[^}]*color:#FFF;/);
-    assert.match(shipping, /id="editor-label-print-btn"[^>]*>라벨 출력<\/button>/);
-    assert.match(shipping, /@page \{ size:50mm 15mm; margin:0; \}/);
-    assert.match(shipping, /shipping-label-person[^\n]*winnerName/);
-    assert.match(shipping, /shipping-label-destination[^\n]*destination/);
+    assert.match(shipping, /\.editor-footer-actions\s*\{[^}]*grid-template-columns:repeat\(3,minmax\(86px,1fr\)\)/);
+    assert.doesNotMatch(shipping, /editor-label-print-btn|printActiveBuyerLabels|shipping-label-print-root/);
     assert.doesNotMatch(shipping, /editor-capture-strip|촬영 대기 중|loadCaptureRecords/);
     assert.doesNotMatch(shipping, /토요일 집하|금요일 집하|hub-result-schedule/);
     assert.doesNotMatch(shipping, />요금표<|shipping-rates-nav/);
@@ -596,6 +594,15 @@ test('print forms remain available inside the shared registration workspace with
     assert.match(print, />경매 리스트<\/button>/);
     assert.match(print, />낙찰 결과<\/button>/);
     assert.match(print, />구매자별<\/button>/);
+    assert.match(print, />배송 라벨<\/button>/);
+    assert.match(print, /id="label-item-list"/);
+    assert.match(print, /function renderShippingLabels\(items\)/);
+    assert.match(print, /function printSelectedShippingLabels\(\)/);
+    assert.match(print, /shipping-label-page-size/);
+    assert.match(print, /size:50mm 15mm;margin:0/);
+    assert.match(print, /shipping-label-person[^\n]*winner\.name/);
+    assert.match(print, /shipping-label-destination[^\n]*destination/);
+    assert.match(print, /payment_status: shipment && shipment\.paymentStatus/);
     assert.match(print, /function toggleOrientation\(\)/);
     assert.match(print, /shippingText\(it\)/);
     assert.match(print, /id="print-login"/);
