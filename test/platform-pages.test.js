@@ -614,10 +614,12 @@ test('print forms remain available inside the shared registration workspace with
     assert.match(print, /id="label-item-list"/);
     assert.match(print, /function renderShippingLabels\(items\)/);
     assert.match(print, /function printSelectedShippingLabels\(\)/);
-    assert.match(print, /shipping-label-page-size/);
-    assert.match(print, /size:50mm 15mm;margin:0/);
-    assert.match(print, /shipping-label-person[^\n]*winner\.name/);
-    assert.match(print, /shipping-label-destination[^\n]*destination/);
+    assert.match(print, /D10_LABEL_BRIDGE_BASE\s*=\s*['"]http:\/\/127\.0\.0\.1:17876['"]/);
+    assert.match(print, /fetchD10Bridge\('\/v1\/labels'/);
+    assert.match(print, /labels:\s*items\.map\(d10ShippingLabelPayload\)/);
+    assert.match(print, /destination:\s*shippingLabelDestination\(it\)/);
+    assert.doesNotMatch(print, /shipping-label-page-size|label-print-mode/);
+    assert.doesNotMatch(print, /function printSelectedShippingLabels\([\s\S]*?window\.print\(\)/);
     assert.match(print, /payment_status: shipment && shipment\.paymentStatus/);
     assert.match(print, /function toggleOrientation\(\)/);
     assert.match(print, /shippingText\(it\)/);

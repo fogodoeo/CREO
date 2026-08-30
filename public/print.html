@@ -332,7 +332,9 @@
         .label-item .label-payment { justify-self:end; padding: 5px 8px; border-radius: 999px; background:#fff7ed; color:#c2410c; font-size:11px; font-weight:850; }
         .label-item .label-payment.is-paid { background:#ecfdf5; color:#047857; }
         .label-empty { padding: 52px 18px; border:1px dashed #cbd5e1; border-radius:12px; color:#64748b; text-align:center; }
-        .shipping-label-print-root { display:none; }
+        .label-printer-status { display:inline-flex; align-items:center; gap:6px; padding:6px 9px; border-radius:8px; background:#f1f5f9; color:#475569; font-size:12px; font-weight:800; }
+        .label-printer-status.is-ready { background:#ecfdf5; color:#047857; }
+        .label-printer-status.is-error { background:#fff1f2; color:#be123c; }
 
         .loading {
             text-align: center;
@@ -531,18 +533,6 @@
 
             .login-gate { display:none !important; }
 
-            body.label-print-mode > *:not(.shipping-label-print-root) { display:none !important; }
-            body.label-print-mode .shipping-label-print-root { display:block !important; margin:0; padding:0; }
-            body.label-print-mode .shipping-label { display:flex; width:50mm; height:15mm; padding:1.4mm 1.8mm; flex-direction:column; justify-content:center; overflow:hidden; color:#000; background:#fff; page-break-after:always; break-after:page; }
-            body.label-print-mode .shipping-label:last-child { page-break-after:auto; break-after:auto; }
-            body.label-print-mode .shipping-label-person { display:flex; align-items:baseline; gap:1.5mm; min-width:0; white-space:nowrap; }
-            body.label-print-mode .shipping-label-person strong { overflow:hidden; font-size:10.5pt; font-weight:900; text-overflow:ellipsis; }
-            body.label-print-mode .shipping-label-person span { flex:0 0 auto; font-size:8pt; font-weight:750; letter-spacing:-.02em; }
-            body.label-print-mode .shipping-label-destination { display:flex; align-items:baseline; gap:1.2mm; min-width:0; margin-top:.8mm; white-space:nowrap; }
-            body.label-print-mode .shipping-label-destination small { flex:0 0 auto; padding:.3mm .8mm; border:.25mm solid #000; border-radius:.8mm; font-size:6.5pt; font-weight:900; }
-            body.label-print-mode .shipping-label-destination b { overflow:hidden; font-size:8.2pt; font-weight:850; letter-spacing:-.04em; text-overflow:ellipsis; }
-            body.label-print-mode .shipping-label-destination b.is-long { font-size:7.2pt; }
-            body.label-print-mode .shipping-label-destination b.is-very-long { font-size:6.2pt; }
         }
 
         @media (max-width: 860px) {
@@ -618,13 +608,12 @@
             <div class="label-toolbar">
                 <label><input id="label-select-all" type="checkbox" onchange="toggleAllShippingLabels(this.checked)"> 전체 선택</label>
                 <span>결제 완료 건이 기본 선택됩니다.</span>
+                <span class="label-printer-status" id="label-printer-status">D10 앱 연결 확인 중</span>
                 <span class="label-selection-summary" id="label-selection-summary">0장 선택</span>
             </div>
             <div class="label-item-list" id="label-item-list"><div class="loading">불러오는 중...</div></div>
         </div>
     </div>
-
-    <div class="shipping-label-print-root" id="shipping-label-print-root" aria-hidden="true"></div>
 
     <section class="login-gate" id="print-login" hidden>
         <div class="login-card"><h2>운영자 확인</h2><p id="print-login-description">인쇄 자료를 불러오려면 관리자 비밀번호를 입력해 주세요.</p><form id="print-login-form"><input id="print-password" type="password" autocomplete="current-password" required><button type="submit">확인</button></form><div class="login-error" id="print-login-error"></div></div>
@@ -640,7 +629,8 @@
             var labelMode = name === 'labels';
             document.getElementById('table-print-controls').hidden = labelMode;
             document.getElementById('orientation-btn').hidden = labelMode;
-            document.getElementById('print-action-btn').textContent = labelMode ? '선택 라벨 인쇄' : '인쇄';
+            document.getElementById('print-action-btn').textContent = labelMode ? 'D10 선택 출력' : '인쇄';
+            if (labelMode) refreshD10PrinterStatus();
             setTimeout(initResize, 50);
             if (name === 'company') {
                 setTimeout(function () { drawConnectionLines(window._phoneRowMap, window._phoneColors); }, 100);
@@ -807,35 +797,82 @@
             updateShippingLabelSelection();
         }
 
-        function printSelectedShippingLabels() {
+        var D10_LABEL_BRIDGE_BASE = 'http://127.0.0.1:17876';
+
+        function setD10PrinterStatus(message, state) {
+            var status = document.getElementById('label-printer-status');
+            status.textContent = message;
+            status.classList.toggle('is-ready', state === 'ready');
+            status.classList.toggle('is-error', state === 'error');
+        }
+
+        async function fetchD10Bridge(path, options, timeoutMs) {
+            var controller = new AbortController();
+            var timer = setTimeout(function () { controller.abort(); }, timeoutMs || 3500);
+            try {
+                return await fetch(D10_LABEL_BRIDGE_BASE + path, Object.assign({}, options || {}, {
+                    cache: 'no-store',
+                    signal: controller.signal
+                }));
+            } finally {
+                clearTimeout(timer);
+            }
+        }
+
+        async function refreshD10PrinterStatus() {
+            setD10PrinterStatus('D10 앱 연결 확인 중', 'checking');
+            try {
+                var response = await fetchD10Bridge('/v1/status', { method: 'GET' }, 2200);
+                if (!response.ok) throw new Error('브리지 응답 오류');
+                var payload = await response.json();
+                var suffix = payload.printing ? ' · 인쇄 중' : payload.queued ? ' · 대기 ' + payload.queued + '장' : '';
+                setD10PrinterStatus('D10 앱 연결됨' + suffix, 'ready');
+                return true;
+            } catch (_error) {
+                setD10PrinterStatus('D10 앱 미연결', 'error');
+                return false;
+            }
+        }
+
+        function d10ShippingLabelPayload(it) {
+            var winner = parseWinner(it.winner);
+            return {
+                lot_number: String(it.name || auctionNumber(it) || '').trim(),
+                winner_name: winner.name || '낙찰자',
+                winner_phone: winner.phone || '',
+                destination: shippingLabelDestination(it)
+            };
+        }
+
+        async function printSelectedShippingLabels() {
             var items = selectedShippingLabelItems();
             if (!items.length) {
                 alert('출력할 배송 라벨을 선택해 주세요.');
                 return;
             }
-            var root = document.getElementById('shipping-label-print-root');
-            root.innerHTML = items.map(function (it) {
-                var winner = parseWinner(it.winner);
-                var destination = shippingLabelDestination(it);
-                var destinationClass = destination.length > 24 ? 'is-very-long' : destination.length > 18 ? 'is-long' : '';
-                return '<section class="shipping-label">'
-                    + '<div class="shipping-label-person"><strong>' + escapePrintHtml(winner.name || '낙찰자') + '</strong><span>' + escapePrintHtml(fmtPhone(winner.phone)) + '</span></div>'
-                    + '<div class="shipping-label-destination"><small>수령</small><b class="' + destinationClass + '">' + escapePrintHtml(destination) + '</b></div>'
-                    + '</section>';
-            }).join('');
-            root.setAttribute('aria-hidden', 'false');
-            document.body.classList.add('label-print-mode');
-            var pageStyle = document.createElement('style');
-            pageStyle.id = 'shipping-label-page-size';
-            pageStyle.textContent = '@media print{@page{size:50mm 15mm;margin:0}}';
-            document.head.appendChild(pageStyle);
-            window.addEventListener('afterprint', function () {
-                document.body.classList.remove('label-print-mode');
-                root.innerHTML = '';
-                root.setAttribute('aria-hidden', 'true');
-                pageStyle.remove();
-            }, { once:true });
-            requestAnimationFrame(function () { window.print(); });
+            var button = document.getElementById('print-action-btn');
+            button.disabled = true;
+            button.textContent = 'D10 전송 중...';
+            setD10PrinterStatus('D10 대기열 전송 중', 'checking');
+            try {
+                var response = await fetchD10Bridge('/v1/labels', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        channel: PRINT_CHANNEL_ID,
+                        labels: items.map(d10ShippingLabelPayload)
+                    })
+                }, 5000);
+                var payload = await response.json().catch(function () { return {}; });
+                if (!response.ok || !payload.ok) throw new Error(payload.error || 'D10 대기열에 전송하지 못했습니다.');
+                setD10PrinterStatus('D10 ' + payload.accepted + '장 출력 대기', 'ready');
+            } catch (error) {
+                setD10PrinterStatus('D10 앱 미연결', 'error');
+                alert('밴드 모니터링 앱을 실행한 뒤 다시 눌러 주세요.\nPDF 인쇄로 전환되지 않습니다.');
+            } finally {
+                button.disabled = false;
+                button.textContent = 'D10 선택 출력';
+            }
         }
 
         var headersAll = '<th>번호</th><th>구분</th><th>이름</th><th>업체</th><th>낙찰가</th><th>낙찰자</th><th>연락처</th><th>배송</th><th>상태</th>';
