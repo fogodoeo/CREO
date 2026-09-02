@@ -1272,6 +1272,10 @@ function createPlatformApi({
             key: group.key,
             id: group.vendor?.id || '',
             name: group.vendor?.name || group.items[0]?.vendorName || '업체',
+            contact: {
+                manager: cleanText(group.vendor?.manager, 60),
+                phone: normalizePhone(group.vendor?.phone)
+            },
             paymentMethods: methods,
             items: group.items.map((item) => ({
                 id: item.id,

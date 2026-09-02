@@ -377,6 +377,8 @@ test('buyer and vendor checkout pages are short-code based and support the full 
     assert.match(source, /data-payment-vendor/);
     assert.match(source, /카드결제 페이지 열기/);
     assert.match(source, /state\.data\.vendors\.map/);
+    assert.match(source, /class="vendor-contact"/);
+    assert.match(source, /vendor\.contact\?\.phone/);
     assert.match(source, /href="\/checkout-ui\.css/);
     assert.match(source, /src="\/checkout-client\.js/);
     assert.match(source, /Checkout\.createClient/);

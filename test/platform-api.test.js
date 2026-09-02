@@ -272,6 +272,7 @@ test('vendor checkout link handles card URL, buyer report, confirmation, duplica
     }, '');
     assert.equal(saved.status, 200, saved.body);
     assert.equal(saved.json().vendors[0].payment.status, 'card_link_pending');
+    assert.equal(saved.json().vendors[0].contact.phone, '01077778888');
 
     const vendorLink = await call(api, 'POST', '/api/platform/channels/alpha/vendor-checkout-link', { vendorId: 'vendor-card' });
     assert.equal(vendorLink.status, 200, vendorLink.body);
@@ -307,6 +308,7 @@ test('vendor checkout link handles card URL, buyer report, confirmation, duplica
 
     const buyerReady = await call(api, 'GET', `/api/platform/buyer-shipping?code=${buyerCode}`, null, '');
     assert.equal(buyerReady.json().vendors[0].payment.cardPaymentUrl, 'https://pay.example.com/orders/abc');
+    assert.equal(buyerReady.json().vendors[0].contact.phone, '01077778888');
     const reportBody = { code: buyerCode, vendorKey: 'vendor-card', requestId: 'buyer-payment-report-1' };
     const [reported, reportedAgain] = await Promise.all([
         call(api, 'POST', '/api/platform/buyer-shipping/report-payment', reportBody, ''),
