@@ -686,6 +686,8 @@ test('print forms have one canonical page linked from both pipeline and workspac
     assert.match(print, /channel-adapters\.js/);
     assert.match(print, /channel-runtime\.js/);
     assert.match(print, /operation-channel\.js/);
+    assert.match(print, /pretendardvariable-dynamic-subset\.min\.css/);
+    assert.doesNotMatch(print, /@import\s+url\([^)]*pretendard/i);
     assert.doesNotMatch(print, /CreoPlatform\.api\('active-channel'\)/);
     assert.match(print, /인쇄할 채널 주소가 없습니다/);
     assert.doesNotMatch(print, /get\('channel'\) \|\| 'cdcup'/);
@@ -733,6 +735,9 @@ test('print forms have one canonical page linked from both pipeline and workspac
     assert.match(print, /CreoGoogleSheetsExport\.createSpreadsheet/);
     assert.match(print, /function toggleOrientation\(\)/);
     assert.match(print, /shippingText\(it\)/);
+    assert.match(print, /\.status-wait\s*\{\s*color:\s*#aaa;\s*\}/);
+    assert.doesNotMatch(print, /\.status-wait\s*\{\s*\.col-item-name/);
+    assert.equal((print.match(/\.col-winner\s*\{/g) || []).length, 1, 'print column rules must have one owner');
     assert.match(print, /id="print-login"/);
     assert.doesNotMatch(print, /channelId\s*===\s*['"]creyon['"]/);
 });
