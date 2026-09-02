@@ -1,0 +1,47 @@
+:root {
+    color-scheme: light;
+    --ink: #181a1e;
+    --muted: #70747c;
+    --line: #e5e7e9;
+    --soft: #f5f5f3;
+    --green: #176b49;
+    --red: #a33d36;
+    --checkout-width: 680px;
+    --item-index-width: 44px;
+    --item-font-size: 13px;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: #eceeec; color: var(--ink); font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; letter-spacing: -.025em; }
+button, input { font: inherit; }
+.shell { width: min(var(--checkout-width), 100%); min-height: 100vh; margin: auto; background: #fff; }
+.top { padding: 22px 20px 19px; border-bottom: 1px solid var(--line); }
+.brand { display: flex; align-items: center; justify-content: space-between; color: var(--muted); font-size: 11px; font-weight: 850; }
+.brand b { color: var(--ink); font-size: 13px; letter-spacing: .18em; }
+.brand-right { display: flex; align-items: center; gap: 9px; }
+.sync { display: inline-flex; align-items: center; gap: 5px; color: var(--green); font-style: normal; white-space: nowrap; }
+.sync::before { width: 6px; height: 6px; border-radius: 50%; background: currentColor; content: ""; }
+.sync[data-state="waiting"] { color: #9a6b1d; }
+.sync[data-state="error"] { color: var(--red); }
+h1 { margin: 18px 0 5px; font-size: 25px; line-height: 1.25; }
+.lead { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
+.items { border-top: 1px solid var(--ink); }
+.item { display: grid; grid-template-columns: var(--item-index-width) minmax(0, 1fr) auto; gap: 9px; align-items: center; padding: 10px 1px; border-bottom: 1px solid var(--line); font-size: var(--item-font-size); }
+.item small { color: var(--muted); }
+.item b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.item strong { font-variant-numeric: tabular-nums; }
+.badge { align-self: center; padding: 4px 8px; border-radius: 99px; background: #eceef0; color: #666b72; font-size: 10px; font-weight: 850; }
+.badge.green { background: #e7f4ed; color: var(--green); }
+.badge.red { background: #f9eae8; color: var(--red); }
+.row { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; }
+.row span { color: var(--muted); }
+.row strong { font-variant-numeric: tabular-nums; }
+.loading, .error, .empty { padding: 70px 22px; text-align: center; }
+.loading b, .error b, .empty b { display: block; font-size: 18px; }
+.loading span, .error span, .empty span { display: block; margin-top: 8px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+[hidden] { display: none !important; }
+
+@media (max-width: 420px) {
+    .top, main { padding-left: 16px; padding-right: 16px; }
+    h1 { font-size: 23px; }
+}
