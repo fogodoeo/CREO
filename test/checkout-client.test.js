@@ -57,12 +57,16 @@ test('checkout client sends short-code auth consistently for reads and mutations
     assert.equal(client.valid, true);
     await client.request();
     await client.request('/save', { destinationId: 'hub-1', requestId: 'request-1' });
+    await client.revision('alpha');
     assert.equal(calls[0].url, 'https://creok.onrender.com/api/platform/buyer-shipping?code=Buyer_123');
     assert.equal(calls[0].options.method, 'GET');
     assert.equal(calls[1].url, 'https://creok.onrender.com/api/platform/buyer-shipping/save');
     assert.deepEqual(JSON.parse(calls[1].options.body), {
         code: 'Buyer_123', destinationId: 'hub-1', requestId: 'request-1'
     });
+    assert.equal(calls[2].url, 'https://creok.onrender.com/api/platform/channels/alpha/broadcast-pulse');
+    assert.equal(calls[2].options.cache, 'no-store');
+    await assert.rejects(() => client.revision('../alpha'), /채널 정보/);
 });
 
 test('checkout client retries server failures but not validation failures', async () => {
@@ -87,4 +91,73 @@ test('checkout client retries server failures but not validation failures', asyn
     });
     await assert.rejects(() => invalid.request(), /입력 오류/);
     assert.equal(validationAttempts, 1);
+});
+
+test('checkout revision sync protects drafts and refreshes once they are clear', async () => {
+    let revision = 1;
+    let draft = true;
+    let refreshes = 0;
+    const statuses = [];
+    const sync = Checkout.createRevisionSync({
+        document: { hidden: false },
+        fetchRevision: async () => ({ checkoutRevision: 2 }),
+        currentRevision: () => revision,
+        hasDraft: () => draft,
+        refresh: async () => {
+            refreshes += 1;
+            revision = 2;
+            return true;
+        },
+        onStatus: (text, state) => statuses.push([text, state]),
+        settleDelay: 0
+    });
+
+    assert.equal(await sync.poll(), 'draft');
+    assert.equal(refreshes, 0);
+    assert.deepEqual(statuses.at(-1), ['새 변경 있음', 'waiting']);
+
+    draft = false;
+    assert.equal(await sync.poll(), 'refreshed');
+    assert.equal(refreshes, 1);
+    assert.deepEqual(statuses.slice(-2), [['반영 중…', 'waiting'], ['방금 반영', 'live']]);
+});
+
+test('checkout revision sync serializes overlapping polls', async () => {
+    let release;
+    let fetches = 0;
+    const waiting = new Promise(resolve => { release = resolve; });
+    const sync = Checkout.createRevisionSync({
+        document: { hidden: false },
+        fetchRevision: async () => {
+            fetches += 1;
+            await waiting;
+            return { checkoutRevision: 1 };
+        },
+        currentRevision: () => 1,
+        refresh: async () => true,
+        settleDelay: 0
+    });
+
+    const first = sync.poll();
+    assert.equal(await sync.poll(), 'skipped');
+    release();
+    assert.equal(await first, 'current');
+    assert.equal(fetches, 1);
+});
+
+test('checkout revision sync fails closed on a malformed pulse', async () => {
+    let refreshes = 0;
+    const statuses = [];
+    const sync = Checkout.createRevisionSync({
+        document: { hidden: false },
+        fetchRevision: async () => ({}),
+        currentRevision: () => 1,
+        refresh: async () => { refreshes += 1; },
+        onStatus: (text, state) => statuses.push([text, state]),
+        settleDelay: 0
+    });
+
+    assert.equal(await sync.poll(), 'failed');
+    assert.equal(refreshes, 0);
+    assert.deepEqual(statuses, [['재연결 중', 'error']]);
 });

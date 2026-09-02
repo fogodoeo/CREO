@@ -86,11 +86,27 @@
             throw lastError || new Error('서버에 연결하지 못했습니다.');
         }
 
+        async function revision(channelId) {
+            const id = String(channelId || '').toLowerCase();
+            if (!/^[a-z0-9-]{1,32}$/.test(id)) throw new Error('채널 정보가 올바르지 않습니다.');
+            const response = await fetchImpl(`${apiOrigin}/api/platform/channels/${encodeURIComponent(id)}/broadcast-pulse`, {
+                cache: 'no-store'
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                const error = new Error(payload.error || `연결 오류 ${response.status}`);
+                error.status = response.status;
+                throw error;
+            }
+            return payload;
+        }
+
         return Object.freeze({
             apiOrigin,
             credential: credentialObject,
             valid: Boolean(apiOrigin && (credential.code || credential.token)),
-            request
+            request,
+            revision
         });
     }
 
@@ -124,5 +140,77 @@
         return Object.freeze({ start, stop });
     }
 
-    return Object.freeze({ byId, createAdaptivePoller, createClient, escapeHtml, money, readCredential, requestId, resolveApiOrigin });
+    function createRevisionSync(options = {}) {
+        const documentObject = options.document || document;
+        const fetchRevision = options.fetchRevision;
+        const currentRevision = options.currentRevision;
+        const refresh = options.refresh;
+        const isReady = options.isReady || (() => true);
+        const isBusy = options.isBusy || (() => false);
+        const hasDraft = options.hasDraft || (() => false);
+        const readRevision = options.readRevision || (payload => payload?.checkoutRevision);
+        const onStatus = options.onStatus || (() => {});
+        const settleDelay = Math.max(0, Number(options.settleDelay ?? 1800) || 0);
+        if (typeof fetchRevision !== 'function' || typeof currentRevision !== 'function' || typeof refresh !== 'function') {
+            throw new TypeError('Revision sync requires fetchRevision, currentRevision, and refresh');
+        }
+
+        let inFlight = false;
+        let statusState = 'live';
+        let settleTimer = null;
+
+        function publish(text, stateName = 'live') {
+            statusState = stateName;
+            clearTimeout(settleTimer);
+            onStatus(text, stateName);
+            if (text === '방금 반영' && settleDelay > 0) {
+                settleTimer = setTimeout(() => publish('실시간', 'live'), settleDelay);
+            }
+        }
+
+        async function poll() {
+            if (documentObject.hidden || inFlight || isBusy() || !isReady()) return 'skipped';
+            inFlight = true;
+            try {
+                const next = await fetchRevision();
+                const nextValue = readRevision(next);
+                const currentValue = currentRevision();
+                const nextRevision = Number(nextValue);
+                const loadedRevision = Number(currentValue);
+                if (
+                    nextValue === undefined || nextValue === null
+                    || currentValue === undefined || currentValue === null
+                    || !Number.isFinite(nextRevision) || !Number.isFinite(loadedRevision)
+                ) throw new Error('Checkout revision is unavailable');
+                if (nextRevision !== loadedRevision) {
+                    if (hasDraft()) {
+                        publish('새 변경 있음', 'waiting');
+                        return 'draft';
+                    }
+                    publish('반영 중…', 'waiting');
+                    if (await refresh() !== false) {
+                        publish('방금 반영', 'live');
+                        return 'refreshed';
+                    }
+                    publish('재연결 중', 'error');
+                    return 'failed';
+                }
+                if (statusState === 'error') publish('실시간', 'live');
+                return 'current';
+            } catch (_) {
+                publish('재연결 중', 'error');
+                return 'failed';
+            } finally {
+                inFlight = false;
+            }
+        }
+
+        function stop() {
+            clearTimeout(settleTimer);
+        }
+
+        return Object.freeze({ poll, publish, stop });
+    }
+
+    return Object.freeze({ byId, createAdaptivePoller, createClient, createRevisionSync, escapeHtml, money, readCredential, requestId, resolveApiOrigin });
 });

@@ -377,6 +377,7 @@ test('shipping mutations refresh only current data and preserve the active edito
 test('buyer and vendor checkout pages are short-code based and support the full payment workflow', () => {
     const source = fs.readFileSync(path.join(__dirname, '..', 'public', 'buyer-shipping.html'), 'utf8');
     const vendor = fs.readFileSync(path.join(__dirname, '..', 'public', 'vendor-checkout.html'), 'utf8');
+    const checkoutClient = fs.readFileSync(path.join(__dirname, '..', 'public', 'checkout-client.js'), 'utf8');
     const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
     assert.match(source, /id="destinations"/);
     assert.match(source, /id="parge-search"/);
@@ -403,8 +404,9 @@ test('buyer and vendor checkout pages are short-code based and support the full 
     assert.match(source, /status==='additional_payment'\)return\['추가 결제'/);
     assert.match(source, /입금했습니다/);
     assert.match(source, /id="sync"[^>]*role="status">실시간/);
-    assert.match(source, /\/broadcast-pulse/);
-    assert.match(source, /checkoutRevision/);
+    assert.doesNotMatch(source, /\/broadcast-pulse/);
+    assert.match(source, /Checkout\.createRevisionSync/);
+    assert.doesNotMatch(source, /function setSync|pulseBusy/);
     assert.doesNotMatch(source, /schedulePulse\(delay=1200\)/);
     assert.doesNotMatch(source, /setInterval\(/);
     assert.doesNotMatch(source, /const params=new URLSearchParams\(location\.search\),pathCode=/);
@@ -417,13 +419,17 @@ test('buyer and vendor checkout pages are short-code based and support the full 
     assert.match(vendor, /카드결제 URL을 등록/);
     assert.match(vendor, /실제 입금·승인 내역/);
     assert.match(vendor, /id="sync"[^>]*role="status">실시간/);
-    assert.match(vendor, /\/broadcast-pulse/);
-    assert.match(vendor, /checkoutRevision/);
-    assert.match(vendor, /새 변경 있음/);
+    assert.doesNotMatch(vendor, /\/broadcast-pulse/);
+    assert.match(vendor, /Checkout\.createRevisionSync/);
+    assert.doesNotMatch(vendor, /function setSync|pulseBusy/);
     assert.match(vendor, /Checkout\.createAdaptivePoller/);
     assert.doesNotMatch(vendor, /schedulePulse\(delay=1200\)/);
     assert.doesNotMatch(vendor, /const params=new URLSearchParams\(location\.search\),pathCode=/);
     assert.doesNotMatch(vendor, /setInterval\(/);
+    assert.match(checkoutClient, /function createRevisionSync/);
+    assert.match(checkoutClient, /\/broadcast-pulse/);
+    assert.match(checkoutClient, /checkoutRevision/);
+    assert.match(checkoutClient, /새 변경 있음/);
     assert.match(server, /buyerShippingShortMatch = \/\^\\\/s\\\//);
     assert.match(server, /new URL\('\/buyer-shipping\.html', url\)/);
     assert.match(server, /serveStatic\(req, res, buyerPageUrl\)/);

@@ -1909,6 +1909,15 @@ function createPlatformApi({
         return revisionSequence;
     }
 
+    function touchRecord(channelId, type, before = null, after = null) {
+        if (
+            type === 'shipment'
+            || type === 'vendor'
+            || (type === 'item' && (isSoldItem(before || {}) || isSoldItem(after || {})))
+        ) touchCheckout(channelId);
+        return touchChannel(channelId);
+    }
+
     async function loadCatalog() {
         const catalog = await repository.getCatalog();
         catalog.channels.forEach((channel) => knownChannelIds.add(channel.id));
@@ -3826,7 +3835,7 @@ function createPlatformApi({
                         return;
                     }
                     const saved = await repository.upsertRecord(channelId, type, record);
-                    touchChannel(channelId);
+                    touchRecord(channelId, type, null, saved);
                     replyJson(res, 201, { record: saved });
                 });
                 return true;
@@ -3927,7 +3936,7 @@ function createPlatformApi({
                         return;
                     }
                     const saved = await repository.upsertRecord(channelId, type, record);
-                    touchChannel(channelId);
+                    touchRecord(channelId, type, current, saved);
                     replyJson(res, 200, { record: saved });
                 });
                 return true;
@@ -3936,6 +3945,7 @@ function createPlatformApi({
             if (segments.length === 4 && method === 'DELETE') {
                 await withMutationLock(`channel:${channelId}`, async () => {
                     const data = await workspace(channelId);
+                    const deletedRecord = data[segments[2]]?.find((record) => record.id === segments[3]) || null;
                     if (type === 'vendor') {
                         const usedByItem = data.items.some((item) => item.vendorId === segments[3]);
                         const usedByShipment = data.shipments.some((shipment) => shipment.vendorId === segments[3]);
@@ -3949,7 +3959,7 @@ function createPlatformApi({
                         return;
                     }
                     await repository.deleteRecord(channelId, type, segments[3]);
-                    touchChannel(channelId);
+                    touchRecord(channelId, type, deletedRecord, null);
                     replyJson(res, 200, { deleted: true });
                 });
                 return true;

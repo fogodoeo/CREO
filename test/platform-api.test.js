@@ -2047,6 +2047,37 @@ test('350 ms broadcast pulse is memory-only and changes after a public mutation'
     assert.equal(full.json().revision, pulse.json().revision);
 });
 
+test('generic sold records invalidate checkout pages without polling every live bid', async () => {
+    const repository = new MemoryRepository();
+    const api = createPlatformApi({ repository, logger: { error() {} } });
+    await call(api, 'GET', '/api/platform/channels', null, '');
+
+    const before = await call(api, 'GET', '/api/platform/channels/alpha/broadcast-pulse', null, '');
+    const waiting = await call(api, 'POST', '/api/platform/channels/alpha/items', {
+        record: { id: 'waiting-import', lotNumber: 1, name: 'A01', status: 'waiting' }
+    });
+    assert.equal(waiting.status, 201, waiting.body);
+    const afterWaiting = await call(api, 'GET', '/api/platform/channels/alpha/broadcast-pulse', null, '');
+    assert.equal(afterWaiting.json().checkoutRevision, before.json().checkoutRevision);
+
+    const live = await call(api, 'PUT', '/api/platform/channels/alpha/items/waiting-import', {
+        record: { ...waiting.json().record, status: 'live', bidLog: [{ name: '입찰자', amount: 10000 }] }
+    });
+    assert.equal(live.status, 200, live.body);
+    const afterLive = await call(api, 'GET', '/api/platform/channels/alpha/broadcast-pulse', null, '');
+    assert.equal(afterLive.json().checkoutRevision, before.json().checkoutRevision);
+
+    const soldImport = await call(api, 'POST', '/api/platform/channels/alpha/items', {
+        record: {
+            id: 'sold-import', lotNumber: 2, name: 'A02', status: 'sold', soldPrice: 120000,
+            winnerName: '테스트구매자', winnerPhone: '01012345678'
+        }
+    });
+    assert.equal(soldImport.status, 201, soldImport.body);
+    const afterSold = await call(api, 'GET', '/api/platform/channels/alpha/broadcast-pulse', null, '');
+    assert.ok(afterSold.json().checkoutRevision > afterLive.json().checkoutRevision);
+});
+
 test('temporary channels can only be deleted when inactive and empty', async () => {
     const repository = new MemoryRepository();
     const api = createPlatformApi({ repository, logger: { error() {} } });
