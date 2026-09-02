@@ -520,6 +520,7 @@ test('new CDCUP overlays and shipping retain compatibility with the established 
     const control = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-control.html'), 'utf8');
     const channelShipping = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-shipping.html'), 'utf8');
     const shipping = fs.readFileSync(path.join(__dirname, '..', 'public', 'shipping.html'), 'utf8');
+    const buyerShipping = fs.readFileSync(path.join(__dirname, '..', 'public', 'buyer-shipping.html'), 'utf8');
     for (const source of [live, control]) {
         assert.match(source, /getBroadcastItemsCached/);
         assert.match(source, /CreoBroadcastProfiles\.usesLegacyData/);
@@ -553,7 +554,9 @@ test('new CDCUP overlays and shipping retain compatibility with the established 
     assert.match(shipping, /settlement-discount\.js/);
     assert.match(shipping, /function settlementDiscountFor/);
     assert.match(shipping, /settlement\.payableAuctionAmount \+ shippingShare/);
-    assert.match(shipping, /settlement\.payableAuctionAmount \+ totalShipping/);
+    assert.match(buyerShipping, /const globalShipping\(\)|function globalShipping\(\)/);
+    assert.doesNotMatch(shipping, /buyer-view|buyerFoundItems|buyerShippingState|\?buyer=1/);
+    assert.ok(Buffer.byteLength(shipping, 'utf8') < 220_000, 'admin shipping must not retain the retired buyer application');
     assert.match(shipping, /adapter\.loadShippingItems/);
     assert.match(shipping, /adapter\.saveShippingItem/);
     assert.match(shipping, /saveShippingItem/);
@@ -569,7 +572,8 @@ test('new CDCUP overlays and shipping retain compatibility with the established 
     assert.match(shipping, /배송업체 로그인/);
     assert.match(shipping, /channel\?\.name \|\| SHIPPING_CHANNEL_ID/);
     assert.match(shipping, /document\.title = `\$\{label\} · 배송관리`/);
-    assert.match(shipping, /id="shipping-buyer-title"/);
+    assert.match(buyerShipping, /id="buyer-name"/);
+    assert.match(buyerShipping, /shortPrefix:'s'/);
     assert.doesNotMatch(shipping, /id="shipping-workspace-link"/);
     assert.match(shipping, /if \(!SHIPPING_CHANNEL_ID\) location\.replace\('\/'\)/);
     assert.doesNotMatch(shipping, /get\('channel'\) \|\| 'cdcup'/);

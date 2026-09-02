@@ -272,67 +272,6 @@
             text-shadow: 0 0 10px rgba(239, 68, 68, 0.15);
         }
 
-        /* Buyer UI option tabs */
-        .buyer-item-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 16px 20px;
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            margin-bottom: 12px;
-            background: rgba(255, 255, 255, 0.02);
-            font-weight: 600;
-        }
-
-        .buyer-shipping-options {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            margin-top: 10px;
-            margin-bottom: 20px;
-        }
-
-        .buyer-option-btn {
-            padding: 16px 8px;
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            background: rgba(255, 255, 255, 0.03);
-            font-size: 14px;
-            font-weight: 700;
-            color: var(--text-secondary);
-            cursor: pointer;
-            text-align: center;
-            transition: all 0.25s ease;
-        }
-
-        .buyer-option-btn:hover {
-            background: rgba(255, 255, 255, 0.08);
-            border-color: rgba(255, 255, 255, 0.2);
-            color: #FFFFFF;
-        }
-
-        .buyer-option-btn.active {
-            border-color: var(--accent);
-            background: var(--accent-light);
-            color: #FFFFFF;
-            box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
-        }
-
-        .buyer-form-detail {
-            background: rgba(255, 255, 255, 0.01);
-            border: 1px solid var(--border);
-            border-radius: 18px;
-            padding: 24px;
-            margin-bottom: 24px;
-        }
-
-        .buyer-form-columns {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-            margin-top: 16px;
-        }
 
         /* Toast notifications */
         .toast {
@@ -416,39 +355,6 @@
             border: 1px solid rgba(16, 185, 129, 0.3) !important;
         }
 
-        /* Region Categories Quick Tabs */
-        .modal-regions-tabs {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            margin-top: 4px;
-            margin-bottom: 8px;
-        }
-
-        .region-tab-btn {
-            padding: 6px 12px;
-            border-radius: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            background: rgba(255, 255, 255, 0.02);
-            color: var(--text-secondary);
-            font-size: 12px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .region-tab-btn:hover {
-            background: rgba(255, 255, 255, 0.06);
-            color: #FFFFFF;
-            border-color: rgba(255, 255, 255, 0.12);
-        }
-
-        .region-tab-btn.active {
-            background: rgba(49, 130, 246, 0.15);
-            color: #FFFFFF;
-            border-color: var(--accent);
-            box-shadow: 0 0 10px rgba(49, 130, 246, 0.2);
-        }
 
         /* Premium Modal Overlays (Toss Bottom Sheets) */
         .modal-overlay {
@@ -800,20 +706,6 @@
                 font-size: 13px;
             }
 
-            /* 낙찰자 입력용 배송사 탭 모바일 최적화 */
-            .buyer-shipping-options {
-                grid-template-columns: repeat(3, 1fr);
-                gap: 8px;
-            }
-            .buyer-shipping-options button:nth-child(4),
-            .buyer-shipping-options button:nth-child(5) {
-                grid-column: span 1.5;
-            }
-
-            .buyer-form-columns {
-                grid-template-columns: 1fr;
-                gap: 10px;
-            }
 
             /* 모바일 가로 슬라이더 레이아웃 추가 */
             .winner-list-grid {
@@ -1562,8 +1454,7 @@
             border-radius: 0;
         }
 
-        #editor-hub-results,
-        #buyer-hub-results {
+        #editor-hub-results {
             max-height: 320px !important;
             padding: 6px;
             background: #FFFFFF !important;
@@ -1635,24 +1526,6 @@
             white-space: nowrap;
         }
 
-        .region-tab-btn {
-            color: #667085;
-            background: #FFFFFF;
-            border-color: #DDE3EB;
-        }
-
-        .region-tab-btn:hover {
-            color: var(--text-title);
-            background: #F8FAFC;
-            border-color: #C9D2DE;
-        }
-
-        .region-tab-btn.active {
-            color: #1D4ED8;
-            background: #EFF6FF;
-            border-color: #93B4EE;
-            box-shadow: none;
-        }
 
         #editor-pickup-wrap {
             background: #FFFFFF !important;
@@ -1788,31 +1661,6 @@
             border-color: #ABEFC6 !important;
         }
 
-        .buyer-item-row,
-        .buyer-form-detail {
-            background: #F8FAFC;
-            border-color: #E4E9F0;
-        }
-
-        .buyer-option-btn {
-            color: #667085;
-            background: #FFFFFF;
-            border-color: #DDE3EB;
-            border-radius: 12px;
-        }
-
-        .buyer-option-btn:hover {
-            color: var(--text-title);
-            background: #F8FAFC;
-            border-color: #BAC5D3;
-        }
-
-        .buyer-option-btn.active {
-            color: #1D4ED8;
-            background: #EFF6FF;
-            border-color: #7AA7F8;
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
-        }
 
         @media (max-width: 1100px) {
             .admin-workspace {
@@ -1942,9 +1790,6 @@
                 padding: 18px;
             }
 
-            .buyer-shipping-options {
-                grid-template-columns: repeat(3, 1fr);
-            }
 
             .segmented-btn {
                 flex-basis: 80px;
@@ -2271,7 +2116,7 @@
         }
         body { padding-bottom: calc(72px + env(safe-area-inset-bottom)) !important; background:#F4F4F5; background-image:none; }
         .card,.table-wrap,.registration-overview,#current-company-bar,.modal-content { border-color:#E4E4E7 !important; box-shadow:var(--shadow) !important; }
-        .winner-card,.registration-entry,.buyer-item-row,.buyer-form-detail { border-color:#E4E4E7 !important; background:#FFF !important; box-shadow:none !important; }
+        .winner-card,.registration-entry { border-color:#E4E4E7 !important; background:#FFF !important; box-shadow:none !important; }
         .winner-card:hover,.winner-card.is-selected { border-color:#A1A1AA !important; background:#FAFAFA !important; transform:none !important; box-shadow:none !important; }
         .segmented-control { padding:4px; border:1px solid #E4E4E7; border-radius:12px; background:#F4F4F5; }
         .segmented-btn { padding:10px 0; border-radius:9px; color:#71717A; }
@@ -2433,103 +2278,6 @@
             </div>
         </div>
 
-        <!-- 낙찰자 셀프서비스 입력 레이아웃 (?buyer=1 모드) -->
-        <div id="buyer-view" style="display: none; width: 100%;">
-            <div class="header">
-                <h1 id="shipping-buyer-title">낙찰 배송 정보 등록</h1>
-                <p>성함과 연락처를 입력해 배송지 또는 수령 방식을 직접 신청해 주세요.</p>
-            </div>
-
-            <!-- 본인 조회 카드 -->
-            <div class="card" id="buyer-search-card">
-                <div style="display: flex; flex-direction: column; gap: 12px;">
-                    <div class="control-group">
-                        <label>낙찰자 성함</label>
-                        <input type="text" id="buyer-name-input" class="input-text" placeholder="성함 입력" onkeyup="if(event.key==='Enter') searchBuyerWins()">
-                    </div>
-                    <div class="control-group">
-                        <label>연락처 뒷자리 (또는 전체)</label>
-                        <input type="text" id="buyer-phone-input" class="input-text" placeholder="연락처 입력" onkeyup="if(event.key==='Enter') searchBuyerWins()">
-                    </div>
-                    <button class="btn btn-full" onclick="searchBuyerWins()">조회하기</button>
-                </div>
-            </div>
-
-            <!-- 결과 및 입력 카드 -->
-            <div class="card" id="buyer-form-card" style="display: none;">
-                <div style="font-size: 15px; font-weight: 800; color: var(--text-title); margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">
-                    <span id="buyer-display-title">김철수</span>님의 낙찰 목록
-                </div>
-
-                <div id="buyer-items-container" style="margin-bottom: 16px;">
-                    <!-- 동적 렌더링 -->
-                </div>
-
-                <div style="font-size: 13px; font-weight: 700; color: var(--text-title); margin-bottom: 6px;">수령 방법 선택</div>
-                <div class="buyer-shipping-options">
-                    <button type="button" class="buyer-option-btn" id="b-opt-pickup" onclick="setBuyerShippingType('픽업')">픽업</button>
-                    <button type="button" class="buyer-option-btn" id="b-opt-delegated" onclick="setBuyerShippingType('업체 배송')">업체 배송</button>
-                    <button type="button" class="buyer-option-btn" id="b-opt-custom" onclick="setBuyerShippingType('기타')">기타</button>
-                </div>
-
-                <div class="pickup-location-wrap" id="buyer-pickup-wrap">
-                    <div class="pickup-location-options" data-pickup-target="buyer"></div>
-                </div>
-
-                <!-- 배송 세부 정보 -->
-                <div class="buyer-form-detail" id="buyer-detail-box" style="display: none;">
-
-                    <!-- Embedded Hub Search & Selection for buyer -->
-                    <div id="buyer-hub-select-wrap" style="display: none; flex-direction: column; gap: 12px; margin-bottom: 12px;">
-                        <div class="form-group" style="margin-bottom: 0;">
-                            <label>배송업체·수령 거점 검색</label>
-                            <input type="text" id="buyer-hub-search" class="input-text" placeholder="업체명, 지역 또는 거점명 검색" autocomplete="off">
-                        </div>
-                        <div id="buyer-hub-regions" class="modal-regions-tabs" style="display: flex; flex-wrap: wrap; gap: 6px;"></div>
-                        <div id="buyer-hub-results" class="modal-results-list" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border); border-radius: 12px; background: rgba(0,0,0,0.2);"></div>
-                    </div>
-
-                    <!-- 직접 입력 폼 (기타 배송사 전용) for buyer -->
-                    <div id="buyer-custom-wrap" style="display: none; flex-direction: column; gap: 12px; margin-bottom: 12px;">
-                        <div class="form-group" style="margin-bottom: 0;">
-                            <label>배송사 이름</label>
-                            <input type="text" id="buyer-custom-company-input" class="input-text" placeholder="예: 경동택배, 우체국 등">
-                        </div>
-                        <div class="form-group" style="margin-bottom: 0;">
-                            <label>배송지 주소 / 수령 정보</label>
-                            <input type="text" id="buyer-custom-region-input" class="input-text" placeholder="상세 주소 또는 배송 정보를 입력하세요">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="control-group" style="margin-bottom: 16px;">
-                    <label>메모 또는 기타 요청사항</label>
-                    <input type="text" class="input-text" id="buyer-memo-input" placeholder="상세 주소 또는 요청사항이 있으시면 적어주세요.">
-                </div>
-
-                <!-- 합산 금액 정보 -->
-                <div style="padding: 16px; background: #F1F5F9; border-radius: 8px; margin-bottom: 16px; border: 1px solid var(--border);">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px; font-weight: 500;">
-                        <span>총 낙찰 금액</span>
-                        <span id="b-summary-bid" style="font-weight: 700;">0만</span>
-                    </div>
-                    <div id="b-summary-discount-row" hidden style="display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px; font-weight: 700; color: #166534;">
-                        <span id="b-summary-discount-label">1위 할인</span>
-                        <span id="b-summary-discount">-0원</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; font-weight: 500;">
-                        <span>배송비</span>
-                        <span id="b-summary-ship" style="font-weight: 700;">0원</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; padding-top: 8px; border-top: 1px dashed #CBD5E1; font-size: 15px; font-weight: 800; color: var(--text-title);">
-                        <span>총 결제금액</span>
-                        <span id="b-summary-total" style="color: #E11D48;">0원</span>
-                    </div>
-                </div>
-
-                <button class="btn btn-full" onclick="submitBuyerShipping()">배송 정보 등록 완료</button>
-            </div>
-        </div>
 
     </div>
 
@@ -2723,7 +2471,7 @@
                         }
                         syncEditorHubClearButton();
                         document.body.classList.remove('hub-search-active');
-                        filterEmbeddedHubs('editor');
+                        filterEmbeddedHubs();
                     };
                     clearHubSearch();
                     setTimeout(clearHubSearch, 0);
@@ -2901,10 +2649,8 @@
             channelPickupLocations = Object.freeze(Array.isArray(locations) && locations.length ? [...locations] : [...DEFAULT_PICKUP_LOCATIONS]);
             const channelLabel = document.getElementById('shipping-channel-label');
             const dialogTitle = document.getElementById('shipping-company-dialog-title');
-            const buyerTitle = document.getElementById('shipping-buyer-title');
             if (channelLabel) channelLabel.textContent = `${label} 배송관리`;
             if (dialogTitle) dialogTitle.textContent = `${label} 배송관리`;
-            if (buyerTitle) buyerTitle.textContent = `${label} 배송 정보 등록`;
             document.title = `${label} · 배송관리`;
             document.querySelectorAll('.app-bottom-nav a').forEach(link => {
                 const url = new URL(link.getAttribute('href'), window.location.href);
@@ -3032,8 +2778,7 @@
 
         let allItems = [];
         let uniqueSellerCompanies = [];
-        let winnerStateMap = {}; 
-        let isAdminMode = true;
+        let winnerStateMap = {};
 
         // 관리자 편집기는 별도 팝업이 아니라 목록 옆의 고정 작업 패널에 배치한다.
         const editorPanelSlot = document.getElementById('editor-panel-slot');
@@ -3042,16 +2787,9 @@
             editorPanelSlot.appendChild(winnerEditPanel);
         }
 
-        // URL 파라미터 감지 (기본 어드민 모드, ?buyer=1 일 때만 일반 낙찰자 입력 모드)
-        const params = new URLSearchParams(window.location.search);
-        if (params.get('buyer') === '1') {
-            isAdminMode = false;
-            document.getElementById('buyer-view').style.display = 'block';
-        } else {
-            isAdminMode = true;
-            document.body.classList.add('admin-mode');
-            document.getElementById('admin-view').style.display = 'block';
-        }
+        // 배송 관리는 관리자 전용이다. 낙찰자는 발급된 /s/{code} 링크를 사용한다.
+        document.body.classList.add('admin-mode');
+        document.getElementById('admin-view').style.display = 'block';
 
         function showToast(msg, isError = false) {
             const t = document.getElementById('toast');
@@ -3143,33 +2881,31 @@
                 console.log('[INIT] Step 4: Loading items...');
                 const items = await loadShippingItems();
                 allItems = (items || []).filter(it => CreoAuctionContract.isSoldStatus(it.status));
-                console.log('[INIT] Step 5: Got', allItems.length, 'items, isAdminMode:', isAdminMode);
+                console.log('[INIT] Step 5: Got', allItems.length, 'items');
 
-                if (isAdminMode) {
-                    const companies = allItems.map(it => (it.company || '').trim()).filter(Boolean);
-                    uniqueSellerCompanies = [...new Set(companies)].sort();
-                    console.log('[INIT] Step 6: Companies:', uniqueSellerCompanies);
-                    
-                    const savedCompany = localStorage.getItem(SHIPPING_COMPANY_STORAGE_KEY);
-                    const forceCompanySelect = new URLSearchParams(window.location.search).get('changeCompany') === '1';
-                    populateCompanySelect();
-                    
-                    if (savedCompany && uniqueSellerCompanies.includes(savedCompany)) {
-                        activeSellerCompany = savedCompany;
-                        updateCurrentCompanyBar();
-                        renderGrid();
-                        console.log('[INIT] Step 7: Auto-selected saved company:', savedCompany);
-                        if (forceCompanySelect) openCompanySelectModal();
-                    } else {
-                        openCompanySelectModal();
-                        console.log('[INIT] Step 7: Ready for selection');
-                    }
-                    if (forceCompanySelect) history.replaceState(null, '', window.location.pathname);
+                const companies = allItems.map(it => (it.company || '').trim()).filter(Boolean);
+                uniqueSellerCompanies = [...new Set(companies)].sort();
+                console.log('[INIT] Step 6: Companies:', uniqueSellerCompanies);
+
+                const savedCompany = localStorage.getItem(SHIPPING_COMPANY_STORAGE_KEY);
+                const forceCompanySelect = new URLSearchParams(window.location.search).get('changeCompany') === '1';
+                populateCompanySelect();
+
+                if (savedCompany && uniqueSellerCompanies.includes(savedCompany)) {
+                    activeSellerCompany = savedCompany;
+                    updateCurrentCompanyBar();
+                    renderGrid();
+                    console.log('[INIT] Step 7: Auto-selected saved company:', savedCompany);
+                    if (forceCompanySelect) openCompanySelectModal();
+                } else {
+                    openCompanySelectModal();
+                    console.log('[INIT] Step 7: Ready for selection');
                 }
+                if (forceCompanySelect) history.replaceState(null, '', window.location.pathname);
             } catch (err) {
                 console.error('[INIT] CRASH:', err);
                 console.error('[INIT] Stack:', err.stack);
-                if (err.status === 401 && isAdminMode) {
+                if (err.status === 401) {
                     shippingLoginRequired = true;
                     openShippingAdminLogin({ required: true });
                 } else {
@@ -3337,24 +3073,23 @@
         ]);
         let channelPickupLocations = DEFAULT_PICKUP_LOCATIONS;
 
-        function renderPickupLocations(target) {
-            const state = target === 'buyer' ? buyerShippingState : editorShippingState;
-            const container = document.querySelector(`[data-pickup-target="${target}"]`);
+        function renderPickupLocations() {
+            const state = editorShippingState;
+            const container = document.querySelector('[data-pickup-target="editor"]');
             if (!container || !state) return;
             container.innerHTML = channelPickupLocations.map(location => `
                 <button type="button" class="pickup-location-btn${state.region === location ? ' active' : ''}"
-                    aria-pressed="${state.region === location}" onclick="selectPickupLocation('${target}', '${location}')">${location}</button>
+                    aria-pressed="${state.region === location}" onclick="selectPickupLocation('${location}')">${location}</button>
             `).join('');
         }
 
-        function selectPickupLocation(target, location) {
+        function selectPickupLocation(location) {
             if (!channelPickupLocations.includes(location)) return;
-            const state = target === 'buyer' ? buyerShippingState : editorShippingState;
+            const state = editorShippingState;
             state.region = location;
             state.hub = '';
-            renderPickupLocations(target);
-            if (target === 'buyer') recalculateBuyerTotal();
-            else updateEditorPricing();
+            renderPickupLocations();
+            updateEditorPricing();
         }
 
         function getSavedShippingCost(items) {
@@ -3428,28 +3163,6 @@
             return { shipping_type: type, shipping_company: company, shipping_region: region };
         }
 
-        function buildBuyerShippingBaseData() {
-            const type = buyerShippingState.type;
-            let company = '';
-            let region = '';
-
-            if (type === '배송') {
-                if (buyerShippingState.company === '기타') {
-                    company = (document.getElementById('buyer-custom-company-input').value || '').trim() || '기타';
-                    region = (document.getElementById('buyer-custom-region-input').value || '').trim() || '직접기입';
-                } else {
-                    company = buyerShippingState.company;
-                    region = `${buyerShippingState.region} (${buyerShippingState.hub})`;
-                }
-            } else if (type === '직접수령') {
-                region = buyerShippingState.region;
-            }
-
-            const memoVal = document.getElementById('buyer-memo-input')?.value.trim();
-            if (memoVal) region = `${region} [요청: ${memoVal}]`.trim();
-
-            return { shipping_type: type, shipping_company: company, shipping_region: region };
-        }
 
         function buildEditorShippingAuditMeta() {
             return {
@@ -3459,15 +3172,6 @@
             };
         }
 
-        function buildBuyerShippingAuditMeta() {
-            return {
-                actor_type: 'buyer',
-                actor_label: '낙찰자 셀프입력',
-                source: 'buyer_self_service',
-                actor_name: document.getElementById('buyer-name-input')?.value || '',
-                actor_phone: document.getElementById('buyer-phone-input')?.value || ''
-            };
-        }
 
         function getWinnerIdentity(item) {
             return CreoPrintShippingSummary.winnerIdentity(item);
@@ -4049,9 +3753,9 @@
             if (!input) return;
             input.value = '';
             delete input.dataset.searchPositioned;
-            if (clearEmbeddedHubSelection('editor')) refreshEmbeddedHubPricing('editor');
+            if (clearEmbeddedHubSelection()) refreshEmbeddedHubPricing();
             syncEditorHubClearButton();
-            filterEmbeddedHubs('editor', { keepSelection:true });
+            filterEmbeddedHubs({ keepSelection:true });
             input.focus();
             positionEditorHubSearch(input);
         }
@@ -4069,7 +3773,7 @@
 
         function handleEditorHubSearchInput(input) {
             syncEditorHubClearButton();
-            filterEmbeddedHubs('editor');
+            filterEmbeddedHubs();
             if (!input) return;
             if (input.value.trim() || document.activeElement === input) positionEditorHubSearch(input);
             else {
@@ -4113,7 +3817,7 @@
                 editorShippingState.company = '';
                 if (!isInit) editorShippingState.region = '';
                 editorShippingState.hub = '';
-                renderPickupLocations('editor');
+                renderPickupLocations();
             } else {
                 pickupWrap.style.display = 'none';
                 editorShippingState.type = '배송';
@@ -4125,7 +3829,6 @@
                         editorShippingState.company = '';
                         editorShippingState.region = '';
                         editorShippingState.hub = '';
-                        activeEmbeddedRegion.editor = '전체';
                     }
 
                     if (embedSearchWrap) {
@@ -4138,7 +3841,7 @@
                                     : '';
                             }
                         }
-                        filterEmbeddedHubs('editor');
+                        filterEmbeddedHubs();
                         if (!isInit) {
                             requestAnimationFrame(alignEditorPanelToViewport);
                             setTimeout(() => {
@@ -4384,8 +4087,8 @@
             }
 
             if (editorShippingState.type === '배송' && editorShippingState.company !== '기타' &&
-                clearEmbeddedHubSelectionIfQueryChanged('editor')) {
-                refreshEmbeddedHubPricing('editor');
+                clearEmbeddedHubSelectionIfQueryChanged()) {
+                refreshEmbeddedHubPricing();
             }
 
             if (editorShippingState.type === '배송' && editorShippingState.company !== '기타' &&
@@ -4455,174 +4158,6 @@
         
 
 
-        // ════════════════════════════════════════════
-        //  낙찰자 셀프서비스 조회 및 제출 모드 (buyer-view, ?buyer=1)
-        // ════════════════════════════════════════════
-        let buyerFoundItems = [];
-        let buyerShippingState = {
-            type: '미설정',
-            company: '',
-            region: '',
-            hub: '',
-            cost: 0
-        };
-
-        // 낙찰자 정보 찾기
-        function searchBuyerWins() {
-            const name = document.getElementById('buyer-name-input').value.trim().toLowerCase();
-            const phone = document.getElementById('buyer-phone-input').value.trim().replace(/[^0-9]/g, '');
-
-            if (!name) {
-                showToast('성함을 입력해 주세요.', true);
-                return;
-            }
-
-            // DB 전체 낙찰 품목 중 이름 및 전화번호가 일치하는 항목 필터링
-            buyerFoundItems = allItems.filter(it => {
-                const winnerClean = (it.winner || '').replace(/[\[\]]/g, '').trim();
-                const parts = winnerClean.split('/');
-                const wName = parts[0].trim().toLowerCase();
-                const wPhone = it.winner_phone ? it.winner_phone.replace(/[^0-9]/g, '') : '';
-                
-                // 이름 일치 & (번호 비었거나 번호 일치)
-                const nameMatch = wName === name;
-                const phoneMatch = !phone || wPhone.endsWith(phone);
-                return nameMatch && phoneMatch;
-            });
-
-            if (buyerFoundItems.length === 0) {
-                showToast('일치하는 낙찰 내역이 없습니다. 정보를 다시 확인해 주세요.', true);
-                document.getElementById('buyer-form-card').style.display = 'none';
-                return;
-            }
-
-            // 정보 입력 카드 활성화
-            document.getElementById('buyer-display-title').textContent = name;
-            document.getElementById('buyer-form-card').style.display = 'block';
-
-            // 낙찰 개체 목록 렌더링
-            const container = document.getElementById('buyer-items-container');
-            container.innerHTML = buyerFoundItems.map(it => `
-                <div class="buyer-item-row">
-                    <div>
-                        <strong style="color: var(--text-title); font-size: 14px;">${auctionItemLabel(it, { includeTeam: true })}</strong>
-                        <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">출품: ${it.company || '미지정'}</div>
-                    </div>
-                    <div style="font-weight: 800; color: #E11D48;">${parseFloat(it.soldPrice || it.sold_price)}만</div>
-                </div>
-            `).join('');
-
-            // 기본 데이터 바인딩
-            const firstItem = buyerFoundItems[0];
-            const initType = firstItem.shipping_type || '미설정';
-            const initCompany = firstItem.shipping_company || '';
-            const fullRegion = firstItem.shipping_region || '';
-            const parsedShipping = parseSavedShippingRegion(fullRegion);
-            const initRegion = parsedShipping.region;
-            const initHub = parsedShipping.hub;
-
-            buyerShippingState = { type: initType, company: initCompany, region: initRegion, hub: initHub, cost: 0 };
-            setBuyerShippingType(initType === '직접수령' ? '픽업' : (initType === '배송' ? (['도도시', '파르게', '랩팡'].includes(initCompany) ? '업체 배송' : '기타') : '미설정'), true);
-            if (initType === '배송' && (initCompany === '도도시' || initCompany === '파르게' || initCompany === '랩팡')) {
-                buyerShippingState.region = initRegion;
-                buyerShippingState.hub = initHub;
-                buyerShippingState.cost = calculateShippingCost(initCompany, initType, initRegion, initHub, 1);
-                
-                if (initRegion && initHub) {
-                    const searchInput = document.getElementById('buyer-hub-search');
-                    if (searchInput) searchInput.value = `${initRegion} ${initHub}`;
-                }
-                
-                filterEmbeddedHubs('buyer');
-            } else if (initType === '배송') {
-                document.getElementById('buyer-custom-company-input').value = initCompany;
-                document.getElementById('buyer-custom-region-input').value = fullRegion;
-            }
-
-            recalculateBuyerTotal();
-        }
-
-        // 낙찰자 입력용 배송사 탭 선택
-        function setBuyerShippingType(companyKey, isInit = false) {
-            const btns = ['pickup', 'delegated', 'custom'];
-            btns.forEach(b => document.getElementById(`b-opt-${b}`).classList.remove('active'));
-
-            const detailBox = document.getElementById('buyer-detail-box');
-            const embedSearchWrap = document.getElementById('buyer-hub-select-wrap');
-            const customWrap = document.getElementById('buyer-custom-wrap');
-            const pickupWrap = document.getElementById('buyer-pickup-wrap');
-
-            if (!companyKey || companyKey === '미설정') {
-                detailBox.style.display = 'none';
-                if (embedSearchWrap) embedSearchWrap.style.display = 'none';
-                if (customWrap) customWrap.style.display = 'none';
-                if (pickupWrap) pickupWrap.style.display = 'none';
-
-                buyerShippingState.type = '미설정';
-                buyerShippingState.company = '';
-                buyerShippingState.region = '';
-                buyerShippingState.hub = '';
-                buyerShippingState.cost = 0;
-            } else if (companyKey === '픽업') {
-                document.getElementById('b-opt-pickup').classList.add('active');
-                detailBox.style.display = 'none';
-                if (embedSearchWrap) embedSearchWrap.style.display = 'none';
-                if (customWrap) customWrap.style.display = 'none';
-                if (pickupWrap) pickupWrap.style.display = 'block';
-
-                buyerShippingState.type = '직접수령';
-                buyerShippingState.company = '';
-                if (!isInit) buyerShippingState.region = '';
-                buyerShippingState.hub = '';
-                buyerShippingState.cost = 0;
-                renderPickupLocations('buyer');
-            } else {
-                detailBox.style.display = 'block';
-                if (pickupWrap) pickupWrap.style.display = 'none';
-                buyerShippingState.type = '배송';
-
-                if (companyKey === '업체 배송') {
-                    document.getElementById('b-opt-delegated').classList.add('active');
-                    if (!isInit) {
-                        buyerShippingState.company = '';
-                        buyerShippingState.region = '';
-                        buyerShippingState.hub = '';
-                        buyerShippingState.cost = 0;
-                        activeEmbeddedRegion.buyer = '전체';
-                    }
-                    if (customWrap) customWrap.style.display = 'none';
-
-                    if (embedSearchWrap) {
-                        embedSearchWrap.style.display = 'flex';
-                        const searchInput = document.getElementById('buyer-hub-search');
-                        if (searchInput) {
-                            searchInput.value = isInit && buyerShippingState.region && buyerShippingState.hub
-                                ? `${buyerShippingState.company} ${buyerShippingState.region} ${buyerShippingState.hub}`
-                                : '';
-                            if (!isInit) {
-                                setTimeout(() => searchInput.focus(), 50);
-                            }
-                        }
-                        const regions = document.getElementById('buyer-hub-regions');
-                        if (regions) regions.innerHTML = '';
-                        filterEmbeddedHubs('buyer');
-                    }
-                } else {
-                    document.getElementById('b-opt-custom').classList.add('active');
-                    buyerShippingState.company = '기타';
-                    
-                    if (embedSearchWrap) embedSearchWrap.style.display = 'none';
-                    if (customWrap) customWrap.style.display = 'flex';
-
-                    if (!isInit) {
-                        document.getElementById('buyer-custom-company-input').value = '';
-                        document.getElementById('buyer-custom-region-input').value = '';
-                    }
-                }
-            }
-
-            recalculateBuyerTotal();
-        }
 
         // ══════════════════════════════════════
         //  거점 검색 및 초성 검색 기능 구현 (지리적 인접 매칭 포함)
@@ -4761,15 +4296,6 @@
         // ══════════════════════════════════════
         //  내장형 거점 선택 및 검색 구현 (Embedded Search)
         // ══════════════════════════════════════
-        let activeEmbeddedRegion = {
-            editor: '전체',
-            buyer: '전체'
-        };
-
-        function getEmbeddedHubState(target) {
-            return target === 'editor' ? editorShippingState : buyerShippingState;
-        }
-
         function renderEditorSelectedHub() {
             const card = document.getElementById('editor-selected-hub');
             const name = document.getElementById('editor-selected-hub-name');
@@ -4789,13 +4315,13 @@
         }
 
         function toggleEditorSelectedHub() {
-            if (!clearEmbeddedHubSelection('editor')) return;
+            if (!clearEmbeddedHubSelection()) return;
             const searchInput = document.getElementById('editor-hub-search');
             if (searchInput) searchInput.value = '';
             syncEditorHubClearButton();
             document.body.classList.remove('hub-search-active');
             renderEditorSelectedHub();
-            filterEmbeddedHubs('editor', { keepSelection:true });
+            filterEmbeddedHubs({ keepSelection:true });
             updateEditorPricing();
             requestAnimationFrame(() => searchInput?.focus());
         }
@@ -4804,21 +4330,19 @@
             return String(value || '').replace(/\s+/g, ' ').trim().toLowerCase();
         }
 
-        function selectedEmbeddedHubText(target) {
-            const state = getEmbeddedHubState(target);
-            if (!state || !state.region || !state.hub) return '';
-            return `${state.company} ${state.region} ${state.hub}`;
+        function selectedEmbeddedHubText() {
+            if (!editorShippingState.region || !editorShippingState.hub) return '';
+            return `${editorShippingState.company} ${editorShippingState.region} ${editorShippingState.hub}`;
         }
 
-        function setEmbeddedHubSearchText(target, company, region, hub) {
-            const searchInput = document.getElementById(`${target}-hub-search`);
+        function setEmbeddedHubSearchText(company, region, hub) {
+            const searchInput = document.getElementById('editor-hub-search');
             if (searchInput) searchInput.value = `${company} ${region} ${hub}`;
-            if (target === 'editor') syncEditorHubClearButton();
+            syncEditorHubClearButton();
         }
 
-        function clearEmbeddedHubSelection(target) {
-            const state = getEmbeddedHubState(target);
-            if (!state) return false;
+        function clearEmbeddedHubSelection() {
+            const state = editorShippingState;
             const hadSelection = Boolean(state.region || state.hub);
             state.region = '';
             state.hub = '';
@@ -4827,96 +4351,37 @@
             return hadSelection;
         }
 
-        function clearEmbeddedHubSelectionIfQueryChanged(target) {
-            const searchInput = document.getElementById(`${target}-hub-search`);
+        function clearEmbeddedHubSelectionIfQueryChanged() {
+            const searchInput = document.getElementById('editor-hub-search');
             if (!searchInput) return false;
 
-            const selectedText = normalizeHubQuery(selectedEmbeddedHubText(target));
+            const selectedText = normalizeHubQuery(selectedEmbeddedHubText());
             if (!selectedText) return false;
 
             const queryText = normalizeHubQuery(searchInput.value);
             if (queryText === selectedText) return false;
 
-            return clearEmbeddedHubSelection(target);
+            return clearEmbeddedHubSelection();
         }
 
-        function refreshEmbeddedHubPricing(target) {
-            if (target === 'editor') {
-                renderEditorSelectedHub();
-                if (activeEditorWinner) updateEditorPricing();
-            } else {
-                recalculateBuyerTotal();
-            }
+        function refreshEmbeddedHubPricing() {
+            renderEditorSelectedHub();
+            if (activeEditorWinner) updateEditorPricing();
         }
 
-        function renderEmbeddedRegionTabs(comp, target) {
-            const container = document.getElementById(`${target}-hub-regions`);
-            if (!container) return;
-
-            const compData = SHIPPING_DATA[comp];
-            if (!compData || !compData.regions) {
-                container.innerHTML = '';
-                return;
-            }
-
-            const regions = Object.keys(compData.regions);
-            if (regions.length <= 1) {
-                container.innerHTML = '';
-                return;
-            }
-
-            const activeReg = activeEmbeddedRegion[target] || '전체';
-            let html = `<button type="button" class="region-tab-btn ${activeReg === '전체' ? 'active' : ''}" onclick="selectEmbeddedRegion('전체', '${target}')">전체</button>`;
-            regions.forEach(reg => {
-                html += `<button type="button" class="region-tab-btn ${activeReg === reg ? 'active' : ''}" onclick="selectEmbeddedRegion('${reg}', '${target}')">${reg}</button>`;
-            });
-            container.innerHTML = html;
-        }
-
-        function selectEmbeddedRegion(regionName, target) {
-            activeEmbeddedRegion[target] = regionName;
-            
-            // Clear search input text
-            const searchInput = document.getElementById(`${target}-hub-search`);
-            if (searchInput) searchInput.value = '';
-
-            if (clearEmbeddedHubSelection(target)) {
-                refreshEmbeddedHubPricing(target);
-            }
-            
-            // Highlight the active button
-            const container = document.getElementById(`${target}-hub-regions`);
-            if (container) {
-                const btns = container.querySelectorAll('.region-tab-btn');
-                btns.forEach(btn => {
-                    if (btn.textContent === regionName) btn.classList.add('active');
-                    else btn.classList.remove('active');
-                });
-            }
-
-            filterEmbeddedHubs(target);
-        }
-
-        function filterEmbeddedHubs(target, options = {}) {
-            const searchInput = document.getElementById(`${target}-hub-search`);
-            const resultsBox = document.getElementById(`${target}-hub-results`);
+        function filterEmbeddedHubs(options = {}) {
+            const searchInput = document.getElementById('editor-hub-search');
+            const resultsBox = document.getElementById('editor-hub-results');
             if (!searchInput || !resultsBox) return;
 
             const q = searchInput.value.trim().toLowerCase();
-            const activeReg = activeEmbeddedRegion[target] || '전체';
 
-            if (!options.keepSelection && clearEmbeddedHubSelectionIfQueryChanged(target)) {
-                refreshEmbeddedHubPricing(target);
+            if (!options.keepSelection && clearEmbeddedHubSelectionIfQueryChanged()) {
+                refreshEmbeddedHubPricing();
             }
 
-            let itemCount = 1;
-            if (target === 'editor') {
-                const winnerName = activeEditorWinner;
-                const state = winnerStateMap[winnerName];
-                if (state) itemCount = state.allItems.length;
-            } else {
-                itemCount = buyerFoundItems.length;
-            }
+            const state = winnerStateMap[activeEditorWinner];
+            const itemCount = state ? state.allItems.length : 1;
 
             if (!q) {
                 resultsBox.innerHTML = '<div class="search-empty-hint">업체명, 지역 또는 거점명을 입력하면<br>모든 배송업체를 한 번에 검색합니다.</div>';
@@ -4939,11 +4404,6 @@
                     });
                 });
             });
-
-            // Filter by Region Tab
-            if (activeReg !== '전체') {
-                allHubs = allHubs.filter(h => h.region === activeReg);
-            }
 
             let exact = [];
             let nearby = [];
@@ -5016,13 +4476,11 @@
             if (exact.length > 0) {
                 exact.forEach(h => {
                     const finalCost = getFinalCost(h.company, h.cost, h.region);
-                    const isSelected = (target === 'editor')
-                        ? (editorShippingState.company === h.company && editorShippingState.region === h.region && editorShippingState.hub === h.shop)
-                        : (buyerShippingState.company === h.company && buyerShippingState.region === h.region && buyerShippingState.hub === h.shop);
+                    const isSelected = editorShippingState.company === h.company && editorShippingState.region === h.region && editorShippingState.hub === h.shop;
                     const selectedStyle = isSelected ? 'border: 2px solid var(--accent); background: rgba(59, 130, 246, 0.1);' : '';
                     
                     html += `
-                        <div class="search-item hub-result" style="${selectedStyle}" onclick="selectEmbeddedHub('${h.company}', '${h.region.replace(/'/g, "\\'")}', '${h.shop.replace(/'/g, "\\'")}', ${h.cost}, '${target}')">
+                        <div class="search-item hub-result" style="${selectedStyle}" onclick="selectEmbeddedHub('${h.company}', '${h.region.replace(/'/g, "\\'")}', '${h.shop.replace(/'/g, "\\'")}')">
                             <div class="hub-result-head">
                                 <div class="hub-result-badges">
                                     <span class="search-item-region hub-result-company">${h.company}</span>
@@ -5047,13 +4505,11 @@
                 }
                 nearby.forEach(h => {
                     const finalCost = getFinalCost(h.company, h.cost, h.region);
-                    const isSelected = (target === 'editor')
-                        ? (editorShippingState.company === h.company && editorShippingState.region === h.region && editorShippingState.hub === h.shop)
-                        : (buyerShippingState.company === h.company && buyerShippingState.region === h.region && buyerShippingState.hub === h.shop);
+                    const isSelected = editorShippingState.company === h.company && editorShippingState.region === h.region && editorShippingState.hub === h.shop;
                     const selectedStyle = isSelected ? 'border: 2px solid var(--accent); background: rgba(59, 130, 246, 0.1);' : '';
                     
                     html += `
-                        <div class="search-item hub-result nearby-result" style="${selectedStyle}" onclick="selectEmbeddedHub('${h.company}', '${h.region.replace(/'/g, "\\'")}', '${h.shop.replace(/'/g, "\\'")}', ${h.cost}, '${target}')">
+                        <div class="search-item hub-result nearby-result" style="${selectedStyle}" onclick="selectEmbeddedHub('${h.company}', '${h.region.replace(/'/g, "\\'")}', '${h.shop.replace(/'/g, "\\'")}')">
                             <div class="hub-result-head">
                                 <div class="hub-result-badges">
                                     <span class="search-item-region hub-result-company">${h.company}</span>
@@ -5071,169 +4527,30 @@
             resultsBox.innerHTML = html;
         }
 
-        function selectEmbeddedHub(company, region, shop, cost, target) {
-            if (target === 'editor') {
-                editorShippingState.company = company;
-                editorShippingState.region = region;
-                editorShippingState.hub = shop;
+        function selectEmbeddedHub(company, region, shop) {
+            editorShippingState.company = company;
+            editorShippingState.region = region;
+            editorShippingState.hub = shop;
 
-                setEmbeddedHubSearchText('editor', company, region, shop);
-                filterEmbeddedHubs('editor', { keepSelection: true });
-                renderEditorSelectedHub();
-                updateEditorPricing();
-                document.body.classList.remove('hub-search-active');
-                const searchInput = document.getElementById('editor-hub-search');
-                if (searchInput) {
-                    delete searchInput.dataset.searchPositioned;
-                    searchInput.blur();
-                }
+            setEmbeddedHubSearchText(company, region, shop);
+            filterEmbeddedHubs({ keepSelection: true });
+            renderEditorSelectedHub();
+            updateEditorPricing();
+            document.body.classList.remove('hub-search-active');
+            const searchInput = document.getElementById('editor-hub-search');
+            if (searchInput) {
+                delete searchInput.dataset.searchPositioned;
+                searchInput.blur();
+            }
 
-                // 선택 후에는 메모 아래의 적용 배송지를 바로 확인할 수 있게 한다.
-                if (window.innerWidth <= 820) {
-                    requestAnimationFrame(() => {
-                        document.getElementById('editor-selected-hub')?.scrollIntoView({ behavior:'smooth', block:'center' });
-                    });
-                }
-            } else {
-                buyerShippingState.company = company;
-                buyerShippingState.region = region;
-                buyerShippingState.hub = shop;
-                buyerShippingState.cost = cost;
-
-                setEmbeddedHubSearchText('buyer', company, region, shop);
-                filterEmbeddedHubs('buyer', { keepSelection: true });
-                recalculateBuyerTotal();
+            // 선택 후에는 메모 아래의 적용 배송지를 바로 확인할 수 있게 한다.
+            if (window.innerWidth <= 820) {
+                requestAnimationFrame(() => {
+                    document.getElementById('editor-selected-hub')?.scrollIntoView({ behavior:'smooth', block:'center' });
+                });
             }
         }
 
-
-        // 낙찰자 셀프서비스 화면 총 계산
-        function recalculateBuyerTotal() {
-            let totalBid = 0;
-            buyerFoundItems.forEach(it => {
-                totalBid += (parseFloat(it.soldPrice || it.sold_price) || 0);
-            });
-
-            let totalShipping = 0;
-            if (buyerShippingState.type === '배송') {
-                if (buyerShippingState.company === '기타') {
-                    totalShipping = 0;
-                } else {
-                    totalShipping = calculateShippingCost(
-                        buyerShippingState.company,
-                        buyerShippingState.type,
-                        buyerShippingState.region,
-                        buyerShippingState.hub,
-                        buyerFoundItems.length
-                    );
-                }
-            }
-
-            const settlement = settlementDiscountFor(buyerFoundItems, allItems);
-            document.getElementById('b-summary-bid').textContent = settlement.originalAmount.toLocaleString() + '원';
-            const discountRow = document.getElementById('b-summary-discount-row');
-            discountRow.hidden = settlement.discountAmount <= 0;
-            discountRow.style.display = settlement.discountAmount > 0 ? 'flex' : 'none';
-            document.getElementById('b-summary-discount-label').textContent = settlement.label || '1위 할인';
-            document.getElementById('b-summary-discount').textContent = `-${settlement.discountAmount.toLocaleString()}원`;
-            document.getElementById('b-summary-ship').textContent = totalShipping.toLocaleString() + '원';
-            
-            const grandTotalWon = settlement.payableAuctionAmount + totalShipping;
-            document.getElementById('b-summary-total').textContent = grandTotalWon.toLocaleString() + '원';
-        }
-
-        // 낙찰자 셀프서비스 제출
-        async function submitBuyerShipping() {
-            if (buyerFoundItems.length === 0) return;
-
-            if (buyerShippingState.type === '미설정') {
-                showToast('수령 방법을 먼저 선택해 주세요.', true);
-                return;
-            }
-
-            if (buyerShippingState.type === '직접수령' && !channelPickupLocations.includes(buyerShippingState.region)) {
-                showToast('직수령 장소를 선택해 주세요.', true);
-                return;
-            }
-
-            if (buyerShippingState.type === '배송' && buyerShippingState.company !== '기타' &&
-                clearEmbeddedHubSelectionIfQueryChanged('buyer')) {
-                refreshEmbeddedHubPricing('buyer');
-            }
-
-            if (buyerShippingState.type === '배송' && buyerShippingState.company !== '기타' &&
-                (!buyerShippingState.region || !buyerShippingState.hub)) {
-                showToast('검색 결과에서 수령 거점을 다시 선택해 주세요.', true);
-                return;
-            }
-
-            if (buyerShippingState.type === '배송' && buyerShippingState.company === '기타' &&
-                (!document.getElementById('buyer-custom-company-input').value.trim() ||
-                 !document.getElementById('buyer-custom-region-input').value.trim())) {
-                showToast('배송사와 배송지 정보를 입력해 주세요.', true);
-                return;
-            }
-
-            const baseShipping = buildBuyerShippingBaseData();
-            if (!confirmShippingOverwrite(buyerFoundItems, baseShipping)) return;
-
-            showLoading(true, '배송 정보를 전송하는 중...');
-            try {
-                const type = baseShipping.shipping_type;
-                const auditMeta = buildBuyerShippingAuditMeta();
-                const sellerCos = [...new Set(buyerFoundItems.map(it => (it.company || '').trim()))];
-                // 전체 배송비 구한 뒤, 업체별로 쪼개기
-                let totalShipping = 0;
-                if (type === '배송') {
-                    if (buyerShippingState.company === '기타') {
-                        totalShipping = 0;
-                    } else {
-                        totalShipping = calculateShippingCost(
-                            buyerShippingState.company,
-                            type,
-                            buyerShippingState.region,
-                            buyerShippingState.hub,
-                            buyerFoundItems.length
-                        );
-                    }
-                }
-
-                const shippingAllocations = splitShippingCostByCompany(sellerCos, totalShipping, buyerFoundItems);
-                for (const co of sellerCos) {
-                    const coItems = buyerFoundItems.filter(it => (it.company || '').trim() === co);
-                    
-                    for (let idx = 0; idx < coItems.length; idx++) {
-                        const it = coItems[idx];
-                        let shipping_type = type;
-                        let shipping_company = baseShipping.shipping_company;
-                        let shipping_region = baseShipping.shipping_region;
-                        let shipping_cost = 0;
-
-                        if (type === '배송') {
-                            shipping_company = baseShipping.shipping_company;
-                            shipping_region = baseShipping.shipping_region;
-
-                            if (idx === 0) shipping_cost = shippingAllocations[co] || 0;
-                        }
-
-                        await saveShippingItem(it.row, {
-                            shipping_type,
-                            shipping_company,
-                            shipping_region,
-                            shipping_cost
-                        }, auditMeta);
-                    }
-                }
-
-                showToast('배송 정보 등록이 완료되었습니다! 판매자 정산서에 실시간 반영됩니다.');
-                setTimeout(() => { location.reload(); }, 2000);
-            } catch (e) {
-                console.error(e);
-                showToast('저장 실패: ' + e.message, true);
-            } finally {
-                showLoading(false);
-            }
-        }
 
 
         // Initialize event listeners
@@ -5254,12 +4571,6 @@
                     }, 0);
                 });
             }
-            // Bind buyer embedded search input
-            const buyerHubSearch = document.getElementById('buyer-hub-search');
-            if (buyerHubSearch) {
-                buyerHubSearch.addEventListener('input', () => filterEmbeddedHubs('buyer'));
-            }
-
             // Update active slide dot on scroll
             const listContainer = document.getElementById('winner-list-container');
             if (listContainer) {
