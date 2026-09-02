@@ -970,34 +970,8 @@
 
         function parseWinner(str) {
             if (!str) return { name: '', phone: '' };
-            var s = str.replace(/[\[\]]/g, '').trim();
-            var m = s.match(/01[0-9][\-\.\s]?\d{3,4}[\-\.\s]?\d{4}/);
-            if (m) {
-                var phone = m[0].replace(/[\-\.\s]/g, '');
-                var rest = s.replace(m[0], '').replace(/[\/,\.]/g, ' ').replace(/\s+/g, ' ').trim();
-                rest = rest.replace(/\(\s*\)/g, '').trim();
-                return { name: rest, phone: phone };
-            }
-            if (s.indexOf('/') >= 0) {
-                var parts = s.split('/').map(function (p) { return p.trim(); });
-                var phoneIdx = -1;
-                for (var i = 0; i < parts.length; i++) {
-                    if (parts[i].replace(/[\-\.\s]/g, '').match(/^\d{7,}$/)) { phoneIdx = i; break; }
-                }
-                if (phoneIdx >= 0) {
-                    var ph = parts.splice(phoneIdx, 1)[0].replace(/[\-\.\s]/g, '');
-                    return { name: parts.join(' / '), phone: ph };
-                }
-                return { name: s, phone: '' };
-            }
-            var words = s.split(/\s+/);
-            for (var j = 0; j < words.length; j++) {
-                if (words[j].replace(/[\-\.\s]/g, '').match(/^\d{7,}$/)) {
-                    var ph2 = words.splice(j, 1)[0].replace(/[\-\.\s]/g, '');
-                    return { name: words.join(' '), phone: ph2 };
-                }
-            }
-            return { name: s, phone: '' };
+            var identity = CreoPrintShippingSummary.winnerIdentity({ winner: str });
+            return { name: identity.name === '이름 없음' ? '' : identity.name, phone: identity.phone };
         }
 
         function fmtPhone(raw) {

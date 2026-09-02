@@ -10,6 +10,7 @@
     <script src="shipping-access.js?v=20260820-v1"></script>
     <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
     <script src="channel-adapters.js?v=20260823-channel-isolation-v3"></script>
+    <script src="print-shipping-summary.js?v=20260903-winner-identity-v2"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard-dynamic-subset.css">
     <style>
         :root { --bg:#f4f7fb; --card:#fff; --line:#e3e9f1; --text:#172033; --muted:#6b7280; --blue:#2563eb; --green:#15803d; --orange:#c2410c; --red:#b91c1c; --shadow:0 10px 30px rgba(23,32,51,.07); font-family:'Pretendard Variable','Pretendard',sans-serif; }
@@ -195,13 +196,7 @@
 
         function esc(value) { return String(value == null ? '' : value).replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
         function winnerIdentity(item) {
-            const clean = String(item.winner || '').replace(/[\[\]]/g,'').trim();
-            const match = clean.match(/01[0-9][\-.\s]?\d{3,4}[\-.\s]?\d{4}|(?<!\d)\d{8}(?!\d)/);
-            const embedded = match ? match[0] : '';
-            const source = embedded ? clean.replace(embedded,' ').replace(/\s+/g,' ').trim() : clean;
-            const name = source.split('/').map(v=>v.trim()).filter(Boolean)[0] || '이름 없음';
-            const phone = String(item.winner_phone || embedded).replace(/[^0-9]/g,'');
-            return { key:phone ? 'phone:'+phone : 'name:'+name.toLowerCase(), name, phone };
+            return CreoPrintShippingSummary.winnerIdentity(item);
         }
         function fmtPhone(value) {
             const p=String(value||'').replace(/[^0-9]/g,'');

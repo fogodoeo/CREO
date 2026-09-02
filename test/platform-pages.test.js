@@ -580,6 +580,9 @@ test('new CDCUP overlays and shipping retain compatibility with the established 
     const shippingStatus = fs.readFileSync(path.join(__dirname, '..', 'public', 'shipping-status.html'), 'utf8');
     assert.match(shippingStatus, /CreoChannelAdapters\.resolve/);
     assert.match(shippingStatus, /adapter\.loadShippingItems/);
+    assert.match(shippingStatus, /print-shipping-summary\.js/);
+    assert.match(shippingStatus, /return CreoPrintShippingSummary\.winnerIdentity\(item\)/);
+    assert.doesNotMatch(shippingStatus, /const match = clean\.match/);
     assert.match(shippingStatus, /id="basis-company"/);
     assert.match(shippingStatus, /id="mode-company"/);
     assert.match(shippingStatus, /function renderCompanies/);
@@ -669,6 +672,8 @@ test('print forms have one canonical page linked from both pipeline and workspac
     assert.match(print, /인쇄할 채널 주소가 없습니다/);
     assert.doesNotMatch(print, /get\('channel'\) \|\| 'cdcup'/);
     assert.match(print, /print-shipping-summary\.js/);
+    assert.match(print, /CreoPrintShippingSummary\.winnerIdentity\(\{ winner: str \}\)/);
+    assert.doesNotMatch(print, /function parseWinner\(str\)[\s\S]{0,400}phoneIdx/);
     assert.match(print, /google-sheets-export\.js/);
     assert.match(print, /accounts\.google\.com\/gsi\/client/);
     assert.match(print, /return adapter\.loadShippingItems\(\{ channel: channel \}\)/);
