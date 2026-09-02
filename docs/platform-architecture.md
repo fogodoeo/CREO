@@ -82,7 +82,7 @@ SQLite를 기본 저장소로 사용한다. 한 채널의 JSON 묶음을 통째�
 - 실제 공용 송출: `/broadcast-router.html?page=1`
 - 방송 제어에서 적용을 누르면 `creo_v2::active_channel`이 변경된다.
 - 실제 공용 송출 주소에는 채널 ID를 넣지 않는다. 채널 ID가 든 주소는 고정 미리보기이므로 운영 전환을 따라가지 않는다.
-- CDCUP은 검증된 기존 `broadcast.html` 송출 껍데기와 기존 제어 화면을 유지한다.
+- CDCUP도 P1·P2는 공용 `auction-live.html`과 공용 배치기를 사용하고, 고유 대진 연출이 필요한 P3만 기존 `broadcast.html` 호환 화면을 유지한다.
 - CREWARTS와 신규 채널은 채널별 테마를 적용하는 `auction-live.html`을 사용한다.
 - 신규 송출은 350ms마다 메모리 전용 `broadcast-pulse`만 확인한다. revision이 바뀔 때만 전체 방송 데이터를 다시 읽고, 30초 안전 동기화를 둔다. 따라서 숫자·상태 반영 지연은 약 0.35초지만 DB 전체 읽기는 반복하지 않는다.
 - 숨겨진 OBS/브라우저 탭은 펄스 확인을 멈추고 다시 보일 때 즉시 재확인한다.

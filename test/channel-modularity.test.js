@@ -136,8 +136,10 @@ test('CDCUP compatibility is tied to its adapter, not copied channel ids', () =>
     const liveCdcup = channel('cdcup', { dataAdapter: 'legacy-cdcup', broadcastProfile: 'cdcup-tournament' });
     const copiedCdcup = channel('summer-team', { dataAdapter: 'platform', broadcastProfile: 'cdcup-tournament' });
 
-    assert.match(Profiles.studioFrame(liveCdcup, 'layout-1'), /^preview\.html\?/);
-    assert.match(Profiles.broadcastTarget(liveCdcup, 2), /^broadcast\.html\?/);
+    assert.match(Profiles.studioFrame(liveCdcup, 'layout-1'), /^platform-layout-editor\.html\?/);
+    assert.match(Profiles.broadcastTarget(liveCdcup, 2), /^auction-live\.html\?/);
+    assert.match(Profiles.studioFrame(liveCdcup, 'layout-3'), /^preview\.html\?/);
+    assert.match(Profiles.broadcastTarget(liveCdcup, 3), /^broadcast\.html\?/);
     assert.match(Profiles.studioFrame(copiedCdcup, 'layout-1'), /^platform-layout-editor\.html\?/);
     assert.match(Profiles.broadcastTarget(copiedCdcup, 2), /^auction-live\.html\?/);
     assert.equal(Profiles.usesLegacyData(liveCdcup), true);
@@ -147,24 +149,26 @@ test('CDCUP compatibility is tied to its adapter, not copied channel ids', () =>
     assert.equal(Profiles.pageContract(copiedCdcup, 3).id, 'tournament');
 });
 
-test('CREWART uses the shared CDCUP layout and settings surfaces without changing its live renderer', () => {
+test('legacy CREWART inherits shared P1 and P2 while retaining its P3 compatibility renderer', () => {
     const academy = channel('crewart', { dataAdapter: 'legacy-cdcup', broadcastProfile: 'crewart-academy' });
-    assert.match(Profiles.studioFrame(academy, 'layout-1'), /^preview\.html\?module=crewart&channel=crewart&page=1&embedded=1$/);
-    assert.match(Profiles.studioFrame(academy, 'layout-2'), /^preview\.html\?module=crewart&channel=crewart&page=2&embedded=1$/);
+    assert.match(Profiles.studioFrame(academy, 'layout-1'), /^platform-layout-editor\.html\?channel=crewart&page=1&embedded=1$/);
+    assert.match(Profiles.studioFrame(academy, 'layout-2'), /^platform-layout-editor\.html\?channel=crewart&page=2&embedded=1$/);
     assert.match(Profiles.studioFrame(academy, 'layout-3'), /^preview\.html\?module=crewart&channel=crewart&page=3&embedded=1$/);
     assert.match(Profiles.studioFrame(academy, 'settings'), /^settings\.html\?module=crewart&channel=crewart&embedded=1$/);
-    assert.match(Profiles.broadcastTarget(academy, 1), /^broadcast\.html\?page=1&module=crewart&channel=crewart&direct=1$/);
+    assert.match(Profiles.broadcastTarget(academy, 1), /^auction-live\.html\?channel=crewart&page=1$/);
+    assert.match(Profiles.broadcastTarget(academy, 3), /^broadcast\.html\?page=3&module=crewart&channel=crewart&direct=1$/);
 });
 
-test('CREYON uses the shared placement editor with an isolated metal renderer', () => {
+test('legacy CREYON inherits shared P1 and P2 with an isolated P3 metal renderer', () => {
     const creyon = channel('auction-260810', { dataAdapter: 'legacy-cdcup', broadcastProfile: 'creyon-metal' });
     assert.equal(Profiles.resolve(creyon).rendererModule, 'creyon');
     assert.equal(Profiles.pageContract(creyon, 3).id, 'status');
-    assert.match(Profiles.studioFrame(creyon, 'layout-1'), /^preview\.html\?module=creyon&channel=auction-260810&page=1&embedded=1$/);
-    assert.match(Profiles.studioFrame(creyon, 'layout-2'), /^preview\.html\?module=creyon&channel=auction-260810&page=2&embedded=1$/);
+    assert.match(Profiles.studioFrame(creyon, 'layout-1'), /^platform-layout-editor\.html\?channel=auction-260810&page=1&embedded=1$/);
+    assert.match(Profiles.studioFrame(creyon, 'layout-2'), /^platform-layout-editor\.html\?channel=auction-260810&page=2&embedded=1$/);
     assert.match(Profiles.studioFrame(creyon, 'layout-3'), /^preview\.html\?module=creyon&channel=auction-260810&page=3&embedded=1$/);
     assert.match(Profiles.studioFrame(creyon, 'settings'), /^settings\.html\?module=creyon&channel=auction-260810&embedded=1$/);
-    assert.match(Profiles.broadcastTarget(creyon, 2), /^broadcast\.html\?page=2&module=creyon&channel=auction-260810&direct=1$/);
+    assert.match(Profiles.broadcastTarget(creyon, 2), /^auction-live\.html\?channel=auction-260810&page=2$/);
+    assert.match(Profiles.broadcastTarget(creyon, 3), /^broadcast\.html\?page=3&module=creyon&channel=auction-260810&direct=1$/);
     assert.equal(Profiles.resolve(creyon).defaultState.notice, 'CREYON');
     assert.doesNotMatch(JSON.stringify(Profiles.resolve(creyon).defaultState), /CREYON LIVE/);
     const hosts = Profiles.settingsContract(creyon).shared.sections.find(section => section.id === 'hosts');

@@ -56,8 +56,8 @@
         return registry.get(channel?.broadcastProfile || 'standard') || registry.get('standard');
     }
 
-    function usesLegacyEngine(channel, profile = resolve(channel)) {
-        return profile?.engine === 'legacy-layout' && usesLegacyData(channel);
+    function usesLegacyEngine(channel, profile = resolve(channel), page = 3) {
+        return validPage(page) === '3' && profile?.engine === 'legacy-layout' && usesLegacyData(channel);
     }
 
     function usesLegacyData(channel) {
@@ -101,9 +101,9 @@
     function studioFrame(channel, view) {
         const profile = resolve(channel);
         const layout = String(view || '').match(/^layout-([123])$/);
-        if (!usesLegacyEngine(channel, profile)) {
+        if (!layout || !usesLegacyEngine(channel, profile, layout[1])) {
             if (layout) return `${SHARED_PLATFORM_RENDERER.editor}?channel=${channelId(channel)}&page=${layout[1]}&embedded=1`;
-            return `auction-control.html?channel=${channelId(channel)}&page=1&embedded=1&view=settings`;
+            if (!usesLegacyEngine(channel, profile, 3)) return `auction-control.html?channel=${channelId(channel)}&page=1&embedded=1&view=settings`;
         }
         const renderer = encodeURIComponent(profile.rendererModule || 'cdcup');
         if (!layout) return `settings.html?module=${renderer}&channel=${channelId(channel)}&embedded=1`;
@@ -113,7 +113,7 @@
     function broadcastTarget(channel, page) {
         const selectedPage = validPage(page);
         const profile = resolve(channel);
-        if (!usesLegacyEngine(channel, profile)) return `${SHARED_PLATFORM_RENDERER.live}?channel=${channelId(channel)}&page=${selectedPage}`;
+        if (!usesLegacyEngine(channel, profile, selectedPage)) return `${SHARED_PLATFORM_RENDERER.live}?channel=${channelId(channel)}&page=${selectedPage}`;
         const renderer = encodeURIComponent(profile.rendererModule || 'cdcup');
         return `broadcast.html?page=${selectedPage}&module=${renderer}&channel=${channelId(channel)}&direct=1`;
     }
