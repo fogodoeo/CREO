@@ -11,6 +11,7 @@
     <script src="auction-contract.js?v=20260819-contract-v1"></script>
     <script src="platform-client.js?v=20260803-admin-session-v2"></script>
     <script src="channel-runtime.js?v=20260901-operator-routing-v1"></script>
+    <script src="operator-pipeline.js?v=20260903-v1"></script>
     <script src="channel-adapters.js?v=20260823-channel-isolation-v3"></script>
     <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
     <script src="print-shipping-summary.js?v=20260903-winner-identity-v2"></script>
@@ -805,6 +806,7 @@
 </head>
 
 <body>
+    <creo-operator-pipeline current="print"></creo-operator-pipeline>
     <div class="tab-bar">
         <span class="channel-chip" id="print-channel-name">채널 확인 중</span>
         <a class="workspace-link" id="workspace-link" href="#">등록 · 목록</a>
@@ -1772,6 +1774,7 @@
             url.searchParams.set('channel', PRINT_CHANNEL_ID);
             document.getElementById('workspace-link').href = url.pathname + url.search;
             document.getElementById('print-login-description').textContent = label + ' 인쇄 자료를 불러오려면 관리자 비밀번호를 입력해 주세요.';
+            CreoOperatorPipeline.sync(PRINT_CHANNEL_ID, label);
         }
 
         function renderPrintError(error) {

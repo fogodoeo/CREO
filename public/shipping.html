@@ -9,6 +9,7 @@
     <title>CREO - 배송/수령 정보 등록</title>
     <script src="platform-client.js?v=20260803-admin-session-v2"></script>
     <script src="channel-runtime.js?v=20260901-operator-routing-v1"></script>
+    <script src="operator-pipeline.js?v=20260903-v1"></script>
     <script src="auction-contract.js?v=20260819-contract-v1"></script>
     <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
     <script src="channel-adapters.js?v=20260823-channel-isolation-v3"></script>
@@ -2220,6 +2221,7 @@
     </style>
 </head>
 <body>
+    <creo-operator-pipeline current="shipping" tone="dark"></creo-operator-pipeline>
 
     <div class="container">
         
@@ -2652,6 +2654,7 @@
             if (channelLabel) channelLabel.textContent = `${label} 배송관리`;
             if (dialogTitle) dialogTitle.textContent = `${label} 배송관리`;
             document.title = `${label} · 배송관리`;
+            CreoOperatorPipeline.sync(SHIPPING_CHANNEL_ID, label);
             document.querySelectorAll('.app-bottom-nav a').forEach(link => {
                 const url = new URL(link.getAttribute('href'), window.location.href);
                 url.searchParams.set('channel', SHIPPING_CHANNEL_ID);

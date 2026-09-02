@@ -233,9 +233,11 @@ test('broadcast studio uses shared profiles instead of channel-specific branches
     assert.match(legacy, /broadcast-studio\.html\?channel=/);
     assert.match(control, /broadcast-studio\.html\?channel=/);
     const workspace = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-workspace.html'), 'utf8');
+    const pipeline = fs.readFileSync(path.join(__dirname, '..', 'public', 'operator-pipeline.js'), 'utf8');
     const shipping = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-shipping.html'), 'utf8');
     assert.match(workspace, /channel-runtime\.js/);
-    assert.match(workspace, /routes\.control/);
+    assert.match(workspace, /<creo-operator-pipeline current="workspace"/);
+    assert.match(pipeline, /route: 'control'/);
     assert.doesNotMatch(workspace, /c\?\.links\?\.control/);
     assert.doesNotMatch(shipping, /c\?\.links\?\.control|manage-link|control-link/);
 });
@@ -659,12 +661,13 @@ test('broadcast live updates reconcile changed regions without rebuilding the wh
 test('print forms have one canonical page linked from both pipeline and workspace', () => {
     const home = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
     const workspace = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-workspace.html'), 'utf8');
+    const pipeline = fs.readFileSync(path.join(__dirname, '..', 'public', 'operator-pipeline.js'), 'utf8');
     const print = fs.readFileSync(path.join(__dirname, '..', 'public', 'print.html'), 'utf8');
     const adapters = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-adapters.js'), 'utf8');
     assert.match(home, /id="quick-print"/);
     assert.match(home, /print\.href=runtime\.url\('print'\)/);
-    assert.match(workspace, /id="print-link"/);
-    assert.match(workspace, /routes\.print/);
+    assert.match(workspace, /<creo-operator-pipeline current="workspace"/);
+    assert.match(pipeline, /route: 'print'/);
     assert.match(print, /platform-client\.js/);
     assert.match(print, /channel-adapters\.js/);
     assert.match(print, /channel-runtime\.js/);
