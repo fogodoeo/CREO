@@ -365,6 +365,10 @@ test('buyer and vendor checkout pages are short-code based and support the full 
     assert.match(source, /status==='paid'\)return\['결제 완료'/);
     assert.match(source, /status==='additional_payment'\)return\['추가 결제'/);
     assert.match(source, /입금했습니다/);
+    assert.match(source, /id="sync"[^>]*role="status">실시간/);
+    assert.match(source, /\/broadcast-pulse/);
+    assert.match(source, /checkoutRevision/);
+    assert.match(source, /schedulePulse\(delay=1200\)/);
     assert.doesNotMatch(source, /setInterval\(/);
     assert.doesNotMatch(source, /<script[^>]+src=/i);
     assert.match(vendor, /\/api\/platform\/vendor-checkout/);
@@ -372,6 +376,11 @@ test('buyer and vendor checkout pages are short-code based and support the full 
     assert.match(vendor, /\/confirm-payment/);
     assert.match(vendor, /카드결제 URL을 등록/);
     assert.match(vendor, /실제 입금·승인 내역/);
+    assert.match(vendor, /id="sync"[^>]*role="status">실시간/);
+    assert.match(vendor, /\/broadcast-pulse/);
+    assert.match(vendor, /checkoutRevision/);
+    assert.match(vendor, /새 변경 있음/);
+    assert.doesNotMatch(vendor, /setInterval\(/);
     assert.match(server, /buyerShippingShortMatch = \/\^\\\/s\\\//);
     assert.match(server, /new URL\('\/buyer-shipping\.html', url\)/);
     assert.match(server, /serveStatic\(req, res, buyerPageUrl\)/);

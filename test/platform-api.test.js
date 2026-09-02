@@ -123,6 +123,7 @@ test('buyer shipping link isolates one buyer, saves idempotently, confirms payme
     assert.deepEqual(initial.json().destinations.map((entry) => entry.label), ['대구 크레오', '대구 크레용 본점', '배송']);
     assert.equal(initial.json().totals.auctionAmount, 1100000);
     assert.equal(initial.json().buyer.phoneLast4, '5678');
+    assert.equal(initial.json().revision, 0);
     assert.doesNotMatch(initial.body, /01012345678|01099998888|private-other-buyer/);
 
     const requestId = 'buyer-save-request-1';
@@ -143,6 +144,9 @@ test('buyer shipping link isolates one buyer, saves idempotently, confirms payme
     assert.equal(savedA.json().totals.shippingAmount, 33000);
     assert.equal(savedA.json().totals.totalAmount, 1133000);
     assert.equal(savedA.json().payment.status, 'in_progress');
+    assert.ok(savedA.json().revision > initial.json().revision);
+    const savedPulse = await call(api, 'GET', '/api/platform/channels/alpha/broadcast-pulse', null, '');
+    assert.equal(savedPulse.json().checkoutRevision, savedA.json().revision);
     assert.equal((await repository.listRecords('alpha', 'shipment')).length, 3);
 
     const confirmRequestId = 'payment-confirm-request-1';
@@ -151,6 +155,7 @@ test('buyer shipping link isolates one buyer, saves idempotently, confirms payme
     assert.equal(confirmed.status, 200, confirmed.body);
     assert.equal(confirmed.json().payment.status, 'in_progress');
     assert.equal(confirmed.json().payment.confirmedAmount, 326000);
+    assert.ok(confirmed.json().revision > savedA.json().revision);
     assert.equal(confirmedAgain.json().duplicate, true);
 
     const restartedApi = createPlatformApi({ repository, adminSessionSecret: secret, logger: { error() {}, warn() {} } });
@@ -276,6 +281,7 @@ test('vendor checkout link handles card URL, buyer report, confirmation, duplica
     assert.equal(vendorInitial.status, 200, vendorInitial.body);
     assert.equal(vendorInitial.json().buyers[0].phone, '01012345678');
     assert.equal(vendorInitial.json().buyers[0].payment.status, 'card_link_pending');
+    const vendorInitialRevision = vendorInitial.json().revision;
     const buyerId = vendorInitial.json().buyers[0].id;
 
     const rejectedUrl = await call(api, 'POST', '/api/platform/vendor-checkout/card-link', {
@@ -297,6 +303,7 @@ test('vendor checkout link handles card URL, buyer report, confirmation, duplica
     assert.equal(cardDuplicate.status, 200, cardDuplicate.body);
     assert.deepEqual([cardSaved.json().duplicate, cardDuplicate.json().duplicate].sort(), [false, true]);
     assert.equal(cardSaved.json().buyers[0].payment.status, 'card_payment_pending');
+    assert.ok(cardSaved.json().revision > vendorInitialRevision);
 
     const buyerReady = await call(api, 'GET', `/api/platform/buyer-shipping?code=${buyerCode}`, null, '');
     assert.equal(buyerReady.json().vendors[0].payment.cardPaymentUrl, 'https://pay.example.com/orders/abc');
@@ -342,6 +349,8 @@ test('a sold transition queues buyer and vendor notices once without blocking th
         logger: { error() {}, warn() {} }
     });
 
+    await call(api, 'GET', '/api/platform/channels', null, '');
+    const pulseBefore = await call(api, 'GET', '/api/platform/channels/alpha/broadcast-pulse', null, '');
     const requests = Array.from({ length: 3 }, () => call(api, 'PUT', '/api/platform/channels/alpha/auction-transition', {
         itemId: 'notice-item', status: 'sold', mode: 'sold', item: {
             soldPrice: 150000, winnerName: '테스트구매자', winnerPhone: '01012345678'
@@ -353,12 +362,19 @@ test('a sold transition queues buyer and vendor notices once without blocking th
     assert.deepEqual(queued.map(entry => entry.event.recipientRole).sort(), ['buyer', 'vendor']);
     assert.equal(queued[0].channelId, 'alpha');
     assert.equal((await repository.getRecord('alpha', 'item', 'notice-item')).status, 'sold');
+    const pulseAfterSale = await call(api, 'GET', '/api/platform/channels/alpha/broadcast-pulse', null, '');
+    assert.ok(
+        pulseAfterSale.json().checkoutRevision > pulseBefore.json().checkoutRevision,
+        `${JSON.stringify(pulseBefore.json())} -> ${JSON.stringify(pulseAfterSale.json())}`
+    );
 
     const duplicate = await call(api, 'PUT', '/api/platform/channels/alpha/auction-transition', {
         itemId: 'notice-item', status: 'sold', mode: 'sold'
     });
     assert.equal(duplicate.status, 200, duplicate.body);
     assert.equal(queued.length, 2);
+    const pulseAfterDuplicate = await call(api, 'GET', '/api/platform/channels/alpha/broadcast-pulse', null, '');
+    assert.equal(pulseAfterDuplicate.json().checkoutRevision, pulseAfterSale.json().checkoutRevision);
 });
 
 test('BASIC sold transition assigns phone parity and rolls dice exactly once per lifecycle', async () => {
@@ -1959,6 +1975,7 @@ test('350 ms broadcast pulse is memory-only and changes after a public mutation'
     const afterMutationReads = repository.catalogReads;
     const pulse = await call(api, 'GET', '/api/platform/channels/alpha/broadcast-pulse', null, '');
     assert.ok(pulse.json().revision > 0);
+    assert.equal(pulse.json().checkoutRevision, 0);
     assert.equal(repository.catalogReads, afterMutationReads);
 
     const full = await call(api, 'GET', '/api/platform/channels/alpha/broadcast', null, '');

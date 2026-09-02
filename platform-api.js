@@ -1041,6 +1041,7 @@ function createPlatformApi({
     const adminLoginAttempts = new Map();
     const configuredBuyerSiteOrigin = String(process.env.CREO_BUYER_SITE_ORIGIN || '').trim().replace(/\/$/, '');
     let revisionSequence = 0;
+    const checkoutRevisions = new Map();
 
     function buyerCorsHeaders(req) {
         const origin = String(req.headers.origin || '').trim();
@@ -1335,6 +1336,7 @@ function createPlatformApi({
             };
         });
         return {
+            revision: checkoutRevision(context.channel.id),
             channel: { id: context.channel.id, name: context.channel.name },
             buyer: { name: maskBuyerName(buyerDisplayName(context.bundleItems[0])), phoneLast4: context.anchorPhone.slice(-4) },
             items,
@@ -1478,6 +1480,7 @@ function createPlatformApi({
         }
         const bundleIds = new Set(context.bundleItems.map((item) => item.id));
         context.shipments = [...context.shipments.filter((shipment) => !bundleIds.has(shipment.itemId)), ...saved];
+        touchCheckout(context.channel.id);
         touchChannel(context.channel.id);
         return { duplicate: false, payload: await buyerShippingPayload(context) };
     }
@@ -1514,6 +1517,7 @@ function createPlatformApi({
         const itemIds = new Set(group.items.map((item) => item.id));
         context.shipments = [...context.shipments.filter((shipment) => !itemIds.has(shipment.itemId)),
             ...group.shipments.filter((shipment) => shipment.paymentStatus === 'paid'), ...saved];
+        touchCheckout(context.channel.id);
         touchChannel(context.channel.id);
         return { duplicate: false, payload: await buyerShippingPayload(context), group };
     }
@@ -1571,6 +1575,7 @@ function createPlatformApi({
         }
         const itemIds = new Set(group.items.map((item) => item.id));
         context.shipments = [...context.shipments.filter((shipment) => !itemIds.has(shipment.itemId)), ...saved];
+        touchCheckout(context.channel.id);
         touchChannel(context.channel.id);
         return { duplicate: false, payload: await buyerShippingPayload(context), group };
     }
@@ -1683,6 +1688,7 @@ function createPlatformApi({
         const bundles = await vendorBuyerBundles(context);
         const buyers = bundles.map(vendorBuyerPublicPayload);
         return {
+            revision: checkoutRevision(context.channel.id),
             channel: { id: context.channel.id, name: context.channel.name },
             vendor: {
                 id: context.vendor.id,
@@ -1738,6 +1744,7 @@ function createPlatformApi({
         const itemIds = new Set(group.items.map((item) => item.id));
         context.shipments = [...context.shipments.filter((shipment) => !itemIds.has(shipment.itemId)),
             ...group.shipments.filter((shipment) => shipment.paymentStatus === 'paid'), ...saved];
+        touchCheckout(context.channel.id);
         touchChannel(context.channel.id);
         return { duplicate: false, bundle: await vendorBuyerBundle(context, buyerId), payload: await vendorCheckoutPayload(context) };
     }
@@ -1880,10 +1887,21 @@ function createPlatformApi({
         return channelRevisions.get(channelId) || 0;
     }
 
+    function checkoutRevision(channelId) {
+        return checkoutRevisions.get(channelId) || 0;
+    }
+
     function touchChannel(channelId) {
         revisionSequence += 1;
         knownChannelIds.add(channelId);
         channelRevisions.set(channelId, revisionSequence);
+        return revisionSequence;
+    }
+
+    function touchCheckout(channelId) {
+        revisionSequence += 1;
+        knownChannelIds.add(channelId);
+        checkoutRevisions.set(channelId, revisionSequence);
         return revisionSequence;
     }
 
@@ -2551,9 +2569,12 @@ function createPlatformApi({
                     replyJson(res, 404, { error: '채널을 찾을 수 없습니다.' });
                     return true;
                 }
-                // This endpoint intentionally stays memory-only. OBS can poll it
-                // every 350 ms without creating SQLite/Supabase read traffic.
-                replyJson(res, 200, { revision: channelRevision(channelId) });
+                // These scoped counters intentionally stay memory-only. Broadcast
+                // and checkout pages can poll without SQLite/Supabase read traffic.
+                replyJson(res, 200, {
+                    revision: channelRevision(channelId),
+                    checkoutRevision: checkoutRevision(channelId)
+                }, buyerCorsHeaders(req));
                 return true;
             }
             const catalog = await loadCatalog();
@@ -3352,6 +3373,7 @@ function createPlatformApi({
                             notifications = { failed: true, error: error.message };
                         }
                     }
+                    if ((requestedStatus === 'sold' && current?.status !== 'sold') || staleSaleOutcome) touchCheckout(channelId);
                     touchChannel(channelId);
                     replyJson(res, 200, {
                         channelId,
