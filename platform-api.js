@@ -7,6 +7,7 @@ const BasicDice = require('./public/basic-dice-core');
 const { normalizePhone } = require('./band-membership');
 const SettlementDiscount = require('./public/settlement-discount');
 const FALLBACK_PARGE_RATES = require('./public/parge_data.json');
+const Checkout = require('./checkout-core');
 
 const {
     DEFAULT_CHANNELS,
@@ -46,7 +47,10 @@ const SHIPPING_RATE_CONFIG_KEYS = Object.freeze({
 });
 const RUNTIME_CONFIG_VERSION_KEY = 'runtime_config_version';
 const BUYER_SHIPPING_TOKEN_TTL_MS = 14 * 24 * 60 * 60 * 1000;
-const BUYER_SHIPPING_SHORT_KEY_PREFIX = 'buyer_shipping_short_v1_';
+const BUYER_SHIPPING_SHORT_KEY_PREFIX = 'buyer_shipping_short_v2_';
+const LEGACY_BUYER_SHIPPING_SHORT_KEY_PREFIX = 'buyer_shipping_short_v1_';
+const VENDOR_CHECKOUT_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const VENDOR_CHECKOUT_SHORT_KEY_PREFIX = 'vendor_checkout_short_v1_';
 
 function replyJson(res, status, value, headers = {}) {
     const body = Buffer.from(JSON.stringify(value));
@@ -397,6 +401,11 @@ function sanitizeRecord(type, input = {}, current = {}) {
         createdAt: current.createdAt || input.createdAt || null
     };
     if (type === 'vendor') {
+        const paymentMethods = Array.isArray(input.paymentMethods)
+            ? [...new Set(input.paymentMethods.filter((method) => Checkout.PAYMENT_METHODS.includes(method)))]
+            : typeof input.paymentMethods === 'string'
+                ? [...new Set(input.paymentMethods.split(',').map((method) => method.trim()).filter((method) => Checkout.PAYMENT_METHODS.includes(method)))]
+                : Checkout.normalizeVendorPaymentMethods({ ...current, ...input });
         return {
             ...base,
             code: cleanText(input.code, 24).toUpperCase(),
@@ -406,6 +415,8 @@ function sanitizeRecord(type, input = {}, current = {}) {
             bankName: cleanText(input.bankName, 40),
             bankAccount: cleanText(input.bankAccount, 80),
             bankHolder: cleanText(input.bankHolder, 60),
+            paymentMethods,
+            cardPaymentEnabled: paymentMethods.includes('card'),
             logoUrl: cleanText(input.logoUrl, 600),
             groupId: cleanText(input.groupId, 64),
             address: cleanText(input.address, 240),
@@ -458,13 +469,18 @@ function sanitizeRecord(type, input = {}, current = {}) {
             pargeRegion: cleanText(input.pargeRegion, 80),
             pargeShop: cleanText(input.pargeShop, 120),
             paymentMethod: ['bank_transfer', 'card', 'on_site'].includes(input.paymentMethod) ? input.paymentMethod : '',
-            paymentStatus: ['awaiting_information', 'awaiting_payment', 'additional_payment', 'paid', 'on_site'].includes(input.paymentStatus)
+            paymentStatus: Checkout.PAYMENT_STATUSES.includes(input.paymentStatus)
                 ? input.paymentStatus
                 : '',
             paymentRequestedAmount: Math.max(0, numberValue(input.paymentRequestedAmount)),
             paymentConfirmedAmount: Math.max(0, numberValue(input.paymentConfirmedAmount)),
             paymentConfirmedAt: cleanText(input.paymentConfirmedAt, 80),
             paymentConfirmationRequestId: cleanText(input.paymentConfirmationRequestId, 80),
+            cardPaymentUrl: cleanText(input.cardPaymentUrl, 1000),
+            cardLinkPreparedAt: cleanText(input.cardLinkPreparedAt, 80),
+            cardLinkRequestId: cleanText(input.cardLinkRequestId, 80),
+            buyerPaymentReportedAt: cleanText(input.buyerPaymentReportedAt, 80),
+            buyerPaymentReportRequestId: cleanText(input.buyerPaymentReportRequestId, 80),
             buyerSubmittedAt: cleanText(input.buyerSubmittedAt, 80),
             buyerRequestId: cleanText(input.buyerRequestId, 80)
         };
@@ -1009,6 +1025,7 @@ function createPlatformApi({
     refreshShippingRateFn = refreshShippingRate,
     crewartHouseService = null,
     bandMembership = null,
+    notificationService = null,
     diceRoll = null,
     diceRandomInt = (maximum) => crypto.randomInt(maximum),
     adminSessionSecret = process.env.CREO_ADMIN_SECRET || crypto.randomBytes(32).toString('hex'),
@@ -1040,23 +1057,16 @@ function createPlatformApi({
         };
     }
 
-    function signBuyerShippingToken({ channelId, itemId, phone, vendorKey }, now = Date.now()) {
-        const payload = Buffer.from(JSON.stringify({
-            v: 1,
-            channelId: normalizeChannelId(channelId),
-            itemId: cleanText(itemId, 64),
-            phoneHash: sessionKey(normalizePhone(phone)),
-            vendorKey: cleanText(vendorKey, 80),
-            expiresAt: now + BUYER_SHIPPING_TOKEN_TTL_MS
-        })).toString('base64url');
-        const unsigned = `bs1.${payload}`;
+    function signedCheckoutToken(prefix, payload, ttlMs, now = Date.now()) {
+        const encoded = Buffer.from(JSON.stringify({ ...payload, expiresAt: now + ttlMs })).toString('base64url');
+        const unsigned = `${prefix}.${encoded}`;
         const signature = crypto.createHmac('sha256', sessionSecret).update(unsigned).digest('base64url');
         return `${unsigned}.${signature}`;
     }
 
-    function verifyBuyerShippingToken(token, now = Date.now()) {
-        const parts = String(token || '').split('.');
-        if (parts.length !== 3 || parts[0] !== 'bs1') return null;
+    function verifiedCheckoutToken(rawToken, prefixes, ttlMs, now = Date.now()) {
+        const parts = String(rawToken || '').split('.');
+        if (parts.length !== 3 || !prefixes.includes(parts[0])) return null;
         const unsigned = parts.slice(0, 2).join('.');
         const expected = crypto.createHmac('sha256', sessionSecret).update(unsigned).digest('base64url');
         const suppliedBuffer = Buffer.from(parts[2]);
@@ -1065,18 +1075,55 @@ function createPlatformApi({
         let payload;
         try { payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8')); }
         catch { return null; }
-        if (payload?.v !== 1 || Number(payload.expiresAt) <= now || Number(payload.expiresAt) > now + BUYER_SHIPPING_TOKEN_TTL_MS + 60_000) return null;
+        if (Number(payload?.expiresAt) <= now || Number(payload.expiresAt) > now + ttlMs + 60_000) return null;
+        return { ...payload, tokenVersion: parts[0] };
+    }
+
+    function signBuyerShippingToken({ channelId, phone }, now = Date.now()) {
+        return signedCheckoutToken('bs2', {
+            v: 2,
+            channelId: normalizeChannelId(channelId),
+            phoneHash: sessionKey(normalizePhone(phone))
+        }, BUYER_SHIPPING_TOKEN_TTL_MS, now);
+    }
+
+    function verifyBuyerShippingToken(token, now = Date.now()) {
+        const payload = verifiedCheckoutToken(token, ['bs2', 'bs1'], BUYER_SHIPPING_TOKEN_TTL_MS, now);
+        if (!payload || ![1, 2].includes(Number(payload.v))) return null;
         payload.channelId = normalizeChannelId(payload.channelId);
         payload.itemId = cleanText(payload.itemId, 64);
         payload.phoneHash = cleanText(payload.phoneHash, 100);
         payload.vendorKey = cleanText(payload.vendorKey, 80);
-        return payload.channelId && payload.itemId && payload.phoneHash ? payload : null;
+        return payload.channelId && payload.phoneHash ? payload : null;
+    }
+
+    function signVendorCheckoutToken({ channelId, vendorKey }, now = Date.now()) {
+        return signedCheckoutToken('vc1', {
+            v: 1,
+            channelId: normalizeChannelId(channelId),
+            vendorKey: cleanText(vendorKey, 80)
+        }, VENDOR_CHECKOUT_TOKEN_TTL_MS, now);
+    }
+
+    function verifyVendorCheckoutToken(token, now = Date.now()) {
+        const payload = verifiedCheckoutToken(token, ['vc1'], VENDOR_CHECKOUT_TOKEN_TTL_MS, now);
+        if (!payload || Number(payload.v) !== 1) return null;
+        payload.channelId = normalizeChannelId(payload.channelId);
+        payload.vendorKey = cleanText(payload.vendorKey, 80);
+        return payload.channelId && payload.vendorKey ? payload : null;
     }
 
     function buyerShippingShortCode(payload) {
-        const stableKey = [payload.channelId, payload.itemId, payload.phoneHash, payload.vendorKey].join(':');
+        const stableKey = [payload.channelId, payload.phoneHash].join(':');
         return crypto.createHmac('sha256', sessionSecret)
-            .update(`buyer-shipping-short:${stableKey}`)
+            .update(`buyer-shipping-short-v2:${stableKey}`)
+            .digest('base64url')
+            .slice(0, 11);
+    }
+
+    function vendorCheckoutShortCode(payload) {
+        return crypto.createHmac('sha256', sessionSecret)
+            .update(`vendor-checkout-short-v1:${payload.channelId}:${payload.vendorKey}`)
             .digest('base64url')
             .slice(0, 11);
     }
@@ -1090,19 +1137,39 @@ function createPlatformApi({
         return code;
     }
 
-    async function resolveBuyerShippingCredential({ token = '', code = '' } = {}) {
+    async function saveVendorCheckoutShortLink(token, payload) {
+        const code = vendorCheckoutShortCode(payload);
+        await repository.upsertRows([{
+            key: `${VENDOR_CHECKOUT_SHORT_KEY_PREFIX}${code}`,
+            value: JSON.stringify({ token, expiresAt: payload.expiresAt })
+        }]);
+        return code;
+    }
+
+    async function resolveShortCredential({ token = '', code = '', kind = 'buyer' } = {}) {
+        const verify = kind === 'vendor' ? verifyVendorCheckoutToken : verifyBuyerShippingToken;
         const cleanCode = cleanText(code, 24);
         if (cleanCode) {
             if (!/^[A-Za-z0-9_-]{8,24}$/.test(cleanCode)) return '';
-            const rows = await repository.getRowsByKeys([`${BUYER_SHIPPING_SHORT_KEY_PREFIX}${cleanCode}`]);
-            const stored = rows?.[0]?.value;
-            let entry;
-            try { entry = stored ? JSON.parse(stored) : null; }
-            catch { return ''; }
+            const prefixes = kind === 'vendor'
+                ? [VENDOR_CHECKOUT_SHORT_KEY_PREFIX]
+                : [BUYER_SHIPPING_SHORT_KEY_PREFIX, LEGACY_BUYER_SHIPPING_SHORT_KEY_PREFIX];
+            const rows = await repository.getRowsByKeys(prefixes.map((prefix) => `${prefix}${cleanCode}`));
+            const entry = rows.map((row) => {
+                try { return JSON.parse(row.value); } catch { return null; }
+            }).find(Boolean);
             if (!entry?.token || Number(entry.expiresAt) <= Date.now()) return '';
-            return verifyBuyerShippingToken(entry.token) ? entry.token : '';
+            return verify(entry.token) ? entry.token : '';
         }
-        return verifyBuyerShippingToken(token) ? token : '';
+        return verify(token) ? token : '';
+    }
+
+    function resolveBuyerShippingCredential(input = {}) {
+        return resolveShortCredential({ ...input, kind: 'buyer' });
+    }
+
+    function resolveVendorCheckoutCredential(input = {}) {
+        return resolveShortCredential({ ...input, kind: 'vendor' });
     }
 
     async function pargeRates() {
@@ -1129,24 +1196,28 @@ function createPlatformApi({
             repository.listRecords(channel.id, 'shipment'),
             repository.listRecords(channel.id, 'vendor')
         ]);
-        const anchor = items.find((item) => item.id === token.itemId && isSoldItem(item));
-        if (!anchor || vendorKeyForItem(anchor) !== token.vendorKey) return null;
-        const anchorPhone = storedWinnerPhone(anchor) || await resolveWinnerPhone(anchor, bandMembership);
-        if (!anchorPhone || sessionKey(anchorPhone) !== token.phoneHash) return null;
-        const resolved = await Promise.all(items.filter((item) => isSoldItem(item) && vendorKeyForItem(item) === token.vendorKey)
-            .map(async (item) => ({ item, phone: storedWinnerPhone(item) || await resolveWinnerPhone(item, bandMembership) })));
-        const bundleItems = resolved.filter((entry) => entry.phone === anchorPhone).map((entry) => entry.item)
-            .sort((left, right) => Number(left.lotNumber) - Number(right.lotNumber) || String(left.id).localeCompare(String(right.id)));
+        const soldItems = items.filter(isSoldItem);
+        if (token.tokenVersion === 'bs1' || Number(token.v) === 1) {
+            const anchor = soldItems.find((item) => item.id === token.itemId);
+            if (!anchor || (token.vendorKey && vendorKeyForItem(anchor) !== token.vendorKey)) return null;
+            const anchorPhone = storedWinnerPhone(anchor) || await resolveWinnerPhone(anchor, bandMembership);
+            if (!anchorPhone || sessionKey(anchorPhone) !== token.phoneHash) return null;
+        }
+        const resolved = await Promise.all(soldItems.map(async (item) => ({
+            item,
+            phone: storedWinnerPhone(item) || await resolveWinnerPhone(item, bandMembership)
+        })));
+        const bundleItems = resolved.filter((entry) => entry.phone && sessionKey(entry.phone) === token.phoneHash)
+            .map((entry) => entry.item)
+            .sort(Checkout.itemOrder);
         if (!bundleItems.length) return null;
-        const vendor = vendors.find((entry) => entry.id === anchor.vendorId)
-            || vendors.find((entry) => entry.name === anchor.vendorName)
-            || { id: anchor.vendorId || '', name: anchor.vendorName || '업체' };
-        return { token, catalog, channel, items, shipments, vendor, anchorPhone, bundleItems };
+        const anchorPhone = resolved.find((entry) => bundleItems.some((item) => item.id === entry.item.id))?.phone || '';
+        return { token, catalog, channel, items, shipments, vendors, anchorPhone, bundleItems };
     }
 
-    function bundleSettlement(context) {
-        const vendorName = context.vendor?.name || context.bundleItems[0]?.vendorName || '';
-        const selected = context.bundleItems.map((item) => ({
+    function groupSettlement(context, group) {
+        const vendorName = group.vendor?.name || group.items[0]?.vendorName || '';
+        const selected = group.items.map((item) => ({
             ...item,
             soldAmountWon: Math.max(0, Number(item.soldPrice) || 0),
             company: vendorName,
@@ -1163,8 +1234,7 @@ function createPlatformApi({
 
     function latestBundleShipment(context) {
         const itemIds = new Set(context.bundleItems.map((item) => item.id));
-        return context.shipments.filter((shipment) => itemIds.has(shipment.itemId))
-            .sort((left, right) => String(right.buyerSubmittedAt || right.updatedAt || '').localeCompare(String(left.buyerSubmittedAt || left.updatedAt || '')))[0] || null;
+        return Checkout.newestShipment(context.shipments.filter((shipment) => itemIds.has(shipment.itemId)));
     }
 
     function shipmentSelection(shipment) {
@@ -1177,69 +1247,119 @@ function createPlatformApi({
         };
     }
 
-    async function buyerShippingPayload(context) {
+    async function checkoutSnapshot(context) {
         const rates = await pargeRates();
         const latest = latestBundleShipment(context);
         const selection = shipmentSelection(latest);
-        const settlement = bundleSettlement(context);
-        const shippingCost = buyerShippingCost(selection, context.bundleItems.length, context.channel, rates);
-        const totalAmount = settlement.payableAuctionAmount + shippingCost;
-        const bundleShipments = context.shipments.filter((shipment) => context.bundleItems.some((item) => item.id === shipment.itemId));
-        const confirmedAmount = bundleShipments.reduce((maximum, shipment) => Math.max(maximum, Number(shipment.paymentConfirmedAmount) || 0), 0);
-        const missingShipment = context.bundleItems.some((item) => !bundleShipments.some((shipment) => shipment.itemId === item.id));
-        const additionalDue = Math.max(0, totalAmount - confirmedAmount);
-        let paymentStatus = 'awaiting_information';
-        if (latest?.paymentMethod === 'on_site' && confirmedAmount < totalAmount) paymentStatus = 'on_site';
-        else if (confirmedAmount > 0 && additionalDue > 0) paymentStatus = 'additional_payment';
-        else if (totalAmount > 0 && confirmedAmount >= totalAmount && !missingShipment) paymentStatus = 'paid';
-        else if (latest?.buyerSubmittedAt) paymentStatus = 'awaiting_payment';
+        const shipping = Checkout.allocateShipping(context.bundleItems, selection, context.channel, rates);
+        const groups = Checkout.groupItemsByVendor(context.bundleItems, context.vendors).map((group) => {
+            const itemIds = new Set(group.items.map((item) => item.id));
+            const shipments = context.shipments.filter((shipment) => itemIds.has(shipment.itemId));
+            const settlement = groupSettlement(context, group);
+            const shippingAmount = group.items.reduce((sum, item) => sum + (shipping.allocations.get(item.id) || 0), 0);
+            const totalAmount = settlement.payableAuctionAmount + shippingAmount;
+            const payment = Checkout.derivePaymentState({ shipments, itemCount: group.items.length, totalAmount });
+            return { ...group, shipments, settlement, shippingAmount, totalAmount, payment };
+        });
+        return { rates, latest, selection, shipping, groups };
+    }
+
+    function groupPublicPayload(group) {
+        const latest = group.payment.latest;
+        const methods = Checkout.normalizeVendorPaymentMethods(group.vendor);
+        return {
+            key: group.key,
+            id: group.vendor?.id || '',
+            name: group.vendor?.name || group.items[0]?.vendorName || '업체',
+            paymentMethods: methods,
+            items: group.items.map((item) => ({
+                id: item.id,
+                lotNumber: Math.max(0, Number(item.lotNumber) || 0),
+                name: cleanText(item.name || '개체', 100),
+                soldAmount: Math.max(0, Number(item.soldPrice) || 0),
+                paymentStatus: group.shipments.find((shipment) => shipment.itemId === item.id)?.paymentStatus || ''
+            })),
+            payment: {
+                status: group.payment.status,
+                method: latest?.paymentMethod || '',
+                confirmedAmount: group.payment.confirmedAmount,
+                additionalDue: group.payment.additionalDue,
+                requestedAmount: group.totalAmount,
+                cardPaymentUrl: latest?.paymentMethod === 'card' ? cleanText(latest.cardPaymentUrl, 1000) : '',
+                buyerPaymentReportedAt: latest?.buyerPaymentReportedAt || '',
+                account: {
+                    bankName: cleanText(group.vendor?.bankName, 40),
+                    accountNumber: cleanText(group.vendor?.bankAccount, 80),
+                    holder: cleanText(group.vendor?.bankHolder, 60)
+                }
+            },
+            totals: {
+                auctionAmount: group.settlement.originalAmount,
+                discountLabel: group.settlement.label || '',
+                discountAmount: group.settlement.discountAmount,
+                payableAuctionAmount: group.settlement.payableAuctionAmount,
+                shippingAmount: group.shippingAmount,
+                totalAmount: group.totalAmount
+            }
+        };
+    }
+
+    async function buyerShippingPayload(context) {
+        const snapshot = await checkoutSnapshot(context);
         const fixedDestinations = (context.channel.shippingDefaults?.pickupLocations || []).slice(0, 12).map((label, index) => ({
             id: `pickup-${index + 1}`,
             type: 'pickup',
             label
         }));
-        return {
-            channel: { id: context.channel.id, name: context.channel.name },
-            vendor: { id: context.vendor?.id || '', name: context.vendor?.name || '업체' },
-            buyer: { name: maskBuyerName(buyerDisplayName(context.bundleItems[0])), phoneLast4: context.anchorPhone.slice(-4) },
-            items: context.bundleItems.map((item) => ({
+        const groups = snapshot.groups.map(groupPublicPayload);
+        const allPaid = groups.length > 0 && groups.every((group) => group.payment.status === 'paid');
+        const hasAdditional = groups.some((group) => group.payment.status === 'additional_payment');
+        const hasReported = groups.some((group) => ['bank_transfer_reported', 'card_payment_reported'].includes(group.payment.status));
+        const submittedAt = snapshot.latest?.buyerSubmittedAt || '';
+        const overallStatus = allPaid ? 'paid' : hasAdditional ? 'additional_payment' : hasReported ? 'payment_reported' : submittedAt ? 'in_progress' : 'awaiting_information';
+        const auctionAmount = groups.reduce((sum, group) => sum + group.totals.auctionAmount, 0);
+        const discountAmount = groups.reduce((sum, group) => sum + group.totals.discountAmount, 0);
+        const payableAuctionAmount = groups.reduce((sum, group) => sum + group.totals.payableAuctionAmount, 0);
+        const confirmedAmount = groups.reduce((sum, group) => sum + group.payment.confirmedAmount, 0);
+        const additionalDue = groups.reduce((sum, group) => sum + group.payment.additionalDue, 0);
+        const items = context.bundleItems.map((item) => {
+            const group = snapshot.groups.find((entry) => entry.items.some((candidate) => candidate.id === item.id));
+            return {
                 id: item.id,
                 lotNumber: Math.max(0, Number(item.lotNumber) || 0),
                 name: cleanText(item.name || '개체', 100),
+                vendorKey: group?.key || '',
+                vendorName: group?.vendor?.name || item.vendorName || '업체',
                 soldAmount: Math.max(0, Number(item.soldPrice) || 0),
-                paymentStatus: bundleShipments.find((shipment) => shipment.itemId === item.id)?.paymentStatus || ''
-            })),
-            destinations: [
-                ...fixedDestinations,
-                { id: 'parge', type: 'parge', label: '배송', provider: '파르게' }
-            ],
+                paymentStatus: group?.shipments.find((shipment) => shipment.itemId === item.id)?.paymentStatus || ''
+            };
+        });
+        return {
+            channel: { id: context.channel.id, name: context.channel.name },
+            buyer: { name: maskBuyerName(buyerDisplayName(context.bundleItems[0])), phoneLast4: context.anchorPhone.slice(-4) },
+            items,
+            vendors: groups,
+            destinations: [...fixedDestinations, { id: 'parge', type: 'parge', label: '배송', provider: '파르게' }],
             parge: {
-                regions: rates,
+                regions: snapshot.rates,
                 additionalFee: Number(context.channel.shippingDefaults?.pargeAdditionalFee) || 7000,
                 jejuAdditionalFee: Number(context.channel.shippingDefaults?.pargeJejuAdditionalFee) || 4000
             },
-            selection: selection ? { ...selection, paymentMethod: latest?.paymentMethod || '' } : null,
-            payment: {
-                status: paymentStatus,
-                method: latest?.paymentMethod || '',
-                confirmedAmount,
-                additionalDue,
-                account: {
-                    bankName: cleanText(context.vendor?.bankName, 40),
-                    accountNumber: cleanText(context.vendor?.bankAccount, 80),
-                    holder: cleanText(context.vendor?.bankHolder, 60)
-                }
-            },
+            selection: snapshot.selection ? {
+                ...snapshot.selection,
+                payments: groups.map((group) => ({ vendorKey: group.key, method: group.payment.method }))
+            } : null,
+            payment: { status: overallStatus, confirmedAmount, additionalDue },
             totals: {
-                auctionAmount: settlement.originalAmount,
-                discountLabel: settlement.label || '',
-                discountAmount: settlement.discountAmount,
-                payableAuctionAmount: settlement.payableAuctionAmount,
-                shippingAmount: shippingCost,
-                totalAmount
+                auctionAmount,
+                discountLabel: groups.map((group) => group.totals.discountLabel).filter(Boolean).join(' · '),
+                discountAmount,
+                payableAuctionAmount,
+                shippingAmount: snapshot.shipping.total,
+                totalAmount: payableAuctionAmount + snapshot.shipping.total
             },
-            submittedAt: latest?.buyerSubmittedAt || '',
-            updatedAt: latest?.updatedAt || ''
+            submittedAt,
+            updatedAt: snapshot.latest?.updatedAt || ''
         };
     }
 
@@ -1249,17 +1369,23 @@ function createPlatformApi({
         return error;
     }
 
+    function requestedPaymentMethods(body, groups) {
+        const rows = Array.isArray(body.payments) ? body.payments : [];
+        const requested = new Map(rows.map((row) => [cleanText(row?.vendorKey, 80), cleanText(row?.method, 30)]));
+        if (body.paymentMethod && groups.length === 1) requested.set(groups[0].key, cleanText(body.paymentMethod, 30));
+        return requested;
+    }
+
     async function saveBuyerShipping(context, body = {}) {
         const requestId = cleanText(body.requestId, 80);
-        if (requestId.length < 8) throw buyerInputError('저장 요청값이 올바르지 않습니다. 페이지를 새로고침해 주세요.');
+        if (requestId.length < 8) throw buyerInputError('저장 요청값이 올바르지 않습니다.');
         const latest = latestBundleShipment(context);
         if (latest?.buyerRequestId === requestId) return { duplicate: true, payload: await buyerShippingPayload(context) };
-        const destinationId = cleanText(body.destinationId, 80);
         const fixedDestinations = (context.channel.shippingDefaults?.pickupLocations || []).slice(0, 12).map((label, index) => ({
-            id: `pickup-${index + 1}`,
-            label
+            id: `pickup-${index + 1}`, type: 'pickup', label
         }));
-        const fixed = fixedDestinations.find((entry) => entry.id === destinationId);
+        const destinationId = cleanText(body.destinationId, 80);
+        const fixed = fixedDestinations.find((destination) => destination.id === destinationId);
         const rates = await pargeRates();
         let selection;
         let method;
@@ -1281,57 +1407,74 @@ function createPlatformApi({
         } else {
             throw buyerInputError('배송지를 선택해 주세요.');
         }
-        const paymentMethod = ['bank_transfer', 'card'].includes(body.paymentMethod) ? body.paymentMethod : '';
-        if (!paymentMethod) throw buyerInputError('입금 방식을 선택해 주세요.');
-        const settlement = bundleSettlement(context);
-        const shippingCost = buyerShippingCost(selection, context.bundleItems.length, context.channel, rates);
-        const totalAmount = settlement.payableAuctionAmount + shippingCost;
+        const groups = Checkout.groupItemsByVendor(context.bundleItems, context.vendors);
+        const requestedMethods = requestedPaymentMethods(body, groups);
+        const shipping = Checkout.allocateShipping(context.bundleItems, selection, context.channel, rates);
         const existingByItem = new Map(context.shipments.map((shipment) => [shipment.itemId, shipment]));
-        const confirmedAmount = context.shipments
-            .filter((shipment) => context.bundleItems.some((item) => item.id === shipment.itemId))
-            .reduce((maximum, shipment) => Math.max(maximum, Number(shipment.paymentConfirmedAmount) || 0), 0);
-        const paymentStatus = confirmedAmount > 0 && confirmedAmount < totalAmount
-            ? 'additional_payment'
-            : confirmedAmount >= totalAmount && totalAmount > 0
-                ? 'paid'
-                : 'awaiting_payment';
-        const status = paymentStatus === 'paid' ? 'complete' : 'payment_pending';
         const now = new Date().toISOString();
-        const bundleId = stableBuyerId('bundle', `${context.channel.id}:${vendorKeyForItem(context.bundleItems[0])}:${context.anchorPhone}`);
         const saved = [];
-        for (let index = 0; index < context.bundleItems.length; index += 1) {
-            const item = context.bundleItems[index];
-            const current = existingByItem.get(item.id) || {};
-            const keepCompletedItem = current.paymentStatus === 'paid' && Boolean(current.paymentConfirmedAt);
-            const itemPaymentStatus = paymentStatus === 'paid' || keepCompletedItem ? 'paid' : paymentStatus;
-            const record = sanitizeRecord('shipment', {
-                ...current,
-                id: current.id || stableBuyerId('shipment', `${context.channel.id}:${item.id}`),
-                itemId: item.id,
-                itemName: item.name || '',
-                itemLotNumber: Number(item.lotNumber) || 0,
-                itemVendorName: context.vendor?.name || item.vendorName || '',
-                vendorId: item.vendorId || context.vendor?.id || '',
-                recipientName: buyerDisplayName(item),
-                recipientPhone: context.anchorPhone,
-                method,
-                carrier,
-                address,
-                cost: index === 0 ? shippingCost : 0,
-                status: itemPaymentStatus === 'paid' ? 'complete' : status,
-                note: current.note || '',
-                bundleId,
-                ...selection,
-                paymentMethod,
-                paymentStatus: itemPaymentStatus,
-                paymentRequestedAmount: totalAmount,
-                paymentConfirmedAmount: confirmedAmount,
-                paymentConfirmedAt: current.paymentConfirmedAt || '',
-                paymentConfirmationRequestId: current.paymentConfirmationRequestId || '',
-                buyerSubmittedAt: now,
-                buyerRequestId: requestId
-            }, current);
-            saved.push(await repository.upsertRecord(context.channel.id, 'shipment', record));
+        for (const group of groups) {
+            const groupShipments = context.shipments.filter((shipment) => group.items.some((item) => item.id === shipment.itemId));
+            const groupLatest = Checkout.newestShipment(groupShipments);
+            const paymentMethod = requestedMethods.get(group.key) || groupLatest?.paymentMethod || '';
+            const allowedMethods = Checkout.normalizeVendorPaymentMethods(group.vendor);
+            if (!Checkout.PAYMENT_METHODS.includes(paymentMethod) || !allowedMethods.includes(paymentMethod)) {
+                throw buyerInputError(`${group.vendor?.name || '업체'}의 결제방식을 선택해 주세요.`);
+            }
+            const settlement = groupSettlement(context, group);
+            const shippingAmount = group.items.reduce((sum, item) => sum + (shipping.allocations.get(item.id) || 0), 0);
+            const totalAmount = settlement.payableAuctionAmount + shippingAmount;
+            const confirmedAmount = Checkout.confirmedAmount(groupShipments);
+            const additional = confirmedAmount > 0 && confirmedAmount < totalAmount;
+            const previousRequested = Math.max(0, Number(groupLatest?.paymentRequestedAmount) || 0);
+            const amountChanged = previousRequested > 0 && previousRequested !== totalAmount;
+            const cardPaymentUrl = paymentMethod === 'card' && !amountChanged ? (groupLatest?.cardPaymentUrl || '') : '';
+            const openStatus = confirmedAmount >= totalAmount && totalAmount > 0
+                ? 'paid'
+                : additional
+                    ? 'additional_payment'
+                    : paymentMethod === 'card'
+                        ? (cardPaymentUrl ? 'card_payment_pending' : 'card_link_pending')
+                        : 'bank_transfer_pending';
+            const bundleId = stableBuyerId('bundle', `${context.channel.id}:${group.key}:${context.anchorPhone}`);
+            for (const item of group.items) {
+                const current = existingByItem.get(item.id) || {};
+                const keepCompletedItem = current.paymentStatus === 'paid' && Boolean(current.paymentConfirmedAt);
+                const itemPaymentStatus = keepCompletedItem ? 'paid' : openStatus;
+                const record = sanitizeRecord('shipment', {
+                    ...current,
+                    id: current.id || stableBuyerId('shipment', `${context.channel.id}:${item.id}`),
+                    itemId: item.id,
+                    itemName: item.name || '',
+                    itemLotNumber: Number(item.lotNumber) || 0,
+                    itemVendorName: group.vendor?.name || item.vendorName || '',
+                    vendorId: item.vendorId || group.vendor?.id || '',
+                    recipientName: buyerDisplayName(item),
+                    recipientPhone: context.anchorPhone,
+                    method,
+                    carrier,
+                    address,
+                    cost: shipping.allocations.get(item.id) || 0,
+                    status: itemPaymentStatus === 'paid' ? 'complete' : 'payment_pending',
+                    note: current.note || '',
+                    bundleId,
+                    ...selection,
+                    paymentMethod,
+                    paymentStatus: itemPaymentStatus,
+                    paymentRequestedAmount: totalAmount,
+                    paymentConfirmedAmount: confirmedAmount,
+                    paymentConfirmedAt: current.paymentConfirmedAt || '',
+                    paymentConfirmationRequestId: current.paymentConfirmationRequestId || '',
+                    cardPaymentUrl,
+                    cardLinkPreparedAt: cardPaymentUrl ? (groupLatest?.cardLinkPreparedAt || '') : '',
+                    cardLinkRequestId: cardPaymentUrl ? (groupLatest?.cardLinkRequestId || '') : '',
+                    buyerPaymentReportedAt: keepCompletedItem ? current.buyerPaymentReportedAt || '' : '',
+                    buyerPaymentReportRequestId: keepCompletedItem ? current.buyerPaymentReportRequestId || '' : '',
+                    buyerSubmittedAt: now,
+                    buyerRequestId: requestId
+                }, current);
+                saved.push(await repository.upsertRecord(context.channel.id, 'shipment', record));
+            }
         }
         const bundleIds = new Set(context.bundleItems.map((item) => item.id));
         context.shipments = [...context.shipments.filter((shipment) => !bundleIds.has(shipment.itemId)), ...saved];
@@ -1339,27 +1482,58 @@ function createPlatformApi({
         return { duplicate: false, payload: await buyerShippingPayload(context) };
     }
 
-    async function confirmBuyerPayment(context, requestId) {
+    async function reportBuyerPayment(context, vendorKey, requestId) {
+        const cleanRequestId = cleanText(requestId, 80);
+        if (cleanRequestId.length < 8) throw buyerInputError('결제 신고 요청값이 올바르지 않습니다.');
+        const snapshot = await checkoutSnapshot(context);
+        const group = snapshot.groups.find((entry) => entry.key === cleanText(vendorKey, 80));
+        if (!group) throw buyerInputError('결제할 업체 내역을 찾을 수 없습니다.', 404);
+        if (group.shipments.length === group.items.length
+            && group.shipments.every((shipment) => shipment.buyerPaymentReportRequestId === cleanRequestId)) {
+            return { duplicate: true, payload: await buyerShippingPayload(context), group };
+        }
+        if (!group.payment.latest?.paymentMethod) throw buyerInputError('배송지와 결제방식을 먼저 저장해 주세요.', 409);
+        if (group.payment.status === 'paid') return { duplicate: true, payload: await buyerShippingPayload(context), group };
+        if (group.payment.latest.paymentMethod === 'card' && !group.payment.latest.cardPaymentUrl) {
+            throw buyerInputError('업체에서 카드결제 링크를 준비하고 있습니다.', 409);
+        }
+        const nextStatus = group.payment.latest.paymentMethod === 'card' ? 'card_payment_reported' : 'bank_transfer_reported';
+        const now = new Date().toISOString();
+        const saved = [];
+        for (const item of group.items) {
+            const current = group.shipments.find((shipment) => shipment.itemId === item.id);
+            if (!current) throw buyerInputError('배송정보를 다시 저장해 주세요.', 409);
+            if (current.paymentStatus === 'paid') continue;
+            saved.push(await repository.upsertRecord(context.channel.id, 'shipment', sanitizeRecord('shipment', {
+                ...current,
+                paymentStatus: nextStatus,
+                buyerPaymentReportedAt: now,
+                buyerPaymentReportRequestId: cleanRequestId
+            }, current)));
+        }
+        const itemIds = new Set(group.items.map((item) => item.id));
+        context.shipments = [...context.shipments.filter((shipment) => !itemIds.has(shipment.itemId)),
+            ...group.shipments.filter((shipment) => shipment.paymentStatus === 'paid'), ...saved];
+        touchChannel(context.channel.id);
+        return { duplicate: false, payload: await buyerShippingPayload(context), group };
+    }
+
+    async function confirmBuyerPayment(context, vendorKey, requestId) {
         const cleanRequestId = cleanText(requestId, 80);
         if (cleanRequestId.length < 8) throw buyerInputError('결제 확인 요청값이 올바르지 않습니다.');
-        const latest = latestBundleShipment(context);
-        const selection = shipmentSelection(latest);
-        if (!selection || !latest?.paymentMethod) throw buyerInputError('구매자가 배송지와 입금 방식을 먼저 선택해야 합니다.', 409);
-        const currentBundleShipments = context.shipments.filter((shipment) => context.bundleItems.some((item) => item.id === shipment.itemId));
-        if (currentBundleShipments.length === context.bundleItems.length
-            && currentBundleShipments.every((shipment) => shipment.paymentConfirmationRequestId === cleanRequestId)) {
-            return { duplicate: true, payload: await buyerShippingPayload(context) };
+        const snapshot = await checkoutSnapshot(context);
+        const group = snapshot.groups.find((entry) => entry.key === cleanText(vendorKey, 80));
+        if (!group) throw buyerInputError('구매자 결제 묶음을 찾을 수 없습니다.', 404);
+        if (!snapshot.selection || !group.payment.latest?.paymentMethod) throw buyerInputError('구매자가 배송지와 결제방식을 먼저 선택해야 합니다.', 409);
+        if (group.shipments.length === group.items.length
+            && group.shipments.every((shipment) => shipment.paymentConfirmationRequestId === cleanRequestId)) {
+            return { duplicate: true, payload: await buyerShippingPayload(context), group };
         }
-        const rates = await pargeRates();
-        const settlement = bundleSettlement(context);
-        const shippingCost = buyerShippingCost(selection, context.bundleItems.length, context.channel, rates);
-        const totalAmount = settlement.payableAuctionAmount + shippingCost;
-        const existingByItem = new Map(context.shipments.map((shipment) => [shipment.itemId, shipment]));
         const now = new Date().toISOString();
-        const bundleId = latest.bundleId || stableBuyerId('bundle', `${context.channel.id}:${vendorKeyForItem(context.bundleItems[0])}:${context.anchorPhone}`);
         const saved = [];
-        for (let index = 0; index < context.bundleItems.length; index += 1) {
-            const item = context.bundleItems[index];
+        const existingByItem = new Map(group.shipments.map((shipment) => [shipment.itemId, shipment]));
+        const bundleId = group.payment.latest.bundleId || stableBuyerId('bundle', `${context.channel.id}:${group.key}:${context.anchorPhone}`);
+        for (const item of group.items) {
             const current = existingByItem.get(item.id) || {};
             const record = sanitizeRecord('shipment', {
                 ...current,
@@ -1367,33 +1541,339 @@ function createPlatformApi({
                 itemId: item.id,
                 itemName: item.name || '',
                 itemLotNumber: Number(item.lotNumber) || 0,
-                itemVendorName: context.vendor?.name || item.vendorName || '',
-                vendorId: item.vendorId || context.vendor?.id || '',
+                itemVendorName: group.vendor?.name || item.vendorName || '',
+                vendorId: item.vendorId || group.vendor?.id || '',
                 recipientName: buyerDisplayName(item),
                 recipientPhone: context.anchorPhone,
-                method: selection.destinationType === 'pickup' ? 'pickup' : 'delivery',
-                carrier: selection.destinationType === 'parge' ? '파르게' : '',
-                address: selection.destinationType === 'parge' ? `${selection.pargeRegion} (${selection.pargeShop})` : latest.address,
-                cost: index === 0 ? shippingCost : 0,
+                method: snapshot.selection.destinationType === 'pickup' ? 'pickup' : 'delivery',
+                carrier: snapshot.selection.destinationType === 'parge' ? '파르게' : '',
+                address: snapshot.selection.destinationType === 'parge' ? `${snapshot.selection.pargeRegion} (${snapshot.selection.pargeShop})` : group.payment.latest.address,
+                cost: snapshot.shipping.allocations.get(item.id) || 0,
                 status: 'complete',
                 note: current.note || '',
                 bundleId,
-                ...selection,
-                paymentMethod: latest.paymentMethod,
+                ...snapshot.selection,
+                paymentMethod: group.payment.latest.paymentMethod,
                 paymentStatus: 'paid',
-                paymentRequestedAmount: totalAmount,
-                paymentConfirmedAmount: totalAmount,
+                paymentRequestedAmount: group.totalAmount,
+                paymentConfirmedAmount: group.totalAmount,
                 paymentConfirmedAt: now,
                 paymentConfirmationRequestId: cleanRequestId,
-                buyerSubmittedAt: current.buyerSubmittedAt || latest.buyerSubmittedAt || now,
-                buyerRequestId: current.buyerRequestId || latest.buyerRequestId || ''
+                cardPaymentUrl: group.payment.latest.cardPaymentUrl || '',
+                cardLinkPreparedAt: group.payment.latest.cardLinkPreparedAt || '',
+                cardLinkRequestId: group.payment.latest.cardLinkRequestId || '',
+                buyerPaymentReportedAt: current.buyerPaymentReportedAt || group.payment.latest.buyerPaymentReportedAt || '',
+                buyerPaymentReportRequestId: current.buyerPaymentReportRequestId || group.payment.latest.buyerPaymentReportRequestId || '',
+                buyerSubmittedAt: current.buyerSubmittedAt || group.payment.latest.buyerSubmittedAt || now,
+                buyerRequestId: current.buyerRequestId || group.payment.latest.buyerRequestId || ''
             }, current);
             saved.push(await repository.upsertRecord(context.channel.id, 'shipment', record));
         }
-        const bundleIds = new Set(context.bundleItems.map((item) => item.id));
-        context.shipments = [...context.shipments.filter((shipment) => !bundleIds.has(shipment.itemId)), ...saved];
+        const itemIds = new Set(group.items.map((item) => item.id));
+        context.shipments = [...context.shipments.filter((shipment) => !itemIds.has(shipment.itemId)), ...saved];
         touchChannel(context.channel.id);
-        return { duplicate: false, payload: await buyerShippingPayload(context) };
+        return { duplicate: false, payload: await buyerShippingPayload(context), group };
+    }
+
+    async function vendorCheckoutContext(tokenOrPayload) {
+        const token = typeof tokenOrPayload === 'string' ? verifyVendorCheckoutToken(tokenOrPayload) : tokenOrPayload;
+        if (!token) return null;
+        const catalog = await loadCatalog();
+        const channel = catalog.channels.find((entry) => entry.id === token.channelId && entry.status === 'active');
+        if (!channel || channel.features?.shipping === false || channel.dataAdapter !== 'platform') return null;
+        const [items, shipments, vendors] = await Promise.all([
+            repository.listRecords(channel.id, 'item'),
+            repository.listRecords(channel.id, 'shipment'),
+            repository.listRecords(channel.id, 'vendor')
+        ]);
+        const vendor = vendors.find((entry) => entry.id === token.vendorKey)
+            || vendors.find((entry) => entry.name === token.vendorKey);
+        if (!vendor) return null;
+        return { token, catalog, channel, items, shipments, vendors, vendor, vendorKey: token.vendorKey };
+    }
+
+    async function vendorBuyerBundles(context) {
+        const resolved = await Promise.all(context.items.filter(isSoldItem).map(async (item) => ({
+            item,
+            phone: storedWinnerPhone(item) || await resolveWinnerPhone(item, bandMembership)
+        })));
+        const buyerRows = new Map();
+        for (const entry of resolved) {
+            if (!entry.phone || vendorKeyForItem(entry.item) !== context.vendorKey) continue;
+            const phoneHash = sessionKey(entry.phone);
+            if (!buyerRows.has(phoneHash)) buyerRows.set(phoneHash, { phoneHash, phone: entry.phone, vendorItems: [] });
+            buyerRows.get(phoneHash).vendorItems.push(entry.item);
+        }
+        const bundles = [];
+        for (const row of buyerRows.values()) {
+            const bundleItems = resolved.filter((entry) => entry.phone && sessionKey(entry.phone) === row.phoneHash)
+                .map((entry) => entry.item)
+                .sort(Checkout.itemOrder);
+            const buyerContext = {
+                token: { channelId: context.channel.id, phoneHash: row.phoneHash },
+                catalog: context.catalog,
+                channel: context.channel,
+                items: context.items,
+                shipments: context.shipments,
+                vendors: context.vendors,
+                anchorPhone: row.phone,
+                bundleItems
+            };
+            const snapshot = await checkoutSnapshot(buyerContext);
+            const group = snapshot.groups.find((entry) => entry.key === context.vendorKey);
+            if (!group) continue;
+            bundles.push({
+                id: stableBuyerId('buyer', `${context.channel.id}:${row.phoneHash}`),
+                phone: row.phone,
+                name: buyerDisplayName(group.items[0]),
+                context: buyerContext,
+                snapshot,
+                group
+            });
+        }
+        return bundles.sort((left, right) => {
+            const leftOpen = left.group.payment.status === 'paid' ? 1 : 0;
+            const rightOpen = right.group.payment.status === 'paid' ? 1 : 0;
+            return leftOpen - rightOpen
+                || String(right.group.payment.latest?.buyerPaymentReportedAt || right.group.payment.latest?.buyerSubmittedAt || '')
+                    .localeCompare(String(left.group.payment.latest?.buyerPaymentReportedAt || left.group.payment.latest?.buyerSubmittedAt || ''))
+                || left.name.localeCompare(right.name, 'ko');
+        });
+    }
+
+    function vendorBuyerPublicPayload(bundle) {
+        const { group, snapshot } = bundle;
+        const latest = group.payment.latest;
+        return {
+            id: bundle.id,
+            name: bundle.name,
+            phone: bundle.phone,
+            destination: snapshot.selection ? {
+                ...snapshot.selection,
+                address: latest?.address || ''
+            } : null,
+            items: group.items.map((item) => ({
+                id: item.id,
+                lotNumber: Math.max(0, Number(item.lotNumber) || 0),
+                name: cleanText(item.name || '개체', 100),
+                soldAmount: Math.max(0, Number(item.soldPrice) || 0),
+                paid: group.shipments.find((shipment) => shipment.itemId === item.id)?.paymentStatus === 'paid'
+            })),
+            payment: {
+                status: group.payment.status,
+                method: latest?.paymentMethod || '',
+                requestedAmount: group.totalAmount,
+                confirmedAmount: group.payment.confirmedAmount,
+                additionalDue: group.payment.additionalDue,
+                cardPaymentUrl: latest?.cardPaymentUrl || '',
+                reportedAt: latest?.buyerPaymentReportedAt || '',
+                confirmedAt: latest?.paymentConfirmedAt || ''
+            },
+            totals: {
+                auctionAmount: group.settlement.originalAmount,
+                discountAmount: group.settlement.discountAmount,
+                payableAuctionAmount: group.settlement.payableAuctionAmount,
+                shippingAmount: group.shippingAmount,
+                totalAmount: group.totalAmount
+            }
+        };
+    }
+
+    async function vendorCheckoutPayload(context) {
+        const bundles = await vendorBuyerBundles(context);
+        const buyers = bundles.map(vendorBuyerPublicPayload);
+        return {
+            channel: { id: context.channel.id, name: context.channel.name },
+            vendor: {
+                id: context.vendor.id,
+                name: context.vendor.name,
+                manager: context.vendor.manager || '',
+                paymentMethods: Checkout.normalizeVendorPaymentMethods(context.vendor)
+            },
+            summary: {
+                buyerCount: buyers.length,
+                itemCount: buyers.reduce((sum, buyer) => sum + buyer.items.length, 0),
+                openCount: buyers.filter((buyer) => buyer.payment.status !== 'paid').length,
+                reportedCount: buyers.filter((buyer) => ['bank_transfer_reported', 'card_payment_reported'].includes(buyer.payment.status)).length
+            },
+            buyers
+        };
+    }
+
+    async function vendorBuyerBundle(context, buyerId) {
+        return (await vendorBuyerBundles(context)).find((entry) => entry.id === cleanText(buyerId, 64)) || null;
+    }
+
+    async function saveCardPaymentLink(context, buyerId, rawUrl, requestId) {
+        const cleanRequestId = cleanText(requestId, 80);
+        if (cleanRequestId.length < 8) throw buyerInputError('카드 링크 요청값이 올바르지 않습니다.');
+        const cardPaymentUrl = Checkout.validateCardPaymentUrl(rawUrl);
+        if (!cardPaymentUrl) throw buyerInputError('외부에서 열 수 있는 HTTPS 카드결제 주소를 입력해 주세요.');
+        const bundle = await vendorBuyerBundle(context, buyerId);
+        if (!bundle) throw buyerInputError('구매자 결제 내역을 찾을 수 없습니다.', 404);
+        const { group } = bundle;
+        if (group.payment.status === 'paid') throw buyerInputError('이미 결제 완료된 내역입니다.', 409);
+        if (group.payment.latest?.paymentMethod !== 'card') throw buyerInputError('구매자가 카드결제를 선택한 내역이 아닙니다.', 409);
+        if (!group.payment.latest?.buyerSubmittedAt) throw buyerInputError('구매자가 배송·결제 정보를 먼저 저장해야 합니다.', 409);
+        if (group.shipments.length === group.items.length
+            && group.shipments.every((shipment) => shipment.cardLinkRequestId === cleanRequestId)) {
+            return { duplicate: true, bundle, payload: await vendorCheckoutPayload(context) };
+        }
+        const now = new Date().toISOString();
+        const saved = [];
+        for (const item of group.items) {
+            const current = group.shipments.find((shipment) => shipment.itemId === item.id);
+            if (!current) throw buyerInputError('구매자가 배송·결제 정보를 다시 저장해야 합니다.', 409);
+            if (current.paymentStatus === 'paid') continue;
+            saved.push(await repository.upsertRecord(context.channel.id, 'shipment', sanitizeRecord('shipment', {
+                ...current,
+                cardPaymentUrl,
+                cardLinkPreparedAt: now,
+                cardLinkRequestId: cleanRequestId,
+                paymentStatus: 'card_payment_pending',
+                buyerPaymentReportedAt: '',
+                buyerPaymentReportRequestId: ''
+            }, current)));
+        }
+        const itemIds = new Set(group.items.map((item) => item.id));
+        context.shipments = [...context.shipments.filter((shipment) => !itemIds.has(shipment.itemId)),
+            ...group.shipments.filter((shipment) => shipment.paymentStatus === 'paid'), ...saved];
+        touchChannel(context.channel.id);
+        return { duplicate: false, bundle: await vendorBuyerBundle(context, buyerId), payload: await vendorCheckoutPayload(context) };
+    }
+
+    function checkoutPageOrigin(req) {
+        return configuredBuyerSiteOrigin || requestOrigin(req);
+    }
+
+    async function prepareBuyerCheckoutLink(req, channelId, phone) {
+        const token = signBuyerShippingToken({ channelId, phone });
+        const payload = verifyBuyerShippingToken(token);
+        const code = await saveBuyerShippingShortLink(token, payload);
+        const origin = checkoutPageOrigin(req);
+        if (!origin) throw buyerInputError('구매자 배송 페이지 주소를 만들 수 없습니다.', 500);
+        const url = new URL(`/s/${code}`, origin);
+        const apiOrigin = requestOrigin(req);
+        if (configuredBuyerSiteOrigin && apiOrigin && url.origin !== new URL(apiOrigin).origin) {
+            url.pathname = '/buyer-shipping.html';
+            url.searchParams.set('code', code);
+            url.searchParams.set('apiOrigin', apiOrigin);
+        }
+        return { token, payload, code, url };
+    }
+
+    async function prepareVendorCheckoutLink(req, channelId, vendorKey) {
+        const token = signVendorCheckoutToken({ channelId, vendorKey });
+        const payload = verifyVendorCheckoutToken(token);
+        const code = await saveVendorCheckoutShortLink(token, payload);
+        const origin = requestOrigin(req);
+        if (!origin) throw buyerInputError('업체 확인 페이지 주소를 만들 수 없습니다.', 500);
+        return { token, payload, code, url: new URL(`/v/${code}`, origin) };
+    }
+
+    async function enqueueNotification(channelId, event) {
+        if (!notificationService) return { configured: false, duplicate: false };
+        try {
+            const result = await notificationService.enqueue(channelId, event);
+            return { configured: true, duplicate: result.duplicate, status: result.record?.status || '' };
+        } catch (error) {
+            logger.error?.('[platform-api] notification enqueue failed', channelId, event.templateKey, error.message);
+            return { configured: true, failed: true, error: error.message };
+        }
+    }
+
+    async function enqueueSaleNotifications(req, channel, item) {
+        const phone = storedWinnerPhone(item) || await resolveWinnerPhone(item, bandMembership);
+        if (!phone) return { buyer: { skipped: 'missing_phone' }, vendor: { skipped: 'missing_phone' } };
+        const vendorKey = vendorKeyForItem(item);
+        const vendor = await repository.getRecord(channel.id, 'vendor', item.vendorId)
+            || (await repository.listRecords(channel.id, 'vendor')).find((entry) => entry.name === item.vendorName)
+            || { id: item.vendorId || '', name: item.vendorName || '업체', phone: '' };
+        const buyerLink = await prepareBuyerCheckoutLink(req, channel.id, phone);
+        const buyerContext = await buyerBundleContext(buyerLink.payload);
+        const buyerPayload = buyerContext ? await buyerShippingPayload(buyerContext) : null;
+        const additional = Boolean(buyerPayload && buyerPayload.items.length > 1);
+        const buyerName = buyerDisplayName(item);
+        const vendorName = vendor.name || item.vendorName || '업체';
+        const itemSummary = buyerSmsItemSummary(additional && buyerContext ? [item] : buyerContext?.bundleItems || [item]);
+        const eventVersion = cleanText(item.updatedAt || item.createdAt || Date.now(), 80);
+        const buyerTemplate = additional ? 'buyer_win_additional' : 'buyer_win_initial';
+        const buyerDue = buyerPayload?.payment?.additionalDue || buyerPayload?.totals?.totalAmount || 0;
+        const buyerResult = await enqueueNotification(channel.id, {
+            eventKey: `sale:${item.id}:${eventVersion}:buyer`,
+            templateKey: buyerTemplate,
+            recipientRole: 'buyer',
+            recipientPhone: phone,
+            variables: {
+                구매자명: buyerName,
+                업체명: vendorName,
+                개체명: itemSummary,
+                낙찰금액: `${Math.max(0, Number(item.soldPrice) || 0).toLocaleString('ko-KR')}원`,
+                추가결제금액: `${Math.max(0, Number(buyerDue) || 0).toLocaleString('ko-KR')}원`,
+                접속코드: buyerLink.code
+            },
+            fallbackText: `${buyerName}님, ${vendorName} ${itemSummary} 낙찰이 등록되었습니다. 배송지와 결제방법을 확인해 주세요.\n${buyerLink.url}`
+        });
+        let vendorResult = { skipped: 'missing_vendor_phone' };
+        if (normalizePhone(vendor.phone) && vendorKey) {
+            const vendorLink = await prepareVendorCheckoutLink(req, channel.id, vendorKey);
+            vendorResult = await enqueueNotification(channel.id, {
+                eventKey: `sale:${item.id}:${eventVersion}:vendor`,
+                templateKey: 'vendor_win',
+                recipientRole: 'vendor',
+                recipientPhone: vendor.phone,
+                variables: {
+                    업체명: vendorName,
+                    개체명: cleanText(item.name || '개체', 100),
+                    구매자명: buyerName,
+                    낙찰금액: `${Math.max(0, Number(item.soldPrice) || 0).toLocaleString('ko-KR')}원`,
+                    업체접속코드: vendorLink.code
+                },
+                fallbackText: `${vendorName} 낙찰 내역이 등록되었습니다. ${item.name || '개체'} · ${buyerName}\n${vendorLink.url}`
+            });
+        }
+        return { buyer: buyerResult, vendor: vendorResult };
+    }
+
+    async function enqueueVendorPaymentReport(req, context, group, buyerName, phone) {
+        const vendor = group.vendor || {};
+        if (!normalizePhone(vendor.phone)) return { skipped: 'missing_vendor_phone' };
+        const link = await prepareVendorCheckoutLink(req, context.channel.id, group.key);
+        return enqueueNotification(context.channel.id, {
+            eventKey: `payment-reported:${group.key}:${sessionKey(phone)}:${group.payment.latest?.buyerPaymentReportRequestId || Date.now()}`,
+            templateKey: 'vendor_payment_reported',
+            recipientRole: 'vendor',
+            recipientPhone: vendor.phone,
+            variables: {
+                업체명: vendor.name || '업체',
+                구매자명: buyerName,
+                결제금액: `${Math.max(0, Number(group.totalAmount) || 0).toLocaleString('ko-KR')}원`,
+                업체접속코드: link.code
+            },
+            fallbackText: `${buyerName}님이 결제를 완료했다고 알려왔습니다. 확인해 주세요.\n${link.url}`
+        });
+    }
+
+    async function enqueueBuyerStatusNotification(req, bundle, templateKey, eventKey) {
+        const link = await prepareBuyerCheckoutLink(req, bundle.context.channel.id, bundle.phone);
+        const vendorName = bundle.group.vendor?.name || '업체';
+        const amount = bundle.group.payment.additionalDue || bundle.group.totalAmount;
+        const isCard = templateKey === 'buyer_card_link_ready';
+        return enqueueNotification(bundle.context.channel.id, {
+            eventKey,
+            templateKey,
+            recipientRole: 'buyer',
+            recipientPhone: bundle.phone,
+            variables: {
+                구매자명: bundle.name,
+                업체명: vendorName,
+                결제금액: `${Math.max(0, Number(amount) || 0).toLocaleString('ko-KR')}원`,
+                접속코드: link.code
+            },
+            fallbackText: isCard
+                ? `${bundle.name}님, ${vendorName} 카드결제 링크가 준비되었습니다.\n${link.url}`
+                : `${bundle.name}님, ${vendorName} 결제가 확인되었습니다.\n${link.url}`
+        });
     }
 
     function channelRevision(channelId) {
@@ -1818,7 +2298,7 @@ function createPlatformApi({
                 return true;
             }
 
-            if (segments.length === 1 && segments[0] === 'buyer-shipping' && method === 'OPTIONS') {
+            if (segments[0] === 'buyer-shipping' && method === 'OPTIONS') {
                 res.writeHead(204, buyerCorsHeaders(req));
                 res.end();
                 return true;
@@ -1846,11 +2326,102 @@ function createPlatformApi({
                     replyJson(res, 401, { error: '배송 링크가 만료되었거나 올바르지 않습니다.' }, buyerCorsHeaders(req));
                     return true;
                 }
-                await withMutationLock(`buyer-shipping:${context.channel.id}:${context.token.phoneHash}:${context.token.vendorKey}`, async () => {
+                await withMutationLock(`buyer-shipping:${context.channel.id}:${context.token.phoneHash}`, async () => {
                     const freshContext = await buyerBundleContext(context.token);
                     if (!freshContext) throw buyerInputError('배송 정보를 다시 불러와 주세요.', 409);
                     const result = await saveBuyerShipping(freshContext, body);
                     replyJson(res, 200, { ...result.payload, duplicate: result.duplicate }, buyerCorsHeaders(req));
+                });
+                return true;
+            }
+
+            if (segments.length === 2 && segments[0] === 'buyer-shipping' && segments[1] === 'report-payment' && method === 'POST') {
+                const body = await readJson(req);
+                const credential = await resolveBuyerShippingCredential(body);
+                const context = await buyerBundleContext(credential);
+                if (!context) {
+                    replyJson(res, 401, { error: '배송 링크가 만료되었거나 올바르지 않습니다.' }, buyerCorsHeaders(req));
+                    return true;
+                }
+                await withMutationLock(`buyer-shipping:${context.channel.id}:${context.token.phoneHash}`, async () => {
+                    const freshContext = await buyerBundleContext(context.token);
+                    if (!freshContext) throw buyerInputError('배송 정보를 다시 불러와 주세요.', 409);
+                    const result = await reportBuyerPayment(freshContext, body.vendorKey, body.requestId);
+                    const freshSnapshot = await checkoutSnapshot(freshContext);
+                    const group = freshSnapshot.groups.find((entry) => entry.key === cleanText(body.vendorKey, 80));
+                    const notification = group
+                        ? await enqueueVendorPaymentReport(req, freshContext, group, buyerDisplayName(freshContext.bundleItems[0]), freshContext.anchorPhone)
+                        : { skipped: 'missing_group' };
+                    replyJson(res, 200, { ...result.payload, duplicate: result.duplicate, notification }, buyerCorsHeaders(req));
+                });
+                return true;
+            }
+
+            if (segments.length === 1 && segments[0] === 'vendor-checkout' && method === 'GET') {
+                const credential = await resolveVendorCheckoutCredential({
+                    token: url.searchParams.get('token'),
+                    code: url.searchParams.get('code')
+                });
+                const context = await vendorCheckoutContext(credential);
+                if (!context) {
+                    replyJson(res, 401, { error: '업체 확인 링크가 만료되었거나 올바르지 않습니다.' });
+                    return true;
+                }
+                replyJson(res, 200, await vendorCheckoutPayload(context));
+                return true;
+            }
+
+            if (segments.length === 2 && segments[0] === 'vendor-checkout' && segments[1] === 'card-link' && method === 'POST') {
+                const body = await readJson(req);
+                const credential = await resolveVendorCheckoutCredential(body);
+                const context = await vendorCheckoutContext(credential);
+                if (!context) {
+                    replyJson(res, 401, { error: '업체 확인 링크가 만료되었거나 올바르지 않습니다.' });
+                    return true;
+                }
+                await withMutationLock(`vendor-checkout:${context.channel.id}:${context.vendorKey}`, async () => {
+                    const freshContext = await vendorCheckoutContext(context.token);
+                    if (!freshContext) throw buyerInputError('업체 결제 정보를 다시 불러와 주세요.', 409);
+                    const result = await saveCardPaymentLink(freshContext, body.buyerId, body.cardPaymentUrl, body.requestId);
+                    const notification = result.duplicate
+                        ? { duplicate: true }
+                        : await enqueueBuyerStatusNotification(
+                            req,
+                            result.bundle,
+                            'buyer_card_link_ready',
+                            `card-link:${context.vendorKey}:${body.buyerId}:${cleanText(body.requestId, 80)}`
+                        );
+                    const reloadedContext = await vendorCheckoutContext(context.token);
+                    replyJson(res, 200, { ...(await vendorCheckoutPayload(reloadedContext)), duplicate: result.duplicate, notification });
+                });
+                return true;
+            }
+
+            if (segments.length === 2 && segments[0] === 'vendor-checkout' && segments[1] === 'confirm-payment' && method === 'POST') {
+                const body = await readJson(req);
+                const credential = await resolveVendorCheckoutCredential(body);
+                const context = await vendorCheckoutContext(credential);
+                if (!context) {
+                    replyJson(res, 401, { error: '업체 확인 링크가 만료되었거나 올바르지 않습니다.' });
+                    return true;
+                }
+                await withMutationLock(`vendor-checkout:${context.channel.id}:${context.vendorKey}`, async () => {
+                    const freshContext = await vendorCheckoutContext(context.token);
+                    if (!freshContext) throw buyerInputError('업체 결제 정보를 다시 불러와 주세요.', 409);
+                    const bundle = await vendorBuyerBundle(freshContext, body.buyerId);
+                    if (!bundle) throw buyerInputError('구매자 결제 내역을 찾을 수 없습니다.', 404);
+                    const result = await confirmBuyerPayment(bundle.context, context.vendorKey, body.requestId);
+                    const reloadedContext = await vendorCheckoutContext(context.token);
+                    const refreshed = await vendorBuyerBundle(reloadedContext, body.buyerId) || bundle;
+                    const notification = result.duplicate
+                        ? { duplicate: true }
+                        : await enqueueBuyerStatusNotification(
+                            req,
+                            refreshed,
+                            'buyer_payment_confirmed',
+                            `payment-confirmed:${context.vendorKey}:${body.buyerId}:${cleanText(body.requestId, 80)}`
+                        );
+                    replyJson(res, 200, { ...(await vendorCheckoutPayload(reloadedContext)), duplicate: result.duplicate, notification });
                 });
                 return true;
             }
@@ -2772,12 +3343,22 @@ function createPlatformApi({
                             throw error;
                         }
                     }
+                    let notifications = null;
+                    if (requestedStatus === 'sold' && current?.status !== 'sold' && savedItem) {
+                        try {
+                            notifications = await enqueueSaleNotifications(req, channel, savedItem);
+                        } catch (error) {
+                            logger.error?.('[platform-api] sale notification preparation failed', channelId, savedItem.id, error.message);
+                            notifications = { failed: true, error: error.message };
+                        }
+                    }
                     touchChannel(channelId);
                     replyJson(res, 200, {
                         channelId,
                         item: savedItem,
                         state: savedState,
-                        shipmentResetCount: staleShipments.length
+                        shipmentResetCount: staleShipments.length,
+                        notifications
                     });
                 });
                 });
@@ -3065,27 +3646,8 @@ function createPlatformApi({
                     replyJson(res, 422, { error: '개체의 업체 정보가 없어 배송 묶음을 만들 수 없습니다.' });
                     return true;
                 }
-                const token = signBuyerShippingToken({ channelId, itemId, phone, vendorKey });
-                const tokenPayload = verifyBuyerShippingToken(token);
-                const shortCode = await saveBuyerShippingShortLink(token, tokenPayload);
-                const apiOrigin = requestOrigin(req);
-                const siteOrigin = configuredBuyerSiteOrigin || apiOrigin;
-                if (!siteOrigin) {
-                    replyJson(res, 500, { error: '구매자 배송 페이지 주소를 만들 수 없습니다.' });
-                    return true;
-                }
-                let buyerUrl;
-                try {
-                    buyerUrl = new URL(`/s/${shortCode}`, siteOrigin);
-                } catch (_) {
-                    replyJson(res, 500, { error: '구매자 배송 페이지 주소 설정이 올바르지 않습니다.' });
-                    return true;
-                }
-                if (configuredBuyerSiteOrigin && apiOrigin && buyerUrl.origin !== new URL(apiOrigin).origin) {
-                    buyerUrl.pathname = '/buyer-shipping.html';
-                    buyerUrl.searchParams.set('code', shortCode);
-                    buyerUrl.searchParams.set('apiOrigin', apiOrigin);
-                }
+                const prepared = await prepareBuyerCheckoutLink(req, channelId, phone);
+                const { payload: tokenPayload, code: shortCode, url: buyerUrl } = prepared;
                 const name = buyerDisplayName(item);
                 const vendorName = cleanText(item.vendorName || (await repository.getRecord(channelId, 'vendor', item.vendorId))?.name || '업체', 80);
                 const context = await buyerBundleContext(tokenPayload);
@@ -3107,6 +3669,28 @@ function createPlatformApi({
                 return true;
             }
 
+            if (segments.length === 3 && segments[2] === 'vendor-checkout-link' && method === 'POST') {
+                if (!await requireAdmin(req, res)) return true;
+                const body = await readJson(req);
+                const vendors = await repository.listRecords(channelId, 'vendor');
+                const requested = cleanText(body.vendorKey || body.vendorId || body.vendorName, 80);
+                const vendor = vendors.find((entry) => entry.id === requested) || vendors.find((entry) => entry.name === requested);
+                if (!vendor) {
+                    replyJson(res, 404, { error: '업체를 찾을 수 없습니다.' });
+                    return true;
+                }
+                const prepared = await prepareVendorCheckoutLink(req, channelId, vendor.id || vendor.name);
+                const context = await vendorCheckoutContext(prepared.payload);
+                replyJson(res, 200, {
+                    url: prepared.url.toString(),
+                    code: prepared.code,
+                    expiresAt: new Date(Date.now() + VENDOR_CHECKOUT_TOKEN_TTL_MS).toISOString(),
+                    vendor: { id: vendor.id, name: vendor.name, phone: vendor.phone || '' },
+                    summary: context ? (await vendorCheckoutPayload(context)).summary : null
+                });
+                return true;
+            }
+
             if (segments.length === 3 && segments[2] === 'buyer-shipping-payment' && method === 'POST') {
                 if (!await requireAdmin(req, res)) return true;
                 const body = await readJson(req);
@@ -3122,17 +3706,16 @@ function createPlatformApi({
                     return true;
                 }
                 const tokenPayload = {
-                    v: 1,
+                    v: 2,
                     channelId,
-                    itemId,
                     phoneHash: sessionKey(phone),
-                    vendorKey: vendorKeyForItem(item),
                     expiresAt: Date.now() + BUYER_SHIPPING_TOKEN_TTL_MS
                 };
-                await withMutationLock(`buyer-shipping:${channelId}:${tokenPayload.phoneHash}:${tokenPayload.vendorKey}`, async () => {
+                const vendorKey = vendorKeyForItem(item);
+                await withMutationLock(`buyer-shipping:${channelId}:${tokenPayload.phoneHash}`, async () => {
                     const context = await buyerBundleContext(tokenPayload);
                     if (!context) throw buyerInputError('구매자 배송 묶음을 찾을 수 없습니다.', 404);
-                    const result = await confirmBuyerPayment(context, body.requestId);
+                    const result = await confirmBuyerPayment(context, body.vendorKey || vendorKey, body.requestId);
                     replyJson(res, 200, { ...result.payload, duplicate: result.duplicate });
                 });
                 return true;
@@ -3308,7 +3891,7 @@ function createPlatformApi({
         } catch (error) {
             logger.error?.('[platform-api]', error.message);
             const status = error.status || (error.code === 'VERSION_CONFLICT' ? 409 : 500);
-            const errorHeaders = url.pathname === '/api/platform/buyer-shipping'
+            const errorHeaders = url.pathname.startsWith('/api/platform/buyer-shipping')
                 ? buyerCorsHeaders(req)
                 : {};
             replyJson(

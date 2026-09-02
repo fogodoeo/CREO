@@ -5,7 +5,7 @@ const { DEFAULT_CHANNELS, channelKey, normalizeChannel, normalizeChannelId } = r
 
 const CATALOG_KEY = 'creo_v2::catalog';
 const ACTIVE_CHANNEL_KEY = 'creo_v2::active_channel';
-const ALLOWED_RECORD_TYPES = new Set(['vendor', 'item', 'shipment', 'setting', 'broadcast', 'asset', 'archive', 'capture']);
+const ALLOWED_RECORD_TYPES = new Set(['vendor', 'item', 'shipment', 'setting', 'broadcast', 'asset', 'archive', 'capture', 'notification']);
 function jsonParse(value, fallback = null) {
     try { return JSON.parse(value); } catch { return fallback; }
 }

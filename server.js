@@ -21,6 +21,7 @@ const { createCdcupRoundsApi } = require('./cdcup-rounds-api');
 const { normalizeChannelId } = require('./platform-core');
 const { SupabaseConfigRepository } = require('./platform-repository');
 const { SQLitePlatformRepository } = require('./sqlite-platform-repository');
+const { CheckoutNotificationService } = require('./checkout-notifications');
 
 const PORT = Number(process.env.PORT || 10000);
 const HOST = process.env.HOST || '0.0.0.0';
@@ -43,7 +44,13 @@ const crewartHouseService = createCrewartHouseService({
     repository: supabasePlatformRepository,
     secret: bandMembership.config.sessionSecret
 });
-platformApi = createPlatformApi({ repository: platformRepository, crewartHouseService, bandMembership });
+const checkoutNotificationService = new CheckoutNotificationService({ repository: platformRepository });
+platformApi = createPlatformApi({
+    repository: platformRepository,
+    crewartHouseService,
+    bandMembership,
+    notificationService: checkoutNotificationService
+});
 const captureStorage = new CaptureStorage();
 const captureApi = createCaptureApi({
     repository: platformRepository,
@@ -319,6 +326,7 @@ const server = http.createServer(async (req, res) => {
                 platform,
                 capture: captureStorage.health(),
                 broadcastAssets: broadcastAssetStorage.health(),
+                checkoutNotifications: checkoutNotificationService.health(),
                 now: new Date().toISOString()
             });
             return;
@@ -348,6 +356,12 @@ const server = http.createServer(async (req, res) => {
         if ((req.method === 'GET' || req.method === 'HEAD') && buyerShippingShortMatch) {
             const buyerPageUrl = new URL('/buyer-shipping.html', url);
             if (await serveStatic(req, res, buyerPageUrl)) return;
+        }
+
+        const vendorCheckoutShortMatch = /^\/v\/([A-Za-z0-9_-]{8,24})$/.exec(url.pathname);
+        if ((req.method === 'GET' || req.method === 'HEAD') && vendorCheckoutShortMatch) {
+            const vendorPageUrl = new URL('/vendor-checkout.html', url);
+            if (await serveStatic(req, res, vendorPageUrl)) return;
         }
 
         const operationalFeature = new Map([
@@ -391,10 +405,31 @@ server.listen(PORT, HOST, () => {
     console.log(`[creo] platform storage: ${platformStorageMode}`);
 });
 
+let notificationWorkerRunning = false;
+async function flushCheckoutNotifications() {
+    if (notificationWorkerRunning) return;
+    notificationWorkerRunning = true;
+    try {
+        const catalog = await platformRepository.getCatalog();
+        for (const channel of catalog.channels.filter((entry) => entry.status === 'active' && entry.dataAdapter === 'platform')) {
+            await checkoutNotificationService.flushChannel(channel.id, 20);
+        }
+    } catch (error) {
+        console.warn('[checkout-notification] worker failed:', error.message);
+    } finally {
+        notificationWorkerRunning = false;
+    }
+}
+
+const notificationWorker = setInterval(flushCheckoutNotifications, 15_000);
+notificationWorker.unref?.();
+setTimeout(flushCheckoutNotifications, 2_000).unref?.();
+
 let shuttingDown = false;
 function shutdown(signal) {
     if (shuttingDown) return;
     shuttingDown = true;
+    clearInterval(notificationWorker);
     console.log(`[creo] ${signal} received, closing cleanly`);
     const forceExit = setTimeout(() => process.exit(1), 10_000);
     forceExit.unref?.();

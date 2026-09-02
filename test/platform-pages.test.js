@@ -16,6 +16,7 @@ const PAGES = [
     'auction-live.html',
     'channel-shipping.html',
     'buyer-shipping.html',
+    'vendor-checkout.html',
     'shipping-companies.html',
     'shipping-rates.html',
     'broadcast-router.html',
@@ -335,40 +336,47 @@ test('shipping editor exposes one buyer message action and a subdued payment con
     assert.match(shipping, /totalLabel\.textContent = confirmedAmount > 0 && additionalDue > 0 \? '추가 결제 금액'/);
 });
 
-test('buyer shipping page is lightweight, short-code based, and offers configured fulfillment choices', () => {
+test('buyer and vendor checkout pages are short-code based and support the full payment workflow', () => {
     const source = fs.readFileSync(path.join(__dirname, '..', 'public', 'buyer-shipping.html'), 'utf8');
+    const vendor = fs.readFileSync(path.join(__dirname, '..', 'public', 'vendor-checkout.html'), 'utf8');
     const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
     assert.match(source, /id="destinations"/);
     assert.match(source, /id="parge-search"/);
-    assert.match(source, /id="parge-regions"/);
+    assert.match(source, /id="parge-tabs"/);
     assert.match(source, /id="parge-results"/);
-    assert.match(source, /function scoreParge/);
-    assert.match(source, /getChosung/);
+    assert.match(source, /function chosung/);
     assert.doesNotMatch(source, /<datalist/i);
-    assert.match(source, /data-payment="card"/);
-    assert.match(source, /별도 결제 링크/);
-    assert.match(source, /state\.data\.destinations\|\|\[\]\)\.map/);
+    assert.match(source, /data-payment-vendor/);
+    assert.match(source, /카드결제 페이지 열기/);
+    assert.match(source, /state\.data\.vendors\.map/);
     assert.match(source, /new URLSearchParams\(location\.search\)/);
     assert.match(source, /location\.pathname/);
     assert.match(source, /params\.get\('code'\)/);
     assert.match(source, /params\.get\('token'\)/);
+    assert.match(source, /parsed\.hostname==='creok\.onrender\.com'/);
+    assert.doesNotMatch(source, /parsed\.protocol==='https:'\|\|/);
     assert.match(source, /\/api\/platform\/buyer-shipping/);
+    assert.match(source, /\/report-payment/);
     assert.match(source, /visibilitychange/);
-    assert.match(source, /id="save-result"[^>]*role="status"[^>]*aria-live="polite"/);
+    assert.match(source, /id="saved"[^>]*role="status"[^>]*aria-live="polite"/);
     assert.match(source, /저장되었습니다\./);
-    assert.match(source, /업체에서 확인 후 문자로 연락드리겠습니다\./);
-    assert.match(source, /state\.submitted\?'변경 내용 저장':'배송지와 입금방식 저장'/);
-    assert.match(source, /if\(status==='paid'\)return\['결제 완료'/);
-    assert.match(source, /return\['입력 대기'/);
-    assert.match(source, /기존 결제 확인 금액/);
-    assert.match(source, /additional\?'추가 결제 금액'/);
-    assert.match(source, /item\.paymentStatus==='paid'/);
-    assert.match(source, /if\(status==='additional_payment'\)return\['추가 결제 필요'/);
+    assert.match(source, /선택 내용이 각 업체에 전달되었습니다/);
+    assert.match(source, /data\.submittedAt\?'변경 내용 저장':'배송지와 결제방식 저장'/);
+    assert.match(source, /status==='paid'\)return\['결제 완료'/);
+    assert.match(source, /status==='additional_payment'\)return\['추가 결제'/);
+    assert.match(source, /입금했습니다/);
     assert.doesNotMatch(source, /setInterval\(/);
     assert.doesNotMatch(source, /<script[^>]+src=/i);
+    assert.match(vendor, /\/api\/platform\/vendor-checkout/);
+    assert.match(vendor, /\/card-link/);
+    assert.match(vendor, /\/confirm-payment/);
+    assert.match(vendor, /카드결제 URL을 등록/);
+    assert.match(vendor, /실제 입금·승인 내역/);
     assert.match(server, /buyerShippingShortMatch = \/\^\\\/s\\\//);
     assert.match(server, /new URL\('\/buyer-shipping\.html', url\)/);
     assert.match(server, /serveStatic\(req, res, buyerPageUrl\)/);
+    assert.match(server, /vendorCheckoutShortMatch = \/\^\\\/v\\\//);
+    assert.match(server, /new URL\('\/vendor-checkout\.html', url\)/);
 });
 
 test('capture setup distributes the no-Python F3 agent with diagnostics', () => {

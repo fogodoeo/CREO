@@ -76,8 +76,11 @@
         var states = items.map(function (item) { return text(item.payment_status); }).filter(Boolean);
         if (states.length && items.every(function (item) { return text(item.payment_status) === 'paid'; })) return 'paid';
         if (states.includes('additional_payment')) return 'additional_payment';
+        if (states.includes('bank_transfer_reported') || states.includes('card_payment_reported')) return 'payment_reported';
         if (states.includes('on_site')) return 'on_site';
-        if (states.includes('awaiting_payment')) return 'awaiting_payment';
+        if (states.some(function (state) {
+            return ['awaiting_payment', 'bank_transfer_pending', 'card_link_pending', 'card_payment_pending'].includes(state);
+        })) return 'awaiting_payment';
         return submitted ? 'awaiting_payment' : 'awaiting_information';
     }
 
@@ -85,6 +88,7 @@
         return ({
             paid: '결제 완료',
             additional_payment: '추가 결제',
+            payment_reported: '업체 확인 요청',
             on_site: '현장 결제',
             awaiting_payment: '결제 대기',
             awaiting_information: '배송 미입력'
@@ -139,7 +143,7 @@
                 submittedAt: submittedAt
             });
         });
-        var priority = { awaiting_information: 0, additional_payment: 1, awaiting_payment: 2, on_site: 3, paid: 4 };
+        var priority = { payment_reported: 0, awaiting_information: 1, additional_payment: 2, awaiting_payment: 3, on_site: 4, paid: 5 };
         return rows.sort(function (left, right) {
             return (priority[left.paymentState] - priority[right.paymentState])
                 || left.buyerName.localeCompare(right.buyerName, 'ko')

@@ -59,3 +59,15 @@ test('sheet input time is always formatted in Korea Standard Time', () => {
     assert.equal(Summary.formatKoreanDateTime('2026-08-31T15:01:00.000Z'), '2026-09-01 00:01');
     assert.equal(Summary.formatKoreanDateTime(''), '');
 });
+
+test('new checkout payment states remain visible in print settlement', () => {
+    const reported = Summary.groupBundles([sold({ payment_status: 'bank_transfer_reported' })]);
+    assert.equal(reported[0].paymentState, 'payment_reported');
+    assert.equal(reported[0].paymentLabel, '업체 확인 요청');
+
+    for (const payment_status of ['bank_transfer_pending', 'card_link_pending', 'card_payment_pending']) {
+        const rows = Summary.groupBundles([sold({ payment_status })]);
+        assert.equal(rows[0].paymentState, 'awaiting_payment');
+        assert.equal(rows[0].paymentLabel, '결제 대기');
+    }
+});

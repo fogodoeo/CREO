@@ -72,7 +72,9 @@ test('buyer shipping link isolates one buyer, saves idempotently, confirms payme
     await repository.upsertRecord('alpha', 'vendor', {
         id: 'vendor-one', name: '라이언게코', bankName: '테스트은행', bankAccount: '123-456', bankHolder: '라이언게코'
     });
-    await repository.upsertRecord('alpha', 'vendor', { id: 'vendor-two', name: '다른업체' });
+    await repository.upsertRecord('alpha', 'vendor', {
+        id: 'vendor-two', name: '다른업체', bankName: '테스트은행', bankAccount: '789-012', bankHolder: '다른업체'
+    });
     await repository.upsertRecord('alpha', 'item', {
         id: 'item-a', lotNumber: 1, name: 'A01', vendorId: 'vendor-one', vendorName: '라이언게코', status: 'sold', soldPrice: 100000,
         winnerName: '테스트구매자', winnerPhone: '01012345678'
@@ -102,8 +104,8 @@ test('buyer shipping link isolates one buyer, saves idempotently, confirms payme
     assert.equal(link.json().phone, '01012345678');
     assert.doesNotMatch(link.json().url, /01012345678/);
     assert.equal(link.json().messageMode, 'initial');
-    assert.equal(link.json().itemSummary, 'A01·A02');
-    assert.match(link.json().message, /^테스트구매자님, 라이언게코 A01·A02 낙찰 감사합니다\./);
+    assert.equal(link.json().itemSummary, 'A01·A02·다른업체개체');
+    assert.match(link.json().message, /^테스트구매자님, 라이언게코 A01·A02·다른업체개체 낙찰 감사합니다\./);
     assert.match(link.json().message, /배송지와 결제 방법은 아래 링크에서 선택/);
     assert.match(link.json().message, /통화가 어렵습니다\. 결제 후 문자/);
     assert.ok(link.json().message.endsWith(link.json().url));
@@ -112,18 +114,25 @@ test('buyer shipping link isolates one buyer, saves idempotently, confirms payme
     assert.equal(shortUrl.pathname, `/s/${code}`);
     assert.match(code, /^[A-Za-z0-9_-]{11}$/);
     assert.equal(shortUrl.search, '');
-    assert.ok(repository.records.get(`config:buyer_shipping_short_v1_${code}`));
+    assert.ok(repository.records.get(`config:buyer_shipping_short_v2_${code}`));
 
     const initial = await call(api, 'GET', `/api/platform/buyer-shipping?code=${encodeURIComponent(code)}`, null, '');
     assert.equal(initial.status, 200, initial.body);
-    assert.deepEqual(initial.json().items.map((item) => item.id), ['item-a', 'item-b']);
+    assert.deepEqual(initial.json().items.map((item) => item.id), ['item-a', 'item-b', 'private-other-vendor']);
+    assert.deepEqual(initial.json().vendors.map((vendor) => vendor.name), ['라이언게코', '다른업체']);
     assert.deepEqual(initial.json().destinations.map((entry) => entry.label), ['대구 크레오', '대구 크레용 본점', '배송']);
-    assert.equal(initial.json().totals.auctionAmount, 300000);
+    assert.equal(initial.json().totals.auctionAmount, 1100000);
     assert.equal(initial.json().buyer.phoneLast4, '5678');
-    assert.doesNotMatch(initial.body, /01012345678|01099998888|private-other-buyer|private-other-vendor/);
+    assert.doesNotMatch(initial.body, /01012345678|01099998888|private-other-buyer/);
 
     const requestId = 'buyer-save-request-1';
-    const saveBody = { code, requestId, destinationId: 'parge', pargeRegion: '수도권', pargeShop: '테스트 파르게', paymentMethod: 'bank_transfer' };
+    const saveBody = {
+        code, requestId, destinationId: 'parge', pargeRegion: '수도권', pargeShop: '테스트 파르게',
+        payments: [
+            { vendorKey: 'vendor-one', method: 'bank_transfer' },
+            { vendorKey: 'vendor-two', method: 'bank_transfer' }
+        ]
+    };
     const [savedA, savedB] = await Promise.all([
         call(api, 'POST', '/api/platform/buyer-shipping', saveBody, ''),
         call(api, 'POST', '/api/platform/buyer-shipping', saveBody, '')
@@ -131,53 +140,63 @@ test('buyer shipping link isolates one buyer, saves idempotently, confirms payme
     assert.equal(savedA.status, 200, savedA.body);
     assert.equal(savedB.status, 200, savedB.body);
     assert.deepEqual([savedA.json().duplicate, savedB.json().duplicate].sort(), [false, true]);
-    assert.equal(savedA.json().totals.shippingAmount, 26000);
-    assert.equal(savedA.json().totals.totalAmount, 326000);
-    assert.equal(savedA.json().payment.status, 'awaiting_payment');
-    assert.equal((await repository.listRecords('alpha', 'shipment')).length, 2);
+    assert.equal(savedA.json().totals.shippingAmount, 33000);
+    assert.equal(savedA.json().totals.totalAmount, 1133000);
+    assert.equal(savedA.json().payment.status, 'in_progress');
+    assert.equal((await repository.listRecords('alpha', 'shipment')).length, 3);
 
     const confirmRequestId = 'payment-confirm-request-1';
     const confirmed = await call(api, 'POST', '/api/platform/channels/alpha/buyer-shipping-payment', { itemId: 'item-a', requestId: confirmRequestId });
     const confirmedAgain = await call(api, 'POST', '/api/platform/channels/alpha/buyer-shipping-payment', { itemId: 'item-a', requestId: confirmRequestId });
     assert.equal(confirmed.status, 200, confirmed.body);
-    assert.equal(confirmed.json().payment.status, 'paid');
+    assert.equal(confirmed.json().payment.status, 'in_progress');
     assert.equal(confirmed.json().payment.confirmedAmount, 326000);
     assert.equal(confirmedAgain.json().duplicate, true);
 
     const restartedApi = createPlatformApi({ repository, adminSessionSecret: secret, logger: { error() {}, warn() {} } });
     const afterRestart = await call(restartedApi, 'GET', `/api/platform/buyer-shipping?code=${encodeURIComponent(code)}`, null, '');
     assert.equal(afterRestart.status, 200, afterRestart.body);
-    assert.equal(afterRestart.json().payment.status, 'paid');
+    assert.equal(afterRestart.json().payment.status, 'in_progress');
+
+    const secondVendorConfirmed = await call(restartedApi, 'POST', '/api/platform/channels/alpha/buyer-shipping-payment', {
+        itemId: 'private-other-vendor', requestId: 'payment-confirm-vendor-two'
+    });
+    assert.equal(secondVendorConfirmed.status, 200, secondVendorConfirmed.body);
+    assert.equal(secondVendorConfirmed.json().payment.status, 'paid');
 
     const changedPickup = await call(restartedApi, 'POST', '/api/platform/buyer-shipping', {
-        code, requestId: 'buyer-change-to-pickup', destinationId: 'pickup-2', paymentMethod: 'card'
+        code, requestId: 'buyer-change-to-pickup', destinationId: 'pickup-2', payments: [
+            { vendorKey: 'vendor-one', method: 'card' }, { vendorKey: 'vendor-two', method: 'card' }
+        ]
     }, '');
     assert.equal(changedPickup.status, 200, changedPickup.body);
     assert.equal(changedPickup.json().selection.destinationId, 'pickup-2');
-    assert.equal(changedPickup.json().selection.paymentMethod, 'card');
+    assert.deepEqual(changedPickup.json().selection.payments.map((entry) => entry.method), ['card', 'card']);
     assert.equal(changedPickup.json().totals.shippingAmount, 0);
 
     const changedBackToParge = await call(restartedApi, 'POST', '/api/platform/buyer-shipping', {
         code, requestId: 'buyer-change-back-to-parge', destinationId: 'parge', pargeRegion: '수도권',
-        pargeShop: '테스트 파르게', paymentMethod: 'bank_transfer'
+        pargeShop: '테스트 파르게', payments: [
+            { vendorKey: 'vendor-one', method: 'bank_transfer' }, { vendorKey: 'vendor-two', method: 'bank_transfer' }
+        ]
     }, '');
     assert.equal(changedBackToParge.status, 200, changedBackToParge.body);
     assert.equal(changedBackToParge.json().selection.destinationId, 'parge');
-    assert.equal(changedBackToParge.json().selection.paymentMethod, 'bank_transfer');
-    assert.equal(changedBackToParge.json().totals.shippingAmount, 26000);
+    assert.deepEqual(changedBackToParge.json().selection.payments.map((entry) => entry.method), ['bank_transfer', 'bank_transfer']);
+    assert.equal(changedBackToParge.json().totals.shippingAmount, 33000);
 
     await repository.upsertRecord('alpha', 'item', {
         id: 'item-c', lotNumber: 5, name: 'A03', vendorId: 'vendor-one', vendorName: '라이언게코', status: 'sold', soldPrice: 50000,
         winnerName: '테스트구매자', winnerPhone: '01012345678'
     });
     const withLaterWin = await call(restartedApi, 'GET', `/api/platform/buyer-shipping?code=${encodeURIComponent(code)}`, null, '');
-    assert.equal(withLaterWin.json().items.length, 3);
-    assert.equal(withLaterWin.json().totals.shippingAmount, 33000);
-    assert.equal(withLaterWin.json().totals.totalAmount, 383000);
+    assert.equal(withLaterWin.json().items.length, 4);
+    assert.equal(withLaterWin.json().totals.shippingAmount, 40000);
+    assert.equal(withLaterWin.json().totals.totalAmount, 1190000);
     assert.equal(withLaterWin.json().payment.status, 'additional_payment');
     assert.equal(withLaterWin.json().payment.additionalDue, 57000);
     assert.deepEqual(withLaterWin.json().items.map((item) => [item.id, item.paymentStatus]), [
-        ['item-a', 'paid'], ['item-b', 'paid'], ['item-c', '']
+        ['item-a', 'paid'], ['item-b', 'paid'], ['private-other-vendor', 'paid'], ['item-c', '']
     ]);
     const additionalLink = await call(restartedApi, 'POST', '/api/platform/channels/alpha/buyer-shipping-link', { itemId: 'item-a' });
     assert.equal(additionalLink.status, 200, additionalLink.body);
@@ -190,33 +209,156 @@ test('buyer shipping link isolates one buyer, saves idempotently, confirms payme
 
     const additionalSave = await call(restartedApi, 'POST', '/api/platform/buyer-shipping', {
         code, requestId: 'buyer-save-additional-win', destinationId: 'parge', pargeRegion: '수도권',
-        pargeShop: '테스트 파르게', paymentMethod: 'bank_transfer'
+        pargeShop: '테스트 파르게', payments: [
+            { vendorKey: 'vendor-one', method: 'bank_transfer' }, { vendorKey: 'vendor-two', method: 'bank_transfer' }
+        ]
     }, '');
     assert.equal(additionalSave.status, 200, additionalSave.body);
     assert.equal(additionalSave.json().payment.status, 'additional_payment');
     assert.equal(additionalSave.json().payment.additionalDue, 57000);
     const shipmentPaymentStates = Object.fromEntries((await repository.listRecords('alpha', 'shipment'))
         .map((shipment) => [shipment.itemId, shipment.paymentStatus]));
-    assert.deepEqual(shipmentPaymentStates, { 'item-a': 'paid', 'item-b': 'paid', 'item-c': 'additional_payment' });
+    assert.deepEqual(shipmentPaymentStates, {
+        'item-a': 'paid', 'item-b': 'paid', 'private-other-vendor': 'paid', 'item-c': 'additional_payment'
+    });
 
     const additionalConfirmed = await call(restartedApi, 'POST', '/api/platform/channels/alpha/buyer-shipping-payment', {
         itemId: 'item-c', requestId: 'payment-confirm-additional-win'
     });
     assert.equal(additionalConfirmed.status, 200, additionalConfirmed.body);
     assert.equal(additionalConfirmed.json().payment.status, 'paid');
-    assert.deepEqual(additionalConfirmed.json().items.map((item) => item.paymentStatus), ['paid', 'paid', 'paid']);
+    assert.deepEqual(additionalConfirmed.json().items.map((item) => item.paymentStatus), ['paid', 'paid', 'paid', 'paid']);
     const paidLink = await call(restartedApi, 'POST', '/api/platform/channels/alpha/buyer-shipping-link', { itemId: 'item-c' });
     assert.equal(paidLink.status, 200, paidLink.body);
     assert.equal(paidLink.json().messageMode, 'paid');
-    assert.match(paidLink.json().message, /A01·A02·A03 결제 완료 내역입니다\./);
+    assert.match(paidLink.json().message, /A01·A02·다른업체개체·A03 결제 완료 내역입니다\./);
 
     const badCode = await call(restartedApi, 'GET', `/api/platform/buyer-shipping?code=${encodeURIComponent(`${code}x`)}`, null, '');
     assert.equal(badCode.status, 401);
-    const shortLinkRow = repository.records.get(`config:buyer_shipping_short_v1_${code}`);
+    const shortLinkRow = repository.records.get(`config:buyer_shipping_short_v2_${code}`);
     shortLinkRow.value = JSON.stringify({ ...JSON.parse(shortLinkRow.value), expiresAt: Date.now() - 1 });
     const expiredCode = await call(restartedApi, 'GET', `/api/platform/buyer-shipping?code=${encodeURIComponent(code)}`, null, '');
     assert.equal(expiredCode.status, 401);
-    assert.equal((await repository.listRecords('alpha', 'shipment')).length, 3);
+    assert.equal((await repository.listRecords('alpha', 'shipment')).length, 4);
+});
+
+test('vendor checkout link handles card URL, buyer report, confirmation, duplicate input, and restart', async () => {
+    const repository = new MemoryRepository();
+    repository.catalog.channels[0] = normalizeChannel({
+        ...repository.catalog.channels[0],
+        shippingDefaults: { pickupLocations: ['대구 크레오'], pargeAdditionalFee: 7000, pargeJejuAdditionalFee: 4000 }
+    });
+    await repository.upsertRecord('alpha', 'vendor', {
+        id: 'vendor-card', name: '카드업체', phone: '01077778888', paymentMethods: ['bank_transfer', 'card']
+    });
+    await repository.upsertRecord('alpha', 'item', {
+        id: 'card-item', lotNumber: 1, name: 'A01', vendorId: 'vendor-card', vendorName: '카드업체',
+        status: 'sold', soldPrice: 150000, winnerName: '구매자', winnerPhone: '01012345678'
+    });
+    const secret = 'vendor-card-flow-secret';
+    const api = createPlatformApi({ repository, adminSessionSecret: secret, logger: { error() {}, warn() {} } });
+    const buyerLink = await call(api, 'POST', '/api/platform/channels/alpha/buyer-shipping-link', { itemId: 'card-item' });
+    const buyerCode = new URL(buyerLink.json().url).pathname.split('/').at(-1);
+    const saved = await call(api, 'POST', '/api/platform/buyer-shipping', {
+        code: buyerCode,
+        requestId: 'buyer-card-choice-1',
+        destinationId: 'pickup-1',
+        payments: [{ vendorKey: 'vendor-card', method: 'card' }]
+    }, '');
+    assert.equal(saved.status, 200, saved.body);
+    assert.equal(saved.json().vendors[0].payment.status, 'card_link_pending');
+
+    const vendorLink = await call(api, 'POST', '/api/platform/channels/alpha/vendor-checkout-link', { vendorId: 'vendor-card' });
+    assert.equal(vendorLink.status, 200, vendorLink.body);
+    assert.doesNotMatch(vendorLink.json().url, /01012345678/);
+    const vendorCode = new URL(vendorLink.json().url).pathname.split('/').at(-1);
+    const vendorInitial = await call(api, 'GET', `/api/platform/vendor-checkout?code=${vendorCode}`, null, '');
+    assert.equal(vendorInitial.status, 200, vendorInitial.body);
+    assert.equal(vendorInitial.json().buyers[0].phone, '01012345678');
+    assert.equal(vendorInitial.json().buyers[0].payment.status, 'card_link_pending');
+    const buyerId = vendorInitial.json().buyers[0].id;
+
+    const rejectedUrl = await call(api, 'POST', '/api/platform/vendor-checkout/card-link', {
+        code: vendorCode, buyerId, cardPaymentUrl: 'http://localhost/pay', requestId: 'card-link-invalid'
+    }, '');
+    assert.equal(rejectedUrl.status, 422);
+
+    const cardBody = {
+        code: vendorCode,
+        buyerId,
+        cardPaymentUrl: 'https://pay.example.com/orders/abc',
+        requestId: 'card-link-request-1'
+    };
+    const [cardSaved, cardDuplicate] = await Promise.all([
+        call(api, 'POST', '/api/platform/vendor-checkout/card-link', cardBody, ''),
+        call(api, 'POST', '/api/platform/vendor-checkout/card-link', cardBody, '')
+    ]);
+    assert.equal(cardSaved.status, 200, cardSaved.body);
+    assert.equal(cardDuplicate.status, 200, cardDuplicate.body);
+    assert.deepEqual([cardSaved.json().duplicate, cardDuplicate.json().duplicate].sort(), [false, true]);
+    assert.equal(cardSaved.json().buyers[0].payment.status, 'card_payment_pending');
+
+    const buyerReady = await call(api, 'GET', `/api/platform/buyer-shipping?code=${buyerCode}`, null, '');
+    assert.equal(buyerReady.json().vendors[0].payment.cardPaymentUrl, 'https://pay.example.com/orders/abc');
+    const reportBody = { code: buyerCode, vendorKey: 'vendor-card', requestId: 'buyer-payment-report-1' };
+    const [reported, reportedAgain] = await Promise.all([
+        call(api, 'POST', '/api/platform/buyer-shipping/report-payment', reportBody, ''),
+        call(api, 'POST', '/api/platform/buyer-shipping/report-payment', reportBody, '')
+    ]);
+    assert.equal(reported.status, 200, reported.body);
+    assert.equal(reportedAgain.status, 200, reportedAgain.body);
+    assert.deepEqual([reported.json().duplicate, reportedAgain.json().duplicate].sort(), [false, true]);
+    assert.equal(reported.json().vendors[0].payment.status, 'card_payment_reported');
+
+    const restarted = createPlatformApi({ repository, adminSessionSecret: secret, logger: { error() {}, warn() {} } });
+    const confirmBody = { code: vendorCode, buyerId, requestId: 'vendor-payment-confirm-1' };
+    const confirmed = await call(restarted, 'POST', '/api/platform/vendor-checkout/confirm-payment', confirmBody, '');
+    const confirmedAgain = await call(restarted, 'POST', '/api/platform/vendor-checkout/confirm-payment', confirmBody, '');
+    assert.equal(confirmed.status, 200, confirmed.body);
+    assert.equal(confirmed.json().buyers[0].payment.status, 'paid');
+    assert.equal(confirmedAgain.json().duplicate, true);
+    const buyerPaid = await call(restarted, 'GET', `/api/platform/buyer-shipping?code=${buyerCode}`, null, '');
+    assert.equal(buyerPaid.json().payment.status, 'paid');
+});
+
+test('a sold transition queues buyer and vendor notices once without blocking the auction', async () => {
+    const repository = new MemoryRepository();
+    await repository.upsertRecord('alpha', 'vendor', {
+        id: 'notice-vendor', name: '알림업체', phone: '01088887777', bankName: '테스트은행', bankAccount: '123-456', bankHolder: '알림업체'
+    });
+    await repository.upsertRecord('alpha', 'item', {
+        id: 'notice-item', lotNumber: 1, name: 'A01', vendorId: 'notice-vendor', vendorName: '알림업체', status: 'waiting'
+    });
+    const queued = [];
+    const api = createPlatformApi({
+        repository,
+        notificationService: {
+            async enqueue(channelId, event) {
+                queued.push({ channelId, event });
+                if (event.recipientRole === 'vendor') throw new Error('temporary provider queue failure');
+                return { duplicate: false, record: { status: 'pending' } };
+            }
+        },
+        logger: { error() {}, warn() {} }
+    });
+
+    const requests = Array.from({ length: 3 }, () => call(api, 'PUT', '/api/platform/channels/alpha/auction-transition', {
+        itemId: 'notice-item', status: 'sold', mode: 'sold', item: {
+            soldPrice: 150000, winnerName: '테스트구매자', winnerPhone: '01012345678'
+        }
+    }));
+    const responses = await Promise.all(requests);
+    assert.ok(responses.every(response => response.status === 200), responses.map(response => response.body).join('\n'));
+    assert.equal(queued.length, 2);
+    assert.deepEqual(queued.map(entry => entry.event.recipientRole).sort(), ['buyer', 'vendor']);
+    assert.equal(queued[0].channelId, 'alpha');
+    assert.equal((await repository.getRecord('alpha', 'item', 'notice-item')).status, 'sold');
+
+    const duplicate = await call(api, 'PUT', '/api/platform/channels/alpha/auction-transition', {
+        itemId: 'notice-item', status: 'sold', mode: 'sold'
+    });
+    assert.equal(duplicate.status, 200, duplicate.body);
+    assert.equal(queued.length, 2);
 });
 
 test('BASIC sold transition assigns phone parity and rolls dice exactly once per lifecycle', async () => {
