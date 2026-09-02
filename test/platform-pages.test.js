@@ -156,7 +156,7 @@ test('camera launcher binds phone, tablet, and OBS to one selected channel room'
     }
 });
 
-test('home is an operational channel launcher without duplicate management routes', () => {
+test('home presents one ordered auction-to-settlement pipeline without duplicate editors', () => {
     const hub = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
     assert.match(hub, /id="login-gate"/);
     assert.match(hub, /id="dashboard" hidden/);
@@ -164,7 +164,8 @@ test('home is an operational channel launcher without duplicate management route
     assert.match(hub, /CreoPlatform\.verifyAdmin\(\)/);
     assert.match(hub, /CreoPlatform\.logout\(\)/);
     assert.match(hub, /id="quick-workspace"/);
-    assert.doesNotMatch(hub, /id="quick-print"|<strong>인쇄 페이지<\/strong>|print\.href=runtime\.url\('print'\)/);
+    assert.match(hub, /id="quick-print"/);
+    assert.match(hub, /print\.href=runtime\.url\('print'\)/);
     assert.match(hub, /id="quick-survey"[^>]*href="crewart-survey\.html"[^>]*hidden/);
     assert.match(hub, /id="quick-shipping"/);
     assert.doesNotMatch(hub, /id="quick-companies"|shipping-companies\.html/);
@@ -172,7 +173,7 @@ test('home is an operational channel launcher without duplicate management route
     assert.doesNotMatch(hub, /id="quick-rankings"/);
     assert.match(hub, /id="quick-broadcast"/);
     assert.match(hub, /id="quick-captures"/);
-    assert.match(hub, /id="quick-settings"/);
+    assert.doesNotMatch(hub, /id="quick-settings"/);
     assert.match(hub, /id="quick-design"/);
     assert.match(hub, /function workspaceUrl\(c\)/);
     assert.match(hub, /c\.dataAdapter===['"]legacy-cdcup['"]&&c\.legacy\?\.managementUrl/);
@@ -187,6 +188,8 @@ test('home is an operational channel launcher without duplicate management route
     assert.doesNotMatch(hub, /shipping\.href=`channel-shipping\.html/);
     assert.match(hub, /runtime\.extension\('survey'\)/);
     assert.match(hub, /runtime\.url\('control'\)/);
+    assert.match(hub, /경매 관리[\s\S]*방송 진행[\s\S]*배송 · 결제[\s\S]*정산 · 인쇄/);
+    assert.match(hub, /낙찰자 페이지[\s\S]*업체 페이지[\s\S]*정산·인쇄/);
     assert.doesNotMatch(hub, /id="quick-archives"|전체 채널|현장 운영|방송 열기/);
     assert.doesNotMatch(hub, /모든 경매 운영을|한곳에서\.|채널은 완전히|공통 도구|관리하기/);
 });
@@ -262,12 +265,12 @@ test('channel creation starts with a safe generated id and protects unsaved edit
     assert.match(manager, /value="winnerGroup"/);
     assert.match(manager, /value="winnerHouse"/);
     assert.match(manager, /audienceCompetition/);
-    assert.match(manager, /1·2P 공용 구성/);
+    assert.match(manager, /채널 운영 프리셋/);
     assert.match(manager, /3P 정체성/);
     assert.match(manager, /id="archive"/);
     assert.match(manager, /보관된 채널/);
     assert.match(manager, /async function saveChannel\(\)/);
-    assert.match(manager, /채널별 HTML 복사본은 만들지 않습니다/);
+    assert.match(manager, /P1·P2 송출 코드와 배치기는 모든 신규 채널이 같은 공용 엔진을 사용합니다/);
     assert.match(manager, /initialRequestedChannelId[\s\S]{0,320}요청한 채널을 찾을 수 없습니다/);
     assert.doesNotMatch(manager, /<label for="broadcast-template">집계 화면 기본형/);
 });
@@ -294,6 +297,10 @@ test('shared workspace builds real select fields for channel groups and auction 
     assert.match(workspace, /if\(!await loadCatalog\(\)\)return/);
     assert.doesNotMatch(workspace, /requested:\(catalog\.channels\[0\]/);
     assert.doesNotMatch(workspace, /setLive[\s\S]{0,500}broadcast-state/);
+    assert.match(workspace, /배송 요약/);
+    assert.match(workspace, /배송·결제 관리 열기/);
+    assert.match(workspace, /여기서는 상태만 확인합니다/);
+    assert.doesNotMatch(workspace, /actions\('shipments'/);
 });
 
 test('operational pages load the shared auction contract before legacy data scripts', () => {
@@ -526,9 +533,10 @@ test('new CDCUP overlays and shipping retain compatibility with the established 
     assert.match(live, /class="vendor-tag">\$\{esc\(item\.vendorName\)\}<\/span>/);
     assert.match(live, /\.item-name strong,\.vendor-tag\{[\s\S]{0,180}color:#fff;font-size:23px;font-weight:800/);
     assert.match(live, /rankOpacity=\[1,\.90,\.86,\.78,\.70,\.64,\.58,\.52\]/);
-    assert.match(channelShipping, /location\.replace\(target\.pathname\+target\.search\)/);
+    assert.match(channelShipping, /location\.replace\(target\.pathname\s*\+\s*target\.search\)/);
     assert.match(channelShipping, /shipping\.html/);
     assert.doesNotMatch(channelShipping, /<a\b|id="channel-select"|id="manage-link"|id="control-link"/);
+    assert.ok(Buffer.byteLength(channelShipping, 'utf8') < 2_000, 'compatibility redirect must not retain a duplicate shipping application');
     assert.match(shipping, /SHIPPING_CHANNEL_ID/);
     assert.match(shipping, /channel-adapters\.js/);
     assert.match(shipping, /CreoChannelAdapters\.resolve/);
@@ -581,7 +589,11 @@ test('new platform channels use the shared three-page arranger and isolated regi
     const studio = fs.readFileSync(path.join(__dirname, '..', 'public', 'broadcast-studio.html'), 'utf8');
     const runtime = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-runtime.js'), 'utf8');
     const legacyEntry = fs.readFileSync(path.join(__dirname, '..', 'public', 'cdcup-index.html'), 'utf8');
-    assert.match(profiles, /platform-layout-editor\.html\?channel=/);
+    assert.match(profiles, /SHARED_PLATFORM_RENDERER/);
+    assert.match(profiles, /editor: 'platform-layout-editor\.html'/);
+    assert.match(profiles, /live: 'auction-live\.html'/);
+    assert.match(profiles, /SHARED_PLATFORM_RENDERER\.editor/);
+    assert.match(profiles, /SHARED_PLATFORM_RENDERER\.live/);
     assert.match(editor, /요소를 끌어 이동/);
     assert.match(editor, /layoutPlacements/);
     assert.match(editor, /broadcast-state/);
@@ -627,11 +639,12 @@ test('broadcast live updates reconcile changed regions without rebuilding the wh
     assert.doesNotMatch(live, /stage\.innerHTML\s*=/);
 });
 
-test('print forms remain available inside the shared registration workspace without a duplicate home shortcut', () => {
+test('print forms have one canonical page linked from both pipeline and workspace', () => {
     const home = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
     const workspace = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-workspace.html'), 'utf8');
     const print = fs.readFileSync(path.join(__dirname, '..', 'public', 'print.html'), 'utf8');
-    assert.doesNotMatch(home, /id="quick-print"|인쇄 페이지|print\.href=runtime\.url\('print'\)/);
+    assert.match(home, /id="quick-print"/);
+    assert.match(home, /print\.href=runtime\.url\('print'\)/);
     assert.match(workspace, /id="print-link"/);
     assert.match(workspace, /`print\.html\?\$\{q\}`/);
     assert.match(print, /platform-client\.js/);

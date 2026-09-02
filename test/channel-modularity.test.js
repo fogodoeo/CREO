@@ -69,6 +69,27 @@ test('1P and 2P use one contract while 3P is selected by broadcast profile', () 
     }
 });
 
+test('every platform profile inherits the same P1 and P2 renderer and editor', () => {
+    assert.deepEqual(Profiles.SHARED_PLATFORM_RENDERER, {
+        editor: 'platform-layout-editor.html',
+        live: 'auction-live.html'
+    });
+    for (const profile of Profiles.ids()) {
+        const configured = channel(`future-${profile}`, { broadcastProfile: profile });
+        for (const page of [1, 2]) {
+            assert.equal(
+                Profiles.studioFrame(configured, `layout-${page}`),
+                `platform-layout-editor.html?channel=future-${profile}&page=${page}&embedded=1`
+            );
+            assert.equal(
+                Profiles.broadcastTarget(configured, page),
+                `auction-live.html?channel=future-${profile}&page=${page}`
+            );
+            assert.strictEqual(Profiles.pageContract(configured, page), Profiles.SHARED_PAGE_CONTRACTS[page]);
+        }
+    }
+});
+
 test('BASIC uses the platform renderer with a dedicated dice team page', () => {
     const basic = channel('basic', { broadcastProfile: 'basic-dice' });
     const profile = Profiles.resolve(basic);
