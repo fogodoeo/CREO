@@ -10,6 +10,7 @@
     <meta http-equiv="Expires" content="0">
     <script src="auction-contract.js?v=20260819-contract-v1"></script>
     <script src="platform-client.js?v=20260803-admin-session-v2"></script>
+    <script src="channel-runtime.js?v=20260901-operator-routing-v1"></script>
     <script src="channel-adapters.js?v=20260823-channel-isolation-v3"></script>
     <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
     <script src="print-shipping-summary.js?v=20260831-shipping-summary-v1"></script>
@@ -1777,15 +1778,12 @@
             setTimeout(initResize, 100);
         }
 
-        var PRINT_CHANNEL_ID = String(new URLSearchParams(location.search).get('channel') || '').toLowerCase().replace(/[^a-z0-9-]/g, '');
+        var PRINT_CHANNEL_ID = CreoChannelRuntime.normalizeChannelId(new URLSearchParams(location.search).get('channel'));
         var printChannel = null;
 
         async function resolvePrintChannelId() {
             if (PRINT_CHANNEL_ID) return PRINT_CHANNEL_ID;
-            var active = await CreoPlatform.api('active-channel');
-            PRINT_CHANNEL_ID = String(active && active.channelId || '').toLowerCase().replace(/[^a-z0-9-]/g, '');
-            if (!PRINT_CHANNEL_ID) throw new Error('현재 운영 채널을 찾을 수 없습니다.');
-            return PRINT_CHANNEL_ID;
+            throw new Error('인쇄할 채널 주소가 없습니다. 메인에서 채널을 다시 선택해 주세요.');
         }
 
         function platformWinner(item) {

@@ -77,6 +77,7 @@
             this.client = options.client || root.CreoPlatform;
             this.location = options.location || root.location || { search: '', href: 'http://creo.local/' };
             this.catalog = options.catalog || { version: 0, channels: [] };
+            this.allowActiveFallback = options.allowActiveFallback !== false;
             this.channel = null;
             this.listeners = new Set();
         }
@@ -88,7 +89,7 @@
             }
             const query = new URLSearchParams(this.location.search || '');
             let selectedId = normalizeChannelId(requested || query.get('channel') || query.get('event'));
-            if (!selectedId && this.client?.api) {
+            if (!selectedId && this.allowActiveFallback && this.client?.api) {
                 const active = await this.client.api('active-channel');
                 selectedId = normalizeChannelId(active?.channelId);
             }
@@ -96,7 +97,9 @@
             if (!this.channel) {
                 throw new Error(selectedId
                     ? '선택한 채널을 찾을 수 없습니다. 메인에서 채널을 다시 선택해 주세요.'
-                    : '현재 운영 채널을 찾을 수 없습니다.');
+                    : this.allowActiveFallback
+                        ? '현재 운영 채널을 찾을 수 없습니다.'
+                        : '채널 주소가 없습니다. 메인에서 채널을 다시 선택해 주세요.');
             }
             this.applyTheme();
             return this;

@@ -234,7 +234,9 @@ test('broadcast studio uses shared profiles instead of channel-specific branches
     assert.match(control, /broadcast-studio\.html\?channel=/);
     const workspace = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-workspace.html'), 'utf8');
     const shipping = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-shipping.html'), 'utf8');
-    assert.match(workspace, /c\?\.links\?\.control/);
+    assert.match(workspace, /channel-runtime\.js/);
+    assert.match(workspace, /routes\.control/);
+    assert.doesNotMatch(workspace, /c\?\.links\?\.control/);
     assert.doesNotMatch(shipping, /c\?\.links\?\.control|manage-link|control-link/);
 });
 
@@ -291,7 +293,7 @@ test('shared workspace builds real select fields for channel groups and auction 
     assert.match(workspace, /field\('status','상태',record\?\.status,'select'/);
     assert.match(workspace, /field\('winnerAlias','방송용 낙찰자명'/);
     assert.match(workspace, /auction-transition/);
-    assert.match(workspace, /등록 채널 주소가 올바르지 않습니다/);
+    assert.match(workspace, /allowActiveFallback:false/);
     assert.match(workspace, /function legacyWorkspaceUrl\(channel\)/);
     assert.match(workspace, /location\.assign\(legacyUrl\)/);
     assert.match(workspace, /if\(!await loadCatalog\(\)\)return/);
@@ -649,10 +651,12 @@ test('print forms have one canonical page linked from both pipeline and workspac
     assert.match(home, /id="quick-print"/);
     assert.match(home, /print\.href=runtime\.url\('print'\)/);
     assert.match(workspace, /id="print-link"/);
-    assert.match(workspace, /`print\.html\?\$\{q\}`/);
+    assert.match(workspace, /routes\.print/);
     assert.match(print, /platform-client\.js/);
     assert.match(print, /channel-adapters\.js/);
-    assert.match(print, /CreoPlatform\.api\('active-channel'\)/);
+    assert.match(print, /channel-runtime\.js/);
+    assert.doesNotMatch(print, /CreoPlatform\.api\('active-channel'\)/);
+    assert.match(print, /인쇄할 채널 주소가 없습니다/);
     assert.doesNotMatch(print, /get\('channel'\) \|\| 'cdcup'/);
     assert.match(print, /print-shipping-summary\.js/);
     assert.match(print, /google-sheets-export\.js/);
@@ -967,7 +971,7 @@ test('BASIC control uploads six dice videos and P3 renders parity totals without
     assert.match(control, /function optimizeDiceVideo/);
     assert.match(control, /width:960,height:540,fps:30,bitrate:1200000/);
     assert.match(control, /optimized\.size>8\*1024\*1024/);
-    assert.match(control, /방송 채널 주소가 올바르지 않습니다/);
+    assert.match(control, /allowActiveFallback:false/);
     assert.match(control, /\/api\/broadcast-assets\//);
     assert.match(control, /file\.size>8\*1024\*1024/);
     assert.match(live, /function renderDiceTeamsPageThree/);

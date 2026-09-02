@@ -8,6 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>CREO - 배송/수령 정보 등록</title>
     <script src="platform-client.js?v=20260803-admin-session-v2"></script>
+    <script src="channel-runtime.js?v=20260901-operator-routing-v1"></script>
     <script src="auction-contract.js?v=20260819-contract-v1"></script>
     <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
     <script src="channel-adapters.js?v=20260823-channel-isolation-v3"></script>
@@ -2688,8 +2689,7 @@
         </div>
     </div>
     <script>
-        const SHIPPING_CHANNEL_ID = String(new URLSearchParams(window.location.search).get('channel') || '')
-            .toLowerCase().replace(/[^a-z0-9-]/g, '');
+        const SHIPPING_CHANNEL_ID = CreoChannelRuntime.normalizeChannelId(new URLSearchParams(window.location.search).get('channel'));
         if (!SHIPPING_CHANNEL_ID) location.replace('/');
         const SHIPPING_COMPANY_STORAGE_KEY = `creo_shipping_company_${SHIPPING_CHANNEL_ID}`;
         let shippingAdapter = null;

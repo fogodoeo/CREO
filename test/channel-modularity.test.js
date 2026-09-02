@@ -52,6 +52,20 @@ test('channel runtime follows the active pointer only when no channel was explic
     assert.equal(Runtime.selectChannel(catalog, 'missing'), null);
 });
 
+test('operator pages can require an explicit channel and never fall through to the live channel', async () => {
+    const catalog = { version: 3, channels: [channel('alpha'), channel('beta')] };
+    const calls = [];
+    const client = { api: async path => { calls.push(path); return { channelId: 'beta' }; } };
+    const runtime = Runtime.create({
+        client,
+        catalog,
+        location: { search: '', href: 'https://creo.test/print.html' },
+        allowActiveFallback: false
+    });
+    await assert.rejects(runtime.load(), /채널 주소가 없습니다/);
+    assert.deepEqual(calls, []);
+});
+
 test('1P and 2P use one contract while 3P is selected by broadcast profile', () => {
     const standard = channel('standard-cup');
     const tournament = channel('team-cup', { broadcastProfile: 'cdcup-tournament' });
