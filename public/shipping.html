@@ -13,6 +13,7 @@
     <script src="auction-contract.js?v=20260819-contract-v1"></script>
     <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
     <script src="channel-adapters.js?v=20260823-channel-isolation-v3"></script>
+    <script src="operation-channel.js?v=20260904-v1"></script>
     <script src="settlement-discount.js?v=20260823-v1"></script>
     <script src="print-shipping-summary.js?v=20260903-winner-identity-v2"></script>
     <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard-dynamic-subset.css" />
@@ -2438,11 +2439,13 @@
         </div>
     </div>
     <script>
-        const SHIPPING_CHANNEL_ID = CreoChannelRuntime.normalizeChannelId(new URLSearchParams(window.location.search).get('channel'));
+        const SHIPPING_CHANNEL_ID = CreoOperationChannel.channelIdFromLocation(window.location);
         if (!SHIPPING_CHANNEL_ID) location.replace('/');
         const SHIPPING_COMPANY_STORAGE_KEY = `creo_shipping_company_${SHIPPING_CHANNEL_ID}`;
-        let shippingAdapter = null;
-        let shippingAdapterContext = null;
+        const shippingOperation = SHIPPING_CHANNEL_ID ? CreoOperationChannel.create({
+            channelId: SHIPPING_CHANNEL_ID,
+            onReady: syncShippingChannelUi
+        }) : null;
         const MOBILE_SHIPPING_HISTORY = window.matchMedia('(max-width: 820px)').matches;
         let restoringMobileShippingHistory = false;
 
@@ -2573,18 +2576,8 @@
             closeMessagePreview();
         });
 
-        async function ensureShippingAdapter() {
-            if (shippingAdapter) return shippingAdapter;
-            const channel = (await CreoPlatform.api(`channels/${encodeURIComponent(SHIPPING_CHANNEL_ID)}`)).channel;
-            shippingAdapter = CreoChannelAdapters.resolve(channel);
-            shippingAdapterContext = { channel };
-            syncShippingChannelUi(channel);
-            return shippingAdapter;
-        }
-
         async function loadShippingItems() {
-            const adapter = await ensureShippingAdapter();
-            return adapter.loadShippingItems(shippingAdapterContext);
+            return shippingOperation.loadShippingItems();
         }
 
         let shippingRefreshRevision = 0;
@@ -2619,8 +2612,7 @@
         }
 
         async function saveShippingItem(row, shippingData, auditMeta = {}) {
-            const adapter = await ensureShippingAdapter();
-            return adapter.saveShippingItem(shippingAdapterContext, row, shippingData, auditMeta);
+            return shippingOperation.saveShippingItem(row, shippingData, auditMeta);
         }
 
         function activeBuyerLinkItem() {
@@ -2684,7 +2676,7 @@
             }
         }
 
-        function syncShippingChannelUi(channel = shippingAdapterContext?.channel) {
+        function syncShippingChannelUi(channel = shippingOperation?.channel) {
             const label = String(channel?.name || SHIPPING_CHANNEL_ID).trim();
             const locations = channel?.shippingDefaults?.pickupLocations;
             channelPickupLocations = Object.freeze(Array.isArray(locations) && locations.length ? [...locations] : [...DEFAULT_PICKUP_LOCATIONS]);
@@ -2710,7 +2702,7 @@
         }
 
         function settlementGroupOrder() {
-            const groups = shippingAdapterContext?.channel?.groups;
+            const groups = shippingOperation?.channel?.groups;
             if (!Array.isArray(groups) || !groups.length) return ['R', 'G', 'B', 'Y'];
             const aliases = { RED: 'R', GREEN: 'G', BLUE: 'B', YELLOW: 'Y', 빨강: 'R', 초록: 'G', 파랑: 'B', 노랑: 'Y' };
             const order = groups.map(group => {
@@ -2733,7 +2725,7 @@
                 return { originalAmount, payableAuctionAmount: originalAmount, discountAmount: 0, label: '' };
             }
             return window.CreoSettlementDiscount.calculate(
-                shippingAdapterContext?.channel?.settlementDiscount,
+                shippingOperation?.channel?.settlementDiscount,
                 selectedItems,
                 settlementItems,
                 { groupOrder: settlementGroupOrder() }

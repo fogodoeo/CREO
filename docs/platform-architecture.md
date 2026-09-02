@@ -31,6 +31,9 @@ channel-adapters.js
 ├─ platform: 채널별 SQLite/Supabase 운영 데이터
 └─ legacy-cdcup: 현재 CDCUP 자료 호환
 
+operation-channel.js
+└─ 배송·전체조회·인쇄의 명시 채널 검증과 공용 읽기/저장 연결
+
 broadcast-profiles.js
 ├─ standard: 일반 집계판
 ├─ basic-dice: 홀짝 팀·주사위 기여도
@@ -139,6 +142,7 @@ CDCUP을 복제해도 `cdcup-tournament` 방송 프로필과 디자인·기능 �
 - `public/channel-manager.html`: 채널 생성·복제·디자인 설정
 - `public/channel-runtime.js`: 공용 채널 선택·URL·기능·전용 페이지 해석
 - `public/channel-adapters.js`: CDCUP 호환 및 플랫폼 데이터의 공통 작업 계약
+- `public/operation-channel.js`: 배송·전체조회·인쇄가 공유하는 명시 채널/어댑터 런타임
 - `public/broadcast-profiles.js`: 공용 1P·2P 계약과 채널별 3P·설정 프로필
 - `public/channel-workspace.html`: 업체·개체·배송 관리
 - `public/auction-control.html`: 공용 방송 제어

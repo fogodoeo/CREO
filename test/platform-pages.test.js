@@ -561,7 +561,8 @@ test('new CDCUP overlays and shipping retain compatibility with the established 
     assert.ok(Buffer.byteLength(channelShipping, 'utf8') < 2_000, 'compatibility redirect must not retain a duplicate shipping application');
     assert.match(shipping, /SHIPPING_CHANNEL_ID/);
     assert.match(shipping, /channel-adapters\.js/);
-    assert.match(shipping, /CreoChannelAdapters\.resolve/);
+    assert.match(shipping, /operation-channel\.js/);
+    assert.match(shipping, /CreoOperationChannel\.create/);
     assert.match(shipping, /print-shipping-summary\.js/);
     assert.match(shipping, /return CreoPrintShippingSummary\.winnerIdentity\(item\)/);
     assert.doesNotMatch(shipping, /phoneMatch = clean\.match/);
@@ -571,8 +572,8 @@ test('new CDCUP overlays and shipping retain compatibility with the established 
     assert.match(buyerShipping, /const globalShipping\(\)|function globalShipping\(\)/);
     assert.doesNotMatch(shipping, /buyer-view|buyerFoundItems|buyerShippingState|\?buyer=1/);
     assert.ok(Buffer.byteLength(shipping, 'utf8') < 220_000, 'admin shipping must not retain the retired buyer application');
-    assert.match(shipping, /adapter\.loadShippingItems/);
-    assert.match(shipping, /adapter\.saveShippingItem/);
+    assert.match(shipping, /shippingOperation\.loadShippingItems/);
+    assert.match(shipping, /shippingOperation\.saveShippingItem/);
     assert.match(shipping, /saveShippingItem/);
     assert.match(shipping, /openShippingAdminLogin\(\{ required: true \}\)/);
     assert.match(shipping, /await initializeShipping\(\)/);
@@ -592,8 +593,8 @@ test('new CDCUP overlays and shipping retain compatibility with the established 
     assert.match(shipping, /if \(!SHIPPING_CHANNEL_ID\) location\.replace\('\/'\)/);
     assert.doesNotMatch(shipping, /get\('channel'\) \|\| 'cdcup'/);
     const shippingStatus = fs.readFileSync(path.join(__dirname, '..', 'public', 'shipping-status.html'), 'utf8');
-    assert.match(shippingStatus, /CreoChannelAdapters\.resolve/);
-    assert.match(shippingStatus, /adapter\.loadShippingItems/);
+    assert.match(shippingStatus, /operation-channel\.js/);
+    assert.match(shippingStatus, /shippingOperation\.loadShippingItems/);
     assert.match(shippingStatus, /print-shipping-summary\.js/);
     assert.match(shippingStatus, /return CreoPrintShippingSummary\.winnerIdentity\(item\)/);
     assert.doesNotMatch(shippingStatus, /const match = clean\.match/);
@@ -676,6 +677,7 @@ test('print forms have one canonical page linked from both pipeline and workspac
     const pipeline = fs.readFileSync(path.join(__dirname, '..', 'public', 'operator-pipeline.js'), 'utf8');
     const print = fs.readFileSync(path.join(__dirname, '..', 'public', 'print.html'), 'utf8');
     const adapters = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-adapters.js'), 'utf8');
+    const operationChannel = fs.readFileSync(path.join(__dirname, '..', 'public', 'operation-channel.js'), 'utf8');
     assert.match(home, /id="quick-print"/);
     assert.match(home, /print\.href=runtime\.url\('print'\)/);
     assert.match(workspace, /<creo-operator-pipeline current="workspace"/);
@@ -683,6 +685,7 @@ test('print forms have one canonical page linked from both pipeline and workspac
     assert.match(print, /platform-client\.js/);
     assert.match(print, /channel-adapters\.js/);
     assert.match(print, /channel-runtime\.js/);
+    assert.match(print, /operation-channel\.js/);
     assert.doesNotMatch(print, /CreoPlatform\.api\('active-channel'\)/);
     assert.match(print, /인쇄할 채널 주소가 없습니다/);
     assert.doesNotMatch(print, /get\('channel'\) \|\| 'cdcup'/);
@@ -691,8 +694,8 @@ test('print forms have one canonical page linked from both pipeline and workspac
     assert.doesNotMatch(print, /function parseWinner\(str\)[\s\S]{0,400}phoneIdx/);
     assert.match(print, /google-sheets-export\.js/);
     assert.match(print, /accounts\.google\.com\/gsi\/client/);
-    assert.match(print, /return adapter\.loadShippingItems\(\{ channel: channel \}\)/);
-    assert.match(print, /인쇄 데이터 연결 방식이 설정되지 않았습니다/);
+    assert.match(print, /return printOperation\.loadShippingItems\(\)/);
+    assert.match(operationChannel, /배송·인쇄 데이터 연결 방식이 설정되지 않았습니다/);
     assert.doesNotMatch(print, /function platformPrintItems\(workspace, channel\)/);
     assert.doesNotMatch(print, /loadShippingItems adapter fallback/);
     assert.doesNotMatch(print, /channels\/['"]? \+ encodeURIComponent\(PRINT_CHANNEL_ID\) \+ ['"]?\/workspace/);
@@ -723,7 +726,7 @@ test('print forms have one canonical page linked from both pipeline and workspac
     assert.match(adapters, /buyer_submitted_at: shipment\?\.buyerSubmittedAt/);
     assert.match(adapters, /payment_requested_amount: Number\(shipment\?\.paymentRequestedAmount\)/);
     assert.match(print, /CreoPrintShippingSummary\.groupBundles\(summaryItems\)/);
-    assert.match(print, /CreoChannelAdapters\.resolve\(channel\)/);
+    assert.match(operationChannel, /adapters\.resolve\(channel\)/);
     assert.doesNotMatch(print, /CreoChannelAdapters\.get\(/);
     assert.match(print, />구글시트 새로 만들기<\/button>/);
     assert.match(print, /https:\/\/www\.googleapis\.com\/auth\/drive\.file/);

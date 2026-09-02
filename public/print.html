@@ -13,6 +13,7 @@
     <script src="channel-runtime.js?v=20260901-operator-routing-v1"></script>
     <script src="operator-pipeline.js?v=20260903-v1"></script>
     <script src="channel-adapters.js?v=20260823-channel-isolation-v3"></script>
+    <script src="operation-channel.js?v=20260904-v1"></script>
     <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
     <script src="print-shipping-summary.js?v=20260903-winner-identity-v2"></script>
     <script src="google-sheets-export.js?v=20260831-google-create-v1"></script>
@@ -1754,8 +1755,8 @@
             setTimeout(initResize, 100);
         }
 
-        var PRINT_CHANNEL_ID = CreoChannelRuntime.normalizeChannelId(new URLSearchParams(location.search).get('channel'));
-        var printChannel = null;
+        var PRINT_CHANNEL_ID = CreoOperationChannel.channelIdFromLocation(location);
+        var printOperation = PRINT_CHANNEL_ID ? CreoOperationChannel.create({ channelId: PRINT_CHANNEL_ID }) : null;
 
         async function resolvePrintChannelId() {
             if (PRINT_CHANNEL_ID) return PRINT_CHANNEL_ID;
@@ -1763,7 +1764,6 @@
         }
 
         function syncPrintChannel(channel) {
-            printChannel = channel;
             var label = String(channel.name || channel.shortName || PRINT_CHANNEL_ID).trim();
             document.getElementById('print-channel-name').textContent = label;
             document.title = label + ' 인쇄 · CREO';
@@ -1787,20 +1787,10 @@
 
         async function loadPrintData() {
             await resolvePrintChannelId();
-            var payload = await CreoPlatform.api('channels/' + encodeURIComponent(PRINT_CHANNEL_ID));
-            var channel = payload.channel;
-            if (!channel) throw new Error('인쇄 채널을 찾을 수 없습니다.');
+            var operation = await printOperation.ready();
+            var channel = operation.channel;
             syncPrintChannel(channel);
-
-            if (channel.dataAdapter === 'legacy-cdcup') {
-                return typeof getItems === 'function' ? getItems() : [];
-            }
-
-            var adapter = typeof CreoChannelAdapters !== 'undefined' ? CreoChannelAdapters.resolve(channel) : null;
-            if (!adapter || typeof adapter.loadShippingItems !== 'function') {
-                throw new Error('이 채널의 인쇄 데이터 연결 방식이 설정되지 않았습니다.');
-            }
-            return adapter.loadShippingItems({ channel: channel });
+            return printOperation.loadShippingItems();
         }
 
         async function initializePrint() {
