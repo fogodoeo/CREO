@@ -6,7 +6,14 @@ const { Readable } = require('node:stream');
 const { createCaptureApi, captureIdFor } = require('../capture-api');
 
 class MemoryRepository {
-    constructor() { this.records = new Map(); this.active = 'cdcup'; }
+    constructor() {
+        this.records = new Map();
+        this.active = 'cdcup';
+        this.catalog = { version: 1, channels: [
+            { id: 'cdcup', status: 'active' },
+            { id: 'event-night', status: 'active' }
+        ] };
+    }
     key(channel, type, id) { return `${channel}:${type}:${id}`; }
     async getRecord(channel, type, id) { return structuredClone(this.records.get(this.key(channel, type, id)) || null); }
     async listRecords(channel, type) {
@@ -22,6 +29,7 @@ class MemoryRepository {
     }
     async deleteRecord(channel, type, id) { this.records.delete(this.key(channel, type, id)); }
     async getActiveChannel() { return this.active; }
+    async getCatalog() { return structuredClone(this.catalog); }
 }
 
 class MemoryStorage {
@@ -190,4 +198,48 @@ test('auto channel follows the active auction and only the selected computer lea
     });
     assert.equal(response.json().job.itemId, 'event_2');
     assert.equal(response.json().activeAgentId, 'pc-b-id');
+});
+
+test('capture mutations reject unknown channels instead of creating orphan channel data', async () => {
+    const repository = new MemoryRepository();
+    const api = createCaptureApi({
+        repository,
+        storage: new MemoryStorage(),
+        isAdmin: async (req) => req.headers['x-creo-admin'] === 'secret',
+        logger: { warn() {} }
+    });
+    const response = await call(api, 'POST', '/api/capture/jobs', {
+        channelId: 'deleted-channel', itemId: 'orphan_1', itemName: '고아 작업'
+    });
+    assert.equal(response.status, 400);
+    assert.equal(repository.records.size, 0);
+});
+
+test('capture completion stays bound to the leased channel across an active-channel switch', async () => {
+    const repository = new MemoryRepository();
+    const storage = new MemoryStorage();
+    const api = createCaptureApi({
+        repository,
+        storage,
+        isAdmin: async (req) => req.headers['x-creo-admin'] === 'secret',
+        logger: { warn() {} }
+    });
+    let response = await call(api, 'POST', '/api/capture/jobs', {
+        channelId: 'cdcup', itemId: 'switch_1', itemName: '전환 작업', eventKey: 'switch-event'
+    });
+    const jobId = response.json().job.id;
+    await call(api, 'POST', '/api/capture/jobs/next', { channelId: 'cdcup', agentId: 'main-pc' });
+
+    repository.active = 'event-night';
+    response = await call(api, 'POST', `/api/capture/jobs/${jobId}/upload`, {
+        channelId: 'cdcup', mimeType: 'image/webp', imageBase64: Buffer.from('bound-image').toString('base64')
+    });
+    assert.equal(response.status, 200);
+    assert.equal(response.json().capture.channelId, 'cdcup');
+    assert.ok(storage.objects.has(`cdcup/${jobId}.webp`));
+    assert.equal((await repository.listRecords('event-night', 'capture')).length, 0);
+
+    response = await call(api, 'POST', `/api/capture/jobs/${jobId}/fail`, { channelId: 'auto', error: 'late failure' });
+    assert.equal(response.status, 400);
+    assert.equal((await repository.getRecord('cdcup', 'capture', jobId)).status, 'complete');
 });

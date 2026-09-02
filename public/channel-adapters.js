@@ -152,7 +152,7 @@
     }
 
     function resolve(channel) {
-        const id = channel?.dataAdapter || (channel?.legacy?.items ? 'legacy-cdcup' : 'platform');
+        const id = channel?.dataAdapter || 'platform';
         return registry.get(id) || registry.get('platform');
     }
 

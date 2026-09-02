@@ -3,6 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
+    BROADCAST_PROFILES,
     DEFAULT_CHANNELS,
     channelKey,
     channelLinks,
@@ -11,10 +12,21 @@ const {
     validateChannel
 } = require('../platform-core');
 
+test('broadcast profile validation uses the renderer registry as its canonical list', () => {
+    const profiles = require('../public/broadcast-profiles');
+    assert.deepEqual(BROADCAST_PROFILES, profiles.ids());
+    assert.deepEqual(BROADCAST_PROFILES, ['standard', 'basic-dice', 'cdcup-tournament', 'crewart-academy', 'creyon-metal']);
+});
+
 test('channel identifiers and storage keys create hard data boundaries', () => {
     assert.equal(channelKey('summer-auction', 'vendor', 'ven_1'), 'creo_v2::summer-auction::vendor::ven_1');
     assert.throws(() => channelKey('!!!', 'vendor', 'one'), /Invalid channel key/);
-    assert.match(channelLinks('summer-auction').workspace, /channel=summer-auction/);
+    assert.equal(channelLinks('summer-auction').workspace, '/channel-workspace.html?channel=summer-auction');
+    assert.equal(channelLinks({
+        id: 'cdcup',
+        dataAdapter: 'legacy-cdcup',
+        legacy: { managementUrl: '/cdcup-index.html?module=cdcup' }
+    }).workspace, '/cdcup-index.html?module=cdcup&channel=cdcup');
     assert.equal(channelLinks('crewart').shipping, '/shipping.html?channel=crewart');
     assert.equal(channelLinks('crewart').shippingStatus, '/shipping-status.html?channel=crewart');
     assert.equal(channelLinks('crewart').shippingCompanies, '/shipping-status.html?channel=crewart&view=company');
@@ -22,6 +34,7 @@ test('channel identifiers and storage keys create hard data boundaries', () => {
     assert.equal(channelLinks('crewart').archives, '/channel-archives.html?channel=crewart');
     assert.equal(channelLinks('crewart').rankings, '/channel-archives.html?channel=crewart&view=current');
     assert.equal(channelLinks('crewart').settings, '/channel-manager.html?channel=crewart');
+    assert.throws(() => channelLinks('!!!'), /Invalid channel id/);
 });
 
 test('channel configuration is normalized and duplicate ids are rejected', () => {
@@ -80,6 +93,9 @@ test('public broadcast items never expose winner or shipping contact data', () =
 
 test('CREWART defaults define viewer-color sold amount competition as channel capability', () => {
     const crewart = DEFAULT_CHANNELS.find(channel => channel.id === 'crewart');
+    assert.equal(crewart.dataAdapter, 'platform');
+    assert.equal(crewart.legacy.items, false);
+    assert.equal(crewart.legacy.managementUrl, '');
     assert.deepEqual(crewart.audienceCompetition, {
         enabled: true,
         assignment: 'survey-random',
@@ -194,6 +210,29 @@ test('an existing channel can intentionally remove every scoreboard', () => {
     const updated = normalizeChannel({ ...fallback, features: { ...fallback.features, scoreboards: false }, scoreboards: [] }, fallback);
     assert.equal(updated.features.scoreboards, false);
     assert.deepEqual(updated.scoreboards, []);
+});
+
+test('dataAdapter is the only data-source switch and repairs stale legacy flags', () => {
+    const platform = normalizeChannel({
+        id: 'platform-copy', name: '플랫폼 복사본', templateId: 'basic', dataAdapter: 'platform',
+        legacy: { items: true, managementUrl: '/cdcup-index.html?channel=wrong' }
+    });
+    assert.equal(platform.templateId, 'basic');
+    assert.equal(platform.dataAdapter, 'platform');
+    assert.deepEqual(platform.legacy, { items: false, managementUrl: '', controlUrl: '' });
+
+    const legacy = normalizeChannel({
+        id: 'legacy-copy', name: '레거시 복사본', dataAdapter: 'legacy-cdcup',
+        legacy: { items: false, managementUrl: '/cdcup-index.html?channel=legacy-copy' }
+    });
+    assert.equal(legacy.legacy.items, true);
+    assert.equal(legacy.legacy.managementUrl, '/cdcup-index.html?channel=legacy-copy');
+});
+
+test('unsupported broadcast profiles fail validation instead of silently changing renderers', () => {
+    const result = validateChannel({ id: 'bad-profile', name: '잘못된 프로필', broadcastProfile: 'unknown-renderer' });
+    assert.equal(result.valid, false);
+    assert.match(result.errors.join(' '), /지원하지 않는 방송 프로필/);
 });
 
 test('BASIC defaults keep phone parity and dice contribution separate from settlement', () => {

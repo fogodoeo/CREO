@@ -177,7 +177,7 @@
       <div class="logo">CREOK CAM</div>
       <div class="channel-wrap">
         <span>#</span>
-        <input type="text" id="channelInput" class="channel-input" value="ongdong" placeholder="채널">
+        <input type="text" id="channelInput" class="channel-input" value="" placeholder="채널">
       </div>
     </div>
 
@@ -236,8 +236,22 @@
     const qrPhone = document.getElementById('qrPhone');
     const qrTablet = document.getElementById('qrTablet');
 
+    function normalizeChannel(value) {
+      return String(value || '').trim().toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-|-$/g, '').slice(0, 32);
+    }
+
     function getCh() {
-      return (chInput.value.trim() || 'ongdong').toLowerCase();
+      return normalizeChannel(chInput.value) || 'creok';
+    }
+
+    async function loadChannel() {
+      const requested = normalizeChannel(new URLSearchParams(location.search).get('channel'));
+      if (requested) { chInput.value = requested; return; }
+      try {
+        const response = await fetch('/api/platform/active-channel', { cache: 'no-store' });
+        const active = response.ok ? normalizeChannel((await response.json()).channelId) : '';
+        if (active) chInput.value = active;
+      } catch (_) {}
     }
 
     // Clean, Battle-Tested Standard URLs that NEVER loop or drop
@@ -246,7 +260,7 @@
     }
 
     function getTabletViewUrl() {
-      return `https://vdo.ninja/?view=${getCh()}_monitor&autoplay&cleanoutput&buffer=0`;
+      return `https://vdo.ninja/?view=${getCh()}_cam&autoplay&cleanoutput&buffer=0`;
     }
 
     function getPcPushUrl() {
@@ -299,7 +313,8 @@
       alert('[OBS 브라우저 소스 링크 복사 완료]\n' + text);
     }
 
-    window.addEventListener('DOMContentLoaded', () => {
+    window.addEventListener('DOMContentLoaded', async () => {
+      await loadChannel();
       updateQrs();
     });
   </script>

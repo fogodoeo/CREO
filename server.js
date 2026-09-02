@@ -175,19 +175,15 @@ function isOperationalChannel(channel, feature) {
     return channel?.status === 'active' && channel?.features?.[feature] !== false;
 }
 
-async function canonicalOperationalChannelLocation(url, feature) {
+async function operationalChannelError(url, feature) {
     if (!url.searchParams.has('channel')) return '';
     const requestedId = normalizeChannelId(url.searchParams.get('channel'));
     const catalog = await platformRepository.getCatalog();
     const requested = catalog.channels.find((channel) => channel.id === requestedId);
     if (isOperationalChannel(requested, feature)) return '';
-    const activeId = normalizeChannelId(await platformRepository.getActiveChannel());
-    const target = catalog.channels.find((channel) => channel.id === activeId && isOperationalChannel(channel, feature))
-        || catalog.channels.find((channel) => isOperationalChannel(channel, feature));
-    if (!target) return '';
-    const params = new URLSearchParams(url.searchParams);
-    params.set('channel', target.id);
-    return `${url.pathname}?${params.toString()}`;
+    return requested
+        ? '이 채널에서는 현재 해당 운영 기능을 사용할 수 없습니다.'
+        : '요청한 채널을 찾을 수 없습니다. 메인에서 채널을 다시 선택해 주세요.';
 }
 
 async function serveStatic(req, res, url) {
@@ -371,12 +367,11 @@ const server = http.createServer(async (req, res) => {
             ['/shipping-rates.html', 'shipping']
         ]).get(url.pathname);
         if ((req.method === 'GET' || req.method === 'HEAD') && operationalFeature) {
-            let location = '';
-            try { location = await canonicalOperationalChannelLocation(url, operationalFeature); }
+            let channelError = '';
+            try { channelError = await operationalChannelError(url, operationalFeature); }
             catch (error) { console.error('[server] channel canonicalization failed:', error.message); }
-            if (location) {
-                writeHeaders(res, 307, { Location: location, 'Cache-Control': 'no-store' });
-                res.end();
+            if (channelError) {
+                sendJson(res, 404, { error: channelError, code: 'CHANNEL_NOT_AVAILABLE' });
                 return;
             }
         }

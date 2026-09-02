@@ -2261,8 +2261,6 @@ function createPlatformApi({
         const storedId = await repository.getActiveChannel();
         const channel = catalog.channels.find((candidate) => candidate.id === storedId && isBroadcastableChannel(candidate))
             || catalog.channels.find((candidate) => isBroadcastableChannel(candidate))
-            || catalog.channels.find((candidate) => candidate.status !== 'archived')
-            || catalog.channels[0]
             || null;
         const channelId = channel?.id || '';
         if (channelId && channelId !== storedId) await repository.setActiveChannel(channelId);
@@ -2463,8 +2461,8 @@ function createPlatformApi({
             }
 
             if (segments.length === 1 && segments[0] === 'active-channel' && method === 'GET') {
-                const { channelId } = await activeChannelContext();
-                replyJson(res, 200, { channelId });
+                const { catalog, channelId } = await activeChannelContext();
+                replyJson(res, 200, { channelId, catalogVersion: catalog.version });
                 return true;
             }
 
@@ -2473,7 +2471,7 @@ function createPlatformApi({
                 const { channelId, channel } = await activeChannelContext();
                 replyJson(res, 200, {
                     activeChannelId: channelId,
-                    channel: channel ? { ...channel, links: channelLinks(channel.id) } : null,
+                    channel: channel ? { ...channel, links: channelLinks(channel) } : null,
                     adapter: channel?.dataAdapter || '',
                     workspace: channel && channel.dataAdapter !== 'legacy-cdcup' ? await workspace(channelId) : null
                 });
@@ -2535,7 +2533,7 @@ function createPlatformApi({
                 const includeInactive = admin && url.searchParams.get('includeArchived') === '1';
                 const channels = catalog.channels
                     .filter((channel) => includeInactive || channel.status === 'active')
-                    .map((channel) => ({ ...channel, links: channelLinks(channel.id) }));
+                    .map((channel) => ({ ...channel, links: channelLinks(channel) }));
                 replyJson(res, 200, { ...catalog, channels });
                 return true;
             }
@@ -2586,7 +2584,7 @@ function createPlatformApi({
             }
 
             if (segments.length === 2 && method === 'GET') {
-                replyJson(res, 200, { channel: { ...channel, links: channelLinks(channel.id) } });
+                replyJson(res, 200, { channel: { ...channel, links: channelLinks(channel) } });
                 return true;
             }
 
@@ -2600,17 +2598,39 @@ function createPlatformApi({
                 }
                 checked.value.createdAt = channel.createdAt;
                 checked.value.updatedAt = new Date().toISOString();
-                const next = catalog.channels.slice();
-                next[channelIndex] = checked.value;
-                const saved = await repository.saveCatalog(next, body.expectedVersion ?? catalog.version);
-                touchChannel(channelId);
+                const saveChannel = async () => {
+                    const next = catalog.channels.slice();
+                    next[channelIndex] = checked.value;
+                    const saved = await repository.saveCatalog(next, body.expectedVersion ?? catalog.version);
+                    touchChannel(channelId);
+                    return saved;
+                };
+                const activeId = await repository.getActiveChannel();
+                if (activeId === channelId && !isBroadcastableChannel(checked.value)) {
+                    const result = await withMutationLock(`channel:${channelId}`, async () => {
+                        const blocker = await channelSwitchBlocker(channel);
+                        if (blocker) return { blocker };
+                        return { saved: await saveChannel() };
+                    });
+                    if (result.blocker) {
+                        replyJson(res, 409, {
+                            error: '진행 중인 경매가 있어 채널을 보관하거나 방송 기능을 끌 수 없습니다. 먼저 경매를 종료해 주세요.',
+                            code: 'CHANNEL_LIVE',
+                            itemId: result.blocker.itemId || ''
+                        });
+                        return true;
+                    }
+                    replyJson(res, 200, { channel: checked.value, catalogVersion: result.saved.version });
+                    return true;
+                }
+                const saved = await saveChannel();
                 replyJson(res, 200, { channel: checked.value, catalogVersion: saved.version });
                 return true;
             }
 
             if (segments.length === 2 && method === 'DELETE') {
                 if (!await requireAdmin(req, res)) return true;
-                if (DEFAULT_CHANNELS.some((entry) => entry.id === channelId) || channel.legacy?.items) {
+                if (DEFAULT_CHANNELS.some((entry) => entry.id === channelId) || channel.dataAdapter === 'legacy-cdcup') {
                     replyJson(res, 409, { error: '기본 운영 채널은 삭제할 수 없습니다. 보관 상태로 변경해 주세요.' });
                     return true;
                 }

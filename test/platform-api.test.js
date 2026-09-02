@@ -877,7 +877,7 @@ test('a newly created channel stays isolated through registration, layout, live 
     assert.equal(alphaWorkspace.json().items[0].name, '기존 채널 개체');
     assert.equal(alphaWorkspace.json().items[0].status, 'waiting');
     const newChannel = catalog.json().channels.find((channel) => channel.id === 'new-auction');
-    assert.equal(newChannel.links.workspace, '/cdcup-index.html?channel=new-auction');
+    assert.equal(newChannel.links.workspace, '/channel-workspace.html?channel=new-auction');
     assert.equal(newChannel.links.control, '/broadcast-studio.html?channel=new-auction');
     assert.equal(newChannel.links.shipping, '/shipping.html?channel=new-auction');
 });
@@ -1046,6 +1046,53 @@ test('active platform auction locks the global channel until the auction ends', 
     assert.equal(repository.active, 'beta');
 });
 
+test('an operating channel can only be archived after its live auction has ended', async () => {
+    const repository = new MemoryRepository();
+    const api = createPlatformApi({ repository, logger: { error() {} } });
+    await call(api, 'POST', '/api/platform/channels/alpha/items', {
+        record: { id: 'item_live', lotNumber: 1, name: '진행 개체' }
+    });
+    await call(api, 'PUT', '/api/platform/channels/alpha/auction-transition', {
+        itemId: 'item_live', status: 'live', mode: 'live', state: { page: 2 }
+    });
+
+    let response = await call(api, 'PUT', '/api/platform/channels/alpha', {
+        channel: { status: 'archived' }
+    });
+    assert.equal(response.status, 409);
+    assert.equal(response.json().code, 'CHANNEL_LIVE');
+    assert.equal((await repository.getCatalog()).channels.find((channel) => channel.id === 'alpha').status, 'active');
+
+    response = await call(api, 'PUT', '/api/platform/channels/alpha', {
+        channel: {
+            features: {
+                ...repository.catalog.channels[0].features,
+                broadcast: false,
+                quiz: false,
+                sponsors: false,
+                scoreboards: false,
+                tournament: false
+            }
+        }
+    });
+    assert.equal(response.status, 409);
+    assert.equal(response.json().code, 'CHANNEL_LIVE');
+
+    await call(api, 'PUT', '/api/platform/channels/alpha/auction-transition', {
+        itemId: 'item_live', status: 'sold', mode: 'sold', item: { soldPrice: 100000 }
+    });
+    response = await call(api, 'PUT', '/api/platform/channels/alpha', {
+        channel: { status: 'archived' }
+    });
+    assert.equal(response.status, 200);
+    assert.equal(response.json().channel.status, 'archived');
+
+    const operational = await call(api, 'GET', '/api/platform/channels');
+    assert.deepEqual(operational.json().channels.map((channel) => channel.id), ['beta']);
+    const active = await call(api, 'GET', '/api/platform/active-channel', null, '');
+    assert.equal(active.json().channelId, 'beta');
+});
+
 test('simultaneous channel switches serialize and reject the stale operator', async () => {
     const repository = new MemoryRepository();
     const api = createPlatformApi({ repository, logger: { error() {} } });
@@ -1084,7 +1131,20 @@ test('public active-channel lookup heals a stale deleted pointer', async () => {
     const response = await call(api, 'GET', '/api/platform/active-channel', null, '');
     assert.equal(response.status, 200);
     assert.equal(response.json().channelId, 'alpha');
+    assert.equal(response.json().catalogVersion, repository.catalog.version);
     assert.equal(repository.active, 'alpha');
+});
+
+test('public active-channel lookup never promotes a draft or paused channel into live operation', async () => {
+    const repository = new MemoryRepository();
+    repository.catalog.channels = repository.catalog.channels.map((channel) => normalizeChannel({ ...channel, status: 'paused' }));
+    repository.catalog.channels.push(normalizeChannel({ id: 'future-show', name: 'Future show', status: 'draft' }));
+    repository.active = 'future-show';
+    const api = createPlatformApi({ repository, logger: { error() {} } });
+    const response = await call(api, 'GET', '/api/platform/active-channel', null, '');
+    assert.equal(response.status, 200);
+    assert.equal(response.json().channelId, '');
+    assert.equal(repository.active, 'future-show');
 });
 
 test('operator context binds the monitor to one authenticated active-channel contract', async () => {

@@ -91,7 +91,9 @@ test('HTTP server exposes the CREO hub, survey assets, health, and membership co
     const cameraResponse = await fetch(`http://127.0.0.1:${port}/cam.html`);
     assert.equal(cameraResponse.status, 200);
     assert.equal(cameraResponse.headers.get('permissions-policy'), 'camera=(self), microphone=(self), geolocation=()');
-    assert.match(await cameraResponse.text(), /카메라 권한 허용/);
+    const cameraHtml = await cameraResponse.text();
+    assert.match(cameraHtml, /폰 카메라 송출/);
+    assert.match(cameraHtml, /\?view=\$\{getCh\(\)\}_cam&autoplay/);
     assert.equal(homeResponse.headers.get('permissions-policy'), 'camera=(), microphone=(), geolocation=()');
 
     const surveyResponse = await fetch(`http://127.0.0.1:${port}/crewart-survey.html`);
@@ -128,21 +130,15 @@ test('HTTP server exposes the CREO hub, survey assets, health, and membership co
         `http://127.0.0.1:${port}/broadcast-studio.html?channel=missing-old-channel&view=layout-1`,
         { redirect: 'manual' }
     );
-    assert.equal(staleStudioResponse.status, 307);
-    const studioLocation = staleStudioResponse.headers.get('location');
-    assert.match(studioLocation, /^\/broadcast-studio\.html\?/);
-    assert.match(studioLocation, /channel=(?!missing-old-channel)[a-z0-9-]+/);
-    assert.match(studioLocation, /view=layout-1/);
+    assert.equal(staleStudioResponse.status, 404);
+    assert.equal((await staleStudioResponse.json()).code, 'CHANNEL_NOT_AVAILABLE');
 
     const staleShippingResponse = await fetch(
         `http://127.0.0.1:${port}/shipping.html?channel=missing-old-channel&changeCompany=1`,
         { redirect: 'manual' }
     );
-    assert.equal(staleShippingResponse.status, 307);
-    const shippingLocation = staleShippingResponse.headers.get('location');
-    assert.match(shippingLocation, /^\/shipping\.html\?/);
-    assert.match(shippingLocation, /channel=(?!missing-old-channel)[a-z0-9-]+/);
-    assert.match(shippingLocation, /changeCompany=1/);
+    assert.equal(staleShippingResponse.status, 404);
+    assert.equal((await staleShippingResponse.json()).code, 'CHANNEL_NOT_AVAILABLE');
 
     const scriptResponse = await fetch(`http://127.0.0.1:${port}/crewart-survey.js`);
     assert.equal(scriptResponse.status, 200);

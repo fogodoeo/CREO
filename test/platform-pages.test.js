@@ -132,40 +132,27 @@ test('the universal broadcast route delegates renderer selection to channel prof
     assert.match(router, /broadcast-profiles\.js/);
     assert.match(router, /\/api\/platform\/channels\//);
     assert.match(router, /CreoBroadcastProfiles\.broadcastTarget/);
-    assert.match(router, /const preview=params\.get\('preview'\)===['"]1['"]/);
-    assert.match(router, /const channelId=preview\?\(normalize\(params\.get\('event'\)\)\|\|activeChannelId\):activeChannelId/);
+    assert.match(router, /fixedChannelId=normalize\(params\.get\('event'\)\)/);
+    assert.match(router, /channelId=fixedChannelId\|\|activeChannelId/);
+    assert.match(router, /catalogVersion=String\(active\.catalogVersion\|\|'0'\)/);
+    assert.match(router, /target!==lastTarget\|\|catalogVersion!==lastCatalogVersion/);
+    assert.doesNotMatch(router, /const preview=params\.get\('preview'\)/);
     assert.doesNotMatch(router, /channelId?\s*===\s*['"](?:cdcup|crewart)['"]/);
 });
 
-test('phone camera waits for a user tap before requesting mobile permission', () => {
+test('camera launcher binds phone, tablet, and OBS to one selected channel room', () => {
     for (const file of ['cam.html', 'cam/index.html']) {
         const source = fs.readFileSync(path.join(__dirname, '..', 'public', file), 'utf8');
-        assert.match(source, /id="permButton"[^>]*onclick="retryCamera\(\)"/);
-        assert.match(source, /function showCameraPermissionGate\(blocked = false\)/);
-        assert.match(source, /if \(!window\.QRCode\) return/);
-        assert.match(source, /if \(mode === 'cam' \|\| mode === 'phone'\) \{\s*showCameraPermissionGate\(false\)/);
-        assert.doesNotMatch(source, /if \(mode === 'cam' \|\| mode === 'phone'\) \{\s*startNativePhoneCam\(\)/);
-        assert.ok(source.lastIndexOf('showCameraPermissionGate(false)') < source.lastIndexOf('updateQrs();'));
-        assert.match(source, /Streaming Error:[\s\S]*카메라 연결됨 · 송출 연결 재시도 필요/);
-        assert.match(source, /receiverTargetId = `creok_\$\{getCh\(\)\}_cam`/);
-        assert.match(source, /connectToStreamer\(receiverTargetId\)/);
-        assert.match(source, /currentPeer\.call\(targetId, createEmptyStream\(\)\)/);
-        assert.doesNotMatch(source, /targetIdMonitor/);
-        assert.match(source, /receiverRetryTimer = setTimeout\(\(\) => connectToStreamer\(receiverTargetId\), 2500\)/);
-        assert.match(source, /if \(receiverOfferStream\) return receiverOfferStream/);
-        assert.match(source, /receiverOfferCanvas\.captureStream\(1\)/);
-        assert.match(source, /receiverOfferStream\?\.getTracks\(\)\.forEach\(track => track\.stop\(\)\)/);
-        assert.match(source, /function stopReceiverMode\(\)/);
-        assert.match(source, /width: \{ ideal: 1920 \}/);
-        assert.match(source, /height: \{ ideal: 1080 \}/);
-        assert.match(source, /function streamQualityLabel\(stream\)/);
-        assert.match(source, /id="hudQuality">해상도 확인 중<\/span>/);
-        assert.match(source, /nativeVideo\.videoWidth/);
-        assert.match(source, /function watchStreamQuality\(stream\)/);
-        assert.match(source, /qualityRefreshTimer = setInterval\(refresh, 1000\)/);
-        assert.match(source, /parameters\.encodings\[0\]\.maxBitrate = maxBitrate/);
-        assert.match(source, /pixels >= 1900000 \? 6000000/);
-        assert.doesNotMatch(source, /라이브 송출 중 \(720p 30fps\)/);
+        assert.match(source, /function normalizeChannel\(value\)/);
+        assert.match(source, /new URLSearchParams\(location\.search\)\.get\('channel'\)/);
+        assert.match(source, /fetch\('\/api\/platform\/active-channel'/);
+        assert.match(source, /\?push=\$\{getCh\(\)\}_cam&webcam&facing=back/);
+        assert.match(source, /\?view=\$\{getCh\(\)\}_cam&autoplay&cleanoutput&buffer=0/);
+        assert.match(source, /\?view=\$\{getCh\(\)\}_cam&cleanoutput/);
+        assert.match(source, /\?push=\$\{getCh\(\)\}_monitor&webcam/);
+        assert.match(source, /QRCode\.toCanvas\(qrPhone, getPhoneCamUrl\(\)/);
+        assert.match(source, /QRCode\.toCanvas\(qrTablet, getTabletViewUrl\(\)/);
+        assert.doesNotMatch(source, /value="ongdong"|\?view=\$\{getCh\(\)\}_monitor&autoplay/);
     }
 });
 
@@ -188,8 +175,10 @@ test('home is an operational channel launcher without duplicate management route
     assert.match(hub, /id="quick-settings"/);
     assert.match(hub, /id="quick-design"/);
     assert.match(hub, /function workspaceUrl\(c\)/);
+    assert.match(hub, /c\.dataAdapter===['"]legacy-cdcup['"]&&c\.legacy\?\.managementUrl/);
     assert.match(hub, /Promise\.all\(\[CreoPlatform\.api\('channels'\),CreoPlatform\.api\('active-channel'\)\]\)/);
-    assert.match(hub, /initialId=channels\.some\(channel=>channel\.id===requested\)\?requested:operatingChannelId/);
+    assert.match(hub, /if\(requestedRaw&&!channels\.some\(channel=>channel\.id===requested\)\)throw new Error\('요청한 채널을 찾을 수 없습니다\.'/);
+    assert.match(hub, /const initialId=requested\|\|operatingChannelId/);
     assert.match(hub, /c\.id===operatingChannelId\?' · 현재 운영':''/);
     assert.match(hub, /runtime\.url\('shipping'\)/);
     assert.match(hub, /rounds\.href=runtime\.url\('archives'\)/);
@@ -214,13 +203,16 @@ test('broadcast studio uses shared profiles instead of channel-specific branches
     assert.match(studio, /CreoBroadcastProfiles\.studioFrame/);
     assert.match(studio, /CreoBroadcastProfiles\.resolve/);
     assert.doesNotMatch(studio, /channel\?\.id\s*===\s*['"](?:cdcup|crewart)['"]/);
-    assert.match(studio, /broadcast-router\.html\?event=/);
+    assert.match(studio, /broadcast-router\.html\?page=\$\{page\}&live=1/);
+    assert.doesNotMatch(studio, /function liveUrl[^\n]*event=/);
     assert.match(studio, /CreoPlatform\.api\('active-channel',[\s\S]{0,180}method:'PUT'/);
     assert.match(studio, /expectedCurrentChannelId:activeChannel\.id/);
     assert.match(studio, /confirmChannelId:next\.id/);
     assert.match(studio, /channel-switch-button/);
     assert.match(studio, /select\.addEventListener\('change',markPending\)/);
-    assert.match(studio, /currentChannel=channels\.find\(channel=>channel\.id===current\.channelId\)\|\|channels\[0\]/);
+    assert.match(studio, /currentChannel=channels\.find\(channel=>channel\.id===current\.channelId\)/);
+    assert.doesNotMatch(studio, /currentChannel=[^;]+\|\|channels\[0\]/);
+    assert.match(studio, /Number\(data\.version\)!==Number\(current\.catalogVersion\)/);
     assert.match(studio, /channel\.status==='active'&&channel\.features\?\.broadcast!==false/);
     assert.match(studio, /capture-gallery\.html\?channel=/);
     assert.match(studio, /진행 · 1P/);
@@ -266,7 +258,27 @@ test('channel creation starts with a safe generated id and protects unsaved edit
     assert.match(manager, /id="broadcast-default-page2-ticker"/);
     assert.match(manager, /id="broadcast-default-page3-title"/);
     assert.match(manager, /broadcastDefaults/);
+    assert.match(manager, /value="basic-dice"/);
+    assert.match(manager, /value="winnerGroup"/);
+    assert.match(manager, /value="winnerHouse"/);
+    assert.match(manager, /audienceCompetition/);
+    assert.match(manager, /1·2P 공용 구성/);
+    assert.match(manager, /3P 정체성/);
+    assert.match(manager, /id="archive"/);
+    assert.match(manager, /보관된 채널/);
+    assert.match(manager, /async function saveChannel\(\)/);
+    assert.match(manager, /채널별 HTML 복사본은 만들지 않습니다/);
+    assert.match(manager, /initialRequestedChannelId[\s\S]{0,320}요청한 채널을 찾을 수 없습니다/);
     assert.doesNotMatch(manager, /<label for="broadcast-template">집계 화면 기본형/);
+});
+
+test('shared pages never use the deprecated legacy flag as a second data-source switch', () => {
+    for (const file of ['channel-runtime.js', 'channel-adapters.js', 'index.html', 'print.html']) {
+        const source = fs.readFileSync(path.join(__dirname, '..', 'public', file), 'utf8');
+        assert.doesNotMatch(source, /legacy(?:\?|\.)?\.?items/);
+    }
+    const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+    assert.doesNotMatch(server, /canonicalOperationalChannelLocation|channels\.find\([^\n]+\)\s*\|\|\s*catalog\.channels\.find/);
 });
 
 test('shared workspace builds real select fields for channel groups and auction state', () => {
@@ -277,6 +289,9 @@ test('shared workspace builds real select fields for channel groups and auction 
     assert.match(workspace, /field\('winnerAlias','방송용 낙찰자명'/);
     assert.match(workspace, /auction-transition/);
     assert.match(workspace, /등록 채널 주소가 올바르지 않습니다/);
+    assert.match(workspace, /function legacyWorkspaceUrl\(channel\)/);
+    assert.match(workspace, /location\.assign\(legacyUrl\)/);
+    assert.match(workspace, /if\(!await loadCatalog\(\)\)return/);
     assert.doesNotMatch(workspace, /requested:\(catalog\.channels\[0\]/);
     assert.doesNotMatch(workspace, /setLive[\s\S]{0,500}broadcast-state/);
 });
@@ -559,7 +574,7 @@ test('new CDCUP overlays and shipping retain compatibility with the established 
     assert.doesNotMatch(companies, /CreoChannelAdapters\.resolve|adapter\.loadShippingItems|<main/);
 });
 
-test('new platform channels use the shared three-page arranger and CDCUP registration entry', () => {
+test('new platform channels use the shared three-page arranger and isolated registration workspace', () => {
     const profiles = fs.readFileSync(path.join(__dirname, '..', 'public', 'broadcast-profiles.js'), 'utf8');
     const editor = fs.readFileSync(path.join(__dirname, '..', 'public', 'platform-layout-editor.html'), 'utf8');
     const live = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-live.html'), 'utf8');
@@ -597,7 +612,7 @@ test('new platform channels use the shared three-page arranger and CDCUP registr
     assert.match(live, /state\.page3BannerOn=true/);
     assert.match(live, /layout-banner-placeholder/);
     assert.match(live, /editorMode\)void refreshFull\(\)/);
-    assert.match(runtime, /workspace:[\s\S]{0,120}path: '\/cdcup-index\.html'/);
+    assert.match(runtime, /workspace:[\s\S]{0,240}path: '\/channel-workspace\.html'/);
     assert.match(legacyEntry, /channel-workspace\.html\?channel=/);
 });
 
@@ -621,6 +636,8 @@ test('print forms remain available inside the shared registration workspace with
     assert.match(workspace, /`print\.html\?\$\{q\}`/);
     assert.match(print, /platform-client\.js/);
     assert.match(print, /channel-adapters\.js/);
+    assert.match(print, /CreoPlatform\.api\('active-channel'\)/);
+    assert.doesNotMatch(print, /get\('channel'\) \|\| 'cdcup'/);
     assert.match(print, /print-shipping-summary\.js/);
     assert.match(print, /google-sheets-export\.js/);
     assert.match(print, /accounts\.google\.com\/gsi\/client/);

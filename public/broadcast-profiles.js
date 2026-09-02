@@ -40,6 +40,10 @@
         return registry.get(profile.id);
     }
 
+    function ids() {
+        return Object.freeze([...registry.keys()]);
+    }
+
     function resolve(channel) {
         return registry.get(channel?.broadcastProfile || 'standard') || registry.get('standard');
     }
@@ -112,5 +116,5 @@
     register({ id: 'crewart-academy', engine: 'legacy-layout', rendererModule: 'crewart', brandMark: 'W', studioAccent: '#ddb960', studioAccentInk: '#211604', sharedStudio: true, page3Renderer: 'academy', page3Label: '기숙사 점수', page3Slots: ['groupScoreboard'], page3SettingsSections: ['houseScoreboard'], assetPack: 'crewart', settings: { compatibilityModes: false, assets: true }, defaultState: { page1BannerOn: false, page2BannerOn: false, notice: 'CREWARTS LIVE', noticeDetail: 'R · G · B · Y', page1Ticker: '크레아트 라이브 · 기숙사 점수판', page2Ticker: 'R · G · B · Y' } });
     register({ id: 'creyon-metal', engine: 'legacy-layout', rendererModule: 'creyon', brandMark: 'Y', studioAccent: '#c4a979', studioAccentInk: '#211f1c', sharedStudio: true, page3Renderer: 'status', page3Label: '방송 현황', page3Slots: ['statusBoard'], page3SettingsSections: ['statusBoard'], assetPack: 'creyon', settings: { compatibilityModes: false, assets: true }, defaultState: { page1BannerOn: false, page2BannerOn: false, notice: 'CREYON', noticeDetail: 'HIGH QUALITY CRESTED GECKO', page1Ticker: 'CREYON', page2Ticker: 'HIGH QUALITY CRESTED GECKO' } });
 
-    return Object.freeze({ SHARED_PAGE_CONTRACTS, SHARED_PAGE2_DEFAULTS, SHARED_SETTINGS_CONTRACT, broadcastTarget, defaultState, pageContract, register, resolve, settingsContract, studioFrame, usesLegacyData, usesLegacyEngine, usesSharedStudio });
+    return Object.freeze({ SHARED_PAGE_CONTRACTS, SHARED_PAGE2_DEFAULTS, SHARED_SETTINGS_CONTRACT, broadcastTarget, defaultState, ids, pageContract, register, resolve, settingsContract, studioFrame, usesLegacyData, usesLegacyEngine, usesSharedStudio });
 });

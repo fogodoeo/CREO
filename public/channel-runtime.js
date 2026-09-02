@@ -9,7 +9,9 @@
     const CHANNEL_PATTERN = /^[a-z0-9][a-z0-9-]{1,31}$/;
     const ROUTES = Object.freeze({
         home: Object.freeze({ path: '/', query: 'channel', label: '채널홈' }),
-        workspace: Object.freeze({ path: '/cdcup-index.html', query: 'channel', label: '등록 · 목록', feature: 'auction' }),
+        // Platform channels must use the isolated workspace. Legacy CDCUP is
+        // routed to its compatibility page by the channel's managementUrl.
+        workspace: Object.freeze({ path: '/channel-workspace.html', query: 'channel', label: '등록 · 목록', feature: 'auction' }),
         print: Object.freeze({ path: '/print.html', query: 'channel', label: '인쇄', feature: 'auction' }),
         shipping: Object.freeze({ path: '/shipping.html', query: 'channel', label: '배송', feature: 'shipping' }),
         shippingStatus: Object.freeze({ path: '/shipping-status.html', query: 'channel', label: '전체조회', feature: 'shipping' }),
@@ -20,8 +22,10 @@
         control: Object.freeze({ path: '/broadcast-studio.html', query: 'channel', label: '방송', feature: 'broadcast' }),
         captures: Object.freeze({ path: '/capture-gallery.html', query: 'channel', label: '캡처' }),
         settings: Object.freeze({ path: '/channel-manager.html', query: 'channel', label: '설정' }),
-        preview: Object.freeze({ path: '/broadcast-router.html', query: 'event', label: '미리보기', feature: 'broadcast', defaults: { page: 1 } }),
-        live: Object.freeze({ path: '/broadcast-router.html', query: 'event', label: '송출', feature: 'broadcast', defaults: { page: 1, live: 1 } })
+        preview: Object.freeze({ path: '/broadcast-router.html', query: 'event', label: '미리보기', feature: 'broadcast', defaults: { page: 1, preview: 1 } }),
+        // The live URL deliberately has no channel query. It follows the
+        // server-owned active-channel pointer, so PRISM never needs a new URL.
+        live: Object.freeze({ path: '/broadcast-router.html', query: '', label: '송출', feature: 'broadcast', defaults: { page: 1, live: 1 } })
     });
 
     function normalizeChannelId(value) {
@@ -35,7 +39,7 @@
         if (!route) throw new Error(`Unknown channel route: ${name}`);
         if (!id) throw new Error('A valid channel id is required');
         const params = new URLSearchParams();
-        params.set(route.query, id);
+        if (route.query) params.set(route.query, id);
         Object.entries({ ...(route.defaults || {}), ...(extra || {}) }).forEach(([key, value]) => {
             if (value === undefined || value === null || value === false || value === '') return;
             params.set(key, String(value));
@@ -64,7 +68,8 @@
     function selectChannel(catalog, requested) {
         const channels = Array.isArray(catalog?.channels) ? catalog.channels : [];
         const id = normalizeChannelId(requested);
-        return channels.find(channel => channel.id === id) || channels[0] || null;
+        if (!id) return null;
+        return channels.find(channel => channel.id === id) || null;
     }
 
     class Runtime {
@@ -82,8 +87,17 @@
                 this.catalog = await this.client.api('channels');
             }
             const query = new URLSearchParams(this.location.search || '');
-            this.channel = selectChannel(this.catalog, requested || query.get('channel') || query.get('event'));
-            if (!this.channel) throw new Error('사용 가능한 채널이 없습니다.');
+            let selectedId = normalizeChannelId(requested || query.get('channel') || query.get('event'));
+            if (!selectedId && this.client?.api) {
+                const active = await this.client.api('active-channel');
+                selectedId = normalizeChannelId(active?.channelId);
+            }
+            this.channel = selectChannel(this.catalog, selectedId);
+            if (!this.channel) {
+                throw new Error(selectedId
+                    ? '선택한 채널을 찾을 수 없습니다. 메인에서 채널을 다시 선택해 주세요.'
+                    : '현재 운영 채널을 찾을 수 없습니다.');
+            }
             this.applyTheme();
             return this;
         }
@@ -124,7 +138,7 @@
         }
 
         adapterId() {
-            return this.channel?.dataAdapter || (this.channel?.legacy?.items ? 'legacy-cdcup' : 'platform');
+            return this.channel?.dataAdapter || 'platform';
         }
 
         profileId() {

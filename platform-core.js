@@ -2,10 +2,12 @@
 
 const crypto = require('node:crypto');
 const ChannelRuntime = require('./public/channel-runtime');
+const BroadcastProfiles = require('./public/broadcast-profiles');
 
 const CHANNEL_STATUSES = Object.freeze(['draft', 'active', 'paused', 'archived']);
 const BROADCAST_TEMPLATES = Object.freeze(['classic', 'tournament', 'academy']);
-const CHANNEL_TEMPLATES = Object.freeze(['standard', 'team', 'community', 'minimal']);
+const BROADCAST_PROFILES = BroadcastProfiles.ids();
+const CHANNEL_TEMPLATES = Object.freeze(['standard', 'basic', 'team', 'community', 'minimal']);
 const OVERLAY_SKINS = Object.freeze(['clean', 'sport', 'heritage', 'minimal', 'metal']);
 const OVERLAY_LAYOUTS = Object.freeze(['left', 'right', 'balanced']);
 const SCOREBOARD_DIMENSIONS = Object.freeze(['vendor', 'group', 'category', 'winner', 'winnerHouse', 'winnerGroup']);
@@ -92,7 +94,7 @@ const DEFAULT_CHANNELS = Object.freeze([
             page2Ticker: 'R · G · B · Y',
             page3Title: '기숙사 컵'
         }),
-        legacy: Object.freeze({ items: true, managementUrl: '/cdcup-index.html?module=crewart&channel=crewart', controlUrl: '/broadcast-studio.html?channel=crewart' })
+        legacy: Object.freeze({ items: false, managementUrl: '', controlUrl: '/broadcast-studio.html?channel=crewart' })
     }),
     Object.freeze({
         id: 'basic',
@@ -320,9 +322,11 @@ function normalizeChannel(input = {}, fallback = {}) {
     const dataAdapter = DATA_ADAPTERS.includes(source.dataAdapter)
         ? source.dataAdapter
         : (DATA_ADAPTERS.includes(fallback.dataAdapter) ? fallback.dataAdapter : (legacyItems ? 'legacy-cdcup' : 'platform'));
-    const broadcastProfile = normalizeChannelId(source.broadcastProfile)
-        || normalizeChannelId(fallback.broadcastProfile)
-        || 'standard';
+    const requestedBroadcastProfile = normalizeChannelId(source.broadcastProfile);
+    const fallbackBroadcastProfile = normalizeChannelId(fallback.broadcastProfile);
+    const broadcastProfile = BROADCAST_PROFILES.includes(requestedBroadcastProfile)
+        ? requestedBroadcastProfile
+        : (BROADCAST_PROFILES.includes(fallbackBroadcastProfile) ? fallbackBroadcastProfile : 'standard');
     const audienceCompetition = normalizeAudienceCompetition(
         input.audienceCompetition ?? source.audienceCompetition,
         fallback.audienceCompetition
@@ -364,8 +368,13 @@ function normalizeChannel(input = {}, fallback = {}) {
         shippingDefaults: normalizeShippingDefaults(input.shippingDefaults ?? source.shippingDefaults, fallback.shippingDefaults),
         legacy: legacy && typeof legacy === 'object'
             ? {
-                items: Boolean(legacy.items),
-                managementUrl: cleanText(legacy.managementUrl || fallback.legacy?.managementUrl, 200),
+                // dataAdapter is the only source of truth. Keeping a stale
+                // legacy.items flag beside a platform adapter made different
+                // pages read different channel databases.
+                items: dataAdapter === 'legacy-cdcup',
+                managementUrl: dataAdapter === 'legacy-cdcup'
+                    ? cleanText(legacy.managementUrl || fallback.legacy?.managementUrl, 200)
+                    : '',
                 controlUrl: cleanText(legacy.controlUrl || fallback.legacy?.controlUrl, 200)
             }
             : { items: false, managementUrl: '', controlUrl: '' },
@@ -379,6 +388,10 @@ function validateChannel(channel, existingChannels = [], currentId = '') {
     const errors = [];
     if (!normalized.id) errors.push('채널 ID는 영문 소문자, 숫자, 하이픈으로 2~32자여야 합니다.');
     if (!normalized.name) errors.push('채널 이름을 입력해 주세요.');
+    const requestedBroadcastProfile = normalizeChannelId(channel?.broadcastProfile);
+    if (channel?.broadcastProfile && !BROADCAST_PROFILES.includes(requestedBroadcastProfile)) {
+        errors.push('지원하지 않는 방송 프로필입니다.');
+    }
     if (normalized.id && existingChannels.some((item) => item.id === normalized.id && item.id !== currentId)) {
         errors.push('이미 사용 중인 채널 ID입니다.');
     }
@@ -409,9 +422,15 @@ function recordId(prefix = 'rec') {
     return `${String(prefix).replace(/[^a-z0-9]/gi, '').toLowerCase().slice(0, 8) || 'rec'}_${random.slice(0, 24)}`;
 }
 
-function channelLinks(channelId) {
-    const id = normalizeChannelId(channelId) || 'cdcup';
-    return ChannelRuntime.channelRoutes(id);
+function channelLinks(channelOrId) {
+    const channel = channelOrId && typeof channelOrId === 'object' ? channelOrId : null;
+    const id = normalizeChannelId(channel?.id || channelOrId);
+    if (!id) throw new Error('Invalid channel id');
+    const links = ChannelRuntime.channelRoutes(id);
+    if (channel?.dataAdapter === 'legacy-cdcup' && channel.legacy?.managementUrl) {
+        links.workspace = ChannelRuntime.preserveChannel(channel.legacy.managementUrl, id);
+    }
+    return links;
 }
 
 function publicChecklist(value) {
@@ -565,6 +584,7 @@ function publicItem(item = {}) {
 }
 
 module.exports = {
+    BROADCAST_PROFILES,
     BROADCAST_TEMPLATES,
     CHANNEL_TEMPLATES,
     CHANNEL_ID_PATTERN,

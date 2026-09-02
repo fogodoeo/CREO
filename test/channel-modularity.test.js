@@ -24,12 +24,32 @@ function channel(id, overrides = {}) {
 test('one route registry preserves the selected channel on every shared page', () => {
     const routes = Runtime.channelRoutes('summer-cup');
     for (const [name, href] of Object.entries(routes)) {
-        const parameter = ['preview', 'live'].includes(name) ? 'event=summer-cup' : 'channel=summer-cup';
+        if (name === 'live') continue;
+        const parameter = name === 'preview' ? 'event=summer-cup' : 'channel=summer-cup';
         assert.match(href, new RegExp(parameter));
     }
+    assert.match(routes.preview, /preview=1/);
+    assert.equal(routes.live, '/broadcast-router.html?page=1&live=1');
+    assert.doesNotMatch(routes.live, /(?:event|channel)=/);
     assert.equal(Runtime.preserveChannel('/shipping.html?mode=all', 'winter-cup'), '/shipping.html?mode=all&channel=winter-cup');
     assert.equal(routes.captures, '/capture-gallery.html?channel=summer-cup');
     assert.equal(routes.print, '/print.html?channel=summer-cup');
+});
+
+test('channel runtime follows the active pointer only when no channel was explicitly requested', async () => {
+    const catalog = { version: 3, channels: [channel('alpha'), channel('beta')] };
+    const calls = [];
+    const client = { api: async path => { calls.push(path); return path === 'active-channel' ? { channelId: 'beta' } : catalog; } };
+    const runtime = Runtime.create({ client, catalog, location: { search: '', href: 'https://creo.test/' } });
+    await runtime.load();
+    assert.equal(runtime.channel.id, 'beta');
+    assert.deepEqual(calls, ['active-channel']);
+
+    const explicit = Runtime.create({ client, catalog, location: { search: '?channel=missing', href: 'https://creo.test/?channel=missing' } });
+    await assert.rejects(explicit.load(), /선택한 채널을 찾을 수 없습니다/);
+    assert.equal(explicit.channel, null);
+    assert.deepEqual(calls, ['active-channel']);
+    assert.equal(Runtime.selectChannel(catalog, 'missing'), null);
 });
 
 test('1P and 2P use one contract while 3P is selected by broadcast profile', () => {
@@ -216,6 +236,9 @@ test('legacy CDCUP rows and platform workspaces expose a common isolated model',
     assert.equal(alpha.items[0].id, 'channels/alpha/workspace');
     assert.equal(beta.items[0].id, 'channels/beta/workspace');
     assert.deepEqual(calls, ['channels/alpha/workspace', 'channels/beta/workspace']);
+
+    const staleFlag = channel('platform-with-stale-flag', { legacy: { items: true } });
+    assert.equal(Adapters.resolve(staleFlag).id, 'platform');
 });
 
 test('platform shipping items do not infer tournament teams from A01/B01-style names', () => {
