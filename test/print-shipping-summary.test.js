@@ -71,3 +71,29 @@ test('new checkout payment states remain visible in print settlement', () => {
         assert.equal(rows[0].paymentLabel, '결제 대기');
     }
 });
+
+test('winner identity is shared across explicit, profile, and embedded phone formats', () => {
+    assert.deepEqual(
+        Summary.winnerIdentity({ winner_name: '박찬영', winner_phone: '010-1234-5678' }),
+        { key: 'phone:01012345678', name: '박찬영', phone: '01012345678' }
+    );
+    assert.deepEqual(
+        Summary.winnerIdentity({ winner: '최혜선/경기/01077887884' }),
+        { key: 'phone:01077887884', name: '최혜선', phone: '01077887884' }
+    );
+    assert.deepEqual(
+        Summary.winnerIdentity({ winner: '김상정/대구/84268438' }),
+        { key: 'phone:84268438', name: '김상정', phone: '84268438' }
+    );
+});
+
+test('settlement grouping uses the same winner identity without pre-enrichment', () => {
+    const rows = Summary.groupBundles([
+        sold({ _winner: undefined, winner_name: '', winner_phone: '', winner: '김미옥/대구/01012345678', name: 'A01' }),
+        sold({ _winner: undefined, winner_name: '김미옥', winner_phone: '010-1234-5678', winner: '', name: 'A02' })
+    ]);
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].buyerName, '김미옥');
+    assert.equal(rows[0].phone, '01012345678');
+    assert.equal(rows[0].itemSummary, 'A01 · A02');
+});

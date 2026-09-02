@@ -547,6 +547,9 @@ test('new CDCUP overlays and shipping retain compatibility with the established 
     assert.match(shipping, /SHIPPING_CHANNEL_ID/);
     assert.match(shipping, /channel-adapters\.js/);
     assert.match(shipping, /CreoChannelAdapters\.resolve/);
+    assert.match(shipping, /print-shipping-summary\.js/);
+    assert.match(shipping, /return CreoPrintShippingSummary\.winnerIdentity\(item\)/);
+    assert.doesNotMatch(shipping, /phoneMatch = clean\.match/);
     assert.match(shipping, /settlement-discount\.js/);
     assert.match(shipping, /function settlementDiscountFor/);
     assert.match(shipping, /settlement\.payableAuctionAmount \+ shippingShare/);
@@ -650,6 +653,7 @@ test('print forms have one canonical page linked from both pipeline and workspac
     const home = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
     const workspace = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-workspace.html'), 'utf8');
     const print = fs.readFileSync(path.join(__dirname, '..', 'public', 'print.html'), 'utf8');
+    const adapters = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-adapters.js'), 'utf8');
     assert.match(home, /id="quick-print"/);
     assert.match(home, /print\.href=runtime\.url\('print'\)/);
     assert.match(workspace, /id="print-link"/);
@@ -663,9 +667,11 @@ test('print forms have one canonical page linked from both pipeline and workspac
     assert.match(print, /print-shipping-summary\.js/);
     assert.match(print, /google-sheets-export\.js/);
     assert.match(print, /accounts\.google\.com\/gsi\/client/);
-    assert.match(print, /function platformPrintItems\(workspace, channel\)/);
-    assert.match(print, /CreoChannelAdapters\.platformChecklist\(item, channel\)/);
-    assert.match(print, /channels\/['"]? \+ encodeURIComponent\(PRINT_CHANNEL_ID\) \+ ['"]?\/workspace/);
+    assert.match(print, /return adapter\.loadShippingItems\(\{ channel: channel \}\)/);
+    assert.match(print, /인쇄 데이터 연결 방식이 설정되지 않았습니다/);
+    assert.doesNotMatch(print, /function platformPrintItems\(workspace, channel\)/);
+    assert.doesNotMatch(print, /loadShippingItems adapter fallback/);
+    assert.doesNotMatch(print, /channels\/['"]? \+ encodeURIComponent\(PRINT_CHANNEL_ID\) \+ ['"]?\/workspace/);
     assert.match(print, />경매 리스트<\/button>/);
     assert.match(print, />낙찰 결과<\/button>/);
     assert.match(print, />구매자별<\/button>/);
@@ -688,10 +694,10 @@ test('print forms have one canonical page linked from both pipeline and workspac
     assert.match(print, /destination:\s*shippingLabelDestination\(it\)/);
     assert.doesNotMatch(print, /shipping-label-page-size|label-print-mode/);
     assert.doesNotMatch(print, /function printSelectedShippingLabels\([\s\S]*?window\.print\(\)/);
-    assert.match(print, /payment_status: shipment && shipment\.paymentStatus/);
-    assert.match(print, /shipping_cost: shipment \? Number\(shipment\.cost\)/);
-    assert.match(print, /buyer_submitted_at: shipment && shipment\.buyerSubmittedAt/);
-    assert.match(print, /payment_requested_amount: shipment \? Number\(shipment\.paymentRequestedAmount\)/);
+    assert.match(adapters, /payment_status: shipment\?\.paymentStatus/);
+    assert.match(adapters, /shipping_cost: Number\(shipment\?\.cost\)/);
+    assert.match(adapters, /buyer_submitted_at: shipment\?\.buyerSubmittedAt/);
+    assert.match(adapters, /payment_requested_amount: Number\(shipment\?\.paymentRequestedAmount\)/);
     assert.match(print, /CreoPrintShippingSummary\.groupBundles\(summaryItems\)/);
     assert.match(print, /CreoChannelAdapters\.resolve\(channel\)/);
     assert.doesNotMatch(print, /CreoChannelAdapters\.get\(/);

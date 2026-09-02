@@ -13,7 +13,7 @@
     <script src="channel-runtime.js?v=20260901-operator-routing-v1"></script>
     <script src="channel-adapters.js?v=20260823-channel-isolation-v3"></script>
     <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
-    <script src="print-shipping-summary.js?v=20260831-shipping-summary-v1"></script>
+    <script src="print-shipping-summary.js?v=20260903-winner-identity-v2"></script>
     <script src="google-sheets-export.js?v=20260831-google-create-v1"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
@@ -1786,52 +1786,6 @@
             throw new Error('인쇄할 채널 주소가 없습니다. 메인에서 채널을 다시 선택해 주세요.');
         }
 
-        function platformWinner(item) {
-            var name = String(item.winnerName || item.winnerAlias || '').trim();
-            var phone = String(item.winnerPhone || '').replace(/[^0-9]/g, '');
-            var embedded = name.replace(/[^0-9]/g, '');
-            return phone && embedded.indexOf(phone) < 0 ? [name, phone].filter(Boolean).join(' / ') : name;
-        }
-
-        function platformChecklist(item, channel) {
-            return CreoChannelAdapters.platformChecklist(item, channel);
-        }
-
-        function platformPrintItems(workspace, channel) {
-            var vendors = new Map((workspace.vendors || []).map(function (vendor) { return [vendor.id, vendor]; }));
-            var shipments = new Map((workspace.shipments || []).map(function (shipment) { return [shipment.itemId, shipment]; }));
-            return (workspace.items || []).slice().sort(function (a, b) { return Number(a.lotNumber) - Number(b.lotNumber); }).map(function (item) {
-                var shipment = shipments.get(item.id);
-                return {
-                    id: item.id,
-                    row: item.id,
-                    num: Number(item.lotNumber) || 0,
-                    name: item.name || '개체',
-                    company: (vendors.get(item.vendorId) || {}).name || item.vendorName || '',
-                    soldPrice: (Number(item.soldPrice) || 0) / 10000,
-                    sold_amount_won: Number(item.soldPrice) || 0,
-                    winner: platformWinner(item),
-                    winner_name: item.winnerName || item.winnerAlias || '',
-                    winner_phone: item.winnerPhone || '',
-                    status: item.status || 'waiting',
-                    checklist: platformChecklist(item, channel),
-                    note: item.note || '',
-                    shipping_type: shipment ? (shipment.method === 'pickup' ? '직접수령' : '배송') : '',
-                    shipping_company: shipment && shipment.carrier || '',
-                    shipping_region: shipment && shipment.address || '',
-                    shipping_cost: shipment ? Number(shipment.cost) || 0 : 0,
-                    shipping_bundle_id: shipment && shipment.bundleId || '',
-                    shipping_status: shipment && shipment.status || '',
-                    payment_status: shipment && shipment.paymentStatus || '',
-                    payment_method: shipment && shipment.paymentMethod || '',
-                    payment_requested_amount: shipment ? Number(shipment.paymentRequestedAmount) || 0 : 0,
-                    payment_confirmed_amount: shipment ? Number(shipment.paymentConfirmedAmount) || 0 : 0,
-                    buyer_submitted_at: shipment && shipment.buyerSubmittedAt || '',
-                    payment_confirmed_at: shipment && shipment.paymentConfirmedAt || ''
-                };
-            });
-        }
-
         function syncPrintChannel(channel) {
             printChannel = channel;
             var label = String(channel.name || channel.shortName || PRINT_CHANNEL_ID).trim();
@@ -1866,16 +1820,10 @@
             }
 
             var adapter = typeof CreoChannelAdapters !== 'undefined' ? CreoChannelAdapters.resolve(channel) : null;
-            if (adapter && typeof adapter.loadShippingItems === 'function') {
-                try {
-                    return await adapter.loadShippingItems({ channel: channel });
-                } catch (e) {
-                    console.warn('loadShippingItems adapter fallback:', e);
-                }
+            if (!adapter || typeof adapter.loadShippingItems !== 'function') {
+                throw new Error('이 채널의 인쇄 데이터 연결 방식이 설정되지 않았습니다.');
             }
-
-            var workspace = await CreoPlatform.api('channels/' + encodeURIComponent(PRINT_CHANNEL_ID) + '/workspace');
-            return platformPrintItems(workspace, channel);
+            return adapter.loadShippingItems({ channel: channel });
         }
 
         async function initializePrint() {

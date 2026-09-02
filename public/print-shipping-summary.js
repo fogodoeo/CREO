@@ -49,8 +49,25 @@
         return number(item.soldPrice) * 10000;
     }
 
+    function winnerIdentity(item) {
+        item = item || {};
+        var saved = item._winner || {};
+        var rawWinner = text(item.winner).replace(/[\[\]]/g, '');
+        var phoneMatch = rawWinner.match(/(?:^|\D)(01[016789][\s.-]?\d{3,4}[\s.-]?\d{4}|\d{8})(?=\D|$)/);
+        var embeddedPhone = phoneMatch ? phoneMatch[1] : '';
+        var explicitName = text(saved.name || item.winner_name || item.winnerName || item.winnerAlias);
+        var nameSource = explicitName || text(embeddedPhone ? rawWinner.replace(embeddedPhone, ' ') : rawWinner);
+        var name = text(nameSource.split('/')[0]) || '이름 없음';
+        var phone = digits(saved.phone || item.winner_phone || item.winnerPhone || embeddedPhone);
+        return {
+            key: phone ? 'phone:' + phone : 'name:' + name.toLowerCase(),
+            name: name,
+            phone: phone
+        };
+    }
+
     function buyer(item) {
-        return item._winner || { name: text(item.winner_name), phone: digits(item.winner_phone) };
+        return winnerIdentity(item);
     }
 
     function bundleKey(item) {
@@ -172,6 +189,7 @@
         paymentLabel: paymentLabel,
         paymentMethodLabel: paymentMethodLabel,
         sheetRows: sheetRows,
-        shippingDestination: shippingDestination
+        shippingDestination: shippingDestination,
+        winnerIdentity: winnerIdentity
     };
 });
