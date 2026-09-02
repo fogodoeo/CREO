@@ -364,6 +364,16 @@ test('shipping editor exposes one buyer message action and a subdued payment con
     assert.match(shipping, /totalLabel\.textContent = confirmedAmount > 0 && additionalDue > 0 \? '추가 결제 금액'/);
 });
 
+test('shipping mutations refresh only current data and preserve the active editor', () => {
+    const shipping = fs.readFileSync(path.join(__dirname, '..', 'public', 'shipping.html'), 'utf8');
+    assert.doesNotMatch(shipping, /location\.reload\(\)/);
+    assert.match(shipping, /async function refreshShippingWorkspace\(\{ preserveEditor = false, refreshOverview = false \} = \{\}\)/);
+    assert.match(shipping, /if \(revision !== shippingRefreshRevision\) return false/);
+    assert.match(shipping, /refreshShippingWorkspace\(\{ preserveEditor: true, refreshOverview: true \}\)/);
+    assert.match(shipping, /if \(paymentConfirmationPending\) return/);
+    assert.match(shipping, /openWinnerEditor\(restoreWinnerKey, \{ syncHistory: false, align: false \}\)/);
+});
+
 test('buyer and vendor checkout pages are short-code based and support the full payment workflow', () => {
     const source = fs.readFileSync(path.join(__dirname, '..', 'public', 'buyer-shipping.html'), 'utf8');
     const vendor = fs.readFileSync(path.join(__dirname, '..', 'public', 'vendor-checkout.html'), 'utf8');

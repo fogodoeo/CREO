@@ -21,8 +21,6 @@
            PREMIUM OBSIDIAN SPACE GLASS DESIGN SYSTEM
            (VERCEL / LINEAR STYLE / DARK GLASSMORPHISM)
            ══════════════════════════════════════ */
-        @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard-dynamic-subset.css");
-
         :root {
             --font-pretendard: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
             --bg: #05070B; /* Deep Space Black */
@@ -2589,6 +2587,37 @@
             return adapter.loadShippingItems(shippingAdapterContext);
         }
 
+        let shippingRefreshRevision = 0;
+        let paymentConfirmationPending = false;
+
+        function applyShippingItems(items) {
+            allItems = (items || []).filter(item => CreoAuctionContract.isSoldStatus(item.status));
+            const companies = allItems.map(item => (item.company || '').trim()).filter(Boolean);
+            uniqueSellerCompanies = [...new Set(companies)].sort();
+            populateCompanySelect();
+        }
+
+        async function refreshShippingWorkspace({ preserveEditor = false, refreshOverview = false } = {}) {
+            const revision = ++shippingRefreshRevision;
+            const restoreWinnerKey = preserveEditor ? activeEditorWinner : null;
+            const items = await loadShippingItems();
+            if (revision !== shippingRefreshRevision) return false;
+
+            applyShippingItems(items);
+            if (activeSellerCompany && !uniqueSellerCompanies.includes(activeSellerCompany)) {
+                activeSellerCompany = '';
+                localStorage.removeItem(SHIPPING_COMPANY_STORAGE_KEY);
+                closeWinnerEditor(true);
+                updateCurrentCompanyBar();
+                openCompanySelectModal();
+            } else if (activeSellerCompany) {
+                updateCurrentCompanyBar();
+                renderGrid({ restoreWinnerKey });
+            }
+            if (refreshOverview) renderRegistrationOverview();
+            return true;
+        }
+
         async function saveShippingItem(row, shippingData, auditMeta = {}) {
             const adapter = await ensureShippingAdapter();
             return adapter.saveShippingItem(shippingAdapterContext, row, shippingData, auditMeta);
@@ -2623,6 +2652,7 @@
         }
 
         async function confirmActiveBuyerPayment() {
+            if (paymentConfirmationPending) return;
             const item = activeBuyerLinkItem();
             if (!item) return showToast('낙찰 개체를 찾을 수 없습니다.', true);
             const state = winnerStateMap[activeEditorWinner];
@@ -2634,14 +2664,23 @@
             const itemId = item._platformItemId || item.row || item.id;
             const requestId = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
             try {
+                paymentConfirmationPending = true;
+                const paymentConfirmBtn = document.getElementById('editor-payment-confirm-btn');
+                if (paymentConfirmBtn) {
+                    paymentConfirmBtn.disabled = true;
+                    paymentConfirmBtn.textContent = '확인 중...';
+                }
                 await CreoPlatform.api(`channels/${encodeURIComponent(SHIPPING_CHANNEL_ID)}/buyer-shipping-payment`, {
                     method: 'POST',
                     body: JSON.stringify({ itemId, requestId })
                 });
+                await refreshShippingWorkspace({ preserveEditor: true, refreshOverview: true });
                 showToast('결제 확인을 완료했습니다.');
-                setTimeout(() => location.reload(), 450);
             } catch (error) {
                 showToast(error.message || '결제 확인을 처리하지 못했습니다.', true);
+            } finally {
+                paymentConfirmationPending = false;
+                if (activeEditorWinner && winnerStateMap[activeEditorWinner]) updateEditorPricing();
             }
         }
 
@@ -2883,17 +2922,12 @@
 
                 console.log('[INIT] Step 4: Loading items...');
                 const items = await loadShippingItems();
-                allItems = (items || []).filter(it => CreoAuctionContract.isSoldStatus(it.status));
+                applyShippingItems(items);
                 console.log('[INIT] Step 5: Got', allItems.length, 'items');
-
-                const companies = allItems.map(it => (it.company || '').trim()).filter(Boolean);
-                uniqueSellerCompanies = [...new Set(companies)].sort();
                 console.log('[INIT] Step 6: Companies:', uniqueSellerCompanies);
 
                 const savedCompany = localStorage.getItem(SHIPPING_COMPANY_STORAGE_KEY);
                 const forceCompanySelect = new URLSearchParams(window.location.search).get('changeCompany') === '1';
-                populateCompanySelect();
-
                 if (savedCompany && uniqueSellerCompanies.includes(savedCompany)) {
                     activeSellerCompany = savedCompany;
                     updateCurrentCompanyBar();
@@ -3339,9 +3373,7 @@
             const originalText = button ? button.textContent : '';
             if (button) { button.disabled = true; button.textContent = '갱신 중...'; }
             try {
-                const items = await loadShippingItems();
-                allItems = (items || []).filter(item => CreoAuctionContract.isSoldStatus(item.status));
-                renderRegistrationOverview();
+                await refreshShippingWorkspace({ preserveEditor: true, refreshOverview: true });
                 showToast('전체 등록 현황을 갱신했습니다.');
             } catch (error) {
                 console.error(error);
@@ -3391,11 +3423,13 @@
             }
 
             return allocations;
-        }        function renderGrid() {
+        }
+
+        function renderGrid({ restoreWinnerKey = null } = {}) {
             try {
                 const selectedCo = activeSellerCompany;
                 const container = document.getElementById('winner-list-container');
-                if (activeEditorWinner) closeWinnerEditor();
+                if (activeEditorWinner) closeWinnerEditor(Boolean(restoreWinnerKey));
                 container.innerHTML = '';
                 winnerStateMap = {};
 
@@ -3584,6 +3618,9 @@
                         indicators.style.display = 'none';
                     }
                 }
+                if (restoreWinnerKey && winnerStateMap[restoreWinnerKey]) {
+                    openWinnerEditor(restoreWinnerKey, { syncHistory: false, align: false });
+                }
             } catch (err) {
                 console.error('[renderGrid] CRASH:', err);
                 alert('[renderGrid ERROR] ' + err.message + '\nStack: ' + err.stack);
@@ -3637,7 +3674,7 @@
             window.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
         }
 
-        function openWinnerEditor(winnerKey) {
+        function openWinnerEditor(winnerKey, { syncHistory = true, align = true } = {}) {
             try {
                 const selectedCo = activeSellerCompany;
                 const state = winnerStateMap[winnerKey];
@@ -3712,14 +3749,14 @@
                 const workspace = document.querySelector('.admin-workspace');
                 if (workspace) workspace.classList.add('is-editing');
                 document.body.classList.add('editor-open');
-                pushMobileShippingView('editor');
+                if (syncHistory) pushMobileShippingView('editor');
 
                 document.querySelectorAll('.winner-card').forEach(card => {
                     card.classList.toggle('is-selected', card.dataset.winner === winnerKey);
                 });
 
                 // 편집을 시작하면 작업 영역을 화면 상단에 맞춰 하단 금액/저장 영역도 함께 보이게 한다.
-                if (panelSlot) {
+                if (panelSlot && align) {
                     requestAnimationFrame(alignEditorPanelToViewport);
                 }
             } catch (openErr) {
@@ -4146,9 +4183,7 @@
                 closeWinnerEditor();
                 showToast(`${winnerName}님의 배송 정보가 저장되었습니다!`);
 
-                const items = await loadShippingItems();
-                allItems = (items || []).filter(it => CreoAuctionContract.isSoldStatus(it.status));
-                renderGrid();
+                await refreshShippingWorkspace();
             } catch (err) {
                 console.error(err);
                 showToast('저장 실패: ' + err.message, true);
