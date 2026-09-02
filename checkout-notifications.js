@@ -50,6 +50,10 @@ function parseTemplateIds(value) {
     }
 }
 
+function firstConfigured(...values) {
+    return values.map((value) => String(value || '').trim()).find(Boolean) || '';
+}
+
 function solapiAuthorization(apiKey, apiSecret, now = new Date(), salt = crypto.randomBytes(32).toString('hex')) {
     const date = now.toISOString();
     const signature = crypto.createHmac('sha256', String(apiSecret)).update(`${date}${salt}`).digest('hex');
@@ -164,11 +168,111 @@ class SolapiAlimtalkProvider {
     }
 }
 
+class NhnCloudAlimtalkProvider {
+    constructor(options = {}) {
+        this.appKey = firstConfigured(
+            options.appKey,
+            process.env.NHN_ALIMTALK_APP_KEY,
+            process.env.NHN_CLOUD_APP_KEY,
+            process.env.NHN_APP_KEY
+        );
+        this.secretKey = firstConfigured(
+            options.secretKey,
+            process.env.NHN_ALIMTALK_SECRET_KEY,
+            process.env.NHN_CLOUD_SECRET_KEY,
+            process.env.NHN_SECRET_KEY
+        );
+        this.senderKey = firstConfigured(
+            options.senderKey,
+            process.env.NHN_ALIMTALK_SENDER_KEY,
+            process.env.NHN_CLOUD_SENDER_KEY,
+            process.env.KAKAO_SENDER_KEY
+        );
+        this.templateCodes = parseTemplateIds(
+            options.templateCodes
+            || process.env.NHN_ALIMTALK_TEMPLATE_CODES_JSON
+            || process.env.NHN_CLOUD_TEMPLATE_CODES_JSON
+        );
+        this.fetch = options.fetchImpl || globalThis.fetch;
+        const baseUrl = String(options.baseUrl || 'https://kakaotalk-bizmessage.api.nhncloudservice.com').replace(/\/+$/, '');
+        this.endpoint = String(options.endpoint || `${baseUrl}/alimtalk/v2.2/appkeys/${encodeURIComponent(this.appKey)}/messages`);
+    }
+
+    readiness(templateKey) {
+        const missing = [];
+        if (!this.appKey) missing.push('NHN_ALIMTALK_APP_KEY');
+        if (!this.secretKey) missing.push('NHN_ALIMTALK_SECRET_KEY');
+        if (!this.senderKey) missing.push('NHN_ALIMTALK_SENDER_KEY');
+        if (!this.templateCodes[templateKey]) missing.push(`template:${templateKey}`);
+        return { ready: missing.length === 0, missing };
+    }
+
+    status() {
+        const templates = Object.fromEntries(TEMPLATE_KEYS.map((key) => [key, this.readiness(key)]));
+        return {
+            provider: 'nhn-cloud-alimtalk',
+            configured: Object.values(templates).every((entry) => entry.ready),
+            appConfigured: Boolean(this.appKey),
+            secretConfigured: Boolean(this.secretKey),
+            profileConfigured: Boolean(this.senderKey),
+            senderConfigured: Boolean(this.senderKey),
+            templates
+        };
+    }
+
+    async send(notification) {
+        const ready = this.readiness(notification.templateKey);
+        if (!ready.ready) {
+            const error = new Error(`알림톡 설정 대기: ${ready.missing.join(', ')}`);
+            error.code = 'CONFIGURATION_PENDING';
+            throw error;
+        }
+        const response = await this.fetch(this.endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json;charset=UTF-8',
+                'X-Secret-Key': this.secretKey
+            },
+            body: JSON.stringify({
+                senderKey: this.senderKey,
+                templateCode: this.templateCodes[notification.templateKey],
+                senderGroupingKey: notification.id,
+                recipientList: [{
+                    recipientNo: notification.recipientPhone,
+                    templateParameter: safeVariables(notification.variables),
+                    recipientGroupingKey: notification.id
+                }]
+            })
+        });
+        const payload = await response.json().catch(() => ({}));
+        const result = payload.message?.sendResults?.[0];
+        const resultCode = Number(result?.resultCode);
+        if (!response.ok || payload.header?.isSuccessful !== true || !result || !Number.isFinite(resultCode) || resultCode !== 0) {
+            const detail = result?.resultMessage
+                || payload.header?.resultMessage
+                || payload.message
+                || `NHN Cloud ${response.status}`;
+            throw new Error(text(detail, 500));
+        }
+        return {
+            messageId: text(payload.message?.requestId, 120),
+            groupId: text(payload.message?.senderGroupingKey || notification.id, 120),
+            statusCode: text(result.resultCode, 40)
+        };
+    }
+}
+
+function createDefaultAlimtalkProvider(providerName = process.env.CREO_ALIMTALK_PROVIDER || 'nhn-cloud') {
+    const provider = String(providerName).trim().toLowerCase();
+    if (provider === 'solapi') return new SolapiAlimtalkProvider();
+    return new NhnCloudAlimtalkProvider();
+}
+
 class CheckoutNotificationService {
     constructor(options = {}) {
         if (!options.repository) throw new Error('repository is required');
         this.repository = options.repository;
-        this.provider = options.provider || new SolapiAlimtalkProvider();
+        this.provider = options.provider || createDefaultAlimtalkProvider();
         this.logger = options.logger || console;
         this.now = options.now || (() => Date.now());
         this.running = false;
@@ -283,9 +387,11 @@ class CheckoutNotificationService {
 
 module.exports = {
     CheckoutNotificationService,
+    NhnCloudAlimtalkProvider,
     NOTIFICATION_STATUSES,
     SolapiAlimtalkProvider,
     TEMPLATE_KEYS,
+    createDefaultAlimtalkProvider,
     normalizeNotification,
     notificationId,
     parseTemplateIds,

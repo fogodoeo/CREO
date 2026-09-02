@@ -4,7 +4,9 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
     CheckoutNotificationService,
+    NhnCloudAlimtalkProvider,
     SolapiAlimtalkProvider,
+    createDefaultAlimtalkProvider,
     notificationId,
     solapiAuthorization
 } = require('../checkout-notifications');
@@ -112,6 +114,81 @@ test('a stale sending record is reclaimed after a process restart', async () => 
     assert.equal(sends, 1);
     assert.equal(stored.status, 'sent');
     assert.equal(stored.attempts, 2);
+});
+
+test('NHN Cloud provider sends one substitution request with template variables and grouping keys', async () => {
+    let request;
+    const provider = new NhnCloudAlimtalkProvider({
+        appKey: 'app-key',
+        secretKey: 'secret-key',
+        senderKey: 'sender-key',
+        templateCodes: { buyer_win_initial: 'BUYER_WIN_01' },
+        fetchImpl: async (url, options) => {
+            request = { url, options, body: JSON.parse(options.body) };
+            return {
+                ok: true,
+                status: 200,
+                json: async () => ({
+                    header: { resultCode: 0, resultMessage: 'SUCCESS', isSuccessful: true },
+                    message: {
+                        requestId: 'request-1',
+                        senderGroupingKey: notificationId('basic', 'sale:item-a:cycle-1', 'buyer_win_initial', 'buyer'),
+                        sendResults: [{ recipientSeq: 1, recipientNo: '01012345678', resultCode: 0, resultMessage: 'SUCCESS' }]
+                    }
+                })
+            };
+        }
+    });
+    const notification = { ...event(), id: notificationId('basic', 'sale:item-a:cycle-1', 'buyer_win_initial', 'buyer') };
+
+    const result = await provider.send(notification);
+
+    assert.equal(result.messageId, 'request-1');
+    assert.equal(result.groupId, notification.id);
+    assert.equal(request.url, 'https://kakaotalk-bizmessage.api.nhncloudservice.com/alimtalk/v2.2/appkeys/app-key/messages');
+    assert.equal(request.options.headers['X-Secret-Key'], 'secret-key');
+    assert.deepEqual(request.body, {
+        senderKey: 'sender-key',
+        templateCode: 'BUYER_WIN_01',
+        senderGroupingKey: notification.id,
+        recipientList: [{
+            recipientNo: '01012345678',
+            templateParameter: { '#{구매자명}': '김상정', '#{접속코드}': 'abc12345678' },
+            recipientGroupingKey: notification.id
+        }]
+    });
+});
+
+test('NHN Cloud is the default checkout notification provider and Solapi is explicit rollback only', () => {
+    const previous = process.env.CREO_ALIMTALK_PROVIDER;
+    delete process.env.CREO_ALIMTALK_PROVIDER;
+    try {
+        assert.ok(createDefaultAlimtalkProvider() instanceof NhnCloudAlimtalkProvider);
+        assert.ok(createDefaultAlimtalkProvider('nhn-cloud') instanceof NhnCloudAlimtalkProvider);
+        assert.ok(createDefaultAlimtalkProvider('solapi') instanceof SolapiAlimtalkProvider);
+    } finally {
+        if (previous === undefined) delete process.env.CREO_ALIMTALK_PROVIDER;
+        else process.env.CREO_ALIMTALK_PROVIDER = previous;
+    }
+});
+
+test('NHN Cloud provider rejects an unsuccessful recipient result without exposing credentials', async () => {
+    const provider = new NhnCloudAlimtalkProvider({
+        appKey: 'app-key',
+        secretKey: 'secret-key',
+        senderKey: 'sender-key',
+        templateCodes: { buyer_win_initial: 'BUYER_WIN_01' },
+        fetchImpl: async () => ({
+            ok: true,
+            status: 200,
+            json: async () => ({
+                header: { resultCode: 0, resultMessage: 'SUCCESS', isSuccessful: true },
+                message: { sendResults: [{ resultCode: -1, resultMessage: '템플릿 불일치' }] }
+            })
+        })
+    });
+
+    await assert.rejects(() => provider.send({ ...event(), id: 'ntf_test' }), /템플릿 불일치/);
 });
 
 test('Solapi provider creates an authenticated AlimTalk request with SMS fallback', async () => {

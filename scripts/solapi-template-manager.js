@@ -83,7 +83,7 @@ async function main() {
         process.stdout.write(`${JSON.stringify(inspected, null, 2)}\n`);
         return;
     }
-    throw new Error('사용법: npm run kakao:templates -- --dry-run | --create | --inspect');
+    throw new Error('사용법: npm run kakao:templates:solapi -- --dry-run | --create | --inspect');
 }
 
 main().catch((error) => {

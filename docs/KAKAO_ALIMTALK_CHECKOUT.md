@@ -59,47 +59,27 @@
 - `/vendor-checkout.html`의 업체 확인 화면
 - 버튼 도메인이 모두 `creok.onrender.com`임을 보여 주는 캡처
 
-## SOLAPI 등록 순서
+## NHN Cloud 등록 순서
 
 Render Secret에 다음 값을 넣는다. 실제 비밀키는 Git에 저장하지 않는다.
 
 ```text
-SOLAPI_API_KEY=
-SOLAPI_API_SECRET=
-SOLAPI_KAKAO_CHANNEL_ID=
-SOLAPI_KAKAO_PF_ID=
-SOLAPI_FROM_NUMBER=
-SOLAPI_KAKAO_CATEGORY_CODE=003001
+CREO_ALIMTALK_PROVIDER=nhn-cloud
+NHN_ALIMTALK_APP_KEY=
+NHN_ALIMTALK_SECRET_KEY=
+NHN_ALIMTALK_SENDER_KEY=
 ```
 
-등록 전 출력 확인:
-
-```bash
-npm run kakao:templates -- --dry-run
-```
-
-템플릿 생성:
-
-```bash
-npm run kakao:templates -- --create
-```
-
-검수 요청:
-
-```bash
-npm run kakao:templates -- --inspect
-```
-
-승인된 템플릿 ID를 아래 JSON 형태로 Render Secret `SOLAPI_KAKAO_TEMPLATE_IDS_JSON`에 등록한다.
+NHN Cloud 콘솔에서 발신 프로필과 템플릿 6개를 승인받은 뒤, 승인된 템플릿 코드를 아래 JSON 형태로 Render Secret `NHN_ALIMTALK_TEMPLATE_CODES_JSON`에 등록한다.
 
 ```json
 {
-  "buyer_win_initial": "TP...",
-  "buyer_win_additional": "TP...",
-  "vendor_win": "TP...",
-  "vendor_payment_reported": "TP...",
-  "buyer_card_link_ready": "TP...",
-  "buyer_payment_confirmed": "TP..."
+  "buyer_win_initial": "BUYER_WIN",
+  "buyer_win_additional": "BUYER_WIN_ADD",
+  "vendor_win": "VENDOR_WIN",
+  "vendor_payment_reported": "VENDOR_PAY_REPORT",
+  "buyer_card_link_ready": "BUYER_CARD_READY",
+  "buyer_payment_confirmed": "BUYER_PAY_DONE"
 }
 ```
 
@@ -109,7 +89,7 @@ npm run kakao:templates -- --inspect
 - 알림은 SQLite의 `notification` 레코드에 먼저 저장하고 백그라운드 작업자가 전송한다.
 - 템플릿 미승인 또는 환경변수 미설정 시 `configuration_pending`으로 보존한다.
 - 일시 오류는 지수 백오프로 재시도하며 72시간이 지나면 `expired` 처리한다.
-- 알림톡 실패 시 SOLAPI 설정의 SMS 대체 발송을 허용한다.
+- 알림톡 실패 시 발송 레코드는 `failed`로 남고 지수 백오프로 다시 시도한다.
 - `/health`의 `checkoutNotifications`에서 키·발신번호·템플릿 준비 상태를 확인한다. 값 자체는 노출하지 않는다.
 
 ## 운영 전 확인표
