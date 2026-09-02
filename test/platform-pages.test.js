@@ -245,6 +245,8 @@ test('channel creation starts with a safe generated id and protects unsaved edit
     assert.match(manager, /function nextChannelId\(\)/);
     assert.match(manager, /draft\.id=nextChannelId\(\)/);
     assert.match(manager, /copy\.id=nextChannelId\(\)/);
+    assert.match(manager, /copy\.broadcastDefaults=structuredClone\(blankChannel\(\)\.broadcastDefaults\)/);
+    assert.match(manager, /copyBroadcastContent:false/);
     assert.match(manager, /channel-form'\)\.reportValidity\(\)/);
     assert.match(manager, /function canDiscard\(\)/);
     assert.match(manager, /beforeunload/);

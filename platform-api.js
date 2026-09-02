@@ -3429,16 +3429,21 @@ function createPlatformApi({
             if (segments.length === 3 && segments[2] === 'duplicate' && method === 'POST') {
                 if (!await requireAdmin(req, res)) return true;
                 const body = await readJson(req);
-                const proposed = normalizeChannel({
+                const requestedChannel = body.channel && typeof body.channel === 'object' ? body.channel : {};
+                const proposedInput = {
                     ...channel,
-                    ...body.channel,
-                    id: body.channel?.id,
-                    name: body.channel?.name || `${channel.name} 복사본`,
+                    ...requestedChannel,
+                    id: requestedChannel.id,
+                    name: requestedChannel.name || `${channel.name} 복사본`,
                     status: 'draft',
                     dataAdapter: 'platform',
                     pages: {},
                     legacy: { items: false, managementUrl: '', controlUrl: '' }
-                });
+                };
+                if (body.copyBroadcastContent !== true && !Object.prototype.hasOwnProperty.call(requestedChannel, 'broadcastDefaults')) {
+                    proposedInput.broadcastDefaults = {};
+                }
+                const proposed = normalizeChannel(proposedInput);
                 const checked = validateChannel(proposed, catalog.channels);
                 if (!checked.valid) {
                     replyJson(res, 422, { error: checked.errors.join(' '), errors: checked.errors });
@@ -3460,12 +3465,30 @@ function createPlatformApi({
                         repository.getRecord(channelId, 'setting', BROADCAST_CONFIG_ID)
                     ]);
                     if (sourceState) {
-                        // A duplicated channel may reuse presentation text and placements, but it
-                        // must never inherit the source auction/audience lifecycle. In particular,
-                        // activeItemId can point at an item that was intentionally not copied.
+                        const copyContent = body.copyBroadcastContent === true;
+                        const targetContent = checked.value.broadcastDefaults || {};
+                        const content = (key) => copyContent ? sourceState[key] : targetContent[key];
+                        // A duplicated channel reuses the shared layout and visibility controls,
+                        // but channel-owned presenters, ticker copy and media must start from the
+                        // target channel. It must also never inherit the source auction lifecycle.
                         await repository.upsertRecord(checked.value.id, 'broadcast', {
                             ...sanitizeBroadcastState({
                                 ...sourceState,
+                                hostName1: content('hostName1'),
+                                hostRole1: content('hostRole1'),
+                                hostName2: content('hostName2'),
+                                hostRole2: content('hostRole2'),
+                                hostName3: content('hostName3'),
+                                hostRole3: content('hostRole3'),
+                                notice: content('notice'),
+                                noticeDetail: content('noticeDetail'),
+                                page1Ticker: content('page1Ticker'),
+                                page2Ticker: content('page2Ticker'),
+                                page1BannerUrl: copyContent ? sourceState.page1BannerUrl : '',
+                                page2BannerUrl: copyContent ? sourceState.page2BannerUrl : '',
+                                page3BannerUrl: copyContent ? sourceState.page3BannerUrl : '',
+                                page3Title: content('page3Title'),
+                                quizQuestion: '',
                                 activeItemId: '',
                                 mode: 'standby',
                                 audienceSessionId: '',

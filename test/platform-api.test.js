@@ -798,7 +798,8 @@ test('duplicating a legacy channel keeps its broadcast profile but starts on iso
     await call(api, 'PUT', '/api/platform/channels/alpha/broadcast-state', {
         hostName1: '공통 진행자', page1Ticker: '복제 자막', activeItemId: 'source-live-item', mode: 'live',
         audienceSessionId: 'source-session', audienceSessionStatus: 'active', audienceSessionLockedAt: '2026-08-27T00:00:00.000Z',
-        quizStatus: 'closed', quizWinner: '이전 당첨자', quizAnswer: '이전 정답'
+        quizStatus: 'closed', quizWinner: '이전 당첨자', quizAnswer: '이전 정답',
+        layoutPlacements: { 'p1-hosts': { x: 7, y: 9, width: 42, height: 18, fontScale: 1.2 } }
     });
     await call(api, 'PUT', '/api/platform/channels/alpha/broadcast-config', { patch: { ticker: '복제 자막', bracket_full_show: '1' } });
     const response = await call(api, 'POST', '/api/platform/channels/alpha/duplicate', {
@@ -813,7 +814,9 @@ test('duplicating a legacy channel keeps its broadcast profile but starts on iso
     const workspace = await call(api, 'GET', '/api/platform/channels/alpha-copy/workspace');
     assert.deepEqual(workspace.json().items, []);
     assert.deepEqual(workspace.json().vendors, []);
-    assert.equal(workspace.json().broadcast.hostName1, '공통 진행자');
+    assert.equal(workspace.json().broadcast.hostName1, '');
+    assert.equal(workspace.json().broadcast.page1Ticker, '');
+    assert.equal(workspace.json().broadcast.layoutPlacements['p1-hosts'].x, 7);
     assert.equal(workspace.json().broadcast.activeItemId, '');
     assert.equal(workspace.json().broadcast.mode, 'standby');
     assert.equal(workspace.json().broadcast.audienceSessionId, '');
