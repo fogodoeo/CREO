@@ -362,6 +362,7 @@ test('a sold transition queues buyer and vendor notices once without blocking th
     assert.ok(responses.every(response => response.status === 200), responses.map(response => response.body).join('\n'));
     assert.equal(queued.length, 2);
     assert.deepEqual(queued.map(entry => entry.event.recipientRole).sort(), ['buyer', 'vendor']);
+    assert.deepEqual(queued.map(entry => entry.event.transport), ['sms', 'sms']);
     assert.equal(queued[0].channelId, 'alpha');
     assert.equal((await repository.getRecord('alpha', 'item', 'notice-item')).status, 'sold');
     const pulseAfterSale = await call(api, 'GET', '/api/platform/channels/alpha/broadcast-pulse', null, '');

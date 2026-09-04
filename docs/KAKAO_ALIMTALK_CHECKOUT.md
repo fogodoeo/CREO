@@ -1,4 +1,4 @@
-# 옹동2 낙찰·배송·결제 및 카카오 알림톡 운영안
+# 옹동2 낙찰·배송·결제 알리고 발송 운영안
 
 ## 확정 구조
 
@@ -7,7 +7,8 @@
 - 업체 링크: `https://creok.onrender.com/v/{업체접속코드}`
 - 구매자는 한 채널에서 여러 업체의 개체를 낙찰받아도 같은 링크를 계속 사용한다.
 - 배송지는 구매자 기준으로 한 번 선택하고, 결제 방법과 결제 완료 상태는 업체별로 분리한다.
-- 카드사의 실제 결제 URL은 알림톡 템플릿에 직접 넣지 않는다. 고정된 CREO 페이지를 거쳐 연다.
+- 결제·송금·납부를 유도하는 문구와 링크는 알림톡으로 보내지 않는다. 구매자·업체의 행동이 필요한 링크는 알리고 SMS/LMS로 보낸다.
+- 알림톡은 결제 확인 완료처럼 행동을 요구하지 않는 상태 통지에만 사용한다.
 - 링크 코드는 전화번호를 포함하지 않는 HMAC 서명 기반 코드이며 유효기간은 구매자 14일, 업체 30일이다.
 
 ## 배송비 배정 규칙
@@ -32,54 +33,59 @@
 
 모든 변경 요청은 `requestId`로 중복 처리한다. 같은 버튼이 두 번 눌리거나 네트워크 재시도가 발생해도 결제 확정과 알림을 한 번만 기록한다.
 
-## 승인 요청 템플릿
+## 발송 수단 분리
 
-원본 JSON은 `config/kakao-alimtalk-templates.json`이다. 총 6개를 한 번에 신청한다.
+원본 분류표는 `config/kakao-alimtalk-templates.json`이다. 결제 페이지나 업체 처리 페이지로 이동해야 하는 첫 5개 이벤트는 문자이며 카카오 템플릿 승인을 요청하지 않는다.
 
-1. `buyer_win_initial`: 최초 낙찰 및 배송·결제 입력 안내
-2. `buyer_win_additional`: 같은 구매자의 추가 낙찰 안내
-3. `vendor_win`: 업체에 신규 낙찰 정보 안내
-4. `vendor_payment_reported`: 업체에 구매자 결제완료 신고 안내
-5. `buyer_card_link_ready`: 구매자에게 카드결제 링크 준비 안내
-6. `buyer_payment_confirmed`: 구매자에게 업체 결제 확인 완료 안내
+1. `buyer_win_initial`: 문자 · 최초 낙찰 및 배송·결제 페이지
+2. `buyer_win_additional`: 문자 · 추가 낙찰 및 추가 결제 페이지
+3. `vendor_win`: 문자 · 업체 신규 낙찰 확인 페이지
+4. `vendor_payment_reported`: 문자 · 업체 구매자 결제 신고 확인 페이지
+5. `buyer_card_link_ready`: 문자 · 준비된 카드결제 페이지
+6. `buyer_payment_confirmed`: 알림톡 · 결제 확인 완료 상태만 안내
 
-버튼 URL은 각각 아래 두 형식만 사용한다.
+문자 URL은 각각 아래 두 형식만 사용한다.
 
 - 구매자: `https://creok.onrender.com/s/#{접속코드}`
 - 업체: `https://creok.onrender.com/v/#{업체접속코드}`
 
-### 검수 의견
+`buyer_payment_confirmed` 알림톡에는 버튼이나 URL을 넣지 않는다. 승인 템플릿이 아직 없거나 반려된 경우에는 같은 상태 안내를 문자로 자동 전환해 누락을 막는다.
 
-> 옹동2 라이브 방송 운영 지원 서비스에서 낙찰·배송·결제 진행 상태를 구매자와 참여 업체에 안내하는 정보성 메시지입니다. 구매자는 본인 전화번호에 연결된 배송·결제 페이지에서 배송지를 입력하고 업체별 결제 방법을 선택합니다. 업체는 본인 전용 확인 페이지에서 실제 입금 또는 카드 승인 내역을 확인합니다. 버튼은 당사 도메인(creok.onrender.com)의 서명된 전용 페이지로만 연결되며 광고성 내용은 포함하지 않습니다.
+### 알림톡 검수 의견
 
-### 심사 자료로 함께 제시할 화면
+> 옹동2 라이브 방송 운영 지원 서비스에서 구매자가 요청한 거래의 결제 확인 완료 사실만 안내하는 정보성 메시지입니다. 결제·송금·납부를 유도하는 문구, 계좌번호, 금액 납부 요청, 외부 링크 및 버튼은 포함하지 않습니다.
 
-- 옹동2 공식 홈페이지의 사업자 정보 영역
-- `/buyer-shipping.html`의 낙찰 내역, 배송지, 업체별 결제 화면
-- `/vendor-checkout.html`의 업체 확인 화면
-- 버튼 도메인이 모두 `creok.onrender.com`임을 보여 주는 캡처
-
-## NHN Cloud 등록 순서
+## 알리고 등록 순서
 
 Render Secret에 다음 값을 넣는다. 실제 비밀키는 Git에 저장하지 않는다.
 
 ```text
-CREO_ALIMTALK_PROVIDER=nhn-cloud
-NHN_ALIMTALK_APP_KEY=
-NHN_ALIMTALK_SECRET_KEY=
-NHN_ALIMTALK_SENDER_KEY=
+ALIGO_API_KEY=
+ALIGO_USER_ID=
+ALIGO_FROM_NUMBER=
+ALIGO_KAKAO_SENDER_KEY=
+ALIGO_TEST_MODE=Y
 ```
 
-NHN Cloud 콘솔에서 발신 프로필과 템플릿 6개를 승인받은 뒤, 승인된 템플릿 코드를 아래 JSON 형태로 Render Secret `NHN_ALIMTALK_TEMPLATE_CODES_JSON`에 등록한다.
+결제 알림 전송기는 알리고로 고정되어 있으므로 provider 선택 환경변수는 사용하지 않는다.
+
+`ALIGO_FROM_NUMBER`는 알리고에 등록·승인된 발신번호여야 한다. 먼저 `ALIGO_TEST_MODE=Y`로 문자 API 연동을 확인하고 실제 운영 전 `N`으로 바꾼다.
+
+결제 확인 완료 알림톡이 승인되면 템플릿 코드와 승인된 본문을 각각 아래 Render Secret에 등록한다. 본문은 줄바꿈과 변수까지 승인본과 정확히 같아야 한다.
+
+`ALIGO_KAKAO_TEMPLATE_CODES_JSON`:
 
 ```json
 {
-  "buyer_win_initial": "BUYER_WIN",
-  "buyer_win_additional": "BUYER_WIN_ADD",
-  "vendor_win": "VENDOR_WIN",
-  "vendor_payment_reported": "VENDOR_PAY_REPORT",
-  "buyer_card_link_ready": "BUYER_CARD_READY",
-  "buyer_payment_confirmed": "BUYER_PAY_DONE"
+  "buyer_payment_confirmed": "승인된_UK_코드"
+}
+```
+
+변수명은 제외하지 말고 실제 승인 문구 전체를 `ALIGO_KAKAO_TEMPLATE_CONTENTS_JSON`에 넣는다.
+
+```json
+{
+  "buyer_payment_confirmed": "#{구매자명}님, #{업체명} 결제가 확인되었습니다.\n확인금액: #{결제금액}"
 }
 ```
 
@@ -87,9 +93,10 @@ NHN Cloud 콘솔에서 발신 프로필과 템플릿 6개를 승인받은 뒤, �
 
 - 경매 낙찰 처리는 카카오 API 응답을 기다리지 않는다.
 - 알림은 SQLite의 `notification` 레코드에 먼저 저장하고 백그라운드 작업자가 전송한다.
-- 템플릿 미승인 또는 환경변수 미설정 시 `configuration_pending`으로 보존한다.
+- 문자 발송 설정이 없으면 `configuration_pending`으로 보존한다.
+- 알림톡 템플릿이 준비되지 않았지만 문자 설정은 준비됐다면 동일 상태 안내를 문자로 한 번만 전환한다.
 - 일시 오류는 지수 백오프로 재시도하며 72시간이 지나면 `expired` 처리한다.
-- 알림톡 실패 시 발송 레코드는 `failed`로 남고 지수 백오프로 다시 시도한다.
+- 알리고 API 실패 시 발송 레코드는 `failed`로 남고 지수 백오프로 다시 시도한다.
 - `/health`의 `checkoutNotifications`에서 키·발신번호·템플릿 준비 상태를 확인한다. 값 자체는 노출하지 않는다.
 
 ## 운영 전 확인표
@@ -102,5 +109,6 @@ NHN Cloud 콘솔에서 발신 프로필과 템플릿 6개를 승인받은 뒤, �
 - [ ] 카드 URL은 외부 HTTPS 주소만 허용함
 - [ ] 같은 요청을 두 번 보내도 한 번만 처리됨
 - [ ] 서버 재시작 후 링크와 결제 상태가 유지됨
-- [ ] 카카오 템플릿 6개가 모두 `APPROVED`
+- [ ] 결제 유도 링크가 있는 5개 이벤트가 SMS/LMS로 분류됨
+- [ ] `buyer_payment_confirmed` 알림톡만 `APPROVED`
 - [ ] `/health`에서 `checkoutNotifications.configured: true`

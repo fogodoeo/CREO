@@ -1813,6 +1813,7 @@ function createPlatformApi({
         const buyerResult = await enqueueNotification(channel.id, {
             eventKey: `sale:${item.id}:${eventVersion}:buyer`,
             templateKey: buyerTemplate,
+            transport: 'sms',
             recipientRole: 'buyer',
             recipientPhone: phone,
             variables: {
@@ -1831,6 +1832,7 @@ function createPlatformApi({
             vendorResult = await enqueueNotification(channel.id, {
                 eventKey: `sale:${item.id}:${eventVersion}:vendor`,
                 templateKey: 'vendor_win',
+                transport: 'sms',
                 recipientRole: 'vendor',
                 recipientPhone: vendor.phone,
                 variables: {
@@ -1853,6 +1855,7 @@ function createPlatformApi({
         return enqueueNotification(context.channel.id, {
             eventKey: `payment-reported:${group.key}:${sessionKey(phone)}:${group.payment.latest?.buyerPaymentReportRequestId || Date.now()}`,
             templateKey: 'vendor_payment_reported',
+            transport: 'sms',
             recipientRole: 'vendor',
             recipientPhone: vendor.phone,
             variables: {
@@ -1873,6 +1876,7 @@ function createPlatformApi({
         return enqueueNotification(bundle.context.channel.id, {
             eventKey,
             templateKey,
+            transport: isCard ? 'sms' : 'alimtalk',
             recipientRole: 'buyer',
             recipientPhone: bundle.phone,
             variables: {

@@ -2,13 +2,15 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const {
+    AligoNotificationProvider,
     CheckoutNotificationService,
-    NhnCloudAlimtalkProvider,
-    SolapiAlimtalkProvider,
-    createDefaultAlimtalkProvider,
-    notificationId,
-    solapiAuthorization
+    createDefaultNotificationProvider,
+    messageText,
+    notificationTransport,
+    notificationId
 } = require('../checkout-notifications');
 
 class MemoryRepository {
@@ -45,6 +47,10 @@ function event(overrides = {}) {
     };
 }
 
+test('transaction SMS copy preserves intentional mobile line breaks', () => {
+    assert.equal(messageText(' 낙찰 안내\r\n\r\n  배송·결제 링크  \nhttps://example.com '), '낙찰 안내\n\n배송·결제 링크\nhttps://example.com');
+});
+
 test('notification enqueue is deterministic and waits safely for template configuration', async () => {
     const repository = new MemoryRepository();
     const provider = { readiness: () => ({ ready: false, missing: ['template:buyer_win_initial'] }) };
@@ -57,6 +63,7 @@ test('notification enqueue is deterministic and waits safely for template config
     assert.equal(repeated.duplicate, true);
     assert.equal(first.record.id, notificationId('basic', 'sale:item-a:cycle-1', 'buyer_win_initial', 'buyer'));
     assert.equal(first.record.status, 'configuration_pending');
+    assert.equal(first.record.transport, 'sms');
     assert.equal((await service.list('basic')).length, 1);
 });
 
@@ -116,109 +123,130 @@ test('a stale sending record is reclaimed after a process restart', async () => 
     assert.equal(stored.attempts, 2);
 });
 
-test('NHN Cloud provider sends one substitution request with template variables and grouping keys', async () => {
+test('Aligo is the only default checkout notification provider', () => {
+    assert.ok(createDefaultNotificationProvider() instanceof AligoNotificationProvider);
+});
+
+test('payment actions use Aligo SMS while a pure completion notice prefers AlimTalk', () => {
+    for (const key of ['buyer_win_initial', 'buyer_win_additional', 'vendor_win', 'vendor_payment_reported', 'buyer_card_link_ready']) {
+        assert.equal(notificationTransport(key), 'sms');
+    }
+    assert.equal(notificationTransport('buyer_payment_confirmed'), 'alimtalk');
+    const spec = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'config', 'kakao-alimtalk-templates.json'), 'utf8'));
+    const byKey = Object.fromEntries(spec.templates.map((entry) => [entry.key, entry]));
+    for (const key of ['buyer_win_initial', 'buyer_win_additional', 'vendor_win', 'vendor_payment_reported', 'buyer_card_link_ready']) {
+        assert.equal(byKey[key].transport, 'sms');
+    }
+    assert.equal(byKey.buyer_payment_confirmed.transport, 'alimtalk');
+    assert.equal(byKey.buyer_payment_confirmed.link, '');
+    assert.equal(byKey.buyer_payment_confirmed.buttonName, '');
+});
+
+test('Aligo provider sends a payment action as URL-encoded LMS without a Kakao template', async () => {
     let request;
-    const provider = new NhnCloudAlimtalkProvider({
-        appKey: 'app-key',
-        secretKey: 'secret-key',
-        senderKey: 'sender-key',
-        templateCodes: { buyer_win_initial: 'BUYER_WIN_01' },
+    const provider = new AligoNotificationProvider({
+        apiKey: 'api-key', userId: 'user-id', from: '01049278600',
         fetchImpl: async (url, options) => {
-            request = { url, options, body: JSON.parse(options.body) };
-            return {
-                ok: true,
-                status: 200,
-                json: async () => ({
-                    header: { resultCode: 0, resultMessage: 'SUCCESS', isSuccessful: true },
-                    message: {
-                        requestId: 'request-1',
-                        senderGroupingKey: notificationId('basic', 'sale:item-a:cycle-1', 'buyer_win_initial', 'buyer'),
-                        sendResults: [{ recipientSeq: 1, recipientNo: '01012345678', resultCode: 0, resultMessage: 'SUCCESS' }]
-                    }
-                })
-            };
+            request = { url, options, body: new URLSearchParams(options.body) };
+            return { ok: true, status: 200, json: async () => ({ result_code: 1, msg_id: 1234, success_cnt: 1, error_cnt: 0 }) };
         }
     });
-    const notification = { ...event(), id: notificationId('basic', 'sale:item-a:cycle-1', 'buyer_win_initial', 'buyer') };
+    const notification = { ...event(), id: 'ntf_sms', transport: 'sms', fallbackText: `낙찰 안내입니다.\n${'https://creok.onrender.com/s/example'.repeat(3)}` };
 
     const result = await provider.send(notification);
 
-    assert.equal(result.messageId, 'request-1');
-    assert.equal(result.groupId, notification.id);
-    assert.equal(request.url, 'https://kakaotalk-bizmessage.api.nhncloudservice.com/alimtalk/v2.2/appkeys/app-key/messages');
-    assert.equal(request.options.headers['X-Secret-Key'], 'secret-key');
-    assert.deepEqual(request.body, {
-        senderKey: 'sender-key',
-        templateCode: 'BUYER_WIN_01',
-        senderGroupingKey: notification.id,
-        recipientList: [{
-            recipientNo: '01012345678',
-            templateParameter: { '#{구매자명}': '김상정', '#{접속코드}': 'abc12345678' },
-            recipientGroupingKey: notification.id
-        }]
-    });
+    assert.equal(result.messageId, '1234');
+    assert.equal(request.url, 'https://apis.aligo.in/send/');
+    assert.equal(request.body.get('key'), 'api-key');
+    assert.equal(request.body.get('user_id'), 'user-id');
+    assert.equal(request.body.get('receiver'), '01012345678');
+    assert.equal(request.body.get('msg_type'), 'LMS');
+    assert.equal(request.body.get('testmode_yn'), 'N');
+    assert.equal(request.body.has('senderkey'), false);
 });
 
-test('NHN Cloud is the default checkout notification provider and Solapi is explicit rollback only', () => {
-    const previous = process.env.CREO_ALIMTALK_PROVIDER;
-    delete process.env.CREO_ALIMTALK_PROVIDER;
-    try {
-        assert.ok(createDefaultAlimtalkProvider() instanceof NhnCloudAlimtalkProvider);
-        assert.ok(createDefaultAlimtalkProvider('nhn-cloud') instanceof NhnCloudAlimtalkProvider);
-        assert.ok(createDefaultAlimtalkProvider('solapi') instanceof SolapiAlimtalkProvider);
-    } finally {
-        if (previous === undefined) delete process.env.CREO_ALIMTALK_PROVIDER;
-        else process.env.CREO_ALIMTALK_PROVIDER = previous;
-    }
-});
-
-test('NHN Cloud provider rejects an unsuccessful recipient result without exposing credentials', async () => {
-    const provider = new NhnCloudAlimtalkProvider({
-        appKey: 'app-key',
-        secretKey: 'secret-key',
-        senderKey: 'sender-key',
-        templateCodes: { buyer_win_initial: 'BUYER_WIN_01' },
-        fetchImpl: async () => ({
-            ok: true,
-            status: 200,
-            json: async () => ({
-                header: { resultCode: 0, resultMessage: 'SUCCESS', isSuccessful: true },
-                message: { sendResults: [{ resultCode: -1, resultMessage: '템플릿 불일치' }] }
-            })
-        })
-    });
-
-    await assert.rejects(() => provider.send({ ...event(), id: 'ntf_test' }), /템플릿 불일치/);
-});
-
-test('Solapi provider creates an authenticated AlimTalk request with SMS fallback', async () => {
+test('Aligo provider renders an approved status template without payment-link fallback', async () => {
     let request;
-    const provider = new SolapiAlimtalkProvider({
-        apiKey: 'api-key',
-        apiSecret: 'api-secret',
-        pfId: 'PF123',
-        from: '01049278600',
-        templateIds: { buyer_win_initial: 'TPL123' },
+    const provider = new AligoNotificationProvider({
+        apiKey: 'api-key', userId: 'user-id', senderKey: 'sender-key', from: '01049278600',
+        templates: {
+            buyer_payment_confirmed: {
+                code: 'UK_APPROVED', subject: '결제 확인 완료',
+                content: '#{구매자명}님, #{업체명} 결제가 확인되었습니다.'
+            }
+        },
         fetchImpl: async (url, options) => {
-            request = { url, options, body: JSON.parse(options.body) };
-            return { ok: true, status: 200, json: async () => ({ errorCount: 0, resultList: [{ messageId: 'M1', groupId: 'G1', statusCode: '2000' }] }) };
+            request = { url, options, body: new URLSearchParams(options.body) };
+            return { ok: true, status: 200, json: async () => ({ code: 0, info: { mid: 5678, scnt: 1, fcnt: 0 } }) };
         }
     });
-
-    const result = await provider.send(event());
-
-    assert.equal(result.messageId, 'M1');
-    assert.equal(request.url, 'https://api.solapi.com/messages/v4/send-many/detail');
-    assert.match(request.options.headers.Authorization, /^HMAC-SHA256 apiKey=api-key, date=/);
-    assert.deepEqual(request.body.messages[0].kakaoOptions, {
-        pfId: 'PF123', templateId: 'TPL123', disableSms: false,
-        variables: { '#{구매자명}': '김상정', '#{접속코드}': 'abc12345678' }
+    const notification = event({
+        id: 'ntf_alimtalk', templateKey: 'buyer_payment_confirmed', transport: 'alimtalk',
+        variables: { 구매자명: '김상정', 업체명: '테스트업체' },
+        fallbackText: '문자용 링크가 포함될 수 있지만 알림톡 본문에는 사용하지 않습니다. https://example.com'
     });
-    assert.equal(request.body.messages[0].from, '01049278600');
-    assert.equal(request.body.allowDuplicates, false);
+
+    const result = await provider.send(notification);
+
+    assert.equal(result.messageId, '5678');
+    assert.equal(request.url, 'https://kakaoapi.aligo.in/akv10/alimtalk/send/');
+    assert.equal(request.body.get('tpl_code'), 'UK_APPROVED');
+    assert.equal(request.body.get('message_1'), '김상정님, 테스트업체 결제가 확인되었습니다.');
+    assert.equal(request.body.get('failover'), 'N');
+    assert.equal(request.body.get('button_1'), null);
 });
 
-test('Solapi authorization signature is stable for a fixed date and salt', () => {
-    const value = solapiAuthorization('key', 'secret', new Date('2026-09-02T00:00:00.000Z'), 'salt');
-    assert.equal(value, 'HMAC-SHA256 apiKey=key, date=2026-09-02T00:00:00.000Z, salt=salt, signature=90ead2be5ffc4bd11aa94c14767e33e7064658044363fb18d70e18d04977b03a');
+test('missing AlimTalk approval falls back to configured Aligo SMS once', async () => {
+    const repository = new MemoryRepository();
+    const sent = [];
+    const provider = new AligoNotificationProvider({
+        apiKey: 'api-key', userId: 'user-id', from: '01049278600',
+        fetchImpl: async (url, options) => {
+            sent.push({ url, body: new URLSearchParams(options.body) });
+            return { ok: true, status: 200, json: async () => ({ result_code: 1, msg_id: 999, success_cnt: 1, error_cnt: 0 }) };
+        }
+    });
+    const service = new CheckoutNotificationService({ repository, provider, now: () => Date.parse('2026-09-02T00:00:00Z') });
+    const queued = await service.enqueue('basic', event({ templateKey: 'buyer_payment_confirmed', transport: 'alimtalk' }));
+
+    assert.equal(queued.record.transport, 'sms');
+    assert.equal(queued.record.status, 'queued');
+    await service.flushChannel('basic');
+    assert.equal(sent.length, 1);
+    assert.equal(sent[0].url, 'https://apis.aligo.in/send/');
+});
+
+test('a pre-deploy pending AlimTalk record migrates to Aligo SMS after restart', async () => {
+    const repository = new MemoryRepository();
+    const id = notificationId('basic', 'confirmed:legacy', 'buyer_payment_confirmed', 'buyer');
+    await repository.upsertRecord('basic', 'notification', {
+        id,
+        eventKey: 'confirmed:legacy',
+        templateKey: 'buyer_payment_confirmed',
+        transport: 'alimtalk',
+        recipientRole: 'buyer',
+        recipientPhone: '01012345678',
+        variables: { 구매자명: '김상정' },
+        fallbackText: '결제 확인 완료 안내',
+        status: 'configuration_pending',
+        attempts: 0,
+        nextAttemptAt: '2026-09-01T00:00:00.000Z',
+        expiresAt: '2026-09-05T00:00:00.000Z'
+    });
+    let sends = 0;
+    const provider = new AligoNotificationProvider({
+        apiKey: 'api-key', userId: 'user-id', from: '01049278600',
+        fetchImpl: async () => {
+            sends += 1;
+            return { ok: true, status: 200, json: async () => ({ result_code: 1, msg_id: 1000, success_cnt: 1, error_cnt: 0 }) };
+        }
+    });
+    const service = new CheckoutNotificationService({ repository, provider, now: () => Date.parse('2026-09-02T00:00:00Z') });
+
+    await service.flushChannel('basic');
+    const stored = await repository.getRecord('basic', 'notification', id);
+
+    assert.equal(sends, 1);
+    assert.equal(stored.transport, 'sms');
+    assert.equal(stored.status, 'sent');
 });

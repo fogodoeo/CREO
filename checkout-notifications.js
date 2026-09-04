@@ -20,8 +20,33 @@ const TEMPLATE_KEYS = Object.freeze([
     'buyer_payment_confirmed'
 ]);
 
+const NOTIFICATION_TRANSPORTS = Object.freeze(['alimtalk', 'sms']);
+const ACTION_SMS_TEMPLATE_KEYS = new Set([
+    'buyer_win_initial',
+    'buyer_win_additional',
+    'vendor_win',
+    'vendor_payment_reported',
+    'buyer_card_link_ready'
+]);
+
+function notificationTransport(templateKey) {
+    return ACTION_SMS_TEMPLATE_KEYS.has(templateKey) ? 'sms' : 'alimtalk';
+}
+
 function text(value, limit = 1000) {
     return String(value ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, limit);
+}
+
+function messageText(value, limit = 2000) {
+    return String(value ?? '')
+        .replace(/\r\n?/g, '\n')
+        .replace(/[\u0000-\u0009\u000b-\u001f\u007f]/g, ' ')
+        .split('\n')
+        .map((line) => line.replace(/[ \t]+/g, ' ').trim())
+        .join('\n')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim()
+        .slice(0, limit);
 }
 
 function phone(value) {
@@ -50,14 +75,20 @@ function parseTemplateIds(value) {
     }
 }
 
-function firstConfigured(...values) {
-    return values.map((value) => String(value || '').trim()).find(Boolean) || '';
+function templateVariables(value = {}) {
+    const result = safeVariables(value);
+    return Object.fromEntries(Object.entries(result).map(([key, entry]) => [key.slice(2, -1), entry]));
 }
 
-function solapiAuthorization(apiKey, apiSecret, now = new Date(), salt = crypto.randomBytes(32).toString('hex')) {
-    const date = now.toISOString();
-    const signature = crypto.createHmac('sha256', String(apiSecret)).update(`${date}${salt}`).digest('hex');
-    return `HMAC-SHA256 apiKey=${apiKey}, date=${date}, salt=${salt}, signature=${signature}`;
+function renderTemplate(content, variables = {}) {
+    const safe = safeVariables(variables);
+    let rendered = String(content || '');
+    for (const [key, value] of Object.entries(safe)) rendered = rendered.split(key).join(value);
+    return rendered;
+}
+
+function firstConfigured(...values) {
+    return values.map((value) => String(value || '').trim()).find(Boolean) || '';
 }
 
 function notificationId(channelId, eventKey, templateKey, recipientRole) {
@@ -75,10 +106,13 @@ function normalizeNotification(input = {}, current = {}) {
         id: text(input.id || current.id, 64),
         eventKey: text(input.eventKey || current.eventKey, 120),
         templateKey: TEMPLATE_KEYS.includes(input.templateKey) ? input.templateKey : current.templateKey,
+        transport: NOTIFICATION_TRANSPORTS.includes(input.transport)
+            ? input.transport
+            : (NOTIFICATION_TRANSPORTS.includes(current.transport) ? current.transport : notificationTransport(input.templateKey || current.templateKey)),
         recipientRole: ['buyer', 'vendor'].includes(input.recipientRole) ? input.recipientRole : current.recipientRole,
         recipientPhone: phone(input.recipientPhone || current.recipientPhone),
         variables: safeVariables(input.variables || current.variables),
-        fallbackText: text(input.fallbackText || current.fallbackText, 2000),
+        fallbackText: messageText(input.fallbackText || current.fallbackText, 2000),
         status,
         attempts: Math.max(0, Number.parseInt(input.attempts ?? current.attempts, 10) || 0),
         providerMessageId: text(input.providerMessageId || current.providerMessageId, 120),
@@ -90,189 +124,145 @@ function normalizeNotification(input = {}, current = {}) {
     };
 }
 
-class SolapiAlimtalkProvider {
+class AligoNotificationProvider {
     constructor(options = {}) {
-        this.apiKey = String(options.apiKey || process.env.SOLAPI_API_KEY || '').trim();
-        this.apiSecret = String(options.apiSecret || process.env.SOLAPI_API_SECRET || '').trim();
-        this.pfId = String(options.pfId || process.env.SOLAPI_KAKAO_PF_ID || '').trim();
-        this.from = phone(options.from || process.env.SOLAPI_FROM_NUMBER || '');
-        this.templateIds = parseTemplateIds(options.templateIds || process.env.SOLAPI_KAKAO_TEMPLATE_IDS_JSON || '');
+        this.apiKey = firstConfigured(options.apiKey, process.env.ALIGO_API_KEY);
+        this.userId = firstConfigured(options.userId, process.env.ALIGO_USER_ID);
+        this.senderKey = firstConfigured(options.senderKey, process.env.ALIGO_KAKAO_SENDER_KEY);
+        this.from = phone(options.from || process.env.ALIGO_FROM_NUMBER || '');
+        const definitions = parseTemplateIds(options.templates || process.env.ALIGO_KAKAO_TEMPLATES_JSON || '');
+        const codes = parseTemplateIds(options.templateCodes || process.env.ALIGO_KAKAO_TEMPLATE_CODES_JSON || '');
+        const contents = parseTemplateIds(options.templateContents || process.env.ALIGO_KAKAO_TEMPLATE_CONTENTS_JSON || '');
+        this.templates = Object.fromEntries(TEMPLATE_KEYS.map((key) => {
+            const definition = definitions[key];
+            const normalized = definition && typeof definition === 'object' && !Array.isArray(definition) ? definition : {};
+            return [key, {
+                code: text(normalized.code || normalized.tplCode || codes[key], 120),
+                subject: text(normalized.subject || normalized.name || '옹동2 안내', 100),
+                content: String(normalized.content || contents[key] || ''),
+                button: normalized.button && typeof normalized.button === 'object' ? normalized.button : null
+            }];
+        }));
         this.fetch = options.fetchImpl || globalThis.fetch;
-        this.endpoint = String(options.endpoint || 'https://api.solapi.com/messages/v4/send-many/detail');
+        this.smsEndpoint = String(options.smsEndpoint || 'https://apis.aligo.in/send/');
+        this.alimtalkEndpoint = String(options.alimtalkEndpoint || 'https://kakaoapi.aligo.in/akv10/alimtalk/send/');
+        this.testMode = String(options.testMode ?? process.env.ALIGO_TEST_MODE ?? '').trim().toUpperCase() === 'Y';
     }
 
-    readiness(templateKey) {
+    readiness(templateKey, transport = notificationTransport(templateKey)) {
         const missing = [];
-        if (!this.apiKey) missing.push('SOLAPI_API_KEY');
-        if (!this.apiSecret) missing.push('SOLAPI_API_SECRET');
-        if (!this.pfId) missing.push('SOLAPI_KAKAO_PF_ID');
-        if (!this.from) missing.push('SOLAPI_FROM_NUMBER');
-        if (!this.templateIds[templateKey]) missing.push(`template:${templateKey}`);
+        if (!this.apiKey) missing.push('ALIGO_API_KEY');
+        if (!this.userId) missing.push('ALIGO_USER_ID');
+        if (!this.from) missing.push('ALIGO_FROM_NUMBER');
+        if (transport === 'alimtalk') {
+            if (!this.senderKey) missing.push('ALIGO_KAKAO_SENDER_KEY');
+            if (!this.templates[templateKey]?.code) missing.push(`template:${templateKey}`);
+            if (!this.templates[templateKey]?.content) missing.push(`content:${templateKey}`);
+        }
         return { ready: missing.length === 0, missing };
     }
 
     status() {
-        const templates = Object.fromEntries(TEMPLATE_KEYS.map((key) => [key, this.readiness(key)]));
+        const templates = Object.fromEntries(TEMPLATE_KEYS.map((key) => [key, {
+            transport: notificationTransport(key),
+            ...this.readiness(key, notificationTransport(key))
+        }]));
         return {
-            provider: 'solapi-alimtalk',
+            provider: 'aligo',
             configured: Object.values(templates).every((entry) => entry.ready),
-            profileConfigured: Boolean(this.pfId),
-            senderConfigured: Boolean(this.from),
-            templates
-        };
-    }
-
-    async send(notification) {
-        const ready = this.readiness(notification.templateKey);
-        if (!ready.ready) {
-            const error = new Error(`알림톡 설정 대기: ${ready.missing.join(', ')}`);
-            error.code = 'CONFIGURATION_PENDING';
-            throw error;
-        }
-        const kakaoOptions = {
-            pfId: this.pfId,
-            templateId: this.templateIds[notification.templateKey],
-            disableSms: false,
-            variables: safeVariables(notification.variables)
-        };
-        const response = await this.fetch(this.endpoint, {
-            method: 'POST',
-            headers: {
-                Authorization: solapiAuthorization(this.apiKey, this.apiSecret),
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                messages: [{
-                    to: notification.recipientPhone,
-                    from: this.from,
-                    text: notification.fallbackText,
-                    autoTypeDetect: true,
-                    kakaoOptions
-                }],
-                allowDuplicates: false,
-                showMessageList: true,
-                agent: { appId: 'creo-checkout', sdkVersion: 'rest/1.0.0', osPlatform: 'render' }
-            })
-        });
-        const payload = await response.json().catch(() => ({}));
-        if (!response.ok || Number(payload.errorCount) > 0) {
-            const detail = payload.errorMessage || payload.message || payload.resultList?.[0]?.statusMessage || `SOLAPI ${response.status}`;
-            throw new Error(text(detail, 500));
-        }
-        const result = payload.resultList?.[0] || {};
-        return {
-            messageId: text(result.messageId, 120),
-            groupId: text(result.groupId || payload.groupId, 120),
-            statusCode: text(result.statusCode, 40)
-        };
-    }
-}
-
-class NhnCloudAlimtalkProvider {
-    constructor(options = {}) {
-        this.appKey = firstConfigured(
-            options.appKey,
-            process.env.NHN_ALIMTALK_APP_KEY,
-            process.env.NHN_CLOUD_APP_KEY,
-            process.env.NHN_APP_KEY
-        );
-        this.secretKey = firstConfigured(
-            options.secretKey,
-            process.env.NHN_ALIMTALK_SECRET_KEY,
-            process.env.NHN_CLOUD_SECRET_KEY,
-            process.env.NHN_SECRET_KEY
-        );
-        this.senderKey = firstConfigured(
-            options.senderKey,
-            process.env.NHN_ALIMTALK_SENDER_KEY,
-            process.env.NHN_CLOUD_SENDER_KEY,
-            process.env.KAKAO_SENDER_KEY
-        );
-        this.templateCodes = parseTemplateIds(
-            options.templateCodes
-            || process.env.NHN_ALIMTALK_TEMPLATE_CODES_JSON
-            || process.env.NHN_CLOUD_TEMPLATE_CODES_JSON
-        );
-        this.fetch = options.fetchImpl || globalThis.fetch;
-        const baseUrl = String(options.baseUrl || 'https://kakaotalk-bizmessage.api.nhncloudservice.com').replace(/\/+$/, '');
-        this.endpoint = String(options.endpoint || `${baseUrl}/alimtalk/v2.2/appkeys/${encodeURIComponent(this.appKey)}/messages`);
-    }
-
-    readiness(templateKey) {
-        const missing = [];
-        if (!this.appKey) missing.push('NHN_ALIMTALK_APP_KEY');
-        if (!this.secretKey) missing.push('NHN_ALIMTALK_SECRET_KEY');
-        if (!this.senderKey) missing.push('NHN_ALIMTALK_SENDER_KEY');
-        if (!this.templateCodes[templateKey]) missing.push(`template:${templateKey}`);
-        return { ready: missing.length === 0, missing };
-    }
-
-    status() {
-        const templates = Object.fromEntries(TEMPLATE_KEYS.map((key) => [key, this.readiness(key)]));
-        return {
-            provider: 'nhn-cloud-alimtalk',
-            configured: Object.values(templates).every((entry) => entry.ready),
-            appConfigured: Boolean(this.appKey),
-            secretConfigured: Boolean(this.secretKey),
+            smsConfigured: this.readiness('buyer_win_initial', 'sms').ready,
             profileConfigured: Boolean(this.senderKey),
-            senderConfigured: Boolean(this.senderKey),
+            senderConfigured: Boolean(this.from),
+            testMode: this.testMode,
             templates
         };
     }
 
     async send(notification) {
-        const ready = this.readiness(notification.templateKey);
+        const transport = NOTIFICATION_TRANSPORTS.includes(notification.transport)
+            ? notification.transport
+            : notificationTransport(notification.templateKey);
+        const ready = this.readiness(notification.templateKey, transport);
         if (!ready.ready) {
-            const error = new Error(`알림톡 설정 대기: ${ready.missing.join(', ')}`);
+            const error = new Error(`알리고 설정 대기: ${ready.missing.join(', ')}`);
             error.code = 'CONFIGURATION_PENDING';
             throw error;
         }
-        const response = await this.fetch(this.endpoint, {
+        if (transport === 'sms') return this.sendSms(notification);
+        return this.sendAlimtalk(notification);
+    }
+
+    async sendSms(notification) {
+        const message = messageText(notification.fallbackText, 2000);
+        const params = new URLSearchParams({
+            key: this.apiKey,
+            user_id: this.userId,
+            sender: this.from,
+            receiver: notification.recipientPhone,
+            msg: message,
+            msg_type: Buffer.byteLength(message, 'utf8') <= 90 ? 'SMS' : 'LMS',
+            title: '옹동2 안내',
+            testmode_yn: this.testMode ? 'Y' : 'N'
+        });
+        const response = await this.fetch(this.smsEndpoint, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json;charset=UTF-8',
-                'X-Secret-Key': this.secretKey
-            },
-            body: JSON.stringify({
-                senderKey: this.senderKey,
-                templateCode: this.templateCodes[notification.templateKey],
-                senderGroupingKey: notification.id,
-                recipientList: [{
-                    recipientNo: notification.recipientPhone,
-                    templateParameter: safeVariables(notification.variables),
-                    recipientGroupingKey: notification.id
-                }]
-            })
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+            body: params.toString()
         });
         const payload = await response.json().catch(() => ({}));
-        const result = payload.message?.sendResults?.[0];
-        const resultCode = Number(result?.resultCode);
-        if (!response.ok || payload.header?.isSuccessful !== true || !result || !Number.isFinite(resultCode) || resultCode !== 0) {
-            const detail = result?.resultMessage
-                || payload.header?.resultMessage
-                || payload.message
-                || `NHN Cloud ${response.status}`;
-            throw new Error(text(detail, 500));
+        if (!response.ok || Number(payload.result_code) !== 1 || Number(payload.error_cnt || 0) > 0) {
+            throw new Error(text(payload.message || `ALIGO SMS ${response.status}`, 500));
         }
         return {
-            messageId: text(payload.message?.requestId, 120),
-            groupId: text(payload.message?.senderGroupingKey || notification.id, 120),
-            statusCode: text(result.resultCode, 40)
+            messageId: text(payload.msg_id, 120),
+            groupId: notification.id,
+            statusCode: text(payload.result_code, 40)
+        };
+    }
+
+    async sendAlimtalk(notification) {
+        const template = this.templates[notification.templateKey];
+        const variables = templateVariables(notification.variables);
+        const params = new URLSearchParams({
+            apikey: this.apiKey,
+            userid: this.userId,
+            senderkey: this.senderKey,
+            tpl_code: template.code,
+            sender: this.from,
+            receiver_1: notification.recipientPhone,
+            recvname_1: text(variables.구매자명 || variables.업체명, 100),
+            subject_1: template.subject,
+            message_1: renderTemplate(template.content, notification.variables),
+            failover: 'N',
+            testMode: this.testMode ? 'Y' : 'N'
+        });
+        if (template.button) params.set('button_1', JSON.stringify(template.button));
+        const response = await this.fetch(this.alimtalkEndpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+            body: params.toString()
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || Number(payload.code) !== 0 || Number(payload.info?.fcnt || 0) > 0) {
+            throw new Error(text(payload.message || `ALIGO 알림톡 ${response.status}`, 500));
+        }
+        return {
+            messageId: text(payload.info?.mid, 120),
+            groupId: notification.id,
+            statusCode: text(payload.code, 40)
         };
     }
 }
 
-function createDefaultAlimtalkProvider(providerName = process.env.CREO_ALIMTALK_PROVIDER || 'nhn-cloud') {
-    const provider = String(providerName).trim().toLowerCase();
-    if (provider === 'solapi') return new SolapiAlimtalkProvider();
-    return new NhnCloudAlimtalkProvider();
+function createDefaultNotificationProvider() {
+    return new AligoNotificationProvider();
 }
 
 class CheckoutNotificationService {
     constructor(options = {}) {
         if (!options.repository) throw new Error('repository is required');
         this.repository = options.repository;
-        this.provider = options.provider || createDefaultAlimtalkProvider();
+        this.provider = options.provider || createDefaultNotificationProvider();
         this.logger = options.logger || console;
         this.now = options.now || (() => Date.now());
         this.running = false;
@@ -280,6 +270,7 @@ class CheckoutNotificationService {
 
     async enqueue(channelId, event = {}) {
         const templateKey = TEMPLATE_KEYS.includes(event.templateKey) ? event.templateKey : '';
+        let transport = NOTIFICATION_TRANSPORTS.includes(event.transport) ? event.transport : notificationTransport(templateKey);
         const recipientPhone = phone(event.recipientPhone);
         const eventKey = text(event.eventKey, 120);
         const recipientRole = ['buyer', 'vendor'].includes(event.recipientRole) ? event.recipientRole : '';
@@ -290,11 +281,19 @@ class CheckoutNotificationService {
         const current = await this.repository.getRecord(channelId, 'notification', id);
         if (current) return { record: current, duplicate: true };
         const now = this.now();
-        const readiness = this.provider.readiness(templateKey);
+        let readiness = this.provider.readiness(templateKey, transport);
+        if (!readiness.ready && transport === 'alimtalk' && event.allowSmsFallback !== false) {
+            const smsReadiness = this.provider.readiness(templateKey, 'sms');
+            if (smsReadiness.ready) {
+                transport = 'sms';
+                readiness = smsReadiness;
+            }
+        }
         const record = normalizeNotification({
             id,
             eventKey,
             templateKey,
+            transport,
             recipientRole,
             recipientPhone,
             variables: event.variables,
@@ -330,13 +329,21 @@ class CheckoutNotificationService {
                 .filter((record) => !record.nextAttemptAt || Date.parse(record.nextAttemptAt) <= now)
                 .sort((left, right) => String(left.createdAt || '').localeCompare(String(right.createdAt || '')))
                 .slice(0, Math.max(1, Math.min(100, Number(limit) || 20)));
-            for (const current of candidates) {
+            for (const storedCurrent of candidates) {
+                let current = normalizeNotification(storedCurrent, storedCurrent);
                 if (current.expiresAt && Date.parse(current.expiresAt) <= now) {
                     await this.repository.upsertRecord(channelId, 'notification', normalizeNotification({ ...current, status: 'expired' }, current));
                     processed += 1;
                     continue;
                 }
-                const readiness = this.provider.readiness(current.templateKey);
+                let readiness = this.provider.readiness(current.templateKey, current.transport);
+                if (!readiness.ready && current.transport === 'alimtalk') {
+                    const smsReadiness = this.provider.readiness(current.templateKey, 'sms');
+                    if (smsReadiness.ready) {
+                        current = normalizeNotification({ ...current, transport: 'sms' }, current);
+                        readiness = smsReadiness;
+                    }
+                }
                 if (!readiness.ready) {
                     await this.repository.upsertRecord(channelId, 'notification', normalizeNotification({
                         ...current,
@@ -386,15 +393,16 @@ class CheckoutNotificationService {
 }
 
 module.exports = {
+    ACTION_SMS_TEMPLATE_KEYS,
+    AligoNotificationProvider,
     CheckoutNotificationService,
-    NhnCloudAlimtalkProvider,
     NOTIFICATION_STATUSES,
-    SolapiAlimtalkProvider,
     TEMPLATE_KEYS,
-    createDefaultAlimtalkProvider,
+    createDefaultNotificationProvider,
+    notificationTransport,
     normalizeNotification,
     notificationId,
+    messageText,
     parseTemplateIds,
-    safeVariables,
-    solapiAuthorization
+    safeVariables
 };
