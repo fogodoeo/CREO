@@ -22,6 +22,27 @@
         return `${Math.max(0, Math.round(Number(value) || 0)).toLocaleString('ko-KR')}원`;
     }
 
+    function formatPhone(value) {
+        const digits = String(value || '').replace(/[^0-9]/g, '');
+        if (digits.length === 11) return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+        if (digits.length === 10) return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+        return digits;
+    }
+
+    function paymentStatusMeta(value, role = 'buyer') {
+        const status = String(value || 'awaiting_information');
+        if (status === 'paid') return Object.freeze({ label: '결제 완료', tone: 'green' });
+        if (['payment_reported', 'bank_transfer_reported', 'card_payment_reported'].includes(status)) {
+            return Object.freeze({ label: role === 'vendor' ? '확인 요청' : '확인 대기', tone: 'red' });
+        }
+        if (status === 'additional_payment') return Object.freeze({ label: '추가 결제', tone: 'red' });
+        if (status === 'in_progress') return Object.freeze({ label: '결제 진행 중', tone: '' });
+        if (status === 'card_link_pending') return Object.freeze({ label: role === 'vendor' ? '카드 링크 필요' : '링크 준비 중', tone: role === 'vendor' ? 'red' : '' });
+        if (status === 'card_payment_pending') return Object.freeze({ label: '카드 결제 대기', tone: '' });
+        if (status === 'bank_transfer_pending') return Object.freeze({ label: '입금 대기', tone: '' });
+        return Object.freeze({ label: '정보 입력 대기', tone: '' });
+    }
+
     function requestId(cryptoObject = globalThis.crypto) {
         return cryptoObject?.randomUUID
             ? cryptoObject.randomUUID()
@@ -212,5 +233,5 @@
         return Object.freeze({ poll, publish, stop });
     }
 
-    return Object.freeze({ byId, createAdaptivePoller, createClient, createRevisionSync, escapeHtml, money, readCredential, requestId, resolveApiOrigin });
+    return Object.freeze({ byId, createAdaptivePoller, createClient, createRevisionSync, escapeHtml, formatPhone, money, paymentStatusMeta, readCredential, requestId, resolveApiOrigin });
 });

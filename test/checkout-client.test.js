@@ -30,6 +30,16 @@ test('checkout credentials support buyer and vendor short links', () => {
     );
 });
 
+test('buyer and vendor pages share phone formatting and canonical payment labels', () => {
+    assert.equal(Checkout.formatPhone('01012345678'), '010-1234-5678');
+    assert.equal(Checkout.formatPhone('0212345678'), '021-234-5678');
+    assert.deepEqual(Checkout.paymentStatusMeta('bank_transfer_reported', 'buyer'), { label: '확인 대기', tone: 'red' });
+    assert.deepEqual(Checkout.paymentStatusMeta('bank_transfer_reported', 'vendor'), { label: '확인 요청', tone: 'red' });
+    assert.deepEqual(Checkout.paymentStatusMeta('card_link_pending', 'buyer'), { label: '링크 준비 중', tone: '' });
+    assert.deepEqual(Checkout.paymentStatusMeta('card_link_pending', 'vendor'), { label: '카드 링크 필요', tone: 'red' });
+    assert.deepEqual(Checkout.paymentStatusMeta('paid', 'vendor'), { label: '결제 완료', tone: 'green' });
+});
+
 test('checkout API origin only accepts the service origin, production, or local development', () => {
     const production = location('/s/Buyer_123');
     assert.equal(Checkout.resolveApiOrigin(production), production.origin);

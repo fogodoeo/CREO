@@ -74,6 +74,7 @@
         const originalAmount = (selectedItems || []).reduce((sum, item) => sum + amountWon(item), 0);
         if (!policy.enabled) return { policy, winningKey: '', label: '', eligibleAmount: 0, discountAmount: 0, originalAmount, payableAuctionAmount: originalAmount };
         const winner = winningKey(policy, allItems, options.groupOrder);
+        if (!winner) return { policy, winningKey: '', label: '', eligibleAmount: 0, discountAmount: 0, originalAmount, payableAuctionAmount: originalAmount };
         const eligibleAmount = (selectedItems || []).reduce((sum, item) =>
             keyFor(policy.rule, item) === winner ? sum + amountWon(item) : sum, 0);
         const discountAmount = Math.floor(eligibleAmount * policy.ratePercent / 100);

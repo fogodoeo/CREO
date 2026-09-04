@@ -30,6 +30,19 @@ test('non-winning house and disabled policies never discount settlement', () => 
     assert.equal(Discount.calculate({ enabled: false, rule: 'winner-house', ratePercent: 10 }, [allItems[0]], allItems).discountAmount, 0);
 });
 
+test('missing competition identity never becomes an empty winning key discount', () => {
+    const unassigned = [item('', 100000), item('', 200000)];
+    const result = Discount.calculate(
+        { enabled: true, rule: 'winner-house', ratePercent: 10 },
+        unassigned,
+        unassigned
+    );
+    assert.equal(result.winningKey, '');
+    assert.equal(result.eligibleAmount, 0);
+    assert.equal(result.discountAmount, 0);
+    assert.equal(result.payableAuctionAmount, 300000);
+});
+
 test('ties follow the configured house order and vendor or buyer rules remain reusable', () => {
     const tied = [item('Y', 100000), item('G', 100000)];
     assert.equal(Discount.calculate({ enabled: true, rule: 'winner-house', ratePercent: 10 }, tied, tied).winningKey, 'G');

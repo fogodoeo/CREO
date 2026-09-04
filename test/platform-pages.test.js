@@ -387,6 +387,7 @@ test('shipping status exposes privacy-minimized notification delivery diagnostic
 test('buyer and vendor checkout pages are short-code based and support the full payment workflow', () => {
     const source = fs.readFileSync(path.join(__dirname, '..', 'public', 'buyer-shipping.html'), 'utf8');
     const vendor = fs.readFileSync(path.join(__dirname, '..', 'public', 'vendor-checkout.html'), 'utf8');
+    const checkoutRules = fs.readFileSync(path.join(__dirname, '..', 'public', 'checkout-rules.js'), 'utf8');
     const checkoutClient = fs.readFileSync(path.join(__dirname, '..', 'public', 'checkout-client.js'), 'utf8');
     const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
     assert.match(source, /id="destinations"/);
@@ -401,7 +402,11 @@ test('buyer and vendor checkout pages are short-code based and support the full 
     assert.match(source, /class="vendor-contact"/);
     assert.match(source, /vendor\.contact\?\.phone/);
     assert.match(source, /href="\/checkout-ui\.css/);
+    assert.match(source, /src="\/checkout-rules\.js/);
     assert.match(source, /src="\/checkout-client\.js/);
+    assert.match(source, /Rules\.allocateShipping/);
+    assert.doesNotMatch(source, /const ordered=\[\.\.\.state\.data\.items\].*allocations\.set/);
+    assert.match(checkoutRules, /function allocateShipping/);
     assert.match(source, /Checkout\.createClient/);
     assert.match(source, /\/api\/platform\/buyer-shipping/);
     assert.match(source, /\/report-payment/);
@@ -410,8 +415,9 @@ test('buyer and vendor checkout pages are short-code based and support the full 
     assert.match(source, /저장되었습니다\./);
     assert.match(source, /선택 내용이 각 업체에 전달되었습니다/);
     assert.match(source, /data\.submittedAt\?'변경 내용 저장':'배송지와 결제방식 저장'/);
-    assert.match(source, /status==='paid'\)return\['결제 완료'/);
-    assert.match(source, /status==='additional_payment'\)return\['추가 결제'/);
+    assert.match(source, /Checkout\.paymentStatusMeta\(status,'buyer'\)/);
+    assert.match(checkoutClient, /status === 'paid'\) return Object\.freeze\(\{ label: '결제 완료'/);
+    assert.match(checkoutClient, /status === 'additional_payment'\) return Object\.freeze\(\{ label: '추가 결제'/);
     assert.match(source, /입금했습니다/);
     assert.match(source, /id="sync"[^>]*role="status">실시간/);
     assert.doesNotMatch(source, /\/broadcast-pulse/);
@@ -423,6 +429,7 @@ test('buyer and vendor checkout pages are short-code based and support the full 
     assert.match(vendor, /href="\/checkout-ui\.css/);
     assert.match(vendor, /src="\/checkout-client\.js/);
     assert.match(vendor, /Checkout\.createClient/);
+    assert.match(vendor, /Checkout\.paymentStatusMeta\(value,'vendor'\)/);
     assert.match(vendor, /\/api\/platform\/vendor-checkout/);
     assert.match(vendor, /\/card-link/);
     assert.match(vendor, /\/confirm-payment/);

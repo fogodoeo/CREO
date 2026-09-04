@@ -3,6 +3,11 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const Checkout = require('../checkout-core');
+const BrowserCheckout = require('../public/checkout-rules');
+
+test('server and buyer page import one checkout rules implementation', () => {
+    assert.strictEqual(Checkout, BrowserCheckout);
+});
 
 test('global shipping allocation charges the base once and later items by sequence across vendors', () => {
     const items = [
