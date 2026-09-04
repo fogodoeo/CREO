@@ -1144,6 +1144,12 @@ test('shared registration workspace rejects stale cross-channel responses', () =
     assert.match(workspace, /response\.channel\?\.id!==requestedChannelId/);
     assert.match(workspace, /editing=\{type,id:record\?\.id\|\|'',channelId\}/);
     assert.match(workspace, /editing\.channelId!==channelId/);
+    assert.match(workspace, /function endpoint\(type,id='',targetChannelId=channelId\)/);
+    assert.match(workspace, /if\(livePending\)return/);
+    assert.match(workspace, /if\(recordPending\)return/);
+    assert.match(workspace, /requestedChannelId!==channelId/);
+    assert.match(workspace, /id="save-record"/);
+    assert.doesNotMatch(workspace, /const baseRender=render|const baseOpenModal=openModal/);
     assert.doesNotMatch(workspace, /get\('channel'\)\|\|['"]cdcup['"]/);
     assert.match(control, /workspaceLoadSequence/);
     assert.match(control, /nextWorkspace\.channel\?\.id!==requestedChannelId/);
