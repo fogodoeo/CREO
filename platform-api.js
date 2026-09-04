@@ -2684,6 +2684,47 @@ function createPlatformApi({
                 return true;
             }
 
+            if (segments.length === 3 && segments[2] === 'notifications' && method === 'GET') {
+                if (!await requireAdmin(req, res)) return true;
+                const limit = Math.max(1, Math.min(500, Number(url.searchParams.get('limit')) || 120));
+                const loadedRecords = notificationService && typeof notificationService.list === 'function'
+                    ? await notificationService.list(channelId, limit)
+                    : [];
+                const records = Array.isArray(loadedRecords) ? loadedRecords : [];
+                const counts = {
+                    total: records.length,
+                    queued: 0,
+                    configuration_pending: 0,
+                    sending: 0,
+                    sent: 0,
+                    failed: 0,
+                    expired: 0
+                };
+                const notifications = records.map((record) => {
+                    const status = Object.prototype.hasOwnProperty.call(counts, record.status) ? record.status : 'failed';
+                    counts[status] += 1;
+                    const digits = String(record.recipientPhone || '').replace(/[^0-9]/g, '');
+                    return {
+                        id: cleanText(record.id, 64),
+                        templateKey: cleanText(record.templateKey, 80),
+                        transport: record.transport === 'alimtalk' ? 'alimtalk' : 'sms',
+                        recipientRole: record.recipientRole === 'vendor' ? 'vendor' : 'buyer',
+                        recipientPhoneLast4: digits.slice(-4),
+                        status,
+                        attempts: Math.max(0, Number(record.attempts) || 0),
+                        lastError: cleanText(record.lastError, 300),
+                        createdAt: cleanText(record.createdAt, 80),
+                        updatedAt: cleanText(record.updatedAt, 80),
+                        sentAt: cleanText(record.sentAt, 80)
+                    };
+                });
+                const delivery = notificationService && typeof notificationService.health === 'function'
+                    ? notificationService.health()
+                    : { provider: 'disabled', configured: false, smsConfigured: false };
+                replyJson(res, 200, { channelId, delivery, counts, notifications });
+                return true;
+            }
+
             if (segments.length === 3 && segments[2] === 'audience' && method === 'GET') {
                 const data = await workspace(channelId);
                 const audience = audienceCompetitionEnabled(channel)

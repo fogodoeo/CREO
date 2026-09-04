@@ -380,6 +380,44 @@ test('a sold transition queues buyer and vendor notices once without blocking th
     assert.equal(pulseAfterDuplicate.json().checkoutRevision, pulseAfterSale.json().checkoutRevision);
 });
 
+test('notification delivery status is admin-only, channel-scoped, and privacy-minimized', async () => {
+    const repository = new MemoryRepository();
+    const records = [{
+        id: 'notice-one',
+        templateKey: 'buyer_win_initial',
+        transport: 'sms',
+        recipientRole: 'buyer',
+        recipientPhone: '01012345678',
+        variables: { 구매자명: '노출되면 안 됨' },
+        fallbackText: '비공개 결제 링크 https://secret.example.com',
+        status: 'failed',
+        attempts: 2,
+        lastError: 'temporary provider error',
+        createdAt: '2026-09-04T01:00:00.000Z',
+        updatedAt: '2026-09-04T01:01:00.000Z'
+    }];
+    const notificationService = {
+        async list(channelId, limit) {
+            assert.equal(channelId, 'alpha');
+            assert.equal(limit, 40);
+            return records;
+        },
+        health() { return { provider: 'aligo', configured: false, smsConfigured: true }; }
+    };
+    const api = createPlatformApi({ repository, notificationService, logger: { error() {}, warn() {} } });
+
+    const denied = await call(api, 'GET', '/api/platform/channels/alpha/notifications?limit=40', null, '');
+    assert.equal(denied.status, 401);
+    const response = await call(api, 'GET', '/api/platform/channels/alpha/notifications?limit=40');
+    assert.equal(response.status, 200, response.body);
+    assert.equal(response.json().channelId, 'alpha');
+    assert.equal(response.json().delivery.provider, 'aligo');
+    assert.equal(response.json().counts.failed, 1);
+    assert.equal(response.json().notifications[0].recipientPhoneLast4, '5678');
+    assert.equal(response.json().notifications[0].lastError, 'temporary provider error');
+    assert.doesNotMatch(response.body, /01012345678|노출되면 안 됨|secret\.example\.com/);
+});
+
 test('BASIC sold transition assigns phone parity and rolls dice exactly once per lifecycle', async () => {
     const repository = new MemoryRepository();
     repository.catalog.channels[0] = normalizeChannel({

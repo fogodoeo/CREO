@@ -38,7 +38,7 @@
         .section-title small { color:var(--blue); font-size:10px; font-weight:850; letter-spacing:.1em; }
         .section-title h2 { margin:4px 0 3px; font-size:18px; }
         .section-title p { margin:0; color:var(--muted); font-size:12px; }
-        .basis-tabs { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-bottom:10px; padding:5px; border:1px solid var(--line); border-radius:14px; background:#eef2f7; }
+        .basis-tabs { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:10px; padding:5px; border:1px solid var(--line); border-radius:14px; background:#eef2f7; }
         .basis-tab { min-height:42px; border:0; border-radius:10px; background:transparent; color:#64748b; font-size:12px; font-weight:850; cursor:pointer; }
         .basis-tab.active { background:#fff; color:var(--blue); box-shadow:0 3px 10px rgba(23,32,51,.09); }
         .view { display:none; }
@@ -100,6 +100,15 @@
         .log-box { min-width:0; padding:10px; border-radius:9px; background:#f8fafc; }
         .log-box span { display:block; color:#7a8493; font-size:8px; font-weight:800; }
         .log-box b { display:block; margin-top:4px; color:#344054; font-size:10px; line-height:1.45; word-break:break-word; }
+        .notification-summary { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:12px; }
+        .notification-stat { padding:12px 13px; border:1px solid var(--line); border-radius:11px; background:#fafbfd; }
+        .notification-stat span { display:block; color:#7b8492; font-size:9px; font-weight:750; }
+        .notification-stat strong { display:block; margin-top:4px; font-size:17px; }
+        .notification-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+        .notification-head strong { display:block; font-size:13px; }
+        .notification-head small { display:block; margin-top:3px; color:var(--muted); font-size:9px; }
+        .notification-meta { display:flex; flex-wrap:wrap; gap:5px; margin-top:10px; }
+        .notification-error { margin-top:9px; padding:8px 9px; border-radius:8px; background:#fef2f2; color:var(--red); font-size:9px; line-height:1.45; }
         .empty { padding:34px 12px; color:#98a2b3; font-size:12px; text-align:center; }
         .loading { position:fixed; inset:0; z-index:20; display:grid; place-items:center; background:rgba(244,247,251,.86); color:#475569; font-size:13px; font-weight:800; backdrop-filter:blur(4px); }
         .toast { position:fixed; left:50%; bottom:60px; z-index:30; transform:translate(-50%,20px); padding:11px 15px; border-radius:10px; background:#172033; color:#fff; font-size:11px; font-weight:750; opacity:0; pointer-events:none; transition:.2s; }
@@ -113,7 +122,6 @@
             .hero { padding:15px; }
             .mode-section { padding:9px; border-radius:13px; }
             .hero h1 { font-size:23px; }
-            .stats { grid-template-columns:repeat(2,1fr); }
             .stats { grid-template-columns:repeat(3,1fr); }
             .stat:nth-child(2) { border-right:1px solid var(--line); }
             .directory { grid-template-columns:1fr; max-height:none; }
@@ -122,6 +130,7 @@
             .log-grid { grid-template-columns:1fr; }
             .company-item { grid-template-columns:1fr auto; }
             .company-item .company-winner,.company-item .company-shipping { grid-column:1/-1; }
+            .notification-summary { grid-template-columns:repeat(2,1fr); }
         }
     </style>
 </head>
@@ -137,6 +146,7 @@
             <button class="basis-tab active" id="basis-winner" type="button" onclick="openMode('winner')">낙찰자</button>
             <button class="basis-tab" id="basis-company" type="button" onclick="openMode('company')">업체</button>
             <button class="basis-tab" id="basis-audit" type="button" onclick="openMode('audit')">변경내역</button>
+            <button class="basis-tab" id="basis-notification" type="button" onclick="openMode('notification')">알림</button>
         </div>
 
         <section class="mode-section view active" id="mode-winner">
@@ -154,6 +164,11 @@
         <section class="mode-section view" id="mode-audit">
             <div class="result" id="audit-result"></div>
         </section>
+
+        <section class="mode-section view" id="mode-notification">
+            <div class="notification-summary" id="notification-summary"></div>
+            <div class="log-list" id="notification-list"></div>
+        </section>
     </main>
     <nav class="app-bottom-nav" aria-label="CREO 공통 페이지 이동">
         <a href="shipping.html">배송관리</a>
@@ -166,6 +181,7 @@
         let winnerGroups = [];
         let companyGroups = [];
         let auditLogs = [];
+        let notificationState = { delivery:{ provider:'disabled', configured:false, smsConfigured:false }, counts:{}, notifications:[] };
         const SHIPPING_CHANNEL_ID = CreoOperationChannel.channelIdFromLocation(location);
         if (!SHIPPING_CHANNEL_ID) location.replace('/');
         const shippingOperation = SHIPPING_CHANNEL_ID ? CreoOperationChannel.create({
@@ -173,7 +189,7 @@
             onReady: syncShippingChannelUi
         }) : null;
         const MOBILE_STATUS_HISTORY = matchMedia('(max-width:820px)').matches;
-        const REQUESTED_MODE = ['winner','company','audit'].includes(new URLSearchParams(location.search).get('view')) ? new URLSearchParams(location.search).get('view') : 'winner';
+        const REQUESTED_MODE = ['winner','company','audit','notification'].includes(new URLSearchParams(location.search).get('view')) ? new URLSearchParams(location.search).get('view') : 'winner';
         let activeMode = REQUESTED_MODE;
         let selectedWinnerKey = '';
         let winnerSearchActive = false;
@@ -329,6 +345,7 @@
                 renderCompanies('');
             }
             if(mode==='audit') renderAuditLogs();
+            if(mode==='notification') renderNotifications();
             window.scrollTo({top:0,behavior:'smooth'});
         }
         function renderStats() {
@@ -393,10 +410,49 @@
             if(!box) return;
             box.innerHTML=auditLogs.length?'<div class="result-head"><strong>최근 변경 '+auditLogs.length+'건</strong><span>최신순</span></div><div class="log-list">'+auditLogs.map(auditLogHtml).join('')+'</div>':'<div class="empty">아직 기록된 배송 변경 이력이 없습니다.</div>';
         }
+        function notificationStatusMeta(status) {
+            return {
+                sent:['발송 완료','complete'],
+                queued:['발송 대기','partial'],
+                configuration_pending:['설정 대기','partial'],
+                sending:['발송 중','partial'],
+                failed:['발송 실패','mismatch'],
+                expired:['만료','mismatch']
+            }[status] || ['확인 필요','mismatch'];
+        }
+        function notificationTemplateLabel(key) {
+            return {
+                buyer_win_initial:'최초 낙찰 안내',
+                buyer_win_additional:'추가 낙찰 안내',
+                vendor_win:'업체 낙찰 안내',
+                vendor_payment_reported:'결제 신고 안내',
+                buyer_card_link_ready:'카드결제 링크',
+                buyer_payment_confirmed:'결제 확인 완료'
+            }[key] || key || '알림';
+        }
+        function notificationHtml(row) {
+            const status=notificationStatusMeta(row.status);
+            const role=row.recipientRole==='vendor'?'업체':'구매자';
+            const transport=row.transport==='alimtalk'?'알림톡':'문자';
+            const time=fmtTime(row.sentAt||row.updatedAt||row.createdAt);
+            return '<article class="log-card"><div class="notification-head"><div><strong>'+esc(notificationTemplateLabel(row.templateKey))+'</strong><small>'+esc(role)+' · '+esc(transport)+' · 연락처 끝 '+esc(row.recipientPhoneLast4||'----')+'</small></div><span class="badge '+status[1]+'">'+status[0]+'</span></div><div class="notification-meta"><span class="badge">'+esc(time)+'</span><span class="badge">시도 '+Number(row.attempts||0)+'회</span></div>'+(row.lastError?'<div class="notification-error">'+esc(row.lastError)+'</div>':'')+'</article>';
+        }
+        function renderNotifications() {
+            const delivery=notificationState.delivery||{},counts=notificationState.counts||{},rows=notificationState.notifications||[];
+            const pending=Number(counts.queued||0)+Number(counts.configuration_pending||0)+Number(counts.sending||0);
+            const provider=delivery.provider==='aligo'?'알리고':delivery.provider||'미설정';
+            document.getElementById('notification-summary').innerHTML=[
+                ['전송기',provider],['발송 완료',Number(counts.sent||0)+'건'],['대기',pending+'건'],['실패',Number(counts.failed||0)+Number(counts.expired||0)+'건']
+            ].map(([label,value])=>'<article class="notification-stat"><span>'+esc(label)+'</span><strong>'+esc(value)+'</strong></article>').join('');
+            const setupNote=delivery.error
+                ? '<div class="notification-error">알림 현황을 불러오지 못했습니다. 배송 자료는 정상적으로 계속 사용할 수 있습니다.</div>'
+                : delivery.smsConfigured?'':'<div class="notification-error">문자 발송 설정이 완료되지 않았습니다. Render의 알리고 환경변수를 확인해 주세요.</div>';
+            document.getElementById('notification-list').innerHTML=setupNote+(rows.length?rows.map(notificationHtml).join(''):'<div class="empty">이 채널의 자동 알림 기록이 없습니다.</div>');
+        }
         function showToast(text){const t=document.getElementById('toast');t.textContent=text;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2400);}
         async function loadData() {
             document.getElementById('loading').style.display='grid';
-            try { const operation=await shippingOperation.ready();const [items, logs]=await Promise.all([shippingOperation.loadShippingItems(), operation.adapter.id==='legacy-cdcup'&&typeof getShippingAuditLogs==='function'?getShippingAuditLogs(120):Promise.resolve([])]); auditLogs=logs||[]; soldItems=(items||[]).filter(i=>CreoAuctionContract.isSoldStatus(i.status)||Number(i.soldPrice||i.sold_price)>0); buildGroups(); buildCompanyGroups(); renderStats(); renderWinnerDirectory(''); renderCompanies(''); renderAuditLogs(); openMode(activeMode,true); }
+            try { const operation=await shippingOperation.ready();const [items, logs, notifications]=await Promise.all([shippingOperation.loadShippingItems(), operation.adapter.id==='legacy-cdcup'&&typeof getShippingAuditLogs==='function'?getShippingAuditLogs(120):Promise.resolve([]),CreoPlatform.api(`channels/${encodeURIComponent(SHIPPING_CHANNEL_ID)}/notifications?limit=120`).catch(error=>({delivery:{provider:'unavailable',configured:false,smsConfigured:false,error:error.message},counts:{},notifications:[]}))]); auditLogs=logs||[]; notificationState=notifications||notificationState; soldItems=(items||[]).filter(i=>CreoAuctionContract.isSoldStatus(i.status)||Number(i.soldPrice||i.sold_price)>0); buildGroups(); buildCompanyGroups(); renderStats(); renderWinnerDirectory(''); renderCompanies(''); renderAuditLogs(); renderNotifications(); openMode(activeMode,true); }
             catch(e){ console.error(e); document.getElementById('mode-'+activeMode).innerHTML='<div class="empty">데이터를 불러오지 못했습니다.</div>'; }
             finally { document.getElementById('loading').style.display='none'; }
         }

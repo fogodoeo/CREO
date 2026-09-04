@@ -367,11 +367,21 @@ test('shipping editor exposes one buyer message action and a subdued payment con
 test('shipping mutations refresh only current data and preserve the active editor', () => {
     const shipping = fs.readFileSync(path.join(__dirname, '..', 'public', 'shipping.html'), 'utf8');
     assert.doesNotMatch(shipping, /location\.reload\(\)/);
-    assert.match(shipping, /async function refreshShippingWorkspace\(\{ preserveEditor = false, refreshOverview = false \} = \{\}\)/);
+    assert.match(shipping, /async function refreshShippingWorkspace\(\{ preserveEditor = false \} = \{\}\)/);
     assert.match(shipping, /if \(revision !== shippingRefreshRevision\) return false/);
-    assert.match(shipping, /refreshShippingWorkspace\(\{ preserveEditor: true, refreshOverview: true \}\)/);
+    assert.match(shipping, /refreshShippingWorkspace\(\{ preserveEditor: true \}\)/);
     assert.match(shipping, /if \(paymentConfirmationPending\) return/);
     assert.match(shipping, /openWinnerEditor\(restoreWinnerKey, \{ syncHistory: false, align: false \}\)/);
+    assert.doesNotMatch(shipping, /registration-overview|renderRegistrationOverview|refreshOverview/);
+});
+
+test('shipping status exposes privacy-minimized notification delivery diagnostics', () => {
+    const status = fs.readFileSync(path.join(__dirname, '..', 'public', 'shipping-status.html'), 'utf8');
+    assert.match(status, /id="basis-notification"/);
+    assert.match(status, /id="mode-notification"/);
+    assert.match(status, /channels\/\$\{encodeURIComponent\(SHIPPING_CHANNEL_ID\)\}\/notifications\?limit=120/);
+    assert.match(status, /recipientPhoneLast4/);
+    assert.doesNotMatch(status, /recipientPhone(?!Last4)/);
 });
 
 test('buyer and vendor checkout pages are short-code based and support the full payment workflow', () => {
