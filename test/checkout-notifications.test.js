@@ -140,6 +140,7 @@ test('payment actions use Aligo SMS while a pure completion notice prefers AlimT
     assert.equal(byKey.buyer_payment_confirmed.transport, 'alimtalk');
     assert.equal(byKey.buyer_payment_confirmed.link, '');
     assert.equal(byKey.buyer_payment_confirmed.buttonName, '');
+    assert.equal(byKey.buyer_payment_confirmed.content, '#{구매자명}님, #{업체명} 결제가 확인되었습니다.\n확인금액: #{결제금액}\n\n배송·결제 페이지에서 전체 진행 상태를 확인할 수 있습니다.');
 });
 
 test('Aligo provider sends a payment action as URL-encoded LMS without a Kakao template', async () => {

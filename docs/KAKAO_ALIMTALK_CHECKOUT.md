@@ -77,7 +77,7 @@ ALIGO_TEST_MODE=Y
 
 ```json
 {
-  "buyer_payment_confirmed": "승인된_UK_코드"
+  "buyer_payment_confirmed": "UK_9278"
 }
 ```
 
@@ -85,7 +85,7 @@ ALIGO_TEST_MODE=Y
 
 ```json
 {
-  "buyer_payment_confirmed": "#{구매자명}님, #{업체명} 결제가 확인되었습니다.\n확인금액: #{결제금액}"
+  "buyer_payment_confirmed": "#{구매자명}님, #{업체명} 결제가 확인되었습니다.\n확인금액: #{결제금액}\n\n배송·결제 페이지에서 전체 진행 상태를 확인할 수 있습니다."
 }
 ```
 
