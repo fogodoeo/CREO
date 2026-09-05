@@ -1369,6 +1369,28 @@ function createPlatformApi({
         };
     }
 
+    async function buyerDeliveryPayload(context) {
+        const payload = await buyerShippingPayload(context);
+        return {
+            revision: payload.revision,
+            channel: payload.channel,
+            buyer: payload.buyer,
+            items: payload.items.map(({ id, lotNumber, name, vendorName, soldAmount }) => ({
+                id, lotNumber, name, vendorName, soldAmount
+            })),
+            destinations: payload.destinations,
+            parge: payload.parge,
+            selection: payload.selection ? {
+                destinationType: payload.selection.destinationType,
+                destinationId: payload.selection.destinationId,
+                pargeRegion: payload.selection.pargeRegion,
+                pargeShop: payload.selection.pargeShop
+            } : null,
+            submittedAt: payload.submittedAt,
+            updatedAt: payload.updatedAt
+        };
+    }
+
     function buyerInputError(message, status = 422) {
         const error = new Error(message);
         error.status = status;
@@ -1382,11 +1404,13 @@ function createPlatformApi({
         return requested;
     }
 
-    async function saveBuyerShipping(context, body = {}) {
+    async function saveBuyerShipping(context, body = {}, options = {}) {
+        const requirePaymentMethod = options.requirePaymentMethod !== false;
+        const responsePayload = options.responsePayload || buyerShippingPayload;
         const requestId = cleanText(body.requestId, 80);
         if (requestId.length < 8) throw buyerInputError('저장 요청값이 올바르지 않습니다.');
         const latest = latestBundleShipment(context);
-        if (latest?.buyerRequestId === requestId) return { duplicate: true, payload: await buyerShippingPayload(context) };
+        if (latest?.buyerRequestId === requestId) return { duplicate: true, payload: await responsePayload(context) };
         const fixedDestinations = (context.channel.shippingDefaults?.pickupLocations || []).slice(0, 12).map((label, index) => ({
             id: `pickup-${index + 1}`, type: 'pickup', label
         }));
@@ -1424,9 +1448,10 @@ function createPlatformApi({
             const groupLatest = Checkout.newestShipment(groupShipments);
             const paymentMethod = requestedMethods.get(group.key) || groupLatest?.paymentMethod || '';
             const allowedMethods = Checkout.normalizeVendorPaymentMethods(group.vendor);
-            if (!Checkout.PAYMENT_METHODS.includes(paymentMethod) || !allowedMethods.includes(paymentMethod)) {
+            if (paymentMethod && (!Checkout.PAYMENT_METHODS.includes(paymentMethod) || !allowedMethods.includes(paymentMethod))) {
                 throw buyerInputError(`${group.vendor?.name || '업체'}의 결제방식을 선택해 주세요.`);
             }
+            if (!paymentMethod && requirePaymentMethod) throw buyerInputError(`${group.vendor?.name || '업체'}의 결제방식을 선택해 주세요.`);
             const settlement = groupSettlement(context, group);
             const shippingAmount = group.items.reduce((sum, item) => sum + (shipping.allocations.get(item.id) || 0), 0);
             const totalAmount = settlement.payableAuctionAmount + shippingAmount;
@@ -1439,7 +1464,9 @@ function createPlatformApi({
                 ? 'paid'
                 : additional
                     ? 'additional_payment'
-                    : paymentMethod === 'card'
+                    : !paymentMethod
+                        ? 'awaiting_information'
+                        : paymentMethod === 'card'
                         ? (cardPaymentUrl ? 'card_payment_pending' : 'card_link_pending')
                         : 'bank_transfer_pending';
             const bundleId = stableBuyerId('bundle', `${context.channel.id}:${group.key}:${context.anchorPhone}`);
@@ -1486,7 +1513,7 @@ function createPlatformApi({
         context.shipments = [...context.shipments.filter((shipment) => !bundleIds.has(shipment.itemId)), ...saved];
         touchCheckout(context.channel.id);
         touchChannel(context.channel.id);
-        return { duplicate: false, payload: await buyerShippingPayload(context) };
+        return { duplicate: false, payload: await responsePayload(context) };
     }
 
     async function reportBuyerPayment(context, vendorKey, requestId) {
@@ -1707,6 +1734,35 @@ function createPlatformApi({
                 reportedCount: buyers.filter((buyer) => ['bank_transfer_reported', 'card_payment_reported'].includes(buyer.payment.status)).length
             },
             buyers
+        };
+    }
+
+    async function vendorStatusPayload(context) {
+        const payload = await vendorCheckoutPayload(context);
+        return {
+            revision: payload.revision,
+            channel: payload.channel,
+            vendor: { id: payload.vendor.id, name: payload.vendor.name, manager: payload.vendor.manager },
+            summary: { buyerCount: payload.summary.buyerCount, itemCount: payload.summary.itemCount },
+            buyers: payload.buyers.map((buyer) => {
+                const status = buyer.payment.status;
+                return {
+                    id: buyer.id,
+                    name: buyer.name,
+                    phoneLast4: String(buyer.phone || '').replace(/[^0-9]/g, '').slice(-4),
+                    destination: buyer.destination?.address || '',
+                    items: buyer.items.map(({ id, lotNumber, name, soldAmount, paid }) => ({ id, lotNumber, name, soldAmount, completed: paid })),
+                    progress: {
+                        status: status === 'paid'
+                            ? 'complete'
+                            : ['bank_transfer_reported', 'card_payment_reported'].includes(status)
+                                ? 'buyer_reported'
+                                : buyer.destination
+                                    ? 'information_registered'
+                                    : 'awaiting_information'
+                    }
+                };
+            })
         };
     }
 
@@ -2331,9 +2387,43 @@ function createPlatformApi({
                 return true;
             }
 
-            if (segments[0] === 'buyer-shipping' && method === 'OPTIONS') {
+            if (['buyer-shipping', 'buyer-delivery'].includes(segments[0]) && method === 'OPTIONS') {
                 res.writeHead(204, buyerCorsHeaders(req));
                 res.end();
+                return true;
+            }
+
+            if (segments.length === 1 && segments[0] === 'buyer-delivery' && method === 'GET') {
+                const credential = await resolveBuyerShippingCredential({
+                    token: url.searchParams.get('token'),
+                    code: url.searchParams.get('code')
+                });
+                const context = await buyerBundleContext(credential);
+                if (!context) {
+                    replyJson(res, 401, { error: '배송 링크가 만료되었거나 올바르지 않습니다.' }, buyerCorsHeaders(req));
+                    return true;
+                }
+                replyJson(res, 200, await buyerDeliveryPayload(context), buyerCorsHeaders(req));
+                return true;
+            }
+
+            if (segments.length === 1 && segments[0] === 'buyer-delivery' && method === 'POST') {
+                const body = await readJson(req);
+                const credential = await resolveBuyerShippingCredential(body);
+                const context = await buyerBundleContext(credential);
+                if (!context) {
+                    replyJson(res, 401, { error: '배송 링크가 만료되었거나 올바르지 않습니다.' }, buyerCorsHeaders(req));
+                    return true;
+                }
+                await withMutationLock(`buyer-shipping:${context.channel.id}:${context.token.phoneHash}`, async () => {
+                    const freshContext = await buyerBundleContext(context.token);
+                    if (!freshContext) throw buyerInputError('배송 정보를 다시 불러와 주세요.', 409);
+                    const result = await saveBuyerShipping(freshContext, body, {
+                        requirePaymentMethod: false,
+                        responsePayload: buyerDeliveryPayload
+                    });
+                    replyJson(res, 200, { ...result.payload, duplicate: result.duplicate }, buyerCorsHeaders(req));
+                });
                 return true;
             }
 
@@ -2387,6 +2477,20 @@ function createPlatformApi({
                         : { skipped: 'missing_group' };
                     replyJson(res, 200, { ...result.payload, duplicate: result.duplicate, notification }, buyerCorsHeaders(req));
                 });
+                return true;
+            }
+
+            if (segments.length === 1 && segments[0] === 'vendor-status' && method === 'GET') {
+                const credential = await resolveVendorCheckoutCredential({
+                    token: url.searchParams.get('token'),
+                    code: url.searchParams.get('code')
+                });
+                const context = await vendorCheckoutContext(credential);
+                if (!context) {
+                    replyJson(res, 401, { error: '업체 확인 링크가 만료되었거나 올바르지 않습니다.' });
+                    return true;
+                }
+                replyJson(res, 200, await vendorStatusPayload(context));
                 return true;
             }
 
@@ -4015,7 +4119,7 @@ function createPlatformApi({
         } catch (error) {
             logger.error?.('[platform-api]', error.message);
             const status = error.status || (error.code === 'VERSION_CONFLICT' ? 409 : 500);
-            const errorHeaders = url.pathname.startsWith('/api/platform/buyer-shipping')
+            const errorHeaders = url.pathname.startsWith('/api/platform/buyer-shipping') || url.pathname.startsWith('/api/platform/buyer-delivery')
                 ? buyerCorsHeaders(req)
                 : {};
             replyJson(

@@ -126,6 +126,27 @@ test('buyer shipping link isolates one buyer, saves idempotently, confirms payme
     assert.equal(initial.json().revision, 0);
     assert.doesNotMatch(initial.body, /01012345678|01099998888|private-other-buyer/);
 
+    const deliveryInitial = await call(api, 'GET', `/api/platform/buyer-delivery?code=${encodeURIComponent(code)}`, null, '');
+    assert.equal(deliveryInitial.status, 200, deliveryInitial.body);
+    assert.deepEqual(deliveryInitial.json().items.map((item) => item.id), ['item-a', 'item-b', 'private-other-vendor']);
+    assert.equal(deliveryInitial.json().vendors, undefined);
+    assert.equal(deliveryInitial.json().payment, undefined);
+    assert.equal(deliveryInitial.json().totals, undefined);
+    assert.doesNotMatch(deliveryInitial.body, /bankAccount|accountNumber|cardPaymentUrl|paymentMethod|01012345678/);
+
+    const deliveryBody = { code, requestId: 'buyer-delivery-request-1', destinationId: 'pickup-1' };
+    const [deliverySavedA, deliverySavedB] = await Promise.all([
+        call(api, 'POST', '/api/platform/buyer-delivery', deliveryBody, ''),
+        call(api, 'POST', '/api/platform/buyer-delivery', deliveryBody, '')
+    ]);
+    assert.equal(deliverySavedA.status, 200, deliverySavedA.body);
+    assert.equal(deliverySavedB.status, 200, deliverySavedB.body);
+    assert.deepEqual([deliverySavedA.json().duplicate, deliverySavedB.json().duplicate].sort(), [false, true]);
+    assert.equal(deliverySavedA.json().selection.destinationId, 'pickup-1');
+    const afterDelivery = await call(api, 'GET', `/api/platform/buyer-shipping?code=${encodeURIComponent(code)}`, null, '');
+    assert.equal(afterDelivery.json().selection.destinationId, 'pickup-1');
+    assert.ok(afterDelivery.json().vendors.every((vendor) => vendor.payment.method === ''));
+
     const requestId = 'buyer-save-request-1';
     const saveBody = {
         code, requestId, destinationId: 'parge', pargeRegion: '수도권', pargeShop: '테스트 파르게',
@@ -284,6 +305,12 @@ test('vendor checkout link handles card URL, buyer report, confirmation, duplica
     assert.equal(vendorInitial.json().buyers[0].payment.status, 'card_link_pending');
     const vendorInitialRevision = vendorInitial.json().revision;
     const buyerId = vendorInitial.json().buyers[0].id;
+    const vendorStatus = await call(api, 'GET', `/api/platform/vendor-status?code=${vendorCode}`, null, '');
+    assert.equal(vendorStatus.status, 200, vendorStatus.body);
+    assert.equal(vendorStatus.json().buyers[0].phoneLast4, '5678');
+    assert.equal(vendorStatus.json().buyers[0].progress.status, 'information_registered');
+    assert.equal(vendorStatus.json().buyers[0].payment, undefined);
+    assert.doesNotMatch(vendorStatus.body, /01012345678|cardPaymentUrl|paymentMethod|accountNumber/);
 
     const rejectedUrl = await call(api, 'POST', '/api/platform/vendor-checkout/card-link', {
         code: vendorCode, buyerId, cardPaymentUrl: 'http://localhost/pay', requestId: 'card-link-invalid'

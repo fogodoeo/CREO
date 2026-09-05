@@ -15,7 +15,9 @@ const PAGES = [
     'broadcast-studio.html',
     'auction-live.html',
     'channel-shipping.html',
+    'buyer-delivery.html',
     'buyer-shipping.html',
+    'vendor-status.html',
     'vendor-checkout.html',
     'shipping-companies.html',
     'shipping-rates.html',
@@ -450,8 +452,37 @@ test('buyer and vendor checkout pages are short-code based and support the full 
     assert.match(server, /buyerShippingShortMatch = \/\^\\\/s\\\//);
     assert.match(server, /new URL\('\/buyer-shipping\.html', url\)/);
     assert.match(server, /serveStatic\(req, res, buyerPageUrl\)/);
+    assert.match(server, /buyerDeliveryShortMatch = \/\^\\\/d\\\//);
+    assert.match(server, /new URL\('\/buyer-delivery\.html', url\)/);
     assert.match(server, /vendorCheckoutShortMatch = \/\^\\\/v\\\//);
     assert.match(server, /new URL\('\/vendor-checkout\.html', url\)/);
+    assert.match(server, /vendorStatusShortMatch = \/\^\\\/w\\\//);
+    assert.match(server, /new URL\('\/vendor-status\.html', url\)/);
+});
+
+test('buyer delivery landing page is genuinely shipping-only', () => {
+    const source = fs.readFileSync(path.join(__dirname, '..', 'public', 'buyer-delivery.html'), 'utf8');
+    const api = fs.readFileSync(path.join(__dirname, '..', 'platform-api.js'), 'utf8');
+    assert.match(source, /shortPrefix:'d'/);
+    assert.match(source, /endpoint:'\/api\/platform\/buyer-delivery'/);
+    assert.match(source, /수령지 선택/);
+    assert.match(source, /수령 정보 저장/);
+    assert.doesNotMatch(source, /결제|계좌|카드/);
+    assert.match(api, /async function buyerDeliveryPayload/);
+    assert.match(api, /requirePaymentMethod: false/);
+    assert.match(api, /segments\[0\] === 'buyer-delivery'/);
+});
+
+
+test('vendor status landing page is genuinely read-only', () => {
+    const source = fs.readFileSync(path.join(__dirname, '..', 'public', 'vendor-status.html'), 'utf8');
+    const api = fs.readFileSync(path.join(__dirname, '..', 'platform-api.js'), 'utf8');
+    assert.match(source, /shortPrefix:'w'/);
+    assert.match(source, /endpoint:'\/api\/platform\/vendor-status'/);
+    assert.match(source, /귀 업체가 등록한 개체/);
+    assert.doesNotMatch(source, /결제|계좌|카드/);
+    assert.match(api, /async function vendorStatusPayload/);
+    assert.match(api, /segments\[0\] === 'vendor-status'/);
 });
 
 test('capture setup distributes the no-Python F3 agent with diagnostics', () => {

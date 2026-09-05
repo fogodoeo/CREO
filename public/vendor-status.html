@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+    <meta name="referrer" content="no-referrer">
+    <title>업체 판매 내역 확인</title>
+    <link rel="stylesheet" href="/checkout-ui.css?v=20260902-checkout-shell-v1">
+    <script src="/checkout-client.js?v=20260904-shared-v1"></script>
+    <style>
+        :root{--checkout-width:720px;--item-index-width:40px;--item-font-size:12px}main{padding:20px 20px 60px}.summary{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-top:17px}.metric{padding:12px;border-radius:10px;background:var(--soft)}.metric small{display:block;color:var(--muted);font-size:10px}.metric b{display:block;margin-top:4px;font-size:18px}.buyer{margin-bottom:12px;border:1px solid var(--line);border-radius:14px;overflow:hidden}.buyer-head{display:flex;justify-content:space-between;gap:12px;padding:14px 15px;background:#fafafa;border-bottom:1px solid var(--line)}.identity b{font-size:15px}.identity span{display:block;margin-top:3px;color:var(--muted);font-size:11px}.body{padding:14px}.destination{padding:11px 12px;border-radius:9px;background:var(--soft);font-size:12px}.destination b{display:block}.destination span{display:block;margin-top:3px;color:var(--muted)}.items{margin-top:12px}.item{gap:8px;padding:9px 1px}.empty{padding:48px 20px;text-align:center;color:var(--muted)}.error button{margin-top:15px;height:40px;padding:0 17px;border:0;border-radius:9px;background:#222;color:#fff;font-weight:800}@media(max-width:420px){.body{padding:12px}}
+    </style>
+</head>
+<body><div class="shell">
+    <div class="loading" id="loading"><b>판매 내역을 불러오고 있습니다</b><span>잠시만 기다려 주세요.</span></div>
+    <div class="error" id="error" hidden><b>페이지를 열 수 없습니다</b><span id="error-message"></span><button id="retry" type="button">다시 시도</button></div>
+    <div id="app" hidden><header class="top"><div class="brand"><b>CREO PARTNER</b><div class="brand-right"><span id="channel"></span><i class="sync" id="sync" role="status">실시간</i></div></div><h1 id="vendor"></h1><p class="lead">귀 업체가 등록한 개체의 낙찰 및 수령 정보 현황입니다.</p><div class="summary"><div class="metric"><small>구매자</small><b id="buyer-count"></b></div><div class="metric"><small>낙찰 개체</small><b id="item-count"></b></div></div></header><main><div id="buyers"></div><div class="empty" id="empty" hidden><b>등록된 낙찰 내역이 없습니다</b></div></main></div>
+</div><script>
+(()=>{'use strict';
+const Checkout=window.CreoCheckoutClient,client=Checkout.createClient({location,endpoint:'/api/platform/vendor-status',shortPrefix:'w'}),$=Checkout.byId,esc=Checkout.escapeHtml,money=Checkout.money;let data=null;
+function statusMeta(value){if(value==='complete')return['처리 완료','green'];if(value==='buyer_reported')return['구매자 신고 접수','red'];if(value==='information_registered')return['수령 정보 등록',''];return['정보 입력 대기','']}
+function render(){if(!data)return;$('channel').textContent=data.channel.name;$('vendor').textContent=data.vendor.name;$('buyer-count').textContent=`${data.summary.buyerCount}명`;$('item-count').textContent=`${data.summary.itemCount}개`;$('empty').hidden=data.buyers.length>0;$('buyers').innerHTML=data.buyers.map(buyer=>{const [label,tone]=statusMeta(buyer.progress.status);return`<article class="buyer"><div class="buyer-head"><div class="identity"><b>${esc(buyer.name)}</b><span>연락처 끝 ${esc(buyer.phoneLast4||'----')}</span></div><span class="badge ${tone}">${label}</span></div><div class="body"><div class="destination"><b>수령 정보</b><span>${esc(buyer.destination||'입력 대기')}</span></div><div class="items">${buyer.items.map(item=>`<div class="item"><small>${String(item.lotNumber).padStart(2,'0')}</small><b>${esc(item.name)}</b><strong>${money(item.soldAmount)}</strong></div>`).join('')}</div></div></article>`}).join('');$('loading').hidden=true;$('error').hidden=true;$('app').hidden=false}
+async function load(silent=false){if(!client.valid)return showError('업체 확인 링크 주소가 올바르지 않습니다.');if(!silent){$('loading').hidden=false;$('app').hidden=true}try{data=await client.request();render();return true}catch(error){if(!silent)showError(error.message||'판매 내역을 불러오지 못했습니다.');return false}}
+function showError(message){$('loading').hidden=true;$('app').hidden=true;$('error').hidden=false;$('error-message').textContent=message}
+const revisionSync=Checkout.createRevisionSync({document,fetchRevision:()=>client.revision(data.channel.id),currentRevision:()=>data?.revision,isReady:()=>!!data,isBusy:()=>false,hasDraft:()=>false,refresh:()=>load(true),onStatus:(text,stateName)=>{if($('sync')){$('sync').textContent=text;$('sync').dataset.state=stateName}}}),poller=Checkout.createAdaptivePoller(revisionSync.poll,{document});window.addEventListener('pagehide',()=>{poller.stop();revisionSync.stop()},{once:true});$('retry').onclick=()=>load();load().finally(()=>poller.start(300));
+})();</script></body></html>

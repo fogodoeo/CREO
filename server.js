@@ -354,9 +354,21 @@ const server = http.createServer(async (req, res) => {
             if (await serveStatic(req, res, buyerPageUrl)) return;
         }
 
+        const buyerDeliveryShortMatch = /^\/d\/([A-Za-z0-9_-]{8,24})$/.exec(url.pathname);
+        if ((req.method === 'GET' || req.method === 'HEAD') && buyerDeliveryShortMatch) {
+            const buyerPageUrl = new URL('/buyer-delivery.html', url);
+            if (await serveStatic(req, res, buyerPageUrl)) return;
+        }
+
         const vendorCheckoutShortMatch = /^\/v\/([A-Za-z0-9_-]{8,24})$/.exec(url.pathname);
         if ((req.method === 'GET' || req.method === 'HEAD') && vendorCheckoutShortMatch) {
             const vendorPageUrl = new URL('/vendor-checkout.html', url);
+            if (await serveStatic(req, res, vendorPageUrl)) return;
+        }
+
+        const vendorStatusShortMatch = /^\/w\/([A-Za-z0-9_-]{8,24})$/.exec(url.pathname);
+        if ((req.method === 'GET' || req.method === 'HEAD') && vendorStatusShortMatch) {
+            const vendorPageUrl = new URL('/vendor-status.html', url);
             if (await serveStatic(req, res, vendorPageUrl)) return;
         }
 
