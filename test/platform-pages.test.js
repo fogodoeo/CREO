@@ -420,7 +420,7 @@ test('buyer and vendor checkout pages are short-code based and support the full 
     assert.match(source, /Checkout\.paymentStatusMeta\(status,'buyer'\)/);
     assert.match(checkoutClient, /status === 'paid'\) return Object\.freeze\(\{ label: '결제 완료'/);
     assert.match(checkoutClient, /status === 'additional_payment'\) return Object\.freeze\(\{ label: '추가 결제'/);
-    assert.match(source, /입금했습니다/);
+    assert.match(source, /입금했어요/);
     assert.match(source, /id="sync"[^>]*role="status">실시간/);
     assert.doesNotMatch(source, /\/broadcast-pulse/);
     assert.match(source, /Checkout\.createRevisionSync/);

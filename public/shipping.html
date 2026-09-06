@@ -2073,6 +2073,20 @@
                 </div>
                 <button class="shipping-admin-login" id="shipping-admin-button" type="button">업체변경</button>
             </div>
+            <details id="shipping-vendor-settings" style="background:white;border:1px solid #ddd;border-radius:12px;padding:16px;margin-bottom:16px" hidden>
+                <summary style="cursor:pointer;font-weight:700">업체 연락처 · 결제 설정 <span id="vendor-settings-state"></span></summary>
+                <form id="vendor-settings-form" style="display:grid;gap:12px;margin-top:16px">
+                    <p>저장한 연락처와 계좌는 해당 업체의 구매자 페이지에 표시됩니다. 관리자 인증 상태에서만 수정할 수 있습니다.</p>
+                    <label>업체 연락처 <input name="phone" type="tel" required class="input-text"></label>
+                    <label><input name="bankEnabled" type="checkbox"> 계좌이체 사용</label>
+                    <label>은행 <input name="bankName" class="input-text"></label>
+                    <label>계좌번호 <input name="bankAccount" class="input-text"></label>
+                    <label>예금주 <input name="bankHolder" class="input-text"></label>
+                    <label><input name="cardEnabled" type="checkbox"> 카드결제 사용 — 요청별 결제 링크를 업체가 등록합니다.</label>
+                    <button type="submit" class="shipping-admin-login">업체 설정 저장</button>
+                    <output id="vendor-settings-feedback" aria-live="polite"></output>
+                </form>
+            </details>
 
             <!-- 업체 선택 전용 팝업 모달 (사이즈 확장 및 2열 그리드화) -->
             <div id="company-select-modal" class="modal-overlay" onclick="if(event.target===this) closeCompanySelectModal()" style="display: none; align-items: center; justify-content: center; z-index: 2000; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px);">
@@ -2415,17 +2429,36 @@
             closeMessagePreview();
         });
 
+        let registeredShippingVendors = [];
         async function loadShippingItems() {
-            return shippingOperation.loadShippingItems();
+            const [items, workspace] = await Promise.all([
+                shippingOperation.loadShippingItems(),
+                CreoPlatform.api(`channels/${encodeURIComponent(SHIPPING_CHANNEL_ID)}/workspace`)
+            ]);
+            registeredShippingVendors = workspace.vendors || [];
+            return items;
         }
 
         let shippingRefreshRevision = 0;
         let paymentConfirmationPending = false;
+        let lastShippingPulse = null;
+        async function pollShippingChanges() {
+            try {
+                if (!document.hidden && !shippingInitializing && !activeEditorWinner && !paymentConfirmationPending) {
+                    const pulse = await CreoPlatform.api(`channels/${encodeURIComponent(SHIPPING_CHANNEL_ID)}/broadcast-pulse`, { admin: '' });
+                    const value = String(pulse.checkoutRevision);
+                    if (lastShippingPulse !== null && value !== lastShippingPulse) await refreshShippingWorkspace();
+                    lastShippingPulse = value;
+                }
+            } catch (_) { /* Keep the existing screen on a temporary connection failure. */ }
+            finally { setTimeout(pollShippingChanges, 5000); }
+        }
+        window.addEventListener('DOMContentLoaded', () => setTimeout(pollShippingChanges, 5000));
 
         function applyShippingItems(items) {
             allItems = (items || []).filter(item => CreoAuctionContract.isSoldStatus(item.status));
             const companies = allItems.map(item => (item.company || '').trim()).filter(Boolean);
-            uniqueSellerCompanies = [...new Set(companies)].sort();
+            uniqueSellerCompanies = [...new Set([...companies, ...registeredShippingVendors.filter(v => v.active !== false).map(v => v.name)])].sort();
             populateCompanySelect();
         }
 
@@ -2857,7 +2890,47 @@
             if (barName) {
                 barName.textContent = activeSellerCompany || '선택 필요';
             }
+            renderVendorSettings();
         }
+
+        let editingShippingVendorId = '';
+        function renderVendorSettings() {
+            const matches = registeredShippingVendors.filter(v => v.name === activeSellerCompany);
+            const vendor = matches.length === 1 ? matches[0] : null;
+            const panel = document.getElementById('shipping-vendor-settings');
+            panel.hidden = !vendor;
+            if (!vendor || editingShippingVendorId === vendor.id) return;
+            editingShippingVendorId = vendor.id;
+            const form = document.getElementById('vendor-settings-form');
+            for (const key of ['phone','bankName','bankAccount','bankHolder']) form.elements[key].value = vendor[key] || '';
+            form.elements.bankEnabled.checked = (vendor.paymentMethods || []).includes('bank_transfer');
+            form.elements.cardEnabled.checked = (vendor.paymentMethods || []).includes('card');
+            document.getElementById('vendor-settings-state').textContent = vendor.phone && vendor.paymentMethods?.length ? '· 설정됨' : '· 설정 필요';
+            document.getElementById('vendor-settings-feedback').textContent = '';
+        }
+        document.getElementById('vendor-settings-form').addEventListener('submit', async event => {
+            event.preventDefault();
+            const form = event.currentTarget, output = document.getElementById('vendor-settings-feedback');
+            const vendorId = editingShippingVendorId;
+            const values = Object.fromEntries(['phone','bankName','bankAccount','bankHolder'].map(key => [key, form.elements[key].value.trim()]));
+            const paymentMethods = [form.elements.bankEnabled.checked ? 'bank_transfer' : '', form.elements.cardEnabled.checked ? 'card' : ''].filter(Boolean);
+            if (!/^0\d{8,10}$/.test(values.phone.replace(/\D/g,''))) { output.textContent = '연락처를 확인해 주세요.'; return; }
+            if (paymentMethods.includes('bank_transfer') && (!values.bankName || !values.bankAccount || !values.bankHolder)) { output.textContent = '은행·계좌번호·예금주를 모두 입력해 주세요.'; return; }
+            const button = form.querySelector('button'); button.disabled = true;
+            try {
+                const workspace = await CreoPlatform.api(`channels/${encodeURIComponent(SHIPPING_CHANNEL_ID)}/workspace`);
+                const current = workspace.vendors.find(v => v.id === vendorId);
+                if (!current) throw new Error('업체가 변경되었습니다. 다시 선택해 주세요.');
+                await CreoPlatform.api(`channels/${encodeURIComponent(SHIPPING_CHANNEL_ID)}/vendors/${encodeURIComponent(vendorId)}`, {
+                    method: 'PUT', body: JSON.stringify({ record: { ...current, ...values, paymentMethods } })
+                });
+                editingShippingVendorId = '';
+                await refreshShippingWorkspace({ preserveEditor: true });
+                updateCurrentCompanyBar();
+                output.textContent = '저장되었습니다. 구매자 페이지에 반영됩니다.';
+            } catch (error) { output.textContent = error.message; }
+            finally { button.disabled = false; }
+        });
 
         function openCompanySelectModal() {
             const modal = document.getElementById('company-select-modal');

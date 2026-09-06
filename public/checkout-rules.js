@@ -57,7 +57,7 @@
     function normalizeVendorPaymentMethods(vendor = {}) {
         const stored = Array.isArray(vendor.paymentMethods) ? vendor.paymentMethods : [];
         const allowed = [...new Set(stored.filter((method) => PAYMENT_METHODS.includes(method)))];
-        if (allowed.length) return allowed;
+        if (Array.isArray(vendor.paymentMethods)) return allowed;
         const fallback = [];
         if (clean(vendor.bankName) && clean(vendor.bankAccount) && clean(vendor.bankHolder)) fallback.push('bank_transfer');
         if (vendor.cardPaymentEnabled !== false) fallback.push('card');

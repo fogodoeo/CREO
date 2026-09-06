@@ -1442,6 +1442,9 @@ function createPlatformApi({
         const requestedMethods = requestedPaymentMethods(body, groups);
         const shipping = Checkout.allocateShipping(context.bundleItems, selection, context.channel, rates);
         const existingByItem = new Map(context.shipments.map((shipment) => [shipment.itemId, shipment]));
+        if (context.shipments.some(shipment => ['bank_transfer_reported', 'card_payment_reported'].includes(shipment.paymentStatus))) {
+            throw buyerInputError('업체가 결제를 확인 중입니다. 확인 완료 후 추가 내역을 저장해 주세요.', 409);
+        }
         const now = new Date().toISOString();
         const saved = [];
         for (const group of groups) {
@@ -1533,6 +1536,10 @@ function createPlatformApi({
             throw buyerInputError('업체에서 카드결제 링크를 준비하고 있습니다.', 409);
         }
         const nextStatus = group.payment.latest.paymentMethod === 'card' ? 'card_payment_reported' : 'bank_transfer_reported';
+        const unpaid = group.shipments.filter(shipment => shipment.paymentStatus !== 'paid');
+        if (unpaid.length && unpaid.every(shipment => shipment.paymentStatus === nextStatus)) {
+            return { duplicate: true, payload: await buyerShippingPayload(context), group };
+        }
         const now = new Date().toISOString();
         const saved = [];
         for (const item of group.items) {
@@ -1568,9 +1575,18 @@ function createPlatformApi({
         const now = new Date().toISOString();
         const saved = [];
         const existingByItem = new Map(group.shipments.map((shipment) => [shipment.itemId, shipment]));
+        const reported = group.shipments.filter(shipment => ['bank_transfer_reported', 'card_payment_reported'].includes(shipment.paymentStatus));
+        const reportedIds = new Set(reported.map(shipment => shipment.itemId));
+        const confirmationAmount = reported.length
+            ? Math.max(...reported.map(shipment => Number(shipment.paymentRequestedAmount) || 0))
+            : group.totalAmount;
         const bundleId = group.payment.latest.bundleId || stableBuyerId('bundle', `${context.channel.id}:${group.key}:${context.anchorPhone}`);
         for (const item of group.items) {
             const current = existingByItem.get(item.id) || {};
+            if (current.paymentStatus === 'paid' || (reported.length && !reportedIds.has(item.id))) {
+                if (current.id) saved.push(current);
+                continue;
+            }
             const record = sanitizeRecord('shipment', {
                 ...current,
                 id: current.id || stableBuyerId('shipment', `${context.channel.id}:${item.id}`),
@@ -1591,8 +1607,8 @@ function createPlatformApi({
                 ...snapshot.selection,
                 paymentMethod: group.payment.latest.paymentMethod,
                 paymentStatus: 'paid',
-                paymentRequestedAmount: group.totalAmount,
-                paymentConfirmedAmount: group.totalAmount,
+                paymentRequestedAmount: confirmationAmount,
+                paymentConfirmedAmount: confirmationAmount,
                 paymentConfirmedAt: now,
                 paymentConfirmationRequestId: cleanRequestId,
                 cardPaymentUrl: group.payment.latest.cardPaymentUrl || '',

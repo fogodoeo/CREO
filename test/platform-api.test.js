@@ -49,6 +49,31 @@ test('explicit draft SMS sale test never switches the operating channel', async 
     }
 });
 
+test('payment report freezes its items when another auction is won before confirmation', async () => {
+    const repository = new MemoryRepository();
+    repository.catalog.channels[0].shippingDefaults = { pickupLocations: ['테스트 수령'] };
+    await repository.upsertRecord('alpha', 'vendor', { id: 'v', name: '업체', bankName: '은행', bankAccount: '123', bankHolder: '업체' });
+    const item = { id: 'first', name: 'A01', lotNumber: 1, vendorId: 'v', vendorName: '업체', status: 'sold', soldPrice: 100000, winnerName: '테스트', winnerPhone: '01012345678' };
+    await repository.upsertRecord('alpha', 'item', item);
+    const api = createPlatformApi({ repository });
+    const link = await call(api, 'POST', '/api/platform/channels/alpha/buyer-shipping-link', { itemId: 'first' });
+    const code = link.json().code;
+    const saved = await call(api, 'POST', '/api/platform/buyer-shipping', { code, requestId: 'save-initial', destinationId: 'pickup-1', payments: [{ vendorKey: 'v', method: 'bank_transfer' }] }, '');
+    assert.equal(saved.status, 200, saved.body);
+    const report = await call(api, 'POST', '/api/platform/buyer-shipping/report-payment', { code, vendorKey: 'v', requestId: 'report-initial' }, '');
+    assert.equal(report.status, 200, report.body);
+    const repeated = await call(api, 'POST', '/api/platform/buyer-shipping/report-payment', { code, vendorKey: 'v', requestId: 'report-second-id' }, '');
+    assert.equal(repeated.json().duplicate, true);
+    await repository.upsertRecord('alpha', 'item', { ...item, id: 'second', name: 'A02', lotNumber: 2 });
+    const confirm = await call(api, 'POST', '/api/platform/channels/alpha/buyer-shipping-payment', { itemId: 'first', requestId: 'confirm-initial' });
+    assert.equal(confirm.status, 200, confirm.body);
+    const shipments = await repository.listRecords('alpha', 'shipment');
+    assert.equal(shipments.filter(s => s.paymentStatus === 'paid').length, 1);
+    assert.equal(shipments[0].paymentConfirmedAmount, 100000);
+    const after = await call(api, 'GET', `/api/platform/buyer-shipping?code=${code}`, null, '');
+    assert.equal(after.json().payment.additionalDue, 100000);
+});
+
 test('shipping rate refresh persists the collected public data before replying', async () => {
     const repository = new MemoryRepository();
     const payload = { updated: '2026-08-19', source: 'test', data: { 수도권: [{ shop: '테스트 거점', cost: 19000 }] } };
