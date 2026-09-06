@@ -13,6 +13,31 @@ const {
 const { normalizeChannel } = require('../platform-core');
 const { createCrewartHouseService } = require('../crewart-house-service');
 
+test('vendor rate persists across saves and restart and reaches public P3 without private fields', async () => {
+    const repository = new MemoryRepository();
+    repository.catalog.channels[0].groups = [{id:'a',name:'팀'}];
+    repository.catalog.channels[0].scoreboards = [{id:'team',dimension:'group',metric:'vendorContribution',unit:'원'}];
+    let api = createPlatformApi({ repository });
+    const record={id:'member',name:'팀원',groupId:'a',contributionRate:0.5,logoUrl:'/logo.png',phone:'01012345678'};
+    const saved=await call(api,'POST','/api/platform/channels/alpha/vendors',{record});
+    assert.equal(saved.status,201,saved.body);
+    for(let i=0;i<2;i++){
+        const updated=await call(api,'PUT','/api/platform/channels/alpha/vendors/member',{record});
+        assert.equal(updated.status,200,updated.body);
+    }
+    await repository.upsertRecord('alpha','item',{id:'sale',vendorId:'member',status:'sold',soldPrice:100000});
+    api=createPlatformApi({repository});
+    const broadcast=await call(api,'GET','/api/platform/channels/alpha/broadcast?page=3',null,'');
+    assert.equal(broadcast.status,200,broadcast.body);
+    assert.equal(broadcast.json().items[0].vendorContributionRate,0.5);
+    assert.equal(broadcast.json().items[0].vendorLogoUrl,'/logo.png');
+    assert.doesNotMatch(broadcast.body,/01012345678/);
+    const ranks=await call(api,'GET','/api/platform/channels/alpha/rankings',null,'');
+    assert.equal(ranks.json().scoreboards[0].rows[0].total,50000);
+    const other=await call(api,'GET','/api/platform/channels/beta/broadcast?page=3',null,'');
+    assert.equal(other.json().items.length,0);
+});
+
 class MemoryRepository {
     constructor() {
         this.catalog = { version: 1, channels: [normalizeChannel({ id: 'alpha', name: '알파', status: 'active' }), normalizeChannel({ id: 'beta', name: '베타', status: 'active' })] };

@@ -6,11 +6,22 @@
 })(typeof window !== 'undefined' ? window : globalThis, function () {
     'use strict';
 
-    function rankingsForChannel(channel, items = []) {
+    function vendorContribution(item) {
+        if (!['sold', 'complete', 'completed'].includes(String(item.status || '').toLowerCase())) return 0;
+        return Math.round(Math.max(0, Number(item.soldPrice) || 0) * (Number(item.vendorContributionRate) === 0.5 ? 0.5 : 1));
+    }
+
+    function rankingsForChannel(channel, items = [], vendors = []) {
+        const vendorMap = new Map((channel?.scoreboards || []).some(board => board.metric === 'vendorContribution') ? vendors.map(vendor => [vendor.id, vendor]) : []);
+        items = (items || []).map(item => {
+            const vendor = vendorMap.get(item.vendorId);
+            return vendor ? { ...item, vendorName: vendor.name, vendorLogoUrl: vendor.logoUrl, groupId: item.groupId || vendor.groupId, vendorContributionRate: vendor.contributionRate } : item;
+        });
         const groups = new Map((channel?.groups || []).map((group) => [group.id, group]));
         return (channel?.scoreboards || []).map((board) => {
             const rows = new Map();
             for (const item of items || []) {
+                if (board.metric === 'vendorContribution' && !['sold', 'complete', 'completed'].includes(String(item.status || '').toLowerCase())) continue;
                 if (!(item.status === 'sold' || Number(item.soldPrice) > 0)) continue;
                 let key = 'unknown';
                 let name = '미지정';
@@ -60,7 +71,7 @@
                     && Number.isFinite(audienceContribution)
                     ? audienceContribution
                     : Number(item.points) || 0;
-                row.total += board.metric === 'soldCount' ? 1 : board.metric === 'points' ? contributionPoints : Number(item.soldPrice) || 0;
+                row.total += board.metric === 'vendorContribution' ? vendorContribution(item) : board.metric === 'soldCount' ? 1 : board.metric === 'points' ? contributionPoints : Number(item.soldPrice) || 0;
                 rows.set(key, row);
             }
             return {
@@ -76,5 +87,5 @@
         });
     }
 
-    return Object.freeze({ rankingsForChannel });
+    return Object.freeze({ rankingsForChannel, vendorContribution });
 });
