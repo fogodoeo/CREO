@@ -419,6 +419,7 @@ function sanitizeRecord(type, input = {}, current = {}) {
             paymentMethods,
             cardPaymentEnabled: paymentMethods.includes('card'),
             logoUrl: cleanText(input.logoUrl, 600),
+            contributionRate: Number(input.contributionRate ?? current.contributionRate) === 0.5 ? 0.5 : 1,
             groupId: cleanText(input.groupId, 64),
             address: cleanText(input.address, 240),
             note: cleanText(input.note, 500),
@@ -3317,6 +3318,7 @@ function createPlatformApi({
                             ...item,
                             vendorName: vendor?.name || item.vendorName,
                             vendorLogoUrl: vendor?.logoUrl || item.vendorLogoUrl,
+                            vendorContributionRate: vendor?.contributionRate ?? 1,
                             groupId: item.groupId || vendor?.groupId || ''
                         });
                         publicRecord.bidLog = publicRecord.bidLog.map((bid) => {
@@ -3634,7 +3636,7 @@ function createPlatformApi({
                         groups: channel.groups,
                         scoreboards: channel.scoreboards
                     },
-                    scoreboards: rankingsForChannel(channel, data.items)
+                    scoreboards: rankingsForChannel(channel, data.items, data.vendors)
                 });
                 return true;
             }
@@ -4073,7 +4075,7 @@ function createPlatformApi({
                             soldCount: sold.length,
                             totalSoldAmount: sold.reduce((sum, item) => sum + (Number(item.soldPrice) || 0), 0),
                             scoreboardCount: channel.scoreboards?.length || 0,
-                            scoreboards: rankingsForChannel(channel, data.items),
+                            scoreboards: rankingsForChannel(channel, data.items, data.vendors),
                             groups: channel.groups || [],
                             items: data.items
                         });

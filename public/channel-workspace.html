@@ -92,7 +92,7 @@ function openModal(type,record=null){
     let f='';
     if(type==='vendors'){
         f+=field('name',`${term('vendor','업체')}명`,record?.name);
-        f+=field('code',`${term('vendor','업체')} 코드`,record?.code);
+        f+=field('code',`${term('vendor','업체')} 코드`,record?.code);f+=field('logoUrl','업체 로고 URL',record?.logoUrl);f+=field('contributionRate','팀 기여도 반영률',record?.contributionRate,'select',`<option value="1" ${Number(record?.contributionRate)!==0.5?'selected':''}>팀장 · 100%</option><option value="0.5" ${Number(record?.contributionRate)===0.5?'selected':''}>팀원 · 50%</option>`);
         if(selectedChannel()?.features?.groups)f+=field('groupId',term('group','그룹'),record?.groupId,'select',groupOptions(record?.groupId));
         f+=field('manager','담당자',record?.manager);
         f+=field('phone','연락처',record?.phone);

@@ -11,7 +11,7 @@ const CHANNEL_TEMPLATES = Object.freeze(['standard', 'basic', 'team', 'community
 const OVERLAY_SKINS = Object.freeze(['clean', 'sport', 'heritage', 'minimal', 'metal']);
 const OVERLAY_LAYOUTS = Object.freeze(['left', 'right', 'balanced']);
 const SCOREBOARD_DIMENSIONS = Object.freeze(['vendor', 'group', 'category', 'winner', 'winnerHouse', 'winnerGroup']);
-const SCOREBOARD_METRICS = Object.freeze(['soldAmount', 'soldCount', 'points']);
+const SCOREBOARD_METRICS = Object.freeze(['soldAmount', 'soldCount', 'points', 'vendorContribution']);
 const DATA_ADAPTERS = Object.freeze(['platform', 'legacy-cdcup']);
 const CHANNEL_ID_PATTERN = /^[a-z0-9][a-z0-9-]{1,31}$/;
 const HEX_COLOR_PATTERN = /^#[0-9a-f]{6}$/i;
@@ -572,6 +572,7 @@ function publicItem(item = {}) {
         points: Number(item.points) || 0,
         winnerAlias: publicBidderName(item.winnerAlias),
         vendorLogoUrl: cleanText(item.vendorLogoUrl, 500),
+        vendorContributionRate: Number(item.vendorContributionRate) === 0.5 ? 0.5 : 1,
         startPrice: Number(item.startPrice) || 0,
         soldPrice: Number(item.soldPrice) || 0,
         status: cleanText(item.status || 'waiting', 24),

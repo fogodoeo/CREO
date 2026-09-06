@@ -15,7 +15,7 @@ const {
 test('broadcast profile validation uses the renderer registry as its canonical list', () => {
     const profiles = require('../public/broadcast-profiles');
     assert.deepEqual(BROADCAST_PROFILES, profiles.ids());
-    assert.deepEqual(BROADCAST_PROFILES, ['standard', 'basic-dice', 'cdcup-tournament', 'crewart-academy', 'creyon-metal']);
+    assert.deepEqual(BROADCAST_PROFILES, ['standard', 'basic-dice', 'cdcup-finals', 'cdcup-tournament', 'crewart-academy', 'creyon-metal']);
 });
 
 test('channel identifiers and storage keys create hard data boundaries', () => {

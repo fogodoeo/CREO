@@ -1074,6 +1074,7 @@ test('BASIC control uploads six dice videos and P3 renders parity totals without
     assert.match(live, /kind==='dice'/);
     assert.match(live, /dice-result-strip"><span>낙찰금 ×<\/span><b>\$\{face\}/);
     assert.match(profiles, /id: 'basic-dice'[\s\S]{0,900}page2Price: false, page2InfoLayout: 'inline-traits', soldEffectPage: 3/);
+    assert.match(profiles, /id: 'cdcup-finals'[\s\S]{0,900}page2Price: false, page2InfoLayout: 'inline-traits', soldEffectPage: 3/);
     assert.match(control, /data-page2-price-control/);
     assert.match(control, /profile\.settings\?\.soldEffectPage===3/);
     assert.match(live, /profile\.settings\?\.page2Price!==false/);
