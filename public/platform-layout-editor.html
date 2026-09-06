@@ -21,13 +21,13 @@
         <label class="toggle"><input id="visible" type="checkbox" checked> 표시</label><button class="action" id="banners" type="button">배너 관리</button><button class="action" id="content" type="button">내용 설정</button><button class="action" id="reset" type="button">초기화</button><button class="action primary" id="save" type="button">저장</button>
     </section>
     <section class="canvas"><div class="preview"><iframe id="frame" title="송출 배치 미리보기"></iframe></div><div class="hint">요소를 끌어 이동 · 우측 아래 손잡이로 크기 조절</div></section>
-    <section class="settings-dock" id="settings-dock"><div class="settings-head"><h2><span id="settings-page"></span> 송출 설정</h2><span>표시 여부 · 문구 · 배너 · 연출을 이 화면에서 바로 저장</span></div><iframe class="settings-frame" id="settings-frame" title="페이지별 송출 설정"></iframe></section>
+    <section class="settings-dock" id="settings-dock"><div class="settings-head"><h2><span id="settings-page"></span> 송출 설정</h2><span>표시 여부 · 문구 · 연출을 이 화면에서 바로 저장</span></div><iframe class="settings-frame" id="settings-frame" title="페이지별 송출 설정"></iframe></section>
 </main>
 <div class="toast" id="toast"></div>
 <script>
 const params=new URLSearchParams(location.search),channelId=String(params.get('channel')||'').replace(/[^a-z0-9-]/g,''),page=Math.max(1,Math.min(3,Number(params.get('page'))||1));
-const $=id=>document.getElementById(id),frame=$('frame'),settingsFrame=$('settings-frame'),slotSelect=$('slot'),labels={'p1-host-1':'네임텍 1','p1-host-2':'네임텍 2','p1-host-3':'네임텍 3','p1-banner':'배너','p1-ticker':'줄별 순환 자막','p2-progress':'현재 / 전체 진행률','p2-info':'개체 정보','p2-bidders':'실시간 입찰자','p2-photo':'개체 사진','p2-price':'가격','p2-sold':'낙찰 알림','p2-banner':'배너','p2-ticker':'줄별 순환 자막','p3-board':'집계판','p3-effect':'주사위·결과 연출','p3-banner':'배너'};
-let placements={},selectedSlot='',drag=null,layoutDirty=false;
+const $=id=>document.getElementById(id),frame=$('frame'),settingsFrame=$('settings-frame'),slotSelect=$('slot'),labels={'p1-host-1':'네임텍 1','p1-host-2':'네임텍 2','p1-host-3':'네임텍 3','p1-banner':'배너','p1-ticker':'줄별 순환 자막','p2-progress':'현재 / 전체 진행률','p2-info':'개체 정보','p2-bidders':'실시간 입찰자','p2-photo':'개체 사진','p2-price':'가격','p2-sold':'낙찰 알림','p2-banner':'배너','p2-ticker':'줄별 순환 자막','p3-board':'집계판','p3-effect':'주사위·결과 연출'};
+let placements={},selectedSlot='',drag=null,layoutDirty=false;if(page===3)$('banners').hidden=true;
 function toast(message){const el=$('toast');el.textContent=message;el.classList.add('show');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('show'),2200)}
 function clamp(value,min,max){return Math.max(min,Math.min(max,Number(value)||0))}
 function previewDocument(){return frame.contentDocument}

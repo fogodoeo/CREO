@@ -173,6 +173,48 @@ class MemoryRepository {
     async setActiveChannel(value) { this.active = value; return value; }
 }
 
+test('shared banner selection is atomic, durable, channel-local and absent from P3', async () => {
+    const repository=new MemoryRepository();
+    await repository.upsertRecord('alpha','asset',{id:'old',kind:'banner',page:'all',name:'기존',imageUrl:'/old.png',active:true});
+    let api=createPlatformApi({repository,logger:{error(){}}});
+    const library='/api/platform/banner-library';
+    assert.equal((await call(api,'POST',library+'/import',{},'')).status,401);
+    for(let i=0;i<2;i++)assert.equal((await call(api,'POST',library+'/import',{})).status,200);
+    const old=(await call(api,'GET',library)).json().banners;
+    assert.equal(old.length,1);
+    assert.equal(await repository.getRecord('beta','broadcast','state'),null);
+    const added=await call(api,'POST',library,{record:{name:'새 배너',imageUrl:'/new.png'}});
+    assert.equal(added.status,201,added.body);
+    const newId=added.json().record.id,oldId=old[0].id;
+    const select=(channel,id,selected)=>call(api,'PUT',`/api/platform/channels/${channel}/banner-selection`,{id,selected});
+    const read=(channel,page=1)=>call(api,'GET',`/api/platform/channels/${channel}/broadcast?page=${page}`,null,'');
+    assert.deepEqual((await read('alpha')).json().assets.map(a=>a.id),[oldId]);
+    const concurrent=await Promise.all([select('beta',newId,true),select('beta',oldId,true)]);
+    for(const result of concurrent)assert.equal(result.status,200,result.body);
+    assert.equal((await select('beta',newId,true)).status,200);
+    assert.equal((await select('beta','invalid',true)).status,422);
+    const stale=await call(api,'PUT','/api/platform/channels/beta/broadcast-state',{selectedBannerIds:[],bannerSelectionConfigured:false,page1BannerOn:false,page3BannerOn:true,page3BannerUrl:'/bad.png',layoutPlacements:{'p3-banner':{x:0,y:0,width:100,height:10}}});
+    assert.equal(stale.status,200,stale.body);
+    api=createPlatformApi({repository});
+    const restored=(await read('beta')).json();
+    assert.deepEqual(restored.state.selectedBannerIds.sort(),[newId,oldId].sort());
+    assert.equal(restored.state.page1BannerOn,true);
+    assert.equal(restored.state.layoutPlacements['p3-banner'],undefined);
+    const p3=(await read('beta',3)).json();
+    assert.equal(p3.state.page3BannerOn,false);assert.equal(p3.state.page3BannerUrl,'');assert.equal(p3.assets.length,0);
+    await select('beta',newId,false);await select('beta',oldId,false);
+    await call(api,'POST',library+'/import',{});
+    assert.equal((await read('beta')).json().assets.length,0);
+    assert.equal((await read('alpha')).json().assets.length,1);
+    assert.equal((await call(api,'GET',library)).json().banners.length,2);
+    const before=await repository.getRecord('alpha','broadcast','state');
+    const write=repository.upsertRecord.bind(repository);
+    repository.upsertRecord=async()=>{throw Error('storage unavailable')};
+    assert.equal((await select('alpha',oldId,false)).status,500);
+    repository.upsertRecord=write;
+    assert.deepEqual(await repository.getRecord('alpha','broadcast','state'),before);
+});
+
 test('explicit draft SMS sale test never switches the operating channel', async () => {
     for (const allowed of [false, true]) {
         const repository = new MemoryRepository();
@@ -1704,7 +1746,7 @@ test('page-scoped broadcast payloads keep PRISM overlays channel-local and compa
     assert.deepEqual(pageThree.json().items.map((item) => item.id).sort(), ['active', 'sold']);
     assert.equal(JSON.stringify(pageThree.json()).includes('foreign'), false);
     assert.equal(JSON.stringify(pageThree.json()).includes('large.webp'), false);
-    assert.deepEqual(pageThree.json().assets.map((asset) => asset.id).sort(), ['dice-1', 'p3-banner']);
+    assert.deepEqual(pageThree.json().assets.map((asset) => asset.id).sort(), ['dice-1']);
 });
 
 test('CREWART operator can idempotently correct a wrongly randomized bidder house', async () => {
@@ -2266,12 +2308,12 @@ test('broadcast state stores independent 1P, 2P, and 3P overlay controls', async
     assert.equal(state.quizStatus, 'open');
     assert.equal(state.quizQuestion, '첫 번째 문제');
     assert.equal(state.quizWinner, '참가자 A');
-    assert.equal(state.page3BannerOn, true);
-    assert.equal(state.page3BannerUrl, 'https://example.com/page3.mp4');
+    assert.equal(state.page3BannerOn, false);
+    assert.equal(state.page3BannerUrl, '');
     assert.deepEqual(state.layoutPlacements['p1-hosts'], { x: 9.5, y: 12, width: 42, height: 18, fontScale: 1.25, opacity: 72, visible: false });
     assert.deepEqual(state.layoutPlacements['p2-progress'], { x: 4, y: 4, width: 18, height: 9, fontScale: 1.4, opacity: 100, visible: true });
     assert.deepEqual(state.layoutPlacements['p3-effect'], { x: 0, y: 96, width: 100, height: 4, fontScale: 2.5, opacity: 100, visible: true });
-    assert.deepEqual(state.layoutPlacements['p3-banner'], { x: 12, y: 70, width: 30, height: 20, fontScale: 1, opacity: 100, visible: true });
+    assert.equal(state.layoutPlacements['p3-banner'], undefined);
     assert.equal(state.layoutPlacements['unknown-slot'], undefined);
     assert.equal(state.ignoredSecret, undefined);
 });
