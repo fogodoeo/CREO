@@ -399,7 +399,9 @@ test('buyer and vendor checkout pages are short-code based and support the full 
     assert.match(source, /function chosung/);
     assert.doesNotMatch(source, /<datalist/i);
     assert.match(source, /data-payment-vendor/);
-    assert.match(source, /카드결제 페이지 열기/);
+    assert.match(source, /카드로 결제하기/);
+    assert.match(source, /CreoCheckoutActions.copyAccount/);
+    assert.match(source, /state.dirty/);
     assert.match(source, /state\.data\.vendors\.map/);
     assert.match(source, /class="vendor-contact"/);
     assert.match(source, /vendor\.contact\?\.phone/);
