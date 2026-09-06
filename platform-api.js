@@ -3535,7 +3535,7 @@ function createPlatformApi({
                         mode: requestedMode
                     });
                     const savedState = await repository.upsertRecord(channelId, 'broadcast', nextState);
-                    await repository.setActiveChannel(channelId);
+                    if (!isolatedNotificationTest) await repository.setActiveChannel(channelId);
                     if (staleShipments.length) {
                         const deletedShipments = [];
                         try {

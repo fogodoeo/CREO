@@ -39,7 +39,7 @@ test('explicit draft SMS sale test never switches the operating channel', async 
     for (const allowed of [false, true]) {
         const repository = new MemoryRepository();
         repository.catalog.channels[1].status = 'draft';
-        await repository.upsertRecord('beta', 'item', { id: 'test', name: 'A01', status: 'waiting' });
+        await repository.upsertRecord('beta', 'item', { id: 'test', name: 'A01', lotNumber: 1, status: 'waiting' });
         const api = createPlatformApi({ repository, notificationService: { provider: { testMode: allowed } } });
         const response = await call(api, 'PUT', '/api/platform/channels/beta/auction-transition', {
             notificationTest: true, itemId: 'test', status: 'sold', item: { soldPrice: 100000 }
