@@ -94,6 +94,14 @@ $('manage-vendor-links').onclick=async()=>{
    const result=await CreoPlatform.api(`channels/${encodeURIComponent(requestedChannelId)}/vendor-checkout-link`,{method:'POST',body:JSON.stringify({vendorId:vendor.id})});
    if(requestedChannelId!==channelId||!$('vendor-links-dialog').open)return;
    input.value=result.url;open.href=result.url;copy.disabled=false;
+   const test=document.createElement('button');test.className='btn';test.textContent='실제 페이지로 테스트';controls.append(test);
+   test.onclick=async()=>{if(test.disabled||channelId!==requestedChannelId)return;test.disabled=true;try{
+    const prepared=await CreoPlatform.api(`channels/${encodeURIComponent(requestedChannelId)}/checkout-test`,{method:'POST',body:JSON.stringify({vendorId:vendor.id})});
+    if(channelId!==requestedChannelId)return;
+    const box=document.createElement('div'),note=document.createElement('p');note.textContent=prepared.message;box.append(note);
+    for(const [label,url] of [['테스트 구매자 페이지',prepared.buyerUrl],['테스트 업체 페이지',prepared.vendorUrl]]){const a=document.createElement('a'),field=document.createElement('input');a.className='btn';a.textContent=label;a.href=url;a.target='_blank';a.rel='noopener noreferrer';field.value=url;field.readOnly=true;field.style.cssText='display:block;width:100%;padding:10px;margin:8px 0';field.setAttribute('aria-label',label+' 주소');field.onclick=()=>field.select();box.append(a,field)}
+    row.append(box);test.textContent='테스트 링크 준비됨';
+   }catch(error){toast(error.message);test.disabled=false}};
    copy.onclick=async()=>{try{await navigator.clipboard.writeText(result.url);copy.textContent='복사됨'}catch{input.select();toast('주소를 선택했습니다. 직접 복사해 주세요.')}};
   }catch(error){input.placeholder=error.message}
  }

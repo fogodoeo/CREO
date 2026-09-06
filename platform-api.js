@@ -124,7 +124,7 @@ function mergeBroadcastConfig(current = {}, patch = {}) {
 }
 
 function isBroadcastableChannel(channel) {
-    return channel?.status === 'active' && channel?.features?.broadcast !== false;
+    return !channel?.id?.startsWith('checkout-test-') && channel?.status === 'active' && channel?.features?.broadcast !== false;
 }
 
 function publicArchive(record = {}) {
@@ -1924,6 +1924,7 @@ function createPlatformApi({
     }
 
     async function enqueueNotification(channelId, event) {
+        if (channelId.startsWith('checkout-test-')) return { configured: true, suppressed: true, status: 'test_no_send' };
         if (!notificationService) return { configured: false, duplicate: false };
         try {
             const result = await notificationService.enqueue(channelId, event);
@@ -2803,7 +2804,7 @@ function createPlatformApi({
                 const admin = await isAdmin(req);
                 const includeInactive = admin && url.searchParams.get('includeArchived') === '1';
                 const channels = catalog.channels
-                    .filter((channel) => includeInactive || channel.status === 'active')
+                    .filter((channel) => !channel.id.startsWith('checkout-test-') && (includeInactive || channel.status === 'active'))
                     .map((channel) => ({ ...channel, links: channelLinks(channel) }));
                 replyJson(res, 200, { ...catalog, channels });
                 return true;
@@ -4060,6 +4061,31 @@ function createPlatformApi({
                     message: sms.message
                 });
                 return true;
+            }
+
+            if (segments.length === 3 && segments[2] === 'checkout-test' && method === 'POST') {
+                if (!await requireAdmin(req,res)) return true;
+                const body=await readJson(req);
+                const vendor=await vendorDirectory.find(channelId,cleanText(body.vendorId,64));
+                if(!vendor || channelId.startsWith('checkout-test-')) { replyJson(res,422,{error:'운영 채널의 업체를 선택해 주세요.'});return true; }
+                const testId='checkout-test-'+crypto.createHash('sha256').update(channelId+':'+vendor.id).digest('hex').slice(0,16);
+                await withMutationLock('checkout-test-create',async()=>{
+                    const current=await loadCatalog();
+                    if(!current.channels.some(c=>c.id===testId)) {
+                        const testChannel=normalizeChannel({id:testId,name:'[테스트·입금 금지] '+vendor.name,status:'active',dataAdapter:'platform',features:{broadcast:false,shipping:true},shippingDefaults:{...channel.shippingDefaults,pickupLocations:channel.shippingDefaults?.pickupLocations?.length?channel.shippingDefaults.pickupLocations:['테스트 직접수령']}});
+                        await repository.saveCatalog([...current.channels,testChannel],current.version);
+                    }
+                    if(!await repository.getRecord(testId,'vendor','test-vendor'))await repository.upsertRecord(testId,'vendor',{
+                        ...vendor,id:'test-vendor',channelId:testId,directoryId:undefined,name:'[테스트] '+vendor.name,
+                        phone:'01049278600',bankName:'테스트 은행 (입금 금지)',bankAccount:'000-000-000000',bankHolder:'실제 입금 금지',paymentMethods:['bank_transfer','card'],cardEnabled:true
+                    });
+                    if(!await repository.getRecord(testId,'item','test-item'))await repository.upsertRecord(testId,'item',{
+                        id:'test-item',channelId:testId,name:'TEST-01 (입금 금지)',lotNumber:1,vendorId:'test-vendor',vendorName:'[테스트] '+vendor.name,status:'sold',soldPrice:100000,winnerName:'테스트 구매자',winnerPhone:'01049278600'
+                    });
+                    const buyer=await prepareBuyerCheckoutLink(req,testId,'01049278600');
+                    const seller=await prepareVendorCheckoutLink(req,testId,'test-vendor');
+                    replyJson(res,200,{buyerUrl:buyer.url.toString(),vendorUrl:seller.url.toString(),channelId:testId,message:'실제 페이지·서버 저장을 사용합니다. 문자 자동 발송은 꺼져 있으며 실제 입금은 하지 마세요.'});
+                });return true;
             }
 
             if (segments.length === 3 && segments[2] === 'vendor-directory') {

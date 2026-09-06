@@ -1,5 +1,10 @@
 (function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.CreoCheckoutActions=api})(typeof window!=='undefined'?window:globalThis,function(){
  'use strict';
+ if(typeof document!=='undefined')document.addEventListener('DOMContentLoaded',()=>{
+  const channel=document.getElementById('channel-name')||document.getElementById('channel');if(!channel)return;
+  const banner=document.createElement('div');banner.textContent='테스트 전용 · 실제 입금 금지 · 문자 자동 발송 없음';banner.style.cssText='position:sticky;top:0;z-index:100;padding:12px;background:#fff0b5;color:#392d00;text-align:center;font-weight:800';banner.hidden=true;document.body.prepend(banner);
+  const update=()=>{banner.hidden=!channel.textContent.startsWith('[테스트·입금 금지]')};const observer=new MutationObserver(update);observer.observe(channel,{childList:true,characterData:true,subtree:true});update();window.addEventListener('pagehide',()=>observer.disconnect(),{once:true});
+ });
  const digits=value=>String(value||'').replace(/\D/g,'');
  function phoneHref(value){const n=digits(value);return /^0\d{8,10}$/.test(n)?'tel:'+n:''}
  function priority(status){return ({bank_transfer_reported:0,card_payment_reported:0,card_link_pending:1,additional_payment:2,awaiting_information:4,paid:9})[status]??3}

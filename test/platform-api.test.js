@@ -13,6 +13,32 @@ const {
 const { normalizeChannel } = require('../platform-core');
 const { createCrewartHouseService } = require('../crewart-house-service');
 
+test('real checkout test links persist, isolate records, and suppress notifications', async () => {
+ const repository=new MemoryRepository();
+ await repository.upsertRecord('alpha','vendor',{id:'v',name:'업체',phone:'01011112222'});
+ let sends=0;const options={repository,adminSessionSecret:'test-checkout',notificationService:{enqueue(){sends++;throw Error('must not send')}}};
+ let api=createPlatformApi(options);
+ const path='/api/platform/channels/alpha/checkout-test';
+ assert.equal((await call(api,'POST',path,{vendorId:'v'},'')).status,401);
+ const results=await Promise.all([call(api,'POST',path,{vendorId:'v'}),call(api,'POST',path,{vendorId:'v'})]);
+ for(const r of results)assert.equal(r.status,200,r.body);
+ const result=results[0].json();assert.equal(results[1].json().channelId,result.channelId);
+ assert.equal((await repository.listRecords(result.channelId,'item')).length,1);
+ assert.equal((await repository.listRecords('alpha','item')).length,0);
+ const code=new URL(result.buyerUrl).pathname.split('/').at(-1),vendorCode=new URL(result.vendorUrl).pathname.split('/').at(-1);
+ const initial=await call(api,'GET','/api/platform/buyer-shipping?code='+code,null,'');assert.equal(initial.status,200,initial.body);
+ const destinationId=initial.json().destinations.find(d=>d.type==='pickup').id;
+ const saved=await call(api,'POST','/api/platform/buyer-shipping',{code,requestId:'test-save',destinationId,payments:[{vendorKey:'test-vendor',method:'bank_transfer'}]},'');assert.equal(saved.status,200,saved.body);
+ const report=await call(api,'POST','/api/platform/buyer-shipping/report-payment',{code,vendorKey:'test-vendor',requestId:'test-report'},'');assert.equal(report.status,200,report.body);
+ api=createPlatformApi(options);
+ const seller=await call(api,'GET','/api/platform/vendor-checkout?code='+vendorCode,null,'');assert.equal(seller.status,200,seller.body);assert.equal(seller.json().buyers[0].payment.status,'bank_transfer_reported');
+ const confirmBody={code:vendorCode,buyerId:seller.json().buyers[0].id,requestId:'test-confirm'};
+ for(let n=0;n<2;n++){const confirmed=await call(api,'POST','/api/platform/vendor-checkout/confirm-payment',confirmBody,'');assert.equal(confirmed.status,200,confirmed.body)}
+ const paid=await call(api,'GET','/api/platform/buyer-shipping?code='+code,null,'');assert.equal(paid.json().payment.status,'paid');
+ assert.equal(sends,0);assert.equal((await repository.listRecords('alpha','shipment')).length,0);
+ const listed=await call(api,'GET','/api/platform/channels?includeArchived=1');assert.ok(!listed.json().channels.some(c=>c.id===result.channelId));
+});
+
 test('vendor rate persists across saves and restart and reaches public P3 without private fields', async () => {
     const repository = new MemoryRepository();
     repository.catalog.channels[0].groups = [{id:'a',name:'팀'}];
