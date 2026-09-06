@@ -16,6 +16,7 @@ const TEMPLATE_KEYS = Object.freeze([
     'buyer_win_additional',
     'vendor_win',
     'vendor_payment_reported',
+    'vendor_card_requested',
     'buyer_card_link_ready',
     'buyer_payment_confirmed'
 ]);
@@ -26,6 +27,7 @@ const ACTION_SMS_TEMPLATE_KEYS = new Set([
     'buyer_win_additional',
     'vendor_win',
     'vendor_payment_reported',
+    'vendor_card_requested',
     'buyer_card_link_ready',
     'buyer_payment_confirmed'
 ]);

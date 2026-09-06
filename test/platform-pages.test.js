@@ -256,7 +256,7 @@ test('channel creation starts with a safe generated id and protects unsaved edit
     assert.match(manager, /beforeunload/);
     assert.match(manager, /scrollbar-width:none/);
     assert.match(manager, /shipping-pickup-locations/);
-    assert.match(manager, /shippingDefaults:\{pickupLocations:/);
+    assert.match(manager, /shippingDefaults:\{enabledCarriers:/);
     assert.match(manager, /id="settlement-discount-enabled"/);
     assert.match(manager, /id="settlement-discount-rule"/);
     assert.match(manager, /id="settlement-discount-rate"/);
@@ -399,7 +399,9 @@ test('buyer and vendor checkout pages are short-code based and support the full 
     assert.match(source, /function chosung/);
     assert.doesNotMatch(source, /<datalist/i);
     assert.match(source, /data-payment-vendor/);
-    assert.match(source, /카드결제 페이지 열기/);
+    assert.match(source, /카드로 결제하기/);
+    assert.match(source, /CreoCheckoutActions.copyAccount/);
+    assert.match(source, /state.dirty/);
     assert.match(source, /state\.data\.vendors\.map/);
     assert.match(source, /class="vendor-contact"/);
     assert.match(source, /vendor\.contact\?\.phone/);
@@ -1191,7 +1193,7 @@ test('shared registration workspace rejects stale cross-channel responses', () =
     assert.match(workspace, /requestedChannelId=channelId/);
     assert.match(workspace, /sequence!==workspaceLoadSequence\|\|requestedChannelId!==channelId/);
     assert.match(workspace, /response\.channel\?\.id!==requestedChannelId/);
-    assert.match(workspace, /editing=\{type,id:record\?\.id\|\|'',channelId\}/);
+    assert.match(workspace, /editing=\{type,id:record\?\.id\|\|'',channelId,directoryRevision:record\?\.directoryRevision\}/);
     assert.match(workspace, /editing\.channelId!==channelId/);
     assert.match(workspace, /function endpoint\(type,id='',targetChannelId=channelId\)/);
     assert.match(workspace, /if\(livePending\)return/);

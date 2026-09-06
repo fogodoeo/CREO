@@ -71,13 +71,15 @@
     function allocateShipping(items = [], selection = null, channel = {}, pargeRates = []) {
         const ordered = items.slice().sort(itemOrder);
         const allocations = new Map(ordered.map((item) => [item.id, 0]));
-        if (!selection || selection.destinationType !== 'parge' || !ordered.length) return { total: 0, allocations };
+        if (!selection || !['parge', 'dodosi'].includes(selection.destinationType) || !ordered.length) return { total: 0, allocations };
         const rate = selectedRate(pargeRates, selection.pargeRegion, selection.pargeShop);
         if (!rate) return { total: 0, allocations };
         const isJeju = String(selection.pargeRegion || '').includes('제주');
-        const additionalFee = isJeju
-            ? Number(channel?.shippingDefaults?.pargeJejuAdditionalFee) || 4000
-            : Number(channel?.shippingDefaults?.pargeAdditionalFee) || 7000;
+        const additionalFee = selection.destinationType === 'dodosi'
+            ? Number(channel?.shippingDefaults?.dodosiAdditionalFee ?? 7000)
+            : isJeju
+            ? Number(channel?.shippingDefaults?.pargeJejuAdditionalFee ?? 4000)
+            : Number(channel?.shippingDefaults?.pargeAdditionalFee ?? 7000);
         allocations.set(ordered[0].id, Math.max(0, Number(rate.baseCost) || 0));
         ordered.slice(1).forEach((item) => allocations.set(item.id, Math.max(0, additionalFee)));
         return {
@@ -103,6 +105,8 @@
         if (Number(totalAmount) > 0 && confirmed >= Number(totalAmount) && !missingShipment) {
             return { status: 'paid', confirmedAmount: confirmed, additionalDue: 0, latest };
         }
+        const reported = newestShipment(shipments.filter(shipment => ['bank_transfer_reported', 'card_payment_reported'].includes(shipment.paymentStatus)));
+        if (reported) return { status: reported.paymentStatus, confirmedAmount: confirmed, additionalDue: due, latest: reported };
         if (confirmed > 0 && due > 0) {
             return { status: 'additional_payment', confirmedAmount: confirmed, additionalDue: due, latest };
         }

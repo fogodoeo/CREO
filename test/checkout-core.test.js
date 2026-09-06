@@ -4,6 +4,14 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const Checkout = require('../checkout-core');
 const BrowserCheckout = require('../public/checkout-rules');
+test('additional payment report remains actionable after a previous payment', () => {
+    const state = Checkout.derivePaymentState({ itemCount: 2, totalAmount: 226000, shipments: [
+        { paymentStatus: 'paid', paymentConfirmedAmount: 119000, buyerSubmittedAt: '2026-09-01' },
+        { paymentStatus: 'bank_transfer_reported', paymentMethod: 'bank_transfer', paymentConfirmedAmount: 119000, buyerSubmittedAt: '2026-09-02' }
+    ] });
+    assert.equal(state.status, 'bank_transfer_reported');
+    assert.equal(state.additionalDue, 107000);
+});
 
 test('server and buyer page import one checkout rules implementation', () => {
     assert.strictEqual(Checkout, BrowserCheckout);

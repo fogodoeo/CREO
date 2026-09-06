@@ -1,0 +1,12 @@
+/* Shared buyer/vendor controls: touch targets, readable type, no color-only status. */
+body{font-size:16px;line-height:1.5}
+button,.btn,.choice,.primary,.minor,.card-link{min-height:48px;font-size:16px!important;cursor:pointer}
+input,select{font-size:16px!important;min-height:48px;max-width:100%}
+.vendor-contact,.buyer-phone{display:inline-flex;align-items:center;min-height:44px;font-size:16px!important;color:#174c8c;text-decoration:underline;overflow-wrap:anywhere}
+.lead,.note,.action p,.action-box p,.vendor-title b,.result b,.row,.item b{font-size:16px!important}
+.badge,.choice small,.status small,.result small,.identity span{font-size:14px!important}
+.vendor-head,.buyer-head{flex-wrap:wrap}.action-box b{font-size:22px;overflow-wrap:anywhere}
+.payable-summary{padding:18px 0}.payable-summary b{display:block;font-size:32px;line-height:1.3}.payable-summary small{font-size:14px;color:#5c626b}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #245dab;outline-offset:3px}
+button:disabled{cursor:default}.buttons{flex-wrap:wrap}.buttons>*{flex:1;min-width:130px}
+@media(max-width:480px){.url-row{display:flex;flex-direction:column}.url-row>*{width:100%}.vendor-head,.buyer-head{gap:8px}.shell{width:100%}.payable-summary b{font-size:30px}}

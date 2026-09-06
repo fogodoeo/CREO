@@ -13,6 +13,32 @@ const {
 const { normalizeChannel } = require('../platform-core');
 const { createCrewartHouseService } = require('../crewart-house-service');
 
+test('real checkout test links persist, isolate records, and suppress notifications', async () => {
+ const repository=new MemoryRepository();
+ await repository.upsertRecord('alpha','vendor',{id:'v',name:'업체',phone:'01011112222'});
+ let sends=0;const options={repository,adminSessionSecret:'test-checkout',notificationService:{enqueue(){sends++;throw Error('must not send')}}};
+ let api=createPlatformApi(options);
+ const path='/api/platform/channels/alpha/checkout-test';
+ assert.equal((await call(api,'POST',path,{vendorId:'v'},'')).status,401);
+ const results=await Promise.all([call(api,'POST',path,{vendorId:'v'}),call(api,'POST',path,{vendorId:'v'})]);
+ for(const r of results)assert.equal(r.status,200,r.body);
+ const result=results[0].json();assert.equal(results[1].json().channelId,result.channelId);
+ assert.equal((await repository.listRecords(result.channelId,'item')).length,1);
+ assert.equal((await repository.listRecords('alpha','item')).length,0);
+ const code=new URL(result.buyerUrl).pathname.split('/').at(-1),vendorCode=new URL(result.vendorUrl).pathname.split('/').at(-1);
+ const initial=await call(api,'GET','/api/platform/buyer-shipping?code='+code,null,'');assert.equal(initial.status,200,initial.body);
+ const destinationId=initial.json().destinations.find(d=>d.type==='pickup').id;
+ const saved=await call(api,'POST','/api/platform/buyer-shipping',{code,requestId:'test-save',destinationId,payments:[{vendorKey:'test-vendor',method:'bank_transfer'}]},'');assert.equal(saved.status,200,saved.body);
+ const report=await call(api,'POST','/api/platform/buyer-shipping/report-payment',{code,vendorKey:'test-vendor',requestId:'test-report'},'');assert.equal(report.status,200,report.body);
+ api=createPlatformApi(options);
+ const seller=await call(api,'GET','/api/platform/vendor-checkout?code='+vendorCode,null,'');assert.equal(seller.status,200,seller.body);assert.equal(seller.json().buyers[0].payment.status,'bank_transfer_reported');
+ const confirmBody={code:vendorCode,buyerId:seller.json().buyers[0].id,requestId:'test-confirm'};
+ for(let n=0;n<2;n++){const confirmed=await call(api,'POST','/api/platform/vendor-checkout/confirm-payment',confirmBody,'');assert.equal(confirmed.status,200,confirmed.body)}
+ const paid=await call(api,'GET','/api/platform/buyer-shipping?code='+code,null,'');assert.equal(paid.json().payment.status,'paid');
+ assert.equal(sends,0);assert.equal((await repository.listRecords('alpha','shipment')).length,0);
+ const listed=await call(api,'GET','/api/platform/channels?includeArchived=1');assert.ok(!listed.json().channels.some(c=>c.id===result.channelId));
+});
+
 test('vendor rate persists across saves and restart and reaches public P3 without private fields', async () => {
     const repository = new MemoryRepository();
     repository.catalog.channels[0].groups = [{id:'a',name:'팀'}];
@@ -36,6 +62,93 @@ test('vendor rate persists across saves and restart and reaches public P3 withou
     assert.equal(ranks.json().scoreboards[0].rows[0].total,50000);
     const other=await call(api,'GET','/api/platform/channels/beta/broadcast?page=3',null,'');
     assert.equal(other.json().items.length,0);
+});
+
+test('channel shipping options enforce carriers, retain quotes, and isolate buyers after restart', async () => {
+    const repository = new MemoryRepository();
+    repository.catalog.channels[0].shippingDefaults = { pickupLocations: ['공개 지점', '비공개 지점'], disabledPickupLocations: ['비공개 지점'], enabledCarriers: ['dodosi'], dodosiAdditionalFee: 3000 };
+    await repository.upsertRows([{key:'shipping_rate_dodosi',value:JSON.stringify({items:[{route:'부산',region:'부산',shop:'테스트샵',price:16000}]})}]);
+    await repository.upsertRecord('alpha','vendor',{id:'v',name:'업체',paymentMethods:['card']});
+    for (let i=1;i<=2;i++) await repository.upsertRecord('alpha','item',{id:'i'+i,name:'A0'+i,lotNumber:i,vendorId:'v',status:'sold',soldPrice:100000,winnerName:'테스트',winnerPhone:'01012345678'});
+    let api=createPlatformApi({repository,adminSessionSecret:'shipping-options-test'});
+    const link=await call(api,'POST','/api/platform/channels/alpha/buyer-shipping-link',{itemId:'i1'});
+    assert.equal(link.status,200,link.body);
+    const code=new URL(link.json().url).pathname.split('/').at(-1);
+    const endpoint='/api/platform/buyer-shipping';
+    const read=()=>call(api,'GET',endpoint+'?code='+code,null,'');
+    const initial=(await read()).json();
+    assert.deepEqual(initial.destinations.map(row=>row.id),['pickup-1','dodosi']);
+    assert.equal(initial.carriers.dodosi.regions[0].shops[0].baseCost,16000);
+    const body={code,requestId:'shipping-options-save',destinationId:'dodosi',pargeRegion:'부산',pargeShop:'부산 - 테스트샵',payments:[{vendorKey:'v',method:'card'}]};
+    for (const destinationId of ['parge','pickup-2']) {
+        const denied=await call(api,'POST',endpoint,{...body,destinationId},'');
+        assert.equal(denied.status,422,denied.body);
+    }
+    const results=await Promise.all([call(api,'POST',endpoint,body,''),call(api,'POST',endpoint,body,'')]);
+    for(const result of results)assert.equal(result.status,200,result.body);
+    const rows=await repository.listRecords('alpha','shipment');
+    assert.equal(rows.length,2);
+    assert.equal(rows.reduce((sum,row)=>sum+row.cost,0),19000);
+    assert.ok(rows.every(row=>row.carrier==='도도시'));
+    assert.equal((await repository.listRecords('beta','shipment')).length,0);
+    repository.catalog.channels[0].shippingDefaults.dodosiAdditionalFee=9000;
+    api=createPlatformApi({repository,adminSessionSecret:'shipping-options-test'});
+    const restored=(await read()).json();
+    assert.equal(restored.vendors[0].totals.shippingAmount,19000);
+});
+
+test('vendor link permits first account registration only and ignores target spoofing', async () => {
+    const repository=new MemoryRepository();
+    await repository.upsertRecord('alpha','vendor',{id:'v1',name:'업체1'});
+    await repository.upsertRecord('alpha','vendor',{id:'v2',name:'업체2'});
+    const api=createPlatformApi({repository,adminSessionSecret:'vendor-settings-test'});
+    const link=await call(api,'POST','/api/platform/channels/alpha/vendor-checkout-link',{vendorId:'v1'});
+    assert.equal(link.status,200,link.body);
+    const code=link.json().code;
+    const body={code,vendorId:'v2',channelId:'beta',phone:'01012345678',bankName:'테스트은행',bankAccount:'123-456-789',bankHolder:'테스트',cardEnabled:true};
+    const endpoint='/api/platform/vendor-checkout/settings';
+    const results=await Promise.all([call(api,'POST',endpoint,body,''),call(api,'POST',endpoint,{...body,bankAccount:'999-999-999'},'')]);
+    assert.deepEqual(results.map(r=>r.status).sort(),[200,409]);
+    assert.equal((await repository.getRecord('alpha','vendor','v1')).bankAccount,'123-456-789');
+    assert.equal((await repository.getRecord('alpha','vendor','v2')).bankAccount,undefined);
+    assert.equal((await repository.listRecords('beta','vendor')).length,0);
+    const repeat=await call(api,'POST',endpoint,body,'');assert.equal(repeat.status,200,repeat.body);
+    assert.equal(repeat.json().vendor.bankRegistered,true);
+    const restarted=createPlatformApi({repository,adminSessionSecret:'vendor-settings-test'});
+    const blocked=await call(restarted,'POST',endpoint,{...body,bankAccount:'111-111-111'},'');assert.equal(blocked.status,409);
+    const invalid=await call(api,'POST',endpoint,{...body,code:'invalid'},'');assert.equal(invalid.status,401);
+});
+
+test('common vendor portal reuses identity without sharing transactions or unrelated vendors', async () => {
+ const repository=new MemoryRepository();
+ const api=createPlatformApi({repository,adminSessionSecret:'common-vendor-test'});
+ await repository.upsertRecord('alpha','vendor',{id:'one',name:'같은 이름',phone:'01012345678'});
+ await repository.upsertRecord('beta','vendor',{id:'unrelated',name:'같은 이름'});
+ const oldLink=await call(api,'POST','/api/platform/channels/alpha/vendor-checkout-link',{vendorId:'one'});
+ const registered=await call(api,'POST','/api/platform/channels/alpha/vendor-directory',{vendorId:'one'});
+ assert.equal(registered.status,200,registered.body);const profileId=registered.json().result.id;
+ const attached=await call(api,'POST','/api/platform/channels/beta/vendor-directory',{profileId});
+ assert.equal(attached.status,200,attached.body);const vendorId=attached.json().result.vendorId;
+ const again=await call(api,'POST','/api/platform/channels/beta/vendor-directory',{profileId});assert.equal(again.json().result.vendorId,vendorId);
+ assert.equal((await repository.listRecords('beta','vendor')).length,2);
+ const newLink=await call(api,'POST','/api/platform/channels/beta/vendor-checkout-link',{vendorId});
+ assert.equal(newLink.json().url,oldLink.json().url);
+ const code=oldLink.json().code;
+ await repository.upsertRecord('alpha','item',{id:'sale-a',lotNumber:1,name:'A01',vendorId:'one',status:'sold',soldPrice:100000,winnerPhone:'01011112222'});
+ await repository.upsertRecord('beta','item',{id:'sale-b',lotNumber:1,name:'B01',vendorId,status:'sold',soldPrice:200000,winnerPhone:'01011112222'});
+ const selected=await call(api,'GET','/api/platform/vendor-checkout?code='+code+'&event=beta',null,'');
+ assert.equal(selected.status,200,selected.body);assert.equal(selected.json().vendor.id,vendorId);assert.equal(selected.json().events.length,2);
+ assert.deepEqual(selected.json().buyers.flatMap(b=>b.items.map(i=>i.name)),['B01']);
+ const denied=await call(api,'GET','/api/platform/vendor-checkout?code='+code+'&event=unknown',null,'');assert.equal(denied.status,401);
+ const settings={code,event:'beta',directoryRevision:selected.json().vendor.directoryRevision,phone:'01087654321',bankName:'은행',bankAccount:'123-456-789',bankHolder:'업체',cardEnabled:true};
+ const saved=await call(api,'POST','/api/platform/vendor-checkout/settings',settings,'');assert.equal(saved.status,200,saved.body);
+ const alpha=await call(api,'GET','/api/platform/vendor-checkout?code='+code,null,'');assert.equal(alpha.json().vendor.phone,'01087654321');
+ assert.equal((await repository.getRecord('beta','vendor','unrelated')).phone,undefined);
+ repository.catalog.channels[0].status='archived';
+ const archive=await call(api,'GET','/api/platform/vendor-checkout?code='+code+'&event=alpha',null,'');assert.equal(archive.status,200);
+ const blocked=await call(api,'POST','/api/platform/vendor-checkout/card-link',{code,event:'alpha',buyerId:'x',cardPaymentUrl:'https://example.com',requestId:'long-request'},'');assert.equal(blocked.status,409);
+ const restarted=createPlatformApi({repository,adminSessionSecret:'common-vendor-test'});
+ const restored=await call(restarted,'GET','/api/platform/vendor-checkout?code='+code+'&event=beta',null,'');assert.equal(restored.json().vendor.bankAccount,'123-456-789');
 });
 
 class MemoryRepository {
@@ -184,7 +297,7 @@ test('buyer shipping link isolates one buyer, saves idempotently, confirms payme
     assert.equal(initial.status, 200, initial.body);
     assert.deepEqual(initial.json().items.map((item) => item.id), ['item-a', 'item-b', 'private-other-vendor']);
     assert.deepEqual(initial.json().vendors.map((vendor) => vendor.name), ['라이언게코', '다른업체']);
-    assert.deepEqual(initial.json().destinations.map((entry) => entry.label), ['대구 크레오', '대구 크레용 본점', '배송']);
+    assert.deepEqual(initial.json().destinations.map((entry) => entry.label), ['대구 크레오', '대구 크레용 본점', '파르게 배송']);
     assert.equal(initial.json().totals.auctionAmount, 1100000);
     assert.equal(initial.json().buyer.phoneLast4, '5678');
     assert.equal(initial.json().revision, 0);
@@ -346,7 +459,13 @@ test('vendor checkout link handles card URL, buyer report, confirmation, duplica
         status: 'sold', soldPrice: 150000, winnerName: '구매자', winnerPhone: '01012345678'
     });
     const secret = 'vendor-card-flow-secret';
-    const api = createPlatformApi({ repository, adminSessionSecret: secret, logger: { error() {}, warn() {} } });
+    const cardEvents = new Map();
+    const notificationService = { async enqueue(channelId, event) {
+        const duplicate = cardEvents.has(event.eventKey);
+        cardEvents.set(event.eventKey, event);
+        return { duplicate, record: { status: 'queued' } };
+    } };
+    const api = createPlatformApi({ repository, notificationService, adminSessionSecret: secret, logger: { error() {}, warn() {} } });
     const buyerLink = await call(api, 'POST', '/api/platform/channels/alpha/buyer-shipping-link', { itemId: 'card-item' });
     const buyerCode = new URL(buyerLink.json().url).pathname.split('/').at(-1);
     const saved = await call(api, 'POST', '/api/platform/buyer-shipping', {
@@ -358,6 +477,13 @@ test('vendor checkout link handles card URL, buyer report, confirmation, duplica
     assert.equal(saved.status, 200, saved.body);
     assert.equal(saved.json().vendors[0].payment.status, 'card_link_pending');
     assert.equal(saved.json().vendors[0].contact.phone, '01077778888');
+    assert.equal([...cardEvents.values()][0].templateKey, 'vendor_card_requested');
+    const repeatedChoice = await call(api, 'POST', '/api/platform/buyer-shipping', {
+        code: buyerCode, requestId: 'buyer-card-choice-2', destinationId: 'pickup-1',
+        payments: [{ vendorKey: 'vendor-card', method: 'card' }]
+    }, '');
+    assert.equal(repeatedChoice.status, 200, repeatedChoice.body);
+    assert.equal(cardEvents.size, 1);
 
     const vendorLink = await call(api, 'POST', '/api/platform/channels/alpha/vendor-checkout-link', { vendorId: 'vendor-card' });
     assert.equal(vendorLink.status, 200, vendorLink.body);

@@ -32,7 +32,6 @@ test('every operator page uses the shared pipeline while buyer and vendor links 
     const pages = {
         'channel-workspace.html': 'workspace',
         'broadcast-studio.html': 'broadcast',
-        'shipping.html': 'shipping',
         'shipping-status.html': 'shipping',
         'print.html': 'print'
     };
@@ -41,7 +40,7 @@ test('every operator page uses the shared pipeline while buyer and vendor links 
         assert.match(source, /operator-pipeline\.js/);
         assert.match(source, new RegExp(`<creo-operator-pipeline current="${current}"`));
     }
-    for (const file of ['buyer-shipping.html', 'vendor-checkout.html']) {
+    for (const file of ['shipping.html', 'buyer-shipping.html', 'vendor-checkout.html']) {
         const source = fs.readFileSync(path.join(ROOT, 'public', file), 'utf8');
         assert.doesNotMatch(source, /operator-pipeline/);
     }
