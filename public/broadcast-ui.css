@@ -13,8 +13,9 @@ body[data-page="2"] .item-progress{border-radius:9px;padding:10px 15px;min-width
 body[data-page="2"] .item-progress strong{font-weight:800;font-size:clamp(24px,3.5vw,50px);letter-spacing:-.04em;line-height:1.1}
 body[data-page="1"] .host-card{padding:10px 18px;border-radius:8px;border-left:3px solid var(--secondary);min-height:48px;display:flex;align-items:center}
 body[data-page="1"] .host-card strong{display:flex;align-items:baseline;gap:14px;min-width:0;line-height:1.2}
-body[data-page="1"] .host-name{font-weight:800;letter-spacing:-.03em}
-body[data-page="1"] .host-role{font-weight:550!important;color:var(--panel-muted)!important;letter-spacing:-.015em}
+body[data-page="1"] .host-name{font-size:clamp(26px,2.8vw,38px);font-weight:800;letter-spacing:-.03em}
+body[data-page="1"] .host-role{font-size:clamp(20px,1.8vw,26px);font-weight:550!important;color:var(--panel-muted)!important;letter-spacing:-.015em}
+body[data-page="2"] .item-copy:not(.is-inline-info){padding:18px 22px;border-radius:9px}
 body:is([data-page="1"],[data-page="2"]) .ticker{border-radius:8px;min-height:54px;border-top:1px solid var(--panel-line);overflow:hidden}
 body:is([data-page="1"],[data-page="2"]) .ticker[data-layout-custom="1"]{width:min(var(--layout-width),calc(100% - var(--layout-x)))!important}
 body:is([data-page="1"],[data-page="2"]) .ticker-badge{padding:0 clamp(14px,1.7vw,26px);border-right:1px solid var(--panel-line);background:rgba(215,183,116,.1);color:#ddc38f;font-weight:750;font-size:clamp(13px,1.8vw,var(--ticker-badge-font-size,24px));letter-spacing:-.02em;white-space:nowrap;flex-shrink:0}
