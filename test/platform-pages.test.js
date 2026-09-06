@@ -256,7 +256,7 @@ test('channel creation starts with a safe generated id and protects unsaved edit
     assert.match(manager, /beforeunload/);
     assert.match(manager, /scrollbar-width:none/);
     assert.match(manager, /shipping-pickup-locations/);
-    assert.match(manager, /shippingDefaults:\{pickupLocations:/);
+    assert.match(manager, /shippingDefaults:\{enabledCarriers:/);
     assert.match(manager, /id="settlement-discount-enabled"/);
     assert.match(manager, /id="settlement-discount-rule"/);
     assert.match(manager, /id="settlement-discount-rate"/);

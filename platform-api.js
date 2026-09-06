@@ -466,7 +466,7 @@ function sanitizeRecord(type, input = {}, current = {}) {
             status: cleanText(input.status || 'pending', 30),
             note: cleanText(input.note, 500),
             bundleId: cleanText(input.bundleId, 80),
-            destinationType: ['pickup', 'parge'].includes(input.destinationType) ? input.destinationType : '',
+            destinationType: ['pickup', 'parge', 'dodosi'].includes(input.destinationType) ? input.destinationType : '',
             destinationId: cleanText(input.destinationId, 80),
             pargeRegion: cleanText(input.pargeRegion, 80),
             pargeShop: cleanText(input.pargeShop, 120),
@@ -1175,7 +1175,32 @@ function createPlatformApi({
         return resolveShortCredential({ ...input, kind: 'vendor' });
     }
 
-    async function pargeRates() {
+    function pickupDestinations(channel) {
+        const defaults = channel.shippingDefaults || {};
+        return (defaults.pickupLocations || []).slice(0, 24).map((label, index) => ({
+            id: `pickup-${index + 1}`, type: 'pickup', label
+        })).filter(row => !(defaults.disabledPickupLocations || []).includes(row.label));
+    }
+
+    async function pargeRates(provider = 'parge') {
+        if (provider === 'dodosi') {
+            let payload = require('./public/dodosi_data.json');
+            try {
+                const rows = await repository.getRowsByKeys(['shipping_rate_dodosi']);
+                const stored = rows?.find(row => row.key === 'shipping_rate_dodosi')?.value;
+                if (stored) payload = JSON.parse(stored);
+            } catch (error) { logger.warn?.('[shipping] 도도시 요금표 조회 실패:', error.message); }
+            const groups = {};
+            const items = Array.isArray(payload) ? payload : payload.items || payload.data || [];
+            for (const item of Array.isArray(items) ? items : []) {
+                const region = cleanText(item.route || item.region || '기타', 80);
+                const name = cleanText(item.region ? `${item.region}${item.sub ? ' ' + item.sub : ''} - ${item.shop}` : item.shop, 120);
+                const cost = Number(item.price);
+                if (!name || !Number.isFinite(cost) || cost <= 0) continue;
+                (groups[region] ||= []).push({ name, baseCost: Math.round(cost) });
+            }
+            return Object.entries(groups).map(([region, shops]) => ({ region, shops }));
+        }
         let payload = FALLBACK_PARGE_RATES;
         try {
             const rows = await repository.getRowsByKeys(['shipping_rate_parge']);
@@ -1251,10 +1276,15 @@ function createPlatformApi({
     }
 
     async function checkoutSnapshot(context) {
-        const rates = await pargeRates();
         const latest = latestBundleShipment(context);
+        const rates = await pargeRates(latest?.destinationType);
         const selection = shipmentSelection(latest);
         const shipping = Checkout.allocateShipping(context.bundleItems, selection, context.channel, rates);
+        // Saved allocations are the quoted shipping price; settings changes do not reprice them.
+        for (const row of context.shipments) {
+            if (shipping.allocations.has(row.itemId) && row.buyerSubmittedAt) shipping.allocations.set(row.itemId, Math.max(0, Number(row.cost) || 0));
+        }
+        shipping.total = [...shipping.allocations.values()].reduce((sum, cost) => sum + cost, 0);
         const groups = Checkout.groupItemsByVendor(context.bundleItems, context.vendors).map((group) => {
             const itemIds = new Set(group.items.map((item) => item.id));
             const shipments = context.shipments.filter((shipment) => itemIds.has(shipment.itemId));
@@ -1313,11 +1343,16 @@ function createPlatformApi({
 
     async function buyerShippingPayload(context) {
         const snapshot = await checkoutSnapshot(context);
-        const fixedDestinations = (context.channel.shippingDefaults?.pickupLocations || []).slice(0, 12).map((label, index) => ({
-            id: `pickup-${index + 1}`,
-            type: 'pickup',
-            label
-        }));
+        const fixedDestinations = pickupDestinations(context.channel);
+        const carriers = {};
+        const availableCarriers = new Set(context.channel.shippingDefaults?.enabledCarriers || ['parge']);
+        if (['parge', 'dodosi'].includes(snapshot.selection?.destinationType)) availableCarriers.add(snapshot.selection.destinationType);
+        if (snapshot.selection?.destinationType === 'pickup' && !fixedDestinations.some(row => row.id === snapshot.selection.destinationId)) {
+            fixedDestinations.push({id:snapshot.selection.destinationId,type:'pickup',label:snapshot.latest.address || '기존 수령지'});
+        }
+        for (const id of availableCarriers) {
+            carriers[id] = { regions: await pargeRates(id), additionalFee: Number(context.channel.shippingDefaults?.[id + 'AdditionalFee'] ?? 7000), jejuAdditionalFee: Number(context.channel.shippingDefaults?.[id + 'JejuAdditionalFee'] ?? (id === 'parge' ? 4000 : 7000)) };
+        }
         const groups = snapshot.groups.map(groupPublicPayload);
         const allPaid = groups.length > 0 && groups.every((group) => group.payment.status === 'paid');
         const hasAdditional = groups.some((group) => group.payment.status === 'additional_payment');
@@ -1347,7 +1382,8 @@ function createPlatformApi({
             buyer: { name: maskBuyerName(buyerDisplayName(context.bundleItems[0])), phoneLast4: context.anchorPhone.slice(-4) },
             items,
             vendors: groups,
-            destinations: [...fixedDestinations, { id: 'parge', type: 'parge', label: '배송', provider: '파르게' }],
+            destinations: [...fixedDestinations, ...Object.keys(carriers).map(id => ({ id, type: id, label: id === 'parge' ? '파르게 배송' : '도도시 배송', provider: id === 'parge' ? '파르게' : '도도시' }))],
+            carriers,
             parge: {
                 regions: snapshot.rates,
                 additionalFee: Number(context.channel.shippingDefaults?.pargeAdditionalFee) || 7000,
@@ -1382,6 +1418,7 @@ function createPlatformApi({
             })),
             destinations: payload.destinations,
             parge: payload.parge,
+            carriers: payload.carriers,
             selection: payload.selection ? {
                 destinationType: payload.selection.destinationType,
                 destinationId: payload.selection.destinationId,
@@ -1413,12 +1450,12 @@ function createPlatformApi({
         if (requestId.length < 8) throw buyerInputError('저장 요청값이 올바르지 않습니다.');
         const latest = latestBundleShipment(context);
         if (latest?.buyerRequestId === requestId) return { duplicate: true, payload: await responsePayload(context) };
-        const fixedDestinations = (context.channel.shippingDefaults?.pickupLocations || []).slice(0, 12).map((label, index) => ({
-            id: `pickup-${index + 1}`, type: 'pickup', label
-        }));
+        const fixedDestinations = pickupDestinations(context.channel);
         const destinationId = cleanText(body.destinationId, 80);
+        const unchangedDestination = latest?.destinationId === destinationId && (latest.pargeRegion || '') === (body.pargeRegion || '') && (latest.pargeShop || '') === (body.pargeShop || '');
+        if (unchangedDestination && latest.destinationType === 'pickup' && !fixedDestinations.some(row => row.id === destinationId)) fixedDestinations.push({id:destinationId,type:'pickup',label:latest.address});
         const fixed = fixedDestinations.find((destination) => destination.id === destinationId);
-        const rates = await pargeRates();
+        const rates = await pargeRates(destinationId);
         let selection;
         let method;
         let carrier;
@@ -1428,13 +1465,13 @@ function createPlatformApi({
             method = 'pickup';
             carrier = '';
             address = fixed.label;
-        } else if (destinationId === 'parge') {
+        } else if (['parge', 'dodosi'].includes(destinationId) && ((context.channel.shippingDefaults?.enabledCarriers || ['parge']).includes(destinationId) || unchangedDestination)) {
             const pargeRegion = cleanText(body.pargeRegion, 80);
             const pargeShop = cleanText(body.pargeShop, 120);
-            if (!selectedPargeRate(rates, pargeRegion, pargeShop)) throw buyerInputError('파르게 수령 지점을 다시 선택해 주세요.');
-            selection = { destinationType: 'parge', destinationId: 'parge', pargeRegion, pargeShop };
+            if (!selectedPargeRate(rates, pargeRegion, pargeShop)) throw buyerInputError('배송업체의 수령 지점을 다시 선택해 주세요.');
+            selection = { destinationType: destinationId, destinationId, pargeRegion, pargeShop };
             method = 'delivery';
-            carrier = '파르게';
+            carrier = destinationId === 'parge' ? '파르게' : '도도시';
             address = `${pargeRegion} (${pargeShop})`;
         } else {
             throw buyerInputError('배송지를 선택해 주세요.');
@@ -1600,8 +1637,8 @@ function createPlatformApi({
                 recipientName: buyerDisplayName(item),
                 recipientPhone: context.anchorPhone,
                 method: snapshot.selection.destinationType === 'pickup' ? 'pickup' : 'delivery',
-                carrier: snapshot.selection.destinationType === 'parge' ? '파르게' : '',
-                address: snapshot.selection.destinationType === 'parge' ? `${snapshot.selection.pargeRegion} (${snapshot.selection.pargeShop})` : group.payment.latest.address,
+                carrier: snapshot.selection.destinationType === 'parge' ? '파르게' : snapshot.selection.destinationType === 'dodosi' ? '도도시' : '',
+                address: ['parge', 'dodosi'].includes(snapshot.selection.destinationType) ? `${snapshot.selection.pargeRegion} (${snapshot.selection.pargeShop})` : group.payment.latest.address,
                 cost: snapshot.shipping.allocations.get(item.id) || 0,
                 status: 'complete',
                 note: current.note || '',

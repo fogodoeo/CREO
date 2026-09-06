@@ -269,12 +269,15 @@ function normalizeShippingDefaults(value = {}, fallback = {}) {
     const source = value && typeof value === 'object' ? value : {};
     const fallbackLocations = Array.isArray(fallback?.pickupLocations) ? fallback.pickupLocations : [];
     const configuredLocations = Array.isArray(source?.pickupLocations) ? source.pickupLocations : [];
-    const locations = configuredLocations.length ? configuredLocations : fallbackLocations;
+    const locations = Array.isArray(source.pickupLocations) ? configuredLocations : fallbackLocations;
     const fee = (raw, inherited, defaultValue) => {
         const parsed = Number(raw ?? inherited);
         return Number.isFinite(parsed) ? Math.max(0, Math.min(100_000, Math.round(parsed))) : defaultValue;
     };
     return {
+        enabledCarriers: [...new Set((Array.isArray(source.enabledCarriers) ? source.enabledCarriers : (fallback.enabledCarriers || ['parge'])).filter(id => ['parge', 'dodosi'].includes(id)))],
+        disabledPickupLocations: (Array.isArray(source.disabledPickupLocations) ? source.disabledPickupLocations : (Array.isArray(fallback.disabledPickupLocations) ? fallback.disabledPickupLocations : [])).filter(label => locations.includes(label)),
+        dodosiAdditionalFee: fee(source.dodosiAdditionalFee, fallback.dodosiAdditionalFee, 7000),
         pickupLocations: [...new Set(locations.map((location) => cleanText(location, 60)).filter(Boolean))].slice(0, 24),
         pargeAdditionalFee: fee(source.pargeAdditionalFee, fallback?.pargeAdditionalFee, 7000),
         pargeJejuAdditionalFee: fee(source.pargeJejuAdditionalFee, fallback?.pargeJejuAdditionalFee, 4000)

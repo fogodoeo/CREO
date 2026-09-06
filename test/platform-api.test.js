@@ -38,6 +38,39 @@ test('vendor rate persists across saves and restart and reaches public P3 withou
     assert.equal(other.json().items.length,0);
 });
 
+test('channel shipping options enforce carriers, retain quotes, and isolate buyers after restart', async () => {
+    const repository = new MemoryRepository();
+    repository.catalog.channels[0].shippingDefaults = { pickupLocations: ['공개 지점', '비공개 지점'], disabledPickupLocations: ['비공개 지점'], enabledCarriers: ['dodosi'], dodosiAdditionalFee: 3000 };
+    await repository.upsertRows([{key:'shipping_rate_dodosi',value:JSON.stringify({items:[{route:'부산',region:'부산',shop:'테스트샵',price:16000}]})}]);
+    await repository.upsertRecord('alpha','vendor',{id:'v',name:'업체',paymentMethods:['card']});
+    for (let i=1;i<=2;i++) await repository.upsertRecord('alpha','item',{id:'i'+i,name:'A0'+i,lotNumber:i,vendorId:'v',status:'sold',soldPrice:100000,winnerName:'테스트',winnerPhone:'01012345678'});
+    let api=createPlatformApi({repository,adminSessionSecret:'shipping-options-test'});
+    const link=await call(api,'POST','/api/platform/channels/alpha/buyer-shipping-link',{itemId:'i1'});
+    assert.equal(link.status,200,link.body);
+    const code=new URL(link.json().url).pathname.split('/').at(-1);
+    const endpoint='/api/platform/buyer-shipping';
+    const read=()=>call(api,'GET',endpoint+'?code='+code,null,'');
+    const initial=(await read()).json();
+    assert.deepEqual(initial.destinations.map(row=>row.id),['pickup-1','dodosi']);
+    assert.equal(initial.carriers.dodosi.regions[0].shops[0].baseCost,16000);
+    const body={code,requestId:'shipping-options-save',destinationId:'dodosi',pargeRegion:'부산',pargeShop:'부산 - 테스트샵',payments:[{vendorKey:'v',method:'card'}]};
+    for (const destinationId of ['parge','pickup-2']) {
+        const denied=await call(api,'POST',endpoint,{...body,destinationId},'');
+        assert.equal(denied.status,422,denied.body);
+    }
+    const results=await Promise.all([call(api,'POST',endpoint,body,''),call(api,'POST',endpoint,body,'')]);
+    for(const result of results)assert.equal(result.status,200,result.body);
+    const rows=await repository.listRecords('alpha','shipment');
+    assert.equal(rows.length,2);
+    assert.equal(rows.reduce((sum,row)=>sum+row.cost,0),19000);
+    assert.ok(rows.every(row=>row.carrier==='도도시'));
+    assert.equal((await repository.listRecords('beta','shipment')).length,0);
+    repository.catalog.channels[0].shippingDefaults.dodosiAdditionalFee=9000;
+    api=createPlatformApi({repository,adminSessionSecret:'shipping-options-test'});
+    const restored=(await read()).json();
+    assert.equal(restored.vendors[0].totals.shippingAmount,19000);
+});
+
 class MemoryRepository {
     constructor() {
         this.catalog = { version: 1, channels: [normalizeChannel({ id: 'alpha', name: '알파', status: 'active' }), normalizeChannel({ id: 'beta', name: '베타', status: 'active' })] };
@@ -184,7 +217,7 @@ test('buyer shipping link isolates one buyer, saves idempotently, confirms payme
     assert.equal(initial.status, 200, initial.body);
     assert.deepEqual(initial.json().items.map((item) => item.id), ['item-a', 'item-b', 'private-other-vendor']);
     assert.deepEqual(initial.json().vendors.map((vendor) => vendor.name), ['라이언게코', '다른업체']);
-    assert.deepEqual(initial.json().destinations.map((entry) => entry.label), ['대구 크레오', '대구 크레용 본점', '배송']);
+    assert.deepEqual(initial.json().destinations.map((entry) => entry.label), ['대구 크레오', '대구 크레용 본점', '파르게 배송']);
     assert.equal(initial.json().totals.auctionAmount, 1100000);
     assert.equal(initial.json().buyer.phoneLast4, '5678');
     assert.equal(initial.json().revision, 0);
