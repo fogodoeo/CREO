@@ -11,6 +11,7 @@ test('shipping includes registered vendors before sales and preserves editor dur
     const source = fs.readFileSync(require.resolve('../public/shipping.html'), 'utf8');
     assert.match(source, /registeredShippingVendors\.filter/);
     assert.match(source, /vendor-settings-form/);
+    assert.doesNotMatch(source, /creo-operator-pipeline|operator-pipeline\.js/);
     assert.match(source, /paymentMethods \}/);
     assert.match(source, /!activeEditorWinner/);
     assert.match(source, /value !== lastShippingPulse/);
