@@ -8,6 +8,7 @@ const { normalizePhone } = require('./band-membership');
 const SettlementDiscount = require('./public/settlement-discount');
 const FALLBACK_PARGE_RATES = require('./public/parge_data.json');
 const Checkout = require('./checkout-core');
+const { shortSms } = require('./checkout-notifications');
 
 const {
     DEFAULT_CHANNELS,
@@ -1880,7 +1881,7 @@ function createPlatformApi({
                 추가결제금액: `${Math.max(0, Number(buyerDue) || 0).toLocaleString('ko-KR')}원`,
                 접속코드: buyerLink.code
             },
-            fallbackText: `${buyerName}님, ${vendorName} ${itemSummary} 낙찰이 등록되었습니다. 배송지와 결제방법을 확인해 주세요.\n${buyerLink.url}`
+            fallbackText: shortSms('낙찰 안내', buyerLink.url, itemSummary)
         });
         let vendorResult = { skipped: 'missing_vendor_phone' };
         if (normalizePhone(vendor.phone) && vendorKey) {
@@ -1898,7 +1899,7 @@ function createPlatformApi({
                     낙찰금액: `${Math.max(0, Number(item.soldPrice) || 0).toLocaleString('ko-KR')}원`,
                     업체접속코드: vendorLink.code
                 },
-                fallbackText: `${vendorName} 낙찰 내역이 등록되었습니다. ${item.name || '개체'} · ${buyerName}\n${vendorLink.url}`
+                fallbackText: shortSms('낙찰 등록', vendorLink.url, item.name)
             });
         }
         return { buyer: buyerResult, vendor: vendorResult };
@@ -1920,7 +1921,7 @@ function createPlatformApi({
                 결제금액: `${Math.max(0, Number(group.totalAmount) || 0).toLocaleString('ko-KR')}원`,
                 업체접속코드: link.code
             },
-            fallbackText: `${buyerName}님이 결제를 완료했다고 알려왔습니다. 확인해 주세요.\n${link.url}`
+            fallbackText: shortSms('입금신고 접수', link.url)
         });
     }
 
@@ -1932,7 +1933,7 @@ function createPlatformApi({
         return enqueueNotification(bundle.context.channel.id, {
             eventKey,
             templateKey,
-            transport: isCard ? 'sms' : 'alimtalk',
+            transport: 'sms',
             recipientRole: 'buyer',
             recipientPhone: bundle.phone,
             variables: {
@@ -1941,9 +1942,7 @@ function createPlatformApi({
                 결제금액: `${Math.max(0, Number(amount) || 0).toLocaleString('ko-KR')}원`,
                 접속코드: link.code
             },
-            fallbackText: isCard
-                ? `${bundle.name}님, ${vendorName} 카드결제 링크가 준비되었습니다.\n${link.url}`
-                : `${bundle.name}님, ${vendorName} 결제가 확인되었습니다.\n${link.url}`
+            fallbackText: shortSms(isCard ? '카드결제 안내' : '결제 확인', link.url)
         });
     }
 
@@ -2785,6 +2784,18 @@ function createPlatformApi({
             if (segments.length === 3 && segments[2] === 'workspace' && method === 'GET') {
                 if (!await requireAdmin(req, res)) return true;
                 replyJson(res, 200, { channel, ...(await workspace(channelId)) });
+                return true;
+            }
+
+            if (segments.length === 3 && segments[2] === 'notification-test' && method === 'POST') {
+                if (!await requireAdmin(req, res)) return true;
+                if (channel.status !== 'draft' || !notificationService?.provider?.testMode) {
+                    replyJson(res, 409, { error: '테스트 모드의 초안 채널에서만 가능합니다.' });
+                    return true;
+                }
+                const body = await readJson(req);
+                const result = await notificationService.sendOneTest(channelId, cleanText(body.notificationId, 64), body.confirmedPhone);
+                replyJson(res, 200, result);
                 return true;
             }
 

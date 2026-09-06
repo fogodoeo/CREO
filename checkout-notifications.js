@@ -26,11 +26,26 @@ const ACTION_SMS_TEMPLATE_KEYS = new Set([
     'buyer_win_additional',
     'vendor_win',
     'vendor_payment_reported',
-    'buyer_card_link_ready'
+    'buyer_card_link_ready',
+    'buyer_payment_confirmed'
 ]);
 
 function notificationTransport(templateKey) {
     return ACTION_SMS_TEMPLATE_KEYS.has(templateKey) ? 'sms' : 'alimtalk';
+}
+
+// Conservative UTF-8 budget also fits the Korean SMS byte limit. Never shorten the URL.
+function shortSms(label, url, item = '') {
+    const link = String(url || '').trim();
+    if (!/^https?:\/\/[^\s]+$/.test(link)) return '';
+    const name = text(item, 100);
+    const candidates = [
+        `[옹동2] ${name ? `${name} ` : ''}${label}\n${link}`,
+        `[옹동2] ${label}\n${link}`
+    ];
+    const result = candidates.find((value) => Buffer.byteLength(value, 'utf8') <= 90);
+    // Empty text fails closed in the provider without interrupting checkout state changes.
+    return result || '';
 }
 
 function text(value, limit = 1000) {
@@ -192,17 +207,20 @@ class AligoNotificationProvider {
         return this.sendAlimtalk(notification);
     }
 
-    async sendSms(notification) {
+    async sendSms(notification, testMode = this.testMode) {
         const message = messageText(notification.fallbackText, 2000);
+        if (!message || Buffer.byteLength(message, 'utf8') > 90) {
+            throw new Error('SMS 90바이트 초과 또는 빈 본문: 자동 LMS 전환하지 않습니다.');
+        }
         const params = new URLSearchParams({
             key: this.apiKey,
             user_id: this.userId,
             sender: this.from,
             receiver: notification.recipientPhone,
             msg: message,
-            msg_type: Buffer.byteLength(message, 'utf8') <= 90 ? 'SMS' : 'LMS',
+            msg_type: 'SMS',
             title: '옹동2 안내',
-            testmode_yn: this.testMode ? 'Y' : 'N'
+            testmode_yn: testMode ? 'Y' : 'N'
         });
         const response = await this.fetch(this.smsEndpoint, {
             method: 'POST',
@@ -317,7 +335,31 @@ class CheckoutNotificationService {
         return { running: this.running, ...this.provider.status() };
     }
 
+    async sendOneTest(channelId, id, confirmedPhone) {
+        if (this.running) throw new Error('알림 처리 중입니다.');
+        this.running = true;
+        try {
+            const current = await this.repository.getRecord(channelId, 'notification', id);
+            if (!current || phone(confirmedPhone) !== current.recipientPhone) throw new Error('수신번호 확인 실패');
+            if (current.status === 'sent') return { duplicate: true };
+            if (current.attempts || !['queued', 'configuration_pending'].includes(current.status)) throw new Error('이미 시도한 알림은 재발송하지 않습니다.');
+            if (!this.provider.readiness(current.templateKey, 'sms').ready) throw new Error('문자 API 설정 대기');
+            // Persist an in-flight marker with no automatic recovery for this explicit one-shot test.
+            const sending = { ...current, status: 'sending', transport: 'sms', attempts: 1,
+                nextAttemptAt: '9999-12-31T00:00:00.000Z' };
+            await this.repository.upsertRecord(channelId, 'notification', sending);
+            const result = await this.provider.sendSms(sending, false);
+            await this.repository.upsertRecord(channelId, 'notification', { ...sending, status: 'sent',
+                providerMessageId: result.messageId, sentAt: new Date(this.now()).toISOString() });
+            return { accepted: true, messageId: result.messageId };
+        } finally {
+            this.running = false;
+        }
+    }
+
     async flushChannel(channelId, limit = 20) {
+        // Dry runs must never consume real auction events or mark them delivered.
+        if (this.provider.testMode) return { skipped: true, processed: 0 };
         if (this.running) return { skipped: true, processed: 0 };
         this.running = true;
         let processed = 0;
@@ -404,5 +446,6 @@ module.exports = {
     notificationId,
     messageText,
     parseTemplateIds,
-    safeVariables
+    safeVariables,
+    shortSms
 };

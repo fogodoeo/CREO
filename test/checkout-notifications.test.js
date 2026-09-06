@@ -10,7 +10,8 @@ const {
     createDefaultNotificationProvider,
     messageText,
     notificationTransport,
-    notificationId
+    notificationId,
+    shortSms
 } = require('../checkout-notifications');
 
 class MemoryRepository {
@@ -35,6 +36,33 @@ class MemoryRepository {
     }
 }
 
+test('explicit one-shot real test is recipient-bound, duplicate-safe and isolated from dry worker', async () => {
+    const repository = new MemoryRepository();
+    let sends = 0;
+    const provider = { testMode: true, readiness: () => ({ ready: true }),
+        async sendSms(record, mode) { assert.equal(mode, false); sends++; return { messageId: 'one' }; } };
+    const service = new CheckoutNotificationService({ repository, provider });
+    const { record } = await service.enqueue('qa', event());
+    assert.equal((await service.flushChannel('qa')).processed, 0);
+    await assert.rejects(service.sendOneTest('qa', record.id, '01099999999'));
+    await service.sendOneTest('qa', record.id, '01012345678');
+    assert.equal((await service.sendOneTest('qa', record.id, '01012345678')).duplicate, true);
+    assert.equal(sends, 1);
+});
+
+test('uncertain one-shot API response is not replayed after restart', async () => {
+    const repository = new MemoryRepository();
+    let sends = 0;
+    const provider = { testMode: true, readiness: () => ({ ready: true }),
+        async sendSms() { sends++; throw new Error('timeout'); } };
+    const service = new CheckoutNotificationService({ repository, provider });
+    const { record } = await service.enqueue('qa', event());
+    await assert.rejects(service.sendOneTest('qa', record.id, '01012345678'), /timeout/);
+    const restarted = new CheckoutNotificationService({ repository, provider });
+    await assert.rejects(restarted.sendOneTest('qa', record.id, '01012345678'), /재발송/);
+    assert.equal(sends, 1);
+});
+
 function event(overrides = {}) {
     return {
         eventKey: 'sale:item-a:cycle-1',
@@ -46,6 +74,23 @@ function event(overrides = {}) {
         ...overrides
     };
 }
+
+test('SMS formatter preserves full personal URL and drops oversized item names', () => {
+    const url = 'https://creok.onrender.com/s/abcdefghijklmnop';
+    assert.equal(shortSms('낙찰 안내', url, 'A01'), `[옹동2] A01 낙찰 안내\n${url}`);
+    const compact = shortSms('낙찰 안내', url, '아주긴개체명'.repeat(20));
+    assert.ok(Buffer.byteLength(compact, 'utf8') <= 90);
+    assert.ok(compact.endsWith(url));
+    assert.equal(shortSms('낙찰 안내', url.repeat(4)), '');
+});
+
+test('oversize SMS fails before network without paid LMS fallback', async () => {
+    let requests = 0;
+    const provider = new AligoNotificationProvider({ fetchImpl: async () => { requests++; } });
+    await assert.rejects(provider.sendSms({ fallbackText: '가'.repeat(100) }), /90바이트/);
+    await assert.rejects(provider.sendSms({ fallbackText: '' }), /빈 본문/);
+    assert.equal(requests, 0);
+});
 
 test('transaction SMS copy preserves intentional mobile line breaks', () => {
     assert.equal(messageText(' 낙찰 안내\r\n\r\n  배송·결제 링크  \nhttps://example.com '), '낙찰 안내\n\n배송·결제 링크\nhttps://example.com');
@@ -127,23 +172,23 @@ test('Aligo is the only default checkout notification provider', () => {
     assert.ok(createDefaultNotificationProvider() instanceof AligoNotificationProvider);
 });
 
-test('payment actions use Aligo SMS while a pure completion notice prefers AlimTalk', () => {
+test('all transaction events default to SMS while approved Kakao content is preserved', () => {
     for (const key of ['buyer_win_initial', 'buyer_win_additional', 'vendor_win', 'vendor_payment_reported', 'buyer_card_link_ready']) {
         assert.equal(notificationTransport(key), 'sms');
     }
-    assert.equal(notificationTransport('buyer_payment_confirmed'), 'alimtalk');
+    assert.equal(notificationTransport('buyer_payment_confirmed'), 'sms');
     const spec = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'config', 'kakao-alimtalk-templates.json'), 'utf8'));
     const byKey = Object.fromEntries(spec.templates.map((entry) => [entry.key, entry]));
     for (const key of ['buyer_win_initial', 'buyer_win_additional', 'vendor_win', 'vendor_payment_reported', 'buyer_card_link_ready']) {
         assert.equal(byKey[key].transport, 'sms');
     }
-    assert.equal(byKey.buyer_payment_confirmed.transport, 'alimtalk');
+    assert.equal(byKey.buyer_payment_confirmed.transport, 'sms');
     assert.equal(byKey.buyer_payment_confirmed.link, '');
     assert.equal(byKey.buyer_payment_confirmed.buttonName, '');
     assert.equal(byKey.buyer_payment_confirmed.content, '#{구매자명}님, #{업체명} 결제가 확인되었습니다.\n확인금액: #{결제금액}\n\n배송·결제 페이지에서 전체 진행 상태를 확인할 수 있습니다.');
 });
 
-test('Aligo provider sends a payment action as URL-encoded LMS without a Kakao template', async () => {
+test('Aligo provider sends a short payment action as SMS without a Kakao template', async () => {
     let request;
     const provider = new AligoNotificationProvider({
         apiKey: 'api-key', userId: 'user-id', from: '01049278600',
@@ -152,7 +197,7 @@ test('Aligo provider sends a payment action as URL-encoded LMS without a Kakao t
             return { ok: true, status: 200, json: async () => ({ result_code: 1, msg_id: 1234, success_cnt: 1, error_cnt: 0 }) };
         }
     });
-    const notification = { ...event(), id: 'ntf_sms', transport: 'sms', fallbackText: `낙찰 안내입니다.\n${'https://creok.onrender.com/s/example'.repeat(3)}` };
+    const notification = { ...event(), id: 'ntf_sms', transport: 'sms', fallbackText: shortSms('낙찰 안내', 'https://creok.onrender.com/s/example', 'A01') };
 
     const result = await provider.send(notification);
 
@@ -161,7 +206,7 @@ test('Aligo provider sends a payment action as URL-encoded LMS without a Kakao t
     assert.equal(request.body.get('key'), 'api-key');
     assert.equal(request.body.get('user_id'), 'user-id');
     assert.equal(request.body.get('receiver'), '01012345678');
-    assert.equal(request.body.get('msg_type'), 'LMS');
+    assert.equal(request.body.get('msg_type'), 'SMS');
     assert.equal(request.body.get('testmode_yn'), 'N');
     assert.equal(request.body.has('senderkey'), false);
 });
