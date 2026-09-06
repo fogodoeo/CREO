@@ -35,6 +35,20 @@ class MemoryRepository {
     async setActiveChannel(value) { this.active = value; return value; }
 }
 
+test('explicit draft SMS sale test never switches the operating channel', async () => {
+    for (const allowed of [false, true]) {
+        const repository = new MemoryRepository();
+        repository.catalog.channels[1].status = 'draft';
+        await repository.upsertRecord('beta', 'item', { id: 'test', name: 'A01', status: 'waiting' });
+        const api = createPlatformApi({ repository, notificationService: { provider: { testMode: allowed } } });
+        const response = await call(api, 'PUT', '/api/platform/channels/beta/auction-transition', {
+            notificationTest: true, itemId: 'test', status: 'sold', item: { soldPrice: 100000 }
+        });
+        assert.equal(response.status, allowed ? 200 : 409, response.body);
+        assert.equal(repository.active, 'alpha');
+    }
+});
+
 test('shipping rate refresh persists the collected public data before replying', async () => {
     const repository = new MemoryRepository();
     const payload = { updated: '2026-08-19', source: 'test', data: { 수도권: [{ shop: '테스트 거점', cost: 19000 }] } };

@@ -3329,7 +3329,10 @@ function createPlatformApi({
                 const body = await readJson(req);
                 await withMutationLock('active-channel', async () => {
                     const active = await activeChannelContext();
-                    if (active.channelId !== channelId) {
+                    const isolatedNotificationTest = body.notificationTest === true
+                        && channel.status === 'draft' && notificationService?.provider?.testMode === true
+                        && body.status === 'sold';
+                    if (active.channelId !== channelId && !isolatedNotificationTest) {
                         replyJson(res, 409, {
                             error: '현재 운영 채널이 변경되었습니다. 경매 목록을 새로고침한 뒤 다시 시도해 주세요.',
                             code: 'ACTIVE_CHANNEL_CHANGED',
