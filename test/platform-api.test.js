@@ -321,7 +321,13 @@ test('vendor checkout link handles card URL, buyer report, confirmation, duplica
         status: 'sold', soldPrice: 150000, winnerName: '구매자', winnerPhone: '01012345678'
     });
     const secret = 'vendor-card-flow-secret';
-    const api = createPlatformApi({ repository, adminSessionSecret: secret, logger: { error() {}, warn() {} } });
+    const cardEvents = new Map();
+    const notificationService = { async enqueue(channelId, event) {
+        const duplicate = cardEvents.has(event.eventKey);
+        cardEvents.set(event.eventKey, event);
+        return { duplicate, record: { status: 'queued' } };
+    } };
+    const api = createPlatformApi({ repository, notificationService, adminSessionSecret: secret, logger: { error() {}, warn() {} } });
     const buyerLink = await call(api, 'POST', '/api/platform/channels/alpha/buyer-shipping-link', { itemId: 'card-item' });
     const buyerCode = new URL(buyerLink.json().url).pathname.split('/').at(-1);
     const saved = await call(api, 'POST', '/api/platform/buyer-shipping', {
@@ -333,6 +339,13 @@ test('vendor checkout link handles card URL, buyer report, confirmation, duplica
     assert.equal(saved.status, 200, saved.body);
     assert.equal(saved.json().vendors[0].payment.status, 'card_link_pending');
     assert.equal(saved.json().vendors[0].contact.phone, '01077778888');
+    assert.equal([...cardEvents.values()][0].templateKey, 'vendor_card_requested');
+    const repeatedChoice = await call(api, 'POST', '/api/platform/buyer-shipping', {
+        code: buyerCode, requestId: 'buyer-card-choice-2', destinationId: 'pickup-1',
+        payments: [{ vendorKey: 'vendor-card', method: 'card' }]
+    }, '');
+    assert.equal(repeatedChoice.status, 200, repeatedChoice.body);
+    assert.equal(cardEvents.size, 1);
 
     const vendorLink = await call(api, 'POST', '/api/platform/channels/alpha/vendor-checkout-link', { vendorId: 'vendor-card' });
     assert.equal(vendorLink.status, 200, vendorLink.body);

@@ -103,6 +103,8 @@
         if (Number(totalAmount) > 0 && confirmed >= Number(totalAmount) && !missingShipment) {
             return { status: 'paid', confirmedAmount: confirmed, additionalDue: 0, latest };
         }
+        const reported = newestShipment(shipments.filter(shipment => ['bank_transfer_reported', 'card_payment_reported'].includes(shipment.paymentStatus)));
+        if (reported) return { status: reported.paymentStatus, confirmedAmount: confirmed, additionalDue: due, latest: reported };
         if (confirmed > 0 && due > 0) {
             return { status: 'additional_payment', confirmedAmount: confirmed, additionalDue: due, latest };
         }

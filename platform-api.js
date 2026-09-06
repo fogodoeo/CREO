@@ -1567,6 +1567,7 @@ function createPlatformApi({
         const snapshot = await checkoutSnapshot(context);
         const group = snapshot.groups.find((entry) => entry.key === cleanText(vendorKey, 80));
         if (!group) throw buyerInputError('구매자 결제 묶음을 찾을 수 없습니다.', 404);
+        if (group.payment.status === 'paid') return { duplicate: true, payload: await buyerShippingPayload(context), group };
         if (!snapshot.selection || !group.payment.latest?.paymentMethod) throw buyerInputError('구매자가 배송지와 결제방식을 먼저 선택해야 합니다.', 409);
         if (group.shipments.length === group.items.length
             && group.shipments.every((shipment) => shipment.paymentConfirmationRequestId === cleanRequestId)) {
@@ -1939,6 +1940,25 @@ function createPlatformApi({
             },
             fallbackText: shortSms('입금신고 접수', link.url)
         });
+    }
+
+    async function enqueueCardRequests(req, context) {
+        const snapshot = await checkoutSnapshot(context);
+        const results = [];
+        for (const group of snapshot.groups) {
+            if (group.payment.latest?.paymentMethod !== 'card' || group.payment.latest?.cardPaymentUrl
+                || group.payment.status === 'paid' || !normalizePhone(group.vendor?.phone)) continue;
+            const link = await prepareVendorCheckoutLink(req, context.channel.id, group.key);
+            const fingerprint = crypto.createHash('sha256').update(JSON.stringify(group.items.map(item =>
+                [item.id, item.createdAt, item.updatedAt, item.soldPrice]))).digest('hex').slice(0, 24);
+            results.push(await enqueueNotification(context.channel.id, {
+                eventKey: `card-request:${sessionKey(context.anchorPhone)}:${group.key}:${fingerprint}`,
+                templateKey: 'vendor_card_requested', transport: 'sms', recipientRole: 'vendor', recipientPhone: group.vendor.phone,
+                variables: { 업체명: group.vendor.name, 업체접속코드: link.code },
+                fallbackText: shortSms('카드결제 요청', link.url)
+            }));
+        }
+        return results;
     }
 
     async function enqueueBuyerStatusNotification(req, bundle, templateKey, eventKey) {
@@ -2430,7 +2450,7 @@ function createPlatformApi({
                     replyJson(res, 401, { error: '배송 링크가 만료되었거나 올바르지 않습니다.' }, buyerCorsHeaders(req));
                     return true;
                 }
-                await withMutationLock(`buyer-shipping:${context.channel.id}:${context.token.phoneHash}`, async () => {
+                await withMutationLock(`channel:${context.channel.id}`, async () => {
                     const freshContext = await buyerBundleContext(context.token);
                     if (!freshContext) throw buyerInputError('배송 정보를 다시 불러와 주세요.', 409);
                     const result = await saveBuyerShipping(freshContext, body, {
@@ -2464,11 +2484,12 @@ function createPlatformApi({
                     replyJson(res, 401, { error: '배송 링크가 만료되었거나 올바르지 않습니다.' }, buyerCorsHeaders(req));
                     return true;
                 }
-                await withMutationLock(`buyer-shipping:${context.channel.id}:${context.token.phoneHash}`, async () => {
+                await withMutationLock(`channel:${context.channel.id}`, async () => {
                     const freshContext = await buyerBundleContext(context.token);
                     if (!freshContext) throw buyerInputError('배송 정보를 다시 불러와 주세요.', 409);
                     const result = await saveBuyerShipping(freshContext, body);
-                    replyJson(res, 200, { ...result.payload, duplicate: result.duplicate }, buyerCorsHeaders(req));
+                    const notifications = await enqueueCardRequests(req, freshContext);
+                    replyJson(res, 200, { ...result.payload, duplicate: result.duplicate, notifications }, buyerCorsHeaders(req));
                 });
                 return true;
             }
@@ -2481,13 +2502,13 @@ function createPlatformApi({
                     replyJson(res, 401, { error: '배송 링크가 만료되었거나 올바르지 않습니다.' }, buyerCorsHeaders(req));
                     return true;
                 }
-                await withMutationLock(`buyer-shipping:${context.channel.id}:${context.token.phoneHash}`, async () => {
+                await withMutationLock(`channel:${context.channel.id}`, async () => {
                     const freshContext = await buyerBundleContext(context.token);
                     if (!freshContext) throw buyerInputError('배송 정보를 다시 불러와 주세요.', 409);
                     const result = await reportBuyerPayment(freshContext, body.vendorKey, body.requestId);
                     const freshSnapshot = await checkoutSnapshot(freshContext);
                     const group = freshSnapshot.groups.find((entry) => entry.key === cleanText(body.vendorKey, 80));
-                    const notification = group
+                    const notification = group && !result.duplicate
                         ? await enqueueVendorPaymentReport(req, freshContext, group, buyerDisplayName(freshContext.bundleItems[0]), freshContext.anchorPhone)
                         : { skipped: 'missing_group' };
                     replyJson(res, 200, { ...result.payload, duplicate: result.duplicate, notification }, buyerCorsHeaders(req));
@@ -2531,7 +2552,7 @@ function createPlatformApi({
                     replyJson(res, 401, { error: '업체 확인 링크가 만료되었거나 올바르지 않습니다.' });
                     return true;
                 }
-                await withMutationLock(`vendor-checkout:${context.channel.id}:${context.vendorKey}`, async () => {
+                await withMutationLock(`channel:${context.channel.id}`, async () => {
                     const freshContext = await vendorCheckoutContext(context.token);
                     if (!freshContext) throw buyerInputError('업체 결제 정보를 다시 불러와 주세요.', 409);
                     const result = await saveCardPaymentLink(freshContext, body.buyerId, body.cardPaymentUrl, body.requestId);
@@ -2557,7 +2578,7 @@ function createPlatformApi({
                     replyJson(res, 401, { error: '업체 확인 링크가 만료되었거나 올바르지 않습니다.' });
                     return true;
                 }
-                await withMutationLock(`vendor-checkout:${context.channel.id}:${context.vendorKey}`, async () => {
+                await withMutationLock(`channel:${context.channel.id}`, async () => {
                     const freshContext = await vendorCheckoutContext(context.token);
                     if (!freshContext) throw buyerInputError('업체 결제 정보를 다시 불러와 주세요.', 409);
                     const bundle = await vendorBuyerBundle(freshContext, body.buyerId);
@@ -3969,7 +3990,7 @@ function createPlatformApi({
                     expiresAt: Date.now() + BUYER_SHIPPING_TOKEN_TTL_MS
                 };
                 const vendorKey = vendorKeyForItem(item);
-                await withMutationLock(`buyer-shipping:${channelId}:${tokenPayload.phoneHash}`, async () => {
+                await withMutationLock(`channel:${channelId}`, async () => {
                     const context = await buyerBundleContext(tokenPayload);
                     if (!context) throw buyerInputError('구매자 배송 묶음을 찾을 수 없습니다.', 404);
                     const result = await confirmBuyerPayment(context, body.vendorKey || vendorKey, body.requestId);
