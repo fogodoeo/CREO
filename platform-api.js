@@ -1781,6 +1781,11 @@ function createPlatformApi({
                 id: context.vendor.id,
                 name: context.vendor.name,
                 manager: context.vendor.manager || '',
+                phone: context.vendor.phone || '',
+                bankName: context.vendor.bankName || '',
+                bankAccount: context.vendor.bankAccount || '',
+                bankHolder: context.vendor.bankHolder || '',
+                bankRegistered: Boolean(context.vendor.bankName || context.vendor.bankAccount || context.vendor.bankHolder),
                 paymentMethods: Checkout.normalizeVendorPaymentMethods(context.vendor)
             },
             summary: {
@@ -2579,6 +2584,39 @@ function createPlatformApi({
                     return true;
                 }
                 replyJson(res, 200, await vendorCheckoutPayload(context));
+                return true;
+            }
+
+            if (segments.length === 2 && segments[0] === 'vendor-checkout' && segments[1] === 'settings' && method === 'POST') {
+                const body = await readJson(req);
+                const credential = await resolveVendorCheckoutCredential(body);
+                const context = await vendorCheckoutContext(credential);
+                if (!context) throw buyerInputError('업체 전용 링크를 다시 확인해 주세요.', 401);
+                await withMutationLock(`channel:${context.channel.id}`, async () => {
+                    const fresh = await vendorCheckoutContext(context.token);
+                    if (!fresh) throw buyerInputError('업체 정보를 다시 불러와 주세요.', 409);
+                    const current = fresh.vendor;
+                    const bank = {
+                        bankName: cleanText(body.bankName, 60),
+                        bankAccount: cleanText(body.bankAccount, 100),
+                        bankHolder: cleanText(body.bankHolder, 80)
+                    };
+                    if (!bank.bankName || !bank.bankAccount || !bank.bankHolder || !/^[0-9 -]{5,100}$/.test(bank.bankAccount)) throw buyerInputError('은행·계좌번호·예금주를 정확히 입력해 주세요.');
+                    const registered = Boolean(current.bankName || current.bankAccount || current.bankHolder);
+                    const changed = Object.keys(bank).some(key => bank[key] !== (current[key] || ''));
+                    if (registered && changed) throw buyerInputError('등록된 계좌 변경은 운영자에게 요청해 주세요.', 409);
+                    const phone = cleanText(body.phone, 30).replace(/[^0-9]/g, '');
+                    if (!/^0\d{8,10}$/.test(phone)) throw buyerInputError('업체 연락처를 정확히 입력해 주세요.');
+                    // Only the vendor resolved from this bearer link may be updated.
+                    await repository.upsertRecord(fresh.channel.id, 'vendor', {
+                        ...current, ...bank, phone,
+                        paymentMethods: ['bank_transfer', ...(body.cardEnabled === true ? ['card'] : [])],
+                        updatedAt: new Date().toISOString()
+                    });
+                    touchCheckout(fresh.channel.id);
+                    touchChannel(fresh.channel.id);
+                    replyJson(res, 200, await vendorCheckoutPayload(await vendorCheckoutContext(context.token)));
+                });
                 return true;
             }
 

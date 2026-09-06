@@ -71,6 +71,28 @@ test('channel shipping options enforce carriers, retain quotes, and isolate buye
     assert.equal(restored.vendors[0].totals.shippingAmount,19000);
 });
 
+test('vendor link permits first account registration only and ignores target spoofing', async () => {
+    const repository=new MemoryRepository();
+    await repository.upsertRecord('alpha','vendor',{id:'v1',name:'업체1'});
+    await repository.upsertRecord('alpha','vendor',{id:'v2',name:'업체2'});
+    const api=createPlatformApi({repository,adminSessionSecret:'vendor-settings-test'});
+    const link=await call(api,'POST','/api/platform/channels/alpha/vendor-checkout-link',{vendorId:'v1'});
+    assert.equal(link.status,200,link.body);
+    const code=link.json().code;
+    const body={code,vendorId:'v2',channelId:'beta',phone:'01012345678',bankName:'테스트은행',bankAccount:'123-456-789',bankHolder:'테스트',cardEnabled:true};
+    const endpoint='/api/platform/vendor-checkout/settings';
+    const results=await Promise.all([call(api,'POST',endpoint,body,''),call(api,'POST',endpoint,{...body,bankAccount:'999-999-999'},'')]);
+    assert.deepEqual(results.map(r=>r.status).sort(),[200,409]);
+    assert.equal((await repository.getRecord('alpha','vendor','v1')).bankAccount,'123-456-789');
+    assert.equal((await repository.getRecord('alpha','vendor','v2')).bankAccount,undefined);
+    assert.equal((await repository.listRecords('beta','vendor')).length,0);
+    const repeat=await call(api,'POST',endpoint,body,'');assert.equal(repeat.status,200,repeat.body);
+    assert.equal(repeat.json().vendor.bankRegistered,true);
+    const restarted=createPlatformApi({repository,adminSessionSecret:'vendor-settings-test'});
+    const blocked=await call(restarted,'POST',endpoint,{...body,bankAccount:'111-111-111'},'');assert.equal(blocked.status,409);
+    const invalid=await call(api,'POST',endpoint,{...body,code:'invalid'},'');assert.equal(invalid.status,401);
+});
+
 class MemoryRepository {
     constructor() {
         this.catalog = { version: 1, channels: [normalizeChannel({ id: 'alpha', name: '알파', status: 'active' }), normalizeChannel({ id: 'beta', name: '베타', status: 'active' })] };

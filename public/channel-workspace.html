@@ -16,7 +16,7 @@
     </style>
 </head>
 <body>
-<script>if(new URLSearchParams(location.search).get('embedded')==='1')document.documentElement.classList.add('embedded-studio');</script>
+<dialog id="vendor-links-dialog" style="width:min(850px,94vw);max-height:85vh;overflow:auto;background:#151922;color:#fff;border:1px solid #555;border-radius:16px;padding:24px"><h2>업체 전용 링크 관리</h2><p>업체별 전용 주소입니다. 해당 업체에게만 전달하세요.</p><div id="vendor-links-list"></div><button class="btn" id="close-vendor-links" type="button">닫기</button></dialog><script>if(new URLSearchParams(location.search).get('embedded')==='1')document.documentElement.classList.add('embedded-studio');</script>
 <header class="top"><a class="brand" id="channel-home-link" href="/">CREO</a><select class="channel-select" id="channel-select" aria-label="채널"></select><nav class="top-links"><a id="archives-link" href="#">회차</a><a id="live-link" href="#" target="_blank" rel="noopener">송출 화면</a></nav></header>
 <creo-operator-pipeline current="workspace"></creo-operator-pipeline>
 <main class="shell">
@@ -24,7 +24,7 @@
     <section class="live-panel" id="live-panel"><div class="live-label"><span>LIVE</span><strong>현재 송출</strong></div><select class="live-item" id="live-item" aria-label="송출할 개체"><option value="">개체 선택</option></select><div class="live-modes" id="live-modes"><button class="live-mode" data-mode="standby" type="button">대기 화면</button><button class="live-mode" data-mode="live" type="button">진행 화면</button><button class="live-mode" data-mode="sold" type="button">낙찰 화면</button></div></section>
     <section class="summary"><article><span>등록 업체</span><b id="vendor-count">0</b></article><article><span>등록 개체</span><b id="item-count">0</b></article><article><span>배송·결제 입력</span><b id="shipment-count">0</b></article></section>
     <div class="tabs" role="tablist"><button class="tab active" data-tab="vendors">업체</button><button class="tab" data-tab="items">개체</button><button class="tab" data-tab="shipping">배송 요약</button></div>
-    <div class="toolbar"><p id="tab-help">이 경매에 참여하는 업체만 등록합니다.</p><button class="btn primary" id="add-record">＋ 업체 추가</button></div>
+    <div class="toolbar"><p id="tab-help">이 경매에 참여하는 업체만 등록합니다.</p><button class="btn" id="manage-vendor-links" type="button">업체 전용 링크 관리</button><button class="btn primary" id="add-record">＋ 업체 추가</button></div>
     <div class="table-wrap" id="table-wrap"></div>
 </main>
 <div class="modal" id="record-modal" hidden><form class="dialog" id="record-form"><div class="dialog-head"><h2 id="dialog-title">항목 추가</h2><button type="button" class="close" id="close-modal" aria-label="닫기">×</button></div><div class="fields" id="record-fields"></div><div class="dialog-actions"><button type="button" class="btn" id="cancel-modal">취소</button><button class="btn primary" id="save-record">저장</button></div></form></div>
@@ -72,6 +72,26 @@ async function deleteRecord(type,id,button){
     catch(error){if(requestedChannelId===channelId)toast(error.message)}
     finally{if(button.isConnected)button.disabled=false}
 }
+$('close-vendor-links').onclick=()=>$('vendor-links-dialog').close();
+$('manage-vendor-links').onclick=async()=>{
+ const requestedChannelId=channelId, vendors=[...data.vendors],host=$('vendor-links-list');
+ host.replaceChildren();$('vendor-links-dialog').showModal();
+ for(const vendor of vendors){
+  const row=document.createElement('div');row.style.cssText='display:grid;gap:8px;padding:14px 0;border-bottom:1px solid #444';
+  const title=document.createElement('strong');title.textContent=vendor.name;
+  const hint=document.createElement('small');hint.textContent=(vendor.bankName&&vendor.bankAccount&&vendor.bankHolder?'계좌 등록 완료':'계좌 등록 필요')+' · '+(vendor.phone||'연락처 미등록');
+  const input=document.createElement('input');input.readOnly=true;input.placeholder='링크 준비 중';input.style.cssText='width:100%;padding:10px';input.setAttribute('aria-label',vendor.name+' 전용 링크');
+  const controls=document.createElement('div'),copy=document.createElement('button'),open=document.createElement('a');
+  copy.type='button';copy.className='btn';copy.textContent='복사';copy.disabled=true;open.className='btn';open.textContent='열기';open.target='_blank';open.rel='noopener noreferrer';controls.append(copy,open);row.append(title,hint,input,controls);host.append(row);
+  try{
+   const result=await CreoPlatform.api(`channels/${encodeURIComponent(requestedChannelId)}/vendor-checkout-link`,{method:'POST',body:JSON.stringify({vendorId:vendor.id})});
+   if(requestedChannelId!==channelId||!$('vendor-links-dialog').open)return;
+   input.value=result.url;open.href=result.url;copy.disabled=false;
+   copy.onclick=async()=>{try{await navigator.clipboard.writeText(result.url);copy.textContent='복사됨'}catch{input.select();toast('주소를 선택했습니다. 직접 복사해 주세요.')}};
+  }catch(error){input.placeholder=error.message}
+ }
+ if(!vendors.length)host.textContent='등록된 업체가 없습니다.';
+};
 async function copyVendorPage(vendorId,button){
     if(button.disabled)return;
     const requestedChannelId=channelId;button.disabled=true;
