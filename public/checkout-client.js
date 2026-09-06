@@ -84,7 +84,7 @@
             let lastError;
             for (let attempt = 0; attempt < retryCount; attempt += 1) {
                 try {
-                    const suffix = body ? '' : `?${new URLSearchParams(credentialObject())}`;
+                    const suffix = body ? '' : `${path.includes('?') ? '&' : '?'}${new URLSearchParams(credentialObject())}`;
                     const response = await fetchImpl(`${apiOrigin}${endpoint}${path}${suffix}`, {
                         method: body ? 'POST' : 'GET',
                         headers: body ? { 'Content-Type': 'application/json' } : {},

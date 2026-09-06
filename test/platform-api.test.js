@@ -93,6 +93,38 @@ test('vendor link permits first account registration only and ignores target spo
     const invalid=await call(api,'POST',endpoint,{...body,code:'invalid'},'');assert.equal(invalid.status,401);
 });
 
+test('common vendor portal reuses identity without sharing transactions or unrelated vendors', async () => {
+ const repository=new MemoryRepository();
+ const api=createPlatformApi({repository,adminSessionSecret:'common-vendor-test'});
+ await repository.upsertRecord('alpha','vendor',{id:'one',name:'같은 이름',phone:'01012345678'});
+ await repository.upsertRecord('beta','vendor',{id:'unrelated',name:'같은 이름'});
+ const oldLink=await call(api,'POST','/api/platform/channels/alpha/vendor-checkout-link',{vendorId:'one'});
+ const registered=await call(api,'POST','/api/platform/channels/alpha/vendor-directory',{vendorId:'one'});
+ assert.equal(registered.status,200,registered.body);const profileId=registered.json().result.id;
+ const attached=await call(api,'POST','/api/platform/channels/beta/vendor-directory',{profileId});
+ assert.equal(attached.status,200,attached.body);const vendorId=attached.json().result.vendorId;
+ const again=await call(api,'POST','/api/platform/channels/beta/vendor-directory',{profileId});assert.equal(again.json().result.vendorId,vendorId);
+ assert.equal((await repository.listRecords('beta','vendor')).length,2);
+ const newLink=await call(api,'POST','/api/platform/channels/beta/vendor-checkout-link',{vendorId});
+ assert.equal(newLink.json().url,oldLink.json().url);
+ const code=oldLink.json().code;
+ await repository.upsertRecord('alpha','item',{id:'sale-a',lotNumber:1,name:'A01',vendorId:'one',status:'sold',soldPrice:100000,winnerPhone:'01011112222'});
+ await repository.upsertRecord('beta','item',{id:'sale-b',lotNumber:1,name:'B01',vendorId,status:'sold',soldPrice:200000,winnerPhone:'01011112222'});
+ const selected=await call(api,'GET','/api/platform/vendor-checkout?code='+code+'&event=beta',null,'');
+ assert.equal(selected.status,200,selected.body);assert.equal(selected.json().vendor.id,vendorId);assert.equal(selected.json().events.length,2);
+ assert.deepEqual(selected.json().buyers.flatMap(b=>b.items.map(i=>i.name)),['B01']);
+ const denied=await call(api,'GET','/api/platform/vendor-checkout?code='+code+'&event=unknown',null,'');assert.equal(denied.status,401);
+ const settings={code,event:'beta',directoryRevision:selected.json().vendor.directoryRevision,phone:'01087654321',bankName:'은행',bankAccount:'123-456-789',bankHolder:'업체',cardEnabled:true};
+ const saved=await call(api,'POST','/api/platform/vendor-checkout/settings',settings,'');assert.equal(saved.status,200,saved.body);
+ const alpha=await call(api,'GET','/api/platform/vendor-checkout?code='+code,null,'');assert.equal(alpha.json().vendor.phone,'01087654321');
+ assert.equal((await repository.getRecord('beta','vendor','unrelated')).phone,undefined);
+ repository.catalog.channels[0].status='archived';
+ const archive=await call(api,'GET','/api/platform/vendor-checkout?code='+code+'&event=alpha',null,'');assert.equal(archive.status,200);
+ const blocked=await call(api,'POST','/api/platform/vendor-checkout/card-link',{code,event:'alpha',buyerId:'x',cardPaymentUrl:'https://example.com',requestId:'long-request'},'');assert.equal(blocked.status,409);
+ const restarted=createPlatformApi({repository,adminSessionSecret:'common-vendor-test'});
+ const restored=await call(restarted,'GET','/api/platform/vendor-checkout?code='+code+'&event=beta',null,'');assert.equal(restored.json().vendor.bankAccount,'123-456-789');
+});
+
 class MemoryRepository {
     constructor() {
         this.catalog = { version: 1, channels: [normalizeChannel({ id: 'alpha', name: '알파', status: 'active' }), normalizeChannel({ id: 'beta', name: '베타', status: 'active' })] };

@@ -417,6 +417,7 @@ function sanitizeRecord(type, input = {}, current = {}) {
             bankAccount: cleanText(input.bankAccount, 80),
             bankHolder: cleanText(input.bankHolder, 60),
             paymentMethods,
+            directoryRevision: Number(input.directoryRevision ?? current.directoryRevision) || 0,
             cardPaymentEnabled: paymentMethods.includes('card'),
             logoUrl: cleanText(input.logoUrl, 600),
             contributionRate: Number(input.contributionRate ?? current.contributionRate) === 0.5 ? 0.5 : 1,
@@ -471,6 +472,9 @@ function sanitizeRecord(type, input = {}, current = {}) {
             pargeRegion: cleanText(input.pargeRegion, 80),
             pargeShop: cleanText(input.pargeShop, 120),
             paymentMethod: ['bank_transfer', 'card', 'on_site'].includes(input.paymentMethod) ? input.paymentMethod : '',
+            bankSnapshot: input.bankSnapshot && typeof input.bankSnapshot === 'object' ? {
+                bankName: cleanText(input.bankSnapshot.bankName,40), bankAccount: cleanText(input.bankSnapshot.bankAccount,80), bankHolder: cleanText(input.bankSnapshot.bankHolder,60)
+            } : current.bankSnapshot || null,
             paymentStatus: Checkout.PAYMENT_STATUSES.includes(input.paymentStatus)
                 ? input.paymentStatus
                 : '',
@@ -1034,6 +1038,7 @@ function createPlatformApi({
     adminSessionTtlMs = ADMIN_SESSION_TTL_MS
 } = {}) {
     if (!repository) throw new Error('repository is required');
+    const vendorDirectory = require('./vendor-directory').createVendorDirectory(repository);
     const sessionSecret = String(adminSessionSecret || crypto.randomBytes(32).toString('hex'));
     const sessionTtlMs = Math.max(60_000, Number(adminSessionTtlMs) || ADMIN_SESSION_TTL_MS);
     const mutationLocks = new Map();
@@ -1222,7 +1227,7 @@ function createPlatformApi({
         const [items, shipments, vendors] = await Promise.all([
             repository.listRecords(channel.id, 'item'),
             repository.listRecords(channel.id, 'shipment'),
-            repository.listRecords(channel.id, 'vendor')
+            vendorDirectory.list(channel.id)
         ]);
         const soldItems = items.filter(isSoldItem);
         if (token.tokenVersion === 'bs1' || Number(token.v) === 1) {
@@ -1325,9 +1330,9 @@ function createPlatformApi({
                 cardPaymentUrl: latest?.paymentMethod === 'card' ? cleanText(latest.cardPaymentUrl, 1000) : '',
                 buyerPaymentReportedAt: latest?.buyerPaymentReportedAt || '',
                 account: {
-                    bankName: cleanText(group.vendor?.bankName, 40),
-                    accountNumber: cleanText(group.vendor?.bankAccount, 80),
-                    holder: cleanText(group.vendor?.bankHolder, 60)
+                    bankName: cleanText((latest?.bankSnapshot || group.vendor)?.bankName, 40),
+                    accountNumber: cleanText((latest?.bankSnapshot || group.vendor)?.bankAccount, 80),
+                    holder: cleanText((latest?.bankSnapshot || group.vendor)?.bankHolder, 60)
                 }
             },
             totals: {
@@ -1534,6 +1539,7 @@ function createPlatformApi({
                     note: current.note || '',
                     bundleId,
                     ...selection,
+                    bankSnapshot: current.bankSnapshot || (group.vendor.bankName&&group.vendor.bankAccount&&group.vendor.bankHolder ? {bankName:group.vendor.bankName,bankAccount:group.vendor.bankAccount,bankHolder:group.vendor.bankHolder} : null),
                     paymentMethod,
                     paymentStatus: itemPaymentStatus,
                     paymentRequestedAmount: totalAmount,
@@ -1667,21 +1673,33 @@ function createPlatformApi({
         return { duplicate: false, payload: await buyerShippingPayload(context), group };
     }
 
-    async function vendorCheckoutContext(tokenOrPayload) {
-        const token = typeof tokenOrPayload === 'string' ? verifyVendorCheckoutToken(tokenOrPayload) : tokenOrPayload;
+    async function vendorCheckoutContext(tokenOrPayload, event = '') {
+        let token = typeof tokenOrPayload === 'string' ? verifyVendorCheckoutToken(tokenOrPayload) : tokenOrPayload;
         if (!token) return null;
+        const profile = await vendorDirectory.profileFor(token.channelId,token.vendorKey);
+        if(event && event !== token.channelId) {
+            const membership=profile?.members.find(member=>member.channelId===event);
+            if(!membership)return null;
+            token={...token,channelId:membership.channelId,vendorKey:membership.vendorId};
+        }
         const catalog = await loadCatalog();
-        const channel = catalog.channels.find((entry) => entry.id === token.channelId && entry.status === 'active');
+        if(!event&&profile&&typeof tokenOrPayload==='string') {
+            const candidates=profile.members.slice().sort((a,b)=>Number(catalog.channels.find(c=>c.id===b.channelId)?.status==='active')-Number(catalog.channels.find(c=>c.id===a.channelId)?.status==='active'));
+            for(const member of candidates) {
+                if(catalog.channels.some(c=>c.id===member.channelId)&&await vendorDirectory.find(member.channelId,member.vendorId)) {token={...token,channelId:member.channelId,vendorKey:member.vendorId};break}
+            }
+        }
+        const channel = catalog.channels.find((entry) => entry.id === token.channelId);
         if (!channel || channel.features?.shipping === false || channel.dataAdapter !== 'platform') return null;
         const [items, shipments, vendors] = await Promise.all([
             repository.listRecords(channel.id, 'item'),
             repository.listRecords(channel.id, 'shipment'),
-            repository.listRecords(channel.id, 'vendor')
+            vendorDirectory.list(channel.id)
         ]);
         const vendor = vendors.find((entry) => entry.id === token.vendorKey)
             || vendors.find((entry) => entry.name === token.vendorKey);
         if (!vendor) return null;
-        return { token, catalog, channel, items, shipments, vendors, vendor, vendorKey: token.vendorKey };
+        return { token, catalog, channel, items, shipments, vendors, vendor, profile, vendorKey: token.vendorKey };
     }
 
     async function vendorBuyerBundles(context) {
@@ -1776,9 +1794,14 @@ function createPlatformApi({
         const buyers = bundles.map(vendorBuyerPublicPayload);
         return {
             revision: checkoutRevision(context.channel.id),
-            channel: { id: context.channel.id, name: context.channel.name },
+            channel: { id: context.channel.id, name: context.channel.name, status: context.channel.status },
+            events: (context.profile?.members || [{channelId:context.channel.id}]).map(member => {
+                const channel=context.catalog.channels.find(row=>row.id===member.channelId);
+                return channel ? {id:channel.id,name:channel.name,status:channel.status} : null;
+            }).filter(Boolean),
             vendor: {
                 id: context.vendor.id,
+                directoryRevision: context.vendor.directoryRevision || 0,
                 name: context.vendor.name,
                 manager: context.vendor.manager || '',
                 phone: context.vendor.phone || '',
@@ -1891,7 +1914,8 @@ function createPlatformApi({
     }
 
     async function prepareVendorCheckoutLink(req, channelId, vendorKey) {
-        const token = signVendorCheckoutToken({ channelId, vendorKey });
+        const profile = await vendorDirectory.profileFor(channelId,vendorKey);
+        const token = signVendorCheckoutToken(profile ? {channelId:profile.home.channelId,vendorKey:profile.home.vendorId} : { channelId, vendorKey });
         const payload = verifyVendorCheckoutToken(token);
         const code = await saveVendorCheckoutShortLink(token, payload);
         const origin = requestOrigin(req);
@@ -1914,8 +1938,8 @@ function createPlatformApi({
         const phone = storedWinnerPhone(item) || await resolveWinnerPhone(item, bandMembership);
         if (!phone) return { buyer: { skipped: 'missing_phone' }, vendor: { skipped: 'missing_phone' } };
         const vendorKey = vendorKeyForItem(item);
-        const vendor = await repository.getRecord(channel.id, 'vendor', item.vendorId)
-            || (await repository.listRecords(channel.id, 'vendor')).find((entry) => entry.name === item.vendorName)
+        const vendor = await vendorDirectory.find(channel.id, item.vendorId)
+            || (await vendorDirectory.list(channel.id)).find((entry) => entry.name === item.vendorName)
             || { id: item.vendorId || '', name: item.vendorName || '업체', phone: '' };
         const buyerLink = await prepareBuyerCheckoutLink(req, channel.id, phone);
         const buyerContext = await buyerBundleContext(buyerLink.payload);
@@ -2047,6 +2071,11 @@ function createPlatformApi({
         return revisionSequence;
     }
 
+    async function touchVendorChannels(channelId,vendorId) {
+        const profile=await vendorDirectory.profileFor(channelId,vendorId);
+        for(const id of new Set([channelId,...(profile?.members||[]).map(member=>member.channelId)])){touchCheckout(id);touchChannel(id)}
+    }
+
     function touchRecord(channelId, type, before = null, after = null) {
         if (
             type === 'shipment'
@@ -2143,7 +2172,7 @@ function createPlatformApi({
 
     async function workspace(channelId) {
         const [vendors, items, shipments, assets, broadcast] = await Promise.all([
-            repository.listRecords(channelId, 'vendor'),
+            vendorDirectory.list(channelId),
             repository.listRecords(channelId, 'item'),
             repository.listRecords(channelId, 'shipment'),
             repository.listRecords(channelId, 'asset'),
@@ -2564,7 +2593,7 @@ function createPlatformApi({
                     token: url.searchParams.get('token'),
                     code: url.searchParams.get('code')
                 });
-                const context = await vendorCheckoutContext(credential);
+                const context = await vendorCheckoutContext(credential, method === 'GET' ? (url.searchParams.get('event') || '') : (body.event || ''));
                 if (!context) {
                     replyJson(res, 401, { error: '업체 확인 링크가 만료되었거나 올바르지 않습니다.' });
                     return true;
@@ -2573,12 +2602,19 @@ function createPlatformApi({
                 return true;
             }
 
+            if (segments.length === 2 && segments[0] === 'vendor-checkout' && segments[1] === 'revision' && method === 'GET') {
+                const credential=await resolveVendorCheckoutCredential({code:url.searchParams.get('code'),token:url.searchParams.get('token')});
+                const context=await vendorCheckoutContext(credential,url.searchParams.get('event')||'');
+                if(!context)throw buyerInputError('업체 전용 링크를 다시 확인해 주세요.',401);
+                replyJson(res,200,{revision:checkoutRevision(context.channel.id)});return true;
+            }
+
             if (segments.length === 1 && segments[0] === 'vendor-checkout' && method === 'GET') {
                 const credential = await resolveVendorCheckoutCredential({
                     token: url.searchParams.get('token'),
                     code: url.searchParams.get('code')
                 });
-                const context = await vendorCheckoutContext(credential);
+                const context = await vendorCheckoutContext(credential, method === 'GET' ? (url.searchParams.get('event') || '') : (body.event || ''));
                 if (!context) {
                     replyJson(res, 401, { error: '업체 확인 링크가 만료되었거나 올바르지 않습니다.' });
                     return true;
@@ -2590,7 +2626,7 @@ function createPlatformApi({
             if (segments.length === 2 && segments[0] === 'vendor-checkout' && segments[1] === 'settings' && method === 'POST') {
                 const body = await readJson(req);
                 const credential = await resolveVendorCheckoutCredential(body);
-                const context = await vendorCheckoutContext(credential);
+                const context = await vendorCheckoutContext(credential, method === 'GET' ? (url.searchParams.get('event') || '') : (body.event || ''));
                 if (!context) throw buyerInputError('업체 전용 링크를 다시 확인해 주세요.', 401);
                 await withMutationLock(`channel:${context.channel.id}`, async () => {
                     const fresh = await vendorCheckoutContext(context.token);
@@ -2608,12 +2644,12 @@ function createPlatformApi({
                     const phone = cleanText(body.phone, 30).replace(/[^0-9]/g, '');
                     if (!/^0\d{8,10}$/.test(phone)) throw buyerInputError('업체 연락처를 정확히 입력해 주세요.');
                     // Only the vendor resolved from this bearer link may be updated.
-                    await repository.upsertRecord(fresh.channel.id, 'vendor', {
+                    await vendorDirectory.update(fresh.channel.id, {
                         ...current, ...bank, phone,
                         paymentMethods: ['bank_transfer', ...(body.cardEnabled === true ? ['card'] : [])],
                         updatedAt: new Date().toISOString()
-                    });
-                    touchCheckout(fresh.channel.id);
+                    }, body.directoryRevision ?? current.directoryRevision, {firstBankOnly:true});
+                    await touchVendorChannels(fresh.channel.id,current.id);
                     touchChannel(fresh.channel.id);
                     replyJson(res, 200, await vendorCheckoutPayload(await vendorCheckoutContext(context.token)));
                 });
@@ -2623,7 +2659,7 @@ function createPlatformApi({
             if (segments.length === 2 && segments[0] === 'vendor-checkout' && segments[1] === 'card-link' && method === 'POST') {
                 const body = await readJson(req);
                 const credential = await resolveVendorCheckoutCredential(body);
-                const context = await vendorCheckoutContext(credential);
+                const context = await vendorCheckoutContext(credential, method === 'GET' ? (url.searchParams.get('event') || '') : (body.event || ''));
                 if (!context) {
                     replyJson(res, 401, { error: '업체 확인 링크가 만료되었거나 올바르지 않습니다.' });
                     return true;
@@ -2631,6 +2667,7 @@ function createPlatformApi({
                 await withMutationLock(`channel:${context.channel.id}`, async () => {
                     const freshContext = await vendorCheckoutContext(context.token);
                     if (!freshContext) throw buyerInputError('업체 결제 정보를 다시 불러와 주세요.', 409);
+                    if(freshContext.channel.status!=='active')throw buyerInputError('운영 중인 경매에서만 결제 처리할 수 있습니다.',409);
                     const result = await saveCardPaymentLink(freshContext, body.buyerId, body.cardPaymentUrl, body.requestId);
                     const notification = result.duplicate
                         ? { duplicate: true }
@@ -2649,7 +2686,7 @@ function createPlatformApi({
             if (segments.length === 2 && segments[0] === 'vendor-checkout' && segments[1] === 'confirm-payment' && method === 'POST') {
                 const body = await readJson(req);
                 const credential = await resolveVendorCheckoutCredential(body);
-                const context = await vendorCheckoutContext(credential);
+                const context = await vendorCheckoutContext(credential, method === 'GET' ? (url.searchParams.get('event') || '') : (body.event || ''));
                 if (!context) {
                     replyJson(res, 401, { error: '업체 확인 링크가 만료되었거나 올바르지 않습니다.' });
                     return true;
@@ -2657,6 +2694,7 @@ function createPlatformApi({
                 await withMutationLock(`channel:${context.channel.id}`, async () => {
                     const freshContext = await vendorCheckoutContext(context.token);
                     if (!freshContext) throw buyerInputError('업체 결제 정보를 다시 불러와 주세요.', 409);
+                    if(freshContext.channel.status!=='active')throw buyerInputError('운영 중인 경매에서만 결제 처리할 수 있습니다.',409);
                     const bundle = await vendorBuyerBundle(freshContext, body.buyerId);
                     if (!bundle) throw buyerInputError('구매자 결제 내역을 찾을 수 없습니다.', 404);
                     const result = await confirmBuyerPayment(bundle.context, context.vendorKey, body.requestId);
@@ -3744,7 +3782,7 @@ function createPlatformApi({
                 checked.value.updatedAt = now;
                 const saved = await repository.saveCatalog([...catalog.channels, checked.value], body.expectedVersion ?? catalog.version);
                 if (body.copyVendors) {
-                    const sourceVendors = await repository.listRecords(channelId, 'vendor');
+                    const sourceVendors = await vendorDirectory.list(channelId);
                     for (const vendor of sourceVendors) {
                         await repository.upsertRecord(checked.value.id, 'vendor', { ...vendor, id: recordId('ven'), channelId: checked.value.id });
                     }
@@ -4024,10 +4062,23 @@ function createPlatformApi({
                 return true;
             }
 
+            if (segments.length === 3 && segments[2] === 'vendor-directory') {
+                if (!await requireAdmin(req,res)) return true;
+                if (method === 'GET') {
+                    const directory=await vendorDirectory.read();
+                    replyJson(res,200,{profiles:directory.profiles.map(p=>({id:p.id,name:p.info.name,phone:p.info.phone||'',members:p.members}))});return true;
+                }
+                if (method === 'POST') {
+                    const body=await readJson(req);
+                    const result=body.profileId ? await vendorDirectory.attach(cleanText(body.profileId,80),channelId) : await vendorDirectory.enroll(channelId,cleanText(body.vendorId,64));
+                    await touchVendorChannels(channelId,result.vendorId||body.vendorId);replyJson(res,200,{result});return true;
+                }
+            }
+
             if (segments.length === 3 && segments[2] === 'vendor-checkout-link' && method === 'POST') {
                 if (!await requireAdmin(req, res)) return true;
                 const body = await readJson(req);
-                const vendors = await repository.listRecords(channelId, 'vendor');
+                const vendors = await vendorDirectory.list(channelId);
                 const requested = cleanText(body.vendorKey || body.vendorId || body.vendorName, 80);
                 const vendor = vendors.find((entry) => entry.id === requested) || vendors.find((entry) => entry.name === requested);
                 if (!vendor) {
@@ -4111,8 +4162,9 @@ function createPlatformApi({
                         replyJson(res, 422, { error: errors.join(' '), errors });
                         return;
                     }
-                    const saved = await repository.upsertRecord(channelId, type, record);
+                    const saved = type === 'vendor' ? await vendorDirectory.update(channelId,record,body.record?.directoryRevision) : await repository.upsertRecord(channelId, type, record);
                     touchRecord(channelId, type, null, saved);
+                    if(type==='vendor')await touchVendorChannels(channelId,saved.id);
                     replyJson(res, 201, { record: saved });
                 });
                 return true;
@@ -4212,8 +4264,9 @@ function createPlatformApi({
                         replyJson(res, 422, { error: errors.join(' '), errors });
                         return;
                     }
-                    const saved = await repository.upsertRecord(channelId, type, record);
+                    const saved = type === 'vendor' ? await vendorDirectory.update(channelId,record,body.record?.directoryRevision) : await repository.upsertRecord(channelId, type, record);
                     touchRecord(channelId, type, current, saved);
+                    if(type==='vendor')await touchVendorChannels(channelId,saved.id);
                     replyJson(res, 200, { record: saved });
                 });
                 return true;
@@ -4224,6 +4277,9 @@ function createPlatformApi({
                     const data = await workspace(channelId);
                     const deletedRecord = data[segments[2]]?.find((record) => record.id === segments[3]) || null;
                     if (type === 'vendor') {
+                        if(await vendorDirectory.profileFor(channelId,segments[3])) {
+                            replyJson(res,409,{error:'공통 업체는 다른 채널과 연결되어 있어 여기서 삭제할 수 없습니다. 비활성화해 주세요.'});return;
+                        }
                         const usedByItem = data.items.some((item) => item.vendorId === segments[3]);
                         const usedByShipment = data.shipments.some((shipment) => shipment.vendorId === segments[3]);
                         if (usedByItem || usedByShipment) {

@@ -24,7 +24,7 @@
     <section class="live-panel" id="live-panel"><div class="live-label"><span>LIVE</span><strong>현재 송출</strong></div><select class="live-item" id="live-item" aria-label="송출할 개체"><option value="">개체 선택</option></select><div class="live-modes" id="live-modes"><button class="live-mode" data-mode="standby" type="button">대기 화면</button><button class="live-mode" data-mode="live" type="button">진행 화면</button><button class="live-mode" data-mode="sold" type="button">낙찰 화면</button></div></section>
     <section class="summary"><article><span>등록 업체</span><b id="vendor-count">0</b></article><article><span>등록 개체</span><b id="item-count">0</b></article><article><span>배송·결제 입력</span><b id="shipment-count">0</b></article></section>
     <div class="tabs" role="tablist"><button class="tab active" data-tab="vendors">업체</button><button class="tab" data-tab="items">개체</button><button class="tab" data-tab="shipping">배송 요약</button></div>
-    <div class="toolbar"><p id="tab-help">이 경매에 참여하는 업체만 등록합니다.</p><button class="btn" id="manage-vendor-links" type="button">업체 전용 링크 관리</button><button class="btn primary" id="add-record">＋ 업체 추가</button></div>
+    <div class="toolbar"><p id="tab-help">이 경매에 참여하는 업체만 등록합니다.</p><button class="btn" id="shared-vendors" type="button">공통 업체 불러오기</button><button class="btn" id="manage-vendor-links" type="button">업체 전용 링크 관리</button><button class="btn primary" id="add-record">＋ 업체 추가</button></div>
     <div class="table-wrap" id="table-wrap"></div>
 </main>
 <div class="modal" id="record-modal" hidden><form class="dialog" id="record-form"><div class="dialog-head"><h2 id="dialog-title">항목 추가</h2><button type="button" class="close" id="close-modal" aria-label="닫기">×</button></div><div class="fields" id="record-fields"></div><div class="dialog-actions"><button type="button" class="btn" id="cancel-modal">취소</button><button class="btn primary" id="save-record">저장</button></div></form></div>
@@ -72,6 +72,13 @@ async function deleteRecord(type,id,button){
     catch(error){if(requestedChannelId===channelId)toast(error.message)}
     finally{if(button.isConnected)button.disabled=false}
 }
+$('shared-vendors').onclick=async()=>{
+ const requestedChannelId=channelId,host=$('vendor-links-list');host.textContent='불러오는 중…';$('vendor-links-dialog').showModal();
+ try{const result=await CreoPlatform.api('channels/'+encodeURIComponent(requestedChannelId)+'/vendor-directory');if(requestedChannelId!==channelId)return;host.replaceChildren();
+ for(const profile of result.profiles){const row=document.createElement('p'),button=document.createElement('button'),label=document.createElement('span');label.textContent=profile.name+' · '+(profile.phone||'연락처 미등록')+' ';button.className='btn';button.textContent=profile.members.some(m=>m.channelId===requestedChannelId)?'이미 참가 중':'이 채널에 추가';button.disabled=profile.members.some(m=>m.channelId===requestedChannelId);button.onclick=async()=>{if(channelId!==requestedChannelId)return;if(!confirm(profile.name+' 업체를 이 채널에 연결할까요? 연락처·계좌·로고를 함께 사용합니다.'))return;button.disabled=true;try{await CreoPlatform.api('channels/'+encodeURIComponent(requestedChannelId)+'/vendor-directory',{method:'POST',body:JSON.stringify({profileId:profile.id})});if(channelId===requestedChannelId)await loadWorkspace();button.textContent='연결 완료'}catch(error){button.disabled=false;toast(error.message)}};row.append(label,button);host.append(row)}
+ if(!result.profiles.length)host.textContent='아직 공통 업체가 없습니다. 업체 전용 링크 관리에서 기존 업체를 공통 업체로 등록해 주세요.';
+ }catch(error){host.textContent=error.message}
+};
 $('close-vendor-links').onclick=()=>$('vendor-links-dialog').close();
 $('manage-vendor-links').onclick=async()=>{
  const requestedChannelId=channelId, vendors=[...data.vendors],host=$('vendor-links-list');
@@ -81,8 +88,8 @@ $('manage-vendor-links').onclick=async()=>{
   const title=document.createElement('strong');title.textContent=vendor.name;
   const hint=document.createElement('small');hint.textContent=(vendor.bankName&&vendor.bankAccount&&vendor.bankHolder?'계좌 등록 완료':'계좌 등록 필요')+' · '+(vendor.phone||'연락처 미등록');
   const input=document.createElement('input');input.readOnly=true;input.placeholder='링크 준비 중';input.style.cssText='width:100%;padding:10px';input.setAttribute('aria-label',vendor.name+' 전용 링크');
-  const controls=document.createElement('div'),copy=document.createElement('button'),open=document.createElement('a');
-  copy.type='button';copy.className='btn';copy.textContent='복사';copy.disabled=true;open.className='btn';open.textContent='열기';open.target='_blank';open.rel='noopener noreferrer';controls.append(copy,open);row.append(title,hint,input,controls);host.append(row);
+  const controls=document.createElement('div'),promote=document.createElement('button'),copy=document.createElement('button'),open=document.createElement('a');
+  copy.type='button';copy.className='btn';copy.textContent='복사';copy.disabled=true;open.className='btn';open.textContent='열기';open.target='_blank';open.rel='noopener noreferrer';promote.type='button';promote.className='btn';promote.textContent=vendor.directoryId?'공통 업체 연결됨':'공통 업체로 등록';promote.disabled=!!vendor.directoryId;promote.onclick=async()=>{if(!confirm('이 업체를 다른 채널에서도 재사용할 공통 업체로 등록할까요? 이름이 같은 업체와 자동 병합하지 않습니다.'))return;try{await CreoPlatform.api('channels/'+encodeURIComponent(requestedChannelId)+'/vendor-directory',{method:'POST',body:JSON.stringify({vendorId:vendor.id})});promote.disabled=true;promote.textContent='공통 업체 연결됨';await loadWorkspace()}catch(error){toast(error.message)}};controls.append(copy,open,promote);row.append(title,hint,input,controls);host.append(row);
   try{
    const result=await CreoPlatform.api(`channels/${encodeURIComponent(requestedChannelId)}/vendor-checkout-link`,{method:'POST',body:JSON.stringify({vendorId:vendor.id})});
    if(requestedChannelId!==channelId||!$('vendor-links-dialog').open)return;
@@ -108,7 +115,7 @@ function field(name,label,value='',type='text',options=''){if(type==='select')re
 function optionList(rows,current,label){return`<option value="">선택</option>`+rows.map(r=>`<option value="${esc(r.id)}" ${r.id===current?'selected':''}>${esc(label(r))}</option>`).join('')}
 function openModal(type,record=null){
     if(!['vendors','items'].includes(type))return;
-    editing={type,id:record?.id||'',channelId};
+    editing={type,id:record?.id||'',channelId,directoryRevision:record?.directoryRevision};
     let f='';
     if(type==='vendors'){
         f+=field('name',`${term('vendor','업체')}명`,record?.name);
@@ -148,6 +155,7 @@ $('record-form').onsubmit=async event=>{
     if(recordPending)return;
     if(!editing||editing.channelId!==channelId)return toast('채널이 변경되었습니다. 항목을 다시 열어 주세요.');
     const requestedChannelId=channelId,currentEditing={...editing},form=Object.fromEntries(new FormData(event.currentTarget)),button=$('save-record');
+    if(currentEditing.directoryRevision)form.directoryRevision=currentEditing.directoryRevision;
     ['lotNumber','startPrice','soldPrice','points'].forEach(key=>{if(key in form)form[key]=Number(form[key])||0});
     recordPending=true;button.disabled=true;button.textContent='저장 중…';
     try{
