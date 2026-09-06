@@ -35,6 +35,9 @@ test('public broadcast preserves only contribution rate and logo, and P3 shows o
     vm.createContext(context);vm.runInContext(source.slice(start,end),context);
     const channel={groups:[{id:'a',name:'비송팀'}],scoreboards:[{dimension:'group',metric:'vendorContribution'}]};
     const rendered=context.renderVendorContributionPageThree(channel,{mode:'sold'},[item]);
-    assert.match(rendered,/끼리끼리 로고/);assert.match(rendered,/팀원 50%/);assert.match(rendered,/기여도 \+50000원/);
+    assert.match(rendered,/끼리끼리 로고/);assert.match(rendered,/팀원 50%/);assert.match(rendered,/기여도 \+5</);assert.match(rendered,/낙찰가 10</);
+    assert.doesNotMatch(rendered,/100,000|50,000|50000원/);
+    const fractional=context.renderVendorContributionPageThree(channel,{mode:'sold'},[{...item,soldPrice:10000}]);
+    assert.match(fractional,/기여도 \+0\.5</);
     assert.doesNotMatch(context.renderVendorContributionPageThree(channel,{mode:'live'},[item]),/src="\/logo.png"/);
 });
