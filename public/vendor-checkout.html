@@ -16,6 +16,7 @@
 <button class="btn" id="save-vendor-settings" type="submit">업체 정보 저장</button><p id="settings-feedback" role="status"></p>
 </form></details><div id="buyers"></div><div class="empty" id="empty" hidden><b>낙찰 내역이 없습니다</b><span>새 낙찰이 등록되면 이 페이지에 표시됩니다.</span></div></main></div></div>
 <script>(()=>{'use strict';const Checkout=window.CreoCheckoutClient,client=Checkout.createClient({location,endpoint:'/api/platform/vendor-checkout',shortPrefix:'v'}),$=Checkout.byId,esc=Checkout.escapeHtml,money=Checkout.money,phone=Checkout.formatPhone,uuid=Checkout.requestId;let selectedEvent=new URLSearchParams(location.search).get("event")||"";let data=null,busy=false,settingsDirty=false,settingsLoaded=false;
+const practice=document.createElement('a');practice.className='btn';practice.textContent='테스트 개체로 연습하기';practice.href='/checkout-practice.html';practice.target='_blank';practice.rel='noopener noreferrer';practice.style.cssText='display:inline-flex;align-items:center;margin:12px 0';practice.onclick=()=>{practice.href='/checkout-practice.html?vendor='+encodeURIComponent($('vendor').textContent||'테스트 업체')};$('vendor-settings').before(practice);
 function renderEvents(){
  selectedEvent=data.channel.id;
  const select=$('vendor-event');select.replaceChildren();
