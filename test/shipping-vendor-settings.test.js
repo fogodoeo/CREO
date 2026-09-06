@@ -14,4 +14,7 @@ test('shipping includes registered vendors before sales and preserves editor dur
     assert.match(source, /paymentMethods \}/);
     assert.match(source, /!activeEditorWinner/);
     assert.match(source, /value !== lastShippingPulse/);
+    assert.doesNotMatch(source, /bankEnabled/);
+    assert.match(source, /낙찰자가 요청 시 결제 링크를 등록하셔야 합니다\./);
+    assert.match(source, /const paymentMethods = \['bank_transfer'/);
 });

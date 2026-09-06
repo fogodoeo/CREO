@@ -2078,11 +2078,10 @@
                 <form id="vendor-settings-form" style="display:grid;gap:12px;margin-top:16px">
                     <p>저장한 연락처와 계좌는 해당 업체의 구매자 페이지에 표시됩니다. 관리자 인증 상태에서만 수정할 수 있습니다.</p>
                     <label>업체 연락처 <input name="phone" type="tel" required class="input-text"></label>
-                    <label><input name="bankEnabled" type="checkbox"> 계좌이체 사용</label>
-                    <label>은행 <input name="bankName" class="input-text"></label>
-                    <label>계좌번호 <input name="bankAccount" class="input-text"></label>
-                    <label>예금주 <input name="bankHolder" class="input-text"></label>
-                    <label><input name="cardEnabled" type="checkbox"> 카드결제 사용 — 요청별 결제 링크를 업체가 등록합니다.</label>
+                    <label>은행 <input name="bankName" class="input-text" required></label>
+                    <label>계좌번호 <input name="bankAccount" class="input-text" required></label>
+                    <label>예금주 <input name="bankHolder" class="input-text" required></label>
+                    <label><input name="cardEnabled" type="checkbox"> 카드결제 사용<br><small>낙찰자가 요청 시 결제 링크를 등록하셔야 합니다.</small></label>
                     <button type="submit" class="shipping-admin-login">업체 설정 저장</button>
                     <output id="vendor-settings-feedback" aria-live="polite"></output>
                 </form>
@@ -2903,7 +2902,6 @@
             editingShippingVendorId = vendor.id;
             const form = document.getElementById('vendor-settings-form');
             for (const key of ['phone','bankName','bankAccount','bankHolder']) form.elements[key].value = vendor[key] || '';
-            form.elements.bankEnabled.checked = (vendor.paymentMethods || []).includes('bank_transfer');
             form.elements.cardEnabled.checked = (vendor.paymentMethods || []).includes('card');
             document.getElementById('vendor-settings-state').textContent = vendor.phone && vendor.paymentMethods?.length ? '· 설정됨' : '· 설정 필요';
             document.getElementById('vendor-settings-feedback').textContent = '';
@@ -2913,7 +2911,7 @@
             const form = event.currentTarget, output = document.getElementById('vendor-settings-feedback');
             const vendorId = editingShippingVendorId;
             const values = Object.fromEntries(['phone','bankName','bankAccount','bankHolder'].map(key => [key, form.elements[key].value.trim()]));
-            const paymentMethods = [form.elements.bankEnabled.checked ? 'bank_transfer' : '', form.elements.cardEnabled.checked ? 'card' : ''].filter(Boolean);
+            const paymentMethods = ['bank_transfer', ...(form.elements.cardEnabled.checked ? ['card'] : [])];
             if (!/^0\d{8,10}$/.test(values.phone.replace(/\D/g,''))) { output.textContent = '연락처를 확인해 주세요.'; return; }
             if (paymentMethods.includes('bank_transfer') && (!values.bankName || !values.bankAccount || !values.bankHolder)) { output.textContent = '은행·계좌번호·예금주를 모두 입력해 주세요.'; return; }
             const button = form.querySelector('button'); button.disabled = true;
