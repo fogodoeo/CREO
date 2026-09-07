@@ -43,3 +43,23 @@ body[data-page="3"] .dice-team-grid{gap:12px!important}
 body[data-page="3"] :is(.dice-overlay-card,.dice-sold-line,.dice-result-strip){border:0!important;border-radius:18px!important;background:#181d24!important;box-shadow:0 8px 24px #0003!important;color:#f9fafb!important}
 body[data-page="3"] :is(.dice-result-strip b,.dice-sold-line b){color:#f9fafb!important}
 @media(max-width:700px){body[data-page]{--broadcast-radius:12px}body[data-page="2"] .item-copy.is-inline-info{padding:10px 12px;gap:10px}body[data-page="1"] .host-card{padding:10px 12px}body[data-page="3"] :is(.contribution-team,.dice-team-card){padding:12px 14px;gap:10px}body[data-page="3"] .vendor-contribution-result{padding:16px;border-radius:20px}}
+
+/* 100% typography baseline: former item title at 180%, with 54px supporting text. */
+body[data-page]{--broadcast-title-size:71.28px;--broadcast-body-size:54.17px}
+body[data-page="1"] .host-name{font-size:var(--broadcast-body-size)!important}
+body[data-page="1"] .host-role{font-size:var(--broadcast-body-size)!important}
+body[data-page="1"] .host-card{padding:8px 16px}
+body[data-page="2"] .item-inline-identity h1{font-size:var(--broadcast-title-size)!important}
+body[data-page="2"] :is(.item-inline-pill,.vendor-tag){font-size:var(--broadcast-body-size)!important}
+body[data-page="2"] :is(.live-bid-name,.live-bid-amount){font-size:var(--broadcast-body-size)!important}
+body[data-page="2"] .live-bid-name small{font-size:.8em}
+body[data-page="2"] .live-bid-row{padding:8px 16px}
+body[data-page="2"] .live-bidders:not([data-layout-custom="1"]){width:min(560px,44vw)}
+body[data-page="2"] .item-progress strong{font-size:var(--broadcast-body-size)!important}
+body[data-page] .ticker-text{font-size:var(--ticker-text-font-size,var(--broadcast-body-size))!important;line-height:1.12}
+body[data-page="3"] :is(.contribution-team h2,.dice-team-card h2){font-size:var(--broadcast-body-size)!important}
+body[data-page="3"] :is(.board-head h1,.rank-card strong){font-size:var(--broadcast-body-size)}
+body[data-page="3"] .contribution-teams[data-layout-custom="1"] .contribution-team{padding:4cqh 16px}
+body[data-page="3"] .contribution-teams[data-layout-custom="1"] h2{font-size:min(54.17px,82cqh)!important}
+body[data-page="3"] .contribution-teams[data-layout-custom="1"] strong{font-size:min(71.28px,90cqh)!important}
+@media(max-width:700px){body[data-page]{--broadcast-title-size:clamp(28px,5.57vw,39px);--broadcast-body-size:clamp(22px,4.23vw,30px)}}
