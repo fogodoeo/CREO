@@ -44,7 +44,7 @@ test('individual host widths survive save, duplicate save, restart and public br
     let api=createPlatformApi({repository});
     const layoutPlacements=Object.fromEntries([1,2,3].map(n=>[`p1-host-${n}`,{x:n*15,y:70,width:8+n,height:8,fontScale:1,opacity:100,visible:true}]));
     for(let n=0;n<2;n++){
-        const saved=await call(api,'PUT','/api/platform/channels/alpha/broadcast-state',{layoutPlacements});
+        const saved=await call(api,'PUT','/api/platform/channels/alpha/broadcast-state',{layoutPlacements,page3ResultBackgroundOpacity:0});
         assert.equal(saved.status,200,saved.body);
         assert.deepEqual(saved.json().state.layoutPlacements,layoutPlacements);
     }
@@ -53,6 +53,7 @@ test('individual host widths survive save, duplicate save, restart and public br
     assert.equal(partial.status,200,partial.body);
     const broadcast=await call(api,'GET','/api/platform/channels/alpha/broadcast?page=1',null,'');
     assert.deepEqual(broadcast.json().state.layoutPlacements,layoutPlacements);
+    assert.equal(broadcast.json().state.page3ResultBackgroundOpacity,0);
     const other=await call(api,'GET','/api/platform/channels/beta/broadcast?page=1',null,'');
     assert.equal(other.json().state.layoutPlacements?.['p1-host-1'],undefined);
 });

@@ -281,6 +281,7 @@ function sanitizeBroadcastState(input = {}) {
         extraMode,
         scoreboardId: cleanText(input.scoreboardId, 64),
         page3Title: cleanText(input.page3Title || input.headline, 120),
+        page3ResultBackgroundOpacity: clampLayoutNumber(input.page3ResultBackgroundOpacity, 0, 100, 85),
         page3BoardPosition: ['auto', 'full', 'left', 'right'].includes(input.page3BoardPosition) ? input.page3BoardPosition : 'auto',
         page3QuizPosition: ['auto', 'top', 'center', 'bottom'].includes(input.page3QuizPosition) ? input.page3QuizPosition : 'auto',
         quizOn: booleanValue(input.quizOn, false),

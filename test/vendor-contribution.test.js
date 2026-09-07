@@ -3,7 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
-const { rankingsForChannel, vendorContribution } = require('../public/ranking-engine');
+const { rankingsForChannel, vendorContribution, liveVendorContribution } = require('../public/ranking-engine');
 const { normalizeChannel, publicItem } = require('../platform-core');
 const profiles = require('../public/broadcast-profiles');
 
@@ -49,7 +49,7 @@ test('public broadcast preserves only contribution rate and logo, and P3 shows o
     const source=fs.readFileSync(require.resolve('../public/auction-live.html'),'utf8');
     const start=source.indexOf('function renderVendorContributionPageThree(');
     const end=source.indexOf('\nfunction ',start+1);
-    const context={CreoAuctionContract:{isSoldStatus:status=>status==='sold'},CreoRankingEngine:{vendorContribution},scoreboardRows:()=>[],activeItem:(_,items)=>items[0],vendorLogo:item=>item.vendorLogoUrl,esc:String,money:String,pageThreeFrame:(_,title,body)=>body};
+    const context={CreoAuctionContract:{isSoldStatus:status=>status==='sold'},CreoRankingEngine:{vendorContribution,liveVendorContribution},scoreboardRows:()=>[],activeItem:(_,items)=>items[0],vendorLogo:item=>item.vendorLogoUrl,esc:String,money:String,pageThreeFrame:(_,title,body)=>body};
     vm.createContext(context);vm.runInContext(source.slice(start,end),context);
     const channel={groups:[{id:'a',name:'비송팀'}],scoreboards:[{dimension:'group',metric:'vendorContribution'}]};
     const rendered=context.renderVendorContributionPageThree(channel,{mode:'sold'},[item]);
@@ -63,4 +63,44 @@ test('public broadcast preserves only contribution rate and logo, and P3 shows o
     const three=context.renderVendorContributionPageThree(channel,{mode:'sold'},[{...item,soldPrice:30000}]);assert.match(three,/<b>3<\/b>/);assert.doesNotMatch(three,/30,000|만원/);
     assert.match(source,/'p3-effect':'.dice-overlay-card, .contribution-stage'/);
     assert.doesNotMatch(context.renderVendorContributionPageThree(channel,{mode:'live'},[item]),/src="\/logo.png"/);
+});
+
+test('live vendor points follow the highest valid bid and stop at the sold boundary', () => {
+    const item={id:'live',status:'live',vendorContributionRate:1,bidLog:[{amount:3},{amount_won:50000},{amount:4},{amount:'invalid'}]};
+    assert.equal(liveVendorContribution(item),10);
+    assert.equal(liveVendorContribution({...item,vendorContributionRate:0.5}),5);
+    assert.equal(liveVendorContribution({...item,bidLog:[]}),0);
+    assert.equal(liveVendorContribution({...item,bidLog:[{amount_won:15000}]}),3);
+    assert.equal(liveVendorContribution({...item,status:'sold',soldPrice:50000}),0);
+    assert.equal(vendorContribution({...item,status:'sold',soldPrice:50000}),10);
+    assert.equal(liveVendorContribution({...item,status:'passed'}),0);
+    assert.equal(liveVendorContribution(null),0);
+});
+
+test('P3 adds live points once and keeps the same total when the item sells', () => {
+    const source=fs.readFileSync(require.resolve('../public/auction-live.html'),'utf8');
+    const start=source.indexOf('function renderVendorContributionPageThree('),end=source.indexOf('\nfunction ',start+1);
+    const context={CreoAuctionContract:{isSoldStatus:s=>s==='sold'},CreoRankingEngine:{vendorContribution,liveVendorContribution},scoreboardRows:(c,i,b)=>rankingsForChannel({...c,scoreboards:[b]},i)[0].rows,activeItem:(s,i)=>i.find(x=>x.id===s.activeItemId),vendorLogo:()=>'',esc:String};
+    vm.createContext(context);vm.runInContext(source.slice(start,end),context);
+    const c={id:'c',groups:[{id:'a',name:'A'}],scoreboards:[{dimension:'group',metric:'vendorContribution'}]};
+    const items=[{id:'old',groupId:'a',status:'sold',soldPrice:100000,vendorContributionRate:0.5},{id:'live',groupId:'a',status:'live',bidLog:[{amount:3}],vendorContributionRate:1}];
+    const render=(mode,rows)=>context.renderVendorContributionPageThree(c,{mode,activeItemId:'live',page3ResultBackgroundOpacity:0},rows);
+    assert.match(render('live',items),/data-contribution-value="16"/);
+    assert.match(render('live',structuredClone(items)),/data-contribution-value="16"/);
+    assert.match(render('sold',[items[0],{...items[1],status:'sold',soldPrice:30000}]),/data-contribution-value="16"/);
+    assert.match(render('standby',items),/data-contribution-value="10"/);
+    assert.match(render('sold',[items[0],{...items[1],status:'sold',soldPrice:30000}]),/--result-background-opacity:0/);
+});
+
+test('contribution counter animates from the visible value and retains decimal targets', () => {
+    const source=fs.readFileSync(require.resolve('../public/auction-live.html'),'utf8');
+    const start=source.indexOf('const contributionCounters='),end=source.indexOf('function finishDiceVideo(',start);
+    const el={dataset:{contributionKey:'a',contributionValue:'0'},isConnected:true,textContent:''};
+    let callback,now=0;
+    const context={stage:{querySelectorAll:()=>[el]},performance:{now:()=>now},requestAnimationFrame:fn=>{callback=fn;return 1},cancelAnimationFrame:()=>{}};
+    vm.createContext(context);vm.runInContext(source.slice(start,end),context);
+    context.hydrateContributionCounters();el.dataset.contributionValue='10';context.hydrateContributionCounters();
+    now=425;callback(now);assert.equal(el.textContent,'5');
+    el.dataset.contributionValue='11.5';context.hydrateContributionCounters();assert.equal(el.textContent,'5');
+    now=1275;callback(now);assert.equal(el.textContent,'11.5');
 });

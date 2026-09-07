@@ -88,5 +88,14 @@
         });
     }
 
-    return Object.freeze({ rankingsForChannel, vendorContribution });
+    function liveVendorContribution(item) {
+        if (item?.status !== 'live') return 0;
+        const amount = Math.max(0, ...(item.bidLog || []).map(bid => {
+            const value = bid.amount_won != null ? Number(bid.amount_won) : Number(bid.amount) * 10000;
+            return Number.isFinite(value) ? value : 0;
+        }));
+        return vendorContribution({ ...item, status: 'sold', soldPrice: amount });
+    }
+
+    return Object.freeze({ rankingsForChannel, vendorContribution, liveVendorContribution });
 });
