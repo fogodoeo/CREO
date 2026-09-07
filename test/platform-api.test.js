@@ -245,6 +245,11 @@ test('payment report freezes its items when another auction is won before confir
     const repeated = await call(api, 'POST', '/api/platform/buyer-shipping/report-payment', { code, vendorKey: 'v', requestId: 'report-second-id' }, '');
     assert.equal(repeated.json().duplicate, true);
     await repository.upsertRecord('alpha', 'item', { ...item, id: 'second', name: 'A02', lotNumber: 2 });
+    const vendorLink = await call(api, 'POST', '/api/platform/channels/alpha/vendor-checkout-link', { vendorId: 'v' });
+    const vendorCode = new URL(vendorLink.json().url).pathname.split('/').at(-1);
+    const vendorBefore = await call(api, 'GET', '/api/platform/vendor-checkout?code='+vendorCode, null, '');
+    assert.equal(vendorBefore.json().buyers[0].payment.additionalDue, 200000);
+    assert.equal(vendorBefore.json().buyers[0].payment.confirmationDue, 100000);
     const confirm = await call(api, 'POST', '/api/platform/channels/alpha/buyer-shipping-payment', { itemId: 'first', requestId: 'confirm-initial' });
     assert.equal(confirm.status, 200, confirm.body);
     const shipments = await repository.listRecords('alpha', 'shipment');
@@ -252,6 +257,20 @@ test('payment report freezes its items when another auction is won before confir
     assert.equal(shipments[0].paymentConfirmedAmount, 100000);
     const after = await call(api, 'GET', `/api/platform/buyer-shipping?code=${code}`, null, '');
     assert.equal(after.json().payment.additionalDue, 100000);
+});
+
+test('payment report rejects unsaved additional wins before writing any shipment', async () => {
+ const repository=new MemoryRepository();repository.catalog.channels[0].shippingDefaults={pickupLocations:['테스트']};
+ await repository.upsertRecord('alpha','vendor',{id:'v',name:'업체',bankName:'은행',bankAccount:'12345',bankHolder:'업체'});
+ const item={id:'first',name:'A01',lotNumber:1,vendorId:'v',vendorName:'업체',status:'sold',soldPrice:100000,winnerName:'테스트',winnerPhone:'01012345678'};
+ await repository.upsertRecord('alpha','item',item);const api=createPlatformApi({repository});
+ const link=await call(api,'POST','/api/platform/channels/alpha/buyer-shipping-link',{itemId:'first'});const code=link.json().code;
+ const saved=await call(api,'POST','/api/platform/buyer-shipping',{code,requestId:'save-initial',destinationId:'pickup-1',payments:[{vendorKey:'v',method:'bank_transfer'}]},'');assert.equal(saved.status,200,saved.body);
+ const before=JSON.stringify(await repository.listRecords('alpha','shipment'));
+ await repository.upsertRecord('alpha','item',{...item,id:'second',lotNumber:2});
+ for(const requestId of ['report-first','report-retry']){const result=await call(api,'POST','/api/platform/buyer-shipping/report-payment',{code,vendorKey:'v',requestId},'');assert.equal(result.status,409,result.body);assert.equal(JSON.stringify(await repository.listRecords('alpha','shipment')),before)}
+ const resaved=await call(api,'POST','/api/platform/buyer-shipping',{code,requestId:'save-additional',destinationId:'pickup-1',payments:[{vendorKey:'v',method:'bank_transfer'}]},'');assert.equal(resaved.status,200,resaved.body);
+ const reported=await call(api,'POST','/api/platform/buyer-shipping/report-payment',{code,vendorKey:'v',requestId:'report-complete'},'');assert.equal(reported.status,200,reported.body);assert.equal(reported.json().vendors[0].payment.confirmationDue,200000);
 });
 
 test('shipping rate refresh persists the collected public data before replying', async () => {

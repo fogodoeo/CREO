@@ -1336,6 +1336,7 @@ function createPlatformApi({
                 method: latest?.paymentMethod || '',
                 confirmedAmount: group.payment.confirmedAmount,
                 additionalDue: group.payment.additionalDue,
+                confirmationDue: group.payment.confirmationDue ?? null,
                 requestedAmount: group.totalAmount,
                 cardPaymentUrl: latest?.paymentMethod === 'card' ? cleanText(latest.cardPaymentUrl, 1000) : '',
                 buyerPaymentReportedAt: latest?.buyerPaymentReportedAt || '',
@@ -1594,6 +1595,10 @@ function createPlatformApi({
         if (unpaid.length && unpaid.every(shipment => shipment.paymentStatus === nextStatus)) {
             return { duplicate: true, payload: await buyerShippingPayload(context), group };
         }
+        // Validate the complete bundle before mutating any existing shipment.
+        if (group.items.some(item => !group.shipments.some(shipment => shipment.itemId === item.id))) {
+            throw buyerInputError('추가 낙찰 내역의 배송정보를 먼저 저장해 주세요.', 409);
+        }
         const now = new Date().toISOString();
         const saved = [];
         for (const item of group.items) {
@@ -1785,6 +1790,7 @@ function createPlatformApi({
                 requestedAmount: group.totalAmount,
                 confirmedAmount: group.payment.confirmedAmount,
                 additionalDue: group.payment.additionalDue,
+                confirmationDue: group.payment.confirmationDue ?? null,
                 cardPaymentUrl: latest?.cardPaymentUrl || '',
                 reportedAt: latest?.buyerPaymentReportedAt || '',
                 confirmedAt: latest?.paymentConfirmedAt || ''

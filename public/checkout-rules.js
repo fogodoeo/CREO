@@ -106,7 +106,10 @@
             return { status: 'paid', confirmedAmount: confirmed, additionalDue: 0, latest };
         }
         const reported = newestShipment(shipments.filter(shipment => ['bank_transfer_reported', 'card_payment_reported'].includes(shipment.paymentStatus)));
-        if (reported) return { status: reported.paymentStatus, confirmedAmount: confirmed, additionalDue: due, latest: reported };
+        if (reported) {
+            const requested = Math.max(...shipments.filter(shipment => ['bank_transfer_reported', 'card_payment_reported'].includes(shipment.paymentStatus)).map(shipment => Number(shipment.paymentRequestedAmount) || 0));
+            return { status: reported.paymentStatus, confirmedAmount: confirmed, additionalDue: due, confirmationDue: Math.max(0, requested - confirmed), latest: reported };
+        }
         if (confirmed > 0 && due > 0) {
             return { status: 'additional_payment', confirmedAmount: confirmed, additionalDue: due, latest };
         }
