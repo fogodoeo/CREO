@@ -13,6 +13,8 @@
   };swap.cancel=current=>pending.delete(current);return swap;
  }
  function prepare(media){
+  // Template contents have an inert ownerDocument and do not fetch media.
+  if(typeof document!=='undefined'&&media.ownerDocument!==document){document.adoptNode(media);media.src=media.getAttribute('src')}
   if(media.tagName==='IMG')return media.decode();
   if(media.tagName!=='VIDEO')return Promise.resolve();
   if(media.readyState>=2)return Promise.resolve();
