@@ -353,7 +353,7 @@ test('shipping editor exposes one buyer message action and a subdued payment con
     assert.match(shipping, /copyBtn\.onclick\s*=\s*sendBuyerShippingLinkSms/);
     assert.match(shipping, /class="editor-payment-action" id="editor-payment-confirm-btn"/);
     assert.match(shipping, /\.editor-payment-action\s*\{[^}]*background:#344054;[^}]*color:#FFF;/);
-    assert.match(shipping, /\.editor-footer-actions\s*\{[^}]*grid-template-columns:repeat\(3,minmax\(86px,1fr\)\)/);
+    assert.match(shipping, /\.editor-footer-actions\s*\{[^}]*grid-template-columns:repeat\(2,minmax\(86px,1fr\)\)/);
     assert.doesNotMatch(shipping, /editor-label-print-btn|printActiveBuyerLabels|shipping-label-print-root/);
     assert.doesNotMatch(shipping, /editor-capture-strip|촬영 대기 중|loadCaptureRecords/);
     assert.doesNotMatch(shipping, /토요일 집하|금요일 집하|hub-result-schedule/);

@@ -2012,7 +2012,7 @@
         .registration-badge,.registration-badge.complete,.registration-badge.partial,.registration-badge.mismatch,.status-select.status-waiting,.status-select.status-contacted,.status-select.status-paid { border-color:#D4D4D8 !important; background:#F4F4F5 !important; color:#52525B !important; }
         .action-icon-btn { border-color:#D4D4D8 !important; background:#FFF !important; color:#3F3F46 !important; box-shadow:none !important; filter:grayscale(1); }
         .editor-action-footer { padding:12px 20px 16px; border-color:#E4E4E7; box-shadow:0 -6px 18px rgba(0,0,0,.035); }
-        .editor-footer-actions { display:grid; grid-template-columns:repeat(3,minmax(86px,1fr)); gap:8px; }
+        .editor-footer-actions { display:grid; grid-template-columns:repeat(2,minmax(86px,1fr)); gap:8px; }
         .editor-copy-action,.editor-save-action { display:flex; align-items:center; justify-content:center; height:44px; border-radius:10px; font-family:inherit; font-size:12px; font-weight:850; text-align:center; cursor:pointer; }
         .editor-copy-action { border:1px solid #D4D4D8; background:#FFF; color:#3F3F46; }
         .editor-copy-action:hover { border-color:#A1A1AA; background:#FAFAFA; }
@@ -2281,6 +2281,7 @@
                     </div>
                 </div>
                 <div class="editor-footer-actions">
+                    <button class="editor-copy-action" id="editor-buyer-page-btn" type="button">낙찰자 페이지 보기</button>
                     <button class="editor-copy-action" id="editor-info-copy-btn" type="button">배송 안내</button>
                     <button class="editor-save-action" type="button" onclick="saveWinnerEditor()">배송 저장</button>
                     <button class="editor-payment-action" id="editor-payment-confirm-btn" type="button" hidden>입금 확인</button>
@@ -2487,6 +2488,26 @@
             const state = winnerStateMap[activeEditorWinner];
             if (!state) return null;
             return state.allItems.find(item => (item.company || '').trim() === activeSellerCompany) || state.allItems[0] || null;
+        }
+
+        async function openActiveBuyerPage() {
+            const item = activeBuyerLinkItem();
+            if (!item) return showToast('낙찰 개체를 찾을 수 없습니다.', true);
+            const preview = window.open('about:blank', '_blank');
+            if (!preview) return showToast('팝업을 허용한 뒤 다시 눌러 주세요.', true);
+            preview.opener = null;
+            try {
+                const result = await CreoPlatform.api(`channels/${encodeURIComponent(SHIPPING_CHANNEL_ID)}/buyer-shipping-link`, {
+                    method: 'POST',
+                    body: JSON.stringify({ itemId: item._platformItemId || item.row || item.id })
+                });
+                const url = new URL(result.url, window.location.origin);
+                if (url.origin !== window.location.origin || !url.pathname.startsWith('/s/')) throw new Error('낙찰자 페이지 주소를 확인할 수 없습니다.');
+                preview.location.replace(url.href);
+            } catch (error) {
+                preview.close();
+                showToast(error.message || '낙찰자 페이지를 열지 못했습니다.', true);
+            }
         }
 
         async function sendBuyerShippingLinkSms() {
@@ -3812,6 +3833,12 @@
             const copyBtn = document.getElementById('editor-info-copy-btn');
             const paymentConfirmBtn = document.getElementById('editor-payment-confirm-btn');
             const cleanPhone = (state.phone || '').replace(/[^0-9]/g, '');
+
+            const buyerPageBtn = document.getElementById('editor-buyer-page-btn');
+            if (buyerPageBtn) {
+                buyerPageBtn.onclick = openActiveBuyerPage;
+                buyerPageBtn.disabled = !cleanPhone;
+            }
 
             if (copyBtn) {
                 copyBtn.textContent = grandTotal > 0 && state.payment_confirmed_amount >= grandTotal
