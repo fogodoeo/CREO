@@ -763,7 +763,7 @@ test('print forms have one canonical page linked from both pipeline and workspac
     assert.match(print, />배송 라벨<\/button>/);
     assert.match(print, /id="label-item-list"/);
     assert.match(print, /id="label-preview-stage"/);
-    assert.match(print, /실제 D10 15×50mm 비율/);
+    assert.match(print, /실제 B1 PRO 30×50mm \(가로형\) 비율/);
     assert.match(print, /function renderShippingLabels\(items\)/);
     assert.match(print, /function renderShippingLabelPreview\(\)/);
     assert.match(print, /function moveShippingLabelPreview\(direction\)/);

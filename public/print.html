@@ -417,11 +417,11 @@
 
         .label-paper {
             display: grid;
-            grid-template-rows: 34% 29% 27% 10%;
+            grid-template-rows: 16% 40% 23% 21%;
             width: 100%;
-            aspect-ratio: 10 / 3;
+            aspect-ratio: 5 / 3;
             overflow: hidden;
-            padding: 7px 24px 0;
+            padding: 8px 14px;
             border: 1px solid #cbd5e1;
             background: #fff;
             box-shadow: 0 8px 24px rgba(15, 23, 42, .12);
@@ -444,7 +444,8 @@
         .label-paper-destination { font-size: 29px; font-weight: 900; letter-spacing: -.045em; }
         .label-paper-destination.is-long { font-size: 20px; line-height: 1.02; white-space: normal; text-overflow: clip; }
         .label-paper-destination.is-very-long { font-size: 16px; letter-spacing: -.035em; }
-        .label-paper-buyer { font-size: 27px; font-weight: 850; letter-spacing: -.04em; }
+        .label-paper-header { display:flex; align-items:center; justify-content:center; background:#000; color:#fff; border-radius:5px; font-size:17px; font-weight:850; }
+        .label-paper-buyer { font-size: 27px; font-weight: 850; letter-spacing: -.04em; border-top:2px solid #000; }
         .label-paper-buyer.is-long { font-size: 20px; }
         .label-paper-buyer.is-very-long { font-size: 17px; }
         .label-paper-phone { align-items: flex-start; padding-top: 2px; font-size: 23px; font-weight: 850; letter-spacing: -.025em; }
@@ -454,7 +455,7 @@
             display: grid;
             place-items: center;
             width: 100%;
-            aspect-ratio: 10 / 3;
+            aspect-ratio: 5 / 3;
             border: 1px dashed #94a3b8;
             border-radius: 4px;
             background: rgba(255,255,255,.55);
@@ -839,20 +840,20 @@
     <div class="tab-content" id="tab-labels">
         <div class="header">
             <h1>배송 라벨</h1>
-            <div class="meta">15×50mm · 개체당 1장</div>
+            <div class="meta">30×50mm (가로형) · 개체당 1장</div>
         </div>
         <div class="label-workspace">
             <div class="label-toolbar">
                 <label><input id="label-select-all" type="checkbox" onchange="toggleAllShippingLabels(this.checked)"> 전체 선택</label>
                 <span>결제 완료 건이 기본 선택됩니다.</span>
-                <span class="label-printer-status" id="label-printer-status">D10 앱 연결 확인 중</span>
+                <span class="label-printer-status" id="label-printer-status">B1 PRO 앱 연결 확인 중</span>
                 <span class="label-selection-summary" id="label-selection-summary">0장 선택</span>
             </div>
             <div class="label-workspace-body">
                 <section class="label-preview-panel" aria-label="배송 라벨 출력 미리보기">
                     <div class="label-preview-heading">
                         <strong>출력 미리보기</strong>
-                        <span>실제 D10 15×50mm 비율</span>
+                        <span>실제 B1 PRO 30×50mm (가로형) 비율</span>
                     </div>
                     <div class="label-preview-stage" id="label-preview-stage">
                         <div class="label-preview-empty">라벨 자료를 불러오는 중입니다.</div>
@@ -862,7 +863,7 @@
                         <span class="label-preview-counter" id="label-preview-counter">0 / 0</span>
                         <button id="label-preview-next" type="button" onclick="moveShippingLabelPreview(1)">다음</button>
                     </div>
-                    <div class="label-preview-note">회색 외곽선과 하단 점선은 용지·급지 여백 안내이며 실제로 인쇄되지 않습니다.</div>
+                    <div class="label-preview-note">가로 50mm × 세로 30mm · B1 PRO 전용. 회색 외곽선은 실제로 인쇄되지 않습니다.</div>
                 </section>
                 <div class="label-item-list" id="label-item-list"><div class="loading">불러오는 중...</div></div>
             </div>
@@ -883,7 +884,7 @@
             var labelMode = name === 'labels';
             document.getElementById('table-print-controls').hidden = labelMode;
             document.getElementById('orientation-btn').hidden = labelMode;
-            document.getElementById('print-action-btn').textContent = labelMode ? 'D10 선택 출력' : '인쇄';
+            document.getElementById('print-action-btn').textContent = labelMode ? 'B1 PRO 선택 출력' : '인쇄';
             if (labelMode) refreshD10PrinterStatus();
             setTimeout(initResize, 50);
             if (name === 'company') {
@@ -1297,10 +1298,10 @@
             var destinationClass = destinationLength > 38 ? ' is-long is-very-long' : destinationLength > 20 ? ' is-long' : '';
             var buyerClass = buyerLength > 18 ? ' is-long is-very-long' : buyerLength > 11 ? ' is-long' : '';
             stage.innerHTML = '<div class="label-paper" title="' + escapePrintHtml(payload.lot_number || '') + '">'
+                + '<div class="label-paper-header">배송 · ' + escapePrintHtml(payload.lot_number || '-') + '</div>'
                 + '<div class="label-paper-line label-paper-destination' + destinationClass + '">' + escapePrintHtml(payload.destination || '-') + '</div>'
                 + '<div class="label-paper-line label-paper-buyer' + buyerClass + '">' + escapePrintHtml(payload.winner_name || '-') + '</div>'
                 + '<div class="label-paper-line label-paper-phone">' + escapePrintHtml(fmtPhone(payload.winner_phone) || '-') + '</div>'
-                + '<div class="label-paper-feed-margin" aria-hidden="true"></div>'
                 + '</div>';
             counter.textContent = (position + 1) + ' / ' + indexes.length + (selectedShippingLabelItems().length ? ' · 선택 라벨' : ' · 출력 가능');
             prev.disabled = position <= 0;
@@ -1330,16 +1331,16 @@
         }
 
         async function refreshD10PrinterStatus() {
-            setD10PrinterStatus('D10 앱 연결 확인 중', 'checking');
+            setD10PrinterStatus('B1 PRO 앱 연결 확인 중', 'checking');
             try {
                 var response = await fetchD10Bridge('/v1/status', { method: 'GET' }, 2200);
                 if (!response.ok) throw new Error('브리지 응답 오류');
                 var payload = await response.json();
                 var suffix = payload.printing ? ' · 인쇄 중' : payload.queued ? ' · 대기 ' + payload.queued + '장' : '';
-                setD10PrinterStatus('D10 앱 연결됨' + suffix, 'ready');
+                setD10PrinterStatus('B1 PRO 앱 연결됨' + suffix, 'ready');
                 return true;
             } catch (_error) {
-                setD10PrinterStatus('D10 앱 미연결', 'error');
+                setD10PrinterStatus('B1 PRO 앱 미연결', 'error');
                 return false;
             }
         }
@@ -1362,8 +1363,8 @@
             }
             var button = document.getElementById('print-action-btn');
             button.disabled = true;
-            button.textContent = 'D10 전송 중...';
-            setD10PrinterStatus('D10 대기열 전송 중', 'checking');
+            button.textContent = 'B1 PRO 전송 중...';
+            setD10PrinterStatus('B1 PRO 대기열 전송 중', 'checking');
             try {
                 var response = await fetchD10Bridge('/v1/labels', {
                     method: 'POST',
@@ -1374,14 +1375,14 @@
                     })
                 }, 5000);
                 var payload = await response.json().catch(function () { return {}; });
-                if (!response.ok || !payload.ok) throw new Error(payload.error || 'D10 대기열에 전송하지 못했습니다.');
-                setD10PrinterStatus('D10 ' + payload.accepted + '장 출력 대기', 'ready');
+                if (!response.ok || !payload.ok) throw new Error(payload.error || 'B1 PRO 대기열에 전송하지 못했습니다.');
+                setD10PrinterStatus('B1 PRO ' + payload.accepted + '장 출력 대기', 'ready');
             } catch (error) {
-                setD10PrinterStatus('D10 앱 미연결', 'error');
+                setD10PrinterStatus('B1 PRO 앱 미연결', 'error');
                 alert('밴드 모니터링 앱을 실행한 뒤 다시 눌러 주세요.\nPDF 인쇄로 전환되지 않습니다.');
             } finally {
                 button.disabled = false;
-                button.textContent = 'D10 선택 출력';
+                button.textContent = 'B1 PRO 선택 출력';
             }
         }
 
