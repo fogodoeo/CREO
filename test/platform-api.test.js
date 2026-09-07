@@ -39,6 +39,24 @@ test('real checkout test links persist, isolate records, and suppress notificati
  const listed=await call(api,'GET','/api/platform/channels?includeArchived=1');assert.ok(!listed.json().channels.some(c=>c.id===result.channelId));
 });
 
+test('individual host widths survive save, duplicate save, restart and public broadcast', async () => {
+    const repository=new MemoryRepository();
+    let api=createPlatformApi({repository});
+    const layoutPlacements=Object.fromEntries([1,2,3].map(n=>[`p1-host-${n}`,{x:n*15,y:70,width:8+n,height:8,fontScale:1,opacity:100,visible:true}]));
+    for(let n=0;n<2;n++){
+        const saved=await call(api,'PUT','/api/platform/channels/alpha/broadcast-state',{layoutPlacements});
+        assert.equal(saved.status,200,saved.body);
+        assert.deepEqual(saved.json().state.layoutPlacements,layoutPlacements);
+    }
+    api=createPlatformApi({repository});
+    const partial=await call(api,'PUT','/api/platform/channels/alpha/broadcast-state',{page1HostsOn:true});
+    assert.equal(partial.status,200,partial.body);
+    const broadcast=await call(api,'GET','/api/platform/channels/alpha/broadcast?page=1',null,'');
+    assert.deepEqual(broadcast.json().state.layoutPlacements,layoutPlacements);
+    const other=await call(api,'GET','/api/platform/channels/beta/broadcast?page=1',null,'');
+    assert.equal(other.json().state.layoutPlacements?.['p1-host-1'],undefined);
+});
+
 test('vendor rate persists across saves and restart and reaches public P3 without private fields', async () => {
     const repository = new MemoryRepository();
     repository.catalog.channels[0].groups = [{id:'a',name:'팀'}];
@@ -59,7 +77,7 @@ test('vendor rate persists across saves and restart and reaches public P3 withou
     assert.equal(broadcast.json().items[0].vendorLogoUrl,'/logo.png');
     assert.doesNotMatch(broadcast.body,/01012345678/);
     const ranks=await call(api,'GET','/api/platform/channels/alpha/rankings',null,'');
-    assert.equal(ranks.json().scoreboards[0].rows[0].total,50000);
+    assert.equal(ranks.json().scoreboards[0].rows[0].total,10);
     const other=await call(api,'GET','/api/platform/channels/beta/broadcast?page=3',null,'');
     assert.equal(other.json().items.length,0);
 });

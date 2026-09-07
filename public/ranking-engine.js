@@ -8,7 +8,8 @@
 
     function vendorContribution(item) {
         if (!['sold', 'complete', 'completed'].includes(String(item.status || '').toLowerCase())) return 0;
-        return Math.round(Math.max(0, Number(item.soldPrice) || 0) * (Number(item.vendorContributionRate) === 0.5 ? 0.5 : 1));
+        // Persisted role codes remain 0.5 (member) and 1 (captain).
+        return Math.round(Math.max(0, Number(item.soldPrice) || 0) * (Number(item.vendorContributionRate) === 0.5 ? 1 : 2)) / 10000;
     }
 
     function rankingsForChannel(channel, items = [], vendors = []) {
@@ -79,7 +80,7 @@
                 name: board.name,
                 dimension: board.dimension,
                 metric: board.metric,
-                unit: board.unit,
+                unit: board.metric === 'vendorContribution' ? '점' : board.unit,
                 rows: [...rows.values()]
                     .sort((a, b) => b.total - a.total || b.count - a.count || a.name.localeCompare(b.name, 'ko'))
                     .slice(0, board.topN || 8)

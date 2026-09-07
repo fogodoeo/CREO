@@ -15,3 +15,7 @@ test('video banners crop within their box even when custom placement allows over
 test('contribution overlay has no opaque full-screen backdrop', () => {
     assert.match(source, /\.contribution-page\{background:transparent\}/);
 });
+
+test('custom host width overrides responsive and profile minimum widths', () => {
+    assert.match(source, /\.host-card\[data-layout-custom="1"\]\{min-width:0!important\}/);
+});

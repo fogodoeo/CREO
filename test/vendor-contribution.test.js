@@ -23,17 +23,23 @@ test('vendor contribution is separate from sale totals and recalculates on reope
     const vendors = [{id:'captain',name:'비송',groupId:'a',contributionRate:1},{id:'member',name:'끼리끼리',groupId:'a',contributionRate:0.5}];
     const items = [{id:'one',vendorId:'captain',status:'sold',soldPrice:100000},{id:'two',vendorId:'member',status:'sold',soldPrice:100000}];
     const initial = rankingsForChannel(channel,items,vendors);
-    assert.equal(initial[0].rows[0].total,150000);
+    assert.equal(initial[0].rows[0].total,30);
+    assert.equal(initial[0].unit,'점');
     assert.equal(initial[1].rows.reduce((sum,row)=>sum+row.total,0),200000);
     assert.deepEqual(rankingsForChannel(channel,structuredClone(items),vendors),initial);
+    assert.deepEqual(rankingsForChannel(channel,[...items].reverse(),vendors),initial);
     items[1].status='live';
-    assert.equal(rankingsForChannel(channel,items,vendors)[0].rows[0].total,100000);
+    assert.equal(rankingsForChannel(channel,items,vendors)[0].rows[0].total,20);
     items[1].status='passed';
-    assert.equal(rankingsForChannel(channel,items,vendors)[0].rows[0].total,100000);
+    assert.equal(rankingsForChannel(channel,items,vendors)[0].rows[0].total,20);
     items[1].status='sold';
-    assert.equal(rankingsForChannel(channel,items,vendors)[0].rows[0].total,150000);
+    assert.equal(rankingsForChannel(channel,items,vendors)[0].rows[0].total,30);
     assert.equal(rankingsForChannel(channel,[],vendors)[0].rows.length,0);
     assert.equal(vendorContribution({status:'waiting',soldPrice:100000,vendorContributionRate:0.5}),0);
+    assert.equal(vendorContribution({status:'sold',soldPrice:15000,vendorContributionRate:0.5}),1.5);
+    assert.equal(vendorContribution({status:'sold',soldPrice:15000,vendorContributionRate:1}),3);
+    assert.equal(vendorContribution({status:'sold',soldPrice:-1,vendorContributionRate:1}),0);
+    assert.equal(vendorContribution({status:'sold',soldPrice:'invalid',vendorContributionRate:1}),0);
 });
 
 test('public broadcast preserves only contribution rate and logo, and P3 shows only the sold vendor', () => {
@@ -48,8 +54,12 @@ test('public broadcast preserves only contribution rate and logo, and P3 shows o
     const channel={groups:[{id:'a',name:'비송팀'}],scoreboards:[{dimension:'group',metric:'vendorContribution'}]};
     const rendered=context.renderVendorContributionPageThree(channel,{mode:'sold'},[item]);
     assert.match(rendered,/끼리끼리 로고/);assert.match(rendered,/비송팀/);assert.match(rendered,/vendor-contribution-result/);assert.doesNotMatch(rendered,/<video|팀원 50%|낙찰가/);
-    assert.doesNotMatch(rendered,/100,000|50,000|50000원/);
+    assert.match(rendered,/100,000/);assert.match(rendered,/기여도 · 100%/);assert.doesNotMatch(rendered,/<small>만<\/small>/);
     const fractional=context.renderVendorContributionPageThree(channel,{mode:'sold'},[{...item,soldPrice:10000}]);
     assert.match(fractional,/끼리끼리/);
+    assert.match(fractional,/<strong>1<\/strong>/);
+    const captain=context.renderVendorContributionPageThree(channel,{mode:'sold'},[{...item,winnerAlias:'테스트낙찰자',vendorContributionRate:1}]);
+    assert.match(captain,/테스트낙찰자/);assert.match(captain,/기여도 · 200%/);assert.match(captain,/<strong>20<\/strong>/);
+    assert.match(source,/'p3-effect':'.dice-overlay-card, .contribution-stage'/);
     assert.doesNotMatch(context.renderVendorContributionPageThree(channel,{mode:'live'},[item]),/src="\/logo.png"/);
 });
