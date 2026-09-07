@@ -6,4 +6,4 @@ For compatibility, persisted `contributionRate` and public `vendorContributionRa
 
 P3 and server rankings derive scores from the current sold records. Reopening or passing an item removes its contribution, and closing it again recomputes it without accumulating events. Actual sale totals remain in KRW. Contribution scoreboards expose the unit `점`.
 
-The P3 central result uses the `p3-effect` placement slot and the team totals use `p3-board`. The central result appears only for the active sold item and contains its vendor logo (or vendor name fallback), winner alias, numeric sale amount, contribution multiplier, and points.
+The P3 central result uses the `p3-effect` placement slot and the team totals use `p3-board`. The central result appears only for the active sold item: large vendor logo, vendor name, then sale amount divided by 10,000 with no unit suffix. Captains additionally show `×2`. A 30,000 KRW sale shows `3` (member) or `3 ×2` (captain); the bottom team total receives 3 or 6 points.

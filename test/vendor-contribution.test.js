@@ -54,12 +54,13 @@ test('public broadcast preserves only contribution rate and logo, and P3 shows o
     const channel={groups:[{id:'a',name:'비송팀'}],scoreboards:[{dimension:'group',metric:'vendorContribution'}]};
     const rendered=context.renderVendorContributionPageThree(channel,{mode:'sold'},[item]);
     assert.match(rendered,/끼리끼리 로고/);assert.match(rendered,/비송팀/);assert.match(rendered,/vendor-contribution-result/);assert.doesNotMatch(rendered,/<video|팀원 50%|낙찰가/);
-    assert.match(rendered,/100,000/);assert.match(rendered,/기여도 · 100%/);assert.doesNotMatch(rendered,/<small>만<\/small>/);
+    assert.match(rendered,/<b>10<\/b>/);assert.doesNotMatch(rendered,/100,000|×2|기여도 ·/);assert.doesNotMatch(rendered,/<small>만<\/small>/);
     const fractional=context.renderVendorContributionPageThree(channel,{mode:'sold'},[{...item,soldPrice:10000}]);
     assert.match(fractional,/끼리끼리/);
-    assert.match(fractional,/<strong>1<\/strong>/);
+    assert.match(fractional,/<b>1<\/b>/);
     const captain=context.renderVendorContributionPageThree(channel,{mode:'sold'},[{...item,winnerAlias:'테스트낙찰자',vendorContributionRate:1}]);
-    assert.match(captain,/테스트낙찰자/);assert.match(captain,/기여도 · 200%/);assert.match(captain,/<strong>20<\/strong>/);
+    assert.doesNotMatch(captain,/테스트낙찰자|100,000/);assert.match(captain,/<h2>끼리끼리<\/h2>/);assert.match(captain,/<b>10<\/b>/);assert.match(captain,/×2/);
+    const three=context.renderVendorContributionPageThree(channel,{mode:'sold'},[{...item,soldPrice:30000}]);assert.match(three,/<b>3<\/b>/);assert.doesNotMatch(three,/30,000|만원/);
     assert.match(source,/'p3-effect':'.dice-overlay-card, .contribution-stage'/);
     assert.doesNotMatch(context.renderVendorContributionPageThree(channel,{mode:'live'},[item]),/src="\/logo.png"/);
 });

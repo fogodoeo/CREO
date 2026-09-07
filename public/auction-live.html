@@ -115,12 +115,12 @@
         .contribution-stage{position:absolute;inset:4% 7% 20%;display:grid;place-items:center}
         .vendor-contribution-result{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(10px,2vh,24px);overflow:hidden}
         .vendor-contribution-result img{width:min(480px,48vw);height:48%;min-height:0;object-fit:contain}
-        .vendor-contribution-result h2{max-width:100%;margin:0;color:#f3f0e9;font-size:clamp(36px,5vw,78px);font-weight:850;line-height:1.15;text-align:center;overflow-wrap:anywhere}
-        .contribution-sale{display:flex;align-items:center;justify-content:center;gap:28px;max-width:100%;color:#fff;font-size:clamp(26px,3.7vw,64px);font-weight:850;line-height:1.15;text-shadow:0 2px 8px #000}.contribution-sale span{overflow-wrap:anywhere;min-width:0}.contribution-sale b{white-space:nowrap;font-variant-numeric:tabular-nums}.contribution-points{text-align:center;color:#fff;text-shadow:0 2px 8px #000}.contribution-points small{display:block;font-size:clamp(18px,2vw,30px);font-weight:700}.contribution-points strong{display:block;font-size:clamp(40px,5.5vw,88px);font-weight:900;line-height:1.12;font-variant-numeric:tabular-nums}.contribution-team{flex-wrap:wrap}.contribution-team strong{max-width:100%;overflow-wrap:anywhere}
+        .vendor-contribution-result h2{max-width:100%;margin:0;color:#f3f0e9;font-size:clamp(44px,6vw,96px);font-weight:850;line-height:1.15;text-align:center;overflow-wrap:anywhere}
+        .contribution-sale{display:flex;align-items:baseline;justify-content:center;gap:20px;max-width:100%;color:#fff;font-size:clamp(64px,9vw,144px);font-weight:900;line-height:1.05;text-shadow:0 2px 8px #000;font-variant-numeric:tabular-nums}.contribution-sale b{white-space:nowrap}.contribution-multiplier{font-size:.65em;font-weight:850}.contribution-team{flex-wrap:wrap}.contribution-team strong{max-width:100%;overflow-wrap:anywhere}
         .contribution-teams{position:absolute;bottom:3%;left:50%;transform:translateX(-50%);width:min(1100px,90%);display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
         .contribution-team{display:flex;align-items:center;justify-content:space-between;gap:20px;min-width:0;padding:22px 28px;border:1px solid #ffffff20;border-left:4px solid var(--team-color);border-radius:4px;background:color-mix(in srgb,var(--team-color) 16%,#111720);color:#f5f2eb}
         .contribution-team h2{margin:0;font-size:clamp(24px,2.6vw,40px);font-weight:820;white-space:nowrap}
-        .contribution-team strong{font-size:clamp(26px,3.5vw,58px);font-weight:860;line-height:1;font-variant-numeric:tabular-nums;white-space:nowrap}
+        .contribution-team strong{font-size:clamp(34px,4.5vw,72px);font-weight:860;line-height:1;font-variant-numeric:tabular-nums;white-space:nowrap}
         .contribution-team small{font-size:.35em;margin-left:5px;color:#aeb5bd}
         .item-inline-traits{gap:0}
         .item-inline-pill,.item-inline-pill.is-accent{padding:0 12px;border:0;border-radius:0;background:transparent;color:#fff;font-size:calc(var(--p2-item-font-size,33px) * .76);font-weight:820;line-height:1.15}
@@ -185,7 +185,7 @@ function renderVendorContributionPageThree(channel,state,items,assets=[]){
     const item=activeItem(state,items),sold=state.mode==='sold'&&item&&CreoAuctionContract.isSoldStatus(item.status);
     const cards=groups.map(group=>`<article class="contribution-team" style="--team-color:${esc(group.color||'#315b96')}"><h2>${esc(group.name)}</h2><strong>${score(group.total)}</strong></article>`).join('');
     const logo=sold?vendorLogo(item,assets):'';
-    const result=sold?`<article class="vendor-contribution-result">${logo?`<img src="${esc(logo)}" alt="${esc(item.vendorName)} 로고">`:`<h2>${esc(item.vendorName||'업체 미지정')}</h2>`}<div class="contribution-sale"><span>${esc(item.winnerAlias||'낙찰자')}</span><b>${score(item.soldPrice)}</b></div><div class="contribution-points"><small>기여도 · ${Number(item.vendorContributionRate)===0.5?'100':'200'}%</small><strong>${score(CreoRankingEngine.vendorContribution(item))}</strong></div></article>`:'';
+    const result=sold?`<article class="vendor-contribution-result">${logo?`<img src="${esc(logo)}" alt="${esc(item.vendorName)} 로고">`:''}<h2>${esc(item.vendorName||'업체 미지정')}</h2><div class="contribution-sale"><b>${score(Number(item.soldPrice)/10000)}</b>${Number(item.vendorContributionRate)===0.5?'':'<span class="contribution-multiplier">×2</span>'}</div></article>`:'';
     return `<section class="layer enter contribution-page" data-page3-renderer="vendor-contribution"><div class="contribution-stage">${result}</div><div class="contribution-teams">${cards}</div></section>`;
 }
 function houseColor(name){return({R:'#8a2b31',G:'#285b3b',B:'#31558c',Y:'#b07d20'})[houseKey(name)]||'#c39a4a'}
