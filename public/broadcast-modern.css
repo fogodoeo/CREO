@@ -1,0 +1,36 @@
+/* Broadcast surfaces: quiet cards, clear hierarchy, camera-safe transparency. */
+body[data-page]{--broadcast-card:rgba(24,29,36,.96);--broadcast-ink:#f9fafb;--broadcast-muted:#b0b8c1;--broadcast-radius:18px;-webkit-font-smoothing:antialiased}
+body[data-page] :is(.host-card,.item-progress,.item-copy,.price-card,.ticker,.announcement,.sold-notice,.live-bid-row,.contribution-team,.dice-team-card,.board-head,.ranking-row,.rank-card,.item-head,.event-chip){border:0!important;border-radius:var(--broadcast-radius)!important;background:var(--broadcast-card);box-shadow:0 8px 24px rgba(0,0,0,.16)!important;clip-path:none!important;color:var(--broadcast-ink)}
+body[data-page] :is(.host-card,.item-copy,.price-card,.sold-notice){text-shadow:none}
+body[data-page="1"] .host-card{padding:12px 20px;background:var(--broadcast-card)!important}
+body[data-page="1"] .host-card::after{display:none}
+body[data-page="1"] .host-name{color:var(--broadcast-ink);font-weight:800;letter-spacing:-.035em}
+body[data-page="1"] .host-role{color:var(--broadcast-muted)!important;font-weight:600!important}
+body[data-page="1"] .host-role::before{content:"";width:4px;height:4px;align-self:center;border-radius:50%;background:#6b7684;margin-right:10px}
+body[data-page="2"] .item-copy.is-inline-info{padding:12px 20px;background:var(--broadcast-card)!important;gap:18px}
+body[data-page="2"] .vendor-tag{color:var(--broadcast-muted)!important;font-weight:600}
+body[data-page="2"] .item-inline-identity h1{font-weight:850;letter-spacing:-.035em}
+body[data-page="2"] .item-inline-pill{color:var(--broadcast-ink)!important;letter-spacing:-.025em}
+body[data-page="2"] .item-inline-pill+.item-inline-pill{border-left:1px solid #ffffff30}
+body[data-page="2"] .item-progress{padding:12px 18px;background:var(--broadcast-card)!important}
+body[data-page="2"] .item-progress strong{color:#f9fafb;font-weight:800}
+body[data-page="2"] .live-bid-row{padding:12px 18px;background:rgba(24,29,36,var(--bidders-opacity,.94))!important}
+body[data-page="2"] .live-bid-amount{color:#f9fafb;font-weight:850}
+body[data-page="2"] .live-bid-row[data-rank="1"]{background:rgba(42,54,73,var(--bidders-opacity,.94))!important}
+body[data-page="2"] :is(.price b,.sold-notice strong){color:#f9fafb}
+body[data-page] .ticker{background:rgba(24,29,36,.96)!important;border-radius:14px!important}
+body[data-page] .ticker-badge{background:rgba(255,255,255,.07)!important;border:0!important;color:#d1d6db!important;font-weight:700}
+body[data-page] .ticker-text{color:#f9fafb!important;letter-spacing:-.025em}
+body[data-page="3"] .vendor-contribution-result{border:0;border-radius:28px;padding:24px 36px;background:rgba(24,29,36,var(--result-background-opacity,.85));box-shadow:0 16px 40px #0003}
+body[data-page="3"] .vendor-contribution-result h2{color:#f9fafb;letter-spacing:-.04em;font-weight:800;text-shadow:none}
+body[data-page="3"] .contribution-sale{color:#f9fafb;text-shadow:none;letter-spacing:-.04em}
+body[data-page="3"] .contribution-multiplier{color:#b0b8c1;font-weight:700}
+body[data-page="3"] :is(.contribution-team,.dice-team-card){background:color-mix(in srgb,var(--team-color) 12%,#181d24)!important;padding:18px 26px;gap:18px}
+body[data-page="3"] :is(.contribution-team h2,.dice-team-card h2){color:#d1d6db!important;font-weight:750!important;letter-spacing:-.035em}
+body[data-page="3"] :is(.contribution-team h2,.dice-team-card h2)::before{content:"";display:inline-block;width:.28em;height:.28em;margin-right:.45em;vertical-align:middle;border-radius:50%;background:color-mix(in srgb,var(--team-color) 65%,white)}
+body[data-page="3"] :is(.contribution-team strong,.dice-team-card strong){color:#f9fafb!important;font-weight:850!important;letter-spacing:-.04em}
+body[data-page="3"] .contribution-teams{gap:12px}
+body[data-page="3"] .dice-team-grid{gap:12px!important}
+body[data-page="3"] :is(.dice-overlay-card,.dice-sold-line,.dice-result-strip){border:0!important;border-radius:18px!important;background:#181d24!important;box-shadow:0 8px 24px #0003!important;color:#f9fafb!important}
+body[data-page="3"] :is(.dice-result-strip b,.dice-sold-line b){color:#f9fafb!important}
+@media(max-width:700px){body[data-page]{--broadcast-radius:12px}body[data-page="2"] .item-copy.is-inline-info{padding:10px 12px;gap:10px}body[data-page="1"] .host-card{padding:10px 12px}body[data-page="3"] :is(.contribution-team,.dice-team-card){padding:12px 14px;gap:10px}body[data-page="3"] .vendor-contribution-result{padding:16px;border-radius:20px}}
