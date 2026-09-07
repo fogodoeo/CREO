@@ -416,9 +416,9 @@ test('buyer and vendor checkout pages are short-code based and support the full 
     assert.match(source, /\/report-payment/);
     assert.match(source, /Checkout\.createAdaptivePoller/);
     assert.match(source, /id="saved"[^>]*role="status"[^>]*aria-live="polite"/);
-    assert.match(source, /저장되었습니다\./);
-    assert.match(source, /선택 내용이 각 업체에 전달되었습니다/);
-    assert.match(source, /data\.submittedAt\?'변경 내용 저장':'배송지와 결제방식 저장'/);
+    assert.match(source, /저장 완료/);
+    assert.doesNotMatch(source, /수령 지점을 검색합니다|입금 후 완료 사실을 알려주세요/);
+    assert.match(source, /data\.submittedAt\?'변경 내용 저장':'선택 완료'/);
     assert.match(source, /Checkout\.paymentStatusMeta\(status,'buyer'\)/);
     assert.match(checkoutClient, /status === 'paid'\) return Object\.freeze\(\{ label: '결제 완료'/);
     assert.match(checkoutClient, /status === 'additional_payment'\) return Object\.freeze\(\{ label: '추가 결제'/);
