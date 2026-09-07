@@ -1,4 +1,9 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs');
+test('vendor header hides operator labels without removing live update targets',()=>{
+ const s=fs.readFileSync('public/vendor-checkout.html','utf8');
+ assert.match(s,/\.top > \.brand,\.top > label\{display:none\}/);
+ for(const id of ['sync','channel','vendor-event'])assert.ok(s.includes('id="'+id+'"'));
+});
 test('buyer and vendor guide uses external YouTube navigation without video embeds',()=>{
  const helper=fs.readFileSync('public/checkout-actions.js','utf8');
  assert.match(helper,/https:\/\/www.youtube.com\/shorts\/CEhm37HkDqQ/);
