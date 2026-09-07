@@ -608,7 +608,7 @@ test('new CDCUP overlays and shipping retain compatibility with the established 
     assert.match(live, /function bidAmountLabel\(value\)\{const amount=Number\(value\)\|\|0;/);
     assert.match(live, /bidLog:\[\{name:'입찰자',region:'지역',amount:10\}\]/);
     assert.match(live, /class="vendor-tag"/);
-    assert.match(live, /class="vendor-tag">\$\{esc\(item\.vendorName\)\}<\/span>/);
+    assert.match(live, /class="vendor-tag">\[\$\{esc\(item\.vendorName\)\}\]<\/span>/);
     assert.match(live, /\.item-name strong,\.vendor-tag\{[\s\S]{0,180}color:#fff;font-size:23px;font-weight:800/);
     assert.match(live, /rankOpacity=\[1,\.90,\.86,\.78,\.70,\.64,\.58,\.52\]/);
     assert.match(channelShipping, /location\.replace\(target\.pathname\s*\+\s*target\.search\)/);
@@ -687,7 +687,7 @@ test('new platform channels use the shared three-page arranger and isolated regi
     assert.match(editor, /broadcast-state/);
     assert.match(editor, /p3-board/);
     assert.match(editor, /p3-effect/);
-    assert.match(editor, /p3-banner/);
+    assert.doesNotMatch(editor, /p3-banner/);
     assert.match(editor, /id="content"[^>]*>내용 설정/);
     assert.match(editor, /id="opacity"/);
     assert.match(editor, /id="visible"/);
@@ -709,7 +709,7 @@ test('new platform channels use the shared three-page arranger and isolated regi
     assert.match(editor, /tickerPeer=slot==='p1-ticker'\?'p2-ticker'/);
     assert.match(editor, /글자 크기 · P1\/P2 공용/);
     assert.doesNotMatch(live, /transform:none!important;zoom:var\(--layout-font-scale/);
-    assert.match(live, /state\.page3BannerOn=true/);
+    assert.doesNotMatch(live, /state\.page3BannerOn=true/);
     assert.match(live, /layout-banner-placeholder/);
     assert.match(live, /editorMode\)void refreshFull\(\)/);
     assert.match(runtime, /workspace:[\s\S]{0,240}path: '\/channel-workspace\.html'/);

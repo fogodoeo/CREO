@@ -197,7 +197,7 @@ function sanitizeBroadcastState(input = {}) {
     const allowedLayoutSlots = new Set([
         'p1-hosts', 'p1-banner', 'p1-ticker',
         'p2-progress', 'p2-info', 'p2-bidders', 'p2-photo', 'p2-price', 'p2-sold', 'p2-banner', 'p2-ticker',
-        'p3-board', 'p3-effect', 'p3-banner'
+        'p3-board', 'p3-effect'
     ]);
     const clampLayoutNumber = (value, min, max, fallback) => {
         const number = Number(value);
@@ -274,8 +274,10 @@ function sanitizeBroadcastState(input = {}) {
         page2BannerPosition: position(input.page2BannerPosition),
         page2TickerPosition: ['auto', 'top', 'bottom'].includes(input.page2TickerPosition) ? input.page2TickerPosition : 'auto',
         page3On: booleanValue(input.page3On, false),
-        page3BannerOn: booleanValue(input.page3BannerOn, false),
-        page3BannerUrl: cleanText(input.page3BannerUrl, 600),
+        page3BannerOn: false,
+        page3BannerUrl: '',
+        bannerSelectionConfigured: input.bannerSelectionConfigured === true,
+        selectedBannerIds: [...new Set((Array.isArray(input.selectedBannerIds)?input.selectedBannerIds:[]).map(id=>cleanText(id,64)).filter(Boolean))].slice(0,100),
         extraMode,
         scoreboardId: cleanText(input.scoreboardId, 64),
         page3Title: cleanText(input.page3Title || input.headline, 120),
@@ -678,6 +680,13 @@ function phoneParityCompetitionEnabled(channel) {
 
 function mergeChannelBroadcastState(channel, current = {}, patch = {}) {
     const next = { ...(current || {}), ...(patch || {}) };
+    // Selection has its own atomic endpoint; older settings panels cannot reset it.
+    next.bannerSelectionConfigured = current.bannerSelectionConfigured === true;
+    next.selectedBannerIds = current.selectedBannerIds || [];
+    if (next.bannerSelectionConfigured) {
+        next.page1BannerOn = next.page2BannerOn = next.selectedBannerIds.length > 0;
+        next.page1BannerUrl = next.page2BannerUrl = '';
+    }
     if (channel?.broadcastProfile !== 'basic-dice') return next;
     const owns = (key) => Object.prototype.hasOwnProperty.call(patch || {}, key);
     const tickerText = owns('page1Ticker')
@@ -1039,6 +1048,7 @@ function createPlatformApi({
 } = {}) {
     if (!repository) throw new Error('repository is required');
     const vendorDirectory = require('./vendor-directory').createVendorDirectory(repository);
+    const bannerLibrary = require('./shared-banner-library').createSharedBannerLibrary(repository);
     const sessionSecret = String(adminSessionSecret || crypto.randomBytes(32).toString('hex'));
     const sessionTtlMs = Math.max(60_000, Number(adminSessionTtlMs) || ADMIN_SESSION_TTL_MS);
     const mutationLocks = new Map();
@@ -2454,6 +2464,30 @@ function createPlatformApi({
             const segments = url.pathname.slice('/api/platform/'.length).split('/').filter(Boolean).map(decodeURIComponent);
             const method = req.method || 'GET';
 
+            if(segments[0]==='banner-library'){
+                if(!await requireAdmin(req,res))return true;
+                if(segments.length===1&&method==='GET'){replyJson(res,200,{banners:await bannerLibrary.list()});return true}
+                if(segments.length===1&&method==='POST'){
+                    const body=await readJson(req);
+                    await withMutationLock('shared-banners',async()=>{const record=await bannerLibrary.save(body.record||{});const catalog=await repository.getCatalog();for(const channel of catalog.channels)touchChannel(channel.id);replyJson(res,201,{record})});return true;
+                }
+                if(segments[1]==='import'&&method==='POST'){
+                    await withMutationLock('shared-banners',async()=>{
+                        const catalog=await repository.getCatalog(),selections=await bannerLibrary.importExisting(catalog.channels);
+                        for(const entry of selections)await withMutationLock('channel:'+entry.channelId,async()=>{
+                            const stored=await repository.getRecord(entry.channelId,'broadcast','state');
+                            if(!stored&&!entry.ids.length)return;
+                            const current=stored||catalog.channels.find(row=>row.id===entry.channelId)?.broadcastDefaults||{};
+                            if(current.bannerSelectionConfigured)return;
+                            const layoutPlacements=Object.fromEntries(Object.entries(current.layoutPlacements||{}).filter(([key])=>key!=='p3-banner'));
+                            await repository.upsertRecord(entry.channelId,'broadcast',{...current,id:'state',layoutPlacements,bannerSelectionConfigured:true,selectedBannerIds:entry.ids,page1BannerOn:entry.ids.length>0,page2BannerOn:entry.ids.length>0,page1BannerUrl:'',page2BannerUrl:'',page3BannerOn:false,page3BannerUrl:'',revision:Date.now()});touchChannel(entry.channelId);
+                        });
+                        replyJson(res,200,{banners:await bannerLibrary.list()});
+                    });return true;
+                }
+                replyJson(res,404,{error:'Not found'});return true;
+            }
+
             if (segments.length === 2 && segments[0] === 'auth' && segments[1] === 'login' && method === 'POST') {
                 const now = Date.now();
                 const address = clientAddress(req);
@@ -3353,6 +3387,11 @@ function createPlatformApi({
 
             if (segments.length === 3 && segments[2] === 'broadcast' && method === 'GET') {
                 const data = await workspace(channelId);
+                if(data.broadcast?.bannerSelectionConfigured){
+                    data.assets=[...data.assets.filter(asset=>asset.kind!=='banner'),...await bannerLibrary.selected(data.broadcast)];
+                    data.broadcast={...data.broadcast,page1BannerUrl:'',page2BannerUrl:''};
+                }
+                data.broadcast={...data.broadcast,page3BannerOn:false,page3BannerUrl:''};
                 const vendors = new Map(data.vendors.map((vendor) => [vendor.id, vendor]));
                 const activeItemId = cleanText(data.broadcast?.activeItemId, 64);
                 const requestedPageRaw = Number.parseInt(url.searchParams.get('page'), 10);
@@ -3422,7 +3461,7 @@ function createPlatformApi({
                         .filter((asset) => asset.active !== false)
                         .filter((asset) => !requestedPage
                             || (requestedPage === 3
-                                ? asset.kind === 'dice' || (asset.kind === 'banner' && (asset.page === 'all' || asset.page === '3'))
+                                ? asset.kind === 'dice'
                                 : (asset.page === 'all' || asset.page === String(requestedPage))))
                         .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name, 'ko'))
                         .map(({ id, name, kind, page, targetName, imageUrl, linkUrl, sortOrder }) => ({ id, name, kind, page, targetName, imageUrl, linkUrl, sortOrder })),
@@ -4000,6 +4039,21 @@ function createPlatformApi({
                     replyJson(res, 200, { channelId, session: publicPinballSession(saved), duplicate: false });
                 });
                 return true;
+            }
+
+            if(segments.length===3&&segments[2]==='banner-selection'&&method==='PUT'){
+                if(!await requireAdmin(req,res))return true;
+                const body=await readJson(req);
+                if(typeof body.selected!=='boolean'||!(await bannerLibrary.list()).some(row=>row.id===body.id)){replyJson(res,422,{error:'공용 보관함의 배너를 선택해 주세요.'});return true}
+                await withMutationLock('channel:'+channelId,async()=>{
+                    const current=await repository.getRecord(channelId,'broadcast','state')||channel.broadcastDefaults||{};
+                    const ids=new Set(current.selectedBannerIds||[]);
+                    if(body.selected)ids.add(body.id);else ids.delete(body.id);
+                    const placements={...(current.layoutPlacements||{})};
+                    if(body.selected)for(const key of ['p1-banner','p2-banner'])if(placements[key])placements[key]={...placements[key],visible:true};
+                    const state=await repository.upsertRecord(channelId,'broadcast',{...sanitizeBroadcastState({...current,layoutPlacements:placements,bannerSelectionConfigured:true,selectedBannerIds:[...ids],page1BannerOn:ids.size>0,page2BannerOn:ids.size>0,page1BannerUrl:'',page2BannerUrl:''}),revision:Date.now()});
+                    touchChannel(channelId);replyJson(res,200,{state});
+                });return true;
             }
 
             if (segments.length === 3 && segments[2] === 'broadcast-state' && method === 'PUT') {

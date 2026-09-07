@@ -5,6 +5,18 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const { rankingsForChannel, vendorContribution } = require('../public/ranking-engine');
 const { normalizeChannel, publicItem } = require('../platform-core');
+const profiles = require('../public/broadcast-profiles');
+
+test('finals inherit BASIC item presentation while retaining team scoreboards', () => {
+    const basic=profiles.resolve({broadcastProfile:'basic-dice'});
+    const finals=profiles.resolve({broadcastProfile:'cdcup-finals'});
+    for(const setting of ['page2Price','page2InfoLayout','soldEffectPage'])assert.equal(finals.settings[setting],basic.settings[setting]);
+    assert.equal(finals.page3Renderer,'scoreboard');
+    assert.notEqual(finals.settings.diceAssets,true);
+    const source=fs.readFileSync(require.resolve('../public/auction-live.html'),'utf8');
+    assert.match(source,/\n\s*\.item-copy\.is-inline-info\{[^}]*display:flex/);
+    assert.doesNotMatch(source,/body\[data-broadcast-profile="basic-dice"\] \.item-copy\.is-inline-info/);
+});
 
 test('vendor contribution is separate from sale totals and recalculates on reopen without accumulation', () => {
     const channel = normalizeChannel({id:'finals',name:'결승',groups:[{id:'a',name:'비송팀'}],scoreboards:[{id:'team',dimension:'group',metric:'vendorContribution',unit:'원'},{id:'sales',dimension:'vendor',metric:'soldAmount'}]});
