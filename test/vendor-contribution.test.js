@@ -7,6 +7,13 @@ const { rankingsForChannel, vendorContribution, liveVendorContribution } = requi
 const { normalizeChannel, publicItem } = require('../platform-core');
 const profiles = require('../public/broadcast-profiles');
 
+test('new channel profiles inherit shared item presentation without finals event text', () => {
+    assert.equal(profiles.resolve({broadcastProfile:'standard'}).settings.page2InfoLayout,'inline-traits');
+    assert.equal(profiles.defaultState({broadcastProfile:'cdcup-finals'}).page3Title,'팀 기여도');
+    assert.equal(profiles.defaultState({broadcastProfile:'cdcup-finals',broadcastDefaults:{page3Title:'맞춤 행사'}}).page3Title,'맞춤 행사');
+    assert.equal(profiles.resolve({broadcastProfile:'basic-dice'}).page3Renderer,'dice-teams');
+});
+
 test('finals inherit BASIC item presentation while retaining team scoreboards', () => {
     const basic=profiles.resolve({broadcastProfile:'basic-dice'});
     const finals=profiles.resolve({broadcastProfile:'cdcup-finals'});
