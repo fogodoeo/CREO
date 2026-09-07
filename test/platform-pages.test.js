@@ -984,7 +984,8 @@ test('broadcast control manages reusable banners, sponsors, and vendor logos', (
     assert.match(live, /split\(\/\\r\?\\n\/\)/);
     assert.match(live, /Math\.floor\(Date\.now\(\)\/6000\)/);
     assert.match(live, /function isVideoAsset\(url\)/);
-    assert.match(live, /muted autoplay loop playsinline preload="metadata"/);
+    assert.match(live, /data-banner-playlist/);
+    assert.match(live, /banner-player\.js/);
     assert.match(control, /crewartSampleAssets/);
     assert.doesNotMatch(control, /quiz-section|name="quizQuestion"|돌발 퀴즈/);
     assert.match(control, /value="vendor">업체별 금액/);
