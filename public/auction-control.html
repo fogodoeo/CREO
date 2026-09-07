@@ -206,7 +206,21 @@ async function importLegacyAssets(){if(typeof getRuntimeConfigMap!=='function'){
 async function loadCatalog(){catalog=await CreoPlatform.api('channels');runtime=CreoChannelRuntime.create({client:CreoPlatform,catalog,location,allowActiveFallback:false});await runtime.load();channelId=runtime.channel.id;$('channel-select').innerHTML=catalog.channels.map(channel=>`<option value="${esc(channel.id)}" ${channel.id===channelId?'selected':''}>${esc(channel.name)}</option>`).join('')}
     async function load(){const requestedChannelId=channelId,sequence=++workspaceLoadSequence,nextWorkspace=await CreoPlatform.api(`channels/${encodeURIComponent(requestedChannelId)}/workspace`);if(sequence!==workspaceLoadSequence||requestedChannelId!==channelId)return;if(nextWorkspace.channel?.id!==requestedChannelId)throw new Error('방송 채널 자료가 일치하지 않습니다. 새로고침해 주세요.');nextWorkspace.items=nextWorkspace.items||[];nextWorkspace.vendors=nextWorkspace.vendors||[];nextWorkspace.assets=nextWorkspace.assets||[];const channel=catalog.channels.find(row=>row.id===requestedChannelId),profile=CreoBroadcastProfiles.resolve(channel),profileDefaults=profile.defaultState||{};if(CreoBroadcastProfiles.usesLegacyData(channel)&&typeof getBroadcastItemsCached==='function'){const legacy=await getBroadcastItemsCached(false,15000);if(sequence!==workspaceLoadSequence||requestedChannelId!==channelId)return;if(legacy.length)nextWorkspace.items=legacy.map(item=>({id:`legacy_${item.row}`,lotNumber:Number(item.num)||0,name:item.name||item.displayName||'개체'}))}workspace=nextWorkspace;state={...defaults,...profileDefaults,...CreoBroadcastProfiles.defaultState(channel),...(workspace.broadcast||{})};$('title').textContent=(channel?.name||requestedChannelId)+' 방송 관리';$('legacy-import-box').hidden=!CreoBroadcastProfiles.usesLegacyData(channel);$('seed-crewart-assets').hidden=profile.assetPack!=='crewart';$('seed-crewart-assets-dialog').hidden=profile.assetPack!=='crewart';$('vendor-names').innerHTML=workspace.vendors.map(vendor=>`<option value="${esc(vendor.name)}"></option>`).join('');fill();syncLinks();renderAssets();setPage(page)}
 document.querySelectorAll('.page-tab').forEach(button=>button.onclick=()=>setPage(button.dataset.page));
-form.addEventListener('change',updatePositionWarnings);
+let vendorTagSaveQueue=Promise.resolve();
+function saveVendorTag(value,requestedChannelId){
+    return CreoPlatform.api(`channels/${encodeURIComponent(requestedChannelId)}/broadcast-state`,{method:'PUT',body:JSON.stringify({page2VendorTagOn:value})}).then(saved=>{
+        if(requestedChannelId!==channelId)return;
+        state={...state,...saved.state};
+        window.parent.postMessage({type:'creo-broadcast-settings-saved',page:2},location.origin);
+        toast(value?'업체 태그를 표시합니다.':'업체 태그를 숨겼습니다.');
+    });
+}
+form.addEventListener('change',event=>{
+    updatePositionWarnings();
+    if(event.target.name!=='page2VendorTagOn')return;
+    const value=event.target.checked,requestedChannelId=channelId;
+    vendorTagSaveQueue=vendorTagSaveQueue.then(()=>saveVendorTag(value,requestedChannelId)).catch(error=>toast('업체 태그 저장 실패: '+error.message));
+});
 form.addEventListener('input',event=>{if(event.target.name==='page2BiddersOpacity')syncBidderOpacityValue();if(isBasicDice()&&['page1Ticker','page2Ticker'].includes(event.target.name))syncBasicTickerFields(event.target.name);if(isBasicDice()&&['page1TickerInterval','page2TickerInterval'].includes(event.target.name)){const source=event.target.name==='page2TickerInterval'?'page2Ticker':'page1Ticker';syncBasicTickerFields(source)}});
 document.querySelectorAll('#mode-buttons button').forEach(button=>button.onclick=()=>{mode=button.dataset.mode;syncMode()});
 document.querySelectorAll('.asset-filter').forEach(button=>button.onclick=()=>{assetFilter=button.dataset.filter;document.querySelectorAll('.asset-filter').forEach(row=>row.classList.toggle('active',row===button));renderAssets()});
