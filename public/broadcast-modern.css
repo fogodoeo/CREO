@@ -33,6 +33,8 @@ body[data-page="3"] :is(.contribution-team h2,.dice-team-card h2){color:#d1d6db!
 body[data-page="3"] :is(.contribution-team h2,.dice-team-card h2)::before{content:"";display:inline-block;width:.28em;height:.28em;margin-right:.45em;vertical-align:middle;border-radius:50%;background:color-mix(in srgb,var(--team-color) 65%,white)}
 body[data-page="3"] :is(.contribution-team strong,.dice-team-card strong){color:#f9fafb!important;font-weight:850!important;letter-spacing:-.04em}
 body[data-page="3"] .contribution-teams{gap:12px}
+body[data-page="3"] .contribution-team:nth-child(2){flex-direction:row-reverse}
+body[data-page="3"] .contribution-team:nth-child(2) h2{text-align:right}
 body[data-page="3"] .contribution-teams[data-layout-custom="1"]{container-type:size;grid-template-rows:minmax(0,1fr);min-height:0;overflow:hidden}
 body[data-page="3"] .contribution-teams[data-layout-custom="1"] .contribution-team{min-height:0;height:100%;padding:min(18px,12cqh) 20px;flex-wrap:nowrap;overflow:hidden}
 body[data-page="3"] .contribution-teams[data-layout-custom="1"] h2{font-size:min(2.6vw,40cqh);line-height:1.1;min-width:0;overflow:hidden;text-overflow:ellipsis}
