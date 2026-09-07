@@ -7,6 +7,9 @@ body[data-page="1"] .host-card::after{display:none}
 body[data-page="1"] .host-name{color:var(--broadcast-ink);font-weight:800;letter-spacing:-.035em}
 body[data-page="1"] .host-role{color:var(--broadcast-muted)!important;font-weight:600!important}
 body[data-page="1"] .host-role::before{content:"";width:4px;height:4px;align-self:center;border-radius:50%;background:#6b7684;margin-right:10px}
+body[data-page="1"] .host-card strong{align-items:center!important;flex-wrap:nowrap!important;gap:10px;max-width:100%;line-height:1}
+body[data-page="1"] :is(.host-name,.host-role){align-items:center;line-height:1.2}
+body[data-page="1"] .host-role::before{flex:0 0 4px}
 body[data-page="2"] .item-copy.is-inline-info{padding:12px 20px;background:var(--broadcast-card)!important;gap:18px}
 body[data-page="2"] .vendor-tag{color:var(--broadcast-muted)!important;font-weight:600}
 body[data-page="2"] .item-inline-identity h1{font-weight:850;letter-spacing:-.035em}
@@ -30,6 +33,10 @@ body[data-page="3"] :is(.contribution-team h2,.dice-team-card h2){color:#d1d6db!
 body[data-page="3"] :is(.contribution-team h2,.dice-team-card h2)::before{content:"";display:inline-block;width:.28em;height:.28em;margin-right:.45em;vertical-align:middle;border-radius:50%;background:color-mix(in srgb,var(--team-color) 65%,white)}
 body[data-page="3"] :is(.contribution-team strong,.dice-team-card strong){color:#f9fafb!important;font-weight:850!important;letter-spacing:-.04em}
 body[data-page="3"] .contribution-teams{gap:12px}
+body[data-page="3"] .contribution-teams[data-layout-custom="1"]{container-type:size;grid-template-rows:minmax(0,1fr);min-height:0;overflow:hidden}
+body[data-page="3"] .contribution-teams[data-layout-custom="1"] .contribution-team{min-height:0;height:100%;padding:min(18px,12cqh) 20px;flex-wrap:nowrap;overflow:hidden}
+body[data-page="3"] .contribution-teams[data-layout-custom="1"] h2{font-size:min(2.6vw,40cqh);line-height:1.1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+body[data-page="3"] .contribution-teams[data-layout-custom="1"] strong{font-size:min(4.5vw,60cqh);line-height:1;flex-shrink:0}
 body[data-page="3"] .dice-team-grid{gap:12px!important}
 body[data-page="3"] :is(.dice-overlay-card,.dice-sold-line,.dice-result-strip){border:0!important;border-radius:18px!important;background:#181d24!important;box-shadow:0 8px 24px #0003!important;color:#f9fafb!important}
 body[data-page="3"] :is(.dice-result-strip b,.dice-sold-line b){color:#f9fafb!important}
