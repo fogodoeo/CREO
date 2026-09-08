@@ -1042,12 +1042,14 @@ function createPlatformApi({
     crewartHouseService = null,
     bandMembership = null,
     notificationService = null,
+    checkoutTestDeliveryChannels = process.env.CREO_CHECKOUT_TEST_DELIVERY_CHANNELS || '',
     diceRoll = null,
     diceRandomInt = (maximum) => crypto.randomInt(maximum),
     adminSessionSecret = process.env.CREO_ADMIN_SECRET || crypto.randomBytes(32).toString('hex'),
     adminSessionTtlMs = ADMIN_SESSION_TTL_MS
 } = {}) {
     if (!repository) throw new Error('repository is required');
+    const testDeliveryChannels = new Set(String(checkoutTestDeliveryChannels).split(',').map(id => id.trim()).filter(id => /^checkout-test-[a-f0-9]{16}$/.test(id)));
     const vendorDirectory = require('./vendor-directory').createVendorDirectory(repository);
     const bannerLibrary = require('./shared-banner-library').createSharedBannerLibrary(repository);
     const sessionSecret = String(adminSessionSecret || crypto.randomBytes(32).toString('hex'));
@@ -1396,6 +1398,7 @@ function createPlatformApi({
         return {
             revision: checkoutRevision(context.channel.id),
             channel: { id: context.channel.id, name: context.channel.name },
+            testDeliveryEnabled: testDeliveryChannels.has(context.channel.id),
             buyer: { name: maskBuyerName(buyerDisplayName(context.bundleItems[0])), phoneLast4: context.anchorPhone.slice(-4) },
             items,
             vendors: groups,
@@ -1811,6 +1814,7 @@ function createPlatformApi({
         const buyers = bundles.map(vendorBuyerPublicPayload);
         return {
             revision: checkoutRevision(context.channel.id),
+            testDeliveryEnabled: testDeliveryChannels.has(context.channel.id),
             channel: { id: context.channel.id, name: context.channel.name, status: context.channel.status },
             events: (context.profile?.members || [{channelId:context.channel.id}]).map(member => {
                 const channel=context.catalog.channels.find(row=>row.id===member.channelId);
@@ -1941,7 +1945,11 @@ function createPlatformApi({
     }
 
     async function enqueueNotification(channelId, event) {
-        if (channelId.startsWith('checkout-test-')) return { configured: true, suppressed: true, status: 'test_no_send' };
+        if (channelId.startsWith('checkout-test-')) {
+            if (!testDeliveryChannels.has(channelId)) return { configured: true, suppressed: true, status: 'test_no_send' };
+            // Explicitly enabled practice pages can only notify the operator's test phone.
+            event = { ...event, recipientPhone: '01049278600' };
+        }
         if (!notificationService) return { configured: false, duplicate: false };
         try {
             const result = await notificationService.enqueue(channelId, event);
