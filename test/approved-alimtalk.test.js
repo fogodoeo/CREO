@@ -17,7 +17,7 @@ test('approved bodies and buttons substitute all variables and retain approved r
     assert.match(JSON.parse(requests[0].get('button_1')).button[1].linkMo, /\/d\/buyer123456$/);
     assert.match(JSON.parse(requests.at(-1).get('button_1')).button[1].linkMo, /\/s\/buyer123456$/);
     await assert.rejects(provider.send({ templateKey: 'vendor_win', variables: {} }), /변수 누락/);
-    assert.equal(requests.length, 8);
+    assert.equal(requests.length, 10);
     const card = requests.find(request => request.get('tpl_code') === 'UL_0884');
     assert.match(JSON.parse(card.get('button_1')).button[1].linkMo, /\/d\/buyer123456$/);
 });

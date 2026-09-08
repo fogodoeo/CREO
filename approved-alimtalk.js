@@ -6,9 +6,11 @@ const codes = Object.freeze({
     buyer_win_additional: 'UL_0881',
     vendor_win: 'UL_0882',
     vendor_shipping_registered: 'UL_0883',
+    operator_checkout_change: 'UL_0883',
     vendor_payment_reported: 'UL_0883',
     vendor_card_requested: 'UL_0883',
     buyer_card_link_ready: 'UL_0884',
+    buyer_checkout_change_reviewed: 'UL_0884',
     buyer_payment_confirmed: 'UK_9278'
 });
 const templates = Object.fromEntries(Object.entries(codes).map(([key, code]) => {

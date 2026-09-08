@@ -13,6 +13,7 @@ const { shortSms } = require('./checkout-notifications');
 const {
     DEFAULT_CHANNELS,
     channelLinks,
+    channelKey,
     cleanText,
     normalizeChannel,
     normalizeChannelId,
@@ -1399,6 +1400,8 @@ function createPlatformApi({
             revision: checkoutRevision(context.channel.id),
             channel: { id: context.channel.id, name: context.channel.name },
             testDeliveryEnabled: testDeliveryChannels.has(context.channel.id),
+            changeRequest: publicChange((await checkoutChanges(context))[0]),
+            canRequestChange: Boolean(submittedAt) && !ownCheckoutShipments(context).some(checkoutChangeLocked),
             buyer: { name: maskBuyerName(buyerDisplayName(context.bundleItems[0])), phoneLast4: context.anchorPhone.slice(-4) },
             items,
             vendors: groups,
@@ -1463,12 +1466,141 @@ function createPlatformApi({
         return requested;
     }
 
+    function ownCheckoutShipments(context) {
+        const ids = new Set(context.bundleItems.map(item => item.id));
+        return context.shipments.filter(row => ids.has(row.itemId));
+    }
+    async function checkoutChanges(context) {
+        return (await repository.listRecords(context.channel.id, 'checkoutchange'))
+            .filter(row => row.phoneHash === context.token.phoneHash)
+            .sort((a,b) => (a.state!=='pending')-(b.state!=='pending') || String(b.createdAt).localeCompare(String(a.createdAt)));
+    }
+    async function pendingCheckoutChange(context) { return (await checkoutChanges(context)).find(row => row.state === 'pending'); }
+    async function assertNoCheckoutChange(context) {
+        if (await pendingCheckoutChange(context)) throw buyerInputError('변경 요청을 운영자가 확인 중입니다. 승인·반려 후 진행해 주세요.', 409);
+    }
+    async function assertShipmentNotPending(channelId, record) {
+        const changes=await repository.listRecords(channelId,'checkoutchange');
+        if(changes.some(r=>r.state==='pending' && r.itemIds?.includes(record?.itemId)))throw buyerInputError('변경 요청 승인·반려 후 배송 정보를 수정해 주세요.',409);
+    }
+    function checkoutSelectionChanged(context, body) {
+        const latest = latestBundleShipment(context);
+        if (!latest?.buyerSubmittedAt || !ownCheckoutShipments(context).some(row=>row.paymentMethod)) return false;
+        if (latest.destinationId !== body.destinationId || (latest.pargeRegion || '') !== (body.pargeRegion || '') || (latest.pargeShop || '') !== (body.pargeShop || '')) return true;
+        const groups = Checkout.groupItemsByVendor(context.bundleItems, context.vendors), requested = requestedPaymentMethods(body, groups);
+        return groups.some(group => {
+            const old = Checkout.newestShipment(ownCheckoutShipments(context).filter(row => group.items.some(item => item.id === row.itemId)));
+            return old?.paymentMethod && requested.has(group.key) && old.paymentMethod !== requested.get(group.key);
+        });
+    }
+    function checkoutChangeLocked(row) {
+        return ['paid','bank_transfer_reported','card_payment_reported'].includes(row.paymentStatus) || Number(row.paymentConfirmedAmount)>0 || Boolean(row.trackingNumber) || ['shipped','delivered','received','complete'].includes(row.status);
+    }
+    function assertChangeable(context) {
+        if (ownCheckoutShipments(context).some(checkoutChangeLocked)) {
+            throw buyerInputError('결제 신고·확인 또는 발송된 내역은 변경할 수 없습니다. 운영자에게 문의해 주세요.', 409);
+        }
+    }
+    function checkoutFingerprint(context) {
+        const sort = rows => [...rows].sort((a,b) => String(a.id).localeCompare(String(b.id)));
+        return sessionKey(JSON.stringify({items:sort(context.bundleItems),shipments:sort(ownCheckoutShipments(context)),vendors:sort(context.vendors),shipping:context.channel.shippingDefaults,discount:context.channel.settlementDiscount}));
+    }
+    function changeView(payload) {
+        return { selection:payload.selection, totals:payload.totals, vendors:payload.vendors.map(v => ({key:v.key,name:v.name,method:v.payment.method,amount:v.totals.totalAmount,shippingAmount:v.totals.shippingAmount})),
+            address:payload.selection?.destinationType === 'pickup' ? payload.destinations.find(d=>d.id===payload.selection.destinationId)?.label || '' : [payload.selection?.pargeRegion,payload.selection?.pargeShop].filter(Boolean).join(' · ') };
+    }
+    function publicChange(row) { return row ? {id:row.id,state:row.state,createdAt:row.createdAt,reviewedAt:row.reviewedAt || '',reason:row.reason || '',after:row.after} : null; }
+    function operatorChangeEvent(record) {
+        return {eventKey:`checkout-change:${record.id}`,templateKey:'operator_checkout_change',recipientRole:'operator',recipientPhone:'01049278600',transport:'alimtalk',allowSmsFallback:false,failureSmsFallback:true,
+            variables:{업체명:record.before.vendors.map(v=>v.name).join(', '),구매자명:record.buyerName,업체접속코드:record.operatorCode},fallbackText:shortSms('변경 승인 요청',`https://creok.onrender.com/w/${record.operatorCode}`)};
+    }
+    async function submitCheckoutChange(req, context, body) {
+        const requestId = cleanText(body.requestId,80);
+        if (requestId.length < 8) throw buyerInputError('변경 요청값이 올바르지 않습니다.');
+        const id = stableBuyerId('change', `${context.channel.id}:${context.token.phoneHash}:${requestId}`);
+        let record = await repository.getRecord(context.channel.id, 'checkoutchange', id);
+        const duplicate = Boolean(record);
+        if (!record) {
+            await assertNoCheckoutChange(context); assertChangeable(context);
+            if (!latestBundleShipment(context)?.buyerSubmittedAt || !checkoutSelectionChanged(context,body)) throw buyerInputError('기존 정보와 다른 변경 내용을 선택해 주세요.');
+            const proposal = {requestId:`change-${requestId}`.slice(0,80),destinationId:cleanText(body.destinationId,80),pargeRegion:cleanText(body.pargeRegion,80),pargeShop:cleanText(body.pargeShop,120),payments:(body.payments || []).map(p=>({vendorKey:cleanText(p.vendorKey,80),method:cleanText(p.method,30)}))};
+            const before = changeView(await buyerShippingPayload(context));
+            const preview = await saveBuyerShipping(structuredClone(context), proposal, {dryRun:true});
+            const code = 'op_' + sessionKey(`${context.channel.id}:${id}`).replace(/[^A-Za-z0-9_-]/g,'').slice(0,16);
+            const now = new Date().toISOString();
+            record = {id,channelId:context.channel.id,phoneHash:context.token.phoneHash,phone:context.anchorPhone,buyerName:buyerDisplayName(context.bundleItems[0]),state:'pending',createdAt:now,updatedAt:now,before,after:changeView(preview.payload),proposal,fingerprint:checkoutFingerprint(context),operatorCode:code,
+                itemIds:context.bundleItems.map(i=>i.id),cardLinks:ownCheckoutShipments(context).filter(s=>s.cardPaymentUrl).map(s=>({vendorId:s.vendorId,url:s.cardPaymentUrl}))};
+            const rows=[{key:channelKey(context.channel.id,'checkoutchange',id),value:JSON.stringify(record)},
+                {key:`creo_checkout_change_link::${code}`,value:JSON.stringify({channelId:context.channel.id,id})}];
+            if(notificationService?.prepare && (!context.channel.id.startsWith('checkout-test-') || testDeliveryChannels.has(context.channel.id))){
+                const prepared=await notificationService.prepare(context.channel.id,operatorChangeEvent(record));
+                if(!prepared.duplicate)rows.push({key:channelKey(context.channel.id,'notification',prepared.record.id),value:JSON.stringify(prepared.record)});
+            }
+            await repository.upsertRows(rows);
+            touchCheckout(context.channel.id); touchChannel(context.channel.id);
+        }
+        let notification = {duplicate:true};
+        if (record.state === 'pending') notification = await enqueueNotification(context.channel.id,operatorChangeEvent(record));
+        return {duplicate,notification,payload:await buyerShippingPayload(context)};
+    }
+    async function reviewCheckoutChange(req, channel, id, body) {
+        const record = await repository.getRecord(channel.id,'checkoutchange',id);
+        if (!record) throw buyerInputError('변경 요청이 없습니다.',404);
+        if (!['approve','reject'].includes(body.action)) throw buyerInputError('승인 또는 반려를 선택해 주세요.');
+        const state = body.action === 'approve' ? 'approved' : 'rejected';
+        if (record.state !== 'pending') {
+            if (record.state === state) return {record,duplicate:true};
+            throw buyerInputError('이미 처리한 변경 요청입니다.',409);
+        }
+        if (state === 'approved' && channel.status !== 'active') throw buyerInputError('운영 중인 채널에서만 승인할 수 있습니다.',409);
+        const now = new Date().toISOString(), reviewed = {...record,state,updatedAt:now,reviewedAt:now,reviewedBy:'operator',reason:cleanText(body.reason,300)};
+        let rows=[];
+        if (state === 'approved') {
+            const context = await buyerBundleContext({v:2,channelId:channel.id,phoneHash:record.phoneHash});
+            if (!context || checkoutFingerprint(context) !== record.fingerprint) throw buyerInputError('요청 이후 낙찰·결제 정보가 바뀌었습니다. 반려 후 다시 요청해 주세요.',409);
+            assertChangeable(context);
+            if (body.confirmedUnpaid !== true) throw buyerInputError('모든 관련 업체의 미결제 여부를 확인해 주세요.');
+            if (record.cardLinks.length && body.confirmedCardLinksCancelled !== true) throw buyerInputError('기존 카드 링크 취소·미승인 여부를 확인해 주세요.');
+            const copy=structuredClone(context);
+            copy.shipments=copy.shipments.map(s=>context.bundleItems.some(i=>i.id===s.itemId)?{...s,cardPaymentUrl:'',cardLinkPreparedAt:'',cardLinkRequestId:''}:s);
+            const result=await saveBuyerShipping(copy,record.proposal,{dryRun:true,approvedChange:true});
+            if(JSON.stringify(changeView(result.payload).totals)!==JSON.stringify(record.after.totals))throw buyerInputError('배송비·금액이 바뀌었습니다. 반려 후 다시 요청해 주세요.',409);
+            rows=result.records.map(s=>({key:channelKey(channel.id,'shipment',s.id),value:JSON.stringify({...s,updatedAt:now,createdAt:s.createdAt || now})}));
+            reviewed.confirmedUnpaid=true; reviewed.confirmedCardLinksCancelled=body.confirmedCardLinksCancelled === true;
+        } else if (!reviewed.reason) throw buyerInputError('반려 사유를 입력해 주세요.');
+        rows.push({key:channelKey(channel.id,'checkoutchange',id),value:JSON.stringify(reviewed)});
+        const context=await buyerBundleContext({v:2,channelId:channel.id,phoneHash:record.phoneHash});
+        const events=[];
+        if(context){
+            const link=await prepareBuyerCheckoutLink(req,channel.id,context.anchorPhone);
+            events.push({eventKey:`checkout-change-reviewed:${id}`,templateKey:'buyer_checkout_change_reviewed',recipientRole:'buyer',recipientPhone:context.anchorPhone,transport:'alimtalk',
+                variables:{구매자명:record.buyerName,업체명:record.after.vendors.map(v=>v.name).join(', '),개체명:context.bundleItems.map(i=>i.name).join('·'),낙찰금액:`${context.bundleItems.reduce((n,i)=>n+Number(i.soldPrice||0),0).toLocaleString('ko-KR')}원`,접속코드:link.code},fallbackText:shortSms(state==='approved'?'변경 승인':'변경 반려',link.url)});
+            if(state==='approved')for(const group of Checkout.groupItemsByVendor(context.bundleItems,context.vendors)){
+                if(!normalizePhone(group.vendor?.phone))continue;
+                const vendorLink=await prepareVendorCheckoutLink(req,channel.id,group.key);
+                events.push({eventKey:`checkout-change-approved:${id}:${group.key}`,templateKey:'vendor_shipping_registered',recipientRole:'vendor',recipientPhone:group.vendor.phone,transport:'alimtalk',variables:{업체명:group.vendor.name,구매자명:record.buyerName,업체접속코드:vendorLink.code},fallbackText:shortSms('수령정보 변경',vendorLink.url)});
+            }
+        }
+        if(notificationService?.prepare && (!channel.id.startsWith('checkout-test-')||testDeliveryChannels.has(channel.id)))for(const event of events){
+            const prepared=await notificationService.prepare(channel.id,{...event,recipientPhone:channel.id.startsWith('checkout-test-')?'01049278600':event.recipientPhone,allowSmsFallback:false,failureSmsFallback:true});
+            if(!prepared.duplicate)rows.push({key:channelKey(channel.id,'notification',prepared.record.id),value:JSON.stringify(prepared.record)});
+        }
+        await repository.upsertRows(rows);
+        touchCheckout(channel.id);touchChannel(channel.id);
+        if(!notificationService?.prepare)for(const event of events)await enqueueNotification(channel.id,event);
+        return {record:reviewed,duplicate:false};
+    }
+
     async function saveBuyerShipping(context, body = {}, options = {}) {
         const requirePaymentMethod = options.requirePaymentMethod !== false;
         const responsePayload = options.responsePayload || buyerShippingPayload;
         const requestId = cleanText(body.requestId, 80);
         if (requestId.length < 8) throw buyerInputError('저장 요청값이 올바르지 않습니다.');
         const latest = latestBundleShipment(context);
+        if (!options.dryRun && !options.approvedChange) {
+            await assertNoCheckoutChange(context);
+            if (checkoutSelectionChanged(context, body)) throw buyerInputError('저장한 정보는 변경 요청 후 운영자 승인이 필요합니다.', 409);
+        }
         if (latest?.buyerRequestId === requestId) return { duplicate: true, payload: await responsePayload(context) };
         const fixedDestinations = pickupDestinations(context.channel);
         const destinationId = cleanText(body.destinationId, 80);
@@ -1500,7 +1632,7 @@ function createPlatformApi({
         const requestedMethods = requestedPaymentMethods(body, groups);
         const shipping = Checkout.allocateShipping(context.bundleItems, selection, context.channel, rates);
         const existingByItem = new Map(context.shipments.map((shipment) => [shipment.itemId, shipment]));
-        if (context.shipments.some(shipment => ['bank_transfer_reported', 'card_payment_reported'].includes(shipment.paymentStatus))) {
+        if (ownCheckoutShipments(context).some(shipment => ['bank_transfer_reported', 'card_payment_reported'].includes(shipment.paymentStatus))) {
             throw buyerInputError('업체가 결제를 확인 중입니다. 확인 완료 후 추가 내역을 저장해 주세요.', 409);
         }
         const now = new Date().toISOString();
@@ -1569,17 +1701,17 @@ function createPlatformApi({
                     buyerSubmittedAt: now,
                     buyerRequestId: requestId
                 }, current);
-                saved.push(await repository.upsertRecord(context.channel.id, 'shipment', record));
+                saved.push(options.dryRun ? record : await repository.upsertRecord(context.channel.id, 'shipment', record));
             }
         }
         const bundleIds = new Set(context.bundleItems.map((item) => item.id));
         context.shipments = [...context.shipments.filter((shipment) => !bundleIds.has(shipment.itemId)), ...saved];
-        touchCheckout(context.channel.id);
-        touchChannel(context.channel.id);
-        return { duplicate: false, payload: await responsePayload(context) };
+        if (!options.dryRun) { touchCheckout(context.channel.id); touchChannel(context.channel.id); }
+        return { duplicate: false, records: saved, payload: await responsePayload(context) };
     }
 
     async function reportBuyerPayment(context, vendorKey, requestId) {
+        await assertNoCheckoutChange(context);
         const cleanRequestId = cleanText(requestId, 80);
         if (cleanRequestId.length < 8) throw buyerInputError('결제 신고 요청값이 올바르지 않습니다.');
         const snapshot = await checkoutSnapshot(context);
@@ -1625,6 +1757,7 @@ function createPlatformApi({
     }
 
     async function confirmBuyerPayment(context, vendorKey, requestId) {
+        await assertNoCheckoutChange(context);
         const cleanRequestId = cleanText(requestId, 80);
         if (cleanRequestId.length < 8) throw buyerInputError('결제 확인 요청값이 올바르지 않습니다.');
         const snapshot = await checkoutSnapshot(context);
@@ -1811,7 +1944,7 @@ function createPlatformApi({
 
     async function vendorCheckoutPayload(context) {
         const bundles = await vendorBuyerBundles(context);
-        const buyers = bundles.map(vendorBuyerPublicPayload);
+        const buyers = await Promise.all(bundles.map(async bundle => ({...vendorBuyerPublicPayload(bundle),changePending:Boolean(await pendingCheckoutChange(bundle.context))})));
         return {
             revision: checkoutRevision(context.channel.id),
             testDeliveryEnabled: testDeliveryChannels.has(context.channel.id),
@@ -1882,6 +2015,7 @@ function createPlatformApi({
         if (!cardPaymentUrl) throw buyerInputError('외부에서 열 수 있는 HTTPS 카드결제 주소를 입력해 주세요.');
         const bundle = await vendorBuyerBundle(context, buyerId);
         if (!bundle) throw buyerInputError('구매자 결제 내역을 찾을 수 없습니다.', 404);
+        await assertNoCheckoutChange(bundle.context);
         const { group } = bundle;
         if (group.payment.status === 'paid') throw buyerInputError('이미 결제 완료된 내역입니다.', 409);
         if (group.payment.latest?.paymentMethod !== 'card') throw buyerInputError('구매자가 카드결제를 선택한 내역이 아닙니다.', 409);
@@ -2589,6 +2723,24 @@ function createPlatformApi({
                 return true;
             }
 
+            if (segments.length === 1 && segments[0] === 'checkout-change-link' && method === 'GET') {
+                if (!await requireAdmin(req,res)) return true;
+                const code=cleanText(url.searchParams.get('code'),24);
+                const rows=await repository.getRowsByKeys([`creo_checkout_change_link::${code}`]);
+                const link=rows[0]?.value ? JSON.parse(rows[0].value) : null;
+                if(!link)throw buyerInputError('변경 요청 링크가 없습니다.',404);
+                replyJson(res,200,link);return true;
+            }
+            if (segments.length === 2 && segments[0] === 'buyer-shipping' && segments[1] === 'change-request' && method === 'POST') {
+                const body=await readJson(req),credential=await resolveBuyerShippingCredential(body),context=await buyerBundleContext(credential);
+                if(!context)throw buyerInputError('구매자 링크를 확인해 주세요.',401);
+                await withMutationLock(`channel:${context.channel.id}`,async()=>{
+                    const fresh=await buyerBundleContext(context.token);
+                    if(!fresh)throw buyerInputError('변경할 내역이 없습니다.',409);
+                    const result=await submitCheckoutChange(req,fresh,body);
+                    replyJson(res,200,{...result.payload,duplicate:result.duplicate,notification:result.notification},buyerCorsHeaders(req));
+                });return true;
+            }
             if (segments.length === 1 && segments[0] === 'buyer-shipping' && method === 'GET') {
                 const credential = await resolveBuyerShippingCredential({
                     token: url.searchParams.get('token'),
@@ -3029,7 +3181,7 @@ function createPlatformApi({
                         id: cleanText(record.id, 64),
                         templateKey: cleanText(record.templateKey, 80),
                         transport: record.transport === 'alimtalk' ? 'alimtalk' : 'sms',
-                        recipientRole: record.recipientRole === 'vendor' ? 'vendor' : 'buyer',
+                        recipientRole: ['vendor','operator'].includes(record.recipientRole) ? record.recipientRole : 'buyer',
                         recipientPhoneLast4: digits.slice(-4),
                         status,
                         attempts: Math.max(0, Number(record.attempts) || 0),
@@ -4197,6 +4349,18 @@ function createPlatformApi({
                 return true;
             }
 
+            if (segments.length >= 3 && segments[2] === 'checkout-changes') {
+                if(!await requireAdmin(req,res))return true;
+                if(segments.length===3 && method==='GET'){
+                    const records=(await repository.listRecords(channelId,'checkoutchange')).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));
+                    replyJson(res,200,{records});return true;
+                }
+                if(segments.length===4 && method==='POST'){
+                    const body=await readJson(req);
+                    await withMutationLock(`channel:${channelId}`,async()=>replyJson(res,200,await reviewCheckoutChange(req,channel,segments[3],body)));
+                    return true;
+                }
+            }
             if (segments.length === 3 && segments[2] === 'buyer-shipping-payment' && method === 'POST') {
                 if (!await requireAdmin(req, res)) return true;
                 const body = await readJson(req);
@@ -4250,6 +4414,7 @@ function createPlatformApi({
                     }
                     const data = await workspace(channelId);
                     let record = sanitizeRecord(type, body.record);
+                    if(type==='shipment')await assertShipmentNotPending(channelId,record);
                     if (type === 'item' && body.allocateNextLot === true) {
                         const nextLotNumber = data.items.reduce(
                             (maximum, item) => Math.max(maximum, Number(item.lotNumber) || 0),
@@ -4355,6 +4520,7 @@ function createPlatformApi({
                         incoming.status = 'live';
                     }
                     let record = sanitizeRecord(type, incoming, current);
+                    if(type==='shipment'){await assertShipmentNotPending(channelId,current);await assertShipmentNotPending(channelId,record);}
                     if (type === 'item' && current.status === 'live' && audienceCompetitionEnabled(channel)) {
                         const decorated = await decorateCrewartBidLog(channelId, channel, data.broadcast, record);
                         record = decorated.item;
@@ -4376,6 +4542,7 @@ function createPlatformApi({
                 await withMutationLock(`channel:${channelId}`, async () => {
                     const data = await workspace(channelId);
                     const deletedRecord = data[segments[2]]?.find((record) => record.id === segments[3]) || null;
+                    if(type==='shipment')await assertShipmentNotPending(channelId,deletedRecord);
                     if (type === 'vendor') {
                         if(await vendorDirectory.profileFor(channelId,segments[3])) {
                             replyJson(res,409,{error:'공통 업체는 다른 채널과 연결되어 있어 여기서 삭제할 수 없습니다. 비활성화해 주세요.'});return;

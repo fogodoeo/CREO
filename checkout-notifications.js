@@ -17,9 +17,11 @@ const TEMPLATE_KEYS = Object.freeze([
     'buyer_win_additional',
     'vendor_win',
     'vendor_shipping_registered',
+    'operator_checkout_change',
     'vendor_payment_reported',
     'vendor_card_requested',
     'buyer_card_link_ready',
+    'buyer_checkout_change_reviewed',
     'buyer_payment_confirmed'
 ]);
 
@@ -122,7 +124,7 @@ function normalizeNotification(input = {}, current = {}) {
             : (NOTIFICATION_TRANSPORTS.includes(current.transport) ? current.transport : notificationTransport(input.templateKey || current.templateKey)),
         allowSmsFallback: input.allowSmsFallback ?? current.allowSmsFallback ?? true,
         failureSmsFallback: input.failureSmsFallback ?? current.failureSmsFallback ?? false,
-        recipientRole: ['buyer', 'vendor'].includes(input.recipientRole) ? input.recipientRole : current.recipientRole,
+        recipientRole: ['buyer', 'vendor', 'operator'].includes(input.recipientRole) ? input.recipientRole : current.recipientRole,
         recipientPhone: phone(input.recipientPhone || current.recipientPhone),
         variables: safeVariables(input.variables || current.variables),
         fallbackText: messageText(input.fallbackText || current.fallbackText, 2000),
@@ -298,11 +300,18 @@ class CheckoutNotificationService {
     }
 
     async enqueue(channelId, event = {}) {
+        const prepared = await this.prepare(channelId, event);
+        if (prepared.duplicate) return prepared;
+        return { record: await this.repository.upsertRecord(channelId, 'notification', prepared.record), duplicate: false };
+    }
+
+    // Allows a business change and its notification to share one repository transaction.
+    async prepare(channelId, event = {}) {
         const templateKey = TEMPLATE_KEYS.includes(event.templateKey) ? event.templateKey : '';
         let transport = NOTIFICATION_TRANSPORTS.includes(event.transport) ? event.transport : notificationTransport(templateKey);
         const recipientPhone = phone(event.recipientPhone);
         const eventKey = text(event.eventKey, 120);
-        const recipientRole = ['buyer', 'vendor'].includes(event.recipientRole) ? event.recipientRole : '';
+        const recipientRole = ['buyer', 'vendor', 'operator'].includes(event.recipientRole) ? event.recipientRole : '';
         if (!channelId || !templateKey || !recipientPhone || !eventKey || !recipientRole) {
             throw new Error('알림 이벤트 정보가 올바르지 않습니다.');
         }
@@ -335,7 +344,7 @@ class CheckoutNotificationService {
             expiresAt: new Date(now + 72 * 60 * 60 * 1000).toISOString(),
             lastError: readiness.ready ? '' : `설정 대기: ${readiness.missing.join(', ')}`
         });
-        return { record: await this.repository.upsertRecord(channelId, 'notification', record), duplicate: false };
+        return { record: {...record,createdAt:new Date(now).toISOString(),updatedAt:new Date(now).toISOString()}, duplicate: false };
     }
 
     async list(channelId, limit = 200) {

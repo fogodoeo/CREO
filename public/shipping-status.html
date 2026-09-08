@@ -426,13 +426,17 @@
                 buyer_win_additional:'추가 낙찰 안내',
                 vendor_win:'업체 낙찰 안내',
                 vendor_payment_reported:'결제 신고 안내',
+                vendor_shipping_registered:'수령정보 등록',
+                vendor_card_requested:'카드결제 요청',
+                operator_checkout_change:'운영자 변경 승인 요청',
+                buyer_checkout_change_reviewed:'변경 처리 결과 확인',
                 buyer_card_link_ready:'카드결제 링크',
                 buyer_payment_confirmed:'결제 확인 완료'
             }[key] || key || '알림';
         }
         function notificationHtml(row) {
             const status=notificationStatusMeta(row.status);
-            const role=row.recipientRole==='vendor'?'업체':'구매자';
+            const role={vendor:'업체',operator:'운영자',buyer:'구매자'}[row.recipientRole]||'수신자';
             const transport=row.transport==='alimtalk'?'알림톡':'문자';
             const time=fmtTime(row.sentAt||row.updatedAt||row.createdAt);
             return '<article class="log-card"><div class="notification-head"><div><strong>'+esc(notificationTemplateLabel(row.templateKey))+'</strong><small>'+esc(role)+' · '+esc(transport)+' · 연락처 끝 '+esc(row.recipientPhoneLast4||'----')+'</small></div><span class="badge '+status[1]+'">'+status[0]+'</span></div><div class="notification-meta"><span class="badge">'+esc(time)+'</span><span class="badge">시도 '+Number(row.attempts||0)+'회</span></div>'+(row.lastError?'<div class="notification-error">'+esc(row.lastError)+'</div>':'')+'</article>';

@@ -459,10 +459,7 @@ test('buyer shipping link isolates one buyer, saves idempotently, confirms payme
             { vendorKey: 'vendor-one', method: 'card' }, { vendorKey: 'vendor-two', method: 'card' }
         ]
     }, '');
-    assert.equal(changedPickup.status, 200, changedPickup.body);
-    assert.equal(changedPickup.json().selection.destinationId, 'pickup-2');
-    assert.deepEqual(changedPickup.json().selection.payments.map((entry) => entry.method), ['card', 'card']);
-    assert.equal(changedPickup.json().totals.shippingAmount, 0);
+    assert.equal(changedPickup.status, 409, 'Paid checkout cannot be changed directly');
 
     const changedBackToParge = await call(restartedApi, 'POST', '/api/platform/buyer-shipping', {
         code, requestId: 'buyer-change-back-to-parge', destinationId: 'parge', pargeRegion: '수도권',
