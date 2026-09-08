@@ -45,6 +45,7 @@ test('Aligo owns delivery-failure SMS and worker does not send a second message'
     await service.enqueue('qa',event);assert.equal((await service.enqueue('qa',event)).duplicate,true);
     const restarted=new CheckoutNotificationService({repository,provider});await restarted.flushChannel('qa');await restarted.flushChannel('qa');
     assert.equal(requests.length,1);assert.match(requests[0].url,/alimtalk\/send/);assert.equal(requests[0].body.get('failover'),'Y');assert.equal(requests[0].body.get('fmessage_1'),event.fallbackText);
+    assert.equal(requests[0].body.get('fsubject_1'),'옹동2 안내','Aligo requires a failover subject even for an SMS body');
     await assert.rejects(provider.send({...event,fallbackText:''}),/대체문자/);
     await assert.rejects(provider.send({...event,fallbackText:'가'.repeat(40)}),/90바이트/);
     assert.equal(requests.length,1);

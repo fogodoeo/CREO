@@ -260,7 +260,10 @@ class AligoNotificationProvider {
             testMode: this.testMode ? 'Y' : 'N'
         });
         // Aligo handles final delivery failure; do not send a second SMS from this worker.
-        if (failureFallback) params.set('fmessage_1', fallbackText);
+        if (failureFallback) {
+            params.set('fsubject_1', '옹동2 안내');
+            params.set('fmessage_1', fallbackText);
+        }
         const renderValue = value => typeof value === 'string' ? renderTemplate(value, notification.variables)
             : Array.isArray(value) ? value.map(renderValue)
             : value && typeof value === 'object' ? Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, renderValue(entry)])) : value;
