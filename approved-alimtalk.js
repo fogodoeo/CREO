@@ -8,6 +8,7 @@ const codes = Object.freeze({
     vendor_shipping_registered: 'UL_0883',
     vendor_payment_reported: 'UL_0883',
     vendor_card_requested: 'UL_0883',
+    buyer_card_link_ready: 'UL_0884',
     buyer_payment_confirmed: 'UK_9278'
 });
 const templates = Object.fromEntries(Object.entries(codes).map(([key, code]) => {

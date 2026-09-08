@@ -2065,12 +2065,14 @@ function createPlatformApi({
         return enqueueNotification(bundle.context.channel.id, {
             eventKey,
             templateKey,
-            transport: isCard ? 'sms' : 'alimtalk', allowSmsFallback: false,
+            transport: 'alimtalk', allowSmsFallback: false,
             recipientRole: 'buyer',
             recipientPhone: bundle.phone,
             variables: {
                 구매자명: bundle.name,
                 업체명: vendorName,
+                개체명: bundle.group.items.map(item => cleanText(item.name || '개체', 100)).join(', '),
+                낙찰금액: `${Math.max(0, Number(bundle.group.settlement.originalAmount) || 0).toLocaleString('ko-KR')}원`,
                 결제금액: `${Math.max(0, Number(amount) || 0).toLocaleString('ko-KR')}원`,
                 접속코드: link.code
             },

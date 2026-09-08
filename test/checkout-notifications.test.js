@@ -172,10 +172,11 @@ test('Aligo is the only default checkout notification provider', () => {
     assert.ok(createDefaultNotificationProvider() instanceof AligoNotificationProvider);
 });
 
-test('approved events use Alimtalk and only card link readiness still uses SMS', () => {
+test('all checkout events use Alimtalk including card link readiness', () => {
     const { codes } = require('../approved-alimtalk');
     for (const key of Object.keys(codes)) assert.equal(notificationTransport(key), 'alimtalk');
-    assert.equal(notificationTransport('buyer_card_link_ready'), 'sms');
+    assert.equal(notificationTransport('buyer_card_link_ready'), 'alimtalk');
+    assert.equal(codes.buyer_card_link_ready, 'UL_0884');
     assert.equal(codes.vendor_shipping_registered, 'UL_0883');
     assert.equal(codes.vendor_payment_reported, 'UL_0883');
     assert.equal(codes.buyer_payment_confirmed, 'UK_9278');

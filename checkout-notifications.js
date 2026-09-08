@@ -24,9 +24,7 @@ const TEMPLATE_KEYS = Object.freeze([
 ]);
 
 const NOTIFICATION_TRANSPORTS = Object.freeze(['alimtalk', 'sms']);
-const ACTION_SMS_TEMPLATE_KEYS = new Set([
-    'buyer_card_link_ready'
-]);
+const ACTION_SMS_TEMPLATE_KEYS = new Set();
 
 function notificationTransport(templateKey) {
     return ACTION_SMS_TEMPLATE_KEYS.has(templateKey) ? 'sms' : 'alimtalk';

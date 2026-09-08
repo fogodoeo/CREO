@@ -16,5 +16,5 @@
   ],
   "intendedEvent": "업체가 실제 결제 확인 처리한 뒤",
   "approvalSource": "2026-09-08 알리고 template/list API에서 inspStatus=APR, 본문과 버튼 대조 완료.",
-  "deploymentStatus": "approved-alimtalk.js 실행 기본값. UL_0884는 예비 명세로 자동 발송하지 않음."
+  "deploymentStatus": "approved-alimtalk.js 실행 기본값. UL_0884는 카드 링크 등록 시 구매자 재안내에 사용."
 }

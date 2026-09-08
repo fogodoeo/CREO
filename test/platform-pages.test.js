@@ -404,7 +404,7 @@ test('buyer and vendor checkout pages are short-code based and support the full 
     assert.match(source, /state.dirty/);
     assert.match(source, /state\.data\.vendors\.map/);
     assert.match(source, /class="vendor-contact"/);
-    assert.match(source, /vendor\.contact\?\.phone/);
+    assert.match(source, /v\.contact\?\.phone/);
     assert.match(source, /href="\/checkout-ui\.css/);
     assert.match(source, /src="\/checkout-rules\.js/);
     assert.match(source, /src="\/checkout-client\.js/);
@@ -437,7 +437,7 @@ test('buyer and vendor checkout pages are short-code based and support the full 
     assert.match(vendor, /\/api\/platform\/vendor-checkout/);
     assert.match(vendor, /\/card-link/);
     assert.match(vendor, /\/confirm-payment/);
-    assert.match(vendor, /결제 링크 · 문자 전송/);
+    assert.match(vendor, /결제 링크 · 알림톡 전송/);
     assert.match(vendor, /실제 입금·승인 내역/);
     assert.match(vendor, /id="sync"[^>]*role="status">실시간/);
     assert.doesNotMatch(vendor, /\/broadcast-pulse/);

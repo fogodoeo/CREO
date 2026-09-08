@@ -68,11 +68,12 @@
     },
     {
       "key": "buyer_card_link_ready",
-      "transport": "sms",
-      "name": "카드결제 링크 준비 안내",
-      "content": "#{구매자명}님, #{업체명} 카드결제 링크가 준비되었습니다.\n결제금액: #{결제금액}\n\n배송·결제 페이지에서 카드결제를 진행해 주세요.",
-      "buttonName": "카드결제 확인",
-      "link": "https://creok.onrender.com/s/#{접속코드}"
+      "transport": "alimtalk",
+      "name": "낙찰 내역 등록 안내",
+      "content": "#{구매자명}님, 라이브 방송에서 낙찰된 내역이 등록되었습니다.\n업체: #{업체명}\n개체: #{개체명}\n낙찰금액: #{낙찰금액}\n\n상세 내역은 아래 버튼에서 확인할 수 있습니다.",
+      "buttonName": "낙찰 내역 확인",
+      "link": "https://creok.onrender.com/d/#{접속코드}",
+      "code": "UL_0884"
     }
   ]
 }

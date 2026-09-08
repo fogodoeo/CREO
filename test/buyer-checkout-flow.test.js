@@ -15,3 +15,20 @@ test('saved reload shows payment instructions, editing can return without a writ
 test('dirty change and saving disable duplicate submission appropriately',()=>{const s=setup({type:'pickup',submitted:true,payment:true,dirty:true});s.run();assert.equal(s.nodes.submit.disabled,false);s.state.saving=true;s.run();assert.equal(s.nodes.submit.disabled,true)});
 test('additional wins require saving even after a prior successful submission',()=>{const s=setup({type:'pickup',submitted:true,payment:true});s.state.data.items=[{paymentStatus:'paid'},{paymentStatus:''}];s.run();assert.equal(s.nodes.submit.disabled,false);assert.equal(s.nodes.submit.textContent,'추가 낙찰 내역 저장');assert.equal(s.ctx.needsShippingSave(),true)});
 test('pending vendor confirmation blocks edits and resubmission until confirmation finishes',()=>{const s=setup({type:'pickup',submitted:true,payment:true,dirty:true});s.state.data.vendors[0].payment.status='bank_transfer_reported';s.run();assert.equal(s.nodes.submit.disabled,true);assert.equal(s.nodes['change-destination'].disabled,true);assert.equal(s.nodes.submit.textContent,'업체 결제 확인 중');s.state.data.vendors[0].payment.status='additional_payment';s.run();assert.equal(s.nodes.submit.disabled,false);assert.equal(s.nodes['change-destination'].disabled,false)});
+test('initial choice prefers bank, preserving saved card and dirty draft across refresh',()=>{
+ const state={dirty:false},ctx=vm.createContext({state,render(){}});
+ vm.runInContext(html.slice(html.indexOf('function hydrate('),html.indexOf('async function load(')),ctx);
+ const data={vendors:[{key:'v',payment:{method:''},paymentMethods:['bank_transfer','card']}]};
+ ctx.hydrate(data);assert.equal(state.payments.v,'bank_transfer');
+ data.vendors[0].payment.method='card';ctx.hydrate(data);assert.equal(state.payments.v,'card');
+ state.dirty=true;state.payments.v='bank_transfer';ctx.hydrate(data,true);assert.equal(state.payments.v,'bank_transfer');
+ data.vendors[0].payment.method='';data.vendors[0].paymentMethods=['card'];state.dirty=false;ctx.hydrate(data);assert.equal(state.payments.v,'');
+});
+test('paid and reported cards hide payment actions, ready card uses Alimtalk copy',()=>{
+ const state={data:{submittedAt:'saved'},dirty:false};const ctx=vm.createContext({state,needsShippingSave:()=>false,esc:x=>x});
+ vm.runInContext(html.slice(html.indexOf('function vendorAction('),html.indexOf('function renderVendors(')),ctx);
+ assert.equal(ctx.vendorAction({payment:{status:'paid'}},{}),'');
+ const reported=ctx.vendorAction({payment:{status:'card_payment_reported'}},{});assert.doesNotMatch(reported,/data-report|card-link/);
+ assert.match(ctx.vendorAction({payment:{method:'card'}},{}),/알림톡/);
+ assert.match(ctx.vendorAction({payment:{method:'card',cardPaymentUrl:'https://example.com'}},{}),/카드로 결제하기/);
+});

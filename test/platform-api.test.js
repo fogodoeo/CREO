@@ -609,6 +609,12 @@ test('vendor checkout link handles card URL, buyer report, confirmation, duplica
     assert.equal(cardDuplicate.status, 200, cardDuplicate.body);
     assert.deepEqual([cardSaved.json().duplicate, cardDuplicate.json().duplicate].sort(), [false, true]);
     assert.equal(cardSaved.json().buyers[0].payment.status, 'card_payment_pending');
+    const cardNotices = [...cardEvents.values()].filter(e => e.templateKey === 'buyer_card_link_ready');
+    assert.equal(cardNotices.length, 1);
+    assert.equal(cardNotices[0].transport, 'alimtalk');
+    assert.equal(cardNotices[0].allowSmsFallback, false);
+    assert.ok(cardNotices[0].variables.개체명);
+    assert.match(cardNotices[0].variables.낙찰금액, /원$/);
     assert.ok(cardSaved.json().revision > vendorInitialRevision);
 
     const buyerReady = await call(api, 'GET', `/api/platform/buyer-shipping?code=${buyerCode}`, null, '');

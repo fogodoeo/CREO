@@ -17,15 +17,17 @@ test('approved bodies and buttons substitute all variables and retain approved r
     assert.match(JSON.parse(requests[0].get('button_1')).button[1].linkMo, /\/d\/buyer123456$/);
     assert.match(JSON.parse(requests.at(-1).get('button_1')).button[1].linkMo, /\/s\/buyer123456$/);
     await assert.rejects(provider.send({ templateKey: 'vendor_win', variables: {} }), /변수 누락/);
-    assert.equal(requests.length, 7);
+    assert.equal(requests.length, 8);
+    const card = requests.find(request => request.get('tpl_code') === 'UL_0884');
+    assert.match(JSON.parse(card.get('button_1')).button[1].linkMo, /\/d\/buyer123456$/);
 });
 
-test('Alimtalk-only events retain their transport across configuration waits and restart', async () => {
+for (const templateKey of ['buyer_win_initial', 'buyer_card_link_ready']) test(`${templateKey} retains Alimtalk across configuration waits and restart`, async () => {
     const records = new Map();
     const repository = { async getRecord(c,t,id) { return records.get(id); }, async upsertRecord(c,t,r) { records.set(r.id,r); return r; }, async listRecords() { return [...records.values()]; } };
     const provider = { readiness: (_, transport) => ({ ready: transport === 'sms', missing: ['profile'] }), send() { throw Error('must not send'); } };
     const service = new CheckoutNotificationService({ repository, provider });
-    const queued = await service.enqueue('qa', { eventKey: 'sale:1', templateKey: 'buyer_win_initial', recipientRole: 'buyer', recipientPhone: '01012345678', allowSmsFallback: false });
+    const queued = await service.enqueue('qa', { eventKey: 'sale:1', templateKey, recipientRole: 'buyer', recipientPhone: '01012345678', allowSmsFallback: false });
     assert.equal(queued.record.transport, 'alimtalk');
     await new CheckoutNotificationService({ repository, provider }).flushChannel('qa');
     const [record] = await service.list('qa');
