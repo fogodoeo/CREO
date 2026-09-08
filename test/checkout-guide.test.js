@@ -3,7 +3,7 @@ test('vendor header hides operator labels without removing live update targets',
  const s=fs.readFileSync('public/vendor-checkout.html','utf8');
  const css=fs.readFileSync('public/checkout-layout.css','utf8');
  assert.match(s,/checkout-layout\.css/);
- assert.match(css,/\.vendor-page \.top>label\{display:none\}/);
+ assert.match(css,/\.brand-right[^}]*display:none!important/);
  for(const id of ['sync','channel','vendor-event'])assert.ok(s.includes('id="'+id+'"'));
 });
 test('buyer and vendor guide uses external YouTube navigation without video embeds',()=>{

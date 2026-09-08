@@ -1,5 +1,13 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const html=fs.readFileSync(require.resolve('../public/vendor-checkout.html'),'utf8');
+test('vendor event selector is visible for multiple events and hidden for a single event',()=>{
+ const select={parentElement:{},options:[],replaceChildren(){this.options=[]},append(option){this.options.push(option)}};
+ const ctx=vm.createContext({data:{channel:{id:'a',name:'A',status:'active'}},$:()=>select,document:{createElement:()=>({})}});
+ vm.runInContext(html.slice(html.indexOf('function renderEvents('),html.indexOf("$('vendor-event').onchange")),ctx);
+ ctx.renderEvents();assert.equal(select.parentElement.hidden,true);
+ ctx.data.events=[ctx.data.channel,{id:'b',name:'B',status:'archived'}];ctx.renderEvents();
+ assert.equal(select.parentElement.hidden,false);assert.equal(select.options.length,2);assert.equal(select.options[0].selected,true);
+});
 test('card link feedback distinguishes persistence from notification acceptance',()=>{const ctx=vm.createContext({});vm.runInContext(html.slice(html.indexOf('function cardLinkFeedback('),html.indexOf('let workFilter=')),ctx);assert.match(ctx.cardLinkFeedback({failed:true}),/알림톡 발송 실패/);assert.match(ctx.cardLinkFeedback({status:'queued'}),/발송 대기/);assert.match(ctx.cardLinkFeedback({status:'sent'}),/접수 완료/);assert.match(ctx.cardLinkFeedback({status:'configuration_pending'}),/설정 확인/)});
 const buyer=(status,method='bank_transfer',destination={address:'테스트'},cardPaymentUrl='')=>({payment:{status,method,cardPaymentUrl},destination});
 function setup(buyers,channelStatus='active'){
