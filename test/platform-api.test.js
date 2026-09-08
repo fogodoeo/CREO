@@ -193,7 +193,7 @@ class MemoryRepository {
     async upsertRecord(channel, type, value) { const record = { ...value, channelId: channel }; this.records.set(this.key(channel, type, value.id), record); return structuredClone(record); }
     async deleteRecord(channel, type, id) { this.records.delete(this.key(channel, type, id)); }
     async getRowsByKeys(keys) { return keys.map(key => this.records.get(`config:${key}`)).filter(Boolean).map(row => ({ ...row })); }
-    async upsertRows(rows) { for (const row of rows) this.records.set(`config:${row.key}`, { ...row }); }
+    async upsertRows(rows) { for (const row of rows) { this.records.set(`config:${row.key}`, { ...row }); const parts=row.key.split('::'); if(parts[0]==='creo_v2'&&parts.length===4){const record=JSON.parse(row.value);this.records.set(this.key(parts[1],parts[2],record.id),{...record,channelId:parts[1]});} } }
     async health() { return { ok: true }; }
     async getActiveChannel() { return this.active; }
     async setActiveChannel(value) { this.active = value; return value; }

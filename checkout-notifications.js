@@ -132,7 +132,7 @@ function normalizeNotification(input = {}, current = {}) {
         attempts: Math.max(0, Number.parseInt(input.attempts ?? current.attempts, 10) || 0),
         providerMessageId: text(input.providerMessageId || current.providerMessageId, 120),
         providerGroupId: text(input.providerGroupId || current.providerGroupId, 120),
-        lastError: text(input.lastError || current.lastError, 500),
+        lastError: text(input.lastError ?? current.lastError, 500),
         nextAttemptAt: text(input.nextAttemptAt || current.nextAttemptAt, 80),
         sentAt: text(input.sentAt || current.sentAt, 80),
         expiresAt: text(input.expiresAt || current.expiresAt, 80)

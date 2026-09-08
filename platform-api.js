@@ -483,6 +483,9 @@ function sanitizeRecord(type, input = {}, current = {}) {
                 ? input.paymentStatus
                 : '',
             paymentRequestedAmount: Math.max(0, numberValue(input.paymentRequestedAmount)),
+            shippingChangedAfterReport: Boolean(input.shippingChangedAfterReport),
+            cardLinkCancellationRequired: Boolean(input.cardLinkCancellationRequired),
+            destinationRevisionId: cleanText(input.destinationRevisionId,80),
             paymentConfirmedAmount: Math.max(0, numberValue(input.paymentConfirmedAmount)),
             paymentConfirmedAt: cleanText(input.paymentConfirmedAt, 80),
             paymentConfirmationRequestId: cleanText(input.paymentConfirmationRequestId, 80),
@@ -1342,6 +1345,9 @@ function createPlatformApi({
                 additionalDue: group.payment.additionalDue,
                 confirmationDue: group.payment.confirmationDue ?? null,
                 requestedAmount: group.totalAmount,
+                shippingChangedAfterReport: Boolean(latest?.shippingChangedAfterReport),
+                reportedAmount: latest?.shippingChangedAfterReport ? Number(latest.paymentRequestedAmount)||0 : null,
+                cardLinkCancellationRequired: Boolean(latest?.cardLinkCancellationRequired),
                 cardPaymentUrl: latest?.paymentMethod === 'card' ? cleanText(latest.cardPaymentUrl, 1000) : '',
                 buyerPaymentReportedAt: latest?.buyerPaymentReportedAt || '',
                 account: {
@@ -1402,6 +1408,7 @@ function createPlatformApi({
             testDeliveryEnabled: testDeliveryChannels.has(context.channel.id),
             changeRequest: publicChange((await checkoutChanges(context))[0]),
             canRequestChange: Boolean(submittedAt) && !ownCheckoutShipments(context).some(checkoutChangeLocked),
+            canEditDestination: !ownCheckoutShipments(context).some(destinationChangeLocked) && !(await pendingCheckoutChange(context) && checkoutRequestChangesPayment(await pendingCheckoutChange(context))),
             buyer: { name: maskBuyerName(buyerDisplayName(context.bundleItems[0])), phoneLast4: context.anchorPhone.slice(-4) },
             items,
             vendors: groups,
@@ -1493,6 +1500,19 @@ function createPlatformApi({
             return old?.paymentMethod && requested.has(group.key) && old.paymentMethod !== requested.get(group.key);
         });
     }
+    function checkoutPaymentChanged(context,body) {
+        const groups=Checkout.groupItemsByVendor(context.bundleItems,context.vendors),requested=requestedPaymentMethods(body,groups);
+        return groups.some(group=>{
+            const old=Checkout.newestShipment(ownCheckoutShipments(context).filter(row=>group.items.some(item=>item.id===row.itemId)));
+            return old?.paymentMethod && requested.has(group.key) && old.paymentMethod!==requested.get(group.key);
+        });
+    }
+    function checkoutRequestChangesPayment(record) {
+        return record.before.vendors.some(v=>v.method && record.after.vendors.find(a=>a.key===v.key)?.method!==v.method);
+    }
+    function destinationChangeLocked(row) {
+        return row.paymentStatus==='paid' || Number(row.paymentConfirmedAmount)>0 || Boolean(row.trackingNumber) || ['shipped','delivered','received','complete'].includes(row.status);
+    }
     function checkoutChangeLocked(row) {
         return ['paid','bank_transfer_reported','card_payment_reported'].includes(row.paymentStatus) || Number(row.paymentConfirmedAmount)>0 || Boolean(row.trackingNumber) || ['shipped','delivered','received','complete'].includes(row.status);
     }
@@ -1515,6 +1535,10 @@ function createPlatformApi({
             variables:{업체명:record.before.vendors.map(v=>v.name).join(', '),구매자명:record.buyerName,업체접속코드:record.operatorCode},fallbackText:shortSms('변경 승인 요청',`https://creok.onrender.com/w/${record.operatorCode}`)};
     }
     async function submitCheckoutChange(req, context, body) {
+        if(!checkoutPaymentChanged(context,body)){
+            const result=await saveBuyerShipping(context,body);
+            return {...result,notification:result.duplicate?{duplicate:true}:await enqueueShippingRegistered(req,context)};
+        }
         const requestId = cleanText(body.requestId,80);
         if (requestId.length < 8) throw buyerInputError('변경 요청값이 올바르지 않습니다.');
         const id = stableBuyerId('change', `${context.channel.id}:${context.token.phoneHash}:${requestId}`);
@@ -1597,9 +1621,15 @@ function createPlatformApi({
         const requestId = cleanText(body.requestId, 80);
         if (requestId.length < 8) throw buyerInputError('저장 요청값이 올바르지 않습니다.');
         const latest = latestBundleShipment(context);
+        const destinationChanged=Boolean(latest?.buyerSubmittedAt) && (latest.destinationId!==body.destinationId || (latest.pargeRegion||'')!==(body.pargeRegion||'') || (latest.pargeShop||'')!==(body.pargeShop||''));
+        const directDestinationEdit=destinationChanged && !checkoutPaymentChanged(context,body) && !options.dryRun && !options.approvedChange;
+        let replacedRequest=null;
         if (!options.dryRun && !options.approvedChange) {
-            await assertNoCheckoutChange(context);
-            if (checkoutSelectionChanged(context, body)) throw buyerInputError('저장한 정보는 변경 요청 후 운영자 승인이 필요합니다.', 409);
+            const pending=await pendingCheckoutChange(context);
+            if(pending && !(directDestinationEdit&&!checkoutRequestChangesPayment(pending)))await assertNoCheckoutChange(context);
+            if (checkoutPaymentChanged(context, body)) throw buyerInputError('결제 방식 변경은 운영자 승인이 필요합니다.', 409);
+            if(destinationChanged && ownCheckoutShipments(context).some(destinationChangeLocked))throw buyerInputError('결제 확인·발송 이후에는 배송지를 수정할 수 없습니다.',409);
+            if(directDestinationEdit && pending)replacedRequest=pending;
         }
         if (latest?.buyerRequestId === requestId) return { duplicate: true, payload: await responsePayload(context) };
         const fixedDestinations = pickupDestinations(context.channel);
@@ -1632,7 +1662,7 @@ function createPlatformApi({
         const requestedMethods = requestedPaymentMethods(body, groups);
         const shipping = Checkout.allocateShipping(context.bundleItems, selection, context.channel, rates);
         const existingByItem = new Map(context.shipments.map((shipment) => [shipment.itemId, shipment]));
-        if (ownCheckoutShipments(context).some(shipment => ['bank_transfer_reported', 'card_payment_reported'].includes(shipment.paymentStatus))) {
+        if (!directDestinationEdit && ownCheckoutShipments(context).some(shipment => ['bank_transfer_reported', 'card_payment_reported'].includes(shipment.paymentStatus))) {
             throw buyerInputError('업체가 결제를 확인 중입니다. 확인 완료 후 추가 내역을 저장해 주세요.', 409);
         }
         const now = new Date().toISOString();
@@ -1667,7 +1697,8 @@ function createPlatformApi({
             for (const item of group.items) {
                 const current = existingByItem.get(item.id) || {};
                 const keepCompletedItem = current.paymentStatus === 'paid' && Boolean(current.paymentConfirmedAt);
-                const itemPaymentStatus = keepCompletedItem ? 'paid' : openStatus;
+                const keepReported=directDestinationEdit && ['bank_transfer_reported','card_payment_reported'].includes(current.paymentStatus);
+                const itemPaymentStatus = keepCompletedItem ? 'paid' : keepReported ? current.paymentStatus : openStatus;
                 const record = sanitizeRecord('shipment', {
                     ...current,
                     id: current.id || stableBuyerId('shipment', `${context.channel.id}:${item.id}`),
@@ -1689,23 +1720,31 @@ function createPlatformApi({
                     bankSnapshot: current.bankSnapshot || (group.vendor.bankName&&group.vendor.bankAccount&&group.vendor.bankHolder ? {bankName:group.vendor.bankName,bankAccount:group.vendor.bankAccount,bankHolder:group.vendor.bankHolder} : null),
                     paymentMethod,
                     paymentStatus: itemPaymentStatus,
-                    paymentRequestedAmount: totalAmount,
+                    paymentRequestedAmount: keepReported ? current.paymentRequestedAmount : totalAmount,
+                    shippingChangedAfterReport: keepReported && Number(current.paymentRequestedAmount)!==totalAmount,
+                    cardLinkCancellationRequired: !keepReported && paymentMethod==='card' && (Boolean(current.cardLinkCancellationRequired) || (directDestinationEdit&&amountChanged&&Boolean(current.cardPaymentUrl))),
                     paymentConfirmedAmount: confirmedAmount,
                     paymentConfirmedAt: current.paymentConfirmedAt || '',
                     paymentConfirmationRequestId: current.paymentConfirmationRequestId || '',
-                    cardPaymentUrl,
+                    cardPaymentUrl: keepReported ? current.cardPaymentUrl || '' : cardPaymentUrl,
                     cardLinkPreparedAt: cardPaymentUrl ? (groupLatest?.cardLinkPreparedAt || '') : '',
                     cardLinkRequestId: cardPaymentUrl ? (groupLatest?.cardLinkRequestId || '') : '',
-                    buyerPaymentReportedAt: keepCompletedItem ? current.buyerPaymentReportedAt || '' : '',
-                    buyerPaymentReportRequestId: keepCompletedItem ? current.buyerPaymentReportRequestId || '' : '',
+                    buyerPaymentReportedAt: keepCompletedItem || keepReported ? current.buyerPaymentReportedAt || '' : '',
+                    buyerPaymentReportRequestId: keepCompletedItem || keepReported ? current.buyerPaymentReportRequestId || '' : '',
                     buyerSubmittedAt: now,
+                    destinationRevisionId: directDestinationEdit ? requestId : current.destinationRevisionId || '',
                     buyerRequestId: requestId
                 }, current);
-                saved.push(options.dryRun ? record : await repository.upsertRecord(context.channel.id, 'shipment', record));
+                saved.push(options.dryRun || directDestinationEdit ? record : await repository.upsertRecord(context.channel.id, 'shipment', record));
             }
         }
         const bundleIds = new Set(context.bundleItems.map((item) => item.id));
         context.shipments = [...context.shipments.filter((shipment) => !bundleIds.has(shipment.itemId)), ...saved];
+        if(directDestinationEdit){
+            const rows=saved.map(s=>({key:channelKey(context.channel.id,'shipment',s.id),value:JSON.stringify({...s,createdAt:s.createdAt||now,updatedAt:now})}));
+            if(replacedRequest)rows.push({key:channelKey(context.channel.id,'checkoutchange',replacedRequest.id),value:JSON.stringify({...replacedRequest,state:'approved',reviewedBy:'buyer',reviewedAt:now,updatedAt:now,reason:'결제 확인 전 배송지 직접 수정',after:changeView(await buyerShippingPayload(context))})});
+            await repository.upsertRows(rows);
+        }
         if (!options.dryRun) { touchCheckout(context.channel.id); touchChannel(context.channel.id); }
         return { duplicate: false, records: saved, payload: await responsePayload(context) };
     }
@@ -1756,7 +1795,7 @@ function createPlatformApi({
         return { duplicate: false, payload: await buyerShippingPayload(context), group };
     }
 
-    async function confirmBuyerPayment(context, vendorKey, requestId) {
+    async function confirmBuyerPayment(context, vendorKey, requestId, confirmation = {}) {
         await assertNoCheckoutChange(context);
         const cleanRequestId = cleanText(requestId, 80);
         if (cleanRequestId.length < 8) throw buyerInputError('결제 확인 요청값이 올바르지 않습니다.');
@@ -1774,7 +1813,9 @@ function createPlatformApi({
         const existingByItem = new Map(group.shipments.map((shipment) => [shipment.itemId, shipment]));
         const reported = group.shipments.filter(shipment => ['bank_transfer_reported', 'card_payment_reported'].includes(shipment.paymentStatus));
         const reportedIds = new Set(reported.map(shipment => shipment.itemId));
-        const confirmationAmount = reported.length
+        const shippingReview=reported.some(s=>s.shippingChangedAfterReport);
+        if(shippingReview && (confirmation.shippingAmountReviewed!==true || Number(confirmation.expectedAmount)!==group.totalAmount))throw buyerInputError('배송지 변경으로 금액이 달라졌습니다. 실제 입금·승인 금액이 변경 금액과 일치하는지 다시 확인해 주세요.',409);
+        const confirmationAmount = shippingReview ? group.totalAmount : reported.length
             ? Math.max(...reported.map(shipment => Number(shipment.paymentRequestedAmount) || 0))
             : group.totalAmount;
         const bundleId = group.payment.latest.bundleId || stableBuyerId('bundle', `${context.channel.id}:${group.key}:${context.anchorPhone}`);
@@ -1804,6 +1845,7 @@ function createPlatformApi({
                 ...snapshot.selection,
                 paymentMethod: group.payment.latest.paymentMethod,
                 paymentStatus: 'paid',
+                shippingChangedAfterReport: false,
                 paymentRequestedAmount: confirmationAmount,
                 paymentConfirmedAmount: confirmationAmount,
                 paymentConfirmedAt: now,
@@ -1928,6 +1970,9 @@ function createPlatformApi({
                 confirmedAmount: group.payment.confirmedAmount,
                 additionalDue: group.payment.additionalDue,
                 confirmationDue: group.payment.confirmationDue ?? null,
+                shippingChangedAfterReport: Boolean(latest?.shippingChangedAfterReport),
+                reportedAmount: latest?.shippingChangedAfterReport ? Number(latest.paymentRequestedAmount)||0 : null,
+                cardLinkCancellationRequired: Boolean(latest?.cardLinkCancellationRequired),
                 cardPaymentUrl: latest?.cardPaymentUrl || '',
                 reportedAt: latest?.buyerPaymentReportedAt || '',
                 confirmedAt: latest?.paymentConfirmedAt || ''
@@ -2008,7 +2053,7 @@ function createPlatformApi({
         return (await vendorBuyerBundles(context)).find((entry) => entry.id === cleanText(buyerId, 64)) || null;
     }
 
-    async function saveCardPaymentLink(context, buyerId, rawUrl, requestId) {
+    async function saveCardPaymentLink(context, buyerId, rawUrl, requestId, confirmation = {}) {
         const cleanRequestId = cleanText(requestId, 80);
         if (cleanRequestId.length < 8) throw buyerInputError('카드 링크 요청값이 올바르지 않습니다.');
         const cardPaymentUrl = Checkout.validateCardPaymentUrl(rawUrl);
@@ -2017,6 +2062,8 @@ function createPlatformApi({
         if (!bundle) throw buyerInputError('구매자 결제 내역을 찾을 수 없습니다.', 404);
         await assertNoCheckoutChange(bundle.context);
         const { group } = bundle;
+        if(group.shipments.some(s=>s.cardLinkCancellationRequired) && (confirmation.confirmedOldCardLinkCancelled!==true || Number(confirmation.expectedAmount)!==group.totalAmount))throw buyerInputError('배송비 변경 전 카드 링크를 취소·차단하고 현재 금액으로 새 링크를 등록해 주세요.',409);
+        if(group.shipments.some(s=>s.shippingChangedAfterReport))throw buyerInputError('결제 신고 후 배송비가 바뀌었습니다. 실제 결제 내역부터 확인해 주세요.',409);
         if (group.payment.status === 'paid') throw buyerInputError('이미 결제 완료된 내역입니다.', 409);
         if (group.payment.latest?.paymentMethod !== 'card') throw buyerInputError('구매자가 카드결제를 선택한 내역이 아닙니다.', 409);
         if (!group.payment.latest?.buyerSubmittedAt) throw buyerInputError('구매자가 배송·결제 정보를 먼저 저장해야 합니다.', 409);
@@ -2033,6 +2080,7 @@ function createPlatformApi({
             saved.push(await repository.upsertRecord(context.channel.id, 'shipment', sanitizeRecord('shipment', {
                 ...current,
                 cardPaymentUrl,
+                cardLinkCancellationRequired: false,
                 cardLinkPreparedAt: now,
                 cardLinkRequestId: cleanRequestId,
                 paymentStatus: 'card_payment_pending',
@@ -2178,7 +2226,7 @@ function createPlatformApi({
             const latest = group.payment.latest || {};
             const fingerprint = crypto.createHash('sha256').update(JSON.stringify([
                 group.items.map(item => [item.id, item.soldPrice]).sort(),
-                latest.destinationId, latest.address, latest.pargeRegion, latest.pargeShop, latest.paymentMethod
+                latest.destinationId, latest.address, latest.pargeRegion, latest.pargeShop, latest.paymentMethod, latest.destinationRevisionId || ''
             ])).digest('hex').slice(0, 24);
             results.push(await enqueueNotification(context.channel.id, {
                 eventKey: `shipping-registered:${sessionKey(context.anchorPhone)}:${group.key}:${fingerprint}`,
@@ -2875,7 +2923,7 @@ function createPlatformApi({
                     const freshContext = await vendorCheckoutContext(context.token);
                     if (!freshContext) throw buyerInputError('업체 결제 정보를 다시 불러와 주세요.', 409);
                     if(freshContext.channel.status!=='active')throw buyerInputError('운영 중인 경매에서만 결제 처리할 수 있습니다.',409);
-                    const result = await saveCardPaymentLink(freshContext, body.buyerId, body.cardPaymentUrl, body.requestId);
+                    const result = await saveCardPaymentLink(freshContext, body.buyerId, body.cardPaymentUrl, body.requestId, body);
                     const notification = result.duplicate
                         ? { duplicate: true }
                         : await enqueueBuyerStatusNotification(
@@ -2904,7 +2952,7 @@ function createPlatformApi({
                     if(freshContext.channel.status!=='active')throw buyerInputError('운영 중인 경매에서만 결제 처리할 수 있습니다.',409);
                     const bundle = await vendorBuyerBundle(freshContext, body.buyerId);
                     if (!bundle) throw buyerInputError('구매자 결제 내역을 찾을 수 없습니다.', 404);
-                    const result = await confirmBuyerPayment(bundle.context, context.vendorKey, body.requestId);
+                    const result = await confirmBuyerPayment(bundle.context, context.vendorKey, body.requestId, body);
                     const reloadedContext = await vendorCheckoutContext(context.token);
                     const refreshed = await vendorBuyerBundle(reloadedContext, body.buyerId) || bundle;
                     const notification = result.duplicate
@@ -3185,7 +3233,7 @@ function createPlatformApi({
                         recipientPhoneLast4: digits.slice(-4),
                         status,
                         attempts: Math.max(0, Number(record.attempts) || 0),
-                        lastError: cleanText(record.lastError, 300),
+                        lastError: record.status==='sent' ? '' : cleanText(record.lastError, 300),
                         createdAt: cleanText(record.createdAt, 80),
                         updatedAt: cleanText(record.updatedAt, 80),
                         sentAt: cleanText(record.sentAt, 80)
@@ -4385,7 +4433,7 @@ function createPlatformApi({
                 await withMutationLock(`channel:${channelId}`, async () => {
                     const context = await buyerBundleContext(tokenPayload);
                     if (!context) throw buyerInputError('구매자 배송 묶음을 찾을 수 없습니다.', 404);
-                    const result = await confirmBuyerPayment(context, body.vendorKey || vendorKey, body.requestId);
+                    const result = await confirmBuyerPayment(context, body.vendorKey || vendorKey, body.requestId, body);
                     replyJson(res, 200, { ...result.payload, duplicate: result.duplicate });
                 });
                 return true;

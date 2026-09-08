@@ -137,6 +137,31 @@ test('configured notification flush sends exactly once and persists the provider
     assert.equal(stored.providerMessageId, 'message-1');
 });
 
+test('successful retry clears the previous provider error after restart', async () => {
+    const repository = new MemoryRepository();
+    let now = Date.parse('2026-09-02T00:00:00Z');
+    let attempts = 0;
+    const provider = {
+        readiness: () => ({ ready: true, missing: [] }),
+        async send() {
+            if (++attempts === 1) throw new Error('temporary provider failure');
+            return { messageId: 'retry-success' };
+        }
+    };
+    const service = new CheckoutNotificationService({ repository, provider, now: () => now });
+    await service.enqueue('basic', event());
+    await service.flushChannel('basic');
+    const [failed] = await service.list('basic');
+    assert.match(failed.lastError, /temporary provider failure/);
+    now = Date.parse(failed.nextAttemptAt) + 1000;
+    const restarted = new CheckoutNotificationService({ repository, provider, now: () => now });
+    await restarted.flushChannel('basic');
+    const [sent] = await restarted.list('basic');
+    assert.equal(sent.status, 'sent');
+    assert.equal(sent.lastError, '');
+    assert.equal(attempts, 2);
+});
+
 test('a stale sending record is reclaimed after a process restart', async () => {
     const repository = new MemoryRepository();
     const id = notificationId('basic', 'sale:item-a:cycle-1', 'buyer_win_initial', 'buyer');

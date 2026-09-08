@@ -2542,11 +2542,17 @@
             const confirmed = Number(state?.payment_confirmed_amount) || 0;
             const due = Math.max(0, total - confirmed);
             const paymentLabel = confirmed > 0 && due > 0 ? `추가 결제 ${due.toLocaleString()}원` : `결제 ${total.toLocaleString()}원`;
-            if (!confirm(`${state?.winnerName || '낙찰자'}님의 ${paymentLabel}을 확인 처리할까요?`)) return;
             const itemId = item._platformItemId || item.row || item.id;
             const requestId = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
             try {
                 paymentConfirmationPending = true;
+                const link=await CreoPlatform.api(`channels/${encodeURIComponent(SHIPPING_CHANNEL_ID)}/buyer-shipping-link`,{method:'POST',body:JSON.stringify({itemId})});
+                const checkout=await CreoPlatform.api('buyer-shipping?code='+encodeURIComponent(link.code));
+                const group=checkout.vendors.find(v=>v.items.some(i=>i.id===itemId));
+                if(!group)throw new Error('결제 묶음을 다시 불러와 주세요.');
+                const shippingReview=group.payment.shippingChangedAfterReport;
+                const question=shippingReview?`배송지 변경으로 ${Number(group.payment.reportedAmount).toLocaleString()}원 → ${Number(group.totals.totalAmount).toLocaleString()}원으로 바뀌었습니다. 실제 입금·승인 금액이 변경 금액과 일치합니까?`:`${state?.winnerName || '낙찰자'}님의 ${paymentLabel}을 확인 처리할까요?`;
+                if(!confirm(question))return;
                 const paymentConfirmBtn = document.getElementById('editor-payment-confirm-btn');
                 if (paymentConfirmBtn) {
                     paymentConfirmBtn.disabled = true;
@@ -2554,7 +2560,7 @@
                 }
                 await CreoPlatform.api(`channels/${encodeURIComponent(SHIPPING_CHANNEL_ID)}/buyer-shipping-payment`, {
                     method: 'POST',
-                    body: JSON.stringify({ itemId, requestId })
+                    body: JSON.stringify({ itemId, requestId, shippingAmountReviewed:Boolean(shippingReview), expectedAmount:group.totals.totalAmount })
                 });
                 await refreshShippingWorkspace({ preserveEditor: true });
                 showToast('결제 확인을 완료했습니다.');

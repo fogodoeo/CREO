@@ -26,7 +26,7 @@ async function fixture(t){
  const saved=await call('POST','/api/platform/buyer-shipping',{...selection,requestId:'initial-save'},'');assert.equal(saved.status,200,saved.body);
  t.after(()=>{repo.close();fs.rmSync(dir,{recursive:true,force:true});});
  return {call,code,selection,get repo(){return repo},async restart(){repo.close();repo=new SQLitePlatformRepository(options);restartApi();},
-  request:(extra={})=>call('POST','/api/platform/buyer-shipping/change-request',{...selection,destinationId:'pickup-2',requestId:'change-request-1',...extra},''),
+  request:(extra={})=>call('POST','/api/platform/buyer-shipping/change-request',{...selection,payments:[{vendorKey:'vendor',method:'card'}],destinationId:'pickup-2',requestId:'change-request-1',...extra},''),
   get:()=>call('GET','/api/platform/buyer-shipping?code='+code,null,''),
   review:(id,extra={})=>call('POST','/api/platform/channels/alpha/checkout-changes/'+id,{action:'approve',confirmedUnpaid:true,...extra})};
 }
@@ -83,10 +83,10 @@ for(const paymentStatus of ['paid','bank_transfer_reported','card_payment_report
 });
 test('existing external card link requires cancellation and is removed on approval',async t=>{
  const f=await fixture(t);const s=(await f.repo.listRecords('alpha','shipment'))[0];await f.repo.upsertRecord('alpha','shipment',{...s,paymentMethod:'card',paymentStatus:'card_payment_pending',cardPaymentUrl:'https://pay.example.test/old',cardLinkPreparedAt:new Date().toISOString(),cardLinkRequestId:'old-card'});
- const requested=await f.request({payments:[{vendorKey:'vendor',method:'card'}]});assert.equal(requested.status,200,requested.body);const id=requested.json().changeRequest.id;
+ const requested=await f.request({payments:[{vendorKey:'vendor',method:'bank_transfer'}]});assert.equal(requested.status,200,requested.body);const id=requested.json().changeRequest.id;
  assert.equal((await f.review(id)).status,422);
  const result=await f.review(id,{confirmedCardLinksCancelled:true});assert.equal(result.status,200,result.body);
- const after=(await f.repo.listRecords('alpha','shipment'))[0];assert.equal(after.cardPaymentUrl,'');assert.equal(after.paymentStatus,'card_link_pending');
+ const after=(await f.repo.listRecords('alpha','shipment'))[0];assert.equal(after.cardPaymentUrl,'');assert.equal(after.paymentStatus,'bank_transfer_pending');
 });
 test('pending request blocks buyer report, vendor actions, and generic shipment writes',async t=>{
  const f=await fixture(t);await f.request();
@@ -124,4 +124,48 @@ test('shipment and closed channel lifecycle boundaries fail closed',async t=>{
  await f.repo.upsertRecord('alpha','shipment',shipment);const id=(await f.request()).json().changeRequest.id;
  const catalog=await f.repo.getCatalog();await f.repo.saveCatalog(catalog.channels.map(c=>c.id==='alpha'?{...c,status:'archived'}:c));
  assert.equal((await f.review(id)).status,409);assert.equal((await f.review(id,{action:'reject',reason:'경매 종료'})).status,200);
+});
+test('destination changes apply immediately, survive restart, and notify vendor on each actual save',async t=>{
+ const f=await fixture(t);const body={...f.selection,destinationId:'pickup-2',requestId:'direct-destination'};
+ const results=await Promise.all([f.call('POST','/api/platform/buyer-shipping',body,''),f.call('POST','/api/platform/buyer-shipping',body,'')]);
+ assert.equal(results[0].status,200,results[0].body);assert.equal(results[1].json().duplicate,true);
+ assert.equal((await f.get()).json().selection.destinationId,'pickup-2');assert.equal((await f.repo.listRecords('alpha','checkoutchange')).length,0);
+ await f.restart();assert.equal((await f.get()).json().selection.destinationId,'pickup-2');
+ assert.equal((await f.call('POST','/api/platform/buyer-shipping',{...f.selection,requestId:'return-destination'},'')).status,200);
+ const notifications=await f.repo.listRecords('alpha','notification');assert.equal(notifications.filter(n=>n.templateKey==='vendor_shipping_registered').length,3);assert.equal(notifications.filter(n=>n.recipientRole==='operator').length,0);
+});
+test('reported bank payment is preserved on destination edit and changed fees require an exact amount review',async t=>{
+ const f=await fixture(t);
+ await f.repo.upsertRows([{key:'shipping_rate_parge',value:JSON.stringify({data:{수도권:[{shop:'테스트점',cost:10000}]}})}]);
+ assert.equal((await f.call('POST','/api/platform/buyer-shipping/report-payment',{code:f.code,vendorKey:'vendor',requestId:'report-first'},'')).status,200);
+ assert.equal((await f.get()).json().canEditDestination,true);
+ const r=await f.call('POST','/api/platform/buyer-shipping',{...f.selection,destinationId:'parge',pargeRegion:'수도권',pargeShop:'테스트점',requestId:'reported-fee-change'},'');assert.equal(r.status,200,r.body);
+ const p=r.json().vendors[0].payment;assert.equal(p.status,'bank_transfer_reported');assert.equal(p.reportedAmount,100000);assert.equal(p.requestedAmount,110000);assert.equal(p.shippingChangedAfterReport,true);
+ const shipment=(await f.repo.listRecords('alpha','shipment'))[0];assert.equal(shipment.buyerPaymentReportRequestId,'report-first');
+ await f.restart();
+ const confirm=body=>f.call('POST','/api/platform/channels/alpha/buyer-shipping-payment',{itemId:'item',requestId:'confirm-reviewed',...body});
+ assert.equal((await confirm({})).status,409);assert.equal((await confirm({shippingAmountReviewed:true,expectedAmount:100000})).status,409);
+ const confirmed=await confirm({shippingAmountReviewed:true,expectedAmount:110000});assert.equal(confirmed.status,200,confirmed.body);assert.equal(confirmed.json().payment.confirmedAmount,110000);
+ assert.equal((await f.get()).json().canEditDestination,false);
+ assert.equal((await f.call('POST','/api/platform/buyer-shipping',{...f.selection,requestId:'paid-cannot-change'},'')).status,409);
+});
+test('same-price destination edit retains payment report and does not require another amount review',async t=>{
+ const f=await fixture(t);await f.call('POST','/api/platform/buyer-shipping/report-payment',{code:f.code,vendorKey:'vendor',requestId:'reported-same-price'},'');
+ const r=await f.call('POST','/api/platform/buyer-shipping',{...f.selection,destinationId:'pickup-2',requestId:'same-price-change'},'');assert.equal(r.status,200,r.body);assert.equal(r.json().vendors[0].payment.status,'bank_transfer_reported');assert.equal(r.json().vendors[0].payment.shippingChangedAfterReport,false);
+ assert.equal((await f.call('POST','/api/platform/channels/alpha/buyer-shipping-payment',{itemId:'item',requestId:'same-price-confirm'})).status,200);
+});
+test('old shipping-only approval requests are resolved when the buyer directly saves a destination',async t=>{
+ const f=await fixture(t);const id=(await f.request()).json().changeRequest.id;const request=await f.repo.getRecord('alpha','checkoutchange',id);
+ request.after.vendors[0].method='bank_transfer';await f.repo.upsertRecord('alpha','checkoutchange',request);
+ assert.equal((await f.get()).json().canEditDestination,true);
+ const r=await f.call('POST','/api/platform/buyer-shipping',{...f.selection,destinationId:'pickup-2',requestId:'resolve-legacy-pending'},'');assert.equal(r.status,200,r.body);assert.equal(r.json().changeRequest.state,'approved');
+ assert.equal((await f.repo.getRecord('alpha','checkoutchange',id)).reviewedBy,'buyer');assert.equal((await f.get()).json().selection.destinationId,'pickup-2');
+});
+test('amount-changing card destination edit retires the old link and requires cancellation before replacement',async t=>{
+ const f=await fixture(t),s=(await f.repo.listRecords('alpha','shipment'))[0];await f.repo.upsertRecord('alpha','shipment',{...s,paymentMethod:'card',paymentStatus:'card_payment_pending',cardPaymentUrl:'https://pay.example.test/old'});
+ await f.repo.upsertRows([{key:'shipping_rate_parge',value:JSON.stringify({data:{수도권:[{shop:'테스트점',cost:10000}]}})}]);
+ const r=await f.call('POST','/api/platform/buyer-shipping',{...f.selection,payments:[{vendorKey:'vendor',method:'card'}],destinationId:'parge',pargeRegion:'수도권',pargeShop:'테스트점',requestId:'card-shipping-change'},'');assert.equal(r.status,200,r.body);assert.equal(r.json().vendors[0].payment.cardPaymentUrl,'');assert.equal(r.json().vendors[0].payment.cardLinkCancellationRequired,true);
+ const link=(await f.call('POST','/api/platform/channels/alpha/vendor-checkout-link',{vendorId:'vendor',vendorKey:'vendor'})).json();const vendor=(await f.call('GET','/api/platform/vendor-checkout?code='+link.code,null,'')).json();const body={code:link.code,buyerId:vendor.buyers[0].id,requestId:'replacement-card',cardPaymentUrl:'https://pay.example.test/new'};
+ assert.equal((await f.call('POST','/api/platform/vendor-checkout/card-link',body,'')).status,409);
+ const result=await f.call('POST','/api/platform/vendor-checkout/card-link',{...body,confirmedOldCardLinkCancelled:true,expectedAmount:110000},'');assert.equal(result.status,200,result.body);assert.equal(result.json().buyers[0].payment.cardLinkCancellationRequired,false);
 });
