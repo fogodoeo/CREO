@@ -50,13 +50,13 @@ test('vendor contribution is separate from sale totals and recalculates on reope
 });
 
 test('public broadcast preserves only contribution rate and logo, and P3 shows only the sold vendor', () => {
-    const item=publicItem({id:'one',status:'sold',soldPrice:100000,vendorName:'끼리끼리',vendorLogoUrl:'/logo.png',vendorContributionRate:0.5,phone:'private'});
+    const item=publicItem({id:'one',updatedAt:new Date().toISOString(),status:'sold',soldPrice:100000,vendorName:'끼리끼리',vendorLogoUrl:'/logo.png',vendorContributionRate:0.5,phone:'private'});
     assert.equal(item.vendorContributionRate,0.5);
     assert.equal(item.phone,undefined);
     const source=fs.readFileSync(require.resolve('../public/auction-live.html'),'utf8');
     const start=source.indexOf('function renderVendorContributionPageThree(');
     const end=source.indexOf('\nfunction ',start+1);
-    const context={CreoAuctionContract:{isSoldStatus:status=>status==='sold'},CreoRankingEngine:{vendorContribution,liveVendorContribution},scoreboardRows:()=>[],activeItem:(_,items)=>items[0],vendorLogo:item=>item.vendorLogoUrl,esc:String,money:String,pageThreeFrame:(_,title,body)=>body};
+    const context={CreoContributionResult:require('../public/contribution-result'),editorMode:false,CreoAuctionContract:{isSoldStatus:status=>status==='sold'},CreoRankingEngine:{vendorContribution,liveVendorContribution},scoreboardRows:()=>[],activeItem:(_,items)=>items[0],vendorLogo:item=>item.vendorLogoUrl,esc:String,money:String,pageThreeFrame:(_,title,body)=>body};
     vm.createContext(context);vm.runInContext(source.slice(start,end),context);
     const channel={groups:[{id:'a',name:'비송팀'}],scoreboards:[{dimension:'group',metric:'vendorContribution'}]};
     const rendered=context.renderVendorContributionPageThree(channel,{mode:'sold'},[item]);
@@ -87,10 +87,10 @@ test('live vendor points follow the highest valid bid and stop at the sold bound
 test('P3 adds live points once and keeps the same total when the item sells', () => {
     const source=fs.readFileSync(require.resolve('../public/auction-live.html'),'utf8');
     const start=source.indexOf('function renderVendorContributionPageThree('),end=source.indexOf('\nfunction ',start+1);
-    const context={CreoAuctionContract:{isSoldStatus:s=>s==='sold'},CreoRankingEngine:{vendorContribution,liveVendorContribution},scoreboardRows:(c,i,b)=>rankingsForChannel({...c,scoreboards:[b]},i)[0].rows,activeItem:(s,i)=>i.find(x=>x.id===s.activeItemId),vendorLogo:()=>'',esc:String};
+    const context={CreoContributionResult:require('../public/contribution-result'),editorMode:false,CreoAuctionContract:{isSoldStatus:s=>s==='sold'},CreoRankingEngine:{vendorContribution,liveVendorContribution},scoreboardRows:(c,i,b)=>rankingsForChannel({...c,scoreboards:[b]},i)[0].rows,activeItem:(s,i)=>i.find(x=>x.id===s.activeItemId),vendorLogo:()=>'',esc:String};
     vm.createContext(context);vm.runInContext(source.slice(start,end),context);
     const c={id:'c',groups:[{id:'a',name:'A'}],scoreboards:[{dimension:'group',metric:'vendorContribution'}]};
-    const items=[{id:'old',groupId:'a',status:'sold',soldPrice:100000,vendorContributionRate:0.5},{id:'live',groupId:'a',status:'live',bidLog:[{amount:3}],vendorContributionRate:1}];
+    const items=[{id:'old',groupId:'a',status:'sold',soldPrice:100000,vendorContributionRate:0.5},{id:'live',updatedAt:new Date().toISOString(),groupId:'a',status:'live',bidLog:[{amount:3}],vendorContributionRate:1}];
     const render=(mode,rows)=>context.renderVendorContributionPageThree(c,{mode,activeItemId:'live',page3ResultBackgroundOpacity:0},rows);
     assert.match(render('live',items),/data-contribution-value="16"/);
     assert.match(render('live',structuredClone(items)),/data-contribution-value="16"/);
