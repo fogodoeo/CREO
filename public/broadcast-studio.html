@@ -27,11 +27,11 @@
         @media(max-width:980px){.studio{grid-template-rows:62px auto 98px minmax(0,1fr)}.topbar{grid-template-columns:auto minmax(220px,1fr) auto;gap:9px;padding:0 11px}.brand-copy,.status{display:none}.brand-mark{width:34px;height:34px}.channel,.switch-channel{height:42px}.top-actions a{height:38px;padding:0 10px}.commandbar{display:grid;gap:6px;padding:7px 10px}.workspace-tools,.live-tools{width:100%}.workspace-tools button,.live-tools a{height:36px;flex:1;padding:0 6px}.live-tools{margin:0}}
         @media(max-width:540px){.studio{grid-template-rows:58px auto 94px minmax(0,1fr)}.topbar{padding:0 8px}.brand-mark{width:32px;height:32px}.channel-label{left:10px}.channel{padding-left:9px;font-size:11px}.top-actions a{padding:0 9px;font-size:9px}.workspace-tools button{font-size:9px}.live-tools a{font-size:9px}.workspace-tools button span{display:none}}
     </style>
-</head>
+<link rel="stylesheet" href="/ongdong-brand.css?v=20260908-logo"><script src="/ongdong-brand.js?v=20260908-logo"></script></head>
 <body>
 <section class="login" id="login-gate">
     <form class="login-card" id="login-form">
-        <div class="login-brand"><span class="brand-mark">C</span><h1>CREO BROADCAST<small>CONTROL STUDIO</small></h1></div>
+        <div class="login-brand"><span data-ongdong-brand>옹동2</span><h1>송출 관리<small>CONTROL STUDIO</small></h1></div>
         <label for="admin-password">관리자 비밀번호</label>
         <div class="login-row"><input id="admin-password" type="password" autocomplete="current-password" placeholder="비밀번호 입력" required><button id="login-submit" type="submit">입장</button></div>
         <p class="login-note">관리자 전용</p>
@@ -40,7 +40,7 @@
 </section>
 <main class="studio" id="studio" hidden>
     <header class="topbar">
-        <a class="brand" href="/"><span class="brand-mark">C</span><span class="brand-copy"><strong>CREO</strong><small>BROADCAST STUDIO</small></span></a>
+        <a class="brand" href="/" data-ongdong-brand>옹동2</a>
         <div class="channel-switch"><div class="channel-wrap"><label class="channel-label" for="channel-select">CHANNEL</label><select class="channel" id="channel-select" aria-label="방송 채널"></select></div><button class="switch-channel" id="channel-switch-button" type="button" disabled>운영 전환</button></div>
         <div class="status"><span class="status-dot"></span><strong id="engine-label">방송 제어 연결됨</strong></div>
         <div class="top-actions"><a id="capture-library" href="capture-gallery.html">캡처</a><a href="/">메인</a></div>

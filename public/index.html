@@ -19,7 +19,7 @@
         @media(max-width:900px){.pipeline{grid-template-columns:1fr 1fr}.utilities{grid-template-columns:1fr 1fr}}
         @media(max-width:700px){.shell{width:calc(100% - 22px);padding-top:10px}.nav a{display:none}.page-head{align-items:start;margin-top:28px}.page-head h1{font-size:22px}.launcher,.pipeline,.utilities{grid-template-columns:1fr}.operation{min-height:108px}.handoff{grid-template-columns:1fr}.handoff em{display:none}}
     </style>
-</head>
+<link rel="stylesheet" href="/ongdong-brand.css?v=20260908-logo"><script src="/ongdong-brand.js?v=20260908-logo"></script></head>
 <body>
 <section class="login" id="login-gate">
     <form class="login-card" id="login-form">
@@ -30,7 +30,7 @@
     </form>
 </section>
 <main class="shell" id="dashboard" hidden>
-    <header class="topbar"><a class="brand" href="/"><span class="mark">C</span><strong>CREO</strong></a><nav class="nav"><a href="channel-manager.html">채널 설정</a><button class="logout" id="logout-button" type="button">로그아웃</button></nav></header>
+    <header class="topbar"><a class="brand" href="/" data-ongdong-brand>옹동2</a><nav class="nav"><a href="channel-manager.html">채널 설정</a><button class="logout" id="logout-button" type="button">로그아웃</button></nav></header>
     <section class="page-head"><div><h1>운영 파이프라인</h1><p>채널을 고르면 준비부터 정산까지 같은 채널 자료로 이어집니다.</p></div><span class="connection">연결됨</span></section>
     <section class="launcher"><div class="field"><label for="quick-channel">채널</label><select id="quick-channel"><option>불러오는 중…</option></select></div><div class="field"><label for="quick-design">방송 디자인</label><select id="quick-design"><option value="clean">클린</option><option value="sport">스포츠 중계</option><option value="heritage">문장·헤리티지</option><option value="minimal">미니멀</option></select></div><div class="field"><label for="quick-pinball-skin">핀볼 스킨 · 공통</label><select id="quick-pinball-skin"><option value="ryangecko">라이언게코</option><option value="academy">마법학교</option><option value="midnight">미드나잇</option><option value="arena">아레나</option><option value="clean">클린</option></select></div></section>
     <div class="channel-summary" id="channel-summary"><span class="channel-bar"></span><div><h2 id="channel-name">채널 불러오는 중</h2><p id="channel-meta"></p></div></div>

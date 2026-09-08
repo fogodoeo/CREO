@@ -65,6 +65,25 @@ test('individual host widths survive save, duplicate save, restart and public br
     assert.equal(other.json().state.layoutPlacements?.['p1-host-1'],undefined);
 });
 
+test('P1 and P2 brand placements preserve independent opacity and visibility across restart', async () => {
+    const repository=new MemoryRepository();let api=createPlatformApi({repository});
+    const layoutPlacements={
+        'p1-brand':{x:81,y:4,width:12,height:20,fontScale:1,opacity:35,visible:true},
+        'p2-brand':{x:90,y:78,width:6,height:12,fontScale:1,opacity:0,visible:false}
+    };
+    for(let i=0;i<2;i++){
+        const saved=await call(api,'PUT','/api/platform/channels/alpha/broadcast-state',{layoutPlacements});
+        assert.equal(saved.status,200,saved.body);assert.deepEqual(saved.json().state.layoutPlacements,layoutPlacements);
+    }
+    api=createPlatformApi({repository});
+    for(const page of [1,2]){
+        const shown=await call(api,'GET',`/api/platform/channels/alpha/broadcast?page=${page}`,null,'');
+        assert.deepEqual(shown.json().state.layoutPlacements,layoutPlacements);
+    }
+    const other=await call(api,'GET','/api/platform/channels/beta/broadcast?page=1',null,'');
+    assert.equal(other.json().state.layoutPlacements?.['p1-brand'],undefined);
+});
+
 test('vendor rate persists across saves and restart and reaches public P3 without private fields', async () => {
     const repository = new MemoryRepository();
     repository.catalog.channels[0].groups = [{id:'a',name:'팀'}];
