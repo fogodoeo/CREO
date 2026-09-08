@@ -1,0 +1,20 @@
+{
+  "code": "UL_0881",
+  "title": "추가 낙찰 등록 안내",
+  "content": "#{구매자명}님, 추가 낙찰 내역이 등록되었습니다.\n업체: #{업체명}\n개체: #{개체명}\n낙찰금액: #{낙찰금액}\n\n기존 수령 정보와 함께 확인할 수 있습니다.",
+  "buttons": [
+    {
+      "type": "AC",
+      "name": "채널 추가"
+    },
+    {
+      "type": "WL",
+      "name": "추가 낙찰 확인",
+      "mobileUrl": "https://creok.onrender.com/d/#{접속코드}",
+      "pcUrl": "https://creok.onrender.com/d/#{접속코드}"
+    }
+  ],
+  "intendedEvent": "추가 낙찰 등록",
+  "approvalSource": "2026-09-08 알리고 template/list API에서 inspStatus=APR, 본문과 버튼 대조 완료.",
+  "deploymentStatus": "approved-alimtalk.js 실행 기본값. UL_0884는 예비 명세로 자동 발송하지 않음."
+}

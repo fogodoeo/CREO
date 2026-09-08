@@ -356,7 +356,7 @@ const server = http.createServer(async (req, res) => {
 
         const buyerDeliveryShortMatch = /^\/d\/([A-Za-z0-9_-]{8,24})$/.exec(url.pathname);
         if ((req.method === 'GET' || req.method === 'HEAD') && buyerDeliveryShortMatch) {
-            const buyerPageUrl = new URL('/buyer-delivery.html', url);
+            const buyerPageUrl = new URL('/buyer-shipping.html', url);
             if (await serveStatic(req, res, buyerPageUrl)) return;
         }
 
@@ -368,7 +368,7 @@ const server = http.createServer(async (req, res) => {
 
         const vendorStatusShortMatch = /^\/w\/([A-Za-z0-9_-]{8,24})$/.exec(url.pathname);
         if ((req.method === 'GET' || req.method === 'HEAD') && vendorStatusShortMatch) {
-            const vendorPageUrl = new URL('/vendor-status.html', url);
+            const vendorPageUrl = new URL('/vendor-checkout.html', url);
             if (await serveStatic(req, res, vendorPageUrl)) return;
         }
 

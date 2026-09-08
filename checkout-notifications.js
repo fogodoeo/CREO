@@ -1,6 +1,7 @@
 'use strict';
 
 const crypto = require('node:crypto');
+const approvedAlimtalk = require('./approved-alimtalk');
 
 const NOTIFICATION_STATUSES = new Set([
     'queued',
@@ -15,6 +16,7 @@ const TEMPLATE_KEYS = Object.freeze([
     'buyer_win_initial',
     'buyer_win_additional',
     'vendor_win',
+    'vendor_shipping_registered',
     'vendor_payment_reported',
     'vendor_card_requested',
     'buyer_card_link_ready',
@@ -23,13 +25,7 @@ const TEMPLATE_KEYS = Object.freeze([
 
 const NOTIFICATION_TRANSPORTS = Object.freeze(['alimtalk', 'sms']);
 const ACTION_SMS_TEMPLATE_KEYS = new Set([
-    'buyer_win_initial',
-    'buyer_win_additional',
-    'vendor_win',
-    'vendor_payment_reported',
-    'vendor_card_requested',
-    'buyer_card_link_ready',
-    'buyer_payment_confirmed'
+    'buyer_card_link_ready'
 ]);
 
 function notificationTransport(templateKey) {
@@ -126,6 +122,7 @@ function normalizeNotification(input = {}, current = {}) {
         transport: NOTIFICATION_TRANSPORTS.includes(input.transport)
             ? input.transport
             : (NOTIFICATION_TRANSPORTS.includes(current.transport) ? current.transport : notificationTransport(input.templateKey || current.templateKey)),
+        allowSmsFallback: input.allowSmsFallback ?? current.allowSmsFallback ?? true,
         recipientRole: ['buyer', 'vendor'].includes(input.recipientRole) ? input.recipientRole : current.recipientRole,
         recipientPhone: phone(input.recipientPhone || current.recipientPhone),
         variables: safeVariables(input.variables || current.variables),
@@ -151,7 +148,7 @@ class AligoNotificationProvider {
         const codes = parseTemplateIds(options.templateCodes || process.env.ALIGO_KAKAO_TEMPLATE_CODES_JSON || '');
         const contents = parseTemplateIds(options.templateContents || process.env.ALIGO_KAKAO_TEMPLATE_CONTENTS_JSON || '');
         this.templates = Object.fromEntries(TEMPLATE_KEYS.map((key) => {
-            const definition = definitions[key];
+            const definition = definitions[key] || approvedAlimtalk.templates[key];
             const normalized = definition && typeof definition === 'object' && !Array.isArray(definition) ? definition : {};
             return [key, {
                 code: text(normalized.code || normalized.tplCode || codes[key], 120),
@@ -256,7 +253,13 @@ class AligoNotificationProvider {
             failover: 'N',
             testMode: this.testMode ? 'Y' : 'N'
         });
-        if (template.button) params.set('button_1', JSON.stringify(template.button));
+        const renderValue = value => typeof value === 'string' ? renderTemplate(value, notification.variables)
+            : Array.isArray(value) ? value.map(renderValue)
+            : value && typeof value === 'object' ? Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, renderValue(entry)])) : value;
+        if (template.button) params.set('button_1', JSON.stringify(renderValue(template.button)));
+        if (/#\{[^}]+\}/.test(params.get('message_1') + (params.get('button_1') || ''))) {
+            throw new Error('알림톡 필수 변수 누락');
+        }
         const response = await this.fetch(this.alimtalkEndpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
@@ -314,6 +317,7 @@ class CheckoutNotificationService {
             eventKey,
             templateKey,
             transport,
+            allowSmsFallback: event.allowSmsFallback !== false,
             recipientRole,
             recipientPhone,
             variables: event.variables,
@@ -381,7 +385,7 @@ class CheckoutNotificationService {
                     continue;
                 }
                 let readiness = this.provider.readiness(current.templateKey, current.transport);
-                if (!readiness.ready && current.transport === 'alimtalk') {
+                if (!readiness.ready && current.transport === 'alimtalk' && current.allowSmsFallback !== false) {
                     const smsReadiness = this.provider.readiness(current.templateKey, 'sms');
                     if (smsReadiness.ready) {
                         current = normalizeNotification({ ...current, transport: 'sms' }, current);

@@ -1,0 +1,20 @@
+{
+  "code": "UL_0880",
+  "title": "낙찰 등록 및 수령정보 안내",
+  "content": "#{구매자명}님, #{업체명} 낙찰 내역이 등록되었습니다.\n개체: #{개체명}\n낙찰금액: #{낙찰금액}\n\n배송 진행을 위해 수령 정보를 확인해 주세요.",
+  "buttons": [
+    {
+      "type": "AC",
+      "name": "채널 추가"
+    },
+    {
+      "type": "WL",
+      "name": "낙찰·배송 확인",
+      "mobileUrl": "https://creok.onrender.com/d/#{접속코드}",
+      "pcUrl": "https://creok.onrender.com/d/#{접속코드}"
+    }
+  ],
+  "intendedEvent": "첫 낙찰 등록",
+  "approvalSource": "2026-09-08 알리고 template/list API에서 inspStatus=APR, 본문과 버튼 대조 완료.",
+  "deploymentStatus": "approved-alimtalk.js 실행 기본값. UL_0884는 예비 명세로 자동 발송하지 않음."
+}

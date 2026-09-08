@@ -1,0 +1,20 @@
+{
+  "code": "UK_9278",
+  "title": "구매자 결제 확인 완료",
+  "content": "#{구매자명}님, #{업체명} 결제가 확인되었습니다.\n확인금액: #{결제금액}\n\n배송·결제 페이지에서 전체 진행 상태를 확인할 수 있습니다.",
+  "buttons": [
+    {
+      "type": "AC",
+      "name": "채널 추가"
+    },
+    {
+      "type": "WL",
+      "name": "진행 상태 확인",
+      "mobileUrl": "https://creok.onrender.com/s/#{접속코드}",
+      "pcUrl": "https://creok.onrender.com/s/#{접속코드}"
+    }
+  ],
+  "intendedEvent": "업체가 실제 결제 확인 처리한 뒤",
+  "approvalSource": "2026-09-08 알리고 template/list API에서 inspStatus=APR, 본문과 버튼 대조 완료.",
+  "deploymentStatus": "approved-alimtalk.js 실행 기본값. UL_0884는 예비 명세로 자동 발송하지 않음."
+}

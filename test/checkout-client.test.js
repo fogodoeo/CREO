@@ -16,6 +16,9 @@ function response(status, payload) {
 }
 
 test('checkout credentials support buyer and vendor short links', () => {
+    assert.equal(Checkout.readCredential(location('/d/Buyer_123'), 's').code, 'Buyer_123');
+    assert.equal(Checkout.readCredential(location('/w/Vendor-123'), 'v').code, 'Vendor-123');
+    assert.equal(Checkout.readCredential(location('/w/Vendor-123'), 's').code, '');
     assert.deepEqual(
         Checkout.readCredential(location('/s/Buyer_123'), 's'),
         { code: 'Buyer_123', token: '' }

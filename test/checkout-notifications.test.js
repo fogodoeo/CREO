@@ -108,7 +108,7 @@ test('notification enqueue is deterministic and waits safely for template config
     assert.equal(repeated.duplicate, true);
     assert.equal(first.record.id, notificationId('basic', 'sale:item-a:cycle-1', 'buyer_win_initial', 'buyer'));
     assert.equal(first.record.status, 'configuration_pending');
-    assert.equal(first.record.transport, 'sms');
+    assert.equal(first.record.transport, 'alimtalk');
     assert.equal((await service.list('basic')).length, 1);
 });
 
@@ -172,20 +172,13 @@ test('Aligo is the only default checkout notification provider', () => {
     assert.ok(createDefaultNotificationProvider() instanceof AligoNotificationProvider);
 });
 
-test('all transaction events default to SMS while approved Kakao content is preserved', () => {
-    for (const key of ['buyer_win_initial', 'buyer_win_additional', 'vendor_win', 'vendor_payment_reported', 'buyer_card_link_ready']) {
-        assert.equal(notificationTransport(key), 'sms');
-    }
-    assert.equal(notificationTransport('buyer_payment_confirmed'), 'sms');
-    const spec = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'config', 'kakao-alimtalk-templates.json'), 'utf8'));
-    const byKey = Object.fromEntries(spec.templates.map((entry) => [entry.key, entry]));
-    for (const key of ['buyer_win_initial', 'buyer_win_additional', 'vendor_win', 'vendor_payment_reported', 'buyer_card_link_ready']) {
-        assert.equal(byKey[key].transport, 'sms');
-    }
-    assert.equal(byKey.buyer_payment_confirmed.transport, 'sms');
-    assert.equal(byKey.buyer_payment_confirmed.link, '');
-    assert.equal(byKey.buyer_payment_confirmed.buttonName, '');
-    assert.equal(byKey.buyer_payment_confirmed.content, '#{구매자명}님, #{업체명} 결제가 확인되었습니다.\n확인금액: #{결제금액}\n\n배송·결제 페이지에서 전체 진행 상태를 확인할 수 있습니다.');
+test('approved events use Alimtalk and only card link readiness still uses SMS', () => {
+    const { codes } = require('../approved-alimtalk');
+    for (const key of Object.keys(codes)) assert.equal(notificationTransport(key), 'alimtalk');
+    assert.equal(notificationTransport('buyer_card_link_ready'), 'sms');
+    assert.equal(codes.vendor_shipping_registered, 'UL_0883');
+    assert.equal(codes.vendor_payment_reported, 'UL_0883');
+    assert.equal(codes.buyer_payment_confirmed, 'UK_9278');
 });
 
 test('Aligo provider sends a short payment action as SMS without a Kakao template', async () => {

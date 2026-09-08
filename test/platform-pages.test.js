@@ -455,11 +455,11 @@ test('buyer and vendor checkout pages are short-code based and support the full 
     assert.match(server, /new URL\('\/buyer-shipping\.html', url\)/);
     assert.match(server, /serveStatic\(req, res, buyerPageUrl\)/);
     assert.match(server, /buyerDeliveryShortMatch = \/\^\\\/d\\\//);
-    assert.match(server, /new URL\('\/buyer-delivery\.html', url\)/);
+    assert.match(server, /buyerDeliveryShortMatch\) \{\s+const buyerPageUrl = new URL\('\/buyer-shipping\.html', url\)/);
     assert.match(server, /vendorCheckoutShortMatch = \/\^\\\/v\\\//);
     assert.match(server, /new URL\('\/vendor-checkout\.html', url\)/);
     assert.match(server, /vendorStatusShortMatch = \/\^\\\/w\\\//);
-    assert.match(server, /new URL\('\/vendor-status\.html', url\)/);
+    assert.match(server, /vendorStatusShortMatch\) \{\s+const vendorPageUrl = new URL\('\/vendor-checkout\.html', url\)/);
 });
 
 test('buyer delivery landing page is genuinely shipping-only', () => {

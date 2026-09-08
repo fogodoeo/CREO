@@ -368,7 +368,7 @@ test('buyer shipping link isolates one buyer, saves idempotently, confirms payme
     assert.ok(link.json().message.endsWith(link.json().url));
     const shortUrl = new URL(link.json().url);
     const code = shortUrl.pathname.split('/').at(-1);
-    assert.equal(shortUrl.pathname, `/s/${code}`);
+    assert.equal(shortUrl.pathname, `/d/${code}`);
     assert.match(code, /^[A-Za-z0-9_-]{11}$/);
     assert.equal(shortUrl.search, '');
     assert.ok(repository.records.get(`config:buyer_shipping_short_v2_${code}`));
@@ -557,7 +557,8 @@ test('vendor checkout link handles card URL, buyer report, confirmation, duplica
     assert.equal(saved.status, 200, saved.body);
     assert.equal(saved.json().vendors[0].payment.status, 'card_link_pending');
     assert.equal(saved.json().vendors[0].contact.phone, '01077778888');
-    assert.equal([...cardEvents.values()][0].templateKey, 'vendor_card_requested');
+    assert.equal([...cardEvents.values()][0].templateKey, 'vendor_shipping_registered');
+    assert.equal([...cardEvents.values()][0].variables.구매자명, '구매자');
     const repeatedChoice = await call(api, 'POST', '/api/platform/buyer-shipping', {
         code: buyerCode, requestId: 'buyer-card-choice-2', destinationId: 'pickup-1',
         payments: [{ vendorKey: 'vendor-card', method: 'card' }]
@@ -615,8 +616,10 @@ test('vendor checkout link handles card URL, buyer report, confirmation, duplica
     assert.equal(reportedAgain.status, 200, reportedAgain.body);
     assert.deepEqual([reported.json().duplicate, reportedAgain.json().duplicate].sort(), [false, true]);
     assert.equal(reported.json().vendors[0].payment.status, 'card_payment_reported');
+    assert.equal([...cardEvents.values()].filter(e => e.templateKey === 'vendor_payment_reported').length, 1);
+    assert.equal([...cardEvents.values()].find(e => e.templateKey === 'vendor_payment_reported').transport, 'alimtalk');
 
-    const restarted = createPlatformApi({ repository, adminSessionSecret: secret, logger: { error() {}, warn() {} } });
+    const restarted = createPlatformApi({ repository, notificationService, adminSessionSecret: secret, logger: { error() {}, warn() {} } });
     const confirmBody = { code: vendorCode, buyerId, requestId: 'vendor-payment-confirm-1' };
     const confirmed = await call(restarted, 'POST', '/api/platform/vendor-checkout/confirm-payment', confirmBody, '');
     const confirmedAgain = await call(restarted, 'POST', '/api/platform/vendor-checkout/confirm-payment', confirmBody, '');
@@ -625,6 +628,10 @@ test('vendor checkout link handles card URL, buyer report, confirmation, duplica
     assert.equal(confirmedAgain.json().duplicate, true);
     const buyerPaid = await call(restarted, 'GET', `/api/platform/buyer-shipping?code=${buyerCode}`, null, '');
     assert.equal(buyerPaid.json().payment.status, 'paid');
+    const confirmations = [...cardEvents.values()].filter(e => e.templateKey === 'buyer_payment_confirmed');
+    assert.equal(confirmations.length, 1);
+    assert.equal(confirmations[0].transport, 'alimtalk');
+    assert.equal(confirmations[0].recipientRole, 'buyer');
 });
 
 test('a sold transition queues buyer and vendor notices once without blocking the auction', async () => {
@@ -659,7 +666,7 @@ test('a sold transition queues buyer and vendor notices once without blocking th
     assert.ok(responses.every(response => response.status === 200), responses.map(response => response.body).join('\n'));
     assert.equal(queued.length, 2);
     assert.deepEqual(queued.map(entry => entry.event.recipientRole).sort(), ['buyer', 'vendor']);
-    assert.deepEqual(queued.map(entry => entry.event.transport), ['sms', 'sms']);
+    assert.deepEqual(queued.map(entry => entry.event.transport), ['alimtalk', 'alimtalk']);
     assert.equal(queued[0].channelId, 'alpha');
     assert.equal((await repository.getRecord('alpha', 'item', 'notice-item')).status, 'sold');
     const pulseAfterSale = await call(api, 'GET', '/api/platform/channels/alpha/broadcast-pulse', null, '');

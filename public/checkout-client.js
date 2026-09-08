@@ -51,7 +51,8 @@
 
     function readCredential(locationObject, shortPrefix) {
         const params = new URLSearchParams(locationObject.search || '');
-        const escapedPrefix = String(shortPrefix || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const prefixes = shortPrefix === 's' ? ['s', 'd'] : shortPrefix === 'v' ? ['v', 'w'] : [shortPrefix || ''];
+        const escapedPrefix = `(?:${prefixes.map(prefix => String(prefix).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`;
         const match = new RegExp(`^/${escapedPrefix}/([A-Za-z0-9_-]{8,24})$`).exec(locationObject.pathname || '');
         const code = params.get('code') || match?.[1] || '';
         const token = params.get('token') || '';

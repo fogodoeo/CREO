@@ -1,0 +1,20 @@
+{
+  "code": "UL_0882",
+  "title": "판매업체 낙찰 등록 업무 알림",
+  "content": "[판매업체 업무 알림]\n#{업체명} 담당자님,\n귀 업체가 판매 등록한 #{개체명}에 낙찰 내역이 등록되었습니다.\n구매자: #{구매자명}\n낙찰금액: #{낙찰금액}\n\n업체 판매 현황에서 등록 내역을 확인해 주세요.",
+  "buttons": [
+    {
+      "type": "AC",
+      "name": "채널 추가"
+    },
+    {
+      "type": "WL",
+      "name": "업체 판매 현황",
+      "mobileUrl": "https://creok.onrender.com/w/#{업체접속코드}",
+      "pcUrl": "https://creok.onrender.com/w/#{업체접속코드}"
+    }
+  ],
+  "intendedEvent": "업체 개체 낙찰 등록",
+  "approvalSource": "2026-09-08 알리고 template/list API에서 inspStatus=APR, 본문과 버튼 대조 완료.",
+  "deploymentStatus": "approved-alimtalk.js 실행 기본값. UL_0884는 예비 명세로 자동 발송하지 않음."
+}

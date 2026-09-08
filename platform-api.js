@@ -1920,7 +1920,7 @@ function createPlatformApi({
         const code = await saveBuyerShippingShortLink(token, payload);
         const origin = checkoutPageOrigin(req);
         if (!origin) throw buyerInputError('구매자 배송 페이지 주소를 만들 수 없습니다.', 500);
-        const url = new URL(`/s/${code}`, origin);
+        const url = new URL(`/d/${code}`, origin);
         const apiOrigin = requestOrigin(req);
         if (configuredBuyerSiteOrigin && apiOrigin && url.origin !== new URL(apiOrigin).origin) {
             url.pathname = '/buyer-shipping.html';
@@ -1937,7 +1937,7 @@ function createPlatformApi({
         const code = await saveVendorCheckoutShortLink(token, payload);
         const origin = requestOrigin(req);
         if (!origin) throw buyerInputError('업체 확인 페이지 주소를 만들 수 없습니다.', 500);
-        return { token, payload, code, url: new URL(`/v/${code}`, origin) };
+        return { token, payload, code, url: new URL(`/w/${code}`, origin) };
     }
 
     async function enqueueNotification(channelId, event) {
@@ -1972,7 +1972,7 @@ function createPlatformApi({
         const buyerResult = await enqueueNotification(channel.id, {
             eventKey: `sale:${item.id}:${eventVersion}:buyer`,
             templateKey: buyerTemplate,
-            transport: 'sms',
+            transport: 'alimtalk', allowSmsFallback: false,
             recipientRole: 'buyer',
             recipientPhone: phone,
             variables: {
@@ -1991,7 +1991,7 @@ function createPlatformApi({
             vendorResult = await enqueueNotification(channel.id, {
                 eventKey: `sale:${item.id}:${eventVersion}:vendor`,
                 templateKey: 'vendor_win',
-                transport: 'sms',
+                transport: 'alimtalk', allowSmsFallback: false,
                 recipientRole: 'vendor',
                 recipientPhone: vendor.phone,
                 variables: {
@@ -2014,7 +2014,7 @@ function createPlatformApi({
         return enqueueNotification(context.channel.id, {
             eventKey: `payment-reported:${group.key}:${sessionKey(phone)}:${group.payment.latest?.buyerPaymentReportRequestId || Date.now()}`,
             templateKey: 'vendor_payment_reported',
-            transport: 'sms',
+            transport: 'alimtalk', allowSmsFallback: false,
             recipientRole: 'vendor',
             recipientPhone: vendor.phone,
             variables: {
@@ -2027,20 +2027,23 @@ function createPlatformApi({
         });
     }
 
-    async function enqueueCardRequests(req, context) {
+    async function enqueueShippingRegistered(req, context) {
         const snapshot = await checkoutSnapshot(context);
         const results = [];
         for (const group of snapshot.groups) {
-            if (group.payment.latest?.paymentMethod !== 'card' || group.payment.latest?.cardPaymentUrl
-                || group.payment.status === 'paid' || !normalizePhone(group.vendor?.phone)) continue;
+            if (!normalizePhone(group.vendor?.phone)) continue;
             const link = await prepareVendorCheckoutLink(req, context.channel.id, group.key);
-            const fingerprint = crypto.createHash('sha256').update(JSON.stringify(group.items.map(item =>
-                [item.id, item.createdAt, item.updatedAt, item.soldPrice]))).digest('hex').slice(0, 24);
+            const latest = group.payment.latest || {};
+            const fingerprint = crypto.createHash('sha256').update(JSON.stringify([
+                group.items.map(item => [item.id, item.soldPrice]).sort(),
+                latest.destinationId, latest.address, latest.pargeRegion, latest.pargeShop, latest.paymentMethod
+            ])).digest('hex').slice(0, 24);
             results.push(await enqueueNotification(context.channel.id, {
-                eventKey: `card-request:${sessionKey(context.anchorPhone)}:${group.key}:${fingerprint}`,
-                templateKey: 'vendor_card_requested', transport: 'sms', recipientRole: 'vendor', recipientPhone: group.vendor.phone,
-                variables: { 업체명: group.vendor.name, 업체접속코드: link.code },
-                fallbackText: shortSms('카드결제 요청', link.url)
+                eventKey: `shipping-registered:${sessionKey(context.anchorPhone)}:${group.key}:${fingerprint}`,
+                templateKey: 'vendor_shipping_registered', transport: 'alimtalk', allowSmsFallback: false,
+                recipientRole: 'vendor', recipientPhone: group.vendor.phone,
+                variables: { 업체명: group.vendor.name, 구매자명: buyerDisplayName(context.bundleItems[0]), 업체접속코드: link.code },
+                fallbackText: shortSms('수령정보 등록', link.url)
             }));
         }
         return results;
@@ -2054,7 +2057,7 @@ function createPlatformApi({
         return enqueueNotification(bundle.context.channel.id, {
             eventKey,
             templateKey,
-            transport: 'sms',
+            transport: isCard ? 'sms' : 'alimtalk', allowSmsFallback: false,
             recipientRole: 'buyer',
             recipientPhone: bundle.phone,
             variables: {
@@ -2602,7 +2605,7 @@ function createPlatformApi({
                     const freshContext = await buyerBundleContext(context.token);
                     if (!freshContext) throw buyerInputError('배송 정보를 다시 불러와 주세요.', 409);
                     const result = await saveBuyerShipping(freshContext, body);
-                    const notifications = await enqueueCardRequests(req, freshContext);
+                    const notifications = result.duplicate ? [] : await enqueueShippingRegistered(req, freshContext);
                     replyJson(res, 200, { ...result.payload, duplicate: result.duplicate, notifications }, buyerCorsHeaders(req));
                 });
                 return true;
