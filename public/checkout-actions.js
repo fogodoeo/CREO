@@ -3,7 +3,10 @@
  if(typeof document!=='undefined')document.addEventListener('DOMContentLoaded',()=>{
   const channel=document.getElementById('channel-name')||document.getElementById('channel');if(!channel)return;
   const guide=document.createElement('a');guide.href='https://www.youtube.com/shorts/CEhm37HkDqQ';guide.target='_blank';guide.rel='noopener noreferrer';guide.textContent='배송·결제 방법 영상으로 보기 ↗';guide.style.cssText='display:flex;align-items:center;justify-content:center;min-height:48px;padding:12px;margin:12px 0 16px;border-radius:10px;background:#f0f2f5;color:#202225;font-size:16px;font-weight:700;text-decoration:none';
-  guide.textContent='이용 방법 ↗';guide.style.cssText='display:inline-block;margin-top:16px;color:#656b74;font-size:14px;text-decoration:underline';document.querySelector('main')?.append(guide);
+  guide.textContent='이용 방법 ↗';guide.className='help-link';guide.removeAttribute('style');
+  const footer=document.createElement('footer');footer.className='site-footer';
+  const copyright=document.createElement('small');copyright.textContent='© 옹동2';
+  footer.append(guide,copyright);document.querySelector('main')?.append(footer);
   const banner=document.createElement('div');banner.textContent='테스트 전용 · 실제 입금 금지 · 문자 자동 발송 없음';banner.style.cssText='position:sticky;top:0;z-index:100;padding:12px;background:#fff0b5;color:#392d00;text-align:center;font-weight:800';banner.hidden=true;document.body.prepend(banner);
   const update=()=>{banner.hidden=!channel.textContent.startsWith('[테스트·입금 금지]');banner.textContent=channel.dataset.testDelivery==='true'?'테스트 전용 · 실제 입금 금지 · 알림 수신번호 끝자리 8600':'테스트 전용 · 실제 입금 금지 · 알림 자동 발송 없음'};const observer=new MutationObserver(update);observer.observe(channel,{childList:true,characterData:true,subtree:true,attributes:true,attributeFilter:['data-test-delivery']});update();window.addEventListener('pagehide',()=>observer.disconnect(),{once:true});
  });

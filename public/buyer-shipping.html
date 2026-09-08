@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
     <meta name="referrer" content="no-referrer">
-    <title>CREO 배송·결제</title>
+    <title>옹동2 · 배송·결제</title>
     <link rel="stylesheet" href="/checkout-ui.css?v=20260902-checkout-shell-v1">
     <script src="/checkout-rules.js?v=20260907-payment-audit"></script>
     <script src="/checkout-client.js?v=20260908-approved-links"></script>
@@ -24,12 +24,12 @@
         @media(max-width:420px){.footer{padding-left:16px;padding-right:16px}.vendor-body{padding:12px}}
     .choice b{font-size:16px}.choice i{flex-shrink:0}.status small:empty{display:none}#destinations{grid-template-columns:repeat(2,minmax(0,1fr))}#destinations .choice{min-height:54px;padding:12px;gap:8px}
     </style>
-<link rel="stylesheet" href="/checkout-accessible.css?v=20260906-1"><script src="/checkout-actions.js?v=20260908-test-delivery"></script><link rel="stylesheet" href="/buyer-checkout.css?v=20260908-focused"></head>
+<link rel="stylesheet" href="/checkout-accessible.css?v=20260906-1"><script src="/checkout-actions.js?v=20260908-ongdong"></script><link rel="stylesheet" href="/buyer-checkout.css?v=20260908-focused"><link rel="stylesheet" href="/checkout-brand.css?v=20260908-ongdong"></head>
 <body><div class="shell">
     <div class="loading" id="loading"><b>불러오는 중…</b></div>
     <div class="error" id="error" hidden><b>페이지를 열 수 없습니다</b><span id="error-message"></span><button id="retry" type="button">다시 시도</button></div>
     <div id="app" hidden>
-        <header class="top"><div class="brand"><b>CREO</b><div class="brand-right"><span id="channel-name"></span><i class="sync" id="sync" role="status">실시간</i></div></div><div class="buyer-greeting"><span id="buyer-name"></span>님</div><div class="flow-steps" aria-label="진행 단계"><span id="step-shipping">1 수령지</span><span aria-hidden="true">›</span><span id="step-payment">2 결제</span></div><h1 id="flow-title">어디서 받으시나요?</h1><div class="status" id="status" hidden><span id="status-label"></span><small id="status-detail"></small></div><div class="saved" id="saved" role="status" aria-live="polite" hidden><b>저장 완료</b></div></header>
+        <header class="top"><div class="brand"><b>옹동2</b><span class="page-context">배송·결제</span><div class="brand-right" hidden><span id="channel-name"></span><i class="sync" id="sync" role="status">실시간</i></div></div><div class="buyer-greeting"><span id="buyer-name"></span>님</div><div class="flow-steps" aria-label="진행 단계"><span id="step-shipping">1 수령지</span><span aria-hidden="true">›</span><span id="step-payment">2 결제</span></div><div id="flow-symbol" class="flow-symbol" aria-hidden="true" hidden></div><h1 id="flow-title">어디서 받으시나요?</h1><div class="status" id="status" hidden><span id="status-label"></span><small id="status-detail"></small></div><div class="saved" id="saved" role="status" aria-live="polite" hidden><b>저장 완료</b></div></header>
         <main>
             <section class="section" id="shipping-section"><div id="destination-summary" class="destination-summary" hidden><div><small>수령지</small><b id="destination-value"></b></div><button id="change-destination" type="button">변경</button></div><div id="destination-editor"><div class="head"><h2>수령 방법</h2><button id="cancel-destination" type="button" hidden>선택 유지</button></div><div class="choices" id="destinations"></div><div class="parge" id="parge" hidden><input class="search" id="parge-search" placeholder="지역·지점 검색" aria-label="수령 지점 검색" autocomplete="off"><div class="tabs" id="parge-tabs"></div><div class="results" id="parge-results"></div><p class="note" id="parge-note"></p></div></div></section>
             <section class="section" id="payment-section" hidden><div class="head"><h2>업체별 결제</h2></div><div id="vendors"></div><div class="payable-summary" id="payment-summary"><span id="payable-title">이번 결제금액</span><b id="payable-amount"></b><small id="payable-note"></small></div></section>
@@ -61,6 +61,8 @@ function renderFlow(){
  $('step-shipping').className=showPayment?'complete':'active';
  $('step-payment').className=showPayment?'active':'';
  $('status').hidden=true;
+ $('flow-symbol').hidden=!(showPayment&&saved&&(paid||pending));
+ $('flow-symbol').textContent=paid?'✓':'…';
  $('saved').hidden=true;
  $('submit').parentElement && ($('submit').parentElement.hidden=saved||!showPayment);
  const paymentReady=state.data.vendors.every(v=>v.payment.status==='paid'||state.payments[v.key]);

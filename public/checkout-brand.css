@@ -1,0 +1,21 @@
+/* Customer-facing identity and hierarchy, shared by buyer and vendor. */
+:root{--ink:#191f28;--muted:#6b7684}
+.top>.brand{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 28px}
+.brand>b{font-size:20px;line-height:1.4;letter-spacing:-.6px;font-weight:800;text-transform:none}
+.page-context{font-size:12px;color:#8b95a1;font-weight:500}.brand-right[hidden]{display:none!important}
+.top{padding:24px 24px 12px}.top h1{font-weight:750;line-height:1.4;word-break:keep-all}
+.site-footer{display:flex;flex-direction:column;align-items:center;gap:12px;margin-top:32px;padding:20px 0 4px;border-top:1px solid #f2f4f6}
+.site-footer .help-link{display:flex;align-items:center;min-height:44px;padding:0 16px;font-size:13px;color:#6b7684;text-decoration:none}
+.site-footer small{font-size:11px;color:#8b95a1;font-weight:400;letter-spacing:0}
+.privacy{text-align:center;color:#8b95a1;font-size:11px;margin:28px 0 -20px}
+.flow-symbol{display:flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:50%;background:#e8f3ff;color:#3182f6;font-size:28px;font-weight:700;margin:8px 0 16px}
+.destination-summary{gap:12px;padding:12px 0 16px}.destination-summary b{font-size:14px;line-height:1.6}.destination-summary button{min-height:44px}
+.amount-focus{margin:0 0 18px}.amount-focus strong{font-weight:750;font-size:36px}.vendor-title b{font-weight:650}.amount-details summary{min-height:48px}.vendor-contact{font-weight:500;text-decoration:none}
+.method-details summary{font-weight:500}.action-box{background:#f2f4f6}.action-box b{font-size:20px;font-weight:650;line-height:1.5}.buttons{display:grid;grid-template-columns:1fr 1.4fr;gap:8px}.primary,.minor{height:54px;font-weight:650}
+.order-details{border-bottom:0;padding:12px 0}.order-details summary{min-height:48px}.order-details summary b{font-weight:600}
+.work-title{font-size:22px;font-weight:650;line-height:1.5;letter-spacing:-.6px}.work-title strong{display:block;margin-top:4px;font-size:38px;line-height:1.2;font-weight:750;color:#191f28}.work-title br{display:none}
+.work-filters{gap:0;border-bottom:1px solid #e5e8eb;padding:0;margin-bottom:22px}.work-filter{flex:1;white-space:nowrap;border-radius:0;background:transparent!important;padding:12px 8px;color:#8b95a1;font-weight:500;min-height:50px}.work-filter[aria-pressed=true]{color:#191f28;border-bottom:2px solid #191f28;font-weight:750}
+.buyer-head{align-items:flex-start}.identity b{font-size:19px;font-weight:700}.buyer-phone{display:inline-flex;align-items:center;min-height:40px;color:#8b95a1;font-weight:500;text-decoration:none}.body .row.total{align-items:baseline}.body .row.total strong{font-size:30px;font-weight:750}.buyer .action{padding:0;background:transparent}.buyer .action p{line-height:1.6}.url-row{display:flex;flex-direction:column;gap:10px}.url-row input{width:100%;box-sizing:border-box;padding:14px;min-height:52px;border-radius:12px;background:#f2f4f6;border:1px solid transparent}.url-row input:focus{border-color:#3182f6;outline:0}.url-row .btn{width:100%;font-size:16px}.confirm{font-size:16px;min-height:54px}.buyer-detail summary{min-height:44px;display:flex;align-items:center}.buyer .badge{font-weight:600;max-width:44%;white-space:normal;text-align:center}
+button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid #93c5fd;outline-offset:3px}
+@media(max-width:360px){.top{padding-left:18px;padding-right:18px}.amount-focus strong{font-size:32px}.work-filter{font-size:13px!important;padding-left:4px;padding-right:4px}.body .row.total strong{font-size:26px}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}

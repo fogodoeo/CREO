@@ -613,6 +613,7 @@ test('vendor checkout link handles card URL, buyer report, confirmation, duplica
     assert.equal(cardNotices.length, 1);
     assert.equal(cardNotices[0].transport, 'alimtalk');
     assert.equal(cardNotices[0].allowSmsFallback, false);
+    assert.equal(cardNotices[0].failureSmsFallback, true);
     assert.ok(cardNotices[0].variables.개체명);
     assert.match(cardNotices[0].variables.낙찰금액, /원$/);
     assert.ok(cardSaved.json().revision > vendorInitialRevision);

@@ -121,6 +121,7 @@ function normalizeNotification(input = {}, current = {}) {
             ? input.transport
             : (NOTIFICATION_TRANSPORTS.includes(current.transport) ? current.transport : notificationTransport(input.templateKey || current.templateKey)),
         allowSmsFallback: input.allowSmsFallback ?? current.allowSmsFallback ?? true,
+        failureSmsFallback: input.failureSmsFallback ?? current.failureSmsFallback ?? false,
         recipientRole: ['buyer', 'vendor'].includes(input.recipientRole) ? input.recipientRole : current.recipientRole,
         recipientPhone: phone(input.recipientPhone || current.recipientPhone),
         variables: safeVariables(input.variables || current.variables),
@@ -238,6 +239,11 @@ class AligoNotificationProvider {
     async sendAlimtalk(notification) {
         const template = this.templates[notification.templateKey];
         const variables = templateVariables(notification.variables);
+        const failureFallback = notification.failureSmsFallback === true;
+        const fallbackText = messageText(notification.fallbackText, 2000);
+        if (failureFallback && (!fallbackText || Buffer.byteLength(fallbackText, 'utf8') > 90)) {
+            throw new Error('대체문자 본문 누락 또는 90바이트 초과');
+        }
         const params = new URLSearchParams({
             apikey: this.apiKey,
             userid: this.userId,
@@ -248,9 +254,11 @@ class AligoNotificationProvider {
             recvname_1: text(variables.구매자명 || variables.업체명, 100),
             subject_1: template.subject,
             message_1: renderTemplate(template.content, notification.variables),
-            failover: 'N',
+            failover: failureFallback ? 'Y' : 'N',
             testMode: this.testMode ? 'Y' : 'N'
         });
+        // Aligo handles final delivery failure; do not send a second SMS from this worker.
+        if (failureFallback) params.set('fmessage_1', fallbackText);
         const renderValue = value => typeof value === 'string' ? renderTemplate(value, notification.variables)
             : Array.isArray(value) ? value.map(renderValue)
             : value && typeof value === 'object' ? Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, renderValue(entry)])) : value;
@@ -316,6 +324,7 @@ class CheckoutNotificationService {
             templateKey,
             transport,
             allowSmsFallback: event.allowSmsFallback !== false,
+            failureSmsFallback: event.failureSmsFallback === true,
             recipientRole,
             recipientPhone,
             variables: event.variables,

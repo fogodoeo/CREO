@@ -1952,7 +1952,7 @@ function createPlatformApi({
         }
         if (!notificationService) return { configured: false, duplicate: false };
         try {
-            const result = await notificationService.enqueue(channelId, event);
+            const result = await notificationService.enqueue(channelId, { ...event, allowSmsFallback: false, failureSmsFallback: true });
             return { configured: true, duplicate: result.duplicate, status: result.record?.status || '' };
         } catch (error) {
             logger.error?.('[platform-api] notification enqueue failed', channelId, event.templateKey, error.message);
