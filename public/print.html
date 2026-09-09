@@ -506,7 +506,7 @@
         .label-bundle-info b { color:#1d4ed8; }
         .label-bundle-info em { color:#b45309; font-style:normal; font-weight:800; }
         .label-preview-bundle { margin-top:12px; padding:12px; background:#eff6ff; color:#1e293b; border-radius:10px; font-size:14px; line-height:1.7; overflow-wrap:anywhere; }
-        .label-paper.has-bundle { grid-template-rows:22% 24% 17% 17% 10% 10%; }
+        .label-paper.has-bundle { grid-template-rows:22% 24% 9% 9% 17% 19%; }
         .label-paper.has-bundle .label-paper-header { font-size:32px; }
         .label-paper.has-bundle .label-paper-destination { font-size:22px; }
         .label-paper.has-bundle .label-paper-destination.is-long { font-size:16px; }
@@ -1321,10 +1321,10 @@
             stage.innerHTML = '<div class="label-paper has-bundle" title="' + escapePrintHtml(payload.lot_number || '') + '">'
                 + '<div class="label-paper-header">' + escapePrintHtml(payload.lot_number || '배송') + '</div>'
                 + '<div class="label-paper-line label-paper-destination' + destinationClass + '">' + escapePrintHtml(payload.destination || '-') + '</div>'
-                + '<div class="label-paper-line label-paper-buyer' + buyerClass + '">' + escapePrintHtml(payload.winner_name || '-') + '</div>'
-                + '<div class="label-paper-line label-paper-phone">' + escapePrintHtml(fmtPhone(payload.winner_phone) || '-') + '</div>'
                 + '<div class="label-paper-detail">' + escapePrintHtml(payload.bundle_summary || '') + '</div>'
                 + '<div class="label-paper-detail">' + escapePrintHtml(payload.amount_summary || '') + '</div>'
+                + '<div class="label-paper-line label-paper-buyer' + buyerClass + '">' + escapePrintHtml(payload.winner_name || '-') + '</div>'
+                + '<div class="label-paper-line label-paper-phone">' + escapePrintHtml(fmtPhone(payload.winner_phone) || '-') + '</div>'
                 + '</div>';
             counter.textContent = (position + 1) + ' / ' + indexes.length + (selectedShippingLabelItems().length ? ' · 선택 라벨' : ' · 출력 가능');
             stage.innerHTML += '<div class="label-preview-bundle">' + shippingLabelBundleHtml(items[activeIndex]) + '</div>';
@@ -1382,7 +1382,7 @@
                 winner_phone: winner.phone || '',
                 destination: shippingLabelDestination(it),
                 bundle_summary: bundle ? (bundle.count > 1 ? '합배송 대상 ' + bundle.count + '개 · ' : '단독 · ') + bundle.items.split(' · ').slice(0, 4).join(' ') + (bundle.count > 4 ? ' 외 ' + (bundle.count - 4) + '개' : '') : '',
-                amount_summary: bundle ? '개체 ' + bundle.itemAmount.toLocaleString('ko-KR') + '원 · 묶음 ' + (bundle.soldAmount + bundle.shippingCost).toLocaleString('ko-KR') + '원' : ''
+                amount_summary: bundle ? '배송비 ' + bundle.shippingCost.toLocaleString('ko-KR') + '원' : ''
             };
         }
 
