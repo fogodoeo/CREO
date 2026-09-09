@@ -3,7 +3,7 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 function screen(bank){
  const html=fs.readFileSync(require.resolve('../public/organizer-shipping.html'),'utf8');
  const nodes=new Map([...html.matchAll(/id="([^"]+)"/g)].map(m=>[m[1],{hidden:false,value:'',textContent:'',focus(){}}]));
- const context=vm.createContext({URLSearchParams,location:{search:'?channel=alpha'},document:{getElementById:id=>nodes.get(id)},CreoPlatform:{escapeHtml:s=>s,api:()=>new Promise(()=>{})},setInterval(){}});
+ const context=vm.createContext({URLSearchParams,location:{search:'?channel=alpha'},document:{getElementById:id=>nodes.get(id)},CreoPlatform:{escapeHtml:s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'),api:()=>new Promise(()=>{})},setInterval(){}});
  vm.runInContext(fs.readFileSync(require.resolve('../public/organizer-shipping.js'),'utf8'),context);
  context.bankFixture=bank;vm.runInContext('state={bank:bankFixture};renderBank()',context);
  return {nodes,context,html};
@@ -27,4 +27,13 @@ test('registered account is visible, editable and does not lose a draft during r
 test('legacy account missing its notification phone opens the setup form with account values preserved',()=>{
  const {nodes}=screen({bankName:'은행',bankAccount:'123-456',bankHolder:'주관사'});
  assert.equal(nodes.get('bank-form').hidden,false);assert.equal(nodes.get('bankAccount').value,'123-456');
+});
+test('fee details start collapsed, escape source text and show the allocated total',()=>{
+ const {context}=screen({});
+ context.feeFixture={shippingFeeItems:[{id:'a',name:'<img src=x>',carrier:'파르게',destination:'서울 & 테스트점',amount:3500},{id:'b',name:'B01',carrier:'파르게',destination:'서울',amount:3500}]};
+ const html=vm.runInContext('feeDetailNotice(feeFixture)',context);
+ assert.ok(html.includes('배송비 상세 · 2개체'));assert.ok(html.includes('7,000원'));
+ assert.ok(html.includes('&lt;img src=x&gt;'));assert.ok(html.includes('서울 &amp; 테스트점'));assert.ok(!html.includes('<img'));
+ assert.ok(!/<details[^>]*\bopen\b/.test(html));
+ assert.equal(vm.runInContext('feeDetailNotice({shippingFeeItems:[]})',context),'');
 });

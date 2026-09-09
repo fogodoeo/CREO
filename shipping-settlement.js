@@ -51,4 +51,14 @@ function summarizeMissingDestinations(items, shipments, vendors) {
         return true;
     }).sort((a,b)=>(Number(a.lotNumber)||0)-(Number(b.lotNumber)||0)||String(a.id).localeCompare(String(b.id))).map(item=>({id:item.id,name:item.name||'',lotNumber:Number(item.lotNumber)||0}))}));
 }
-module.exports = {summarizeShipping,summarizeCarriers,summarizeMissingDestinations};
+function shippingFeeDetails(items, shipments, vendors) {
+    const itemMap=new Map(items.map(i=>[i.id,i])),rows=shippingRows(items,shipments);
+    return vendors.map(v=>({vendorId:v.id,shippingFeeItems:rows.filter(s=>s.vendorId===v.id).map(s=>{
+        const item=itemMap.get(s.itemId);
+        return {id:item.id,name:item.name||'',lotNumber:Number(item.lotNumber)||0,
+            carrier:String(s.carrier||'').trim()||'배송업체 미지정',
+            destination:String(s.address||'').trim()||[s.pargeRegion,s.pargeShop].filter(Boolean).join(' · ')||'배송지 미입력',
+            amount:Math.max(0,Math.round(Number(s.cost)||0))};
+    }).sort((a,b)=>a.lotNumber-b.lotNumber||String(a.id).localeCompare(String(b.id)))}));
+}
+module.exports = {summarizeShipping,summarizeCarriers,summarizeMissingDestinations,shippingFeeDetails};

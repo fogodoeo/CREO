@@ -60,6 +60,8 @@ test('shipping remittance is vendor scoped, atomic, durable, duplicate safe and 
  let state=(await call(api,'GET',f.route)).json(),v=state.vendors.find(v=>v.vendorId==='v');
  assert.equal(v.pendingReport.amount,19000);assert.equal(v.receivedAmount,0);assert.equal(v.remainingAmount,19000);
  assert.equal(state.carriers.reduce((n,c)=>n+c.totalAmount,0),19000);
+ assert.equal(v.shippingFeeItems.reduce((n,i)=>n+i.amount,0),v.totalAmount);
+ assert.deepEqual(v.shippingFeeItems.map(i=>i.name),['A01']);
  const notifications=await f.repository.listRecords('alpha','notification');assert.equal(notifications.length,1);
  assert.equal(notifications[0].recipientPhone,'01022223333');assert.equal(notifications[0].transport,'sms');assert.ok(Buffer.byteLength(notifications[0].fallbackText,'utf8')<=90);
  assert.equal((await f.repository.listRecords('beta','notification')).length,0);

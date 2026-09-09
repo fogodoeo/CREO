@@ -1,5 +1,23 @@
 const test=require('node:test'), assert=require('node:assert/strict');
-const {summarizeShipping,summarizeCarriers,summarizeMissingDestinations}=require('../shipping-settlement');
+const {summarizeShipping,summarizeCarriers,summarizeMissingDestinations,shippingFeeDetails}=require('../shipping-settlement');
+
+test('fee causes reconcile to vendor and carrier totals using the same latest allocated fees',()=>{
+ const vendors=[{id:'v'},{id:'other'}],items=['a','b','c','d'].map((id,index)=>({id,name:id.toUpperCase(),lotNumber:index+1,vendorId:'v',status:'sold'}));
+ const rows=[{itemId:'a',vendorId:'v',method:'delivery',carrier:'파르게',address:'서울 테스트점',cost:3500,paymentStatus:'paid',updatedAt:'2',recipientPhone:'01012345678'},
+ {itemId:'a',vendorId:'v',method:'delivery',carrier:'파르게',cost:9000,updatedAt:'1'},
+ {itemId:'b',vendorId:'v',method:'delivery',carrier:'파르게',address:'서울 테스트점',cost:3500,paymentStatus:'pending'},
+ {itemId:'c',vendorId:'v',method:'pickup',address:'직수령',cost:0},
+ {itemId:'d',vendorId:'v',method:'delivery',cost:9000,paymentStatus:'refunded'},
+ {itemId:'b',vendorId:'other',method:'delivery',cost:99999,updatedAt:'9'}];
+ const details=shippingFeeDetails(items,rows,vendors);
+ assert.deepEqual(details[0].shippingFeeItems.map(i=>i.id),['a','b']);assert.deepEqual(details[1].shippingFeeItems,[]);
+ const total=details[0].shippingFeeItems.reduce((n,i)=>n+i.amount,0);
+ assert.equal(total,7000);assert.equal(total,summarizeShipping(items,rows,vendors)[0].totalAmount);
+ assert.equal(total,summarizeCarriers(items,rows,vendors)[0].totalAmount);
+ assert.equal(details[0].shippingFeeItems[0].destination,'서울 테스트점');
+ assert.equal(JSON.stringify(details).includes('01012345678'),false);
+ assert.deepEqual(shippingFeeDetails(items,rows.slice().reverse(),vendors),details);
+});
 
 test('missing destinations include unsaved sold items and empty placeholders, but not saved pickup or free delivery',()=>{
  const items=['absent','empty','pickup','delivery','paid-empty','waiting','cancelled'].map((id,i)=>({id,name:id,vendorId:'v',lotNumber:i+1,status:['waiting','cancelled'].includes(id)?id:'sold'}));
