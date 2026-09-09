@@ -37,7 +37,7 @@
         }
         if (status === 'additional_payment') return Object.freeze({ label: '추가 결제', tone: 'red' });
         if (status === 'in_progress') return Object.freeze({ label: '결제 진행 중', tone: '' });
-        if (status === 'card_link_pending') return Object.freeze({ label: role === 'vendor' ? '카드 링크 필요' : '링크 준비 중', tone: role === 'vendor' ? 'red' : '' });
+        if (status === 'card_link_pending') return Object.freeze({ label: role === 'vendor' ? '결제 안내 필요' : '안내 준비 중', tone: role === 'vendor' ? 'red' : '' });
         if (status === 'card_payment_pending') return Object.freeze({ label: '카드 결제 대기', tone: '' });
         if (status === 'bank_transfer_pending') return Object.freeze({ label: '입금 대기', tone: '' });
         return Object.freeze({ label: '정보 입력 대기', tone: '' });

@@ -9,7 +9,7 @@
     <script src="/checkout-rules.js?v=20260907-payment-audit"></script>
     <script src="/checkout-client.js?v=20260908-approved-links"></script>
 
-<script src="/checkout-actions.js?v=20260908-layout"></script><link rel="stylesheet" href="/checkout-layout.css?v=20260908-mobile-focus"><link rel="stylesheet" href="/ongdong-brand.css?v=20260908-logo"><script src="/ongdong-brand.js?v=20260908-logo"></script></head>
+<script src="/checkout-actions.js?v=20260908-layout"></script><link rel="stylesheet" href="/checkout-layout.css?v=20260908-mobile-focus"><link rel="stylesheet" href="/ongdong-brand.css?v=20260908-logo"><script src="/ongdong-brand.js?v=20260908-logo"></script><link rel="stylesheet" href="/checkout-mobile.css?v=20260909-mobile-clean"></head>
 <body class="buyer-page"><div class="shell">
     <div class="loading" id="loading"><b>불러오는 중…</b></div>
     <div class="error" id="error" hidden><b>페이지를 열 수 없습니다</b><span id="error-message"></span><button id="retry" type="button">다시 시도</button></div>
@@ -46,7 +46,7 @@ function renderFlow(){
  $('destination-editor').hidden=showPayment;
  $('cancel-destination').hidden=!ready||!editingDestination;
  $('destination-value').textContent=ready?(destination().type==='pickup'?'직수령 · '+destination().label:[destination().label,state.pargeRegion,state.pargeShop].filter(Boolean).join(' · ')):'';
- $('flow-title').textContent=!showPayment?'어디서 받으시나요?':paid&&saved?'결제가 완료됐어요':pending&&saved?'결제 확인 중이에요':saved?'결제를 진행해 주세요':destinationDraft()?'배송지를 확인해 주세요':'결제 방법을 선택해 주세요';
+ $('flow-title').textContent=!showPayment?'어디서 받으시나요?':paid&&saved?'결제가 완료됐어요':pending&&saved?'결제 확인 중이에요':saved&&state.data.vendors.every(v=>['paid','card_link_pending'].includes(v.payment.status))?'결제 안내를 준비 중이에요':saved?'결제를 진행해 주세요':destinationDraft()?'배송지를 확인해 주세요':'결제 방법을 선택해 주세요';
  $('step-shipping').className=showPayment?'complete':'active';
  $('step-payment').className=showPayment?'active':'';
  $('status').hidden=true;
@@ -87,7 +87,7 @@ function vendorAction(vendor,due){
   return `<div class="account-panel"><div class="account-text"><small>${esc(a.bankName)} · ${esc(a.holder)}</small><b>${esc(a.accountNumber)}</b></div><button class="copy-button" type="button" data-copy="${esc(a.accountNumber)}">계좌 복사</button></div><button class="primary payment-cta" type="button" data-report="${esc(vendor.key)}">입금했어요</button>`;
  }
  if(p.method==='card'){
-  if(p.cardNoticeMethod==='external')return '<div class="waiting-note"><b>카카오톡 결제 안내를 확인해 주세요</b><span>결제 후 업체가 확인하면 완료됩니다</span></div>';
+  if(p.cardNoticeMethod==='external')return '<div class="waiting-note"><b>별도로 받은 결제 안내를 확인해 주세요</b><span>업체 확인 후 완료돼요</span></div>';
   if(!p.cardPaymentUrl)return '<div class="waiting-note"><b>카드결제 준비 중</b><span>준비되면 알림톡으로 알려드려요</span></div>';
   return `<div class="card-actions"><a class="card-link" href="${esc(p.cardPaymentUrl)}" target="_blank" rel="noopener noreferrer">카드로 결제하기</a><button class="report-link" type="button" data-report="${esc(vendor.key)}">결제를 마쳤어요</button></div>`;
  }
@@ -101,7 +101,7 @@ function renderVendors(){
   const locked=paid||pendingConfirmation()||changePending()||state.data.canRequestChange===false;
   const selector=paid?'':saved&&locked?`<div class="method-readonly"><span>결제 방법</span><b>${method==='card'?'카드결제':'계좌이체'}</b></div>`:saved?`<details class="method-details"><summary><span>결제 방법</span><b>${method==='card'?'카드결제':'계좌이체'}</b><span class="edit-label">변경</span></summary>${choices}</details>`:choices;
   const call=CreoCheckoutActions.phoneHref(v.contact?.phone);
-  return `<article class="vendor"><div class="vendor-head"><div class="vendor-title"><b>${esc(v.name)}</b></div>${call?`<a class="vendor-contact" href="${esc(call)}" aria-label="${esc(v.name)}에 전화 문의"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M7 3H4a1 1 0 0 0-1 1c0 9.4 7.6 17 17 17a1 1 0 0 0 1-1v-3l-5-2-2 2a15 15 0 0 1-7-7l2-2-2-5Z"/></svg>전화 문의</a>`:''}</div><div class="vendor-body"><div class="amount-focus"><div class="amount-caption"><small>${paid?'결제한 금액':due.confirmed?'추가 결제금액':'결제할 금액'}</small>${saved&&!paid?`<span class="badge ${tone}">${label}</span>`:''}</div><strong>${money(paid?v.payment.confirmedAmount:due.due)}</strong></div><details class="receipt-details"><summary>낙찰금·배송비</summary><div class="cost-breakdown"><span>낙찰금 <b>${money(v.totals.auctionAmount)}</b></span><span>배송비 <b>${money(due.shippingAmount)}</b></span>${v.totals.discountAmount?`<span>할인 <b>−${money(v.totals.discountAmount)}</b></span>`:''}${due.confirmed&&!paid?`<span>결제한 금액 <b>${money(due.confirmed)}</b></span>`:''}</div></details>${saved?vendorAction(v,due)+selector:selector+vendorAction(v,due)}</div></article>`;
+  return `<article class="vendor"><div class="vendor-head"><div class="vendor-title"><b>${esc(v.name)}</b></div>${call?`<a class="vendor-contact" href="${esc(call)}" aria-label="${esc(v.name)}에 전화 문의"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M7 3H4a1 1 0 0 0-1 1c0 9.4 7.6 17 17 17a1 1 0 0 0 1-1v-3l-5-2-2 2a15 15 0 0 1-7-7l2-2-2-5Z"/></svg>전화 문의</a>`:''}</div><div class="vendor-body"><div class="amount-focus"><div class="amount-caption"><small>${paid?'결제한 금액':due.confirmed?'추가 결제금액':'결제할 금액'}</small>${saved&&!paid&&v.payment.status!=='card_link_pending'?`<span class="badge ${tone}">${label}</span>`:''}</div><strong>${money(paid?v.payment.confirmedAmount:due.due)}</strong></div>${saved?vendorAction(v,due)+selector:selector+vendorAction(v,due)}<details class="receipt-details"><summary>낙찰금·배송비</summary><div class="cost-breakdown"><span>낙찰금 <b>${money(v.totals.auctionAmount)}</b></span><span>배송비 <b>${money(due.shippingAmount)}</b></span>${v.totals.discountAmount?`<span>할인 <b>−${money(v.totals.discountAmount)}</b></span>`:''}${due.confirmed&&!paid?`<span>결제한 금액 <b>${money(due.confirmed)}</b></span>`:''}</div></details></div></article>`;
  }).join('');
  document.querySelectorAll('[data-payment-vendor]').forEach(b=>b.onclick=()=>{state.payments[b.dataset.paymentVendor]=b.dataset.method;state.saved=false;state.dirty=true;render()});
  document.querySelectorAll('[data-copy]').forEach(b=>b.onclick=async()=>{await CreoCheckoutActions.copyAccount(b.dataset.copy,b)});
