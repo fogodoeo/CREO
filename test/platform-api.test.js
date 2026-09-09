@@ -714,6 +714,28 @@ test('a sold transition queues buyer and vendor notices once without blocking th
     assert.equal(pulseAfterDuplicate.json().checkoutRevision, pulseAfterSale.json().checkoutRevision);
 });
 
+test('missing buyer phone does not suppress vendor sale notice, including duplicate requests and restart', async () => {
+    const repository = new MemoryRepository();
+    await repository.upsertRecord('alpha', 'vendor', {id:'v-phone', name:'판매업체', phone:'01088887777'});
+    await repository.upsertRecord('alpha', 'item', {id:'no-phone', lotNumber:1, name:'A01', vendorId:'v-phone', vendorName:'판매업체', status:'waiting'});
+    const queued=[];
+    const options={repository, notificationService:{async enqueue(channelId,event){queued.push({channelId,event});return {record:{status:'queued'}};}}};
+    let api=createPlatformApi(options);
+    const path='/api/platform/channels/alpha/auction-transition';
+    const body={itemId:'no-phone',status:'sold',mode:'sold',item:{soldPrice:30000,winnerName:'구매자'}};
+    const responses=await Promise.all([call(api,'PUT',path,body),call(api,'PUT',path,body)]);
+    for(const r of responses)assert.equal(r.status,200,r.body);
+    assert.equal(queued.length,1);
+    assert.equal(queued[0].event.templateKey,'vendor_win');
+    assert.equal(queued[0].event.recipientPhone,'01088887777');
+    assert.equal(queued[0].channelId,'alpha');
+    assert.ok(responses.some(r=>r.json().notifications?.buyer?.skipped==='missing_phone'));
+    api=createPlatformApi(options);
+    assert.equal((await call(api,'PUT',path,body)).status,200);
+    assert.equal(queued.length,1);
+    assert.equal((await repository.getRecord('alpha','item','no-phone')).status,'sold');
+});
+
 test('notification delivery status is admin-only, channel-scoped, and privacy-minimized', async () => {
     const repository = new MemoryRepository();
     const records = [{

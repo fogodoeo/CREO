@@ -2144,22 +2144,24 @@ function createPlatformApi({
 
     async function enqueueSaleNotifications(req, channel, item) {
         const phone = storedWinnerPhone(item) || await resolveWinnerPhone(item, bandMembership);
-        if (!phone) return { buyer: { skipped: 'missing_phone' }, vendor: { skipped: 'missing_phone' } };
         const vendorKey = vendorKeyForItem(item);
         const vendor = await vendorDirectory.find(channel.id, item.vendorId)
             || (await vendorDirectory.list(channel.id)).find((entry) => entry.name === item.vendorName)
             || { id: item.vendorId || '', name: item.vendorName || '업체', phone: '' };
+        const buyerName = buyerDisplayName(item);
+        const vendorName = vendor.name || item.vendorName || '업체';
+        const eventVersion = cleanText(item.updatedAt || item.createdAt || Date.now(), 80);
+        let buyerResult = { skipped: 'missing_phone' };
+        // A missing buyer contact or buyer-link failure must not suppress the vendor's notice.
+        if (phone) try {
         const buyerLink = await prepareBuyerCheckoutLink(req, channel.id, phone);
         const buyerContext = await buyerBundleContext(buyerLink.payload);
         const buyerPayload = buyerContext ? await buyerShippingPayload(buyerContext) : null;
         const additional = Boolean(buyerPayload && buyerPayload.items.length > 1);
-        const buyerName = buyerDisplayName(item);
-        const vendorName = vendor.name || item.vendorName || '업체';
         const itemSummary = buyerSmsItemSummary(additional && buyerContext ? [item] : buyerContext?.bundleItems || [item]);
-        const eventVersion = cleanText(item.updatedAt || item.createdAt || Date.now(), 80);
         const buyerTemplate = additional ? 'buyer_win_additional' : 'buyer_win_initial';
         const buyerDue = buyerPayload?.payment?.additionalDue || buyerPayload?.totals?.totalAmount || 0;
-        const buyerResult = await enqueueNotification(channel.id, {
+        buyerResult = await enqueueNotification(channel.id, {
             eventKey: `sale:${item.id}:${eventVersion}:buyer`,
             templateKey: buyerTemplate,
             transport: 'alimtalk', allowSmsFallback: false,
@@ -2175,6 +2177,10 @@ function createPlatformApi({
             },
             fallbackText: shortSms('낙찰 안내', buyerLink.url, itemSummary)
         });
+        } catch (error) {
+            logger.error?.('[platform-api] buyer sale notification preparation failed', channel.id, item.id, error.message);
+            buyerResult = { failed: true, error: error.message };
+        }
         let vendorResult = { skipped: 'missing_vendor_phone' };
         if (normalizePhone(vendor.phone) && vendorKey) {
             const vendorLink = await prepareVendorCheckoutLink(req, channel.id, vendorKey);
