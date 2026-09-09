@@ -736,6 +736,22 @@ test('missing buyer phone does not suppress vendor sale notice, including duplic
     assert.equal((await repository.getRecord('alpha','item','no-phone')).status,'sold');
 });
 
+test('deleting a selected lot clears the broadcast; live deletion is rejected', async () => {
+    const repository=new MemoryRepository();
+    await repository.upsertRecord('alpha','item',{id:'delete-me',lotNumber:1,name:'테스트',status:'live'});
+    await repository.upsertRecord('alpha','broadcast',{id:'state',activeItemId:'delete-me',mode:'live',page:2});
+    const api=createPlatformApi({repository});
+    const path='/api/platform/channels/alpha/items/delete-me';
+    assert.equal((await call(api,'DELETE',path)).status,409);
+    assert.ok(await repository.getRecord('alpha','item','delete-me'));
+    await repository.upsertRecord('alpha','item',{id:'delete-me',lotNumber:1,name:'테스트',status:'waiting'});
+    await repository.upsertRecord('alpha','broadcast',{id:'state',activeItemId:'delete-me',mode:'standby',page:2});
+    assert.equal((await call(api,'DELETE',path)).status,200);
+    assert.equal((await repository.getRecord('alpha','broadcast','state')).activeItemId,'');
+    assert.equal((await repository.getRecord('alpha','broadcast','state')).mode,'standby');
+    assert.equal((await call(createPlatformApi({repository}),'DELETE',path)).status,200);
+});
+
 test('notification delivery status is admin-only, channel-scoped, and privacy-minimized', async () => {
     const repository = new MemoryRepository();
     const records = [{

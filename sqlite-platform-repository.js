@@ -51,19 +51,28 @@ class SQLitePlatformRepository {
                 updated_at TEXT NOT NULL
             );
             CREATE INDEX IF NOT EXISTS platform_outbox_due_idx ON platform_outbox(next_attempt_at, updated_at);
+            CREATE TABLE IF NOT EXISTS platform_deleted_keys (key TEXT PRIMARY KEY);
         `);
+        if (!this.db.prepare('PRAGMA table_info(platform_outbox)').all().some(column => column.name === 'revision')) {
+            this.db.exec('ALTER TABLE platform_outbox ADD COLUMN revision INTEGER NOT NULL DEFAULT 0');
+        }
+        this.db.exec("INSERT OR IGNORE INTO platform_deleted_keys(key) SELECT key FROM platform_outbox WHERE operation='delete'");
+        this.db.exec('DELETE FROM platform_kv WHERE key IN (SELECT key FROM platform_deleted_keys)');
         this.statements = {
             get: this.db.prepare('SELECT key, value FROM platform_kv WHERE key = ?'),
             upsert: this.db.prepare(`INSERT INTO platform_kv(key,value,updated_at) VALUES(?,?,?)
                 ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at`),
             delete: this.db.prepare('DELETE FROM platform_kv WHERE key = ?'),
+            deleted: this.db.prepare('SELECT key FROM platform_deleted_keys WHERE key = ?'),
+            markDeleted: this.db.prepare('INSERT OR IGNORE INTO platform_deleted_keys(key) VALUES(?)'),
+            clearDeleted: this.db.prepare('DELETE FROM platform_deleted_keys WHERE key = ?'),
             listPrefix: this.db.prepare('SELECT key,value FROM platform_kv WHERE key LIKE ? ORDER BY key ASC'),
             enqueue: this.db.prepare(`INSERT INTO platform_outbox(key,operation,value,attempts,next_attempt_at,last_error,created_at,updated_at)
                 VALUES(?,?,?,0,0,'',?,?) ON CONFLICT(key) DO UPDATE SET operation=excluded.operation,value=excluded.value,
-                attempts=0,next_attempt_at=0,last_error='',updated_at=excluded.updated_at`),
-            due: this.db.prepare('SELECT key,operation,value,attempts FROM platform_outbox WHERE next_attempt_at <= ? ORDER BY updated_at ASC LIMIT ?'),
-            synced: this.db.prepare('DELETE FROM platform_outbox WHERE key = ?'),
-            failed: this.db.prepare('UPDATE platform_outbox SET attempts=?,next_attempt_at=?,last_error=?,updated_at=? WHERE key=?'),
+                attempts=0,next_attempt_at=0,last_error='',updated_at=excluded.updated_at,revision=platform_outbox.revision+1`),
+            due: this.db.prepare('SELECT key,operation,value,attempts,revision FROM platform_outbox WHERE next_attempt_at <= ? ORDER BY updated_at ASC LIMIT ?'),
+            synced: this.db.prepare('DELETE FROM platform_outbox WHERE key = ? AND revision = ?'),
+            failed: this.db.prepare('UPDATE platform_outbox SET attempts=?,next_attempt_at=?,last_error=?,updated_at=? WHERE key=? AND revision=?'),
             outboxCount: this.db.prepare('SELECT COUNT(*) AS count FROM platform_outbox')
         };
         if (this.mirror && this.mirrorWorkerEnabled) this.startOutboxWorker();
@@ -93,6 +102,8 @@ class SQLitePlatformRepository {
         this.transaction(() => {
             for (const row of rows) {
                 if (!row?.key || row.value === undefined || row.value === null) continue;
+                // A remote read can finish after a local edit/delete. Local state wins.
+                if (this.statements.deleted.get(String(row.key)) || this.statements.get.get(String(row.key))) continue;
                 this.statements.upsert.run(String(row.key), String(row.value), now);
             }
         });
@@ -125,29 +136,28 @@ class SQLitePlatformRepository {
     async getRowsByKeys(keys) {
         const local = keys.map((key) => this.statements.get.get(key)).filter(Boolean);
         const found = new Set(local.map((row) => row.key));
-        const missing = keys.filter((key) => !found.has(key));
+        const missing = keys.filter((key) => !found.has(key) && !this.statements.deleted.get(key));
         if (missing.length && this.mirror?.getRowsByKeys) {
             try {
                 const remote = await this.mirror.getRowsByKeys(missing);
                 this.cacheRows(remote);
-                local.push(...remote);
             } catch (error) {
                 this.lastMirrorError = String(error.message || error).slice(0, 200);
             }
         }
-        return local;
+        return keys.map(key => this.statements.get.get(key)).filter(Boolean);
     }
 
     async getRow(key) {
         const local = this.statements.get.get(key);
-        if (local || !this.mirror?.getRow) return local || null;
+        if (local || this.statements.deleted.get(key) || !this.mirror?.getRow) return local || null;
         try {
             const remote = await this.mirror.getRow(key);
             if (remote) this.cacheRows([remote]);
-            return remote || null;
+            return this.statements.get.get(key) || null;
         } catch (error) {
             this.lastMirrorError = String(error.message || error).slice(0, 200);
-            return null;
+            return this.statements.get.get(key) || null;
         }
     }
 
@@ -157,6 +167,7 @@ class SQLitePlatformRepository {
         this.transaction(() => {
             for (const row of rows) {
                 const value = String(row.value);
+                this.statements.clearDeleted.run(row.key);
                 this.statements.upsert.run(row.key, value, now);
                 this.enqueue(row.key, 'upsert', value);
             }
@@ -167,6 +178,7 @@ class SQLitePlatformRepository {
     async deleteRow(key) {
         this.transaction(() => {
             this.statements.delete.run(key);
+            this.statements.markDeleted.run(key);
             this.enqueue(key, 'delete');
         });
         await this.syncOutboxAfterMutation(1);
@@ -230,10 +242,10 @@ class SQLitePlatformRepository {
         try {
             const remote = await this.mirror.listRecords(channel, type);
             this.cacheRows(remote.map((record) => ({ key: channelKey(channel, type, record.id), value: JSON.stringify(record) })));
-            return remote;
+            return this.statements.listPrefix.all(`${prefix}%`).map(row => parseJson(row.value, null)).filter(Boolean);
         } catch (error) {
             this.lastMirrorError = String(error.message || error).slice(0, 200);
-            return local;
+            return this.statements.listPrefix.all(`${prefix}%`).map(row => parseJson(row.value, null)).filter(Boolean);
         }
     }
 
@@ -285,14 +297,14 @@ class SQLitePlatformRepository {
             try {
                 if (row.operation === 'delete') await this.mirror.deleteRow(row.key);
                 else await this.mirror.upsertRows([{ key: row.key, value: row.value }]);
-                this.statements.synced.run(row.key);
+                this.statements.synced.run(row.key, row.revision);
                 synced += 1;
                 this.lastMirrorError = '';
                 this.lastMirrorSyncAt = new Date().toISOString();
             } catch (error) {
                 const attempts = Number(row.attempts || 0) + 1;
                 const backoff = Math.min(3_600_000, 5_000 * (2 ** Math.min(attempts, 9)));
-                this.statements.failed.run(attempts, Date.now() + backoff, String(error.message || error).slice(0, 500), new Date().toISOString(), row.key);
+                this.statements.failed.run(attempts, Date.now() + backoff, String(error.message || error).slice(0, 500), new Date().toISOString(), row.key, row.revision);
                 this.lastMirrorError = String(error.message || error).slice(0, 200);
             }
         }

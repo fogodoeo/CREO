@@ -4596,6 +4596,10 @@ function createPlatformApi({
                 await withMutationLock(`channel:${channelId}`, async () => {
                     const data = await workspace(channelId);
                     const deletedRecord = data[segments[2]]?.find((record) => record.id === segments[3]) || null;
+                    if (type === 'item' && (deletedRecord?.status === 'live' || (data.broadcast?.activeItemId === segments[3] && data.broadcast?.mode === 'live'))) {
+                        replyJson(res, 409, { error: '진행 중인 경매는 종료하거나 대기로 전환한 후 삭제해 주세요.' });
+                        return;
+                    }
                     if(type==='shipment')await assertShipmentNotPending(channelId,deletedRecord);
                     if (type === 'vendor') {
                         if(await vendorDirectory.profileFor(channelId,segments[3])) {
@@ -4612,7 +4616,14 @@ function createPlatformApi({
                         replyJson(res, 409, { error: '연결된 배송 정보가 있어 개체를 삭제할 수 없습니다.' });
                         return;
                     }
-                    await repository.deleteRecord(channelId, type, segments[3]);
+                    const clearSelection = type === 'item' && data.broadcast?.activeItemId === segments[3];
+                    if (clearSelection) await repository.upsertRecord(channelId, 'broadcast', { ...data.broadcast, activeItemId: '', mode: 'standby' });
+                    try {
+                        await repository.deleteRecord(channelId, type, segments[3]);
+                    } catch (error) {
+                        if (clearSelection) await repository.upsertRecord(channelId, 'broadcast', data.broadcast);
+                        throw error;
+                    }
                     touchRecord(channelId, type, deletedRecord, null);
                     replyJson(res, 200, { deleted: true });
                 });

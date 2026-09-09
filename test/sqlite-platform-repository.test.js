@@ -33,6 +33,44 @@ class RecordingMirror extends ReadableMirror {
     }
 }
 
+test('deleted records cannot return from a stale mirror, including empty lists and restart', async t => {
+    const directory=fs.mkdtempSync(path.join(os.tmpdir(),'creo-delete-read-'));
+    t.after(()=>fs.rmSync(directory,{recursive:true,force:true}));
+    const dbPath=path.join(directory,'db.sqlite'),mirror=new ReadableMirror();
+    const key='creo_v2::alpha::shipment::one',record={id:'one',itemId:'test'};
+    mirror.rows.set(key,JSON.stringify(record));mirror.records.set('alpha:shipment',[record]);
+    mirror.records.set('beta:shipment',[record]);
+    let repo=new SQLitePlatformRepository({dbPath,mirror,durable:true,startWorker:false});
+    await repo.listRecords('alpha','shipment');
+    await repo.deleteRecord('alpha','shipment','one');
+    await repo.deleteRecord('alpha','shipment','one');
+    await repo.flushOutbox(); // Mirror still returns its stale snapshot even after acknowledging deletion.
+    repo.close();repo=new SQLitePlatformRepository({dbPath,mirror,durable:true,startWorker:false});
+    try {
+        assert.deepEqual(await repo.listRecords('alpha','shipment'),[]);
+        assert.equal(await repo.getRow(key),null);
+        assert.deepEqual(await repo.getRowsByKeys([key]),[]);
+        assert.equal((await repo.listRecords('beta','shipment')).length,1);
+        await repo.upsertRecord('alpha','shipment',{...record,itemId:'new'});
+        assert.equal((await repo.getRecord('alpha','shipment','one')).itemId,'new');
+    } finally {repo.close();}
+});
+
+for(const action of ['delete','update']) test(`late mirror reads cannot undo a local ${action}`,async t=>{
+    const directory=fs.mkdtempSync(path.join(os.tmpdir(),'creo-late-read-'));
+    t.after(()=>fs.rmSync(directory,{recursive:true,force:true}));
+    let release;const key='creo_v2::alpha::item::one';
+    const mirror={getRow:()=>new Promise(resolve=>{release=resolve;})};
+    const repo=new SQLitePlatformRepository({dbPath:path.join(directory,'db.sqlite'),mirror,durable:true,startWorker:false});
+    try {
+        const pending=repo.getRow(key);
+        if(action==='delete')await repo.deleteRow(key);else await repo.upsertRows([{key,value:'new'}]);
+        release({key,value:'old'});
+        const row=await pending;
+        assert.equal(row?.value,action==='delete'?undefined:'new');
+    } finally {repo.close();}
+});
+
 test('SQLite repository disables admin access when no secret is configured', async (t) => {
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'creo-default-admin-'));
     t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
@@ -50,6 +88,24 @@ test('SQLite repository disables admin access when no secret is configured', asy
     assert.equal(await repository.verifyAdmin('anything'), false);
     assert.equal((await repository.health()).adminConfigured, false);
     repository.close();
+});
+
+for(const fails of [false,true]) test(`mirror ${fails?'failure':'acknowledgement'} cannot discard a newer deletion`,async t=>{
+    const directory=fs.mkdtempSync(path.join(os.tmpdir(),'creo-mirror-order-'));
+    t.after(()=>fs.rmSync(directory,{recursive:true,force:true}));
+    let release;const deleted=[];
+    const mirror={upsertRows:()=>new Promise((resolve,reject)=>{release=()=>fails?reject(Error('offline')):resolve();}),deleteRow:async key=>deleted.push(key)};
+    const repo=new SQLitePlatformRepository({dbPath:path.join(directory,'db.sqlite'),mirror,durable:true,startWorker:false});
+    try {
+        await repo.upsertRows([{key:'entry',value:'old'}]);
+        const pending=repo.flushOutbox();
+        await repo.deleteRow('entry');
+        release();await pending;
+        assert.equal((await repo.health()).outboxPending,1);
+        await repo.flushOutbox();
+        assert.deepEqual(deleted,['entry']);
+        assert.equal((await repo.health()).outboxPending,0);
+    } finally {repo.close();}
 });
 
 test('SQLite repository persists channel-isolated records across restarts', async (t) => {
