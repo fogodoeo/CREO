@@ -1998,6 +1998,14 @@ function createPlatformApi({
         };
     }
 
+    async function organizerShippingSettlement(channelId, items, shipments, vendors) {
+        const key = `creo_organizer_shipping_bank::${channelId}`;
+        const rows = await repository.getRowsByKeys([key]);
+        let bank = {};
+        try { bank = JSON.parse(rows.find(row => row.key === key)?.value || '{}'); } catch (_) {}
+        return {bank, vendors:require('./shipping-settlement').summarizeShipping(items, shipments, vendors)};
+    }
+
     async function vendorCheckoutPayload(context) {
         const bundles = await vendorBuyerBundles(context);
         const buyers = await Promise.all(bundles.map(async bundle => ({...vendorBuyerPublicPayload(bundle),changePending:Boolean(await pendingCheckoutChange(bundle.context))})));
@@ -2027,6 +2035,7 @@ function createPlatformApi({
                 openCount: buyers.filter((buyer) => buyer.payment.status !== 'paid').length,
                 reportedCount: buyers.filter((buyer) => ['bank_transfer_reported', 'card_payment_reported'].includes(buyer.payment.status)).length
             },
+            shippingSettlement: await organizerShippingSettlement(context.channel.id, context.items, context.shipments, [context.vendor]),
             buyers
         };
     }
@@ -3129,6 +3138,26 @@ function createPlatformApi({
             const channel = catalog.channels[channelIndex];
             if (!channel) {
                 replyJson(res, 404, { error: '채널을 찾을 수 없습니다.' });
+                return true;
+            }
+
+            if (segments.length === 3 && segments[2] === 'organizer-shipping' && ['GET','PUT'].includes(method)) {
+                if (!await requireAdmin(req,res)) return true;
+                await withMutationLock(`channel:${channelId}`, async () => {
+                    const data = await workspace(channelId);
+                    const current = await organizerShippingSettlement(channelId,data.items,data.shipments,data.vendors);
+                    if (method === 'PUT') {
+                        const body = await readJson(req);
+                        if (String(body.expectedUpdatedAt || '') !== String(current.bank.updatedAt || '')) throw buyerInputError('계좌가 변경되었습니다. 새로고침 후 다시 저장해 주세요.',409);
+                        const bank = {bankName:cleanText(body.bankName,40),bankAccount:cleanText(body.bankAccount,80),bankHolder:cleanText(body.bankHolder,60)};
+                        if (!bank.bankName || !bank.bankHolder || !/^[0-9 -]{5,80}$/.test(bank.bankAccount)) throw buyerInputError('은행·계좌번호·예금주를 확인해 주세요.');
+                        bank.updatedAt = new Date().toISOString();
+                        await repository.upsertRows([{key:`creo_organizer_shipping_bank::${channelId}`,value:JSON.stringify(bank)}]);
+                        current.bank = bank;
+                        touchCheckout(channelId);
+                    }
+                    replyJson(res,200,{channel:{id:channel.id,name:channel.name},...current});
+                });
                 return true;
             }
 

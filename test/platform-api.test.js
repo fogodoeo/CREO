@@ -13,6 +13,21 @@ const {
 const { normalizeChannel } = require('../platform-core');
 const { createCrewartHouseService } = require('../crewart-house-service');
 
+test('organizer bank is admin-only, channel-scoped, persisted and rejects stale edits', async () => {
+    const repository = new MemoryRepository();
+    const api = createPlatformApi({repository});
+    const route='/api/platform/channels/alpha/organizer-shipping';
+    assert.equal((await call(api,'GET',route,null,'')).status,401);
+    assert.equal((await call(api,'PUT',route,{bankName:'은행',bankAccount:'1234567',bankHolder:'주관사'},'')).status,401);
+    const saved=await call(api,'PUT',route,{bankName:'은행',bankAccount:'1234567',bankHolder:'주관사'});
+    assert.equal(saved.status,200);
+    const fresh=await call(createPlatformApi({repository}),'GET',route);
+    assert.equal(fresh.json().bank.bankAccount,'1234567');
+    assert.equal((await call(api,'PUT',route,{bankName:'은행',bankAccount:'9999999',bankHolder:'주관사'})).status,409);
+    const publicChannel=await call(api,'GET','/api/platform/channels/alpha',null,'');
+    assert.equal(JSON.stringify(publicChannel.body).includes('1234567'),false);
+});
+
 test('stale full-item writes and transitions cannot restore an earlier sale', async () => {
     const repository = new MemoryRepository();
     await repository.upsertRecord('alpha', 'item', { id: 'one', lotNumber: 1, name: 'current', status: 'waiting', updatedAt: 'new', soldPrice: 0 });
