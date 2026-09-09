@@ -1,5 +1,5 @@
 'use strict';
-function summarizeShipping(items, shipments, vendors) {
+function shippingRows(items, shipments) {
     const sold = new Map(items.filter(i => i.status === 'sold').map(i => [i.id, i]));
     const latest = new Map();
     for (const s of shipments) {
@@ -8,8 +8,12 @@ function summarizeShipping(items, shipments, vendors) {
         const prev = latest.get(s.itemId);
         if (!prev || String(s.updatedAt || '') > String(prev.updatedAt || '')) latest.set(s.itemId, s);
     }
+    return [...latest.values()].filter(s => s.method === 'delivery' && !['cancelled','refunded'].includes(s.paymentStatus));
+}
+function summarizeShipping(items, shipments, vendors) {
+    const eligible = shippingRows(items, shipments);
     return vendors.map(v => {
-        const rows = [...latest.values()].filter(s => s.vendorId === v.id && s.method === 'delivery' && !['cancelled','refunded'].includes(s.paymentStatus));
+        const rows = eligible.filter(s => s.vendorId === v.id);
         const cost = s => Math.max(0, Math.round(Number(s.cost) || 0));
         return {vendorId:v.id, vendorName:v.name,
             totalAmount:rows.reduce((n,s) => n + cost(s), 0),
@@ -18,4 +22,17 @@ function summarizeShipping(items, shipments, vendors) {
             itemCount:rows.length};
     });
 }
-module.exports = {summarizeShipping};
+function summarizeCarriers(items, shipments, vendors) {
+    const vendorIds = new Set(vendors.map(v=>v.id));
+    const groups = new Map();
+    for (const s of shippingRows(items, shipments)) {
+        if (!vendorIds.has(s.vendorId)) continue;
+        const carrier = String(s.carrier || '').trim() || '배송업체 미지정';
+        if (!groups.has(carrier)) groups.set(carrier,{carrier,totalAmount:0,itemCount:0,vendorAmounts:Object.create(null)});
+        const row = groups.get(carrier),amount=Math.max(0,Math.round(Number(s.cost)||0));
+        row.totalAmount+=amount;row.itemCount++;
+        row.vendorAmounts[s.vendorId]=(row.vendorAmounts[s.vendorId]||0)+amount;
+    }
+    return [...groups.values()].sort((a,b)=>a.carrier.localeCompare(b.carrier,'ko'));
+}
+module.exports = {summarizeShipping,summarizeCarriers};

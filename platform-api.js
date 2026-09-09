@@ -3226,6 +3226,7 @@ function createPlatformApi({
                 await withMutationLock(`channel:${channelId}`, async () => {
                     const data = await workspace(channelId);
                     const current = await organizerShippingSettlement(channelId,data.items,data.shipments,data.vendors);
+                    current.carriers = require('./shipping-settlement').summarizeCarriers(data.items,data.shipments,data.vendors);
                     if (method === 'PUT') {
                         const body = await readJson(req);
                         if (String(body.expectedUpdatedAt || '') !== String(current.bank.updatedAt || '')) throw buyerInputError('계좌가 변경되었습니다. 새로고침 후 다시 저장해 주세요.',409);
