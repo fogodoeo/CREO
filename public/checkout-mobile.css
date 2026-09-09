@@ -65,7 +65,20 @@
 .sr-only { position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0; }
 .buyer-page .footer { max-width:520px;padding-left:20px;padding-right:20px; }
 .buyer-page main:has(~.footer[hidden]) { padding-bottom:28px; }
+/* Organizer remittance uses the same typography as the vendor's buyer cards. */
+.vendor-page { --vendor-amount-size:34px; }
+.vendor-page .row.total strong,.vendor-page .shipping-settlement .settlement-amount { font-family:inherit;font-size:var(--vendor-amount-size);font-weight:750;line-height:1.25;letter-spacing:-.6px;color:var(--ink);font-variant-numeric:tabular-nums;overflow-wrap:anywhere; }
+.vendor-page .shipping-settlement { padding:20px;border:0;border-radius:20px;background:#f5f6f8; }
+.vendor-page .shipping-settlement>.settlement-pair>b { font-size:18px;font-weight:700;line-height:1.5; }
+.vendor-page .shipping-settlement .settlement-status { font-size:12px;font-weight:600;font-style:normal;line-height:1.5;padding:5px 8px; }
+.vendor-page .shipping-settlement .settlement-primary { font-family:inherit;font-size:16px;font-weight:650;line-height:1.5;min-height:54px;padding:12px 16px;border-radius:14px;background:var(--blue); }
+.vendor-page .shipping-settlement .settlement-primary:disabled { background:#e5e8eb; }
+.vendor-page .shipping-settlement .settlement-bank { font-size:18px;font-weight:650;line-height:1.5;letter-spacing:0; }
+.vendor-page .shipping-settlement details .settlement-pair { font-size:13px; }
+.vendor-page .shipping-settlement details .settlement-pair b { font-weight:550; }
+.vendor-page .shipping-settlement #copy-organizer-bank { font-size:13px;font-weight:600;min-height:44px; }
 @media(max-width:360px) {
+  .vendor-page { --vendor-amount-size:30px; }
   :is(.buyer-page,.vendor-page) main { padding-left:16px;padding-right:16px; }
   :is(.buyer-page,.vendor-page) .top { padding-left:16px;padding-right:16px; }
   .vendor-head,.buyer-head { padding:16px 16px 0; }

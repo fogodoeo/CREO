@@ -1,10 +1,20 @@
 'use strict';
 const $=id=>document.getElementById(id), channelId=new URLSearchParams(location.search).get('channel')||'', esc=CreoPlatform.escapeHtml;
 const route='channels/'+encodeURIComponent(channelId)+'/organizer-shipping';
-let state, saving=false, dirty=false, bankRevision='';
+let state, saving=false, dirty=false, bankRevision='', editingBank=false;
 const money=n=>Number(n||0).toLocaleString('ko-KR')+'원';
 const date=s=>new Date(s).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
 const fields=['bankName','bankAccount','bankHolder','notificationPhone'];
+function renderBank(){
+ const bank=state.bank,ready=fields.every(k=>String(bank[k]||'').trim()),showForm=editingBank||!ready;
+ $('bank-title').textContent=ready?'배송비 받을 계좌':'배송비 받을 계좌 등록';
+ $('bank-intro').hidden=!showForm;$('bank-form').hidden=!showForm;$('bank-saved').hidden=showForm;
+ $('edit-bank').hidden=showForm;$('cancel-bank').hidden=!ready||!showForm;
+ $('save').textContent=ready?'변경 내용 저장':'계좌 등록하기';
+ $('bank-saved-owner').textContent=[bank.bankName,bank.bankHolder].filter(Boolean).join(' · ');
+ $('bank-saved-account').textContent=bank.bankAccount||'';$('bank-saved-phone').textContent=bank.notificationPhone||'';
+ if(!dirty){for(const k of fields)$(k).value=bank[k]||'';bankRevision=bank.updatedAt||'';}
+}
 function missingDestinationNotice(v){
  const items=v.missingDestinationItems||[];
  return items.length?`<details class="settlement-history"><summary><span class="settlement-status waiting">배송지 미입력 ${items.length}개체</span></summary>${items.map(i=>`<div class="settlement-pair"><b>${esc(i.name||(i.lotNumber?'#'+i.lotNumber:i.id))}</b><span class="settlement-muted">미입력</span></div>`).join('')}</details>`:'';
@@ -15,8 +25,7 @@ function render(){
  $('total').textContent=money(sum('remainingAmount'));$('all-total').textContent=money(sum('totalAmount'));$('received').textContent=money(sum('receivedAmount'));
  const missingCount=state.vendors.reduce((n,v)=>n+(v.missingDestinationItems||[]).length,0);
  $('missing-total').hidden=!missingCount;$('missing-total').textContent=`배송지 미입력 ${missingCount}개체 · 배송비 미확정`;
- $('bank-state').textContent=state.bank.bankAccount&&state.bank.notificationPhone?'등록됨':'등록 필요';
- if(!dirty){for(const k of fields)$(k).value=state.bank[k]||'';bankRevision=state.bank.updatedAt||'';}
+ renderBank();
  const pending=state.vendors.filter(v=>v.pendingReport);$('pending-count').textContent=pending.length;
  $('pending-section').hidden=!pending.length;
  $('pending').innerHTML=pending.map(v=>{const r=v.pendingReport;return `<article class="settlement-card"><div class="settlement-pair"><b>${esc(v.vendorName)}</b><span class="settlement-status waiting">확인 대기</span></div><div class="settlement-amount">${money(r.amount)}</div><div class="settlement-muted">${date(r.reportedAt)} 입금 접수</div><div class="settlement-muted">${esc(r.bank.bankName)} ${esc(r.bank.bankAccount)}</div><div class="settlement-actions"><button class="settlement-secondary" data-review="rejected" data-vendor="${esc(v.vendorId)}">미입금</button><button class="settlement-primary" data-review="confirmed" data-vendor="${esc(v.vendorId)}">입금 확인</button></div></article>`}).join('')||'<div class="settlement-empty">확인할 입금이 없어요</div>';
@@ -33,7 +42,9 @@ function render(){
 async function load(){try{if(!channelId)throw Error('채널 주소가 필요합니다.');state=await CreoPlatform.api(route);render();return true}catch(e){if(e.status===401){$('login').hidden=false;$('content').hidden=true}else $('message').textContent=e.message;return false}}
 $('login-form').onsubmit=async e=>{e.preventDefault();try{if(!await CreoPlatform.verifyAdmin($('password').value))throw Error('비밀번호를 확인해 주세요.');$('password').value='';$('message').textContent='';await load()}catch(err){$('message').textContent=err.message}};
 $('bank-form').oninput=()=>{dirty=true};
-$('bank-form').onsubmit=async e=>{e.preventDefault();if(saving)return;saving=true;$('save').disabled=true;try{const body={expectedUpdatedAt:bankRevision};for(const k of fields)body[k]=$(k).value.trim();await CreoPlatform.api(route,{method:'PUT',body:JSON.stringify(body)});dirty=false;await load();$('bank-settings').open=false;$('message').textContent='저장 완료'}catch(err){$('message').textContent=err.message}finally{saving=false;$('save').disabled=false}};
+$('edit-bank').onclick=()=>{if(saving)return;editingBank=true;renderBank();$('bankName').focus()};
+$('cancel-bank').onclick=()=>{if(saving)return;editingBank=false;dirty=false;renderBank();$('edit-bank').focus()};
+$('bank-form').onsubmit=async e=>{e.preventDefault();if(saving)return;saving=true;$('save').disabled=true;try{const body={expectedUpdatedAt:bankRevision};for(const k of fields)body[k]=$(k).value.trim();await CreoPlatform.api(route,{method:'PUT',body:JSON.stringify(body)});dirty=false;editingBank=false;await load();$('message').textContent='계좌 저장 완료'}catch(err){$('message').textContent=err.message}finally{saving=false;$('save').disabled=false}};
 $('refresh').onclick=()=>load();
 load();
-setInterval(()=>{if(!document.hidden&&!saving&&!dirty&&!document.querySelector('details[open]'))load()},15000);
+setInterval(()=>{if(!document.hidden&&!saving&&!dirty&&!editingBank&&!document.querySelector('details[open]'))load()},15000);
