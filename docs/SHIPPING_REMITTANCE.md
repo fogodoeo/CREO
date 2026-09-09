@@ -1,6 +1,8 @@
 # Organizer shipping remittance
 
-The organizer configures bank details and a notification phone per channel at `organizer-shipping.html?channel=...`. Only an authenticated operator can edit these fields or confirm receipt. The notification phone is excluded from vendor payloads.
+The organizer configures bank details and a notification phone through a dedicated `/o/<code>` portal. The operations vendor table includes a separate organizer role with link open/copy controls, including channels with no vendors. This role is not inserted into auction vendor records, counts or contribution calculations. Operators can still use `organizer-shipping.html?channel=...`. The notification phone is excluded from vendor payloads.
+
+An operator issues the organizer link through the admin-only `channels/:id/organizer-link` endpoint. A random 144-bit code lasts one year and is persisted per channel with a hashed lookup key. Repeated issuance returns the existing unexpired link under a channel mutation lock. The code grants only that channel's organizer summary, account editing and receipt review; it cannot issue links, access the general workspace, mutate auction items or access another channel. Expired/invalid links fail closed. The short portal resolves its channel from the code, not a supplied channel query. Future approved messaging templates can use this same URL; this feature does not send an invitation or Kakao message automatically.
 
 Vendor flow: outstanding shipping fees → copy bank account → “배송비 입금했어요” → confirm amount → pending organizer review. The full shipping fee includes buyer payments still pending. Reporting a transfer does not confirm a bank transaction. The organizer reviews a fixed amount and the bank account snapshot, then confirms receipt or marks it unpaid. Confirmed amounts reduce outstanding fees. Later fee changes leave the reported amount unchanged; overpayments remain visible.
 

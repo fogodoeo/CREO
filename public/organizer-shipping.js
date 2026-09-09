@@ -1,6 +1,9 @@
 'use strict';
-const $=id=>document.getElementById(id), channelId=new URLSearchParams(location.search).get('channel')||'', esc=CreoPlatform.escapeHtml;
-const route='channels/'+encodeURIComponent(channelId)+'/organizer-shipping';
+const $=id=>document.getElementById(id), esc=CreoPlatform.escapeHtml;
+const organizerCode=/^\/o\/([A-Za-z0-9_-]{24})$/.exec(location.pathname||'')?.[1]||new URLSearchParams(location.search).get('code')||'';
+let channelId=organizerCode?'':new URLSearchParams(location.search).get('channel')||'';
+let route='channels/'+encodeURIComponent(channelId)+'/organizer-shipping';
+function organizerApi(path,options={}){return CreoPlatform.api(path,{...options,headers:{...options.headers,...(organizerCode?{'X-Creo-Organizer':organizerCode}:{})}})}
 let state, saving=false, dirty=false, bankRevision='', editingBank=false;
 const money=n=>Number(n||0).toLocaleString('ko-KR')+'원';
 const date=s=>new Date(s).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
@@ -46,15 +49,15 @@ function render(){
  pending.forEach((v,index)=>{const note=document.createElement('small');note.className='settlement-muted';note.textContent=({queued:'문자 발송 대기',sending:'문자 발송 중',sent:'문자 접수 완료',failed:'문자 실패 · 재시도 대기',configuration_pending:'문자 발송 설정 확인 필요',expired:'문자 발송 만료'})[v.pendingReport.notificationStatus]||'';cards[index].querySelector('.settlement-actions').before(note)});
  document.querySelectorAll('[data-review]').forEach(button=>button.onclick=async()=>{
   if(saving)return;const v=state.vendors.find(v=>v.vendorId===button.dataset.vendor),r=v.pendingReport,action=button.dataset.review;
-  saving=true;try{if(!await confirmShippingSettlement(v.vendorName,money(r.amount),action==='confirmed'?'실제 입금 확인':'미입금 처리'))return;button.disabled=true;await CreoPlatform.api(route+'/review',{method:'POST',body:JSON.stringify({vendorId:v.vendorId,reportId:r.id,expectedAmount:r.amount,action})});await load();$('message').textContent=action==='confirmed'?'입금 확인 완료':'미입금 처리 완료'}catch(e){$('message').textContent=e.message}finally{saving=false;button.disabled=false}
+  saving=true;try{if(!await confirmShippingSettlement(v.vendorName,money(r.amount),action==='confirmed'?'실제 입금 확인':'미입금 처리'))return;button.disabled=true;await organizerApi(route+'/review',{method:'POST',body:JSON.stringify({vendorId:v.vendorId,reportId:r.id,expectedAmount:r.amount,action})});await load();$('message').textContent=action==='confirmed'?'입금 확인 완료':'미입금 처리 완료'}catch(e){$('message').textContent=e.message}finally{saving=false;button.disabled=false}
  });
 }
-async function load(){try{if(!channelId)throw Error('채널 주소가 필요합니다.');state=await CreoPlatform.api(route);render();return true}catch(e){if(e.status===401){$('login').hidden=false;$('content').hidden=true}else $('message').textContent=e.message;return false}}
+async function load(){try{if(!channelId&&organizerCode){const access=await organizerApi('organizer-access',{method:'POST',body:JSON.stringify({code:organizerCode})});channelId=access.channel.id;route='channels/'+encodeURIComponent(channelId)+'/organizer-shipping'}if(!channelId)throw Error('주관사 전용 링크를 확인해 주세요.');state=await organizerApi(route);render();return true}catch(e){if(e.status===401){$('login').hidden=!!organizerCode;$('content').hidden=true;if(organizerCode)$('message').textContent='링크가 만료되었어요. 운영자에게 새 링크를 요청해 주세요.'}else $('message').textContent=e.message;return false}}
 $('login-form').onsubmit=async e=>{e.preventDefault();try{if(!await CreoPlatform.verifyAdmin($('password').value))throw Error('비밀번호를 확인해 주세요.');$('password').value='';$('message').textContent='';await load()}catch(err){$('message').textContent=err.message}};
 $('bank-form').oninput=()=>{dirty=true};
 $('edit-bank').onclick=()=>{if(saving)return;editingBank=true;renderBank();$('bankName').focus()};
 $('cancel-bank').onclick=()=>{if(saving)return;editingBank=false;dirty=false;renderBank();$('edit-bank').focus()};
-$('bank-form').onsubmit=async e=>{e.preventDefault();if(saving)return;saving=true;$('save').disabled=true;try{const body={expectedUpdatedAt:bankRevision};for(const k of fields)body[k]=$(k).value.trim();await CreoPlatform.api(route,{method:'PUT',body:JSON.stringify(body)});dirty=false;editingBank=false;await load();$('message').textContent='계좌 저장 완료'}catch(err){$('message').textContent=err.message}finally{saving=false;$('save').disabled=false}};
+$('bank-form').onsubmit=async e=>{e.preventDefault();if(saving)return;saving=true;$('save').disabled=true;try{const body={expectedUpdatedAt:bankRevision};for(const k of fields)body[k]=$(k).value.trim();await organizerApi(route,{method:'PUT',body:JSON.stringify(body)});dirty=false;editingBank=false;await load();$('message').textContent='계좌 저장 완료'}catch(err){$('message').textContent=err.message}finally{saving=false;$('save').disabled=false}};
 $('refresh').onclick=()=>load();
 load();
 setInterval(()=>{if(!document.hidden&&!saving&&!dirty&&!editingBank&&!document.querySelector('details[open]'))load()},15000);

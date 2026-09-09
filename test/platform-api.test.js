@@ -14,6 +14,53 @@ const { normalizeChannel } = require('../platform-core');
 const { createCrewartHouseService } = require('../crewart-house-service');
 const {CheckoutNotificationService} = require('../checkout-notifications');
 
+test('organizer link is durable, channel scoped and cannot grant auction or vendor management access',async()=>{
+ const repository=new MemoryRepository(),route='/api/platform/channels/alpha/organizer-link';
+ let api=createPlatformApi({repository});
+ assert.equal((await call(api,'POST',route,{},'')).status,401);
+ const links=await Promise.all([call(api,'POST',route,{}),call(api,'POST',route,{})]);
+ assert.ok(links.every(r=>r.status===200));assert.equal(links[0].json().url,links[1].json().url);
+ const code=new URL(links[0].json().url).pathname.split('/').at(-1),headers={'x-creo-organizer':code};
+ assert.equal(code.length,24);assert.equal((await repository.listRecords('alpha','vendor')).length,0);
+ api=createPlatformApi({repository});
+ const access=await call(api,'POST','/api/platform/organizer-access',{code},'');assert.equal(access.status,200);assert.equal(access.json().channel.id,'alpha');
+ const settlement='/api/platform/channels/alpha/organizer-shipping';
+ assert.equal((await call(api,'GET',settlement,null,'',headers)).status,200);
+ assert.equal((await call(api,'GET',settlement.replace('alpha','beta'),null,'',headers)).status,401);
+ for(const path of ['/api/platform/channels/alpha/workspace','/api/platform/channels/alpha/organizer-link'])assert.equal((await call(api,'GET',path,null,'',headers)).status,401);
+ assert.equal((await call(api,'POST','/api/platform/channels/alpha/items',{record:{name:'blocked'}},'',headers)).status,401);
+ assert.equal((await call(api,'POST',route,{},'',headers)).status,401);
+ const saved=await call(api,'PUT',settlement,{bankName:'은행',bankAccount:'1234567',bankHolder:'주관사',notificationPhone:'01011112222'},'',headers);
+ assert.equal(saved.status,200,saved.body);
+ assert.equal((await call(api,'PUT',settlement,{bankName:'은행',bankAccount:'9999999',bankHolder:'주관사'},'',headers)).status,409);
+ const row=(await repository.getRowsByKeys(['creo_organizer_access::alpha']))[0];
+ await repository.upsertRows([{key:row.key,value:JSON.stringify({...JSON.parse(row.value),expiresAt:0})}]);
+ assert.equal((await call(api,'GET',settlement,null,'',headers)).status,401);
+ assert.equal((await call(api,'POST','/api/platform/organizer-access',{code},'')).status,401);
+});
+
+test('organizer credentials can review only their channel receipts; vendor credentials are rejected',async()=>{
+ const f=await shippingRemittanceFixture();
+ await call(f.api,'POST','/api/platform/vendor-checkout/report-shipping',f.body,'');
+ const link=(await call(f.api,'POST','/api/platform/channels/alpha/organizer-link',{})).json();
+ const code=new URL(link.url).pathname.split('/').at(-1),headers={'x-creo-organizer':code};
+ const payload=(await call(f.api,'GET',f.route,null,'',headers)).json(),v=payload.vendors.find(v=>v.vendorId==='v');
+ const review={vendorId:'v',reportId:v.pendingReport.id,expectedAmount:19000,action:'confirmed'};
+ assert.equal((await call(f.api,'POST',f.route+'/review',review,'',{'x-creo-organizer':f.code})).status,401);
+ assert.equal((await call(f.api,'POST',f.route.replace('alpha','beta')+'/review',review,'',headers)).status,401);
+ assert.equal((await call(f.api,'POST',f.route+'/review',review,'',headers)).status,200);
+ assert.equal((await call(f.api,'POST',f.route+'/review',review,'',headers)).json().duplicate,true);
+});
+
+test('organizer link storage failure does not issue a usable link and can be retried',async()=>{
+ const repository=new MemoryRepository(),api=createPlatformApi({repository,logger:{error(){}}});
+ const write=repository.upsertRows.bind(repository);repository.upsertRows=async()=>{throw Error('storage failure')};
+ const path='/api/platform/channels/alpha/organizer-link';
+ assert.equal((await call(api,'POST',path,{})).status,500);
+ repository.upsertRows=write;assert.equal((await call(api,'GET',path)).json().url,'');
+ assert.equal((await call(api,'POST',path,{})).status,200);
+});
+
 test('organizer shows a vendor with only unregistered destinations even when shipping fees are zero',async()=>{
  const repository=new MemoryRepository();
  await repository.upsertRecord('alpha','vendor',{id:'missing-v',name:'미입력 업체'});

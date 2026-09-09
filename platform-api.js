@@ -1056,6 +1056,13 @@ function createPlatformApi({
     if (!repository) throw new Error('repository is required');
     const testDeliveryChannels = new Set(String(checkoutTestDeliveryChannels).split(',').map(id => id.trim()).filter(id => /^checkout-test-[a-f0-9]{16}$/.test(id)));
     const vendorDirectory = require('./vendor-directory').createVendorDirectory(repository);
+    const organizerAccess = require('./organizer-access').createOrganizerAccess(repository);
+    async function requireOrganizer(req,res,channelId){
+        if(await isAdmin(req))return true;
+        const access=await organizerAccess.resolve(req.headers['x-creo-organizer']);
+        if(access?.channelId===channelId)return true;
+        replyJson(res,401,{error:'주관사 전용 링크를 다시 확인해 주세요.'});return false;
+    }
     const bannerLibrary = require('./shared-banner-library').createSharedBannerLibrary(repository);
     const sessionSecret = String(adminSessionSecret || crypto.randomBytes(32).toString('hex'));
     const sessionTtlMs = Math.max(60_000, Number(adminSessionTtlMs) || ADMIN_SESSION_TTL_MS);
@@ -3171,6 +3178,13 @@ function createPlatformApi({
                 return true;
             }
 
+            if (segments.length===1 && segments[0]==='organizer-access' && method==='POST') {
+                const body=await readJson(req),access=await organizerAccess.resolve(body.code);
+                const channel=access?(await loadCatalog()).channels.find(c=>c.id===access.channelId):null;
+                if(!channel){replyJson(res,401,{error:'주관사 전용 링크가 만료되었거나 올바르지 않습니다.'});return true;}
+                replyJson(res,200,{channel:{id:channel.id,name:channel.name},expiresAt:access.expiresAt});return true;
+            }
+
             if (segments[0] !== 'channels' || !segments[1]) {
                 replyJson(res, 404, { error: 'Not found' });
                 return true;
@@ -3198,8 +3212,16 @@ function createPlatformApi({
                 return true;
             }
 
+            if (segments.length===3 && segments[2]==='organizer-link' && ['GET','POST'].includes(method)) {
+                if(!await requireAdmin(req,res))return true;
+                await withMutationLock(`channel:${channelId}`,async()=>{
+                    const access=method==='POST'?await organizerAccess.issue(channelId):await organizerAccess.current(channelId);
+                    replyJson(res,200,{role:'organizer',channelId,url:access?new URL('/o/'+access.code,requestOrigin(req)).href:'',expiresAt:access?.expiresAt||null});
+                });return true;
+            }
+
             if (segments.length === 4 && segments[2] === 'organizer-shipping' && segments[3] === 'review' && method === 'POST') {
-                if (!await requireAdmin(req,res)) return true;
+                if (!await requireOrganizer(req,res,channelId)) return true;
                 const body = await readJson(req);
                 await withMutationLock(`channel:${channelId}`, async () => {
                     const key = `creo_organizer_shipping_ledger::${channelId}`;
@@ -3222,7 +3244,7 @@ function createPlatformApi({
             }
 
             if (segments.length === 3 && segments[2] === 'organizer-shipping' && ['GET','PUT'].includes(method)) {
-                if (!await requireAdmin(req,res)) return true;
+                if (!await requireOrganizer(req,res,channelId)) return true;
                 await withMutationLock(`channel:${channelId}`, async () => {
                     const data = await workspace(channelId);
                     const current = await organizerShippingSettlement(channelId,data.items,data.shipments,data.vendors);

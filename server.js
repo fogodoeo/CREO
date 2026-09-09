@@ -349,6 +349,9 @@ const server = http.createServer(async (req, res) => {
         }
 
         const buyerShippingShortMatch = /^\/s\/([A-Za-z0-9_-]{8,24})$/.exec(url.pathname);
+        if ((req.method === 'GET' || req.method === 'HEAD') && /^\/o\/[A-Za-z0-9_-]{24}$/.test(url.pathname)) {
+            if (await serveStatic(req,res,new URL('/organizer-shipping.html',url))) return;
+        }
         if ((req.method === 'GET' || req.method === 'HEAD') && buyerShippingShortMatch) {
             const buyerPageUrl = new URL('/buyer-shipping.html', url);
             if (await serveStatic(req, res, buyerPageUrl)) return;
