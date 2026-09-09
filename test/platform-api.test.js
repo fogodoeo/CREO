@@ -236,7 +236,7 @@ for (const enableDelivery of [false, true]) test(`checkout practice persists and
  for(let n=0;n<2;n++){const confirmed=await call(api,'POST','/api/platform/vendor-checkout/confirm-payment',confirmBody,'');assert.equal(confirmed.status,200,confirmed.body)}
  const paid=await call(api,'GET','/api/platform/buyer-shipping?code='+code,null,'');assert.equal(paid.json().payment.status,'paid');
  assert.equal(sends.length,enableDelivery?3:0);
- if(enableDelivery){assert.deepEqual(sends.map(e=>e.templateKey),['vendor_shipping_registered','vendor_payment_reported','buyer_payment_confirmed']);assert.ok(sends.every(e=>e.recipientPhone==='01049278600'&&e.channelId===result.channelId));}
+ if(enableDelivery){assert.deepEqual(sends.map(e=>e.templateKey),['vendor_payment_method_registered','vendor_payment_reported','buyer_payment_confirmed']);assert.ok(sends.every(e=>e.recipientPhone==='01049278600'&&e.channelId===result.channelId));}
  assert.equal((await repository.listRecords('alpha','shipment')).length,0);
  const listed=await call(api,'GET','/api/platform/channels?includeArchived=1');assert.ok(!listed.json().channels.some(c=>c.id===result.channelId));
 });
@@ -775,7 +775,7 @@ test('external card notice skips duplicate notification and vendor confirms with
     assert.equal(saved.status, 200, saved.body);
     assert.equal(saved.json().vendors[0].payment.status, 'card_link_pending');
     assert.equal(saved.json().vendors[0].contact.phone, '01077778888');
-    assert.equal([...cardEvents.values()][0].templateKey, 'vendor_shipping_registered');
+    assert.equal([...cardEvents.values()][0].templateKey, 'vendor_payment_method_registered');
     assert.equal([...cardEvents.values()][0].variables.구매자명, '구매자');
     const repeatedChoice = await call(api, 'POST', '/api/platform/buyer-shipping', {
         code: buyerCode, requestId: 'buyer-card-choice-2', destinationId: 'pickup-1',
@@ -855,7 +855,7 @@ test('vendor checkout link handles card URL, buyer report, confirmation, duplica
     assert.equal(saved.status, 200, saved.body);
     assert.equal(saved.json().vendors[0].payment.status, 'card_link_pending');
     assert.equal(saved.json().vendors[0].contact.phone, '01077778888');
-    assert.equal([...cardEvents.values()][0].templateKey, 'vendor_shipping_registered');
+    assert.equal([...cardEvents.values()][0].templateKey, 'vendor_payment_method_registered');
     assert.equal([...cardEvents.values()][0].variables.구매자명, '구매자');
     const repeatedChoice = await call(api, 'POST', '/api/platform/buyer-shipping', {
         code: buyerCode, requestId: 'buyer-card-choice-2', destinationId: 'pickup-1',

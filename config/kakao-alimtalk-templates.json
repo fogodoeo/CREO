@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "channelName": "옹동2",
   "categoryCode": "003001",
   "templates": [
@@ -33,9 +33,9 @@
     {
       "key": "vendor_payment_reported",
       "transport": "alimtalk",
-      "code": "UL_0883",
-      "name": "판매업체 수령정보 등록 알림",
-      "content": "[판매업체 업무 알림]\n#{업체명} 담당자님,\n귀 업체가 판매 등록한 개체의 구매자 수령 정보가 등록되었습니다.\n구매자: #{구매자명}\n\n업체 판매 현황에서 수령 정보를 확인해 주세요.",
+      "code": "UL_2144",
+      "name": "판매업체 구매자 결제 확인 요청",
+      "content": "[판매업체 업무 알림]\n#{업체명} 담당자님,\n#{구매자명}님이 결제 사실을 등록하고 확인을 요청했습니다.\n\n실제 입금 또는 카드 승인 내역을 확인한 후 업체 판매 현황에서 확인 처리해 주세요.",
       "buttonName": "업체 판매 현황",
       "link": "https://creok.onrender.com/w/#{업체접속코드}"
     },
@@ -69,11 +69,11 @@
     {
       "key": "buyer_card_link_ready",
       "transport": "alimtalk",
-      "name": "낙찰 내역 등록 안내",
-      "content": "#{구매자명}님, 라이브 방송에서 낙찰된 내역이 등록되었습니다.\n업체: #{업체명}\n개체: #{개체명}\n낙찰금액: #{낙찰금액}\n\n상세 내역은 아래 버튼에서 확인할 수 있습니다.",
+      "code": "UL_2139",
+      "name": "구매자 요청한 카드결제 안내 등록",
+      "content": "#{구매자명}님, #{업체명}에서 요청하신 카드결제 링크를 등록했습니다.\n\n낙찰 내역에서 등록된 결제 안내를 확인해 주세요.",
       "buttonName": "낙찰 내역 확인",
-      "link": "https://creok.onrender.com/d/#{접속코드}",
-      "code": "UL_0884"
+      "link": "https://creok.onrender.com/d/#{접속코드}"
     },
     {
       "key": "operator_checkout_change",
@@ -92,6 +92,15 @@
       "buttonName": "낙찰 내역 확인",
       "link": "https://creok.onrender.com/d/#{접속코드}",
       "code": "UL_0884"
+    },
+    {
+      "key": "vendor_payment_method_registered",
+      "transport": "alimtalk",
+      "code": "UL_2138",
+      "name": "판매업체 구매자 결제방식 등록 안내",
+      "content": "[판매업체 업무 알림]\n#{업체명} 담당자님,\n#{구매자명}님이 결제방식을 선택했습니다.\n결제방식: #{결제방식}\n\n업체 판매 현황에서 선택 내용을 확인해 주세요.",
+      "buttonName": "업체 판매 현황",
+      "link": "https://creok.onrender.com/w/#{업체접속코드}"
     }
   ]
 }

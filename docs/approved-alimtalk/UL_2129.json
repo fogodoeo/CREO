@@ -1,0 +1,29 @@
+{
+  "code": "UL_2129",
+  "title": "판매업체 구매자 정보 업데이트 안내",
+  "content": "[판매업체 업무 알림]\n#{업체명} 담당자님,\n#{구매자명}님이 거래 진행 정보를 등록했습니다.\n\n업체 판매 현황에서 등록 내용을 확인해 주세요.",
+  "buttons": [
+    {
+      "type": "AC",
+      "name": "채널추가"
+    },
+    {
+      "type": "WL",
+      "name": "업체 판매 현황",
+      "mobileUrl": "https://creok.onrender.com/w/#{업체접속코드}",
+      "pcUrl": "https://creok.onrender.com/w/#{업체접속코드}"
+    }
+  ],
+  "variables": [
+    "업체명",
+    "구매자명",
+    "업체접속코드"
+  ],
+  "audience": "vendor",
+  "intendedEvent": "구매자가 일반 거래 진행 정보를 저장한 사실을 업체에 안내하는 예비 템플릿",
+  "approvalStatus": "approved",
+  "approvalSource": "2026-09-10 알리고 템플릿관리 목록의 승인완료 및 코드별 템플릿 보기 팝업에서 본문·버튼·모바일/PC 링크 직접 대조.",
+  "aligoFallbackSms": "disabled",
+  "deploymentStatus": "보관 및 적용 계획만 작성. 실행 기본값·운영 환경변수는 아직 전환하지 않음.",
+  "adoptionDecision": "reserve"
+}

@@ -7,9 +7,10 @@ const codes = Object.freeze({
     vendor_win: 'UL_0882',
     vendor_shipping_registered: 'UL_0883',
     operator_checkout_change: 'UL_0883',
-    vendor_payment_reported: 'UL_0883',
+    vendor_payment_reported: 'UL_2144',
+    vendor_payment_method_registered: 'UL_2138',
     vendor_card_requested: 'UL_0883',
-    buyer_card_link_ready: 'UL_0884',
+    buyer_card_link_ready: 'UL_2139',
     buyer_checkout_change_reviewed: 'UL_0884',
     buyer_payment_confirmed: 'UK_9278'
 });

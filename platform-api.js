@@ -1546,8 +1546,8 @@ function createPlatformApi({
     }
     async function submitCheckoutChange(req, context, body) {
         if(!checkoutPaymentChanged(context,body)){
-            const result=await saveBuyerShipping(context,body);
-            return {...result,notification:result.duplicate?{duplicate:true}:await enqueueShippingRegistered(req,context)};
+            const result=await saveBuyerShipping(context,body,{notificationRequest:req});
+            return {...result,notification:result.duplicate?{duplicate:true}:result.notifications};
         }
         const requestId = cleanText(body.requestId,80);
         if (requestId.length < 8) throw buyerInputError('변경 요청값이 올바르지 않습니다.');
@@ -1611,8 +1611,12 @@ function createPlatformApi({
                 variables:{구매자명:record.buyerName,업체명:record.after.vendors.map(v=>v.name).join(', '),개체명:context.bundleItems.map(i=>i.name).join('·'),낙찰금액:`${context.bundleItems.reduce((n,i)=>n+Number(i.soldPrice||0),0).toLocaleString('ko-KR')}원`,접속코드:link.code},fallbackText:shortSms(state==='approved'?'변경 승인':'변경 반려',link.url)});
             if(state==='approved')for(const group of Checkout.groupItemsByVendor(context.bundleItems,context.vendors)){
                 if(!normalizePhone(group.vendor?.phone))continue;
+                const before=record.before.vendors.find(v=>v.key===group.key),after=record.after.vendors.find(v=>v.key===group.key);
+                const paymentChanged=Boolean(after?.method) && before?.method!==after.method;
+                const destinationChanged=['destinationId','pargeRegion','pargeShop'].some(key=>(record.before.selection?.[key]||'')!==(record.after.selection?.[key]||''));
+                if(!paymentChanged && !destinationChanged)continue;
                 const vendorLink=await prepareVendorCheckoutLink(req,channel.id,group.key);
-                events.push({eventKey:`checkout-change-approved:${id}:${group.key}`,templateKey:'vendor_shipping_registered',recipientRole:'vendor',recipientPhone:group.vendor.phone,transport:'alimtalk',variables:{업체명:group.vendor.name,구매자명:record.buyerName,업체접속코드:vendorLink.code},fallbackText:shortSms('수령정보 변경',vendorLink.url)});
+                events.push({eventKey:`checkout-change-approved:${id}:${group.key}`,templateKey:paymentChanged?'vendor_payment_method_registered':'vendor_shipping_registered',recipientRole:'vendor',recipientPhone:group.vendor.phone,transport:'alimtalk',variables:{업체명:group.vendor.name,구매자명:record.buyerName,업체접속코드:vendorLink.code,...(paymentChanged?{결제방식:after.method==='card'?'카드결제':'계좌이체'}:{})},fallbackText:shortSms(paymentChanged?'결제방식 등록':'수령정보 변경',vendorLink.url)});
             }
         }
         if(notificationService?.prepare && (!channel.id.startsWith('checkout-test-')||testDeliveryChannels.has(channel.id)))for(const event of events){
@@ -1626,6 +1630,7 @@ function createPlatformApi({
     }
 
     async function saveBuyerShipping(context, body = {}, options = {}) {
+        const previousNotices=shippingNoticeSnapshot(context);
         const requirePaymentMethod = options.requirePaymentMethod !== false;
         const responsePayload = options.responsePayload || buyerShippingPayload;
         const requestId = cleanText(body.requestId, 80);
@@ -1747,18 +1752,26 @@ function createPlatformApi({
                     destinationRevisionId: directDestinationEdit ? requestId : current.destinationRevisionId || '',
                     buyerRequestId: requestId
                 }, current);
-                saved.push(options.dryRun || directDestinationEdit ? record : await repository.upsertRecord(context.channel.id, 'shipment', record));
+                saved.push({...record,createdAt:current.createdAt||now,updatedAt:now});
             }
         }
         const bundleIds = new Set(context.bundleItems.map((item) => item.id));
         context.shipments = [...context.shipments.filter((shipment) => !bundleIds.has(shipment.itemId)), ...saved];
-        if(directDestinationEdit){
+        const notifications=[];
+        if(!options.dryRun){
             const rows=saved.map(s=>({key:channelKey(context.channel.id,'shipment',s.id),value:JSON.stringify({...s,createdAt:s.createdAt||now,updatedAt:now})}));
             if(replacedRequest)rows.push({key:channelKey(context.channel.id,'checkoutchange',replacedRequest.id),value:JSON.stringify({...replacedRequest,state:'approved',reviewedBy:'buyer',reviewedAt:now,updatedAt:now,reason:'결제 확인 전 배송지 직접 수정',after:changeView(await buyerShippingPayload(context))})});
+            const events=options.notificationRequest?await shippingRegistrationEvents(options.notificationRequest,context,previousNotices):[];
+            if(notificationService?.prepare && (!context.channel.id.startsWith('checkout-test-')||testDeliveryChannels.has(context.channel.id)))for(const event of events){
+                const prepared=await notificationService.prepare(context.channel.id,{...event,recipientPhone:context.channel.id.startsWith('checkout-test-')?'01049278600':event.recipientPhone,failureSmsFallback:true});
+                if(!prepared.duplicate)rows.push({key:channelKey(context.channel.id,'notification',prepared.record.id),value:JSON.stringify(prepared.record)});
+                notifications.push({configured:true,duplicate:prepared.duplicate,status:prepared.record.status});
+            }
             await repository.upsertRows(rows);
+            if(!notificationService?.prepare)for(const event of events)notifications.push(await enqueueNotification(context.channel.id,event));
         }
         if (!options.dryRun) { touchCheckout(context.channel.id); touchChannel(context.channel.id); }
-        return { duplicate: false, records: saved, payload: await responsePayload(context) };
+        return { duplicate: false, records: saved, notifications, payload: await responsePayload(context) };
     }
 
     async function reportBuyerPayment(context, vendorKey, requestId) {
@@ -2297,24 +2310,30 @@ function createPlatformApi({
         });
     }
 
-    async function enqueueShippingRegistered(req, context) {
+    function shippingNoticeSnapshot(context){
+        return new Map(Checkout.groupItemsByVendor(context.bundleItems,context.vendors).map(group=>{
+            const latest=Checkout.newestShipment(context.shipments.filter(s=>group.items.some(i=>i.id===s.itemId)))||{};
+            const savedIds=group.items.filter(i=>context.shipments.some(s=>s.itemId===i.id&&s.buyerSubmittedAt)).map(i=>i.id).sort();
+            return [group.key,{method:latest.paymentMethod||'',fingerprint:latest.buyerSubmittedAt?JSON.stringify([savedIds,latest.paymentRequestedAmount,latest.destinationId,latest.address,latest.pargeRegion,latest.pargeShop,latest.paymentMethod]):''}];
+        }));
+    }
+    async function shippingRegistrationEvents(req, context, previous) {
         const snapshot = await checkoutSnapshot(context);
+        const current=shippingNoticeSnapshot(context);
         const results = [];
         for (const group of snapshot.groups) {
             if (!normalizePhone(group.vendor?.phone)) continue;
+            if(previous.get(group.key)?.fingerprint===current.get(group.key)?.fingerprint)continue;
             const link = await prepareVendorCheckoutLink(req, context.channel.id, group.key);
             const latest = group.payment.latest || {};
-            const fingerprint = crypto.createHash('sha256').update(JSON.stringify([
-                group.items.map(item => [item.id, item.soldPrice]).sort(),
-                latest.destinationId, latest.address, latest.pargeRegion, latest.pargeShop, latest.paymentMethod, latest.destinationRevisionId || ''
-            ])).digest('hex').slice(0, 24);
-            results.push(await enqueueNotification(context.channel.id, {
-                eventKey: `shipping-registered:${sessionKey(context.anchorPhone)}:${group.key}:${fingerprint}`,
-                templateKey: 'vendor_shipping_registered', transport: 'alimtalk', allowSmsFallback: false,
+            const paymentChanged=Boolean(latest.paymentMethod)&&(!previous.get(group.key)?.fingerprint||previous.get(group.key)?.method!==latest.paymentMethod);
+            results.push({
+                eventKey: `shipping-registered:${sessionKey(context.anchorPhone)}:${group.key}:${latest.buyerRequestId}`,
+                templateKey: paymentChanged?'vendor_payment_method_registered':'vendor_shipping_registered', transport: 'alimtalk', allowSmsFallback: false,
                 recipientRole: 'vendor', recipientPhone: group.vendor.phone,
-                variables: { 업체명: group.vendor.name, 구매자명: buyerDisplayName(context.bundleItems[0]), 업체접속코드: link.code },
-                fallbackText: shortSms('수령정보 등록', link.url)
-            }));
+                variables: { 업체명: group.vendor.name, 구매자명: buyerDisplayName(context.bundleItems[0]), 업체접속코드: link.code,...(paymentChanged?{결제방식:latest.paymentMethod==='card'?'카드결제':'계좌이체'}:{}) },
+                fallbackText: shortSms(paymentChanged?'결제방식 등록':'수령정보 등록', link.url)
+            });
         }
         return results;
     }
@@ -2894,8 +2913,8 @@ function createPlatformApi({
                 await withMutationLock(`channel:${context.channel.id}`, async () => {
                     const freshContext = await buyerBundleContext(context.token);
                     if (!freshContext) throw buyerInputError('배송 정보를 다시 불러와 주세요.', 409);
-                    const result = await saveBuyerShipping(freshContext, body);
-                    const notifications = result.duplicate ? [] : await enqueueShippingRegistered(req, freshContext);
+                    const result = await saveBuyerShipping(freshContext, body,{notificationRequest:req});
+                    const notifications = result.notifications||[];
                     replyJson(res, 200, { ...result.payload, duplicate: result.duplicate, notifications }, buyerCorsHeaders(req));
                 });
                 return true;

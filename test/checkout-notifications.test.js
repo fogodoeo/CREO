@@ -201,9 +201,9 @@ test('all checkout events use Alimtalk including card link readiness', () => {
     const { codes } = require('../approved-alimtalk');
     for (const key of Object.keys(codes)) assert.equal(notificationTransport(key), 'alimtalk');
     assert.equal(notificationTransport('buyer_card_link_ready'), 'alimtalk');
-    assert.equal(codes.buyer_card_link_ready, 'UL_0884');
+    assert.equal(codes.buyer_card_link_ready, 'UL_2139');
     assert.equal(codes.vendor_shipping_registered, 'UL_0883');
-    assert.equal(codes.vendor_payment_reported, 'UL_0883');
+    assert.equal(codes.vendor_payment_reported, 'UL_2144');
     assert.equal(codes.buyer_payment_confirmed, 'UK_9278');
 });
 

@@ -5,7 +5,7 @@ const {SQLitePlatformRepository}=require('../sqlite-platform-repository');
 const {createPlatformApi}=require('../platform-api');
 const {normalizeChannel}=require('../platform-core');
 const {CheckoutNotificationService}=require('../checkout-notifications');
-async function fixture(t){
+async function fixture(t,{saveInitial=true}={}){
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'creo-change-'));
  const options={dbPath:path.join(dir,'test.sqlite'),durable:true,adminSecret:'secret',startWorker:false};
  let repo=new SQLitePlatformRepository(options),api;
@@ -23,13 +23,51 @@ async function fixture(t){
  const link=await call('POST','/api/platform/channels/alpha/buyer-shipping-link',{itemId:'item'});assert.equal(link.status,200,link.body);
  const code=link.json().code||new URL(link.json().url).pathname.split('/').at(-1);
  const selection={code,destinationId:'pickup-1',payments:[{vendorKey:'vendor',method:'bank_transfer'}]};
- const saved=await call('POST','/api/platform/buyer-shipping',{...selection,requestId:'initial-save'},'');assert.equal(saved.status,200,saved.body);
+ if(saveInitial){const saved=await call('POST','/api/platform/buyer-shipping',{...selection,requestId:'initial-save'},'');assert.equal(saved.status,200,saved.body);}
  t.after(()=>{repo.close();fs.rmSync(dir,{recursive:true,force:true});});
  return {call,code,selection,get repo(){return repo},async restart(){repo.close();repo=new SQLitePlatformRepository(options);restartApi();},
   request:(extra={})=>call('POST','/api/platform/buyer-shipping/change-request',{...selection,payments:[{vendorKey:'vendor',method:'card'}],destinationId:'pickup-2',requestId:'change-request-1',...extra},''),
   get:()=>call('GET','/api/platform/buyer-shipping?code='+code,null,''),
   review:(id,extra={})=>call('POST','/api/platform/channels/alpha/checkout-changes/'+id,{action:'approve',confirmedUnpaid:true,...extra})};
 }
+test('payment choice and its notice commit atomically, retry once and remain deduplicated after restart',async t=>{
+ const f=await fixture(t,{saveInitial:false}),body={...f.selection,requestId:'atomic-initial'};
+ const original=f.repo.upsertRows.bind(f.repo);
+ f.repo.upsertRows=async rows=>original(rows.some(r=>r.key.includes('::shipment::'))?[...rows,{key:{invalid:true},value:'transaction failure'}]:rows);
+ const failed=await f.call('POST','/api/platform/buyer-shipping',body,'');assert.equal(failed.status,500,failed.body);
+ assert.equal((await f.repo.listRecords('alpha','shipment')).length,0);assert.equal((await f.repo.listRecords('alpha','notification')).length,0);
+ f.repo.upsertRows=original;
+ const saved=await Promise.all([f.call('POST','/api/platform/buyer-shipping',body,''),f.call('POST','/api/platform/buyer-shipping',body,'')]);
+ for(const r of saved){assert.equal(r.status,200,r.body);assert.ok((r.json().notifications||[]).every(n=>!n.record));}
+ let notices=await f.repo.listRecords('alpha','notification');assert.equal(notices.length,1);assert.equal(notices[0].templateKey,'vendor_payment_method_registered');assert.equal(notices[0].variables['#{결제방식}'],'계좌이체');
+ await f.restart();
+ assert.equal((await f.call('POST','/api/platform/buyer-shipping',{...body,requestId:'same-choice-new-id'},'')).status,200);
+ assert.equal((await f.repo.listRecords('alpha','notification')).length,1);assert.equal((await f.repo.listRecords('beta','notification')).length,0);
+});
+test('combined choice sends one vendor notice and only approved method changes notify again',async t=>{
+ const f=await fixture(t),id=(await f.request()).json().changeRequest.id;
+ const methodNotices=async()=> (await f.repo.listRecords('alpha','notification')).filter(n=>n.templateKey==='vendor_payment_method_registered');
+ assert.equal((await methodNotices()).length,1,'pending request must not claim a method change');
+ const original=f.repo.upsertRows.bind(f.repo);
+ f.repo.upsertRows=async rows=>original(rows.some(r=>r.key.includes('checkoutchange'))?[...rows,{key:{invalid:true},value:'failure'}]:rows);
+ assert.equal((await f.review(id)).status,500);assert.equal((await methodNotices()).length,1);
+ f.repo.upsertRows=original;assert.equal((await f.review(id)).status,200);assert.equal((await f.review(id)).json().duplicate,true);
+ const notices=await methodNotices();assert.equal(notices.length,2);assert.equal(notices.at(-1).variables['#{결제방식}'],'카드결제');
+ assert.equal((await f.repo.listRecords('alpha','notification')).filter(n=>n.templateKey==='vendor_shipping_registered').length,0,'combined destination/payment change uses one notice');
+ const next=(await f.request({destinationId:'pickup-2',payments:[{vendorKey:'vendor',method:'bank_transfer'}],requestId:'reject-next-method'})).json().changeRequest.id;
+ assert.equal((await f.review(next,{action:'reject',reason:'기존 방식 유지'})).status,200);assert.equal((await methodNotices()).length,2);
+});
+test('new vendor choices notify only that vendor and additional items do not repeat the method notice',async t=>{
+ const f=await fixture(t);
+ await f.repo.upsertRecord('alpha','vendor',{id:'second',name:'다른업체',phone:'01033334444',paymentMethods:['bank_transfer','card']});
+ await f.repo.upsertRecord('alpha','item',{...(await f.repo.getRecord('alpha','item','item')),id:'second-item',lotNumber:2,vendorId:'second',vendorName:'다른업체'});
+ const body={...f.selection,requestId:'new-vendor-choice',payments:[...f.selection.payments,{vendorKey:'second',method:'card'}]};
+ assert.equal((await f.call('POST','/api/platform/buyer-shipping',body,'')).status,200);
+ let notices=await f.repo.listRecords('alpha','notification');assert.equal(notices.length,2);assert.equal(notices.find(n=>n.recipientPhone==='01033334444').variables['#{결제방식}'],'카드결제');
+ await f.repo.upsertRecord('alpha','item',{...(await f.repo.getRecord('alpha','item','item')),id:'added-item',lotNumber:3});
+ assert.equal((await f.call('POST','/api/platform/buyer-shipping',{...body,requestId:'additional-item-save'},'')).status,200);
+ notices=await f.repo.listRecords('alpha','notification');assert.equal(notices.length,3);assert.equal(notices.filter(n=>n.templateKey==='vendor_payment_method_registered').length,2);assert.equal(notices.find(n=>n.templateKey==='vendor_shipping_registered').recipientPhone,'01011112222');
+});
 test('change request is durable, isolated, idempotent, and applies only on authenticated approval',async t=>{
  const f=await fixture(t),before=await f.repo.listRecords('alpha','shipment');
  const results=await Promise.all([f.request(),f.request()]);for(const r of results)assert.equal(r.status,200,r.body);
@@ -132,7 +170,7 @@ test('destination changes apply immediately, survive restart, and notify vendor 
  assert.equal((await f.get()).json().selection.destinationId,'pickup-2');assert.equal((await f.repo.listRecords('alpha','checkoutchange')).length,0);
  await f.restart();assert.equal((await f.get()).json().selection.destinationId,'pickup-2');
  assert.equal((await f.call('POST','/api/platform/buyer-shipping',{...f.selection,requestId:'return-destination'},'')).status,200);
- const notifications=await f.repo.listRecords('alpha','notification');assert.equal(notifications.filter(n=>n.templateKey==='vendor_shipping_registered').length,3);assert.equal(notifications.filter(n=>n.recipientRole==='operator').length,0);
+ const notifications=await f.repo.listRecords('alpha','notification');assert.equal(notifications.filter(n=>n.templateKey==='vendor_shipping_registered').length,2);assert.equal(notifications.filter(n=>n.templateKey==='vendor_payment_method_registered').length,1);assert.equal(notifications.filter(n=>n.recipientRole==='operator').length,0);
 });
 test('reported bank payment is preserved on destination edit and changed fees require an exact amount review',async t=>{
  const f=await fixture(t);

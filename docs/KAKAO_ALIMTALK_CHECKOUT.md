@@ -35,7 +35,7 @@
 
 ## 발송 수단 분리
 
-원본 분류표는 `config/kakao-alimtalk-templates.json`이다. 결제 페이지나 업체 처리 페이지로 이동해야 하는 첫 5개 이벤트는 문자이며 카카오 템플릿 승인을 요청하지 않는다.
+아래 문자 중심 분류는 초기 설계 기록이며 현재 발송 방식과 다르다. 현재 기본 매핑은 `approved-alimtalk.js`, 승인 원문 및 2026-09-10 신규 승인 적용 계획은 [알림톡 적용표](approved-alimtalk/APPLICATION_MAP.md)를 기준으로 확인한다. `config/kakao-alimtalk-templates.json`도 운영 전환 시 함께 갱신해야 한다.
 
 1. `buyer_win_initial`: 문자 · 최초 낙찰 및 배송·결제 페이지
 2. `buyer_win_additional`: 문자 · 추가 낙찰 및 추가 결제 페이지

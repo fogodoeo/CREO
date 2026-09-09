@@ -1,0 +1,30 @@
+{
+  "code": "UL_2138",
+  "title": "판매업체 구매자 결제방식 등록 안내",
+  "content": "[판매업체 업무 알림]\n#{업체명} 담당자님,\n#{구매자명}님이 결제방식을 선택했습니다.\n결제방식: #{결제방식}\n\n업체 판매 현황에서 선택 내용을 확인해 주세요.",
+  "buttons": [
+    {
+      "type": "AC",
+      "name": "채널추가"
+    },
+    {
+      "type": "WL",
+      "name": "업체 판매 현황",
+      "mobileUrl": "https://creok.onrender.com/w/#{업체접속코드}",
+      "pcUrl": "https://creok.onrender.com/w/#{업체접속코드}"
+    }
+  ],
+  "variables": [
+    "업체명",
+    "구매자명",
+    "결제방식",
+    "업체접속코드"
+  ],
+  "audience": "vendor",
+  "intendedEvent": "구매자의 최초 결제방식 저장 또는 실제 반영된 결제방식 변경",
+  "approvalStatus": "approved",
+  "approvalSource": "2026-09-10 알리고 템플릿관리 목록의 승인완료 및 코드별 템플릿 보기 팝업에서 본문·버튼·모바일/PC 링크 직접 대조.",
+  "aligoFallbackSms": "disabled",
+  "deploymentStatus": "2026-09-10 예약 작업에서 실행 기본값과 API 이벤트 연결. 배포된 실제 코드는 health의 checkoutNotifications.templates에서 확인.",
+  "adoptionDecision": "implemented"
+}

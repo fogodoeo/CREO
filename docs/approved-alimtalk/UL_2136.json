@@ -1,0 +1,29 @@
+{
+  "code": "UL_2136",
+  "title": "구매자 거래 정보 등록 안내",
+  "content": "#{구매자명}님, #{업체명}에서 거래 진행 정보를 등록했습니다.\n\n낙찰 내역에서 등록 내용을 확인해 주세요.",
+  "buttons": [
+    {
+      "type": "AC",
+      "name": "채널추가"
+    },
+    {
+      "type": "WL",
+      "name": "낙찰 내역 확인",
+      "mobileUrl": "https://creok.onrender.com/d/#{접속코드}",
+      "pcUrl": "https://creok.onrender.com/d/#{접속코드}"
+    }
+  ],
+  "variables": [
+    "구매자명",
+    "업체명",
+    "접속코드"
+  ],
+  "audience": "buyer",
+  "intendedEvent": "업체가 해당 구매자의 일반 거래 진행 정보를 등록한 사실을 구매자에게 안내하는 예비 템플릿",
+  "approvalStatus": "approved",
+  "approvalSource": "2026-09-10 알리고 템플릿관리 목록의 승인완료 및 코드별 템플릿 보기 팝업에서 본문·버튼·모바일/PC 링크 직접 대조.",
+  "aligoFallbackSms": "disabled",
+  "deploymentStatus": "보관 및 적용 계획만 작성. 실행 기본값·운영 환경변수는 아직 전환하지 않음.",
+  "adoptionDecision": "reserve"
+}

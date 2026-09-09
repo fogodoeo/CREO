@@ -20,6 +20,7 @@ const TEMPLATE_KEYS = Object.freeze([
     'operator_checkout_change',
     'organizer_shipping_reported',
     'vendor_payment_reported',
+    'vendor_payment_method_registered',
     'vendor_card_requested',
     'buyer_card_link_ready',
     'buyer_checkout_change_reviewed',
@@ -181,6 +182,7 @@ class AligoNotificationProvider {
     status() {
         const templates = Object.fromEntries(TEMPLATE_KEYS.map((key) => [key, {
             transport: notificationTransport(key),
+            code: this.templates[key]?.code || null,
             ...this.readiness(key, notificationTransport(key))
         }]));
         return {
