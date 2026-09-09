@@ -12,6 +12,7 @@ function summarizeShipping(items, shipments, vendors) {
         const rows = [...latest.values()].filter(s => s.vendorId === v.id && s.method === 'delivery' && !['cancelled','refunded'].includes(s.paymentStatus));
         const cost = s => Math.max(0, Math.round(Number(s.cost) || 0));
         return {vendorId:v.id, vendorName:v.name,
+            totalAmount:rows.reduce((n,s) => n + cost(s), 0),
             collectedAmount:rows.filter(s => s.paymentStatus === 'paid').reduce((n,s) => n + cost(s), 0),
             pendingAmount:rows.filter(s => s.paymentStatus !== 'paid').reduce((n,s) => n + cost(s), 0),
             itemCount:rows.length};
