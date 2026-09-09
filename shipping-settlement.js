@@ -1,5 +1,5 @@
 'use strict';
-function shippingRows(items, shipments) {
+function latestItemShipments(items, shipments) {
     const sold = new Map(items.filter(i => i.status === 'sold').map(i => [i.id, i]));
     const latest = new Map();
     for (const s of shipments) {
@@ -8,7 +8,10 @@ function shippingRows(items, shipments) {
         const prev = latest.get(s.itemId);
         if (!prev || String(s.updatedAt || '') > String(prev.updatedAt || '')) latest.set(s.itemId, s);
     }
-    return [...latest.values()].filter(s => s.method === 'delivery' && !['cancelled','refunded'].includes(s.paymentStatus));
+    return latest;
+}
+function shippingRows(items, shipments) {
+    return [...latestItemShipments(items,shipments).values()].filter(s => s.method === 'delivery' && !['cancelled','refunded'].includes(s.paymentStatus));
 }
 function summarizeShipping(items, shipments, vendors) {
     const eligible = shippingRows(items, shipments);
@@ -35,4 +38,17 @@ function summarizeCarriers(items, shipments, vendors) {
     }
     return [...groups.values()].sort((a,b)=>a.carrier.localeCompare(b.carrier,'ko'));
 }
-module.exports = {summarizeShipping,summarizeCarriers};
+function summarizeMissingDestinations(items, shipments, vendors) {
+    const latest = latestItemShipments(items,shipments);
+    return vendors.map(v=>({vendorId:v.id,missingDestinationItems:items.filter(item=>{
+        if(item.status!=='sold'||item.vendorId!==v.id)return false;
+        const s=latest.get(item.id);
+        if(s&&['cancelled','refunded'].includes(s.paymentStatus))return false;
+        if(!s)return true;
+        // A saved pickup location is complete; payment timestamps and zero fees are irrelevant.
+        if(s.method==='pickup')return !String(s.address||s.destinationId||'').trim();
+        if(s.method==='delivery')return !(String(s.address||'').trim()||(String(s.pargeRegion||'').trim()&&String(s.pargeShop||'').trim()));
+        return true;
+    }).sort((a,b)=>(Number(a.lotNumber)||0)-(Number(b.lotNumber)||0)||String(a.id).localeCompare(String(b.id))).map(item=>({id:item.id,name:item.name||'',lotNumber:Number(item.lotNumber)||0}))}));
+}
+module.exports = {summarizeShipping,summarizeCarriers,summarizeMissingDestinations};

@@ -1,5 +1,30 @@
 const test=require('node:test'), assert=require('node:assert/strict');
-const {summarizeShipping,summarizeCarriers}=require('../shipping-settlement');
+const {summarizeShipping,summarizeCarriers,summarizeMissingDestinations}=require('../shipping-settlement');
+
+test('missing destinations include unsaved sold items and empty placeholders, but not saved pickup or free delivery',()=>{
+ const items=['absent','empty','pickup','delivery','paid-empty','waiting','cancelled'].map((id,i)=>({id,name:id,vendorId:'v',lotNumber:i+1,status:['waiting','cancelled'].includes(id)?id:'sold'}));
+ const shipments=[
+  {itemId:'empty',vendorId:'v',method:'delivery',cost:0},
+  {itemId:'pickup',vendorId:'v',method:'pickup',destinationId:'pickup-1',cost:0},
+  {itemId:'delivery',vendorId:'v',method:'delivery',address:'수도권 (테스트점)',cost:0,paymentStatus:'pending'},
+  {itemId:'paid-empty',vendorId:'v',method:'delivery',paymentStatus:'paid',cost:0}
+ ];
+ const result=summarizeMissingDestinations(items,shipments,[{id:'v'},{id:'other'}]);
+ assert.deepEqual(result[0].missingDestinationItems.map(i=>i.id),['absent','empty','paid-empty']);
+ assert.deepEqual(result[1].missingDestinationItems,[]);
+ assert.deepEqual(Object.keys(result[0].missingDestinationItems[0]).sort(),['id','lotNumber','name']);
+});
+test('missing destination uses the latest matching vendor shipment and clears after address registration',()=>{
+ const items=[{id:'a',name:'A01',vendorId:'v',status:'sold'},{id:'b',vendorId:'v',status:'sold'}];
+ const rows=[{itemId:'a',vendorId:'v',method:'delivery',address:'이전 배송지',updatedAt:'1'},
+ {itemId:'a',vendorId:'v',method:'delivery',address:'',updatedAt:'2'},
+ {itemId:'a',vendorId:'other',method:'delivery',address:'다른 업체',updatedAt:'9'},
+ {itemId:'b',vendorId:'v',method:'delivery',paymentStatus:'refunded'}];
+ const read=()=>summarizeMissingDestinations(items,rows,[{id:'v'}])[0].missingDestinationItems;
+ assert.equal(read().length,1);assert.equal(read().length,1);
+ rows.push({itemId:'a',vendorId:'v',method:'delivery',pargeRegion:'수도권',pargeShop:'테스트점',updatedAt:'3'});
+ assert.deepEqual(read(),[]);
+});
 test('organizer totals use paid allocated shipping fees, not auction prices or bundle totals',()=>{
  const items=['a','b','c','d'].map(id=>({id,vendorId:'v',status:'sold'}));
  const shipments=[{itemId:'a',vendorId:'v',method:'delivery',cost:3500,paymentStatus:'paid'},

@@ -10,6 +10,8 @@ Storage: private channel configuration rows `creo_organizer_shipping_bank::<chan
 
 The organizer view prioritizes receipts from vendors: expected total, received amount and outstanding amount are visible for every vendor without expanding a card. Buyer payment states are omitted from this page. Carrier totals group the same allocated shipment fees, regardless of buyer payment state. They provide a registered-fee breakdown, not a record of transfers made to carriers or independent carrier invoices. Receiving money from a vendor never reduces these carrier totals. Unknown carrier names remain explicitly unassigned.
 
+The organizer header has no operations-page link. Vendors with sold items lacking a destination stay visible even with zero recorded shipping fees. A badge lists the affected item names; the page notes that shipping fees remain undetermined. Saved pickup locations and free deliveries are not considered missing. This is derived from each item's newest vendor-matching shipment, without changing shipment data, receipts or fee totals. Missing-destination item details are added only to the authenticated organizer response.
+
 Design references: [Daangn SEED](https://seed-design.io/) for consistent components and [Toss's internal-tool design process](https://toss.tech/article/1st-product-designer-tools) for removing repetitive work. Amounts precede actions; account settings and detailed breakdowns are collapsible; completed vendor cards compact. These are design references, not a claim of conformance to a Toss specification.
 
 Risk: release (persistent settlement history, new SMS event, public vendor payload).

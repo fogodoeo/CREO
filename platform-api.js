@@ -3227,6 +3227,8 @@ function createPlatformApi({
                     const data = await workspace(channelId);
                     const current = await organizerShippingSettlement(channelId,data.items,data.shipments,data.vendors);
                     current.carriers = require('./shipping-settlement').summarizeCarriers(data.items,data.shipments,data.vendors);
+                    const missing = require('./shipping-settlement').summarizeMissingDestinations(data.items,data.shipments,data.vendors);
+                    current.vendors = current.vendors.map(v=>({...v,missingDestinationItems:missing.find(row=>row.vendorId===v.vendorId)?.missingDestinationItems||[]}));
                     if (method === 'PUT') {
                         const body = await readJson(req);
                         if (String(body.expectedUpdatedAt || '') !== String(current.bank.updatedAt || '')) throw buyerInputError('계좌가 변경되었습니다. 새로고침 후 다시 저장해 주세요.',409);

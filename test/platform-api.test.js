@@ -14,6 +14,22 @@ const { normalizeChannel } = require('../platform-core');
 const { createCrewartHouseService } = require('../crewart-house-service');
 const {CheckoutNotificationService} = require('../checkout-notifications');
 
+test('organizer shows a vendor with only unregistered destinations even when shipping fees are zero',async()=>{
+ const repository=new MemoryRepository();
+ await repository.upsertRecord('alpha','vendor',{id:'missing-v',name:'미입력 업체'});
+ await repository.upsertRecord('alpha','item',{id:'missing-i',name:'B03',vendorId:'missing-v',status:'sold',lotNumber:6,winnerPhone:'01012345678'});
+ await repository.upsertRecord('beta','item',{id:'other-i',name:'다른 채널',vendorId:'missing-v',status:'sold'});
+ const api=createPlatformApi({repository});
+ const route='/api/platform/channels/alpha/organizer-shipping';
+ assert.equal((await call(api,'GET',route,null,'')).status,401);
+ let v=(await call(api,'GET',route)).json().vendors[0];
+ assert.equal(v.totalAmount,0);assert.equal(v.itemCount,0);
+ assert.deepEqual(v.missingDestinationItems,[{id:'missing-i',name:'B03',lotNumber:6}]);
+ await repository.upsertRecord('alpha','shipment',{id:'s',itemId:'missing-i',vendorId:'missing-v',method:'pickup',address:'서울 직수령',cost:0});
+ v=(await call(createPlatformApi({repository}),'GET',route)).json().vendors[0];
+ assert.deepEqual(v.missingDestinationItems,[]);assert.equal(v.totalAmount,0);
+});
+
 async function shippingRemittanceFixture(){
  const repository=new MemoryRepository();
  await repository.upsertRecord('alpha','vendor',{id:'v',name:'아주긴업체이름'.repeat(10),phone:'01011112222'});
