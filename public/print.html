@@ -15,7 +15,7 @@
     <script src="channel-adapters.js?v=20260823-channel-isolation-v3"></script>
     <script src="operation-channel.js?v=20260904-v1"></script>
     <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
-    <script src="print-shipping-summary.js?v=20260903-winner-identity-v2"></script>
+    <script src="print-shipping-summary.js?v=20260909-label-bundles"></script>
     <script src="google-sheets-export.js?v=20260831-google-create-v1"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
@@ -502,6 +502,15 @@
         .label-item .label-buyer { color: #0f172a; font-weight: 800; }
         .label-item .label-payment { justify-self:end; padding: 5px 8px; border-radius: 999px; background:#fff7ed; color:#c2410c; font-size:11px; font-weight:850; }
         .label-item .label-payment.is-paid { background:#ecfdf5; color:#047857; }
+        .label-item .label-bundle-info { grid-column:2 / -1; white-space:normal; overflow:visible; line-height:1.6; color:#334155; }
+        .label-bundle-info b { color:#1d4ed8; }
+        .label-bundle-info em { color:#b45309; font-style:normal; font-weight:800; }
+        .label-preview-bundle { margin-top:12px; padding:12px; background:#eff6ff; color:#1e293b; border-radius:10px; font-size:14px; line-height:1.7; overflow-wrap:anywhere; }
+        .label-paper.has-bundle { grid-template-rows:22% 24% 17% 17% 10% 10%; }
+        .label-paper.has-bundle .label-paper-header { font-size:32px; }
+        .label-paper.has-bundle .label-paper-destination { font-size:22px; }
+        .label-paper.has-bundle .label-paper-destination.is-long { font-size:16px; }
+        .label-paper-detail { font-size:12px; font-weight:800; line-height:1.1; overflow-wrap:anywhere; }
         .label-empty { padding: 52px 18px; border:1px dashed #cbd5e1; border-radius:12px; color:#64748b; text-align:center; }
         .label-printer-status { display:inline-flex; align-items:center; gap:6px; padding:6px 9px; border-radius:8px; background:#f1f5f9; color:#475569; font-size:12px; font-weight:800; }
         .label-printer-status.is-ready { background:#ecfdf5; color:#047857; }
@@ -1195,6 +1204,7 @@
                     && Boolean(shippingLabelDestination(it));
             });
             window._shippingLabelItems = eligible;
+            window._shippingLabelBundles = CreoPrintShippingSummary.labelBundles(eligible);
             window._shippingLabelPreviewIndex = null;
             var list = document.getElementById('label-item-list');
             if (!eligible.length) {
@@ -1213,9 +1223,20 @@
                     + '<span class="label-phone">' + escapePrintHtml(fmtPhone(winner.phone)) + '</span>'
                     + '<span class="label-destination">' + escapePrintHtml(shippingLabelDestination(it)) + '</span>'
                     + '<span class="label-payment' + (paid ? ' is-paid' : '') + '">' + (paid ? '결제 완료' : '결제 대기') + '</span>'
+                    + '<span class="label-bundle-info">' + shippingLabelBundleHtml(it) + '</span>'
                     + '</label>';
             }).join('');
             updateShippingLabelSelection();
+        }
+
+        function shippingLabelBundleHtml(it) {
+            var bundle = window._shippingLabelBundles && window._shippingLabelBundles.get(it);
+            if (!bundle) return '';
+            var won = function (n) { return Number(n || 0).toLocaleString('ko-KR') + '원'; };
+            return '<b>' + (bundle.count > 1 ? '합배송 대상 ' + bundle.count + '개' : '단독 배송') + '</b> · ' + escapePrintHtml(bundle.items)
+                + '<br>이 개체 ' + won(bundle.itemAmount) + ' · 묶음 낙찰금 ' + won(bundle.soldAmount)
+                + ' + 배송비 ' + won(bundle.shippingCost) + ' = <strong>' + won(bundle.soldAmount + bundle.shippingCost) + '</strong>'
+                + (bundle.unpaidCount ? '<br><em>결제 대기 ' + bundle.unpaidCount + '개 포함 · 출고 전 확인</em>' : '<br>묶음 전체 결제 완료');
         }
 
         function selectedShippingLabelItems() {
@@ -1297,13 +1318,16 @@
             var buyerLength = Array.from(String(payload.winner_name || '')).length;
             var destinationClass = destinationLength > 38 ? ' is-long is-very-long' : destinationLength > 20 ? ' is-long' : '';
             var buyerClass = buyerLength > 18 ? ' is-long is-very-long' : buyerLength > 11 ? ' is-long' : '';
-            stage.innerHTML = '<div class="label-paper" title="' + escapePrintHtml(payload.lot_number || '') + '">'
+            stage.innerHTML = '<div class="label-paper has-bundle" title="' + escapePrintHtml(payload.lot_number || '') + '">'
                 + '<div class="label-paper-header">' + escapePrintHtml(payload.lot_number || '배송') + '</div>'
                 + '<div class="label-paper-line label-paper-destination' + destinationClass + '">' + escapePrintHtml(payload.destination || '-') + '</div>'
                 + '<div class="label-paper-line label-paper-buyer' + buyerClass + '">' + escapePrintHtml(payload.winner_name || '-') + '</div>'
                 + '<div class="label-paper-line label-paper-phone">' + escapePrintHtml(fmtPhone(payload.winner_phone) || '-') + '</div>'
+                + '<div class="label-paper-detail">' + escapePrintHtml(payload.bundle_summary || '') + '</div>'
+                + '<div class="label-paper-detail">' + escapePrintHtml(payload.amount_summary || '') + '</div>'
                 + '</div>';
             counter.textContent = (position + 1) + ' / ' + indexes.length + (selectedShippingLabelItems().length ? ' · 선택 라벨' : ' · 출력 가능');
+            stage.innerHTML += '<div class="label-preview-bundle">' + shippingLabelBundleHtml(items[activeIndex]) + '</div>';
             prev.disabled = position <= 0;
             next.disabled = position >= indexes.length - 1;
         }
@@ -1347,11 +1371,14 @@
 
         function d10ShippingLabelPayload(it) {
             var winner = parseWinner(it.winner);
+            var bundle = window._shippingLabelBundles && window._shippingLabelBundles.get(it);
             return {
                 lot_number: String(it.name || auctionNumber(it) || '').trim(),
                 winner_name: winner.name || '낙찰자',
                 winner_phone: winner.phone || '',
-                destination: shippingLabelDestination(it)
+                destination: shippingLabelDestination(it),
+                bundle_summary: bundle ? (bundle.count > 1 ? '합배송 대상 ' + bundle.count + '개 · ' : '단독 · ') + bundle.items.split(' · ').slice(0, 4).join(' ') + (bundle.count > 4 ? ' 외 ' + (bundle.count - 4) + '개' : '') : '',
+                amount_summary: bundle ? '개체 ' + bundle.itemAmount.toLocaleString('ko-KR') + '원 · 묶음 ' + (bundle.soldAmount + bundle.shippingCost).toLocaleString('ko-KR') + '원' : ''
             };
         }
 

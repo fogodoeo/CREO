@@ -168,6 +168,30 @@
         });
     }
 
+    function labelBundles(items) {
+        var groups = new Map(), result = new Map();
+        (items || []).forEach(function (item) {
+            var identity = winnerIdentity(item), destination = shippingDestination(item);
+            // Never combine unknown buyers or different delivery destinations.
+            var key = identity.phone && destination
+                ? JSON.stringify([text(item.channelId || item.channel_id), identity.phone, text(item.shipping_type), destination])
+                : item;
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key).push(item);
+        });
+        groups.forEach(function (rows) {
+            var summary = {
+                count: rows.length,
+                items: rows.map(function (it) { return text(it.name || it.num); }).join(' · '),
+                soldAmount: rows.reduce(function (sum, it) { return sum + itemWon(it); }, 0),
+                shippingCost: rows.reduce(function (sum, it) { return sum + number(it.shipping_cost); }, 0),
+                unpaidCount: rows.filter(function (it) { return it.payment_status !== 'paid'; }).length
+            };
+            rows.forEach(function (it) { result.set(it, Object.assign({ itemAmount: itemWon(it) }, summary)); });
+        });
+        return result;
+    }
+
     function sheetRows(rows) {
         return [[
             '업체', '낙찰자', '연락처', '낙찰 개체', '개체 수', '합배송',
@@ -186,6 +210,7 @@
         bundleKey: bundleKey,
         formatKoreanDateTime: formatKoreanDateTime,
         groupBundles: groupBundles,
+        labelBundles: labelBundles,
         paymentLabel: paymentLabel,
         paymentMethodLabel: paymentMethodLabel,
         sheetRows: sheetRows,
