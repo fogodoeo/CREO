@@ -1361,6 +1361,10 @@
                 if (!response.ok) throw new Error('브리지 응답 오류');
                 var payload = await response.json();
                 var suffix = payload.printing ? ' · 인쇄 중' : payload.queued ? ' · 대기 ' + payload.queued + '장' : '';
+                if (!payload.shippingLabelDetails) {
+                    setD10PrinterStatus('새 라벨 적용: 모니터 앱 다시 열기', 'error');
+                    return false;
+                }
                 setD10PrinterStatus('B1 PRO 앱 연결됨' + suffix, 'ready');
                 return true;
             } catch (_error) {
@@ -1386,6 +1390,10 @@
             var items = selectedShippingLabelItems();
             if (!items.length) {
                 alert('출력할 배송 라벨을 선택해 주세요.');
+                return;
+            }
+            if (!await refreshD10PrinterStatus()) {
+                alert('합배송·금액 라벨을 적용하려면 밴드 모니터 앱을 다시 열어 주세요.');
                 return;
             }
             var button = document.getElementById('print-action-btn');
