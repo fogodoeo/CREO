@@ -12,6 +12,72 @@ const {
 } = require('../platform-api');
 const { normalizeChannel } = require('../platform-core');
 const { createCrewartHouseService } = require('../crewart-house-service');
+const {CheckoutNotificationService} = require('../checkout-notifications');
+
+async function shippingRemittanceFixture(){
+ const repository=new MemoryRepository();
+ await repository.upsertRecord('alpha','vendor',{id:'v',name:'아주긴업체이름'.repeat(10),phone:'01011112222'});
+ await repository.upsertRecord('alpha','vendor',{id:'other',name:'다른업체'});
+ await repository.upsertRecord('alpha','item',{id:'i',vendorId:'v',name:'A01',lotNumber:1,status:'sold',soldPrice:100000,winnerPhone:'01012345678'});
+ await repository.upsertRecord('alpha','shipment',{id:'s',itemId:'i',vendorId:'v',method:'delivery',cost:19000,paymentStatus:'pending'});
+ const sends=[];
+ const notificationService=new CheckoutNotificationService({repository,provider:{readiness:()=>({ready:true,missing:[]}),async send(record){sends.push(record);return {messageId:'fake'}}}});
+ const options={repository,notificationService,adminSessionSecret:'remittance-test',logger:{error(){},warn(){}}};
+ let api=createPlatformApi(options);
+ const route='/api/platform/channels/alpha/organizer-shipping';
+ const saved=await call(api,'PUT',route,{bankName:'은행',bankAccount:'1234567',bankHolder:'주관사',notificationPhone:'01022223333'});
+ assert.equal(saved.status,200,saved.body);
+ const link=await call(api,'POST','/api/platform/channels/alpha/vendor-checkout-link',{vendorId:'v'});
+ const code=link.json().code;
+ const body={code,requestId:'remit-first',expectedAmount:19000,expectedBankUpdatedAt:saved.json().bank.updatedAt};
+ return {repository,options,api,route,code,body,sends,notificationService};
+}
+
+test('shipping remittance is vendor scoped, atomic, durable, duplicate safe and sends one SMS',async()=>{
+ const f=await shippingRemittanceFixture();let {api}=f;
+ const endpoint='/api/platform/vendor-checkout/report-shipping';
+ assert.equal((await call(api,'POST',endpoint,{...f.body,code:'bad'},'')).status,401);
+ assert.equal((await call(api,'POST',endpoint,{...f.body,expectedAmount:18000},'')).status,409);
+ const results=await Promise.all([call(api,'POST',endpoint,{...f.body,vendorId:'other',channelId:'beta'},''),call(api,'POST',endpoint,{...f.body,requestId:'remit-second'},'')]);
+ for(const r of results)assert.equal(r.status,200,r.body);
+ assert.equal(results.filter(r=>r.json().duplicate).length,1);
+ let state=(await call(api,'GET',f.route)).json(),v=state.vendors.find(v=>v.vendorId==='v');
+ assert.equal(v.pendingReport.amount,19000);assert.equal(v.receivedAmount,0);assert.equal(v.remainingAmount,19000);
+ const notifications=await f.repository.listRecords('alpha','notification');assert.equal(notifications.length,1);
+ assert.equal(notifications[0].recipientPhone,'01022223333');assert.equal(notifications[0].transport,'sms');assert.ok(Buffer.byteLength(notifications[0].fallbackText,'utf8')<=90);
+ assert.equal((await f.repository.listRecords('beta','notification')).length,0);
+ await f.notificationService.flushChannel('alpha',20);await f.notificationService.flushChannel('alpha',20);assert.equal(f.sends.length,1);
+ api=createPlatformApi(f.options);
+ const vendor=(await call(api,'GET','/api/platform/vendor-checkout?code='+f.code,null,'')).json();
+ assert.equal(vendor.shippingSettlement.bank.notificationPhone,undefined);assert.equal(vendor.shippingSettlement.vendors.length,1);
+ assert.equal(vendor.shippingSettlement.vendors[0].pendingReport.amount,19000);
+ const review={vendorId:'v',reportId:v.pendingReport.id,action:'confirmed',expectedAmount:19000};
+ assert.equal((await call(api,'POST',f.route+'/review',review,'')).status,401);
+ assert.equal((await call(api,'POST',f.route+'/review',{...review,expectedAmount:19001})).status,409);
+ for(const r of await Promise.all([call(api,'POST',f.route+'/review',review),call(api,'POST',f.route+'/review',review)]))assert.equal(r.status,200,r.body);
+ state=(await call(createPlatformApi(f.options),'GET',f.route)).json();v=state.vendors.find(v=>v.vendorId==='v');
+ assert.equal(v.receivedAmount,19000);assert.equal(v.remainingAmount,0);assert.equal(v.pendingReport,null);
+ assert.equal((await call(api,'POST',f.route+'/review',{...review,action:'rejected'})).status,409);
+ assert.equal((await call(api,'POST',endpoint,f.body,'')).json().duplicate,true);
+});
+
+test('shipping report failure saves neither ledger nor SMS; amount changes retain reported snapshot',async()=>{
+ const f=await shippingRemittanceFixture(),endpoint='/api/platform/vendor-checkout/report-shipping';
+ const save=f.repository.upsertRows.bind(f.repository);f.repository.upsertRows=async()=>{throw Error('disk unavailable')};
+ assert.equal((await call(f.api,'POST',endpoint,f.body,'')).status,500);
+ assert.equal((await f.repository.listRecords('alpha','notification')).length,0);
+ f.repository.upsertRows=save;
+ assert.equal((await call(f.api,'POST',endpoint,f.body,'')).status,200);
+ await f.repository.upsertRecord('alpha','shipment',{id:'s',itemId:'i',vendorId:'v',method:'delivery',cost:26000,paymentStatus:'pending'});
+ let state=(await call(f.api,'GET',f.route)).json(),v=state.vendors.find(v=>v.vendorId==='v');
+ assert.equal(v.pendingReport.amount,19000);assert.equal(v.remainingAmount,26000);
+ await call(f.api,'POST',f.route+'/review',{vendorId:'v',reportId:v.pendingReport.id,expectedAmount:19000,action:'confirmed'});
+ assert.equal((await call(f.api,'POST',endpoint,{...f.body,requestId:'remit-extra',expectedAmount:7000},'')).status,200);
+ state=(await call(f.api,'GET',f.route)).json();v=state.vendors.find(v=>v.vendorId==='v');assert.equal(v.pendingReport.amount,7000);
+ await call(f.api,'POST',f.route+'/review',{vendorId:'v',reportId:v.pendingReport.id,expectedAmount:7000,action:'rejected'});
+ assert.equal((await call(f.api,'POST',endpoint,{...f.body,requestId:'remit-again',expectedAmount:7000},'')).status,200);
+ assert.equal((await f.repository.listRecords('alpha','notification')).length,3);
+});
 
 test('organizer bank is admin-only, channel-scoped, persisted and rejects stale edits', async () => {
     const repository = new MemoryRepository();

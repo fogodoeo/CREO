@@ -18,6 +18,7 @@ const TEMPLATE_KEYS = Object.freeze([
     'vendor_win',
     'vendor_shipping_registered',
     'operator_checkout_change',
+    'organizer_shipping_reported',
     'vendor_payment_reported',
     'vendor_card_requested',
     'buyer_card_link_ready',
@@ -26,7 +27,7 @@ const TEMPLATE_KEYS = Object.freeze([
 ]);
 
 const NOTIFICATION_TRANSPORTS = Object.freeze(['alimtalk', 'sms']);
-const ACTION_SMS_TEMPLATE_KEYS = new Set();
+const ACTION_SMS_TEMPLATE_KEYS = new Set(['organizer_shipping_reported']);
 
 function notificationTransport(templateKey) {
     return ACTION_SMS_TEMPLATE_KEYS.has(templateKey) ? 'sms' : 'alimtalk';

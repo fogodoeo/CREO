@@ -2000,10 +2000,50 @@ function createPlatformApi({
 
     async function organizerShippingSettlement(channelId, items, shipments, vendors) {
         const key = `creo_organizer_shipping_bank::${channelId}`;
-        const rows = await repository.getRowsByKeys([key]);
+        const ledgerKey = `creo_organizer_shipping_ledger::${channelId}`;
+        const rows = await repository.getRowsByKeys([key, ledgerKey]);
         let bank = {};
         try { bank = JSON.parse(rows.find(row => row.key === key)?.value || '{}'); } catch (_) {}
-        return {bank, vendors:require('./shipping-settlement').summarizeShipping(items, shipments, vendors)};
+        // Financial history must fail closed if stored data is damaged.
+        const ledger = JSON.parse(rows.find(row => row.key === ledgerKey)?.value || '[]');
+        const summaries = require('./shipping-settlement').summarizeShipping(items, shipments, vendors).map(v => {
+            const history = ledger.filter(r => r.vendorId === v.vendorId);
+            const receivedAmount = history.filter(r => r.status === 'confirmed').reduce((n,r) => n + r.amount, 0);
+            return {...v, receivedAmount, remainingAmount:Math.max(0,v.totalAmount-receivedAmount), overpaidAmount:Math.max(0,receivedAmount-v.totalAmount), pendingReport:history.find(r => r.status === 'pending') || null, history};
+        });
+        await Promise.all(summaries.map(async v => {
+            if(v.pendingReport?.notificationId){
+                const notification=await repository.getRecord(channelId,'notification',v.pendingReport.notificationId);
+                v.pendingReport.notificationStatus=notification?.status || 'configuration_pending';
+            }
+        }));
+        return {bank, vendors:summaries};
+    }
+
+    async function reportOrganizerShipping(context, body) {
+        const channelId = context.channel.id;
+        const current = await organizerShippingSettlement(channelId,context.items,context.shipments,[context.vendor]);
+        const row = current.vendors[0], bank = current.bank;
+        const requestId = cleanText(body.requestId,80);
+        if (requestId.length < 8) throw buyerInputError('다시 시도해 주세요.');
+        if (row.history.some(r => r.id === requestId) || row.pendingReport) return {duplicate:true};
+        if (!bank.bankAccount || !normalizePhone(bank.notificationPhone)) throw buyerInputError('주관사 계좌·알림번호 등록 대기 중입니다.',409);
+        if (body.expectedBankUpdatedAt !== bank.updatedAt || Number(body.expectedAmount) !== row.remainingAmount || row.remainingAmount <= 0) throw buyerInputError('정산 금액·계좌가 변경되었습니다. 새로고침해 주세요.',409);
+        if (!notificationService?.prepare) throw buyerInputError('문자 발송 설정을 확인해 주세요.',503);
+        if (channelId.startsWith('checkout-test-') && !testDeliveryChannels.has(channelId)) throw buyerInputError('연습 채널은 문자 발송이 꺼져 있습니다.',409);
+        const record = {id:requestId,vendorId:context.vendor.id,vendorName:context.vendor.name,amount:row.remainingAmount,status:'pending',reportedAt:new Date().toISOString(),bank:{bankName:bank.bankName,bankAccount:bank.bankAccount,bankHolder:bank.bankHolder}};
+        let vendorLabel = cleanText(context.vendor.name,60);
+        const sms = () => `[옹동2] ${vendorLabel} 배송비 ${record.amount.toLocaleString('ko-KR')}원 입금 접수`;
+        while (Buffer.byteLength(sms(),'utf8') > 90 && vendorLabel.length) vendorLabel = vendorLabel.slice(0,-1);
+        const eventKey = 'shipping-remit:'+crypto.createHash('sha256').update(JSON.stringify([context.vendor.id,requestId])).digest('hex');
+        const prepared = await notificationService.prepare(channelId,{eventKey,templateKey:'organizer_shipping_reported',recipientRole:'operator',recipientPhone:bank.notificationPhone,transport:'sms',fallbackText:sms()});
+        record.notificationId = prepared.record.id;
+        const key = `creo_organizer_shipping_ledger::${channelId}`;
+        const rows = await repository.getRowsByKeys([key]);
+        const ledger = JSON.parse(rows.find(r=>r.key===key)?.value || '[]');
+        await repository.upsertRows([{key,value:JSON.stringify([...ledger,record])},{key:channelKey(channelId,'notification',prepared.record.id),value:JSON.stringify(prepared.record)}]);
+        touchCheckout(channelId);
+        return {duplicate:false};
     }
 
     async function vendorCheckoutPayload(context) {
@@ -2035,7 +2075,11 @@ function createPlatformApi({
                 openCount: buyers.filter((buyer) => buyer.payment.status !== 'paid').length,
                 reportedCount: buyers.filter((buyer) => ['bank_transfer_reported', 'card_payment_reported'].includes(buyer.payment.status)).length
             },
-            shippingSettlement: await organizerShippingSettlement(context.channel.id, context.items, context.shipments, [context.vendor]),
+            shippingSettlement: await (async () => {
+                const settlement = await organizerShippingSettlement(context.channel.id, context.items, context.shipments, [context.vendor]);
+                const {notificationPhone,...bank} = settlement.bank;
+                return {...settlement,bank,notificationReady:Boolean(normalizePhone(notificationPhone))};
+            })(),
             buyers
         };
     }
@@ -2907,6 +2951,19 @@ function createPlatformApi({
                 return true;
             }
 
+            if (segments.length === 2 && segments[0] === 'vendor-checkout' && segments[1] === 'report-shipping' && method === 'POST') {
+                const body = await readJson(req);
+                const context = await vendorCheckoutContext(await resolveVendorCheckoutCredential(body),body.event || '');
+                if (!context) throw buyerInputError('업체 전용 링크를 다시 확인해 주세요.',401);
+                await withMutationLock(`channel:${context.channel.id}`,async () => {
+                    const fresh = await vendorCheckoutContext(context.token,context.channel.id);
+                    if (!fresh) throw buyerInputError('업체 정보를 다시 불러와 주세요.',409);
+                    const result = await reportOrganizerShipping(fresh,body);
+                    replyJson(res,200,{...await vendorCheckoutPayload(fresh),...result});
+                });
+                return true;
+            }
+
             if (segments.length === 2 && segments[0] === 'vendor-checkout' && segments[1] === 'settings' && method === 'POST') {
                 const body = await readJson(req);
                 const credential = await resolveVendorCheckoutCredential(body);
@@ -3141,6 +3198,29 @@ function createPlatformApi({
                 return true;
             }
 
+            if (segments.length === 4 && segments[2] === 'organizer-shipping' && segments[3] === 'review' && method === 'POST') {
+                if (!await requireAdmin(req,res)) return true;
+                const body = await readJson(req);
+                await withMutationLock(`channel:${channelId}`, async () => {
+                    const key = `creo_organizer_shipping_ledger::${channelId}`;
+                    const rows = await repository.getRowsByKeys([key]);
+                    const ledger = JSON.parse(rows.find(r=>r.key===key)?.value || '[]');
+                    const record = ledger.find(r=>r.id===body.reportId && r.vendorId===body.vendorId);
+                    if (!record) throw buyerInputError('입금 내역을 찾을 수 없습니다.',404);
+                    if (!['confirmed','rejected'].includes(body.action)) throw buyerInputError('처리 상태를 확인해 주세요.');
+                    if (Number(body.expectedAmount)!==record.amount) throw buyerInputError('입금 금액을 다시 확인해 주세요.',409);
+                    if (record.status !== 'pending') {
+                        if (record.status !== body.action) throw buyerInputError('이미 처리된 내역입니다.',409);
+                        replyJson(res,200,{duplicate:true}); return;
+                    }
+                    record.status=body.action; record.reviewedAt=new Date().toISOString();
+                    await repository.upsertRows([{key,value:JSON.stringify(ledger)}]);
+                    touchCheckout(channelId);
+                    replyJson(res,200,{duplicate:false});
+                });
+                return true;
+            }
+
             if (segments.length === 3 && segments[2] === 'organizer-shipping' && ['GET','PUT'].includes(method)) {
                 if (!await requireAdmin(req,res)) return true;
                 await withMutationLock(`channel:${channelId}`, async () => {
@@ -3150,6 +3230,8 @@ function createPlatformApi({
                         const body = await readJson(req);
                         if (String(body.expectedUpdatedAt || '') !== String(current.bank.updatedAt || '')) throw buyerInputError('계좌가 변경되었습니다. 새로고침 후 다시 저장해 주세요.',409);
                         const bank = {bankName:cleanText(body.bankName,40),bankAccount:cleanText(body.bankAccount,80),bankHolder:cleanText(body.bankHolder,60)};
+                        bank.notificationPhone = normalizePhone(body.notificationPhone ?? current.bank.notificationPhone);
+                        if (body.notificationPhone && !bank.notificationPhone) throw buyerInputError('문자 받을 휴대폰 번호를 확인해 주세요.');
                         if (!bank.bankName || !bank.bankHolder || !/^[0-9 -]{5,80}$/.test(bank.bankAccount)) throw buyerInputError('은행·계좌번호·예금주를 확인해 주세요.');
                         bank.updatedAt = new Date().toISOString();
                         await repository.upsertRows([{key:`creo_organizer_shipping_bank::${channelId}`,value:JSON.stringify(bank)}]);
