@@ -119,7 +119,7 @@
         const storedStatus = PAYMENT_STATUSES.includes(latest.paymentStatus) ? latest.paymentStatus : '';
         if (latest.paymentMethod === 'card') {
             if (storedStatus === 'card_payment_reported') return { status: storedStatus, confirmedAmount: confirmed, additionalDue: due, latest };
-            if (latest.cardPaymentUrl) return { status: 'card_payment_pending', confirmedAmount: confirmed, additionalDue: due, latest };
+            if (latest.cardPaymentUrl || (latest.cardNoticeMethod === 'external' && latest.cardLinkPreparedAt)) return { status: 'card_payment_pending', confirmedAmount: confirmed, additionalDue: due, latest };
             return { status: 'card_link_pending', confirmedAmount: confirmed, additionalDue: due, latest };
         }
         if (storedStatus === 'bank_transfer_reported') return { status: storedStatus, confirmedAmount: confirmed, additionalDue: due, latest };

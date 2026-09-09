@@ -595,6 +595,86 @@ test('buyer shipping link isolates one buyer, saves idempotently, confirms payme
     assert.equal((await repository.listRecords('alpha', 'shipment')).length, 4);
 });
 
+test('external card notice skips duplicate notification and vendor confirms without buyer report', async () => {
+    const repository = new MemoryRepository();
+    repository.catalog.channels[0] = normalizeChannel({
+        ...repository.catalog.channels[0],
+        shippingDefaults: { pickupLocations: ['대구 크레오'], pargeAdditionalFee: 7000, pargeJejuAdditionalFee: 4000 }
+    });
+    await repository.upsertRecord('alpha', 'vendor', {
+        id: 'vendor-card', name: '카드업체', phone: '01077778888', paymentMethods: ['bank_transfer', 'card']
+    });
+    await repository.upsertRecord('alpha', 'item', {
+        id: 'card-item', lotNumber: 1, name: 'A01', vendorId: 'vendor-card', vendorName: '카드업체',
+        status: 'sold', soldPrice: 150000, winnerName: '구매자', winnerPhone: '01012345678'
+    });
+    const secret = 'vendor-card-flow-secret';
+    const cardEvents = new Map();
+    const notificationService = { async enqueue(channelId, event) {
+        const duplicate = cardEvents.has(event.eventKey);
+        cardEvents.set(event.eventKey, event);
+        return { duplicate, record: { status: 'queued' } };
+    } };
+    const api = createPlatformApi({ repository, notificationService, adminSessionSecret: secret, logger: { error() {}, warn() {} } });
+    const buyerLink = await call(api, 'POST', '/api/platform/channels/alpha/buyer-shipping-link', { itemId: 'card-item' });
+    const buyerCode = new URL(buyerLink.json().url).pathname.split('/').at(-1);
+    const saved = await call(api, 'POST', '/api/platform/buyer-shipping', {
+        code: buyerCode,
+        requestId: 'buyer-card-choice-1',
+        destinationId: 'pickup-1',
+        payments: [{ vendorKey: 'vendor-card', method: 'card' }]
+    }, '');
+    assert.equal(saved.status, 200, saved.body);
+    assert.equal(saved.json().vendors[0].payment.status, 'card_link_pending');
+    assert.equal(saved.json().vendors[0].contact.phone, '01077778888');
+    assert.equal([...cardEvents.values()][0].templateKey, 'vendor_shipping_registered');
+    assert.equal([...cardEvents.values()][0].variables.구매자명, '구매자');
+    const repeatedChoice = await call(api, 'POST', '/api/platform/buyer-shipping', {
+        code: buyerCode, requestId: 'buyer-card-choice-2', destinationId: 'pickup-1',
+        payments: [{ vendorKey: 'vendor-card', method: 'card' }]
+    }, '');
+    assert.equal(repeatedChoice.status, 200, repeatedChoice.body);
+    assert.equal(cardEvents.size, 1);
+
+    const vendorLink = await call(api, 'POST', '/api/platform/channels/alpha/vendor-checkout-link', { vendorId: 'vendor-card' });
+    assert.equal(vendorLink.status, 200, vendorLink.body);
+    assert.doesNotMatch(vendorLink.json().url, /01012345678/);
+    const vendorCode = new URL(vendorLink.json().url).pathname.split('/').at(-1);
+    const vendorInitial = await call(api, 'GET', `/api/platform/vendor-checkout?code=${vendorCode}`, null, '');
+    assert.equal(vendorInitial.status, 200, vendorInitial.body);
+    assert.equal(vendorInitial.json().buyers[0].phone, '01012345678');
+    assert.equal(vendorInitial.json().buyers[0].payment.status, 'card_link_pending');
+    const vendorInitialRevision = vendorInitial.json().revision;
+    const buyerId = vendorInitial.json().buyers[0].id;
+    const vendorStatus = await call(api, 'GET', `/api/platform/vendor-status?code=${vendorCode}`, null, '');
+    assert.equal(vendorStatus.status, 200, vendorStatus.body);
+    assert.equal(vendorStatus.json().buyers[0].phoneLast4, '5678');
+    assert.equal(vendorStatus.json().buyers[0].progress.status, 'information_registered');
+    assert.equal(vendorStatus.json().buyers[0].payment, undefined);
+    assert.doesNotMatch(vendorStatus.body, /01012345678|cardPaymentUrl|paymentMethod|accountNumber/);
+
+    const body = { code: vendorCode, buyerId, cardNoticeMethod: 'external', requestId: 'external-notice-1', expectedAmount: 150000 };
+    const [one, two] = await Promise.all([call(api,'POST','/api/platform/vendor-checkout/card-link',body,''),call(api,'POST','/api/platform/vendor-checkout/card-link',body,'')]);
+    assert.equal(one.status,200,one.body);assert.equal(two.status,200,two.body);
+    assert.equal(one.json().notification.skipped,true);
+    assert.equal(one.json().buyers[0].payment.cardNoticeMethod,'external');
+    assert.equal(one.json().buyers[0].payment.status,'card_payment_pending');
+    assert.equal(cardEvents.size,1);
+    const restarted=createPlatformApi({repository,notificationService,adminSessionSecret:secret});
+    const ready=(await call(restarted,'GET',`/api/platform/buyer-shipping?code=${buyerCode}`,null,'')).json();
+    assert.equal(ready.vendors[0].payment.cardNoticeMethod,'external');
+    assert.equal(ready.vendors[0].payment.cardPaymentUrl,'');
+    const stale=await call(restarted,'POST','/api/platform/vendor-checkout/confirm-payment',{code:vendorCode,buyerId,requestId:'stale-amount-test',expectedAmount:1},'');
+    assert.equal(stale.status,409);
+    const confirmation={code:vendorCode,buyerId,requestId:'external-confirm-1',expectedAmount:150000};
+    for(let i=0;i<2;i++){
+        const result=await call(restarted,'POST','/api/platform/vendor-checkout/confirm-payment',confirmation,'');
+        assert.equal(result.status,200,result.body);assert.equal(result.json().buyers[0].payment.status,'paid');
+    }
+    assert.equal([...cardEvents.values()].filter(e=>e.templateKey==='buyer_payment_confirmed').length,1);
+    assert.equal([...cardEvents.values()].filter(e=>e.templateKey==='buyer_card_link_ready'||e.templateKey==='vendor_payment_reported').length,0);
+});
+
 test('vendor checkout link handles card URL, buyer report, confirmation, duplicate input, and restart', async () => {
     const repository = new MemoryRepository();
     repository.catalog.channels[0] = normalizeChannel({

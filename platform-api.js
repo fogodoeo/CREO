@@ -490,6 +490,7 @@ function sanitizeRecord(type, input = {}, current = {}) {
             paymentConfirmedAt: cleanText(input.paymentConfirmedAt, 80),
             paymentConfirmationRequestId: cleanText(input.paymentConfirmationRequestId, 80),
             cardPaymentUrl: cleanText(input.cardPaymentUrl, 1000),
+            cardNoticeMethod: input.cardNoticeMethod === 'external' ? 'external' : 'link',
             cardLinkPreparedAt: cleanText(input.cardLinkPreparedAt, 80),
             cardLinkRequestId: cleanText(input.cardLinkRequestId, 80),
             buyerPaymentReportedAt: cleanText(input.buyerPaymentReportedAt, 80),
@@ -1349,6 +1350,7 @@ function createPlatformApi({
                 shippingChangedAfterReport: Boolean(latest?.shippingChangedAfterReport),
                 reportedAmount: latest?.shippingChangedAfterReport ? Number(latest.paymentRequestedAmount)||0 : null,
                 cardLinkCancellationRequired: Boolean(latest?.cardLinkCancellationRequired),
+                cardNoticeMethod: latest?.cardNoticeMethod || 'link',
                 cardPaymentUrl: latest?.paymentMethod === 'card' ? cleanText(latest.cardPaymentUrl, 1000) : '',
                 buyerPaymentReportedAt: latest?.buyerPaymentReportedAt || '',
                 account: {
@@ -1554,7 +1556,7 @@ function createPlatformApi({
             const code = 'op_' + sessionKey(`${context.channel.id}:${id}`).replace(/[^A-Za-z0-9_-]/g,'').slice(0,16);
             const now = new Date().toISOString();
             record = {id,channelId:context.channel.id,phoneHash:context.token.phoneHash,phone:context.anchorPhone,buyerName:buyerDisplayName(context.bundleItems[0]),state:'pending',createdAt:now,updatedAt:now,before,after:changeView(preview.payload),proposal,fingerprint:checkoutFingerprint(context),operatorCode:code,
-                itemIds:context.bundleItems.map(i=>i.id),cardLinks:ownCheckoutShipments(context).filter(s=>s.cardPaymentUrl).map(s=>({vendorId:s.vendorId,url:s.cardPaymentUrl}))};
+                itemIds:context.bundleItems.map(i=>i.id),cardLinks:ownCheckoutShipments(context).filter(s=>s.cardPaymentUrl || s.cardNoticeMethod==='external').map(s=>({vendorId:s.vendorId,url:s.cardPaymentUrl}))};
             const rows=[{key:channelKey(context.channel.id,'checkoutchange',id),value:JSON.stringify(record)},
                 {key:`creo_checkout_change_link::${code}`,value:JSON.stringify({channelId:context.channel.id,id})}];
             if(notificationService?.prepare && (!context.channel.id.startsWith('checkout-test-') || testDeliveryChannels.has(context.channel.id))){
@@ -1587,7 +1589,7 @@ function createPlatformApi({
             if (body.confirmedUnpaid !== true) throw buyerInputError('모든 관련 업체의 미결제 여부를 확인해 주세요.');
             if (record.cardLinks.length && body.confirmedCardLinksCancelled !== true) throw buyerInputError('기존 카드 링크 취소·미승인 여부를 확인해 주세요.');
             const copy=structuredClone(context);
-            copy.shipments=copy.shipments.map(s=>context.bundleItems.some(i=>i.id===s.itemId)?{...s,cardPaymentUrl:'',cardLinkPreparedAt:'',cardLinkRequestId:''}:s);
+            copy.shipments=copy.shipments.map(s=>context.bundleItems.some(i=>i.id===s.itemId)?{...s,cardPaymentUrl:'',cardNoticeMethod:'link',cardLinkPreparedAt:'',cardLinkRequestId:''}:s);
             const result=await saveBuyerShipping(copy,record.proposal,{dryRun:true,approvedChange:true});
             if(JSON.stringify(changeView(result.payload).totals)!==JSON.stringify(record.after.totals))throw buyerInputError('배송비·금액이 바뀌었습니다. 반려 후 다시 요청해 주세요.',409);
             rows=result.records.map(s=>({key:channelKey(channel.id,'shipment',s.id),value:JSON.stringify({...s,updatedAt:now,createdAt:s.createdAt || now})}));
@@ -1685,6 +1687,7 @@ function createPlatformApi({
             const previousRequested = Math.max(0, Number(groupLatest?.paymentRequestedAmount) || 0);
             const amountChanged = previousRequested > 0 && previousRequested !== totalAmount;
             const cardPaymentUrl = paymentMethod === 'card' && !amountChanged ? (groupLatest?.cardPaymentUrl || '') : '';
+            const externalNotice = paymentMethod === 'card' && !amountChanged && groupLatest?.cardNoticeMethod === 'external' && Boolean(groupLatest?.cardLinkPreparedAt);
             const openStatus = confirmedAmount >= totalAmount && totalAmount > 0
                 ? 'paid'
                 : additional
@@ -1692,7 +1695,7 @@ function createPlatformApi({
                     : !paymentMethod
                         ? 'awaiting_information'
                         : paymentMethod === 'card'
-                        ? (cardPaymentUrl ? 'card_payment_pending' : 'card_link_pending')
+                        ? (cardPaymentUrl || externalNotice ? 'card_payment_pending' : 'card_link_pending')
                         : 'bank_transfer_pending';
             const bundleId = stableBuyerId('bundle', `${context.channel.id}:${group.key}:${context.anchorPhone}`);
             for (const item of group.items) {
@@ -1723,13 +1726,14 @@ function createPlatformApi({
                     paymentStatus: itemPaymentStatus,
                     paymentRequestedAmount: keepReported ? current.paymentRequestedAmount : totalAmount,
                     shippingChangedAfterReport: keepReported && Number(current.paymentRequestedAmount)!==totalAmount,
-                    cardLinkCancellationRequired: !keepReported && paymentMethod==='card' && (Boolean(current.cardLinkCancellationRequired) || (directDestinationEdit&&amountChanged&&Boolean(current.cardPaymentUrl))),
+                    cardLinkCancellationRequired: !keepReported && paymentMethod==='card' && (Boolean(current.cardLinkCancellationRequired) || (directDestinationEdit&&amountChanged&&Boolean(current.cardPaymentUrl || current.cardNoticeMethod === 'external'))),
                     paymentConfirmedAmount: confirmedAmount,
                     paymentConfirmedAt: current.paymentConfirmedAt || '',
                     paymentConfirmationRequestId: current.paymentConfirmationRequestId || '',
                     cardPaymentUrl: keepReported ? current.cardPaymentUrl || '' : cardPaymentUrl,
-                    cardLinkPreparedAt: cardPaymentUrl ? (groupLatest?.cardLinkPreparedAt || '') : '',
-                    cardLinkRequestId: cardPaymentUrl ? (groupLatest?.cardLinkRequestId || '') : '',
+                    cardNoticeMethod: externalNotice ? 'external' : 'link',
+                    cardLinkPreparedAt: cardPaymentUrl || externalNotice ? (groupLatest?.cardLinkPreparedAt || '') : '',
+                    cardLinkRequestId: cardPaymentUrl || externalNotice ? (groupLatest?.cardLinkRequestId || '') : '',
                     buyerPaymentReportedAt: keepCompletedItem || keepReported ? current.buyerPaymentReportedAt || '' : '',
                     buyerPaymentReportRequestId: keepCompletedItem || keepReported ? current.buyerPaymentReportRequestId || '' : '',
                     buyerSubmittedAt: now,
@@ -1808,6 +1812,11 @@ function createPlatformApi({
         if (group.shipments.length === group.items.length
             && group.shipments.every((shipment) => shipment.paymentConfirmationRequestId === cleanRequestId)) {
             return { duplicate: true, payload: await buyerShippingPayload(context), group };
+        }
+        if (group.payment.latest?.cardNoticeMethod === 'external' &&
+            (Number(confirmation.expectedAmount) !== group.totalAmount || group.shipments.length !== group.items.length ||
+             group.shipments.some(shipment => Number(shipment.paymentRequestedAmount) !== group.totalAmount))) {
+            throw buyerInputError('결제금액이 변경되었습니다. 외부 결제 내역과 현재 금액을 다시 확인해 주세요.', 409);
         }
         const now = new Date().toISOString();
         const saved = [];
@@ -1974,6 +1983,7 @@ function createPlatformApi({
                 shippingChangedAfterReport: Boolean(latest?.shippingChangedAfterReport),
                 reportedAmount: latest?.shippingChangedAfterReport ? Number(latest.paymentRequestedAmount)||0 : null,
                 cardLinkCancellationRequired: Boolean(latest?.cardLinkCancellationRequired),
+                cardNoticeMethod: latest?.cardNoticeMethod || 'link',
                 cardPaymentUrl: latest?.cardPaymentUrl || '',
                 reportedAt: latest?.buyerPaymentReportedAt || '',
                 confirmedAt: latest?.paymentConfirmedAt || ''
@@ -2057,12 +2067,14 @@ function createPlatformApi({
     async function saveCardPaymentLink(context, buyerId, rawUrl, requestId, confirmation = {}) {
         const cleanRequestId = cleanText(requestId, 80);
         if (cleanRequestId.length < 8) throw buyerInputError('카드 링크 요청값이 올바르지 않습니다.');
-        const cardPaymentUrl = Checkout.validateCardPaymentUrl(rawUrl);
-        if (!cardPaymentUrl) throw buyerInputError('외부에서 열 수 있는 HTTPS 카드결제 주소를 입력해 주세요.');
+        const external = confirmation.cardNoticeMethod === 'external';
+        const cardPaymentUrl = external ? '' : Checkout.validateCardPaymentUrl(rawUrl);
+        if (!external && !cardPaymentUrl) throw buyerInputError('외부에서 열 수 있는 HTTPS 카드결제 주소를 입력해 주세요.');
         const bundle = await vendorBuyerBundle(context, buyerId);
         if (!bundle) throw buyerInputError('구매자 결제 내역을 찾을 수 없습니다.', 404);
         await assertNoCheckoutChange(bundle.context);
         const { group } = bundle;
+        if (external && Number(confirmation.expectedAmount) !== group.totalAmount) throw buyerInputError('결제금액이 변경되었습니다. 현재 금액으로 발송했는지 다시 확인해 주세요.', 409);
         if(group.shipments.some(s=>s.cardLinkCancellationRequired) && (confirmation.confirmedOldCardLinkCancelled!==true || Number(confirmation.expectedAmount)!==group.totalAmount))throw buyerInputError('배송비 변경 전 카드 링크를 취소·차단하고 현재 금액으로 새 링크를 등록해 주세요.',409);
         if(group.shipments.some(s=>s.shippingChangedAfterReport))throw buyerInputError('결제 신고 후 배송비가 바뀌었습니다. 실제 결제 내역부터 확인해 주세요.',409);
         if (group.payment.status === 'paid') throw buyerInputError('이미 결제 완료된 내역입니다.', 409);
@@ -2081,6 +2093,7 @@ function createPlatformApi({
             saved.push(await repository.upsertRecord(context.channel.id, 'shipment', sanitizeRecord('shipment', {
                 ...current,
                 cardPaymentUrl,
+                cardNoticeMethod: external ? 'external' : 'link',
                 cardLinkCancellationRequired: false,
                 cardLinkPreparedAt: now,
                 cardLinkRequestId: cleanRequestId,
@@ -2931,7 +2944,9 @@ function createPlatformApi({
                     if (!freshContext) throw buyerInputError('업체 결제 정보를 다시 불러와 주세요.', 409);
                     if(freshContext.channel.status!=='active')throw buyerInputError('운영 중인 경매에서만 결제 처리할 수 있습니다.',409);
                     const result = await saveCardPaymentLink(freshContext, body.buyerId, body.cardPaymentUrl, body.requestId, body);
-                    const notification = result.duplicate
+                    const notification = body.cardNoticeMethod === 'external'
+                        ? { skipped: true, reason: 'external_notice' }
+                        : result.duplicate
                         ? { duplicate: true }
                         : await enqueueBuyerStatusNotification(
                             req,

@@ -87,6 +87,7 @@ function vendorAction(vendor,due){
   return `<div class="account-panel"><div class="account-text"><small>${esc(a.bankName)} · ${esc(a.holder)}</small><b>${esc(a.accountNumber)}</b></div><button class="copy-button" type="button" data-copy="${esc(a.accountNumber)}">계좌 복사</button></div><button class="primary payment-cta" type="button" data-report="${esc(vendor.key)}">입금했어요</button>`;
  }
  if(p.method==='card'){
+  if(p.cardNoticeMethod==='external')return '<div class="waiting-note"><b>카카오톡 결제 안내를 확인해 주세요</b><span>결제 후 업체가 확인하면 완료됩니다</span></div>';
   if(!p.cardPaymentUrl)return '<div class="waiting-note"><b>카드결제 준비 중</b><span>준비되면 알림톡으로 알려드려요</span></div>';
   return `<div class="card-actions"><a class="card-link" href="${esc(p.cardPaymentUrl)}" target="_blank" rel="noopener noreferrer">카드로 결제하기</a><button class="report-link" type="button" data-report="${esc(vendor.key)}">결제를 마쳤어요</button></div>`;
  }

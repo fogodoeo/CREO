@@ -437,7 +437,8 @@ test('buyer and vendor checkout pages are short-code based and support the full 
     assert.match(vendor, /\/api\/platform\/vendor-checkout/);
     assert.match(vendor, /\/card-link/);
     assert.match(vendor, /\/confirm-payment/);
-    assert.match(vendor, /카드결제 링크 등록/);
+    assert.match(vendor, /외부 알림톡 발송/);
+    assert.match(vendor, /결제 안내 보냈어요/);
     assert.match(vendor, /링크 등록·알림 보내기/);
     assert.match(vendor, /실제 거래 내역 확인/);
     assert.match(vendor, /id="sync"[^>]*role="status">실시간/);
