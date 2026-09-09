@@ -178,6 +178,7 @@
         let configCache = null;
         let configCacheAt = 0;
         let lastPulseRevision = '';
+        let broadcastSequence = 0;
 
         async function request(path, options = {}) {
             const response = await target.fetch(`/api/platform/${path}`, {
@@ -200,7 +201,10 @@
         async function context() {
             if (!contextPromise) {
                 contextPromise = request(`channels/${encodeURIComponent(channelId)}`)
-                    .then(payload => ({ channel: payload.channel, platform: payload.channel?.dataAdapter !== 'legacy-cdcup' }));
+                    .then(payload => {
+                        if (payload.channel?.id !== channelId) throw new Error('방송 채널 응답이 일치하지 않습니다.');
+                        return { channel: payload.channel, platform: payload.channel?.dataAdapter !== 'legacy-cdcup' };
+                    }).catch(error => { contextPromise = null; throw error; });
             }
             return contextPromise;
         }
@@ -217,10 +221,20 @@
         async function loadBroadcast(force = false, maxAgeMs = 900) {
             const now = Date.now();
             if (!force && broadcastCache && now - broadcastCacheAt < Math.max(350, Number(maxAgeMs) || 900)) return broadcastCache;
-            broadcastCache = await request(`channels/${encodeURIComponent(channelId)}/broadcast`);
+            const sequence = ++broadcastSequence;
+            const payload = await request(`channels/${encodeURIComponent(channelId)}/broadcast`);
+            if (payload.channel?.id !== channelId || (payload.state?.channelId && payload.state.channelId !== channelId)
+                || (payload.items || []).some(item => item.channelId && item.channelId !== channelId)) throw new Error('송출 데이터의 채널이 일치하지 않습니다.');
+            if (sequence !== broadcastSequence) {
+                if (broadcastCache) return broadcastCache;
+                throw new Error('새 송출 데이터를 불러오는 중입니다.');
+            }
+            if (payload.broadcastEpoch && payload.broadcastEpoch === broadcastCache?.broadcastEpoch
+                && Number(payload.revision) < Number(broadcastCache.revision)) return broadcastCache;
+            broadcastCache = payload;
             target.__creoAudience = broadcastCache?.audience || null;
             target.__creoBroadcastState = broadcastCache?.state || null;
-            broadcastCacheAt = now;
+            broadcastCacheAt = Date.now();
             return broadcastCache;
         }
 

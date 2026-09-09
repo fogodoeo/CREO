@@ -1065,6 +1065,7 @@ function createPlatformApi({
     const adminLoginAttempts = new Map();
     const configuredBuyerSiteOrigin = String(process.env.CREO_BUYER_SITE_ORIGIN || '').trim().replace(/\/$/, '');
     let revisionSequence = 0;
+    const broadcastEpoch = crypto.randomUUID();
     const checkoutRevisions = new Map();
 
     function buyerCorsHeaders(req) {
@@ -3005,7 +3006,8 @@ function createPlatformApi({
                     activeChannelId: channelId,
                     channel: channel ? { ...channel, links: channelLinks(channel) } : null,
                     adapter: channel?.dataAdapter || '',
-                    workspace: channel && channel.dataAdapter !== 'legacy-cdcup' ? await workspace(channelId) : null
+                    workspace: channel && channel.dataAdapter !== 'legacy-cdcup'
+                        ? await withMutationLock(`channel:${channelId}`, () => workspace(channelId)) : null
                 });
                 return true;
             }
@@ -3612,7 +3614,10 @@ function createPlatformApi({
             }
 
             if (segments.length === 3 && segments[2] === 'broadcast' && method === 'GET') {
-                const data = await workspace(channelId);
+                const snapshot = await withMutationLock(`channel:${channelId}`, async () => ({
+                    data: await workspace(channelId), revision: channelRevision(channelId)
+                }));
+                const data = snapshot.data;
                 if(data.broadcast?.bannerSelectionConfigured){
                     data.assets=[...data.assets.filter(asset=>asset.kind!=='banner'),...await bannerLibrary.selected(data.broadcast)];
                     data.broadcast={...data.broadcast,page1BannerUrl:'',page2BannerUrl:''};
@@ -3675,7 +3680,8 @@ function createPlatformApi({
                 }));
                 const revealedBidderKeys = new Set(audience.revealedBidderKeys || []);
                 replyJson(res, 200, {
-                    revision: channelRevision(channelId),
+                    revision: snapshot.revision,
+                    broadcastEpoch,
                     channel,
                     audience,
                     itemProgress,
@@ -3762,6 +3768,10 @@ function createPlatformApi({
                     const data = await workspace(channelId);
                     const itemId = cleanText(body.itemId || body.item?.id, 64);
                     const current = data.items.find((item) => item.id === itemId) || null;
+                    if (body.expectedUpdatedAt && body.expectedUpdatedAt !== current?.updatedAt) {
+                        replyJson(res, 409, { code: 'ITEM_CHANGED', error: '개체 정보가 변경되었습니다. 새로고침 후 다시 진행해 주세요.' });
+                        return;
+                    }
                     const requestedStatus = ['waiting', 'live', 'sold', 'passed'].includes(body.status) ? body.status : '';
                     const requestedMode = ['standby', 'live', 'sold'].includes(body.mode) ? body.mode : (requestedStatus === 'live' ? 'live' : requestedStatus === 'sold' ? 'sold' : 'standby');
                     const staleShipments = current && ['waiting', 'live'].includes(requestedStatus)
@@ -4565,6 +4575,11 @@ function createPlatformApi({
                     }
                     const data = await workspace(channelId);
                     const incoming = { ...body.record, id: current.id };
+                    const expectedUpdatedAt = body.expectedUpdatedAt || body.record?.updatedAt;
+                    if (type === 'item' && expectedUpdatedAt && expectedUpdatedAt !== current.updatedAt) {
+                        replyJson(res, 409, { code: 'ITEM_CHANGED', error: '개체 정보가 변경되었습니다. 새로고침 후 다시 저장해 주세요.' });
+                        return;
+                    }
                     // Ordinary item edits must not end a live auction. Older
                     // monitor clients send a full cached record when editing
                     // the name/checklist, and that cache can still say

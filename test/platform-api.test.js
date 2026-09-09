@@ -13,6 +13,53 @@ const {
 const { normalizeChannel } = require('../platform-core');
 const { createCrewartHouseService } = require('../crewart-house-service');
 
+test('stale full-item writes and transitions cannot restore an earlier sale', async () => {
+    const repository = new MemoryRepository();
+    await repository.upsertRecord('alpha', 'item', { id: 'one', lotNumber: 1, name: 'current', status: 'waiting', updatedAt: 'new', soldPrice: 0 });
+    const api = createPlatformApi({ repository });
+    for (let n = 0; n < 2; n++) {
+        const edit = await call(api, 'PUT', '/api/platform/channels/alpha/items/one', { record: { updatedAt: 'old', status: 'sold', soldPrice: 200000, name: 'previous' } });
+        assert.equal(edit.status, 409);
+        const transition = await call(api, 'PUT', '/api/platform/channels/alpha/auction-transition', { itemId: 'one', status: 'sold', expectedUpdatedAt: 'old', item: { soldPrice: 200000 } });
+        assert.equal(transition.status, 409);
+    }
+    const saved = await repository.getRecord('alpha', 'item', 'one');
+    assert.equal(saved.status, 'waiting');
+    assert.equal(saved.soldPrice, 0);
+    assert.equal(saved.name, 'current');
+});
+
+test('broadcast reads wait for an auction transition and carry a restart identity', async () => {
+    const repository = new MemoryRepository();
+    const api = createPlatformApi({ repository });
+    assert.equal((await call(api, 'POST', '/api/platform/channels/alpha/items', { record: { id: 'one', lotNumber: 1, name: 'one' } })).status, 201);
+    let release, entered;
+    const gate = new Promise(r => { release = r; });
+    const started = new Promise(r => { entered = r; });
+    const original = repository.upsertRecord.bind(repository);
+    repository.upsertRecord = async (channel, kind, record) => {
+        const result = await original(channel, kind, record);
+        if (kind === 'item' && record.status === 'live') { entered(); await gate; }
+        return result;
+    };
+    const transition = call(api, 'PUT', '/api/platform/channels/alpha/auction-transition', { itemId: 'one', status: 'live' });
+    await Promise.race([started, transition.then(r => { throw new Error(`transition ended before gate: ${r.status} ${r.body}`); })]);
+    let completed = false;
+    const read = call(api, 'GET', '/api/platform/channels/alpha/broadcast?page=2', null, '').then(r => { completed = true; return r; });
+    await new Promise(setImmediate);
+    assert.equal(completed, false);
+    release();
+    assert.equal((await transition).status, 200);
+    const payload = (await read).json();
+    assert.equal(payload.state.activeItemId, 'one');
+    assert.equal(payload.state.mode, 'live');
+    assert.equal(payload.items[0].status, 'live');
+    assert.ok(payload.broadcastEpoch);
+    const restarted = (await call(createPlatformApi({ repository }), 'GET', '/api/platform/channels/alpha/broadcast?page=2', null, '')).json();
+    assert.notEqual(restarted.broadcastEpoch, payload.broadcastEpoch);
+    assert.equal(restarted.state.activeItemId, 'one');
+});
+
 for (const enableDelivery of [false, true]) test(`checkout practice persists and ${enableDelivery ? 'delivers only to the test phone' : 'suppresses notifications'}`, async () => {
  const repository=new MemoryRepository();
  await repository.upsertRecord('alpha','vendor',{id:'v',name:'업체',phone:'01011112222'});

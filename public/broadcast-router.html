@@ -21,7 +21,24 @@ const params=new URLSearchParams(location.search),frame=document.getElementById(
 function normalize(value){const id=String(value||'').toLowerCase().replace(/[^a-z0-9-]/g,'').slice(0,32);return id==='crewarts'?'crewart':id}
 function page(){return ['1','2','3'].includes(params.get('page'))?params.get('page'):'1'}
 async function channelConfig(id,catalogVersion){const key=`${id}:${catalogVersion}`;if(channelCache.has(key))return channelCache.get(key);const response=await fetch(`/api/platform/channels/${encodeURIComponent(id)}`,{cache:'no-store'});if(!response.ok)throw new Error(`채널 설정 오류 ${response.status}`);const channel=(await response.json()).channel;if(!channel||channel.id!==id)throw new Error('채널 설정이 요청 주소와 일치하지 않습니다.');channelCache.clear();channelCache.set(key,channel);return channel}
-async function refresh(){try{const response=await fetch('/api/platform/active-channel',{cache:'no-store'});if(!response.ok)throw new Error(`채널 연결 오류 ${response.status}`);const active=await response.json(),activeChannelId=normalize(active.channelId),fixedChannelId=normalize(params.get('event')),channelId=fixedChannelId||activeChannelId,catalogVersion=String(active.catalogVersion||'0');if(!channelId)throw new Error('운영 채널이 없습니다.');const selectedPage=page(),channel=await channelConfig(channelId,catalogVersion),target=CreoBroadcastProfiles.broadcastTarget(channel,selectedPage);if(target!==lastTarget||catalogVersion!==lastCatalogVersion){if(frame.getAttribute('src')!==target)frame.src=target;lastTarget=target;lastCatalogVersion=catalogVersion;statusEl.textContent=`${channel.name||channelId} · ${selectedPage}P ${fixedChannelId?'고정 채널 미리보기':'운영 잠금 송출 중'}`}document.body.classList.remove('has-error')}catch(error){statusEl.textContent=error.message||String(error);document.body.classList.add('has-error')}}
+let refreshSequence=0,renderedChannel='';
+async function refresh(){
+ const sequence=++refreshSequence;
+ try{
+  const response=await fetch('/api/platform/active-channel',{cache:'no-store'});
+  if(!response.ok)throw new Error(`채널 연결 오류 ${response.status}`);
+  const active=await response.json();if(sequence!==refreshSequence)return;
+  const activeChannelId=normalize(active.channelId),fixedChannelId=normalize(params.get('event')),channelId=fixedChannelId||activeChannelId,catalogVersion=String(active.catalogVersion||'0');
+  if(!channelId)throw new Error('운영 채널이 없습니다.');
+  // Hide the previous channel while the new channel configuration is loading.
+  if(renderedChannel&&renderedChannel!==channelId){frame.removeAttribute('src');lastTarget='';renderedChannel='';}
+  const selectedPage=page(),channel=await channelConfig(channelId,catalogVersion);
+  if(sequence!==refreshSequence)return;
+  const target=CreoBroadcastProfiles.broadcastTarget(channel,selectedPage);
+  if(target!==lastTarget||catalogVersion!==lastCatalogVersion){if(frame.getAttribute('src')!==target)frame.src=target;lastTarget=target;lastCatalogVersion=catalogVersion;statusEl.textContent=`${channel.name||channelId} · ${selectedPage}P ${fixedChannelId?'고정 채널 미리보기':'운영 잠금 송출 중'}`}
+  renderedChannel=channelId;document.body.classList.remove('has-error');
+ }catch(error){if(sequence!==refreshSequence)return;statusEl.textContent=error.message||String(error);document.body.classList.add('has-error')}
+}
 let refreshTimer=null;function scheduleRefresh(delay){clearTimeout(refreshTimer);refreshTimer=setTimeout(async()=>{if(!document.hidden)await refresh();scheduleRefresh(document.hidden?10000:2500)},delay)}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){void refresh();scheduleRefresh(2500)}});void refresh().finally(()=>scheduleRefresh(2500));
 </script>

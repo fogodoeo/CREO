@@ -378,6 +378,7 @@ test('legacy-layout bridge keeps renderer identity separate from platform channe
         enrichBroadcastItem: async item => item,
         getAuctionPulse: async () => ({})
     };
+    responses['/api/platform/channels/academy-copy/broadcast'].channel = channel('academy-copy');
     const bridge = BroadcastBridge.install(target);
     const items = await target.getItems();
     const config = await target.getConfigMap();
