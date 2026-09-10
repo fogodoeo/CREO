@@ -2098,7 +2098,8 @@ function createPlatformApi({
             shippingSettlement: await (async () => {
                 const settlement = await organizerShippingSettlement(context.channel.id, context.items, context.shipments, [context.vendor]);
                 const {notificationPhone,...bank} = settlement.bank;
-                return {...settlement,bank,notificationReady:Boolean(normalizePhone(notificationPhone))};
+                const vendors=settlement.vendors.map(v=>({...v,history:v.history.map(({memo,depositSignature,depositRequestId,...receipt})=>receipt)}));
+                return {...settlement,vendors,bank,notificationReady:Boolean(normalizePhone(notificationPhone))};
             })(),
             buyers
         };
@@ -3237,6 +3238,31 @@ function createPlatformApi({
                     const access=method==='POST'?await organizerAccess.issue(channelId):await organizerAccess.current(channelId);
                     replyJson(res,200,{role:'organizer',channelId,url:access?new URL('/o/'+access.code,requestOrigin(req)).href:'',expiresAt:access?.expiresAt||null});
                 });return true;
+            }
+
+            if (segments.length === 4 && segments[2] === 'organizer-shipping' && ['deposit','cancel'].includes(segments[3]) && method === 'POST') {
+                if (!await requireOrganizer(req,res,channelId)) return true;
+                const body = await readJson(req);
+                await withMutationLock(`channel:${channelId}`, async () => {
+                    // Settlement remains available after the auction ends; no auction/payment rows are mutated.
+                    const key = `creo_organizer_shipping_ledger::${channelId}`;
+                    const data = await workspace(channelId);
+                    const current = await organizerShippingSettlement(channelId,data.items,data.shipments,data.vendors);
+                    const vendor = current.vendors.find(v=>v.vendorId===body.vendorId);
+                    if (!vendor) throw buyerInputError('업체를 찾을 수 없습니다.',404);
+                    const rows = await repository.getRowsByKeys([key]);
+                    const ledger = JSON.parse(rows.find(r=>r.key===key)?.value || '[]');
+                    const receipts = require('./organizer-receipts');
+                    const result = segments[3] === 'deposit'
+                        ? receipts.deposit(ledger,vendor,body,current.bank)
+                        : receipts.cancel(ledger,body);
+                    if (!result.duplicate) {
+                        await repository.upsertRows([{key,value:JSON.stringify(result.ledger)}]);
+                        touchCheckout(channelId);
+                    }
+                    replyJson(res,200,{duplicate:result.duplicate});
+                });
+                return true;
             }
 
             if (segments.length === 4 && segments[2] === 'organizer-shipping' && segments[3] === 'review' && method === 'POST') {
