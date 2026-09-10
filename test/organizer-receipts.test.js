@@ -10,7 +10,7 @@ async function fixture(t){
  let repo=new SQLitePlatformRepository(options),api;
  const boot=()=>{api=createPlatformApi({repository:repo,adminSessionSecret:'receipt-test',logger:{error(){},warn(){}}})};
  await repo.saveCatalog(['alpha','beta'].map(id=>normalizeChannel({id,name:id,status:'active'})));
- await repo.upsertRecord('alpha','vendor',{id:'v',name:'비송'});
+ await repo.upsertRecord('alpha','vendor',{id:'v',name:'비송',bankHolder:'송향주'});
  await repo.upsertRecord('alpha','item',{id:'i',vendorId:'v',name:'A01',status:'sold',winnerPhone:'01011112222',soldPrice:100000});
  await repo.upsertRecord('alpha','shipment',{id:'s',itemId:'i',vendorId:'v',method:'delivery',address:'서울',cost:80000,paymentStatus:'pending'});
  boot();
@@ -22,6 +22,7 @@ async function fixture(t){
 }
 test('manual installments are durable and reflected in vendor totals without changing buyer payment or sending notifications',async t=>{
  const f=await fixture(t);
+ assert.equal((await f.vendor()).vendorBankHolder,'송향주');
  const result=await f.call('POST',f.route+'/deposit',f.body);assert.equal(result.status,200,result.body);
  await f.restart();let v=await f.vendor();assert.equal(v.receivedAmount,50000);assert.equal(v.remainingAmount,30000);assert.equal(v.history[0].paidOn,'2026-09-09');
  const link=(await f.call('POST','/api/platform/channels/alpha/vendor-checkout-link',{vendorId:'v'})).json();

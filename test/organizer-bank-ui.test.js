@@ -37,3 +37,21 @@ test('fee details start collapsed, escape source text and show the allocated tot
  assert.ok(!/<details[^>]*\bopen\b/.test(html));
  assert.equal(vm.runInContext('feeDetailNotice({shippingFeeItems:[]})',context),'');
 });
+
+test('receipt backdrop dismisses only outside clicks, never content drags or in-flight saves',()=>{
+ const {nodes,context}=screen({}),dialog=nodes.get('receipt-dialog');let closed=0;
+ dialog.getBoundingClientRect=()=>({left:20,right:400,top:200,bottom:800});dialog.close=()=>closed++;
+ const outside={target:dialog,clientX:10,clientY:100},inside={target:dialog,clientX:60,clientY:250};
+ dialog.onpointerdown(outside);dialog.onclick(outside);assert.equal(closed,1);
+ dialog.onpointerdown(inside);dialog.onclick(inside);assert.equal(closed,1);
+ dialog.onpointerdown(inside);dialog.onclick(outside);assert.equal(closed,1);
+ vm.runInContext('saving=true',context);dialog.onpointerdown(outside);dialog.onclick(outside);assert.equal(closed,1);
+ vm.runInContext('saving=false',context);dialog.onpointerdown(outside);dialog.onclick(outside);assert.equal(closed,2);
+});
+test('vendor labels include only a registered holder and escape company and holder markup',()=>{
+ const {context}=screen({});context.vendor={vendorName:'비송',vendorBankHolder:' 송향주 '};
+ assert.equal(vm.runInContext('vendorLabel(vendor)',context),'비송(송향주)');
+ assert.equal(vm.runInContext("vendorLabel({vendorName:'비송'})",context),'비송');
+ context.vendor={vendorName:'<업체>',vendorBankHolder:'<img src=x>'};
+ const html=vm.runInContext('vendorLabelHtml(vendor)',context);assert.ok(html.includes('&lt;업체&gt;'));assert.ok(html.includes('&lt;img src=x&gt;'));assert.ok(!html.includes('<img'));
+});

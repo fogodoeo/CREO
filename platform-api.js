@@ -3296,7 +3296,7 @@ function createPlatformApi({
                     current.carriers = require('./shipping-settlement').summarizeCarriers(data.items,data.shipments,data.vendors);
                     const missing = require('./shipping-settlement').summarizeMissingDestinations(data.items,data.shipments,data.vendors);
                     const feeDetails = require('./shipping-settlement').shippingFeeDetails(data.items,data.shipments,data.vendors);
-                    current.vendors = current.vendors.map(v=>({...v,missingDestinationItems:missing.find(row=>row.vendorId===v.vendorId)?.missingDestinationItems||[],shippingFeeItems:feeDetails.find(row=>row.vendorId===v.vendorId)?.shippingFeeItems||[]}));
+                    current.vendors = current.vendors.map(v=>({...v,vendorBankHolder:cleanText(data.vendors.find(row=>row.id===v.vendorId)?.bankHolder,60),missingDestinationItems:missing.find(row=>row.vendorId===v.vendorId)?.missingDestinationItems||[],shippingFeeItems:feeDetails.find(row=>row.vendorId===v.vendorId)?.shippingFeeItems||[]}));
                     if (method === 'PUT') {
                         const body = await readJson(req);
                         if (String(body.expectedUpdatedAt || '') !== String(current.bank.updatedAt || '')) throw buyerInputError('계좌가 변경되었습니다. 새로고침 후 다시 저장해 주세요.',409);
