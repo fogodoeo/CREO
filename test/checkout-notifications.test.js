@@ -162,7 +162,7 @@ test('successful retry clears the previous provider error after restart', async 
     assert.equal(attempts, 2);
 });
 
-test('a stale sending record is reclaimed after a process restart', async () => {
+test('a stale sending record requires provider verification after restart, without duplicate send', async () => {
     const repository = new MemoryRepository();
     const id = notificationId('basic', 'sale:item-a:cycle-1', 'buyer_win_initial', 'buyer');
     await repository.upsertRecord('basic', 'notification', {
@@ -188,9 +188,71 @@ test('a stale sending record is reclaimed after a process restart', async () => 
     const stored = await repository.getRecord('basic', 'notification', id);
 
     assert.equal(result.processed, 1);
+    assert.equal(sends, 0);
+    assert.equal(stored.status, 'delivery_unknown');
+    assert.equal(stored.attempts, 1);
+    await service.flushChannel('basic');
+    assert.equal(sends, 0);
+});
+
+test('shutdown drains the current provider receipt and leaves the rest queued for restart', async () => {
+    const repository = new MemoryRepository();
+    let entered, finishSend;
+    const started = new Promise(resolve => { entered = resolve; });
+    const gate = new Promise(resolve => { finishSend = resolve; });
+    let sends = 0;
+    const provider = { readiness: () => ({ ready: true }), async send() {
+        sends++; entered(); await gate; return { messageId: 'accepted-once' };
+    } };
+    const service = new CheckoutNotificationService({ repository, provider });
+    const first = await service.enqueue('qa', event());
+    const second = await service.enqueue('qa', event({ eventKey: 'sale:second' }));
+    const work = service.flushChannel('qa');
+    await started;
+    let drained = false;
+    const drain = service.stopAndDrain().then(() => { drained = true; });
+    await Promise.resolve();
+    assert.equal(drained, false);
+    assert.equal((await service.flushChannel('qa')).skipped, true);
+    finishSend();
+    await Promise.all([work, drain]);
     assert.equal(sends, 1);
-    assert.equal(stored.status, 'sent');
-    assert.equal(stored.attempts, 2);
+    assert.equal((await repository.getRecord('qa', 'notification', first.record.id)).status, 'sent');
+    assert.equal((await repository.getRecord('qa', 'notification', second.record.id)).status, 'queued');
+    const restarted = new CheckoutNotificationService({ repository, provider });
+    await restarted.flushChannel('qa');
+    assert.equal(sends, 2);
+});
+
+test('an accepted send followed by receipt-storage failure is never automatically resent', async () => {
+    const repository = new MemoryRepository();
+    const save = repository.upsertRecord.bind(repository);
+    repository.upsertRecord = async (channel, type, record) => {
+        if (record.status === 'sent') throw new Error('receipt write failed');
+        return save(channel, type, record);
+    };
+    let sends = 0;
+    const provider = { readiness: () => ({ ready: true }), async send() { sends++; return { messageId: 'accepted' }; } };
+    const service = new CheckoutNotificationService({ repository, provider, logger: { warn() {} } });
+    const { record } = await service.enqueue('qa', event());
+    await service.flushChannel('qa');
+    const stored = await repository.getRecord('qa', 'notification', record.id);
+    assert.equal(stored.status, 'delivery_unknown');
+    assert.equal(stored.providerMessageId, 'accepted');
+    await new CheckoutNotificationService({ repository, provider }).flushChannel('qa');
+    assert.equal(sends, 1);
+});
+
+test('provider timeout, invalid JSON and ambiguous HTTP response are retained for review', async () => {
+    for (const fetchImpl of [
+        async () => { throw new Error('network timeout'); },
+        async () => ({ ok: true, status: 200, json: async () => { throw new Error('truncated'); } }),
+        async () => ({ ok: false, status: 503, json: async () => ({}) }),
+        async () => ({ ok: true, status: 200, json: async () => ({}) })
+    ]) {
+        const provider = new AligoNotificationProvider({ apiKey: 'test', userId: 'test', from: '01012345678', fetchImpl });
+        await assert.rejects(provider.send({ ...event(), transport: 'sms', fallbackText: 'test' }), { code: 'DELIVERY_UNCERTAIN' });
+    }
 });
 
 test('Aligo is the only default checkout notification provider', () => {

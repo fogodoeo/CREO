@@ -12,7 +12,8 @@ const codes = Object.freeze({
     vendor_card_requested: 'UL_0883',
     buyer_card_link_ready: 'UL_2139',
     buyer_checkout_change_reviewed: 'UL_0884',
-    buyer_payment_confirmed: 'UK_9278'
+    buyer_payment_confirmed: 'UK_9278',
+    organizer_shipping_reported: 'UL_2785'
 });
 const templates = Object.fromEntries(Object.entries(codes).map(([key, code]) => {
     const spec = require(`./docs/approved-alimtalk/${code}.json`);

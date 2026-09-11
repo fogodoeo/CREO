@@ -7,6 +7,7 @@ const NOTIFICATION_STATUSES = new Set([
     'queued',
     'configuration_pending',
     'sending',
+    'delivery_unknown',
     'sent',
     'failed',
     'expired'
@@ -28,7 +29,7 @@ const TEMPLATE_KEYS = Object.freeze([
 ]);
 
 const NOTIFICATION_TRANSPORTS = Object.freeze(['alimtalk', 'sms']);
-const ACTION_SMS_TEMPLATE_KEYS = new Set(['organizer_shipping_reported']);
+const ACTION_SMS_TEMPLATE_KEYS = new Set();
 
 function notificationTransport(templateKey) {
     return ACTION_SMS_TEMPLATE_KEYS.has(templateKey) ? 'sms' : 'alimtalk';
@@ -135,7 +136,7 @@ function normalizeNotification(input = {}, current = {}) {
         providerMessageId: text(input.providerMessageId || current.providerMessageId, 120),
         providerGroupId: text(input.providerGroupId || current.providerGroupId, 120),
         lastError: text(input.lastError ?? current.lastError, 500),
-        nextAttemptAt: text(input.nextAttemptAt || current.nextAttemptAt, 80),
+        nextAttemptAt: text(input.nextAttemptAt ?? current.nextAttemptAt, 80),
         sentAt: text(input.sentAt || current.sentAt, 80),
         expiresAt: text(input.expiresAt || current.expiresAt, 80)
     };
@@ -210,6 +211,26 @@ class AligoNotificationProvider {
         return this.sendAlimtalk(notification);
     }
 
+    async postForm(endpoint, params) {
+        // A timeout or unreadable response is not proof that Aligo rejected a
+        // message. Preserve that distinction so a restart cannot send it twice.
+        try {
+            const response = await this.fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+                body: params.toString(),
+                signal: AbortSignal.timeout(12_000)
+            });
+            const payload = await response.json();
+            if (!payload || typeof payload !== 'object' || response.status >= 500) throw new Error('알리고 응답 확인 실패');
+            return { response, payload };
+        } catch (cause) {
+            const error = new Error(`발송 결과 확인 필요: ${cause.message}`);
+            error.code = 'DELIVERY_UNCERTAIN';
+            throw error;
+        }
+    }
+
     async sendSms(notification, testMode = this.testMode) {
         const message = messageText(notification.fallbackText, 2000);
         if (!message || Buffer.byteLength(message, 'utf8') > 90) {
@@ -225,12 +246,8 @@ class AligoNotificationProvider {
             title: '옹동2 안내',
             testmode_yn: testMode ? 'Y' : 'N'
         });
-        const response = await this.fetch(this.smsEndpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-            body: params.toString()
-        });
-        const payload = await response.json().catch(() => ({}));
+        const { response, payload } = await this.postForm(this.smsEndpoint, params);
+        if (payload.result_code === undefined) throw Object.assign(new Error('알리고 SMS 접수 결과 누락'), { code: 'DELIVERY_UNCERTAIN' });
         if (!response.ok || Number(payload.result_code) !== 1 || Number(payload.error_cnt || 0) > 0) {
             throw new Error(text(payload.message || `ALIGO SMS ${response.status}`, 500));
         }
@@ -274,12 +291,8 @@ class AligoNotificationProvider {
         if (/#\{[^}]+\}/.test(params.get('message_1') + (params.get('button_1') || ''))) {
             throw new Error('알림톡 필수 변수 누락');
         }
-        const response = await this.fetch(this.alimtalkEndpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-            body: params.toString()
-        });
-        const payload = await response.json().catch(() => ({}));
+        const { response, payload } = await this.postForm(this.alimtalkEndpoint, params);
+        if (payload.code === undefined) throw Object.assign(new Error('알리고 알림톡 접수 결과 누락'), { code: 'DELIVERY_UNCERTAIN' });
         if (!response.ok || Number(payload.code) !== 0 || Number(payload.info?.fcnt || 0) > 0) {
             throw new Error(text(payload.message || `ALIGO 알림톡 ${response.status}`, 500));
         }
@@ -303,6 +316,18 @@ class CheckoutNotificationService {
         this.logger = options.logger || console;
         this.now = options.now || (() => Date.now());
         this.running = false;
+        this.stopping = false;
+        this.idleWaiters = [];
+    }
+
+    async stopAndDrain() {
+        this.stopping = true;
+        if (this.running) await new Promise(resolve => this.idleWaiters.push(resolve));
+    }
+
+    finishRun() {
+        this.running = false;
+        for (const resolve of this.idleWaiters.splice(0)) resolve();
     }
 
     async enqueue(channelId, event = {}) {
@@ -364,6 +389,7 @@ class CheckoutNotificationService {
     }
 
     async sendOneTest(channelId, id, confirmedPhone) {
+        if (this.stopping) throw new Error('서버 종료 준비 중입니다.');
         if (this.running) throw new Error('알림 처리 중입니다.');
         this.running = true;
         try {
@@ -381,14 +407,14 @@ class CheckoutNotificationService {
                 providerMessageId: result.messageId, sentAt: new Date(this.now()).toISOString() });
             return { accepted: true, messageId: result.messageId };
         } finally {
-            this.running = false;
+            this.finishRun();
         }
     }
 
     async flushChannel(channelId, limit = 20) {
         // Dry runs must never consume real auction events or mark them delivered.
         if (this.provider.testMode) return { skipped: true, processed: 0 };
-        if (this.running) return { skipped: true, processed: 0 };
+        if (this.running || this.stopping) return { skipped: true, processed: 0 };
         this.running = true;
         let processed = 0;
         try {
@@ -400,7 +426,16 @@ class CheckoutNotificationService {
                 .sort((left, right) => String(left.createdAt || '').localeCompare(String(right.createdAt || '')))
                 .slice(0, Math.max(1, Math.min(100, Number(limit) || 20)));
             for (const storedCurrent of candidates) {
+                if (this.stopping) break;
                 let current = normalizeNotification(storedCurrent, storedCurrent);
+                if (current.status === 'sending') {
+                    await this.repository.upsertRecord(channelId, 'notification', normalizeNotification({
+                        ...current, status: 'delivery_unknown', nextAttemptAt: '',
+                        lastError: '이전 발송이 중단되었습니다. 알리고 발송내역 확인이 필요합니다.'
+                    }, current));
+                    processed += 1;
+                    continue;
+                }
                 if (current.expiresAt && Date.parse(current.expiresAt) <= now) {
                     await this.repository.upsertRecord(channelId, 'notification', normalizeNotification({ ...current, status: 'expired' }, current));
                     processed += 1;
@@ -431,25 +466,28 @@ class CheckoutNotificationService {
                     lastError: '',
                     nextAttemptAt: new Date(now + 2 * 60_000).toISOString()
                 }, current));
+                let acceptedResult;
                 try {
-                    const result = await this.provider.send(sending);
+                    acceptedResult = await this.provider.send(sending);
                     await this.repository.upsertRecord(channelId, 'notification', normalizeNotification({
                         ...sending,
                         status: 'sent',
-                        providerMessageId: result.messageId,
-                        providerGroupId: result.groupId,
+                        providerMessageId: acceptedResult.messageId,
+                        providerGroupId: acceptedResult.groupId,
                         sentAt: new Date(this.now()).toISOString(),
                         nextAttemptAt: ''
                     }, sending));
                 } catch (error) {
                     const configurationPending = error.code === 'CONFIGURATION_PENDING';
+                    const uncertain = Boolean(acceptedResult) || error.code === 'DELIVERY_UNCERTAIN';
                     const attempts = Number(sending.attempts) || 1;
                     const backoffMs = Math.min(30 * 60_000, 15_000 * Math.pow(2, Math.min(6, attempts - 1)));
                     await this.repository.upsertRecord(channelId, 'notification', normalizeNotification({
                         ...sending,
-                        status: configurationPending ? 'configuration_pending' : 'failed',
+                        status: uncertain ? 'delivery_unknown' : (configurationPending ? 'configuration_pending' : 'failed'),
+                        ...(acceptedResult ? { providerMessageId: acceptedResult.messageId, providerGroupId: acceptedResult.groupId } : {}),
                         lastError: error.message,
-                        nextAttemptAt: new Date(this.now() + (configurationPending ? 60_000 : backoffMs)).toISOString()
+                        nextAttemptAt: uncertain ? '' : new Date(this.now() + (configurationPending ? 60_000 : backoffMs)).toISOString()
                     }, sending));
                     this.logger.warn?.('[checkout-notification] delivery failed', channelId, current.id, error.message);
                 }
@@ -457,7 +495,7 @@ class CheckoutNotificationService {
             }
             return { skipped: false, processed };
         } finally {
-            this.running = false;
+            this.finishRun();
         }
     }
 }

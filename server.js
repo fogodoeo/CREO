@@ -26,6 +26,11 @@ const { CheckoutNotificationService } = require('./checkout-notifications');
 const PORT = Number(process.env.PORT || 10000);
 const HOST = process.env.HOST || '0.0.0.0';
 const PUBLIC_DIR = path.resolve(__dirname, 'public');
+// Optional UI split. Leave unset until the web gateway has passed the rollout checks.
+const frontendOrigin = process.env.CREO_FRONTEND_ORIGIN ? new URL(process.env.CREO_FRONTEND_ORIGIN) : null;
+if (frontendOrigin && (!['http:', 'https:'].includes(frontendOrigin.protocol)
+    || frontendOrigin.username || frontendOrigin.password || frontendOrigin.pathname !== '/'
+    || frontendOrigin.search || frontendOrigin.hash)) throw new Error('CREO_FRONTEND_ORIGIN must be an origin');
 const GOOGLE_OAUTH_CLIENT_ID = String(process.env.GOOGLE_OAUTH_CLIENT_ID || process.env.GOOGLE_SHEETS_CLIENT_ID || '').trim();
 const bandOAuth = createBandOAuth();
 let platformApi;
@@ -202,6 +207,17 @@ async function serveStatic(req, res, url) {
         throw error;
     }
     if (!stat.isFile()) return false;
+
+    if (frontendOrigin && frontendOrigin.host !== req.headers.host) {
+        // Use the original short link, not its internal HTML alias. Never accept a request-supplied origin.
+        const original = new URL(req.url, 'http://localhost');
+        const destination = new URL(frontendOrigin);
+        destination.pathname = original.pathname;
+        destination.search = original.search;
+        writeHeaders(res, 307, { Location: destination.href, 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' });
+        res.end();
+        return true;
+    }
 
     const etag = `W/\"${stat.size.toString(16)}-${Math.trunc(stat.mtimeMs).toString(16)}\"`;
     const commonHeaders = {
@@ -421,11 +437,12 @@ server.listen(PORT, HOST, () => {
 
 let notificationWorkerRunning = false;
 async function flushCheckoutNotifications() {
-    if (notificationWorkerRunning) return;
+    if (notificationWorkerRunning || shuttingDown) return;
     notificationWorkerRunning = true;
     try {
         const catalog = await platformRepository.getCatalog();
         for (const channel of catalog.channels.filter((entry) => entry.status === 'active' && entry.dataAdapter === 'platform')) {
+            if (shuttingDown) break;
             await checkoutNotificationService.flushChannel(channel.id, 20);
         }
     } catch (error) {
@@ -437,18 +454,23 @@ async function flushCheckoutNotifications() {
 
 const notificationWorker = setInterval(flushCheckoutNotifications, 15_000);
 notificationWorker.unref?.();
-setTimeout(flushCheckoutNotifications, 2_000).unref?.();
+const notificationStartup = setTimeout(flushCheckoutNotifications, 2_000);
+notificationStartup.unref?.();
 
 let shuttingDown = false;
 function shutdown(signal) {
     if (shuttingDown) return;
     shuttingDown = true;
     clearInterval(notificationWorker);
+    clearTimeout(notificationStartup);
     console.log(`[creo] ${signal} received, closing cleanly`);
-    const forceExit = setTimeout(() => process.exit(1), 10_000);
+    const forceExit = setTimeout(() => process.exit(1), 25_000);
     forceExit.unref?.();
-    server.close(() => {
-        try { platformRepository.close?.(); } catch (error) { console.error('[creo] repository close failed:', error.message); }
+    Promise.all([
+        new Promise(resolve => server.close(resolve)),
+        checkoutNotificationService.stopAndDrain()
+    ]).then(async () => {
+        try { await platformRepository.close?.(); } catch (error) { console.error('[creo] repository close failed:', error.message); }
         clearTimeout(forceExit);
         process.exit(0);
     });

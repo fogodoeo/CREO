@@ -416,6 +416,7 @@
                 queued:['발송 대기','partial'],
                 configuration_pending:['설정 대기','partial'],
                 sending:['발송 중','partial'],
+                delivery_unknown:['발송 결과 확인 필요','mismatch'],
                 failed:['발송 실패','mismatch'],
                 expired:['만료','mismatch']
             }[status] || ['확인 필요','mismatch'];
@@ -446,7 +447,7 @@
             const pending=Number(counts.queued||0)+Number(counts.configuration_pending||0)+Number(counts.sending||0);
             const provider=delivery.provider==='aligo'?'알리고':delivery.provider||'미설정';
             document.getElementById('notification-summary').innerHTML=[
-                ['전송기',provider],['발송 완료',Number(counts.sent||0)+'건'],['대기',pending+'건'],['실패',Number(counts.failed||0)+Number(counts.expired||0)+'건']
+                ['전송기',provider],['발송 접수',Number(counts.sent||0)+'건'],['대기',pending+'건'],['확인 필요',Number(counts.failed||0)+Number(counts.expired||0)+Number(counts.delivery_unknown||0)+'건']
             ].map(([label,value])=>'<article class="notification-stat"><span>'+esc(label)+'</span><strong>'+esc(value)+'</strong></article>').join('');
             const setupNote=delivery.error
                 ? '<div class="notification-error">알림 현황을 불러오지 못했습니다. 배송 자료는 정상적으로 계속 사용할 수 있습니다.</div>'

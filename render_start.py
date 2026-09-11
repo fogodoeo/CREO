@@ -268,13 +268,13 @@ def start_band_monitor() -> subprocess.Popen[bytes]:
     return subprocess.Popen(command, cwd=ROOT, env=environment)
 
 
-def stop_process(process: Optional[subprocess.Popen[bytes]], name: str) -> None:
+def stop_process(process: Optional[subprocess.Popen[bytes]], name: str, timeout: int = 15) -> None:
     if not process or process.poll() is not None:
         return
     print(f"[render-supervisor] stopping {name}", flush=True)
     process.terminate()
     try:
-        process.wait(timeout=15)
+        process.wait(timeout=timeout)
     except subprocess.TimeoutExpired:
         process.kill()
         process.wait(timeout=5)
@@ -330,8 +330,12 @@ def main() -> int:
                     break
                 band_process = start_band_monitor()
     finally:
-        stop_process(band_process, "BAND monitor")
-        stop_process(node_process, "web app")
+        # Let the API persist an in-flight Aligo receipt immediately. Waiting
+        # for Chrome first used most of Render's shutdown grace period.
+        band_stop = threading.Thread(target=stop_process, args=(band_process, "BAND monitor"))
+        band_stop.start()
+        stop_process(node_process, "web app", timeout=27)
+        band_stop.join()
     return exit_code
 
 

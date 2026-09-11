@@ -2049,14 +2049,15 @@ function createPlatformApi({
         if (row.history.some(r => r.id === requestId) || row.pendingReport) return {duplicate:true};
         if (!bank.bankAccount || !normalizePhone(bank.notificationPhone)) throw buyerInputError('주관사 계좌·알림번호 등록 대기 중입니다.',409);
         if (body.expectedBankUpdatedAt !== bank.updatedAt || Number(body.expectedAmount) !== row.remainingAmount || row.remainingAmount <= 0) throw buyerInputError('정산 금액·계좌가 변경되었습니다. 새로고침해 주세요.',409);
-        if (!notificationService?.prepare) throw buyerInputError('문자 발송 설정을 확인해 주세요.',503);
-        if (channelId.startsWith('checkout-test-') && !testDeliveryChannels.has(channelId)) throw buyerInputError('연습 채널은 문자 발송이 꺼져 있습니다.',409);
+        if (!notificationService?.prepare) throw buyerInputError('알림 발송 설정을 확인해 주세요.',503);
+        if (channelId.startsWith('checkout-test-') && !testDeliveryChannels.has(channelId)) throw buyerInputError('연습 채널은 알림 발송이 꺼져 있습니다.',409);
         const record = {id:requestId,vendorId:context.vendor.id,vendorName:context.vendor.name,amount:row.remainingAmount,status:'pending',reportedAt:new Date().toISOString(),bank:{bankName:bank.bankName,bankAccount:bank.bankAccount,bankHolder:bank.bankHolder}};
         let vendorLabel = cleanText(context.vendor.name,60);
         const sms = () => `[옹동2] ${vendorLabel} 배송비 ${record.amount.toLocaleString('ko-KR')}원 입금 접수`;
         while (Buffer.byteLength(sms(),'utf8') > 90 && vendorLabel.length) vendorLabel = vendorLabel.slice(0,-1);
         const eventKey = 'shipping-remit:'+crypto.createHash('sha256').update(JSON.stringify([context.vendor.id,requestId])).digest('hex');
-        const prepared = await notificationService.prepare(channelId,{eventKey,templateKey:'organizer_shipping_reported',recipientRole:'operator',recipientPhone:bank.notificationPhone,transport:'sms',fallbackText:sms()});
+        const access = await organizerAccess.issue(channelId);
+        const prepared = await notificationService.prepare(channelId,{eventKey,templateKey:'organizer_shipping_reported',recipientRole:'operator',recipientPhone:bank.notificationPhone,transport:'alimtalk',variables:{업체명:context.vendor.name,입금금액:record.amount.toLocaleString('ko-KR'),주관사접속코드:access.code},fallbackText:sms()});
         record.notificationId = prepared.record.id;
         const key = `creo_organizer_shipping_ledger::${channelId}`;
         const rows = await repository.getRowsByKeys([key]);
@@ -3422,6 +3423,7 @@ function createPlatformApi({
                     queued: 0,
                     configuration_pending: 0,
                     sending: 0,
+                    delivery_unknown: 0,
                     sent: 0,
                     failed: 0,
                     expired: 0

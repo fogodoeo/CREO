@@ -96,7 +96,7 @@ async function shippingRemittanceFixture(){
  return {repository,options,api,route,code,body,sends,notificationService};
 }
 
-test('shipping remittance is vendor scoped, atomic, durable, duplicate safe and sends one SMS',async()=>{
+test('shipping remittance is vendor scoped, atomic, durable, duplicate safe and sends one organizer Alimtalk',async()=>{
  const f=await shippingRemittanceFixture();let {api}=f;
  const endpoint='/api/platform/vendor-checkout/report-shipping';
  assert.equal((await call(api,'POST',endpoint,{...f.body,code:'bad'},'')).status,401);
@@ -110,7 +110,12 @@ test('shipping remittance is vendor scoped, atomic, durable, duplicate safe and 
  assert.equal(v.shippingFeeItems.reduce((n,i)=>n+i.amount,0),v.totalAmount);
  assert.deepEqual(v.shippingFeeItems.map(i=>i.name),['A01']);
  const notifications=await f.repository.listRecords('alpha','notification');assert.equal(notifications.length,1);
- assert.equal(notifications[0].recipientPhone,'01022223333');assert.equal(notifications[0].transport,'sms');assert.ok(Buffer.byteLength(notifications[0].fallbackText,'utf8')<=90);
+ assert.equal(notifications[0].recipientPhone,'01022223333');assert.equal(notifications[0].transport,'alimtalk');assert.ok(Buffer.byteLength(notifications[0].fallbackText,'utf8')<=90);
+ assert.equal(notifications[0].variables['#{입금금액}'],'19,000');
+ assert.equal(notifications[0].variables['#{업체명}'],'아주긴업체이름'.repeat(10));
+ const organizer = require('../organizer-access').createOrganizerAccess(f.repository);
+ assert.equal((await organizer.resolve(notifications[0].variables['#{주관사접속코드}'])).channelId,'alpha');
+ assert.equal((await organizer.issue('alpha')).code,notifications[0].variables['#{주관사접속코드}']);
  assert.equal((await f.repository.listRecords('beta','notification')).length,0);
  await f.notificationService.flushChannel('alpha',20);await f.notificationService.flushChannel('alpha',20);assert.equal(f.sends.length,1);
  api=createPlatformApi(f.options);
@@ -128,7 +133,7 @@ test('shipping remittance is vendor scoped, atomic, durable, duplicate safe and 
  assert.equal((await call(api,'POST',endpoint,f.body,'')).json().duplicate,true);
 });
 
-test('shipping report failure saves neither ledger nor SMS; amount changes retain reported snapshot',async()=>{
+test('shipping report failure saves neither ledger nor notification; amount changes retain reported snapshot',async()=>{
  const f=await shippingRemittanceFixture(),endpoint='/api/platform/vendor-checkout/report-shipping';
  const save=f.repository.upsertRows.bind(f.repository);f.repository.upsertRows=async()=>{throw Error('disk unavailable')};
  assert.equal((await call(f.api,'POST',endpoint,f.body,'')).status,500);

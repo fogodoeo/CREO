@@ -1,0 +1,19 @@
+# Creates a NEW paid web service only. Does not change the existing core or its disk.
+services:
+  - type: web
+    name: ongdong2-web
+    runtime: node
+    plan: 0.5c-512mb
+    buildCommand: node --check gateway-server.js
+    startCommand: node gateway-server.js
+    healthCheckPath: /health
+    buildFilter:
+      paths:
+        - public/**
+        - gateway-server.js
+        - deploy/render-gateway.yaml
+    envVars:
+      - key: CREO_BACKEND_URL
+        value: https://creok.onrender.com
+      - key: CREO_PUBLIC_ORIGIN
+        value: https://creok.onrender.com

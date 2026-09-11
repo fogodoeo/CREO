@@ -1,0 +1,16 @@
+{
+  "code": "UL_2785",
+  "title": "주관사 배송비 입금 접수 알림",
+  "content": "[주관사 업무 알림]\n#{업체명}에서 배송비 #{입금금액}원에 대한 입금 확인을 요청했습니다.\n\n배송비 정산 페이지에서 실제 입금 여부를 확인해 주세요.",
+  "buttons": [
+    { "type": "AC", "name": "채널추가" },
+    { "type": "WL", "name": "배송비 정산 확인", "mobileUrl": "https://creok.onrender.com/o/#{주관사접속코드}", "pcUrl": "https://creok.onrender.com/o/#{주관사접속코드}" }
+  ],
+  "variables": ["업체명", "입금금액", "주관사접속코드"],
+  "audience": "organizer",
+  "intendedEvent": "업체가 주관사 배송비 입금 확인을 요청한 경우",
+  "approvalStatus": "approved",
+  "approvalSource": "2026-09-11 알리고 승인완료 목록 및 UL_2785 템플릿 보기에서 본문과 버튼 링크 대조",
+  "aligoFallbackSms": "disabled",
+  "adoptionDecision": "implemented"
+}

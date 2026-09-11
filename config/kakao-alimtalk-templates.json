@@ -1,8 +1,17 @@
 {
-  "version": 4,
+  "version": 5,
   "channelName": "옹동2",
   "categoryCode": "003001",
   "templates": [
+    {
+      "key": "organizer_shipping_reported",
+      "transport": "alimtalk",
+      "code": "UL_2785",
+      "name": "주관사 배송비 입금 접수 알림",
+      "content": "[주관사 업무 알림]\n#{업체명}에서 배송비 #{입금금액}원에 대한 입금 확인을 요청했습니다.\n\n배송비 정산 페이지에서 실제 입금 여부를 확인해 주세요.",
+      "buttonName": "배송비 정산 확인",
+      "link": "https://creok.onrender.com/o/#{주관사접속코드}"
+    },
     {
       "key": "buyer_win_initial",
       "transport": "alimtalk",
