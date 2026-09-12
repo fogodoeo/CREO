@@ -1,0 +1,1539 @@
+{
+  "generatedAt": "2026-09-12T05:45:08.441Z",
+  "scope": "Static HTML inventory only; no API/customer records fetched. Production observations retain their original dates and do not prove current local code is deployed. Visual and permission evidence is recorded separately.",
+  "pages": [
+    {
+      "route": "_local-bundle-preview.html",
+      "role": "local-only",
+      "title": "경매 인쇄 · CREO",
+      "headings": [
+        "경매 리스트",
+        "낙찰 · 배송 정산",
+        "배송 라벨",
+        "운영자 확인"
+      ],
+      "styles": [
+        "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
+      ],
+      "scripts": [
+        "auction-contract.js?v=20260819-contract-v1",
+        "platform-client.js?v=20260803-admin-session-v2",
+        "channel-runtime.js?v=20260901-operator-routing-v1",
+        "operator-pipeline.js?v=20260903-v1",
+        "channel-adapters.js?v=20260823-channel-isolation-v3",
+        "operation-channel.js?v=20260904-v1",
+        "supabase-bridge.js?v=20260717-egress-hotfix-v1",
+        "print-shipping-summary.js?v=20260909-label-bundles",
+        "google-sheets-export.js?v=20260831-google-create-v1",
+        "https://accounts.google.com/gsi/client"
+      ],
+      "navigation": [],
+      "visualReview": "pending",
+      "production": null
+    },
+    {
+      "route": "auction-control.html",
+      "role": "operator",
+      "title": "송출 설정 · CREO",
+      "headings": [
+        "방송 관리",
+        "진행자",
+        "P1·P2 공통 순환 자막",
+        "배너",
+        "경매 화면 요소",
+        "P1·P2 공통 순환 자막",
+        "배너",
+        "낙찰 집계",
+        "방송 자산",
+        "P2 세부 표시",
+        "주사위 영상 1~6",
+        "실제 화면 직접 배치"
+      ],
+      "styles": [
+        "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
+      ],
+      "scripts": [
+        "platform-client.js?v=20260803-admin-session-v2",
+        "channel-runtime.js?v=20260901-operator-routing-v1",
+        "auction-contract.js?v=20260819-contract-v1",
+        "supabase-bridge.js?v=20260720-quota-fallback-v2",
+        "broadcast-profiles.js?v=20260906-finals-v1"
+      ],
+      "navigation": [
+        "/main"
+      ],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "송출 설정 · CREO",
+        "bytes": 59417,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "auction-live.html",
+      "role": "broadcast",
+      "title": "CREO 공용 송출",
+      "headings": [
+        "${esc(item.name)}",
+        "${vendorTag}${esc(item.name)}",
+        "${esc(group.name)}",
+        "${esc(item.vendorName||'업체 미지정')}",
+        "${esc(s.quizQuestion||'문제를 준비하고 있습니다.')}",
+        "${esc(title)}",
+        "${esc(label)}",
+        "낙찰자 × 주사위",
+        "낙찰자 × 주사위",
+        "${esc(row.group.shortName||row.group.name)}",
+        "송출 시에만 표시"
+      ],
+      "styles": [
+        "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css",
+        "auction-skin-metal.css?v=20260819-metal-v1",
+        "broadcast-ui.css?v=20260907-white-traits-v2",
+        "broadcast-modern.css?v=20260907-modern-v1",
+        "/ongdong-brand.css?v=20260908-logo"
+      ],
+      "scripts": [
+        "auction-contract.js?v=20260819-contract-v1",
+        "basic-dice-core.js?v=20260830-balance-v2",
+        "supabase-bridge.js?v=20260720-quota-fallback-v2",
+        "broadcast-profiles.js?v=20260906-finals-v1",
+        "/ongdong-brand.js?v=20260908-logo",
+        "ranking-engine.js",
+        "contribution-result.js?v=20260908-expiry",
+        "banner-player.js"
+      ],
+      "navigation": [],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "CREO 공용 송출",
+        "bytes": 88825,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "band-monitor.html",
+      "role": "operator",
+      "title": "BAND 승인봇 상태판",
+      "headings": [
+        "승인봇 상태판",
+        "승인 프로그램에 연결하고 있습니다",
+        "현재 처리 현황",
+        "승인 조건",
+        "로그인 세션 갱신",
+        "켜야 하는 곳"
+      ],
+      "styles": [
+        "./band-monitor.css"
+      ],
+      "scripts": [
+        "./band-monitor.js"
+      ],
+      "navigation": [
+        "./",
+        "https://www.band.us/"
+      ],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "BAND 승인봇 상태판",
+        "bytes": 10550,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "banner-library.html",
+      "role": "tool",
+      "title": "공용 배너 보관함 · CREO",
+      "headings": [
+        "공용 배너 보관함"
+      ],
+      "styles": [],
+      "scripts": [
+        "platform-client.js?v=20260803-admin-session-v2",
+        "banner-library.js?v=20260906-v1"
+      ],
+      "navigation": [],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "공용 배너 보관함 · CREO",
+        "bytes": 3718,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "banner_maker.html",
+      "role": "tool",
+      "title": "배너 이미지 생성기 V2",
+      "headings": [
+        "배너 구조 복원 버전"
+      ],
+      "styles": [
+        "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
+      ],
+      "scripts": [
+        "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"
+      ],
+      "navigation": [],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "배너 이미지 생성기 V2",
+        "bytes": 13107,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "broadcast-router.html",
+      "role": "broadcast",
+      "title": "CREO 통합 송출",
+      "headings": [],
+      "styles": [],
+      "scripts": [
+        "broadcast-profiles.js?v=20260906-finals-v1"
+      ],
+      "navigation": [],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "CREO 통합 송출",
+        "bytes": 3917,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "broadcast-studio.html",
+      "role": "broadcast",
+      "title": "방송 관리 · CREO",
+      "headings": [
+        "송출 관리CONTROL STUDIO"
+      ],
+      "styles": [
+        "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css",
+        "/ongdong-brand.css?v=20260908-logo"
+      ],
+      "scripts": [
+        "platform-client.js?v=20260803-admin-session-v2",
+        "channel-runtime.js?v=20260901-operator-routing-v1",
+        "operator-pipeline.js?v=20260903-v1",
+        "broadcast-profiles.js?v=20260906-finals-v1",
+        "/ongdong-brand.js?v=20260908-logo"
+      ],
+      "navigation": [
+        "/main",
+        "capture-gallery.html",
+        "/main"
+      ],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "방송 관리 · CREO",
+        "bytes": 16658,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "broadcast.html",
+      "role": "broadcast",
+      "title": "CREO 방송 송출",
+      "headings": [
+        "${roundTitle} 전체 경기 결과"
+      ],
+      "styles": [
+        "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css",
+        "broadcast-creyon.css?v=20260820-live-bidders-v1",
+        "broadcast-crewart.css?v=20260823-flat-reel-v5"
+      ],
+      "scripts": [
+        "auction-contract.js?v=20260819-contract-v1",
+        "supabase-bridge.js?v=20260819-round3-seed-v2",
+        "channel-broadcast-bridge.js?v=20260909-channel-order-v6",
+        "event-modules.js?v=20260823-crewart-flat-board-v5"
+      ],
+      "navigation": [],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "CREO 방송 송출",
+        "bytes": 462658,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "buyer-delivery.html",
+      "role": "buyer",
+      "title": "낙찰·배송 확인",
+      "headings": [
+        "님 낙찰·배송",
+        "낙찰 내역",
+        "수령지 선택"
+      ],
+      "styles": [
+        "/checkout-ui.css?v=20260902-checkout-shell-v1"
+      ],
+      "scripts": [
+        "/checkout-client.js?v=20260904-shared-v1"
+      ],
+      "navigation": [],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "낙찰·배송 확인",
+        "bytes": 12052,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "buyer-library.html",
+      "role": "buyer",
+      "title": "내 보관함 · 옹동2",
+      "headings": [
+        "보관함을 열지 못했어요",
+        "내 개체 보관함",
+        "내 보관함",
+        "",
+        "낙찰 내역 연결"
+      ],
+      "styles": [
+        "/ongdong-brand.css",
+        "/checkout-navigation.css",
+        "/buyer-library.css",
+        "/checkout-inquiry.css?v=20260912-inquiry"
+      ],
+      "scripts": [
+        "/checkout-inquiry.js?v=20260912-inquiry",
+        "/ongdong-brand.js",
+        "/checkout-client.js",
+        "/checkout-item-view.js",
+        "/buyer-kakao-login.js",
+        "/buyer-library.js?v=20260912-inquiry"
+      ],
+      "navigation": [
+        "/buyer-library.html"
+      ],
+      "visualReview": "pending",
+      "production": null
+    },
+    {
+      "route": "buyer-shipping.html",
+      "role": "buyer",
+      "title": "옹동2 · 배송·결제",
+      "headings": [
+        "페이지를 열 수 없어요",
+        "어디서 받으시나요?",
+        "수령 방법",
+        "업체별 결제",
+        "내 개체"
+      ],
+      "styles": [
+        "/checkout-ui.css?v=20260902-checkout-shell-v1",
+        "/checkout-navigation.css?v=20260912-buyer-tabs",
+        "/checkout-inquiry.css?v=20260912-inquiry",
+        "/checkout-layout.css?v=20260908-mobile-focus",
+        "/ongdong-brand.css?v=20260908-logo",
+        "/checkout-pages.css?v=20260912-blue"
+      ],
+      "scripts": [
+        "/checkout-rules.js?v=20260912-checkout-outbox",
+        "/checkout-client.js?v=20260912-status-colors",
+        "/checkout-item-view.js?v=20260912-buyer-tabs",
+        "/checkout-inquiry.js?v=20260912-inquiry",
+        "/buyer-navigation.js?v=20260912-inquiry",
+        "/buyer-library-link.js",
+        "/checkout-actions.js?v=20260912-checkout-outbox",
+        "/ongdong-brand.js?v=20260908-logo"
+      ],
+      "navigation": [
+        "/buyer-library.html",
+        "${esc(p.cardPaymentUrl)}",
+        "${esc(call)}"
+      ],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "옹동2 · 배송·결제",
+        "bytes": 22760,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "cam.html",
+      "role": "broadcast",
+      "title": "CREOK CAM",
+      "headings": [],
+      "styles": [],
+      "scripts": [
+        "https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"
+      ],
+      "navigation": [],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "CREOK CAM",
+        "bytes": 9378,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "cam/index.html",
+      "role": "broadcast",
+      "title": "CREOK CAM",
+      "headings": [],
+      "styles": [],
+      "scripts": [
+        "https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"
+      ],
+      "navigation": [],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "CREOK CAM",
+        "bytes": 9378,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "capture-gallery.html",
+      "role": "tool",
+      "title": "본체 캡처 · CREO",
+      "headings": [
+        "본체 캡처 관리",
+        "본체 캡처",
+        "${esc(row.itemName||'개체')}"
+      ],
+      "styles": [
+        "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
+      ],
+      "scripts": [
+        "platform-client.js?v=20260803-admin-session-v2"
+      ],
+      "navigation": [
+        "/main",
+        "broadcast-studio.html",
+        "capture-setup.html",
+        "/main",
+        "${esc(downloadUrl(row))}"
+      ],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "본체 캡처 · CREO",
+        "bytes": 9488,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "capture-setup.html",
+      "role": "tool",
+      "title": "CREO 자동 캡처 설정",
+      "headings": [
+        "낙찰 개체 자동 캡처",
+        "PRISM 단축키 지정",
+        "본체 에이전트 설치",
+        "노트북 경매 앱 설정",
+        "실전 동작 확인",
+        "사진 포함 문자"
+      ],
+      "styles": [],
+      "scripts": [],
+      "navigation": [
+        "downloads/creo-capture-agent-v1.2.3.zip",
+        "/main"
+      ],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "CREO 자동 캡처 설정",
+        "bytes": 5624,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "cdcup-index.html",
+      "role": "operator",
+      "title": "CDCUP 경매 관리",
+      "headings": [
+        "업체 페이지",
+        "회차 기록"
+      ],
+      "styles": [
+        "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard-dynamic-subset.css",
+        "common.css?v=20260707-nav-dropdown2"
+      ],
+      "scripts": [
+        "auction-contract.js?v=20260819-contract-v1",
+        "supabase-bridge.js?v=20260819-round3-seed-v2",
+        "event-modules.js?v=20260821-crewart-p3-layout-v9",
+        "assets/vendor/xlsx.mini.min.js?v=0.18.5"
+      ],
+      "navigation": [
+        "cdcup-index.html",
+        "index.html",
+        "cdcup-index.html",
+        "summary.html",
+        "ranking.html?channel=cdcup",
+        "crewarts/",
+        "shipping.html",
+        "summary.html",
+        "shipping.html?channel=cdcup"
+      ],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "CDCUP 경매 관리",
+        "bytes": 264165,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "cdcup/index.html",
+      "role": "operator",
+      "title": "CDCUP 운영",
+      "headings": [
+        "CDCUP 운영"
+      ],
+      "styles": [
+        "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
+      ],
+      "scripts": [],
+      "navigation": [
+        "../index.html",
+        "../cdcup-index.html",
+        "../summary.html",
+        "../ranking.html?channel=cdcup",
+        "../settings.html"
+      ],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "CDCUP 운영",
+        "bytes": 3602,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "channel-archives.html",
+      "role": "operator",
+      "title": "회차 관리 · CREO",
+      "headings": [
+        "회차 관리",
+        "CURRENT EPISODE",
+        "현재 회차 · 실시간 정보",
+        "SAVED EPISODES",
+        "${esc(a.title||'제목 없는 회차')}"
+      ],
+      "styles": [],
+      "scripts": [
+        "auction-contract.js?v=20260819-contract-v1",
+        "platform-client.js?v=20260803-admin-session-v2",
+        "supabase-bridge.js?v=20260717-egress-hotfix-v1",
+        "channel-adapters.js?v=20260823-channel-isolation-v3",
+        "ranking-engine.js?v=20260813-ranking-v2",
+        "cdcup-tournament-data.js?v=20260817-round3-grid-v1"
+      ],
+      "navigation": [
+        "/main"
+      ],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "회차 관리 · CREO",
+        "bytes": 14901,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "channel-manager.html",
+      "role": "operator",
+      "title": "채널 관리 · CREO",
+      "headings": [
+        "채널",
+        "채널 설정",
+        "기본 정보",
+        "운영 방식",
+        "배송·직수령 설정",
+        "낙찰금 할인",
+        "화면 용어",
+        "집계 그룹",
+        "집계판",
+        "방송 조립",
+        "채널별 방송 기본 콘텐츠",
+        "방송 디자인",
+        "운영자 확인"
+      ],
+      "styles": [
+        "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
+      ],
+      "scripts": [
+        "platform-client.js?v=20260803-admin-session-v2"
+      ],
+      "navigation": [
+        "/main",
+        "/main"
+      ],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "채널 관리 · CREO",
+        "bytes": 47255,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "channel-rankings.html",
+      "role": "operator",
+      "title": "순위표 이동",
+      "headings": [],
+      "styles": [],
+      "scripts": [],
+      "navigation": [],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "순위표 이동",
+        "bytes": 508,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "channel-shipping.html",
+      "role": "operator",
+      "title": "배송·결제 관리로 이동 · CREO",
+      "headings": [],
+      "styles": [],
+      "scripts": [],
+      "navigation": [],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "배송·결제 관리로 이동 · CREO",
+        "bytes": 729,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "channel-workspace.html",
+      "role": "operator",
+      "title": "채널 운영 · CREO",
+      "headings": [
+        "업체·주관사 링크 관리",
+        "현장 운영",
+        "항목 추가",
+        "운영자 확인"
+      ],
+      "styles": [
+        "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
+      ],
+      "scripts": [
+        "platform-client.js?v=20260803-admin-session-v2",
+        "channel-runtime.js?v=20260901-operator-routing-v1",
+        "operator-pipeline.js?v=20260903-v1"
+      ],
+      "navigation": [
+        "/main",
+        "/vendor-entry-review.html"
+      ],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "채널 운영 · CREO",
+        "bytes": 36580,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "checkout-changes.html",
+      "role": "operator",
+      "title": "변경 요청 · 옹동2",
+      "headings": [
+        "결제 방식 변경 요청",
+        "${esc(r.buyerName)}"
+      ],
+      "styles": [
+        "/ongdong-brand.css?v=20260908-logo"
+      ],
+      "scripts": [
+        "/platform-client.js",
+        "/ongdong-brand.js?v=20260908-logo"
+      ],
+      "navigation": [
+        "/shipping.html",
+        "tel:${esc(r.phone)}"
+      ],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "변경 요청 · 옹동2",
+        "bytes": 6765,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "checkout-practice.html",
+      "role": "operator",
+      "title": "배송·결제 테스트 연습",
+      "headings": [
+        "배송·결제 연습",
+        "TEST-01 · 테스트 구매자"
+      ],
+      "styles": [],
+      "scripts": [
+        "/checkout-practice.js"
+      ],
+      "navigation": [],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "배송·결제 테스트 연습",
+        "bytes": 5511,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "crewart-broadcast.html",
+      "role": "broadcast",
+      "title": "크레와트 송출",
+      "headings": [
+        "${esc(cfg.live_quiz_question || '문제를 준비하고 있습니다.')}",
+        "잠시 후 시작합니다",
+        "${esc(item.name || item.displayName || '마법 개체')}",
+        "송출 데이터 오류"
+      ],
+      "styles": [
+        "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css",
+        "crewart.css?v=20260806-house-redesign"
+      ],
+      "scripts": [
+        "auction-contract.js?v=20260819-contract-v1",
+        "supabase-bridge.js?v=20260720-quota-fallback-v2",
+        "event-modules.js?v=20260821-crewart-p3-layout-v9"
+      ],
+      "navigation": [],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "크레와트 송출",
+        "bytes": 14374,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "crewart-control.html",
+      "role": "operator",
+      "title": "크레와트 방송 제어로 이동",
+      "headings": [],
+      "styles": [],
+      "scripts": [],
+      "navigation": [
+        "broadcast-studio.html?channel=crewart"
+      ],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "크레와트 방송 제어로 이동",
+        "bytes": 588,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "crewart-preview.html",
+      "role": "broadcast",
+      "title": "공통 방송 미리보기로 이동",
+      "headings": [],
+      "styles": [],
+      "scripts": [],
+      "navigation": [
+        "preview.html?page=3&module=crewart"
+      ],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "공통 방송 미리보기로 이동",
+        "bytes": 578,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "crewart-ranking.html",
+      "role": "broadcast",
+      "title": "크레와트 순위표 이동",
+      "headings": [],
+      "styles": [],
+      "scripts": [],
+      "navigation": [],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "크레와트 순위표 이동",
+        "bytes": 353,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "crewart-settings.html",
+      "role": "operator",
+      "title": "크레와트 설정",
+      "headings": [
+        "크레와트 설정",
+        "기숙사",
+        "점수",
+        "입찰자 기숙사 배정",
+        "현재 점수 미리보기"
+      ],
+      "styles": [
+        "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css",
+        "crewart.css?v=20260707-magic2"
+      ],
+      "scripts": [
+        "auction-contract.js?v=20260819-contract-v1",
+        "supabase-bridge.js?v=20260717-egress-hotfix-v1",
+        "event-modules.js?v=20260821-crewart-p3-layout-v9"
+      ],
+      "navigation": [
+        "crewart-settings.html",
+        "index.html",
+        "crewart-settings.html",
+        "crewart-survey.html",
+        "ranking.html?channel=crewart",
+        "cdcup/",
+        "broadcast-router.html?event=crewart&amp;page=3"
+      ],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "크레와트 설정",
+        "bytes": 8009,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "crewart-survey.html",
+      "role": "survey",
+      "title": "크레와트 성향 테스트",
+      "headings": [
+        "CREWARTSPERSONALITY TEST",
+        "성향 결과",
+        "",
+        "평소 유형은?",
+        "BAND",
+        "내 링크로 BAND 인증 완료",
+        "카카오톡으로 보내기",
+        "이미지 저장"
+      ],
+      "styles": [
+        "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css",
+        "crewart-survey-v4.css?v=20260817-share-polish-v96"
+      ],
+      "scripts": [
+        "assets/vendor/kakao-2.8.1.min.js",
+        "crewart-survey-core.js?v=20260817-calibrated-v29",
+        "crewart-survey.js?v=20260823-survey-closed-v106"
+      ],
+      "navigation": [
+        "https://www.band.us/band/101878670/post"
+      ],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "크레와트 성향 테스트",
+        "bytes": 14123,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "crewarts/index.html",
+      "role": "operator",
+      "title": "크레와트 운영",
+      "headings": [
+        "크레와트 운영"
+      ],
+      "styles": [
+        "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
+      ],
+      "scripts": [],
+      "navigation": [
+        "../index.html",
+        "../cdcup-index.html?module=crewart&channel=crewart",
+        "../crewart-settings.html",
+        "../crewart-survey.html",
+        "../ranking.html?channel=crewart",
+        "../settings.html"
+      ],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "크레와트 운영",
+        "bytes": 3896,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "index.html",
+      "role": "operator",
+      "title": "CREO 운영",
+      "headings": [
+        "관리자 로그인",
+        "운영 파이프라인",
+        "채널 불러오는 중"
+      ],
+      "styles": [
+        "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css",
+        "/ongdong-brand.css?v=20260908-logo"
+      ],
+      "scripts": [
+        "platform-client.js?v=20260803-admin-session-v2",
+        "channel-runtime.js?v=20260820-capture-gallery-v1",
+        "/ongdong-brand.js?v=20260908-logo"
+      ],
+      "navigation": [
+        "/main",
+        "channel-manager.html",
+        "roulette/",
+        "crewart-survey.html",
+        "shipping-rates.html"
+      ],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "CREO 운영",
+        "bytes": 17311,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "operator-login.html",
+      "role": "operator",
+      "title": "운영자 로그인 · 옹동2",
+      "headings": [
+        "운영자 로그인"
+      ],
+      "styles": [
+        "/ongdong-brand.css",
+        "/operator-entry.css"
+      ],
+      "scripts": [
+        "/ongdong-brand.js",
+        "/operator-login.js"
+      ],
+      "navigation": [],
+      "visualReview": "pending",
+      "production": null
+    },
+    {
+      "route": "organizer-shipping.html",
+      "role": "organizer",
+      "title": "주관사 · 옹동2",
+      "headings": [
+        "배송비 정산",
+        "배송비 받을 계좌 등록",
+        "업체별 내역",
+        "입금 확인"
+      ],
+      "styles": [
+        "/ongdong-brand.css",
+        "/shipping-settlement.css?v=20260910-organizer-role",
+        "/organizer-page.css?v=20260910-holder",
+        "/checkout-pages.css?v=20260912-blue"
+      ],
+      "scripts": [
+        "/platform-client.js",
+        "/ongdong-brand.js",
+        "/organizer-shipping.js?v=20260910-holder"
+      ],
+      "navigation": [],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "주관사 · 옹동2",
+        "bytes": 4755,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "platform-layout-editor.html",
+      "role": "operator",
+      "title": "송출 배치 · CREO",
+      "headings": [
+        "송출 설정"
+      ],
+      "styles": [],
+      "scripts": [
+        "platform-client.js?v=20260803-admin-session-v2"
+      ],
+      "navigation": [],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "송출 배치 · CREO",
+        "bytes": 14595,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "preview.html",
+      "role": "broadcast",
+      "title": "방송 미리보기 - CREO",
+      "headings": [],
+      "styles": [
+        "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css",
+        "common.css?v=20260707-nav-dropdown2"
+      ],
+      "scripts": [
+        "auction-contract.js?v=20260819-contract-v1",
+        "supabase-bridge.js?v=20260819-round3-seed-v2",
+        "channel-broadcast-bridge.js?v=20260909-channel-order-v6",
+        "cdcup-tournament-data.js?v=20260819-round3-seed-v2",
+        "event-modules.js?v=20260821-crewart-p3-layout-v9"
+      ],
+      "navigation": [
+        "index.html",
+        "index.html",
+        "broadcast-studio.html?channel=cdcup",
+        "broadcast-studio.html?channel=crewart",
+        "preview.html?page=1",
+        "broadcast-router.html?event=cdcup&amp;page=1",
+        "broadcast-router.html?event=cdcup&amp;page=2",
+        "broadcast-router.html?event=cdcup&amp;page=3",
+        "broadcast-router.html?event=crewart&amp;page=1",
+        "broadcast-router.html?event=crewart&amp;page=2",
+        "broadcast-router.html?event=crewart&amp;page=3",
+        "preview.html?page=1",
+        "preview.html?page=2",
+        "preview.html?page=3",
+        "settings.html",
+        "ranking.html?channel=cdcup&amp;ceremony=1",
+        "crewart-settings.html"
+      ],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "방송 미리보기 - CREO",
+        "bytes": 258996,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "print.html",
+      "role": "tool",
+      "title": "경매 인쇄 · CREO",
+      "headings": [
+        "경매 리스트",
+        "낙찰 · 배송 정산",
+        "배송 라벨",
+        "운영자 확인"
+      ],
+      "styles": [
+        "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
+      ],
+      "scripts": [
+        "auction-contract.js?v=20260819-contract-v1",
+        "platform-client.js?v=20260803-admin-session-v2",
+        "channel-runtime.js?v=20260901-operator-routing-v1",
+        "operator-pipeline.js?v=20260903-v1",
+        "channel-adapters.js?v=20260823-channel-isolation-v3",
+        "operation-channel.js?v=20260904-v1",
+        "supabase-bridge.js?v=20260717-egress-hotfix-v1",
+        "print-shipping-summary.js?v=20260909-label-bundles",
+        "google-sheets-export.js?v=20260831-google-create-v1",
+        "https://accounts.google.com/gsi/client"
+      ],
+      "navigation": [],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "경매 인쇄 · CREO",
+        "bytes": 98075,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "ranking.html",
+      "role": "broadcast",
+      "title": "회차 관리로 이동",
+      "headings": [],
+      "styles": [],
+      "scripts": [],
+      "navigation": [],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "회차 관리로 이동",
+        "bytes": 522,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "roulette/index.html",
+      "role": "broadcast",
+      "title": "MARBLE DRAW",
+      "headings": [
+        "추첨 준비",
+        "브로드캐스트 송출",
+        "결과 시점 순위",
+        "행사 정보",
+        "참가자",
+        "추첨 방식"
+      ],
+      "styles": [],
+      "scripts": [],
+      "navigation": [],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "MARBLE DRAW",
+        "bytes": 12962,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "settings.html",
+      "role": "operator",
+      "title": "방송 화면 제어 - CREO",
+      "headings": [],
+      "styles": [
+        "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css",
+        "common.css?v=20260707-nav-dropdown2"
+      ],
+      "scripts": [
+        "auction-contract.js?v=20260819-contract-v1",
+        "supabase-bridge.js?v=20260717-egress-hotfix-v1",
+        "channel-broadcast-bridge.js?v=20260909-channel-order-v6",
+        "event-modules.js?v=20260821-crewart-p3-layout-v9"
+      ],
+      "navigation": [
+        "index.html",
+        "index.html",
+        "broadcast-studio.html?channel=cdcup",
+        "broadcast-studio.html?channel=crewart",
+        "preview.html?page=1",
+        "broadcast-router.html?event=cdcup&amp;page=1",
+        "broadcast-router.html?event=cdcup&amp;page=2",
+        "broadcast-router.html?event=cdcup&amp;page=3",
+        "broadcast-router.html?event=crewart&amp;page=1",
+        "broadcast-router.html?event=crewart&amp;page=2",
+        "broadcast-router.html?event=crewart&amp;page=3",
+        "preview.html?page=1",
+        "preview.html?page=2",
+        "preview.html?page=3",
+        "settings.html"
+      ],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "방송 화면 제어 - CREO",
+        "bytes": 74075,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "shipping-companies.html",
+      "role": "operator",
+      "title": "업체별 조회 이동 · CREO",
+      "headings": [],
+      "styles": [],
+      "scripts": [],
+      "navigation": [],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "업체별 조회 이동 · CREO",
+        "bytes": 577,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "shipping-rates.html",
+      "role": "operator",
+      "title": "공용 배송 데이터 · CREO",
+      "headings": [
+        "공용 배송 데이터",
+        "관리자 전용 요금표",
+        "최근 변경사항",
+        "관리자 로그인"
+      ],
+      "styles": [],
+      "scripts": [
+        "platform-client.js?v=20260811-shipping-refresh",
+        "auction-contract.js?v=20260819-contract-v1",
+        "supabase-bridge.js?v=20260811-shipping-refresh",
+        "assets/vendor/xlsx.mini.min.js?v=0.18.5"
+      ],
+      "navigation": [
+        "/"
+      ],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "공용 배송 데이터 · CREO",
+        "bytes": 23826,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "shipping-status.html",
+      "role": "buyer",
+      "title": "배송 등록 조회 | CREO",
+      "headings": [
+        "전체조회"
+      ],
+      "styles": [
+        "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard-dynamic-subset.css"
+      ],
+      "scripts": [
+        "auction-contract.js?v=20260819-contract-v1",
+        "platform-client.js?v=20260803-admin-session-v2",
+        "channel-runtime.js?v=20260901-operator-routing-v1",
+        "operator-pipeline.js?v=20260903-v1",
+        "shipping-access.js?v=20260820-v1",
+        "supabase-bridge.js?v=20260717-egress-hotfix-v1",
+        "channel-adapters.js?v=20260823-channel-isolation-v3",
+        "operation-channel.js?v=20260904-v1",
+        "print-shipping-summary.js?v=20260903-winner-identity-v2"
+      ],
+      "navigation": [
+        "shipping.html",
+        "shipping-status.html",
+        "tel:"
+      ],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "배송 등록 조회 | CREO",
+        "bytes": 39436,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "shipping.html",
+      "role": "operator",
+      "title": "옹동2 · 배송 관리",
+      "headings": [
+        "관리자 로그인",
+        "안내 문구 미리보기"
+      ],
+      "styles": [
+        "/ongdong-brand.css?v=20260908-logo",
+        "/buyer-link-manager.css",
+        "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.8/dist/web/static/pretendard-dynamic-subset.css"
+      ],
+      "scripts": [
+        "/ongdong-brand.js?v=20260908-logo",
+        "platform-client.js?v=20260803-admin-session-v2",
+        "/buyer-link-manager.js",
+        "/checkout-actions.js?v=20260912-confirmation",
+        "channel-runtime.js?v=20260901-operator-routing-v1",
+        "auction-contract.js?v=20260819-contract-v1",
+        "supabase-bridge.js?v=20260717-egress-hotfix-v1",
+        "channel-adapters.js?v=20260823-channel-isolation-v3",
+        "operation-channel.js?v=20260904-v1",
+        "settlement-discount.js?v=20260823-v1",
+        "print-shipping-summary.js?v=20260903-winner-identity-v2"
+      ],
+      "navigation": [
+        "checkout-changes.html?channel=",
+        "shipping.html",
+        "shipping-status.html"
+      ],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "옹동2 · 배송 관리",
+        "bytes": 199733,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "summary.html",
+      "role": "operator",
+      "title": "경매 결과 — CDCUP",
+      "headings": [],
+      "styles": [
+        "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css",
+        "common.css?v=20260707-nav-dropdown2"
+      ],
+      "scripts": [
+        "auction-contract.js?v=20260819-contract-v1",
+        "supabase-bridge.js?v=20260717-egress-hotfix-v1",
+        "event-modules.js?v=20260821-crewart-p3-layout-v9"
+      ],
+      "navigation": [
+        "cdcup-index.html",
+        "index.html",
+        "cdcup-index.html",
+        "summary.html",
+        "ranking.html?channel=cdcup",
+        "crewarts/",
+        "cdcup-index.html",
+        "summary.html",
+        "shipping.html?channel=cdcup"
+      ],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "경매 결과 — CDCUP",
+        "bytes": 21622,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "tournament-bracket.html",
+      "role": "broadcast",
+      "title": "2026 CDCUP 공식 토너먼트 대진표",
+      "headings": [
+        "시즌 2 진행표"
+      ],
+      "styles": [],
+      "scripts": [
+        "auction-contract.js?v=20260819-contract-v1",
+        "supabase-bridge.js?v=20260819-round3-seed-v2",
+        "cdcup-tournament-data.js?v=20260819-round3-seed-v2"
+      ],
+      "navigation": [],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "2026 CDCUP 공식 토너먼트 대진표",
+        "bytes": 26101,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "vendor-checkout.html",
+      "role": "vendor",
+      "title": "옹동2 · 업체 결제 확인",
+      "headings": [
+        "",
+        "지금 할 일 0건",
+        "참여 업체 연락처"
+      ],
+      "styles": [
+        "/checkout-ui.css?v=20260902-checkout-shell-v1",
+        "/shipping-settlement.css?v=20260910",
+        "/vendor-navigation.css?v=20260912-entry",
+        "/vendor-contact-form.css",
+        "/checkout-navigation.css?v=20260912-checkout-photos",
+        "/checkout-layout.css?v=20260908-mobile-focus",
+        "/ongdong-brand.css?v=20260908-logo",
+        "/checkout-pages.css?v=20260912-confirmation"
+      ],
+      "scripts": [
+        "/checkout-client.js?v=20260912-status-colors",
+        "/shipping-confirm.js?v=20260910",
+        "/vendor-navigation.js?v=20260912-entry",
+        "/vendor-contact-form.js",
+        "/checkout-item-view.js?v=20260912-checkout-photos",
+        "/vendor-item-view.js?v=20260912-checkout-photos",
+        "/checkout-actions.js?v=20260912-confirmation",
+        "/ongdong-brand.js?v=20260908-logo"
+      ],
+      "navigation": [
+        "${esc(href)}",
+        "${esc(CreoCheckoutActions.phoneHref(buyer.phone))}"
+      ],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "옹동2 · 업체 결제 확인",
+        "bytes": 20000,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "vendor-entries.html",
+      "role": "vendor",
+      "title": "출품 개체 · 옹동2",
+      "headings": [
+        "업체 정보 등록",
+        "부 선택",
+        "개체 정보",
+        "개체 사진",
+        "작성한 내용을 남길까요?",
+        "피들에서 가져오기"
+      ],
+      "styles": [
+        "/ongdong-brand.css",
+        "/checkout-pages.css",
+        "/vendor-entry.css",
+        "/vendor-contact-form.css",
+        "/vendor-navigation.css"
+      ],
+      "scripts": [
+        "/vendor-contact-form.js",
+        "/ongdong-brand.js",
+        "/vendor-entry-api.js",
+        "/vendor-navigation.js",
+        "/vendor-entry-app.js"
+      ],
+      "navigation": [
+        "/vendor-entries.html",
+        "/vendor-checkout.html",
+        "/vendor-entries.html?section=profile"
+      ],
+      "visualReview": "pending",
+      "production": null
+    },
+    {
+      "route": "vendor-entry-review.html",
+      "role": "operator",
+      "title": "출품 검토 · 옹동2",
+      "headings": [
+        "운영자 로그인",
+        "출품 검토",
+        ""
+      ],
+      "styles": [
+        "/ongdong-brand.css",
+        "/checkout-navigation.css",
+        "/vendor-entry-review.css",
+        "/entry-photo-usage.css"
+      ],
+      "scripts": [
+        "/platform-client.js",
+        "/ongdong-brand.js",
+        "/checkout-item-view.js",
+        "/vendor-entry-review.js",
+        "/entry-photo-usage.js"
+      ],
+      "navigation": [
+        "/channel-manager.html"
+      ],
+      "visualReview": "pending",
+      "production": null
+    },
+    {
+      "route": "vendor-status.html",
+      "role": "vendor",
+      "title": "업체 판매 내역 확인",
+      "headings": [
+        ""
+      ],
+      "styles": [
+        "/checkout-ui.css?v=20260902-checkout-shell-v1"
+      ],
+      "scripts": [
+        "/checkout-client.js?v=20260904-shared-v1"
+      ],
+      "navigation": [],
+      "visualReview": "pending",
+      "production": {
+        "status": 200,
+        "contentType": "text/html; charset=utf-8",
+        "title": "업체 판매 내역 확인",
+        "bytes": 5200,
+        "redirect": null,
+        "observedAt": "2026-09-11T21:21:47.878Z"
+      }
+    },
+    {
+      "route": "welcome.html",
+      "role": "public",
+      "title": "옹동2",
+      "headings": [
+        "옹동2"
+      ],
+      "styles": [
+        "/ongdong-brand.css",
+        "/operator-entry.css"
+      ],
+      "scripts": [
+        "/ongdong-brand.js"
+      ],
+      "navigation": [],
+      "visualReview": "pending",
+      "production": null
+    }
+  ]
+}

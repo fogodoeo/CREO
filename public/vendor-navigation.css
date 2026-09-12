@@ -1,0 +1,20 @@
+/* Keep the existing payment controller's settings fields; editing lives in 업체 정보. */
+.vendor-page #vendor-settings{display:none!important}
+.vendor-page:not(.entry-page) .top>label:has(#vendor-event){display:block;font-size:13px;color:var(--muted,#5e6978);margin-top:20px}
+.vendor-page #vendor-event{display:block;width:100%;min-width:0;min-height:52px;padding:12px;margin-top:6px;border:1px solid var(--checkout-control-border,#8797b1);border-radius:12px;background:#fff;color:var(--ink,#202631);font-size:16px;font-weight:600}
+.vendor-page{--vendor-nav-height:72px}
+.vendor-bottom-nav{position:fixed;inset:auto 0 0;margin:0 auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));max-width:520px;min-height:var(--vendor-nav-height);padding:6px 12px calc(6px + env(safe-area-inset-bottom));border-top:1px solid var(--line,#e2e7ed);background:#fff;z-index:5}
+.vendor-bottom-nav[hidden]{display:none!important}
+.vendor-bottom-nav a,.vendor-bottom-nav>span{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:60px;min-width:0;padding:4px;color:var(--muted,#5e6978);text-decoration:none;font-size:12px;line-height:1.4;font-weight:500;text-align:center;border-radius:8px}
+.vendor-bottom-nav svg{width:22px;height:22px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.vendor-bottom-nav [aria-current]{color:var(--blue,#2563eb);font-weight:700}
+.vendor-bottom-nav [data-vendor-section=profile]{position:relative}
+.vendor-bottom-nav .profile-incomplete::after{content:'';position:absolute;top:6px;left:calc(50% + 12px);width:6px;height:6px;border-radius:50%;background:var(--red,#cf2525)}
+.vendor-page:not(.entry-page):has(.vendor-bottom-nav){padding-bottom:calc(var(--vendor-nav-height) + env(safe-area-inset-bottom))}
+.entry-page:has(.vendor-bottom-nav:not([hidden])) .entry-shell{padding-bottom:calc(var(--vendor-nav-height) + env(safe-area-inset-bottom))}
+.entry-page:has(.vendor-bottom-nav:not([hidden])) #content>.form-actions,.entry-page:has(.vendor-bottom-nav:not([hidden])) #profile-form>.form-actions{bottom:calc(var(--vendor-nav-height) + env(safe-area-inset-bottom))}
+.entry-page:has(.vendor-bottom-nav:not([hidden])) .notice{bottom:calc(var(--vendor-nav-height) + 16px + env(safe-area-inset-bottom))}
+.vendor-bottom-nav :focus-visible{outline:3px solid var(--checkout-focus,#1d4ed8);outline-offset:-3px}
+.vendor-info-prompt{display:block;padding:14px 16px;margin-block:16px;background:#eef4ff;color:#1d4ed8;border-radius:12px;font-size:16px;font-weight:600;text-decoration:none}
+.vendor-info-prompt[hidden]{display:none}
+@media(forced-colors:active){.vendor-bottom-nav [aria-current]{outline:2px solid Highlight;outline-offset:-4px}}

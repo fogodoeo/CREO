@@ -6,6 +6,7 @@ const https = require('node:https');
 const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
+const {isProtectedEntry,entryPath}=require('./operator-entry');
 
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
     '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8',
@@ -16,6 +17,7 @@ const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; ch
     '.mov': 'video/quicktime', '.ogg': 'audio/ogg', '.txt': 'text/plain; charset=utf-8' };
 
 function pageAlias(pathname) {
+    if(entryPath(pathname)==='/')return '/welcome.html';
     if (/^\/w\/op_[A-Za-z0-9_-]{16}$/.test(pathname)) return '/checkout-changes.html';
     if (/^\/[ds]\/[A-Za-z0-9_-]{8,24}$/.test(pathname)) return '/buyer-shipping.html';
     if (/^\/[vw]\/[A-Za-z0-9_-]{8,24}$/.test(pathname)) return '/vendor-checkout.html';
@@ -74,6 +76,7 @@ function createGateway(options = {}) {
                 res.writeHead(400); return res.end('Invalid request target');
             }
             const url = new URL(req.url, publicOrigin);
+            if(isProtectedEntry(url.pathname))return proxy(req,res);
             if (!['GET', 'HEAD'].includes(req.method) || url.pathname.startsWith('/api/') || url.pathname === '/health') return proxy(req, res);
             let pathname;
             try { pathname = decodeURIComponent(pageAlias(url.pathname)); } catch { pathname = '\0'; }

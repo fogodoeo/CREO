@@ -4,6 +4,16 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const Checkout = require('../checkout-core');
 const BrowserCheckout = require('../public/checkout-rules');
+
+test('additional payments use the outstanding item guide regardless of paid item ordering',()=>{
+    const paid={itemId:'old',buyerSubmittedAt:'2026-09-12T00:00:00Z',paymentMethod:'card',paymentStatus:'paid',paymentConfirmedAmount:50000,cardPaymentUrl:''};
+    const outstanding={itemId:'new',buyerSubmittedAt:paid.buyerSubmittedAt,paymentMethod:'card',paymentStatus:'card_payment_pending',cardPaymentUrl:'https://pay.example.test/new'};
+    for(const shipments of [[paid,outstanding],[outstanding,paid]]){
+        const state=Checkout.derivePaymentState({shipments,itemCount:2,totalAmount:90000});
+        assert.equal(state.status,'additional_payment');assert.equal(state.additionalDue,40000);assert.equal(state.latest.itemId,'new');assert.equal(state.latest.cardPaymentUrl,outstanding.cardPaymentUrl);
+    }
+});
+
 test('additional payment report remains actionable after a previous payment', () => {
     const state = Checkout.derivePaymentState({ itemCount: 2, totalAmount: 226000, shipments: [
         { paymentStatus: 'paid', paymentConfirmedAmount: 119000, buyerSubmittedAt: '2026-09-01' },

@@ -418,6 +418,273 @@ class MemoryRepository {
     async setActiveChannel(value) { this.active = value; return value; }
 }
 
+test('checkout media is identical for buyer and selling vendor, isolated by buyer and channel, and survives restart', async () => {
+    const repository = new MemoryRepository();
+    for (const id of ['v1','v2']) await repository.upsertRecord('alpha','vendor',{id,name:id});
+    const sold={status:'sold',soldPrice:100000,winnerName:'가상 구매자',winnerPhone:'01012345678'};
+    await repository.upsertRecord('alpha','item',{...sold,id:'own',lotNumber:1,name:'A01',vendorId:'v1',photoUrl:'/assets/own.webp',attributes:{photo_sire:'/assets/sire.webp',bid_log:'PRIVATE_BID_LOG',winner_phone:'PRIVATE_CONTACT'}});
+    await repository.upsertRecord('alpha','item',{...sold,id:'plain',lotNumber:2,name:'A02',vendorId:'v1'});
+    await repository.upsertRecord('alpha','item',{...sold,id:'other-vendor',lotNumber:3,name:'B01',vendorId:'v2',photoUrl:'/assets/other-vendor.webp'});
+    await repository.upsertRecord('alpha','item',{...sold,id:'other-buyer',lotNumber:4,name:'A03',vendorId:'v1',winnerPhone:'01099998888',photoUrl:'/assets/other-buyer.webp'});
+    await repository.upsertRecord('beta','item',{...sold,id:'own',lotNumber:1,name:'Other auction',vendorId:'v1',photoUrl:'/assets/other-channel.webp'});
+    const options={repository,adminSessionSecret:'isolated-checkout-media-test'};
+    let api=createPlatformApi(options);
+    const code=(await call(api,'POST','/api/platform/channels/alpha/buyer-shipping-link',{itemId:'own'})).json().code;
+    const vendorCode=(await call(api,'POST','/api/platform/channels/alpha/vendor-checkout-link',{vendorId:'v1'})).json().code;
+    const read=async()=>{
+        const buyerResponse=await call(api,'GET','/api/platform/buyer-shipping?code='+code,null,'');
+        const vendorResponse=await call(api,'GET','/api/platform/vendor-checkout?code='+vendorCode,null,'');
+        assert.equal(buyerResponse.status,200,buyerResponse.body);assert.equal(vendorResponse.status,200,vendorResponse.body);
+        assert.doesNotMatch(buyerResponse.body,/other-buyer\.webp|other-channel\.webp|PRIVATE_BID_LOG|PRIVATE_CONTACT|01099998888/);
+        assert.doesNotMatch(vendorResponse.body,/other-channel\.webp|other-vendor\.webp|PRIVATE_BID_LOG|PRIVATE_CONTACT/);
+        const buyer=buyerResponse.json(),vendor=vendorResponse.json();
+        const own=buyer.items.find(item=>item.id==='own');
+        const fromVendor=vendor.buyers.flatMap(row=>row.items).find(item=>item.id==='own');
+        assert.deepEqual(fromVendor.media,own.media);assert.deepEqual(fromVendor.parents,own.parents);
+        assert.deepEqual(buyer.vendors[0].items[0].media,own.media);
+        assert.equal(buyer.items.find(item=>item.id==='plain').media,undefined);
+        return own;
+    };
+    assert.equal((await read()).parents[0].media[0].url,'/assets/sire.webp');
+    const own=await repository.getRecord('alpha','item','own');
+    await repository.upsertRecord('alpha','item',{...own,attributes:{...own.attributes,photo_sire:'/assets/sire-updated.webp'}});
+    api=createPlatformApi(options);
+    assert.equal((await read()).parents[0].media[0].url,'/assets/sire-updated.webp');
+    assert.equal((await call(api,'GET','/api/platform/buyer-shipping?code='+vendorCode,null,'')).status,401);
+    assert.equal((await call(api,'GET','/api/platform/vendor-checkout?code='+code,null,'')).status,401);
+});
+
+test('archived buyer checkout stays scoped and read only through restart, expiry, and all write endpoints', async () => {
+    let identityLookups=0;
+    const repository=new MemoryRepository(),options={repository,adminSessionSecret:'isolated-archive-checkout',bandMembership:{async resolveMemberIdentity(){identityLookups++;return {phone:'01012345678'}}}};
+    await repository.upsertRecord('alpha','vendor',{id:'v',name:'가상 업체',bankName:'은행',bankAccount:'PRIVATE_OLD_ACCOUNT',bankHolder:'예금주'});
+    await repository.upsertRecord('alpha','item',{id:'own',name:'A01',lotNumber:1,status:'sold',vendorId:'v',soldPrice:100000,winnerName:'가상 구매자',winnerPhone:'01012345678',photoUrl:'/assets/own.webp'});
+    await repository.upsertRecord('beta','item',{id:'unrelated',name:'다른 경매',status:'sold',winnerPhone:'01012345678'});
+    let api=createPlatformApi(options);
+    const issued=await call(api,'POST','/api/platform/channels/alpha/buyer-shipping-link',{itemId:'own'});
+    assert.equal(issued.status,200,issued.body);const {code}=issued.json();
+    await repository.upsertRecord('alpha','item',{id:'ambiguous-history',name:'Old owner unknown',status:'sold',vendorId:'v',winnerName:'Reused nickname',photoUrl:'/assets/not-proven-owned.webp'});
+    // Archive before information was registered: history must still be readable.
+    repository.catalog.channels[0].status='archived';
+    api=createPlatformApi(options);
+    const before=JSON.stringify([...repository.records]);
+    const page=await call(api,'GET','/api/platform/buyer-shipping?code='+code+'&channel=beta',null,'');
+    assert.equal(page.status,200,page.body);const data=page.json();
+    assert.equal(data.channel.id,'alpha');assert.equal(data.readOnly,true);
+    assert.deepEqual(data.items.map(item=>item.id),['own']);
+    assert.equal(identityLookups,0,'historical ownership cannot fall back to current membership or nickname');
+    assert.equal(data.items[0].media[0].url,'/assets/own.webp');
+    assert.equal(data.canEditDestination,false);assert.equal(data.canRequestChange,false);
+    assert.equal(data.savedDestination,null);assert.deepEqual(data.vendors[0].paymentMethods,[]);
+    assert.equal(data.vendors[0].payment.canChangeMethod,false);assert.doesNotMatch(page.body,/PRIVATE_OLD_ACCOUNT/);
+    for(const endpoint of ['/buyer-shipping','/buyer-delivery','/buyer-shipping/change-request','/buyer-shipping/report-payment']){
+        const results=await Promise.all([1,2].map(()=>call(api,'POST','/api/platform'+endpoint,{code,destinationId:'pickup-1',vendorKey:'v',requestId:'archive-write-denied',payments:[{vendorKey:'v',method:'bank_transfer'}]},'')));
+        assert.ok(results.every(result=>result.status===401||result.status===409),endpoint);
+    }
+    assert.equal(JSON.stringify([...repository.records]),before,'reading or rejected writes must not alter records or enqueue notices');
+    repository.catalog.channels[0].status='active';api=createPlatformApi(options);
+    assert.equal((await call(api,'GET','/api/platform/buyer-shipping?code='+code,null,'')).json().readOnly,false);
+    for(const status of ['paused','draft']){
+        repository.catalog.channels[0].status=status;api=createPlatformApi(options);
+        assert.equal((await call(api,'GET','/api/platform/buyer-shipping?code='+code,null,'')).status,401);
+    }
+    repository.catalog.channels[0].status='archived';api=createPlatformApi(options);
+    const key='buyer_shipping_short_v2_'+code,row=(await repository.getRowsByKeys([key]))[0];
+    await repository.upsertRows([{key,value:JSON.stringify({...JSON.parse(row.value),expiresAt:Date.now()-1})}]);
+    assert.equal((await call(api,'GET','/api/platform/buyer-shipping?code='+code,null,'')).status,401);
+});
+
+test('archiving between buyer request validation and mutation prevents stale checkout saves', async () => {
+    const repository=new MemoryRepository();
+    await repository.upsertRecord('alpha','vendor',{id:'v',name:'가상 업체'});
+    await repository.upsertRecord('alpha','item',{id:'own',lotNumber:1,name:'A01',status:'sold',vendorId:'v',soldPrice:100000,winnerPhone:'01012345678'});
+    const api=createPlatformApi({repository});
+    const code=(await call(api,'POST','/api/platform/channels/alpha/buyer-shipping-link',{itemId:'own'})).json().code;
+    const read=repository.getCatalog.bind(repository);let reads=0;
+    repository.getCatalog=async()=>{const snapshot=await read();if(++reads===1)repository.catalog.channels[0].status='archived';return snapshot;};
+    const result=await call(api,'POST','/api/platform/buyer-shipping',{code,destinationId:'pickup-1',requestId:'stale-save-request',payments:[{vendorKey:'v',method:'bank_transfer'}]},'');
+    assert.equal(result.status,409,result.body);
+    assert.deepEqual(await repository.listRecords('alpha','shipment'),[]);
+    assert.deepEqual(await repository.listRecords('alpha','notification'),[]);
+});
+
+test('vendor entry API owns drafts, gates intake and submission, and operator approval links durable parent updates to checkout', async () => {
+    const repository=new MemoryRepository(),uid=()=>require('node:crypto').randomUUID();
+    repository.catalog.channels[0].groups=[{id:'entry-team',name:'예시 팀'}];
+    await repository.upsertRecord('alpha','vendor',{id:'v',name:'출품 업체',phone:'01012345678',bankName:'은행',bankAccount:'12345',bankHolder:'예금주',groupId:'entry-team',teamName:'예시 팀'});
+    await repository.upsertRecord('alpha','vendor',{id:'other',name:'다른 업체'});
+    const options={repository,adminSessionSecret:'entry-integration-test'};let api=createPlatformApi(options);
+    const vendorCode=(await call(api,'POST','/api/platform/channels/alpha/vendor-checkout-link',{vendorId:'v'})).json().code;
+    const otherCode=(await call(api,'POST','/api/platform/channels/alpha/vendor-checkout-link',{vendorId:'other'})).json().code;
+    const readPath='/api/platform/vendor-entries?code='+vendorCode;
+    assert.equal((await call(api,'GET','/api/platform/vendor-entries',null,'')).status,401);
+    let first=await call(api,'GET',readPath,null,'');assert.equal(first.status,200,first.body);assert.equal(first.json().state.events[0].entriesOpen,false);
+    const entry={id:uid(),morph:'릴리화이트',sex:'female',weight:'28',photoIds:[]};
+    const send=(body,code=vendorCode)=>call(api,'POST','/api/platform/vendor-entries',{code,requestId:uid(),...body},'');
+    assert.equal((await send({type:'save',entry})).status,409);
+    const policy='/api/platform/channels/alpha/entry-policy';assert.equal((await call(api,'PUT',policy,{open:true,expectedRevision:0},'')).status,401);
+    assert.equal((await call(api,'PUT',policy,{open:true,expectedRevision:0})).status,200);
+    assert.equal((await call(api,'PUT',policy,{open:false,expectedRevision:0})).status,409);
+    const parentId=uid(),mediaId=uid(),profile=await require('../vendor-directory').createVendorDirectory(repository).profileFor('alpha','v');
+    const trustedContext={channel:repository.catalog.channels[0],catalog:repository.catalog,vendor:await repository.getRecord('alpha','vendor','v'),profile};
+    await require('../vendor-entries').createVendorEntries(repository).addMedia(trustedContext,{id:mediaId,url:'/assets/sire-first.webp',thumbnailUrl:'/assets/sire-small.webp',size:200,thumbnailSize:100});
+    const parent={id:parentId,name:'처음 부모',sex:'male',photoId:mediaId};
+    assert.equal((await send({type:'parent',parent})).status,200);entry.sireId=parentId;
+    const submit=await send({type:'submit',entry,vendorId:'other'});assert.equal(submit.status,200,submit.body);
+    assert.equal(submit.json().state.entries[0].channelVendorId,'v');
+    assert.deepEqual(await repository.listRecords('alpha','item'),[]);
+    assert.equal((await call(api,'GET','/api/platform/vendor-entries?code='+otherCode,null,'')).json().state.entries.length,0);
+    assert.equal((await send({type:'save',entry,expectedVersion:1},otherCode)).status,422,'foreign parent is never accepted');
+    assert.equal((await send({type:'approve',id:entry.id,expectedVersion:1,lot:'A01',order:1})).status,403);
+    const review='/api/platform/channels/alpha/entries/review',body={type:'approve',vendorId:'v',id:entry.id,expectedVersion:1,requestId:uid(),lot:'A01',order:1,startPrice:30000};
+    assert.equal((await call(api,'POST',review,body,'')).status,401);
+    const approved=await Promise.all([call(api,'POST',review,body),call(api,'POST',review,body)]);
+    for(const result of approved)assert.equal(result.status,200,result.body);
+    assert.deepEqual(approved.map(row=>row.json().duplicate).sort(),[false,true]);
+    assert.equal((await call(api,'GET','/api/platform/channels/alpha/entries',null,'')).status,401);
+    const reviewState=(await call(api,'GET','/api/platform/channels/alpha/entries')).json();
+    assert.equal(reviewState.groups.find(group=>group.vendor.id==='v').entries[0].status,'approved');
+    assert.deepEqual(reviewState.groups.find(group=>group.vendor.id==='v').vendor,{id:'v',name:'출품 업체',groupId:'entry-team',teamName:'예시 팀'},'operator team defaults survive the vendor entry summary');
+    assert.equal(reviewState.channel.status,'active');
+    assert.deepEqual(reviewState.allocation,[{id:approved[0].json().itemId,entryId:entry.id,code:'A01',order:1,startPrice:30000,groupId:'entry-team',teamName:'예시 팀',status:'waiting'}]);
+    const item=(await repository.listRecords('alpha','item'))[0];await repository.upsertRecord('alpha','item',{...item,status:'sold',soldPrice:80000,winnerPhone:'01022223333',winnerName:'가상 낙찰자'});
+    const buyerCode=(await call(api,'POST','/api/platform/channels/alpha/buyer-shipping-link',{itemId:item.id})).json().code;
+    const before=(await call(api,'GET','/api/platform/buyer-shipping?code='+buyerCode,null,'')).json(),sale=JSON.stringify(await repository.getRecord('alpha','item',item.id));
+    assert.equal(before.items[0].parents[0].name,'처음 부모');
+    assert.equal((await send({type:'parent',parent:{...parent,name:'수정한 부모'},expectedVersion:1})).status,200);
+    api=createPlatformApi(options);
+    const after=(await call(api,'GET','/api/platform/buyer-shipping?code='+buyerCode,null,'')).json();
+    assert.equal(after.items[0].parents[0].name,'수정한 부모');assert.equal(after.editVersion,before.editVersion);
+    assert.equal(JSON.stringify(await repository.getRecord('alpha','item',item.id)),sale,'parent edits preserve sold facts and payment version');
+    const vendor=(await call(api,'GET','/api/platform/vendor-checkout?code='+vendorCode,null,'')).json();assert.equal(vendor.buyers[0].items[0].parents[0].name,'수정한 부모');
+    assert.equal((await call(api,'GET','/api/platform/vendor-entries?code='+buyerCode,null,'')).status,401);
+});
+
+test('entry photo upload is authenticated, durable and private through approval and buyer checkout',async t=>{
+    const fs=require('node:fs/promises'),path=require('node:path'),os=require('node:os'),uid=()=>require('node:crypto').randomUUID();
+    const {EntryPhotoStorage}=require('../entry-photo-storage');
+    const directory=await fs.mkdtemp(path.join(os.tmpdir(),'entry-api-photo-'));
+    t.after(async()=>{assert.equal(path.dirname(directory),os.tmpdir());assert.ok(path.basename(directory).startsWith('entry-api-photo-'));await fs.rm(directory,{recursive:true,force:true});});
+    const repository=new MemoryRepository(),storage=new EntryPhotoStorage({localDir:directory,secret:'photo-test'});
+    const options={repository,adminSessionSecret:'photo-api',entryPhotoStorage:storage,logger:{error(){}}};let api=createPlatformApi(options);
+    for(const id of ['v','other'])await repository.upsertRecord('alpha','vendor',{id,name:id,phone:'01012345678',bankName:'은행',bankAccount:'12345',bankHolder:'예금주'});
+    const code=(await call(api,'POST','/api/platform/channels/alpha/vendor-checkout-link',{vendorId:'v'})).json().code;
+    const other=(await call(api,'POST','/api/platform/channels/alpha/vendor-checkout-link',{vendorId:'other'})).json().code;
+    const image=(await require('sharp')({create:{width:64,height:48,channels:3,background:'#1378ed'}}).png().toBuffer()).toString('base64');
+    const route='/api/platform/vendor-entries/photos',body={code,id:uid(),image};
+    assert.equal((await call(api,'POST',route,{...body,code:'wrong'},'')).status,401);
+    assert.equal((await call(api,'POST',route,{...body,id:'../bad'},'')).status,422);
+    assert.equal((await call(api,'POST',route,{...body,image:'no-image'},'')).status,422);
+    assert.equal((await call(api,'POST',route,{...body,image:'x'.repeat(600001)},'')).status,413);
+    const first=await call(api,'POST',route,{...body,vendorId:'other',channelId:'beta',url:'https://evil.test'},'');assert.equal(first.status,200,first.body);
+    const visible=first.json().media;assert.ok(visible.url.includes('signature='));
+    const imageResponse=await call(api,'GET',visible.url,null,'');assert.equal(imageResponse.status,200);
+    assert.equal((await call(api,'GET',visible.url.split('?')[0],null,'')).status,404);
+    assert.equal((await call(api,'GET','/api/platform/vendor-entries?code='+other,null,'')).json().state.media.length,0);
+    api=createPlatformApi({...options,entryPhotoStorage:new EntryPhotoStorage({localDir:directory,secret:'photo-test'})});
+    const again=await call(api,'POST',route,body,'');assert.equal(again.status,200,again.body);
+    let state=(await call(api,'GET','/api/platform/vendor-entries?code='+code,null,'')).json().state;
+    assert.equal(state.media.length,1);assert.equal(state.ownerId,(await require('../vendor-directory').createVendorDirectory(repository).profileFor('alpha','v')).id);
+    const alternate=(await require('sharp')({create:{width:64,height:48,channels:3,background:'#ff0000'}}).png().toBuffer()).toString('base64');
+    assert.equal((await call(api,'POST',route,{...body,image:alternate},'')).status,409);
+    await call(api,'PUT','/api/platform/channels/alpha/entry-policy',{open:true,expectedRevision:0});
+    const entry={id:uid(),morph:'릴리화이트',photoIds:[body.id]},send=data=>call(api,'POST','/api/platform/vendor-entries',{code,requestId:uid(),...data},'');
+    assert.equal((await send({type:'submit',entry})).status,200);
+    const approval=await call(api,'POST','/api/platform/channels/alpha/entries/review',{type:'approve',vendorId:'v',id:entry.id,expectedVersion:1,lot:'A01',order:1,requestId:uid()});assert.equal(approval.status,200,approval.body);
+    let item=await repository.getRecord('alpha','item',approval.json().itemId);
+    assert.ok(item.attributes.media[0].url.startsWith('/__entry_photo__/'));assert.ok(!JSON.stringify(item).includes('signature='));
+    assert.equal((await call(api,'GET','/api/platform/channels/alpha/broadcast',null,'')).json().items[0].photoUrl,'');
+    await repository.upsertRecord('alpha','item',{...item,status:'sold',soldPrice:80000,winnerName:'가상 구매자',winnerPhone:'01022223333'});
+    const buyer=(await call(api,'POST','/api/platform/channels/alpha/buyer-shipping-link',{itemId:item.id})).json().code;
+    const checkout=(await call(api,'GET','/api/platform/buyer-shipping?code='+buyer,null,'')).json();
+    assert.ok(checkout.items[0].media[0].url.includes('signature='));
+    assert.equal((await call(api,'GET',checkout.items[0].media[0].url,null,'')).status,200);
+    assert.equal((await call(api,'POST',route,{...body,code:buyer,id:uid()},'')).status,401);
+    assert.equal((await repository.listRecords('alpha','notification')).length,0);
+    repository.catalog.channels[0].status='archived';
+    assert.equal((await call(api,'POST',route,{...body,id:uid()},'')).status,409);
+});
+
+test('entry photo storage failure never blocks an auction write and retry registers one photo',async()=>{
+    const uid=()=>require('node:crypto').randomUUID(),repository=new MemoryRepository();
+    let release,started;const gate=new Promise(r=>release=r),seen=new Promise(r=>started=r);
+    let fail=true;
+    const {EntryPhotoStorage}=require('../entry-photo-storage');
+    const storage=new EntryPhotoStorage({supabaseUrl:'https://fake.supabase.co',serviceKey:'fake',secret:'fake',fetchFn:async()=>{throw Error('no remote requests');}});
+    storage.ensureReady=async()=>{};
+    storage.persist=async()=>{started();await gate;if(fail)throw Object.assign(Error('synthetic storage failure'),{status:503});};
+    let secondStarted,processed=0;const secondSeen=new Promise(r=>secondStarted=r),processPhoto=require('../entry-photo-codec').createEntryPhotoProcessor();
+    const api=createPlatformApi({repository,entryPhotoStorage:storage,entryPhotoProcessor:async image=>{processed++;if(processed===2)secondStarted();return processPhoto(image);},logger:{error(){}}});
+    await repository.upsertRecord('alpha','vendor',{id:'v',name:'가상 업체'});
+    const code=(await call(api,'POST','/api/platform/channels/alpha/vendor-checkout-link',{vendorId:'v'})).json().code;
+    const image=(await require('sharp')({create:{width:20,height:20,channels:3,background:'#fff'}}).png().toBuffer()).toString('base64');
+    const body={code,id:uid(),image},route='/api/platform/vendor-entries/photos';
+    const upload=call(api,'POST',route,body,'');await seen;
+    const second=call(api,'POST',route,{...body,id:uid()},'');await secondSeen;
+    assert.equal((await call(api,'POST',route,{...body,id:uid()},'')).status,429,'queued uploads are bounded while Storage is slow');
+    try{
+        const update=await Promise.race([call(api,'POST','/api/platform/channels/alpha/items',{record:{id:'during-photo',name:'B01',lotNumber:1}}),new Promise((_,reject)=>{const timer=setTimeout(()=>reject(Error('auction blocked by photo upload')),1000);timer.unref();})]);
+        assert.equal(update.status,201,update.body);
+    }finally{release();}
+    assert.equal((await upload).status,503);
+    assert.equal((await second).status,503);
+    assert.equal((await call(api,'GET','/api/platform/vendor-entries?code='+code,null,'')).json().state.media.length,0);
+    fail=false;assert.equal((await call(api,'POST',route,body,'')).status,200);
+    assert.equal((await call(api,'POST',route,body,'')).status,200);
+    assert.equal((await call(api,'GET','/api/platform/vendor-entries?code='+code,null,'')).json().state.media.length,1);
+});
+
+test('entry photo upload rechecks auction access after processing before registering files',async()=>{
+    const repository=new MemoryRepository(),uid=()=>require('node:crypto').randomUUID();
+    let release,started;const gate=new Promise(r=>release=r),seen=new Promise(r=>started=r);let writes=0;
+    const {EntryPhotoStorage}=require('../entry-photo-storage');
+    const storage=new EntryPhotoStorage({supabaseUrl:'https://fake.supabase.co',serviceKey:'fake',secret:'fake'});
+    storage.ensureReady=async()=>{};storage.persist=async()=>{writes++;};
+    const transform=require('../entry-photo-codec').createEntryPhotoProcessor();
+    const api=createPlatformApi({repository,entryPhotoStorage:storage,entryPhotoProcessor:async image=>{started();await gate;return transform(image);},logger:{error(){}}});
+    await repository.upsertRecord('alpha','vendor',{id:'v',name:'가상 업체'});
+    const code=(await call(api,'POST','/api/platform/channels/alpha/vendor-checkout-link',{vendorId:'v'})).json().code;
+    await call(api,'GET','/api/platform/vendor-entries?code='+code,null,'');
+    const image=(await require('sharp')({create:{width:20,height:20,channels:3,background:'#fff'}}).png().toBuffer()).toString('base64');
+    const upload=call(api,'POST','/api/platform/vendor-entries/photos',{code,id:uid(),image},'');await seen;
+    repository.catalog.channels[0].status='archived';release();
+    assert.equal((await upload).status,409);assert.equal(writes,0);
+});
+
+test('Feedle import endpoints require a participating vendor and open intake before any external read',async()=>{
+    const repository=new MemoryRepository(),reads=[];
+    const importer={async metadata(url){reads.push(['metadata',url]);return {sourceId:'source-test',morph:'가상 모프'};},async image(url){reads.push(['image',url]);return {type:'image/png',buffer:Buffer.from('isolated image')};}};
+    const api=createPlatformApi({repository,feedleImporter:importer,logger:{error(){}}});
+    await repository.upsertRecord('alpha','vendor',{id:'v',name:'업체'});
+    const code=(await call(api,'POST','/api/platform/channels/alpha/vendor-checkout-link',{vendorId:'v'})).json().code;
+    const route='/api/platform/vendor-entries/feedle',body={code,url:'https://www.feedle.me/pet/example'};
+    assert.equal((await call(api,'POST',route,{...body,code:'bad'},'')).status,401);
+    assert.equal((await call(api,'POST',route,body,'')).status,409);assert.equal(reads.length,0);
+    await call(api,'PUT','/api/platform/channels/alpha/entry-policy',{open:true,expectedRevision:0});
+    assert.equal((await call(api,'POST',route,{...body,event:'beta'},'')).status,401);
+    assert.equal((await call(api,'POST',route,body,'')).json().morph,'가상 모프');
+    assert.equal((await call(api,'POST',route+'-image',body,'')).status,200);
+    repository.catalog.channels[0].status='archived';
+    assert.equal((await call(api,'POST',route,body,'')).status,409);assert.equal(reads.length,2);
+    assert.equal((await repository.listRecords('alpha','item')).length,0);
+    assert.equal((await repository.listRecords('alpha','notification')).length,0);
+});
+
+test('operator entry approvals from different vendors serialize duplicate auction ordering',async()=>{
+    const repository=new MemoryRepository(),uid=()=>require('node:crypto').randomUUID(),api=createPlatformApi({repository});
+    await call(api,'PUT','/api/platform/channels/alpha/entry-policy',{open:true,expectedRevision:0});
+    const bodies=[];
+    for(const vendorId of ['one','two']){
+        await repository.upsertRecord('alpha','vendor',{id:vendorId,name:vendorId,phone:'01012345678',bankName:'은행',bankAccount:'12345',bankHolder:'예금주'});
+        const code=(await call(api,'POST','/api/platform/channels/alpha/vendor-checkout-link',{vendorId})).json().code,id=uid();
+        const submitted=await call(api,'POST','/api/platform/vendor-entries',{code,type:'submit',entry:{id,morph:'모프'},requestId:uid()},'');assert.equal(submitted.status,200,submitted.body);
+        bodies.push({vendorId,type:'approve',id,expectedVersion:1,lot:vendorId==='one'?'A01':'B01',order:1,requestId:uid()});
+    }
+    const secondApi=createPlatformApi({repository});
+    const results=await Promise.all(bodies.map((body,index)=>call(index?secondApi:api,'POST','/api/platform/channels/alpha/entries/review',body)));
+    assert.deepEqual(results.map(row=>row.status).sort(),[200,409]);assert.equal((await repository.listRecords('alpha','item')).length,1);
+});
+
 test('shared banner selection is atomic, durable, channel-local and absent from P3', async () => {
     const repository=new MemoryRepository();
     await repository.upsertRecord('alpha','asset',{id:'old',kind:'banner',page:'all',name:'기존',imageUrl:'/old.png',active:true});

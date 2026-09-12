@@ -93,6 +93,25 @@ class SupabaseConfigRepository {
             .filter((row) => row.value !== null);
     }
 
+    // Strict read-only inventory: no offset gaps or silently dropped signatures.
+    async scanRowsByPrefix(prefix, options = {}) {
+        const {scanOptions,pageRows}=require('./repository-scan');
+        const {after,limit,upper}=scanOptions(prefix,options);
+        const query=new URLSearchParams({select:'key,value',order:'key.asc',limit:String(limit+1)});
+        query.append('key','gte.'+prefix);query.append('key','lt.'+upper);
+        if(after)query.append('key','gt.'+after);
+        const data=await this.request('config?'+query,{signal:AbortSignal.timeout(8000)});
+        if(!Array.isArray(data))throw new Error('Invalid inventory response');
+        let previous=after;
+        const rows=data.map(row=>{
+            if(typeof row.key!=='string'||!row.key.startsWith(prefix)||row.key<=previous)throw new Error('Invalid inventory order');
+            previous=row.key;const value=readStoredValue(row.key,row.value,this.integritySecret);
+            if(value===null)throw new Error('Inventory integrity check failed');
+            return {key:row.key,value};
+        });
+        return pageRows(rows,limit);
+    }
+
     async getRow(key) {
         const rows = await this.request(`config?select=key,value&key=eq.${encodeURIComponent(key)}&limit=1`);
         const row = rows?.[0];

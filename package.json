@@ -5,12 +5,13 @@
   "description": "CREO multi-channel auction operations hub and BAND OAuth bridge",
   "main": "server.js",
   "scripts": {
+    "precheck": "node --check operator-password.js && node --check operator-entry.js && node --check public/operator-login.js && node --check repository-scan.js && node --check entry-photo-audit.js && node --check public/entry-photo-usage.js && node --check buyer-auth-maintenance.js && node --check public/buyer-kakao-login.js && node --check public/checkout-inquiry.js && node --check public/vendor-contact-form.js && node --check vendor-inquiry.js",
     "postinstall": "node tools/install-render-chrome.cjs",
     "start": "python3 render_start.py",
     "start:web": "node server.js",
     "build:roulette": "npm --prefix roulette-app run build",
     "check:roulette": "npm --prefix roulette-app run check",
-    "check": "node --check server.js && node --check band-monitor-status.js && node --check load-local-env.js && node --check band-oauth.js && node --check band-membership.js && node --check cdcup-rounds-api.js && node --check crewart-survey-api.js && node --check crewart-house-service.js && node --check platform-core.js && node --check platform-repository.js && node --check sqlite-platform-repository.js && node --check shipping-rate-refresh.js && node --check platform-api.js && node --check checkout-core.js && node --check checkout-notifications.js && node --check capture-storage.js && node --check capture-api.js && node --check broadcast-asset-storage.js && node --check broadcast-asset-api.js && node --check public/auction-contract.js && node --check public/basic-dice-core.js && node --check public/channel-adapters.js && node --check public/operation-channel.js && node --check public/cdcup-tournament-data.js && node --check public/checkout-rules.js && node --check public/checkout-client.js && node --check public/crewart-survey.js && node --check public/event-modules.js && node --check public/google-sheets-export.js && node --check public/operator-pipeline.js && node --check public/ranking-engine.js && node --check public/shipping-access.js && node --check public/supabase-bridge.js && node --check public/band-monitor.js && node --check tools/install-render-chrome.cjs",
+    "check": "node --check server.js && node --check band-monitor-status.js && node --check load-local-env.js && node --check band-oauth.js && node --check band-membership.js && node --check cdcup-rounds-api.js && node --check crewart-survey-api.js && node --check crewart-house-service.js && node --check platform-core.js && node --check platform-repository.js && node --check sqlite-platform-repository.js && node --check shipping-rate-refresh.js && node --check platform-api.js && node --check checkout-core.js && node --check checkout-item-data.js && node --check buyer-account-auth.js && node --check buyer-collection.js && node --check public/buyer-library.js && node --check public/buyer-library-link.js && node --check buyer-link-access.js && node --check public/buyer-link-manager.js && node --check vendor-entries.js && node --check entry-photo-storage.js && node --check entry-photo-codec.js && node --check feedle-import.js && node --check public/vendor-entry-api.js && node --check public/vendor-entry-app.js && node --check public/vendor-navigation.js && node --check public/checkout-item-view.js && node --check public/buyer-navigation.js && node --check public/vendor-item-view.js && node --check public/vendor-entry-review.js && node --check checkout-notifications.js && node --check capture-storage.js && node --check capture-api.js && node --check broadcast-asset-storage.js && node --check broadcast-asset-api.js && node --check public/auction-contract.js && node --check public/basic-dice-core.js && node --check public/channel-adapters.js && node --check public/operation-channel.js && node --check public/cdcup-tournament-data.js && node --check public/checkout-rules.js && node --check public/checkout-client.js && node --check public/crewart-survey.js && node --check public/event-modules.js && node --check public/google-sheets-export.js && node --check public/operator-pipeline.js && node --check public/ranking-engine.js && node --check public/shipping-access.js && node --check public/supabase-bridge.js && node --check public/band-monitor.js && node --check tools/install-render-chrome.cjs",
     "test": "node --test",
     "test:band-monitor": "python -m unittest discover -s tests -p \"test_band_*.py\""
   },
@@ -18,6 +19,7 @@
     "node": "22.x"
   },
   "dependencies": {
-    "puppeteer": "^25.3.0"
+    "puppeteer": "^25.3.0",
+    "sharp": "0.35.4"
   }
 }

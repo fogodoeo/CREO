@@ -31,13 +31,13 @@
 
     function paymentStatusMeta(value, role = 'buyer') {
         const status = String(value || 'awaiting_information');
-        if (status === 'paid') return Object.freeze({ label: '결제 완료', tone: 'green' });
+        if (status === 'paid') return Object.freeze({ label: '결제 확인 완료', tone: 'green' });
         if (['payment_reported', 'bank_transfer_reported', 'card_payment_reported'].includes(status)) {
-            return Object.freeze({ label: role === 'vendor' ? '확인 요청' : '확인 대기', tone: 'red' });
+            return Object.freeze({ label: role === 'vendor' ? '결제 확인 필요' : '업체 확인 대기', tone: role === 'vendor' ? 'blue' : '' });
         }
-        if (status === 'additional_payment') return Object.freeze({ label: '추가 결제', tone: 'red' });
+        if (status === 'additional_payment') return Object.freeze({ label: '추가 결제', tone: 'blue' });
         if (status === 'in_progress') return Object.freeze({ label: '결제 진행 중', tone: '' });
-        if (status === 'card_link_pending') return Object.freeze({ label: role === 'vendor' ? '결제 안내 필요' : '안내 준비 중', tone: role === 'vendor' ? 'red' : '' });
+        if (status === 'card_link_pending') return Object.freeze({ label: role === 'vendor' ? '카드 안내 필요' : '카드 안내 준비 중', tone: role === 'vendor' ? 'blue' : '' });
         if (status === 'card_payment_pending') return Object.freeze({ label: '카드 결제 대기', tone: '' });
         if (status === 'bank_transfer_pending') return Object.freeze({ label: '입금 대기', tone: '' });
         return Object.freeze({ label: '정보 입력 대기', tone: '' });

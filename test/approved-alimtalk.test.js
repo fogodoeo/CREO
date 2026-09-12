@@ -23,6 +23,17 @@ test('approved bodies and buttons substitute all variables and retain approved r
     assert.equal(requests.length, 12);
     const card = requests.find(request => request.get('tpl_code') === 'UL_2139');
     assert.match(JSON.parse(card.get('button_1')).button[1].linkMo, /\/d\/buyer123456$/);
+    // Assert the event-to-approval pairing, not merely that any approved body renders.
+    const keys=Object.keys(require('../approved-alimtalk').codes);
+    for(const [key,code,phrase] of [
+        ['vendor_payment_method_registered','UL_2138','결제방식: 카드결제'],
+        ['buyer_card_link_ready','UL_2139','카드결제 링크를 등록했습니다.'],
+        ['vendor_payment_reported','UL_2144','결제 사실을 등록하고 확인을 요청했습니다.']
+    ]){
+        const request=requests[keys.indexOf(key)];
+        assert.equal(request.get('tpl_code'),code,key);
+        assert.ok(request.get('message_1').includes(phrase),key);
+    }
 });
 
 for (const templateKey of ['buyer_win_initial', 'buyer_card_link_ready']) test(`${templateKey} retains Alimtalk across configuration waits and restart`, async () => {

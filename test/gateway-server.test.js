@@ -16,7 +16,7 @@ async function close(server) { if (server.listening) await new Promise(resolve =
 async function fixture(t) {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), 'creo-gateway-'));
     t.after(() => fs.rm(root, { recursive: true, force: true }));
-    for (const name of ['index.html', 'buyer-shipping.html', 'vendor-checkout.html', 'organizer-shipping.html', 'checkout-changes.html']) {
+    for (const name of ['index.html', 'welcome.html', 'buyer-shipping.html', 'vendor-checkout.html', 'organizer-shipping.html', 'checkout-changes.html']) {
         await fs.writeFile(path.join(root, name), name);
     }
     const received = [];
@@ -35,7 +35,7 @@ async function fixture(t) {
 
 test('gateway preserves existing shortlinks and does not expose backend credentials', async t => {
     const { url, received } = await fixture(t);
-    for (const [route, file] of [['/', 'index.html'], ['/d/abcdefghijk', 'buyer-shipping.html'],
+    for (const [route, file] of [['/', 'welcome.html'], ['/d/abcdefghijk', 'buyer-shipping.html'],
         ['/s/abcdefghijk', 'buyer-shipping.html'], ['/v/abcdefghijk', 'vendor-checkout.html'],
         ['/w/abcdefghijk', 'vendor-checkout.html'], ['/w/op_abcdefghijklmnop', 'checkout-changes.html'],
         ['/o/abcdefghijklmnopqrstuvwx', 'organizer-shipping.html']]) {
@@ -71,7 +71,7 @@ test('web-only restart leaves the core running and new UI reuses the same API re
     await fetch(url + '/api/qa/result', { method: 'POST', body: 'first' });
     const port = gateway.address().port;
     await close(gateway);
-    await fs.writeFile(path.join(root, 'index.html'), 'web release 2');
+    await fs.writeFile(path.join(root, 'welcome.html'), 'web release 2');
     assert.equal(core.listening, true);
     assert.equal((await fetch(options.backendUrl + '/health')).status, 200);
     const replacement = createGateway(options); t.after(() => close(replacement));

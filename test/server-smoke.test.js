@@ -34,7 +34,7 @@ async function waitForHealth(url, timeoutMs = 8000) {
     throw lastError || new Error('server did not become ready');
 }
 
-test('HTTP server exposes the CREO hub, survey assets, health, and membership config', async (t) => {
+test('HTTP server separates the public home and protected hub while preserving survey, health and membership config', async (t) => {
     const port = await freePort();
     const statusDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'creo-band-status-'));
     const statusFile = path.join(statusDirectory, 'runtime.json');
@@ -46,19 +46,31 @@ test('HTTP server exposes the CREO hub, survey assets, health, and membership co
         monitor_enabled: true,
         applications: { queued: 2 }
     }), 'utf8');
+    const isolatedEnv={...process.env};
+    for(const key of Object.keys(isolatedEnv))if(/^(CREO_|SUPABASE_|ALIGO_|BAND_|GOOGLE_)/.test(key))isolatedEnv[key]='';
+    const localEnv=await fs.readFile(path.join(__dirname,'..','.env'),'utf8').catch(()=>'');
+    for(const line of localEnv.split(/\r?\n/)){const match=/^\s*([A-Z_][A-Z0-9_]*)\s*=/.exec(line);if(match)isolatedEnv[match[1]]='';}
     const child = spawn(process.execPath, ['server.js'], {
         cwd: path.join(__dirname, '..'),
         env: {
-            ...process.env,
+            ...isolatedEnv,
             PORT: String(port),
             HOST: '127.0.0.1',
+            CREO_DATA_DIR: path.join(statusDirectory,'data'),
+            CREO_SUPABASE_MIRROR_ENABLED: 'false',
+            CREO_ADMIN_SECRET: 'isolated-smoke-secret',
+            ALIGO_TEST_MODE: 'Y',
+            BAND_MONITOR_ENABLED: 'false',
             BAND_MONITOR_STATUS_FILE: statusFile,
             GOOGLE_OAUTH_CLIENT_ID: 'test-client.apps.googleusercontent.com'
         },
         stdio: ['ignore', 'pipe', 'pipe']
     });
-    t.after(() => child.kill());
-    t.after(() => fs.rm(statusDirectory, { recursive: true, force: true }));
+    t.after(async()=>{
+        if(child.exitCode===null&&child.signalCode===null){const stopped=new Promise(resolve=>child.once('exit',resolve));child.kill();await stopped;}
+        const target=path.resolve(statusDirectory);assert.ok(target.startsWith(path.resolve(os.tmpdir())+path.sep)&&path.basename(target).startsWith('creo-band-status-'));
+        await fs.rm(target,{recursive:true,force:true,maxRetries:5,retryDelay:100});
+    });
 
     const healthResponse = await waitForHealth(`http://127.0.0.1:${port}/health`);
     const health = await healthResponse.json();
@@ -86,7 +98,8 @@ test('HTTP server exposes the CREO hub, survey assets, health, and membership co
 
     const homeResponse = await fetch(`http://127.0.0.1:${port}/`);
     assert.equal(homeResponse.status, 200);
-    assert.match(await homeResponse.text(), /CREO/);
+    const homeHtml=await homeResponse.text();assert.match(homeHtml,/받으신 전용 링크/);assert.doesNotMatch(homeHtml,/quick-workspace/);
+    const mainResponse=await fetch(`http://127.0.0.1:${port}/main`);assert.equal(mainResponse.status,200);assert.match(await mainResponse.text(),/operator-login/);
 
     const cameraResponse = await fetch(`http://127.0.0.1:${port}/cam.html`);
     assert.equal(cameraResponse.status, 200);

@@ -11,6 +11,7 @@ services:
       paths:
         - public/**
         - gateway-server.js
+        - operator-entry.js
         - deploy/render-gateway.yaml
     envVars:
       - key: CREO_BACKEND_URL

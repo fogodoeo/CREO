@@ -315,6 +315,7 @@ class CheckoutNotificationService {
         this.provider = options.provider || createDefaultNotificationProvider();
         this.logger = options.logger || console;
         this.now = options.now || (() => Date.now());
+        this.beforeSend = options.beforeSend || (async () => {});
         this.running = false;
         this.stopping = false;
         this.idleWaiters = [];
@@ -398,6 +399,7 @@ class CheckoutNotificationService {
             if (current.status === 'sent') return { duplicate: true };
             if (current.attempts || !['queued', 'configuration_pending'].includes(current.status)) throw new Error('이미 시도한 알림은 재발송하지 않습니다.');
             if (!this.provider.readiness(current.templateKey, 'sms').ready) throw new Error('문자 API 설정 대기');
+            await this.beforeSend(channelId,current);
             // Persist an in-flight marker with no automatic recovery for this explicit one-shot test.
             const sending = { ...current, status: 'sending', transport: 'sms', attempts: 1,
                 nextAttemptAt: '9999-12-31T00:00:00.000Z' };
@@ -468,6 +470,7 @@ class CheckoutNotificationService {
                 }, current));
                 let acceptedResult;
                 try {
+                    await this.beforeSend(channelId,sending);
                     acceptedResult = await this.provider.send(sending);
                     await this.repository.upsertRecord(channelId, 'notification', normalizeNotification({
                         ...sending,
@@ -480,14 +483,15 @@ class CheckoutNotificationService {
                 } catch (error) {
                     const configurationPending = error.code === 'CONFIGURATION_PENDING';
                     const uncertain = Boolean(acceptedResult) || error.code === 'DELIVERY_UNCERTAIN';
+                    const inactiveLink = error.code === 'BUYER_LINK_INACTIVE';
                     const attempts = Number(sending.attempts) || 1;
                     const backoffMs = Math.min(30 * 60_000, 15_000 * Math.pow(2, Math.min(6, attempts - 1)));
                     await this.repository.upsertRecord(channelId, 'notification', normalizeNotification({
                         ...sending,
-                        status: uncertain ? 'delivery_unknown' : (configurationPending ? 'configuration_pending' : 'failed'),
+                        status: uncertain ? 'delivery_unknown' : inactiveLink ? 'expired' : (configurationPending ? 'configuration_pending' : 'failed'),
                         ...(acceptedResult ? { providerMessageId: acceptedResult.messageId, providerGroupId: acceptedResult.groupId } : {}),
                         lastError: error.message,
-                        nextAttemptAt: uncertain ? '' : new Date(this.now() + (configurationPending ? 60_000 : backoffMs)).toISOString()
+                        nextAttemptAt: uncertain || inactiveLink ? '' : new Date(this.now() + (configurationPending ? 60_000 : backoffMs)).toISOString()
                     }, sending));
                     this.logger.warn?.('[checkout-notification] delivery failed', channelId, current.id, error.message);
                 }

@@ -98,9 +98,11 @@
     }
 
     function derivePaymentState({ shipments = [], itemCount = 0, totalAmount = 0 } = {}) {
-        const latest = newestShipment(shipments);
         const confirmed = confirmedAmount(shipments);
         const due = Math.max(0, Number(totalAmount) - confirmed);
+        // A completed item can share the last selection timestamp with a new win.
+        // Its old card guide must not replace the outstanding items' current guide.
+        const latest = newestShipment(due > 0 ? shipments.filter(shipment => shipment.paymentStatus !== 'paid') : shipments) || newestShipment(shipments);
         const missingShipment = Number(itemCount) > shipments.length;
         if (Number(totalAmount) > 0 && confirmed >= Number(totalAmount) && !missingShipment) {
             return { status: 'paid', confirmedAmount: confirmed, additionalDue: 0, latest };

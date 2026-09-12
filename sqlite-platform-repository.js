@@ -148,6 +148,23 @@ class SQLitePlatformRepository {
         return keys.map(key => this.statements.get.get(key)).filter(Boolean);
     }
 
+    async scanRowsByPrefix(prefix, options = {}) {
+        const {scanOptions,pageRows}=require('./repository-scan');
+        const {after,limit,upper}=scanOptions(prefix,options);
+        const local=pageRows(this.db.prepare('SELECT key,value FROM platform_kv WHERE key >= ? AND key < ? AND key > ? ORDER BY key LIMIT ?').all(prefix,upper,after,limit+1),limit);
+        if(!this.mirror)return local;
+        if(!this.mirror.scanRowsByPrefix)throw new Error('Mirror inventory is unavailable');
+        // Include cold remote keys, but preserve local edits and deletion marks.
+        // Unlike recovery reads, an unavailable mirror must not look like zero use.
+        const remote=await this.mirror.scanRowsByPrefix(prefix,{after,limit});
+        const boundaries=[local.nextCursor,remote.nextCursor].filter(Boolean).sort();
+        const boundary=boundaries[0]||null,merged=new Map(remote.rows.map(row=>[row.key,row]));
+        for(const row of local.rows)merged.set(row.key,row);
+        const rows=[...merged.values()].filter(row=>(!boundary||row.key<=boundary)&&!this.statements.deleted.get(row.key)).sort((a,b)=>a.key<b.key?-1:a.key>b.key?1:0);
+        const page=pageRows(rows,limit);
+        return {rows:page.rows,nextCursor:page.nextCursor||boundary};
+    }
+
     async getRow(key) {
         const local = this.statements.get.get(key);
         if (local || this.statements.deleted.get(key) || !this.mirror?.getRow) return local || null;

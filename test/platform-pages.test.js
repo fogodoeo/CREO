@@ -420,7 +420,7 @@ test('buyer and vendor checkout pages are short-code based and support the full 
     assert.doesNotMatch(source, /수령 지점을 검색합니다|입금 후 완료 사실을 알려주세요/);
     assert.match(source, /data\.submittedAt\?'변경 내용 저장':'선택 완료'/);
     assert.match(source, /Checkout\.paymentStatusMeta\(status,'buyer'\)/);
-    assert.match(checkoutClient, /status === 'paid'\) return Object\.freeze\(\{ label: '결제 완료'/);
+    assert.match(checkoutClient, /status === 'paid'\) return Object\.freeze\(\{ label: '결제 확인 완료'/);
     assert.match(checkoutClient, /status === 'additional_payment'\) return Object\.freeze\(\{ label: '추가 결제'/);
     assert.match(source, /입금했어요/);
     assert.match(source, /id="sync"[^>]*role="status">실시간/);
@@ -461,7 +461,7 @@ test('buyer and vendor checkout pages are short-code based and support the full 
     assert.match(server, /vendorCheckoutShortMatch = \/\^\\\/v\\\//);
     assert.match(server, /new URL\('\/vendor-checkout\.html', url\)/);
     assert.match(server, /vendorStatusShortMatch = \/\^\\\/w\\\//);
-    assert.match(server, /vendorStatusShortMatch\) \{\s+const vendorPageUrl = new URL\('\/vendor-checkout\.html', url\)/);
+    assert.match(server, /vendorStatusShortMatch\) \{\s+const vendorPageUrl = new URL\('\/vendor-entries\.html', url\)/);
 });
 
 test('buyer delivery landing page is genuinely shipping-only', () => {

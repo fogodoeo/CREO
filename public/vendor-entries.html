@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="referrer" content="no-referrer">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>출품 개체 · 옹동2</title>
+  <link rel="stylesheet" href="/ongdong-brand.css">
+  <link rel="stylesheet" href="/checkout-pages.css">
+  <link rel="stylesheet" href="/vendor-entry.css">
+  <link rel="stylesheet" href="/vendor-contact-form.css">
+  <script defer src="/vendor-contact-form.js"></script>
+  <link rel="stylesheet" href="/vendor-navigation.css">
+  <script defer src="/ongdong-brand.js"></script>
+  <script defer src="/vendor-entry-api.js"></script>
+  <script defer src="/vendor-navigation.js"></script>
+  <script defer src="/vendor-entry-app.js"></script>
+</head>
+<body class="vendor-page entry-page">
+  <div class="entry-shell">
+    <a href="#content" class="skip-link">본문으로 이동</a>
+    <header class="entry-header">
+      <b data-ongdong-brand>옹동2</b><span class="entry-context" id="context">업체</span>
+    </header>
+    <div class="event-switcher"><label for="entry-event">경매 선택</label><select id="entry-event" aria-label="경매 선택"></select></div>
+    <main id="content" tabindex="-1"><p class="loading">불러오는 중…</p></main>
+    <footer class="entry-footer">© 옹동2 </footer>
+    <nav class="vendor-bottom-nav" id="navigation" aria-label="업체 메뉴" hidden>
+      <a data-vendor-section="entries" href="/vendor-entries.html" aria-current="page">출품 개체</a>
+      <a data-vendor-section="settlement" href="/vendor-checkout.html">낙찰·정산</a>
+      <a data-vendor-section="profile" href="/vendor-entries.html?section=profile">업체 정보</a>
+    </nav>
+  </div>
+  <dialog id="profile-dialog" class="sheet profile-popup" aria-labelledby="profile-dialog-title">
+    <header class="sheet-head"><h2 id="profile-dialog-title">업체 정보 등록</h2><button type="button" id="profile-close" class="icon-button" aria-label="업체 정보 등록 닫기">×</button></header>
+    <div id="profile-dialog-content" class="sheet-content"></div>
+    <div class="sheet-actions profile-popup-actions"><button type="submit" form="profile-form" id="profile-dialog-save" class="primary">저장하고 시작</button><button type="button" id="profile-later" class="text-button">나중에</button></div>
+  </dialog>
+  <dialog id="parent-dialog" class="sheet" aria-labelledby="parent-title">
+    <header class="sheet-head"><button type="button" id="parent-back" class="icon-button" aria-label="부모 목록으로 돌아가기" hidden>←</button><h2 id="parent-title">부 선택</h2><button type="button" id="parent-close" class="icon-button" aria-label="부모 선택 닫기">×</button></header>
+    <div id="parent-content" class="sheet-content"></div>
+    <div id="parent-error" role="alert" class="inline-error" hidden></div>
+    <div id="parent-actions" class="sheet-actions"></div>
+  </dialog>
+  <dialog id="detail-dialog" class="sheet" aria-labelledby="detail-title">
+    <header class="sheet-head"><h2 id="detail-title">개체 정보</h2><button type="button" id="detail-close" class="icon-button" aria-label="개체 정보 닫기">×</button></header>
+    <div id="detail-content" class="sheet-content"></div>
+    <div id="detail-error" role="alert" class="inline-error" hidden></div>
+    <div id="detail-actions" class="sheet-actions"></div>
+  </dialog>
+  <dialog id="photo-dialog" class="photo-dialog" aria-labelledby="photo-title">
+    <header><h2 id="photo-title">개체 사진</h2><button type="button" id="photo-close" class="icon-button" aria-label="사진 닫기">×</button></header>
+    <img id="large-photo" alt="">
+    <div id="large-photo-error" class="inline-error" role="alert" hidden>사진을 불러오지 못했어요. <button type="button" class="secondary" id="large-photo-retry">다시 시도</button></div>
+    <div class="photo-navigation"><button type="button" id="photo-prev" aria-label="이전 사진">←</button><span id="photo-position"></span><button type="button" id="photo-next" aria-label="다음 사진">→</button></div>
+  </dialog>
+  <dialog id="leave-dialog" class="confirm-dialog" aria-labelledby="leave-title">
+    <h2 id="leave-title">작성한 내용을 남길까요?</h2>
+    <button class="primary" type="button" id="leave-save">임시 저장 후 나가기</button>
+    <button class="secondary" type="button" id="leave-stay">계속 작성</button>
+    <button class="text-button danger" type="button" id="leave-discard">저장하지 않고 나가기</button>
+    <p id="leave-error" class="inline-error" role="alert" hidden></p>
+  </dialog>
+  <dialog id="import-dialog" class="sheet" aria-labelledby="import-title">
+    <header class="sheet-head"><h2 id="import-title">피들에서 가져오기</h2><button type="button" id="import-close" class="icon-button" aria-label="피들 가져오기 닫기">×</button></header>
+    <div class="sheet-content"><form id="import-form"><label class="field" for="feedle-url"><span>개체 링크</span><input id="feedle-url" type="url" inputmode="url" placeholder="https://www.feedle.me/pet/…" autocomplete="off" required></label><p class="muted">가져온 정보를 확인한 뒤 검토 요청해 주세요.</p></form><p id="import-error" class="inline-error" role="alert" hidden></p><p id="import-progress" class="muted" role="status"></p></div>
+    <div class="sheet-actions"><button type="submit" form="import-form" class="primary full" id="import-submit">가져오기</button></div>
+  </dialog>
+  <div id="notice" class="notice" role="status"></div>
+</body>
+</html>

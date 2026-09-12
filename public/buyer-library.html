@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="referrer" content="no-referrer"><title>내 보관함 · 옹동2</title>
+<link rel="stylesheet" href="/ongdong-brand.css"><link rel="stylesheet" href="/checkout-navigation.css"><link rel="stylesheet" href="/buyer-library.css">
+<link rel="stylesheet" href="/checkout-inquiry.css?v=20260912-inquiry"><script src="/checkout-inquiry.js?v=20260912-inquiry" defer></script>
+<script src="/ongdong-brand.js" defer></script><script src="/checkout-client.js" defer></script><script src="/checkout-item-view.js" defer></script><script src="/buyer-kakao-login.js" defer></script><script src="/buyer-library.js?v=20260912-inquiry" defer></script></head>
+<body><main class="library-shell"><header class="library-brand"><b data-ongdong-brand>옹동2</b><button type="button" id="logout" hidden>로그아웃</button></header>
+<p id="loading" role="status">불러오는 중…</p><h1 id="recovery-title" hidden>보관함을 열지 못했어요</h1><p id="error" role="alert" hidden></p><button type="button" id="retry" class="secondary" hidden>다시 시도</button>
+<section id="login" hidden><h1>내 개체 보관함</h1><p class="muted">낙찰한 개체를 경매별로 모아봐요</p><form id="login-form" method="post" action="/api/platform/buyer-account/start"><input type="hidden" name="link" id="login-link"><button class="kakao" type="submit">카카오 로그인</button></form><p id="login-status" class="muted" role="status" hidden></p><a href="/buyer-library.html" id="return-library" class="secondary" hidden>보관함으로</a><p id="unavailable" hidden>보관함 로그인을 준비하고 있어요</p></section>
+<section id="library" hidden><div class="library-heading"><div><h1>내 보관함</h1><p class="muted" id="account-phone"></p></div><button type="button" class="icon-button" id="refresh" aria-label="보관함 새로고침">↻</button></div>
+<button type="button" id="open-connect" class="secondary">낙찰 링크로 연결</button><p class="muted" id="phone-required" hidden>카카오 전화번호 제공 동의가 필요해요</p><button type="button" id="phone-relogin" class="secondary" hidden>다시 로그인</button>
+<div id="events"></div><p class="library-empty" id="empty" hidden>연결한 낙찰 내역이 없어요</p><button type="button" id="more" class="secondary" hidden>더 보기</button></section>
+<section id="detail" hidden><button type="button" id="back" class="back">← 내 보관함</button><h1 id="event-title" tabindex="-1"></h1><p id="event-count" class="muted"></p><div id="items"></div></section>
+<footer>© 옹동2</footer></main>
+<dialog id="connect-dialog" aria-labelledby="connect-title"><form id="connect-form"><header><h2 id="connect-title">낙찰 내역 연결</h2><button type="button" id="close-connect" class="icon-button" aria-label="연결 창 닫기">×</button></header><label for="link-input">받은 낙찰 링크</label><input id="link-input" name="link" inputmode="url" autocomplete="off" placeholder="https://creok.onrender.com/d/…" required><div id="connection-preview" hidden></div><p id="connect-error" role="alert" hidden></p><button class="primary" id="connect-submit" type="submit">내역 확인</button></form></dialog>
+</body></html>

@@ -6,9 +6,8 @@ test('vendor header hides operator labels without removing live update targets',
  assert.match(css,/\.brand-right[^}]*display:none!important/);
  for(const id of ['sync','channel','vendor-event'])assert.ok(s.includes('id="'+id+'"'));
 });
-test('buyer and vendor guide uses external YouTube navigation without video embeds',()=>{
+test('buyer and vendor headers omit the obsolete guide and keep the shared actions',()=>{
  const helper=fs.readFileSync('public/checkout-actions.js','utf8');
- assert.match(helper,/https:\/\/www.youtube.com\/shorts\/CEhm37HkDqQ/);
- assert.match(helper,/noopener noreferrer/);
+ assert.doesNotMatch(helper,/youtube\.com|이용 안내|append\(guide\)/);
  for(const p of ['public/buyer-shipping.html','public/vendor-checkout.html']){const s=fs.readFileSync(p,'utf8');assert.match(s,/checkout-actions.js/);assert.doesNotMatch(s,/checkout-mobile-v1.mp4|createElement\('video'\)/)}
 });

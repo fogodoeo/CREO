@@ -8,7 +8,7 @@
 
     const CHANNEL_PATTERN = /^[a-z0-9][a-z0-9-]{1,31}$/;
     const ROUTES = Object.freeze({
-        home: Object.freeze({ path: '/', query: 'channel', label: '채널홈' }),
+        home: Object.freeze({ path: '/main', query: 'channel', label: '채널홈' }),
         // Platform channels must use the isolated workspace. Legacy CDCUP is
         // routed to its compatibility page by the channel's managementUrl.
         workspace: Object.freeze({ path: '/channel-workspace.html', query: 'channel', label: '등록 · 목록', feature: 'auction' }),

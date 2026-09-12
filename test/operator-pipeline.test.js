@@ -16,7 +16,7 @@ test('one operator pipeline keeps every core step on the selected channel', () =
     assert.deepEqual(state.steps.map(step => step.id), ['workspace', 'broadcast', 'shipping', 'print']);
     assert.equal(state.steps.filter(step => step.active).map(step => step.id).join(','), 'broadcast');
     for (const step of state.steps) assert.match(step.href, /channel=future-live/);
-    assert.equal(state.home, '/?channel=future-live');
+    assert.equal(state.home, '/main?channel=future-live');
     assert.equal(state.settings, '/channel-manager.html?channel=future-live');
 });
 

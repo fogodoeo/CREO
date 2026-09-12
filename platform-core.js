@@ -580,7 +580,7 @@ function publicItem(item = {}) {
         soldPrice: Number(item.soldPrice) || 0,
         status: cleanText(item.status || 'waiting', 24),
         note: cleanText(item.note, 240),
-        photoUrl: cleanText(item.photoUrl, 500),
+        photoUrl: String(item.photoUrl||'').startsWith('/__entry_photo__/') ? '' : cleanText(item.photoUrl, 500),
         updatedAt: cleanText(item.updatedAt, 80),
         attributes: publicItemAttributes(item),
         bidLog: publicBidLog(item)

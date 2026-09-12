@@ -33,7 +33,9 @@ async function fixture(t,{saveInitial=true}={}){
 test('payment choice and its notice commit atomically, retry once and remain deduplicated after restart',async t=>{
  const f=await fixture(t,{saveInitial:false}),body={...f.selection,requestId:'atomic-initial'};
  const original=f.repo.upsertRows.bind(f.repo);
- f.repo.upsertRows=async rows=>original(rows.some(r=>r.key.includes('::shipment::'))?[...rows,{key:{invalid:true},value:'transaction failure'}]:rows);
+ // Fail after the notification write is attempted, not before the first shipment.
+ // A broken implementation that commits shipments separately must fail this test.
+ f.repo.upsertRows=async rows=>original(rows.some(r=>r.key.includes('::notification::'))?[...rows,{key:{invalid:true},value:'transaction failure'}]:rows);
  const failed=await f.call('POST','/api/platform/buyer-shipping',body,'');assert.equal(failed.status,500,failed.body);
  assert.equal((await f.repo.listRecords('alpha','shipment')).length,0);assert.equal((await f.repo.listRecords('alpha','notification')).length,0);
  f.repo.upsertRows=original;
@@ -205,5 +207,5 @@ test('amount-changing card destination edit retires the old link and requires ca
  const r=await f.call('POST','/api/platform/buyer-shipping',{...f.selection,payments:[{vendorKey:'vendor',method:'card'}],destinationId:'parge',pargeRegion:'수도권',pargeShop:'테스트점',requestId:'card-shipping-change'},'');assert.equal(r.status,200,r.body);assert.equal(r.json().vendors[0].payment.cardPaymentUrl,'');assert.equal(r.json().vendors[0].payment.cardLinkCancellationRequired,true);
  const link=(await f.call('POST','/api/platform/channels/alpha/vendor-checkout-link',{vendorId:'vendor',vendorKey:'vendor'})).json();const vendor=(await f.call('GET','/api/platform/vendor-checkout?code='+link.code,null,'')).json();const body={code:link.code,buyerId:vendor.buyers[0].id,requestId:'replacement-card',cardPaymentUrl:'https://pay.example.test/new'};
  assert.equal((await f.call('POST','/api/platform/vendor-checkout/card-link',body,'')).status,409);
- const result=await f.call('POST','/api/platform/vendor-checkout/card-link',{...body,confirmedOldCardLinkCancelled:true,expectedAmount:110000},'');assert.equal(result.status,200,result.body);assert.equal(result.json().buyers[0].payment.cardLinkCancellationRequired,false);
+ const result=await f.call('POST','/api/platform/vendor-checkout/card-link',{...body,confirmedOldCardLinkCancelled:true,expectedAmount:110000,expectedCardCancellationVersion:vendor.buyers[0].payment.cardCancellationVersion},'');assert.equal(result.status,200,result.body);assert.equal(result.json().buyers[0].payment.cardLinkCancellationRequired,false);
 });

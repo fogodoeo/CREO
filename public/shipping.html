@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -10,6 +10,9 @@
     <link rel="stylesheet" href="/ongdong-brand.css?v=20260908-logo">
     <script src="/ongdong-brand.js?v=20260908-logo"></script>
     <script src="platform-client.js?v=20260803-admin-session-v2"></script>
+    <script src="/buyer-link-manager.js"></script>
+    <script src="/checkout-actions.js?v=20260912-confirmation"></script>
+    <link rel="stylesheet" href="/buyer-link-manager.css">
     <script src="channel-runtime.js?v=20260901-operator-routing-v1"></script>
     <script src="auction-contract.js?v=20260819-contract-v1"></script>
     <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
@@ -279,24 +282,27 @@
             position: fixed;
             bottom: 32px;
             left: 50%;
-            transform: translateX(-50%) translateY(100px);
+            transform: translateX(-50%);
             background: rgba(13, 18, 30, 0.95);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
             color: white;
-            padding: 14px 28px;
-            border-radius: 30px;
+            width: max-content;
+            max-width: calc(100vw - 32px);
+            padding: 14px 18px;
+            border-radius: 14px;
             font-size: 14px;
+            line-height: 1.5;
             font-weight: 700;
             z-index: 5000;
             opacity: 0;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            transition: transform 0.35s cubic-bezier(0.32, 0.94, 0.6, 1), opacity 0.3s;
+            transition: opacity 120ms ease-out;
+            pointer-events: none;
         }
 
         .toast.show {
-            transform: translateX(-50%) translateY(0);
             opacity: 1;
         }
 
@@ -2015,6 +2021,7 @@
         .action-icon-btn { border-color:#D4D4D8 !important; background:#FFF !important; color:#3F3F46 !important; box-shadow:none !important; filter:grayscale(1); }
         .editor-action-footer { padding:12px 20px 16px; border-color:#E4E4E7; box-shadow:0 -6px 18px rgba(0,0,0,.035); }
         .editor-footer-actions { display:grid; grid-template-columns:repeat(2,minmax(86px,1fr)); gap:8px; }
+        .editor-link-control { display:inline-flex;align-items:center;min-height:44px;margin-top:8px;padding:8px 12px;border:1px solid #cbd3dd;border-radius:10px;background:#fff;color:#364152;font-family:inherit;font-size:14px;font-weight:600;line-height:1.4;cursor:pointer; }
         .editor-copy-action,.editor-save-action { display:flex; align-items:center; justify-content:center; height:44px; border-radius:10px; font-family:inherit; font-size:12px; font-weight:850; text-align:center; cursor:pointer; }
         .editor-copy-action { border:1px solid #D4D4D8; background:#FFF; color:#3F3F46; }
         .editor-copy-action:hover { border-color:#A1A1AA; background:#FAFAFA; }
@@ -2050,7 +2057,8 @@
         .message-preview-actions button { height:42px; border-radius:9px; font-family:inherit; font-size:12px; font-weight:850; cursor:pointer; }
         .message-preview-close { border:1px solid #D4D4D8; background:#FFF; color:#52525B; }
         .message-preview-copy { border:1px solid var(--accent); background:var(--accent); color:#FFF; }
-        .toast { bottom:58px; }
+        .toast { bottom:calc(68px + env(safe-area-inset-bottom)); }
+        @media(prefers-reduced-motion:reduce) { .toast { transition:none; } }
         .app-bottom-nav { position:fixed; left:50%; bottom:max(2px,env(safe-area-inset-bottom)); z-index:1900; display:grid; grid-template-columns:repeat(2,1fr); gap:2px; width:min(410px,calc(100% - 8px)); height:50px; padding:3px; border:1px solid #D4D4D8; border-radius:12px; background:rgba(255,255,255,.97); box-shadow:0 6px 20px rgba(0,0,0,.10); transform:translateX(-50%); backdrop-filter:blur(16px); }
         .app-bottom-nav a,.app-bottom-nav button { display:flex; align-items:center; justify-content:center; min-width:0; border:0; border-radius:10px; background:transparent; color:#64748B; font-family:inherit; font-size:10.5px; font-weight:850; text-decoration:none; white-space:nowrap; cursor:pointer; }
         .app-bottom-nav a.active { background:#2563EB; color:#fff; }
@@ -2162,7 +2170,7 @@
     </section>
 
     <!-- 토스트 & 로딩 -->
-    <div class="toast" id="toast"></div>
+    <div class="toast" id="toast" role="status"></div>
     <div class="loading-overlay" id="loading-overlay">
         <div class="spinner"></div>
         <div style="font-weight: 700; color: var(--text-title); font-size: 13px;" id="loading-text">로딩 중...</div>
@@ -2188,6 +2196,7 @@
                             <div id="editor-info-winner" style="font-size: 18px; font-weight: 850; color: var(--text-title); line-height: 1.3;">낙찰자명</div>
                             <!-- 전화번호 (비클릭 텍스트) -->
                             <div id="editor-info-phone" style="font-size: 14px; color: var(--text-secondary); font-weight: 600; margin-top: 3px;">전화번호</div>
+                            <button class="editor-link-control" id="editor-buyer-link-btn" type="button">개인 링크 관리</button>
                         </div>
                     </div>
                 </div>
@@ -2505,9 +2514,7 @@
                     method: 'POST',
                     body: JSON.stringify({ itemId: item._platformItemId || item.row || item.id })
                 });
-                const url = new URL(result.url, window.location.origin);
-                if (url.origin !== window.location.origin || !url.pathname.startsWith('/s/')) throw new Error('낙찰자 페이지 주소를 확인할 수 없습니다.');
-                preview.location.replace(url.href);
+                preview.location.replace(CreoBuyerLinkManager.safeUrl(result.url));
             } catch (error) {
                 preview.close();
                 showToast(error.message || '낙찰자 페이지를 열지 못했습니다.', true);
@@ -2541,19 +2548,18 @@
             const item = activeBuyerLinkItem();
             if (!item) return showToast('낙찰 개체를 찾을 수 없습니다.', true);
             const state = winnerStateMap[activeEditorWinner];
-            const total = Number(state?.grandTotal) || 0;
-            const confirmed = Number(state?.payment_confirmed_amount) || 0;
-            const due = Math.max(0, total - confirmed);
-            const paymentLabel = confirmed > 0 && due > 0 ? `추가 결제 ${due.toLocaleString()}원` : `결제 ${total.toLocaleString()}원`;
+            const channelId = SHIPPING_CHANNEL_ID, winnerId = activeEditorWinner;
             const itemId = item._platformItemId || item.row || item.id;
             const requestId = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
             try {
                 paymentConfirmationPending = true;
-                const link=await CreoPlatform.api(`channels/${encodeURIComponent(SHIPPING_CHANNEL_ID)}/buyer-shipping-link`,{method:'POST',body:JSON.stringify({itemId})});
-                const checkout=await CreoPlatform.api('buyer-shipping?code='+encodeURIComponent(link.code));
+                const checkout=await CreoPlatform.api(`channels/${encodeURIComponent(channelId)}/buyer-checkout-preview?itemId=${encodeURIComponent(itemId)}`);
+                if(channelId!==SHIPPING_CHANNEL_ID||winnerId!==activeEditorWinner)throw new Error('선택한 구매자가 바뀌었습니다. 다시 확인해 주세요.');
                 const group=checkout.vendors.find(v=>v.items.some(i=>i.id===itemId));
                 if(!group)throw new Error('결제 묶음을 다시 불러와 주세요.');
                 const shippingReview=group.payment.shippingChangedAfterReport;
+                const amount=group.payment.confirmationDue??group.payment.additionalDue??group.totals.totalAmount;
+                const paymentLabel=`${group.payment.confirmedAmount>0?'추가 결제':'결제'} ${Number(amount).toLocaleString()}원`;
                 const question=shippingReview?`배송지 변경으로 ${Number(group.payment.reportedAmount).toLocaleString()}원 → ${Number(group.totals.totalAmount).toLocaleString()}원으로 바뀌었습니다. 실제 입금·승인 금액이 변경 금액과 일치합니까?`:`${state?.winnerName || '낙찰자'}님의 ${paymentLabel}을 확인 처리할까요?`;
                 if(!confirm(question))return;
                 const paymentConfirmBtn = document.getElementById('editor-payment-confirm-btn');
@@ -2561,12 +2567,13 @@
                     paymentConfirmBtn.disabled = true;
                     paymentConfirmBtn.textContent = '확인 중...';
                 }
-                await CreoPlatform.api(`channels/${encodeURIComponent(SHIPPING_CHANNEL_ID)}/buyer-shipping-payment`, {
+                const result=await CreoPlatform.api(`channels/${encodeURIComponent(channelId)}/buyer-shipping-payment`, {
                     method: 'POST',
-                    body: JSON.stringify({ itemId, requestId, shippingAmountReviewed:Boolean(shippingReview), expectedAmount:group.totals.totalAmount })
+                    body: JSON.stringify({ itemId, requestId, expectedVersion:checkout.editVersion, shippingAmountReviewed:Boolean(shippingReview), expectedAmount:group.totals.totalAmount })
                 });
                 await refreshShippingWorkspace({ preserveEditor: true });
-                showToast('결제 확인을 완료했습니다.');
+                const feedback=CreoCheckoutActions.paymentConfirmationFeedback(result.notification);
+                showToast(feedback.text,feedback.warning);
             } catch (error) {
                 showToast(error.message || '결제 확인을 처리하지 못했습니다.', true);
             } finally {
@@ -2723,12 +2730,14 @@
         document.body.classList.add('admin-mode');
         document.getElementById('admin-view').style.display = 'block';
 
+        let shippingToastTimer;
         function showToast(msg, isError = false) {
             const t = document.getElementById('toast');
             t.textContent = msg;
             t.style.background = isError ? '#EF4444' : '#0F172A';
             t.classList.add('show');
-            setTimeout(() => t.classList.remove('show'), 2500);
+            clearTimeout(shippingToastTimer);
+            shippingToastTimer = setTimeout(() => t.classList.remove('show'), 6000);
         }
 
         function showLoading(active, text = '로딩 중...') {
@@ -3845,6 +3854,14 @@
             const cleanPhone = (state.phone || '').replace(/[^0-9]/g, '');
 
             const buyerPageBtn = document.getElementById('editor-buyer-page-btn');
+            const buyerLinkBtn = document.getElementById('editor-buyer-link-btn');
+            if (buyerLinkBtn) {
+                buyerLinkBtn.disabled = !cleanPhone;
+                buyerLinkBtn.onclick = () => {
+                    window.shippingBuyerLinkManager ||= CreoBuyerLinkManager.create({api:(...args)=>CreoPlatform.api(...args),getContext:()=>{const item=activeBuyerLinkItem();return item?{channelId:SHIPPING_CHANNEL_ID,itemId:item._platformItemId||item.row||item.id}:null;}});
+                    window.shippingBuyerLinkManager.open().catch(error=>showToast(error.message,true));
+                };
+            }
             if (buyerPageBtn) {
                 buyerPageBtn.onclick = openActiveBuyerPage;
                 buyerPageBtn.disabled = !cleanPhone;

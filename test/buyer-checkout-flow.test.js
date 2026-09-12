@@ -32,3 +32,20 @@ test('paid and reported cards hide payment actions, ready card uses Alimtalk cop
  assert.match(ctx.vendorAction({payment:{method:'card'}},{}),/알림톡/);
  assert.match(ctx.vendorAction({payment:{method:'card',cardPaymentUrl:'https://example.com'}},{}),/카드로 결제하기/);
 });
+test('a saved destination is a top-level choice and does not select or save until the buyer chooses',()=>{
+ const nodes={},state={data:{savedDestination:{label:'파르게 · 서울 · 수령점',destinationId:'parge',pargeRegion:'서울',pargeShop:'수령점'}},destinationId:'',dirty:false};
+ const ctx=vm.createContext({state,$:id=>nodes[id]??={},esc:String,render(){},document:{querySelector:()=>({focus(){}})}});
+ vm.runInContext(html.slice(html.indexOf('let editingDestination='),html.indexOf(' const destination=')),ctx);
+ assert.equal(typeof ctx.renderSavedDestination,'function');ctx.renderSavedDestination();
+ assert.equal(nodes['saved-destination'].hidden,false);assert.equal(nodes['destination-options'].hidden,true);
+ assert.equal(state.destinationId,'');assert.equal(state.dirty,false);
+ nodes['reuse-destination'].onclick();assert.equal(state.destinationId,'parge');assert.equal(state.pargeShop,'수령점');assert.equal(state.dirty,true);
+ ctx.renderSavedDestination();assert.equal(nodes['saved-destination'].hidden,true);
+});
+test('choosing another destination dismisses the suggestion without copying it',()=>{
+ const nodes={},state={data:{savedDestination:{label:'이전 수령지'}},destinationId:''};
+ const ctx=vm.createContext({state,$:id=>nodes[id]??={},esc:String,render(){},document:{querySelector:()=>({focus(){}})}});
+ vm.runInContext(html.slice(html.indexOf('let editingDestination='),html.indexOf(' const destination=')),ctx);
+ ctx.renderSavedDestination();nodes['new-destination'].onclick();ctx.renderSavedDestination();
+ assert.equal(state.destinationId,'');assert.equal(nodes['saved-destination'].hidden,true);assert.equal(nodes['destination-options'].hidden,false);
+});

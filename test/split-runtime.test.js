@@ -69,6 +69,8 @@ test('real core and web gateway preserve short links, admin sessions and stored 
     assert.equal(login.status, 200);
     const cookie = login.headers.get('set-cookie').split(';')[0];
     const headers = { cookie, 'content-type': 'application/json', origin: webUrl };
+    assert.match(await (await fetch(webUrl+'/main')).text(),/operator-login/);
+    assert.match(await (await fetch(webUrl+'/main',{headers})).text(),/quick-workspace/);
     assert.equal((await fetch(webUrl + '/api/platform/admin-check', { headers })).status, 200);
     const configPath = '/api/platform/channels/crewart/broadcast-config';
     const save = await fetch(webUrl + configPath, { method: 'PUT', headers, body: JSON.stringify({ patch: { splitRuntimeTest: 'verified' } }) });

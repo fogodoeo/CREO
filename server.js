@@ -15,6 +15,7 @@ const { createCrewartHouseService } = require('./crewart-house-service');
 const { createPlatformApi } = require('./platform-api');
 const { createCaptureApi } = require('./capture-api');
 const { CaptureStorage } = require('./capture-storage');
+const { EntryPhotoStorage } = require('./entry-photo-storage');
 const { createBroadcastAssetApi } = require('./broadcast-asset-api');
 const { BroadcastAssetStorage } = require('./broadcast-asset-storage');
 const { createCdcupRoundsApi } = require('./cdcup-rounds-api');
@@ -49,13 +50,21 @@ const crewartHouseService = createCrewartHouseService({
     repository: supabasePlatformRepository,
     secret: bandMembership.config.sessionSecret
 });
-const checkoutNotificationService = new CheckoutNotificationService({ repository: platformRepository });
+const checkoutNotificationService = new CheckoutNotificationService({ repository: platformRepository, beforeSend:(channelId,notification)=>platformApi.assertBuyerNotificationLink(channelId,notification) });
+const entryPhotoStorage = new EntryPhotoStorage({
+    supabaseUrl: process.env.SUPABASE_URL,
+    serviceKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    bucket: process.env.CREO_ENTRY_PHOTO_BUCKET || 'auction-entry-photos'
+});
 platformApi = createPlatformApi({
     repository: platformRepository,
     crewartHouseService,
     bandMembership,
-    notificationService: checkoutNotificationService
+    notificationService: checkoutNotificationService,
+    entryPhotoStorage,
+    entryPhotoMaxBytes: Number(process.env.CREO_ENTRY_PHOTO_VENDOR_MAX_BYTES) || 100000000
 });
+const operatorEntry = require('./operator-entry').createOperatorEntry({isAuthenticated:platformApi.hasAdminSession,frontendOrigin});
 const captureStorage = new CaptureStorage();
 const captureApi = createCaptureApi({
     repository: platformRepository,
@@ -391,7 +400,7 @@ const server = http.createServer(async (req, res) => {
         }
         const vendorStatusShortMatch = /^\/w\/([A-Za-z0-9_-]{8,24})$/.exec(url.pathname);
         if ((req.method === 'GET' || req.method === 'HEAD') && vendorStatusShortMatch) {
-            const vendorPageUrl = new URL('/vendor-checkout.html', url);
+            const vendorPageUrl = new URL('/vendor-entries.html', url);
             if (await serveStatic(req, res, vendorPageUrl)) return;
         }
 
@@ -411,6 +420,7 @@ const server = http.createServer(async (req, res) => {
             }
         }
 
+        if (await operatorEntry(req,res,url)) return;
         if ((req.method === 'GET' || req.method === 'HEAD') && await serveStatic(req, res, url)) {
             return;
         }
@@ -456,6 +466,8 @@ const notificationWorker = setInterval(flushCheckoutNotifications, 15_000);
 notificationWorker.unref?.();
 const notificationStartup = setTimeout(flushCheckoutNotifications, 2_000);
 notificationStartup.unref?.();
+const buyerAuthMaintenance = require('./buyer-auth-maintenance').createBuyerAuthMaintenance({cleanup:()=>platformApi.cleanupBuyerAuth()});
+buyerAuthMaintenance.start();
 
 let shuttingDown = false;
 function shutdown(signal) {
@@ -468,7 +480,8 @@ function shutdown(signal) {
     forceExit.unref?.();
     Promise.all([
         new Promise(resolve => server.close(resolve)),
-        checkoutNotificationService.stopAndDrain()
+        checkoutNotificationService.stopAndDrain(),
+        buyerAuthMaintenance.stop()
     ]).then(async () => {
         try { await platformRepository.close?.(); } catch (error) { console.error('[creo] repository close failed:', error.message); }
         clearTimeout(forceExit);

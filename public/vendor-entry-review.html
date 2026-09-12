@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>출품 검토 · 옹동2</title>
+  <link rel="stylesheet" href="/ongdong-brand.css">
+  <link rel="stylesheet" href="/checkout-navigation.css">
+  <link rel="stylesheet" href="/vendor-entry-review.css">
+  <link rel="stylesheet" href="/entry-photo-usage.css">
+  <script defer src="/platform-client.js"></script>
+  <script defer src="/ongdong-brand.js"></script>
+  <script defer src="/checkout-item-view.js"></script>
+  <script defer src="/vendor-entry-review.js"></script>
+  <script defer src="/entry-photo-usage.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">본문으로 이동</a>
+  <header class="topbar"><strong data-ongdong-brand>옹동2</strong><a id="workspace-link" href="/channel-manager.html">경매 관리</a></header>
+  <main id="main" tabindex="-1">
+    <section id="login-section" hidden>
+      <h1>운영자 로그인</h1>
+      <form id="login-form"><label for="password">비밀번호</label><input id="password" type="password" autocomplete="current-password" required><button class="primary" type="submit">로그인</button><p id="login-error" class="error" role="alert" hidden></p></form>
+    </section>
+    <section id="review-section" hidden>
+      <div class="heading"><h1>출품 검토</h1><div class="heading-actions"><button id="open-photo-usage" class="secondary" type="button">사진 저장량</button><button id="refresh" class="secondary" type="button">새로고침</button></div></div>
+      <label class="event-label" for="review-event">경매</label><select id="review-event"></select>
+      <div id="intake" class="intake" hidden><div><span class="eyebrow">출품 접수</span><strong id="intake-status"></strong></div><button class="secondary" id="toggle-intake" type="button"></button></div>
+      <div class="filters" id="filters" role="group" aria-label="검토 상태">
+        <button type="button" data-status="submitted" aria-pressed="true">검토 대기 <span>0</span></button>
+        <button type="button" data-status="changes_requested" aria-pressed="false">수정 요청 <span>0</span></button>
+        <button type="button" data-status="approved" aria-pressed="false">편성 완료 <span>0</span></button>
+      </div>
+      <label class="vendor-filter" for="review-vendor"><span>업체</span><select id="review-vendor"><option value="">전체 업체</option></select></label>
+      <p id="list-message" class="error" role="alert" hidden></p>
+      <div id="entry-list" aria-live="polite"></div>
+    </section>
+    <p id="notice" role="status"></p>
+  </main>
+  <dialog id="review-dialog" aria-labelledby="review-title">
+    <header class="dialog-head"><div><p id="review-company" class="eyebrow"></p><h2 id="review-title" tabindex="-1"></h2></div><button class="icon-button" id="close-review" type="button" aria-label="출품 검토 닫기">×</button></header>
+    <div class="dialog-content">
+      <p id="revision-note" class="muted" hidden>편성된 개체의 변경안</p>
+      <div id="entry-information"></div>
+      <form id="review-form" novalidate>
+        <section id="allocation-fields"><h3>편성 정보</h3><div class="field-grid">
+          <label for="lot-code">경매 번호<input id="lot-code" maxlength="16" placeholder="A01" autocomplete="off" required></label>
+          <label for="lot-order">진행 순서<input id="lot-order" type="number" inputmode="numeric" min="1" max="10000" step="1" required></label>
+          <label for="lot-price">시작가 <span class="muted">원</span><input id="lot-price" type="number" inputmode="numeric" min="0" step="1" required></label>
+          <label for="lot-team" id="lot-team-label">팀 <span class="muted">선택</span><input id="lot-team" maxlength="60" autocomplete="off"></label>
+          <label for="lot-group" id="lot-group-label" hidden>팀 <span class="muted">선택</span><select id="lot-group"></select></label>
+        </div></section>
+        <section id="reason-fields" hidden><h3><label for="review-reason">수정할 내용</label></h3><textarea id="review-reason" maxlength="200" rows="3" placeholder="예: 개체 체중을 확인해 주세요"></textarea></section>
+        <p id="review-error" class="error" role="alert" hidden></p>
+        <button id="reload-entry" class="secondary" type="button" hidden>최신 내용 다시 확인</button>
+      </form>
+    </div>
+    <footer class="dialog-actions" id="review-actions"><button id="change-review-mode" class="secondary" type="button">수정 요청</button><button class="primary" form="review-form" id="confirm-review" type="submit">경매에 반영</button></footer>
+  </dialog>
+  <footer class="page-footer">© 옹동2</footer>
+</body>
+</html>
