@@ -9,7 +9,7 @@
   let section = new URLSearchParams(location.search).get('section') || 'home', profile = null, profileDirty = false;
   let profilePromptShown = false, profilePopupForSubmit = false, profileReturnFocus = null, leaveProfileOnly = false;
   const profilePromptKey = () => 'ongdong-entry-profile-prompt-v1:' + Store.VENDOR + ':' + previewCode;
-  const profileReady = p => Boolean(p?.phone && p.bankRegistered);
+  const profileReady = p => !window.CreoVendorNavigation.profileRequired(p);
   function profilePromptSeen() { try { return profilePromptShown || localStorage.getItem(profilePromptKey()) === 'seen'; } catch { return profilePromptShown; } }
   function markProfilePromptSeen() { profilePromptShown = true; try { localStorage.setItem(profilePromptKey(), 'seen'); } catch {} }
   function editorNavigation(editing) { $('navigation').hidden = role !== 'vendor' || editing; document.body.classList.toggle('entry-editing', editing); }
@@ -81,6 +81,7 @@
     const links = $('navigation').querySelectorAll('a');
     links[0].href = pageUrl('entries'); links[1].href = pageUrl('settlement'); links[2].href = pageUrl('profile');
     links.forEach((link, index) => { if (index === (section === 'profile' ? 2 : 0)) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current'); });
+    window.CreoVendorNavigation.updateStatus({entriesRequired:currentEvent()?.entriesOpen === true && entries().length === 0});
   }
   function renderList() {
     draft = null; dirty = false; profileDirty = false; section = 'entries'; eventControls();
@@ -110,7 +111,7 @@
       else detailEntry(entry);
     });
     images($('content'));
-    if ($('vendor-info-summary')) loadProfileSummary();
+    if (role === 'vendor') loadProfileSummary();
   }
   async function profileApi(body) {
     if (Store.live) return Store.profile(body);
@@ -122,15 +123,15 @@
   async function loadProfileSummary() {
     const event = eventId;
     try {
-      const loaded = await profileApi(); if (event !== eventId || !$('vendor-info-summary')) return;
+      const loaded = await profileApi(); if (event !== eventId || section !== 'entries') return;
       profile = loaded;
       updateProfileStatus();
-      if (!profileReady(profile) && !profilePromptSeen() && !document.querySelector('dialog[open]') && !busy && !uploading) openProfilePopup();
+      if (currentEvent()?.entriesOpen && !profileReady(profile) && !profilePromptSeen() && !document.querySelector('dialog[open]') && !busy && !uploading) openProfilePopup();
     } catch { if ($('vendor-info-summary')) { $('vendor-info-summary').hidden = false; $('vendor-info-summary').querySelector('.summary-action').textContent = '다시 확인 ›'; } }
   }
   function updateProfileStatus() {
-    const ready = profileReady(profile), link = document.querySelector('#navigation [data-vendor-section=profile]');
-    link.classList.toggle('profile-incomplete', !ready); link.title = ready ? '업체 정보' : '연락처·계좌 등록 필요';
+    const ready = profileReady(profile);
+    window.CreoVendorNavigation.updateStatus({profileRequired:!ready});
     if ($('vendor-info-summary')) $('vendor-info-summary').hidden = ready;
   }
   function profileFormMarkup(p, popup = false) {
@@ -211,18 +212,15 @@
     draft = structuredClone(entry); dirty = false;
     editorNavigation(true);
     $('content').innerHTML = `<div class="title-row"><button type="button" id="entry-back" class="icon-button" aria-label="출품 목록으로 돌아가기">←</button><h1>개체 등록</h1></div><p class="entry-caption">${esc(entry.code || '출품 번호는 저장 시 자동 부여')}</p>
-      ${entry.sourceUrl ? `<div class="source-link"><span>피들에서 가져온 개체</span><a href="${esc(entry.sourceUrl)}" target="_blank" rel="noopener noreferrer">원본 보기 ↗</a></div>` : '<button class="import-shortcut" type="button" id="open-import">피들 링크로 가져오기 <span aria-hidden="true">↗</span></button>'}
+      ${entry.sourceUrl ? `<div class="source-link"><span>피들에서 가져온 개체</span><a href="${esc(entry.sourceUrl)}" target="_blank" rel="noopener noreferrer">원본 보기 ↗</a></div>` : ''}
       ${entry.reason ? `<div class="request-note"><b>수정 요청</b>${esc(entry.reason)}</div>` : ''}
       <form id="entry-form" novalidate>
         <section class="entry-section"><div class="section-head"><h2>개체 사진 <span class="optional">선택</span></h2><small id="photo-count"></small></div><div id="entry-photos" class="photo-strip"></div><input id="entry-photo-input" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden><div id="photo-error" class="inline-error" role="alert" hidden></div></section>
-        <label class="field" for="entry-morph"><span>모프</span><input id="entry-morph" name="morph" maxlength="60" placeholder="예: 릴리화이트, 하리퀸" value="${esc(entry.morph)}" aria-describedby="morph-error" autocomplete="off"><span class="field-error" id="morph-error" hidden></span></label>
         ${radioGroup('sex', '성별', [['unknown', '미구분'], ['male', '수컷'], ['female', '암컷']], entry.sex)}
         <label class="field" for="entry-weight"><span>체중 <span class="optional">g · 선택</span></span><input id="entry-weight" name="weight" inputmode="decimal" maxlength="6" placeholder="예: 28" value="${esc(entry.weight)}"></label>
         <section class="entry-section"><div class="section-head"><h2>부모 정보 <span class="optional">선택</span></h2></div><div id="entry-parents" class="parents"></div></section>
-        <details class="extra"><summary>추가 정보 <span class="optional">크기 · 해칭일 · 비고</span></summary><div>
-          ${radioGroup('size', '크기', ['베이비', '아성체', '준성체', '성체'].map(x => [x, x]), entry.size)}
-          <label class="field" for="entry-hatch"><span>해칭일</span><input id="entry-hatch" name="hatchDate" type="date" value="${esc(entry.hatchDate)}" max="${new Date().toLocaleDateString('en-CA')}"></label>
-          <label class="field" for="entry-note"><span>비고</span><textarea id="entry-note" name="note" maxlength="600" placeholder="개체의 특징이나 참고할 내용">${esc(entry.note)}</textarea></label></div></details>
+        <label class="field" for="entry-hatch"><span>해칭일 <span class="optional">선택</span></span><input id="entry-hatch" name="hatchDate" type="date" value="${esc(entry.hatchDate)}" max="${new Date().toLocaleDateString('en-CA')}"></label>
+        <label class="field" for="entry-note"><span>비고 <span class="optional">선택</span></span><textarea id="entry-note" name="note" maxlength="600" placeholder="모프, 개체 특징 등 참고할 내용">${esc(entry.note)}</textarea></label>
         <p id="entry-error" class="inline-error" role="alert" hidden></p>
         <div class="form-actions"><button class="secondary" type="button" id="save-draft">임시 저장</button><button class="primary" type="submit" id="submit-entry">검토 요청</button></div>
       </form>`;
@@ -237,20 +235,12 @@
   function readDraft() {
     if (!$('entry-form')) return draft;
     const form = new FormData($('entry-form'));
-    for (const key of ['morph', 'sex', 'weight', 'size', 'hatchDate', 'note']) draft[key] = String(form.get(key) || '');
+    for (const key of ['sex', 'weight', 'hatchDate', 'note']) draft[key] = String(form.get(key) || '');
     return draft;
-  }
-  function validateSubmit() {
-    let first;
-    const issues = [['entry-morph', 'morph-error', !draft.morph.trim(), '모프를 입력해 주세요.']];
-    for (const [field, error, invalid, message] of issues) {
-      $(field).setAttribute('aria-invalid', String(invalid)); errorAt(error, invalid ? message : ''); if (invalid && !first) first = $(field);
-    }
-    first?.focus(); return !first;
   }
   async function saveEntry(submit, navigate = true) {
     if (busy || uploading) return false;
-    readDraft(); if (submit && !validateSubmit()) return false;
+    readDraft();
     busy = true; $('save-draft').disabled = $('submit-entry').disabled = true; errorAt('entry-error', '');
     try {
       if (submit) {
@@ -607,6 +597,7 @@
     try {
       state = await Store.read();
       if (Store.live) setContext();
+      window.CreoVendorNavigation.updateStatus({entriesRequired:currentEvent()?.entriesOpen === true && entries().length === 0});
       if (!draft && section === 'entries' && !document.querySelector('dialog[open]')) {
         const focused = document.activeElement, entryId = focused?.dataset.entry, elementId = focused?.id;
         renderList();

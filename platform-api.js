@@ -2253,6 +2253,8 @@ function createPlatformApi({
         const buyers = await Promise.all(bundles.map(async bundle => ({...vendorBuyerPublicPayload({...bundle,group:{...bundle.group,items:bundle.group.items.map(item=>displayById.get(item.id)||item)}}),changePending:Boolean(await pendingCheckoutChange(bundle.context))})));
         return {
             revision: checkoutRevision(context.channel.id),
+            // Navigation needs counts only; do not resolve/download entry photos.
+            entrySummary: await vendorEntries.summary(context).catch(() => null),
             vendorContacts: context.vendors.filter(v => v.id !== context.vendor.id).map(v => ({name:cleanText(v.name,80),phone:Inquiry.vendorContact(v)?.phone || ''})).sort((a,b) => a.name.localeCompare(b.name,'ko')),
             testDeliveryEnabled: testDeliveryChannels.has(context.channel.id),
             channel: { id: context.channel.id, name: context.channel.name, status: context.channel.status },
@@ -3241,6 +3243,7 @@ function createPlatformApi({
                     if(!context.profile){await vendorDirectory.enroll(context.channel.id,context.vendor.id);context=await vendorCheckoutContext(context.token,context.channel.id);}
                     if(method==='GET'){replyJson(res,200,{state:await vendorEntries.read(context)});return;}
                     const result=await vendorEntries.command(context,body);
+                    if(!result.duplicate)touchCheckout(context.channel.id);
                     if(!result.duplicate&&body.type==='parent')await touchVendorChannels(context.channel.id,context.vendor.id);
                     replyJson(res,200,result);
                 });return true;
@@ -4935,7 +4938,7 @@ function createPlatformApi({
                     if(!fresh||fresh.dataAdapter!=='platform'||typeof body.open!=='boolean'||(body.open&&!['active','draft'].includes(fresh.status)))throw buyerInputError('출품 접수 상태를 확인해 주세요.');
                     if(body.expectedRevision!==current.revision)throw buyerInputError('접수 상태가 변경됐어요. 다시 확인해 주세요.',409);
                     const result={id:'entry-policy',open:body.open,revision:current.revision+1,updatedAt:new Date().toISOString()};
-                    await repository.upsertRecord(channelId,'setting',result);replyJson(res,200,result);
+                    await repository.upsertRecord(channelId,'setting',result);touchCheckout(channelId);replyJson(res,200,result);
                 });return true;
             }
             if (segments[2]==='entries' && ((segments.length===3&&method==='GET')||(segments.length===4&&segments[3]==='review'&&method==='POST'))) {

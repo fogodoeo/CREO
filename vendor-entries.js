@@ -91,6 +91,11 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
         // Existing live auctions are closed until the operator opens intake.
         return {open:value?.open===true,revision:Number(value?.revision)||0};
     }
+    async function summary(context) {
+        const currentPolicy = await policy(context.channel.id);
+        const state = context.profile ? await readOwner(owner(context)) : null;
+        return {entriesOpen:entriesOpen(context,currentPolicy),entryCount:state ? state.entries.filter(entry => entry.channelId === context.channel.id && entry.channelVendorId === context.vendor.id).length : 0};
+    }
     function view(state, context) {
         const memberships=context.profile.members;
         const entries=state.entries.filter(entry=>memberships.some(member=>member.channelId===entry.channelId&&member.vendorId===entry.channelVendorId));
@@ -129,6 +134,7 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
             const now=new Date().toISOString();let result,item=null;
             if(type==='import'){
                 const normalized=normalizeEntry(input.entry),id=cleanText(input.entry?.id,80);
+                if(normalized.morph&&!normalized.note.startsWith('모프: '+normalized.morph))normalized.note=['모프: '+normalized.morph,normalized.note].filter(Boolean).join('\n').slice(0,600);
                 if(!uuid(id)||!normalized.sourceId)throw fail('피들 링크를 다시 불러와 주세요.',422);
                 const duplicate=state.entries.find(entry=>entry.channelId===context.channel.id&&entry.sourceId===normalized.sourceId);
                 if(duplicate)return {state:await read(context),result:duplicate.id,duplicate:true};
@@ -173,7 +179,6 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
                 const entry={...normalized,id,vendorId:ownerId,channelVendorId:context.vendor.id,channelId:context.channel.id,entryNumber,code:`출품 ${String(entryNumber).padStart(2,'0')}`,version:(current?.version||0)+1,status:type==='submit'?'submitted':'draft',updatedAt:now,...(current?.approved?{approved:current.approved,itemId:current.itemId,lot:current.lot}: {})};
                 const facts=snapshot(state,entry);
                 if(type==='submit'){
-                    if(!normalized.morph)throw fail('모프를 입력해 주세요.',422);
                     if(!normalizePhone(context.vendor.phone)||!['bankName','bankAccount','bankHolder'].every(field=>cleanText(context.vendor[field],100)))throw fail('업체 연락처와 계좌를 먼저 등록해 주세요.',422);
                     entry.submission=facts;
                 }
@@ -201,6 +206,7 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
                         const teamName=group?.name||cleanText(input.teamName??existing?.teamName??context.vendor.teamName,60);
                         const safe=value=>String(value||'').replace(/[|:]/g,' ');
                         item={...(existing||{}),id:itemId,lotNumber:order,name:lot,vendorId:context.vendor.id,vendorName:context.vendor.name,groupId,teamName,category:facts.morph,status:'waiting',startPrice,soldPrice:0,photoUrl:facts.media[0]?.url||'',createdAt:existing?.createdAt||now,updatedAt:now,attributes:{...(existing?.attributes||{}),checklist:`gender:${{male:'M',female:'F',unknown:''}[facts.sex]}|weight:${facts.weight}|morph:${safe(facts.morph)}|size:${safe(facts.size)}`,displayNumber:lot,entry_traits:{morph:facts.morph,sex:facts.sex,weight:facts.weight,size:facts.size,hatchDate:facts.hatchDate},media:facts.media,parents:facts.parents,vendor_entry:{ownerId,entryId:entry.id}}};
+                        item.note=facts.note;
                         entry.approved={...copy(facts),approvedAt:now};entry.itemId=itemId;entry.lot=lot;entry.status='approved';
                     }else{
                         const reason=cleanText(input.reason,200);
@@ -289,7 +295,7 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
             return resolveFacts(item);
         }));
     }
-    return {read,command,addMedia,hydrateItems,hydrateCollectionRecords,policy};
+    return {read,command,addMedia,hydrateItems,hydrateCollectionRecords,policy,summary};
 }
 
 module.exports={createVendorEntries,normalizeEntry};

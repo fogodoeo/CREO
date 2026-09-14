@@ -14,6 +14,58 @@ function fixture(){
 const draft=()=>({id:randomUUID(),morph:'릴리화이트',sex:'female',weight:'28',photoIds:[]});
 const command=(type,fields={})=>({type,requestId:randomUUID(),...fields});
 
+test('registration summary counts saved entries only in the selected vendor and auction, including after restart',async()=>{
+    const {repository,context,service}=fixture();
+    const before=JSON.stringify([...repository.rows]);
+    assert.deepEqual(await service.summary({...context,profile:null}),{entriesOpen:true,entryCount:0});
+    assert.equal(JSON.stringify([...repository.rows]),before,'summary must not enroll or write');
+    assert.deepEqual(await service.summary(context),{entriesOpen:true,entryCount:0});
+    const saved=command('save',{entry:draft()});
+    await service.command(context,saved);await service.command(context,saved);
+    assert.deepEqual(await createVendorEntries(repository).summary(context),{entriesOpen:true,entryCount:1});
+    const other={...context,channel:context.catalog.channels[1],vendor:{...context.vendor,id:'v2'}};
+    assert.deepEqual(await service.summary(other),{entriesOpen:true,entryCount:0});
+    await assert.rejects(service.summary({...context,vendor:{id:'unauthorized'}}),error=>error.status===403);
+    assert.deepEqual(await service.summary({...context,channel:{...context.channel,status:'archived'}}),{entriesOpen:false,entryCount:1});
+    repository.rows.set('creo_v2::alpha::setting::entry-policy',{key:'creo_v2::alpha::setting::entry-policy',value:JSON.stringify({open:false})});
+    assert.deepEqual(await service.summary(context),{entriesOpen:false,entryCount:1});
+});
+
+test('registration summary fails on unreadable records rather than reporting a false zero',async()=>{
+    const {repository,context,service}=fixture();
+    const key='vendor_entries_v1::'+context.profile.id;
+    repository.rows.set(key,{key,value:'{broken'});
+    await assert.rejects(service.summary(context),error=>error.status===503);
+});
+
+test('minimal entry submits without a morph and approval preserves notes and hatch date',async()=>{
+    const {repository,context,service}=fixture();
+    const entry={id:randomUUID(),sex:'female',weight:'23.5',hatchDate:'2026-03-01',note:'꼬리 재생 흔적 확인',photoIds:[]};
+    const submitted=await service.command(context,command('submit',{entry}));
+    assert.equal(submitted.state.entries[0].submission.note,entry.note);
+    const approve=command('approve',{id:entry.id,expectedVersion:1,lot:'C01',order:1,startPrice:10000});
+    await service.command(context,approve,{operator:true});
+    await createVendorEntries(repository).command(context,approve,{operator:true});
+    const items=await repository.listRecords(context.channel.id,'item');
+    assert.equal(items.length,1);assert.equal(items[0].note,entry.note);
+    assert.equal(items[0].attributes.entry_traits.hatchDate,entry.hatchDate);
+    assert.equal(items[0].name,'C01');assert.equal(items[0].status,'waiting');
+});
+
+test('Feedle morph is included once in editable notes and retry keeps the original draft',async()=>{
+    const {repository,context,service}=fixture();
+    const entry={...draft(),sourceId:randomUUID(),note:'건강하게 자라는 개체'};
+    const request=command('import',{entry});
+    const result=await service.command(context,request);
+    assert.equal(result.state.entries[0].note,'모프: 릴리화이트\n건강하게 자라는 개체');
+    const again=await createVendorEntries(repository).command(context,request);
+    assert.equal(again.state.entries.length,1);assert.equal(again.state.entries[0].note,result.state.entries[0].note);
+    const edit={...again.state.entries[0],note:'업체가 확인 후 수정한 비고'};
+    const saved=await service.command(context,command('save',{entry:edit,expectedVersion:1}));
+    assert.equal(saved.state.entries[0].note,edit.note);
+    assert.equal(saved.state.entries[0].morph,'릴리화이트');
+});
+
 test('Feedle import atomically creates a draft, reuses corrected parents and deduplicates simultaneous imports',async()=>{
     const {repository,context,service}=fixture(),sourceId=randomUUID(),parentSource=randomUUID();
     const make=()=>command('import',{entry:{...draft(),sourceId},parents:{sire:{id:randomUUID(),sourceId:parentSource,name:'공개 부',sex:'male'}}});

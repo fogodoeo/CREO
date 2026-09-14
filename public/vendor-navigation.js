@@ -17,7 +17,20 @@
     const label = link.textContent;
     link.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true">' + icons[link.dataset.vendorSection] + '</svg><span></span>';
     link.lastElementChild.textContent = label;
+    const hint = document.createElement('small'); hint.className = 'vendor-nav-hint'; hint.textContent = '등록 필요'; hint.hidden = true;
+    link.append(hint);
   });
+  const profileRequired = profile => ['phone','bankName','bankAccount','bankHolder'].some(key => !String(profile?.[key] || '').trim());
+  const updateStatus = status => {
+    for (const section of ['entries','profile']) {
+      const key = section + 'Required';
+      if (typeof status[key] !== 'boolean') continue;
+      const link = nav.querySelector(`[data-vendor-section="${section}"]`);
+      link.classList.toggle('registration-required', status[key]);
+      link.querySelector('.vendor-nav-hint').hidden = !status[key];
+    }
+  };
+  window.CreoVendorNavigation = { updateStatus, profileRequired };
   if (!settlement) return;
   const preview = nav.classList.contains('vendor-preview-nav');
   let info = document.getElementById('vendor-info-prompt');
@@ -41,7 +54,7 @@
       link.href = destination(link.dataset.vendorSection);
     });
     info.href = destination('profile');
-    info.hidden = nav.hidden || ['vendor-phone','vendor-bank','vendor-account','vendor-holder'].every(id => document.getElementById(id)?.value.trim());
+    info.hidden = nav.hidden || !nav.querySelector('[data-vendor-section="profile"]').classList.contains('registration-required');
   };
   for (const event of ['pointerdown', 'focusin', 'click']) nav.addEventListener(event, update);
   const guard = event => { if (!event.target.closest('a') || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return; if (!window.dispatchEvent(new Event('vendor-before-navigation', { cancelable: true }))) event.preventDefault(); };
