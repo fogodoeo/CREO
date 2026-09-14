@@ -134,30 +134,66 @@
 
     function createAdaptivePoller(task, options = {}) {
         const documentObject = options.document || document;
+        const windowObject = options.window || documentObject.defaultView;
+        const setTimer = options.setTimeout || setTimeout;
+        const clearTimer = options.clearTimeout || clearTimeout;
         const visibleDelay = Math.max(250, Number(options.visibleDelay) || 1200);
         const hiddenDelay = Math.max(visibleDelay, Number(options.hiddenDelay) || 10000);
         const focusDelay = Math.max(0, Number(options.focusDelay) || 100);
         let timer = null;
         let stopped = true;
+        let suspended = false;
+        let running = false;
+        let wakeRequested = false;
 
         const schedule = delay => {
-            clearTimeout(timer);
-            if (stopped) return;
-            timer = setTimeout(async () => {
-                try { await task(); } finally { schedule(documentObject.hidden ? hiddenDelay : visibleDelay); }
+            clearTimer(timer);
+            if (stopped || suspended) return;
+            timer = setTimer(async () => {
+                timer = null;
+                if (stopped || suspended) return;
+                if (running) { wakeRequested = true; return; }
+                running = true;
+                try { await task(); }
+                catch (error) { options.onError?.(error); }
+                finally {
+                    running = false;
+                    const delay = wakeRequested ? focusDelay : documentObject.hidden ? hiddenDelay : visibleDelay;
+                    wakeRequested = false;
+                    schedule(delay);
+                }
             }, delay);
         };
         const onVisibility = () => schedule(documentObject.hidden ? hiddenDelay : focusDelay);
+        const onFocus = () => { if (!documentObject.hidden) schedule(focusDelay); };
+        const onPageHide = () => {
+            suspended = true;
+            clearTimer(timer);
+            options.onSuspend?.();
+        };
+        const onPageShow = event => {
+            if (!suspended && !event.persisted) return;
+            suspended = false;
+            schedule(focusDelay);
+        };
         const start = (delay = 300) => {
             if (!stopped) return;
             stopped = false;
+            suspended = false;
             documentObject.addEventListener('visibilitychange', onVisibility);
+            windowObject?.addEventListener('focus', onFocus);
+            windowObject?.addEventListener('pagehide', onPageHide);
+            windowObject?.addEventListener('pageshow', onPageShow);
             schedule(delay);
         };
         const stop = () => {
             stopped = true;
-            clearTimeout(timer);
+            wakeRequested = false;
+            clearTimer(timer);
             documentObject.removeEventListener('visibilitychange', onVisibility);
+            windowObject?.removeEventListener('focus', onFocus);
+            windowObject?.removeEventListener('pagehide', onPageHide);
+            windowObject?.removeEventListener('pageshow', onPageShow);
         };
         return Object.freeze({ start, stop });
     }
@@ -180,6 +216,7 @@
         let inFlight = false;
         let statusState = 'live';
         let settleTimer = null;
+        let generation = 0;
 
         function publish(text, stateName = 'live') {
             statusState = stateName;
@@ -193,8 +230,10 @@
         async function poll() {
             if (documentObject.hidden || inFlight || isBusy() || !isReady()) return 'skipped';
             inFlight = true;
+            const requestedGeneration = generation;
             try {
                 const next = await fetchRevision();
+                if (requestedGeneration !== generation || documentObject.hidden || isBusy() || !isReady()) return 'skipped';
                 const nextValue = readRevision(next);
                 const currentValue = currentRevision();
                 const nextRevision = Number(nextValue);
@@ -210,7 +249,9 @@
                         return 'draft';
                     }
                     publish('반영 중…', 'waiting');
-                    if (await refresh() !== false) {
+                    const refreshed = await refresh();
+                    if (requestedGeneration !== generation) return 'skipped';
+                    if (refreshed !== false) {
                         publish('방금 반영', 'live');
                         return 'refreshed';
                     }
@@ -220,6 +261,7 @@
                 if (statusState === 'error') publish('실시간', 'live');
                 return 'current';
             } catch (_) {
+                if (requestedGeneration !== generation) return 'skipped';
                 publish('재연결 중', 'error');
                 return 'failed';
             } finally {
@@ -228,6 +270,7 @@
         }
 
         function stop() {
+            generation++;
             clearTimeout(settleTimer);
         }
 

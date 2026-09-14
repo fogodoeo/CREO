@@ -149,4 +149,4 @@ async function confirmPayment(buyerId){
 }
 function hasDraft(){return CreoVendorItemView.isOpen()||settingsDirty||[...document.querySelectorAll('[data-card-mode]')].some(select=>select.checked&&select.value==='external')||[...document.querySelectorAll('[data-card-input]')].some(input=>input.value.trim())}
 const revisionSync=Checkout.createRevisionSync({document,fetchRevision:async()=>({checkoutRevision:(await api('/revision')).revision}),currentRevision:()=>data?.revision,isReady:()=>!!data,isBusy:()=>busy,hasDraft,refresh:()=>load(true),onStatus:(text,stateName)=>{if($('sync')){$('sync').textContent=text;$('sync').dataset.state=stateName}}});
-const poller=Checkout.createAdaptivePoller(revisionSync.poll,{document});window.addEventListener('pagehide',()=>{poller.stop();revisionSync.stop()},{once:true});$('retry').onclick=()=>load();load().finally(()=>poller.start(300));})();</script></body></html>
+const poller=Checkout.createAdaptivePoller(revisionSync.poll,{document,window,onSuspend:()=>revisionSync.stop()});$('retry').onclick=()=>load();load().finally(()=>poller.start(300));})();</script></body></html>
