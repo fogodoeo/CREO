@@ -12,7 +12,8 @@ test('unchecked banners stay hidden and P3 never renders even editor placeholder
 test('P2 vendor toggle removes bracketed identity and logo in both layouts',()=>{
  let inline=false;
  const context=vm.createContext({activeItem:(_,items)=>items[0],CreoBroadcastProfiles:{resolve:()=>({settings:{page2InfoLayout:inline?'inline-traits':'standard'}})},vendorLogo:()=>'/vendor.png',esc:String,money:String,pageTwoProgress:()=>'',pageTwoInlineInfo:(item,tag)=>tag+item.name,pageTwoBidders:()=>'',banner:()=>'',showBanner:()=>false,pageTicker:()=>''});
- loadFunction(context,'pageTwo');
+ context.editorMode=false;context.CreoBroadcastSummary=require('../public/broadcast-summary');
+ loadFunction(context,'pageTwoParents');loadFunction(context,'pageTwo');
  const item={name:'개체',vendorName:'비송',lotNumber:1};
  for(inline of [false,true]){
   assert.match(context.pageTwo({}, {page2VendorTagOn:true},[item],[]),/\[비송\]/);

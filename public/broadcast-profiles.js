@@ -12,7 +12,7 @@
 
     const SHARED_PAGE_CONTRACTS = Object.freeze({
         1: Object.freeze({ id: 'host', label: '진행', slots: Object.freeze(['channel', 'hosts', 'notice', 'ticker', 'banner']) }),
-        2: Object.freeze({ id: 'item', label: '경매', slots: Object.freeze(['item', 'vendorTag', 'liveBidders', 'photo', 'price', 'sold', 'ticker', 'banner']) })
+        2: Object.freeze({ id: 'item', label: '경매', slots: Object.freeze(['item', 'vendorTag', 'liveBidders', 'photo', 'parentPhotos', 'price', 'sold', 'ticker', 'banner']) })
     });
 
     const SHARED_PAGE2_DEFAULTS = Object.freeze({
@@ -21,6 +21,7 @@
         page2BiddersOpacity: 94,
         page2BiddersFontSize: 20,
         page2ItemFontSize: 33,
+        page2ParentsOn: true,
         page2BiddersPosition: 'top-left'
     });
 
@@ -37,8 +38,8 @@
         sections: Object.freeze([
             Object.freeze({ id: 'hosts', label: '진행진', fields: Object.freeze(['hostName1', 'hostRole1', 'hostName2', 'hostRole2', 'hostName3', 'hostRole3']) }),
             Object.freeze({ id: 'page1', label: '1P 진행 화면', fields: Object.freeze(['page1HostsOn', 'page1NoticeOn', 'page1TickerOn', 'page1BannerOn']) }),
-            Object.freeze({ id: 'page2', label: '2P 개체 화면', fields: Object.freeze(['page2InfoOn', 'page2VendorTagOn', 'page2BiddersOn', 'page2BiddersOpacity', 'page2BiddersFontSize', 'page2ItemFontSize', 'page2PhotoOn', 'page2PriceOn', 'page2SoldOn', 'page2TickerOn', 'page2BannerOn']) }),
-            Object.freeze({ id: 'page3', label: '3P 집계 화면', fields: Object.freeze(['page3On', 'scoreboardId', 'extraMode', 'page3Title']) })
+            Object.freeze({ id: 'page2', label: '2P 개체 화면', fields: Object.freeze(['page2InfoOn', 'page2VendorTagOn', 'page2BiddersOn', 'page2BiddersOpacity', 'page2BiddersFontSize', 'page2ItemFontSize', 'page2PhotoOn', 'page2ParentsOn', 'page2PriceOn', 'page2SoldOn', 'page2TickerOn', 'page2BannerOn']) }),
+            Object.freeze({ id: 'page3', label: '3P 집계 화면', fields: Object.freeze(['page3On', 'page3VendorRankingOn', 'page3BuyerRankingOn', 'page3RankingInterval', 'scoreboardId', 'extraMode', 'page3Title']) })
         ])
     });
 

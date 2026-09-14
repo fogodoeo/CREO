@@ -73,7 +73,7 @@ test('1P and 2P use one contract while 3P is selected by broadcast profile', () 
 
     assert.strictEqual(Profiles.pageContract(standard, 1), Profiles.pageContract(tournament, 1));
     assert.strictEqual(Profiles.pageContract(tournament, 2), Profiles.pageContract(academy, 2));
-    assert.deepEqual(Profiles.pageContract(standard, 2).slots, ['item', 'vendorTag', 'liveBidders', 'photo', 'price', 'sold', 'ticker', 'banner']);
+    assert.deepEqual(Profiles.pageContract(standard, 2).slots, ['item', 'vendorTag', 'liveBidders', 'photo', 'parentPhotos', 'price', 'sold', 'ticker', 'banner']);
     assert.equal(Profiles.pageContract(standard, 3).id, 'scoreboard');
     assert.equal(Profiles.pageContract(tournament, 3).id, 'tournament');
     assert.equal(Profiles.pageContract(academy, 3).id, 'academy');
@@ -239,6 +239,7 @@ test('standard channels use the maintained platform controller and renderer', ()
         page2BiddersOpacity: 94,
         page2BiddersFontSize: 20,
         page2ItemFontSize: 33,
+        page2ParentsOn: true,
         page2BiddersPosition: 'top-left'
     });
     for (const profile of ['standard', 'cdcup-tournament', 'crewart-academy', 'creyon-metal']) {

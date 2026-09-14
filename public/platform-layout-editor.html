@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>송출 배치 · 옹동2</title>
-  <link rel="stylesheet" href="studio-layout-editor.css?v=20260915-studio">
+  <link rel="stylesheet" href="studio-layout-editor.css?v=20260915-summary">
   <script defer src="platform-client.js?v=20260803-admin-session-v2"></script>
   <script defer src="studio-layout-draft.js?v=20260915-studio"></script>
-  <script defer src="studio-layout-editor.js?v=20260915-studio"></script>
+  <script defer src="studio-layout-editor.js?v=20260915-themes"></script>
 </head>
 <body>
 <main class="editor">
@@ -17,7 +17,7 @@
   <p class="save-error" id="save-error" role="alert" hidden></p>
   <section class="workspace" aria-label="송출 배치 편집">
     <section class="canvas" aria-label="송출 미리보기">
-      <div class="canvas-top"><strong>송출 미리보기</strong><span>1920 × 1080 · <span id="preview-scale">맞춤</span></span></div>
+      <div class="canvas-top"><strong>송출 미리보기</strong><label id="example-option" hidden><input id="example-preview" type="checkbox" checked> 예시 데이터</label><span>1920 × 1080 · <span id="preview-scale">맞춤</span></span></div>
       <div class="canvas-surface" id="canvas-surface">
         <div class="preview" id="preview"><iframe id="frame" title="송출 배치 미리보기"></iframe></div>
         <div class="retry-preview" id="preview-error" hidden><p>화면을 불러오지 못했어요.<br>연결을 확인하고 다시 시도해 주세요.</p><button class="action" id="retry-preview" type="button">다시 불러오기</button></div>

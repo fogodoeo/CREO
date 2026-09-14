@@ -200,7 +200,7 @@ function sanitizeBroadcastState(input = {}) {
     const itemFontSize = Number.isFinite(itemFontSizeRaw) ? Math.max(16, Math.min(96, itemFontSizeRaw)) : 33;
     const allowedLayoutSlots = new Set([
         'p1-hosts', 'p1-host-1', 'p1-host-2', 'p1-host-3', 'p1-banner', 'p1-ticker', 'p1-brand',
-        'p2-progress', 'p2-info', 'p2-bidders', 'p2-photo', 'p2-price', 'p2-sold', 'p2-banner', 'p2-ticker', 'p2-brand',
+        'p2-progress', 'p2-info', 'p2-bidders', 'p2-photo', 'p2-parents', 'p2-price', 'p2-sold', 'p2-banner', 'p2-ticker', 'p2-brand',
         'p3-board', 'p3-effect'
     ]);
     const clampLayoutNumber = (value, min, max, fallback) => {
@@ -272,6 +272,7 @@ function sanitizeBroadcastState(input = {}) {
         page2BannerUrl: cleanText(input.page2BannerUrl, 600),
         page2HeaderPosition: position(input.page2HeaderPosition),
         page2InfoPosition: position(input.page2InfoPosition),
+        page2ParentsOn: booleanValue(input.page2ParentsOn),
         page2PhotoPosition: position(input.page2PhotoPosition),
         page2PricePosition: position(input.page2PricePosition),
         page2SoldPosition: position(input.page2SoldPosition),
@@ -285,6 +286,9 @@ function sanitizeBroadcastState(input = {}) {
         extraMode,
         scoreboardId: cleanText(input.scoreboardId, 64),
         page3Title: cleanText(input.page3Title || input.headline, 120),
+        page3VendorRankingOn: booleanValue(input.page3VendorRankingOn),
+        page3BuyerRankingOn: booleanValue(input.page3BuyerRankingOn, false),
+        page3RankingInterval: clampLayoutNumber(input.page3RankingInterval, 5, 60, 10),
         page3ResultBackgroundOpacity: clampLayoutNumber(input.page3ResultBackgroundOpacity, 0, 100, 85),
         page3BoardPosition: ['auto', 'full', 'left', 'right'].includes(input.page3BoardPosition) ? input.page3BoardPosition : 'auto',
         page3QuizPosition: ['auto', 'top', 'center', 'bottom'].includes(input.page3QuizPosition) ? input.page3QuizPosition : 'auto',
@@ -4174,7 +4178,11 @@ function createPlatformApi({
                 if (audienceCompetitionEnabled(channel) && requestedPage !== 1) {
                     audience.roulette = await crewartRoulettePayload(channelId, data.broadcast);
                 }
-                const broadcastItems = await Promise.all(pageItems.map(async (item) => {
+                // Publish entry photos only for the specimen currently on P2, not waiting submissions.
+                const visiblePhotoItems = !requestedPage || requestedPage === 2 ? pageItems.filter(item => item.id === activeItemId || (!activeItemId && data.broadcast?.mode === 'live' && item.status === 'live')) : [];
+                const hydratedPhotos = new Map((await vendorEntries.hydrateItems(channelId, visiblePhotoItems)).map(item => [item.id, item]));
+                const photoItems = pageItems.map(item => hydratedPhotos.get(item.id) || item);
+                const broadcastItems = await Promise.all(photoItems.map(async (item) => {
                     const isActiveItem = item.status === 'live' || (activeItemId && item.id === activeItemId);
                     const missingParityGroup = item.status === 'sold'
                         && !['odd', 'even'].includes(cleanText(item.attributes?.audience_group_key, 16).toLowerCase());
@@ -4223,6 +4231,13 @@ function createPlatformApi({
                             vendorContributionRate: vendor?.contributionRate ?? 1,
                             groupId: item.groupId || vendor?.groupId || ''
                         });
+                        // Channel-scoped opaque keys distinguish names without publishing contacts.
+                        const winner = winningBid(item);
+                        const alias = cleanText(item.winnerAlias || item.winnerName, 160);
+                        const matchingBid = !alias || [winner?.bidder_key, winner?.bidderKey, winner?.name, winner?.bidder].includes(alias) ? winner : null;
+                        const buyerIdentity = normalizePhone(item.winnerPhone) || phoneFromBid({name: alias}) || phoneFromBid(matchingBid || {}) || cleanText(matchingBid?.bidder_key || matchingBid?.bidderKey || alias, 160);
+                        publicRecord.winnerAlias = publicBidderName(item.winnerName || matchingBid?.name || item.winnerAlias);
+                        publicRecord.winnerPublicKey = buyerIdentity ? 'buyer_' + crypto.createHmac('sha256', sessionSecret).update(channelId + ':' + buyerIdentity).digest('base64url').slice(0,24) : '';
                         publicRecord.bidLog = publicRecord.bidLog.map((bid) => {
                             const pending = bid.crewart_house_source === 'random'
                                 && !revealedBidderKeys.has(bid.bidder_key);

@@ -1,0 +1,27 @@
+/* Fixed portrait frame; intrinsic photo dimensions never change overlay geometry. */
+body[data-page="2"] .parent-photos{position:absolute;right:4%;bottom:14%;width:17%;height:auto;aspect-ratio:3/4;overflow:hidden!important;border-radius:16px;z-index:5;container-type:inline-size;background:transparent;visibility:hidden}
+body[data-page="2"] .parent-photos.has-parent-photo{visibility:visible;background:var(--broadcast-card)}
+body[data-page="2"] .parent-photos figure{position:absolute;inset:0;margin:0;zoom:1!important}
+body[data-page="2"] .parent-photos figure[hidden]{display:none}
+body[data-page="2"] .parent-photos img{display:block;width:100%;height:100%;object-fit:contain;object-position:center}
+body[data-page="2"] .parent-photos figcaption{position:absolute;bottom:0;left:0;right:0;padding:4.9cqw 5.5cqw;background:#111720d9;color:#fff;font-size:clamp(24px,13.5cqw,56px);font-weight:750;line-height:1.15;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body[data-layout-editor="1"] .parent-photos:empty,body[data-layout-editor="1"] .parent-photos[data-photos-failed="1"]{visibility:visible;display:grid;place-items:center;border:2px dashed #bdc9da;background:var(--broadcast-card);color:var(--broadcast-muted)}
+body[data-layout-editor="1"] .parent-photos:empty::after{content:'부모 사진';font-size:44px;white-space:nowrap}
+body[data-page="3"] .board.simple-ranking{inset:9% 8% 9%;display:grid;grid-template-rows:auto minmax(0,1fr);gap:18px;container-type:size;overflow:hidden!important;background:var(--broadcast-card);padding:32px 42px;border-radius:24px}
+body[data-page="3"] .simple-ranking .board-head{display:flex;align-items:center;gap:20px;background:transparent!important;box-shadow:none!important;border-radius:0!important;backdrop-filter:none;min-width:0;padding:0 0 22px;border-bottom:1px solid #ffffff28}
+body[data-page="3"] .simple-ranking h1{margin:0;font-size:64px;line-height:1.15;font-weight:750;letter-spacing:-.035em}
+body[data-page="3"] .simple-ranking .ranking-page{margin-left:auto;font-size:34px;color:var(--broadcast-muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+body[data-page="3"] .summary-rows{list-style:none;margin:0;padding:0;display:grid;grid-template-rows:repeat(5,minmax(0,1fr));min-height:0}
+body[data-page="3"] .summary-row{display:grid;grid-template-columns:80px minmax(0,1fr) auto;gap:24px;align-items:center;min-width:0;border-bottom:1px solid #ffffff1a;font-size:72px;line-height:1.12;font-weight:650;font-variant-numeric:tabular-nums}
+body[data-page="3"] .summary-row:last-child{border-bottom:0}
+body[data-page="3"] .summary-rank{font-size:52px;color:var(--broadcast-muted)}
+body[data-page="3"] .summary-name{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.035em}
+body[data-page="3"] .summary-amount{white-space:nowrap;font-weight:800;letter-spacing:-.03em}
+body[data-page="3"] .summary-amount small{font-size:.54em;margin-left:8px;font-weight:600;color:var(--broadcast-muted)}
+body[data-page="3"] .summary-row[data-rank="1"] .summary-rank,body[data-page="3"] .summary-row[data-rank="1"] .summary-amount{color:var(--secondary)}
+body[data-page="3"] .summary-empty{align-self:center;text-align:center;font-size:56px;color:var(--broadcast-muted)}
+body[data-page="3"] .simple-ranking[data-layout-custom="1"] .summary-row{font-size:min(72px,9cqh);gap:20px;grid-template-columns:min(80px,6cqw) minmax(0,1fr) auto}
+body[data-page="3"] .simple-ranking[data-layout-custom="1"] h1{font-size:min(64px,9cqh)}
+body[data-page="3"] .simple-ranking[data-layout-custom="1"] .summary-rank{font-size:min(52px,7cqh)}
+body[data-page="3"] .simple-ranking[data-layout-custom="1"]{padding:min(32px,3cqh) min(42px,3cqw);gap:min(18px,2cqh)}
+body[data-page="3"] .simple-ranking[data-layout-custom="1"] .board-head{padding-bottom:min(22px,3cqh)}

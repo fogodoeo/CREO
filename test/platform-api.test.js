@@ -14,6 +14,54 @@ const { normalizeChannel } = require('../platform-core');
 const { createCrewartHouseService } = require('../crewart-house-service');
 const {CheckoutNotificationService} = require('../checkout-notifications');
 
+test('theme and palette save independently, survive restart, and do not touch live records or another channel',async()=>{
+ const repository=new MemoryRepository();let api=createPlatformApi({repository});
+ await repository.upsertRecord('alpha','item',{id:'live',status:'live',attributes:{bid_log:[{name:'입찰자',amount:3}]}});
+ await repository.upsertRecord('alpha','broadcast',{id:'state',activeItemId:'live',mode:'live',layoutPlacements:{'p2-info':{x:20,width:65}}});
+ const records=structuredClone([...repository.records]),beta=structuredClone(repository.catalog.channels[1]);
+ const path='/api/platform/channels/alpha';
+ assert.equal((await call(api,'PUT',path,{channel:{broadcastTheme:'pixel'}},'')).status,401);
+ assert.equal((await call(api,'PUT',path,{channel:{broadcastTheme:'pixel'}})).status,200);
+ const palette={primary:'#315fbb',secondary:'#8eb3ff',accent:'#dfebff'};
+ assert.equal((await call(api,'PUT',path,{channel:{theme:palette}})).status,200);
+ api=createPlatformApi({repository});
+ const output=(await call(api,'GET',path+'/broadcast?page=2',null,'')).json();
+ assert.equal(output.channel.broadcastTheme,'pixel');assert.equal(output.channel.theme.primary,palette.primary);
+ assert.deepEqual([...repository.records],records);assert.deepEqual(repository.catalog.channels[1],beta);
+ assert.equal((await call(api,'PUT',path,{channel:{broadcastTheme:'base'}})).status,200);
+ assert.equal((await call(api,'GET',path)).json().channel.theme.primary,palette.primary);
+});
+
+test('broadcast summary options and parent placement survive partial saves and restart without changing auction state',async()=>{
+ const repository=new MemoryRepository(),options={repository,adminSessionSecret:'summary-state-test'};let api=createPlatformApi(options);
+ const path='/api/platform/channels/alpha/broadcast-state',body={page3On:true,page3VendorRankingOn:false,page3BuyerRankingOn:true,page3RankingInterval:17,page2ParentsOn:false,layoutPlacements:{'p2-parents':{x:79,y:46,width:17,height:40,opacity:70}}};
+ assert.equal((await call(api,'PUT',path,body,'')).status,401);
+ assert.equal((await call(api,'PUT',path,body)).status,200);
+ assert.equal((await call(api,'PUT',path,body)).status,200);
+ await call(api,'PUT',path,{hostName1:'진행자'});api=createPlatformApi(options);
+ const broadcast=(await call(api,'GET','/api/platform/channels/alpha/broadcast?page=3',null,'')).json();
+ assert.equal(broadcast.state.page3BuyerRankingOn,true);assert.equal(broadcast.state.page3VendorRankingOn,false);assert.equal(broadcast.state.page3RankingInterval,17);
+ assert.equal(broadcast.state.page2ParentsOn,false);assert.equal(broadcast.state.layoutPlacements['p2-parents'].opacity,70);
+ assert.equal(broadcast.state.mode,'standby');assert.equal(broadcast.items.length,0);
+ assert.equal(await repository.getRecord('beta','broadcast','state'),null);
+ await call(api,'PUT',path,{page3RankingInterval:999});assert.equal((await repository.getRecord('alpha','broadcast','state')).page3RankingInterval,60);
+});
+
+test('public buyer rank identities separate matching names, preserve explicit winners, and stay private across channels',async()=>{
+ const repository=new MemoryRepository(),options={repository,adminSessionSecret:'summary-identity-test'};let api=createPlatformApi(options);
+ const item={status:'sold',soldPrice:30000,winnerAlias:'동명',winnerName:'동명',winnerPhone:'01011112222'};
+ await repository.upsertRecord('alpha','item',{...item,id:'one'});await repository.upsertRecord('alpha','item',{...item,id:'two'});
+ await repository.upsertRecord('alpha','item',{...item,id:'three',winnerPhone:'01033334444'});
+ await repository.upsertRecord('beta','item',{...item,id:'one'});
+ await repository.upsertRecord('alpha','item',{id:'manual',status:'sold',soldPrice:10000,winnerAlias:'지정 낙찰자',attributes:{bid_log:[{name:'다른 입찰자',phone:'01055556666',amount:2}]}});
+ const read=async channel=>(await call(api,'GET','/api/platform/channels/'+channel+'/broadcast?page=3',null,'')).json();
+ const data=await read('alpha'),byId=new Map(data.items.map(i=>[i.id,i]));
+ assert.equal(byId.get('one').winnerPublicKey,byId.get('two').winnerPublicKey);assert.notEqual(byId.get('one').winnerPublicKey,byId.get('three').winnerPublicKey);
+ assert.equal(byId.get('manual').winnerAlias,'지정 낙찰자');assert.doesNotMatch(JSON.stringify(data),/01011112222|01033334444|01055556666/);
+ assert.notEqual((await read('beta')).items[0].winnerPublicKey,byId.get('one').winnerPublicKey);
+ api=createPlatformApi(options);assert.equal((await read('alpha')).items.find(i=>i.id==='one').winnerPublicKey,byId.get('one').winnerPublicKey);
+});
+
 test('organizer link is durable, channel scoped and cannot grant auction or vendor management access',async()=>{
  const repository=new MemoryRepository(),route='/api/platform/channels/alpha/organizer-link';
  let api=createPlatformApi({repository});
@@ -608,10 +656,15 @@ test('vendor entry API owns drafts, gates intake and submission, and operator ap
     const buyerCode=(await call(api,'POST','/api/platform/channels/alpha/buyer-shipping-link',{itemId:item.id})).json().code;
     const before=(await call(api,'GET','/api/platform/buyer-shipping?code='+buyerCode,null,'')).json(),sale=JSON.stringify(await repository.getRecord('alpha','item',item.id));
     assert.equal(before.items[0].parents[0].name,'처음 부모');
+    await call(api,'PUT','/api/platform/channels/alpha/broadcast-state',{mode:'sold',activeItemId:item.id});
+    const broadcastBefore=(await call(api,'GET','/api/platform/channels/alpha/broadcast',null,'')).json().items.find(row=>row.id===item.id);
+    assert.equal(broadcastBefore.attributes.photo_sire_name,'처음 부모');assert.equal(broadcastBefore.attributes.photo_sire,'/assets/sire-first.webp');
     assert.equal((await send({type:'parent',parent:{...parent,name:'수정한 부모'},expectedVersion:1})).status,200);
     api=createPlatformApi(options);
     const after=(await call(api,'GET','/api/platform/buyer-shipping?code='+buyerCode,null,'')).json();
     assert.equal(after.items[0].parents[0].name,'수정한 부모');assert.equal(after.editVersion,before.editVersion);
+    const broadcastAfter=(await call(api,'GET','/api/platform/channels/alpha/broadcast',null,'')).json().items.find(row=>row.id===item.id);
+    assert.equal(broadcastAfter.attributes.photo_sire_name,'수정한 부모');assert.equal(broadcastAfter.attributes.photo_sire,'/assets/sire-first.webp');
     assert.equal(JSON.stringify(await repository.getRecord('alpha','item',item.id)),sale,'parent edits preserve sold facts and payment version');
     const vendor=(await call(api,'GET','/api/platform/vendor-checkout?code='+vendorCode,null,'')).json();assert.equal(vendor.buyers[0].items[0].parents[0].name,'수정한 부모');
     assert.equal((await call(api,'GET','/api/platform/vendor-entries?code='+buyerCode,null,'')).status,401);
@@ -651,6 +704,10 @@ test('entry photo upload is authenticated, durable and private through approval 
     let item=await repository.getRecord('alpha','item',approval.json().itemId);
     assert.ok(item.attributes.media[0].url.startsWith('/__entry_photo__/'));assert.ok(!JSON.stringify(item).includes('signature='));
     assert.equal((await call(api,'GET','/api/platform/channels/alpha/broadcast',null,'')).json().items[0].photoUrl,'');
+    await call(api,'PUT','/api/platform/channels/alpha/broadcast-state',{mode:'live',activeItemId:item.id});
+    const activePhoto=(await call(api,'GET','/api/platform/channels/alpha/broadcast?page=2',null,'')).json().items[0].photoUrl;
+    assert.ok(activePhoto.includes('signature='));assert.equal((await call(api,'GET',activePhoto,null,'')).status,200);
+    assert.equal((await call(api,'GET','/api/platform/channels/alpha/broadcast?page=3',null,'')).json().items[0].photoUrl,'');
     await repository.upsertRecord('alpha','item',{...item,status:'sold',soldPrice:80000,winnerName:'가상 구매자',winnerPhone:'01022223333'});
     const buyer=(await call(api,'POST','/api/platform/channels/alpha/buyer-shipping-link',{itemId:item.id})).json().code;
     const checkout=(await call(api,'GET','/api/platform/buyer-shipping?code='+buyer,null,'')).json();

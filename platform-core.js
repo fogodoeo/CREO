@@ -351,6 +351,7 @@ function normalizeChannel(input = {}, fallback = {}) {
         broadcastTemplate,
         dataAdapter,
         broadcastProfile,
+        broadcastTheme: require('./public/broadcast-themes').resolve(source.broadcastTheme).id,
         pages: normalizePages(input.pages ?? source.pages, fallback.pages),
         templateId,
         theme: {
@@ -458,11 +459,18 @@ function publicItemAttributes(item = {}) {
     const audienceContributionBase = Number(attributes.audience_contribution_base);
     const audienceGroupKey = cleanText(attributes.audience_group_key, 16).toLowerCase();
     const diceFace = Number.parseInt(attributes.audience_dice_face, 10);
+    const parentPhoto = role => {
+        const parent = (Array.isArray(attributes.parents) ? attributes.parents : []).find(row => row?.role === role);
+        const url = String(parent ? parent.media?.[0]?.url || parent.media?.[0]?.thumbnailUrl || '' : attributes['photo_' + role] || '').trim();
+        return !url.startsWith('/__entry_photo__/') && /^(https?:\/\/|\/[^/])/.test(url) ? cleanText(url, 1200) : '';
+    };
     return {
         checklist: publicChecklist(attributes.checklist),
         announce: cleanText(attributes.announce, 1000),
-        photo_sire: cleanText(attributes.photo_sire, 600),
-        photo_dam: cleanText(attributes.photo_dam, 600),
+        photo_sire: parentPhoto('sire'),
+        photo_sire_name: cleanText((Array.isArray(attributes.parents) ? attributes.parents : []).find(row => row?.role === 'sire')?.name || attributes.sire_name || '', 80),
+        photo_dam_name: cleanText((Array.isArray(attributes.parents) ? attributes.parents : []).find(row => row?.role === 'dam')?.name || attributes.dam_name || '', 80),
+        photo_dam: parentPhoto('dam'),
         photo_sibling: cleanText(attributes.photo_sibling, 600),
         start_time: cleanText(attributes.start_time, 80),
         crewart_house_key: ['R', 'G', 'B', 'Y'].includes(cleanText(attributes.crewart_house_key, 8).toUpperCase())

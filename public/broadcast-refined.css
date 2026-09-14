@@ -57,6 +57,8 @@ body[data-page="3"] .contribution-multiplier{color:var(--secondary,#ccd4df)}
 body[data-page="1"] :is(.host-name,.host-role){white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 body[data-page="1"] .host-name{max-width:100%}
 body[data-page="1"] .host-role{min-width:0}
+/* A single unsized host card grows to its one-line text; saved boxes stay authoritative. */
+body[data-page="1"] .layer:not(:has(.host-card[data-host-index="2"],.host-card[data-host-index="3"])) .host-card.host-slot:not([data-layout-custom="1"]){left:auto;right:var(--safe-x);width:max-content;max-width:calc(100% - 2 * var(--safe-x))}
 body[data-page="2"] .item-inline-identity{flex-shrink:0;max-width:45%}
 body[data-page="2"] .item-inline-traits{flex:1;min-width:0;white-space:nowrap}
 body[data-page="2"] .item-inline-pill{flex-shrink:1;overflow:hidden;text-overflow:ellipsis;display:block}

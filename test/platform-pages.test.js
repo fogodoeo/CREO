@@ -518,7 +518,9 @@ test('the new broadcast implements three independent camera overlays', () => {
     const metal = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-skin-metal.css'), 'utf8');
     assert.doesNotMatch(live, /1P · HOST/);
     assert.doesNotMatch(live, /2P · ITEM/);
-    assert.match(live, /LIVE AUCTION TOTAL/);
+    assert.doesNotMatch(live, /LIVE AUCTION TOTAL| · 3P<\/span>/);
+    assert.match(live, /<script src="broadcast-parent-photos\.js/);
+    assert.doesNotMatch(live, /<script defer src="broadcast-parent-photos\.js/);
     assert.match(live, /function pageOne/);
     assert.match(live, /function pageTwo/);
     assert.match(live, /function pageThree/);

@@ -1,0 +1,21 @@
+/* Decoration only. Typography, auction state, saved geometry and media stay shared. */
+body[data-broadcast-theme="pixel"] #stage :is(.host-card,.item-copy,.item-progress,.live-bid-row,.price-card,.sold-notice,.ticker,.parent-photos,.item-photo,.simple-ranking,.contribution-team,.dice-team-card,.vendor-contribution-result,.dice-overlay-card){border-radius:0!important;border-color:transparent!important;isolation:isolate;box-shadow:4px 4px 0 #090f1c99!important;clip-path:polygon(0 6px,6px 6px,6px 0,calc(100% - 6px) 0,calc(100% - 6px) 6px,100% 6px,100% calc(100% - 6px),calc(100% - 6px) calc(100% - 6px),calc(100% - 6px) 100%,6px 100%,6px calc(100% - 6px),0 calc(100% - 6px))!important}
+/* Only the corners and outer rim carry artwork; rails never cross the lettering. */
+body[data-broadcast-theme="pixel"] #stage :is(.host-card,.item-copy,.item-progress,.live-bid-row,.price-card,.sold-notice,.ticker,.parent-photos,.item-photo,.simple-ranking,.contribution-team,.dice-team-card,.vendor-contribution-result,.dice-overlay-card)::after{content:'';display:block;position:absolute;inset:0;width:auto;height:auto;z-index:8;pointer-events:none;border:20px solid transparent;border-image:url('/assets/broadcast-themes/pixel-frame-v1.png') 160 fill / 20px / 0 stretch;image-rendering:pixelated;background:transparent;animation:none;box-shadow:inset 0 0 0 1px #dce5ef80;mask:linear-gradient(#000 0 0) top/100% 3px no-repeat,linear-gradient(#000 0 0) bottom/100% 3px no-repeat,linear-gradient(#000 0 0) left/3px 100% no-repeat,linear-gradient(#000 0 0) right/3px 100% no-repeat,linear-gradient(#000 0 0) top left/20px 20px no-repeat,linear-gradient(#000 0 0) top right/20px 20px no-repeat,linear-gradient(#000 0 0) bottom left/20px 20px no-repeat,linear-gradient(#000 0 0) bottom right/20px 20px no-repeat}
+body[data-broadcast-theme="pixel"][data-layout-editor="1"] #stage [data-layout-slot]{clip-path:none!important}
+body[data-broadcast-theme="pixel"][data-layout-editor="1"] #stage .parent-photos:empty::after{content:'부모 사진';display:grid;place-items:center;mask:none}
+body[data-broadcast-theme="pixel"] :is(.live-bid-row,.contribution-team,.dice-team-card){position:relative}
+body[data-broadcast-theme="pixel"] .host-card:not(.host-slot):not([data-layout-custom="1"]){position:relative}
+body[data-broadcast-theme="pixel"] .parent-photos figcaption{padding-bottom:calc(4.9cqw + 4px)}
+body[data-broadcast-theme="pixel"] .simple-ranking .board-head{border-bottom:3px solid color-mix(in srgb,var(--secondary) 45%,transparent)}
+body[data-broadcast-theme="pixel"] .summary-row{border-bottom-style:dashed}
+body[data-broadcast-theme="pixel"] .live-bid-row[data-rank="1"]{outline:2px solid var(--secondary);outline-offset:-4px}
+
+/* Small theme swatches in the operator menu use the same asset as the output. */
+.theme-styles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+.theme-styles button{display:grid;gap:10px;padding:10px;min-height:104px;border:1px solid #3d4859;border-radius:10px;background:#111720;color:#e6ecf5;text-align:left;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.theme-styles button[aria-pressed="true"]{border:2px solid #91b4ff;padding:9px;background:#263650}
+.theme-style-sample{display:grid;place-items:center;position:relative;min-height:48px;border-radius:8px;background:#293548;color:#f7faff;font-size:15px;font-weight:700}
+.theme-style-sample[data-style="pixel"]{border-radius:0;border:8px solid transparent;border-image:url('/assets/broadcast-themes/pixel-frame-v1.png') 160 fill / 8px / 0 stretch;image-rendering:pixelated}
+.theme-style-sample span{image-rendering:auto}
+.theme-popover .theme-color-title{font-size:13px;font-weight:600;margin:0 0 10px;color:#c0cad8}
