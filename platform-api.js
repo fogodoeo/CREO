@@ -2084,7 +2084,10 @@ function createPlatformApi({
         }
         const catalog = await loadCatalog();
         if(!event&&profile&&typeof tokenOrPayload==='string') {
-            const candidates=profile.members.slice().sort((a,b)=>Number(catalog.channels.find(c=>c.id===b.channelId)?.status==='active')-Number(catalog.channels.find(c=>c.id===a.channelId)?.status==='active'));
+            const candidates=profile.members.slice().sort((a,b)=>{
+                const left=catalog.channels.find(c=>c.id===a.channelId),right=catalog.channels.find(c=>c.id===b.channelId);
+                return Number(right?.status==='active')-Number(left?.status==='active')||String(right?.createdAt||'').localeCompare(String(left?.createdAt||''));
+            });
             for(const member of candidates) {
                 if(catalog.channels.some(c=>c.id===member.channelId)&&await vendorDirectory.find(member.channelId,member.vendorId)) {token={...token,channelId:member.channelId,vendorKey:member.vendorId};break}
             }
@@ -4920,10 +4923,18 @@ function createPlatformApi({
                 if (!await requireAdmin(req,res)) return true;
                 if (method === 'GET') {
                     const directory=await vendorDirectory.read();
-                    replyJson(res,200,{profiles:directory.profiles.map(p=>({id:p.id,name:p.info.name,phone:p.info.phone||'',members:p.members}))});return true;
+                    replyJson(res,200,{profiles:directory.profiles.map(p=>({id:p.id,name:p.info.name,phone:p.info.phone||'',revision:p.revision,members:p.members}))});return true;
                 }
                 if (method === 'POST') {
                     const body=await readJson(req);
+                    if(body.profileId&&body.existingVendorId){
+                        await withMutationLock('channel:'+channelId,async()=>{
+                            const vendorId=cleanText(body.existingVendorId,64),profileId=cleanText(body.profileId,80),target=await vendorDirectory.profileFor(channelId,vendorId);
+                            const work=()=>vendorDirectory.attachExisting(profileId,channelId,vendorId,{expectedRevision:body.expectedRevision,expectedTargetProfileId:body.expectedTargetProfileId});
+                            const result=target&&target.id!==profileId?await vendorEntries.withOwnerLock(target.id,work):await work();
+                            await touchVendorChannels(channelId,vendorId);replyJson(res,200,{result});
+                        });return true;
+                    }
                     const result=body.profileId ? await vendorDirectory.attach(cleanText(body.profileId,80),channelId) : await vendorDirectory.enroll(channelId,cleanText(body.vendorId,64));
                     await touchVendorChannels(channelId,result.vendorId||body.vendorId);replyJson(res,200,{result});return true;
                 }

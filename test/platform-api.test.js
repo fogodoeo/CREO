@@ -396,6 +396,63 @@ test('common vendor portal reuses identity without sharing transactions or unrel
  const restored=await call(restarted,'GET','/api/platform/vendor-checkout?code='+code+'&event=beta',null,'');assert.equal(restored.json().vendor.bankAccount,'123-456-789');
 });
 
+test('operator links existing participation without changing old links or leaking same-name vendor sales',async()=>{
+ const repository=new MemoryRepository();
+ repository.catalog.channels[0].createdAt='2026-09-01T00:00:00Z';repository.catalog.channels[1].createdAt='2026-09-14T00:00:00Z';
+ let api=createPlatformApi({repository,adminSessionSecret:'participation-link-test'});
+ for(const [channel,id] of [['alpha','old'],['alpha','unrelated'],['beta','new']])await repository.upsertRecord(channel,'vendor',{id,name:'같은 지점명'});
+ const old=(await call(api,'POST','/api/platform/channels/alpha/vendor-checkout-link',{vendorId:'old'})).json();
+ const current=(await call(api,'POST','/api/platform/channels/beta/vendor-checkout-link',{vendorId:'new'})).json();
+ const source=(await call(api,'POST','/api/platform/channels/beta/vendor-directory',{vendorId:'new'})).json().result;
+ const target=(await call(api,'POST','/api/platform/channels/alpha/vendor-directory',{vendorId:'old'})).json().result;
+ const unrelated=(await call(api,'POST','/api/platform/channels/alpha/vendor-checkout-link',{vendorId:'unrelated'})).json();
+ await repository.upsertRecord('alpha','item',{id:'old-sale',name:'이전 출품',vendorId:'old',status:'sold',lotNumber:1,soldPrice:350000,winnerPhone:'01011112222'});
+ await repository.upsertRecord('alpha','item',{id:'other-sale',name:'다른 업체 출품',vendorId:'unrelated',status:'sold',lotNumber:2,soldPrice:500000,winnerPhone:'01011112222'});
+ const path='/api/platform/channels/alpha/vendor-directory',body={profileId:source.id,existingVendorId:'old',expectedRevision:source.revision,expectedTargetProfileId:target.id};
+ assert.equal((await call(api,'POST',path,body,'')).status,401);
+ assert.equal((await call(api,'GET','/api/platform/vendor-checkout?code='+current.code+'&event=alpha',null,'')).status,401);
+ const results=await Promise.all([call(api,'POST',path,body),call(api,'POST',path,body)]);
+ assert.ok(results.every(r=>r.status===200),results.map(r=>r.body).join('\n'));
+ assert.equal(results.filter(r=>r.json().result.duplicate).length,1);
+ api=createPlatformApi({repository,adminSessionSecret:'participation-link-test'});
+ for(const link of [old,current]){
+  const latest=await call(api,'GET','/api/platform/vendor-checkout?code='+link.code,null,'');
+  assert.equal(latest.status,200,latest.body);assert.equal(latest.json().vendor.id,'new');
+  assert.deepEqual(new Set(latest.json().events.map(e=>e.id)),new Set(['alpha','beta']));
+  const previous=await call(api,'GET','/api/platform/vendor-checkout?code='+link.code+'&event=alpha',null,'');
+  assert.deepEqual(previous.json().buyers.flatMap(b=>b.items.map(i=>i.name)),['이전 출품']);
+  const entries=await call(api,'GET','/api/platform/vendor-entries?code='+link.code+'&event=alpha',null,'');
+  assert.equal(entries.status,200,entries.body);assert.equal(entries.json().state.ownerId,source.id);
+ }
+ assert.equal((await call(api,'GET','/api/platform/vendor-checkout?code='+unrelated.code+'&event=beta',null,'')).status,401);
+ assert.equal((await repository.listRecords('alpha','vendor')).length,2);
+ assert.equal((await repository.getRecord('alpha','item','old-sale')).soldPrice,350000);
+});
+
+test('participation linking waits for an in-flight owner write and rejects newly saved media',async()=>{
+ const repository=new MemoryRepository(),api=createPlatformApi({repository,adminSessionSecret:'link-owner-lock'});
+ const {createVendorEntries}=require('../vendor-entries');
+ const service=createVendorEntries(repository);
+ for(const [channel,id] of [['alpha','old'],['beta','new']])await repository.upsertRecord(channel,'vendor',{id,name:'업체'});
+ const target=(await call(api,'POST','/api/platform/channels/alpha/vendor-directory',{vendorId:'old'})).json().result;
+ const source=(await call(api,'POST','/api/platform/channels/beta/vendor-directory',{vendorId:'new'})).json().result;
+ let release,started;const startedPromise=new Promise(r=>started=r),gate=new Promise(r=>release=r);
+ const mediaWrite=service.withOwnerLock(target.id,async()=>{
+  started();await gate;
+  await repository.upsertRows([{key:'vendor_entries_v1::'+target.id,value:JSON.stringify({schema:1,ownerId:target.id,entries:[],parents:[],parentHistory:[],media:[{id:'in-flight-photo'}],requests:[]})}]);
+ });
+ await startedPromise;
+ let settled=false,readTarget;const targetRead=new Promise(r=>readTarget=r),getRows=repository.getRowsByKeys.bind(repository);
+ repository.getRowsByKeys=async keys=>{const result=await getRows(keys);if(keys.includes('vendor_directory_v1'))readTarget();return result;};
+ const linking=call(api,'POST','/api/platform/channels/alpha/vendor-directory',{profileId:source.id,existingVendorId:'old',expectedRevision:source.revision,expectedTargetProfileId:target.id}).then(result=>{settled=true;return result});
+ try{await targetRead;await new Promise(setImmediate);assert.equal(settled,false,'link must wait for the existing owner write');}
+ finally{release();}
+ await mediaWrite;
+ const result=await linking;assert.equal(result.status,409,result.body);
+ const {createVendorDirectory}=require('../vendor-directory');
+ assert.equal((await createVendorDirectory(repository).profileFor('alpha','old')).id,target.id);
+});
+
 class MemoryRepository {
     constructor() {
         this.catalog = { version: 1, channels: [normalizeChannel({ id: 'alpha', name: '알파', status: 'active' }), normalizeChannel({ id: 'beta', name: '베타', status: 'active' })] };

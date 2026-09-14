@@ -76,7 +76,23 @@ async function deleteRecord(type,id,button){
 $('shared-vendors').onclick=async()=>{
  const requestedChannelId=channelId,host=$('vendor-links-list');host.textContent='불러오는 중…';$('vendor-links-dialog').showModal();
  try{const result=await CreoPlatform.api('channels/'+encodeURIComponent(requestedChannelId)+'/vendor-directory');if(requestedChannelId!==channelId)return;host.replaceChildren();
- for(const profile of result.profiles){const row=document.createElement('p'),button=document.createElement('button'),label=document.createElement('span');label.textContent=profile.name+' · '+(profile.phone||'연락처 미등록')+' ';button.className='btn';button.textContent=profile.members.some(m=>m.channelId===requestedChannelId)?'이미 참가 중':'이 채널에 추가';button.disabled=profile.members.some(m=>m.channelId===requestedChannelId);button.onclick=async()=>{if(channelId!==requestedChannelId)return;if(!confirm(profile.name+' 업체를 이 채널에 연결할까요? 연락처·계좌·로고를 함께 사용합니다.'))return;button.disabled=true;try{await CreoPlatform.api('channels/'+encodeURIComponent(requestedChannelId)+'/vendor-directory',{method:'POST',body:JSON.stringify({profileId:profile.id})});if(channelId===requestedChannelId)await loadWorkspace();button.textContent='연결 완료'}catch(error){button.disabled=false;toast(error.message)}};row.append(label,button);host.append(row)}
+ for(const profile of result.profiles){
+  const row=document.createElement('p'),button=document.createElement('button'),label=document.createElement('span');
+  const participating=profile.members.some(m=>m.channelId===requestedChannelId);
+  const matches=data.vendors.filter(v=>v.name.trim()===profile.name.trim()),existing=matches.length===1?matches[0]:null;
+  label.textContent=profile.name+' · '+(profile.phone||'연락처 미등록')+' ';button.className='btn';
+  button.textContent=participating?'이미 참가 중':existing?'참여 이력 연결':'이 채널에 추가';button.disabled=participating;
+  button.onclick=async()=>{
+   if(channelId!==requestedChannelId)return;
+   const prompt=existing?profile.name+'의 다른 경매 참여 이력을 이 채널의 '+existing.name+'에 연결할까요? 같은 업체·지점인지 확인해 주세요. 연락처·계좌·로고를 함께 사용합니다.':profile.name+' 업체를 이 채널에 연결할까요? 연락처·계좌·로고를 함께 사용합니다.';
+   if(!confirm(prompt))return;button.disabled=true;
+   try{
+    const body={profileId:profile.id,...(existing?{existingVendorId:existing.id,expectedRevision:profile.revision,expectedTargetProfileId:existing.directoryId||''}:{})};
+    await CreoPlatform.api('channels/'+encodeURIComponent(requestedChannelId)+'/vendor-directory',{method:'POST',body:JSON.stringify(body)});
+    if(channelId===requestedChannelId)await loadWorkspace();button.textContent='연결 완료';
+   }catch(error){button.disabled=false;toast(error.message)}
+  };row.append(label,button);host.append(row);
+ }
  if(!result.profiles.length)host.textContent='아직 공통 업체가 없습니다. 업체·주관사 링크 관리에서 기존 업체를 공통 업체로 등록해 주세요.';
  }catch(error){host.textContent=error.message}
 };

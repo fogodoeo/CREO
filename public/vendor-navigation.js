@@ -17,8 +17,7 @@
     const label = link.textContent;
     link.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true">' + icons[link.dataset.vendorSection] + '</svg><span></span>';
     link.lastElementChild.textContent = label;
-    const hint = document.createElement('small'); hint.className = 'vendor-nav-hint'; hint.textContent = '등록 필요'; hint.hidden = true;
-    link.append(hint);
+    link.dataset.label = label;
   });
   const profileRequired = profile => ['phone','bankName','bankAccount','bankHolder'].some(key => !String(profile?.[key] || '').trim());
   const updateStatus = status => {
@@ -27,7 +26,8 @@
       if (typeof status[key] !== 'boolean') continue;
       const link = nav.querySelector(`[data-vendor-section="${section}"]`);
       link.classList.toggle('registration-required', status[key]);
-      link.querySelector('.vendor-nav-hint').hidden = !status[key];
+      if (status[key]) link.setAttribute('aria-label', link.dataset.label + ' · 등록 필요');
+      else link.removeAttribute('aria-label');
     }
   };
   window.CreoVendorNavigation = { updateStatus, profileRequired };

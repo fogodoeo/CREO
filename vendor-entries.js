@@ -295,7 +295,7 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
             return resolveFacts(item);
         }));
     }
-    return {read,command,addMedia,hydrateItems,hydrateCollectionRecords,policy,summary};
+    return {read,command,addMedia,hydrateItems,hydrateCollectionRecords,policy,summary,withOwnerLock:locked};
 }
 
 module.exports={createVendorEntries,normalizeEntry};

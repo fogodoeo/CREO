@@ -18,3 +18,66 @@ test('failed membership persistence can retry without duplicate vendor records',
  const write=r.upsertRows;r.upsertRows=async()=>{throw Error('disk unavailable')};await assert.rejects(d.attach(p.id,'b'),/disk/);
  r.upsertRows=write;await d.attach(p.id,'b');await d.attach(p.id,'b');assert.equal((await r.listRecords('b','vendor')).length,1);
 });
+
+async function existingParticipation(){
+ const r=repo(),d=createVendorDirectory(r);
+ await r.upsertRecord('new','vendor',{id:'new-v',name:'대구 지점'});
+ await r.upsertRecord('old','vendor',{id:'old-v',name:'대구 지점'});
+ const source=await d.enroll('new','new-v'),target=await d.enroll('old','old-v');
+ const options={expectedRevision:source.revision,expectedTargetProfileId:target.id};
+ return {r,d,source,target,options};
+}
+test('explicit existing participation link is atomic, retryable, durable and preserves channel records',async()=>{
+ const {r,d,source,target,options}=await existingParticipation();
+ await r.upsertRecord('old','item',{id:'i',vendorId:'old-v',status:'sold',soldPrice:350000});
+ await r.upsertRecord('old','shipment',{id:'s',vendorId:'old-v',paymentStatus:'paid'});
+ const records=structuredClone(r.records),write=r.upsertRows;
+ r.upsertRows=async()=>{throw Error('disk unavailable')};
+ await assert.rejects(d.attachExisting(source.id,'old','old-v',options),/disk/);
+ assert.equal((await d.profileFor('old','old-v')).id,target.id);
+ r.upsertRows=write;
+ const results=await Promise.all([d.attachExisting(source.id,'old','old-v',options),d.attachExisting(source.id,'old','old-v',options)]);
+ assert.deepEqual(results.map(r=>r.duplicate),[false,true]);
+ const restarted=createVendorDirectory(r),directory=await restarted.read();
+ assert.equal(directory.profiles.length,1);assert.equal(directory.membershipLinks.length,1);
+ assert.equal(directory.membershipLinks[0].previousProfile.id,target.id);
+ assert.equal((await restarted.profileFor('old','old-v')).id,source.id);
+ assert.equal(directory.profiles[0].members.length,2);
+ assert.deepEqual(r.records,records);
+});
+test('existing participation link refuses stale identities, competing memberships and conflicting profiles',async()=>{
+ const {r,d,source,target,options}=await existingParticipation();
+ await assert.rejects(d.attachExisting(source.id,'old','old-v',{...options,expectedRevision:0}),/변경/);
+ await assert.rejects(d.attachExisting(source.id,'old','old-v',{...options,expectedTargetProfileId:''}),/변경/);
+ await assert.rejects(d.attachExisting(source.id,'old','missing',options),/찾을/);
+ const p=await d.find('old','old-v');await d.update('old',{...p,bankAccount:'11111'},p.directoryRevision);
+ const q=await d.find('new','new-v');await d.update('new',{...q,bankAccount:'22222'},q.directoryRevision);
+ await assert.rejects(d.attachExisting(source.id,'old','old-v',{...options,expectedRevision:2}),/정보가 달라/);
+ assert.equal((await d.profileFor('old','old-v')).id,target.id);
+ const other=await d.attach(source.id,'old');
+ await assert.rejects(d.attachExisting(source.id,'old','old-v',{...options,expectedRevision:3}),/이미 다른/);
+ assert.notEqual(other.vendorId,'old-v');
+});
+test('existing participation link never discards entries, parents, photos or uncertain owner data',async()=>{
+ const {r,d,source,target,options}=await existingParticipation();
+ const key='vendor_entries_v1::'+target.id,empty={schema:1,ownerId:target.id,entries:[],parents:[],parentHistory:[],media:[],requests:[]};
+ for(const field of ['entries','parents','parentHistory','media','requests']){
+  await r.upsertRows([{key,value:JSON.stringify({...empty,[field]:[{id:'saved'}]})}]);
+  await assert.rejects(d.attachExisting(source.id,'old','old-v',options),/자료가 있어/);
+ }
+ await r.upsertRows([{key,value:'{broken'}]);await assert.rejects(d.attachExisting(source.id,'old','old-v',options),/읽지/);
+ assert.equal((await d.profileFor('old','old-v')).id,target.id);
+ await r.upsertRows([{key,value:JSON.stringify(empty)}]);
+ await d.attachExisting(source.id,'old','old-v',options);
+ assert.equal((await d.profileFor('old','old-v')).id,source.id);
+});
+test('linking an unregistered participation preserves its existing profile details and never matches names automatically',async()=>{
+ const r=repo(),d=createVendorDirectory(r);
+ for(const [channel,id,fields] of [['new','n',{}],['old','o',{manager:'담당자',bankName:'은행',bankAccount:'11111',bankHolder:'예금주'}],['other','x',{}]])await r.upsertRecord(channel,'vendor',{id,name:'같은 이름',...fields});
+ const p=await d.enroll('new','n');
+ await d.attachExisting(p.id,'old','o',{expectedRevision:1,expectedTargetProfileId:''});
+ assert.equal((await d.find('new','n')).bankAccount,'11111');
+ assert.equal((await d.find('old','o')).id,'o');
+ assert.equal(await d.profileFor('other','x'),null);
+ assert.equal((await d.find('other','x')).bankAccount,undefined);
+});

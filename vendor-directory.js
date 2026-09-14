@@ -59,6 +59,42 @@ function createVendorDirectory(repository) {
             const entry={channelId,vendorId};profile.members.push(entry);profile.revision++;return entry;
         });
     }
+    // An operator explicitly identifies both participation records. Never infer
+    // authorization from a matching company name or phone number.
+    async function attachExisting(profileId,channelId,vendorId,{expectedRevision,expectedTargetProfileId}={}) {
+        return mutate(async directory=>{
+            const profile=directory.profiles.find(p=>p.id===profileId);
+            if(!profile)throw fail('공통 업체를 찾을 수 없습니다.',404);
+            const existing=profile.members.find(m=>m.channelId===channelId);
+            if(existing){if(existing.vendorId===vendorId)return {...existing,duplicate:true};throw fail('이 경매에 이미 다른 업체 기록이 연결돼 있어요.');}
+            if(profile.revision!==expectedRevision)throw fail('업체 정보가 변경됐어요. 다시 불러와 주세요.');
+            const record=await repository.getRecord(channelId,'vendor',vendorId);
+            if(!record)throw fail('연결할 참여 업체를 찾을 수 없습니다.',404);
+            const target=directory.profiles.find(p=>member(p,channelId,vendorId));
+            if((target?.id||'')!==expectedTargetProfileId)throw fail('참여 이력이 변경됐어요. 다시 불러와 주세요.');
+            if(target){
+                if(target.members.length!==1)throw fail('이미 여러 경매에 연결된 업체예요. 참여 이력을 확인해 주세요.');
+                const rows=await repository.getRowsByKeys(['vendor_entries_v1::'+target.id]);
+                if(rows.length){
+                    let data;try{data=JSON.parse(rows[0].value)}catch{throw fail('기존 출품 자료를 읽지 못했어요.',503);}
+                    if(data.schema!==1||data.ownerId!==target.id||['entries','parents','parentHistory','media','requests'].some(k=>!Array.isArray(data[k])||data[k].length))throw fail('기존 출품·부모·사진 자료가 있어요. 자료를 확인한 뒤 연결해 주세요.');
+                }
+            }
+            const info=target?.info||pick(record), nextInfo={...profile.info};
+            const present=v=>Array.isArray(v)?v.length>0:v!==undefined&&v!==null&&String(v).trim()!=='';
+            for(const key of FIELDS.filter(k=>k!=='name')){
+                if(!present(info[key]))continue;
+                if(present(nextInfo[key])&&JSON.stringify(nextInfo[key])!==JSON.stringify(info[key]))throw fail('연락처·계좌 등 업체 정보가 달라요. 같은 업체인지 확인해 주세요.');
+                nextInfo[key]=info[key];
+            }
+            const now=new Date().toISOString(), participation={channelId,vendorId};
+            directory.membershipLinks=directory.membershipLinks||[];
+            directory.membershipLinks.push({profileId,...participation,previousProfile:target||null,previousInfo:profile.info,linkedAt:now});
+            if(target)directory.profiles=directory.profiles.filter(p=>p.id!==target.id);
+            profile.members.push(participation);profile.info=nextInfo;profile.revision++;profile.updatedAt=now;
+            return {...participation,duplicate:false};
+        });
+    }
     async function update(channelId,record,expectedRevision,{firstBankOnly=false}={}) {
         return mutate(async directory=>{
             const profile=directory.profiles.find(p=>member(p,channelId,record.id));
@@ -80,6 +116,6 @@ function createVendorDirectory(repository) {
             return hydrate(record,profile);
         });
     }
-    return {read,list,find,profileFor,enroll,attach,update};
+    return {read,list,find,profileFor,enroll,attach,attachExisting,update};
 }
 module.exports={createVendorDirectory};

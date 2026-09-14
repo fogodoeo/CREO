@@ -7,6 +7,7 @@
   let eventId = new URLSearchParams(location.search).get('event') || Store.CHANNEL;
   const previewCode = Store.live ? Store.code : new URLSearchParams(location.search).get('code') || 'preview-bank';
   let section = new URLSearchParams(location.search).get('section') || 'home', profile = null, profileDirty = false;
+  let profileEventId = '', profileSequence = 0;
   let profilePromptShown = false, profilePopupForSubmit = false, profileReturnFocus = null, leaveProfileOnly = false;
   const profilePromptKey = () => 'ongdong-entry-profile-prompt-v1:' + Store.VENDOR + ':' + previewCode;
   const profileReady = p => !window.CreoVendorNavigation.profileRequired(p);
@@ -92,7 +93,7 @@
     list.sort((a, b) => ({ changes_requested: 0, draft: 1, submitted: 2, approved: 3 })[a.status] - ({ changes_requested: 0, draft: 1, submitted: 2, approved: 3 })[b.status]);
     const title = role === 'review' ? '출품 검토' : role === 'buyer' ? '개체 확인' : '출품 개체';
     $('content').innerHTML = `<div class="entry-title"><div class="title-row"><h1>${title}</h1>${role === 'vendor' && !['archived','paused'].includes(currentEvent()?.status) ? '<button type="button" class="secondary" id="manage-parents">부모 관리</button>' : ''}</div>${!currentEvent()?.entriesOpen && role === 'vendor' ? '<p class="muted">출품 마감 · 낙찰·정산 내역은 계속 확인할 수 있어요</p>' : ''}</div>
-      ${role === 'vendor' && currentEvent()?.entriesOpen ? `<a class="vendor-info-summary" id="vendor-info-summary" href="${pageUrl('profile')}" hidden><span><b>업체 정보 등록</b><small>연락처·결제 설정</small></span><span class="summary-action">등록하기 <span aria-hidden="true">›</span></span></a><div class="entry-create-actions"><button class="secondary" type="button" id="open-import">피들 링크로 가져오기</button><button class="primary" type="button" id="add-entry">＋ 직접 추가</button></div>` : ''}
+      ${role === 'vendor' && currentEvent()?.entriesOpen ? `<a class="vendor-info-summary" id="vendor-info-summary" href="${pageUrl('profile')}" ${profileEventId === eventId && profile && !profileReady(profile) ? '' : 'hidden'}><span><b>업체 정보 등록</b><small>연락처·결제 설정</small></span><span class="summary-action">등록하기 <span aria-hidden="true">›</span></span></a><div class="entry-create-actions"><button class="secondary" type="button" id="open-import">피들 링크로 가져오기</button><button class="primary" type="button" id="add-entry">＋ 직접 추가</button></div>` : ''}
       ${list.length ? `<p class="entry-count">${list.length}개체</p><div class="entry-list">${list.map(e => {
         const shown = displaySource(e);
         return `<button type="button" class="entry-row" data-entry="${esc(e.id)}">${shown.photoIds?.length ? avatar(shown.photoIds[0]) : ''}<span class="row-info">${role !== 'buyer' ? `<span class="status ${e.status}">${statusName[e.status]}</span>` : ''}<strong>${esc(e.lot || e.code)} · ${esc(shown.morph || '새 개체')}</strong><small>${[sexName[shown.sex], shown.weight ? shown.weight + 'g' : ''].filter(Boolean).map(esc).join(' · ')}</small></span><span class="chevron" aria-hidden="true">›</span></button>`;
@@ -121,13 +122,17 @@
     return payload.vendor;
   }
   async function loadProfileSummary() {
-    const event = eventId;
+    const event = eventId, sequence = ++profileSequence;
     try {
-      const loaded = await profileApi(); if (event !== eventId || section !== 'entries') return;
-      profile = loaded;
+      const loaded = await profileApi(); if (event !== eventId || section !== 'entries' || sequence !== profileSequence) return;
+      profile = loaded; profileEventId = event;
       updateProfileStatus();
       if (currentEvent()?.entriesOpen && !profileReady(profile) && !profilePromptSeen() && !document.querySelector('dialog[open]') && !busy && !uploading) openProfilePopup();
-    } catch { if ($('vendor-info-summary')) { $('vendor-info-summary').hidden = false; $('vendor-info-summary').querySelector('.summary-action').textContent = '다시 확인 ›'; } }
+    } catch {
+      if (event !== eventId || section !== 'entries' || sequence !== profileSequence) return;
+      // A failed refresh must not replace a known completed/incomplete state.
+      if (profileEventId !== eventId && $('vendor-info-summary')) { $('vendor-info-summary').hidden = false; $('vendor-info-summary').querySelector('.summary-action').textContent = '다시 확인 ›'; }
+    }
   }
   function updateProfileStatus() {
     const ready = profileReady(profile);
@@ -176,15 +181,15 @@
   async function renderProfile() {
     section = 'profile'; draft = null; dirty = profileDirty = false; eventControls(); editorNavigation(false);
     $('content').innerHTML = '<div class="entry-title"><h1>업체 정보</h1></div><p class="muted" role="status">불러오는 중…</p>';
-    const selectedEvent = eventId;
+    const selectedEvent = eventId, sequence = ++profileSequence;
     try {
-      const loaded = await profileApi(); if (section !== 'profile' || eventId !== selectedEvent) return;
-      profile = loaded;
+      const loaded = await profileApi(); if (section !== 'profile' || eventId !== selectedEvent || sequence !== profileSequence) return;
+      profile = loaded; profileEventId = selectedEvent;
       updateProfileStatus();
       $('content').innerHTML = `<div class="entry-title"><h1>업체 정보</h1><p class="muted">${esc(profile.name)}</p></div>` + profileFormMarkup(profile);
       bindProfileForm();
     } catch (e) {
-      if (section !== 'profile') return;
+      if (section !== 'profile' || eventId !== selectedEvent || sequence !== profileSequence) return;
       $('content').innerHTML = `<div class="entry-title"><h1>업체 정보</h1><p class="inline-error" role="alert">${esc(e.message)}</p><button type="button" class="secondary" id="profile-retry">다시 시도</button></div>`;
       $('profile-retry').onclick = renderProfile;
     }
@@ -198,9 +203,9 @@
     let first;
     for (const [id, valid, message] of checks) { $('profile-' + id).setAttribute('aria-invalid', String(!valid)); errorAt('profile-' + id + '-error', valid ? '' : message); if (!valid && !first) first = $('profile-' + id); }
     if (first) { first.focus(); return false; }
-    busy = true; const saveButton = $('profile-save') || $('profile-dialog-save'); saveButton.disabled = true; errorAt('profile-error', '');
+    busy = true; ++profileSequence; const saveButton = $('profile-save') || $('profile-dialog-save'); saveButton.disabled = true; errorAt('profile-error', '');
     try {
-      profile = await profileApi(data); profileDirty = false;
+      profile = await profileApi(data); profileEventId = eventId; profileDirty = false;
       if (refresh) await renderProfile(); toast('업체 정보를 저장했어요'); return true;
     } catch (e) { errorAt('profile-error', e.message); return false; }
     finally { busy = false; saveButton.disabled = false; }
@@ -244,7 +249,7 @@
     busy = true; $('save-draft').disabled = $('submit-entry').disabled = true; errorAt('entry-error', '');
     try {
       if (submit) {
-        profile = await profileApi();
+        ++profileSequence; profile = await profileApi(); profileEventId = eventId;
         if (!profileReady(profile)) { busy = false; openProfilePopup(true); return false; }
       }
       const id = await send({ type: submit ? 'submit' : 'save', entry: draft, expectedVersion: draft.version });
