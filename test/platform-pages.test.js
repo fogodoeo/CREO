@@ -35,11 +35,18 @@ test('platform pages contain valid inline JavaScript and required viewport metad
     for (const file of PAGES) {
         const source = fs.readFileSync(path.join(__dirname, '..', 'public', file), 'utf8');
         assert.match(source, /<meta[^>]+name=["']viewport["']/i, `${file} needs a viewport`);
+        assert.doesNotMatch(source.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ''), /window\.addEventListener\(/, `${file} must not render event handlers as text`);
         const inlineScripts = [...source.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)]
             .filter((match) => !/\bsrc\s*=/.test(match[0].slice(0, match[0].indexOf('>') + 1)))
             .map((match) => match[1])
             .filter((script) => script.trim());
-        assert.ok(inlineScripts.length, `${file} should have inline behavior`);
+        const localScripts = [...source.matchAll(/<script[^>]+src=["']([^"'?#]+)(?:[^"']*)["'][^>]*>/gi)]
+            .map(match => match[1]).filter(src => !/^https?:/.test(src));
+        assert.ok(inlineScripts.length || localScripts.length, `${file} should load behavior`);
+        for (const src of localScripts) {
+            const script = fs.readFileSync(path.join(__dirname, '..', 'public', src.replace(/^\//, '')), 'utf8');
+            assert.doesNotThrow(() => new vm.Script(script, {filename: src}));
+        }
         inlineScripts.forEach((script, index) => {
             assert.doesNotThrow(() => new vm.Script(script, { filename: `${file}#${index + 1}` }));
         });
@@ -274,7 +281,7 @@ test('channel creation starts with a safe generated id and protects unsaved edit
     assert.match(manager, /value="winnerHouse"/);
     assert.match(manager, /audienceCompetition/);
     assert.match(manager, /채널 운영 프리셋/);
-    assert.match(manager, /3P 정체성/);
+    assert.match(manager, /3P 집계 방식/);
     assert.match(manager, /id="archive"/);
     assert.match(manager, /보관된 채널/);
     assert.match(manager, /async function saveChannel\(\)/);
@@ -674,7 +681,7 @@ test('new CDCUP overlays and shipping retain compatibility with the established 
 
 test('new platform channels use the shared three-page arranger and isolated registration workspace', () => {
     const profiles = fs.readFileSync(path.join(__dirname, '..', 'public', 'broadcast-profiles.js'), 'utf8');
-    const editor = fs.readFileSync(path.join(__dirname, '..', 'public', 'platform-layout-editor.html'), 'utf8');
+    const editor = fs.readFileSync(path.join(__dirname, '..', 'public', 'platform-layout-editor.html'), 'utf8') + fs.readFileSync(path.join(__dirname, '..', 'public', 'studio-layout-editor.js'), 'utf8');
     const live = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-live.html'), 'utf8');
     const studio = fs.readFileSync(path.join(__dirname, '..', 'public', 'broadcast-studio.html'), 'utf8');
     const runtime = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-runtime.js'), 'utf8');
@@ -684,13 +691,13 @@ test('new platform channels use the shared three-page arranger and isolated regi
     assert.match(profiles, /live: 'auction-live\.html'/);
     assert.match(profiles, /SHARED_PLATFORM_RENDERER\.editor/);
     assert.match(profiles, /SHARED_PLATFORM_RENDERER\.live/);
-    assert.match(editor, /요소를 끌어 이동/);
+    assert.match(editor, /끌어서 이동/);
     assert.match(editor, /layoutPlacements/);
     assert.match(editor, /broadcast-state/);
     assert.match(editor, /p3-board/);
     assert.match(editor, /p3-effect/);
     assert.doesNotMatch(editor, /p3-banner/);
-    assert.match(editor, /id="content"[^>]*>내용 설정/);
+    assert.match(editor, /id="content"[^>]*>문구·표시 설정/);
     assert.match(editor, /id="opacity"/);
     assert.match(editor, /id="visible"/);
     assert.match(editor, /id="banners"/);
@@ -698,9 +705,9 @@ test('new platform channels use the shared three-page arranger and isolated regi
     assert.match(editor, /auction-control\.html\?channel=.*compact=1/);
     assert.match(editor, /creo-broadcast-settings-saved/);
     assert.match(editor, /p2-progress/);
-    assert.match(editor, /'p1-host-1':'네임텍 1'/);
-    assert.match(editor, /'p1-host-2':'네임텍 2'/);
-    assert.match(editor, /'p1-host-3':'네임텍 3'/);
+    assert.match(editor, /'p1-host-1':'네임택 1'/);
+    assert.match(editor, /'p1-host-2':'네임택 2'/);
+    assert.match(editor, /'p1-host-3':'네임택 3'/);
     assert.match(live, /dataset\.layoutSlot=slot/);
     assert.match(live, /class="item-progress glass"/);
     assert.doesNotMatch(live, /남은 \$\{remaining\}/);
@@ -708,7 +715,7 @@ test('new platform channels use the shared three-page arranger and isolated regi
     assert.match(live, /\[data-layout-slot\]\[data-layout-custom="1"\]:not\(\[data-layout-slot="p1-ticker"\]\):not\(\[data-layout-slot="p2-ticker"\]\)>\*\{zoom:var\(--layout-font-scale,1\)\}/);
     assert.match(live, /function applyTickerFontScale\(element,scale\)/);
     assert.match(live, /--ticker-text-font-size/);
-    assert.match(editor, /tickerPeer=slot==='p1-ticker'\?'p2-ticker'/);
+    assert.match(editor, /peer=slot==='p1-ticker'\?'p2-ticker'/);
     assert.match(editor, /글자 크기 · P1\/P2 공용/);
     assert.doesNotMatch(live, /transform:none!important;zoom:var\(--layout-font-scale/);
     assert.doesNotMatch(live, /state\.page3BannerOn=true/);

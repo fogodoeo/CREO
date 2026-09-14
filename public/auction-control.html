@@ -35,7 +35,7 @@
         .dice-video-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}.dice-video-slot{position:relative;min-height:104px;padding:11px;border:1px solid var(--line);border-radius:9px;background:#0d1116}.dice-video-slot.ready{border-color:#5f714d;background:#10170f}.dice-video-slot strong{display:block;color:var(--gold);font-size:12px}.dice-video-slot span{display:block;margin:5px 0 10px;color:#737e8b;font-size:9px;line-height:1.4}.dice-video-slot input{position:absolute;width:1px;height:1px;opacity:0}.dice-video-slot button{width:100%;height:32px;border:1px solid #3a434f;border-radius:7px;background:#171c23;color:#cbd2db;font-size:10px;font-weight:820;cursor:pointer}.dice-video-slot button:disabled{opacity:.5}.dice-video-note{margin:9px 0 0;color:#697482;font-size:9px;line-height:1.5}@media(max-width:700px){.dice-video-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
         .layout{display:block}.controls{width:min(760px,100%);height:100%;margin:auto;border-right:0}.preview{display:none}.savebar{left:50%;width:min(760px,100%);transform:translateX(-50%)}
     </style>
-</head>
+<link rel="stylesheet" href="operator-studio.css?v=20260915-studio"><script defer src="studio-interface.js?v=20260915-studio"></script></head>
 <body>
 <header class="top">
     <a class="brand" href="/main">CREO</a>
@@ -72,6 +72,9 @@
     </section>
 </main>
 
+<script>
+window.addEventListener('message',event=>{if(event.origin!==location.origin||event.source!==window.parent||event.data?.type!=='creo-broadcast-theme')return;const expected=new URLSearchParams(location.search).get('channel');if(event.data.channelId!==expected)return;document.querySelectorAll('iframe').forEach(frame=>{try{frame.contentWindow?.CreoApplyBroadcastTheme?.(event.data.theme)}catch(_){}})});
+</script>
 <section class="asset-manager" id="asset-manager" hidden>
     <div class="asset-shell">
         <header class="asset-head"><div><h2>방송 자산</h2><p>배너·영상·로고를 등록하면 송출 화면에 자동 반영됩니다.</p></div><button class="small-btn" id="seed-crewart-assets-dialog" type="button" hidden>RGBY 예시 저장</button><button class="asset-close" id="close-assets" type="button" aria-label="닫기">×</button></header>

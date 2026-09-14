@@ -67,6 +67,17 @@
             .step i{display:grid;width:22px;height:22px;flex:0 0 auto;place-items:center;border:1px solid ${tone === 'dark' ? '#363d47' : '#d9dee5'};border-radius:7px;font-size:9px;font-style:normal;font-weight:900}.step.active i{border-color:currentColor}.step span{min-width:0}.step b,.step small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.step b{font-size:10px;font-weight:850}.step small{margin-top:1px;color:${tone === 'dark' ? '#68727e' : '#87909a'};font-size:7px;font-weight:700}
             .settings{padding:8px 10px;border-radius:8px;color:${tone === 'dark' ? '#87919d' : '#707a85'};font-size:9px;font-weight:800;text-decoration:none;white-space:nowrap}.settings:hover{background:${tone === 'dark' ? '#171b21' : '#fff'};color:inherit}
             @media(max-width:760px){.bar{grid-template-columns:1fr auto;width:calc(100% - 20px);gap:7px;padding:6px 0}.channel{grid-column:1}.settings{grid-column:2}.bar nav{grid-column:1/-1;grid-row:2;gap:3px}.step{justify-content:center;padding:7px 4px}.step i{width:20px;height:20px}.step small{display:none}.step b{font-size:9px}}
+            :host([presentation="studio"]){background:#101319;font-family:Studio Pretendard,Pretendard,sans-serif}
+            :host([presentation="studio"]) .bar{width:calc(100% - 48px);min-height:62px;grid-template-columns:minmax(0,1fr) auto;gap:24px;border-bottom-color:#343e4d}
+            :host([presentation="studio"]) .channel{display:none}
+            :host([presentation="studio"]) .step{min-height:40px;padding:8px 14px;border-color:transparent;color:#a4afbf;gap:10px}
+            :host([presentation="studio"]) .step.active{background:#23334c;color:#e1ecff;border-color:#455e84}
+            :host([presentation="studio"]) .step b{font-size:13px;font-weight:600}
+            :host([presentation="studio"]) .step small{display:none}
+            :host([presentation="studio"]) .step i{font-size:11px;width:24px;height:24px;font-weight:600}
+            :host([presentation="studio"]) .settings{font-size:12px;color:#bac5d6;padding:12px}
+            :host([presentation="studio"]) :focus-visible{outline:2px solid #91b4ff;outline-offset:2px}
+            @media(max-width:660px){:host([presentation="studio"]) .bar{width:calc(100% - 20px);display:block;padding:6px 0}:host([presentation="studio"]) .bar nav{display:flex;gap:2px}:host([presentation="studio"]) .step{flex:1;min-width:0;padding:7px 4px;gap:5px}:host([presentation="studio"]) .step i{display:none}:host([presentation="studio"]) .step b{font-size:11px}:host([presentation="studio"]) .settings{display:none}}
             @media print{:host{display:none!important}}
         </style><div class="bar"><a class="channel" href="${escapeHtml(state.home)}"><small>OPERATING CHANNEL</small><b>${escapeHtml(state.channelName)}</b></a><nav aria-label="경매 운영 단계">${steps}</nav><a class="settings" href="${escapeHtml(state.settings)}">채널 설정</a></div>`;
     }
