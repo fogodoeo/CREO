@@ -9,7 +9,8 @@ test('preset and custom palettes keep panel text and leading bidder readable',()
 });
 test('palette application rejects CSS injection and preserves unrelated geometry',()=>{
  const values={'--layout-x':'31%'},doc={documentElement:{style:{setProperty:(k,v)=>values[k]=v}}};
- apply(doc,{...presets[1].theme,background:'red;display:none',layoutX:'0'});
- assert.equal(values['--surface'],presets[1].theme.surface);assert.equal(values['--layout-x'],'31%');assert.equal(values['--background'],undefined);
- assert.throws(()=>custom('red'));assert.equal(match({...presets[1].theme}).id,'blue');assert.equal(match({}),null);
+ const blue=presets.find(p=>p.id==='blue').theme;
+ apply(doc,{...blue,background:'red;display:none',layoutX:'0'});
+ assert.equal(values['--surface'],blue.surface);assert.equal(values['--layout-x'],'31%');assert.equal(values['--background'],undefined);
+ assert.throws(()=>custom('red'));assert.equal(match({...blue}).id,'blue');assert.equal(match({}),null);
 });

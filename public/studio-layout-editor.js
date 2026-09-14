@@ -4,6 +4,9 @@
  const $=id=>document.getElementById(id),frame=$('frame'),settingsFrame=$('settings-frame'),model=CreoLayoutDraft.create();
  const labels={'p1-host-1':'네임택 1','p1-host-2':'네임택 2','p1-host-3':'네임택 3','p1-banner':'배너','p1-ticker':'자막','p2-progress':'경매 진행률','p2-info':'개체 정보','p2-bidders':'실시간 입찰자','p2-photo':'개체 사진','p2-parents':'부모 사진','p2-price':'가격','p2-sold':'낙찰 알림','p2-banner':'배너','p2-ticker':'자막','p3-board':'집계판','p3-effect':'낙찰·결과 연출'};
  const fields=['x','y','width','height','font','opacity','visible'];
+ for(const p of [1,2,3])labels['p'+p+'-frame']='게임기 프레임';
+ const isFrame=slot=>slot.endsWith('-frame');
+ const usesTransparency=slot=>slot==='p2-parents'||isFrame(slot);
  let selected='',drag=null,saving=false,ready=false,toastTimer,loadTimer,pendingTheme=null,pendingStyle=null;
  const clamp=(value,min,max)=>Math.max(min,Math.min(max,Number(value)||0));
  const doc=()=>frame.contentDocument;
@@ -33,9 +36,11 @@
  function syncFields(){
   const value=box();for(const id of fields)$(id).disabled=!value;
   for(const name of ['x','y','width','height'])$(name).value=value?value[name].toFixed(1):'';
-  $('font').disabled=!value||selected==='p2-parents';$('font').value=value?.fontScale||1;$('font-value').textContent=Math.round((value?.fontScale||1)*100)+'%';
+  for(const name of ['x','y','width','height'])$(name).disabled=!value||isFrame(selected);
+  $('font').disabled=!value||selected==='p2-parents'||isFrame(selected);$('font').value=value?.fontScale||1;$('font-value').textContent=Math.round((value?.fontScale||1)*100)+'%';
   $('font-label').textContent=selected.endsWith('-ticker')?'글자 크기 · P1/P2 공용':'글자 크기';
-  $('opacity').value=value?.opacity??100;$('opacity-value').textContent=Math.round(value?.opacity??100)+'%';$('visible').checked=value?.visible!==false;
+  const displayOpacity=usesTransparency(selected)?100-(value?.opacity??100):(value?.opacity??100);
+  $('opacity-label').textContent=usesTransparency(selected)?'투명도':'불투명도';$('opacity').value=displayOpacity;$('opacity-value').textContent=Math.round(displayOpacity)+'%';$('visible').checked=value?.visible!==false;
   $('reset').disabled=!value||!model.values()[selected];
   requestAnimationFrame(()=>{$('fit-note').hidden=![...(target()?.querySelectorAll('.host-role,.host-name,.item-inline-pill,h1,h2,.live-bid-name,.ticker-text')||[])].some(el=>el.clientWidth>0&&el.scrollWidth>el.clientWidth+2)});
  }
@@ -43,12 +48,13 @@
  function install(){
   const document=doc();if(!document)return;
   if(pendingTheme)frame.contentWindow?.CreoApplyBroadcastTheme?.(pendingTheme,pendingStyle);
-  const elements=[...document.querySelectorAll('[data-layout-slot]')];
+  const elements=[...document.querySelectorAll('[data-layout-slot]')].filter(el=>!isFrame(el.dataset.layoutSlot)||document.body.dataset.broadcastTheme==='pixel');
   $('slot').replaceChildren(new Option(elements.length?'요소 선택':'표시할 요소 없음',''),...elements.map(el=>new Option(labels[el.dataset.layoutSlot]||el.dataset.layoutSlot,el.dataset.layoutSlot)));
   let style=document.getElementById('creo-layout-editor-style');
   if(!style){style=document.createElement('style');style.id='creo-layout-editor-style';style.textContent='body[data-layout-editor="1"] [data-layout-slot]{outline:1px dashed #91b4ff99;outline-offset:4px}body[data-layout-editor="1"] [data-layout-slot].layout-selected{outline:3px solid #91b4ff;box-shadow:0 0 0 5px #3370f529}body[data-layout-editor="1"] [data-layout-slot]:focus-visible{outline:4px solid #fff}.creo-layout-handle{position:absolute!important;right:-10px!important;bottom:-10px!important;width:20px!important;height:20px!important;border:3px solid #10151d!important;border-radius:5px!important;background:#91b4ff!important;cursor:nwse-resize!important;z-index:9999!important;zoom:1!important;touch-action:none}.layout-selected>.creo-layout-handle{display:block!important}[data-layout-slot]:not(.layout-selected)>.creo-layout-handle{display:none!important}';document.head.appendChild(style);}
   for(const [slot,value] of Object.entries(model.pending()))paint(slot,value);
   for(const element of elements){
+   if(isFrame(element.dataset.layoutSlot))continue;
    const slot=element.dataset.layoutSlot;element.tabIndex=0;element.setAttribute('role','button');element.setAttribute('aria-label',(labels[slot]||slot)+' 위치 조절');element.style.touchAction='none';
    let handle=element.querySelector(':scope > .creo-layout-handle');if(!handle){handle=document.createElement('span');handle.className='creo-layout-handle';handle.setAttribute('aria-hidden','true');element.appendChild(handle);}
    element.onfocus=()=>select(slot);
@@ -71,13 +77,13 @@
  function loadPreview(){clearTimeout(loadTimer);ready=false;status();$('preview-error').hidden=true;frame.src=`auction-live.html?channel=${encodeURIComponent(channelId)}&page=${page}&editor=1&examples=${$('example-preview').checked?1:0}&refresh=${Date.now()}`;loadTimer=setTimeout(()=>{if(!ready)$('preview-error').hidden=false},15000);}
  window.addEventListener('message',async event=>{
   if(event.origin!==location.origin)return;
-  if(event.source===window.parent&&event.data?.type==='creo-broadcast-theme'&&event.data.channelId===channelId){pendingTheme=event.data.theme;pendingStyle=event.data.broadcastTheme;frame.contentWindow?.CreoApplyBroadcastTheme?.(pendingTheme,pendingStyle);settingsFrame.contentWindow?.postMessage(event.data,location.origin);return;}
+  if(event.source===window.parent&&event.data?.type==='creo-broadcast-theme'&&event.data.channelId===channelId){pendingTheme=event.data.theme;pendingStyle=event.data.broadcastTheme;frame.contentWindow?.CreoApplyBroadcastTheme?.(pendingTheme,pendingStyle);settingsFrame.contentWindow?.postMessage(event.data,location.origin);requestAnimationFrame(install);return;}
   if(event.source===frame.contentWindow&&event.data?.type==='creo-layout-ready'&&Number(event.data.page)===page){model.receive(event.data.placements);requestAnimationFrame(install);return;}
   if(event.source===settingsFrame.contentWindow&&event.data?.type==='creo-asset-manager'){settingsFrame.classList.toggle('assets-open',event.data.open===true);return;}
   if(event.source===settingsFrame.contentWindow&&event.data?.type==='creo-broadcast-settings-saved'){if(model.dirty()&&!await save(false))return;loadPreview();toast('문구·표시 설정을 반영했어요');}
  });
  $('slot').onchange=()=>select($('slot').value);
- for(const name of ['x','y','width','height','opacity'])$(name).oninput=()=>{if(box()&&$(name).value!=='')change(selected,{...box(),[name]:$(name).value})};
+ for(const name of ['x','y','width','height','opacity'])$(name).oninput=()=>{if(box()&&$(name).value!=='')change(selected,{...box(),[name]:name==='opacity'&&usesTransparency(selected)?100-Number($(name).value):$(name).value})};
  $('font').oninput=()=>box()&&change(selected,{...box(),fontScale:$('font').value});$('visible').onchange=()=>box()&&change(selected,{...box(),visible:$('visible').checked});
  $('reset').onclick=()=>{if(!selected)return;model.change(selected,null);paint(selected,null);syncFields();status();toast('배치 저장을 누르면 기본 위치로 반영돼요');};
  const settings=()=>$('settings-dock').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'instant':'smooth',block:'start'});

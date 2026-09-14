@@ -47,6 +47,25 @@ test('broadcast summary options and parent placement survive partial saves and r
  await call(api,'PUT',path,{page3RankingInterval:999});assert.equal((await repository.getRecord('alpha','broadcast','state')).page3RankingInterval,60);
 });
 
+test('console and parent placements retain independent size and opacity across save, duplicate and restart',async()=>{
+ const repository=new MemoryRepository(),options={repository,adminSessionSecret:'console-layout-test'};let api=createPlatformApi(options);
+ const item={id:'running',status:'live',attributes:{bid_log:[{name:'입찰자',amount:3}]}};
+ await repository.upsertRecord('alpha','item',item);
+ const originalItem=structuredClone(await repository.getRecord('alpha','item',item.id));
+ const path='/api/platform/channels/alpha/broadcast-state';
+ const box=(width,height,opacity)=>({x:12,y:40,width,height,fontScale:1,opacity,visible:true});
+ const layoutPlacements={'p2-parents':box(17.5,33.3,70),'p1-frame':box(100,100,100),'p2-frame':box(100,100,40),'p3-frame':{...box(100,100,0),visible:false}};
+ const payload={activeItemId:item.id,mode:'live',layoutPlacements};
+ assert.equal((await call(api,'PUT',path,payload,'')).status,401);
+ for(let i=0;i<2;i++)assert.equal((await call(api,'PUT',path,payload)).status,200);
+ await call(api,'PUT',path,{hostName1:'진행자'});api=createPlatformApi(options);
+ const state=(await call(api,'GET','/api/platform/channels/alpha/broadcast?page=2',null,'')).json().state;
+ assert.deepEqual(state.layoutPlacements,layoutPlacements);
+ assert.equal(state.activeItemId,item.id);assert.equal(state.mode,'live');
+ assert.deepEqual(await repository.getRecord('alpha','item',item.id),originalItem);
+ assert.equal(await repository.getRecord('beta','broadcast','state'),null);
+});
+
 test('public buyer rank identities separate matching names, preserve explicit winners, and stay private across channels',async()=>{
  const repository=new MemoryRepository(),options={repository,adminSessionSecret:'summary-identity-test'};let api=createPlatformApi(options);
  const item={status:'sold',soldPrice:30000,winnerAlias:'동명',winnerName:'동명',winnerPhone:'01011112222'};

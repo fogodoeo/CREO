@@ -1,6 +1,7 @@
 (function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.CreoBroadcastPalette=api;})(typeof window==='undefined'?globalThis:window,function(){
  'use strict';
  const presets=Object.freeze([
+  {id:'retro',name:'레트로',theme:{primary:'#aaa0d8',secondary:'#ffdc79',background:'#1d192e',surface:'#373054',text:'#fff4d8'}},
   {id:'graphite',name:'그라파이트',theme:{primary:'#414b5b',secondary:'#ccd4df',background:'#101319',surface:'#202630',text:'#f7faff'}},
   {id:'blue',name:'블루',theme:{primary:'#315fbb',secondary:'#98beff',background:'#0d131f',surface:'#172b49',text:'#f7faff'}},
   {id:'green',name:'그린',theme:{primary:'#217458',secondary:'#8eddbb',background:'#101915',surface:'#16392e',text:'#f7faff'}},

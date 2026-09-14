@@ -18,10 +18,12 @@ test('visual concepts default safely and never replace readable typography or au
  assert.equal(doc.body.dataset.broadcastProfile,'cdcup-tournament');
 });
 
-test('registered pixel asset is a small square RGBA PNG',()=>{
- const asset=path.join(__dirname,'../public',themes.resolve('pixel').frame);
- const buffer=fs.readFileSync(asset);
- assert.equal(buffer.toString('hex',0,8),'89504e470d0a1a0a');assert.equal(buffer[25],6);
- assert.ok(buffer.length<300000);assert.equal(buffer.readUInt32BE(16),buffer.readUInt32BE(20));
- // Center alpha is checked from the generated file during the documented visual review.
+test('console skin has no external image requests or interactive controls over the camera',()=>{
+ const markup=themes.frame();
+ assert.match(markup,/class="broadcast-console" aria-hidden="true"/);
+ assert.doesNotMatch(markup,/<(?:img|video|iframe|button|input)|\bon\w+=|https?:/);
+ const css=fs.readFileSync(path.join(__dirname,'../public/broadcast-themes.css'),'utf8');
+ assert.doesNotMatch(css,/url\(|filter:drop-shadow/);
+ assert.match(css,/pointer-events:none!important/);
+ assert.equal(themes.frame(),markup,'unchanged frame markup can be reconciled without replacing media');
 });
