@@ -1,0 +1,17 @@
+.theme-baseline-note{margin:-8px 0 20px;color:#a4afbf;font-size:13px}
+.channel-theme-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.channel-theme-options button{display:grid;gap:12px;min-height:108px;padding:12px;border:1px solid #3a4657;border-radius:12px;background:#171e29;color:#eef3fb;text-align:left;font:inherit;cursor:pointer}
+.channel-theme-options button[aria-pressed=true]{border:2px solid #91b4ff;padding:11px;background:#263650}
+.channel-style-sample{display:grid;place-items:center;min-height:48px;border-radius:10px;background:#303c4b;font-size:18px;font-weight:750;color:#f7faff}
+.channel-style-sample[data-style=pixel]{background:#373054;color:#ffdc79;border:3px solid #fff4d8;border-radius:0;box-shadow:3px 3px 0 #242039}
+.channel-theme-options strong{font-size:14px}
+.channel-palette-options{display:flex;gap:8px;flex-wrap:wrap;margin-top:20px}
+.channel-palette-options button{display:flex;align-items:center;gap:7px;min-height:42px;padding:8px 11px;border:1px solid #3a4657;border-radius:9px;background:#171e29;color:#dce5f2;cursor:pointer;font:inherit;font-size:13px}
+.channel-palette-options i{width:14px;height:14px;border-radius:50%;background:var(--swatch);box-shadow:inset 0 0 0 1px #ffffff30}
+.channel-palette-options button[aria-pressed=true]{border:2px solid #91b4ff;padding:7px 10px;background:#263650}
+.theme-custom{margin:20px 0;color:#a4afbf;font-size:13px}.theme-custom summary{cursor:pointer;padding-block:8px}.theme-custom[open] summary{margin-bottom:10px}
+.channel-theme-preview{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:16px;margin-top:22px;min-height:100px;padding:18px;border-radius:14px;background:var(--preview-bg);color:var(--preview-text);font-size:20px;line-height:1.4}
+.channel-theme-preview strong{font-size:26px;white-space:nowrap}.theme-preview-progress{font-variant-numeric:tabular-nums;color:var(--preview-secondary);font-weight:750}
+.channel-theme-preview[data-theme=pixel]{border:4px solid var(--preview-text);border-radius:0;box-shadow:5px 5px 0 #242039}
+.channel-theme-preview[data-theme=pixel] strong{padding:4px 12px;background:var(--preview-secondary);color:#242039}
+.channel-theme-options button:focus-visible,.channel-palette-options button:focus-visible{outline:3px solid #fff;outline-offset:3px}

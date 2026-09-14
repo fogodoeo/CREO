@@ -14,6 +14,45 @@ const { normalizeChannel } = require('../platform-core');
 const { createCrewartHouseService } = require('../crewart-house-service');
 const {CheckoutNotificationService} = require('../checkout-notifications');
 
+test('new channels persist the selected theme and common layout without copying another auction',async(t)=>{
+ const fs=require('node:fs'),path=require('node:path'),os=require('node:os');
+ const {SQLitePlatformRepository}=require('../sqlite-platform-repository');
+ const directory=fs.mkdtempSync(path.join(os.tmpdir(),'creo-theme-channel-'));
+ const options={dbPath:path.join(directory,'platform.sqlite'),adminSecret:'secret',startWorker:false};
+ let repository=new SQLitePlatformRepository(options),api=createPlatformApi({repository});
+ t.after(()=>{repository.close();fs.rmSync(directory,{recursive:true,force:true});});
+ await repository.saveCatalog([normalizeChannel({id:'alpha',name:'알파',status:'active'})]);await repository.setActiveChannel('alpha');
+ await repository.upsertRecord('alpha','item',{id:'old',name:'이전 경매',status:'sold',soldPrice:90000});
+ const source=await repository.getRecord('alpha','item','old');
+ const body={channel:{id:'new-pixel',name:'신규 픽셀',status:'active',broadcastTheme:'pixel',theme:require('../public/broadcast-palette').presets[0].theme},expectedVersion:(await repository.getCatalog()).version};
+ assert.equal((await call(api,'POST','/api/platform/channels',body,'')).status,401);
+ const created=await call(api,'POST','/api/platform/channels',body);assert.equal(created.status,201);
+ assert.equal(created.json().channel.broadcastDefaults.layoutPreset,'standard-v1');
+ assert.notEqual((await call(api,'POST','/api/platform/channels',body)).status,201);
+ assert.equal((await repository.getCatalog()).channels.filter(c=>c.id==='new-pixel').length,1);
+ assert.deepEqual(await repository.listRecords('new-pixel','item'),[]);
+ const url='/api/platform/channels/new-pixel';
+ const layout={'p2-waiting':{x:28,y:26,width:35,height:38,fontScale:1,opacity:80,visible:true}};
+ assert.equal((await call(api,'PUT',url+'/broadcast-state',{layoutPlacements:layout,hostName1:'새 진행자'})).status,200);
+ await call(api,'PUT',url+'/broadcast-state',{page2Ticker:'새 자막'});
+ repository.close();repository=new SQLitePlatformRepository(options);api=createPlatformApi({repository});
+ const data=(await call(api,'GET',url+'/broadcast?page=2',null,'')).json();
+ assert.equal(data.channel.broadcastTheme,'pixel');assert.equal(data.state.mode,'standby');assert.equal(data.items.length,0);
+ assert.deepEqual(data.state.layoutPlacements['p2-waiting'],layout['p2-waiting']);
+ assert.ok(data.state.layoutPlacements['p1-host-1']);assert.ok(data.state.layoutPlacements['p3-board']);
+ assert.equal(data.state.page3BuyerRankingOn,true);assert.equal(data.state.page3VendorRankingOn,true);
+ assert.equal(data.state.hostName1,'새 진행자');assert.equal(data.state.page2Ticker,'새 자막');
+ await call(api,'PUT',url+'/broadcast-state',{layoutPlacements:{}});
+ const reset=(await call(api,'GET',url+'/broadcast?page=2',null,'')).json();
+ assert.deepEqual(reset.state.layoutPlacements['p2-waiting'],require('../public/broadcast-profiles').STANDARD_LAYOUT['p2-waiting']);
+ assert.equal(reset.state.hostName1,'새 진행자');
+ const version=(await repository.getCatalog()).version;
+ assert.equal((await call(api,'PUT',url,{channel:{broadcastTheme:'base'},expectedVersion:version})).status,200);
+ assert.equal((await call(api,'PUT',url,{channel:{broadcastTheme:'pixel'},expectedVersion:version})).status,409);
+ assert.equal((await call(api,'GET',url)).json().channel.broadcastTheme,'base');
+ assert.deepEqual(await repository.getRecord('alpha','item','old'),source);
+});
+
 test('theme and palette save independently, survive restart, and do not touch live records or another channel',async()=>{
  const repository=new MemoryRepository();let api=createPlatformApi({repository});
  await repository.upsertRecord('alpha','item',{id:'live',status:'live',attributes:{bid_log:[{name:'입찰자',amount:3}]}});

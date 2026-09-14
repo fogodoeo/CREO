@@ -2,7 +2,7 @@
  'use strict';
  const params=new URLSearchParams(location.search),channelId=String(params.get('channel')||'').replace(/[^a-z0-9-]/g,''),page=Math.max(1,Math.min(3,Number(params.get('page'))||1));
  const $=id=>document.getElementById(id),frame=$('frame'),settingsFrame=$('settings-frame'),model=CreoLayoutDraft.create();
- const labels={'p1-host-1':'네임택 1','p1-host-2':'네임택 2','p1-host-3':'네임택 3','p1-banner':'배너','p1-ticker':'자막','p2-progress':'경매 진행률','p2-info':'개체 정보','p2-bidders':'실시간 입찰자','p2-photo':'개체 사진','p2-parents':'부모 사진','p2-price':'가격','p2-sold':'낙찰 알림','p2-banner':'배너','p2-ticker':'자막','p3-board':'집계판','p3-effect':'낙찰·결과 연출'};
+ const labels={'p1-host-1':'네임택 1','p1-host-2':'네임택 2','p1-host-3':'네임택 3','p1-banner':'배너','p1-ticker':'자막','p2-progress':'경매 진행률','p2-info':'개체 정보','p2-waiting':'개체 대기 화면','p2-bidders':'실시간 입찰자','p2-photo':'개체 사진','p2-parents':'부모 사진','p2-price':'가격','p2-sold':'낙찰 알림','p2-banner':'배너','p2-ticker':'자막','p3-board':'집계판','p3-effect':'낙찰·결과 연출'};
  const fields=['x','y','width','height','font','opacity','visible'];
  for(const p of [1,2,3])labels['p'+p+'-frame']='게임기 프레임';
  const isFrame=slot=>slot.endsWith('-frame');
@@ -11,7 +11,7 @@
  const clamp=(value,min,max)=>Math.max(min,Math.min(max,Number(value)||0));
  const doc=()=>frame.contentDocument;
  const target=(slot=selected)=>doc()?.querySelector(`[data-layout-slot="${slot}"]`);
- function status(){const dirty=model.dirty();$('save-status').textContent=saving?'저장 중…':dirty?'저장 전 변경사항':ready?'저장됨':'불러오는 중…';$('save-status').dataset.dirty=String(dirty);$('save').disabled=!ready||saving||!dirty;}
+ function status(){const dirty=model.dirty();$('save-status').textContent=saving?'저장 중…':dirty?'저장 전 변경사항':ready?'저장됨':'불러오는 중…';$('save-status').dataset.dirty=String(dirty);$('save').disabled=!ready||saving||!dirty;$('p2-scene').disabled=!ready;}
  function toast(message){$('toast').textContent=message;$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),2400);}
  function currentBox(element){const rect=element.getBoundingClientRect(),view=doc().documentElement;return {x:rect.left/view.clientWidth*100,y:rect.top/view.clientHeight*100,width:rect.width/view.clientWidth*100,height:rect.height/view.clientHeight*100,fontScale:Number(element.style.getPropertyValue('--layout-font-scale'))||1,opacity:100,visible:true};}
  function box(slot=selected){return model.values()[slot]||(target(slot)?currentBox(target(slot)):null);}
@@ -74,7 +74,7 @@
   catch(error){if(error.status===401)window.parent.postMessage({type:'creo-admin-required'},location.origin);$('save-error').textContent=(error.message||'저장하지 못했어요.')+' 변경사항은 유지돼요. 배치 저장을 다시 눌러 주세요.';$('save-error').hidden=false;return false;}
   finally{saving=false;status();}
  }
- function loadPreview(){clearTimeout(loadTimer);ready=false;status();$('preview-error').hidden=true;frame.src=`auction-live.html?channel=${encodeURIComponent(channelId)}&page=${page}&editor=1&examples=${$('example-preview').checked?1:0}&refresh=${Date.now()}`;loadTimer=setTimeout(()=>{if(!ready)$('preview-error').hidden=false},15000);}
+ function loadPreview(){clearTimeout(loadTimer);ready=false;status();$('preview-error').hidden=true;frame.src=`auction-live.html?channel=${encodeURIComponent(channelId)}&page=${page}&editor=1&scene=${$('p2-scene').value}&examples=${$('example-preview').checked?1:0}&refresh=${Date.now()}`;loadTimer=setTimeout(()=>{if(!ready)$('preview-error').hidden=false},15000);}
  window.addEventListener('message',async event=>{
   if(event.origin!==location.origin)return;
   if(event.source===window.parent&&event.data?.type==='creo-broadcast-theme'&&event.data.channelId===channelId){pendingTheme=event.data.theme;pendingStyle=event.data.broadcastTheme;frame.contentWindow?.CreoApplyBroadcastTheme?.(pendingTheme,pendingStyle);settingsFrame.contentWindow?.postMessage(event.data,location.origin);requestAnimationFrame(install);return;}
@@ -89,7 +89,9 @@
  const settings=()=>$('settings-dock').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'instant':'smooth',block:'start'});
  $('content').onclick=settings;$('banners').onclick=()=>{settingsFrame.classList.add('assets-open');settings();settingsFrame.contentWindow?.postMessage({type:'creo-open-assets',filter:'banner'},location.origin)};
   $('save').onclick=()=>save();$('retry-preview').onclick=loadPreview;
-  $('example-preview').onchange=()=>frame.contentWindow?.postMessage({type:'creo-preview-examples',enabled:$('example-preview').checked},location.origin);
+  $('p2-scene').onchange=()=>frame.contentWindow?.postMessage({type:'creo-preview-p2-scene',scene:$('p2-scene').value},location.origin);
+ $('p2-scene-option').hidden=page!==2;
+ $('example-preview').onchange=()=>frame.contentWindow?.postMessage({type:'creo-preview-examples',enabled:$('example-preview').checked},location.origin);
  $('page-chip').textContent=$('settings-page').textContent='P'+page;$('editor-title').textContent=({1:'진행 화면',2:'경매 화면',3:'집계 화면'})[page]+' 배치';if(page===3)$('banners').hidden=true;$('example-option').hidden=page!==3;
  new ResizeObserver(resize).observe($('canvas-surface'));resize();loadPreview();settingsFrame.src=`auction-control.html?channel=${encodeURIComponent(channelId)}&page=${page}&embedded=1&compact=1`;
  window.addEventListener('beforeunload',event=>{if(model.dirty()){event.preventDefault();event.returnValue='';}});

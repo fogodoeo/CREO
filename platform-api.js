@@ -201,7 +201,7 @@ function sanitizeBroadcastState(input = {}) {
     const allowedLayoutSlots = new Set([
         'p1-hosts', 'p1-host-1', 'p1-host-2', 'p1-host-3', 'p1-banner', 'p1-ticker', 'p1-brand',
         'p2-progress', 'p2-info', 'p2-bidders', 'p2-photo', 'p2-parents', 'p2-price', 'p2-sold', 'p2-banner', 'p2-ticker', 'p2-brand',
-        'p3-board', 'p3-effect', 'p1-frame', 'p2-frame', 'p3-frame'
+        'p3-board', 'p3-effect', 'p1-frame', 'p2-frame', 'p3-frame', 'p2-waiting'
     ]);
     const clampLayoutNumber = (value, min, max, fallback) => {
         const number = Number(value);
@@ -702,7 +702,12 @@ function phoneParityCompetitionEnabled(channel) {
 }
 
 function mergeChannelBroadcastState(channel, current = {}, patch = {}) {
-    const next = { ...(current || {}), ...(patch || {}) };
+    const defaults = require('./public/broadcast-profiles').defaultState(channel);
+    const next = { ...defaults, ...(current || {}), ...(patch || {}) };
+    if (defaults.layoutPlacements) {
+        const placements = Object.prototype.hasOwnProperty.call(patch, 'layoutPlacements') ? patch.layoutPlacements : current.layoutPlacements;
+        next.layoutPlacements = { ...defaults.layoutPlacements, ...(placements || {}) };
+    }
     // Selection has its own atomic endpoint; older settings panels cannot reset it.
     next.bannerSelectionConfigured = current.bannerSelectionConfigured === true;
     next.selectedBannerIds = current.selectedBannerIds || [];
@@ -3507,7 +3512,8 @@ function createPlatformApi({
                 if (!await requireAdmin(req, res)) return true;
                 const body = await readJson(req);
                 const catalog = await loadCatalog();
-                const checked = validateChannel(body.channel, catalog.channels);
+                const requested = body.channel || {};
+                const checked = validateChannel({ ...requested, broadcastDefaults: { ...(requested.broadcastDefaults || {}), layoutPreset: 'standard-v1' } }, catalog.channels);
                 if (!checked.valid) {
                     replyJson(res, 422, { error: checked.errors.join(' '), errors: checked.errors });
                     return true;

@@ -21,17 +21,17 @@ body[data-broadcast-theme="pixel"] .broadcast-console[data-layout-custom="1"]{in
 .console-speaker i{width:1.770833vw;height:.648148vh;background:#9b90a9;border-radius:.208333vw}
 
 /* Complete panel surfaces. The silhouette is behind content, with no raster overprint or filter. */
-body[data-broadcast-theme="pixel"] #stage :is(.host-card,.item-copy,.item-progress,.live-bid-row,.price-card,.sold-notice,.ticker,.parent-photos,.item-photo,.simple-ranking,.contribution-team,.dice-team-card,.vendor-contribution-result,.dice-overlay-card){
+body[data-broadcast-theme="pixel"] #stage :is(.host-card,.item-copy,.item-progress,.live-bid-row,.price-card,.sold-notice,.standby-note,.ticker,.parent-photos,.item-photo,.simple-ranking,.contribution-team,.dice-team-card,.vendor-contribution-result,.dice-overlay-card){
  border-radius:0!important;border:0!important;isolation:isolate;clip-path:none!important;
  background:transparent!important;color:var(--pixel-cream)!important;box-shadow:none!important;
 }
-body[data-broadcast-theme="pixel"] #stage :is(.host-card,.item-copy,.item-progress,.live-bid-row,.price-card,.sold-notice,.ticker,.parent-photos,.item-photo,.simple-ranking,.contribution-team,.dice-team-card,.vendor-contribution-result,.dice-overlay-card)::before,
-body[data-broadcast-theme="pixel"] #stage :is(.host-card,.item-copy,.item-progress,.live-bid-row,.price-card,.sold-notice,.ticker,.parent-photos,.item-photo,.simple-ranking,.contribution-team,.dice-team-card,.vendor-contribution-result,.dice-overlay-card)::after{
+body[data-broadcast-theme="pixel"] #stage :is(.host-card,.item-copy,.item-progress,.live-bid-row,.price-card,.sold-notice,.standby-note,.ticker,.parent-photos,.item-photo,.simple-ranking,.contribution-team,.dice-team-card,.vendor-contribution-result,.dice-overlay-card)::before,
+body[data-broadcast-theme="pixel"] #stage :is(.host-card,.item-copy,.item-progress,.live-bid-row,.price-card,.sold-notice,.standby-note,.ticker,.parent-photos,.item-photo,.simple-ranking,.contribution-team,.dice-team-card,.vendor-contribution-result,.dice-overlay-card)::after{
  content:'';display:block;position:absolute;inset:0;z-index:-1;pointer-events:none;
  width:auto;height:auto;background:var(--pixel-fill,var(--pixel-panel));border:0;animation:none;box-shadow:inset 0 0 0 var(--pixel-line) var(--pixel-cream),inset 0 -12px 0 color-mix(in srgb,var(--pixel-purple) 45%,var(--pixel-panel));
  clip-path:polygon(0 var(--pixel-step),var(--pixel-step) var(--pixel-step),var(--pixel-step) 0,calc(100% - var(--pixel-step)) 0,calc(100% - var(--pixel-step)) var(--pixel-step),100% var(--pixel-step),100% calc(100% - var(--pixel-step)),calc(100% - var(--pixel-step)) calc(100% - var(--pixel-step)),calc(100% - var(--pixel-step)) 100%,var(--pixel-step) 100%,var(--pixel-step) calc(100% - var(--pixel-step)),0 calc(100% - var(--pixel-step)));
 }
-body[data-broadcast-theme="pixel"] #stage :is(.host-card,.item-copy,.item-progress,.live-bid-row,.price-card,.sold-notice,.ticker,.parent-photos,.item-photo,.simple-ranking,.contribution-team,.dice-team-card,.vendor-contribution-result,.dice-overlay-card)::before{inset:-6px -10px -10px -6px;z-index:-2;background:var(--pixel-ink);box-shadow:none}
+body[data-broadcast-theme="pixel"] #stage :is(.host-card,.item-copy,.item-progress,.live-bid-row,.price-card,.sold-notice,.standby-note,.ticker,.parent-photos,.item-photo,.simple-ranking,.contribution-team,.dice-team-card,.vendor-contribution-result,.dice-overlay-card)::before{inset:-6px -10px -10px -6px;z-index:-2;background:var(--pixel-ink);box-shadow:none}
 /* Keep glyph layers above the stepped surfaces even under editor zoom and live counter transforms. */
 body[data-broadcast-theme="pixel"] #stage :is(.item-progress strong,.host-card strong,.live-bid-name,.live-bid-amount,.item-inline-identity,.item-inline-traits,.ticker-text){position:relative;z-index:1}
 body[data-broadcast-theme="pixel"] #stage .parent-photos figure{z-index:1}

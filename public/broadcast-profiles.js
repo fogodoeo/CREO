@@ -25,6 +25,23 @@
         page2BiddersPosition: 'top-left'
     });
 
+    // Versioned, event-free starting layout. Existing channels opt in only on creation.
+    const box=(x,y,width,height,fontScale=1)=>Object.freeze({x,y,width,height,fontScale,opacity:100,visible:true});
+    const STANDARD_LAYOUT = Object.freeze({
+        'p1-host-1':box(48,78,48,9), 'p1-banner':box(4,65,25,24), 'p1-ticker':box(4,90,92,7),
+        'p2-progress':box(4,5,9,8.4), 'p2-info':box(22,5,61.5,10),
+        'p2-bidders':box(4,59,27,25), 'p2-parents':box(78.5,65.2,17.5,20.4),
+        'p2-banner':box(35.4,63.3,25,24), 'p2-ticker':box(4,90,92,7),
+        'p2-waiting':box(35,26,30,32), 'p3-board':box(22,12,56,76)
+    });
+    function initialState(channel){
+        if(channel?.broadcastDefaults?.layoutPreset!=='standard-v1')return {};
+        return {page1HostsOn:true,page1TickerOn:true,page1BannerOn:true,page2InfoOn:true,page2ProgressOn:true,
+            page2BiddersOn:true,page2ParentsOn:true,page2PriceOn:false,page2SoldOn:true,page2TickerOn:true,page2BannerOn:true,
+            page3On:true,page3VendorRankingOn:true,page3BuyerRankingOn:true,page3RankingInterval:10,
+            layoutPlacements:Object.fromEntries(Object.entries(STANDARD_LAYOUT).map(([key,value])=>[key,{...value}]))};
+    }
+
     // P1/P2 are application code, not channel assets. Every platform-backed
     // channel points at these same files so a renderer or editor fix is inherited
     // by both existing and newly-created channels. Profiles may replace P3 only.
@@ -94,6 +111,7 @@
         const profile = resolve(channel);
         return Object.freeze({
             ...SHARED_PAGE2_DEFAULTS,
+            ...initialState(channel),
             ...(profile.defaultState || {}),
             ...(channel?.broadcastDefaults || {})
         });
@@ -126,5 +144,5 @@
     register({ id: 'crewart-academy', engine: 'legacy-layout', rendererModule: 'crewart', brandMark: 'W', studioAccent: '#ddb960', studioAccentInk: '#211604', sharedStudio: true, page3Renderer: 'academy', page3Label: '기숙사 점수', page3Slots: ['groupScoreboard'], page3SettingsSections: ['houseScoreboard'], assetPack: 'crewart', settings: { compatibilityModes: false, assets: true }, defaultState: { page1BannerOn: false, page2BannerOn: false, notice: 'CREWARTS LIVE', noticeDetail: 'R · G · B · Y', page1Ticker: '크레아트 라이브 · 기숙사 점수판', page2Ticker: 'R · G · B · Y' } });
     register({ id: 'creyon-metal', engine: 'legacy-layout', rendererModule: 'creyon', brandMark: 'Y', studioAccent: '#c4a979', studioAccentInk: '#211f1c', sharedStudio: true, page3Renderer: 'status', page3Label: '방송 현황', page3Slots: ['statusBoard'], page3SettingsSections: ['statusBoard'], assetPack: 'creyon', settings: { compatibilityModes: false, assets: true }, defaultState: { page1BannerOn: false, page2BannerOn: false, notice: 'CREYON', noticeDetail: 'HIGH QUALITY CRESTED GECKO', page1Ticker: 'CREYON', page2Ticker: 'HIGH QUALITY CRESTED GECKO' } });
 
-    return Object.freeze({ SHARED_PAGE_CONTRACTS, SHARED_PAGE2_DEFAULTS, SHARED_PLATFORM_RENDERER, SHARED_SETTINGS_CONTRACT, broadcastTarget, defaultState, ids, pageContract, register, resolve, settingsContract, studioFrame, usesLegacyData, usesLegacyEngine, usesSharedStudio });
+    return Object.freeze({ SHARED_PAGE_CONTRACTS, SHARED_PAGE2_DEFAULTS, SHARED_PLATFORM_RENDERER, SHARED_SETTINGS_CONTRACT, STANDARD_LAYOUT, initialState, broadcastTarget, defaultState, ids, pageContract, register, resolve, settingsContract, studioFrame, usesLegacyData, usesLegacyEngine, usesSharedStudio });
 });

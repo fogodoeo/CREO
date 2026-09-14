@@ -1,0 +1,28 @@
+/* Scene objects share each channel's palette; live media stays in the existing player. */
+.banner-tv-decor{display:none;pointer-events:none}
+body[data-broadcast-theme="pixel"] #stage .banner{container-type:size;overflow:visible!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important}
+body[data-broadcast-theme="pixel"] .banner-tv-decor{display:block;position:absolute;inset:0;z-index:0;border:1cqw solid var(--pixel-ink);border-radius:5cqw;background:linear-gradient(135deg,var(--pixel-shell),var(--pixel-purple));box-shadow:inset 0 .8cqw 0 #fff6,inset -1.2cqw -1.4cqw 0 #24203940,1.2cqw 1.8cqw 0 var(--pixel-ink)}
+body[data-broadcast-theme="pixel"] .banner-tv-decor::before{content:'';position:absolute;inset:4% 10% 5% 2%;border:1cqw solid #625574;border-radius:4cqw;background:#09090c;box-shadow:0 .4cqw 0 #fff6,inset 0 .4cqw .8cqw #0008}
+body[data-broadcast-theme="pixel"] #stage .banner > .banner-media{position:absolute;inset:7% auto auto 4%;width:82%!important;height:84%!important;object-fit:contain!important;border:0;border-radius:2.6cqw;z-index:1;background:#09090c;zoom:1!important}
+.banner-tv-controls{position:absolute;right:2%;top:7%;bottom:7%;width:6%;display:flex;flex-direction:column;align-items:center;gap:2.6cqw}
+.banner-tv-dial{display:block;position:relative;width:5.4cqw;height:5.4cqw;flex:none;border:.6cqw solid #645475;border-radius:50%;background:linear-gradient(135deg,#f2ebf9,#9884b0);box-shadow:.2cqw .6cqw 0 #7b6a8d}
+.banner-tv-dial::after{content:'';position:absolute;left:45%;top:10%;width:12%;height:38%;background:#473555;transform:rotate(24deg);transform-origin:50% 90%;border-radius:2px}
+.banner-tv-dial.small{width:4.4cqw;height:4.4cqw;border-width:.4cqw}
+.banner-tv-speaker{width:4cqw;height:28%;margin-top:auto;background:repeating-linear-gradient(0deg,#7d6e8f 0 .6cqw,transparent .6cqw 1.4cqw);border-radius:.8cqw}
+.banner-tv-led{width:1.6cqw;height:1.6cqw;flex:none;border:.4cqw solid #7c7287;border-radius:50%;background:#74aa83}
+.banner-tv-foot{position:absolute;bottom:-3cqw;width:8%;height:2.4cqw;background:#625474;box-shadow:0 .6cqw 0 var(--pixel-ink);border-radius:0 0 1cqw 1cqw}
+.banner-tv-foot.left{left:9%}.banner-tv-foot.right{right:9%}
+.banner-placeholder-label{position:relative;z-index:1}
+body[data-broadcast-theme="pixel"] .banner-placeholder-label{margin-right:10%;color:var(--pixel-cream)}
+
+#stage .standby-note.mystery-card{position:absolute;left:35%;top:26%;width:30%;height:32%;min-width:0;min-height:0;max-width:none;transform:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1vh;padding:2vh 2vw;background:var(--surface);color:var(--text);border:1px solid #ffffff24;border-radius:24px;box-shadow:0 12px 32px #0003;container-type:size;isolation:isolate;text-align:center}
+.mystery-orbit{position:relative;width:76%;height:80%;display:grid;place-items:center;isolation:isolate;flex:1;min-height:0;color:#080d16}
+.mystery-orbit::before{content:'';position:absolute;inset:0;background:color-mix(in srgb,var(--primary) 58%,transparent);border-radius:50%}
+.mystery-orbit svg{position:absolute;width:100%;height:100%;fill:currentColor;transform:rotate(-8deg)}
+.mystery-orbit strong{position:relative;z-index:1;font-size:min(23cqw,39cqh);line-height:1;font-weight:850;letter-spacing:.07em;margin-right:-.07em;color:var(--text);text-shadow:0 4px 0 #111827,0 0 18px #0008;font-variant-numeric:tabular-nums}
+.standby-caption{position:relative;z-index:1;font-size:min(8cqw,13cqh);font-weight:700;line-height:1.1;white-space:nowrap;color:var(--text)}
+body[data-broadcast-theme="pixel"] #stage .mystery-card{background:transparent;border:0;border-radius:0}
+body[data-broadcast-theme="pixel"] .mystery-orbit{color:var(--pixel-ink)}
+body[data-broadcast-theme="pixel"] .mystery-orbit::before{background:var(--pixel-yellow);border-radius:0;clip-path:polygon(50% 0,60% 20%,80% 5%,79% 30%,100% 30%,85% 50%,100% 70%,78% 73%,79% 98%,59% 82%,48% 100%,40% 80%,17% 94%,20% 70%,0 66%,16% 48%,0 26%,25% 26%,24% 3%,42% 20%)}
+body[data-broadcast-theme="pixel"] .mystery-orbit strong{color:var(--pixel-cream)}
+@media(prefers-reduced-motion:no-preference){.mystery-orbit strong{animation:mystery-breathe 2.4s ease-in-out infinite}@keyframes mystery-breathe{50%{opacity:.8}}}

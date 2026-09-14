@@ -249,6 +249,7 @@ function normalizeBroadcastDefaults(value = {}, fallback = {}) {
     const source = { ...(fallback || {}), ...(value || {}) };
     const text = (key, max = 220) => cleanText(source[key], max);
     return {
+        layoutPreset: source.layoutPreset === 'standard-v1' ? 'standard-v1' : '',
         hostName1: text('hostName1', 60),
         hostRole1: text('hostRole1', 40),
         hostName2: text('hostName2', 60),
