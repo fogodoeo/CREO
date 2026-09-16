@@ -33,7 +33,7 @@ test('new channels persist the selected theme and common layout without copying 
  assert.deepEqual(await repository.listRecords('new-pixel','item'),[]);
  const url='/api/platform/channels/new-pixel';
  const layout={'p2-waiting':{x:28,y:26,width:35,height:38,fontScale:1,opacity:80,visible:true}};
- assert.equal((await call(api,'PUT',url+'/broadcast-state',{layoutPlacements:layout,hostName1:'새 진행자'})).status,200);
+ assert.equal((await call(api,'PUT',url+'/broadcast-state',{layoutPlacements:layout,hostName1:'새 진행자',page2NoteOn:false})).status,200);
  await call(api,'PUT',url+'/broadcast-state',{page2Ticker:'새 자막'});
  repository.close();repository=new SQLitePlatformRepository(options);api=createPlatformApi({repository});
  const data=(await call(api,'GET',url+'/broadcast?page=2',null,'')).json();
@@ -42,6 +42,7 @@ test('new channels persist the selected theme and common layout without copying 
  assert.ok(data.state.layoutPlacements['p1-host-1']);assert.ok(data.state.layoutPlacements['p3-board']);
  assert.equal(data.state.page3BuyerRankingOn,true);assert.equal(data.state.page3VendorRankingOn,true);
  assert.equal(data.state.hostName1,'새 진행자');assert.equal(data.state.page2Ticker,'새 자막');
+ assert.equal(data.state.page2NoteOn,false,'note visibility survives a partial save and SQLite restart');
  await call(api,'PUT',url+'/broadcast-state',{layoutPlacements:{}});
  const reset=(await call(api,'GET',url+'/broadcast?page=2',null,'')).json();
  assert.deepEqual(reset.state.layoutPlacements['p2-waiting'],require('../public/broadcast-profiles').STANDARD_LAYOUT['p2-waiting']);
@@ -84,6 +85,22 @@ test('broadcast summary options and parent placement survive partial saves and r
  assert.equal(broadcast.state.mode,'standby');assert.equal(broadcast.items.length,0);
  assert.equal(await repository.getRecord('beta','broadcast','state'),null);
  await call(api,'PUT',path,{page3RankingInterval:999});assert.equal((await repository.getRecord('alpha','broadcast','state')).page3RankingInterval,60);
+});
+test('note visibility saves are isolated, idempotent, and never advance or rewrite a live auction',async()=>{
+ const repository=new MemoryRepository();let api=createPlatformApi({repository});
+ const item={id:'running-note',status:'live',name:'A01',note:'원본 비고',attributes:{bid_log:[{name:'입찰자',amount:10}]}};
+ await repository.upsertRecord('alpha','item',item);
+ await repository.upsertRecord('alpha','broadcast',{id:'state',mode:'live',activeItemId:item.id,page2InfoOn:true});
+ const original=structuredClone(await repository.getRecord('alpha','item',item.id));
+ const path='/api/platform/channels/alpha/broadcast-state';
+ assert.equal((await call(api,'PUT',path,{page2NoteOn:false},'')).status,401);
+ for(const r of await Promise.all([call(api,'PUT',path,{page2NoteOn:false}),call(api,'PUT',path,{page2NoteOn:false})]))assert.equal(r.status,200);
+ await call(api,'PUT',path,{page2Ticker:'새 자막'});api=createPlatformApi({repository});
+ const state=(await call(api,'GET','/api/platform/channels/alpha/broadcast?page=2',null,'')).json().state;
+ assert.equal(state.page2NoteOn,false);assert.equal(state.page2InfoOn,true);assert.equal(state.mode,'live');assert.equal(state.activeItemId,item.id);
+ assert.deepEqual(await repository.getRecord('alpha','item',item.id),original);
+ assert.equal(await repository.getRecord('beta','broadcast','state'),null);
+ assert.equal((await call(api,'PUT',path,{page2NoteOn:true})).json().state.page2NoteOn,true);
 });
 
 test('console and parent placements retain independent size and opacity across save, duplicate and restart',async()=>{

@@ -39,7 +39,7 @@ test('authorization loss on a write clears private forms and a late read cannot 
  f.calls[1].resolve(data());await old;
  assert.equal(f.nodes.get('receipt-dialog').open,false);assert.equal(f.nodes.get('content').hidden,true);assert.equal(f.nodes.get('login').hidden,false);
  for(const id of ['receipt-amount','receipt-memo','bankAccount','notificationPhone'])assert.equal(f.nodes.get(id).value,'');
- for(const id of ['vendors','carriers','receipt-detail-content'])assert.equal(f.nodes.get(id).innerHTML,'');
+ for(const id of ['vendors','carriers','receipt-detail-content','auction-items','auction-vendor'])assert.equal(f.nodes.get(id).innerHTML,'');
  assert.equal(f.nodes.get('receipt-title').textContent,'입금 확인');assert.equal(f.run('state'),null);
  const count=f.calls.length;f.timers[0]();assert.equal(f.calls.length,count,'expired access should not poll repeatedly');
 });
@@ -72,4 +72,20 @@ test('overpayment is visible separately and does not hide another vendor’s out
  assert.equal(f.nodes.get('total').textContent,'30,000원');assert.equal(f.nodes.get('received').textContent,'140,000원');assert.equal(f.nodes.get('overpaid-total').textContent,'초과 입금 10,000원');assert.equal(f.nodes.get('overpaid-total').hidden,false);
  assert.equal(f.run('vendorStatus(state.vendors[1])'),'초과 입금');assert.equal(f.run('vendorBalance(state.vendors[1])'),'10,000원 초과');
  assert.match(f.nodes.get('vendors').innerHTML,/10,000원 초과/);
+});
+test('organizer auction view separates sales from shipping, includes pending and pickup, and filters without writes',async()=>{
+ const f=screen();await f.ready();
+ f.run(`state.auctionItems=[
+  {id:'a',code:'A01',vendorId:'v',vendorName:'업체',buyerName:'가나다',amount:100000,paymentStatus:'pending',method:'delivery',destination:'서울',shippingFee:3500},
+  {id:'b',code:'B01',vendorId:'v',vendorName:'업체',buyerName:'나나다',amount:200000,paymentStatus:'paid',method:'pickup',destination:'대구본점'},
+  {id:'c',code:'A02',vendorId:'other',vendorName:'다른업체',buyerName:'다나다',amount:500000,paymentStatus:'refunded'}];render();setOrganizerView('auction')`);
+ assert.equal(f.nodes.get('auction-total').textContent,'300,000원');assert.equal(f.nodes.get('total').textContent,'30,000원');
+ assert.equal(f.nodes.get('shipping-panel').hidden,true);assert.equal(f.nodes.get('auction-panel').hidden,false);
+ assert.match(f.nodes.get('auction-items').innerHTML,/결제 대기/);assert.match(f.nodes.get('auction-items').innerHTML,/직수령/);assert.match(f.nodes.get('auction-items').innerHTML,/환불/);
+ f.nodes.get('auction-search').value='B01';f.nodes.get('auction-search').oninput();
+ assert.match(f.nodes.get('auction-items').innerHTML,/B01/);assert.doesNotMatch(f.nodes.get('auction-items').innerHTML,/A01/);
+ f.nodes.get('auction-search').value='';f.nodes.get('auction-vendor').value='other';f.nodes.get('auction-vendor').onchange();
+ assert.equal(f.nodes.get('auction-total').textContent,'0원');assert.match(f.nodes.get('auction-items').innerHTML,/A02/);
+ f.run('clearAccess()');assert.equal(f.nodes.get('auction-items').innerHTML,'');assert.equal(f.nodes.get('auction-total').textContent,'');
+ assert.equal(f.calls.length,1,'view changes are read-only');
 });

@@ -11,7 +11,8 @@
   <script defer src="/platform-client.js"></script>
   <script defer src="/ongdong-brand.js"></script>
   <script defer src="/checkout-item-view.js"></script>
-  <script defer src="/vendor-entry-review.js"></script>
+  <script defer src="/entry-numbering.js?v=20260917"></script>
+  <script defer src="/vendor-entry-review.js?v=20260917-parts"></script>
   <script defer src="/entry-photo-usage.js"></script>
 </head>
 <body>
@@ -44,12 +45,13 @@
       <div id="entry-information"></div>
       <form id="review-form" novalidate>
         <section id="allocation-fields"><h3>편성 정보</h3><div class="field-grid">
+          <label for="lot-part">번호 구분<select id="lot-part"><option value="A">1부 · A01~</option><option value="B">2부 · B01~</option><option value="manual">직접 입력 · 팀 구분 등</option></select></label>
           <label for="lot-code">경매 번호<input id="lot-code" maxlength="16" placeholder="A01" autocomplete="off" required></label>
           <label for="lot-order">진행 순서<input id="lot-order" type="number" inputmode="numeric" min="1" max="10000" step="1" required></label>
           <label for="lot-price">시작가 <span class="muted">원</span><input id="lot-price" type="number" inputmode="numeric" min="0" step="1" required></label>
           <label for="lot-team" id="lot-team-label">팀 <span class="muted">선택</span><input id="lot-team" maxlength="60" autocomplete="off"></label>
           <label for="lot-group" id="lot-group-label" hidden>팀 <span class="muted">선택</span><select id="lot-group"></select></label>
-        </div></section>
+        </div><p class="muted">번호와 진행 순서는 각각 수정할 수 있어요.</p></section>
         <section id="reason-fields" hidden><h3><label for="review-reason">수정할 내용</label></h3><textarea id="review-reason" maxlength="200" rows="3" placeholder="예: 개체 체중을 확인해 주세요"></textarea></section>
         <p id="review-error" class="error" role="alert" hidden></p>
         <button id="reload-entry" class="secondary" type="button" hidden>최신 내용 다시 확인</button>

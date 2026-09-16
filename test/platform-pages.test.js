@@ -72,7 +72,7 @@ test('BASIC page two reuses the one-line item and traits formula', () => {
     const source = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-live.html'), 'utf8');
     const profiles = fs.readFileSync(path.join(__dirname, '..', 'public', 'broadcast-profiles.js'), 'utf8');
     assert.match(profiles, /page2InfoLayout: 'inline-traits'/);
-    assert.match(source, /function pageTwoInlineInfo\(item,vendorTag\)/);
+    assert.match(source, /function pageTwoInlineInfo\(item,vendorTag(?:,[^)]*)?\)/);
     assert.match(source, /item-copy is-inline-info/);
     assert.match(source, /function pageTwoInfoTraits\(item\)/);
     assert.match(source, /profile\.settings\?\.page2InfoLayout==='inline-traits'/);

@@ -16,6 +16,7 @@
     });
 
     const SHARED_PAGE2_DEFAULTS = Object.freeze({
+        page2NoteOn: true,
         page2VendorTagOn: true,
         page2BiddersOn: true,
         page2BiddersOpacity: 94,
@@ -36,7 +37,7 @@
     });
     function initialState(channel){
         if(channel?.broadcastDefaults?.layoutPreset!=='standard-v1')return {};
-        return {page1HostsOn:true,page1TickerOn:true,page1BannerOn:true,page2InfoOn:true,page2ProgressOn:true,
+        return {page1HostsOn:true,page1TickerOn:true,page1BannerOn:true,page2InfoOn:true,page2NoteOn:true,page2ProgressOn:true,
             page2BiddersOn:true,page2ParentsOn:true,page2PriceOn:false,page2SoldOn:true,page2TickerOn:true,page2BannerOn:true,
             page3On:true,page3VendorRankingOn:true,page3BuyerRankingOn:true,page3RankingInterval:10,
             layoutPlacements:Object.fromEntries(Object.entries(STANDARD_LAYOUT).map(([key,value])=>[key,{...value}]))};
@@ -55,7 +56,7 @@
         sections: Object.freeze([
             Object.freeze({ id: 'hosts', label: '진행진', fields: Object.freeze(['hostName1', 'hostRole1', 'hostName2', 'hostRole2', 'hostName3', 'hostRole3']) }),
             Object.freeze({ id: 'page1', label: '1P 진행 화면', fields: Object.freeze(['page1HostsOn', 'page1NoticeOn', 'page1TickerOn', 'page1BannerOn']) }),
-            Object.freeze({ id: 'page2', label: '2P 개체 화면', fields: Object.freeze(['page2InfoOn', 'page2VendorTagOn', 'page2BiddersOn', 'page2BiddersOpacity', 'page2BiddersFontSize', 'page2ItemFontSize', 'page2PhotoOn', 'page2ParentsOn', 'page2PriceOn', 'page2SoldOn', 'page2TickerOn', 'page2BannerOn']) }),
+            Object.freeze({ id: 'page2', label: '2P 개체 화면', fields: Object.freeze(['page2InfoOn', 'page2NoteOn', 'page2VendorTagOn', 'page2BiddersOn', 'page2BiddersOpacity', 'page2BiddersFontSize', 'page2ItemFontSize', 'page2PhotoOn', 'page2ParentsOn', 'page2PriceOn', 'page2SoldOn', 'page2TickerOn', 'page2BannerOn']) }),
             Object.freeze({ id: 'page3', label: '3P 집계 화면', fields: Object.freeze(['page3On', 'page3VendorRankingOn', 'page3BuyerRankingOn', 'page3RankingInterval', 'scoreboardId', 'extraMode', 'page3Title']) })
         ])
     });

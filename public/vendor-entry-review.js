@@ -6,6 +6,7 @@
   $('review-form').querySelectorAll('input,textarea,select').forEach(input=>input.setAttribute('aria-describedby','review-error'));
   let channelId=new URLSearchParams(location.search).get('channel')||'', data=null, status='submitted', vendorId='', selected=null;
   let busy=false, loading=false, sequence=0, reviewMode='approve', opener=null, pending=null, outside=false;
+  let preferredPart='A';
   const endpoint=()=>`channels/${encodeURIComponent(channelId)}/entries`;
   const canReview=()=>data&&['draft','active'].includes(data.channel.status);
   const source=entry=>entry.submission||entry.approved||entry;
@@ -96,8 +97,9 @@
     const reviewable=canReview()&&row.entry.status==='submitted';
     $('review-form').hidden=!reviewable;$('review-actions').hidden=!reviewable;$('reload-entry').hidden=true;
     const existing=data.allocation.find(item=>item.id===row.entry.itemId);
-    $('lot-code').value=existing?.code||row.entry.lot||'';
-    $('lot-order').value=existing?.order||Math.max(0,...data.allocation.map(item=>item.order))+1;
+    const numbering=window.CreoEntryNumbering.initial({allocation:data.allocation,existing,lot:row.entry.lot,teamBased:!!data.channel.groups?.length,preferred:preferredPart});
+    $('lot-part').value=numbering.mode;$('lot-code').value=numbering.code;
+    $('lot-order').value=numbering.order;
     $('lot-price').value=existing?.startPrice||0;$('lot-team').value=existing?.teamName||row.group.vendor.teamName||'';$('review-reason').value='';
     const groups=data.channel.groups||[];
     $('lot-team-label').hidden=groups.length>0;$('lot-group-label').hidden=!groups.length;
@@ -122,6 +124,14 @@
   };
   $('filters').onclick=event=>{const button=event.target.closest('[data-status]');if(!button)return;status=button.dataset.status;renderList();};
   $('review-vendor').onchange=event=>{vendorId=event.target.value;renderList();};
+  $('lot-part').onchange=()=>{
+    const part=$('lot-part').value;preferredPart=part;pending=null;
+    if(part!=='manual')$('lot-code').value=window.CreoEntryNumbering.nextCode(part,data.allocation);
+    error('review-error','');
+  };
+  $('lot-code').oninput=()=>{
+    if($('lot-part').value!=='manual'&&!new RegExp('^'+$('lot-part').value+'\\d+$','i').test($('lot-code').value.trim()))$('lot-part').value='manual';
+  };
   $('change-review-mode').onclick=()=>{showMode(reviewMode==='approve'?'request-changes':'approve');(reviewMode==='approve'?$('lot-code'):$('review-reason')).focus();};
   $('review-form').oninput=event=>{pending=null;event.target.removeAttribute('aria-invalid');error('review-error','');};
   $('review-form').onsubmit=async event=>{
@@ -158,7 +168,7 @@
   };
   $('refresh').onclick=load;
   $('review-event').onchange=event=>{
-    if(busy)return;channelId=event.target.value;data=null;vendorId='';status='submitted';
+    if(busy)return;channelId=event.target.value;data=null;vendorId='';status='submitted';preferredPart='A';
     const url=new URL(location.href);url.searchParams.set('channel',channelId);history.replaceState(null,'',url);setLinks();render();load();
   };
   $('login-form').onsubmit=async event=>{

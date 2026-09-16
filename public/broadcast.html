@@ -3980,6 +3980,8 @@
     </style>
     <link rel="stylesheet" href="broadcast-creyon.css?v=20260820-live-bidders-v1">
     <link rel="stylesheet" href="broadcast-crewart.css?v=20260823-flat-reel-v5">
+    <link rel="stylesheet" href="broadcast-item-notes.css?v=20260917">
+    <script src="broadcast-item-notes.js?v=20260917"></script>
 </head>
 
 <body>
@@ -4010,6 +4012,7 @@
                 <span class="sep"></span>
                 <div class="traits" id="info-traits">
                     <div class="traits-track" id="traits-track"></div>
+                    <div id="legacy-item-note"></div>
                 </div>
                 <div class="accent-bar"></div>
             </div>
@@ -5585,7 +5588,8 @@
             if (visCount === 2) stack.classList.add('two-photos');
 
             // 특성 — checklist/note가 바뀔 때만 pill 배지 재구성
-            const traitsKey = (item.checklist || "") + "|" + (item.note || "");
+            const showItemNote = window.__creoBroadcastState?.page2NoteOn !== false;
+            const traitsKey = (item.checklist || "") + "|" + (item.note || "") + "|" + showItemNote;
             if (traitsKey !== window._lastTraitsKey) {
                 window._lastTraitsKey = traitsKey;
 
@@ -5628,11 +5632,9 @@
                     if (cl.activity) addPill(track, '활동성:' + (GRADE[cl.activity] || cl.activity), '');
                     if (cl.feed) addPill(track, '먹이:' + (GRADE[cl.feed] || cl.feed), '');
                     if (cl.structure) addPill(track, '체형:' + (GRADE[cl.structure] || cl.structure), '');
-                    if (isCleanNote(cl.memo)) addPill(track, cl.memo, '');
-                    if (isCleanNote(item.note) && item.note !== cl.memo) {
-                        addPill(track, item.note, '');
-                    }
                 }
+                document.getElementById('legacy-item-note').innerHTML = quizMeta.isQuiz || !showItemNote ? '' : CreoBroadcastItemNotes.markup(cl.memo,item.note);
+                CreoBroadcastItemNotes.hydrate(document);
 
                 // 호스트 모드 특성 트랙 (page 1 용) — 비워두기
                 const hcTrack = document.getElementById("hc-traits-track");

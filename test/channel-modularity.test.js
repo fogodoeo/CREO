@@ -234,6 +234,7 @@ test('standard channels use the maintained platform controller and renderer', ()
     assert.match(Profiles.broadcastTarget(standard, 3), /^auction-live\.html\?channel=plain-auction&page=3$/);
     assert.equal(Profiles.usesLegacyEngine(standard), false);
     assert.deepEqual(Profiles.SHARED_PAGE2_DEFAULTS, {
+        page2NoteOn: true,
         page2VendorTagOn: true,
         page2BiddersOn: true,
         page2BiddersOpacity: 94,
@@ -244,6 +245,7 @@ test('standard channels use the maintained platform controller and renderer', ()
     });
     for (const profile of ['standard', 'cdcup-tournament', 'crewart-academy', 'creyon-metal']) {
         const state = Profiles.defaultState(channel(`shared-${profile}`, { broadcastProfile: profile }));
+        assert.equal(state.page2NoteOn, true);
         assert.equal(state.page2VendorTagOn, true);
         assert.equal(state.page2BiddersOn, true);
         assert.equal(state.page2BiddersOpacity, 94);

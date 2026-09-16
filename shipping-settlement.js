@@ -61,4 +61,27 @@ function shippingFeeDetails(items, shipments, vendors) {
             amount:Math.max(0,Math.round(Number(s.cost)||0))};
     }).sort((a,b)=>a.lotNumber-b.lotNumber||String(a.id).localeCompare(String(b.id)))}));
 }
-module.exports = {summarizeShipping,summarizeCarriers,summarizeMissingDestinations,shippingFeeDetails};
+// Organizer-only projection: never expose bearer links, phone numbers, bids,
+// bank accounts, or the raw shipment record through this view.
+function organizerAuctionItems(items, shipments, vendors, buyerName=()=> '낙찰자') {
+    const vendorMap=new Map(vendors.map(v=>[v.id,v]));
+    const phone=value=>String(value||'').replace(/\D/g,'').replace(/^82(?=10)/,'0');
+    const itemMap=new Map(items.map(item=>[item.id,item]));
+    const latest=latestItemShipments(items,shipments.filter(s=>{
+        const winner=phone(itemMap.get(s.itemId)?.winnerPhone),recipient=phone(s.recipientPhone);
+        return !winner||!recipient||winner===recipient;
+    }));
+    return items.filter(item=>item.status==='sold').map(item=>{
+        const shipment=latest.get(item.id),payment=shipment?.paymentStatus||'pending';
+        const inactive=['cancelled','refunded'].includes(payment);
+        return {id:item.id,code:String(item.attributes?.displayNumber||item.name||'').trim(),
+            order:Number(item.lotNumber)||0,vendorId:item.vendorId||'',
+            vendorName:vendorMap.get(item.vendorId)?.name||item.vendorName||'업체 미지정',
+            buyerName:buyerName(item),amount:Math.max(0,Math.round(Number(item.soldPrice)||0)),
+            paymentStatus:inactive?payment:payment==='paid'?'paid':'pending',
+            method:shipment?.method==='pickup'?'pickup':shipment?.method==='delivery'?'delivery':'',
+            destination:String(shipment?.address||'').trim()||[shipment?.pargeRegion,shipment?.pargeShop].filter(Boolean).join(' · '),
+            shippingFee:shipment?.method==='delivery'?Math.max(0,Math.round(Number(shipment.cost)||0)):0};
+    }).sort((a,b)=>a.order-b.order||a.code.localeCompare(b.code,'ko',{numeric:true})||String(a.id).localeCompare(String(b.id)));
+}
+module.exports = {summarizeShipping,summarizeCarriers,summarizeMissingDestinations,shippingFeeDetails,organizerAuctionItems};

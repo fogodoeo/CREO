@@ -5,6 +5,7 @@ let channelId=organizerCode?'':new URLSearchParams(location.search).get('channel
 let route='channels/'+encodeURIComponent(channelId)+'/organizer-shipping';
 function organizerApi(path,options={}){return CreoPlatform.api(path,{cache:'no-store',...options,headers:{...options.headers,...(organizerCode?{'X-Creo-Organizer':organizerCode}:{})}})}
 let state, saving=false, dirty=false, bankRevision='', editingBank=false, receiptVendor=null, receiptAttempt=null, loadRevision=0, fresh=false, accessDenied=false;
+let organizerView='shipping';
 const money=n=>Number(n||0).toLocaleString('ko-KR')+'원';
 const date=s=>s?new Date(s).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
 const today=()=>new Date(Date.now()+9*3600000).toISOString().slice(0,10);
@@ -14,7 +15,9 @@ function clearAccess(){
  ++loadRevision;fresh=false;accessDenied=true;state=null;receiptVendor=null;receiptAttempt=null;dirty=false;editingBank=false;bankRevision='';
  if($('receipt-dialog').open)$('receipt-dialog').close();
  $('content').hidden=true;$('login').hidden=!!organizerCode;
- for(const id of ['vendors','carriers','receipt-detail-content'])$(id).replaceChildren();
+ for(const id of ['vendors','carriers','receipt-detail-content','auction-items','auction-vendor'])$(id).replaceChildren();
+ for(const id of ['auction-count','auction-total','auction-result-count'])$(id).textContent='';
+ $('auction-search').value='';setOrganizerView('shipping');
  for(const id of ['channel','total','all-total','received','overpaid-total','missing-total','bank-saved-owner','bank-saved-account','bank-saved-phone','receipt-balance','receipt-error'])$(id).textContent='';
  for(const id of [...fields,'password','receipt-amount','receipt-date','receipt-memo'])$(id).value='';
  $('receipt-title').textContent='입금 확인';$('receipt-reload').hidden=true;$('receipt-error').hidden=true;
@@ -52,6 +55,26 @@ function vendorStatus(v){return v.pendingReport?'확인 요청':v.overpaidAmount
 function vendorBalance(v){return v.overpaidAmount?money(v.overpaidAmount)+' 초과':money(v.remainingAmount);}
 function vendorLabel(v){const holder=String(v.vendorBankHolder||'').trim();return v.vendorName+(holder?'('+holder+')':'');}
 function vendorLabelHtml(v){const holder=String(v.vendorBankHolder||'').trim();return esc(v.vendorName)+(holder?'<wbr><span class="vendor-holder">('+esc(holder)+')</span>':'');}
+function setOrganizerView(view){
+ organizerView=view;
+ $('shipping-panel').hidden=view!=='shipping';$('auction-panel').hidden=view!=='auction';
+ $('show-shipping').setAttribute('aria-pressed',String(view==='shipping'));$('show-auction').setAttribute('aria-pressed',String(view==='auction'));
+ $('page-title').textContent=view==='auction'?'낙찰 내역':'배송비 정산';
+}
+function renderAuction(){
+ const all=state?.auctionItems||[],vendor=$('auction-vendor').value,query=$('auction-search').value.trim().toLocaleLowerCase('ko-KR');
+ const selected=all.filter(item=>!vendor||item.vendorId===vendor),active=selected.filter(item=>!['cancelled','refunded'].includes(item.paymentStatus));
+ $('auction-count').textContent=`${vendor?'선택 업체':'전체'} 낙찰 ${active.length}개체`;
+ $('auction-total').textContent=money(active.reduce((n,item)=>n+item.amount,0));
+ const visible=selected.filter(item=>!query||[item.code,item.buyerName,item.vendorName].join(' ').toLocaleLowerCase('ko-KR').includes(query));
+ $('auction-result-count').textContent=query?`검색 결과 ${visible.length}개체`:`${visible.length}개체`;
+ const opened=new Set([...$('auction-items').querySelectorAll('details[open]')].map(node=>node.dataset.item));
+ $('auction-items').innerHTML=visible.map(item=>{
+   const cancelled=['cancelled','refunded'].includes(item.paymentStatus),status={paid:'결제 확인',cancelled:'취소',refunded:'환불'}[item.paymentStatus]||'결제 대기';
+   const destination=item.destination||'미입력',method={pickup:'직수령',delivery:'배송'}[item.method]||'미선택';
+   return `<details class="organizer-auction-item" data-item="${esc(item.id)}"${opened.has(item.id)?' open':''}><summary><span class="auction-item-identity"><strong>${esc(item.code||'번호 미지정')}</strong><small>${esc(item.vendorName)}</small></span><span class="auction-item-result"><b>${money(item.amount)}</b><span>${cancelled?status:esc(item.buyerName)}</span></span></summary><dl class="auction-item-detail"><div><dt>낙찰자</dt><dd>${esc(item.buyerName)}</dd></div><div><dt>결제</dt><dd${item.paymentStatus==='paid'?' class="paid"':''}>${status}</dd></div><div><dt>수령 방식</dt><dd>${method}</dd></div><div><dt>수령지</dt><dd>${esc(destination)}</dd></div>${item.method==='delivery'?`<div><dt>배송비</dt><dd>${money(item.shippingFee)}</dd></div>`:''}</dl></details>`;
+ }).join('')||`<div class="settlement-empty">${all.length?'일치하는 내역이 없어요':'낙찰 내역이 없어요'}</div>`;
+}
 function render(){
  $('login').hidden=true;$('content').hidden=false;$('channel').textContent=state.channel.name;
  const sum=k=>state.vendors.reduce((n,v)=>n+(v[k]||0),0);
@@ -60,6 +83,11 @@ function render(){
  const missingCount=state.vendors.reduce((n,v)=>n+(v.missingDestinationItems||[]).length,0);
  $('missing-total').hidden=!missingCount;$('missing-total').textContent=`배송지 미입력 ${missingCount}개체 · 배송비 미확정`;
  renderBank();
+ const selectedVendor=$('auction-vendor').value;
+ const auctionVendors=[...new Map((state.auctionItems||[]).map(item=>[item.vendorId,item.vendorName])).entries()].sort((a,b)=>a[1].localeCompare(b[1],'ko'));
+ $('auction-vendor').innerHTML='<option value="">전체 업체</option>'+auctionVendors.map(([id,name])=>`<option value="${esc(id)}">${esc(name)}</option>`).join('');
+ $('auction-vendor').value=auctionVendors.some(([id])=>id===selectedVendor)?selectedVendor:'';
+ renderAuction();setOrganizerView(organizerView);
  const vendors=state.vendors.filter(v=>v.itemCount||v.history.length||v.missingDestinationItems?.length).sort((a,b)=>Number(!!b.pendingReport)-Number(!!a.pendingReport)||Number(b.remainingAmount>0)-Number(a.remainingAmount>0)||a.vendorName.localeCompare(b.vendorName,'ko'));
  $('vendors').innerHTML=vendors.map(v=>`<button type="button" class="organizer-vendor-row" data-vendor="${esc(v.vendorId)}" aria-label="${esc(vendorLabel(v))} ${vendorStatus(v)} ${v.overpaidAmount?'':'잔액 '}${vendorBalance(v)}"><span><span class="organizer-vendor-name">${vendorLabelHtml(v)}</span><small class="${v.pendingReport||v.overpaidAmount?'request':v.receivedAmount&&!v.remainingAmount?'done':''}">${vendorStatus(v)}</small>${v.missingDestinationItems?.length?`<small>배송지 미입력 ${v.missingDestinationItems.length}개체</small>`:''}</span><span class="vendor-balance ${!v.remainingAmount?'complete':''}">${vendorBalance(v)}</span><span class="arrow" aria-hidden="true">›</span></button>`).join('')||'<div class="settlement-empty">정산할 배송비가 없어요</div>';
  $('vendors').querySelectorAll('[data-vendor]').forEach(button=>button.onclick=()=>{if(!saving)openReceipt(state.vendors.find(v=>v.vendorId===button.dataset.vendor))});
@@ -125,6 +153,11 @@ $('receipt-dialog').onpointerdown=e=>{receiptBackdropPressed=isReceiptBackdrop(e
 $('receipt-dialog').onclick=e=>{const dismiss=receiptBackdropPressed&&isReceiptBackdrop(e);receiptBackdropPressed=false;if(dismiss&&!saving)$('receipt-dialog').close()};
 $('receipt-reload').onclick=async()=>{if(saving)return;const id=receiptVendor.vendorId;if(await load())openReceipt(state.vendors.find(v=>v.vendorId===id))};
 $('refresh').onclick=()=>{if(!saving)load()};
+$('refresh-auction').onclick=()=>{if(!saving)load()};
+$('show-shipping').onclick=()=>setOrganizerView('shipping');
+$('show-auction').onclick=()=>setOrganizerView('auction');
+$('auction-vendor').onchange=renderAuction;
+$('auction-search').oninput=renderAuction;
 $('retry').onclick=()=>{if(!saving)load()};
 load();
 setInterval(()=>{if(!accessDenied&&!document.hidden&&!saving&&!dirty&&!editingBank&&!$('receipt-dialog').open&&!document.querySelector('details[open]'))load()},15000);

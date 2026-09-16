@@ -1,0 +1,12 @@
+/* Keep the saved P2 anchor and width; the note owns the row below the identity. */
+body[data-page="2"] #stage .item-copy.is-inline-info.has-item-note{flex-wrap:wrap;align-content:flex-start;row-gap:10px;height:auto!important;min-height:var(--layout-height,108px)}
+body[data-page="2"] #stage .item-copy.is-inline-info.has-item-note .item-inline-traits{flex:1 1 0;min-width:0;margin-left:0}
+.broadcast-item-note{flex:0 0 100%;min-width:0;max-width:100%;overflow:hidden;color:var(--theme-ink,#fff);font-size:calc(var(--broadcast-body-size,48px) * var(--layout-font-scale,1));font-weight:650;line-height:1.25;text-align:left}
+.broadcast-item-note>span{display:block;width:max-content;min-width:100%;white-space:nowrap}
+.broadcast-item-note[data-overflow="1"]>span{animation:broadcast-note-pan var(--note-duration,12s) linear infinite alternate}
+@keyframes broadcast-note-pan{0%,15%{transform:translateX(0)}85%,100%{transform:translateX(var(--note-travel,0px))}}
+body[data-broadcast-theme="pixel"][data-page="2"] #stage .item-copy.is-inline-info.has-item-note{padding-bottom:12px;padding-top:8px}
+body[data-broadcast-theme="pixel"] .has-item-note .broadcast-item-note{margin-left:24px;flex-basis:calc(100% - 24px);max-width:calc(100% - 24px)}
+#info-traits:has(.broadcast-item-note){display:flex;flex-direction:column;align-items:stretch;gap:8px}
+#info-traits .broadcast-item-note{flex:auto;font-size:var(--note-font-size,28px)}
+@media(prefers-reduced-motion:reduce){.broadcast-item-note{overflow:visible}.broadcast-item-note>span{animation:none!important;transform:none!important;width:auto;white-space:normal;overflow-wrap:anywhere}}

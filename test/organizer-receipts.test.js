@@ -76,3 +76,17 @@ test('manual writes require organizer authorization for the same channel and rej
  for(const patch of [{amount:-1},{amount:0},{amount:1.5},{amount:'50000'},{paidOn:'2026-02-30'},{paidOn:'2099-01-01'},{memo:'x'.repeat(201)}])assert.equal((await f.call('POST',f.route+'/deposit',{...f.body,...patch},'',headers)).status,422,JSON.stringify(patch));
  assert.equal((await f.call('POST',f.route+'/deposit',f.body,'',headers)).status,200);assert.equal((await f.repo.getRowsByKeys(['creo_organizer_shipping_ledger::beta'])).length,0);
 });
+test('organizer auction results are channel-scoped, private, durable and read-only',async t=>{
+ const f=await fixture(t);
+ await f.repo.upsertRecord('alpha','item',{id:'i',vendorId:'v',name:'A01',status:'sold',winnerName:'예시 낙찰자',winnerPhone:'01011112222',soldPrice:100000});
+ await f.repo.upsertRecord('beta','item',{id:'i',vendorId:'v',name:'다른 경매 비공개',status:'sold',soldPrice:999999});
+ const link=(await f.call('POST','/api/platform/channels/alpha/organizer-link',{})).json(),code=new URL(link.url).pathname.split('/').at(-1),headers={'x-creo-organizer':code};
+ assert.equal((await f.call('GET',f.route,null,'')).status,401);
+ assert.equal((await f.call('GET',f.route.replace('alpha','beta'),null,'',headers)).status,401);
+ const before=await f.repo.getRecord('alpha','shipment','s');
+ const result=(await f.call('GET',f.route,null,'',headers)).json().auctionItems;
+ assert.equal(result.length,1);assert.equal(result[0].code,'A01');assert.equal(result[0].buyerName,'예시 낙찰자');assert.equal(result[0].paymentStatus,'pending');assert.equal(result[0].amount,100000);
+ assert.doesNotMatch(JSON.stringify(result),/01011112222|다른 경매 비공개|winnerPhone|bid_log|접속코드/);
+ await f.restart();assert.deepEqual((await f.call('GET',f.route,null,'',headers)).json().auctionItems,result);
+ assert.deepEqual(await f.repo.getRecord('alpha','shipment','s'),before);assert.equal((await f.repo.listRecords('alpha','notification')).length,0);
+});

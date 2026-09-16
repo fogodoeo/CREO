@@ -255,6 +255,7 @@ function sanitizeBroadcastState(input = {}) {
         page1BannerPosition: position(input.page1BannerPosition),
         page1TickerPosition: ['auto', 'top', 'bottom'].includes(input.page1TickerPosition) ? input.page1TickerPosition : 'auto',
         page2InfoOn: booleanValue(input.page2InfoOn),
+        page2NoteOn: booleanValue(input.page2NoteOn),
         page2ProgressOn: booleanValue(input.page2ProgressOn),
         page2VendorTagOn: booleanValue(input.page2VendorTagOn),
         page2BiddersOn: booleanValue(input.page2BiddersOn),
@@ -3623,6 +3624,7 @@ function createPlatformApi({
                     const data = await workspace(channelId);
                     const current = await organizerShippingSettlement(channelId,data.items,data.shipments,data.vendors);
                     current.carriers = require('./shipping-settlement').summarizeCarriers(data.items,data.shipments,data.vendors);
+                    current.auctionItems = require('./shipping-settlement').organizerAuctionItems(data.items.map(item=>({...item,winnerPhone:storedWinnerPhone(item)})),data.shipments,data.vendors,buyerDisplayName);
                     const missing = require('./shipping-settlement').summarizeMissingDestinations(data.items,data.shipments,data.vendors);
                     const feeDetails = require('./shipping-settlement').shippingFeeDetails(data.items,data.shipments,data.vendors);
                     current.vendors = current.vendors.map(v=>({...v,vendorBankHolder:cleanText(data.vendors.find(row=>row.id===v.vendorId)?.bankHolder,60),missingDestinationItems:missing.find(row=>row.vendorId===v.vendorId)?.missingDestinationItems||[],shippingFeeItems:feeDetails.find(row=>row.vendorId===v.vendorId)?.shippingFeeItems||[]}));
