@@ -1339,8 +1339,22 @@ function createPlatformApi({
         return Checkout.newestShipment(context.shipments.filter((shipment) => itemIds.has(shipment.itemId)));
     }
 
-    function shipmentSelection(shipment) {
-        if (!shipment?.destinationType) return null;
+    function shipmentSelection(shipment, channel, rates=[]) {
+        if (!shipment) return null;
+        if (!shipment.destinationType) {
+            if (shipment.method === 'pickup') {
+                const pickup=pickupDestinations(channel).find(row=>row.label===shipment.address);
+                return pickup?{destinationType:'pickup',destinationId:pickup.id,pargeRegion:'',pargeShop:''}:null;
+            }
+            const id=({'파르게':'parge','도도시':'dodosi'})[shipment.carrier];
+            if (!id || !(channel.shippingDefaults?.enabledCarriers||['parge']).includes(id)) return null;
+            const compact=value=>String(value||'').replace(/[\s()·]/g,'');
+            const address=compact(shipment.address),matches=[];
+            for (const group of rates) for (const shop of group.shops) {
+                if(address && [shop.name,group.region+shop.name].some(value=>compact(value)===address)) matches.push({region:group.region,shop:shop.name});
+            }
+            return {destinationType:id,destinationId:id,pargeRegion:matches.length===1?matches[0].region:'',pargeShop:matches.length===1?matches[0].shop:''};
+        }
         return {
             destinationType: shipment.destinationType,
             destinationId: shipment.destinationId || '',
@@ -1351,8 +1365,8 @@ function createPlatformApi({
 
     async function checkoutSnapshot(context) {
         const latest = latestBundleShipment(context);
-        const rates = await pargeRates(latest?.destinationType);
-        const selection = shipmentSelection(latest);
+        const rates = await pargeRates(latest?.destinationType || ({'파르게':'parge','도도시':'dodosi'})[latest?.carrier]);
+        const selection = shipmentSelection(latest,context.channel,rates);
         const shipping = Checkout.allocateShipping(context.bundleItems, selection, context.channel, rates);
         // Saved allocations are the quoted shipping price; settings changes do not reprice them.
         for (const row of context.shipments) {
@@ -1584,6 +1598,50 @@ function createPlatformApi({
     function buyerDestinationKey(context) {
         return `creo_buyer_destination::${sessionKey(context.anchorPhone)}`;
     }
+    function reusableDestination(saved, channelId, fixedDestinations, carriers) {
+        if (!saved || ['cancelled','canceled','refunded'].includes(saved.status) || ['cancelled','refunded'].includes(saved.paymentStatus)) return null;
+        if (saved.destinationType === 'pickup') {
+            const pickup = saved.sourceChannelId === channelId && fixedDestinations.find(d => d.id === saved.destinationId && d.label === saved.address);
+            return pickup ? {destinationId:pickup.id, destinationType:'pickup', label:pickup.label, pargeRegion:'', pargeShop:''} : null;
+        }
+        const carrier = carriers[saved.destinationType];
+        const rate = carrier?.regions.find(r => r.region === saved.pargeRegion)?.shops.find(s => s.name === saved.pargeShop);
+        return rate ? {destinationId:saved.destinationType, destinationType:saved.destinationType, label:`${saved.destinationType === 'parge' ? '파르게' : '도도시'} · ${saved.pargeRegion} · ${saved.pargeShop}`, pargeRegion:saved.pargeRegion, pargeShop:saved.pargeShop} : null;
+    }
+    async function shippingSuggestions(channel, catalog, data) {
+        const latestByItem = new Map();
+        for (const row of data.shipments) {
+            const prior = latestByItem.get(row.itemId);
+            if (!prior || String(row.updatedAt || '') >= String(prior.updatedAt || '')) latestByItem.set(row.itemId,row);
+        }
+        const pending = data.items.filter(item => {
+            const shipment = latestByItem.get(item.id);
+            return item.status === 'sold' && storedWinnerPhone(item) && !shipment?.buyerSubmittedAt && !shipment?.address;
+        });
+        if (!pending.length) return [];
+        const phones = new Set(pending.map(storedWinnerPhone)), history = new Map();
+        const keys = [...phones].map(phone=>buyerDestinationKey({anchorPhone:phone}));
+        const stored = new Map((await repository.getRowsByKeys(keys)).map(row=>[row.key,row.value]));
+        for (const other of catalog.channels.filter(c=>c.dataAdapter==='platform')) {
+            const rows = other.id===channel.id ? data.shipments : await repository.listRecords(other.id,'shipment');
+            for (const row of rows) {
+                const phone=normalizePhone(row.recipientPhone);
+                if (!phones.has(phone) || !row.buyerSubmittedAt || ['cancelled','canceled','refunded'].includes(row.status) || ['cancelled','refunded'].includes(row.paymentStatus)) continue;
+                const prior=history.get(phone);
+                if (!prior || String(row.buyerSubmittedAt)>String(prior.buyerSubmittedAt)) history.set(phone,{...row,sourceChannelId:other.id});
+            }
+        }
+        const carriers={};
+        for (const id of channel.shippingDefaults?.enabledCarriers || ['parge']) carriers[id]={regions:await pargeRates(id)};
+        const fixed=pickupDestinations(channel), suggestions=new Map();
+        for (const phone of phones) {
+            let saved;try {saved=JSON.parse(stored.get(buyerDestinationKey({anchorPhone:phone}))||'null')}catch {}
+            saved ||= history.get(phone);
+            const destination=reusableDestination(saved,channel.id,fixed,carriers);
+            if(destination) suggestions.set(phone,{...destination,recordedAt:saved.buyerSubmittedAt||'',estimated:true});
+        }
+        return pending.flatMap(item=>suggestions.has(storedWinnerPhone(item))?[{itemId:item.id,...suggestions.get(storedWinnerPhone(item))}]:[]);
+    }
     async function savedBuyerDestination(context, fixedDestinations, carriers) {
         // Only called after a personal checkout credential resolves to this phone.
         // Reuse destination details, never another auction's prices or payment state.
@@ -1602,14 +1660,7 @@ function createPlatformApi({
                 }
                 saved = candidates.sort((a,b) => String(b.buyerSubmittedAt).localeCompare(String(a.buyerSubmittedAt)))[0];
             }
-            if (!saved) return null;
-            if (saved.destinationType === 'pickup') {
-                const pickup = saved.sourceChannelId === context.channel.id && fixedDestinations.find(d => d.id === saved.destinationId && d.label === saved.address);
-                return pickup ? {destinationId:pickup.id, destinationType:'pickup', label:pickup.label, pargeRegion:'', pargeShop:''} : null;
-            }
-            const carrier = carriers[saved.destinationType];
-            const rate = carrier?.regions.find(r => r.region === saved.pargeRegion)?.shops.find(s => s.name === saved.pargeShop);
-            return rate ? {destinationId:saved.destinationType, destinationType:saved.destinationType, label:`${saved.destinationType === 'parge' ? '파르게' : '도도시'} · ${saved.pargeRegion} · ${saved.pargeShop}`, pargeRegion:saved.pargeRegion, pargeShop:saved.pargeShop} : null;
+            return reusableDestination(saved,context.channel.id,fixedDestinations,carriers);
         } catch (error) {
             logger.warn?.('[checkout] saved destination unavailable', error.message);
             return null;
@@ -3412,11 +3463,36 @@ function createPlatformApi({
                 return true;
             }
 
+            if (segments.length === 1 && segments[0] === 'shipping-rates' && ['GET','PUT'].includes(method)) {
+                if (method==='PUT' && !await requireAdmin(req,res)) return true;
+                const body=method==='PUT'?await readJson(req):Object.fromEntries(url.searchParams);
+                const company=cleanText(body.company),key=Object.hasOwn(SHIPPING_RATE_CONFIG_KEYS,company)?SHIPPING_RATE_CONFIG_KEYS[company]:null;
+                if(!key)throw buyerInputError('지원하지 않는 배송사입니다.');
+                let payload;
+                if(method==='PUT'){
+                    const source=body.payload||{},cleanRate=row=>{
+                        const shop=cleanText(row.shop,160),cost=Number(row.cost??row.price);
+                        if(!shop||!Number.isSafeInteger(cost)||cost<0||cost>1000000)throw buyerInputError('거점명과 기본요금을 확인해 주세요.');
+                        return {shop,cost,day:cleanText(row.day||row.arrival_day,80)};
+                    };
+                    payload={updated:new Date().toLocaleString('ko-KR',{timeZone:'Asia/Seoul'}),source:'excel'};
+                    if(company==='도도시')payload.items=(Array.isArray(source.items)?source.items:[]).map(row=>{const rate=cleanRate(row);return {shop:rate.shop,price:rate.cost,day:rate.day,route:cleanText(row.route,80),region:cleanText(row.region,80),sub:cleanText(row.sub,80),idx:cleanText(row.idx,30)};});
+                    else payload.data=Object.fromEntries(Object.entries(source.data||{}).map(([group,rows])=>[cleanText(group,80),Array.isArray(rows)?rows.map(cleanRate):[]]));
+                    const count=payload.items?.length??Object.values(payload.data||{}).reduce((n,rows)=>n+rows.length,0);
+                    if(!count||count>10000)throw buyerInputError('배송표 행 수를 확인해 주세요.');
+                    await repository.upsertRows([{key,value:JSON.stringify(payload)},{key:RUNTIME_CONFIG_VERSION_KEY,value:`${Date.now().toString(36)}-${crypto.randomBytes(4).toString('hex')}`}]);
+                }else{
+                    const rows=await repository.getRowsByKeys([key]);
+                    payload=rows[0]?.value?JSON.parse(rows[0].value):require('./public/'+({'도도시':'dodosi','파르게':'parge','랩팡':'wrapang'})[company]+'_data.json');
+                }
+                replyJson(res,200,{company,payload,...(method==='PUT'?{persisted:true}:{})});return true;
+            }
+
             if (segments.length === 2 && segments[0] === 'shipping-rates' && segments[1] === 'refresh' && method === 'POST') {
                 if (!await requireAdmin(req, res)) return true;
                 const body = await readJson(req);
                 const company = cleanText(body.company);
-                const configKey = SHIPPING_RATE_CONFIG_KEYS[company];
+                const configKey = Object.hasOwn(SHIPPING_RATE_CONFIG_KEYS,company) ? SHIPPING_RATE_CONFIG_KEYS[company] : null;
                 if (!configKey) {
                     replyJson(res, 422, { error: '지원하지 않는 배송사입니다.' });
                     return true;
@@ -3726,6 +3802,13 @@ function createPlatformApi({
             if (segments.length === 3 && segments[2] === 'workspace' && method === 'GET') {
                 if (!await requireAdmin(req, res)) return true;
                 replyJson(res, 200, { channel, ...(await workspace(channelId)) });
+                return true;
+            }
+
+            if (segments.length === 3 && segments[2] === 'shipping-suggestions' && method === 'GET') {
+                if (!await requireAdmin(req,res)) return true;
+                const data=await workspace(channelId);
+                replyJson(res,200,{channelId,suggestions:await shippingSuggestions(channel,catalog,data)});
                 return true;
             }
 

@@ -134,6 +134,7 @@
             var hasShipping = bundleItems.some(function (item) { return Boolean(text(item.shipping_type) || text(item.shipping_region)); });
             var inputState = submittedAt ? 'buyer_submitted' : hasShipping ? 'operator_entered' : 'waiting';
             var destinations = Array.from(new Set(bundleItems.map(shippingDestination).filter(Boolean)));
+            var estimates = inputState === 'waiting' ? Array.from(new Set(bundleItems.map(item=>text(item._shippingSuggestion?.label)).filter(Boolean))) : [];
             var methods = Array.from(new Set(bundleItems.map(function (item) { return text(item.payment_method); }).filter(Boolean)));
             var state = paymentState(bundleItems, Boolean(submittedAt) || hasShipping);
             rows.push({
@@ -150,6 +151,7 @@
                 requestedAmount: Math.max.apply(null, [0].concat(bundleItems.map(function (item) { return number(item.payment_requested_amount); }))),
                 confirmedAmount: Math.max.apply(null, [0].concat(bundleItems.map(function (item) { return number(item.payment_confirmed_amount); }))),
                 destination: destinations.join(' / '),
+                estimatedDestination: estimates.length === 1 ? estimates[0] : '',
                 destinationMismatch: destinations.length > 1,
                 inputState: inputState,
                 inputLabel: inputState === 'buyer_submitted' ? '입력 완료' : inputState === 'operator_entered' ? '운영자 입력' : '미입력',
@@ -201,7 +203,7 @@
             return [
                 row.company, row.buyerName, formatPhone(row.phone), row.itemSummary, row.itemCount, row.combined ? '합배송' : '',
                 row.soldAmountWon, row.shippingCost, row.requestedAmount, row.confirmedAmount,
-                row.inputLabel, row.paymentLabel, row.paymentMethodLabel, row.destination, formatKoreanDateTime(row.submittedAt)
+                row.inputLabel, row.paymentLabel, row.paymentMethodLabel, row.destination || (row.estimatedDestination ? '예상 · '+row.estimatedDestination : ''), formatKoreanDateTime(row.submittedAt)
             ];
         }));
     }

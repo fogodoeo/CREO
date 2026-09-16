@@ -1883,30 +1883,27 @@ const SHIPPING_RATE_CONFIG_KEYS = Object.freeze({
 async function _getShippingRateOverride(company) {
     const key = SHIPPING_RATE_CONFIG_KEYS[company];
     if (!key) return null;
-    const rows = await _sbFetch(`config?key=eq.${encodeURIComponent(key)}&select=value&limit=1`);
-    if (!rows || !rows[0] || !rows[0].value) return null;
-    try {
-        const parsed = JSON.parse(rows[0].value);
-        return parsed && typeof parsed === 'object' ? parsed : null;
-    } catch (error) {
-        console.warn(`[SB] ${company} 배송표 override parse failed:`, error);
-        return null;
-    }
+    const response=await fetch('/api/platform/shipping-rates?company='+encodeURIComponent(company),{cache:'no-store'});
+    if(!response.ok)throw new Error('공용 배송표 조회 실패 ('+response.status+')');
+    const result=await response.json();
+    if(result.company!==company||!result.payload)throw new Error('공용 배송표 응답을 확인해 주세요.');
+    return result.payload;
 }
 
 async function saveShippingRateData(company, payload) {
     const key = SHIPPING_RATE_CONFIG_KEYS[company];
     if (!key) throw new Error('지원하지 않는 배송사입니다.');
     const data = payload && typeof payload === 'object' ? payload : {};
-    await updateConfigs({ [key]: JSON.stringify(data) });
-    return { success: true, updated: data.updated || '' };
+    const result=await CreoPlatform.api('shipping-rates',{method:'PUT',body:JSON.stringify({company,payload:data})});
+    if(!result.persisted)throw new Error('배송표 저장 확인값을 받지 못했습니다.');
+    return { success: true, updated: result.payload.updated || '' };
 }
 
 async function getDodosiData() {
     try {
         const override = await _getShippingRateOverride('도도시');
         if (override && Array.isArray(override.items)) {
-            return { success: true, data: override.items, updated: override.updated || '', source: 'excel' };
+            return { success: true, data: override.items, updated: override.updated || '', source: override.source || '공용 데이터' };
         }
         const resp = await fetch('dodosi_data.json');
         if (!resp.ok) throw new Error('dodosi_data.json 로드 실패');
@@ -1925,7 +1922,7 @@ async function getPargeData() {
     try {
         const override = await _getShippingRateOverride('파르게');
         if (override && override.data && typeof override.data === 'object') {
-            return { success: true, data: override.data, updated: override.updated || '', source: 'excel' };
+            return { success: true, data: override.data, updated: override.updated || '', source: override.source || '공용 데이터' };
         }
         const resp = await fetch('parge_data.json');
         if (!resp.ok) throw new Error('parge_data.json 로드 실패');
@@ -1944,7 +1941,7 @@ async function getWrapangData() {
     try {
         const override = await _getShippingRateOverride('랩팡');
         if (override && override.data && typeof override.data === 'object') {
-            return { success: true, data: override.data, updated: override.updated || '', source: 'excel' };
+            return { success: true, data: override.data, updated: override.updated || '', source: override.source || '공용 데이터' };
         }
         const resp = await fetch('wrapang_data.json');
         if (!resp.ok) throw new Error('wrapang_data.json 로드 실패');

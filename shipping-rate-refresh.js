@@ -95,8 +95,8 @@ function parseDodosiDestination(raw, route, idx) {
 async function refreshDodosiRoute([idx, route]) {
     const product = await imwebProduct('https://www.dodosi.co.kr', idx);
     const first = optionCalls(await product.load());
-    const origin = first.find((row) => row.value_name.includes('렙타일아트'));
-    if (!origin) throw new Error(`${route} 노선에서 대구 출발지를 찾지 못했습니다.`);
+    const origin = first.find((row) => row.value_name.includes('크레용(대구)'));
+    if (!origin) throw new Error(`${route} 노선에서 크레용 대구 출발지를 찾지 못했습니다.`);
     const second = optionCalls(await product.load([origin]));
     const one = second.find((row) => row.value_name.replace(/\s/g, '') === '1마리');
     if (!one) throw new Error(`${route} 노선의 1마리 옵션을 찾지 못했습니다.`);

@@ -1071,8 +1071,8 @@
         function populateCalculatedShipping(items) {
             var winnerGroups = {};
             items.forEach(function(it) {
-                var w = parseWinner(it.winner);
-                var key = (w.phone || w.name || '').replace(/[^0-9a-zA-Z가-힣]/g, '');
+                var w = CreoPrintShippingSummary.winnerIdentity(it);
+                var key = /^01[016789]\d{7,8}$/.test(w.phone) ? w.phone : ('item:' + (it._platformItemId || it.row || items.indexOf(it)));
                 if (!key) return;
                 if (!winnerGroups[key]) winnerGroups[key] = [];
                 winnerGroups[key].push(it);
@@ -1183,7 +1183,7 @@
             var carrier = String(it.shipping_company || '').trim();
             var location = String(it.shipping_region || '').replace(/\s*\[(?:메모|요청):[^\]]+\]\s*$/, '').trim();
             if (method === '직접수령') return location ? '직접수령 · ' + location : '직접수령';
-            if (method !== '배송') return '-';
+            if (method !== '배송') return it._shippingSuggestion?.label ? '예상 · ' + it._shippingSuggestion.label : '-';
             return [carrier, location].filter(Boolean).join(' · ') || '배송';
         }
 
@@ -1208,7 +1208,7 @@
             window._shippingLabelPreviewIndex = null;
             var list = document.getElementById('label-item-list');
             if (!eligible.length) {
-                list.innerHTML = '<div class="label-empty">연락처와 수령 거점이 저장된 낙찰 건이 없습니다.</div>';
+                list.innerHTML = '<div class="label-empty">연락처와 수령 거점이 저장된 낙찰 건이 없습니다.</div>' + estimatedShippingRows(items);
                 updateShippingLabelSelection();
                 return;
             }
@@ -1225,8 +1225,21 @@
                     + '<span class="label-payment' + (paid ? ' is-paid' : '') + '">' + (paid ? '결제 완료' : '결제 대기') + '</span>'
                     + '<span class="label-bundle-info">' + shippingLabelBundleHtml(it) + '</span>'
                     + '</label>';
-            }).join('');
+            }).join('') + estimatedShippingRows(items);
             updateShippingLabelSelection();
+        }
+
+        function estimatedShippingRows(items) {
+            return (items || []).filter(it=>CreoAuctionContract.isSoldStatus(it.status) && !shippingLabelDestination(it) && it._shippingSuggestion?.label).map(it=>{
+                var winner=CreoPrintShippingSummary.winnerIdentity(it);
+                winner.name=parseWinner(it.winner).name||winner.name;
+                return '<div class="label-item" style="background:#f8fafc">'
+                    + '<span aria-hidden="true">—</span><strong>' + escapePrintHtml(it.name || auctionNumber(it)) + '</strong>'
+                    + '<span class="label-buyer">' + escapePrintHtml(winner.name || '낙찰자') + '</span>'
+                    + '<span class="label-phone">' + escapePrintHtml(fmtPhone(winner.phone)) + '</span>'
+                    + '<span class="label-destination">예상 · ' + escapePrintHtml(it._shippingSuggestion.label) + '</span>'
+                    + '<span class="label-payment">배송 미입력</span><span class="label-bundle-info">구매자 확인 전 · 출력 제외</span></div>';
+            }).join('');
         }
 
         function shippingLabelBundleHtml(it) {
@@ -1482,7 +1495,7 @@
                     return '<span class="settlement-item">' + escapePrintHtml(item.name || auctionNumber(item)) + '</span>';
                 }).join('');
                 var inputClass = row.inputState === 'waiting' ? '' : 'input-done';
-                var destination = row.destination || '배송지 입력 대기';
+                var destination = row.destination || (row.estimatedDestination ? '예상 · '+row.estimatedDestination : '배송지 입력 대기');
                 var shippingCost = row.inputState === 'waiting' ? '-' : fmtWon(row.shippingCost);
                 var paymentDetail = [];
                 if (row.paymentMethod) paymentDetail.push(row.paymentMethodLabel);
@@ -1791,7 +1804,19 @@
             var operation = await printOperation.ready();
             var channel = operation.channel;
             syncPrintChannel(channel);
-            return printOperation.loadShippingItems();
+            var items=await printOperation.loadShippingItems();
+            if(channel.dataAdapter==='platform'){
+                try{
+                    var result=await CreoPlatform.api('channels/'+encodeURIComponent(channel.id)+'/shipping-suggestions');
+                    if(result.channelId!==channel.id)throw new Error('배송 이력 채널이 일치하지 않습니다.');
+                    var suggestions=new Map((result.suggestions||[]).map(row=>[row.itemId,row]));
+                    items=items.map(item=>Object.assign({},item,{_shippingSuggestion:suggestions.get(item._platformItemId)||null}));
+                }catch(error){
+                    if(error.status===401)throw error;
+                    console.warn('이전 배송지 조회 실패:',error.message);
+                }
+            }
+            return items;
         }
 
         async function initializePrint() {

@@ -16,6 +16,55 @@ function sold(overrides = {}) {
     };
 }
 
+test('estimated destination stays unsubmitted, unpriced and explicit in exported rows',()=>{
+ const item=sold({shipping_type:'',shipping_company:'',shipping_region:'',shipping_cost:0,buyer_submitted_at:'',payment_status:'',payment_method:'',payment_requested_amount:0,_shippingSuggestion:{label:'파르게 · 서울 · 수령점',estimated:true}});
+ const before=structuredClone(item),row=Summary.groupBundles([item])[0];
+ assert.equal(row.destination,'');assert.equal(row.estimatedDestination,'파르게 · 서울 · 수령점');assert.equal(row.inputState,'waiting');assert.equal(row.paymentState,'awaiting_information');assert.equal(row.shippingCost,0);assert.equal(row.requestedAmount,0);
+ assert.match(Summary.sheetRows([row])[1][13],/^예상 · /);assert.deepEqual(item,before);
+ assert.equal(Summary.groupBundles([sold({_shippingSuggestion:item._shippingSuggestion})])[0].estimatedDestination,'');
+});
+
+test('estimated destination cannot enter the label print selection',()=>{
+ const fs=require('fs'),vm=require('vm'),source=fs.readFileSync(require.resolve('../public/print.html'),'utf8');
+ const list={},context=vm.createContext({window:{},document:{getElementById:()=>list},CreoAuctionContract:{isSoldStatus:()=>true},CreoPrintShippingSummary:Summary,parseWinner:()=>({name:'예시',phone:'01012345678'}),fmtPhone:String,escapePrintHtml:String,auctionNumber:()=> 'A01',updateShippingLabelSelection(){}});
+ for(const name of ['shippingLabelDestination','renderShippingLabels','estimatedShippingRows']){
+  const begin=source.indexOf('        function '+name+'('),end=source.indexOf('\n        function ',begin+1);vm.runInContext(source.slice(begin,end),context);
+ }
+ const item={name:'A01',status:'sold',_shippingSuggestion:{label:'파르게 · 서울 · 수령점',estimated:true}};
+ context.renderShippingLabels([item]);assert.equal(context.window._shippingLabelItems.length,0);assert.match(list.innerHTML,/예상 · 파르게/);assert.doesNotMatch(list.innerHTML,/shipping-label-check/);
+});
+
+test('print shipping propagation requires an exact full phone, never the name or suffix',()=>{
+ const fs=require('fs'),vm=require('vm'),source=fs.readFileSync(require.resolve('../public/print.html'),'utf8');
+ const context=vm.createContext({CreoPrintShippingSummary:Summary,parseSavedShippingRegion:()=>({region:'',hub:''})});
+ const begin=source.indexOf('        function populateCalculatedShipping('),end=source.indexOf('\n        function ',begin+1);vm.runInContext(source.slice(begin,end),context);
+ const items=[
+  {winner_name:'동명이인',winner_phone:'01012345678',shipping_type:'직접수령',shipping_region:'확정 행사장'},
+  {winner_name:'다른 표시명',winner_phone:'010-1234-5678'},
+  {winner_name:'동명이인',winner_phone:'01099995678'},
+  {winner_name:'동명이인'},
+  {winner_name:'번호미상',shipping_type:'직접수령',shipping_region:'다른 행사장'},
+  {winner_name:'번호미상'},
+  {winner_name:'부분번호',winner_phone:'12345678',shipping_type:'직접수령',shipping_region:'또 다른 행사장'},
+  {winner_name:'부분번호',winner_phone:'12345678'}
+ ];
+ context.populateCalculatedShipping(items);
+ assert.equal(items[1].shipping_region,'확정 행사장');
+ for(const i of [2,3,5,7]){assert.equal(items[i].shipping_region,undefined);assert.equal(items[i].shipping_type,undefined);}
+});
+
+test('print loads channel-scoped estimates without mutating canonical items and survives history failure',async()=>{
+ const fs=require('fs'),vm=require('vm'),source=fs.readFileSync(require.resolve('../public/print.html'),'utf8');
+ const items=[{_platformItemId:'a',status:'sold',winner_phone:'01012345678'}];
+ let response={channelId:'alpha',suggestions:[{itemId:'a',label:'파르게 · 예시점',estimated:true}]},failure;
+ const context=vm.createContext({console:{warn(){}},resolvePrintChannelId:async()=> 'alpha',syncPrintChannel(){},printOperation:{ready:async()=>({channel:{id:'alpha',dataAdapter:'platform'}}),loadShippingItems:async()=>items},CreoPlatform:{api:async path=>{assert.equal(path,'channels/alpha/shipping-suggestions');if(failure)throw failure;return response}}});
+ const begin=source.indexOf('        async function loadPrintData('),end=source.indexOf('\n        async function ',begin+1);vm.runInContext(source.slice(begin,end),context);
+ const loaded=await context.loadPrintData();assert.equal(loaded[0]._shippingSuggestion.label,'파르게 · 예시점');assert.equal(items[0]._shippingSuggestion,undefined);
+ response={...response,channelId:'beta'};assert.equal((await context.loadPrintData())[0]._shippingSuggestion,undefined);
+ failure=Object.assign(new Error('temporary outage'),{status:503});assert.equal(await context.loadPrintData(),items);
+ failure=Object.assign(new Error('authentication expired'),{status:401});await assert.rejects(context.loadPrintData(),error=>error.status===401);
+});
+
 test('print settlement groups one buyer and vendor into one combined-shipping row', () => {
     const rows = Summary.groupBundles([
         sold({ name: 'A01', sold_amount_won: 100000, shipping_cost: 26000, payment_status: 'paid', payment_confirmed_amount: 326000 }),

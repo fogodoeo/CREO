@@ -992,6 +992,21 @@ test('shipping rate refresh persists the collected public data before replying',
     assert.equal(response.json().persisted, true);
     assert.deepEqual(JSON.parse(repository.records.get('config:shipping_rate_parge').value), payload);
     assert.ok(repository.records.get('config:runtime_config_version').value);
+    const read=await call(api,'GET','/api/platform/shipping-rates?company='+encodeURIComponent('파르게'),null,'');
+    assert.equal(read.status,200);assert.deepEqual(read.json().payload,payload);
+});
+
+test('shared shipping data read and workbook writes use one store and preserve data on failures',async()=>{
+ const repository=new MemoryRepository();let api=createPlatformApi({repository,logger:{error(){}},refreshShippingRateFn:async()=>{throw Error('provider unavailable')}});
+ const path='/api/platform/shipping-rates',query=path+'?company='+encodeURIComponent('파르게');
+ const payload={data:{서울:[{shop:'신규 지점',cost:12000,day:'수',privateField:'ignore'}]},privateField:'ignore'};
+ assert.equal((await call(api,'PUT',path,{company:'파르게',payload},'')).status,401);
+ for(const r of await Promise.all([call(api,'PUT',path,{company:'파르게',payload}),call(api,'PUT',path,{company:'파르게',payload})]))assert.equal(r.status,200);
+ const before=(await call(api,'GET',query,null,'')).json();assert.equal(before.payload.data.서울[0].cost,12000);assert.doesNotMatch(JSON.stringify(before),/privateField|ignore/);
+ assert.equal((await call(api,'PUT',path,{company:'파르게',payload:{data:{서울:[{shop:'오류',cost:-1}]}}})).status,422);
+ assert.equal((await call(api,'POST',path+'/refresh',{company:'파르게',force:true})).status,500);
+ api=createPlatformApi({repository});assert.deepEqual((await call(api,'GET',query,null,'')).json(),before);
+ assert.equal((await call(api,'GET',path+'?company=invalid',null,'')).status,422);
 });
 
 test('buyer shipping link isolates one buyer, saves idempotently, confirms payment, and detects later combined wins', async () => {

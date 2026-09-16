@@ -35,6 +35,53 @@ async function fixture(t,{initial=true}={}){
  return {call,code,selection,get,change,buyerCode,vendor,get repo(){return repo},async restart(){repo.close();repo=new SQLitePlatformRepository(options);start()}};
 }
 
+test('operator carrier and receiving shop prefill the buyer page without marking a submission',async t=>{
+ const f=await fixture(t,{initial:false});
+ const path='/api/platform/buyer-shipping?code='+f.code;
+ assert.equal((await f.get()).json().selection,null);
+ for(const address of ['', '서울 (수령점)', '수령점']){
+  await f.repo.upsertRecord('alpha','shipment',{id:'operator',itemId:'item',vendorId:'vendor',recipientPhone:'01012345678',method:'delivery',carrier:'파르게',address,cost:10000});
+  const before=await f.repo.listRecords('alpha','shipment');
+  for(const r of await Promise.all([f.call('GET',path),f.call('GET',path)])){
+   assert.equal(r.status,200);const p=r.json();assert.equal(p.selection.destinationId,'parge');assert.equal(p.selection.pargeShop,address?'수령점':'');assert.equal(p.submittedAt,'');
+  }
+  assert.deepEqual(await f.repo.listRecords('alpha','shipment'),before);
+ }
+ await f.restart();assert.equal((await f.get()).json().selection.pargeShop,'수령점');
+ assert.equal((await f.get(await f.buyerCode('beta'))).json().selection,null);
+ assert.equal((await f.repo.listRecords('alpha','notification')).length,0);
+});
+
+test('shipping history estimates are admin-only, phone-exact, read-only and survive restart',async t=>{
+ const f=await fixture(t,{initial:false});
+ await f.repo.upsertRecord('alpha','shipment',{id:'previous',itemId:'old',recipientPhone:'01012345678',buyerSubmittedAt:'2026-09-01',destinationType:'parge',destinationId:'parge',pargeRegion:'서울',pargeShop:'수령점',status:'complete',cost:99999,cardPaymentUrl:'private-link',bankSnapshot:{bankAccount:'private-account'}});
+ await f.repo.upsertRecord('beta','item',{id:'different',name:'동명이인',status:'sold',winnerName:'구매자',winnerPhone:'01099995678'});
+ await f.repo.upsertRecord('beta','item',{id:'unidentified',name:'미확인',status:'sold',winnerName:'구매자 5678'});
+ const path='/api/platform/channels/beta/shipping-suggestions';
+ assert.equal((await f.call('GET',path)).status,401);
+ const before=await f.repo.listRecords('beta','item');
+ for(const r of await Promise.all([f.call('GET',path,null,'secret'),f.call('GET',path,null,'secret')])){
+  assert.equal(r.status,200,r.body);const p=r.json();assert.equal(p.channelId,'beta');assert.equal(p.suggestions.length,1);assert.equal(p.suggestions[0].itemId,'item');assert.equal(p.suggestions[0].estimated,true);assert.equal(p.suggestions[0].pargeShop,'수령점');assert.doesNotMatch(r.body,/010123|private|99999|bank|payment/i);
+ }
+ assert.deepEqual(await f.repo.listRecords('beta','item'),before);assert.equal((await f.repo.listRecords('beta','shipment')).length,0);
+ await f.restart();assert.equal((await f.call('GET',path,null,'secret')).json().suggestions.length,1);
+ await f.repo.upsertRecord('beta','shipment',{id:'confirmed',itemId:'item',address:'새 수령지',recipientPhone:'01012345678'});
+ assert.deepEqual((await f.call('GET',path,null,'secret')).json().suggestions,[]);
+ assert.equal((await f.call('GET','/api/platform/channels/missing/shipping-suggestions',null,'secret')).status,404);
+});
+
+test('shipping estimates exclude removed shops, disabled carriers and previous event pickup',async t=>{
+ const f=await fixture(t,{initial:false}),path='/api/platform/channels/beta/shipping-suggestions';
+ const prior={id:'previous',itemId:'old',recipientPhone:'01012345678',buyerSubmittedAt:'2026-09-01',destinationType:'parge',destinationId:'parge',pargeRegion:'서울',pargeShop:'수령점',status:'complete'};
+ await f.repo.upsertRecord('alpha','shipment',{...prior,pargeShop:'폐점한 곳'});
+ assert.deepEqual((await f.call('GET',path,null,'secret')).json().suggestions,[]);
+ await f.repo.upsertRecord('alpha','shipment',{...prior,destinationType:'pickup',destinationId:'pickup-1',address:'행사장'});
+ assert.deepEqual((await f.call('GET',path,null,'secret')).json().suggestions,[]);
+ await f.repo.upsertRecord('alpha','shipment',prior);
+ const catalog=await f.repo.getCatalog();await f.repo.saveCatalog(catalog.channels.map(c=>c.id==='beta'?{...c,shippingDefaults:{...c.shippingDefaults,enabledCarriers:[]}}:c));
+ assert.deepEqual((await f.call('GET',path,null,'secret')).json().suggestions,[]);
+});
+
 test('direct method save, notification and duplicate retry persist together across restart',async t=>{
  const f=await fixture(t),p=(await f.get()).json();
  const body={...f.selection,payments:[{vendorKey:'vendor',method:'card'}],requestId:'direct-card',expectedVersion:p.editVersion};

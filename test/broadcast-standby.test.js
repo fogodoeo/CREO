@@ -22,13 +22,13 @@ test('reveal happens once per live transition, never on reload, repeated polls o
  assert.equal(standby.shouldReveal(sold,live),true);
  assert.equal(standby.shouldReveal(live,waiting),false);
 });
-test('P2 renderer emits only mystery, progress, banner and ticker while waiting',()=>{
+test('P2 waiting keeps progress, banner and ticker without a next-item popup or stale details',()=>{
  const html=fs.readFileSync(require.resolve('../public/auction-live.html'),'utf8');
  const source=html.slice(html.indexOf('function pageTwo(c,'),html.indexOf('function aggregateStats('));
  const context={CreoBroadcastStandby:standby,channelId:'alpha',pageTwoProgress:()=>'<progress></progress>',banner:()=>'<aside>배너</aside>',showBanner:()=>true,pageTicker:()=>'<footer>자막</footer>'};
  vm.createContext(context);vm.runInContext(source,context);
  const result=context.pageTwo({}, {mode:'standby',activeItemId:'old'},items,[],{});
- assert.match(result,/\?\?\?/);assert.match(result,/다음 개체/);assert.match(result,/<progress/);assert.match(result,/<aside/);assert.match(result,/<footer/);
+ assert.doesNotMatch(result,/\?\?\?|다음 개체|mystery-card|standby-note/);assert.match(result,/<progress/);assert.match(result,/<aside/);assert.match(result,/<footer/);
  assert.doesNotMatch(result,/이전 개체|다음 비밀 개체|old.jpg|parent-photos|live-bidders|price-card/);
 });
 test('new channel baseline is isolated, editable and does not overwrite established profiles',()=>{
