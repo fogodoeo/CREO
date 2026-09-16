@@ -6,7 +6,10 @@
   $('review-form').querySelectorAll('input,textarea,select').forEach(input=>input.setAttribute('aria-describedby','review-error'));
   let channelId=new URLSearchParams(location.search).get('channel')||'', data=null, status='submitted', vendorId='', selected=null;
   let busy=false, loading=false, sequence=0, reviewMode='approve', opener=null, pending=null, outside=false;
-  let preferredPart='A';
+  let preferredPart='1부', checked=new Map(), batchPending=null;
+  const Numbering=window.CreoEntryNumbering;
+  const key=row=>row.group.vendor.id+':'+row.entry.id;
+  const visibleRows=()=>rows().filter(row=>row.entry.status===status&&(!vendorId||row.group.vendor.id===vendorId)).sort((a,b)=>status==='approved'?(data.allocation.find(i=>i.id===a.entry.itemId)?.order||0)-(data.allocation.find(i=>i.id===b.entry.itemId)?.order||0):a.group.vendor.name.localeCompare(b.group.vendor.name,'ko')||a.entry.entryNumber-b.entry.entryNumber);
   const endpoint=()=>`channels/${encodeURIComponent(channelId)}/entries`;
   const canReview=()=>data&&['draft','active'].includes(data.channel.status);
   const source=entry=>entry.submission||entry.approved||entry;
@@ -15,8 +18,11 @@
   function notice(message){$('notice').textContent=message;}
   function setBusy(value){
     busy=value;
-    for(const id of ['toggle-intake','review-event','refresh','change-review-mode','confirm-review','close-review','reload-entry'])$(id).disabled=value;
+    for(const id of ['toggle-intake','review-event','review-vendor','refresh','change-review-mode','confirm-review','close-review','reload-entry','batch-part','approve-selected','arrange-vendors','print-entry-labels','select-all'])$(id).disabled=value;
+    $('entry-list').querySelectorAll('input,button').forEach(el=>el.disabled=value);
+    $('filters').querySelectorAll('button').forEach(el=>el.disabled=value);
     $('review-form').querySelectorAll('input,textarea,select').forEach(input=>{input.disabled=value;});
+    updateSelection();
   }
   function setLinks(){
     $('workspace-link').href=channelId?'/channel-workspace.html?channel='+encodeURIComponent(channelId):'/channel-manager.html';
@@ -33,20 +39,35 @@
     return {id:row.entry.id,name:s.morph,media:photos(s.photoIds),parents};
   }
   function renderList(){
-    const all=rows(), visible=all.filter(row=>row.entry.status===status&&(!vendorId||row.group.vendor.id===vendorId));
+    const all=rows(), visible=visibleRows();
+    checked=new Map([...checked].filter(([id,version])=>all.some(r=>key(r)===id&&r.entry.version===version&&r.entry.status===status)));
     $('filters').querySelectorAll('[data-status]').forEach(button=>{
       button.setAttribute('aria-pressed',String(button.dataset.status===status));
       button.querySelector('span').textContent=all.filter(row=>row.entry.status===button.dataset.status&&(!vendorId||row.group.vendor.id===vendorId)).length;
     });
     $('entry-list').innerHTML=visible.length?visible.map(row=>{
       const entry=row.entry,s=source(entry),picture=View.pictures(itemView(row),location.origin).find(p=>p.group==='개체'&&p.thumbnailUrl);
-      const traits=View.traitSummary({traits:{...s,morph:''}});
-      return `<button class="entry-row" type="button" data-entry="${esc(entry.id)}" data-vendor="${esc(row.group.vendor.id)}">${picture?`<img src="${esc(picture.thumbnailUrl)}" alt="" loading="lazy">`:''}<span class="row-text"><small>${esc(row.group.vendor.name)}${entry.approved&&entry.status==='submitted'?' · 변경안':''}</small><strong>${esc(entry.lot||entry.code)} · ${esc(s.morph||'개체 정보')}</strong>${traits?`<span class="traits">${esc(traits)}</span>`:''}</span><span class="chevron" aria-hidden="true">›</span></button>`;
-    }).join(''):`<p class="empty">${{submitted:'검토할 개체가 없어요',changes_requested:'수정 요청한 개체가 없어요',approved:'편성한 개체가 없어요'}[status]}</p>`;
+      const traits=[s.sex==='unknown'?'미구분':'',View.traitSummary({traits:{...s,morph:'',size:''}}).replace(/ · /g,' ')].filter(Boolean).join(' '),summary=[traits,window.CreoEntryLabelPrint.parentNames(row),s.hatchDate?'해칭 '+s.hatchDate:'',s.note?.replace(/\s+/g,' ')].filter(Boolean).join(' · ')||'미구분';
+      const allocation=data.allocation.find(i=>i.id===entry.itemId);
+      return `<article class="entry-row"><label class="entry-check"><input type="checkbox" data-check="${esc(key(row))}" aria-label="${esc(row.group.vendor.name+' '+(entry.lot||entry.code))} 선택" ${checked.has(key(row))?'checked':''}></label>${picture?`<img src="${esc(picture.thumbnailUrl)}" alt="" loading="lazy">`:''}<div class="row-text"><small>${allocation&&status==='approved'?`<span class="order-badge">${allocation.order}번째</span> `:''}${esc(row.group.vendor.name)} · <b>${esc(entry.lot||entry.code)}</b>${entry.approved&&entry.status==='submitted'?' · 변경안':''}</small><p class="entry-summary" title="${esc(summary)}">${esc(summary)}</p></div><button class="row-detail secondary" type="button" data-entry="${esc(entry.id)}" data-vendor="${esc(row.group.vendor.id)}" aria-label="${esc(row.group.vendor.name+' '+(entry.lot||entry.code))} 상세">상세</button></article>`;
+    }).join(''):`<p class="empty">${{submitted:'검토할 개체가 없어요',changes_requested:'수정 요청한 개체가 없어요',approved:'검토 대기에서 개체를 선택해 출품해 주세요'}[status]}</p>`;
+    $('selection-bar').hidden=!visible.length;$('batch-bar').hidden=!canReview()||status==='changes_requested';
+    $('approve-selected').hidden=status!=='submitted';$('arrange-vendors').hidden=status!=='approved';
+    updateSelection();
+  }
+  function updateSelection(){
+    const visible=visibleRows(),count=visible.filter(r=>checked.has(key(r))).length;
+    const part=$('batch-part').value,targets=data?.allocation.filter(i=>Numbering.partOf(i.code)===part)||[];
+    $('selection-count').textContent=count+'마리 선택';$('select-all').checked=!!visible.length&&count===visible.length;$('select-all').indeterminate=count>0&&count<visible.length;
+    $('approve-selected').disabled=busy||loading||!canReview()||!count;
+    $('print-entry-labels').disabled=busy||loading||!count;
+    $('arrange-vendors').disabled=busy||loading||!canReview()||targets.length<2;
+    $('select-all').disabled=busy||loading||!visible.length;
+    $('batch-hint').textContent=status==='approved'?`${part} 전체 ${targets.length}마리 · 식별 번호 유지`:'선택한 개체만 경매에 반영돼요.';
   }
   function render(){
     $('intake').hidden=!data;
-    if(!data){$('entry-list').innerHTML='<p class="empty">검토할 경매를 선택해 주세요</p>';return;}
+    if(!data){$('entry-list').innerHTML='<p class="empty">검토할 경매를 선택해 주세요</p>';$('selection-bar').hidden=true;$('batch-bar').hidden=true;updateSelection();return;}
     $('intake-status').textContent=data.policy.open&&canReview()?'접수 중':'접수 마감';
     $('toggle-intake').textContent=data.policy.open?'접수 마감':'접수 시작';
     $('toggle-intake').hidden=!canReview();
@@ -58,7 +79,7 @@
   async function load(){
     if(busy)return false;
     const current=++sequence,requested=channelId;
-    loading=true;error('list-message','');$('refresh').disabled=true;
+    loading=true;error('list-message','');$('refresh').disabled=true;updateSelection();
     try{
       if(!requested){data=null;render();return true;}
       const next=await client.api(endpoint());
@@ -68,7 +89,7 @@
     }catch(e){
       if(current===sequence){error('list-message',e.message);if(e.status===401){$('login-section').hidden=false;$('review-section').hidden=true;}}
       return false;
-    }finally{if(current===sequence){loading=false;$('refresh').disabled=false;}}
+    }finally{if(current===sequence){loading=false;$('refresh').disabled=false;updateSelection();}}
   }
   function renderInformation(row){
     const s=source(row.entry), item=itemView(row), pictures=View.pictures(item,location.origin);
@@ -91,14 +112,14 @@
   function openEntry(row,button){
     selected=row;opener=button||opener;pending=null;
     $('review-company').textContent=row.group.vendor.name;
-    $('review-title').textContent=(row.entry.lot||row.entry.code)+' · '+(source(row.entry).morph||'개체 정보');
+    $('review-title').textContent=row.entry.lot||row.entry.code;
     $('revision-note').hidden=!(row.entry.approved&&row.entry.status==='submitted');
     renderInformation(row);showMode('approve');
     const reviewable=canReview()&&row.entry.status==='submitted';
     $('review-form').hidden=!reviewable;$('review-actions').hidden=!reviewable;$('reload-entry').hidden=true;
     const existing=data.allocation.find(item=>item.id===row.entry.itemId);
     const numbering=window.CreoEntryNumbering.initial({allocation:data.allocation,existing,lot:row.entry.lot,teamBased:!!data.channel.groups?.length,preferred:preferredPart});
-    $('lot-part').value=numbering.mode;$('lot-code').value=numbering.code;
+    $('lot-part').value=Numbering.parts.includes(numbering.mode)?numbering.mode:'manual';$('lot-code').value=numbering.code;
     $('lot-order').value=numbering.order;
     $('lot-price').value=existing?.startPrice||0;$('lot-team').value=existing?.teamName||row.group.vendor.teamName||'';$('review-reason').value='';
     const groups=data.channel.groups||[];
@@ -122,15 +143,17 @@
     const button=event.target.closest('[data-entry]');if(!button||busy||loading)return;
     const row=rows().find(row=>row.entry.id===button.dataset.entry&&row.group.vendor.id===button.dataset.vendor);if(row)openEntry(row,button);
   };
-  $('filters').onclick=event=>{const button=event.target.closest('[data-status]');if(!button)return;status=button.dataset.status;renderList();};
-  $('review-vendor').onchange=event=>{vendorId=event.target.value;renderList();};
+  $('entry-list').onchange=event=>{const id=event.target.dataset.check,row=rows().find(r=>key(r)===id);if(!row||busy)return;if(event.target.checked)checked.set(id,row.entry.version);else checked.delete(id);batchPending=null;updateSelection();};
+  $('select-all').onchange=event=>{for(const row of visibleRows()){if(event.target.checked)checked.set(key(row),row.entry.version);else checked.delete(key(row));}batchPending=null;renderList();};
+  $('filters').onclick=event=>{const button=event.target.closest('[data-status]');if(!button||busy)return;status=button.dataset.status;checked.clear();batchPending=null;renderList();};
+  $('review-vendor').onchange=event=>{vendorId=event.target.value;checked.clear();batchPending=null;renderList();};
   $('lot-part').onchange=()=>{
     const part=$('lot-part').value;preferredPart=part;pending=null;
     if(part!=='manual')$('lot-code').value=window.CreoEntryNumbering.nextCode(part,data.allocation);
     error('review-error','');
   };
   $('lot-code').oninput=()=>{
-    if($('lot-part').value!=='manual'&&!new RegExp('^'+$('lot-part').value+'\\d+$','i').test($('lot-code').value.trim()))$('lot-part').value='manual';
+    if($('lot-part').value!=='manual'&&Numbering.partOf($('lot-code').value)!==$('lot-part').value)$('lot-part').value='manual';
   };
   $('change-review-mode').onclick=()=>{showMode(reviewMode==='approve'?'request-changes':'approve');(reviewMode==='approve'?$('lot-code'):$('review-reason')).focus();};
   $('review-form').oninput=event=>{pending=null;event.target.removeAttribute('aria-invalid');error('review-error','');};
@@ -138,7 +161,7 @@
     event.preventDefault();if(busy||!selected||selected.entry.status!=='submitted')return;
     error('review-error','');
     const lot=$('lot-code').value.trim().toUpperCase(),order=Number($('lot-order').value),startPrice=Number($('lot-price').value),reason=$('review-reason').value.trim();
-    const checks=reviewMode==='approve'?[['lot-code',/^[A-Z0-9][A-Z0-9-]{0,15}$/.test(lot),'경매 번호를 입력해 주세요.'],['lot-order',Number.isInteger(order)&&order>0&&order<=10000,'진행 순서는 1~10,000 사이로 입력해 주세요.'],['lot-price',$('lot-price').value!==''&&Number.isSafeInteger(startPrice)&&startPrice>=0,'시작가를 0원 이상으로 입력해 주세요.']]:[['review-reason',Boolean(reason),'수정할 내용을 입력해 주세요.']];
+    const checks=reviewMode==='approve'?[['lot-code',Numbering.valid(lot),'식별 번호를 입력해 주세요. 예: 1부 A01'],['lot-order',Number.isInteger(order)&&order>0&&order<=10000,'진행 순서는 1~10,000 사이로 입력해 주세요.'],['lot-price',$('lot-price').value!==''&&Number.isSafeInteger(startPrice)&&startPrice>=0,'시작가를 0원 이상으로 입력해 주세요.']]:[['review-reason',Boolean(reason),'수정할 내용을 입력해 주세요.']];
     const invalid=checks.find(([,valid])=>!valid);if(invalid){$(invalid[0]).setAttribute('aria-invalid','true');error('review-error',invalid[2]);$(invalid[0]).focus();return;}
     const team=(data.channel.groups||[]).length?{groupId:$('lot-group').value,teamName:''}:{groupId:'',teamName:$('lot-team').value.trim()};
     const command={vendorId:selected.group.vendor.id,type:reviewMode,id:selected.entry.id,expectedVersion:selected.entry.version,...(reviewMode==='approve'?{lot,order,startPrice,...team}:{reason})};
@@ -159,6 +182,34 @@
     if(busy||!selected)return;const id=selected.entry.id,owner=selected.group.vendor.id;
     if(await load()){const row=rows().find(row=>row.entry.id===id&&row.group.vendor.id===owner);if(row)openEntry(row);else{dialog.close();notice('출품 상태가 변경됐어요. 목록을 확인해 주세요.');}}
   };
+  $('batch-part').onchange=()=>{preferredPart=$('batch-part').value;batchPending=null;updateSelection();};
+  async function runBatch(type){
+    if(busy||loading||!data||!canReview())return;
+    const part=$('batch-part').value,selection=visibleRows().filter(r=>checked.has(key(r)));
+    if(type==='approve-many'&&!selection.length){error('list-message','출품할 개체를 체크해 주세요.');$('select-all').focus();return;}
+    const fields=type==='approve-many'?{entries:selection.map(r=>({id:r.entry.id,vendorId:r.group.vendor.id,expectedVersion:checked.get(key(r))}))}:{items:data.allocation.filter(i=>Numbering.partOf(i.code)===part).map(i=>({id:i.id,updatedAt:i.updatedAt}))};
+    const command={type,part,...fields},signature=JSON.stringify(command);
+    if(!batchPending||batchPending.signature!==signature)batchPending={signature,body:{...command,requestId:crypto.randomUUID()}};
+    error('list-message','');setBusy(true);
+    try{
+      const result=await client.api(endpoint()+'/batch',{method:'POST',body:JSON.stringify(batchPending.body)});
+      const completedChannel=channelId;
+      checked.clear();batchPending=null;status='approved';vendorId='';setBusy(false);
+      const refreshed=await load();if(channelId!==completedChannel)return;
+      if(refreshed){for(const row of rows())if(row.entry.status==='approved'&&result.itemIds.includes(row.entry.itemId))checked.set(key(row),row.entry.version);renderList();}
+      notice(!refreshed?'편성은 저장됐어요. 새로고침해 목록을 확인해 주세요.':type==='approve-many'?`${result.count}마리 편성 완료 · 교차 배치하거나 라벨을 출력하세요.`:`${part} 교차 배치 완료 · ${checked.size}마리 라벨 출력 준비`);
+    }catch(e){error('list-message',e.message);if(e.status===409){batchPending=null;checked.clear();setBusy(false);await load();error('list-message',e.message);}}
+    finally{setBusy(false);}
+  }
+  $('approve-selected').onclick=()=>runBatch('approve-many');
+  $('arrange-vendors').onclick=()=>runBatch('arrange');
+  const labelPrinter=window.CreoEntryLabelPrint.create({document,client,endpoint,channel:()=>channelId});
+  $('print-entry-labels').onclick=()=>{
+    if(busy||loading)return;
+    const selection=visibleRows().filter(row=>checked.has(key(row)));
+    if(!selection.length){error('list-message','라벨을 출력할 개체를 체크해 주세요.');$('select-all').focus();return;}
+    error('list-message','');labelPrinter.open(selection,data.allocation,$('print-entry-labels'));
+  };
   $('toggle-intake').onclick=async()=>{
     if(busy||loading||!data||!canReview())return;
     const next=!data.policy.open;setBusy(true);
@@ -168,7 +219,7 @@
   };
   $('refresh').onclick=load;
   $('review-event').onchange=event=>{
-    if(busy)return;channelId=event.target.value;data=null;vendorId='';status='submitted';preferredPart='A';
+    if(busy)return;channelId=event.target.value;data=null;vendorId='';status='submitted';preferredPart='1부';$('batch-part').value='1부';checked.clear();batchPending=null;notice('');
     const url=new URL(location.href);url.searchParams.set('channel',channelId);history.replaceState(null,'',url);setLinks();render();load();
   };
   $('login-form').onsubmit=async event=>{
@@ -187,6 +238,6 @@
       $('review-event').value=channelId;setLinks();await load();
     }catch(e){error($('review-section').hidden?'login-error':'list-message',e.message);}
   }
-  window.addEventListener('focus',()=>{if(!dialog.open&&!busy&&!loading&&!$('review-section').hidden)load();});
+  window.addEventListener('focus',()=>{if(!dialog.open&&!$('entry-label-dialog').open&&!busy&&!loading&&!$('review-section').hidden)load();});
   start();
 })();

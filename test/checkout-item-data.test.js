@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const { checkoutItem } = require('../checkout-item-data');
 test('legacy A/B names display once while numeric lot order stays unchanged',()=>{
  const {itemTitle}=require('../public/checkout-item-view');
- for(const name of ['A01','B15']){const raw={name,lotNumber:4},item=checkoutItem(raw);assert.equal(itemTitle(item),name);assert.equal(item.lotNumber,4);assert.deepEqual(raw,{name,lotNumber:4});}
+ for(const name of ['A01','B15','1부 A01','2부 B15','이벤 E100']){const raw={name,lotNumber:4},item=checkoutItem(raw);assert.equal(itemTitle(item),name);assert.equal(item.lotNumber,4);assert.deepEqual(raw,{name,lotNumber:4});}
  assert.equal(checkoutItem({name:'릴리화이트',lotNumber:2}).displayNumber,'2');
  assert.equal(checkoutItem({name:'A01',lotNumber:4,attributes:{displayNumber:'B02'}}).displayNumber,'B02','an explicit operator number remains authoritative');
 });

@@ -726,7 +726,8 @@ test('vendor entry API owns drafts, gates intake and submission, and operator ap
     assert.equal(reviewState.groups.find(group=>group.vendor.id==='v').entries[0].status,'approved');
     assert.deepEqual(reviewState.groups.find(group=>group.vendor.id==='v').vendor,{id:'v',name:'출품 업체',groupId:'entry-team',teamName:'예시 팀'},'operator team defaults survive the vendor entry summary');
     assert.equal(reviewState.channel.status,'active');
-    assert.deepEqual(reviewState.allocation,[{id:approved[0].json().itemId,entryId:entry.id,code:'A01',order:1,startPrice:30000,groupId:'entry-team',teamName:'예시 팀',status:'waiting'}]);
+    const allocatedItem=await repository.getRecord('alpha','item',approved[0].json().itemId);
+    assert.deepEqual(reviewState.allocation,[{id:approved[0].json().itemId,entryId:entry.id,code:'A01',order:1,startPrice:30000,groupId:'entry-team',teamName:'예시 팀',status:'waiting',updatedAt:allocatedItem.updatedAt}]);
     const item=(await repository.listRecords('alpha','item'))[0];await repository.upsertRecord('alpha','item',{...item,status:'sold',soldPrice:80000,winnerPhone:'01022223333',winnerName:'가상 낙찰자'});
     const buyerCode=(await call(api,'POST','/api/platform/channels/alpha/buyer-shipping-link',{itemId:item.id})).json().code;
     const before=(await call(api,'GET','/api/platform/buyer-shipping?code='+buyerCode,null,'')).json(),sale=JSON.stringify(await repository.getRecord('alpha','item',item.id));
@@ -872,6 +873,34 @@ test('operator entry approvals from different vendors serialize duplicate auctio
     const secondApi=createPlatformApi({repository});
     const results=await Promise.all(bodies.map((body,index)=>call(index?secondApi:api,'POST','/api/platform/channels/alpha/entries/review',body)));
     assert.deepEqual(results.map(row=>row.status).sort(),[200,409]);assert.equal((await repository.listRecords('alpha','item')).length,1);
+});
+
+test('batch approval API requires operator access and serializes numbering across API instances',async()=>{
+    const repository=new MemoryRepository(),uid=()=>require('node:crypto').randomUUID(),api=createPlatformApi({repository}),otherApi=createPlatformApi({repository});
+    const route='/api/platform/channels/alpha/entries/batch',batches=[];
+    await call(api,'PUT','/api/platform/channels/alpha/entry-policy',{open:true,expectedRevision:0});
+    for(const vendorId of ['one','two']){
+        await repository.upsertRecord('alpha','vendor',{id:vendorId,name:vendorId,phone:'01000000000',bankName:'은행',bankAccount:'000',bankHolder:'예금주'});
+        const code=(await call(api,'POST','/api/platform/channels/alpha/vendor-checkout-link',{vendorId})).json().code,entries=[];
+        for(let n=0;n<2;n++){
+            const id=uid(),submitted=await call(api,'POST','/api/platform/vendor-entries',{code,type:'submit',entry:{id,sex:'female',weight:'10'},requestId:uid()},'');
+            assert.equal(submitted.status,200,submitted.body);entries.push({id,vendorId,expectedVersion:1});
+        }
+        batches.push({type:'approve-many',part:'1부',requestId:uid(),entries});
+    }
+    assert.equal((await call(api,'POST',route,batches[0],'')).status,401);
+    assert.equal((await repository.listRecords('alpha','item')).length,0);
+    const results=await Promise.all(batches.map((body,index)=>call(index?otherApi:api,'POST',route,body)));
+    assert.ok(results.every(result=>result.status===200),results.map(r=>r.body).join('\n'));
+    const items=await repository.listRecords('alpha','item');assert.equal(items.length,4);
+    assert.deepEqual(items.map(i=>i.name).sort(),['1부 A01','1부 A02','1부 A03','1부 A04']);
+    assert.equal(new Set(items.map(i=>i.lotNumber)).size,4);
+    assert.equal((await call(otherApi,'POST',route,batches[0])).json().duplicate,true);
+    const state=(await call(api,'GET','/api/platform/channels/alpha/entries')).json();
+    const arranged=await call(api,'POST',route,{type:'arrange',part:'1부',requestId:uid(),items:state.allocation.map(i=>({id:i.id,updatedAt:i.updatedAt}))});
+    assert.equal(arranged.status,200,arranged.body);
+    assert.equal((await repository.listRecords('beta','item')).length,0);
+    assert.equal((await repository.listRecords('alpha','notification')).length,0);
 });
 
 test('shared banner selection is atomic, durable, channel-local and absent from P3', async () => {

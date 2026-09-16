@@ -5090,7 +5090,7 @@ function createPlatformApi({
                     await repository.upsertRecord(channelId,'setting',result);touchCheckout(channelId);replyJson(res,200,result);
                 });return true;
             }
-            if (segments[2]==='entries' && ((segments.length===3&&method==='GET')||(segments.length===4&&segments[3]==='review'&&method==='POST'))) {
+            if (segments[2]==='entries' && ((segments.length===3&&method==='GET')||(segments.length===4&&['review','batch'].includes(segments[3])&&method==='POST'))) {
                 if(!await requireAdmin(req,res))return true;
                 if(channel.dataAdapter!=='platform')throw buyerInputError('플랫폼 경매에서 출품을 관리할 수 있습니다.',409);
                 if(method==='GET'){
@@ -5100,10 +5100,25 @@ function createPlatformApi({
                         groups.push({...state,vendor:{id:vendor.id,name:vendor.name,groupId:vendor.groupId||'',teamName:vendor.teamName||''},entries:state.entries.filter(entry=>entry.channelId===channelId)});
                     }
                     const items=await repository.listRecords(channelId,'item');
-                    const allocation=items.map(item=>({id:item.id,entryId:item.attributes?.vendor_entry?.entryId||'',code:item.attributes?.displayNumber||item.name,order:Number(item.lotNumber)||0,startPrice:Number(item.startPrice)||0,groupId:item.groupId||'',teamName:item.teamName||'',status:item.status}));
+                    const allocation=items.map(item=>({id:item.id,entryId:item.attributes?.vendor_entry?.entryId||'',code:item.attributes?.displayNumber||item.name,order:Number(item.lotNumber)||0,startPrice:Number(item.startPrice)||0,groupId:item.groupId||'',teamName:item.teamName||'',status:item.status,updatedAt:item.updatedAt||''}));
                     replyJson(res,200,{channel:{id:channelId,name:channel.name,status:channel.status,groups:(channel.groups||[]).map(group=>({id:group.id,name:group.name}))},policy:await vendorEntries.policy(channelId),allocation,groups});return true;
                 }
                 const body=await readJson(req);
+                if(segments[3]==='batch'){
+                    await withMutationLock(`channel:${channelId}`,async()=>{
+                        const currentCatalog=await loadCatalog(),fresh=currentCatalog.channels.find(c=>c.id===channelId);
+                        if(!fresh)throw buyerInputError('경매를 다시 선택해 주세요.',404);
+                        const contexts=[];
+                        for(const vendorId of new Set((Array.isArray(body.entries)?body.entries:[]).filter(Boolean).map(e=>cleanText(e.vendorId,64)))){
+                            const vendor=await vendorDirectory.find(channelId,vendorId),profile=vendor&&await vendorDirectory.profileFor(channelId,vendorId);
+                            if(!vendor||!profile)throw buyerInputError('출품 업체를 다시 확인해 주세요.',404);
+                            contexts.push({channel:fresh,vendor,profile,catalog:currentCatalog});
+                        }
+                        const result=await vendorEntries.batch(fresh,contexts,body);
+                        if(!result.duplicate)touchChannel(channelId);
+                        replyJson(res,200,result);
+                    });return true;
+                }
                 await withMutationLock(`channel:${channelId}`,async()=>{
                     const currentCatalog=await loadCatalog(),fresh=currentCatalog.channels.find(row=>row.id===channelId),vendor=await vendorDirectory.find(channelId,cleanText(body.vendorId,64));
                     const profile=vendor?await vendorDirectory.profileFor(channelId,vendor.id):null;

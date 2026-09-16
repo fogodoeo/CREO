@@ -32,7 +32,7 @@ function checkoutItem(item = {}) {
     }).filter(Boolean);
     // Older auctions keep A01/B01 as the name and use lotNumber only for order.
     // Do not turn that into a second visible identifier such as "01 · A01".
-    const namedNumber = /^[A-Za-z]\d{2,4}$/.test(String(item.name || '').trim()) ? String(item.name).trim() : '';
+    const namedNumber = /^(?:[A-Za-z]\d{2,5}|1부 A\d{2,5}|2부 B\d{2,5}|이벤 E\d{2,5})$/.test(String(item.name || '').trim()) ? String(item.name).trim() : '';
     const displayNumber = cleanText(item.displayNumber || item.lotCode || attributes.displayNumber || attributes.lotCode || namedNumber || item.lotNumber, 30);
     return {
         id: item.id,

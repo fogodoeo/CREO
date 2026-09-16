@@ -74,3 +74,15 @@ test('provider configuration outage preserves sold state and recovers both queue
  assert.ok((await f.repo.listRecords('alpha','notification')).every(n=>n.status==='configuration_pending'));
  f.restart();f.setReady(true);await f.service.flushChannel('alpha');await f.service.flushChannel('alpha');assert.equal(f.sent.length,2);
 });
+
+test('part identifiers survive public broadcast, buyer display and both sale notifications',async t=>{
+ const f=await fixture(t),item=await f.repo.getRecord('alpha','item','one');
+ await f.repo.upsertRecord('alpha','item',{...item,name:'2부 B01',lotNumber:17,attributes:{...item.attributes,displayNumber:'2부 B01'}});
+ const broadcast=await f.call('GET','channels/alpha/broadcast');assert.equal(broadcast.status,200,broadcast.body);
+ const publicItem=broadcast.json().items.find(i=>i.id==='one');
+ const legacy=require('../public/channel-broadcast-bridge').toLegacyItem(publicItem);
+ assert.equal(legacy.name,'2부 B01');assert.equal(legacy.num,17);
+ assert.equal(require('../public/checkout-item-view').itemTitle(require('../checkout-item-data').checkoutItem(publicItem)),'2부 B01');
+ assert.equal((await f.sell()).status,200);f.restart();await f.service.flushChannel('alpha');
+ assert.equal(f.sent.length,2);assert.ok(f.sent.every(n=>n.variables['#{개체명}']==='2부 B01'));
+});

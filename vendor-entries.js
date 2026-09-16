@@ -5,6 +5,7 @@ const { cleanText, channelKey } = require('./platform-core');
 const { normalizePhone } = require('./band-membership');
 const { imageUrl } = require('./public/checkout-item-view');
 const { privatePhotoReference } = require('./entry-photo-storage');
+const Numbering = require('./public/entry-numbering');
 const locks = new WeakMap();
 const KEY = 'vendor_entries_v1::';
 const uuid = value => /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(String(value || ''));
@@ -193,10 +194,10 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
                 }else{
                     if(entry.status!=='submitted')throw fail('검토 중인 출품만 처리할 수 있습니다.');
                     if(type==='approve'){
-                        const lot=cleanText(input.lot,16).toUpperCase(),order=Number(input.order),startPrice=Number(input.startPrice||0);
-                        if(!/^[A-Z0-9][A-Z0-9-]{0,15}$/.test(lot)||!Number.isInteger(order)||order<1||order>10000||!Number.isSafeInteger(startPrice)||startPrice<0)throw fail('경매 번호·순서·시작가를 확인해 주세요.',422);
+                        const lot=Numbering.normalize(cleanText(input.lot,16)),order=Number(input.order),startPrice=Number(input.startPrice||0);
+                        if(!Numbering.valid(lot)||!Number.isInteger(order)||order<1||order>10000||!Number.isSafeInteger(startPrice)||startPrice<0)throw fail('경매 번호·순서·시작가를 확인해 주세요.',422);
                         const items=await repository.listRecords(context.channel.id,'item'),itemId=entry.itemId||'entry-'+entry.id,existing=items.find(item=>item.id===itemId);
-                        if(existing&&(existing.status!=='waiting'||existing.winnerPhone||existing.soldPrice||existing.attributes?.bid_log))throw fail('입찰이 시작된 개체는 출품 변경안으로 덮어쓸 수 없습니다.');
+                        if(existing&&!canArrange(existing))throw fail('입찰이 시작된 개체는 출품 변경안으로 덮어쓸 수 없습니다.');
                         if(!entry.itemId&&existing)throw fail('연결할 개체를 확인해 주세요.');
                         if(existing&&(existing.vendorId!==context.vendor.id||existing.attributes?.vendor_entry?.ownerId!==ownerId||existing.attributes?.vendor_entry?.entryId!==entry.id))throw fail('편성된 개체의 업체 또는 연결 정보가 변경됐어요. 다시 확인해 주세요.');
                         if(items.some(item=>item.id!==itemId&&(String(item.attributes?.displayNumber||item.name).toUpperCase()===lot||Number(item.lotNumber)===order)))throw fail('이미 사용 중인 경매 번호 또는 순서입니다.');
@@ -223,6 +224,79 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
             return {state:await read(context),result,duplicate:false,itemId:item?.id||null};
         });
         return operator?locked('review:'+context.channel.id,execute):execute();
+    }
+    function canArrange(item) {
+        if(item.status!=='waiting'||item.winnerPhone||item.winnerName||Number(item.soldPrice)>0)return false;
+        try {const log=item.attributes?.bid_log;return !log||(Array.isArray(log)?log:JSON.parse(log)).length===0;} catch{return false;}
+    }
+    function nextItemTimestamp(item) {
+        return new Date(Math.max(Date.now(),(Date.parse(item.updatedAt)||0)+1)).toISOString();
+    }
+    // Stage the existing single-entry command behind all participating owner locks.
+    // No item or owner document reaches durable storage until the whole batch succeeds.
+    async function batch(channel, contexts, input, { random=Math.random }={}) {
+        const requestId=cleanText(input.requestId,80),signature=hash(input),type=input.type;
+        if(requestId.length<8||!['approve-many','arrange'].includes(type))throw fail('작업을 다시 선택해 주세요.',422);
+        const owners=[...new Set(contexts.map(owner))].sort();
+        const lockOwners=(n,work)=>n<owners.length?locked(owners[n],()=>lockOwners(n+1,work)):work();
+        return locked('review:'+channel.id,()=>lockOwners(0,async()=>{
+            const journal=await repository.getRecord(channel.id,'setting','entry-batch-log')||{id:'entry-batch-log',requests:[]};
+            const prior=journal.requests.find(r=>r.id===requestId);
+            if(prior){if(prior.signature!==signature)throw fail('다른 내용의 요청입니다. 새로고침 후 다시 시도해 주세요.');return {...prior.result,duplicate:true};}
+            if(!['draft','active'].includes(channel.status))throw fail('진행 가능한 경매에서만 편성할 수 있어요.');
+            const items=await repository.listRecords(channel.id,'item');
+            if(items.some(item=>item.status==='live'))throw fail('경매 진행 중에는 편성을 바꿀 수 없어요. 진행을 마친 뒤 다시 시도해 주세요.');
+            const staged=new Map();
+            const stage={
+                getRowsByKeys:async keys=>{const stored=await repository.getRowsByKeys(keys);return keys.map(key=>staged.get(key)||stored.find(r=>r.key===key)).filter(Boolean);},
+                getRecord:async(c,t,id)=>{const row=staged.get(channelKey(c,t,id));return row?JSON.parse(row.value):repository.getRecord(c,t,id);},
+                listRecords:async(c,t)=>{const result=new Map((await repository.listRecords(c,t)).map(r=>[r.id,r]));for(const row of staged.values())if(row.key.startsWith(channelKey(c,t,'')+'::')) {const value=JSON.parse(row.value);result.set(value.id,value);}return [...result.values()];},
+                upsertRows:async rows=>{for(const row of rows)staged.set(row.key,{...row});}
+            };
+            let result;
+            if(type==='approve-many'){
+                const selection=input.entries;
+                if(!Array.isArray(selection)||!selection.length||selection.length>120||selection.some(s=>!s||!s.id||!s.vendorId)||new Set(selection.map(s=>s.id)).size!==selection.length||!Numbering.parts.includes(input.part))throw fail('출품할 개체와 부를 선택해 주세요. 한 번에 120마리까지 가능해요.',422);
+                const service=createVendorEntries(stage,{resolveMediaUrl,maxMediaBytes}),itemIds=[];
+                for(let index=0;index<selection.length;index++){
+                    const row=selection[index],context=contexts.find(c=>c.vendor.id===row.vendorId);
+                    if(!context||context.channel.id!==channel.id)throw fail('출품 업체를 다시 확인해 주세요.',403);
+                    const state=await stage.getRowsByKeys([KEY+owner(context)]),entry=state[0]&&JSON.parse(state[0].value).entries.find(e=>e.id===row.id&&e.channelId===channel.id&&e.channelVendorId===row.vendorId);
+                    if(!entry||entry.version!==row.expectedVersion)throw fail('선택한 출품이 변경됐어요. 새로고침 후 다시 선택해 주세요.');
+                    const currentItems=await stage.listRecords(channel.id,'item'),existing=currentItems.find(i=>i.id===entry.itemId);
+                    let order=existing?.lotNumber||Math.max(0,...currentItems.map(i=>Number(i.lotNumber)||0))+1;
+                    if(!existing){
+                        const nextPart=currentItems.filter(i=>Numbering.parts.indexOf(Numbering.partOf(i.attributes?.displayNumber||i.name))>Numbering.parts.indexOf(input.part)).sort((a,b)=>a.lotNumber-b.lotNumber)[0];
+                        if(nextPart){
+                            order=Number(nextPart.lotNumber);
+                            const shifted=currentItems.filter(i=>Number(i.lotNumber)>=order);
+                            if(shifted.some(i=>!canArrange(i)))throw fail('뒤 순서에 입찰·낙찰 기록이 있어요. 진행 중인 편성을 확인해 주세요.');
+                            if(shifted.some(i=>!Number.isInteger(i.lotNumber)||i.lotNumber>=10000))throw fail('진행 순서가 범위를 벗어났어요. 경매 운영에서 확인해 주세요.');
+                            await stage.upsertRows(shifted.map(i=>({key:channelKey(channel.id,'item',i.id),value:JSON.stringify({...i,lotNumber:i.lotNumber+1,updatedAt:nextItemTimestamp(i)})})));
+                        }
+                    }
+                    const approved=await service.command(context,{type:'approve',requestId:requestId.slice(0,65)+'-'+index,id:row.id,expectedVersion:row.expectedVersion,lot:existing?.attributes?.displayNumber||existing?.name||Numbering.nextCode(input.part,currentItems),order,startPrice:existing?.startPrice??0},{operator:true});
+                    itemIds.push(approved.itemId);
+                }
+                result={type,count:selection.length,itemIds};
+            }else{
+                if(!Numbering.parts.includes(input.part))throw fail('교차 배치할 부를 선택해 주세요.',422);
+                const targets=items.filter(i=>Numbering.partOf(i.attributes?.displayNumber||i.name)===input.part);
+                const expected=Array.isArray(input.items)?input.items:[];
+                if(targets.length<2)throw fail('같은 부에 개체가 2마리 이상 있어야 해요.',422);
+                if(expected.length!==targets.length||new Set(expected.map(i=>i.id)).size!==targets.length||targets.some(i=>!expected.some(e=>e.id===i.id&&e.updatedAt===i.updatedAt)))throw fail('편성 목록이 변경됐어요. 새로고침 후 다시 배치해 주세요.');
+                if(targets.some(i=>!canArrange(i)))throw fail('입찰·낙찰 기록이 있는 개체는 다시 배치할 수 없어요.');
+                const slots=targets.map(i=>Number(i.lotNumber)).sort((a,b)=>a-b);
+                if(new Set(items.map(i=>Number(i.lotNumber))).size!==items.length)throw fail('진행 순서가 중복돼 있어요. 경매 운영에서 먼저 확인해 주세요.');
+                const ordered=Numbering.interleave(targets,random);
+                ordered.forEach((item,index)=>staged.set(channelKey(channel.id,'item',item.id),{key:channelKey(channel.id,'item',item.id),value:JSON.stringify({...item,lotNumber:slots[index],updatedAt:nextItemTimestamp(item)})}));
+                result={type,count:ordered.length,itemIds:ordered.map(i=>i.id)};
+            }
+            journal.requests.push({id:requestId,signature,result});journal.requests=journal.requests.slice(-500);
+            staged.set(channelKey(channel.id,'setting',journal.id),{key:channelKey(channel.id,'setting',journal.id),value:JSON.stringify(journal)});
+            await repository.upsertRows([...staged.values()]);
+            return {...result,duplicate:false};
+        }));
     }
     // Only trusted upload handling may register media; clients cannot write arbitrary URLs.
     async function addMedia(context, media, persist = async () => {}) {
@@ -295,7 +369,7 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
             return resolveFacts(item);
         }));
     }
-    return {read,command,addMedia,hydrateItems,hydrateCollectionRecords,policy,summary,withOwnerLock:locked};
+    return {read,command,batch,addMedia,hydrateItems,hydrateCollectionRecords,policy,summary,withOwnerLock:locked};
 }
 
 module.exports={createVendorEntries,normalizeEntry};

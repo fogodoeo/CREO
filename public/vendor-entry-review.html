@@ -6,13 +6,14 @@
   <title>출품 검토 · 옹동2</title>
   <link rel="stylesheet" href="/ongdong-brand.css">
   <link rel="stylesheet" href="/checkout-navigation.css">
-  <link rel="stylesheet" href="/vendor-entry-review.css">
+  <link rel="stylesheet" href="/vendor-entry-review.css?v=20260917-batch">
   <link rel="stylesheet" href="/entry-photo-usage.css">
   <script defer src="/platform-client.js"></script>
   <script defer src="/ongdong-brand.js"></script>
   <script defer src="/checkout-item-view.js"></script>
-  <script defer src="/entry-numbering.js?v=20260917"></script>
-  <script defer src="/vendor-entry-review.js?v=20260917-parts"></script>
+  <script defer src="/entry-numbering.js?v=20260917-batch"></script>
+  <script defer src="/entry-label-print.js?v=20260917"></script>
+  <script defer src="/vendor-entry-review.js?v=20260917-batch"></script>
   <script defer src="/entry-photo-usage.js"></script>
 </head>
 <body>
@@ -33,10 +34,21 @@
         <button type="button" data-status="approved" aria-pressed="false">편성 완료 <span>0</span></button>
       </div>
       <label class="vendor-filter" for="review-vendor"><span>업체</span><select id="review-vendor"><option value="">전체 업체</option></select></label>
+      <div class="selection-bar" id="selection-bar">
+        <label class="check-all"><input id="select-all" type="checkbox">전체 선택</label>
+        <span id="selection-count" role="status">0마리 선택</span>
+        <button class="secondary" id="print-entry-labels" type="button">식별 라벨</button>
+      </div>
+      <div class="batch-bar" id="batch-bar">
+        <label for="batch-part">편성 구분<select id="batch-part"><option value="1부">1부 · A01~</option><option value="2부">2부 · B01~</option><option value="이벤">이벤 · E01~</option></select></label>
+        <button class="primary" type="button" id="approve-selected">선택 출품하기</button>
+        <button class="primary" type="button" id="arrange-vendors" hidden>업체별 교차 배치</button>
+        <p id="batch-hint" class="muted">선택한 개체만 경매에 반영돼요.</p>
+      </div>
       <p id="list-message" class="error" role="alert" hidden></p>
+      <p id="notice" role="status"></p>
       <div id="entry-list" aria-live="polite"></div>
     </section>
-    <p id="notice" role="status"></p>
   </main>
   <dialog id="review-dialog" aria-labelledby="review-title">
     <header class="dialog-head"><div><p id="review-company" class="eyebrow"></p><h2 id="review-title" tabindex="-1"></h2></div><button class="icon-button" id="close-review" type="button" aria-label="출품 검토 닫기">×</button></header>
@@ -45,8 +57,8 @@
       <div id="entry-information"></div>
       <form id="review-form" novalidate>
         <section id="allocation-fields"><h3>편성 정보</h3><div class="field-grid">
-          <label for="lot-part">번호 구분<select id="lot-part"><option value="A">1부 · A01~</option><option value="B">2부 · B01~</option><option value="manual">직접 입력 · 팀 구분 등</option></select></label>
-          <label for="lot-code">경매 번호<input id="lot-code" maxlength="16" placeholder="A01" autocomplete="off" required></label>
+          <label for="lot-part">번호 구분<select id="lot-part"><option value="1부">1부 · A01~</option><option value="2부">2부 · B01~</option><option value="이벤">이벤 · E01~</option><option value="manual">직접 입력 · 기존 번호</option></select></label>
+          <label for="lot-code">식별 번호<input id="lot-code" maxlength="16" placeholder="1부 A01" autocomplete="off" required></label>
           <label for="lot-order">진행 순서<input id="lot-order" type="number" inputmode="numeric" min="1" max="10000" step="1" required></label>
           <label for="lot-price">시작가 <span class="muted">원</span><input id="lot-price" type="number" inputmode="numeric" min="0" step="1" required></label>
           <label for="lot-team" id="lot-team-label">팀 <span class="muted">선택</span><input id="lot-team" maxlength="60" autocomplete="off"></label>
@@ -58,6 +70,11 @@
       </form>
     </div>
     <footer class="dialog-actions" id="review-actions"><button id="change-review-mode" class="secondary" type="button">수정 요청</button><button class="primary" form="review-form" id="confirm-review" type="submit">경매에 반영</button></footer>
+  </dialog>
+  <dialog id="entry-label-dialog" aria-labelledby="label-title">
+    <header class="dialog-head"><h2 id="label-title">식별 라벨</h2><button class="icon-button" id="close-labels" type="button" aria-label="라벨 인쇄 닫기">×</button></header>
+    <div class="dialog-content"><p class="muted" id="label-count"></p><div id="entry-label-preview"></div><p id="label-print-status" role="status"></p><p id="label-print-error" class="error" role="alert" hidden></p></div>
+    <footer class="dialog-actions"><button class="secondary" id="browser-label-print" type="button">브라우저 인쇄</button><button class="primary" id="b1-entry-print" type="button">B1 PRO 출력</button></footer>
   </dialog>
   <footer class="page-footer">© 옹동2</footer>
 </body>
