@@ -1283,18 +1283,20 @@ function createPlatformApi({
         return sanitizePargeRates(payload);
     }
 
-    async function buyerBundleContext(tokenOrPayload, { allowArchived = false, operatorAccess = false } = {}) {
+    async function buyerBundleContext(tokenOrPayload, { allowArchived = false, operatorAccess = false, prospectiveItem = null } = {}) {
         const token = typeof tokenOrPayload === 'string' ? verifyBuyerShippingToken(tokenOrPayload) : tokenOrPayload;
         if (!token) return null;
         if (!operatorAccess && !await buyerLinkAccess.accepts(token)) return null;
         const catalog = await loadCatalog();
         const channel = catalog.channels.find((entry) => entry.id === token.channelId && (entry.status === 'active' || (allowArchived && entry.status === 'archived')));
         if (!channel || channel.features?.shipping === false || channel.dataAdapter !== 'platform') return null;
-        const [items, shipments, vendors] = await Promise.all([
+        const [storedItems, shipments, vendors] = await Promise.all([
             repository.listRecords(channel.id, 'item'),
             repository.listRecords(channel.id, 'shipment'),
             vendorDirectory.list(channel.id)
         ]);
+        // Only the internal sold transition supplies this candidate before its atomic commit.
+        const items = prospectiveItem ? storedItems.map(item=>item.id===prospectiveItem.id?prospectiveItem:item) : storedItems;
         const soldItems = items.filter(isSoldItem);
         // Historical ownership must come from the stored sale. A member's
         // present-day profile or reused nickname cannot claim an older result.
@@ -2502,27 +2504,40 @@ function createPlatformApi({
         }
     }
 
-    async function enqueueSaleNotifications(req, channel, item) {
+    async function enqueueSaleNotifications(req, channel, item, prepareOnly = false) {
+        const rows = [];
+        const queue = async event => {
+            if (!prepareOnly) return enqueueNotification(channel.id,event);
+            if (channel.id.startsWith('checkout-test-')) {
+                if (!testDeliveryChannels.has(channel.id)) return {configured:true,suppressed:true,status:'test_no_send'};
+                event={...event,recipientPhone:'01049278600'};
+            }
+            const prepared=await notificationService.prepare(channel.id,{...event,allowSmsFallback:false,failureSmsFallback:true});
+            if(!prepared.duplicate)rows.push({key:channelKey(channel.id,'notification',prepared.record.id),value:JSON.stringify(prepared.record)});
+            return {configured:true,duplicate:prepared.duplicate,status:prepared.record.status};
+        };
         const phone = storedWinnerPhone(item) || await resolveWinnerPhone(item, bandMembership);
+        if(prepareOnly && phone)item.winnerPhone=phone;
         const vendorKey = vendorKeyForItem(item);
         const vendor = await vendorDirectory.find(channel.id, item.vendorId)
             || (await vendorDirectory.list(channel.id)).find((entry) => entry.name === item.vendorName)
             || { id: item.vendorId || '', name: item.vendorName || '업체', phone: '' };
         const buyerName = buyerDisplayName(item);
         const vendorName = vendor.name || item.vendorName || '업체';
-        const eventVersion = cleanText(item.updatedAt || item.createdAt || Date.now(), 80);
+        const eventVersion = cleanText(item.buyerSaleId || item.updatedAt || item.createdAt || Date.now(), 80);
+        const eventPrefix = item.buyerSaleId ? 'sale-v2' : 'sale';
         let buyerResult = { skipped: 'missing_phone' };
         // A missing buyer contact or buyer-link failure must not suppress the vendor's notice.
         if (phone) try {
         const buyerLink = await prepareBuyerCheckoutLink(req, channel.id, phone);
-        const buyerContext = await buyerBundleContext(buyerLink.payload);
+        const buyerContext = await buyerBundleContext(buyerLink.payload,prepareOnly?{prospectiveItem:item}:{});
         const buyerPayload = buyerContext ? await buyerShippingPayload(buyerContext) : null;
         const additional = Boolean(buyerPayload && buyerPayload.items.length > 1);
         const itemSummary = buyerSmsItemSummary(additional && buyerContext ? [item] : buyerContext?.bundleItems || [item]);
         const buyerTemplate = additional ? 'buyer_win_additional' : 'buyer_win_initial';
         const buyerDue = buyerPayload?.payment?.additionalDue || buyerPayload?.totals?.totalAmount || 0;
-        buyerResult = await enqueueNotification(channel.id, {
-            eventKey: `sale:${item.id}:${eventVersion}:buyer`,
+        buyerResult = await queue({
+            eventKey: `${eventPrefix}:${item.id}:${eventVersion}:buyer`,
             templateKey: buyerTemplate,
             transport: 'alimtalk', allowSmsFallback: false,
             recipientRole: 'buyer',
@@ -2538,14 +2553,15 @@ function createPlatformApi({
             fallbackText: shortSms('낙찰 안내', buyerLink.url, itemSummary)
         });
         } catch (error) {
+            if (prepareOnly && error.code !== 'BUYER_LINK_REVOKED') throw error;
             logger.error?.('[platform-api] buyer sale notification preparation failed', channel.id, item.id, error.message);
             buyerResult = { failed: true, error: error.message };
         }
         let vendorResult = { skipped: 'missing_vendor_phone' };
         if (normalizePhone(vendor.phone) && vendorKey) {
             const vendorLink = await prepareVendorCheckoutLink(req, channel.id, vendorKey);
-            vendorResult = await enqueueNotification(channel.id, {
-                eventKey: `sale:${item.id}:${eventVersion}:vendor`,
+            vendorResult = await queue({
+                eventKey: `${eventPrefix}:${item.id}:${eventVersion}:vendor`,
                 templateKey: 'vendor_win',
                 transport: 'alimtalk', allowSmsFallback: false,
                 recipientRole: 'vendor',
@@ -2560,7 +2576,8 @@ function createPlatformApi({
                 fallbackText: shortSms('낙찰 등록', vendorLink.url, item.name)
             });
         }
-        return { buyer: buyerResult, vendor: vendorResult };
+        const notifications={buyer:buyerResult,vendor:vendorResult};
+        return prepareOnly ? {rows,notifications} : notifications;
     }
 
     async function prepareVendorPaymentReport(req, context, group, buyerName, eventKey) {
@@ -4423,6 +4440,7 @@ function createPlatformApi({
                     }
 
                     let savedItem = current;
+                    let atomicSale = null;
                     if (current && (requestedStatus || (body.item && typeof body.item === 'object'))) {
                         let candidate = sanitizeRecord('item', {
                             ...current,
@@ -4571,7 +4589,11 @@ function createPlatformApi({
                             replyJson(res, 422, { error: errors.join(' '), errors });
                             return;
                         }
-                        savedItem = await repository.upsertRecord(channelId, 'item', candidate);
+                        if (requestedStatus==='sold' && current.status!=='sold' && notificationService?.prepare) {
+                            atomicSale=await enqueueSaleNotifications(req,channel,candidate,true);
+                            const now=new Date().toISOString();
+                            savedItem={...candidate,channelId,updatedAt:now,createdAt:candidate.createdAt||now};
+                        } else savedItem = await repository.upsertRecord(channelId, 'item', candidate);
                     }
 
                     const hasExplicitActiveItem = body.state && typeof body.state === 'object'
@@ -4585,8 +4607,18 @@ function createPlatformApi({
                         activeItemId: hasExplicitActiveItem ? body.state.activeItemId : (itemId || data.broadcast?.activeItemId || ''),
                         mode: requestedMode
                     });
-                    const savedState = await repository.upsertRecord(channelId, 'broadcast', nextState);
-                    if (!isolatedNotificationTest) await repository.setActiveChannel(channelId);
+                    let savedState;
+                    if(atomicSale){
+                        savedState={...nextState,channelId,updatedAt:savedItem.updatedAt,createdAt:data.broadcast?.createdAt||savedItem.updatedAt};
+                        await repository.upsertRows([
+                            {key:channelKey(channelId,'item',savedItem.id),value:JSON.stringify(savedItem)},
+                            {key:channelKey(channelId,'broadcast','state'),value:JSON.stringify(savedState)},
+                            ...atomicSale.rows
+                        ]);
+                    } else {
+                        savedState=await repository.upsertRecord(channelId,'broadcast',nextState);
+                        if(!isolatedNotificationTest)await repository.setActiveChannel(channelId);
+                    }
                     if (staleShipments.length) {
                         const deletedShipments = [];
                         try {
@@ -4611,8 +4643,8 @@ function createPlatformApi({
                             throw error;
                         }
                     }
-                    let notifications = null;
-                    if (requestedStatus === 'sold' && current?.status !== 'sold' && savedItem) {
+                    let notifications = atomicSale?.notifications || null;
+                    if (!atomicSale && requestedStatus === 'sold' && current?.status !== 'sold' && savedItem) {
                         try {
                             notifications = await enqueueSaleNotifications(req, channel, savedItem);
                         } catch (error) {
@@ -5357,6 +5389,14 @@ function createPlatformApi({
     }
 
     async function assertBuyerNotificationLink(channelId,notification) {
+        const sale=String(notification.eventKey||'').match(/^sale-v2:([^:]+):([^:]+):(buyer|vendor)$/);
+        if(sale){
+            const item=await repository.getRecord(channelId,'item',sale[1]);
+            if(item?.status!=='sold'||item.buyerSaleId!==sale[2])throw Object.assign(new Error('취소되거나 새로 진행된 낙찰의 이전 알림을 중지했어요.'),{code:'BUYER_LINK_INACTIVE'});
+            if(sale[3]==='buyer'&&storedWinnerPhone(item)!==normalizePhone(notification.recipientPhone))throw Object.assign(new Error('낙찰자가 변경되어 이전 수신자 발송을 중지했어요.'),{code:'BUYER_LINK_INACTIVE'});
+            const variables=notification.variables||{};
+            if(variables['#{낙찰금액}']!==`${Math.max(0,Number(item.soldPrice)||0).toLocaleString('ko-KR')}원`||variables['#{구매자명}']!==buyerDisplayName(item))throw Object.assign(new Error('낙찰 정보가 변경되어 이전 내용의 발송을 중지했어요.'),{code:'BUYER_LINK_INACTIVE'});
+        }
         const code=notification.recipientRole==='buyer'?(notification.variables?.['#{접속코드}']||notification.variables?.접속코드):'';
         if(!code)return;
         const token=await resolveBuyerShippingCredential({code}),payload=token&&verifyBuyerShippingToken(token);
