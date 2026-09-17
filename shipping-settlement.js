@@ -81,6 +81,7 @@ function organizerAuctionItems(items, shipments, vendors, buyerName=()=> '낙찰
             paymentStatus:inactive?payment:payment==='paid'?'paid':'pending',
             method:shipment?.method==='pickup'?'pickup':shipment?.method==='delivery'?'delivery':'',
             destination:String(shipment?.address||'').trim()||[shipment?.pargeRegion,shipment?.pargeShop].filter(Boolean).join(' · '),
+            shippingNote:String(shipment?.note||'').trim(),
             shippingFee:shipment?.method==='delivery'?Math.max(0,Math.round(Number(shipment.cost)||0)):0};
     }).sort((a,b)=>a.order-b.order||a.code.localeCompare(b.code,'ko',{numeric:true})||String(a.id).localeCompare(String(b.id)));
 }

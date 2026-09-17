@@ -16,7 +16,7 @@
     <script src="channel-runtime.js?v=20260901-operator-routing-v1"></script>
     <script src="auction-contract.js?v=20260819-contract-v1"></script>
     <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
-    <script src="channel-adapters.js?v=20260823-channel-isolation-v3"></script>
+    <script src="channel-adapters.js?v=20260918-shipping-note"></script>
     <script src="operation-channel.js?v=20260904-v1"></script>
     <script src="settlement-discount.js?v=20260823-v1"></script>
     <script src="print-shipping-summary.js?v=20260903-winner-identity-v2"></script>
@@ -3371,6 +3371,13 @@
                         </div>
                     `;
 
+                    const vendorNote = [...new Set(groupItems.map(item => String(item.shipping_note || '').trim()).filter(Boolean))].join(' · ');
+                    if (vendorNote) {
+                        const memo = document.createElement('p');
+                        memo.textContent = '수령 메모 · ' + vendorNote;
+                        memo.style.cssText = 'margin:12px 0 0;font-size:14px;line-height:1.5;overflow-wrap:anywhere;color:var(--text-secondary)';
+                        card.appendChild(memo);
+                    }
                     container.appendChild(card);
                 });
 

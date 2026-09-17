@@ -1399,6 +1399,7 @@ function createPlatformApi({
                 phone: Inquiry.vendorContact(group.vendor)?.phone || ''
             },
             paymentMethods: methods,
+            shippingNote: shipmentNotes(group.shipments),
             items: group.items.map((item) => ({
                 ...checkoutItem(item),
                 paymentStatus: group.shipments.find((shipment) => shipment.itemId === item.id)?.paymentStatus || ''
@@ -2224,6 +2225,8 @@ function createPlatformApi({
             id: bundle.id,
             name: bundle.name,
             phone: bundle.phone,
+            shippingNote: shipmentNotes(group.shipments),
+            canEditShippingNote: group.shipments.length > 0,
             destination: snapshot.selection ? {
                 ...snapshot.selection,
                 address: latest?.address || ''
@@ -2391,6 +2394,81 @@ function createPlatformApi({
 
     async function vendorBuyerBundle(context, buyerId) {
         return (await vendorBuyerBundles(context)).find((entry) => entry.id === cleanText(buyerId, 64)) || null;
+    }
+
+    function shipmentNotes(shipments) {
+        return [...new Set(shipments.map(row => cleanText(row.note, 500)).filter(Boolean))].join(' · ');
+    }
+
+    function vendorShippingLock(bundle) {
+        if (bundle.context.channel.status !== 'active') return '종료된 경매는 조회만 가능해요.';
+        if (bundle.snapshot.groups.length !== 1) return '다른 업체와 합배송 중이에요. 수령지 변경은 운영자에게 요청해 주세요.';
+        if (!bundle.snapshot.selection || bundle.group.items.length !== bundle.group.shipments.length) return '구매자의 수령 정보 등록 후 변경할 수 있어요.';
+        if (bundle.group.shipments.some(checkoutChangeLocked)) return '결제 신고·확인 또는 발송된 내역이에요. 수령지 변경은 운영자에게 요청해 주세요.';
+        return '';
+    }
+
+    async function vendorShippingEditor(context, buyerId) {
+        const bundle = await vendorBuyerBundle(context, buyerId);
+        if (!bundle) throw buyerInputError('구매자 내역을 찾을 수 없습니다.', 404);
+        const payload = await buyerShippingPayload(bundle.context);
+        const lockedReason = vendorShippingLock(bundle) || (await pendingCheckoutChange(bundle.context) ? '운영자가 변경 요청을 확인 중이에요.' : '');
+        return {
+            buyerId: bundle.id, name: bundle.name, expectedVersion: buyerEditVersion(bundle.context),
+            note: shipmentNotes(bundle.group.shipments), canEditDestination: !lockedReason, lockedReason,
+            selection: bundle.snapshot.selection, address: bundle.group.payment.latest?.address || '',
+            destinations: payload.destinations, carriers: payload.carriers,
+            itemCount: bundle.group.items.length, auctionAmount: bundle.group.settlement.payableAuctionAmount,
+            shippingAmount: bundle.group.shippingAmount, totalAmount: bundle.group.totalAmount,
+            hasCardGuide: bundle.group.shipments.some(row => row.cardPaymentUrl || row.cardNoticeMethod === 'external')
+        };
+    }
+
+    async function saveVendorShipping(context, body) {
+        const requestId = cleanText(body.requestId, 80);
+        if (requestId.length < 8) throw buyerInputError('저장 요청값이 올바르지 않습니다. 다시 열어 주세요.');
+        const bundle = await vendorBuyerBundle(context, body.buyerId);
+        if (!bundle) throw buyerInputError('구매자 내역을 찾을 수 없습니다.', 404);
+        if (typeof body.note !== 'string' || body.note.length > 500) throw buyerInputError('메모는 500자 이내로 입력해 주세요.');
+        const note = cleanText(body.note, 500);
+        const selection = {destinationId:cleanText(body.destinationId,80),pargeRegion:cleanText(body.pargeRegion,80),pargeShop:cleanText(body.pargeShop,120)};
+        const receiptKey = checkoutActionReceiptKey(bundle.context, bundle.group.key, 'vendor-shipping', requestId);
+        const fingerprint = sessionKey(JSON.stringify([body.expectedVersion, selection, note, body.expectedAmount]));
+        if (await readCheckoutActionReceipt(context.channel.id, receiptKey, fingerprint)) return {duplicate:true};
+        if (!body.expectedVersion || body.expectedVersion !== buyerEditVersion(bundle.context)) throw buyerInputError('수령·결제 정보가 변경되었습니다. 창을 닫고 다시 열어 주세요.',409);
+        if (!bundle.group.shipments.length) throw buyerInputError('구매자가 수령 정보를 등록한 뒤 메모를 남겨 주세요.',409);
+        const previous = bundle.snapshot.selection || {};
+        const changed = Object.keys(selection).some(key => selection[key] !== (previous[key] || ''));
+        let saved, total = bundle.group.totalAmount;
+        const now = new Date().toISOString();
+        if (changed) {
+            const reason = vendorShippingLock(bundle);
+            if (reason) throw buyerInputError(reason,409);
+            await assertNoCheckoutChange(bundle.context);
+            // Reuse the buyer's fee allocation and card invalidation logic, but commit
+            // our scoped shipments and audit receipt in one durable transaction below.
+            const result = await saveBuyerShipping(structuredClone(bundle.context), {
+                ...selection, requestId,
+                payments:[{vendorKey:bundle.group.key,method:bundle.group.payment.latest?.paymentMethod || ''}]
+            }, {dryRun:true,requirePaymentMethod:false});
+            saved = result.records.map(row => ({...row,note,destinationRevisionId:requestId}));
+            total = result.payload.totals.totalAmount;
+        } else {
+            // A note-only edit must not reprice, reset a report or touch paid fields.
+            saved = bundle.group.shipments.map(row => ({...row,note,updatedAt:now}));
+        }
+        if (!Number.isFinite(body.expectedAmount) || body.expectedAmount !== total) throw buyerInputError('배송비가 변경되었습니다. 창을 닫고 금액을 다시 확인해 주세요.',409);
+        const rows = saved.map(row => ({key:channelKey(context.channel.id,'shipment',row.id),value:JSON.stringify(row)}));
+        if (changed) rows.push({key:buyerDestinationKey(bundle.context),value:JSON.stringify({
+            ...shipmentSelection(saved[0],context.channel),address:saved[0].address,
+            sourceChannelId:context.channel.id,buyerSubmittedAt:now
+        })});
+        rows.push({key:receiptKey,value:JSON.stringify({fingerprint,createdAt:now,action:'vendor-shipping',
+            vendorKey:bundle.group.key,previousShipments:bundle.group.shipments,
+            itemIds:saved.map(row=>row.itemId),notification:{skipped:true,reason:'vendor_shipping_edit'}})});
+        await repository.upsertRows(rows);
+        touchCheckout(context.channel.id); touchChannel(context.channel.id);
+        return {duplicate:false};
     }
 
     function canResetCardGuide(group) {
@@ -3391,6 +3469,21 @@ function createPlatformApi({
                 const context=await vendorCheckoutContext(credential,url.searchParams.get('event')||'');
                 if(!context)throw buyerInputError('업체 전용 링크를 다시 확인해 주세요.',401);
                 replyJson(res,200,{revision:checkoutRevision(context.channel.id)});return true;
+            }
+
+            if (segments.length === 2 && segments[0] === 'vendor-checkout' && segments[1] === 'shipping-editor' && ['GET','POST'].includes(method)) {
+                const body = method === 'POST' ? await readJson(req) : Object.fromEntries(url.searchParams);
+                const context = await vendorCheckoutContext(await resolveVendorCheckoutCredential(body),body.event || '');
+                if (!context) throw buyerInputError('업체 전용 링크를 다시 열어 주세요.',401);
+                await withMutationLock(`channel:${context.channel.id}`,async()=>{
+                    const fresh = await vendorCheckoutContext(context.token,context.channel.id);
+                    if (!fresh) throw buyerInputError('업체 정보를 다시 불러와 주세요.',409);
+                    if (method === 'GET') { replyJson(res,200,await vendorShippingEditor(fresh,body.buyerId)); return; }
+                    if (fresh.channel.status !== 'active') throw buyerInputError('운영 중인 경매에서만 변경할 수 있습니다.',409);
+                    const result = await saveVendorShipping(fresh,body);
+                    replyJson(res,200,{...await vendorCheckoutPayload(await vendorCheckoutContext(context.token,context.channel.id)),...result});
+                });
+                return true;
             }
 
             if (segments.length === 1 && segments[0] === 'vendor-checkout' && method === 'GET') {
