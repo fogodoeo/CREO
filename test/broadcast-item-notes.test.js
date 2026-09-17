@@ -27,11 +27,22 @@ test('note observers are disconnected on item replacement and when returning to 
  current=node();c.CreoBroadcastItemNotes.hydrate(container);assert.equal(disconnects,1);assert.equal(current.dataset.overflow,'1');
  current=null;c.CreoBroadcastItemNotes.hydrate(container);assert.equal(disconnects,2);
 });
-test('two-row style overrides saved fixed height and pixel zero-grow traits without changing the anchor',()=>{
+test('P2 content sizing overrides saved height and separates the note from the identity row',()=>{
  const css=fs.readFileSync(require.resolve('../public/broadcast-item-notes.css'),'utf8');
- const card=css.match(/body\[data-page="2"\] #stage \.item-copy\.is-inline-info\.has-item-note\{([^}]+)\}/)[1];
- assert.match(card,/height:auto!important/);assert.doesNotMatch(card,/(?:^|;)(?:top|left|right|width):/);
- const traits=css.match(/\.has-item-note \.item-inline-traits\{([^}]+)\}/)[1];assert.match(traits,/flex:1 1 0/);
+ const card=css.match(/body\[data-page="2"\] #stage \.item-copy\.is-inline-info\{([^}]+)\}/)[1];
+ assert.match(card,/width:max-content!important/);assert.match(card,/height:auto!important/);assert.match(card,/min-height:0!important/);
+ assert.doesNotMatch(card,/(?:^|;)(?:top|left|right):/);
+ assert.match(card,/flex-direction:column/);
+ const source=fs.readFileSync(require.resolve('../public/auction-live.html'),'utf8');
+ const functions=source.slice(source.indexOf('function pageTwoInfoTraits('),source.indexOf('function pageTwoParents('));
+ const c=vm.createContext({CreoBroadcastItemNotes:notes,CreoAuctionContract:contract,esc:String});vm.runInContext(functions,c);
+ for(const note of ['', '짧은 비고', '긴 비고 '.repeat(100)]){
+  const html=c.pageTwoInlineInfo({name:'A01',note,attributes:{checklist:'gender:F|weight:28'}},'');
+  assert.match(html,/item-inline-main/);
+  if(note)assert.match(html,/<\/div><\/div><div class="broadcast-item-note">/);
+ }
+ // Neither row must demand 100% of the configured box's width via flex-basis.
+ assert.doesNotMatch(css,/flex:(?:0 0 100%|1 1 0)|flex-basis:calc\(100%/);
  assert.match(css,/@media\(prefers-reduced-motion:reduce\)/);assert.match(css,/white-space:normal/);
 });
 test('P2 notes can be hidden in both layouts without removing identity or traits; undefined keeps existing visibility',()=>{
