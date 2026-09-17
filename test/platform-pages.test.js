@@ -759,7 +759,7 @@ test('print forms have one canonical page linked from both pipeline and workspac
     assert.match(print, /인쇄할 채널 주소가 없습니다/);
     assert.doesNotMatch(print, /get\('channel'\) \|\| 'cdcup'/);
     assert.match(print, /print-shipping-summary\.js/);
-    assert.match(print, /CreoPrintShippingSummary\.winnerIdentity\(\{ winner: str \}\)/);
+    assert.match(print, /CreoPrintShippingSummary\.winnerIdentity\(/);
     assert.doesNotMatch(print, /function parseWinner\(str\)[\s\S]{0,400}phoneIdx/);
     assert.match(print, /google-sheets-export\.js/);
     assert.match(print, /accounts\.google\.com\/gsi\/client/);

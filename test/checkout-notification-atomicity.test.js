@@ -29,6 +29,88 @@ async function fixture(t,method='card') {
  return {call,card,report,selection,link,vendor,buyer,sent,get repository(){return repository},get service(){return service},setReady(v){ready=v},restart(){repository.close();start()},notices:async key=>(await repository.listRecords('alpha','notification')).filter(n=>n.templateKey===key)};
 }
 
+async function resetRequest(f, extra={}) {
+ const current=(await f.call('GET','vendor-checkout?code='+f.vendor.code)).json().buyers[0];
+ return {code:f.vendor.code,buyerId:current.id,requestId:'reset-card-guide',expectedVersion:current.payment.editVersion,expectedAmount:current.totals.totalAmount,confirmedOldCardLinkCancelled:true,confirmedUnpaid:true,...extra};
+}
+for(const external of [false,true])test(`reset ${external?'external':'linked'} card guide preserves shipping and allows a new guide after restart`,async t=>{
+ const f=await fixture(t);assert.equal((await f.card(external?{cardNoticeMethod:'external'}:{})).status,200);
+ const before=await f.repository.listRecords('alpha','shipment');
+ const notices=await f.repository.listRecords('alpha','notification');
+ const body=await resetRequest(f);
+ const responses=await Promise.all([f.call('POST','vendor-checkout/reset-card-guide',body),f.call('POST','vendor-checkout/reset-card-guide',body)]);
+ assert.deepEqual(responses.map(r=>r.status),[200,200]);assert.deepEqual(responses.map(r=>r.json().duplicate).sort(),[false,true]);
+ assert.equal(responses[0].json().buyers[0].payment.status,'card_link_pending');
+ assert.equal(responses[0].json().buyers[0].payment.canResetCardGuide,false);
+ const after=await f.repository.listRecords('alpha','shipment');
+ for(const row of after){const old=before.find(s=>s.id===row.id);for(const key of ['address','recipientPhone','cost','buyerSubmittedAt','paymentConfirmedAmount','paymentConfirmedAt'])assert.equal(row[key],old[key],key);assert.equal(row.cardPaymentUrl,'');assert.equal(row.cardNoticeMethod,'link');assert.equal(row.cardLinkRequestId,'');assert.equal(row.retiredCardPaymentUrl,old.cardPaymentUrl);}
+ assert.deepEqual(await f.repository.listRecords('alpha','notification'),notices,'reset creates no messages');
+ assert.equal((await f.repository.listRecords('beta','shipment')).length,0);
+ f.restart();assert.equal((await f.call('POST','vendor-checkout/reset-card-guide',body)).json().duplicate,true);
+ const buyer=(await f.call('GET','buyer-shipping?code='+f.link.code)).json();
+ assert.equal(buyer.vendors[0].payment.cardPaymentUrl,'');assert.doesNotMatch(JSON.stringify(buyer),/pay\.example\.test\/fixture/);
+ const replaced=await f.card({requestId:'replacement-guide',cardPaymentUrl:'https://pay.example.test/replacement'});assert.equal(replaced.status,200,replaced.body);
+ const saved=await f.repository.listRecords('alpha','shipment');
+ assert.equal((await f.call('POST','vendor-checkout/reset-card-guide',body)).json().duplicate,true);
+ assert.deepEqual(await f.repository.listRecords('alpha','shipment'),saved,'late reset retry cannot remove new guide');
+ await f.service.flushChannel('alpha');
+ const cardNotices=await f.notices('buyer_card_link_ready');
+ assert.equal(cardNotices.filter(n=>n.status==='sent').length,1);
+ if(!external)assert.equal(cardNotices.filter(n=>n.status==='expired').length,1,'superseded queued guide never goes out');
+});
+test('card reset is versioned, confirmed and vendor/channel scoped',async t=>{
+ const f=await fixture(t);await f.card();const body=await resetRequest(f);
+ const before=await f.repository.listRecords('alpha','shipment');
+ for(const extra of [{expectedVersion:''},{expectedVersion:'stale'},{expectedAmount:1},{confirmedUnpaid:false},{confirmedOldCardLinkCancelled:false}])assert.equal((await f.call('POST','vendor-checkout/reset-card-guide',{...body,...extra})).status,409);
+ assert.equal((await f.call('POST','vendor-checkout/reset-card-guide',{...body,code:'invalid'})).status,401);
+ assert.equal((await f.call('POST','vendor-checkout/reset-card-guide',{...body,event:'beta'})).status,401);
+ assert.equal((await f.call('POST','vendor-checkout/reset-card-guide',{...body,buyerId:'someone-else'})).status,404);
+ assert.deepEqual(await f.repository.listRecords('alpha','shipment'),before);
+});
+for(const patch of [{paymentStatus:'paid',paymentConfirmedAmount:50000},{paymentConfirmedAmount:1000},{trackingNumber:'TEST'},{status:'shipped'},{status:'complete'}])test('card reset protects confirmed or dispatched shipments '+JSON.stringify(patch),async t=>{
+ const f=await fixture(t);await f.card();
+ for(const row of await f.repository.listRecords('alpha','shipment'))await f.repository.upsertRecord('alpha','shipment',{...row,...patch});
+ const body=await resetRequest(f),before=await f.repository.listRecords('alpha','shipment');
+ assert.equal((await f.call('POST','vendor-checkout/reset-card-guide',body)).status,409);
+ assert.deepEqual(await f.repository.listRecords('alpha','shipment'),before);
+});
+test('card reset failure rolls back every item and receipt before retry',async t=>{
+ const f=await fixture(t);await f.card();const body=await resetRequest(f),before=await f.repository.listRecords('alpha','shipment');
+ const upsert=f.repository.upsertRows.bind(f.repository);
+ f.repository.upsertRows=rows=>upsert(rows.some(r=>r.key.startsWith('checkout_action_v1::'))?[...rows,{key:{invalid:true},value:'fail'}]:rows);
+ assert.equal((await f.call('POST','vendor-checkout/reset-card-guide',body)).status,500);
+ assert.deepEqual(await f.repository.listRecords('alpha','shipment'),before);
+ f.restart();const retry=await f.call('POST','vendor-checkout/reset-card-guide',body);assert.equal(retry.status,200,retry.body);assert.equal(retry.json().duplicate,false);
+});
+test('reset and payment confirmation racing cannot overwrite each other',async t=>{
+ for(const confirmFirst of [false,true]){
+  const f=await fixture(t);await f.card();const body=await resetRequest(f);
+  const reset=()=>f.call('POST','vendor-checkout/reset-card-guide',body);
+  const confirm=()=>f.call('POST','vendor-checkout/confirm-payment',{code:f.vendor.code,buyerId:body.buyerId,requestId:'racing-confirm',expectedVersion:body.expectedVersion,expectedAmount:50000});
+  const responses=await Promise.all(confirmFirst?[confirm(),reset()]:[reset(),confirm()]);
+  assert.deepEqual(responses.map(r=>r.status).sort(),[200,409]);
+  const rows=await f.repository.listRecords('alpha','shipment');assert.ok(rows.every(s=>s.paymentStatus===(confirmFirst?'paid':'card_link_pending')));
+ }
+});
+test('buyer reported payment can be reset only after vendor confirms cancellation and nonpayment',async t=>{
+ const f=await fixture(t);await f.card();await f.report();const body=await resetRequest(f);
+ assert.equal((await f.call('POST','vendor-checkout/reset-card-guide',{...body,confirmedUnpaid:false})).status,409);
+ const reset=await f.call('POST','vendor-checkout/reset-card-guide',body);assert.equal(reset.status,200,reset.body);
+ for(const row of await f.repository.listRecords('alpha','shipment'))assert.equal(row.buyerPaymentReportedAt,'');
+});
+test('card reset preserves previously paid items and rejects archived events',async t=>{
+ const f=await fixture(t);await f.card();
+ const first=(await f.repository.listRecords('alpha','shipment')).find(s=>s.itemId==='first');
+ await f.repository.upsertRecord('alpha','shipment',{...first,paymentStatus:'paid',paymentConfirmedAmount:30000});
+ const paid=await f.repository.getRecord('alpha','shipment',first.id),body=await resetRequest(f);
+ const result=await f.call('POST','vendor-checkout/reset-card-guide',body);assert.equal(result.status,200,result.body);
+ assert.deepEqual(await f.repository.getRecord('alpha','shipment',first.id),paid);
+ await f.card({requestId:'after-partial-reset',cardPaymentUrl:'https://pay.example.test/remaining'});
+ const archivedBody=await resetRequest(f,{requestId:'reset-archived'}),catalog=await f.repository.getCatalog();
+ await f.repository.saveCatalog(catalog.channels.map(c=>c.id==='alpha'?{...c,status:'archived'}:c));
+ assert.equal((await f.call('POST','vendor-checkout/reset-card-guide',archivedBody)).status,409);
+});
+
 test('card registration and buyer report remain unchanged if their notification cannot be prepared',async t=>{
  for(const kind of ['card','report']){
   const f=await fixture(t,kind==='card'?'card':'bank_transfer'),key=kind==='card'?'buyer_card_link_ready':'vendor_payment_reported';

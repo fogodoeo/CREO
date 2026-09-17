@@ -2234,6 +2234,7 @@ function createPlatformApi({
             })),
             payment: {
                 editVersion: buyerEditVersion(bundle.context),
+                canResetCardGuide: canResetCardGuide(group),
                 status: group.payment.status,
                 method: latest?.paymentMethod || '',
                 requestedAmount: group.totalAmount,
@@ -2390,6 +2391,47 @@ function createPlatformApi({
 
     async function vendorBuyerBundle(context, buyerId) {
         return (await vendorBuyerBundles(context)).find((entry) => entry.id === cleanText(buyerId, 64)) || null;
+    }
+
+    function canResetCardGuide(group) {
+        const unpaid = group.shipments.filter(row => row.paymentStatus !== 'paid');
+        return group.payment.status !== 'paid'
+            && group.payment.latest?.paymentMethod === 'card'
+            && unpaid.length > 0
+            && group.items.every(item => group.shipments.some(row => row.itemId === item.id))
+            && unpaid.every(row => !destinationChangeLocked(row) && row.paymentMethod === 'card' && !row.cardLinkCancellationRequired)
+            && unpaid.some(row => row.cardLinkPreparedAt || row.cardPaymentUrl || row.cardNoticeMethod === 'external');
+    }
+
+    async function resetCardPaymentGuide(context, body) {
+        const requestId = cleanText(body.requestId, 80);
+        if (requestId.length < 8) throw buyerInputError('변경 요청값이 올바르지 않습니다. 새로고침 후 다시 시도해 주세요.');
+        const bundle = await vendorBuyerBundle(context, body.buyerId);
+        if (!bundle) throw buyerInputError('구매자 결제 내역을 찾을 수 없습니다.', 404);
+        const { group } = bundle;
+        const receiptKey = checkoutActionReceiptKey(bundle.context, group.key, 'card-reset', requestId);
+        const fingerprint = sessionKey(JSON.stringify([body.expectedVersion, body.expectedAmount, body.confirmedOldCardLinkCancelled, body.confirmedUnpaid]));
+        if (await readCheckoutActionReceipt(context.channel.id, receiptKey, fingerprint)) return { duplicate: true };
+        await assertNoCheckoutChange(bundle.context);
+        if (body.confirmedOldCardLinkCancelled !== true || body.confirmedUnpaid !== true) throw buyerInputError('기존 결제 앱에서 요청을 취소·차단하고 미결제 상태인지 확인해 주세요.', 409);
+        if (!body.expectedVersion || body.expectedVersion !== buyerEditVersion(bundle.context) || Number(body.expectedAmount) !== group.totalAmount) throw buyerInputError('결제 정보가 변경되었습니다. 새로고침 후 다시 확인해 주세요.', 409);
+        if (!canResetCardGuide(group)) throw buyerInputError('대기로 변경할 수 없는 내역입니다. 결제 확인·발송 상태를 확인해 주세요.', 409);
+        const now = new Date().toISOString();
+        const unpaid = group.shipments.filter(row => row.paymentStatus !== 'paid');
+        const rows = unpaid.map(current => ({key:channelKey(context.channel.id,'shipment',current.id),value:JSON.stringify({
+            ...current, cardPaymentUrl:'', cardNoticeMethod:'link', cardLinkPreparedAt:'', cardLinkRequestId:'',
+            cardLinkCancellationRequired:false, retiredCardPaymentUrl:current.cardPaymentUrl || '',
+            retiredCardNoticeMethod:current.cardNoticeMethod || 'link', cardCancellationVersion:requestId,
+            paymentStatus:'card_link_pending', buyerPaymentReportedAt:'', buyerPaymentReportRequestId:'',
+            shippingChangedAfterReport:false, paymentRequestedAmount:group.totalAmount, updatedAt:now
+        })}));
+        // Keep the old guide and buyer report in the same durable transaction as the reset.
+        rows.push({key:receiptKey,value:JSON.stringify({fingerprint,createdAt:now,action:'card-reset',vendorKey:group.key,
+            itemIds:unpaid.map(row=>row.itemId),previousShipments:unpaid,
+            notification:{skipped:true,reason:'card_guide_reset'}})});
+        await repository.upsertRows(rows);
+        touchCheckout(context.channel.id); touchChannel(context.channel.id);
+        return { duplicate:false };
     }
 
     async function saveCardPaymentLink(context, buyerId, rawUrl, requestId, confirmation = {}, req) {
@@ -3433,6 +3475,19 @@ function createPlatformApi({
                     const notification = result.notification || {duplicate:result.duplicate};
                     const reloadedContext = await vendorCheckoutContext(context.token);
                     replyJson(res, 200, { ...(await vendorCheckoutPayload(reloadedContext)), duplicate: result.duplicate, notification });
+                });
+                return true;
+            }
+
+            if (segments.length === 2 && segments[0] === 'vendor-checkout' && segments[1] === 'reset-card-guide' && method === 'POST') {
+                const body = await readJson(req);
+                const context = await vendorCheckoutContext(await resolveVendorCheckoutCredential(body), body.event || '');
+                if (!context) throw buyerInputError('업체 전용 링크를 다시 열어 주세요.', 401);
+                await withMutationLock(`channel:${context.channel.id}`, async () => {
+                    const fresh = await vendorCheckoutContext(context.token);
+                    if (!fresh || fresh.channel.status !== 'active') throw buyerInputError('운영 중인 경매에서만 변경할 수 있습니다.', 409);
+                    const result = await resetCardPaymentGuide(fresh, body);
+                    replyJson(res, 200, {...await vendorCheckoutPayload(await vendorCheckoutContext(context.token)), duplicate:result.duplicate});
                 });
                 return true;
             }
@@ -5416,6 +5471,16 @@ function createPlatformApi({
         if(!code)return;
         const token=await resolveBuyerShippingCredential({code}),payload=token&&verifyBuyerShippingToken(token);
         if(!payload||payload.channelId!==channelId||!await buyerLinkAccess.accepts(payload))throw Object.assign(new Error('구매자 링크가 만료되거나 변경되어 발송을 중지했어요.'),{code:'BUYER_LINK_INACTIVE'});
+        if (notification.templateKey === 'buyer_card_link_ready' && String(notification.eventKey || '').startsWith('card-link:')) {
+            const context = await buyerBundleContext(payload);
+            const current = context && ownCheckoutShipments(context).some(row => {
+                const item = context.bundleItems.find(item => item.id === row.itemId);
+                if (!item || !row.cardLinkRequestId || !row.cardPaymentUrl || row.cardNoticeMethod === 'external' || row.cardLinkCancellationRequired) return false;
+                const key = checkoutActionReceiptKey(context, vendorKeyForItem(item), 'card-link', row.cardLinkRequestId);
+                return `card-link:${sessionKey(key)}` === notification.eventKey;
+            });
+            if (!current) throw Object.assign(new Error('변경되거나 취소된 카드 안내의 발송을 중지했어요.'), {code:'BUYER_LINK_INACTIVE'});
+        }
     }
     return { handle, isAdmin, hasAdminSession, workspace, assertBuyerNotificationLink, cleanupBuyerAuth:buyerAccount.cleanupExpired };
 }

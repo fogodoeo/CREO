@@ -1,5 +1,21 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const html=fs.readFileSync(require.resolve('../public/vendor-checkout.html'),'utf8');
+test('card guide change is visible only for eligible active buyers',()=>{
+ const ctx=vm.createContext({window:{CreoCheckoutClient:{escapeHtml:String}}});
+ vm.runInContext(fs.readFileSync(require.resolve('../public/vendor-card-reset.js'),'utf8'),ctx);
+ const button=ctx.window.CreoVendorCardReset.button,b={id:'buyer',payment:{canResetCardGuide:true}};
+ assert.match(button(b,{status:'active'}),/카드 안내 변경/);
+ assert.equal(button(b,{status:'archived'}),'');assert.equal(button({...b,changePending:true},{status:'active'}),'');assert.equal(button({...b,payment:{canResetCardGuide:false}},{status:'active'}),'');
+});
+test('cancelled reset sends nothing and failed response retries the same request id',async()=>{
+ let confirmed=false,fail=true,calls=[],sequence=0,focus=0;
+ const buyer={id:'buyer',name:'예시',payment:{canResetCardGuide:true,editVersion:'one'},totals:{totalAmount:50000}};
+ const ctx=vm.createContext({data:{buyers:[buyer]},busy:false,selectedEvent:'alpha',workFilter:'waiting',CreoVendorCardReset:{confirm:async()=>confirmed},uuid:()=>String(++sequence),CSS:{escape:String},document:{querySelector:()=>({focus(){focus++}})},render(){},revisionSync:{publish(){}},alert(){},api:async(path,body)=>{calls.push({path,body});if(fail)throw Error('lost response');return{buyers:[buyer]}}});
+ vm.runInContext(html.slice(html.indexOf('const pendingCardRequests='),html.indexOf('async function sendCard(')),ctx);
+ await ctx.resetCardGuide('buyer');assert.equal(calls.length,0);assert.equal(ctx.busy,false);
+ confirmed=true;await ctx.resetCardGuide('buyer');fail=false;await ctx.resetCardGuide('buyer');
+ assert.equal(calls.length,2);assert.deepEqual(calls[0],calls[1]);assert.equal(calls[0].path,'/reset-card-guide');assert.equal(calls[0].body.confirmedUnpaid,true);assert.equal(ctx.busy,false);assert.equal(ctx.workFilter,'action');assert.equal(focus,1);
+});
 test('vendor event selector is visible for multiple events and hidden for a single event',()=>{
  const select={parentElement:{},options:[],replaceChildren(){this.options=[]},append(option){this.options.push(option)}};
  const ctx=vm.createContext({data:{channel:{id:'a',name:'A',status:'active'}},$:()=>select,document:{createElement:()=>({})}});

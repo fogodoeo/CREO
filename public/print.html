@@ -946,9 +946,9 @@
             return parts.join(' / ');
         }
 
-        function parseWinner(str) {
-            if (!str) return { name: '', phone: '' };
-            var identity = CreoPrintShippingSummary.winnerIdentity({ winner: str });
+        function parseWinner(item) {
+            if (!item) return { name: '', phone: '' };
+            var identity = CreoPrintShippingSummary.winnerIdentity(typeof item === 'object' ? item : { winner: item });
             return { name: identity.name === '이름 없음' ? '' : identity.name, phone: identity.phone };
         }
 
@@ -1198,7 +1198,7 @@
 
         function renderShippingLabels(items) {
             var eligible = (items || []).filter(function (it) {
-                var winner = parseWinner(it.winner);
+                var winner = parseWinner(it);
                 return CreoAuctionContract.isSoldStatus(it.status)
                     && Boolean((winner.phone || '').replace(/[^0-9]/g, ''))
                     && Boolean(shippingLabelDestination(it));
@@ -1213,7 +1213,7 @@
                 return;
             }
             list.innerHTML = eligible.map(function (it, index) {
-                var winner = parseWinner(it.winner);
+                var winner = parseWinner(it);
                 var paid = it.payment_status === 'paid';
                 return '<label class="label-item" data-label-row-index="' + index + '" onclick="setShippingLabelPreview(' + index + ')">'
                     + '<input class="shipping-label-check" type="checkbox" data-label-index="' + index + '"'
@@ -1232,7 +1232,7 @@
         function estimatedShippingRows(items) {
             return (items || []).filter(it=>CreoAuctionContract.isSoldStatus(it.status) && !shippingLabelDestination(it) && it._shippingSuggestion?.label).map(it=>{
                 var winner=CreoPrintShippingSummary.winnerIdentity(it);
-                winner.name=parseWinner(it.winner).name||winner.name;
+                winner.name=parseWinner(it).name||winner.name;
                 return '<div class="label-item" style="background:#f8fafc">'
                     + '<span aria-hidden="true">—</span><strong>' + escapePrintHtml(it.name || auctionNumber(it)) + '</strong>'
                     + '<span class="label-buyer">' + escapePrintHtml(winner.name || '낙찰자') + '</span>'
@@ -1387,7 +1387,7 @@
         }
 
         function d10ShippingLabelPayload(it) {
-            var winner = parseWinner(it.winner);
+            var winner = parseWinner(it);
             var bundle = window._shippingLabelBundles && window._shippingLabelBundles.get(it);
             return {
                 lot_number: String(it.name || auctionNumber(it) || '').trim(),
@@ -1518,7 +1518,7 @@
 
         function buildShippingSettlement(items) {
             var summaryItems = (items || []).filter(function (it) { return CreoAuctionContract.isSoldStatus(it.status); }).map(function (it) {
-                var parsed = parseWinner(it.winner);
+                var parsed = parseWinner(it);
                 return Object.assign({}, it, {
                     _winner: {
                         name: parsed.name || it.winner_name || '',
@@ -1694,7 +1694,7 @@
         var headersList = '<th>번호</th><th>구분</th><th>이름</th><th>업체</th><th>정보</th>';
 
         function buildResultRow(it, showCompany) {
-            var w = parseWinner(it.winner);
+            var w = parseWinner(it);
             var r = '<tr>';
             r += '<td class="col-item-name">' + formatItemCodeName(it) + '</td>';
             r += '<td class="col-winner">' + (w.name || '-') + '</td>';
@@ -1948,7 +1948,7 @@
             var soldItems = items.filter(function (it) { return CreoAuctionContract.isSoldStatus(it.status); });
             var buyerMap = {};
             soldItems.forEach(function (it) {
-                var w = parseWinner(it.winner);
+                var w = parseWinner(it);
                 var phone = (w.phone || '').replace(/[^0-9]/g, '');
                 if (!phone) return;
                 if (!buyerMap[phone]) buyerMap[phone] = [];
@@ -2004,7 +2004,7 @@
             if (selectedCompany) {
                 var selItems = companyMap[selectedCompany] || [];
                 selItems.forEach(function (it) {
-                    var w = parseWinner(it.winner);
+                    var w = parseWinner(it);
                     var phone = (w.phone || '').replace(/[^0-9]/g, '');
                     if (phone && multiPhones[phone]) {
                         buyerMap[phone].forEach(function (bi) {
@@ -2029,7 +2029,7 @@
                 var isOther = selectedCompany && company !== selectedCompany;
 
                 list.forEach(function (it, idx) {
-                    var w = parseWinner(it.winner);
+                    var w = parseWinner(it);
                     var phone = (w.phone || '').replace(/[^0-9]/g, '');
                     var isMulti = phone && multiPhones[phone];
 
