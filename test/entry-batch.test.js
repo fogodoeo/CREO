@@ -19,6 +19,26 @@ test('checked entries alone become numbered auction items, with atomic replay ac
  await assert.rejects(f.approve(selected,'2부',requestId),e=>e.status===409);
  assert.equal((await f.repo.listRecords('beta','item')).length,0);
 });
+test('vendor deletion racing batch approval produces either a tombstone or an approved item, never both',async t=>{
+ for(const first of ['delete','approve']){
+  const f=await fixture(t),row=f.entries[0],context=f.contexts[0];
+  const remove=()=>f.service.command(context,{type:'delete',id:row.id,expectedVersion:1,requestId:randomUUID()});
+  const approve=()=>f.approve([row]);
+  const results=await Promise.allSettled(first==='delete'?[remove(),approve()]:[approve(),remove()]);
+  assert.equal(results.filter(r=>r.status==='fulfilled').length,1);
+  const key='vendor_entries_v1::'+context.profile.id,raw=JSON.parse((await f.repo.getRowsByKeys([key]))[0].value),entry=raw.entries.find(e=>e.id===row.id);
+  const items=await f.items();assert.ok(['approved','deleted'].includes(entry.status));assert.equal(items.length,entry.status==='approved'?1:0);
+  f.restart();assert.equal((await f.service.read(context)).entries.some(e=>e.id===row.id),entry.status==='approved');
+  assert.equal((await f.items()).length,items.length);
+ }
+});
+test('deleting a submitted selection makes stale bulk approval atomic and leaves sibling entries unchanged',async t=>{
+ const f=await fixture(t),row=f.entries[3];
+ await f.service.command(f.contexts[1],{type:'delete',id:row.id,expectedVersion:1,requestId:randomUUID()});
+ const before=await Promise.all(f.contexts.map(c=>f.service.read(c)));
+ await assert.rejects(f.approve([f.entries[0],row]));
+ assert.deepEqual(await Promise.all(f.contexts.map(c=>f.service.read(c))),before);assert.deepEqual(await f.items(),[]);
+});
 test('a stale, duplicated or foreign selection leaves the whole batch unchanged',async t=>{
  const f=await fixture(t),before=await Promise.all(f.contexts.map(c=>f.service.read(c)));
  for(const entries of [[f.entries[0],{...f.entries[3],expectedVersion:99}],[f.entries[0],f.entries[0]],[{...f.entries[0],vendorId:'C'}]])await assert.rejects(f.approve(entries));

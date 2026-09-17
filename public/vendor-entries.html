@@ -7,14 +7,14 @@
   <title>출품 개체 · 옹동2</title>
   <link rel="stylesheet" href="/ongdong-brand.css">
   <link rel="stylesheet" href="/checkout-pages.css">
-  <link rel="stylesheet" href="/vendor-entry.css?v=20260914-vendor-history">
+  <link rel="stylesheet" href="/vendor-entry.css?v=20260917-entry-delete">
   <link rel="stylesheet" href="/vendor-contact-form.css">
   <script defer src="/vendor-contact-form.js"></script>
   <link rel="stylesheet" href="/vendor-navigation.css?v=20260914-vendor-history">
   <script defer src="/ongdong-brand.js"></script>
-  <script defer src="/vendor-entry-api.js"></script>
+  <script defer src="/vendor-entry-api.js?v=20260917-entry-delete"></script>
   <script defer src="/vendor-navigation.js?v=20260914-vendor-history"></script>
-  <script defer src="/vendor-entry-app.js?v=20260914-vendor-history"></script>
+  <script defer src="/vendor-entry-app.js?v=20260917-entry-delete"></script>
 </head>
 <body class="vendor-page entry-page">
   <div class="entry-shell">
@@ -60,6 +60,15 @@
     <button class="secondary" type="button" id="leave-stay">계속 작성</button>
     <button class="text-button danger" type="button" id="leave-discard">저장하지 않고 나가기</button>
     <p id="leave-error" class="inline-error" role="alert" hidden></p>
+  </dialog>
+  <dialog id="delete-dialog" class="confirm-dialog" aria-labelledby="delete-title" aria-describedby="delete-description">
+    <h2 id="delete-title">이 개체를 삭제할까요?</h2>
+    <p id="delete-entry-name" class="delete-entry-name"></p>
+    <p id="delete-description" class="muted">출품 목록에서 삭제돼요. 부모 정보는 유지돼요.</p>
+    <p id="delete-error" class="inline-error" role="alert" hidden></p>
+    <button class="secondary" type="button" id="delete-cancel" autofocus>취소</button>
+    <button class="primary delete-confirm" type="button" id="delete-confirm">삭제</button>
+    <button class="text-button" type="button" id="delete-refresh" hidden>목록 새로고침</button>
   </dialog>
   <dialog id="import-dialog" class="sheet" aria-labelledby="import-title">
     <header class="sheet-head"><h2 id="import-title">피들에서 가져오기</h2><button type="button" id="import-close" class="icon-button" aria-label="피들 가져오기 닫기">×</button></header>

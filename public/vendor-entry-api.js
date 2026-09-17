@@ -60,6 +60,10 @@
     current = result.state; selected = current.channelId;
     localMedia = storedMedia || [];
     recovery = storedDraft || null;
+    if (recovery?.entry?.version > 0 && !current.entries.some(entry => entry.id === recovery.entry.id)) {
+      recovery = recovery.parent ? { ...recovery, entry: null } : null;
+      await record('draft', recovery);
+    }
     // A completed upload may have lost its response; prefer durable server media.
     localMedia = localMedia.filter(row => !current.media.some(saved => saved.id === row.id));
     await record('media', localMedia);
@@ -94,7 +98,7 @@
     if (input.channelId && input.channelId !== selected) throw Error('경매가 변경됐어요. 목록에서 다시 열어 주세요.');
     if (input.type === 'media') return stage(input.media);
     if (input.type === 'retry-photo') { await flushPhoto(input.id); return { state: merged(), result: input.id }; }
-    if (!['save','submit','withdraw','revise','parent','import'].includes(input.type)) throw Error('업체 페이지에서 실행할 수 없는 작업이에요.');
+    if (!['save','submit','withdraw','revise','parent','import','delete'].includes(input.type)) throw Error('업체 페이지에서 실행할 수 없는 작업이에요.');
     mutationEpoch++;
     const referenced = [...(input.entry?.photoIds || []), input.parent?.photoId, ...Object.values(input.parents || {}).map(p => p?.photoId)].filter(Boolean);
     if (input.type === 'import') {
@@ -112,6 +116,10 @@
     mutationEpoch++;
     await record('request', undefined, true);
     if (result.state.version >= current.version) current = result.state;
+    if (input.type === 'delete' && recovery?.entry?.id === input.id) {
+      recovery = recovery.parent ? { ...recovery, entry: null } : null;
+      await record('draft', recovery);
+    }
     if (input.type === 'import') { await record('import:' + input.entry.sourceId, undefined, true); recovery = null; await record('draft', undefined, true); }
     return { ...result, state: merged() };
   }

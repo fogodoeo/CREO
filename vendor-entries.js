@@ -95,11 +95,11 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
     async function summary(context) {
         const currentPolicy = await policy(context.channel.id);
         const state = context.profile ? await readOwner(owner(context)) : null;
-        return {entriesOpen:entriesOpen(context,currentPolicy),entryCount:state ? state.entries.filter(entry => entry.channelId === context.channel.id && entry.channelVendorId === context.vendor.id).length : 0};
+        return {entriesOpen:entriesOpen(context,currentPolicy),entryCount:state ? state.entries.filter(entry => entry.status !== 'deleted' && entry.channelId === context.channel.id && entry.channelVendorId === context.vendor.id).length : 0};
     }
     function view(state, context) {
         const memberships=context.profile.members;
-        const entries=state.entries.filter(entry=>memberships.some(member=>member.channelId===entry.channelId&&member.vendorId===entry.channelVendorId));
+        const entries=state.entries.filter(entry=>entry.status!=='deleted'&&memberships.some(member=>member.channelId===entry.channelId&&member.vendorId===entry.channelVendorId));
         const mediaIds=new Set([...state.parents.map(parent=>parent.photoId),...entries.flatMap(entry=>[...(entry.photoIds||[]),...(entry.approved?.photoIds||[]),...(entry.submission?.photoIds||[])])].filter(Boolean));
         // Recent unattached uploads survive a lost response or an interrupted draft.
         const recent = new Set(state.media.filter(media=>!mediaIds.has(media.id)).slice(-12).map(media=>media.id));
@@ -121,7 +121,7 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
     }
     async function command(context, input, { operator=false }={}) {
         const ownerId=owner(context),type=String(input.type||'');
-        const allowed=operator?['approve','request-changes']:['save','submit','withdraw','revise','parent','import'];
+        const allowed=operator?['approve','request-changes']:['save','submit','withdraw','revise','parent','import','delete'];
         if(!allowed.includes(type))throw fail('이 작업을 실행할 수 없습니다.',403);
         const requestId=cleanText(input.requestId,80);
         if(requestId.length<8)throw fail('요청을 다시 확인해 주세요.',422);
@@ -130,14 +130,14 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
             const state=await readOwner(ownerId),key=context.channel.id+':'+type+':'+requestId;
             const previous=state.requests.find(request=>request.key===key);
             if(previous){if(previous.signature!==signature)throw fail('같은 요청으로 다른 내용을 저장할 수 없습니다. 다시 시도해 주세요.');return {state:await read(context),result:previous.result,duplicate:true}}
-            if(type!=='parent'&&!(operator?['draft','active'].includes(context.channel.status):entriesOpen(context,await policy(context.channel.id))))throw fail('출품 접수가 마감됐어요. 운영자에게 문의해 주세요.');
+            if(type!=='parent'&&!(operator||type==='delete'?['draft','active'].includes(context.channel.status):entriesOpen(context,await policy(context.channel.id))))throw fail('출품 접수가 마감됐어요. 운영자에게 문의해 주세요.');
             if(type==='parent'&&!['active','draft'].includes(context.channel.status))throw fail('진행 중인 경매의 업체 페이지에서 부모 정보를 수정해 주세요.');
             const now=new Date().toISOString();let result,item=null;
             if(type==='import'){
                 const normalized=normalizeEntry(input.entry),id=cleanText(input.entry?.id,80);
                 if(normalized.morph&&!normalized.note.startsWith('모프: '+normalized.morph))normalized.note=['모프: '+normalized.morph,normalized.note].filter(Boolean).join('\n').slice(0,600);
                 if(!uuid(id)||!normalized.sourceId)throw fail('피들 링크를 다시 불러와 주세요.',422);
-                const duplicate=state.entries.find(entry=>entry.channelId===context.channel.id&&entry.sourceId===normalized.sourceId);
+                const duplicate=state.entries.find(entry=>entry.status!=='deleted'&&entry.channelId===context.channel.id&&entry.sourceId===normalized.sourceId);
                 if(duplicate)return {state:await read(context),result:duplicate.id,duplicate:true};
                 if(state.entries.some(entry=>entry.id===id))throw fail('이미 사용한 출품 번호예요. 다시 불러와 주세요.');
                 for(const role of ['sire','dam']){
@@ -175,7 +175,7 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
                 if(current&&(current.channelId!==context.channel.id||current.channelVendorId!==context.vendor.id))throw fail('이 출품을 수정할 수 없습니다.',403);
                 if(current&&(current.version!==input.expectedVersion||!['draft','changes_requested'].includes(current.status)))throw fail('출품 상태가 변경됐어요. 목록에서 다시 열어 주세요.');
                 const normalized=normalizeEntry(input.entry);
-                if(normalized.sourceId&&state.entries.some(entry=>entry.id!==id&&entry.channelId===context.channel.id&&entry.sourceId===normalized.sourceId))throw fail('이미 가져온 피들 개체예요. 기존 출품을 확인해 주세요.');
+                if(normalized.sourceId&&state.entries.some(entry=>entry.status!=='deleted'&&entry.id!==id&&entry.channelId===context.channel.id&&entry.sourceId===normalized.sourceId))throw fail('이미 가져온 피들 개체예요. 기존 출품을 확인해 주세요.');
                 const entryNumber=current?.entryNumber||Math.max(0,...state.entries.filter(entry=>entry.channelId===context.channel.id).map(entry=>entry.entryNumber))+1;
                 const entry={...normalized,id,vendorId:ownerId,channelVendorId:context.vendor.id,channelId:context.channel.id,entryNumber,code:`출품 ${String(entryNumber).padStart(2,'0')}`,version:(current?.version||0)+1,status:type==='submit'?'submitted':'draft',updatedAt:now,...(current?.approved?{approved:current.approved,itemId:current.itemId,lot:current.lot}: {})};
                 const facts=snapshot(state,entry);
@@ -188,7 +188,14 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
                 const entry=state.entries.find(entry=>entry.id===input.id&&entry.channelId===context.channel.id&&entry.channelVendorId===context.vendor.id);
                 if(!entry)throw fail('출품을 찾을 수 없습니다.',404);
                 if(entry.version!==input.expectedVersion)throw fail('출품이 변경됐어요. 내용을 다시 확인해 주세요.');
-                if(type==='revise'){
+                if(type==='delete'){
+                    if(!['draft','submitted','changes_requested'].includes(entry.status)||entry.itemId||entry.approved)throw fail('이미 편성된 개체는 삭제할 수 없어요. 운영자에게 문의해 주세요.');
+                    const items=await repository.listRecords(context.channel.id,'item');
+                    if(items.some(item=>item.id==='entry-'+entry.id||item.attributes?.vendor_entry?.entryId===entry.id))throw fail('이미 경매에 반영된 개체예요. 목록을 다시 확인해 주세요.');
+                    // Keep a tombstone and its original references: stale saves cannot recreate
+                    // this entry, and deleting one offspring never deletes shared parent photos.
+                    entry.status='deleted';entry.deletedAt=now;
+                }else if(type==='revise'){
                     if(entry.status!=='approved')throw fail('편성된 개체만 변경안을 만들 수 있습니다.');
                     entry.status='draft';delete entry.submission;
                 }else{

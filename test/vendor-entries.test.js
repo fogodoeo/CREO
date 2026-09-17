@@ -14,6 +14,85 @@ function fixture(){
 const draft=()=>({id:randomUUID(),morph:'릴리화이트',sex:'female',weight:'28',photoIds:[]});
 const command=(type,fields={})=>({type,requestId:randomUUID(),...fields});
 
+test('vendor deletion hides unapproved entries, preserves parents/media and reserves their numbers across restart',async()=>{
+    const {repository,context,service}=fixture(),parentId=randomUUID(),mediaId=randomUUID();
+    await service.addMedia(context,{id:mediaId,url:'/assets/parent.webp',thumbnailUrl:'/assets/parent-small.webp',size:1000,thumbnailSize:100});
+    await service.command(context,command('parent',{parent:{id:parentId,name:'공용 부모',sex:'male',photoId:mediaId}}));
+    for(const status of ['draft','submitted','changes_requested']){
+        const entry={...draft(),sireId:parentId,photoIds:[mediaId]};
+        await service.command(context,command(status==='draft'?'save':'submit',{entry}));
+        if(status==='changes_requested')await service.command(context,command('request-changes',{id:entry.id,expectedVersion:1,reason:'정보 확인'}),{operator:true});
+        const saved=(await service.read(context)).entries.find(e=>e.id===entry.id);
+        const request=command('delete',{id:entry.id,expectedVersion:saved.version});
+        const results=await Promise.all([service.command(context,request),createVendorEntries(repository).command(context,request)]);
+        assert.deepEqual(results.map(r=>r.duplicate).sort(),[false,true]);
+        assert.equal((await createVendorEntries(repository).command(context,request)).duplicate,true);
+        assert.equal((await service.read(context)).entries.length,0);
+        assert.equal((await service.summary(context)).entryCount,0);
+        const raw=JSON.parse(repository.rows.get('vendor_entries_v1::'+context.profile.id).value);
+        const deleted=raw.entries.find(e=>e.id===entry.id);
+        assert.equal(deleted.status,'deleted');assert.ok(deleted.deletedAt);assert.equal(deleted.version,saved.version+1);
+        assert.equal(raw.parents.length,1);assert.equal(raw.media.length,1);
+        await assert.rejects(service.command(context,command('save',{entry,expectedVersion:deleted.version})),/변경/);
+    }
+    const next=await service.command(context,command('save',{entry:draft()}));
+    assert.equal(next.state.entries[0].code,'출품 04');assert.deepEqual(await repository.listRecords('alpha','item'),[]);
+});
+
+test('deletion protects approved entries including pending revisions and orphaned auction links',async()=>{
+    const {repository,context,service}=fixture(),entry=draft();
+    await service.command(context,command('submit',{entry}));
+    await service.command(context,command('approve',{id:entry.id,expectedVersion:1,lot:'A01',order:1}),{operator:true});
+    const itemKey='creo_v2::alpha::item::entry-'+entry.id,item=JSON.parse(repository.rows.get(itemKey).value);
+    for(const status of ['waiting','live','sold']){
+        repository.rows.set(itemKey,{key:itemKey,value:JSON.stringify({...item,status})});
+        const before=JSON.stringify([...repository.rows]);
+        await assert.rejects(service.command(context,command('delete',{id:entry.id,expectedVersion:2})),/편성/);
+        assert.equal(JSON.stringify([...repository.rows]),before);
+    }
+    await service.command(context,command('revise',{id:entry.id,expectedVersion:2}));
+    await assert.rejects(service.command(context,command('delete',{id:entry.id,expectedVersion:3})),/편성/);
+    const rawKey='vendor_entries_v1::'+context.profile.id,raw=JSON.parse(repository.rows.get(rawKey).value);
+    delete raw.entries[0].itemId;delete raw.entries[0].approved;
+    repository.rows.set(rawKey,{key:rawKey,value:JSON.stringify(raw)});
+    await assert.rejects(service.command(context,command('delete',{id:entry.id,expectedVersion:3})),/경매에 반영/);
+});
+
+test('delete ownership, stale versions and lifecycle checks fail without writes; closed intake still permits withdrawal',async()=>{
+    const {repository,context,service}=fixture(),entry=draft();await service.command(context,command('save',{entry}));
+    const before=JSON.stringify([...repository.rows]),request=command('delete',{id:entry.id,expectedVersion:1});
+    const otherAuction={...context,channel:context.catalog.channels[1],vendor:{...context.vendor,id:'v2'}};
+    const foreignOwner={...context,profile:{id:randomUUID(),members:context.profile.members}};
+    for(const other of [otherAuction,foreignOwner])await assert.rejects(service.command(other,request),e=>e.status===404);
+    await assert.rejects(service.command(context,{...request,expectedVersion:0}),/변경/);
+    await assert.rejects(service.command(context,request,{operator:true}),e=>e.status===403);
+    for(const status of ['paused','archived'])await assert.rejects(service.command({...context,channel:{...context.channel,status}},request),/마감/);
+    assert.equal(JSON.stringify([...repository.rows]),before);
+    repository.rows.set('creo_v2::alpha::setting::entry-policy',{key:'creo_v2::alpha::setting::entry-policy',value:JSON.stringify({open:false})});
+    await service.command(context,request);assert.equal((await service.read(context)).entries.length,0);
+});
+
+test('delete write failure preserves entry and can retry once after service restart',async()=>{
+    const {repository,context,service}=fixture(),entry=draft();await service.command(context,command('submit',{entry}));
+    const before=JSON.stringify([...repository.rows]),write=repository.upsertRows,request=command('delete',{id:entry.id,expectedVersion:1});
+    repository.upsertRows=async()=>{throw Error('delete storage failed')};
+    await assert.rejects(service.command(context,request),/storage failed/);assert.equal(JSON.stringify([...repository.rows]),before);
+    repository.upsertRows=write;
+    await createVendorEntries(repository).command(context,request);
+    assert.equal((await createVendorEntries(repository).command(context,request)).duplicate,true);
+    await assert.rejects(service.command(context,{...request,id:randomUUID()}),/같은 요청/);
+});
+
+test('deleted Feedle source can be reimported with a new identity but an old save cannot resurrect it',async()=>{
+    const {context,service}=fixture(),entry={...draft(),sourceId:randomUUID()};
+    await service.command(context,command('import',{entry}));
+    await service.command(context,command('delete',{id:entry.id,expectedVersion:1}));
+    await assert.rejects(service.command(context,command('import',{entry})),/사용한 출품/);
+    const next={...entry,id:randomUUID()},result=await service.command(context,command('import',{entry:next}));
+    assert.equal(result.result,next.id);assert.equal(result.state.entries.length,1);assert.equal(result.state.entries[0].entryNumber,2);
+    await assert.rejects(service.command(context,command('submit',{entry,expectedVersion:2})),/변경/);
+});
+
 test('registration summary counts saved entries only in the selected vendor and auction, including after restart',async()=>{
     const {repository,context,service}=fixture();
     const before=JSON.stringify([...repository.rows]);

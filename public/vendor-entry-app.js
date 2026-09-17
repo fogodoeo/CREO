@@ -25,11 +25,13 @@
   const urls = new Map();
   let state, draft = null, dirty = false, busy = false, uploading = false, parentRole, parentDraft, parentDirty = false, parentManage = false, parentListWasEmpty = false, selectedDetail, photoSet = [], photoIndex = 0, leaveAction, noticeTimer;
   let restoringRecovery = false;
+  let deletingEntry = null;
   const updates = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('ongdong-entry-design-updates') : null;
   const camera = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 6h4l2-3h4l2 3h4a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1Z"/><circle cx="12" cy="12.5" r="4"/></svg>';
   const parents = () => state.parents.filter(p => p.vendorId === Store.VENDOR);
-  const entries = () => state.entries.filter(e => e.vendorId === Store.VENDOR && e.channelId === eventId);
+  const entries = () => state.entries.filter(e => e.status !== 'deleted' && e.vendorId === Store.VENDOR && e.channelId === eventId);
   const currentEvent = () => (state.events || []).find(e => e.id === eventId);
+  const canDeleteEntry = entry => role === 'vendor' && entry?.version > 0 && !entry.itemId && !entry.approved && ['draft','submitted','changes_requested'].includes(entry.status) && ['draft','active'].includes(currentEvent()?.status);
   function toast(text) { clearTimeout(noticeTimer); $('notice').textContent = text; noticeTimer = setTimeout(() => { $('notice').textContent = ''; }, 3000); }
   function errorAt(id, text) { const el = $(id); if (!el) { if (text) toast(text); return; } el.textContent = text || ''; el.hidden = !text; }
   function avatar(id, fallback) { return id ? `<img class="avatar" data-media-id="${esc(id)}" alt="" loading="lazy">` : `<span class="avatar initial" aria-hidden="true">${esc(fallback)}</span>`; }
@@ -216,7 +218,7 @@
   function editEntry(entry) {
     draft = structuredClone(entry); dirty = false;
     editorNavigation(true);
-    $('content').innerHTML = `<div class="title-row"><button type="button" id="entry-back" class="icon-button" aria-label="출품 목록으로 돌아가기">←</button><h1>개체 등록</h1></div><p class="entry-caption">${esc(entry.code || '출품 번호는 저장 시 자동 부여')}</p>
+    $('content').innerHTML = `<div class="title-row"><button type="button" id="entry-back" class="icon-button" aria-label="출품 목록으로 돌아가기">←</button><h1>개체 등록</h1>${canDeleteEntry(entry) ? '<button type="button" id="delete-entry" class="text-button danger entry-delete-trigger" aria-label="개체 삭제">삭제</button>' : ''}</div><p class="entry-caption">${esc(entry.code || '출품 번호는 저장 시 자동 부여')}</p>
       ${entry.sourceUrl ? `<div class="source-link"><span>피들에서 가져온 개체</span><a href="${esc(entry.sourceUrl)}" target="_blank" rel="noopener noreferrer">원본 보기 ↗</a></div>` : ''}
       ${entry.reason ? `<div class="request-note"><b>수정 요청</b>${esc(entry.reason)}</div>` : ''}
       <form id="entry-form" novalidate>
@@ -230,6 +232,7 @@
         <div class="form-actions"><button class="secondary" type="button" id="save-draft">임시 저장</button><button class="primary" type="submit" id="submit-entry">검토 요청</button></div>
       </form>`;
     $('entry-back').onclick = () => leave(renderList);
+    $('delete-entry')?.addEventListener('click', () => openDelete(entry));
     $('open-import')?.addEventListener('click', () => leave(openImport));
     $('entry-form').addEventListener('input', () => { dirty = true; keepDraft(); });
     $('entry-form').onsubmit = event => { event.preventDefault(); saveEntry(true); };
@@ -508,6 +511,10 @@
       $('detail-actions').hidden = false; $('detail-actions').innerHTML = '<button type="button" class="secondary full" id="revise-entry">수정안 작성</button>';
       $('revise-entry').onclick = () => review('revise');
     } else $('detail-actions').hidden = true;
+    if (canDeleteEntry(entry)) {
+      $('detail-content').insertAdjacentHTML('beforeend', '<div class="entry-delete-footer"><button type="button" class="text-button danger" id="delete-entry" aria-label="개체 삭제">개체 삭제</button></div>');
+      $('delete-entry').onclick = () => openDelete(entry);
+    }
     images($('detail-content'));
     $('detail-content').querySelectorAll('[data-start]').forEach(button => button.onclick = () => openPhotos(source.photoIds, '개체 사진', Number(button.dataset.start)));
     $('detail-dialog').showModal(); $('detail-content').scrollTop = 0;
@@ -523,6 +530,44 @@
     } catch (e) { errorAt('detail-error', e.message); }
     finally { busy = false; }
   }
+  function openDelete(entry) {
+    if (busy || uploading || !canDeleteEntry(entry)) return;
+    deletingEntry = { id: entry.id, version: entry.version };
+    $('delete-entry-name').textContent = [entry.code, sexName[entry.sex], entry.weight ? entry.weight + 'g' : ''].filter(Boolean).join(' · ');
+    errorAt('delete-error', ''); $('delete-refresh').hidden = true;
+    $('delete-dialog').showModal(); $('delete-cancel').focus();
+  }
+  $('delete-cancel').onclick = () => { if (!busy) $('delete-dialog').close(); };
+  $('delete-dialog').addEventListener('cancel', event => { if (busy) event.preventDefault(); });
+  $('detail-dialog').addEventListener('cancel', event => { if (busy) event.preventDefault(); });
+  $('delete-confirm').onclick = async () => {
+    if (busy || uploading || !deletingEntry) return;
+    busy = true; errorAt('delete-error', '');
+    for (const id of ['delete-confirm','delete-cancel','delete-refresh']) $(id).disabled = true;
+    $('delete-confirm').textContent = '삭제 중…';
+    try {
+      await send({ type: 'delete', id: deletingEntry.id, expectedVersion: deletingEntry.version });
+      dirty = false; draft = null; selectedDetail = null;
+      $('delete-dialog').close(); $('detail-dialog').close();
+      busy = false; renderList(); $('content').focus(); toast('개체를 삭제했어요');
+    } catch (error) {
+      errorAt('delete-error', error.message);
+      $('delete-refresh').hidden = ![404,409].includes(error.status);
+    } finally {
+      busy = false; $('delete-confirm').textContent = '삭제';
+      for (const id of ['delete-confirm','delete-cancel','delete-refresh']) $(id).disabled = false;
+    }
+  };
+  $('delete-refresh').onclick = async () => {
+    if (busy) return;
+    busy = true; $('delete-refresh').disabled = true;
+    try {
+      state = await Store.read(); dirty = false; draft = null; selectedDetail = null;
+      $('delete-dialog').close(); $('detail-dialog').close(); busy = false;
+      renderList(); $('content').focus();
+    } catch (error) { errorAt('delete-error', error.message); }
+    finally { busy = false; $('delete-refresh').disabled = false; }
+  };
   function openPhotos(ids, title, index = 0) {
     photoSet = ids.filter(id => state.media.some(m => m.id === id)); if (!photoSet.length) return;
     photoIndex = index; $('photo-title').textContent = title; renderLargePhoto(); $('photo-dialog').showModal();
@@ -574,7 +619,7 @@
   $('import-close').onclick = () => { if (!busy) $('import-dialog').close(); };
   $('import-dialog').addEventListener('cancel', event => { if (busy) event.preventDefault(); });
   $('photo-dialog').addEventListener('keydown', e => { if (e.key === 'ArrowLeft') $('photo-prev').click(); if (e.key === 'ArrowRight') $('photo-next').click(); });
-  for (const id of ['parent-dialog', 'detail-dialog', 'photo-dialog', 'import-dialog', 'profile-dialog']) {
+  for (const id of ['parent-dialog', 'detail-dialog', 'photo-dialog', 'import-dialog', 'profile-dialog', 'delete-dialog']) {
     let beganOutside = false;
     $(id).addEventListener('pointerdown', event => { const r = $(id).getBoundingClientRect(); beganOutside = event.target === $(id) && (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom); });
     $(id).addEventListener('click', event => {
