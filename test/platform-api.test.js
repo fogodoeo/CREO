@@ -14,6 +14,41 @@ const { normalizeChannel } = require('../platform-core');
 const { createCrewartHouseService } = require('../crewart-house-service');
 const {CheckoutNotificationService} = require('../checkout-notifications');
 
+test('broadcast projects submitted hatch dates through refresh, next item, channel switch and restart without writing records', async () => {
+    const repository = new MemoryRepository();
+    await repository.upsertRecord('alpha', 'item', { id:'dated', name:'A01', status:'live', attributes:{checklist:'gender:F|weight:28', entry_traits:{hatchDate:'2026-07-14'}} });
+    await repository.upsertRecord('alpha', 'item', { id:'plain', name:'A02', status:'waiting', attributes:{checklist:'gender:M|weight:20'} });
+    await repository.upsertRecord('beta', 'item', { id:'dated', name:'B01', status:'live', attributes:{entry_traits:{hatchDate:'2025-12-18'}} });
+    for (const channel of ['alpha', 'beta']) await repository.upsertRecord(channel, 'broadcast', {id:'state', mode:'live', activeItemId:'dated'});
+    let api = createPlatformApi({repository});
+    const read = async (channel = 'alpha') => {
+        const response = await call(api, 'GET', `/api/platform/channels/${channel}/broadcast?page=2`, null, '');
+        assert.equal(response.status, 200, response.body);
+        return response.json();
+    };
+    const source = structuredClone([...repository.records]);
+    const first = await read();
+    assert.match(first.items[0].attributes.checklist, /birth:26\.07\.14/);
+    for (const result of await Promise.all([read(), read()])) assert.deepEqual(result.items, first.items);
+    assert.match((await read('beta')).items[0].attributes.checklist, /birth:25\.12\.18/);
+    assert.deepEqual([...repository.records], source);
+    const edit = await call(api, 'PUT', '/api/platform/channels/alpha/items/dated', {record:{name:'A01',lotNumber:1,status:'live',attributes:{checklist:'gender:F|weight:28',entry_traits:{hatchDate:'2026-07-15'}}}});
+    assert.equal(edit.status, 200, edit.body);
+    const updated = await read();
+    assert.ok(updated.revision > first.revision);
+    assert.match(updated.items[0].attributes.checklist, /birth:26\.07\.15/);
+    assert.doesNotMatch(updated.items[0].attributes.checklist, /26\.07\.14/);
+    api = createPlatformApi({repository});
+    assert.match((await read()).items[0].attributes.checklist, /birth:26\.07\.15/);
+    const next = await call(api, 'PUT', '/api/platform/channels/alpha/broadcast-state', {mode:'live',activeItemId:'plain'});
+    assert.equal(next.status, 200, next.body);
+    const plain = await read();
+    assert.equal(plain.state.activeItemId, 'plain');
+    assert.doesNotMatch(plain.items.find(item => item.id === plain.state.activeItemId).attributes.checklist, /birth:/);
+    assert.match((await read('beta')).items[0].attributes.checklist, /birth:25\.12\.18/);
+    assert.equal((await repository.listRecords('alpha', 'notification')).length, 0);
+});
+
 test('new channels persist the selected theme and common layout without copying another auction',async(t)=>{
  const fs=require('node:fs'),path=require('node:path'),os=require('node:os');
  const {SQLitePlatformRepository}=require('../sqlite-platform-repository');

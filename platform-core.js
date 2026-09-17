@@ -3,6 +3,7 @@
 const crypto = require('node:crypto');
 const ChannelRuntime = require('./public/channel-runtime');
 const BroadcastProfiles = require('./public/broadcast-profiles');
+const AuctionContract = require('./public/auction-contract');
 
 const CHANNEL_STATUSES = Object.freeze(['draft', 'active', 'paused', 'archived']);
 const BROADCAST_TEMPLATES = Object.freeze(['classic', 'tournament', 'academy']);
@@ -452,6 +453,17 @@ function publicChecklist(value) {
 
 function publicItemAttributes(item = {}) {
     const attributes = item.attributes && typeof item.attributes === 'object' ? item.attributes : {};
+    let checklist = publicChecklist(attributes.checklist);
+    const birth = String(attributes.entry_traits?.hatchDate || '').trim();
+    const legacyBirth = AuctionContract.parseChecklist(checklist).birth;
+    // Vendor submissions store the full hatch date separately from the legacy
+    // checklist. Project only that date into the existing broadcast contract;
+    // keep an explicit operator-edited birth value and never mutate the item.
+    if (!legacyBirth && /^\d{4}-\d{2}-\d{2}$/.test(birth)
+        && Number.isFinite(Date.parse(birth)) && new Date(birth).toISOString().slice(0, 10) === birth) {
+        checklist = [...checklist.split('|').filter(part => part && part.split(':', 1)[0].trim() !== 'birth'),
+            `birth:${birth.slice(2).replace(/-/g, '.')}`].join('|');
+    }
     const contributionMultiplier = Number(attributes.crewart_contribution_multiplier);
     const contributionAmount = Number(attributes.crewart_contribution_amount);
     const contributionBase = Number(attributes.crewart_contribution_base);
@@ -466,7 +478,7 @@ function publicItemAttributes(item = {}) {
         return !url.startsWith('/__entry_photo__/') && /^(https?:\/\/|\/[^/])/.test(url) ? cleanText(url, 1200) : '';
     };
     return {
-        checklist: publicChecklist(attributes.checklist),
+        checklist,
         announce: cleanText(attributes.announce, 1000),
         photo_sire: parentPhoto('sire'),
         photo_sire_name: cleanText((Array.isArray(attributes.parents) ? attributes.parents : []).find(row => row?.role === 'sire')?.name || attributes.sire_name || '', 80),
