@@ -6,13 +6,13 @@
   <title>출품 검토 · 옹동2</title>
   <link rel="stylesheet" href="/ongdong-brand.css">
   <link rel="stylesheet" href="/checkout-navigation.css">
-  <link rel="stylesheet" href="/vendor-entry-review.css?v=20260917-batch">
+  <link rel="stylesheet" href="/vendor-entry-review.css?v=20260917-label-fold">
   <link rel="stylesheet" href="/entry-photo-usage.css">
   <script defer src="/platform-client.js"></script>
   <script defer src="/ongdong-brand.js"></script>
   <script defer src="/checkout-item-view.js"></script>
   <script defer src="/entry-numbering.js?v=20260917-batch"></script>
-  <script defer src="/entry-label-print.js?v=20260917"></script>
+  <script defer src="/entry-label-print.js?v=20260917-label-fold"></script>
   <script defer src="/vendor-entry-review.js?v=20260917-batch"></script>
   <script defer src="/entry-photo-usage.js"></script>
 </head>
@@ -73,7 +73,13 @@
   </dialog>
   <dialog id="entry-label-dialog" aria-labelledby="label-title">
     <header class="dialog-head"><h2 id="label-title">식별 라벨</h2><button class="icon-button" id="close-labels" type="button" aria-label="라벨 인쇄 닫기">×</button></header>
-    <div class="dialog-content"><p class="muted" id="label-count"></p><div id="entry-label-preview"></div><p id="label-print-status" role="status"></p><p id="label-print-error" class="error" role="alert" hidden></p></div>
+    <div class="dialog-content"><p class="muted" id="label-count"></p>
+      <fieldset class="label-format"><legend>라벨 형식</legend><div class="label-format-options">
+        <label><input type="radio" name="entry-label-format" value="standard" checked>기존형</label>
+        <label><input type="radio" name="entry-label-format" value="fold">접는형</label>
+      </div></fieldset>
+      <p class="muted" id="label-format-hint" role="status"></p>
+      <div id="entry-label-preview"></div><p id="label-print-status" role="status"></p><p id="label-print-error" class="error" role="alert" hidden></p></div>
     <footer class="dialog-actions"><button class="secondary" id="browser-label-print" type="button">브라우저 인쇄</button><button class="primary" id="b1-entry-print" type="button">B1 PRO 출력</button></footer>
   </dialog>
   <footer class="page-footer">© 옹동2</footer>
