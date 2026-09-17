@@ -621,7 +621,7 @@ test('new CDCUP overlays and shipping retain compatibility with the established 
     assert.match(live, /class="vendor-tag"/);
     assert.match(live, /class="vendor-tag">\[\$\{esc\(item\.vendorName\)\}\]<\/span>/);
     assert.match(live, /\.item-name strong,\.vendor-tag\{[\s\S]{0,180}color:#fff;font-size:23px;font-weight:800/);
-    assert.match(live, /rankOpacity=\[1,\.90,\.86,\.78,\.70,\.64,\.58,\.52\]/);
+    assert.match(live, /broadcast-bidders\.css/);
     assert.match(channelShipping, /location\.replace\(target\.pathname\s*\+\s*target\.search\)/);
     assert.match(channelShipping, /shipping\.html/);
     assert.doesNotMatch(channelShipping, /<a\b|id="channel-select"|id="manage-link"|id="control-link"/);

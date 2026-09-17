@@ -1,0 +1,24 @@
+/* Two rank slots keep their geometry as bidders arrive or change rank. */
+body[data-page="2"] #stage .live-bidders{
+    display:grid;grid-template-rows:repeat(2,minmax(0,1fr));
+    align-content:stretch;gap:12px;height:clamp(144px,25vh,270px);
+    min-height:0;max-height:none;box-sizing:border-box;container-type:size;
+}
+/* Older layouts can extend below the frame; retain the anchor and fit both rows. */
+body[data-page="2"] #stage .live-bidders[data-layout-custom="1"]{
+    max-height:max(0px,calc(100% - var(--layout-y) - 1.5%))!important;
+    max-width:max(0px,calc(100% - var(--layout-x) - 1.5%))!important;
+}
+body[data-page="2"] #stage .live-bidders>.live-bid-row{
+    zoom:1!important;box-sizing:border-box;min-width:0;min-height:0;height:100%;
+    grid-template-columns:minmax(0,1fr) auto;column-gap:min(16px,3cqw);
+    padding:min(12px,4cqh) min(28px,5cqw);line-height:1.15;
+    font-size:min(calc(var(--broadcast-body-size,54.17px)*var(--layout-font-scale,1)),24cqh,10cqw);
+}
+body[data-page="2"] #stage .live-bid-row :is(.live-bid-name,.live-bid-amount){
+    min-width:0;font-size:inherit!important;line-height:inherit;white-space:nowrap;
+}
+body[data-page="2"] #stage .live-bid-amount{
+    margin:0;text-align:right;font-variant-numeric:tabular-nums;
+}
+body[data-page="2"] #stage .live-bid-row.is-empty :is(.live-bid-name,.live-bid-amount){opacity:.55}
