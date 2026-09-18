@@ -277,6 +277,7 @@ function normalizeShippingDefaults(value = {}, fallback = {}) {
         return Number.isFinite(parsed) ? Math.max(0, Math.min(100_000, Math.round(parsed))) : defaultValue;
     };
     return {
+        ...((source.deliverySchedule ?? fallback.deliverySchedule) ? { deliverySchedule: require('./delivery-schedule-core').normalizeConfig(source.deliverySchedule ?? fallback.deliverySchedule) } : {}),
         enabledCarriers: [...new Set((Array.isArray(source.enabledCarriers) ? source.enabledCarriers : (fallback.enabledCarriers || ['parge'])).filter(id => ['parge', 'dodosi'].includes(id)))],
         disabledPickupLocations: (Array.isArray(source.disabledPickupLocations) ? source.disabledPickupLocations : (Array.isArray(fallback.disabledPickupLocations) ? fallback.disabledPickupLocations : [])).filter(label => locations.includes(label)),
         dodosiAdditionalFee: fee(source.dodosiAdditionalFee, fallback.dodosiAdditionalFee, 7000),

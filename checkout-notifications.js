@@ -25,11 +25,12 @@ const TEMPLATE_KEYS = Object.freeze([
     'vendor_card_requested',
     'buyer_card_link_ready',
     'buyer_checkout_change_reviewed',
-    'buyer_payment_confirmed'
+    'buyer_payment_confirmed',
+    'shipping_data_refresh_failed'
 ]);
 
 const NOTIFICATION_TRANSPORTS = Object.freeze(['alimtalk', 'sms']);
-const ACTION_SMS_TEMPLATE_KEYS = new Set();
+const ACTION_SMS_TEMPLATE_KEYS = new Set(['shipping_data_refresh_failed']);
 
 function notificationTransport(templateKey) {
     return ACTION_SMS_TEMPLATE_KEYS.has(templateKey) ? 'sms' : 'alimtalk';

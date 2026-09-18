@@ -514,6 +514,7 @@ function sanitizeRecord(type, input = {}, current = {}) {
             buyerPaymentReportedAt: cleanText(input.buyerPaymentReportedAt, 80),
             buyerPaymentReportRequestId: cleanText(input.buyerPaymentReportRequestId, 80),
             buyerSubmittedAt: cleanText(input.buyerSubmittedAt, 80),
+            destinationRegisteredAt: cleanText(input.destinationRegisteredAt, 80),
             buyerRequestId: cleanText(input.buyerRequestId, 80)
         };
     }
@@ -1070,6 +1071,7 @@ function createPlatformApi({
     crewartHouseService = null,
     bandMembership = null,
     notificationService = null,
+    deliverySchedules = null,
     buyerAccountConfig = require('./buyer-account-auth').configFromEnv(),
     buyerAccountFetch = globalThis.fetch,
     buyerAccountNow = Date.now,
@@ -1384,7 +1386,8 @@ function createPlatformApi({
             const payment = Checkout.derivePaymentState({ shipments, itemCount: group.items.length, totalAmount });
             return { ...group, shipments, settlement, shippingAmount, totalAmount, payment };
         });
-        return { rates, latest, selection, shipping, groups };
+        const deliverySchedule = deliverySchedules ? await deliverySchedules.estimate(context.channel, selection, latest?.destinationRegisteredAt || latest?.buyerSubmittedAt) : null;
+        return { rates, latest, selection, shipping, groups, deliverySchedule };
     }
 
     function groupPublicPayload(group) {
@@ -1449,6 +1452,7 @@ function createPlatformApi({
         }
         for (const id of availableCarriers) {
             carriers[id] = { regions: await pargeRates(id), additionalFee: Number(context.channel.shippingDefaults?.[id + 'AdditionalFee'] ?? 7000), jejuAdditionalFee: Number(context.channel.shippingDefaults?.[id + 'JejuAdditionalFee'] ?? (id === 'parge' ? 4000 : 7000)) };
+            if (deliverySchedules) carriers[id].regions = await deliverySchedules.enrichRates(context.channel, id, carriers[id].regions, snapshot.latest?.destinationRegisteredAt || snapshot.latest?.buyerSubmittedAt, snapshot.selection);
         }
         const groups = snapshot.groups.map(group => groupPublicPayload({...group,items:group.items.map(item=>displayById.get(item.id)||item)}));
         if (readOnly) for (const group of groups) {
@@ -1501,6 +1505,7 @@ function createPlatformApi({
                 ...snapshot.selection,
                 payments: groups.map((group) => ({ vendorKey: group.key, method: group.payment.method }))
             } : null,
+            deliverySchedule: snapshot.deliverySchedule,
             payment: { status: overallStatus, confirmedAmount, additionalDue },
             totals: {
                 auctionAmount,
@@ -1913,6 +1918,7 @@ function createPlatformApi({
                     buyerPaymentReportedAt: keepCompletedItem || keepReported ? current.buyerPaymentReportedAt || '' : '',
                     buyerPaymentReportRequestId: keepCompletedItem || keepReported ? current.buyerPaymentReportRequestId || '' : '',
                     buyerSubmittedAt: now,
+                    destinationRegisteredAt: unchangedDestination ? (current.destinationRegisteredAt || latest?.destinationRegisteredAt || latest?.buyerSubmittedAt || now) : now,
                     destinationRevisionId: directDestinationEdit ? requestId : current.destinationRevisionId || '',
                     buyerRequestId: requestId
                 }, current);
@@ -2226,6 +2232,7 @@ function createPlatformApi({
             name: bundle.name,
             phone: bundle.phone,
             shippingNote: shipmentNotes(group.shipments),
+            deliverySchedule: snapshot.deliverySchedule,
             canEditShippingNote: group.shipments.length > 0,
             destination: snapshot.selection ? {
                 ...snapshot.selection,
@@ -2776,7 +2783,13 @@ function createPlatformApi({
         return channelRevisions.get(channelId) || 0;
     }
 
+    const deliveryScheduleRevisions = new Map();
     function checkoutRevision(channelId) {
+        const scheduleRevision = deliverySchedules?.revision();
+        if (scheduleRevision && deliveryScheduleRevisions.get(channelId) !== scheduleRevision) {
+            deliveryScheduleRevisions.set(channelId, scheduleRevision);
+            touchCheckout(channelId);
+        }
         return checkoutRevisions.get(channelId) || 0;
     }
 
@@ -3628,6 +3641,13 @@ function createPlatformApi({
                 return true;
             }
 
+            if (segments.length === 2 && segments[0] === 'shipping-rates' && segments[1] === 'automation' && ['GET','PUT'].includes(method)) {
+                if (!await requireAdmin(req, res)) return true;
+                if (!deliverySchedules) throw buyerInputError('배송정보 자동 갱신이 준비되지 않았습니다.', 503);
+                const value = method === 'PUT' ? await deliverySchedules.configure(await readJson(req)) : await deliverySchedules.status();
+                replyJson(res, 200, value); return true;
+            }
+
             if (segments.length === 1 && segments[0] === 'shipping-rates' && ['GET','PUT'].includes(method)) {
                 if (method==='PUT' && !await requireAdmin(req,res)) return true;
                 const body=method==='PUT'?await readJson(req):Object.fromEntries(url.searchParams);
@@ -3661,6 +3681,9 @@ function createPlatformApi({
                 if (!configKey) {
                     replyJson(res, 422, { error: '지원하지 않는 배송사입니다.' });
                     return true;
+                }
+                if (deliverySchedules && ['도도시', '파르게'].includes(company)) {
+                    replyJson(res, 200, await deliverySchedules.refreshCarrier(company)); return true;
                 }
                 const result = await refreshShippingRateFn(company, { force: body.force === true });
                 await repository.upsertRows([
@@ -3866,6 +3889,18 @@ function createPlatformApi({
                     const current = await organizerShippingSettlement(channelId,data.items,data.shipments,data.vendors);
                     current.carriers = require('./shipping-settlement').summarizeCarriers(data.items,data.shipments,data.vendors);
                     current.auctionItems = require('./shipping-settlement').organizerAuctionItems(data.items.map(item=>({...item,winnerPhone:storedWinnerPhone(item)})),data.shipments,data.vendors,buyerDisplayName);
+                    if (deliverySchedules && channel.shippingDefaults?.deliverySchedule?.enabled) {
+                        const rateMap = Object.fromEntries(await Promise.all(['parge', 'dodosi'].map(async id => [id, await pargeRates(id)])));
+                        current.auctionItems = await Promise.all(current.auctionItems.map(async row => {
+                            if (row.method !== 'delivery' || ['cancelled', 'refunded'].includes(row.paymentStatus)) return row;
+                            const item = data.items.find(i => i.id === row.id);
+                            const phone = storedWinnerPhone(item);
+                            const shipment = Checkout.newestShipment(data.shipments.filter(s => s.itemId === row.id && (!phone || !s.recipientPhone || normalizePhone(s.recipientPhone) === normalizePhone(phone))));
+                            const carrier = shipment?.destinationType || ({'파르게':'parge','도도시':'dodosi'})[shipment?.carrier];
+                            const selection = shipmentSelection(shipment, channel, rateMap[carrier] || []);
+                            return { ...row, deliverySchedule: await deliverySchedules.estimate(channel, selection, shipment?.destinationRegisteredAt || shipment?.buyerSubmittedAt) };
+                        }));
+                    }
                     const missing = require('./shipping-settlement').summarizeMissingDestinations(data.items,data.shipments,data.vendors);
                     const feeDetails = require('./shipping-settlement').shippingFeeDetails(data.items,data.shipments,data.vendors);
                     current.vendors = current.vendors.map(v=>({...v,vendorBankHolder:cleanText(data.vendors.find(row=>row.id===v.vendorId)?.bankHolder,60),missingDestinationItems:missing.find(row=>row.vendorId===v.vendorId)?.missingDestinationItems||[],shippingFeeItems:feeDetails.find(row=>row.vendorId===v.vendorId)?.shippingFeeItems||[]}));

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
     <meta name="referrer" content="no-referrer">
     <title>옹동2 · 배송·결제</title>
+    <link rel="stylesheet" href="/delivery-schedule.css?v=20260918-1"><script src="/delivery-schedule-view.js?v=20260918-1"></script>
     <link rel="stylesheet" href="/checkout-ui.css?v=20260902-checkout-shell-v1">
     <script src="/checkout-rules.js?v=20260912-checkout-outbox"></script>
     <script src="/checkout-client.js?v=20260912-status-colors"></script>
@@ -138,6 +139,9 @@ function render(){
  const [label,tone]=paymentStatus(data.payment.status);
  $('status-label').textContent=label;$('status-detail').textContent='';$('status').dataset.tone=tone;$('saved').hidden=!state.saved;
  renderSavedDestination();renderDestinations();renderParge();renderVendors();
+ let scheduleBox=$('delivery-schedule');if(!scheduleBox){scheduleBox=document.createElement('div');scheduleBox.id='delivery-schedule';scheduleBox.setAttribute('aria-live','polite');$('shipping-section').appendChild(scheduleBox)}
+ const schedule=['parge','dodosi'].includes(state.destinationId)&&state.pargeShop?(selectedRate()?.deliverySchedule||null):null;
+ scheduleBox.innerHTML=CreoDeliverySchedule.html(schedule);scheduleBox.hidden=!schedule;
  const allocation=globalShipping(),amount=data.vendors.reduce((sum,v)=>sum+vendorDue(v,allocation).due,0);
  $('payable-amount').textContent=money(data.payment.status==='paid'?data.vendors.reduce((sum,v)=>sum+(Number(v.payment.confirmedAmount)||0),0):amount);
  $('payable-title').textContent=data.payment.status==='paid'?'결제 확인 완료':'이번 결제금액';

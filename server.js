@@ -50,7 +50,8 @@ const crewartHouseService = createCrewartHouseService({
     repository: supabasePlatformRepository,
     secret: bandMembership.config.sessionSecret
 });
-const checkoutNotificationService = new CheckoutNotificationService({ repository: platformRepository, beforeSend:(channelId,notification)=>platformApi.assertBuyerNotificationLink(channelId,notification) });
+const checkoutNotificationService = new CheckoutNotificationService({ repository: platformRepository, beforeSend:(channelId,notification)=>notification.templateKey==='shipping_data_refresh_failed'?deliverySchedules.assertAlertCurrent(notification):platformApi.assertBuyerNotificationLink(channelId,notification) });
+const deliverySchedules = require('./delivery-schedule-service').createDeliveryScheduleService({ repository: platformRepository, notificationService: checkoutNotificationService });
 const entryPhotoStorage = new EntryPhotoStorage({
     supabaseUrl: process.env.SUPABASE_URL,
     serviceKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
@@ -61,6 +62,7 @@ platformApi = createPlatformApi({
     crewartHouseService,
     bandMembership,
     notificationService: checkoutNotificationService,
+    deliverySchedules,
     entryPhotoStorage,
     entryPhotoMaxBytes: Number(process.env.CREO_ENTRY_PHOTO_VENDOR_MAX_BYTES) || 100000000
 });
@@ -455,6 +457,7 @@ async function flushCheckoutNotifications() {
             if (shuttingDown) break;
             await checkoutNotificationService.flushChannel(channel.id, 20);
         }
+        if (!shuttingDown) await checkoutNotificationService.flushChannel(require('./delivery-schedule-service').SYSTEM_CHANNEL, 2);
     } catch (error) {
         console.warn('[checkout-notification] worker failed:', error.message);
     } finally {
@@ -468,6 +471,7 @@ const notificationStartup = setTimeout(flushCheckoutNotifications, 2_000);
 notificationStartup.unref?.();
 const buyerAuthMaintenance = require('./buyer-auth-maintenance').createBuyerAuthMaintenance({cleanup:()=>platformApi.cleanupBuyerAuth()});
 buyerAuthMaintenance.start();
+deliverySchedules.start();
 
 let shuttingDown = false;
 function shutdown(signal) {
@@ -481,6 +485,7 @@ function shutdown(signal) {
     Promise.all([
         new Promise(resolve => server.close(resolve)),
         checkoutNotificationService.stopAndDrain(),
+        deliverySchedules.stop(),
         buyerAuthMaintenance.stop()
     ]).then(async () => {
         try { await platformRepository.close?.(); } catch (error) { console.error('[creo] repository close failed:', error.message); }

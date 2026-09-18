@@ -187,6 +187,10 @@ async function refreshParge() {
     const [partnersPayload, booking] = await Promise.all([getJson('https://parge.co.kr/api/partners'), getText('https://parge.co.kr/booking')]);
     const paths = [...new Set([...booking.matchAll(/\/_next\/static\/chunks\/[^"']+\.js/g)].map((match) => match[0]))];
     const matrix = extractMatrix(await Promise.all(paths.map((value) => getText(`https://parge.co.kr${value}`))));
+    return buildPargePayload(partnersPayload, matrix);
+}
+
+function buildPargePayload(partnersPayload, matrix) {
     const blocked = ['대구곤충마트','레포리아 (익산)','정글숲 (포항)','크레노바 (창원)','오야지크레 (안양)','BLACK LABEL EXOTIC (대구)','다니엘렙타일 (오창)','트라이디거 하남 본점'].map(compact);
     const partners = partnersPayload.partners.filter((row) => row?.name && row.isActive !== false && !blocked.includes(compact(row.name))).sort((a,b) => a.name.localeCompare(b.name,'ko'));
     const data = Object.fromEntries(['서울/경기/인천','충청/대전','전라/광주','대구/경북/부산/경남','강원도','제주도'].map((group) => [group, []]));
@@ -214,4 +218,4 @@ async function refreshShippingRate(company, { force = false } = {}) {
     inflight.set(company, task); return task;
 }
 
-module.exports = { PROVIDERS, refreshShippingRate };
+module.exports = { PROVIDERS, refreshShippingRate, extractMatrix, buildPargePayload, requiredValuesWithPrice, parseDodosiDestination };

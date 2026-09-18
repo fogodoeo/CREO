@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
     <title>공용 배송 데이터 · CREO</title>
+    <link rel="stylesheet" href="/shipping-automation.css?v=20260918"><script src="/shipping-automation.js?v=20260918"></script>
     <script src="platform-client.js?v=20260811-shipping-refresh"></script>
     <script src="auction-contract.js?v=20260819-contract-v1"></script>
     <script src="supabase-bridge.js?v=20260811-shipping-refresh"></script>
@@ -29,6 +30,9 @@
     <div class="admin-content" id="admin-content" hidden>
         <section class="notice"><div><strong>파르게 API와 도도시·랩팡 공개 옵션을 직접 확인합니다.</strong><span>수집 결과가 비정상이면 저장하지 않고 현재 데이터를 유지합니다.</span></div><button class="refresh-all" id="refresh-all" type="button">전체 최신정보 가져오기</button></section>
         <div class="status" id="status"></div>
+        <section class="shipping-auto" aria-labelledby="shipping-auto-title"><h2 id="shipping-auto-title">파르게·도도시 자동 갱신</h2><p id="shipping-auto-status" role="status">갱신 상태 확인 중</p><p id="shipping-auto-parge"></p><p id="shipping-auto-dodosi"></p>
+        <form id="shipping-auto-form"><label><input id="shipping-auto-enabled" type="checkbox"> 자동 갱신</label><label for="shipping-alert-phone">실패 알림 받을 번호<input id="shipping-alert-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="01012345678" pattern="010[0-9-]{8,10}"></label><button id="shipping-auto-save" type="submit">저장</button></form>
+        <p>재시도 2회 후에도 실패하면 문자 1회</p><p id="shipping-auto-message" role="status"></p></section>
         <section class="vendors" id="vendors"></section>
         <section class="panel">
             <div class="panel-head"><div><h2>최근 변경사항</h2><p id="change-caption">갱신하면 이전 데이터와 달라진 내용을 표시합니다.</p></div><div class="tabs" id="tabs"></div></div>
@@ -40,7 +44,7 @@
 <section class="login" id="login"><form class="login-card" id="login-form"><h2>관리자 로그인</h2><p>비밀번호가 확인되면 공용 요금표가 표시됩니다.</p><input id="password" type="password" autocomplete="current-password" placeholder="관리자 비밀번호"><button type="submit">로그인</button><div class="login-error" id="login-error"></div></form></section>
 <script>
 const COMPANIES=['도도시','파르게','랩팡'];
-const LABELS={도도시:'14개 노선 · 대구 출발',파르게:'크레오 대구본점 출발',랩팡:'대구 출발'};
+const LABELS={도도시:'크레용 대구 출발',파르게:'크레오 대구본점 출발',랩팡:'대구 출발'};
 const state={data:{},rows:[],changes:{},active:'전체',busy:false,pendingAction:null,imported:[]};
 const channel=String(new URLSearchParams(location.search).get('channel')||'').toLowerCase().replace(/[^a-z0-9-]/g,'');
 const returnUrl=channel?`shipping.html?channel=${encodeURIComponent(channel)}`:'/main';
@@ -52,7 +56,7 @@ function clearStatus(){$('status').className='status'}
 function flatten(company,payload){if(company==='도도시')return (payload.items||[]).map(x=>({company,group:x.route||'',region:x.region||'',sub:x.sub||'',shop:x.shop||'',day:x.day||'',price:Number(x.price||0),idx:x.idx||''}));const rows=[];Object.entries(payload.data||{}).forEach(([group,items])=>(items||[]).forEach(x=>rows.push({company,group,region:'',sub:'',shop:x.shop||'',day:x.day||x.arrival_day||'',price:Number(x.cost||0),idx:''})));return rows}
 function payloadFromRows(company,rows){const updated=new Date().toLocaleString('ko-KR');if(company==='도도시')return{updated,source:'excel',items:rows.map((x,i)=>({route:x.group,idx:x.idx||i+1,region:x.region,sub:x.sub,shop:x.shop,day:x.day,price:x.price}))};const data={};rows.forEach(x=>(data[x.group]??=[]).push({shop:x.shop,cost:x.price,day:x.day}));return{updated,source:'excel',data}}
 async function loadCurrent(){const [d,p,w]=await Promise.all([getDodosiData(),getPargeData(),getWrapangData()]);const values=[d,p,w];COMPANIES.forEach((company,i)=>{const result=values[i];state.data[company]={payload:company==='도도시'?{updated:result.updated,source:result.source,items:result.data}:{updated:result.updated,source:result.source,data:result.data},rows:flatten(company,company==='도도시'?{items:result.data}:{data:result.data})}});state.rows=COMPANIES.flatMap(c=>state.data[c].rows);renderAll()}
-function renderAll(){renderVendors();renderTabs();renderChanges()}
+function renderAll(){renderVendors();renderTabs();renderChanges();CreoShippingAutomation.refresh()}
 function renderVendors(){$('vendors').innerHTML=COMPANIES.map(company=>{const item=state.data[company]||{rows:[],payload:{}};const groups=new Set(item.rows.map(x=>x.group)).size;const source=item.payload.source||'배포 기본값';return `<article class="vendor" id="vendor-${company}"><div class="vendor-head"><div><div class="vendor-name">${company}</div><span class="source">${esc(source)}</span></div><button type="button" onclick="refreshCompany('${company}')">최신정보 가져오기</button></div><div class="count">${item.rows.length.toLocaleString()}<small>개 거점</small></div><div class="meta">${LABELS[company]} · ${groups}개 권역<br>${esc(nowText(item.payload.updated))}</div></article>`}).join('')}
 function renderTabs(){$('tabs').innerHTML=['전체',...COMPANIES].map(x=>`<button class="${state.active===x?'active':''}" onclick="selectTab('${x}')">${x}</button>`).join('')}
 function selectTab(company){state.active=company;renderTabs();renderChanges()}
