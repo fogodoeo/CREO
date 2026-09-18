@@ -6,6 +6,13 @@ const { createDeliveryScheduleService, KEY } = require('../delivery-schedule-ser
 const now = Date.parse('2026-09-18T00:00:00Z');
 const checkedAt = new Date(now).toISOString();
 const config = { enabled: true, auctionDate: '2026-09-17', pargeOrigin: '대구 출발점', dodosiOrigin: '대구 출발점' };
+test('explicitly unset origins remain unset across normalization and never estimate a default route',()=>{
+ const blank={...config,pargeOrigin:'',dodosiOrigin:''};
+ assert.deepEqual(Core.normalizeConfig(Core.normalizeConfig(blank)),Core.normalizeConfig(blank));
+ assert.equal(Core.normalizeConfig(blank).pargeOrigin,'');assert.equal(Core.normalizeConfig(blank).dodosiOrigin,'');
+ assert.equal(Core.normalizeConfig({enabled:true}).pargeOrigin,'크레오 대구본점');
+ for(const carrier of ['parge','dodosi']){const result=estimate(carrier,{config:blank});assert.equal(result.status,'review');assert.equal(result.reason,'location');}
+});
 function parge() { return { ratePayload:{data:{서울:[{shop:'서울 도착점',cost:30000}]}},checkedAt, partners: [{ name: '대구 출발점', region: '대구/경북/부산/경남' }, { name: '서울 도착점', region: '서울/경기/인천' }, { name: '광주 도착점', region: '전라/광주' }, { name: '제주 도착점', region: '제주도' }], schedules: [{partnerName:'대구 출발점',region:'경상권',pickupDayLabel:'토요일',collectDayLabel:'월요일',deliveryDayLabel:'화요일'}], regionDays: {capital:[4],jeolla:[0]},jejuSaturdayFrom:'2026-09-19' }; }
 function dodosi() { return { ratePayload:{items:[{route:'서울A',shop:'도착점',price:30000}]},checkedAt, origins: [{name:'대구 출발점',collectDays:[3,0],vacationStart:'2026-09-24',vacationEnd:'2026-09-27',destinations:[
     {label:'서울 방배 - 도착점',route:'서울A',arrivalDays:[2,6],transitDays:1,closedDays:[1],vacationStart:'2026-09-24',vacationEnd:'2026-09-27'},

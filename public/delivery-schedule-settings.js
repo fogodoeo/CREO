@@ -11,8 +11,8 @@ function fillDeliverySchedule(channel) {
     field('enabled').checked = config.enabled === true;
     field('date').value = config.auctionDate || '';
     field('date').required = config.enabled === true;
-    field('parge-origin').value = config.pargeOrigin || '크레오 대구본점';
-    field('dodosi-origin').value = config.dodosiOrigin || '크레용(대구)';
+    field('parge-origin').value = config.pargeOrigin ?? '크레오 대구본점';
+    field('dodosi-origin').value = config.dodosiOrigin ?? '크레용(대구)';
     field('parge-dispatch').value = config.pargeDispatchDate || '';
     field('dodosi-dispatch').value = config.dodosiDispatchDate || '';
 }

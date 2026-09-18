@@ -32,8 +32,8 @@ function normalizeConfig(input) {
     return {
         enabled: input.enabled === true,
         auctionDate: date(input.auctionDate),
-        pargeOrigin: clean(input.pargeOrigin || '크레오 대구본점'),
-        dodosiOrigin: clean(input.dodosiOrigin || '크레용(대구)'),
+        pargeOrigin: clean(input.pargeOrigin ?? '크레오 대구본점'),
+        dodosiOrigin: clean(input.dodosiOrigin ?? '크레용(대구)'),
         pargeDispatchDate: date(input.pargeDispatchDate),
         dodosiDispatchDate: date(input.dodosiDispatchDate)
     };

@@ -156,7 +156,7 @@ function bindTableActions(){
     document.querySelectorAll('[data-delete]').forEach(button=>button.onclick=()=>{const[type,id]=button.dataset.delete.split(':');deleteRecord(type,id,button)});
     document.querySelectorAll('[data-vendor-link]').forEach(button=>button.onclick=()=>copyVendorPage(button.dataset.vendorLink,button));
 }
-function field(name,label,value='',type='text',options=''){if(type==='select')return`<div class="field"><label>${label}</label><select name="${name}">${options}</select></div>`;if(type==='textarea')return`<div class="field full"><label>${label}</label><textarea name="${name}">${esc(value)}</textarea></div>`;return`<div class="field"><label>${label}</label><input name="${name}" type="${type}" value="${esc(value)}"></div>`}
+function field(name,label,value='',type='text',options=''){const id='record-'+name;if(type==='select')return`<div class="field"><label for="${id}">${label}</label><select id="${id}" name="${name}">${options}</select></div>`;if(type==='textarea')return`<div class="field full"><label for="${id}">${label}</label><textarea id="${id}" name="${name}">${esc(value)}</textarea></div>`;return`<div class="field"><label for="${id}">${label}</label><input id="${id}" name="${name}" type="${type}" value="${esc(value)}"></div>`}
 function optionList(rows,current,label){return`<option value="">선택</option>`+rows.map(r=>`<option value="${esc(r.id)}" ${r.id===current?'selected':''}>${esc(label(r))}</option>`).join('')}
 function openModal(type,record=null){
     if(!['vendors','items'].includes(type))return;
@@ -164,7 +164,8 @@ function openModal(type,record=null){
     let f='';
     if(type==='vendors'){
         f+=field('name',`${term('vendor','업체')}명`,record?.name);
-        f+=field('code',`${term('vendor','업체')} 코드`,record?.code);f+=field('logoUrl','업체 로고 URL',record?.logoUrl);f+=field('contributionRate','팀 기여도 반영률',record?.contributionRate,'select',`<option value="1" ${Number(record?.contributionRate)!==0.5?'selected':''}>팀장 · 200%</option><option value="0.5" ${Number(record?.contributionRate)===0.5?'selected':''}>팀원 · 100%</option>`);
+        f+=field('code',`${term('vendor','업체')} 코드`,record?.code);f+=field('logoUrl','업체 로고 URL',record?.logoUrl);
+        if(selectedChannel()?.features?.groups)f+=field('contributionRate','팀 기여도 반영률',record?.contributionRate,'select',`<option value="1" ${Number(record?.contributionRate)!==0.5?'selected':''}>팀장 · 200%</option><option value="0.5" ${Number(record?.contributionRate)===0.5?'selected':''}>팀원 · 100%</option>`);
         if(selectedChannel()?.features?.groups)f+=field('groupId',term('group','그룹'),record?.groupId,'select',groupOptions(record?.groupId));
         f+=field('manager','담당자',record?.manager);
         f+=field('phone','연락처',record?.phone);
