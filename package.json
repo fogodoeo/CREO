@@ -5,6 +5,7 @@
   "description": "CREO multi-channel auction operations hub and BAND OAuth bridge",
   "main": "server.js",
   "scripts": {
+    "postcheck": "node --check vendor-access.js && node --check broadcast-booking.js && node --check public/vendor-access.js && node --check public/vendor-bookings.js && node --check public/organizer-bookings.js && node --check public/booking-workspace-link.js && node --check tools/vendor-portal-preview.cjs && node --check tools/booking-preview.cjs",
     "precheck": "node --check operator-password.js && node --check operator-entry.js && node --check public/operator-login.js && node --check repository-scan.js && node --check entry-photo-audit.js && node --check public/entry-photo-usage.js && node --check buyer-auth-maintenance.js && node --check public/buyer-kakao-login.js && node --check public/checkout-inquiry.js && node --check public/vendor-contact-form.js && node --check vendor-inquiry.js",
     "postinstall": "node tools/install-render-chrome.cjs",
     "start": "python3 render_start.py",

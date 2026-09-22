@@ -28,6 +28,17 @@ async function fixture(t,{enabled=true,photoResolver}={}){
 test('account feature is off until explicitly configured and never contacts Kakao implicitly',async t=>{
  const f=await fixture(t,{enabled:false});assert.deepEqual((await f.call('GET','buyer-account/session')).json(),{available:false,authenticated:false});assert.equal((await f.call('POST','buyer-account/start','',{raw:true})).status,503);assert.equal(f.upstream.length,0);
 });
+test('vendor OAuth return is fixed, phone stays encrypted and cancellation returns to vendor login',async t=>{
+ const f=await fixture(t),jar={};
+ const start=await f.call('POST','buyer-account/start','returnTo=vendor',{jar,raw:true});
+ const state=new URL(start.headers.Location).searchParams.get('state');
+ const done=await f.call('GET','buyer-account/callback?state='+state+'&code=alice',undefined,{jar});
+ assert.equal(done.headers.Location,'/vendor-access.html?from=kakao');
+ const session=await f.call('GET','buyer-account/session',undefined,{jar});assert.equal(session.json().authenticated,true);assert.doesNotMatch(session.body,/01000000002|verifiedPhone/);
+ const rows=f.repository.db.prepare("SELECT key,value FROM platform_kv WHERE key LIKE 'creo_v2::buyer-auth::%'").all();assert.ok(rows.every(r=>!r.value.includes('01000000002')));
+ const again=await f.call('POST','buyer-account/start','returnTo=vendor',{jar,raw:true});
+ const cancel=await f.call('GET','buyer-account/callback?state='+new URL(again.headers.Location).searchParams.get('state')+'&error=access_denied',undefined,{jar});assert.equal(cancel.headers.Location,'/vendor-access.html?error=login_cancelled');
+});
 
 test('personal collection retains original business inquiry after resale and follows verified profile edits',async t=>{
  const f=await fixture(t),{createVendorDirectory}=require('../vendor-directory'),directory=createVendorDirectory(f.repository);

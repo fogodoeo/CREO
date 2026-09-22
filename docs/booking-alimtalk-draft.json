@@ -1,0 +1,18 @@
+{
+  "status": "pending_user_review_and_provider_approval",
+  "templateKey": "broadcast_booking_updated",
+  "definition": {
+    "code": "",
+    "subject": "전국크레자랑 예약 상태 업데이트 안내",
+    "content": "[전국크레자랑 예약 안내]\n#{업체명}님의 방송 예약 상태가 업데이트되었습니다.\n\n예약 상태: #{예약상태}\n예약 방송: #{방송일시}\n예약 수량: #{수량}마리\n\n아래 버튼에서 상세 내용을 확인해 주세요.",
+    "button": {
+      "button": [{
+        "name": "예약 확인하기",
+        "linkType": "WL",
+        "linkTypeName": "웹링크",
+        "linkMo": "https://creok.onrender.com/r/#{예약접속코드}",
+        "linkPc": "https://creok.onrender.com/r/#{예약접속코드}"
+      }]
+    }
+  }
+}

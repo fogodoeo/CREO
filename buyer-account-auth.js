@@ -63,7 +63,7 @@ function createBuyerAccountAuth({repository,config=configFromEnv(),fetchImpl=glo
   const user=await requestJson('https://kapi.kakao.com/v1/oidc/userinfo',{headers});
   if(typeof user.sub!=='string'||!/^\d{1,32}$/.test(user.sub))throw error('로그인 계정을 확인할 수 없어요.',502);
   const phone=user.phone_number_verified===true?koreaPhone(user.phone_number):'';
-  return {accountId:digest(`kakao:${cfg.clientId}:${user.sub}`),phoneHash:phone?hashPhone(phone):'',phoneLast4:phone.slice(-4)};
+  return {accountId:digest(`kakao:${cfg.clientId}:${user.sub}`),phoneHash:phone?hashPhone(phone):'',phoneLast4:phone.slice(-4),verifiedPhone:phone};
  }
  const headers={'Cache-Control':'no-store, private','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff'};
  const json=(res,status,body,extra={})=>{res.writeHead(status,{...headers,'Content-Type':'application/json; charset=utf-8',...extra});res.end(JSON.stringify(body));};
@@ -110,7 +110,8 @@ function createBuyerAccountAuth({repository,config=configFromEnv(),fetchImpl=glo
   if(!url.pathname.startsWith(PREFIX+'/'))return false;
   const route=url.pathname.slice(PREFIX.length),method=req.method;
   const navigation=req.headers['sec-fetch-mode']==='navigate'||String(req.headers.accept||'').includes('text/html');
-  let resumeLink='';
+  let resumeLink='',vendorReturn=false;
+  const failure=(reason)=>vendorReturn?redirect(res,'/vendor-access.html?error='+encodeURIComponent(reason)):loginFailure(res,reason,resumeLink);
   try{
    if(route==='/session'&&method==='GET'){
     const user=await session(req);json(res,200,{available:enabled,authenticated:Boolean(user),...(javascriptKey?{kakao:{javascriptKey}}:{}),...(user?{phoneLast4:user.phoneLast4,canLink:Boolean(user.phoneHash),csrfToken:user.csrfToken}:{})},enabled&&!browserBinding(req)?{'Set-Cookie':[cookie(browserCookie,newBrowserBinding(),86400)]}:{});return true;
@@ -119,10 +120,10 @@ function createBuyerAccountAuth({repository,config=configFromEnv(),fetchImpl=glo
    if(['/start','/prepare'].includes(route)&&method==='POST'){
     const talk=route==='/prepare';if(talk&&!javascriptKey)throw error('카카오계정으로 로그인해 주세요.',503);
     sameOrigin(req);const binding=browserBinding(req)||newBrowserBinding();let bytes='';for await(const chunk of req){bytes+=chunk.toString();if(Buffer.byteLength(bytes)>2048)throw error('요청이 너무 커요.',413);}
-    const code=new URLSearchParams(bytes).get('link')||'';if(code&&!/^[\w-]{8,24}$/.test(code))throw error('낙찰 링크를 확인해 주세요.');
+    const fields=new URLSearchParams(bytes),code=fields.get('link')||'';vendorReturn=fields.get('returnTo')==='vendor';if(code&&!/^[\w-]{8,24}$/.test(code))throw error('낙찰 링크를 확인해 주세요.');
     resumeLink=code;rate(req,binding);
     const state=random(),verifier=talk?'':random(),stateKey=ROOT+'state::'+digest(state);
-    await repository.upsertRows([row(stateKey,{binding:digest('flow:'+binding),...(talk?{transport:'talk'}:{verifier}),link:code,expiresAt:now()+5*60*1000,used:false})]);
+    await repository.upsertRows([row(stateKey,{binding:digest('flow:'+binding),...(talk?{transport:'talk'}:{verifier}),link:code,returnTo:vendorReturn?'vendor':'',expiresAt:now()+5*60*1000,used:false})]);
     if(talk){json(res,200,{authorize:{redirectUri:origin+PREFIX+'/callback',state,scope:'openid,phone_number',throughTalk:true},expiresIn:300},{'Set-Cookie':[cookie(browserCookie,binding,86400)]});return true;}
     const authorize=new URL('https://kauth.kakao.com/oauth/authorize');authorize.search=new URLSearchParams({client_id:cfg.clientId,redirect_uri:origin+PREFIX+'/callback',response_type:'code',scope:'openid,phone_number',state,code_challenge:crypto.createHash('sha256').update(verifier).digest('base64url'),code_challenge_method:'S256'}).toString();
     redirect(res,authorize.toString(),[cookie(browserCookie,binding,86400)]);return true;
@@ -135,18 +136,19 @@ function createBuyerAccountAuth({repository,config=configFromEnv(),fetchImpl=glo
      const record=await read(stateKey),bound=record&&(binding&&equal(record.binding,digest('flow:'+binding))||validToken(legacyBinding)&&equal(record.binding,digest(legacyBinding)));
      if(!bound)throw error('로그인 요청이 만료됐어요.',401);
      resumeLink=validLink(record.link);
+     vendorReturn=record.returnTo==='vendor';
      if(record.used||!Number.isFinite(record.expiresAt)||record.expiresAt<=now())throw error('로그인 요청이 만료됐어요.',401);
      await repository.upsertRows([row(stateKey,{used:true,binding:record.binding,link:resumeLink,expiresAt:now()})]);return record;
     });
     try{
-     const code=url.searchParams.get('code');if(url.searchParams.get('error')==='access_denied'){loginFailure(res,'login_cancelled',resumeLink);return true;}
+     const code=url.searchParams.get('code');if(url.searchParams.get('error')==='access_denied'){failure('login_cancelled');return true;}
      if(url.searchParams.has('error')||!code||code.length>2048)throw error('로그인을 완료하지 못했어요.',401);
      const account=await exchange(code,flow),token=random(),stamp=now();
      const old=readCookie(req,cookieName),rows=[row(ROOT+'session::'+digest(token),{...account,authenticatedAt:stamp,expiresAt:stamp+7*86400000,revoked:false})];
      if(validToken(old))rows.push(row(ROOT+'session::'+digest(old),{revoked:true,expiresAt:stamp}));
      await repository.upsertRows(rows);
-     redirect(res,'/buyer-library.html'+(flow.link?'#link='+flow.link:''),[cookie(cookieName,token,7*86400),cookie(stateCookie,'',0)]);
-    }catch{loginFailure(res,'login_failed',resumeLink);}
+     redirect(res,vendorReturn?'/vendor-access.html?from=kakao':'/buyer-library.html'+(flow.link?'#link='+flow.link:''),[cookie(cookieName,token,7*86400),cookie(stateCookie,'',0)]);
+    }catch{failure('login_failed');}
     return true;
    }
    if(route==='/logout'&&method==='POST'){
@@ -155,7 +157,7 @@ function createBuyerAccountAuth({repository,config=configFromEnv(),fetchImpl=glo
    }
    json(res,404,{error:'페이지를 찾을 수 없어요.'});return true;
   }catch(err){
-   if(navigation&&['/start','/callback'].includes(route))loginFailure(res,err.status===429?'login_limited':route==='/callback'&&err.status===401?'login_expired':'login_failed',resumeLink);
+   if(navigation&&['/start','/callback'].includes(route))failure(err.status===429?'login_limited':route==='/callback'&&err.status===401?'login_expired':'login_failed');
    else json(res,err.status||503,{error:err.status?err.message:'로그인을 잠시 후 다시 시도해 주세요.'});return true;
   }
  }

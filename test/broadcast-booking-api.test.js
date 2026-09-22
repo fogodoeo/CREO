@@ -1,0 +1,21 @@
+'use strict';
+const test=require('node:test'),assert=require('node:assert/strict'),{randomUUID}=require('node:crypto');
+const {createFixture}=require('../tools/booking-preview.cjs');
+test('real API authenticates vendor/organizer and limits reservation links and other channels',async t=>{
+ const f=await createFixture();t.after(f.close);
+ const get=await f.call('GET','/api/platform/vendor-bookings?event=national-cre&code='+f.code,null,'');assert.equal(get.status,200,get.body);assert.equal(get.json().pendingCount,1);
+ assert.equal((await f.call('GET','/api/platform/vendor-bookings',null,'')).status,401);
+ assert.equal((await f.call('GET','/api/platform/vendor-bookings?event=other-auction&code='+f.otherCode,null,'')).status,404);
+ const route='/api/platform/channels/national-cre/broadcast-bookings';
+ assert.equal((await f.call('GET',route,null,'')).status,401);
+ assert.equal((await f.call('GET',route,null,'',{'x-creo-organizer':f.organizerCode})).status,200);
+ assert.equal((await f.call('GET','/api/platform/channels/other-auction/broadcast-bookings',null,'',{'x-creo-organizer':f.organizerCode})).status,401);
+ const r=(await f.service.read(f.channel)).state.reservations.find(r=>r.id===f.first);
+ const link=await f.call('GET','/api/platform/vendor-bookings?bookingCode='+r.linkCode,null,'');assert.equal(link.status,200);assert.equal(link.json().linkedReservationId,r.id);assert.ok(link.json().navigationToken);
+ const denied=await f.call('POST','/api/platform/vendor-bookings',{bookingCode:r.linkCode,type:'reserve',date:'2026-10-05',quantity:1,requestId:randomUUID()},'');assert.equal(denied.status,403);
+ const entry=await f.call('GET','/api/platform/vendor-entries?event=national-cre&code='+f.code,null,'');assert.equal(entry.json().state.bookingSummary.enabled,true);
+ const other=await f.call('GET','/api/platform/vendor-entries?event=other-auction&code='+f.otherCode,null,'');assert.equal(other.json().state.bookingSummary.enabled,false);
+ const request={type:'respond',code:f.code,event:'national-cre',id:r.id,expectedVersion:r.version,proposalId:get.json().reservations[0].proposal.id,response:'accept',requestId:randomUUID()};
+ const accepted=await f.call('POST','/api/platform/vendor-bookings',request,'');assert.equal(accepted.status,200,accepted.body);assert.equal(accepted.json().reservations[0].quantity,6);
+ assert.equal((await f.call('POST','/api/platform/vendor-bookings',request,'')).json().duplicate,true);
+});

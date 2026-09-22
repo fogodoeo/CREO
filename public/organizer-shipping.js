@@ -76,6 +76,7 @@ function renderAuction(){
  }).join('')||`<div class="settlement-empty">${all.length?'일치하는 내역이 없어요':'낙찰 내역이 없어요'}</div>`;
 }
 function render(){
+ $('broadcast-bookings').hidden=state.channel.id!=='national-cre';$('broadcast-bookings').href='/organizer-bookings.html?'+new URLSearchParams({channel:state.channel.id,...(organizerCode?{code:organizerCode}:{})});
  $('login').hidden=true;$('content').hidden=false;$('channel').textContent=state.channel.name;
  const sum=k=>state.vendors.reduce((n,v)=>n+(v[k]||0),0);
  $('total').textContent=money(sum('remainingAmount'));$('all-total').textContent=money(sum('totalAmount'));$('received').textContent=money(sum('receivedAmount'));

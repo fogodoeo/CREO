@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="referrer" content="no-referrer">
+<title>방송 예약 · 전국크레자랑</title>
+<link rel="stylesheet" href="/checkout-pages.css?v=20260918-design"><link rel="stylesheet" href="/vendor-navigation.css?v=20260923-portal"><link rel="stylesheet" href="/broadcast-booking.css?v=20260922-booking"><link rel="stylesheet" href="/vendor-booking-portal.css?v=20260923-portal">
+<script defer src="/vendor-navigation.js?v=20260923-portal"></script><script defer src="/vendor-bookings.js?v=20260923-portal"></script></head>
+<body class="vendor-page booking-page"><a class="booking-skip" href="#booking-main">본문으로 이동</a>
+<div class="booking-shell"><header class="booking-header"><a id="vendor-home" href="/vendor-access.html">전국크레자랑</a><span id="vendor-name"></span></header>
+<main id="booking-main" tabindex="-1"><div class="booking-heading"><h1>방송 예약</h1></div>
+<p id="booking-status" role="status" class="booking-status">예약을 불러오는 중…</p><div id="booking-error" role="alert" class="booking-error" hidden></div><button id="booking-retry" class="booking-secondary" type="button" hidden>다시 불러오기</button>
+<div id="booking-content" hidden>
+<section id="booking-requests" aria-labelledby="request-heading" hidden><h2 id="request-heading">응답할 변경 요청</h2><div id="request-list"></div></section>
+<section class="booking-section" aria-labelledby="my-heading"><div class="booking-section-heading"><h2 id="my-heading">다가오는 방송</h2><button id="booking-refresh" type="button" class="booking-text">새로고침</button></div><div id="reservation-list"></div></section>
+<button id="open-reserve" class="booking-primary" type="button">방송 예약하기</button>
+<details class="booking-history"><summary>지난 예약</summary><div id="reservation-history"></div></details>
+</div></main></div>
+<dialog id="booking-reserve" class="booking-dialog" aria-labelledby="reserve-heading"><header><h2 id="reserve-heading">방송일 선택</h2><button id="reserve-close" class="booking-icon" type="button" aria-label="예약 화면 닫기">×</button></header><span id="region-label" hidden></span>
+<form id="reserve-form" novalidate><fieldset><legend>방송 날짜</legend><div id="date-options" class="booking-dates"></div></fieldset>
+<p id="date-reason" class="booking-muted" role="status"></p><p id="no-booking-date" class="booking-muted booking-intro" hidden>지금은 예약 가능한 날짜가 없어요</p>
+<div id="quantity-area" hidden><div class="quantity-heading"><label for="booking-quantity">몇 마리 출품할까요?</label><p id="quantity-help" class="booking-muted"></p></div><div class="booking-quantity"><button id="quantity-minus" type="button" aria-label="1마리 줄이기">−</button><div><input id="booking-quantity" name="quantity" type="number" inputmode="numeric" min="1" step="1" required aria-describedby="quantity-help"><span>마리</span></div><button id="quantity-plus" type="button" aria-label="1마리 늘리기">＋</button></div><p id="booking-deadline" class="booking-muted" hidden></p></div>
+<p id="reserve-error" class="booking-error" role="alert" hidden></p><button type="submit" id="reserve-submit" class="booking-primary">예약 확정하기</button></form>
+<details class="booking-rules"><summary>예약 기준</summary><p>업체당 최대 8마리, 같은 지역은 합계 16마리까지 예약할 수 있어요. 같은 지역은 앞뒤 방송에 연속으로 참여할 수 없어요.</p></details></dialog>
+<nav class="vendor-bottom-nav" aria-label="업체 메뉴" hidden><a data-vendor-section="entries">출품 개체</a><a data-vendor-section="settlement">낙찰·정산</a><a data-vendor-section="profile">업체 정보</a></nav>
+<dialog id="booking-detail" class="booking-dialog" aria-labelledby="detail-heading"><header><h2 id="detail-heading">예약 상세</h2><button type="button" id="detail-close" class="booking-icon" aria-label="예약 상세 닫기">×</button></header><div id="detail-body"></div><p id="detail-error" class="booking-error" role="alert" hidden></p><div id="detail-actions" class="booking-actions"></div></dialog>
+<dialog id="booking-confirm" class="booking-dialog booking-confirm" aria-labelledby="confirm-heading"><h2 id="confirm-heading">예약을 취소할까요?</h2><p id="confirm-description"></p><p class="booking-muted">취소하면 자리가 해제됩니다. 다시 예약할 때는 가능한 날짜와 수량이 달라질 수 있습니다.</p><p id="cancel-error" class="booking-error" role="alert" hidden></p><div class="booking-actions"><button id="cancel-back" class="booking-secondary" type="button" autofocus>예약 유지하기</button><button id="cancel-confirm" class="booking-danger" type="button">예약 취소하기</button></div></dialog>
+</body></html>

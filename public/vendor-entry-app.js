@@ -4,13 +4,14 @@
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   const uuid = () => crypto.randomUUID();
   const role = Store.live ? 'vendor' : new URLSearchParams(location.search).get('role') || 'vendor';
+  const portal = Store.live && new URLSearchParams(location.search).get('portal');
   let eventId = new URLSearchParams(location.search).get('event') || Store.CHANNEL;
   const previewCode = Store.live ? Store.code : new URLSearchParams(location.search).get('code') || 'preview-bank';
   let section = new URLSearchParams(location.search).get('section') || 'home', profile = null, profileDirty = false;
   let profileEventId = '', profileSequence = 0;
   let profilePromptShown = false, profilePopupForSubmit = false, profileReturnFocus = null, leaveProfileOnly = false;
   const profilePromptKey = () => 'ongdong-entry-profile-prompt-v1:' + Store.VENDOR + ':' + previewCode;
-  const profileReady = p => !window.CreoVendorNavigation.profileRequired(p);
+  const profileReady = p => portal || !window.CreoVendorNavigation.profileRequired(p);
   function profilePromptSeen() { try { return profilePromptShown || localStorage.getItem(profilePromptKey()) === 'seen'; } catch { return profilePromptShown; } }
   function markProfilePromptSeen() { profilePromptShown = true; try { localStorage.setItem(profilePromptKey(), 'seen'); } catch {} }
   function editorNavigation(editing) { $('navigation').hidden = role !== 'vendor' || editing; document.body.classList.toggle('entry-editing', editing); }
@@ -81,9 +82,12 @@
     if (!currentEvent()) eventId = state.channelId || Store.CHANNEL;
     $('entry-event').innerHTML = state.events.map(e => `<option value="${esc(e.id)}" ${e.id === eventId ? 'selected' : ''}>${esc(e.name)}${e.date ? ' · ' + esc(e.date.slice(5).replace('-', '/')) : ''}${e.entriesOpen ? '' : ' · 접수 마감'}</option>`).join('');
     $('entry-event').disabled = busy || uploading;
-    const links = $('navigation').querySelectorAll('a');
-    links[0].href = pageUrl('entries'); links[1].href = pageUrl('settlement'); links[2].href = pageUrl('profile');
-    links.forEach((link, index) => { if (index === (section === 'profile' ? 2 : 0)) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current'); });
+    window.CreoVendorNavigation.configureBooking(state.bookingSummary, pageUrl('booking'));
+    const links = $('navigation').querySelectorAll('a[data-vendor-section]');
+    links.forEach(link => {
+      link.href = pageUrl(link.dataset.vendorSection);
+      if(link.dataset.vendorSection === (section === 'profile' ? 'profile' : 'entries'))link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');
+    });
     window.CreoVendorNavigation.updateStatus({entriesRequired:currentEvent()?.entriesOpen === true && entries().length === 0});
   }
   function renderList() {
@@ -99,7 +103,7 @@
       ${list.length ? `<p class="entry-count">${list.length}개체</p><div class="entry-list">${list.map(e => {
         const shown = displaySource(e);
         return `<button type="button" class="entry-row" data-entry="${esc(e.id)}">${shown.photoIds?.length ? avatar(shown.photoIds[0]) : ''}<span class="row-info">${role !== 'buyer' ? `<span class="status ${e.status}">${statusName[e.status]}</span>` : ''}<strong>${esc(e.lot || e.code)} · ${esc(shown.morph || '새 개체')}</strong><small>${[sexName[shown.sex], shown.weight ? shown.weight + 'g' : ''].filter(Boolean).map(esc).join(' · ')}</small></span><span class="chevron" aria-hidden="true">›</span></button>`;
-      }).join('')}</div>` : `<div class="empty-state"><p>${role === 'review' ? '검토할 개체가 없어요' : role === 'buyer' ? '편성 완료한 개체가 여기에 표시돼요' : '첫 개체를 등록해 보세요'}</p></div>`}
+      }).join('')}</div>` : `<div class="empty-state"><p>${role === 'review' ? '검토할 개체가 없어요' : role === 'buyer' ? '편성 완료한 개체가 여기에 표시돼요' : currentEvent()?.entriesOpen ? '첫 개체를 등록해 보세요' : '등록된 출품 개체가 없어요'}</p></div>`}
       `;
     $('add-entry')?.addEventListener('click', () => editEntry(blankEntry()));
     $('open-import')?.addEventListener('click', openImport);
@@ -666,6 +670,7 @@
   if (updates) updates.onmessage = refreshParentInformation;
   window.addEventListener('focus', refreshParentInformation);
   async function start() {
+    if(portal&&section==='profile'){location.replace(pageUrl('profile'));return;}
     setContext();
     try {
       state = await Store.read();

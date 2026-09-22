@@ -192,6 +192,25 @@ class SQLitePlatformRepository {
         await this.syncOutboxAfterMutation(rows.length);
     }
 
+    // Compare and commit the entire scheduling state and its notification rows
+    // in one SQLite transaction, including competing repository connections.
+    async compareAndSwapRows(key, expectedValue, rows) {
+        const now = new Date().toISOString();
+        const committed = this.transaction(() => {
+            const current = this.statements.get.get(key);
+            if ((current?.value ?? null) !== expectedValue) return false;
+            for (const row of rows) {
+                const value = String(row.value);
+                this.statements.clearDeleted.run(row.key);
+                this.statements.upsert.run(row.key, value, now);
+                this.enqueue(row.key, 'upsert', value);
+            }
+            return true;
+        });
+        if (committed) await this.syncOutboxAfterMutation(rows.length);
+        return committed;
+    }
+
     async deleteRow(key) {
         this.transaction(() => {
             this.statements.delete.run(key);

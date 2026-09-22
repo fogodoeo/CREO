@@ -1084,7 +1084,11 @@ function createPlatformApi({
     diceRandomInt = (maximum) => crypto.randomInt(maximum),
     adminSessionSecret = process.env.CREO_ADMIN_SECRET || crypto.randomBytes(32).toString('hex'),
     adminSessionTtlMs = ADMIN_SESSION_TTL_MS,
-    operatorPasswordHash = process.env.CREO_OPERATOR_PASSWORD_HASH || ''
+    operatorPasswordHash = process.env.CREO_OPERATOR_PASSWORD_HASH || '',
+    bookingNow = Date.now,
+    vendorAccessOrigin = process.env.CREO_VENDOR_ORIGIN || 'https://creok.onrender.com',
+    vendorAccessNow = Date.now,
+    vendorAccessSecret = adminSessionSecret
 } = {}) {
     if (!repository) throw new Error('repository is required');
     const testDeliveryChannels = new Set(String(checkoutTestDeliveryChannels).split(',').map(id => id.trim()).filter(id => /^checkout-test-[a-f0-9]{16}$/.test(id)));
@@ -1094,6 +1098,13 @@ function createPlatformApi({
         maxMediaBytes: entryPhotoMaxBytes
     });
     const organizerAccess = require('./organizer-access').createOrganizerAccess(repository);
+    const Booking = require('./broadcast-booking');
+    const booking = Booking.createBroadcastBooking(repository, {
+        now: bookingNow, notificationService,
+        entriesFor: async context => context.profile
+            ? (await vendorEntries.read(context)).entries.filter(e => e.channelId === context.channel.id && e.channelVendorId === context.vendor.id)
+            : []
+    });
     async function requireOrganizer(req,res,channelId){
         if(await isAdmin(req))return true;
         const access=await organizerAccess.resolve(req.headers['x-creo-organizer']);
@@ -1106,6 +1117,19 @@ function createPlatformApi({
     const adminCookieSecret = operatorPassword.sessionSecret(sessionSecret);
     const buyerLinkAccess = require('./buyer-link-access').createBuyerLinkAccess({repository,secret:sessionSecret,signToken:signBuyerShippingToken,verifyToken:verifyBuyerShippingToken,shortPrefix:BUYER_SHIPPING_SHORT_KEY_PREFIX});
     const buyerAccount = require('./buyer-account-auth').createBuyerAccountAuth({repository,config:buyerAccountConfig,fetchImpl:buyerAccountFetch,now:buyerAccountNow,hashPhone:sessionKey});
+    const vendorAccess = require('./vendor-access').createVendorAccess({
+        repository, secret: vendorAccessSecret, origin: vendorAccessOrigin, now: vendorAccessNow,
+        smsProvider: notificationService?.provider, buyerAccount, notificationService,
+        channelFor: async () => (await loadCatalog()).channels.find(c => Booking.enabled(c) && ['draft','active'].includes(c.status)),
+        vendorsFor: () => vendorDirectory.list(Booking.CHANNEL_ID),
+        profileFor: async id => { await vendorDirectory.enroll(Booking.CHANNEL_ID,id); return vendorDirectory.find(Booking.CHANNEL_ID,id); },
+        saveProfile: (id,changes,revision) => withMutationLock('channel:'+Booking.CHANNEL_ID,async () => {
+            const vendor=await vendorDirectory.find(Booking.CHANNEL_ID,id);
+            if(!vendor)throw buyerInputError('업체를 찾을 수 없어요.',404);
+            await vendorDirectory.update(Booking.CHANNEL_ID,{...vendor,...changes},revision);
+            await touchVendorChannels(Booking.CHANNEL_ID,id);
+        })
+    });
     const entryPhotoAudit = require('./entry-photo-audit').createEntryPhotoAudit({repository,decodeBuyerRecord:buyerAccount.decodeRow});
     const buyerCollection = require('./buyer-collection').createBuyerCollection({repository,auth:buyerAccount,linkAccess:buyerLinkAccess,now:buyerAccountNow,
         resolveProof:async code=>buyerBundleContext(await resolveBuyerShippingCredential({code}),{allowArchived:true}),
@@ -1198,6 +1222,7 @@ function createPlatformApi({
     }
 
     function verifyVendorCheckoutToken(token, now = Date.now()) {
+        if(String(token||'').startsWith('va1.'))return vendorAccess.verifyToken(token);
         const payload = verifiedCheckoutToken(token, ['vc1'], VENDOR_CHECKOUT_TOKEN_TTL_MS, now);
         if (!payload || Number(payload.v) !== 1) return null;
         payload.channelId = normalizeChannelId(payload.channelId);
@@ -2146,6 +2171,8 @@ function createPlatformApi({
     async function vendorCheckoutContext(tokenOrPayload, event = '') {
         let token = typeof tokenOrPayload === 'string' ? verifyVendorCheckoutToken(tokenOrPayload) : tokenOrPayload;
         if (!token) return null;
+        const access = token.accessActor || token.accessSession ? await vendorAccess.authorize(token) : null;
+        if ((token.accessActor || token.accessSession) && (!access || (event && event !== token.channelId))) return null;
         const profile = await vendorDirectory.profileFor(token.channelId,token.vendorKey);
         if(event && event !== token.channelId) {
             const membership=profile?.members.find(member=>member.channelId===event);
@@ -2153,7 +2180,7 @@ function createPlatformApi({
             token={...token,channelId:membership.channelId,vendorKey:membership.vendorId};
         }
         const catalog = await loadCatalog();
-        if(!event&&profile&&typeof tokenOrPayload==='string') {
+        if(!access&&!event&&profile&&typeof tokenOrPayload==='string') {
             const candidates=profile.members.slice().sort((a,b)=>{
                 const left=catalog.channels.find(c=>c.id===a.channelId),right=catalog.channels.find(c=>c.id===b.channelId);
                 return Number(right?.status==='active')-Number(left?.status==='active')||String(right?.createdAt||'').localeCompare(String(left?.createdAt||''));
@@ -2172,7 +2199,8 @@ function createPlatformApi({
         const vendor = vendors.find((entry) => entry.id === token.vendorKey)
             || vendors.find((entry) => entry.name === token.vendorKey);
         if (!vendor) return null;
-        return { token, catalog, channel, items, shipments, vendors, vendor, profile, vendorKey: token.vendorKey };
+        if(access&&vendor.active===false)return null;
+        return { token, catalog, channel, items, shipments, vendors, vendor, profile, access, vendorKey: token.vendorKey };
     }
 
     async function vendorBuyerBundles(context) {
@@ -2332,6 +2360,7 @@ function createPlatformApi({
             revision: checkoutRevision(context.channel.id),
             // Navigation needs counts only; do not resolve/download entry photos.
             entrySummary: await vendorEntries.summary(context).catch(() => null),
+            bookingSummary: await booking.summary(context),
             vendorContacts: context.vendors.filter(v => v.id !== context.vendor.id).map(v => ({name:cleanText(v.name,80),phone:Inquiry.vendorContact(v)?.phone || ''})).sort((a,b) => a.name.localeCompare(b.name,'ko')),
             testDeliveryEnabled: testDeliveryChannels.has(context.channel.id),
             channel: { id: context.channel.id, name: context.channel.name, status: context.channel.status },
@@ -3184,6 +3213,7 @@ function createPlatformApi({
     }
 
     async function handle(req, res, url) {
+        if(await vendorAccess.handle(req,res,url))return true;
         if (!url.pathname.startsWith('/api/platform/')) return false;
         try {
             if (await buyerAccount.handle(req,res,url)) return true;
@@ -3446,6 +3476,26 @@ function createPlatformApi({
                 } finally { activePhotoUploads--; }
             }
 
+            if (segments.length === 1 && segments[0] === 'vendor-bookings' && ['GET','POST'].includes(method)) {
+                const body=method==='POST'?await readJson(req):Object.fromEntries(url.searchParams);
+                let context, linkedReservationId='', navigationToken='';
+                if(body.bookingCode) {
+                    const channel=(await loadCatalog()).channels.find(c=>c.id===Booking.CHANNEL_ID);
+                    const link=channel&&await booking.resolveLink(channel,body.bookingCode);
+                    if(!link)throw buyerInputError('예약 링크가 만료되었거나 올바르지 않습니다. 업체 전용 페이지로 다시 열어 주세요.',401);
+                    navigationToken=signVendorCheckoutToken({channelId:channel.id,vendorKey:link.vendorId});
+                    context=await vendorCheckoutContext(navigationToken,channel.id);linkedReservationId=link.reservationId;
+                } else context=await vendorCheckoutContext(await resolveVendorCheckoutCredential(body),body.event||'');
+                if(!context)throw buyerInputError('업체 전용 링크를 다시 확인해 주세요.',401);
+                if(!Booking.enabled(context.channel))throw buyerInputError('전국크레자랑에서만 방송을 예약할 수 있습니다.',404);
+                let result={};
+                if(method==='POST') {
+                    if(body.bookingCode&&body.id!==linkedReservationId)throw buyerInputError('이 예약 링크에서 처리할 수 없는 요청입니다.',403);
+                    result=await booking.command(context,body);touchCheckout(context.channel.id);
+                }
+                replyJson(res,200,{...await booking.vendorView(context),...result,linkedReservationId,navigationToken});return true;
+            }
+
             if (segments.length === 1 && segments[0] === 'vendor-entries' && ['GET','POST'].includes(method)) {
                 const body=method==='POST'?await readJson(req):Object.fromEntries(url.searchParams);
                 const credential=await resolveVendorCheckoutCredential(body);
@@ -3455,8 +3505,9 @@ function createPlatformApi({
                     let context=await vendorCheckoutContext(initial.token,initial.channel.id);
                     if(!context)throw buyerInputError('업체 정보를 다시 불러와 주세요.',409);
                     if(!context.profile){await vendorDirectory.enroll(context.channel.id,context.vendor.id);context=await vendorCheckoutContext(context.token,context.channel.id);}
-                    if(method==='GET'){replyJson(res,200,{state:await vendorEntries.read(context)});return;}
+                    if(method==='GET'){replyJson(res,200,{state:{...await vendorEntries.read(context),bookingSummary:await booking.summary(context)}});return;}
                     const result=await vendorEntries.command(context,body);
+                    result.state.bookingSummary=await booking.summary(context);
                     if(!result.duplicate)touchCheckout(context.channel.id);
                     if(!result.duplicate&&body.type==='parent')await touchVendorChannels(context.channel.id,context.vendor.id);
                     replyJson(res,200,result);
@@ -3531,6 +3582,7 @@ function createPlatformApi({
                 const credential = await resolveVendorCheckoutCredential(body);
                 const context = await vendorCheckoutContext(credential, method === 'GET' ? (url.searchParams.get('event') || '') : (body.event || ''));
                 if (!context) throw buyerInputError('업체 전용 링크를 다시 확인해 주세요.', 401);
+                if(context.access)throw buyerInputError('업체 정보 화면에서 변경해 주세요.',403);
                 await withMutationLock(`channel:${context.channel.id}`, async () => {
                     const fresh = await vendorCheckoutContext(context.token);
                     if (!fresh) throw buyerInputError('업체 정보를 다시 불러와 주세요.', 409);
@@ -3826,6 +3878,16 @@ function createPlatformApi({
                 return true;
             }
 
+            if (segments.length===3 && segments[2]==='broadcast-bookings' && ['GET','POST'].includes(method)) {
+                if(!await requireOrganizer(req,res,channelId))return true;
+                const vendors=await vendorDirectory.list(channelId);
+                let result={};
+                if(method==='POST') {
+                    result=await booking.command({channel,vendors},await readJson(req),{operator:true});touchCheckout(channelId);
+                }
+                replyJson(res,200,{...await booking.operatorView(channel,vendors),...result});return true;
+            }
+
             if (segments.length===3 && segments[2]==='organizer-link' && ['GET','POST'].includes(method)) {
                 if(!await requireAdmin(req,res))return true;
                 await withMutationLock(`channel:${channelId}`,async()=>{
@@ -3916,7 +3978,7 @@ function createPlatformApi({
                         current.bank = bank;
                         touchCheckout(channelId);
                     }
-                    replyJson(res,200,{channel:{id:channel.id,name:channel.name},...current});
+                    replyJson(res,200,{channel:{id:channel.id,name:channel.name},bookingEnabled:Booking.enabled(channel),...current});
                 });
                 return true;
             }
@@ -5545,6 +5607,10 @@ function createPlatformApi({
                         }
                         const usedByItem = data.items.some((item) => item.vendorId === segments[3]);
                         const usedByShipment = data.shipments.some((shipment) => shipment.vendorId === segments[3]);
+                        const usedByBooking = Booking.enabled(channel) && (await booking.read(channel)).state.reservations.some(r=>r.vendorId===segments[3]);
+                        if (usedByBooking) {
+                            replyJson(res,409,{error:'방송 예약 이력이 있는 업체는 삭제할 수 없습니다. 업체 참여를 중지해 주세요.'});return;
+                        }
                         if (usedByItem || usedByShipment) {
                             replyJson(res, 409, { error: '연결된 개체나 배송이 있어 업체를 삭제할 수 없습니다.' });
                             return;
@@ -5587,6 +5653,16 @@ function createPlatformApi({
     }
 
     async function assertBuyerNotificationLink(channelId,notification) {
+        if(notification.templateKey==='vendor_join_requested')return vendorAccess.assertNotification(notification);
+        if(notification.templateKey==='broadcast_booking_updated') {
+            const channel=(await loadCatalog()).channels.find(c=>c.id===channelId);
+            if(!channel)throw Object.assign(new Error('예약 채널을 찾을 수 없습니다.'),{code:'BUYER_LINK_INACTIVE'});
+            await booking.assertNotification(channel,notification);
+            const linkCode=notification.variables?.['#{예약접속코드}']||notification.variables?.예약접속코드;
+            const link=await booking.resolveLink(channel,linkCode),vendor=link&&await vendorDirectory.find(channelId,link.vendorId);
+            if(!vendor||normalizePhone(vendor.phone)!==normalizePhone(notification.recipientPhone))throw Object.assign(new Error('업체 연락처가 변경되어 이전 알림을 중지했습니다.'),{code:'BUYER_LINK_INACTIVE'});
+            return;
+        }
         const sale=String(notification.eventKey||'').match(/^sale-v2:([^:]+):([^:]+):(buyer|vendor)$/);
         if(sale){
             const item=await repository.getRecord(channelId,'item',sale[1]);

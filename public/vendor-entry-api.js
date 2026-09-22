@@ -151,6 +151,8 @@
     },
     pageUrl(section, event = selected) {
       const query = new URLSearchParams({ ...credential(), event });
+      if(params.get('portal')){query.set('portal',params.get('portal'));if(section==='profile')return '/vendor-access.html?section=profile&company='+encodeURIComponent(params.get('portal'));}
+      if (section === 'booking') return '/vendor-bookings.html?' + query;
       if (section === 'settlement') return '/vendor-checkout.html?' + query;
       query.set('section', section); return '/vendor-entries.html?' + query;
     }

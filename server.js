@@ -58,6 +58,7 @@ const entryPhotoStorage = new EntryPhotoStorage({
     bucket: process.env.CREO_ENTRY_PHOTO_BUCKET || 'auction-entry-photos'
 });
 platformApi = createPlatformApi({
+    vendorAccessSecret: require('./vendor-access-secret').vendorAccessSecret({repository:platformRepository}),
     repository: platformRepository,
     crewartHouseService,
     bandMembership,
@@ -388,6 +389,10 @@ const server = http.createServer(async (req, res) => {
         if ((req.method === 'GET' || req.method === 'HEAD') && buyerDeliveryShortMatch) {
             const buyerPageUrl = new URL('/buyer-shipping.html', url);
             if (await serveStatic(req, res, buyerPageUrl)) return;
+        }
+
+        if ((req.method === 'GET' || req.method === 'HEAD') && /^\/r\/[A-Za-z0-9_-]{24}$/.test(url.pathname)) {
+            if (await serveStatic(req, res, new URL('/vendor-bookings.html', url))) return;
         }
 
         const vendorCheckoutShortMatch = /^\/v\/([A-Za-z0-9_-]{8,24})$/.exec(url.pathname);
