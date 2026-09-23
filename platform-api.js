@@ -5686,7 +5686,7 @@ function createPlatformApi({
             if (!current) throw Object.assign(new Error('변경되거나 취소된 카드 안내의 발송을 중지했어요.'), {code:'BUYER_LINK_INACTIVE'});
         }
     }
-    return { handle, isAdmin, hasAdminSession, workspace, assertBuyerNotificationLink, cleanupBuyerAuth:buyerAccount.cleanupExpired };
+    return { handle, isAdmin, hasAdminSession, workspace, assertBuyerNotificationLink, cleanupBuyerAuth:buyerAccount.cleanupExpired, cleanupVendorAuth:vendorAccess.cleanupExpired };
 }
 
 module.exports = {

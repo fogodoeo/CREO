@@ -474,7 +474,10 @@ const notificationWorker = setInterval(flushCheckoutNotifications, 15_000);
 notificationWorker.unref?.();
 const notificationStartup = setTimeout(flushCheckoutNotifications, 2_000);
 notificationStartup.unref?.();
-const buyerAuthMaintenance = require('./buyer-auth-maintenance').createBuyerAuthMaintenance({cleanup:()=>platformApi.cleanupBuyerAuth()});
+const buyerAuthMaintenance = require('./buyer-auth-maintenance').createBuyerAuthMaintenance({cleanup:async()=>{
+    const results=await Promise.allSettled([platformApi.cleanupBuyerAuth(),platformApi.cleanupVendorAuth()]);
+    const failed=results.find(result=>result.status==='rejected');if(failed)throw failed.reason;
+}});
 buyerAuthMaintenance.start();
 deliverySchedules.start();
 

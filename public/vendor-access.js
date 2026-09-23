@@ -32,6 +32,25 @@
    profile:()=>profileHtml()
   };
   $('main').innerHTML=(html[screen]||html.login)();
+  if(['login','phone','register','join','profile','choice'].includes(screen)){
+   const footer=document.createElement('div');footer.className='privacy-links';
+   footer.innerHTML='<a href="/vendor-privacy.html" target="_blank" rel="noopener">개인정보처리방침<span class="sr-only"> (새 창)</span></a><a href="tel:01049278600">문의</a>';
+   $('main').append(footer);
+  }
+  if(screen==='login'||screen==='phone'){
+   const notice=document.createElement('p');notice.className='privacy-note';notice.textContent='휴대전화 번호는 로그인·계정 관리에 필요한 필수 정보예요.';
+   $('main').querySelector('.privacy-links').before(notice);
+  }
+  if(screen==='register'){
+   $('register-form').querySelector('.field-note')?.remove();
+   const notice=document.createElement('p');notice.className='privacy-note';notice.textContent='업체명·지역·연락처는 필수예요. 업체 연락처는 예약·낙찰 안내와 거래 문의에 사용해요.';
+   $('register-form').querySelector('.actions').before(notice);
+  }
+  if(screen==='join'){
+   const consent=document.createElement('div');consent.className='privacy-consent';
+   consent.innerHTML=`<p>${esc(joinCompany.name)} 대표에게 이름과 로그인 번호를 제공해요. 참여 승인·소속 관리에 사용하며 소속 관리가 끝나거나 동의를 철회할 때까지 이용해요. 거부하면 참여 요청을 보낼 수 없어요.</p><label class="check"><input id="sharing-consent" type="checkbox" required>개인정보 제공에 동의해요 (필수)</label>`;
+   $('join-form').querySelector('.actions').before(consent);
+  }
   bind('retry',enter);bind('phone-login',()=>{sessionStorage.setItem('vendor-remember',String($('remember').checked));go('phone');});
   if($('kakao-form'))$('kakao-form').onsubmit=()=>{sessionStorage.setItem('vendor-remember',String($('remember').checked));};
   form('phone-form',async()=>{await sendOtp($('phone').value,'login');});
@@ -39,7 +58,7 @@
   bind('resend',()=>sendOtp(otp.phone,otp.purpose));bind('new-company',()=>{registration={};go('register');});bind('find-company',()=>go('search'));
   form('register-form',async()=>{const phone=$('contact').value.replace(/[\s-]/g,'');registration={...registration,name:$('company-name').value.trim(),region:$('region').value,phone};if(phone!==state.phone&&registration.verifiedPhone!==phone){await sendOtp(phone,'register');return;}const result=await request('register',registration);company=result.id;await navigate();});
   form('search-form',async()=>{const seq=++searchSequence,data=await request('search?q='+encodeURIComponent($('search').value.trim()));if(seq!==searchSequence||screen!=='search')return;$('search-results').innerHTML=data.companies.length?data.companies.map(c=>`<button class="result" data-join="${esc(c.id)}"><span><strong>${esc(c.name)}</strong><small>${esc(c.region)}</small></span><span class="chevron">›</span></button>`).join(''):'<p class="empty">등록된 업체를 찾지 못했어요</p>';for(const b of document.querySelectorAll('[data-join]'))b.onclick=()=>{joinCompany=data.companies.find(c=>c.id===b.dataset.join);go('join');};});
-  form('join-form',async()=>{await request('join',{companyId:joinCompany.id,name:$('staff-name').value.trim()});await refresh();go('pending');});
+  form('join-form',async()=>{await request('join',{companyId:joinCompany.id,name:$('staff-name').value.trim(),sharingConsent:$('sharing-consent').checked});await refresh();go('pending');});
   bind('check-approval',enter);bind('cancel-join',async()=>{await request('join-response',{id:state.requests[0].id,action:'cancel'});await refresh();go('choice');});
   for(const b of document.querySelectorAll('[data-company]'))b.onclick=()=>run(()=>navigate('booking',b.dataset.company));
   if(screen==='profile')bindProfile();if(screen==='verify'){tick();$('otp-code').focus();}

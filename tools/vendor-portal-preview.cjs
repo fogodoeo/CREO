@@ -30,7 +30,7 @@ async function createFixture(){
 async function main(){
  const f=await createFixture(),owner=await f.login('01000000001'),staff=await f.login('01000000002');
  const company=(await f.post(owner,'register',{name:'테스트',region:'대구·경북',phone:'01000000001'})).json();
- await f.post(staff,'join',{companyId:company.id,name:'테스트 직원'});
+ await f.post(staff,'join',{companyId:company.id,name:'테스트 직원',sharingConsent:true});
  const root=path.resolve(__dirname,'../public');
  http.createServer(async(req,res)=>{try{
   const url=new URL(req.url,f.origin);

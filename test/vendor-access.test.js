@@ -1,8 +1,38 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),{randomUUID}=require('node:crypto');
 const {createFixture}=require('../tools/vendor-portal-preview.cjs');
+const authRoot='creo_vendor_access_v1::';
 async function fixture(t){const f=await createFixture();t.after(f.close);return f;}
 async function register(f,c,name='테스트'){const r=await f.post(c,'register',{name,region:'대구·경북',phone:(await f.refresh(c)).json().phone});assert.equal(r.status,200,r.body);return r.json().id;}
+
+test('expired vendor authentication records are swept after grace, while accounts and active sessions survive',async t=>{
+ const f=await fixture(t),owner=await f.login('01000000001'),id=await register(f,owner);
+ const inventory=async()=>(await f.repository.scanRowsByPrefix(authRoot,{limit:100})).rows;
+ const original=await inventory(),otp=original.find(r=>r.key.includes('::otp:')),session=original.find(r=>r.key.includes('::session:'));
+ assert.ok(otp&&session);f.advance(86400000+179999);
+ assert.equal((await f.api.cleanupVendorAuth()).removed,0);
+ f.advance(1);assert.equal((await f.api.cleanupVendorAuth()).removed,1);
+ assert.equal((await f.repository.getRowsByKeys([otp.key])).length,0);
+ assert.equal((await f.refresh(owner)).json().companies[0].id,id);
+ f.advance(31*86400000);const active=await f.login('01000000002');
+ const remove=f.repository.deleteRow.bind(f.repository);let deleted=0;f.repository.deleteRow=async key=>{deleted++;await remove(key);};
+ await Promise.all([f.api.cleanupVendorAuth(),f.api.cleanupVendorAuth()]);assert.equal(deleted,1);
+ assert.equal((await f.repository.getRowsByKeys([session.key])).length,0);
+ assert.equal((await f.refresh(active)).json().authenticated,true);
+ f.restart();assert.equal((await f.api.cleanupVendorAuth()).removed,0);
+ const returned=await f.login('01000000001');assert.equal((await f.refresh(returned)).json().companies[0].id,id);
+});
+
+test('vendor cleanup retains corrupt or changed records and retries a failed deletion',async t=>{
+ const f=await fixture(t);await f.login('01000000001');f.advance(86400000+180000);
+ const otp=(await f.repository.scanRowsByPrefix(authRoot,{limit:100})).rows.find(r=>r.key.includes('::otp:'));
+ const remove=f.repository.deleteRow.bind(f.repository);f.repository.deleteRow=async()=>{throw Error('isolated delete failure');};
+ await assert.rejects(f.api.cleanupVendorAuth(),/isolated delete failure/);
+ assert.equal((await f.repository.getRowsByKeys([otp.key])).length,1);f.repository.deleteRow=remove;
+ assert.equal((await f.api.cleanupVendorAuth()).removed,1);
+ const corrupt=authRoot+'proof:'+'x'.repeat(43);await f.repository.upsertRows([{key:corrupt,value:'invalid encrypted data'}]);
+ assert.equal((await f.api.cleanupVendorAuth()).invalid,1);assert.equal((await f.repository.getRowsByKeys([corrupt])).length,1);
+});
 test('SMS authentication binds browser and CSRF, persists, rejects replay, expires and rate limits',async t=>{
  const f=await fixture(t),c=f.client(),other=f.client();await f.refresh(c);await f.refresh(other);
  assert.equal((await f.call(c,'POST','/api/platform/vendor-access/otp',{phone:'01000000001'},{origin:'https://evil.invalid'})).status,403);
@@ -26,7 +56,9 @@ test('one company survives concurrent registration and restart; scoped tokens re
 test('staff requires owner approval; contact changes cannot transfer ownership or notification recipient',async t=>{
  const f=await fixture(t),owner=await f.login('01000000001'),staff=await f.login('01000000002'),stranger=await f.login('01000000003'),id=await register(f,owner);
  assert.equal((await f.post(staff,'select',{id})).status,403);
- const join=await f.post(staff,'join',{companyId:id,name:'직원'}),request=join.json().id;
+ assert.equal((await f.post(staff,'join',{companyId:id,name:'직원'})).status,422);
+ assert.equal((await f.post(owner,'profile',{companyId:id})).json().requests.length,0);
+ const join=await f.post(staff,'join',{companyId:id,name:'직원',sharingConsent:true}),request=join.json().id;
  assert.equal((await f.post(stranger,'join-response',{id:request,action:'approve'})).status,403);
  const p=(await f.post(owner,'profile',{companyId:id})).json();assert.equal(p.requests.length,1);
  assert.equal((await f.post(owner,'profile',{companyId:id,action:'contact',phone:'01000000004',revision:p.revision})).status,422);
