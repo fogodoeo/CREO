@@ -10,6 +10,21 @@ test('Parge rejects changed weekday ordering and incomplete partner data',async(
  guide=weekly.replace('월요일 화요일','화요일 월요일');await assert.rejects(reader.parge(),/route changed/);
  guide=weekly;count=1;await assert.rejects(reader.parge(),/Invalid PARGE/);
 });
+test('Parge accepts the October daily cards but rejects changed routes and script-only stale tables',async()=>{
+ const cards='<ul><li>월 <b>수거</b> 수도권/경상권</li><li>화 충청/구미/대구 배송</li><li>수 경상권 배송</li><li>목 수도권 배송</li><li>금 강원 배송</li><li>토 제주 배송 <span>토 에어 · 당일 도착</span></li><li>일 전라도/진주/논산 배송</li></ul>';
+ let guide=cards;
+ const reader=createSourceReader(async url=>response(url.endsWith('/booking')?'<script src="/_next/static/chunks/test.js"></script>':url.endsWith('/test.js')?'({sudo:{sudo:10000},daegu:{sudo:30000,jeju:50000,wonchun:30000}})':url.endsWith('/guide')?guide:url.endsWith('/partners')?{partners:Array.from({length:50},(_,i)=>({name:'매장'+i,region:'강원',isActive:true}))}:{schedules:Array.from({length:5},()=>({isActive:true,collectDayLabel:'월요일'}))}));
+ const result=await reader.parge();
+ assert.deepEqual(result.regionDays,{capital:[4],chungcheong:[2],jeolla:[0],gyeongsang:[3],gangwon:[5]});
+ assert.equal(result.jejuSaturdayFrom,'2026-09-19');
+ assert.equal(result.ratePayload.data['강원도'].length,50);
+ for(const changed of [cards.replace('금 강원 배송','목 강원 배송'),cards.replace('목 수도권 배송','목 경상권 배송'),cards.replace('토 에어 · 당일 도착','선박 배송'),cards.replace('<li>일 전라도/진주/논산 배송</li>','')]){
+  guide=changed+`<script>window.cachedGuide=${JSON.stringify(weekly)}</script>`;
+  await assert.rejects(reader.parge(),/route changed/);
+ }
+ guide=`<script type="application/json">${JSON.stringify(weekly)}</script>`;
+ await assert.rejects(reader.parge(),/route changed/);
+});
 test('Dodosi matches duplicate shop names by city and only performs read-only option queries',async()=>{
  const calls=[];
  const shops=[['출발점','대구','수/일'],['동명점','부산','월','화','2026/09/24','2026/09/27'],['동명점','울산','월'],...Array.from({length:17},(_,i)=>['다른점'+i,'서울','월'])];

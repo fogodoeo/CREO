@@ -36,14 +36,17 @@ function createSourceReader(fetchImpl = globalThis.fetch) {
         const get = budget(45000, options.signal);
         const partnersResult = await get.json('https://parge.co.kr/api/partners');
         const scheduleResult = await get.json('https://parge.co.kr/api/delivery-schedules');
-        const guide = clean(await get.text('https://parge.co.kr/guide'));
+        const guide = clean((await get.text('https://parge.co.kr/guide')).replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '').replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, ''));
         const partners = (partnersResult.partners || []).filter(p => p.isActive !== false).map(p => ({ name: clean(p.name), region: clean(p.region) }));
         const schedules = (scheduleResult.schedules || []).filter(r => r.isActive).map(r => ({
             region: clean(r.region), partnerName: clean(r.partnerName), collectDayLabel: clean(r.collectDayLabel), deliveryDayLabel: clean(r.deliveryDayLabel)
         }));
         if (partners.length < 20 || partners.length > 1000 || schedules.length < 5 || schedules.length > 2000) throw new Error('Invalid PARGE schedule data');
-        // Fail closed when the audited weekly table changes, including its column order.
-        if (!/월요일 화요일 수요일 목요일 금요일 토요일 일요일 수거 \(수도권\/경상권\) 충청\/구미\/대구 배송 경상권 배송 수도권 배송 강원 배송 제주 배송 \(토 에어·당일 도착\) 전라도\/진주\/논산 배송/.test(guide)) throw new Error('PARGE weekly route changed');
+        // The same audited timetable is published as either a table or daily cards.
+        // Keep checking every weekday/route pairing; unknown schedules fail closed.
+        const weeklyTable = /월요일 화요일 수요일 목요일 금요일 토요일 일요일 수거 \(수도권\/경상권\) 충청\/구미\/대구 배송 경상권 배송 수도권 배송 강원 배송 제주 배송 \(토 에어·당일 도착\) 전라도\/진주\/논산 배송/;
+        const weeklyCards = /월 수거 수도권\/경상권 화 충청\/구미\/대구 배송 수 경상권 배송 목 수도권 배송 금 강원 배송 토 제주 배송 토 에어\s*·\s*당일 도착 일 전라도\/진주\/논산 배송/;
+        if (!weeklyTable.test(guide) && !weeklyCards.test(guide)) throw new Error('PARGE weekly route changed');
         const booking = await get.text('https://parge.co.kr/booking');
         const paths = [...new Set([...booking.matchAll(/\/_next\/static\/chunks\/[^"']+\.js/g)].map(m => m[0]))];
         if (!paths.length || paths.length > 30 || paths.some(p => !/^\/_next\/static\/chunks\/(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_.-]+\.js$/.test(p))) throw new Error('PARGE rate source changed');
