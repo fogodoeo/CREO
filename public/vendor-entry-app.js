@@ -145,6 +145,9 @@
     window.CreoVendorNavigation.updateStatus({profileRequired:!ready});
     if ($('vendor-info-summary')) $('vendor-info-summary').hidden = ready;
   }
+  function profileCardEnabled(p) {
+    return Array.isArray(p.paymentMethods) ? p.paymentMethods.includes('card') : p.cardEnabled === true;
+  }
   function profileFormMarkup(p, popup = false) {
     return `<form id="profile-form" novalidate>
         ${window.CreoVendorContactForm.markup(p,{compact:popup})}
@@ -153,7 +156,7 @@
         <label class="field" for="profile-account"><span>계좌번호</span><input id="profile-account" inputmode="numeric" maxlength="40" value="${esc(p.bankAccount)}" placeholder="숫자만 입력" ${p.bankRegistered ? 'readonly' : ''} aria-describedby="profile-account-error"><span class="field-error" id="profile-account-error" hidden></span></label>
         <label class="field" for="profile-holder"><span>예금주</span><input id="profile-holder" maxlength="40" value="${esc(p.bankHolder)}" placeholder="예금주명" ${p.bankRegistered ? 'readonly' : ''} aria-describedby="profile-holder-error"><span class="field-error" id="profile-holder-error" hidden></span></label>
         ${p.bankRegistered ? '<p class="profile-account-note muted">계좌 변경은 운영자에게 요청해 주세요.</p>' : ''}
-        ${popup ? '' : `<label class="profile-card-choice"><span><b>카드결제</b><small>카드결제도 받을 수 있어요</small></span><input id="profile-card" type="checkbox" ${p.cardEnabled ? 'checked' : ''}></label>`}</section>
+        ${popup ? '' : `<label class="profile-card-choice"><span><b>카드결제</b><small>카드결제도 받을 수 있어요</small></span><input id="profile-card" type="checkbox" ${profileCardEnabled(p) ? 'checked' : ''}></label>`}</section>
         <p id="profile-error" class="inline-error" role="alert" hidden></p>${popup ? '' : '<div class="form-actions"><button class="primary" type="submit" id="profile-save">저장</button></div>'}</form>`;
   }
   function bindProfileForm(popup = false) {
@@ -202,7 +205,7 @@
   }
   async function saveProfile(refresh = true) {
     if (busy) return false;
-    const data = { ...window.CreoVendorContactForm.read($('profile-form').querySelector('.vendor-contact-settings')), bankName: $('profile-bank').value.trim(), bankAccount: $('profile-account').value.trim(), bankHolder: $('profile-holder').value.trim(), cardEnabled: $('profile-card')?.checked ?? Boolean(profile.cardEnabled) };
+    const data = { ...window.CreoVendorContactForm.read($('profile-form').querySelector('.vendor-contact-settings')), bankName: $('profile-bank').value.trim(), bankAccount: $('profile-account').value.trim(), bankHolder: $('profile-holder').value.trim(), cardEnabled: $('profile-card')?.checked ?? profileCardEnabled(profile) };
     if (Store.live) data.directoryRevision = profile.directoryRevision;
     const checks = [['phone', /^0\d{8,10}$/.test(data.phone), '휴대폰 번호를 확인해 주세요.'], ['bank', !!data.bankName, '은행을 입력해 주세요.'], ['account', /^[0-9 -]{5,40}$/.test(data.bankAccount), '계좌번호를 확인해 주세요.'], ['holder', !!data.bankHolder, '예금주를 입력해 주세요.']];
     if($('profile-inquiry'))checks.push(['inquiry',!data.inquiryPhone||/^0\d{8,10}$/.test(data.inquiryPhone),'고객 문의 전화번호를 확인해 주세요.']);
