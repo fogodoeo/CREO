@@ -1,4 +1,4 @@
-/* Two rank slots keep their geometry as bidders arrive or change rank. */
+/* Reserve two positions, but render only real bids (or one waiting message). */
 body[data-page="2"] #stage .live-bidders{
     display:grid;grid-template-rows:repeat(2,minmax(0,1fr));
     align-content:stretch;gap:12px;height:clamp(144px,25vh,270px);
@@ -21,4 +21,6 @@ body[data-page="2"] #stage .live-bid-row :is(.live-bid-name,.live-bid-amount){
 body[data-page="2"] #stage .live-bid-amount{
     margin:0;text-align:right;font-variant-numeric:tabular-nums;
 }
-body[data-page="2"] #stage .live-bid-row.is-empty :is(.live-bid-name,.live-bid-amount){opacity:.55}
+body[data-page="2"] #stage .live-bid-row.is-empty{grid-template-columns:1fr;border-left-color:transparent}
+body[data-page="2"] #stage .live-bid-row.is-empty .live-bid-name{color:#cbd5e1;font-weight:650}
+body[data-page="2"] #stage .live-bid-row.is-exiting{position:absolute;left:0;right:0;pointer-events:none}

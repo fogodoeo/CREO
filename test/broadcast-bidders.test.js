@@ -11,11 +11,13 @@ test('only the highest two distinct bidders are shown, without changing bid hist
     const html=render(item);assert.equal((html.match(/class="live-bid-row/g)||[]).length,2);
     assert.ok(!html.includes('지수'));assert.equal(JSON.stringify(item),before);
 });
-test('empty and single-bidder states retain both slots; new item clears the old names',()=>{
-    for(const item of [{},{bidLog:[]},{bidLog:[{name:'민수',amount:12}]}]){
-        const html=render(item);assert.equal((html.match(/class="live-bid-row/g)||[]).length,2);
-        assert.ok(html.includes('입찰 대기'));assert.ok(html.includes('data-rank="2"'));
+test('empty state shows one waiting message; one bidder has no empty second row',()=>{
+    for(const item of [{},{bidLog:[]}]){
+        const html=render(item);assert.equal((html.match(/class="live-bid-row/g)||[]).length,1);
+        assert.equal((html.match(/입찰 대기/g)||[]).length,1);assert.ok(!html.includes('—'));
     }
+    const single=render({bidLog:[{name:'민수',amount:12}]});
+    assert.equal((single.match(/class="live-bid-row/g)||[]).length,1);assert.ok(!single.includes('입찰 대기'));assert.ok(!single.includes('data-rank="2"'));
     assert.ok(!render({bidLog:[]}).includes('민수'));
     assert.equal(render({bidLog:[{name:'민수',amount:12}]},{page2BiddersOn:false}),'');
 });

@@ -143,7 +143,8 @@
     <link rel="stylesheet" href="broadcast-themes.css?v=20260915-reveal-tv">
     <link rel="stylesheet" href="broadcast-scenes.css?v=20260915-reveal-tv">
     <link rel="stylesheet" href="broadcast-item-notes.css?v=20260917-content-fit">
-    <link rel="stylesheet" href="broadcast-bidders.css?v=20260917-two-slots">
+    <link rel="stylesheet" href="broadcast-bidders.css?v=20261001-bid-flow">
+    <script src="broadcast-bidders.js?v=20261001-bid-flow"></script>
     <script src="broadcast-item-notes.js?v=20260917"></script>
 </head>
 <body><main class="stage" id="stage"></main><div class="error" id="error" hidden></div>
@@ -180,10 +181,9 @@ function bidAmountLabel(value){const amount=Number(value)||0;return`${amount.toL
 function pageTwoBidders(item,s){
     if(s.page2BiddersOn===false)return'';
     const rows=pageTwoBidRows(item),rawOpacity=Number(s.page2BiddersOpacity),opacity=(Number.isFinite(rawOpacity)?Math.max(0,Math.min(100,rawOpacity)):94)/100;
-    return`<div class="live-bidders" aria-label="상위 입찰자 2명" style="--bidders-opacity:${opacity}">${Array.from({length:2},(_,index)=>{
-        const bid=rows[index];
-        return`<div class="live-bid-row${bid?'':' is-empty'}" data-rank="${index+1}"><strong class="live-bid-name"${bid?` title="${esc(bid.name)}"`:''}>${bid?esc(bid.name):'입찰 대기'}</strong><strong class="live-bid-amount">${bid?(bid.isQuiz?'정답!':bidAmountLabel(bid.amount)):'—'}</strong></div>`;
-    }).join('')}</div>`;
+    return`<div class="live-bidders" aria-label="실시간 입찰" data-item-key="${esc(item?.id||'')}" style="--bidders-opacity:${opacity}">${rows.length?rows.map((bid,index)=>
+        `<div class="live-bid-row" data-bidder-key="${esc(bid.key)}" data-rank="${index+1}"><strong class="live-bid-name" title="${esc(bid.name)}">${esc(bid.name)}</strong><strong class="live-bid-amount">${bid.isQuiz?'정답!':bidAmountLabel(bid.amount)}</strong></div>`
+    ).join(''):'<div class="live-bid-row is-empty"><span class="live-bid-name">입찰 대기</span></div>'}</div>`;
 }
 function pageTwoProgress(s,progress){if(s.page2ProgressOn===false)return'';const current=Math.max(0,Number(progress?.current)||0),total=Math.max(0,Number(progress?.total)||0);return`<div class="item-progress glass"><strong>${current}/${total}</strong></div>`}
 function pageTwoInfoTraits(item){const checklist=CreoAuctionContract.parseChecklist(item?.attributes?.checklist||item?.checklist||''),gender={M:'수컷',F:'암컷',U:'미구분'},yn={O:'O',X:'X'},rows=[];const add=(text,accent=false)=>{const value=String(text||'').trim();if(value&&!['none','null','undefined'].includes(value.toLowerCase())&&!rows.some(row=>row.text===value))rows.push({text:value,accent})};if(checklist.gender)add(gender[checklist.gender]||checklist.gender,true);if(checklist.weight)add(`${checklist.weight}g`,true);if(checklist.birth)add(checklist.birth);if(checklist.spot)add(`점:${yn[checklist.spot]||checklist.spot}`);if(checklist.pin)add(`풀핀:${yn[checklist.pin]||checklist.pin}`);if(checklist.size)add(`도살:${checklist.size}`);if(checklist.wall)add(`월높이:${checklist.wall}`);if(checklist.color)add(`색감:${checklist.color}`);if(checklist.activity)add(`활동성:${checklist.activity}`);if(checklist.feed)add(`먹이:${checklist.feed}`);if(checklist.structure)add(`체형:${checklist.structure}`);return rows}
@@ -285,7 +285,7 @@ function syncElementAttributes(current,next){for(const attribute of[...current.a
 function releaseRenderMedia(element){window.CreoBannerPlayer?.release(element);window.CreoParentPhotos?.release(element);for(const media of element.matches('video,audio')?[element,...element.querySelectorAll('video,audio')]:element.querySelectorAll('video,audio')){media.pause();media.removeAttribute('src');for(const source of media.querySelectorAll('source'))source.removeAttribute('src');media.load()}}
 function reconcileRenderChildren(parent,nextParent){
     const currentChildren=[...parent.children],currentByKey=new Map(currentChildren.map((element,index)=>[renderRegionKey(element,index),element])),kept=new Set;
-    [...nextParent.children].forEach((next,index)=>{const key=renderRegionKey(next,index);let current=currentByKey.get(key),source=next.outerHTML;if(current&&key==='layer'){syncElementAttributes(current,next);reconcileRenderChildren(current,next)}else if(current&&key==='dice-overlay'&&current.dataset.diceEvent===next.dataset.diceEvent&&current.querySelector('.dice-result-strip')){renderSources.set(current,source)}else if(!current||renderSources.get(current)!==source){if(current){releaseRenderMedia(current);current.replaceWith(next)}else{parent.append(next)}current=next;rememberRenderSources(current);renderSources.set(current,source)}kept.add(current);const position=parent.children[index];if(position!==current)parent.insertBefore(current,position||null)});
+    [...nextParent.children].forEach((next,index)=>{const key=renderRegionKey(next,index);let current=currentByKey.get(key),source=next.outerHTML;if(current&&key==='layer'){syncElementAttributes(current,next);reconcileRenderChildren(current,next)}else if(current&&key==='live-bidders'&&window.CreoBroadcastBidders){if(renderSources.get(current)!==source){window.CreoBroadcastBidders.update(current,next);renderSources.set(current,source)}}else if(current&&key==='dice-overlay'&&current.dataset.diceEvent===next.dataset.diceEvent&&current.querySelector('.dice-result-strip')){renderSources.set(current,source)}else if(!current||renderSources.get(current)!==source){if(current){releaseRenderMedia(current);current.replaceWith(next)}else{parent.append(next)}current=next;rememberRenderSources(current);renderSources.set(current,source)}kept.add(current);const position=parent.children[index];if(position!==current)parent.insertBefore(current,position||null)});
     for(const child of[...parent.children])if(!kept.has(child)){releaseRenderMedia(child);child.remove()}
 }
 function reconcileStage(markup){const template=document.createElement('template');template.innerHTML=markup;reconcileRenderChildren(stage,template.content)}
