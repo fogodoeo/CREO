@@ -121,11 +121,11 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
     }
     async function command(context, input, { operator=false }={}) {
         const ownerId=owner(context),type=String(input.type||'');
-        const allowed=operator?['approve','request-changes']:['save','submit','withdraw','revise','parent','import','delete'];
+        const allowed=operator?['approve','request-changes','renumber']:['save','submit','withdraw','revise','parent','import','delete'];
         if(!allowed.includes(type))throw fail('이 작업을 실행할 수 없습니다.',403);
         const requestId=cleanText(input.requestId,80);
         if(requestId.length<8)throw fail('요청을 다시 확인해 주세요.',422);
-        const signature=hash({type,entry:input.entry,parent:input.parent,parents:input.parents,id:input.id,expectedVersion:input.expectedVersion,lot:input.lot,order:input.order,startPrice:input.startPrice,teamName:input.teamName,groupId:input.groupId,reason:input.reason});
+        const signature=hash({type,entry:input.entry,parent:input.parent,parents:input.parents,id:input.id,expectedVersion:input.expectedVersion,expectedUpdatedAt:input.expectedUpdatedAt,lot:input.lot,order:input.order,startPrice:input.startPrice,teamName:input.teamName,groupId:input.groupId,reason:input.reason});
         const execute=()=>locked(ownerId,async()=>{
             const state=await readOwner(ownerId),key=context.channel.id+':'+type+':'+requestId;
             const previous=state.requests.find(request=>request.key===key);
@@ -188,7 +188,18 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
                 const entry=state.entries.find(entry=>entry.id===input.id&&entry.channelId===context.channel.id&&entry.channelVendorId===context.vendor.id);
                 if(!entry)throw fail('출품을 찾을 수 없습니다.',404);
                 if(entry.version!==input.expectedVersion)throw fail('출품이 변경됐어요. 내용을 다시 확인해 주세요.');
-                if(type==='delete'){
+                if(type==='renumber'){
+                    if(entry.status!=='approved'||!entry.itemId||!['draft','active'].includes(context.channel.status))throw fail('편성된 대기 개체만 번호를 변경할 수 있어요.');
+                    const items=await repository.listRecords(context.channel.id,'item'),existing=items.find(row=>row.id===entry.itemId);
+                    if(items.some(row=>row.status==='live')||!existing||!canArrange(existing))throw fail('입찰이 시작된 경매에서는 번호를 변경할 수 없어요.');
+                    if(existing.vendorId!==context.vendor.id||existing.attributes?.vendor_entry?.ownerId!==ownerId||existing.attributes?.vendor_entry?.entryId!==entry.id)throw fail('개체 연결 정보를 다시 확인해 주세요.');
+                    if(input.expectedUpdatedAt!==existing.updatedAt)throw fail('개체 정보가 변경됐어요. 새로고침 후 다시 시도해 주세요.');
+                    const lot=Numbering.normalize(cleanText(input.lot,16)),order=Number(input.order),startPrice=Number(input.startPrice);
+                    if(!Numbering.valid(lot)||!Number.isInteger(order)||order<1||order>10000||!Number.isSafeInteger(startPrice)||startPrice<0)throw fail('경매 번호·순서·시작가를 확인해 주세요.',422);
+                    if(items.some(row=>row.id!==existing.id&&(Numbering.normalize(row.attributes?.displayNumber||row.name)===lot||Number(row.lotNumber)===order)))throw fail('이미 사용 중인 경매 번호 또는 순서입니다.');
+                    item={...existing,name:lot,lotNumber:order,startPrice,updatedAt:nextItemTimestamp(existing),attributes:{...existing.attributes,displayNumber:lot}};
+                    entry.lot=lot;
+                }else if(type==='delete'){
                     if(!['draft','submitted','changes_requested'].includes(entry.status)||entry.itemId||entry.approved)throw fail('이미 편성된 개체는 삭제할 수 없어요. 운영자에게 문의해 주세요.');
                     const items=await repository.listRecords(context.channel.id,'item');
                     if(items.some(item=>item.id==='entry-'+entry.id||item.attributes?.vendor_entry?.entryId===entry.id))throw fail('이미 경매에 반영된 개체예요. 목록을 다시 확인해 주세요.');

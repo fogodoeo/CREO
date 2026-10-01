@@ -14,6 +14,47 @@ function fixture(){
 const draft=()=>({id:randomUUID(),morph:'릴리화이트',sex:'female',weight:'28',photoIds:[]});
 const command=(type,fields={})=>({type,requestId:randomUUID(),...fields});
 
+test('operator renumber keeps entry and auction identity aligned, preserves facts, and replays across restart',async()=>{
+    const {repository,context,service}=fixture(),entry=draft();
+    await service.command(context,command('submit',{entry}));
+    await service.command(context,command('approve',{id:entry.id,expectedVersion:1,lot:'1부 A01',order:1,startPrice:10000000}),{operator:true});
+    const before=(await service.read(context)).entries[0],old=(await repository.listRecords('alpha','item'))[0];
+    const request=command('renumber',{id:entry.id,expectedVersion:2,expectedUpdatedAt:old.updatedAt,lot:'2부 B14',order:29,startPrice:10000000});
+    await assert.rejects(service.command(context,request),e=>e.status===403);
+    const results=await Promise.all([service.command(context,request,{operator:true}),service.command(context,request,{operator:true})]);
+    assert.deepEqual(results.map(r=>r.duplicate).sort(),[false,true]);
+    const restarted=createVendorEntries(repository);
+    assert.equal((await restarted.command(context,request,{operator:true})).duplicate,true);
+    const after=(await restarted.read(context)).entries[0],item=(await repository.listRecords('alpha','item'))[0];
+    assert.equal(after.lot,'2부 B14');assert.equal(after.version,3);assert.deepEqual(after.approved,before.approved);
+    assert.deepEqual(item,{...old,name:'2부 B14',lotNumber:29,attributes:{...old.attributes,displayNumber:'2부 B14'},updatedAt:item.updatedAt});
+    assert.ok(item.updatedAt>old.updatedAt);assert.deepEqual(await repository.listRecords('beta','item'),[]);
+    await assert.rejects(restarted.command(context,{...request,requestId:randomUUID()},{operator:true}));
+});
+
+test('renumber rejects stale, duplicate, foreign and progressed items and fails without partial writes',async()=>{
+    const {repository,context,service}=fixture(),entries=[draft(),draft()];
+    for(const [i,entry] of entries.entries()){
+        await service.command(context,command('submit',{entry}));
+        await service.command(context,command('approve',{id:entry.id,expectedVersion:1,lot:'1부 A0'+(i+1),order:i+1}),{operator:true});
+    }
+    const items=await repository.listRecords('alpha','item'),old=items[0],key='creo_v2::alpha::item::'+old.id;
+    const request=()=>command('renumber',{id:entries[0].id,expectedVersion:2,expectedUpdatedAt:old.updatedAt,lot:'2부 B14',order:29,startPrice:10000000});
+    for(const patch of [{lot:'1부 A02'},{order:2},{expectedUpdatedAt:'stale'},{startPrice:-1}]){
+        const before=[...repository.rows];await assert.rejects(service.command(context,{...request(),...patch},{operator:true}));assert.deepEqual([...repository.rows],before);
+    }
+    for(const patch of [{status:'live'},{status:'sold',soldPrice:10000},{attributes:{...old.attributes,bid_log:[{amount:10000}]}},{vendorId:'foreign'}]){
+        repository.rows.set(key,{key,value:JSON.stringify({...old,...patch})});const before=[...repository.rows];
+        await assert.rejects(service.command(context,request(),{operator:true}));assert.deepEqual([...repository.rows],before);
+    }
+    repository.rows.set(key,{key,value:JSON.stringify(old)});
+    await assert.rejects(service.command({...context,channel:{...context.channel,status:'archived'}},request(),{operator:true}));
+    const write=repository.upsertRows,before=[...repository.rows];repository.upsertRows=async()=>{throw Error('disk failure')};
+    await assert.rejects(service.command(context,request(),{operator:true}),/disk failure/);assert.deepEqual([...repository.rows],before);
+    repository.upsertRows=write;await service.command(context,request(),{operator:true});
+    assert.equal((await repository.listRecords('alpha','item')).length,2);
+});
+
 test('vendor deletion hides unapproved entries, preserves parents/media and reserves their numbers across restart',async()=>{
     const {repository,context,service}=fixture(),parentId=randomUUID(),mediaId=randomUUID();
     await service.addMedia(context,{id:mediaId,url:'/assets/parent.webp',thumbnailUrl:'/assets/parent-small.webp',size:1000,thumbnailSize:100});
