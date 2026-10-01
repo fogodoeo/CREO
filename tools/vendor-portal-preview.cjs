@@ -2,8 +2,8 @@
 // Isolated SQLite + fake SMS provider. This file is never served by production.
 const fs=require('node:fs'),os=require('node:os'),path=require('node:path'),http=require('node:http'),{Readable}=require('node:stream');
 const {SQLitePlatformRepository}=require('../sqlite-platform-repository'),{createPlatformApi}=require('../platform-api'),{normalizeChannel}=require('../platform-core'),{CheckoutNotificationService}=require('../checkout-notifications');
-async function createFixture(){
- const dir=fs.mkdtempSync(path.join(os.tmpdir(),'creo-portal-test-')),origin='http://127.0.0.1:4331',secret='isolated-vendor-portal-test-secret-0001';
+async function createFixture({origin='http://127.0.0.1:4331'}={}){
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'creo-portal-test-')),secret='isolated-vendor-portal-test-secret-0001';
  const repository=new SQLitePlatformRepository({dataDir:dir,startWorker:false,adminSecret:secret}),sms=[];
  let clock=Date.parse('2026-09-23T09:00:00+09:00');
  await repository.saveCatalog([normalizeChannel({id:'national-cre',name:'전국크레자랑',status:'active',dataAdapter:'platform'})]);

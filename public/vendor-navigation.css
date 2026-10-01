@@ -19,4 +19,5 @@
 .vendor-bottom-nav :focus-visible{outline:3px solid var(--checkout-focus,#1d4ed8);outline-offset:-3px}
 .vendor-info-prompt{display:block;padding:14px 16px;margin-block:16px;background:#eef4ff;color:#1d4ed8;border-radius:12px;font-size:16px;font-weight:600;text-decoration:none}
 .vendor-info-prompt[hidden]{display:none}
+.vendor-channel-return{display:inline-flex;align-items:center;justify-content:center;min-height:44px;margin-inline-start:auto;padding:8px;font-size:14px;font-weight:500;color:#245bd4;text-decoration:none;flex-shrink:0}.vendor-channel-return:focus-visible{outline:3px solid #245bd4;outline-offset:2px}
 @media(forced-colors:active){.vendor-bottom-nav [aria-current]{outline:2px solid Highlight;outline-offset:-4px}}

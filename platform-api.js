@@ -1118,6 +1118,7 @@ function createPlatformApi({
     const buyerLinkAccess = require('./buyer-link-access').createBuyerLinkAccess({repository,secret:sessionSecret,signToken:signBuyerShippingToken,verifyToken:verifyBuyerShippingToken,shortPrefix:BUYER_SHIPPING_SHORT_KEY_PREFIX});
     const buyerAccount = require('./buyer-account-auth').createBuyerAccountAuth({repository,config:buyerAccountConfig,fetchImpl:buyerAccountFetch,now:buyerAccountNow,hashPhone:sessionKey});
     const vendorAccess = require('./vendor-access').createVendorAccess({
+        existingVendorsFor: require('./vendor-channel-access').createVendorChannelAccess({loadCatalog,vendorDirectory}),
         repository, secret: vendorAccessSecret, origin: vendorAccessOrigin, now: vendorAccessNow,
         smsProvider: notificationService?.provider, buyerAccount, notificationService,
         channelFor: async () => (await loadCatalog()).channels.find(c => Booking.enabled(c) && ['draft','active'].includes(c.status)),
@@ -2173,7 +2174,8 @@ function createPlatformApi({
         if (!token) return null;
         const access = token.accessActor || token.accessSession ? await vendorAccess.authorize(token) : null;
         if ((token.accessActor || token.accessSession) && (!access || (event && event !== token.channelId))) return null;
-        const profile = await vendorDirectory.profileFor(token.channelId,token.vendorKey);
+        let profile = await vendorDirectory.profileFor(token.channelId,token.vendorKey);
+        if(access?.kind==='phone'&&profile)profile={...profile,members:profile.members.filter(m=>m.channelId===token.channelId&&m.vendorId===token.vendorKey)};
         if(event && event !== token.channelId) {
             const membership=profile?.members.find(member=>member.channelId===event);
             if(!membership)return null;
@@ -3582,7 +3584,7 @@ function createPlatformApi({
                 const credential = await resolveVendorCheckoutCredential(body);
                 const context = await vendorCheckoutContext(credential, method === 'GET' ? (url.searchParams.get('event') || '') : (body.event || ''));
                 if (!context) throw buyerInputError('업체 전용 링크를 다시 확인해 주세요.', 401);
-                if(context.access)throw buyerInputError('업체 정보 화면에서 변경해 주세요.',403);
+                if(context.access&&context.access.kind!=='phone')throw buyerInputError('업체 정보 화면에서 변경해 주세요.',403);
                 await withMutationLock(`channel:${context.channel.id}`, async () => {
                     const fresh = await vendorCheckoutContext(context.token);
                     if (!fresh) throw buyerInputError('업체 정보를 다시 불러와 주세요.', 409);

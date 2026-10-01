@@ -4,15 +4,15 @@ const {channelKey}=require('./platform-core');
 const {REGIONS}=require('./broadcast-booking');
 const PREFIX='/api/platform/vendor-access',ROOT='creo_vendor_access_v1::',STATE=ROOT+'directory';
 const fail=(message,status=400)=>Object.assign(new Error(message),{status});
-const phone=value=>{const p=String(value||'').replace(/[\s-]/g,'');return /^010\d{8}$/.test(p)?p:'';};
+const phone=value=>{const p=String(value||'').replace(/[\s-]/g,'').replace(/^(?:\+82|0082)0?/,'0');return /^010\d{8}$/.test(p)?p:'';};
 const equal=(a,b)=>{const x=Buffer.from(String(a||'')),y=Buffer.from(String(b||''));return x.length===y.length&&crypto.timingSafeEqual(x,y);};
-function createVendorAccess({repository,secret,origin='https://creok.onrender.com',now=Date.now,smsProvider,buyerAccount,channelFor,vendorsFor,profileFor,saveProfile,notificationService}={}){
+function createVendorAccess({repository,secret,origin='https://creok.onrender.com',now=Date.now,smsProvider,buyerAccount,channelFor,vendorsFor,profileFor,saveProfile,notificationService,existingVendorsFor}={}){
  const configured=String(secret||'').length>=32&&typeof repository.compareAndSwapRows==='function';
  const key=crypto.createHash('sha256').update('vendor-access:'+String(secret||'unconfigured')).digest();
  const digest=v=>crypto.createHmac('sha256',key).update(String(v)).digest('base64url');
  const random=()=>crypto.randomBytes(32).toString('base64url'),valid=v=>/^[\w-]{43}$/.test(String(v||''));
  function signAccess(payload){const data=Buffer.from(JSON.stringify({...payload,v:1,expiresAt:now()+30*86400000})).toString('base64url');return 'va1.'+data+'.'+digest('access:'+data);}
- function verifyToken(token){try{const [prefix,data,signature,extra]=String(token||'').split('.');if(!configured||prefix!=='va1'||extra||!data||data.length>2000||!equal(signature,digest('access:'+data)))return null;const payload=JSON.parse(Buffer.from(data,'base64url').toString());return payload.v===1&&payload.channelId==='national-cre'&&payload.expiresAt>now()&&valid(payload.accessActor)&&valid(payload.accessSession)?payload:null;}catch{return null;}}
+ function verifyToken(token){try{const [prefix,data,signature,extra]=String(token||'').split('.');if(!configured||prefix!=='va1'||extra||!data||data.length>2000||!equal(signature,digest('access:'+data)))return null;const payload=JSON.parse(Buffer.from(data,'base64url').toString());const allowed=payload.accessKind==='phone'?typeof existingVendorsFor==='function'&&/^[a-z0-9][a-z0-9-]{0,63}$/.test(payload.channelId)&&typeof payload.vendorKey==='string'&&payload.vendorKey.length<=80:payload.channelId==='national-cre';return payload.v===1&&allowed&&payload.expiresAt>now()&&valid(payload.accessActor)&&valid(payload.accessSession)?payload:null;}catch{return null;}}
  const secure=origin.startsWith('https:'),cookieName=secure?'__Host-creo_vendor':'creo_vendor_local',flowName=cookieName+'_flow';
  const cookie=(name,value,age)=>`${name}=${value}; Path=/; HttpOnly; SameSite=Lax${age===null?'':'; Max-Age='+age}${secure?'; Secure':''}`;
  const cookies=req=>Object.fromEntries(String(req.headers.cookie||'').split(';').map(s=>s.trim().split('=')));
@@ -46,8 +46,8 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
    return actor;
   });
  }
- async function issueSession(req,res,actor,remember){
-  const token=random(),stamp=now(),id=digest(token),previous=await session(req),rows=[row(ROOT+'session:'+id,{actorId:actor.id,createdAt:stamp,expiresAt:stamp+(remember?30:1)*86400000,revoked:false})];
+ async function issueSession(req,res,actor,remember,verifiedPhone=''){
+  const token=random(),stamp=now(),id=digest(token),previous=await session(req),rows=[row(ROOT+'session:'+id,{actorId:actor.id,verifiedPhone:phone(verifiedPhone),createdAt:stamp,expiresAt:stamp+(remember?30:1)*86400000,revoked:false})];
   if(previous)rows.push(row(ROOT+'session:'+previous.id,{...previous,revoked:true}));
   await repository.upsertRows(rows);
   json(res,200,{authenticated:true},{'Set-Cookie':[cookie(cookieName,token,remember?30*86400:null)]});
@@ -55,19 +55,26 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
  async function authorize(token){
   if(!token?.accessSession||!valid(token.accessSession))return null;
   const s=(await read(ROOT+'session:'+token.accessSession)).value;
-  if(!s||s.revoked||s.expiresAt<=now()||s.actorId!==token.accessActor||token.channelId!=='national-cre')return null;
+  if(!s||s.revoked||s.expiresAt<=now()||s.actorId!==token.accessActor)return null;
+  if(token.accessKind==='phone'){
+   if(!phone(s.verifiedPhone)||!existingVendorsFor)return null;
+   const matches=await existingVendorsFor(phone(s.verifiedPhone));
+   return matches.some(m=>m.channelId===token.channelId&&m.vendorId===token.vendorKey)?{role:'owner',kind:'phone',actorId:s.actorId}:null;
+  }
+  if(token.channelId!=='national-cre')return null;
   const state=(await read(STATE)).value||fresh(),company=member(state,s.actorId,token.vendorKey);
   if(!company)return null;
   return {role:company.ownerId===s.actorId?'owner':'staff',actorId:s.actorId,companyId:company.id};
  }
  async function view(req){
   const s=await session(req),state=(await read(STATE)).value||fresh(),actor=s&&actorOf(state,s);
-  const ready=Boolean(configured&&await channelFor());
-  const base={available:ready,smsAvailable:ready&&smsProvider?.readiness('vendor_otp','sms').ready===true&&!smsProvider.testMode,kakaoAvailable:ready&&buyerAccount?.enabled===true,regions:REGIONS};
+  const ready=Boolean(configured&&(existingVendorsFor||await channelFor()));
+  const base={available:ready,channelLogin:!!existingVendorsFor,smsAvailable:ready&&smsProvider?.readiness('vendor_otp','sms').ready===true&&!smsProvider.testMode,kakaoAvailable:ready&&buyerAccount?.enabled===true,regions:REGIONS};
   if(!actor)return {...base,authenticated:false};
   const records=await vendorsFor(),companies=state.companies.filter(c=>member(state,s.actorId,c.id)).map(c=>{const v=records.find(v=>v.id===c.id);return v?{id:c.id,name:v.name,region:REGIONS[v.bookingRegion]||'',role:c.ownerId===actor.id?'owner':'staff'}:null;}).filter(Boolean);
   const requests=state.requests.filter(r=>r.actorId===actor.id&&r.status==='pending').map(r=>({id:r.id,companyId:r.companyId,name:records.find(v=>v.id===r.companyId)?.name||'업체',status:r.status}));
-  return {...base,authenticated:true,phone:actor.phone,csrfToken:s.csrfToken,companies,requests};
+  const participations=existingVendorsFor&&phone(s.verifiedPhone)?await existingVendorsFor(phone(s.verifiedPhone)):[];
+  return {...base,authenticated:true,phone:s.verifiedPhone||actor.phone,phoneVerificationRequired:!!existingVendorsFor&&!phone(s.verifiedPhone),participations,csrfToken:s.csrfToken,companies,requests};
  }
  async function proofFor(token,s,target,purpose){
   if(!valid(token))throw fail('연락처를 인증해 주세요.',422);
@@ -89,7 +96,7 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
    extra.push(row(ROOT+'otp:'+digest(id),{phone:target,purpose,actorId:s?.actorId||'',binding:digest(flow),hash:digest(id+':'+code),expiresAt:stamp+180000,attempts:0,status:'sending'}));
   });
   try{
-   await smsProvider.sendSms({id:'vendor-otp-'+digest(id),recipientPhone:target,fallbackText:`[전국크레자랑] 인증번호 ${code} (3분 내 입력)`});
+   await smsProvider.sendSms({id:'vendor-otp-'+digest(id),recipientPhone:target,fallbackText:`[옹동2] 인증번호 ${code} (3분 내 입력)`});
    const k=ROOT+'otp:'+digest(id),old=await read(k);await repository.compareAndSwapRows(k,old.raw,[row(k,{...old.value,status:'sent'})]);
   }catch{throw fail('인증 문자를 보내지 못했어요. 잠시 후 다시 요청해 주세요.',502);}
   return {challenge:id,expiresIn:180,retryAfter:60};
@@ -125,17 +132,17 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
    if(method!=='POST')throw fail('요청을 찾을 수 없어요.',404);
    guard(req,s?.csrfToken||digest('flow:'+cookies(req)[flowName]));
    const body=await bodyOf(req);
-   if(!await channelFor())throw fail('전국크레자랑 접속을 준비 중이에요.',503);
+   if(!existingVendorsFor&&!await channelFor())throw fail('접속을 준비 중이에요. 잠시 후 다시 시도해 주세요.',503);
    if(route==='/otp'){json(res,200,await beginOtp(req,body,s));return true;}
    if(route==='/verify'){
     const proof=await verifyOtp(req,body,s);
-    if(proof.purpose==='login'){const actor=await actorFor('phone:'+digest(proof.phone),proof.phone);await issueSession(req,res,actor,body.remember===true);}
+    if(proof.purpose==='login'){const actor=await actorFor('phone:'+digest(proof.phone),proof.phone);await issueSession(req,res,actor,body.remember===true,proof.phone);}
     else{const token=random();await repository.upsertRows([row(ROOT+'proof:'+digest(token),{phone:proof.phone,purpose:proof.purpose,actorId:s.actorId,expiresAt:now()+300000})]);json(res,200,{proof:token});}
     return true;
    }
    if(route==='/kakao'){
     const account=await buyerAccount?.session(req);if(!account)throw fail('카카오 로그인을 완료해 주세요.',401);
-    const actor=await actorFor('kakao:'+account.accountId,phone(account.verifiedPhone));await issueSession(req,res,actor,body.remember===true);return true;
+    const actor=await actorFor('kakao:'+account.accountId,phone(account.verifiedPhone));await issueSession(req,res,actor,body.remember===true,account.verifiedPhone);return true;
    }
    if(!s)throw fail('다시 로그인해 주세요.',401);
    if(route==='/logout'){await repository.upsertRows([row(ROOT+'session:'+s.id,{...s,revoked:true})]);json(res,200,{authenticated:false},{'Set-Cookie':[cookie(cookieName,'',0)]});return true;}
@@ -152,6 +159,14 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
     });json(res,200,result);return true;
    }
    if(route==='/select'){
+    if(body.channelId){
+     if(!existingVendorsFor||!phone(s.verifiedPhone))throw fail('업체에 등록된 번호로 다시 로그인해 주세요.',403);
+     const matches=await existingVendorsFor(phone(s.verifiedPhone));
+     const selected=matches.find(m=>m.channelId===body.channelId&&m.vendorId===body.vendorId);
+     if(!selected)throw fail('연결된 채널을 다시 선택해 주세요.',403);
+     const token=signAccess({channelId:selected.channelId,vendorKey:selected.vendorId,accessKind:'phone',accessActor:s.actorId,accessSession:s.id});
+     json(res,200,{token,channelId:selected.channelId,vendorId:selected.vendorId});return true;
+    }
     const state=(await read(STATE)).value||fresh(),company=member(state,s.actorId,body.id);if(!company)throw fail('연결된 업체를 선택해 주세요.',403);
     const token=signAccess({channelId:'national-cre',vendorKey:company.id,accessActor:s.actorId,accessSession:s.id});json(res,200,{token,companyId:company.id});return true;
    }
