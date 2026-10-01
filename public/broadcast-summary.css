@@ -4,7 +4,7 @@ body[data-page="2"] .parent-photos.has-parent-photo{visibility:visible;backgroun
 body[data-page="2"] .parent-photos figure{position:absolute;inset:0;margin:0;zoom:1!important}
 body[data-page="2"] .parent-photos figure[hidden]{display:none}
 body[data-page="2"] .parent-photos img{display:block;width:100%;height:100%;object-fit:contain;object-position:center}
-body[data-page="2"] .parent-photos figcaption{position:absolute;bottom:0;left:0;right:0;box-sizing:border-box;height:40px;padding:6px 12px;background:#111720d9;color:#fff;font-size:24px;font-weight:750;line-height:28px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body[data-page="2"] .parent-photos figcaption{position:absolute;bottom:0;left:0;right:0;box-sizing:border-box;padding:6px 12px;background:#111720d9;color:#fff;font-size:var(--ticker-text-font-size,54.17px);font-weight:750;line-height:1.2;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 body[data-layout-editor="1"] .parent-photos:empty,body[data-layout-editor="1"] .parent-photos[data-photos-failed="1"]{visibility:visible;display:grid;place-items:center;border:2px dashed #bdc9da;background:var(--broadcast-card);color:var(--broadcast-muted)}
 body[data-layout-editor="1"] .parent-photos:empty::after{content:'부모 사진';font-size:44px;white-space:nowrap}
 body[data-page="3"] .board.simple-ranking{inset:9% 8% 9%;display:grid;grid-template-rows:auto minmax(0,1fr);gap:18px;container-type:size;overflow:hidden!important;background:var(--broadcast-card);padding:32px 42px;border-radius:24px}

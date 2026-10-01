@@ -1,5 +1,16 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs'),path=require('node:path');
+test('parent caption follows ticker font scale and resets when the layout changes',()=>{
+ const html=fs.readFileSync(path.join(__dirname,'../public/auction-live.html'),'utf8');
+ const values={};const context={stage:{style:{setProperty:(key,value)=>{values[key]=value}}}};
+ vm.createContext(context);
+ for(const name of ['tickerFontScale','syncParentCaptionFont'])vm.runInContext(html.split('\n').find(line=>line.startsWith(`function ${name}(`)),context);
+ for(const scale of [.5,1,1.4,2.5]){
+  context.syncParentCaptionFont({'p2-ticker':{fontScale:scale}});
+  assert.equal(values['--ticker-text-font-size'],`${54.17*scale}px`);
+ }
+ context.syncParentCaptionFont({});assert.equal(values['--ticker-text-font-size'],'54.17px');
+});
 function fixture(rows){
  let now=0,tick;
  class Element{
