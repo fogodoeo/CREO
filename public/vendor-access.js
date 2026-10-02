@@ -107,7 +107,13 @@
   });
  }
  $('close-editor').onclick=()=>{if(!busy)$('editor').close();};$('editor').addEventListener('cancel',e=>{if(busy)e.preventDefault();});
- $('back').onclick=()=>{if(busy)return;if(['register','join','pending','search'].includes(screen)){run(()=>openDirectory());return;}go(({phone:'login',verify:otp?.purpose==='register'?'register':'phone',directory:state.companies.length?'companies':'login'})[screen]||'companies');};
+ function previousScreen(){
+  if(screen==='phone')return 'login';
+  if(screen==='verify')return otp?.purpose==='register'?'register':'phone';
+  if(screen==='directory')return state?.companies?.length?'companies':'login';
+  return 'companies';
+ }
+ $('back').onclick=()=>{if(busy)return;if(['register','join','pending','search'].includes(screen)){run(()=>openDirectory());return;}go(previousScreen());};
  $('account').onclick=()=>run(async()=>{await request('logout',{});company='';await refresh();go('login');});
  run(async()=>{await refresh();if(q.get('from')==='kakao'){await request('kakao',{remember:sessionStorage.getItem('vendor-remember')!=='false'});history.replaceState(null,'','/vendor-access.html');}await enter();if(q.has('error'))error('카카오 로그인을 완료하지 못했어요. 다시 시도해 주세요.');});
 })();
