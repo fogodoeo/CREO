@@ -12,12 +12,13 @@
  function go(next){screen=next;error('');render();$(next==='verify'?'otp-code':next==='phone'?'phone':'main')?.focus({preventScroll:true});window.scrollTo(0,0);}
  async function refresh(){state=await request('session');return state;}
  async function navigate(section='booking',id=company){const data=await request('select',{id});const params=new URLSearchParams({event:'national-cre',token:data.token,portal:id});if(section==='profile'){location.href='/vendor-access.html?section=profile&company='+encodeURIComponent(id);return;}if(section==='entries')params.set('section','entries');location.href=(section==='booking'?'/vendor-broadcast.html':section==='settlement'?'/vendor-checkout.html':'/vendor-entries.html')+'?'+params;}
- async function enter(){await refresh();if(!state.available){go('unavailable');return;}if(!state.authenticated){go('login');return;}if(state.phoneVerificationRequired){go('verify-required');return;}if(q.get('section')==='profile'&&state.companies.some(c=>c.id===company)){await loadProfile();return;}if(state.companies.length===1){company=state.companies[0].id;await navigate();return;}if(state.companies.length){go('companies');return;}if(state.requests.length){go('pending');return;}await openDirectory();}
+ async function enter(){await refresh();if(!state.available){go('unavailable');return;}if(!state.authenticated){go('login');return;}if(state.phoneVerificationRequired){go('verify-required');return;}if(q.get('section')==='profile'&&state.companies.some(c=>c.id===company)){await loadProfile();return;}if(q.get('section')==='channels'&&state.companies.some(c=>c.id===company)){go('channels');return;}if(state.companies.length===1){company=state.companies[0].id;go('channels');return;}if(state.companies.length){go('companies');return;}if(state.requests.length){go('pending');return;}await openDirectory();}
  async function loadProfile(){profile=await request('profile',{companyId:company});go('profile');}
+ async function chooseCompany(id){await refresh();if(!state.authenticated||state.phoneVerificationRequired||!state.companies?.some(c=>c.id===id))throw Error('업체 연결을 확인하고 다시 선택해 주세요.');company=id;go('channels');}
  function bind(id,fn){if($(id))$(id).onclick=()=>run(fn);}
  function form(id,fn){if($(id))$(id).onsubmit=e=>{e.preventDefault();run(fn);};}
  function render(){
-  $('back').hidden=['login','profile','companies','directory','verify-required','unavailable'].includes(screen)&&!(screen==='directory'&&state.companies.length);$('account').hidden=!state?.authenticated;$('main').classList.toggle('has-nav',screen==='profile');$('main').classList.toggle('login-screen',screen==='login');document.querySelector('.portal-nav')?.remove();
+  $('back').hidden=(screen==='channels'&&state.companies.length<2)||(['login','profile','companies','directory','verify-required','unavailable'].includes(screen)&&!(screen==='directory'&&state.companies.length));$('account').hidden=!state?.authenticated;$('main').classList.toggle('has-nav',screen==='profile');$('main').classList.toggle('login-screen',screen==='login');document.querySelector('.portal-nav')?.remove();
   if(screen!=='profile')window.CreoVendorShell?.clear();
   const html={
    directory:()=>heading('업체를 선택해 주세요')+`<label class="field" for="directory-region">지역<select id="directory-region"><option value="">지역 선택</option>${state.regions.map(r=>`<option ${r===directoryRegion?'selected':''}>${esc(r)}</option>`).join('')}</select></label><div id="directory-results" class="result-list" aria-live="polite"></div>`+(state.preregisteredOnly?'':`<div class="register-option"><span>업체가 없나요?</span>${action('new-company','새 업체 등록','text-button')}</div>`),
@@ -32,6 +33,7 @@
    pending:()=>`<div class="pending-mark" aria-hidden="true">✓</div>`+heading('대표의 승인을 기다려요',esc(state.requests[0]?.name||'업체')+'에 참여를 요청했어요')+`<div class="actions">${action('check-approval','승인 확인')}${action('cancel-join','요청 취소','text-button')}</div>`,
    'verify-required':()=>heading('전화번호를 확인해 주세요')+action('verify-phone','전화번호 인증'),
    companies:()=>heading('업체를 선택해 주세요')+state.companies.map(c=>`<button class="result" data-company="${esc(c.id)}"><span><strong>${esc(c.name)}</strong><small>${esc(c.region)}</small></span><span class="chevron">›</span></button>`).join('')+action('other-company','다른 업체 찾기','text-button'),
+   channels:()=>heading('채널 선택',esc(state.companies.find(c=>c.id===company)?.name||''))+`<button type="button" id="open-national" class="choice"><span><strong>전국크레자랑</strong></span><span class="chevron" aria-hidden="true">›</span></button>`,
    profile:()=>profileHtml()
   };
   $('main').innerHTML=(html[screen]||html.login)();
@@ -47,6 +49,7 @@
   }
   bind('retry',enter);bind('phone-login',()=>{sessionStorage.setItem('vendor-remember',String($('remember').checked));go('phone');});
   bind('verify-phone',()=>go('phone'));
+  bind('open-national',()=>navigate('booking'));
   bind('other-company',openDirectory);
   if($('directory-region'))$('directory-region').onchange=()=>run(loadDirectory);
   if($('kakao-form'))$('kakao-form').onsubmit=()=>{sessionStorage.setItem('vendor-remember',String($('remember').checked));};
@@ -58,7 +61,7 @@
    const phone=$('contact').value.replace(/[\s-]/g,'');registration={...registration,name:$('company-name').value.trim(),region:$('region').value,phone};directoryRegion=registration.region;
    try{
     if(needsContactVerification(phone)){await sendOtp(phone,'register');return;}
-    const result=await request('register',registration);company=result.id;await navigate();
+    const result=await request('register',registration);await chooseCompany(result.id);
    }catch(e){
     if(screen==='register'&&e.existingCompany){$('register-recovery').innerHTML=action('existing-company','기존 업체 선택','secondary');bind('existing-company',()=>openDirectory(e.existingCompany.region));}
     if(screen==='register'&&e.status===422){delete registration.proof;delete registration.verifiedPhone;$('contact').oninput();}
@@ -68,7 +71,7 @@
   form('search-form',async()=>{const seq=++searchSequence,data=await request('search?q='+encodeURIComponent($('search').value.trim()));if(seq!==searchSequence||screen!=='search')return;$('search-results').innerHTML=data.companies.length?data.companies.map(c=>`<button class="result" data-join="${esc(c.id)}"><span><strong>${esc(c.name)}</strong><small>${esc(c.region)}</small></span><span class="chevron">›</span></button>`).join(''):'<p class="empty">등록된 업체를 찾지 못했어요</p>';for(const b of document.querySelectorAll('[data-join]'))b.onclick=()=>{joinCompany=data.companies.find(c=>c.id===b.dataset.join);go('join');};});
   form('join-form',async()=>{await request('join',{companyId:joinCompany.id,name:$('staff-name').value.trim(),sharingConsent:$('sharing-consent').checked});await refresh();go('pending');});
   bind('check-approval',enter);bind('cancel-join',async()=>{await request('join-response',{id:state.requests[0].id,action:'cancel'});await refresh();await openDirectory();});
-  for(const b of document.querySelectorAll('[data-company]'))b.onclick=()=>run(()=>navigate('booking',b.dataset.company));
+  for(const b of document.querySelectorAll('[data-company]'))b.onclick=()=>run(()=>chooseCompany(b.dataset.company));
   if(screen==='profile')bindProfile();if(screen==='verify'){tick();$('otp-code').focus();}
  }
  function needsContactVerification(phone){return phone!==state.phone&&registration.verifiedPhone!==phone;}
@@ -83,8 +86,8 @@
    host.innerHTML=data.companies.length?data.companies.map(c=>`<button class="result" data-directory="${esc(c.id)}"><span><strong>${esc(c.name)}</strong><small>${c.connected?'연결된 업체':c.canClaim?'대표로 시작':c.canJoin?'직원 참여 요청':'대표 연결 전'}</small></span><span class="chevron" aria-hidden="true">›</span></button>`).join(''):'<p class="empty">등록된 업체가 없어요.</p>';
    for(const button of host.querySelectorAll('[data-directory]'))button.onclick=()=>run(async()=>{
     const selected=data.companies.find(c=>c.id===button.dataset.directory);
-    if(selected.connected){await navigate('booking',selected.id);return;}
-    if(selected.canClaim){await request('claim',{id:selected.id});company=selected.id;await navigate();return;}
+    if(selected.connected){await chooseCompany(selected.id);return;}
+    if(selected.canClaim){await request('claim',{id:selected.id});await chooseCompany(selected.id);return;}
     if(!selected.canJoin)throw Error('등록된 대표 번호로 먼저 로그인해 주세요. 번호가 다르면 운영자에게 문의해 주세요.');
     joinCompany=selected;go('join');
    });

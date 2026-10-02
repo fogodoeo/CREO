@@ -54,6 +54,7 @@
    if(!month)month=(state.dates.find(d=>d.startsAt>=state.now&&d.regionName===state.vendor.region)||state.dates[0]).date.slice(0,7);
    $('#company-name').textContent=state.vendor.name;
    $('#nav-broadcast').href=location.pathname+location.search;$('#nav-settlement').href=Store.pageUrl('settlement');$('#nav-profile').href=Store.pageUrl('profile');window.CreoVendorShell.mount($('.channel-vendor-nav'),{active:'booking'});$('.channel-vendor-nav').hidden=false;
+   $('#channel-picker').href='/vendor-access.html?'+new URLSearchParams({section:'channels',...(q.get('portal')?{company:q.get('portal')}:{})});
    renderCalendar();
   }catch(e){
    $('#load-error').textContent=e.message;
