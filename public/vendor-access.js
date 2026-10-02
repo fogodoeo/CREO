@@ -12,13 +12,12 @@
  function go(next){screen=next;error('');render();$(next==='verify'?'otp-code':next==='phone'?'phone':'main')?.focus({preventScroll:true});window.scrollTo(0,0);}
  async function refresh(){state=await request('session');return state;}
  async function navigate(section='booking',id=company){const data=await request('select',{id});const params=new URLSearchParams({event:'national-cre',token:data.token,portal:id});if(section==='profile'){location.href='/vendor-access.html?section=profile&company='+encodeURIComponent(id);return;}if(section==='entries')params.set('section','entries');location.href=(section==='booking'?'/vendor-broadcast.html':section==='settlement'?'/vendor-checkout.html':'/vendor-entries.html')+'?'+params;}
- async function enter(){await refresh();if(!state.available){go('unavailable');return;}if(!state.authenticated){go('login');return;}if(q.get('section')==='profile'&&state.companies.some(c=>c.id===company)){await loadProfile();return;}if(state.channelLogin){go('channels');return;}if(state.companies.length===1){company=state.companies[0].id;await navigate();return;}go(state.companies.length?'companies':state.requests.length?'pending':'choice');}
- async function openChannel(index){const selected=state.participations[index];if(!selected)return;const data=await request('select',{channelId:selected.channelId,vendorId:selected.vendorId});location.href='/vendor-entries.html?'+new URLSearchParams({event:data.channelId,token:data.token});}
+ async function enter(){await refresh();if(!state.available){go('unavailable');return;}if(!state.authenticated){go('login');return;}if(state.phoneVerificationRequired){go('verify-required');return;}if(q.get('section')==='profile'&&state.companies.some(c=>c.id===company)){await loadProfile();return;}if(state.companies.length===1){company=state.companies[0].id;await navigate();return;}go(state.companies.length?'companies':state.requests.length?'pending':'choice');}
  async function loadProfile(){profile=await request('profile',{companyId:company});go('profile');}
  function bind(id,fn){if($(id))$(id).onclick=()=>run(fn);}
  function form(id,fn){if($(id))$(id).onsubmit=e=>{e.preventDefault();run(fn);};}
  function render(){
-  $('back').hidden=['login','profile','companies','channels','unavailable'].includes(screen);$('account').hidden=!state?.authenticated;$('main').classList.toggle('has-nav',screen==='profile');$('main').classList.toggle('login-screen',screen==='login');document.querySelector('.portal-nav')?.remove();
+  $('back').hidden=['login','profile','companies','verify-required','unavailable'].includes(screen);$('account').hidden=!state?.authenticated;$('main').classList.toggle('has-nav',screen==='profile');$('main').classList.toggle('login-screen',screen==='login');document.querySelector('.portal-nav')?.remove();
   const html={
    unavailable:()=>heading('접속을 준비하고 있어요','잠시 후 다시 열어 주세요.')+action('retry','다시 확인'),
    login:()=>heading('업체 로그인')+`<div class="login-actions">${state.kakaoAvailable?`<form id="kakao-form" method="post" action="/api/platform/buyer-account/start"><input type="hidden" name="returnTo" value="vendor"><button class="kakao"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3C6.5 3 2 6.5 2 10.8c0 2.8 1.9 5.3 4.8 6.7l-1.1 4 4.6-2.8 1.7.1c5.5 0 10-3.6 10-8S17.5 3 12 3Z"/></svg>카카오로 시작하기</button></form>`:''}${state.smsAvailable?action('phone-login','전화번호로 로그인',state.kakaoAvailable?'secondary':'primary'):'<p class="muted">문자 로그인을 준비 중이에요. 잠시 후 다시 시도해 주세요.</p>'}<label class="check"><input id="remember" type="checkbox" checked>로그인 유지</label></div>`,
@@ -29,7 +28,7 @@
    search:()=>heading('함께할 업체를 찾아주세요')+`<form id="search-form">${field('업체명','search','type="search" placeholder="업체명 검색" maxlength="40" required')}<div class="actions"><button class="secondary">검색</button></div></form><div id="search-results" class="result-list" aria-live="polite"></div>`,
    join:()=>heading(esc(joinCompany.name)+'에<br>참여할까요?',esc(joinCompany.region))+`<form id="join-form">${field('이름','staff-name','autocomplete="name" placeholder="대표가 알아볼 수 있는 이름" maxlength="40" required')}<div class="actions"><button class="primary">참여 요청하기</button></div></form>`,
    pending:()=>`<div class="pending-mark" aria-hidden="true">✓</div>`+heading('대표의 승인을 기다려요',esc(state.requests[0]?.name||'업체')+'에 참여를 요청했어요')+`<div class="actions">${action('check-approval','승인 확인')}${action('cancel-join','요청 취소','text-button')}</div>`,
-   channels:()=>state.phoneVerificationRequired?heading('전화번호를 확인해 주세요','업체에 등록된 번호로 연결할게요.')+action('verify-phone','전화번호 인증'):heading('채널 선택')+`<div class="channel-list">${state.participations.map((c,i)=>`<button class="channel-choice" data-channel="${i}"><span><strong>${esc(c.channelName)}</strong><small>${esc(c.vendorName)}</small></span><span class="chevron" aria-hidden="true">›</span></button>`).join('')}<button class="channel-choice" data-action="national"><span><strong>전국크레자랑</strong></span><span class="chevron" aria-hidden="true">›</span></button></div>`,
+   'verify-required':()=>heading('전화번호를 확인해 주세요')+action('verify-phone','전화번호 인증'),
    companies:()=>heading('업체를 선택해 주세요')+state.companies.map(c=>`<button class="result" data-company="${esc(c.id)}"><span><strong>${esc(c.name)}</strong><small>${esc(c.region)}</small></span><span class="chevron">›</span></button>`).join(''),
    profile:()=>profileHtml()
   };
@@ -51,8 +50,6 @@
   }
   bind('retry',enter);bind('phone-login',()=>{sessionStorage.setItem('vendor-remember',String($('remember').checked));go('phone');});
   bind('verify-phone',()=>go('phone'));
-  bind('national',async()=>{if(state.companies.length===1){company=state.companies[0].id;await navigate();}else go(state.companies.length?'companies':state.requests.length?'pending':'choice');});
-  for(const b of document.querySelectorAll('[data-channel]'))b.onclick=()=>run(()=>openChannel(Number(b.dataset.channel)));
   if($('kakao-form'))$('kakao-form').onsubmit=()=>{sessionStorage.setItem('vendor-remember',String($('remember').checked));};
   form('phone-form',async()=>{await sendOtp($('phone').value,'login');});
   form('verify-form',async()=>{const data=await request('verify',{challenge:otp.challenge,code:$('otp-code').value,remember:sessionStorage.getItem('vendor-remember')!=='false'});if(otp.purpose==='login'){await enter();}else{registration.proof=data.proof;registration.verifiedPhone=otp.phone;go('register');}});

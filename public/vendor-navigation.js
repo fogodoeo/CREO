@@ -3,7 +3,7 @@
   const accessQuery=new URLSearchParams(location.search);
   if((accessQuery.get('token')||'').startsWith('va1.')&&!accessQuery.get('portal')){
     const header=document.querySelector('.entry-header')||document.querySelector('.top .brand');
-    if(header){const link=document.createElement('a');link.href='/vendor-access.html';link.className='vendor-channel-return';link.textContent='채널 선택';link.addEventListener('click',event=>{if(!event.ctrlKey&&!event.metaKey&&!window.dispatchEvent(new Event('vendor-before-navigation',{cancelable:true})))event.preventDefault();});header.append(link);}
+    if(header){const link=document.createElement('a');link.href='/vendor-access.html';link.className='vendor-channel-return';link.textContent='업체 홈';link.addEventListener('click',event=>{if(!event.ctrlKey&&!event.metaKey&&!window.dispatchEvent(new Event('vendor-before-navigation',{cancelable:true})))event.preventDefault();});header.append(link);}
   }
   let nav = document.querySelector('.vendor-bottom-nav');
   const settlement = document.getElementById('vendor-event');
