@@ -1,7 +1,7 @@
 'use strict';
 const crypto=require('node:crypto');
 const {channelKey}=require('./platform-core');
-const {REGIONS}=require('./broadcast-booking');
+const {REGIONS,regionForVendor}=require('./national-broadcast');
 const PREFIX='/api/platform/vendor-access',ROOT='creo_vendor_access_v1::',STATE=ROOT+'directory';
 const fail=(message,status=400)=>Object.assign(new Error(message),{status});
 const phone=value=>{const p=String(value||'').replace(/[\s-]/g,'').replace(/^(?:\+82|0082)0?/,'0');return /^010\d{8}$/.test(p)?p:'';};
@@ -71,7 +71,7 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
   const ready=Boolean(configured&&(existingVendorsFor||await channelFor()));
   const base={available:ready,channelLogin:!!existingVendorsFor,smsAvailable:ready&&smsProvider?.readiness('vendor_otp','sms').ready===true&&!smsProvider.testMode,kakaoAvailable:ready&&buyerAccount?.enabled===true,regions:REGIONS};
   if(!actor)return {...base,authenticated:false};
-  const records=await vendorsFor(),companies=state.companies.filter(c=>member(state,s.actorId,c.id)).map(c=>{const v=records.find(v=>v.id===c.id);return v?{id:c.id,name:v.name,region:REGIONS[v.bookingRegion]||'',role:c.ownerId===actor.id?'owner':'staff'}:null;}).filter(Boolean);
+  const records=await vendorsFor(),companies=state.companies.filter(c=>member(state,s.actorId,c.id)).map(c=>{const v=records.find(v=>v.id===c.id);return v?{id:c.id,name:v.name,region:REGIONS[regionForVendor(v)]||'',role:c.ownerId===actor.id?'owner':'staff'}:null;}).filter(Boolean);
   const requests=state.requests.filter(r=>r.actorId===actor.id&&r.status==='pending').map(r=>({id:r.id,companyId:r.companyId,name:records.find(v=>v.id===r.companyId)?.name||'업체',status:r.status}));
   const participations=existingVendorsFor&&phone(s.verifiedPhone)?await existingVendorsFor(phone(s.verifiedPhone)):[];
   return {...base,authenticated:true,phone:s.verifiedPhone||actor.phone,phoneVerificationRequired:!!existingVendorsFor&&!phone(s.verifiedPhone),participations,csrfToken:s.csrfToken,companies,requests};
@@ -126,7 +126,7 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
    if(route==='/search'&&method==='GET'){
     if(!s)throw fail('먼저 로그인해 주세요.',401);
     const query=String(url.searchParams.get('q')||'').trim().slice(0,40),state=(await read(STATE)).value||fresh();
-    const list=query?(await vendorsFor()).filter(v=>v.active!==false&&state.companies.some(c=>c.id===v.id)&&v.name.includes(query)).slice(0,20).map(v=>({id:v.id,name:v.name,region:REGIONS[v.bookingRegion]||''})):[];
+    const list=query?(await vendorsFor()).filter(v=>v.active!==false&&state.companies.some(c=>c.id===v.id)&&v.name.includes(query)).slice(0,20).map(v=>({id:v.id,name:v.name,region:REGIONS[regionForVendor(v)]||''})):[];
     json(res,200,{companies:list});return true;
    }
    if(method!=='POST')throw fail('요청을 찾을 수 없어요.',404);
@@ -155,7 +155,7 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
      const existing=next.companies.find(c=>c.ownerId===s.actorId);if(existing)return {id:existing.id,duplicate:true};
      if(next.companies.some(c=>c.name.normalize('NFKC').replace(/\s/g,'')===name.normalize('NFKC').replace(/\s/g,'')&&c.region===region))throw fail('같은 이름의 업체가 있어요. 직원으로 참여하기에서 찾아 주세요.',409);
      const id='va-'+crypto.randomUUID().replaceAll('-',''),company={id,name,region,ownerId:s.actorId,members:[{actorId:s.actorId,name:'대표'}],createdAt:now()};next.companies.push(company);
-     extra.push({key:channelKey('national-cre','vendor',id),value:JSON.stringify({id,name,phone:contact,inquiryPhone:contact,inquiryPhoneMode:'shared',active:true,bookingRegion:region,createdAt:new Date(now()).toISOString()})});return {id};
+     extra.push({key:channelKey('national-cre','vendor',id),value:JSON.stringify({id,name,phone:contact,inquiryPhone:contact,inquiryPhoneMode:'shared',active:true,bookingRegion:[0,3,4,6,7][region],broadcastRegion:REGIONS[region],createdAt:new Date(now()).toISOString()})});return {id};
     });json(res,200,result);return true;
    }
    if(route==='/select'){
@@ -204,7 +204,7 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
      else throw fail('변경할 항목을 확인해 주세요.',422);
      await saveProfile(company.id,changes,body.revision);json(res,200,{saved:true});return true;
     }
-    json(res,200,{id:vendor.id,name:vendor.name,region:REGIONS[vendor.bookingRegion]||REGIONS[company.region],phone:vendor.phone,revision:vendor.directoryRevision||0,role:owner?'owner':'staff',...(owner?{bankName:vendor.bankName||'',bankAccount:vendor.bankAccount||'',bankHolder:vendor.bankHolder||'',members:company.members.map(m=>({name:m.name,owner:m.actorId===company.ownerId})),requests:state.requests.filter(r=>r.companyId===company.id&&r.status==='pending').map(r=>({id:r.id,name:r.name,phone:state.actors.find(a=>a.id===r.actorId)?.phone||''}))}:{})});return true;
+    json(res,200,{id:vendor.id,name:vendor.name,region:REGIONS[regionForVendor(vendor)]||REGIONS[company.region],phone:vendor.phone,revision:vendor.directoryRevision||0,role:owner?'owner':'staff',...(owner?{bankName:vendor.bankName||'',bankAccount:vendor.bankAccount||'',bankHolder:vendor.bankHolder||'',members:company.members.map(m=>({name:m.name,owner:m.actorId===company.ownerId})),requests:state.requests.filter(r=>r.companyId===company.id&&r.status==='pending').map(r=>({id:r.id,name:r.name,phone:state.actors.find(a=>a.id===r.actorId)?.phone||''}))}:{})});return true;
    }
    throw fail('요청을 찾을 수 없어요.',404);
   }catch(e){json(res,e.status||503,{error:e.status?e.message:'처리하지 못했어요. 잠시 후 다시 시도해 주세요.'});return true;}

@@ -16,6 +16,9 @@
     const data=await response.json();if(!response.ok)throw Object.assign(Error(data.error||'처리하지 못했습니다. 다시 시도해 주세요.'),{status:response.status});return data;
   }
   function accept(data) {
+    if(data.mode==='regional-cycle-v1'){
+      location.replace('/vendor-broadcast.html?'+new URLSearchParams({event:data.channel.id,...(data.navigationToken?{token:data.navigationToken}:credential),...(q.get('portal')?{portal:q.get('portal')}:{})}));return false;
+    }
     state=data;event=data.channel.id;
     if(data.navigationToken)credential={token:data.navigationToken};
     $('vendor-name').textContent=data.vendor.name;$('region-label').textContent=data.vendor.region||'지역 미등록';
@@ -25,6 +28,7 @@
     window.CreoVendorNavigation.configureBooking(data,url('booking'));nav.hidden=false;
     for(const a of nav.querySelectorAll('a')){a.href=url(a.dataset.vendorSection);if(a.dataset.vendorSection==='booking')a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');}
     $('vendor-home').href=url('entries');
+    return true;
   }
   function card(r) {const missing=r.status==='confirmed'&&r.session.startsAt>state.now&&r.entryIds.length<r.quantity;return `<button class="booking-card" type="button" data-detail="${esc(r.id)}" aria-label="${esc(date(r.date))} · ${r.quantity}마리 상세"><header><strong>${esc(date(r.date))}</strong><b>${r.quantity}마리 <span aria-hidden="true">›</span></b></header>${missing?`<div class="booking-card-meta action-needed">출품 개체 ${r.quantity-r.entryIds.length}마리 선택하기</div>`:r.status==='cancelled'?'<div class="booking-card-meta">취소한 예약</div>':''}</button>`;}
   function renderCalendar(){
@@ -69,14 +73,14 @@
     try{
       const data=await request({...body,requestId:pending.requestId});
       try{sessionStorage.removeItem(storageKey);}catch{}
-      accept(data);render();
+      if(!accept(data))return false;render();
       $('booking-status').textContent=({reserve:'예약이 확정되었습니다.',change:'예약이 변경되었습니다.',respond:body.response==='accept'?'변경을 수락했습니다.':'기존 예약을 유지합니다.',cancel:'예약이 취소되었습니다.',entries:'출품 개체를 저장했습니다.'})[body.type];
       return true;
     }catch(e){error(target,e.message);return false;}finally{setBusy(false);if(state)updateQuantity();}
   }
   async function load(){
     if(busy)return;const id=++sequence;error('booking-error','');$('booking-refresh').disabled=true;
-    try{const data=await request();if(id!==sequence)return;accept(data);document.querySelectorAll('.region-help').forEach(el=>el.remove());render();$('booking-status').textContent='';
+    try{const data=await request();if(id!==sequence)return;if(!accept(data))return;document.querySelectorAll('.region-help').forEach(el=>el.remove());render();$('booking-status').textContent='';
       if(!openedLink&&data.linkedReservationId){openedLink=true;openDetail(data.linkedReservationId);}
     }catch(e){error('booking-error',e.message);$('booking-retry').hidden=false;$('booking-status').textContent='';if(e.status===401||e.status===404){$('booking-content').hidden=true;document.querySelector('.vendor-bottom-nav').hidden=true;}}
     finally{if(id===sequence)$('booking-refresh').disabled=false;}

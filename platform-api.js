@@ -1099,7 +1099,9 @@ function createPlatformApi({
     });
     const organizerAccess = require('./organizer-access').createOrganizerAccess(repository);
     const Booking = require('./broadcast-booking');
-    const booking = Booking.createBroadcastBooking(repository, {
+    const booking = require('./national-broadcast').createBookingRouter(repository, {
+        entries:vendorEntries,
+        contextForVendor:async(channel,vendor)=>({channel,vendor,profile:await vendorDirectory.profileFor(channel.id,vendor.id),catalog:await loadCatalog()}),
         now: bookingNow, notificationService,
         entriesFor: async context => context.profile
             ? (await vendorEntries.read(context)).entries.filter(e => e.channelId === context.channel.id && e.channelVendorId === context.vendor.id)
@@ -3490,10 +3492,21 @@ function createPlatformApi({
                 } else context=await vendorCheckoutContext(await resolveVendorCheckoutCredential(body),body.event||'');
                 if(!context)throw buyerInputError('업체 전용 링크를 다시 확인해 주세요.',401);
                 if(!Booking.enabled(context.channel))throw buyerInputError('전국크레자랑에서만 방송을 예약할 수 있습니다.',404);
+                const cycle=await booking.cycle.active(context.channel);
+                if(cycle&&!context.profile){
+                    await withMutationLock(`channel:${context.channel.id}`,async()=>{await vendorDirectory.enroll(context.channel.id,context.vendor.id);});
+                    context=await vendorCheckoutContext(context.token,context.channel.id);
+                    if(!context)throw buyerInputError('업체 페이지를 다시 열어 주세요.',401);
+                }
                 let result={};
                 if(method==='POST') {
                     if(body.bookingCode&&body.id!==linkedReservationId)throw buyerInputError('이 예약 링크에서 처리할 수 없는 요청입니다.',403);
-                    result=await booking.command(context,body);touchCheckout(context.channel.id);
+                    if(cycle)result=await withMutationLock(`channel:${context.channel.id}`,async()=>{
+                        const fresh=await vendorCheckoutContext(context.token,context.channel.id);if(!fresh)throw buyerInputError('업체 페이지를 다시 열어 주세요.',401);
+                        return booking.command(fresh,body);
+                    });
+                    else result=await booking.command(context,body);
+                    touchCheckout(context.channel.id);
                 }
                 replyJson(res,200,{...await booking.vendorView(context),...result,linkedReservationId,navigationToken});return true;
             }
@@ -3508,6 +3521,7 @@ function createPlatformApi({
                     if(!context)throw buyerInputError('업체 정보를 다시 불러와 주세요.',409);
                     if(!context.profile){await vendorDirectory.enroll(context.channel.id,context.vendor.id);context=await vendorCheckoutContext(context.token,context.channel.id);}
                     if(method==='GET'){replyJson(res,200,{state:{...await vendorEntries.read(context),bookingSummary:await booking.summary(context)}});return;}
+                    if(await booking.cycle.active(context.channel))throw buyerInputError('방송 달력에서 개체를 등록해 주세요.',409);
                     const result=await vendorEntries.command(context,body);
                     result.state.bookingSummary=await booking.summary(context);
                     if(!result.duplicate)touchCheckout(context.channel.id);
@@ -3880,12 +3894,27 @@ function createPlatformApi({
                 return true;
             }
 
+            if(segments.length===3&&segments[2]==='national-cycle-config'&&['GET','PUT'].includes(method)){
+                if(!await requireAdmin(req,res))return true;
+                if(channelId!=='national-cre')throw buyerInputError('전국크레자랑 전용 설정입니다.',404);
+                if(method==='GET'){replyJson(res,200,{config:await repository.getRecord(channelId,'setting','national-cycle-config')});return true;}
+                const body=await readJson(req);if(body.mode!=='regional-cycle-v1')throw buyerInputError('방송 운영 방식을 확인해 주세요.',422);
+                await withMutationLock(`channel:${channelId}`,async()=>{
+                    const previous=await repository.getRecord(channelId,'setting','national-cycle-config');
+                    if(previous?.mode==='regional-cycle-v1'){replyJson(res,200,{config:previous,duplicate:true});return;}
+                    const legacy=await repository.getRecord(channelId,'setting','broadcast-bookings');
+                    if(legacy?.reservations?.some(r=>r.status==='confirmed'))throw buyerInputError('기존 예약이 있어 자동 전환할 수 없습니다. 예약을 먼저 확인해 주세요.',409);
+                    const config={id:'national-cycle-config',mode:body.mode,createdAt:new Date().toISOString()};
+                    await repository.upsertRecord(channelId,'setting',config);touchCheckout(channelId);replyJson(res,200,{config});
+                });return true;
+            }
             if (segments.length===3 && segments[2]==='broadcast-bookings' && ['GET','POST'].includes(method)) {
                 if(!await requireOrganizer(req,res,channelId))return true;
                 const vendors=await vendorDirectory.list(channelId);
                 let result={};
                 if(method==='POST') {
-                    result=await booking.command({channel,vendors},await readJson(req),{operator:true});touchCheckout(channelId);
+                    const input=await readJson(req);
+                    result=await withMutationLock(`channel:${channelId}`,async()=>booking.command({channel,vendors},input,{operator:true}));touchCheckout(channelId);
                 }
                 replyJson(res,200,{...await booking.operatorView(channel,vendors),...result});return true;
             }

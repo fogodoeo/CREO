@@ -39,6 +39,7 @@
     }
   };
   function configureBooking(summary, href) {
+    nav.classList.remove('national-cycle-nav');nav.querySelector('[data-vendor-section="entries"]')?.removeAttribute('hidden');
     let link = nav.querySelector('[data-vendor-section="booking"]');
     if (!summary?.enabled) { link?.remove(); nav.classList.remove('has-booking'); return; }
     document.querySelectorAll('[data-ongdong-brand]').forEach(el=>{el.removeAttribute('data-ongdong-brand');el.classList.remove('ongdong-brand');el.textContent='전국크레자랑';});
@@ -60,6 +61,11 @@
     badge.hidden=!count;badge.textContent=String(count);badge.setAttribute('aria-hidden','true');
     link.setAttribute('aria-label',count?`방송 예약 · 응답할 변경 요청 ${count}건`:'방송 예약');
     nav.classList.add('has-booking');
+    if(summary.mode==='regional-cycle-v1'){
+      nav.classList.add('national-cycle-nav');nav.querySelector('[data-vendor-section="entries"]')?.setAttribute('hidden','');
+      link.dataset.label='방송';link.querySelector('span').textContent='방송';link.setAttribute('aria-label',count?'방송 · 개체 등록 필요':'방송');
+      link.href=link.href.replace('/vendor-bookings.html','/vendor-broadcast.html');
+    }
   }
   window.CreoVendorNavigation = { updateStatus, profileRequired, configureBooking };
   if (!settlement) return;
@@ -79,7 +85,7 @@
     const destination = section => {
       const params = new URLSearchParams({ event, ...(code ? { code } : { token }) });
       if(query.get('portal')){params.set('portal',query.get('portal'));if(section==='profile')return '/vendor-access.html?section=profile&company='+encodeURIComponent(query.get('portal'));}
-      if (section === 'booking') return '/vendor-bookings.html?' + params;
+      if (section === 'booking') return (nav.classList.contains('national-cycle-nav')?'/vendor-broadcast.html?':'/vendor-bookings.html?') + params;
       if (section === 'settlement') return '/vendor-checkout.html?' + params;
       params.set('section', section); return (preview ? '/entry-preview/' : '/vendor-entries.html') + '?' + params;
     };

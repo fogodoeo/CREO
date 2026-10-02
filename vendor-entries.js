@@ -175,9 +175,27 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
                 if(current&&(current.channelId!==context.channel.id||current.channelVendorId!==context.vendor.id))throw fail('이 출품을 수정할 수 없습니다.',403);
                 if(current&&(current.version!==input.expectedVersion||!['draft','changes_requested'].includes(current.status)))throw fail('출품 상태가 변경됐어요. 목록에서 다시 열어 주세요.');
                 const normalized=normalizeEntry(input.entry);
+                const broadcast=context.nationalBroadcast;
+                if(broadcast){
+                    if(context.channel.id!=='national-cre'||(current?.broadcastDate&&current.broadcastDate!==broadcast.date))throw fail('방송 연결을 확인해 주세요.',403);
+                    normalized.sex=['male','female','unknown'].includes(input.entry.sex)?input.entry.sex:'';
+                    if(type==='submit'&&(!['male','female','unknown'].includes(input.entry.sex)||!normalized.weight||!normalized.hatchDate||normalized.hatchDate>broadcast.today))throw fail('성별·체중·출생년월일을 확인해 주세요. 미래 출생일은 등록할 수 없어요.',422);
+                    for(const role of ['sire','dam']){
+                        normalized[role+'Id']='';
+                        const photoId=cleanText(input.parents?.[role]?.photoId,80);if(!photoId)continue;
+                        photos(state,[photoId]);
+                        const digest=crypto.createHash('sha256').update(id+':'+role).digest('hex');
+                        const parentId=digest.slice(0,8)+'-'+digest.slice(8,12)+'-4'+digest.slice(13,16)+'-a'+digest.slice(17,20)+'-'+digest.slice(20,32);
+                        const old=state.parents.find(p=>p.id===parentId);
+                        if(old)state.parentHistory.push({...copy(old),replacedAt:now});
+                        const value={id:parentId,vendorId:ownerId,name:'',code:broadcast.date+'-'+(broadcast.slot+1)+'-'+role,morph:'',sex:role==='sire'?'male':'female',photoId,version:(old?.version||0)+1,updatedAt:now};
+                        state.parents=state.parents.filter(p=>p.id!==parentId).concat(value);normalized[role+'Id']=parentId;
+                    }
+                }
                 if(normalized.sourceId&&state.entries.some(entry=>entry.status!=='deleted'&&entry.id!==id&&entry.channelId===context.channel.id&&entry.sourceId===normalized.sourceId))throw fail('이미 가져온 피들 개체예요. 기존 출품을 확인해 주세요.');
                 const entryNumber=current?.entryNumber||Math.max(0,...state.entries.filter(entry=>entry.channelId===context.channel.id).map(entry=>entry.entryNumber))+1;
                 const entry={...normalized,id,vendorId:ownerId,channelVendorId:context.vendor.id,channelId:context.channel.id,entryNumber,code:`출품 ${String(entryNumber).padStart(2,'0')}`,version:(current?.version||0)+1,status:type==='submit'?'submitted':'draft',updatedAt:now,...(current?.approved?{approved:current.approved,itemId:current.itemId,lot:current.lot}: {})};
+                if(broadcast)Object.assign(entry,{code:'개체 '+(broadcast.slot+1),broadcastDate:broadcast.date,broadcastReservationId:broadcast.id,broadcastSlot:broadcast.slot});
                 const facts=snapshot(state,entry);
                 if(type==='submit'){
                     if(!normalizePhone(context.vendor.phone)||!['bankName','bankAccount','bankHolder'].every(field=>cleanText(context.vendor[field],100)))throw fail('업체 연락처와 계좌를 먼저 등록해 주세요.',422);

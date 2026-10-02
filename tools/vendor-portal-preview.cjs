@@ -2,7 +2,7 @@
 // Isolated SQLite + fake SMS provider. This file is never served by production.
 const fs=require('node:fs'),os=require('node:os'),path=require('node:path'),http=require('node:http'),{Readable}=require('node:stream');
 const {SQLitePlatformRepository}=require('../sqlite-platform-repository'),{createPlatformApi}=require('../platform-api'),{normalizeChannel}=require('../platform-core'),{CheckoutNotificationService}=require('../checkout-notifications');
-async function createFixture({origin='http://127.0.0.1:4331'}={}){
+async function createFixture({origin='http://127.0.0.1:4331',apiOptions={}}={}){
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'creo-portal-test-')),secret='isolated-vendor-portal-test-secret-0001';
  const repository=new SQLitePlatformRepository({dataDir:dir,startWorker:false,adminSecret:secret}),sms=[];
  let clock=Date.parse('2026-09-23T09:00:00+09:00');
@@ -10,7 +10,7 @@ async function createFixture({origin='http://127.0.0.1:4331'}={}){
  await repository.upsertRecord('national-cre','setting',{id:'entry-policy',open:true,revision:1});
  const provider={readiness:(_key,transport)=>({ready:transport==='sms',missing:transport==='sms'?[]:['template']}),status:()=>({}),sendSms:async n=>{sms.push(n);return {id:'isolated'};}};
  const notifications=new CheckoutNotificationService({repository,provider,now:()=>clock});
- const options={repository,notificationService:notifications,adminSessionSecret:secret,vendorAccessOrigin:origin,vendorAccessNow:()=>clock,bookingNow:()=>clock,logger:{error(){},warn(){}}};
+ const options={repository,notificationService:notifications,adminSessionSecret:secret,vendorAccessOrigin:origin,vendorAccessNow:()=>clock,bookingNow:()=>clock,logger:{error(){},warn(){}},...apiOptions};
  let api=createPlatformApi(options);
  function client(){return {jar:{},csrf:''};}
  async function call(c,method,route,body,headers={}){
