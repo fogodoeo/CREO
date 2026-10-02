@@ -2,9 +2,10 @@
 
 Risk: release (authorization, encrypted persistence and deployed onboarding).
 
-- Common national onboarding defaults to operator preregistration. The legacy
-  self-registration route is disabled unless the private channel setting
-  vendor-access-policy explicitly selects self-registration-v1 (legacy fixtures).
+- Common national onboarding starts with region/company selection. Operators
+  can preregister companies, and verified users can create a missing company.
+  The private vendor-access-policy mode preregistration-only-v1 can explicitly
+  disable new self-registration. Missing configuration permits registration.
 - Administrators use national-vendors.html, linked from the national workspace
   and broadcast management page. Register name, one of five regions and owner
   login phone. Existing national vendors retain their IDs and financial records.
@@ -20,6 +21,11 @@ Risk: release (authorization, encrypted persistence and deployed onboarding).
   configuration; no new outbound transport or template is configured here.
 - Existing connected vendors continue to enter their calendar. General auction
   direct links and general phone matching are unchanged.
+- Self-registration uses the current session's verified phone as the encrypted
+  owner login phone. A different trade contact needs separate OTP proof.
+  Registration request IDs and fingerprints make retries idempotent, and
+  normalized company-name/region checks cover both access-directory companies
+  and existing national vendor records. Duplicate errors link to company selection.
 
 Verification: vendor-preregistration.test.js covers admin/CSRF boundaries,
 number mismatch, Kakao and SMS ownership, missing phone, duplicate/concurrent
@@ -35,6 +41,9 @@ Rendered checks at 390px and 320px covered owner selection into the calendar,
 staff request and owner approval, and administrator registration/save. At 320px,
 document scroll width equaled viewport width. Only isolated fixtures were used
 for write tests. Production had zero national vendors/reservations before deploy.
+
+The later self-registration update is covered by
+[NATIONAL_VENDOR_ONBOARDING_QA.md](NATIONAL_VENDOR_ONBOARDING_QA.md).
 
 Separate pending work: national auction/settlement data still uses the shared
 national-cre channel. A date picker alone cannot isolate payments and totals.

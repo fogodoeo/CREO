@@ -9,11 +9,11 @@ async function main(){
  const login=await f.call(admin,'POST','/api/platform/auth/login',{password:f.secret});if(login.status!==200)throw Error(login.body);
  await f.call(admin,'PUT','/api/platform/channels/national-cre/national-cycle-config',{mode:'regional-cycle-v1'});
  const seeded=await f.call(admin,'POST','/api/platform/national-vendor-directory',{id:'preview-seoul',name:'서울 테스트',region:'서울',loginPhone:'01000000001'});if(seeded.status!==200)throw Error(seeded.body);
- const owner=await f.login('01000000001'),staff=await f.login('01000000002'),root=path.resolve(__dirname,'../public');
+ const owner=await f.login('01000000001'),staff=await f.login('01000000002'),newcomer=await f.login('01000000003'),root=path.resolve(__dirname,'../public');
  http.createServer(async(req,res)=>{try{
   const url=new URL(req.url,origin);
-  if(['/owner','/staff','/admin'].includes(url.pathname)){
-   const c=url.pathname==='/admin'?admin:url.pathname==='/owner'?owner:staff;
+  if(['/owner','/staff','/admin','/newcomer'].includes(url.pathname)){
+   const c=url.pathname==='/admin'?admin:url.pathname==='/owner'?owner:url.pathname==='/newcomer'?newcomer:staff;
    res.writeHead(303,{Location:url.pathname==='/admin'?'/national-vendors.html':'/vendor-access.html','Set-Cookie':Object.entries(c.jar).map(([k,v])=>`${k}=${v}; Path=/; HttpOnly; SameSite=Lax`)});res.end();return;
   }
   if(url.pathname.startsWith('/api/')&&await f.api.handle(req,res,url))return;

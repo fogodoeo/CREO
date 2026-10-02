@@ -2,7 +2,7 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const {createFixture}=require('../tools/vendor-portal-preview.cjs');
 const route='/api/platform/national-vendor-directory';
-async function setup(options){const f=await createFixture(options);await f.repository.deleteRow(require('../platform-core').channelKey('national-cre','setting','vendor-access-policy'));return f;}
+async function setup(options){const f=await createFixture(options);await f.repository.upsertRecord('national-cre','setting',{id:'vendor-access-policy',mode:'preregistration-only-v1'});return f;}
 const input=(overrides={})=>({id:'test-seoul',name:'서울 테스트',region:'서울',loginPhone:'01000000001',...overrides});
 const admin=(f,body)=>f.call(f.client(),body?'POST':'GET',route,body,{'x-creo-admin':f.secret});
 test('preregistration is administrator only, validates input, blocks public self-registration and conceals numbers',async t=>{
