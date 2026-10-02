@@ -12,13 +12,14 @@
  function go(next){screen=next;error('');render();$(next==='verify'?'otp-code':next==='phone'?'phone':'main')?.focus({preventScroll:true});window.scrollTo(0,0);}
  async function refresh(){state=await request('session');return state;}
  async function navigate(section='booking',id=company){const data=await request('select',{id});const params=new URLSearchParams({event:'national-cre',token:data.token,portal:id});if(section==='profile'){location.href='/vendor-access.html?section=profile&company='+encodeURIComponent(id);return;}if(section==='entries')params.set('section','entries');location.href=(section==='booking'?'/vendor-broadcast.html':section==='settlement'?'/vendor-checkout.html':'/vendor-entries.html')+'?'+params;}
- async function enter(){await refresh();if(!state.available){go('unavailable');return;}if(!state.authenticated){go('login');return;}if(state.phoneVerificationRequired){go('verify-required');return;}if(q.get('section')==='profile'&&state.companies.some(c=>c.id===company)){await loadProfile();return;}if(state.companies.length===1){company=state.companies[0].id;await navigate();return;}go(state.companies.length?'companies':state.requests.length?'pending':'choice');}
+ async function enter(){await refresh();if(!state.available){go('unavailable');return;}if(!state.authenticated){go('login');return;}if(state.phoneVerificationRequired){go('verify-required');return;}if(q.get('section')==='profile'&&state.companies.some(c=>c.id===company)){await loadProfile();return;}if(state.companies.length===1){company=state.companies[0].id;await navigate();return;}go(state.companies.length?'companies':state.requests.length?'pending':state.preregisteredOnly?'directory':'choice');}
  async function loadProfile(){profile=await request('profile',{companyId:company});go('profile');}
  function bind(id,fn){if($(id))$(id).onclick=()=>run(fn);}
  function form(id,fn){if($(id))$(id).onsubmit=e=>{e.preventDefault();run(fn);};}
  function render(){
-  $('back').hidden=['login','profile','companies','verify-required','unavailable'].includes(screen);$('account').hidden=!state?.authenticated;$('main').classList.toggle('has-nav',screen==='profile');$('main').classList.toggle('login-screen',screen==='login');document.querySelector('.portal-nav')?.remove();
+  $('back').hidden=['login','profile','companies','directory','verify-required','unavailable'].includes(screen);$('account').hidden=!state?.authenticated;$('main').classList.toggle('has-nav',screen==='profile');$('main').classList.toggle('login-screen',screen==='login');document.querySelector('.portal-nav')?.remove();
   const html={
+   directory:()=>heading('업체를 선택해 주세요')+`<label class="field" for="directory-region">지역<select id="directory-region"><option value="">지역 선택</option>${state.regions.map(r=>`<option>${esc(r)}</option>`).join('')}</select></label><div id="directory-results" class="result-list" aria-live="polite"></div>`,
    unavailable:()=>heading('접속을 준비하고 있어요','잠시 후 다시 열어 주세요.')+action('retry','다시 확인'),
    login:()=>heading('업체 로그인')+`<div class="login-actions">${state.kakaoAvailable?`<form id="kakao-form" method="post" action="/api/platform/buyer-account/start"><input type="hidden" name="returnTo" value="vendor"><button class="kakao"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3C6.5 3 2 6.5 2 10.8c0 2.8 1.9 5.3 4.8 6.7l-1.1 4 4.6-2.8 1.7.1c5.5 0 10-3.6 10-8S17.5 3 12 3Z"/></svg>카카오로 시작하기</button></form>`:''}${state.smsAvailable?action('phone-login','전화번호로 로그인',state.kakaoAvailable?'secondary':'primary'):'<p class="muted">문자 로그인을 준비 중이에요. 잠시 후 다시 시도해 주세요.</p>'}<label class="check"><input id="remember" type="checkbox" checked>로그인 유지</label></div>`,
    phone:()=>heading('전화번호로 로그인','업체에 등록된 번호를 입력해 주세요.')+`<form id="phone-form">${field('휴대전화 번호','phone','type="tel" inputmode="tel" autocomplete="tel-national" placeholder="010-0000-0000" maxlength="13" required')}<div class="actions"><button class="primary">인증번호 받기</button></div></form>`,
@@ -33,7 +34,7 @@
    profile:()=>profileHtml()
   };
   $('main').innerHTML=(html[screen]||html.login)();
-  if(['login','phone','register','join','profile','choice'].includes(screen)){
+  if(['login','phone','register','join','profile','choice','directory'].includes(screen)){
    const footer=document.createElement('div');footer.className='privacy-links';
    footer.innerHTML='<a href="/vendor-privacy.html" target="_blank" rel="noopener">개인정보처리방침<span class="sr-only"> (새 창)</span></a><a href="tel:01049278600">문의</a>';
    $('main').append(footer);
@@ -50,6 +51,7 @@
   }
   bind('retry',enter);bind('phone-login',()=>{sessionStorage.setItem('vendor-remember',String($('remember').checked));go('phone');});
   bind('verify-phone',()=>go('phone'));
+  if($('directory-region'))$('directory-region').onchange=()=>run(loadDirectory);
   if($('kakao-form'))$('kakao-form').onsubmit=()=>{sessionStorage.setItem('vendor-remember',String($('remember').checked));};
   form('phone-form',async()=>{await sendOtp($('phone').value,'login');});
   form('verify-form',async()=>{const data=await request('verify',{challenge:otp.challenge,code:$('otp-code').value,remember:sessionStorage.getItem('vendor-remember')!=='false'});if(otp.purpose==='login'){await enter();}else{registration.proof=data.proof;registration.verifiedPhone=otp.phone;go('register');}});
@@ -57,9 +59,25 @@
   form('register-form',async()=>{const phone=$('contact').value.replace(/[\s-]/g,'');registration={...registration,name:$('company-name').value.trim(),region:$('region').value,phone};if(phone!==state.phone&&registration.verifiedPhone!==phone){await sendOtp(phone,'register');return;}const result=await request('register',registration);company=result.id;await navigate();});
   form('search-form',async()=>{const seq=++searchSequence,data=await request('search?q='+encodeURIComponent($('search').value.trim()));if(seq!==searchSequence||screen!=='search')return;$('search-results').innerHTML=data.companies.length?data.companies.map(c=>`<button class="result" data-join="${esc(c.id)}"><span><strong>${esc(c.name)}</strong><small>${esc(c.region)}</small></span><span class="chevron">›</span></button>`).join(''):'<p class="empty">등록된 업체를 찾지 못했어요</p>';for(const b of document.querySelectorAll('[data-join]'))b.onclick=()=>{joinCompany=data.companies.find(c=>c.id===b.dataset.join);go('join');};});
   form('join-form',async()=>{await request('join',{companyId:joinCompany.id,name:$('staff-name').value.trim(),sharingConsent:$('sharing-consent').checked});await refresh();go('pending');});
-  bind('check-approval',enter);bind('cancel-join',async()=>{await request('join-response',{id:state.requests[0].id,action:'cancel'});await refresh();go('choice');});
+  bind('check-approval',enter);bind('cancel-join',async()=>{await request('join-response',{id:state.requests[0].id,action:'cancel'});await refresh();go(state.preregisteredOnly?'directory':'choice');});
   for(const b of document.querySelectorAll('[data-company]'))b.onclick=()=>run(()=>navigate('booking',b.dataset.company));
   if(screen==='profile')bindProfile();if(screen==='verify'){tick();$('otp-code').focus();}
+ }
+ async function loadDirectory(){
+  const region=$('directory-region').value,host=$('directory-results');
+  if(!region){host.replaceChildren();return;}
+  host.textContent='업체를 불러오는 중…';
+  try{
+   const data=await request('search?region='+encodeURIComponent(region));
+   host.innerHTML=data.companies.length?data.companies.map(c=>`<button class="result" data-directory="${esc(c.id)}"><span><strong>${esc(c.name)}</strong><small>${c.connected?'연결된 업체':c.canClaim?'대표로 시작':c.canJoin?'직원 참여 요청':'대표 연결 전'}</small></span><span class="chevron" aria-hidden="true">›</span></button>`).join(''):'<p class="empty">등록된 업체가 없어요.<br><a class="help-link" href="tel:01049278600">등록 문의</a></p>';
+   for(const button of host.querySelectorAll('[data-directory]'))button.onclick=()=>run(async()=>{
+    const selected=data.companies.find(c=>c.id===button.dataset.directory);
+    if(selected.connected){await navigate('booking',selected.id);return;}
+    if(selected.canClaim){await request('claim',{id:selected.id});company=selected.id;await navigate();return;}
+    if(!selected.canJoin)throw Error('등록된 대표 번호로 먼저 로그인해 주세요. 번호가 다르면 운영자에게 문의해 주세요.');
+    joinCompany=selected;go('join');
+   });
+  }catch(e){host.innerHTML=action('directory-retry','다시 불러오기','secondary');bind('directory-retry',loadDirectory);throw e;}
  }
  async function sendOtp(phone,purpose){const data=await request('otp',{phone,purpose});otp={...data,phone:phone.replace(/[\s-]/g,''),purpose,sentAt:Date.now()};go('verify');}
  function tick(){if(screen!=='verify'||!$('otp-time'))return;const seconds=Math.max(0,180-Math.floor((Date.now()-otp.sentAt)/1000));$('otp-time').textContent=seconds?`${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')} 안에 입력해 주세요`:'인증번호가 만료됐어요. 다시 받아 주세요.';$('resend').disabled=Date.now()-otp.sentAt<60000||busy;}
@@ -78,7 +96,7 @@
   });
  }
  $('close-editor').onclick=()=>{if(!busy)$('editor').close();};$('editor').addEventListener('cancel',e=>{if(busy)e.preventDefault();});
- $('back').onclick=()=>{if(busy)return;go(({phone:'login',verify:otp?.purpose==='register'?'register':'phone',register:'choice',search:'choice',join:'search',pending:'choice'})[screen]||'companies');};
+ $('back').onclick=()=>{if(busy)return;go(({phone:'login',verify:otp?.purpose==='register'?'register':'phone',register:'choice',search:'choice',join:state.preregisteredOnly?'directory':'search',pending:state.preregisteredOnly?'directory':'choice',directory:state.companies.length?'companies':'login'})[screen]||'companies');};
  $('account').onclick=()=>run(async()=>{await request('logout',{});company='';await refresh();go('login');});
  run(async()=>{await refresh();if(q.get('from')==='kakao'){await request('kakao',{remember:sessionStorage.getItem('vendor-remember')!=='false'});history.replaceState(null,'','/vendor-access.html');}await enter();if(q.has('error'))error('카카오 로그인을 완료하지 못했어요. 다시 시도해 주세요.');});
 })();

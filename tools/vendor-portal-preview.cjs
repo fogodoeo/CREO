@@ -8,6 +8,8 @@ async function createFixture({origin='http://127.0.0.1:4331',apiOptions={}}={}){
  let clock=Date.parse('2026-09-23T09:00:00+09:00');
  await repository.saveCatalog([normalizeChannel({id:'national-cre',name:'전국크레자랑',status:'active',dataAdapter:'platform'})]);
  await repository.upsertRecord('national-cre','setting',{id:'entry-policy',open:true,revision:1});
+ // Legacy onboarding fixtures explicitly opt in; production defaults to preregistration.
+ await repository.upsertRecord('national-cre','setting',{id:'vendor-access-policy',mode:'self-registration-v1'});
  const provider={readiness:(_key,transport)=>({ready:transport==='sms',missing:transport==='sms'?[]:['template']}),status:()=>({}),sendSms:async n=>{sms.push(n);return {id:'isolated'};}};
  const notifications=new CheckoutNotificationService({repository,provider,now:()=>clock});
  const options={repository,notificationService:notifications,adminSessionSecret:secret,vendorAccessOrigin:origin,vendorAccessNow:()=>clock,bookingNow:()=>clock,logger:{error(){},warn(){}},...apiOptions};
@@ -17,7 +19,7 @@ async function createFixture({origin='http://127.0.0.1:4331',apiOptions={}}={}){
   const req=Readable.from(body?[Buffer.from(JSON.stringify(body))]:[]);req.method=method;req.socket={remoteAddress:'127.0.0.1'};req.headers={host:'127.0.0.1:4331',origin,cookie:Object.entries(c.jar).map(([k,v])=>k+'='+v).join('; '),'x-vendor-csrf':c.csrf,...headers};
   const res={writeHead(status,headers){this.status=status;this.headers=headers},end(body=''){this.body=String(body)},json(){return JSON.parse(this.body||'{}')}};
   await api.handle(req,res,new URL(route,origin));
-  for(const raw of res.headers?.['Set-Cookie']||[]){const [k,v]=raw.split(';')[0].split('=');c.jar[k]=v;}
+  for(const raw of [].concat(res.headers?.['Set-Cookie']||[])){const [k,v]=raw.split(';')[0].split('=');c.jar[k]=v;}
   if(route.endsWith('/session')&&res.status===200)c.csrf=res.json().csrfToken;
   return res;
  }

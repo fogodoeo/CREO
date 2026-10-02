@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="referrer" content="no-referrer"><title>업체 사전등록 · 전국크레자랑</title><link rel="stylesheet" href="/vendor-access.css?v=20261002-preregister"><script defer src="/platform-client.js"></script><script defer src="/national-vendors.js?v=20261002-preregister"></script></head>
+<body><div class="portal-shell"><header class="portal-header"><a href="/organizer-bookings.html?channel=national-cre">‹ 방송 관리</a></header><main id="main">
+<div class="intro"><h1>업체 사전등록</h1></div><p id="error" class="error" role="alert" hidden></p>
+<form id="login" hidden><label class="field" for="password">운영자 비밀번호<input id="password" type="password" autocomplete="current-password" required></label><div class="actions"><button class="primary">로그인</button></div></form>
+<section id="content" hidden><button id="add" type="button" class="primary">업체 추가</button><div id="companies" class="result-list"></div></section>
+</main></div>
+<dialog id="editor" aria-labelledby="editor-title"><header><h2 id="editor-title">업체 등록</h2><button id="close" type="button" class="icon-button" aria-label="닫기">×</button></header>
+<form id="vendor-form"><label class="field" for="existing">업체<select id="existing"><option value="">새 업체</option></select></label>
+<label class="field" for="name">업체명<input id="name" maxlength="40" autocomplete="organization" required></label>
+<label class="field" for="region">지역<select id="region" required><option value="">지역 선택</option></select></label>
+<label class="field" for="phone">대표 로그인 번호<input id="phone" type="tel" inputmode="tel" autocomplete="tel-national" placeholder="010-0000-0000" maxlength="13" required></label>
+<p class="field-note">이 번호로 인증한 사람이 대표로 연결됩니다. 업체 연락처는 연결 후 별도로 변경할 수 있어요.</p>
+<p id="editor-error" class="error" role="alert" hidden></p><div class="actions"><button id="save" class="primary">저장</button></div></form></dialog>
+</body></html>

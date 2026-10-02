@@ -9,6 +9,7 @@ async function landing(overrides={},search=''){
 test('common login goes directly to national broadcast regardless of other auction memberships',async()=>{
  assert.deepEqual(await landing({companies:[{id:'national-vendor'}]}),['broadcast:national-vendor']);
  assert.deepEqual(await landing(),['choice']);
+ assert.deepEqual(await landing({preregisteredOnly:true}),['directory']);
 });
 test('common entry preserves required verification, staff approval and company/profile selection',async()=>{
  assert.deepEqual(await landing({authenticated:false}),['login']);

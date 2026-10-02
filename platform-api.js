@@ -3223,6 +3223,17 @@ function createPlatformApi({
             if (await buyerAccount.handle(req,res,url)) return true;
             const segments = url.pathname.slice('/api/platform/'.length).split('/').filter(Boolean).map(decodeURIComponent);
             const method = req.method || 'GET';
+            if(segments[0]==='national-vendor-directory'){
+                if(!await requireAdmin(req,res))return true;
+                if(segments.length!==1||!['GET','POST'].includes(method)){replyJson(res,405,{error:'지원하지 않는 요청입니다.'});return true;}
+                if(method==='POST'){
+                    if(req.headers['sec-fetch-site']==='cross-site'||req.headers.origin&&req.headers.origin!==vendorAccessOrigin){replyJson(res,403,{error:'운영 페이지에서 다시 요청해 주세요.'});return true;}
+                    const body=await readJson(req);
+                    replyJson(res,200,await withMutationLock('channel:national-cre',()=>vendorAccess.preregister(body)),{'Cache-Control':'no-store, private'});
+                    touchChannel('national-cre');
+                }else replyJson(res,200,await vendorAccess.directory(),{'Cache-Control':'no-store, private'});
+                return true;
+            }
 
             if(segments[0]==='entry-photo-usage'){
                 if(!await requireAdmin(req,res))return true;
