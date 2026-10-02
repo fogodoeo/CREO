@@ -41,7 +41,7 @@
   function configureBooking(summary, href) {
     nav.classList.remove('national-cycle-nav');nav.querySelector('[data-vendor-section="entries"]')?.removeAttribute('hidden');
     let link = nav.querySelector('[data-vendor-section="booking"]');
-    if (!summary?.enabled) { link?.remove(); nav.classList.remove('has-booking'); return; }
+    if (!summary?.enabled) { link?.remove(); nav.classList.remove('has-booking');window.CreoVendorShell?.clear(nav); return; }
     document.querySelectorAll('[data-ongdong-brand]').forEach(el=>{el.removeAttribute('data-ongdong-brand');el.classList.remove('ongdong-brand');el.textContent='전국크레자랑';});
     document.title=document.title.replace('옹동2','전국크레자랑');
     const footer=document.querySelector('.entry-footer');if(footer)footer.textContent='전국크레자랑';
@@ -65,7 +65,8 @@
       nav.classList.add('national-cycle-nav');nav.querySelector('[data-vendor-section="entries"]')?.setAttribute('hidden','');
       link.dataset.label='방송';link.querySelector('span').textContent='방송';link.setAttribute('aria-label',count?'방송 · 개체 등록 필요':'방송');
       link.href=link.href.replace('/vendor-bookings.html','/vendor-broadcast.html');
-    }
+      window.CreoVendorShell?.mount(nav);
+    } else window.CreoVendorShell?.clear(nav);
   }
   window.CreoVendorNavigation = { updateStatus, profileRequired, configureBooking };
   if (!settlement) return;
