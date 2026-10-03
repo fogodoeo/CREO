@@ -30,7 +30,7 @@ async function createFixture({origin='http://127.0.0.1:4331',apiOptions={}}={}){
  return {get api(){return api},repository,sms,provider,client,call,post,refresh,login,close,origin,secret,advance:ms=>clock+=ms,restart:()=>api=createPlatformApi(options)};
 }
 async function main(){
- const logos=new Map(),f=await createFixture({apiOptions:{vendorLogoStorage:{put:async(_channel,name,bytes)=>{logos.set(name,bytes);return {url:'/__preview/logo/'+name};}}}}),owner=await f.login('01000000001'),staff=await f.login('01000000002');
+ const logos=new Map(),f=await createFixture({origin:process.env.VENDOR_PREVIEW_ORIGIN||'http://127.0.0.1:4331',apiOptions:{vendorLogoStorage:{put:async(_channel,name,bytes)=>{logos.set(name,bytes);return {url:'/__preview/logo/'+name};}}}}),owner=await f.login('01000000001'),staff=await f.login('01000000002');
  await f.repository.upsertRecord('national-cre','setting',{id:'national-cycle-config',mode:'regional-cycle-v1'});f.advance(11*86400000);
  const company=(await f.post(owner,'register',{name:'테스트',region:'대구·경북',phone:'01000000001'})).json();
  await f.post(staff,'join',{companyId:company.id,name:'테스트 직원',sharingConsent:true});
@@ -42,7 +42,7 @@ async function main(){
   if(url.pathname.startsWith('/api/')&&await f.api.handle(req,res,url))return;
   const file=path.resolve(root,'.'+url.pathname);if(!file.startsWith(root+path.sep)||!fs.existsSync(file)||!fs.statSync(file).isFile()){res.writeHead(404);res.end();return;}
   res.writeHead(200,{'Cache-Control':'no-store','Content-Type':{'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.svg':'image/svg+xml'}[path.extname(file)]||'application/octet-stream'});fs.createReadStream(file).pipe(res);
- }catch(e){res.writeHead(500);res.end('Isolated preview error');}}).listen(4331,'127.0.0.1',()=>console.log('Isolated preview: '+f.origin+'/__preview/owner'));
+ }catch(e){res.writeHead(500);res.end('Isolated preview error');}}).listen(Number(new URL(f.origin).port)||4331,'127.0.0.1',()=>console.log('Isolated preview: '+f.origin+'/__preview/owner'));
 }
 if(require.main===module)main().catch(e=>{console.error(e);process.exitCode=1;});
 module.exports={createFixture};

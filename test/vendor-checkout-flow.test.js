@@ -29,7 +29,7 @@ const buyer=(status,method='bank_transfer',destination={address:'테스트'},car
 function setup(buyers,channelStatus='active'){
  const nodes={},buttons=['action','waiting','paid','all'].map(filter=>({dataset:{filter},setAttribute(k,v){this[k]=v}})),cards=[{dataset:{stage:'action'},draft:'https://example.test/payment'},{dataset:{stage:'waiting'}},{dataset:{stage:'paid'}}];
  const events={};
- const ctx=vm.createContext({CreoVendorTasks:require('../public/vendor-task-state'),data:{channel:{id:'a',status:channelStatus},buyers},$:id=>nodes[id]??={},document:{querySelectorAll:s=>s==='[data-filter]'?buttons:cards},window:{addEventListener:(name,listener)=>events[name]=listener},busy:false,hasDraft:()=>false,confirm:()=>false});
+ const ctx=vm.createContext({URLSearchParams,location:{search:''},CreoVendorTasks:require('../public/vendor-task-state'),data:{channel:{id:'a',status:channelStatus},vendor:{id:'v1'},buyers},$:id=>nodes[id]??={remove(){this.removed=true}},document:{querySelector:s=>nodes[s]??={},querySelectorAll:s=>s==='[data-filter]'?buttons:cards},window:{addEventListener:(name,listener)=>events[name]=listener},busy:false,hasDraft:()=>false,confirm:()=>false});
  vm.runInContext(html.slice(html.indexOf('let workFilter='),html.indexOf('function renderVendorContacts(')),ctx);
  return{ctx,nodes,buttons,cards,events};
 }
@@ -40,6 +40,15 @@ test('only reported payments and missing card links need vendor action',()=>{
 test('filter changes retain existing cards and card-link drafts',()=>{
  const s=setup([buyer('bank_transfer_reported'),buyer('paid')]);s.ctx.renderWorkFilters();assert.equal(s.buttons[0]['aria-pressed'],'true');assert.equal(s.cards[2].hidden,true);s.buttons[2].onclick();assert.equal(s.cards[2].hidden,false);assert.equal(s.cards[0].draft,'https://example.test/payment');assert.equal(s.nodes['action-count'].textContent,'1건');
  s.ctx.data.buyers=[];s.ctx.renderWorkFilters();assert.equal(s.nodes['filter-empty'].hidden,true);
+ assert.equal(s.nodes['.work-filters'].hidden,true);assert.equal(s.nodes['.work-title'].hidden,true);
+ s.ctx.data.buyers=[buyer('paid')];s.ctx.renderWorkFilters();assert.equal(s.nodes['.work-filters'].hidden,false);
+});
+test('empty shipping settlement disappears without hiding any nonzero settlement',()=>{
+ const s=setup([]);s.ctx.data.shippingSettlement={vendors:[{vendorId:'v1',totalAmount:0,remainingAmount:0,receivedAmount:0}]};
+ s.ctx.renderShippingSettlement();assert.equal(s.nodes['shipping-settlement'].removed,true);
+ const panel={classList:{toggle(){}},querySelector:()=>null,innerHTML:'',remove(){throw Error('nonzero settlement hidden');}};s.nodes['shipping-settlement']=panel;
+ s.ctx.money=String;s.ctx.esc=String;s.ctx.data.shippingSettlement.vendors[0].remainingAmount=100;
+ s.ctx.renderShippingSettlement();assert.match(panel.innerHTML,/100/);
 });
 test('event switch resets filters and archived records do not appear actionable',()=>{const s=setup([buyer('bank_transfer_reported')]);s.ctx.renderWorkFilters();s.ctx.data.channel={id:'b',status:'archived'};s.ctx.renderWorkFilters();assert.equal(s.buttons[1]['aria-pressed'],'true');assert.equal(s.nodes['action-count'].textContent,'0건')});
 test('menu navigation preserves unfinished payment work unless explicitly discarded',()=>{
