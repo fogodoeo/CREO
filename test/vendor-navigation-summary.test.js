@@ -12,11 +12,14 @@ test('checkout initializes navigation after its DOM and before fetching its firs
 });
 test('checkout forwards national booking mode even while settings contain unsaved edits',()=>{
  const summary={enabled:true,mode:'regional-cycle-v1',pendingCount:1},statuses=[];
- vm.runInNewContext(render+';renderSettings();',{settingsDirty:true,data:{vendor:{phone:'01000000001'},entrySummary:{entriesOpen:true,entryCount:0},bookingSummary:summary},window:{CreoVendorNavigation:{profileRequired:()=>false,updateStatus:s=>statuses.push(s)}}});
+ vm.runInNewContext(render+';renderSettings();',{URLSearchParams,location:{search:''},settingsDirty:true,data:{vendor:{phone:'01000000001'},entrySummary:{entriesOpen:true,entryCount:0},bookingSummary:summary},window:{CreoVendorNavigation:{profileRequired:()=>false,updateStatus:s=>statuses.push(s)}}});
  assert.equal(statuses.length,1);assert.equal(statuses[0].bookingSummary,summary);
 });
 test('general checkout forwards disabled booking mode so national navigation can be removed',()=>{
  const summary={enabled:false},statuses=[];
- vm.runInNewContext(render+';renderSettings();',{settingsDirty:true,data:{vendor:{},entrySummary:{entriesOpen:true,entryCount:2},bookingSummary:summary},window:{CreoVendorNavigation:{profileRequired:()=>true,updateStatus:s=>statuses.push(s)}}});
+ vm.runInNewContext(render+';renderSettings();',{URLSearchParams,location:{search:''},settingsDirty:true,data:{vendor:{},entrySummary:{entriesOpen:true,entryCount:2},bookingSummary:summary},window:{CreoVendorNavigation:{profileRequired:()=>true,updateStatus:s=>statuses.push(s)}}});
  assert.equal(statuses[0].bookingSummary.enabled,false);assert.equal(statuses[0].entriesRequired,false);
+});
+test('portal checkout uses its dedicated profile screen instead of a duplicate uneditable form',()=>{
+ const panel={hidden:false};vm.runInNewContext(render+';renderSettings();',{URLSearchParams,location:{search:'?portal=company'},$:()=>panel,data:{vendor:{}},window:{CreoVendorNavigation:{profileRequired:()=>false,updateStatus(){}}}});assert.equal(panel.hidden,true);
 });

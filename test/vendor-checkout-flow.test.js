@@ -29,7 +29,7 @@ const buyer=(status,method='bank_transfer',destination={address:'테스트'},car
 function setup(buyers,channelStatus='active'){
  const nodes={},buttons=['action','waiting','paid','all'].map(filter=>({dataset:{filter},setAttribute(k,v){this[k]=v}})),cards=[{dataset:{stage:'action'},draft:'https://example.test/payment'},{dataset:{stage:'waiting'}},{dataset:{stage:'paid'}}];
  const events={};
- const ctx=vm.createContext({data:{channel:{id:'a',status:channelStatus},buyers},$:id=>nodes[id]??={},document:{querySelectorAll:s=>s==='[data-filter]'?buttons:cards},window:{addEventListener:(name,listener)=>events[name]=listener},busy:false,hasDraft:()=>false,confirm:()=>false});
+ const ctx=vm.createContext({CreoVendorTasks:require('../public/vendor-task-state'),data:{channel:{id:'a',status:channelStatus},buyers},$:id=>nodes[id]??={},document:{querySelectorAll:s=>s==='[data-filter]'?buttons:cards},window:{addEventListener:(name,listener)=>events[name]=listener},busy:false,hasDraft:()=>false,confirm:()=>false});
  vm.runInContext(html.slice(html.indexOf('let workFilter='),html.indexOf('function renderVendorContacts(')),ctx);
  return{ctx,nodes,buttons,cards,events};
 }

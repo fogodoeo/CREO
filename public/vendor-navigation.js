@@ -57,7 +57,7 @@
       const code=query.get('code')||short?.[1]||'',token=query.get('token')||'';
       link.href='/vendor-bookings.html?'+new URLSearchParams({event:settlement?.value||query.get('event')||'',...(code?{code}:{token}),...(query.get('portal')?{portal:query.get('portal')}:{})});
     }
-    const count=Math.max(0,Number(summary.pendingCount)||0), badge=link.querySelector('.vendor-nav-count');
+    const count=Math.max(0,Number(summary.attentionCount??summary.pendingCount)||0), badge=link.querySelector('.vendor-nav-count');
     badge.hidden=!count;badge.textContent=String(count);badge.setAttribute('aria-hidden','true');
     link.setAttribute('aria-label',count?`방송 예약 · 응답할 변경 요청 ${count}건`:'방송 예약');
     nav.classList.add('has-booking');

@@ -13,7 +13,7 @@
  function reservation(date=selected){return state.reservations.find(r=>r.date===date&&r.status==='confirmed')}
  function entry(r=reservation(),i=slot){return r?.entries[i]||null}
  function editable(e=entry()){return (!e||['draft','changes_requested'].includes(e.status))&&Date.parse(reservation().session.entriesDueAt)>Date.parse(state.now)&&state.entryState.events.some(e=>e.id==='national-cre'&&e.entriesOpen)}
- function task(d){const r=reservation(d.date);return d.regionName===state.vendor.region&&d.startsAt>state.now&&(r?r.completed<5:d.maxQuantityAvailable===5)}
+ function task(d){return d.regionName===state.vendor.region&&CreoVendorTasks.broadcastNeedsAction(d,reservation(d.date),state.now,state.entryState.events.some(e=>e.id==='national-cre'&&e.entriesOpen))}
  async function request(body){
   let requestId,storageKey='national-broadcast-request:'+Store.VENDOR,payload;
   if(body){payload=JSON.stringify(body);let saved;try{saved=JSON.parse(sessionStorage.getItem(storageKey)||'null')}catch{}

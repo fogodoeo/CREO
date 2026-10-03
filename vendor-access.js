@@ -2,11 +2,12 @@
 const crypto=require('node:crypto');
 const {channelKey}=require('./platform-core');
 const {REGIONS,regionForVendor}=require('./national-broadcast');
+const {profileStatus}=require('./vendor-profile-status');
 const PREFIX='/api/platform/vendor-access',ROOT='creo_vendor_access_v1::',STATE=ROOT+'directory';
 const fail=(message,status=400)=>Object.assign(new Error(message),{status});
 const phone=value=>{const p=String(value||'').replace(/[\s-]/g,'').replace(/^(?:\+82|0082)0?/,'0');return /^010\d{8}$/.test(p)?p:'';};
 const equal=(a,b)=>{const x=Buffer.from(String(a||'')),y=Buffer.from(String(b||''));return x.length===y.length&&crypto.timingSafeEqual(x,y);};
-function createVendorAccess({repository,secret,origin='https://creok.onrender.com',now=Date.now,smsProvider,buyerAccount,channelFor,vendorsFor,profileFor,saveProfile,notificationService,existingVendorsFor}={}){
+function createVendorAccess({repository,secret,origin='https://creok.onrender.com',now=Date.now,smsProvider,buyerAccount,channelFor,vendorsFor,profileFor,saveProfile,saveLogo,deletionContext,reviewDeletion,taskSummary,notificationService,existingVendorsFor}={}){
  const configured=String(secret||'').length>=32&&typeof repository.compareAndSwapRows==='function';
  const key=crypto.createHash('sha256').update('vendor-access:'+String(secret||'unconfigured')).digest();
  const digest=v=>crypto.createHmac('sha256',key).update(String(v)).digest('base64url');
@@ -34,7 +35,7 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
  async function requireSession(req){const s=await session(req);if(!s)throw fail('다시 로그인해 주세요.',401);return s;}
  function guard(req,csrf){if(req.headers.origin!==origin||req.headers['sec-fetch-site']==='cross-site'||!equal(req.headers['x-vendor-csrf'],csrf))throw fail('페이지를 새로고침한 뒤 다시 시도해 주세요.',403);}
  const actorOf=(state,s)=>state.actors.find(a=>a.id===s.actorId);
- const member=(state,actorId,companyId)=>state.companies.find(c=>c.id===companyId&&c.members.some(m=>m.actorId===actorId));
+ const member=(state,actorId,companyId)=>state.companies.find(c=>c.id===companyId&&!c.deletedAt&&c.members.some(m=>m.actorId===actorId));
  // Owner login credentials stay encrypted here, separate from editable trade contacts.
  const selfRegistrationAllowed=async()=> (await repository.getRecord('national-cre','setting','vendor-access-policy'))?.mode!=='preregistration-only-v1';
  const companyName=value=>String(value||'').normalize('NFKC').replace(/[\s\p{Cf}]/gu,'').toLocaleLowerCase('ko-KR');
@@ -44,7 +45,7 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
   return {regions:REGIONS,companies:(await vendorsFor()).filter(v=>v.active!==false).map(v=>{
    const c=state.companies.find(c=>c.id===v.id);
    return {id:v.id,name:v.name,region:REGIONS[regionForVendor(v)]||'',registered:!!c,claimed:!!c?.ownerId,loginPhone:c?.loginPhone||'',revision:c?.revision||0};
-  })};
+  }),deletions:(state.deletions||[]).filter(r=>r.status==='pending').map(r=>({...r,name:state.companies.find(c=>c.id===r.companyId)?.name||'업체'}))};
  }
  async function preregister(body){
   const id=String(body.id||''),target=phone(body.loginPhone),region=REGIONS.indexOf(body.region),name=String(body.name||'').trim();
@@ -115,8 +116,8 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
   const ready=Boolean(configured&&(existingVendorsFor||await channelFor()));
   const base={available:ready,preregisteredOnly:!await selfRegistrationAllowed(),channelLogin:!!existingVendorsFor,smsAvailable:ready&&smsProvider?.readiness('vendor_otp','sms').ready===true&&!smsProvider.testMode,kakaoAvailable:ready&&buyerAccount?.enabled===true,regions:REGIONS};
   if(!actor)return {...base,authenticated:false};
-  const records=await vendorsFor(),companies=state.companies.filter(c=>member(state,s.actorId,c.id)).map(c=>{const v=records.find(v=>v.id===c.id&&v.active!==false);return v?{id:c.id,name:v.name,region:REGIONS[regionForVendor(v)]||'',role:c.ownerId===actor.id?'owner':'staff'}:null;}).filter(Boolean);
-  const requests=state.requests.filter(r=>r.actorId===actor.id&&r.status==='pending').map(r=>({id:r.id,companyId:r.companyId,name:records.find(v=>v.id===r.companyId)?.name||'업체',status:r.status}));
+  const records=await vendorsFor(),companies=state.companies.filter(c=>member(state,s.actorId,c.id)).map(c=>{const v=records.find(v=>v.id===c.id&&v.active!==false),role=c.ownerId===actor.id?'owner':'staff';return v?{id:c.id,name:v.name,region:REGIONS[regionForVendor(v)]||'',role,...profileStatus(v,role,state.requests.filter(r=>r.companyId===c.id&&r.status==='pending'))}:null;}).filter(Boolean);
+  const requests=await Promise.all(state.requests.filter(r=>r.actorId===actor.id&&r.status==='pending'&&records.some(v=>v.id===r.companyId&&v.active!==false)).map(async r=>({id:r.id,companyId:r.companyId,name:records.find(v=>v.id===r.companyId)?.name||'업체',status:r.status,notificationStatus:r.notificationId?(await repository.getRecord('national-cre','notification',r.notificationId))?.status||'configuration_pending':'configuration_pending'})));
   const participations=existingVendorsFor&&phone(s.verifiedPhone)?await existingVendorsFor(phone(s.verifiedPhone)):[];
   return {...base,authenticated:true,phone:s.verifiedPhone||actor.phone,phoneVerificationRequired:!!existingVendorsFor&&!phone(s.verifiedPhone),participations,csrfToken:s.csrfToken,companies,requests};
  }
@@ -156,7 +157,7 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
  }
  const headers={'Cache-Control':'no-store, private','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff'};
  function json(res,status,body,extra={}){res.writeHead(status,{...headers,'Content-Type':'application/json; charset=utf-8',...extra});res.end(JSON.stringify(body));}
- async function bodyOf(req){let data='';for await(const b of req){data+=b.toString();if(Buffer.byteLength(data)>12000)throw fail('입력 내용이 너무 길어요.',413);}try{return JSON.parse(data||'{}');}catch{throw fail('입력을 확인해 주세요.');}}
+ async function bodyOf(req,limit=12000){const chunks=[];let size=0;for await(const b of req){size+=Buffer.byteLength(b);if(size>limit)throw fail('입력 내용이 너무 길어요.',413);chunks.push(Buffer.from(b));}try{return JSON.parse(Buffer.concat(chunks).toString('utf8')||'{}');}catch{throw fail('입력을 확인해 주세요.');}}
  async function handle(req,res,url){
   if(!url.pathname.startsWith(PREFIX+'/'))return false;
   const route=url.pathname.slice(PREFIX.length),method=req.method;
@@ -167,6 +168,13 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
     json(res,200,{...data,...(!data.authenticated?{csrfToken:digest('flow:'+flow)}:{})},{'Set-Cookie':[cookie(flowName,flow,86400)]});return true;
    }
    const s=await session(req);
+   if(route==='/tasks'&&method==='GET'){
+    if(!s)throw fail('다시 로그인해 주세요.',401);
+    const state=(await read(STATE)).value||fresh(),c=member(state,s.actorId,url.searchParams.get('company')),v=c&&await activeVendor(c.id);
+    if(!v)throw fail('연결된 업체를 확인해 주세요.',403);
+    const role=c.ownerId===s.actorId?'owner':'staff';
+    json(res,200,{...profileStatus(v,role,state.requests.filter(r=>r.companyId===c.id&&r.status==='pending')),...(taskSummary?await taskSummary(c.id):{})});return true;
+   }
    if(route==='/search'&&method==='GET'){
     if(!s)throw fail('먼저 로그인해 주세요.',401);
     const query=String(url.searchParams.get('q')||'').trim().slice(0,40),state=(await read(STATE)).value||fresh();
@@ -179,7 +187,7 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
    }
    if(method!=='POST')throw fail('요청을 찾을 수 없어요.',404);
    guard(req,s?.csrfToken||digest('flow:'+cookies(req)[flowName]));
-   const body=await bodyOf(req);
+   const body=await bodyOf(req,route==='/logo'&&s?7100000:12000);
    if(!existingVendorsFor&&!await channelFor())throw fail('접속을 준비 중이에요. 잠시 후 다시 시도해 주세요.',503);
    if(route==='/otp'){json(res,200,await beginOtp(req,body,s));return true;}
    if(route==='/verify'){
@@ -236,29 +244,48 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
     const name=String(body.name||'').trim();if(!name||name.length>40)throw fail('대표가 알아볼 수 있는 이름을 입력해 주세요.',422);
     if(body.sharingConsent!==true)throw fail('업체 대표에게 이름·전화번호를 제공하는 데 동의해 주세요.',422);
     const result=await mutate(async(state,extra)=>{
-     const company=state.companies.find(c=>c.id===body.companyId);if(!company)throw fail('업체를 다시 찾아 주세요.',404);
+     const company=state.companies.find(c=>c.id===body.companyId&&!c.deletedAt);if(!company)throw fail('업체를 다시 찾아 주세요.',404);
      if(member(state,s.actorId,company.id))return {connected:true};
      if(!company.ownerId)throw fail('대표가 먼저 로그인해야 해요. 대표에게 접속을 요청해 주세요.',409);
      const old=state.requests.find(r=>r.actorId===s.actorId&&r.status==='pending');if(old)return {id:old.id,duplicate:true};
      const item={id:crypto.randomUUID(),companyId:company.id,actorId:s.actorId,name,status:'pending',createdAt:now(),sharingConsent:{version:'2026-09-23',acceptedAt:now()}};state.requests.push(item);
      const owner=state.actors.find(a=>a.id===company.ownerId),recipient=company.loginPhone||owner?.phone;
-     if(recipient&&notificationService?.prepare){const prepared=await notificationService.prepare('national-cre',{templateKey:'vendor_join_requested',eventKey:'vendor-join:'+item.id,recipientRole:'vendor',recipientPhone:recipient,allowSmsFallback:false,failureSmsFallback:false,variables:{업체명:company.name,직원명:name,참여요청ID:item.id,접속주소:origin+'/vendor-access.html?section=profile&company='+company.id}});if(!prepared.duplicate)extra.push({key:channelKey('national-cre','notification',prepared.record.id),value:JSON.stringify(prepared.record)});}
+     if(recipient&&notificationService?.prepare){const fallbackText='[옹동2] 직원 승인\n'+origin+'/vendor-access.html?review=1',smsFits=Buffer.byteLength(fallbackText)<=90;const prepared=await notificationService.prepare('national-cre',{templateKey:'vendor_join_requested',eventKey:'vendor-join:'+item.id,recipientRole:'vendor',recipientPhone:recipient,allowSmsFallback:smsFits,failureSmsFallback:smsFits,fallbackText,variables:{업체명:company.name,직원명:name,참여요청ID:item.id,접속주소:origin+'/vendor-access.html?section=profile&company='+company.id}});item.notificationId=prepared.record.id;if(!prepared.duplicate)extra.push({key:channelKey('national-cre','notification',prepared.record.id),value:JSON.stringify(prepared.record)});}
      return {id:item.id};
     });json(res,200,result);return true;
    }
    if(route==='/join-response'){
     const result=await mutate(state=>{
      const item=state.requests.find(r=>r.id===body.id),company=state.companies.find(c=>c.id===item?.companyId);
-     if(!item||!company)throw fail('참여 요청을 찾을 수 없어요.',404);
+     if(!item||!company||company.deletedAt)throw fail('참여 요청을 찾을 수 없어요.',404);
      const cancel=body.action==='cancel';if(cancel?item.actorId!==s.actorId:company.ownerId!==s.actorId)throw fail('이 요청을 처리할 권한이 없어요.',403);
      if(!['cancel','approve','reject'].includes(body.action))throw fail('응답을 확인해 주세요.',422);
      const status={cancel:'cancelled',approve:'approved',reject:'rejected'}[body.action];if(item.status!=='pending'){if(item.status===status)return {duplicate:true};throw fail('이미 처리된 요청이에요.',409);}
      if(status==='approved'&&!member(state,item.actorId,company.id))company.members.push({actorId:item.actorId,name:item.name});item.status=status;item.updatedAt=now();return {status};
     });json(res,200,result);return true;
    }
-   if(route==='/profile'){
+   if(route==='/deletion'){
+    const result=await mutate(state=>{
+     const c=member(state,s.actorId,body.companyId);if(!c||c.ownerId!==s.actorId)throw fail('업체 대표만 요청할 수 있어요.',403);
+     state.deletions=state.deletions||[];
+     const pending=state.deletions.find(r=>r.companyId===c.id&&r.status==='pending');
+     if(body.action==='cancel'){const r=state.deletions.find(r=>r.id===body.id&&r.companyId===c.id);if(r?.status==='cancelled')return {duplicate:true};if(!r||r.status!=='pending')throw fail('이미 처리된 요청이에요.',409);r.status='cancelled';r.updatedAt=now();return {status:r.status};}
+     if(body.action!=='request')throw fail('요청을 확인해 주세요.',422);
+     if(pending)return {id:pending.id,duplicate:true};
+     if(!/^[a-f0-9-]{36}$/.test(body.requestId||''))throw fail('요청을 다시 확인해 주세요.',422);
+     const old=state.deletions.find(r=>r.id===body.requestId);if(old){if(old.companyId!==c.id)throw fail('요청을 다시 확인해 주세요.',409);return {id:old.id,status:old.status,duplicate:true};}
+     const r={id:body.requestId,companyId:c.id,status:'pending',createdAt:now()};state.deletions.push(r);return {id:r.id,status:r.status};
+    });json(res,200,result);return true;
+   }
+   if(route==='/profile'||route==='/logo'){
     const state=(await read(STATE)).value||fresh(),company=member(state,s.actorId,body.companyId);if(!company||!await activeVendor(company.id))throw fail('연결된 업체를 확인해 주세요.',403);
     const owner=company.ownerId===s.actorId,vendor=await profileFor(company.id);if(!vendor)throw fail('업체 정보를 찾을 수 없어요.',404);
+    if(route==='/logo'){
+     if(!owner)throw fail('업체 대표만 변경할 수 있어요.',403);
+     if(body.revision!==vendor.directoryRevision)throw fail('업체 정보가 변경됐어요. 새로고침해 주세요.',409);
+     const logoUrl=body.remove===true?'':await saveLogo(company.id,body.data);
+     await saveProfile(company.id,{logoUrl},body.revision);json(res,200,{saved:true});return true;
+    }
     if(body.action){
      if(!owner)throw fail('업체 대표만 변경할 수 있어요.',403);
      const changes={};
@@ -267,12 +294,29 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
      else throw fail('변경할 항목을 확인해 주세요.',422);
      await saveProfile(company.id,changes,body.revision);json(res,200,{saved:true});return true;
     }
-    json(res,200,{id:vendor.id,name:vendor.name,region:REGIONS[regionForVendor(vendor)]||REGIONS[company.region],phone:vendor.phone,revision:vendor.directoryRevision||0,role:owner?'owner':'staff',...(owner?{bankName:vendor.bankName||'',bankAccount:vendor.bankAccount||'',bankHolder:vendor.bankHolder||'',members:company.members.map(m=>({name:m.name,owner:m.actorId===company.ownerId})),requests:state.requests.filter(r=>r.companyId===company.id&&r.status==='pending').map(r=>({id:r.id,name:r.name,phone:state.actors.find(a=>a.id===r.actorId)?.phone||''}))}:{})});return true;
+    const requests=state.requests.filter(r=>r.companyId===company.id&&r.status==='pending');
+    json(res,200,{id:vendor.id,name:vendor.name,region:REGIONS[regionForVendor(vendor)]||REGIONS[company.region],phone:vendor.phone,logoUrl:vendor.logoUrl||'',...profileStatus(vendor,owner?'owner':'staff',requests),revision:vendor.directoryRevision||0,role:owner?'owner':'staff',...(owner?{deletion:(state.deletions||[]).filter(r=>r.companyId===company.id).at(-1)||null,bankName:vendor.bankName||'',bankAccount:vendor.bankAccount||'',bankHolder:vendor.bankHolder||'',members:company.members.map(m=>({name:m.name,owner:m.actorId===company.ownerId})),requests:requests.map(r=>({id:r.id,name:r.name,phone:state.actors.find(a=>a.id===r.actorId)?.phone||''}))}:{})});return true;
    }
    throw fail('요청을 찾을 수 없어요.',404);
   }catch(e){json(res,e.status||503,{error:e.status?e.message:'처리하지 못했어요. 잠시 후 다시 시도해 주세요.',...(e.existingCompany?{existingCompany:e.existingCompany}:{})});return true;}
  }
- async function assertNotification(notice){const state=(await read(STATE)).value||fresh(),id=notice.variables?.참여요청ID||notice.variables?.['#{참여요청ID}'],request=state.requests.find(r=>r.id===id),company=state.companies.find(c=>c.id===request?.companyId),owner=state.actors.find(a=>a.id===company?.ownerId);if(request?.status!=='pending'||(company?.loginPhone||owner?.phone)!==notice.recipientPhone)throw Object.assign(fail('이미 처리된 참여 요청이에요.'),{code:'BUYER_LINK_INACTIVE'});}
+ async function assertNotification(notice){const state=(await read(STATE)).value||fresh(),id=notice.variables?.참여요청ID||notice.variables?.['#{참여요청ID}'],request=state.requests.find(r=>r.id===id),company=state.companies.find(c=>c.id===request?.companyId),owner=state.actors.find(a=>a.id===company?.ownerId);if(request?.status!=='pending'||company?.deletedAt||!await activeVendor(company?.id)||(company?.loginPhone||owner?.phone)!==notice.recipientPhone)throw Object.assign(fail('이미 처리된 참여 요청이에요.'),{code:'BUYER_LINK_INACTIVE'});}
+ async function review(body){
+  const snapshot=(await read(STATE)).value||fresh(),r=(snapshot.deletions||[]).find(r=>r.id===body.id);
+  if(!r)throw fail('삭제 요청을 찾을 수 없어요.',404);
+  if(body.action==='inspect-deletion')return {...r,...await deletionContext(r.companyId)};
+  if(!['approve-deletion','reject-deletion'].includes(body.action))throw fail('요청을 확인해 주세요.',422);
+  const approved=body.action==='approve-deletion',note=String(body.note||'').trim().slice(0,300);
+  if(!approved&&!note)throw fail('반려 사유를 입력해 주세요.',422);
+  return reviewDeletion(r.companyId,approved,async rows=>mutate((state,extra)=>{
+   const current=(state.deletions||[]).find(x=>x.id===r.id),company=state.companies.find(c=>c.id===r.companyId),status=approved?'approved':'rejected';
+   if(current.status===status)return {duplicate:true,status};
+   if(current.status!=='pending')throw fail('이미 처리된 요청이에요.',409);
+   current.status=status;current.note=note;current.updatedAt=now();
+   if(approved){company.deletedAt=now();for(const request of state.requests)if(request.companyId===company.id&&request.status==='pending'){request.status='cancelled';request.updatedAt=now();}extra.push(...rows);}
+   return {status};
+  }));
+ }
  let cleanupCursor='',cleanupPending=null;
  async function cleanupExpired(){
   if(!configured||!repository.scanRowsByPrefix||!repository.deleteRow)return {enabled:false,scanned:0,removed:0};
@@ -298,6 +342,6 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
   })().finally(()=>{cleanupPending=null;});
   return cleanupPending;
  }
- return {handle,authorize,assertNotification,view,verifyToken,cleanupExpired,directory,preregister};
+ return {handle,authorize,assertNotification,view,verifyToken,cleanupExpired,directory,preregister,review};
 }
 module.exports={createVendorAccess,phone};

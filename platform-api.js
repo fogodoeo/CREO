@@ -1076,6 +1076,7 @@ function createPlatformApi({
     buyerAccountFetch = globalThis.fetch,
     buyerAccountNow = Date.now,
     entryPhotoStorage = null,
+    vendorLogoStorage = null,
     entryPhotoProcessor = require('./entry-photo-codec').createEntryPhotoProcessor(),
     entryPhotoMaxBytes = 100000000,
     feedleImporter = require('./feedle-import').createImporter(),
@@ -1119,16 +1120,29 @@ function createPlatformApi({
     const adminCookieSecret = operatorPassword.sessionSecret(sessionSecret);
     const buyerLinkAccess = require('./buyer-link-access').createBuyerLinkAccess({repository,secret:sessionSecret,signToken:signBuyerShippingToken,verifyToken:verifyBuyerShippingToken,shortPrefix:BUYER_SHIPPING_SHORT_KEY_PREFIX});
     const buyerAccount = require('./buyer-account-auth').createBuyerAccountAuth({repository,config:buyerAccountConfig,fetchImpl:buyerAccountFetch,now:buyerAccountNow,hashPhone:sessionKey});
+    const vendorLifecycle=require('./vendor-lifecycle').createVendorLifecycle({repository,vendorDirectory,loadCatalog,booking,settlement:organizerShippingSettlement,lock:withMutationLock,touch:touchChannel,now:vendorAccessNow});
     const vendorAccess = require('./vendor-access').createVendorAccess({
         existingVendorsFor: require('./vendor-channel-access').createVendorChannelAccess({loadCatalog,vendorDirectory}),
         repository, secret: vendorAccessSecret, origin: vendorAccessOrigin, now: vendorAccessNow,
         smsProvider: notificationService?.provider, buyerAccount, notificationService,
         channelFor: async () => (await loadCatalog()).channels.find(c => Booking.enabled(c) && ['draft','active'].includes(c.status)),
         vendorsFor: () => vendorDirectory.list(Booking.CHANNEL_ID),
+        saveLogo:require('./vendor-logo').createVendorLogo(vendorLogoStorage),
+        deletionContext:vendorLifecycle.inspect,reviewDeletion:vendorLifecycle.review,
+        taskSummary:async id=>{
+            const catalog=await loadCatalog(),channel=catalog.channels.find(c=>c.id===Booking.CHANNEL_ID),vendor=await vendorDirectory.find(Booking.CHANNEL_ID,id),profile=await vendorDirectory.profileFor(Booking.CHANNEL_ID,id);
+            const summary=channel&&profile?await booking.summary({channel,vendor,profile,catalog}):null;
+            if(!channel)return {bookingAttention:false,settlementAttention:false};
+            const [items,shipments,vendors]=await Promise.all([repository.listRecords(channel.id,'item'),repository.listRecords(channel.id,'shipment'),vendorDirectory.list(channel.id)]);
+            const bundles=await vendorBuyerBundles({channel,vendor,profile,catalog,items,shipments,vendors,vendorKey:id});
+            const actions=await Promise.all(bundles.map(async bundle=>require('./public/vendor-task-state').settlementStage({...vendorBuyerPublicPayload(bundle),changePending:Boolean(await pendingCheckoutChange(bundle.context))},channel)==='action'));
+            const shipping=await organizerShippingSettlement(channel.id,items,shipments,[vendor]),money=shipping.vendors.find(v=>v.vendorId===id);
+            return {bookingAttention:!!(summary?.attentionCount??summary?.pendingCount),settlementAttention:actions.some(Boolean)||!!(money?.remainingAmount&&!money.pendingReport&&shipping.bank.bankAccount&&normalizePhone(shipping.bank.notificationPhone))};
+        },
         profileFor: async id => { await vendorDirectory.enroll(Booking.CHANNEL_ID,id); return vendorDirectory.find(Booking.CHANNEL_ID,id); },
         saveProfile: (id,changes,revision) => withMutationLock('channel:'+Booking.CHANNEL_ID,async () => {
             const vendor=await vendorDirectory.find(Booking.CHANNEL_ID,id);
-            if(!vendor)throw buyerInputError('업체를 찾을 수 없어요.',404);
+            if(!vendor||vendor.active===false)throw buyerInputError('업체를 찾을 수 없어요.',404);
             await vendorDirectory.update(Booking.CHANNEL_ID,{...vendor,...changes},revision);
             await touchVendorChannels(Booking.CHANNEL_ID,id);
         })
@@ -2177,6 +2191,7 @@ function createPlatformApi({
         const access = token.accessActor || token.accessSession ? await vendorAccess.authorize(token) : null;
         if ((token.accessActor || token.accessSession) && (!access || (event && event !== token.channelId))) return null;
         let profile = await vendorDirectory.profileFor(token.channelId,token.vendorKey);
+        if(profile?.deletedAt)return null;
         if(access?.kind==='phone'&&profile)profile={...profile,members:profile.members.filter(m=>m.channelId===token.channelId&&m.vendorId===token.vendorKey)};
         if(event && event !== token.channelId) {
             const membership=profile?.members.find(member=>member.channelId===event);
@@ -3229,7 +3244,7 @@ function createPlatformApi({
                 if(method==='POST'){
                     if(req.headers['sec-fetch-site']==='cross-site'||req.headers.origin&&req.headers.origin!==vendorAccessOrigin){replyJson(res,403,{error:'운영 페이지에서 다시 요청해 주세요.'});return true;}
                     const body=await readJson(req);
-                    replyJson(res,200,await withMutationLock('channel:national-cre',()=>vendorAccess.preregister(body)),{'Cache-Control':'no-store, private'});
+                    replyJson(res,200,body.action?await vendorAccess.review(body):await withMutationLock('channel:national-cre',()=>vendorAccess.preregister(body)),{'Cache-Control':'no-store, private'});
                     touchChannel('national-cre');
                 }else replyJson(res,200,await vendorAccess.directory(),{'Cache-Control':'no-store, private'});
                 return true;

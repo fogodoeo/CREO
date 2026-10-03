@@ -57,6 +57,7 @@ const entryPhotoStorage = new EntryPhotoStorage({
     serviceKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
     bucket: process.env.CREO_ENTRY_PHOTO_BUCKET || 'auction-entry-photos'
 });
+const broadcastAssetStorage = new BroadcastAssetStorage();
 platformApi = createPlatformApi({
     vendorAccessSecret: require('./vendor-access-secret').vendorAccessSecret({repository:platformRepository}),
     repository: platformRepository,
@@ -65,6 +66,7 @@ platformApi = createPlatformApi({
     notificationService: checkoutNotificationService,
     deliverySchedules,
     entryPhotoStorage,
+    vendorLogoStorage:broadcastAssetStorage,
     entryPhotoMaxBytes: Number(process.env.CREO_ENTRY_PHOTO_VENDOR_MAX_BYTES) || 100000000
 });
 const operatorEntry = require('./operator-entry').createOperatorEntry({isAuthenticated:platformApi.hasAdminSession,frontendOrigin});
@@ -74,7 +76,6 @@ const captureApi = createCaptureApi({
     storage: captureStorage,
     isAdmin: platformApi.isAdmin
 });
-const broadcastAssetStorage = new BroadcastAssetStorage();
 const broadcastAssetApi = createBroadcastAssetApi({
     storage: broadcastAssetStorage,
     isAdmin: platformApi.isAdmin

@@ -19,7 +19,16 @@
    link.dataset.label=label;
    if(active){if(active===key)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');}
   }
+  refreshAttention(nav);
+ }
+ function applyAttention(nav,status){
+  for(const [key,label]of sections){const link=nav.querySelector('[data-vendor-section="'+key+'"]');if(!link)continue;const needed=!!status[key+'Attention'];link.classList.toggle('portal-attention',needed);if(key==='profile')link.classList.remove('registration-required');link.setAttribute('aria-label',label+(needed?' · 확인할 일 있음':''));}
+ }
+ async function refreshAttention(nav){
+  const q=new URLSearchParams(location.search),company=q.get('company')||q.get('portal')||nav.dataset.company;
+  if(!company)return;
+  try{const response=await fetch('/api/platform/vendor-access/tasks?company='+encodeURIComponent(company),{cache:'no-store',credentials:'same-origin',signal:AbortSignal.timeout(10000)});if(!response.ok)return;const data=await response.json();if(nav.isConnected)applyAttention(nav,data);}catch{/* The page's main retry remains available during an outage. */}
  }
  function clear(nav){nav?.classList.remove('vendor-portal-nav');document.body.classList.remove('national-vendor-shell');}
- global.CreoVendorShell={mount,clear};
+ global.CreoVendorShell={mount,clear,applyAttention,refreshAttention};
 })(window);

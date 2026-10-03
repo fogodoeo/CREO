@@ -2,9 +2,10 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const source=fs.readFileSync(require.resolve('../public/vendor-access.js'),'utf8');
 const enter=source.slice(source.indexOf(' async function enter()'),source.indexOf(' async function loadProfile()'));
+const choose=source.slice(source.indexOf(' async function chooseCompany('),source.indexOf(' function bind('));
 async function landing(overrides={},search=''){
  const calls=[],context={URLSearchParams,state:{available:true,authenticated:true,channelLogin:true,phoneVerificationRequired:false,companies:[],requests:[],participations:Array.from({length:20},(_,i)=>({channelId:'other-'+i})),...overrides},company:'company-a',q:new URLSearchParams(search),refresh:async()=>{},go:s=>calls.push(s),openDirectory:async()=>calls.push('directory'),navigate:async()=>calls.push('broadcast:'+context.company),loadProfile:async()=>calls.push('profile')};
- await vm.runInNewContext(enter+'\nenter()',context);return calls;
+ await vm.runInNewContext(enter+'\n'+choose+'\nenter()',context);return calls;
 }
 test('common login requires channel selection even with one national company',async()=>{
  assert.deepEqual(await landing({companies:[{id:'national-vendor'}]}),['channels']);
@@ -18,12 +19,17 @@ test('channel return keeps the selected authorized company and rejects unrelated
 });
 test('company selection refreshes membership before showing its channels',async()=>{
  const choose=source.slice(source.indexOf(' async function chooseCompany('),source.indexOf(' function bind('));
- const calls=[],context={state:{},company:'old',refresh:async()=>{context.state={authenticated:true,companies:[{id:'allowed'}]};calls.push('refresh');},go:s=>calls.push(s)};
+ const calls=[],context={q:new URLSearchParams(),state:{},company:'old',refresh:async()=>{context.state={authenticated:true,companies:[{id:'allowed'}]};calls.push('refresh');},go:s=>calls.push(s)};
  await vm.runInNewContext(choose+"\nchooseCompany('allowed')",context);
  assert.equal(context.company,'allowed');assert.deepEqual(calls,['refresh','channels']);
  calls.length=0;
  await assert.rejects(vm.runInNewContext(choose+"\nchooseCompany('unrelated')",context),/업체 연결/);
  assert.deepEqual(calls,['refresh']);assert.equal(context.company,'allowed');
+});
+test('missing required info lands on profile, completed and staff companies keep channel choice',async()=>{
+ assert.deepEqual(await landing({companies:[{id:'company-a',setupRequired:true}]}),['profile']);
+ assert.deepEqual(await landing({companies:[{id:'company-a',setupRequired:false,role:'staff'}]}),['channels']);
+ assert.deepEqual(await landing({companies:[{id:'company-a',setupRequired:false}]},'?review=1'),['profile']);
 });
 test('common entry preserves required verification, staff approval and company/profile selection',async()=>{
  assert.deepEqual(await landing({authenticated:false}),['login']);

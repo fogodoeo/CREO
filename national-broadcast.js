@@ -50,7 +50,7 @@ function createNationalBroadcast(repository,{now=Date.now,entries,notificationSe
   });
   return {mode:MODE,enabled:true,version:state.version,now:new Date(now()).toISOString(),channel:{id:context.channel.id,name:context.channel.name,status:context.channel.status},vendor:{id:context.vendor.id,name:context.vendor.name,region:REGIONS[region]||''},regions:REGIONS,dates:dates(state).map(d=>availability({...state,channelStatus:context.channel.status},d,region,context.vendor.id)),reservations,entryState,pendingCount:reservations.filter(r=>r.status==='confirmed'&&r.session.startsAt>new Date(now()).toISOString()&&r.completed<5).length};
  }
- async function summary(context){const v=await view(context);return {enabled:true,mode:MODE,pendingCount:v.pendingCount};}
+ async function summary(context){const v=await view(context),open=v.entryState.events?.some(e=>e.id===context.channel.id&&e.entriesOpen),attentionCount=v.dates.filter(d=>d.regionName===v.vendor.region&&require('./public/vendor-task-state').broadcastNeedsAction(d,v.reservations.find(r=>r.date===d.date&&r.status==='confirmed'),v.now,open)).length;return {enabled:true,mode:MODE,pendingCount:v.pendingCount,attentionCount};}
  async function command(context,input,{operator=false}={}){
   if(!['draft','active'].includes(context.channel.status)||(!operator&&context.vendor?.active===false))throw fail('현재 방송을 변경할 수 없어요.',403);
   if(!repository.compareAndSwapRows)throw fail('방송 저장소를 확인해 주세요.',503);

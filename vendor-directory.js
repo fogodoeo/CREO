@@ -32,7 +32,7 @@ function createVendorDirectory(repository) {
     const pick = record => ({...Object.fromEntries(FIELDS.filter(key=>record[key]!==undefined).map(key=>[key,record[key]])),inquiryPhone:inquiryPhone(record),inquiryPhoneMode:record.inquiryPhoneMode==='shared'?'shared':'separate'});
     // The shared profile is authoritative even when a legacy profile has no mode.
     // A channel-row write from a failed save must not change contact visibility.
-    function hydrate(record,profile) { return profile?{...record,...profile.info,inquiryPhoneMode:profile.info.inquiryPhoneMode==='shared'?'shared':'separate',directoryId:profile.id,directoryRevision:profile.revision}:record; }
+    function hydrate(record,profile) { return profile?{...record,...profile.info,...(profile.deletedAt?{active:false}:{}),inquiryPhoneMode:profile.info.inquiryPhoneMode==='shared'?'shared':'separate',directoryId:profile.id,directoryRevision:profile.revision}:record; }
     async function list(channelId) {
         const [records,directory]=await Promise.all([repository.listRecords(channelId,'vendor'),read()]);
         return records.map(record=>hydrate(record,directory.profiles.find(p=>member(p,channelId,record.id))));
@@ -51,6 +51,7 @@ function createVendorDirectory(repository) {
     async function attach(profileId,channelId) {
         return mutate(async directory=>{
             const profile=directory.profiles.find(p=>p.id===profileId);if(!profile)throw fail('공통 업체를 찾을 수 없습니다.',404);
+            if(profile.deletedAt)throw fail('삭제 승인된 업체는 참여할 수 없어요.',403);
             const existing=profile.members.find(m=>m.channelId===channelId);if(existing)return existing;
             // Stable ID makes retry after a storage failure safe, without merging names.
             const vendorId='shared-'+profile.id.replaceAll('-','');
@@ -65,12 +66,14 @@ function createVendorDirectory(repository) {
         return mutate(async directory=>{
             const profile=directory.profiles.find(p=>p.id===profileId);
             if(!profile)throw fail('공통 업체를 찾을 수 없습니다.',404);
+            if(profile.deletedAt)throw fail('삭제 승인된 업체는 연결할 수 없어요.',403);
             const existing=profile.members.find(m=>m.channelId===channelId);
             if(existing){if(existing.vendorId===vendorId)return {...existing,duplicate:true};throw fail('이 경매에 이미 다른 업체 기록이 연결돼 있어요.');}
             if(profile.revision!==expectedRevision)throw fail('업체 정보가 변경됐어요. 다시 불러와 주세요.');
             const record=await repository.getRecord(channelId,'vendor',vendorId);
             if(!record)throw fail('연결할 참여 업체를 찾을 수 없습니다.',404);
             const target=directory.profiles.find(p=>member(p,channelId,vendorId));
+            if(target?.deletedAt)throw fail('삭제 승인된 업체는 연결할 수 없어요.',403);
             if((target?.id||'')!==expectedTargetProfileId)throw fail('참여 이력이 변경됐어요. 다시 불러와 주세요.');
             if(target){
                 if(target.members.length!==1)throw fail('이미 여러 경매에 연결된 업체예요. 참여 이력을 확인해 주세요.');
@@ -98,6 +101,7 @@ function createVendorDirectory(repository) {
     async function update(channelId,record,expectedRevision,{firstBankOnly=false}={}) {
         return mutate(async directory=>{
             const profile=directory.profiles.find(p=>member(p,channelId,record.id));
+            if(profile?.deletedAt)throw fail('삭제 승인된 업체는 변경할 수 없어요.',403);
             if(record.inquiryPhone===undefined||record.inquiryPhoneMode===undefined){
                 const previous=profile?.info||await repository.getRecord(channelId,'vendor',record.id);
                 record={...record,inquiryPhone:record.inquiryPhone??inquiryPhone(previous),inquiryPhoneMode:record.inquiryPhoneMode??previous?.inquiryPhoneMode??'separate'};
@@ -116,6 +120,13 @@ function createVendorDirectory(repository) {
             return hydrate(record,profile);
         });
     }
-    return {read,list,find,profileFor,enroll,attach,attachExisting,update};
+    // Hold the same lock as profile edits while the access directory and this
+    // document commit together through the repository's atomic CAS transaction.
+    function lifecycle(channelId,vendorId,work){
+        const previous=locks.get(repository)||Promise.resolve();
+        const next=previous.catch(()=>{}).then(async()=>{const directory=await read(),profile=directory.profiles.find(p=>member(p,channelId,vendorId));return work(profile,directory,KEY);});
+        locks.set(repository,next);return next;
+    }
+    return {read,list,find,profileFor,enroll,attach,attachExisting,update,lifecycle};
 }
 module.exports={createVendorDirectory};
