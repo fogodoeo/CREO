@@ -75,12 +75,13 @@ test('approval atomically deactivates all memberships, revokes old tokens and su
  assert.ok((await directory.profileFor('national-cre',f.id)).deletedAt);
  await assert.rejects(directory.attach(profile.id,'other'),/삭제 승인/);
 });
-test('future reservations block deletion and cancellation racing approval has one terminal result',async t=>{
+test('future reservations are cancelled on deletion and cancellation racing approval has one terminal result',async t=>{
  const f=await fixture(t);await f.profile();const token=(await f.post(f.owner,'select',{id:f.id})).json().token;
  const booked=await f.call(f.owner,'POST','/api/platform/vendor-bookings',{token,event:'national-cre',type:'reserve',date:'2026-09-28',quantity:5,requestId:randomUUID()});assert.equal(booked.status,200,booked.body);
- const id=await f.remove(),blocked=await f.admin({action:'approve-deletion',id});assert.equal(blocked.status,409,blocked.body);assert.match(blocked.body,/방송/);
- const review=await f.admin({action:'inspect-deletion',id});assert.match(review.json().blockers.join(),/2026-09-28/);assert.match(review.json().blockers.join(),/먼저 취소/);
- const cancelled=await f.post(f.owner,'deletion',{companyId:f.id,action:'cancel',id});assert.equal(cancelled.status,200);
+ const id=await f.remove();
+ const review=await f.admin({action:'inspect-deletion',id});assert.deepEqual(review.json().blockers,[]);assert.deepEqual(review.json().effects.reservations,['2026-09-28']);
+ assert.equal((await f.admin({action:'approve-deletion',id})).status,200);
+ const booking=await f.repository.getRecord('national-cre','setting','broadcast-bookings');assert.equal(booking.reservations[0].status,'cancelled');
  const g=await fixture(t);await g.profile();const next=await g.remove();
  const results=await Promise.all([g.admin({action:'approve-deletion',id:next}),g.post(g.owner,'deletion',{companyId:g.id,action:'cancel',id:next})]);
  assert.equal(results.filter(r=>r.status===200).length,1,results.map(r=>r.body).join());assert.ok(results.some(r=>[403,409].includes(r.status)));
@@ -102,18 +103,52 @@ test('admin direct deletion needs no vendor request, is authorized, atomic, idem
  assert.equal((await f.call(f.owner,'GET','/api/platform/vendor-bookings?event=national-cre&token='+token)).status,401);
  assert.equal((await f.repository.getRecord('national-cre','vendor',f.id)).active,false);
 });
-test('admin direct deletion handles unclaimed vendors and resolves pending requests, but blocks reservations',async t=>{
+test('admin direct deletion handles unclaimed vendors, resolves pending requests and cancels reservations',async t=>{
  const f=await fixture(t);await f.profile();
  const request=await f.remove(),body={action:'admin-delete-company',companyId:f.id,confirmName:'온보딩 테스트',requestId:randomUUID()};
  const token=(await f.post(f.owner,'select',{id:f.id})).json().token;
  assert.equal((await f.call(f.owner,'POST','/api/platform/vendor-bookings',{token,event:'national-cre',type:'reserve',date:'2026-09-28',quantity:5,requestId:randomUUID()})).status,200);
- assert.equal((await f.admin(body)).status,409);assert.equal((await f.profile()).deletion.status,'pending');
+ assert.equal((await f.admin(body)).status,200);assert.equal((await f.admin({action:'inspect-deletion',id:request})).json().status,'approved');
  const g=await fixture(t);await g.profile();const pending=await g.remove();
  assert.equal((await g.admin({...body,companyId:g.id,requestId:randomUUID()})).status,200);
  assert.equal((await g.admin({action:'inspect-deletion',id:pending})).json().status,'approved');
  await g.repository.upsertRecord('national-cre','vendor',{id:'unclaimed',name:'미접속 업체',broadcastRegion:'서울',active:true});
  assert.equal((await g.admin({action:'admin-delete-company',companyId:'unclaimed',confirmName:'미접속 업체',requestId:randomUUID()})).status,200);
  assert.equal((await g.repository.getRecord('national-cre','vendor','unclaimed')).active,false);
+});
+test('company deletion atomically removes submissions, approved waiting items and future regional reservations',async t=>{
+ const f=await fixture(t);await f.profile();const directory=createVendorDirectory(f.repository),profile=await directory.profileFor('national-cre',f.id);
+ await f.repository.upsertRecord('national-cre','setting',{id:'national-cycle-config',mode:'regional-cycle-v1'});f.advance(11*86400000);
+ const token=(await f.post(f.owner,'select',{id:f.id})).json().token;
+ assert.equal((await f.call(f.owner,'POST','/api/platform/vendor-bookings',{token,event:'national-cre',type:'reserve',date:'2026-10-14',quantity:5,requestId:randomUUID()})).status,200);
+ const key='vendor_entries_v1::'+profile.id,entries=['draft','submitted','changes_requested','approved'].map((status,n)=>({id:'e'+n,channelId:'national-cre',channelVendorId:f.id,status,version:1,...(status==='approved'?{itemId:'waiting-item'}:{})}));
+ await f.repository.upsertRows([{key,value:JSON.stringify({schema:1,ownerId:profile.id,version:1,entries,requests:[],parents:[],parentHistory:[],media:[]})}]);
+ await f.repository.upsertRecord('national-cre','item',{id:'waiting-item',vendorId:f.id,status:'waiting',attributes:{bid_log:[]}});
+ await f.repository.upsertRecord('national-cre','item',{id:'unrelated',vendorId:'another',status:'waiting'});
+ await f.repository.upsertRecord('national-cre','broadcast',{id:'state',activeItemId:'waiting-item',mode:'standby'});
+ const body={action:'admin-delete-company',companyId:f.id,confirmName:'온보딩 테스트',requestId:randomUUID()};
+ const inspected=(await f.admin({action:'inspect-company-deletion',companyId:f.id})).json();assert.deepEqual(inspected.blockers,[]);assert.equal(inspected.effects.entries,4);assert.equal(inspected.effects.items,1);
+ const original=f.repository.compareAndSwapRows.bind(f.repository);
+ // Failure after the delete row must roll back the item, booking and access rows.
+ f.repository.compareAndSwapRows=(k,expected,rows)=>original(k,expected,[...rows,{key:'isolated-failure',get value(){throw Error('isolated transaction failure');}}]);
+ assert.equal((await f.admin(body)).status,500);f.repository.compareAndSwapRows=original;
+ assert.ok(await f.repository.getRecord('national-cre','item','waiting-item'));
+ assert.equal((await f.repository.getRecord('national-cre','setting','national-broadcasts')).reservations[0].status,'confirmed');assert.equal((await f.refresh(f.owner)).json().companies.length,1);
+ const results=await Promise.all([f.admin(body),f.admin(body)]);assert.ok(results.every(r=>r.status===200),results.map(r=>r.body).join());
+ f.restart();assert.equal((await f.admin(body)).json().duplicate,true);
+ assert.equal(await f.repository.getRecord('national-cre','item','waiting-item'),null);assert.ok(await f.repository.getRecord('national-cre','item','unrelated'));
+ assert.ok((await f.repository.getRowsByKeys(['vendor_deleted_items_v1::national-cre::waiting-item'])).length);
+ assert.equal((await f.repository.getRecord('national-cre','broadcast','state')).activeItemId,'');
+ const state=JSON.parse((await f.repository.getRowsByKeys([key]))[0].value);assert.ok(state.entries.every(e=>e.status==='deleted'));
+ const booking=await f.repository.getRecord('national-cre','setting','national-broadcasts');assert.equal(booking.reservations[0].status,'cancelled');assert.equal(booking.audit.filter(a=>a.action==='업체 삭제로 예약 취소').length,1);
+ const review=await f.call(f.client(),'GET','/api/platform/channels/national-cre/entries',null,{'x-creo-admin':f.secret});assert.equal(review.status,200,review.body);assert.equal(review.json().groups.flatMap(g=>g.entries).length,0);
+});
+test('active auction still blocks deletion without touching submissions; completed sold records survive',async t=>{
+ const f=await fixture(t);await f.profile();const body={action:'admin-delete-company',companyId:f.id,confirmName:'온보딩 테스트',requestId:randomUUID()};
+ await f.repository.upsertRecord('national-cre','item',{id:'live',vendorId:f.id,status:'live'});assert.equal((await f.admin(body)).status,409);
+ await f.repository.upsertRecord('national-cre','item',{id:'live',vendorId:f.id,status:'sold'});
+ await f.repository.upsertRecord('national-cre','shipment',{id:'done',itemId:'live',vendorId:f.id,paymentStatus:'paid',status:'delivered'});
+ assert.equal((await f.admin(body)).status,200);assert.equal((await f.repository.getRecord('national-cre','item','live')).status,'sold');assert.ok(await f.repository.getRecord('national-cre','shipment','done'));
 });
 test('task summary never exposes owner bank details and shares checkout action rules',async t=>{
  const f=await fixture(t);await f.profile();

@@ -200,6 +200,12 @@ class SQLitePlatformRepository {
             const current = this.statements.get.get(key);
             if ((current?.value ?? null) !== expectedValue) return false;
             for (const row of rows) {
+                if (row.delete === true) {
+                    this.statements.delete.run(row.key);
+                    this.statements.markDeleted.run(row.key);
+                    this.enqueue(row.key, 'delete');
+                    continue;
+                }
                 const value = String(row.value);
                 this.statements.clearDeleted.run(row.key);
                 this.statements.upsert.run(row.key, value, now);
