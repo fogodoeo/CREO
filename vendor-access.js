@@ -324,6 +324,31 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
  }
  async function assertNotification(notice){const state=(await read(STATE)).value||fresh(),id=notice.variables?.참여요청ID||notice.variables?.['#{참여요청ID}'],request=state.requests.find(r=>r.id===id),company=state.companies.find(c=>c.id===request?.companyId),owner=state.actors.find(a=>a.id===company?.ownerId);if(request?.status!=='pending'||company?.deletedAt||!await activeVendor(company?.id)||(company?.loginPhone||owner?.phone)!==notice.recipientPhone)throw Object.assign(fail('이미 처리된 참여 요청이에요.'),{code:'BUYER_LINK_INACTIVE'});}
  async function review(body){
+  if(['inspect-company-deletion','admin-delete-company'].includes(body.action)){
+   const id=String(body.companyId||''),snapshot=(await read(STATE)).value||fresh();
+   const previous=(snapshot.deletions||[]).find(r=>r.id===body.requestId);
+   if(body.action==='admin-delete-company'&&previous){
+    if(previous.companyId!==id||previous.source!=='admin')throw fail('요청을 다시 확인해 주세요.',409);
+    return {status:previous.status,duplicate:true};
+   }
+   const vendor=await activeVendor(id);
+   if(!vendor)throw fail('업체를 찾을 수 없어요. 목록을 새로고침해 주세요.',404);
+   if(body.action==='inspect-company-deletion')return {companyId:id,name:vendor.name,status:'pending',...await deletionContext(id)};
+   if(!/^[\w-]{16,80}$/.test(String(body.requestId||''))||body.confirmName!==vendor.name)throw fail('삭제할 업체를 다시 확인해 주세요.',422);
+   return reviewDeletion(id,true,async rows=>mutate((state,extra)=>{
+    state.deletions=state.deletions||[];
+    const duplicate=state.deletions.find(r=>r.id===body.requestId);
+    if(duplicate){if(duplicate.companyId!==id||duplicate.source!=='admin')throw fail('요청을 다시 확인해 주세요.',409);return {status:duplicate.status,duplicate:true};}
+    let company=state.companies.find(c=>c.id===id);
+    if(company?.deletedAt)throw fail('이미 삭제된 업체예요.',409);
+    if(!company){company={id,name:vendor.name,region:regionForVendor(vendor),members:[],ownerId:'',createdAt:now()};state.companies.push(company);}
+    company.deletedAt=now();
+    for(const r of state.deletions)if(r.companyId===id&&r.status==='pending'){r.status='approved';r.updatedAt=now();}
+    for(const r of state.requests)if(r.companyId===id&&r.status==='pending'){r.status='cancelled';r.updatedAt=now();}
+    state.deletions.push({id:body.requestId,companyId:id,source:'admin',status:'approved',createdAt:now(),updatedAt:now()});
+    extra.push(...rows);return {status:'approved'};
+   }));
+  }
   const snapshot=(await read(STATE)).value||fresh(),r=(snapshot.deletions||[]).find(r=>r.id===body.id);
   if(!r)throw fail('삭제 요청을 찾을 수 없어요.',404);
   if(body.action==='inspect-deletion')return {...r,...await deletionContext(r.companyId)};

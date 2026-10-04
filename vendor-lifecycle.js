@@ -19,7 +19,7 @@ function createVendorLifecycle({repository,vendorDirectory,loadCatalog,booking,s
    if(money&&(money.remainingAmount>0||money.overpaidAmount>0||money.pendingReport))blockers.push(channel.name+' · 미완료 배송비 정산');
    if(m.channelId==='national-cre'){
      const schedules=await booking.operatorView(channel,await vendorDirectory.list(m.channelId));
-     if(schedules.sessions.some(s=>Date.parse(s.startsAt)+4*3600000>now()&&s.reservations.some(r=>r.vendorId===m.vendorId&&r.status==='confirmed')))blockers.push('전국크레자랑 · 예정·진행 중인 방송');
+     for(const s of schedules.sessions.filter(s=>Date.parse(s.startsAt)+4*3600000>now()&&s.reservations.some(r=>r.vendorId===m.vendorId&&r.status==='confirmed')))blockers.push('전국크레자랑 · '+s.date+' 방송 예약 — 방송 관리에서 예약을 먼저 취소해 주세요.');
    }
   }
   if(profile){
