@@ -31,7 +31,7 @@
 .entry-sheet .step-extra textarea{min-height:68px;padding:10px 14px}
 .entry-sheet .parent-photo-fields{margin-top:14px}
 @media(max-width:360px){.parent-photo-grid{gap:8px}.photo-picker{padding:8px;gap:6px}.photo-picker img{width:36px;height:46px}.photo-add{width:28px}.photo-picker>span:not(.photo-add){font-size:13px}.photo-picker small{font-size:11px}}
-/* One animal at a time in a bottom sheet; the calendar stays the main screen. */
+/* Entry editing stays inside the broadcast calendar. */
 body:has(dialog[open]){overflow:hidden}
 dialog.broadcast-sheet{width:calc(100% - 32px);max-width:480px;padding:24px;overscroll-behavior:contain}
 dialog.entry-sheet{height:min(780px,92dvh);max-height:92dvh;overflow:hidden;display:flex;flex-direction:column}
@@ -40,6 +40,32 @@ dialog.entry-sheet:not([open]){display:none}
 .entry-sheet>header h2{font-size:21px}
 .entry-sheet #sheet-body{display:flex;flex-direction:column;min-height:0;flex:1}
 #entry-step-form{display:flex;flex-direction:column;min-height:0;flex:1}
+#bulk-entry-form{display:flex;flex-direction:column;min-height:0;flex:1}
+dialog.bulk-sheet{max-width:960px}
+.bulk-columns,.bulk-row{display:grid;grid-template-columns:80px 100px 80px 148px minmax(120px,1fr) 80px;gap:12px;align-items:start}
+.bulk-columns{padding:10px 0;color:var(--muted);font-size:13px;border-bottom:1px solid var(--line)}
+.bulk-row{padding:16px 0;border-bottom:1px solid var(--line)}
+.bulk-row:last-child{border-bottom:0}
+.bulk-row-heading h4{font-size:15px;margin:0 0 4px}.bulk-row-heading>.muted{font-size:12px}.bulk-row-heading .text{display:block;min-height:44px;padding:8px 0}
+.bulk-field{display:block;min-width:0}.bulk-field>span{display:none}
+.bulk-field input,.bulk-field select,.bulk-field textarea{display:block;width:100%;min-width:0;min-height:46px;border:1px solid #c3cbd6;border-radius:8px;padding:10px;background:#fff;color:var(--ink);font:inherit;font-size:16px;line-height:1.4}
+.bulk-field textarea{resize:vertical;min-height:46px}
+.bulk-field [readonly],.bulk-field select:disabled{background:#f5f6f8;color:var(--muted);opacity:1}
+.bulk-field [aria-invalid=true]{border-color:#b12727}
+.bulk-photos{min-width:0}.bulk-photos[open]{grid-column:1/-1}.bulk-photos summary{display:flex;align-items:center;gap:8px;min-height:44px;font-size:13px;cursor:pointer;list-style:none}.bulk-photos summary::after{content:'＋';margin-inline-start:auto}.bulk-photos[open] summary::after{content:'−'}
+.bulk-photo-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding-top:4px}
+.bulk-row .entry-reason{grid-column:1/-1}
+.bulk-sheet .step-footer{padding-top:16px;gap:12px}
+.bulk-sheet .step-footer .secondary{flex-basis:100px;padding-inline:12px;white-space:nowrap}
+.bulk-sheet .entry-progress{margin-bottom:8px}
+@media(max-width:760px){
+ dialog.bulk-sheet{width:100%;max-width:none;height:94dvh;max-height:94dvh;margin:auto 0 0;border-radius:20px 20px 0 0;padding:20px 16px max(16px,env(safe-area-inset-bottom))}
+ .bulk-columns{display:none}.bulk-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;padding:20px 0}
+ .bulk-row-heading{grid-column:1/-1;display:flex;align-items:center;gap:10px}.bulk-row-heading h4{margin:0}.bulk-row-heading .text{margin-inline-start:auto;padding:4px 8px}
+ .bulk-field>span{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}.bulk-field small{font-size:12px;font-weight:400}
+ .bulk-date,.bulk-note,.bulk-photos{grid-column:1/-1}.bulk-photo-grid{gap:8px}.bulk-photo-grid .photo-picker{min-height:72px;padding:8px}.bulk-photo-grid .photo-picker.has-photo{padding:0}.bulk-photo-grid .photo-picker.has-photo img{height:84px}
+ .bulk-scroll{overscroll-behavior:contain}.bulk-sheet .step-footer{padding-top:12px}.bulk-sheet>header{margin-bottom:12px}
+}
 .entry-step-scroll{overflow:auto;min-height:0;flex:1;padding:3px 3px 0;scroll-padding:16px}
 .entry-progress{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px}
 .entry-progress h3{font-size:16px}.entry-progress>span{font-size:13px;color:var(--muted)}

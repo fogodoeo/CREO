@@ -261,6 +261,32 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
         });
         return operator?locked('review:'+context.channel.id,execute):execute();
     }
+    async function saveMany(context, rows, requestId) {
+        if (!Array.isArray(rows) || !rows.length || rows.length > 5 || new Set(rows.map(row=>row.input.entry.id)).size !== rows.length) throw fail('등록할 개체를 다시 확인해 주세요.',422);
+        return locked(owner(context),async()=>{
+            const key=context.channel.id+':save-many:'+requestId,signature=hash(rows.map(row=>({...row,broadcast:{id:row.broadcast.id,date:row.broadcast.date,slot:row.broadcast.slot}}))),initial=await readOwner(owner(context));
+            const prior=initial.requests.find(row=>row.key===key);
+            if(prior){if(prior.signature!==signature)throw fail('같은 요청으로 다른 내용을 저장할 수 없습니다. 다시 시도해 주세요.');return {result:prior.result,duplicate:true};}
+            const staged=new Map();
+            const stage={
+                getRowsByKeys:async keys=>{const stored=await repository.getRowsByKeys(keys);return keys.map(key=>staged.get(key)||stored.find(row=>row.key===key)).filter(Boolean);},
+                getRecord:repository.getRecord.bind(repository),
+                listRecords:repository.listRecords.bind(repository),
+                upsertRows:async values=>{for(const row of values)staged.set(row.key,{...row});}
+            };
+            const service=createVendorEntries(stage,{resolveMediaUrl,maxMediaBytes}),results=[];
+            for(const row of rows){
+                try{results.push(await service.command({...context,nationalBroadcast:row.broadcast},{...row.input,requestId:hash({requestId})+'-'+row.broadcast.slot}));}
+                catch(error){throw fail(`개체 ${row.broadcast.slot+1}: ${error.message}`,error.status||500);}
+            }
+            // Commit the entire owner document once. Failed rows never partially submit.
+            const final=JSON.parse(staged.get(KEY+owner(context)).value);
+            final.requests.push({key,signature,result:results.map(row=>row.result)});final.requests=final.requests.slice(-500);
+            staged.set(KEY+owner(context),{key:KEY+owner(context),value:JSON.stringify(final)});
+            await repository.upsertRows([...staged.values()]);
+            return {result:results.map(row=>row.result),duplicate:results.every(row=>row.duplicate)};
+        });
+    }
     function canArrange(item) {
         if(item.status!=='waiting'||item.winnerPhone||item.winnerName||Number(item.soldPrice)>0)return false;
         try {const log=item.attributes?.bid_log;return !log||(Array.isArray(log)?log:JSON.parse(log)).length===0;} catch{return false;}
@@ -405,7 +431,7 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
             return resolveFacts(item);
         }));
     }
-    return {read,command,batch,addMedia,hydrateItems,hydrateCollectionRecords,policy,summary,withOwnerLock:locked};
+    return {read,command,saveMany,batch,addMedia,hydrateItems,hydrateCollectionRecords,policy,summary,withOwnerLock:locked};
 }
 
 module.exports={createVendorEntries,normalizeEntry};

@@ -83,3 +83,49 @@ test('capacity is atomic across vendors; reserved slots are private and pickup s
  f.restart();assert.equal((await f.get()).json().reservations[0].pickup,true);
  const view=(await f.call(f.client,'GET','/api/platform/channels/national-cre/broadcast-bookings',undefined,f.admin)).json();assert.equal(view.sessions[0].confirmedQuantity,35);assert.equal(view.sessions[0].regions[0].available,0);
 });
+
+test('four entries submit together, preserve the fifth slot and retry without duplicate entries',async t=>{
+ const f=await fixture(t),r=(await f.command({type:'reserve',date:'2026-10-14',quantity:5})).json().reservations[0];
+ const body={type:'save-entries',id:r.id,requestId:randomUUID(),submit:true,entries:Array.from({length:4},(_,slot)=>({slot,expectedVersion:0,entry:{sex:'female',weight:String(slot+5),hatchDate:'2026-09-01',note:'일괄 '+slot}}))};
+ const response=await f.command(body);assert.equal(response.status,200,response.body);
+ assert.equal(response.json().reservations[0].completed,4);assert.equal(response.json().reservations[0].entries[4],null);
+ const ids=response.json().reservations[0].entries.slice(0,4).map(e=>e.id);assert.deepEqual(ids,r.entryIds.slice(0,4));
+ f.advance(86400000);f.restart();const duplicate=await f.command(body);assert.equal(duplicate.status,200,duplicate.body);assert.equal(duplicate.json().duplicate,true);
+ assert.equal((await f.command({...body,entries:body.entries.slice(0,3)})).status,409);
+ const last=await f.command({...body,requestId:randomUUID(),entries:[{...body.entries[0],slot:4}]});assert.equal(last.status,200,last.body);assert.equal(last.json().reservations[0].completed,5);
+});
+
+test('batch validation and storage failure leave every entry unchanged; retry is durable',async t=>{
+ const f=await fixture(t),view=(await f.command({type:'reserve',date:'2026-10-14',quantity:5})).json(),r=view.reservations[0];
+ const body={type:'save-entries',id:r.id,requestId:randomUUID(),submit:true,entries:Array.from({length:5},(_,slot)=>({slot,expectedVersion:0,entry:{sex:'unknown',weight:'5',hatchDate:'2026-09-01'}}))};
+ const invalid=structuredClone(body);invalid.entries[4].entry.sex='';const bad=await f.command(invalid);assert.equal(bad.status,422,bad.body);assert.match(bad.json().error,/개체 5/);assert.equal((await f.get()).json().reservations[0].completed,0);
+ assert.ok((await f.get()).json().reservations[0].entries.every(e=>e===null));
+ const upsert=f.repository.upsertRows.bind(f.repository);f.repository.upsertRows=async rows=>{if(rows.some(r=>r.key.startsWith('vendor_entries_v1::')))throw Error('isolated write failure');return upsert(rows);};
+ assert.equal((await f.command(body)).status,500);f.repository.upsertRows=upsert;
+ assert.ok((await f.get()).json().reservations[0].entries.every(e=>e===null));
+ assert.equal((await f.command(body)).status,200);f.restart();assert.equal((await f.get()).json().reservations[0].completed,5);
+});
+
+test('batch conflicts, duplicate slots, unowned reservations and deadlines cannot partially overwrite entries',async t=>{
+ const f=await fixture(t),r=(await f.command({type:'reserve',date:'2026-10-14',quantity:5})).json().reservations[0];
+ const body={type:'save-entries',id:r.id,submit:false,entries:Array.from({length:5},(_,slot)=>({slot,expectedVersion:0,entry:{sex:'male',weight:'5',hatchDate:'2026-09-01'}}))};
+ assert.equal((await f.command({...body,entries:[body.entries[0],body.entries[0]]})).status,422);
+ assert.equal((await f.command({...body,id:randomUUID()})).status,403);
+ const results=await Promise.all([f.command(body),f.command({...body,entries:body.entries.map(e=>({...e,entry:{...e.entry,weight:'9'}}))})]);assert.deepEqual(results.map(r=>r.status).sort(),[200,409]);
+ const rows=(await f.get()).json().reservations[0].entries;assert.equal(new Set(rows.map(e=>e.weight)).size,1);assert.ok(rows.every(e=>e.version===1));
+ f.advance(12*86400000);assert.equal((await f.command({...body,entries:body.entries.map(e=>({...e,expectedVersion:1}))})).status,409);
+ assert.deepEqual((await f.get()).json().reservations[0].entries,rows);
+});
+
+test('batch photos remain associated with their row and invalid media rolls back every row',async t=>{
+ const f=await fixture(t),view=(await f.command({type:'reserve',date:'2026-10-14',quantity:5})).json(),r=view.reservations[0];
+ const channel={id:'national-cre',name:'전국크레자랑',status:'active',dataAdapter:'platform'},context={profile:{id:view.entryState.ownerId,members:[{channelId:channel.id,vendorId:f.vendorId}]},channel,vendor:{id:f.vendorId},catalog:{channels:[channel]}};
+ const service=createVendorEntries(f.repository),animal=randomUUID(),parent=randomUUID();
+ for(const id of [animal,parent])await service.addMedia(context,{id,url:'/assets/'+id+'.webp',thumbnailUrl:'/assets/'+id+'-thumb.webp',size:100,thumbnailSize:50});
+ const body={type:'save-entries',id:r.id,submit:true,entries:[0,1].map(slot=>({slot,expectedVersion:0,entry:{sex:'unknown',weight:'8',hatchDate:'2026-09-01',photoIds:slot===0?[animal]:[]},parents:{sire:{photoId:slot===0?parent:randomUUID()}}}))};
+ assert.equal((await f.command(body)).status,422);assert.ok((await f.get()).json().reservations[0].entries.every(e=>e===null));
+ body.entries[1].parents={};const saved=await f.command(body);assert.equal(saved.status,200,saved.body);
+ const result=saved.json(),rows=result.reservations[0].entries;assert.deepEqual(rows[0].photoIds,[animal]);assert.deepEqual(rows[1].photoIds,[]);
+ assert.equal(result.entryState.parents.find(p=>p.id===rows[0].sireId).photoId,parent);assert.ok(!rows[1].sireId);
+ const queue=(await f.call(f.client,'GET','/api/platform/channels/national-cre/entries',undefined,f.admin)).json();assert.equal(queue.groups[0].entries.length,2);
+});

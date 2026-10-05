@@ -56,12 +56,19 @@ function createNationalBroadcast(repository,{now=Date.now,entries,notificationSe
   if(!repository.compareAndSwapRows)throw fail('방송 저장소를 확인해 주세요.',503);
   const {state,raw}=await read(context.channel),requestId=String(input.requestId||''),type=input.type;
   if(!/^[a-zA-Z0-9_-]{8,80}$/.test(requestId))throw fail('요청을 다시 확인해 주세요.',422);
-  const allowed=operator?['session','defaults','region','cancel']:['reserve','save-entry','reopen-entry','pickup'];
+  const allowed=operator?['session','defaults','region','cancel']:['reserve','save-entry','save-entries','reopen-entry','pickup'];
   if(!allowed.includes(type))throw fail('이 작업을 실행할 수 없어요.',403);
   const clean={...input};for(const k of ['requestId','code','token','bookingCode'])delete clean[k];
   const signature=crypto.createHash('sha256').update(JSON.stringify(clean)).digest('hex'),requestKey=(operator?'operator':context.vendor.id)+':'+requestId,prior=state.requests.find(r=>r.key===requestKey);
   if(prior){if(prior.signature!==signature)throw fail('요청 내용이 변경됐어요. 다시 확인해 주세요.');return {result:prior.result,duplicate:true};}
   let r,result='',action='';
+  if(type==='save-entries'){
+   r=state.reservations.find(r=>r.id===input.id&&r.vendorId===context.vendor.id&&r.status==='confirmed');
+   if(!r||!context.profile)throw fail('출품할 방송을 다시 확인해 주세요.',403);
+   if(now()>=Date.parse(session(state,r.date).entriesDueAt))throw fail('개체 등록 기한이 지났어요. 운영자에게 문의해 주세요.');
+   if(!Array.isArray(input.entries)||!input.entries.length||input.entries.length>5||input.entries.some(row=>!row||!Number.isInteger(row.slot)||row.slot<0||row.slot>4)||new Set(input.entries.map(row=>row.slot)).size!==input.entries.length)throw fail('등록할 개체를 다시 확인해 주세요.',422);
+   return entries.saveMany(context,input.entries.map(row=>({broadcast:{id:r.id,date:r.date,slot:row.slot,today:Legacy.day(now())},input:{type:input.submit===true?'submit':'save',entry:{...row.entry,id:r.entryIds[row.slot]},parents:row.parents,expectedVersion:row.expectedVersion}})),requestId);
+  }
   if(type==='save-entry'||type==='reopen-entry'){
    r=state.reservations.find(r=>r.id===input.id&&r.vendorId===context.vendor.id&&r.status==='confirmed');
    if(!r||!Number.isInteger(input.slot)||input.slot<0||input.slot>4)throw fail('출품할 방송과 개체를 확인해 주세요.',403);

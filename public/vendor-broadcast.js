@@ -8,6 +8,8 @@
  const koreanDay=value=>new Date(Date.parse(value)+9*3600000).toISOString().slice(0,10);
  let state,month='',selected='',slot=0,busy=false,draft=null,dirty=false,recovery={},recoveryQueue=Promise.resolve(),photoBusy=false,lastTrigger=null;
  const removed=new Map(),photoUrls=new Map();
+ let bulkDrafts=null;
+ const rowHasData=row=>!!(row.sex||row.weight||row.hatchDate||row.note||row.photoIds?.length||row.parents?.sire?.photoId||row.parents?.dam?.photoId);
  function message(s){$('#notice').textContent=s;setTimeout(()=>{$('#notice').textContent=''},4500)}
  function params(){return {...(Store.code?{code:Store.code}:{token:Store.token}),event:'national-cre'}}
  function reservation(date=selected){return state.reservations.find(r=>r.date===date&&r.status==='confirmed')}
@@ -25,7 +27,7 @@
  }
  function persistRecovery(){const value={nationalDrafts:structuredClone(recovery)};recoveryQueue=recoveryQueue.catch(()=>{}).then(()=>Store.recovery.save(value));return recoveryQueue}
  function fields(){const f=$('#entry-step-form');if(!f)return draft;const data=Object.fromEntries(new FormData(f));return {...draft,sex:data.sex||'',weight:String(data.weight||''),hatchDate:data.hatchDate||'',note:data.note||''}}
- function capture(){if(!editable()||!draft)return;draft=fields();dirty=true;recovery[draft.id]={...draft};persistRecovery().catch(e=>{$('#step-error').textContent=e.message})}
+ function capture(){if($('#bulk-entry-form')){captureBulk();return}if(!editable()||!draft)return;draft=fields();dirty=true;recovery[draft.id]={...draft};persistRecovery().catch(e=>{$('#step-error').textContent=e.message})}
  function photo(id){return state.entryState.media.find(m=>m.id===id)||Store.getState().media.find(m=>m.id===id)}
  function photoBlock(readonly){
   return `<fieldset class="parent-photo-fields"><legend>부모 개체 사진 <span class="muted">(선택)</span></legend><div class="parent-photo-grid">${[['sire','부 개체'],['dam','모 개체']].map(([side,label])=>{
@@ -65,6 +67,8 @@
  }
  function openDate(date,index){
   selected=date;const d=state.dates.find(d=>d.date===date),r=reservation(date);if(!d)return;
+  if(r&&index===undefined){openBulk();return}
+  bulkDrafts=null;
   if(!r){modal(dateLabel(date),`<div class="broadcast-empty"><p class="eyebrow">${esc(d.regionName)} · 오후 8시</p><h3>${d.regionName===state.vendor.region?'개체 미등록':esc(d.regionName)+' 방송'}</h3><p class="muted">${esc(d.reason||'업체당 5마리')}</p></div>${d.maxQuantityAvailable===5?'<button class="primary" data-action="reserve">5마리 출품 신청</button>':''}<p class="form-error" id="step-error" role="alert"></p>`);return}
   if(index===undefined&&r.completed===5){
    draft=null;dirty=false;
@@ -83,7 +87,60 @@
    </div><div class="step-footer">${slot?'<button type="button" class="secondary" data-action="prev">이전</button>':''}${canEdit&&!conflict?`<button class="primary" type="submit">${slot===4?'제출 완료':'제출하고 다음'}</button>`:e?.status==='submitted'&&Date.parse(r.session.entriesDueAt)>Date.parse(state.now)?'<button class="primary" type="button" data-action="reopen">수정하기</button>':'<button class="primary" type="button" data-action="next">다음</button>'}</div></form>`,true);
   sheet.querySelector('[aria-current=step]')?.focus({preventScroll:true});
  }
+ function bulkEditable(i){return editable(entry(reservation(),i))}
+ function bulkPhotos(row,i,readonly){
+  return `<details class="bulk-photos"><summary>사진 <span class="muted">${(row.photoIds?.length||0)+['sire','dam'].filter(side=>row.parents?.[side]?.photoId).length||'선택'}</span></summary><div class="bulk-photo-grid">${[['animal','개체'],['sire','부 개체'],['dam','모 개체']].map(([side,label])=>{
+   const id=side==='animal'?row.photoIds?.[0]:row.parents?.[side]?.photoId,m=id&&photo(id),url=m&&(m.thumbnailUrl||m.url)||photoUrls.get(id);
+   return `<div class="parent-photo"><label class="photo-picker ${url?'has-photo':''}">${url?`<img src="${esc(url)}" alt="개체 ${i+1} ${label} 사진">`:''}<span>${label}<small>${readonly?(url?'등록됨':'미등록'):(url?'사진 교체':'사진 추가')}</small></span>${readonly?'':`<input type="file" accept="image/jpeg,image/png,image/webp" data-bulk-photo="${side}" data-index="${i}" aria-label="개체 ${i+1} ${label} 사진 ${url?'교체':'추가'}">`}</label>${url&&!readonly?`<button type="button" class="photo-remove" data-action="bulk-remove-photo" data-index="${i}" data-side="${side}" aria-label="개체 ${i+1} ${label} 사진 삭제"><span aria-hidden="true">×</span></button>`:''}${removed.has(row.id+side)&&!readonly?`<button class="photo-undo" type="button" data-action="bulk-undo-photo" data-index="${i}" data-side="${side}">삭제 취소</button>`:''}</div>`;
+  }).join('')}</div></details>`;
+ }
+ function openBulk(){
+  const r=reservation();draft=null;
+  bulkDrafts=r.entryIds.map((id,i)=>{
+   const e=r.entries[i],saved=recovery[id];
+   return saved&&bulkEditable(i)?structuredClone(saved):{id,version:e?.version||0,sex:e?.sex||'',weight:e?.weight||'',hatchDate:e?.hatchDate||'',note:e?.note||'',photoIds:e?.photoIds||[],parents:Object.fromEntries(['sire','dam'].map(side=>[side,{photoId:state.entryState.parents.find(p=>p.id===e?.[side+'Id'])?.photoId||''}]))};
+  });
+  dirty=bulkDrafts.some((row,i)=>bulkEditable(i)&&!!recovery[row.id]);
+  modal(dateLabel(selected),`<form id="bulk-entry-form" novalidate><div class="entry-step-scroll bulk-scroll"><div class="entry-progress"><h3>출품 개체</h3><span>${r.completed} / 5마리 제출</span></div>
+   <div class="bulk-columns" aria-hidden="true"><span>개체</span><span>성별</span><span>체중</span><span>출생년월일</span><span>추가 정보</span><span>사진</span></div>
+   <div class="bulk-rows">${bulkDrafts.map((row,i)=>{
+    const e=r.entries[i],conflict=bulkEditable(i)&&row.version!==(e?.version||0),readonly=!bulkEditable(i)||conflict;
+    return `<section class="bulk-row" data-bulk-row="${i}" aria-labelledby="bulk-label-${i}"><div class="bulk-row-heading"><h4 id="bulk-label-${i}">개체 ${i+1}</h4><span class="muted">${labels[e?.status]||'미등록'}</span>${e?.status==='submitted'&&Date.parse(r.session.entriesDueAt)>Date.parse(state.now)?`<button type="button" class="text" data-action="bulk-reopen" data-index="${i}">수정</button>`:''}</div>
+    <label class="bulk-field"><span>성별</span><select name="sex-${i}" aria-label="개체 ${i+1} 성별" ${readonly?'disabled':''}><option value="">선택</option>${[['female','암컷'],['male','수컷'],['unknown','미구분']].map(([v,l])=>`<option value="${v}" ${row.sex===v?'selected':''}>${l}</option>`).join('')}</select></label>
+    <label class="bulk-field"><span>체중 (g)</span><input name="weight-${i}" aria-label="개체 ${i+1} 체중 (g)" type="number" inputmode="decimal" min=".01" max="1000" step=".01" placeholder="g" value="${esc(row.weight)}" ${readonly?'readonly':''}></label>
+    <label class="bulk-field bulk-date"><span>출생년월일</span><input name="hatchDate-${i}" aria-label="개체 ${i+1} 출생년월일" type="date" max="${koreanDay(state.now)}" value="${esc(row.hatchDate)}" ${readonly?'readonly':''}></label>
+    <label class="bulk-field bulk-note"><span>추가 정보 <small>선택</small></span><textarea name="note-${i}" aria-label="개체 ${i+1} 추가 정보" rows="1" maxlength="600" placeholder="모프, 특징 등" ${readonly?'readonly':''}>${esc(row.note)}</textarea></label>
+    ${bulkPhotos(row,i,readonly)}${e?.reason?`<p class="entry-reason">${esc(e.reason)}</p>`:''}${conflict?`<p class="entry-reason">다른 화면에서 변경된 개체예요.</p><button type="button" class="text" data-action="bulk-latest" data-index="${i}">최신 자료 불러오기</button>`:''}</section>`;
+   }).join('')}</div><p id="step-error" class="form-error" role="alert"></p>
+   ${r.completed===5?`<div class="pickup-line"><div><strong>파르게 수거</strong><span>${r.pickup?'수거 완료':'수거 전'}</span></div><button type="button" class="pickup-button" data-action="pickup">${r.pickup?'수거 전으로 변경':'수거 완료 표시'}</button></div>`:''}
+   </div><div class="step-footer">${bulkDrafts.some((_,i)=>bulkEditable(i))?'<button type="button" class="secondary" data-action="bulk-save">임시 저장</button><button type="submit" class="primary">일괄 제출</button>':'<button type="button" class="primary" data-action="close">닫기</button>'}</div></form>`,true);
+  sheet.classList.add('bulk-sheet');
+ }
+ function captureBulk(){
+  if(!bulkDrafts)return;
+  for(const [i,row] of bulkDrafts.entries()){
+   if(!bulkEditable(i)||row.version!==(reservation().entries[i]?.version||0))continue;
+   for(const key of ['sex','weight','hatchDate','note'])row[key]=$(`[name="${key}-${i}"]`)?.value||'';
+   recovery[row.id]=structuredClone(row);
+  }
+  dirty=true;persistRecovery().catch(e=>{$('#step-error').textContent=e.message});
+ }
+ async function commitBulk(submit){
+  if(!bulkDrafts||(!dirty&&!submit))return true;
+  captureBulk();await recoveryQueue;
+  const rows=bulkDrafts.map((row,i)=>({row,i})).filter(({row,i})=>bulkEditable(i)&&(rowHasData(row)||!!reservation().entries[i]));
+  if(!rows.length){if(submit)throw Error('등록할 개체 정보를 입력해 주세요.');dirty=false;return true}
+  for(const {row,i} of rows){
+   if(row.version!==(reservation().entries[i]?.version||0))throw Error(`개체 ${i+1}: 최신 자료를 불러온 뒤 다시 저장해 주세요.`);
+   if(submit){for(const key of ['sex','weight','hatchDate']){const input=$(`[name="${key}-${i}"]`);input.required=true;if(!input.checkValidity()){input.setAttribute('aria-invalid','true');input.focus();input.reportValidity();throw Error(`개체 ${i+1}: 성별·체중·출생년월일을 확인해 주세요.`)}input.removeAttribute('aria-invalid')}}
+   for(const id of [...(row.photoIds||[]),...Object.values(row.parents||{}).map(p=>p.photoId)].filter(Boolean)){if(Store.getState().media.find(m=>m.id===id)?.pending)await Store.send({type:'retry-photo',id})}
+  }
+  state=await request({type:'save-entries',id:reservation().id,submit,entries:rows.map(({row,i})=>({slot:i,expectedVersion:row.version,entry:{sex:row.sex,weight:row.weight,hatchDate:row.hatchDate,note:row.note,photoIds:row.photoIds||[]},parents:row.parents}))});
+  for(const {row} of rows){delete recovery[row.id];for(const side of ['animal','sire','dam'])removed.delete(row.id+side)}
+  await persistRecovery();dirty=false;return true;
+ }
  async function commit(submit){
+  if($('#bulk-entry-form'))return commitBulk(submit);
   if(!draft||!editable()||(!dirty&&!submit))return true;
   capture();await recoveryQueue;
   const r=reservation(),id=draft.id;
@@ -98,8 +155,17 @@
   const url=URL.createObjectURL(file),img=new Image();
   try{await new Promise((ok,no)=>{img.onload=ok;img.onerror=()=>no(Error('JPG 또는 PNG 사진을 선택해 주세요.'));img.src=url});const scale=Math.min(1,800/Math.max(img.width,img.height)),canvas=document.createElement('canvas');canvas.width=Math.round(img.width*scale);canvas.height=Math.round(img.height*scale);const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0,canvas.width,canvas.height);const blob=await new Promise(ok=>canvas.toBlob(ok,'image/jpeg',.72));if(!blob||blob.size>350000)throw Error('사진 크기를 줄여 다시 선택해 주세요.');return blob}finally{URL.revokeObjectURL(url)}
  }
- document.addEventListener('input',e=>{if(e.target.type!=='file'&&e.target.closest('#entry-step-form'))capture()});
+ document.addEventListener('input',e=>{if(e.target.type!=='file'&&e.target.closest('#entry-step-form,#bulk-entry-form')){e.target.removeAttribute('aria-invalid');capture()}});
  document.addEventListener('change',async e=>{
+  if(e.target.dataset.bulkPhoto){
+   const i=Number(e.target.dataset.index),side=e.target.dataset.bulkPhoto,file=e.target.files?.[0];
+   if(!file||busy||photoBusy||!bulkEditable(i))return;
+   captureBulk();photoBusy=true;setBusy(true);const scroll=$('.bulk-scroll').scrollTop;
+   try{const blob=await imageBlob(file),id=uid(),url=URL.createObjectURL(blob);photoUrls.set(id,url);const result=await Store.send({type:'media',media:{id,blob,url,thumbnailUrl:url,label:`개체 ${i+1} ${side}`}});state.entryState.media=result.state.media;
+    if(side==='animal')bulkDrafts[i].photoIds=[id];else bulkDrafts[i].parents[side]={photoId:id};
+    recovery[bulkDrafts[i].id]=structuredClone(bulkDrafts[i]);await persistRecovery();openBulk();$(`[data-bulk-row="${i}"] details`).open=true;$('.bulk-scroll').scrollTop=scroll;
+   }catch(error){$('#step-error').textContent=error.message}finally{photoBusy=false;setBusy(false)}return;
+  }
   const side=e.target.dataset.photo,file=e.target.files?.[0];if(!side||!file||busy||photoBusy||!editable())return;
   capture();photoBusy=true;setBusy(true);
   try{const blob=await imageBlob(file),id=uid(),url=URL.createObjectURL(blob);photoUrls.set(id,url);const result=await Store.send({type:'media',media:{id,blob,url,thumbnailUrl:url,label:side==='sire'?'부 개체':'모 개체'}});state.entryState.media=result.state.media;draft.parents[side]={photoId:id};recovery[draft.id]=structuredClone(draft);await persistRecovery();dirty=true;openDate(selected,slot)}
@@ -111,15 +177,32 @@
   if(b.dataset.month){const d=new Date(month+'-01T12:00:00Z');d.setUTCMonth(d.getUTCMonth()+Number(b.dataset.month));const next=d.toISOString().slice(0,7);if(next>='2026-10'&&next<=state.dates.at(-1).date.slice(0,7)){month=next;renderCalendar()}return}
   if(b.dataset.slot!==undefined){run(async()=>{await commit(false);openDate(selected,Number(b.dataset.slot))});return}
   const action=b.dataset.action;
+  if(action==='bulk-save'){run(async()=>{await commitBulk(false);openBulk();renderCalendar();message('입력한 개체를 저장했어요')});return}
+  if(action==='bulk-reopen'){run(async()=>{await commitBulk(false);const i=Number(b.dataset.index);state=await request({type:'reopen-entry',id:reservation().id,slot:i,expectedVersion:reservation().entries[i].version});openBulk();$(`[name="sex-${i}"]`).focus()});return}
+  if(action==='bulk-latest'){run(async()=>{const i=Number(b.dataset.index);captureBulk();delete recovery[bulkDrafts[i].id];await persistRecovery();await load();openBulk()});return}
+  if(action==='bulk-remove-photo'||action==='bulk-undo-photo'){
+   const i=Number(b.dataset.index),side=b.dataset.side;if(!bulkEditable(i))return;
+   run(async()=>{captureBulk();const row=bulkDrafts[i],key=row.id+side,scroll=$('.bulk-scroll').scrollTop;
+    if(action==='bulk-remove-photo'){removed.set(key,side==='animal'?row.photoIds:row.parents[side]);if(side==='animal')row.photoIds=[];else row.parents[side]={photoId:''}}
+    else{if(side==='animal')row.photoIds=removed.get(key);else row.parents[side]=removed.get(key);removed.delete(key)}
+    recovery[row.id]=structuredClone(row);await persistRecovery();openBulk();$(`[data-bulk-row="${i}"] details`).open=true;$('.bulk-scroll').scrollTop=scroll;
+   });return;
+  }
   if(action==='close'){close();return}
   if(action==='remove-photo'||action==='undo-photo'){run(async()=>{capture();const key=draft.id+b.dataset.side;if(action==='remove-photo'){removed.set(key,draft.parents[b.dataset.side]);draft.parents[b.dataset.side]={photoId:''}}else{draft.parents[b.dataset.side]=removed.get(key);removed.delete(key)}recovery[draft.id]=structuredClone(draft);await persistRecovery();openDate(selected,slot)});return}
   if(action==='discard'){run(async()=>{delete recovery[draft.id];await persistRecovery();dirty=false;await load();openDate(selected,slot)});return}
-  if(action==='reserve')run(async()=>{state=await request({type:'reserve',date:selected,quantity:5});openDate(selected,0);renderCalendar()});
+  if(action==='reserve')run(async()=>{state=await request({type:'reserve',date:selected,quantity:5});openDate(selected);renderCalendar()});
   if(action==='prev'||action==='next')run(async()=>{await commit(false);openDate(selected,action==='prev'?Math.max(0,slot-1):slot<4?slot+1:undefined)});
   if(action==='reopen')run(async()=>{state=await request({type:'reopen-entry',id:reservation().id,slot,expectedVersion:entry().version});openDate(selected,slot)});
   if(action==='pickup')run(async()=>{const r=reservation();state=await request({type:'pickup',id:r.id,expectedVersion:r.version,pickup:!r.pickup});openDate(selected)});
  });
- document.addEventListener('submit',e=>{if(e.target.id!=='entry-step-form')return;e.preventDefault();if(!e.target.reportValidity())return;run(async()=>{await commit(true);if(slot<4)openDate(selected,slot+1);else{const missing=reservation().entries.findIndex(pending);openDate(selected,missing<0?undefined:missing)}renderCalendar()})});
+ document.addEventListener('submit',e=>{
+  if(e.target.id==='bulk-entry-form'){
+   e.preventDefault();if(busy||photoBusy)return;captureBulk();
+   for(const [i,row] of bulkDrafts.entries())for(const key of ['sex','weight','hatchDate']){const input=$(`[name="${key}-${i}"]`);input.required=bulkEditable(i)&&rowHasData(row);if(input.required&&!input.checkValidity()){input.setAttribute('aria-invalid','true');input.focus();input.reportValidity();$('#step-error').textContent=`개체 ${i+1}: 성별·체중·출생년월일을 확인해 주세요.`;return}}
+   run(async()=>{await commitBulk(true);openBulk();renderCalendar();message('입력한 개체를 제출했어요')});return;
+  }
+  if(e.target.id!=='entry-step-form')return;e.preventDefault();if(!e.target.reportValidity())return;run(async()=>{await commit(true);if(slot<4)openDate(selected,slot+1);else{const missing=reservation().entries.findIndex(pending);openDate(selected,missing<0?undefined:missing)}renderCalendar()})});
  $('#close').onclick=close;sheet.addEventListener('cancel',e=>{e.preventDefault();close()});sheet.addEventListener('close',()=>{draft=null;dirty=false;(lastTrigger?.isConnected?lastTrigger:$('#refresh')).focus()});
  $('#refresh').onclick=load;window.addEventListener('beforeunload',e=>{if(busy||photoBusy){e.preventDefault();e.returnValue=''}});
  load();
