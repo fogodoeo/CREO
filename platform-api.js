@@ -1094,6 +1094,7 @@ function createPlatformApi({
     if (!repository) throw new Error('repository is required');
     const testDeliveryChannels = new Set(String(checkoutTestDeliveryChannels).split(',').map(id => id.trim()).filter(id => /^checkout-test-[a-f0-9]{16}$/.test(id)));
     const vendorDirectory = require('./vendor-directory').createVendorDirectory(repository);
+    const saveVendorLogo = require('./vendor-logo').createVendorLogo(vendorLogoStorage);
     const vendorEntries = require('./vendor-entries').createVendorEntries(repository, {
         resolveMediaUrl: value => entryPhotoStorage ? entryPhotoStorage.resolve(value) : value,
         maxMediaBytes: entryPhotoMaxBytes
@@ -1127,7 +1128,7 @@ function createPlatformApi({
         smsProvider: notificationService?.provider, buyerAccount, notificationService,
         channelFor: async () => (await loadCatalog()).channels.find(c => Booking.enabled(c) && ['draft','active'].includes(c.status)),
         vendorsFor: () => vendorDirectory.list(Booking.CHANNEL_ID),
-        saveLogo:require('./vendor-logo').createVendorLogo(vendorLogoStorage),
+        saveLogo:saveVendorLogo,
         deletionContext:vendorLifecycle.inspect,reviewDeletion:vendorLifecycle.review,
         taskSummary:async id=>{
             const catalog=await loadCatalog(),channel=catalog.channels.find(c=>c.id===Booking.CHANNEL_ID),vendor=await vendorDirectory.find(Booking.CHANNEL_ID,id),profile=await vendorDirectory.profileFor(Booking.CHANNEL_ID,id);
@@ -2391,6 +2392,7 @@ function createPlatformApi({
                 id: context.vendor.id,
                 directoryRevision: context.vendor.directoryRevision || 0,
                 name: context.vendor.name,
+                logoUrl: context.vendor.logoUrl || '',
                 manager: context.vendor.manager || '',
                 phone: context.vendor.phone || '',
                 inquiryPhone: Inquiry.inquiryPhone(context.vendor),
@@ -3615,6 +3617,31 @@ function createPlatformApi({
                     if (!fresh) throw buyerInputError('업체 정보를 다시 불러와 주세요.',409);
                     const result = await reportOrganizerShipping(fresh,body);
                     replyJson(res,200,{...await vendorCheckoutPayload(fresh),...result});
+                });
+                return true;
+            }
+
+            if (segments.length === 2 && segments[0] === 'vendor-checkout' && segments[1] === 'logo' && method === 'POST') {
+                const body = await readJson(req, 7100000);
+                const credential = await resolveVendorCheckoutCredential(body);
+                const context = await vendorCheckoutContext(credential, body.event || '');
+                if (!context) throw buyerInputError('업체 전용 링크를 다시 열어 주세요.', 401);
+                // Account members must use the owner-checked profile route.
+                if (context.access && context.access.kind !== 'phone') throw buyerInputError('업체 정보 화면에서 변경해 주세요.', 403);
+                await withMutationLock(`channel:${context.channel.id}`, async () => {
+                    let fresh = await vendorCheckoutContext(context.token, context.channel.id);
+                    if (!fresh || fresh.vendor.active === false) throw buyerInputError('업체 전용 링크를 다시 열어 주세요.', 401);
+                    if (!Number.isInteger(body.directoryRevision) || body.directoryRevision !== (fresh.vendor.directoryRevision || 0)) throw buyerInputError('업체 정보가 변경됐어요. 새로고침한 뒤 다시 선택해 주세요.', 409);
+                    if (!fresh.profile) {
+                        await vendorDirectory.enroll(fresh.channel.id, fresh.vendor.id);
+                        fresh = await vendorCheckoutContext(context.token, context.channel.id);
+                    }
+                    const logoUrl = body.remove === true ? '' : await saveVendorLogo(fresh.profile.id, body.data);
+                    await vendorDirectory.update(fresh.channel.id, {...fresh.vendor, logoUrl}, fresh.vendor.directoryRevision);
+                    await touchVendorChannels(fresh.channel.id, fresh.vendor.id);
+                    touchChannel(fresh.channel.id);
+                    const saved = await vendorDirectory.find(fresh.channel.id, fresh.vendor.id);
+                    replyJson(res, 200, {vendor: {logoUrl: saved.logoUrl || '', directoryRevision: saved.directoryRevision}});
                 });
                 return true;
             }

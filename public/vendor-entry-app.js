@@ -148,8 +148,14 @@
   function profileCardEnabled(p) {
     return Array.isArray(p.paymentMethods) ? p.paymentMethods.includes('card') : p.cardEnabled === true;
   }
+  function profileLogoMarkup(p) {
+    return `<div class="section-head"><h2>업체 로고${p.logoUrl ? '' : '<span class="profile-attention-dot" aria-hidden="true"></span>'} <span class="optional">선택</span></h2><span class="muted">${p.logoUrl ? '' : '미등록'}</span></div>
+      <div class="profile-logo-controls">${p.logoUrl ? `<div class="profile-logo-preview"><img src="${esc(p.logoUrl)}" alt="${esc(p.name)} 로고"><button type="button" class="profile-logo-remove" id="profile-logo-remove" aria-label="로고 삭제">×</button></div>` : ''}<label class="profile-logo-upload secondary">${p.logoUrl ? '로고 변경' : '로고 등록'}<input id="profile-logo-file" type="file" accept="image/jpeg,image/png,image/webp" aria-label="${p.logoUrl ? '로고 변경' : '로고 등록'}" aria-describedby="profile-logo-hint"></label></div>
+      <p id="profile-logo-hint" class="muted">JPG·PNG·WebP · 5MB 이하</p>`;
+  }
   function profileFormMarkup(p, popup = false) {
     return `<form id="profile-form" novalidate>
+        ${popup ? '' : `<section class="entry-section profile-logo-section"><div id="profile-logo-content">${profileLogoMarkup(p)}</div><p id="profile-logo-error" class="inline-error" role="alert" hidden></p><p id="profile-logo-status" class="muted" role="status"></p></section>`}
         ${window.CreoVendorContactForm.markup(p,{compact:popup})}
         <section class="entry-section">${popup ? '' : '<h2 class="profile-section-title">결제 설정</h2><div class="profile-payment-heading"><h3>계좌이체</h3><span class="muted">기본</span></div>'}
         <label class="field" for="profile-bank"><span>은행</span><input id="profile-bank" maxlength="60" value="${esc(p.bankName)}" placeholder="예: 농협" ${p.bankRegistered ? 'readonly' : ''} aria-describedby="profile-bank-error"><span class="field-error" id="profile-bank-error" hidden></span></label>
@@ -160,8 +166,10 @@
         <p id="profile-error" class="inline-error" role="alert" hidden></p>${popup ? '' : '<div class="form-actions"><button class="primary" type="submit" id="profile-save">저장</button></div>'}</form>`;
   }
   function bindProfileForm(popup = false) {
+    if (!popup) bindProfileLogo();
     window.CreoVendorContactForm.bind($('profile-form').querySelector('.vendor-contact-settings'));
     $('profile-form').oninput = event => {
+        if (event.target.id === 'profile-logo-file') return;
         profileDirty = true;
         if ($(event.target.id + '-error')) { event.target.removeAttribute('aria-invalid'); errorAt(event.target.id + '-error', ''); }
         errorAt('profile-error', '');
@@ -218,6 +226,46 @@
       if (refresh) await renderProfile(); toast('업체 정보를 저장했어요'); return true;
     } catch (e) { errorAt('profile-error', e.message); return false; }
     finally { busy = false; saveButton.disabled = false; }
+  }
+  function bindProfileLogo() {
+    $('profile-logo-file').onchange = event => {
+      const file = event.target.files?.[0];
+      if (file) saveProfileLogo(file);
+    };
+    if ($('profile-logo-remove')) $('profile-logo-remove').onclick = () => {
+      if (!busy && confirm('업체 로고를 삭제할까요?')) saveProfileLogo(null);
+    };
+  }
+  async function saveProfileLogo(file) {
+    if (busy || uploading) return;
+    errorAt('profile-logo-error', '');
+    if (file && (!['image/jpeg','image/png','image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024)) {
+      errorAt('profile-logo-error', '5MB 이하의 JPG·PNG·WebP 사진을 선택해 주세요.');
+      $('profile-logo-file').value = ''; return;
+    }
+    busy = true; eventControls();
+    $('profile-save').disabled = true; $('profile-logo-file').disabled = true;
+    if ($('profile-logo-remove')) $('profile-logo-remove').disabled = true;
+    $('profile-logo-status').textContent = file ? '로고 저장 중…' : '로고 삭제 중…';
+    try {
+      const data = file ? await new Promise((resolve,reject) => {
+        const reader = new FileReader(); reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(Error('사진을 읽지 못했어요. 다시 선택해 주세요.')); reader.readAsDataURL(file);
+      }) : undefined;
+      const body = {data, remove:!file, directoryRevision:profile.directoryRevision};
+      const saved = await Store.logo(body);
+      // Keep unsaved contact/payment inputs; logo saves only update these two fields.
+      profile = {...profile, logoUrl:saved.logoUrl, directoryRevision:saved.directoryRevision};
+      $('profile-logo-content').innerHTML = profileLogoMarkup(profile); bindProfileLogo();
+      $('profile-logo-file').focus();
+      $('profile-logo-status').textContent = file ? '로고를 저장했어요' : '로고를 삭제했어요';
+    } catch (e) {
+      errorAt('profile-logo-error', e.message); $('profile-logo-status').textContent = '';
+    } finally {
+      busy = false; eventControls(); $('profile-save').disabled = false;
+      $('profile-logo-file').disabled = false; $('profile-logo-file').value = '';
+      if ($('profile-logo-remove')) $('profile-logo-remove').disabled = false;
+    }
   }
   function radioGroup(name, label, choices, selected) {
     return `<fieldset><legend>${label}</legend><div class="segments">${choices.map(([value, text]) => `<label class="segment"><input type="radio" name="${name}" value="${value}" ${selected === value ? 'checked' : ''}><span>${text}</span></label>`).join('')}</div></fieldset>`;

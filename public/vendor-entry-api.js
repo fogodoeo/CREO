@@ -152,6 +152,10 @@
       const result = await request('vendor-checkout' + (body ? '/settings' : '') + '?' + query, body);
       return result.vendor;
     },
+    async logo(body) {
+      const result = await request('vendor-checkout/logo', body, {timeout:60000});
+      return result.vendor;
+    },
     pageUrl(section, event = selected) {
       const query = new URLSearchParams({ ...credential(), event });
       if(params.get('portal')){query.set('portal',params.get('portal'));if(section==='profile')return '/vendor-access.html?section=profile&company='+encodeURIComponent(params.get('portal'));}
