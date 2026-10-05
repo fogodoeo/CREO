@@ -16,7 +16,7 @@
         "area": "서울·경기·인천",
         "shop": "수도권 기본 노선",
         "regions": [
-          "서울",
+          "서울·인천",
           "경기"
         ],
         "collectDays": [
@@ -684,7 +684,7 @@
         "area": "인천 서구",
         "shop": "넝쿨 (인천)",
         "regions": [
-          "경기"
+          "서울·인천"
         ],
         "collectDays": [
           1
@@ -693,11 +693,11 @@
         "basis": "사용자 확인: 일요일 접수 → 월요일 수거 → 화요일 대구 도착",
         "address": "인천 서구 서곶로 50 판매3동 1층 B126호",
         "location": {
-          "region": "경기",
+          "region": "서울·인천",
           "city": "인천",
           "district": "서구",
-          "id": "경기|인천|서구",
-          "cityId": "경기|인천",
+          "id": "서울·인천|인천|서구",
+          "cityId": "서울·인천|인천",
           "label": "인천 서구",
           "lat": 37.5630917,
           "lng": 126.68356775,
@@ -710,7 +710,7 @@
         "area": "인천",
         "shop": "노블레스게코 (청라)",
         "regions": [
-          "경기"
+          "서울·인천"
         ],
         "collectDays": [
           1
@@ -719,11 +719,11 @@
         "basis": "사용자 확인: 일요일 접수 → 월요일 수거 → 화요일 대구 도착",
         "address": "인천 청라동 143-9",
         "location": {
-          "region": "경기",
+          "region": "서울·인천",
           "city": "인천",
           "district": "",
-          "id": "경기|인천",
-          "cityId": "경기|인천",
+          "id": "서울·인천|인천",
+          "cityId": "서울·인천|인천",
           "label": "인천",
           "lat": 37.487084360000004,
           "lng": 126.70171808,
@@ -856,7 +856,7 @@
         "area": "서울 강남구",
         "shop": "도마뱀 세마리(강남)",
         "regions": [
-          "서울"
+          "서울·인천"
         ],
         "collectDays": [
           1
@@ -865,11 +865,11 @@
         "basis": "사용자 확인: 일요일 접수 → 월요일 수거 → 화요일 대구 도착",
         "address": "서울 강남구 선릉로328 지하1층",
         "location": {
-          "region": "서울",
+          "region": "서울·인천",
           "city": "서울",
           "district": "강남구",
-          "id": "서울|서울|강남구",
-          "cityId": "서울|서울",
+          "id": "서울·인천|서울|강남구",
+          "cityId": "서울·인천|서울",
           "label": "서울 강남구",
           "lat": 37.532512104761906,
           "lng": 126.99604564285713,
@@ -1113,7 +1113,7 @@
         "area": "서울 영등포구",
         "shop": "렙타일스테이션 (영등포)",
         "regions": [
-          "서울"
+          "서울·인천"
         ],
         "collectDays": [
           1
@@ -1122,11 +1122,11 @@
         "basis": "사용자 확인: 일요일 접수 → 월요일 수거 → 화요일 대구 도착",
         "address": "서울시 영등포구 국회대로 632, 지층 B105호",
         "location": {
-          "region": "서울",
+          "region": "서울·인천",
           "city": "서울",
           "district": "영등포구",
-          "id": "서울|서울|영등포구",
-          "cityId": "서울|서울",
+          "id": "서울·인천|서울|영등포구",
+          "cityId": "서울·인천|서울",
           "label": "서울 영등포구",
           "lat": 37.532512104761906,
           "lng": 126.99604564285713,
@@ -1191,7 +1191,7 @@
         "area": "서울 은평구",
         "shop": "렙토누리 (은평구)",
         "regions": [
-          "서울"
+          "서울·인천"
         ],
         "collectDays": [
           1
@@ -1200,11 +1200,11 @@
         "basis": "사용자 확인: 일요일 접수 → 월요일 수거 → 화요일 대구 도착",
         "address": "서울 은평구 통일로 896-1 1층",
         "location": {
-          "region": "서울",
+          "region": "서울·인천",
           "city": "서울",
           "district": "은평구",
-          "id": "서울|서울|은평구",
-          "cityId": "서울|서울",
+          "id": "서울·인천|서울|은평구",
+          "cityId": "서울·인천|서울",
           "label": "서울 은평구",
           "lat": 37.532512104761906,
           "lng": 126.99604564285713,
@@ -1370,7 +1370,7 @@
         "area": "서울 서초구",
         "shop": "무무사우르스(강남 서초)",
         "regions": [
-          "서울"
+          "서울·인천"
         ],
         "collectDays": [
           1
@@ -1379,11 +1379,11 @@
         "basis": "사용자 확인: 일요일 접수 → 월요일 수거 → 화요일 대구 도착",
         "address": "서울시 서초구 논현로 87 삼호물산 B-1406",
         "location": {
-          "region": "서울",
+          "region": "서울·인천",
           "city": "서울",
           "district": "서초구",
-          "id": "서울|서울|서초구",
-          "cityId": "서울|서울",
+          "id": "서울·인천|서울|서초구",
+          "cityId": "서울·인천|서울",
           "label": "서울 서초구",
           "lat": 37.46571,
           "lng": 127.02510455000001,
@@ -1549,7 +1549,7 @@
         "area": "서울 서대문구",
         "shop": "세븐게코 (서대문)",
         "regions": [
-          "서울"
+          "서울·인천"
         ],
         "collectDays": [
           1
@@ -1558,11 +1558,11 @@
         "basis": "사용자 확인: 일요일 접수 → 월요일 수거 → 화요일 대구 도착",
         "address": "서울 서대문구 가재울로4길 40 2층 201호",
         "location": {
-          "region": "서울",
+          "region": "서울·인천",
           "city": "서울",
           "district": "서대문구",
-          "id": "서울|서울|서대문구",
-          "cityId": "서울|서울",
+          "id": "서울·인천|서울|서대문구",
+          "cityId": "서울·인천|서울",
           "label": "서울 서대문구",
           "lat": 37.5883145,
           "lng": 126.9436478,
@@ -1673,7 +1673,7 @@
         "area": "서울 강동구",
         "shop": "아토리(강동 천호동)",
         "regions": [
-          "서울"
+          "서울·인천"
         ],
         "collectDays": [
           1
@@ -1682,11 +1682,11 @@
         "basis": "사용자 확인: 일요일 접수 → 월요일 수거 → 화요일 대구 도착",
         "address": "서울시 강동구 천호동397-74  지하1층",
         "location": {
-          "region": "서울",
+          "region": "서울·인천",
           "city": "서울",
           "district": "강동구",
-          "id": "서울|서울|강동구",
-          "cityId": "서울|서울",
+          "id": "서울·인천|서울|강동구",
+          "cityId": "서울·인천|서울",
           "label": "서울 강동구",
           "lat": 37.5511841,
           "lng": 127.1247048,
@@ -1699,7 +1699,7 @@
         "area": "서울 마포구",
         "shop": "어느날, 도마뱀 (마포)",
         "regions": [
-          "서울"
+          "서울·인천"
         ],
         "collectDays": [
           1
@@ -1708,11 +1708,11 @@
         "basis": "사용자 확인: 일요일 접수 → 월요일 수거 → 화요일 대구 도착",
         "address": "서울 마포구 만리재옛길 12-2/2층",
         "location": {
-          "region": "서울",
+          "region": "서울·인천",
           "city": "서울",
           "district": "마포구",
-          "id": "서울|서울|마포구",
-          "cityId": "서울|서울",
+          "id": "서울·인천|서울|마포구",
+          "cityId": "서울·인천|서울",
           "label": "서울 마포구",
           "lat": 37.5564608,
           "lng": 126.9135983,
@@ -1777,7 +1777,7 @@
         "area": "서울 서대문구",
         "shop": "원해크레 (서대문)",
         "regions": [
-          "서울"
+          "서울·인천"
         ],
         "collectDays": [
           1
@@ -1786,11 +1786,11 @@
         "basis": "사용자 확인: 일요일 접수 → 월요일 수거 → 화요일 대구 도착",
         "address": "서울 서대문구 독립문로 10길 5 지하 원해크레",
         "location": {
-          "region": "서울",
+          "region": "서울·인천",
           "city": "서울",
           "district": "서대문구",
-          "id": "서울|서울|서대문구",
-          "cityId": "서울|서울",
+          "id": "서울·인천|서울|서대문구",
+          "cityId": "서울·인천|서울",
           "label": "서울 서대문구",
           "lat": 37.5883145,
           "lng": 126.9436478,
@@ -1803,7 +1803,7 @@
         "area": "인천 미추홀구",
         "shop": "저스트팜(인천 미추홀구)",
         "regions": [
-          "경기"
+          "서울·인천"
         ],
         "collectDays": [
           1
@@ -1812,11 +1812,11 @@
         "basis": "사용자 확인: 일요일 접수 → 월요일 수거 → 화요일 대구 도착",
         "address": "인천광역시 미추홀구 숙골로 87번길 24, 304호",
         "location": {
-          "region": "경기",
+          "region": "서울·인천",
           "city": "인천",
           "district": "미추홀구",
-          "id": "경기|인천|미추홀구",
-          "cityId": "경기|인천",
+          "id": "서울·인천|인천|미추홀구",
+          "cityId": "서울·인천|인천",
           "label": "인천 미추홀구",
           "lat": 37.487084360000004,
           "lng": 126.70171808,
@@ -1855,7 +1855,7 @@
         "area": "인천 중구",
         "shop": "체크메이트 게코 (영종)",
         "regions": [
-          "경기"
+          "서울·인천"
         ],
         "collectDays": [
           1
@@ -1864,11 +1864,11 @@
         "basis": "사용자 확인: 일요일 접수 → 월요일 수거 → 화요일 대구 도착",
         "address": "인천광역시 중구 월촌길 38, 103호",
         "location": {
-          "region": "경기",
+          "region": "서울·인천",
           "city": "인천",
           "district": "중구",
-          "id": "경기|인천|중구",
-          "cityId": "경기|인천",
+          "id": "서울·인천|인천|중구",
+          "cityId": "서울·인천|인천",
           "label": "인천 중구",
           "lat": 37.487084360000004,
           "lng": 126.70171808,
@@ -2037,7 +2037,7 @@
         "area": "서울 도봉구",
         "shop": "크레무타 (도봉)",
         "regions": [
-          "서울"
+          "서울·인천"
         ],
         "collectDays": [
           1
@@ -2046,11 +2046,11 @@
         "basis": "사용자 확인: 일요일 접수 → 월요일 수거 → 화요일 대구 도착",
         "address": "서울특별시 도봉구 도봉로143길 72 2층",
         "location": {
-          "region": "서울",
+          "region": "서울·인천",
           "city": "서울",
           "district": "도봉구",
-          "id": "서울|서울|도봉구",
-          "cityId": "서울|서울",
+          "id": "서울·인천|서울|도봉구",
+          "cityId": "서울·인천|서울",
           "label": "서울 도봉구",
           "lat": 37.532512104761906,
           "lng": 126.99604564285713,
@@ -2294,7 +2294,7 @@
         "area": "인천 부평구",
         "shop": "털보삼촌 (부평)",
         "regions": [
-          "경기"
+          "서울·인천"
         ],
         "collectDays": [
           1
@@ -2303,11 +2303,11 @@
         "basis": "사용자 확인: 일요일 접수 → 월요일 수거 → 화요일 대구 도착",
         "address": "인천광역시 부평구 부평대로63번길 10-57, 2층",
         "location": {
-          "region": "경기",
+          "region": "서울·인천",
           "city": "인천",
           "district": "부평구",
-          "id": "경기|인천|부평구",
-          "cityId": "경기|인천",
+          "id": "서울·인천|인천|부평구",
+          "cityId": "서울·인천|인천",
           "label": "인천 부평구",
           "lat": 37.4853946,
           "lng": 126.7240402,
@@ -2494,7 +2494,7 @@
         "area": "서울 노원구",
         "shop": "페르소나 렙타일 (노원)",
         "regions": [
-          "서울"
+          "서울·인천"
         ],
         "collectDays": [
           1
@@ -2503,11 +2503,11 @@
         "basis": "사용자 확인: 일요일 접수 → 월요일 수거 → 화요일 대구 도착",
         "address": "서울특별시 노원구 노원로460 3층",
         "location": {
-          "region": "서울",
+          "region": "서울·인천",
           "city": "서울",
           "district": "노원구",
-          "id": "서울|서울|노원구",
-          "cityId": "서울|서울",
+          "id": "서울·인천|서울|노원구",
+          "cityId": "서울·인천|서울",
           "label": "서울 노원구",
           "lat": 37.532512104761906,
           "lng": 126.99604564285713,
@@ -2619,7 +2619,7 @@
         "area": "서울 강동구",
         "shop": "호리즌 (강동)",
         "regions": [
-          "서울"
+          "서울·인천"
         ],
         "collectDays": [
           1
@@ -2628,11 +2628,11 @@
         "basis": "사용자 확인: 일요일 접수 → 월요일 수거 → 화요일 대구 도착",
         "address": "서울 강동구 상일동 212 지하1층",
         "location": {
-          "region": "서울",
+          "region": "서울·인천",
           "city": "서울",
           "district": "강동구",
-          "id": "서울|서울|강동구",
-          "cityId": "서울|서울",
+          "id": "서울·인천|서울|강동구",
+          "cityId": "서울·인천|서울",
           "label": "서울 강동구",
           "lat": 37.5511841,
           "lng": 127.1247048,
@@ -2668,7 +2668,7 @@
         "area": "서울 관악구",
         "shop": "더베스트팜 (관악구)",
         "regions": [
-          "서울"
+          "서울·인천"
         ],
         "collectDays": [
           1
@@ -2677,11 +2677,11 @@
         "basis": "사용자 확인: 일요일 접수 → 월요일 수거 → 화요일 대구 도착",
         "address": "봉천동 886-5지하",
         "location": {
-          "region": "서울",
+          "region": "서울·인천",
           "city": "서울",
           "district": "관악구",
-          "id": "서울|서울|관악구",
-          "cityId": "서울|서울",
+          "id": "서울·인천|서울|관악구",
+          "cityId": "서울·인천|서울",
           "label": "서울 관악구",
           "lat": 37.4791376,
           "lng": 126.955963,
@@ -2772,7 +2772,7 @@
         "area": "인천",
         "shop": "크레랑 (인천)",
         "regions": [
-          "경기"
+          "서울·인천"
         ],
         "collectDays": [
           1
@@ -2781,11 +2781,11 @@
         "basis": "사용자 확인: 일요일 접수 → 월요일 수거 → 화요일 대구 도착",
         "address": "경기도 (상세 주소·영업시간은 매장 SNS 참고)",
         "location": {
-          "region": "경기",
+          "region": "서울·인천",
           "city": "인천",
           "district": "",
-          "id": "경기|인천",
-          "cityId": "경기|인천",
+          "id": "서울·인천|인천",
+          "cityId": "서울·인천|인천",
           "label": "인천",
           "lat": 37.487084360000004,
           "lng": 126.70171808,
@@ -2891,7 +2891,7 @@
           }
         ],
         "group": "서울A",
-        "region": "서울",
+        "region": "서울·인천",
         "source": "https://www.dodosi.co.kr/shop_view?idx=873",
         "images": [
           "https://cdn.imweb.me/upload/S2023110927991ae7d2081/72d6ec94b274c.png",
@@ -2913,11 +2913,11 @@
         "issue": "",
         "address": "서울특별시 서초구 방배중앙로 31 지호2빌딩",
         "location": {
-          "region": "서울",
+          "region": "서울·인천",
           "city": "서울",
           "district": "서초구",
-          "id": "서울|서울|서초구",
-          "cityId": "서울|서울",
+          "id": "서울·인천|서울|서초구",
+          "cityId": "서울·인천|서울",
           "lat": 37.4826229,
           "lng": 126.9918526,
           "label": "서울 서초구"
@@ -2967,7 +2967,7 @@
           }
         ],
         "group": "서울A",
-        "region": "서울",
+        "region": "서울·인천",
         "source": "https://www.dodosi.co.kr/shop_view?idx=873",
         "images": [
           "https://cdn.imweb.me/upload/S2023110927991ae7d2081/72d6ec94b274c.png",
@@ -2989,11 +2989,11 @@
         "issue": "",
         "address": "서울특별시 양천구 목동로25길 28",
         "location": {
-          "region": "서울",
+          "region": "서울·인천",
           "city": "서울",
           "district": "양천구",
-          "id": "서울|서울|양천구",
-          "cityId": "서울|서울",
+          "id": "서울·인천|서울|양천구",
+          "cityId": "서울·인천|서울",
           "lat": 37.5283479,
           "lng": 126.8610922,
           "label": "서울 양천구"
@@ -3043,7 +3043,7 @@
           }
         ],
         "group": "서울A",
-        "region": "서울",
+        "region": "서울·인천",
         "source": "https://www.dodosi.co.kr/shop_view?idx=873",
         "images": [
           "https://cdn.imweb.me/upload/S2023110927991ae7d2081/72d6ec94b274c.png",
@@ -3064,11 +3064,11 @@
         "arrivalLabel": "수.일",
         "issue": "",
         "location": {
-          "region": "서울",
+          "region": "서울·인천",
           "city": "서울",
           "district": "",
-          "id": "서울|서울",
-          "cityId": "서울|서울",
+          "id": "서울·인천|서울",
+          "cityId": "서울·인천|서울",
           "label": "서울",
           "approximate": true,
           "lat": 37.532512104761906,
@@ -3119,7 +3119,7 @@
           }
         ],
         "group": "서울A",
-        "region": "서울",
+        "region": "서울·인천",
         "source": "https://www.dodosi.co.kr/shop_view?idx=873",
         "images": [
           "https://cdn.imweb.me/upload/S2023110927991ae7d2081/72d6ec94b274c.png",
@@ -3141,11 +3141,11 @@
         "issue": "",
         "address": "서울특별시 관악구 봉천로 524",
         "location": {
-          "region": "서울",
+          "region": "서울·인천",
           "city": "서울",
           "district": "관악구",
-          "id": "서울|서울|관악구",
-          "cityId": "서울|서울",
+          "id": "서울·인천|서울|관악구",
+          "cityId": "서울·인천|서울",
           "lat": 37.4791376,
           "lng": 126.955963,
           "label": "서울 관악구"
@@ -3195,7 +3195,7 @@
           }
         ],
         "group": "서울A",
-        "region": "서울",
+        "region": "서울·인천",
         "source": "https://www.dodosi.co.kr/shop_view?idx=873",
         "images": [
           "https://cdn.imweb.me/upload/S2023110927991ae7d2081/72d6ec94b274c.png",
@@ -3217,11 +3217,11 @@
         "issue": "",
         "address": "서울특별시 송파구 거마로9길 18-8",
         "location": {
-          "region": "서울",
+          "region": "서울·인천",
           "city": "서울",
           "district": "송파구",
-          "id": "서울|서울|송파구",
-          "cityId": "서울|서울",
+          "id": "서울·인천|서울|송파구",
+          "cityId": "서울·인천|서울",
           "lat": 37.4970224,
           "lng": 127.144318,
           "label": "서울 송파구"
@@ -3271,7 +3271,7 @@
           }
         ],
         "group": "서울A",
-        "region": "서울",
+        "region": "서울·인천",
         "source": "https://www.dodosi.co.kr/shop_view?idx=873",
         "images": [
           "https://cdn.imweb.me/upload/S2023110927991ae7d2081/72d6ec94b274c.png",
@@ -3293,11 +3293,11 @@
         "issue": "",
         "address": "서울특별시 서초구 청룡마을길 47",
         "location": {
-          "region": "서울",
+          "region": "서울·인천",
           "city": "서울",
           "district": "서초구",
-          "id": "서울|서울|서초구",
-          "cityId": "서울|서울",
+          "id": "서울·인천|서울|서초구",
+          "cityId": "서울·인천|서울",
           "lat": 37.4487971,
           "lng": 127.0583565,
           "label": "서울 서초구"
@@ -3347,7 +3347,7 @@
           }
         ],
         "group": "서울B",
-        "region": "서울",
+        "region": "서울·인천",
         "source": "https://www.dodosi.co.kr/shop_view?idx=1146",
         "images": [
           "https://cdn.imweb.me/upload/S2023110927991ae7d2081/72d6ec94b274c.png",
@@ -3369,11 +3369,11 @@
         "issue": "",
         "address": "서울특별시 광진구 동일로 34",
         "location": {
-          "region": "서울",
+          "region": "서울·인천",
           "city": "서울",
           "district": "광진구",
-          "id": "서울|서울|광진구",
-          "cityId": "서울|서울",
+          "id": "서울·인천|서울|광진구",
+          "cityId": "서울·인천|서울",
           "lat": 37.5358894,
           "lng": 127.0609029,
           "label": "서울 광진구"
@@ -3424,7 +3424,7 @@
           }
         ],
         "group": "서울B",
-        "region": "서울",
+        "region": "서울·인천",
         "source": "https://www.dodosi.co.kr/shop_view?idx=1146",
         "images": [
           "https://cdn.imweb.me/upload/S2023110927991ae7d2081/72d6ec94b274c.png",
@@ -3446,11 +3446,11 @@
         "issue": "",
         "address": "서울특별시 서대문구 통일로39가길 1",
         "location": {
-          "region": "서울",
+          "region": "서울·인천",
           "city": "서울",
           "district": "서대문구",
-          "id": "서울|서울|서대문구",
-          "cityId": "서울|서울",
+          "id": "서울·인천|서울|서대문구",
+          "cityId": "서울·인천|서울",
           "lat": 37.5883145,
           "lng": 126.9436478,
           "label": "서울 서대문구"
@@ -3500,7 +3500,7 @@
           }
         ],
         "group": "서울B",
-        "region": "서울",
+        "region": "서울·인천",
         "source": "https://www.dodosi.co.kr/shop_view?idx=1146",
         "images": [
           "https://cdn.imweb.me/upload/S2023110927991ae7d2081/72d6ec94b274c.png",
@@ -3522,11 +3522,11 @@
         "issue": "",
         "address": "서울특별시 강북구 한천로140길 59 별하우스",
         "location": {
-          "region": "서울",
+          "region": "서울·인천",
           "city": "서울",
           "district": "강북구",
-          "id": "서울|서울|강북구",
-          "cityId": "서울|서울",
+          "id": "서울·인천|서울|강북구",
+          "cityId": "서울·인천|서울",
           "lat": 37.6421959,
           "lng": 127.0288315,
           "label": "서울 강북구"
@@ -3576,7 +3576,7 @@
           }
         ],
         "group": "서울B",
-        "region": "서울",
+        "region": "서울·인천",
         "source": "https://www.dodosi.co.kr/shop_view?idx=1146",
         "images": [
           "https://cdn.imweb.me/upload/S2023110927991ae7d2081/72d6ec94b274c.png",
@@ -3598,11 +3598,11 @@
         "issue": "",
         "address": "서울특별시 강서구 공항대로 219 센테니아",
         "location": {
-          "region": "서울",
+          "region": "서울·인천",
           "city": "서울",
           "district": "강서구",
-          "id": "서울|서울|강서구",
-          "cityId": "서울|서울",
+          "id": "서울·인천|서울|강서구",
+          "cityId": "서울·인천|서울",
           "lat": 37.5596349,
           "lng": 126.8320108,
           "label": "서울 강서구"
@@ -3652,7 +3652,7 @@
           }
         ],
         "group": "서울B",
-        "region": "서울",
+        "region": "서울·인천",
         "source": "https://www.dodosi.co.kr/shop_view?idx=1146",
         "images": [
           "https://cdn.imweb.me/upload/S2023110927991ae7d2081/72d6ec94b274c.png",
@@ -3674,11 +3674,11 @@
         "issue": "",
         "address": "서울특별시 강동구 상암로 8-1",
         "location": {
-          "region": "서울",
+          "region": "서울·인천",
           "city": "서울",
           "district": "강동구",
-          "id": "서울|서울|강동구",
-          "cityId": "서울|서울",
+          "id": "서울·인천|서울|강동구",
+          "cityId": "서울·인천|서울",
           "lat": 37.5511841,
           "lng": 127.1247048,
           "label": "서울 강동구"
@@ -3728,7 +3728,7 @@
           }
         ],
         "group": "서울B",
-        "region": "서울",
+        "region": "서울·인천",
         "source": "https://www.dodosi.co.kr/shop_view?idx=1146",
         "images": [
           "https://cdn.imweb.me/upload/S2023110927991ae7d2081/72d6ec94b274c.png",
@@ -3749,11 +3749,11 @@
         "arrivalLabel": "수.일",
         "issue": "",
         "location": {
-          "region": "서울",
+          "region": "서울·인천",
           "city": "서울",
           "district": "",
-          "id": "서울|서울",
-          "cityId": "서울|서울",
+          "id": "서울·인천|서울",
+          "cityId": "서울·인천|서울",
           "label": "서울",
           "approximate": true,
           "lat": 37.532512104761906,
@@ -3804,7 +3804,7 @@
           }
         ],
         "group": "서울B",
-        "region": "서울",
+        "region": "서울·인천",
         "source": "https://www.dodosi.co.kr/shop_view?idx=1146",
         "images": [
           "https://cdn.imweb.me/upload/S2023110927991ae7d2081/72d6ec94b274c.png",
@@ -3825,11 +3825,11 @@
         "arrivalLabel": "수.일",
         "issue": "",
         "location": {
-          "region": "서울",
+          "region": "서울·인천",
           "city": "서울",
           "district": "",
-          "id": "서울|서울",
-          "cityId": "서울|서울",
+          "id": "서울·인천|서울",
+          "cityId": "서울·인천|서울",
           "label": "서울",
           "approximate": true,
           "lat": 37.532512104761906,
@@ -6380,7 +6380,7 @@
           }
         ],
         "group": "인천",
-        "region": "경기",
+        "region": "서울·인천",
         "source": "https://www.dodosi.co.kr/shop_view?idx=894",
         "images": [
           "https://cdn.imweb.me/upload/S2023110927991ae7d2081/f92da58469bf9.png",
@@ -6402,11 +6402,11 @@
         "issue": "",
         "address": "인천광역시 부평구 동수로 49",
         "location": {
-          "region": "경기",
+          "region": "서울·인천",
           "city": "인천",
           "district": "부평구",
-          "id": "경기|인천|부평구",
-          "cityId": "경기|인천",
+          "id": "서울·인천|인천|부평구",
+          "cityId": "서울·인천|인천",
           "lat": 37.4853946,
           "lng": 126.7240402,
           "label": "인천 부평구"
@@ -6456,7 +6456,7 @@
           }
         ],
         "group": "인천",
-        "region": "경기",
+        "region": "서울·인천",
         "source": "https://www.dodosi.co.kr/shop_view?idx=894",
         "images": [
           "https://cdn.imweb.me/upload/S2023110927991ae7d2081/f92da58469bf9.png",
@@ -6478,11 +6478,11 @@
         "issue": "",
         "address": "인천광역시 서구 청라에메랄드로 79 커낼에비뉴",
         "location": {
-          "region": "경기",
+          "region": "서울·인천",
           "city": "인천",
           "district": "서구",
-          "id": "경기|인천|서구",
-          "cityId": "경기|인천",
+          "id": "서울·인천|인천|서구",
+          "cityId": "서울·인천|인천",
           "lat": 37.5323373,
           "lng": 126.6556909,
           "label": "인천 서구"
@@ -6532,7 +6532,7 @@
           }
         ],
         "group": "인천",
-        "region": "경기",
+        "region": "서울·인천",
         "source": "https://www.dodosi.co.kr/shop_view?idx=894",
         "images": [
           "https://cdn.imweb.me/upload/S2023110927991ae7d2081/f92da58469bf9.png",
@@ -6554,11 +6554,11 @@
         "issue": "",
         "address": "인천광역시 연수구 먼우금로 19 동남아파트",
         "location": {
-          "region": "경기",
+          "region": "서울·인천",
           "city": "인천",
           "district": "연수구",
-          "id": "경기|인천|연수구",
-          "cityId": "경기|인천",
+          "id": "서울·인천|인천|연수구",
+          "cityId": "서울·인천|인천",
           "lat": 37.4012713,
           "lng": 126.6681581,
           "label": "인천 연수구"
@@ -6608,7 +6608,7 @@
           }
         ],
         "group": "인천",
-        "region": "경기",
+        "region": "서울·인천",
         "source": "https://www.dodosi.co.kr/shop_view?idx=894",
         "images": [
           "https://cdn.imweb.me/upload/S2023110927991ae7d2081/f92da58469bf9.png",
@@ -6630,11 +6630,11 @@
         "issue": "",
         "address": "인천광역시 남동구 서창남순환로216번길 36 리치타워",
         "location": {
-          "region": "경기",
+          "region": "서울·인천",
           "city": "인천",
           "district": "남동구",
-          "id": "경기|인천|남동구",
-          "cityId": "경기|인천",
+          "id": "서울·인천|인천|남동구",
+          "cityId": "서울·인천|인천",
           "lat": 37.4225725,
           "lng": 126.7492566,
           "label": "인천 남동구"
@@ -6684,7 +6684,7 @@
           }
         ],
         "group": "인천",
-        "region": "경기",
+        "region": "서울·인천",
         "source": "https://www.dodosi.co.kr/shop_view?idx=894",
         "images": [
           "https://cdn.imweb.me/upload/S2023110927991ae7d2081/f92da58469bf9.png",
@@ -6706,11 +6706,11 @@
         "issue": "",
         "address": "인천광역시 서구 이음5로 34 제일프라자",
         "location": {
-          "region": "경기",
+          "region": "서울·인천",
           "city": "인천",
           "district": "서구",
-          "id": "경기|인천|서구",
-          "cityId": "경기|인천",
+          "id": "서울·인천|인천|서구",
+          "cityId": "서울·인천|인천",
           "lat": 37.5938461,
           "lng": 126.7114446,
           "label": "인천 서구"
@@ -6760,7 +6760,7 @@
           }
         ],
         "group": "인천",
-        "region": "경기",
+        "region": "서울·인천",
         "source": "https://www.dodosi.co.kr/shop_view?idx=894",
         "images": [
           "https://cdn.imweb.me/upload/S2023110927991ae7d2081/f92da58469bf9.png",
@@ -6781,11 +6781,11 @@
         "arrivalLabel": "수.일",
         "issue": "",
         "location": {
-          "region": "경기",
+          "region": "서울·인천",
           "city": "인천",
           "district": "",
-          "id": "경기|인천",
-          "cityId": "경기|인천",
+          "id": "서울·인천|인천",
+          "cityId": "서울·인천|인천",
           "label": "인천",
           "approximate": true,
           "lat": 37.487084360000004,
@@ -6836,7 +6836,7 @@
           }
         ],
         "group": "인천",
-        "region": "경기",
+        "region": "서울·인천",
         "source": "https://www.dodosi.co.kr/shop_view?idx=894",
         "images": [
           "https://cdn.imweb.me/upload/S2023110927991ae7d2081/f92da58469bf9.png",
@@ -6857,11 +6857,11 @@
         "arrivalLabel": "수.일",
         "issue": "",
         "location": {
-          "region": "경기",
+          "region": "서울·인천",
           "city": "인천",
           "district": "",
-          "id": "경기|인천",
-          "cityId": "경기|인천",
+          "id": "서울·인천|인천",
+          "cityId": "서울·인천|인천",
           "label": "인천",
           "approximate": true,
           "lat": 37.487084360000004,
@@ -10719,8 +10719,8 @@
       "lng": 126.4653022
     },
     {
-      "id": "서울|서울",
-      "region": "서울",
+      "id": "서울·인천|서울",
+      "region": "서울·인천",
       "city": "서울",
       "district": "",
       "label": "서울",
@@ -10728,15 +10728,15 @@
       "lng": 126.99604564285713
     },
     {
-      "id": "서울|서울|강남구",
-      "region": "서울",
+      "id": "서울·인천|서울|강남구",
+      "region": "서울·인천",
       "city": "서울",
       "district": "강남구",
       "label": "서울 강남구"
     },
     {
-      "id": "서울|서울|강동구",
-      "region": "서울",
+      "id": "서울·인천|서울|강동구",
+      "region": "서울·인천",
       "city": "서울",
       "district": "강동구",
       "label": "서울 강동구",
@@ -10744,8 +10744,8 @@
       "lng": 127.1247048
     },
     {
-      "id": "서울|서울|강북구",
-      "region": "서울",
+      "id": "서울·인천|서울|강북구",
+      "region": "서울·인천",
       "city": "서울",
       "district": "강북구",
       "label": "서울 강북구",
@@ -10753,8 +10753,8 @@
       "lng": 127.0288315
     },
     {
-      "id": "서울|서울|강서구",
-      "region": "서울",
+      "id": "서울·인천|서울|강서구",
+      "region": "서울·인천",
       "city": "서울",
       "district": "강서구",
       "label": "서울 강서구",
@@ -10762,8 +10762,8 @@
       "lng": 126.8320108
     },
     {
-      "id": "서울|서울|관악구",
-      "region": "서울",
+      "id": "서울·인천|서울|관악구",
+      "region": "서울·인천",
       "city": "서울",
       "district": "관악구",
       "label": "서울 관악구",
@@ -10771,8 +10771,8 @@
       "lng": 126.955963
     },
     {
-      "id": "서울|서울|광진구",
-      "region": "서울",
+      "id": "서울·인천|서울|광진구",
+      "region": "서울·인천",
       "city": "서울",
       "district": "광진구",
       "label": "서울 광진구",
@@ -10780,22 +10780,22 @@
       "lng": 127.0609029
     },
     {
-      "id": "서울|서울|노원구",
-      "region": "서울",
+      "id": "서울·인천|서울|노원구",
+      "region": "서울·인천",
       "city": "서울",
       "district": "노원구",
       "label": "서울 노원구"
     },
     {
-      "id": "서울|서울|도봉구",
-      "region": "서울",
+      "id": "서울·인천|서울|도봉구",
+      "region": "서울·인천",
       "city": "서울",
       "district": "도봉구",
       "label": "서울 도봉구"
     },
     {
-      "id": "서울|서울|마포구",
-      "region": "서울",
+      "id": "서울·인천|서울|마포구",
+      "region": "서울·인천",
       "city": "서울",
       "district": "마포구",
       "label": "서울 마포구",
@@ -10803,8 +10803,8 @@
       "lng": 126.9135983
     },
     {
-      "id": "서울|서울|서대문구",
-      "region": "서울",
+      "id": "서울·인천|서울|서대문구",
+      "region": "서울·인천",
       "city": "서울",
       "district": "서대문구",
       "label": "서울 서대문구",
@@ -10812,8 +10812,8 @@
       "lng": 126.9436478
     },
     {
-      "id": "서울|서울|서초구",
-      "region": "서울",
+      "id": "서울·인천|서울|서초구",
+      "region": "서울·인천",
       "city": "서울",
       "district": "서초구",
       "label": "서울 서초구",
@@ -10821,8 +10821,8 @@
       "lng": 127.02510455000001
     },
     {
-      "id": "서울|서울|송파구",
-      "region": "서울",
+      "id": "서울·인천|서울|송파구",
+      "region": "서울·인천",
       "city": "서울",
       "district": "송파구",
       "label": "서울 송파구",
@@ -10830,8 +10830,8 @@
       "lng": 127.144318
     },
     {
-      "id": "서울|서울|양천구",
-      "region": "서울",
+      "id": "서울·인천|서울|양천구",
+      "region": "서울·인천",
       "city": "서울",
       "district": "양천구",
       "label": "서울 양천구",
@@ -10839,15 +10839,15 @@
       "lng": 126.8610922
     },
     {
-      "id": "서울|서울|영등포구",
-      "region": "서울",
+      "id": "서울·인천|서울|영등포구",
+      "region": "서울·인천",
       "city": "서울",
       "district": "영등포구",
       "label": "서울 영등포구"
     },
     {
-      "id": "서울|서울|은평구",
-      "region": "서울",
+      "id": "서울·인천|서울|은평구",
+      "region": "서울·인천",
       "city": "서울",
       "district": "은평구",
       "label": "서울 은평구"
@@ -11144,8 +11144,8 @@
       "label": "익산"
     },
     {
-      "id": "경기|인천",
-      "region": "경기",
+      "id": "서울·인천|인천",
+      "region": "서울·인천",
       "city": "인천",
       "district": "",
       "label": "인천",
@@ -11153,8 +11153,8 @@
       "lng": 126.70171808
     },
     {
-      "id": "경기|인천|남동구",
-      "region": "경기",
+      "id": "서울·인천|인천|남동구",
+      "region": "서울·인천",
       "city": "인천",
       "district": "남동구",
       "label": "인천 남동구",
@@ -11162,15 +11162,15 @@
       "lng": 126.7492566
     },
     {
-      "id": "경기|인천|미추홀구",
-      "region": "경기",
+      "id": "서울·인천|인천|미추홀구",
+      "region": "서울·인천",
       "city": "인천",
       "district": "미추홀구",
       "label": "인천 미추홀구"
     },
     {
-      "id": "경기|인천|부평구",
-      "region": "경기",
+      "id": "서울·인천|인천|부평구",
+      "region": "서울·인천",
       "city": "인천",
       "district": "부평구",
       "label": "인천 부평구",
@@ -11178,8 +11178,8 @@
       "lng": 126.7240402
     },
     {
-      "id": "경기|인천|서구",
-      "region": "경기",
+      "id": "서울·인천|인천|서구",
+      "region": "서울·인천",
       "city": "인천",
       "district": "서구",
       "label": "인천 서구",
@@ -11187,8 +11187,8 @@
       "lng": 126.68356775
     },
     {
-      "id": "경기|인천|연수구",
-      "region": "경기",
+      "id": "서울·인천|인천|연수구",
+      "region": "서울·인천",
       "city": "인천",
       "district": "연수구",
       "label": "인천 연수구",
@@ -11196,8 +11196,8 @@
       "lng": 126.6681581
     },
     {
-      "id": "경기|인천|중구",
-      "region": "경기",
+      "id": "서울·인천|인천|중구",
+      "region": "서울·인천",
       "city": "인천",
       "district": "중구",
       "label": "인천 중구"

@@ -4,12 +4,13 @@ const {channelKey}=require('./platform-core');
 const Legacy=require('./broadcast-booking');
 const Inbound=require('./public/broadcast-inbound-core'),inboundData=require('./public/broadcast-inbound-data.json');
 const Origin=require('./public/broadcast-origin-core');
-const REGIONS=['서울','경기','전라·충청','대구·경북','부산·울산·경남'];
+const REGIONS=['서울·인천','경기','전라·충청','대구·경북','부산·울산·경남'];
 const START='2026-10-14',MODE='regional-cycle-v1',KEY=channelKey('national-cre','setting','national-broadcasts');
 const fail=(message,status=409)=>Object.assign(Error(message),{status});
 const uuid=()=>crypto.randomUUID();
 const validCapacity=value=>value===null||(Number.isSafeInteger(value)&&value>=5&&value%5===0);
-function regionForVendor(v){if(REGIONS.includes(v?.broadcastRegion))return REGIONS.indexOf(v.broadcastRegion);return [0,1,1,1,2,2,3,4][v?.bookingRegion]??null;}
+function regionIndex(name){return ['서울','인천','서울+인천'].includes(name)?0:REGIONS.indexOf(name);}
+function regionForVendor(v){const region=regionIndex(v?.broadcastRegion);if(region>=0)return region;return [0,0,1,1,2,2,3,4][v?.bookingRegion]??null;}
 function scheduled(date){return /^\d{4}-\d{2}-\d{2}$/.test(date||'')&&Number.isFinite(Legacy.start(date))&&Legacy.day(Legacy.start(date))===date&&date>=START&&[1,3].includes(new Date(date+'T00:00:00Z').getUTCDay());}
 function regionAt(date){
  if(!scheduled(date))return null;
@@ -158,4 +159,4 @@ function createBookingRouter(repository,options){
  for(const method of ['read','summary','vendorView','operatorView','command','resolveLink','assertNotification'])router[method]=async(first,...rest)=>(await cycle.active(first.channel||first)?cycle:old)[method](first,...rest);
  return router;
 }
-module.exports={REGIONS,START,MODE,regionAt,regionForVendor,createNationalBroadcast,createBookingRouter};
+module.exports={REGIONS,START,MODE,regionAt,regionIndex,regionForVendor,createNationalBroadcast,createBookingRouter};

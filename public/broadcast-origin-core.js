@@ -1,9 +1,10 @@
 (function(root,factory){if(typeof module==='object'&&module.exports)module.exports=factory();else root.CreoOriginCore=factory();})(typeof globalThis==='object'?globalThis:this,function(){
  'use strict';
  const compact=s=>String(s||'').normalize('NFKC').toLocaleLowerCase('en').replace(/[\s()[\]{}·.,_\-/]/g,'');
+ const regionLabel=r=>['서울','인천','서울+인천'].includes(r)?'서울·인천':r;
  function addressParts(address){
   const words=String(address||'').trim().split(/\s+/),first=words[0]||'';
-  const provinces=[['서울','서울'],['인천','경기'],['경기','경기'],['강원','경기'],['대전','전라·충청'],['세종','전라·충청'],['충청남','전라·충청'],['충남','전라·충청'],['충청북','전라·충청'],['충북','전라·충청'],['전북','전라·충청'],['전라북','전라·충청'],['전라남','전라·충청'],['전남','전라·충청'],['광주','전라·충청'],['제주','전라·충청'],['대구','대구·경북'],['경상북','대구·경북'],['경북','대구·경북'],['부산','부산·울산·경남'],['울산','부산·울산·경남'],['경상남','부산·울산·경남'],['경남','부산·울산·경남']];
+  const provinces=[['서울','서울·인천'],['인천','서울·인천'],['경기','경기'],['강원','경기'],['대전','전라·충청'],['세종','전라·충청'],['충청남','전라·충청'],['충남','전라·충청'],['충청북','전라·충청'],['충북','전라·충청'],['전북','전라·충청'],['전라북','전라·충청'],['전라남','전라·충청'],['전남','전라·충청'],['광주','전라·충청'],['제주','전라·충청'],['대구','대구·경북'],['경상북','대구·경북'],['경북','대구·경북'],['부산','부산·울산·경남'],['울산','부산·울산·경남'],['경상남','부산·울산·경남'],['경남','부산·울산·경남']];
   const found=provinces.find(([prefix])=>first.startsWith(prefix));if(!found)return null;
   const metro=/^(서울|인천|대전|세종|광주|대구|부산|울산)/.test(first);
   const city=metro?found[0]:(words[1]||'').replace(/[시군]$/,'');
@@ -12,7 +13,7 @@
   return {region:found[1],city,district,id:found[1]+'|'+city+(district?'|'+district:''),cityId:found[1]+'|'+city};
  }
  function locality(data,address,region){
-  const parsed=addressParts(address);if(!parsed||parsed.region!==region)return null;
+  const parsed=addressParts(address);if(!parsed||parsed.region!==regionLabel(region))return null;
   const places=data.places||[];
   return places.find(p=>p.id===parsed.id)||places.find(p=>p.id===parsed.cityId)||null;
  }
@@ -38,10 +39,14 @@
   const h=Math.sin(lat/2)**2+Math.cos(a.lat*rad)*Math.cos(b.lat*rad)*Math.sin(lng/2)**2;
   return 6371*2*Math.asin(Math.sqrt(Math.min(1,h)));
  }
+ function shopLocation(origin,choices){
+  const label=origin.location?.label||origin.area;
+  return choices.some(o=>o.id!==origin.id&&compact(o.shop)===compact(origin.shop)&&(o.location?.label||o.area)===label)?origin.area||label:label;
+ }
  function options(data,carrier,vendor,areaId=''){
   // Broadcast rotation and the physical departure shop are independent.
   const choices=data[carrier]?.origins||[];
-  const places=(data.places||[]).filter(p=>p.region===vendor.region),own=ownShop(choices,vendor);
+  const places=(data.places||[]).filter(p=>p.region===regionLabel(vendor.region)),own=ownShop(choices,vendor);
   const saved=vendor.inboundOrigins?.[carrier]||'',selected=saved||own?.id||'';
   let place=places.find(p=>p.id===areaId)||places.find(p=>p.id===vendor.locality?.id)||null;
   if(place&&!Number.isFinite(place.lat)){const city=places.find(p=>p.city===place.city&&!p.district&&Number.isFinite(p.lat));if(city)place={...place,lat:city.lat,lng:city.lng,approximate:true};}
@@ -53,5 +58,5 @@
   }).filter(r=>r.group<2||(!r.origin.location.approximate&&r.km<=50)).sort((a,b)=>a.group-b.group||a.km-b.km||a.origin.shop.localeCompare(b.origin.shop,'ko')):[];
   return {choices,places,own,selected,automatic:!saved&&!!own,place,recommended:scored.slice(0,3).map(r=>r.origin)};
  }
- return {compact,addressParts,locality,nameKeys,ownShop,distance,options};
+ return {compact,addressParts,locality,nameKeys,ownShop,distance,shopLocation,options};
 });

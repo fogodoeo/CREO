@@ -1,7 +1,7 @@
 'use strict';
 const crypto=require('node:crypto');
 const {channelKey}=require('./platform-core');
-const {REGIONS,regionForVendor}=require('./national-broadcast');
+const {REGIONS,regionIndex,regionForVendor}=require('./national-broadcast');
 const {profileStatus}=require('./vendor-profile-status');
 const PREFIX='/api/platform/vendor-access',ROOT='creo_vendor_access_v1::',STATE=ROOT+'directory';
 const fail=(message,status=400)=>Object.assign(new Error(message),{status});
@@ -50,7 +50,7 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
   }),deletions:(state.deletions||[]).filter(r=>r.status==='pending').map(r=>({...r,name:state.companies.find(c=>c.id===r.companyId)?.name||'업체'}))};
  }
  async function preregister(body){
-  const id=String(body.id||''),target=phone(body.loginPhone),region=REGIONS.indexOf(body.region),name=String(body.name||'').trim();
+  const id=String(body.id||''),target=phone(body.loginPhone),region=regionIndex(body.region),name=String(body.name||'').trim();
   if(!/^[-a-zA-Z0-9_]{1,80}$/.test(id)||!target||region<0||!name||name.length>40)throw fail('업체명·지역·대표 로그인 번호를 확인해 주세요.',422);
   const existing=await repository.getRecord('national-cre','vendor',id);
   if(existing?.active===false)throw fail('사용 중지된 업체예요. 업체 관리에서 확인해 주세요.',409);
@@ -182,8 +182,8 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
    if(route==='/search'&&method==='GET'){
     if(!s)throw fail('먼저 로그인해 주세요.',401);
     const query=String(url.searchParams.get('q')||'').trim().slice(0,40),state=(await read(STATE)).value||fresh();
-    const selectedRegion=url.searchParams.get('region');
-    const list=(query||REGIONS.includes(selectedRegion))?(await vendorsFor()).filter(v=>v.active!==false&&companyName(v.name).includes(companyName(query))&&(!selectedRegion||REGIONS[regionForVendor(v)]===selectedRegion)).map(v=>{
+    const selectedRegion=url.searchParams.get('region'),selectedIndex=regionIndex(selectedRegion);
+    const list=(query||selectedIndex>=0)?(await vendorsFor()).filter(v=>v.active!==false&&companyName(v.name).includes(companyName(query))&&(!selectedRegion||regionForVendor(v)===selectedIndex)).map(v=>{
      const c=state.companies.find(c=>c.id===v.id);
      return {id:v.id,name:v.name,region:REGIONS[regionForVendor(v)]||'',connected:!!member(state,s.actorId,v.id),canClaim:!!c&&!c.ownerId&&!!phone(s.verifiedPhone)&&c.loginPhone===phone(s.verifiedPhone),canJoin:!!c?.ownerId};
     }):[];
@@ -208,7 +208,7 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
    if(route==='/logout'){await repository.upsertRows([row(ROOT+'session:'+s.id,{...s,revoked:true})]);json(res,200,{authenticated:false},{'Set-Cookie':[cookie(cookieName,'',0)]});return true;}
    if(route==='/register'){
     if(!await selfRegistrationAllowed())throw fail('사전 등록된 업체를 선택해 주세요.',403);
-    const name=String(body.name||'').trim(),region=REGIONS.indexOf(body.region),contact=phone(body.phone);
+    const name=String(body.name||'').trim(),region=regionIndex(body.region),contact=phone(body.phone);
     if(!companyName(name)||name.length>40||region<0||!contact)throw fail('업체명·지역·연락처를 확인해 주세요.',422);
     const loginPhone=phone(s.verifiedPhone);
     if(!loginPhone)throw fail('대표로 사용할 전화번호를 먼저 인증해 주세요.',403);

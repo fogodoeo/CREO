@@ -20,6 +20,17 @@ test('preregistration is administrator only, validates input, blocks public self
  assert.equal((await f.post(c,'claim',{id:'test-seoul'})).status,403);
  assert.equal((await f.post(c,'select',{id:'test-seoul'})).status,403);
 });
+test('canonical and legacy Seoul-Incheon region searches return the same preregistered vendors',async t=>{
+ const f=await setup();t.after(()=>f.close());
+ for(const [id,region] of [['seoul','서울·인천'],['incheon','인천'],['gyeonggi','경기']])assert.equal((await admin(f,input({id,name:id,region}))).status,200);
+ const c=await f.login('01000000002');f.restart();
+ for(const region of ['서울·인천','서울','인천','서울+인천']){
+  const result=(await f.call(c,'GET','/api/platform/vendor-access/search?region='+encodeURIComponent(region))).json().companies;
+  assert.deepEqual(result.map(v=>v.id).sort(),['incheon','seoul']);assert.ok(result.every(v=>v.region==='서울·인천'));
+ }
+ const separate=(await f.call(c,'GET','/api/platform/vendor-access/search?region='+encodeURIComponent('경기'))).json().companies;
+ assert.deepEqual(separate.map(v=>v.id),['gyeonggi']);
+});
 test('verified representative claims once, survives restart, and another actor cannot claim or select',async t=>{
  const f=await setup();t.after(()=>f.close());await admin(f,input());
  const owner=await f.login('01000000001');

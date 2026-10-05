@@ -6,7 +6,7 @@
  function dow(s){return new Date(s+'T00:00:00Z').getUTCDay();}
  function next(s,days,include=false){for(let n=include?0:1;n<=7;n++){const d=add(s,n);if(days.includes(dow(d)))return d;}return '';}
  function closed(date,origin){const from=String(origin.vacationStart||'').replaceAll('/','-'),to=String(origin.vacationEnd||'').replaceAll('/','-');return valid(from)&&valid(to)&&date>=from&&date<=to;}
- function origins(data,carrier,region){return (data?.[carrier]?.origins||[]).filter(o=>!region||(carrier==='parge'?o.regions.includes(region):o.region===region));}
+ function origins(data,carrier,region){const label=['서울','인천','서울+인천'].includes(region)?'서울·인천':region;return (data?.[carrier]?.origins||[]).filter(o=>!label||(carrier==='parge'?o.regions.includes(label):o.region===label));}
  function plan(data,carrier,origin,broadcastDate,today){
   if(!valid(broadcastDate)||!valid(today)||!origin)return {status:'review',reason:'출발 정거샵을 선택해 주세요.'};
   if(origin.issue)return {status:'review',reason:origin.issue,origin};

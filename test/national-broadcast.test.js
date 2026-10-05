@@ -1,11 +1,11 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),{randomUUID}=require('node:crypto');
-const {createFixture}=require('../tools/vendor-portal-preview.cjs'),{createVendorEntries}=require('../vendor-entries'),{REGIONS,regionAt}=require('../national-broadcast');
-async function fixture(t,name='서울 테스트'){
+const {createFixture}=require('../tools/vendor-portal-preview.cjs'),{createVendorEntries}=require('../vendor-entries'),{REGIONS,regionAt,regionIndex,regionForVendor}=require('../national-broadcast');
+async function fixture(t,name='서울 테스트',region='서울'){
  const f=await createFixture();t.after(f.close);f.advance(9*86400000);
  const admin={'x-creo-admin':f.secret};
  let r=await f.call(f.client(),'PUT','/api/platform/channels/national-cre/national-cycle-config',{mode:'regional-cycle-v1'},admin);assert.equal(r.status,200,r.body);
- const client=await f.login('01000000001'),registered=await f.post(client,'register',{name,region:'서울',phone:'01000000001'}),vendorId=registered.json().id;
+ const client=await f.login('01000000001'),registered=await f.post(client,'register',{name,region,phone:'01000000001'}),vendorId=registered.json().id;
  const vendor=await f.repository.getRecord('national-cre','vendor',vendorId);await f.repository.upsertRecord('national-cre','vendor',{...vendor,bankName:'가상은행',bankAccount:'000000',bankHolder:'테스트'});
  const token=(await f.post(client,'select',{id:vendorId})).json().token;
  const get=()=>f.call(client,'GET','/api/platform/vendor-bookings?'+new URLSearchParams({token,event:'national-cre'}));
@@ -14,9 +14,45 @@ async function fixture(t,name='서울 테스트'){
  return {...f,admin,client,vendorId,token,get,command,view};
 }
 test('five-region rotation has a fixed first broadcast and covers month/year boundaries',()=>{
- assert.deepEqual(REGIONS,['서울','경기','전라·충청','대구·경북','부산·울산·경남']);
+ assert.deepEqual(REGIONS,['서울·인천','경기','전라·충청','대구·경북','부산·울산·경남']);
  assert.equal(regionAt('2026-10-12'),null);assert.equal(regionAt('2026-10-14'),0);assert.equal(regionAt('2026-10-19'),1);assert.equal(regionAt('2026-10-26'),3);assert.equal(regionAt('2026-11-02'),0);assert.equal(regionAt('2026-02-30'),null);
  assert.equal(regionAt('2027-01-04'),3);assert.equal(regionAt('9999-12-29'),4);
+});
+test('Seoul and Incheon aliases share the first cycle region while explicit Gyeonggi stays separate',()=>{
+ for(const name of ['서울','인천','서울+인천','서울·인천']){assert.equal(regionIndex(name),0);assert.equal(regionForVendor({broadcastRegion:name}),0);}
+ assert.equal(regionForVendor({bookingRegion:1}),0);
+ assert.equal(regionForVendor({broadcastRegion:'경기',bookingRegion:1}),1);
+ assert.deepEqual([0,1,2,3,4,5,6,7].map(bookingRegion=>regionForVendor({bookingRegion})),[0,0,1,1,2,2,3,4]);
+ assert.equal(regionIndex('알 수 없음'),-1);assert.equal(regionForVendor({}),null);
+});
+test('a legacy Incheon vendor gets Seoul-Incheon eligibility and canonical company details after restart',async t=>{
+ const f=await fixture(t,'인천 테스트','인천'),vendor=await f.repository.getRecord('national-cre','vendor',f.vendorId);
+ await f.repository.upsertRecord('national-cre','vendor',{...vendor,broadcastRegion:'인천',bookingRegion:1});
+ for(let pass=0;pass<2;pass++){
+  if(pass)f.restart();
+  const view=(await f.get()).json();assert.equal(view.vendor.region,'서울·인천');
+  assert.equal(view.dates.find(d=>d.date==='2026-10-14').maxQuantityAvailable,5);
+  assert.equal(view.dates.find(d=>d.date==='2026-10-19').maxQuantityAvailable,0);
+  assert.equal((await f.refresh(f.client)).json().companies.find(c=>c.id===f.vendorId).region,'서울·인천');
+  assert.equal((await f.post(f.client,'profile',{companyId:f.vendorId})).json().region,'서울·인천');
+ }
+});
+test('moving a cancelled Gyeonggi booking back to Seoul-Incheon creates one active five-slot booking',async t=>{
+ const f=await fixture(t,'이동 테스트','서울·인천'),route='/api/platform/channels/national-cre/broadcast-bookings';f.advance(3*86400000);
+ const read=async()=>(await f.call(f.client,'GET',route,null,f.admin)).json();
+ const write=body=>f.call(f.client,'POST',route,{requestId:randomUUID(),...body},f.admin);
+ const first=(await f.command({type:'reserve',date:'2026-10-14',quantity:5})).json().reservations[0];
+ assert.equal((await write({type:'cancel',id:first.id,expectedVersion:first.version})).status,200);
+ assert.equal((await write({type:'region',vendorId:f.vendorId,region:1,expectedVersion:(await read()).version})).status,200);
+ const second=(await f.command({type:'reserve',date:'2026-10-19',quantity:5})).json().reservations.find(r=>r.status==='confirmed');
+ assert.equal((await write({type:'cancel',id:second.id,expectedVersion:second.version})).status,200);
+ assert.equal((await write({type:'region',vendorId:f.vendorId,region:0,expectedVersion:(await read()).version})).status,200);
+ const body={type:'reserve',date:'2026-10-14',quantity:5,requestId:randomUUID()};
+ assert.equal((await f.command(body)).status,200);f.restart();assert.equal((await f.command(body)).json().duplicate,true);
+ const view=(await f.get()).json(),active=view.reservations.filter(r=>r.status==='confirmed');
+ assert.equal(view.vendor.region,'서울·인천');assert.deepEqual(active.map(r=>[r.date,r.quantity]),[['2026-10-14',5]]);
+ assert.equal(new Set(active[0].entryIds).size,5);assert.equal(view.reservations.filter(r=>r.status==='cancelled').length,2);
+ assert.equal((await f.post(f.client,'profile',{companyId:f.vendorId})).json().region,'서울·인천');
 });
 test('operator region correction is consistent in booking, company selection and profile after restart',async t=>{
  const f=await fixture(t,'권역 변경 테스트'),route='/api/platform/channels/national-cre/broadcast-bookings';
@@ -155,7 +191,7 @@ test('batch conflicts, duplicate slots, unowned reservations and deadlines canno
 });
 
 test('inbound origin preferences persist per vendor, reject stale writes and never reserve transport',async t=>{
- const f=await fixture(t),data=require('../public/broadcast-inbound-data.json'),origin=data.dodosi.origins.find(o=>o.region==='서울'),body={type:'inbound-origin',carrier:'dodosi',originId:origin.id,expectedVersion:f.view.version,requestId:randomUUID()};
+ const f=await fixture(t),data=require('../public/broadcast-inbound-data.json'),origin=data.dodosi.origins.find(o=>o.region==='서울·인천'),body={type:'inbound-origin',carrier:'dodosi',originId:origin.id,expectedVersion:f.view.version,requestId:randomUUID()};
  const saved=await f.command(body);assert.equal(saved.status,200,saved.body);assert.equal(saved.json().vendor.inboundOrigins.dodosi,origin.id);assert.equal(saved.json().reservations.length,0);
  f.restart();const duplicate=await f.command(body);assert.equal(duplicate.status,200,duplicate.body);assert.equal(duplicate.json().duplicate,true);
  assert.equal((await f.command({...body,requestId:randomUUID(),originId:''})).status,409);
@@ -169,7 +205,7 @@ test('inbound origin preferences persist per vendor, reject stale writes and nev
 test('a nearby departure shop may cross the broadcast-region boundary without changing eligibility',async t=>{
  const f=await fixture(t),data=require('../public/broadcast-inbound-data.json'),shop=data.dodosi.origins.find(o=>o.area==='하남');
  const response=await f.command({type:'inbound-origin',carrier:'dodosi',originId:shop.id,expectedVersion:f.view.version});assert.equal(response.status,200,response.body);
- const view=response.json();assert.equal(view.vendor.region,'서울');assert.equal(view.vendor.inboundOrigins.dodosi,shop.id);
+ const view=response.json();assert.equal(view.vendor.region,'서울·인천');assert.equal(view.vendor.inboundOrigins.dodosi,shop.id);
  assert.equal(view.dates.find(d=>d.date==='2026-10-19').maxQuantityAvailable,0);assert.equal(view.dates.find(d=>d.date==='2026-10-14').maxQuantityAvailable,5);
  const plan=require('../public/broadcast-inbound-core').forVendor(data,'dodosi','서울',shop.id,'2026-10-14','2026-10-05',{anyRegion:true});assert.equal(plan.origin.id,shop.id);assert.notEqual(plan.status,'review');
 });
