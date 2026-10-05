@@ -2,6 +2,7 @@
 
 const crypto = require('node:crypto');
 const {inquiryPhone}=require('./public/checkout-inquiry');
+const National=require('./national-broadcast');
 const KEY = 'vendor_directory_v1';
 const FIELDS = ['name','manager','phone','inquiryPhone','inquiryPhoneMode','kakaoUrl','bankName','bankAccount','bankHolder','paymentMethods','cardPaymentEnabled','logoUrl','address'];
 const locks = new WeakMap();
@@ -34,8 +35,21 @@ function createVendorDirectory(repository) {
     // A channel-row write from a failed save must not change contact visibility.
     function hydrate(record,profile) { return profile?{...record,...profile.info,...(profile.deletedAt?{active:false}:{}),inquiryPhoneMode:profile.info.inquiryPhoneMode==='shared'?'shared':'separate',directoryId:profile.id,directoryRevision:profile.revision}:record; }
     async function list(channelId) {
-        const [records,directory]=await Promise.all([repository.listRecords(channelId,'vendor'),read()]);
-        return records.map(record=>hydrate(record,directory.profiles.find(p=>member(p,channelId,record.id))));
+        const [records,directory,cycle]=await Promise.all([
+            repository.listRecords(channelId,'vendor'),read(),
+            channelId==='national-cre'?Promise.all([
+                repository.getRecord(channelId,'setting','national-cycle-config'),
+                repository.getRecord(channelId,'setting','national-broadcasts')
+            ]):[]
+        ]);
+        // Use the operator's persisted region in login and profile views too.
+        const regions=cycle[0]?.mode===National.MODE?cycle[1]?.regions||{}:{};
+        return records.map(record=>{
+            const region=regions[record.id];
+            const local=Number.isInteger(region)&&region>=0&&region<National.REGIONS.length
+                ?{...record,broadcastRegion:National.REGIONS[region],bookingRegion:[0,3,4,6,7][region]}:record;
+            return hydrate(local,directory.profiles.find(p=>member(p,channelId,record.id)));
+        });
     }
     async function find(channelId,vendorId) { return (await list(channelId)).find(v=>v.id===vendorId)||null; }
     async function profileFor(channelId,vendorId) { return (await read()).profiles.find(p=>member(p,channelId,vendorId))||null; }

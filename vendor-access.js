@@ -40,6 +40,7 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
  // Owner login credentials stay encrypted here, separate from editable trade contacts.
  const selfRegistrationAllowed=async()=> (await repository.getRecord('national-cre','setting','vendor-access-policy'))?.mode!=='preregistration-only-v1';
  const companyName=value=>String(value||'').normalize('NFKC').replace(/[\s\p{Cf}]/gu,'').toLocaleLowerCase('ko-KR');
+ const companyRegion=(company,records)=>regionForVendor(records.find(v=>v.id===company.id))??company.region;
  async function activeVendor(id){return (await vendorsFor()).find(v=>v.id===id&&v.active!==false);}
  async function directory(){
   const state=(await read(STATE)).value||fresh();
@@ -61,7 +62,7 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
    if(c&&(body.revision!==c.revision||c.region!==region))throw fail('등록 정보가 변경됐어요. 새로고침해 주세요.',409);
    const normalized=companyName(name);
    if(!normalized)throw fail('업체명을 입력해 주세요.',422);
-   if(!c&&(records.some(v=>v.id!==id&&regionForVendor(v)===region&&companyName(v.name)===normalized)||state.companies.some(v=>v.id!==id&&v.region===region&&companyName(v.name)===normalized)))throw fail('같은 지역에 같은 업체가 있어요. 기존 업체를 선택해 주세요.',409);
+   if(!c&&(records.some(v=>v.id!==id&&regionForVendor(v)===region&&companyName(v.name)===normalized)||state.companies.some(v=>v.id!==id&&companyRegion(v,records)===region&&companyName(v.name)===normalized)))throw fail('같은 지역에 같은 업체가 있어요. 기존 업체를 선택해 주세요.',409);
    if(!c){c={id,name:existing?.name||name,region,ownerId:'',members:[],createdAt:now(),revision:0};state.companies.push(c);}
    c.loginPhone=target;c.revision=(c.revision||0)+1;c.updatedAt=now();
    if(!existing)extra.push({key:channelKey('national-cre','vendor',id),value:JSON.stringify({id,name,phone:target,inquiryPhone:target,inquiryPhoneMode:'shared',active:true,broadcastRegion:REGIONS[region],bookingRegion:[0,3,4,6,7][region],paymentMethods:['bank_transfer','card'],cardPaymentEnabled:true,createdAt:new Date(now()).toISOString()})});
@@ -223,7 +224,7 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
     const result=await mutate((next,extra)=>{
      const existing=next.companies.find(c=>c.ownerId===s.actorId&&c.registrationId===requestId);
      if(existing){if(existing.registrationFingerprint!==fingerprint)throw fail('등록 요청이 변경됐어요. 업체 선택에서 등록 결과를 확인해 주세요.',409);return {id:existing.id,duplicate:true};}
-     const duplicate=records.find(v=>regionForVendor(v)===region&&companyName(v.name)===companyName(name))||next.companies.find(c=>c.region===region&&companyName(c.name)===companyName(name));
+     const duplicate=records.find(v=>regionForVendor(v)===region&&companyName(v.name)===companyName(name))||next.companies.find(c=>companyRegion(c,records)===region&&companyName(c.name)===companyName(name));
      if(duplicate)throw Object.assign(fail(duplicate.active===false?'사용 중지된 업체가 있어요. 운영자에게 문의해 주세요.':'이미 등록된 업체예요. 기존 업체를 선택해 주세요.',409),duplicate.active===false?{}:{existingCompany:{id:duplicate.id,name:duplicate.name,region:REGIONS[region]}});
      const id='va-'+crypto.randomUUID().replaceAll('-',''),company={id,name,region,ownerId:s.actorId,loginPhone,revision:1,registrationId:requestId,registrationFingerprint:fingerprint,members:[{actorId:s.actorId,name:'대표'}],createdAt:now()};next.companies.push(company);
      extra.push({key:channelKey('national-cre','vendor',id),value:JSON.stringify({id,name,phone:contact,inquiryPhone:contact,inquiryPhoneMode:'shared',active:true,bookingRegion:[0,3,4,6,7][region],broadcastRegion:REGIONS[region],paymentMethods:['bank_transfer','card'],cardPaymentEnabled:true,createdAt:new Date(now()).toISOString()})});return {id};

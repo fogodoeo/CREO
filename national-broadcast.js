@@ -2,6 +2,8 @@
 const crypto=require('node:crypto');
 const {channelKey}=require('./platform-core');
 const Legacy=require('./broadcast-booking');
+const Inbound=require('./public/broadcast-inbound-core'),inboundData=require('./public/broadcast-inbound-data.json');
+const Origin=require('./public/broadcast-origin-core');
 const REGIONS=['서울','경기','전라·충청','대구·경북','부산·울산·경남'];
 const START='2026-10-14',MODE='regional-cycle-v1',KEY=channelKey('national-cre','setting','national-broadcasts');
 const fail=(message,status=409)=>Object.assign(Error(message),{status});
@@ -48,7 +50,8 @@ function createNationalBroadcast(repository,{now=Date.now,entries,notificationSe
    const slotEntries=r.entryIds.map(id=>entryState.entries.find(e=>e.id===id)||null);
    return {...r,linkCode:undefined,session:session(state,r.date),entries:slotEntries,completed:slotEntries.filter(e=>e&&['submitted','approved'].includes(e.status)).length,proposal:null,history:state.audit.filter(a=>a.reservationId===r.id)};
   });
-  return {mode:MODE,enabled:true,version:state.version,now:new Date(now()).toISOString(),channel:{id:context.channel.id,name:context.channel.name,status:context.channel.status},vendor:{id:context.vendor.id,name:context.vendor.name,region:REGIONS[region]||''},regions:REGIONS,dates:dates(state).map(d=>availability({...state,channelStatus:context.channel.status},d,region,context.vendor.id)),reservations,entryState,pendingCount:reservations.filter(r=>r.status==='confirmed'&&r.session.startsAt>new Date(now()).toISOString()&&r.completed<5).length};
+  const place=Origin.locality(inboundData,context.vendor.address,REGIONS[region]);
+  return {mode:MODE,enabled:true,version:state.version,now:new Date(now()).toISOString(),channel:{id:context.channel.id,name:context.channel.name,status:context.channel.status},vendor:{id:context.vendor.id,name:context.vendor.name,region:REGIONS[region]||'',locality:place?{id:place.id,city:place.city,district:place.district,label:place.label}:null,inboundOrigins:state.inboundOrigins?.[context.vendor.id]||{}},regions:REGIONS,dates:dates(state).map(d=>availability({...state,channelStatus:context.channel.status},d,region,context.vendor.id)),reservations,entryState,pendingCount:reservations.filter(r=>r.status==='confirmed'&&r.session.startsAt>new Date(now()).toISOString()&&r.completed<5).length};
  }
  async function summary(context){const v=await view(context),open=v.entryState.events?.some(e=>e.id===context.channel.id&&e.entriesOpen),attentionCount=v.dates.filter(d=>d.regionName===v.vendor.region&&require('./public/vendor-task-state').broadcastNeedsAction(d,v.reservations.find(r=>r.date===d.date&&r.status==='confirmed'),v.now,open)).length;return {enabled:true,mode:MODE,pendingCount:v.pendingCount,attentionCount};}
  async function command(context,input,{operator=false}={}){
@@ -56,7 +59,7 @@ function createNationalBroadcast(repository,{now=Date.now,entries,notificationSe
   if(!repository.compareAndSwapRows)throw fail('방송 저장소를 확인해 주세요.',503);
   const {state,raw}=await read(context.channel),requestId=String(input.requestId||''),type=input.type;
   if(!/^[a-zA-Z0-9_-]{8,80}$/.test(requestId))throw fail('요청을 다시 확인해 주세요.',422);
-  const allowed=operator?['session','defaults','region','cancel']:['reserve','save-entry','save-entries','reopen-entry','pickup'];
+  const allowed=operator?['session','defaults','region','cancel']:['reserve','save-entry','save-entries','reopen-entry','pickup','inbound-origin'];
   if(!allowed.includes(type))throw fail('이 작업을 실행할 수 없어요.',403);
   const clean={...input};for(const k of ['requestId','code','token','bookingCode'])delete clean[k];
   const signature=crypto.createHash('sha256').update(JSON.stringify(clean)).digest('hex'),requestKey=(operator?'operator':context.vendor.id)+':'+requestId,prior=state.requests.find(r=>r.key===requestKey);
@@ -78,7 +81,11 @@ function createNationalBroadcast(repository,{now=Date.now,entries,notificationSe
    const payload=type==='reopen-entry'?{type:'withdraw',id:r.entryIds[input.slot]}:{type:input.submit===true?'submit':'save',entry:{...input.entry,id:r.entryIds[input.slot]},parents:input.parents};
    return entries.command(scoped,{...payload,expectedVersion:input.expectedVersion,requestId});
   }
-  if(type==='reserve'){
+  if(type==='inbound-origin'){
+   if(input.expectedVersion!==state.version)throw fail('다른 화면에서 변경됐어요. 새로고침 후 다시 저장해 주세요.');
+   if(!['parge','dodosi'].includes(input.carrier)||typeof input.originId!=='string'||(input.originId&&!Inbound.origins(inboundData,input.carrier).some(o=>o.id===input.originId)))throw fail('목록에서 출발 정거샵을 선택해 주세요.',422);
+   state.inboundOrigins||={};state.inboundOrigins[context.vendor.id]={...state.inboundOrigins[context.vendor.id],[input.carrier]:input.originId};result='inbound-origin';
+  }else if(type==='reserve'){
    if(input.quantity!==5)throw fail('업체당 5마리 고정 출품이에요.',422);
    const region=state.regions[context.vendor.id]??regionForVendor(context.vendor),a=availability(state,input.date,region,context.vendor.id);
    if(a.maxQuantityAvailable!==5)throw fail(a.reason);
