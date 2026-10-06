@@ -10,6 +10,12 @@
 .inbound-carriers .inbound-card+.inbound-card{border-top:1px solid var(--line)}
 .inbound-row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
 .inbound-card h3{font-size:15px;font-weight:600}
+.inbound-destination{display:flex;align-items:baseline;gap:16px;margin:10px 0 0;font-size:14px;line-height:1.5}
+.inbound-destination dt{color:var(--muted);flex-shrink:0;font-size:13px}
+.inbound-destination dd{margin:0;font-weight:600;overflow-wrap:anywhere}
+.entry-delivery{margin-top:24px}
+.entry-delivery h3{font-size:16px;font-weight:600}
+.entry-delivery .inbound-destination{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 16px;margin-top:14px}
 .inbound-deadline{font-size:14px;white-space:nowrap}
 .inbound-deadline strong{font-size:18px;font-variant-numeric:tabular-nums;margin-right:3px}
 .inbound-warning{display:block;color:#a74013;font-size:12px;font-weight:600;margin-top:4px}

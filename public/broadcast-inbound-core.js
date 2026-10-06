@@ -1,6 +1,7 @@
 (function(root,factory){if(typeof module==='object'&&module.exports)module.exports=factory();else root.CreoInboundCore=factory();})(typeof globalThis==='object'?globalThis:this,function(){
  'use strict';
  const DAY=86400000;
+ function destination(data,carrier){return ['parge','dodosi'].includes(carrier)?String(data?.destinations?.[carrier]||''):'';}
  function valid(s){return /^\d{4}-\d{2}-\d{2}$/.test(s||'')&&Number.isFinite(Date.parse(s+'T00:00:00Z'))&&new Date(s+'T00:00:00Z').toISOString().slice(0,10)===s;}
  function add(s,n){return new Date(Date.parse(s+'T00:00:00Z')+n*DAY).toISOString().slice(0,10);}
  function dow(s){return new Date(s+'T00:00:00Z').getUTCDay();}
@@ -38,5 +39,5 @@
   if(plans.length&&plans.every(p=>p.status!=='review')&&new Set(plans.map(key)).size===1)return {...plans[0],regional:true,choices};
   return {status:'review',reason:choices.length?'출발 정거샵을 고르면 일정이 표시돼요.':'이 지역의 대구행 운송편은 확인이 필요해요.',choices};
  }
- return {valid,add,dow,next,origins,plan,forVendor};
+ return {valid,add,dow,next,origins,plan,forVendor,destination};
 });

@@ -6,14 +6,15 @@
  const source=p=>p.carrier==='parge'?data.parge.source:p.origin?.source||data.dodosi.source;
  const deliveryNotice='<p class="inbound-notice">배송 일정은 참고용입니다.<strong>반드시 방송일 전에 도착하도록 준비해 주세요.</strong></p>';
  let data,failed=false,context,milestones=new Map(),lastTrigger,selections={},areaIds={},saving=false;
- async function ready(){if(data)return;const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),5000);try{const r=await fetch('/broadcast-inbound-data.json?v=20261005-seoul-incheon',{cache:'no-cache',signal:controller.signal});if(!r.ok)throw Error();const v=await r.json();if(v.version!==1||!Array.isArray(v.dodosi?.origins)||!Array.isArray(v.parge?.origins))throw Error();data=v;failed=false;}catch{failed=true;}finally{clearTimeout(timer);}}
+ async function ready(){if(data)return;const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),5000);try{const r=await fetch('/broadcast-inbound-data.json?v=20261006-destinations',{cache:'no-cache',signal:controller.signal});if(!r.ok)throw Error();const v=await r.json();if(v.version!==1||!Array.isArray(v.dodosi?.origins)||!Array.isArray(v.parge?.origins))throw Error();data=v;failed=false;}catch{failed=true;}finally{clearTimeout(timer);}}
+ function destinationLine(p){return p.destination?`<dl class="inbound-destination"><dt>도착지</dt><dd>${esc(p.destination)}</dd></dl>`:'';}
  function details(p){
   if(p.status==='review'){
    return p.origin?.issue||!p.choices?.length?`<a class="inbound-review-link" href="${esc(source(p))}" target="_blank" rel="noopener" aria-label="${names[p.carrier]} 마감일 확인">마감일 확인 ↗</a>`:'';
   }
   return `<p class="inbound-deadline"><strong>${fmt(p.actionDate)}</strong>까지${p.status==='missed'?'<span class="inbound-warning">기한 지남</span>':p.status==='today'?'<span class="inbound-warning">오늘까지</span>':''}</p>`;
  }
- function compute(date){const s=context.state,today=new Date(Date.parse(s.now)+9*3600000).toISOString().slice(0,10);return ['parge','dodosi'].map(c=>{const choice=selections[c],plan=choice.selected?Core.forVendor(data,c,s.vendor.region,choice.selected,date,today,{anyRegion:true}):{status:'review',choices:choice.choices};return {...plan,carrier:c,broadcastDate:date,selection:choice};});}
+ function compute(date){const s=context.state,today=new Date(Date.parse(s.now)+9*3600000).toISOString().slice(0,10);return ['parge','dodosi'].map(c=>{const choice=selections[c],plan=choice.selected?Core.forVendor(data,c,s.vendor.region,choice.selected,date,today,{anyRegion:true}):{status:'review',choices:choice.choices};return {...plan,carrier:c,broadcastDate:date,selection:choice,destination:s.inboundDestinations?.[c]||Core.destination(data,c)};});}
  function originControl(p){
   if(!p.choices.length)return '';
   const {selected,own,place,places,recommended}=p.selection,isOwn=selected&&selected===own?.id,label=selected?(isOwn?'우리 업체 · ':'출발지 · ')+(p.origin?.shop||'다시 선택'):'출발 정거샵 선택';
@@ -46,13 +47,13 @@
    day.setAttribute('aria-label',`${broadcastLabel?broadcastLabel+', ':fmt(date)+', '}${labels.join('·')} 배송 마감`);
   }
   const plans=compute(target.date);
-  const html=`<section id="inbound-panel" class="inbound-panel" aria-labelledby="inbound-title"><div class="inbound-heading"><h2 id="inbound-title">배송 마감</h2><p>${fmt(target.date)} 방송</p></div>${deliveryNotice}<div class="inbound-carriers">${plans.map(p=>`<article class="inbound-card"><div class="inbound-row"><h3>${names[p.carrier]}</h3>${details(p)}</div>${originControl(p)}</article>`).join('')}</div><p id="inbound-error" class="form-error" role="alert"></p></section>`;
+  const html=`<section id="inbound-panel" class="inbound-panel" aria-labelledby="inbound-title"><div class="inbound-heading"><h2 id="inbound-title">배송 마감</h2><p>${fmt(target.date)} 방송</p></div>${deliveryNotice}<div class="inbound-carriers">${plans.map(p=>`<article class="inbound-card"><div class="inbound-row"><h3>${names[p.carrier]}</h3>${details(p)}</div>${destinationLine(p)}${originControl(p)}</article>`).join('')}</div><p id="inbound-error" class="form-error" role="alert"></p></section>`;
   (document.querySelector('.registration-task:last-of-type')||calendar).insertAdjacentHTML('afterend',html);
  }
  function openDate(date){
   const items=milestones.get(date);if(!items)return;lastTrigger=document.activeElement;
   let dialog=document.querySelector('#inbound-dialog');if(!dialog){dialog=document.createElement('dialog');dialog.id='inbound-dialog';dialog.className='inbound-dialog';dialog.setAttribute('aria-labelledby','inbound-dialog-title');document.body.append(dialog);dialog.addEventListener('close',()=>lastTrigger?.isConnected&&lastTrigger.focus());}
-  dialog.innerHTML=`<header><h2 id="inbound-dialog-title">${fmt(date)}까지</h2><button type="button" class="icon" data-inbound-close aria-label="배송 마감 닫기">×</button></header>${items.map(p=>`<article class="inbound-card"><h3>${names[p.carrier]}</h3><p class="inbound-for">${fmt(p.broadcastDate)} 방송 · 배송 마감</p>${p.status==='missed'?'<p class="inbound-warning">기한 지남 · 운송사에 문의해 주세요.</p>':''}<a class="text" href="${esc(p.carrier==='parge'?data.parge.source:p.origin.source)}" target="_blank" rel="noopener">${names[p.carrier]} 안내</a></article>`).join('')}${deliveryNotice}${context.state.dates.some(d=>d.date===date)?'<button type="button" class="primary" data-inbound-broadcast="'+date+'">이날 방송 보기</button>':''}`;
+  dialog.innerHTML=`<header><h2 id="inbound-dialog-title">${fmt(date)}까지</h2><button type="button" class="icon" data-inbound-close aria-label="배송 마감 닫기">×</button></header>${items.map(p=>`<article class="inbound-card"><h3>${names[p.carrier]}</h3><p class="inbound-for">${fmt(p.broadcastDate)} 방송 · 배송 마감</p>${destinationLine(p)}${p.status==='missed'?'<p class="inbound-warning">기한 지남 · 운송사에 문의해 주세요.</p>':''}<a class="text" href="${esc(p.carrier==='parge'?data.parge.source:p.origin.source)}" target="_blank" rel="noopener">${names[p.carrier]} 안내</a></article>`).join('')}${deliveryNotice}${context.state.dates.some(d=>d.date===date)?'<button type="button" class="primary" data-inbound-broadcast="'+date+'">이날 방송 보기</button>':''}`;
   dialog.showModal();
  }
  document.addEventListener('click',e=>{

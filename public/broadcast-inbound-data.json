@@ -1,7 +1,10 @@
 {
   "version": 1,
   "checkedAt": "2026-10-05",
-  "destination": "크레용(대구)",
+  "destinations": {
+    "parge": "대구 크레오",
+    "dodosi": "대구 크레용"
+  },
   "arrivalBufferDays": 1,
   "parge": {
     "source": "https://parge.co.kr/guide",

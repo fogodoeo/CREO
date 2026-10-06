@@ -14,6 +14,11 @@
  function params(){return {...(Store.code?{code:Store.code}:{token:Store.token}),event:'national-cre'}}
  function reservation(date=selected){return state.reservations.find(r=>r.date===date&&r.status==='confirmed')}
  function entry(r=reservation(),i=slot){return r?.entries[i]||null}
+ function pickupBlock(r){
+  if(r.completed!==5)return '';
+  const places=state.inboundDestinations||{};
+  return `<section class="entry-delivery" aria-label="출품 배송"><h3>출품 배송</h3><dl class="inbound-destination">${[['parge','파르게'],['dodosi','도도시']].filter(([carrier])=>places[carrier]).map(([carrier,name])=>`<dt>${name} 도착지</dt><dd>${esc(places[carrier])}</dd>`).join('')}</dl><div class="pickup-line"><div><strong>수거 상태</strong><span>${r.pickup?'수거 완료':'수거 전'}</span></div><button type="button" class="pickup-button" data-action="pickup">${r.pickup?'수거 전으로 변경':'수거 완료 표시'}</button></div></section>`;
+ }
  function editable(e=entry()){return (!e||['draft','changes_requested'].includes(e.status))&&Date.parse(reservation().session.entriesDueAt)>Date.parse(state.now)&&state.entryState.events.some(e=>e.id==='national-cre'&&e.entriesOpen)}
  function task(d){return d.regionName===state.vendor.region&&CreoVendorTasks.broadcastNeedsAction(d,reservation(d.date),state.now,state.entryState.events.some(e=>e.id==='national-cre'&&e.entriesOpen))}
  async function request(body){
@@ -76,7 +81,7 @@
   if(!r){modal(dateLabel(date),`<div class="broadcast-empty"><p class="eyebrow">${esc(d.regionName)} · 오후 8시</p><h3>${d.regionName===state.vendor.region?'개체 미등록':esc(d.regionName)+' 방송'}</h3><p class="muted">${esc(d.reason||'업체당 5마리')}</p></div>${d.maxQuantityAvailable===5?'<button class="primary" data-action="reserve">5마리 출품 신청</button>':''}<p class="form-error" id="step-error" role="alert"></p>`);return}
   if(index===undefined&&r.completed===5){
    draft=null;dirty=false;
-   modal(dateLabel(date),`<div class="entry-progress"><h3>개체 제출 완료</h3><span>5 / 5마리</span></div><div class="entry-complete-list">${r.entries.map((e,i)=>`<button data-slot="${i}"><strong>개체 ${i+1}</strong><small>${labels[e.status]} ›</small></button>`).join('')}</div><div class="pickup-line"><div><strong>파르게 수거</strong><span>${r.pickup?'수거 완료':'수거 전'}</span></div><button class="pickup-button" data-action="pickup">${r.pickup?'수거 전으로 변경':'수거 완료 표시'}</button></div><p id="step-error" class="form-error" role="alert"></p><button class="primary" data-action="close">닫기</button>`);return;
+   modal(dateLabel(date),`<div class="entry-progress"><h3>개체 제출 완료</h3><span>5 / 5마리</span></div><div class="entry-complete-list">${r.entries.map((e,i)=>`<button data-slot="${i}"><strong>개체 ${i+1}</strong><small>${labels[e.status]} ›</small></button>`).join('')}</div>${pickupBlock(r)}<p id="step-error" class="form-error" role="alert"></p><button class="primary" data-action="close">닫기</button>`);return;
   }
   slot=index??r.entries.findIndex(pending);if(slot<0)slot=0;
   const e=entry(),saved=recovery[r.entryIds[slot]],canEdit=editable(e);
@@ -116,7 +121,7 @@
     <label class="bulk-field bulk-note"><span>추가 정보 <small>선택</small></span><textarea name="note-${i}" aria-label="개체 ${i+1} 추가 정보" rows="1" maxlength="600" placeholder="모프, 특징 등" ${readonly?'readonly':''}>${esc(row.note)}</textarea></label>
     ${bulkPhotos(row,i,readonly)}${e?.reason?`<p class="entry-reason">${esc(e.reason)}</p>`:''}${conflict?`<p class="entry-reason">다른 화면에서 변경된 개체예요.</p><button type="button" class="text" data-action="bulk-latest" data-index="${i}">최신 자료 불러오기</button>`:''}</section>`;
    }).join('')}</div><p id="step-error" class="form-error" role="alert"></p>
-   ${r.completed===5?`<div class="pickup-line"><div><strong>파르게 수거</strong><span>${r.pickup?'수거 완료':'수거 전'}</span></div><button type="button" class="pickup-button" data-action="pickup">${r.pickup?'수거 전으로 변경':'수거 완료 표시'}</button></div>`:''}
+   ${pickupBlock(r)}
    </div><div class="step-footer">${bulkDrafts.some((_,i)=>bulkEditable(i))?'<button type="button" class="secondary" data-action="bulk-save">임시 저장</button><button type="submit" class="primary">일괄 제출</button>':'<button type="button" class="primary" data-action="close">닫기</button>'}</div></form>`,true);
   sheet.classList.add('bulk-sheet');
  }
