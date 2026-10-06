@@ -65,6 +65,7 @@ platformApi = createPlatformApi({
     bandMembership,
     notificationService: checkoutNotificationService,
     deliverySchedules,
+    legacyShippingHistory: require('./shipping-destination-history').createLegacyShippingHistory({repository:supabasePlatformRepository}),
     entryPhotoStorage,
     vendorLogoStorage:broadcastAssetStorage,
     entryPhotoMaxBytes: Number(process.env.CREO_ENTRY_PHOTO_VENDOR_MAX_BYTES) || 100000000

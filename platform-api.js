@@ -11,6 +11,7 @@ const Checkout = require('./checkout-core');
 const { shortSms } = require('./checkout-notifications');
 const { checkoutItem } = require('./checkout-item-data');
 const Inquiry = require('./public/checkout-inquiry');
+const ShippingHistory = require('./shipping-destination-history');
 const { collectionInquiries } = require('./vendor-inquiry');
 
 const {
@@ -1072,6 +1073,7 @@ function createPlatformApi({
     bandMembership = null,
     notificationService = null,
     deliverySchedules = null,
+    legacyShippingHistory = null,
     buyerAccountConfig = require('./buyer-account-auth').configFromEnv(),
     buyerAccountFetch = globalThis.fetch,
     buyerAccountNow = Date.now,
@@ -1649,15 +1651,34 @@ function createPlatformApi({
     function buyerDestinationKey(context) {
         return `creo_buyer_destination::${sessionKey(context.anchorPhone)}`;
     }
-    function reusableDestination(saved, channelId, fixedDestinations, carriers) {
-        if (!saved || ['cancelled','canceled','refunded'].includes(saved.status) || ['cancelled','refunded'].includes(saved.paymentStatus)) return null;
-        if (saved.destinationType === 'pickup') {
-            const pickup = saved.sourceChannelId === channelId && fixedDestinations.find(d => d.id === saved.destinationId && d.label === saved.address);
-            return pickup ? {destinationId:pickup.id, destinationType:'pickup', label:pickup.label, pargeRegion:'', pargeShop:''} : null;
+    async function destinationHistory(phones,catalog,currentChannelId,currentShipments) {
+        const history=new Map([...phones].map(ShippingHistory.fullPhone).filter(Boolean).map(phone=>[phone,[]])),unavailable=new Set();
+        for(const channel of catalog.channels.filter(c=>c.dataAdapter==='platform'&&!c.id.startsWith('checkout-test-'))){
+            try {
+                const rows=channel.id===currentChannelId?currentShipments:await repository.listRecords(channel.id,'shipment'),latest=new Map();
+                for(const row of rows){
+                    const key=row.itemId||row.id,prior=latest.get(key);
+                    if(!prior||ShippingHistory.timestamp(row.updatedAt)>=ShippingHistory.timestamp(prior.updatedAt))latest.set(key,row);
+                }
+                for(const row of latest.values())history.get(ShippingHistory.fullPhone(row.recipientPhone))?.push({...row,sourceChannelId:channel.id});
+            }catch(error){unavailable.add(channel.id);logger.warn?.('[checkout] shipping history source unavailable',channel.id);}
         }
-        const carrier = carriers[saved.destinationType];
-        const rate = carrier?.regions.find(r => r.region === saved.pargeRegion)?.shops.find(s => s.name === saved.pargeShop);
-        return rate ? {destinationId:saved.destinationType, destinationType:saved.destinationType, label:`${saved.destinationType === 'parge' ? '파르게' : '도도시'} · ${saved.pargeRegion} · ${saved.pargeShop}`, pargeRegion:saved.pargeRegion, pargeShop:saved.pargeShop} : null;
+        if(legacyShippingHistory){
+            try{for(const row of await legacyShippingHistory(new Set(history.keys())))history.get(ShippingHistory.fullPhone(row.recipientPhone))?.push(row);}
+            catch(error){logger.warn?.('[checkout] legacy shipping history unavailable');}
+        }
+        try {
+            const keys=new Map([...history.keys()].map(phone=>[buyerDestinationKey({anchorPhone:phone}),phone]));
+            for(const row of await repository.getRowsByKeys([...keys.keys()])){
+                try{
+                    const saved=JSON.parse(row.value),records=history.get(keys.get(row.key));
+                    // Shipment history is authoritative when the source still exists: an old
+                    // cached preference cannot override a corrected or cancelled shipment.
+                    if(saved&&records&&!unavailable.has(saved.sourceChannelId)&&!records.some(r=>r.sourceChannelId===saved.sourceChannelId))records.push(saved);
+                }catch{}
+            }
+        }catch(error){logger.warn?.('[checkout] saved destination unavailable');}
+        return history;
     }
     async function shippingSuggestions(channel, catalog, data) {
         const latestByItem = new Map();
@@ -1670,26 +1691,13 @@ function createPlatformApi({
             return item.status === 'sold' && storedWinnerPhone(item) && !shipment?.buyerSubmittedAt && !shipment?.address;
         });
         if (!pending.length) return [];
-        const phones = new Set(pending.map(storedWinnerPhone)), history = new Map();
-        const keys = [...phones].map(phone=>buyerDestinationKey({anchorPhone:phone}));
-        const stored = new Map((await repository.getRowsByKeys(keys)).map(row=>[row.key,row.value]));
-        for (const other of catalog.channels.filter(c=>c.dataAdapter==='platform')) {
-            const rows = other.id===channel.id ? data.shipments : await repository.listRecords(other.id,'shipment');
-            for (const row of rows) {
-                const phone=normalizePhone(row.recipientPhone);
-                if (!phones.has(phone) || !row.buyerSubmittedAt || ['cancelled','canceled','refunded'].includes(row.status) || ['cancelled','refunded'].includes(row.paymentStatus)) continue;
-                const prior=history.get(phone);
-                if (!prior || String(row.buyerSubmittedAt)>String(prior.buyerSubmittedAt)) history.set(phone,{...row,sourceChannelId:other.id});
-            }
-        }
+        const phones = new Set(pending.map(storedWinnerPhone)),history=await destinationHistory(phones,catalog,channel.id,data.shipments);
         const carriers={};
         for (const id of channel.shippingDefaults?.enabledCarriers || ['parge']) carriers[id]={regions:await pargeRates(id)};
         const fixed=pickupDestinations(channel), suggestions=new Map();
         for (const phone of phones) {
-            let saved;try {saved=JSON.parse(stored.get(buyerDestinationKey({anchorPhone:phone}))||'null')}catch {}
-            saved ||= history.get(phone);
-            const destination=reusableDestination(saved,channel.id,fixed,carriers);
-            if(destination) suggestions.set(phone,{...destination,recordedAt:saved.buyerSubmittedAt||'',estimated:true});
+            const found=ShippingHistory.latestDestination(history.get(phone)||[],channel.id,fixed,carriers);
+            if(found) suggestions.set(phone,{...found.destination,recordedAt:found.recordedAt,estimated:true});
         }
         return pending.flatMap(item=>suggestions.has(storedWinnerPhone(item))?[{itemId:item.id,...suggestions.get(storedWinnerPhone(item))}]:[]);
     }
@@ -1697,21 +1705,8 @@ function createPlatformApi({
         // Only called after a personal checkout credential resolves to this phone.
         // Reuse destination details, never another auction's prices or payment state.
         try {
-            const rows = await repository.getRowsByKeys([buyerDestinationKey(context)]);
-            let saved = rows[0]?.value ? JSON.parse(rows[0].value) : null;
-            if (!saved) {
-                const candidates = [];
-                for (const channel of context.catalog.channels.filter(c => c.dataAdapter === 'platform')) {
-                    const shipments = channel.id === context.channel.id ? context.shipments : await repository.listRecords(channel.id, 'shipment');
-                    for (const row of shipments) {
-                        if (normalizePhone(row.recipientPhone) === context.anchorPhone && row.buyerSubmittedAt && !['cancelled','canceled'].includes(row.status)) {
-                            candidates.push({...row, sourceChannelId:channel.id});
-                        }
-                    }
-                }
-                saved = candidates.sort((a,b) => String(b.buyerSubmittedAt).localeCompare(String(a.buyerSubmittedAt)))[0];
-            }
-            return reusableDestination(saved,context.channel.id,fixedDestinations,carriers);
+            const history=await destinationHistory(new Set([context.anchorPhone]),context.catalog,context.channel.id,context.shipments);
+            return ShippingHistory.latestDestination(history.get(context.anchorPhone)||[],context.channel.id,fixedDestinations,carriers)?.destination||null;
         } catch (error) {
             logger.warn?.('[checkout] saved destination unavailable', error.message);
             return null;

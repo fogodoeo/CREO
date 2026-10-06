@@ -23,6 +23,21 @@ test('legacy non-platform keys remain compatible', () => {
     assert.equal(readStoredValue('admin_pw', 'plain', 'secret'), 'plain');
 });
 
+test('key reads forward cancellation signals while preserving integrity checks', async () => {
+    const controller = new AbortController(), key = 'creo_v2::alpha::item::one';
+    const repository = new SupabaseConfigRepository({
+        url: 'https://example.supabase.co', key: 'test-key', integritySecret: 'secret',
+        fetchImpl: async (_url, options) => {
+            assert.equal(options.signal, controller.signal);
+            return new Response(JSON.stringify([
+                { key, value: protectStoredValue(key, '{"ok":true}', 'secret') },
+                { key: 'creo_v2::alpha::item::tampered', value: 'unsigned' }
+            ]));
+        }
+    });
+    assert.deepEqual(await repository.getRowsByKeys([key], { signal: controller.signal }), [{ key, value: '{"ok":true}' }]);
+});
+
 test('server storage never falls back to a hardcoded Supabase project', async () => {
     const previousUrl = process.env.SUPABASE_URL;
     const previousServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

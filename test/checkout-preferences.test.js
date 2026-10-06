@@ -6,12 +6,12 @@ const {createPlatformApi}=require('../platform-api');
 const {normalizeChannel}=require('../platform-core');
 const {CheckoutNotificationService}=require('../checkout-notifications');
 
-async function fixture(t,{initial=true}={}){
+async function fixture(t,{initial=true,legacyShippingHistory=null}={}){
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'creo-preferences-'));
  const options={dbPath:path.join(dir,'test.sqlite'),durable:true,adminSecret:'secret',startWorker:false};
  let repo=new SQLitePlatformRepository(options),api;
  const provider={readiness:()=>({ready:true,missing:[]}),status:()=>({}),send:async()=>{throw Error('External sends forbidden in tests')}};
- const start=()=>{api=createPlatformApi({repository:repo,notificationService:new CheckoutNotificationService({repository:repo,provider}),adminSessionSecret:'preferences-test-secret',logger:{error(){},warn(){}}})};
+ const start=()=>{api=createPlatformApi({repository:repo,legacyShippingHistory,notificationService:new CheckoutNotificationService({repository:repo,provider}),adminSessionSecret:'preferences-test-secret',logger:{error(){},warn(){}}})};
  await repo.saveCatalog(['alpha','beta'].map(id=>normalizeChannel({id,name:id,status:'active',shippingDefaults:{pickupLocations:['행사장'],enabledCarriers:['parge']}})));
  await repo.upsertRows([{key:'shipping_rate_parge',value:JSON.stringify({data:{서울:[{shop:'수령점',cost:10000}]}})}]);
  for(const ch of ['alpha','beta']){
@@ -157,6 +157,49 @@ test('previous destination follows an authenticated phone across auctions, repri
  assert.equal((await f.repo.listRecords('beta','shipment')).length,0);
  const result=await f.call('POST','/api/platform/buyer-shipping',{code:beta,...next.savedDestination,payments:[{vendorKey:'vendor',method:'bank_transfer'}],requestId:'reuse-address',expectedVersion:next.editVersion});
  assert.equal(result.status,200,result.body);assert.equal(result.json().totals.shippingAmount,24000);
+});
+test('archived operator-entered deliveries without new checkout fields appear across auctions, read-only',async t=>{
+ const f=await fixture(t,{initial:false}),catalog=await f.repo.getCatalog();
+ await f.repo.saveCatalog(catalog.channels.map(c=>c.id==='alpha'?{...c,status:'archived'}:c));
+ await f.repo.upsertRecord('alpha','shipment',{id:'legacy',itemId:'old',recipientPhone:'+82 10-1234-5678',carrier:'파르게',method:'delivery',address:'서울 (수령점)',status:'complete',createdAt:'2026-08-01',cost:99999,cardPaymentUrl:'private-link'});
+ const beta=await f.buyerCode('beta'),before=await f.repo.listRecords('alpha','shipment');
+ for(let pass=0;pass<2;pass++){
+  if(pass)await f.restart();
+  const response=await f.get(beta),next=response.json();assert.equal(next.savedDestination.pargeShop,'수령점');assert.equal(next.selection,null);assert.equal(next.submittedAt,'');
+  assert.doesNotMatch(response.body,/private-link|99999/);
+  const admin=(await f.call('GET','/api/platform/channels/beta/shipping-suggestions',null,'secret')).json();assert.equal(admin.suggestions[0].pargeShop,'수령점');
+ }
+ assert.deepEqual(await f.repo.listRecords('alpha','shipment'),before);assert.equal((await f.repo.listRecords('beta','shipment')).length,0);assert.equal((await f.repo.listRecords('beta','notification')).length,0);
+});
+test('an unusable recent destination and stale preference do not hide an older valid destination',async t=>{
+ const f=await fixture(t),p=(await f.get()).json();
+ await f.repo.upsertRows([{key:'shipping_rate_parge',value:JSON.stringify({data:{서울:[{shop:'수령점',cost:10000},{shop:'폐점 예정',cost:12000}]}})}]);
+ assert.equal((await f.call('POST','/api/platform/buyer-shipping',{...f.selection,destinationId:'parge',pargeRegion:'서울',pargeShop:'폐점 예정',requestId:'last-destination',expectedVersion:p.editVersion})).status,200);
+ await f.repo.upsertRecord('alpha','shipment',{id:'older',itemId:'older-item',recipientPhone:'01012345678',destinationType:'parge',pargeRegion:'서울',pargeShop:'수령점',buyerSubmittedAt:'2026-08-01',status:'complete'});
+ await f.repo.upsertRows([{key:'shipping_rate_parge',value:JSON.stringify({data:{서울:[{shop:'수령점',cost:23000}]}})}]);
+ const beta=await f.buyerCode('beta');assert.equal((await f.get(beta)).json().savedDestination.pargeShop,'수령점');
+ const latest=(await f.repo.listRecords('alpha','shipment')).find(s=>s.itemId==='item');
+ await f.repo.upsertRecord('alpha','shipment',{...latest,destinationType:'pickup',destinationId:'pickup-1',address:'행사장'});
+ assert.equal((await f.get(beta)).json().savedDestination.pargeShop,'수령점');
+});
+test('corrected or cancelled shipments win over a stale cached preference and partial phones never match',async t=>{
+ const f=await fixture(t);await f.change('bank_transfer',{destinationId:'parge',pargeRegion:'서울',pargeShop:'수령점'});
+ const latest=(await f.repo.listRecords('alpha','shipment'))[0];
+ await f.repo.upsertRecord('alpha','shipment',{...latest,status:'cancelled'});
+ await f.repo.upsertRecord('alpha','shipment',{id:'partial',itemId:'partial-item',recipientPhone:'12345678',carrier:'파르게',address:'서울 (수령점)',status:'complete'});
+ const beta=await f.buyerCode('beta');assert.equal((await f.get(beta)).json().savedDestination,null);
+ await f.repo.upsertRows([{key:'shipping_rate_parge',value:JSON.stringify({data:{서울:[{shop:'수령점',cost:10000},{shop:'새 수령점',cost:20000}]}})}]);
+ await f.repo.upsertRecord('alpha','shipment',{...latest,status:'complete',pargeShop:'새 수령점',address:'서울 (새 수령점)'});
+ assert.equal((await f.get(beta)).json().savedDestination.pargeShop,'새 수령점');
+});
+test('legacy history is scoped to the authenticated phone, survives source failure and cannot auto-submit',async t=>{
+ let fail=false,calls=0;const legacyShippingHistory=async phones=>{calls++;assert.deepEqual([...phones],['01012345678']);if(fail)throw Error('offline');return [{id:'old',sourceChannelId:'legacy-cdcup:round',recipientPhone:'01012345678',carrier:'파르게',address:'서울 (수령점)',status:'complete',updatedAt:'2026-09-01'},{id:'stranger',recipientPhone:'01099998888',carrier:'파르게',address:'비공개 주소'}];};
+ const f=await fixture(t,{initial:false,legacyShippingHistory}),beta=await f.buyerCode('beta'),callsBeforeUnauthorized=calls;
+ assert.equal((await f.get('forged')).status,401);assert.equal((await f.call('GET','/api/platform/buyer-shipping?phone=01012345678')).status,401);assert.equal(calls,callsBeforeUnauthorized);
+ const next=(await f.get(beta)).json();assert.equal(next.savedDestination.pargeShop,'수령점');assert.equal(next.selection,null);assert.equal(next.submittedAt,'');assert.equal((await f.repo.listRecords('beta','shipment')).length,0);
+ fail=true;const offline=await f.get(beta);assert.equal(offline.status,200);assert.equal(offline.json().savedDestination,null);
+ await f.repo.upsertRecord('alpha','shipment',{id:'native',itemId:'old-item',recipientPhone:'01012345678',carrier:'파르게',address:'수령점',status:'complete'});
+ assert.equal((await f.get(beta)).json().savedDestination.pargeShop,'수령점');
 });
 test('saved destination is unavailable to another phone and raw-phone or forged credential requests',async t=>{
  const f=await fixture(t);await f.change('bank_transfer',{destinationId:'parge',pargeRegion:'서울',pargeShop:'수령점'});

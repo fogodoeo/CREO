@@ -70,10 +70,10 @@ class SupabaseConfigRepository {
         return text ? jsonParse(text, text) : null;
     }
 
-    async getRowsByKeys(keys) {
+    async getRowsByKeys(keys, options = {}) {
         if (!keys.length) return [];
         const encoded = keys.map((key) => `"${String(key).replace(/"/g, '\\"')}"`).join(',');
-        const rows = await this.request(`config?select=key,value&key=in.(${encodeURIComponent(encoded)})`) || [];
+        const rows = await this.request(`config?select=key,value&key=in.(${encodeURIComponent(encoded)})`, options) || [];
         return rows.map((row) => ({ ...row, value: readStoredValue(row.key, row.value, this.integritySecret) }))
             .filter((row) => row.value !== null);
     }
