@@ -5,6 +5,10 @@
     "parge": "대구 크레오",
     "dodosi": "대구 크레용"
   },
+  "destinationPhones": {
+    "parge": "010-5002-9163",
+    "dodosi": "010-2508-8240"
+  },
   "arrivalBufferDays": 1,
   "parge": {
     "source": "https://parge.co.kr/guide",
@@ -2848,6 +2852,7 @@
     ]
   },
   "dodosi": {
+    "arrivalBufferDays": 0,
     "source": "https://www.dodosi.co.kr/113",
     "routeCount": 14,
     "origins": [

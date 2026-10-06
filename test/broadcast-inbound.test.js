@@ -5,8 +5,8 @@ test('October 14 and 19 require the same October 11 PARGE application; later col
  for(const date of ['2026-10-14','2026-10-19']){const p=Core.forVendor(data,'parge','서울','',date,today);assert.equal(p.actionDate,'2026-10-11');assert.equal(p.departureDate,'2026-10-12');assert.equal(p.arrivalDate,'2026-10-13');}
  const p=Core.forVendor(data,'parge','경기','', '2026-10-19','2026-10-12');assert.equal(p.status,'missed');
 });
-test('DODOSI uses hand-in, actual departure and destination separately; same-day arrival is excluded',()=>{
- const p=Core.plan(data,'dodosi',o('드래곤길들이기'),'2026-10-14',today);assert.equal(p.actionDate,'2026-10-09');assert.equal(p.departureDate,'2026-10-10');assert.equal(p.arrivalDate,'2026-10-11');
+test('DODOSI permits broadcast-day arrival but still follows the actual departure legs',()=>{
+ const p=Core.plan(data,'dodosi',o('드래곤길들이기'),'2026-10-14',today);assert.equal(p.actionDate,'2026-10-12');assert.equal(p.departureDate,'2026-10-13');assert.equal(p.arrivalDate,'2026-10-14');
  const monday=Core.plan(data,'dodosi',o('드래곤길들이기'),'2026-10-19',today);assert.equal(monday.actionDate,'2026-10-16');assert.equal(monday.arrivalDate,'2026-10-18');
  const cheongju=Core.plan(data,'dodosi',o('세븐디가든'),'2026-10-19',today);assert.equal(cheongju.actionDate,'2026-10-13');assert.equal(cheongju.departureDate,'2026-10-14');assert.equal(cheongju.arrivalDate,'2026-10-18');
  const holiday=Core.plan(data,'dodosi',o('디어렙(청주)'),'2026-10-19',today);assert.equal(holiday.actionDate,'2026-10-12');assert.equal(holiday.arrivalDate,'2026-10-18');
@@ -21,7 +21,7 @@ test('source conflicts, missing shops, Jeju weeks and ambiguous regional schedul
 test('all confirmed routes preserve order across month/year boundaries and before/at/after deadlines',()=>{
  for(const carrier of ['parge','dodosi'])for(const origin of data[carrier].origins)for(const date of ['2026-10-14','2026-11-02','2027-01-04']){
   const p=Core.plan(data,carrier,origin,date,today);if(p.status==='review')continue;
-  assert.ok(p.actionDate<=p.departureDate);assert.ok(p.departureDate<p.arrivalDate);assert.ok(p.arrivalDate<date);
+  assert.ok(p.actionDate<=p.departureDate);assert.ok(p.departureDate<p.arrivalDate);assert.ok(p.arrivalDate<=Core.add(date,-(data[carrier].arrivalBufferDays??data.arrivalBufferDays)));
   assert.equal(Core.plan(data,carrier,origin,date,p.actionDate).status,'today');
   assert.equal(Core.plan(data,carrier,origin,date,Core.add(p.actionDate,1)).status,'missed');
  }

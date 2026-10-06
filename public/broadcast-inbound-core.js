@@ -2,6 +2,7 @@
  'use strict';
  const DAY=86400000;
  function destination(data,carrier){return ['parge','dodosi'].includes(carrier)?String(data?.destinations?.[carrier]||''):'';}
+ function destinationPhone(data,carrier){return ['parge','dodosi'].includes(carrier)?String(data?.destinationPhones?.[carrier]||''):'';}
  function valid(s){return /^\d{4}-\d{2}-\d{2}$/.test(s||'')&&Number.isFinite(Date.parse(s+'T00:00:00Z'))&&new Date(s+'T00:00:00Z').toISOString().slice(0,10)===s;}
  function add(s,n){return new Date(Date.parse(s+'T00:00:00Z')+n*DAY).toISOString().slice(0,10);}
  function dow(s){return new Date(s+'T00:00:00Z').getUTCDay();}
@@ -11,8 +12,8 @@
  function plan(data,carrier,origin,broadcastDate,today){
   if(!valid(broadcastDate)||!valid(today)||!origin)return {status:'review',reason:'출발 정거샵을 선택해 주세요.'};
   if(origin.issue)return {status:'review',reason:origin.issue,origin};
-  const cutoff=add(broadcastDate,-data.arrivalBufferDays),candidates=[];
-  // Evaluate real service legs forward, then select the latest one arriving before the broadcast.
+  const cutoff=add(broadcastDate,-(data[carrier]?.arrivalBufferDays??data.arrivalBufferDays)),candidates=[];
+  // Follow each service leg forward; only DODOSI permits arrival on the broadcast date.
   for(let n=0;n<=45;n++){
    const actionDate=add(cutoff,-n);let departureDate,arrivalDate;
    if(carrier==='parge'){
@@ -39,5 +40,20 @@
   if(plans.length&&plans.every(p=>p.status!=='review')&&new Set(plans.map(key)).size===1)return {...plans[0],regional:true,choices};
   return {status:'review',reason:choices.length?'출발 정거샵을 고르면 일정이 표시돼요.':'이 지역의 대구행 운송편은 확인이 필요해요.',choices};
  }
- return {valid,add,dow,next,origins,plan,forVendor,destination};
+ function forSelection(data,carrier,region,selection,broadcastDate,today){
+  const choices=selection.choices||origins(data,carrier);
+  if(selection.selected)return {...forVendor(data,carrier,region,selection.selected,broadcastDate,today,{anyRegion:true}),choices};
+  const known=o=>!o.issue&&!o.locationIssue;
+  const nearby=(selection.recommended||[]).filter(known).map(o=>plan(data,carrier,o,broadcastDate,today)).find(p=>p.status!=='review');
+  if(nearby)return {...nearby,choices,estimated:true,estimateBasis:'nearby',basisLabel:selection.place?.label||''};
+  // A known locality with no verified nearby route must not inherit a distant city's schedule.
+  if(selection.place)return {status:'review',reason:'근처 대구행 운송편은 운송사에 확인해 주세요.',choices};
+  const regional=region?origins(data,carrier,region).filter(known):[],defaults=regional.filter(o=>o.regionalDefault);
+  const plans=(defaults.length?defaults:regional).map(o=>plan(data,carrier,o,broadcastDate,today)).filter(p=>p.status!=='review');
+  // Until a shop is chosen, show the earlier preparation date when regional routes differ.
+  plans.sort((a,b)=>a.actionDate.localeCompare(b.actionDate)||a.origin.id.localeCompare(b.origin.id));
+  if(plans.length)return {...plans[0],choices,estimated:true,estimateBasis:'region',basisLabel:region};
+  return {status:'review',reason:'이 지역의 대구행 운송편은 운송사에 확인해 주세요.',choices};
+ }
+ return {valid,add,dow,next,origins,plan,forVendor,forSelection,destination,destinationPhone};
 });

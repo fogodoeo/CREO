@@ -72,7 +72,7 @@ test('Incheon localities and saved departure shops follow Seoul-Incheon without 
  const shop=data.dodosi.origins.find(o=>o.shop.includes('크레리즘')&&o.area.includes('청라'));assert.ok(shop);
  const saved=Origin.options(data,'dodosi',{...v,inboundOrigins:{dodosi:shop.id}});assert.equal(saved.selected,shop.id);assert.equal(saved.automatic,false);
  for(const region of ['서울·인천','서울','인천']){
-  const dodosi=Inbound.forVendor(data,'dodosi',region,saved.selected,'2026-10-14','2026-10-05');assert.equal(dodosi.actionDate,'2026-10-09');assert.equal(dodosi.arrivalDate,'2026-10-11');
+  const dodosi=Inbound.forVendor(data,'dodosi',region,saved.selected,'2026-10-14','2026-10-05');assert.equal(dodosi.actionDate,'2026-10-12');assert.equal(dodosi.arrivalDate,'2026-10-14');
   const parge=Inbound.forVendor(data,'parge',region,'','2026-10-14','2026-10-05');assert.equal(parge.actionDate,'2026-10-11');assert.equal(parge.arrivalDate,'2026-10-13');
  }
  for(const carrier of ['parge','dodosi'])for(const shop of data[carrier].origins.filter(o=>o.location?.city==='인천')){

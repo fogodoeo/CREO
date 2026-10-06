@@ -204,14 +204,14 @@ test('inbound origin preferences persist per vendor, reject stale writes and nev
 });
 
 test('carrier-specific inbound destinations are automatic and stay fixed across origin changes, pickup and restart',async t=>{
- const f=await fixture(t),expected={parge:'대구 크레오',dodosi:'대구 크레용'};
- for(let i=0;i<2;i++){const view=(await f.get()).json();assert.deepEqual(view.inboundDestinations,expected);assert.equal(view.version,f.view.version);assert.equal(view.reservations.length,0);}
+ const f=await fixture(t),expected={parge:'대구 크레오',dodosi:'대구 크레용'},phones={parge:'010-5002-9163',dodosi:'010-2508-8240'};
+ for(let i=0;i<2;i++){const view=(await f.get()).json();assert.deepEqual(view.inboundDestinations,expected);assert.deepEqual(view.inboundDestinationPhones,phones);assert.equal(view.version,f.view.version);assert.equal(view.reservations.length,0);}
  const reserved=await f.command({type:'reserve',date:'2026-10-14',quantity:5,inboundDestinations:{parge:'다른 곳',dodosi:'다른 곳'}});assert.equal(reserved.status,200,reserved.body);
  const r=reserved.json().reservations[0];assert.deepEqual(reserved.json().inboundDestinations,expected);
  const origin=require('../public/broadcast-inbound-data.json').dodosi.origins.find(o=>o.region==='경기'&&!o.issue);
  const changed=await f.command({type:'inbound-origin',carrier:'dodosi',originId:origin.id,expectedVersion:reserved.json().version});assert.equal(changed.status,200,changed.body);assert.deepEqual(changed.json().inboundDestinations,expected);
  const pickup={type:'pickup',id:r.id,pickup:true,expectedVersion:r.version,requestId:randomUUID()};assert.equal((await f.command(pickup)).status,200);
- f.restart();const again=await f.command(pickup);assert.equal(again.status,200,again.body);assert.equal(again.json().duplicate,true);assert.deepEqual(again.json().inboundDestinations,expected);assert.equal(again.json().reservations[0].pickup,true);
+ f.restart();const again=await f.command(pickup);assert.equal(again.status,200,again.body);assert.equal(again.json().duplicate,true);assert.deepEqual(again.json().inboundDestinations,expected);assert.deepEqual(again.json().inboundDestinationPhones,phones);assert.equal(again.json().reservations[0].pickup,true);
 });
 test('a nearby departure shop may cross the broadcast-region boundary without changing eligibility',async t=>{
  const f=await fixture(t),data=require('../public/broadcast-inbound-data.json'),shop=data.dodosi.origins.find(o=>o.area==='하남');
