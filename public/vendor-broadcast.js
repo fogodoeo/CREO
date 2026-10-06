@@ -94,10 +94,15 @@
  }
  function bulkEditable(i){return editable(entry(reservation(),i))}
  function bulkPhotos(row,i,readonly){
-  return `<details class="bulk-photos"><summary>사진 <span class="muted">${(row.photoIds?.length||0)+['sire','dam'].filter(side=>row.parents?.[side]?.photoId).length||'선택'}</span></summary><div class="bulk-photo-grid">${[['animal','개체'],['sire','부 개체'],['dam','모 개체']].map(([side,label])=>{
+  return `<div class="bulk-photo-grid">${[['animal','개체'],['sire','부 개체'],['dam','모 개체']].map(([side,label])=>{
    const id=side==='animal'?row.photoIds?.[0]:row.parents?.[side]?.photoId,m=id&&photo(id),url=m&&(m.thumbnailUrl||m.url)||photoUrls.get(id);
    return `<div class="parent-photo"><label class="photo-picker ${url?'has-photo':''}">${url?`<img src="${esc(url)}" alt="개체 ${i+1} ${label} 사진">`:''}<span>${label}<small>${readonly?(url?'등록됨':'미등록'):(url?'사진 교체':'사진 추가')}</small></span>${readonly?'':`<input type="file" accept="image/jpeg,image/png,image/webp" data-bulk-photo="${side}" data-index="${i}" aria-label="개체 ${i+1} ${label} 사진 ${url?'교체':'추가'}">`}</label>${url&&!readonly?`<button type="button" class="photo-remove" data-action="bulk-remove-photo" data-index="${i}" data-side="${side}" aria-label="개체 ${i+1} ${label} 사진 삭제"><span aria-hidden="true">×</span></button>`:''}${removed.has(row.id+side)&&!readonly?`<button class="photo-undo" type="button" data-action="bulk-undo-photo" data-index="${i}" data-side="${side}">삭제 취소</button>`:''}</div>`;
-  }).join('')}</div></details>`;
+  }).join('')}</div>`;
+ }
+ function bulkDetails(row,i,readonly){
+  const photos=(row.photoIds?.length||0)+['sire','dam'].filter(side=>row.parents?.[side]?.photoId).length;
+  const extra=[photos?'사진 '+photos+'장':'',row.note?'정보 있음':''].filter(Boolean).join(' · ');
+  return `<details class="bulk-details"><summary aria-label="개체 ${i+1} 사진·추가 정보${extra?', '+extra:''}"><span>사진·추가 정보</span>${extra?'<small>등록됨</small>':''}<span class="bulk-caret" aria-hidden="true">⌄</span></summary><div class="bulk-extra"><label class="bulk-field bulk-note"><span>추가 정보 <small>선택</small></span><textarea name="note-${i}" aria-label="개체 ${i+1} 추가 정보" rows="2" maxlength="600" placeholder="모프, 특징 등" ${readonly?'readonly':''}>${esc(row.note)}</textarea></label>${bulkPhotos(row,i,readonly)}</div></details>`;
  }
  function openBulk(){
   const r=reservation();draft=null;
@@ -107,15 +112,15 @@
   });
   dirty=bulkDrafts.some((row,i)=>bulkEditable(i)&&!!recovery[row.id]);
   modal(dateLabel(selected),`<form id="bulk-entry-form" novalidate><div class="entry-step-scroll bulk-scroll"><div class="entry-progress"><h3>${CreoVendorTasks.broadcastRegistrationComplete(r)?'개체 제출 완료':'출품 개체'}</h3><span>${r.completed?r.completed+'마리 제출':r.quantity===4?'4마리':'4~5마리'}</span></div>
-   <div class="bulk-columns" aria-hidden="true"><span>개체</span><span>성별</span><span>체중</span><span>출생년월일</span><span>추가 정보</span><span>사진</span></div>
+   <div class="bulk-columns" aria-hidden="true"><span>개체</span><span>성별</span><span>체중(g)</span><span>출생년월일</span></div>
    <div class="bulk-rows">${bulkDrafts.map((row,i)=>{
     const e=r.entries[i],conflict=bulkEditable(i)&&row.version!==(e?.version||0),readonly=!bulkEditable(i)||conflict;
-    return `<section class="bulk-row" data-bulk-row="${i}" aria-labelledby="bulk-label-${i}"><div class="bulk-row-heading"><h4 id="bulk-label-${i}">개체 ${i+1}${i===4?' <small class="muted">선택</small>':''}</h4><span class="muted">${labels[e?.status]||(i===4?'':'미등록')}</span>${e?.status==='submitted'&&Date.parse(r.session.entriesDueAt)>Date.parse(state.now)?`<button type="button" class="text" data-action="bulk-reopen" data-index="${i}">수정</button>`:''}</div>
+    return `<section class="bulk-row" data-bulk-row="${i}" aria-labelledby="bulk-label-${i}"><h4 class="bulk-number" id="bulk-label-${i}" aria-label="개체 ${i+1}${i===4?' 선택':''}">${i+1}</h4>
     <label class="bulk-field"><span>성별</span><select name="sex-${i}" aria-label="개체 ${i+1} 성별" ${readonly?'disabled':''}><option value="">선택</option>${[['female','암컷'],['male','수컷'],['unknown','미구분']].map(([v,l])=>`<option value="${v}" ${row.sex===v?'selected':''}>${l}</option>`).join('')}</select></label>
     <label class="bulk-field"><span>체중 (g)</span><input name="weight-${i}" aria-label="개체 ${i+1} 체중 (g)" type="number" inputmode="decimal" min=".01" max="1000" step=".01" placeholder="g" value="${esc(row.weight)}" ${readonly?'readonly':''}></label>
     <label class="bulk-field bulk-date"><span>출생년월일</span><input name="hatchDate-${i}" aria-label="개체 ${i+1} 출생년월일" type="date" max="${koreanDay(state.now)}" value="${esc(row.hatchDate)}" ${readonly?'readonly':''}></label>
-    <label class="bulk-field bulk-note"><span>추가 정보 <small>선택</small></span><textarea name="note-${i}" aria-label="개체 ${i+1} 추가 정보" rows="1" maxlength="600" placeholder="모프, 특징 등" ${readonly?'readonly':''}>${esc(row.note)}</textarea></label>
-    ${bulkPhotos(row,i,readonly)}${e?.reason?`<p class="entry-reason">${esc(e.reason)}</p>`:''}${conflict?`<p class="entry-reason">다른 화면에서 변경된 개체예요.</p><button type="button" class="text" data-action="bulk-latest" data-index="${i}">최신 자료 불러오기</button>`:''}</section>`;
+    <div class="bulk-row-state"><span>${labels[e?.status]||(i===4?'선택':'')}</span>${e?.status==='submitted'&&Date.parse(r.session.entriesDueAt)>Date.parse(state.now)?`<button type="button" class="text" data-action="bulk-reopen" data-index="${i}" aria-label="개체 ${i+1} 수정">수정</button>`:''}</div>
+    ${bulkDetails(row,i,readonly)}${e?.reason?`<p class="entry-reason">${esc(e.reason)}</p>`:''}${conflict?`<p class="entry-reason">다른 화면에서 변경된 개체예요.</p><button type="button" class="text bulk-latest" data-action="bulk-latest" data-index="${i}">최신 자료 불러오기</button>`:''}</section>`;
    }).join('')}</div><p id="step-error" class="form-error" role="alert"></p>
    ${pickupBlock(r)}
    </div><div class="step-footer"></div></form>`,true);
