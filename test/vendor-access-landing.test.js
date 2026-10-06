@@ -17,7 +17,7 @@ test('channel return keeps the selected authorized company and rejects unrelated
  assert.deepEqual(await landing({companies:[{id:'a'},{id:'b'}]},'?section=channels'),['companies']);
  assert.deepEqual(await landing({authenticated:false},'?section=channels'),['login']);
 });
-test('company selection refreshes membership before showing its channels',async()=>{
+test('company selection refreshes missing membership and never accepts an unrelated ID',async()=>{
  const choose=source.slice(source.indexOf(' async function chooseCompany('),source.indexOf(' function bind('));
  const calls=[],context={q:new URLSearchParams(),state:{},company:'old',refresh:async()=>{context.state={authenticated:true,companies:[{id:'allowed'}]};calls.push('refresh');},go:s=>calls.push(s)};
  await vm.runInNewContext(choose+"\nchooseCompany('allowed')",context);
@@ -25,6 +25,19 @@ test('company selection refreshes membership before showing its channels',async(
  calls.length=0;
  await assert.rejects(vm.runInNewContext(choose+"\nchooseCompany('unrelated')",context),/업체 연결/);
  assert.deepEqual(calls,['refresh']);assert.equal(context.company,'allowed');
+});
+test('entry checks the session once and presents two authorized companies before channel choice',async()=>{
+ assert.deepEqual(await landing({companies:[{id:'doremi'},{id:'celeb'}]}),['companies']);
+ assert.deepEqual(await landing({companies:[{id:'company-a'},{id:'celeb'}]},'?section=companies'),['companies']);
+ const calls=[],context={q:new URLSearchParams(),state:{available:true,authenticated:true,companies:[{id:'doremi',canClaim:true}],requests:[]},company:'',refresh:async()=>calls.push('session'),request:async(route,body)=>calls.push(route+':'+body.id),go:s=>calls.push(s),openDirectory:async()=>{},loadProfile:async()=>{}};
+ await vm.runInNewContext(enter+'\n'+choose+'\nenter()',context);
+ assert.deepEqual(calls,['session','claim:doremi','channels']);
+ assert.equal(context.company,'doremi');
+ // The ordinary bootstrap must not make a session read before enter() does it.
+ const bootstrap=source.slice(source.lastIndexOf('  run(async()=>'),source.lastIndexOf('})();'));
+ assert.ok(bootstrap);
+ const bootCalls=[],bootContext={q:new URLSearchParams(),run:work=>work(),refresh:async()=>bootCalls.push('session'),enter:async()=>bootCalls.push('enter')};
+ await vm.runInNewContext(bootstrap,bootContext);assert.deepEqual(bootCalls,['enter']);
 });
 test('missing required info lands on profile, completed and staff companies keep channel choice',async()=>{
  assert.deepEqual(await landing({companies:[{id:'company-a',setupRequired:true}]}),['profile']);

@@ -37,6 +37,29 @@ nav.vendor-portal-nav .portal-attention .vendor-nav-count{display:none}
 .vendor-shared-header .vendor-home{font-size:20px;font-weight:750;letter-spacing:-.6px;color:#202632;flex-shrink:0}
 .vendor-shared-header .vendor-channel{font-size:13px;flex-shrink:0}
 .vendor-shared-header .vendor-company{margin-left:auto;justify-content:flex-end;text-align:right;min-width:0;font-weight:550}
+.vendor-shared-header button.vendor-company{display:flex;align-items:center;gap:6px;min-height:44px;max-width:45%;padding:8px 10px;border:0;border-radius:10px;background:#eef1f5;color:#202632;font:inherit;font-size:14px;line-height:1.4;overflow-wrap:anywhere;cursor:pointer}
+.vendor-shared-header button.vendor-company>span:last-child{flex-shrink:0;color:#626d7b}
+.vendor-shared-header button:focus-visible{outline:3px solid #245bd4;outline-offset:2px}
+html.vendor-shell-pending :is(.portal-header,.topbar){visibility:hidden}
+dialog.vendor-company-dialog{box-sizing:border-box;width:min(480px,calc(100% - 32px));max-height:calc(100dvh - 40px);margin:auto;padding:20px 24px 24px;border:0;border-radius:24px;background:#fff;color:#202632;font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overflow:auto;overscroll-behavior:contain;box-shadow:0 12px 80px #15223b22}
+dialog.vendor-company-dialog::backdrop{background:#18233366}
+.vendor-company-dialog header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:12px}
+.vendor-company-dialog h2{margin:0;font-size:22px;line-height:1.4;font-weight:700}
+.vendor-switch-close{width:44px;min-height:44px;flex-shrink:0;padding:0;border:0;background:none;color:#626d7b;font-size:28px;cursor:pointer}
+.vendor-company-options{display:grid;gap:8px}
+.vendor-company-option{box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:76px;width:100%;padding:14px 16px;border:0;border-radius:12px;background:#f5f7fa;color:#202632;font:inherit;text-align:left;cursor:pointer}
+.vendor-company-option>span:first-child{min-width:0;overflow-wrap:anywhere}
+.vendor-company-option strong{display:block;font-size:17px;line-height:1.4;font-weight:650}
+.vendor-company-option small{display:block;margin-top:4px;color:#626d7b;font-size:14px;line-height:1.4}
+.vendor-switch-state{flex-shrink:0;color:#626d7b;font-size:14px}
+.vendor-company-option[aria-current]{background:#eef4ff}
+.vendor-company-option[aria-current] .vendor-switch-state{color:#245bd4;font-weight:600}
+.vendor-company-dialog :is(button,a):focus-visible{outline:3px solid #245bd4;outline-offset:2px}
+.vendor-company-dialog button:disabled{opacity:.5;cursor:default}
+.vendor-switch-loading{margin:12px 0;color:#626d7b;font-size:15px;line-height:1.5}
+.vendor-switch-retry{display:flex;align-items:center;justify-content:center;min-height:44px;padding:10px;border:0;border-radius:10px;background:#eef1f5;color:#245bd4;font:inherit;font-size:15px;text-decoration:none;cursor:pointer}
+.vendor-switch-error{margin:16px 0 0;padding:12px;border-radius:10px;background:#fff3f3;color:#b52323;font-size:14px;line-height:1.5;overflow-wrap:anywhere}
+@media(max-width:540px){dialog.vendor-company-dialog{position:fixed;inset:auto 0 0;width:100%;max-width:100%;max-height:calc(100dvh - 24px);margin:0;border-radius:24px 24px 0 0;padding:20px 20px max(24px,env(safe-area-inset-bottom))}}
 .vendor-shared-header a:focus-visible{outline:3px solid #245bd4;outline-offset:2px;border-radius:4px}
 body.has-vendor-header :is(.portal-header,.topbar),body.has-vendor-header.vendor-page .top>.brand{display:none!important}
 body.has-vendor-header.vendor-page .top{padding-top:24px}

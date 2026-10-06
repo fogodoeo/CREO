@@ -60,11 +60,12 @@
   $('#load-error').textContent='';$('#refresh').disabled=true;
   const inboundReady=window.CreoInbound?.ready();
   try{
-   await Store.read();recovery=Store.recovery.read()?.nationalDrafts||{};state=await request();
-   if(state.mode!=='regional-cycle-v1'){location.replace('/vendor-bookings.html?'+new URLSearchParams(params()));return}
+   const next=await request();
+   if(next.mode!=='regional-cycle-v1'){location.replace('/vendor-bookings.html?'+new URLSearchParams(params()));return}
+   await Store.read({state:{...next.entryState,bookingSummary:{enabled:true,mode:next.mode}}});recovery=Store.recovery.read()?.nationalDrafts||{};state=next;
    if(!month)month=(state.dates.find(d=>d.startsAt>=state.now&&d.regionName===state.vendor.region)||state.dates[0]).date.slice(0,7);
    $('#company-name').textContent=state.vendor.name;
-   $('#nav-broadcast').href=location.pathname+location.search;$('#nav-settlement').href=Store.pageUrl('settlement');$('#nav-profile').href=Store.pageUrl('profile');window.CreoVendorShell.mount($('.channel-vendor-nav'),{active:'booking'});$('.channel-vendor-nav').hidden=false;
+   $('#nav-broadcast').href=location.pathname+location.search;$('#nav-settlement').href=Store.pageUrl('settlement');$('#nav-profile').href=Store.pageUrl('profile');window.CreoVendorShell.mount($('.channel-vendor-nav'),{active:'booking',companyName:state.vendor.name});$('.channel-vendor-nav').hidden=false;
    $('#channel-picker').href='/vendor-access.html?'+new URLSearchParams({section:'channels',...(q.get('portal')?{company:q.get('portal')}:{})});
    renderCalendar();
    inboundReady?.then(()=>{if(state)renderCalendar()});

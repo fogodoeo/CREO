@@ -49,11 +49,11 @@
     for (const row of localMedia) if (!media.has(row.id) || row.pending) media.set(row.id, row);
     return { ...current, media: [...media.values()] };
   }
-  async function read() {
+  async function read(prefetched) {
     const sequence = ++readSequence, epoch = mutationEpoch;
     const query = new URLSearchParams({ ...credential(), ...(selected ? { event: selected } : {}) });
-    const result = await request('vendor-entries?' + query);
-    if(result.state.bookingSummary?.mode==='regional-cycle-v1'&&params.get('section')!=='profile'&&(/\/vendor-entries\.html$/.test(location.pathname)||/^\/w\//.test(location.pathname))){
+    const result = prefetched || await request('vendor-entries?' + query);
+    if(!prefetched&&result.state.bookingSummary?.mode==='regional-cycle-v1'&&params.get('section')!=='profile'&&(/\/vendor-entries\.html$/.test(location.pathname)||/^\/w\//.test(location.pathname))){
       location.replace('/vendor-broadcast.html?'+new URLSearchParams({...credential(),event:result.state.channelId,...(params.get('portal')?{portal:params.get('portal')}:{})}));
     }
     if (selected && result.state.channelId !== selected) throw Error('경매가 일치하지 않아요. 업체 링크를 다시 열어 주세요.');

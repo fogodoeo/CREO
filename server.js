@@ -409,7 +409,8 @@ const server = http.createServer(async (req, res) => {
         }
         const vendorStatusShortMatch = /^\/w\/([A-Za-z0-9_-]{8,24})$/.exec(url.pathname);
         if ((req.method === 'GET' || req.method === 'HEAD') && vendorStatusShortMatch) {
-            const vendorPageUrl = new URL('/vendor-entries.html', url);
+            const page=await platformApi.vendorEntryPage({code:vendorStatusShortMatch[1],event:url.searchParams.get('event')||'',section:url.searchParams.get('section')||''});
+            const vendorPageUrl = new URL(page, url);
             if (await serveStatic(req, res, vendorPageUrl)) return;
         }
 

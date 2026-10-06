@@ -5765,7 +5765,16 @@ function createPlatformApi({
             if (!current) throw Object.assign(new Error('변경되거나 취소된 카드 안내의 발송을 중지했어요.'), {code:'BUYER_LINK_INACTIVE'});
         }
     }
-    return { handle, isAdmin, hasAdminSession, workspace, assertBuyerNotificationLink, cleanupBuyerAuth:buyerAccount.cleanupExpired, cleanupVendorAuth:vendorAccess.cleanupExpired };
+    async function vendorEntryPage({code,event='',section=''}={}) {
+        if(section==='profile')return '/vendor-entries.html';
+        try {
+            const credential=await resolveVendorCheckoutCredential({code});
+            const context=credential&&await vendorCheckoutContext(credential,event);
+            if(context&&await booking.cycle.active(context.channel))return '/vendor-broadcast.html';
+        } catch { /* The entry API supplies the normal retry/error screen if storage is unavailable. */ }
+        return '/vendor-entries.html';
+    }
+    return { handle, isAdmin, hasAdminSession, workspace, vendorEntryPage, assertBuyerNotificationLink, cleanupBuyerAuth:buyerAccount.cleanupExpired, cleanupVendorAuth:vendorAccess.cleanupExpired };
 }
 
 module.exports = {
