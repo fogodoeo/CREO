@@ -46,8 +46,8 @@ test('a failed timetable request shows a recoverable error and retry restores ca
 });
 test('submitted-entry delivery details show the same destination contacts and preserve pickup state',()=>{
  const code=fs.readFileSync(require.resolve('../public/vendor-broadcast.js'),'utf8'),start=code.indexOf(' function pickupBlock('),end=code.indexOf('\n function editable(',start);
- const context=vm.createContext({state:{inboundDestinations:data.destinations,inboundDestinationPhones:data.destinationPhones},esc:String});
+ const context=vm.createContext({state:{inboundDestinations:data.destinations,inboundDestinationPhones:data.destinationPhones},esc:String,CreoVendorTasks:require('../public/vendor-task-state')});
  vm.runInContext(code.slice(start,end),context);
- assert.equal(context.pickupBlock({completed:4}),'');
- for(const pickup of [false,true]){const html=context.pickupBlock({completed:5,pickup});assert.match(html,/href="tel:01050029163"/);assert.match(html,/href="tel:01025088240"/);assert.ok(html.includes('<span>'+(pickup?'수거 완료':'수거 전')+'</span>'));}
+ assert.equal(context.pickupBlock({completed:3}),'');
+ for(const completed of [4,5])for(const pickup of [false,true]){const html=context.pickupBlock({completed,pickup});assert.match(html,/href="tel:01050029163"/);assert.match(html,/href="tel:01025088240"/);assert.ok(html.includes('<span>'+(pickup?'수거 완료':'수거 전')+'</span>'));}
 });

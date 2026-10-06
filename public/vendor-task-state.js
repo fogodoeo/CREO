@@ -9,10 +9,13 @@
   if(['bank_transfer_reported','card_payment_reported'].includes(buyer.payment.status)||(buyer.payment.method==='card'&&(!buyer.payment.cardPaymentUrl||buyer.payment.cardNoticeMethod==='external')))return 'action';
   return 'waiting';
  }
+ function broadcastRegistrationComplete(reservation){
+  return reservation.completed>=4&&reservation.completed<=5&&!reservation.entries?.some(e=>e?.status==='changes_requested');
+ }
  function broadcastNeedsAction(date,reservation,now,entriesOpen=true){
   if(!date||date.startsAt<=now||!entriesOpen)return false;
-  if(!reservation)return date.maxQuantityAvailable===5;
-  return reservation.completed<5&&reservation.session.entriesDueAt>now;
+  if(!reservation)return date.maxQuantityAvailable>=4;
+  return !broadcastRegistrationComplete(reservation)&&reservation.session.entriesDueAt>now;
  }
- return {settlementStage,broadcastNeedsAction};
+ return {settlementStage,broadcastNeedsAction,broadcastRegistrationComplete};
 });

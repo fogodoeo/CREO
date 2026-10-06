@@ -94,7 +94,7 @@ test('vendor location is scoped to the authorized vendor and viewing recommendat
 test('reserve creates exactly five durable slots, duplicates and restart do not add slots or notifications',async t=>{
  const f=await fixture(t),requestId=randomUUID(),body={type:'reserve',date:'2026-10-14',quantity:5,requestId};
  assert.equal(f.view.dates[0].maxQuantity,null);
- for(const quantity of [1,4,8])assert.equal((await f.command({...body,requestId:randomUUID(),quantity})).status,422);
+ for(const quantity of [0,1,3,6,8,4.5,'4'])assert.equal((await f.command({...body,requestId:randomUUID(),quantity})).status,422);
  assert.equal((await f.command({...body,date:'2026-10-19'})).status,409);
  const first=await f.command(body);assert.equal(first.status,200,first.body);const slots=first.json().reservations[0].entryIds;assert.equal(new Set(slots).size,5);
  const adminView=(await f.call(f.client,'GET','/api/platform/channels/national-cre/broadcast-bookings',undefined,f.admin)).json();assert.equal(adminView.sessions[0].reservations[0].completed,0);
@@ -162,10 +162,46 @@ test('four entries submit together, preserve the fifth slot and retry without du
  const body={type:'save-entries',id:r.id,requestId:randomUUID(),submit:true,entries:Array.from({length:4},(_,slot)=>({slot,expectedVersion:0,entry:{sex:'female',weight:String(slot+5),hatchDate:'2026-09-01',note:'일괄 '+slot}}))};
  const response=await f.command(body);assert.equal(response.status,200,response.body);
  assert.equal(response.json().reservations[0].completed,4);assert.equal(response.json().reservations[0].entries[4],null);
+ assert.equal(response.json().reservations[0].registrationComplete,true);assert.equal(response.json().pendingCount,0);
+ const admin=(await f.call(f.client,'GET','/api/platform/channels/national-cre/broadcast-bookings',null,f.admin)).json().sessions[0].reservations[0];
+ assert.equal(admin.completed,4);assert.equal(admin.registrationComplete,true);
  const ids=response.json().reservations[0].entries.slice(0,4).map(e=>e.id);assert.deepEqual(ids,r.entryIds.slice(0,4));
  f.advance(86400000);f.restart();const duplicate=await f.command(body);assert.equal(duplicate.status,200,duplicate.body);assert.equal(duplicate.json().duplicate,true);
+ assert.equal(duplicate.json().reservations[0].registrationComplete,true);assert.equal(duplicate.json().pendingCount,0);
  assert.equal((await f.command({...body,entries:body.entries.slice(0,3)})).status,409);
  const last=await f.command({...body,requestId:randomUUID(),entries:[{...body.entries[0],slot:4}]});assert.equal(last.status,200,last.body);assert.equal(last.json().reservations[0].completed,5);
+ assert.equal(last.json().reservations[0].registrationComplete,true);
+});
+
+test('four-place reservations fit the remaining capacity, survive retry, and cannot submit a fifth slot',async t=>{
+ const f=await fixture(t),route='/api/platform/channels/national-cre/broadcast-bookings';
+ const initial=(await f.call(f.client,'GET',route,null,f.admin)).json();
+ assert.equal((await f.call(f.client,'POST',route,{type:'session',date:'2026-10-14',settings:{...initial.sessions[0],maxQuantity:9},expectedVersion:initial.version,requestId:randomUUID()},f.admin)).status,200);
+ const first=await f.command({type:'reserve',date:'2026-10-14',quantity:5});assert.equal(first.status,200,first.body);
+ const other=await f.login('01000000002'),company=(await f.post(other,'register',{name:'네 마리 업체',region:'서울',phone:'01000000002'})).json();
+ const token=(await f.post(other,'select',{id:company.id})).json().token;
+ const command=body=>f.call(other,'POST','/api/platform/vendor-bookings',{event:'national-cre',token,requestId:randomUUID(),...body});
+ const view=(await f.call(other,'GET','/api/platform/vendor-bookings?'+new URLSearchParams({event:'national-cre',token}))).json();assert.equal(view.dates[0].maxQuantityAvailable,4);
+ assert.equal((await command({type:'reserve',date:'2026-10-14',quantity:5})).status,409);
+ const body={type:'reserve',date:'2026-10-14',quantity:4,requestId:randomUUID()},responses=await Promise.all([command(body),command(body)]);
+ assert.ok(responses.every(r=>r.status===200));assert.equal(responses.filter(r=>r.json().duplicate).length,1);
+ const r=responses[0].json().reservations[0];assert.equal(r.quantity,4);assert.equal(r.entryIds.length,4);
+ assert.equal((await command({type:'save-entry',id:r.id,slot:4,expectedVersion:0,entry:{}})).status,403);
+ assert.equal((await command({type:'save-entries',id:r.id,entries:[{slot:4,expectedVersion:0,entry:{}}]})).status,422);
+ f.restart();assert.equal((await command(body)).json().duplicate,true);
+ const current=(await f.call(f.client,'GET',route,null,f.admin)).json();assert.equal(current.sessions[0].confirmedQuantity,9);assert.equal(current.sessions[0].regions[0].available,0);
+ assert.equal((await f.call(f.client,'POST',route,{type:'session',date:'2026-10-14',settings:{...current.sessions[0],maxQuantity:8},expectedVersion:current.version,requestId:randomUUID()},f.admin)).status,422);
+});
+
+test('three submissions remain incomplete and the fourth completes an existing five-slot reservation',async t=>{
+ const f=await fixture(t),r=(await f.command({type:'reserve',date:'2026-10-14',quantity:5})).json().reservations[0];
+ const entry={sex:'unknown',weight:'5',hatchDate:'2026-09-01'};
+ const first=await f.command({type:'save-entries',id:r.id,submit:true,entries:[0,1,2].map(slot=>({slot,expectedVersion:0,entry}))});
+ assert.equal(first.status,200,first.body);assert.equal(first.json().reservations[0].registrationComplete,false);assert.equal(first.json().pendingCount,1);
+ const fourth=await f.command({type:'save-entry',id:r.id,slot:3,submit:true,expectedVersion:0,entry});
+ assert.equal(fourth.status,200,fourth.body);assert.equal(fourth.json().reservations[0].registrationComplete,true);assert.equal(fourth.json().pendingCount,0);
+ const current=fourth.json().reservations[0],pickup=await f.command({type:'pickup',id:r.id,expectedVersion:current.version,pickup:true});assert.equal(pickup.status,200,pickup.body);
+ f.restart();const reloaded=(await f.get()).json().reservations[0];assert.equal(reloaded.registrationComplete,true);assert.equal(reloaded.pickup,true);
 });
 
 test('batch validation and storage failure leave every entry unchanged; retry is durable',async t=>{

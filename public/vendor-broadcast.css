@@ -47,6 +47,7 @@ dialog.bulk-sheet{max-width:960px}
 .bulk-row{padding:16px 0;border-bottom:1px solid var(--line)}
 .bulk-row:last-child{border-bottom:0}
 .bulk-row-heading h4{font-size:15px;margin:0 0 4px}.bulk-row-heading>.muted{font-size:12px}.bulk-row-heading .text{display:block;min-height:44px;padding:8px 0}
+.bulk-row-heading h4 small{font-size:12px;font-weight:400;white-space:nowrap}
 .bulk-field{display:block;min-width:0}.bulk-field>span{display:none}
 .bulk-field input,.bulk-field select,.bulk-field textarea{display:block;width:100%;min-width:0;min-height:46px;border:1px solid #c3cbd6;border-radius:8px;padding:10px;background:#fff;color:var(--ink);font:inherit;font-size:16px;line-height:1.4}
 .bulk-field textarea{resize:vertical;min-height:46px}
