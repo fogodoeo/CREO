@@ -52,7 +52,7 @@
 .inbound-span::before{content:'';position:absolute;left:0;right:0;top:6px;border-top:2px dashed #697586}
 .inbound-span.dodosi{top:14px;color:#37679f}
 .inbound-span.dodosi::before{border-top:2px solid #4071ab}
-.inbound-span b{position:relative;background:#fff;font-size:10px;line-height:14px;font-weight:600;letter-spacing:0;white-space:nowrap;padding-inline:2px}
+.inbound-span b{position:relative;background:#fff;font-size:11px;line-height:14px;font-weight:600;letter-spacing:0;white-space:nowrap;padding-inline:1px}
 .inbound-span.route-start{left:3px}
 .inbound-span.route-end{right:3px}
 .broadcast-calendar .day{min-height:88px;justify-content:flex-start;padding-block:30px 6px}
