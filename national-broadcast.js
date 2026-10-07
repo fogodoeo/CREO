@@ -11,12 +11,17 @@ const fail=(message,status=409)=>Object.assign(Error(message),{status});
 const uuid=()=>crypto.randomUUID();
 const validCapacity=value=>value===null||(Number.isSafeInteger(value)&&value>=4);
 const reservedQuantity=(state,date)=>state.reservations.filter(r=>r.date===date&&r.status==='confirmed').reduce((sum,r)=>sum+r.quantity,0);
-function entryProgress(r,entries){
+function entryProgress(r,entries,entryLimit=r.entryIds.length){
  const slots=r.entryIds.map(id=>entries.find(e=>e.id===id)||null),completed=slots.filter(e=>e&&['submitted','approved'].includes(e.status)).length;
- return {entries:slots,completed,registrationComplete:Tasks.broadcastRegistrationComplete({entries:slots,completed})};
+ const excessSubmitted=slots.slice(entryLimit).filter(e=>e&&['submitted','approved'].includes(e.status)).length;
+ return {entries:slots,completed,entryLimit,excessSubmitted,registrationComplete:Tasks.broadcastRegistrationComplete({entries:slots.slice(0,entryLimit),completed,entryLimit,excessSubmitted})};
 }
 function regionIndex(name){return ['서울','인천','서울+인천'].includes(name)?0:REGIONS.indexOf(name);}
 function regionForVendor(v){const region=regionIndex(v?.broadcastRegion);if(region>=0)return region;return [0,0,1,1,2,2,3,4][v?.bookingRegion]??null;}
+function regionEntryPolicy(state,region,vendors){
+ const ids=new Set(vendors.filter(v=>v.id&&v.active!==false&&!v.deletedAt&&(state.regions?.[v.id]??regionForVendor(v))===region).map(v=>v.id));
+ return {regionVendorCount:ids.size,vendorEntryLimit:ids.size>=9?4:5};
+}
 function scheduled(date){return /^\d{4}-\d{2}-\d{2}$/.test(date||'')&&Number.isFinite(Legacy.start(date))&&Legacy.day(Legacy.start(date))===date&&date>=START&&[1,3].includes(new Date(date+'T00:00:00Z').getUTCDay());}
 function regionAt(date){
  if(!scheduled(date))return null;
@@ -36,9 +41,12 @@ function createNationalBroadcast(repository,{now=Date.now,entries,notificationSe
  }
  function session(state,date){return {...Legacy.session(state,date),region:regionAt(date),regionName:REGIONS[regionAt(date)]||''};}
  function dates(state){const result=[],today=Legacy.day(now()),end=Legacy.addDays(today,370);for(let d=START;d<=end;d=Legacy.addDays(d,1))if(scheduled(d))result.push(d);return result;}
- function availability(state,date,region,vendorId){
+ function policySession(state,date,vendors){return {...session(state,date),...regionEntryPolicy(state,regionAt(date),vendors)};}
+ function limitFor(state,r,vendors){return Legacy.start(r.date)<=now()?r.entryIds.length:Math.min(r.entryIds.length,regionEntryPolicy(state,r.region,vendors).vendorEntryLimit);}
+ function limitMessage(){return '이 권역은 참여업체가 9팀 이상으로 업체당 최대 4마리까지 등록할 수 있어요. 새로고침 후 확인해 주세요.';}
+ function availability(state,date,region,vendorId,vendors){
   if(!scheduled(date))return {date,maxQuantityAvailable:0,reason:'방송일을 선택해 주세요.'};
-  const s=session(state,date),block=reason=>({...s,maxQuantityAvailable:0,reason});
+  const s=policySession(state,date,vendors),block=reason=>({...s,maxQuantityAvailable:0,reason});
   if(!Number.isInteger(region))return block('업체 지역을 먼저 등록해 주세요.');
   if(region!==s.region)return block(s.regionName+' 방송이에요.');
   if(!['draft','active'].includes(state.channelStatus||'active'))return block('종료된 채널이에요.');
@@ -46,7 +54,7 @@ function createNationalBroadcast(repository,{now=Date.now,entries,notificationSe
   if(now()>=Date.parse(s.closesAt))return block('출품 신청이 마감됐어요.');
   if(date>Legacy.addDays(Legacy.day(now()),14))return block('방송 2주 전부터 신청할 수 있어요.');
   if(state.reservations.some(r=>r.vendorId===vendorId&&r.date===date&&r.status==='confirmed'))return block('이미 신청한 방송이에요.');
-  const available=s.maxQuantity===null?5:Math.min(5,s.maxQuantity-reservedQuantity(state,date));
+  const available=s.maxQuantity===null?s.vendorEntryLimit:Math.min(s.vendorEntryLimit,s.maxQuantity-reservedQuantity(state,date));
   if(available<4)return block('방송 정원이 찼어요.');
   return {...s,maxQuantityAvailable:available,reason:''};
  }
@@ -54,10 +62,10 @@ function createNationalBroadcast(repository,{now=Date.now,entries,notificationSe
   const {state}=await read(context.channel),region=state.regions[context.vendor.id]??regionForVendor(context.vendor);
   const entryState=context.profile?await entries.read(context):{entries:[],parents:[],media:[],events:[]};
   const reservations=state.reservations.filter(r=>r.vendorId===context.vendor.id).map(r=>{
-   return {...r,linkCode:undefined,session:session(state,r.date),...entryProgress(r,entryState.entries),proposal:null,history:state.audit.filter(a=>a.reservationId===r.id)};
+   return {...r,linkCode:undefined,session:policySession(state,r.date,context.vendors),...entryProgress(r,entryState.entries,limitFor(state,r,context.vendors)),proposal:null,history:state.audit.filter(a=>a.reservationId===r.id)};
   });
   const place=Origin.locality(inboundData,context.vendor.address,REGIONS[region]);
-  return {mode:MODE,enabled:true,version:state.version,now:new Date(now()).toISOString(),channel:{id:context.channel.id,name:context.channel.name,status:context.channel.status},vendor:{id:context.vendor.id,name:context.vendor.name,region:REGIONS[region]||'',locality:place?{id:place.id,city:place.city,district:place.district,label:place.label}:null,inboundOrigins:state.inboundOrigins?.[context.vendor.id]||{}},inboundDestinations:Object.fromEntries(['parge','dodosi'].map(carrier=>[carrier,Inbound.destination(inboundData,carrier)])),inboundDestinationPhones:Object.fromEntries(['parge','dodosi'].map(carrier=>[carrier,Inbound.destinationPhone(inboundData,carrier)])),regions:REGIONS,dates:dates(state).map(d=>availability({...state,channelStatus:context.channel.status},d,region,context.vendor.id)),reservations,entryState,pendingCount:reservations.filter(r=>r.status==='confirmed'&&r.session.startsAt>new Date(now()).toISOString()&&!r.registrationComplete).length};
+  return {mode:MODE,enabled:true,version:state.version,now:new Date(now()).toISOString(),channel:{id:context.channel.id,name:context.channel.name,status:context.channel.status},vendor:{id:context.vendor.id,name:context.vendor.name,region:REGIONS[region]||'',locality:place?{id:place.id,city:place.city,district:place.district,label:place.label}:null,inboundOrigins:state.inboundOrigins?.[context.vendor.id]||{}},inboundDestinations:Object.fromEntries(['parge','dodosi'].map(carrier=>[carrier,Inbound.destination(inboundData,carrier)])),inboundDestinationPhones:Object.fromEntries(['parge','dodosi'].map(carrier=>[carrier,Inbound.destinationPhone(inboundData,carrier)])),regions:REGIONS,dates:dates(state).map(d=>availability({...state,channelStatus:context.channel.status},d,region,context.vendor.id,context.vendors)),reservations,entryState,pendingCount:reservations.filter(r=>r.status==='confirmed'&&r.session.startsAt>new Date(now()).toISOString()&&!r.registrationComplete).length};
  }
  async function summary(context){const v=await view(context),open=v.entryState.events?.some(e=>e.id===context.channel.id&&e.entriesOpen),attentionCount=v.dates.filter(d=>d.regionName===v.vendor.region&&require('./public/vendor-task-state').broadcastNeedsAction(d,v.reservations.find(r=>r.date===d.date&&r.status==='confirmed'),v.now,open)).length;return {enabled:true,mode:MODE,pendingCount:v.pendingCount,attentionCount};}
  async function command(context,input,{operator=false}={}){
@@ -76,11 +84,13 @@ function createNationalBroadcast(repository,{now=Date.now,entries,notificationSe
    if(!r||!context.profile)throw fail('출품할 방송을 다시 확인해 주세요.',403);
    if(now()>=Date.parse(session(state,r.date).entriesDueAt))throw fail('개체 등록 기한이 지났어요. 운영자에게 문의해 주세요.');
    if(!Array.isArray(input.entries)||!input.entries.length||input.entries.length>r.entryIds.length||input.entries.some(row=>!row||!Number.isInteger(row.slot)||row.slot<0||row.slot>=r.entryIds.length)||new Set(input.entries.map(row=>row.slot)).size!==input.entries.length)throw fail('등록할 개체를 다시 확인해 주세요.',422);
+   if(input.entries.some(row=>row.slot>=limitFor(state,r,context.vendors)))throw fail(limitMessage());
    return entries.saveMany(context,input.entries.map(row=>({broadcast:{id:r.id,date:r.date,slot:row.slot,today:Legacy.day(now())},input:{type:input.submit===true?'submit':'save',entry:{...row.entry,id:r.entryIds[row.slot]},parents:row.parents,expectedVersion:row.expectedVersion}})),requestId);
   }
   if(type==='save-entry'||type==='reopen-entry'){
    r=state.reservations.find(r=>r.id===input.id&&r.vendorId===context.vendor.id&&r.status==='confirmed');
    if(!r||!Number.isInteger(input.slot)||input.slot<0||input.slot>=r.entryIds.length)throw fail('출품할 방송과 개체를 확인해 주세요.',403);
+   if(type==='save-entry'&&input.slot>=limitFor(state,r,context.vendors))throw fail(limitMessage());
    if(now()>=Date.parse(session(state,r.date).entriesDueAt))throw fail('개체 등록 기한이 지났어요. 운영자에게 문의해 주세요.');
    if(!context.profile)throw fail('업체 페이지를 다시 열어 주세요.');
    const scoped={...context,nationalBroadcast:{id:r.id,date:r.date,slot:input.slot,today:Legacy.day(now())}};
@@ -93,7 +103,8 @@ function createNationalBroadcast(repository,{now=Date.now,entries,notificationSe
    state.inboundOrigins||={};state.inboundOrigins[context.vendor.id]={...state.inboundOrigins[context.vendor.id],[input.carrier]:input.originId};result='inbound-origin';
   }else if(type==='reserve'){
    if(![4,5].includes(input.quantity))throw fail('업체당 4~5마리 출품할 수 있어요.',422);
-   const region=state.regions[context.vendor.id]??regionForVendor(context.vendor),a=availability(state,input.date,region,context.vendor.id);
+   const region=state.regions[context.vendor.id]??regionForVendor(context.vendor),a=availability(state,input.date,region,context.vendor.id,context.vendors);
+   if(input.quantity>a.vendorEntryLimit)throw fail(limitMessage());
    if(a.maxQuantityAvailable<input.quantity)throw fail(a.reason||'신청 가능한 수량이 변경됐어요. 다시 불러와 주세요.');
    r={id:uuid(),vendorId:context.vendor.id,vendorName:context.vendor.name,region,date:input.date,quantity:input.quantity,status:'confirmed',version:1,entryIds:Array.from({length:input.quantity},uuid),pickup:false,linkCode:crypto.randomBytes(18).toString('base64url'),createdAt:new Date(now()).toISOString()};
    state.reservations.push(r);result=r.id;action='예약 확정';
@@ -151,7 +162,7 @@ function createNationalBroadcast(repository,{now=Date.now,entries,notificationSe
   })));
   return {mode:MODE,version:state.version,now:new Date(now()).toISOString(),channel:{id:channel.id,name:channel.name},defaults:state.defaults,regions:REGIONS,vendors:vendors.map(v=>({id:v.id,name:v.name,region:state.regions[v.id]??regionForVendor(v)})),sessions:dates(state).filter(d=>d>=Legacy.day(now())||state.reservations.some(r=>r.date===d)).map(date=>{
    const rs=state.reservations.filter(r=>r.date===date),confirmed=reservedQuantity(state,date);
-   return {...session(state,date),confirmedQuantity:confirmed,heldQuantity:0,shortfall:0,regions:REGIONS.map((name,i)=>({name,confirmed:i===regionAt(date)?confirmed:0,held:0,available:availability(state,date,i,'operator-probe').maxQuantityAvailable?(session(state,date).maxQuantity===null?null:session(state,date).maxQuantity-confirmed):0})),reservations:rs.map(r=>{const {completed,registrationComplete}=entryProgress(r,entrySets.get(r.vendorId)||[]);return {...r,completed,registrationComplete,linkCode:undefined,session:session(state,date),regionName:REGIONS[r.region],vendorName:vendors.find(v=>v.id===r.vendorId)?.name||r.vendorName,proposal:null,history:state.audit.filter(a=>a.reservationId===r.id)};}),incoming:[]};
+   return {...policySession(state,date,vendors),confirmedQuantity:confirmed,heldQuantity:0,shortfall:0,regions:REGIONS.map((name,i)=>({name,confirmed:i===regionAt(date)?confirmed:0,held:0,available:availability(state,date,i,'operator-probe',vendors).maxQuantityAvailable?(session(state,date).maxQuantity===null?null:session(state,date).maxQuantity-confirmed):0})),reservations:rs.map(r=>{const {completed,registrationComplete,entryLimit,excessSubmitted}=entryProgress(r,entrySets.get(r.vendorId)||[],limitFor(state,r,vendors));return {...r,completed,registrationComplete,entryLimit,excessSubmitted,linkCode:undefined,session:session(state,date),regionName:REGIONS[r.region],vendorName:vendors.find(v=>v.id===r.vendorId)?.name||r.vendorName,proposal:null,history:state.audit.filter(a=>a.reservationId===r.id)};}),incoming:[]};
   })};
  }
  async function resolveLink(channel,code){const {state}=await read(channel),r=state.reservations.find(r=>r.linkCode===code);return r&&/^[A-Za-z0-9_-]{24}$/.test(code||'')&&now()<Legacy.start(r.date)+30*86400000?{vendorId:r.vendorId,reservationId:r.id}:null;}
@@ -164,4 +175,4 @@ function createBookingRouter(repository,options){
  for(const method of ['read','summary','vendorView','operatorView','command','resolveLink','assertNotification'])router[method]=async(first,...rest)=>(await cycle.active(first.channel||first)?cycle:old)[method](first,...rest);
  return router;
 }
-module.exports={REGIONS,START,MODE,regionAt,regionIndex,regionForVendor,createNationalBroadcast,createBookingRouter};
+module.exports={REGIONS,START,MODE,regionAt,regionIndex,regionForVendor,regionEntryPolicy,createNationalBroadcast,createBookingRouter};

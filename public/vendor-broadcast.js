@@ -14,12 +14,14 @@
  function params(){return {...(Store.code?{code:Store.code}:{token:Store.token}),event:'national-cre'}}
  function reservation(date=selected){return state.reservations.find(r=>r.date===date&&r.status==='confirmed')}
  function entry(r=reservation(),i=slot){return r?.entries[i]||null}
+ const entryLimit=r=>r.entryLimit??r.entryIds.length;
+ const policyText=d=>`${d.regionName} ${d.regionVendorCount}개 업체 · 업체당 ${d.vendorEntryLimit===4?'최대 4마리':'4~5마리'}`;
  function pickupBlock(r){
   if(!CreoVendorTasks.broadcastRegistrationComplete(r))return '';
   const places=state.inboundDestinations||{},phones=state.inboundDestinationPhones||{};
   return `<section class="entry-delivery" aria-label="출품 배송"><h3>출품 배송</h3><dl class="inbound-destination">${[['parge','파르게'],['dodosi','도도시']].filter(([carrier])=>places[carrier]).map(([carrier,name])=>`<dt>${name} 도착지</dt><dd>${esc(places[carrier])}${phones[carrier]?`<a class="inbound-phone" href="tel:${phones[carrier].replace(/\D/g,'')}" aria-label="${esc(places[carrier]+'에 전화 '+phones[carrier])}">${esc(phones[carrier])}</a>`:''}</dd>`).join('')}</dl><div class="pickup-line"><div><strong>수거 상태</strong><span>${r.pickup?'수거 완료':'수거 전'}</span></div><button type="button" class="pickup-button" data-action="pickup">${r.pickup?'수거 전으로 변경':'수거 완료 표시'}</button></div></section>`;
  }
- function editable(e=entry()){return (!e||['draft','changes_requested'].includes(e.status))&&Date.parse(reservation().session.entriesDueAt)>Date.parse(state.now)&&state.entryState.events.some(e=>e.id==='national-cre'&&e.entriesOpen)}
+ function editable(e=entry(),i=slot){return i<entryLimit(reservation())&&(!e||['draft','changes_requested'].includes(e.status))&&Date.parse(reservation().session.entriesDueAt)>Date.parse(state.now)&&state.entryState.events.some(e=>e.id==='national-cre'&&e.entriesOpen)}
  function task(d){return d.regionName===state.vendor.region&&CreoVendorTasks.broadcastNeedsAction(d,reservation(d.date),state.now,state.entryState.events.some(e=>e.id==='national-cre'&&e.entriesOpen))}
  async function request(body){
   let requestId,storageKey='national-broadcast-request:'+Store.VENDOR,payload;
@@ -79,12 +81,12 @@
   selected=date;const d=state.dates.find(d=>d.date===date),r=reservation(date);if(!d)return;
   if(r&&index===undefined){openBulk();return}
   bulkDrafts=null;
-  if(!r){modal(dateLabel(date),`<div class="broadcast-empty"><p class="eyebrow">${esc(d.regionName)} · 오후 8시</p><h3>${d.regionName===state.vendor.region?'개체 미등록':esc(d.regionName)+' 방송'}</h3><p class="muted">${esc(d.reason||(d.maxQuantityAvailable===4?'4마리 신청 가능':'업체당 4~5마리'))}</p></div>${d.maxQuantityAvailable>=4?'<button class="primary" data-action="reserve">출품 개체 등록</button>':''}<p class="form-error" id="step-error" role="alert"></p>`);return}
+  if(!r){modal(dateLabel(date),`<div class="broadcast-empty"><p class="eyebrow">${esc(d.regionName)} · 오후 8시</p><h3>${d.regionName===state.vendor.region?'개체 미등록':esc(d.regionName)+' 방송'}</h3><p class="muted">${esc(d.reason||policyText(d))}</p></div>${d.maxQuantityAvailable>=4?'<button class="primary" data-action="reserve">출품 개체 등록</button>':''}<p class="form-error" id="step-error" role="alert"></p>`);return}
   slot=index??r.entries.findIndex(pending);if(slot<0)slot=0;
   const e=entry(),saved=recovery[r.entryIds[slot]],canEdit=editable(e);
   draft=saved&&canEdit?structuredClone(saved):{id:r.entryIds[slot],version:e?.version||0,sex:e?.sex||'',weight:e?.weight||'',hatchDate:e?.hatchDate||'',note:e?.note||'',parents:Object.fromEntries(['sire','dam'].map(side=>[side,{photoId:state.entryState.parents.find(p=>p.id===e?.[side+'Id'])?.photoId||''}]))};
   dirty=!!(saved&&canEdit);const conflict=dirty&&draft.version!==(e?.version||0);
-  modal(dateLabel(date),`<form id="entry-step-form" novalidate><div class="entry-step-scroll"><div class="entry-progress"><h3>출품 개체</h3><span>${r.completed}마리 제출</span></div><div class="entry-steps" aria-label="출품 개체">${r.entries.map((e,i)=>`<button type="button" data-slot="${i}" aria-label="개체 ${i+1}, ${labels[e?.status]||(i===4?'선택':'미등록')}" ${slot===i?'aria-current="step"':''}><span>${i+1}</span><small>${labels[e?.status]||(i===4?'선택':'미등록')}</small></button>`).join('')}</div>
+  modal(dateLabel(date),`<form id="entry-step-form" novalidate><div class="entry-step-scroll"><div class="entry-progress"><h3>출품 개체</h3><span>${r.completed}마리 제출</span></div><div class="entry-steps" aria-label="출품 개체">${r.entries.slice(0,entryLimit(r)).map((e,i)=>`<button type="button" data-slot="${i}" aria-label="개체 ${i+1}, ${labels[e?.status]||(i===4?'선택':'미등록')}" ${slot===i?'aria-current="step"':''}><span>${i+1}</span><small>${labels[e?.status]||(i===4?'선택':'미등록')}</small></button>`).join('')}</div>
    ${e?.reason?`<p class="entry-reason">${esc(e.reason)}</p>`:''}${conflict?'<p class="entry-reason">다른 화면에서 변경됐어요. 작성 내용을 확인한 뒤 최신 자료를 불러와 주세요.</p><button type="button" class="text" data-action="discard">최신 자료 불러오기</button>':''}
    <fieldset class="sex-options" ${canEdit&&!conflict?'':'disabled'}><legend>성별</legend><div>${[['female','암컷'],['male','수컷'],['unknown','미구분']].map(([v,l])=>`<label><input type="radio" name="sex" required value="${v}" ${draft.sex===v?'checked':''}><span>${l}</span></label>`).join('')}</div></fieldset>
    <div class="step-basics"><label class="field">체중<span class="weight-input"><input name="weight" type="number" required min=".01" max="1000" step=".01" inputmode="decimal" value="${esc(draft.weight)}" ${canEdit&&!conflict?'':'readonly'}><span>g</span></span></label><label class="field">출생년월일<input name="hatchDate" type="date" required max="${koreanDay(state.now)}" value="${esc(draft.hatchDate)}" ${canEdit&&!conflict?'':'readonly'}></label></div>
@@ -93,7 +95,7 @@
     </div><div class="step-footer">${slot?'<button type="button" class="secondary" data-action="prev">이전</button>':''}${canEdit&&!conflict?`<button class="primary" type="submit">${r.completed>=3?'제출하기':'제출하고 다음'}</button>`:e?.status==='submitted'&&Date.parse(r.session.entriesDueAt)>Date.parse(state.now)?'<button class="primary" type="button" data-action="reopen">수정하기</button>':'<button class="primary" type="button" data-action="next">다음</button>'}</div></form>`,true);
   sheet.querySelector('[aria-current=step]')?.focus({preventScroll:true});
  }
- function bulkEditable(i){return editable(entry(reservation(),i))}
+ function bulkEditable(i){return editable(entry(reservation(),i),i)}
  function bulkPhotos(row,i,readonly){
   return `<div class="bulk-photo-grid">${[['animal','개체'],['sire','부 개체'],['dam','모 개체']].map(([side,label])=>{
    const id=side==='animal'?row.photoIds?.[0]:row.parents?.[side]?.photoId,m=id&&photo(id),url=m&&(m.thumbnailUrl||m.url)||photoUrls.get(id);
@@ -107,12 +109,13 @@
  }
  function openBulk(){
   const r=reservation();draft=null;
-  bulkDrafts=r.entryIds.map((id,i)=>{
+  bulkDrafts=r.entryIds.slice(0,entryLimit(r)).map((id,i)=>{
    const e=r.entries[i],saved=recovery[id];
    return saved&&bulkEditable(i)?structuredClone(saved):{id,version:e?.version||0,sex:e?.sex||'',weight:e?.weight||'',hatchDate:e?.hatchDate||'',note:e?.note||'',photoIds:e?.photoIds||[],parents:Object.fromEntries(['sire','dam'].map(side=>[side,{photoId:state.entryState.parents.find(p=>p.id===e?.[side+'Id'])?.photoId||''}]))};
   });
   dirty=bulkDrafts.some((row,i)=>bulkEditable(i)&&!!recovery[row.id]);
-  modal(dateLabel(selected),`<form id="bulk-entry-form" novalidate><div class="entry-step-scroll bulk-scroll"><div class="entry-progress"><h3>${CreoVendorTasks.broadcastRegistrationComplete(r)?'개체 제출 완료':'출품 개체'}</h3><span>${r.completed?r.completed+'마리 제출':r.quantity===4?'4마리':'4~5마리'}</span></div>
+  modal(dateLabel(selected),`<form id="bulk-entry-form" novalidate><div class="entry-step-scroll bulk-scroll"><div class="entry-progress"><h3>${CreoVendorTasks.broadcastRegistrationComplete(r)?'개체 제출 완료':'출품 개체'}</h3><span>${r.completed?r.completed+'마리 제출':entryLimit(r)===4?'4마리':'4~5마리'}</span></div>
+   <p class="muted">${esc(policyText(r.session))}</p>
    <div class="bulk-columns" aria-hidden="true"><span>개체</span><span>성별</span><span>체중(g)</span><span>출생년월일</span></div>
    <div class="bulk-rows">${bulkDrafts.map((row,i)=>{
     const e=r.entries[i],conflict=bulkEditable(i)&&row.version!==(e?.version||0),readonly=!bulkEditable(i)||conflict;
@@ -123,10 +126,17 @@
     <div class="bulk-row-state"><span>${labels[e?.status]||(i===4?'선택':'')}</span>${e?.status==='submitted'&&Date.parse(r.session.entriesDueAt)>Date.parse(state.now)?`<button type="button" class="text" data-action="bulk-reopen" data-index="${i}" aria-label="개체 ${i+1} 수정">수정</button>`:''}</div>
     ${bulkDetails(row,i,readonly)}${e?.reason?`<p class="entry-reason">${esc(e.reason)}</p>`:''}${conflict?`<p class="entry-reason">다른 화면에서 변경된 개체예요.</p><button type="button" class="text bulk-latest" data-action="bulk-latest" data-index="${i}">최신 자료 불러오기</button>`:''}</section>`;
    }).join('')}</div><p id="step-error" class="form-error" role="alert"></p>
-   ${pickupBlock(r)}
+   ${retainedEntries(r)}${pickupBlock(r)}
    </div><div class="step-footer"></div></form>`,true);
   renderBulkActions();
   sheet.classList.add('bulk-sheet');
+ }
+ function retainedEntries(r){
+  return r.entryIds.slice(entryLimit(r)).map((id,j)=>{
+   const i=entryLimit(r)+j,e=r.entries[i],row=recovery[id]||e;
+   if(!row)return '';
+   return `<details class="bulk-details"><summary>개체 ${i+1} 기존 자료 보관</summary><p class="muted">현재 등록 한도는 ${entryLimit(r)}마리입니다. 기존 자료는 삭제하지 않고 보관합니다.${e?.status==='approved'?' 이미 승인된 개체는 운영자에게 확인해 주세요.':''}</p><p>${esc(labels[e?.status]||'이 기기에 임시 저장')} · ${esc(row.sex==='male'?'수컷':row.sex==='female'?'암컷':'미구분')} · ${esc(row.weight||'미입력')}g · ${esc(row.hatchDate||'출생일 미입력')}</p>${bulkDetails({...row,parents:row.parents||Object.fromEntries(['sire','dam'].map(side=>[side,{photoId:state.entryState.parents.find(p=>p.id===e?.[side+'Id'])?.photoId||''}]))},i,true)}${e?.status==='submitted'&&Date.parse(r.session.entriesDueAt)>Date.parse(state.now)?`<button type="button" class="text" data-action="bulk-reopen" data-index="${i}">개체 ${i+1} 제출 철회</button>`:''}</details>`;
+  }).join('');
  }
  function renderBulkActions(){
   const hasEdits=bulkDrafts.some((row,i)=>bulkEditable(i)&&rowHasData(row));
@@ -196,7 +206,7 @@
   if(b.dataset.slot!==undefined){run(async()=>{await commit(false);openDate(selected,Number(b.dataset.slot))});return}
   const action=b.dataset.action;
   if(action==='bulk-save'){run(async()=>{await commitBulk(false);openBulk();renderCalendar();message('입력한 개체를 저장했어요')});return}
-  if(action==='bulk-reopen'){run(async()=>{await commitBulk(false);const i=Number(b.dataset.index);state=await request({type:'reopen-entry',id:reservation().id,slot:i,expectedVersion:reservation().entries[i].version});openBulk();$(`[name="sex-${i}"]`).focus()});return}
+  if(action==='bulk-reopen'){run(async()=>{await commitBulk(false);const i=Number(b.dataset.index);state=await request({type:'reopen-entry',id:reservation().id,slot:i,expectedVersion:reservation().entries[i].version});openBulk();$(`[name="sex-${i}"]`)?.focus()});return}
   if(action==='bulk-latest'){run(async()=>{const i=Number(b.dataset.index);captureBulk();delete recovery[bulkDrafts[i].id];await persistRecovery();await load();openBulk()});return}
   if(action==='bulk-remove-photo'||action==='bulk-undo-photo'){
    const i=Number(b.dataset.index),side=b.dataset.side;if(!bulkEditable(i))return;
@@ -210,7 +220,7 @@
   if(action==='remove-photo'||action==='undo-photo'){run(async()=>{capture();const key=draft.id+b.dataset.side;if(action==='remove-photo'){removed.set(key,draft.parents[b.dataset.side]);draft.parents[b.dataset.side]={photoId:''}}else{draft.parents[b.dataset.side]=removed.get(key);removed.delete(key)}recovery[draft.id]=structuredClone(draft);await persistRecovery();openDate(selected,slot)});return}
   if(action==='discard'){run(async()=>{delete recovery[draft.id];await persistRecovery();dirty=false;await load();openDate(selected,slot)});return}
   if(action==='reserve')run(async()=>{state=await request({type:'reserve',date:selected,quantity:state.dates.find(d=>d.date===selected).maxQuantityAvailable});openDate(selected);renderCalendar()});
-  if(action==='prev'||action==='next')run(async()=>{await commit(false);openDate(selected,action==='prev'?Math.max(0,slot-1):slot<reservation().entries.length-1?slot+1:undefined)});
+  if(action==='prev'||action==='next')run(async()=>{await commit(false);openDate(selected,action==='prev'?Math.max(0,slot-1):slot<entryLimit(reservation())-1?slot+1:undefined)});
   if(action==='reopen')run(async()=>{state=await request({type:'reopen-entry',id:reservation().id,slot,expectedVersion:entry().version});openDate(selected,slot)});
   if(action==='pickup')run(async()=>{const r=reservation();state=await request({type:'pickup',id:r.id,expectedVersion:r.version,pickup:!r.pickup});openDate(selected)});
  });
@@ -220,7 +230,7 @@
    for(const [i,row] of bulkDrafts.entries())for(const key of ['sex','weight','hatchDate']){const input=$(`[name="${key}-${i}"]`);input.required=bulkEditable(i)&&rowHasData(row);if(input.required&&!input.checkValidity()){input.setAttribute('aria-invalid','true');input.focus();input.reportValidity();$('#step-error').textContent=`개체 ${i+1}: 성별·체중·출생년월일을 확인해 주세요.`;return}}
    run(async()=>{await commitBulk(true);openBulk();renderCalendar();message('입력한 개체를 제출했어요')});return;
   }
-  if(e.target.id!=='entry-step-form')return;e.preventDefault();if(!e.target.reportValidity())return;run(async()=>{await commit(true);const r=reservation(),missing=r.entries.findIndex(pending);openDate(selected,CreoVendorTasks.broadcastRegistrationComplete(r)||missing<0?undefined:missing);renderCalendar()})});
+  if(e.target.id!=='entry-step-form')return;e.preventDefault();if(!e.target.reportValidity())return;run(async()=>{await commit(true);const r=reservation(),missing=r.entries.slice(0,entryLimit(r)).findIndex(pending);openDate(selected,CreoVendorTasks.broadcastRegistrationComplete(r)||missing<0?undefined:missing);renderCalendar()})});
  $('#close').onclick=close;sheet.addEventListener('cancel',e=>{e.preventDefault();close()});sheet.addEventListener('close',()=>{draft=null;dirty=false;(lastTrigger?.isConnected?lastTrigger:$('#refresh')).focus()});
  $('#refresh').onclick=load;window.addEventListener('beforeunload',e=>{if(busy||photoBusy){e.preventDefault();e.returnValue=''}});
  load();

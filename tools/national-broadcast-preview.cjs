@@ -10,6 +10,11 @@ async function main(){
  const owner=await f.login('01000000001'),company=(await f.post(owner,'register',{name:'서울 테스트',region:'서울',phone:'01000000001'})).json();
  const v=await f.repository.getRecord('national-cre','vendor',company.id);await f.repository.upsertRecord('national-cre','vendor',{...v,bankName:'가상은행',bankAccount:'000000',bankHolder:'테스트'});
  const token=(await f.post(owner,'select',{id:company.id})).json().token,root=path.resolve(__dirname,'../public');
+ if(process.env.NATIONAL_PREVIEW_TEAM_COUNT){
+  const old=await f.call(owner,'POST','/api/platform/vendor-bookings',{type:'reserve',date:'2026-10-14',quantity:5,requestId:crypto.randomUUID(),token,event:'national-cre'});
+  if(old.status!==200)throw Error(old.body);
+  for(let i=1;i<Number(process.env.NATIONAL_PREVIEW_TEAM_COUNT);i++)await f.call(owner,'POST','/api/platform/national-vendor-directory',{id:'preview-company-'+i,name:'미리보기 '+i,region:'서울·인천',loginPhone:'0101000'+String(i).padStart(4,'0'),revision:0},{'x-creo-admin':f.secret});
+ }
  http.createServer(async(req,res)=>{try{
   const url=new URL(req.url,origin);
   if(url.pathname==='/'){res.writeHead(303,{Location:'/vendor-broadcast.html?'+new URLSearchParams({event:'national-cre',token}),'Set-Cookie':Object.entries(owner.jar).map(([k,v])=>`${k}=${v}; Path=/; HttpOnly; SameSite=Lax`)});res.end();return;}

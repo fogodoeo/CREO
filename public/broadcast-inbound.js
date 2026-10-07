@@ -2,11 +2,10 @@
  'use strict';
  const Core=window.CreoInboundCore,Origin=window.CreoOriginCore,esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const names={parge:'파르게',dodosi:'도도시'},fmt=d=>`${Number(d.slice(5,7))}/${Number(d.slice(8))}(${['일','월','화','수','목','금','토'][Core.dow(d)]})`;
- const truck='<svg class="inbound-symbol" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h11v11H3zM14 10h4l3 4v3h-7"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg>';
  const source=p=>p.carrier==='parge'?data.parge.source:p.estimateBasis==='region'?data.dodosi.source:p.origin?.source||data.dodosi.source;
  const deliveryNotice='<p class="inbound-notice">배송 일정은 참고용입니다.<strong>방송 시작 전까지 도착하도록 준비해 주세요.</strong></p>';
  let data,failed=false,context,milestones=new Map(),lastTrigger,selections={},areaIds={},saving=false;
- async function ready(){if(data)return;const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),5000);try{const r=await fetch('/broadcast-inbound-data.json?v=20261006-estimates',{cache:'no-cache',signal:controller.signal});if(!r.ok)throw Error();const v=await r.json();if(v.version!==1||!Array.isArray(v.dodosi?.origins)||!Array.isArray(v.parge?.origins))throw Error();data=v;failed=false;}catch{failed=true;}finally{clearTimeout(timer);}}
+ async function ready(){if(data)return;const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),5000);try{const r=await fetch('/broadcast-inbound-data.json?v=20261007-routes',{cache:'no-cache',signal:controller.signal});if(!r.ok)throw Error();const v=await r.json();if(v.version!==1||!Array.isArray(v.dodosi?.origins)||!Array.isArray(v.parge?.origins))throw Error();data=v;failed=false;}catch{failed=true;}finally{clearTimeout(timer);}}
  function destinationLine(p){return p.destination?`<dl class="inbound-destination"><dt>도착지</dt><dd>${esc(p.destination)}${p.destinationPhone?`<a class="inbound-phone" href="tel:${p.destinationPhone.replace(/\D/g,'')}" aria-label="${esc(p.destination+'에 전화 '+p.destinationPhone)}">${esc(p.destinationPhone)}</a>`:''}</dd></dl>`:'';}
  function basisLine(p){
   if(!p.estimated)return '';
@@ -19,6 +18,10 @@
    return `<a class="inbound-review-link" href="${esc(source(p))}" target="_blank" rel="noopener" aria-label="${names[p.carrier]} 마감일 확인">마감일 확인 ↗</a>`;
   }
   return `<p class="inbound-deadline">${p.estimated?'<span class="inbound-estimate">예상</span>':''}<strong>${fmt(p.actionDate)}</strong>까지${p.status==='missed'?'<span class="inbound-warning">기한 지남</span>':p.status==='today'?'<span class="inbound-warning">오늘까지</span>':''}</p>`;
+ }
+ function routeLine(p){
+  if(p.status==='review')return '';
+  return `<ol class="inbound-route" aria-label="${names[p.carrier]} 운송 일정">${[[p.actionLabel,p.actionDate],[p.departureLabel,p.departureDate],['대구 도착',p.arrivalDate]].map(([label,date])=>`<li><span>${esc(label)}</span><strong>${fmt(date)}</strong></li>`).join('')}</ol>${p.arrivalDate===p.broadcastDate?'<p class="inbound-basis">방송 당일 도착편 · 도착 시각을 확인해 주세요.</p>':''}`;
  }
  function compute(date){const s=context.state,today=new Date(Date.parse(s.now)+9*3600000).toISOString().slice(0,10);return ['parge','dodosi'].map(c=>{const choice=selections[c],plan=Core.forSelection(data,c,s.vendor.region,choice,date,today);return {...plan,carrier:c,broadcastDate:date,selection:choice,destination:s.inboundDestinations?.[c]||Core.destination(data,c),destinationPhone:s.inboundDestinationPhones?.[c]||Core.destinationPhone(data,c)};});}
  function originControl(p){
@@ -33,7 +36,7 @@
   context=next;milestones=new Map();document.querySelector('#inbound-panel')?.remove();
   const calendar=document.querySelector('.broadcast-calendar');if(!calendar)return;
   calendar.querySelector('.calendar-key')?.remove();
-  calendar.querySelector('.calendar-head').insertAdjacentHTML('afterend',`<div class="calendar-key" aria-label="달력 표시"><span><i class="calendar-key-broadcast" aria-hidden="true"></i>방송</span><span>${truck}배송 마감</span></div>`);
+  calendar.querySelector('.calendar-head').insertAdjacentHTML('afterend',`<div class="calendar-key" aria-label="달력 표시"><span><i class="calendar-key-broadcast" aria-hidden="true"></i>방송</span><span><i class="calendar-key-route parge" aria-hidden="true"></i>파르게</span><span><i class="calendar-key-route dodosi" aria-hidden="true"></i>도도시</span><span>운송 구간 · 눌러서 일정</span></div>`);
   if(!data){calendar.insertAdjacentHTML('afterend',failed?'<section id="inbound-panel" class="inbound-panel"><p>운송 일정을 불러오지 못했어요.</p><button type="button" class="text" data-inbound-retry>다시 불러오기</button></section>':'<section id="inbound-panel" class="inbound-panel"><p class="muted" role="status">운송 일정 불러오는 중…</p></section>');return;}
   const {state,month}=context,today=new Date(Date.parse(state.now)+9*3600000).toISOString().slice(0,10);
   selections=Object.fromEntries(['parge','dodosi'].map(c=>[c,Origin.options(data,c,state.vendor,areaIds[c])]));
@@ -42,15 +45,21 @@
   // Include the following month's broadcast so its earlier shipping deadline stays visible.
   const planDates=mine.filter(d=>d.date>=month+'-01'&&d.date<=Core.add(month+'-01',65));
   for(const d of planDates)for(const p of compute(d.date)){
-   if(p.status==='review'||!p.actionDate.startsWith(month))continue;
-   const list=milestones.get(p.actionDate)||[];list.push({...p,label:p.actionLabel});milestones.set(p.actionDate,list);
+   if(p.status==='review')continue;
+   for(let day=p.actionDate;day<=p.arrivalDate;day=Core.add(day,1)){
+    if(!day.startsWith(month))continue;
+    const list=milestones.get(day)||[];list.push({...p,label:p.actionLabel});milestones.set(day,list);
+   }
   }
   for(const day of calendar.querySelectorAll('.day')){
    const n=Number(day.querySelector('span')?.textContent),date=month+'-'+String(n).padStart(2,'0'),items=milestones.get(date);if(!items?.length)continue;
    day.disabled=false;day.dataset.inboundDate=date;day.classList.add('has-inbound');
-   const labels=[...new Set(items.map(p=>names[p.carrier]))],broadcastLabel=day.getAttribute('aria-label');
-   day.insertAdjacentHTML('beforeend',`<div class="inbound-day-mark">${truck}${labels.map(label=>`<small class="inbound-mark">${esc(label)}</small>`).join('')}</div>`);
-   day.setAttribute('aria-label',`${broadcastLabel?broadcastLabel+', ':fmt(date)+', '}${items.map(p=>names[p.carrier]+(p.estimated?' 예상':'')+' 배송 마감').filter((v,i,a)=>a.indexOf(v)===i).join(', ')}`);
+   const broadcastLabel=day.getAttribute('aria-label'),carriers=[...new Set(items.map(p=>p.carrier))];
+   day.insertAdjacentHTML('beforeend',carriers.map(c=>{
+    const start=items.some(p=>p.carrier===c&&p.actionDate===date)||Core.dow(date)===0||n===1,end=items.some(p=>p.carrier===c&&p.arrivalDate===date)||Core.dow(date)===6;
+    return `<span class="inbound-span ${c} ${start?'route-start':''} ${end?'route-end':''}" aria-hidden="true" title="${names[c]} 운송 일정">${start?`<b>${names[c]}</b>`:''}</span>`;
+   }).join(''));
+   day.setAttribute('aria-label',`${broadcastLabel?broadcastLabel+', ':fmt(date)+', '}${items.map(p=>names[p.carrier]+(p.estimated?' 예상':'')+(date===p.actionDate?' 배송 마감':' 운송 구간')+', '+fmt(p.actionDate)+' '+p.actionLabel+' → '+fmt(p.departureDate)+' '+p.departureLabel+' → '+fmt(p.arrivalDate)+' 대구 도착').filter((v,i,a)=>a.indexOf(v)===i).join(', ')}`);
   }
   const plans=compute(target.date);
   if([...milestones.values()].flat().some(p=>p.estimated))calendar.querySelector('.calendar-key>span:last-child').insertAdjacentHTML('beforeend','<span>· 예상 포함</span>');
@@ -60,7 +69,7 @@
  function openDate(date){
   const items=milestones.get(date);if(!items)return;lastTrigger=document.activeElement;
   let dialog=document.querySelector('#inbound-dialog');if(!dialog){dialog=document.createElement('dialog');dialog.id='inbound-dialog';dialog.className='inbound-dialog';dialog.setAttribute('aria-labelledby','inbound-dialog-title');document.body.append(dialog);dialog.addEventListener('close',()=>lastTrigger?.isConnected&&lastTrigger.focus());}
-  dialog.innerHTML=`<header><h2 id="inbound-dialog-title">${fmt(date)}까지 준비</h2><button type="button" class="icon" data-inbound-close aria-label="배송 마감 닫기">×</button></header>${items.map(p=>`<article class="inbound-card"><h3>${names[p.carrier]}${p.estimated?' <span class="inbound-estimate">예상</span>':''}</h3><p class="inbound-for">${fmt(p.broadcastDate)} 방송${p.arrivalDate===p.broadcastDate?' · 당일 도착편':''}</p>${basisLine(p)}${destinationLine(p)}${p.status==='missed'?'<p class="inbound-warning">기한 지남 · 운송사에 문의해 주세요.</p>':''}<a class="text" href="${esc(source(p))}" target="_blank" rel="noopener">${names[p.carrier]} 안내</a></article>`).join('')}${deliveryNotice}${context.state.dates.some(d=>d.date===date)?'<button type="button" class="primary" data-inbound-broadcast="'+date+'">이날 방송 보기</button>':''}`;
+  dialog.innerHTML=`<header><h2 id="inbound-dialog-title">배송 일정</h2><button type="button" class="icon" data-inbound-close aria-label="배송 마감 닫기">×</button></header>${items.map(p=>`<article class="inbound-card"><h3>${names[p.carrier]}${p.estimated?' <span class="inbound-estimate">예상</span>':''}</h3><p class="inbound-for">${fmt(p.broadcastDate)} 방송${p.arrivalDate===p.broadcastDate?' · 당일 도착편':''}</p>${basisLine(p)}${routeLine(p)}${destinationLine(p)}${p.status==='missed'?'<p class="inbound-warning">기한 지남 · 운송사에 문의해 주세요.</p>':''}<a class="text" href="${esc(source(p))}" target="_blank" rel="noopener">${names[p.carrier]} 안내</a></article>`).join('')}${deliveryNotice}${context.state.dates.some(d=>d.date===date)?'<button type="button" class="primary" data-inbound-broadcast="'+date+'">이날 방송 보기</button>':''}`;
   dialog.showModal();
  }
  document.addEventListener('click',e=>{

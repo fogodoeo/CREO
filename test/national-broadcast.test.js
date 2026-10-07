@@ -18,6 +18,58 @@ test('five-region rotation has a fixed first broadcast and covers month/year bou
  assert.equal(regionAt('2026-10-12'),null);assert.equal(regionAt('2026-10-14'),0);assert.equal(regionAt('2026-10-19'),1);assert.equal(regionAt('2026-10-26'),3);assert.equal(regionAt('2026-11-02'),0);assert.equal(regionAt('2026-02-30'),null);
  assert.equal(regionAt('2027-01-04'),3);assert.equal(regionAt('9999-12-29'),4);
 });
+test('every region switches at nine active distinct companies, including region overrides',()=>{
+ const {regionEntryPolicy}=require('../national-broadcast');
+ for(let region=0;region<5;region++){
+  const vendors=Array.from({length:8},(_,i)=>({id:'v'+i,broadcastRegion:REGIONS[region],phone:'01000000001'}));
+  const policy=list=>regionEntryPolicy({regions:{}},region,list);
+  assert.deepEqual(policy(vendors),{regionVendorCount:8,vendorEntryLimit:5});
+  assert.equal(policy([...vendors,vendors[0],{id:'inactive',active:false,broadcastRegion:REGIONS[region]},{id:'deleted',deletedAt:'2026-10-01',broadcastRegion:REGIONS[region]},{id:'unknown'},{id:'other',broadcastRegion:REGIONS[(region+1)%5]}]).vendorEntryLimit,5);
+  const ninth={id:'ninth',broadcastRegion:REGIONS[(region+1)%5]};
+  assert.deepEqual(regionEntryPolicy({regions:{ninth:region}},region,[...vendors,ninth]),{regionVendorCount:9,vendorEntryLimit:4});
+  assert.equal(policy([...vendors,{...ninth,broadcastRegion:REGIONS[region]}]).vendorEntryLimit,4);
+ }
+});
+async function addRegionalCompanies(f,count){
+ for(let i=1;i<=count;i++){
+  const result=await f.call(f.client,'POST','/api/platform/national-vendor-directory',{id:'regional-extra-'+i,name:'권역 테스트 '+i,region:'서울·인천',loginPhone:'0101000'+String(i).padStart(4,'0'),revision:0},f.admin);
+  assert.equal(result.status,200,result.body);
+ }
+}
+test('nine preregistered teams cap new reservations at four, with durable concurrent retry and isolated regions',async t=>{
+ const f=await fixture(t);await addRegionalCompanies(f,8);
+ const view=(await f.get()).json(),date=view.dates[0];
+ assert.equal(date.regionVendorCount,9);assert.equal(date.vendorEntryLimit,4);assert.equal(date.maxQuantityAvailable,4);
+ assert.equal(view.dates.find(d=>d.region===1).vendorEntryLimit,5);
+ assert.equal((await f.command({type:'reserve',date:date.date,quantity:5})).status,409);
+ const body={type:'reserve',date:date.date,quantity:4,requestId:randomUUID()},replies=await Promise.all([f.command(body),f.command(body)]);
+ assert.ok(replies.every(r=>r.status===200));assert.equal(replies.filter(r=>r.json().duplicate).length,1);
+ const r=replies[0].json().reservations[0];assert.equal(r.entryLimit,4);assert.equal(r.entryIds.length,4);
+ f.restart();assert.equal((await f.command(body)).json().duplicate,true);assert.equal((await f.get()).json().dates[0].vendorEntryLimit,4);
+ const notices=await f.repository.listRecords('national-cre','notification');assert.equal(notices.filter(n=>n.templateKey==='broadcast_booking_updated').length,1);
+ const operator=(await f.call(f.client,'GET','/api/platform/channels/national-cre/broadcast-bookings',null,f.admin)).json();assert.equal(operator.sessions[0].regionVendorCount,9);assert.equal(operator.sessions[0].vendorEntryLimit,4);
+});
+test('a ninth team limits existing five-slot bookings without deleting saved data or partially saving stale batches',async t=>{
+ const f=await fixture(t),r=(await f.command({type:'reserve',date:'2026-10-14',quantity:5})).json().reservations[0];
+ const fifth={type:'save-entry',id:r.id,slot:4,expectedVersion:0,entry:{sex:'male',weight:'8',hatchDate:'2026-09-01',note:'보관할 다섯 번째'}};
+ assert.equal((await f.command(fifth)).status,200);await addRegionalCompanies(f,8);
+ let current=(await f.get()).json().reservations[0];assert.equal(current.entryLimit,4);assert.equal(current.entries[4].note,fifth.entry.note);
+ assert.equal((await f.command({...fifth,expectedVersion:1,submit:true})).status,409);
+ const rows=[0,1,2,3,4].map(slot=>({slot,expectedVersion:slot===4?1:0,entry:{sex:'unknown',weight:'5',hatchDate:'2026-09-01'}}));
+ assert.equal((await f.command({type:'save-entries',id:r.id,submit:true,entries:rows})).status,409);
+ current=(await f.get()).json().reservations[0];assert.ok(current.entries.slice(0,4).every(e=>e===null));assert.equal(current.entries[4].version,1);
+ const submitted=await f.command({type:'save-entries',id:r.id,submit:true,entries:rows.slice(0,4)});assert.equal(submitted.status,200,submitted.body);assert.equal(submitted.json().reservations[0].registrationComplete,true);
+ f.restart();current=(await f.get()).json().reservations[0];assert.equal(current.completed,4);assert.equal(current.entries[4].note,fifth.entry.note);
+});
+test('an existing fifth submission remains visible for withdrawal and historical broadcasts keep their original limit',async t=>{
+ const f=await fixture(t),r=(await f.command({type:'reserve',date:'2026-10-14',quantity:5})).json().reservations[0];
+ const rows=[0,1,2,3,4].map(slot=>({slot,expectedVersion:0,entry:{sex:'unknown',weight:'5',hatchDate:'2026-09-01'}}));
+ assert.equal((await f.command({type:'save-entries',id:r.id,submit:true,entries:rows})).status,200);await addRegionalCompanies(f,8);
+ let current=(await f.get()).json().reservations[0];assert.equal(current.completed,5);assert.equal(current.excessSubmitted,1);assert.equal(current.registrationComplete,false);
+ const withdrawn=await f.command({type:'reopen-entry',id:r.id,slot:4,expectedVersion:current.entries[4].version});assert.equal(withdrawn.status,200,withdrawn.body);
+ current=withdrawn.json().reservations[0];assert.equal(current.completed,4);assert.equal(current.excessSubmitted,0);assert.equal(current.registrationComplete,true);assert.equal(current.entries[4].status,'draft');
+ f.advance(13*86400000);f.restart();current=(await f.get()).json().reservations[0];assert.equal(current.entryLimit,5);assert.equal(current.entries.length,5);
+});
 test('Seoul and Incheon aliases share the first cycle region while explicit Gyeonggi stays separate',()=>{
  for(const name of ['서울','인천','서울+인천','서울·인천']){assert.equal(regionIndex(name),0);assert.equal(regionForVendor({broadcastRegion:name}),0);}
  assert.equal(regionForVendor({bookingRegion:1}),0);

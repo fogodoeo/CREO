@@ -32,8 +32,30 @@ test('real calendar renderer shows both carriers before a Seoul vendor chooses a
 test('calendar estimates use the registered locality and replace them with the chosen shop on redraw',async()=>{
  const f=fixture({address:'서울특별시 송파구 거마로 1'});await f.ready();f.render();assert.match(f.html(),/서울 송파구 인근 · 다이노마켓 · 서울 송파구 기준/);
  const selected=data.dodosi.origins.find(o=>o.shop==='드래곤길들이기');f.state.vendor.inboundOrigins.dodosi=selected.id;f.render();
- assert.doesNotMatch(f.day(11).html,/도도시/);assert.match(f.day(12).html,/도도시/);assert.doesNotMatch(f.day(12).attrs['aria-label'],/예상/);
- const dialog=f.click(12);assert.match(dialog.innerHTML,/당일 도착편/);assert.doesNotMatch(dialog.innerHTML,/inbound-estimate/);assert.equal(f.writes.length,0);
+ assert.doesNotMatch(f.day(11).html,/도도시/);assert.match(f.day(12).html,/도도시/);assert.doesNotMatch(f.day(12).attrs['aria-label'],/도도시 예상/);
+ const dialog=f.click(12);assert.match(dialog.innerHTML,/당일 도착편/);assert.match(dialog.innerHTML,/<h3>도도시<\/h3>/);assert.equal(f.writes.length,0);
+});
+test('Monday broadcasts show Friday hand-in, Saturday departure and Sunday Daegu arrival even for another broadcast region',async()=>{
+ const origin=data.dodosi.origins.find(o=>o.shop==='드래곤길들이기');
+ const f=fixture({region:'대구·경북',origins:{dodosi:origin.id}});await f.ready();
+ f.state.dates=[{date:'2026-10-26',regionName:'대구·경북'}];f.render();
+ assert.doesNotMatch(f.html(),/class="inbound-route"/);
+ for(const day of [23,24,25]){
+  assert.equal(f.day(day).disabled,false);assert.match(f.day(day).html,/inbound-span dodosi/);
+  for(const pattern of [/맡기기<\/span><strong>10\/23\(금\)/,/출발<\/span><strong>10\/24\(토\)/,/대구 도착<\/span><strong>10\/25\(일\)/])assert.match(f.click(day).innerHTML,pattern);
+ }
+ assert.match(f.day(23).html,/dodosi route-start/);assert.match(f.day(24).html,/dodosi\s+route-end/);assert.match(f.day(25).html,/dodosi route-start route-end/);
+ assert.match(f.day(23).html,/<b>도도시<\/b>/);assert.match(f.day(25).html,/<b>도도시<\/b>/);
+ assert.doesNotMatch(f.day(26).html,/inbound-span dodosi/);
+ assert.equal(f.writes.length,0);
+});
+
+test('shipping strips continue into the next month and open the full route there',async()=>{
+ const origin=data.dodosi.origins.find(o=>o.shop==='드래곤길들이기');
+ const f=fixture({origins:{dodosi:origin.id}});await f.ready();f.render('2026-11');
+ assert.match(f.day(1).html,/inbound-span dodosi route-start route-end/);assert.equal(f.day(1).disabled,false);
+ const dialog=f.click(1);assert.match(dialog.innerHTML,/맡기기<\/span><strong>10\/30\(금\)/);assert.match(dialog.innerHTML,/대구 도착<\/span><strong>11\/1\(일\)/);
+ assert.equal(f.writes.length,0);
 });
 test('following-month broadcasts retain their shipping markers in the earlier month and rerenders do not save estimates',async()=>{
  const f=fixture();await f.ready();f.render();assert.match(f.day(25).html,/파르게/);assert.match(f.day(30).html,/도도시/);

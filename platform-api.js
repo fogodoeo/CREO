@@ -1134,9 +1134,9 @@ function createPlatformApi({
         deletionContext:vendorLifecycle.inspect,reviewDeletion:vendorLifecycle.review,
         taskSummary:async id=>{
             const catalog=await loadCatalog(),channel=catalog.channels.find(c=>c.id===Booking.CHANNEL_ID),vendor=await vendorDirectory.find(Booking.CHANNEL_ID,id),profile=await vendorDirectory.profileFor(Booking.CHANNEL_ID,id);
-            const summary=channel&&profile?await booking.summary({channel,vendor,profile,catalog}):null;
             if(!channel)return {bookingAttention:false,settlementAttention:false};
             const [items,shipments,vendors]=await Promise.all([repository.listRecords(channel.id,'item'),repository.listRecords(channel.id,'shipment'),vendorDirectory.list(channel.id)]);
+            const summary=profile?await booking.summary({channel,vendor,profile,catalog,vendors}):null;
             const bundles=await vendorBuyerBundles({channel,vendor,profile,catalog,items,shipments,vendors,vendorKey:id});
             const actions=await Promise.all(bundles.map(async bundle=>require('./public/vendor-task-state').settlementStage({...vendorBuyerPublicPayload(bundle),changePending:Boolean(await pendingCheckoutChange(bundle.context))},channel)==='action'));
             const shipping=await organizerShippingSettlement(channel.id,items,shipments,[vendor]),money=shipping.vendors.find(v=>v.vendorId===id);
