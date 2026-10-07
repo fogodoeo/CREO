@@ -1,6 +1,7 @@
 'use strict';
 const path=require('node:path');
-const fontfile=path.join(__dirname,'public/roulette/PretendardVariable.be37ba89.woff2');
+// FreeType/Pango on the Linux host needs an actual sfnt font, not a browser WOFF2.
+const fontfile=path.join(__dirname,'public/promo-assets/PretendardVariable.ttf');
 const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
 const shortName=s=>({'제트크레스티드게코':'제트크레','REPSODY 렙소디':'렙소디','더숲(크레숲)':'더숲 · 크레숲','크레용 대구본점':'크레용 대구'})[s]||s;
 async function render(group,{logoBytes}){
