@@ -6,15 +6,15 @@
   const url=new URL(src,location.origin);
   if(url.origin===location.origin&&/^\/promo-assets\/partners-20261007\.(png|thumb\.webp)$/.test(url.pathname))url.searchParams.set('v','board3');
   if(url.origin===location.origin&&/^\/promo-assets\/(weekly|easy)\.(png|thumb\.webp)$/.test(url.pathname))url.pathname=url.pathname.replace(/\.(png|thumb\.webp)$/,'-v2.$1');
-  if(url.origin===location.origin&&url.pathname==='/promo-assets/hero.jpg')url.pathname='/promo-assets/hero-seoul-incheon-v2.png';
+  if(url.origin===location.origin&&['/promo-assets/hero.jpg','/promo-assets/hero-seoul-incheon-v2.png'].includes(url.pathname))url.pathname='/promo-assets/hero-seoul-incheon-v3.png';
   return url.href;
  }
  function isSharedHero(block){
   if(block.type!=='image')return false;
   const url=new URL(block.src,location.origin);
-  return url.origin===location.origin&&['/promo-assets/hero.jpg','/promo-assets/hero-seoul-incheon-v2.png'].includes(url.pathname);
+  return url.origin===location.origin&&['/promo-assets/hero.jpg','/promo-assets/hero-seoul-incheon-v2.png','/promo-assets/hero-seoul-incheon-v3.png'].includes(url.pathname);
  }
- function postBlocks(t){return [{type:'image',src:'/promo-assets/hero-seoul-incheon-v2.png',alt:'전국크레자랑 라이브 방송 · EP 01. 서울, 인천 · 10월 14일 수요일 밤 8시'},...t.blocks.filter(b=>!isSharedHero(b))];}
+ function postBlocks(t){return [{type:'image',src:'/promo-assets/hero-seoul-incheon-v3.png',alt:'전국크레자랑 라이브 방송 · EP 01. 서울, 인천 · 10월 14일 수요일 밤 8시'},...t.blocks.filter(b=>!isSharedHero(b))];}
  function thumbnailImage(t){return t.blocks.find(b=>b.type==='image'&&!isSharedHero(b));}
  function enablePreviewDismiss(dialog){
   let outsideStart=false;
