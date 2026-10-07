@@ -79,8 +79,8 @@ test('new bundled manuscripts merge into existing state without overwriting edit
  saved.templates=saved.templates.filter(t=>!t.id.startsWith('launch26-'));
  saved.templates[0].title='운영자가 직접 고친 제목';saved.templates[0].active=false;
  await f.repository.upsertRows([{key,value:JSON.stringify(saved)}]);f.restart();
- let view=(await f.get(f.owner,f.id,true)).json();assert.equal(view.templates.filter(t=>t.id.startsWith('launch26-')).length,5);
+ let view=(await f.get(f.owner,f.id,true)).json();const bundled=require('../promo-templates.json');assert.equal(view.templates.filter(t=>t.id.startsWith('launch26-')).length,bundled.filter(t=>t.id.startsWith('launch26-')).length);
  assert.equal(view.templates[0].title,'운영자가 직접 고친 제목');assert.equal(view.templates[0].active,false);assert.equal(view.templates[0].usage.length,1);assert.equal(view.assignments.length,1);
  assert.equal((await f.post({action:'copy',templateId:'launch26-joseon',version:1})).status,200);f.restart();
- view=(await f.get(f.owner,f.id,true)).json();assert.equal(view.templates.length,7);assert.equal(view.templates.find(t=>t.id==='launch26-joseon').usage.length,1);
+ view=(await f.get(f.owner,f.id,true)).json();assert.equal(view.templates.length,bundled.length);assert.equal(view.templates.find(t=>t.id==='launch26-joseon').usage.length,1);
 });
