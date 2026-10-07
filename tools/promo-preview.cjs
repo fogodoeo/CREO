@@ -8,6 +8,8 @@ async function main(){
  const registered=await f.post(owner,'register',{name:'미리보기 업체',region:'서울·인천',phone:'01000000001'}),company=registered.json().id;
  await f.call(admin,'POST','/api/platform/auth/login',{password:f.secret});
  const sent=await f.call(admin,'POST','/api/platform/promo-center',{action:'assign',requestId:randomUUID(),revision:0,date:'2026-10-08',slot:'afternoon',vendorId:company,templateId:'ep01-welcome'});if(sent.status!==200)throw Error(sent.body);
+ const today=await f.call(admin,'POST','/api/platform/promo-center',{action:'assign',requestId:randomUUID(),revision:1,date:'2026-10-07',slot:'afternoon',vendorId:company,templateId:'ep01-brief'});if(today.status!==200)throw Error(today.body);
+ f.advance(5*3600000);
  const root=path.resolve(__dirname,'../public');
  http.createServer(async(req,res)=>{try{const url=new URL(req.url,origin);
   if(['/__preview/vendor','/__preview/admin'].includes(url.pathname)){const c=url.pathname.endsWith('admin')?admin:owner;const names=new Set([...Object.keys(owner.jar),...Object.keys(admin.jar)]);res.writeHead(303,{Location:'/promo-center.html?'+(c===admin?'admin=1':'company='+company),'Set-Cookie':[...names].map(k=>`${k}=${c.jar[k]||''}; Path=/; HttpOnly; SameSite=Lax${c.jar[k]?'':'; Max-Age=0'}`)});res.end();return;}

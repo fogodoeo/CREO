@@ -54,3 +54,20 @@ test('template validation rejects active payloads, versions cannot be overwritte
  assert.equal((await f.post({action:'copy',templateId:template.id,version:2})).status,500);f.repository.compareAndSwapRows=previous;
  assert.equal((await f.get()).json().templates[0].usage.length,0);
 });
+
+test('unfinished own assignments remain discoverable across months and after deadline',async t=>{
+ const f=await fixture(t);await f.assign();await f.assign({date:'2026-10-01'});
+ f.advance(6*3600000);
+ const s=(await f.get()).json();assert.equal(s.pending.length,2);assert.equal(s.pending[0].status,'overdue');assert.equal(s.pending[1].date,'2026-10-01');
+ assert.equal((await f.get(f.other,f.otherId)).json().pending.length,0);
+});
+
+test('assigned template cannot be hidden; tracking URL variations cannot complete another assignment',async t=>{
+ const f=await fixture(t),a=(await f.assign()).json();const s=(await f.get()).json(),template=s.templates[0];
+ assert.equal((await f.post({action:'template',revision:s.revision,id:template.id,name:template.name,title:template.title,blocks:template.blocks,active:false},f.owner,true)).status,409);
+ f.advance(5*3600000);
+ assert.equal((await f.post({action:'complete',id:a.id,templateId:template.id,version:template.version,url:'https://m.cafe.naver.com/reptilia/12345/?from=share#comment'})).status,200);
+ const next=(await f.assign({date:'2026-09-24'})).json();f.advance(24*3600000);
+ assert.equal((await f.post({action:'complete',id:next.id,templateId:template.id,version:template.version,url:'https://cafe.naver.com/reptilia/12345?from=another'})).status,409);
+ assert.equal((await f.get()).json().assignments[0].publication.url,'https://cafe.naver.com/reptilia/12345');
+});

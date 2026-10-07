@@ -41,6 +41,7 @@ function createPromoCenter({ repository, vendorsFor, now = Date.now }) {
   return { revision:state.revision, capacity:state.capacity, slots:SLOTS, now:now(), vendorId, admin, vendors,
    templates:state.templates.filter(t => admin || t.active !== false).map(t => ({ ...t, usage:state.copies.filter(c => c.templateId === t.id).slice(-10).reverse().map(({vendorId,at,version})=>({vendorId,at,version})), published:state.assignments.filter(a=>a.templateId===t.id&&a.publication).map(a=>({vendorId:a.vendorId,date:a.date,url:a.publication.url})) })),
    assignments:state.assignments.filter(a => a.date.startsWith(month)).map(a => ({...a,status:status(a)})),
+   pending:state.assignments.filter(a => a.vendorId===vendorId && !a.cancelled && !a.publication).sort((a,b)=>(a.date+SLOTS[a.slot].start).localeCompare(b.date+SLOTS[b.slot].start)).map(a=>({...a,status:status(a)})),
    next:state.assignments.filter(a => a.vendorId===vendorId && status(a)==='assigned').sort((a,b)=>(a.date+SLOTS[a.slot].start).localeCompare(b.date+SLOTS[b.slot].start))[0] || null };
  }
  async function mutate(actor, body) {
@@ -66,7 +67,10 @@ function createPromoCenter({ repository, vendorsFor, now = Date.now }) {
      const normalized=normalizeTemplate(body),old=state.templates.find(t=>t.id===body.id);
      if(body.id&&!old)throw fail('원고를 찾지 못했어요.',404);
      if(!old&&state.templates.length>=100)throw fail('원고는 최대 100개까지 보관할 수 있어요.');
-     if(old){Object.assign(old,normalized,{version:old.version+1,active:body.active!==false,updatedAt:stamp});result.id=old.id;}
+     if(old){
+      if(body.active===false && state.assignments.some(a=>a.templateId===old.id&&!a.cancelled&&!a.publication))throw fail('아직 게시하지 않은 배정에서 사용하는 원고예요. 해당 배정의 원고를 변경하거나 배정을 취소한 뒤 비공개로 바꿔 주세요.',409);
+      Object.assign(old,normalized,{version:old.version+1,active:body.active!==false,updatedAt:stamp});result.id=old.id;
+     }
      else {const t={...normalized,id:crypto.randomUUID(),version:1,active:true,updatedAt:stamp};state.templates.push(t);result.id=t.id;}
     } else if(body.action==='cancel') {
      const a=state.assignments.find(a=>a.id===body.id);if(!a)throw fail('배정을 찾지 못했어요.',404);
@@ -96,7 +100,9 @@ function createPromoCenter({ repository, vendorsFor, now = Date.now }) {
      if(stamp<Date.parse(`${a.date}T${SLOTS[a.slot].start}:00+09:00`))throw fail('배정된 게시 시간이 아직 시작되지 않았어요.');
      let url;try{url=new URL(body.url);}catch{throw fail('게시한 카페 글 주소를 입력해 주세요.');}
      if(url.protocol!=='https:'||!['cafe.naver.com','m.cafe.naver.com'].includes(url.hostname)||url.port||url.username||url.password||!(/\/\d+\/?$/.test(url.pathname)||/\/articles\/\d+\/?$/.test(url.pathname)))throw fail('네이버 카페 게시글 주소를 입력해 주세요.');
-     if(state.assignments.some(x=>x.publication?.url===url.href))throw fail('이미 등록된 게시글이에요.',409);
+     // Tracking parameters do not make the same article a different publication.
+     url.search='';url.hash='';url.hostname='cafe.naver.com';url.pathname=url.pathname.replace(/\/$/,'');
+     if(state.assignments.some(x=>{if(!x.publication)return false;const prior=new URL(x.publication.url);return prior.pathname.replace(/\/$/,'')===url.pathname;}))throw fail('이미 등록된 게시글이에요.',409);
      a.templateId=t.id;a.publication={url:url.href,reportedAt:stamp,version:t.version,title:t.title};a.updatedAt=stamp;
     }
    } else throw fail('지원하지 않는 작업이에요.');
