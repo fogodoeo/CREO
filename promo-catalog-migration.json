@@ -1,6 +1,6 @@
 {
-  "version": 1,
-  "id": "20261008-curated-rebuild",
+  "version": 2,
+  "id": "20261008-curated-rebuild-v2",
   "replace": ["launch26-showtime", "ep01-welcome", "ep01-brief", "launch26-collector"],
   "retire": {
     "launch26-editorial": "ep01-brief",
