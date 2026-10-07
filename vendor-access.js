@@ -390,6 +390,12 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
   })().finally(()=>{cleanupPending=null;});
   return cleanupPending;
  }
- return {handle,authorize,assertNotification,view,verifyToken,cleanupExpired,directory,preregister,review};
+ async function authorizeCompany(req,companyId,{write=false}={}){
+  const s=await requireSession(req);if(write)guard(req,s.csrfToken);
+  const state=(await read(STATE)).value||fresh(),c=member(state,s.actorId,companyId),v=c&&await activeVendor(c.id);
+  if(!v||!phone(s.verifiedPhone))throw fail('연결된 업체 계정으로 로그인해 주세요.',403);
+  return {vendorId:v.id,actorId:s.actorId};
+ }
+ return {handle,authorize,authorizeCompany,assertNotification,view,verifyToken,cleanupExpired,directory,preregister,review};
 }
 module.exports={createVendorAccess,phone};

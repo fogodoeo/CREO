@@ -8,7 +8,7 @@
  const query=new URLSearchParams(location.search),portal=query.get('portal'),profileEntry=location.pathname.endsWith('/vendor-access.html')&&query.get('section')==='profile'&&query.get('company');
  if(portal||profileEntry)document.documentElement.classList.add('vendor-shell-pending');
  const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- function currentSection(){return profileEntry?'profile':location.pathname.endsWith('/vendor-checkout.html')?'settlement':'booking';}
+ function currentSection(){return location.pathname.endsWith('/promo-center.html')?'promo':profileEntry?'profile':location.pathname.endsWith('/vendor-checkout.html')?'settlement':'booking';}
  let switchDialog,switchSequence=0,switching=false;
  async function access(route,session,body){
   const response=await fetch('/api/platform/vendor-access/'+route,{method:body?'POST':'GET',cache:'no-store',credentials:'same-origin',headers:{'Content-Type':'application/json','x-vendor-csrf':session?.csrfToken||''},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(20000)});
@@ -43,6 +43,7 @@
      const active=currentSection();
      // A fresh server selection checks membership even when this chooser was left open.
      const data=await access('select',session,{id:selected.id});
+     if(active==='promo'){location.href='/promo-center.html?company='+encodeURIComponent(selected.id);return;}
      if(active==='profile'||selected.setupRequired){location.href='/vendor-access.html?section=profile&company='+encodeURIComponent(selected.id);return;}
      const params=new URLSearchParams({event:'national-cre',token:data.token,portal:selected.id});
      location.href=(active==='settlement'?'/vendor-checkout.html':'/vendor-broadcast.html')+'?'+params;
@@ -66,6 +67,13 @@
  function mount(nav,{active,companyName}={}){
   if(!nav)return;
   document.body.classList.add('national-vendor-shell');nav.classList.add('vendor-portal-nav');nav.setAttribute('aria-label','업체 메뉴');
+  const promoCompany=query.get('company')||query.get('portal')||nav.dataset.company;
+  if(promoCompany){
+   let promo=nav.querySelector('[data-promo-nav]');
+   if(!promo){promo=document.createElement('a');promo.dataset.promoNav='';promo.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM8 9h8M8 13h5"/></svg><span>홍보 관리</span>';nav.append(promo);}
+   promo.href='/promo-center.html?company='+encodeURIComponent(promoCompany);
+   if(currentSection()==='promo')promo.setAttribute('aria-current','page');else promo.removeAttribute('aria-current');
+  }
   for(const [key,label,icon]of sections){
    const link=nav.querySelector('[data-vendor-section="'+key+'"]');
    if(!link)continue;
