@@ -16,7 +16,7 @@ function mark(item,cx,top,size,key){
  return `${square}<svg x="${cx-size/2}" y="${top}" width="${size}" height="${size}" viewBox="${crop.join(' ')}" preserveAspectRatio="xMidYMid meet"><defs><clipPath id="${key}">${clip}</clipPath></defs><image width="${item.width}" height="${item.height}" clip-path="url(#${key})" href="${item.uri}"/></svg>`;
 }
 const label=v=>({'제트크레스티드게코':'제트크레','REPSODY 렙소디':'렙소디','더숲(크레숲)':'더숲 · 크레숲','크레용 대구본점':'크레용 대구'})[v.name]||v.name;
-async function renderPartnerBoard(vendors,assets){
+async function renderPartnerBoard(vendors,assets,stem='partners-20261007'){
  const items=[];
  for(const v of vendors){const file=path.join(assets,'partner-logos',v.file);const meta=await sharp(file).metadata();items.push({vendor:v,width:meta.width,height:meta.height,uri:'data:image/png;base64,'+fs.readFileSync(file).toString('base64')});}
  const width=1500,gridY=540,rowStep=350,height=gridY+Math.ceil(items.length/3)*rowStep+130;
@@ -35,8 +35,8 @@ async function renderPartnerBoard(vendors,assets){
  body+=await type('업체별 일정에 따라 순차적으로 출연합니다',width/2,height-81,34,400,secondary,'center');
  const title=escape('전국크레자랑 참여업체: '+vendors.map(v=>v.name).join(', '));
  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img"><title>${title}</title><rect width="${width}" height="${height}" fill="white"/>${body}</svg>`;
- fs.writeFileSync(path.join(assets,'partners-20261007.svg'),svg);
- await sharp(Buffer.from(svg)).png().toFile(path.join(assets,'partners-20261007.png'));
+ fs.writeFileSync(path.join(assets,stem+'.svg'),svg);
+ await sharp(Buffer.from(svg)).png().toFile(path.join(assets,stem+'.png'));
  // The cover previews the complete logo wall; no arbitrary set of eight featured brands.
  let thumb=await type('다양한 취향.',88,240,76,700);
  thumb+=await type('하나의 밴드.',88,331,76,700);
@@ -44,7 +44,7 @@ async function renderPartnerBoard(vendors,assets){
  thumb+=await type('함께하는 브리더들',88,463,34,400,secondary);
  for(let i=0;i<items.length;i++){thumb+=mark(items[i],792+(i%5)*133,76+Math.floor(i/5)*118,91,'cover-'+i);}
  const thumbSvg=`<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="844"><rect width="1500" height="844" fill="white"/>${thumb}</svg>`;
- await sharp(Buffer.from(thumbSvg)).resize(800).webp({quality:88}).toFile(path.join(assets,'partners-20261007.thumb.webp'));
+ await sharp(Buffer.from(thumbSvg)).resize(800).webp({quality:88}).toFile(path.join(assets,stem+'.thumb.webp'));
  return {height,width,brands:items.length};
 }
 module.exports={renderPartnerBoard};

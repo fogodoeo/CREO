@@ -1,6 +1,6 @@
 [
   {
-    "name": "Doze gecko",
+    "name": "도즈게코",
     "url": "https://iuwqjeecwepqyqqlzprf.supabase.co/storage/v1/object/public/broadcast-assets/vendor-logos/va-0208bf74963e4714ada24b42610653b9-c5ebc80c-b86f-46a7-bce8-51cc1d5a6801.webp",
     "file": "01.png"
   },
@@ -37,6 +37,7 @@
   },
   {
     "name": "오늘도마뱀",
+    "vendorId": "va-53c2b808a0e940d7b5e3a18fc785d840",
     "url": "",
     "file": "08.png",
     "source": "user-supplied",
@@ -69,6 +70,7 @@
   },
   {
     "name": "오케이게코",
+    "vendorId": "va-7823febb87394c4fad86328877026486",
     "url": "",
     "file": "13.png",
     "source": "user-supplied",
@@ -126,6 +128,7 @@
   },
   {
     "name": "니코게코",
+    "vendorId": "va-b1de422f022d47d590b62ab5582a627f",
     "url": "",
     "file": "20.png",
     "source": "user-supplied",
@@ -163,6 +166,7 @@
   },
   {
     "name": "크레버디",
+    "vendorId": "nv-e1bfdb79d64b4e3ba2c864947cd3cf75",
     "url": "",
     "file": "26.png",
     "source": "user-supplied",
@@ -172,5 +176,19 @@
       167,
       166
     ]
+  },
+  {
+    "name": "마브렙타일",
+    "vendorId": "va-ba79f7dab64d4c8398092d364cc21c2f",
+    "url": "",
+    "file": "marv-reptile.png",
+    "source": "https://www.instagram.com/marv_reptile/"
+  },
+  {
+    "name": "말랑젤리",
+    "vendorId": "va-b3a9d580a74c40cfb5bbec05b91b098c",
+    "url": "",
+    "file": "mallang-jelly.png",
+    "source": "https://www.instagram.com/mallang.__.jelly/"
   }
 ]

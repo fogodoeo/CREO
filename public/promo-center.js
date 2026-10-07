@@ -4,7 +4,8 @@
  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  function imageURL(src){
   const url=new URL(src,location.origin);
-  if(url.origin===location.origin&&/^\/promo-assets\/partners-20261007\.(png|thumb\.webp)$/.test(url.pathname))url.searchParams.set('v','board3');
+  if(url.origin===location.origin&&/^\/promo-assets\/partners-20261007\.(png|thumb\.webp)$/.test(url.pathname))url.pathname=url.pathname.replace('partners-20261007.','partners-20261007-v4.');
+  if(url.origin===location.origin&&/^\/promo-assets\/ticket\.(png|thumb\.webp)$/.test(url.pathname))url.pathname=url.pathname.replace('ticket.','ticket-seoul-incheon-v2.');
   if(url.origin===location.origin&&/^\/promo-assets\/(weekly|easy)\.(png|thumb\.webp)$/.test(url.pathname))url.pathname=url.pathname.replace(/\.(png|thumb\.webp)$/,'-v2.$1');
   if(url.origin===location.origin&&['/promo-assets/hero.jpg','/promo-assets/hero-seoul-incheon-v2.png'].includes(url.pathname))url.pathname='/promo-assets/hero-seoul-incheon-v3.png';
   return url.href;
@@ -14,7 +15,23 @@
   const url=new URL(block.src,location.origin);
   return url.origin===location.origin&&['/promo-assets/hero.jpg','/promo-assets/hero-seoul-incheon-v2.png','/promo-assets/hero-seoul-incheon-v3.png'].includes(url.pathname);
  }
- function postBlocks(t){return [{type:'image',src:'/promo-assets/hero-seoul-incheon-v3.png',alt:'전국크레자랑 라이브 방송 · EP 01. 서울, 인천 · 10월 14일 수요일 밤 8시'},...t.blocks.filter(b=>!isSharedHero(b))];}
+ function isSharedAsset(b,kind){if(b.type!=='image')return false;const u=new URL(b.src,location.origin);return u.origin===location.origin&&(kind==='ticket'?/^\/promo-assets\/ticket(?:-seoul-incheon-v2)?\.png$/:/^\/promo-assets\/partners-20261007(?:-v4)?\.png$/).test(u.pathname);}
+ function postBlocks(t,images=[]){
+  const blocks=[],hasBoard=t.blocks.some(b=>isSharedAsset(b,'partners'));
+  let inserted=false;
+  for(const b of t.blocks){
+   if(isSharedHero(b)||isSharedAsset(b,'ticket'))continue;
+   if(isSharedAsset(b,'partners')){if(!inserted){blocks.push(...images.map(i=>({...i,type:'image'})));inserted=true;}continue;}
+   if(hasBoard&&b.type==='text'&&/^※ 2026\.10\.07 기준/.test(b.text))continue;
+   blocks.push(b);
+   // Insert once, immediately after the paragraph introducing the participating vendors.
+   if(!hasBoard&&!inserted&&b.type==='text'&&(/다양한 크레들을 선보일 예정|다양한 크레들을 선보입니다|30여 곳의 전문|전국의 전문 브리더|여러 업체의 크레|여러 지역의 전문 업체|지역별 전문 업체가 돌아가며 참여/.test(b.text))){blocks.push(...images.map(i=>({...i,type:'image'})));inserted=true;}
+  }
+  if(!inserted&&images.length){const index=blocks.findIndex(b=>b.href);blocks.splice(index<0?blocks.length:index,0,...images.map(i=>({...i,type:'image'})));}
+  const ticket={type:'image',src:'/promo-assets/ticket-seoul-incheon-v2.png',alt:'첫 방송 서울·인천 편 · 10월 14일 · 배송비 무료 · 낙찰자 1인당 최대 3만 원 지원'};
+  const link=blocks.findIndex(b=>b.href&&/band\.us/.test(b.href));blocks.splice(link<0?blocks.length:link,0,ticket);
+  return [{type:'image',src:'/promo-assets/hero-seoul-incheon-v3.png',alt:'전국크레자랑 라이브 방송 · EP 01. 서울, 인천 · 10월 14일 수요일 밤 8시'},...blocks];
+ }
  function thumbnailImage(t){return t.blocks.find(b=>b.type==='image'&&!isSharedHero(b));}
  function enablePreviewDismiss(dialog){
   let outsideStart=false;
@@ -28,13 +45,14 @@
  let company=query.get('company')||'',session,state,month=kst(Date.now()).slice(0,7),selected=kst(Date.now()),template,busy=false,trigger,refreshSequence=0,copying=false;
  const pendingRequests=new Map();
  let loadedAt=Date.now();
+ let partnerMode='none',partnerRegions=new Set(),partnerImages=[],partnerReady=true,partnerSequence=0;
  const names={assigned:'배정됨',completed:'게시 완료',overdue:'미게시',cancelled:'취소됨'};
  function error(message){$('error').textContent=message;$('error').hidden=!message;}
  async function request(body){
   let fingerprint;
   if(body){const {requestId,...intent}=body;fingerprint=JSON.stringify(intent);const retained=pendingRequests.get(fingerprint)||requestId;pendingRequests.set(fingerprint,retained);body={...body,requestId:retained};}
   const params=new URLSearchParams({month,...(!admin?{company}:{})});
-  const response=await fetch('/api/platform/promo-center'+(body?'':'?'+params),{method:body?'POST':'GET',credentials:'same-origin',cache:'no-store',headers:{'Content-Type':'application/json','x-vendor-csrf':session?.csrfToken||''},...(body?{body:JSON.stringify({...body,...(!admin?{company}:{})})}:{}),signal:AbortSignal.timeout(20000)});
+  const response=await fetch('/api/platform/promo-center'+(body?'':'?'+params),{method:body?'POST':'GET',credentials:'same-origin',cache:'no-store',headers:{'Content-Type':'application/json','x-vendor-csrf':session?.csrfToken||''},...(body?{body:JSON.stringify({...body,...(!admin?{company}:{})})}:{}),signal:AbortSignal.timeout(body?.action==='partner-image'?60000:20000)});
   const data=await response.json();if(fingerprint&&(response.ok||response.status<500))pendingRequests.delete(fingerprint);if(!response.ok)throw Object.assign(Error(data.error||'불러오지 못했어요.'),{status:response.status});return data;
  }
  async function refresh(){
@@ -77,11 +95,43 @@
   }).join('')||'<p class="empty">등록된 홍보 원고가 없습니다</p>';
   for(const image of $('templates').querySelectorAll('.template-visual img'))image.addEventListener('error',()=>{if(image.dataset.original){const original=image.dataset.original;delete image.dataset.original;image.src=original;}else image.hidden=true;});
  }
- function bodyHTML(t,copying=false){return postBlocks(t).map(b=>b.type==='image'?`<p style="text-align:center;margin:20px 0"><img src="${esc(imageURL(copying&&b.copySrc?b.copySrc:b.src))}" alt="${esc(b.alt)}" width="500" style="width:500px;max-width:100%;height:auto"></p>`:`<p style="text-align:${b.align};font-family:NanumSquareNeo,'나눔스퀘어 네오',sans-serif;line-height:1.7;margin:0"><span style="font-family:NanumSquareNeo,'나눔스퀘어 네오',sans-serif;font-size:${b.size}px;color:${b.color==='green'?'#007443':'#202632'};font-weight:${b.bold?700:400}">${b.href?'<a href="'+esc(b.href)+'">':''}${(esc(b.text).replace(/\n/g,'<br>')||'<br>')}${b.href?'</a>':''}</span></p>`).join('');}
- function preview(id){template=state.templates.find(t=>t.id===id);if(!template){error('보관된 원고입니다. 운영자에게 문의해 주세요.');return;}$('post-title').textContent=template.title;$('post-preview').innerHTML=bodyHTML(template);$('copy-status').textContent='';$('downloads').innerHTML=postBlocks(template).filter(b=>b.type==='image').map((b,i)=>`<a download href="${esc(imageURL(b.src))}">이미지 ${i+1} 다운로드 · ${esc(b.alt)}</a>`).join('');trigger=document.activeElement;$('detail').showModal();$('detail').querySelector('.dialog-scroll').scrollTop=0;}
+ function bodyHTML(t,copying=false,images=[]){return postBlocks(t,images).map(b=>b.type==='image'?`<p style="text-align:center;margin:20px 0"><img src="${esc(imageURL(copying&&b.copySrc?b.copySrc:b.src))}" alt="${esc(b.alt)}" width="500" style="width:500px;max-width:100%;height:auto"></p>`:`<p style="text-align:${b.align};font-family:NanumSquareNeo,'나눔스퀘어 네오',sans-serif;line-height:1.7;margin:0"><span style="font-family:NanumSquareNeo,'나눔스퀘어 네오',sans-serif;font-size:${b.size}px;color:${b.color==='green'?'#007443':'#202632'};font-weight:${b.bold?700:400}">${b.href?'<a href="'+esc(b.href)+'">':''}${(esc(b.text).replace(/\n/g,'<br>')||'<br>')}${b.href?'</a>':''}</span></p>`).join('');}
+ function preview(id){template=state.templates.find(t=>t.id===id);if(!template){error('보관된 원고입니다. 운영자에게 문의해 주세요.');return;}
+  partnerMode=template.blocks.some(b=>isSharedAsset(b,'partners'))?'all':'none';partnerRegions=new Set();partnerImages=[];partnerReady=partnerMode==='none';
+  $('post-title').textContent=template.title;$('copy-status').textContent='';
+  for(const radio of document.querySelectorAll('[name="partner-mode"]'))radio.checked=radio.value===partnerMode;
+  showPartnerRegions();drawPost();trigger=document.activeElement;$('detail').showModal();$('detail').querySelector('.dialog-scroll').scrollTop=0;updatePartners();
+ }
+ function syncCopyButtons(){$('copy-title').disabled=copying;$('copy-body').disabled=copying||!partnerReady;$('partner-controls').disabled=copying;$('partner-refresh').disabled=copying;}
+ function drawPost(){
+  $('post-preview').innerHTML=bodyHTML(template,false,partnerImages);
+  $('downloads').innerHTML=postBlocks(template,partnerImages).filter(b=>b.type==='image').map((b,i)=>`<a download target="_blank" rel="noopener" href="${esc(imageURL(b.src))}">이미지 ${i+1} 다운로드 · ${esc(b.alt)}</a>`).join('');
+  syncCopyButtons();
+ }
+ function showPartnerRegions(){
+  $('partner-regions').hidden=partnerMode!=='regions';
+  const regions=state.partners?.regions||[],signature=JSON.stringify(regions),host=$('partner-region-options');
+  if(host.dataset.signature!==signature){const focused=host.contains(document.activeElement)?document.activeElement.value:null;host.innerHTML=regions.map(r=>`<label><input type="checkbox" value="${r.id}">${esc(r.name)} <span>${r.count}개 브랜드</span></label>`).join('');host.dataset.signature=signature;if(focused!==null)host.querySelector(`input[value="${Number(focused)}"]`)?.focus();}
+  for(const input of host.querySelectorAll('input'))input.checked=partnerRegions.has(Number(input.value));
+ }
+ async function updatePartners(){
+  const sequence=++partnerSequence,mode=partnerMode,regions=[...partnerRegions];partnerImages=[];partnerReady=mode==='none';$('copy-status').textContent='';$('partner-refresh').hidden=mode==='none';$('partner-retry').hidden=true;$('partner-status').removeAttribute('aria-busy');drawPost();
+  const current=()=>sequence===partnerSequence&&$('detail').open;
+  if(mode==='none'){$('partner-status').textContent='업체 이미지 없이 복사합니다. 첫 방송 서울·인천 편 배송비 티켓은 항상 포함됩니다.';return;}
+  if(mode==='regions'&&!regions.length){$('partner-status').textContent='소개할 지역을 한 곳 이상 선택해 주세요.';return;}
+  $('partner-status').textContent='최신 참여업체로 이미지를 준비하고 있어요';$('partner-status').setAttribute('aria-busy','true');
+  try{
+   const latest=await request();if(!current())return;state.partners=latest.partners;showPartnerRegions();
+   const result=await request({action:'partner-image',requestId:crypto.randomUUID(),catalogVersion:state.partners.version,mode,regions});if(!current())return;
+   await Promise.all(result.images.map(i=>new Promise((resolve,reject)=>{const image=new Image(),timeout=setTimeout(()=>reject(Error('image timeout')),20000);image.onload=()=>{clearTimeout(timeout);resolve();};image.onerror=()=>{clearTimeout(timeout);reject(Error('image load'));};image.src=imageURL(i.src);})));if(!current())return;
+   partnerImages=result.images;partnerReady=true;drawPost();
+   $('partner-status').textContent=`${result.count}개 브랜드 · ${result.images.length}장 포함 · ${mode==='all'?'4열':'지역별 3열'} 구성. 업체별 일정에 따라 순차 출연합니다.`;
+  }catch(e){if(!current())return;$('partner-status').textContent=e.status?e.message:'업체 이미지를 준비하지 못했어요. 연결을 확인하고 다시 시도해 주세요.';$('partner-retry').hidden=false;}
+  finally{if(current()){$('partner-status').removeAttribute('aria-busy');syncCopyButtons();}}
+ }
  async function copy(withFormatting){
-  if(copying)return;copying=true;$('copy-title').disabled=true;$('copy-body').disabled=true;
-  const t=template,html=bodyHTML(t,true),plain=t.blocks.filter(b=>b.type==='text').map(b=>b.text).join('\n');
+  if(copying||(withFormatting&&!partnerReady))return;copying=true;syncCopyButtons();
+  const t=template,html=bodyHTML(t,true,partnerImages),plain=postBlocks(t,partnerImages).map(b=>b.type==='text'?b.text:b.alt).join('\n');
   $('copy-status').textContent='';
   try {
    if(withFormatting){
@@ -91,7 +141,7 @@
    $('copy-status').textContent=withFormatting?'본문을 복사했어요. 카페 본문에 붙여넣어 주세요.':'제목을 복사했어요.';
    if(withFormatting&&!admin){try{await request({action:'copy',requestId:crypto.randomUUID(),templateId:t.id,version:t.version});await refresh();}catch{$('copy-status').textContent='본문은 복사했지만 사용 이력을 저장하지 못했어요. 연결을 확인하고 다시 복사해 주세요.';}}
   }catch(e){$('copy-status').textContent='복사하지 못했어요. 본문을 직접 선택해 복사하거나 PC 브라우저에서 다시 시도해 주세요.';}
-  finally{copying=false;$('copy-title').disabled=false;$('copy-body').disabled=false;if($('detail').open)$(withFormatting?'copy-body':'copy-title').focus();}
+  finally{copying=false;syncCopyButtons();if($('detail').open)$(withFormatting?'copy-body':'copy-title').focus();}
  }
  function openForm(title,html,save){
   trigger=document.activeElement;$('form-title').textContent=title;$('fields').innerHTML=html;$('form-error').hidden=true;$('form-reload').hidden=true;$('save').textContent=title==='배정 취소'?'배정 취소':title==='게시 완료 등록'?'게시 완료 등록':'저장';
@@ -124,6 +174,9 @@
  }
  document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const d=b.dataset;if('close'in d){b.closest('dialog').close();return;}if(d.date){selected=d.date;renderCalendar();renderDay();}if(d.preview)preview(d.preview);if(d.edit)assignment(d.edit);if(d.complete)complete(d.complete);if(d.templateEdit)editTemplate(d.templateEdit);if(d.templateClone)editTemplate(d.templateClone,true);if(d.cancel){const revision=state.revision;openForm('배정 취소','<p>이 배정을 취소할까요? 기록은 남고 업체에게 취소 상태가 표시됩니다.</p>',()=>request({action:'cancel',requestId:crypto.randomUUID(),revision,id:d.cancel}));}});
  enablePreviewDismiss($('detail'));
+ $('detail').addEventListener('close',()=>{partnerSequence++;});
+ $('partner-controls').addEventListener('change',e=>{if(e.target.name==='partner-mode'){partnerMode=e.target.value;showPartnerRegions();}else if(e.target.type==='checkbox'){const id=Number(e.target.value);if(e.target.checked)partnerRegions.add(id);else partnerRegions.delete(id);}updatePartners();});
+ $('partner-retry').onclick=()=>updatePartners();$('partner-refresh').onclick=()=>updatePartners();
  for(const dialog of document.querySelectorAll('dialog'))dialog.addEventListener('close',()=>{$('save').hidden=false;if(trigger?.isConnected)trigger.focus();else $('tab-templates').focus();});
  $('form-reload').onclick=async()=>{try{await refresh();$('form-dialog').close();$('status').textContent='최신 정보를 불러왔어요. 변경 내용을 확인하고 다시 입력해 주세요.';}catch{$('form-error').textContent='연결을 확인하고 다시 불러와 주세요.';}};
  $('copy-title').onclick=()=>copy(false);$('copy-body').onclick=()=>copy(true);$('refresh').onclick=()=>start();$('assign').onclick=()=>assignment();$('create-template').onclick=()=>editTemplate();

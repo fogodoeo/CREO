@@ -30,3 +30,17 @@ dialog[open]{display:flex;flex-direction:column}
 .template-info .actions{gap:8px}.template-info .actions button{font-size:14px;padding-inline:12px}
 .template-visual:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
 @media(max-width:620px){.template-grid{grid-template-columns:minmax(0,1fr);gap:20px}.template-info h3{font-size:20px}}
+.partner-picker{background:var(--bg);border-radius:12px;padding:20px;margin-bottom:24px}
+.partner-picker fieldset{border:0;padding:0;margin:0;min-width:0}
+.partner-picker legend{font-size:16px;font-weight:700;margin-bottom:12px}
+.partner-modes{display:flex;flex-wrap:wrap;gap:8px}
+.partner-picker label{display:flex;align-items:center;gap:8px;min-height:44px;margin:0;font-size:14px;font-weight:500;cursor:pointer;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.partner-picker label:has(input:checked){border-color:var(--accent);background:#edf2ff;color:var(--accent)}
+.partner-picker input{width:18px;height:18px;flex:none;margin:0;padding:0;accent-color:var(--accent)}
+#partner-regions{margin-top:20px}
+#partner-region-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+#partner-region-options label{flex-wrap:wrap}
+#partner-region-options span{color:var(--muted);font-size:12px;font-weight:400}
+#partner-status{margin:16px 0 12px}
+.partner-picker .actions button{font-size:14px}
+@media(max-width:400px){.partner-picker{padding:16px}.partner-modes{flex-direction:column}#partner-region-options{grid-template-columns:minmax(0,1fr)}}

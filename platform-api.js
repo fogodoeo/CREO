@@ -3229,6 +3229,7 @@ function createPlatformApi({
     }
 
     const promoCenter = require('./promo-center').createPromoCenter({repository, vendorsFor:()=>vendorDirectory.list('national-cre'), now:vendorAccessNow});
+    const promoPartners = require('./promo-partners').createPromoPartners({repository, vendorsFor:()=>vendorDirectory.list('national-cre'), storage:vendorLogoStorage, now:vendorAccessNow});
     async function handle(req, res, url) {
         if(await vendorAccess.handle(req,res,url))return true;
         if (!url.pathname.startsWith('/api/platform/')) return false;
@@ -3243,7 +3244,7 @@ function createPlatformApi({
                 let actor={admin:true};
                 if(!admin)actor=await vendorAccess.authorizeCompany(req,body.company||url.searchParams.get('company'),{write:method==='POST'});
                 else if(method==='POST'&&(req.headers.origin!==vendorAccessOrigin||req.headers['sec-fetch-site']==='cross-site')){replyJson(res,403,{error:'운영 페이지에서 다시 요청해 주세요.'});return true;}
-                const payload=method==='GET'?await promoCenter.view({...actor,month:url.searchParams.get('month')}):await promoCenter.mutate(actor,body);
+                const payload=method==='GET'?{...await promoCenter.view({...actor,month:url.searchParams.get('month')}),partners:await promoPartners.view()}:body.action==='partner-image'?await promoPartners.image(body):await promoCenter.mutate(actor,body);
                 replyJson(res,200,payload,{'Cache-Control':'no-store, private'});return true;
             }
             if(segments[0]==='national-vendor-directory'){
