@@ -5,7 +5,16 @@
  function imageURL(src){
   const url=new URL(src,location.origin);
   if(url.origin===location.origin&&/^\/promo-assets\/partners-20261007\.(png|thumb\.webp)$/.test(url.pathname))url.searchParams.set('v','board3');
+  if(url.origin===location.origin&&/^\/promo-assets\/(weekly|easy)\.(png|thumb\.webp)$/.test(url.pathname))url.pathname=url.pathname.replace(/\.(png|thumb\.webp)$/,'-v2.$1');
   return url.href;
+ }
+ function enablePreviewDismiss(dialog){
+  let outsideStart=false;
+  const outside=e=>{const r=dialog.getBoundingClientRect();return e.target===dialog&&(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom);};
+  dialog.addEventListener('pointerdown',e=>{outsideStart=e.isPrimary&&e.button===0&&outside(e);});
+  dialog.addEventListener('pointercancel',()=>{outsideStart=false;});
+  dialog.addEventListener('click',e=>{const dismiss=outsideStart&&outside(e);outsideStart=false;if(dismiss)dialog.close();});
+  dialog.addEventListener('close',()=>{outsideStart=false;});
  }
  const kst=ms=>new Date(ms+9*3600000).toISOString().slice(0,10),format=d=>d.replace(/^(\d{4})-(\d{2})-(\d{2})$/,'$2월 $3일');
  let company=query.get('company')||'',session,state,month=kst(Date.now()).slice(0,7),selected=kst(Date.now()),template,busy=false,trigger,refreshSequence=0,copying=false;
@@ -60,8 +69,8 @@
   }).join('')||'<p class="empty">등록된 홍보 원고가 없습니다</p>';
   for(const image of $('templates').querySelectorAll('.template-visual img'))image.addEventListener('error',()=>{if(image.dataset.original){const original=image.dataset.original;delete image.dataset.original;image.src=original;}else image.hidden=true;});
  }
- function bodyHTML(t,copying=false){return t.blocks.map(b=>b.type==='image'?`<p style="text-align:center;margin:20px 0"><img src="${esc(copying&&b.copySrc?b.copySrc:imageURL(b.src))}" alt="${esc(b.alt)}" width="500" style="width:500px;max-width:100%;height:auto"></p>`:`<p style="text-align:${b.align};font-family:NanumSquareNeo,'나눔스퀘어 네오',sans-serif;line-height:1.7;margin:0"><span style="font-family:NanumSquareNeo,'나눔스퀘어 네오',sans-serif;font-size:${b.size}px;color:${b.color==='green'?'#007443':'#202632'};font-weight:${b.bold?700:400}">${b.href?'<a href="'+esc(b.href)+'">':''}${(esc(b.text).replace(/\n/g,'<br>')||'<br>')}${b.href?'</a>':''}</span></p>`).join('');}
- function preview(id){template=state.templates.find(t=>t.id===id);if(!template){error('보관된 원고입니다. 운영자에게 문의해 주세요.');return;}$('post-title').textContent=template.title;$('post-preview').innerHTML=bodyHTML(template);$('copy-status').textContent='';$('downloads').innerHTML=template.blocks.filter(b=>b.type==='image').map((b,i)=>`<a download href="${esc(imageURL(b.src))}">이미지 ${i+1} 다운로드 · ${esc(b.alt)}</a>`).join('');trigger=document.activeElement;$('detail').showModal();}
+ function bodyHTML(t,copying=false){return t.blocks.map(b=>b.type==='image'?`<p style="text-align:center;margin:20px 0"><img src="${esc(imageURL(copying&&b.copySrc?b.copySrc:b.src))}" alt="${esc(b.alt)}" width="500" style="width:500px;max-width:100%;height:auto"></p>`:`<p style="text-align:${b.align};font-family:NanumSquareNeo,'나눔스퀘어 네오',sans-serif;line-height:1.7;margin:0"><span style="font-family:NanumSquareNeo,'나눔스퀘어 네오',sans-serif;font-size:${b.size}px;color:${b.color==='green'?'#007443':'#202632'};font-weight:${b.bold?700:400}">${b.href?'<a href="'+esc(b.href)+'">':''}${(esc(b.text).replace(/\n/g,'<br>')||'<br>')}${b.href?'</a>':''}</span></p>`).join('');}
+ function preview(id){template=state.templates.find(t=>t.id===id);if(!template){error('보관된 원고입니다. 운영자에게 문의해 주세요.');return;}$('post-title').textContent=template.title;$('post-preview').innerHTML=bodyHTML(template);$('copy-status').textContent='';$('downloads').innerHTML=template.blocks.filter(b=>b.type==='image').map((b,i)=>`<a download href="${esc(imageURL(b.src))}">이미지 ${i+1} 다운로드 · ${esc(b.alt)}</a>`).join('');trigger=document.activeElement;$('detail').showModal();$('detail').querySelector('.dialog-scroll').scrollTop=0;}
  async function copy(withFormatting){
   if(copying)return;copying=true;$('copy-title').disabled=true;$('copy-body').disabled=true;
   const t=template,html=bodyHTML(t,true),plain=t.blocks.filter(b=>b.type==='text').map(b=>b.text).join('\n');
@@ -106,6 +115,7 @@
   finally{$('refresh').disabled=false;$('loading').hidden=true;}
  }
  document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const d=b.dataset;if('close'in d){b.closest('dialog').close();return;}if(d.date){selected=d.date;renderCalendar();renderDay();}if(d.preview)preview(d.preview);if(d.edit)assignment(d.edit);if(d.complete)complete(d.complete);if(d.templateEdit)editTemplate(d.templateEdit);if(d.templateClone)editTemplate(d.templateClone,true);if(d.cancel){const revision=state.revision;openForm('배정 취소','<p>이 배정을 취소할까요? 기록은 남고 업체에게 취소 상태가 표시됩니다.</p>',()=>request({action:'cancel',requestId:crypto.randomUUID(),revision,id:d.cancel}));}});
+ enablePreviewDismiss($('detail'));
  for(const dialog of document.querySelectorAll('dialog'))dialog.addEventListener('close',()=>{$('save').hidden=false;if(trigger?.isConnected)trigger.focus();else $('tab-templates').focus();});
  $('form-reload').onclick=async()=>{try{await refresh();$('form-dialog').close();$('status').textContent='최신 정보를 불러왔어요. 변경 내용을 확인하고 다시 입력해 주세요.';}catch{$('form-error').textContent='연결을 확인하고 다시 불러와 주세요.';}};
  $('copy-title').onclick=()=>copy(false);$('copy-body').onclick=()=>copy(true);$('refresh').onclick=()=>start();$('assign').onclick=()=>assignment();$('create-template').onclick=()=>editTemplate();
