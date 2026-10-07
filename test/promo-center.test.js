@@ -71,3 +71,16 @@ test('assigned template cannot be hidden; tracking URL variations cannot complet
  assert.equal((await f.post({action:'complete',id:next.id,templateId:template.id,version:template.version,url:'https://cafe.naver.com/reptilia/12345?from=another'})).status,409);
  assert.equal((await f.get()).json().assignments[0].publication.url,'https://cafe.naver.com/reptilia/12345');
 });
+
+test('new bundled manuscripts merge into existing state without overwriting edits or history',async t=>{
+ const f=await fixture(t);await f.assign();await f.post({action:'copy',templateId:'ep01-welcome',version:1});
+ const key=require('../platform-core').channelKey('national-cre','setting','promo-center');
+ const row=(await f.repository.getRowsByKeys([key]))[0],saved=JSON.parse(row.value);
+ saved.templates=saved.templates.filter(t=>!t.id.startsWith('launch26-'));
+ saved.templates[0].title='운영자가 직접 고친 제목';saved.templates[0].active=false;
+ await f.repository.upsertRows([{key,value:JSON.stringify(saved)}]);f.restart();
+ let view=(await f.get(f.owner,f.id,true)).json();assert.equal(view.templates.filter(t=>t.id.startsWith('launch26-')).length,5);
+ assert.equal(view.templates[0].title,'운영자가 직접 고친 제목');assert.equal(view.templates[0].active,false);assert.equal(view.templates[0].usage.length,1);assert.equal(view.assignments.length,1);
+ assert.equal((await f.post({action:'copy',templateId:'launch26-joseon',version:1})).status,200);f.restart();
+ view=(await f.get(f.owner,f.id,true)).json();assert.equal(view.templates.length,7);assert.equal(view.templates.find(t=>t.id==='launch26-joseon').usage.length,1);
+});

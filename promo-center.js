@@ -32,6 +32,9 @@ function createPromoCenter({ repository, vendorsFor, now = Date.now }) {
   let state;
   try { state = row ? JSON.parse(row.value) : fresh(); } catch { throw fail('홍보 기록을 읽지 못했어요.',503); }
   if (!Array.isArray(state.assignments) || !Array.isArray(state.templates)) throw fail('홍보 기록을 확인해 주세요.',503);
+  // Add new bundled manuscripts without replacing operator edits, visibility or usage.
+  // Merged additions are persisted together with the next ordinary CAS write.
+  for(const template of seed){if(!state.templates.some(t=>t.id===template.id))state.templates.push({...template,...normalizeTemplate(template)});}
   return { raw: row?.value ?? null, state };
  }
  const status = a => a.cancelled ? 'cancelled' : a.publication ? 'completed' : now() > Date.parse(`${a.date}T${SLOTS[a.slot].end}:59+09:00`) ? 'overdue' : 'assigned';
