@@ -46,4 +46,29 @@ extraMap.forEach(({ file, id }) => {
   fs.writeFileSync(path.join(outExtra, file + '.txt'), toTxt(t), 'utf8');
 });
 
-console.log('Successfully synced static HTML/TXT exports in Desktop/전크자/output/promo-center!');
+// all 9 complete set
+const outAll = 'C:/Users/5600x/Desktop/전크자/output/promo-center/전체원고9종';
+fs.mkdirSync(outAll, { recursive: true });
+const outAllImg = path.join(outAll, '이미지');
+fs.mkdirSync(outAllImg, { recursive: true });
+
+// Copy assets to images folder
+const promoAssetsDir = path.join(root, 'public', 'promo-assets');
+if (fs.existsSync(promoAssetsDir)) {
+  for (const f of fs.readdirSync(promoAssetsDir)) {
+    if (f.endsWith('.png') || f.endsWith('.jpg') || f.endsWith('.webp')) {
+      fs.copyFileSync(path.join(promoAssetsDir, f), path.join(outAllImg, f));
+    }
+  }
+}
+
+templates.forEach((t, i) => {
+  const num = String(i + 1).padStart(2, '0');
+  const safeName = t.name.replace(/[\\/:*?"<>|·\s]+/g, '_');
+  const baseName = `${num}_${safeName}`;
+  fs.writeFileSync(path.join(outAll, baseName + '.html'), `<!doctype html><html lang="ko"><meta charset="utf-8"><title>${esc(t.title)}</title><style>body{max-width:500px;margin:24px auto;padding:24px;font-family:'NanumSquare Neo',sans-serif;background:#fff;color:#202632;}h1{font-size:20px;border-bottom:2px solid #007443;padding-bottom:8px;margin-bottom:20px;}article{border:1px solid #e2e8f0;border-radius:12px;padding:24px;background:#f8fafc;}</style><h1>[업체 사장님 원고 ${num}] ${esc(t.name)}</h1><article>${toHtml(t)}</article></html>`, 'utf8');
+  fs.writeFileSync(path.join(outAll, baseName + '.txt'), `[업체 사장님 원고 ${num} - ${t.name}]\n\n` + toTxt(t), 'utf8');
+});
+
+console.log('Successfully synced static HTML/TXT exports in Desktop/전크자/output/promo-center (including 전체원고9종)!');
+
