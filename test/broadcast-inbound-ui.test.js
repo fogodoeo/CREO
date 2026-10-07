@@ -71,5 +71,5 @@ test('submitted-entry delivery details show the same destination contacts and pr
  const context=vm.createContext({state:{inboundDestinations:data.destinations,inboundDestinationPhones:data.destinationPhones},esc:String,CreoVendorTasks:require('../public/vendor-task-state')});
  vm.runInContext(code.slice(start,end),context);
  assert.equal(context.pickupBlock({completed:3}),'');
- for(const completed of [4,5])for(const pickup of [false,true]){const html=context.pickupBlock({completed,pickup});assert.match(html,/href="tel:01050029163"/);assert.match(html,/href="tel:01025088240"/);assert.ok(html.includes('<span>'+(pickup?'수거 완료':'수거 전')+'</span>'));}
+ for(const completed of [4])for(const pickup of [false,true]){const html=context.pickupBlock({completed,pickup});assert.match(html,/href="tel:01050029163"/);assert.match(html,/href="tel:01025088240"/);assert.ok(html.includes('<span>'+(pickup?'수거 완료':'수거 전')+'</span>'));}
 });

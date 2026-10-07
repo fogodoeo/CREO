@@ -14,8 +14,8 @@
  function params(){return {...(Store.code?{code:Store.code}:{token:Store.token}),event:'national-cre'}}
  function reservation(date=selected){return state.reservations.find(r=>r.date===date&&r.status==='confirmed')}
  function entry(r=reservation(),i=slot){return r?.entries[i]||null}
- const entryLimit=r=>r.entryLimit??r.entryIds.length;
- const policyText=d=>`${d.regionName} ${d.regionVendorCount}개 업체 · 업체당 ${d.vendorEntryLimit===4?'최대 4마리':'4~5마리'}`;
+ const entryLimit=r=>r.entryLimit??Math.min(4,r.entryIds.length);
+ const policyText=d=>`${d.regionName} ${d.regionVendorCount}개 업체 · 업체당 4마리`;
  function pickupBlock(r){
   if(!CreoVendorTasks.broadcastRegistrationComplete(r))return '';
   const places=state.inboundDestinations||{},phones=state.inboundDestinationPhones||{};
@@ -86,7 +86,7 @@
   const e=entry(),saved=recovery[r.entryIds[slot]],canEdit=editable(e);
   draft=saved&&canEdit?structuredClone(saved):{id:r.entryIds[slot],version:e?.version||0,sex:e?.sex||'',weight:e?.weight||'',hatchDate:e?.hatchDate||'',note:e?.note||'',parents:Object.fromEntries(['sire','dam'].map(side=>[side,{photoId:state.entryState.parents.find(p=>p.id===e?.[side+'Id'])?.photoId||''}]))};
   dirty=!!(saved&&canEdit);const conflict=dirty&&draft.version!==(e?.version||0);
-  modal(dateLabel(date),`<form id="entry-step-form" novalidate><div class="entry-step-scroll"><div class="entry-progress"><h3>출품 개체</h3><span>${r.completed}마리 제출</span></div><div class="entry-steps" aria-label="출품 개체">${r.entries.slice(0,entryLimit(r)).map((e,i)=>`<button type="button" data-slot="${i}" aria-label="개체 ${i+1}, ${labels[e?.status]||(i===4?'선택':'미등록')}" ${slot===i?'aria-current="step"':''}><span>${i+1}</span><small>${labels[e?.status]||(i===4?'선택':'미등록')}</small></button>`).join('')}</div>
+  modal(dateLabel(date),`<form id="entry-step-form" novalidate><div class="entry-step-scroll"><div class="entry-progress"><h3>출품 개체</h3><span>${r.completed}마리 제출</span></div><div class="entry-steps" aria-label="출품 개체">${r.entries.slice(0,entryLimit(r)).map((e,i)=>`<button type="button" data-slot="${i}" aria-label="개체 ${i+1}, ${labels[e?.status]||'미등록'}" ${slot===i?'aria-current="step"':''}><span>${i+1}</span><small>${labels[e?.status]||'미등록'}</small></button>`).join('')}</div>
    ${e?.reason?`<p class="entry-reason">${esc(e.reason)}</p>`:''}${conflict?'<p class="entry-reason">다른 화면에서 변경됐어요. 작성 내용을 확인한 뒤 최신 자료를 불러와 주세요.</p><button type="button" class="text" data-action="discard">최신 자료 불러오기</button>':''}
    <fieldset class="sex-options" ${canEdit&&!conflict?'':'disabled'}><legend>성별</legend><div>${[['female','암컷'],['male','수컷'],['unknown','미구분']].map(([v,l])=>`<label><input type="radio" name="sex" required value="${v}" ${draft.sex===v?'checked':''}><span>${l}</span></label>`).join('')}</div></fieldset>
    <div class="step-basics"><label class="field">체중<span class="weight-input"><input name="weight" type="number" required min=".01" max="1000" step=".01" inputmode="decimal" value="${esc(draft.weight)}" ${canEdit&&!conflict?'':'readonly'}><span>g</span></span></label><label class="field">출생년월일<input name="hatchDate" type="date" required max="${koreanDay(state.now)}" value="${esc(draft.hatchDate)}" ${canEdit&&!conflict?'':'readonly'}></label></div>
@@ -114,16 +114,16 @@
    return saved&&bulkEditable(i)?structuredClone(saved):{id,version:e?.version||0,sex:e?.sex||'',weight:e?.weight||'',hatchDate:e?.hatchDate||'',note:e?.note||'',photoIds:e?.photoIds||[],parents:Object.fromEntries(['sire','dam'].map(side=>[side,{photoId:state.entryState.parents.find(p=>p.id===e?.[side+'Id'])?.photoId||''}]))};
   });
   dirty=bulkDrafts.some((row,i)=>bulkEditable(i)&&!!recovery[row.id]);
-  modal(dateLabel(selected),`<form id="bulk-entry-form" novalidate><div class="entry-step-scroll bulk-scroll"><div class="entry-progress"><h3>${CreoVendorTasks.broadcastRegistrationComplete(r)?'개체 제출 완료':'출품 개체'}</h3><span>${r.completed?r.completed+'마리 제출':entryLimit(r)===4?'4마리':'4~5마리'}</span></div>
+  modal(dateLabel(selected),`<form id="bulk-entry-form" novalidate><div class="entry-step-scroll bulk-scroll"><div class="entry-progress"><h3>${CreoVendorTasks.broadcastRegistrationComplete(r)?'개체 제출 완료':'출품 개체'}</h3><span>${r.completed?r.completed+'마리 제출':entryLimit(r)+'마리'}</span></div>
    <p class="muted">${esc(policyText(r.session))}</p>
    <div class="bulk-columns" aria-hidden="true"><span>개체</span><span>성별</span><span>체중(g)</span><span>출생년월일</span></div>
    <div class="bulk-rows">${bulkDrafts.map((row,i)=>{
     const e=r.entries[i],conflict=bulkEditable(i)&&row.version!==(e?.version||0),readonly=!bulkEditable(i)||conflict;
-    return `<section class="bulk-row" data-bulk-row="${i}" aria-labelledby="bulk-label-${i}"><h4 class="bulk-number" id="bulk-label-${i}" aria-label="개체 ${i+1}${i===4?' 선택':''}">${i+1}</h4>
+    return `<section class="bulk-row" data-bulk-row="${i}" aria-labelledby="bulk-label-${i}"><h4 class="bulk-number" id="bulk-label-${i}" aria-label="개체 ${i+1}">${i+1}</h4>
     <label class="bulk-field"><span>성별</span><select name="sex-${i}" aria-label="개체 ${i+1} 성별" ${readonly?'disabled':''}><option value="">선택</option>${[['female','암컷'],['male','수컷'],['unknown','미구분']].map(([v,l])=>`<option value="${v}" ${row.sex===v?'selected':''}>${l}</option>`).join('')}</select></label>
     <label class="bulk-field"><span>체중 (g)</span><input name="weight-${i}" aria-label="개체 ${i+1} 체중 (g)" type="number" inputmode="decimal" min=".01" max="1000" step=".01" placeholder="g" value="${esc(row.weight)}" ${readonly?'readonly':''}></label>
     <label class="bulk-field bulk-date"><span>출생년월일</span><input name="hatchDate-${i}" aria-label="개체 ${i+1} 출생년월일" type="date" max="${koreanDay(state.now)}" value="${esc(row.hatchDate)}" ${readonly?'readonly':''}></label>
-    <div class="bulk-row-state"><span>${labels[e?.status]||(i===4?'선택':'')}</span>${e?.status==='submitted'&&Date.parse(r.session.entriesDueAt)>Date.parse(state.now)?`<button type="button" class="text" data-action="bulk-reopen" data-index="${i}" aria-label="개체 ${i+1} 수정">수정</button>`:''}</div>
+    <div class="bulk-row-state"><span>${labels[e?.status]||''}</span>${e?.status==='submitted'&&Date.parse(r.session.entriesDueAt)>Date.parse(state.now)?`<button type="button" class="text" data-action="bulk-reopen" data-index="${i}" aria-label="개체 ${i+1} 수정">수정</button>`:''}</div>
     ${bulkDetails(row,i,readonly)}${e?.reason?`<p class="entry-reason">${esc(e.reason)}</p>`:''}${conflict?`<p class="entry-reason">다른 화면에서 변경된 개체예요.</p><button type="button" class="text bulk-latest" data-action="bulk-latest" data-index="${i}">최신 자료 불러오기</button>`:''}</section>`;
    }).join('')}</div><p id="step-error" class="form-error" role="alert"></p>
    ${retainedEntries(r)}${pickupBlock(r)}

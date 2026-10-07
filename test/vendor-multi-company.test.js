@@ -37,17 +37,17 @@ test('claiming and switching are idempotent, keep two identities and remain sepa
  }
  assert.equal((await f.repository.listRecords('national-cre','vendor')).length,2);
 });
-test('two companies with one owner each reserve four or five slots, without seeing or mutating the other reservation',async t=>{
+test('two companies with one owner each reserve four slots, without seeing or mutating the other reservation',async t=>{
  const f=await fixture(t),tokens={};f.advance(13*86400000);
  assert.equal((await f.call(f.client(),'PUT','/api/platform/channels/national-cre/national-cycle-config',{mode:'regional-cycle-v1'},{'x-creo-admin':f.secret})).status,200);
  for(const id of ['doremi','celeb']){await f.post(f.owner,'claim',{id});tokens[id]=(await f.post(f.owner,'select',{id})).json().token;}
  const command=(id,body)=>f.call(f.owner,'POST','/api/platform/vendor-bookings',{event:'national-cre',token:tokens[id],requestId:randomUUID(),...body});
- const results=await Promise.all([command('doremi',{type:'reserve',date:'2026-10-28',quantity:4}),command('celeb',{type:'reserve',date:'2026-10-28',quantity:5})]);
- for(const [i,r]of results.entries()){assert.equal(r.status,200,r.body);assert.equal(r.json().reservations.length,1);assert.equal(r.json().reservations[0].quantity,i?5:4);}
+ const results=await Promise.all([command('doremi',{type:'reserve',date:'2026-10-28',quantity:4}),command('celeb',{type:'reserve',date:'2026-10-28',quantity:4})]);
+ for(const [i,r]of results.entries()){assert.equal(r.status,200,r.body);assert.equal(r.json().reservations.length,1);assert.equal(r.json().reservations[0].quantity,4);}
  const reservation=results[1].json().reservations[0];
  assert.equal((await command('doremi',{type:'pickup',id:reservation.id,expectedVersion:reservation.version,pickup:true})).status,404);
  f.restart();
- for(const [id,count]of [['doremi',4],['celeb',5]]){const r=await f.call(f.owner,'GET','/api/platform/vendor-bookings?'+new URLSearchParams({event:'national-cre',token:tokens[id]}));assert.equal(r.status,200,r.body);assert.equal(r.json().reservations.length,1);assert.equal(r.json().reservations[0].entryIds.length,count);}
+ for(const [id,count]of [['doremi',4],['celeb',4]]){const r=await f.call(f.owner,'GET','/api/platform/vendor-bookings?'+new URLSearchParams({event:'national-cre',token:tokens[id]}));assert.equal(r.status,200,r.body);assert.equal(r.json().reservations.length,1);assert.equal(r.json().reservations[0].entryIds.length,count);}
 });
 test('stale company choices and failed claims cannot grant access; staff memberships stay company-specific',async t=>{
  const f=await fixture(t);const stale=(await f.refresh(f.owner)).json().companies.find(c=>c.id==='celeb');assert.equal(stale.canClaim,true);

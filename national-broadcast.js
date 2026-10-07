@@ -6,11 +6,10 @@ const Inbound=require('./public/broadcast-inbound-core'),inboundData=require('./
 const Origin=require('./public/broadcast-origin-core');
 const Tasks=require('./public/vendor-task-state');
 const REGIONS=['서울·인천','경기','전라·충청','대구·경북','부산·울산·경남'];
-const START='2026-10-14',MODE='regional-cycle-v1',KEY=channelKey('national-cre','setting','national-broadcasts');
+const START='2026-10-14',MODE='regional-cycle-v1',ENTRY_COUNT=4,KEY=channelKey('national-cre','setting','national-broadcasts');
 const fail=(message,status=409)=>Object.assign(Error(message),{status});
 const uuid=()=>crypto.randomUUID();
 const validCapacity=value=>value===null||(Number.isSafeInteger(value)&&value>=4);
-const reservedQuantity=(state,date)=>state.reservations.filter(r=>r.date===date&&r.status==='confirmed').reduce((sum,r)=>sum+r.quantity,0);
 function entryProgress(r,entries,entryLimit=r.entryIds.length){
  const slots=r.entryIds.map(id=>entries.find(e=>e.id===id)||null),completed=slots.filter(e=>e&&['submitted','approved'].includes(e.status)).length;
  const excessSubmitted=slots.slice(entryLimit).filter(e=>e&&['submitted','approved'].includes(e.status)).length;
@@ -20,7 +19,7 @@ function regionIndex(name){return ['서울','인천','서울+인천'].includes(n
 function regionForVendor(v){const region=regionIndex(v?.broadcastRegion);if(region>=0)return region;return [0,0,1,1,2,2,3,4][v?.bookingRegion]??null;}
 function regionEntryPolicy(state,region,vendors){
  const ids=new Set(vendors.filter(v=>v.id&&v.active!==false&&!v.deletedAt&&(state.regions?.[v.id]??regionForVendor(v))===region).map(v=>v.id));
- return {regionVendorCount:ids.size,vendorEntryLimit:ids.size>=9?4:5};
+ return {regionVendorCount:ids.size,vendorEntryLimit:ENTRY_COUNT};
 }
 function scheduled(date){return /^\d{4}-\d{2}-\d{2}$/.test(date||'')&&Number.isFinite(Legacy.start(date))&&Legacy.day(Legacy.start(date))===date&&date>=START&&[1,3].includes(new Date(date+'T00:00:00Z').getUTCDay());}
 function regionAt(date){
@@ -29,6 +28,7 @@ function regionAt(date){
  return (Math.floor(days/7)*2+(days%7>=5?1:0))%5;
 }
 function createNationalBroadcast(repository,{now=Date.now,entries,notificationService,contextForVendor}={}){
+ const reservedQuantity=(state,date)=>state.reservations.filter(r=>r.date===date&&r.status==='confirmed').reduce((sum,r)=>sum+(Legacy.start(date)>now()?Math.min(r.quantity,ENTRY_COUNT):r.quantity),0);
  const empty=()=>({schema:1,version:0,defaults:{maxQuantity:null,closeHours:72,entryHours:24,selfHours:72,responseHours:24},sessions:{},regions:{},reservations:[],requests:[],audit:[]});
  async function active(channel){return Legacy.enabled(channel)&&(await repository.getRecord(channel.id,'setting','national-cycle-config'))?.mode===MODE;}
  async function read(channel){
@@ -43,7 +43,7 @@ function createNationalBroadcast(repository,{now=Date.now,entries,notificationSe
  function dates(state){const result=[],today=Legacy.day(now()),end=Legacy.addDays(today,370);for(let d=START;d<=end;d=Legacy.addDays(d,1))if(scheduled(d))result.push(d);return result;}
  function policySession(state,date,vendors){return {...session(state,date),...regionEntryPolicy(state,regionAt(date),vendors)};}
  function limitFor(state,r,vendors){return Legacy.start(r.date)<=now()?r.entryIds.length:Math.min(r.entryIds.length,regionEntryPolicy(state,r.region,vendors).vendorEntryLimit);}
- function limitMessage(){return '이 권역은 참여업체가 9팀 이상으로 업체당 최대 4마리까지 등록할 수 있어요. 새로고침 후 확인해 주세요.';}
+ function limitMessage(){return '전국크레자랑은 모든 업체가 4마리씩 출품합니다. 새로고침 후 확인해 주세요.';}
  function availability(state,date,region,vendorId,vendors){
   if(!scheduled(date))return {date,maxQuantityAvailable:0,reason:'방송일을 선택해 주세요.'};
   const s=policySession(state,date,vendors),block=reason=>({...s,maxQuantityAvailable:0,reason});
@@ -102,9 +102,8 @@ function createNationalBroadcast(repository,{now=Date.now,entries,notificationSe
    if(!['parge','dodosi'].includes(input.carrier)||typeof input.originId!=='string'||(input.originId&&!Inbound.origins(inboundData,input.carrier).some(o=>o.id===input.originId)))throw fail('목록에서 출발 정거샵을 선택해 주세요.',422);
    state.inboundOrigins||={};state.inboundOrigins[context.vendor.id]={...state.inboundOrigins[context.vendor.id],[input.carrier]:input.originId};result='inbound-origin';
   }else if(type==='reserve'){
-   if(![4,5].includes(input.quantity))throw fail('업체당 4~5마리 출품할 수 있어요.',422);
+   if(input.quantity!==ENTRY_COUNT)throw fail('업체당 출품 수량은 4마리로 고정입니다.',422);
    const region=state.regions[context.vendor.id]??regionForVendor(context.vendor),a=availability(state,input.date,region,context.vendor.id,context.vendors);
-   if(input.quantity>a.vendorEntryLimit)throw fail(limitMessage());
    if(a.maxQuantityAvailable<input.quantity)throw fail(a.reason||'신청 가능한 수량이 변경됐어요. 다시 불러와 주세요.');
    r={id:uuid(),vendorId:context.vendor.id,vendorName:context.vendor.name,region,date:input.date,quantity:input.quantity,status:'confirmed',version:1,entryIds:Array.from({length:input.quantity},uuid),pickup:false,linkCode:crypto.randomBytes(18).toString('base64url'),createdAt:new Date(now()).toISOString()};
    state.reservations.push(r);result=r.id;action='예약 확정';
@@ -147,7 +146,7 @@ function createNationalBroadcast(repository,{now=Date.now,entries,notificationSe
    if(['예약 확정','예약 취소'].includes(action)){
     if(!notificationService?.prepare)throw fail('예약 알림 저장소를 확인해 주세요.',503);
     const vendor=operator?context.vendors.find(v=>v.id===r.vendorId):context.vendor;
-    const notice=await notificationService.prepare(context.channel.id,{templateKey:'broadcast_booking_updated',eventKey:`booking:${r.id}:${r.version}`,recipientRole:'vendor',recipientPhone:vendor?.phone,transport:'alimtalk',allowSmsFallback:false,failureSmsFallback:false,variables:{업체명:vendor?.name||r.vendorName,예약상태:action,방송일시:r.date+' 오후 8시',수량:r.quantity===4?'4':'4~5',예약접속코드:r.linkCode}});
+    const notice=await notificationService.prepare(context.channel.id,{templateKey:'broadcast_booking_updated',eventKey:`booking:${r.id}:${r.version}`,recipientRole:'vendor',recipientPhone:vendor?.phone,transport:'alimtalk',allowSmsFallback:false,failureSmsFallback:false,variables:{업체명:vendor?.name||r.vendorName,예약상태:action,방송일시:r.date+' 오후 8시',수량:String(limitFor(state,r,context.vendors)),예약접속코드:r.linkCode}});
     r.noticeVersion=r.version;rows.push({key:channelKey(context.channel.id,'notification',notice.record.id),value:JSON.stringify(notice.record)});
    }
   }

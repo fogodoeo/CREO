@@ -120,7 +120,7 @@ test('company deletion atomically removes submissions, approved waiting items an
  const f=await fixture(t);await f.profile();const directory=createVendorDirectory(f.repository),profile=await directory.profileFor('national-cre',f.id);
  await f.repository.upsertRecord('national-cre','setting',{id:'national-cycle-config',mode:'regional-cycle-v1'});f.advance(11*86400000);
  const token=(await f.post(f.owner,'select',{id:f.id})).json().token;
- assert.equal((await f.call(f.owner,'POST','/api/platform/vendor-bookings',{token,event:'national-cre',type:'reserve',date:'2026-10-14',quantity:5,requestId:randomUUID()})).status,200);
+ assert.equal((await f.call(f.owner,'POST','/api/platform/vendor-bookings',{token,event:'national-cre',type:'reserve',date:'2026-10-14',quantity:4,requestId:randomUUID()})).status,200);
  const key='vendor_entries_v1::'+profile.id,entries=['draft','submitted','changes_requested','approved'].map((status,n)=>({id:'e'+n,channelId:'national-cre',channelVendorId:f.id,status,version:1,...(status==='approved'?{itemId:'waiting-item'}:{})}));
  await f.repository.upsertRows([{key,value:JSON.stringify({schema:1,ownerId:profile.id,version:1,entries,requests:[],parents:[],parentHistory:[],media:[]})}]);
  await f.repository.upsertRecord('national-cre','item',{id:'waiting-item',vendorId:f.id,status:'waiting',attributes:{bid_log:[]}});
@@ -160,11 +160,11 @@ test('task summary never exposes owner bank details and shares checkout action r
  assert.equal(settlementStage(base,{status:'archived'}),'waiting');
  assert.equal(settlementStage({...base,destination:null},{status:'active'}),'waiting');
  assert.equal(settlementStage({...base,payment:{status:'paid'}},{status:'active'}),'paid');
- const {broadcastNeedsAction}=require('../public/vendor-task-state'),now='2026-10-13T00:00:00.000Z',date={startsAt:'2026-10-14T11:00:00.000Z',maxQuantityAvailable:5};
+ const {broadcastNeedsAction}=require('../public/vendor-task-state'),now='2026-10-13T00:00:00.000Z',date={startsAt:'2026-10-14T11:00:00.000Z',maxQuantityAvailable:4};
  assert.equal(broadcastNeedsAction(date,null,now),true);
  assert.equal(broadcastNeedsAction(date,null,now,false),false);
  assert.equal(broadcastNeedsAction(date,{completed:0,session:{entriesDueAt:now}},now),false);
- assert.equal(broadcastNeedsAction(date,{completed:5,session:{entriesDueAt:date.startsAt}},now),false);
+ assert.equal(broadcastNeedsAction(date,{completed:4,session:{entriesDueAt:date.startsAt}},now),false);
 });
 test('approval blocks unsettled records, failed atomic write keeps company active',async t=>{
  const f=await fixture(t);await f.profile();const id=await f.remove();

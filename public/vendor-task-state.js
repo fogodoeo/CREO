@@ -10,7 +10,7 @@
   return 'waiting';
  }
  function broadcastRegistrationComplete(reservation){
-  return reservation.completed>=4&&reservation.completed<=(reservation.entryLimit??5)&&!reservation.excessSubmitted&&!reservation.entries?.slice(0,reservation.entryLimit??5).some(e=>e?.status==='changes_requested');
+  return reservation.completed>=4&&reservation.completed<=(reservation.entryLimit??4)&&!reservation.excessSubmitted&&!reservation.entries?.slice(0,reservation.entryLimit??4).some(e=>e?.status==='changes_requested');
  }
  function broadcastNeedsAction(date,reservation,now,entriesOpen=true){
   if(!date||date.startsAt<=now||!entriesOpen)return false;
