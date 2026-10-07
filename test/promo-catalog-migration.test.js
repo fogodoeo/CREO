@@ -5,26 +5,35 @@ const seed=require('../promo-templates.json');
 const {randomUUID}=require('node:crypto');
 const key=require('../platform-core').channelKey('national-cre','setting','promo-center');
 function fixture(){
- const templates=seed.map(t=>({...structuredClone(t),title:'이전 원고 '+t.id,name:'이전 이름',version:3,bundleVersion:4}));
- templates.push({...structuredClone(templates[0]),id:'launch26-easy',title:'이전 간편 원고'});
+ const templates=seed.filter(t=>['launch26-joseon','launch26-showtime','ep01-welcome'].includes(t.id)).map(t=>({...structuredClone(t),title:'운영자가 수정한 '+t.id,name:'운영자 이름',version:3,bundleVersion:4}));
+ for(const t of templates)t.blocks[0].text='운영자가 다듬은 도입부 '+t.id;
+ for(const id of ['launch26-easy','ep01-brief','launch26-collector'])templates.push({...structuredClone(templates[0]),id,title:'이전 원고 '+id});
  const accepted=templates.find(t=>t.id==='launch26-joseon');accepted.title='승인된 전하 원고';
- const saved={revision:10,capacity:1,templates,assignments:[
+ const saved={revision:10,catalogVersion:2,capacity:1,templates,assignments:[
   {id:'pending',vendorId:'vendor',templateId:'launch26-easy',date:'2026-10-14',slot:'afternoon'},
   {id:'done',vendorId:'vendor',templateId:'launch26-easy',date:'2026-10-07',slot:'afternoon',publication:{url:'https://cafe.naver.com/reptilia/12345',title:'게시한 예전 제목',version:3}}
+  ,{id:'brief-pending',vendorId:'vendor',templateId:'ep01-brief',date:'2026-10-14',slot:'night'}
+  ,{id:'collector-pending',vendorId:'vendor',templateId:'launch26-collector',date:'2026-10-15',slot:'afternoon'}
  ],copies:[{vendorId:'vendor',templateId:'launch26-easy',version:3,at:1}],audit:[],requests:[]};
  let raw=JSON.stringify(saved),writes=0;
  const repository={getRowsByKeys:async()=>[{key,value:raw}],compareAndSwapRows:async(_key,expected,rows)=>{if(raw!==expected)return false;raw=rows[0].value;writes++;return true;}};
  const create=()=>createPromoCenter({repository,vendorsFor:async()=>[{id:'vendor',name:'업체'}],now:()=>Date.parse('2026-10-08T12:00:00+09:00')});
  return {repository,create,get raw(){return raw},set raw(v){raw=v},get writes(){return writes}};
 }
-test('curated replacement archives old drafts, updates pending assignment, preserves approved text and completed history once',async()=>{
+test('three new stories are added once, removed drafts are archived and all three approved manuscripts keep operator edits',async()=>{
  const f=fixture(),s=createView(f.create());const first=await s();
  assert.equal(first.revision,11);assert.equal(f.writes,1);
- assert.equal(first.templates.filter(t=>t.active!==false).length,5);
+ assert.equal(first.templates.filter(t=>t.active!==false).length,6);
  const old=first.templates.find(t=>t.id==='launch26-easy');assert.equal(old.active,false);assert.equal(old.version,4);
- assert.equal(first.templates.find(t=>t.id==='ep01-welcome').version,4);
+ for(const id of ['launch26-showtime','ep01-welcome']){
+  const preserved=first.templates.find(t=>t.id===id);assert.equal(preserved.version,3);assert.equal(preserved.title,'운영자가 수정한 '+id);
+  assert.equal(preserved.blocks[0].text,'운영자가 다듬은 도입부 '+id);
+ }
+ assert.equal(first.templates.find(t=>t.id==='launch26-taste').version,1);
  assert.equal(first.templates.find(t=>t.id==='launch26-joseon').title,'승인된 전하 원고');
  assert.equal(first.assignments.find(a=>a.id==='pending').templateId,'ep01-welcome');
+ assert.equal(first.assignments.find(a=>a.id==='brief-pending').templateId,'launch26-taste');
+ assert.equal(first.assignments.find(a=>a.id==='collector-pending').templateId,'launch26-breeder');
  const done=first.assignments.find(a=>a.id==='done');assert.equal(done.templateId,'launch26-easy');assert.equal(done.publication.title,'게시한 예전 제목');assert.equal(done.publication.version,3);
  assert.equal(old.usage.length,1);await s();await createView(f.create())();assert.equal(f.writes,1);
  const post=await f.create().mutate({admin:true},{action:'template',requestId:randomUUID(),revision:11,id:'ep01-welcome',name:'운영자 수정',title:'어떤 제목이든 수정 유지',blocks:first.templates.find(t=>t.id==='ep01-welcome').blocks,active:true});
@@ -43,7 +52,7 @@ test('a migration retries a conflicting write and returns the committed revision
 test('failed migration never reports an unsaved new catalog as successful',async()=>{
  const f=fixture();f.repository.compareAndSwapRows=async()=>false;
  await assert.rejects(createView(f.create())(),e=>e.status===409);
- assert.equal(JSON.parse(f.raw).revision,10);assert.equal(JSON.parse(f.raw).catalogVersion,undefined);
+ assert.equal(JSON.parse(f.raw).revision,10);assert.equal(JSON.parse(f.raw).catalogVersion,2);
  f.repository.compareAndSwapRows=async()=>{throw Error('disk unavailable')};
  await assert.rejects(createView(f.create())(),/disk unavailable/);
 });
