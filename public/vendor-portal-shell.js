@@ -89,18 +89,55 @@
  }
  function applyAttention(nav,status){
   for(const [key,label]of sections){const link=nav.querySelector('[data-vendor-section="'+key+'"]');if(!link)continue;const needed=!!status[key+'Attention'];link.classList.toggle('portal-attention',needed);if(key==='profile')link.classList.remove('registration-required');link.setAttribute('aria-label',label+(needed?' · 확인할 일 있음':''));}
+  const promo=nav.querySelector('[data-promo-nav]');if(promo){promo.classList.toggle('portal-attention',!!status.promoAttention);promo.setAttribute('aria-label','홍보 관리'+(status.promoAttention?' · 게시 일정 있음':''));}
+  showPromoNotice(nav,status);
+ }
+ function showPromoNotice(nav,status){
+  if(currentSection()==='promo')return;
+  const main=document.getElementById('main')||document.querySelector('#app > main');if(!main)return;
+  let host=document.getElementById('vendor-promo-notice');
+  if(!host){host=document.createElement('section');host.id='vendor-promo-notice';host.setAttribute('aria-label','홍보 게시 일정');main.prepend(host);}
+  const company=new URLSearchParams(location.search).get('company')||new URLSearchParams(location.search).get('portal')||nav.dataset.company;
+  renderPromo(host,company,status);
+ }
+ function promoMarkup(company,status){
+  const base='/promo-center.html?company='+encodeURIComponent(company);
+  if(status.promoUnavailable)return '<h2>홍보 일정을 불러오지 못했어요</h2><p>다시 확인하거나 홍보 관리에서 일정을 확인해 주세요.</p><div class="vendor-promo-actions"><a class="vendor-promo-action" href="'+base+'">홍보 관리 열기</a><button type="button" data-promo-retry>다시 확인</button></div>';
+  const next=status.promoSummary?.next;if(!next)return '';
+  const title=next.status==='overdue'?'홍보글 게시 확인이 필요해요':next.isToday?'오늘 홍보글 게시 대상입니다':'홍보글 게시 일정이 배정됐어요';
+  const date=next.date.replace(/^(\d{4})-(\d{2})-(\d{2})$/,'$2월 $3일');
+  const hint=next.status==='overdue'?'배정 시간이 지났어요. 이미 게시했다면 글 링크를 등록해 주세요.':'이 시간 안에 카페에 게시하고, 글 링크로 완료를 등록해 주세요.';
+  return '<p class="vendor-promo-eyebrow">전국크레자랑 · 홍보 게시 일정</p><h2>'+title+'</h2><p class="vendor-promo-date">'+esc(date)+' · '+esc(next.slotLabel)+' '+esc(next.start)+'–'+esc(next.end)+'</p><p class="vendor-promo-manuscript">'+esc(next.title)+'</p><p>'+hint+'</p><div class="vendor-promo-actions"><a class="vendor-promo-action" href="'+base+'&assignment='+encodeURIComponent(next.id)+'">배정 원고 열기</a>'+(status.promoSummary.pendingCount>1?'<span>미완료 일정 '+status.promoSummary.pendingCount+'건</span>':'')+'</div>';
+ }
+ function renderPromo(host,company,status){
+  host.dataset.company=company;host.className='vendor-promo-notice';host.innerHTML=promoMarkup(company,status);host.hidden=!host.innerHTML;
+  host.querySelector('[data-promo-retry]')?.addEventListener('click',()=>mountPromo(host,company));
+ }
+ const promoVersions=new WeakMap();
+ async function mountPromo(host,company){
+  if(!host||!company)return;
+  host.dataset.company=company;const version=(promoVersions.get(host)||0)+1;promoVersions.set(host,version);
+  const current=()=>host.isConnected&&host.dataset.company===company&&promoVersions.get(host)===version;
+  host.setAttribute('aria-busy','true');
+  try{
+   const response=await fetch('/api/platform/vendor-access/tasks?company='+encodeURIComponent(company),{cache:'no-store',credentials:'same-origin',signal:AbortSignal.timeout(10000)});
+   if(!response.ok)throw Error('unavailable');const data=await response.json();if(current())renderPromo(host,company,data);
+  }catch{if(current())renderPromo(host,company,{promoUnavailable:true});}
+  finally{if(current())host.removeAttribute('aria-busy');}
  }
  const refreshVersions=new WeakMap();
  async function refreshAttention(nav){
   const q=new URLSearchParams(location.search),company=q.get('company')||q.get('portal')||nav.dataset.company;
   if(!company)return;
   const version=(refreshVersions.get(nav)||0)+1;refreshVersions.set(nav,version);
-  try{const response=await fetch('/api/platform/vendor-access/tasks?company='+encodeURIComponent(company),{cache:'no-store',credentials:'same-origin',signal:AbortSignal.timeout(10000)});if(!response.ok)return;const data=await response.json();if(nav.isConnected&&refreshVersions.get(nav)===version)applyAttention(nav,data);}catch{/* Keep the last known attention state; the page offers refresh. */}
+  const current=()=>nav.isConnected&&refreshVersions.get(nav)===version;
+  try{const response=await fetch('/api/platform/vendor-access/tasks?company='+encodeURIComponent(company),{cache:'no-store',credentials:'same-origin',signal:AbortSignal.timeout(10000)});if(!response.ok)throw Error('unavailable');const data=await response.json();if(current())applyAttention(nav,data);}catch{if(current())showPromoNotice(nav,{promoUnavailable:true});}
  }
  function clear(nav){nav?.classList.remove('vendor-portal-nav');document.documentElement.classList.remove('vendor-shell-pending');document.body.classList.remove('national-vendor-shell','has-vendor-header');document.getElementById('vendor-shared-header')?.remove();}
- global.addEventListener('focus',()=>{const nav=document.querySelector('.vendor-portal-nav');if(nav)refreshAttention(nav);});
- document.addEventListener('visibilitychange',()=>{const nav=document.querySelector('.vendor-portal-nav');if(!document.hidden&&nav)refreshAttention(nav);});
- global.CreoVendorShell={mount,clear,header,applyAttention,refreshAttention};
+ function refreshTasks(){const nav=document.querySelector('.vendor-portal-nav');if(nav)refreshAttention(nav);else{const host=document.getElementById('vendor-promo-notice');if(host?.dataset.company)mountPromo(host,host.dataset.company);}}
+ global.addEventListener('focus',refreshTasks);
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshTasks();});
+ global.CreoVendorShell={mount,clear,header,applyAttention,refreshAttention,mountPromo};
  // Keep the same header and page width before and after the first API response.
  function boot(){if(document.documentElement.classList.contains('vendor-shell-pending')){document.body.classList.add('national-vendor-shell');header();}}
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();

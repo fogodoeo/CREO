@@ -8,6 +8,11 @@ async function main(){
  const origin='http://127.0.0.1:'+port,images=new Map(),f=await createFixture({origin,apiOptions:{vendorLogoStorage:{put:async(_channel,name,bytes)=>{images.set(name,bytes);return {url:'/__preview/promo-image/'+name};}}}});f.advance(14*86400000);
  const owner=await f.login('01000000001'),admin=f.client();
  const registered=await f.post(owner,'register',{name:'미리보기 업체',region:'서울·인천',phone:'01000000001'}),company=registered.json().id;
+ if(process.env.PROMO_PREVIEW_READY_PROFILE==='1'){
+  const profile=(await f.post(owner,'profile',{companyId:company})).json();
+  const saved=await f.post(owner,'profile',{companyId:company,action:'bank',revision:profile.revision,bankName:'미리보기 은행',bankAccount:'123456789',bankHolder:'미리보기'});
+  if(saved.status!==200)throw Error(saved.body);
+ }
  await f.call(admin,'POST','/api/platform/auth/login',{password:f.secret});
  const sent=await f.call(admin,'POST','/api/platform/promo-center',{action:'assign',requestId:randomUUID(),revision:0,date:'2026-10-08',slot:'afternoon',vendorId:company,templateId:'ep01-welcome'});if(sent.status!==200)throw Error(sent.body);
  const today=await f.call(admin,'POST','/api/platform/promo-center',{action:'assign',requestId:randomUUID(),revision:1,date:'2026-10-07',slot:'afternoon',vendorId:company,templateId:'launch26-taste'});if(today.status!==200)throw Error(today.body);

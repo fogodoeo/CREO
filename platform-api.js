@@ -1140,7 +1140,9 @@ function createPlatformApi({
             const bundles=await vendorBuyerBundles({channel,vendor,profile,catalog,items,shipments,vendors,vendorKey:id});
             const actions=await Promise.all(bundles.map(async bundle=>require('./public/vendor-task-state').settlementStage({...vendorBuyerPublicPayload(bundle),changePending:Boolean(await pendingCheckoutChange(bundle.context))},channel)==='action'));
             const shipping=await organizerShippingSettlement(channel.id,items,shipments,[vendor]),money=shipping.vendors.find(v=>v.vendorId===id);
-            return {bookingAttention:!!(summary?.attentionCount??summary?.pendingCount),settlementAttention:actions.some(Boolean)||!!(money?.remainingAmount&&!money.pendingReport&&shipping.bank.bankAccount&&normalizePhone(shipping.bank.notificationPhone))};
+            const tasks={bookingAttention:!!(summary?.attentionCount??summary?.pendingCount),settlementAttention:actions.some(Boolean)||!!(money?.remainingAmount&&!money.pendingReport&&shipping.bank.bankAccount&&normalizePhone(shipping.bank.notificationPhone))};
+            try{const promoSummary=await promoCenter.summary(id);return {...tasks,promoSummary,promoAttention:promoSummary.pendingCount>0};}
+            catch{return {...tasks,promoUnavailable:true};}
         },
         profileFor: async id => { await vendorDirectory.enroll(Booking.CHANNEL_ID,id); return vendorDirectory.find(Booking.CHANNEL_ID,id); },
         saveProfile: (id,changes,revision) => withMutationLock('channel:'+Booking.CHANNEL_ID,async () => {

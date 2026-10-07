@@ -34,10 +34,11 @@
    'verify-required':()=>heading('전화번호를 확인해 주세요')+action('verify-phone','전화번호 인증'),
    'request-result':()=>heading(state.requestResults[0].status==='removed'?'업체 연결이 해제됐어요':'참여 요청이 거절됐어요',esc(state.requestResults[0].name))+`<p class="muted">${state.requestResults[0].status==='removed'?'다시 참여하려면 대표의 승인이 필요해요.':'업체 대표에게 확인한 뒤 다시 요청해 주세요.'}</p>`+action('ack-result','확인'),
    companies:()=>heading('업체를 선택해 주세요')+state.companies.map(c=>`<button class="result" data-company="${esc(c.id)}"><span><strong>${esc(c.name)}${c.profileAttention?dot():''}</strong><small>${esc(c.region)}${c.setupRequired?' · 정보 등록 필요':c.approvalCount?' · 직원 승인 '+c.approvalCount+'건':''}</small></span><span class="chevron">›</span></button>`).join('')+action('other-company','다른 업체 찾기','text-button'),
-   channels:()=>heading('채널 선택',esc(state.companies.find(c=>c.id===company)?.name||''))+`<button type="button" id="open-national" class="choice"><span><strong>전국크레자랑</strong></span><span class="chevron" aria-hidden="true">›</span></button>`,
+   channels:()=>heading('채널 선택',esc(state.companies.find(c=>c.id===company)?.name||''))+`<section id="vendor-promo-notice" hidden aria-label="홍보 게시 일정"></section><button type="button" id="open-national" class="choice"><span><strong>전국크레자랑</strong></span><span class="chevron" aria-hidden="true">›</span></button><a class="choice" href="/promo-center.html?company=${encodeURIComponent(company)}"><span><strong>홍보 원고·게시 일정</strong><small>원고 복사와 게시 완료 등록</small></span><span class="chevron" aria-hidden="true">›</span></a>`,
    profile:()=>profileHtml()
   };
   $('main').innerHTML=(html[screen]||html.login)();
+  if(screen==='channels')window.CreoVendorShell?.mountPromo($('vendor-promo-notice'),company);
   if(['login','phone','register','join','profile','choice','directory'].includes(screen)){
    const footer=document.createElement('div');footer.className='privacy-links';
    footer.innerHTML='<a href="/vendor-privacy.html" target="_blank" rel="noopener">개인정보처리방침<span class="sr-only"> (새 창)</span></a><a href="tel:01049278600">문의</a>';

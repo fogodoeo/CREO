@@ -54,7 +54,7 @@ test('copy polish centers stored paragraphs and removes old notices without repl
  assert.ok(result.blocks.filter(b=>b.type==='text').every(b=>b.align==='center'));
  const text=result.blocks.map(b=>b.text||'').join('\n');assert.doesNotMatch(text,/택배|※ 사진/);assert.match(text,/생물 전문 배송업체/);
  assert.deepEqual(JSON.parse(f.raw).assignments.find(a=>a.id==='done'),history);assert.deepEqual(JSON.parse(f.raw).copies,copies);
- assert.equal(JSON.parse(f.raw).catalogVersion,4);assert.equal(f.writes,1);
+ assert.equal(JSON.parse(f.raw).catalogVersion,require('../promo-catalog-migration.json').version);assert.equal(f.writes,1);
  await createView(f.create())();assert.equal(f.writes,1);
  const edited=await f.create().mutate({admin:true},{action:'template',requestId:randomUUID(),revision:first.revision,id:result.id,name:result.name,title:'나중에 또 다듬은 제목',blocks:result.blocks,active:true});
  const after=await createView(f.create())();assert.equal(after.revision,edited.revision);assert.equal(after.templates.find(t=>t.id===result.id).title,'나중에 또 다듬은 제목');
@@ -73,4 +73,17 @@ test('failed migration never reports an unsaved new catalog as successful',async
  assert.equal(JSON.parse(f.raw).revision,10);assert.equal(JSON.parse(f.raw).catalogVersion,2);
  f.repository.compareAndSwapRows=async()=>{throw Error('disk unavailable')};
  await assert.rejects(createView(f.create())(),/disk unavailable/);
+});
+test('reader hook migration updates stock titles once, preserving operator titles and immutable publication history',async()=>{
+ const f=fixture(),saved=JSON.parse(f.raw),hooks=require('../promo-copy-hooks.json');saved.catalogVersion=4;
+ for(const a of saved.assignments)if(!a.publication)a.templateId=require('../promo-catalog-migration.json').retire[a.templateId]||a.templateId;
+ saved.templates=structuredClone(seed);for(const t of saved.templates){t.version=6;t.title=hooks[t.id].previous[0];}
+ saved.templates.find(t=>t.id==='launch26-tour').title='운영자가 정한 샵 투어 제목';
+ const before=structuredClone(saved.assignments),copies=structuredClone(saved.copies);f.raw=JSON.stringify(saved);
+ const first=await createView(f.create())();
+ for(const t of first.templates){assert.equal(t.title,t.id==='launch26-tour'?'운영자가 정한 샵 투어 제목':hooks[t.id].title);assert.equal(t.version,t.id==='launch26-tour'?6:7);}
+ assert.deepEqual(JSON.parse(f.raw).assignments,before);assert.deepEqual(JSON.parse(f.raw).copies,copies);
+ await createView(f.create())();assert.equal(f.writes,1);
+ const t=first.templates[0];await f.create().mutate({admin:true},{action:'template',requestId:randomUUID(),revision:first.revision,id:t.id,name:t.name,title:'다시 직접 다듬은 제목',blocks:t.blocks,active:true});
+ assert.equal((await createView(f.create())()).templates[0].title,'다시 직접 다듬은 제목');
 });

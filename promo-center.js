@@ -4,7 +4,7 @@ const { channelKey } = require('./platform-core');
 const seed = require('./promo-templates.json');
 const media = require('./promo-media.json');
 const catalog = require('./promo-catalog-migration.json');
-const { polishPromoBlocks } = require('./promo-copy-polish');
+const { polishPromoBlocks, polishPromoTitle } = require('./promo-copy-polish');
 const KEY = channelKey('national-cre', 'setting', 'promo-center');
 const SLOTS = { afternoon: { label: '오후', start: '13:30', end: '14:55' }, night: { label: '심야', start: '23:30', end: '23:55' } };
 const fail = (message, status = 422) => Object.assign(new Error(message), { status });
@@ -45,9 +45,9 @@ function createPromoCenter({ repository, vendorsFor, now = Date.now }) {
   if((state.catalogVersion||0)<catalog.version){
    const stamp=now();
    if(catalog.polishCopy)for(const template of state.templates){
-    const blocks=polishPromoBlocks(template.blocks);
-    if(JSON.stringify(blocks)!==JSON.stringify(template.blocks)){
-     template.blocks=blocks;template.version=(template.version||1)+1;template.updatedAt=stamp;
+    const blocks=polishPromoBlocks(template.blocks),title=polishPromoTitle(template.id,template.title);
+    if(JSON.stringify(blocks)!==JSON.stringify(template.blocks)||title!==template.title){
+     template.blocks=blocks;template.title=title;template.version=(template.version||1)+1;template.updatedAt=stamp;
      state.audit.push({actor:'system',action:'catalog-copy-polish',recordId:template.id,at:stamp});
     }
    }
@@ -79,6 +79,12 @@ function createPromoCenter({ repository, vendorsFor, now = Date.now }) {
   throw fail('원고 구성을 갱신 중이에요. 다시 시도해 주세요.',409);
  }
  const status = a => a.cancelled ? 'cancelled' : a.publication ? 'completed' : now() > Date.parse(`${a.date}T${SLOTS[a.slot].end}:59+09:00`) ? 'overdue' : 'assigned';
+ async function summary(vendorId){
+  const {state}=await read(),stamp=now(),today=new Date(stamp+9*3600000).toISOString().slice(0,10);
+  const pending=state.assignments.filter(a=>a.vendorId===vendorId&&!a.cancelled&&!a.publication).sort((a,b)=>(a.date+SLOTS[a.slot].start).localeCompare(b.date+SLOTS[b.slot].start));
+  const current=pending.find(a=>a.date===today)||pending[0],template=current&&state.templates.find(t=>t.id===current.templateId);
+  return {pendingCount:pending.length,next:current?{id:current.id,date:current.date,slot:current.slot,slotLabel:SLOTS[current.slot].label,start:SLOTS[current.slot].start,end:SLOTS[current.slot].end,status:status(current),isToday:current.date===today,templateId:current.templateId,title:template?.title||'배정 원고'}:null};
+ }
  async function view({ vendorId = '', admin = false, month }) {
   if (!/^20\d{2}-(0[1-9]|1[0-2])$/.test(month || '')) throw fail('조회할 월을 확인해 주세요.');
   const { state } = await read(), vendors = (await vendorsFor()).filter(v => v.active !== false).map(v => ({ id:v.id, name:v.name }));
@@ -156,6 +162,6 @@ function createPromoCenter({ repository, vendorsFor, now = Date.now }) {
   }
   throw fail('다른 요청을 처리 중이에요. 다시 시도해 주세요.',409);
  }
- return { view, mutate };
+ return { view, mutate, summary };
 }
 module.exports={createPromoCenter,normalizeTemplate,validDate,SLOTS};

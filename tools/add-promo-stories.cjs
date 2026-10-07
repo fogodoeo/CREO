@@ -1,7 +1,7 @@
 'use strict';
 // Adds three community-voiced stories while preserving the user's approved manuscripts.
 const fs=require('node:fs'),path=require('node:path'),sharp=require('sharp');
-const {polishPromoBlocks}=require('../promo-copy-polish');
+const {polishPromoBlocks,polishPromoTitle}=require('../promo-copy-polish');
 const root=path.resolve(__dirname,'..'),assets=path.join(root,'public/promo-assets');
 const output='C:/Users/5600x/Desktop/전크자/output/promo-center/추가원고3종_20261008';
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -54,7 +54,7 @@ const pack=[
   p('대망의 첫 방송은 10월 14일 수요일 밤 8시에 시작합니다.\n첫 방송 낙찰자 전원에게 1인당 배송비 최대 3만 원을 시원하게 지원해 드립니다.\n\n당장 입양 생각이 없으셔도 좋습니다.\n“우와, 저 샵엔 저런 아이도 있네!” 하시며 편하게 놀러 오셔서 응원 댓글 하나씩 남겨주세요.\n저희도 최고의 컨디션으로 정성껏 준비해서 반갑게 맞이하겠습니다 ^^'),
   p('※ 사진은 방송 준비의 분위기를 연출한 이미지입니다.'),...footer
  ]}
-].map(t=>({...t,blocks:polishPromoBlocks(t.blocks),version:1,bundleVersion:7,active:true}));
+].map(t=>({...t,title:polishPromoTitle(t.id,t.title),blocks:polishPromoBlocks(t.blocks),version:1,bundleVersion:8,active:true}));
 async function main(){
  fs.mkdirSync(path.join(output,'이미지'),{recursive:true});
  const before=JSON.parse(fs.readFileSync(path.join(root,'promo-templates.json'),'utf8'));

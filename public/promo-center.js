@@ -44,7 +44,7 @@
  const kst=ms=>new Date(ms+9*3600000).toISOString().slice(0,10),format=d=>d.replace(/^(\d{4})-(\d{2})-(\d{2})$/,'$2월 $3일');
  let company=query.get('company')||'',session,state,month=kst(Date.now()).slice(0,7),selected=kst(Date.now()),template,busy=false,trigger,refreshSequence=0,copying=false;
  const pendingRequests=new Map();
- let loadedAt=Date.now();
+ let loadedAt=Date.now(),assignmentOpened=false;
  let partnerMode='all',partnerRegions=new Set(),partnerImages=[],partnerReady=false,partnerSequence=0;
  const names={assigned:'배정됨',completed:'게시 완료',overdue:'미게시',cancelled:'취소됨'};
  function error(message){$('error').textContent=message;$('error').hidden=!message;}
@@ -170,11 +170,21 @@
    return request({action:'template',requestId:crypto.randomUUID(),revision,...(id&&!clone?{id}:{}),name:$('t-name').value,title:$('t-title').value,blocks,active:$('t-active')?.checked!==false});
   });
  }
+ async function openAssignedPreview(){
+  const id=query.get('assignment');if(admin||assignmentOpened||!id)return;assignmentOpened=true;
+  const assigned=(state.pending||[]).find(a=>a.id===id&&a.vendorId===company);
+  if(!assigned){$('status').textContent='이 일정은 이미 완료되었거나 변경됐어요. 현재 게시 일정을 확인해 주세요.';return;}
+  selected=assigned.date;const assignedMonth=assigned.date.slice(0,7);
+  if(month!==assignedMonth){month=assignedMonth;await refresh();}else render();
+  // A fresh response may show that the operator cancelled/completed this assignment.
+  const current=(state.pending||[]).find(a=>a.id===id&&a.vendorId===company);
+  if(current)preview(current.templateId);else $('status').textContent='게시 일정이 변경됐어요. 현재 일정을 확인해 주세요.';
+ }
  async function start(){
   $('refresh').disabled=true;$('loading').hidden=false;
   try{if(admin){if(!await CreoPlatform.verifyAdmin()){$('content').hidden=true;$('login').hidden=false;$('login').querySelector('a').hidden=true;$('admin-login').hidden=false;return;}}
    else{const r=await fetch('/api/platform/vendor-access/session',{credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(20000)});if(!r.ok)throw Error('로그인을 확인하지 못했어요. 새로고침해 주세요.');session=await r.json();if(!session.authenticated){$('content').hidden=true;$('login').hidden=false;return;}if(!company&&session.companies?.length===1){company=session.companies[0].id;history.replaceState(null,'','?company='+encodeURIComponent(company));}if(!company){$('content').hidden=true;$('login').hidden=false;return;}}
-   await refresh();
+   await refresh();await openAssignedPreview();
   }catch(e){error(e.status?e.message:'연결을 확인하고 새로고침해 주세요.');if(e.status===401||e.status===403)$('login').hidden=false;}
   finally{$('refresh').disabled=false;$('loading').hidden=true;}
  }
