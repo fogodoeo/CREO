@@ -41,6 +41,24 @@ test('three new stories are added once, removed drafts are archived and all thre
  await assert.rejects(f.create().mutate({vendorId:'vendor'},{action:'copy',requestId:randomUUID(),templateId:'ep01-welcome',version:3}),e=>e.status===409);
 });
 function createView(service){return ()=>service.view({admin:true,month:'2026-10'});}
+test('copy polish centers stored paragraphs and removes old notices without replacing operator text or publication history',async()=>{
+ const f=fixture(),saved=JSON.parse(f.raw);saved.catalogVersion=3;
+ const t=saved.templates.find(t=>t.id==='launch26-showtime');t.title='제가 고른 제목';t.bundleVersion=0;
+ t.blocks[0].text='제가 직접 다듬은 문장';t.blocks[0].align='left';
+ t.blocks.push({type:'text',text:'쌀쌀해진 환절기에 고속버스 택배 걱정 없이,\n집 근처 제휴 전문 매장에서 안전하게 아이를 인계받으실 수 있습니다.',size:16,align:'left'},
+  {type:'text',text:'※ 사진은 샵 투어의 분위기를 연출한 이미지입니다.',size:16,align:'left'});
+ const history=structuredClone(saved.assignments.find(a=>a.id==='done')),copies=structuredClone(saved.copies);f.raw=JSON.stringify(saved);
+ const first=await createView(f.create())(),result=first.templates.find(t=>t.id==='launch26-showtime');
+ assert.equal(result.title,'제가 고른 제목');
+ assert.equal(result.version,4);assert.equal(result.blocks[0].text,'제가 직접 다듬은 문장');
+ assert.ok(result.blocks.filter(b=>b.type==='text').every(b=>b.align==='center'));
+ const text=result.blocks.map(b=>b.text||'').join('\n');assert.doesNotMatch(text,/택배|※ 사진/);assert.match(text,/생물 전문 배송업체/);
+ assert.deepEqual(JSON.parse(f.raw).assignments.find(a=>a.id==='done'),history);assert.deepEqual(JSON.parse(f.raw).copies,copies);
+ assert.equal(JSON.parse(f.raw).catalogVersion,4);assert.equal(f.writes,1);
+ await createView(f.create())();assert.equal(f.writes,1);
+ const edited=await f.create().mutate({admin:true},{action:'template',requestId:randomUUID(),revision:first.revision,id:result.id,name:result.name,title:'나중에 또 다듬은 제목',blocks:result.blocks,active:true});
+ const after=await createView(f.create())();assert.equal(after.revision,edited.revision);assert.equal(after.templates.find(t=>t.id===result.id).title,'나중에 또 다듬은 제목');
+});
 test('a migration retries a conflicting write and returns the committed revision, without losing concurrent history',async()=>{
  const f=fixture(),normal=f.repository.compareAndSwapRows;let collided=false;
  f.repository.compareAndSwapRows=async(...args)=>{

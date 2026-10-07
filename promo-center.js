@@ -4,6 +4,7 @@ const { channelKey } = require('./platform-core');
 const seed = require('./promo-templates.json');
 const media = require('./promo-media.json');
 const catalog = require('./promo-catalog-migration.json');
+const { polishPromoBlocks } = require('./promo-copy-polish');
 const KEY = channelKey('national-cre', 'setting', 'promo-center');
 const SLOTS = { afternoon: { label: '오후', start: '13:30', end: '14:55' }, night: { label: '심야', start: '23:30', end: '23:55' } };
 const fail = (message, status = 422) => Object.assign(new Error(message), { status });
@@ -20,7 +21,7 @@ function normalizeTemplate(body) {
   if (b.type !== 'text' || typeof b.text !== 'string' || b.text.length > 2000) throw fail('본문 문단을 확인해 주세요.');
   const href = b.href ? String(b.href) : '';
   if (href && !/^https:\/\/(band\.us|cafe\.naver\.com)\/[\w/?#%=&.\-]+$/.test(href)) throw fail('밴드 또는 네이버 카페 링크만 사용할 수 있어요.');
-  return { type: 'text', text: b.text, size: [16,18,20,24,26].includes(b.size) ? b.size : 16, bold: !!b.bold, color: b.color === 'green' ? 'green' : 'ink', align: b.align === 'left' ? 'left' : 'center', ...(href ? { href } : {}) };
+  return { type: 'text', text: b.text, size: [16,18,20,24,26].includes(b.size) ? b.size : 16, bold: !!b.bold, color: b.color === 'green' ? 'green' : 'ink', align: 'center', ...(href ? { href } : {}) };
  });
  if (JSON.stringify(blocks).length > 50000) throw fail('원고가 너무 길어요.');
  return { name, title, blocks };
@@ -40,13 +41,16 @@ function createPromoCenter({ repository, vendorsFor, now = Date.now }) {
   for(const template of seed){
    const existing = state.templates.find(t=>t.id===template.id);
    if(!existing){state.templates.push({...template,...normalizeTemplate(template)});dirty=true;}
-   else if(!existing.updatedAt && !existing.title.startsWith('운영자') && existing.title!=='승인된 전하 원고' && (template.bundleVersion||0) > (existing.bundleVersion||0)){
-    const norm = normalizeTemplate(template);
-    existing.name = norm.name; existing.title = norm.title; existing.blocks = norm.blocks; existing.bundleVersion = template.bundleVersion; dirty = true;
-   }
   }
   if((state.catalogVersion||0)<catalog.version){
    const stamp=now();
+   if(catalog.polishCopy)for(const template of state.templates){
+    const blocks=polishPromoBlocks(template.blocks);
+    if(JSON.stringify(blocks)!==JSON.stringify(template.blocks)){
+     template.blocks=blocks;template.version=(template.version||1)+1;template.updatedAt=stamp;
+     state.audit.push({actor:'system',action:'catalog-copy-polish',recordId:template.id,at:stamp});
+    }
+   }
    for(const id of catalog.replace){
     const template=seed.find(t=>t.id===id),existing=state.templates.find(t=>t.id===id);
     if(!template||!existing)throw fail('홍보 원고 구성을 확인해 주세요.',503);

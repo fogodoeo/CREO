@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="same-origin"><title>홍보 관리 · 전국크레자랑</title><link rel="stylesheet" href="/vendor-portal-shell.css?v=20261008-promo"><link rel="stylesheet" href="/promo-center.css?v=20261008-stories6"><script src="/platform-client.js"></script><script src="/vendor-portal-shell.js?v=20261008-promo"></script><script defer src="/promo-center.js?v=20261008-stories6"></script></head>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="same-origin"><title>홍보 관리 · 전국크레자랑</title><link rel="stylesheet" href="/vendor-portal-shell.css?v=20261008-promo"><link rel="stylesheet" href="/promo-center.css?v=20261008-centered-all"><script src="/platform-client.js"></script><script src="/vendor-portal-shell.js?v=20261008-promo"></script><script defer src="/promo-center.js?v=20261008-centered-all"></script></head>
 <body><main class="promo-shell"><header class="page-head"><div><p class="eyebrow">전국크레자랑</p><h1>홍보 관리</h1></div><button id="refresh" type="button">새로고침</button></header>
 <p id="loading" role="status" class="muted">일정과 원고를 불러오고 있어요</p><p id="status" role="status"></p><p id="error" role="alert" hidden></p>
 <section id="login" hidden><h2>로그인하고 확인해 주세요</h2><p>배정된 게시 일정과 홍보 원고를 한곳에서 확인할 수 있어요.</p><a class="button primary" href="/vendor-access.html">업체 로그인</a><form id="admin-login" hidden><label>운영자 비밀번호<input type="password" id="password" autocomplete="current-password" required></label><button class="primary">운영자 로그인</button></form></section>
@@ -11,8 +11,8 @@
 <dialog id="detail" aria-labelledby="detail-title"><div class="dialog-toolbar"><header class="dialog-head"><h2 id="detail-title">원고 미리보기</h2><button type="button" data-close aria-label="미리보기 닫기">×</button></header><div class="copy-actions"><button id="copy-title">제목 복사</button><button id="copy-body" class="primary">본문 서식 복사</button></div><p id="copy-status" role="status"></p></div><div class="dialog-scroll">
 <section class="partner-picker" aria-label="원고에 넣을 업체 선택">
  <fieldset id="partner-controls"><legend>업체 소개</legend><div class="partner-modes">
-  <label><input type="radio" name="partner-mode" value="none" checked>넣지 않음</label>
-  <label><input type="radio" name="partner-mode" value="all">전체 참여업체</label>
+  <label><input type="radio" name="partner-mode" value="none">넣지 않음</label>
+  <label><input type="radio" name="partner-mode" value="all" checked>전체 참여업체</label>
   <label><input type="radio" name="partner-mode" value="regions">지역별 참여업체</label>
  </div><div id="partner-regions" hidden><p class="muted">소개할 지역을 선택해 주세요 · 여러 곳 선택 가능</p><div id="partner-region-options"></div></div></fieldset>
  <p id="partner-status" role="status" class="muted"></p><div class="actions"><button id="partner-retry" type="button" hidden>다시 시도</button><button id="partner-refresh" type="button">명단 새로고침</button></div>

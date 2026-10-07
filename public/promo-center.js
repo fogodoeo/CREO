@@ -45,7 +45,7 @@
  let company=query.get('company')||'',session,state,month=kst(Date.now()).slice(0,7),selected=kst(Date.now()),template,busy=false,trigger,refreshSequence=0,copying=false;
  const pendingRequests=new Map();
  let loadedAt=Date.now();
- let partnerMode='none',partnerRegions=new Set(),partnerImages=[],partnerReady=true,partnerSequence=0;
+ let partnerMode='all',partnerRegions=new Set(),partnerImages=[],partnerReady=false,partnerSequence=0;
  const names={assigned:'배정됨',completed:'게시 완료',overdue:'미게시',cancelled:'취소됨'};
  function error(message){$('error').textContent=message;$('error').hidden=!message;}
  async function request(body){
@@ -103,7 +103,7 @@
  }
  function bodyHTML(t,copying=false,images=[]){return postBlocks(t,images).map(b=>b.type==='image'?`<p align="center" style="text-align:center;margin:20px 0"><img src="${esc(imageURL(copying&&b.copySrc?b.copySrc:b.src))}" alt="${esc(b.alt)}" width="500" style="width:500px;max-width:100%;height:auto"></p>`:`<p align="${b.align||'center'}" style="text-align:${b.align||'center'};font-family:NanumSquareNeo,'나눔스퀘어 네오',sans-serif;line-height:1.75;margin:0;word-break:keep-all;overflow-wrap:anywhere"><span style="font-family:NanumSquareNeo,'나눔스퀘어 네오',sans-serif;font-size:${b.size}px;color:${b.color==='green'?'#007443':'#202632'};font-weight:${b.bold?700:400}">${b.href?'<a href="'+esc(b.href)+'">':''}${(esc(b.text).replace(/\n/g,'<br>')||'<br>')}${b.href?'</a>':''}</span></p>`).join('');}
  function preview(id){template=state.templates.find(t=>t.id===id);if(!template){error('보관된 원고입니다. 운영자에게 문의해 주세요.');return;}
-  partnerMode=template.blocks.some(b=>isSharedAsset(b,'partners'))?'all':'none';partnerRegions=new Set();partnerImages=[];partnerReady=partnerMode==='none';
+  partnerMode='all';partnerRegions=new Set();partnerImages=[];partnerReady=false;
   $('post-title').textContent=template.title;$('copy-status').textContent='';
   for(const radio of document.querySelectorAll('[name="partner-mode"]'))radio.checked=radio.value===partnerMode;
   showPartnerRegions();drawPost();trigger=document.activeElement;$('detail').showModal();$('detail').querySelector('.dialog-scroll').scrollTop=0;updatePartners();

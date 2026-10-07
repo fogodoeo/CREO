@@ -1,6 +1,7 @@
 {
-  "version": 3,
-  "id": "20261008-three-community-stories",
+  "version": 4,
+  "id": "20261008-centered-copy-specialist-delivery",
+  "polishCopy": true,
   "replace": [],
   "retire": {
     "launch26-editorial": "launch26-taste",

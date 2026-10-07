@@ -30,6 +30,7 @@ dialog[open]{display:flex;flex-direction:column}
 .template-info .actions{gap:8px}.template-info .actions button{font-size:14px;padding-inline:12px}
 .template-visual:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
 @media(max-width:620px){.template-grid{grid-template-columns:minmax(0,1fr);gap:20px}.template-info h3{font-size:20px}}
+#post-title{text-align:center;word-break:keep-all;overflow-wrap:anywhere}
 .partner-picker{background:var(--bg);border-radius:12px;padding:20px;margin-bottom:24px}
 .partner-picker fieldset{border:0;padding:0;margin:0;min-width:0}
 .partner-picker legend{font-size:16px;font-weight:700;margin-bottom:12px}
