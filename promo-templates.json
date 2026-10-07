@@ -1695,20 +1695,12 @@
       {
         "type": "image",
         "src": "/promo-assets/partners-20261007.png",
-        "alt": "전국크레자랑 참여업체 로고 22곳 · 업체별 순차 출연",
+        "alt": "전국크레자랑 참여업체 로고 모음 · 업체별 순차 출연",
         "width": 500
       },
       {
         "type": "text",
-        "text": "오늘도마뱀 · 오케이게코 · 니코게코도 함께합니다",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "※ 등록업체 기준 2026.10.07\n로고가 등록된 업체는 이미지로 담았습니다",
+        "text": "※ 2026.10.07 기준 · 업체별 순차 출연",
         "size": 16,
         "bold": false,
         "align": "center",
