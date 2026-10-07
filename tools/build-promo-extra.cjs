@@ -17,7 +17,7 @@ async function main(){
  fs.copyFileSync(source,path.join(out,'업체로고_출처.json'));
  await require('./render-partner-board.cjs').renderPartnerBoard(logos,assets);
  const pack=[
-  {id:'launch26-showtime',name:'전국노래자랑 감성 · 우리 동네 크레 자랑',title:'전국의 집사님들, 이번엔 크레 자랑입니다',blocks:[
+  {id:'launch26-showtime',name:'전국노래자랑 감성 · 우리 동네 크레 자랑',title:'🎤 전국의 집사님들, 이번엔 크레 자랑입니다',blocks:[
    h('전국의 집사님들\n크레 자랑하러 오세요'),gap(),
    p('동네마다 자랑거리가 하나씩 있듯\n크레를 키우는 집사님들께도\n꼭 보여주고 싶은 아이가 있죠.'),
    image('showtime-photo.png','얼굴이 보이지 않는 야외무대 진행자와 손 위의 작은 크레 · AI 연출 이미지'),p('※ AI 연출 이미지이며 실제 출연자·출품 개체가 아닙니다'),gap(),
@@ -28,7 +28,7 @@ async function main(){
    p('낙찰 시 카카오톡 알림톡이 자동 발송됩니다.\n전용 페이지에서 낙찰 내역과 결제 안내를 확인하고\n배송 정보는 한 번 등록하면 다음에도 그대로 사용합니다.\n수령은 집 근처 업체에서 픽업합니다.'),gap(),
    ...common,p('입양 계획이 없어도 구경은 환영입니다.\n우리 동네 크레 자랑, 함께 보실까요'),gap(),link(),p('네이버 밴드에서 ‘전국크레자랑’ 검색')
   ]},
-  {id:'launch26-partners',name:'참여업체 소개 · 실제 로고 모음',title:'익숙한 이름도, 새롭게 만날 이름도 한자리에',blocks:[
+  {id:'launch26-partners',name:'참여업체 소개 · 실제 로고 모음',title:'🤝 익숙한 이름도, 새롭게 만날 이름도 한자리에',blocks:[
    h('반가운 업체들이\n한 밴드에 모였습니다'),gap(),
    p('평소 눈여겨보던 업체부터\n이번에 처음 알게 될 브리더까지.\n전국크레자랑에서 차례로 만나보세요.'),gap(),
    image('partners-20261007.png','전국크레자랑 참여업체 로고 모음 · 업체별 순차 출연'),
