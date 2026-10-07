@@ -15,29 +15,7 @@ async function main(){
  if(!fs.existsSync(source))fs.copyFileSync(path.join(out,'업체로고_출처.json'),source);
  const vendors=JSON.parse(fs.readFileSync(source,'utf8')),logos=vendors.filter(v=>v.url||v.file),missing=vendors.filter(v=>!v.url&&!v.file);
  fs.copyFileSync(source,path.join(out,'업체로고_출처.json'));
- let tiles='',previewTiles='';
- for(let i=0;i<logos.length;i++){
-  const v=logos[i],filename=v.file||String(vendors.indexOf(v)+1).padStart(2,'0')+'.png',local=path.join(assets,'partner-logos',filename);
-  if(!fs.existsSync(local)){
-   const response=await fetch(v.url,{signal:AbortSignal.timeout(20000)});if(!response.ok)throw Error(v.name+': '+response.status);
-   await sharp(Buffer.from(await response.arrayBuffer()),{limitInputPixels:25000000}).png().toFile(local);
-  }
-  const remainder=logos.length%4,lastRow=i>=logos.length-remainder,offset=lastRow?(4-remainder)*175:0;
-  const x=75+(i%4)*350+offset,y=270+Math.floor(i/4)*300;
-  const uri='data:image/png;base64,'+fs.readFileSync(local).toString('base64');
-  // SVG presentation preserves source artwork, crops padding and separates the combined mark.
-  const meta=v.crop?await sharp(local).metadata():null;
-  const markX=x+(v.squareBackground?72:60),markWidth=v.squareBackground?196:220;
-  const clip=v.circle?`<circle cx="${v.circle[0]}" cy="${v.circle[1]}" r="${v.circle[2]}"/>`:v.crop?`<rect x="${v.crop[0]}" y="${v.crop[1]}" width="${v.crop[2]}" height="${v.crop[3]}"/>`:'';
-  const background=v.squareBackground?`<rect x="${markX}" y="${y+12}" width="196" height="196" fill="${v.squareBackground}"/>`:'';
-  const artwork=background+(v.crop?`<svg x="${markX}" y="${y+12}" width="${markWidth}" height="196" viewBox="${v.crop.join(' ')}" preserveAspectRatio="xMidYMid meet"><defs><clipPath id="mark-${i}">${clip}</clipPath></defs><image width="${meta.width}" height="${meta.height}" clip-path="url(#mark-${i})" href="${uri}"/></svg>`:`<image x="${markX}" y="${y+12}" width="${markWidth}" height="196" preserveAspectRatio="xMidYMid meet" href="${uri}"/>`);
-  const label=({'제트크레스티드게코':'제트크레','REPSODY 렙소디':'렙소디','더숲(크레숲)':'더숲 · 크레숲','크레용 대구본점':'크레용 대구'})[v.name]||v.name;
-  const tile=`${artwork}<text x="${x+170}" y="${y+252}" text-anchor="middle" font-size="34" font-weight="400" fill="#303638">${esc(label)}</text>`;
-  tiles+=tile;if(i<8)previewTiles+=tile;
- }
- const height=270+Math.ceil(logos.length/4)*300+130;
- const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="${height}" viewBox="0 0 1500 ${height}"><rect width="1500" height="${height}" fill="white"/><g font-family="Malgun Gothic, sans-serif"><text x="80" y="76" font-size="27" fill="#007443">전국크레자랑</text><text x="80" y="163" font-size="66" font-weight="700" letter-spacing="-2" fill="#202632">함께하는 업체들</text><text x="1420" y="162" text-anchor="end" font-size="28" fill="#626d7b">각자의 취향, 하나의 무대</text><path d="M80 214H1420" stroke="#dce1e8" stroke-width="2"/>${tiles}<path d="M80 ${height-110}H1420" stroke="#dce1e8"/><text x="80" y="${height-53}" font-size="26" fill="#626d7b">업체별 일정에 따라 순차적으로 출연합니다</text><text x="1420" y="${height-53}" text-anchor="end" font-size="26" fill="#626d7b">2026.10</text></g></svg>`;
- fs.writeFileSync(path.join(assets,'partners-20261007.svg'),svg);await sharp(Buffer.from(svg)).png().toFile(path.join(assets,'partners-20261007.png'));
+ await require('./render-partner-board.cjs').renderPartnerBoard(logos,assets);
  const pack=[
   {id:'launch26-showtime',name:'전국노래자랑 감성 · 우리 동네 크레 자랑',title:'전국의 집사님들, 이번엔 크레 자랑입니다',blocks:[
    h('전국의 집사님들\n크레 자랑하러 오세요'),gap(),
@@ -70,10 +48,8 @@ async function main(){
  // Small real thumbnails keep the library fast even when the source art is large.
  for(const src of Object.keys(media)){
   const original=path.join(root,'public',src),thumb=original.replace(/\.[^.]+$/,'.thumb.webp');
-  if(fs.existsSync(original))await sharp(original).resize(800,450,{fit:'inside',withoutEnlargement:true}).webp({quality:82}).toFile(thumb);
+  if(fs.existsSync(original)&&!src.endsWith('/partners-20261007.png'))await sharp(original).resize(800,450,{fit:'inside',withoutEnlargement:true}).webp({quality:82}).toFile(thumb);
  }
- const partnerThumb=`<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="844"><rect width="1500" height="844" fill="white"/><g font-family="Malgun Gothic, sans-serif"><text x="85" y="98" font-size="52" font-weight="700" fill="#202632">함께하는 업체들</text><text x="1415" y="96" text-anchor="end" font-size="28" fill="#007443">전국크레자랑</text><path d="M85 137H1415" stroke="#dce1e8"/><g transform="translate(150 -22) scale(.80)">${previewTiles}</g><text x="85" y="791" font-size="29" fill="#626d7b">참여업체 ${logos.length}곳 · 전체 명단은 원고에서</text></g></svg>`;
- await sharp(Buffer.from(partnerThumb)).resize(800).webp({quality:85}).toFile(path.join(assets,'partners-20261007.thumb.webp'));
  for(const t of pack){
   const name=t.id==='launch26-showtime'?'01_전국노래자랑감성':'02_참여업체로고';
   const body=t.blocks.map(b=>b.type==='image'?`<p style="text-align:center;margin:24px 0"><img src="이미지/${path.basename(b.src)}" alt="${esc(b.alt)}" width="500" style="width:500px;max-width:100%;height:auto"></p>`:`<p style="margin:0;text-align:${b.align};font-size:${b.size}px;font-weight:${b.bold?700:400};line-height:1.7;color:${b.color==='green'?'#007443':'#202632'}">${b.href?'<a href="'+esc(b.href)+'">':''}${esc(b.text).replace(/\n/g,'<br>')||'<br>'}${b.href?'</a>':''}</p>`).join('');
