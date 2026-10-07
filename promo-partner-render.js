@@ -5,7 +5,7 @@ const fontfile=path.join(__dirname,'public/promo-assets/PretendardVariable.ttf')
 const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
 const shortName=s=>({'제트크레스티드게코':'제트크레','REPSODY 렙소디':'렙소디','더숲(크레숲)':'더숲 · 크레숲','크레용 대구본점':'크레용 대구'})[s]||s;
 async function render(group,{logoBytes}){
- const sharp=require('sharp'),width=1500,columns=group.columns,cell=(width-120)/columns,row=310,gridY=270,height=gridY+Math.ceil(group.items.length/columns)*row+90;
+ const sharp=require('sharp'),width=1500,columns=group.columns,cell=(width-120)/columns,row=310,gridY=48,height=gridY+Math.ceil(group.items.length/columns)*row+16;
  const layers=[];
  async function text(value,cx,top,size,color='#202632',weight=500,max=1380){
   let out;
@@ -13,9 +13,6 @@ async function render(group,{logoBytes}){
   if(out.info.width>max)out=await sharp(out.data).resize({width:Math.floor(max)}).png().toBuffer({resolveWithObject:true});
   layers.push({input:out.data,left:Math.round(cx-out.info.width/2),top});
  }
- await text('전국크레자랑',width/2,48,34,'#007443',600);
- await text(group.title,width/2,112,66,'#202632',700);
- await text(`${group.items.length}개 브랜드 · 업체별 일정에 따라 순차 출연`,width/2,201,32,'#626d7b');
  for(let i=0;i<group.items.length;i++){
   const item=group.items[i],cx=60+cell*(i%columns+.5),top=gridY+Math.floor(i/columns)*row,size=columns===4?194:218;
   const input=await logoBytes(item.logo);
