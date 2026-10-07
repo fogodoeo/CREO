@@ -1,5 +1,16 @@
 # 홍보 원고 배너 수정 · 2026-10-07
 
+## 대표 이미지 서울·인천 수정
+
+- 자산: `public/promo-assets/hero-seoul-incheon-v2.png`
+- 입력: 기존 `public/promo-assets/hero.jpg`. 원본 파일은 보존한다.
+- built-in image_gen으로 회차를 `EP 01. 서울, 인천`으로 수정. 기존 검정·민트, 장갑 위 크레, 날짜·방송시간 구성은 유지한다. 결과의 회차 문구를 눈으로 확인한 뒤 원고의 500px 표시로 검수한다.
+- 모든 원고 본문에는 공통 대표 이미지를 맨 앞에 한 번만 표시한다. 목록 썸네일은 이 공통 이미지를 제외한 해당 원고의 첫 이미지로 선택한다.
+
+```text
+Precisely edit the attached Korean live broadcast hero poster. This is a localized text correction only. In the upper right corner inside the outlined photograph frame, replace the existing text 'EP.01 서울' with exactly 'EP 01. 서울, 인천'. The new text must be correctly typeset in clean white Korean sans-serif, right aligned in the same position, reduced slightly in size or extended to the left only if needed to fit comfortably. Preserve ALL other content and composition: the black green background, giant white 전국크레자랑 heading, small live auction heading, Naver Band logo, mint LIVE label, small orange crested gecko on white gloved hands, frame, 10.14 date, 첫 방송 badge, 수요일 밤 8시, and bottom 매주 월·수 밤 8시 strip. Do not add anything. Preserve the original aspect ratio and sharp professional typography. No changes to any other wording. No new texture, noise, distortions, decorative elements, or added illustrations. Highest available image quality.
+```
+
 ## 배포 자산
 
 - `public/promo-assets/weekly-v2.png`, `weekly-v2.thumb.webp`: 전크자 로고를 사용한 매주 월·수 밤 8시 배너. built-in image_gen 생성 및 글자 대비 보정.

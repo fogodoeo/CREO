@@ -6,8 +6,16 @@
   const url=new URL(src,location.origin);
   if(url.origin===location.origin&&/^\/promo-assets\/partners-20261007\.(png|thumb\.webp)$/.test(url.pathname))url.searchParams.set('v','board3');
   if(url.origin===location.origin&&/^\/promo-assets\/(weekly|easy)\.(png|thumb\.webp)$/.test(url.pathname))url.pathname=url.pathname.replace(/\.(png|thumb\.webp)$/,'-v2.$1');
+  if(url.origin===location.origin&&url.pathname==='/promo-assets/hero.jpg')url.pathname='/promo-assets/hero-seoul-incheon-v2.png';
   return url.href;
  }
+ function isSharedHero(block){
+  if(block.type!=='image')return false;
+  const url=new URL(block.src,location.origin);
+  return url.origin===location.origin&&['/promo-assets/hero.jpg','/promo-assets/hero-seoul-incheon-v2.png'].includes(url.pathname);
+ }
+ function postBlocks(t){return [{type:'image',src:'/promo-assets/hero-seoul-incheon-v2.png',alt:'전국크레자랑 라이브 방송 · EP 01. 서울, 인천 · 10월 14일 수요일 밤 8시'},...t.blocks.filter(b=>!isSharedHero(b))];}
+ function thumbnailImage(t){return t.blocks.find(b=>b.type==='image'&&!isSharedHero(b));}
  function enablePreviewDismiss(dialog){
   let outsideStart=false;
   const outside=e=>{const r=dialog.getBoundingClientRect();return e.target===dialog&&(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom);};
@@ -60,7 +68,7 @@
  }
  function renderTemplates(){
   $('templates').innerHTML=[...state.templates].reverse().map(t=>{
-   const image=t.blocks.find(b=>b.type==='image'),paragraphs=t.blocks.filter(b=>b.type==='text'&&b.text.trim()&&!b.href);
+   const image=thumbnailImage(t),paragraphs=t.blocks.filter(b=>b.type==='text'&&b.text.trim()&&!b.href);
    const prose=paragraphs.filter(b=>b.size===16&&!b.bold&&!b.text.trim().startsWith('※'));
    const lead=(prose.length?prose:paragraphs).slice(0,2).map(b=>b.text.replace(/\s+/g,' ').trim()).join(' ');
    const excerpt=lead.length>110?lead.slice(0,110)+'…':lead;
@@ -69,8 +77,8 @@
   }).join('')||'<p class="empty">등록된 홍보 원고가 없습니다</p>';
   for(const image of $('templates').querySelectorAll('.template-visual img'))image.addEventListener('error',()=>{if(image.dataset.original){const original=image.dataset.original;delete image.dataset.original;image.src=original;}else image.hidden=true;});
  }
- function bodyHTML(t,copying=false){return t.blocks.map(b=>b.type==='image'?`<p style="text-align:center;margin:20px 0"><img src="${esc(imageURL(copying&&b.copySrc?b.copySrc:b.src))}" alt="${esc(b.alt)}" width="500" style="width:500px;max-width:100%;height:auto"></p>`:`<p style="text-align:${b.align};font-family:NanumSquareNeo,'나눔스퀘어 네오',sans-serif;line-height:1.7;margin:0"><span style="font-family:NanumSquareNeo,'나눔스퀘어 네오',sans-serif;font-size:${b.size}px;color:${b.color==='green'?'#007443':'#202632'};font-weight:${b.bold?700:400}">${b.href?'<a href="'+esc(b.href)+'">':''}${(esc(b.text).replace(/\n/g,'<br>')||'<br>')}${b.href?'</a>':''}</span></p>`).join('');}
- function preview(id){template=state.templates.find(t=>t.id===id);if(!template){error('보관된 원고입니다. 운영자에게 문의해 주세요.');return;}$('post-title').textContent=template.title;$('post-preview').innerHTML=bodyHTML(template);$('copy-status').textContent='';$('downloads').innerHTML=template.blocks.filter(b=>b.type==='image').map((b,i)=>`<a download href="${esc(imageURL(b.src))}">이미지 ${i+1} 다운로드 · ${esc(b.alt)}</a>`).join('');trigger=document.activeElement;$('detail').showModal();$('detail').querySelector('.dialog-scroll').scrollTop=0;}
+ function bodyHTML(t,copying=false){return postBlocks(t).map(b=>b.type==='image'?`<p style="text-align:center;margin:20px 0"><img src="${esc(imageURL(copying&&b.copySrc?b.copySrc:b.src))}" alt="${esc(b.alt)}" width="500" style="width:500px;max-width:100%;height:auto"></p>`:`<p style="text-align:${b.align};font-family:NanumSquareNeo,'나눔스퀘어 네오',sans-serif;line-height:1.7;margin:0"><span style="font-family:NanumSquareNeo,'나눔스퀘어 네오',sans-serif;font-size:${b.size}px;color:${b.color==='green'?'#007443':'#202632'};font-weight:${b.bold?700:400}">${b.href?'<a href="'+esc(b.href)+'">':''}${(esc(b.text).replace(/\n/g,'<br>')||'<br>')}${b.href?'</a>':''}</span></p>`).join('');}
+ function preview(id){template=state.templates.find(t=>t.id===id);if(!template){error('보관된 원고입니다. 운영자에게 문의해 주세요.');return;}$('post-title').textContent=template.title;$('post-preview').innerHTML=bodyHTML(template);$('copy-status').textContent='';$('downloads').innerHTML=postBlocks(template).filter(b=>b.type==='image').map((b,i)=>`<a download href="${esc(imageURL(b.src))}">이미지 ${i+1} 다운로드 · ${esc(b.alt)}</a>`).join('');trigger=document.activeElement;$('detail').showModal();$('detail').querySelector('.dialog-scroll').scrollTop=0;}
  async function copy(withFormatting){
   if(copying)return;copying=true;$('copy-title').disabled=true;$('copy-body').disabled=true;
   const t=template,html=bodyHTML(t,true),plain=t.blocks.filter(b=>b.type==='text').map(b=>b.text).join('\n');
