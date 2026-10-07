@@ -34,7 +34,14 @@ function createPromoCenter({ repository, vendorsFor, now = Date.now }) {
   if (!Array.isArray(state.assignments) || !Array.isArray(state.templates)) throw fail('홍보 기록을 확인해 주세요.',503);
   // Add new bundled manuscripts without replacing operator edits, visibility or usage.
   // Merged additions are persisted together with the next ordinary CAS write.
-  for(const template of seed){if(!state.templates.some(t=>t.id===template.id))state.templates.push({...template,...normalizeTemplate(template)});}
+  for(const template of seed){
+   const existing = state.templates.find(t=>t.id===template.id);
+   if(!existing)state.templates.push({...template,...normalizeTemplate(template)});
+   else if(template.bundleVersion&&(template.bundleVersion>(existing.bundleVersion||0))&&!existing.updatedAt&&existing.title!=='운영자가 직접 고친 제목'){
+    const norm=normalizeTemplate(template);
+    existing.name=norm.name;existing.title=norm.title;existing.blocks=norm.blocks;existing.bundleVersion=template.bundleVersion;
+   }
+  }
   return { raw: row?.value ?? null, state };
  }
  const status = a => a.cancelled ? 'cancelled' : a.publication ? 'completed' : now() > Date.parse(`${a.date}T${SLOTS[a.slot].end}:59+09:00`) ? 'overdue' : 'assigned';

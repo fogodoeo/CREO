@@ -1,16 +1,19 @@
 [
   {
     "id": "ep01-welcome",
-    "name": "첫 방송 소개 · 인사형",
-    "title": "🔴 EP.01 — 그러면, 서울·인천이 먼저 자랑하겠습니다",
+    "name": "브리더 고백 · 사장님의 찐소감",
+    "title": "🦎 \"경매할 때마다 진땀 뺐는데...\" 브리더가 직접 말씀드립니다",
+    "bundleVersion": 2,
     "version": 1,
     "active": true,
     "blocks": [
       {
-        "type": "image",
-        "src": "/promo-assets/hero.jpg",
-        "alt": "전국크레자랑 라이브 방송",
-        "width": 500
+        "type": "text",
+        "text": "솔직히 그동안 경매할 때마다\n진땀 좀 뺐습니다",
+        "size": 24,
+        "bold": true,
+        "align": "center",
+        "color": "ink"
       },
       {
         "type": "text",
@@ -22,7 +25,286 @@
       },
       {
         "type": "text",
-        "text": "안녕하세요 집사님들, 옹동2입니다.",
+        "text": "안녕하세요, 크레를 사랑하고 브리딩하는 동료 집사이자 브리더입니다.\n날씨가 꽤 쌀쌀해졌네요. 다들 아이들 축양은 건강하게 잘하고 계신지요.",
+        "size": 16,
+        "bold": false,
+        "align": "center",
+        "color": "ink"
+      },
+      {
+        "type": "image",
+        "src": "/promo-assets/hero.jpg",
+        "alt": "전국크레자랑 라이브 방송",
+        "width": 500
+      },
+      {
+        "type": "text",
+        "text": "솔직히 그동안 온라인 경매 한 번 하려면 손이 열 개라도 모자랐습니다.\n낙찰자분들께 일일이 계좌 찍어드리고, 입금 확인하고, 주소 취합하고…\n요즘처럼 날씨 쌀쌀해지면 배송 중에 아이들 다칠까 봐 늘 노심초사했거든요.",
+        "size": 16,
+        "bold": false,
+        "align": "center",
+        "color": "ink"
+      },
+      {
+        "type": "text",
+        "text": "",
+        "size": 16,
+        "bold": false,
+        "align": "center",
+        "color": "ink"
+      },
+      {
+        "type": "text",
+        "text": "그래서 전국 30여 개 브리더가 직접 뭉쳤습니다",
+        "size": 18,
+        "bold": true,
+        "align": "center",
+        "color": "ink"
+      },
+      {
+        "type": "text",
+        "text": "이름하여 전국크레자랑 네이버 밴드 라이브 경매!\n낙찰 즉시 카톡 알림톡으로 바로 결제 링크가 가고,\n주소도 최초 1회만 등록해 두시면 다음부턴 일일이 적으실 필요도 없습니다.",
+        "size": 16,
+        "bold": false,
+        "align": "center",
+        "color": "ink"
+      },
+      {
+        "type": "text",
+        "text": "",
+        "size": 16,
+        "bold": false,
+        "align": "center",
+        "color": "ink"
+      },
+      {
+        "type": "text",
+        "text": "가장 안심되는 '집 근처 매장 안전 픽업'",
+        "size": 18,
+        "bold": true,
+        "align": "center",
+        "color": "ink"
+      },
+      {
+        "type": "text",
+        "text": "찬바람 부는 가을·겨울, 일반 택배로 보내며 마음 졸이지 않도록\n거주지 근처 제휴 전문 샵으로 개체가 안전하게 이동되어\n직접 눈으로 건강 상태를 확인하고 픽업하시는 방식입니다.",
+        "size": 16,
+        "bold": false,
+        "align": "center",
+        "color": "ink"
+      },
+      {
+        "type": "text",
+        "text": "",
+        "size": 16,
+        "bold": false,
+        "align": "center",
+        "color": "ink"
+      },
+      {
+        "type": "text",
+        "text": "10월 14일 수요일 밤 8시 · 첫 방송 서울·인천",
+        "size": 18,
+        "bold": true,
+        "align": "center",
+        "color": "ink"
+      },
+      {
+        "type": "text",
+        "text": "첫 회부터 서울·인천 대표 샵들의 자존심을 걸고\n정말 아끼던 퀄리티 개체들로 신중하게 선별해서 출품합니다.",
+        "size": 16,
+        "bold": false,
+        "align": "center",
+        "color": "ink"
+      },
+      {
+        "type": "text",
+        "text": "",
+        "size": 16,
+        "bold": false,
+        "align": "center",
+        "color": "ink"
+      },
+      {
+        "type": "text",
+        "text": "첫 방송 배송비 지원 이벤트",
+        "size": 18,
+        "bold": true,
+        "align": "center",
+        "color": "ink"
+      },
+      {
+        "type": "text",
+        "text": "※ 첫 방송 낙찰자 1인당 배송비 최대 3만 원 전액 지원!",
+        "size": 16,
+        "bold": false,
+        "align": "center",
+        "color": "ink"
+      },
+      {
+        "type": "text",
+        "text": "",
+        "size": 16,
+        "bold": false,
+        "align": "center",
+        "color": "ink"
+      },
+      {
+        "type": "text",
+        "text": "입양 부담 갖지 마시고 편하게 오셔서 응원 댓글도 달아주시고 눈호강하고 가세요!\n정성껏 준비해서 기다리겠습니다.",
+        "size": 16,
+        "bold": false,
+        "align": "center",
+        "color": "ink"
+      },
+      {
+        "type": "text",
+        "text": "",
+        "size": 16,
+        "bold": false,
+        "align": "center",
+        "color": "ink"
+      },
+      {
+        "type": "text",
+        "text": "전국크레자랑 밴드 바로가기",
+        "size": 18,
+        "bold": true,
+        "align": "center",
+        "color": "green",
+        "href": "https://band.us/n/a6a6beMe97Ucc"
+      },
+      {
+        "type": "text",
+        "text": "네이버 밴드에서 ‘전국크레자랑’ 검색",
+        "size": 16,
+        "bold": false,
+        "align": "center",
+        "color": "ink"
+      }
+    ]
+  },
+  {
+    "id": "ep01-brief",
+    "name": "입문자 안내 · 초보 집사 안심 가이드",
+    "title": "🦎 \"첫 크레 어디서 데려올까?\" 고민 중인 분들을 위한 안심 가이드",
+    "bundleVersion": 2,
+    "version": 1,
+    "active": true,
+    "blocks": [
+      {
+        "type": "text",
+        "text": "첫 크레 입양,\n사기나 폐사 걱정 때문에 망설여지셨나요?",
+        "size": 24,
+        "bold": true,
+        "align": "center",
+        "color": "ink"
+      },
+      {
+        "type": "text",
+        "text": "",
+        "size": 16,
+        "bold": false,
+        "align": "center",
+        "color": "ink"
+      },
+      {
+        "type": "text",
+        "text": "사진만 보고 분양받았다가 실물이 달라 실망할까 봐 걱정되고,\n찬바람 부는 날씨에 택배 배송 중 잘못될까 봐 망설여지셨다면 안심하세요.",
+        "size": 16,
+        "bold": false,
+        "align": "center",
+        "color": "ink"
+      },
+      {
+        "type": "image",
+        "src": "/promo-assets/simple.png",
+        "alt": "알림톡은 자동으로, 배송 정보는 한 번만, 집 근처 매장에서 픽업",
+        "width": 500
+      },
+      {
+        "type": "text",
+        "text": "사진이 아닌 '실시간 라이브'로 확인",
+        "size": 18,
+        "bold": true,
+        "align": "center",
+        "color": "ink"
+      },
+      {
+        "type": "text",
+        "text": "전국크레자랑은 전국의 30여 개 검증된 전문 브리더가 함께합니다.\n고화질 라이브 영상으로 먹이 반응, 발색, 활동성을 꼼꼼히 확인하고 입찰할 수 있어\n사진 왜곡에 대한 걱정이 없습니다.",
+        "size": 16,
+        "bold": false,
+        "align": "center",
+        "color": "ink"
+      },
+      {
+        "type": "text",
+        "text": "",
+        "size": 16,
+        "bold": false,
+        "align": "center",
+        "color": "ink"
+      },
+      {
+        "type": "text",
+        "text": "택배 사고 걱정 없는 '집 근처 매장 안심 픽업'",
+        "size": 18,
+        "bold": true,
+        "align": "center",
+        "color": "ink"
+      },
+      {
+        "type": "text",
+        "text": "개체의 안전을 위해 일반 택배가 아닌, 거주지 근처 제휴 전문 샵으로 안전하게 이송되어\n직접 실물을 확인하고 데려오실 수 있습니다.",
+        "size": 16,
+        "bold": false,
+        "align": "center",
+        "color": "ink"
+      },
+      {
+        "type": "text",
+        "text": "",
+        "size": 16,
+        "bold": false,
+        "align": "center",
+        "color": "ink"
+      },
+      {
+        "type": "text",
+        "text": "초보자도 1분이면 끝나는 카톡 알림톡 결제",
+        "size": 18,
+        "bold": true,
+        "align": "center",
+        "color": "ink"
+      },
+      {
+        "type": "text",
+        "text": "낙찰 즉시 카톡 알림톡으로 안내가 오며, 복잡한 계좌 문의 없이 전용 창에서 간편 결제됩니다.\n주소도 한 번 등록해 두시면 다음에도 그대로 적용됩니다.",
+        "size": 16,
+        "bold": false,
+        "align": "center",
+        "color": "ink"
+      },
+      {
+        "type": "text",
+        "text": "",
+        "size": 16,
+        "bold": false,
+        "align": "center",
+        "color": "ink"
+      },
+      {
+        "type": "text",
+        "text": "10월 14일 수요일 밤 8시 첫 방송 · 서울·인천",
+        "size": 18,
+        "bold": true,
+        "align": "center",
+        "color": "ink"
+      },
+      {
+        "type": "text",
+        "text": "첫 방송 배송비 지원 (낙찰자 1인당 최대 3만 원)",
         "size": 18,
         "bold": true,
         "align": "center",
@@ -38,23 +320,7 @@
       },
       {
         "type": "text",
-        "text": "날씨가 부쩍 쌀쌀해졌네요.",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "다들 감기 조심하시고",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "아가들도 따뜻하게 지내고 있길 바랍니다.",
+        "text": "당장 입양 계획이 없으셔도 괜찮습니다.\n다양한 모프 구경도 하고 사육 노하우도 배울 겸 가볍게 놀러 오세요 ^^",
         "size": 16,
         "bold": false,
         "align": "center",
@@ -63,398 +329,6 @@
       {
         "type": "text",
         "text": "",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "저도 예쁜 아이들 보려고",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "이 밴드 저 밴드 찾아다니다가,",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "한곳에서 편하게 볼 수 있으면 좋겠다는 마음에",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "30여 곳의 전문 브리더·업체분들과 뜻을 모아",
-        "size": 16,
-        "bold": true,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "‘전국크레자랑’을 시작하게 되었습니다.",
-        "size": 16,
-        "bold": true,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "매주 월요일·수요일 밤 8시",
-        "size": 26,
-        "bold": true,
-        "align": "center",
-        "color": "green"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "지역별 업체들이 돌아가며",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "다양한 크레들을 선보일 예정입니다.",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "image",
-        "src": "/promo-assets/simple.png",
-        "alt": "알림톡은 자동으로, 배송 정보는 한 번만",
-        "width": 500
-      },
-      {
-        "type": "text",
-        "text": "낙찰 시 카카오톡 알림톡으로 안내가 발송되며,",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "배송 정보는 처음에 한 번만 등록해 두시면",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "다음에도 그대로 적용됩니다.",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "10월 14일 수요일 밤 8시",
-        "size": 26,
-        "bold": true,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "서울·인천과 첫 방송을 시작합니다.",
-        "size": 20,
-        "bold": true,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "image",
-        "src": "/promo-assets/ticket.png",
-        "alt": "첫 방송 배송비 지원, 낙찰자당 최대 3만 원",
-        "width": 500
-      },
-      {
-        "type": "text",
-        "text": "첫 방송 낙찰자분들께는",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "1인당 배송비 최대 3만 원을 지원해 드립니다.",
-        "size": 16,
-        "bold": true,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "꼭 입양이 아니더라도",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "예쁜 아이들 구경하러 편하게 놀러 와주세요.",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "첫 방송에서 인사드리겠습니다.",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "오늘도 크레들과 좋은 하루 보내세요.",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "네이버 밴드에서 ‘전국크레자랑’을 검색하시거나",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "아래 링크로 들어오시면 됩니다.",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "전국크레자랑 밴드 바로가기 ↗",
-        "size": 20,
-        "bold": true,
-        "align": "center",
-        "color": "green",
-        "href": "https://band.us/n/a6a6beMe97Ucc"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      }
-    ]
-  },
-  {
-    "id": "ep01-brief",
-    "name": "첫 방송 소개 · 간결형",
-    "title": "🦎 어떤 크레 좋아하세요? 전국 업체들이 함께합니다",
-    "version": 1,
-    "active": true,
-    "blocks": [
-      {
-        "type": "image",
-        "src": "/promo-assets/hero.jpg",
-        "alt": "전국크레자랑 라이브 방송",
-        "width": 500
-      },
-      {
-        "type": "text",
-        "text": "한곳에서 만나는 전국의 크레",
-        "size": 26,
-        "bold": true,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "30여 곳의 전문 브리더·업체가 함께하는\n전국크레자랑을 소개합니다",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "매주 월요일·수요일 밤 8시",
-        "size": 24,
-        "bold": true,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "지역별 업체들이 돌아가며\n다양한 크레들을 선보입니다",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "image",
-        "src": "/promo-assets/simple.png",
-        "alt": "알림톡은 자동으로, 배송 정보는 한 번만",
-        "width": 500
-      },
-      {
-        "type": "text",
-        "text": "낙찰 안내는 카카오톡 알림톡으로 자동 발송\n전용 페이지에서 낙찰 내역과 결제 안내를 확인하세요\n배송 정보는 한 번 등록하면 다음에도 적용됩니다",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "10월 14일 수요일 밤 8시\n첫 방송은 서울·인천",
-        "size": 24,
-        "bold": true,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "image",
-        "src": "/promo-assets/ticket.png",
-        "alt": "첫 방송 배송비 지원, 낙찰자당 최대 3만 원",
-        "width": 500
-      },
-      {
-        "type": "text",
-        "text": "첫 방송 낙찰자 1인당 배송비 최대 3만 원 지원",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "예쁜 크레들 구경하러 편하게 놀러 오세요",
         "size": 16,
         "bold": false,
         "align": "center",
@@ -463,18 +337,29 @@
       {
         "type": "text",
         "text": "전국크레자랑 밴드 바로가기",
-        "size": 20,
+        "size": 18,
         "bold": true,
         "align": "center",
-        "color": "ink",
+        "color": "green",
         "href": "https://band.us/n/a6a6beMe97Ucc"
+      },
+      {
+        "type": "text",
+        "text": "네이버 밴드에서 ‘전국크레자랑’ 검색",
+        "size": 16,
+        "bold": false,
+        "align": "center",
+        "color": "ink"
       }
     ]
   },
   {
     "id": "launch26-joseon",
     "name": "조선시대 · 손바닥만 한 용",
-    "title": "👑 전하, 손바닥만 한 용을 보셨습니까",
+    "title": "👑 “전하, 저잣거리에 용이 나타났다 하옵니다”",
+    "bundleVersion": 2,
+    "version": 1,
+    "active": true,
     "blocks": [
       {
         "type": "text",
@@ -494,7 +379,7 @@
       },
       {
         "type": "text",
-        "text": "“용이라? 크기가 얼마나 되느냐?”\n“손바닥만 하옵니다.”",
+        "text": "“용이라? 그 크기가 대체 얼마나 되느냐?”\n“손바닥만 하옵니다.”",
         "size": 18,
         "bold": false,
         "align": "center",
@@ -508,7 +393,7 @@
       },
       {
         "type": "text",
-        "text": "고을마다 곱게 키운 크레 소식이 자자하여\n이번에는 한자리에 모아 보기로 했습니다.",
+        "text": "“손바닥만 한 용이라니, 천하에 어찌 그런 영물이 있단 말이냐!”",
         "size": 16,
         "bold": false,
         "align": "center",
@@ -524,7 +409,23 @@
       },
       {
         "type": "text",
-        "text": "이름하여 전국크레자랑",
+        "text": "팔도강산 고을마다 지극정성으로 기른 크레 소식이 자자하여,\n과인이 친히 팔도의 장인들을 한자리에 불러 모으라 명하였사옵니다.",
+        "size": 16,
+        "bold": false,
+        "align": "center",
+        "color": "ink"
+      },
+      {
+        "type": "text",
+        "text": "",
+        "size": 16,
+        "bold": false,
+        "align": "center",
+        "color": "ink"
+      },
+      {
+        "type": "text",
+        "text": "“그러하오면, 서울·인천이 먼저 자랑하겠나이다!”",
         "size": 18,
         "bold": true,
         "align": "center",
@@ -532,7 +433,23 @@
       },
       {
         "type": "text",
-        "text": "30여 곳의 전문 브리더·업체가 함께하는\n네이버 밴드 크레스티드게코 라이브 경매입니다.\n매주 다른 지역의 업체와 다양한 크레를 만납니다.",
+        "text": "",
+        "size": 16,
+        "bold": false,
+        "align": "center",
+        "color": "ink"
+      },
+      {
+        "type": "text",
+        "text": "이름하여 전국크레자랑(全國크레自慢)",
+        "size": 18,
+        "bold": true,
+        "align": "center",
+        "color": "green"
+      },
+      {
+        "type": "text",
+        "text": "전국 삼십여 곳의 내로라하는 장인과 상단(전문 브리더)이 뜻을 모아,\n손안의 저잣거리(네이버 밴드)에서 실시간으로 펼치는 야간 장터이옵니다.\n매주 다른 고을의 명품 용들을 안방 사랑방에서 친히 감상하실 수 있습니다.",
         "size": 16,
         "bold": false,
         "align": "center",
@@ -548,7 +465,7 @@
       },
       {
         "type": "text",
-        "text": "장터는 월요일과 수요일, 밤 8시에 열립니다",
+        "text": "장마당이 서는 때",
         "size": 18,
         "bold": true,
         "align": "center",
@@ -556,7 +473,7 @@
       },
       {
         "type": "text",
-        "text": "먼 길 나서실 필요는 없습니다.\n밴드에서 실시간으로 구경하고 참여해 주세요.",
+        "text": "매주 달 뜨는 월요일과 수요일, 밤 여덟 시(戌時)\n대망의 첫 장터 : 10월 14일 수요일 밤 8시 【서울·인천 편】",
         "size": 16,
         "bold": false,
         "align": "center",
@@ -572,7 +489,7 @@
       },
       {
         "type": "text",
-        "text": "낙찰 뒤의 수고도 덜었습니다",
+        "text": "첫 장터의 은혜로운 혜택",
         "size": 18,
         "bold": true,
         "align": "center",
@@ -580,7 +497,7 @@
       },
       {
         "type": "text",
-        "text": "카카오톡 알림톡이 자동으로 발송되고\n연결된 전용 페이지에서 낙찰 내역과 결제 안내를 확인합니다.\n배송 정보는 한 번 등록하면 다음에도 그대로 사용합니다.\n수령은 집 근처 업체에서 픽업하는 방식입니다.",
+        "text": "낙찰자 모두에게 역마 삯(배송비)을 지원하오니,\n한 사람당 최대 삼만 냥(3만 원)의 혜택을 내리겠나이다.",
         "size": 16,
         "bold": false,
         "align": "center",
@@ -596,7 +513,7 @@
       },
       {
         "type": "text",
-        "text": "10월 14일 수요일 밤 8시",
+        "text": "손님들의 노고를 더는 방도",
         "size": 18,
         "bold": true,
         "align": "center",
@@ -604,7 +521,7 @@
       },
       {
         "type": "text",
-        "text": "첫 방송은 서울·인천과 함께합니다",
+        "text": "파발의 신속함 : 낙찰 즉시 카카오 전령(알림톡)이 당도하옵니다.\n간편한 셈법 : 전용 서찰(페이지)에서 내역 확인과 단번에 셈(결제)을 치를 수 있사옵니다.\n무탈한 픽업 : 험한 길에 귀한 용이 다칠세라, 집 근처 객주(협력 매장)에서 안전하게 친견(수령)하시도록 방도를 마련하였사옵니다.",
         "size": 16,
         "bold": false,
         "align": "center",
@@ -620,31 +537,7 @@
       },
       {
         "type": "text",
-        "text": "첫 방송 배송비 지원",
-        "size": 18,
-        "bold": true,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "※ 낙찰자 1인당 최대 3만 원",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "구경만 하셔도 좋습니다.\n어느 고을의 크레가 마음에 드실지, 함께 보시지요.",
+        "text": "먼 길 행차하실 필요 없사옵니다.\n그저 편히 앉으시어 구경만 하셔도 좋으니,\n과연 어느 고을의 용이 가장 영롱한지 함께 지켜보시지요.",
         "size": 16,
         "bold": false,
         "align": "center",
@@ -669,24 +562,25 @@
       },
       {
         "type": "text",
-        "text": "네이버 밴드에서 ‘전국크레자랑’ 검색",
+        "text": "네이버 밴드 검색창에서 ‘전국크레자랑’을 찾으시옵소서",
         "size": 16,
         "bold": false,
         "align": "center",
         "color": "ink"
       }
-    ],
-    "version": 1,
-    "active": true
+    ]
   },
   {
     "id": "launch26-collector",
-    "name": "집사 공감 · 서로 다른 취향",
-    "title": "💚 지역은 달라도, 크레에 진심인 건 같으니까",
+    "name": "집사 공감 · 3년차 랜선 눈팅러",
+    "title": "💚 퇴근 후 크레 멍 때리는 집사님들, 밴드 하나로 정착합시다",
+    "bundleVersion": 2,
+    "version": 1,
+    "active": true,
     "blocks": [
       {
         "type": "text",
-        "text": "어떤 크레 좋아하세요",
+        "text": "퇴근하고 비바리움 불 켜놓고\n멍하니 애들 밥 먹는 거 구경하는 시간",
         "size": 24,
         "bold": true,
         "align": "center",
@@ -702,7 +596,7 @@
       },
       {
         "type": "text",
-        "text": "또렷한 무늬에 눈길이 가는 분도,\n색감 하나에 마음이 움직이는 분도 계시죠.",
+        "text": "하루 중 제일 힐링되는 순간, 다들 폭풍 공감하시죠? ㅎㅎ\n도마뱀 키우는 사람들은 다 똑같은가 봅니다.",
         "size": 16,
         "bold": false,
         "align": "center",
@@ -716,7 +610,7 @@
       },
       {
         "type": "text",
-        "text": "취향은 달라도 예쁜 아이를 발견했을 때의\n반가운 마음은 비슷할 것 같습니다.",
+        "text": "예쁜 아이 한 마리 더 데려오고 싶어서 이 밴드 저 밴드 가입해 두고\n알림 켜두며 찾아다니는 게 일상이었는데,\n솔직히 방송 시간 일일이 챙기기 번거로우셨잖아요 ㅠㅠ",
         "size": 16,
         "bold": false,
         "align": "center",
@@ -732,7 +626,7 @@
       },
       {
         "type": "text",
-        "text": "여러 지역의 크레를, 한 밴드에서",
+        "text": "전국 30여 개 전문 샵이 한 밴드에 모였습니다",
         "size": 18,
         "bold": true,
         "align": "center",
@@ -740,7 +634,7 @@
       },
       {
         "type": "text",
-        "text": "이 밴드 저 밴드에서 찾아보던 업체들을\n한곳에서 만날 수 있도록 전국크레자랑을 준비했습니다.\n30여 곳의 전문 브리더·업체가 함께하며\n지역별로 돌아가며 다양한 크레를 소개합니다.",
+        "text": "매주 월요일과 수요일 밤 8시, 전국크레자랑!\n지역별 대표 브리더들이 돌아가며 라이브를 켜주니까,\n침대에 누워서 전국 각지 명품 크레들을 안방 1열에서 랜선 투어할 수 있습니다.",
         "size": 16,
         "bold": false,
         "align": "center",
@@ -756,7 +650,7 @@
       },
       {
         "type": "text",
-        "text": "매주 월요일·수요일 밤 8시",
+        "text": "낙찰 뒤도 깔끔, 픽업도 안심",
         "size": 18,
         "bold": true,
         "align": "center",
@@ -764,7 +658,7 @@
       },
       {
         "type": "text",
-        "text": "사진만으로 고르기보다\n움직이는 모습과 설명을 라이브로 만나보세요.\n마음에 드는 아이가 있다면 경매에도 참여하실 수 있습니다.",
+        "text": "낙찰받으면 카톡 알림톡으로 바로 결제 링크 오고,\n날씨 쌀쌀해도 택배 폐사 걱정 없이 집 근처 샵에서 직접 보고 데려올 수 있대요!",
         "size": 16,
         "bold": false,
         "align": "center",
@@ -780,23 +674,7 @@
       },
       {
         "type": "text",
-        "text": "낙찰 뒤에는 자동 알림톡으로 안내해 드립니다.\n톡에 연결된 전용 페이지에서 내역과 결제 안내를 확인하고\n한 번 등록한 배송 정보는 다음에도 그대로 사용합니다.\n집 근처 업체에서 픽업하는 방식입니다.",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "10월 14일 수요일 밤 8시",
+        "text": "첫 방송 : 10월 14일(수) 밤 8시 (서울·인천)",
         "size": 18,
         "bold": true,
         "align": "center",
@@ -804,7 +682,7 @@
       },
       {
         "type": "text",
-        "text": "첫 방송은 서울·인천과 함께합니다",
+        "text": "첫 방송 낙찰자는 배송비 최대 3만 원까지 지원해 준다고 합니다!\n배송비 혜택 완전 쏠쏠하네요 ㅎㅎ",
         "size": 16,
         "bold": false,
         "align": "center",
@@ -820,31 +698,7 @@
       },
       {
         "type": "text",
-        "text": "첫 방송 배송비 지원",
-        "size": 18,
-        "bold": true,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "※ 낙찰자 1인당 최대 3만 원",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "꼭 입양할 계획이 없어도 괜찮습니다.\n내 취향의 크레를 발견하는 시간으로\n편하게 놀러 와주세요.",
+        "text": "꼭 입양 안 하셔도 좋으니,\n월·수 저녁에 편하게 침대에 누워서 귀여운 꼬물이들 보며 힐링하러 놀러 오세요 ^^",
         "size": 16,
         "bold": false,
         "align": "center",
@@ -875,18 +729,19 @@
         "align": "center",
         "color": "ink"
       }
-    ],
-    "version": 1,
-    "active": true
+    ]
   },
   {
     "id": "launch26-editorial",
-    "name": "매거진 · 한 밴드에서 만나는 다양함",
-    "title": "✨ 한 밴드에서 만나는, 서로 다른 크레의 매력",
+    "name": "매거진 · 에디터스 픽 큐레이터",
+    "title": "✨ [에디터스 픽] 전국의 브리더 30인이 제안하는 새로운 크레 컬렉션",
+    "bundleVersion": 2,
+    "version": 1,
+    "active": true,
     "blocks": [
       {
         "type": "text",
-        "text": "전국크레자랑",
+        "text": "전국크레자랑 에디토리얼",
         "size": 18,
         "bold": true,
         "align": "center",
@@ -894,7 +749,7 @@
       },
       {
         "type": "text",
-        "text": "지역이 바뀌면\n만나는 크레도 달라집니다",
+        "text": "지역이 바뀌면\n만나는 크레의 결도 달라집니다",
         "size": 24,
         "bold": true,
         "align": "center",
@@ -903,7 +758,7 @@
       {
         "type": "image",
         "src": "/promo-assets/live.png",
-        "alt": "흰 장갑 위 작은 크레와 방송 카메라 · AI 연출 이미지, 실제 출품 개체가 아닙니다",
+        "alt": "흰 장갑 위 작은 크레와 방송 카메라 · AI 연출 이미지",
         "width": 500
       },
       {
@@ -924,7 +779,7 @@
       },
       {
         "type": "text",
-        "text": "크레를 보는 취향도, 브리딩의 방향도\n업체마다 조금씩 다릅니다.\n그 차이를 한자리에서 만나는 방송을 준비했습니다.",
+        "text": "브리더마다 추구하는 형질의 방향, 오랜 시간 공들여 다듬어온 고유의 라인과 피지컬.\n그 섬세한 차이를 하나의 무대에서 깊이 있게 만나는 특별한 라이브 스테이지가 열립니다.",
         "size": 16,
         "bold": false,
         "align": "center",
@@ -940,7 +795,7 @@
       },
       {
         "type": "text",
-        "text": "다양한 업체, 하나의 밴드",
+        "text": "30인의 전문 브리더가 완성하는 릴레이 컬렉션",
         "size": 18,
         "bold": true,
         "align": "center",
@@ -948,7 +803,7 @@
       },
       {
         "type": "text",
-        "text": "전국의 전문 브리더·업체가 지역별로 돌아가며\n각자의 크레를 소개하는 라이브 경매.\n매번 다른 업체와 개체를 만나는 것이\n전국크레자랑의 가장 큰 매력입니다.",
+        "text": "전국의 전문 브리더·업체가 지역별로 돌아가며 각자의 크레를 소개하는 라이브 경매.\n사진 한 장으로는 결코 다 담아낼 수 없었던 개체의 생동감 있는 움직임과 발색을\n실시간 고화질 영상으로 온전히 전달합니다.",
         "size": 16,
         "bold": false,
         "align": "center",
@@ -964,7 +819,7 @@
       },
       {
         "type": "text",
-        "text": "매주 월요일·수요일 밤 8시",
+        "text": "매주 월요일·수요일 밤 8시 네이버 밴드 LIVE",
         "size": 18,
         "bold": true,
         "align": "center",
@@ -972,7 +827,7 @@
       },
       {
         "type": "text",
-        "text": "네이버 밴드에서 실시간으로 진행합니다.\n움직임을 보고 설명을 들으며 천천히 취향을 찾아보세요.",
+        "text": "여유로운 저녁 시간, 움직임을 보고 설명을 들으며 천천히 나만의 취향을 찾아보세요.",
         "size": 16,
         "bold": false,
         "align": "center",
@@ -988,7 +843,7 @@
       },
       {
         "type": "text",
-        "text": "안내는 자동으로, 정보 입력은 한 번만",
+        "text": "정돈된 프로세스, 안전한 거점 픽업",
         "size": 18,
         "bold": true,
         "align": "center",
@@ -996,7 +851,7 @@
       },
       {
         "type": "text",
-        "text": "낙찰 알림톡이 자동 발송됩니다.\n전용 페이지에서 낙찰 내역과 결제 안내를 확인하고\n등록한 배송 정보는 다음 낙찰에도 그대로 사용합니다.\n수령은 집 근처 업체에서 픽업합니다.",
+        "text": "카카오톡 자동 알림톡과 전용 결제창으로 복잡한 정산 과정을 단정하게 줄였습니다.\n수령은 계절 변화에도 안전하도록 집 근처 전문 매장에서 픽업하는 시스템을 갖췄습니다.",
         "size": 16,
         "bold": false,
         "align": "center",
@@ -1012,25 +867,9 @@
       },
       {
         "type": "text",
-        "text": "10월 14일 수요일 밤 8시",
+        "text": "10월 14일 수요일 밤 8시 · 첫 방송 서울·인천",
         "size": 18,
         "bold": true,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "첫 방송은 서울·인천과 함께합니다",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
         "align": "center",
         "color": "ink"
       },
@@ -1044,7 +883,7 @@
       },
       {
         "type": "text",
-        "text": "※ 낙찰자 1인당 최대 3만 원",
+        "text": "※ 낙찰자 1인당 최대 3만 원 지원",
         "size": 16,
         "bold": false,
         "align": "center",
@@ -1060,7 +899,7 @@
       },
       {
         "type": "text",
-        "text": "새로운 크레를 만나는 시간.\n전국크레자랑에서 함께해 주세요.",
+        "text": "새로운 크레를 만나는 가장 품격 있는 시간.\n전국크레자랑에서 함께해 주세요.",
         "size": 16,
         "bold": false,
         "align": "center",
@@ -1091,18 +930,19 @@
         "align": "center",
         "color": "ink"
       }
-    ],
-    "version": 1,
-    "active": true
+    ]
   },
   {
     "id": "launch26-episode",
-    "name": "방송 예고 · 이번 주의 크레",
-    "title": "🔴 EP.01 — 서울·인천부터, 자랑 한번 해보겠습니다",
+    "name": "방송 예고 · 본방사수 편성 PD",
+    "title": "🔴 [방송예고] 10월 14일(수) 밤 8시, EP.01 서울·인천 대표 개체 출격!",
+    "bundleVersion": 2,
+    "version": 1,
+    "active": true,
     "blocks": [
       {
         "type": "text",
-        "text": "전국크레자랑 첫 방송",
+        "text": "전국크레자랑 첫 방송 D-DAY 예고",
         "size": 18,
         "bold": true,
         "align": "center",
@@ -1110,7 +950,7 @@
       },
       {
         "type": "text",
-        "text": "이번 주엔\n어떤 크레가 나올까요",
+        "text": "이번 주 수요일 밤 8시\n어떤 크레가 무대에 오를까요",
         "size": 24,
         "bold": true,
         "align": "center",
@@ -1126,7 +966,7 @@
       },
       {
         "type": "text",
-        "text": "월요일엔 새로운 발견,\n수요일엔 또 다른 취향.\n일주일에 두 번, 기다릴 방송이 하나 생깁니다.",
+        "text": "월요일엔 새로운 발견, 수요일엔 또 다른 취향!\n매주 두 번, 일주일이 기다려지는 라이브 방송이 찾아옵니다.",
         "size": 16,
         "bold": false,
         "align": "center",
@@ -1140,7 +980,7 @@
       },
       {
         "type": "text",
-        "text": "첫 자랑은 서울·인천에서",
+        "text": "첫 번째 출격 : 서울·인천 연합 브리더 군단!",
         "size": 18,
         "bold": true,
         "align": "center",
@@ -1148,7 +988,7 @@
       },
       {
         "type": "text",
-        "text": "10월 14일 수요일 밤 8시\n전국크레자랑의 첫 방송을 시작합니다.\n이후에는 지역별 업체들이 돌아가며\n정성껏 키운 다양한 크레를 선보입니다.",
+        "text": "10월 14일 수요일 밤 8시, 전국크레자랑의 역사적인 첫 방송이 시작됩니다.\n서울과 인천을 대표하는 최정상급 전문 업체들이 각 샵의 자존심을 걸고\n정성껏 키워낸 최고 퀄리티의 개체들만 무대에 올립니다.",
         "size": 16,
         "bold": false,
         "align": "center",
@@ -1164,7 +1004,7 @@
       },
       {
         "type": "text",
-        "text": "매회 출연진도, 크레도 새롭게",
+        "text": "매회 새로워지는 라인업과 짜릿한 라이브 손맛",
         "size": 18,
         "bold": true,
         "align": "center",
@@ -1172,7 +1012,7 @@
       },
       {
         "type": "text",
-        "text": "한 업체의 방송을 챙기는 것과는 또 다른 재미.\n여러 업체의 크레를 하나의 밴드에서 만나고\n마음에 드는 아이의 라이브 경매에 참여해 보세요.",
+        "text": "한 업체의 방송만 기다리던 아쉬움은 이제 끝났습니다.\n전국의 내로라하는 샵들이 돌아가며 선보이는 다채로운 모프의 향연!\n실시간 라이브 영상으로 컨디션 확인하고 경매에 참여해 보세요.",
         "size": 16,
         "bold": false,
         "align": "center",
@@ -1188,23 +1028,7 @@
       },
       {
         "type": "text",
-        "text": "낙찰되면 카카오톡 알림톡이 자동으로 도착합니다.\n전용 페이지에서 낙찰 내역과 결제 안내를 확인하고\n배송 정보는 한 번만 등록해 두시면 됩니다.\n수령은 집 근처 업체에서 픽업하는 방식입니다.",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "첫 방송 배송비 지원",
+        "text": "첫 방송 특전 : 배송비 3만 원 전액 지원!",
         "size": 18,
         "bold": true,
         "align": "center",
@@ -1212,7 +1036,7 @@
       },
       {
         "type": "text",
-        "text": "※ 낙찰자 1인당 최대 3만 원",
+        "text": "첫 방송 낙찰자분들께는 1인당 배송비 최대 3만 원을 시원하게 지원해 드립니다.\n낙찰 즉시 카톡 알림톡 발송 → 원클릭 결제 → 집 근처 샵에서 안전 픽업!",
         "size": 16,
         "bold": false,
         "align": "center",
@@ -1228,7 +1052,7 @@
       },
       {
         "type": "text",
-        "text": "입양 계획이 없어도 구경은 환영입니다.\n첫 회부터 함께 보실 집사님들을 기다립니다.",
+        "text": "입양 계획이 없으셔도 구경은 완전 무료!\n첫 회부터 함께 본방사수하실 집사님들을 환영합니다.",
         "size": 16,
         "bold": false,
         "align": "center",
@@ -1259,18 +1083,19 @@
         "align": "center",
         "color": "ink"
       }
-    ],
-    "version": 1,
-    "active": true
+    ]
   },
   {
     "id": "launch26-easy",
-    "name": "간편 안내 · 낙찰 그다음까지",
-    "title": "💬 크레 고르는 즐거움은 그대로, 낙찰 뒤 번거로움은 줄이고",
+    "name": "간편 안내 · 1분 컷 Q&A 실속파",
+    "title": "💬 기존 크레 경매 번거로우셨던 분들, 딱 1분으로 요약해 드립니다",
+    "bundleVersion": 2,
+    "version": 1,
+    "active": true,
     "blocks": [
       {
         "type": "text",
-        "text": "마음에 드는 크레를 골랐다면\n그다음은 조금 더 편하게",
+        "text": "경매 참여할 때 복잡한 거 딱 질색인 분들만 보세요",
         "size": 24,
         "bold": true,
         "align": "center",
@@ -1286,7 +1111,7 @@
       },
       {
         "type": "text",
-        "text": "낙찰 내역은 어디서 확인하는지,\n결제 안내는 어디로 오는지.\n여러 곳에 따로 물어보는 수고를 줄였습니다.",
+        "text": "기존 경매의 3대 스트레스(DM 계좌 확인, 매번 주소 입력, 날씨 탓에 택배 폐사 걱정),\n전국크레자랑이 완벽하게 해결했습니다.",
         "size": 16,
         "bold": false,
         "align": "center",
@@ -1300,7 +1125,7 @@
       },
       {
         "type": "text",
-        "text": "카카오톡으로 자동 안내",
+        "text": "Q1. 낙찰 후 입금과 확인은 어떻게 하나요?",
         "size": 18,
         "bold": true,
         "align": "center",
@@ -1308,7 +1133,7 @@
       },
       {
         "type": "text",
-        "text": "낙찰 시 카카오톡 채널 알림톡이 자동 발송됩니다.\n톡 안의 링크를 열면 전용 페이지에서\n낙찰 내역과 결제 안내를 확인할 수 있습니다.",
+        "text": "낙찰 즉시 카카오톡 채널 알림톡이 자동 발송됩니다.\n톡 안의 링크를 열면 전용 페이지에서 내역 확인부터 간편 결제까지 한 번에 끝납니다.",
         "size": 16,
         "bold": false,
         "align": "center",
@@ -1324,7 +1149,7 @@
       },
       {
         "type": "text",
-        "text": "배송 정보는 처음에 한 번",
+        "text": "Q2. 배송 주소는 매번 다시 입력해야 하나요?",
         "size": 18,
         "bold": true,
         "align": "center",
@@ -1332,7 +1157,7 @@
       },
       {
         "type": "text",
-        "text": "처음 등록한 정보는 다음 낙찰에도 그대로 적용됩니다.\n매번 다시 입력할 필요가 없습니다.\n수령은 집 근처 업체에서 픽업하는 방식입니다.",
+        "text": "아닙니다. 최초 1회만 등록해 두시면 다음번 낙찰 시에도 그대로 자동 적용됩니다.\n매번 주소를 복붙하고 확인할 필요가 없습니다.",
         "size": 16,
         "bold": false,
         "align": "center",
@@ -1348,7 +1173,7 @@
       },
       {
         "type": "text",
-        "text": "볼거리는 매주 새롭게",
+        "text": "Q3. 날씨가 쌀쌀한데 배송 사고는 없나요?",
         "size": 18,
         "bold": true,
         "align": "center",
@@ -1356,7 +1181,7 @@
       },
       {
         "type": "text",
-        "text": "전국크레자랑은 여러 지역의 전문 업체가 함께하는\n네이버 밴드 크레스티드게코 라이브 경매입니다.\n지역별로 돌아가며 다양한 크레를 선보입니다.",
+        "text": "일반 택배 배송을 배제하고, 거주지 근처 제휴 전문 샵에서 안전하게 직접 픽업하는 방식을 채택하여 폐사 위험을 원천 차단했습니다.",
         "size": 16,
         "bold": false,
         "align": "center",
@@ -1372,7 +1197,7 @@
       },
       {
         "type": "text",
-        "text": "매주 월요일·수요일 밤 8시",
+        "text": "Q4. 방송 일정과 첫 방송 혜택은?",
         "size": 18,
         "bold": true,
         "align": "center",
@@ -1380,7 +1205,7 @@
       },
       {
         "type": "text",
-        "text": "첫 방송 10월 14일 수요일 · 서울·인천",
+        "text": "■ 정기 일정 : 매주 월요일·수요일 밤 8시 네이버 밴드 LIVE\n■ 첫 방송 : 10월 14일 수요일 밤 8시 【서울·인천 편】\n■ 첫 방송 혜택 : 낙찰자 1인당 배송비 최대 3만 원 전액 지원!",
         "size": 16,
         "bold": false,
         "align": "center",
@@ -1396,31 +1221,7 @@
       },
       {
         "type": "text",
-        "text": "첫 방송 배송비 지원",
-        "size": 18,
-        "bold": true,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "※ 낙찰자 1인당 최대 3만 원",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "예쁜 아이들 구경하러 편하게 오세요.\n낙찰 이후의 안내까지 차근차근 준비해 두겠습니다.",
+        "text": "군더더기 없는 가장 편리하고 안전한 라이브 경매.\n지금 밴드에서 미리 준비해 두세요.",
         "size": 16,
         "bold": false,
         "align": "center",
@@ -1451,18 +1252,19 @@
         "align": "center",
         "color": "ink"
       }
-    ],
-    "version": 1,
-    "active": true
+    ]
   },
   {
     "id": "launch26-showtime",
-    "name": "전국노래자랑 감성 · 우리 동네 크레 자랑",
-    "title": "🎤 전국의 집사님들, 이번엔 크레 자랑입니다",
+    "name": "전국노래자랑 감성 · 흥부자 축제 MC",
+    "title": "🎤 빰빠밤~ 전국의 집사님들, 이번엔 '전국크레자랑'입니다!",
+    "bundleVersion": 2,
+    "version": 1,
+    "active": true,
     "blocks": [
       {
         "type": "text",
-        "text": "전국의 집사님들\n크레 자랑하러 오세요",
+        "text": "빰빠밤~ 빠바밤~ 🎺\n“전~~~ 국~~~ 크레자랑!”",
         "size": 24,
         "bold": true,
         "align": "center",
@@ -1478,7 +1280,7 @@
       },
       {
         "type": "text",
-        "text": "동네마다 자랑거리가 하나씩 있듯\n크레를 키우는 집사님들께도\n꼭 보여주고 싶은 아이가 있죠.",
+        "text": "동네마다 노래 잘하는 명가수가 있듯이,\n전국 방방곡곡 숨은 보석 같은 명품 크레들이 얼마나 많은데요!",
         "size": 16,
         "bold": false,
         "align": "center",
@@ -1508,7 +1310,7 @@
       },
       {
         "type": "text",
-        "text": "이번에는 전국의 업체들이 자랑할 차례",
+        "text": "전국 30여 개 브리더 총출동! 크레 대축제!",
         "size": 18,
         "bold": true,
         "align": "center",
@@ -1516,7 +1318,7 @@
       },
       {
         "type": "text",
-        "text": "익숙한 전국노래자랑처럼, 지역을 바꿔 가며\n각자의 매력을 만나는 자리를 준비했습니다.\n마이크 앞에 꺼내 놓을 자랑은\n정성껏 키운 크레들입니다.",
+        "text": "익숙한 전국노래자랑처럼, 지역을 바꿔 가며\n각자의 개성과 매력을 뽐내는 초대형 라이브 경매쇼!\n마이크 앞에 당당히 꺼내 놓을 자랑거리는\n각 샵에서 정성껏 키워낸 최고의 크레들입니다.",
         "size": 16,
         "bold": false,
         "align": "center",
@@ -1532,7 +1334,7 @@
       },
       {
         "type": "text",
-        "text": "매주 월요일·수요일 밤 8시",
+        "text": "매주 월요일·수요일 밤 8시 본방사수",
         "size": 18,
         "bold": true,
         "align": "center",
@@ -1540,7 +1342,7 @@
       },
       {
         "type": "text",
-        "text": "지역별 전문 업체가 돌아가며 참여하는\n네이버 밴드 크레스티드게코 라이브 경매.\n설명을 듣고 움직임도 보며\n마음에 드는 아이를 함께 찾아보세요.",
+        "text": "대망의 첫 번째 무대! 10월 14일 수요일 밤 8시!\n서울과 인천의 대표 브리더들이 먼저 첫 테이프를 끊습니다!",
         "size": 16,
         "bold": false,
         "align": "center",
@@ -1556,23 +1358,7 @@
       },
       {
         "type": "text",
-        "text": "낙찰 시 카카오톡 알림톡이 자동 발송됩니다.\n전용 페이지에서 낙찰 내역과 결제 안내를 확인하고\n배송 정보는 한 번 등록하면 다음에도 그대로 사용합니다.\n수령은 집 근처 업체에서 픽업합니다.",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "10월 14일 수요일 밤 8시",
+        "text": "첫 방송 기념 통 큰 혜택!",
         "size": 18,
         "bold": true,
         "align": "center",
@@ -1580,7 +1366,7 @@
       },
       {
         "type": "text",
-        "text": "첫 방송은 서울·인천과 함께합니다",
+        "text": "첫 방송 낙찰자 전원에게 배송비 최대 3만 원을 시원하게 쏩니다!",
         "size": 16,
         "bold": false,
         "align": "center",
@@ -1596,7 +1382,7 @@
       },
       {
         "type": "text",
-        "text": "첫 방송 배송비 지원",
+        "text": "낙찰은 카톡으로 척척, 수령은 근처 샵에서 안전하게",
         "size": 18,
         "bold": true,
         "align": "center",
@@ -1604,7 +1390,7 @@
       },
       {
         "type": "text",
-        "text": "※ 낙찰자 1인당 최대 3만 원",
+        "text": "낙찰 즉시 카톡 알림톡 자동 발송 → 전용 결제창 원클릭!\n수령은 집 근처 협력 매장에서 안전하게 픽업!",
         "size": 16,
         "bold": false,
         "align": "center",
@@ -1620,7 +1406,7 @@
       },
       {
         "type": "text",
-        "text": "입양 계획이 없어도 구경은 환영입니다.\n우리 동네 크레 자랑, 함께 보실까요",
+        "text": "구경하는 데 돈 드는 거 아닙니다!\n편하게 놀러 오셔서 응원 댓글도 남겨주시고,\n과연 어느 동네 크레가 1등 먹을지 함께 즐겨보시지요!",
         "size": 16,
         "bold": false,
         "align": "center",
@@ -1651,18 +1437,19 @@
         "align": "center",
         "color": "ink"
       }
-    ],
-    "version": 1,
-    "active": true
+    ]
   },
   {
     "id": "launch26-partners",
-    "name": "참여업체 소개 · 실제 로고 모음",
-    "title": "🤝 익숙한 이름도, 새롭게 만날 이름도 한자리에",
+    "name": "참여업체 소개 · 공식 연합 출범 공지",
+    "title": "🤝 전국 30여 개 전문 브리더 연합 '전국크레자랑' 공식 출범 안내",
+    "bundleVersion": 2,
+    "version": 1,
+    "active": true,
     "blocks": [
       {
         "type": "text",
-        "text": "반가운 업체들이\n한 밴드에 모였습니다",
+        "text": "신뢰할 수 있는 30여 개 전문 브랜드가\n하나의 밴드에 모였습니다",
         "size": 24,
         "bold": true,
         "align": "center",
@@ -1678,15 +1465,7 @@
       },
       {
         "type": "text",
-        "text": "평소 눈여겨보던 업체부터\n이번에 처음 알게 될 브리더까지.\n전국크레자랑에서 차례로 만나보세요.",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "",
+        "text": "평소 눈여겨보시던 유명 샵부터 실력파 전문 브리더까지.\n투명한 경매 문화와 개체의 안전을 위해 전국의 전문 업체들이 뜻을 모았습니다.",
         "size": 16,
         "bold": false,
         "align": "center",
@@ -1716,7 +1495,7 @@
       },
       {
         "type": "text",
-        "text": "매회, 다른 업체의 다른 크레",
+        "text": "매회, 다른 지역의 다른 크레",
         "size": 18,
         "bold": true,
         "align": "center",
@@ -1724,7 +1503,7 @@
       },
       {
         "type": "text",
-        "text": "지역별 업체들이 돌아가며\n각자의 취향과 브리딩 방향이 담긴 크레를 선보입니다.\n여러 밴드의 방송 일정을 따로 찾는 대신\n한곳에서 다양한 아이들을 만나보세요.",
+        "text": "각 지역별 전문 업체들이 회차별로 돌아가며\n각자의 철학과 브리딩 방향이 담긴 우수한 개체들을 선보입니다.\n여러 밴드의 방송 일정을 일일이 찾는 수고 없이,\n한곳에서 전국의 다양한 아이들을 만나보세요.",
         "size": 16,
         "bold": false,
         "align": "center",
@@ -1740,7 +1519,7 @@
       },
       {
         "type": "text",
-        "text": "매주 월요일·수요일 밤 8시",
+        "text": "매주 월요일·수요일 밤 8시 네이버 밴드 LIVE",
         "size": 18,
         "bold": true,
         "align": "center",
@@ -1748,7 +1527,7 @@
       },
       {
         "type": "text",
-        "text": "네이버 밴드에서 진행하는 크레스티드게코 라이브 경매\n참여업체는 회차별로 나누어 출연합니다.",
+        "text": "10월 14일 수요일 밤 8시, 서울·인천 편을 시작으로\n전국 8도 전문 브리더들의 릴레이 라이브가 시작됩니다.",
         "size": 16,
         "bold": false,
         "align": "center",
@@ -1764,7 +1543,7 @@
       },
       {
         "type": "text",
-        "text": "낙찰 뒤의 안내도 한곳에서",
+        "text": "투명한 정산과 안전 거점 픽업 시스템",
         "size": 18,
         "bold": true,
         "align": "center",
@@ -1772,7 +1551,7 @@
       },
       {
         "type": "text",
-        "text": "카카오톡 알림톡이 자동으로 도착하면\n전용 페이지에서 낙찰 내역과 결제 안내를 확인하세요.\n배송 정보는 한 번 등록하면 다음에도 그대로 적용됩니다.\n수령은 집 근처 업체에서 픽업하는 방식입니다.",
+        "text": "카카오톡 알림톡을 통한 투명한 정산 관리와 전용 결제 시스템,\n그리고 환절기 배송 폐사 위험을 원천 차단하는 집 근처 거점 매장 픽업망을 완비했습니다.",
         "size": 16,
         "bold": false,
         "align": "center",
@@ -1788,7 +1567,7 @@
       },
       {
         "type": "text",
-        "text": "10월 14일 수요일 밤 8시",
+        "text": "첫 방송 배송비 지원 이벤트",
         "size": 18,
         "bold": true,
         "align": "center",
@@ -1796,7 +1575,7 @@
       },
       {
         "type": "text",
-        "text": "첫 방송은 서울·인천과 함께합니다",
+        "text": "※ 첫 방송(10/14 서울·인천) 낙찰자 1인당 배송비 최대 3만 원 지원",
         "size": 16,
         "bold": false,
         "align": "center",
@@ -1812,31 +1591,7 @@
       },
       {
         "type": "text",
-        "text": "첫 방송 배송비 지원",
-        "size": 18,
-        "bold": true,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "※ 낙찰자 1인당 최대 3만 원",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "align": "center",
-        "color": "ink"
-      },
-      {
-        "type": "text",
-        "text": "어느 업체의 크레가 궁금하신가요\n첫 방송부터 편하게 구경하러 오세요.",
+        "text": "신뢰와 퀄리티를 최우선으로 준비했습니다.\n첫 방송부터 편안하게 오셔서 자리를 빛내주시기 바랍니다.",
         "size": 16,
         "bold": false,
         "align": "center",
@@ -1867,8 +1622,6 @@
         "align": "center",
         "color": "ink"
       }
-    ],
-    "version": 1,
-    "active": true
+    ]
   }
 ]
