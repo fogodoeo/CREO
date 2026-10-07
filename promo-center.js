@@ -40,6 +40,10 @@ function createPromoCenter({ repository, vendorsFor, now = Date.now }) {
   for(const template of seed){
    const existing = state.templates.find(t=>t.id===template.id);
    if(!existing){state.templates.push({...template,...normalizeTemplate(template)});dirty=true;}
+   else if(!existing.updatedAt && !existing.title.startsWith('운영자') && existing.title!=='승인된 전하 원고' && (template.bundleVersion||0) > (existing.bundleVersion||0)){
+    const norm = normalizeTemplate(template);
+    existing.name = norm.name; existing.title = norm.title; existing.blocks = norm.blocks; existing.bundleVersion = template.bundleVersion; dirty = true;
+   }
   }
   if((state.catalogVersion||0)<catalog.version){
    const stamp=now();
