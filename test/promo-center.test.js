@@ -29,7 +29,7 @@ test('concurrent assignments obey capacity; retry is idempotent; restart retains
 test('copy is distinct from publication, owned completion validates time, URL, duplicate and restart',async t=>{
  const f=await fixture(t),a=(await f.assign()).json();assert.ok(a.id);
  const copy={action:'copy',requestId:randomUUID(),templateId:'ep01-welcome',version:1};assert.equal((await f.post(copy)).status,200);assert.equal((await f.post(copy)).json().duplicate,true);
- assert.equal((await f.get()).json().assignments[0].status,'assigned');assert.equal((await f.get()).json().templates[0].usage.length,1);
+ assert.equal((await f.get()).json().assignments[0].status,'assigned');assert.equal((await f.get()).json().templates.find(t=>t.id==='ep01-welcome').usage.length,1);
  const complete={action:'complete',id:a.id,templateId:'ep01-welcome',version:1,url:'https://cafe.naver.com/reptilia/12345',requestId:randomUUID()};
  assert.equal((await f.post(complete)).status,422);f.advance(5*3600000);
  assert.equal((await f.post({...complete,company:f.otherId},f.other)).status,403);
@@ -77,10 +77,10 @@ test('new bundled manuscripts merge into existing state without overwriting edit
  const key=require('../platform-core').channelKey('national-cre','setting','promo-center');
  const row=(await f.repository.getRowsByKeys([key]))[0],saved=JSON.parse(row.value);
  saved.templates=saved.templates.filter(t=>!t.id.startsWith('launch26-'));
- saved.templates[0].title='운영자가 직접 고친 제목';saved.templates[0].active=false;
+ saved.templates[0].title='수정한 나만의 제목과 인사말';saved.templates[0].active=false;
  await f.repository.upsertRows([{key,value:JSON.stringify(saved)}]);f.restart();
  let view=(await f.get(f.owner,f.id,true)).json();const bundled=require('../promo-templates.json');assert.equal(view.templates.filter(t=>t.id.startsWith('launch26-')).length,bundled.filter(t=>t.id.startsWith('launch26-')).length);
- assert.equal(view.templates[0].title,'운영자가 직접 고친 제목');assert.equal(view.templates[0].active,false);assert.equal(view.templates[0].usage.length,1);assert.equal(view.assignments.length,1);
+ assert.equal(view.templates[0].title,'수정한 나만의 제목과 인사말');assert.equal(view.templates[0].active,false);assert.equal(view.templates.find(t=>t.id==='ep01-welcome').usage.length,1);assert.equal(view.assignments.length,1);
  assert.equal((await f.post({action:'copy',templateId:'launch26-joseon',version:1})).status,200);f.restart();
  view=(await f.get(f.owner,f.id,true)).json();assert.equal(view.templates.length,bundled.length);assert.equal(view.templates.find(t=>t.id==='launch26-joseon').usage.length,1);
 });

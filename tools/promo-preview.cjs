@@ -3,7 +3,9 @@
 const {createFixture}=require('./vendor-portal-preview.cjs');
 const http=require('node:http'),fs=require('node:fs'),path=require('node:path'),{randomUUID}=require('node:crypto');
 async function main(){
- const origin='http://127.0.0.1:4338',images=new Map(),f=await createFixture({origin,apiOptions:{vendorLogoStorage:{put:async(_channel,name,bytes)=>{images.set(name,bytes);return {url:'/__preview/promo-image/'+name};}}}});f.advance(14*86400000);
+ const port=Number(process.env.PROMO_PREVIEW_PORT||4338);
+ if(!Number.isInteger(port)||port<1024||port>65535)throw Error('Invalid preview port');
+ const origin='http://127.0.0.1:'+port,images=new Map(),f=await createFixture({origin,apiOptions:{vendorLogoStorage:{put:async(_channel,name,bytes)=>{images.set(name,bytes);return {url:'/__preview/promo-image/'+name};}}}});f.advance(14*86400000);
  const owner=await f.login('01000000001'),admin=f.client();
  const registered=await f.post(owner,'register',{name:'미리보기 업체',region:'서울·인천',phone:'01000000001'}),company=registered.json().id;
  await f.call(admin,'POST','/api/platform/auth/login',{password:f.secret});
@@ -19,6 +21,6 @@ async function main(){
   if(url.pathname.startsWith('/api/')&&await f.api.handle(req,res,url))return;
   const file=path.resolve(root,'.'+decodeURIComponent(url.pathname));if(!file.startsWith(root+path.sep)||!fs.existsSync(file)||!fs.statSync(file).isFile()){res.writeHead(404);res.end();return;}
   res.writeHead(200,{'Cache-Control':'no-store','Content-Type':{'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.png':'image/png','.jpg':'image/jpeg','.woff2':'font/woff2'}[path.extname(file)]||'application/octet-stream'});fs.createReadStream(file).pipe(res);
- }catch{res.writeHead(500);res.end('Preview error');}}).listen(4338,'127.0.0.1',()=>console.log('Local preview: '+origin+'/__preview/vendor'));
+ }catch{res.writeHead(500);res.end('Preview error');}}).listen(port,'127.0.0.1',()=>console.log('Local preview: '+origin+'/__preview/vendor'));
 }
 main().catch(e=>{console.error(e);process.exitCode=1;});

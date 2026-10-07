@@ -3,6 +3,7 @@ const crypto = require('node:crypto');
 const { channelKey } = require('./platform-core');
 const seed = require('./promo-templates.json');
 const media = require('./promo-media.json');
+const catalog = require('./promo-catalog-migration.json');
 const KEY = channelKey('national-cre', 'setting', 'promo-center');
 const SLOTS = { afternoon: { label: '오후', start: '13:30', end: '14:55' }, night: { label: '심야', start: '23:30', end: '23:55' } };
 const fail = (message, status = 422) => Object.assign(new Error(message), { status });
@@ -25,26 +26,49 @@ function normalizeTemplate(body) {
  return { name, title, blocks };
 }
 function createPromoCenter({ repository, vendorsFor, now = Date.now }) {
- const fresh = () => ({ revision: 0, capacity: 1, templates: seed.map(t=>({...t,...normalizeTemplate(t)})), assignments: [], copies: [], requests: [], audit: [] });
+ const fresh = () => ({ revision: 0, catalogVersion:catalog.version, capacity: 1, templates: seed.map(t=>({...t,...normalizeTemplate(t)})), assignments: [], copies: [], requests: [], audit: [] });
  async function read() {
+  for(let retry=0;retry<8;retry++){
   const row = (await repository.getRowsByKeys([KEY])).find(r => r.key === KEY);
   if (!row && repository.mirror && repository.lastMirrorError) throw fail('홍보 기록을 불러오지 못했어요. 다시 시도해 주세요.',503);
   let state;
   try { state = row ? JSON.parse(row.value) : fresh(); } catch { throw fail('홍보 기록을 읽지 못했어요.',503); }
   if (!Array.isArray(state.assignments) || !Array.isArray(state.templates)) throw fail('홍보 기록을 확인해 주세요.',503);
-  // Add new bundled manuscripts without replacing operator edits, visibility or usage.
-  // Merged additions are persisted together with the next ordinary CAS write.
+  // A user-requested catalog replacement is an explicit, one-time migration.
+  // Ordinary reads never overwrite later operator edits based on a title sentinel.
   let dirty = false;
   for(const template of seed){
    const existing = state.templates.find(t=>t.id===template.id);
    if(!existing){state.templates.push({...template,...normalizeTemplate(template)});dirty=true;}
-   else if(template.bundleVersion&&(template.bundleVersion>(existing.bundleVersion||0))&&existing.title!=='운영자가 직접 고친 제목'){
-    const norm=normalizeTemplate(template);
-    existing.name=norm.name;existing.title=norm.title;existing.blocks=norm.blocks;existing.bundleVersion=template.bundleVersion;dirty=true;
-   }
   }
-  if(dirty&&row){try{await repository.compareAndSwapRows(KEY,row.value,[{key:KEY,value:JSON.stringify(state)}]);}catch{}}
-  return { raw: row?.value ?? null, state };
+  if((state.catalogVersion||0)<catalog.version){
+   const stamp=now();
+   for(const id of catalog.replace){
+    const template=seed.find(t=>t.id===id),existing=state.templates.find(t=>t.id===id);
+    if(!template||!existing)throw fail('홍보 원고 구성을 확인해 주세요.',503);
+    Object.assign(existing,normalizeTemplate(template),{bundleVersion:template.bundleVersion,catalogOrder:template.catalogOrder,version:(existing.version||1)+1,active:true,updatedAt:stamp});
+   }
+   for(const [id,replacement]of Object.entries(catalog.retire)){
+    const old=state.templates.find(t=>t.id===id);
+    if(old&&old.active!==false){old.active=false;old.version=(old.version||1)+1;old.updatedAt=stamp;}
+    // Completed publications keep their original title/version and attribution.
+    for(const assignment of state.assignments.filter(a=>a.templateId===id&&!a.cancelled&&!a.publication)){
+     assignment.templateId=replacement;assignment.updatedAt=stamp;
+     state.audit.push({actor:'system',action:'catalog-reassign',recordId:assignment.id,previousTemplateId:id,templateId:replacement,at:stamp});
+    }
+   }
+   const accepted=state.templates.find(t=>t.id==='launch26-joseon');
+   if(accepted)accepted.catalogOrder=1;
+   state.catalogVersion=catalog.version;
+   state.audit.push({actor:'system',action:'catalog-rebuild',recordId:catalog.id,at:stamp});
+   dirty=true;
+  }
+  if(!dirty||!row)return {raw:row?.value??null,state};
+  state.revision++;
+  const value=JSON.stringify(state);
+  if(await repository.compareAndSwapRows(KEY,row.value,[{key:KEY,value}]))return {raw:value,state};
+  }
+  throw fail('원고 구성을 갱신 중이에요. 다시 시도해 주세요.',409);
  }
  const status = a => a.cancelled ? 'cancelled' : a.publication ? 'completed' : now() > Date.parse(`${a.date}T${SLOTS[a.slot].end}:59+09:00`) ? 'overdue' : 'assigned';
  async function view({ vendorId = '', admin = false, month }) {

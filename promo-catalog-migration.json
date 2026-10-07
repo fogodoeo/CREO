@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "id": "20261008-curated-rebuild",
+  "replace": ["launch26-showtime", "ep01-welcome", "ep01-brief", "launch26-collector"],
+  "retire": {
+    "launch26-editorial": "ep01-brief",
+    "launch26-episode": "launch26-showtime",
+    "launch26-easy": "ep01-welcome",
+    "launch26-partners": "launch26-collector"
+  }
+}
