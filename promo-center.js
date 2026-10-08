@@ -5,6 +5,7 @@ const seed = require('./promo-templates.json');
 const media = require('./promo-media.json');
 const catalog = require('./promo-catalog-migration.json');
 const { polishPromoBlocks, polishPromoTitle } = require('./promo-copy-polish');
+const { addPromoImages } = require('./promo-image-additions');
 const KEY = channelKey('national-cre', 'setting', 'promo-center');
 const SLOTS = { afternoon: { label: '오후', start: '13:30', end: '14:55' }, night: { label: '심야', start: '23:30', end: '23:55' } };
 const fail = (message, status = 422) => Object.assign(new Error(message), { status });
@@ -44,8 +45,11 @@ function createPromoCenter({ repository, vendorsFor, now = Date.now }) {
   }
   if((state.catalogVersion||0)<catalog.version){
    const stamp=now();
-   if(catalog.polishCopy)for(const template of state.templates){
-    const blocks=polishPromoBlocks(template.blocks),title=polishPromoTitle(template.id,template.title);
+   const polish=catalog.polishCopy&&(state.catalogVersion||0)<catalog.copyPolishVersion;
+   for(const template of state.templates){
+    let blocks=polish?polishPromoBlocks(template.blocks):template.blocks;
+    const title=polish?polishPromoTitle(template.id,template.title):template.title;
+    if(catalog.appendImages)blocks=addPromoImages(template.id,blocks);
     if(JSON.stringify(blocks)!==JSON.stringify(template.blocks)||title!==template.title){
      template.blocks=blocks;template.title=title;template.version=(template.version||1)+1;template.updatedAt=stamp;
      state.audit.push({actor:'system',action:'catalog-copy-polish',recordId:template.id,at:stamp});

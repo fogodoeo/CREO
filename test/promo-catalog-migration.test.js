@@ -87,3 +87,17 @@ test('reader hook migration updates stock titles once, preserving operator title
  const t=first.templates[0];await f.create().mutate({admin:true},{action:'template',requestId:randomUUID(),revision:first.revision,id:t.id,name:t.name,title:'다시 직접 다듬은 제목',blocks:t.blocks,active:true});
  assert.equal((await createView(f.create())()).templates[0].title,'다시 직접 다듬은 제목');
 });
+test('photo additions preserve version 5 operator edits and history, add once and survive restart',async()=>{
+ const f=fixture(),saved=JSON.parse(f.raw),photos=require('../promo-image-additions.json');saved.catalogVersion=5;saved.templates=structuredClone(seed);
+ const sources=new Set(photos.map(p=>p.src));
+ for(const t of saved.templates){t.version=4;t.blocks=t.blocks.filter(b=>!sources.has(b.src));}
+ const own=saved.templates.find(t=>t.id==='launch26-taste');own.title=require('../promo-copy-hooks.json')[own.id].previous[0];own.blocks[0].text='운영자가 방금 다듬은 취향 질문';
+ const snapshot=structuredClone(own.blocks),history=structuredClone(saved.assignments.find(a=>a.publication)),copies=structuredClone(saved.copies);f.raw=JSON.stringify(saved);
+ const first=await createView(f.create())(),changed=first.templates.find(t=>t.id===own.id);
+ assert.equal(changed.title,own.title);assert.equal(changed.version,5);assert.deepEqual(changed.blocks.filter(b=>!sources.has(b.src)),snapshot);
+ for(const p of photos){const t=first.templates.find(t=>t.id===p.templateId);assert.equal(t.blocks.filter(b=>b.src===p.src).length,1);}
+ assert.deepEqual(JSON.parse(f.raw).assignments.find(a=>a.publication),history);assert.deepEqual(JSON.parse(f.raw).copies,copies);
+ await createView(f.create())();assert.equal(f.writes,1);
+ const later=await f.create().mutate({admin:true},{action:'template',requestId:randomUUID(),revision:first.revision,id:changed.id,name:changed.name,title:'사진 추가 이후 직접 수정',blocks:changed.blocks.filter(b=>!sources.has(b.src)),active:true});
+ const after=await createView(f.create())();assert.equal(after.revision,later.revision);assert.equal(after.templates.find(t=>t.id===changed.id).blocks.some(b=>sources.has(b.src)),false);
+});

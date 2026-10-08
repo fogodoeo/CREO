@@ -1,7 +1,9 @@
 {
-  "version": 5,
-  "id": "20261008-reader-hooks",
+  "version": 6,
+  "id": "20261008-six-supporting-photos",
   "polishCopy": true,
+  "copyPolishVersion": 5,
+  "appendImages": true,
   "replace": [],
   "retire": {
     "launch26-editorial": "launch26-taste",

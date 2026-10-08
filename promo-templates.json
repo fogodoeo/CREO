@@ -63,6 +63,13 @@
         "align": "center"
       },
       {
+        "type": "image",
+        "src": "/promo-assets/joseon-small-dragon-v1.jpg",
+        "copySrc": "https://creok.onrender.com/promo-assets/joseon-small-dragon-v1.jpg",
+        "alt": "한복 소매 아래 손바닥 위에 앉은 작은 크레스티드게코",
+        "width": 500
+      },
+      {
         "type": "text",
         "text": "",
         "size": 16,
@@ -311,6 +318,13 @@
         "align": "center"
       },
       {
+        "type": "image",
+        "src": "/promo-assets/festival-microphone-v1.jpg",
+        "copySrc": "https://creok.onrender.com/promo-assets/festival-microphone-v1.jpg",
+        "alt": "마이크와 작은 크레를 함께 소개하는 야외무대의 손",
+        "width": 500
+      },
+      {
         "type": "text",
         "text": "",
         "size": 16,
@@ -498,6 +512,13 @@
       },
       {
         "type": "image",
+        "src": "/promo-assets/interview-evening-live-v1.jpg",
+        "copySrc": "https://creok.onrender.com/promo-assets/interview-evening-live-v1.jpg",
+        "alt": "소파에 편히 앉아 휴대폰으로 라이브를 보는 집사의 손",
+        "width": 500
+      },
+      {
+        "type": "image",
         "src": "/promo-assets/after-bid-v5.png",
         "alt": "카카오톡 알림톡 → 전용 페이지 확인 → 집 근처 업체 픽업",
         "width": 500
@@ -622,6 +643,13 @@
         "align": "center"
       },
       {
+        "type": "image",
+        "src": "/promo-assets/taste-color-whitewall-v1.jpg",
+        "copySrc": "https://creok.onrender.com/promo-assets/taste-color-whitewall-v1.jpg",
+        "alt": "발색과 화이트 월이 다른 두 크레를 소개하는 손",
+        "width": 500
+      },
+      {
         "type": "text",
         "text": "",
         "size": 16,
@@ -720,7 +748,7 @@
       }
     ],
     "version": 1,
-    "bundleVersion": 8,
+    "bundleVersion": 9,
     "active": true
   },
   {
@@ -824,6 +852,13 @@
         "align": "center"
       },
       {
+        "type": "image",
+        "src": "/promo-assets/tour-nearby-pickup-v1.jpg",
+        "copySrc": "https://creok.onrender.com/promo-assets/tour-nearby-pickup-v1.jpg",
+        "alt": "집 근처 매장에서 작은 크레의 상태를 직접 확인하는 손",
+        "width": 500
+      },
+      {
         "type": "text",
         "text": "",
         "size": 16,
@@ -874,7 +909,7 @@
       }
     ],
     "version": 1,
-    "bundleVersion": 8,
+    "bundleVersion": 9,
     "active": true
   },
   {
@@ -928,6 +963,13 @@
         "bold": false,
         "color": "ink",
         "align": "center"
+      },
+      {
+        "type": "image",
+        "src": "/promo-assets/breeder-preparation-v1.jpg",
+        "copySrc": "https://creok.onrender.com/promo-assets/breeder-preparation-v1.jpg",
+        "alt": "축양장에서 방송에 소개할 작은 크레를 살피는 브리더",
+        "width": 500
       },
       {
         "type": "text",
@@ -1028,7 +1070,7 @@
       }
     ],
     "version": 1,
-    "bundleVersion": 8,
+    "bundleVersion": 9,
     "active": true
   }
 ]
