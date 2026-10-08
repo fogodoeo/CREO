@@ -14,6 +14,7 @@
   return `<p class="inbound-basis">${esc(p.estimateBasis==='nearby'?`${p.basisLabel} 인근 · ${shop} 기준`:`${p.basisLabel} 기준 · 출발지에 따라 달라요`)}</p>`;
  }
  function details(p){
+  if(p.requiresSelection)return '<p class="inbound-review">출발지 선택 후 안내</p>';
   if(p.status==='review'){
    return `<a class="inbound-review-link" href="${esc(source(p))}" target="_blank" rel="noopener" aria-label="${names[p.carrier]} 마감일 확인">마감일 확인 ↗</a>`;
   }
@@ -29,7 +30,9 @@
   const {selected,own,place,places,recommended}=p.selection,isOwn=selected&&selected===own?.id,label=selected?(isOwn?'우리 업체 · ':'출발지 · ')+(p.origin?.shop||'다시 선택'):'출발 정거샵 선택';
   const choice=o=>`<option value="${esc(o.id)}" ${selected===o.id?'selected':''}>${esc(o.area+' · '+o.shop)}</option>`;
   const real=p.choices.filter(o=>!o.regionalDefault).sort((a,b)=>a.area.localeCompare(b.area,'ko')||a.shop.localeCompare(b.shop,'ko')),regional=p.choices.filter(o=>o.regionalDefault);
-  return `<details class="inbound-origin"><summary>${esc(label)}</summary><label for="inbound-area-${p.carrier}">지역</label><select id="inbound-area-${p.carrier}" data-inbound-area="${p.carrier}"><option value="">${context.state.vendor.locality?'업체 소재지 기준':'시·군·구 선택'}</option>${places.map(o=>`<option value="${esc(o.id)}" ${areaIds[p.carrier]===o.id?'selected':''}>${esc(o.label)}</option>`).join('')}</select>${place?`<p class="inbound-location-basis">${esc(place.label)} 인근</p>${recommended.length?`<div class="inbound-recommendations">${recommended.map(o=>`<button type="button" data-inbound-pick="${esc(o.id)}" data-carrier="${p.carrier}"><span><strong>${esc(o.shop)}</strong><small>${esc(Origin.shopLocation(o,p.choices))}</small></span><span aria-hidden="true">${selected===o.id?'✓':'›'}</span></button>`).join('')}</div>`:'<p class="inbound-review">확인된 후보가 없어요. 목록에서 골라 주세요.</p>'}`:''}<label for="inbound-${p.carrier}">${recommended.length?'다른 정거샵':'출발 정거샵'}</label><select id="inbound-${p.carrier}" data-inbound-origin="${p.carrier}"><option value="">${own?'우리 업체 자동 선택':'정거샵 선택'}</option>${own?`<optgroup label="우리 업체">${choice(own)}</optgroup>`:''}<optgroup label="정거샵">${real.filter(o=>o.id!==own?.id).map(choice).join('')}</optgroup>${regional.length?`<optgroup label="지역 기본 일정">${regional.map(choice).join('')}</optgroup>`:''}</select></details>`;
+  const candidates=p.candidates||[],suggestions=p.requiresSelection?candidates.map(plan=>({origin:plan.origin,plan})):recommended.map(origin=>({origin}));
+  const suggestionHTML=suggestions.length?`<p class="inbound-location-basis">${p.requiresSelection?'방송 전 도착편 · 늦게 맡길 수 있는 순':'인근 정거샵'}</p><div class="inbound-recommendations">${suggestions.map(({origin:o,plan})=>`<button type="button" data-inbound-pick="${esc(o.id)}" data-carrier="${p.carrier}"><span><strong>${esc(o.shop)}</strong><small>${esc(Origin.shopLocation(o,p.choices))}</small>${plan?`<small>${fmt(plan.actionDate)} ${plan.actionLabel} → ${fmt(plan.arrivalDate)} 대구 도착</small>${plan.status==='missed'?'<span class="inbound-warning">기한 지남 · 운송사 확인 필요</span>':''}`:''}</span><span aria-hidden="true">${selected===o.id?'✓':'›'}</span></button>`).join('')}</div>`:p.requiresSelection?'<p class="inbound-review">확인된 후보가 없어요. 실제 이용할 정거샵을 목록에서 골라 주세요.</p>':'';
+  return `<details class="inbound-origin" ${p.requiresSelection?'open':''}><summary>${esc(label)}</summary><label for="inbound-area-${p.carrier}">지역</label><select id="inbound-area-${p.carrier}" data-inbound-area="${p.carrier}"><option value="">${context.state.vendor.locality?'업체 소재지 기준':'시·군·구 선택'}</option>${places.map(o=>`<option value="${esc(o.id)}" ${areaIds[p.carrier]===o.id?'selected':''}>${esc(o.label)}</option>`).join('')}</select>${place?`<p class="inbound-location-basis">${esc(place.label)} 인근</p>`:''}${suggestionHTML}<label for="inbound-${p.carrier}">${suggestions.length?'다른 정거샵':'출발 정거샵'}</label><select id="inbound-${p.carrier}" data-inbound-origin="${p.carrier}"><option value="">${own?'우리 업체 자동 선택':'정거샵 선택'}</option>${own?`<optgroup label="우리 업체">${choice(own)}</optgroup>`:''}<optgroup label="정거샵">${real.filter(o=>o.id!==own?.id).map(choice).join('')}</optgroup>${regional.length?`<optgroup label="지역 기본 일정">${regional.map(choice).join('')}</optgroup>`:''}</select></details>`;
  }
  function render(next){
   if(context&&context.state.vendor.id!==next.state.vendor.id)areaIds={};
@@ -56,14 +59,16 @@
    day.disabled=false;day.dataset.inboundDate=date;day.classList.add('has-inbound');
    const broadcastLabel=day.getAttribute('aria-label'),carriers=[...new Set(items.map(p=>p.carrier))];
    day.insertAdjacentHTML('beforeend',carriers.map(c=>{
-    const start=items.some(p=>p.carrier===c&&p.actionDate===date)||Core.dow(date)===0||n===1,end=items.some(p=>p.carrier===c&&p.arrivalDate===date)||Core.dow(date)===6;
-    return `<span class="inbound-span ${c} ${start?'route-start':''} ${end?'route-end':''}" aria-hidden="true" title="${names[c]} 운송 일정">${start?`<b>${names[c]}</b>`:''}</span>`;
+    const routes=items.filter(p=>p.carrier===c),first=routes.every(p=>p.actionDate===date),last=routes.every(p=>p.arrivalDate===date);
+    const start=first||Core.dow(date)===0||n===1,end=last||Core.dow(date)===6;
+    return `<span class="inbound-span ${c} ${start?'route-start':''} ${end?'route-end':''} ${first?'route-origin':''} ${last?'route-destination':''}" aria-hidden="true" title="${names[c]} 운송 일정">${start?`<b>${names[c]}</b>`:''}</span>`;
    }).join(''));
    day.setAttribute('aria-label',`${broadcastLabel?broadcastLabel+', ':fmt(date)+', '}${items.map(p=>names[p.carrier]+(p.estimated?' 예상':'')+(date===p.actionDate?' 배송 마감':' 운송 구간')+', '+fmt(p.actionDate)+' '+p.actionLabel+' → '+fmt(p.departureDate)+' '+p.departureLabel+' → '+fmt(p.arrivalDate)+' 대구 도착').filter((v,i,a)=>a.indexOf(v)===i).join(', ')}`);
   }
   const plans=compute(target.date);
+  if(plans.some(p=>p.requiresSelection))calendar.insertAdjacentHTML('beforeend','<p class="inbound-notice">출발 정거샵을 선택하면 달력에 해당 운송 일정이 표시됩니다.</p>');
   if([...milestones.values()].flat().some(p=>p.estimated))calendar.querySelector('.calendar-key>span:last-child').insertAdjacentHTML('beforeend','<span>· 예상 포함</span>');
-  const html=`<section id="inbound-panel" class="inbound-panel" aria-labelledby="inbound-title"><div class="inbound-heading"><h2 id="inbound-title">배송 마감</h2><p>${fmt(target.date)} 방송</p></div>${deliveryNotice}<div class="inbound-carriers">${plans.map(p=>`<article class="inbound-card"><div class="inbound-row"><h3>${names[p.carrier]}</h3>${details(p)}</div>${basisLine(p)}${destinationLine(p)}${originControl(p)}</article>`).join('')}</div><p id="inbound-error" class="form-error" role="alert"></p></section>`;
+  const html=`<section id="inbound-panel" class="inbound-panel" aria-labelledby="inbound-title"><div class="inbound-heading"><h2 id="inbound-title">출품 운송 일정</h2><p>${fmt(target.date)} 방송</p></div>${deliveryNotice}<div class="inbound-carriers">${plans.map(p=>`<article class="inbound-card"><div class="inbound-row"><h3>${names[p.carrier]}</h3>${details(p)}</div>${basisLine(p)}${destinationLine(p)}${originControl(p)}</article>`).join('')}</div><p id="inbound-error" class="form-error" role="alert"></p></section>`;
   (document.querySelector('.registration-task:last-of-type')||calendar).insertAdjacentHTML('afterend',html);
  }
  function openDate(date){

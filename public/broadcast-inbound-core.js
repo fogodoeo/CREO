@@ -43,17 +43,13 @@
  function forSelection(data,carrier,region,selection,broadcastDate,today){
   const choices=selection.choices||origins(data,carrier);
   if(selection.selected)return {...forVendor(data,carrier,region,selection.selected,broadcastDate,today,{anyRegion:true}),choices};
-  const known=o=>!o.issue&&!o.locationIssue;
-  const nearby=(selection.recommended||[]).filter(known).map(o=>plan(data,carrier,o,broadcastDate,today)).find(p=>p.status!=='review');
-  if(nearby)return {...nearby,choices,estimated:true,estimateBasis:'nearby',basisLabel:selection.place?.label||''};
-  // A known locality with no verified nearby route must not inherit a distant city's schedule.
-  if(selection.place)return {status:'review',reason:'근처 대구행 운송편은 운송사에 확인해 주세요.',choices};
-  const regional=region?origins(data,carrier,region).filter(known):[],defaults=regional.filter(o=>o.regionalDefault);
-  const plans=(defaults.length?defaults:regional).map(o=>plan(data,carrier,o,broadcastDate,today)).filter(p=>p.status!=='review');
-  // Until a shop is chosen, show the earlier preparation date when regional routes differ.
-  plans.sort((a,b)=>a.actionDate.localeCompare(b.actionDate)||a.origin.id.localeCompare(b.origin.id));
-  if(plans.length)return {...plans[0],choices,estimated:true,estimateBasis:'region',basisLabel:region};
-  return {status:'review',reason:'이 지역의 대구행 운송편은 운송사에 확인해 주세요.',choices};
+  // Suggestions are not the vendor's shipping deadline. Each shop already uses
+  // its latest feasible service; compare them without silently choosing one.
+  const pool=selection.place?(selection.recommended||[]):region?origins(data,carrier,region):[];
+  const candidates=pool.filter(o=>!o.issue&&!o.locationIssue&&!o.regionalDefault)
+   .map(o=>plan(data,carrier,o,broadcastDate,today)).filter(p=>p.status!=='review');
+  candidates.sort((a,b)=>b.actionDate.localeCompare(a.actionDate)||b.arrivalDate.localeCompare(a.arrivalDate)||a.origin.id.localeCompare(b.origin.id));
+  return {status:'review',requiresSelection:true,reason:'이용할 출발 정거샵을 선택해 주세요.',choices,candidates:candidates.slice(0,3)};
  }
  return {valid,add,dow,next,origins,plan,forVendor,forSelection,destination,destinationPhone};
 });

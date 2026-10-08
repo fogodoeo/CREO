@@ -1,5 +1,7 @@
 # Vendor inbound calendar estimates — 2026-10-06
 
+> Historical release record. The unselected-origin estimate policy below was replaced on 2026-10-09: see `INBOUND_DEADLINE_CORRECTION_20261009.md`. Do not restore the earlier regional deadline fallback.
+
 Risk: **Release** (vendor-facing shipping dates, additive vendor-view fields, deployment).
 
 ## Behavior

@@ -55,6 +55,9 @@
 .inbound-span b{position:relative;background:#fff;font-size:11px;line-height:14px;font-weight:600;letter-spacing:0;white-space:nowrap;padding-inline:1px}
 .inbound-span.route-start{left:3px}
 .inbound-span.route-end{right:3px}
+.inbound-span.route-origin{left:50%}
+.inbound-span.route-destination{right:50%}
+.inbound-span.route-origin b{transform:translateX(-50%)}
 .broadcast-calendar .day{min-height:88px;justify-content:flex-start;padding-block:30px 6px}
 .broadcast-calendar .calendar-attention{top:33px;right:4px}
 .broadcast-calendar .day .calendar-region{font-weight:600}
