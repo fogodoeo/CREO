@@ -46,13 +46,26 @@ test('notice shows exact time, escaped title, clear deadline state, direct assig
  const f=ui(),s={promoSummary:{pendingCount:2,next:{id:'a&b',date:'2026-10-14',slotLabel:'오후',start:'13:30',end:'14:55',status:'assigned',isToday:true,title:'<img onerror=attack()>'}}};
  const html=f.ctx.promoMarkup('company&other',s);assert.match(html,/오늘 홍보글 게시 대상/);assert.match(html,/10월 14일 · 오후 13:30–14:55/);assert.match(html,/assignment=a%26b/);assert.match(html,/company=company%26other/);assert.match(html,/&lt;img/);assert.doesNotMatch(html,/<img/);assert.match(html,/미완료 일정 2건/);
  s.promoSummary.next.status='overdue';assert.match(f.ctx.promoMarkup('x',s),/이미 게시했다면 글 링크/);
- assert.equal(f.ctx.promoMarkup('x',{promoSummary:{pendingCount:0,next:null}}),'');assert.match(f.ctx.promoMarkup('x',{promoUnavailable:true}),/다시 확인/);
+ const empty=f.ctx.promoMarkup('x',{promoSummary:{pendingCount:0,next:null}});assert.match(empty,/<h2>홍보 관리<\/h2>/);assert.match(empty,/홍보 관리 열기/);assert.match(empty,/company=x/);assert.doesNotMatch(empty,/배정됐|게시 대상/);assert.equal(f.ctx.promoMarkup('',{}),'');assert.match(f.ctx.promoMarkup('x',{promoUnavailable:true}),/다시 확인/);
+});
+test('every connected vendor has a visible promo entry before tasks load and after empty or failed results',async()=>{
+ const f=ui(),pending=f.ctx.mountPromo(f.host,'company&other');
+ assert.equal(f.host.hidden,false);assert.match(f.host.innerHTML,/홍보 관리 열기/);assert.match(f.host.innerHTML,/company=company%26other/);
+ f.calls[0].resolve({ok:true,json:async()=>({promoSummary:{pendingCount:0,next:null}})});await pending;
+ assert.equal(f.host.hidden,false);assert.match(f.host.innerHTML,/<h2>홍보 관리<\/h2>/);
+ const refresh=f.ctx.mountPromo(f.host,'company&other');f.calls[1].reject(Error('unavailable'));await refresh;
+ assert.equal(f.host.hidden,false);assert.match(f.host.innerHTML,/홍보 관리 열기/);assert.match(f.host.innerHTML,/다시 확인/);
+});
+test('switching vendors replaces the previous assignment with that vendor’s permanent promo entry',async()=>{
+ const f=ui();f.ctx.renderPromo(f.host,'old',{promoSummary:{pendingCount:1,next:{id:'old-assignment',date:'2026-10-08',slotLabel:'오후',start:'13:30',end:'14:55',status:'assigned',isToday:true,title:'이전 업체 원고'}}});
+ const pending=f.ctx.mountPromo(f.host,'new');assert.equal(f.host.hidden,false);assert.match(f.host.innerHTML,/company=new/);assert.doesNotMatch(f.host.innerHTML,/old-assignment|이전 업체 원고/);
+ f.calls[0].resolve({ok:true,json:async()=>({promoSummary:{pendingCount:0,next:null}})});await pending;assert.match(f.host.innerHTML,/홍보 관리 열기/);
 });
 test('late or disconnected responses cannot replace another company notice; failure has a retry state',async()=>{
  const f=ui(),first=f.ctx.mountPromo(f.host,'old'),second=f.ctx.mountPromo(f.host,'new');
  f.calls[1].resolve({ok:true,json:async()=>({promoUnavailable:true})});await second;const current=f.host.innerHTML;
  f.calls[0].resolve({ok:true,json:async()=>({promoSummary:{pendingCount:0,next:null}})});await first;assert.equal(f.host.dataset.company,'new');assert.equal(f.host.innerHTML,current);
- const disconnected=f.ctx.mountPromo(f.host,'third');f.host.isConnected=false;f.calls[2].reject(Error('timeout'));await disconnected;assert.equal(f.host.innerHTML,current);
+ const disconnected=f.ctx.mountPromo(f.host,'third'),beforeDisconnect=f.host.innerHTML;f.host.isConnected=false;f.calls[2].reject(Error('timeout'));await disconnected;assert.equal(f.host.innerHTML,beforeDisconnect);
  f.host.isConnected=true;const fail=f.ctx.mountPromo(f.host,'fourth');f.calls[3].reject(Error('timeout'));await fail;assert.match(f.host.innerHTML,/불러오지 못했어요/);assert.equal(f.host.hidden,false);
 });
 function deepLink(id,pending,admin=false){

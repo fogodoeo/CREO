@@ -102,14 +102,16 @@
   for(const image of document.querySelectorAll('.template-visual img'))image.addEventListener('error',()=>{if(image.dataset.original){const original=image.dataset.original;delete image.dataset.original;image.src=original;}else image.hidden=true;});
  }
  function bodyHTML(t,copying=false,images=[]){return postBlocks(t,images).map(b=>b.type==='image'?`<p align="center" style="text-align:center;margin:20px 0"><img src="${esc(imageURL(copying&&b.copySrc?b.copySrc:b.src))}" alt="${esc(b.alt)}" width="500" style="width:500px;max-width:100%;height:auto"></p>`:`<p align="${b.align||'center'}" style="text-align:${b.align||'center'};font-family:NanumSquareNeo,'나눔스퀘어 네오',sans-serif;line-height:1.75;margin:0;word-break:keep-all;overflow-wrap:anywhere"><span style="font-family:NanumSquareNeo,'나눔스퀘어 네오',sans-serif;font-size:${b.size}px;color:${b.color==='green'?'#007443':'#202632'};font-weight:${b.bold?700:400}">${b.href?'<a href="'+esc(b.href)+'">':''}${(esc(b.text).replace(/\n/g,'<br>')||'<br>')}${b.href?'</a>':''}</span></p>`).join('');}
+ function plainBody(t,images=[]){return postBlocks(t,images).filter(b=>b.type==='text').map(b=>b.href?b.text+'\n'+b.href:b.text).join('\n');}
  function preview(id){template=state.templates.find(t=>t.id===id);if(!template){error('보관된 원고입니다. 운영자에게 문의해 주세요.');return;}
   partnerMode='all';partnerRegions=new Set();partnerImages=[];partnerReady=false;
   $('post-title').textContent=template.title;$('copy-status').textContent='';
   for(const radio of document.querySelectorAll('[name="partner-mode"]'))radio.checked=radio.value===partnerMode;
   showPartnerRegions();drawPost();trigger=document.activeElement;$('detail').showModal();$('detail').querySelector('.dialog-scroll').scrollTop=0;updatePartners();
  }
- function syncCopyButtons(){$('copy-title').disabled=copying;$('copy-body').disabled=copying||!partnerReady;$('partner-controls').disabled=copying;$('partner-refresh').disabled=copying;}
+ function syncCopyButtons(){$('copy-title').disabled=copying;$('copy-body').disabled=copying||!partnerReady;$('copy-mobile-text').disabled=copying||!partnerReady;$('prepare-images').disabled=copying||!partnerReady||!!imageBundleController;$('partner-controls').disabled=copying;$('partner-refresh').disabled=copying;}
  function drawPost(){
+  clearImageBundle();
   $('post-preview').innerHTML=bodyHTML(template,false,partnerImages);
   $('downloads').innerHTML=postBlocks(template,partnerImages).filter(b=>b.type==='image').map((b,i)=>`<a download target="_blank" rel="noopener" href="${esc(imageURL(b.src))}">이미지 ${i+1} 다운로드 · ${esc(b.alt)}</a>`).join('');
   syncCopyButtons();
@@ -137,17 +139,38 @@
  }
  async function copy(withFormatting){
   if(copying||(withFormatting&&!partnerReady))return;copying=true;syncCopyButtons();
-  const t=template,html=bodyHTML(t,true,partnerImages),plain=postBlocks(t,partnerImages).map(b=>b.type==='text'?b.text:b.alt).join('\n');
+  const t=template,html=bodyHTML(t,true,partnerImages),plain=plainBody(t,partnerImages);
   $('copy-status').textContent='';
   try {
-   if(withFormatting){
+   if(withFormatting==='plain')await navigator.clipboard.writeText(plain);
+   else if(withFormatting){
     if(navigator.clipboard?.write&&window.ClipboardItem)await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([html],{type:'text/html'}),'text/plain':new Blob([plain],{type:'text/plain'})})]);
     else {const host=document.createElement('div');host.innerHTML=html;host.style.cssText='position:fixed;inset:0;opacity:0;pointer-events:none';$('detail').append(host);try{const range=document.createRange();range.selectNodeContents(host);const selection=getSelection();selection.removeAllRanges();selection.addRange(range);if(!document.execCommand('copy'))throw Error('본문을 직접 선택해 복사해 주세요.');selection.removeAllRanges();}finally{host.remove();}}
    }else await navigator.clipboard.writeText(t.title);
-   $('copy-status').textContent=withFormatting?'본문을 복사했어요. 카페 본문에 붙여넣어 주세요.':'제목을 복사했어요.';
+   $('copy-status').textContent=withFormatting==='plain'?'글을 복사했어요. 붙여넣은 뒤 사진·로고를 첨부해 주세요.':withFormatting?'본문을 복사했어요. 사진이 빠지면 아래 사진·로고 받기를 이용해 주세요.':'제목을 복사했어요.';
    if(withFormatting&&!admin){try{await request({action:'copy',requestId:crypto.randomUUID(),templateId:t.id,version:t.version});await refresh();}catch{$('copy-status').textContent='본문은 복사했지만 사용 이력을 저장하지 못했어요. 연결을 확인하고 다시 복사해 주세요.';}}
   }catch(e){$('copy-status').textContent='복사하지 못했어요. 본문을 직접 선택해 복사하거나 PC 브라우저에서 다시 시도해 주세요.';}
-  finally{copying=false;syncCopyButtons();if($('detail').open)$(withFormatting?'copy-body':'copy-title').focus();}
+  finally{copying=false;syncCopyButtons();if($('detail').open)$(withFormatting==='plain'?'copy-mobile-text':withFormatting?'copy-body':'copy-title').focus();}
+ }
+ let imageBundleController=null,imageBundleURL='';
+ function clearImageBundle(){
+  imageBundleController?.abort();imageBundleController=null;
+  $('mobile-post-help').removeAttribute('aria-busy');
+  if(imageBundleURL)URL.revokeObjectURL(imageBundleURL);imageBundleURL='';
+  $('save-images').hidden=true;$('save-images').removeAttribute('href');$('mobile-image-status').textContent='';$('prepare-images').textContent='사진·로고 받기';
+ }
+ async function prepareImages(){
+  if(copying||!partnerReady||imageBundleController)return;
+  clearImageBundle();const controller=new AbortController(),sequence=partnerSequence;imageBundleController=controller;syncCopyButtons();
+  let timedOut=false;const timeout=setTimeout(()=>{timedOut=true;controller.abort();},45000);
+  $('prepare-images').textContent='사진 준비 중';$('mobile-image-status').textContent='사진과 업체 로고를 준비하고 있어요';$('mobile-post-help').setAttribute('aria-busy','true');
+  try{
+   const blocks=postBlocks(template,partnerImages),result=await window.CreoPromoImageBundle.prepare(blocks.filter(b=>b.type==='image').map(b=>({src:imageURL(b.src),alt:b.alt})),{signal:controller.signal,text:plainBody(template,partnerImages)});
+   if(controller.signal.aborted||sequence!==partnerSequence||!$('detail').open)return;
+   imageBundleURL=URL.createObjectURL(result.blob);const link=$('save-images');link.href=imageBundleURL;link.download='전국크레자랑_사진로고.zip';link.textContent='전체 '+result.count+'장 저장';link.hidden=false;
+   $('mobile-image-status').textContent='저장한 ZIP을 파일 앱에서 압축 해제한 뒤 카페에 사진을 첨부해 주세요. 사진 순서와 본문도 함께 담았습니다.';link.focus();
+  }catch(e){if(timedOut&&imageBundleController===controller)$('mobile-image-status').textContent='사진을 받는 시간이 길어졌어요. 연결을 확인하고 다시 시도해 주세요.';else if(!controller.signal.aborted)$('mobile-image-status').textContent=e instanceof TypeError?'사진을 준비하지 못했어요. 연결을 확인하거나 아래 이미지 따로 받기를 이용해 주세요.':e.message||'사진을 준비하지 못했어요. 아래 이미지 따로 받기를 이용해 주세요.';}
+  finally{clearTimeout(timeout);if(imageBundleController===controller){imageBundleController=null;$('mobile-post-help').removeAttribute('aria-busy');$('prepare-images').textContent='사진·로고 받기';syncCopyButtons();}}
  }
  function openForm(title,html,save){
   trigger=document.activeElement;$('form-title').textContent=title;$('fields').innerHTML=html;$('form-error').hidden=true;$('form-reload').hidden=true;$('save').textContent=title==='배정 취소'?'배정 취소':title==='게시 완료 등록'?'게시 완료 등록':'저장';
@@ -190,12 +213,13 @@
  }
  document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const d=b.dataset;if('close'in d){b.closest('dialog').close();return;}if(d.date){selected=d.date;renderCalendar();renderDay();}if(d.preview)preview(d.preview);if(d.edit)assignment(d.edit);if(d.complete)complete(d.complete);if(d.templateEdit)editTemplate(d.templateEdit);if(d.templateClone)editTemplate(d.templateClone,true);if(d.cancel){const revision=state.revision;openForm('배정 취소','<p>이 배정을 취소할까요? 기록은 남고 업체에게 취소 상태가 표시됩니다.</p>',()=>request({action:'cancel',requestId:crypto.randomUUID(),revision,id:d.cancel}));}});
  enablePreviewDismiss($('detail'));
- $('detail').addEventListener('close',()=>{partnerSequence++;});
+ $('detail').addEventListener('close',()=>{partnerSequence++;clearImageBundle();});
  $('partner-controls').addEventListener('change',e=>{if(e.target.name==='partner-mode'){partnerMode=e.target.value;showPartnerRegions();}else if(e.target.type==='checkbox'){const id=Number(e.target.value);if(e.target.checked)partnerRegions.add(id);else partnerRegions.delete(id);}updatePartners();});
  $('partner-retry').onclick=()=>updatePartners();$('partner-refresh').onclick=()=>updatePartners();
  for(const dialog of document.querySelectorAll('dialog'))dialog.addEventListener('close',()=>{$('save').hidden=false;if(trigger?.isConnected)trigger.focus();else $('tab-templates').focus();});
  $('form-reload').onclick=async()=>{try{await refresh();$('form-dialog').close();$('status').textContent='최신 정보를 불러왔어요. 변경 내용을 확인하고 다시 입력해 주세요.';}catch{$('form-error').textContent='연결을 확인하고 다시 불러와 주세요.';}};
  $('copy-title').onclick=()=>copy(false);$('copy-body').onclick=()=>copy(true);$('refresh').onclick=()=>start();$('assign').onclick=()=>assignment();$('create-template').onclick=()=>editTemplate();
+ $('copy-mobile-text').onclick=()=>copy('plain');$('prepare-images').onclick=prepareImages;
  for(const [id,step]of [['prev',-1],['next-month',1]])$(id).onclick=async()=>{const [y,m]=month.split('-').map(Number);month=new Date(Date.UTC(y,m-1+step,1)).toISOString().slice(0,7);selected=month+'-01';try{await refresh();}catch(e){error(e.message);}};
  for(const view of ['calendar','templates'])$('tab-'+view).onclick=()=>{for(const v of ['calendar','templates']){$(v+'-view').hidden=v!==view;if(v===view)$('tab-'+v).setAttribute('aria-current','page');else $('tab-'+v).removeAttribute('aria-current');}};
  $('capacity-form').onsubmit=async e=>{e.preventDefault();try{await request({action:'capacity',requestId:crypto.randomUUID(),revision:state.revision,capacity:Number($('capacity').value)});await refresh();$('status').textContent='정원을 저장했습니다.';}catch(e){error(e.message);}};

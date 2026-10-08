@@ -85,7 +85,7 @@
    link.dataset.label=label;
    if(active){if(active===key)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');}
   }
-  header(companyName);refreshAttention(nav);
+  header(companyName);showPromoNotice(nav,{});refreshAttention(nav);
  }
  function applyAttention(nav,status){
   for(const [key,label]of sections){const link=nav.querySelector('[data-vendor-section="'+key+'"]');if(!link)continue;const needed=!!status[key+'Attention'];link.classList.toggle('portal-attention',needed);if(key==='profile')link.classList.remove('registration-required');link.setAttribute('aria-label',label+(needed?' · 확인할 일 있음':''));}
@@ -101,9 +101,11 @@
   renderPromo(host,company,status);
  }
  function promoMarkup(company,status){
+  if(!company)return '';
   const base='/promo-center.html?company='+encodeURIComponent(company);
   if(status.promoUnavailable)return '<h2>홍보 일정을 불러오지 못했어요</h2><p>다시 확인하거나 홍보 관리에서 일정을 확인해 주세요.</p><div class="vendor-promo-actions"><a class="vendor-promo-action" href="'+base+'">홍보 관리 열기</a><button type="button" data-promo-retry>다시 확인</button></div>';
-  const next=status.promoSummary?.next;if(!next)return '';
+  const next=status.promoSummary?.next;
+  if(!next)return '<p class="vendor-promo-eyebrow">전국크레자랑</p><h2>홍보 관리</h2><p>홍보 원고를 복사하고 게시 일정을 확인해 주세요.</p><div class="vendor-promo-actions"><a class="vendor-promo-action" href="'+base+'">홍보 관리 열기</a></div>';
   const title=next.status==='overdue'?'홍보글 게시 확인이 필요해요':next.isToday?'오늘 홍보글 게시 대상입니다':'홍보글 게시 일정이 배정됐어요';
   const date=next.date.replace(/^(\d{4})-(\d{2})-(\d{2})$/,'$2월 $3일');
   const hint=next.status==='overdue'?'배정 시간이 지났어요. 이미 게시했다면 글 링크를 등록해 주세요.':'이 시간 안에 카페에 게시하고, 글 링크로 완료를 등록해 주세요.';
@@ -116,8 +118,10 @@
  const promoVersions=new WeakMap();
  async function mountPromo(host,company){
   if(!host||!company)return;
+  const previousCompany=host.dataset.company;
   host.dataset.company=company;const version=(promoVersions.get(host)||0)+1;promoVersions.set(host,version);
   const current=()=>host.isConnected&&host.dataset.company===company&&promoVersions.get(host)===version;
+  if(host.hidden||previousCompany!==company)renderPromo(host,company,{});
   host.setAttribute('aria-busy','true');
   try{
    const response=await fetch('/api/platform/vendor-access/tasks?company='+encodeURIComponent(company),{cache:'no-store',credentials:'same-origin',signal:AbortSignal.timeout(10000)});

@@ -45,3 +45,10 @@ dialog[open]{display:flex;flex-direction:column}
 #partner-status{margin:16px 0 12px}
 .partner-picker .actions button{font-size:14px}
 @media(max-width:400px){.partner-picker{padding:16px}.partner-modes{flex-direction:column}#partner-region-options{grid-template-columns:minmax(0,1fr)}}
+/* Mobile editors may paste text without fetching referenced photos. */
+.mobile-post-help{margin:0 0 24px;padding:20px;border:1px solid var(--line);border-radius:12px;background:var(--bg)}
+.mobile-post-help h3{margin:0 0 8px;font-size:18px}
+.mobile-post-help p{margin:0 0 12px;font-size:14px;color:var(--muted);line-height:1.6}
+.mobile-post-help .actions{gap:12px}
+.mobile-post-help [role=status]:empty{display:none}
+.mobile-post-help [role=status]{margin:12px 0 0}
