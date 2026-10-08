@@ -5,7 +5,7 @@
  const source=p=>p.carrier==='parge'?data.parge.source:p.estimateBasis==='region'?data.dodosi.source:p.origin?.source||data.dodosi.source;
  const deliveryNotice='<p class="inbound-notice">배송 일정은 참고용입니다.<strong>방송 시작 전까지 도착하도록 준비해 주세요.</strong></p>';
  let data,failed=false,context,milestones=new Map(),lastTrigger,selections={},areaIds={},saving=false;
- async function ready(){if(data)return;const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),5000);try{const r=await fetch('/broadcast-inbound-data.json?v=20261007-routes',{cache:'no-cache',signal:controller.signal});if(!r.ok)throw Error();const v=await r.json();if(v.version!==1||!Array.isArray(v.dodosi?.origins)||!Array.isArray(v.parge?.origins))throw Error();data=v;failed=false;}catch{failed=true;}finally{clearTimeout(timer);}}
+ async function ready(){if(data)return;const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),5000);try{const r=await fetch('/broadcast-inbound-data.json?v=20261009-high-rank',{cache:'no-cache',signal:controller.signal});if(!r.ok)throw Error();const v=await r.json();if(v.version!==1||!Array.isArray(v.dodosi?.origins)||!Array.isArray(v.parge?.origins))throw Error();data=v;failed=false;}catch{failed=true;}finally{clearTimeout(timer);}}
  function destinationLine(p){return p.destination?`<dl class="inbound-destination"><dt>도착지</dt><dd>${esc(p.destination)}${p.destinationPhone?`<a class="inbound-phone" href="tel:${p.destinationPhone.replace(/\D/g,'')}" aria-label="${esc(p.destination+'에 전화 '+p.destinationPhone)}">${esc(p.destinationPhone)}</a>`:''}</dd></dl>`:'';}
  function basisLine(p){
   if(!p.estimated)return '';
@@ -39,7 +39,7 @@
   context=next;milestones=new Map();document.querySelector('#inbound-panel')?.remove();
   const calendar=document.querySelector('.broadcast-calendar');if(!calendar)return;
   calendar.querySelector('.calendar-key')?.remove();
-  calendar.querySelector('.calendar-head').insertAdjacentHTML('afterend',`<div class="calendar-key" aria-label="달력 표시"><span><i class="calendar-key-broadcast" aria-hidden="true"></i>방송</span><span><i class="calendar-key-route parge" aria-hidden="true"></i>파르게</span><span><i class="calendar-key-route dodosi" aria-hidden="true"></i>도도시</span><span>운송 구간 · 눌러서 일정</span></div>`);
+  calendar.querySelector('.calendar-head').insertAdjacentHTML('afterend',`<div class="calendar-key" aria-label="달력 표시"><span><i class="calendar-key-broadcast" aria-hidden="true"></i>방송</span><span><i class="calendar-key-route parge" aria-hidden="true"></i>파르게</span><span><i class="calendar-key-route dodosi" aria-hidden="true"></i>도도시</span><span>준비일부터 방송일까지 · 눌러서 일정</span></div>`);
   if(!data){calendar.insertAdjacentHTML('afterend',failed?'<section id="inbound-panel" class="inbound-panel"><p>운송 일정을 불러오지 못했어요.</p><button type="button" class="text" data-inbound-retry>다시 불러오기</button></section>':'<section id="inbound-panel" class="inbound-panel"><p class="muted" role="status">운송 일정 불러오는 중…</p></section>');return;}
   const {state,month}=context,today=new Date(Date.parse(state.now)+9*3600000).toISOString().slice(0,10);
   selections=Object.fromEntries(['parge','dodosi'].map(c=>[c,Origin.options(data,c,state.vendor,areaIds[c])]));
@@ -49,7 +49,9 @@
   const planDates=mine.filter(d=>d.date>=month+'-01'&&d.date<=Core.add(month+'-01',65));
   for(const d of planDates)for(const p of compute(d.date)){
    if(p.status==='review')continue;
-   for(let day=p.actionDate;day<=p.arrivalDate;day=Core.add(day,1)){
+   // The calendar connects preparation to its broadcast; arrival remains a
+   // separate, unchanged milestone in the route details.
+   for(let day=p.actionDate;day<=p.broadcastDate;day=Core.add(day,1)){
     if(!day.startsWith(month))continue;
     const list=milestones.get(day)||[];list.push({...p,label:p.actionLabel});milestones.set(day,list);
    }
@@ -59,11 +61,11 @@
    day.disabled=false;day.dataset.inboundDate=date;day.classList.add('has-inbound');
    const broadcastLabel=day.getAttribute('aria-label'),carriers=[...new Set(items.map(p=>p.carrier))];
    day.insertAdjacentHTML('beforeend',carriers.map(c=>{
-    const routes=items.filter(p=>p.carrier===c),first=routes.every(p=>p.actionDate===date),last=routes.every(p=>p.arrivalDate===date);
+    const routes=items.filter(p=>p.carrier===c),first=routes.every(p=>p.actionDate===date),last=routes.every(p=>p.broadcastDate===date);
     const start=first||Core.dow(date)===0||n===1,end=last||Core.dow(date)===6;
-    return `<span class="inbound-span ${c} ${start?'route-start':''} ${end?'route-end':''} ${first?'route-origin':''} ${last?'route-destination':''}" aria-hidden="true" title="${names[c]} 운송 일정">${start?`<b>${names[c]}</b>`:''}</span>`;
+    return `<span class="inbound-span ${c} ${start?'route-start':''} ${end?'route-end':''} ${first?'route-origin':''} ${last?'route-destination':''}" aria-hidden="true" title="${names[c]} · 준비일부터 방송일까지">${start?`<b>${names[c]}</b>`:''}</span>`;
    }).join(''));
-   day.setAttribute('aria-label',`${broadcastLabel?broadcastLabel+', ':fmt(date)+', '}${items.map(p=>names[p.carrier]+(p.estimated?' 예상':'')+(date===p.actionDate?' 배송 마감':' 운송 구간')+', '+fmt(p.actionDate)+' '+p.actionLabel+' → '+fmt(p.departureDate)+' '+p.departureLabel+' → '+fmt(p.arrivalDate)+' 대구 도착').filter((v,i,a)=>a.indexOf(v)===i).join(', ')}`);
+   day.setAttribute('aria-label',`${broadcastLabel?broadcastLabel+', ':fmt(date)+', '}${items.map(p=>names[p.carrier]+(p.estimated?' 예상':'')+(date===p.actionDate?' 배송 마감':date===p.broadcastDate?' 방송일':' 방송 준비 구간')+', '+fmt(p.actionDate)+' '+p.actionLabel+' → '+fmt(p.departureDate)+' '+p.departureLabel+' → '+fmt(p.arrivalDate)+' 대구 도착 → '+fmt(p.broadcastDate)+' 방송').filter((v,i,a)=>a.indexOf(v)===i).join(', ')}`);
   }
   const plans=compute(target.date);
   if(plans.some(p=>p.requiresSelection))calendar.insertAdjacentHTML('beforeend','<p class="inbound-notice">출발 정거샵을 선택하면 달력에 해당 운송 일정이 표시됩니다.</p>');

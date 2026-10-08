@@ -17,6 +17,14 @@ test('same-brand shops require an unambiguous district; brand name alone never p
  assert.equal(r.own.area,'서울[송파]');
  assert.equal(Origin.options(data,'dodosi',vendor('크레스타','부산·울산·경남')).own,null);
 });
+
+test('High Rank rename preserves the Daegu departure identity for old and new names, without matching Suwon',()=>{
+ for(const name of ['하이랭크','High_Rank','룸메이트','룸메이트 (대구)']){
+  const r=Origin.options(data,'parge',vendor(name,'대구·경북','대구광역시 달서구 월배로373'));
+  assert.equal(r.own.id,'parge-seed-16');assert.equal(r.own.shop,'하이랭크 (대구)');assert.equal(r.automatic,true);
+ }
+ assert.equal(Origin.options(data,'parge',vendor('룸메이트 수원','경기','경기도 수원시 권선구 탑동')).own,null);
+});
 test('explicit saved choice wins over an own shop and recommendations, including after reload',()=>{
  const selected=data.dodosi.origins.find(o=>o.shop==='아임룻'),v=vendor('크레다이브','경기','경기도 부천시 원미구 중동로 1',{dodosi:selected.id});
  for(const x of [v,JSON.parse(JSON.stringify(v))]){const r=Origin.options(data,'dodosi',x);assert.equal(r.selected,selected.id);assert.equal(r.automatic,false);}

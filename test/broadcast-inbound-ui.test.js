@@ -36,25 +36,35 @@ test('Monday broadcasts show Friday hand-in, Saturday departure and Sunday Daegu
  const f=fixture({region:'대구·경북',origins:{dodosi:origin.id}});await f.ready();
  f.state.dates=[{date:'2026-10-26',regionName:'대구·경북'}];f.render();
  assert.doesNotMatch(f.html(),/class="inbound-route"/);
- for(const day of [23,24,25]){
+ for(const day of [23,24,25,26]){
   assert.equal(f.day(day).disabled,false);assert.match(f.day(day).html,/inbound-span dodosi/);
   for(const pattern of [/맡기기<\/span><strong>10\/23\(금\)/,/출발<\/span><strong>10\/24\(토\)/,/대구 도착<\/span><strong>10\/25\(일\)/])assert.match(f.click(day).innerHTML,pattern);
  }
- assert.match(f.day(23).html,/dodosi route-start/);assert.match(f.day(24).html,/dodosi\s+route-end/);assert.match(f.day(25).html,/dodosi route-start route-end/);
+ assert.match(f.day(23).html,/dodosi route-start/);assert.match(f.day(24).html,/dodosi\s+route-end/);assert.match(f.day(25).html,/dodosi route-start/);
  assert.match(f.day(23).html,/route-origin/);assert.doesNotMatch(f.day(23).html,/route-destination/);
  assert.doesNotMatch(f.day(24).html,/route-origin|route-destination/);
- assert.match(f.day(25).html,/route-destination/);assert.doesNotMatch(f.day(25).html,/route-origin/);
+ assert.doesNotMatch(f.day(25).html,/route-destination|route-origin/);assert.match(f.day(26).html,/route-destination/);
  assert.match(f.day(23).html,/<b>도도시<\/b>/);assert.match(f.day(25).html,/<b>도도시<\/b>/);
- assert.doesNotMatch(f.day(26).html,/inbound-span dodosi/);
+ assert.doesNotMatch(f.day(27).html,/inbound-span dodosi/);assert.match(f.click(26).innerHTML,/이날 방송 보기/);
  assert.equal(f.writes.length,0);
 });
 
 test('shipping strips continue into the next month and open the full route there',async()=>{
  const origin=data.dodosi.origins.find(o=>o.shop==='드래곤길들이기');
  const f=fixture({origins:{dodosi:origin.id}});await f.ready();f.render('2026-11');
- assert.match(f.day(1).html,/inbound-span dodosi route-start route-end/);assert.equal(f.day(1).disabled,false);
- assert.match(f.day(1).html,/route-destination/);assert.doesNotMatch(f.day(1).html,/route-origin/);
+ assert.match(f.day(1).html,/inbound-span dodosi route-start/);assert.equal(f.day(1).disabled,false);
+ assert.doesNotMatch(f.day(1).html,/route-origin|route-destination/);assert.match(f.day(2).html,/route-destination/);
  const dialog=f.click(1);assert.match(dialog.innerHTML,/맡기기<\/span><strong>10\/30\(금\)/);assert.match(dialog.innerHTML,/대구 도착<\/span><strong>11\/1\(일\)/);
+ assert.equal(f.writes.length,0);
+});
+
+test('PARGE connects to the broadcast day even when it arrives the day before; actual arrival stays unchanged',async()=>{
+ const f=fixture({origins:{parge:'parge-capital'}});await f.ready();f.render();
+ for(const day of [11,12,13,14])assert.match(f.day(day).html,/inbound-span parge/);
+ assert.match(f.day(11).html,/route-origin/);assert.doesNotMatch(f.day(13).html,/route-destination/);
+ assert.match(f.day(14).html,/route-destination/);assert.doesNotMatch(f.day(15).html,/inbound-span parge/);
+ assert.match(f.day(14).attrs['aria-label'],/10\/13\(화\) 대구 도착 → 10\/14\(수\) 방송/);
+ const dialog=f.click(14);assert.match(dialog.innerHTML,/대구 도착<\/span><strong>10\/13\(화\)/);assert.match(dialog.innerHTML,/이날 방송 보기/);
  assert.equal(f.writes.length,0);
 });
 test('following-month broadcasts retain their shipping markers in the earlier month and rerenders do not save estimates',async()=>{
