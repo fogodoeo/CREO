@@ -1,1490 +1,1490 @@
 [
-  {
-    "id": "launch26-joseon",
-    "name": "조선시대 저잣거리 · 사극 드립형",
-    "title": "👑 전하, 저잣거리에 용이 나타났다 하옵니다",
-    "catalogOrder": 1,
-    "bundleVersion": 7,
-    "version": 1,
-    "active": true,
-    "blocks": [
-      {
-        "type": "text",
-        "text": "전하, 저잣거리에\n용이 나타났다 하옵니다",
-        "size": 26,
-        "bold": true,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "“용이라? 그 크기가 대체 얼마나 되느냐?”\n“손바닥만 하옵니다.”",
-        "size": 18,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "image",
-        "src": "/promo-assets/joseon.png",
-        "alt": "작은 크레를 보고 미소 짓는 임금과 신하 · 콘셉트 일러스트",
-        "width": 500
-      },
-      {
-        "type": "text",
-        "text": "“손바닥만 한 용이라니, 천하에 어찌 그런 영물이 있단 말이냐!”",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "팔도강산 고을마다 지극정성으로 기른 크레 소식이 자자하여,\n과인이 팔도의 장인들을 한자리에 불러 모으라 명하였사옵니다.",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "image",
-        "src": "/promo-assets/joseon-small-dragon-v1.jpg",
-        "copySrc": "https://creok.onrender.com/promo-assets/joseon-small-dragon-v1.jpg",
-        "alt": "한복 소매 아래 손바닥 위에 앉은 작은 크레스티드게코",
-        "width": 500
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "“그러하오면, 서울·인천의 저희 샵이 먼저 자랑하겠나이다!”",
-        "size": 20,
-        "bold": true,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "이름하여 전국크레자랑(全國크레自慢)",
-        "size": 18,
-        "bold": true,
-        "color": "green",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "안녕하십니까 파사모 회원님들! 이번에 전국 30여 곳 장인·상단과 함께 대장정에 오르게 된 참여 업체 사장입니다 ㅎㅎ\n매주 달 뜨는 월요일과 수요일 밤 여덟 시(戌時), 네이버 밴드 저잣거리에서 명품 크레 야간 장터가 실시간으로 펼쳐집니다.",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "대망의 첫 장터 : 10월 14일 수요일 밤 8시 【서울·인천 편】",
-        "size": 20,
-        "bold": true,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "저희 샵도 첫 방송에 자존심을 걸고 정성껏 키운 명품 용들을 이끌고 출두하옵니다!",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "첫 장터의 은혜로운 혜택",
-        "size": 20,
-        "bold": true,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "낙찰자 모두에게 역마 삯(배송비)을 지원하오니,\n한 사람당 최대 삼만 냥(3만 원)의 혜택을 내리겠나이다.",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "손님들의 노고를 더는 방도",
-        "size": 20,
-        "bold": true,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "파발의 신속함 : 낙찰 즉시 카카오 전령(알림톡)이 당도하옵니다.\n간편한 셈법 : 전용 서찰(페이지)에서 낙찰 내역과 셈법(결제 안내)을 한눈에 살피실 수 있사옵니다.\n생물 전문 배송 : 전문 배송업체가 집 근처 객주(협력 매장)까지 귀한 용을 모셔 오옵니다.\n편안한 픽업 : 도착한 아이의 상태를 직접 살피고 데려가시면 되옵니다.",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "먼 길 행차하실 필요 없사옵니다.\n그저 안방 사랑방에 편히 앉으시어 구경만 하셔도 좋으니,\n과연 어느 고을의 용이 가장 영롱한지 함께 지켜보시지요 ^^",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "전국크레자랑 밴드 바로가기",
-        "size": 18,
-        "bold": true,
-        "color": "green",
-        "align": "center",
-        "href": "https://band.us/n/a6a6beMe97Ucc"
-      },
-      {
-        "type": "text",
-        "text": "네이버 밴드에서 ‘전국크레자랑’ 검색",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      }
-    ]
-  },
-  {
-    "id": "launch26-showtime",
-    "name": "전국노래자랑형 · 우리 동네 자랑",
-    "title": "🎤 전국~~~~크레자랑｜서울·인천이 먼저 자랑하겠습니다",
-    "catalogOrder": 2,
-    "bundleVersion": 7,
-    "version": 1,
-    "active": true,
-    "blocks": [
-      {
-        "type": "text",
-        "text": "전국~~~~ 크레자랑!",
-        "size": 26,
-        "bold": true,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "안녕하세요 파사모 회원님들! 이번에 함께하게 된 [업체명] 사장입니다 ^^\n다들 일요일 낮마다 전국노래자랑 한 번쯤 보셨죠? ㅎㅎ\n동네마다 숨은 명가수분들이 무대에 오르는 것처럼,\n우리 크레 판에도 지역마다·샵마다 꼭꼭 숨겨둔 보물 같은 아이들이 정말 많거든요.",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "image",
-        "src": "/promo-assets/festival-stage-v5.jpg",
-        "alt": "마이크를 든 진행자가 맞이하는 야외무대",
-        "width": 500
-      },
-      {
-        "type": "text",
-        "text": "“우리 동네에 이런 크레가 있습니다”",
-        "size": 20,
-        "bold": true,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "그래서 전국의 전문 브리더·업체 30여 곳이 뭉쳐서\n이름 그대로 ‘전국크레자랑’을 제대로 열어보기로 했습니다!\n\n매주 지역별로 돌아가며 각 샵의 자존심을 걸고,\n정성껏 키운 아이들을 라이브 방송으로 속 시원하게 자랑하고 경매도 진행합니다.",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "사진만으로 다 보기 어려웠던 아이들의 매력,\n라이브에서 움직임과 무늬를 보며 브리더의 설명도 함께 들어보세요.",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "image",
-        "src": "/promo-assets/festival-cre-v5.jpg",
-        "alt": "서로 다른 무늬의 작은 크레를 소개하는 장갑 낀 손",
-        "width": 500
-      },
-      {
-        "type": "text",
-        "text": "월·수 밤 8시, 안방 1열에서 신나게 구경하세요",
-        "size": 20,
-        "bold": true,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "방송은 매주 월요일과 수요일 밤 8시, 네이버 밴드 라이브로 찾아갑니다.\n채팅으로 편하게 소통도 하시고, 마음에 쏙 드는 아이가 나오면 실시간 경매로 손맛도 느껴보세요!",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "image",
-        "src": "/promo-assets/festival-microphone-v1.jpg",
-        "copySrc": "https://creok.onrender.com/promo-assets/festival-microphone-v1.jpg",
-        "alt": "마이크와 작은 크레를 함께 소개하는 야외무대의 손",
-        "width": 500
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "낙찰 뒤 입금·배송도 번거로움 없이 깔끔하게",
-        "size": 20,
-        "bold": true,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "낙찰받으시면 카카오톡 채널 알림톡이 자동으로 발송됩니다.\n톡 안의 링크에서 낙찰 내역과 결제 안내를 한눈에 확인하시고,\n배송 정보도 최초 1회만 등록해 두시면 다음번 낙찰에도 그대로 자동 적용됩니다.\n\n아이들은 생물 전문 배송업체를 통해\n집 근처 제휴 업체로 배송됩니다.\n도착 후 직접 상태를 확인하고 픽업하시면 됩니다.",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "대망의 첫 자랑은 서울·인천부터!",
-        "size": 26,
-        "bold": true,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "10월 14일 수요일 밤 8시, 서울·인천 편으로 첫 테이프를 끊습니다!\n첫 방송 기념으로 낙찰자 1인당 배송비 최대 3만 원 지원 혜택도 함께 드립니다.\n\n꼭 입양 계획이 없으셔도 괜찮으니,\n어느 동네 크레가 제일 예쁜지 편하게 들어오셔서 구경도 하시고 응원 댓글 하나씩 남겨주세요 ^^",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "전국크레자랑 밴드 바로가기",
-        "size": 18,
-        "bold": true,
-        "color": "green",
-        "align": "center",
-        "href": "https://band.us/n/a6a6beMe97Ucc"
-      },
-      {
-        "type": "text",
-        "text": "네이버 밴드에서 ‘전국크레자랑’ 검색",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      }
-    ]
-  },
-  {
-    "id": "ep01-welcome",
-    "name": "입찰자 인터뷰형 · 구경보다 바빴던 날",
-    "title": "🔴 방송 찾다가 지치셨나요｜크레는 한 밴드에서",
-    "catalogOrder": 3,
-    "bundleVersion": 7,
-    "version": 1,
-    "active": true,
-    "blocks": [
-      {
-        "type": "text",
-        "text": "“애들 구경 좀 하려고 켰는데\n찾아다니느라 제가 더 바쁘더라고요”",
-        "size": 26,
-        "bold": true,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "안녕하세요 파사모 회원님들, [업체명]입니다 ^^\n라이브 경매를 보는 집사님 입장에서 생각해 봤습니다.\n예쁜 아이들은 보고 싶은데, 방송을 챙기는 과정은 어떠셨나요.",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "image",
-        "src": "/promo-assets/interview-home-v5.jpg",
-        "alt": "휴대폰을 든 집사와 마이크",
-        "width": 500
-      },
-      {
-        "type": "text",
-        "text": "“좋아하는 샵 방송 시간 챙기는 게 은근히 일이더라고요”",
-        "size": 20,
-        "bold": true,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "“이 밴드 저 밴드 가입해 둬도 샵마다 방송 요일이랑 시간이 제각각이라,\n퇴근하고 깜빡 딴짓하면 보고 싶던 샵 방송은 이미 끝나 있고…\n\n어렵게 낙찰받아도 계좌 번호 어디 있었지 찾고,\n배송 주소 일일이 톡으로 보내고, 다음번 낙찰 때 또 똑같이 적고…\n솔직히 아이들 보는 건 너무 좋은데 이 과정들이 참 번거롭고 피곤했어요.”",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "그래서, 전국의 브리더들이 한 밴드에 모였습니다",
-        "size": 26,
-        "bold": true,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "집사님들의 그 현실적인 고충에 깊이 공감해서,\n전국의 실력파 브리더·전문 매장 30여 곳이 뜻을 모았습니다.\n\n이제 여기저기 알림 켜두고 헤매실 필요 없이,\n‘전국크레자랑’ 밴드 딱 한곳에서 전국의 다양한 크레들을 만나실 수 있습니다!",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "방송 시간은 고정, 낙찰 안내는 자동으로",
-        "size": 20,
-        "bold": true,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "방송은 매주 월요일과 수요일 밤 8시!\n지역별 전문 업체들이 순서대로 돌아가며 정성껏 키운 아이들을 라이브로 선보입니다.\n\n낙찰 안내도 카카오톡 채널 알림톡이 자동으로 발송됩니다.\n톡 안의 링크에서 낙찰 내역과 결제 안내를 바로 확인하실 수 있고,\n등록해 두신 배송 주소는 다음 낙찰에도 그대로 자동 적용됩니다.",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "image",
-        "src": "/promo-assets/interview-evening-live-v1.jpg",
-        "copySrc": "https://creok.onrender.com/promo-assets/interview-evening-live-v1.jpg",
-        "alt": "소파에 편히 앉아 휴대폰으로 라이브를 보는 집사의 손",
-        "width": 500
-      },
-      {
-        "type": "image",
-        "src": "/promo-assets/after-bid-v5.png",
-        "alt": "카카오톡 알림톡 → 전용 페이지 확인 → 집 근처 업체 픽업",
-        "width": 500
-      },
-      {
-        "type": "text",
-        "text": "생물 전문 배송으로 집 근처에서 픽업",
-        "size": 20,
-        "bold": true,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "아이들은 생물 전문 배송업체를 통해\n집 근처 제휴 업체로 배송됩니다.\n도착 후 직접 상태를 확인하고 픽업하시면 됩니다.",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "첫 방송 : 10월 14일 수요일 밤 8시 【서울·인천 편】",
-        "size": 20,
-        "bold": true,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "10월 14일 수요일 밤 8시, 서울·인천 대표 샵들의 개체들로 첫 방송이 시작됩니다!\n첫 방송을 함께해 주시는 낙찰자분들께는 1인당 배송비 최대 3만 원을 지원해 드립니다.\n\n이제 방송 찾아다니느라 피곤해하지 마시고,\n월·수 밤 8시에 안방에서 편하게 예쁜 크레들 구경하러 놀러 오세요 ^^",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "전국크레자랑 밴드 바로가기",
-        "size": 18,
-        "bold": true,
-        "color": "green",
-        "align": "center",
-        "href": "https://band.us/n/a6a6beMe97Ucc"
-      },
-      {
-        "type": "text",
-        "text": "네이버 밴드에서 ‘전국크레자랑’ 검색",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      }
-    ]
-  },
-  {
-    "id": "launch26-taste",
-    "name": "취향 찾기형 · 어떤 크레에 눈이 가세요",
-    "title": "🔥 발색파 vs 화이트 월파｜당신은 어느 쪽인가요",
-    "catalogOrder": 4,
-    "blocks": [
-      {
-        "type": "text",
-        "text": "당신은 어떤 취향을\n갖고 있나요",
-        "size": 26,
-        "bold": true,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "안녕하세요 파사모 회원님들, [업체명]입니다 ^^\n크레 아이들 보실 때 어디에 가장 먼저 눈이 가시나요?\n묵직한 다크 발색, 하얗게 꽉 찬 화이트 월, 빈틈없는 핀과 드리피…\n집사님마다 “이건 진짜 못 참지” 하는 최애 포인트가 다 다르시더라고요.",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "image",
-        "src": "/promo-assets/taste-v6.jpg",
-        "alt": "서로 다른 색과 무늬의 크레스티드게코 세 마리",
-        "width": 500
-      },
-      {
-        "type": "text",
-        "text": "내 취향이 아닐 줄 알았는데, 자꾸만 보게 되는 아이",
-        "size": 20,
-        "bold": true,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "저희도 아이들 축양하다 보면 참 신기할 때가 많습니다.\n비슷한 모프여도 콧대 라인 하나, 옆구리 패턴 하나에 느낌이 완전히 달라지거든요.\n\n평소 좋아하시던 고정 취향도 좋지만,\n생각지도 못했던 매력의 아이에게 문득 눈길이 꽂히는 재미도 크레를 키우는 묘미 아닐까 싶습니다 ㅎㅎ",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "image",
-        "src": "/promo-assets/taste-color-whitewall-v1.jpg",
-        "copySrc": "https://creok.onrender.com/promo-assets/taste-color-whitewall-v1.jpg",
-        "alt": "발색과 화이트 월이 다른 두 크레를 소개하는 손",
-        "width": 500
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "30여 곳의 브리더가 모이면, 구경할 취향도 넓어집니다",
-        "size": 20,
-        "bold": true,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "전국의 전문 브리더·업체 30여 곳이 함께하는 ‘전국크레자랑’.\n지역별 전문 샵들이 돌아가며 릴레이로 라이브를 열어\n각자의 브리딩 철학과 시간으로 빚어낸 개성 넘치는 아이들을 선보입니다.\n\n매주 월요일과 수요일 밤 8시, 네이버 밴드 라이브에서\n실시간 움직임과 무늬를 보며 나만의 취향을 찾아보세요!\n당장 입양 계획이 없으셔도 편하게 랜선 힐링하러 오시면 됩니다 ^^",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "마음에 쏙 드는 아이를 낙찰받으셨다면",
-        "size": 20,
-        "bold": true,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "낙찰 즉시 카카오톡 채널 알림톡이 자동으로 발송됩니다.\n전용 페이지에서 낙찰 내역과 결제 안내를 한 번에 확인하실 수 있고,\n배송 정보는 최초 1회만 등록해 두시면 다음번 낙찰에도 그대로 자동 적용됩니다.\n\n아이들은 생물 전문 배송업체를 통해\n집 근처 제휴 업체로 배송됩니다.\n도착 후 직접 상태를 확인하고 픽업하시면 됩니다.",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "첫 번째 취향 탐색은 서울·인천부터!",
-        "size": 26,
-        "bold": true,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "10월 14일 수요일 밤 8시, 대망의 첫 방송에서 만나요.\n첫 방송 낙찰자 1인당 배송비 최대 3만 원 지원 혜택도 드립니다.\n\n회원님들은 어떤 스타일의 크레를 가장 좋아하시나요? 댓글로도 편하게 나눠주세요!\n저희도 정말 멋진 아이들로 정성껏 준비해서 기다리겠습니다 ^^",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "전국크레자랑 밴드 바로가기",
-        "size": 18,
-        "bold": true,
-        "color": "green",
-        "align": "center",
-        "href": "https://band.us/n/a6a6beMe97Ucc"
-      },
-      {
-        "type": "text",
-        "text": "네이버 밴드에서 ‘전국크레자랑’ 검색",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      }
-    ],
-    "version": 1,
-    "bundleVersion": 9,
-    "active": true
-  },
-  {
-    "id": "launch26-tour",
-    "name": "랜선 샵 투어형 · 거리 대신 한 밴드",
-    "title": "🚗 보고 싶은 그 샵, 너무 멀었죠｜이번엔 밴드에서",
-    "catalogOrder": 5,
-    "blocks": [
-      {
-        "type": "text",
-        "text": "보고 싶은 샵은 전국에\n나는 오늘도 우리 동네에",
-        "size": 26,
-        "bold": true,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "안녕하세요 파사모 회원님들, [업체명]입니다!\n인스타나 카페 피드 보면서 “와, 여기 샵 아이들 실물로 꼭 보고 싶다” 했다가\n지도 검색해 보고 너무 멀어서 조용히 뒤로 가기 누르신 적 다들 있으시죠? ㅎㅎ\n마음은 이미 전국 샵 투어 중인데, 바쁜 일상에 주말마다 멀리 찾아가기는 참 쉽지 않습니다.",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "image",
-        "src": "/promo-assets/tour-v6.jpg",
-        "alt": "작은 크레를 소개하는 브리더와 샵을 구경하는 집사",
-        "width": 500
-      },
-      {
-        "type": "text",
-        "text": "샵이 있는 지역은 달라도, 크레는 한 밴드에서 만납니다!",
-        "size": 20,
-        "bold": true,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "그래서 전국의 전문 브리더·업체 30여 곳이 의기투합했습니다.\n서울·인천부터 경기, 대구·경북, 부산·울산·경남, 전라·충청까지!\n\n각 지역을 대표하는 실력파 샵들이 돌아가며 정성껏 키운 아이들을 소개하는\n전국 업체들이 함께하는 릴레이 라이브 경매, ‘전국크레자랑’입니다.\n직접 장거리 운전하며 돌아다니실 필요 없이, 전국의 명품 크레들을 안방 1열에서 차례로 만나보세요.",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "월·수 밤 8시, 안방에서 떠나는 전국 크레 샵 투어",
-        "size": 20,
-        "bold": true,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "평소 눈여겨보던 유명 샵의 개체도 보고, 숨은 고수 업체의 아이도 새롭게 발견하고!\n실시간 고화질 영상으로 피지컬과 움직임을 보며 브리더의 생생한 설명까지 들으시면\n사진 몇 장으로 구경할 때와는 비교할 수 없는 짜릿한 재미가 있습니다.\n\n방송은 매주 월요일과 수요일 밤 8시 고정!\n퇴근 후 편안한 마음으로 들어오셔서, 이번엔 어느 동네 아이들이 나오나 즐겁게 구경해 주세요.",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "멀리 있는 샵의 아이, 낙찰 후에는 어떻게 수령하나요?",
-        "size": 20,
-        "bold": true,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "낙찰 시 카카오톡 채널 알림톡이 자동으로 발송됩니다.\n전용 페이지에서 낙찰 내역과 결제 안내를 원클릭으로 확인하시고,\n배송 주소는 최초 1회만 등록해 두시면 다음번에도 그대로 자동 적용됩니다.\n\n아이들은 생물 전문 배송업체를 통해\n집 근처 제휴 업체로 배송됩니다.\n도착 후 직접 상태를 확인하고 픽업하시면 됩니다.",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "image",
-        "src": "/promo-assets/tour-nearby-pickup-v1.jpg",
-        "copySrc": "https://creok.onrender.com/promo-assets/tour-nearby-pickup-v1.jpg",
-        "alt": "집 근처 매장에서 작은 크레의 상태를 직접 확인하는 손",
-        "width": 500
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "첫 번째 샵 투어 행선지는 서울·인천!",
-        "size": 26,
-        "bold": true,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "10월 14일 수요일 밤 8시, 대장정의 첫 테이프를 끊습니다!\n첫 방송을 함께해 주시는 낙찰자분들께는 1인당 배송비 최대 3만 원을 지원해 드립니다.\n\n멀어서 눈으로만 찜해두셨던 전국 각지의 크레들,\n이번엔 ‘전국크레자랑’ 밴드에서 편안하게 랜선 투어로 만나보세요 ^^",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "전국크레자랑 밴드 바로가기",
-        "size": 18,
-        "bold": true,
-        "color": "green",
-        "align": "center",
-        "href": "https://band.us/n/a6a6beMe97Ucc"
-      },
-      {
-        "type": "text",
-        "text": "네이버 밴드에서 ‘전국크레자랑’ 검색",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      }
-    ],
-    "version": 1,
-    "bundleVersion": 9,
-    "active": true
-  },
-  {
-    "id": "launch26-breeder",
-    "name": "브리더 준비 노트형 · 방송 전의 설렘",
-    "title": "👀 사장님은 어떤 크레를 방송에 데려올까요",
-    "catalogOrder": 6,
-    "blocks": [
-      {
-        "type": "text",
-        "text": "방송 전, 사장님들은\n어떤 아이를 고를까요",
-        "size": 26,
-        "bold": true,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "안녕하세요 파사모 회원님들, [업체명]입니다 ^^\n이번에 전국의 동료 브리더들과 함께 ‘전국크레자랑’ 라이브를 준비하며 인사드립니다.\n\n예쁜 아이들을 기다려주시는 집사님들도 두근거리시겠지만,\n“어떤 아이를 데리고 나가야 회원님들이 감탄하실까?” 고민하며\n축양장을 둘러보는 저희 사장들도 정말 가슴이 뜁니다 ㅎㅎ\n사진 한 장에는 차마 다 담기지 않는 아이들의 진짜 매력을 방송에서 속 시원히 보여드리고 싶거든요.",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "image",
-        "src": "/promo-assets/prep-v6.jpg",
-        "alt": "촬영 카메라 앞에서 작은 크레를 소개하는 흰 장갑 낀 손",
-        "width": 500
-      },
-      {
-        "type": "text",
-        "text": "빛나는 무늬 뒤에는, 정성으로 키워낸 브리더의 이야기가 있습니다",
-        "size": 20,
-        "bold": true,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "이 아이는 어떤 라인에서 태어났는지, 자라면서 발색이 어떻게 올라오는지,\n어떤 포인트를 눈여겨보시면 좋을지.\n\n방송에서는 아이의 컨디션과 활발한 움직임을 여과 없이 보여드리면서\n아이마다 담긴 사육 이야기까지 친근하게 들려드리려 합니다.\n궁금하신 점은 실시간 채팅으로 편하게 물어봐 주세요!",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "image",
-        "src": "/promo-assets/breeder-preparation-v1.jpg",
-        "copySrc": "https://creok.onrender.com/promo-assets/breeder-preparation-v1.jpg",
-        "alt": "축양장에서 방송에 소개할 작은 크레를 살피는 브리더",
-        "width": 500
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "한 샵만의 방송이 아닌, 전국 30여 개 브리더들의 릴레이 축제",
-        "size": 20,
-        "bold": true,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "전국의 전문 브리더와 매장 30여 곳이 함께 만드는 상생 라이브입니다.\n회차마다 다른 지역의 전문 샵들이 돌아가며 출연하기 때문에,\n한 밴드 안에서도 매번 새로운 브리딩 스타일과 신선한 아이들을 만나실 수 있습니다.\n\n매주 월요일과 수요일 밤 8시!\n자존심을 걸고 정성껏 키운 명품 크레들을 안방 1열에서 소개해 드리겠습니다.",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "낙찰 뒤 안내도 한곳에서",
-        "size": 20,
-        "bold": true,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "낙찰 즉시 카카오톡 채널 알림톡이 자동으로 발송됩니다.\n전용 페이지에서 낙찰 내역과 결제 안내를 바로 확인하실 수 있고,\n배송 주소도 최초 1회만 등록해 두시면 다음번 낙찰에도 그대로 자동 적용됩니다.\n\n아이들은 생물 전문 배송업체를 통해\n집 근처 제휴 업체로 배송됩니다.\n도착 후 직접 상태를 확인하고 픽업하시면 됩니다.",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "10월 14일 수요일 밤 8시, 서울·인천부터 첫인사 올립니다!",
-        "size": 26,
-        "bold": true,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "대망의 첫 방송은 10월 14일 수요일 밤 8시에 시작합니다.\n첫 방송 낙찰자 전원에게 1인당 배송비 최대 3만 원을 시원하게 지원해 드립니다.\n\n당장 입양 생각이 없으셔도 좋습니다.\n“우와, 저 샵엔 저런 아이도 있네!” 하시며 편하게 놀러 오셔서 응원 댓글 하나씩 남겨주세요.\n저희도 최고의 컨디션으로 정성껏 준비해서 반갑게 맞이하겠습니다 ^^",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "전국크레자랑 밴드 바로가기",
-        "size": 18,
-        "bold": true,
-        "color": "green",
-        "align": "center",
-        "href": "https://band.us/n/a6a6beMe97Ucc"
-      },
-      {
-        "type": "text",
-        "text": "네이버 밴드에서 ‘전국크레자랑’ 검색",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      }
-    ],
-    "version": 1,
-    "bundleVersion": 9,
-    "active": true
-  },
-  {
-    "id": "launch26-series",
-    "name": "드라마 첫 화형 · 다음 지역이 기다려지는 방송",
-    "title": "🎬 첫 화부터 같이 보실래요｜서울·인천 편 10.14",
-    "catalogOrder": 7,
-    "blocks": [
-      {
-        "type": "text",
-        "text": "이번 시리즈의 주인공은\n크레입니다",
-        "size": 26,
-        "bold": true,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "안녕하세요 파사모 회원님들\n[업체명]입니다\n새로운 방송을 소개하려니 저희도 첫 화를 기다리는 기분이네요.\n이번엔 전국의 샵들이 한 밴드에 모여,\n회차마다 다른 지역의 크레들을 소개합니다.",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "image",
-        "src": "/promo-assets/series-premiere-v1.jpg",
-        "alt": "라이브 촬영 카메라 앞에서 작은 크레를 소개하는 두 진행자의 손",
-        "width": 500
-      },
-      {
-        "type": "text",
-        "text": "같은 시간, 같은 밴드\n출연하는 지역은 달라집니다",
-        "size": 20,
-        "bold": true,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "서울·인천, 경기, 경북, 경남, 전라·충청.\n30여 곳의 전문 브리더·업체가 돌아가며 참여합니다.\n\n한 샵에서 끝나는 구경이 아니라\n“다음엔 어느 지역 아이들이 나올까” 기다리는 재미.\n매주 월요일과 수요일 밤 8시에 이어집니다.",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "마음에 드는 주인공을 만났다면",
-        "size": 20,
-        "bold": true,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "낙찰되면 카카오톡 채널 알림톡이 자동으로 발송됩니다.\n톡 안의 전용 페이지에서 낙찰 내역과 결제 안내를 확인해 주세요.\n처음 등록한 배송 정보는 다음 낙찰에도 그대로 적용됩니다.\n\n생물 전문 배송업체가 집 근처 제휴 업체까지 배송하며,\n도착 후 상태를 직접 확인하고 픽업하시면 됩니다.",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "EP 01 서울·인천\n10월 14일 수요일 밤 8시",
-        "size": 26,
-        "bold": true,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "첫 방송 낙찰자분들께 배송비를 1인당 최대 3만 원 지원합니다.\n\n꼭 입양이 아니어도 괜찮습니다.\n첫 화부터 편하게 함께 봐주세요.\n전국크레자랑 밴드에서 인사드리겠습니다 ^^",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "전국크레자랑 밴드 바로가기",
-        "size": 18,
-        "bold": true,
-        "color": "green",
-        "align": "center",
-        "href": "https://band.us/n/a6a6beMe97Ucc"
-      },
-      {
-        "type": "text",
-        "text": "네이버 밴드에서 ‘전국크레자랑’ 검색",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      }
-    ],
-    "version": 1,
-    "bundleVersion": 1,
-    "active": true
-  },
-  {
-    "id": "launch26-questions",
-    "name": "라이브 질문형 · 사진 다음의 궁금증",
-    "title": "🔎 사진 저장만 하던 그 크레｜라이브에서 물어보세요",
-    "catalogOrder": 8,
-    "blocks": [
-      {
-        "type": "text",
-        "text": "예쁜 건 알겠는데\n궁금한 게 더 많아졌다면",
-        "size": 26,
-        "bold": true,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "안녕하세요 집사님들\n[업체명]입니다\n크레 사진을 보다 보면 저장 버튼부터 누르게 되죠.\n그런데 막상 더 알아보고 싶을 땐\n사진 한 장으로는 답이 안 나오는 질문들도 생깁니다.",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "image",
-        "src": "/promo-assets/live-question-v1.jpg",
-        "alt": "작은 크레의 옆구리 무늬를 손으로 가리키며 설명하는 브리더",
-        "width": 500
-      },
-      {
-        "type": "text",
-        "text": "어떤 라인에서 태어났나요\n자라면서 무늬는 어떻게 달라졌나요",
-        "size": 20,
-        "bold": true,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "아이의 움직임을 보며 브리더의 설명을 듣고,\n궁금한 점은 라이브 채팅으로 물어봐 주세요.\n처음 크레를 알아보는 분도,\n오래 키워온 집사님도 편하게 함께하실 수 있습니다.",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "답해주는 샵도, 소개하는 아이들도\n회차마다 새롭게",
-        "size": 20,
-        "bold": true,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "전국의 전문 브리더·업체 30여 곳이 함께합니다.\n다른 지역의 샵들이 돌아가며 참여하는\n네이버 밴드 라이브 경매 ‘전국크레자랑’.\n\n매주 월요일과 수요일 밤 8시,\n사진 속 궁금증을 방송에서 이어가 보세요.",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "낙찰 뒤 안내는 알림톡으로",
-        "size": 20,
-        "bold": true,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "낙찰되면 카카오톡 채널 알림톡이 자동으로 발송됩니다.\n톡 안의 전용 페이지에서 낙찰 내역과 결제 안내를 확인해 주세요.\n처음 등록한 배송 정보는 다음 낙찰에도 그대로 적용됩니다.\n\n생물 전문 배송업체가 집 근처 제휴 업체까지 배송하며,\n도착 후 상태를 직접 확인하고 픽업하시면 됩니다.",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "첫 질문은 서울·인천부터\n10월 14일 수요일 밤 8시",
-        "size": 26,
-        "bold": true,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "첫 방송 낙찰자 1인당 배송비 최대 3만 원 지원.\n\n입양을 정하지 않으셔도 편하게 구경하러 오세요.\n회원님들은 크레를 볼 때 어떤 점이 가장 궁금하신가요?\n방송에서 반갑게 만나겠습니다 ^^",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "전국크레자랑 밴드 바로가기",
-        "size": 18,
-        "bold": true,
-        "color": "green",
-        "align": "center",
-        "href": "https://band.us/n/a6a6beMe97Ucc"
-      },
-      {
-        "type": "text",
-        "text": "네이버 밴드에서 ‘전국크레자랑’ 검색",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      }
-    ],
-    "version": 1,
-    "bundleVersion": 1,
-    "active": true
-  },
-  {
-    "id": "launch26-afterwork",
-    "name": "퇴근 후 취미형 · 월·수 밤의 작은 즐거움",
-    "title": "📺 퇴근하고 뭐 보세요｜월·수엔 크레 구경",
-    "catalogOrder": 9,
-    "blocks": [
-      {
-        "type": "text",
-        "text": "오늘 하루는 여기까지\n이제 크레 구경할 시간",
-        "size": 26,
-        "bold": true,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "안녕하세요 파사모 회원님들\n[업체명]입니다\n할 일 마치고 잠깐 앉아서 예쁜 아이들 보는 시간.\n크레 좋아하는 분들께는 이런 소소한 구경도\n하루 끝의 작은 즐거움이 아닐까 싶습니다.",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "image",
-        "src": "/promo-assets/afterwork-viewing-v1.jpg",
-        "alt": "저녁 조명 아래 휴대폰과 작은 크레 사육장 곁에서 쉬는 집사의 손",
-        "width": 500
-      },
-      {
-        "type": "text",
-        "text": "월요일도, 수요일도\n밤 8시에 한 밴드에서",
-        "size": 20,
-        "bold": true,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "전국의 전문 브리더·업체 30여 곳이 모였습니다.\n지역별 샵들이 돌아가며 각자의 크레들을 소개하니,\n한 밴드 안에서도 매회 다른 아이들을 구경할 수 있어요.\n\n오늘은 어떤 무늬가 눈에 들어올지,\n어떤 샵의 브리딩 이야기가 들릴지.\n네이버 밴드 라이브 경매 ‘전국크레자랑’에서 함께 보세요.",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "구경하다 마음에 드는 아이를 만났을 땐",
-        "size": 20,
-        "bold": true,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "낙찰되면 카카오톡 채널 알림톡이 자동으로 발송됩니다.\n톡 안의 전용 페이지에서 낙찰 내역과 결제 안내를 확인해 주세요.\n처음 등록한 배송 정보는 다음 낙찰에도 그대로 적용됩니다.\n\n생물 전문 배송업체가 집 근처 제휴 업체까지 배송하며,\n도착 후 상태를 직접 확인하고 픽업하시면 됩니다.",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "10월 14일 수요일 밤 8시\n서울·인천부터 시작합니다",
-        "size": 26,
-        "bold": true,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "첫 방송에는 낙찰자 1인당 배송비 최대 3만 원을 지원합니다.\n\n입양 계획이 없어도 부담 없이 들러주세요.\n크레 구경하며 잠깐 쉬어가는 저녁이면 좋겠습니다.\n첫 방송에서 인사드릴게요 ^^",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      },
-      {
-        "type": "text",
-        "text": "전국크레자랑 밴드 바로가기",
-        "size": 18,
-        "bold": true,
-        "color": "green",
-        "align": "center",
-        "href": "https://band.us/n/a6a6beMe97Ucc"
-      },
-      {
-        "type": "text",
-        "text": "네이버 밴드에서 ‘전국크레자랑’ 검색",
-        "size": 16,
-        "bold": false,
-        "color": "ink",
-        "align": "center"
-      }
-    ],
-    "version": 1,
-    "bundleVersion": 1,
-    "active": true
-  }
+ {
+  "id": "launch26-joseon",
+  "name": "조선시대 저잣거리 · 사극 드립형",
+  "title": "👑 전하, 저잣거리에 용이 나타났다 하옵니다",
+  "catalogOrder": 1,
+  "bundleVersion": 7,
+  "version": 1,
+  "active": true,
+  "blocks": [
+   {
+    "type": "text",
+    "text": "전하, 저잣거리에\n용이 나타났다 하옵니다",
+    "size": 26,
+    "bold": true,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "“용이라? 그 크기가 대체 얼마나 되느냐?”\n“손바닥만 하옵니다.”",
+    "size": 18,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "image",
+    "src": "/promo-assets/joseon.png",
+    "alt": "작은 크레를 보고 미소 짓는 임금과 신하 · 콘셉트 일러스트",
+    "width": 500
+   },
+   {
+    "type": "text",
+    "text": "“손바닥만 한 용이라니, 천하에 어찌 그런 영물이 있단 말이냐!”",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "팔도강산 고을마다 지극정성으로 기른 크레 소식이 자자하여,\n과인이 팔도의 장인들을 한자리에 불러 모으라 명하였노라.",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "image",
+    "src": "/promo-assets/joseon-small-dragon-v1.jpg",
+    "copySrc": "https://creok.onrender.com/promo-assets/joseon-small-dragon-v1.jpg",
+    "alt": "한복 소매 아래 손바닥 위에 앉은 작은 크레스티드게코",
+    "width": 500
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "“그러하오면, 서울·인천의 저희 샵이 먼저 자랑하겠나이다!”",
+    "size": 20,
+    "bold": true,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "이름하여 전국크레자랑(全國크레自慢)",
+    "size": 18,
+    "bold": true,
+    "color": "green",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "안녕하십니까 파사모 회원님들! 이번에 전국 30여 곳 장인·상단과 함께 대장정에 오르게 된 참여 업체 사장입니다 ㅎㅎ\n매주 달 뜨는 월요일과 수요일 밤 여덟 시(戌時), 네이버 밴드 저잣거리에서 명품 크레 야간 장터가 실시간으로 펼쳐집니다.",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "대망의 첫 장터 : 10월 14일 수요일 밤 8시 【서울·인천 편】",
+    "size": 20,
+    "bold": true,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "저희 샵도 첫 방송에 자존심을 걸고 정성껏 키운 명품 용들을 이끌고 출두하옵니다!",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "첫 장터의 은혜로운 혜택",
+    "size": 20,
+    "bold": true,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "낙찰자 모두에게 역마 삯(배송비)을 지원하오니,\n한 사람당 최대 삼만 냥(3만 원)의 혜택을 내리겠나이다.",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "손님들의 노고를 더는 방도",
+    "size": 20,
+    "bold": true,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "파발의 신속함 : 낙찰 즉시 카카오 전령(알림톡)이 당도하옵니다.\n간편한 셈법 : 전용 서찰(페이지)에서 낙찰 내역과 셈법(결제 안내)을 한눈에 살피실 수 있사옵니다.\n생물 전문 배송 : 전문 배송업체가 집 근처 객주(협력 매장)까지 귀한 용을 모셔 오옵니다.\n편안한 픽업 : 도착한 아이의 상태를 직접 살피고 데려가시면 되옵니다.",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "먼 길 행차하실 필요 없사옵니다.\n그저 안방 사랑방에 편히 앉으시어 구경만 하셔도 좋으니,\n과연 어느 고을의 용이 가장 영롱한지 함께 지켜보시지요 ^^",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "전국크레자랑 밴드 바로가기",
+    "size": 18,
+    "bold": true,
+    "color": "green",
+    "align": "center",
+    "href": "https://band.us/n/a6a6beMe97Ucc"
+   },
+   {
+    "type": "text",
+    "text": "네이버 밴드에서 ‘전국크레자랑’ 검색",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   }
+  ]
+ },
+ {
+  "id": "launch26-showtime",
+  "name": "전국노래자랑형 · 우리 동네 자랑",
+  "title": "🎤 전국~~~~크레자랑｜서울·인천이 먼저 자랑하겠습니다",
+  "catalogOrder": 2,
+  "bundleVersion": 7,
+  "version": 1,
+  "active": true,
+  "blocks": [
+   {
+    "type": "text",
+    "text": "전국~~~~ 크레자랑!",
+    "size": 26,
+    "bold": true,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "안녕하세요 파사모 회원님들! 이번에 함께하게 된 [업체명] 사장입니다 ^^\n다들 일요일 낮마다 전국노래자랑 한 번쯤 보셨죠? ㅎㅎ\n동네마다 숨은 명가수분들이 무대에 오르는 것처럼,\n우리 크레 판에도 지역마다·샵마다 꼭꼭 숨겨둔 보물 같은 아이들이 정말 많거든요.",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "image",
+    "src": "/promo-assets/festival-stage-v5.jpg",
+    "alt": "마이크를 든 진행자가 맞이하는 야외무대",
+    "width": 500
+   },
+   {
+    "type": "text",
+    "text": "“우리 동네에 이런 크레가 있습니다”",
+    "size": 20,
+    "bold": true,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "그래서 전국의 전문 브리더·업체 30여 곳이 뭉쳐서\n이름 그대로 ‘전국크레자랑’을 제대로 열어보기로 했습니다!\n\n매주 지역별로 돌아가며 각 샵의 자존심을 걸고,\n정성껏 키운 아이들을 라이브 방송으로 속 시원하게 자랑하고 경매도 진행합니다.",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "사진만으로 다 보기 어려웠던 아이들의 매력,\n라이브에서 움직임과 무늬를 보며 브리더의 설명도 함께 들어보세요.",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "image",
+    "src": "/promo-assets/festival-cre-v5.jpg",
+    "alt": "서로 다른 무늬의 작은 크레를 소개하는 장갑 낀 손",
+    "width": 500
+   },
+   {
+    "type": "text",
+    "text": "월·수 밤 8시, 안방 1열에서 신나게 구경하세요",
+    "size": 20,
+    "bold": true,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "방송은 매주 월요일과 수요일 밤 8시, 네이버 밴드 라이브로 찾아갑니다.\n채팅으로 편하게 소통도 하시고, 마음에 쏙 드는 아이가 나오면 실시간 경매로 손맛도 느껴보세요!",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "image",
+    "src": "/promo-assets/festival-microphone-v1.jpg",
+    "copySrc": "https://creok.onrender.com/promo-assets/festival-microphone-v1.jpg",
+    "alt": "마이크와 작은 크레를 함께 소개하는 야외무대의 손",
+    "width": 500
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "낙찰 뒤 입금·배송도 번거로움 없이 깔끔하게",
+    "size": 20,
+    "bold": true,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "낙찰받으시면 카카오톡 채널 알림톡이 자동으로 발송됩니다.\n톡 안의 링크에서 낙찰 내역과 결제 안내를 한눈에 확인하시고,\n배송 정보도 최초 1회만 등록해 두시면 다음번 낙찰에도 그대로 자동 적용됩니다.\n\n아이들은 생물 전문 배송업체를 통해\n집 근처 제휴 업체로 배송됩니다.\n도착 후 직접 상태를 확인하고 픽업하시면 됩니다.",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "대망의 첫 자랑은 서울·인천부터!",
+    "size": 26,
+    "bold": true,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "10월 14일 수요일 밤 8시, 서울·인천 편으로 첫 테이프를 끊습니다!\n첫 방송 기념으로 낙찰자 1인당 배송비 최대 3만 원 지원 혜택도 함께 드립니다.\n\n꼭 입양 계획이 없으셔도 괜찮으니,\n어느 동네 크레가 제일 예쁜지 편하게 들어오셔서 구경도 하시고 응원 댓글 하나씩 남겨주세요 ^^",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "전국크레자랑 밴드 바로가기",
+    "size": 18,
+    "bold": true,
+    "color": "green",
+    "align": "center",
+    "href": "https://band.us/n/a6a6beMe97Ucc"
+   },
+   {
+    "type": "text",
+    "text": "네이버 밴드에서 ‘전국크레자랑’ 검색",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   }
+  ]
+ },
+ {
+  "id": "ep01-welcome",
+  "name": "입찰자 인터뷰형 · 구경보다 바빴던 날",
+  "title": "🔴 방송 찾다가 지치셨나요｜크레는 한 밴드에서",
+  "catalogOrder": 3,
+  "bundleVersion": 7,
+  "version": 1,
+  "active": true,
+  "blocks": [
+   {
+    "type": "text",
+    "text": "“애들 구경 좀 하려고 켰는데\n찾아다니느라 제가 더 바쁘더라고요”",
+    "size": 26,
+    "bold": true,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "안녕하세요 파사모 회원님들, [업체명]입니다 ^^\n라이브 경매를 보는 집사님 입장에서 생각해 봤습니다.\n예쁜 아이들은 보고 싶은데, 방송 챙기는 과정이 은근히 번거롭지 않으셨나요?",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "image",
+    "src": "/promo-assets/interview-home-v5.jpg",
+    "alt": "휴대폰을 든 집사와 마이크",
+    "width": 500
+   },
+   {
+    "type": "text",
+    "text": "“좋아하는 샵 방송 시간 챙기는 게 은근히 일이더라고요”",
+    "size": 20,
+    "bold": true,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "“이 밴드 저 밴드 가입해 둬도 샵마다 방송 요일이랑 시간이 제각각이라,\n퇴근하고 깜빡 딴짓하면 보고 싶던 샵 방송은 이미 끝나 있고…\n\n어렵게 낙찰받아도 계좌 번호 어디 있었지 찾고,\n배송 주소 일일이 톡으로 보내고, 다음번 낙찰 때 또 똑같이 적고…\n솔직히 아이들 보는 건 너무 좋은데 이 과정들이 참 번거롭고 피곤했어요.”",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "그래서, 전국의 브리더들이 한 밴드에 모였습니다",
+    "size": 26,
+    "bold": true,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "집사님들의 그 현실적인 고충에 깊이 공감해서,\n전국의 실력파 브리더·전문 매장 30여 곳이 뜻을 모았습니다.\n\n이제 여기저기 알림 켜두고 헤매실 필요 없이,\n‘전국크레자랑’ 밴드 딱 한곳에서 전국의 다양한 크레들을 만나실 수 있습니다!",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "방송 시간은 고정, 낙찰 안내는 자동으로",
+    "size": 20,
+    "bold": true,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "방송은 매주 월요일과 수요일 밤 8시!\n지역별 전문 업체들이 순서대로 돌아가며 정성껏 키운 아이들을 라이브로 선보입니다.\n\n낙찰 안내도 카카오톡 채널 알림톡이 자동으로 발송됩니다.\n톡 안의 링크에서 낙찰 내역과 결제 안내를 바로 확인하실 수 있고,\n등록해 두신 배송 주소는 다음 낙찰에도 그대로 자동 적용됩니다.",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "image",
+    "src": "/promo-assets/interview-evening-live-v1.jpg",
+    "copySrc": "https://creok.onrender.com/promo-assets/interview-evening-live-v1.jpg",
+    "alt": "소파에 편히 앉아 휴대폰으로 라이브를 보는 집사의 손",
+    "width": 500
+   },
+   {
+    "type": "image",
+    "src": "/promo-assets/after-bid-v5.png",
+    "alt": "카카오톡 알림톡 → 전용 페이지 확인 → 집 근처 업체 픽업",
+    "width": 500
+   },
+   {
+    "type": "text",
+    "text": "생물 전문 배송으로 집 근처에서 픽업",
+    "size": 20,
+    "bold": true,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "아이들은 생물 전문 배송업체를 통해\n집 근처 제휴 업체로 배송됩니다.\n도착 후 직접 상태를 확인하고 픽업하시면 됩니다.",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "첫 방송 : 10월 14일 수요일 밤 8시 【서울·인천 편】",
+    "size": 20,
+    "bold": true,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "10월 14일 수요일 밤 8시, 서울·인천 대표 샵들의 개체들로 첫 방송이 시작됩니다!\n첫 방송을 함께해 주시는 낙찰자분들께는 1인당 배송비 최대 3만 원을 지원해 드립니다.\n\n이제 방송 찾아다니느라 피곤해하지 마시고,\n월·수 밤 8시에 안방에서 편하게 예쁜 크레들 구경하러 놀러 오세요 ^^",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "전국크레자랑 밴드 바로가기",
+    "size": 18,
+    "bold": true,
+    "color": "green",
+    "align": "center",
+    "href": "https://band.us/n/a6a6beMe97Ucc"
+   },
+   {
+    "type": "text",
+    "text": "네이버 밴드에서 ‘전국크레자랑’ 검색",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   }
+  ]
+ },
+ {
+  "id": "launch26-taste",
+  "name": "취향 찾기형 · 어떤 크레에 눈이 가세요",
+  "title": "🔥 발색파 vs 화이트 월파｜당신은 어느 쪽인가요",
+  "catalogOrder": 4,
+  "blocks": [
+   {
+    "type": "text",
+    "text": "당신은 어떤 취향을\n갖고 있나요",
+    "size": 26,
+    "bold": true,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "안녕하세요 파사모 회원님들, [업체명]입니다 ^^\n크레 아이들 보실 때 어디에 가장 먼저 눈이 가시나요?\n묵직한 다크 발색, 하얗게 꽉 찬 화이트 월, 빈틈없는 핀과 드리피…\n집사님마다 “이건 진짜 못 참지” 하는 최애 포인트가 다 다르시더라고요.",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "image",
+    "src": "/promo-assets/taste-v6.jpg",
+    "alt": "서로 다른 색과 무늬의 크레스티드게코 세 마리",
+    "width": 500
+   },
+   {
+    "type": "text",
+    "text": "내 취향이 아닐 줄 알았는데, 자꾸만 보게 되는 아이",
+    "size": 20,
+    "bold": true,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "저희도 아이들 축양하다 보면 참 신기할 때가 많습니다.\n비슷한 모프여도 콧대 라인 하나, 옆구리 패턴 하나에 느낌이 완전히 달라지거든요.\n\n평소 좋아하시던 고정 취향도 좋지만,\n생각지도 못했던 매력의 아이에게 문득 눈길이 꽂히는 재미도 크레를 키우는 묘미 아닐까 싶습니다 ㅎㅎ",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "image",
+    "src": "/promo-assets/taste-color-whitewall-v1.jpg",
+    "copySrc": "https://creok.onrender.com/promo-assets/taste-color-whitewall-v1.jpg",
+    "alt": "발색과 화이트 월이 다른 두 크레를 소개하는 손",
+    "width": 500
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "30여 곳의 브리더가 모이면, 구경할 취향도 넓어집니다",
+    "size": 20,
+    "bold": true,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "전국의 전문 브리더·업체 30여 곳이 함께하는 ‘전국크레자랑’.\n지역별 전문 샵들이 돌아가며 릴레이로 라이브를 열어\n각자의 브리딩 철학과 시간으로 빚어낸 개성 넘치는 아이들을 선보입니다.\n\n매주 월요일과 수요일 밤 8시, 네이버 밴드 라이브에서\n실시간 움직임과 무늬를 보며 나만의 취향을 찾아보세요!\n당장 입양 계획이 없으셔도 편하게 랜선 힐링하러 오시면 됩니다 ^^",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "마음에 쏙 드는 아이를 낙찰받으셨다면",
+    "size": 20,
+    "bold": true,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "낙찰 즉시 카카오톡 채널 알림톡이 자동으로 발송됩니다.\n전용 페이지에서 낙찰 내역과 결제 안내를 한 번에 확인하실 수 있고,\n배송 정보는 최초 1회만 등록해 두시면 다음번 낙찰에도 그대로 자동 적용됩니다.\n\n아이들은 생물 전문 배송업체를 통해\n집 근처 제휴 업체로 배송됩니다.\n도착 후 직접 상태를 확인하고 픽업하시면 됩니다.",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "첫 번째 취향 탐색은 서울·인천부터!",
+    "size": 26,
+    "bold": true,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "10월 14일 수요일 밤 8시, 대망의 첫 방송에서 찾아뵙겠습니다!\n첫 방송 낙찰자분들께는 1인당 배송비 최대 3만 원 지원 혜택도 함께 드립니다.\n\n회원님들은 어떤 스타일의 크레를 가장 좋아하시나요? 댓글로도 편하게 나눠주세요!\n저희도 정말 멋진 아이들로 정성껏 준비해서 기다리겠습니다 ^^",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "전국크레자랑 밴드 바로가기",
+    "size": 18,
+    "bold": true,
+    "color": "green",
+    "align": "center",
+    "href": "https://band.us/n/a6a6beMe97Ucc"
+   },
+   {
+    "type": "text",
+    "text": "네이버 밴드에서 ‘전국크레자랑’ 검색",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   }
+  ],
+  "version": 1,
+  "bundleVersion": 9,
+  "active": true
+ },
+ {
+  "id": "launch26-tour",
+  "name": "랜선 샵 투어형 · 거리 대신 한 밴드",
+  "title": "🚗 보고 싶은 그 샵, 너무 멀었죠｜이번엔 밴드에서",
+  "catalogOrder": 5,
+  "blocks": [
+   {
+    "type": "text",
+    "text": "보고 싶은 샵은 전국에\n나는 오늘도 우리 동네에",
+    "size": 26,
+    "bold": true,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "안녕하세요 파사모 회원님들, [업체명]입니다!\n인스타나 카페 피드 보면서 “와, 여기 샵 아이들 실물로 꼭 보고 싶다” 했다가\n지도 검색해 보고 너무 멀어서 조용히 뒤로 가기 누르신 적 다들 있으시죠? ㅎㅎ\n마음은 이미 전국 샵 투어 중인데, 바쁜 일상에 주말마다 멀리 찾아가기는 참 쉽지 않습니다.",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "image",
+    "src": "/promo-assets/tour-v6.jpg",
+    "alt": "작은 크레를 소개하는 브리더와 샵을 구경하는 집사",
+    "width": 500
+   },
+   {
+    "type": "text",
+    "text": "샵이 있는 지역은 달라도, 크레는 한 밴드에서 만납니다!",
+    "size": 20,
+    "bold": true,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "그래서 전국의 전문 브리더·업체 30여 곳이 의기투합했습니다.\n서울·인천부터 경기, 대구·경북, 부산·울산·경남, 전라·충청까지!\n\n각 지역을 대표하는 실력파 샵들이 정성껏 키운 아이들을 차례로 선보이는\n전국 연합 릴레이 라이브 경매, ‘전국크레자랑’입니다.\n직접 장거리 운전하며 돌아다니실 필요 없이, 전국의 명품 크레들을 안방 1열에서 차례로 만나보세요.",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "월·수 밤 8시, 안방에서 떠나는 전국 크레 샵 투어",
+    "size": 20,
+    "bold": true,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "평소 눈여겨보던 유명 샵의 개체도 보고, 숨은 고수 업체의 아이도 새롭게 발견하고!\n실시간 고화질 영상으로 피지컬과 움직임을 보며 브리더의 생생한 설명까지 들으시면\n사진 몇 장으로 구경할 때와는 비교할 수 없는 짜릿한 재미가 있습니다.\n\n방송은 매주 월요일과 수요일 밤 8시 고정!\n퇴근 후 편안한 마음으로 들어오셔서, 이번엔 어느 동네 아이들이 나오나 즐겁게 구경해 주세요.",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "멀리 있는 샵의 아이, 낙찰 후에는 어떻게 수령하나요?",
+    "size": 20,
+    "bold": true,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "낙찰 시 카카오톡 채널 알림톡이 자동으로 발송됩니다.\n전용 페이지에서 낙찰 내역과 결제 안내를 원클릭으로 확인하시고,\n배송 주소는 최초 1회만 등록해 두시면 다음번에도 그대로 자동 적용됩니다.\n\n아이들은 생물 전문 배송업체를 통해\n집 근처 제휴 업체로 배송됩니다.\n도착 후 직접 상태를 확인하고 픽업하시면 됩니다.",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "image",
+    "src": "/promo-assets/tour-nearby-pickup-v1.jpg",
+    "copySrc": "https://creok.onrender.com/promo-assets/tour-nearby-pickup-v1.jpg",
+    "alt": "집 근처 매장에서 작은 크레의 상태를 직접 확인하는 손",
+    "width": 500
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "첫 번째 샵 투어 행선지는 서울·인천!",
+    "size": 26,
+    "bold": true,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "10월 14일 수요일 밤 8시, 대장정의 첫 테이프를 끊습니다!\n첫 방송을 함께해 주시는 낙찰자분들께는 1인당 배송비 최대 3만 원을 지원해 드립니다.\n\n멀어서 눈으로만 찜해두셨던 전국 각지의 크레들,\n이번엔 ‘전국크레자랑’ 밴드에서 편안하게 랜선 투어로 만나보세요 ^^",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "전국크레자랑 밴드 바로가기",
+    "size": 18,
+    "bold": true,
+    "color": "green",
+    "align": "center",
+    "href": "https://band.us/n/a6a6beMe97Ucc"
+   },
+   {
+    "type": "text",
+    "text": "네이버 밴드에서 ‘전국크레자랑’ 검색",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   }
+  ],
+  "version": 1,
+  "bundleVersion": 9,
+  "active": true
+ },
+ {
+  "id": "launch26-breeder",
+  "name": "브리더 준비 노트형 · 방송 전의 설렘",
+  "title": "👀 사장님은 어떤 크레를 방송에 데려올까요",
+  "catalogOrder": 6,
+  "blocks": [
+   {
+    "type": "text",
+    "text": "방송 전, 사장님들은\n어떤 아이를 고를까요",
+    "size": 26,
+    "bold": true,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "안녕하세요 파사모 회원님들, [업체명]입니다 ^^\n이번에 전국의 동료 브리더들과 함께 ‘전국크레자랑’ 라이브를 준비하며 인사드립니다.\n\n예쁜 아이들을 기다려주시는 집사님들도 두근거리시겠지만,\n“어떤 아이를 데리고 나가야 회원님들이 감탄하실까?” 고민하며\n축양장을 둘러보는 저희 사장들도 정말 가슴이 뜁니다 ㅎㅎ\n사진 한 장에는 차마 다 담기지 않는 아이들의 진짜 매력을 방송에서 속 시원히 보여드리고 싶거든요.",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "image",
+    "src": "/promo-assets/prep-v6.jpg",
+    "alt": "촬영 카메라 앞에서 작은 크레를 소개하는 흰 장갑 낀 손",
+    "width": 500
+   },
+   {
+    "type": "text",
+    "text": "빛나는 무늬 뒤에는, 정성으로 키워낸 브리더의 이야기가 있습니다",
+    "size": 20,
+    "bold": true,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "이 아이는 어떤 라인에서 태어났는지, 자라면서 발색이 어떻게 올라오는지,\n어떤 포인트를 눈여겨보시면 좋을지.\n\n방송에서는 아이의 컨디션과 활발한 움직임을 여과 없이 보여드리면서\n아이마다 담긴 사육 이야기까지 친근하게 들려드리려 합니다.\n궁금하신 점은 실시간 채팅으로 편하게 물어봐 주세요!",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "image",
+    "src": "/promo-assets/breeder-preparation-v1.jpg",
+    "copySrc": "https://creok.onrender.com/promo-assets/breeder-preparation-v1.jpg",
+    "alt": "축양장에서 방송에 소개할 작은 크레를 살피는 브리더",
+    "width": 500
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "한 샵만의 방송이 아닌, 전국 30여 개 브리더들의 릴레이 축제",
+    "size": 20,
+    "bold": true,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "전국의 전문 브리더와 매장 30여 곳이 함께 만드는 상생 라이브입니다.\n회차마다 다른 지역의 전문 샵들이 돌아가며 출연하기 때문에,\n한 밴드 안에서도 매번 새로운 브리딩 스타일과 신선한 아이들을 만나실 수 있습니다.\n\n매주 월요일과 수요일 밤 8시!\n자존심을 걸고 정성껏 키운 명품 크레들을 안방 1열에서 소개해 드리겠습니다.",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "낙찰 뒤 안내도 한곳에서",
+    "size": 20,
+    "bold": true,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "낙찰 즉시 카카오톡 채널 알림톡이 자동으로 발송됩니다.\n전용 페이지에서 낙찰 내역과 결제 안내를 바로 확인하실 수 있고,\n배송 주소도 최초 1회만 등록해 두시면 다음번 낙찰에도 그대로 자동 적용됩니다.\n\n아이들은 생물 전문 배송업체를 통해\n집 근처 제휴 업체로 배송됩니다.\n도착 후 직접 상태를 확인하고 픽업하시면 됩니다.",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "10월 14일 수요일 밤 8시, 서울·인천부터 첫인사 올립니다!",
+    "size": 26,
+    "bold": true,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "대망의 첫 방송은 10월 14일 수요일 밤 8시에 시작합니다.\n첫 방송 낙찰자 전원에게 1인당 배송비 최대 3만 원을 시원하게 지원해 드립니다.\n\n당장 입양 생각이 없으셔도 좋습니다.\n“우와, 저 샵엔 저런 아이도 있네!” 하시며 편하게 놀러 오셔서 응원 댓글 하나씩 남겨주세요.\n저희도 최고의 컨디션으로 정성껏 준비해서 반갑게 맞이하겠습니다 ^^",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "전국크레자랑 밴드 바로가기",
+    "size": 18,
+    "bold": true,
+    "color": "green",
+    "align": "center",
+    "href": "https://band.us/n/a6a6beMe97Ucc"
+   },
+   {
+    "type": "text",
+    "text": "네이버 밴드에서 ‘전국크레자랑’ 검색",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   }
+  ],
+  "version": 1,
+  "bundleVersion": 9,
+  "active": true
+ },
+ {
+  "id": "launch26-series",
+  "name": "드라마 첫 화형 · 다음 지역이 기다려지는 방송",
+  "title": "🎬 첫 화부터 같이 보실래요｜서울·인천 편 10.14",
+  "catalogOrder": 7,
+  "blocks": [
+   {
+    "type": "text",
+    "text": "이번 시리즈의 주인공은\n크레입니다",
+    "size": 26,
+    "bold": true,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "안녕하세요 파사모 회원님들, [업체명]입니다 ^^\n새로운 방송을 소개하려니 저희도 드라마 첫 화를 기다리는 것처럼 설레네요.\n이번엔 전국의 전문 샵들이 한 밴드에 모여,\n회차마다 다른 지역의 멋진 크레들을 차례로 소개합니다.",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "image",
+    "src": "/promo-assets/series-premiere-v1.jpg",
+    "alt": "라이브 촬영 카메라 앞에서 작은 크레를 소개하는 두 진행자의 손",
+    "width": 500
+   },
+   {
+    "type": "text",
+    "text": "같은 시간, 같은 밴드\n출연하는 지역은 달라집니다",
+    "size": 20,
+    "bold": true,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "서울·인천, 경기, 경북, 경남, 전라·충청.\n30여 곳의 전문 브리더·업체가 돌아가며 참여합니다.\n\n한 샵에서 끝나는 단발성 구경이 아니라,\n“다음엔 어느 지역 아이들이 나올까?” 기다리는 설렘이 있습니다.\n매주 월요일과 수요일 밤 8시에 그 즐거움이 이어집니다.",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "마음에 드는 주인공을 만났다면",
+    "size": 20,
+    "bold": true,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "낙찰되면 카카오톡 채널 알림톡이 자동으로 발송됩니다.\n톡 안의 전용 페이지에서 낙찰 내역과 결제 안내를 확인해 주세요.\n처음 등록한 배송 정보는 다음 낙찰에도 그대로 적용됩니다.\n\n생물 전문 배송업체가 집 근처 제휴 업체까지 배송하며,\n도착 후 상태를 직접 확인하고 픽업하시면 됩니다.",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "EP 01 서울·인천\n10월 14일 수요일 밤 8시",
+    "size": 26,
+    "bold": true,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "첫 방송 기념으로 낙찰자분들께 배송비를 1인당 최대 3만 원 지원해 드립니다.\n\n꼭 입양이 아니어도 괜찮으니,\n첫 화부터 편안한 마음으로 함께 즐겨주세요.\n전국크레자랑 밴드에서 반갑게 인사드리겠습니다 ^^",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "전국크레자랑 밴드 바로가기",
+    "size": 18,
+    "bold": true,
+    "color": "green",
+    "align": "center",
+    "href": "https://band.us/n/a6a6beMe97Ucc"
+   },
+   {
+    "type": "text",
+    "text": "네이버 밴드에서 ‘전국크레자랑’ 검색",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   }
+  ],
+  "version": 1,
+  "bundleVersion": 7,
+  "active": true
+ },
+ {
+  "id": "launch26-questions",
+  "name": "라이브 질문형 · 사진 다음의 궁금증",
+  "title": "🔎 사진 저장만 하던 그 크레｜라이브에서 물어보세요",
+  "catalogOrder": 8,
+  "blocks": [
+   {
+    "type": "text",
+    "text": "예쁜 건 알겠는데\n궁금한 게 더 많아졌다면",
+    "size": 26,
+    "bold": true,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "안녕하세요 파사모 회원님들, [업체명]입니다 ^^\n크레 사진을 보다 보면 나도 모르게 저장 버튼부터 누르게 되죠 ㅎㅎ\n그런데 막상 더 깊이 알아보고 싶을 땐,\n사진 한 장만으로는 다 풀리지 않는 궁금증들이 생기곤 합니다.",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "image",
+    "src": "/promo-assets/live-question-v1.jpg",
+    "alt": "작은 크레의 옆구리 무늬를 손으로 가리키며 설명하는 브리더",
+    "width": 500
+   },
+   {
+    "type": "text",
+    "text": "어떤 라인에서 태어났나요\n자라면서 무늬는 어떻게 달라졌나요",
+    "size": 20,
+    "bold": true,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "아이의 활발한 움직임을 보며 브리더의 생생한 설명도 듣고,\n궁금한 점은 실시간 채팅으로 편하게 물어봐 주세요.\n이제 막 크레를 알아보시는 초보 집사님도,\n오랫동안 키워오신 베테랑 집사님도 누구나 편하게 함께하실 수 있습니다.",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "답해주는 샵도, 소개하는 아이들도\n회차마다 새롭게",
+    "size": 20,
+    "bold": true,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "전국의 전문 브리더·업체 30여 곳이 함께합니다.\n다른 지역의 샵들이 돌아가며 참여하는\n네이버 밴드 라이브 경매 ‘전국크레자랑’.\n\n매주 월요일과 수요일 밤 8시,\n사진 속 궁금증을 방송에서 이어가 보세요.",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "낙찰 뒤 안내는 알림톡으로",
+    "size": 20,
+    "bold": true,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "낙찰되면 카카오톡 채널 알림톡이 자동으로 발송됩니다.\n톡 안의 전용 페이지에서 낙찰 내역과 결제 안내를 확인해 주세요.\n처음 등록한 배송 정보는 다음 낙찰에도 그대로 적용됩니다.\n\n생물 전문 배송업체가 집 근처 제휴 업체까지 배송하며,\n도착 후 상태를 직접 확인하고 픽업하시면 됩니다.",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "첫 질문은 서울·인천부터\n10월 14일 수요일 밤 8시",
+    "size": 26,
+    "bold": true,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "첫 방송 기념으로 낙찰자분들께 1인당 배송비를 최대 3만 원 지원해 드립니다!\n\n당장 입양 계획이 없으셔도 좋으니 편하게 구경하러 놀러 오세요.\n회원님들은 크레를 보실 때 어떤 점이 가장 궁금하신가요?\n라이브 방송에서 반갑게 이야기 나눠요 ^^",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "전국크레자랑 밴드 바로가기",
+    "size": 18,
+    "bold": true,
+    "color": "green",
+    "align": "center",
+    "href": "https://band.us/n/a6a6beMe97Ucc"
+   },
+   {
+    "type": "text",
+    "text": "네이버 밴드에서 ‘전국크레자랑’ 검색",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   }
+  ],
+  "version": 1,
+  "bundleVersion": 7,
+  "active": true
+ },
+ {
+  "id": "launch26-afterwork",
+  "name": "퇴근 후 취미형 · 월·수 밤의 작은 즐거움",
+  "title": "📺 퇴근하고 뭐 보세요｜월·수엔 크레 구경",
+  "catalogOrder": 9,
+  "blocks": [
+   {
+    "type": "text",
+    "text": "오늘 하루는 여기까지\n이제 크레 구경할 시간",
+    "size": 26,
+    "bold": true,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "안녕하세요 파사모 회원님들, [업체명]입니다 ^^\n하루 일과를 무사히 마치고 잠깐 소파에 기대어 예쁜 아이들을 보는 시간.\n크레를 사랑하는 집사님들께는 이런 소소한 구경도\n지친 하루 끝의 가장 힐링되는 순간이 아닐까 싶습니다.",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "image",
+    "src": "/promo-assets/afterwork-viewing-v1.jpg",
+    "alt": "저녁 조명 아래 휴대폰과 작은 크레 사육장 곁에서 쉬는 집사의 손",
+    "width": 500
+   },
+   {
+    "type": "text",
+    "text": "월요일도, 수요일도\n밤 8시에 한 밴드에서",
+    "size": 20,
+    "bold": true,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "전국의 전문 브리더·업체 30여 곳이 뭉쳤습니다.\n지역별 샵들이 돌아가며 각자의 크레들을 선보이니,\n한 밴드 안에서도 매회 새롭고 다채로운 아이들을 구경하실 수 있습니다.\n\n오늘은 어떤 아이의 무늬가 눈에 쏙 들어올지,\n어떤 샵의 흥미진진한 브리딩 이야기가 펼쳐질지.\n네이버 밴드 라이브 경매 ‘전국크레자랑’에서 함께 즐겨보세요.",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "구경하다 마음에 드는 아이를 만났을 땐",
+    "size": 20,
+    "bold": true,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "낙찰되면 카카오톡 채널 알림톡이 자동으로 발송됩니다.\n톡 안의 전용 페이지에서 낙찰 내역과 결제 안내를 확인해 주세요.\n처음 등록한 배송 정보는 다음 낙찰에도 그대로 적용됩니다.\n\n생물 전문 배송업체가 집 근처 제휴 업체까지 배송하며,\n도착 후 상태를 직접 확인하고 픽업하시면 됩니다.",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "10월 14일 수요일 밤 8시\n서울·인천부터 시작합니다",
+    "size": 26,
+    "bold": true,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "첫 방송 기념으로 낙찰자분들께 1인당 배송비를 최대 3만 원 지원해 드립니다.\n\n입양 계획이 없으셔도 전혀 부담 없이 들러주세요.\n예쁜 크레들 보시며 하루의 피로를 푸는 편안한 저녁이 되셨으면 좋겠습니다.\n첫 방송에서 반갑게 인사드릴게요 ^^",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   },
+   {
+    "type": "text",
+    "text": "전국크레자랑 밴드 바로가기",
+    "size": 18,
+    "bold": true,
+    "color": "green",
+    "align": "center",
+    "href": "https://band.us/n/a6a6beMe97Ucc"
+   },
+   {
+    "type": "text",
+    "text": "네이버 밴드에서 ‘전국크레자랑’ 검색",
+    "size": 16,
+    "bold": false,
+    "color": "ink",
+    "align": "center"
+   }
+  ],
+  "version": 1,
+  "bundleVersion": 7,
+  "active": true
+ }
 ]
