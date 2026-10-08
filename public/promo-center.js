@@ -147,7 +147,7 @@
     if(navigator.clipboard?.write&&window.ClipboardItem)await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([html],{type:'text/html'}),'text/plain':new Blob([plain],{type:'text/plain'})})]);
     else {const host=document.createElement('div');host.innerHTML=html;host.style.cssText='position:fixed;inset:0;opacity:0;pointer-events:none';$('detail').append(host);try{const range=document.createRange();range.selectNodeContents(host);const selection=getSelection();selection.removeAllRanges();selection.addRange(range);if(!document.execCommand('copy'))throw Error('본문을 직접 선택해 복사해 주세요.');selection.removeAllRanges();}finally{host.remove();}}
    }else await navigator.clipboard.writeText(t.title);
-   $('copy-status').textContent=withFormatting==='plain'?'글을 복사했어요.':withFormatting?'글과 사진 순서를 담아 복사했어요. 카페에 붙여넣은 뒤 사진과 서식을 확인해 주세요.':'제목을 복사했어요.';
+   $('copy-status').textContent=withFormatting==='plain'?'글을 복사했어요.':withFormatting?'본문을 복사했어요. 붙여넣은 뒤 이미지·로고와 서식을 확인해 주세요.':'제목을 복사했어요.';
    if(withFormatting&&!admin){try{await request({action:'copy',requestId:crypto.randomUUID(),templateId:t.id,version:t.version});await refresh();}catch{$('copy-status').textContent='본문은 복사했지만 사용 이력을 저장하지 못했어요. 연결을 확인하고 다시 복사해 주세요.';}}
   }catch(e){$('copy-status').textContent='복사하지 못했어요. 본문을 직접 선택해 복사하거나 PC 브라우저에서 다시 시도해 주세요.';}
   finally{copying=false;syncCopyButtons();if($('detail').open)$(withFormatting==='plain'?'copy-mobile-text':withFormatting?'copy-body':'copy-title').focus();}

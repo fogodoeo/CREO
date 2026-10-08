@@ -10,6 +10,8 @@ dialog[open]{display:flex;flex-direction:column}
 .dialog-head button{flex:none;min-width:44px;min-height:44px}
 .dialog-toolbar .copy-actions{position:static;padding:16px 0 0;gap:8px;background:transparent}
 .dialog-toolbar #copy-status{margin:12px 0 0;font-size:14px;line-height:1.5}
+.copy-compatibility{margin:12px 0 0;padding:12px;background:var(--bg);border-radius:8px;color:var(--muted);font-size:14px;line-height:1.5;word-break:keep-all;overflow-wrap:anywhere}
+.copy-compatibility strong{display:block;margin-bottom:4px;color:var(--text);font-weight:600}
 .dialog-scroll{min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:20px 24px 24px;scroll-padding-block:20px}
 .dialog-scroll>p:first-child{margin-top:0}
 @media(max-width:540px){dialog{padding:0}.dialog-toolbar{padding:16px}.dialog-scroll{padding:16px}.dialog-toolbar .copy-actions button{padding-inline:12px}}
