@@ -22,5 +22,17 @@
   "launch26-breeder": {
     "title": "👀 사장님은 어떤 크레를 방송에 데려올까요",
     "previous": ["🦎 방송에 꺼내 놓을 아이들, 저희도 설레는 마음으로 준비합니다"]
+  },
+  "launch26-series": {
+    "title": "🎬 첫 화부터 같이 보실래요｜서울·인천 편 10.14",
+    "previous": []
+  },
+  "launch26-questions": {
+    "title": "🔎 사진 저장만 하던 그 크레｜라이브에서 물어보세요",
+    "previous": []
+  },
+  "launch26-afterwork": {
+    "title": "📺 퇴근하고 뭐 보세요｜월·수엔 크레 구경",
+    "previous": []
   }
 }

@@ -67,7 +67,8 @@ async function main(){
   media[b.src]='https://creok.onrender.com'+b.src;
   await sharp(src).resize(800,450,{fit:'inside',withoutEnlargement:true}).webp({quality:88}).toFile(src.replace(/\.[^.]+$/,'.thumb.webp'));
  }
- fs.writeFileSync(path.join(root,'promo-templates.json'),JSON.stringify([...kept,...pack],null,2)+'\n');
+ const later=before.filter(t=>!preserved.includes(t.id)&&!pack.some(p=>p.id===t.id));
+ fs.writeFileSync(path.join(root,'promo-templates.json'),JSON.stringify([...kept,...pack,...later],null,2)+'\n');
  fs.writeFileSync(path.join(root,'promo-media.json'),JSON.stringify(media,null,2)+'\n');
  for(const [i,t]of pack.entries()){
   const blocks=[image('hero-seoul-incheon-v3.png','전국크레자랑 · EP 01. 서울·인천'),...t.blocks];

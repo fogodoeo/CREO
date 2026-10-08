@@ -27,8 +27,8 @@ test('copy hooks keep genre voices but remove unsupported system and quality cla
  }
  assert.equal(seed.find(t=>t.id==='launch26-taste').blocks[0].text,'당신은 어떤 취향을\n갖고 있나요');
 });
-test('all six published seeds use centered copy, no image notes or parcel claims, and specialist delivery',()=>{
- const seed=require('../promo-templates.json');assert.equal(seed.length,6);
+test('all published seeds use centered copy, no image notes or parcel claims, and specialist delivery',()=>{
+ const seed=require('../promo-templates.json');assert.ok(seed.length>=6);
  for(const template of seed){
   const text=template.blocks.filter(b=>b.type==='text');
   assert.ok(text.every(b=>b.align==='center'),template.id);

@@ -23,7 +23,7 @@ function fixture(){
 test('three new stories are added once, removed drafts are archived and all three approved manuscripts keep operator edits',async()=>{
  const f=fixture(),s=createView(f.create());const first=await s();
  assert.equal(first.revision,11);assert.equal(f.writes,1);
- assert.equal(first.templates.filter(t=>t.active!==false).length,6);
+ assert.equal(first.templates.filter(t=>t.active!==false).length,seed.length);
  const old=first.templates.find(t=>t.id==='launch26-easy');assert.equal(old.active,false);assert.equal(old.version,4);
  for(const id of ['launch26-showtime','ep01-welcome']){
   const preserved=first.templates.find(t=>t.id===id);assert.equal(preserved.version,3);assert.equal(preserved.title,'운영자가 수정한 '+id);
@@ -77,11 +77,11 @@ test('failed migration never reports an unsaved new catalog as successful',async
 test('reader hook migration updates stock titles once, preserving operator titles and immutable publication history',async()=>{
  const f=fixture(),saved=JSON.parse(f.raw),hooks=require('../promo-copy-hooks.json');saved.catalogVersion=4;
  for(const a of saved.assignments)if(!a.publication)a.templateId=require('../promo-catalog-migration.json').retire[a.templateId]||a.templateId;
- saved.templates=structuredClone(seed);for(const t of saved.templates){t.version=6;t.title=hooks[t.id].previous[0];}
+ saved.templates=structuredClone(seed.filter(t=>hooks[t.id]?.previous.length));for(const t of saved.templates){t.version=6;t.title=hooks[t.id].previous[0];}
  saved.templates.find(t=>t.id==='launch26-tour').title='운영자가 정한 샵 투어 제목';
  const before=structuredClone(saved.assignments),copies=structuredClone(saved.copies);f.raw=JSON.stringify(saved);
  const first=await createView(f.create())();
- for(const t of first.templates){assert.equal(t.title,t.id==='launch26-tour'?'운영자가 정한 샵 투어 제목':hooks[t.id].title);assert.equal(t.version,t.id==='launch26-tour'?6:7);}
+ for(const t of first.templates.filter(t=>hooks[t.id]?.previous.length)){assert.equal(t.title,t.id==='launch26-tour'?'운영자가 정한 샵 투어 제목':hooks[t.id].title);assert.equal(t.version,t.id==='launch26-tour'?6:7);}
  assert.deepEqual(JSON.parse(f.raw).assignments,before);assert.deepEqual(JSON.parse(f.raw).copies,copies);
  await createView(f.create())();assert.equal(f.writes,1);
  const t=first.templates[0];await f.create().mutate({admin:true},{action:'template',requestId:randomUUID(),revision:first.revision,id:t.id,name:t.name,title:'다시 직접 다듬은 제목',blocks:t.blocks,active:true});
@@ -100,4 +100,31 @@ test('photo additions preserve version 5 operator edits and history, add once an
  await createView(f.create())();assert.equal(f.writes,1);
  const later=await f.create().mutate({admin:true},{action:'template',requestId:randomUUID(),revision:first.revision,id:changed.id,name:changed.name,title:'사진 추가 이후 직접 수정',blocks:changed.blocks.filter(b=>!sources.has(b.src)),active:true});
  const after=await createView(f.create())();assert.equal(after.revision,later.revision);assert.equal(after.templates.find(t=>t.id===changed.id).blocks.some(b=>sources.has(b.src)),false);
+});
+
+test('new concepts append once to the current catalog, preserving edited manuscripts and frozen history',async()=>{
+ const f=fixture(),saved=JSON.parse(f.raw),concepts=require('../tools/add-promo-concepts.cjs').pack;
+ const ids=new Set(concepts.map(t=>t.id));
+ saved.catalogVersion=require('../promo-catalog-migration.json').version;
+ saved.templates=structuredClone(seed.filter(t=>!ids.has(t.id)));
+ saved.templates[0].title='현재 운영자가 직접 고른 제목';saved.templates[0].blocks[0].text='현재 운영자가 직접 고친 도입부';
+ saved.templates[0].active=false;saved.templates[0].version=12;
+ const oldTemplates=structuredClone(saved.templates),assignments=structuredClone(saved.assignments),copies=structuredClone(saved.copies);f.raw=JSON.stringify(saved);
+ const first=await createView(f.create())();assert.equal(first.revision,11);assert.equal(f.writes,1);
+ const persisted=JSON.parse(f.raw);assert.deepEqual(persisted.templates.filter(t=>!ids.has(t.id)),oldTemplates);
+ assert.deepEqual(persisted.assignments,assignments);assert.deepEqual(persisted.copies,copies);
+ for(const t of concepts){const added=first.templates.filter(v=>v.id===t.id);assert.equal(added.length,1);assert.equal(added[0].active,true);assert.equal(added[0].version,1);}
+ await createView(f.create())();assert.equal(f.writes,1);
+ const added=first.templates.find(t=>ids.has(t.id));await f.create().mutate({admin:true},{action:'template',requestId:randomUUID(),revision:first.revision,id:added.id,name:added.name,title:'새 원고를 나중에 수정한 제목',blocks:added.blocks,active:false});
+ const again=await createView(f.create())();assert.equal(again.templates.find(t=>t.id===added.id).title,'새 원고를 나중에 수정한 제목');assert.equal(again.templates.find(t=>t.id===added.id).active,false);
+});
+
+test('current-catalog additions retry concurrent changes and never report a failed save as successful',async()=>{
+ const f=fixture(),saved=JSON.parse(f.raw),ids=new Set(require('../tools/add-promo-concepts.cjs').pack.map(t=>t.id));
+ saved.catalogVersion=require('../promo-catalog-migration.json').version;saved.templates=structuredClone(seed.filter(t=>!ids.has(t.id)));f.raw=JSON.stringify(saved);
+ const normal=f.repository.compareAndSwapRows;let conflicted=false;
+ f.repository.compareAndSwapRows=async(...args)=>{if(!conflicted){conflicted=true;const latest=JSON.parse(f.raw);latest.revision++;latest.templates[0].title='동시에 수정한 제목';latest.copies.push({vendorId:'vendor',templateId:latest.templates[0].id,version:1,at:99});f.raw=JSON.stringify(latest);return false;}return normal(...args);};
+ const first=await createView(f.create())();assert.equal(first.revision,12);assert.equal(first.templates[0].title,'동시에 수정한 제목');assert.equal(JSON.parse(f.raw).copies.at(-1).at,99);assert.equal(f.writes,1);
+ f.raw=JSON.stringify(saved);f.repository.compareAndSwapRows=async()=>false;
+ await assert.rejects(createView(f.create())(),e=>e.status===409);assert.equal(JSON.parse(f.raw).templates.some(t=>ids.has(t.id)),false);
 });
