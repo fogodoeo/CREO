@@ -3239,6 +3239,16 @@ function createPlatformApi({
             if (await buyerAccount.handle(req,res,url)) return true;
             const segments = url.pathname.slice('/api/platform/'.length).split('/').filter(Boolean).map(decodeURIComponent);
             const method = req.method || 'GET';
+            if(segments[0]==='promo-library'){
+                if(method!=='GET'||segments.length>2||(segments.length===2&&segments[1]!=='partners')){replyJson(res,405,{error:'홍보 원고는 조회와 복사만 할 수 있어요.'});return true;}
+                let payload;
+                if(segments[1]==='partners')payload=await promoPartners.image({mode:url.searchParams.get('mode'),catalogVersion:url.searchParams.get('catalogVersion'),regions:url.searchParams.getAll('region').map(Number)});
+                else {
+                    const {version,count,vendorCount,regions,unassigned}=await promoPartners.view();
+                    payload={...await promoCenter.library(),partners:{version,count,vendorCount,regions,unassigned}};
+                }
+                replyJson(res,200,payload,{'Cache-Control':'no-store'});return true;
+            }
             if(segments[0]==='promo-center'){
                 if(segments.length!==1||!['GET','POST'].includes(method)){replyJson(res,405,{error:'지원하지 않는 요청입니다.'});return true;}
                 const body=method==='POST'?await readJson(req):{};

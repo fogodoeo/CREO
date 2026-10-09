@@ -109,7 +109,7 @@
   const title=next.status==='overdue'?'홍보글 게시 확인이 필요해요':next.isToday?'오늘 홍보글 게시 대상입니다':'홍보글 게시 일정이 배정됐어요';
   const date=next.date.replace(/^(\d{4})-(\d{2})-(\d{2})$/,'$2월 $3일');
   const hint=next.status==='overdue'?'배정 시간이 지났어요. 이미 게시했다면 글 링크를 등록해 주세요.':'이 시간 안에 카페에 게시하고, 글 링크로 완료를 등록해 주세요.';
-  return '<p class="vendor-promo-eyebrow">전국크레자랑 · 홍보 게시 일정</p><h2>'+title+'</h2><p class="vendor-promo-date">'+esc(date)+' · '+esc(next.slotLabel)+' '+esc(next.start)+'–'+esc(next.end)+'</p><p class="vendor-promo-manuscript">'+esc(next.title)+'</p><p>'+hint+'</p><div class="vendor-promo-actions"><a class="vendor-promo-action" href="'+base+'&assignment='+encodeURIComponent(next.id)+'">배정 원고 열기</a>'+(status.promoSummary.pendingCount>1?'<span>미완료 일정 '+status.promoSummary.pendingCount+'건</span>':'')+'</div>';
+  return '<p class="vendor-promo-eyebrow">전국크레자랑 · 홍보 게시 일정</p><h2>'+title+'</h2><p class="vendor-promo-date">'+esc(date)+' · '+esc(next.slotLabel)+' '+esc(next.start)+'–'+esc(next.end)+'</p><p class="vendor-promo-manuscript">'+esc(next.title)+'</p><p>'+hint+'</p><div class="vendor-promo-actions"><a class="vendor-promo-action" href="'+base+'&assignment='+encodeURIComponent(next.id)+'">배정 원고 열기</a><a class="vendor-promo-action" href="'+base+'&view=templates">전체 원고 보기·복사</a>'+(status.promoSummary.pendingCount>1?'<span>미완료 일정 '+status.promoSummary.pendingCount+'건</span>':'')+'</div>';
  }
  function renderPromo(host,company,status){
   host.dataset.company=company;host.className='vendor-promo-notice';host.innerHTML=promoMarkup(company,status);host.hidden=!host.innerHTML;

@@ -89,6 +89,11 @@ function createPromoCenter({ repository, vendorsFor, now = Date.now }) {
   const current=pending.find(a=>a.date===today)||pending[0],template=current&&state.templates.find(t=>t.id===current.templateId);
   return {pendingCount:pending.length,next:current?{id:current.id,date:current.date,slot:current.slot,slotLabel:SLOTS[current.slot].label,start:SLOTS[current.slot].start,end:SLOTS[current.slot].end,status:status(current),isToday:current.date===today,templateId:current.templateId,title:template?.title||'배정 원고'}:null};
  }
+ async function library() {
+  const {state}=await read();
+  // Only the published manuscript is public. Assignments, usage and audit stay private.
+  return {templates:state.templates.filter(t=>t.active!==false).map(t=>({id:t.id,name:t.name,title:t.title,blocks:normalizeTemplate(t).blocks,version:t.version,catalogOrder:t.catalogOrder}))};
+ }
  async function view({ vendorId = '', admin = false, month }) {
   if (!/^20\d{2}-(0[1-9]|1[0-2])$/.test(month || '')) throw fail('조회할 월을 확인해 주세요.');
   const { state } = await read(), vendors = (await vendorsFor()).filter(v => v.active !== false).map(v => ({ id:v.id, name:v.name }));
@@ -166,6 +171,6 @@ function createPromoCenter({ repository, vendorsFor, now = Date.now }) {
   }
   throw fail('다른 요청을 처리 중이에요. 다시 시도해 주세요.',409);
  }
- return { view, mutate, summary };
+ return { view, mutate, summary, library };
 }
 module.exports={createPromoCenter,normalizeTemplate,validDate,SLOTS};

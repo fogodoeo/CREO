@@ -1,6 +1,7 @@
 (() => {
  'use strict';
  const $=id=>document.getElementById(id),query=new URLSearchParams(location.search),admin=query.get('admin')==='1';
+ const library=!admin&&(query.get('library')==='1'||!query.get('company'));
  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  function imageURL(src){
   const url=new URL(src,location.origin);
@@ -49,6 +50,13 @@
  const names={assigned:'배정됨',completed:'게시 완료',overdue:'미게시',cancelled:'취소됨'};
  function error(message){$('error').textContent=message;$('error').hidden=!message;}
  async function request(body){
+  if(library){
+   if(body&&body.action!=='partner-image')throw Error('원고 수정과 일정 관리는 업체 로그인 후 이용해 주세요.');
+   const params=new URLSearchParams(body?{mode:body.mode,catalogVersion:body.catalogVersion}:{});
+   for(const region of body?.regions||[])params.append('region',region);
+   const response=await fetch('/api/platform/promo-library'+(body?'/partners?'+params:''),{credentials:'omit',cache:'no-store',signal:AbortSignal.timeout(body?60000:20000)});
+   const data=await response.json();if(!response.ok)throw Object.assign(Error(data.error||'원고를 불러오지 못했어요.'),{status:response.status});return data;
+  }
   let fingerprint;
   if(body){const {requestId,...intent}=body;fingerprint=JSON.stringify(intent);const retained=pendingRequests.get(fingerprint)||requestId;pendingRequests.set(fingerprint,retained);body={...body,requestId:retained};}
   const params=new URLSearchParams({month,...(!admin?{company}:{})});
@@ -64,6 +72,12 @@
  const vendorName=id=>state.vendors.find(v=>v.id===id)?.name||'이전 참여 업체';
  const templateName=id=>state.templates.find(t=>t.id===id)?.name||'보관된 원고';
  function render(){
+  if(library){
+   document.title='홍보 원고 · 전국크레자랑';document.querySelector('h1').textContent='홍보 원고';
+   $('library-intro').hidden=false;$('next').hidden=true;document.querySelector('.view-tabs').hidden=true;
+   $('calendar-view').hidden=true;$('templates-view').hidden=false;$('vendor-nav').hidden=true;
+   renderTemplates();return;
+  }
   $('assign').hidden=!admin;$('settings').hidden=!admin;$('create-template').hidden=!admin;$('capacity').value=state.capacity;
   if(admin)$('next').innerHTML='<div class="next-card"><h2>날짜와 담당 업체를 배정해 주세요</h2><p class="muted">업체는 자신의 일정에서 원고를 복사하고, 게시한 글의 링크로 완료를 기록합니다.</p><span class="muted">시간대별 '+state.capacity+'곳 · 복사와 게시 완료를 별도로 기록</span></div>';
   else {const a=state.next;$('next').innerHTML=a?`<div class="next-card"><p class="eyebrow">${esc(vendorName(company))} · 다음 게시 일정</p><h2>${format(a.date)} ${state.slots[a.slot].label}</h2><p>${state.slots[a.slot].start}–${state.slots[a.slot].end} 사이에 게시해 주세요</p><button class="primary" data-preview="${esc(a.templateId)}">배정 원고 보기</button></div>`:'<div class="next-card"><h2>아직 배정된 일정이 없어요</h2><p class="muted">운영자가 배정하면 이곳에 표시됩니다. 홍보 원고는 미리 확인할 수 있어요.</p></div>';
@@ -85,7 +99,8 @@
   $('day-list').innerHTML=Object.entries(state.slots).map(([key,slot])=>{const rows=state.assignments.filter(a=>a.date===selected&&a.slot===key);return `<section class="slot-card"><div class="slot-title"><h3>${slot.label}</h3><span>${slot.start}–${slot.end}</span></div>${rows.length?rows.map(a=>`<div class="assignment"><div class="assignment-top"><strong>${esc(vendorName(a.vendorId))}${a.vendorId===company?' · 내 일정':''}</strong><span class="state ${a.status}">${names[a.status]}</span></div><p>${esc(templateName(a.templateId))}</p><div class="actions"><button data-preview="${esc(a.templateId)}">원고 보기</button>${a.publication?`<a class="button" target="_blank" rel="noopener" href="${esc(a.publication.url)}">게시글 확인 ↗</a>`:a.status!=='cancelled'?(admin?`<button data-edit="${a.id}">배정 변경</button><button data-cancel="${a.id}">배정 취소</button>`:a.vendorId===company?`<button class="primary" data-complete="${a.id}">게시 완료 등록</button>`:''):''}</div>${a.publication?'<p class="muted">업체가 등록한 게시 완료 기록</p>':''}</div>`).join(''):'<p class="empty">배정된 업체가 없습니다</p>'}</section>`;}).join('');
  }
  function renderTemplates(){
-  const cards=list=>list.map(t=>{
+  const cards=list=>list.map(entry=>{
+   const t={usage:[],published:[],...entry};
    const image=thumbnailImage(t),paragraphs=t.blocks.filter(b=>b.type==='text'&&b.text.trim()&&!b.href);
    const prose=paragraphs.filter(b=>b.size===16&&!b.bold&&!b.text.trim().startsWith('※'));
    const lead=(prose.length?prose:paragraphs).slice(0,2).map(b=>b.text.replace(/\s+/g,' ').trim()).join(' ');
@@ -96,6 +111,7 @@
   const active=state.templates.filter(t=>t.active!==false).sort((a,b)=>(a.catalogOrder??100)-(b.catalogOrder??100));
   const archived=state.templates.filter(t=>t.active===false);
   $('templates').innerHTML=cards(active);
+  if(library)for(const usage of $('templates').querySelectorAll('.usage'))usage.hidden=true;
   $('archive-templates').hidden=!admin||!archived.length;
   $('archive-summary').textContent='보관된 원고 '+archived.length+'개';
   $('archived-templates').innerHTML=admin?cards(archived):'';
@@ -148,7 +164,7 @@
     else {const host=document.createElement('div');host.innerHTML=html;host.style.cssText='position:fixed;inset:0;opacity:0;pointer-events:none';$('detail').append(host);try{const range=document.createRange();range.selectNodeContents(host);const selection=getSelection();selection.removeAllRanges();selection.addRange(range);if(!document.execCommand('copy'))throw Error('본문을 직접 선택해 복사해 주세요.');selection.removeAllRanges();}finally{host.remove();}}
    }else await navigator.clipboard.writeText(t.title);
    $('copy-status').textContent=withFormatting==='plain'?'글을 복사했어요.':withFormatting?'본문을 복사했어요. 붙여넣은 뒤 이미지·로고와 서식을 확인해 주세요.':'제목을 복사했어요.';
-   if(withFormatting&&!admin){try{await request({action:'copy',requestId:crypto.randomUUID(),templateId:t.id,version:t.version});await refresh();}catch{$('copy-status').textContent='본문은 복사했지만 사용 이력을 저장하지 못했어요. 연결을 확인하고 다시 복사해 주세요.';}}
+  if(withFormatting&&!admin&&!library){try{await request({action:'copy',requestId:crypto.randomUUID(),templateId:t.id,version:t.version});await refresh();}catch{$('copy-status').textContent='본문은 복사했지만 사용 이력을 저장하지 못했어요. 연결을 확인하고 다시 복사해 주세요.';}}
   }catch(e){$('copy-status').textContent='복사하지 못했어요. 본문을 직접 선택해 복사하거나 PC 브라우저에서 다시 시도해 주세요.';}
   finally{copying=false;syncCopyButtons();if($('detail').open)$(withFormatting==='plain'?'copy-mobile-text':withFormatting?'copy-body':'copy-title').focus();}
  }
@@ -205,9 +221,10 @@
  }
  async function start(){
   $('refresh').disabled=true;$('loading').hidden=false;
+  if(library){try{await refresh();}catch(e){error(e.status?e.message:'연결을 확인하고 새로고침해 주세요.');}finally{$('refresh').disabled=false;$('loading').hidden=true;}return;}
   try{if(admin){if(!await CreoPlatform.verifyAdmin()){$('content').hidden=true;$('login').hidden=false;$('login').querySelector('a').hidden=true;$('admin-login').hidden=false;return;}}
    else{const r=await fetch('/api/platform/vendor-access/session',{credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(20000)});if(!r.ok)throw Error('로그인을 확인하지 못했어요. 새로고침해 주세요.');session=await r.json();if(!session.authenticated){$('content').hidden=true;$('login').hidden=false;return;}if(!company&&session.companies?.length===1){company=session.companies[0].id;history.replaceState(null,'','?company='+encodeURIComponent(company));}if(!company){$('content').hidden=true;$('login').hidden=false;return;}}
-   await refresh();await openAssignedPreview();
+   await refresh();if(query.get('view')==='templates')$('tab-templates').click();await openAssignedPreview();
   }catch(e){error(e.status?e.message:'연결을 확인하고 새로고침해 주세요.');if(e.status===401||e.status===403)$('login').hidden=false;}
   finally{$('refresh').disabled=false;$('loading').hidden=true;}
  }
