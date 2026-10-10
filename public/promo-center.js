@@ -14,7 +14,7 @@
  function isSharedHero(block){
   if(block.type!=='image')return false;
   const url=new URL(block.src,location.origin);
-  return url.origin===location.origin&&['/promo-assets/hero.jpg','/promo-assets/hero-seoul-incheon-v2.png','/promo-assets/hero-seoul-incheon-v3.png'].includes(url.pathname);
+  return url.origin===location.origin&&['/promo-assets/hero.jpg','/promo-assets/hero-seoul-incheon-v2.png','/promo-assets/hero-seoul-incheon-v3.png','/promo-assets/seoul-incheon-premiere-map-v7.png'].includes(url.pathname);
  }
  function isSharedAsset(b,kind){if(b.type!=='image')return false;const u=new URL(b.src,location.origin);return u.origin===location.origin&&(kind==='ticket'?/^\/promo-assets\/ticket(?:-seoul-incheon-v2)?\.png$/:/^\/promo-assets\/partners-20261007(?:-v4)?\.png$/).test(u.pathname);}
  function postBlocks(t,images=[]){
@@ -31,9 +31,10 @@
   if(!inserted&&images.length){const index=blocks.findIndex(b=>b.href);blocks.splice(index<0?blocks.length:index,0,...images.map(i=>({...i,type:'image'})));}
   const ticket={type:'image',src:'/promo-assets/ticket-seoul-incheon-v2.png',alt:'첫 방송 서울·인천 편 · 10월 14일 · 배송비 무료 · 낙찰자 1인당 최대 3만 원 지원'};
   const link=blocks.findIndex(b=>b.href&&/band\.us/.test(b.href));blocks.splice(link<0?blocks.length:link,0,ticket);
-  return [{type:'image',src:'/promo-assets/hero-seoul-incheon-v3.png',alt:'전국크레자랑 라이브 방송 · EP 01. 서울, 인천 · 10월 14일 수요일 밤 8시'},...blocks];
+  const header=t.blocks.find(b=>isSharedHero(b)&&new URL(b.src,location.origin).pathname==='/promo-assets/seoul-incheon-premiere-map-v7.png')||{type:'image',src:'/promo-assets/hero-seoul-incheon-v3.png',alt:'전국크레자랑 라이브 방송 · EP 01. 서울, 인천 · 10월 14일 수요일 밤 8시'};
+  return [header,...blocks];
  }
- function thumbnailImage(t){return t.blocks.find(b=>b.type==='image'&&!isSharedHero(b));}
+ function thumbnailImage(t){return t.blocks.find(b=>isSharedHero(b)&&new URL(b.src,location.origin).pathname==='/promo-assets/seoul-incheon-premiere-map-v7.png')||t.blocks.find(b=>b.type==='image'&&!isSharedHero(b));}
  function enablePreviewDismiss(dialog){
   let outsideStart=false;
   const outside=e=>{const r=dialog.getBoundingClientRect();return e.target===dialog&&(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom);};

@@ -65,6 +65,26 @@ test('all manuscripts carry one Seoul/Incheon ticket before the Band link, with 
   const html=ctx.bodyHTML(t,true);assert.equal((html.match(/src="[^\"]*ticket-seoul-incheon-v2.png"/g)||[]).length,1,t.id);
  }
 });
+
+test('map manuscript replaces its old header once in preview, copy and image bundle without changing other manuscripts',()=>{
+ const source=fs.readFileSync(require.resolve('../public/promo-center.js'),'utf8'),ctx=vm.createContext({URL,location:{origin:'https://creok.onrender.com'},esc:v=>String(v)});
+ vm.runInContext(source.slice(source.indexOf(' function imageURL('),source.indexOf('\n const kst=')),ctx);
+ vm.runInContext(source.slice(source.indexOf(' function bodyHTML('),source.indexOf('\n function preview(')),ctx);
+ const seeds=require('../promo-templates.json'),t=seeds.find(t=>t.id==='launch26-seoul-incheon-map'),before=JSON.stringify(t);
+ const poster='/promo-assets/seoul-incheon-premiere-map-v7.png';
+ const mixed={...t,blocks:[{type:'image',src:'/promo-assets/hero.jpg',alt:'old'},...t.blocks]};
+ for(const copying of [false,true]){
+  const html=ctx.bodyHTML(mixed,copying);
+  assert.match(html,/^<p[^>]*><img src="https:\/\/creok.onrender.com\/promo-assets\/seoul-incheon-premiere-map-v7.png"/);
+  assert.equal((html.match(/src="[^"]*seoul-incheon-premiere-map-v7.png"/g)||[]).length,1);
+  assert.doesNotMatch(html,/src="[^"]*hero(?:-seoul-incheon-v[23])?\.(?:png|jpg)"/);
+ }
+ const images=Array.from(ctx.postBlocks(mixed)).filter(b=>b.type==='image');
+ assert.equal(images[0].src,poster);assert.equal(images.filter(b=>b.src===poster).length,1);
+ assert.equal(ctx.thumbnailImage(t).src,poster);
+ assert.equal(JSON.stringify(t),before);
+ for(const other of seeds.filter(s=>s.id!==t.id))assert.equal(ctx.postBlocks(other)[0].src,'/promo-assets/hero-seoul-incheon-v3.png');
+});
 test('none/all/regions replace partner art once and preserve unrelated content and immutable source',()=>{
  const source=fs.readFileSync(require.resolve('../public/promo-center.js'),'utf8'),ctx=vm.createContext({URL,location:{origin:'https://creok.onrender.com'}});
  vm.runInContext(source.slice(source.indexOf(' function imageURL('),source.indexOf('\n const kst=')),ctx);
