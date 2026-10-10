@@ -44,7 +44,7 @@ test('Monday broadcasts show Friday hand-in, Saturday departure and Sunday Daegu
  assert.match(f.day(23).html,/route-origin/);assert.doesNotMatch(f.day(23).html,/route-destination/);
  assert.doesNotMatch(f.day(24).html,/route-origin|route-destination/);
  assert.doesNotMatch(f.day(25).html,/route-destination|route-origin/);assert.match(f.day(26).html,/route-destination/);
- assert.match(f.day(23).html,/<b>도도시<\/b>/);assert.match(f.day(25).html,/<b>도도시<\/b>/);
+ assert.match(f.day(23).html,/<b>도도시<\/b>/);assert.doesNotMatch(f.day(25).html,/<b>도도시<\/b>/);
  assert.doesNotMatch(f.day(27).html,/inbound-span dodosi/);assert.match(f.click(26).innerHTML,/이날 방송 보기/);
  assert.equal(f.writes.length,0);
 });
@@ -54,8 +54,21 @@ test('shipping strips continue into the next month and open the full route there
  const f=fixture({origins:{dodosi:origin.id}});await f.ready();f.render('2026-11');
  assert.match(f.day(1).html,/inbound-span dodosi route-start/);assert.equal(f.day(1).disabled,false);
  assert.doesNotMatch(f.day(1).html,/route-origin|route-destination/);assert.match(f.day(2).html,/route-destination/);
+ assert.doesNotMatch(f.day(1).html,/<b>도도시<\/b>/);
  const dialog=f.click(1);assert.match(dialog.innerHTML,/맡기기<\/span><strong>10\/30\(금\)/);assert.match(dialog.innerHTML,/대구 도착<\/span><strong>11\/1\(일\)/);
  assert.equal(f.writes.length,0);
+});
+
+test('October 19 PARGE route labels October 11 once and continues unlabeled on October 18',async()=>{
+ const f=fixture({region:'경기',origins:{parge:'parge-capital'}});await f.ready();
+ f.state.dates=[{date:'2026-10-19',regionName:'경기'}];f.render();
+ assert.match(f.day(11).html,/route-origin/);assert.match(f.day(11).html,/<b>파르게<\/b>/);
+ for(let n=12;n<=19;n++){
+  assert.match(f.day(n).html,/inbound-span parge/);assert.doesNotMatch(f.day(n).html,/<b>파르게<\/b>/);
+ }
+ assert.match(f.day(18).html,/route-start/);assert.doesNotMatch(f.day(18).html,/route-origin/);
+ assert.match(f.day(19).html,/route-destination/);
+ assert.match(f.click(18).innerHTML,/10\/19\(월\) 방송/);assert.equal(f.writes.length,0);
 });
 
 test('PARGE connects to the broadcast day even when it arrives the day before; actual arrival stays unchanged',async()=>{

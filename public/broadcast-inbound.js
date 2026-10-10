@@ -63,7 +63,8 @@
    day.insertAdjacentHTML('beforeend',carriers.map(c=>{
     const routes=items.filter(p=>p.carrier===c),first=routes.every(p=>p.actionDate===date),last=routes.every(p=>p.broadcastDate===date);
     const start=first||Core.dow(date)===0||n===1,end=last||Core.dow(date)===6;
-    return `<span class="inbound-span ${c} ${start?'route-start':''} ${end?'route-end':''} ${first?'route-origin':''} ${last?'route-destination':''}" aria-hidden="true" title="${names[c]} · 준비일부터 방송일까지">${start?`<b>${names[c]}</b>`:''}</span>`;
+    const begins=routes.some(p=>p.actionDate===date);
+    return `<span class="inbound-span ${c} ${start?'route-start':''} ${end?'route-end':''} ${first?'route-origin':''} ${last?'route-destination':''}" aria-hidden="true" title="${names[c]} · 준비일부터 방송일까지">${begins?`<b>${names[c]}</b>`:''}</span>`;
    }).join(''));
    day.setAttribute('aria-label',`${broadcastLabel?broadcastLabel+', ':fmt(date)+', '}${items.map(p=>names[p.carrier]+(p.estimated?' 예상':'')+(date===p.actionDate?' 배송 마감':date===p.broadcastDate?' 방송일':' 방송 준비 구간')+', '+fmt(p.actionDate)+' '+p.actionLabel+' → '+fmt(p.departureDate)+' '+p.departureLabel+' → '+fmt(p.arrivalDate)+' 대구 도착 → '+fmt(p.broadcastDate)+' 방송').filter((v,i,a)=>a.indexOf(v)===i).join(', ')}`);
   }
