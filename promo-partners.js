@@ -2,7 +2,7 @@
 const crypto=require('node:crypto'),fs=require('node:fs'),path=require('node:path');
 const National=require('./national-broadcast'),curated=require('./tools/promo-partners.json');
 const ASSETS=path.join(__dirname,'public/promo-assets/partner-logos');
-const VERSION='partners-layout-3-logos-only';
+const VERSION='partners-layout-4-full-creyon-name';
 const fail=(message,status=422)=>Object.assign(Error(message),{status});
 const hash=value=>crypto.createHash('sha256').update(value).digest('hex');
 const curatedId=v=>v.vendorId||v.url?.match(/vendor-logos\/((?:va|nv)-[a-f0-9]+)/)?.[1];
