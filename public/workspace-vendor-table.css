@@ -1,0 +1,59 @@
+/* Vendor directory only: reuse the workspace's type, surfaces and accent. */
+body.vendor-directory-view .shell{width:min(1480px,calc(100% - 40px))}
+body.vendor-directory-view .toolbar{flex-wrap:wrap;justify-content:flex-end}
+body.vendor-directory-view .toolbar p{flex:1 1 320px;font-size:14px;line-height:1.5;color:#596473}
+body.vendor-directory-view .btn:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.vendor-directory{table-layout:fixed;min-width:1100px;white-space:normal}
+.vendor-directory caption{text-align:left;padding:14px 16px;background:var(--panel);border-bottom:1px solid var(--line);font-size:13px;line-height:1.6;color:#596473}
+.vendor-col-name{width:14%}.vendor-col-region{width:10%}.vendor-col-contact{width:8%}.vendor-col-phone{width:12%}.vendor-col-address{width:22%}.vendor-col-bank{width:20%}.vendor-col-actions{width:14%}
+.vendor-directory th,.vendor-directory td{padding:18px 14px;vertical-align:top;font-size:14px;line-height:1.55;letter-spacing:-.018em;overflow-wrap:anywhere;word-break:normal}
+.vendor-directory thead th{padding-top:12px;padding-bottom:12px;font-size:13px;font-weight:650;color:#596473;background:#f7f8fa}
+.vendor-directory tbody th{background:transparent;color:var(--text);font-weight:400}
+.vendor-directory tbody tr:hover th{background:#fafbfc}
+.vendor-company strong{font-size:16px;font-weight:750;word-break:keep-all;overflow-wrap:anywhere}
+.vendor-detail{display:block;margin-top:4px;font-size:12px;font-weight:400;color:#596473;line-height:1.5}
+.vendor-region-name{display:inline-block;padding:3px 8px;border:1px solid var(--line);border-radius:6px;background:#f7f8fa;font-size:12px;font-weight:650;word-break:keep-all}
+.vendor-phone,.vendor-account{font-variant-numeric:tabular-nums;letter-spacing:0}
+.vendor-contact-name{font-weight:600}
+.vendor-bank-name{display:block;font-weight:600;margin-bottom:2px}
+.vendor-account{display:block}
+.vendor-missing{color:#687381;font-size:13px;font-weight:400}
+.vendor-mobile-label{display:none}
+.vendor-directory .row-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.vendor-directory .row-actions .btn{min-height:36px;padding:5px;font-size:12px;line-height:1.35;white-space:normal}
+.vendor-directory [data-organizer-row] td{padding-top:13px;padding-bottom:13px;background:#f7f8fa;color:#596473;font-size:13px;vertical-align:middle}
+.vendor-directory [data-organizer-row] td:first-child{color:var(--text)}
+.vendor-directory [data-organizer-row] .row-actions{grid-template-columns:1fr}
+.vendor-directory tbody tr:last-child th{border-bottom:0}
+@media(min-width:801px) and (max-width:1140px){
+    body.vendor-directory-view #table-wrap::before{content:'표를 좌우로 밀어 전체 정보를 확인하세요.';display:block;padding:10px 16px;font-size:12px;color:#596473;border-bottom:1px solid var(--line)}
+}
+@media(max-width:800px){
+    body.vendor-directory-view .shell{width:calc(100% - 24px)}
+    body.vendor-directory-view .toolbar p{flex-basis:100%}
+    body.vendor-directory-view .toolbar>.btn{flex:1 1 auto;font-size:13px}
+    body.vendor-directory-view .tabs{position:static}
+    body.vendor-directory-view .heading{flex-wrap:wrap}
+    .vendor-directory{min-width:0;display:block}
+    .vendor-directory colgroup{display:none}
+    .vendor-directory caption{display:block;font-size:12px}
+    .vendor-directory thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+    .vendor-directory tbody{display:block}
+    .vendor-directory .vendor-record{display:block;padding:18px 16px;border-bottom:1px solid var(--line)}
+    .vendor-directory .vendor-record:last-child{border-bottom:0}
+    .vendor-directory .vendor-record>th,.vendor-directory .vendor-record>td{padding:0;border:0;background:transparent}
+    .vendor-directory .vendor-record>th{display:block;margin-bottom:14px}
+    .vendor-company strong{font-size:18px}
+    .vendor-directory .vendor-record>.vendor-cell{display:grid;grid-template-columns:66px minmax(0,1fr);gap:12px;margin-top:10px}
+    .vendor-mobile-label{display:block;padding-top:1px;color:#596473;font-size:12px;font-weight:500}
+    .vendor-cell-content{min-width:0}
+    .vendor-directory .vendor-record>.vendor-actions{display:block;margin-top:16px;padding-top:14px;border-top:1px solid #edf0f3}
+    .vendor-actions>.vendor-mobile-label{display:none}
+    .vendor-directory .row-actions{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+    .vendor-directory .row-actions .btn{min-height:40px;font-size:13px}
+    .vendor-directory [data-organizer-row]{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:16px;background:#f7f8fa;border-bottom:1px solid var(--line)}
+    .vendor-directory [data-organizer-row] td{display:block;padding:0;border:0;background:transparent}
+    .vendor-directory [data-organizer-row] td:nth-child(2){grid-column:1;font-size:12px}
+    .vendor-directory [data-organizer-row] td:last-child{grid-column:2;grid-row:1 / 3;align-self:center}
+    .vendor-directory .vendor-empty-row,.vendor-directory .vendor-empty-row td{display:block}
+}
