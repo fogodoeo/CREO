@@ -5,9 +5,18 @@
     "file": "01.png"
   },
   {
-    "name": "룸메이트",
-    "url": "https://iuwqjeecwepqyqqlzprf.supabase.co/storage/v1/object/public/broadcast-assets/vendor-logos/va-04731fa4690343a58152c6bca3de3875-f03d9634-9159-40a3-a185-b8136c4c3c6a.webp",
-    "file": "02.png"
+    "name": "하이랭크",
+    "vendorId": "va-04731fa4690343a58152c6bca3de3875",
+    "url": "",
+    "file": "high-rank-20261012.png",
+    "source": "user-supplied"
+  },
+  {
+    "name": "채채파파",
+    "vendorId": "ven_fb49f7597daf40e899ee8150",
+    "url": "",
+    "file": "chaechapapa-20261012.png",
+    "source": "user-supplied"
   },
   {
     "name": "크레앤코",
