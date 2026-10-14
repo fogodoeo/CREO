@@ -80,34 +80,5 @@ body[data-broadcast-theme="pixel"] #stage .vendor-contribution-result{--pixel-fi
 .theme-style-sample[data-style="pixel"]{border-radius:0;border:3px solid #fff4d8;background:#373054;color:#ffdc79;box-shadow:3px 3px 0 #242039}
 .theme-popover .theme-color-title{font-size:13px;font-weight:600;margin:0 0 10px;color:#c0cad8}
 
-/* National stage: painted sign panels, with the camera space kept transparent. */
-body[data-broadcast-theme="national-stage"]{--national-ink:#253640;--national-paper:#fff7e7;--national-blue:#285779;--national-red:#ae3733;--national-gold:#f2cb62}
-body[data-broadcast-theme="national-stage"] #stage :is(.host-card,.item-copy,.item-progress,.live-bid-row,.price-card,.sold-notice,.simple-ranking,.standby-note){background:var(--national-paper)!important;color:var(--national-ink)!important;border:2px solid #e4d6ba;border-bottom:5px solid #c9b18a;border-radius:12px;box-shadow:0 5px 0 #553f2733;backdrop-filter:none}
-body[data-broadcast-theme="national-stage"] #stage :is(.item-name strong,.vendor-tag,.host-name,.live-bid-name,.live-bid-amount,.item-copy h1,.price b,.item-progress strong,.summary-name,.summary-amount){color:var(--national-ink)!important}
-body[data-broadcast-theme="national-stage"] #stage .host-card{border-left:8px solid var(--national-red)}
-body[data-broadcast-theme="national-stage"] #stage .host-role{color:var(--national-blue)}
-body[data-broadcast-theme="national-stage"] #stage .item-copy.is-inline-info{padding:0 24px;border-left:8px solid var(--national-blue);gap:22px;overflow:hidden}
-body[data-broadcast-theme="national-stage"] #stage .item-inline-traits{color:var(--national-ink)}
-body[data-broadcast-theme="national-stage"] #stage .item-inline-pill{color:var(--national-ink)!important;border-color:#bca88b}
-body[data-broadcast-theme="national-stage"] #stage .item-inline-sep{background:#c9b18a}
-body[data-broadcast-theme="national-stage"] #stage .item-progress{background:var(--national-blue)!important;border-color:#234561;border-bottom-color:#142e43}
-body[data-broadcast-theme="national-stage"] #stage .item-progress strong{color:var(--national-paper)!important}
-body[data-broadcast-theme="national-stage"] #stage .live-bid-row{padding:12px 24px;border-left:7px solid #c5b38d;min-height:66px}
-body[data-broadcast-theme="national-stage"] #stage .live-bid-row[data-rank="1"]{background:var(--national-gold)!important;border-color:#d4b158;border-left-color:var(--national-red)}
-body[data-broadcast-theme="national-stage"] #stage .live-bid-row.empty{color:#54606a}
-body[data-broadcast-theme="national-stage"] #stage .parent-photos{border:5px solid var(--national-paper);border-radius:12px;box-shadow:0 4px 0 #553f2733;overflow:hidden}
-body[data-broadcast-theme="national-stage"] #stage .parent-photos figcaption{color:var(--national-paper);background:var(--national-blue);border:0}
-body[data-broadcast-theme="national-stage"] #stage .ticker{background:var(--national-blue)!important;border:2px solid #234561;border-radius:12px;box-shadow:0 4px 0 #553f2733;overflow:hidden;backdrop-filter:none}
-body[data-broadcast-theme="national-stage"] #stage .ticker-badge{background:var(--national-red);color:var(--national-paper);font-weight:800;letter-spacing:0}
-body[data-broadcast-theme="national-stage"] #stage .ticker-text{color:var(--national-paper)!important;font-weight:650}
-body[data-broadcast-theme="national-stage"] #stage .ticker-text b{color:var(--national-red)}
-body[data-broadcast-theme="national-stage"] #stage .sold-notice{border-color:var(--national-red);box-shadow:0 6px 0 #672a2c44}
-body[data-broadcast-theme="national-stage"] #stage .sold-notice :is(small,strong){color:var(--national-red)!important}
-body[data-broadcast-theme="national-stage"] #stage .sold-notice span{color:var(--national-ink)}
-body[data-broadcast-theme="national-stage"] #stage .board-head{background:var(--national-blue);color:var(--national-paper)}
-body[data-broadcast-theme="national-stage"] #stage .board-head span{color:var(--national-paper)}
-body[data-broadcast-theme="national-stage"] #stage .summary-row{border-color:#dfcfad;color:var(--national-ink)}
-.theme-style-sample[data-style="national-stage"]{background:#fff7e7;color:#285779;border:2px solid #dfcfad;border-left:7px solid #ae3733;border-radius:8px}
-body[data-broadcast-theme="national-stage"][data-page="2"] #stage .item-copy.is-inline-info[data-layout-custom="1"]{left:var(--layout-x)!important;right:auto!important;max-width:var(--layout-width)!important;padding:16px 22px;}
-body[data-broadcast-theme="national-stage"][data-page="2"] #stage .item-inline-identity h1{font-size:calc(46px * var(--layout-font-scale,1))!important}
-body[data-broadcast-theme="national-stage"][data-page="2"] #stage :is(.item-inline-pill,.vendor-tag){font-size:calc(34px * var(--layout-font-scale,1))!important}
+/* The national overlay lives in broadcast-national.css; the picker mirrors it. */
+.theme-style-sample[data-style="national-stage"]{background:linear-gradient(100deg,#fffefb 0 24%,#176d88 24%,#3b5f9a 58%,#8b2f64);color:#fff;border:2px solid #bffbe8;border-radius:99px;text-shadow:0 1px 2px #172232}

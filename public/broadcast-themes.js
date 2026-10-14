@@ -4,7 +4,7 @@
  const presets=Object.freeze([
   Object.freeze({id:'base',name:'기본',description:'단정한 기본 박스',frame:''}),
   Object.freeze({id:'pixel',name:'픽셀',description:'레트로 게임기',frame:''}),
-  Object.freeze({id:'national-stage',name:'전국크레자랑',description:'베이지 스튜디오 · 네이비와 금색',frame:''})
+  Object.freeze({id:'national-stage',name:'전국크레자랑',description:'흰색 이름칸 · 번호 원 · 청록·자주 방송 자막',frame:''})
  ]);
  function resolve(id){return presets.find(p=>p.id===id)||presets[0]}
  function apply(doc,id){const theme=resolve(id);if(doc.body)doc.body.dataset.broadcastTheme=theme.id;return theme.id}
