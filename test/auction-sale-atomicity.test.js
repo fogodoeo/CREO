@@ -3,11 +3,11 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const {SQLitePlatformRepository}=require('../sqlite-platform-repository');
 const {createPlatformApi}=require('../platform-api'),{normalizeChannel}=require('../platform-core'),{CheckoutNotificationService}=require('../checkout-notifications');
 
-async function fixture(t){
+async function fixture(t,bandMembership){
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'creo-sale-atomic-'));
  const options={dbPath:path.join(dir,'test.sqlite'),durable:true,startWorker:false,adminSecret:'secret'};
  let repo,api,service,ready=true;const sent=[];
- function start(){repo=new SQLitePlatformRepository(options);service=new CheckoutNotificationService({repository:repo,provider:{testMode:false,readiness:()=>({ready,missing:ready?[]:['template']}),status:()=>({}),send:async n=>{sent.push(n);return {messageId:'fake-'+n.id}}},beforeSend:(c,n)=>api.assertBuyerNotificationLink(c,n),logger:{warn(){}}});api=createPlatformApi({repository:repo,notificationService:service,adminSessionSecret:'sale-fixture',logger:{error(){},warn(){}}});}
+ function start(){repo=new SQLitePlatformRepository(options);service=new CheckoutNotificationService({repository:repo,provider:{testMode:false,readiness:()=>({ready,missing:ready?[]:['template']}),status:()=>({}),send:async n=>{sent.push(n);return {messageId:'fake-'+n.id}}},beforeSend:(c,n)=>api.assertBuyerNotificationLink(c,n),logger:{warn(){}}});api=createPlatformApi({repository:repo,notificationService:service,bandMembership,adminSessionSecret:'sale-fixture',logger:{error(){},warn(){}}});}
  start();t.after(()=>{repo.close();if(path.dirname(path.resolve(dir))!==path.resolve(os.tmpdir())||!path.basename(dir).startsWith('creo-sale-atomic-'))throw Error('Unsafe cleanup');fs.rmSync(dir,{recursive:true,force:true});});
  await repo.saveCatalog(['alpha','beta'].map(id=>normalizeChannel({id,name:id,status:'active',shippingDefaults:{pickupLocations:['가상 행사장']}})));await repo.setActiveChannel('alpha');
  await repo.upsertRecord('alpha','vendor',{id:'v',name:'가상 업체',phone:'01000000001',bankName:'가상은행',bankAccount:'000000',bankHolder:'가상업체'});
@@ -85,4 +85,63 @@ test('part identifiers survive public broadcast, buyer display and both sale not
  assert.equal(require('../public/checkout-item-view').itemTitle(require('../checkout-item-data').checkoutItem(publicItem)),'2부 B01');
  assert.equal((await f.sell()).status,200);f.restart();await f.service.flushChannel('alpha');
  assert.equal(f.sent.length,2);assert.ok(f.sent.every(n=>n.variables['#{개체명}']==='2부 B01'));
+});
+
+async function businessBid(f) {
+ await f.repo.upsertRecord('alpha','vendor',{id:'buyer-business',name:'가상 구매상점',phone:'01000000004',inquiryPhone:'01000000005',active:true});
+ const item=await f.repo.getRecord('alpha','item','one');
+ await f.repo.upsertRecord('alpha','item',{...item,attributes:{...item.attributes,bid_log:JSON.stringify([{name:'가상 구매상점',bidder_key:'fixture-business-member',amount:3}])}});
+ return {item:{soldPrice:30000,winnerName:'가상 구매상점',winnerAlias:'가상 구매상점',winnerPhone:''}};
+}
+
+test('business winner gets one notice, a frozen contact and a valid checkout through retries and restart',async t=>{
+ const f=await fixture(t),body=await businessBid(f);
+ const results=await Promise.all([f.sell(body),f.sell(body)]);assert.ok(results.every(r=>r.status===200));
+ const sold=await f.repo.getRecord('alpha','item','one');assert.equal(sold.winnerPhone,'01000000004');
+ assert.equal((await f.repo.listRecords('alpha','notification')).filter(n=>n.recipientRole==='buyer').length,1);
+ const business=await f.repo.getRecord('alpha','vendor','buyer-business');await f.repo.upsertRecord('alpha','vendor',{...business,phone:'01000000006'});
+ f.restart();assert.equal((await f.sell(body)).status,200);assert.equal((await f.repo.getRecord('alpha','item','one')).winnerPhone,'01000000004');
+ await f.service.flushChannel('alpha');await f.service.flushChannel('alpha');
+ assert.equal(f.sent.filter(n=>n.recipientRole==='buyer').length,1);assert.equal(f.sent.find(n=>n.recipientRole==='buyer').recipientPhone,'01000000004');
+ const preview=await f.call('GET','channels/alpha/buyer-checkout-preview?itemId=one');assert.equal(preview.status,200,preview.body);
+ assert.equal(preview.json().items.length,1);assert.equal((await f.repo.listRecords('beta','notification')).length,0);
+ const broadcast=(await f.call('GET','channels/alpha/broadcast')).json();assert.doesNotMatch(JSON.stringify(broadcast),/01000000004|fixture-business-member/);
+});
+
+test('explicit and keyed member phones take priority over business-name fallback',async t=>{
+ for(const source of ['explicit','member']){
+  const f=await fixture(t,{resolveMemberIdentity:async()=>({phone:'01000000007'})}),body=await businessBid(f);
+  if(source==='explicit')body.item.winnerPhone='01000000008';
+  const r=await f.sell(body);assert.equal(r.status,200,r.body);
+  assert.equal((await f.repo.getRecord('alpha','item','one')).winnerPhone,source==='explicit'?'01000000008':'01000000007');
+ }
+});
+
+test('member lookup outage still resolves a unique business without changing historical ownership',async t=>{
+ const f=await fixture(t,{resolveMemberIdentity:async()=>{throw Error('isolated outage')}}),body=await businessBid(f);
+ assert.equal((await f.sell(body)).status,200);assert.equal((await f.repo.getRecord('alpha','item','one')).winnerPhone,'01000000004');
+ await f.repo.upsertRecord('alpha','item',{id:'old',name:'OLD',status:'sold',soldPrice:10000,winnerName:'가상 구매상점',winnerAlias:'가상 구매상점',winnerPhone:'',vendorId:'v',vendorName:'가상 업체'});
+ const link=await f.call('POST','channels/alpha/buyer-shipping-link',{itemId:'old'});assert.equal(link.status,422);
+});
+
+test('business fallback remains channel scoped and rejects duplicates and a changed winner outside the bid log',async t=>{
+ for(const condition of ['duplicate','other-channel','changed-winner']){
+  const f=await fixture(t),body=await businessBid(f);
+  if(condition==='duplicate')await f.repo.upsertRecord('alpha','vendor',{id:'duplicate',name:'가상 구매상점',phone:'01000000009',active:true});
+  if(condition==='other-channel'){await f.repo.deleteRecord('alpha','vendor','buyer-business');await f.repo.upsertRecord('beta','vendor',{id:'buyer-business',name:'가상 구매상점',phone:'01000000004',active:true});}
+  if(condition==='changed-winner'){body.item.winnerName='다른 구매상점';body.item.winnerAlias='다른 구매상점';await f.repo.upsertRecord('alpha','vendor',{id:'other-buyer',name:'다른 구매상점',phone:'01000000009',active:true});}
+  const r=await f.sell(body);assert.equal(r.status,200,r.body);assert.equal((await f.repo.getRecord('alpha','item','one')).winnerPhone,'');
+  assert.equal((await f.repo.listRecords('alpha','notification')).filter(n=>n.recipientRole==='buyer').length,0);
+ }
+});
+
+test('business contact and notices roll back together, then use the new contact after reopening',async t=>{
+ const f=await fixture(t),body=await businessBid(f),before=await f.repo.getRecord('alpha','item','one'),upsert=f.repo.upsertRows.bind(f.repo);
+ f.repo.upsertRows=rows=>upsert(rows.some(r=>r.key.includes('::notification::'))?[...rows,{key:{invalid:true},value:'rollback'}]:rows);
+ assert.equal((await f.sell(body)).status,500);assert.deepEqual(await f.repo.getRecord('alpha','item','one'),before);assert.equal((await f.repo.listRecords('alpha','notification')).length,0);
+ f.restart();assert.equal((await f.sell(body)).status,200);const first=await f.repo.getRecord('alpha','item','one');
+ assert.equal((await f.transition({itemId:'one',status:'waiting',mode:'standby'})).status,200);
+ const vendor=await f.repo.getRecord('alpha','vendor','buyer-business');await f.repo.upsertRecord('alpha','vendor',{...vendor,phone:'01000000006'});
+ assert.equal((await f.sell(body)).status,200);const second=await f.repo.getRecord('alpha','item','one');assert.equal(second.winnerPhone,'01000000006');assert.notEqual(first.buyerSaleId,second.buyerSaleId);
+ f.restart();await f.service.flushChannel('alpha');assert.equal(f.sent.filter(n=>n.recipientRole==='buyer').length,1);assert.equal(f.sent.find(n=>n.recipientRole==='buyer').recipientPhone,'01000000006');
 });

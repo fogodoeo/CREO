@@ -13,6 +13,7 @@ const { checkoutItem } = require('./checkout-item-data');
 const Inquiry = require('./public/checkout-inquiry');
 const ShippingHistory = require('./shipping-destination-history');
 const { collectionInquiries } = require('./vendor-inquiry');
+const { registeredVendorBuyerPhone } = require('./vendor-buyer-contact');
 
 const {
     DEFAULT_CHANNELS,
@@ -746,22 +747,23 @@ function mergeChannelBroadcastState(channel, current = {}, patch = {}) {
     };
 }
 
-async function resolveWinnerPhone(item, bandMembership) {
+async function resolveWinnerPhone(item, bandMembership, vendors) {
     const bid = winningBid(item, true) || {};
     const explicit = normalizePhone(item?.winnerPhone || phoneFromBid(bid))
         || phoneFromBid({ name: `${item?.winnerAlias || ''} ${item?.winnerName || ''}` });
     if (explicit) return explicit;
-    if (typeof bandMembership?.resolveMemberIdentity !== 'function') return '';
-    try {
+    if (typeof bandMembership?.resolveMemberIdentity === 'function') try {
         const identity = await bandMembership.resolveMemberIdentity({
             bandMemberKey: bid?.bidder_key || bid?.bidderKey || '',
             displayName: bid?.name || bid?.bidder || item?.winnerAlias || item?.winnerName || '',
             requireMemberKey: true
         });
-        return normalizePhone(identity?.phone);
-    } catch (_) {
-        return '';
-    }
+        const phone = normalizePhone(identity?.phone);
+        if (phone) return phone;
+    } catch (_) { /* A registered business contact can still resolve a new sale. */ }
+    if (!Array.isArray(vendors)) return '';
+    if (rawItemBidLog(item).length && !winningBid(item, true)) return '';
+    return registeredVendorBuyerPhone(item, vendors);
 }
 
 async function resolvePhoneParityWinner(item, bandMembership) {
@@ -4992,6 +4994,16 @@ function createPlatformApi({
                                     audience_dice_reveal_at: revealAt
                                 }
                             };
+                        }
+                        if (requestedStatus === 'sold' && current.status !== 'sold') {
+                            candidate.winnerPhone = await resolveWinnerPhone(candidate, bandMembership, data.vendors);
+                        } else if (requestedStatus === 'sold' && current.status === 'sold'
+                            && !normalizePhone(candidate.winnerPhone)
+                            && candidate.winnerName === current.winnerName
+                            && candidate.winnerAlias === current.winnerAlias) {
+                            // A repeated desktop request may still contain its pre-resolution
+                            // blank phone. Keep the contact frozen with this sale.
+                            candidate.winnerPhone = storedWinnerPhone(current);
                         }
                         const errors = validateRecord('item', candidate, { ...data, groups: channel.groups || [] });
                         if (errors.length) {
