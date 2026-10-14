@@ -195,6 +195,10 @@ function openModal(type,record=null){
     }else{
         f+=field('lotNumber','번호',record?.lotNumber,'number');
         f+=field('name',`${term('item','개체')}명`,record?.name);
+        if(selectedChannel()?.vendorSettlement?.enabled){
+            f+=field('auctionKind','출품 구분',record?.attributes?.auctionKind,'select',`<option value="normal" ${record?.attributes?.auctionKind!=='event'?'selected':''}>일반 출품</option><option value="event" ${record?.attributes?.auctionKind==='event'?'selected':''}>이벤트 · 수수료 면제</option>`);
+            f+=field('broadcastDate','방송일',record?.attributes?.broadcastDate||new Date(Date.now()+9*3600000).toISOString().slice(0,10),'date');
+        }
         if(selectedChannel()?.features?.vendors)f+=field('vendorId',term('vendor','업체'),record?.vendorId,'select',optionList(data.vendors,record?.vendorId,v=>v.name));
         if(selectedChannel()?.features?.groups)f+=field('groupId',term('group','그룹'),record?.groupId,'select',groupOptions(record?.groupId));
         f+=field('category','카테고리',record?.category);
@@ -208,6 +212,8 @@ function openModal(type,record=null){
         f+=field('note','설명',record?.note,'textarea');
     }
     $('record-fields').innerHTML=f;
+    const kind=type==='items'&&selectedChannel()?.vendorSettlement?.enabled?$('record-fields').querySelector('[name="auctionKind"]'):null;
+    if(kind&&!record)kind.onchange=()=>{if(kind.value!=='event')return;const names=new Set(data.items.map(row=>row.name));let n=1;while(names.has('E'+String(n).padStart(2,'0')))n++;$('record-fields').querySelector('[name="name"]').value='E'+String(n).padStart(2,'0');$('record-fields').querySelector('[name="lotNumber"]').value=Math.max(0,...data.items.map(row=>Number(row.lotNumber)||0))+1;};
     $('dialog-title').textContent=(type==='vendors'?term('vendor','업체'):term('item','개체'))+(record?' 수정':' 추가');
     $('record-modal').hidden=false;
 }
@@ -218,6 +224,12 @@ $('record-form').onsubmit=async event=>{
     if(!editing||editing.channelId!==channelId)return toast('채널이 변경되었습니다. 항목을 다시 열어 주세요.');
     const requestedChannelId=channelId,currentEditing={...editing},form=Object.fromEntries(new FormData(event.currentTarget)),button=$('save-record');
     if(currentEditing.directoryRevision)form.directoryRevision=currentEditing.directoryRevision;
+    if(currentEditing.type==='items'&&selectedChannel()?.vendorSettlement?.enabled){
+        const original=data.items.find(row=>row.id===currentEditing.id);
+        form.attributes={...(original?.attributes||{}),auctionKind:form.auctionKind==='event'?'event':'normal',broadcastDate:form.broadcastDate,displayNumber:form.name};
+        delete form.auctionKind;delete form.broadcastDate;
+        if(form.attributes.auctionKind==='event'&&!/^E\d{2,}$/.test(form.name||''))return toast('이벤트 번호를 E01 형식으로 입력해 주세요.');
+    }
     ['lotNumber','startPrice','soldPrice','points'].forEach(key=>{if(key in form)form[key]=Number(form[key])||0});
     recordPending=true;button.disabled=true;button.textContent='저장 중…';
     try{

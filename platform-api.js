@@ -482,6 +482,7 @@ function sanitizeRecord(type, input = {}, current = {}) {
             carrier: cleanText(input.carrier, 80),
             trackingNumber: cleanText(input.trackingNumber, 100),
             cost: Math.max(0, numberValue(input.cost)),
+            ...(input.shippingSupportDate ? {grossCost:Math.max(0,numberValue(input.grossCost)),shippingSupportAmount:Math.max(0,numberValue(input.shippingSupportAmount)),shippingSupportDate:cleanText(input.shippingSupportDate,10)} : {}),
             status: cleanText(input.status || 'pending', 30),
             note: cleanText(input.note, 500),
             bundleId: cleanText(input.bundleId, 80),
@@ -1418,7 +1419,7 @@ function createPlatformApi({
         const latest = latestBundleShipment(context);
         const rates = await pargeRates(latest?.destinationType || ({'파르게':'parge','도도시':'dodosi'})[latest?.carrier]);
         const selection = shipmentSelection(latest,context.channel,rates);
-        const shipping = Checkout.allocateShipping(context.bundleItems, selection, context.channel, rates);
+        const shipping = Checkout.allocateShipping(context.bundleItems, selection, context.channel, rates, context.shipments);
         // Saved allocations are the quoted shipping price; settings changes do not reprice them.
         for (const row of context.shipments) {
             if (shipping.allocations.has(row.itemId) && row.buyerSubmittedAt) shipping.allocations.set(row.itemId, Math.max(0, Number(row.cost) || 0));
@@ -1431,7 +1432,8 @@ function createPlatformApi({
             const shippingAmount = group.items.reduce((sum, item) => sum + (shipping.allocations.get(item.id) || 0), 0);
             const totalAmount = settlement.payableAuctionAmount + shippingAmount;
             const payment = Checkout.derivePaymentState({ shipments, itemCount: group.items.length, totalAmount });
-            return { ...group, shipments, settlement, shippingAmount, totalAmount, payment };
+            const shippingSupportAmount=group.items.reduce((sum,item)=>sum+(shipping.supportAllocations?.get(item.id)||0),0);
+            return { ...group, shipments, settlement, shippingAmount, shippingSupportAmount, totalAmount, payment };
         });
         const deliverySchedule = deliverySchedules ? await deliverySchedules.estimate(context.channel, selection, latest?.destinationRegisteredAt || latest?.buyerSubmittedAt) : null;
         return { rates, latest, selection, shipping, groups, deliverySchedule };
@@ -1480,6 +1482,8 @@ function createPlatformApi({
                 discountAmount: group.settlement.discountAmount,
                 payableAuctionAmount: group.settlement.payableAuctionAmount,
                 shippingAmount: group.shippingAmount,
+                shippingSupportAmount: group.shippingSupportAmount || 0,
+                grossShippingAmount: group.shippingAmount + (group.shippingSupportAmount || 0),
                 totalAmount: group.totalAmount
             }
         };
@@ -1522,6 +1526,7 @@ function createPlatformApi({
             const group = snapshot.groups.find((entry) => entry.items.some((candidate) => candidate.id === item.id));
             return {
                 ...checkoutItem(item),
+                broadcastDate: Checkout.broadcastDate(item),
                 vendorKey: group?.key || '',
                 vendorName: group?.vendor?.name || item.vendorName || '업체',
                 inquiry: Inquiry.vendorContact(context.vendors.find(vendor=>vendor.id===item.vendorId)),
@@ -1533,6 +1538,8 @@ function createPlatformApi({
             editVersion: buyerEditVersion(context),
             savedDestination: submittedAt || readOnly ? null : await savedBuyerDestination(context, fixedDestinations, carriers),
             channel: { id: context.channel.id, name: context.channel.name, status: context.channel.status },
+            shippingSupport: context.channel.shippingSupport || null,
+            shippingQuotes: ownCheckoutShipments(context).filter(row=>row.buyerSubmittedAt).map(({itemId,cost,shippingSupportDate,shippingSupportAmount,buyerSubmittedAt,updatedAt})=>({itemId,cost,shippingSupportDate,shippingSupportAmount,buyerSubmittedAt,updatedAt})),
             readOnly,
             testDeliveryEnabled: testDeliveryChannels.has(context.channel.id),
             changeRequest: publicChange((await checkoutChanges(context))[0]),
@@ -1560,6 +1567,8 @@ function createPlatformApi({
                 discountAmount,
                 payableAuctionAmount,
                 shippingAmount: snapshot.shipping.total,
+                shippingSupportAmount: snapshot.shipping.supportTotal || 0,
+                grossShippingAmount: snapshot.shipping.grossTotal ?? snapshot.shipping.total,
                 totalAmount: payableAuctionAmount + snapshot.shipping.total
             },
             submittedAt,
@@ -1877,7 +1886,7 @@ function createPlatformApi({
         }
         const groups = Checkout.groupItemsByVendor(context.bundleItems, context.vendors);
         const requestedMethods = requestedPaymentMethods(body, groups);
-        const shipping = Checkout.allocateShipping(context.bundleItems, selection, context.channel, rates);
+        const shipping = Checkout.allocateShipping(context.bundleItems, selection, context.channel, rates, unchangedDestination ? context.shipments : []);
         const existingByItem = new Map(context.shipments.map((shipment) => [shipment.itemId, shipment]));
         if (!directDestinationEdit && ownCheckoutShipments(context).some(shipment => ['bank_transfer_reported', 'card_payment_reported'].includes(shipment.paymentStatus))) {
             throw buyerInputError('업체가 결제를 확인 중입니다. 확인 완료 후 추가 내역을 저장해 주세요.', 409);
@@ -1933,6 +1942,7 @@ function createPlatformApi({
                     carrier,
                     address,
                     cost: shipping.allocations.get(item.id) || 0,
+                    ...(shipping.supportDates?.get(item.id) ? {grossCost:shipping.grossAllocations.get(item.id)||0,shippingSupportAmount:shipping.supportAllocations.get(item.id)||0,shippingSupportDate:shipping.supportDates.get(item.id)} : {shippingSupportDate:'',shippingSupportAmount:0,grossCost:shipping.allocations.get(item.id)||0}),
                     status: itemPaymentStatus === 'paid' ? 'complete' : 'payment_pending',
                     note: current.note || '',
                     bundleId,
@@ -2314,12 +2324,16 @@ function createPlatformApi({
                 discountAmount: group.settlement.discountAmount,
                 payableAuctionAmount: group.settlement.payableAuctionAmount,
                 shippingAmount: group.shippingAmount,
+                shippingSupportAmount: group.shippingSupportAmount || 0,
+                grossShippingAmount: group.shippingAmount + (group.shippingSupportAmount || 0),
                 totalAmount: group.totalAmount
             }
         };
     }
 
     async function organizerShippingSettlement(channelId, items, shipments, vendors) {
+        const channel=(await loadCatalog()).channels.find(row=>row.id===channelId)||{};
+        const fees=channel.vendorSettlement?.enabled?require('./auction-settlement').summarize(items,shipments,vendors,channel):[];
         const key = `creo_organizer_shipping_bank::${channelId}`;
         const ledgerKey = `creo_organizer_shipping_ledger::${channelId}`;
         const rows = await repository.getRowsByKeys([key, ledgerKey]);
@@ -2330,7 +2344,8 @@ function createPlatformApi({
         const summaries = require('./shipping-settlement').summarizeShipping(items, shipments, vendors).map(v => {
             const history = ledger.filter(r => r.vendorId === v.vendorId);
             const receivedAmount = history.filter(r => r.status === 'confirmed').reduce((n,r) => n + r.amount, 0);
-            return {...v, receivedAmount, remainingAmount:Math.max(0,v.totalAmount-receivedAmount), overpaidAmount:Math.max(0,receivedAmount-v.totalAmount), pendingReport:history.find(r => r.status === 'pending') || null, history};
+            const fee=fees.find(row=>row.vendorId===v.vendorId),totalAmount=v.totalAmount+(fee?.feeAmount||0);
+            return {...v,...(fee?{...fee,shippingAmount:v.totalAmount}:{}),totalAmount, receivedAmount, remainingAmount:Math.max(0,totalAmount-receivedAmount), overpaidAmount:Math.max(0,receivedAmount-totalAmount), pendingReport:history.find(r => r.status === 'pending') || null, history};
         });
         await Promise.all(summaries.map(async v => {
             if(v.pendingReport?.notificationId){
@@ -2338,7 +2353,7 @@ function createPlatformApi({
                 v.pendingReport.notificationStatus=notification?.status || 'configuration_pending';
             }
         }));
-        return {bank, vendors:summaries};
+        return {bank, vendors:summaries,...(channel.vendorSettlement?.enabled?{includesVendorFees:true}: {})};
     }
 
     async function reportOrganizerShipping(context, body) {
@@ -2348,11 +2363,17 @@ function createPlatformApi({
         const requestId = cleanText(body.requestId,80);
         if (requestId.length < 8) throw buyerInputError('다시 시도해 주세요.');
         if (row.history.some(r => r.id === requestId) || row.pendingReport) return {duplicate:true};
-        if (!bank.bankAccount || !normalizePhone(bank.notificationPhone)) throw buyerInputError('주관사 계좌·알림번호 등록 대기 중입니다.',409);
+        if (!bank.bankAccount || (!current.includesVendorFees && !normalizePhone(bank.notificationPhone))) throw buyerInputError('주관사 계좌·알림번호 등록 대기 중입니다.',409);
         if (body.expectedBankUpdatedAt !== bank.updatedAt || Number(body.expectedAmount) !== row.remainingAmount || row.remainingAmount <= 0) throw buyerInputError('정산 금액·계좌가 변경되었습니다. 새로고침해 주세요.',409);
-        if (!notificationService?.prepare) throw buyerInputError('알림 발송 설정을 확인해 주세요.',503);
+        if (!current.includesVendorFees && !notificationService?.prepare) throw buyerInputError('알림 발송 설정을 확인해 주세요.',503);
         if (channelId.startsWith('checkout-test-') && !testDeliveryChannels.has(channelId)) throw buyerInputError('연습 채널은 알림 발송이 꺼져 있습니다.',409);
         const record = {id:requestId,vendorId:context.vendor.id,vendorName:context.vendor.name,amount:row.remainingAmount,status:'pending',reportedAt:new Date().toISOString(),bank:{bankName:bank.bankName,bankAccount:bank.bankAccount,bankHolder:bank.bankHolder}};
+        if(current.includesVendorFees){
+            // The approved shipping-only Alimtalk template must not describe auction fees.
+            const key=`creo_organizer_shipping_ledger::${channelId}`,rows=await repository.getRowsByKeys([key]);
+            const ledger=JSON.parse(rows.find(r=>r.key===key)?.value||'[]');
+            await repository.upsertRows([{key,value:JSON.stringify([...ledger,{...record,kind:'vendor-settlement',entryFeeAmount:row.entryFeeAmount,commissionAmount:row.commissionAmount,shippingAmount:row.shippingAmount}])}]);touchCheckout(channelId);return {duplicate:false,notification:{status:'operator_page'}};
+        }
         let vendorLabel = cleanText(context.vendor.name,60);
         const sms = () => `[옹동2] ${vendorLabel} 배송비 ${record.amount.toLocaleString('ko-KR')}원 입금 접수`;
         while (Buffer.byteLength(sms(),'utf8') > 90 && vendorLabel.length) vendorLabel = vendorLabel.slice(0,-1);
@@ -2411,7 +2432,7 @@ function createPlatformApi({
                 const settlement = await organizerShippingSettlement(context.channel.id, context.items, context.shipments, [context.vendor]);
                 const {notificationPhone,...bank} = settlement.bank;
                 const vendors=settlement.vendors.map(v=>({...v,history:v.history.map(({memo,depositSignature,depositRequestId,...receipt})=>receipt)}));
-                return {...settlement,vendors,bank,notificationReady:Boolean(normalizePhone(notificationPhone))};
+                return {...settlement,vendors,bank,notificationReady:settlement.includesVendorFees || Boolean(normalizePhone(notificationPhone))};
             })(),
             buyers
         };
@@ -4796,6 +4817,10 @@ function createPlatformApi({
                             ...(requestedStatus ? { status: requestedStatus } : {}),
                             id: current.id
                         }, current);
+                        // Desktop transitions cannot discard operator-only fee/date metadata.
+                        for (const key of ['organizerFeePolicy','broadcastDate','auctionKind']) {
+                            if (current.attributes?.[key] !== undefined) candidate.attributes[key] = current.attributes[key];
+                        }
                         if (staleSaleOutcome) {
                             candidate = {
                                 ...candidate,
@@ -5566,6 +5591,7 @@ function createPlatformApi({
                     }
                     const data = await workspace(channelId);
                     let record = sanitizeRecord(type, body.record);
+                    if(type==='item')record=require('./auction-settlement').stamp(record,channel);
                     if(type==='shipment')await assertShipmentNotPending(channelId,record);
                     if (type === 'item' && body.allocateNextLot === true) {
                         const nextLotNumber = data.items.reduce(
@@ -5677,6 +5703,7 @@ function createPlatformApi({
                         incoming.status = 'live';
                     }
                     let record = sanitizeRecord(type, incoming, current);
+                    if(type==='item')record=require('./auction-settlement').stamp(record,channel,current);
                     if(type==='shipment'){await assertShipmentNotPending(channelId,current);await assertShipmentNotPending(channelId,record);}
                     if (type === 'item' && current.status === 'live' && audienceCompetitionEnabled(channel)) {
                         const decorated = await decorateCrewartBidLog(channelId, channel, data.broadcast, record);

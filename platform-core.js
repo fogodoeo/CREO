@@ -370,6 +370,8 @@ function normalizeChannel(input = {}, fallback = {}) {
         scoreboards,
         audienceCompetition,
         settlementDiscount: normalizeSettlementDiscount(input.settlementDiscount ?? source.settlementDiscount, fallback.settlementDiscount),
+        ...(source.vendorSettlement ? {vendorSettlement:require('./auction-settlement').normalizePolicy(source.vendorSettlement)} : {}),
+        ...(source.shippingSupport ? {shippingSupport:{enabled:source.shippingSupport.enabled===true,broadcastDate:/^\d{4}-\d{2}-\d{2}$/.test(source.shippingSupport.broadcastDate||'')?source.shippingSupport.broadcastDate:'',maxAmount:Math.max(0,Math.min(100000,Math.round(Number(source.shippingSupport.maxAmount)||0)))}} : {}),
         overlay: normalizeOverlay(input.overlay || source.overlay, fallback.overlay),
         broadcastDefaults: normalizeBroadcastDefaults(input.broadcastDefaults ?? source.broadcastDefaults, fallback.broadcastDefaults),
         shippingDefaults: normalizeShippingDefaults(input.shippingDefaults ?? source.shippingDefaults, fallback.shippingDefaults),

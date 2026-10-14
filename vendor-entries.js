@@ -244,6 +244,8 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
                         const safe=value=>String(value||'').replace(/[|:]/g,' ');
                         item={...(existing||{}),id:itemId,lotNumber:order,name:lot,vendorId:context.vendor.id,vendorName:context.vendor.name,groupId,teamName,category:facts.morph,status:'waiting',startPrice,soldPrice:0,photoUrl:facts.media[0]?.url||'',createdAt:existing?.createdAt||now,updatedAt:now,attributes:{...(existing?.attributes||{}),checklist:`gender:${{male:'M',female:'F',unknown:''}[facts.sex]}|weight:${facts.weight}|morph:${safe(facts.morph)}|size:${safe(facts.size)}`,displayNumber:lot,entry_traits:{morph:facts.morph,sex:facts.sex,weight:facts.weight,size:facts.size,hatchDate:facts.hatchDate},media:facts.media,parents:facts.parents,vendor_entry:{ownerId,entryId:entry.id}}};
                         item.note=facts.note;
+                        if(entry.broadcastDate)item.attributes.broadcastDate=entry.broadcastDate;
+                        if(context.channel.vendorSettlement?.enabled)item.attributes.organizerFeePolicy=existing?.attributes?.organizerFeePolicy||require('./auction-settlement').normalizePolicy(context.channel.vendorSettlement);
                         entry.approved={...copy(facts),approvedAt:now};entry.itemId=itemId;entry.lot=lot;entry.status='approved';
                     }else{
                         const reason=cleanText(input.reason,200);

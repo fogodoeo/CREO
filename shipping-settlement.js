@@ -22,6 +22,7 @@ function summarizeShipping(items, shipments, vendors) {
             totalAmount:rows.reduce((n,s) => n + cost(s), 0),
             collectedAmount:rows.filter(s => s.paymentStatus === 'paid').reduce((n,s) => n + cost(s), 0),
             pendingAmount:rows.filter(s => s.paymentStatus !== 'paid').reduce((n,s) => n + cost(s), 0),
+            ...(rows.some(s=>s.shippingSupportDate)?{shippingSupportAmount:rows.reduce((n,s)=>n+Math.max(0,Number(s.shippingSupportAmount)||0),0)}:{}),
             itemCount:rows.length};
     });
 }
@@ -32,7 +33,7 @@ function summarizeCarriers(items, shipments, vendors) {
         if (!vendorIds.has(s.vendorId)) continue;
         const carrier = String(s.carrier || '').trim() || '배송업체 미지정';
         if (!groups.has(carrier)) groups.set(carrier,{carrier,totalAmount:0,itemCount:0,vendorAmounts:Object.create(null)});
-        const row = groups.get(carrier),amount=Math.max(0,Math.round(Number(s.cost)||0));
+        const row = groups.get(carrier),amount=Math.max(0,Math.round(Number(s.cost)||0))+Math.max(0,Math.round(Number(s.shippingSupportAmount)||0));
         row.totalAmount+=amount;row.itemCount++;
         row.vendorAmounts[s.vendorId]=(row.vendorAmounts[s.vendorId]||0)+amount;
     }
@@ -58,7 +59,7 @@ function shippingFeeDetails(items, shipments, vendors) {
         return {id:item.id,name:item.name||'',lotNumber:Number(item.lotNumber)||0,
             carrier:String(s.carrier||'').trim()||'배송업체 미지정',
             destination:String(s.address||'').trim()||[s.pargeRegion,s.pargeShop].filter(Boolean).join(' · ')||'배송지 미입력',
-            amount:Math.max(0,Math.round(Number(s.cost)||0))};
+            amount:Math.max(0,Math.round(Number(s.cost)||0)),...(s.shippingSupportDate?{supportAmount:Math.max(0,Math.round(Number(s.shippingSupportAmount)||0))}:{})};
     }).sort((a,b)=>a.lotNumber-b.lotNumber||String(a.id).localeCompare(String(b.id)))}));
 }
 // Organizer-only projection: never expose bearer links, phone numbers, bids,

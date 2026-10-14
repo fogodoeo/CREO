@@ -68,7 +68,9 @@
         return pargeRates.find((group) => group.region === region)?.shops?.find((entry) => entry.name === shop) || null;
     }
 
-    function allocateShipping(items = [], selection = null, channel = {}, pargeRates = []) {
+    function broadcastDate(item = {}) { return item.broadcastDate || item.attributes?.broadcastDate || item.attributes?.vendor_entry?.broadcastDate || ''; }
+
+    function allocateShipping(items = [], selection = null, channel = {}, pargeRates = [], saved = []) {
         const ordered = items.slice().sort(itemOrder);
         const allocations = new Map(ordered.map((item) => [item.id, 0]));
         if (!selection || !['parge', 'dodosi'].includes(selection.destinationType) || !ordered.length) return { total: 0, allocations };
@@ -82,10 +84,40 @@
             : Number(channel?.shippingDefaults?.pargeAdditionalFee ?? 7000);
         allocations.set(ordered[0].id, Math.max(0, Number(rate.baseCost) || 0));
         ordered.slice(1).forEach((item) => allocations.set(item.id, Math.max(0, additionalFee)));
-        return {
-            total: [...allocations.values()].reduce((sum, amount) => sum + amount, 0),
-            allocations
-        };
+        const policy = channel.shippingSupport;
+        const prior = new Map();
+        for (const row of saved) {
+            const old = prior.get(row.itemId);
+            if (allocations.has(row.itemId) && row.buyerSubmittedAt && (!old || String(row.updatedAt || '') > String(old.updatedAt || ''))) prior.set(row.itemId, row);
+        }
+        const eligible = policy?.enabled && policy.broadcastDate && ordered.some(item => broadcastDate(item) === policy.broadcastDate);
+        if (!eligible && ![...prior.values()].some(row => row.shippingSupportDate)) return {total:[...allocations.values()].reduce((sum,amount)=>sum+amount,0),allocations};
+        const grossAllocations = new Map(), supportAllocations = new Map(), supportDates = new Map();
+        const quotedDates = new Set(ordered.filter(item => prior.has(item.id)).map(broadcastDate));
+        const seenDates = new Set();
+        let remaining = eligible ? Math.max(0, Math.round(Number(policy.maxAmount) || 0)) : 0;
+        for (const item of ordered) {
+            const row = prior.get(item.id);
+            if (!row) continue;
+            const net = Math.max(0, Math.round(Number(row.cost) || 0));
+            const support = row.shippingSupportDate ? Math.max(0, Math.round(Number(row.shippingSupportAmount) || 0)) : 0;
+            allocations.set(item.id, net); grossAllocations.set(item.id, net + support);
+            supportAllocations.set(item.id, support); supportDates.set(item.id, row.shippingSupportDate || '');
+            if (row.shippingSupportDate === policy?.broadcastDate) remaining = Math.max(0, remaining - support);
+        }
+        for (const item of ordered) {
+            if (prior.has(item.id)) continue;
+            const day = broadcastDate(item);
+            // Saved quotes retain their base fee when lots are reordered. A later broadcast is a new shipment.
+            const gross = Math.max(0, Number(quotedDates.has(day) || seenDates.has(day) ? additionalFee : rate.baseCost) || 0);
+            seenDates.add(day);
+            const matches = eligible && day === policy.broadcastDate;
+            const support = matches ? Math.min(gross, remaining) : 0;
+            remaining -= support;
+            grossAllocations.set(item.id, gross); supportAllocations.set(item.id, support);
+            supportDates.set(item.id, matches ? policy.broadcastDate : ''); allocations.set(item.id, gross - support);
+        }
+        return {total:[...allocations.values()].reduce((a,b)=>a+b,0),allocations,grossTotal:[...grossAllocations.values()].reduce((a,b)=>a+b,0),supportTotal:[...supportAllocations.values()].reduce((a,b)=>a+b,0),grossAllocations,supportAllocations,supportDates};
     }
 
     function newestShipment(shipments = []) {
@@ -145,6 +177,7 @@
         PAYMENT_METHODS,
         PAYMENT_STATUSES,
         allocateShipping,
+        broadcastDate,
         confirmedAmount,
         derivePaymentState,
         groupItemsByVendor,
