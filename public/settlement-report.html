@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><meta name="referrer" content="no-referrer"><title>총정산 · CREO</title>
+<link rel="stylesheet" href="/settlement-report.css?v=20261014"><script src="/platform-client.js?v=20260803-admin-session-v2"></script><script src="/assets/vendor/xlsx.mini.min.js"></script><script src="/settlement-workbook.js?v=20261014"></script><script defer src="/settlement-report-page.js?v=20261014"></script></head>
+<body><main>
+<a id="back" class="back" href="/channel-workspace.html">← 채널 운영</a>
+<header><div><p id="channel">CREO</p><h1>총정산</h1></div><button id="refresh" type="button">새로고침</button></header>
+<p id="message" role="status" aria-live="polite">불러오는 중…</p>
+<form id="login" hidden><h2>운영자 확인</h2><label for="password">운영자 비밀번호</label><div><input id="password" type="password" autocomplete="current-password" required><button class="primary">확인</button></div></form>
+<div id="content" hidden>
+<div class="scope"><span>채널 누적</span><span id="updated"></span></div>
+<section class="totals" aria-label="정산 합계"><div><span>수수료 합계</span><strong id="fees"></strong></div><div><span>배송비 지원</span><strong id="support"></strong></div><div><span>업체 미입금</span><strong id="due"></strong></div></section>
+<p id="attention" class="attention" hidden></p>
+<div class="actions"><button id="excel" class="primary" type="button" disabled>총정산 엑셀</button><button id="copy" type="button" disabled>구글시트용 표 복사</button><a id="receipts" href="#">입금 확인 관리</a></div>
+<p class="hint">엑셀에는 업체·개체·낙찰자 결제·입금 내역이 담겨요. 구글시트에서도 열 수 있어요.</p>
+<nav id="tabs" aria-label="정산 내역"><button type="button" data-view="0" aria-pressed="true">업체 총정산</button><button type="button" data-view="1" aria-pressed="false">개체 내역</button><button type="button" data-view="2" aria-pressed="false">낙찰자 결제</button><button type="button" data-view="3" aria-pressed="false">입금 내역</button></nav>
+<div class="table-wrap" tabindex="0" role="region" aria-label="정산표 가로 스크롤"><table id="table"></table></div>
+<p class="hint">방송별 내역은 엑셀의 방송일 필터로 확인하세요. 입금 잔액은 업체별 누적 기준이며, 저장한 파일은 웹과 자동 동기화되지 않아요.</p>
+</div></main></body></html>

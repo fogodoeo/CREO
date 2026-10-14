@@ -370,11 +370,16 @@ function createBandMembership(options = {}) {
         if (!config.configured) return null;
         const phone = normalizePhone(input.phone);
         if (phone) return { phone, subject: publicSubject(phone, config.sessionSecret), displayName: '', memberKey: '' };
+        // Financial/contact resolution must use an exact member key. Names can
+        // change or be shared by multiple people, even when only one is mirrored.
+        const byMemberKey = await lookupMemberIdentity(config.memberKeyColumn, input.bandMemberKey);
+        if (byMemberKey) return byMemberKey;
+        if (input.requireMemberKey) return null;
         for (const displayName of profileNameCandidates(input.displayName)) {
             const byDisplayName = await lookupMemberIdentity(config.displayNameColumn, displayName);
             if (byDisplayName) return byDisplayName;
         }
-        return lookupMemberIdentity(config.memberKeyColumn, input.bandMemberKey);
+        return null;
     }
 
     async function lookupMemberSubject(column, value) {

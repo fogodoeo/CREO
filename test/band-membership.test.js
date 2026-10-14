@@ -347,3 +347,17 @@ test('member identity resolves one profile to a phone and fails closed for dupli
     assert.equal(await membership.resolveMemberIdentity({ displayName: '동명이인' }), null);
     assert.equal((await membership.resolveMemberIdentity({ phone: '12345678' })).phone, '01012345678');
 });
+
+test('financial identity prefers the exact member key and never falls back to a name or ambiguous key', async () => {
+    let nameQueries=0;
+    const membership=createBandMembership({env:ENV,now:()=>NOW,fetchImpl:async url=>{
+        const q=new URL(url);
+        if(q.searchParams.has('display_name')){nameQueries++;return jsonResponse([{phone_normalized:'01099999999'}]);}
+        if(q.searchParams.get('band_member_key')==='eq.known')return jsonResponse([{phone_normalized:'01012345678',band_member_key:'known'}]);
+        if(q.searchParams.get('band_member_key')==='eq.ambiguous')return jsonResponse([{phone_normalized:'01011111111'},{phone_normalized:'01022222222'}]);
+        return jsonResponse([]);
+    }});
+    assert.equal((await membership.resolveMemberIdentity({bandMemberKey:'known',displayName:'동명이인',requireMemberKey:true})).phone,'01012345678');
+    for(const key of ['unknown','ambiguous',''])assert.equal(await membership.resolveMemberIdentity({bandMemberKey:key,displayName:'동명이인',requireMemberKey:true}),null);
+    assert.equal(nameQueries,0);
+});

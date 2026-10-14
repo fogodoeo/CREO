@@ -664,7 +664,7 @@ async function bidderMemberKey(bid, bandMembership) {
     }
 }
 
-function winningBid(item) {
+function winningBid(item, requireWinnerMatch = false) {
     const bids = rawItemBidLog(item);
     if (!bids.length) return null;
     const winnerValues = [item?.winnerAlias, item?.winnerName]
@@ -676,6 +676,7 @@ function winningBid(item) {
         return winnerValues.includes(name) || winnerValues.includes(key);
     });
     const candidates = matches.length ? matches : bids;
+    if (requireWinnerMatch && winnerValues.length && !matches.length) return null;
     return candidates
         .map((bid, index) => ({ bid, index, amount: Math.max(0, Number(bid?.amount) || 0) }))
         .sort((left, right) => right.amount - left.amount || right.index - left.index)[0]?.bid || null;
@@ -743,7 +744,7 @@ function mergeChannelBroadcastState(channel, current = {}, patch = {}) {
 }
 
 async function resolveWinnerPhone(item, bandMembership) {
-    const bid = winningBid(item) || {};
+    const bid = winningBid(item, true) || {};
     const explicit = normalizePhone(item?.winnerPhone || phoneFromBid(bid))
         || phoneFromBid({ name: `${item?.winnerAlias || ''} ${item?.winnerName || ''}` });
     if (explicit) return explicit;
@@ -751,7 +752,8 @@ async function resolveWinnerPhone(item, bandMembership) {
     try {
         const identity = await bandMembership.resolveMemberIdentity({
             bandMemberKey: bid?.bidder_key || bid?.bidderKey || '',
-            displayName: bid?.name || bid?.bidder || item?.winnerAlias || item?.winnerName || ''
+            displayName: bid?.name || bid?.bidder || item?.winnerAlias || item?.winnerName || '',
+            requireMemberKey: true
         });
         return normalizePhone(identity?.phone);
     } catch (_) {
@@ -948,7 +950,7 @@ function startsNewAuctionLifecycle(item = {}, requestedStatus = '') {
 
 function storedWinnerPhone(item = {}) {
     return normalizePhone(item.winnerPhone)
-        || phoneFromBid(winningBid(item) || {})
+        || phoneFromBid(winningBid(item, true) || {})
         || phoneFromBid({ name: `${item.winnerAlias || ''} ${item.winnerName || ''}` });
 }
 
@@ -4018,6 +4020,36 @@ function createPlatformApi({
                     const access=method==='POST'?await organizerAccess.issue(channelId):await organizerAccess.current(channelId);
                     replyJson(res,200,{role:'organizer',channelId,url:access?new URL('/o/'+access.code,requestOrigin(req)).href:'',expiresAt:access?.expiresAt||null});
                 });return true;
+            }
+
+            if (segments.length === 3 && segments[2] === 'settlement-report' && method === 'GET') {
+                if (!await requireAdmin(req, res)) return true;
+                // Capture one consistent financial snapshot; slow directory lookups
+                // must never hold the live auction mutation lock.
+                const snapshot = await withMutationLock(`channel:${channelId}`, async () => {
+                    const data = await workspace(channelId);
+                    return {...data, organizer: await organizerShippingSettlement(channelId, data.items, data.shipments, data.vendors), generatedAt: new Date().toISOString()};
+                });
+                const lookups = new Map();
+                const items = snapshot.items.map(item => ({...item}));
+                let cursor = 0;
+                await Promise.all(Array.from({length: Math.min(4, items.length)}, async () => {
+                    while (cursor < items.length) {
+                        const item = items[cursor++];
+                        if (item.status !== 'sold') continue;
+                        const stored = storedWinnerPhone(item);
+                        item._buyerName = buyerDisplayName(item);
+                        if (stored) { item.winnerPhone = stored; item._phoneSource = 'stored'; continue; }
+                        // Archive snapshots must not be rewritten with today's directory.
+                        const bid = winningBid(item, true), key = bid?.bidder_key || bid?.bidderKey;
+                        if (channel.status === 'archived' || !key) { item.winnerPhone = ''; continue; }
+                        if (!lookups.has(key)) lookups.set(key, resolveWinnerPhone(item, bandMembership));
+                        item.winnerPhone = await lookups.get(key);
+                        item._phoneSource = item.winnerPhone ? 'member' : 'missing';
+                    }
+                }));
+                replyJson(res, 200, require('./settlement-report').buildReport({...snapshot, channel, items}));
+                return true;
             }
 
             if (segments.length === 4 && segments[2] === 'organizer-shipping' && ['deposit','cancel'].includes(segments[3]) && method === 'POST') {
