@@ -14,6 +14,28 @@ const { normalizeChannel } = require('../platform-core');
 const { createCrewartHouseService } = require('../crewart-house-service');
 const {CheckoutNotificationService} = require('../checkout-notifications');
 
+test('P2 text sizing persists through partial saves and restart without moving the live auction',async()=>{
+ const repository=new MemoryRepository();let api=createPlatformApi({repository});
+ await repository.upsertRecord('alpha','item',{id:'current',name:'A01',status:'live',attributes:{bid_log:[{name:'가상 입찰자',amount:12}]}});
+ await repository.upsertRecord('alpha','broadcast',{id:'state',mode:'live',activeItemId:'current',page2Ticker:'기존 자막'});
+ const item=structuredClone(await repository.getRecord('alpha','item','current'));
+ const box={x:4,y:78,width:73,height:9,fontScale:1.5,opacity:100,visible:true};
+ const placements={'p2-info':{...box,autoWidth:true},'p2-bidders':{...box,autoWidth:false},'p2-photo':{...box,autoWidth:true},'p2-price':{...box,autoWidth:'false'}};
+ const url='/api/platform/channels/alpha';
+ assert.equal((await call(api,'PUT',url+'/broadcast-state',{layoutPlacements:placements},'')).status,401);
+ for(let i=0;i<2;i++)assert.equal((await call(api,'PUT',url+'/broadcast-state',{layoutPlacements:placements})).status,200);
+ await call(api,'PUT',url+'/broadcast-state',{page2NoteOn:false});
+ api=createPlatformApi({repository});
+ const data=(await call(api,'GET',url+'/broadcast?page=2',null,'')).json();
+ assert.deepEqual(data.state.layoutPlacements['p2-info'],{...box,autoWidth:true});
+ assert.deepEqual(data.state.layoutPlacements['p2-bidders'],{...box,autoWidth:false});
+ assert.deepEqual(data.state.layoutPlacements['p2-photo'],box);
+ assert.deepEqual(data.state.layoutPlacements['p2-price'],box);
+ assert.equal(data.state.mode,'live');assert.equal(data.state.activeItemId,'current');assert.equal(data.state.page2Ticker,'기존 자막');
+ assert.deepEqual(await repository.getRecord('alpha','item','current'),item);
+ assert.equal((await call(api,'GET','/api/platform/channels/beta/broadcast?page=2',null,'')).json().state.layoutPlacements?.['p2-info'],undefined);
+});
+
 test('broadcast projects submitted hatch dates through refresh, next item, channel switch and restart without writing records', async () => {
     const repository = new MemoryRepository();
     await repository.upsertRecord('alpha', 'item', { id:'dated', name:'A01', status:'live', attributes:{checklist:'gender:F|weight:28', entry_traits:{hatchDate:'2026-07-14'}} });

@@ -3,10 +3,11 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>송출 배치 · 옹동2</title>
-  <link rel="stylesheet" href="studio-layout-editor.css?v=20260915-reveal-tv">
+  <link rel="stylesheet" href="studio-layout-editor.css?v=20261014-p2-text-fit">
   <script defer src="platform-client.js?v=20260803-admin-session-v2"></script>
   <script defer src="studio-layout-draft.js?v=20260915-studio"></script>
-  <script defer src="studio-layout-editor.js?v=20260915-reveal-tv"></script>
+  <script defer src="broadcast-text-layout.js?v=20261014-p2-text-fit"></script>
+  <script defer src="studio-layout-editor.js?v=20261014-p2-text-fit"></script>
 </head>
 <body>
 <main class="editor">
@@ -27,6 +28,8 @@
     <aside class="inspector" aria-label="선택 요소 속성">
       <h2>요소 조절</h2>
       <div class="field"><label for="slot">배치 요소</label><select id="slot"><option value="">화면을 불러오는 중…</option></select></div>
+      <div class="range-field"><div class="range-heading"><label for="font" id="font-label">글자 크기</label><div class="font-number"><input id="font-number" type="number" min="50" max="250" step="5" value="100" aria-label="글자 크기 백분율" disabled><span>%</span></div></div><input id="font" type="range" min="0.5" max="2.5" step="0.05" value="1" disabled><output class="sr-only" for="font" id="font-value">100%</output></div>
+      <label class="toggle" id="auto-width-field" for="auto-width" hidden>글자에 맞춰 가로폭<input id="auto-width" type="checkbox" checked disabled></label>
       <fieldset><legend>위치 <span>(%)</span></legend><div class="paired">
         <div class="field"><label for="x">가로 X</label><input id="x" type="number" min="0" max="96" step="0.1" disabled></div>
         <div class="field"><label for="y">세로 Y</label><input id="y" type="number" min="0" max="96" step="0.1" disabled></div>
@@ -35,7 +38,6 @@
         <div class="field"><label for="width">가로</label><input id="width" type="number" min="4" max="100" step="0.1" disabled></div>
         <div class="field"><label for="height">세로</label><input id="height" type="number" min="4" max="100" step="0.1" disabled></div>
       </div></fieldset>
-      <div class="range-field"><div class="range-heading"><label for="font" id="font-label">글자 크기</label><output for="font" id="font-value">100%</output></div><input id="font" type="range" min="0.5" max="2.5" step="0.05" value="1" disabled></div>
       <p class="fit-note" id="fit-note" role="status" hidden>내용이 길어요 · 문구 또는 폭 조절</p>
       <div class="range-field"><div class="range-heading"><label for="opacity" id="opacity-label">불투명도</label><output for="opacity" id="opacity-value">100%</output></div><input id="opacity" type="range" min="0" max="100" step="1" value="100" disabled></div>
       <label class="toggle" for="visible">송출에 표시<input id="visible" type="checkbox" checked disabled></label>

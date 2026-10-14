@@ -229,6 +229,9 @@ function sanitizeBroadcastState(input = {}) {
                 opacity: clampLayoutNumber(raw.opacity, 0, 100, 100),
                 visible: raw.visible !== false
             };
+            if (['p2-info', 'p2-progress', 'p2-bidders', 'p2-price', 'p2-sold'].includes(slot) && typeof raw.autoWidth === 'boolean') {
+                layoutPlacements[slot].autoWidth = raw.autoWidth;
+            }
         }
     }
     return {

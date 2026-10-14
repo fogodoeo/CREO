@@ -7,6 +7,8 @@
  for(const p of [1,2,3])labels['p'+p+'-frame']='게임기 프레임';
  const isFrame=slot=>slot.endsWith('-frame');
  const usesTransparency=slot=>slot==='p2-parents'||isFrame(slot);
+ const textLayout=CreoBroadcastTextLayout;
+ const theme=()=>doc()?.body.dataset.broadcastTheme;
  let selected='',drag=null,saving=false,ready=false,toastTimer,loadTimer,pendingTheme=null,pendingStyle=null;
  const clamp=(value,min,max)=>Math.max(min,Math.min(max,Number(value)||0));
  const doc=()=>frame.contentDocument;
@@ -17,6 +19,7 @@
  function box(slot=selected){return model.values()[slot]||(target(slot)?currentBox(target(slot)):null);}
  function paint(slot,value){
   const element=target(slot);if(!element)return;
+  textLayout.apply(element,theme(),slot,value);
   if(value===null){delete element.dataset.layoutCustom;delete element.dataset.layoutHidden;for(const name of ['x','y','width','height','font-scale','opacity','content-width','content-height'])element.style.removeProperty('--layout-'+name);return;}
   element.dataset.layoutCustom='1';element.dataset.layoutHidden=value.visible?'0':'1';
   for(const name of ['x','y','width','height'])element.style.setProperty('--layout-'+name,value[name]+'%');
@@ -28,6 +31,7 @@
  }
  function change(slot,value){
   const next={x:clamp(value.x,0,96),y:clamp(value.y,0,96),width:clamp(value.width,4,100),height:clamp(value.height,4,100),fontScale:clamp(value.fontScale,.5,2.5),opacity:clamp(value.opacity??100,0,100),visible:value.visible!==false};
+  if(typeof value.autoWidth==='boolean')next.autoWidth=value.autoWidth;
   model.change(slot,next);paint(slot,next);
   const peer=slot==='p1-ticker'?'p2-ticker':slot==='p2-ticker'?'p1-ticker':'';
   if(peer&&model.values()[peer])model.change(peer,{...model.values()[peer],fontScale:next.fontScale});
@@ -38,6 +42,10 @@
   for(const name of ['x','y','width','height'])$(name).value=value?value[name].toFixed(1):'';
   for(const name of ['x','y','width','height'])$(name).disabled=!value||isFrame(selected);
   $('font').disabled=!value||selected==='p2-parents'||isFrame(selected);$('font').value=value?.fontScale||1;$('font-value').textContent=Math.round((value?.fontScale||1)*100)+'%';
+  $('font-number').disabled=$('font').disabled;if(document.activeElement!==$('font-number'))$('font-number').value=Math.round((value?.fontScale||1)*100);
+  const canFit=textLayout.supports(theme(),selected),autoWidth=textLayout.automatic(theme(),selected,value);
+  $('auto-width-field').hidden=!canFit;$('auto-width').disabled=!value||!canFit;$('auto-width').checked=autoWidth;
+  if(autoWidth){$('width').disabled=true;$('height').disabled=true;const rect=target()?.getBoundingClientRect(),view=doc()?.documentElement;if(rect&&view){$('width').value=(rect.width/view.clientWidth*100).toFixed(1);$('height').value=(rect.height/view.clientHeight*100).toFixed(1);}}
   $('font-label').textContent=selected.endsWith('-ticker')?'글자 크기 · P1/P2 공용':'글자 크기';
   const displayOpacity=usesTransparency(selected)?100-(value?.opacity??100):(value?.opacity??100);
   $('opacity-label').textContent=usesTransparency(selected)?'투명도':'불투명도';$('opacity').value=displayOpacity;$('opacity-value').textContent=Math.round(displayOpacity)+'%';$('visible').checked=value?.visible!==false;
@@ -54,12 +62,13 @@
   if(!style){style=document.createElement('style');style.id='creo-layout-editor-style';style.textContent='body[data-layout-editor="1"] [data-layout-slot]{outline:1px dashed #91b4ff99;outline-offset:4px}body[data-layout-editor="1"] [data-layout-slot].layout-selected{outline:3px solid #91b4ff;box-shadow:0 0 0 5px #3370f529}body[data-layout-editor="1"] [data-layout-slot]:focus-visible{outline:4px solid #fff}.creo-layout-handle{position:absolute!important;right:-10px!important;bottom:-10px!important;width:20px!important;height:20px!important;border:3px solid #10151d!important;border-radius:5px!important;background:#91b4ff!important;cursor:nwse-resize!important;z-index:9999!important;zoom:1!important;touch-action:none}.layout-selected>.creo-layout-handle{display:block!important}[data-layout-slot]:not(.layout-selected)>.creo-layout-handle{display:none!important}';document.head.appendChild(style);}
   for(const [slot,value] of Object.entries(model.pending()))paint(slot,value);
   for(const element of elements){
+   textLayout.apply(element,theme(),element.dataset.layoutSlot,model.values()[element.dataset.layoutSlot]);
    if(isFrame(element.dataset.layoutSlot))continue;
    const slot=element.dataset.layoutSlot;element.tabIndex=0;element.setAttribute('role','button');element.setAttribute('aria-label',(labels[slot]||slot)+' 위치 조절');element.style.touchAction='none';
    let handle=element.querySelector(':scope > .creo-layout-handle');if(!handle){handle=document.createElement('span');handle.className='creo-layout-handle';handle.setAttribute('aria-hidden','true');element.appendChild(handle);}
    element.onfocus=()=>select(slot);
    element.onkeydown=event=>{const steps={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]};if(event.key==='Enter'||event.key===' '){event.preventDefault();select(slot);return;}if(!steps[event.key])return;event.preventDefault();select(slot);const [dx,dy]=steps[event.key],value=box(),step=event.shiftKey?1:.1;change(slot,{...value,x:value.x+dx*step,y:value.y+dy*step});};
-   const start=(event,type)=>{if(drag||event.button!==0)return;event.preventDefault();event.stopPropagation();select(slot);drag={slot,type,pointer:event.pointerId,startX:event.clientX,startY:event.clientY,box:box()};event.currentTarget.setPointerCapture(event.pointerId);};
+   const start=(event,type)=>{if(drag||event.button!==0)return;event.preventDefault();event.stopPropagation();select(slot);let value=box();if(type==='resize'&&textLayout.automatic(theme(),slot,value)){const actual=currentBox(element);value={...value,width:actual.width,height:actual.height,autoWidth:false};if(element.classList.contains('is-lower-caption'))value.y=actual.y;}drag={slot,type,pointer:event.pointerId,startX:event.clientX,startY:event.clientY,box:value};event.currentTarget.setPointerCapture(event.pointerId);};
    element.onpointerdown=event=>{if(event.target!==handle)start(event,'move')};handle.onpointerdown=event=>start(event,'resize');
   }
   document.onpointermove=event=>{if(!drag||event.pointerId!==drag.pointer)return;const view=document.documentElement,dx=(event.clientX-drag.startX)/view.clientWidth*100,dy=(event.clientY-drag.startY)/view.clientHeight*100;change(drag.slot,drag.type==='move'?{...drag.box,x:drag.box.x+dx,y:drag.box.y+dy}:{...drag.box,width:drag.box.width+dx,height:drag.box.height+dy});};
@@ -85,6 +94,9 @@
  $('slot').onchange=()=>select($('slot').value);
  for(const name of ['x','y','width','height','opacity'])$(name).oninput=()=>{if(box()&&$(name).value!=='')change(selected,{...box(),[name]:name==='opacity'&&usesTransparency(selected)?100-Number($(name).value):$(name).value})};
  $('font').oninput=()=>box()&&change(selected,{...box(),fontScale:$('font').value});$('visible').onchange=()=>box()&&change(selected,{...box(),visible:$('visible').checked});
+ $('font-number').oninput=()=>{const value=Number($('font-number').value);if(box()&&value>=50&&value<=250)change(selected,{...box(),fontScale:value/100});};
+ $('font-number').onchange=()=>{if(box())change(selected,{...box(),fontScale:clamp($('font-number').value,50,250)/100});$('font-number').value=Math.round((box()?.fontScale||1)*100);};
+ $('auto-width').onchange=()=>{if(!box())return;const value=box(),actual=currentBox(target());change(selected,{...value,...(!$('auto-width').checked?{width:actual.width,height:actual.height,...(target().classList.contains('is-lower-caption')?{y:actual.y}:{})}:{}),autoWidth:$('auto-width').checked});};
  $('reset').onclick=()=>{if(!selected)return;model.change(selected,null);paint(selected,null);syncFields();status();toast('배치 저장을 누르면 기본 위치로 반영돼요');};
  const settings=()=>$('settings-dock').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'instant':'smooth',block:'start'});
  $('content').onclick=settings;$('banners').onclick=()=>{settingsFrame.classList.add('assets-open');settings();settingsFrame.contentWindow?.postMessage({type:'creo-open-assets',filter:'banner'},location.origin)};
