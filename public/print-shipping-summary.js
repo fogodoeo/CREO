@@ -49,6 +49,33 @@
         return number(item.soldPrice) * 10000;
     }
 
+    function shippingAmounts(item) {
+        if (['직접수령', '픽업'].includes(text(item.shipping_type))) return { gross: 0, buyer: 0, support: 0 };
+        var buyer = number(item.shipping_cost);
+        // Keep the saved buyer charge separate from the original shipping quote.
+        var gross = Math.max(number(item.shipping_gross_cost), buyer + number(item.shipping_support_amount));
+        return { gross: gross, buyer: buyer, support: gross - buyer };
+    }
+
+    function recordedShippingDisplays(items) {
+        var groups = new Map(), result = new Map();
+        (items || []).forEach(function (item) {
+            if (!item._platformShipmentId) { result.set(item, '-'); return; }
+            if (['직접수령', '픽업'].includes(text(item.shipping_type))) { result.set(item, '0원 (직수령)'); return; }
+            var winner = winnerIdentity(item), destination = shippingDestination(item);
+            var key = /^01[016789]\d{7,8}$/.test(winner.phone) && destination
+                ? JSON.stringify([text(item.channelId || item.channel_id), text(item.company), winner.phone, destination])
+                : item;
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key).push(item);
+        });
+        groups.forEach(function (rows) {
+            var gross = rows.reduce(function (sum, item) { return sum + shippingAmounts(item).gross; }, 0);
+            rows.forEach(function (item, index) { result.set(item, index ? '(합배송)' : gross.toLocaleString('ko-KR') + '원'); });
+        });
+        return result;
+    }
+
     function winnerIdentity(item) {
         item = item || {};
         var saved = item._winner || {};
@@ -147,7 +174,9 @@
                 itemCount: bundleItems.length,
                 combined: bundleItems.length > 1,
                 soldAmountWon: bundleItems.reduce(function (sum, item) { return sum + itemWon(item); }, 0),
-                shippingCost: bundleItems.reduce(function (sum, item) { return sum + number(item.shipping_cost); }, 0),
+                shippingCost: bundleItems.reduce(function (sum, item) { return sum + shippingAmounts(item).gross; }, 0),
+                buyerShippingCost: bundleItems.reduce(function (sum, item) { return sum + shippingAmounts(item).buyer; }, 0),
+                shippingSupportAmount: bundleItems.reduce(function (sum, item) { return sum + shippingAmounts(item).support; }, 0),
                 requestedAmount: Math.max.apply(null, [0].concat(bundleItems.map(function (item) { return number(item.payment_requested_amount); }))),
                 confirmedAmount: Math.max.apply(null, [0].concat(bundleItems.map(function (item) { return number(item.payment_confirmed_amount); }))),
                 destination: destinations.join(' / '),
@@ -186,7 +215,9 @@
                 count: rows.length,
                 items: rows.map(function (it) { return text(it.name || it.num); }).join(' · '),
                 soldAmount: rows.reduce(function (sum, it) { return sum + itemWon(it); }, 0),
-                shippingCost: rows.reduce(function (sum, it) { return sum + number(it.shipping_cost); }, 0),
+                shippingCost: rows.reduce(function (sum, it) { return sum + shippingAmounts(it).gross; }, 0),
+                buyerShippingCost: rows.reduce(function (sum, it) { return sum + shippingAmounts(it).buyer; }, 0),
+                shippingSupportAmount: rows.reduce(function (sum, it) { return sum + shippingAmounts(it).support; }, 0),
                 unpaidCount: rows.filter(function (it) { return it.payment_status !== 'paid'; }).length
             };
             rows.forEach(function (it) { result.set(it, Object.assign({ itemAmount: itemWon(it) }, summary)); });
@@ -197,13 +228,13 @@
     function sheetRows(rows) {
         return [[
             '업체', '낙찰자', '연락처', '낙찰 개체', '개체 수', '합배송',
-            '낙찰금', '배송비', '결제 요청액', '결제 확인액',
-            '배송 입력', '결제 상태', '결제 수단', '수령지', '입력 시각'
+            '낙찰금', '배송비(할인 전)', '결제 요청액', '결제 확인액',
+            '배송 입력', '결제 상태', '결제 수단', '수령지', '입력 시각', '배송 지원금', '낙찰자 배송비'
         ]].concat((rows || []).map(function (row) {
             return [
                 row.company, row.buyerName, formatPhone(row.phone), row.itemSummary, row.itemCount, row.combined ? '합배송' : '',
                 row.soldAmountWon, row.shippingCost, row.requestedAmount, row.confirmedAmount,
-                row.inputLabel, row.paymentLabel, row.paymentMethodLabel, row.destination || (row.estimatedDestination ? '예상 · '+row.estimatedDestination : ''), formatKoreanDateTime(row.submittedAt)
+                row.inputLabel, row.paymentLabel, row.paymentMethodLabel, row.destination || (row.estimatedDestination ? '예상 · '+row.estimatedDestination : ''), formatKoreanDateTime(row.submittedAt), row.shippingSupportAmount, row.buyerShippingCost
             ];
         }));
     }
@@ -216,6 +247,8 @@
         paymentLabel: paymentLabel,
         paymentMethodLabel: paymentMethodLabel,
         sheetRows: sheetRows,
+        shippingAmounts: shippingAmounts,
+        recordedShippingDisplays: recordedShippingDisplays,
         shippingDestination: shippingDestination,
         winnerIdentity: winnerIdentity
     };

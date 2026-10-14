@@ -322,6 +322,18 @@ test('platform shipping items expose settlement fields used by print exports', (
     assert.equal(rows[0].payment_confirmed_at, '2026-08-31T00:05:00.000Z');
 });
 
+test('platform shipping adapter carries gross shipping without replacing the buyer charge', () => {
+    const workspace={vendors:[],items:[{id:'a',status:'sold',soldPrice:100000}],shipments:[
+        {id:'s',itemId:'a',method:'delivery',cost:3000,grossCost:33000,shippingSupportAmount:30000,paymentRequestedAmount:103000}
+    ]};
+    const before=structuredClone(workspace), row=Adapters.platformShippingItems(workspace,channel('basic'))[0];
+    assert.equal(row.shipping_cost,3000);
+    assert.equal(row.shipping_gross_cost,33000);
+    assert.equal(row.shipping_support_amount,30000);
+    assert.equal(row.payment_requested_amount,103000);
+    assert.deepEqual(workspace,before);
+});
+
 test('CREWART broadcast strips copied CDCUP metadata even when the item is named A01', () => {
     const bridged = BroadcastBridge.toLegacyItem({
         id: 'item_a01',

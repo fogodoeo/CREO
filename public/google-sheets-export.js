@@ -23,7 +23,7 @@
 
     function buildCell(value, columnIndex, rowIndex) {
         var header = rowIndex === 0;
-        var numericWon = rowIndex > 0 && columnIndex >= 6 && columnIndex <= 9 && typeof value === 'number';
+        var numericWon = rowIndex > 0 && (columnIndex >= 6 && columnIndex <= 9 || columnIndex === 15 || columnIndex === 16) && typeof value === 'number';
         var format = {
             verticalAlignment: 'MIDDLE',
             wrapStrategy: columnIndex === 3 || columnIndex === 13 ? 'WRAP' : 'CLIP'
@@ -45,7 +45,7 @@
     function buildSpreadsheet(rows, title) {
         var safeRows = Array.isArray(rows) ? rows : [];
         var columnCount = Math.max(1, safeRows.reduce(function (max, row) { return Math.max(max, Array.isArray(row) ? row.length : 0); }, 0));
-        var widths = [120, 110, 130, 220, 70, 70, 110, 100, 115, 115, 100, 100, 100, 290, 145];
+        var widths = [120, 110, 130, 220, 70, 70, 110, 140, 115, 115, 100, 100, 100, 290, 145, 120, 120];
         return {
             properties: {
                 title: cleanTitle(title),

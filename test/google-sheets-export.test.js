@@ -50,3 +50,15 @@ test('Google Sheets API errors remain actionable', async () => {
         /OAuth client is not authorized/
     );
 });
+
+test('Google Sheets retains separate numeric support and buyer shipping columns', () => {
+    const extended=rows.map((row,index)=>row.concat(index ? [23000,3000] : ['배송 지원금','낙찰자 배송비']));
+    const sheet=Export.buildSpreadsheet(extended,'정산').sheets[0];
+    assert.equal(sheet.properties.gridProperties.columnCount,17);
+    assert.equal(sheet.basicFilter.range.endColumnIndex,17);
+    for (const [index,value] of [[15,23000],[16,3000]]) {
+        const cell=sheet.data[0].rowData[1].values[index];
+        assert.equal(cell.userEnteredValue.numberValue,value);
+        assert.equal(cell.userEnteredFormat.numberFormat.pattern,'#,##0"원"');
+    }
+});

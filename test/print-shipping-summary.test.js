@@ -97,7 +97,7 @@ test('additional payment has priority and sheet export keeps raw numeric amounts
     ]);
     assert.equal(rows[0].paymentState, 'additional_payment');
     const sheet = Summary.sheetRows(rows);
-    assert.equal(sheet[0][7], '배송비');
+    assert.equal(sheet[0][7], '배송비(할인 전)');
     assert.equal(sheet[1][7], 26000);
     assert.equal(sheet[1][11], '추가 결제');
     assert.equal(sheet[1][14], '2026-08-31 09:00');
@@ -145,4 +145,63 @@ test('settlement grouping uses the same winner identity without pre-enrichment',
     assert.equal(rows[0].buyerName, '김미옥');
     assert.equal(rows[0].phone, '01012345678');
     assert.equal(rows[0].itemSummary, 'A01 · A02');
+});
+
+test('print preserves original shipping, support and actual payment amounts separately', () => {
+    for (const buyerCost of [0, 3000]) {
+        const item = sold({ shipping_cost: buyerCost, shipping_gross_cost: 33000, shipping_support_amount: 33000 - buyerCost,
+            payment_requested_amount: 100000 + buyerCost, payment_confirmed_amount: 100000 + buyerCost });
+        const before = structuredClone(item), row = Summary.groupBundles([item])[0], sheet = Summary.sheetRows([row]);
+        assert.equal(row.shippingCost, 33000);
+        assert.equal(row.buyerShippingCost, buyerCost);
+        assert.equal(row.shippingSupportAmount, 33000 - buyerCost);
+        assert.equal(row.requestedAmount, 100000 + buyerCost);
+        assert.equal(row.confirmedAmount, 100000 + buyerCost);
+        assert.equal(sheet[1][7], 33000);
+        assert.equal(sheet[1][15], 33000 - buyerCost);
+        assert.equal(sheet[1][16], buyerCost);
+        assert.deepEqual(item, before);
+    }
+});
+
+test('shipping amounts support old records, zero charges and pickup without invented fees', () => {
+    assert.deepEqual(Summary.shippingAmounts(sold({shipping_cost:3000,shipping_support_amount:30000})), {gross:33000,buyer:3000,support:30000});
+    assert.deepEqual(Summary.shippingAmounts(sold({shipping_cost:19000})), {gross:19000,buyer:19000,support:0});
+    assert.deepEqual(Summary.shippingAmounts(sold()), {gross:0,buyer:0,support:0});
+    assert.deepEqual(Summary.shippingAmounts(sold({shipping_cost:3000,shipping_gross_cost:NaN})), {gross:3000,buyer:3000,support:0});
+    assert.deepEqual(Summary.shippingAmounts(sold({shipping_type:'직접수령',shipping_cost:19000,shipping_support_amount:19000})), {gross:0,buyer:0,support:0});
+});
+
+test('platform print keeps stored allocations and missing destinations unchanged across rerenders', () => {
+    const fs=require('fs'),vm=require('vm'),source=fs.readFileSync(require.resolve('../public/print.html'),'utf8');
+    const context=vm.createContext({CreoPrintShippingSummary:Summary});
+    const begin=source.indexOf('        function populateCalculatedShipping('),end=source.indexOf('\n        function ',begin+1);
+    vm.runInContext(source.slice(begin,end),context);
+    const items = [
+        sold({_platformItemId:'a',_platformShipmentId:'sa',shipping_cost:0,shipping_gross_cost:19000,shipping_support_amount:19000}),
+        sold({_platformItemId:'b',_platformShipmentId:'sb',shipping_cost:0,shipping_gross_cost:7000,shipping_support_amount:7000}),
+        sold({_platformItemId:'c',_platformShipmentId:'sc',company:'다른업체',shipping_cost:3000,shipping_gross_cost:7000,shipping_support_amount:4000}),
+        sold({_platformItemId:'d',_platformShipmentId:'sd',shipping_region:'다른 배송지',shipping_cost:19000}),
+        sold({_platformItemId:'e',_platformShipmentId:'',shipping_type:'',shipping_company:'',shipping_region:'',buyer_submitted_at:''}),
+        sold({_platformItemId:'f',_platformShipmentId:'sf',shipping_type:'직접수령',shipping_region:'직수령지'})
+    ];
+    const before=structuredClone(items);
+    context.populateCalculatedShipping(items);
+    assert.deepEqual(items.map(it=>it.shipping_display),['26,000원','(합배송)','7,000원','19,000원','-','0원 (직수령)']);
+    const first=structuredClone(items);
+    context.populateCalculatedShipping(items);
+    assert.deepEqual(items,first);
+    assert.deepEqual(items.map(({shipping_display,...it})=>it),before);
+    assert.equal(Summary.groupBundles(items).reduce((sum,row)=>sum+row.shippingCost,0),52000);
+});
+
+test('shipping display never combines unknown buyers or channels', () => {
+    const items = [
+        sold({_platformShipmentId:'a',_winner:{name:'동명이인',phone:''},shipping_cost:19000}),
+        sold({_platformShipmentId:'b',_winner:{name:'동명이인',phone:''},shipping_cost:19000}),
+        sold({_platformShipmentId:'c',channelId:'one',shipping_cost:19000}),
+        sold({_platformShipmentId:'d',channelId:'two',shipping_cost:19000})
+    ];
+    const displays=Summary.recordedShippingDisplays(items);
+    for (const item of items) assert.equal(displays.get(item),'19,000원');
 });
