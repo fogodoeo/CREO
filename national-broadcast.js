@@ -61,6 +61,7 @@ function createNationalBroadcast(repository,{now=Date.now,entries,notificationSe
  async function view(context){
   const {state}=await read(context.channel),region=state.regions[context.vendor.id]??regionForVendor(context.vendor);
   const entryState=context.profile?await entries.read(context):{entries:[],parents:[],media:[],events:[]};
+  if(context.profile&&entries.auctionPhotos)entryState.auctionItems=await entries.auctionPhotos(context);
   const reservations=state.reservations.filter(r=>r.vendorId===context.vendor.id).map(r=>{
    return {...r,linkCode:undefined,session:policySession(state,r.date,context.vendors),...entryProgress(r,entryState.entries,limitFor(state,r,context.vendors)),proposal:null,history:state.audit.filter(a=>a.reservationId===r.id)};
   });
@@ -73,12 +74,13 @@ function createNationalBroadcast(repository,{now=Date.now,entries,notificationSe
   if(!repository.compareAndSwapRows)throw fail('방송 저장소를 확인해 주세요.',503);
   const {state,raw}=await read(context.channel),requestId=String(input.requestId||''),type=input.type;
   if(!/^[a-zA-Z0-9_-]{8,80}$/.test(requestId))throw fail('요청을 다시 확인해 주세요.',422);
-  const allowed=operator?['session','defaults','region','cancel']:['reserve','save-entry','save-entries','reopen-entry','pickup','inbound-origin'];
+  const allowed=operator?['session','defaults','region','cancel']:['reserve','save-entry','save-entries','reopen-entry','parent-photos','pickup','inbound-origin'];
   if(!allowed.includes(type))throw fail('이 작업을 실행할 수 없어요.',403);
   const clean={...input};for(const k of ['requestId','code','token','bookingCode'])delete clean[k];
   const signature=crypto.createHash('sha256').update(JSON.stringify(clean)).digest('hex'),requestKey=(operator?'operator':context.vendor.id)+':'+requestId,prior=state.requests.find(r=>r.key===requestKey);
   if(prior){if(prior.signature!==signature)throw fail('요청 내용이 변경됐어요. 다시 확인해 주세요.');return {result:prior.result,duplicate:true};}
   let r,result='',action='';
+  if(type==='parent-photos')return entries.updateItemParents(context,input);
   if(type==='save-entries'){
    r=state.reservations.find(r=>r.id===input.id&&r.vendorId===context.vendor.id&&r.status==='confirmed');
    if(!r||!context.profile)throw fail('출품할 방송을 다시 확인해 주세요.',403);

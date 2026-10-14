@@ -3577,6 +3577,7 @@ function createPlatformApi({
                     });
                     else result=await booking.command(context,body);
                     touchCheckout(context.channel.id);
+                    if(cycle&&body.type==='parent-photos'&&!result.duplicate)touchChannel(context.channel.id);
                 }
                 replyJson(res,200,{...await booking.vendorView(context),...result,linkedReservationId,navigationToken});return true;
             }

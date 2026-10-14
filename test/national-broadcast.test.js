@@ -18,6 +18,21 @@ test('five-region rotation has a fixed first broadcast and covers month/year bou
  assert.equal(regionAt('2026-10-12'),null);assert.equal(regionAt('2026-10-14'),0);assert.equal(regionAt('2026-10-19'),1);assert.equal(regionAt('2026-10-26'),3);assert.equal(regionAt('2026-11-02'),0);assert.equal(regionAt('2026-02-30'),null);
  assert.equal(regionAt('2027-01-04'),3);assert.equal(regionAt('9999-12-29'),4);
 });
+test('vendor parent photos update imported lots after the entry deadline and refresh the broadcast pulse',async t=>{
+ const f=await fixture(t),view=(await f.get()).json(),ownerId=view.entryState.ownerId,photoId=randomUUID();
+ const channel={id:'national-cre',status:'active'},context={channel,vendor:{id:f.vendorId},profile:{id:ownerId,members:[{channelId:'national-cre',vendorId:f.vendorId}]},catalog:{channels:[channel]}};
+ await createVendorEntries(f.repository).addMedia(context,{id:photoId,url:'/assets/test-parent.webp',thumbnailUrl:'/assets/test-parent-small.webp',size:200,thumbnailSize:50});
+ const item={id:'imported-lot',name:'A01',lotNumber:1,vendorId:f.vendorId,status:'waiting',startPrice:0,attributes:{broadcastDate:'2026-10-14',entry_traits:{sex:'male',weight:'5',hatchDate:'2026-01-01'}}};
+ await f.repository.upsertRecord('national-cre','item',item);await f.repository.upsertRecord('national-cre','item',{...item,id:'other-vendor',lotNumber:2,vendorId:'foreign'});
+ f.advance(12*86400000);
+ const current=(await f.get()).json().entryState.auctionItems;assert.equal(current.length,1);assert.equal(current[0].id,item.id);
+ const pulse=()=>f.call(f.client,'GET','/api/platform/channels/national-cre/broadcast-pulse');const before=(await pulse()).json().revision;
+ const saved=await f.command({type:'parent-photos',itemId:item.id,side:'sire',photoId,expectedUpdatedAt:current[0].updatedAt});assert.equal(saved.status,200,saved.body);
+ assert.equal(saved.json().entryState.auctionItems[0].parents[0].media[0].url,'/assets/test-parent.webp');assert.ok((await pulse()).json().revision>before);
+ assert.deepEqual((await f.repository.getRecord('national-cre','item',item.id)).attributes.entry_traits,item.attributes.entry_traits);
+ const denied=await f.command({type:'parent-photos',itemId:'other-vendor',side:'sire',photoId,expectedUpdatedAt:current[0].updatedAt});assert.equal(denied.status,403);
+ f.restart();assert.equal((await f.get()).json().entryState.auctionItems[0].parentPhotoIds.sire,photoId);
+});
 test('every region always allows four entries regardless of company count or region overrides',()=>{
  const {regionEntryPolicy}=require('../national-broadcast');
  for(let region=0;region<5;region++){

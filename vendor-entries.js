@@ -376,6 +376,56 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
             state.media.push(row);state.version++;await repository.upsertRows([{key:KEY+ownerId,value:JSON.stringify(state)}]);return row;
         });
     }
+    function mergedParents(item, libraryParents = item.attributes?.parents || []) {
+        const overrides = new Set(Array.isArray(item.attributes?.parentPhotoOverrides) ? item.attributes.parentPhotoOverrides : []);
+        return ['sire','dam'].map(role => (overrides.has(role) ? item.attributes?.parents : libraryParents)?.find(p => p.role === role)).filter(Boolean);
+    }
+    async function auctionPhotos(context) {
+        const state = await readOwner(owner(context));
+        const items = (await repository.listRecords(context.channel.id,'item')).filter(item => item.vendorId === context.vendor.id && item.attributes?.broadcastDate);
+        const hydrated = await hydrateItems(context.channel.id,items);
+        return hydrated.sort((a,b)=>a.lotNumber-b.lotNumber).map(item => {
+            const raw = items.find(row=>row.id===item.id);
+            const entry = state.entries.find(e=>e.itemId===item.id && e.approved);
+            let parents = raw.attributes?.parents || [];
+            if(entry)try{parents=mergedParents(raw,parentPhotos(state,entry.approved))}catch{}
+            return {
+                ...require('./checkout-item-data').checkoutItem(item), date:item.attributes.broadcastDate,
+                status:item.status, updatedAt:item.updatedAt,
+                canEdit:['draft','active'].includes(context.channel.status)&&context.vendor.active!==false&&['waiting','live','passed'].includes(item.status),
+                parentPhotoIds:Object.fromEntries(['sire','dam'].map(role=>{
+                    const url=parents.find(p=>p.role===role)?.media?.[0]?.url;
+                    return [role,state.media.find(m=>m.url===url)?.id||''];
+                }))
+            };
+        });
+    }
+    async function updateItemParents(context,input) {
+        const ownerId=owner(context),id=cleanText(input.itemId,64),side=input.side,photoId=cleanText(input.photoId,80),requestId=cleanText(input.requestId,80);
+        if(context.channel.id!=='national-cre'||!['draft','active'].includes(context.channel.status)||context.vendor.active===false)throw fail('현재 방송에서는 사진을 변경할 수 없어요.',403);
+        if(!['sire','dam'].includes(side)||!id||!/^[a-zA-Z0-9_-]{8,80}$/.test(requestId))throw fail('부모 사진을 다시 선택해 주세요.',422);
+        return locked(ownerId,async()=>{
+            const state=await readOwner(ownerId),key=context.channel.id+':item-parents:'+requestId;
+            const signature=hash({id,side,photoId,expectedUpdatedAt:input.expectedUpdatedAt}),prior=state.requests.find(r=>r.key===key);
+            if(prior){if(prior.signature!==signature)throw fail('요청 내용이 변경됐어요. 다시 열어 주세요.');return {duplicate:true,itemId:id};}
+            const item=await repository.getRecord(context.channel.id,'item',id);
+            if(!item||item.vendorId!==context.vendor.id)throw fail('해당 업체의 개체만 변경할 수 있어요.',403);
+            if(!['waiting','live','passed'].includes(item.status))throw fail('낙찰·종료된 개체는 운영자에게 문의해 주세요.');
+            if(!input.expectedUpdatedAt||input.expectedUpdatedAt!==item.updatedAt)throw fail('개체가 변경됐어요. 사진 목록을 다시 열어 주세요.');
+            const media=photos(state,[photoId]),entry=state.entries.find(e=>e.itemId===id&&e.approved);
+            let parents=item.attributes?.parents||[];
+            if(entry)parents=mergedParents(item,parentPhotos(state,entry.approved));
+            const existing=parents.find(p=>p.role===side)||{role:side,name:'',morph:''};
+            const replacement={...existing,media};
+            const saved={...item,updatedAt:nextItemTimestamp(item),attributes:{...item.attributes,
+                parents:parents.filter(p=>p.role!==side).concat(replacement),
+                parentPhotoOverrides:[...new Set([...(Array.isArray(item.attributes?.parentPhotoOverrides)?item.attributes.parentPhotoOverrides:[]),side])]
+            }};
+            state.version++;state.requests.push({key,signature,result:id});state.requests=state.requests.slice(-500);
+            await repository.upsertRows([{key:KEY+ownerId,value:JSON.stringify(state)},{key:channelKey(context.channel.id,'item',id),value:JSON.stringify(saved)}]);
+            return {duplicate:false,itemId:id};
+        });
+    }
     async function hydrateItems(channelId, items) {
         const owners=new Map();
         for(const item of items){
@@ -391,7 +441,7 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
             if(link&&owners.has(link.ownerId)&&!state)return {...item,parentInfoState:'snapshot'};
             const entry=state?.entries.find(entry=>entry.id===link.entryId&&entry.channelId===channelId&&entry.channelVendorId===item.vendorId&&entry.itemId===item.id&&entry.approved);
             if(!entry)return item;
-            try{return {...item,attributes:{...item.attributes,parents:parentPhotos(state,entry.approved)}}}
+            try{return {...item,attributes:{...item.attributes,parents:mergedParents(item,parentPhotos(state,entry.approved))}}}
             catch{return {...item,parentInfoState:'snapshot'}}
         });
         return Promise.all(hydrated.map(async item=>{
@@ -433,7 +483,7 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
             return resolveFacts(item);
         }));
     }
-    return {read,command,saveMany,batch,addMedia,hydrateItems,hydrateCollectionRecords,policy,summary,withOwnerLock:locked};
+    return {read,command,saveMany,batch,addMedia,auctionPhotos,updateItemParents,hydrateItems,hydrateCollectionRecords,policy,summary,withOwnerLock:locked};
 }
 
 module.exports={createVendorEntries,normalizeEntry};
