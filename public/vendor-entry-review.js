@@ -4,12 +4,14 @@
   const viewer=View.createViewer({document,origin:location.origin});
   const dialog=$('review-dialog');
   $('review-form').querySelectorAll('input,textarea,select').forEach(input=>input.setAttribute('aria-describedby','review-error'));
-  let channelId=new URLSearchParams(location.search).get('channel')||'', data=null, status='submitted', vendorId='', selected=null;
+  const params=new URLSearchParams(location.search),Intake=window.CreoEntryIntake;
+  let channelId=params.get('channel')||'', data=null, status=['submitted','draft','changes_requested','approved'].includes(params.get('status'))?params.get('status'):'submitted', vendorId=params.get('vendor')||'', selected=null;
+  let broadcastDate='',dateInitialized=false,requestedDate=params.get('broadcastDate');
   let busy=false, loading=false, sequence=0, reviewMode='approve', opener=null, pending=null, outside=false;
   let preferredPart='1부', checked=new Map(), batchPending=null;
   const Numbering=window.CreoEntryNumbering;
   const key=row=>row.group.vendor.id+':'+row.entry.id;
-  const visibleRows=()=>rows().filter(row=>row.entry.status===status&&(!vendorId||row.group.vendor.id===vendorId)).sort((a,b)=>status==='approved'?(data.allocation.find(i=>i.id===a.entry.itemId)?.order||0)-(data.allocation.find(i=>i.id===b.entry.itemId)?.order||0):a.group.vendor.name.localeCompare(b.group.vendor.name,'ko')||a.entry.entryNumber-b.entry.entryNumber);
+  const visibleRows=()=>rows().filter(row=>Intake.onDate(row,broadcastDate)&&row.entry.status===status&&(!vendorId||row.group.vendor.id===vendorId)).sort((a,b)=>status==='approved'?(data.allocation.find(i=>i.id===a.entry.itemId)?.order||0)-(data.allocation.find(i=>i.id===b.entry.itemId)?.order||0):a.group.vendor.name.localeCompare(b.group.vendor.name,'ko')||a.entry.entryNumber-b.entry.entryNumber);
   const endpoint=()=>`channels/${encodeURIComponent(channelId)}/entries`;
   const canReview=()=>data&&['draft','active'].includes(data.channel.status);
   const source=entry=>entry.submission||entry.approved||entry;
@@ -18,8 +20,8 @@
   function notice(message){$('notice').textContent=message;}
   function setBusy(value){
     busy=value;
-    for(const id of ['toggle-intake','review-event','review-vendor','refresh','change-review-mode','confirm-review','close-review','reload-entry','batch-part','approve-selected','arrange-vendors','print-entry-labels','select-all'])$(id).disabled=value;
-    $('entry-list').querySelectorAll('input,button').forEach(el=>el.disabled=value);
+    for(const id of ['toggle-intake','review-event','review-vendor','review-date','refresh','change-review-mode','confirm-review','close-review','reload-entry','batch-part','approve-selected','arrange-vendors','print-entry-labels','select-all'])$(id).disabled=value;
+    $('entry-list').querySelectorAll('input,button').forEach(el=>el.disabled=value||(status==='draft'&&el.matches('input')));
     $('filters').querySelectorAll('button').forEach(el=>el.disabled=value);
     $('review-form').querySelectorAll('input,textarea,select').forEach(input=>{input.disabled=value;});
     updateSelection();
@@ -27,6 +29,13 @@
   function setLinks(){
     $('workspace-link').href=channelId?'/channel-workspace.html?channel='+encodeURIComponent(channelId):'/channel-manager.html';
     $('workspace-link').textContent=channelId?'경매 운영':'경매 관리';
+  }
+  function syncFilters(){const url=new URL(Intake.reviewUrl(channelId,broadcastDate,vendorId,status),location.origin);history.replaceState(null,'',url);}
+  function renderDates(){
+    const dates=Intake.dates(data);if(broadcastDate&&!dates.includes(broadcastDate))dates.push(broadcastDate);dates.sort();
+    $('review-date-field').hidden=!dates.length;
+    $('review-date').innerHTML='<option value="">전체 방송</option>'+dates.map(day=>`<option value="${day}">${day}${day===Intake.today()?' · 오늘':''}</option>`).join('');
+    $('review-date').value=broadcastDate;
   }
   function itemView(row){
     const s=source(row.entry), group=row.group;
@@ -40,33 +49,34 @@
   }
   function renderList(){
     const all=rows(), visible=visibleRows();
-    checked=new Map([...checked].filter(([id,version])=>all.some(r=>key(r)===id&&r.entry.version===version&&r.entry.status===status)));
+    checked=new Map([...checked].filter(([id,version])=>visible.some(r=>key(r)===id&&r.entry.version===version)));
     $('filters').querySelectorAll('[data-status]').forEach(button=>{
       button.setAttribute('aria-pressed',String(button.dataset.status===status));
-      button.querySelector('span').textContent=all.filter(row=>row.entry.status===button.dataset.status&&(!vendorId||row.group.vendor.id===vendorId)).length;
+      button.querySelector('span').textContent=all.filter(row=>Intake.onDate(row,broadcastDate)&&row.entry.status===button.dataset.status&&(!vendorId||row.group.vendor.id===vendorId)).length;
     });
     $('entry-list').innerHTML=visible.length?visible.map(row=>{
       const entry=row.entry,s=source(entry),picture=View.pictures(itemView(row),location.origin).find(p=>p.group==='개체'&&p.thumbnailUrl);
       const traits=[s.sex==='unknown'?'미구분':'',View.traitSummary({traits:{...s,morph:'',size:''}}).replace(/ · /g,' ')].filter(Boolean).join(' '),summary=[traits,window.CreoEntryLabelPrint.parentNames(row),s.hatchDate?'해칭 '+s.hatchDate:'',s.note?.replace(/\s+/g,' ')].filter(Boolean).join(' · ')||'미구분';
       const allocation=data.allocation.find(i=>i.id===entry.itemId);
-      return `<article class="entry-row"><label class="entry-check"><input type="checkbox" data-check="${esc(key(row))}" aria-label="${esc(row.group.vendor.name+' '+(entry.lot||entry.code))} 선택" ${checked.has(key(row))?'checked':''}></label>${picture?`<img src="${esc(picture.thumbnailUrl)}" alt="" loading="lazy">`:''}<div class="row-text"><small>${allocation&&status==='approved'?`<span class="order-badge">${allocation.order}번째</span> `:''}${esc(row.group.vendor.name)}${entry.broadcastDate?' · '+esc(entry.broadcastDate)+' 방송':''} · <b>${esc(entry.lot||entry.code)}</b>${entry.approved&&entry.status==='submitted'?' · 변경안':''}</small><p class="entry-summary" title="${esc(summary)}">${esc(summary)}</p></div><button class="row-detail secondary" type="button" data-entry="${esc(entry.id)}" data-vendor="${esc(row.group.vendor.id)}" aria-label="${esc(row.group.vendor.name+' '+(entry.lot||entry.code))} 상세">상세</button></article>`;
-    }).join(''):`<p class="empty">${{submitted:'검토할 개체가 없어요',changes_requested:'수정 요청한 개체가 없어요',approved:'검토 대기에서 개체를 선택해 출품해 주세요'}[status]}</p>`;
-    $('selection-bar').hidden=!visible.length;$('batch-bar').hidden=!canReview()||status==='changes_requested';
+      return `<article class="entry-row">${status==='draft'?'':`<label class="entry-check"><input type="checkbox" data-check="${esc(key(row))}" aria-label="${esc(row.group.vendor.name+' '+(entry.lot||entry.code))} 선택" ${checked.has(key(row))?'checked':''}></label>`}${picture?`<img src="${esc(picture.thumbnailUrl)}" alt="" loading="lazy">`:''}<div class="row-text"><small>${allocation&&status==='approved'?`<span class="order-badge">${allocation.order}번째</span> `:''}${esc(row.group.vendor.name)}${entry.broadcastDate?' · '+esc(entry.broadcastDate)+' 방송':''} · <b>${esc(entry.lot||entry.code)}</b>${entry.approved&&entry.status==='submitted'?' · 변경안':''}</small><p class="entry-summary" title="${esc(summary)}">${esc(summary)}</p></div><button class="row-detail secondary" type="button" data-entry="${esc(entry.id)}" data-vendor="${esc(row.group.vendor.id)}" aria-label="${esc(row.group.vendor.name+' '+(entry.lot||entry.code))} 상세">상세</button></article>`;
+    }).join(''):`<p class="empty">${{submitted:'검토할 개체가 없어요',draft:'작성 중인 개체가 없어요',changes_requested:'수정 요청한 개체가 없어요',approved:'검토 대기에서 개체를 선택해 출품해 주세요'}[status]}</p>`;
+    $('selection-bar').hidden=!visible.length||status==='draft';$('batch-bar').hidden=!canReview()||['changes_requested','draft'].includes(status);
     $('approve-selected').hidden=status!=='submitted';$('arrange-vendors').hidden=status!=='approved';
     updateSelection();
   }
   function updateSelection(){
     const visible=visibleRows(),count=visible.filter(r=>checked.has(key(r))).length;
-    const part=$('batch-part').value,targets=data?.allocation.filter(i=>Numbering.partOf(i.code)===part)||[];
+    const part=$('batch-part').value,{targets,scoped}=Intake.arrangement(data,broadcastDate,part,Numbering.partOf);
     $('selection-count').textContent=count+'마리 선택';$('select-all').checked=!!visible.length&&count===visible.length;$('select-all').indeterminate=count>0&&count<visible.length;
     $('approve-selected').disabled=busy||loading||!canReview()||!count;
     $('print-entry-labels').disabled=busy||loading||!count;
-    $('arrange-vendors').disabled=busy||loading||!canReview()||targets.length<2;
+    $('arrange-vendors').disabled=busy||loading||!canReview()||targets.length<2||!scoped;
     $('select-all').disabled=busy||loading||!visible.length;
-    $('batch-hint').textContent=status==='approved'?`${part} 전체 ${targets.length}마리 · 식별 번호 유지`:'선택한 개체만 경매에 반영돼요.';
+    $('batch-hint').textContent=status==='approved'?(!scoped?'다른 방송일의 편성이 있어요. 교차 배치는 전체 방송에서 확인해 주세요.':`${part} 전체 ${targets.length}마리 · 식별 번호 유지`):'선택한 개체만 경매에 반영돼요.';
   }
   function render(){
     $('intake').hidden=!data;
+    renderDates();
     if(!data){$('entry-list').innerHTML='<p class="empty">검토할 경매를 선택해 주세요</p>';$('selection-bar').hidden=true;$('batch-bar').hidden=true;updateSelection();return;}
     $('intake-status').textContent=data.policy.open&&canReview()?'접수 중':'접수 마감';
     $('toggle-intake').textContent=data.policy.open?'접수 마감':'접수 시작';
@@ -85,7 +95,7 @@
       const next=await client.api(endpoint());
       if(current!==sequence||requested!==channelId)return false;
       if(next.channel?.id!==requested)throw Error('다른 경매의 응답입니다. 다시 불러와 주세요.');
-      data=next;render();return true;
+      data=next;if(!dateInitialized){broadcastDate=Intake.initialDate(data,requestedDate);dateInitialized=true;}render();return true;
     }catch(e){
       if(current===sequence){error('list-message',e.message);if(e.status===401){$('login-section').hidden=false;$('review-section').hidden=true;}}
       return false;
@@ -143,10 +153,11 @@
     const button=event.target.closest('[data-entry]');if(!button||busy||loading)return;
     const row=rows().find(row=>row.entry.id===button.dataset.entry&&row.group.vendor.id===button.dataset.vendor);if(row)openEntry(row,button);
   };
-  $('entry-list').onchange=event=>{const id=event.target.dataset.check,row=rows().find(r=>key(r)===id);if(!row||busy)return;if(event.target.checked)checked.set(id,row.entry.version);else checked.delete(id);batchPending=null;updateSelection();};
+  $('entry-list').onchange=event=>{const id=event.target.dataset.check,row=visibleRows().find(r=>key(r)===id);if(!row||busy||status==='draft')return;if(event.target.checked)checked.set(id,row.entry.version);else checked.delete(id);batchPending=null;updateSelection();};
   $('select-all').onchange=event=>{for(const row of visibleRows()){if(event.target.checked)checked.set(key(row),row.entry.version);else checked.delete(key(row));}batchPending=null;renderList();};
-  $('filters').onclick=event=>{const button=event.target.closest('[data-status]');if(!button||busy)return;status=button.dataset.status;checked.clear();batchPending=null;renderList();};
-  $('review-vendor').onchange=event=>{vendorId=event.target.value;checked.clear();batchPending=null;renderList();};
+  $('filters').onclick=event=>{const button=event.target.closest('[data-status]');if(!button||busy)return;status=button.dataset.status;checked.clear();batchPending=null;syncFilters();renderList();};
+  $('review-vendor').onchange=event=>{vendorId=event.target.value;checked.clear();batchPending=null;syncFilters();renderList();};
+  $('review-date').onchange=event=>{if(busy)return;broadcastDate=event.target.value;checked.clear();batchPending=null;syncFilters();renderList();};
   $('lot-part').onchange=()=>{
     const part=$('lot-part').value;preferredPart=part;pending=null;
     if(part!=='manual')$('lot-code').value=window.CreoEntryNumbering.nextCode(part,data.allocation);
@@ -186,6 +197,8 @@
   async function runBatch(type){
     if(busy||loading||!data||!canReview())return;
     const part=$('batch-part').value,selection=visibleRows().filter(r=>checked.has(key(r)));
+    if(type==='approve-many'&&status!=='submitted')return;
+    if(type==='arrange'&&!Intake.arrangement(data,broadcastDate,part,Numbering.partOf).scoped){error('list-message','다른 방송일의 편성이 있어요. 전체 방송을 선택해 확인해 주세요.');return;}
     if(type==='approve-many'&&!selection.length){error('list-message','출품할 개체를 체크해 주세요.');$('select-all').focus();return;}
     const fields=type==='approve-many'?{entries:selection.map(r=>({id:r.entry.id,vendorId:r.group.vendor.id,expectedVersion:checked.get(key(r))}))}:{items:data.allocation.filter(i=>Numbering.partOf(i.code)===part).map(i=>({id:i.id,updatedAt:i.updatedAt}))};
     const command={type,part,...fields},signature=JSON.stringify(command);
@@ -219,8 +232,8 @@
   };
   $('refresh').onclick=load;
   $('review-event').onchange=event=>{
-    if(busy)return;channelId=event.target.value;data=null;vendorId='';status='submitted';preferredPart='1부';$('batch-part').value='1부';checked.clear();batchPending=null;notice('');
-    const url=new URL(location.href);url.searchParams.set('channel',channelId);history.replaceState(null,'',url);setLinks();render();load();
+    if(busy)return;channelId=event.target.value;data=null;vendorId='';status='submitted';broadcastDate='';requestedDate=null;dateInitialized=false;preferredPart='1부';$('batch-part').value='1부';checked.clear();batchPending=null;notice('');
+    const url=new URL(location.href);url.searchParams.set('channel',channelId);['broadcastDate','vendor','status'].forEach(key=>url.searchParams.delete(key));history.replaceState(null,'',url);setLinks();render();load();
   };
   $('login-form').onsubmit=async event=>{
     event.preventDefault();const button=event.submitter;button.disabled=true;error('login-error','');

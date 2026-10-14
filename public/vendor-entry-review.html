@@ -6,14 +6,15 @@
   <title>출품 검토 · 옹동2</title>
   <link rel="stylesheet" href="/ongdong-brand.css">
   <link rel="stylesheet" href="/checkout-navigation.css">
-  <link rel="stylesheet" href="/vendor-entry-review.css?v=20260917-label-fold">
+  <link rel="stylesheet" href="/vendor-entry-review.css?v=20261014-date">
   <link rel="stylesheet" href="/entry-photo-usage.css">
   <script defer src="/platform-client.js"></script>
   <script defer src="/ongdong-brand.js"></script>
   <script defer src="/checkout-item-view.js"></script>
   <script defer src="/entry-numbering.js?v=20260917-batch"></script>
   <script defer src="/entry-label-print.js?v=20260917-label-fold"></script>
-  <script defer src="/vendor-entry-review.js?v=20261002-cycle"></script>
+  <script defer src="/entry-intake.js?v=20261014-intake"></script>
+  <script defer src="/vendor-entry-review.js?v=20261014-date"></script>
   <script defer src="/entry-photo-usage.js"></script>
 </head>
 <body>
@@ -27,11 +28,13 @@
     <section id="review-section" hidden>
       <div class="heading"><h1>출품 검토</h1><div class="heading-actions"><button id="open-photo-usage" class="secondary" type="button">사진 저장량</button><button id="refresh" class="secondary" type="button">새로고침</button></div></div>
       <label class="event-label" for="review-event">경매</label><select id="review-event"></select>
+      <div class="vendor-filter" id="review-date-field" hidden><label for="review-date">방송일</label><select id="review-date"></select></div>
       <div id="intake" class="intake" hidden><div><span class="eyebrow">출품 접수</span><strong id="intake-status"></strong></div><button class="secondary" id="toggle-intake" type="button"></button></div>
       <div class="filters" id="filters" role="group" aria-label="검토 상태">
         <button type="button" data-status="submitted" aria-pressed="true">검토 대기 <span>0</span></button>
         <button type="button" data-status="changes_requested" aria-pressed="false">수정 요청 <span>0</span></button>
         <button type="button" data-status="approved" aria-pressed="false">편성 완료 <span>0</span></button>
+        <button type="button" data-status="draft" aria-pressed="false">작성 중 <span>0</span></button>
       </div>
       <label class="vendor-filter" for="review-vendor"><span>업체</span><select id="review-vendor"><option value="">전체 업체</option></select></label>
       <div class="selection-bar" id="selection-bar">
