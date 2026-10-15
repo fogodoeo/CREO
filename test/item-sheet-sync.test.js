@@ -19,7 +19,7 @@ function fixture({bridgeFactory,hydrateItems}={}){
         async initialize(){return {}},async read(){return {rows:copy(grid),protections:copy(protections)}},
         async acquire(_,snapshot,indexes){count++;const description='CREO item sync lease '+time+' test';protections.push({description});if(afterAcquire){const hook=afterAcquire;afterAcquire=null;await hook();}return {ids:indexes,description};},
         async release(_,lease){protections=protections.filter(p=>p.description!==lease.description);lease.ids=[]},
-        async publish(_,updates,lease){if(failPublish)throw Error('network failure');for(const u of updates){const r=grid.find(r=>r.id===u.id);if(u.values)r.values=copy(u.values);r.status=u.status;r.choice=u.choice;}await this.release(_,lease);}
+        async publish(_,updates,lease){if(failPublish)throw Error('network failure');for(const u of updates){const r=grid.find(r=>r.id===u.id);if(u.values)r.values=copy(u.values);r.status=u.status;r.choice=u.choice;if(u.listing!==undefined)r.listing=u.listing;}await this.release(_,lease);}
     };
     const locks=new Map();
     const lock=async(key,fn)=>{const old=locks.get(key)||Promise.resolve();let release;const p=new Promise(r=>release=r);locks.set(key,old.then(()=>p));await old;try{return await fn()}finally{release()}};
@@ -183,4 +183,53 @@ test('admin-only sheet routes, pause, resume and cross-channel status remain iso
     assert.equal((await call('POST',f.config)).status,200);assert.equal((await call('GET',null,'secret','beta')).data.configured,false);
     await call('POST',{action:'pause'});f.grid[0].values=f.values();await api.itemSheetSync.sync('alpha');assert.equal((await f.items()).length,0);
     await call('POST',{action:'resume'});await api.itemSheetSync.sync('alpha');assert.equal((await f.items()).length,1);
+});
+
+const listingLayout=f=>{for(const r of f.grid){r.offset=1;r.listing='';}return f;};
+test('explicit sheet listing approves a submitted entry atomically with its broadcast name, original photos and vendor links',async()=>{
+    const f=listingLayout(pendingFixture());await f.connect();await f.sync();const before=f.read();
+    assert.equal(f.grid[0].listing,'대기');f.grid[0].values[0]='A01';f.grid[0].values[7]='15';await f.sync();
+    assert.equal((await f.items()).length,0);f.grid[0].listing='출품';await Promise.all([f.sync(),f.sync()]);
+    const item=(await f.items())[0],state=f.read();assert.equal((await f.items()).length,1);assert.equal(item.name,'A01');assert.equal(item.attributes.displayNumber,'A01');assert.equal(item.lotNumber,1);assert.equal(item.startPrice,150000);assert.equal(item.status,'waiting');
+    assert.deepEqual(item.attributes.vendor_entry,{ownerId:f.ownerId,entryId:f.entryId});assert.equal(item.attributes.parents[0].name,'원래 부모');assert.equal(item.photoUrl,'https://example.com/original.webp');
+    assert.equal(state.entries[0].status,'approved');assert.equal(state.entries[0].itemId,item.id);assert.equal(state.entries[0].lot,'A01');assert.deepEqual(state.entries[1],before.entries[1]);assert.equal(f.grid[0].status,'출품 완료');
+    f.restart();await f.sync();assert.deepEqual(await f.items(),[item]);assert.equal(f.read().entries[0].version,state.entries[0].version);
+    f.grid[0].values[0]='B03';await f.sync();assert.equal((await f.items())[0].name,'B03');assert.equal((await f.items())[0].attributes.displayNumber,'B03');assert.equal(f.read().entries[0].lot,'B03');
+});
+test('listing is an explicit action for new sheet rows; an unfinished name or source cannot be approved',async()=>{
+    const f=listingLayout(fixture());await f.connect();f.grid[0].values=f.values();await f.sync();assert.equal((await f.items()).length,0);assert.equal(f.grid[0].listing,'대기');
+    f.grid[0].listing='출품';await f.sync();assert.equal((await f.items()).length,1);
+    for(const sourceStatus of ['submitted','draft','changes_requested']){
+        const p=listingLayout(pendingFixture());const s=p.read();s.entries[0].status=sourceStatus;p.put(s);await p.connect();await p.sync();p.grid[0].listing='출품';await p.sync();assert.equal((await p.items()).length,0);assert.notEqual(p.grid[0].status,'출품 완료');
+    }
+});
+test('multiple sheet approvals use consecutive actual auction positions and reject duplicate broadcast names per row',async()=>{
+    const f=listingLayout(pendingFixture()),s=f.read();s.entries.push({...s.entries[0],id:crypto.randomUUID(),entryNumber:2,code:'출품 02'});f.put(s);await f.connect();await f.sync();
+    for(const r of f.grid.slice(0,2)){r.listing='출품';r.values[0]='A01';}await f.sync();assert.equal((await f.items()).length,0);assert.match(f.grid[0].status,/중복/);
+    f.grid[1].values[0]='A02';await f.sync();const items=await f.items();assert.deepEqual(items.map(i=>i.name),['A01','A02']);assert.deepEqual(items.map(i=>i.lotNumber),[1,2]);assert.equal(f.read().entries.filter(e=>e.channelId==='alpha'&&e.status==='approved').length,2);
+});
+test('a failed sheet acknowledgement or server restart cannot duplicate an approval',async()=>{
+    const f=listingLayout(pendingFixture());await f.connect();await f.sync();f.grid[0].values[0]='A01';f.grid[0].listing='출품';f.publishFails(true);await f.sync();const entry=f.read().entries[0];assert.equal(entry.status,'approved');assert.equal((await f.items()).length,1);
+    f.restart();f.publishFails(false);await f.sync();assert.equal((await f.items()).length,1);assert.equal(f.read().entries[0].version,entry.version);assert.equal(f.grid[0].status,'출품 완료');
+});
+test('approval storage failure rolls back both source and auction, then retry succeeds once',async()=>{
+    const f=listingLayout(pendingFixture());await f.connect();await f.sync();const original=f.read();f.grid[0].values[0]='A01';f.grid[0].listing='출품';f.storeFails(true);await assert.rejects(f.sync());assert.deepEqual(f.read(),original);assert.equal((await f.items()).length,0);
+    f.storeFails(false);await f.sync();assert.equal((await f.items()).length,1);assert.equal(f.read().entries[0].status,'approved');
+});
+test('fresh source status and a removed selection prevent stale sheet approval',async()=>{
+    for(const change of ['withdraw','clear']){
+        const f=listingLayout(pendingFixture());await f.connect();await f.sync();f.grid[0].values[0]='A01';f.grid[0].listing='출품';
+        f.afterAcquire(()=>{if(change==='clear')f.grid[0].listing='대기';else{const s=f.read();s.entries[0].status='draft';s.entries[0].version++;f.put(s);}});
+        await f.sync();assert.equal((await f.items()).length,0);assert.notEqual(f.read().entries[0].status,'approved');
+    }
+});
+test('published, live and sold lots cannot be removed by clearing the sheet selection',async()=>{
+    const f=listingLayout(pendingFixture());await f.connect();await f.sync();f.grid[0].values[0]='A01';f.grid[0].listing='출품';await f.sync();const item=(await f.items())[0];
+    f.grid[0].listing='대기';await f.sync();assert.match(f.grid[0].status,/취소는 웹/);assert.deepEqual(await f.items(),[item]);
+    f.grid[0].listing='출품';f.putRecord('item',{...item,status:'live'});f.grid[0].values[0]='A02';await f.sync();assert.equal((await f.items())[0].name,'A01');assert.equal(f.read().entries[0].lot,'A01');
+    f.putRecord('item',{...item,status:'sold',soldPrice:350000});await f.sync();assert.equal((await f.items())[0].soldPrice,350000);assert.match(f.grid[0].status,/수정할 수 없어요/);
+});
+test('sheet approval retains durable private media and its source parent relationship',async()=>{
+    const f=listingLayout(pendingFixture()),s=f.read(),ref='/__entry_photo__/'+crypto.randomUUID()+'/'+crypto.randomUUID()+'/'+'a'.repeat(64)+'/full.webp';s.media[0].url=ref;s.media[0].thumbnailUrl=ref;f.put(s);
+    await f.connect();await f.sync();f.grid[0].values[0]='E01';f.grid[0].listing='출품';await f.sync();const item=(await f.items())[0];assert.equal(item.photoUrl,ref);assert.equal(item.attributes.parents[0].media[0].url,ref);assert.equal(f.read().entries[0].sireId,f.parentId);
 });

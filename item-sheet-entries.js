@@ -40,7 +40,15 @@ function createEntryBridge({directory,entries}){
     function prepare(channel,data,writes,stamp){
         const changed=new Map(),items=[];
         for(const item of writes){
-            const ref=item._sheetEntry;if(!ref){items.push(item);continue;}
+            const ref=item._sheetEntry;if(!ref){
+                const link=item.attributes?.vendor_entry,source=link&&(changed.get(link.ownerId)||data.sheetSources.get(link.ownerId));
+                const original=source?.entries.find(e=>e.id===link.entryId&&e.channelId===channel.id&&e.channelVendorId===item.vendorId&&e.itemId===item.id);
+                if(original&&(original.lot!==item.name||original.sheetStartPrice!==item.startPrice)){
+                    const state=changed.get(link.ownerId)||structuredClone(source),entry=state.entries.find(e=>e.id===link.entryId);
+                    changed.set(link.ownerId,state);Object.assign(entry,{lot:item.name,sheetLot:item.name,sheetStartPrice:item.startPrice,version:entry.version+1,updatedAt:stamp});
+                }
+                items.push(item);continue;
+            }
             let state=changed.get(ref.ownerId);
             if(!state){const original=data.sheetSources.get(ref.ownerId);if(!original)fail('출품 업체를 다시 확인해 주세요.');state=structuredClone(original);changed.set(ref.ownerId,state);}
             const entry=state.entries.find(e=>e.id===ref.entryId&&e.channelId===channel.id&&e.channelVendorId===item.vendorId);
@@ -64,6 +72,12 @@ function createEntryBridge({directory,entries}){
             }
             Object.assign(entry,entries.sheetAccess.normalize(fields),{sheetLot:values[0]===entry.code?'':values[0],sheetStartPrice:item.startPrice,version:entry.version+1,updatedAt:stamp});
             if(entry.status==='submitted')entry.submission=entries.sheetAccess.snapshot(state,entry);
+            if(item._sheetApprove){
+                const vendor=data.vendors.find(v=>v.id===item.vendorId);
+                const approved=entries.sheetAccess.approve({channel,vendor},state,entry,{lot:values[0],order:item.lotNumber,startPrice:item.startPrice},
+                    {items:data.items.filter(i=>!i._sheetEntry).concat(items),ownerId:ref.ownerId,now:stamp});
+                items.push(approved);
+            }
         }
         const rows=[...changed].map(([ownerId,state])=>{state.version++;return {key:KEY+ownerId,value:JSON.stringify(state)};});
         return {items,rows};

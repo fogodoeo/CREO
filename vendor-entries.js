@@ -119,6 +119,29 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
         })));
         return {...visible,events:events.filter(Boolean),channelId:context.channel.id,vendor:{id:context.vendor.id,name:context.vendor.name},homeSection:(context.items||[]).some(item=>item.vendorId===context.vendor.id&&item.status==='sold')?'settlement':'entries'};
     }
+    // Pure preparation shared by web approval and the sheet's atomic transaction.
+    function prepareApproval(context, state, entry, input, { items, ownerId, now }) {
+        if(entry.status!=='submitted')throw fail('제출된 개체만 출품할 수 있어요. 업체의 제출을 확인해 주세요.');
+        const lot=Numbering.normalize(cleanText(input.lot,16)),order=Number(input.order),startPrice=Number(input.startPrice||0);
+        if(!Numbering.valid(lot)||!Number.isInteger(order)||order<1||order>10000||!Number.isSafeInteger(startPrice)||startPrice<0)throw fail('경매 번호·순서·시작가를 확인해 주세요.',422);
+        const itemId=entry.itemId||'entry-'+entry.id,existing=items.find(item=>item.id===itemId);
+        if(existing&&!canArrange(existing))throw fail('입찰이 시작된 개체는 출품 변경안으로 덮어쓸 수 없습니다.');
+        if(!entry.itemId&&existing)throw fail('연결할 개체를 확인해 주세요.');
+        if(existing&&(existing.vendorId!==context.vendor.id||existing.attributes?.vendor_entry?.ownerId!==ownerId||existing.attributes?.vendor_entry?.entryId!==entry.id))throw fail('편성된 개체의 업체 또는 연결 정보가 변경됐어요. 다시 확인해 주세요.');
+        if(items.some(item=>item.id!==itemId&&(Numbering.normalize(item.attributes?.displayNumber||item.name)===lot||Number(item.lotNumber)===order)))throw fail('이미 사용 중인 경매 번호 또는 순서입니다.');
+        const facts=entry.submission;
+        if(!facts)throw fail('제출 정보를 다시 확인해 주세요.');
+        const groupId=cleanText(input.groupId??existing?.groupId??context.vendor.groupId,64),group=context.channel.groups?.find(group=>group.id===groupId);
+        if(groupId&&!group)throw fail('이 경매에 등록된 팀을 선택해 주세요.',422);
+        const teamName=group?.name||cleanText(input.teamName??existing?.teamName??context.vendor.teamName,60);
+        const safe=value=>String(value||'').replace(/[|:]/g,' ');
+        const item={...(existing||{}),id:itemId,lotNumber:order,name:lot,vendorId:context.vendor.id,vendorName:context.vendor.name,groupId,teamName,category:facts.morph,status:'waiting',startPrice,soldPrice:0,photoUrl:facts.media[0]?.url||'',createdAt:existing?.createdAt||now,updatedAt:now,attributes:{...(existing?.attributes||{}),checklist:`gender:${{male:'M',female:'F',unknown:''}[facts.sex]}|weight:${facts.weight}|morph:${safe(facts.morph)}|size:${safe(facts.size)}`,displayNumber:lot,entry_traits:{morph:facts.morph,sex:facts.sex,weight:facts.weight,size:facts.size,hatchDate:facts.hatchDate},media:facts.media,parents:facts.parents,vendor_entry:{ownerId,entryId:entry.id}}};
+        item.note=facts.note;
+        if(entry.broadcastDate)item.attributes.broadcastDate=entry.broadcastDate;
+        if(context.channel.vendorSettlement?.enabled)item.attributes.organizerFeePolicy=existing?.attributes?.organizerFeePolicy||require('./auction-settlement').normalizePolicy(context.channel.vendorSettlement);
+        entry.approved={...copy(facts),approvedAt:now};entry.itemId=itemId;entry.lot=lot;entry.status='approved';
+        return item;
+    }
     async function command(context, input, { operator=false }={}) {
         const ownerId=owner(context),type=String(input.type||'');
         const allowed=operator?['approve','request-changes','renumber']:['save','submit','withdraw','revise','parent','import','delete'];
@@ -230,23 +253,7 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
                 }else{
                     if(entry.status!=='submitted')throw fail('검토 중인 출품만 처리할 수 있습니다.');
                     if(type==='approve'){
-                        const lot=Numbering.normalize(cleanText(input.lot,16)),order=Number(input.order),startPrice=Number(input.startPrice||0);
-                        if(!Numbering.valid(lot)||!Number.isInteger(order)||order<1||order>10000||!Number.isSafeInteger(startPrice)||startPrice<0)throw fail('경매 번호·순서·시작가를 확인해 주세요.',422);
-                        const items=await repository.listRecords(context.channel.id,'item'),itemId=entry.itemId||'entry-'+entry.id,existing=items.find(item=>item.id===itemId);
-                        if(existing&&!canArrange(existing))throw fail('입찰이 시작된 개체는 출품 변경안으로 덮어쓸 수 없습니다.');
-                        if(!entry.itemId&&existing)throw fail('연결할 개체를 확인해 주세요.');
-                        if(existing&&(existing.vendorId!==context.vendor.id||existing.attributes?.vendor_entry?.ownerId!==ownerId||existing.attributes?.vendor_entry?.entryId!==entry.id))throw fail('편성된 개체의 업체 또는 연결 정보가 변경됐어요. 다시 확인해 주세요.');
-                        if(items.some(item=>item.id!==itemId&&(String(item.attributes?.displayNumber||item.name).toUpperCase()===lot||Number(item.lotNumber)===order)))throw fail('이미 사용 중인 경매 번호 또는 순서입니다.');
-                        const facts=entry.submission;
-                        const groupId=cleanText(input.groupId??existing?.groupId??context.vendor.groupId,64),group=context.channel.groups?.find(group=>group.id===groupId);
-                        if(groupId&&!group)throw fail('이 경매에 등록된 팀을 선택해 주세요.',422);
-                        const teamName=group?.name||cleanText(input.teamName??existing?.teamName??context.vendor.teamName,60);
-                        const safe=value=>String(value||'').replace(/[|:]/g,' ');
-                        item={...(existing||{}),id:itemId,lotNumber:order,name:lot,vendorId:context.vendor.id,vendorName:context.vendor.name,groupId,teamName,category:facts.morph,status:'waiting',startPrice,soldPrice:0,photoUrl:facts.media[0]?.url||'',createdAt:existing?.createdAt||now,updatedAt:now,attributes:{...(existing?.attributes||{}),checklist:`gender:${{male:'M',female:'F',unknown:''}[facts.sex]}|weight:${facts.weight}|morph:${safe(facts.morph)}|size:${safe(facts.size)}`,displayNumber:lot,entry_traits:{morph:facts.morph,sex:facts.sex,weight:facts.weight,size:facts.size,hatchDate:facts.hatchDate},media:facts.media,parents:facts.parents,vendor_entry:{ownerId,entryId:entry.id}}};
-                        item.note=facts.note;
-                        if(entry.broadcastDate)item.attributes.broadcastDate=entry.broadcastDate;
-                        if(context.channel.vendorSettlement?.enabled)item.attributes.organizerFeePolicy=existing?.attributes?.organizerFeePolicy||require('./auction-settlement').normalizePolicy(context.channel.vendorSettlement);
-                        entry.approved={...copy(facts),approvedAt:now};entry.itemId=itemId;entry.lot=lot;entry.status='approved';
+                        item=prepareApproval(context,state,entry,input,{items:await repository.listRecords(context.channel.id,'item'),ownerId,now});
                     }else{
                         const reason=cleanText(input.reason,200);
                         if(type==='request-changes'&&!reason)throw fail('수정할 내용을 입력해 주세요.',422);
@@ -484,7 +491,7 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
         }));
     }
     return {read,command,saveMany,batch,addMedia,auctionPhotos,updateItemParents,hydrateItems,hydrateCollectionRecords,policy,summary,withOwnerLock:locked,
-        sheetAccess:{readOwner,normalize:normalizeEntry,snapshot,facts:async(state,entry)=>resolveFacts(snapshot(state,entry))}};
+        sheetAccess:{readOwner,normalize:normalizeEntry,snapshot,approve:prepareApproval,facts:async(state,entry)=>resolveFacts(snapshot(state,entry))}};
 }
 
 module.exports={createVendorEntries,normalizeEntry};

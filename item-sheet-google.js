@@ -26,18 +26,19 @@ function createGoogleClient({credentials,fetchImpl=globalThis.fetch,now=Date.now
         return r.json();
     }
     async function read(config){
-        const range="'"+config.tabName.replaceAll("'","''")+"'!A1:P"+(config.rowIds.length+1);
+        const range="'"+config.tabName.replaceAll("'","''")+"'!A1:Q"+(config.rowIds.length+1);
         const q=new URLSearchParams({ranges:range,includeGridData:'true',fields:'spreadsheetId,sheets(properties,protectedRanges,data(startRow,startColumn,rowData(values(userEnteredValue,effectiveValue,formattedValue))))'});
         const data=await request(config,'?'+q),sheet=data.sheets?.find(s=>s.properties.sheetId===config.tabId);
         if(!sheet)throw Error('연결한 시트 탭을 찾을 수 없어요.');
         const grid=sheet.data?.[0]?.rowData||[],headers=grid[0]?.values?.map(cellValue)||[];
-        if(!Model.same(headers.slice(0,16),Model.HEADERS))throw Error('시트의 열 제목이 바뀌었어요. 원래 제목으로 복구해 주세요.');
+        const offset=Model.same(headers.slice(0,17),Model.LISTING_HEADERS)?1:0;
+        if(!offset&&!Model.same(headers.slice(0,16),Model.HEADERS))throw Error('시트의 열 제목이 바뀌었어요. 원래 제목으로 복구해 주세요.');
         const rows=grid.slice(1,config.rowIds.length+1).map((r,i)=>{
-            const cells=Array.from({length:16},(_,j)=>r.values?.[j]||{});
-            return {index:i+1,id:String(cellValue(cells[15])),values:Model.normalize(cells.slice(0,13).map(cellValue)),status:String(cellValue(cells[13])),choice:String(cellValue(cells[14])),formula:cells.some(c=>c.userEnteredValue?.formulaValue),raw:cells.map(c=>c.userEnteredValue||{})};
+            const cells=Array.from({length:16+offset},(_,j)=>r.values?.[j]||{});
+            return {index:i+1,offset,...(offset?{listing:String(cellValue(cells[0])).trim()}:{}),id:String(cellValue(cells[15+offset])),values:Model.normalize(cells.slice(offset,13+offset).map(cellValue)),status:String(cellValue(cells[13+offset])),choice:String(cellValue(cells[14+offset])),formula:cells.some(c=>c.userEnteredValue?.formulaValue),raw:cells.map(c=>c.userEnteredValue||{})};
         });
         if(rows.length!==config.rowIds.length||new Set(rows.map(r=>r.id)).size!==rows.length||rows.some(r=>!config.rowIds.includes(r.id)))throw Error('시트 연결 행이 바뀌었어요. 행 삭제·이동을 되돌려 주세요.');
-        return {rows,protections:sheet.protectedRanges||[]};
+        return {rows,offset,protections:sheet.protectedRanges||[]};
     }
     async function acquire(config,snapshot,indexes){
         const leases=snapshot.protections.filter(p=>String(p.description||'').startsWith(LEASE));
@@ -45,7 +46,7 @@ function createGoogleClient({credentials,fetchImpl=globalThis.fetch,now=Date.now
         if(stale.length)await request(config,':batchUpdate',{requests:stale.map(p=>({deleteProtectedRange:{protectedRangeId:p.protectedRangeId}}))});
         if(leases.length!==stale.length)return null;
         const sa=await credentials(),description=LEASE+now()+' '+crypto.randomUUID();
-        const result=await request(config,':batchUpdate',{requests:[...new Set(indexes)].map(index=>({addProtectedRange:{protectedRange:{description,range:{sheetId:config.tabId,startRowIndex:index,endRowIndex:index+1,startColumnIndex:0,endColumnIndex:16},warningOnly:false,editors:{users:[sa.client_email]}}}}))});
+        const result=await request(config,':batchUpdate',{requests:[...new Set(indexes)].map(index=>({addProtectedRange:{protectedRange:{description,range:{sheetId:config.tabId,startRowIndex:index,endRowIndex:index+1,startColumnIndex:0,endColumnIndex:16+(snapshot.offset||0)},warningOnly:false,editors:{users:[sa.client_email]}}}}))});
         return {ids:result.replies.map(r=>r.addProtectedRange.protectedRange.protectedRangeId),description};
     }
     async function release(config,lease){
@@ -54,6 +55,8 @@ function createGoogleClient({credentials,fetchImpl=globalThis.fetch,now=Date.now
     async function publish(config,updates,lease){
         const requests=[];
         for(const u of updates){
+            const offset=u.offset||0;
+            if(offset&&u.listing!==undefined)requests.push({updateCells:{range:{sheetId:config.tabId,startRowIndex:u.index,endRowIndex:u.index+1,startColumnIndex:0,endColumnIndex:1},rows:[{values:[{userEnteredValue:u.listing?{stringValue:u.listing}:{}}]}],fields:'userEnteredValue'}});
             for(let col=0;col<15;col++){
                 const value=col<13?u.values?.[col]:col===13?u.status:u.choice;
                 if(value===undefined)continue;
@@ -62,17 +65,17 @@ function createGoogleClient({credentials,fetchImpl=globalThis.fetch,now=Date.now
                 if(value==='')userEnteredValue={};
                 else if([3,7].includes(col)&&Number.isFinite(Number(value)))userEnteredValue={numberValue:Number(value)};
                 else if(col===4&&/^\d{4}-\d{2}-\d{2}$/.test(value))userEnteredValue={numberValue:Date.parse(value)/86400000+25569};
-                requests.push({updateCells:{range:{sheetId:config.tabId,startRowIndex:u.index,endRowIndex:u.index+1,startColumnIndex:col,endColumnIndex:col+1},rows:[{values:[{userEnteredValue}]}],fields:'userEnteredValue'}});
+                requests.push({updateCells:{range:{sheetId:config.tabId,startRowIndex:u.index,endRowIndex:u.index+1,startColumnIndex:col+offset,endColumnIndex:col+offset+1},rows:[{values:[{userEnteredValue}]}],fields:'userEnteredValue'}});
             }
         }
         requests.push(...lease.ids.map(id=>({deleteProtectedRange:{protectedRangeId:id}})));
         await request(config,':batchUpdate',{requests});lease.ids=[];
     }
     async function initialize(config){
-        const current=await read(config),sa=await credentials();
+        const current=await read(config),sa=await credentials(),offset=current.offset||0;
         const requests=[];
-        if(!current.protections.some(p=>p.description===STRUCTURE))requests.push({addProtectedRange:{protectedRange:{description:STRUCTURE,range:{sheetId:config.tabId},warningOnly:false,editors:{users:[sa.client_email]},unprotectedRanges:[{sheetId:config.tabId,startRowIndex:1,endRowIndex:config.rowIds.length+1,startColumnIndex:0,endColumnIndex:13},{sheetId:config.tabId,startRowIndex:1,endRowIndex:config.rowIds.length+1,startColumnIndex:14,endColumnIndex:15}]}}});
-        requests.push({updateDimensionProperties:{range:{sheetId:config.tabId,dimension:'COLUMNS',startIndex:15,endIndex:26},properties:{hiddenByUser:true},fields:'hiddenByUser'}});
+        if(!current.protections.some(p=>p.description===STRUCTURE))requests.push({addProtectedRange:{protectedRange:{description:STRUCTURE,range:{sheetId:config.tabId},warningOnly:false,editors:{users:[sa.client_email]},unprotectedRanges:[{sheetId:config.tabId,startRowIndex:1,endRowIndex:config.rowIds.length+1,startColumnIndex:0,endColumnIndex:13+offset},{sheetId:config.tabId,startRowIndex:1,endRowIndex:config.rowIds.length+1,startColumnIndex:14+offset,endColumnIndex:15+offset}]}}});
+        requests.push({updateDimensionProperties:{range:{sheetId:config.tabId,dimension:'COLUMNS',startIndex:15+offset,endIndex:26},properties:{hiddenByUser:true},fields:'hiddenByUser'}});
         requests.push({updateSpreadsheetProperties:{properties:{timeZone:'Asia/Seoul'},fields:'timeZone'}});
         await request(config,':batchUpdate',{requests});
         return current;

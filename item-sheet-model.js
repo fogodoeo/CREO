@@ -2,6 +2,7 @@
 const Numbering=require('./public/entry-numbering');
 
 const HEADERS = Object.freeze(['개체번호','업체','성별','체중(g)','출생일','모프','비고','시작가(만원)','개체 사진','부 이름','부 사진','모 이름','모 사진','동기화','충돌 해결','연결 ID']);
+const LISTING_HEADERS = Object.freeze(['출품 설정','개체명',...HEADERS.slice(1)]);
 const FIELD_COUNT = 13;
 const SEX = {M:'수컷',F:'암컷',PM:'수추',PF:'암추',male:'수컷',female:'암컷',unknown:'미구분'};
 const SEX_CODE = {수컷:'M',암컷:'F',수추:'PM',암추:'PF',미구분:''};
@@ -99,4 +100,4 @@ function locked(item,broadcast={}) {
     return item.status!=='waiting'||Number(item.soldPrice)>0||(broadcast.mode==='live'&&broadcast.activeItemId===item.id)||
         hasBids;
 }
-module.exports={HEADERS,FIELD_COUNT,normalize,exported,validated,apply,merge,locked,same};
+module.exports={HEADERS,LISTING_HEADERS,FIELD_COUNT,normalize,exported,validated,apply,merge,locked,same};
