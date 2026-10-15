@@ -6,6 +6,7 @@ body[data-broadcast-theme="pixel"]{
  --pixel-step:clamp(3px,.833333vw,16px);--pixel-line:clamp(2px,.260417vw,5px);
 }
 .broadcast-console{display:none;position:absolute;inset:0;z-index:1;pointer-events:none!important}
+.recessive-brand{display:none;pointer-events:none!important}
 body[data-broadcast-theme="pixel"] .broadcast-console{display:block}
 body[data-broadcast-theme="pixel"] .broadcast-console[data-layout-custom="1"]{inset:0!important;width:100%!important;height:100%!important;transform:none!important}
 .broadcast-console>*{zoom:1!important;pointer-events:none}
@@ -82,3 +83,4 @@ body[data-broadcast-theme="pixel"] #stage .vendor-contribution-result{--pixel-fi
 
 /* The national overlay lives in broadcast-national.css; the picker mirrors it. */
 .theme-style-sample[data-style="national-stage"]{background:linear-gradient(100deg,#fffefb 0 24%,#176d88 24%,#3b5f9a 58%,#8b2f64);color:#fff;border:2px solid #bffbe8;border-radius:99px;text-shadow:0 1px 2px #172232}
+.theme-style-sample[data-style="recessive-special"]{background:#f5f2e9;color:#202923;border-left:8px solid #b9cba0;border-radius:4px;letter-spacing:-.03em}

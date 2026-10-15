@@ -16,6 +16,12 @@ test('visual concepts default safely and never replace readable typography or au
  assert.equal(themes.apply(doc,'pixel'),'pixel');assert.equal(doc.body.dataset.broadcastTheme,'pixel');
  themes.apply(doc,'base');assert.deepEqual(doc.body.style,{fontFamily:'Pretendard',fontSize:'72px'});
  assert.equal(doc.body.dataset.broadcastProfile,'cdcup-tournament');
+ for(const preset of themes.presets){
+  assert.deepEqual({...normalizeChannel({...source,broadcastTheme:preset.id}),broadcastTheme:'base'},base);
+  assert.equal(themes.apply(doc,preset.id),preset.id);
+  assert.equal(doc.body.dataset.broadcastProfile,'cdcup-tournament');
+  assert.deepEqual(doc.body.style,{fontFamily:'Pretendard',fontSize:'72px'});
+ }
 });
 
 test('console skin has no external image requests or interactive controls over the camera',()=>{
@@ -26,4 +32,14 @@ test('console skin has no external image requests or interactive controls over t
  assert.doesNotMatch(css,/url\(|filter:drop-shadow/);
  assert.match(css,/pointer-events:none!important/);
  assert.equal(themes.frame(),markup,'unchanged frame markup can be reconciled without replacing media');
+});
+
+test('specialty masthead escapes channel text and stays separate from auction data',()=>{
+ const channel={shortName:'크레용 <img src=x onerror="bad()">',broadcastTheme:'recessive-special'};
+ const before=JSON.stringify(channel),markup=themes.frame(channel);
+ assert.match(markup,/열성모프 특집/);
+ assert.match(markup,/크레용 &lt;img/);
+ assert.doesNotMatch(markup,/<img/);
+ assert.equal(JSON.stringify(channel),before);
+ assert.equal(themes.resolve('recessive-special').id,'recessive-special');
 });

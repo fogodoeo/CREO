@@ -4,12 +4,13 @@
  const presets=Object.freeze([
   Object.freeze({id:'base',name:'기본',description:'단정한 기본 박스',frame:''}),
   Object.freeze({id:'pixel',name:'픽셀',description:'레트로 게임기',frame:''}),
-  Object.freeze({id:'national-stage',name:'전국크레자랑',description:'흰색 이름칸 · 번호 원 · 청록·자주 방송 자막',frame:''})
+  Object.freeze({id:'national-stage',name:'전국크레자랑',description:'흰색 이름칸 · 번호 원 · 청록·자주 방송 자막',frame:''}),
+  Object.freeze({id:'recessive-special',name:'열성모프 특집',description:'아이보리 · 차콜 · 세이지 포인트',frame:''})
  ]);
  function resolve(id){return presets.find(p=>p.id===id)||presets[0]}
  function apply(doc,id){const theme=resolve(id);if(doc.body)doc.body.dataset.broadcastTheme=theme.id;return theme.id}
  // Always mounted so changing themes can reveal/hide the frame without remounting media.
- function frame(){return '<div class="broadcast-console" aria-hidden="true"><div class="console-shell"></div><div class="screen-bezel"></div><div class="console-stripes"><i></i><i></i><i></i><i></i></div><i class="console-power"></i><i class="console-dpad"></i><div class="console-buttons"><i></i><i></i></div><div class="console-speaker"><i></i><i></i><i></i><i></i><i></i></div></div>'}
+ function frame(channel){const name=String(channel?.shortName||channel?.name||'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));return '<div class="broadcast-console" aria-hidden="true"><div class="console-shell"></div><div class="screen-bezel"></div><div class="console-stripes"><i></i><i></i><i></i><i></i></div><i class="console-power"></i><i class="console-dpad"></i><div class="console-buttons"><i></i><i></i></div><div class="console-speaker"><i></i><i></i><i></i><i></i><i></i></div></div>'+`<div class="recessive-brand"><span>${name}</span><strong>열성모프 특집</strong></div>`}
  function bannerFrame(){return '<div class="banner-tv-decor" aria-hidden="true"><div class="banner-tv-controls"><i class="banner-tv-dial"></i><i class="banner-tv-dial small"></i><i class="banner-tv-speaker"></i><i class="banner-tv-led"></i></div><i class="banner-tv-foot left"></i><i class="banner-tv-foot right"></i></div>';}
  return Object.freeze({presets,resolve,apply,frame,bannerFrame});
 });

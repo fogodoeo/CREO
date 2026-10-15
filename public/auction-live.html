@@ -8,7 +8,7 @@
     <script src="auction-contract.js?v=20260819-contract-v1"></script>
     <script src="broadcast-palette.js?v=20260915-retro-console"></script>
     <script src="broadcast-summary.js?v=20260915-summary"></script>
-    <script src="broadcast-themes.js?v=20261014-tv-captions"></script>
+    <script src="broadcast-themes.js?v=20261015-recessive"></script>
     <script src="broadcast-standby.js?v=20260915-reveal-tv"></script>
     <script src="broadcast-parent-photos.js?v=20260915-summary"></script>
     <script src="basic-dice-core.js?v=20260830-balance-v2"></script>
@@ -141,11 +141,12 @@
     <link rel="stylesheet" href="broadcast-modern.css?v=20260907-modern-v1">
     <link rel="stylesheet" href="broadcast-refined.css?v=20260915-themes">
     <link rel="stylesheet" href="broadcast-summary.css?v=20261001-parent-ticker-size">
-    <link rel="stylesheet" href="broadcast-themes.css?v=20261014-tv-captions">
+    <link rel="stylesheet" href="broadcast-themes.css?v=20261015-recessive">
     <link rel="stylesheet" href="broadcast-scenes.css?v=20260915-reveal-tv">
     <link rel="stylesheet" href="broadcast-item-notes.css?v=20260917-content-fit">
     <link rel="stylesheet" href="broadcast-bidders.css?v=20261001-bid-flow">
     <link rel="stylesheet" href="broadcast-national.css?v=20261014-p2-text-fit">
+    <link rel="stylesheet" href="broadcast-recessive.css?v=20261015-recessive">
     <script src="broadcast-bidders.js?v=20261001-bid-flow"></script>
     <script src="broadcast-item-notes.js?v=20260917"></script>
 </head>
@@ -328,7 +329,7 @@ function render(data){
     const nextP2View=page===2?CreoBroadcastStandby.view(state,items,channelId):null;
     const revealP2=nextP2View&&CreoBroadcastStandby.shouldReveal(lastP2View,nextP2View);
     if(nextP2View)lastP2View=nextP2View;
-    const markup=page===1?pageOne(data.channel,state,assets):page===2?pageTwo(data.channel,state,items,assets,progress):profilePageThree(data.channel,state,items,assets);reconcileStage(markup+CreoBroadcastThemes.frame());
+    const markup=page===1?pageOne(data.channel,state,assets):page===2?pageTwo(data.channel,state,items,assets,progress):profilePageThree(data.channel,state,items,assets);reconcileStage(markup+CreoBroadcastThemes.frame(data.channel));
     if(editorMode&&page===3&&!CreoBroadcastSummary.standard(data.channel,profile.page3Renderer)&&!stage.querySelector('.dice-overlay-card, .contribution-stage'))stage.querySelector('.layer')?.insertAdjacentHTML('beforeend','<div class="dice-overlay-card broadcast-effect-placeholder"><div class="dice-result"><small>영상·결과 연출</small><h2>송출 시에만 표시</h2></div></div>');
     if(revealP2&&!editorMode&&!matchMedia('(prefers-reduced-motion: reduce)').matches)stage.querySelector('.item-copy')?.animate([{opacity:0},{opacity:1}],{duration:220,easing:'ease-out'});
     const appliedPlacements=applyLayoutPlacements(state);if(page===2)for(const element of stage.querySelectorAll('[data-layout-slot]'))window.CreoBroadcastTextLayout?.apply(element,data.channel.broadcastTheme,element.dataset.layoutSlot,appliedPlacements[element.dataset.layoutSlot]);syncParentCaptionFont(appliedPlacements);window.CreoBroadcastItemNotes?.hydrate(stage);window.CreoParentPhotos?.hydrate(stage);hydrateOdometers();hydrateContributionCounters();window.CreoBannerPlayer?.hydrate(stage);wireDiceVideos();if(editorMode)window.parent.postMessage({type:'creo-layout-ready',page,placements:appliedPlacements},location.origin)

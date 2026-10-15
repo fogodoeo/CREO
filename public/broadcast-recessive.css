@@ -1,0 +1,68 @@
+/* Optical surfaces only. Auction data, saved placements and camera transparency stay shared. */
+body[data-broadcast-theme="recessive-special"]{
+ --recessive-paper:#f5f2e9;--recessive-ink:#202923;--recessive-muted:#596453;
+ --recessive-sage:#c8d7af;--recessive-rule:#d6d9cd;--theme-ink:#202923;
+}
+body[data-broadcast-theme="recessive-special"] #stage .recessive-brand{
+ display:flex;position:absolute;top:4%;left:4%;align-items:center;gap:24px;
+ padding:20px 28px;border-left:7px solid var(--recessive-sage);border-radius:4px;
+ background:var(--recessive-ink);color:var(--recessive-paper);z-index:5;
+ box-shadow:0 4px 18px #0002;white-space:nowrap;
+}
+body[data-broadcast-theme="recessive-special"] #stage .recessive-brand span{
+ padding-right:24px;border-right:1px solid #f5f2e944;color:var(--recessive-sage);
+ font-size:30px;font-weight:700;letter-spacing:-.025em;
+}
+body[data-broadcast-theme="recessive-special"] #stage .recessive-brand strong{
+ font-size:42px;font-weight:750;letter-spacing:-.04em;line-height:1.2;
+}
+body[data-broadcast-theme="recessive-special"][data-page="2"] #stage .recessive-brand{display:none}
+body[data-broadcast-theme="recessive-special"] #stage :is(.host-card,.item-copy,.item-progress,.price-card,.sold-notice,.simple-ranking){
+ background:var(--recessive-paper)!important;color:var(--recessive-ink)!important;
+ border:1px solid var(--recessive-rule)!important;border-radius:8px!important;
+ box-shadow:0 4px 18px #0002!important;
+}
+body[data-broadcast-theme="recessive-special"] #stage :is(.host-name,.item-inline-identity h1,.item-progress strong,.summary-name,.summary-amount){
+ color:var(--recessive-ink)!important;font-weight:800;letter-spacing:-.035em;
+}
+body[data-broadcast-theme="recessive-special"] #stage .host-card{border-left:7px solid var(--recessive-sage)!important}
+body[data-broadcast-theme="recessive-special"] #stage .host-role{color:var(--recessive-muted)!important}
+body[data-broadcast-theme="recessive-special"] #stage .host-role::before{background:var(--recessive-rule)}
+body[data-broadcast-theme="recessive-special"] #stage .item-copy.is-inline-info{padding:14px 24px;row-gap:10px;border-left:7px solid var(--recessive-sage)!important}
+body[data-broadcast-theme="recessive-special"] #stage .item-inline-main{gap:20px}
+body[data-broadcast-theme="recessive-special"] #stage .item-inline-identity{gap:20px}
+body[data-broadcast-theme="recessive-special"] #stage .vendor-tag{color:var(--recessive-muted)!important;font-weight:650}
+body[data-broadcast-theme="recessive-special"] #stage .item-inline-sep{background:var(--recessive-rule)}
+body[data-broadcast-theme="recessive-special"] #stage .item-inline-pill{color:var(--recessive-ink)!important;border-color:var(--recessive-rule)!important;font-weight:650}
+body[data-broadcast-theme="recessive-special"] #stage .broadcast-item-note{color:var(--recessive-muted);font-weight:600}
+body[data-broadcast-theme="recessive-special"] #stage .item-progress{border-top:5px solid var(--recessive-sage)!important}
+body[data-broadcast-theme="recessive-special"] #stage .live-bid-row{
+ border:1px solid #f5f2e940;border-radius:6px!important;background:var(--recessive-ink)!important;
+ box-shadow:0 4px 18px #0002!important;
+}
+body[data-broadcast-theme="recessive-special"] #stage .live-bid-row :is(.live-bid-name,.live-bid-amount){color:var(--recessive-paper)!important}
+body[data-broadcast-theme="recessive-special"] #stage .live-bid-row[data-rank="1"]{background:var(--recessive-sage)!important;border-color:var(--recessive-sage);border-left:6px solid var(--recessive-ink)}
+body[data-broadcast-theme="recessive-special"] #stage .live-bid-row[data-rank="1"] :is(.live-bid-name,.live-bid-amount){color:var(--recessive-ink)!important}
+body[data-broadcast-theme="recessive-special"] #stage .live-bid-row.is-empty{border-style:dashed}
+body[data-broadcast-theme="recessive-special"] #stage .parent-photos{border-radius:8px;background:transparent}
+body[data-broadcast-theme="recessive-special"] #stage .parent-photos.has-parent-photo{background:var(--recessive-paper);box-shadow:0 4px 18px #0002}
+body[data-broadcast-theme="recessive-special"] #stage .parent-photos figcaption{background:var(--recessive-paper);color:var(--recessive-ink);border-top:3px solid var(--recessive-sage);font-weight:750}
+body[data-broadcast-theme="recessive-special"] #stage .ticker{
+ border:1px solid #f5f2e930!important;border-left:7px solid var(--recessive-sage)!important;
+ border-radius:6px!important;background:var(--recessive-ink)!important;box-shadow:0 4px 18px #0002!important;
+}
+body[data-broadcast-theme="recessive-special"] #stage .ticker-text{color:var(--recessive-paper);font-weight:650}
+body[data-broadcast-theme="recessive-special"] #stage .price :is(span,small){color:var(--recessive-muted)}
+body[data-broadcast-theme="recessive-special"] #stage :is(.price b,.sold-notice strong){color:var(--recessive-ink)!important}
+body[data-broadcast-theme="recessive-special"] #stage .sold-notice{border-top:8px solid var(--recessive-sage)!important}
+body[data-broadcast-theme="recessive-special"] #stage .sold-notice :is(small,span){color:var(--recessive-muted)}
+body[data-broadcast-theme="recessive-special"] #stage .simple-ranking .board-head{
+ border-bottom:2px solid var(--recessive-ink);background:transparent!important;color:var(--recessive-ink)!important;
+}
+body[data-broadcast-theme="recessive-special"] #stage .simple-ranking h1{font-weight:750;letter-spacing:-.04em}
+body[data-broadcast-theme="recessive-special"] #stage .summary-row{border-color:var(--recessive-rule)}
+body[data-broadcast-theme="recessive-special"] #stage :is(.summary-rank,.ranking-page,.summary-empty,.summary-amount small){color:var(--recessive-muted)!important}
+body[data-broadcast-theme="recessive-special"] #stage .summary-row[data-rank="1"] .summary-rank{
+ display:grid;place-items:center;aspect-ratio:1;border-radius:50%;background:var(--recessive-sage);color:var(--recessive-ink)!important;
+}
+@media(prefers-reduced-motion:reduce){body[data-broadcast-theme="recessive-special"] #stage .sold-flash{animation:none!important}}
