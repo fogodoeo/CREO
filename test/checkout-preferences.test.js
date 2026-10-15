@@ -35,6 +35,93 @@ async function fixture(t,{initial=true,legacyShippingHistory=null}={}){
  return {call,code,selection,get,change,buyerCode,vendor,get repo(){return repo},async restart(){repo.close();repo=new SQLitePlatformRepository(options);start()}};
 }
 
+async function addOtherVendorWin(f,id='other-item'){
+ await f.repo.upsertRecord('alpha','vendor',{id:'other-vendor',name:'다른 업체',phone:'01022223333',paymentMethods:['bank_transfer','card'],bankName:'다른은행',bankAccount:'67890',bankHolder:'다른 업체'});
+ await f.repo.upsertRecord('alpha','item',{id,name:id,lotNumber:2,status:'sold',soldPrice:200000,winnerName:'구매자',winnerPhone:'01012345678',vendorId:'other-vendor',vendorName:'다른 업체'});
+}
+async function reportFirstVendor(f){
+ const p=(await f.get()).json();const r=await f.call('POST','/api/platform/buyer-shipping/report-payment',{code:f.code,vendorKey:'vendor',requestId:'first-vendor-report',expectedVersion:p.editVersion});assert.equal(r.status,200,r.body);
+ return (await f.repo.listRecords('alpha','shipment')).filter(s=>s.vendorId==='vendor');
+}
+async function saveOtherVendor(f,extra={}){
+ const p=(await f.get()).json();return f.call('POST','/api/platform/buyer-shipping',{...f.selection,payments:[{vendorKey:'vendor',method:'bank_transfer'},{vendorKey:'other-vendor',method:'bank_transfer'}],requestId:'other-vendor-save',expectedVersion:p.editVersion,...extra});
+}
+
+test('pending vendor payment preserves its records while other vendor saves, pays and retries across restart',async t=>{
+ const f=await fixture(t),reported=await reportFirstVendor(f);await addOtherVendorWin(f);
+ const beforeNotices=await f.repo.listRecords('alpha','notification'),p=(await f.get()).json();
+ const body={...f.selection,payments:[{vendorKey:'vendor',method:'bank_transfer'},{vendorKey:'other-vendor',method:'bank_transfer'}],requestId:'independent-save',expectedVersion:p.editVersion};
+ const results=await Promise.all([f.call('POST','/api/platform/buyer-shipping',body),f.call('POST','/api/platform/buyer-shipping',body)]);
+ for(const r of results)assert.equal(r.status,200,r.body);assert.equal(results.filter(r=>r.json().duplicate).length,1);
+ let data=(await f.get()).json();const other=data.vendors.find(v=>v.key==='other-vendor');assert.equal(other.payment.status,'bank_transfer_pending');assert.equal(other.payment.account.accountNumber,'67890');assert.equal(other.totals.totalAmount,200000);
+ assert.deepEqual((await f.repo.listRecords('alpha','shipment')).filter(s=>s.vendorId==='vendor'),reported);
+ const newNotices=(await f.repo.listRecords('alpha','notification')).filter(n=>!beforeNotices.some(old=>old.id===n.id));assert.equal(newNotices.length,1);assert.equal(newNotices[0].recipientPhone,'01022223333');
+ await f.restart();assert.equal((await f.call('POST','/api/platform/buyer-shipping',body)).json().duplicate,true);
+ data=(await f.get()).json();const report={code:f.code,vendorKey:'other-vendor',requestId:'other-vendor-report',expectedVersion:data.editVersion};
+ const responses=await Promise.all([f.call('POST','/api/platform/buyer-shipping/report-payment',report),f.call('POST','/api/platform/buyer-shipping/report-payment',report)]);for(const r of responses)assert.equal(r.status,200,r.body);
+ assert.deepEqual((await f.repo.listRecords('alpha','shipment')).filter(s=>s.vendorId==='vendor'),reported);
+ assert.equal((await f.repo.listRecords('alpha','notification')).filter(n=>n.templateKey==='vendor_payment_reported'&&n.recipientPhone==='01022223333').length,1);
+ assert.equal((await f.repo.listRecords('beta','shipment')).length,0);
+});
+
+test('new wins for a pending vendor remain unsubmitted without preventing another vendor payment',async t=>{
+ const f=await fixture(t),reported=await reportFirstVendor(f);
+ await f.repo.upsertRecord('alpha','item',{...(await f.repo.getRecord('alpha','item','item')),id:'same-vendor-new',lotNumber:3});await addOtherVendorWin(f);
+ const r=await saveOtherVendor(f);assert.equal(r.status,200,r.body);
+ assert.equal(r.json().items.find(i=>i.id==='same-vendor-new').paymentStatus,'');assert.equal(r.json().vendors.find(v=>v.key==='other-vendor').payment.status,'bank_transfer_pending');
+ assert.deepEqual((await f.repo.listRecords('alpha','shipment')).filter(s=>s.vendorId==='vendor'),reported);
+ const report=await f.call('POST','/api/platform/buyer-shipping/report-payment',{code:f.code,vendorKey:'other-vendor',requestId:'other-with-additions',expectedVersion:r.json().editVersion});assert.equal(report.status,200,report.body);
+ assert.equal((await f.repo.listRecords('alpha','shipment')).some(s=>s.itemId==='same-vendor-new'),false);
+});
+
+for(const reportedStatus of ['bank_transfer_reported','card_payment_reported'])test(reportedStatus+' does not lock another saved vendor method or alter its own quote',async t=>{
+ const f=await fixture(t);await addOtherVendorWin(f);assert.equal((await saveOtherVendor(f)).status,200);
+ const first=(await f.repo.listRecords('alpha','shipment')).find(s=>s.vendorId==='vendor');
+ const pending={...first,paymentStatus:reportedStatus,paymentMethod:reportedStatus.startsWith('card')?'card':'bank_transfer',cardPaymentUrl:'https://pay.example.test/pending',cardNoticeMethod:'external',cardLinkPreparedAt:'2026-01-01',buyerPaymentReportedAt:'2026-01-02',buyerPaymentReportRequestId:'pending-report'};
+ await f.repo.upsertRecord('alpha','shipment',pending);const before=(await f.repo.listRecords('alpha','shipment')).find(s=>s.id===pending.id);
+ const r=await saveOtherVendor(f,{requestId:'independent-method',payments:[{vendorKey:'vendor',method:pending.paymentMethod},{vendorKey:'other-vendor',method:'card'}]});assert.equal(r.status,200,r.body);
+ assert.equal(r.json().vendors.find(v=>v.key==='other-vendor').payment.status,'card_link_pending');assert.deepEqual(await f.repo.getRecord('alpha','shipment',first.id),before);
+});
+
+test('pending vendor method edits are rejected without partially saving another vendor',async t=>{
+ const f=await fixture(t),before=await reportFirstVendor(f);await addOtherVendorWin(f);
+ const r=await saveOtherVendor(f,{payments:[{vendorKey:'vendor',method:'card'},{vendorKey:'other-vendor',method:'bank_transfer'}]});assert.equal(r.status,409);
+ assert.deepEqual(await f.repo.listRecords('alpha','shipment'),before);
+});
+
+test('shared destination and another vendor method can change without clearing a pending report',async t=>{
+ const f=await fixture(t);await addOtherVendorWin(f);assert.equal((await saveOtherVendor(f)).status,200);const reported=await reportFirstVendor(f);
+ const r=await saveOtherVendor(f,{requestId:'shared-destination-other-method',destinationId:'parge',pargeRegion:'서울',pargeShop:'수령점',payments:[{vendorKey:'vendor',method:'bank_transfer'},{vendorKey:'other-vendor',method:'card'}]});assert.equal(r.status,200,r.body);
+ const shipments=await f.repo.listRecords('alpha','shipment');assert.ok(shipments.every(s=>s.destinationId==='parge'&&s.pargeShop==='수령점'));
+ const first=shipments.find(s=>s.vendorId==='vendor');assert.equal(first.paymentStatus,'bank_transfer_reported');assert.equal(first.paymentRequestedAmount,reported[0].paymentRequestedAmount);assert.equal(first.buyerPaymentReportRequestId,reported[0].buyerPaymentReportRequestId);assert.equal(first.shippingChangedAfterReport,true);
+ assert.equal(r.json().vendors.find(v=>v.key==='other-vendor').payment.status,'card_link_pending');
+});
+
+test('independent save failure is atomic and retry leaves pending payment untouched',async t=>{
+ const f=await fixture(t),before=await reportFirstVendor(f);await addOtherVendorWin(f);const notices=await f.repo.listRecords('alpha','notification'),write=f.repo.upsertRows.bind(f.repo);
+ f.repo.upsertRows=async rows=>write(rows.some(row=>row.key.includes('::shipment::'))?[...rows,{key:{invalid:true},value:'fail'}]:rows);
+ assert.equal((await saveOtherVendor(f)).status,500);assert.deepEqual(await f.repo.listRecords('alpha','shipment'),before);assert.deepEqual(await f.repo.listRecords('alpha','notification'),notices);
+ f.repo.upsertRows=write;const saved=await saveOtherVendor(f);assert.equal(saved.status,200,saved.body);assert.deepEqual((await f.repo.listRecords('alpha','shipment')).filter(s=>s.vendorId==='vendor'),before);
+});
+
+test('report versus another vendor save rejects stale writes and permits a fresh retry',async t=>{
+ for(const reportFirst of [true,false]){
+  const f=await fixture(t);await addOtherVendorWin(f);const p=(await f.get()).json();
+  const report=()=>f.call('POST','/api/platform/buyer-shipping/report-payment',{code:f.code,vendorKey:'vendor',requestId:'racing-report',expectedVersion:p.editVersion});
+  const save=()=>saveOtherVendor(f,{expectedVersion:p.editVersion,requestId:'racing-other-save'});
+  const responses=await Promise.all(reportFirst?[report(),save()]:[save(),report()]);assert.deepEqual(responses.map(r=>r.status).sort(),[200,409]);
+  const retry=await saveOtherVendor(f,{requestId:'fresh-other-save'});assert.equal(retry.status,200,retry.body);
+  if(reportFirst)assert.equal(retry.json().vendors.find(v=>v.key==='vendor').payment.status,'bank_transfer_reported');
+ }
+});
+
+test('single pending vendor and archived channel still reject saves',async t=>{
+ const f=await fixture(t),before=await reportFirstVendor(f);
+ const r=await f.change('bank_transfer',{requestId:'pending-alone'});assert.equal(r.status,409);assert.deepEqual(await f.repo.listRecords('alpha','shipment'),before);
+ await addOtherVendorWin(f);const catalog=await f.repo.getCatalog();await f.repo.saveCatalog(catalog.channels.map(c=>c.id==='alpha'?{...c,status:'archived'}:c));
+ assert.equal((await saveOtherVendor(f)).status,401);assert.deepEqual(await f.repo.listRecords('alpha','shipment'),before);
+});
+
 test('operator carrier and receiving shop prefill the buyer page without marking a submission',async t=>{
  const f=await fixture(t,{initial:false});
  const path='/api/platform/buyer-shipping?code='+f.code;

@@ -1904,15 +1904,22 @@ function createPlatformApi({
         const requestedMethods = requestedPaymentMethods(body, groups);
         const shipping = Checkout.allocateShipping(context.bundleItems, selection, context.channel, rates, unchangedDestination ? context.shipments : []);
         const existingByItem = new Map(context.shipments.map((shipment) => [shipment.itemId, shipment]));
-        if (!directDestinationEdit && ownCheckoutShipments(context).some(shipment => ['bank_transfer_reported', 'card_payment_reported'].includes(shipment.paymentStatus))) {
-            throw buyerInputError('업체가 결제를 확인 중입니다. 확인 완료 후 추가 내역을 저장해 주세요.', 409);
-        }
         const now = new Date().toISOString();
         const saved = [];
+        const preservedShipmentIds = new Set();
         for (const group of groups) {
             const groupShipments = context.shipments.filter((shipment) => group.items.some((item) => item.id === shipment.itemId));
             const groupLatest = Checkout.newestShipment(groupShipments);
             const paymentMethod = requestedMethods.get(group.key) || groupLatest?.paymentMethod || '';
+            if (!destinationChanged && groupShipments.some(shipment => ['bank_transfer_reported', 'card_payment_reported'].includes(shipment.paymentStatus))) {
+                // A vendor's pending report freezes only its own payment bundle.
+                // Keep its quote, report and timestamps untouched while other vendors save.
+                for (const shipment of groupShipments) {
+                    saved.push(shipment);
+                    preservedShipmentIds.add(shipment.id);
+                }
+                continue;
+            }
             const allowedMethods = Checkout.normalizeVendorPaymentMethods(group.vendor);
             if (paymentMethod && (!Checkout.PAYMENT_METHODS.includes(paymentMethod) || !allowedMethods.includes(paymentMethod))) {
                 throw buyerInputError(`${group.vendor?.name || '업체'}의 결제방식을 선택해 주세요.`);
@@ -1942,7 +1949,7 @@ function createPlatformApi({
             for (const item of group.items) {
                 const current = existingByItem.get(item.id) || {};
                 const keepCompletedItem = current.paymentStatus === 'paid' && Boolean(current.paymentConfirmedAt);
-                const keepReported=directDestinationEdit && ['bank_transfer_reported','card_payment_reported'].includes(current.paymentStatus);
+                const keepReported=destinationChanged && ['bank_transfer_reported','card_payment_reported'].includes(current.paymentStatus);
                 const itemPaymentStatus = keepCompletedItem ? 'paid' : keepReported ? current.paymentStatus : openStatus;
                 const record = sanitizeRecord('shipment', {
                     ...current,
@@ -1991,11 +1998,15 @@ function createPlatformApi({
                 saved.push({...record,createdAt:current.createdAt||now,updatedAt:now});
             }
         }
+        const recordsToWrite = saved.filter(record => !preservedShipmentIds.has(record.id));
+        if (!recordsToWrite.length && preservedShipmentIds.size) {
+            throw buyerInputError('해당 업체가 결제를 확인 중입니다. 확인 완료 후 추가 내역을 저장해 주세요.', 409);
+        }
         const bundleIds = new Set(context.bundleItems.map((item) => item.id));
         context.shipments = [...context.shipments.filter((shipment) => !bundleIds.has(shipment.itemId)), ...saved];
         const notifications=[];
         if(!options.dryRun){
-            const rows=saved.map(s=>({key:channelKey(context.channel.id,'shipment',s.id),value:JSON.stringify({...s,createdAt:s.createdAt||now,updatedAt:now})}));
+            const rows=recordsToWrite.map(s=>({key:channelKey(context.channel.id,'shipment',s.id),value:JSON.stringify({...s,createdAt:s.createdAt||now,updatedAt:now})}));
             if (!latest?.buyerSubmittedAt || destinationChanged) rows.push({key:buyerDestinationKey(context),value:JSON.stringify({...selection,address,sourceChannelId:context.channel.id,buyerSubmittedAt:now})});
             if(replacedRequest)rows.push({key:channelKey(context.channel.id,'checkoutchange',replacedRequest.id),value:JSON.stringify({...replacedRequest,state:'approved',reviewedBy:'buyer',reviewedAt:now,updatedAt:now,reason:'결제 확인 전 배송지 직접 수정',after:changeView(await buyerShippingPayload(context))})});
             const events=options.notificationRequest?await shippingRegistrationEvents(options.notificationRequest,context,previousNotices):[];
