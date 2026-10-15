@@ -41,3 +41,15 @@ test('all print views pass the full record so display and grouping retain explic
     assert.doesNotMatch(source, /parseWinner\(it\.winner\)/);
     assert.equal((source.match(/parseWinner\(it\)/g) || []).length, 9);
 });
+
+test('packing labels keep up to eight companion lots and separate the count from the original shipping fee', () => {
+    const scope = context();
+    const item = {name:'A01', winner_name:'테스트', winner_phone:'01012345678', shipping_region:'가상 수령점'};
+    const lots = ['A01','A02','A03','A04','B01','B02','B03','E01'];
+    scope.window._shippingLabelBundles = new Map([[item, {count:8, items:lots.join(' · '), shippingCost:33000}]]);
+    const payload = scope.d10ShippingLabelPayload(item);
+    assert.equal(payload.bundle_summary, '합배송 8마리 · ' + lots.join(' · '));
+    assert.equal(payload.amount_summary, '배송비 33,000원');
+    scope.window._shippingLabelBundles.set(item, {count:9, items:[...lots,'E02'].join(' · '), shippingCost:33000});
+    assert.match(scope.d10ShippingLabelPayload(item).bundle_summary, /외 1마리$/);
+});

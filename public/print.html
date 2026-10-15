@@ -416,40 +416,41 @@
         }
 
         .label-paper {
-            display: grid;
-            grid-template-rows: 30% 28% 22% 20%;
+            position: relative;
+            container-type: inline-size;
             width: 100%;
-            aspect-ratio: 5 / 3;
+            aspect-ratio: 8 / 5;
             overflow: hidden;
-            padding: 8px 14px;
             border: 1px solid #cbd5e1;
             background: #fff;
             box-shadow: 0 8px 24px rgba(15, 23, 42, .12);
-            color: #020617;
+            color: #000;
             font-family: 'Pretendard', sans-serif;
-            text-align: center;
+            font-weight: 700;
+            text-align: left;
         }
-
-        .label-paper-line {
+        .label-paper [data-label-size] {
+            position: absolute;
             display: flex;
             align-items: center;
-            justify-content: center;
             min-width: 0;
-            overflow: hidden;
-            line-height: 1;
-            white-space: nowrap;
-            text-overflow: ellipsis;
+            line-height: 1.08;
+            overflow-wrap: anywhere;
+            text-wrap: balance;
         }
-
-        .label-paper-destination { font-size: 29px; font-weight: 900; letter-spacing: -.045em; }
-        .label-paper-destination.is-long { font-size: 20px; line-height: 1.02; white-space: normal; text-overflow: clip; }
-        .label-paper-destination.is-very-long { font-size: 16px; letter-spacing: -.035em; }
-        .label-paper-header { display:flex; align-items:center; justify-content:center; background:#000; color:#fff; border-radius:5px; font-size:44px; font-weight:900; overflow:hidden; }
-        .label-paper-buyer { font-size: 27px; font-weight: 850; letter-spacing: -.04em; border-top:2px solid #000; }
-        .label-paper-buyer.is-long { font-size: 20px; }
-        .label-paper-buyer.is-very-long { font-size: 17px; }
-        .label-paper-phone { align-items: flex-start; padding-top: 2px; font-size: 23px; font-weight: 850; letter-spacing: -.025em; }
-        .label-paper-feed-margin { border-top: 1px dashed #e2e8f0; }
+        .label-paper [data-label-size] > span { width:100%; }
+        .label-paper-header {
+            left:2.78%; top:3.33%; width:30.21%; height:26.11%;
+            background:#000; color:#fff; border-radius:1cqw; text-align:center;
+        }
+        .label-paper-buyer { left:36.11%; top:3.33%; width:61.11%; height:17.22%; }
+        .label-paper-phone { left:36.11%; top:21.94%; width:61.11%; height:7.5%; white-space:nowrap; }
+        .label-paper-carrier { left:2.78%; top:34.17%; width:94.44%; height:7.22%; }
+        .label-paper-destination { left:2.78%; top:42.5%; width:94.44%; height:21.67%; }
+        .label-paper-rule { position:absolute; left:2.78%; top:68.06%; width:94.44%; border-top:1px solid #000; }
+        .label-paper-bundle { left:2.78%; top:70.83%; width:94.44%; height:8.33%; }
+        .label-paper-lots { left:2.78%; top:79.44%; width:94.44%; height:12.22%; }
+        .label-paper-amount { left:2.78%; top:92.22%; width:94.44%; height:5.56%; text-align:right; }
 
         .label-preview-empty {
             display: grid;
@@ -506,11 +507,6 @@
         .label-bundle-info b { color:#1d4ed8; }
         .label-bundle-info em { color:#b45309; font-style:normal; font-weight:800; }
         .label-preview-bundle { margin-top:12px; padding:12px; background:#eff6ff; color:#1e293b; border-radius:10px; font-size:14px; line-height:1.7; overflow-wrap:anywhere; }
-        .label-paper.has-bundle { grid-template-rows:22% 24% 9% 9% 17% 19%; }
-        .label-paper.has-bundle .label-paper-header { font-size:32px; }
-        .label-paper.has-bundle .label-paper-destination { font-size:22px; }
-        .label-paper.has-bundle .label-paper-destination.is-long { font-size:16px; }
-        .label-paper-detail { font-size:12px; font-weight:800; line-height:1.1; overflow-wrap:anywhere; }
         .label-empty { padding: 52px 18px; border:1px dashed #cbd5e1; border-radius:12px; color:#64748b; text-align:center; }
         .label-printer-status { display:inline-flex; align-items:center; gap:6px; padding:6px 9px; border-radius:8px; background:#f1f5f9; color:#475569; font-size:12px; font-weight:800; }
         .label-printer-status.is-ready { background:#ecfdf5; color:#047857; }
@@ -770,10 +766,6 @@
             .label-item .label-phone,.label-item .label-destination { grid-column:3 / -1; }
             .label-selection-summary { width:100%;margin-left:0; }
             .label-preview-stage { min-height:0;padding:14px 8px; }
-            .label-paper { padding-left:16px;padding-right:16px; }
-            .label-paper-destination { font-size:clamp(17px,5vw,29px); }
-            .label-paper-buyer { font-size:clamp(16px,4.7vw,27px); }
-            .label-paper-phone { font-size:clamp(14px,4vw,23px); }
             .settlement-stats { grid-template-columns:repeat(2,minmax(120px,1fr)); }
             .settlement-tools { align-items:stretch; flex-direction:column; }
             .settlement-tools input,.settlement-tools select,.sheets-export-btn { width:100%; min-width:0; }
@@ -1197,7 +1189,7 @@
             var method = String(it.shipping_type || '').trim();
             var carrier = String(it.shipping_company || '').trim();
             var location = String(it.shipping_region || '').replace(/\s*\[(?:메모|요청):[^\]]+\]\s*$/, '').trim();
-            if (method === '직접수령') return location;
+            if (method === '직접수령') return location ? '직접수령 · ' + location : '';
             if (method !== '배송') return '';
             return [carrier, location].filter(Boolean).join(' · ');
         }
@@ -1335,22 +1327,40 @@
 
             var position = indexes.indexOf(activeIndex);
             var payload = d10ShippingLabelPayload(items[activeIndex]);
-            var destinationLength = Array.from(String(payload.destination || '')).length;
-            var buyerLength = Array.from(String(payload.winner_name || '')).length;
-            var destinationClass = destinationLength > 38 ? ' is-long is-very-long' : destinationLength > 20 ? ' is-long' : '';
-            var buyerClass = buyerLength > 18 ? ' is-long is-very-long' : buyerLength > 11 ? ' is-long' : '';
-            stage.innerHTML = '<div class="label-paper has-bundle" title="' + escapePrintHtml(payload.lot_number || '') + '">'
-                + '<div class="label-paper-header">' + escapePrintHtml(payload.lot_number || '배송') + '</div>'
-                + '<div class="label-paper-line label-paper-destination' + destinationClass + '">' + escapePrintHtml(payload.destination || '-') + '</div>'
-                + '<div class="label-paper-detail">' + escapePrintHtml(payload.bundle_summary || '') + '</div>'
-                + '<div class="label-paper-detail">' + escapePrintHtml(payload.amount_summary || '') + '</div>'
-                + '<div class="label-paper-line label-paper-buyer' + buyerClass + '">' + escapePrintHtml(payload.winner_name || '-') + '</div>'
-                + '<div class="label-paper-line label-paper-phone">' + escapePrintHtml(fmtPhone(payload.winner_phone) || '-') + '</div>'
+            var route = String(payload.destination || '').match(/^(파르게|도도시|랩팡|직접수령|직수령) · (.*)$/);
+            var group = String(payload.bundle_summary || '').match(/^합배송(?: 대상)?\s*(\d+)\s*(?:마리|개)\s*·\s*(.*)$/);
+            stage.innerHTML = '<div class="label-paper" title="' + escapePrintHtml(payload.lot_number || '') + '">'
+                + '<div class="label-paper-header" data-label-size="76"><span>' + escapePrintHtml(payload.lot_number || '배송') + '</span></div>'
+                + '<div class="label-paper-buyer" data-label-size="62"><span>' + escapePrintHtml(payload.winner_name || '낙찰자 미입력') + '</span></div>'
+                + '<div class="label-paper-phone" data-label-size="31"><span>' + escapePrintHtml(fmtPhone(payload.winner_phone) || '연락처 미입력') + '</span></div>'
+                + '<div class="label-paper-carrier" data-label-size="25"><span>' + escapePrintHtml(route ? route[1] : '배송지') + '</span></div>'
+                + '<div class="label-paper-destination" data-label-size="46"><span>' + escapePrintHtml(route ? route[2] : payload.destination || '배송지 미입력') + '</span></div>'
+                + '<div class="label-paper-rule"></div>'
+                + '<div class="label-paper-bundle" data-label-size="34"><span>' + (group ? '합배송 ' + escapePrintHtml(group[1]) + '마리' : /^단독/.test(payload.bundle_summary || '') ? '단독 배송' : '합배송 미확인') + '</span></div>'
+                + '<div class="label-paper-lots" data-label-size="34"><span>' + escapePrintHtml(group ? group[2] : '') + '</span></div>'
+                + '<div class="label-paper-amount" data-label-size="21"><span>' + escapePrintHtml(payload.amount_summary || '') + '</span></div>'
                 + '</div>';
             counter.textContent = (position + 1) + ' / ' + indexes.length + (selectedShippingLabelItems().length ? ' · 선택 라벨' : ' · 출력 가능');
             stage.innerHTML += '<div class="label-preview-bundle">' + shippingLabelBundleHtml(items[activeIndex]) + '</div>';
             prev.disabled = position <= 0;
             next.disabled = position >= indexes.length - 1;
+            fitShippingLabelPreview();
+            if (document.fonts) document.fonts.ready.then(fitShippingLabelPreview);
+            if (!window._shippingLabelPreviewObserver && typeof ResizeObserver !== 'undefined') {
+                window._shippingLabelPreviewObserver = new ResizeObserver(fitShippingLabelPreview);
+                window._shippingLabelPreviewObserver.observe(stage);
+            }
+        }
+
+        function fitShippingLabelPreview() {
+            document.querySelectorAll('.label-paper [data-label-size]').forEach(function (box) {
+                var content = box.firstElementChild;
+                if (!content || !box.clientWidth) return;
+                for (var size = Number(box.dataset.labelSize); size >= 10; size--) {
+                    box.style.fontSize = (size / 5.76) + 'cqw';
+                    if (content.scrollWidth <= box.clientWidth + 1 && content.getBoundingClientRect().height <= box.clientHeight + 1) break;
+                }
+            });
         }
 
         var D10_LABEL_BRIDGE_BASE = 'http://127.0.0.1:17876';
@@ -1402,7 +1412,7 @@
                 winner_name: winner.name || '낙찰자',
                 winner_phone: winner.phone || '',
                 destination: shippingLabelDestination(it),
-                bundle_summary: bundle ? (bundle.count > 1 ? '합배송 대상 ' + bundle.count + '개 · ' : '단독 · ') + bundle.items.split(' · ').slice(0, 4).join(' ') + (bundle.count > 4 ? ' 외 ' + (bundle.count - 4) + '개' : '') : '',
+                bundle_summary: bundle ? (bundle.count > 1 ? '합배송 ' + bundle.count + '마리 · ' : '단독 · ') + bundle.items.split(' · ').slice(0, 8).join(' · ') + (bundle.count > 8 ? ' 외 ' + (bundle.count - 8) + '마리' : '') : '',
                 amount_summary: bundle ? '배송비 ' + bundle.shippingCost.toLocaleString('ko-KR') + '원' : ''
             };
         }
