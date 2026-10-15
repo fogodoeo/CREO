@@ -7,6 +7,7 @@ const CREDENTIAL_KEY='creo_v2::private_item_sheet_credentials';
 const settingKey=id=>channelKey(id,'setting','item-sheet-sync');
 const parse=(value,fallback=null)=>{try{return JSON.parse(value);}catch{return fallback;}};
 const error=message=>Object.assign(Error(message),{status:422});
+const lotKey=(name,vendor)=>/^출품 \d+$/.test(name)?name+'\n'+vendor:name;
 function seal(value,secret){
     if(!secret)throw error('서버의 비밀키 설정이 필요해요.');
     const key=crypto.createHash('sha256').update('creo-item-sheets\n'+secret).digest(),iv=crypto.randomBytes(12);
@@ -28,7 +29,7 @@ function planRows(state,rows,data,channel,stamp){
     }
     let nextLot=Math.max(0,...items.map(i=>Number(i.lotNumber)||0));
     const sheetNames=new Map();
-    for(const r of rows)if(r.values[0])sheetNames.set(r.values[0],(sheetNames.get(r.values[0])||0)+1);
+    for(const r of rows)if(r.values[0]){const key=lotKey(r.values[0],r.values[1]);sheetNames.set(key,(sheetNames.get(key)||0)+1);}
     for(const row of rows){
         let binding=bindings[row.id],item=binding&&items.find(i=>i.id===binding.itemId),values,status='',choice=row.choice;
         const occupied=row.values.some(Boolean);
@@ -36,7 +37,7 @@ function planRows(state,rows,data,channel,stamp){
             if(row.formula)throw Error('수식 대신 값을 입력해 주세요.');
             if(binding&&!item)throw Error('웹에서 삭제된 개체예요. 이 행은 다시 등록하지 않아요.');
             if(!binding&&!occupied)continue;
-            if(row.values[0]&&sheetNames.get(row.values[0])>1)throw Error('개체번호가 시트에서 중복됐어요.');
+            if(row.values[0]&&sheetNames.get(lotKey(row.values[0],row.values[1]))>1)throw Error('개체번호가 시트에서 중복됐어요.');
             if(item&&Model.locked(item,data.broadcast)){
                 if(!Model.same(row.values,binding.base)&&!Model.same(row.values,Model.exported(item,data.vendors)))throw Error('진행·종료된 개체는 시트에서 수정할 수 없어요.');
                 values=Model.exported(item,data.vendors);status=item.status==='live'?'진행 중 · 수정 잠금':'종료 · 수정 잠금';choice='';
@@ -45,8 +46,8 @@ function planRows(state,rows,data,channel,stamp){
                 const web=item?Model.exported(item,data.vendors):Array(Model.FIELD_COUNT).fill('');
                 const result=Model.merge(binding?.base||Array(Model.FIELD_COUNT).fill(''),web,row.values,choice);
                 if(result.conflicts.length)throw Error('충돌: '+result.conflicts.map(i=>Model.HEADERS[i]+' (웹: '+(web[i]||'빈 값').slice(0,70)+')').join(', ')+' · 충돌 해결을 선택해 주세요.');
-                const valid=Model.validated(result.values,data.vendors);values=valid.values;
-                if(items.some(i=>i.id!==item?.id&&String(i.name).toUpperCase()===values[0]))throw Error('웹에 같은 개체번호가 있어요.');
+                const valid=Model.validated(result.values,data.vendors,item?._sheetEntry);values=valid.values;
+                if(items.some(i=>i.id!==item?.id&&lotKey(String(i.name).toUpperCase(),i.vendorName||data.vendors.find(v=>v.id===i.vendorId)?.name)===lotKey(values[0],values[1])))throw Error('웹에 같은 개체번호가 있어요.');
                 if(!item){
                     const id='sheet-'+crypto.createHash('sha256').update(channel.id+'\n'+row.id).digest('hex').slice(0,32);
                     item={id,channelId:channel.id,lotNumber:++nextLot,name:values[0],vendorId:valid.vendor.id,vendorName:valid.vendor.name,status:'waiting',soldPrice:0,createdAt:stamp,attributes:{broadcastDate:channel.auctionDate||'',sheetRowId:row.id}};
@@ -56,7 +57,7 @@ function planRows(state,rows,data,channel,stamp){
                     const next=Model.apply(item,values,valid.vendor);next.updatedAt=new Date(Math.max(Date.parse(stamp),Date.parse(item.updatedAt||0)+1||0)).toISOString();
                     writes.push(next);items[items.findIndex(i=>i.id===item.id)]=next;
                 }
-                status='연결됨';choice='';
+                status=item?._sheetEntry?({submitted:'검토 대기',draft:'작성 중',changes_requested:'수정 요청'}[item._sheetEntry.status]+' · 연결됨'):'연결됨';choice='';
             }
         }catch(e){status=e.message;errors.push({row:row.index+1,message:status});values=undefined;}
         if(values||status!==row.status||choice!==row.choice){
@@ -65,7 +66,7 @@ function planRows(state,rows,data,channel,stamp){
     }
     return {bindings,updates,writes,errors};
 }
-function createItemSheetSync({repository,lock,workspace,hydrateItems=async(_,items)=>items,touch=()=>{},sanitizeRecord,validateRecord,secret=repository.adminSecret,google,fetchImpl,now=Date.now,logger=console}){
+function createItemSheetSync({repository,lock,workspace,hydrateItems=async(_,items)=>items,entryBridge,touch=()=>{},sanitizeRecord,validateRecord,secret=repository.adminSecret,google,fetchImpl,now=Date.now,logger=console}){
     let running=null,timer=null,stopped=false;
     const inFlight=new Map();
     const readKey=async key=>parse((await repository.getRowsByKeys([key]))[0]?.value);
@@ -79,6 +80,11 @@ function createItemSheetSync({repository,lock,workspace,hydrateItems=async(_,ite
     const client=google||createGoogleClient({credentials,fetchImpl,now});
     const read=id=>readKey(settingKey(id));
     const save=(id,value)=>repository.upsertRows([{key:settingKey(id),value:JSON.stringify(value)}]);
+    async function view(channelId){
+        const data=await workspace(channelId),original=new Map(data.items.map(i=>[i.id,i]));
+        data.items=(await hydrateItems(channelId,data.items)).map(i=>({...i,_sheetOriginal:original.get(i.id)}));
+        return data;
+    }
     async function status(id){
         const s=await read(id);if(!s)return {configured:false};
         return {configured:true,enabled:s.enabled,spreadsheetUrl:'https://docs.google.com/spreadsheets/d/'+s.spreadsheetId+'/edit',lastSuccessAt:s.lastSuccessAt||null,lastError:s.lastError||'',errorCount:s.errorCount||0,intervalSeconds:10};
@@ -122,7 +128,7 @@ function createItemSheetSync({repository,lock,workspace,hydrateItems=async(_,ite
         return lock('channel:'+channelId,async()=>{
             const channel=(await repository.getCatalog()).channels.find(c=>c.id===channelId);
             if(!channel||!['active','draft'].includes(channel.status)||channel.dataAdapter!=='platform')throw error('종료·보관된 채널은 동기화하지 않아요.');
-            const data=await workspace(channelId);data.items=await hydrateItems(channelId,data.items);return {channel,data};
+            const data=await view(channelId);if(entryBridge)await entryBridge.load(channel,data);return {channel,data};
         });
     }
     async function run(channelId){
@@ -150,7 +156,9 @@ function createItemSheetSync({repository,lock,workspace,hydrateItems=async(_,ite
                 await lock('channel:'+channelId,async()=>{
                     const channel=(await repository.getCatalog()).channels.find(c=>c.id===channelId);
                     if(!channel||!['active','draft'].includes(channel.status))throw error('종료된 채널은 동기화하지 않아요.');
-                    const data=await workspace(channelId);data.items=await hydrateItems(channelId,data.items);
+                    const data=await view(channelId);
+                    const commit=async()=>{
+                    if(entryBridge)await entryBridge.load(channel,data);
                     plan=planRows(state,fresh.rows,data,channel,stamp);
                     const allowed=new Set(plan.updates.filter(u=>lockedIds.has(u.id)).map(u=>plan.bindings[u.id]?.itemId));
                     // Only rows protected in this pass may be committed. Other rows wait for the next tick.
@@ -159,19 +167,22 @@ function createItemSheetSync({repository,lock,workspace,hydrateItems=async(_,ite
                     const nextBindings=structuredClone(state.bindings||{});
                     for(const id of lockedIds)if(plan.bindings[id])nextBindings[id]=plan.bindings[id];
                     plan.bindings=nextBindings;
-                    const rows=[];
-                    for(const item of plan.writes){
-                        const current=data.items.find(i=>i.id===item.id)||{};
+                    const prepared=entryBridge?entryBridge.prepare(channel,data,plan.writes,stamp):{items:plan.writes,rows:[]};
+                    const rows=prepared.rows;
+                    for(const item of prepared.items){
+                        const displayed=data.items.find(i=>i.id===item.id),current=displayed?._sheetOriginal||displayed||{};
                         if(current.id&&Model.locked(current,data.broadcast))throw error('경매 상태가 변경됐어요.');
                         let saved=sanitizeRecord('item',item,current);
                         saved=require('./auction-settlement').stamp(saved,channel,current);
                         saved={...saved,channelId,createdAt:item.createdAt||stamp,updatedAt:item.updatedAt};
-                        const problems=validateRecord('item',saved,{...data,items:data.items.filter(i=>i.id!==saved.id).concat(plan.writes),groups:channel.groups||[]});
+                        const problems=validateRecord('item',saved,{...data,items:data.items.filter(i=>!i._sheetEntry&&i.id!==saved.id).concat(prepared.items),groups:channel.groups||[]});
                         if(problems.length)throw error(problems.join(' '));
                         rows.push({key:channelKey(channelId,'item',saved.id),value:JSON.stringify(saved)});
                     }
                     state={...state,bindings:plan.bindings};rows.push({key:settingKey(channelId),value:JSON.stringify(state)});
                     await repository.upsertRows(rows);if(plan.writes.length)touch(channelId);
+                    };
+                    if(entryBridge)await entryBridge.withLocks(channel,data,commit);else await commit();
                 });
                 await client.publish(state,plan.updates,lease);
                 for(const u of plan.updates)if(u.base&&state.bindings[u.id])state.bindings[u.id].base=u.base;

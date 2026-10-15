@@ -128,10 +128,10 @@
     const reviewable=canReview()&&row.entry.status==='submitted';
     $('review-form').hidden=!reviewable;$('review-actions').hidden=!reviewable;$('reload-entry').hidden=true;
     const existing=data.allocation.find(item=>item.id===row.entry.itemId);
-    const numbering=window.CreoEntryNumbering.initial({allocation:data.allocation,existing,lot:row.entry.lot,teamBased:!!data.channel.groups?.length,preferred:preferredPart});
+    const numbering=window.CreoEntryNumbering.initial({allocation:data.allocation,existing,lot:row.entry.lot||row.entry.sheetLot,teamBased:!!data.channel.groups?.length,preferred:preferredPart});
     $('lot-part').value=Numbering.parts.includes(numbering.mode)?numbering.mode:'manual';$('lot-code').value=numbering.code;
     $('lot-order').value=numbering.order;
-    $('lot-price').value=existing?.startPrice||0;$('lot-team').value=existing?.teamName||row.group.vendor.teamName||'';$('review-reason').value='';
+    $('lot-price').value=existing?.startPrice??row.entry.sheetStartPrice??0;$('lot-team').value=existing?.teamName||row.group.vendor.teamName||'';$('review-reason').value='';
     const groups=data.channel.groups||[];
     $('lot-team-label').hidden=groups.length>0;$('lot-group-label').hidden=!groups.length;
     $('lot-group').innerHTML='<option value="">팀 없음</option>'+groups.map(group=>`<option value="${esc(group.id)}">${esc(group.name)}</option>`).join('');

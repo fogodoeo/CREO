@@ -6,7 +6,7 @@ const {sanitizeRecord,validateRecord,createPlatformApi}=require('../platform-api
 const {channelKey}=require('../platform-core');
 const {Readable}=require('node:stream');
 const {STRUCTURE}=require('../item-sheet-google');
-function fixture(){
+function fixture({bridgeFactory,hydrateItems}={}){
     const records=new Map(),channel={id:'alpha',name:'가상 경매',dataAdapter:'platform',status:'active'},other={...channel,id:'beta'};
     let time=Date.parse('2026-10-15T08:00:00Z'),failStore=false,failPublish=false,afterAcquire=null;
     const copy=structuredClone;
@@ -24,7 +24,8 @@ function fixture(){
     const locks=new Map();
     const lock=async(key,fn)=>{const old=locks.get(key)||Promise.resolve();let release;const p=new Promise(r=>release=r);locks.set(key,old.then(()=>p));await old;try{return await fn()}finally{release()}};
     const workspace=async id=>({vendors:await repository.listRecords(id,'vendor'),items:await repository.listRecords(id,'item'),shipments:await repository.listRecords(id,'shipment'),broadcast:await repository.getRecord(id,'broadcast','state')||{}});
-    const create=()=>createItemSheetSync({repository,lock,workspace,sanitizeRecord,validateRecord,google,now:()=>++time,logger:{warn(){}}});
+    const entryBridge=bridgeFactory?.(repository);
+    const create=()=>createItemSheetSync({repository,lock,workspace,sanitizeRecord,validateRecord,entryBridge,hydrateItems,google,now:()=>++time,logger:{warn(){}}});
     let service=create();
     const config={action:'connect',spreadsheetId:'test-sheet-12345678901234567890',tabId:1,tabName:'출품 개체',rowIds:grid.map(r=>r.id)};
     const values=()=>['A01','가상업체','암컷','25','2025-07-13','아잔틱','PCR','30','https://example.com/gecko.webp','','','',''];
@@ -110,9 +111,67 @@ test('parent photo overrides preserve all other attributes and fee/buyer data',(
     const vendor={id:'v',name:'업체'},values=Model.exported(item,[vendor]);values[10]='https://example.com/new.webp';const next=Model.apply(item,values,vendor);
     assert.deepEqual(next.attributes.vendor_entry,item.attributes.vendor_entry);assert.deepEqual(next.attributes.organizerFeePolicy,item.attributes.organizerFeePolicy);assert.deepEqual(next.attributes.parents.find(p=>p.role==='dam'),item.attributes.parents[1]);assert.deepEqual(next.attributes.parentPhotoOverrides,['sire']);
 });
+test('editing text preserves durable private photo references instead of persisting expiring display URLs',async()=>{
+    const ref='/__entry_photo__/'+crypto.randomUUID()+'/'+crypto.randomUUID()+'/'+'a'.repeat(64)+'/full.webp';
+    const f=fixture({hydrateItems:async(_,items)=>items.map(i=>({...i,photoUrl:'https://example.com/view?expires=1',attributes:{...i.attributes,parents:[{...i.attributes.parents[0],media:[{url:'https://example.com/parent?expires=1'}]}]}}))});
+    f.put('item',{id:'private-photo',name:'A01',lotNumber:1,vendorId:'v',status:'waiting',photoUrl:ref,attributes:{media:[{url:ref}],parents:[{role:'sire',name:'부모',media:[{url:ref}]}]}});
+    await f.connect();await f.sync();f.grid[0].values[6]='시트 비고';f.grid[0].values[9]='새 부모 이름';await f.sync();
+    const item=(await f.items())[0];assert.equal(item.note,'시트 비고');assert.equal(item.photoUrl,ref);assert.equal(item.attributes.media[0].url,ref);assert.equal(item.attributes.parents[0].media[0].url,ref);assert.equal(item.attributes.parents[0].name,'새 부모 이름');assert.equal(JSON.stringify(item).includes('expires='),false);assert.equal('_sheetOriginal' in item,false);
+});
 test('credential material is encrypted and the status response cannot expose it',async()=>{
     const sealed=seal({private_key:'test key',client_email:'test'},'secret');assert.equal(JSON.stringify(sealed).includes('test key'),false);assert.deepEqual(unseal(sealed,'secret'),{private_key:'test key',client_email:'test'});assert.throws(()=>unseal(sealed,'wrong'));
     const f=fixture();await f.service.configure(f.channel,{...f.config,serviceAccount:{type:'service_account',client_email:'robot@test.iam.gserviceaccount.com',private_key:'-----BEGIN PRIVATE KEY-----\nfixture\n'}});assert.equal(f.records.get(CREDENTIAL_KEY).includes('PRIVATE KEY'),false);assert.equal(JSON.stringify(await f.service.status('alpha')).includes('private_key'),false);
+});
+function pendingFixture(){
+    const ownerId=crypto.randomUUID(),entryId=crypto.randomUUID(),parentId=crypto.randomUUID();let entries;
+    const f=fixture({bridgeFactory(repository){
+        entries=require('../vendor-entries').createVendorEntries(repository);
+        return require('../item-sheet-entries').createEntryBridge({directory:{async profileFor(c,v){return ['v','v2'].includes(v)?{id:ownerId}:null}},entries});
+    }});
+    const entry={id:entryId,channelId:'alpha',channelVendorId:'v',vendorId:ownerId,entryNumber:1,code:'출품 01',version:1,status:'submitted',sex:'female',weight:'25',hatchDate:'2025-07-13',morph:'아잔틱',note:'PCR',photoIds:['photo'],sireId:parentId,damId:'',updatedAt:'2026-10-14T00:00:00Z'};
+    const state={schema:1,version:1,ownerId,entries:[entry,{...entry,id:crypto.randomUUID(),channelId:'beta',note:'다른 채널 비공개'}],media:[{id:'photo',url:'https://example.com/original.webp',thumbnailUrl:'https://example.com/thumb.webp',size:100,thumbnailSize:10}],parents:[{id:parentId,name:'원래 부모',sex:'male',photoId:'photo',version:1}],parentHistory:[],requests:[]};
+    const key='vendor_entries_v1::'+ownerId;
+    entry.submission=entries.sheetAccess.snapshot(state,entry);
+    const put=s=>f.records.set(key,JSON.stringify(s)),read=()=>JSON.parse(f.records.get(key));put(state);
+    return {...f,get service(){return f.service},ownerId,entryId,parentId,read,put,putRecord:f.put,entries};
+}
+test('submitted vendor entries populate the same sheet without approving them or duplicating auction lots',async()=>{
+    const f=pendingFixture();await f.connect();await f.sync();
+    assert.equal(f.grid[0].values[0],'출품 01');assert.equal(f.grid[0].values[8],'https://example.com/original.webp');assert.equal(f.grid[0].values[9],'원래 부모');assert.equal(f.grid[0].status,'검토 대기 · 연결됨');
+    assert.equal((await f.items()).length,0);assert.equal(f.read().entries[0].status,'submitted');assert.equal(JSON.stringify(f.grid).includes('다른 채널 비공개'),false);
+    await f.sync();assert.equal(f.grid.filter(r=>r.values[0]).length,1);
+});
+test('pending entry sheet edits preserve approval, other channels and shared parent records; web changes sync back',async()=>{
+    const f=pendingFixture();await f.connect();await f.sync();const original=f.read();
+    f.grid[0].values[0]='A01';f.grid[0].values[3]='27.5';f.grid[0].values[6]='시트 비고';f.grid[0].values[7]='10';f.grid[0].values[8]='https://example.com/new.webp';f.grid[0].values[9]='시트 부모';f.grid[0].values[10]='';await f.sync();
+    const state=f.read(),entry=state.entries[0];assert.equal(entry.status,'submitted');assert.equal(entry.sheetLot,'A01');assert.equal(entry.sheetStartPrice,100000);assert.equal(entry.weight,'27.5');assert.equal(entry.submission.note,'시트 비고');assert.equal(entry.submission.media[0].url,'https://example.com/new.webp');assert.equal(entry.version,2);
+    assert.deepEqual(state.entries[1],original.entries[1]);assert.deepEqual(state.parents.find(p=>p.id===f.parentId),original.parents[0]);assert.equal(entry.submission.parents[0].name,'시트 부모');assert.deepEqual(entry.submission.parents[0].media,[]);assert.equal(state.parents.find(p=>p.id===entry.sireId).sourceId,'');assert.equal((await f.items()).length,0);
+    entry.note='웹 비고';entry.version++;f.put(state);await f.sync();assert.equal(f.grid[0].values[6],'웹 비고');
+});
+test('pending entry races, failed publication and restart preserve the entry version and explicit conflict',async()=>{
+    const f=pendingFixture();await f.connect();await f.sync();f.grid[0].values[6]='시트 수정';
+    f.afterAcquire(()=>{const s=f.read();s.entries[0].note='웹 수정';s.entries[0].version++;f.put(s)});await f.sync();assert.match(f.grid[0].status,/충돌/);assert.equal(f.read().entries[0].note,'웹 수정');
+    f.grid[0].choice='시트 적용';f.publishFails(true);await f.sync();assert.equal(f.read().entries[0].note,'시트 수정');const version=f.read().entries[0].version;
+    f.restart();f.publishFails(false);await f.sync();assert.equal(f.read().entries[0].version,version);assert.equal(f.grid[0].status,'검토 대기 · 연결됨');
+});
+test('approval migrates the existing sheet row to the real auction item and never creates a duplicate',async()=>{
+    const f=pendingFixture();await f.connect();await f.sync();
+    const entry=f.read().entries[0],context={channel:f.channel,vendor:(await f.workspace('alpha')).vendors[0],profile:{id:f.ownerId,members:[{channelId:'alpha',vendorId:'v'}]},catalog:await f.repository.getCatalog()};
+    await f.entries.command(context,{type:'approve',id:entry.id,expectedVersion:entry.version,lot:'1부 A01',order:1,startPrice:300000,requestId:'approve-from-web-0001'},{operator:true});
+    await f.sync();assert.equal((await f.items()).length,1);assert.equal(f.grid.filter(r=>r.values[0]).length,1);assert.equal(f.grid[0].values[0],'1부 A01');assert.equal(f.grid[0].values[7],'30');assert.equal(f.grid[0].status,'연결됨');
+    f.grid[0].values[6]='편성 뒤 수정';await f.sync();assert.equal((await f.items())[0].note,'편성 뒤 수정');
+    const item=(await f.items())[0];f.putRecord('item',{...item,status:'sold',soldPrice:500000});f.grid[0].values[6]='종료 뒤 수정';await f.sync();assert.equal((await f.items())[0].note,'편성 뒤 수정');assert.match(f.grid[0].status,/수정할 수 없어요/);
+});
+test('same submission numbers in separate vendors stay distinct and cannot be reassigned',async()=>{
+    const f=pendingFixture();f.putRecord('vendor',{id:'v2',name:'두번째 업체',active:true});const state=f.read();state.entries.push({...state.entries[0],id:crypto.randomUUID(),channelVendorId:'v2'});f.put(state);
+    await f.connect();await f.sync();assert.equal(f.grid.filter(r=>r.values[0]).length,2);assert.equal(f.grid[0].values[0],'출품 01');assert.equal(f.grid[1].values[0],'출품 01');assert.equal(f.grid[1].values[1],'두번째 업체');
+    f.grid[0].values[0]='A01';f.grid[0].values[1]='두번째 업체';await f.sync();assert.match(f.grid[0].status,/소속 업체/);assert.equal(f.read().entries[0].channelVendorId,'v');
+});
+test('deletion, invalid pending edits and atomic failure never approve or partially modify vendor entries',async()=>{
+    const f=pendingFixture();await f.connect();await f.sync();const original=f.read();
+    f.grid[0].values[3]='2.123';await f.sync();assert.match(f.grid[0].status,/소수 둘째/);assert.deepEqual(f.read(),original);
+    f.grid[0].values[3]='30';f.storeFails(true);await assert.rejects(f.sync());assert.deepEqual(f.read(),original);assert.equal((await f.items()).length,0);
+    f.storeFails(false);const deleted=f.read();deleted.entries[0].status='deleted';deleted.entries[0].version++;f.put(deleted);await f.sync();assert.match(f.grid[0].status,/삭제된/);assert.equal((await f.items()).length,0);
 });
 test('admin-only sheet routes, pause, resume and cross-channel status remain isolated',async()=>{
     const f=fixture(),api=createPlatformApi({repository:f.repository,itemSheetGoogle:f.google});

@@ -1180,6 +1180,7 @@ function createPlatformApi({
     const itemSheetSync = require('./item-sheet-sync').createItemSheetSync({
         repository, lock:withMutationLock, workspace,
         hydrateItems:(channelId,items)=>vendorEntries.hydrateItems(channelId,items),
+        entryBridge:require('./item-sheet-entries').createEntryBridge({directory:vendorDirectory,entries:vendorEntries}),
         touch:touchChannel, sanitizeRecord, validateRecord, logger,
         secret:repository.integritySecret||repository.adminSecret,
         google:itemSheetGoogle

@@ -483,7 +483,8 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
             return resolveFacts(item);
         }));
     }
-    return {read,command,saveMany,batch,addMedia,auctionPhotos,updateItemParents,hydrateItems,hydrateCollectionRecords,policy,summary,withOwnerLock:locked};
+    return {read,command,saveMany,batch,addMedia,auctionPhotos,updateItemParents,hydrateItems,hydrateCollectionRecords,policy,summary,withOwnerLock:locked,
+        sheetAccess:{readOwner,normalize:normalizeEntry,snapshot,facts:async(state,entry)=>resolveFacts(snapshot(state,entry))}};
 }
 
 module.exports={createVendorEntries,normalizeEntry};

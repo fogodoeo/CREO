@@ -1,4 +1,5 @@
 'use strict';
+const Numbering=require('./public/entry-numbering');
 
 const HEADERS = Object.freeze(['개체번호','업체','성별','체중(g)','출생일','모프','비고','시작가(만원)','개체 사진','부 이름','부 사진','모 이름','모 사진','동기화','충돌 해결','연결 ID']);
 const FIELD_COUNT = 13;
@@ -24,7 +25,7 @@ function image(value) {
 }
 function normalize(values) {
     const row=Array.from({length:FIELD_COUNT},(_,i)=>text(values[i]));
-    row[0]=row[0].toUpperCase();
+    row[0]=Numbering.normalize(row[0]);
     for(const i of [3,7]) if(row[i]!=='' && Number.isFinite(Number(row[i].replaceAll(',','')))) row[i]=String(Number(row[i].replaceAll(',','')));
     row[4]=date(values[4]);
     return row;
@@ -40,21 +41,25 @@ function exported(item,vendors) {
     for(const i of [8,10,12])if(values[i])try{values[i]=image(values[i]);}catch{values[i]='';}
     return values;
 }
-function validated(values,vendors) {
+function validated(values,vendors,entry=null) {
     const v=normalize(values);
-    if(!/^[A-Z]{1,3}\d{1,4}$/.test(v[0]))fail('개체번호를 A01 형식으로 입력해 주세요.');
+    if(!Numbering.valid(v[0])&&(!entry||v[0]!==entry.code))fail('개체번호를 A01 형식으로 입력해 주세요.');
     const matches=vendors.filter(row=>row.active!==false&&row.name===v[1]);
     if(matches.length!==1)fail('등록된 업체를 선택해 주세요.');
+    if(entry&&matches[0].id!==entry.vendorId)fail('업체가 제출한 개체의 소속 업체는 바꿀 수 없어요.');
+    if(entry&&!['수컷','암컷','미구분'].includes(v[2]))fail('제출 개체는 수컷·암컷·미구분 중 선택해 주세요.');
+    if(entry&&v[3]&&(!/^\d+(\.\d{1,2})?$/.test(v[3])||v[3].length>8))fail('제출 개체의 체중은 소수 둘째 자리까지 입력해 주세요.');
     if(v[2]&&!Object.hasOwn(SEX_CODE,v[2]))fail('성별을 선택해 주세요.');
     if(v[3]&&(!Number.isFinite(Number(v[3]))||Number(v[3])<=0||Number(v[3])>1000))fail('체중은 0보다 큰 숫자로 입력해 주세요.');
     if(v[4]&&(!/^\d{4}-\d{2}-\d{2}$/.test(v[4])||!Number.isFinite(Date.parse(v[4]))||new Date(v[4]).toISOString().slice(0,10)!==v[4]))fail('출생일을 YYYY-MM-DD 형식으로 입력해 주세요.');
     if(v[7]&&(!Number.isFinite(Number(v[7]))||Number(v[7])<0||Number(v[7])>100000))fail('시작가는 만원 단위 숫자로 입력해 주세요.');
     for(const [i,limit] of [[5,60],[6,1000],[9,100],[11,100]])if(v[i].length>limit)fail(HEADERS[i]+' 내용이 너무 길어요.');
+    if(entry&&(v[6].length>600||v[9].length>40||v[11].length>40))fail('제출 개체는 비고 600자, 부모 이름 40자까지 입력할 수 있어요.');
     for(const i of [8,10,12]){v[i]=image(v[i]);if(v[i].length>600)fail('사진 주소가 너무 길어요.');}
     return {values:v,vendor:matches[0]};
 }
 function apply(item,values,vendor) {
-    const before=exported(item,[vendor]),a=structuredClone(item.attributes||{});
+    const before=exported(item,[vendor]),original=item._sheetOriginal||item,a=structuredClone(original.attributes||{});
     const changed=i=>before[i]!==values[i];
     const checklist=new Map(String(a.checklist||'').split('|').filter(Boolean).map(s=>{const i=s.indexOf(':');return [s.slice(0,i),s.slice(i+1)];}));
     const traits={...(a.entry_traits||{})};
@@ -74,7 +79,7 @@ function apply(item,values,vendor) {
         a.parents=parents.filter(p=>p.role!==role).concat(next);
         a.parentPhotoOverrides=[...new Set([...(a.parentPhotoOverrides||[]),role])];
     }
-    return {...item,name:values[0],vendorId:vendor.id,vendorName:vendor.name,category:values[5],note:values[6],startPrice:Math.round(Number(values[7]||0)*10000),photoUrl:values[8],attributes:a};
+    return {...original,name:values[0],vendorId:vendor.id,vendorName:vendor.name,category:values[5],note:values[6],startPrice:Math.round(Number(values[7]||0)*10000),photoUrl:changed(8)?values[8]:original.photoUrl||'',attributes:a};
 }
 function merge(base,web,sheet,choice='') {
     const values=[],conflicts=[];
