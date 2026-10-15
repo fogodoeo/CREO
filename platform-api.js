@@ -1099,7 +1099,8 @@ function createPlatformApi({
     bookingNow = Date.now,
     vendorAccessOrigin = process.env.CREO_VENDOR_ORIGIN || 'https://creok.onrender.com',
     vendorAccessNow = Date.now,
-    vendorAccessSecret = adminSessionSecret
+    vendorAccessSecret = adminSessionSecret,
+    itemSheetGoogle = null
 } = {}) {
     if (!repository) throw new Error('repository is required');
     const testDeliveryChannels = new Set(String(checkoutTestDeliveryChannels).split(',').map(id => id.trim()).filter(id => /^checkout-test-[a-f0-9]{16}$/.test(id)));
@@ -1176,6 +1177,13 @@ function createPlatformApi({
     if (entryPhotoStorage && !entryPhotoStorage.secret) entryPhotoStorage.secret = sessionSecret;
     const sessionTtlMs = Math.max(60_000, Number(adminSessionTtlMs) || ADMIN_SESSION_TTL_MS);
     const mutationLocks = new Map();
+    const itemSheetSync = require('./item-sheet-sync').createItemSheetSync({
+        repository, lock:withMutationLock, workspace,
+        hydrateItems:(channelId,items)=>vendorEntries.hydrateItems(channelId,items),
+        touch:touchChannel, sanitizeRecord, validateRecord, logger,
+        secret:repository.integritySecret||repository.adminSecret,
+        google:itemSheetGoogle
+    });
     const channelRevisions = new Map();
     const knownChannelIds = new Set(DEFAULT_CHANNELS.map((channel) => channel.id));
     const revokedAdminSessions = new Map();
@@ -5616,6 +5624,16 @@ function createPlatformApi({
                 return true;
             }
 
+            if (segments.length === 3 && segments[2] === 'item-sheet') {
+                if (!await requireAdmin(req,res)) return true;
+                if (method === 'GET') replyJson(res,200,await itemSheetSync.status(channelId));
+                else if (method === 'POST') {
+                    const body=await readJson(req);
+                    replyJson(res,200,body.action==='sync'?await itemSheetSync.sync(channelId):await itemSheetSync.configure(channel,body));
+                } else replyJson(res,405,{error:'Method not allowed'});
+                return true;
+            }
+
             const type = segments[2]?.replace(/s$/, '');
             if (segments[2] !== 'archives' && !TYPES.has(type)) {
                 replyJson(res, 404, { error: 'Not found' });
@@ -5873,7 +5891,7 @@ function createPlatformApi({
         } catch { /* The entry API supplies the normal retry/error screen if storage is unavailable. */ }
         return '/vendor-entries.html';
     }
-    return { handle, isAdmin, hasAdminSession, workspace, vendorEntryPage, assertBuyerNotificationLink, cleanupBuyerAuth:buyerAccount.cleanupExpired, cleanupVendorAuth:vendorAccess.cleanupExpired };
+    return { handle, isAdmin, hasAdminSession, workspace, vendorEntryPage, assertBuyerNotificationLink, cleanupBuyerAuth:buyerAccount.cleanupExpired, cleanupVendorAuth:vendorAccess.cleanupExpired, itemSheetSync };
 }
 
 module.exports = {

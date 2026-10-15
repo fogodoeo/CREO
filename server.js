@@ -483,6 +483,7 @@ const buyerAuthMaintenance = require('./buyer-auth-maintenance').createBuyerAuth
 }});
 buyerAuthMaintenance.start();
 deliverySchedules.start();
+platformApi.itemSheetSync.start();
 
 let shuttingDown = false;
 function shutdown(signal) {
@@ -497,7 +498,8 @@ function shutdown(signal) {
         new Promise(resolve => server.close(resolve)),
         checkoutNotificationService.stopAndDrain(),
         deliverySchedules.stop(),
-        buyerAuthMaintenance.stop()
+        buyerAuthMaintenance.stop(),
+        platformApi.itemSheetSync.stop()
     ]).then(async () => {
         try { await platformRepository.close?.(); } catch (error) { console.error('[creo] repository close failed:', error.message); }
         clearTimeout(forceExit);
