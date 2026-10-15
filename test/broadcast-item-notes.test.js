@@ -1,6 +1,17 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const notes=require('../public/broadcast-item-notes'),contract=require('../public/auction-contract');
+
+test('pricing notes use explicit won/manwon units, clear zero values and preserve original notes',()=>{
+ const item={name:'A11',startPrice:50000,note:'SPT 아잔틱 · PCR',attributes:{checklist:'memo:부모 확인'}};
+ const before=structuredClone(item);
+ assert.deepEqual(notes.pricingTerms(item,{bidUnitManwon:5}),['시작가 5만원','입찰단위 5만원']);
+ assert.equal(notes.text(item.note,...notes.pricingTerms(item,{bidUnitManwon:10})),'SPT 아잔틱 · PCR · 시작가 5만원 · 입찰단위 10만원');
+ assert.deepEqual(notes.pricingTerms({startPrice:2500},{bidUnitManwon:.25}),['시작가 0.25만원','입찰단위 0.25만원']);
+ for(const value of [0,null,undefined,-5,Infinity,NaN,'<img>',1000000])assert.deepEqual(notes.pricingTerms({startPrice:0},{bidUnitManwon:value}),[]);
+ for(const mode of ['quiz','buy_now'])assert.deepEqual(notes.pricingTerms({...item,attributes:{checklist:`sale_mode:${mode}`}},{bidUnitManwon:5}),[]);
+ assert.deepEqual(item,before);
+});
 test('notes normalize, deduplicate and escape without a placeholder or lost tail',()=>{
  assert.equal(notes.markup('none',' null '),'');assert.equal(notes.text('  흰 벽\n부모 확인  ','흰 벽 부모 확인'),'흰 벽 부모 확인');
  const long='아주 긴 설명 '.repeat(200)+'끝부분';
@@ -69,4 +80,24 @@ test('embedded P2 settings submit the note toggle without submitting auction sta
  c.input={page2NoteOn:false,page2InfoOn:true,mode:'sold',activeItemId:'stale'};
  const result=vm.runInContext('compactPatch(input)',c);
  assert.equal(result.page2NoteOn,false);assert.equal(result.page2InfoOn,true);assert.equal(result.mode,undefined);assert.equal(result.activeItemId,undefined);
+});
+
+test('P2 pricing follows live settings, item changes and note visibility in both layouts',()=>{
+ const source=fs.readFileSync(require.resolve('../public/auction-live.html'),'utf8');let inline=true;
+ const c=vm.createContext({CreoBroadcastItemNotes:notes,CreoAuctionContract:contract,esc:String,money:String,
+  CreoBroadcastStandby:require('../public/broadcast-standby'),channelId:'alpha',editorMode:false,
+  CreoBroadcastProfiles:{resolve:()=>({settings:{page2InfoLayout:inline?'inline-traits':'standard'}})},
+  vendorLogo:()=>'',pageTwoProgress:()=>'',pageTwoBidders:()=>'',pageTwoParents:()=>'',banner:()=>'',showBanner:()=>false,pageTicker:()=>''});
+ for(const name of ['pageTwoInfoTraits','pageTwoInlineInfo','pageTwo']){const start=source.indexOf('function '+name+'('),end=source.indexOf('\nfunction ',start+1);vm.runInContext(source.slice(start,end),c);}
+ const item={id:'live',name:'A11',status:'live',startPrice:50000,note:'SPT 아잔틱 · PCR'};
+ for(inline of [true,false]){
+  const state={mode:'live',activeItemId:item.id};
+  const render=(record,unit=5,s=state)=>c.pageTwo({},s,[record],[],{}, {bidUnitManwon:unit});
+  assert.match(render(item),/SPT 아잔틱 · PCR · 시작가 5만원 · 입찰단위 5만원/);
+  assert.match(render({...item,startPrice:100000},10),/시작가 10만원 · 입찰단위 10만원/);
+  assert.doesNotMatch(render({...item,name:'B01',note:'',startPrice:0},0),/SPT|시작가 5만원|입찰단위|broadcast-item-note/);
+  assert.doesNotMatch(render(item,5,{...state,page2NoteOn:false}),/SPT|시작가 5만원|입찰단위/);
+  assert.doesNotMatch(render(item,5,{mode:'standby',activeItemId:''}),/시작가 5만원|입찰단위/);
+ }
+ assert.match(source,/pageTwo\(data.channel,state,items,assets,progress,data.pricing\)/);
 });

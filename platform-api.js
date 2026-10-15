@@ -4660,9 +4660,12 @@ function createPlatformApi({
 
             if (segments.length === 3 && segments[2] === 'broadcast' && method === 'GET') {
                 const snapshot = await withMutationLock(`channel:${channelId}`, async () => ({
-                    data: await workspace(channelId), revision: channelRevision(channelId)
+                    data: await workspace(channelId),
+                    pricingConfig: await repository.getRecord(channelId, 'setting', BROADCAST_CONFIG_ID),
+                    revision: channelRevision(channelId)
                 }));
                 const data = snapshot.data;
+                const bidUnit = Number(snapshot.pricingConfig?.values?.auction_bid_unit_manwon || 0);
                 if(data.broadcast?.bannerSelectionConfigured){
                     data.assets=[...data.assets.filter(asset=>asset.kind!=='banner'),...await bannerLibrary.selected(data.broadcast)];
                     data.broadcast={...data.broadcast,page1BannerUrl:'',page2BannerUrl:''};
@@ -4734,6 +4737,7 @@ function createPlatformApi({
                     channel,
                     audience,
                     itemProgress,
+                    pricing: { bidUnitManwon: Number.isFinite(bidUnit) && bidUnit >= 0 && bidUnit <= 999999 ? bidUnit : 0 },
                     state: data.broadcast ? {
                         ...data.broadcast,
                         quizAnswer: data.broadcast.quizStatus === 'closed' ? data.broadcast.quizAnswer : ''
@@ -4788,6 +4792,7 @@ function createPlatformApi({
             if (segments.length === 3 && segments[2] === 'broadcast-config' && method === 'PUT') {
                 if (!await requireAdmin(req, res)) return true;
                 const body = await readJson(req);
+                await withMutationLock(`channel:${channelId}`, async () => {
                 const stored = await repository.getRecord(channelId, 'setting', BROADCAST_CONFIG_ID);
                 const values = mergeBroadcastConfig(stored?.values, body.patch);
                 const record = await repository.upsertRecord(channelId, 'setting', {
@@ -4797,6 +4802,7 @@ function createPlatformApi({
                 });
                 touchChannel(channelId);
                 replyJson(res, 200, { channelId, config: record.values, revision: record.revision });
+                });
                 return true;
             }
 

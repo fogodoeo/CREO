@@ -6,6 +6,15 @@
   }
   const escape=value=>value.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   function markup(...values){const note=text(...values);return note?`<div class="broadcast-item-note"><span>${escape(note)}</span></div>`:'';}
+  function pricingTerms(item={},pricing={}){
+    const checklist=String(item.attributes?.checklist||item.checklist||'');
+    if(/(?:^|\|)\s*sale_mode\s*:\s*(?:quiz|buy_now)\s*(?:\||$)/i.test(checklist))return [];
+    const terms=[],start=Number(item.startPrice),unit=Number(pricing.bidUnitManwon);
+    const amount=value=>value.toLocaleString('ko-KR',{maximumFractionDigits:4});
+    if(Number.isFinite(start)&&start>0)terms.push(`시작가 ${amount(start/10000)}만원`);
+    if(Number.isFinite(unit)&&unit>0&&unit<=999999)terms.push(`입찰단위 ${amount(unit)}만원`);
+    return terms;
+  }
   let current=null,observer=null;
   function measure(){
     if(!current?.isConnected)return;
@@ -20,7 +29,7 @@
     measure();
   }
   if(root.document)root.document.fonts?.ready.then(measure);
-  const api={text,markup,hydrate};
+  const api={text,markup,pricingTerms,hydrate};
   if(typeof module==='object'&&module.exports)module.exports=api;
   root.CreoBroadcastItemNotes=api;
 })(typeof window==='object'?window:globalThis);

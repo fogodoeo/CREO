@@ -14,6 +14,7 @@ test('P2 vendor toggle removes bracketed identity and logo in both layouts',()=>
  let inline=false;
  const context=vm.createContext({activeItem:(_,items)=>items[0],CreoBroadcastProfiles:{resolve:()=>({settings:{page2InfoLayout:inline?'inline-traits':'standard'}})},vendorLogo:()=>'/vendor.png',esc:String,money:String,pageTwoProgress:()=>'',pageTwoInlineInfo:(item,tag)=>tag+item.name,pageTwoBidders:()=>'',banner:()=>'',showBanner:()=>false,pageTicker:()=>''});
  context.editorMode=false;context.CreoBroadcastSummary=require('../public/broadcast-summary');
+ context.CreoBroadcastItemNotes=require('../public/broadcast-item-notes');
  context.CreoBroadcastStandby=require('../public/broadcast-standby');context.channelId='alpha';
  loadFunction(context,'pageTwoParents');loadFunction(context,'pageTwo');
  const item={id:'live',status:'live',name:'개체',vendorName:'비송',lotNumber:1};

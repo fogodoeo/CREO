@@ -14,6 +14,34 @@ const { normalizeChannel } = require('../platform-core');
 const { createCrewartHouseService } = require('../crewart-house-service');
 const {CheckoutNotificationService} = require('../checkout-notifications');
 
+test('broadcast pricing updates are channel scoped, survive restart and never change auction or notices',async()=>{
+ const repository=new MemoryRepository();let api=createPlatformApi({repository});
+ const path='/api/platform/channels/alpha';
+ await repository.upsertRecord('alpha','item',{id:'pricing-item',name:'A11',status:'live',startPrice:50000,note:'SPT 아잔틱 · PCR',attributes:{bid_log:[{name:'가상 입찰자',amount:10}]}});
+ await repository.upsertRecord('alpha','broadcast',{id:'state',mode:'live',activeItemId:'pricing-item'});
+ const item=structuredClone(await repository.getRecord('alpha','item','pricing-item'));
+ const state=structuredClone(await repository.getRecord('alpha','broadcast','state'));
+ const read=async()=> (await call(api,'GET',path+'/broadcast?page=2',null,'')).json();
+ const first=await read();assert.equal(first.pricing.bidUnitManwon,0);
+ assert.equal((await call(api,'PUT',path+'/broadcast-config',{patch:{auction_bid_unit_manwon:'5'}},'')).status,401);
+ const writes=await Promise.all([
+  call(api,'PUT',path+'/broadcast-config',{patch:{auction_bid_unit_manwon:'5'}}),
+  call(api,'PUT',path+'/broadcast-config',{patch:{unrelated:'keep',private_fixture:'never publish'}})
+ ]);assert.ok(writes.every(r=>r.status===200));
+ assert.equal((await read()).pricing.bidUnitManwon,5);assert.ok((await read()).revision>first.revision);
+ api=createPlatformApi({repository});
+ const restarted=await read();assert.deepEqual(restarted.pricing,{bidUnitManwon:5});assert.doesNotMatch(JSON.stringify(restarted),/never publish/);
+ assert.equal((await call(api,'GET','/api/platform/channels/beta/broadcast?page=2',null,'')).json().pricing.bidUnitManwon,0);
+ for(const value of ['10','0','not-a-number','-5']){
+  for(let i=0;i<2;i++)assert.equal((await call(api,'PUT',path+'/broadcast-config',{patch:{auction_bid_unit_manwon:value}})).status,200);
+  assert.equal((await read()).pricing.bidUnitManwon,value==='10'?10:0);
+ }
+ assert.equal((await call(api,'GET',path+'/broadcast-config')).json().config.unrelated,'keep');
+ assert.deepEqual(await repository.getRecord('alpha','item','pricing-item'),item);
+ assert.deepEqual(await repository.getRecord('alpha','broadcast','state'),state);
+ assert.equal((await repository.listRecords('alpha','notification')).length,0);
+});
+
 test('P2 text sizing persists through partial saves and restart without moving the live auction',async()=>{
  const repository=new MemoryRepository();let api=createPlatformApi({repository});
  await repository.upsertRecord('alpha','item',{id:'current',name:'A01',status:'live',attributes:{bid_log:[{name:'가상 입찰자',amount:12}]}});
