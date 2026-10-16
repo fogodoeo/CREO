@@ -91,3 +91,18 @@ test('payment report for a saved vendor can proceed beside another vendor draft'
  vm.runInContext(html.slice(html.indexOf('const pendingReportRequests='),html.indexOf('const revisionSync=')),s.ctx);
  await s.ctx.report('pending',{});assert.equal(requests,0);await s.ctx.report('extra',{});assert.equal(requests,0);await s.ctx.report('ready',{});assert.equal(requests,1);
 });
+
+test('payment choices put bank first without changing an existing card choice or vendor capabilities',()=>{
+ const s=multiVendorFlow();s.state.data.vendors=[s.ready];s.ready.paymentMethods=['card','bank_transfer'];s.state.payments.ready='card';
+ Object.assign(s.ctx,{globalShipping:()=>new Map(),esc:String,money:String,shippingQuote:()=>({allocations:new Map()}),paymentStatus:()=>['',''],CreoCheckoutActions:{priority:()=>0,phoneHref:()=>''},document:{querySelectorAll:()=>[]}});
+ vm.runInContext(html.slice(html.indexOf('function vendorDue('),html.indexOf('function render(){')),s.ctx);
+ s.ctx.renderVendors();let markup=s.nodes.vendors.innerHTML;
+ assert.ok(markup.indexOf('data-method="bank_transfer"')<markup.indexOf('data-method="card"'));
+ assert.match(markup,/<button class="choice selected"[^>]*aria-pressed="true"[^>]*data-method="card"/);
+ assert.match(markup,/role="group" aria-label="ready 결제 방법"/);
+ assert.equal(s.state.payments.ready,'card');assert.deepEqual(s.ready.paymentMethods,['card','bank_transfer']);
+ s.ready.paymentMethods=['card'];s.ctx.renderVendors();markup=s.nodes.vendors.innerHTML;
+ assert.doesNotMatch(markup,/bank-first|data-method="bank_transfer"/);assert.match(markup,/data-method="card"/);
+ s.ready.paymentMethods=['bank_transfer'];s.state.payments.ready='bank_transfer';s.ctx.renderVendors();
+ assert.doesNotMatch(s.nodes.vendors.innerHTML,/data-method="card"/);
+});

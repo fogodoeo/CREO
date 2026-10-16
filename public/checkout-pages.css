@@ -42,6 +42,12 @@
 .choice { border-color:var(--checkout-control-border);min-height:64px; }.choice i { border-color:var(--checkout-control-border); }
 .choice.selected,.result.selected { background:var(--checkout-action-soft);border-color:var(--blue); }.choice:disabled.selected { opacity:1; }.choice:disabled { color:var(--muted);background:var(--soft); }.choice:disabled.selected i { border-color:#64748b; }
 .payment-choices .choice { min-height:54px; }.payment-choices .choice b { font-size:16px; }
+.buyer-page .payment-choices { grid-template-columns:minmax(0,1fr); }
+.buyer-page .payment-choices.bank-first .choice[data-method="bank_transfer"] { min-height:60px;padding:16px; }
+.buyer-page .payment-choices.bank-first .choice[data-method="bank_transfer"] b { font-size:17px;font-weight:700; }
+.buyer-page .payment-choices.bank-first .choice[data-method="card"] { width:auto;max-width:100%;justify-self:end;min-height:44px;padding:10px 12px;gap:12px;color:var(--muted);border-color:transparent;background:transparent; }
+.buyer-page .payment-choices.bank-first .choice[data-method="card"] b { font-size:14px;font-weight:500; }
+.buyer-page .payment-choices.bank-first .choice[data-method="card"].selected { color:var(--ink);border-color:var(--blue);background:var(--checkout-action-soft); }
 .search,.url-row input,#vendor-settings-form input:not([type=checkbox]) { border-color:var(--checkout-control-border);background:#fff;min-height:48px; }
 .tab { min-height:44px;color:var(--muted); }.tab.active { background:var(--blue);border-color:var(--blue);color:#fff; }.result { min-height:72px; }.result small { font-size:13px; }
 .report-link { min-height:48px;font-size:15px;color:#46556b;background:var(--soft);margin-top:12px; }

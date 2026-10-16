@@ -16,7 +16,7 @@
     <script src="/buyer-navigation.js?v=20260912-inquiry"></script>
     <script src="/buyer-library-link.js" defer></script>
 
-<script src="/checkout-actions.js?v=20260912-checkout-outbox"></script><link rel="stylesheet" href="/checkout-layout.css?v=20260908-mobile-focus"><link rel="stylesheet" href="/ongdong-brand.css?v=20260908-logo"><script src="/ongdong-brand.js?v=20260908-logo"></script><link rel="stylesheet" href="/checkout-pages.css?v=20260912-blue"></head>
+<script src="/checkout-actions.js?v=20260912-checkout-outbox"></script><link rel="stylesheet" href="/checkout-layout.css?v=20260908-mobile-focus"><link rel="stylesheet" href="/ongdong-brand.css?v=20260908-logo"><script src="/ongdong-brand.js?v=20260908-logo"></script><link rel="stylesheet" href="/checkout-pages.css?v=20261016-bank-first"></head>
 <body class="buyer-page"><div class="shell">
     <div class="loading" id="loading"><b>불러오는 중…</b></div>
     <div class="error" id="error" hidden><b data-ongdong-brand>옹동2</b><h1>페이지를 열 수 없어요</h1><span id="error-message" role="alert"></span><p id="error-link-help" hidden>링크 재발급은 운영자에게 요청해 주세요.</p><div class="error-actions"><button id="retry" type="button">다시 시도</button><a id="error-library" href="/buyer-library.html" hidden>내 보관함</a></div></div>
@@ -122,7 +122,8 @@ function renderVendors(){
  const shipping=globalShipping();
  $('vendors').innerHTML=state.data.vendors.slice().sort((a,b)=>CreoCheckoutActions.priority(a.payment.status)-CreoCheckoutActions.priority(b.payment.status)).map(v=>{
   const [label,tone]=paymentStatus(v.payment.status),due=vendorDue(v,shipping),method=state.payments[v.key]||'',paid=v.payment.status==='paid',saved=vendorSaved(v);
-  const choices=`<div class="choices payment-choices">${v.paymentMethods.map(value=>`<button class="choice ${method===value?'selected':''}" type="button" aria-pressed="${method===value}" data-payment-vendor="${esc(v.key)}" data-method="${value}" ${paid||pendingConfirmation(v)||changePending()||v.payment.canChangeMethod===false?'disabled':''}><span><b>${value==='bank_transfer'?'계좌이체':'카드결제'}</b></span><i></i></button>`).join('')}</div>`;
+  const methods=['bank_transfer','card'].filter(value=>v.paymentMethods.includes(value));
+  const choices=`<div class="choices payment-choices ${methods.includes('bank_transfer')?'bank-first':''}" role="group" aria-label="${esc(v.name)} 결제 방법">${methods.map(value=>`<button class="choice ${method===value?'selected':''}" type="button" aria-pressed="${method===value}" data-payment-vendor="${esc(v.key)}" data-method="${value}" ${paid||pendingConfirmation(v)||changePending()||v.payment.canChangeMethod===false?'disabled':''}><span><b>${value==='bank_transfer'?'계좌이체':'카드결제'}</b></span><i aria-hidden="true"></i></button>`).join('')}</div>`;
   const locked=paid||pendingConfirmation(v)||changePending()||v.payment.canChangeMethod===false;
   const selector=paid?'':saved&&locked?`<div class="method-readonly"><span>결제 방법</span><b>${method==='card'?'카드결제':'계좌이체'}</b></div>`:saved?`<details class="method-details"><summary><span>결제 방법</span><b>${method==='card'?'카드결제':'계좌이체'}</b><span class="edit-label">변경</span></summary>${choices}</details>`:choices;
   const call=CreoCheckoutActions.phoneHref(v.contact?.phone);
