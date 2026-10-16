@@ -1131,6 +1131,11 @@ function createPlatformApi({
     const operatorPassword = require('./operator-password').createOperatorPassword(operatorPasswordHash);
     const adminCookieSecret = operatorPassword.sessionSecret(sessionSecret);
     const buyerLinkAccess = require('./buyer-link-access').createBuyerLinkAccess({repository,secret:sessionSecret,signToken:signBuyerShippingToken,verifyToken:verifyBuyerShippingToken,shortPrefix:BUYER_SHIPPING_SHORT_KEY_PREFIX});
+    const buyerContacts = require('./buyer-contact-operations').createBuyerContactOperations({
+        repository,channelKey,storedPhone:storedWinnerPhone,resolvePhone:item=>resolveWinnerPhone(item,bandMembership),
+        buyerName:buyerDisplayName,winningBid,prepareLink:prepareBuyerCheckoutLink,notifications:notificationService,touch:touchChannel,
+        vendorName:async(channelId,id)=>(await vendorDirectory.find(channelId,id))?.name||'업체'
+    });
     const buyerAccount = require('./buyer-account-auth').createBuyerAccountAuth({repository,config:buyerAccountConfig,fetchImpl:buyerAccountFetch,now:buyerAccountNow,hashPhone:sessionKey});
     const vendorLifecycle=require('./vendor-lifecycle').createVendorLifecycle({repository,vendorDirectory,loadCatalog,booking,settlement:organizerShippingSettlement,lock:withMutationLock,touch:touchChannel,now:vendorAccessNow});
     const vendorAccess = require('./vendor-access').createVendorAccess({
@@ -2318,6 +2323,7 @@ function createPlatformApi({
             canEditShippingNote: group.shipments.length > 0,
             destination: snapshot.selection ? {
                 ...snapshot.selection,
+                carrier: latest?.carrier || '',
                 address: latest?.address || ''
             } : null,
             items: group.items.map((item) => ({
@@ -2390,30 +2396,25 @@ function createPlatformApi({
         const requestId = cleanText(body.requestId,80);
         if (requestId.length < 8) throw buyerInputError('다시 시도해 주세요.');
         if (row.history.some(r => r.id === requestId) || row.pendingReport) return {duplicate:true};
-        if (!bank.bankAccount || (!current.includesVendorFees && !normalizePhone(bank.notificationPhone))) throw buyerInputError('주관사 계좌·알림번호 등록 대기 중입니다.',409);
+        if (!bank.bankAccount || !normalizePhone(bank.notificationPhone)) throw buyerInputError('주관사 계좌·알림번호 등록 대기 중입니다.',409);
         if (body.expectedBankUpdatedAt !== bank.updatedAt || Number(body.expectedAmount) !== row.remainingAmount || row.remainingAmount <= 0) throw buyerInputError('정산 금액·계좌가 변경되었습니다. 새로고침해 주세요.',409);
-        if (!current.includesVendorFees && !notificationService?.prepare) throw buyerInputError('알림 발송 설정을 확인해 주세요.',503);
+        if (!notificationService?.prepare) throw buyerInputError('알림 발송 설정을 확인해 주세요.',503);
         if (channelId.startsWith('checkout-test-') && !testDeliveryChannels.has(channelId)) throw buyerInputError('연습 채널은 알림 발송이 꺼져 있습니다.',409);
         const record = {id:requestId,vendorId:context.vendor.id,vendorName:context.vendor.name,amount:row.remainingAmount,status:'pending',reportedAt:new Date().toISOString(),bank:{bankName:bank.bankName,bankAccount:bank.bankAccount,bankHolder:bank.bankHolder}};
-        if(current.includesVendorFees){
-            // The approved shipping-only Alimtalk template must not describe auction fees.
-            const key=`creo_organizer_shipping_ledger::${channelId}`,rows=await repository.getRowsByKeys([key]);
-            const ledger=JSON.parse(rows.find(r=>r.key===key)?.value||'[]');
-            await repository.upsertRows([{key,value:JSON.stringify([...ledger,{...record,kind:'vendor-settlement',entryFeeAmount:row.entryFeeAmount,commissionAmount:row.commissionAmount,shippingAmount:row.shippingAmount}])}]);touchCheckout(channelId);return {duplicate:false,notification:{status:'operator_page'}};
-        }
+        if(current.includesVendorFees) Object.assign(record,{kind:'vendor-settlement',entryFeeAmount:row.entryFeeAmount,commissionAmount:row.commissionAmount,shippingAmount:row.shippingAmount});
         let vendorLabel = cleanText(context.vendor.name,60);
-        const sms = () => `[옹동2] ${vendorLabel} 배송비 ${record.amount.toLocaleString('ko-KR')}원 입금 접수`;
+        const sms = () => `[옹동2] ${vendorLabel} ${current.includesVendorFees?'정산금':'배송비'} ${record.amount.toLocaleString('ko-KR')}원 입금 신고`;
         while (Buffer.byteLength(sms(),'utf8') > 90 && vendorLabel.length) vendorLabel = vendorLabel.slice(0,-1);
         const eventKey = 'shipping-remit:'+crypto.createHash('sha256').update(JSON.stringify([context.vendor.id,requestId])).digest('hex');
         const access = await organizerAccess.issue(channelId);
-        const prepared = await notificationService.prepare(channelId,{eventKey,templateKey:'organizer_shipping_reported',recipientRole:'operator',recipientPhone:bank.notificationPhone,transport:'alimtalk',variables:{업체명:context.vendor.name,입금금액:record.amount.toLocaleString('ko-KR'),주관사접속코드:access.code},fallbackText:sms()});
+        const prepared = await notificationService.prepare(channelId,{eventKey,templateKey:current.includesVendorFees?'vendor_settlement_reported':'organizer_shipping_reported',recipientRole:'operator',recipientPhone:bank.notificationPhone,transport:current.includesVendorFees?'sms':'alimtalk',failureSmsFallback:true,variables:{업체명:context.vendor.name,입금금액:record.amount.toLocaleString('ko-KR'),주관사접속코드:access.code},fallbackText:sms()});
         record.notificationId = prepared.record.id;
         const key = `creo_organizer_shipping_ledger::${channelId}`;
         const rows = await repository.getRowsByKeys([key]);
         const ledger = JSON.parse(rows.find(r=>r.key===key)?.value || '[]');
         await repository.upsertRows([{key,value:JSON.stringify([...ledger,record])},{key:channelKey(channelId,'notification',prepared.record.id),value:JSON.stringify(prepared.record)}]);
         touchCheckout(channelId);
-        return {duplicate:false};
+        return {duplicate:false,notification:{status:prepared.record.status}};
     }
 
     async function vendorCheckoutPayload(context) {
@@ -2459,7 +2460,7 @@ function createPlatformApi({
                 const settlement = await organizerShippingSettlement(context.channel.id, context.items, context.shipments, [context.vendor]);
                 const {notificationPhone,...bank} = settlement.bank;
                 const vendors=settlement.vendors.map(v=>({...v,history:v.history.map(({memo,depositSignature,depositRequestId,...receipt})=>receipt)}));
-                return {...settlement,vendors,bank,notificationReady:settlement.includesVendorFees || Boolean(normalizePhone(notificationPhone))};
+                return {...settlement,vendors,bank,notificationReady:Boolean(normalizePhone(notificationPhone))};
             })(),
             buyers
         };
@@ -4268,6 +4269,19 @@ function createPlatformApi({
                 return true;
             }
 
+            if (segments.length === 3 && segments[2] === 'buyer-contacts' && ['GET','POST'].includes(method)) {
+                if (!await requireAdmin(req,res)) return true;
+                if (channel.dataAdapter!=='platform') throw buyerInputError('이 채널에서는 사용할 수 없어요.',409);
+                if(method==='GET')replyJson(res,200,await buyerContacts.list(channelId));
+                else {
+                    if(channel.status!=='active')throw buyerInputError('보관된 경매는 조회만 가능합니다.',409);
+                    const body=await readJson(req);
+                    const result=await withMutationLock(`channel:${channelId}`,()=>buyerContacts.command(channelId,body,req));
+                    replyJson(res,200,result);
+                }
+                return true;
+            }
+
             if (segments.length === 3 && segments[2] === 'notifications' && method === 'GET') {
                 if (!await requireAdmin(req, res)) return true;
                 const limit = Math.max(1, Math.min(500, Number(url.searchParams.get('limit')) || 120));
@@ -5022,7 +5036,8 @@ function createPlatformApi({
                             };
                         }
                         if (requestedStatus === 'sold' && current.status !== 'sold') {
-                            candidate.winnerPhone = await resolveWinnerPhone(candidate, bandMembership, data.vendors);
+                            candidate.winnerPhone = await buyerContacts.correctedPhone(channelId,candidate)
+                                || await resolveWinnerPhone(candidate, bandMembership, data.vendors);
                         } else if (requestedStatus === 'sold' && current.status === 'sold'
                             && !normalizePhone(candidate.winnerPhone)
                             && candidate.winnerName === current.winnerName
@@ -5877,10 +5892,11 @@ function createPlatformApi({
             if(!vendor||normalizePhone(vendor.phone)!==normalizePhone(notification.recipientPhone))throw Object.assign(new Error('업체 연락처가 변경되어 이전 알림을 중지했습니다.'),{code:'BUYER_LINK_INACTIVE'});
             return;
         }
-        const sale=String(notification.eventKey||'').match(/^sale-v2:([^:]+):([^:]+):(buyer|vendor)$/);
+        const sale=String(notification.eventKey||'').match(/^sale-v2:([^:]+):([^:]+):(buyer|vendor)$/)
+            || (()=>{const m=String(notification.eventKey||'').match(/^retry:([^:]+):([^:]+):[^:]+$/);return m?[m[0],m[1],m[2],'buyer']:null;})();
         if(sale){
             const item=await repository.getRecord(channelId,'item',sale[1]);
-            if(item?.status!=='sold'||item.buyerSaleId!==sale[2])throw Object.assign(new Error('취소되거나 새로 진행된 낙찰의 이전 알림을 중지했어요.'),{code:'BUYER_LINK_INACTIVE'});
+            if(item?.status!=='sold'||(item.buyerSaleId||'legacy')!==sale[2])throw Object.assign(new Error('취소되거나 새로 진행된 낙찰의 이전 알림을 중지했어요.'),{code:'BUYER_LINK_INACTIVE'});
             if(sale[3]==='buyer'&&storedWinnerPhone(item)!==normalizePhone(notification.recipientPhone))throw Object.assign(new Error('낙찰자가 변경되어 이전 수신자 발송을 중지했어요.'),{code:'BUYER_LINK_INACTIVE'});
             const variables=notification.variables||{};
             if(variables['#{낙찰금액}']!==`${Math.max(0,Number(item.soldPrice)||0).toLocaleString('ko-KR')}원`||variables['#{구매자명}']!==buyerDisplayName(item))throw Object.assign(new Error('낙찰 정보가 변경되어 이전 내용의 발송을 중지했어요.'),{code:'BUYER_LINK_INACTIVE'});

@@ -199,6 +199,14 @@
         });
     }
 
+    function labelOrder(left, right) {
+        // Printed lot names are the physical identifiers; storage order is not auction order.
+        var code = function (item) { return text(item.name || item.num || item.lotNumber).normalize('NFKC').toUpperCase(); };
+        return code(left).localeCompare(code(right), 'en', {numeric:true, sensitivity:'base'})
+            || number(left.lotNumber || left.num) - number(right.lotNumber || right.num)
+            || text(left.id).localeCompare(text(right.id));
+    }
+
     function labelBundles(items) {
         var groups = new Map(), result = new Map();
         (items || []).forEach(function (item) {
@@ -211,6 +219,7 @@
             groups.get(key).push(item);
         });
         groups.forEach(function (rows) {
+            rows.sort(labelOrder);
             var summary = {
                 count: rows.length,
                 items: rows.map(function (it) { return text(it.name || it.num); }).join(' · '),
@@ -244,6 +253,7 @@
         formatKoreanDateTime: formatKoreanDateTime,
         groupBundles: groupBundles,
         labelBundles: labelBundles,
+        labelOrder: labelOrder,
         paymentLabel: paymentLabel,
         paymentMethodLabel: paymentMethodLabel,
         sheetRows: sheetRows,

@@ -15,7 +15,7 @@
     <script src="channel-adapters.js?v=20261015-gross-shipping"></script>
     <script src="operation-channel.js?v=20260904-v1"></script>
     <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
-    <script src="print-shipping-summary.js?v=20261015-gross-shipping"></script>
+    <script src="print-shipping-summary.js?v=20261016-label-order"></script>
     <script src="google-sheets-export.js?v=20261015-gross-shipping"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
@@ -1206,6 +1206,7 @@
                     && Boolean((winner.phone || '').replace(/[^0-9]/g, ''))
                     && Boolean(shippingLabelDestination(it));
             });
+            eligible.sort(CreoPrintShippingSummary.labelOrder);
             window._shippingLabelItems = eligible;
             window._shippingLabelBundles = CreoPrintShippingSummary.labelBundles(eligible);
             window._shippingLabelPreviewIndex = null;

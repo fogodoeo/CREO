@@ -1,9 +1,13 @@
 (function (global) {
     'use strict';
     const {escapeHtml:esc,money} = global.CreoCheckoutClient;
+    function carrierLabel(destination) {
+        if (!destination) return '';
+        return ({pickup:'직수령',parge:'파르게',dodosi:'도도시'})[destination.destinationType || destination.destinationId]
+            || destination.carrier || '배송업체 확인 필요';
+    }
     function summary(buyer, channel) {
-        if (!buyer.destination && !buyer.shippingNote) return '';
-        return `<section class="vendor-shipping-summary"><div><b>수령 정보</b>${channel.status==='active' && buyer.canEditShippingNote ? `<button type="button" data-edit-shipping="${esc(buyer.id)}">수정</button>`:''}</div><p>${buyer.destination?.destinationType==='pickup'?'직수령 · ':''}${esc(buyer.destination?.address || '미등록')}</p>${global.CreoDeliverySchedule?.html(buyer.deliverySchedule)||''}${buyer.shippingNote?`<p class="vendor-shipping-note"><b>메모</b> ${esc(buyer.shippingNote)}</p>`:''}</section>`;
+        return `<section class="vendor-shipping-summary"><div><b>${esc(carrierLabel(buyer.destination) || '수령 정보')}</b>${channel.status==='active' && buyer.canEditShippingNote ? `<button type="button" data-edit-shipping="${esc(buyer.id)}">수정</button>`:''}</div><p>${esc(buyer.destination?.address || (buyer.destination ? [buyer.destination.pargeRegion,buyer.destination.pargeShop].filter(Boolean).join(' · ') || '수령지 확인 필요' : '수령지 입력 대기'))}</p>${global.CreoDeliverySchedule?.html(buyer.deliverySchedule)||''}${buyer.shippingNote?`<p class="vendor-shipping-note"><b>메모</b> ${esc(buyer.shippingNote)}</p>`:''}</section>`;
     }
     function quote(editor, selection) {
         const previous = editor.selection || {};
@@ -75,5 +79,5 @@
             document.body.append(dialog);dialog.showModal();(editor.canEditDestination?field('destinationId'):field('note')).focus();
         });
     }
-    global.CreoVendorShipping={summary,quote,open};
+    global.CreoVendorShipping={summary,quote,open,carrierLabel};
 })(window);
