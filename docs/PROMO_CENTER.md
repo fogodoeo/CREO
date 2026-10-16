@@ -2,7 +2,7 @@
 
 ## 2026-10-16 월쑤(매주 월·수 밤 8시) 경기 편 & 전라·충청 편 홍보 원고 5종 전면 개편
 
-- 종료된 `10.14 서울·인천 첫 방송` 및 첫 방송 한정 `배송비 최대 3만 원 지원` 관련 원고 10종을 `promo-catalog-migration.json` (version 8)에서 모두 비공개(`active: false`) 보관 처리하고, 미완료 배정은 신규 원고 5종으로 자동 전환한다. 기존 완료 게시물의 제목/버전 및 복사 이력은 그대로 보존한다.
+- 종료된 `10.14 서울·인천 첫 방송` 및 첫 방송 한정 `배송비 최대 3만 원 지원` 관련 원고 10종을 `promo-catalog-migration.json` (version 9)에서 모두 비공개(`active: false`) 보관 처리하고, 미완료 배정은 신규 원고 5종으로 자동 전환한다. 기존 완료 게시물의 제목/버전 및 복사 이력은 그대로 보존한다.
 - 공통 상단 메인 포스터를 사용자가 전달한 `hero-wolssu-v1.png`(`전국크레자랑 월쑤! 매주 월·수 밤 8시 네이버 밴드 LIVE 경매`)로 교체하고, 하단 밴드 링크 바로 위에는 신규 협찬 이벤트 배너 `ticket-wolssu-gamachi-v1.png`(`크레준치 협찬 이벤트 · 낙찰자 중 5명 가마치통닭 쿠폰 증정`)를 자동 삽입한다.
 - 공개 목록(`/promo-center.html?library=1`)과 업체 홍보 관리에 노출되는 신규 원고 5종(`promo-templates.json`, 실제 네이버 카페 홍보글 호흡에 맞춘 약 630~710자 분량):
   1. `wolssu26-joseon` (조선 풍류 · 월쑤 야간 장터형): `👑 매주 월·수엔 ‘월쑤!’｜10월 19일 월요일 경기 편 출두하옵니다`
@@ -11,7 +11,7 @@
   4. `wolssu26-afterwork` (퇴근 후 힐링 · 월쑤 저녁 루틴형): `📺 월·수 밤 8시엔 크레 구경｜10월 19일 월요일 경기 편부터 만나요`
   5. `wolssu26-breeder` (브리더 준비 노트 · 출품 브리더의 진심형): `👀 방송에 데려갈 아이들 고르며 설렙니다｜10.19(월) 경기 편 & 수요일 전라·충청 편`
 - 모든 원고는 **10월 19일 월요일 밤 8시 경기 편** 안내와 **10월 21일 수요일 밤 8시 전라·충청 편** 예고 및 **크레준치 협찬 가마치통닭 쿠폰 증정 이벤트(낙찰자 중 5명)** 안내를 담았다.
-- 구간별 삽입 이미지: 원고별 콘셉트에 맞춘 실사·연출 이미지 5종(`wolssu-joseon-pavilion-v1.jpg`, `wolssu-gyeonggi-stage-v1.jpg`, `wolssu-taste-morphs-v1.jpg`, `wolssu-evening-lounge-v1.jpg`, `wolssu-breeder-select-v1.jpg`), Pretendard Variable TTF로 렌더링한 일정·로드맵 배너 2종(`wolssu-schedule-gyeonggi-v1.png`, `wolssu-relay-roadmap-v1.png`), 하단 공통 협찬 이벤트 배너(`ticket-wolssu-gamachi-v1.png`)를 배치했다.
+- 구간별 삽입 이미지: 크레스티드게코(생물)가 직접 노출되지 않는 무드·스튜디오·비바리움 배경 이미지 5종(`wolssu-joseon-pavilion-v2.jpg`, `wolssu-gyeonggi-stage-v2.jpg`, `wolssu-taste-morphs-v2.jpg`, `wolssu-evening-lounge-v2.jpg`, `wolssu-breeder-select-v2.jpg`), Pretendard Variable TTF로 렌더링한 일정·로드맵 배너 2종(`wolssu-schedule-gyeonggi-v1.png`, `wolssu-relay-roadmap-v1.png`), 하단 공통 협찬 이벤트 배너(`ticket-wolssu-gamachi-v1.png`)를 배치했다.
 - 생성 도구: `tools/render-wolssu-banners.cjs`, `tools/rebuild-wolssu-catalog.cjs`. 전달본: `C:/Users/5600x/Desktop/전크자/output/promo-center/월쑤_경기전라충청_원고5종_20261016`.
 
 ## 2026-10-11 서울·인천 첫 방송 · 지도 안내형

@@ -5,7 +5,7 @@
     "title": "👑 매주 월·수엔 ‘월쑤!’｜10월 19일 월요일 경기 편 출두하옵니다",
     "catalogOrder": 1,
     "version": 1,
-    "bundleVersion": 11,
+    "bundleVersion": 12,
     "active": true,
     "blocks": [
       {
@@ -34,9 +34,9 @@
       },
       {
         "type": "image",
-        "src": "/promo-assets/wolssu-joseon-pavilion-v1.jpg",
-        "copySrc": "https://creok.onrender.com/promo-assets/wolssu-joseon-pavilion-v1.jpg",
-        "alt": "달빛 아래 전통 정자 위 이끼 돌에 앉은 크레스티드게코와 청자 찻잔",
+        "src": "/promo-assets/wolssu-joseon-pavilion-v2.jpg",
+        "copySrc": "https://creok.onrender.com/promo-assets/wolssu-joseon-pavilion-v2.jpg",
+        "alt": "보름달과 청사초롱 불빛 아래 전통 정자 위 소반과 청자 다기",
         "width": 500
       },
       {
@@ -111,7 +111,7 @@
     "title": "🔥 이번 주 월요일은 경기 편!｜10.19 밤 8시 & 수요일 전라·충청 편까지",
     "catalogOrder": 2,
     "version": 1,
-    "bundleVersion": 11,
+    "bundleVersion": 12,
     "active": true,
     "blocks": [
       {
@@ -140,9 +140,9 @@
       },
       {
         "type": "image",
-        "src": "/promo-assets/wolssu-gyeonggi-stage-v1.jpg",
-        "copySrc": "https://creok.onrender.com/promo-assets/wolssu-gyeonggi-stage-v1.jpg",
-        "alt": "라이브 방송 카메라 앞에서 붉은 할리퀸 크레스티드게코를 소개하는 장갑 낀 손",
+        "src": "/promo-assets/wolssu-gyeonggi-stage-v2.jpg",
+        "copySrc": "https://creok.onrender.com/promo-assets/wolssu-gyeonggi-stage-v2.jpg",
+        "alt": "라이브 방송 스튜디오 조명 아래 카메라와 마이크, 코르크 바크가 놓인 무대",
         "width": 500
       },
       {
@@ -217,7 +217,7 @@
     "title": "🦎 내 취향 크레 어디 숨어있을까｜10.19 월요일 경기 편 & 수요일 전라·충청 편",
     "catalogOrder": 3,
     "version": 1,
-    "bundleVersion": 11,
+    "bundleVersion": 12,
     "active": true,
     "blocks": [
       {
@@ -246,9 +246,9 @@
       },
       {
         "type": "image",
-        "src": "/promo-assets/wolssu-taste-morphs-v1.jpg",
-        "copySrc": "https://creok.onrender.com/promo-assets/wolssu-taste-morphs-v1.jpg",
-        "alt": "코르크 바크 위에 나란히 앉은 다크 레드 계열과 릴리 화이트 계열의 크레스티드게코 두 마리",
+        "src": "/promo-assets/wolssu-taste-morphs-v2.jpg",
+        "copySrc": "https://creok.onrender.com/promo-assets/wolssu-taste-morphs-v2.jpg",
+        "alt": "갤러리 조명 아래 코르크 바크와 양치식물로 꾸며진 두 개의 유리 비바리움",
         "width": 500
       },
       {
@@ -323,7 +323,7 @@
     "title": "📺 월·수 밤 8시엔 크레 구경｜10월 19일 월요일 경기 편부터 만나요",
     "catalogOrder": 4,
     "version": 1,
-    "bundleVersion": 11,
+    "bundleVersion": 12,
     "active": true,
     "blocks": [
       {
@@ -352,9 +352,9 @@
       },
       {
         "type": "image",
-        "src": "/promo-assets/wolssu-evening-lounge-v1.jpg",
-        "copySrc": "https://creok.onrender.com/promo-assets/wolssu-evening-lounge-v1.jpg",
-        "alt": "따뜻한 저녁 조명 아래 비바리움 속 나뭇잎 위에 앉은 크레스티드게코와 찻잔",
+        "src": "/promo-assets/wolssu-evening-lounge-v2.jpg",
+        "copySrc": "https://creok.onrender.com/promo-assets/wolssu-evening-lounge-v2.jpg",
+        "alt": "따뜻한 저녁 조명 아래 찻잔과 노트가 놓인 책상과 초록 식물 테라리움",
         "width": 500
       },
       {
@@ -429,7 +429,7 @@
     "title": "👀 방송에 데려갈 아이들 고르며 설렙니다｜10.19(월) 경기 편 & 수요일 전라·충청 편",
     "catalogOrder": 5,
     "version": 1,
-    "bundleVersion": 11,
+    "bundleVersion": 12,
     "active": true,
     "blocks": [
       {
@@ -458,9 +458,9 @@
       },
       {
         "type": "image",
-        "src": "/promo-assets/wolssu-breeder-select-v1.jpg",
-        "copySrc": "https://creok.onrender.com/promo-assets/wolssu-breeder-select-v1.jpg",
-        "alt": "축양장 앞 따뜻한 조명 아래 코르크 바크 위의 크레스티드게코를 살피는 브리더의 손",
+        "src": "/promo-assets/wolssu-breeder-select-v2.jpg",
+        "copySrc": "https://creok.onrender.com/promo-assets/wolssu-breeder-select-v2.jpg",
+        "alt": "정돈된 브리딩 룸 조명 아래 카메라 렌즈와 코르크 바크, 노트가 놓인 준비 테이블",
         "width": 500
       },
       {
