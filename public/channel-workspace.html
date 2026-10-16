@@ -43,7 +43,7 @@
 <div class="modal" id="record-modal" hidden><form class="dialog" id="record-form"><div class="dialog-head"><h2 id="dialog-title">항목 추가</h2><button type="button" class="close" id="close-modal" aria-label="닫기">×</button></div><div class="fields" id="record-fields"></div><div class="dialog-actions"><button type="button" class="btn" id="cancel-modal">취소</button><button class="btn primary" id="save-record">저장</button></div></form></div>
 <div class="login" id="login"><div class="login-box"><h2>운영자 확인</h2><p>기존 관리자 비밀번호를 입력해 주세요.</p><form id="login-form"><input type="password" id="password" aria-label="운영자 비밀번호" autocomplete="current-password" required><button class="btn primary">확인</button></form></div></div>
 <div class="toast" id="toast" role="status"></div>
-<script src="/item-sheet-link.js?v=20261015-sheet"></script>
+<script src="/item-sheet-link.js?v=20261017-polling"></script>
 <script>
 const $=id=>document.getElementById(id),esc=v=>CreoPlatform.escapeHtml(v);let catalog={channels:[]},runtime=null,channelId='',data={vendors:[],items:[],shipments:[],broadcast:{}},tab='vendors',editing=null,workspaceLoadSequence=0,livePending=false,recordPending=false;
 function toast(m){const e=$('toast');e.textContent=m;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),2500)}
