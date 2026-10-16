@@ -37,6 +37,10 @@ test('all published seeds use centered copy, no image notes or parcel claims, sp
   assert.match(joined,/10월 19일|10\.19/,template.id);
   assert.match(joined,/경기 편/,template.id);
   assert.match(joined,/전라·충청 편/,template.id);
+  assert.match(joined,/크레준치/,template.id);
+  assert.match(joined,/가마치통닭/,template.id);
+  const chars=text.map(b=>b.text).join('').length;
+  assert.ok(chars>=550&&chars<=750,`${template.id} length=${chars}`);
   assert.ok(template.blocks.filter(b=>b.type==='image').every(b=>!b.alt.includes('AI 연출')),template.id);
  }
 });

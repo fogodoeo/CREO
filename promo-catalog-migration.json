@@ -1,10 +1,16 @@
 {
-  "version": 7,
-  "id": "20261016-wolssu-gyeonggi-5pack",
+  "version": 8,
+  "id": "20261016-wolssu-gamachi-compact",
   "polishCopy": true,
   "copyPolishVersion": 5,
   "appendImages": true,
-  "replace": [],
+  "replace": [
+    "wolssu26-joseon",
+    "wolssu26-relay",
+    "wolssu26-taste",
+    "wolssu26-afterwork",
+    "wolssu26-breeder"
+  ],
   "retire": {
     "launch26-editorial": "wolssu26-taste",
     "launch26-episode": "wolssu26-relay",

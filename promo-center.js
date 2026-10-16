@@ -58,7 +58,9 @@ function createPromoCenter({ repository, vendorsFor, now = Date.now }) {
    for(const id of catalog.replace){
     const template=seed.find(t=>t.id===id),existing=state.templates.find(t=>t.id===id);
     if(!template||!existing)throw fail('홍보 원고 구성을 확인해 주세요.',503);
-    Object.assign(existing,normalizeTemplate(template),{bundleVersion:template.bundleVersion,catalogOrder:template.catalogOrder,version:(existing.version||1)+1,active:true,updatedAt:stamp});
+    if(existing.bundleVersion!==template.bundleVersion){
+     Object.assign(existing,normalizeTemplate(template),{bundleVersion:template.bundleVersion,catalogOrder:template.catalogOrder,version:(existing.version||1)+1,active:true,updatedAt:stamp});
+    }
    }
    for(const [id,replacement]of Object.entries(catalog.retire)){
     const old=state.templates.find(t=>t.id===id);
