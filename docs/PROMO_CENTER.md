@@ -1,5 +1,19 @@
 # 전국크레자랑 홍보 관리
 
+## 2026-10-16 월쑤(매주 월·수 밤 8시) 경기 편 & 전라·충청 편 홍보 원고 5종 전면 개편
+
+- 종료된 `10.14 서울·인천 첫 방송` 및 첫 방송 한정 `배송비 최대 3만 원 지원` 관련 원고 10종을 `promo-catalog-migration.json` (version 7)에서 모두 비공개(`active: false`) 보관 처리하고, 미완료 배정은 신규 원고 5종으로 자동 전환한다. 기존 완료 게시물의 제목/버전 및 복사 이력은 그대로 보존한다.
+- 공통 상단 메인 포스터를 사용자가 전달한 `hero-wolssu-v1.png`(`전국크레자랑 월쑤! 매주 월·수 밤 8시 네이버 밴드 LIVE 경매`)로 교체하고, 하단 `ticket-seoul-incheon-v2.png` 자동 삽입을 제거했다.
+- 공개 목록(`/promo-center.html?library=1`)과 업체 홍보 관리에 노출되는 신규 원고 5종(`promo-templates.json`):
+  1. `wolssu26-joseon` (조선 풍류 · 월쑤 야간 장터형): `👑 매주 월·수엔 ‘월쑤!’｜10월 19일 월요일 경기 편 출두하옵니다`
+  2. `wolssu26-relay` (전국 릴레이 · 경기 & 전라·충청 예고형): `🔥 이번 주 월요일은 경기 편!｜10.19 밤 8시 & 수요일 전라·충청 편까지`
+  3. `wolssu26-taste` (취향 탐색 · 모프 & 라인업 감상형): `🦎 내 취향 크레 어디 숨어있을까｜10.19 월요일 경기 편 & 수요일 전라·충청 편`
+  4. `wolssu26-afterwork` (퇴근 후 힐링 · 월쑤 저녁 루틴형): `📺 월·수 밤 8시엔 크레 구경｜10월 19일 월요일 경기 편부터 만나요`
+  5. `wolssu26-breeder` (브리더 준비 노트 · 출품 브리더의 진심형): `👀 방송에 데려갈 아이들 고르며 설렙니다｜10.19(월) 경기 편 & 수요일 전라·충청 편`
+- 모든 원고는 **10월 19일 월요일 밤 8시 경기 편**(크레젠또·오늘도마뱀·오야지크레·크레준치·니코게코·크레에이트·마브렙타일·말랑젤리) 안내를 중심으로 구성하고, 이어지는 **10월 21일 수요일 밤 8시 전라·충청 편**(채채파파·제트크레스티드게코·펠리체게코·아기공룡·쭌이네·좀비렙타일·디게코) 예고와 기대 멘트를 함께 담았다.
+- 구간별 삽입 이미지: 원고별 콘셉트에 맞춘 실사·연출 이미지 5종(`wolssu-joseon-pavilion-v1.jpg`, `wolssu-gyeonggi-stage-v1.jpg`, `wolssu-taste-morphs-v1.jpg`, `wolssu-evening-lounge-v1.jpg`, `wolssu-breeder-select-v1.jpg`), Pretendard Variable TTF로 렌더링한 일정·로드맵 배너 2종(`wolssu-schedule-gyeonggi-v1.png`, `wolssu-relay-roadmap-v1.png`), 카카오톡 알림톡 안내 배너(`easy-v2.png`) 및 근거리 제휴샵 픽업 이미지(`tour-nearby-pickup-v1.jpg`)를 구간마다 배치했다.
+- 생성 도구: `tools/render-wolssu-banners.cjs`, `tools/rebuild-wolssu-catalog.cjs`. 전달본: `C:/Users/5600x/Desktop/전크자/output/promo-center/월쑤_경기전라충청_원고5종_20261016`.
+
 ## 2026-10-11 서울·인천 첫 방송 · 지도 안내형
 
 - `launch26-seoul-incheon-map` 원고를 열 번째로 추가한다. 기존 9개 원고, 운영자 수정, 보관 상태와 이력은 유지하고 기존 append-only seed 병합을 사용한다. catalog migration 버전은 올리지 않는다.

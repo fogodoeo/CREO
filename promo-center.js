@@ -69,7 +69,7 @@ function createPromoCenter({ repository, vendorsFor, now = Date.now }) {
      state.audit.push({actor:'system',action:'catalog-reassign',recordId:assignment.id,previousTemplateId:id,templateId:replacement,at:stamp});
     }
    }
-   const accepted=state.templates.find(t=>t.id==='launch26-joseon');
+   const accepted=state.templates.find(t=>t.id==='wolssu26-joseon');
    if(accepted)accepted.catalogOrder=1;
    state.catalogVersion=catalog.version;
    state.audit.push({actor:'system',action:'catalog-rebuild',recordId:catalog.id,at:stamp});

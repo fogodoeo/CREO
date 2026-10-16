@@ -25,15 +25,18 @@ test('copy hooks keep genre voices but remove unsupported system and quality cla
   assert.equal(t.title,hooks[t.id].title);assert.equal(t.title.length<65,true);
   assert.doesNotMatch(t.blocks.map(b=>b.text||'').join('\n'),/대한민국 최초|원클릭 정산|조명 왜곡 없이|간편 결제를 한 번에|가장 편리하게|전액 지원/);
  }
- assert.equal(seed.find(t=>t.id==='launch26-taste').blocks[0].text,'당신은 어떤 취향을\n갖고 있나요');
+ assert.equal(seed.find(t=>t.id==='wolssu26-taste').blocks[0].text,'볼 때마다 새로워지는 눈호강\n당신은 어떤 크레에 끌리시나요');
 });
-test('all published seeds use centered copy, no image notes or parcel claims, and specialist delivery',()=>{
- const seed=require('../promo-templates.json');assert.ok(seed.length>=6);
+test('all published seeds use centered copy, no image notes or parcel claims, specialist delivery, and updated Gyeonggi/Jeolla-Chungcheong schedule',()=>{
+ const seed=require('../promo-templates.json');assert.equal(seed.length,5);
  for(const template of seed){
-  const text=template.blocks.filter(b=>b.type==='text');
+  const text=template.blocks.filter(b=>b.type==='text'),joined=text.map(b=>b.text).join('\n')+'\n'+template.title;
   assert.ok(text.every(b=>b.align==='center'),template.id);
-  assert.doesNotMatch(text.map(b=>b.text).join('\n'),/택배|※.*(?:사진|이미지).*(?:연출|AI)/,template.id);
-  assert.match(text.map(b=>b.text).join('\n'),/생물 전문 배송|전문 배송업체/,template.id);
+  assert.doesNotMatch(joined,/택배|※.*(?:사진|이미지).*(?:연출|AI)|10\.14|10월 14일|서울·인천|배송비 최대 3만 원|배송비 무료/,template.id);
+  assert.match(joined,/생물 전문 배송|전문 배송업체/,template.id);
+  assert.match(joined,/10월 19일|10\.19/,template.id);
+  assert.match(joined,/경기 편/,template.id);
+  assert.match(joined,/전라·충청 편/,template.id);
   assert.ok(template.blocks.filter(b=>b.type==='image').every(b=>!b.alt.includes('AI 연출')),template.id);
  }
 });

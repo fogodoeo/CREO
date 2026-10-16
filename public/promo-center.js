@@ -8,13 +8,13 @@
   if(url.origin===location.origin&&/^\/promo-assets\/partners-20261007\.(png|thumb\.webp)$/.test(url.pathname))url.pathname=url.pathname.replace('partners-20261007.','partners-20261007-v4.');
   if(url.origin===location.origin&&/^\/promo-assets\/ticket\.(png|thumb\.webp)$/.test(url.pathname))url.pathname=url.pathname.replace('ticket.','ticket-seoul-incheon-v2.');
   if(url.origin===location.origin&&/^\/promo-assets\/(weekly|easy)\.(png|thumb\.webp)$/.test(url.pathname))url.pathname=url.pathname.replace(/\.(png|thumb\.webp)$/,'-v2.$1');
-  if(url.origin===location.origin&&['/promo-assets/hero.jpg','/promo-assets/hero-seoul-incheon-v2.png'].includes(url.pathname))url.pathname='/promo-assets/hero-seoul-incheon-v3.png';
+  if(url.origin===location.origin&&['/promo-assets/hero.jpg','/promo-assets/hero-seoul-incheon-v2.png','/promo-assets/hero-seoul-incheon-v3.png','/promo-assets/seoul-incheon-premiere-map-v7.png'].includes(url.pathname))url.pathname='/promo-assets/hero-wolssu-v1.png';
   return url.href;
  }
  function isSharedHero(block){
   if(block.type!=='image')return false;
   const url=new URL(block.src,location.origin);
-  return url.origin===location.origin&&['/promo-assets/hero.jpg','/promo-assets/hero-seoul-incheon-v2.png','/promo-assets/hero-seoul-incheon-v3.png','/promo-assets/seoul-incheon-premiere-map-v7.png'].includes(url.pathname);
+  return url.origin===location.origin&&['/promo-assets/hero.jpg','/promo-assets/hero-seoul-incheon-v2.png','/promo-assets/hero-seoul-incheon-v3.png','/promo-assets/seoul-incheon-premiere-map-v7.png','/promo-assets/hero-wolssu-v1.png'].includes(url.pathname);
  }
  function isSharedAsset(b,kind){if(b.type!=='image')return false;const u=new URL(b.src,location.origin);return u.origin===location.origin&&(kind==='ticket'?/^\/promo-assets\/ticket(?:-seoul-incheon-v2)?\.png$/:/^\/promo-assets\/partners-20261007(?:-v4)?\.png$/).test(u.pathname);}
  function postBlocks(t,images=[]){
@@ -29,12 +29,10 @@
    if(!hasBoard&&!inserted&&b.type==='text'&&(/다양한 크레들을 선보일 예정|다양한 크레들을 선보입니다|30여 곳의 전문|전국의 전문 브리더|여러 업체의 크레|여러 지역의 전문 업체|지역별 전문 업체가 돌아가며 참여/.test(b.text))){blocks.push(...images.map(i=>({...i,type:'image'})));inserted=true;}
   }
   if(!inserted&&images.length){const index=blocks.findIndex(b=>b.href);blocks.splice(index<0?blocks.length:index,0,...images.map(i=>({...i,type:'image'})));}
-  const ticket={type:'image',src:'/promo-assets/ticket-seoul-incheon-v2.png',alt:'첫 방송 서울·인천 편 · 10월 14일 · 배송비 무료 · 낙찰자 1인당 최대 3만 원 지원'};
-  const link=blocks.findIndex(b=>b.href&&/band\.us/.test(b.href));blocks.splice(link<0?blocks.length:link,0,ticket);
-  const header=t.blocks.find(b=>isSharedHero(b)&&new URL(b.src,location.origin).pathname==='/promo-assets/seoul-incheon-premiere-map-v7.png')||{type:'image',src:'/promo-assets/hero-seoul-incheon-v3.png',alt:'전국크레자랑 라이브 방송 · EP 01. 서울, 인천 · 10월 14일 수요일 밤 8시'};
+  const header={type:'image',src:'/promo-assets/hero-wolssu-v1.png',alt:'전국크레자랑 월쑤! 매주 월·수 밤 8시 네이버 밴드 LIVE 경매'};
   return [header,...blocks];
  }
- function thumbnailImage(t){return t.blocks.find(b=>isSharedHero(b)&&new URL(b.src,location.origin).pathname==='/promo-assets/seoul-incheon-premiere-map-v7.png')||t.blocks.find(b=>b.type==='image'&&!isSharedHero(b));}
+ function thumbnailImage(t){return t.blocks.find(b=>b.type==='image'&&!isSharedHero(b));}
  function enablePreviewDismiss(dialog){
   let outsideStart=false;
   const outside=e=>{const r=dialog.getBoundingClientRect();return e.target===dialog&&(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom);};
@@ -143,7 +141,7 @@
  async function updatePartners(){
   const sequence=++partnerSequence,mode=partnerMode,regions=[...partnerRegions];partnerImages=[];partnerReady=mode==='none';$('copy-status').textContent='';$('partner-refresh').hidden=mode==='none';$('partner-retry').hidden=true;$('partner-status').removeAttribute('aria-busy');drawPost();
   const current=()=>sequence===partnerSequence&&$('detail').open;
-  if(mode==='none'){$('partner-status').textContent='업체 이미지 없이 복사합니다. 첫 방송 서울·인천 편 배송비 티켓은 항상 포함됩니다.';return;}
+  if(mode==='none'){$('partner-status').textContent='업체 소개 이미지 없이 원고 본문만 복사합니다.';return;}
   if(mode==='regions'&&!regions.length){$('partner-status').textContent='소개할 지역을 한 곳 이상 선택해 주세요.';return;}
   $('partner-status').textContent='최신 참여업체로 이미지를 준비하고 있어요';$('partner-status').setAttribute('aria-busy','true');
   try{

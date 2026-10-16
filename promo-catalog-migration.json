@@ -1,16 +1,26 @@
 {
-  "version": 6,
-  "id": "20261008-six-supporting-photos",
+  "version": 7,
+  "id": "20261016-wolssu-gyeonggi-5pack",
   "polishCopy": true,
   "copyPolishVersion": 5,
   "appendImages": true,
   "replace": [],
   "retire": {
-    "launch26-editorial": "launch26-taste",
-    "launch26-episode": "launch26-showtime",
-    "launch26-easy": "ep01-welcome",
-    "launch26-partners": "launch26-tour",
-    "ep01-brief": "launch26-taste",
-    "launch26-collector": "launch26-breeder"
+    "launch26-editorial": "wolssu26-taste",
+    "launch26-episode": "wolssu26-relay",
+    "launch26-easy": "wolssu26-afterwork",
+    "launch26-partners": "wolssu26-relay",
+    "ep01-brief": "wolssu26-taste",
+    "launch26-collector": "wolssu26-breeder",
+    "launch26-joseon": "wolssu26-joseon",
+    "launch26-showtime": "wolssu26-relay",
+    "ep01-welcome": "wolssu26-afterwork",
+    "launch26-taste": "wolssu26-taste",
+    "launch26-tour": "wolssu26-relay",
+    "launch26-breeder": "wolssu26-breeder",
+    "launch26-series": "wolssu26-relay",
+    "launch26-questions": "wolssu26-breeder",
+    "launch26-afterwork": "wolssu26-afterwork",
+    "launch26-seoul-incheon-map": "wolssu26-relay"
   }
 }

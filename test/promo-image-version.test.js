@@ -9,8 +9,10 @@ test('updated partner artwork bypasses old browser caches without changing exter
  assert.equal(ctx.imageURL('/promo-assets/partners-20261007.png?download=1&v=old'),'https://creok.onrender.com/promo-assets/partners-20261007-v4.png?download=1&v=old');
  assert.equal(ctx.imageURL('https://example.com/promo-assets/partners-20261007.png?token=keep'),'https://example.com/promo-assets/partners-20261007.png?token=keep');
  assert.equal(ctx.imageURL('/promo-assets/showtime-photo.png'),'https://creok.onrender.com/promo-assets/showtime-photo.png');
- assert.equal(ctx.imageURL('/promo-assets/hero.jpg'),'https://creok.onrender.com/promo-assets/hero-seoul-incheon-v3.png');
- assert.equal(ctx.imageURL('/promo-assets/hero-seoul-incheon-v2.png'),'https://creok.onrender.com/promo-assets/hero-seoul-incheon-v3.png');
+ assert.equal(ctx.imageURL('/promo-assets/hero.jpg'),'https://creok.onrender.com/promo-assets/hero-wolssu-v1.png');
+ assert.equal(ctx.imageURL('/promo-assets/hero-seoul-incheon-v2.png'),'https://creok.onrender.com/promo-assets/hero-wolssu-v1.png');
+ assert.equal(ctx.imageURL('/promo-assets/hero-seoul-incheon-v3.png'),'https://creok.onrender.com/promo-assets/hero-wolssu-v1.png');
+ assert.equal(ctx.imageURL('/promo-assets/seoul-incheon-premiere-map-v7.png'),'https://creok.onrender.com/promo-assets/hero-wolssu-v1.png');
  assert.equal(ctx.imageURL('https://example.com/promo-assets/hero.jpg'),'https://example.com/promo-assets/hero.jpg');
  for(const name of ['weekly','easy'])for(const extension of ['png','thumb.webp']){
   assert.equal(ctx.imageURL(`/promo-assets/${name}.${extension}`),`https://creok.onrender.com/promo-assets/${name}-v2.${extension}`);
@@ -18,7 +20,7 @@ test('updated partner artwork bypasses old browser caches without changing exter
   assert.equal(ctx.imageURL(`https://example.com/promo-assets/${name}.${extension}`),`https://example.com/promo-assets/${name}.${extension}`);
  }
 });
-test('preview and formatted copy use one corrected hero without losing other Naver-hosted images',()=>{
+test('preview and formatted copy use one shared Wolssu hero without losing other Naver-hosted images',()=>{
  const source=fs.readFileSync(require.resolve('../public/promo-center.js'),'utf8');
  const ctx=vm.createContext({URL,location:{origin:'https://creok.onrender.com'},esc:v=>String(v)});
  vm.runInContext(source.slice(source.indexOf(' function imageURL('),source.indexOf('\n const kst=')),ctx);
@@ -33,10 +35,10 @@ test('preview and formatted copy use one corrected hero without losing other Nav
  assert.match(html,/src="https:\/\/creok.onrender.com\/promo-assets\/easy-v2.png"/);
  assert.match(html,/src="https:\/\/cafeptthumb-phinf.pstatic.net\/example.jpg\?type=w1600"/);
  for(const content of [html,ctx.bodyHTML(manuscript)]){
-  assert.match(content,/^<p[^>]*><img src="https:\/\/creok.onrender.com\/promo-assets\/hero-seoul-incheon-v3.png"/);
-  assert.equal((content.match(/src="[^"]*hero-seoul-incheon-v3.png"/g)||[]).length,1);
-  assert.doesNotMatch(content,/old-seoul|src="[^"]*hero.jpg/);
-  assert.match(content,/EP 01\. 서울, 인천/);
+  assert.match(content,/^<p[^>]*><img src="https:\/\/creok.onrender.com\/promo-assets\/hero-wolssu-v1.png"/);
+  assert.equal((content.match(/src="[^"]*hero-wolssu-v1.png"/g)||[]).length,1);
+  assert.doesNotMatch(content,/old-seoul|src="[^"]*hero.jpg|hero-seoul-incheon|ticket-seoul-incheon/);
+  assert.match(content,/전국크레자랑 월쑤!/);
  }
 });
 test('shared hero is added once without mutating source blocks, and thumbnails keep manuscript-specific images',()=>{
@@ -46,44 +48,42 @@ test('shared hero is added once without mutating source blocks, and thumbnails k
  const text={type:'text',text:'소개'},specific={type:'image',src:'/promo-assets/weekly.png'},oldHero={type:'image',src:'/promo-assets/hero.jpg'},newHero={type:'image',src:'https://creok.onrender.com/promo-assets/hero-seoul-incheon-v2.png?v=2'};
  for(const blocks of [[text,specific],[oldHero,text,newHero,specific],[text],[oldHero]]){
   const snapshot=JSON.stringify(blocks),t={blocks},result=ctx.postBlocks(t);
-  assert.equal(result[0].src,'/promo-assets/hero-seoul-incheon-v3.png');
+  assert.equal(result[0].src,'/promo-assets/hero-wolssu-v1.png');
   assert.equal(result.filter(b=>ctx.isSharedHero(b)).length,1);
-  assert.deepEqual(Array.from(result.slice(1)).filter(b=>!ctx.isSharedAsset(b,'ticket')),blocks.filter(b=>!ctx.isSharedHero(b)));
+  assert.deepEqual(Array.from(result.slice(1)),blocks.filter(b=>!ctx.isSharedHero(b)));
   assert.equal(JSON.stringify(blocks),snapshot);
   assert.equal(ctx.thumbnailImage(t),blocks.includes(specific)?specific:undefined);
  }
  const external={type:'image',src:'https://other.example/promo-assets/hero.jpg'};
  assert.equal(ctx.thumbnailImage({blocks:[external]}),external);
 });
-test('all manuscripts carry one Seoul/Incheon ticket before the Band link, with no old Naver ticket',()=>{
+test('all manuscripts start with hero-wolssu-v1.png, exclude retired 10.14 tickets, and include inline scene images',()=>{
  const source=fs.readFileSync(require.resolve('../public/promo-center.js'),'utf8'),ctx=vm.createContext({URL,location:{origin:'https://creok.onrender.com'},esc:v=>String(v)});
  vm.runInContext(source.slice(source.indexOf(' function imageURL('),source.indexOf('\n const kst=')),ctx);
  vm.runInContext(source.slice(source.indexOf(' function bodyHTML('),source.indexOf('\n function preview(')),ctx);
  for(const t of require('../promo-templates.json')){
-  const result=ctx.postBlocks(t);assert.equal(result.filter(b=>ctx.isSharedAsset(b,'ticket')).length,1,t.id);
-  const ticket=result.findIndex(b=>ctx.isSharedAsset(b,'ticket')),link=result.findIndex(b=>b.href?.includes('band.us'));assert.ok(ticket<link,t.id);assert.match(result[ticket].alt,/서울·인천/);assert.equal(result[ticket].copySrc,undefined);
-  const html=ctx.bodyHTML(t,true);assert.equal((html.match(/src="[^\"]*ticket-seoul-incheon-v2.png"/g)||[]).length,1,t.id);
+  const result=ctx.postBlocks(t);
+  assert.equal(result[0].src,'/promo-assets/hero-wolssu-v1.png',t.id);
+  assert.equal(result.filter(b=>ctx.isSharedAsset(b,'ticket')).length,0,t.id);
+  assert.ok(result.filter(b=>b.type==='image').length>=3,t.id);
+  const html=ctx.bodyHTML(t,true);
+  assert.equal((html.match(/src="[^\"]*hero-wolssu-v1.png"/g)||[]).length,1,t.id);
+  assert.doesNotMatch(html,/ticket-seoul-incheon|seoul-incheon-premiere-map/,t.id);
  }
 });
-
-test('map manuscript replaces its old header once in preview, copy and image bundle without changing other manuscripts',()=>{
+test('legacy map or ticket blocks are stripped and normalized to hero-wolssu-v1.png',()=>{
  const source=fs.readFileSync(require.resolve('../public/promo-center.js'),'utf8'),ctx=vm.createContext({URL,location:{origin:'https://creok.onrender.com'},esc:v=>String(v)});
  vm.runInContext(source.slice(source.indexOf(' function imageURL('),source.indexOf('\n const kst=')),ctx);
  vm.runInContext(source.slice(source.indexOf(' function bodyHTML('),source.indexOf('\n function preview(')),ctx);
- const seeds=require('../promo-templates.json'),t=seeds.find(t=>t.id==='launch26-seoul-incheon-map'),before=JSON.stringify(t);
- const poster='/promo-assets/seoul-incheon-premiere-map-v7.png';
- const mixed={...t,blocks:[{type:'image',src:'/promo-assets/hero.jpg',alt:'old'},...t.blocks]};
+ const t=require('../promo-templates.json')[0],before=JSON.stringify(t);
+ const mixed={...t,blocks:[{type:'image',src:'/promo-assets/seoul-incheon-premiere-map-v7.png',alt:'old map'},{type:'image',src:'/promo-assets/ticket-seoul-incheon-v2.png',alt:'old ticket'},...t.blocks]};
  for(const copying of [false,true]){
   const html=ctx.bodyHTML(mixed,copying);
-  assert.match(html,/^<p[^>]*><img src="https:\/\/creok.onrender.com\/promo-assets\/seoul-incheon-premiere-map-v7.png"/);
-  assert.equal((html.match(/src="[^"]*seoul-incheon-premiere-map-v7.png"/g)||[]).length,1);
-  assert.doesNotMatch(html,/src="[^"]*hero(?:-seoul-incheon-v[23])?\.(?:png|jpg)"/);
+  assert.match(html,/^<p[^>]*><img src="https:\/\/creok.onrender.com\/promo-assets\/hero-wolssu-v1.png"/);
+  assert.equal((html.match(/src="[^"]*hero-wolssu-v1.png"/g)||[]).length,1);
+  assert.doesNotMatch(html,/seoul-incheon-premiere-map|ticket-seoul-incheon/);
  }
- const images=Array.from(ctx.postBlocks(mixed)).filter(b=>b.type==='image');
- assert.equal(images[0].src,poster);assert.equal(images.filter(b=>b.src===poster).length,1);
- assert.equal(ctx.thumbnailImage(t).src,poster);
  assert.equal(JSON.stringify(t),before);
- for(const other of seeds.filter(s=>s.id!==t.id))assert.equal(ctx.postBlocks(other)[0].src,'/promo-assets/hero-seoul-incheon-v3.png');
 });
 test('none/all/regions replace partner art once and preserve unrelated content and immutable source',()=>{
  const source=fs.readFileSync(require.resolve('../public/promo-center.js'),'utf8'),ctx=vm.createContext({URL,location:{origin:'https://creok.onrender.com'}});

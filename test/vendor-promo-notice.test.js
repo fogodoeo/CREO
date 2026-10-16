@@ -7,7 +7,7 @@ async function fixture(t){
  const tasks=(c=owner,company=id)=>f.call(c,'GET','/api/platform/vendor-access/tasks?company='+company);
  const promo=()=>f.call(owner,'GET','/api/platform/promo-center?month=2026-09',undefined,{'x-creo-admin':f.secret});
  const change=async(body,admin=true)=>f.call(owner,'POST','/api/platform/promo-center',{requestId:randomUUID(),...(admin?{revision:(await promo()).json().revision}:{company:id}),...body},admin?{'x-creo-admin':f.secret}:{});
- const assign=async(date)=>change({action:'assign',date,slot:'afternoon',vendorId:id,templateId:'launch26-taste'});
+ const assign=async(date)=>change({action:'assign',date,slot:'afternoon',vendorId:id,templateId:'wolssu26-taste'});
  return {...f,id,owner,other,tasks,change,assign};
 }
 test('vendor summary requires own live membership and includes no private vendor fields',async t=>{
@@ -23,7 +23,7 @@ test('today has priority over old missed dates; completion, cancellation, cross-
  const f=await fixture(t),old=(await f.assign('2026-09-23')).json(),today=(await f.assign('2026-09-24')).json(),future=(await f.assign('2026-10-14')).json();
  f.advance(24*3600000);let status=(await f.tasks()).json();assert.equal(status.promoSummary.pendingCount,3);assert.equal(status.promoSummary.next.id,today.id);
  f.advance(5*3600000);
- const complete={action:'complete',id:today.id,templateId:'launch26-taste',version:1,url:'https://cafe.naver.com/reptilia/8765432',requestId:randomUUID()};
+ const complete={action:'complete',id:today.id,templateId:'wolssu26-taste',version:1,url:'https://cafe.naver.com/reptilia/8765432',requestId:randomUUID()};
  const done=await f.change(complete,false);assert.equal(done.status,200,done.body);assert.equal((await f.change(complete,false)).json().duplicate,true);
  assert.equal((await f.tasks()).json().promoSummary.next.id,old.id);assert.equal((await f.tasks()).json().promoSummary.next.status,'overdue');
  await f.change({action:'cancel',id:old.id});f.restart();status=(await f.tasks()).json();assert.equal(status.promoSummary.pendingCount,1);assert.equal(status.promoSummary.next.id,future.id);assert.equal(status.promoSummary.next.isToday,false);
