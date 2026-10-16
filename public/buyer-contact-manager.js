@@ -4,7 +4,7 @@
     function mount({getChannelId,getTab,refresh}){
         const esc=root.CreoPlatform.escapeHtml,host=document.createElement('section');
         host.className='buyer-contact-panel';host.hidden=true;document.getElementById('table-wrap').before(host);
-        let rows=[],all=false,loadedChannel='',sequence=0,loading=false,dialog=null,message='';
+        let rows=[],all=false,loadedChannel='',sequence=0,loading=false,opening=false,dialog=null,message='';
         function paint(){
             const count=rows.filter(r=>r.attention).length,visible=all?rows:rows.filter(r=>r.attention);
             host.innerHTML=`<div class="contact-heading"><h2>낙찰자 연락처·발송 <span>${count?'확인 필요 '+count+'건':'확인 필요 없음'}</span></h2><button type="button" data-contact-toggle>${all?'확인 필요만':'전체 '+rows.length+'건'}</button></div><p class="contact-context">알리고 접수는 수신 완료와 다릅니다. 외부에서 보낸 문자는 별도 확인해 주세요.</p><div class="contact-rows">${visible.map(r=>`<article class="contact-row"><b>${esc(r.lot)}</b><div><strong>${esc(r.name)}</strong><span>${esc(r.phone||'번호 없음')}</span></div><span class="contact-state ${r.attention?'needs-attention':''}">${esc(labels[r.status]||'확인 필요')}</span><button type="button" data-contact-open="${esc(r.itemId)}">번호·발송</button></article>`).join('')}</div><p class="contact-message" role="status"></p>`;
@@ -22,11 +22,20 @@
             finally{loading=false;if(channel!==getChannelId())load();}
         }
         async function open(id,opener){
-            if(dialog)return;
-            let row=rows.find(r=>r.itemId===id);
-            if(!row){await load();row=rows.find(r=>r.itemId===id)}
+            if(dialog||opening)return;
+            const channel=getChannelId();let row=loadedChannel===channel?rows.find(r=>r.itemId===id):null;
+            if(!row){
+                opening=true;if(opener)opener.disabled=true;
+                try{
+                    const data=await root.CreoPlatform.api(`channels/${encodeURIComponent(channel)}/buyer-contacts`);
+                    if(channel!==getChannelId())return;
+                    rows=data.rows;loadedChannel=channel;row=rows.find(r=>r.itemId===id);paint();
+                    if(!row){message='현재 낙찰 정보를 찾을 수 없어요. 새로고침해 주세요.';paint();}
+                }catch(e){if(channel===getChannelId()){message=e.message;paint();}return;}
+                finally{opening=false;if(opener)opener.disabled=false;}
+            }
             if(!row)return;
-            const channel=getChannelId();dialog=document.createElement('dialog');dialog.className='buyer-contact-dialog';
+            dialog=document.createElement('dialog');dialog.className='buyer-contact-dialog';
             dialog.setAttribute('aria-labelledby','buyer-contact-title');
             dialog.innerHTML=`<form><h2 id="buyer-contact-title">${esc(row.lot)} · 연락처·발송</h2><p class="contact-winner">${esc(row.rawName||row.name)}</p><p class="contact-state">${esc(labels[row.status])}${row.sentAt?' · '+esc(new Date(row.sentAt).toLocaleString('ko-KR')):''}</p><label>휴대전화 번호<input name="phone" type="tel" inputmode="tel" autocomplete="off" value="${esc(row.phone)}" required aria-describedby="contact-error"></label><label class="contact-confirm"><input type="checkbox" name="confirmed"> 이 낙찰자의 번호를 확인했어요</label><p id="contact-error" role="alert" tabindex="-1"></p><div class="contact-dialog-actions"><button type="button" data-contact-close>닫기</button><button type="submit" name="action" value="save">번호만 저장</button><button type="submit" name="action" value="send" class="contact-primary">저장하고 알림톡 보내기</button></div>${row.phone?'<button type="button" class="contact-external">외부에서 이미 발송했어요</button>':''}</form>`;
             const form=dialog.querySelector('form'),error=dialog.querySelector('#contact-error');let busy=false,pending=null;
