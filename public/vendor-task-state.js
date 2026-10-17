@@ -15,7 +15,7 @@
  function broadcastNeedsAction(date,reservation,now,entriesOpen=true){
   if(!date||date.startsAt<=now||!entriesOpen)return false;
   if(!reservation)return date.maxQuantityAvailable>=4;
-  return !broadcastRegistrationComplete(reservation)&&reservation.session.entriesDueAt>now;
+  return !broadcastRegistrationComplete(reservation)&&(!reservation.session.entriesDueAt||reservation.session.entriesDueAt>now);
  }
  return {settlementStage,broadcastNeedsAction,broadcastRegistrationComplete};
 });

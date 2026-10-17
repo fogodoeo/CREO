@@ -39,7 +39,9 @@ function createNationalBroadcast(repository,{now=Date.now,entries,notificationSe
   if(state.schema!==1||!Array.isArray(state.reservations)||!Array.isArray(state.requests))throw fail('방송 자료를 확인할 수 없어요.',503);
   return {state,raw};
  }
- function session(state,date){return {...Legacy.session(state,date),region:regionAt(date),regionName:REGIONS[regionAt(date)]||''};}
+  // Regional broadcasts have no automatic intake or entry deadline, including
+  // sessions created under the old 72/24-hour defaults. Manual pauses still apply.
+  function session(state,date){return {...Legacy.session(state,date),closesAt:null,entriesDueAt:null,selfUntil:null,region:regionAt(date),regionName:REGIONS[regionAt(date)]||''};}
  function dates(state){const result=[],today=Legacy.day(now()),end=Legacy.addDays(today,370);for(let d=START;d<=end;d=Legacy.addDays(d,1))if(scheduled(d))result.push(d);return result;}
  function policySession(state,date,vendors){return {...session(state,date),...regionEntryPolicy(state,regionAt(date),vendors)};}
  function limitFor(state,r,vendors){return Legacy.start(r.date)<=now()?r.entryIds.length:Math.min(r.entryIds.length,regionEntryPolicy(state,r.region,vendors).vendorEntryLimit);}
@@ -51,7 +53,7 @@ function createNationalBroadcast(repository,{now=Date.now,entries,notificationSe
   if(region!==s.region)return block(s.regionName+' 방송이에요.');
   if(!['draft','active'].includes(state.channelStatus||'active'))return block('종료된 채널이에요.');
   if(s.paused)return block('접수가 마감됐어요.');
-  if(now()>=Date.parse(s.closesAt))return block('출품 신청이 마감됐어요.');
+   if(date<Legacy.day(now()))return block('지난 방송이에요.');
   if(date>Legacy.addDays(Legacy.day(now()),14))return block('방송 2주 전부터 신청할 수 있어요.');
   if(state.reservations.some(r=>r.vendorId===vendorId&&r.date===date&&r.status==='confirmed'))return block('이미 신청한 방송이에요.');
   const available=s.maxQuantity===null?s.vendorEntryLimit:Math.min(s.vendorEntryLimit,s.maxQuantity-reservedQuantity(state,date));
@@ -84,7 +86,6 @@ function createNationalBroadcast(repository,{now=Date.now,entries,notificationSe
   if(type==='save-entries'){
    r=state.reservations.find(r=>r.id===input.id&&r.vendorId===context.vendor.id&&r.status==='confirmed');
    if(!r||!context.profile)throw fail('출품할 방송을 다시 확인해 주세요.',403);
-   if(now()>=Date.parse(session(state,r.date).entriesDueAt))throw fail('개체 등록 기한이 지났어요. 운영자에게 문의해 주세요.');
    if(!Array.isArray(input.entries)||!input.entries.length||input.entries.length>r.entryIds.length||input.entries.some(row=>!row||!Number.isInteger(row.slot)||row.slot<0||row.slot>=r.entryIds.length)||new Set(input.entries.map(row=>row.slot)).size!==input.entries.length)throw fail('등록할 개체를 다시 확인해 주세요.',422);
    if(input.entries.some(row=>row.slot>=limitFor(state,r,context.vendors)))throw fail(limitMessage());
    return entries.saveMany(context,input.entries.map(row=>({broadcast:{id:r.id,date:r.date,slot:row.slot,today:Legacy.day(now())},input:{type:input.submit===true?'submit':'save',entry:{...row.entry,id:r.entryIds[row.slot]},parents:row.parents,expectedVersion:row.expectedVersion}})),requestId);
@@ -93,7 +94,6 @@ function createNationalBroadcast(repository,{now=Date.now,entries,notificationSe
    r=state.reservations.find(r=>r.id===input.id&&r.vendorId===context.vendor.id&&r.status==='confirmed');
    if(!r||!Number.isInteger(input.slot)||input.slot<0||input.slot>=r.entryIds.length)throw fail('출품할 방송과 개체를 확인해 주세요.',403);
    if(type==='save-entry'&&input.slot>=limitFor(state,r,context.vendors))throw fail(limitMessage());
-   if(now()>=Date.parse(session(state,r.date).entriesDueAt))throw fail('개체 등록 기한이 지났어요. 운영자에게 문의해 주세요.');
    if(!context.profile)throw fail('업체 페이지를 다시 열어 주세요.');
    const scoped={...context,nationalBroadcast:{id:r.id,date:r.date,slot:input.slot,today:Legacy.day(now())}};
    const payload=type==='reopen-entry'?{type:'withdraw',id:r.entryIds[input.slot]}:{type:input.submit===true?'submit':'save',entry:{...input.entry,id:r.entryIds[input.slot]},parents:input.parents};
@@ -123,9 +123,8 @@ function createNationalBroadcast(repository,{now=Date.now,entries,notificationSe
    }else{
     if(!scheduled(input.date)||input.date<Legacy.day(now()))throw fail('앞으로의 방송일을 선택해 주세요.',422);
     const v=input.settings||{};if(!validCapacity(v.maxQuantity)||(v.maxQuantity!==null&&v.maxQuantity<reservedQuantity(state,input.date)))throw fail('이미 확보한 출품 자리 이상으로 입력하거나 제한 없이 설정해 주세요.',422);
-    for(const k of ['closesAt','entriesDueAt','selfUntil'])if(!Number.isFinite(Date.parse(v[k]))||Date.parse(v[k])>Legacy.start(input.date))throw fail('기한을 방송 시작 전으로 설정해 주세요.',422);
     if(!Number.isInteger(v.responseHours)||v.responseHours<1||v.responseHours>336)throw fail('응답 기한을 확인해 주세요.',422);
-    state.sessions[input.date]={...session(state,input.date),...Object.fromEntries(['maxQuantity','closesAt','entriesDueAt','selfUntil','responseHours'].map(k=>[k,v[k]])),paused:v.paused===true};
+     state.sessions[input.date]={...session(state,input.date),maxQuantity:v.maxQuantity,responseHours:v.responseHours,paused:v.paused===true};
    }result=type;
   }else{
    r=state.reservations.find(r=>r.id===input.id&&(operator||r.vendorId===context.vendor.id)&&r.status==='confirmed');

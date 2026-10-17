@@ -55,3 +55,26 @@ test('approved library photos can be replaced, removed and restored without reap
  }
  assert.deepEqual((await f.service.read(f.context)).entries[0],entryBefore);
 });
+
+test('parent names save without photos, survive restart and do not change auction facts',async()=>{
+ const f=fixture(),body=f.command(undefined,{name:'헐크'});delete body.photoId;
+ const results=await Promise.all([f.service.updateItemParents(f.context,body),f.service.updateItemParents(f.context,body)]);
+ assert.deepEqual(results.map(r=>r.duplicate).sort(),[false,true]);
+ const service=createVendorEntries(f.repository),item=await f.repository.getRecord('national-cre','item',f.item.id);
+ assert.equal((await service.updateItemParents(f.context,body)).duplicate,true);
+ assert.deepEqual(item.attributes.parents,[{role:'sire',name:'헐크',morph:'',media:[]}]);
+ assert.equal((await service.auctionPhotos(f.context))[0].parents[0].name,'헐크');
+ await assert.rejects(service.updateItemParents(f.context,{...body,name:'다른 이름'}),/요청 내용/);
+ await assert.rejects(service.updateItemParents(f.context,{...body,requestId:randomUUID(),name:'오래된 수정'}),/개체가 변경/);
+ assert.deepEqual({...item,updatedAt:f.item.updatedAt,attributes:f.item.attributes},f.item);
+});
+test('name and photo patches preserve each other and the opposite parent',async()=>{
+ const f=fixture(),photoId=await f.media(),save=async(side,patch)=>{const current=await f.repository.getRecord('national-cre','item',f.item.id);return f.service.updateItemParents(f.context,{itemId:f.item.id,side,...patch,expectedUpdatedAt:current.updatedAt,requestId:randomUUID()})};
+ await save('sire',{name:'헐크',photoId});await save('dam',{name:'리즈'});await save('sire',{name:'헐크 수정'});
+ let item=await f.repository.getRecord('national-cre','item',f.item.id);assert.equal(item.attributes.parents.find(p=>p.role==='sire').media[0].url,'/assets/photo.webp');
+ await save('sire',{photoId:''});item=await f.repository.getRecord('national-cre','item',f.item.id);
+ assert.equal(item.attributes.parents.find(p=>p.role==='sire').name,'헐크 수정');assert.equal(item.attributes.parents.find(p=>p.role==='dam').name,'리즈');
+ await save('sire',{photoId});await save('sire',{name:''});item=await f.repository.getRecord('national-cre','item',f.item.id);
+ assert.equal(item.attributes.parents.find(p=>p.role==='sire').media.length,1);assert.equal(item.attributes.parents.find(p=>p.role==='sire').name,'');
+ const before=[...f.rows],upsert=f.repository.upsertRows;f.repository.upsertRows=async()=>{throw Error('storage failed')};await assert.rejects(save('dam',{name:'저장 실패'}),/storage failed/);assert.deepEqual([...f.rows],before);f.repository.upsertRows=upsert;
+});

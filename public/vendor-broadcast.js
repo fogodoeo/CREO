@@ -9,9 +9,11 @@
  let state,month='',selected='',slot=0,busy=false,draft=null,dirty=false,recovery={},recoveryQueue=Promise.resolve(),photoBusy=false,lastTrigger=null;
  const removed=new Map(),photoUrls=new Map();
  let bulkDrafts=null,auctionPhotoItem=null,auctionPhotoPending=null;
- const auctionPhotoUndo=new Map();
+  const auctionPhotoUndo=new Map(),auctionNameDrafts=new Map();
  const auctionItems=(date=selected)=>(state?.entryState.auctionItems||[]).filter(item=>item.date===date);
- const rowHasData=row=>!!(row.sex||row.weight||row.hatchDate||row.note||row.photoIds?.length||row.parents?.sire?.photoId||row.parents?.dam?.photoId);
+  const rowHasData=row=>!!(row.sex||row.weight||row.hatchDate||row.note||row.photoIds?.length||['sire','dam'].some(side=>row.parents?.[side]?.photoId||row.parents?.[side]?.name?.trim()));
+  const registrationOpen=r=>!r.session.entriesDueAt||Date.parse(r.session.entriesDueAt)>Date.parse(state.now);
+  function entryParents(e){return Object.fromEntries(['sire','dam'].map(side=>{const p=state.entryState.parents.find(p=>p.id===e?.[side+'Id']);return [side,{name:p?.name||'',photoId:p?.photoId||''}]}))}
  function message(s){$('#notice').textContent=s;setTimeout(()=>{$('#notice').textContent=''},4500)}
  function params(){return {...(Store.code?{code:Store.code}:{token:Store.token}),event:'national-cre'}}
  function reservation(date=selected){return state.reservations.find(r=>r.date===date&&r.status==='confirmed')}
@@ -23,7 +25,7 @@
   const places=state.inboundDestinations||{},phones=state.inboundDestinationPhones||{};
   return `<section class="entry-delivery" aria-label="출품 배송"><h3>출품 배송</h3><dl class="inbound-destination">${[['parge','파르게'],['dodosi','도도시']].filter(([carrier])=>places[carrier]).map(([carrier,name])=>`<dt>${name} 도착지</dt><dd>${esc(places[carrier])}${phones[carrier]?`<a class="inbound-phone" href="tel:${phones[carrier].replace(/\D/g,'')}" aria-label="${esc(places[carrier]+'에 전화 '+phones[carrier])}">${esc(phones[carrier])}</a>`:''}</dd>`).join('')}</dl><div class="pickup-line"><div><strong>수거 상태</strong><span>${r.pickup?'수거 완료':'수거 전'}</span></div><button type="button" class="pickup-button" data-action="pickup">${r.pickup?'수거 전으로 변경':'수거 완료 표시'}</button></div></section>`;
  }
- function editable(e=entry(),i=slot){return i<entryLimit(reservation())&&(!e||['draft','changes_requested'].includes(e.status))&&Date.parse(reservation().session.entriesDueAt)>Date.parse(state.now)&&state.entryState.events.some(e=>e.id==='national-cre'&&e.entriesOpen)}
+ function editable(e=entry(),i=slot){return i<entryLimit(reservation())&&(!e||['draft','changes_requested'].includes(e.status))&&registrationOpen(reservation())&&state.entryState.events.some(e=>e.id==='national-cre'&&e.entriesOpen)}
  function task(d){if(auctionItems(d.date).length>=4)return false;return d.regionName===state.vendor.region&&CreoVendorTasks.broadcastNeedsAction(d,reservation(d.date),state.now,state.entryState.events.some(e=>e.id==='national-cre'&&e.entriesOpen))}
  async function request(body){
   let requestId,storageKey='national-broadcast-request:'+Store.VENDOR,payload;
@@ -35,13 +37,13 @@
   if(body)sessionStorage.removeItem(storageKey);return data;
  }
  function persistRecovery(){const value={nationalDrafts:structuredClone(recovery)};recoveryQueue=recoveryQueue.catch(()=>{}).then(()=>Store.recovery.save(value));return recoveryQueue}
- function fields(){const f=$('#entry-step-form');if(!f)return draft;const data=Object.fromEntries(new FormData(f));return {...draft,sex:data.sex||'',weight:String(data.weight||''),hatchDate:data.hatchDate||'',note:data.note||''}}
+  function fields(){const f=$('#entry-step-form');if(!f)return draft;const data=Object.fromEntries(new FormData(f));return {...draft,sex:data.sex||'',weight:String(data.weight||''),hatchDate:data.hatchDate||'',note:data.note||'',parents:Object.fromEntries(['sire','dam'].map(side=>[side,{...draft.parents?.[side],name:data[side+'-name']??draft.parents?.[side]?.name??''}]))}}
  function capture(){if($('#bulk-entry-form')){captureBulk();return}if(!editable()||!draft)return;draft=fields();dirty=true;recovery[draft.id]={...draft};persistRecovery().catch(e=>{$('#step-error').textContent=e.message})}
  function photo(id){return state.entryState.media.find(m=>m.id===id)||Store.getState().media.find(m=>m.id===id)}
  function photoBlock(readonly){
-  return `<fieldset class="parent-photo-fields"><legend>부모 개체 사진 <span class="muted">(선택)</span></legend><div class="parent-photo-grid">${[['sire','부 개체'],['dam','모 개체']].map(([side,label])=>{
+   return `<fieldset class="parent-photo-fields"><legend>부모정보 <span class="muted">(선택)</span></legend><div class="parent-photo-grid">${[['sire','부 개체'],['dam','모 개체']].map(([side,label])=>{
    const id=draft.parents?.[side]?.photoId,m=id&&photo(id),url=m&&(m.thumbnailUrl||m.url)||photoUrls.get(id);
-   return `<div class="parent-photo">${url?`<label class="photo-picker has-photo"><img src="${esc(url)}" alt="${label} 사진"><span>${label}${readonly?'':'<small>사진 교체</small>'}</span>${readonly?'':`<input type="file" accept="image/*" data-photo="${side}" aria-label="${label} 사진 교체">`}</label>${readonly?'':`<button class="photo-remove" type="button" data-action="remove-photo" data-side="${side}" aria-label="${label} 사진 삭제"><span aria-hidden="true">×</span></button>`}`:`<label class="photo-picker"><span class="photo-add" aria-hidden="true">＋</span><span>${label}<small>${readonly?'미등록':'사진 추가'}</small></span>${readonly?'':`<input type="file" accept="image/*" data-photo="${side}" aria-label="${label} 사진 추가">`}</label>`}${!readonly&&removed.has(draft.id+side)?`<button class="photo-undo" type="button" data-action="undo-photo" data-side="${side}">삭제 취소</button>`:''}</div>`;
+   return `<div class="parent-photo">${url?`<label class="photo-picker has-photo"><img src="${esc(url)}" alt="${label} 사진"><span>${label}${readonly?'':'<small>사진 교체</small>'}</span>${readonly?'':`<input type="file" accept="image/*" data-photo="${side}" aria-label="${label} 사진 교체">`}</label>${readonly?'':`<button class="photo-remove" type="button" data-action="remove-photo" data-side="${side}" aria-label="${label} 사진 삭제"><span aria-hidden="true">×</span></button>`}`:`<label class="photo-picker"><span class="photo-add" aria-hidden="true">＋</span><span>${label}<small>${readonly?'미등록':'사진 추가'}</small></span>${readonly?'':`<input type="file" accept="image/*" data-photo="${side}" aria-label="${label} 사진 추가">`}</label>`}${!readonly&&removed.has(draft.id+side)?`<button class="photo-undo" type="button" data-action="undo-photo" data-side="${side}">삭제 취소</button>`:''}<label class="parent-name-field"><span>${label} 이름</span><input name="${side}-name" maxlength="40" value="${esc(draft.parents?.[side]?.name||'')}" ${readonly?'readonly':''}></label></div>`;
   }).join('')}</div></fieldset>`;
  }
  function setBusy(value){busy=value;sheet.querySelectorAll('button').forEach(el=>el.disabled=value);const scroll=sheet.querySelector('.entry-step-scroll');if(scroll)scroll.inert=value;$('#refresh').disabled=value}
@@ -49,10 +51,10 @@
   return `<div class="auction-photo-table" id="auction-photo-table"><div class="auction-columns" aria-hidden="true"><span>개체</span><span>성별</span><span>체중(g)</span><span>출생년월일</span></div>${auctionItems().map(item=>{
    const t=item.traits||{},number=esc(item.displayNumber);
    return `<section class="auction-photo-row" aria-label="${number}"><div class="auction-facts"><strong>${number}</strong><span aria-label="성별">${esc(({male:'수컷',female:'암컷',unknown:'미구분'})[t.sex]||'—')}</span><span aria-label="체중(g)">${esc(t.weight||'—')}</span><time aria-label="출생년월일">${esc(t.hatchDate||'—')}</time></div><div class="auction-photo-tools">${[['sire','부'],['dam','모']].map(([side,label])=>{
-    const media=item.parents?.find(p=>p.role===side)?.media?.[0],url=media?.thumbnailUrl||media?.url,key=item.id+side;
-    return `<div class="parent-photo"><label class="auction-photo-picker ${url?'has-photo':''}">${url?`<img src="${esc(url)}" alt="${number} ${label} 개체 사진">`:''}<span>${label} 사진${!url&&item.canEdit?' ＋':''}${!url&&!item.canEdit?' 없음':''}</span>${item.canEdit?`<input type="file" accept="image/jpeg,image/png,image/webp" data-auction-parent="${side}" data-item="${esc(item.id)}" aria-label="${number} ${label} 개체 사진 ${url?'교체':'추가'}">`:''}</label>${url&&item.canEdit?`<button type="button" class="photo-remove" data-action="auction-remove-photo" data-item="${esc(item.id)}" data-side="${side}" aria-label="${number} ${label} 개체 사진 삭제"><span aria-hidden="true">×</span></button>`:''}${auctionPhotoUndo.has(key)&&item.canEdit?`<button type="button" class="photo-undo" data-action="auction-undo-photo" data-item="${esc(item.id)}" data-side="${side}">${label} 사진 삭제 취소</button>`:''}</div>`;
+    const parent=item.parents?.find(p=>p.role===side),media=parent?.media?.[0],url=media?.thumbnailUrl||media?.url,key=item.id+side,name=auctionNameDrafts.get(key)?.name??parent?.name??'';
+    return `<div class="parent-photo"><label class="auction-photo-picker ${url?'has-photo':''}">${url?`<img src="${esc(url)}" alt="${number} ${label} 개체 사진">`:''}<span>${label} 사진${!url&&item.canEdit?' ＋':''}${!url&&!item.canEdit?' 없음':''}</span>${item.canEdit?`<input type="file" accept="image/jpeg,image/png,image/webp" data-auction-parent="${side}" data-item="${esc(item.id)}" aria-label="${number} ${label} 개체 사진 ${url?'교체':'추가'}">`:''}</label>${url&&item.canEdit?`<button type="button" class="photo-remove" data-action="auction-remove-photo" data-item="${esc(item.id)}" data-side="${side}" aria-label="${number} ${label} 개체 사진 삭제"><span aria-hidden="true">×</span></button>`:''}${auctionPhotoUndo.has(key)&&item.canEdit?`<button type="button" class="photo-undo" data-action="auction-undo-photo" data-item="${esc(item.id)}" data-side="${side}">${label} 사진 삭제 취소</button>`:''}<label class="parent-name-field"><span>${label} 이름</span><input maxlength="40" aria-label="${number} ${label} 개체 이름" value="${esc(name)}" ${item.canEdit?`data-auction-name="${side}" data-item="${esc(item.id)}"`:'readonly'}></label></div>`;
    }).join('')}</div>${!item.canEdit?'<span class="auction-readonly">낙찰·종료</span>':''}</section>`;
-  }).join('')}${auctionPhotoPending?`<button type="button" class="text" data-action="auction-retry-photo">사진 저장 다시 시도</button>`:''}</div>`;
+  }).join('')}${auctionPhotoPending?`<button type="button" class="text" data-action="auction-retry-photo">저장 다시 시도</button>`:''}<button type="button" class="secondary auction-name-save" data-action="auction-save-names" ${auctionNameDrafts.size?'':'hidden'}>부모 이름 저장</button></div>`;
  }
  function openAuctionList(){
   draft=null;bulkDrafts=null;auctionPhotoItem=null;dirty=false;
@@ -63,14 +65,27 @@
   const table=$('#auction-photo-table');if(table)table.outerHTML=auctionPhotoList();
   if(auctionPhotoItem)auctionPhotoItem=auctionItems().find(item=>item.id===auctionPhotoItem.id);
  }
- async function saveAuctionPhoto(side,photoId){
+  async function saveAuctionPhoto(side,photoId){return saveAuctionParent(side,{photoId})}
+  async function saveAuctionParent(side,changes){
   const item=auctionPhotoItem;if(!item?.canEdit)return;
-  const pending=auctionPhotoPending?.itemId===item.id&&auctionPhotoPending.side===side&&auctionPhotoPending.photoId===photoId?auctionPhotoPending:{itemId:item.id,side,photoId,expectedUpdatedAt:item.updatedAt};
+   const nameDraft=auctionNameDrafts.get(item.id+side),body={itemId:item.id,side,...changes,...(nameDraft?{name:nameDraft.name}:{}),expectedUpdatedAt:nameDraft?.expectedUpdatedAt||item.updatedAt};
+   const pending=JSON.stringify(auctionPhotoPending)===JSON.stringify(body)?auctionPhotoPending:body,photoId=pending.photoId;
   auctionPhotoPending=pending;
   if(photoId&&Store.getState().media.find(m=>m.id===photoId)?.pending)await Store.send({type:'retry-photo',id:photoId});
-  state=await request({type:'parent-photos',...pending});auctionPhotoPending=null;
-  await Store.read({state:state.entryState});refreshAuctionPhotos();$('#step-error').textContent='';renderCalendar();message('부모 사진을 반영했어요');
+   state=await request({type:'parent-photos',...pending});auctionPhotoPending=null;
+   auctionNameDrafts.delete(item.id+side);
+   const updated=auctionItems().find(row=>row.id===item.id);
+   for(const row of auctionNameDrafts.values())if(row.itemId===item.id&&row.expectedUpdatedAt===pending.expectedUpdatedAt)row.expectedUpdatedAt=updated.updatedAt;
+   await Store.read({state:state.entryState});refreshAuctionPhotos();$('#step-error').textContent='';renderCalendar();message('부모정보를 저장했어요');
  }
+  async function saveAuctionNames(){for(const row of [...auctionNameDrafts.values()]){auctionPhotoItem=auctionItems().find(item=>item.id===row.itemId);if(!auctionPhotoItem?.canEdit)throw Error('개체 상태가 변경됐어요. 최신 자료를 불러와 주세요.');await saveAuctionParent(row.side,{name:row.name})}}
+  function captureAuctionName(input){
+   const item=auctionItems().find(row=>row.id===input.dataset.item),side=input.dataset.auctionName;if(!item?.canEdit)return;
+   const key=item.id+side,name=input.value,previous=auctionNameDrafts.get(key);
+   if(name===(item.parents?.find(p=>p.role===side)?.name||''))auctionNameDrafts.delete(key);
+   else auctionNameDrafts.set(key,{itemId:item.id,side,name,expectedUpdatedAt:previous?.expectedUpdatedAt||item.updatedAt});
+   const save=$('[data-action="auction-save-names"]');if(save)save.hidden=!auctionNameDrafts.size;
+  }
  function auctionPhotoError(error){
   $('#step-error').textContent=error.message;
   if(error.status===409)$('#step-error').insertAdjacentHTML('beforeend',' <button type="button" class="text" data-action="auction-photo-refresh">최신 자료 불러오기</button>');
@@ -118,7 +133,7 @@
   if(!r){modal(dateLabel(date),`<div class="broadcast-empty"><p class="eyebrow">${esc(d.regionName)} · 오후 8시</p><h3>${d.regionName===state.vendor.region?'개체 미등록':esc(d.regionName)+' 방송'}</h3><p class="muted">${esc(d.reason||policyText(d))}</p></div>${d.maxQuantityAvailable>=4?'<button class="primary" data-action="reserve">출품 개체 등록</button>':''}<p class="form-error" id="step-error" role="alert"></p>`);return}
   slot=index??r.entries.findIndex(pending);if(slot<0)slot=0;
   const e=entry(),saved=recovery[r.entryIds[slot]],canEdit=editable(e);
-  draft=saved&&canEdit?structuredClone(saved):{id:r.entryIds[slot],version:e?.version||0,sex:e?.sex||'',weight:e?.weight||'',hatchDate:e?.hatchDate||'',note:e?.note||'',parents:Object.fromEntries(['sire','dam'].map(side=>[side,{photoId:state.entryState.parents.find(p=>p.id===e?.[side+'Id'])?.photoId||''}]))};
+  draft=saved&&canEdit?structuredClone(saved):{id:r.entryIds[slot],version:e?.version||0,sex:e?.sex||'',weight:e?.weight||'',hatchDate:e?.hatchDate||'',note:e?.note||'',parents:entryParents(e)};
   dirty=!!(saved&&canEdit);const conflict=dirty&&draft.version!==(e?.version||0);
   modal(dateLabel(date),`<form id="entry-step-form" novalidate><div class="entry-step-scroll"><div class="entry-progress"><h3>출품 개체</h3><span>${r.completed}마리 제출</span></div><div class="entry-steps" aria-label="출품 개체">${r.entries.slice(0,entryLimit(r)).map((e,i)=>`<button type="button" data-slot="${i}" aria-label="개체 ${i+1}, ${labels[e?.status]||'미등록'}" ${slot===i?'aria-current="step"':''}><span>${i+1}</span><small>${labels[e?.status]||'미등록'}</small></button>`).join('')}</div>
    ${e?.reason?`<p class="entry-reason">${esc(e.reason)}</p>`:''}${conflict?'<p class="entry-reason">다른 화면에서 변경됐어요. 작성 내용을 확인한 뒤 최신 자료를 불러와 주세요.</p><button type="button" class="text" data-action="discard">최신 자료 불러오기</button>':''}
@@ -126,26 +141,26 @@
    <div class="step-basics"><label class="field">체중<span class="weight-input"><input name="weight" type="number" required min=".01" max="1000" step=".01" inputmode="decimal" value="${esc(draft.weight)}" ${canEdit&&!conflict?'':'readonly'}><span>g</span></span></label><label class="field">출생년월일<input name="hatchDate" type="date" required max="${koreanDay(state.now)}" value="${esc(draft.hatchDate)}" ${canEdit&&!conflict?'':'readonly'}></label></div>
    <label class="field step-extra">추가 정보 <span class="muted">(선택)</span><textarea name="note" rows="2" maxlength="600" placeholder="모프, 특징 등" ${canEdit&&!conflict?'':'readonly'}>${esc(draft.note)}</textarea></label>${photoBlock(!canEdit||conflict)}
    <p id="step-error" class="form-error" role="alert"></p>${!canEdit?`<p class="server-status">${labels[e?.status]||'개체 등록이 마감됐어요.'}</p>`:''}
-    </div><div class="step-footer">${slot?'<button type="button" class="secondary" data-action="prev">이전</button>':''}${canEdit&&!conflict?`<button class="primary" type="submit">${r.completed>=3?'제출하기':'제출하고 다음'}</button>`:e?.status==='submitted'&&Date.parse(r.session.entriesDueAt)>Date.parse(state.now)?'<button class="primary" type="button" data-action="reopen">수정하기</button>':'<button class="primary" type="button" data-action="next">다음</button>'}</div></form>`,true);
+    </div><div class="step-footer">${slot?'<button type="button" class="secondary" data-action="prev">이전</button>':''}${canEdit&&!conflict?`<button class="primary" type="submit">${r.completed>=3?'제출하기':'제출하고 다음'}</button>`:e?.status==='submitted'&&registrationOpen(r)?'<button class="primary" type="button" data-action="reopen">수정하기</button>':'<button class="primary" type="button" data-action="next">다음</button>'}</div></form>`,true);
   sheet.querySelector('[aria-current=step]')?.focus({preventScroll:true});
  }
  function bulkEditable(i){return editable(entry(reservation(),i),i)}
  function bulkPhotos(row,i,readonly){
   return `<div class="bulk-photo-grid">${[['animal','개체'],['sire','부 개체'],['dam','모 개체']].map(([side,label])=>{
    const id=side==='animal'?row.photoIds?.[0]:row.parents?.[side]?.photoId,m=id&&photo(id),url=m&&(m.thumbnailUrl||m.url)||photoUrls.get(id);
-   return `<div class="parent-photo"><label class="photo-picker ${url?'has-photo':''}">${url?`<img src="${esc(url)}" alt="개체 ${i+1} ${label} 사진">`:''}<span>${label}<small>${readonly?(url?'등록됨':'미등록'):(url?'사진 교체':'사진 추가')}</small></span>${readonly?'':`<input type="file" accept="image/jpeg,image/png,image/webp" data-bulk-photo="${side}" data-index="${i}" aria-label="개체 ${i+1} ${label} 사진 ${url?'교체':'추가'}">`}</label>${url&&!readonly?`<button type="button" class="photo-remove" data-action="bulk-remove-photo" data-index="${i}" data-side="${side}" aria-label="개체 ${i+1} ${label} 사진 삭제"><span aria-hidden="true">×</span></button>`:''}${removed.has(row.id+side)&&!readonly?`<button class="photo-undo" type="button" data-action="bulk-undo-photo" data-index="${i}" data-side="${side}">삭제 취소</button>`:''}</div>`;
+   return `<div class="parent-photo"><label class="photo-picker ${url?'has-photo':''}">${url?`<img src="${esc(url)}" alt="개체 ${i+1} ${label} 사진">`:''}<span>${label}<small>${readonly?(url?'등록됨':'미등록'):(url?'사진 교체':'사진 추가')}</small></span>${readonly?'':`<input type="file" accept="image/jpeg,image/png,image/webp" data-bulk-photo="${side}" data-index="${i}" aria-label="개체 ${i+1} ${label} 사진 ${url?'교체':'추가'}">`}</label>${url&&!readonly?`<button type="button" class="photo-remove" data-action="bulk-remove-photo" data-index="${i}" data-side="${side}" aria-label="개체 ${i+1} ${label} 사진 삭제"><span aria-hidden="true">×</span></button>`:''}${removed.has(row.id+side)&&!readonly?`<button class="photo-undo" type="button" data-action="bulk-undo-photo" data-index="${i}" data-side="${side}">삭제 취소</button>`:''}${side==='animal'?'':`<label class="parent-name-field"><span>${label} 이름</span><input name="${side}-name-${i}" aria-label="개체 ${i+1} ${label} 이름" maxlength="40" value="${esc(row.parents?.[side]?.name||'')}" ${readonly?'readonly':''}></label>`}</div>`;
   }).join('')}</div>`;
  }
  function bulkDetails(row,i,readonly){
   const photos=(row.photoIds?.length||0)+['sire','dam'].filter(side=>row.parents?.[side]?.photoId).length;
-  const extra=[photos?'사진 '+photos+'장':'',row.note?'정보 있음':''].filter(Boolean).join(' · ');
-  return `<details class="bulk-details"><summary aria-label="개체 ${i+1} 사진·추가 정보${extra?', '+extra:''}"><span>사진·추가 정보</span>${extra?'<small>등록됨</small>':''}<span class="bulk-caret" aria-hidden="true">⌄</span></summary><div class="bulk-extra"><label class="bulk-field bulk-note"><span>추가 정보 <small>선택</small></span><textarea name="note-${i}" aria-label="개체 ${i+1} 추가 정보" rows="2" maxlength="600" placeholder="모프, 특징 등" ${readonly?'readonly':''}>${esc(row.note)}</textarea></label>${bulkPhotos(row,i,readonly)}</div></details>`;
+  const extra=[photos?'사진 '+photos+'장':'',row.note||['sire','dam'].some(side=>row.parents?.[side]?.name)?'정보 있음':''].filter(Boolean).join(' · ');
+  return `<details class="bulk-details"><summary aria-label="개체 ${i+1} 사진·부모정보${extra?', '+extra:''}"><span>사진·부모정보</span>${extra?'<small>등록됨</small>':''}<span class="bulk-caret" aria-hidden="true">⌄</span></summary><div class="bulk-extra"><label class="bulk-field bulk-note"><span>추가 정보 <small>선택</small></span><textarea name="note-${i}" aria-label="개체 ${i+1} 추가 정보" rows="2" maxlength="600" placeholder="모프, 특징 등" ${readonly?'readonly':''}>${esc(row.note)}</textarea></label>${bulkPhotos(row,i,readonly)}</div></details>`;
  }
  function openBulk(){
   const r=reservation();draft=null;
   bulkDrafts=r.entryIds.slice(0,entryLimit(r)).map((id,i)=>{
    const e=r.entries[i],saved=recovery[id];
-   return saved&&bulkEditable(i)?structuredClone(saved):{id,version:e?.version||0,sex:e?.sex||'',weight:e?.weight||'',hatchDate:e?.hatchDate||'',note:e?.note||'',photoIds:e?.photoIds||[],parents:Object.fromEntries(['sire','dam'].map(side=>[side,{photoId:state.entryState.parents.find(p=>p.id===e?.[side+'Id'])?.photoId||''}]))};
+   return saved&&bulkEditable(i)?structuredClone(saved):{id,version:e?.version||0,sex:e?.sex||'',weight:e?.weight||'',hatchDate:e?.hatchDate||'',note:e?.note||'',photoIds:e?.photoIds||[],parents:entryParents(e)};
   });
   dirty=bulkDrafts.some((row,i)=>bulkEditable(i)&&!!recovery[row.id]);
   modal(dateLabel(selected),`<form id="bulk-entry-form" novalidate><div class="entry-step-scroll bulk-scroll"><div class="entry-progress"><h3>${CreoVendorTasks.broadcastRegistrationComplete(r)?'개체 제출 완료':'출품 개체'}</h3><span>${r.completed?r.completed+'마리 제출':entryLimit(r)+'마리'}</span></div>
@@ -157,10 +172,10 @@
     <label class="bulk-field"><span>성별</span><select name="sex-${i}" aria-label="개체 ${i+1} 성별" ${readonly?'disabled':''}><option value="">선택</option>${[['female','암컷'],['male','수컷'],['unknown','미구분']].map(([v,l])=>`<option value="${v}" ${row.sex===v?'selected':''}>${l}</option>`).join('')}</select></label>
     <label class="bulk-field"><span>체중 (g)</span><input name="weight-${i}" aria-label="개체 ${i+1} 체중 (g)" type="number" inputmode="decimal" min=".01" max="1000" step=".01" placeholder="g" value="${esc(row.weight)}" ${readonly?'readonly':''}></label>
     <label class="bulk-field bulk-date"><span>출생년월일</span><input name="hatchDate-${i}" aria-label="개체 ${i+1} 출생년월일" type="date" max="${koreanDay(state.now)}" value="${esc(row.hatchDate)}" ${readonly?'readonly':''}></label>
-    <div class="bulk-row-state"><span>${labels[e?.status]||''}</span>${e?.status==='submitted'&&Date.parse(r.session.entriesDueAt)>Date.parse(state.now)?`<button type="button" class="text" data-action="bulk-reopen" data-index="${i}" aria-label="개체 ${i+1} 수정">수정</button>`:''}</div>
+    <div class="bulk-row-state"><span>${labels[e?.status]||''}</span>${e?.status==='submitted'&&registrationOpen(r)?`<button type="button" class="text" data-action="bulk-reopen" data-index="${i}" aria-label="개체 ${i+1} 수정">수정</button>`:''}</div>
     ${bulkDetails(row,i,readonly)}${e?.reason?`<p class="entry-reason">${esc(e.reason)}</p>`:''}${conflict?`<p class="entry-reason">다른 화면에서 변경된 개체예요.</p><button type="button" class="text bulk-latest" data-action="bulk-latest" data-index="${i}">최신 자료 불러오기</button>`:''}</section>`;
    }).join('')}</div><p id="step-error" class="form-error" role="alert"></p>
-   ${retainedEntries(r)}${auctionItems().length?'<h3 class="auction-photo-heading">편성된 개체 부모 사진</h3>'+auctionPhotoList():''}${pickupBlock(r)}
+   ${retainedEntries(r)}${auctionItems().length?'<h3 class="auction-photo-heading">편성된 개체 부모정보</h3>'+auctionPhotoList():''}${pickupBlock(r)}
    </div><div class="step-footer"></div></form>`,true);
   renderBulkActions();
   sheet.classList.add('bulk-sheet');
@@ -169,7 +184,7 @@
   return r.entryIds.slice(entryLimit(r)).map((id,j)=>{
    const i=entryLimit(r)+j,e=r.entries[i],row=recovery[id]||e;
    if(!row)return '';
-   return `<details class="bulk-details"><summary>개체 ${i+1} 기존 자료 보관</summary><p class="muted">현재 등록 한도는 ${entryLimit(r)}마리입니다. 기존 자료는 삭제하지 않고 보관합니다.${e?.status==='approved'?' 이미 승인된 개체는 운영자에게 확인해 주세요.':''}</p><p>${esc(labels[e?.status]||'이 기기에 임시 저장')} · ${esc(row.sex==='male'?'수컷':row.sex==='female'?'암컷':'미구분')} · ${esc(row.weight||'미입력')}g · ${esc(row.hatchDate||'출생일 미입력')}</p>${bulkDetails({...row,parents:row.parents||Object.fromEntries(['sire','dam'].map(side=>[side,{photoId:state.entryState.parents.find(p=>p.id===e?.[side+'Id'])?.photoId||''}]))},i,true)}${e?.status==='submitted'&&Date.parse(r.session.entriesDueAt)>Date.parse(state.now)?`<button type="button" class="text" data-action="bulk-reopen" data-index="${i}">개체 ${i+1} 제출 철회</button>`:''}</details>`;
+   return `<details class="bulk-details"><summary>개체 ${i+1} 기존 자료 보관</summary><p class="muted">현재 등록 한도는 ${entryLimit(r)}마리입니다. 기존 자료는 삭제하지 않고 보관합니다.${e?.status==='approved'?' 이미 승인된 개체는 운영자에게 확인해 주세요.':''}</p><p>${esc(labels[e?.status]||'이 기기에 임시 저장')} · ${esc(row.sex==='male'?'수컷':row.sex==='female'?'암컷':'미구분')} · ${esc(row.weight||'미입력')}g · ${esc(row.hatchDate||'출생일 미입력')}</p>${bulkDetails({...row,parents:row.parents||entryParents(e)},i,true)}${e?.status==='submitted'&&registrationOpen(r)?`<button type="button" class="text" data-action="bulk-reopen" data-index="${i}">개체 ${i+1} 제출 철회</button>`:''}</details>`;
   }).join('');
  }
  function renderBulkActions(){
@@ -182,11 +197,13 @@
   for(const [i,row] of bulkDrafts.entries()){
    if(!bulkEditable(i)||row.version!==(reservation().entries[i]?.version||0))continue;
    for(const key of ['sex','weight','hatchDate','note'])row[key]=$(`[name="${key}-${i}"]`)?.value||'';
+   for(const side of ['sire','dam'])row.parents[side]={...row.parents[side],name:$(`[name="${side}-name-${i}"]`)?.value??row.parents[side]?.name??''};
    recovery[row.id]=structuredClone(row);
   }
   dirty=true;renderBulkActions();persistRecovery().catch(e=>{$('#step-error').textContent=e.message});
  }
  async function commitBulk(submit){
+  await saveAuctionNames();
   if(!bulkDrafts||(!dirty&&!submit))return true;
   captureBulk();await recoveryQueue;
   const rows=bulkDrafts.map((row,i)=>({row,i})).filter(({row,i})=>bulkEditable(i)&&(rowHasData(row)||!!reservation().entries[i]));
@@ -203,6 +220,7 @@
  }
  async function commit(submit){
   if($('#bulk-entry-form'))return commitBulk(submit);
+  await saveAuctionNames();
   if(!draft||!editable()||(!dirty&&!submit))return true;
   capture();await recoveryQueue;
   const r=reservation(),id=draft.id;
@@ -217,7 +235,7 @@
   const url=URL.createObjectURL(file),img=new Image();
   try{await new Promise((ok,no)=>{img.onload=ok;img.onerror=()=>no(Error('JPG 또는 PNG 사진을 선택해 주세요.'));img.src=url});const scale=Math.min(1,800/Math.max(img.width,img.height)),canvas=document.createElement('canvas');canvas.width=Math.round(img.width*scale);canvas.height=Math.round(img.height*scale);const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0,canvas.width,canvas.height);const blob=await new Promise(ok=>canvas.toBlob(ok,'image/jpeg',.72));if(!blob||blob.size>350000)throw Error('사진 크기를 줄여 다시 선택해 주세요.');return blob}finally{URL.revokeObjectURL(url)}
  }
- document.addEventListener('input',e=>{if(e.target.type!=='file'&&e.target.closest('#entry-step-form,#bulk-entry-form')){e.target.removeAttribute('aria-invalid');capture()}});
+ document.addEventListener('input',e=>{if(e.target.dataset.auctionName){captureAuctionName(e.target);return}if(e.target.type!=='file'&&e.target.closest('#entry-step-form,#bulk-entry-form')){e.target.removeAttribute('aria-invalid');capture()}});
  document.addEventListener('change',async e=>{
   if(e.target.dataset.auctionParent){
    if(busy||photoBusy)return;
@@ -233,13 +251,13 @@
    if(!file||busy||photoBusy||!bulkEditable(i))return;
    captureBulk();photoBusy=true;setBusy(true);const scroll=$('.bulk-scroll').scrollTop;
    try{const blob=await imageBlob(file),id=uid(),url=URL.createObjectURL(blob);photoUrls.set(id,url);const result=await Store.send({type:'media',media:{id,blob,url,thumbnailUrl:url,label:`개체 ${i+1} ${side}`}});state.entryState.media=result.state.media;
-    if(side==='animal')bulkDrafts[i].photoIds=[id];else bulkDrafts[i].parents[side]={photoId:id};
+    if(side==='animal')bulkDrafts[i].photoIds=[id];else bulkDrafts[i].parents[side]={...bulkDrafts[i].parents[side],photoId:id};
     recovery[bulkDrafts[i].id]=structuredClone(bulkDrafts[i]);await persistRecovery();openBulk();$(`[data-bulk-row="${i}"] details`).open=true;$('.bulk-scroll').scrollTop=scroll;
    }catch(error){$('#step-error').textContent=error.message}finally{photoBusy=false;setBusy(false)}return;
   }
   const side=e.target.dataset.photo,file=e.target.files?.[0];if(!side||!file||busy||photoBusy||!editable())return;
   capture();photoBusy=true;setBusy(true);
-  try{const blob=await imageBlob(file),id=uid(),url=URL.createObjectURL(blob);photoUrls.set(id,url);const result=await Store.send({type:'media',media:{id,blob,url,thumbnailUrl:url,label:side==='sire'?'부 개체':'모 개체'}});state.entryState.media=result.state.media;draft.parents[side]={photoId:id};recovery[draft.id]=structuredClone(draft);await persistRecovery();dirty=true;openDate(selected,slot)}
+  try{const blob=await imageBlob(file),id=uid(),url=URL.createObjectURL(blob);photoUrls.set(id,url);const result=await Store.send({type:'media',media:{id,blob,url,thumbnailUrl:url,label:side==='sire'?'부 개체':'모 개체'}});state.entryState.media=result.state.media;draft.parents[side]={...draft.parents[side],photoId:id};recovery[draft.id]=structuredClone(draft);await persistRecovery();dirty=true;openDate(selected,slot)}
   catch(error){$('#step-error').textContent=error.message}finally{photoBusy=false;setBusy(false)}
  });
  document.addEventListener('click',e=>{
@@ -248,25 +266,26 @@
   if(b.dataset.month){const d=new Date(month+'-01T12:00:00Z');d.setUTCMonth(d.getUTCMonth()+Number(b.dataset.month));const next=d.toISOString().slice(0,7);if(next>='2026-10'&&next<=state.dates.at(-1).date.slice(0,7)){month=next;renderCalendar()}return}
   if(b.dataset.slot!==undefined){run(async()=>{await commit(false);openDate(selected,Number(b.dataset.slot))});return}
   const action=b.dataset.action;
-  if(action==='auction-photo-refresh'){run(async()=>{state=await request();auctionPhotoPending=null;refreshAuctionPhotos();$('#step-error').textContent=''});return}
-  if(action==='auction-retry-photo'){auctionPhotoItem=auctionItems().find(item=>item.id===auctionPhotoPending.itemId);run(()=>saveAuctionPhoto(auctionPhotoPending.side,auctionPhotoPending.photoId));return}
+  if(action==='auction-photo-refresh'){run(async()=>{state=await request();auctionPhotoPending=null;for(const row of auctionNameDrafts.values()){const item=auctionItems().find(item=>item.id===row.itemId);if(item)row.expectedUpdatedAt=item.updatedAt;}refreshAuctionPhotos();$('#step-error').textContent=''});return}
+  if(action==='auction-retry-photo'){auctionPhotoItem=auctionItems().find(item=>item.id===auctionPhotoPending.itemId);run(()=>saveAuctionParent(auctionPhotoPending.side,auctionPhotoPending));return}
   if(action==='auction-remove-photo'||action==='auction-undo-photo'){
    auctionPhotoItem=auctionItems().find(item=>item.id===b.dataset.item);if(!auctionPhotoItem?.canEdit)return;
    run(async()=>{const side=b.dataset.side,key=auctionPhotoItem.id+side;if(action==='auction-remove-photo'){const previous=auctionPhotoItem.parentPhotoIds[side];if(previous)auctionPhotoUndo.set(key,previous);else auctionPhotoUndo.delete(key);await saveAuctionPhoto(side,'')}else{const photoId=auctionPhotoUndo.get(key);await saveAuctionPhoto(side,photoId);auctionPhotoUndo.delete(key);refreshAuctionPhotos()}});return;
   }
+  if(action==='auction-save-names'){run(saveAuctionNames);return}
   if(action==='bulk-save'){run(async()=>{await commitBulk(false);openBulk();renderCalendar();message('입력한 개체를 저장했어요')});return}
   if(action==='bulk-reopen'){run(async()=>{await commitBulk(false);const i=Number(b.dataset.index);state=await request({type:'reopen-entry',id:reservation().id,slot:i,expectedVersion:reservation().entries[i].version});openBulk();$(`[name="sex-${i}"]`)?.focus()});return}
   if(action==='bulk-latest'){run(async()=>{const i=Number(b.dataset.index);captureBulk();delete recovery[bulkDrafts[i].id];await persistRecovery();await load();openBulk()});return}
   if(action==='bulk-remove-photo'||action==='bulk-undo-photo'){
    const i=Number(b.dataset.index),side=b.dataset.side;if(!bulkEditable(i))return;
    run(async()=>{captureBulk();const row=bulkDrafts[i],key=row.id+side,scroll=$('.bulk-scroll').scrollTop;
-    if(action==='bulk-remove-photo'){removed.set(key,side==='animal'?row.photoIds:row.parents[side]);if(side==='animal')row.photoIds=[];else row.parents[side]={photoId:''}}
-    else{if(side==='animal')row.photoIds=removed.get(key);else row.parents[side]=removed.get(key);removed.delete(key)}
+    if(action==='bulk-remove-photo'){removed.set(key,side==='animal'?row.photoIds:row.parents[side]);if(side==='animal')row.photoIds=[];else row.parents[side]={...row.parents[side],photoId:''}}
+    else{if(side==='animal')row.photoIds=removed.get(key);else row.parents[side]={...row.parents[side],photoId:removed.get(key)?.photoId||''};removed.delete(key)}
     recovery[row.id]=structuredClone(row);await persistRecovery();openBulk();$(`[data-bulk-row="${i}"] details`).open=true;$('.bulk-scroll').scrollTop=scroll;
    });return;
   }
   if(action==='close'){close();return}
-  if(action==='remove-photo'||action==='undo-photo'){run(async()=>{capture();const key=draft.id+b.dataset.side;if(action==='remove-photo'){removed.set(key,draft.parents[b.dataset.side]);draft.parents[b.dataset.side]={photoId:''}}else{draft.parents[b.dataset.side]=removed.get(key);removed.delete(key)}recovery[draft.id]=structuredClone(draft);await persistRecovery();openDate(selected,slot)});return}
+  if(action==='remove-photo'||action==='undo-photo'){run(async()=>{capture();const key=draft.id+b.dataset.side;if(action==='remove-photo'){removed.set(key,draft.parents[b.dataset.side]);draft.parents[b.dataset.side]={...draft.parents[b.dataset.side],photoId:''}}else{draft.parents[b.dataset.side]={...draft.parents[b.dataset.side],photoId:removed.get(key)?.photoId||''};removed.delete(key)}recovery[draft.id]=structuredClone(draft);await persistRecovery();openDate(selected,slot)});return}
   if(action==='discard'){run(async()=>{delete recovery[draft.id];await persistRecovery();dirty=false;await load();openDate(selected,slot)});return}
   if(action==='reserve')run(async()=>{state=await request({type:'reserve',date:selected,quantity:state.dates.find(d=>d.date===selected).maxQuantityAvailable});openDate(selected);renderCalendar()});
   if(action==='prev'||action==='next')run(async()=>{await commit(false);openDate(selected,action==='prev'?Math.max(0,slot-1):slot<entryLimit(reservation())-1?slot+1:undefined)});
@@ -281,6 +300,6 @@
   }
   if(e.target.id!=='entry-step-form')return;e.preventDefault();if(!e.target.reportValidity())return;run(async()=>{await commit(true);const r=reservation(),missing=r.entries.slice(0,entryLimit(r)).findIndex(pending);openDate(selected,CreoVendorTasks.broadcastRegistrationComplete(r)||missing<0?undefined:missing);renderCalendar()})});
  $('#close').onclick=close;sheet.addEventListener('cancel',e=>{e.preventDefault();close()});sheet.addEventListener('close',()=>{draft=null;auctionPhotoItem=null;dirty=false;(lastTrigger?.isConnected?lastTrigger:$('#refresh')).focus()});
- $('#refresh').onclick=load;window.addEventListener('beforeunload',e=>{if(busy||photoBusy){e.preventDefault();e.returnValue=''}});
+ $('#refresh').onclick=load;window.addEventListener('beforeunload',e=>{if(busy||photoBusy||auctionNameDrafts.size){e.preventDefault();e.returnValue=''}});
  load();
 })();

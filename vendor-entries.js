@@ -205,13 +205,16 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
                     if(type==='submit'&&(!['male','female','unknown'].includes(input.entry.sex)||!normalized.weight||!normalized.hatchDate||normalized.hatchDate>broadcast.today))throw fail('성별·체중·출생년월일을 확인해 주세요. 미래 출생일은 등록할 수 없어요.',422);
                     for(const role of ['sire','dam']){
                         normalized[role+'Id']='';
-                        const photoId=cleanText(input.parents?.[role]?.photoId,80);if(!photoId)continue;
-                        photos(state,[photoId]);
                         const digest=crypto.createHash('sha256').update(id+':'+role).digest('hex');
                         const parentId=digest.slice(0,8)+'-'+digest.slice(8,12)+'-4'+digest.slice(13,16)+'-a'+digest.slice(17,20)+'-'+digest.slice(20,32);
                         const old=state.parents.find(p=>p.id===parentId);
+                        const previous=state.parents.find(p=>p.id===current?.[role+'Id']),patch=input.parents?.[role]||{};
+                        const name=cleanText(Object.hasOwn(patch,'name')?patch.name:previous?.name,40);
+                        const photoId=cleanText(Object.hasOwn(patch,'photoId')?patch.photoId:previous?.photoId,80);
+                        if(!photoId&&!name)continue;
+                        photos(state,[photoId]);
                         if(old)state.parentHistory.push({...copy(old),replacedAt:now});
-                        const value={id:parentId,vendorId:ownerId,name:'',code:broadcast.date+'-'+(broadcast.slot+1)+'-'+role,morph:'',sex:role==='sire'?'male':'female',photoId,version:(old?.version||0)+1,updatedAt:now};
+                        const value={id:parentId,vendorId:ownerId,name,code:broadcast.date+'-'+(broadcast.slot+1)+'-'+role,morph:previous?.morph||'',sex:role==='sire'?'male':'female',photoId,version:(old?.version||0)+1,updatedAt:now};
                         state.parents=state.parents.filter(p=>p.id!==parentId).concat(value);normalized[role+'Id']=parentId;
                     }
                 }
@@ -409,21 +412,22 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
     }
     async function updateItemParents(context,input) {
         const ownerId=owner(context),id=cleanText(input.itemId,64),side=input.side,photoId=cleanText(input.photoId,80),requestId=cleanText(input.requestId,80);
-        if(context.channel.id!=='national-cre'||!['draft','active'].includes(context.channel.status)||context.vendor.active===false)throw fail('현재 방송에서는 사진을 변경할 수 없어요.',403);
-        if(!['sire','dam'].includes(side)||!id||!/^[a-zA-Z0-9_-]{8,80}$/.test(requestId))throw fail('부모 사진을 다시 선택해 주세요.',422);
+        const hasPhoto=Object.hasOwn(input,'photoId'),hasName=Object.hasOwn(input,'name'),name=cleanText(input.name,40);
+        if(context.channel.id!=='national-cre'||!['draft','active'].includes(context.channel.status)||context.vendor.active===false)throw fail('현재 방송에서는 부모정보를 변경할 수 없어요.',403);
+        if(!['sire','dam'].includes(side)||!id||(!hasPhoto&&!hasName)||!/^[a-zA-Z0-9_-]{8,80}$/.test(requestId))throw fail('부모정보를 다시 확인해 주세요.',422);
         return locked(ownerId,async()=>{
             const state=await readOwner(ownerId),key=context.channel.id+':item-parents:'+requestId;
-            const signature=hash({id,side,photoId,expectedUpdatedAt:input.expectedUpdatedAt}),prior=state.requests.find(r=>r.key===key);
+            const signature=hash({id,side,...(hasPhoto?{photoId}:{}),...(hasName?{name}:{}),expectedUpdatedAt:input.expectedUpdatedAt}),prior=state.requests.find(r=>r.key===key);
             if(prior){if(prior.signature!==signature)throw fail('요청 내용이 변경됐어요. 다시 열어 주세요.');return {duplicate:true,itemId:id};}
             const item=await repository.getRecord(context.channel.id,'item',id);
             if(!item||item.vendorId!==context.vendor.id)throw fail('해당 업체의 개체만 변경할 수 있어요.',403);
             if(!['waiting','live','passed'].includes(item.status))throw fail('낙찰·종료된 개체는 운영자에게 문의해 주세요.');
-            if(!input.expectedUpdatedAt||input.expectedUpdatedAt!==item.updatedAt)throw fail('개체가 변경됐어요. 사진 목록을 다시 열어 주세요.');
-            const media=photos(state,[photoId]),entry=state.entries.find(e=>e.itemId===id&&e.approved);
+            if(!input.expectedUpdatedAt||input.expectedUpdatedAt!==item.updatedAt)throw fail('개체가 변경됐어요. 최신 자료를 불러와 주세요.');
+            const entry=state.entries.find(e=>e.itemId===id&&e.approved);
             let parents=item.attributes?.parents||[];
             if(entry)parents=mergedParents(item,parentPhotos(state,entry.approved));
             const existing=parents.find(p=>p.role===side)||{role:side,name:'',morph:''};
-            const replacement={...existing,media};
+            const replacement={...existing,...(hasName?{name}:{}),media:hasPhoto?photos(state,[photoId]):existing.media||[]};
             const saved={...item,updatedAt:nextItemTimestamp(item),attributes:{...item.attributes,
                 parents:parents.filter(p=>p.role!==side).concat(replacement),
                 parentPhotoOverrides:[...new Set([...(Array.isArray(item.attributes?.parentPhotoOverrides)?item.attributes.parentPhotoOverrides:[]),side])]

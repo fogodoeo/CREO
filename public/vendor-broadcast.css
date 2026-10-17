@@ -5,6 +5,11 @@
 .auction-photo-picker>span{white-space:nowrap}@media(max-width:360px){.auction-photo-tools{gap:8px}.auction-photo-picker{font-size:12px;gap:5px;padding-left:6px}.auction-photo-picker img{width:28px;height:32px}}
 .parent-photo-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .parent-photo{min-width:0;position:relative}
+.parent-name-field{display:grid;gap:4px;margin-top:8px;color:var(--muted,#626d7b);font-size:12px}
+.parent-name-field input{box-sizing:border-box;width:100%;min-width:0;min-height:44px;padding:8px;border:1px solid #c7ced8;border-radius:8px;background:#fff;color:#202631;font:inherit;font-size:16px}
+.parent-name-field input:focus-visible{outline:3px solid #245bd4;outline-offset:2px}
+.parent-name-field input[readonly]{background:#f8f9fb}
+.auction-name-save{margin-top:12px;min-height:44px;width:100%}
 .photo-picker{position:relative;display:flex;align-items:center;gap:10px;padding:10px;min-height:76px;border:1px dashed #b8c2ce;border-radius:12px;background:#f8f9fb;cursor:pointer}
 .photo-picker>span:not(.photo-add){font-size:14px;font-weight:600}
 .photo-picker small{display:block;font-size:12px;font-weight:400;color:var(--muted);margin-top:3px}

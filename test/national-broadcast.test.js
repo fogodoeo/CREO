@@ -27,11 +27,11 @@ test('vendor parent photos update imported lots after the entry deadline and ref
  f.advance(12*86400000);
  const current=(await f.get()).json().entryState.auctionItems;assert.equal(current.length,1);assert.equal(current[0].id,item.id);
  const pulse=()=>f.call(f.client,'GET','/api/platform/channels/national-cre/broadcast-pulse');const before=(await pulse()).json().revision;
- const saved=await f.command({type:'parent-photos',itemId:item.id,side:'sire',photoId,expectedUpdatedAt:current[0].updatedAt});assert.equal(saved.status,200,saved.body);
+ const saved=await f.command({type:'parent-photos',itemId:item.id,side:'sire',name:'헐크',photoId,expectedUpdatedAt:current[0].updatedAt});assert.equal(saved.status,200,saved.body);
  assert.equal(saved.json().entryState.auctionItems[0].parents[0].media[0].url,'/assets/test-parent.webp');assert.ok((await pulse()).json().revision>before);
  assert.deepEqual((await f.repository.getRecord('national-cre','item',item.id)).attributes.entry_traits,item.attributes.entry_traits);
  const denied=await f.command({type:'parent-photos',itemId:'other-vendor',side:'sire',photoId,expectedUpdatedAt:current[0].updatedAt});assert.equal(denied.status,403);
- f.restart();assert.equal((await f.get()).json().entryState.auctionItems[0].parentPhotoIds.sire,photoId);
+ f.restart();assert.equal((await f.get()).json().entryState.auctionItems[0].parentPhotoIds.sire,photoId);assert.equal((await f.get()).json().entryState.auctionItems[0].parents[0].name,'헐크');
 });
 test('every region always allows four entries regardless of company count or region overrides',()=>{
  const {regionEntryPolicy}=require('../national-broadcast');
@@ -205,7 +205,7 @@ test('entry and parent photos enter the existing approval queue; approval create
  assert.equal((await f.command({...body,requestId:randomUUID(),expectedVersion:e.version+1})).status,409);
  const direct=await f.call(f.client,'POST','/api/platform/vendor-entries',{type:'save',entry:{id:randomUUID()},requestId:randomUUID(),token:f.token,event:'national-cre'});assert.equal(direct.status,409);
 });
-test('concurrent edits, invalid parents, deadlines and failed persistence fail without partial submission',async t=>{
+test('concurrent edits, invalid parents and failed persistence fail without partial submission; entry time is unrestricted',async t=>{
  const f=await fixture(t),r=(await f.command({type:'reserve',date:'2026-10-14',quantity:4})).json().reservations[0];
  const incomplete=await f.command({type:'save-entry',id:r.id,slot:1,expectedVersion:0,entry:{weight:'3.2'}});assert.equal(incomplete.status,200,incomplete.body);assert.equal(incomplete.json().reservations[0].entries[1].sex,'');assert.equal(incomplete.json().reservations[0].entries[1].code,'개체 2');
  const missingSex=await f.command({type:'save-entry',id:r.id,slot:1,expectedVersion:1,submit:true,entry:{weight:'3.2',hatchDate:'2026-09-01'}});assert.equal(missingSex.status,422);
@@ -217,7 +217,7 @@ test('concurrent edits, invalid parents, deadlines and failed persistence fail w
  const upsert=f.repository.upsertRows.bind(f.repository);f.repository.upsertRows=async rows=>{if(rows.some(r=>r.key.startsWith('vendor_entries_v1::')))throw Error('isolated failure');return upsert(rows)};
  assert.equal((await f.command({...base,submit:true,expectedVersion:current.version})).status,500);f.repository.upsertRows=upsert;
  assert.equal((await f.get()).json().reservations[0].entries[0].status,'draft');
- f.advance(12*86400000);assert.equal((await f.command({...base,expectedVersion:current.version})).status,409);
+ f.advance(12*86400000);assert.equal((await f.command({...base,expectedVersion:current.version})).status,200);
 });
 test('capacity is atomic across vendors; reserved slots are private and pickup survives restart',async t=>{
  const f=await fixture(t),initial=(await f.call(f.client,'GET','/api/platform/channels/national-cre/broadcast-bookings',undefined,f.admin)).json();
@@ -293,15 +293,41 @@ test('batch validation and storage failure leave every entry unchanged; retry is
  assert.equal((await f.command(body)).status,200);f.restart();assert.equal((await f.get()).json().reservations[0].completed,4);
 });
 
-test('batch conflicts, duplicate slots, unowned reservations and deadlines cannot partially overwrite entries',async t=>{
+test('batch conflicts, duplicate slots and unowned reservations cannot partially overwrite entries; later edits remain available',async t=>{
  const f=await fixture(t),r=(await f.command({type:'reserve',date:'2026-10-14',quantity:4})).json().reservations[0];
  const body={type:'save-entries',id:r.id,submit:false,entries:Array.from({length:4},(_,slot)=>({slot,expectedVersion:0,entry:{sex:'male',weight:'5',hatchDate:'2026-09-01'}}))};
  assert.equal((await f.command({...body,entries:[body.entries[0],body.entries[0]]})).status,422);
  assert.equal((await f.command({...body,id:randomUUID()})).status,403);
  const results=await Promise.all([f.command(body),f.command({...body,entries:body.entries.map(e=>({...e,entry:{...e.entry,weight:'9'}}))})]);assert.deepEqual(results.map(r=>r.status).sort(),[200,409]);
  const rows=(await f.get()).json().reservations[0].entries;assert.equal(new Set(rows.map(e=>e.weight)).size,1);assert.ok(rows.every(e=>e.version===1));
- f.advance(12*86400000);assert.equal((await f.command({...body,entries:body.entries.map(e=>({...e,expectedVersion:1}))})).status,409);
- assert.deepEqual((await f.get()).json().reservations[0].entries,rows);
+ f.advance(12*86400000);assert.equal((await f.command({...body,entries:body.entries.map(e=>({...e,expectedVersion:1}))})).status,200);
+ assert.ok((await f.get()).json().reservations[0].entries.every(e=>e.version===2));
+});
+
+test('legacy time cutoffs no longer block national intake; manual pause, region and past-date boundaries remain',async t=>{
+ const f=await fixture(t,'경기 테스트','경기'),route='/api/platform/channels/national-cre/broadcast-bookings';
+ let view=(await f.call(f.client,'GET',route,null,f.admin)).json();
+ const settings={...view.sessions.find(s=>s.date==='2026-10-19'),closesAt:'2026-10-16T11:00:00.000Z',entriesDueAt:'2026-10-18T11:00:00.000Z',selfUntil:'2026-10-16T11:00:00.000Z'};
+ assert.equal((await f.call(f.client,'POST',route,{type:'session',date:'2026-10-19',settings,expectedVersion:view.version,requestId:randomUUID()},f.admin)).status,200);
+ const raw=await f.repository.getRecord('national-cre','setting','national-broadcasts');raw.sessions['2026-10-19']={...settings};await f.repository.upsertRecord('national-cre','setting',{...raw,id:'national-broadcasts'});
+ f.advance(Date.parse('2026-10-19T10:00:00.000Z')-Date.parse(f.view.now));f.restart();
+ const next=(await f.get()).json(),date=next.dates.find(d=>d.date==='2026-10-19');assert.equal(date.maxQuantityAvailable,4);assert.equal(date.closesAt,null);assert.equal(date.entriesDueAt,null);
+ assert.equal((await f.command({type:'reserve',date:'2026-10-14',quantity:4})).status,409);
+ assert.equal((await f.command({type:'reserve',date:'2026-10-21',quantity:4})).status,409);
+ view=(await f.call(f.client,'GET',route,null,f.admin)).json();
+ assert.equal((await f.call(f.client,'POST',route,{type:'session',date:date.date,settings:{...date,paused:true},expectedVersion:view.version,requestId:randomUUID()},f.admin)).status,200);
+ assert.equal((await f.command({type:'reserve',date:date.date,quantity:4})).status,409);
+ view=(await f.call(f.client,'GET',route,null,f.admin)).json();
+ assert.equal((await f.call(f.client,'POST',route,{type:'session',date:date.date,settings:{...date,paused:false},expectedVersion:view.version,requestId:randomUUID()},f.admin)).status,200);
+ const reserved=await f.command({type:'reserve',date:date.date,quantity:4});assert.equal(reserved.status,200,reserved.body);
+ const r=reserved.json().reservations[0],body={type:'save-entries',id:r.id,submit:true,requestId:randomUUID(),entries:[0,1,2,3].map(slot=>({slot,expectedVersion:0,entry:{sex:'male',weight:'5',hatchDate:'2026-01-01'},parents:{sire:{name:'헐크 '+slot},dam:{name:'리즈 '+slot}}}))};
+ const submitted=await f.command(body);assert.equal(submitted.status,200,submitted.body);assert.equal(submitted.json().reservations[0].completed,4);assert.equal(submitted.json().entryState.parents.length,8);
+ f.restart();assert.equal((await f.command(body)).json().duplicate,true);
+ const e=(await f.get()).json().reservations[0].entries[0],reopen=await f.command({type:'reopen-entry',id:r.id,slot:0,expectedVersion:e.version});assert.equal(reopen.status,200,reopen.body);
+ const edit=await f.command({type:'save-entry',id:r.id,slot:0,submit:true,expectedVersion:reopen.json().reservations[0].entries[0].version,entry:body.entries[0].entry,parents:{sire:{photoId:''}}});assert.equal(edit.status,200,edit.body);
+ const submittedEntry=edit.json().reservations[0].entries[0];assert.equal(submittedEntry.submission.parents.find(p=>p.role==='sire').name,'헐크 0');assert.equal(submittedEntry.submission.parents.find(p=>p.role==='dam').name,'리즈 0');
+ const approved=await f.call(f.client,'POST','/api/platform/channels/national-cre/entries/review',{type:'approve',requestId:randomUUID(),vendorId:f.vendorId,id:submittedEntry.id,expectedVersion:submittedEntry.version,lot:'A01',order:1,startPrice:0},f.admin);assert.equal(approved.status,200,approved.body);
+ const item=(await f.repository.listRecords('national-cre','item'))[0];assert.equal(item.attributes.parents.find(p=>p.role==='sire').name,'헐크 0');assert.equal(item.attributes.parents.find(p=>p.role==='sire').media.length,0);
 });
 
 test('inbound origin preferences persist per vendor, reject stale writes and never reserve transport',async t=>{
