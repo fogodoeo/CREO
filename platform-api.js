@@ -5,6 +5,7 @@ const { refreshShippingRate } = require('./shipping-rate-refresh');
 const { rankingsForChannel } = require('./public/ranking-engine');
 const BasicDice = require('./public/basic-dice-core');
 const { normalizePhone } = require('./band-membership');
+const { extractMobilePhone, redactPhoneText, buyerDisplayName: contactDisplayName } = require('./public/mobile-phone');
 const SettlementDiscount = require('./public/settlement-discount');
 const FALLBACK_PARGE_RATES = require('./public/parge_data.json');
 const Checkout = require('./checkout-core');
@@ -646,12 +647,7 @@ function phoneFromBid(bid = {}) {
     );
     if (explicit) return explicit;
     const text = String(bid.name || bid.bidder || bid.winner || '');
-    const matches = text.match(/(?<!\d)(?:010[\s.-]?\d{4}[\s.-]?\d{4}|\d{8})(?!\d)/g) || [];
-    for (const match of matches) {
-        const normalized = normalizePhone(/^\d{8}$/.test(match) ? `010${match}` : match);
-        if (normalized) return normalized;
-    }
-    return '';
+    return extractMobilePhone(text);
 }
 
 async function bidderMemberKey(bid, bandMembership) {
@@ -897,13 +893,7 @@ function publicBidderKey(value) {
 }
 
 function publicBidderName(value) {
-    return cleanText(value, 120)
-        .replace(/(?<!\d)010[\s.-]?\d{3,4}[\s.-]?\d{4}(?!\d)/g, '')
-        .replace(/(^|[\s/|·])\d{8,13}(?=$|[\s/|·])/g, '$1')
-        .replace(/[\s/|·]+$/g, '')
-        .replace(/\s+/g, ' ')
-        .trim()
-        .slice(0, 80);
+    return redactPhoneText(cleanText(value,120)).slice(0,80);
 }
 
 function validateRecord(type, record, workspace) {
@@ -960,7 +950,7 @@ function storedWinnerPhone(item = {}) {
 }
 
 function buyerDisplayName(item = {}) {
-    return publicBidderName(item.winnerName || item.winnerAlias || winningBid(item)?.name || '낙찰자') || '낙찰자';
+    return contactDisplayName(item.winnerName || item.winnerAlias || winningBid(item)?.name || '낙찰자') || '낙찰자';
 }
 
 function maskBuyerName(value) {

@@ -1,15 +1,13 @@
 'use strict';
 
 const { createHmac, randomBytes, timingSafeEqual } = require('node:crypto');
+const { normalizeMobilePhone } = require('./public/mobile-phone');
 
 const SESSION_TYPE = 'band_phone_membership';
 const DEFAULT_TARGET_BAND_URL = 'https://www.band.us/band/101878670/post';
 
 function normalizePhone(value) {
-    let digits = String(value || '').replace(/\D/g, '');
-    if (digits.startsWith('82') && digits.length === 12) digits = `0${digits.slice(2)}`;
-    if (digits.length === 8) digits = `010${digits}`;
-    return /^010\d{8}$/.test(digits) ? digits : '';
+    return normalizeMobilePhone(value);
 }
 
 function profileNameCandidates(value) {

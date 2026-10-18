@@ -1,8 +1,8 @@
 (function (root, factory) {
-    var api = factory();
+    var api = factory(typeof module === 'object' && module.exports ? require('./mobile-phone') : root.CreoMobilePhone);
     if (typeof module === 'object' && module.exports) module.exports = api;
     else root.CreoPrintShippingSummary = api;
-})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (Phone) {
     'use strict';
 
     function text(value) {
@@ -83,8 +83,7 @@
         var phoneMatch = rawWinner.match(/(?:^|\D)(01[016789][\s.-]?\d{3,4}[\s.-]?\d{4}|\d{8})(?=\D|$)/);
         var embeddedPhone = phoneMatch ? phoneMatch[1] : '';
         var explicitName = text(saved.name || item.winner_name || item.winnerName || item.winnerAlias);
-        var nameSource = explicitName || text(embeddedPhone ? rawWinner.replace(embeddedPhone, ' ') : rawWinner);
-        var name = text(nameSource.split('/')[0]) || '이름 없음';
+        var name = Phone.buyerDisplayName(explicitName || rawWinner) || '이름 없음';
         var phone = digits(saved.phone || item.winner_phone || item.winnerPhone || embeddedPhone);
         return {
             key: phone ? 'phone:' + phone : 'name:' + name.toLowerCase(),

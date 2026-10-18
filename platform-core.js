@@ -530,13 +530,7 @@ function publicItemAttributes(item = {}) {
 }
 
 function publicBidderName(value) {
-    return cleanText(value, 120)
-        .replace(/(?<!\d)010[\s.-]?\d{3,4}[\s.-]?\d{4}(?!\d)/g, '')
-        .replace(/(^|[\s/|·])\d{8,13}(?=$|[\s/|·])/g, '$1')
-        .replace(/[\s/|·]+$/g, '')
-        .replace(/\s+/g, ' ')
-        .trim()
-        .slice(0, 80);
+    return require('./public/mobile-phone').redactPhoneText(cleanText(value,120)).slice(0,80);
 }
 
 function publicBidLog(item = {}) {
