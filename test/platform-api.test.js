@@ -14,6 +14,25 @@ const { normalizeChannel } = require('../platform-core');
 const { createCrewartHouseService } = require('../crewart-house-service');
 const {CheckoutNotificationService} = require('../checkout-notifications');
 
+test('countdown display is authenticated, scoped and never modifies auction records',async()=>{
+ const repository=new MemoryRepository(),api=createPlatformApi({repository});
+ const path='/api/platform/channels/alpha';
+ const item={id:'count-item',name:'A01',status:'live'};
+ const state={id:'state',mode:'live',activeItemId:item.id};
+ await repository.upsertRecord('alpha','item',item);await repository.upsertRecord('alpha','broadcast',state);
+ const before=JSON.stringify([...repository.records]);
+ const signal={sessionId:'test-desktop-123456',sequence:1,itemId:item.id,running:true};
+ assert.equal((await call(api,'PUT',path+'/countdown-display',signal,'')).status,401);
+ assert.equal((await call(api,'PUT','/api/platform/channels/beta/countdown-display',signal)).status,409);
+ assert.equal((await call(api,'PUT',path+'/countdown-display',signal)).status,200);
+ const read=async()=>(await call(api,'GET',path+'/broadcast?page=2',null,'')).json();
+ assert.equal((await read()).state.countdownDisplay.running,true);
+ assert.equal((await call(api,'PUT',path+'/countdown-display',{...signal,sequence:3,running:false})).status,200);
+ assert.equal((await call(api,'PUT',path+'/countdown-display',{...signal,sequence:2})).json().duplicate,true);
+ assert.equal((await read()).state.countdownDisplay,null);
+ assert.equal(JSON.stringify([...repository.records]),before);
+});
+
 test('broadcast pricing updates are channel scoped, survive restart and never change auction or notices',async()=>{
  const repository=new MemoryRepository();let api=createPlatformApi({repository});
  const path='/api/platform/channels/alpha';
