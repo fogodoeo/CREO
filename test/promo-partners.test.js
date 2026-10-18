@@ -5,13 +5,13 @@ const curated=require('../tools/promo-partners.json');
 test('catalog uses live active membership and regions; expands approved split brands without contact data',()=>{
  const doze=curated[0],split=curated.find(v=>v.name==='도레미');
  const vendors=[{id:curatedId(doze),name:'Doze gecko',broadcastRegion:'대구·경북',phone:'secret',address:'private'},{id:curatedId(split),name:'도레미&셀렙',broadcastRegion:'부산·울산·경남'},{id:'inactive',name:'inactive',active:false},{id:'deleted',deletedAt:'now'},{id:'new',name:'새 업체',broadcastRegion:'경기'}];
- const c=makeCatalog(vendors),p=publicCatalog(c);assert.equal(p.items[0].name,'도즈게코');assert.equal(p.count,6);assert.equal(p.vendorCount,5);assert.deepEqual(p.items.filter(v=>v.region===4).map(v=>v.name),['도레미','셀렙']);assert.equal(p.regions[1].count,1);assert.doesNotMatch(JSON.stringify(p),/secret|private|logoUrl|fingerprint/);
+ const c=makeCatalog(vendors),p=publicCatalog(c);assert.equal(p.items[0].name,'도즈게코');assert.equal(p.count,7);assert.equal(p.vendorCount,6);assert.deepEqual(p.items.filter(v=>v.region===4).map(v=>v.name),['도레미','셀렙']);assert.equal(p.regions[1].count,1);assert.doesNotMatch(JSON.stringify(p),/secret|private|logoUrl|fingerprint/);
  assert.notEqual(c.version,makeCatalog([...vendors,{id:'extra',name:'신규'}]).version);assert.notEqual(c.version,makeCatalog(vendors.slice(1)).version);
  assert.notEqual(c.version,makeCatalog(vendors.map(v=>({...v,broadcastRegion:'경기'}))).version);
 });
 test('promotion-only Instagram logos appear in Gyeongbuk without creating or duplicating registrations',()=>{
  const vendors=[],c=makeCatalog(vendors);assert.equal(vendors.length,0);
- assert.deepEqual(c.items.map(v=>[v.name,v.region,!!v.logo]),[['크레빠',3,true],['크레오',3,true]]);
+ assert.deepEqual(c.items.map(v=>[v.name,v.region,!!v.logo]),[['크레빠',3,true],['마이리틀드래곤',3,true],['크레오',3,true]]);
  const registered=makeCatalog([{id:'real-crebar',name:'크레빠',broadcastRegion:'경기'}]);
  assert.equal(registered.items.filter(v=>v.name==='크레빠').length,1);
  const one=registered.items.find(v=>v.name==='크레빠');assert.equal(one.vendorId,'real-crebar');assert.equal(one.region,1);assert.ok(one.logo);
@@ -33,7 +33,7 @@ test('concurrent selection coalesces, restart reuses immutable images, changes c
 test('empty regions and failed storage fail closed, retry recovers without a false saved record',async()=>{
  const f=fixture(),s=createPromoPartners(f.options),catalogVersion=(await s.view()).version;
  await assert.rejects(s.image({mode:'regions',regions:[4],catalogVersion}),{status:422});assert.equal(f.renders,0);
- f.failed=true;await assert.rejects(s.image({mode:'all',catalogVersion}),/storage failed/);assert.equal(f.rows.size,0);f.failed=false;assert.equal((await s.image({mode:'all',catalogVersion})).count,4);assert.equal(f.rows.size,1);
+ f.failed=true;await assert.rejects(s.image({mode:'all',catalogVersion}),/storage failed/);assert.equal(f.rows.size,0);f.failed=false;assert.equal((await s.image({mode:'all',catalogVersion})).count,5);assert.equal(f.rows.size,1);
 });
 test('partner API requires authenticated membership and CSRF and produces a usable PNG',async t=>{
  const {createFixture}=require('../tools/vendor-portal-preview.cjs');const files=new Map(),f=await createFixture({apiOptions:{vendorLogoStorage:{put:async(c,n,b)=>{files.set(n,b);return {url:'/api/broadcast-assets/'+c+'/'+n};}}}});t.after(f.close);
@@ -41,6 +41,6 @@ test('partner API requires authenticated membership and CSRF and produces a usab
  const get=await f.call(owner,'GET','/api/platform/promo-center?month=2026-09&company='+id);assert.equal(get.status,200,get.body);const body={action:'partner-image',mode:'all',catalogVersion:get.json().partners.version,company:id};
  assert.equal((await f.call(f.client(),'POST','/api/platform/promo-center',body)).status,401);assert.equal((await f.call(other,'POST','/api/platform/promo-center',body)).status,403);
  assert.equal((await f.call(owner,'POST','/api/platform/promo-center',body,{origin:'https://evil.invalid'})).status,403);assert.equal((await f.call(owner,'POST','/api/platform/promo-center',body,{'x-vendor-csrf':''})).status,403);
- const result=await f.call(owner,'POST','/api/platform/promo-center',body);assert.equal(result.status,200,result.body);assert.equal(result.json().count,3);assert.equal(files.size,1);const meta=await require('sharp')([...files.values()][0]).metadata();assert.equal(meta.format,'png');assert.equal(meta.width,1500);
+ const result=await f.call(owner,'POST','/api/platform/promo-center',body);assert.equal(result.status,200,result.body);assert.equal(result.json().count,4);assert.equal(files.size,1);const meta=await require('sharp')([...files.values()][0]).metadata();assert.equal(meta.format,'png');assert.equal(meta.width,1500);
  f.restart();const repeated=await f.call(owner,'POST','/api/platform/promo-center',body);assert.equal(repeated.json().images[0].src,result.json().images[0].src);assert.equal(files.size,1);
 });
