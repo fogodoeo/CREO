@@ -7,6 +7,8 @@ Validation:
 - Focused desktop countdown, display publisher and platform manager: 31 passed.
 - Full desktop suite: 136 passed, 1 unrelated printer dependency error. The published `niimprint==0.0.1` installed on this PC lacks `BleTransport`; `test_connection_failure_on_usb_uses_next_bluetooth_attempt` fails in unchanged printer code. No printer changes were made.
 - Synthetic browser: 12 cases at 1920, 1280 and 676 px, including expiry without a network update and no renewal from re-rendering. Badge image inspected. Existing caption layout: 24 cases passed.
+- Actual `auction-live.html` with an isolated synthetic API: start, cancel, restart and sold transitions passed with no browser errors. The badge was visually inspected in the real national theme.
+- Production read-only verification: new script returned 200, broadcast payload exposed `countdownDisplay: null` in standby, and the 경기 October 19 ticker rendered successfully. No production countdown was triggered.
 - Display signal tests cover authentication, channel scope, active item, duplicate/reordered signals, disconnect expiry, sold/standby, next item and server restart. Production auction records were not used as test fixtures.
 
 Deployment requires both repositories. The web release alone cannot detect a countdown from an old monitor. The other laptop must update its three Python files and restart the monitor; live end-to-end confirmation on that laptop is still required.
