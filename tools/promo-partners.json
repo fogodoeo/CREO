@@ -199,5 +199,23 @@
     "url": "",
     "file": "mallang-jelly.png",
     "source": "https://www.instagram.com/mallang.__.jelly/"
+  },
+  {
+    "name": "크레빠",
+    "vendorId": "promo-cre-bar-1225",
+    "displayOnly": true,
+    "region": "대구·경북",
+    "url": "",
+    "file": "cre-bar-1225-20261018.jpg",
+    "source": "https://www.instagram.com/cre_bar_1225/"
+  },
+  {
+    "name": "크레오",
+    "vendorId": "promo-creo-y",
+    "displayOnly": true,
+    "region": "대구·경북",
+    "url": "",
+    "file": "creo-y-20261018.jpg",
+    "source": "https://www.instagram.com/creo__y/"
   }
 ]

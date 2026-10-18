@@ -12,10 +12,15 @@ if(process.env.SUPABASE_URL)origins.add(new URL(process.env.SUPABASE_URL).origin
 function safeLogoURL(value){try{const u=new URL(value);return u.protocol==='https:'&&!u.username&&!u.password&&!u.port&&origins.has(u.origin)&&/^\/storage\/v1\/object\/public\/broadcast-assets\/vendor-logos\/[\w.-]+$/.test(u.pathname)?u.href:'';}catch{return '';}}
 function makeCatalog(vendors){
  const items=[],seen=new Set();
- for(const v of vendors){
+ // Approved promotion-only brands do not create login, booking or settlement records.
+ // A later registration (including an inactive one) owns its membership and region.
+ const sameName=(a,b)=>String(a||'').trim().normalize('NFKC').toLowerCase()===String(b||'').trim().normalize('NFKC').toLowerCase();
+ const supplements=approved.filter(x=>x.displayOnly&&!vendors.some(v=>v.id===x.vendorId||sameName(v.name,x.name)))
+  .map(x=>({id:x.vendorId,name:x.name,broadcastRegion:x.region}));
+ for(const v of [...vendors,...supplements]){
   if(!v.id||seen.has(v.id)||v.active===false||v.deletedAt)continue;
   seen.add(v.id);
-  const region=National.regionForVendor(v),overrides=approved.filter(x=>x.vendorId===v.id);
+  const region=National.regionForVendor(v),overrides=approved.filter(x=>x.vendorId===v.id||(x.displayOnly&&sameName(v.name,x.name)));
   for(const x of overrides.length?overrides:[null]){
    const useLocal=x&&(!v.logoUrl||!x.url||v.logoUrl===x.url||overrides.length>1);
    const logo=useLocal?{file:x.file,crop:x.crop,circle:x.circle,squareBackground:x.squareBackground,fingerprint:x.fingerprint}:safeLogoURL(v.logoUrl)?{url:safeLogoURL(v.logoUrl)}:null;
