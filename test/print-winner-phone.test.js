@@ -43,14 +43,14 @@ test('all print views pass the full record so display and grouping retain explic
     assert.equal((source.match(/parseWinner\(it\)/g) || []).length, 9);
 });
 
-test('packing labels keep up to eight companion lots and separate the count from the original shipping fee', () => {
+test('packing labels keep up to eight companion lots without printing shipping fees', () => {
     const scope = context();
     const item = {name:'A01', winner_name:'테스트', winner_phone:'01012345678', shipping_region:'가상 수령점'};
     const lots = ['A01','A02','A03','A04','B01','B02','B03','E01'];
     scope.window._shippingLabelBundles = new Map([[item, {count:8, items:lots.join(' · '), shippingCost:33000}]]);
     const payload = scope.d10ShippingLabelPayload(item);
     assert.equal(payload.bundle_summary, '합배송 8마리 · ' + lots.join(' · '));
-    assert.equal(payload.amount_summary, '배송비 33,000원');
+    assert.equal(payload.amount_summary, '');
     scope.window._shippingLabelBundles.set(item, {count:9, items:[...lots,'E02'].join(' · '), shippingCost:33000});
     assert.match(scope.d10ShippingLabelPayload(item).bundle_summary, /외 1마리$/);
 });
@@ -64,7 +64,7 @@ test('a lot beyond the first eight stays visible on its own shipping label', () 
     const payload = scope.d10ShippingLabelPayload(item);
     assert.equal(payload.bundle_summary, '합배송 9마리 · ' + [...lots.slice(0, 7), 'E09'].join(' · ') + ' 외 1마리');
     assert.equal(bundle.items, lots.join(' · '));
-    assert.equal(payload.amount_summary, '배송비 33,000원');
+    assert.equal(payload.amount_summary, '');
 });
 
 test('boxed lots highlight only the exact current lot and keep the remainder separate', () => {

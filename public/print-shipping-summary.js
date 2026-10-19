@@ -111,6 +111,19 @@
         return [carrier, address].filter(Boolean).join(' · ') || '배송';
     }
 
+    function labelRoute(destination) {
+        var address = text(destination).replace(/\s+/g, ' '), carrier = '';
+        var match = address.match(/^(파르게|도도시|랩팡|직접수령|직수령)(?: · (.*))?$/);
+        if (match) { carrier = match[1] === '직접수령' ? '직수령' : match[1]; address = match[2] || ''; }
+        var region = '배송지', shop = address || '배송지 미입력';
+        var outer = address.match(/^([^()]+?)\s*\((.+)\)$/);
+        var legacy = address.match(/^(서울|경기|인천|부산|대구|대전|광주|울산|세종|강원|충북|충남|전북|전남|경북|경남|제주)\s+(.+)$/);
+        if (address.indexOf(' · ') >= 0) { region = address.slice(0, address.indexOf(' · ')); shop = address.slice(address.indexOf(' · ') + 3); }
+        else if (outer && /^(서울|경기|인천|부산|대구|대전|광주|울산|세종|강원|충청|전라|충북|충남|전북|전남|경북|경남|제주)(?:[/\s]|$)/.test(outer[1])) { region = outer[1].trim(); shop = outer[2].trim(); }
+        else if (legacy) { region = legacy[1]; shop = legacy[2]; }
+        return { carrier: carrier, region: region, shop: shop };
+    }
+
     function newest(values) {
         return values.filter(Boolean).sort().at(-1) || '';
     }
@@ -259,6 +272,7 @@
         shippingAmounts: shippingAmounts,
         recordedShippingDisplays: recordedShippingDisplays,
         shippingDestination: shippingDestination,
+        labelRoute: labelRoute,
         winnerIdentity: winnerIdentity
     };
 });
