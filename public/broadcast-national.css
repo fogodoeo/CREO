@@ -39,7 +39,7 @@ body[data-broadcast-theme="national-stage"][data-page="1"] #stage .host-role{
 }
 body[data-broadcast-theme="national-stage"][data-page="1"] #stage .host-role::before{display:none}
 
-/* P2: one compact introduction ribbon; long item details can form a second row. */
+/* P2: lot number beside three detail rows: vendor, traits, and note. */
 body[data-broadcast-theme="national-stage"][data-page="2"] #stage .item-copy.is-inline-info{
  border:3px solid var(--national-rim)!important;border-radius:34px!important;background:var(--national-ribbon)!important;
  color:#fff!important;padding:0!important;gap:0;overflow:hidden;
@@ -51,19 +51,20 @@ body[data-broadcast-theme="national-stage"][data-page="2"] #stage .item-copy.is-
 }
 /* A lower-third caption grows upward from its saved bottom edge, away from the ticker. */
 body[data-broadcast-theme="national-stage"][data-page="2"] #stage .item-copy.is-inline-info.is-lower-caption[data-layout-custom="1"]{top:auto!important;bottom:calc(100% - var(--layout-y) - var(--layout-height))!important}
-body[data-broadcast-theme="national-stage"][data-page="2"] #stage .item-inline-main{gap:0;align-items:stretch;overflow:visible}
+body[data-broadcast-theme="national-stage"][data-page="2"] #stage .item-inline-main{display:grid;grid-template-columns:max-content minmax(0,1fr);width:100%;gap:0;align-items:stretch;overflow:visible}
 body[data-broadcast-theme="national-stage"][data-page="2"] #stage .item-inline-main .item-inline-identity{
- display:flex;align-items:center;gap:12px;flex:0 1 auto;min-width:0;max-width:55%;padding:8px 18px 8px 24px;
+ display:flex;align-items:center;gap:12px;min-width:0;max-width:none;padding:8px 18px 8px 24px;
  background:var(--national-paper);color:var(--national-ink);overflow:hidden;
 }
 body[data-broadcast-theme="national-stage"][data-page="2"] #stage .item-inline-identity h1{
  font-size:calc(46px * var(--layout-font-scale,1))!important;color:var(--national-ink)!important;
  font-weight:850!important;letter-spacing:-.03em;line-height:1.13;white-space:normal;word-break:keep-all;overflow-wrap:anywhere;overflow:visible;flex:1;
 }
-body[data-broadcast-theme="national-stage"][data-page="2"] #stage .national-item-detail{flex:1;min-width:0;padding:8px 22px;display:grid;grid-template-columns:minmax(0,1fr);align-content:center;align-items:center;gap:7px}
-body[data-broadcast-theme="national-stage"][data-page="2"] #stage .national-item-detail .vendor-tag{color:#fff!important;font-size:calc(32px * var(--layout-font-scale,1))!important;font-weight:800;line-height:1.2;flex:0 1 auto;max-width:100%;white-space:normal;overflow-wrap:anywhere}
-body[data-broadcast-theme="national-stage"][data-page="2"] #stage .item-inline-main .item-inline-traits{flex:0 1 auto;flex-wrap:wrap;min-width:0;gap:6px 0;overflow:visible}
-body[data-broadcast-theme="national-stage"][data-page="2"] #stage .item-inline-pill{color:#fff!important;border-color:#ffffff80;font-size:calc(30px * var(--layout-font-scale,1))!important;font-weight:700;line-height:1.2}
+body[data-broadcast-theme="national-stage"][data-page="2"] #stage .national-item-detail{min-width:0;padding:8px 22px;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(1.2em,auto) minmax(1.2em,auto) minmax(1.2em,auto);align-content:center;align-items:center;gap:7px}
+body[data-broadcast-theme="national-stage"][data-page="2"] #stage .national-item-detail .vendor-tag{grid-row:1;color:#fff!important;font-size:calc(32px * var(--layout-font-scale,1) * var(--national-row-fit,1))!important;font-weight:800;line-height:1.2;max-width:100%;white-space:nowrap}
+body[data-broadcast-theme="national-stage"][data-page="2"] #stage .item-inline-main .item-inline-traits{grid-row:2;flex-wrap:nowrap;min-width:0;gap:0;overflow:visible}
+body[data-broadcast-theme="national-stage"][data-page="2"] #stage .item-inline-pill{flex:none;color:#fff!important;border-color:#ffffff80;font-size:calc(30px * var(--layout-font-scale,1) * var(--national-row-fit,1))!important;font-weight:700;line-height:1.2;white-space:nowrap}
+body[data-broadcast-theme="national-stage"][data-page="2"] #stage .national-item-detail .broadcast-item-note{grid-row:3}
 body[data-broadcast-theme="national-stage"][data-page="2"] #stage .broadcast-item-note{padding:6px 0 0;color:#fff;font-size:calc(28px * var(--layout-font-scale,1));border-top:1px solid #ffffff35;line-height:1.2}
 body[data-broadcast-theme="national-stage"][data-page="2"] #stage .broadcast-item-note>span{padding:0}
 body[data-broadcast-theme="national-stage"][data-page="2"] #stage .item-progress{display:grid;place-items:center;padding:8px;border:3px solid var(--national-rim)!important;border-radius:999px!important;background:var(--national-number)!important;box-shadow:0 3px 0 #3f568d!important}
@@ -118,10 +119,9 @@ body[data-broadcast-theme="national-stage"][data-page="2"] #stage [data-text-aut
 }
 body[data-broadcast-theme="national-stage"][data-page="2"] #stage [data-text-auto-width="1"][data-layout-custom="1"]{max-width:calc(98% - var(--layout-x))!important}
 body[data-broadcast-theme="national-stage"][data-page="2"] #stage :is(.live-bidders,.price-card,.sold-notice)[data-text-auto-width][data-layout-custom="1"]{transform:translateY(min(0px,calc(98vh - var(--text-anchor-y,0px) - 100%)))!important}
-body[data-broadcast-theme="national-stage"][data-page="2"] #stage .item-copy.is-inline-info[data-text-auto-width="1"]{width:max-content!important;max-width:92%!important}
-body[data-broadcast-theme="national-stage"][data-page="2"] #stage .item-copy[data-text-auto-width="1"][data-layout-custom="1"]{max-width:calc(98% - var(--layout-x))!important}
-/* Long notes scroll within the main ribbon instead of widening it indefinitely. */
-body[data-broadcast-theme="national-stage"][data-page="2"] #stage .item-copy[data-text-auto-width="1"] .broadcast-item-note{contain:inline-size}
+/* Keep the right safe edge fixed; longer details grow the ribbon to the left. */
+body[data-broadcast-theme="national-stage"][data-page="2"] #stage .item-copy.is-inline-info[data-text-auto-width="1"],
+body[data-broadcast-theme="national-stage"][data-page="2"] #stage .item-copy.is-inline-info[data-text-auto-width="1"][data-layout-custom="1"]{left:auto!important;right:2%!important;width:max-content!important;max-width:96%!important}
 body[data-broadcast-theme="national-stage"][data-page="2"] #stage .live-bidders[data-text-auto-width]{
  container-type:normal;grid-template-columns:minmax(0,1fr) max-content;grid-template-rows:none;grid-auto-rows:1fr;align-content:start;overflow:visible;
  height:auto!important;max-height:none!important;
