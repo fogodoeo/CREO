@@ -2053,25 +2053,20 @@
         .company-admin-key { display:grid; width:44px; height:44px; padding:0; place-items:center; border:1px solid #D4D4D8; border-radius:10px; background:#FFF; color:#52525B; cursor:pointer; }
         .company-admin-key:hover { border-color:#A1A1AA; background:#FAFAFA; color:#18181B; }
         .company-admin-key svg { width:19px; height:19px; fill:currentColor; }
-        .shipping-admin-modal { position:fixed; inset:0; z-index:2500; display:grid; place-items:center; padding:18px; background:rgba(24,24,27,.48); backdrop-filter:blur(6px); }
+        .shipping-admin-modal { position:fixed; inset:0; z-index:2500; display:grid; place-items:center; margin:0; width:100%; max-width:none; height:100%; max-height:none; padding:18px; border:0; color:inherit; overflow:auto; background:rgba(24,24,27,.48); backdrop-filter:blur(6px); }
+        .shipping-admin-modal::backdrop { background:transparent; }
         .shipping-admin-modal[hidden] { display:none; }
         .shipping-admin-card { width:min(350px,100%); padding:22px; border:1px solid #E4E4E7; border-radius:14px; background:#FFF; box-shadow:var(--shadow-md); }
         .shipping-admin-card h2 { margin:0; color:#18181B; font-size:17px; }
-        .shipping-admin-card p { margin:6px 0 15px; color:#71717A; font-size:11px; }
-        .shipping-admin-card input { width:100%; height:42px; padding:0 11px; border:1px solid #D4D4D8; border-radius:9px; outline:0; }
+        .shipping-admin-card p { margin:6px 0 15px; color:#71717A; font-size:14px; line-height:1.6; word-break:keep-all; }
+        .shipping-admin-card label { display:block; margin-bottom:6px; font-size:14px; }
+        .shipping-admin-card input { width:100%; height:44px; padding:0 11px; border:1px solid #D4D4D8; border-radius:9px; font:inherit; font-size:16px; outline:0; }
         .shipping-admin-card input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(37,99,235,.10); }
-        .shipping-admin-card button { width:100%; height:42px; margin-top:8px; border:0; border-radius:9px; background:var(--accent); color:#FFF; font-family:inherit; font-size:12px; font-weight:850; cursor:pointer; }
-        .shipping-admin-error { min-height:14px; margin-top:7px; color:#B91C1C; font-size:10px; }
-        .message-preview-modal { position:fixed; inset:0; z-index:2600; display:grid; place-items:center; padding:18px; background:rgba(24,24,27,.48); backdrop-filter:blur(6px); }
-        .message-preview-modal[hidden] { display:none; }
-        .message-preview-card { width:min(520px,100%); max-height:calc(100vh - 36px); padding:22px; overflow:auto; border:1px solid #E4E4E7; border-radius:14px; background:#FFF; box-shadow:var(--shadow-md); }
-        .message-preview-card h2 { margin:0; color:#18181B; font-size:17px; }
-        .message-preview-card p { margin:6px 0 14px; color:#71717A; font-size:11px; }
-        .message-preview-text { max-height:360px; margin:0; padding:15px; overflow:auto; border:1px solid #E4E4E7; border-radius:10px; background:#FAFAFA; color:#27272A; font-family:inherit; font-size:12px; line-height:1.65; white-space:pre-wrap; word-break:break-word; }
-        .message-preview-actions { display:grid; grid-template-columns:104px minmax(0,1fr); gap:8px; margin-top:12px; }
-        .message-preview-actions button { height:42px; border-radius:9px; font-family:inherit; font-size:12px; font-weight:850; cursor:pointer; }
-        .message-preview-close { border:1px solid #D4D4D8; background:#FFF; color:#52525B; }
-        .message-preview-copy { border:1px solid var(--accent); background:var(--accent); color:#FFF; }
+        .shipping-admin-card button,.shipping-admin-exit { display:flex; align-items:center; justify-content:center; width:100%; min-height:44px; margin-top:8px; padding:8px 12px; border:0; border-radius:9px; background:var(--accent); color:#FFF; font-family:inherit; font-size:14px; font-weight:850; cursor:pointer; text-decoration:none; }
+        .shipping-admin-card .shipping-admin-cancel,.shipping-admin-exit { border:1px solid #D4D4D8; background:#FFF; color:#52525B; }
+        .shipping-admin-card [hidden] { display:none; }
+        .shipping-admin-card button:disabled { cursor:wait; }
+        .shipping-admin-error { min-height:18px; margin-top:7px; color:#B91C1C; font-size:12px; }
         .toast { bottom:calc(68px + env(safe-area-inset-bottom)); }
         button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible { outline:3px solid #1d4ed8;outline-offset:3px; }
         button.hub-result { display:block;width:100%;font:inherit;text-align:start;color:inherit;background:#fff; }
@@ -2171,27 +2166,18 @@
         <a class="active" href="shipping.html" aria-current="page">배송관리</a>
         <a href="shipping-status.html">전체조회</a>
     </nav>
-    <section class="shipping-admin-modal" id="shipping-admin-modal" hidden>
+    <dialog class="shipping-admin-modal" id="shipping-admin-modal" aria-labelledby="shipping-admin-title" aria-describedby="shipping-admin-note" hidden>
         <form class="shipping-admin-card" id="shipping-admin-form">
             <h2 id="shipping-admin-title">관리자 로그인</h2>
             <p id="shipping-admin-note">배송 자료를 관리하려면 비밀번호를 입력하세요.</p>
             <label for="shipping-admin-password">관리자 비밀번호</label>
-            <input id="shipping-admin-password" type="password" autocomplete="current-password" required>
+            <input id="shipping-admin-password" type="password" autocomplete="current-password" aria-describedby="shipping-admin-error" required>
             <button type="submit">로그인</button>
-            <div class="shipping-admin-error" id="shipping-admin-error"></div>
+            <div class="shipping-admin-error" id="shipping-admin-error" role="alert"></div>
+            <button class="shipping-admin-cancel" id="shipping-admin-cancel" type="button">취소</button>
+            <a class="shipping-admin-exit" id="shipping-admin-exit" href="/main" hidden>운영 홈으로</a>
         </form>
-    </section>
-    <section class="message-preview-modal" id="message-preview-modal" hidden>
-        <div class="message-preview-card" role="dialog" aria-modal="true" aria-labelledby="message-preview-title">
-            <h2 id="message-preview-title">안내 문구 미리보기</h2>
-            <p>아래 내용이 그대로 복사됩니다.</p>
-            <pre class="message-preview-text" id="message-preview-text"></pre>
-            <div class="message-preview-actions">
-                <button class="message-preview-close" id="message-preview-close" type="button">닫기</button>
-                <button class="message-preview-copy" id="message-preview-copy" type="button">복사</button>
-            </div>
-        </div>
-    </section>
+    </dialog>
 
     <!-- 토스트 & 로딩 -->
     <div class="toast" id="toast" role="status"></div>
@@ -2362,7 +2348,7 @@
                 restoringMobileShippingHistory = true;
                 const target = event.state?.creoShippingView || 'base';
                 const searchInput = document.getElementById('editor-hub-search');
-                if (target !== 'editor' && target !== 'message-preview') {
+                if (target !== 'editor') {
                     const clearHubSearch = () => {
                         if (searchInput) {
                             searchInput.value = '';
@@ -2375,10 +2361,9 @@
                     clearHubSearch();
                     setTimeout(clearHubSearch, 0);
                 }
-                if (target !== 'message-preview' && !document.getElementById('message-preview-modal')?.hidden) closeMessagePreview(true);
-                if (target !== 'admin-login' && !document.getElementById('shipping-admin-modal')?.hidden) document.getElementById('shipping-admin-modal').hidden = true;
+                if (target !== 'admin-login') closeShippingAdminLogin(true);
                 if (target !== 'company-select' && document.getElementById('company-select-modal')?.classList.contains('active')) closeCompanySelectModal(true);
-                if (!['editor','message-preview'].includes(target) && activeEditorWinner) closeWinnerEditor(true);
+                if (target !== 'editor' && activeEditorWinner) closeWinnerEditor(true);
                 restoringMobileShippingHistory = false;
             });
         }
@@ -2392,6 +2377,7 @@
 
         let shippingLoginRequired = false;
         let shippingInitializing = false;
+        let shippingLoginPending = false;
 
         function openShippingAdminLogin(options = {}) {
             const modal = document.getElementById('shipping-admin-modal');
@@ -2405,10 +2391,30 @@
             if (error) error.textContent = '';
             if (modal) {
                 modal.dataset.required = options.required ? 'true' : 'false';
+                document.getElementById('shipping-admin-cancel').hidden = Boolean(options.required);
+                const exit = document.getElementById('shipping-admin-exit');
+                exit.hidden = !options.required;
+                const query = new URLSearchParams({ channel: SHIPPING_CHANNEL_ID });
+                const archive = new URLSearchParams(location.search).get('archive');
+                if (archive) query.set('archive', archive);
+                exit.href = '/main?' + query;
+                if (modal.open) return;
                 modal.hidden = false;
+                modal.showModal();
             }
             pushMobileShippingView('admin-login');
-            requestAnimationFrame(() => document.getElementById('shipping-admin-password')?.focus());
+            document.getElementById('shipping-admin-password')?.focus();
+        }
+
+        function closeShippingAdminLogin(fromHistory = false, authenticated = false) {
+            const modal = document.getElementById('shipping-admin-modal');
+            if (!modal?.open || (modal.dataset.required === 'true' && !authenticated)) return;
+            modal.close();
+            modal.hidden = true;
+            modal.dataset.required = 'false';
+            document.getElementById('shipping-admin-password').value = '';
+            document.getElementById('shipping-admin-error').textContent = '';
+            if (!fromHistory) closeMobileShippingView('admin-login');
         }
 
         function openAdminFromCompanyModal() {
@@ -2420,25 +2426,38 @@
         }
 
         document.getElementById('shipping-admin-button')?.addEventListener('click', openCompanySelectModal);
-        document.getElementById('shipping-admin-modal')?.addEventListener('click', event => {
-            if (event.target === event.currentTarget) {
-                if (event.currentTarget.dataset.required === 'true') return;
-                event.currentTarget.hidden = true;
-                closeMobileShippingView('admin-login');
+        document.getElementById('shipping-admin-cancel').addEventListener('click', () => closeShippingAdminLogin());
+        document.getElementById('shipping-admin-modal').addEventListener('cancel', event => {
+            event.preventDefault();
+            closeShippingAdminLogin();
+        });
+        document.getElementById('shipping-admin-modal').addEventListener('keydown', event => {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                closeShippingAdminLogin();
             }
+        });
+        document.getElementById('shipping-admin-modal')?.addEventListener('click', event => {
+            if (event.target === event.currentTarget) closeShippingAdminLogin();
         });
         document.getElementById('shipping-admin-form')?.addEventListener('submit', async event => {
             event.preventDefault();
+            if (shippingLoginPending) return;
+            shippingLoginPending = true;
             const input = document.getElementById('shipping-admin-password');
             const error = document.getElementById('shipping-admin-error');
+            const button = event.currentTarget.querySelector('button[type="submit"]');
+            button.disabled = true;
+            button.textContent = '로그인 중…';
             if (error) error.textContent = '';
             try {
                 CreoPlatform.setAdmin(input.value);
                 if (!await CreoPlatform.verifyAdmin(input.value)) throw new Error('비밀번호가 맞지 않습니다.');
-                input.value = '';
-                const modal = document.getElementById('shipping-admin-modal');
-                modal.hidden = true;
-                modal.dataset.required = 'false';
+                // Finish this history entry before initialization can open company selection.
+                if (MOBILE_SHIPPING_HISTORY && history.state?.creoShippingView === 'admin-login') {
+                    history.replaceState({ creoShippingView:'base' }, '', location.href);
+                }
+                closeShippingAdminLogin(true, true);
                 setShippingAdminState(true);
                 if (shippingLoginRequired) {
                     shippingLoginRequired = false;
@@ -2446,7 +2465,14 @@
                 }
             } catch (failure) {
                 CreoPlatform.setAdmin('');
-                if (error) error.textContent = failure.message || '로그인하지 못했습니다.';
+                if (document.getElementById('shipping-admin-modal').open) {
+                    if (error) error.textContent = (failure.message || '로그인하지 못했습니다.') + ' 다시 시도해 주세요.';
+                    input.focus();
+                }
+            } finally {
+                shippingLoginPending = false;
+                button.disabled = false;
+                button.textContent = '로그인';
             }
         });
         (async () => {
@@ -2454,26 +2480,6 @@
             try { if (await CreoPlatform.verifyAdmin()) setShippingAdminState(true); }
             catch (_) { await CreoPlatform.logout(); }
         })();
-
-        let messagePreviewValue = '';
-        function openMessagePreview(message) {
-            messagePreviewValue = String(message || '');
-            document.getElementById('message-preview-text').textContent = messagePreviewValue;
-            document.getElementById('message-preview-modal').hidden = false;
-            pushMobileShippingView('message-preview');
-        }
-        function closeMessagePreview(fromHistory = false) {
-            document.getElementById('message-preview-modal').hidden = true;
-            if (!fromHistory) closeMobileShippingView('message-preview');
-        }
-        document.getElementById('message-preview-close')?.addEventListener('click', closeMessagePreview);
-        document.getElementById('message-preview-modal')?.addEventListener('click', event => {
-            if (event.target === event.currentTarget) closeMessagePreview();
-        });
-        document.getElementById('message-preview-copy')?.addEventListener('click', async () => {
-            await copyPlainText(messagePreviewValue, '전체 결제·배송 안내를 복사했습니다.');
-            closeMessagePreview();
-        });
 
         let registeredShippingVendors = [];
         async function loadShippingItems() {
@@ -2674,26 +2680,6 @@
                 settlementItems,
                 { groupOrder: settlementGroupOrder() }
             );
-        }
-
-        async function copyPlainText(text, successMessage) {
-            try {
-                if (navigator.clipboard && navigator.clipboard.writeText) await navigator.clipboard.writeText(text);
-                else {
-                    const textarea = document.createElement('textarea');
-                    textarea.value = text;
-                    textarea.style.position = 'fixed';
-                    textarea.style.opacity = '0';
-                    document.body.appendChild(textarea);
-                    textarea.select();
-                    document.execCommand('copy');
-                    textarea.remove();
-                }
-                showToast(successMessage || '복사했습니다.');
-            } catch (error) {
-                console.error(error);
-                showToast('복사에 실패했습니다.', true);
-            }
         }
 
         const SHIPPING_DATA = {

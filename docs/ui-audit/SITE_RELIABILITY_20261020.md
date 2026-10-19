@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | 공통 진입·로그인 | 62개 정적 경로 응답, `/main`의 로그인 경계는 기존 배포 검사 | 로그인 실패·복귀·공통 메뉴·오래된 별칭 |
 | 운영 홈·회차·출품 | 회차 격리, 보관 채널의 배송 메뉴, 잘못된 회차 복구, 320px/PC 홈 확인 | 실제 운영자 로그인 이후 진입, 출품 편집·빈/오류 상태 |
-| 낙찰·배송·인쇄·정산 | 배송 편집·업체 선택 배포. 전체조회 오류 복구·검색 초점·원 단위 낙찰가 수정 및 320px/PC 확인(미배포), 준비 개체 인쇄, 과거 정산 접근 확인 | 관리자/안내 창·총정산 전체 흐름 |
+| 낙찰·배송·인쇄·정산 | 배송 편집·업체 선택·전체조회 오류 복구·원 단위 낙찰가 배포. 관리자 로그인 PC/320px 검증 완료(미배포), 미사용 안내 창 제거, 준비 개체 인쇄·과거 정산 접근 확인 | 총정산 전체 흐름·실제 기기 |
 | 업체 로그인·출품·예약·정산 | 기존 개별 검사 기록과 이번 로그인 정리 회귀 | 현재 버전의 모바일 연결·오류·재접속 |
 | 구매자 배송·결제·보관함 | 현재/이전 결제 회차 표시, 가상 상태 전이·복귀 배포. 보관함 회차 선택·재연결·계정 전환 실화면 확인·배포 | 변경 요청·문의·실제 기기 |
 | 방송·핀볼·캡처·배너 | 경기→전라·충청 구성 복사, 실제 준비 화면 확인 | 조작/송출 동기화·재접속·도구 연결 |
@@ -146,7 +146,7 @@ Vanilla HTML/JS/CSS. 기존 `CHECKOUT_DESIGN.md`의 흰 표면·회색 본문·�
 - 전체조회에서 현재 3개체의 가상 구매자만 보이고 ‘없는이름’ 검색은 빈 결과로 표시됐다. 전화번호 일부 `0003` 검색→현재 3개체 상세→다른 낙찰자 선택으로 복귀도 실제 확인했다. 다만 상세/복귀 후 초점은 문서로 빠졌고 검색 입력은 접근성 이름이 없었다. 관리자/안내 창도 별도 초점 검토가 필요하다. 다음 범위에서 회귀와 함께 보완한다.
 - `73e4506c448bbb4b5b16c107c311e44210e48308` / Render `dep-dbb8khui0phs73euojj0`는 06:24:51 KST Live. 배포 후 health·송출 200, 정적 파일 22개 일치, 전체 비교 채널의 식별자·낙찰합계 불변, 현재/이전 회차의 미결제 조회 200/readOnly=false였다. `site-shipping-company-before.json`/`site-shipping-company-after.json`에 기록했다.
 
-## 배송 전체조회 오류 복구·검색·금액 표시 · 배포 전 검증
+## 배송 전체조회 오류 복구·검색·금액 표시
 
 위험도: release. UI 조회 상태와 금액 표시를 수정하고 기존 원 단위 변환 함수를 공개한다. 낙찰·배송·결제 저장과 알림 전송은 변경하지 않는다.
 
@@ -177,4 +177,34 @@ Vanilla HTML/JS/CSS. 기존 `CHECKOUT_DESIGN.md`의 흰 표면·회색 본문·�
 - 실제 격리된 localhost 프록시에서 workspace GET만 503으로 바꿔 실패 화면을 확인했다. 오류를 해제한 뒤 ‘다시 불러오기’를 클릭하자 현재 3개체 목록·검색창 초점이 복구됐다. 상세 heading→다른 낙찰자→검색창 초점, 업체 B 검색→100,000원, PC 두 업체 목록과 빈 변경내역/알림 상태를 확인했다. 실제 낙찰·결제·발송은 수행하지 않았다.
 - 그림: 상위 `scratch/national-session-20261019/site-shipping-status-error-320.png`, `site-shipping-status-recovered-320.png`, `site-shipping-status-company-desktop.png`. 후속 보완: 실제 휴대폰/Safari, 200% 확대, 스크린리더 음성은 Not verified. 현재 범위에서 재현한 HIGH 항목은 수정·검증됐다.
 
-판정: 배송 전체조회에서 확인한 범위는 Approve. 배포 후 운영 GET 비교를 수행한다. 전체 사이트의 나머지 흐름은 첫 표대로 계속 검증하며 전체 사이트에 대한 Approve 판정은 아직 하지 않는다.
+- `b03cc709b4b744d2106f82d90f2e3810dfb1168c` / Render `dep-dbb8r9jrjlhs73cjqbcg`는 06:39:12 KST Live. 배포 후 health·송출 200, 정적 23개 파일 일치, 전체 비교 채널의 개체·배송 식별자와 낙찰합계 불변이었다. 현재 34개/34개 배송, 이전 38개/36개 배송과 양쪽 미결제 조회 200/readOnly=false가 유지됐다. `site-shipping-status-before.json`/`site-shipping-status-after.json`에 기록했다.
+
+판정: 배송 전체조회에서 확인한 범위는 Approve. 전체 사이트의 나머지 흐름은 첫 표대로 계속 검증하며 전체 사이트에 대한 Approve 판정은 아직 하지 않는다.
+
+## 배송 관리자 로그인·미사용 안내 창 정리 · 배포 전 검증
+
+위험도: release(배포). 로그인 창의 접근성·초점·중복 제출·화면 이력을 변경한다. 실제 비밀번호 검증·권한·낙찰·배송·결제 저장·알림 전송 API는 유지한다. 기존 Vanilla HTML/JS/CSS와 `CHECKOUT_DESIGN.md`의 색·16px 입력·44px 버튼 기준을 따른다. `better-interface` 여섯 도메인과 `emil-design-eng`를 적용했다.
+
+| 분야 | 확인한 증거 | 결과 |
+| --- | --- | --- |
+| Accessibility | 실제 PC/320px AX, Tab, Escape, 취소 및 초점 복귀 | 기본 dialog, 이름·설명·오류 연결, 배경 초점 차단 |
+| Layout | 320px 일반·필수·오류 상태, PC 필수 로그인 | 입력·로그인·취소/운영 홈 버튼 전체 표시 |
+| Writing | 비밀번호 오류와 재시도, 로그인 중 상태 | 실패 후 다음 행동과 진행 중 상태 표시 |
+| Typography | 320px 계산 스타일 | 설명·버튼 14px, 입력 16px, 오류 12px |
+| Colors | 실제 계산 스타일 #71717a/white, #fff/#2563eb, #52525b/white | 기존 대비를 유지하며 불투명도 변경 없음 |
+| UI | 중복 열기/제출, 취소·재시도·성공 후 업체 선택 | 44px 버튼, 모션 추가 없음, 성공 후 새 업체 창을 닫는 이력 경쟁 방지 |
+
+| 심각도 | 분야 | 위치 | Before | After | Why |
+| --- | --- | --- | --- | --- | --- |
+| HIGH | Accessibility | `public/shipping.html:2169`, `:2382` | 로그인 창에서 Tab이 배경 운영 홈으로 빠지고 Escape·취소 경로가 없음 | 이름 있는 기본 dialog, 선택적 로그인 취소/초점 복귀, 필수 로그인은 운영 홈 링크 | 키보드로 작업을 끝내거나 안전하게 나갈 수 있음 |
+| HIGH | Accessibility | `public/shipping.html:2434` | native dialog로 바꾸는 첫 구현에서 초기 필수 로그인에 Escape를 누르면 닫힘 | keydown 기본 동작 방지와 required 검사, 실제 재확인 | 초기 로그인에서 의도하지 않은 배경 복귀 방지 |
+| MEDIUM | UI | `public/shipping.html:2443` | 로그인 중 추가 제출 가능, 성공 후 모바일 이력에 로그인 상태가 남음 | 요청 중복 억제, 성공 후 이력 정리→업체 선택 순서 | 중복 요청·늦은 화면 닫힘 방지 |
+| MEDIUM | Typography | `public/shipping.html:2061` | 설명 11px·오류 10px·42px 버튼 | 설명/버튼 14px·오류 12px·44px 조작 | 좁은 화면에서 읽고 누르기 쉬움 |
+
+- 저장소 참조 검색에서 `openMessagePreview`는 선언만 있었고 사용처가 없었다. 관련 CSS·숨김 마크업·모바일 이력 분기·전용 복사 함수를 제거했다. 실제 ‘배송 안내/안내 다시 보내기’는 `sendBuyerShippingLinkSms`에 연결되어 있으며 이 경로는 수정하지 않았다.
+- 집중: `node --test test/shipping-admin-dialog.test.js test/shipping-interaction.test.js test/shipping-vendor-settings.test.js test/shipping-refresh.test.js` 18개 통과. 마지막 Escape 보완 후 앞의 3개 파일 12개를 재실행해 통과했다. 반복 열기·취소/Back 중복 닫힘·필수 접근 제한·중복 제출·실패 후 재시도·늦은 실패·성공 후 초기화 순서를 검사했다.
+- 최종 `npm test` 1,409개, `npm run check`, PC `python -m unittest discover -p "test*.py"` 270개 통과. 로그: `site-shipping-admin-tests.log`, `site-shipping-admin-check.log`, 상위 `scratch/site-shipping-admin-desktop.log`.
+- 실제 PC: Tab이 배경 링크로 빠지지 않고 로그인 조작 사이로 복귀, Escape 후 업체변경 버튼 초점 확인. 320px: 취소 후 업체변경 복귀, 필수 로그인 Escape 유지, 가상 오답 오류/입력 초점→정답 재시도→업체 선택 창 확인. 별도 localhost 프록시의 가상 인증만 사용했으며 실제 자격 증명·운영 기록·알림은 사용하지 않았다.
+- 그림: 상위 `scratch/national-session-20261019/site-shipping-admin-320.png`, `site-shipping-admin-error-320.png`. 실제 휴대폰/Safari·200% 확대·스크린리더 음성·실제 관리자 인증은 Not verified. 전체 낙찰/정산 기능의 검증 완료로 확대하지 않는다.
+
+판정: 이번 로그인 창 범위는 Approve. 배포 후 운영 읽기 전용 비교를 진행한다. 전체 사이트 점검은 첫 표대로 계속한다.
