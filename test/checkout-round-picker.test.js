@@ -44,3 +44,32 @@ test('vendor settlement navigation retains the selected historical round',()=>{
  const ctx=vm.createContext({query:new URLSearchParams({round:'archive:old'}),URLSearchParams,event:'national-cre',code:'synthetic-link',token:'',preview:false,nav:{classList:{contains:()=>false}}});
  const href=vm.runInContext(source.slice(start,end)+"destination('settlement')",ctx);assert.equal(new URL(href,'https://example.test').searchParams.get('round'),'archive:old');
 });
+test('unavailable round recovery removes only the view filter and keeps link authority, event and tab',()=>{
+ const ctx=vm.createContext({window:{},URL});
+ vm.runInContext(fs.readFileSync(require.resolve('../public/checkout-round-picker'),'utf8'),ctx);
+ const recovery=ctx.window.CreoCheckoutRounds.recoveryHref;
+ for(const path of ['/s/syntheticLink','/v/syntheticLink','/buyer-shipping.html','/vendor-checkout.html']){
+  const before=new URL(path+'?code=syntheticLink&token=synthetic-token&event=national-cre&round=archive%3Amissing#items','https://example.test');
+  const after=new URL(recovery(409,{href:before.href}));
+  assert.equal(after.origin,before.origin);assert.equal(after.pathname,before.pathname);assert.equal(after.hash,'#items');
+  assert.equal(after.searchParams.has('round'),false);
+  for(const key of ['code','token','event'])assert.equal(after.searchParams.get(key),before.searchParams.get(key));
+  for(const status of [0,400,401,403,404,500])assert.equal(recovery(status,{href:before.href}),'');
+  assert.equal(recovery(409,{href:after.href}),'');
+ }
+});
+for(const file of ['vendor-checkout.html','buyer-shipping.html'])test(file+' exposes round recovery only for a failed round read, with no stale recovery after an auth error',async()=>{
+ const source=fs.readFileSync(require.resolve('../public/'+file),'utf8'),nodes=new Map();
+ const ctx=vm.createContext({window:{},URL,location:{href:'https://example.test/'+file+'?code=syntheticLink&round=archive%3Amissing'},$:id=>{if(!nodes.has(id))nodes.set(id,{removeAttribute(name){delete this[name]}});return nodes.get(id)}});
+ vm.runInContext(fs.readFileSync(require.resolve('../public/checkout-round-picker'),'utf8'),ctx);
+ ctx.CreoCheckoutRounds=ctx.window.CreoCheckoutRounds;
+ const start=source.indexOf('function showError('),end=source.indexOf('\n',start);
+ vm.runInContext(source.slice(start,end),ctx);
+ ctx.showError('unavailable round',409);
+ const link=nodes.get('error-round-recovery');assert.equal(link.hidden,false);assert.equal(new URL(link.href).searchParams.has('round'),false);assert.equal(nodes.get('app').hidden,true);
+ ctx.showError('revoked link',401);assert.equal(link.hidden,true);assert.equal(link.href,undefined);
+ ctx.client={valid:true};ctx.loadSequence=0;ctx.api=async()=>{throw Object.assign(Error('unavailable round'),{status:409})};
+ vm.runInContext(source.slice(source.indexOf('async function load(silent='),start),ctx);
+ await ctx.load();assert.equal(link.hidden,false,'failed load must forward its status to recovery');
+ assert.match(source,/<a id="error-round-recovery"[^>]*hidden>/);
+});

@@ -1,6 +1,18 @@
 (function(root){
  'use strict';
- root.CreoCheckoutRounds={create({client,container,load,canChange=()=>true}){
+ function recoveryHref(status,locationObject=location){
+  if(status!==409)return '';
+  const url=new URL(locationObject.href);
+  if(!url.searchParams.get('round'))return '';
+  url.searchParams.delete('round');
+  return url.href;
+ }
+ function showRecovery(link,status){
+  const href=recoveryHref(status);
+  link.hidden=!href;
+  if(href)link.href=href;else link.removeAttribute('href');
+ }
+ root.CreoCheckoutRounds={recoveryHref,showRecovery,create({client,container,load,canChange=()=>true}){
   let data=null,busy=false;
   const panel=document.createElement('section');panel.className='checkout-round-switch';panel.hidden=true;
   const label=document.createElement('label'),select=document.createElement('select');
