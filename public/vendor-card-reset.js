@@ -1,7 +1,7 @@
 (function (global) {
     'use strict';
     function button(buyer, channel) {
-        if (!buyer.payment?.canResetCardGuide || buyer.changePending || channel.status !== 'active') return '';
+        if (!buyer.payment?.canResetCardGuide || buyer.changePending || (channel.checkoutOpen!==true&&channel.status !== 'active')) return '';
         const id = global.CreoCheckoutClient.escapeHtml(buyer.id);
         return `<button class="card-reset-button" type="button" data-reset-card="${id}">카드 안내 변경</button>`;
     }

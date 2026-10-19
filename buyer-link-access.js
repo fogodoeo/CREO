@@ -8,7 +8,7 @@ function createBuyerLinkAccess({repository,secret,signToken,verifyToken,shortPre
     const hash=value=>crypto.createHmac('sha256',secret).update(value).digest('base64url');
     function identity(subject){
         if(!subject?.channelId||!subject?.phoneHash)throw fail('구매자 링크 대상을 확인해 주세요.',422);
-        return `${subject.channelId}:${subject.phoneHash}`;
+        return `${subject.channelId}:${subject.phoneHash}`+(subject.roundScope?':round:'+subject.roundScope:'');
     }
     const stateKey=subject=>'buyer_link_access_v1::'+hash(identity(subject));
     const codeFor=(subject,generation=0)=>hash('buyer-shipping-short-v2:'+identity(subject)+(generation?':generation:'+generation:'')).slice(0,11);

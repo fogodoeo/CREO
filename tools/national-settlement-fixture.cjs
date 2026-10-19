@@ -4,8 +4,8 @@ const {normalizeChannel}=require('../platform-core');
 const day='2026-10-14';
 const channel=()=>normalizeChannel({id:'national-cre',name:'전국크레자랑',status:'active',dataAdapter:'platform',broadcastTheme:'national-stage',vendorSettlement:{enabled:true,entryFee:10000,ratePercent:10},shippingSupport:{enabled:true,broadcastDate:day,maxAmount:30000},shippingDefaults:{enabledCarriers:['parge'],pickupLocations:['현장 수령'],pargeAdditionalFee:7000}});
 const item=(id,vendorId='v1',extra={})=>({id,name:id.toUpperCase(),lotNumber:Number(id.replace(/\D/g,''))||1,vendorId,status:'sold',soldPrice:100000,winnerName:'가상 낙찰자',winnerPhone:'01000000003',attributes:{broadcastDate:day,organizerFeePolicy:{enabled:true,entryFee:10000,ratePercent:10}},...extra});
-async function fixture(){
- const f=await createFixture(),c=f.client();
+async function fixture(options){
+ const f=await createFixture(options),c=f.client();
  f.request=(method,path,body,admin=true)=>f.call(c,method,'/api/platform'+path,body,admin?{'x-creo-admin':f.secret}:{});
  await f.repository.saveCatalog([channel(),normalizeChannel({id:'creyon',name:'크레용',status:'active'})]);
  await f.repository.setActiveChannel('national-cre');

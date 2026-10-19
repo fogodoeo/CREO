@@ -2,6 +2,9 @@
 
 const crypto = require('node:crypto');
 const AuctionRounds = require('./auction-rounds');
+const OperationRounds = require('./operation-rounds');
+const CheckoutRounds = require('./checkout-rounds');
+const NationalRounds = require('./national-round-operations');
 const { refreshShippingRate } = require('./shipping-rate-refresh');
 const { rankingsForChannel } = require('./public/ranking-engine');
 const BasicDice = require('./public/basic-dice-core');
@@ -1097,10 +1100,11 @@ function createPlatformApi({
     if (!repository) throw new Error('repository is required');
     const testDeliveryChannels = new Set(String(checkoutTestDeliveryChannels).split(',').map(id => id.trim()).filter(id => /^checkout-test-[a-f0-9]{16}$/.test(id)));
     const vendorDirectory = require('./vendor-directory').createVendorDirectory(repository);
+    const nationalRounds = NationalRounds.createNationalRoundOperations({repository,directory:vendorDirectory,lock:withMutationLock,touch:touchChannel});
     const pargeDispatch = require('./parge-dispatch').createPargeDispatch({
         read: async id => (await repository.getRecord(id,'setting','parge-dispatch'))?.records || [],
         write: (id,records) => repository.upsertRows([{key:channelKey(id,'setting','parge-dispatch'),value:JSON.stringify({id:'parge-dispatch',channelId:id,records})}]),
-        workspace,
+        workspace:async id=>OperationRounds.scopeWorkspace((await repository.getCatalog()).channels.find(c=>c.id===id),await workspace(id)),
         shops: async () => require('./public/parge-dispatch-core').shopNames(await pargeRates()),
         lock: (id,work) => withMutationLock(`channel:${id}`,work)
     });
@@ -1237,12 +1241,12 @@ function createPlatformApi({
         return { ...payload, tokenVersion: parts[0] };
     }
 
-    function signBuyerShippingToken({ channelId, phone, phoneHash, accessGeneration = 0 }, now = Date.now()) {
+    function signBuyerShippingToken({ channelId, phone, phoneHash, itemId='', roundScope='', accessGeneration = 0 }, now = Date.now()) {
         return signedCheckoutToken('bs2', {
             v: 2,
             channelId: normalizeChannelId(channelId),
             phoneHash: phoneHash || sessionKey(normalizePhone(phone)),
-            accessGeneration
+            accessGeneration, ...(itemId?{itemId}:{}), ...(roundScope?{roundScope}:{})
         }, BUYER_SHIPPING_TOKEN_TTL_MS, now);
     }
 
@@ -1307,12 +1311,14 @@ function createPlatformApi({
         return verify(token) ? token : '';
     }
 
-    function resolveBuyerShippingCredential(input = {}) {
-        return resolveShortCredential({ ...input, kind: 'buyer' });
+    async function resolveBuyerShippingCredential(input = {}) {
+        const credential=await resolveShortCredential({ ...input, kind: 'buyer' });
+        return input.round&&credential?{...verifyBuyerShippingToken(credential),checkoutRound:cleanText(input.round,120)}:credential;
     }
 
-    function resolveVendorCheckoutCredential(input = {}) {
-        return resolveShortCredential({ ...input, kind: 'vendor' });
+    async function resolveVendorCheckoutCredential(input = {}) {
+        const credential=await resolveShortCredential({ ...input, kind: 'vendor' });
+        return input.round&&credential?{...verifyVendorCheckoutToken(credential),checkoutRound:cleanText(input.round,120)}:credential;
     }
 
     function pickupDestinations(channel) {
@@ -1358,7 +1364,7 @@ function createPlatformApi({
         if (!token) return null;
         if (!operatorAccess && !await buyerLinkAccess.accepts(token)) return null;
         const catalog = await loadCatalog();
-        const channel = catalog.channels.find((entry) => entry.id === token.channelId && (entry.status === 'active' || (allowArchived && entry.status === 'archived')));
+        const channel = catalog.channels.find((entry) => entry.id === token.channelId && CheckoutRounds.open(entry));
         if (!channel || channel.features?.shipping === false || channel.dataAdapter !== 'platform') return null;
         const [storedItems, shipments, vendors] = await Promise.all([
             repository.listRecords(channel.id, 'item'),
@@ -1370,7 +1376,7 @@ function createPlatformApi({
         const soldItems = items.filter(isSoldItem);
         // Historical ownership must come from the stored sale. A member's
         // present-day profile or reused nickname cannot claim an older result.
-        const buyerPhone = async item => storedWinnerPhone(item) || (channel.status === 'archived' ? '' : await resolveWinnerPhone(item, bandMembership));
+        const buyerPhone = async item => storedWinnerPhone(item) || (channel.status === 'archived'||item.auctionArchiveId ? '' : await resolveWinnerPhone(item, bandMembership));
         if (token.tokenVersion === 'bs1' || Number(token.v) === 1) {
             const anchor = soldItems.find((item) => item.id === token.itemId);
             if (!anchor || (token.vendorKey && vendorKeyForItem(anchor) !== token.vendorKey)) return null;
@@ -1381,12 +1387,26 @@ function createPlatformApi({
             item,
             phone: await buyerPhone(item)
         })));
-        const bundleItems = resolved.filter((entry) => entry.phone && sessionKey(entry.phone) === token.phoneHash)
+        const matching=resolved.filter(entry=>entry.phone&&sessionKey(entry.phone)===token.phoneHash);
+        const ownedIds=new Set(matching.map(e=>e.item.id));
+        let rounds=CheckoutRounds.groups(channel,items,shipments,await repository.listRecords(channel.id,'archive'),i=>ownedIds.has(i.id));
+        if(!operatorAccess&&!token.itemId){
+            // Legacy identity links may select history, but cannot bypass a later
+            // round's revocation or replacement generation.
+            rounds=(await Promise.all(rounds.map(async round=>{
+                const anchor=round.items.find(i=>ownedIds.has(i.id)),phone=matching.find(e=>e.item.id===anchor.id).phone;
+                const subject=await buyerLinkSubject(channel.id,phone,anchor);
+                return await buyerLinkAccess.accepts({...token,roundScope:subject.roundScope||''})?round:null;
+            }))).filter(Boolean);
+        }
+        const round=CheckoutRounds.select(rounds,token.checkoutRound||'',token.itemId||'');
+        const roundItems=round.items,roundIds=new Set(roundItems.map(i=>i.id));
+        const bundleItems = resolved.filter((entry) => roundIds.has(entry.item.id) && entry.phone && sessionKey(entry.phone) === token.phoneHash)
             .map((entry) => entry.item)
             .sort(Checkout.itemOrder);
         if (!bundleItems.length) return null;
         const anchorPhone = resolved.find((entry) => bundleItems.some((item) => item.id === entry.item.id))?.phone || '';
-        return { token, catalog, channel, items, shipments, vendors, anchorPhone, bundleItems };
+        return { token:{...token,checkoutRound:round.key}, catalog, channel, round:CheckoutRounds.publicRound(round), rounds:(token.itemId?[round]:rounds).map(CheckoutRounds.publicRound), items:roundItems, shipments:shipments.filter(s=>roundIds.has(s.itemId)), vendors, anchorPhone, bundleItems };
     }
 
     function groupSettlement(context, group) {
@@ -1510,7 +1530,7 @@ function createPlatformApi({
     }
 
     async function buyerShippingPayload(context) {
-        const readOnly = context.channel.status === 'archived';
+        const readOnly = !CheckoutRounds.open(context.channel);
         const snapshot = await checkoutSnapshot(context);
         const displayItems = await vendorEntries.hydrateItems(context.channel.id, context.bundleItems);
         const displayById = new Map(displayItems.map(item => [item.id,item]));
@@ -1556,6 +1576,7 @@ function createPlatformApi({
         return {
             revision: checkoutRevision(context.channel.id),
             editVersion: buyerEditVersion(context),
+            round:context.round,rounds:context.rounds,
             savedDestination: submittedAt || readOnly ? null : await savedBuyerDestination(context, fixedDestinations, carriers),
             channel: { id: context.channel.id, name: context.channel.name, status: context.channel.status },
             shippingSupport: context.channel.shippingSupport || null,
@@ -1638,7 +1659,7 @@ function createPlatformApi({
     }
     async function checkoutChanges(context) {
         return (await repository.listRecords(context.channel.id, 'checkoutchange'))
-            .filter(row => row.phoneHash === context.token.phoneHash)
+            .filter(row => row.phoneHash === context.token.phoneHash && row.itemIds?.some(id=>context.bundleItems.some(item=>item.id===id)))
             .sort((a,b) => (a.state!=='pending')-(b.state!=='pending') || String(b.createdAt).localeCompare(String(a.createdAt)));
     }
     async function pendingCheckoutChange(context) { return (await checkoutChanges(context)).find(row => row.state === 'pending'); }
@@ -1803,11 +1824,11 @@ function createPlatformApi({
             if (record.state === state) return {record,duplicate:true};
             throw buyerInputError('이미 처리한 변경 요청입니다.',409);
         }
-        if (state === 'approved' && channel.status !== 'active') throw buyerInputError('운영 중인 채널에서만 승인할 수 있습니다.',409);
+        if (state === 'approved' && !CheckoutRounds.open(channel)) throw buyerInputError('운영 중인 채널에서만 승인할 수 있습니다.',409);
         const now = new Date().toISOString(), reviewed = {...record,state,updatedAt:now,reviewedAt:now,reviewedBy:'operator',reason:cleanText(body.reason,300)};
         let rows=[];
         if (state === 'approved') {
-            const context = await buyerBundleContext({v:2,channelId:channel.id,phoneHash:record.phoneHash},{operatorAccess:true});
+            const context = await buyerBundleContext({v:2,channelId:channel.id,phoneHash:record.phoneHash,itemId:record.itemIds?.[0]},{operatorAccess:true});
             if (!context || checkoutFingerprint(context) !== record.fingerprint) throw buyerInputError('요청 이후 낙찰·결제 정보가 바뀌었습니다. 반려 후 다시 요청해 주세요.',409);
             assertChangeable(context);
             if (body.confirmedUnpaid !== true) throw buyerInputError('모든 관련 업체의 미결제 여부를 확인해 주세요.');
@@ -1820,10 +1841,10 @@ function createPlatformApi({
             reviewed.confirmedUnpaid=true; reviewed.confirmedCardLinksCancelled=body.confirmedCardLinksCancelled === true;
         } else if (!reviewed.reason) throw buyerInputError('반려 사유를 입력해 주세요.');
         rows.push({key:channelKey(channel.id,'checkoutchange',id),value:JSON.stringify(reviewed)});
-        const context=await buyerBundleContext({v:2,channelId:channel.id,phoneHash:record.phoneHash},{operatorAccess:true});
+        const context=await buyerBundleContext({v:2,channelId:channel.id,phoneHash:record.phoneHash,itemId:record.itemIds?.[0]},{operatorAccess:true});
         const events=[];
         if(context){
-            const link=await prepareBuyerNotificationLink(req,channel.id,context.anchorPhone);
+            const link=await prepareBuyerNotificationLink(req,channel.id,context.anchorPhone,context.bundleItems[0]);
             if(link)events.push({eventKey:`checkout-change-reviewed:${id}`,templateKey:'buyer_checkout_change_reviewed',recipientRole:'buyer',recipientPhone:context.anchorPhone,transport:'alimtalk',
                 variables:{구매자명:record.buyerName,업체명:record.after.vendors.map(v=>v.name).join(', '),개체명:context.bundleItems.map(i=>i.name).join('·'),낙찰금액:`${context.bundleItems.reduce((n,i)=>n+Number(i.soldPrice||0),0).toLocaleString('ko-KR')}원`,접속코드:link.code},fallbackText:shortSms(state==='approved'?'변경 승인':'변경 반려',link.url)});
             if(state==='approved')for(const group of Checkout.groupItemsByVendor(context.bundleItems,context.vendors)){
@@ -2227,17 +2248,25 @@ function createPlatformApi({
     async function vendorCheckoutContext(tokenOrPayload, event = '') {
         let token = typeof tokenOrPayload === 'string' ? verifyVendorCheckoutToken(tokenOrPayload) : tokenOrPayload;
         if (!token) return null;
-        const access = token.accessActor || token.accessSession ? await vendorAccess.authorize(token) : null;
-        if ((token.accessActor || token.accessSession) && (!access || (event && event !== token.channelId))) return null;
-        let profile = await vendorDirectory.profileFor(token.channelId,token.vendorKey);
+        const catalog = await loadCatalog();
+        const accessOrigin=token.accessOrigin||{channelId:token.channelId,vendorKey:token.vendorKey};
+        const access = token.accessActor || token.accessSession ? await vendorAccess.authorize({...token,...accessOrigin}) : null;
+        if ((token.accessActor || token.accessSession) && !access) return null;
+        let profile = await vendorDirectory.profileFor(accessOrigin.channelId,accessOrigin.vendorKey);
         if(profile?.deletedAt)return null;
-        if(access?.kind==='phone'&&profile)profile={...profile,members:profile.members.filter(m=>m.channelId===token.channelId&&m.vendorId===token.vendorKey)};
+        if(access){
+            const targetId=event||token.channelId,target=catalog.channels.find(c=>c.id===targetId);
+            if(access.kind==='phone'&&targetId!==accessOrigin.channelId)return null;
+            if(access.kind!=='phone'&&targetId!==accessOrigin.channelId&&target?.nationalRound?.parentId!==accessOrigin.channelId)return null;
+            if(targetId!==accessOrigin.channelId&&!profile?.members.some(m=>m.channelId===targetId))return null;
+            if(profile)profile={...profile,members:profile.members.filter(m=>access.kind==='phone'?m.channelId===accessOrigin.channelId&&m.vendorId===accessOrigin.vendorKey:m.channelId===accessOrigin.channelId||catalog.channels.some(c=>c.id===m.channelId&&c.nationalRound?.parentId===accessOrigin.channelId))};
+            token={...token,accessOrigin};
+        }
         if(event && event !== token.channelId) {
             const membership=profile?.members.find(member=>member.channelId===event);
             if(!membership)return null;
             token={...token,channelId:membership.channelId,vendorKey:membership.vendorId};
         }
-        const catalog = await loadCatalog();
         if(!access&&!event&&profile&&typeof tokenOrPayload==='string') {
             const candidates=profile.members.slice().sort((a,b)=>{
                 const left=catalog.channels.find(c=>c.id===a.channelId),right=catalog.channels.find(c=>c.id===b.channelId);
@@ -2258,13 +2287,16 @@ function createPlatformApi({
             || vendors.find((entry) => entry.name === token.vendorKey);
         if (!vendor) return null;
         if(access&&vendor.active===false)return null;
-        return { token, catalog, channel, items, shipments, vendors, vendor, profile, access, vendorKey: token.vendorKey };
+        const rounds=CheckoutRounds.groups(channel,items,shipments,await repository.listRecords(channel.id,'archive'),i=>vendorKeyForItem(i)===token.vendorKey);
+        const round=CheckoutRounds.select(rounds,token.checkoutRound||'');
+        const ids=new Set(round.items.map(i=>i.id));
+        return { token:{...token,checkoutRound:round.key}, catalog, channel, round:CheckoutRounds.publicRound(round),rounds:rounds.map(CheckoutRounds.publicRound),financialRounds:rounds,roundShipments:shipments, items:round.items, shipments:shipments.filter(s=>ids.has(s.itemId)), vendors, vendor, profile, access, vendorKey: token.vendorKey };
     }
 
     async function vendorBuyerBundles(context) {
         const resolved = await Promise.all(context.items.filter(isSoldItem).map(async (item) => ({
             item,
-            phone: storedWinnerPhone(item) || await resolveWinnerPhone(item, bandMembership)
+            phone: storedWinnerPhone(item) || (context.channel.status==='archived'||item.auctionArchiveId?'':await resolveWinnerPhone(item, bandMembership))
         })));
         const buyerRows = new Map();
         for (const entry of resolved) {
@@ -2372,7 +2404,10 @@ function createPlatformApi({
         let bank = {};
         try { bank = JSON.parse(rows.find(row => row.key === key)?.value || '{}'); } catch (_) {}
         // Financial history must fail closed if stored data is damaged.
-        const ledger = JSON.parse(rows.find(row => row.key === ledgerKey)?.value || '[]');
+        const allLedger = JSON.parse(rows.find(row => row.key === ledgerKey)?.value || '[]');
+        const archives=await repository.listRecords(channelId,'archive'),hasHistory=archives.some(a=>a.closedAt),itemIds=new Set(items.map(i=>i.id));
+        const ledger=allLedger.filter(r=>r.itemIds?.length?r.itemIds.every(id=>itemIds.has(id)):!hasHistory);
+        const unassignedReceiptCount=hasHistory?allLedger.filter(r=>vendors.some(v=>v.id===r.vendorId)&&!r.itemIds?.length&&['confirmed','pending'].includes(r.status)).length:0;
         const summaries = require('./shipping-settlement').summarizeShipping(items, shipments, vendors).map(v => {
             const history = ledger.filter(r => r.vendorId === v.vendorId);
             const receivedAmount = history.filter(r => r.status === 'confirmed').reduce((n,r) => n + r.amount, 0);
@@ -2385,12 +2420,13 @@ function createPlatformApi({
                 v.pendingReport.notificationStatus=notification?.status || 'configuration_pending';
             }
         }));
-        return {bank, vendors:summaries,...(channel.vendorSettlement?.enabled?{includesVendorFees:true}: {})};
+        return {bank, vendors:summaries,unassignedReceiptCount,...(channel.vendorSettlement?.enabled?{includesVendorFees:true}: {})};
     }
 
     async function reportOrganizerShipping(context, body) {
         const channelId = context.channel.id;
         const current = await organizerShippingSettlement(channelId,context.items,context.shipments,[context.vendor]);
+        if(current.unassignedReceiptCount)throw buyerInputError('기존 입금의 회차를 확인 중입니다. 주관사 확인 후 정산을 진행해 주세요.',409);
         const row = current.vendors[0], bank = current.bank;
         const requestId = cleanText(body.requestId,80);
         if (requestId.length < 8) throw buyerInputError('다시 시도해 주세요.');
@@ -2399,7 +2435,7 @@ function createPlatformApi({
         if (body.expectedBankUpdatedAt !== bank.updatedAt || Number(body.expectedAmount) !== row.remainingAmount || row.remainingAmount <= 0) throw buyerInputError('정산 금액·계좌가 변경되었습니다. 새로고침해 주세요.',409);
         if (!notificationService?.prepare) throw buyerInputError('알림 발송 설정을 확인해 주세요.',503);
         if (channelId.startsWith('checkout-test-') && !testDeliveryChannels.has(channelId)) throw buyerInputError('연습 채널은 알림 발송이 꺼져 있습니다.',409);
-        const record = {id:requestId,vendorId:context.vendor.id,vendorName:context.vendor.name,amount:row.remainingAmount,status:'pending',reportedAt:new Date().toISOString(),bank:{bankName:bank.bankName,bankAccount:bank.bankAccount,bankHolder:bank.bankHolder}};
+        const record = {id:requestId,itemIds:context.items.filter(i=>i.vendorId===context.vendor.id).map(i=>i.id),vendorId:context.vendor.id,vendorName:context.vendor.name,amount:row.remainingAmount,status:'pending',reportedAt:new Date().toISOString(),bank:{bankName:bank.bankName,bankAccount:bank.bankAccount,bankHolder:bank.bankHolder}};
         if(current.includesVendorFees) Object.assign(record,{kind:'vendor-settlement',entryFeeAmount:row.entryFeeAmount,commissionAmount:row.commissionAmount,shippingAmount:row.shippingAmount});
         let vendorLabel = cleanText(context.vendor.name,60);
         const sms = () => `[옹동2] ${vendorLabel} ${current.includesVendorFees?'정산금':'배송비'} ${record.amount.toLocaleString('ko-KR')}원 입금 신고`;
@@ -2418,6 +2454,10 @@ function createPlatformApi({
 
     async function vendorCheckoutPayload(context) {
         const bundles = await vendorBuyerBundles(context);
+        const settlements=new Map(await Promise.all((context.financialRounds||[]).map(async round=>{
+            const ids=new Set(round.items.map(i=>i.id));
+            return [round.key,await organizerShippingSettlement(context.channel.id,round.items,context.roundShipments.filter(s=>ids.has(s.itemId)),[context.vendor])];
+        })));
         const displayItems = await vendorEntries.hydrateItems(context.channel.id,bundles.flatMap(bundle=>bundle.group.items));
         const displayById = new Map(displayItems.map(item=>[item.id,item]));
         const buyers = await Promise.all(bundles.map(async bundle => ({...vendorBuyerPublicPayload({...bundle,group:{...bundle.group,items:bundle.group.items.map(item=>displayById.get(item.id)||item)}}),changePending:Boolean(await pendingCheckoutChange(bundle.context))})));
@@ -2428,7 +2468,8 @@ function createPlatformApi({
             bookingSummary: await booking.summary(context),
             vendorContacts: context.vendors.filter(v => v.id !== context.vendor.id).map(v => ({name:cleanText(v.name,80),phone:Inquiry.vendorContact(v)?.phone || ''})).sort((a,b) => a.name.localeCompare(b.name,'ko')),
             testDeliveryEnabled: testDeliveryChannels.has(context.channel.id),
-            channel: { id: context.channel.id, name: context.channel.name, status: context.channel.status },
+            channel: { id: context.channel.id, name: context.channel.name, status: context.channel.status, checkoutOpen:CheckoutRounds.open(context.channel) },
+            round:context.round,rounds:(context.rounds||[]).map(round=>{const settlement=settlements.get(round.key),own=settlement?.vendors[0];return {...round,settlementRemaining:own?.remainingAmount||0,settlementPending:!!own?.pendingReport,settlementNeedsReview:!!settlement?.unassignedReceiptCount};}),
             events: (context.profile?.members || [{channelId:context.channel.id}]).map(member => {
                 const channel=context.catalog.channels.find(row=>row.id===member.channelId);
                 return channel ? {id:channel.id,name:channel.name,status:channel.status} : null;
@@ -2456,7 +2497,7 @@ function createPlatformApi({
                 reportedCount: buyers.filter((buyer) => ['bank_transfer_reported', 'card_payment_reported'].includes(buyer.payment.status)).length
             },
             shippingSettlement: await (async () => {
-                const settlement = await organizerShippingSettlement(context.channel.id, context.items, context.shipments, [context.vendor]);
+                const settlement = settlements.get(context.round?.key)||await organizerShippingSettlement(context.channel.id, context.items, context.shipments, [context.vendor]);
                 const {notificationPhone,...bank} = settlement.bank;
                 const vendors=settlement.vendors.map(v=>({...v,history:v.history.map(({memo,depositSignature,depositRequestId,...receipt})=>receipt)}));
                 return {...settlement,vendors,bank,notificationReady:Boolean(normalizePhone(notificationPhone))};
@@ -2503,7 +2544,7 @@ function createPlatformApi({
     }
 
     function vendorShippingLock(bundle) {
-        if (bundle.context.channel.status !== 'active') return '종료된 경매는 조회만 가능해요.';
+        if (!CheckoutRounds.open(bundle.context.channel)) return '종료된 경매는 조회만 가능해요.';
         if (bundle.snapshot.groups.length !== 1) return '다른 업체와 합배송 중이에요. 수령지 변경은 운영자에게 요청해 주세요.';
         if (!bundle.snapshot.selection || bundle.group.items.length !== bundle.group.shipments.length) return '구매자의 수령 정보 등록 후 변경할 수 있어요.';
         if (bundle.group.shipments.some(checkoutChangeLocked)) return '결제 신고·확인 또는 발송된 내역이에요. 수령지 변경은 운영자에게 요청해 주세요.';
@@ -2677,8 +2718,20 @@ function createPlatformApi({
         return configuredBuyerSiteOrigin || requestOrigin(req);
     }
 
-    async function prepareBuyerCheckoutLink(req, channelId, phone) {
-        const {token,payload,code} = await buyerLinkAccess.issue({channelId,phoneHash:sessionKey(normalizePhone(phone))});
+    async function buyerLinkSubject(channelId,phone,item=null) {
+        if(!item){const candidates=(await repository.listRecords(channelId,'item')).filter(i=>isSoldItem(i)&&storedWinnerPhone(i)===normalizePhone(phone));OperationRounds.buyerScope(candidates,'',candidates);item=candidates[0];}
+        const archives=await repository.listRecords(channelId,'archive');
+        const closedRounds=archives.filter(a=>a.closedAt).sort((a,b)=>String(a.closedAt).localeCompare(String(b.closedAt))||a.id.localeCompare(b.id)),closed=closedRounds.at(-1);
+        // The first generation retains existing link identity. After a close, a new
+        // generation cannot replace an earlier round's short URL.
+        const archiveIndex=item?.auctionArchiveId?closedRounds.findIndex(a=>a.id===item.auctionArchiveId):-1;
+        if(item?.auctionArchiveId&&archiveIndex<0)throw buyerInputError('보관 회차 기록을 확인해 주세요.',409);
+        const previous=item?.auctionArchiveId?closedRounds[archiveIndex-1]:closed;
+        const roundScope=previous?'after:'+previous.id:'';
+        return {channelId,phoneHash:sessionKey(normalizePhone(phone)),...(item?{itemId:item.id}:{}),...(roundScope?{roundScope}:{})};
+    }
+    async function prepareBuyerCheckoutLink(req, channelId, phone, item=null) {
+        const {token,payload,code} = await buyerLinkAccess.issue(await buyerLinkSubject(channelId,phone,item));
         return {token,payload,code,url:buyerCheckoutUrl(req,code)};
     }
 
@@ -2695,8 +2748,8 @@ function createPlatformApi({
         return url;
     }
 
-    async function prepareBuyerNotificationLink(req,channelId,phone) {
-        try{return await prepareBuyerCheckoutLink(req,channelId,phone);}
+    async function prepareBuyerNotificationLink(req,channelId,phone,item=null) {
+        try{return await prepareBuyerCheckoutLink(req,channelId,phone,item);}
         catch(error){if(error.code==='BUYER_LINK_REVOKED')return null;throw error;}
     }
 
@@ -2751,7 +2804,7 @@ function createPlatformApi({
         let buyerResult = { skipped: 'missing_phone' };
         // A missing buyer contact or buyer-link failure must not suppress the vendor's notice.
         if (phone) try {
-        const buyerLink = await prepareBuyerCheckoutLink(req, channel.id, phone);
+        const buyerLink = await prepareBuyerCheckoutLink(req, channel.id, phone,item);
         const buyerContext = await buyerBundleContext(buyerLink.payload,prepareOnly?{prospectiveItem:item}:{});
         const buyerPayload = buyerContext ? await buyerShippingPayload(buyerContext) : null;
         const additional = Boolean(buyerPayload && buyerPayload.items.length > 1);
@@ -2809,6 +2862,7 @@ function createPlatformApi({
         return {event:{
             eventKey,
             templateKey: 'vendor_payment_reported',
+            itemIds:group.items.map(i=>i.id),
             transport: 'alimtalk', allowSmsFallback: false,
             recipientRole: 'vendor',
             recipientPhone: vendor.phone,
@@ -2851,7 +2905,7 @@ function createPlatformApi({
     }
 
     async function prepareBuyerStatusNotification(req, bundle, templateKey, eventKey, confirmedAmount) {
-        const link = await prepareBuyerNotificationLink(req, bundle.context.channel.id, bundle.phone);
+        const link = await prepareBuyerNotificationLink(req, bundle.context.channel.id, bundle.phone,bundle.context.bundleItems[0]);
         if(!link)return {result:{failed:true,status:'link_revoked',error:'구매자 링크가 사용 중지되어 알림을 보내지 않았어요. 링크 관리에서 새로 발급해 주세요.'}};
         const vendorName = bundle.group.vendor?.name || '업체';
         const amount = confirmedAmount ?? (bundle.group.payment.additionalDue || bundle.group.totalAmount);
@@ -2859,6 +2913,7 @@ function createPlatformApi({
         return {event:{
             eventKey,
             templateKey,
+            itemIds:bundle.group.items.map(i=>i.id),
             transport: 'alimtalk', allowSmsFallback: false,
             recipientRole: 'buyer',
             recipientPhone: bundle.phone,
@@ -3416,7 +3471,7 @@ function createPlatformApi({
             if (segments.length === 1 && segments[0] === 'buyer-delivery' && method === 'GET') {
                 const credential = await resolveBuyerShippingCredential({
                     token: url.searchParams.get('token'),
-                    code: url.searchParams.get('code')
+                    code: url.searchParams.get('code'), round:url.searchParams.get('round')
                 });
                 const context = await buyerBundleContext(credential);
                 if (!context) {
@@ -3468,7 +3523,7 @@ function createPlatformApi({
             if (segments.length === 1 && segments[0] === 'buyer-shipping' && method === 'GET') {
                 const credential = await resolveBuyerShippingCredential({
                     token: url.searchParams.get('token'),
-                    code: url.searchParams.get('code')
+                    code: url.searchParams.get('code'), round:url.searchParams.get('round')
                 });
                 const context = await buyerBundleContext(credential, { allowArchived: true });
                 if (!context) {
@@ -3629,7 +3684,7 @@ function createPlatformApi({
             if (segments.length === 1 && segments[0] === 'vendor-status' && method === 'GET') {
                 const credential = await resolveVendorCheckoutCredential({
                     token: url.searchParams.get('token'),
-                    code: url.searchParams.get('code')
+                    code: url.searchParams.get('code'), round:url.searchParams.get('round')
                 });
                 const context = await vendorCheckoutContext(credential, method === 'GET' ? (url.searchParams.get('event') || '') : (body.event || ''));
                 if (!context) {
@@ -3641,7 +3696,7 @@ function createPlatformApi({
             }
 
             if (segments.length === 2 && segments[0] === 'vendor-checkout' && segments[1] === 'revision' && method === 'GET') {
-                const credential=await resolveVendorCheckoutCredential({code:url.searchParams.get('code'),token:url.searchParams.get('token')});
+                const credential=await resolveVendorCheckoutCredential({code:url.searchParams.get('code'),token:url.searchParams.get('token'),round:url.searchParams.get('round')});
                 const context=await vendorCheckoutContext(credential,url.searchParams.get('event')||'');
                 if(!context)throw buyerInputError('업체 전용 링크를 다시 확인해 주세요.',401);
                 replyJson(res,200,{revision:checkoutRevision(context.channel.id)});return true;
@@ -3655,7 +3710,7 @@ function createPlatformApi({
                     const fresh = await vendorCheckoutContext(context.token,context.channel.id);
                     if (!fresh) throw buyerInputError('업체 정보를 다시 불러와 주세요.',409);
                     if (method === 'GET') { replyJson(res,200,await vendorShippingEditor(fresh,body.buyerId)); return; }
-                    if (fresh.channel.status !== 'active') throw buyerInputError('운영 중인 경매에서만 변경할 수 있습니다.',409);
+                    if (!CheckoutRounds.open(fresh.channel)) throw buyerInputError('운영 중인 경매에서만 변경할 수 있습니다.',409);
                     const result = await saveVendorShipping(fresh,body);
                     replyJson(res,200,{...await vendorCheckoutPayload(await vendorCheckoutContext(context.token,context.channel.id)),...result});
                 });
@@ -3665,7 +3720,7 @@ function createPlatformApi({
             if (segments.length === 1 && segments[0] === 'vendor-checkout' && method === 'GET') {
                 const credential = await resolveVendorCheckoutCredential({
                     token: url.searchParams.get('token'),
-                    code: url.searchParams.get('code')
+                    code: url.searchParams.get('code'), round:url.searchParams.get('round')
                 });
                 const context = await vendorCheckoutContext(credential, method === 'GET' ? (url.searchParams.get('event') || '') : (body.event || ''));
                 if (!context) {
@@ -3765,7 +3820,7 @@ function createPlatformApi({
                 await withMutationLock(`channel:${context.channel.id}`, async () => {
                     const freshContext = await vendorCheckoutContext(context.token);
                     if (!freshContext) throw buyerInputError('업체 결제 정보를 다시 불러와 주세요.', 409);
-                    if(freshContext.channel.status!=='active')throw buyerInputError('운영 중인 경매에서만 결제 처리할 수 있습니다.',409);
+                    if(!CheckoutRounds.open(freshContext.channel))throw buyerInputError('운영 중인 경매에서만 결제 처리할 수 있습니다.',409);
                     const result = await saveCardPaymentLink(freshContext, body.buyerId, body.cardPaymentUrl, body.requestId, body, req);
                     const notification = result.notification || {duplicate:result.duplicate};
                     const reloadedContext = await vendorCheckoutContext(context.token);
@@ -3780,7 +3835,7 @@ function createPlatformApi({
                 if (!context) throw buyerInputError('업체 전용 링크를 다시 열어 주세요.', 401);
                 await withMutationLock(`channel:${context.channel.id}`, async () => {
                     const fresh = await vendorCheckoutContext(context.token);
-                    if (!fresh || fresh.channel.status !== 'active') throw buyerInputError('운영 중인 경매에서만 변경할 수 있습니다.', 409);
+                    if (!fresh || !CheckoutRounds.open(fresh.channel)) throw buyerInputError('운영 중인 경매에서만 변경할 수 있습니다.', 409);
                     const result = await resetCardPaymentGuide(fresh, body);
                     replyJson(res, 200, {...await vendorCheckoutPayload(await vendorCheckoutContext(context.token)), duplicate:result.duplicate});
                 });
@@ -3793,7 +3848,7 @@ function createPlatformApi({
                 if (!context) { replyJson(res,401,{error:'업체 확인 링크를 다시 열어 주세요.'}); return true; }
                 await withMutationLock(`channel:${context.channel.id}`, async () => {
                     const fresh = await vendorCheckoutContext(context.token);
-                    if (!fresh || fresh.channel.status !== 'active') throw buyerInputError('운영 중인 경매에서만 처리할 수 있습니다.',409);
+                    if (!fresh || !CheckoutRounds.open(fresh.channel)) throw buyerInputError('운영 중인 경매에서만 처리할 수 있습니다.',409);
                     const bundle = await vendorBuyerBundle(fresh,body.buyerId);
                     if (!bundle) throw buyerInputError('구매자 내역을 다시 불러와 주세요.',404);
                     const latest = bundle.group.payment.latest;
@@ -3820,7 +3875,7 @@ function createPlatformApi({
                 await withMutationLock(`channel:${context.channel.id}`, async () => {
                     const freshContext = await vendorCheckoutContext(context.token);
                     if (!freshContext) throw buyerInputError('업체 결제 정보를 다시 불러와 주세요.', 409);
-                    if(freshContext.channel.status!=='active')throw buyerInputError('운영 중인 경매에서만 결제 처리할 수 있습니다.',409);
+                    if(!CheckoutRounds.open(freshContext.channel))throw buyerInputError('운영 중인 경매에서만 결제 처리할 수 있습니다.',409);
                     const bundle = await vendorBuyerBundle(freshContext, body.buyerId);
                     if (!bundle) throw buyerInputError('구매자 결제 내역을 찾을 수 없습니다.', 404);
                     const result = await confirmBuyerPayment(bundle.context, context.vendorKey, body.requestId, body, req);
@@ -3897,7 +3952,7 @@ function createPlatformApi({
                     channel: channel ? { ...channel, links: channelLinks(channel) } : null,
                     adapter: channel?.dataAdapter || '',
                     workspace: channel && channel.dataAdapter !== 'legacy-cdcup'
-                        ? await withMutationLock(`channel:${channelId}`, async () => AuctionRounds.currentWorkspace(await workspace(channelId))) : null
+                        ? await withMutationLock(`channel:${channelId}`, async () => OperationRounds.scopeWorkspace(channel,await workspace(channelId))) : null
                 });
                 return true;
             }
@@ -3948,6 +4003,16 @@ function createPlatformApi({
                     unchanged: false
                 });
                 });
+                return true;
+            }
+
+            if (segments.length === 1 && segments[0] === 'operation-rounds' && method === 'GET') {
+                if (!await requireAdmin(req,res)) return true;
+                replyJson(res,200,await OperationRounds.list(repository));return true;
+            }
+            if (segments.length === 1 && segments[0] === 'national-rounds' && ['GET','POST'].includes(method)) {
+                if (!await requireAdmin(req,res)) return true;
+                replyJson(res,200,method === 'GET' ? await nationalRounds.list() : await nationalRounds.command(await readJson(req)));
                 return true;
             }
 
@@ -4053,7 +4118,7 @@ function createPlatformApi({
                 // Capture one consistent financial snapshot; slow directory lookups
                 // must never hold the live auction mutation lock.
                 const snapshot = await withMutationLock(`channel:${channelId}`, async () => {
-                    const data = await workspace(channelId);
+                    const data = await OperationRounds.scopedWorkspace(repository,channel,await workspace(channelId),url.searchParams.get('archive')||'');
                     return {...data, organizer: await organizerShippingSettlement(channelId, data.items, data.shipments, data.vendors), generatedAt: new Date().toISOString()};
                 });
                 const lookups = new Map();
@@ -4084,18 +4149,22 @@ function createPlatformApi({
                 await withMutationLock(`channel:${channelId}`, async () => {
                     // Settlement remains available after the auction ends; no auction/payment rows are mutated.
                     const key = `creo_organizer_shipping_ledger::${channelId}`;
-                    const data = await workspace(channelId);
+                    const data = await OperationRounds.scopedWorkspace(repository,channel,await workspace(channelId),url.searchParams.get('archive')||'');
                     const current = await organizerShippingSettlement(channelId,data.items,data.shipments,data.vendors);
                     const vendor = current.vendors.find(v=>v.vendorId===body.vendorId);
                     if (!vendor) throw buyerInputError('업체를 찾을 수 없습니다.',404);
+                    if(current.unassignedReceiptCount)throw buyerInputError('회차 미지정 입금이 있습니다. 기존 입금의 회차를 먼저 확인해 주세요.',409);
                     const rows = await repository.getRowsByKeys([key]);
                     const ledger = JSON.parse(rows.find(r=>r.key===key)?.value || '[]');
                     const receipts = require('./organizer-receipts');
+                    const selectedIds=new Set(vendor.history.map(r=>r.id));
+                    if(segments[3]==='deposit'&&body.requestId&&ledger.some(r=>r.depositRequestId===body.requestId&&!selectedIds.has(r.id)))throw buyerInputError('다른 회차에서 사용한 요청입니다.',409);
                     const result = segments[3] === 'deposit'
-                        ? receipts.deposit(ledger,vendor,body,current.bank)
-                        : receipts.cancel(ledger,body);
+                        ? receipts.deposit(vendor.history,vendor,body,current.bank)
+                        : receipts.cancel(vendor.history,body);
                     if (!result.duplicate) {
-                        await repository.upsertRows([{key,value:JSON.stringify(result.ledger)}]);
+                        const updated=result.ledger.map(r=>r.itemIds?.length?r:{...r,itemIds:data.items.filter(i=>i.vendorId===body.vendorId).map(i=>i.id)});
+                        await repository.upsertRows([{key,value:JSON.stringify([...ledger.filter(r=>!selectedIds.has(r.id)),...updated])}]);
                         touchCheckout(channelId);
                     }
                     replyJson(res,200,{duplicate:result.duplicate});
@@ -4129,10 +4198,10 @@ function createPlatformApi({
             if (segments.length === 3 && segments[2] === 'organizer-shipping' && ['GET','PUT'].includes(method)) {
                 if (!await requireOrganizer(req,res,channelId)) return true;
                 await withMutationLock(`channel:${channelId}`, async () => {
-                    const data = await workspace(channelId);
+                    const data = await OperationRounds.scopedWorkspace(repository,channel,await workspace(channelId),url.searchParams.get('archive')||'');
                     const current = await organizerShippingSettlement(channelId,data.items,data.shipments,data.vendors);
                     current.carriers = require('./shipping-settlement').summarizeCarriers(data.items,data.shipments,data.vendors);
-                    current.auctionItems = require('./shipping-settlement').organizerAuctionItems(AuctionRounds.currentItems(data.items).map(item=>({...item,winnerPhone:storedWinnerPhone(item)})),data.shipments,data.vendors,buyerDisplayName);
+                    current.auctionItems = require('./shipping-settlement').organizerAuctionItems(data.items.map(item=>({...item,winnerPhone:storedWinnerPhone(item)})),data.shipments,data.vendors,buyerDisplayName);
                     if (deliverySchedules && channel.shippingDefaults?.deliverySchedule?.enabled) {
                         const rateMap = Object.fromEntries(await Promise.all(['parge', 'dodosi'].map(async id => [id, await pargeRates(id)])));
                         current.auctionItems = await Promise.all(current.auctionItems.map(async row => {
@@ -4246,7 +4315,8 @@ function createPlatformApi({
             if (segments.length === 3 && segments[2] === 'workspace' && method === 'GET') {
                 if (!await requireAdmin(req, res)) return true;
                 const data = await workspace(channelId);
-                replyJson(res, 200, { channel, ...(url.searchParams.get('includeArchived') === '1' ? data : AuctionRounds.currentWorkspace(data)) });
+                const scoped=url.searchParams.has('scope')||url.searchParams.has('archive');
+                replyJson(res, 200, { channel, ...(scoped ? await OperationRounds.scopedWorkspace(repository,channel,data,url.searchParams.get('archive')||'') : url.searchParams.get('includeArchived') === '1' ? data : {...AuctionRounds.currentWorkspace(data),items:OperationRounds.scopeWorkspace(channel,data).items,shipments:OperationRounds.scopeWorkspace(channel,data).shipments}) });
                 return true;
             }
 
@@ -4288,7 +4358,11 @@ function createPlatformApi({
                 const loadedRecords = notificationService && typeof notificationService.list === 'function'
                     ? await notificationService.list(channelId, limit)
                     : [];
-                const records = Array.isArray(loadedRecords) ? loadedRecords : [];
+                let records = Array.isArray(loadedRecords) ? loadedRecords : [];
+                if(url.searchParams.has('scope')||url.searchParams.has('archive')){
+                    const full=await workspace(channelId),scoped=await OperationRounds.scopedWorkspace(repository,channel,full,url.searchParams.get('archive')||''),ids=new Set(scoped.items.map(i=>i.id));
+                    if(scoped.items.length!==full.items.length)records=records.filter(r=>r.itemIds?.length?r.itemIds.every(id=>ids.has(id)):scoped.items.some(i=>String(r.eventKey||'').startsWith('sale:'+i.id+':')||String(r.eventKey||'').startsWith('sale-v2:'+i.id+':')||String(r.eventKey||'').startsWith('retry:'+i.id+':')));
+                }
                 const counts = {
                     total: records.length,
                     queued: 0,
@@ -4698,7 +4772,7 @@ function createPlatformApi({
                     pricingConfig: await repository.getRecord(channelId, 'setting', BROADCAST_CONFIG_ID),
                     revision: channelRevision(channelId)
                 }));
-                const data = AuctionRounds.currentWorkspace(snapshot.data);
+                const data = OperationRounds.scopeWorkspace(channel,snapshot.data);
                 const bidUnit = Number(snapshot.pricingConfig?.values?.auction_bid_unit_manwon || 0);
                 if(data.broadcast?.bannerSelectionConfigured){
                     data.assets=[...data.assets.filter(asset=>asset.kind!=='banner'),...await bannerLibrary.selected(data.broadcast)];
@@ -4866,7 +4940,15 @@ function createPlatformApi({
                     const itemId = cleanText(body.itemId || body.item?.id, 64);
                     const current = data.items.find((item) => item.id === itemId) || null;
                     AuctionRounds.assertCurrent(current);
-                    if (body.state?.activeItemId) AuctionRounds.assertCurrent(data.items.find(item => item.id === body.state.activeItemId));
+                    if (current) NationalRounds.assertDate(channel,current);
+                    if(current&&!OperationRounds.scopeWorkspace(channel,data).items.some(i=>i.id===current.id))throw buyerInputError('선택한 방송 회차의 개체가 아닙니다. 회차를 다시 선택해 주세요.',409);
+                    if (current?.attributes?.roundTargetChannelId) throw Object.assign(new Error('별도 회차로 가져온 접수 개체입니다. 회차 선택에서 해당 방송을 열어 주세요.'),{status:409});
+                    if (body.state?.activeItemId) {
+                        const selected=data.items.find(item=>item.id===body.state.activeItemId);
+                        AuctionRounds.assertCurrent(selected);
+                        if(selected&&!OperationRounds.scopeWorkspace(channel,data).items.some(i=>i.id===selected.id))throw buyerInputError('다른 회차의 개체를 방송에 선택할 수 없습니다.',409);
+                        if(selected)NationalRounds.assertDate(channel,{...selected,status:'live'});
+                    }
                     if (body.expectedUpdatedAt && body.expectedUpdatedAt !== current?.updatedAt) {
                         replyJson(res, 409, { code: 'ITEM_CHANGED', error: '개체 정보가 변경되었습니다. 새로고침 후 다시 진행해 주세요.' });
                         return;
@@ -4911,6 +4993,7 @@ function createPlatformApi({
                         for (const key of ['organizerFeePolicy','broadcastDate','auctionKind']) {
                             if (current.attributes?.[key] !== undefined) candidate.attributes[key] = current.attributes[key];
                         }
+                        candidate = NationalRounds.assertDate(channel,candidate);
                         if (staleSaleOutcome) {
                             candidate = {
                                 ...candidate,
@@ -5427,7 +5510,12 @@ function createPlatformApi({
                 await withMutationLock(`channel:${channelId}`, async () => {
                     const current = await repository.getRecord(channelId, 'broadcast', 'state');
                     const selectedId = body.activeItemId || current?.activeItemId;
-                    if (selectedId) AuctionRounds.assertCurrent(await repository.getRecord(channelId, 'item', selectedId));
+                    if (selectedId) {
+                        const selected=await repository.getRecord(channelId,'item',selectedId);
+                        AuctionRounds.assertCurrent(selected);
+                        if(selected)NationalRounds.assertDate(channel,{...selected,status:'live'});
+                        if(selected&&!OperationRounds.scopeWorkspace(channel,await workspace(channelId)).items.some(i=>i.id===selected.id))throw buyerInputError('다른 회차의 개체를 방송에 선택할 수 없습니다.',409);
+                    }
                     const record = await repository.upsertRecord(channelId, 'broadcast', {
                         ...sanitizeBroadcastState(mergeChannelBroadcastState(channel, current || {}, body)),
                         revision: Date.now()
@@ -5448,9 +5536,9 @@ function createPlatformApi({
                     if(!current||!item||!isSoldItem(item))throw buyerInputError('낙찰 개체를 찾을 수 없어요.',404);
                     const phone=storedWinnerPhone(item)||(current.status==='archived'?'':await resolveWinnerPhone(item,bandMembership));
                     if(!phone)throw buyerInputError('낙찰 기록에서 구매자 번호를 확인할 수 없어요.',422);
-                    const subject={channelId,phoneHash:sessionKey(phone)};
+                    const subject=await buyerLinkSubject(channelId,phone,item);
                     if(segments[2]==='buyer-checkout-preview'){
-                        const context=await buyerBundleContext({v:2,...subject},{operatorAccess:true,allowArchived:true});
+                         const context=await buyerBundleContext({v:2,...subject,itemId},{operatorAccess:true,allowArchived:true});
                         if(!context)throw buyerInputError('구매자 내역을 찾을 수 없어요.',404);
                         replyJson(res,200,await buyerShippingPayload(context));return;
                     }
@@ -5485,7 +5573,7 @@ function createPlatformApi({
                     replyJson(res, 422, { error: '개체의 업체 정보가 없어 배송 묶음을 만들 수 없습니다.' });
                     return true;
                 }
-                const prepared = await prepareBuyerCheckoutLink(req, channelId, phone);
+                const prepared = await prepareBuyerCheckoutLink(req, channelId, phone,item);
                 const { payload: tokenPayload, code: shortCode, url: buyerUrl } = prepared;
                 const name = buyerDisplayName(item);
                 const vendorName = cleanText(item.vendorName || (await repository.getRecord(channelId, 'vendor', item.vendorId))?.name || '업체', 80);
@@ -5631,7 +5719,13 @@ function createPlatformApi({
                 if(!await requireAdmin(req,res))return true;
                 if(segments.length===3 && method==='GET'){
                     const records=(await repository.listRecords(channelId,'checkoutchange')).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));
-                    replyJson(res,200,{records});return true;
+                    const data=await workspace(channelId),focusId=url.searchParams.get('recordId');
+                    const focus=focusId?records.find(r=>r.id===focusId):null;
+                    if(focusId&&!focus)throw buyerInputError('변경 요청을 찾을 수 없습니다.',404);
+                    const anchor=focus?data.items.find(i=>focus.itemIds?.includes(i.id)):null;
+                    const archiveId=anchor?.auctionArchiveId||url.searchParams.get('archive')||'';
+                    const scoped=await OperationRounds.scopedWorkspace(repository,channel,data,archiveId),ids=new Set(scoped.items.map(i=>i.id));
+                    replyJson(res,200,{archiveId,records:records.filter(r=>r.itemIds?.length&&r.itemIds.every(id=>ids.has(id)))});return true;
                 }
                 if(segments.length===4 && method==='POST'){
                     const body=await readJson(req);
@@ -5645,7 +5739,7 @@ function createPlatformApi({
                 const itemId = cleanText(body.itemId, 64);
                 await withMutationLock(`channel:${channelId}`, async () => {
                     const freshChannel = (await repository.getCatalog()).channels.find(c=>c.id===channelId);
-                    if (freshChannel?.status !== 'active') throw buyerInputError('운영 중인 경매에서만 결제 처리할 수 있습니다.',409);
+                    if (!CheckoutRounds.open(freshChannel)) throw buyerInputError('운영 중인 경매에서만 결제 처리할 수 있습니다.',409);
                     const item = await repository.getRecord(channelId, 'item', itemId);
                     if (!item || !isSoldItem(item)) {
                         replyJson(res, 404, { error: '낙찰 개체를 찾을 수 없습니다.' });
@@ -5659,6 +5753,7 @@ function createPlatformApi({
                     const tokenPayload = {
                         v: 2,
                         channelId,
+                        itemId,
                         phoneHash: sessionKey(phone),
                         expiresAt: Date.now() + BUYER_SHIPPING_TOKEN_TTL_MS
                     };
@@ -5711,9 +5806,13 @@ function createPlatformApi({
                     }
                     const data = await workspace(channelId);
                     let record = sanitizeRecord(type, body.record);
-                    if (type === 'item') AuctionRounds.assertCurrent(await repository.getRecord(channelId, 'item', record.id));
-                    if(type==='item')record=require('./auction-settlement').stamp(record,channel);
-                    if(type==='shipment')await assertShipmentNotPending(channelId,record);
+                    if (type === 'item') {
+                        const previous=await repository.getRecord(channelId,'item',record.id);
+                        AuctionRounds.assertCurrent(previous);
+                        if(previous?.attributes?.roundTargetChannelId)throw Object.assign(new Error('별도 회차로 가져온 개체의 접수 원본은 덮어쓸 수 없어요.'),{status:409});
+                    }
+                    if(type==='item')record=require('./auction-settlement').stamp(NationalRounds.assertDate(channel,record),channel);
+                    if(type==='shipment'){OperationRounds.assertShipmentScope(channel,data,record,body);await assertShipmentNotPending(channelId,record);}
                     if (type === 'item' && body.allocateNextLot === true) {
                         const nextLotNumber = AuctionRounds.currentItems(data.items).reduce(
                             (maximum, item) => Math.max(maximum, Number(item.lotNumber) || 0),
@@ -5836,8 +5935,8 @@ function createPlatformApi({
                         incoming.status = 'live';
                     }
                     let record = sanitizeRecord(type, incoming, current);
-                    if(type==='item')record=require('./auction-settlement').stamp(record,channel,current);
-                    if(type==='shipment'){await assertShipmentNotPending(channelId,current);await assertShipmentNotPending(channelId,record);}
+                    if(type==='item')record=require('./auction-settlement').stamp(NationalRounds.assertDate(channel,record,current),channel,current);
+                    if(type==='shipment'){OperationRounds.assertShipmentScope(channel,data,current,body);OperationRounds.assertShipmentScope(channel,data,record,body);await assertShipmentNotPending(channelId,current);await assertShipmentNotPending(channelId,record);}
                     if (type === 'item' && current.status === 'live' && audienceCompetitionEnabled(channel)) {
                         const decorated = await decorateCrewartBidLog(channelId, channel, data.broadcast, record);
                         record = decorated.item;

@@ -2,8 +2,9 @@
 (() => {
     const $=id=>document.getElementById(id), esc=CreoPlatform.escapeHtml;
     const channelId=new URLSearchParams(location.search).get('channel')||'';
-    const suffix='?channel='+encodeURIComponent(channelId);
-    $('back').href='/channel-workspace.html'+suffix;
+    const archive=new URLSearchParams(location.search).get('archive')||'';
+    const suffix='?'+new URLSearchParams({channel:channelId,...(archive?{archive}:{})});
+    $('back').href='/main'+suffix;
     $('receipts').href='/organizer-shipping.html'+suffix;
     let report=null, view=0, busy=false, sequence=0;
     const won=value=>Number(value).toLocaleString('ko-KR')+'원';
@@ -21,7 +22,7 @@
         $('message').textContent='최신 내역을 확인하고 있어요…';
         try {
             if(!channelId)throw Error('채널 운영 화면에서 총정산을 열어 주세요.');
-            const next=await CreoPlatform.api('channels/'+encodeURIComponent(channelId)+'/settlement-report',{cache:'no-store'});
+            const next=await CreoPlatform.api('channels/'+encodeURIComponent(channelId)+'/settlement-report'+(archive?'?archive='+encodeURIComponent(archive):''),{cache:'no-store'});
             if(revision!==sequence)return;
             if(next.channel?.id!==channelId)throw Error('채널이 일치하지 않습니다. 다시 열어 주세요.');
             report=next;$('login').hidden=true;$('content').hidden=false;
@@ -29,6 +30,7 @@
             $('updated').textContent=new Date(report.generatedAt).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'})+' 기준';
             $('fees').textContent=won(report.totals.feeAmount);$('support').textContent=won(report.totals.shippingSupportAmount);$('due').textContent=won(report.totals.remainingAmount);
             const notes=[];
+            if(report.unassignedReceiptCount)notes.push('회차 미지정 입금 '+report.unassignedReceiptCount+'건 · 해당 회차 확인 전 합계에서 제외');
             if(report.totals.waitingCount)notes.push('진행 전 '+report.totals.waitingCount+'마리 포함');
             if(report.totals.missingPhoneCount)notes.push('연락처 확인 '+report.totals.missingPhoneCount+'마리');
             if(report.totals.missingShippingCount)notes.push('배송비 미확정 '+report.totals.missingShippingCount+'마리');

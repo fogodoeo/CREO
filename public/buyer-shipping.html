@@ -8,15 +8,15 @@
     <link rel="stylesheet" href="/delivery-schedule.css?v=20260918-1"><script src="/delivery-schedule-view.js?v=20260918-1"></script>
     <link rel="stylesheet" href="/checkout-ui.css?v=20260902-checkout-shell-v1">
     <script src="/checkout-rules.js?v=20261014-support-20260912-checkout-outbox"></script>
-    <script src="/checkout-client.js?v=20260912-status-colors"></script>
+    <script src="/checkout-client.js?v=20261020-round"></script>
     <link rel="stylesheet" href="/checkout-navigation.css?v=20260912-buyer-tabs">
     <script src="/checkout-item-view.js?v=20260912-buyer-tabs"></script>
     <link rel="stylesheet" href="/checkout-inquiry.css?v=20260912-inquiry">
     <script src="/checkout-inquiry.js?v=20260912-inquiry"></script>
-    <script src="/buyer-navigation.js?v=20260912-inquiry"></script>
+    <script src="/buyer-navigation.js?v=20261020-round"></script>
     <script src="/buyer-library-link.js" defer></script>
 
-<script src="/checkout-actions.js?v=20260912-checkout-outbox"></script><link rel="stylesheet" href="/checkout-layout.css?v=20260908-mobile-focus"><link rel="stylesheet" href="/ongdong-brand.css?v=20260908-logo"><script src="/ongdong-brand.js?v=20260908-logo"></script><link rel="stylesheet" href="/checkout-pages.css?v=20261016-bank-first"></head>
+<script src="/checkout-actions.js?v=20260912-checkout-outbox"></script><link rel="stylesheet" href="/checkout-layout.css?v=20260908-mobile-focus"><link rel="stylesheet" href="/ongdong-brand.css?v=20260908-logo"><script src="/ongdong-brand.js?v=20260908-logo"></script><link rel="stylesheet" href="/checkout-pages.css?v=20261016-bank-first"><script src="/checkout-round-picker.js?v=20261020-compact"></script><link rel="stylesheet" href="/checkout-round-picker.css?v=20261020-compact"></head>
 <body class="buyer-page"><div class="shell">
     <div class="loading" id="loading"><b>불러오는 중…</b></div>
     <div class="error" id="error" hidden><b data-ongdong-brand>옹동2</b><h1>페이지를 열 수 없어요</h1><span id="error-message" role="alert"></span><p id="error-link-help" hidden>링크 재발급은 운영자에게 요청해 주세요.</p><div class="error-actions"><button id="retry" type="button">다시 시도</button><a id="error-library" href="/buyer-library.html" hidden>내 보관함</a></div></div>
@@ -41,6 +41,8 @@
  const Checkout=window.CreoCheckoutClient,Rules=window.CreoCheckoutRules,params=new URLSearchParams(location.search),client=Checkout.createClient({location,endpoint:'/api/platform/buyer-shipping',shortPrefix:'s',apiOrigin:params.get('apiOrigin')||''});
  const $=Checkout.byId,esc=Checkout.escapeHtml,money=Checkout.money,uuid=Checkout.requestId,phone=Checkout.formatPhone;
 const state={data:null,destinationId:'',pargeRegion:'',pargeShop:'',query:'',region:'전체',payments:{},saving:false,saved:false,dirty:false};
+const roundPicker=CreoCheckoutRounds.create({client,container:$('app'),load:()=>{state.dirty=false;return load()},canChange:()=>!state.saving&&(!state.dirty||confirm('입력 중인 내용을 버리고 다른 회차로 이동할까요?'))});
+let loadSequence=0;
 const experience=CreoBuyerNavigation.create({onNavigate:()=>render()});
 window.addEventListener('beforeunload',event=>{if(state.dirty||state.saving){event.preventDefault();event.returnValue='';}});
 async function api(path='',body=null){return client.request(path,body)}
@@ -157,8 +159,8 @@ function render(){
  renderFlow();experience.update(data,{dirty:state.dirty,editing:editingDestination,additional:needsShippingSave()});
  $('loading').hidden=true;$('error').hidden=true;$('app').hidden=false;
 }
-function hydrate(data,preserveDraft=false){const draft=preserveDraft&&state.dirty?{destinationId:state.destinationId,pargeRegion:state.pargeRegion,pargeShop:state.pargeShop,query:state.query,region:state.region,payments:{...state.payments}}:null;state.data=data;state.destinationId=draft?.destinationId||data.selection?.destinationId||'';state.pargeRegion=draft?.pargeRegion||data.selection?.pargeRegion||'';state.pargeShop=draft?.pargeShop||data.selection?.pargeShop||'';state.query=draft?.query??(state.pargeShop?`${state.pargeRegion} ${state.pargeShop}`:'');state.region=draft?.region||'전체';state.payments=Object.fromEntries(data.vendors.map(v=>[v.key,draft?.payments[v.key]||v.payment.method||(v.paymentMethods.includes('bank_transfer')?'bank_transfer':'')]));state.dirty=Boolean(draft);render()}
-async function load(silent=false,preserveDraft=false){if(!client.valid)return showError('배송 링크 주소가 올바르지 않습니다.');if(!silent){$('loading').hidden=false;$('app').hidden=true}try{hydrate(await api(),preserveDraft);return true}catch(error){if(!silent)showError(error.message||'배송 정보를 불러오지 못했습니다.',error.status);return false}}function showError(message,status=0){$('loading').hidden=true;$('app').hidden=true;$('error').hidden=false;$('error-message').textContent=message;$('error-link-help').hidden=![401,403].includes(status)}
+function hydrate(data,preserveDraft=false){roundPicker.update(data);const draft=preserveDraft&&state.dirty?{destinationId:state.destinationId,pargeRegion:state.pargeRegion,pargeShop:state.pargeShop,query:state.query,region:state.region,payments:{...state.payments}}:null;state.data=data;state.destinationId=draft?.destinationId||data.selection?.destinationId||'';state.pargeRegion=draft?.pargeRegion||data.selection?.pargeRegion||'';state.pargeShop=draft?.pargeShop||data.selection?.pargeShop||'';state.query=draft?.query??(state.pargeShop?`${state.pargeRegion} ${state.pargeShop}`:'');state.region=draft?.region||'전체';state.payments=Object.fromEntries(data.vendors.map(v=>[v.key,draft?.payments[v.key]||v.payment.method||(v.paymentMethods.includes('bank_transfer')?'bank_transfer':'')]));state.dirty=Boolean(draft);render()}
+async function load(silent=false,preserveDraft=false){const seq=++loadSequence;if(!client.valid)return showError('배송 링크 주소가 올바르지 않습니다.');if(!silent){$('loading').hidden=false;$('app').hidden=true}try{const next=await api();if(seq!==loadSequence)return false;hydrate(next,preserveDraft);return true}catch(error){if(seq!==loadSequence)return false;if(!silent)showError(error.message||'배송 정보를 불러오지 못했습니다.',error.status);return false}}function showError(message,status=0){$('loading').hidden=true;$('app').hidden=true;$('error').hidden=false;$('error-message').textContent=message;$('error-link-help').hidden=![401,403].includes(status)}
 async function save(){if($('submit').disabled)return;state.saving=true;render();try{const signature=JSON.stringify([state.data.editVersion,state.destinationId,state.pargeRegion,state.pargeShop,state.payments]);if(state.saveSignature!==signature){state.saveSignature=signature;state.saveRequestId=uuid()}const data=await api('',{requestId:state.saveRequestId,expectedVersion:state.data.editVersion,destinationId:state.destinationId,pargeRegion:state.pargeRegion,pargeShop:state.pargeShop,payments:state.data.vendors.map(v=>({vendorKey:v.key,method:state.payments[v.key]}))});state.saveRequestId=null;state.dirty=false;state.saved=true;hydrate(data);state.saved=true;render();revisionSync.publish('방금 반영','live');$('flow-title').scrollIntoView({behavior:'smooth',block:'center'})}catch(error){alert(error.message||'저장하지 못했습니다.')}finally{state.saving=false;render()}}
 const pendingReportRequests=new Map();
 async function report(vendorKey,button){

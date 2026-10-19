@@ -40,13 +40,20 @@
         const id = Runtime.normalizeChannelId(channelId);
         if (!id) return null;
         const routes = Runtime.channelRoutes(id);
+        const archive=new URLSearchParams(root.location?.search||'').get('archive')||'';
+        const home=routes.home+(archive?'&archive='+encodeURIComponent(archive):'');
         return {
             channelId: id,
-            channelName: String(channelName || id).trim(),
+            channelName: String(channelName || id).trim() + (new URLSearchParams(root.location?.search || '').has('archive') && !String(channelName).includes('이전 회차') ? ' · 이전 회차' : ''),
             current: currentId(current),
-            home: routes.home,
+            home,
             settings: routes.settings,
-            steps: STEPS.map(step => ({ ...step, href: routes[step.route], active: step.id === currentId(current) }))
+            rounds: home,
+            steps: STEPS.filter(step=>!archive||['shipping','print'].includes(step.id)).map(step => {
+                const archive = new URLSearchParams(root.location?.search || '').get('archive');
+                const suffix = archive && ['shipping','print'].includes(step.id) ? '&archive='+encodeURIComponent(archive) : '';
+                return {...step,href:routes[step.route]+suffix,active:step.id===currentId(current)};
+            })
         };
     }
 
@@ -79,7 +86,8 @@
             :host([presentation="studio"]) :focus-visible{outline:2px solid #91b4ff;outline-offset:2px}
             @media(max-width:660px){:host([presentation="studio"]) .bar{width:calc(100% - 20px);display:block;padding:6px 0}:host([presentation="studio"]) .bar nav{display:flex;gap:2px}:host([presentation="studio"]) .step{flex:1;min-width:0;padding:7px 4px;gap:5px}:host([presentation="studio"]) .step i{display:none}:host([presentation="studio"]) .step b{font-size:11px}:host([presentation="studio"]) .settings{display:none}}
             @media print{:host{display:none!important}}
-        </style><div class="bar"><a class="channel" href="${escapeHtml(state.home)}"><small>OPERATING CHANNEL</small><b>${escapeHtml(state.channelName)}</b></a><nav aria-label="경매 운영 단계">${steps}</nav><a class="settings" href="${escapeHtml(state.settings)}">채널 설정</a></div>`;
+            .channel,.settings{min-height:44px;align-content:center}.channel small{font-size:11px;color:${tone==='dark'?'#a4afbf':'#566171'}}.channel b{font-size:14px}.step{min-height:44px}.step b{font-size:13px}.step small{font-size:11px;color:${tone==='dark'?'#a4afbf':'#566171'}}.settings{font-size:13px}:focus-visible{outline:2px solid ${tone==='dark'?'#91b4ff':'#254ac7'};outline-offset:2px}
+        </style><div class="bar"><a class="channel" href="${escapeHtml(state.home)}"><small>선택한 회차</small><b>${escapeHtml(state.channelName)}</b></a><nav aria-label="경매 운영 단계">${steps}</nav><a class="settings" href="${escapeHtml(state.home)}">운영 홈 · 회차 선택</a></div>`;
     }
 
     let PipelineElement = null;

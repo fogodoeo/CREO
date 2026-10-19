@@ -8,11 +8,11 @@
     <script src="auction-contract.js?v=20260819-contract-v1"></script>
     <script src="platform-client.js?v=20260803-admin-session-v2"></script>
     <script src="channel-runtime.js?v=20260901-operator-routing-v1"></script>
-    <script src="operator-pipeline.js?v=20260903-v1"></script>
+    <script src="operator-pipeline.js?v=20261020-rounds"></script>
     <script src="shipping-access.js?v=20260820-v1"></script>
     <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
-    <script src="channel-adapters.js?v=20261019-current-shipping"></script>
-    <script src="operation-channel.js?v=20260904-v1"></script>
+    <script src="channel-adapters.js?v=20261020-rounds"></script>
+    <script src="operation-channel.js?v=20261020-rounds"></script>
     <script src="mobile-phone.js?v=20261018-contact"></script>
     <script src="print-shipping-summary.js?v=20261018-contact"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard-dynamic-subset.css">
@@ -198,6 +198,7 @@
         document.querySelectorAll('.app-bottom-nav a').forEach(link => {
             const url = new URL(link.getAttribute('href'), location.href);
             url.searchParams.set('channel', SHIPPING_CHANNEL_ID);
+            const archive=new URLSearchParams(location.search).get('archive');if(archive)url.searchParams.set('archive',archive);
             link.href = url.pathname + url.search;
         });
 
@@ -458,7 +459,7 @@
         function showToast(text){const t=document.getElementById('toast');t.textContent=text;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2400);}
         async function loadData() {
             document.getElementById('loading').style.display='grid';
-            try { const operation=await shippingOperation.ready();const [items, logs, notifications]=await Promise.all([shippingOperation.loadShippingItems(), operation.adapter.id==='legacy-cdcup'&&typeof getShippingAuditLogs==='function'?getShippingAuditLogs(120):Promise.resolve([]),CreoPlatform.api(`channels/${encodeURIComponent(SHIPPING_CHANNEL_ID)}/notifications?limit=120`).catch(error=>({delivery:{provider:'unavailable',configured:false,smsConfigured:false,error:error.message},counts:{},notifications:[]}))]); auditLogs=logs||[]; notificationState=notifications||notificationState; soldItems=(items||[]).filter(i=>CreoAuctionContract.isSoldStatus(i.status)||Number(i.soldPrice||i.sold_price)>0); buildGroups(); buildCompanyGroups(); renderStats(); renderWinnerDirectory(''); renderCompanies(''); renderAuditLogs(); renderNotifications(); openMode(activeMode,true); }
+            try { const operation=await shippingOperation.ready();const [items, logs, notifications]=await Promise.all([shippingOperation.loadShippingItems(), operation.adapter.id==='legacy-cdcup'&&typeof getShippingAuditLogs==='function'?getShippingAuditLogs(120):Promise.resolve([]),CreoPlatform.api(`channels/${encodeURIComponent(SHIPPING_CHANNEL_ID)}/notifications?limit=120&scope=round${operation.context.archiveId?'&archive='+encodeURIComponent(operation.context.archiveId):''}`).catch(error=>({delivery:{provider:'unavailable',configured:false,smsConfigured:false,error:error.message},counts:{},notifications:[]}))]); auditLogs=logs||[]; notificationState=notifications||notificationState; soldItems=(items||[]).filter(i=>CreoAuctionContract.isSoldStatus(i.status)||Number(i.soldPrice||i.sold_price)>0); buildGroups(); buildCompanyGroups(); renderStats(); renderWinnerDirectory(''); renderCompanies(''); renderAuditLogs(); renderNotifications(); openMode(activeMode,true); }
             catch(e){ console.error(e); document.getElementById('mode-'+activeMode).innerHTML='<div class="empty">데이터를 불러오지 못했습니다.</div>'; }
             finally { document.getElementById('loading').style.display='none'; }
         }
@@ -466,7 +467,7 @@
         if (MOBILE_STATUS_HISTORY) window.addEventListener('popstate', event => {
             const state = event.state;
             if (state?.creoShippingExit) {
-                location.replace('shipping.html?channel='+encodeURIComponent(SHIPPING_CHANNEL_ID));
+                location.replace('shipping.html?'+new URLSearchParams({channel:SHIPPING_CHANNEL_ID,...(shippingOperation.context?.archiveId?{archive:shippingOperation.context.archiveId}:{})}));
                 return;
             }
             if (!state?.creoShippingStatus) return;

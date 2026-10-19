@@ -55,3 +55,16 @@ test('operation channel fails closed when the server returns another channel', a
     });
     await assert.rejects(operation.ready(), /서버 자료가 일치하지 않습니다/);
 });
+
+test('selected archive only loads that round and refuses saves to a different round', async t => {
+    const previous=global.CreoPlatform;t.after(()=>{global.CreoPlatform=previous});
+    const channel={id:'national-cre',dataAdapter:'platform'};
+    const archived=id=>({id,status:'sold',soldPrice:100000,auctionArchiveId:id});
+    global.CreoPlatform={api:async()=>({items:[{id:'current',status:'sold',soldPrice:200000}],archivedItems:[archived('round-1'),archived('round-2')],shipments:[],vendors:[]})};
+    const adapter=require('../public/channel-adapters').resolve(channel);
+    const make=archiveId=>OperationChannel.create({channelId:channel.id,archiveId,runtime:ChannelRuntime,client:{api:async()=>({channel})},adapters:{resolve:()=>adapter}});
+    const operation=make('round-1');assert.deepEqual((await operation.loadShippingItems()).map(i=>i.id),['round-1']);
+    await assert.rejects(operation.saveShippingItem('current',{}),/선택한 회차/);
+    assert.deepEqual(await make('missing').loadShippingItems(),[]);
+    assert.deepEqual((await make('').loadShippingItems()).map(i=>i.id),['current']);
+});

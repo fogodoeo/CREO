@@ -165,42 +165,12 @@ test('camera launcher binds phone, tablet, and OBS to one selected channel room'
     }
 });
 
-test('home presents one ordered auction-to-settlement pipeline without duplicate editors', () => {
-    const hub = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
-    assert.match(hub, /id="login-gate"/);
-    assert.match(hub, /id="dashboard" hidden/);
-    assert.match(hub, /id="admin-password"/);
-    assert.match(hub, /CreoPlatform\.verifyAdmin\(\)/);
-    assert.match(hub, /CreoPlatform\.logout\(\)/);
-    assert.match(hub, /id="quick-workspace"/);
-    assert.match(hub, /id="quick-print"/);
-    assert.match(hub, /print\.href=runtime\.url\('print'\)/);
-    assert.match(hub, /id="quick-survey"[^>]*href="crewart-survey\.html"[^>]*hidden/);
-    assert.match(hub, /id="quick-shipping"/);
-    assert.doesNotMatch(hub, /id="quick-companies"|shipping-companies\.html/);
-    assert.match(hub, /id="quick-rounds"/);
-    assert.doesNotMatch(hub, /id="quick-rankings"/);
-    assert.match(hub, /id="quick-broadcast"/);
-    assert.match(hub, /id="quick-captures"/);
-    assert.doesNotMatch(hub, /id="quick-settings"/);
-    assert.match(hub, /id="quick-design"/);
-    assert.match(hub, /function workspaceUrl\(c\)/);
-    assert.match(hub, /c\.dataAdapter===['"]legacy-cdcup['"]&&c\.legacy\?\.managementUrl/);
-    assert.match(hub, /Promise\.all\(\[CreoPlatform\.api\('channels'\),CreoPlatform\.api\('active-channel'\)\]\)/);
-    assert.match(hub, /if\(requestedRaw&&!channels\.some\(channel=>channel\.id===requested\)\)throw new Error\('요청한 채널을 찾을 수 없습니다\.'/);
-    assert.match(hub, /const initialId=requested\|\|operatingChannelId/);
-    assert.match(hub, /c\.id===operatingChannelId\?' · 현재 운영':''/);
-    assert.match(hub, /runtime\.url\('shipping'\)/);
-    assert.match(hub, /rounds\.href=runtime\.url\('archives'\)/);
-    assert.doesNotMatch(hub, /runtime\.extension\('archives'\)/);
-    assert.doesNotMatch(hub, /rankings\.href=runtime\.url\('rankings'\)/);
-    assert.doesNotMatch(hub, /shipping\.href=`channel-shipping\.html/);
-    assert.match(hub, /runtime\.extension\('survey'\)/);
-    assert.match(hub, /runtime\.url\('control'\)/);
-    assert.match(hub, /경매 관리[\s\S]*방송 진행[\s\S]*배송 · 결제[\s\S]*정산 · 인쇄/);
-    assert.match(hub, /낙찰자 페이지[\s\S]*업체 페이지[\s\S]*정산·인쇄/);
-    assert.doesNotMatch(hub, /id="quick-archives"|전체 채널|현장 운영|방송 열기/);
-    assert.doesNotMatch(hub, /모든 경매 운영을|한곳에서\.|채널은 완전히|공통 도구|관리하기/);
+test('home presents round selection and ordered operations', () => {
+ const hub=fs.readFileSync(path.join(__dirname,'..','public','index.html'),'utf8');
+ for(const id of ['login-gate','admin-password','quick-channel','quick-round','quick-workspace','quick-broadcast','quick-shipping','quick-print','quick-pinball','quick-report'])assert.ok(hub.includes('id="'+id+'"'));
+ assert.match(hub,/id="dashboard" hidden/);assert.match(hub,/operator-home-model\.js/);assert.match(hub,/operator-home\.js/);
+ assert.match(hub,/출품·순서[\s\S]*방송 진행[\s\S]*낙찰·배송[\s\S]*정산·인쇄/);
+ assert.match(hub,/<details class="settings">/);assert.doesNotMatch(hub,/id="quick-design"|id="quick-companies"|id="quick-rankings"/);
 });
 
 test('broadcast studio uses shared profiles instead of channel-specific branches', () => {
@@ -216,16 +186,16 @@ test('broadcast studio uses shared profiles instead of channel-specific branches
     assert.match(studio, /CreoBroadcastProfiles\.resolve/);
     assert.doesNotMatch(studio, /channel\?\.id\s*===\s*['"](?:cdcup|crewart)['"]/);
     assert.match(studio, /broadcast-router\.html\?page=\$\{page\}&live=1/);
-    assert.doesNotMatch(studio, /function liveUrl[^\n]*event=/);
+    assert.match(studio, /function liveUrl[^\n]*preview=1/);
     assert.match(studio, /CreoPlatform\.api\('active-channel',[\s\S]{0,180}method:'PUT'/);
-    assert.match(studio, /expectedCurrentChannelId:activeChannel\.id/);
+    assert.match(studio, /expectedCurrentChannelId:operatingChannelId/);
     assert.match(studio, /confirmChannelId:next\.id/);
     assert.match(studio, /channel-switch-button/);
-    assert.match(studio, /select\.addEventListener\('change',markPending\)/);
-    assert.match(studio, /currentChannel=channels\.find\(channel=>channel\.id===current\.channelId\)/);
+    assert.match(studio, /select\.addEventListener\('change',[^\n]*renderActive\(next\);markPending\(\)/);
+    assert.match(studio, /selected=channels\.find\(c=>c\.id===\(requested\|\|current\.channelId\)\)/);
     assert.doesNotMatch(studio, /currentChannel=[^;]+\|\|channels\[0\]/);
     assert.match(studio, /Number\(data\.version\)!==Number\(current\.catalogVersion\)/);
-    assert.match(studio, /channel\.status==='active'&&channel\.features\?\.broadcast!==false/);
+    assert.match(studio, /channel\.status==='draft'&&channel\.nationalRound/);
     assert.match(studio, /capture-gallery\.html\?channel=/);
     assert.match(studio, /진행 · 1P/);
     assert.match(studio, /경매 · 2P/);
@@ -747,7 +717,7 @@ test('print forms have one canonical page linked from both pipeline and workspac
     const adapters = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-adapters.js'), 'utf8');
     const operationChannel = fs.readFileSync(path.join(__dirname, '..', 'public', 'operation-channel.js'), 'utf8');
     assert.match(home, /id="quick-print"/);
-    assert.match(home, /print\.href=runtime\.url\('print'\)/);
+    assert.match(home, /operator-home-model\.js/);
     assert.match(workspace, /<creo-operator-pipeline current="workspace"/);
     assert.match(pipeline, /route: 'print'/);
     assert.match(print, /platform-client\.js/);
@@ -1116,16 +1086,10 @@ test('BASIC control uploads six dice videos and P3 renders parity totals without
     assert.match(live, /host-role/);
 });
 
-test('common pinball resolves winners from the operating channel rather than the dashboard selection', () => {
-    const hub = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
-    const pinball = fs.readFileSync(path.join(__dirname, '..', 'roulette-app', 'src', 'app.ts'), 'utf8');
-    assert.match(hub, /operatingChannel=catalog\.channels\.find\(channel=>channel\.id===operatingChannelId\)/);
-    assert.match(pinball, /async function resolveActivePinballChannel/);
-    assert.match(pinball, /fetch\('\/api\/platform\/active-channel'/);
-    assert.match(pinball, /if \(isBroadcastMode\) return;/);
-    assert.doesNotMatch(pinball, /if \(remoteChannelId \|\| isBroadcastMode\) return;/);
-    assert.match(pinball, /await resolveActivePinballChannel\(\)/);
-    assert.match(pinball, /channels\/\$\{encodeURIComponent\(remoteChannelId\)\}\/broadcast/);
+test('pinball retains explicit round and only bare launchers resolve active channel', () => {
+ const pinball=fs.readFileSync(path.join(__dirname,'..','roulette-app','src','app.ts'),'utf8');
+ assert.ok(pinball.includes("if (isBroadcastMode || queryParameters.has('channel')) return;"));
+ assert.match(pinball,/await resolveActivePinballChannel\(\)/);assert.ok(pinball.includes('encodeURIComponent(remoteChannelId)'));
 });
 
 test('broadcast setup keeps live operations separate and removes dead legacy controls', () => {

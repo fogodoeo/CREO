@@ -98,7 +98,7 @@ test('buyer reported payment can be reset only after vendor confirms cancellatio
  const reset=await f.call('POST','vendor-checkout/reset-card-guide',body);assert.equal(reset.status,200,reset.body);
  for(const row of await f.repository.listRecords('alpha','shipment'))assert.equal(row.buyerPaymentReportedAt,'');
 });
-test('card reset preserves previously paid items and rejects archived events',async t=>{
+test('card reset preserves previously paid items and rejects paused events',async t=>{
  const f=await fixture(t);await f.card();
  const first=(await f.repository.listRecords('alpha','shipment')).find(s=>s.itemId==='first');
  await f.repository.upsertRecord('alpha','shipment',{...first,paymentStatus:'paid',paymentConfirmedAmount:30000});
@@ -107,7 +107,7 @@ test('card reset preserves previously paid items and rejects archived events',as
  assert.deepEqual(await f.repository.getRecord('alpha','shipment',first.id),paid);
  await f.card({requestId:'after-partial-reset',cardPaymentUrl:'https://pay.example.test/remaining'});
  const archivedBody=await resetRequest(f,{requestId:'reset-archived'}),catalog=await f.repository.getCatalog();
- await f.repository.saveCatalog(catalog.channels.map(c=>c.id==='alpha'?{...c,status:'archived'}:c));
+ await f.repository.saveCatalog(catalog.channels.map(c=>c.id==='alpha'?{...c,status:'paused'}:c));
  assert.equal((await f.call('POST','vendor-checkout/reset-card-guide',archivedBody)).status,409);
 });
 
@@ -196,13 +196,13 @@ test('even a second no-op report request is remembered after confirmation and ne
  assert.deepEqual(await f.repository.listRecords('alpha','shipment'),before);assert.equal((await f.notices('vendor_payment_reported')).length,1);
 });
 
-test('revoked buyer links and absent vendor contacts are explicit while archived or unauthorized writes fail',async t=>{
+test('revoked buyer links and absent vendor contacts are explicit while paused or unauthorized writes fail',async t=>{
  const f=await fixture(t);assert.equal((await f.call('POST','channels/alpha/buyer-link-access',{itemId:'first',action:'revoke',expectedRevision:0,requestId:'revoke-before-card'},true)).status,200);
  const saved=await f.card();assert.equal(saved.status,200,saved.body);assert.equal(saved.json().notification.status,'link_revoked');assert.equal((await f.notices('buyer_card_link_ready')).length,0);assert.equal((await f.report()).status,401);
  const missing=await fixture(t,'bank_transfer'),vendor=await missing.repository.getRecord('alpha','vendor','vendor');await missing.repository.upsertRecord('alpha','vendor',{...vendor,phone:''});
  const reported=await missing.report();assert.equal(reported.status,200,reported.body);assert.equal(reported.json().notification.skipped,'missing_vendor_phone');assert.equal((await missing.notices('vendor_payment_reported')).length,0);
  const archived=await fixture(t);assert.equal((await archived.card({code:'invalid-code'})).status,401);assert.equal((await archived.report({code:'invalid-code'})).status,401);
- const catalog=await archived.repository.getCatalog();await archived.repository.saveCatalog(catalog.channels.map(c=>c.id==='alpha'?{...c,status:'archived'}:c));
- assert.equal((await archived.card()).status,409);assert.equal((await archived.report()).status,401,'archived buyer mutation credentials are invalid');
+ const catalog=await archived.repository.getCatalog();await archived.repository.saveCatalog(catalog.channels.map(c=>c.id==='alpha'?{...c,status:'paused'}:c));
+ assert.equal((await archived.card()).status,409);assert.equal((await archived.report()).status,401,'paused buyer mutation credentials are invalid');
  assert.equal((await archived.notices('buyer_card_link_ready')).length,0);assert.equal((await archived.notices('vendor_payment_reported')).length,0);
 });

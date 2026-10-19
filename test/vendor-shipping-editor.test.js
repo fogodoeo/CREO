@@ -90,16 +90,16 @@ test('payment confirmation racing with destination change accepts only the first
   const result=await Promise.all(confirmFirst?[confirm(),f.save(body)]:[f.save(body),confirm()]);assert.deepEqual(result.map(r=>r.status),[200,409]);
  }
 });
-test('bank payment fee recalculates, stale buyer save fails, and archive blocks even note edits',async t=>{
+test('bank payment fee recalculates, stale buyer save fails, and pause blocks even note edits',async t=>{
  const f=await fixture(t,{method:'bank_transfer'}),before=(await f.call('GET','buyer-shipping?code='+f.link.code)).json();
  const r=await f.save(await f.body());assert.equal(r.status,200,r.body);assert.equal(r.json().buyers[0].payment.status,'bank_transfer_pending');
  const stale=await f.call('POST','buyer-shipping',{code:f.link.code,...before.selection,expectedVersion:before.editVersion,requestId:'old-buyer-save'});assert.equal(stale.status,409);
- const body=await f.body({requestId:'archived-note'});const catalog=await f.repo.getCatalog();await f.repo.saveCatalog(catalog.channels.map(c=>({...c,status:'archived'})));assert.equal((await f.save(body)).status,409);
+ const body=await f.body({requestId:'archived-note'});const catalog=await f.repo.getCatalog();await f.repo.saveCatalog(catalog.channels.map(c=>({...c,status:'paused'})));assert.equal((await f.save(body)).status,409);
 });
 test('UI quote preserves saved fees, computes changed carrier and hides empty notes safely',()=>{
  const context=vm.createContext({window:{CreoCheckoutClient:require('../public/checkout-client')}});vm.runInContext(fs.readFileSync(require.resolve('../public/vendor-shipping-editor.js'),'utf8'),context);
  const {quote,summary}=context.window.CreoVendorShipping;
  const e={selection:{destinationId:'parge',pargeRegion:'강원',pargeShop:'이전점'},shippingAmount:47000,itemCount:2,destinations:[{id:'pickup-1',type:'pickup'}],carriers:{parge:{regions:[{region:'강원',shops:[{name:'신규점',baseCost:30000}]}],additionalFee:7000,jejuAdditionalFee:4000}}};
  assert.equal(quote(e,e.selection),47000);assert.equal(quote(e,{destinationId:'pickup-1'}),0);assert.equal(quote(e,{destinationId:'parge',pargeRegion:'강원',pargeShop:'신규점'}),37000);assert.equal(quote(e,{destinationId:'bad'}),null);
- const buyer={id:'b',canEditShippingNote:true,destination:{address:'로컬점'},shippingNote:'<img onerror=bad>'};assert.match(summary(buyer,{status:'active'}),/data-edit-shipping/);assert.doesNotMatch(summary(buyer,{status:'active'}),/<img/);assert.doesNotMatch(summary(buyer,{status:'archived'}),/data-edit-shipping/);assert.doesNotMatch(summary({...buyer,shippingNote:''},{status:'active'}),/vendor-shipping-note/);
+ const buyer={id:'b',canEditShippingNote:true,destination:{address:'로컬점'},shippingNote:'<img onerror=bad>'};assert.match(summary(buyer,{status:'active'}),/data-edit-shipping/);assert.doesNotMatch(summary(buyer,{status:'active'}),/<img/);assert.doesNotMatch(summary(buyer,{status:'paused'}),/data-edit-shipping/);assert.doesNotMatch(summary({...buyer,shippingNote:''},{status:'active'}),/vendor-shipping-note/);
 });

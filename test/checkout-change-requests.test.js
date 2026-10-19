@@ -158,11 +158,11 @@ test('approval and rejection racing can produce only one terminal decision',asyn
  const record=await f.repo.getRecord('alpha','checkoutchange',id);assert.equal(record.state,'approved');
  assert.equal((await f.repo.listRecords('alpha','notification')).filter(n=>n.templateKey==='buyer_checkout_change_reviewed').length,1);
 });
-test('shipment and closed channel lifecycle boundaries fail closed',async t=>{
+test('shipment and paused channel lifecycle boundaries fail closed',async t=>{
  const f=await fixture(t),shipment=(await f.repo.listRecords('alpha','shipment'))[0];
  await f.repo.upsertRecord('alpha','shipment',{...shipment,trackingNumber:'TRACK123'});assert.equal((await f.request()).status,409);
  await f.repo.upsertRecord('alpha','shipment',shipment);const id=(await f.request()).json().changeRequest.id;
- const catalog=await f.repo.getCatalog();await f.repo.saveCatalog(catalog.channels.map(c=>c.id==='alpha'?{...c,status:'archived'}:c));
+ const catalog=await f.repo.getCatalog();await f.repo.saveCatalog(catalog.channels.map(c=>c.id==='alpha'?{...c,status:'paused'}:c));
  assert.equal((await f.review(id)).status,409);assert.equal((await f.review(id,{action:'reject',reason:'경매 종료'})).status,200);
 });
 test('destination changes apply immediately, survive restart, and notify vendor on each actual save',async t=>{

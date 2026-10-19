@@ -74,11 +74,11 @@ test('renewal rejects foreign, revoked and unissued requests; failed writes and 
  assert.equal((await f.access(command)).status,409,'retry after a newer action cannot resurrect an old link');
 });
 
-test('archived link renewal uses frozen winner evidence and keeps checkout read-only',async t=>{
+test('archived link renewal uses frozen winner evidence and keeps pending checkout available',async t=>{
  const f=await fixture(t);await expireLink(f);const catalog=await f.repository.getCatalog();await f.repository.saveCatalog(catalog.channels.map(c=>c.id==='alpha'?{...c,status:'archived'}:c));
  const response=await f.access({action:'renew',expectedRevision:0,requestId:'renew-archive-only'});assert.equal(response.status,200,response.body);assert.equal(response.json().code,f.link.code);
- const buyer=await f.call('GET','buyer-shipping?code='+f.link.code);assert.equal(buyer.json().readOnly,true);
- assert.equal((await f.call('POST','buyer-shipping',{code:f.link.code,destinationId:'pickup-1',requestId:'archive-must-not-write'})).status,401);
+ const buyer=await f.call('GET','buyer-shipping?code='+f.link.code);assert.equal(buyer.json().readOnly,false);
+ assert.equal((await f.call('POST','buyer-shipping',{code:f.link.code,destinationId:'pickup-1',requestId:'archive-pending-save',payments:[{vendorKey:'vendor',method:'bank_transfer'}]})).status,200);
  const item=await f.repository.getRecord('alpha','item','item');await f.repository.upsertRecord('alpha','item',{...item,winnerPhone:''});await expireLink(f);
  assert.equal((await f.access({action:'renew',expectedRevision:1,requestId:'missing-frozen-owner'})).status,422);
 });
@@ -107,11 +107,11 @@ test('link changes reject foreign callers, stale concurrent actions and failed a
  const results=await Promise.all([f.access(body),f.access({...body,requestId:'second-concurrent-change'})]);assert.deepEqual(results.map(r=>r.status).sort(),[200,409]);
  assert.equal((await f.access()).json().revision,1);assert.equal((await f.access(undefined,'beta')).json().revision,0);
 });
-test('archived buyer link replacement remains read-only and signed invalid expiry is rejected',async t=>{
+test('archived buyer link replacement retains pending checkout access and signed invalid expiry is rejected',async t=>{
  const f=await fixture(t),catalog=await f.repository.getCatalog();await f.repository.saveCatalog(catalog.channels.map(c=>c.id==='alpha'?{...c,status:'archived'}:c));
  const result=await f.access({action:'rotate',expectedRevision:0,requestId:'archived-link-replace'});assert.equal(result.status,200,result.body);
- const code=result.json().code,payload=(await f.call('GET','buyer-shipping?code='+code)).json();assert.equal(payload.readOnly,true);
- assert.equal((await f.call('POST','buyer-shipping',{code,destinationId:'pickup-1',requestId:'archive-cannot-write'})).status,401);
+ const code=result.json().code,payload=(await f.call('GET','buyer-shipping?code='+code)).json();assert.equal(payload.readOnly,false);
+ assert.equal((await f.call('POST','buyer-shipping',{code,destinationId:'pickup-1',requestId:'archive-pending-save'})).status,200);
  const row=(await f.repository.getRowsByKeys(['buyer_shipping_short_v2_'+code]))[0],stored=JSON.parse(row.value);
  const parsed=JSON.parse(Buffer.from(stored.token.split('.')[1],'base64url'));
  for(const expiry of [undefined,'invalid']){

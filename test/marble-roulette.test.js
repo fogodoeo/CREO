@@ -71,18 +71,10 @@ test('roulette exposes its version and keeps native broadcast rendering with the
     assert.match(marble, /createRadialGradient/);
 });
 
-test('global pinball launcher exposes reusable skins and carries the selected channel', () => {
-    const main = fs.readFileSync(path.join(root, 'public', 'index.html'), 'utf8');
-
-    assert.match(main, /id="quick-pinball-skin"/);
-    assert.match(main, /id="quick-pinball"/);
-    assert.match(main, /value="ryangecko">라이언게코/);
-    assert.match(main, /value="academy">마법학교/);
-    assert.match(main, /creo_pinball_skin_v2_/);
-    assert.match(main, /broadcastProfile==='basic-dice'\?'ryangecko':'academy'/);
-    assert.match(main, /new URLSearchParams\(\{theme:pinballSkin\.value\}\)/);
-    assert.match(main, /params\.set\('channel',operatingChannel\.id\)/);
-    assert.match(main, /params\.set\('channelName',operatingChannel\.name\)/);
+test('round launcher carries selected identity and delegates skin controls', () => {
+ const main=fs.readFileSync(path.join(root,'public','index.html'),'utf8'),model=fs.readFileSync(path.join(root,'public','operator-home-model.js'),'utf8');
+ assert.match(main,/id="quick-pinball"/);assert.doesNotMatch(main,/id="quick-pinball-skin"/);
+ assert.ok(model.includes('new URLSearchParams({channel:id,channelName:s.label,theme})'));assert.ok(model.includes("national(c)?'national'"));
 });
 
 test('pinball separates an authenticated laptop controller from a clean fixed broadcast source', () => {

@@ -31,7 +31,7 @@ test('closing a round hides auction rows while preserving financial identity, sh
     const f=await fixture(t),item=await f.repo.getRecord('alpha','item','old'),shipment=await f.repo.getRecord('alpha','shipment','ship');
     const replies=await Promise.all([f.close(),f.close()]);assert(replies.every(r=>r.status===200));assert.deepEqual(replies.map(r=>r.json().duplicate).sort(),[false,true]);
     f.restart();
-    const current=(await f.call('GET','channels/alpha/workspace')).json();assert.equal(current.items.length,0);assert.equal(current.archivedItems.length,1);assert.deepEqual(current.shipments,[shipment]);
+    const current=(await f.call('GET','channels/alpha/workspace')).json();assert.equal(current.items.length,0);assert.equal(current.archivedItems.length,1);assert.deepEqual(current.shipments,[]);assert.deepEqual((await f.call('GET','channels/alpha/workspace?archive='+f.archiveId)).json().shipments,[shipment]);
     assert.equal(current.broadcast.mode,'standby');assert.equal(current.broadcast.activeItemId,'');
     const {auctionArchiveId,updatedAt,...saved}=current.archivedItems[0],{updatedAt:priorTime,...original}=item;
     assert.equal(auctionArchiveId,f.archiveId);assert.deepEqual(saved,original);

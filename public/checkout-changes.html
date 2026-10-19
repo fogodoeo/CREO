@@ -12,6 +12,7 @@
 'use strict';
 const client=window.CreoPlatform,$=id=>document.getElementById(id),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let channel=new URLSearchParams(location.search).get('channel')||'',focusId='',busy=false;
+let archive=new URLSearchParams(location.search).get('archive')||'';
 const money=n=>Number(n||0).toLocaleString('ko-KR')+'원';
 function view(v){return `<div>${esc(v.address||'미선택')}</div><div class="amount">${money(v.totals?.totalAmount)}</div>${v.vendors.map(x=>`<div class="vendor"><strong>${esc(x.name)}</strong><div>${x.method==='card'?'카드결제':'계좌이체'}</div><div>${money(x.amount)}</div><small>배송비 ${money(x.shippingAmount)}</small></div>`).join('')}`}
 async function load(){
@@ -19,8 +20,9 @@ async function load(){
  const code=location.pathname.match(/^\/w\/(op_[A-Za-z0-9_-]{16})$/)?.[1];
  if(code){const link=await client.api('checkout-change-link?code='+encodeURIComponent(code));channel=link.channelId;focusId=link.id;}
  if(!channel)throw Error('배송 관리에서 채널을 선택한 뒤 변경 요청을 열어 주세요.');
- $('back').href='/shipping.html?channel='+encodeURIComponent(channel);
- const data=await client.api('channels/'+encodeURIComponent(channel)+'/checkout-changes');
+ const scope=new URLSearchParams({...((archive)?{archive}:{}),...(focusId?{recordId:focusId}:{})});
+ const data=await client.api('channels/'+encodeURIComponent(channel)+'/checkout-changes'+(scope.size?'?'+scope:''));
+ archive=data.archiveId||archive;$('back').href='/shipping.html?'+new URLSearchParams({channel,...(archive?{archive}:{})});
  const rows=data.records.sort((a,b)=>(b.id===focusId)-(a.id===focusId)||(a.state!=='pending')-(b.state!=='pending'));
  $('list').innerHTML=rows.length?rows.map(r=>`<article data-id="${esc(r.id)}"><span class="badge">${{pending:'승인 대기',approved:r.reviewedBy==='buyer'?'배송지 수정 완료':'승인 완료',rejected:'반려'}[r.state]||esc(r.state)}</span><h2 style="margin-top:12px">${esc(r.buyerName)}</h2><a href="tel:${esc(r.phone)}">${esc(r.phone)}</a><div class="caption">${esc(new Date(r.createdAt).toLocaleString('ko-KR'))}</div><div class="compare"><section><div class="caption">변경 전</div>${view(r.before)}</section><section><div class="caption">요청한 변경</div>${view(r.after)}</section></div>${r.state==='pending'?`<label><input type="checkbox" data-unpaid>관련 업체 모두 실제 입금·카드 승인 내역이 없음을 확인했습니다.</label>${r.cardLinks?.length?'<label><input type="checkbox" data-cancelled>기존 카드결제 링크를 외부 결제서비스에서도 취소·차단했습니다.</label>':''}<textarea aria-label="반려 사유" placeholder="반려할 경우 사유를 입력해 주세요" maxlength="300"></textarea><div class="actions"><button data-action="reject">반려</button><button class="primary" data-action="approve">변경 승인</button></div>`:`<p>${esc(r.reason||'변경 내용을 적용했습니다.')}</p><small>${esc(new Date(r.reviewedAt).toLocaleString('ko-KR'))}</small>`}</article>`).join(''):'<article>변경 요청이 없습니다.</article>';
 }

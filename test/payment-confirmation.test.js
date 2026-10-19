@@ -66,10 +66,10 @@ test('revoked buyer links do not prevent recording actual payment and missing pr
  const configured=await fixture(t);configured.setReady(false);const waiting=await configured.confirm('vendor');assert.equal(waiting.status,200,waiting.body);assert.equal(waiting.json().notification.status,'configuration_pending');
  configured.restart();configured.setReady(true);await configured.service.flushChannel('alpha');assert.equal(configured.sent.filter(n=>n.templateKey==='buyer_payment_confirmed').length,1);
 });
-test('stale payment versions, archived auctions and unauthorized callers cannot confirm or notify',async t=>{
+test('stale payment versions, paused auctions and unauthorized callers cannot confirm or notify',async t=>{
  const f=await fixture(t);assert.equal((await f.call('POST','channels/alpha/buyer-shipping-payment',{itemId:'first',requestId:'unauthorized-request'})).status,401);
  assert.equal((await f.confirm('operator',{expectedVersion:'stale-version'})).status,409);
- const catalog=await f.repository.getCatalog();await f.repository.saveCatalog(catalog.channels.map(c=>c.id==='alpha'?{...c,status:'archived'}:c));
+ const catalog=await f.repository.getCatalog();await f.repository.saveCatalog(catalog.channels.map(c=>c.id==='alpha'?{...c,status:'paused'}:c));
  for(const role of ['operator','vendor'])assert.equal((await f.confirm(role)).status,409);
  assert.equal((await f.notices()).length,0);assert.ok((await f.repository.listRecords('alpha','shipment')).every(s=>s.paymentStatus!=='paid'));
 });

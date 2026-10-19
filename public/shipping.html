@@ -16,8 +16,8 @@
     <script src="channel-runtime.js?v=20260901-operator-routing-v1"></script>
     <script src="auction-contract.js?v=20260819-contract-v1"></script>
     <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
-    <script src="channel-adapters.js?v=20261019-current-shipping"></script>
-    <script src="operation-channel.js?v=20260904-v1"></script>
+    <script src="channel-adapters.js?v=20261020-rounds"></script>
+    <script src="operation-channel.js?v=20261020-rounds"></script>
     <script src="settlement-discount.js?v=20260823-v1"></script>
     <script src="mobile-phone.js?v=20261018-contact"></script>
     <script src="print-shipping-summary.js?v=20261018-contact"></script>
@@ -2082,8 +2082,8 @@
                     <strong id="current-company-name" style="font-size: 18px; font-weight: 850; color: var(--text-title);">선택 필요</strong>
                 </div>
                 <button class="shipping-admin-login" id="shipping-admin-button" type="button">업체변경</button>
-                <a class="shipping-admin-login" style="display:grid;place-items:center;text-decoration:none;margin-left:8px" href="checkout-changes.html" onclick="this.href='checkout-changes.html?channel='+encodeURIComponent(SHIPPING_CHANNEL_ID)">변경 요청</a>
-                <a class="shipping-admin-login" style="display:grid;place-items:center;text-decoration:none;margin-left:8px" href="parge-dispatch.html" onclick="this.href='parge-dispatch.html?channel='+encodeURIComponent(SHIPPING_CHANNEL_ID)">파르게 접수</a>
+                <a id="shipping-changes-link" class="shipping-admin-login" style="display:grid;place-items:center;text-decoration:none;margin-left:8px" href="#">변경 요청</a>
+                <a id="shipping-parge-link" class="shipping-admin-login" style="display:grid;place-items:center;text-decoration:none;margin-left:8px" href="#">파르게 접수</a>
             </div>
             <details id="shipping-vendor-settings" style="background:white;border:1px solid #ddd;border-radius:12px;padding:16px;margin-bottom:16px" hidden>
                 <summary style="cursor:pointer;font-weight:700">업체 연락처 · 결제 설정 <span id="vendor-settings-state"></span></summary>
@@ -2307,7 +2307,7 @@
     <script>
         const SHIPPING_CHANNEL_ID = CreoOperationChannel.channelIdFromLocation(window.location);
         if (!SHIPPING_CHANNEL_ID) location.replace('/');
-        const SHIPPING_COMPANY_STORAGE_KEY = `creo_shipping_company_${SHIPPING_CHANNEL_ID}`;
+        const SHIPPING_COMPANY_STORAGE_KEY = `creo_shipping_company_${SHIPPING_CHANNEL_ID}_${new URLSearchParams(location.search).get('archive')||'current'}`;
         const shippingOperation = SHIPPING_CHANNEL_ID ? CreoOperationChannel.create({
             channelId: SHIPPING_CHANNEL_ID,
             onReady: syncShippingChannelUi
@@ -2355,6 +2355,9 @@
 
         function setShippingAdminState(authenticated) {
             document.body.dataset.shippingAdmin = authenticated ? 'true' : 'false';
+            let home=document.getElementById('shipping-operator-home');
+            if(!home){home=document.createElement('a');home.id='shipping-operator-home';home.textContent='운영 홈 · 회차 선택';home.style.cssText='display:inline-flex;min-height:44px;align-items:center;font-size:14px;color:#254ac7';document.getElementById('shipping-channel-label')?.parentElement.append(home);}
+            home.hidden=!authenticated;home.style.display=authenticated?'inline-flex':'none';home.href='/main?'+new URLSearchParams({channel:SHIPPING_CHANNEL_ID,...(new URLSearchParams(location.search).get('archive')?{archive:new URLSearchParams(location.search).get('archive')}:{})});
         }
 
         let shippingLoginRequired = false;
@@ -2585,7 +2588,8 @@
         }
 
         function syncShippingChannelUi(channel = shippingOperation?.channel) {
-            const label = String(channel?.name || SHIPPING_CHANNEL_ID).trim();
+            const archive = new URLSearchParams(location.search).get('archive');
+            const label = String(channel?.name || SHIPPING_CHANNEL_ID).trim() + (archive ? ' · 이전 회차' : '');
             const locations = channel?.shippingDefaults?.pickupLocations;
             channelPickupLocations = Object.freeze(Array.isArray(locations) && locations.length ? [...locations] : [...DEFAULT_PICKUP_LOCATIONS]);
             const channelLabel = document.getElementById('shipping-channel-label');
@@ -2593,9 +2597,12 @@
             if (channelLabel) channelLabel.textContent = `${label} 배송관리`;
             if (dialogTitle) dialogTitle.textContent = `${label} 배송관리`;
             document.title = `${label} · 배송관리`;
+            document.getElementById('shipping-changes-link').href='checkout-changes.html?'+new URLSearchParams({channel:SHIPPING_CHANNEL_ID,...(archive?{archive}:{})});
+            const pargeLink=document.getElementById('shipping-parge-link');pargeLink.href='parge-dispatch.html?channel='+encodeURIComponent(SHIPPING_CHANNEL_ID);pargeLink.hidden=!!archive;if(archive)pargeLink.style.setProperty('display','none','important');
             document.querySelectorAll('.app-bottom-nav a').forEach(link => {
                 const url = new URL(link.getAttribute('href'), window.location.href);
                 url.searchParams.set('channel', SHIPPING_CHANNEL_ID);
+                if(archive && /(?:shipping|print)/.test(url.pathname))url.searchParams.set('archive',archive);
                 link.href = url.pathname + url.search;
             });
         }
@@ -2839,7 +2846,7 @@
                     openCompanySelectModal();
                     console.log('[INIT] Step 7: Ready for selection');
                 }
-                if (forceCompanySelect) history.replaceState(null, '', window.location.pathname);
+                if (forceCompanySelect) {const url=new URL(location.href);url.searchParams.delete('changeCompany');history.replaceState(null,'',url.pathname+url.search);}
             } catch (err) {
                 console.error('[INIT] CRASH:', err);
                 console.error('[INIT] Stack:', err.stack);

@@ -87,7 +87,7 @@
       const params = new URLSearchParams({ event, ...(code ? { code } : { token }) });
       if(query.get('portal')){params.set('portal',query.get('portal'));if(section==='profile')return '/vendor-access.html?section=profile&company='+encodeURIComponent(query.get('portal'));}
       if (section === 'booking') return (nav.classList.contains('national-cycle-nav')?'/vendor-broadcast.html?':'/vendor-bookings.html?') + params;
-      if (section === 'settlement') return '/vendor-checkout.html?' + params;
+      if (section === 'settlement') {if(query.get('round'))params.set('round',query.get('round'));return '/vendor-checkout.html?' + params;}
       params.set('section', section); return (preview ? '/entry-preview/' : '/vendor-entries.html') + '?' + params;
     };
     nav.querySelectorAll('a[data-vendor-section]').forEach(link => {

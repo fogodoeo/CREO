@@ -73,7 +73,7 @@ function createBuyerContactOperations(deps) {
         let notification=null;
         if(body.action==='send'){
             if(!notifications?.prepare)throw error('알림 발송 설정을 확인해 주세요.',503);
-            const link=await prepareLink(req,channelId,nextPhone);
+            const link=await prepareLink(req,channelId,nextPhone,updated);
             const event={eventKey:`retry:${item.id}:${item.buyerSaleId||'legacy'}:${digest(requestId).slice(0,12)}`,templateKey:'buyer_win_initial',transport:'alimtalk',allowSmsFallback:false,failureSmsFallback:true,
                 recipientRole:'buyer',recipientPhone:nextPhone,variables:{구매자명:buyerName(updated),업체명:item.vendorName||await deps.vendorName(channelId,item.vendorId),개체명:item.name,낙찰금액:`${Number(item.soldPrice||0).toLocaleString('ko-KR')}원`,접속코드:link.code},fallbackText:shortSms('낙찰 안내',link.url,item.name)};
             const prepared=await notifications.prepare(channelId,event);

@@ -7,7 +7,7 @@
             || destination.carrier || '배송업체 확인 필요';
     }
     function summary(buyer, channel) {
-        return `<section class="vendor-shipping-summary"><div><b>${esc(carrierLabel(buyer.destination) || '수령 정보')}</b>${channel.status==='active' && buyer.canEditShippingNote ? `<button type="button" data-edit-shipping="${esc(buyer.id)}">수정</button>`:''}</div><p>${esc(buyer.destination?.address || (buyer.destination ? [buyer.destination.pargeRegion,buyer.destination.pargeShop].filter(Boolean).join(' · ') || '수령지 확인 필요' : '수령지 입력 대기'))}</p>${global.CreoDeliverySchedule?.html(buyer.deliverySchedule)||''}${buyer.shippingNote?`<p class="vendor-shipping-note"><b>메모</b> ${esc(buyer.shippingNote)}</p>`:''}</section>`;
+        return `<section class="vendor-shipping-summary"><div><b>${esc(carrierLabel(buyer.destination) || '수령 정보')}</b>${(channel.checkoutOpen===true||channel.status==='active') && buyer.canEditShippingNote ? `<button type="button" data-edit-shipping="${esc(buyer.id)}">수정</button>`:''}</div><p>${esc(buyer.destination?.address || (buyer.destination ? [buyer.destination.pargeRegion,buyer.destination.pargeShop].filter(Boolean).join(' · ') || '수령지 확인 필요' : '수령지 입력 대기'))}</p>${global.CreoDeliverySchedule?.html(buyer.deliverySchedule)||''}${buyer.shippingNote?`<p class="vendor-shipping-note"><b>메모</b> ${esc(buyer.shippingNote)}</p>`:''}</section>`;
     }
     function quote(editor, selection) {
         const previous = editor.selection || {};

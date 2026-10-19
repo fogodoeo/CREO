@@ -11,9 +11,9 @@
     <script src="auction-contract.js?v=20260819-contract-v1"></script>
     <script src="platform-client.js?v=20260803-admin-session-v2"></script>
     <script src="channel-runtime.js?v=20260901-operator-routing-v1"></script>
-    <script src="operator-pipeline.js?v=20260903-v1"></script>
-    <script src="channel-adapters.js?v=20261019-current-shipping"></script>
-    <script src="operation-channel.js?v=20260904-v1"></script>
+    <script src="operator-pipeline.js?v=20261020-rounds"></script>
+    <script src="channel-adapters.js?v=20261020-rounds"></script>
+    <script src="operation-channel.js?v=20261020-rounds"></script>
     <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
     <script src="mobile-phone.js?v=20261018-contact"></script>
     <script src="print-shipping-summary.js?v=20261019-label-route"></script>
@@ -69,7 +69,7 @@
         }
 
         .control-group { display:flex;align-items:center;gap:6px;margin-left:auto;font-size:12px;color:#666; }
-        .control-group[hidden] { display:none !important; }
+        .control-group[hidden],.workspace-link[hidden] { display:none !important; }
         .orientation-btn { padding:10px 14px;border:2px solid #ddd;border-radius:8px;background:#f5f5f5;color:#444;font-size:12px;font-weight:750;cursor:pointer; }
         .login-gate { position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:20px;background:#f5f6f8; }
         .login-gate[hidden] { display:none; }
@@ -783,7 +783,7 @@
     <div class="tab-bar">
         <span class="channel-chip" id="print-channel-name">채널 확인 중</span>
         <a class="workspace-link" id="workspace-link" href="#">등록 · 목록</a>
-        <a class="workspace-link" href="parge-dispatch.html" onclick="this.href='parge-dispatch.html?channel='+encodeURIComponent(new URLSearchParams(location.search).get('channel')||'national-cre')">파르게 접수</a>
+        <a class="workspace-link" id="parge-dispatch-link" href="parge-dispatch.html" onclick="this.href='parge-dispatch.html?channel='+encodeURIComponent(new URLSearchParams(location.search).get('channel')||'national-cre')">파르게 접수</a>
         <button class="tab-btn" onclick="showTab('list',this)">경매 리스트</button>
         <button class="tab-btn active" onclick="showTab('results',this)">낙찰 결과</button>
         <button class="tab-btn" onclick="showTab('company',this)">구매자별</button>
@@ -1828,6 +1828,8 @@
 
         function syncPrintChannel(channel) {
             var label = String(channel.name || channel.shortName || PRINT_CHANNEL_ID).trim();
+            if(new URLSearchParams(location.search).has('archive'))label += ' · 이전 회차';
+            document.getElementById('parge-dispatch-link').hidden = new URLSearchParams(location.search).has('archive');
             document.getElementById('print-channel-name').textContent = label;
             document.title = label + ' 인쇄 · CREO';
             var workspace = channel.legacy && channel.legacy.managementUrl
@@ -1835,6 +1837,7 @@
                 : (channel.links && channel.links.workspace || '/channel-workspace.html');
             var url = new URL(workspace, location.href);
             url.searchParams.set('channel', PRINT_CHANNEL_ID);
+            const archive=new URLSearchParams(location.search).get('archive');if(archive){url.pathname='/main';url.searchParams.set('archive',archive);document.getElementById('workspace-link').textContent='회차 운영 홈';}
             document.getElementById('workspace-link').href = url.pathname + url.search;
             document.getElementById('print-login-description').textContent = label + ' 인쇄 자료를 불러오려면 관리자 비밀번호를 입력해 주세요.';
             CreoOperatorPipeline.sync(PRINT_CHANNEL_ID, label);

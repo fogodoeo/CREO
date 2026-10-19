@@ -626,7 +626,7 @@ test('common vendor portal reuses identity without sharing transactions or unrel
  assert.equal((await repository.getRecord('beta','vendor','unrelated')).phone,undefined);
  repository.catalog.channels[0].status='archived';
  const archive=await call(api,'GET','/api/platform/vendor-checkout?code='+code+'&event=alpha',null,'');assert.equal(archive.status,200);
- const blocked=await call(api,'POST','/api/platform/vendor-checkout/card-link',{code,event:'alpha',buyerId:'x',cardPaymentUrl:'https://example.com',requestId:'long-request'},'');assert.equal(blocked.status,409);
+ const blocked=await call(api,'POST','/api/platform/vendor-checkout/card-link',{code,event:'alpha',buyerId:'x',cardPaymentUrl:'https://example.com',requestId:'long-request'},'');assert.equal(blocked.status,404);
  const restarted=createPlatformApi({repository,adminSessionSecret:'common-vendor-test'});
  const restored=await call(restarted,'GET','/api/platform/vendor-checkout?code='+code+'&event=beta',null,'');assert.equal(restored.json().vendor.bankAccount,'123-456-789');
 });
@@ -746,7 +746,7 @@ test('checkout media is identical for buyer and selling vendor, isolated by buye
     assert.equal((await call(api,'GET','/api/platform/vendor-checkout?code='+code,null,'')).status,401);
 });
 
-test('archived buyer checkout stays scoped and read only through restart, expiry, and all write endpoints', async () => {
+test('archived pending checkout remains scoped through restart; pause and expiry still block writes', async () => {
     let identityLookups=0;
     const repository=new MemoryRepository(),options={repository,adminSessionSecret:'isolated-archive-checkout',bandMembership:{async resolveMemberIdentity(){identityLookups++;return {phone:'01012345678'}}}};
     await repository.upsertRecord('alpha','vendor',{id:'v',name:'가상 업체',bankName:'은행',bankAccount:'PRIVATE_OLD_ACCOUNT',bankHolder:'예금주'});
@@ -762,13 +762,14 @@ test('archived buyer checkout stays scoped and read only through restart, expiry
     const before=JSON.stringify([...repository.records]);
     const page=await call(api,'GET','/api/platform/buyer-shipping?code='+code+'&channel=beta',null,'');
     assert.equal(page.status,200,page.body);const data=page.json();
-    assert.equal(data.channel.id,'alpha');assert.equal(data.readOnly,true);
+    assert.equal(data.channel.id,'alpha');assert.equal(data.readOnly,false);
     assert.deepEqual(data.items.map(item=>item.id),['own']);
     assert.equal(identityLookups,0,'historical ownership cannot fall back to current membership or nickname');
     assert.equal(data.items[0].media[0].url,'/assets/own.webp');
-    assert.equal(data.canEditDestination,false);assert.equal(data.canRequestChange,false);
-    assert.equal(data.savedDestination,null);assert.deepEqual(data.vendors[0].paymentMethods,[]);
-    assert.equal(data.vendors[0].payment.canChangeMethod,false);assert.doesNotMatch(page.body,/PRIVATE_OLD_ACCOUNT/);
+    assert.equal(data.canEditDestination,true);assert.equal(data.canRequestChange,false);
+    assert.equal(data.savedDestination,null);assert.ok(data.vendors[0].paymentMethods.includes('bank_transfer'));
+    assert.equal(data.vendors[0].payment.canChangeMethod,true);assert.match(page.body,/PRIVATE_OLD_ACCOUNT/);
+    repository.catalog.channels[0].status='paused';
     for(const endpoint of ['/buyer-shipping','/buyer-delivery','/buyer-shipping/change-request','/buyer-shipping/report-payment']){
         const results=await Promise.all([1,2].map(()=>call(api,'POST','/api/platform'+endpoint,{code,destinationId:'pickup-1',vendorKey:'v',requestId:'archive-write-denied',payments:[{vendorKey:'v',method:'bank_transfer'}]},'')));
         assert.ok(results.every(result=>result.status===401||result.status===409),endpoint);
@@ -786,14 +787,14 @@ test('archived buyer checkout stays scoped and read only through restart, expiry
     assert.equal((await call(api,'GET','/api/platform/buyer-shipping?code='+code,null,'')).status,401);
 });
 
-test('archiving between buyer request validation and mutation prevents stale checkout saves', async () => {
+test('pausing between buyer request validation and mutation prevents stale checkout saves', async () => {
     const repository=new MemoryRepository();
     await repository.upsertRecord('alpha','vendor',{id:'v',name:'가상 업체'});
     await repository.upsertRecord('alpha','item',{id:'own',lotNumber:1,name:'A01',status:'sold',vendorId:'v',soldPrice:100000,winnerPhone:'01012345678'});
     const api=createPlatformApi({repository});
     const code=(await call(api,'POST','/api/platform/channels/alpha/buyer-shipping-link',{itemId:'own'})).json().code;
     const read=repository.getCatalog.bind(repository);let reads=0;
-    repository.getCatalog=async()=>{const snapshot=await read();if(++reads===1)repository.catalog.channels[0].status='archived';return snapshot;};
+    repository.getCatalog=async()=>{const snapshot=await read();if(++reads===1)repository.catalog.channels[0].status='paused';return snapshot;};
     const result=await call(api,'POST','/api/platform/buyer-shipping',{code,destinationId:'pickup-1',requestId:'stale-save-request',payments:[{vendorKey:'v',method:'bank_transfer'}]},'');
     assert.equal(result.status,409,result.body);
     assert.deepEqual(await repository.listRecords('alpha','shipment'),[]);

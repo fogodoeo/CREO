@@ -80,16 +80,18 @@
         const apiOrigin = resolveApiOrigin(locationObject, options.apiOrigin || '');
         const retryCount = Math.max(1, Math.min(3, Number(options.retries) || 3));
         const credentialObject = () => credential.code ? { code: credential.code } : { token: credential.token };
+        let selectedRound=new URLSearchParams(locationObject.search||'').get('round')||'';
 
         async function request(path = '', body = null) {
+            const scopedCredential={...credentialObject(),...(selectedRound?{round:selectedRound}:{})};
             let lastError;
             for (let attempt = 0; attempt < retryCount; attempt += 1) {
                 try {
-                    const suffix = body ? '' : `${path.includes('?') ? '&' : '?'}${new URLSearchParams(credentialObject())}`;
+                    const suffix = body ? '' : `${path.includes('?') ? '&' : '?'}${new URLSearchParams(scopedCredential)}`;
                     const response = await fetchImpl(`${apiOrigin}${endpoint}${path}${suffix}`, {
                         method: body ? 'POST' : 'GET',
                         headers: body ? { 'Content-Type': 'application/json' } : {},
-                        body: body ? JSON.stringify({ ...credentialObject(), ...body }) : undefined,
+                        body: body ? JSON.stringify({ ...scopedCredential, ...body }) : undefined,
                         cache: 'no-store'
                     });
                     const payload = await response.json().catch(() => ({}));
@@ -126,6 +128,8 @@
         return Object.freeze({
             apiOrigin,
             credential: credentialObject,
+            getRound:()=>selectedRound,
+            setRound:value=>{selectedRound=String(value||'');},
             valid: Boolean(apiOrigin && (credential.code || credential.token)),
             request,
             revision

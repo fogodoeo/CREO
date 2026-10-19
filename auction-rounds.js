@@ -31,7 +31,12 @@ async function closeRound(repository, channelId, archiveId) {
     }
     const now = new Date().toISOString();
     const row = (type, record) => ({key:channelKey(channelId,type,record.id), value:JSON.stringify(record)});
+    const ledgerKey='creo_organizer_shipping_ledger::'+channelId;
+    const ledgerRow=(await repository.getRowsByKeys([ledgerKey]))[0];
+    const archives=await repository.listRecords(channelId,'archive');
+    const ledger=ledgerRow&&!archives.some(a=>a.closedAt)?JSON.parse(ledgerRow.value).map(r=>r.itemIds?.length?r:{...r,itemIds:items.filter(i=>i.vendorId===r.vendorId).map(i=>i.id)}):null;
     await repository.upsertRows([
+        ...(ledger?[{key:ledgerKey,value:JSON.stringify(ledger)}]:[]),
         ...items.map(item => row('item', {...item, auctionArchiveId:archiveId, updatedAt:now})),
         row('archive', {...archive, closedAt:now}),
         row('broadcast', {...state, id:'state', mode:'standby', activeItemId:'',

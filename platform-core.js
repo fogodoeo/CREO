@@ -351,6 +351,8 @@ function normalizeChannel(input = {}, fallback = {}) {
         description: cleanText(source.description, 140),
         logoUrl: cleanText(source.logoUrl, 600),
         status,
+        ...(source.nationalRound?.parentId === 'national-cre' && /^\d{4}-\d{2}-\d{2}$/.test(source.nationalRound.date || '')
+            ? {nationalRound:{parentId:'national-cre',date:source.nationalRound.date}} : {}),
         broadcastTemplate,
         dataAdapter,
         broadcastProfile,

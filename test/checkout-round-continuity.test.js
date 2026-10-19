@@ -1,0 +1,97 @@
+'use strict';
+const test=require('node:test'),assert=require('node:assert/strict'),crypto=require('node:crypto');
+const {fixture,item}=require('../tools/national-settlement-fixture.cjs');
+async function setup(t){
+ const f=await fixture();t.after(()=>f.close());
+ assert.equal((await f.request('POST','/buyer-shipping',f.saveBody,false)).status,200);
+ const vendor=(await f.request('POST','/channels/national-cre/vendor-checkout-link',{vendorId:'v1'})).json();
+ const archive=(await f.request('POST','/channels/national-cre/archives',{title:'이전 회차 · 미정산'})).json().archive.id;
+ assert.equal((await f.request('POST','/channels/national-cre/archives/'+archive+'/close-round')).status,200);
+ await f.repository.upsertRecord('national-cre','item',item('new01','v1',{soldPrice:50000,attributes:{broadcastDate:'2026-10-19'}}));
+ const next=(await f.request('POST','/channels/national-cre/buyer-shipping-link',{itemId:'new01'})).json();
+ assert.equal((await f.request('POST','/buyer-shipping',{...f.saveBody,code:next.code,requestId:'new-round-shipping',payments:[{vendorKey:'v1',method:'bank_transfer'}]},false)).status,200);
+ const round='archive:'+archive;
+ const readVendor=scope=>f.request('GET','/vendor-checkout?code='+vendor.code+(scope?'&round='+encodeURIComponent(scope):''),null,false);
+ return {...f,vendor,next,archive,round,readVendor};
+}
+test('previous unpaid buyer and vendor pages remain usable after close, next auction, confirmation and restart',async t=>{
+ const f=await setup(t),current=(await f.readVendor()).json();assert.equal(current.rounds.length,2);assert.equal(current.summary.itemCount,1);
+ assert.ok(current.rounds.find(r=>r.key===f.round).settlementRemaining>0,'past organizer settlement remains visible from another round');
+ const previous=(await f.readVendor(f.round)).json();assert.equal(previous.summary.itemCount,2);assert.equal(previous.summary.openCount,1);
+ const buyer=previous.buyers[0],body={code:f.vendor.code,round:f.round,buyerId:buyer.id,requestId:'previous-round-confirm',expectedVersion:buyer.payment.editVersion,expectedAmount:buyer.totals.totalAmount};
+ const results=await Promise.all([1,2].map(()=>f.request('POST','/vendor-checkout/confirm-payment',body,false)));
+ assert.ok(results.every(r=>r.status===200),results.map(r=>r.body).join('\n'));assert.deepEqual(results.map(r=>r.json().duplicate).sort(),[false,true]);
+ assert.equal((await f.readVendor()).json().buyers[0].payment.status,'bank_transfer_pending');
+ f.restart();const oldBuyer=(await f.read()).json();assert.equal(oldBuyer.items.length,3);assert.equal(oldBuyer.vendors.find(v=>v.key==='v1').payment.status,'paid');
+ assert.equal((await f.readVendor(f.round)).json().buyers[0].payment.status,'paid');
+ assert.equal((await f.readVendor('archive:missing')).status,409);
+ const catalog=await f.repository.getCatalog();await f.repository.saveCatalog(catalog.channels.map(c=>c.id==='national-cre'?{...c,status:'archived'}:c));
+ const stillOpen=(await f.read()).json();assert.equal(stillOpen.readOnly,false);assert.equal(stillOpen.vendors.find(v=>v.key==='v2').payment.status,'bank_transfer_pending');
+ assert.equal((await f.readVendor(f.round)).json().channel.checkoutOpen,true);
+ const newBuyer=(await f.request('GET','/buyer-shipping?code='+f.next.code,null,false)).json();
+ assert.equal((await f.request('POST','/buyer-shipping/report-payment',{code:f.next.code,round:newBuyer.round.key,requestId:'archived-round-report',vendorKey:'v1',expectedVersion:newBuyer.editVersion},false)).status,200);
+ assert.equal((await f.request('GET','/buyer-shipping?code='+f.next.code+'&round='+encodeURIComponent(f.round),null,false)).status,409,'an anchored link cannot switch to another round');
+});
+test('vendor remittance retains its old round, retries once and never reduces next round balance',async t=>{
+ const f=await setup(t);
+ assert.equal((await f.request('PUT','/channels/national-cre/organizer-shipping',{bankName:'가상은행',bankAccount:'000-000-000',bankHolder:'가상 주관사',notificationPhone:'01000000009',expectedUpdatedAt:''})).status,200);
+ const data=(await f.readVendor(f.round)).json(),own=data.shippingSettlement.vendors[0];
+ const body={code:f.vendor.code,round:f.round,requestId:'old-round-remittance',expectedAmount:own.remainingAmount,expectedBankUpdatedAt:data.shippingSettlement.bank.updatedAt};
+ const r=await f.request('POST','/vendor-checkout/report-shipping',body,false);assert.equal(r.status,200,r.body);
+ assert.equal((await f.request('POST','/vendor-checkout/report-shipping',body,false)).json().duplicate,true);
+ f.restart();const old=(await f.readVendor(f.round)).json(),next=(await f.readVendor()).json();
+ assert.equal(old.shippingSettlement.vendors[0].pendingReport.amount,own.remainingAmount);
+ assert.equal(next.shippingSettlement.vendors[0].pendingReport,null);
+ const ledger=JSON.parse((await f.repository.getRowsByKeys(['creo_organizer_shipping_ledger::national-cre']))[0].value);
+ assert.deepEqual(ledger[0].itemIds.sort(),['a01','a02']);
+});
+test('legacy unanchored links offer owned rounds instead of hiding pending history or combining totals',async t=>{
+ const f=await setup(t),key='buyer_shipping_short_v2_'+f.code,row=JSON.parse((await f.repository.getRowsByKeys([key]))[0].value),payload=JSON.parse(Buffer.from(row.token.split('.')[1],'base64url'));
+ delete payload.itemId;delete payload.roundScope;
+ const unsigned='bs2.'+Buffer.from(JSON.stringify(payload)).toString('base64url'),token=unsigned+'.'+crypto.createHmac('sha256',f.secret).update(unsigned).digest('base64url');
+ await f.repository.upsertRows([{key,value:JSON.stringify({...row,token})}]);
+ const latest=(await f.read()).json();assert.equal(latest.rounds.length,2);assert.deepEqual(latest.items.map(i=>i.id),['new01']);
+ const old=(await f.request('GET','/buyer-shipping?code='+f.code+'&round='+encodeURIComponent(f.round),null,false)).json();assert.equal(old.items.length,3);assert.equal(old.totals.auctionAmount,300000);
+ await f.repository.upsertRecord('national-cre','item',item('stranger','v2',{winnerPhone:'01000000008',attributes:{broadcastDate:'2026-10-01'}}));
+ assert.equal((await f.request('GET','/buyer-shipping?code='+f.code+'&round=date:2026-10-01',null,false)).status,409);
+ const info=(await f.request('GET','/channels/national-cre/buyer-link-access?itemId=new01')).json();
+ assert.equal((await f.request('POST','/channels/national-cre/buyer-link-access',{itemId:'new01',action:'revoke',expectedRevision:info.revision,requestId:'revoke-new-round-link'})).status,200);
+ assert.equal((await f.request('GET','/buyer-shipping?code='+f.code+'&round=date:2026-10-19',null,false)).status,409,'legacy links cannot bypass a later round revocation');
+ assert.equal((await f.request('GET','/buyer-shipping?code='+f.code+'&round='+encodeURIComponent(f.round),null,false)).status,200);
+});
+test('stale cross-round confirmation and storage failure leave both rounds untouched',async t=>{
+ const f=await setup(t),old=(await f.readVendor(f.round)).json(),next=(await f.readVendor()).json(),buyer=old.buyers[0];
+ const body={code:f.vendor.code,round:f.round,buyerId:buyer.id,requestId:'failed-confirmation',expectedVersion:buyer.payment.editVersion,expectedAmount:buyer.totals.totalAmount};
+ const before=await f.repository.listRecords('national-cre','shipment');
+ assert.equal((await f.request('POST','/vendor-checkout/confirm-payment',{...body,round:next.round.key},false)).status,409);
+ const original=f.repository.upsertRows.bind(f.repository);f.repository.upsertRows=async()=>{throw Error('isolated persistence failure')};
+ try{assert.equal((await f.request('POST','/vendor-checkout/confirm-payment',body,false)).status,500);}finally{f.repository.upsertRows=original;}
+ assert.deepEqual(await f.repository.listRecords('national-cre','shipment'),before);
+ assert.equal((await f.request('POST','/vendor-checkout/confirm-payment',body,false)).status,200);
+});
+test('logged-in national company can revisit its prepared rounds without losing authorization or logout revocation',async t=>{
+ const {createFixture}=require('../tools/vendor-portal-preview.cjs'),f=await createFixture();t.after(()=>f.close());
+ const owner=await f.login('01000000001'),company=(await f.post(owner,'register',{name:'가상 회차 업체',region:'대구·경북',phone:'01000000001'})).json().id;
+ const token=(await f.post(owner,'select',{id:company})).json().token;
+ await require('../vendor-directory').createVendorDirectory(f.repository).enroll('national-cre',company);
+ await f.repository.upsertRecord('national-cre','item',item('future',company,{status:'waiting',soldPrice:0,winnerName:'',winnerPhone:'',attributes:{broadcastDate:'2026-10-21'}}));
+ const prepared=await f.call(owner,'POST','/api/platform/national-rounds',{action:'prepare',date:'2026-10-21'},{'x-creo-admin':f.secret});assert.equal(prepared.status,200,prepared.body);
+ const id=prepared.json().channelId,catalog=await f.repository.getCatalog();await f.repository.saveCatalog(catalog.channels.map(c=>c.id===id?{...c,status:'active'}:c));
+ const target=(await f.repository.listRecords(id,'item'))[0];await f.repository.upsertRecord(id,'item',{...target,status:'sold',soldPrice:50000,winnerPhone:'01000000003'});
+ const get=event=>f.call(owner,'GET','/api/platform/vendor-checkout?token='+token+'&event='+event);
+ const page=await get(id);assert.equal(page.status,200,page.body);assert.equal(page.json().summary.itemCount,1);assert.equal(page.json().vendor.id,company);
+ assert.equal((await get('national-cre')).status,200);
+ assert.equal((await get('creyon')).status,401);
+ f.restart();assert.equal((await get(id)).status,200);
+ await f.post(owner,'logout',{});assert.equal((await get(id)).status,401);
+});
+test('past ownership never resolves from a present-day nickname while the parent channel remains active',async t=>{
+ let lookups=0;const f=await fixture({apiOptions:{bandMembership:{async resolveMemberIdentity(){lookups++;return {phone:'01000000003'}}}}});t.after(()=>f.close());
+ const archive=(await f.request('POST','/channels/national-cre/archives',{title:'이전 기록'})).json().archive.id;
+ await f.request('POST','/channels/national-cre/archives/'+archive+'/close-round');
+ await f.repository.upsertRecord('national-cre','item',item('unknown','v1',{auctionArchiveId:archive,winnerPhone:'',winnerName:'재사용 닉네임'}));
+ assert.equal((await f.read()).json().items.length,3);
+ const vendor=(await f.request('POST','/channels/national-cre/vendor-checkout-link',{vendorId:'v1'})).json();
+ const page=(await f.request('GET','/vendor-checkout?code='+vendor.code+'&round='+encodeURIComponent('archive:'+archive),null,false)).json();
+ assert.equal(page.summary.itemCount,2);assert.equal(lookups,0);
+});

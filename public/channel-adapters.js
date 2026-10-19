@@ -94,20 +94,26 @@
             return api()(endpoint(context.channel, 'workspace'));
         },
         async saveRecord(context, type, record, id = '') {
-            const result = await api()(endpoint(context.channel, type, id), { method: id ? 'PUT' : 'POST', body: JSON.stringify({ record }) });
+            const result = await api()(endpoint(context.channel, type, id), { method: id ? 'PUT' : 'POST', body: JSON.stringify({ record, ...(type === 'shipments' ? { expectedArchiveId: context.archiveId || '' } : {}) }) });
             return result.record;
         },
         async deleteRecord(context, type, id) {
             return api()(endpoint(context.channel, type, id), { method: 'DELETE' });
         },
         async loadShippingItems(context) {
-            context.workspace = await this.loadWorkspace(context);
+            context.workspace = await api()(endpoint(context.channel,'workspace')+'?scope=round'+(context.archiveId?'&archive='+encodeURIComponent(context.archiveId):''));
+            if (context.archiveId) {
+                const selected = [...(context.workspace.items || []),...(context.workspace.archivedItems || [])].filter(item => item.auctionArchiveId === context.archiveId);
+                // An unknown archive is empty; never fall back to the current round.
+                return platformShippingItems({...context.workspace,items:selected,archivedItems:[]},context.channel,{includeArchived:true});
+            }
             return platformShippingItems(context.workspace, context.channel);
         },
         async saveShippingItem(context, itemId, shippingData) {
             if (!context.workspace) context.workspace = await this.loadWorkspace(context);
             const item = [...(context.workspace.items || []), ...(context.workspace.archivedItems || [])].find(entry => entry.id === itemId);
             if (!item) throw new Error('이 채널에서 낙찰 항목을 찾을 수 없습니다.');
+            if ((item.auctionArchiveId || '') !== (context.archiveId || '')) throw new Error('선택한 회차의 낙찰 항목이 아닙니다.');
             const vendor = (context.workspace.vendors || []).find(entry => entry.id === item.vendorId);
             const current = (context.workspace.shipments || []).find(entry => entry.itemId === item.id);
             const pickup = shippingData.shipping_type === '직접수령';
@@ -140,7 +146,8 @@
         async deleteRecord() {
             throw new Error('CDCUP 자료 삭제는 기존 등록 화면에서 진행해 주세요.');
         },
-        async loadShippingItems() {
+        async loadShippingItems(context) {
+            if(context?.archiveId)throw new Error('보관 회차의 배송 자료는 이 데이터 연결에서 지원하지 않습니다.');
             if (typeof root.getItems !== 'function') throw new Error('CDCUP 배송 데이터를 불러올 수 없습니다.');
             return root.getItems();
         },

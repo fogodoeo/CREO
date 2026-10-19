@@ -29,10 +29,9 @@ let isRemoteController = !isBroadcastMode && Boolean(remoteChannelId);
 let autoLoadAuctionWinners = isRemoteController && queryParameters.get('theme') === 'academy';
 
 async function resolveActivePinballChannel(): Promise<void> {
-  // A broadcast display is tied to the session URL that the controller created.
-  // The shared controller, however, must always follow the server-side operating
-  // lock so an old tab/query cannot import winners from a previous channel.
-  if (isBroadcastMode) return;
+   // Explicit round URLs stay pinned. Only a bare launcher follows the live channel.
+   // An invalid explicit channel must never silently import a different round.
+   if (isBroadcastMode || queryParameters.has('channel')) return;
   try {
     const response = await fetch('/api/platform/active-channel', { cache: 'no-store', credentials: 'same-origin' });
     const payload = await response.json().catch(() => ({})) as { channelId?: string };
@@ -1035,6 +1034,8 @@ async function waitForEngine(): Promise<void> {
 
 async function initialize(): Promise<void> {
   await resolveActivePinballChannel();
+  const operatorHome = document.getElementById('operatorHomeLink') as HTMLAnchorElement | null;
+  if(operatorHome){operatorHome.hidden=isBroadcastMode||!remoteChannelId;operatorHome.style.display=operatorHome.hidden?'none':'inline-flex';operatorHome.href='/main?channel='+encodeURIComponent(remoteChannelId);}
   document.documentElement.classList.toggle('broadcast-mode', isBroadcastMode);
   document.documentElement.classList.toggle('remote-display-mode', isRemoteDisplay);
   bindEvents();

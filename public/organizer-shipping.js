@@ -3,7 +3,7 @@ const $=id=>document.getElementById(id), esc=CreoPlatform.escapeHtml;
 const organizerCode=/^\/o\/([A-Za-z0-9_-]{24})$/.exec(location.pathname||'')?.[1]||new URLSearchParams(location.search).get('code')||'';
 let channelId=organizerCode?'':new URLSearchParams(location.search).get('channel')||'';
 let route='channels/'+encodeURIComponent(channelId)+'/organizer-shipping';
-function organizerApi(path,options={}){return CreoPlatform.api(path,{cache:'no-store',...options,headers:{...options.headers,...(organizerCode?{'X-Creo-Organizer':organizerCode}:{})}})}
+function organizerApi(path,options={}){const archive=new URLSearchParams(location.search).get('archive');if(archive&&path.startsWith('channels/'))path+=(path.includes('?')?'&':'?')+'archive='+encodeURIComponent(archive);return CreoPlatform.api(path,{cache:'no-store',...options,headers:{...options.headers,...(organizerCode?{'X-Creo-Organizer':organizerCode}:{})}})}
 let state, saving=false, dirty=false, bankRevision='', editingBank=false, receiptVendor=null, receiptAttempt=null, loadRevision=0, fresh=false, accessDenied=false;
 let organizerView='shipping';
 const money=n=>Number(n||0).toLocaleString('ko-KR')+'원';
@@ -135,7 +135,7 @@ async function load(){
   if(!channelId&&organizerCode){const access=await organizerApi('organizer-access',{method:'POST',body:JSON.stringify({code:organizerCode})});if(revision!==loadRevision)return false;channelId=access.channel.id;route='channels/'+encodeURIComponent(channelId)+'/organizer-shipping'}
   if(!channelId){showMessage('주관사 전용 링크로 접속해 주세요.');return false;}
   const next=await organizerApi(route);if(revision!==loadRevision)return false;
-  state=next;fresh=true;accessDenied=false;render();showMessage('');return true;
+  state=next;fresh=true;accessDenied=false;render();showMessage(state.unassignedReceiptCount?'회차 미지정 입금 '+state.unassignedReceiptCount+'건이 있습니다. 회차 확인 전에는 입금 합계에서 제외됩니다.':'');return true;
  }catch(e){if(revision===loadRevision)readFailure(e);return false}
  finally{if(revision===loadRevision)$('retry').disabled=saving;}
 }

@@ -8,6 +8,13 @@ const Pipeline = require('../public/operator-pipeline');
 
 const ROOT = path.join(__dirname, '..');
 
+test('national rounds have a persistent selector and archive links retain their scope',t=>{
+    const old=global.location;t.after(()=>{global.location=old});global.location={search:'?channel=national-cre&archive=old-round'};
+    const state=Pipeline.model('national-cre','print','전국크레자랑');assert.equal(state.rounds,'/main?channel=national-cre&archive=old-round');assert.deepEqual(state.steps.map(s=>s.id),['shipping','print']);
+    assert.match(state.channelName,/이전 회차/);for(const s of state.steps.filter(s=>['shipping','print'].includes(s.id)))assert.match(s.href,/archive=old-round/);
+    assert.equal(Pipeline.model('national-cre-20261021','print').rounds,'/main?channel=national-cre-20261021&archive=old-round');assert.equal(Pipeline.model('other','print').rounds,'/main?channel=other&archive=old-round');
+});
+
 test('one operator pipeline keeps every core step on the selected channel', () => {
     const state = Pipeline.model('future-live', 'broadcast', '신규 라이브');
     assert.equal(state.channelId, 'future-live');

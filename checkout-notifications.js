@@ -125,6 +125,7 @@ function normalizeNotification(input = {}, current = {}) {
         ...current,
         id: text(input.id || current.id, 64),
         eventKey: text(input.eventKey || current.eventKey, 120),
+        itemIds: [...new Set((input.itemIds||current.itemIds||[]).filter(id=>typeof id==='string'&&id.length<=64))],
         templateKey: TEMPLATE_KEYS.includes(input.templateKey) ? input.templateKey : current.templateKey,
         transport: NOTIFICATION_TRANSPORTS.includes(input.transport)
             ? input.transport
@@ -366,6 +367,7 @@ class CheckoutNotificationService {
         const record = normalizeNotification({
             id,
             eventKey,
+            itemIds:event.itemIds,
             templateKey,
             transport,
             allowSmsFallback: event.allowSmsFallback !== false,

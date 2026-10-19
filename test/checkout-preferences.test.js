@@ -115,10 +115,10 @@ test('report versus another vendor save rejects stale writes and permits a fresh
  }
 });
 
-test('single pending vendor and archived channel still reject saves',async t=>{
+test('single pending vendor and paused channel still reject saves',async t=>{
  const f=await fixture(t),before=await reportFirstVendor(f);
  const r=await f.change('bank_transfer',{requestId:'pending-alone'});assert.equal(r.status,409);assert.deepEqual(await f.repo.listRecords('alpha','shipment'),before);
- await addOtherVendorWin(f);const catalog=await f.repo.getCatalog();await f.repo.saveCatalog(catalog.channels.map(c=>c.id==='alpha'?{...c,status:'archived'}:c));
+ await addOtherVendorWin(f);const catalog=await f.repo.getCatalog();await f.repo.saveCatalog(catalog.channels.map(c=>c.id==='alpha'?{...c,status:'paused'}:c));
  assert.equal((await saveOtherVendor(f)).status,401);assert.deepEqual(await f.repo.listRecords('alpha','shipment'),before);
 });
 

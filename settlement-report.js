@@ -112,7 +112,7 @@ function buildReport({channel, items, shipments, vendors, organizer, generatedAt
     })));
     return {
         channel: {id: channel.id, name: channel.name}, generatedAt, scope: 'channel',
-        vendors: summary, items: rows, buyers, receipts,
+        vendors: summary, items: rows, buyers, receipts, unassignedReceiptCount:organizer.unassignedReceiptCount||0,
         totals: Object.fromEntries(['soldAmount', 'entryFeeAmount', 'commissionAmount', 'feeAmount', 'shippingAmount', 'shippingSupportAmount', 'totalAmount', 'receivedAmount', 'remainingAmount', 'overpaidAmount', 'waitingCount', 'missingPhoneCount', 'missingShippingCount'].map(key => [key, sum(summary, key)]))
     };
 }

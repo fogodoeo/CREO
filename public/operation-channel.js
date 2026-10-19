@@ -36,7 +36,8 @@
                 const adapter = adapters.resolve(channel);
                 // Adapters keep their channel-local workspace cache on this context.
                 // The resolved identity is immutable, while this cache container must remain writable.
-                const context = { channel };
+                const archiveId = options.archiveId ?? new URLSearchParams(root.location?.search || '').get('archive') ?? '';
+                const context = { channel, archiveId };
                 resolved = Object.freeze({ channelId, channel, adapter, context });
                 if (typeof options.onReady === 'function') options.onReady(channel, resolved);
                 return resolved;

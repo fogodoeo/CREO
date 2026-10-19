@@ -16,7 +16,7 @@ test('dirty change and saving disable duplicate submission appropriately',()=>{c
 test('additional wins require saving even after a prior successful submission',()=>{const s=setup({type:'pickup',submitted:true,payment:true});s.state.data.items=[{paymentStatus:'paid'},{paymentStatus:''}];s.run();assert.equal(s.nodes.submit.disabled,false);assert.equal(s.nodes.submit.textContent,'추가 낙찰 내역 저장');assert.equal(s.ctx.needsShippingSave(),true)});
 test('reported payment blocks resubmission but permits destination editing until vendor confirmation',()=>{const s=setup({type:'pickup',submitted:true,payment:true,dirty:true});s.state.data.vendors[0].payment.status='bank_transfer_reported';s.run();assert.equal(s.nodes.submit.disabled,true);assert.equal(s.nodes['change-destination'].disabled,false);assert.equal(s.nodes.submit.textContent,'업체 결제 확인 중');s.state.data.canEditDestination=false;s.run();assert.equal(s.nodes['change-destination'].disabled,true);s.state.data.canEditDestination=true;s.state.data.vendors[0].payment.status='additional_payment';s.run();assert.equal(s.nodes.submit.disabled,false);assert.equal(s.nodes['change-destination'].disabled,false)});
 test('initial choice prefers bank, preserving saved card and dirty draft across refresh',()=>{
- const state={dirty:false},ctx=vm.createContext({state,render(){}});
+ const state={dirty:false},ctx=vm.createContext({state,roundPicker:{update(){}},render(){}});
  vm.runInContext(html.slice(html.indexOf('function hydrate('),html.indexOf('async function load(')),ctx);
  const data={vendors:[{key:'v',payment:{method:''},paymentMethods:['bank_transfer','card']}]};
  ctx.hydrate(data);assert.equal(state.payments.v,'bank_transfer');

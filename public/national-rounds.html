@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>회차 관리 · 전국크레자랑</title>
+<link rel="stylesheet" href="national-rounds.css?v=1"><script src="platform-client.js"></script><script src="national-rounds.js?v=1" defer></script></head>
+<body><main>
+<header><a href="/main?channel=national-cre">CREO · 전국크레자랑</a><h1>회차 관리</h1><p>방송할 회차를 준비하고, 결제·배송은 해당 회차에서 이어서 처리하세요.</p></header>
+<section id="login" hidden aria-labelledby="login-title"><h2 id="login-title">운영자 로그인</h2><form id="login-form"><label for="password">관리자 비밀번호</label><div class="form-row"><input id="password" type="password" autocomplete="current-password" required><button>로그인</button></div></form></section>
+<div id="operator" hidden>
+<section class="prepare" aria-labelledby="prepare-title"><div><h2 id="prepare-title">다음 회차 준비</h2><p>선택한 방송일의 승인 개체를 가져옵니다. 기존 낙찰·배송·추첨 기록은 가져오지 않습니다.</p></div><form id="prepare-form"><label for="date">방송일 (월·수)</label><div class="form-row"><input type="date" id="date" required><button>회차 준비</button></div></form></section>
+<p class="policy">새 회차는 배송비 지원·할인 없이 준비됩니다. 개체 정보와 순서를 확인한 뒤 방송 회차를 전환하세요.</p>
+<div class="section-heading"><h2>방송 회차</h2><button id="refresh" class="secondary">새로고침</button></div>
+<div id="rounds" class="rounds"></div>
+<footer><a href="/organizer-bookings.html?channel=national-cre">방송 접수 관리</a><a href="/channel-manager.html?channel=national-cre">채널 설정</a></footer>
+</div><p id="message" role="status" aria-live="polite"></p>
+<dialog id="switch-dialog" aria-labelledby="switch-title"><h2 id="switch-title">방송 회차 전환</h2><p id="switch-description"></p><p>송출과 경매 제어 대상이 바뀝니다. 이전 회차의 결제·배송은 계속 처리할 수 있습니다.</p><div class="actions"><button id="switch-cancel" class="secondary">취소</button><button id="switch-confirm">이 회차로 방송 전환</button></div></dialog>
+</main></body></html>

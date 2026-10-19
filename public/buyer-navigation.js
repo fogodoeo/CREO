@@ -36,7 +36,7 @@
           document.body.dataset.buyerSection=active;
           document.body.dataset.buyerReadOnly=String(readOnly);
           document.body.classList.toggle('has-buyer-navigation',canNavigate);
-          $('buyer-event-label').textContent=(data.channel?.name||'')+(readOnly?' · 지난 경매':'');
+          $('buyer-event-label').textContent=(data.round?.name||data.channel?.name||'')+(readOnly?' · 지난 경매':'');
           $('buyer-collection').hidden=active!=='items';
           $('order-overview').hidden=registered||readOnly;
           archive.hidden=!readOnly||active!=='checkout';
