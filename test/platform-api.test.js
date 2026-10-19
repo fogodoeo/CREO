@@ -14,7 +14,7 @@ const { normalizeChannel } = require('../platform-core');
 const { createCrewartHouseService } = require('../crewart-house-service');
 const {CheckoutNotificationService} = require('../checkout-notifications');
 
-test('countdown display is authenticated, scoped and never modifies auction records',async()=>{
+test('retired countdown display accepts old clients without storage, revisions or auction locks',async()=>{
  const repository=new MemoryRepository(),api=createPlatformApi({repository});
  const path='/api/platform/channels/alpha';
  const item={id:'count-item',name:'A01',status:'live'};
@@ -23,14 +23,22 @@ test('countdown display is authenticated, scoped and never modifies auction reco
  const before=JSON.stringify([...repository.records]);
  const signal={sessionId:'test-desktop-123456',sequence:1,itemId:item.id,running:true};
  assert.equal((await call(api,'PUT',path+'/countdown-display',signal,'')).status,401);
- assert.equal((await call(api,'PUT','/api/platform/channels/beta/countdown-display',signal)).status,409);
- assert.equal((await call(api,'PUT',path+'/countdown-display',signal)).status,200);
  const read=async()=>(await call(api,'GET',path+'/broadcast?page=2',null,'')).json();
- assert.equal((await read()).state.countdownDisplay.running,true);
- assert.equal((await call(api,'PUT',path+'/countdown-display',{...signal,sequence:3,running:false})).status,200);
- assert.equal((await call(api,'PUT',path+'/countdown-display',{...signal,sequence:2})).json().duplicate,true);
+ const revision=(await read()).revision;
+ const getRecord=repository.getRecord.bind(repository);
+ repository.getRecord=async()=>{throw Error('retired heartbeat must not read auction state');};
+ for(const channel of ['alpha','beta']){
+  const replies=await Promise.all([signal,signal,{...signal,sequence:3,running:false},{...signal,sequence:2}].map(body=>call(api,'PUT','/api/platform/channels/'+channel+'/countdown-display',body)));
+  for(const reply of replies){assert.equal(reply.status,200);assert.deepEqual(reply.json(),{disabled:true});}
+ }
+ repository.getRecord=getRecord;
  assert.equal((await read()).state.countdownDisplay,null);
+ assert.equal((await read()).revision,revision);
  assert.equal(JSON.stringify([...repository.records]),before);
+ const restarted=createPlatformApi({repository});
+ assert.equal((await call(restarted,'GET',path+'/broadcast?page=2',null,'')).json().state.countdownDisplay,null);
+ const html=require('node:fs').readFileSync(require.resolve('../public/auction-live.html'),'utf8');
+ assert.doesNotMatch(html,/broadcast-countdown\.(?:js|css)|CreoBroadcastCountdown/);
 });
 
 test('broadcast pricing updates are channel scoped, survive restart and never change auction or notices',async()=>{

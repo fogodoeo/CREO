@@ -1190,7 +1190,6 @@ function createPlatformApi({
         google:itemSheetGoogle
     });
     const channelRevisions = new Map();
-    const countdownDisplay = require('./broadcast-countdown').createCountdown();
     const knownChannelIds = new Set(DEFAULT_CHANNELS.map((channel) => channel.id));
     const revokedAdminSessions = new Map();
     const adminLoginAttempts = new Map();
@@ -4686,15 +4685,10 @@ function createPlatformApi({
 
             if (segments.length === 3 && segments[2] === 'countdown-display' && method === 'PUT') {
                 if (!await requireAdmin(req,res)) return true;
-                const body=await readJson(req);
-                await withMutationLock(`channel:${channelId}`,async()=>{
-                    if(await repository.getActiveChannel()!==channelId)throw buyerInputError('운영 채널이 변경됐습니다.',409);
-                    const state=await repository.getRecord(channelId,'broadcast','state');
-                    const item=await repository.getRecord(channelId,'item',body.itemId);
-                    const result=countdownDisplay.update(channelId,body,state,item);
-                    if(!result.duplicate)touchChannel(channelId);
-                    replyJson(res,200,result);
-                });
+                // Older desktop clients may still publish heartbeats. Retire the
+                // decorative display without joining the auction mutation queue.
+                await readJson(req);
+                replyJson(res,200,{disabled:true});
                 return true;
             }
 
@@ -4780,7 +4774,7 @@ function createPlatformApi({
                     pricing: { bidUnitManwon: Number.isFinite(bidUnit) && bidUnit >= 0 && bidUnit <= 999999 ? bidUnit : 0 },
                     state: data.broadcast ? {
                         ...data.broadcast,
-                        countdownDisplay: countdownDisplay.view(channelId,data.broadcast,data.items.find(item=>item.id===data.broadcast.activeItemId)),
+                        countdownDisplay: null,
                         quizAnswer: data.broadcast.quizStatus === 'closed' ? data.broadcast.quizAnswer : ''
                     } : data.broadcast,
                     assets: data.assets
