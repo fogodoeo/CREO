@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "CREO 파르게 일괄 입력",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "CREO 관리페이지에서 선택한 배송을 파르게에 입력하고 장바구니를 확인합니다. 결제는 직접 진행합니다.",
   "permissions": [
     "scripting",

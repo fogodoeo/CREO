@@ -4,7 +4,6 @@
  const route=`channels/${encodeURIComponent(channelId)}/parge-dispatch`,esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const fail=e=>{$('error').textContent=e.message||String(e);};
  $('back').href='/shipping.html?channel='+encodeURIComponent(channelId);
- $('handover-date').min=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
  function helper(action,plan){return new Promise((resolve,reject)=>{
   const requestId=crypto.randomUUID(),timer=setTimeout(()=>{window.removeEventListener('message',receive);reject(Error(action==='ping'?'자동 입력 도구를 설치하고 이 페이지를 새로고침해 주세요.':'응답을 확인하지 못했어요. 파르게 장바구니를 먼저 확인해 주세요.'));},action==='ping'?1500:180000);
   function receive(e){if(e.source!==window||e.origin!==location.origin||e.data?.type!=='creo-parge-result'||e.data.requestId!==requestId)return;clearTimeout(timer);window.removeEventListener('message',receive);e.data.result?.error?reject(Error(e.data.result.error)):resolve(e.data.result);}
@@ -31,9 +30,14 @@
  }catch(e){fail(e)}}
  $('all').onchange=()=>{document.querySelectorAll('[data-select]').forEach(el=>{if(el.disabled)return;el.checked=$('all').checked;const g=groups[+el.dataset.select];el.checked?selected.add(g.key):selected.delete(g.key)});count()};$('broadcast-date').onchange=render;$('refresh').onclick=load;
  $('export').onclick=async()=>{if($('export').disabled)return;$('export').disabled=true;try{
-  $('error').textContent='';const chosen=groups.filter(g=>selected.has(g.key)),plan=Core.manifest(chosen,{channelId,date:$('handover-date').value});
+  $('error').textContent='';const chosen=groups.filter(g=>selected.has(g.key));
+  if(!chosen.length)throw Error('접수할 배송 건을 선택해 주세요.');
   if(chosen.some(g=>!g.paid)&&!confirm('결제 미확인 건이 포함돼 있어요. 계속할까요?'))return;
-  await helper('ping');
+  const ready=await helper('ping');if(!ready.automaticDate)throw Error('가까운 맡김일 자동 선택을 위해 입력 도구를 최신 버전으로 교체해 주세요.');
+  $('handover-date').textContent='파르게에서 가능한 날짜 확인 중…';
+  const resolved=await helper('resolve-date');
+  const plan=Core.manifest(chosen,{channelId,date:resolved.date});
+  $('handover-date').textContent=resolved.date+' · 가장 가까운 가능일';
   const {record}=await post({action:'prepare',requestId:crypto.randomUUID(),plan});await load();
   const result=await helper('dispatch',record.plan);
   await post({action:result.cartVerified?'confirm-cart':'attempted',id:record.id,confirmed:result.cartVerified===true});await load();

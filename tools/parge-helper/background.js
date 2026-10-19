@@ -17,7 +17,7 @@ let dispatching=false;
 chrome.runtime.onMessage.addListener((message,sender,reply)=>{
  if(message?.type!=='creo-parge-web')return;
  try{const url=new URL(sender.tab?.url||'');if(url.origin!=='https://creok.onrender.com'||url.pathname!=='/parge-dispatch.html')return;}catch{return;}
- if(message.action==='ping'){reply({ready:true});return;}
+ if(message.action==='ping'){reply({ready:true,automaticDate:true});return;}
  if(message.action==='release'){
   if(dispatching){reply({error:'입력 중에는 기록을 해제할 수 없어요.'});return;}
   (async()=>{const p=message.plan;if(!p?.channelId||!Array.isArray(p.groups))throw Error('기록을 확인할 수 없어요.');
@@ -25,7 +25,7 @@ chrome.runtime.onMessage.addListener((message,sender,reply)=>{
    await queue.catch(()=>{});await chrome.storage.local.remove(keys);return {released:true};
   })().then(reply,e=>reply({error:e.message}));return true;
  }
- if(message.action!=='dispatch')return;
+ if(!['dispatch','resolve-date'].includes(message.action))return;
  if(dispatching){reply({error:'다른 파르게 입력을 진행 중이에요.'});return;}
  dispatching=true;
  (async()=>{
@@ -33,7 +33,9 @@ chrome.runtime.onMessage.addListener((message,sender,reply)=>{
   if(tabs.length!==1)throw Error('Chrome에서 로그인한 파르게 배송신청 탭을 하나만 열어 주세요.');
   const tab=tabs[0];await chrome.tabs.update(tab.id,{active:true});
   await chrome.scripting.executeScript({target:{tabId:tab.id},files:['mobile-phone.js','parge-dispatch-core.js','form.js']});
-  const results=await chrome.scripting.executeScript({target:{tabId:tab.id},func:async plan=>window.CreoPargeForm.run(plan),args:[message.plan]});
+  const results=message.action==='resolve-date'
+   ?await chrome.scripting.executeScript({target:{tabId:tab.id},func:async()=>window.CreoPargeForm.resolveDate()})
+   :await chrome.scripting.executeScript({target:{tabId:tab.id},func:async plan=>window.CreoPargeForm.run(plan),args:[message.plan]});
   return results[0]?.result||{error:'장바구니 반영 여부를 확인하지 못했어요. 파르게 화면을 확인해 주세요.'};
  })().then(reply,e=>reply({error:e.message})).finally(()=>dispatching=false);
  return true;

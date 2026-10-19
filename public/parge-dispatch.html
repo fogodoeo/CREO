@@ -3,7 +3,7 @@
 <link rel="stylesheet" href="/parge-dispatch.css"></head><body><creo-operator-pipeline current="shipping"></creo-operator-pipeline><main>
 <a id="back" href="/shipping.html">배송 관리로</a><h1>파르게 일괄 접수</h1><p class="muted">출발지 · 크레오 대구본점 <span>010-5002-9163</span></p>
 <form id="login" hidden><label for="password">운영자 비밀번호</label><input id="password" type="password" autocomplete="current-password" required><button>로그인</button></form>
-<section id="app" hidden><div class="controls"><label>방송일<select id="broadcast-date"><option value="">전체</option></select></label><label>파르게 맡김일<input id="handover-date" type="date" required></label><button id="refresh" type="button">새로고침</button></div>
+<section id="app" hidden><div class="controls"><label>방송일<select id="broadcast-date"><option value="">전체</option></select></label><div><span>파르게 맡김일</span><p id="handover-date" role="status">가장 가까운 가능일 자동 선택</p></div><button id="refresh" type="button">새로고침</button></div>
 <p id="count" role="status"></p><div class="controls"><label class="check"><input id="all" type="checkbox"> 접수 가능 건 전체 선택</label><span class="muted">결제 완료 건을 기본 선택해요.</span></div>
 <div id="rows"></div><details id="excluded"><summary>제외된 개체</summary><ul></ul></details>
 <div class="actions"><button class="primary" id="export" type="button">선택한 건 파르게에 담기</button><a href="https://parge.co.kr/booking" target="_blank" rel="noopener">파르게 열기</a></div>

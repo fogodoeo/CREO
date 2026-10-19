@@ -1,4 +1,4 @@
-(function(root){'use strict';if(root.CreoPargeForm)return;
+(function(root){'use strict';if(root.CreoPargeForm?.version==='1.1.0')return;
  const clean=v=>String(v||'').replace(/\s+/g,' ').trim();let running=false;
  const all=(scope,selector)=>[...scope.querySelectorAll(selector)],buttons=scope=>all(scope,'button');
  function button(scope,label){const rows=buttons(scope).filter(b=>clean(b.textContent)===label||b.getAttribute('aria-label')===label);if(rows.length!==1)throw Error('파르게 화면이 달라졌어요: '+label);return rows[0];}
@@ -11,6 +11,46 @@
  function selectedDate(card,date){const [y,m,d]=date.split('-').map(Number);return clean(card.textContent).includes(`선택됨: ${y}년 ${m}월 ${d}일`);}
  function cartRows(){const aside=document.querySelector('aside');if(!aside)return [];return buttons(aside).filter(b=>clean(b.textContent)==='삭제').map(b=>{let n=b.parentElement;while(n&&n!==aside&&!n.textContent.includes('받는분:'))n=n.parentElement;if(!n||n===aside)throw Error('장바구니 구조가 바뀌었어요.');return clean(n.textContent).replace(/^배송\s*\d+\s*/,'');});}
  async function calendar(card,date){const [y,m,d]=date.split('-').map(Number),target=y*12+m;for(let i=0;i<25;i++){const match=card.textContent.match(/(\d{4})년\s*(\d{1,2})월/);if(!match)throw Error('맡김일 달력을 찾을 수 없어요.');const current=Number(match[1])*12+Number(match[2]);if(current===target){click(button(card,String(d)));await until(()=>selectedDate(card,date),'맡김일이 반영되지 않았어요.');return;}const old=match[0];click(button(card,current<target?'다음 달':'이전 달'));await until(()=>!card.textContent.includes(old));}throw Error('맡김일이 너무 멀어요.');}
+ async function earliestDate(card,now=new Date()){
+  const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit'}).format(now);
+  const [year,month]=today.split('-').map(Number),start=year*12+month;
+  // Start at this month even if the user previously browsed a later month.
+  for(let step=0;step<25;step++){
+   const match=card.textContent.match(/(\d{4})년\s*(\d{1,2})월/);
+   if(!match)throw Error('맡김일 달력을 찾을 수 없어요.');
+   const y=Number(match[1]),m=Number(match[2]),current=y*12+m;
+   if(current===start)break;
+   if(step===24)throw Error('현재 달의 맡김일을 확인할 수 없어요.');
+   click(button(card,current>start?'이전 달':'다음 달'));
+   await until(()=>!card.textContent.includes(match[0]));
+  }
+  for(let step=0;step<12;step++){
+   const match=card.textContent.match(/(\d{4})년\s*(\d{1,2})월/);
+   if(!match)throw Error('맡김일 달력을 찾을 수 없어요.');
+   const y=Number(match[1]),m=Number(match[2]);
+   const available=buttons(card).filter(b=>!b.disabled&&b.getAttribute('aria-disabled')!=='true'&&/^\d{1,2}$/.test(clean(b.textContent))).map(b=>{
+    const d=Number(clean(b.textContent)),date=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    return d>=1&&d<=new Date(Date.UTC(y,m,0)).getUTCDate()&&date>=today?date:null;
+   }).filter(Boolean).sort();
+   if(available.length)return available[0];
+   const next=button(card,'다음 달');if(next.disabled||step===11)break;
+   click(next);await until(()=>!card.textContent.includes(match[0]));
+  }
+  throw Error('선택 가능한 맡김일이 없어요. 파르게 일정을 확인해 주세요.');
+ }
+ async function resolveDate(){
+  if(running)return {error:'이미 입력 중이에요.'};running=true;
+  try{
+   if(location.origin!=='https://parge.co.kr'||location.pathname!=='/booking')throw Error('파르게 배송신청 화면에서 실행해 주세요.');
+   if(!buttons(document).some(b=>clean(b.textContent)==='로그아웃'))throw Error('파르게에 먼저 로그인해 주세요.');
+   if(document.querySelector('[role="dialog"]'))throw Error('파르게 안내 팝업을 닫고 다시 실행해 주세요.');
+   if(!document.querySelector('input[placeholder="이름 (또는 샵명)"]')){click(button(document,'크레오 대구본점'));await until(()=>document.querySelector('input[placeholder="이름 (또는 샵명)"]'));}
+   const originText=all(document,'p').find(p=>clean(p.textContent)==='출발지 선택 완료')?.parentElement?.textContent||'';
+   if(!originText.includes('크레오 대구본점'))throw Error('출발지를 크레오 대구본점으로 선택해 주세요.');
+   const rows=cards();if(rows.length!==1||field(rows[0],'이름').value||field(rows[0],'연락처').value||field(rows[0],'예: 150000').value||quantity(rows[0])!==1||!rows[0].textContent.includes('위 버튼으로 도착 매장을 지정해 주세요.')||!rows[0].textContent.includes('위 달력에서 맡김일을 눌러 선택해 주세요.'))throw Error('작성 중인 배송 내용이 있어요. 새 배송신청 화면에서 실행해 주세요.');
+   return {date:await earliestDate(rows[0])};
+  }catch(e){return {error:e.message};}finally{running=false;}
+ }
  async function chooseShop(card,shop){click(button(card,'도착 매장 선택'));const dialog=await until(()=>all(document,'[role="dialog"]').find(d=>d.textContent.includes('도착 파트너')));await fill(field(dialog,'매장명 검색 (권역 탭 숫자로 다른 지역 결과도 확인)'),shop);const find=()=>buttons(dialog).find(b=>clean(b.firstElementChild?.textContent)===shop&&/원/.test(b.textContent));await new Promise(r=>setTimeout(r,200));let target=find();if(!target){const tabs=buttons(dialog).filter(b=>b.querySelector('[aria-label$="매장 수"]')||/^(서울\/경기\/인천|충청\/대전|전라\/광주|대구\/경북\/부산\/경남|강원도|제주도)/.test(clean(b.textContent)));for(const tab of tabs){click(tab);await new Promise(r=>setTimeout(r,100));target=find();if(target)break;}}if(!target)throw Error('파르게에서 도착 매장을 찾지 못했어요: '+shop);click(target);await until(()=>!document.contains(dialog));}
  function report(message,error=false){let banner=document.getElementById('creo-parge-progress');if(!banner){banner=document.createElement('div');banner.id='creo-parge-progress';banner.style.cssText='position:sticky;top:0;z-index:2147483647;padding:16px;background:#eff5ff;color:#17212f;border:2px solid #2457ce;font:600 16px/1.5 system-ui';document.body.prepend(banner);}banner.setAttribute('role',error?'alert':'status');banner.textContent=message;}
  async function digest(value){const buffer=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value));return [...new Uint8Array(buffer)].map(n=>n.toString(16).padStart(2,'0')).join('');}
@@ -46,5 +86,5 @@
   for(const g of plan.groups){const matches=added.filter(row=>row.includes('크레오 대구본점')&&row.includes(g.shop)&&row.includes('받는분: '+g.name)&&row.includes(`크레스티드게코 ${String(g.quantity).padStart(2,'0')}마리`)&&row.includes(`분양 ${g.price}원`));if(matches.length!==1)throw Error('장바구니 마릿수·분양가가 맞지 않아요. 직접 확인해 주세요.');}
   report('장바구니 내역 확인 완료 · 새로고침하면 사라질 수 있어요. 최종 확인 후 결제해 주세요.');return {attempted:true,cartVerified:true,count:plan.groups.length};
  }catch(e){const message=e.message+(attempted?' 장바구니 반영 여부를 먼저 확인해 주세요.':'');report(message,true);return {error:message};}finally{running=false;}}
- root.CreoPargeForm={run};
+ root.CreoPargeForm={version:'1.1.0',run,resolveDate};
 })(window);

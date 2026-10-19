@@ -1,6 +1,6 @@
 # Parge dispatch
 
-Open `/parge-dispatch.html?channel=national-cre` from shipping or print management. Administrator authentication is required. Choose the auction date and handover date; paid Parge deliveries default to selected. Other carriers, pickup, dispatched entries, and incomplete destinations are excluded. Each recipient/destination gets one row with summed animal count and auction prices.
+Open `/parge-dispatch.html?channel=national-cre` from shipping or print management. Administrator authentication is required. Choose the auction date; paid Parge deliveries default to selected. The helper reads the origin shop's live calendar and automatically chooses the earliest enabled date on or after today in Korea, including the next month when necessary. The resolved date is recorded before dispatch and verified again during input. No day-of-week schedule is guessed. Other carriers, pickup, dispatched entries, and incomplete destinations are excluded. Each recipient/destination gets one row with summed animal count and auction prices.
 
 ## One-time Chrome setup
 
@@ -20,6 +20,6 @@ The current in-app browser cannot load this Chrome extension. Its real cart work
 
 ## Validation
 
-Focused 52 tests, full server 1,301 tests and desktop 261 tests passed with isolated data. Real browser cart test: three shipments / five animals, 2026-10-24 handover, origin 크레오 대구본점, memo 전크자; count and declared-price totals verified. No payment or reservation was confirmed. Private evidence lives in root `scratch/parge-dispatch-20261019` and must not be committed.
+Focused 59 tests, full server 1,308 tests and desktop 261 tests passed with isolated data, including nearest enabled date, Korean date boundary, month/year rollover, and no available date. Real browser cart test: three shipments / five animals, 2026-10-24 handover, origin 크레오 대구본점, memo 전크자; count and declared-price totals verified. No payment or reservation was confirmed. Private evidence lives in root `scratch/parge-dispatch-20261019` and must not be committed.
 
 Rebuild the extension after any bundled source change: `python tools/build-parge-helper.py`.
