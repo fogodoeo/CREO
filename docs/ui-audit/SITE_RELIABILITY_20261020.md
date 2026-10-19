@@ -85,6 +85,16 @@ Vanilla HTML/JS/CSS. 기존 `CHECKOUT_DESIGN.md`의 흰 표면·회색 본문·�
 - `npm test`: 1,386개 통과. 첫 전체 실행의 실패 1개는 이전 `loadShippingItems` 호출 문자열을 고정한 검사였으며 인쇄 전용 조회 계약에 맞춰 갱신한 후 다시 통과했다. `npm run check` 통과. PC `python -m unittest discover -p "test*.py"`: 270개 통과.
 - 엄격한 UTF-8 디코딩·U+FFFD 부재·`git diff --check` 확인. 캐시 키 변경은 이번에 수정한 의존 화면만 반영했다.
 - 실제 브라우저: 준비 개체 1마리 경매 리스트, 준비 회차의 낙찰 합계 0, 보관 채널의 단일 회차 홈→전체 배송 조회, 보관 상단 배송/인쇄 메뉴, 320px 하단 도구 확인. 모두 로컬 가상 자료다. `site-audit-prepared-print.png`에 낙찰 전 인쇄 결과를 남겼다.
-- 배포 후 운영 GET 및 자료 보존 비교는 별도 기록한다. 미검증한 전체 역할별 흐름은 첫 표의 범위를 계속 유지한다.
+- `1491584d069dadf63fc985adca23439a68f47cc7` / Render `dep-dbb7luk9v7es73cheh40`는 05:19:31 KST Live. 교체 중 502를 한 번 관찰했으며, 완료 후 health·송출 200 및 정적 파일 19개 일치를 확인했다. 이번/이전 회차 자료·낙찰합계·배송 식별자 불변, 두 회차 미결제 조회 유지. 실제 보관 채널 3개의 배송 페이지 9개가 200, 방송 조작은 404 유지. 잘못된 회차의 복구 화면과 로그인 화면까지 복귀를 실제 확인했다. 운영 홈의 인증 후 화면은 보유한 API용 비밀키와 웹 로그인 암호가 달라 재확인하지 못했으며 로컬 가상 자료로 확인했다. 인증 설정은 변경하지 않았다.
+
+## 사진 처리 패키지 보안 패치
+
+위험도: release. 배포의 npm 감사에서 `sharp 0.35.4` 관련 high 경고 1개를 확인했다. [제작사 공지](https://github.com/lovell/sharp/security/advisories/GHSA-wq5f-xc86-pv6w)의 수정판 `0.35.5`로만 갱신했다. lockfile의 모든 플랫폼 패키지는 유지되고 sharp/libvips 관련 버전만 변경됐다. 로컬 네이티브 모듈은 sharp 0.35.5 / librsvg 2.63.2로 확인했다.
+
+- 기존 업로드는 디코더 호출 전 JPG/PNG/WebP의 파일 표식을 확인하며 SVG를 거부한다. 형식 제한·16MP 제한·변환 시간 제한·동시 처리 제한·개인 저장소 권한은 유지한다.
+- `node --test test/entry-photo-storage.test.js test/entry-photo-audit.test.js test/vendor-parent-photo-ui.test.js test/broadcast-parent-photos.test.js`: 24개 통과. 실제 JPEG 방향·메타데이터 제거, 잘못된/큰 입력 거부, 실패 후 슬롯 해제, 저장 재시도·소유권·부개체 사진 전환을 포함한다.
+- 패치 후 `npm test` 1,386개, `npm run check`, PC `python -m unittest discover -p "test*.py"` 270개 통과. npm 설치 후 감사 결과 취약점 0개. 전체 보안을 보증하는 수치는 아니다.
+- 로컬 실화면: 합성 4색 PNG를 실제 업로드 처리기로 WebP 본문/작은 이미지로 변환한 결과를 브라우저에서 확인했다. 실제 경매 사진·운영 레코드는 사용하지 않았다.
+- 로컬은 Node 24/Windows이며 운영은 Node 22/Linux다. 운영 패키지 설치·기동·건강 상태와 자료 보존을 배포 후 별도로 확인한다. 미검증한 전체 역할별 흐름은 첫 표의 범위를 계속 유지한다.
 
 판정: 이번 수정 범위는 검증된 경로에 한해 반영 가능. 전체 사이트에 대한 Approve 판정은 아직 하지 않는다.
