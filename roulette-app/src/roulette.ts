@@ -18,6 +18,7 @@ import type { UIObject } from './UIObject';
 import { bound } from './utils/bound.decorator';
 import { parseName, shuffle } from './utils/utils';
 import { VideoRecorder } from './utils/videoRecorder';
+import { snapshotStandings } from './standings.js';
 
 export class Roulette extends EventTarget {
   private _marbles: Marble[] = [];
@@ -499,11 +500,7 @@ export class Roulette extends EventTarget {
   }
 
   public getStandings() {
-    return [...this._winners, ...this._marbles].map((marble, index) => ({
-      rank: index + 1,
-      name: marble.name,
-      finished: index < this._winners.length,
-    }));
+    return snapshotStandings(this._winners, this._marbles);
   }
 
   public getMaps() {

@@ -13,6 +13,7 @@ import type { ColorTheme } from './types/ColorTheme';
 import { createSecureSeed, setRandomSeed } from './utils/random';
 import { parseName } from './utils/utils';
 import { auctionWinnerEntries, getLeadingHouseKey, HOUSE_NAMES } from './auctionEntries.js';
+import { createRemoteControls, createSessionPoller } from './remoteControls.js';
 
 const queryParameters = new URLSearchParams(location.search);
 const isBroadcastMode = queryParameters.get('broadcast') === '1';
@@ -223,7 +224,17 @@ let remoteAppliedCommandId = '';
 let remoteStartCommandId = '';
 let remoteApplyQueue = Promise.resolve();
 let remoteCommandPending = false;
+let remoteActionPending = false;
+let remoteSessionRunId = '';
 let lastRemoteResult: PinballResult | null = null;
+
+const remoteControls = createRemoteControls({
+  sendCommand: sendRemoteCommand,
+  readFingerprint: () => JSON.stringify({ entries: parseEntries(), config: collectConfig() }),
+  readSession: () => ({ phase: remotePhase, runId: remoteSessionRunId }),
+  preview: (session) => prepareRound(session.seed),
+  onBusy: (busy) => { remoteActionPending = busy; updateCounts(); },
+});
 
 function parseEntries(value = dom.entries.value): string[] {
   return value
@@ -341,6 +352,13 @@ function showToast(message: string): void {
   toastTimer = window.setTimeout(() => dom.toast.classList.remove('show'), 2200);
 }
 
+function reportControlError(error: unknown): void {
+  const message = error instanceof Error ? error.message : '송출 명령을 보내지 못했습니다. 다시 시도해 주세요.';
+  if (isRemoteController) dom.remoteStatus.textContent = message;
+  setStatus('error', message);
+  showToast(message);
+}
+
 function setStatus(state: 'loading' | 'ready' | 'running' | 'complete' | 'error', message: string): void {
   dom.statusPill.dataset.state = state;
   dom.statusText.textContent = message;
@@ -371,9 +389,11 @@ function updateCounts(): void {
   dom.personCount.textContent = String(people);
   dom.ballCount.textContent = String(balls);
   dom.startBallCount.textContent = `${balls}개 공`;
-  const valid = engineReady && balls >= 2 && balls <= 500 && !running && !remoteCommandPending;
+  const valid = engineReady && balls >= 2 && balls <= 500 && !running && !remoteCommandPending
+    && !remoteActionPending && !(isRemoteController && remotePhase === 'running');
   dom.shuffle.disabled = !valid;
   dom.start.disabled = !valid;
+  dom.resetBroadcastSession.disabled = remoteCommandPending || remoteActionPending;
   dom.winningRank.max = String(Math.max(1, balls));
   if (balls > 500) setStatus('error', '공은 최대 500개까지');
   preparedFingerprint = '';
@@ -625,6 +645,8 @@ function remoteSourceUrl(): string {
   url.searchParams.set('channel', remoteChannelId);
   url.searchParams.set('broadcast', '1');
   url.searchParams.set('theme', currentThemeName());
+  url.searchParams.set('title', dom.eventTitle.value.trim() || DEFAULT_CONFIG.eventTitle);
+  url.searchParams.set('channelName', dom.channelName.value.trim());
   return url.toString();
 }
 
@@ -650,6 +672,7 @@ async function remoteRequest(path: string, init: RequestInit = {}): Promise<{ se
 function updateRemoteSnapshot(session: RemoteSession): void {
   remoteRevision = Math.max(0, Number(session.revision) || 0);
   remotePhase = session.phase;
+  remoteSessionRunId = session.runId;
   const status = session.phase === 'prepared'
     ? `${session.ballCount.toLocaleString('ko-KR')}개 공 · 송출 배치 완료`
     : session.phase === 'running'
@@ -719,6 +742,11 @@ async function acknowledgeRemoteResult(record: RoundRecord): Promise<void> {
 
 async function applyRemoteSession(session: RemoteSession): Promise<void> {
   updateRemoteSnapshot(session);
+  if (session.phase === 'complete') {
+    remoteAppliedCommandId = session.command?.id || '';
+    setStatus('complete', `${session.result?.winner || '결과'} · 추첨 완료`);
+    return;
+  }
   if (!session.command || session.command.id === remoteAppliedCommandId) return;
   if (session.command.type === 'reset') {
     remotePreparedRunId = '';
@@ -756,6 +784,10 @@ async function fetchRemoteSession(): Promise<RemoteSession> {
     remoteApplyQueue = remoteApplyQueue.then(() => applyRemoteSession(response.session)).catch((error) => {
       console.error('Pinball remote command failed', error);
       setStatus('error', error instanceof Error ? error.message : '송출 명령 적용 실패');
+      // Keep the queue usable after a transient error, while propagating failure
+      // to the poller so this same command is retried.
+      remoteApplyQueue = Promise.resolve();
+      throw error;
     });
     await remoteApplyQueue;
   } else {
@@ -765,20 +797,21 @@ async function fetchRemoteSession(): Promise<RemoteSession> {
 }
 
 function startRemotePolling(): void {
-  let lastPulse = -1;
-  const poll = async (): Promise<void> => {
-    try {
+  const readSession = createSessionPoller({
+    readPulse: async () => {
       const response = await fetch(`/api/platform/channels/${encodeURIComponent(remoteChannelId)}/broadcast-pulse`, {
         cache: 'no-store',
         credentials: 'same-origin',
       });
       if (!response.ok) throw new Error(`송출 연결 오류 (${response.status})`);
       const payload = await response.json() as { revision?: number };
-      const pulse = Number(payload.revision) || 0;
-      if (lastPulse < 0 || pulse !== lastPulse) {
-        lastPulse = pulse;
-        await fetchRemoteSession();
-      }
+      return Number(payload.revision) || 0;
+    },
+    fetchSession: fetchRemoteSession,
+  });
+  const poll = async (): Promise<void> => {
+    try {
+      await readSession();
     } catch (error) {
       if (isRemoteController) dom.remoteStatus.textContent = error instanceof Error ? error.message : '송출 서버 연결 끊김';
     } finally {
@@ -894,14 +927,10 @@ function bindEvents(): void {
   });
 
   dom.shuffle.addEventListener('click', () => {
-    void prepareRound().then(() => {
-      if (isRemoteController) void sendRemoteCommand('prepare').catch(console.error);
-    }).catch((error: Error) => showToast(error.message));
+    void (isRemoteController ? remoteControls.prepare() : prepareRound()).catch(reportControlError);
   });
   dom.start.addEventListener('click', () => {
-    void startRound().then(() => {
-      if (isRemoteController) void sendRemoteCommand('start').catch(console.error);
-    }).catch((error: Error) => showToast(error.message));
+    void (isRemoteController ? remoteControls.start() : startRound()).catch(reportControlError);
   });
 
   dom.copyBroadcastSource.addEventListener('click', async () => {

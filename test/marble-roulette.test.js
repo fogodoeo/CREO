@@ -102,8 +102,9 @@ test('pinball separates an authenticated laptop controller from a clean fixed br
     assert.match(app, /broadcast-pulse/);
     assert.match(app, /remoteApplyQueue = remoteApplyQueue\.then/);
     assert.match(app, /session\.command\.id === remoteAppliedCommandId/);
-    assert.match(app, /sendRemoteCommand\('prepare'\)/);
-    assert.match(app, /sendRemoteCommand\('start'\)/);
+    assert.match(app, /sendCommand: sendRemoteCommand/);
+    assert.match(app, /remoteControls\.prepare\(\)/);
+    assert.match(app, /remoteControls\.start\(\)/);
     assert.match(app, /acknowledgeRemoteResult/);
     assert.match(app, /standings: record\.standings/);
     assert.match(app, /session\.result \|\| session\.history\?\.\[0\]/);
