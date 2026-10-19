@@ -116,6 +116,65 @@ test('revoking or rotating a trade link also suspends its library grant until ex
  assert.equal((await f.get(account,'buyer-collection/'+id)).status,403);assert.equal((await f.get(account,'buyer-collection')).json().records[0].available,false);
  const restored=await f.write(account,'buyer-collection/connect',{code:changed.json().code,expectedRevision:1,requestId:'reconnect-rotated'});assert.equal(restored.status,200,restored.body);assert.equal((await f.get(account,'buyer-collection/'+id)).status,200);
 });
+
+test('collection separates explicitly connected auction rounds and applies link revocation only to its own round',async t=>{
+ const f=await fixture(t),account=await f.login();
+ const old=await f.write(account,'buyer-collection/connect',{code:f.link.code,expectedRevision:0,requestId:'collection-old-round'});assert.equal(old.status,200,old.body);
+ const selected=(await f.get(account,'buyer-collection/'+old.json().id+'?view=rounds')).json().round.key;
+ const archive=await f.call('POST','channels/alpha/archives',{title:'이전 회차'},{admin:true});assert.equal(archive.status,201,archive.body);
+ const closed=await f.call('POST','channels/alpha/archives/'+archive.json().archive.id+'/close-round',{}, {admin:true});assert.equal(closed.status,200,closed.body);
+ const reopened=await f.get(account,'buyer-collection/'+old.json().id+'?round='+encodeURIComponent(selected));assert.equal(reopened.status,200,reopened.body);assert.equal(reopened.json().round.name,'이전 회차');
+ await f.repository.upsertRecord('alpha','item',{id:'next',name:'B01',status:'sold',soldPrice:100000,winnerName:'가상 구매자',winnerPhone:'01000000002',vendorId:'vendor',attributes:{broadcastDate:'2026-10-21'}});
+ const issued=await f.call('POST','channels/alpha/buyer-shipping-link',{itemId:'next'},{admin:true});assert.equal(issued.status,200,issued.body);
+ const next=await f.write(account,'buyer-collection/connect',{code:issued.json().code,expectedRevision:1,requestId:'collection-next-round'});assert.equal(next.status,200,next.body);
+ assert.notEqual(next.json().id,old.json().id,'different auction rounds must have different library groups');
+ const list=(await f.get(account,'buyer-collection')).json();assert.equal(list.records.length,2);
+ assert.deepEqual((await f.get(account,'buyer-collection/'+old.json().id)).json().items.map(i=>i.name),['A01']);
+ assert.deepEqual((await f.get(account,'buyer-collection/'+next.json().id)).json().items.map(i=>i.name),['B01']);
+ const revoke=await f.call('POST','channels/alpha/buyer-link-access',{itemId:'next',action:'revoke',expectedRevision:0,requestId:'revoke-next-library-round'},{admin:true});assert.equal(revoke.status,200,revoke.body);
+ f.restart();assert.equal((await f.get(account,'buyer-collection/'+next.json().id)).status,403);assert.equal((await f.get(account,'buyer-collection/'+old.json().id)).status,200);
+ const rotated=await f.call('POST','channels/alpha/buyer-link-access',{itemId:'next',action:'rotate',expectedRevision:1,requestId:'rotate-next-library-round'},{admin:true});assert.equal(rotated.status,200,rotated.body);
+ const reconnected=await f.write(account,'buyer-collection/connect',{code:rotated.json().code,expectedRevision:2,requestId:'reconnect-next-library-round'});assert.equal(reconnected.status,200,reconnected.body);assert.equal(reconnected.json().id,next.json().id);
+ assert.equal((await f.get(account,'buyer-collection/'+next.json().id)).status,200);assert.equal((await f.get(account,'buyer-collection/'+old.json().id)).status,200);
+});
+
+test('legacy combined libraries split on read, retain frozen records, and upgrade only explicitly reconnected sales atomically',async t=>{
+ const f=await fixture(t),account=await f.login();
+ await f.write(account,'buyer-collection/connect',{code:f.link.code,expectedRevision:0,requestId:'legacy-first-round'});
+ const archive=(await f.call('POST','channels/alpha/archives',{title:'이전 회차'},{admin:true})).json().archive;
+ await f.call('POST','channels/alpha/archives/'+archive.id+'/close-round',{}, {admin:true});
+ await f.repository.upsertRecord('alpha','item',{id:'next',name:'B01',status:'sold',soldPrice:100000,winnerPhone:'01000000002',vendorId:'vendor',attributes:{broadcastDate:'2026-10-21'}});
+ const issued=(await f.call('POST','channels/alpha/buyer-shipping-link',{itemId:'next'},{admin:true})).json();
+ await f.write(account,'buyer-collection/connect',{code:issued.code,expectedRevision:1,requestId:'legacy-second-round'});
+ const auth=require('../buyer-account-auth').createBuyerAccountAuth({repository:f.repository,config:f.config,hashPhone:()=>''});
+ const root='creo_v2::buyer-collection::',key=root+'account::'+auth.digest('kakao:'+f.config.clientId+':111'),saved=await auth.read(key),first=saved.grants[0];
+ const legacy={id:auth.digest(first.channelId+':'+first.phoneHash),channelId:first.channelId,channelName:first.channelName,phoneHash:first.phoneHash,accessGeneration:0,items:saved.grants.flatMap(g=>g.items),linkedAt:first.linkedAt,updatedAt:first.updatedAt};
+ const rows=[auth.row(key,{revision:saved.revision,grants:[legacy]})];
+ for(const entry of legacy.items){const recordKey=root+'record::'+auth.digest(entry.identity),record=await auth.read(recordKey);delete record.round;rows.push(auth.row(recordKey,record));}
+ await f.repository.upsertRows(rows);
+ const snapshot=()=>f.repository.db.prepare("SELECT key,value FROM platform_kv WHERE key LIKE 'creo_v2::buyer-collection::%' ORDER BY key").all();
+ const before=snapshot(),list=(await f.get(account,'buyer-collection')).json();assert.equal(list.records[0].roundCount,2);
+ const stalePage=await f.get(account,'buyer-collection/'+legacy.id);assert.equal(stalePage.status,409);assert.match(stalePage.json().error,/새로고침/);assert.equal(stalePage.json().items,undefined);
+ const detail=(await f.get(account,'buyer-collection/'+legacy.id+'?view=rounds')).json();assert.equal(detail.items.length,1);assert.equal(detail.rounds.length,2);
+ const oldRound=detail.rounds.find(r=>r.name==='이전 회차'),nextRound=detail.rounds.find(r=>r.name.includes('2026-10-21'));
+ assert.ok(oldRound);assert.ok(nextRound);
+ const read=round=>f.get(account,'buyer-collection/'+legacy.id+'?round='+encodeURIComponent(round.key));
+ assert.deepEqual((await read(oldRound)).json().items.map(i=>i.name),['A01']);assert.deepEqual((await read(nextRound)).json().items.map(i=>i.name),['B01']);
+ assert.equal((await f.get(account,'buyer-collection/'+legacy.id+'?round=missing')).status,409);
+ assert.deepEqual(snapshot(),before,'read-time grouping must not rewrite existing encrypted records');
+ const revoked=await f.call('POST','channels/alpha/buyer-link-access',{itemId:'next',action:'revoke',expectedRevision:0,requestId:'revoke-legacy-next-round'},{admin:true});assert.equal(revoked.status,200);
+ assert.equal((await read(nextRound)).status,403);assert.equal((await read(oldRound)).status,200);
+ const available=(await f.get(account,'buyer-collection/'+legacy.id+'?view=rounds')).json();assert.equal(available.round.key,oldRound.key);assert.equal(available.rounds.find(r=>r.key===nextRound.key).available,false);
+ const rotated=(await f.call('POST','channels/alpha/buyer-link-access',{itemId:'next',action:'rotate',expectedRevision:1,requestId:'rotate-legacy-next-round'},{admin:true})).json();
+ const body={code:rotated.code,expectedRevision:2,requestId:'upgrade-legacy-next-round'},original=f.repository.upsertRows.bind(f.repository),beforeUpgrade=snapshot();
+ f.repository.upsertRows=async rows=>original(rows.some(r=>r.key.startsWith(root))?[...rows,{key:{invalid:true},value:'rollback'}]:rows);
+ assert.equal((await f.write(account,'buyer-collection/connect',body)).status,500);assert.deepEqual(snapshot(),beforeUpgrade);
+ f.repository.upsertRows=original;const connected=await f.write(account,'buyer-collection/connect',body);assert.equal(connected.status,200,connected.body);
+ assert.equal((await f.write(account,'buyer-collection/connect',body)).json().duplicate,true);
+ f.restart();assert.deepEqual((await f.get(account,'buyer-collection/'+legacy.id)).json().items.map(i=>i.name),['A01']);
+ assert.deepEqual((await f.get(account,'buyer-collection/'+connected.json().id)).json().items.map(i=>i.name),['B01']);
+ assert.equal((await f.get(account,'buyer-collection')).json().records.reduce((sum,r)=>sum+r.itemCount,0),2);
+});
 test('a reopened lot cannot inherit a previous collection grant even with the same buyer and price',async t=>{
  const f=await fixture(t),account=await f.login(),connected=await f.write(account,'buyer-collection/connect',{code:f.link.code,expectedRevision:0,requestId:'connect-old-sale'}),id=connected.json().id;
  const item=await f.repository.getRecord('alpha','item','first');

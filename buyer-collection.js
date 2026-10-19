@@ -2,6 +2,7 @@
 const crypto=require('node:crypto');
 const {checkoutItem}=require('./checkout-item-data');
 const {cleanText,channelKey}=require('./platform-core');
+const {captureRound,recordRounds}=require('./buyer-collection-rounds');
 const ROOT='creo_v2::buyer-collection::';
 const fail=(message,status=409)=>Object.assign(new Error(message),{status});
 function saleIdentity(channelId,item){
@@ -11,7 +12,7 @@ function saleIdentity(channelId,item){
 function captureRecord(context,item,identity,stamp){
  const parents=item.parents||item.attributes?.parents||[];
  const vendor=context.vendors.find(v=>v.id===item.vendorId);
- return {schema:1,identity,itemId:item.id,capturedAt:stamp,
+ return {schema:1,identity,itemId:item.id,capturedAt:stamp,...(captureRound(context)?{round:captureRound(context)}:{}),
   // Store only the checkout projection. Bid logs, phone numbers, bank details
   // and arbitrary attributes must never enter the personal item archive.
   item:{...checkoutItem(item),vendorName:cleanText(vendor?.name||item.vendorName||'업체',100)},
@@ -29,9 +30,9 @@ function createBuyerCollection({repository,auth,linkAccess,resolveProof,resolveR
   // Historical imports require frozen winner evidence, never current membership guesses.
   const items=context.bundleItems.filter(item=>item.winnerPhone&&crypto.createHash('sha256').update(String(item.winnerPhone).replace(/\D/g,'')).digest('base64url')===account.phoneHash);
   if(!items.length)throw fail('낙찰자 기록을 운영자에게 확인해 주세요.',409);
-  return {context,items,id:auth.digest(context.channel.id+':'+context.token.phoneHash)};
+  return {context,items,id:auth.digest(context.channel.id+':'+context.token.phoneHash+':round:'+(context.token.roundScope||'first'))};
  }
- function publicPreview(proof){return {id:proof.id,channel:{id:proof.context.channel.id,name:proof.context.channel.name},itemCount:proof.items.length,amount:proof.items.reduce((n,i)=>n+(Number(i.soldPrice)||0),0)};}
+ function publicPreview(proof){return {id:proof.id,channel:{id:proof.context.channel.id,name:proof.context.channel.name},round:proof.context.round,itemCount:proof.items.length,amount:proof.items.reduce((n,i)=>n+(Number(i.soldPrice)||0),0)};}
  async function connect(account,{code,expectedRevision,requestId}){
   if(typeof requestId!=='string'||!/^[-\w]{8,80}$/.test(requestId))throw fail('연결 요청을 다시 확인해 주세요.',422);
   return auth.lock(ROOT+'connections',async()=>{
@@ -39,7 +40,7 @@ function createBuyerCollection({repository,auth,linkAccess,resolveProof,resolveR
    if(receipt){if(receipt.codeHash!==auth.digest(code))throw fail('이미 다른 연결에 사용된 요청이에요.');return {duplicate:true,revision:stored.revision,id:receipt.id};}
    if(expectedRevision!==stored.revision)throw fail('보관함이 바뀌었어요. 새로고침해 주세요.');
    const proof=await preview(account,code),old=stored.grants.find(g=>g.id===proof.id),items=new Map((old?.items||[]).map(i=>[i.identity,i]));
-   const rows=[];
+   const rows=[],connectedIdentities=new Set();
    for(const original of proof.items){
     const item=original.buyerSaleId?original:{...original,buyerSaleId:crypto.randomUUID()};
     if(!original.buyerSaleId)rows.push({key:channelKey(proof.context.channel.id,'item',item.id),value:JSON.stringify(item)});
@@ -47,25 +48,30 @@ function createBuyerCollection({repository,auth,linkAccess,resolveProof,resolveR
     if(owner&&owner.accountId!==account.accountId)throw fail('다른 보관함에 연결된 내역이에요. 운영자에게 확인해 주세요.');
     const record=await auth.read(recordKey(identity));
     if(!record)rows.push(auth.row(recordKey(identity),captureRecord(proof.context,item,identity,now())));
+    else if(!record.round&&captureRound(proof.context))rows.push(auth.row(recordKey(identity),{...record,round:captureRound(proof.context)}));
+    connectedIdentities.add(identity);
     rows.push(auth.row(ownerKey,{accountId:account.accountId,grantId:proof.id,linkedAt:owner?.linkedAt||now()}));items.set(identity,{id:item.id,identity});
    }
-   const grant={id:proof.id,channelId:proof.context.channel.id,channelName:proof.context.channel.name,phoneHash:account.phoneHash,accessGeneration:proof.context.token.accessGeneration||0,items:[...items.values()],linkedAt:old?.linkedAt||now(),updatedAt:now()};
-   const grants=[grant,...stored.grants.filter(g=>g.id!==grant.id)];
+   const grant={schema:2,id:proof.id,channelId:proof.context.channel.id,channelName:proof.context.channel.name,roundScope:proof.context.token.roundScope||'',round:proof.context.round,phoneHash:account.phoneHash,accessGeneration:proof.context.token.accessGeneration||0,items:[...items.values()],linkedAt:old?.linkedAt||now(),updatedAt:now()};
+   // Explicit reconnection moves only the proven sales out of older combined
+   // grants. Their snapshots and every unrelated historical sale stay intact.
+   const grants=[grant,...stored.grants.filter(g=>g.id!==grant.id).map(g=>({...g,items:g.items.filter(i=>!connectedIdentities.has(i.identity))})).filter(g=>g.items.length)];
    if(grants.length>500||grants.reduce((n,g)=>n+g.items.length,0)>5000)throw fail('보관함 연결 한도를 운영자에게 확인해 주세요.');
    const revision=stored.revision+1;
    rows.push(auth.row(key(account.accountId),{revision,grants}),auth.row(receiptKey,{codeHash:auth.digest(code),id:grant.id,createdAt:now()}));
    await repository.upsertRows(rows);return {duplicate:false,revision,id:grant.id};
   });
  }
- async function accessible(grant){return linkAccess.accepts({channelId:grant.channelId,phoneHash:grant.phoneHash,accessGeneration:grant.accessGeneration});}
- async function list(account,{offset=0}={}){
-  const stored=await load(account.accountId),start=Math.max(0,Math.min(stored.grants.length,Math.floor(Number(offset)||0))),page=stored.grants.slice(start,start+20),records=[];
-  for(const grant of page)records.push({id:grant.id,channelName:grant.channelName,itemCount:grant.items.length,linkedAt:new Date(grant.linkedAt).toISOString(),available:await accessible(grant)});
-  return {revision:stored.revision,records,nextOffset:start+20<stored.grants.length?start+20:null,total:stored.grants.length};
+ async function accessible(grant){return linkAccess.accepts({channelId:grant.channelId,phoneHash:grant.phoneHash,accessGeneration:grant.accessGeneration,...(grant.schema===2?{roundScope:grant.roundScope}:{})});}
+ async function roundAccessible(grant,round,baseAllowed){
+  if(!(baseAllowed===undefined?await accessible(grant):baseAllowed))return false;
+  if(grant.schema===2||!round.scope)return true;
+  // Old combined grants did not record per-round generations. Preserve their
+  // original gate and allow a later round only while it has never been replaced
+  // or revoked; a new valid link explicitly upgrades just that round.
+  return linkAccess.accepts({channelId:grant.channelId,phoneHash:grant.phoneHash,roundScope:round.scope,accessGeneration:0});
  }
- async function detail(account,id){
-  const grant=(await load(account.accountId)).grants.find(g=>g.id===id);if(!grant)throw fail('연결된 내역이 없어요.',404);
-  if(!await accessible(grant))throw fail('새 낙찰 링크로 다시 연결해 주세요.',403);
+ async function view(grant){
   const [saved,context]=await Promise.all([auth.readMany(grant.items.map(item=>recordKey(item.identity))),resolveRecords(grant)]);
   const records=grant.items.map(entry=>{
    const record=saved.get(recordKey(entry.identity));
@@ -73,10 +79,38 @@ function createBuyerCollection({repository,auth,linkAccess,resolveProof,resolveR
    const current=context.items.find(item=>item.id===entry.id);
    return {...record,recordState:!current?'archived':current.status==='sold'&&saleIdentity(grant.channelId,current)===entry.identity?'current':'changed'};
   });
+  const rounds=recordRounds(grant,records,context);
+  const baseAllowed=await accessible(grant),accessByScope=new Map();
+  for(const round of rounds){
+   if(!accessByScope.has(round.scope))accessByScope.set(round.scope,await roundAccessible(grant,round,baseAllowed));
+   round.available=accessByScope.get(round.scope);
+  }
+  return {context,rounds};
+ }
+ async function list(account,{offset=0}={}){
+  const stored=await load(account.accountId),start=Math.max(0,Math.min(stored.grants.length,Math.floor(Number(offset)||0))),page=stored.grants.slice(start,start+20),records=[];
+  for(const grant of page){
+   const summary={id:grant.id,channelName:grant.channelName,itemCount:grant.items.length,linkedAt:new Date(grant.linkedAt).toISOString()};
+   if(!await accessible(grant)){records.push({...summary,available:false});continue;}
+   const {rounds}=await view(grant);
+   records.push({...summary,...(rounds.length===1&&rounds[0].available?{roundName:rounds[0].name}:{}),roundCount:rounds.length,available:rounds.some(r=>r.available)});
+  }
+  return {revision:stored.revision,records,nextOffset:start+20<stored.grants.length?start+20:null,total:stored.grants.length};
+ }
+ async function detail(account,id,{round:requested='',rounds:roundView=false}={}){
+  const grant=(await load(account.accountId)).grants.find(g=>g.id===id);if(!grant)throw fail('연결된 내역이 없어요.',404);
+  if(!await accessible(grant))throw fail('새 낙찰 링크로 다시 연결해 주세요.',403);
+  const {context,rounds}=await view(grant);
+  if(rounds.length>1&&!roundView&&!requested)throw fail('회차별 내역을 보려면 페이지를 새로고침해 주세요.');
+  const round=requested?rounds.find(r=>r.key===requested):rounds.find(r=>r.available)||rounds[0];
+  if(!round)throw fail('선택한 보관 회차를 찾을 수 없어요. 목록을 다시 열어 주세요.');
+  if(!round.available)throw fail('이 회차의 새 낙찰 링크로 다시 연결해 주세요.',403);
+  const records=round.records;
   const items=await hydrateRecords(records);
   // Revocation during photo/parent resolution must not return private content.
-  if(!await accessible(grant))throw fail('새 낙찰 링크로 다시 연결해 주세요.',403);
-  return {channel:{id:grant.channelId,name:grant.channelName,status:context.channel?.status||'archived'},readOnly:true,
+  if(!await roundAccessible(grant,round))throw fail('새 낙찰 링크로 다시 연결해 주세요.',403);
+  const publicRound=r=>({key:r.key,name:r.name,itemCount:r.records.length,available:r.available});
+  return {channel:{id:grant.channelId,name:grant.channelName,status:context.channel?.status||'archived'},readOnly:true,round:publicRound(round),rounds:rounds.map(publicRound),
    items:items.map((item,index)=>({...item,id:records[index].identity,recordState:records[index].recordState}))};
  }
  return {preview:async(account,code)=>publicPreview(await preview(account,code)),connect,list,detail};

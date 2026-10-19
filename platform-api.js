@@ -1171,12 +1171,19 @@ function createPlatformApi({
     });
     const entryPhotoAudit = require('./entry-photo-audit').createEntryPhotoAudit({repository,decodeBuyerRecord:buyerAccount.decodeRow});
     const buyerCollection = require('./buyer-collection').createBuyerCollection({repository,auth:buyerAccount,linkAccess:buyerLinkAccess,now:buyerAccountNow,
-        resolveProof:async code=>buyerBundleContext(await resolveBuyerShippingCredential({code}),{allowArchived:true}),
+        resolveProof:async code=>{
+            const context=await buyerBundleContext(await resolveBuyerShippingCredential({code}),{allowArchived:true});
+            if(!context)return null;
+            const subject=await buyerLinkSubject(context.channel.id,context.anchorPhone,context.bundleItems[0]);
+            const token={...context.token,roundScope:subject.roundScope||''};
+            if(!await buyerLinkAccess.accepts(token))return null;
+            return {...context,token};
+        },
         resolveRecords:async grant=>{
             const catalog=await loadCatalog(),items=[];
             const keys=[...new Set(grant.items.map(item=>channelKey(grant.channelId,'item',item.id)))];
             for(let i=0;i<keys.length;i+=100)for(const row of await repository.getRowsByKeys(keys.slice(i,i+100)))items.push(JSON.parse(row.value));
-            return {channel:catalog.channels.find(channel=>channel.id===grant.channelId),items};
+            return {channel:catalog.channels.find(channel=>channel.id===grant.channelId),items,archives:await repository.listRecords(grant.channelId,'archive')};
         },
         hydrateRecords:async records=>{
             const [items,inquiries]=await Promise.all([vendorEntries.hydrateCollectionRecords(records),collectionInquiries(records,vendorDirectory)]);
@@ -3392,7 +3399,7 @@ function createPlatformApi({
                     await withMutationLock(`channel:${token.channelId}`,async()=>replyJson(res,200,await buyerCollection.connect(account,body),{'Cache-Control':'no-store, private'}));return true;
                 }
                 if(segments.length===2&&method==='GET'){
-                    replyJson(res,200,await buyerCollection.detail(account,segments[1]),{'Cache-Control':'no-store, private'});return true;
+                    replyJson(res,200,await buyerCollection.detail(account,segments[1],{round:cleanText(url.searchParams.get('round'),240),rounds:url.searchParams.get('view')==='rounds'}),{'Cache-Control':'no-store, private'});return true;
                 }
                 replyJson(res,404,{error:'페이지를 찾을 수 없어요.'});return true;
             }
