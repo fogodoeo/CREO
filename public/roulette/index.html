@@ -1,7 +1,21 @@
-<!DOCTYPE html><html lang=ko><script type=importmap>{"imports":{"1v7oZ":"/roulette/Box2D.7042bf0d.js","5Lw9Q":"/roulette/Box2D.simd.dd31b167.wasm","9NQTk":"/roulette/Box2D.simd.3eb62d94.js","hOHCw":"/roulette/Box2D.b9b16b27.wasm"}}</script><meta charset=UTF-8><meta name=viewport content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name=theme-color content=#07111f><meta name=description content="채널과 행사에 관계없이 사용할 수 있는 공용 마블 추첨기"><meta property=og:type content=website><meta property=og:title content="MARBLE DRAW"><meta property=og:description content="공이 달리고, 결과가 남는 라이브 추첨"><title>MARBLE DRAW</title><link rel=stylesheet href=/roulette/roulette-app.76f8eb48.css><body>
+<!DOCTYPE html><html lang=ko><script type=importmap>{"imports":{"1v7oZ":"/roulette/Box2D.7042bf0d.js","5Lw9Q":"/roulette/Box2D.simd.dd31b167.wasm","9NQTk":"/roulette/Box2D.simd.3eb62d94.js","hOHCw":"/roulette/Box2D.b9b16b27.wasm"}}</script><meta charset=UTF-8><meta name=viewport content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name=theme-color content=#07111f><meta name=description content="채널과 행사에 관계없이 사용할 수 있는 공용 마블 추첨기"><meta property=og:type content=website><meta property=og:title content="MARBLE DRAW"><meta property=og:description content="공이 달리고, 결과가 남는 라이브 추첨"><title>MARBLE DRAW</title><link rel=stylesheet href=/roulette/roulette-app.503da46b.css><body>
     <main class=app-shell id=appShell>
       <section class=stage aria-label="마블 추첨 화면">
         <div id=canvasHost class=canvas-host data-roulette-canvas-host></div>
+
+        <div class=national-chrome aria-label="전국크레자랑 추첨 행사">
+          <div class=national-masthead>
+            <div class=national-identity>
+              <span class=national-edition id=nationalEdition>전국크레자랑</span>
+              <strong class=national-wordmark><span>전국</span><span>크레</span><span>자랑</span></strong>
+            </div>
+            <div class=national-prize>
+              <span>함께하는 즐거움 · 행운의 핀볼</span>
+              <strong id=nationalEventTitle>경품 추첨</strong>
+            </div>
+          </div>
+          <div class=national-footnote><span>전국크레자랑 · 행운의 주인공을 만나보세요</span><span>CREO</span></div>
+        </div>
 
         <header class=stage-header>
           <div class=stage-actions>
@@ -153,6 +167,7 @@
               <summary><span>화면 디자인</span><small>테마와 결과 문구</small></summary>
               <div class=advanced-body>
                 <div class=theme-options id=themeOptions>
+                  <label><input type=radio name=theme value=national><span class="national theme-swatch">전국크레자랑</span></label>
                   <label><input type=radio name=theme value=ryangecko checked><span class="ryangecko theme-swatch">⬛ RYAN GECKO</span></label>
                   <label><input type=radio name=theme value=academy><span class="academy theme-swatch">마법학교</span></label>
                   <label><input type=radio name=theme value=midnight><span class="midnight theme-swatch">미드나잇</span></label>
@@ -230,4 +245,4 @@
     </dialog>
 
     <div class=toast id=toast role=status aria-live=polite></div>
-    <script type=module src=/roulette/roulette-app.08c2024e.js></script>
+    <script type=module src=/roulette/roulette-app.a5966615.js></script>

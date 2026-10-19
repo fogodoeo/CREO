@@ -381,7 +381,9 @@ function updateBrand(): void {
   dom.resultLabel.textContent = dom.winnerLabel.value.trim() || DEFAULT_CONFIG.winnerLabel;
   document.documentElement.style.setProperty('--accent', dom.accent.value);
   document.documentElement.dataset.rouletteTheme = String(currentThemeName());
-  document.title = `${dom.eventTitle.value.trim() || DEFAULT_CONFIG.eventTitle} · ${config.appName}`;
+  element<HTMLElement>('nationalEventTitle').textContent = dom.eventTitle.value.trim() || '경품 추첨';
+  element<HTMLElement>('nationalEdition').textContent = dom.channelName.value.trim() || '전국크레자랑';
+  document.title = `${dom.eventTitle.value.trim() || DEFAULT_CONFIG.eventTitle} · ${currentThemeName() === 'national' ? '전국크레자랑' : config.appName}`;
 }
 
 function updateCounts(): void {
@@ -823,6 +825,11 @@ function startRemotePolling(): void {
 
 function applyConfigToControls(next: AppConfig): void {
   config = { ...DEFAULT_CONFIG, ...next };
+  // Existing national-cre broadcast URLs keep working with the event's new skin.
+  if (remoteChannelId === 'national-cre' && config.themePreset === 'clean') {
+    config.themePreset = 'national';
+    config.accentColor = THEME_PRESETS.national.coolTimeIndicator;
+  }
   options.marbleStyle = config.marbleStyle;
   dom.eventTitle.value = config.eventTitle;
   dom.channelName.value = config.channelName;

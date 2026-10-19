@@ -16,6 +16,20 @@
       <section class="stage" aria-label="마블 추첨 화면">
         <div id="canvasHost" class="canvas-host" data-roulette-canvas-host></div>
 
+        <div class="national-chrome" aria-label="전국크레자랑 추첨 행사">
+          <div class="national-masthead">
+            <div class="national-identity">
+              <span class="national-edition" id="nationalEdition">전국크레자랑</span>
+              <strong class="national-wordmark"><span>전국</span><span>크레</span><span>자랑</span></strong>
+            </div>
+            <div class="national-prize">
+              <span>함께하는 즐거움 · 행운의 핀볼</span>
+              <strong id="nationalEventTitle">경품 추첨</strong>
+            </div>
+          </div>
+          <div class="national-footnote"><span>전국크레자랑 · 행운의 주인공을 만나보세요</span><span>CREO</span></div>
+        </div>
+
         <header class="stage-header">
           <div class="stage-actions">
             <span class="sr-only" id="statusPill" data-state="loading" aria-live="polite">
@@ -166,6 +180,7 @@
               <summary><span>화면 디자인</span><small>테마와 결과 문구</small></summary>
               <div class="advanced-body">
                 <div class="theme-options" id="themeOptions">
+                  <label><input type="radio" name="theme" value="national" /><span class="theme-swatch national">전국크레자랑</span></label>
                   <label><input type="radio" name="theme" value="ryangecko" checked /><span class="theme-swatch ryangecko">⬛ RYAN GECKO</span></label>
                   <label><input type="radio" name="theme" value="academy" /><span class="theme-swatch academy">마법학교</span></label>
                   <label><input type="radio" name="theme" value="midnight" /><span class="theme-swatch midnight">미드나잇</span></label>

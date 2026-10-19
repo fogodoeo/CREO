@@ -491,6 +491,10 @@ export class RouletteRenderer {
     scaleForBroadcast: boolean
   ) {
     if (!winner) return;
+    if (document.documentElement.dataset.rouletteTheme === 'national') {
+      this.renderNationalWinner(winner, ctx, width, height);
+      return;
+    }
     const scale = scaleForBroadcast ? width / canvasWidth : 1;
     const resultAreaHeight = winnerAreaHeight * scale;
     ctx.save();
@@ -535,6 +539,39 @@ export class RouletteRenderer {
       ctx.strokeText(winner.name, textRightX, winnerNameY);
     }
     ctx.fillText(winner.name, textRightX, winnerNameY);
+    ctx.restore();
+  }
+
+  private renderNationalWinner(winner: Marble, ctx: CanvasRenderingContext2D, width: number, height: number) {
+    const scale = width / 960;
+    const cardWidth = width * 0.72;
+    const cardHeight = Math.min(152 * scale, height * 0.36);
+    const x = (width - cardWidth) / 2;
+    const y = height - cardHeight - 24 * scale;
+    ctx.save();
+    ctx.shadowColor = '#172d4833';
+    ctx.shadowBlur = 28 * scale;
+    ctx.fillStyle = '#fffdf7';
+    ctx.strokeStyle = '#bd8e39';
+    ctx.lineWidth = 3 * scale;
+    ctx.beginPath();
+    ctx.roundRect(x, y, cardWidth, cardHeight, 18 * scale);
+    ctx.fill();
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#9c3328';
+    ctx.font = `850 ${20 * scale}px 'Pretendard Variable', sans-serif`;
+    ctx.fillText(`${options.winnerLabel} · 축하합니다!`, width / 2, y + cardHeight * 0.25, cardWidth - 40 * scale);
+    ctx.fillStyle = '#172d48';
+    let fontSize = 54 * scale;
+    ctx.font = `900 ${fontSize}px 'Pretendard Variable', sans-serif`;
+    while (ctx.measureText(winner.name).width > cardWidth - 48 * scale && fontSize > 18 * scale) {
+      fontSize -= scale;
+      ctx.font = `900 ${fontSize}px 'Pretendard Variable', sans-serif`;
+    }
+    ctx.fillText(winner.name, width / 2, y + cardHeight * 0.65, cardWidth - 48 * scale);
     ctx.restore();
   }
 }

@@ -26,6 +26,24 @@ export type AppConfig = {
 };
 
 export const THEME_PRESETS: Record<string, ColorTheme> = {
+  national: {
+    background: '#fff8e9',
+    marbleLightness: 46,
+    marbleWinningBorder: '#172d48',
+    skillColor: '#172d48',
+    coolTimeIndicator: '#edc36e',
+    entity: {
+      box: { fill: '#244664', outline: '#142c45', bloom: '#244664', bloomRadius: 0 },
+      circle: { fill: '#edc36e', outline: '#87601e', bloom: '#edc36e', bloomRadius: 0 },
+      polyline: { fill: '#fffdf7', outline: '#244664', bloom: '#244664', bloomRadius: 0 },
+    },
+    rankStroke: '#fff8e9',
+    minimapBackground: '#f4e6cb',
+    minimapViewport: '#244664',
+    winnerText: '#172d48',
+    winnerOutline: '#fff8e9',
+    winnerBackground: '#fff8e9',
+  },
   ryangecko: {
     background: '#07090d',
     marbleLightness: 80,

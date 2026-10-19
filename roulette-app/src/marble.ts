@@ -311,6 +311,25 @@ export class Marble {
   private _drawName(ctx: CanvasRenderingContext2D, zoom: number, simpleLabel: boolean) {
     transformGuard(ctx, () => {
       const fontFamily = `'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+      if (document.documentElement.dataset.rouletteTheme === 'national') {
+        ctx.translate(this.x, this.y + this.size / 2);
+        ctx.scale(1 / zoom, 1 / zoom);
+        ctx.font = `800 11pt ${fontFamily}`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const labelWidth = Math.min(92, ctx.measureText(this.name).width) + 12;
+        ctx.fillStyle = '#fffdf7';
+        ctx.strokeStyle = '#c2a271';
+        ctx.lineWidth = 0.8;
+        ctx.shadowBlur = 0;
+        ctx.beginPath();
+        ctx.roundRect(-labelWidth / 2, 1, labelWidth, 22, 6);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = '#172d48';
+        ctx.fillText(this.name, 0, 12, 92);
+        return;
+      }
       const maxWidth = 112;
       let fontSize = 16;
       ctx.font = `800 ${fontSize}pt ${fontFamily}`;
