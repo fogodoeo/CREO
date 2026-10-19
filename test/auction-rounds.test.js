@@ -37,7 +37,8 @@ test('closing a round hides auction rows while preserving financial identity, sh
     assert.equal(auctionArchiveId,f.archiveId);assert.deepEqual(saved,original);
     const archive=(await f.call('GET',`channels/alpha/archives/${f.archiveId}`)).json().archive;
     assert(archive.closedAt);assert.deepEqual(archive.items,[item]);
-    assert.equal(Adapters.platformShippingItems(current,current.channel).length,1);
+    assert.equal(Adapters.platformShippingItems(current,current.channel).length,0);
+    assert.equal(Adapters.platformShippingItems(current,current.channel,{includeArchived:true}).length,1);
     const context=(await f.call('GET','operator-context')).json();assert.deepEqual(context.workspace.items,[]);
     const full=(await f.call('GET','channels/alpha/workspace?includeArchived=1')).json();assert.equal(full.items.length,1);
     const broadcast=(await f.call('GET','channels/alpha/broadcast')).json();assert.equal(broadcast.items.length,0);assert.equal(broadcast.itemProgress.total,0);assert(!JSON.stringify(broadcast).includes('01000000002'));

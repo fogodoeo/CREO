@@ -298,6 +298,22 @@ test('platform shipping items do not infer tournament teams from A01/B01-style n
     assert.equal(rows[1].checklist, 'weight:42|_auction:crewart|_visibility:public');
 });
 
+test('current shipping excludes prior rounds without removing archived sales, payments or shipping support', () => {
+    const old={id:'old',name:'A01',vendorId:'v',status:'sold',soldPrice:100000,winnerName:'같은 구매자',auctionArchiveId:'previous'};
+    const current={id:'current',name:'A01',vendorId:'v',status:'sold',soldPrice:200000,winnerName:'같은 구매자'};
+    const workspace={vendors:[],items:[current,{id:'waiting',status:'waiting'},old],archivedItems:[old],shipments:[
+        {id:'old-shipment',itemId:'old',cost:0,grossCost:19000,shippingSupportAmount:19000,paymentStatus:'paid'},
+        {id:'current-shipment',itemId:'current',cost:19000,paymentStatus:'bank_transfer_pending'}
+    ]};
+    const before=structuredClone(workspace);
+    const rows=Adapters.platformShippingItems(workspace,channel('basic'));
+    assert.deepEqual(rows.map(r=>r.row),['current']);
+    assert.equal(rows[0].sold_amount_won,200000);assert.equal(rows[0].shipping_cost,19000);assert.equal(rows[0].shipping_support_amount,0);
+    const history=Adapters.platformShippingItems(workspace,channel('basic'),{includeArchived:true});
+    assert.deepEqual(history.map(r=>r.row),['current','old']);assert.equal(history[1].payment_status,'paid');assert.equal(history[1].shipping_support_amount,19000);
+    assert.deepEqual(workspace,before);
+});
+
 test('platform shipping items expose settlement fields used by print exports', () => {
     const rows = Adapters.platformShippingItems({
         vendors: [{ id: 'vendor_ryan', name: '라이언게코' }],

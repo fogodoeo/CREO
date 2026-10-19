@@ -65,10 +65,13 @@
         return [...visible, `_auction:${auctionType}`, '_visibility:public'].join('|');
     }
 
-    function platformShippingItems(workspace, channel = workspace?.channel) {
+    function platformShippingItems(workspace, channel = workspace?.channel, { includeArchived = false } = {}) {
         const vendors = new Map((workspace.vendors || []).map(vendor => [vendor.id, vendor]));
         const shipments = new Map((workspace.shipments || []).map(shipment => [shipment.itemId, shipment]));
-        return [...(workspace.items || []), ...(workspace.archivedItems || [])].filter(item => AuctionContract.isSoldStatus(item.status) || Number(item.soldPrice) > 0).map(item => {
+        const items = includeArchived
+            ? [...new Map([...(workspace.items || []), ...(workspace.archivedItems || [])].map(item => [item.id, item])).values()]
+            : (workspace.items || []).filter(item => !item.auctionArchiveId);
+        return items.filter(item => AuctionContract.isSoldStatus(item.status) || Number(item.soldPrice) > 0).map(item => {
             const shipment = shipments.get(item.id);
             const checklist = platformChecklist(item, channel);
             return {
