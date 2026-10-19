@@ -68,7 +68,7 @@
     function platformShippingItems(workspace, channel = workspace?.channel) {
         const vendors = new Map((workspace.vendors || []).map(vendor => [vendor.id, vendor]));
         const shipments = new Map((workspace.shipments || []).map(shipment => [shipment.itemId, shipment]));
-        return (workspace.items || []).filter(item => AuctionContract.isSoldStatus(item.status) || Number(item.soldPrice) > 0).map(item => {
+        return [...(workspace.items || []), ...(workspace.archivedItems || [])].filter(item => AuctionContract.isSoldStatus(item.status) || Number(item.soldPrice) > 0).map(item => {
             const shipment = shipments.get(item.id);
             const checklist = platformChecklist(item, channel);
             return {
@@ -103,7 +103,7 @@
         },
         async saveShippingItem(context, itemId, shippingData) {
             if (!context.workspace) context.workspace = await this.loadWorkspace(context);
-            const item = (context.workspace.items || []).find(entry => entry.id === itemId);
+            const item = [...(context.workspace.items || []), ...(context.workspace.archivedItems || [])].find(entry => entry.id === itemId);
             if (!item) throw new Error('이 채널에서 낙찰 항목을 찾을 수 없습니다.');
             const vendor = (context.workspace.vendors || []).find(entry => entry.id === item.vendorId);
             const current = (context.workspace.shipments || []).find(entry => entry.itemId === item.id);

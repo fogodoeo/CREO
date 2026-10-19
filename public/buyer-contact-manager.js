@@ -6,8 +6,9 @@
         host.className='buyer-contact-panel';host.hidden=true;document.getElementById('table-wrap').before(host);
         let rows=[],all=false,loadedChannel='',sequence=0,loading=false,opening=false,dialog=null,message='';
         function paint(){
-            const count=rows.filter(r=>r.attention).length,visible=all?rows:rows.filter(r=>r.attention);
-            host.innerHTML=`<div class="contact-heading"><h2>낙찰자 연락처·발송 <span>${count?'확인 필요 '+count+'건':'확인 필요 없음'}</span></h2><button type="button" data-contact-toggle>${all?'확인 필요만':'전체 '+rows.length+'건'}</button></div><p class="contact-context">알리고 접수는 수신 완료와 다릅니다. 외부에서 보낸 문자는 별도 확인해 주세요.</p><div class="contact-rows">${visible.map(r=>`<article class="contact-row"><b>${esc(r.lot)}</b><div><strong>${esc(r.name)}</strong><span>${esc(r.phone||'번호 없음')}</span></div><span class="contact-state ${r.attention?'needs-attention':''}">${esc(labels[r.status]||'확인 필요')}</span><button type="button" data-contact-open="${esc(r.itemId)}">번호·발송</button></article>`).join('')}</div><p class="contact-message" role="status"></p>`;
+            const currentRows=getTab()==='items'?rows.filter(r=>!r.archived):rows;
+            const count=currentRows.filter(r=>r.attention).length,visible=all?currentRows:currentRows.filter(r=>r.attention);
+            host.innerHTML=`<div class="contact-heading"><h2>낙찰자 연락처·발송 <span>${count?'확인 필요 '+count+'건':'확인 필요 없음'}</span></h2><button type="button" data-contact-toggle>${all?'확인 필요만':'전체 '+currentRows.length+'건'}</button></div><p class="contact-context">알리고 접수는 수신 완료와 다릅니다. 외부에서 보낸 문자는 별도 확인해 주세요.</p><div class="contact-rows">${visible.map(r=>`<article class="contact-row"><b>${esc(r.lot)}</b><div><strong>${esc(r.name)}</strong><span>${esc(r.phone||'번호 없음')}</span></div><span class="contact-state ${r.attention?'needs-attention':''}">${esc(labels[r.status]||'확인 필요')}</span><button type="button" data-contact-open="${esc(r.itemId)}">번호·발송</button></article>`).join('')}</div><p class="contact-message" role="status"></p>`;
             host.querySelector('.contact-message').textContent=message;
             host.querySelector('[data-contact-toggle]').onclick=()=>{all=!all;paint()};
             host.querySelectorAll('[data-contact-open]').forEach(b=>b.onclick=()=>open(b.dataset.contactOpen,b));

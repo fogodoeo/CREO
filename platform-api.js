@@ -1,6 +1,7 @@
 'use strict';
 
 const crypto = require('node:crypto');
+const AuctionRounds = require('./auction-rounds');
 const { refreshShippingRate } = require('./shipping-rate-refresh');
 const { rankingsForChannel } = require('./public/ranking-engine');
 const BasicDice = require('./public/basic-dice-core');
@@ -139,6 +140,7 @@ function publicArchive(record = {}) {
         id: cleanText(record.id, 64),
         title: cleanText(record.title || '회차 기록', 80),
         createdAt: record.createdAt || null,
+        closedAt: record.closedAt || null,
         itemCount: Number(record.itemCount) || 0,
         soldCount: Number(record.soldCount) || 0,
         totalSoldAmount: Number(record.totalSoldAmount) || 0,
@@ -912,7 +914,7 @@ function validateRecord(type, record, workspace) {
             errors.push('이 채널에 등록되지 않은 업체입니다.');
         }
         if (record.groupId && !workspace.groups?.some((group) => group.id === record.groupId)) errors.push('이 채널에 등록되지 않은 그룹입니다.');
-        if (workspace.items.some((item) => item.lotNumber === record.lotNumber && item.id !== record.id)) {
+        if (AuctionRounds.currentItems(workspace.items).some((item) => item.lotNumber === record.lotNumber && item.id !== record.id)) {
             errors.push('이 채널에서 이미 사용 중인 경매 번호입니다.');
         }
     }
@@ -1180,7 +1182,7 @@ function createPlatformApi({
     const sessionTtlMs = Math.max(60_000, Number(adminSessionTtlMs) || ADMIN_SESSION_TTL_MS);
     const mutationLocks = new Map();
     const itemSheetSync = require('./item-sheet-sync').createItemSheetSync({
-        repository, lock:withMutationLock, workspace,
+        repository, lock:withMutationLock, workspace:async channelId=>AuctionRounds.currentWorkspace(await workspace(channelId)),
         hydrateItems:(channelId,items)=>vendorEntries.hydrateItems(channelId,items),
         entryBridge:require('./item-sheet-entries').createEntryBridge({directory:vendorDirectory,entries:vendorEntries}),
         touch:touchChannel, sanitizeRecord, validateRecord, logger,
@@ -3128,7 +3130,7 @@ function createPlatformApi({
             return { item, state };
         }
         const ensured = await ensureAudienceSession(channelId, channel, state);
-        const assignmentWeights = crewartAssignmentWeights((await workspace(channelId)).items);
+        const assignmentWeights = crewartAssignmentWeights(AuctionRounds.currentItems((await workspace(channelId)).items));
         const ordered = bids.map((bid, index) => ({ bid, index })).sort((a, b) => {
             const aSeq = Math.max(0, Number.parseInt(a.bid?.bid_sequence || a.bid?.bidSequence, 10) || 0);
             const bSeq = Math.max(0, Number.parseInt(b.bid?.bid_sequence || b.bid?.bidSequence, 10) || 0);
@@ -3896,7 +3898,7 @@ function createPlatformApi({
                     channel: channel ? { ...channel, links: channelLinks(channel) } : null,
                     adapter: channel?.dataAdapter || '',
                     workspace: channel && channel.dataAdapter !== 'legacy-cdcup'
-                        ? await withMutationLock(`channel:${channelId}`, () => workspace(channelId)) : null
+                        ? await withMutationLock(`channel:${channelId}`, async () => AuctionRounds.currentWorkspace(await workspace(channelId))) : null
                 });
                 return true;
             }
@@ -4131,7 +4133,7 @@ function createPlatformApi({
                     const data = await workspace(channelId);
                     const current = await organizerShippingSettlement(channelId,data.items,data.shipments,data.vendors);
                     current.carriers = require('./shipping-settlement').summarizeCarriers(data.items,data.shipments,data.vendors);
-                    current.auctionItems = require('./shipping-settlement').organizerAuctionItems(data.items.map(item=>({...item,winnerPhone:storedWinnerPhone(item)})),data.shipments,data.vendors,buyerDisplayName);
+                    current.auctionItems = require('./shipping-settlement').organizerAuctionItems(AuctionRounds.currentItems(data.items).map(item=>({...item,winnerPhone:storedWinnerPhone(item)})),data.shipments,data.vendors,buyerDisplayName);
                     if (deliverySchedules && channel.shippingDefaults?.deliverySchedule?.enabled) {
                         const rateMap = Object.fromEntries(await Promise.all(['parge', 'dodosi'].map(async id => [id, await pargeRates(id)])));
                         current.auctionItems = await Promise.all(current.auctionItems.map(async row => {
@@ -4244,7 +4246,8 @@ function createPlatformApi({
 
             if (segments.length === 3 && segments[2] === 'workspace' && method === 'GET') {
                 if (!await requireAdmin(req, res)) return true;
-                replyJson(res, 200, { channel, ...(await workspace(channelId)) });
+                const data = await workspace(channelId);
+                replyJson(res, 200, { channel, ...(url.searchParams.get('includeArchived') === '1' ? data : AuctionRounds.currentWorkspace(data)) });
                 return true;
             }
 
@@ -4701,7 +4704,7 @@ function createPlatformApi({
                     pricingConfig: await repository.getRecord(channelId, 'setting', BROADCAST_CONFIG_ID),
                     revision: channelRevision(channelId)
                 }));
-                const data = snapshot.data;
+                const data = AuctionRounds.currentWorkspace(snapshot.data);
                 const bidUnit = Number(snapshot.pricingConfig?.values?.auction_bid_unit_manwon || 0);
                 if(data.broadcast?.bannerSelectionConfigured){
                     data.assets=[...data.assets.filter(asset=>asset.kind!=='banner'),...await bannerLibrary.selected(data.broadcast)];
@@ -4868,6 +4871,8 @@ function createPlatformApi({
                     const data = await workspace(channelId);
                     const itemId = cleanText(body.itemId || body.item?.id, 64);
                     const current = data.items.find((item) => item.id === itemId) || null;
+                    AuctionRounds.assertCurrent(current);
+                    if (body.state?.activeItemId) AuctionRounds.assertCurrent(data.items.find(item => item.id === body.state.activeItemId));
                     if (body.expectedUpdatedAt && body.expectedUpdatedAt !== current?.updatedAt) {
                         replyJson(res, 409, { code: 'ITEM_CHANGED', error: '개체 정보가 변경되었습니다. 새로고침 후 다시 진행해 주세요.' });
                         return;
@@ -5013,7 +5018,7 @@ function createPlatformApi({
                             && current.status !== 'sold'
                         ) {
                             const assignment = await resolvePhoneParityWinner(candidate, bandMembership);
-                            const contributionTotals = BasicDice.contributionTotals(data.items);
+                            const contributionTotals = BasicDice.contributionTotals(AuctionRounds.currentItems(data.items));
                             const face = normalizedDiceFace(typeof diceRoll === 'function'
                                 ? diceRoll({
                                     groupKey: assignment?.groupKey || '',
@@ -5155,7 +5160,7 @@ function createPlatformApi({
                         groups: channel.groups,
                         scoreboards: channel.scoreboards
                     },
-                    scoreboards: rankingsForChannel(channel, data.items, data.vendors)
+                    scoreboards: rankingsForChannel(channel, AuctionRounds.currentItems(data.items), data.vendors)
                 });
                 return true;
             }
@@ -5427,6 +5432,8 @@ function createPlatformApi({
                 const body = await readJson(req);
                 await withMutationLock(`channel:${channelId}`, async () => {
                     const current = await repository.getRecord(channelId, 'broadcast', 'state');
+                    const selectedId = body.activeItemId || current?.activeItemId;
+                    if (selectedId) AuctionRounds.assertCurrent(await repository.getRecord(channelId, 'item', selectedId));
                     const record = await repository.upsertRecord(channelId, 'broadcast', {
                         ...sanitizeBroadcastState(mergeChannelBroadcastState(channel, current || {}, body)),
                         revision: Date.now()
@@ -5575,7 +5582,7 @@ function createPlatformApi({
                         groups.push({...state,vendor:{id:vendor.id,name:vendor.name,groupId:vendor.groupId||'',teamName:vendor.teamName||''},entries:state.entries.filter(entry=>entry.channelId===channelId)});
                     }
                     const items=await repository.listRecords(channelId,'item');
-                    const allocation=items.map(item=>({id:item.id,entryId:item.attributes?.vendor_entry?.entryId||'',code:item.attributes?.displayNumber||item.name,order:Number(item.lotNumber)||0,startPrice:Number(item.startPrice)||0,groupId:item.groupId||'',teamName:item.teamName||'',status:item.status,updatedAt:item.updatedAt||''}));
+                    const allocation=AuctionRounds.currentItems(items).map(item=>({id:item.id,entryId:item.attributes?.vendor_entry?.entryId||'',code:item.attributes?.displayNumber||item.name,order:Number(item.lotNumber)||0,startPrice:Number(item.startPrice)||0,groupId:item.groupId||'',teamName:item.teamName||'',status:item.status,updatedAt:item.updatedAt||''}));
                     replyJson(res,200,{channel:{id:channelId,name:channel.name,status:channel.status,groups:(channel.groups||[]).map(group=>({id:group.id,name:group.name}))},policy:await vendorEntries.policy(channelId),allocation,groups});return true;
                 }
                 const body=await readJson(req);
@@ -5710,10 +5717,11 @@ function createPlatformApi({
                     }
                     const data = await workspace(channelId);
                     let record = sanitizeRecord(type, body.record);
+                    if (type === 'item') AuctionRounds.assertCurrent(await repository.getRecord(channelId, 'item', record.id));
                     if(type==='item')record=require('./auction-settlement').stamp(record,channel);
                     if(type==='shipment')await assertShipmentNotPending(channelId,record);
                     if (type === 'item' && body.allocateNextLot === true) {
-                        const nextLotNumber = data.items.reduce(
+                        const nextLotNumber = AuctionRounds.currentItems(data.items).reduce(
                             (maximum, item) => Math.max(maximum, Number(item.lotNumber) || 0),
                             0
                         ) + 1;
@@ -5734,6 +5742,14 @@ function createPlatformApi({
 
             if (segments.length >= 3 && segments[2] === 'archives') {
                 if (!await requireAdmin(req, res)) return true;
+                if (segments.length === 5 && segments[4] === 'close-round' && method === 'POST') {
+                    await withMutationLock(`channel:${channelId}`, async () => {
+                        const result = await AuctionRounds.closeRound(repository, channelId, segments[3]);
+                        if (!result.duplicate) touchChannel(channelId);
+                        replyJson(res, 200, result);
+                    });
+                    return true;
+                }
                 if (segments.length === 3 && method === 'GET') {
                     const records = await repository.listRecords(channelId, 'archive');
                     const archives = records
@@ -5745,7 +5761,7 @@ function createPlatformApi({
                 if (segments.length === 3 && method === 'POST') {
                     const body = await readJson(req);
                     await withMutationLock(`channel:${channelId}`, async () => {
-                        const data = await workspace(channelId);
+                        const data = AuctionRounds.currentWorkspace(await workspace(channelId));
                         const liveItem = data.items.find((item) => item.status === 'live') || null;
                         if (data.broadcast?.mode === 'live' || liveItem) {
                             replyJson(res, 409, {
@@ -5787,13 +5803,16 @@ function createPlatformApi({
                     return true;
                 }
                 if (segments.length === 4 && method === 'DELETE') {
+                    await withMutationLock(`channel:${channelId}`, async () => {
                     const archive = await repository.getRecord(channelId, 'archive', segments[3]);
                     if (!archive) replyJson(res, 404, { error: '회차 기록을 찾을 수 없습니다.' });
+                    else if (archive.closedAt) replyJson(res, 409, { error: '마감된 회차 기록은 삭제할 수 없습니다.' });
                     else {
                         await repository.deleteRecord(channelId, 'archive', segments[3]);
                         touchChannel(channelId);
                         replyJson(res, 200, { deleted: true });
                     }
+                    });
                     return true;
                 }
             }
@@ -5808,6 +5827,7 @@ function createPlatformApi({
                     }
                     const data = await workspace(channelId);
                     const incoming = { ...body.record, id: current.id };
+                    if (type === 'item') AuctionRounds.assertCurrent(current);
                     const expectedUpdatedAt = body.expectedUpdatedAt || body.record?.updatedAt;
                     if (type === 'item' && expectedUpdatedAt && expectedUpdatedAt !== current.updatedAt) {
                         replyJson(res, 409, { code: 'ITEM_CHANGED', error: '개체 정보가 변경되었습니다. 새로고침 후 다시 저장해 주세요.' });
@@ -5845,6 +5865,7 @@ function createPlatformApi({
                 await withMutationLock(`channel:${channelId}`, async () => {
                     const data = await workspace(channelId);
                     const deletedRecord = data[segments[2]]?.find((record) => record.id === segments[3]) || null;
+                    if (type === 'item') AuctionRounds.assertCurrent(deletedRecord);
                     if (type === 'item' && (deletedRecord?.status === 'live' || (data.broadcast?.activeItemId === segments[3] && data.broadcast?.mode === 'live'))) {
                         replyJson(res, 409, { error: '진행 중인 경매는 종료하거나 대기로 전환한 후 삭제해 주세요.' });
                         return;

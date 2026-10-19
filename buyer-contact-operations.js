@@ -26,7 +26,7 @@ function createBuyerContactOperations(deps) {
             const current = notices.find(n=>phone(n.recipientPhone)===resolved);
             const external = audits.find(a=>a.itemId===item.id && a.saleId===(item.buyerSaleId||'legacy') && a.action==='external' && a.phone===resolved);
             const status = !resolved ? 'missing_phone' : current?.status || (external ? 'external' : 'not_sent');
-            return {itemId:item.id,lot:item.name,lotNumber:item.lotNumber,name:buyerName(item),rawName:item.winnerName||item.winnerAlias||'',phone:resolved,
+            return {itemId:item.id,archived:Boolean(item.auctionArchiveId),lot:item.name,lotNumber:item.lotNumber,name:buyerName(item),rawName:item.winnerName||item.winnerAlias||'',phone:resolved,
                 phoneSource:saved?'sale':resolved?'member':'missing',updatedAt:item.updatedAt||'',saleId:item.buyerSaleId||'legacy',
                 status,lastError:current?.lastError||'',sentAt:current?.sentAt||external?.createdAt||'',noticeId:current?.id||'',
                 hasShipment:shipments.some(s=>s.itemId===item.id),attention:!['sent','external','queued','sending'].includes(status)};

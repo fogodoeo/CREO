@@ -10,6 +10,13 @@ async function fixture(t){
  t.after(()=>{repo.close();if(path.dirname(dir)!==os.tmpdir()||!path.basename(dir).startsWith('creo-entry-batch-'))throw Error('Unsafe cleanup');fs.rmSync(dir,{recursive:true,force:true});});
  return {channel,contexts,entries,get repo(){return repo},get service(){return service},approve:(rows=entries,part='1부',requestId=randomUUID())=>service.batch(channel,contexts,{type:'approve-many',requestId,part,entries:rows}),items:()=>repo.listRecords('alpha','item'),restart(){repo.close();repo=new SQLitePlatformRepository(options);service=createVendorEntries(repo);}};
 }
+test('new round approval reuses numbers without changing archived sales',async t=>{
+ const f=await fixture(t);
+ const old=await f.repo.upsertRecord('alpha','item',{id:'previous',name:'1부 A01',lotNumber:1,status:'sold',soldPrice:30000,auctionArchiveId:'arc-old',attributes:{displayNumber:'1부 A01'}});
+ const result=await f.approve([f.entries[0]]);assert.equal(result.count,1);
+ const current=(await f.items()).find(i=>i.id!==old.id);assert.equal(current.name,'1부 A01');assert.equal(current.lotNumber,1);
+ assert.deepEqual(await f.repo.getRecord('alpha','item',old.id),old);
+});
 test('checked entries alone become numbered auction items, with atomic replay across restart',async t=>{
  const f=await fixture(t),requestId=randomUUID(),selected=[f.entries[0],f.entries[3],f.entries[5]];
  const results=await Promise.all([f.approve(selected,'1부',requestId),f.approve(selected,'1부',requestId)]);assert.deepEqual(results.map(r=>r.duplicate).sort(),[false,true]);

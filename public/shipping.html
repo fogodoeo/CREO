@@ -16,7 +16,7 @@
     <script src="channel-runtime.js?v=20260901-operator-routing-v1"></script>
     <script src="auction-contract.js?v=20260819-contract-v1"></script>
     <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
-    <script src="channel-adapters.js?v=20260918-shipping-note"></script>
+    <script src="channel-adapters.js?v=20261019-rounds"></script>
     <script src="operation-channel.js?v=20260904-v1"></script>
     <script src="settlement-discount.js?v=20260823-v1"></script>
     <script src="mobile-phone.js?v=20261018-contact"></script>
@@ -2446,7 +2446,7 @@
         async function loadShippingItems() {
             const [items, workspace] = await Promise.all([
                 shippingOperation.loadShippingItems(),
-                CreoPlatform.api(`channels/${encodeURIComponent(SHIPPING_CHANNEL_ID)}/workspace`)
+                CreoPlatform.api(`channels/${encodeURIComponent(SHIPPING_CHANNEL_ID)}/workspace?includeArchived=1`)
             ]);
             registeredShippingVendors = workspace.vendors || [];
             return items;
@@ -2955,7 +2955,7 @@
             if (paymentMethods.includes('bank_transfer') && (!values.bankName || !values.bankAccount || !values.bankHolder)) { output.textContent = '은행·계좌번호·예금주를 모두 입력해 주세요.'; return; }
             const button = form.querySelector('button'); button.disabled = true;
             try {
-                const workspace = await CreoPlatform.api(`channels/${encodeURIComponent(SHIPPING_CHANNEL_ID)}/workspace`);
+                const workspace = await CreoPlatform.api(`channels/${encodeURIComponent(SHIPPING_CHANNEL_ID)}/workspace?includeArchived=1`);
                 const current = workspace.vendors.find(v => v.id === vendorId);
                 if (!current) throw new Error('업체가 변경되었습니다. 다시 선택해 주세요.');
                 await CreoPlatform.api(`channels/${encodeURIComponent(SHIPPING_CHANNEL_ID)}/vendors/${encodeURIComponent(vendorId)}`, {
