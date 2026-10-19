@@ -191,7 +191,8 @@ function parseRange(value, size) {
 }
 
 function isOperationalChannel(channel, feature) {
-    return channel?.status === 'active' && channel?.features?.[feature] !== false;
+    const preparedBroadcast = feature === 'broadcast' && channel?.status === 'draft' && channel?.nationalRound?.parentId === 'national-cre';
+    return (channel?.status === 'active' || preparedBroadcast) && channel?.features?.[feature] !== false;
 }
 
 async function operationalChannelError(url, feature) {

@@ -146,6 +146,16 @@ test('HTTP server separates the public home and protected hub while preserving s
     assert.equal(staleStudioResponse.status, 404);
     assert.equal((await staleStudioResponse.json()).code, 'CHANNEL_NOT_AVAILABLE');
 
+    const draftId='national-cre-20261021';
+    const draftResponse=await fetch(`http://127.0.0.1:${port}/api/platform/channels`,{method:'POST',headers:{'X-Creo-Admin':'isolated-smoke-secret','Content-Type':'application/json'},body:JSON.stringify({channel:{id:draftId,name:'가상 준비 회차',status:'draft',nationalRound:{parentId:'national-cre',date:'2026-10-21'}}})});
+    assert.equal(draftResponse.status,201);
+    const draftStudio=await fetch(`http://127.0.0.1:${port}/broadcast-studio.html?channel=${draftId}`);
+    assert.equal(draftStudio.status,200);assert.match(await draftStudio.text(),/control-frame/);
+    const draftShipping=await fetch(`http://127.0.0.1:${port}/shipping.html?channel=${draftId}`);
+    assert.equal(draftShipping.status,404);
+    const draftSwitch=await fetch(`http://127.0.0.1:${port}/api/platform/active-channel`,{method:'PUT',headers:{'X-Creo-Admin':'isolated-smoke-secret','Content-Type':'application/json'},body:JSON.stringify({channelId:draftId})});
+    assert.equal(draftSwitch.status,422);
+
     const staleShippingResponse = await fetch(
         `http://127.0.0.1:${port}/shipping.html?channel=missing-old-channel&changeCompany=1`,
         { redirect: 'manual' }

@@ -6,6 +6,17 @@ const ROOT='national-cre';
 const importId=id=>'round-'+require('node:crypto').createHash('sha256').update(id).digest('hex').slice(0,32);
 const fail=(message,status=409)=>Object.assign(Error(message),{status});
 const dateOf=i=>i.attributes?.broadcastDate||i.attributes?.vendor_entry?.broadcastDate||'';
+function presentationState(source,date,region){
+ const keys=('hostName1 hostRole1 hostName2 hostRole2 hostName3 hostRole3 '+
+  'page1NoticeOn page1HostsOn page1TickerOn page1BannerOn page1Ticker page1TickerInterval page1BannerUrl page1HostsPosition page1NoticePosition page1BannerPosition page1TickerPosition '+
+  'page2InfoOn page2NoteOn page2ProgressOn page2VendorTagOn page2BiddersOn page2BiddersOpacity page2BiddersFontSize page2BiddersPosition page2ItemFontSize page2PhotoOn page2PriceOn page2SoldOn page2TickerOn page2BannerOn page2Ticker page2TickerInterval page2BannerUrl page2HeaderPosition page2InfoPosition page2ParentsOn page2PhotoPosition page2PricePosition page2SoldPosition page2BannerPosition page2TickerPosition '+
+  'page3On page3VendorRankingOn page3BuyerRankingOn page3RankingInterval page3ResultBackgroundOpacity page3BoardPosition page3QuizPosition '+
+  'bannerSelectionConfigured selectedBannerIds extraMode layoutPlacements layoutPreset textLayouts visibleFields page1Style page2Style').split(' ');
+ const state=Object.fromEntries(keys.filter(k=>source?.[k]!==undefined).map(k=>[k,structuredClone(source[k])]));
+ // A prior show's delivery announcement must not promise a date for the next show.
+ for(const key of ['page1Ticker','page2Ticker'])if(typeof state[key]==='string')state[key]=state[key].replace(/[월화수목금토일]요일 방송 직후 파르게 배송이 시작됩니다\.?/g,'배송 일정은 배송·결제 페이지에서 확인해 주세요.');
+ return {...state,notice:`전국크레자랑 · ${region} 편`,noticeDetail:`${Number(date.slice(5,7))}월 ${Number(date.slice(8))}일 ${'일월화수목금토'[new Date(date+'T00:00:00Z').getUTCDay()]}요일 밤 8시`,page3Title:`${region} 편 방송 결과`};
+}
 function assertDate(channel,item,current=null){
  if(current?.attributes?.roundTargetChannelId)item={...item,attributes:{...item.attributes,roundTargetChannelId:current.attributes.roundTargetChannelId,broadcastDate:dateOf(current)}};
  if(item.attributes?.roundTargetChannelId&&item.status!=='waiting')throw fail('별도 회차로 가져온 접수 개체입니다. 해당 회차에서 진행해 주세요.');
@@ -77,14 +88,13 @@ function createNationalRoundOperations({repository,directory,lock,touch,now=Date
     const existingDates=new Set(sourceItems.filter(i=>i.auctionArchiveId||i.status==='sold').map(dateOf));
     if(existingDates.has(date))throw fail('이 날짜는 기존 회차에 낙찰·보관 기록이 있습니다. 해당 회차를 열어 주세요.');
     if(!target){
-     target=normalizeChannel({...source,id:targetId,name:`전국크레자랑 · ${date.slice(5).replace('-','/')} ${National.REGIONS[region]}`,shortName:`${date.slice(5)} ${National.REGIONS[region]}`,status:'draft',nationalRound:{parentId:ROOT,date},shippingSupport:{enabled:false,broadcastDate:date,maxAmount:0},settlementDiscount:{enabled:false},pages:{},legacy:{items:false},broadcastDefaults:{...source.broadcastDefaults,page3Title:`${National.REGIONS[region]}편`}});
+     target=normalizeChannel({...source,id:targetId,name:`전국크레자랑 · ${date.slice(5).replace('-','/')} ${National.REGIONS[region]}`,shortName:`${date.slice(5)} ${National.REGIONS[region]}`,status:'draft',nationalRound:{parentId:ROOT,date},shippingSupport:{enabled:false,broadcastDate:date,maxAmount:0},settlementDiscount:{enabled:false},shippingDefaults:{...source.shippingDefaults,...(source.shippingDefaults?.deliverySchedule?{deliverySchedule:{...source.shippingDefaults.deliverySchedule,auctionDate:date,pargeDispatchDate:'',dodosiDispatchDate:''}}:{})},pages:{},legacy:{items:false},broadcastDefaults:{...source.broadcastDefaults,page3Title:`${National.REGIONS[region]}편`}});
      target.createdAt=stamp;target.updatedAt=stamp;
      const b=await repository.getRecord(ROOT,'broadcast','state');
-     const geometry=Object.fromEntries(['layoutPlacements','layoutPreset','textLayouts','visibleFields','page1Style','page2Style'].filter(k=>b?.[k]!==undefined).map(k=>[k,b[k]]));
-     rows.push(row('broadcast',{id:'state',...geometry,mode:'standby',activeItemId:'',page:1,updatedAt:stamp}));
+     rows.push(row('broadcast',{id:'state',...presentationState(b,date,National.REGIONS[region]),mode:'standby',activeItemId:'',page:1,updatedAt:stamp}));
      const config=await repository.getRecord(ROOT,'setting','broadcast-config');
      // Only presentation settings cross the boundary, never active-item/session state.
-     if(config)rows.push(row('setting',{id:'broadcast-config',values:Object.fromEntries(Object.entries(config.values||{}).filter(([k])=>/^(?:page[123]_|p[123]_|font_|layout_|overlay_|theme_|live_bidders_)/.test(k))),revision:now()}));
+     if(config)rows.push(row('setting',{id:'broadcast-config',values:Object.fromEntries(Object.entries(config.values||{}).filter(([k])=>/^(?:page[123]_|p[123]_|font_|layout_|overlay_|theme_|live_bidders_)/.test(k)||['auction_animation_enabled','auction_bid_unit_manwon'].includes(k))),revision:now()}));
     }
     const sourceVendors=await directory.list(ROOT),known=new Set(targetItems.map(i=>i.attributes?.roundSource?.itemId)),usedVendors=new Set();
     let lot=Math.max(0,...targetItems.map(i=>Number(i.lotNumber)||0));

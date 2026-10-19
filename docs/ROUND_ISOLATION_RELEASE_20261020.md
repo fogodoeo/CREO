@@ -16,3 +16,11 @@ Validation on 2026-10-20:
 This deployment does not prepare/activate a production round or migrate customer data. Production read-only pre/post evidence is recorded in the local release report. Real payment-provider completion and physical PRISM capture are outside these synthetic checks.
 
 The Page2 countdown overlay and server endpoint remain retired. The desktop change removes its remaining display heartbeat; chat countdown remains. Shared lock/revision traffic was observed in the former implementation, but the original outage cause was not conclusively established. Applying the local desktop change requires its next normal restart.
+
+## Preparing the October 21 broadcast
+
+The next national round inherits presentation toggles, font sizes, layout, hosts, shared banner selection, animation preference and bid unit. Its title/date change to the new region; an old weekday-specific delivery announcement is replaced with an instruction to check the delivery page. Delivery estimates use the new auction date and do not inherit old dispatch-date overrides. Sold item, quiz winner and audience-session state are excluded, and re-import preserves later layout edits.
+
+The HTTP route now permits the broadcast studio for a prepared national round while keeping it off-air. The prior static route rejected these previews even though the editor supported them.
+
+Verification: focused preparation/real-HTTP/studio tests 14/14; `npm run check` passed; `npm test` 1,371/1,371; desktop `python -m unittest discover -p "test*.py"` 270/270. A synthetic prepared studio rendered its own editor and preview while identifying the original channel as on-air. UTF-8 and diff checks passed. Production preparation and readback are recorded separately; no production sale data is used for regression testing.

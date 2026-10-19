@@ -34,6 +34,23 @@ test('concurrent repeated prepare imports once; retry after restart preserves lo
  await f.repository.upsertRecord(ROOT,'item',pending('new02'));
  assert.equal((await f.command()).json().imported,1);const rows=await records(f,TARGET);assert.equal(rows.length,2);assert.equal(rows.find(i=>i.id===first.id).note,'엑셀 비고');assert.equal(rows.find(i=>i.id!==first.id).lotNumber,10);
 });
+test('new round inherits complete presentation and pricing without replaying the prior result or session',async t=>{
+ const f=await setup(t),source={id:'state',mode:'sold',page:2,activeItemId:'a01',hostName1:'가상 진행자',page2ItemFontSize:27,page2BiddersFontSize:25,page2PhotoOn:false,page2PriceOn:false,page3BuyerRankingOn:true,page3ResultBackgroundOpacity:85,notice:'경기 편',noticeDetail:'10월 19일 월요일 밤 8시',page2Ticker:'월요일 방송 직후 파르게 배송이 시작됩니다.\n배송지를 입력해 주세요.',bannerSelectionConfigured:true,selectedBannerIds:['shared-banner'],layoutPlacements:{'p2-info':{x:58,width:71,fontScale:1.9}},audienceSessionId:'old-session',quizWinner:'old-winner'};
+ await f.repository.upsertRecord(ROOT,'broadcast',source);
+ await f.repository.upsertRecord(ROOT,'setting',{id:'broadcast-config',values:{auction_animation_enabled:'1',auction_bid_unit_manwon:'5',font_size:'27',auction_session:'old-session',admin_pw:'never-copy'}});
+ assert.equal((await f.command()).status,200);
+ const b=await f.repository.getRecord(TARGET,'broadcast','state');
+ for(const key of ['hostName1','page2ItemFontSize','page2BiddersFontSize','page2PhotoOn','page2PriceOn','page3BuyerRankingOn','page3ResultBackgroundOpacity','bannerSelectionConfigured','selectedBannerIds','layoutPlacements'])assert.deepEqual(b[key],source[key],key);
+ assert.equal(b.mode,'standby');assert.equal(b.activeItemId,'');assert.equal(b.page,1);assert.equal(b.audienceSessionId,undefined);assert.equal(b.quizWinner,undefined);
+ assert.equal(b.notice,'전국크레자랑 · 전라·충청 편');assert.equal(b.noticeDetail,'10월 21일 수요일 밤 8시');assert.doesNotMatch(b.page2Ticker,/월요일/);
+ assert.deepEqual((await f.repository.getRecord(TARGET,'setting','broadcast-config')).values,{auction_animation_enabled:'1',auction_bid_unit_manwon:'5',font_size:'27'});
+ await f.repository.upsertRecord(TARGET,'broadcast',{...b,page2ItemFontSize:31});assert.equal((await f.command()).json().duplicate,true);assert.equal((await f.repository.getRecord(TARGET,'broadcast','state')).page2ItemFontSize,31);
+});
+test('new round delivery calendar uses its own auction date without inheriting old dispatch overrides',async t=>{
+ const f=await setup(t),catalog=await f.repository.getCatalog();await f.repository.saveCatalog(catalog.channels.map(c=>c.id===ROOT?{...c,shippingDefaults:{...c.shippingDefaults,deliverySchedule:{enabled:true,auctionDate:'2026-10-19',pargeDispatchDate:'2026-10-19',dodosiDispatchDate:'2026-10-20',pargeOrigin:'가상 출발지'}}}:c));
+ assert.equal((await f.command()).status,200);const c=(await f.repository.getCatalog()).channels.find(c=>c.id===TARGET);
+ assert.equal(c.shippingDefaults.deliverySchedule.auctionDate,DATE);assert.equal(c.shippingDefaults.deliverySchedule.pargeDispatchDate,'');assert.equal(c.shippingDefaults.deliverySchedule.dodosiDispatchDate,'');assert.equal(c.shippingDefaults.deliverySchedule.pargeOrigin,'가상 출발지');
+});
 test('atomic storage failure leaves source, target, membership and catalog unchanged; retry succeeds',async t=>{
  const f=await setup(t),old=await records(f,ROOT),catalog=await f.repository.getCatalog(),cas=f.repository.compareAndSwapRows.bind(f.repository);
  f.repository.compareAndSwapRows=async()=>{throw Error('isolated storage failure')};assert.equal((await f.command()).status,500);
