@@ -14,25 +14,27 @@
     <script src="channel-adapters.js?v=20261020-rounds"></script>
     <script src="operation-channel.js?v=20261020-rounds"></script>
     <script src="mobile-phone.js?v=20261018-contact"></script>
-    <script src="print-shipping-summary.js?v=20261018-contact"></script>
+    <script src="print-shipping-summary.js?v=20261020-status"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard-dynamic-subset.css">
     <style>
         :root { --bg:#f4f7fb; --card:#fff; --line:#e3e9f1; --text:#172033; --muted:#6b7280; --blue:#2563eb; --green:#15803d; --orange:#c2410c; --red:#b91c1c; --shadow:0 10px 30px rgba(23,32,51,.07); font-family:'Pretendard Variable','Pretendard',sans-serif; }
         * { box-sizing:border-box; }
+        [hidden] { display:none!important; }
+        :focus-visible { outline:2px solid var(--blue); outline-offset:3px; }
         body { margin:0; min-height:100vh; background:linear-gradient(180deg,#f8fafc,#eef3f8); color:var(--text); }
         button,select,input,a { font:inherit; }
         .app { width:min(100%,1040px); margin:0 auto; padding:18px 18px 72px; }
         .topbar { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
         .back { display:inline-flex; align-items:center; gap:5px; color:#475569; font-size:13px; font-weight:750; text-decoration:none; }
-        .refresh { padding:8px 12px; border:1px solid var(--line); border-radius:9px; background:#fff; color:#475569; font-size:11px; font-weight:750; cursor:pointer; }
+        .refresh { flex-shrink:0; min-height:44px; padding:8px 12px; border:1px solid var(--line); border-radius:9px; background:#fff; color:#475569; font-size:13px; font-weight:750; white-space:nowrap; cursor:pointer; }
         .hero { margin-bottom:12px; padding:18px 20px; border:1px solid var(--line); border-radius:16px; background:#fff; box-shadow:var(--shadow); }
         .hero small { color:var(--blue); font-size:10px; font-weight:900; letter-spacing:.12em; }
-        .hero h1 { margin:0; font-size:24px; letter-spacing:-.05em; }
+        .hero h1 { margin:0; font-size:24px; line-height:1.3; letter-spacing:-.05em; word-break:keep-all; overflow-wrap:anywhere; }
         .hero p { margin:0; color:var(--muted); font-size:13px; line-height:1.55; }
         .stats { display:grid; grid-template-columns:repeat(3,1fr); margin-top:14px; border:1px solid var(--line); border-radius:11px; overflow:hidden; }
         .stat { padding:12px 14px; border-right:1px solid var(--line); background:#fafbfd; }
         .stat:last-child { border-right:0; }
-        .stat span { display:block; color:#7b8492; font-size:10px; }
+        .stat span { display:block; color:var(--muted); font-size:12px; }
         .stat strong { display:block; margin-top:4px; font-size:18px; }
         .mode-section { padding:14px; border:1px solid var(--line); border-radius:15px; background:#fff; box-shadow:var(--shadow); }
         .section-title { margin-bottom:14px; }
@@ -40,80 +42,84 @@
         .section-title h2 { margin:4px 0 3px; font-size:18px; }
         .section-title p { margin:0; color:var(--muted); font-size:12px; }
         .basis-tabs { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:10px; padding:5px; border:1px solid var(--line); border-radius:14px; background:#eef2f7; }
-        .basis-tab { min-height:42px; border:0; border-radius:10px; background:transparent; color:#64748b; font-size:12px; font-weight:850; cursor:pointer; }
+        .basis-tab { min-height:44px; border:0; border-radius:10px; background:transparent; color:#64748b; font-size:13px; font-weight:750; cursor:pointer; }
         .basis-tab.active { background:#fff; color:var(--blue); box-shadow:0 3px 10px rgba(23,32,51,.09); }
         .view { display:none; }
         .view.active { display:block; }
         .view-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:14px; }
-        .view-back { padding:7px 10px; border:1px solid var(--line); border-radius:8px; background:#f8fafc; color:#475569; font-size:11px; font-weight:750; cursor:pointer; }
-        .picker { width:100%; min-height:44px; padding:0 13px; border:1px solid #d7dee8; border-radius:11px; background:#fff; color:var(--text); font-size:13px; font-weight:700; outline:none; }
+        .view-back { min-height:44px; padding:7px 10px; border:1px solid var(--line); border-radius:8px; background:#f8fafc; color:#475569; font-size:13px; font-weight:750; cursor:pointer; }
+        .picker { width:100%; min-height:44px; padding:0 13px; border:1px solid #d7dee8; border-radius:11px; background:#fff; color:var(--text); font-size:16px; font-weight:500; }
         .picker:focus { border-color:#7aa7f8; box-shadow:0 0 0 3px rgba(37,99,235,.1); }
         .winner-search { margin-bottom:10px; }
         .company-search { margin-bottom:10px; }
+        .search-label { display:block; margin-bottom:8px; font-size:14px; font-weight:700; }
+        .search-count { margin:0 0 12px; color:var(--muted); font-size:13px; }
+        #status-load-error h2 { font-size:18px; line-height:1.4; }
+        #status-load-error p { color:var(--muted); font-size:14px; line-height:1.5; }
         .company-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:10px; }
         .company-stat { padding:12px 14px; border:1px solid var(--line); border-radius:11px; background:#fafbfd; }
-        .company-stat span { display:block; color:#7b8492; font-size:10px; }
+        .company-stat span { display:block; color:var(--muted); font-size:12px; }
         .company-stat strong { display:block; margin-top:4px; font-size:18px; }
         .company-list { display:grid; gap:10px; }
         .company-card { overflow:hidden; border:1px solid var(--line); border-radius:13px; background:#fff; }
         .company-head { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:14px 16px; background:#fafbfc; }
-        .company-head h3 { margin:0; font-size:15px; }
-        .company-head span { color:var(--muted); font-size:10px; }
+        .company-head h2 { margin:0; font-size:16px; }
+        .company-head span { color:var(--muted); font-size:12px; }
         .company-progress { color:var(--green)!important; font-weight:850; }
         .company-items { display:grid; }
         .company-item { display:grid; grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) minmax(0,1fr) auto; align-items:center; gap:12px; padding:12px 16px; border-top:1px solid #edf0f4; }
-        .company-item strong { display:block; font-size:12px; }
-        .company-item small { display:block; margin-top:3px; color:var(--muted); font-size:9px; }
-        .company-shipping { color:#475569; font-size:10px; }
+        .company-item strong { display:block; font-size:14px; }
+        .company-item small { display:block; margin-top:3px; color:var(--muted); font-size:12px; }
+        .company-shipping { color:#475569; font-size:13px; }
         .company-shipping b { display:block; margin-top:3px; }
         .directory { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; max-height:430px; overflow-y:auto; }
         .directory-btn { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 13px; border:1px solid var(--line); border-radius:11px; background:#fff; color:inherit; text-align:left; cursor:pointer; }
         .directory-main { min-width:0; }
-        .directory-btn strong { display:block; font-size:13px; }
-        .directory-meta { display:block; margin-top:3px; overflow:hidden; color:var(--muted); font-size:10px; text-overflow:ellipsis; white-space:nowrap; }
+        .directory-btn strong { display:block; font-size:16px; }
+        .directory-meta { display:block; margin-top:5px; color:var(--muted); font-size:12px; line-height:1.5; word-break:keep-all; overflow-wrap:anywhere; }
         .directory-side { display:flex; flex:0 0 auto; flex-direction:column; align-items:flex-end; gap:5px; }
-        .directory-side em { color:var(--blue); font-size:10px; font-style:normal; font-weight:800; }
+        .directory-side em { color:var(--blue); font-size:12px; font-style:normal; font-weight:800; }
         .directory-side .badge { min-height:22px; margin:0; padding:0 7px; }
         .result { margin-top:16px; }
-        .result-head { display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin-bottom:10px; padding:0 2px; }
-        .result-head strong { font-size:18px; }
-        .result-head span { color:var(--muted); font-size:11px; }
+        .result-head { display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:12px; margin-bottom:10px; padding:0 2px; }
+        .result-head strong,.result-head h2 { margin:0; font-size:18px; line-height:1.4; overflow-wrap:anywhere; }
+        .result-head span { color:var(--muted); font-size:13px; }
         .record-list { display:grid; gap:10px; }
         .record { padding:17px; border:1px solid var(--line); border-radius:15px; background:#fff; }
         .record-top { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
         .record-person strong { display:block; font-size:15px; }
         .record-person a { display:inline-block; margin-top:4px; color:#475569; font-size:12px; font-weight:650; text-decoration:none; }
-        .badge { display:inline-flex; align-items:center; min-height:26px; padding:0 8px; border:1px solid #dce2ea; border-radius:999px; background:#f8fafc; color:#667085; font-size:9px; font-weight:850; }
+        .badge { display:inline-flex; align-items:center; min-height:26px; padding:3px 8px; border:1px solid #dce2ea; border-radius:999px; background:#f8fafc; color:#667085; font-size:12px; font-weight:700; line-height:1.4; }
         .badge.complete { border-color:#bbe6cb; background:#f0fdf4; color:var(--green); }
         .badge.partial { border-color:#fed7aa; background:#fff7ed; color:var(--orange); }
         .badge.mismatch { border-color:#fecaca; background:#fef2f2; color:var(--red); }
         .record-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px; padding-top:11px; border-top:1px solid #edf0f4; }
-        .info-block span { display:block; color:#7a8493; font-size:9px; font-weight:700; }
-        .info-block strong { display:block; margin-top:4px; color:#344054; font-size:11px; line-height:1.55; }
+        .info-block span { display:block; color:var(--muted); font-size:12px; font-weight:700; }
+        .info-block strong { display:block; margin-top:4px; color:#344054; font-size:14px; line-height:1.55; }
         .items { display:flex; flex-wrap:wrap; gap:5px; margin-top:11px; }
-        .item-chip { padding:4px 7px; border-radius:7px; background:#f1f5f9; color:#475569; font-size:9px; font-weight:700; }
+        .item-chip { padding:4px 7px; border-radius:7px; background:#f1f5f9; color:#475569; font-size:12px; font-weight:700; overflow-wrap:anywhere; }
         .log-list { display:grid; gap:10px; }
         .log-card { padding:15px; border:1px solid var(--line); border-radius:13px; background:#fff; }
         .log-card-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
         .log-card-head strong { display:block; font-size:13px; }
-        .log-card-head span { display:block; margin-top:3px; color:var(--muted); font-size:10px; }
+        .log-card-head span { display:block; margin-top:3px; color:var(--muted); font-size:12px; }
         .log-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:11px; }
         .log-box { min-width:0; padding:10px; border-radius:9px; background:#f8fafc; }
-        .log-box span { display:block; color:#7a8493; font-size:8px; font-weight:800; }
-        .log-box b { display:block; margin-top:4px; color:#344054; font-size:10px; line-height:1.45; word-break:break-word; }
+        .log-box span { display:block; color:var(--muted); font-size:12px; font-weight:700; }
+        .log-box b { display:block; margin-top:4px; color:#344054; font-size:13px; line-height:1.5; word-break:break-word; }
         .notification-summary { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:12px; }
         .notification-stat { padding:12px 13px; border:1px solid var(--line); border-radius:11px; background:#fafbfd; }
-        .notification-stat span { display:block; color:#7b8492; font-size:9px; font-weight:750; }
+        .notification-stat span { display:block; color:var(--muted); font-size:12px; font-weight:750; }
         .notification-stat strong { display:block; margin-top:4px; font-size:17px; }
         .notification-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
         .notification-head strong { display:block; font-size:13px; }
-        .notification-head small { display:block; margin-top:3px; color:var(--muted); font-size:9px; }
+        .notification-head small { display:block; margin-top:3px; color:var(--muted); font-size:12px; }
         .notification-meta { display:flex; flex-wrap:wrap; gap:5px; margin-top:10px; }
-        .notification-error { margin-top:9px; padding:8px 9px; border-radius:8px; background:#fef2f2; color:var(--red); font-size:9px; line-height:1.45; }
-        .empty { padding:34px 12px; color:#98a2b3; font-size:12px; text-align:center; }
+        .notification-error { margin-top:9px; padding:8px 9px; border-radius:8px; background:#fef2f2; color:var(--red); font-size:12px; line-height:1.5; }
+        .empty { padding:34px 12px; color:var(--muted); font-size:14px; line-height:1.5; text-align:center; }
         .loading { position:fixed; inset:0; z-index:20; display:grid; place-items:center; background:rgba(244,247,251,.86); color:#475569; font-size:13px; font-weight:800; backdrop-filter:blur(4px); }
-        .toast { position:fixed; left:50%; bottom:60px; z-index:30; transform:translate(-50%,20px); padding:11px 15px; border-radius:10px; background:#172033; color:#fff; font-size:11px; font-weight:750; opacity:0; pointer-events:none; transition:.2s; }
-        .toast.show { transform:translate(-50%,0); opacity:1; }
+        .toast { position:fixed; left:50%; bottom:60px; z-index:30; max-width:calc(100% - 24px); transform:translateX(-50%); padding:11px 15px; border-radius:10px; background:#172033; color:#fff; font-size:13px; font-weight:750; opacity:0; pointer-events:none; }
+        .toast.show { opacity:1; }
         .app-bottom-nav { position:fixed; left:50%; bottom:max(2px,env(safe-area-inset-bottom)); z-index:1900; display:grid; grid-template-columns:repeat(2,1fr); gap:2px; width:min(410px,calc(100% - 8px)); height:50px; padding:3px; border:1px solid rgba(148,163,184,.34); border-radius:14px; background:rgba(248,250,252,.97); box-shadow:0 10px 30px rgba(15,23,42,.18); transform:translateX(-50%); backdrop-filter:blur(16px); }
         .app-bottom-nav a { display:flex; align-items:center; justify-content:center; min-width:0; border-radius:10px; color:#64748b; font-size:10.5px; font-weight:850; text-decoration:none; white-space:nowrap; }
         .app-bottom-nav a.active { background:#2563eb; color:#fff; }
@@ -140,33 +146,43 @@
     <main class="app">
         <header class="hero">
             <nav class="topbar"><h1 id="shipping-status-title">전체조회</h1><button class="refresh" type="button" onclick="reloadData(this)">새로고침</button></nav>
-            <div class="stats" id="stats"></div>
+            <div class="stats" id="stats" data-status-content></div>
         </header>
 
-        <div class="basis-tabs" aria-label="조회 기준">
+        <section id="status-load-error" class="mode-section" role="alert" hidden>
+            <h2 tabindex="-1">배송 내역을 불러오지 못했습니다</h2>
+            <p>연결 상태를 확인한 뒤 다시 시도해 주세요.</p>
+            <button class="refresh" type="button" onclick="reloadData(this)">다시 불러오기</button>
+        </section>
+        <div class="basis-tabs" aria-label="조회 기준" data-status-content>
             <button class="basis-tab active" id="basis-winner" type="button" onclick="openMode('winner')">낙찰자</button>
             <button class="basis-tab" id="basis-company" type="button" onclick="openMode('company')">업체</button>
             <button class="basis-tab" id="basis-audit" type="button" onclick="openMode('audit')">변경내역</button>
             <button class="basis-tab" id="basis-notification" type="button" onclick="openMode('notification')">알림</button>
         </div>
 
-        <section class="mode-section view active" id="mode-winner">
-            <input class="picker winner-search" id="winner-search" type="search" placeholder="이름 또는 연락처 검색" oninput="handleWinnerSearch(this)">
+        <section class="mode-section view active" id="mode-winner" data-status-content>
+            <div id="winner-search-controls">
+                <label class="search-label" for="winner-search">낙찰자 검색</label>
+                <input class="picker winner-search" id="winner-search" type="search" placeholder="이름 또는 연락처" oninput="handleWinnerSearch(this)">
+                <p class="search-count" id="winner-search-count" role="status"></p>
+            </div>
             <div class="directory" id="winner-directory"></div>
             <div class="result" id="winner-result"></div>
         </section>
 
-        <section class="mode-section view" id="mode-company">
-            <input class="picker company-search" id="company-search" type="search" placeholder="업체명 검색" oninput="renderCompanies(this.value)">
+        <section class="mode-section view" id="mode-company" data-status-content>
+            <label class="search-label" for="company-search">업체 검색</label>
+            <input class="picker company-search" id="company-search" type="search" placeholder="업체명" oninput="renderCompanies(this.value)">
             <div class="company-stats" id="company-stats"></div>
             <div class="company-list" id="company-list"></div>
         </section>
 
-        <section class="mode-section view" id="mode-audit">
+        <section class="mode-section view" id="mode-audit" data-status-content>
             <div class="result" id="audit-result"></div>
         </section>
 
-        <section class="mode-section view" id="mode-notification">
+        <section class="mode-section view" id="mode-notification" data-status-content>
             <div class="notification-summary" id="notification-summary"></div>
             <div class="log-list" id="notification-list"></div>
         </section>
@@ -175,8 +191,8 @@
         <a href="shipping.html">배송관리</a>
         <a class="active" href="shipping-status.html" aria-current="page">전체조회</a>
     </nav>
-    <div class="loading" id="loading">배송 등록 데이터를 불러오는 중...</div>
-    <div class="toast" id="toast"></div>
+    <div class="loading" id="loading" role="status">배송 등록 데이터를 불러오는 중...</div>
+    <div class="toast" id="toast" role="status"></div>
     <script>
         let soldItems = [];
         let winnerGroups = [];
@@ -194,6 +210,7 @@
         let activeMode = REQUESTED_MODE;
         let selectedWinnerKey = '';
         let winnerSearchActive = false;
+        let statusLoadEpoch = 0;
 
         document.querySelectorAll('.app-bottom-nav a').forEach(link => {
             const url = new URL(link.getAttribute('href'), location.href);
@@ -271,7 +288,7 @@
                 const companies=[...new Set(group.items.map(i=>String(i.company||'').trim()).filter(Boolean))].sort();
                 const latest=Math.max(0,...group.items.filter(i=>i.shipping_type).map(i=>new Date(i.updated_at||0).getTime()).filter(Number.isFinite));
                 const shippingCost=group.items.reduce((sum,i)=>sum+(Number(i.shipping_cost)||0),0);
-                const totalBid=group.items.reduce((sum,i)=>sum+(Number(i.sold_price||i.soldPrice)||0)*10000,0);
+                const totalBid=group.items.reduce((sum,i)=>sum+CreoPrintShippingSummary.itemWon(i),0);
                 return {...group,companies,status:groupStatus(group.items),latest,shippingCost,totalBid};
             }).sort((a,b)=>{
                 const priority={mismatch:0,partial:1,pending:2,complete:3};
@@ -310,16 +327,16 @@
             const query=String(queryValue??search?.value??'').trim().toLocaleLowerCase();
             const rows=companyGroups.filter(company=>!query||company.name.toLocaleLowerCase().includes(query));
             const registered=soldItems.filter(item=>companyItemShippingInfo(item).complete).length;
-            document.getElementById('company-stats').innerHTML=[['업체',companyGroups.length],['낙찰 항목',soldItems.length],['배송 등록',registered]].map(([label,value])=>'<article class="company-stat"><span>'+label+'</span><strong>'+value+'</strong></article>').join('');
+            document.getElementById('company-stats').innerHTML=[['전체 업체',companyGroups.length],['전체 낙찰',soldItems.length],['배송 등록',registered]].map(([label,value])=>'<article class="company-stat"><span>'+label+'</span><strong>'+value+'</strong></article>').join('');
             document.getElementById('company-list').innerHTML=rows.length?rows.map(company=>{
                 const done=company.items.filter(item=>companyItemShippingInfo(item).complete).length;
-                return '<article class="company-card"><header class="company-head"><div><h3>'+esc(company.name)+'</h3><span>'+company.items.length+'개 항목</span></div><span class="company-progress">'+done+' / '+company.items.length+' 배송 등록</span></header><div class="company-items">'+company.items.slice().sort((a,b)=>Number(a.num||a.lotNumber)-Number(b.num||b.lotNumber)).map(item=>{
+                return '<article class="company-card"><header class="company-head"><div><h2>'+esc(company.name)+'</h2><span>'+company.items.length+'개 항목</span></div><span class="company-progress">'+done+' / '+company.items.length+' 배송 등록</span></header><div class="company-items">'+company.items.slice().sort((a,b)=>Number(a.num||a.lotNumber)-Number(b.num||b.lotNumber)).map(item=>{
                     const shipping=companyItemShippingInfo(item);
-                    return '<div class="company-item"><div><strong>'+esc(companyItemName(item)||'이름 없음')+'</strong><small>낙찰가 '+Number(item.sold_price||item.soldPrice||0).toLocaleString('ko-KR')+'</small></div><div class="company-winner"><strong>'+esc(companyWinner(item))+'</strong><small>'+esc(companyPhone(item)||'연락처 없음')+'</small></div><div class="company-shipping">배송 정보<b>'+esc(shipping.label||'-')+' · '+esc(shipping.cost)+'</b></div><span class="badge '+(shipping.complete?'complete':'')+'">'+(shipping.complete?'등록 완료':'확인 필요')+'</span></div>';
+                    return '<div class="company-item"><div><strong>'+esc(companyItemName(item)||'이름 없음')+'</strong><small>낙찰가 '+CreoPrintShippingSummary.itemWon(item).toLocaleString('ko-KR')+'원</small></div><div class="company-winner"><strong>'+esc(companyWinner(item))+'</strong><small>'+esc(companyPhone(item)||'연락처 없음')+'</small></div><div class="company-shipping">배송 정보<b>'+esc(shipping.label||'-')+' · '+esc(shipping.cost)+'</b></div><span class="badge '+(shipping.complete?'complete':'')+'">'+(shipping.complete?'등록 완료':'확인 필요')+'</span></div>';
                 }).join('')+'</div></article>';
             }).join(''):'<div class="empty">조건에 맞는 업체가 없습니다.</div>';
         }
-        function openMode(mode, fromHistory = false) {
+        function openMode(mode, fromHistory = false, moveFocus = true) {
             const nextUrl=new URL(location.href);
             if(mode==='winner') nextUrl.searchParams.delete('view');
             else nextUrl.searchParams.set('view',mode);
@@ -330,12 +347,12 @@
             selectedWinnerKey = '';
             document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
             document.getElementById('mode-'+mode).classList.add('active');
-            document.querySelectorAll('.basis-tab').forEach(v=>v.classList.remove('active'));
+            document.querySelectorAll('.basis-tab').forEach(v=>{v.classList.remove('active');v.setAttribute('aria-pressed',String(v.id==='basis-'+mode));});
             document.getElementById('basis-'+mode).classList.add('active');
             if(mode==='winner') {
                 const search=document.getElementById('winner-search');
                 const directory=document.getElementById('winner-directory');
-                search.style.display='block';
+                document.getElementById('winner-search-controls').hidden=false;
                 directory.style.display='grid';
                 search.value='';
                 document.getElementById('winner-result').innerHTML='';
@@ -348,7 +365,8 @@
             }
             if(mode==='audit') renderAuditLogs();
             if(mode==='notification') renderNotifications();
-            window.scrollTo({top:0,behavior:'smooth'});
+            if(moveFocus)(document.getElementById(mode+'-search')||document.getElementById('basis-'+mode)).focus();
+            window.scrollTo({top:0,behavior:'auto'});
         }
         function renderStats() {
             const complete=winnerGroups.filter(g=>g.status==='complete').length;
@@ -365,7 +383,10 @@
         function renderWinnerDirectory(query) {
             const q=String(query||'').replace(/[^0-9가-힣a-zA-Z]/g,'').toLowerCase();
             const list=winnerGroups.filter(g=>!q||(g.name+g.phone).replace(/[^0-9가-힣a-zA-Z]/g,'').toLowerCase().includes(q));
-            document.getElementById('winner-directory').innerHTML=list.length?list.map(g=>{const meta=statusMeta(g.status);return '<button class="directory-btn" type="button" onclick="renderWinner(\''+esc(g.key)+'\')"><span class="directory-main"><strong>'+esc(g.name)+'</strong><span class="directory-meta">'+esc(fmtPhone(g.phone))+' · '+esc(g.companies.join(', '))+'</span></span><span class="directory-side"><span class="badge '+meta[1]+'">'+meta[0]+'</span><em>'+g.items.length+'개체</em></span></button>';}).join(''):'<div class="empty">검색 결과가 없습니다.</div>';
+            const directory=document.getElementById('winner-directory');
+            directory.innerHTML=list.length?list.map(g=>{const meta=statusMeta(g.status);return '<button class="directory-btn" type="button" data-winner="'+esc(g.key)+'"><span class="directory-main"><strong>'+esc(g.name)+'</strong><span class="directory-meta">'+esc(fmtPhone(g.phone))+' · '+esc(g.companies.join(', '))+'</span></span><span class="directory-side"><span class="badge '+meta[1]+'">'+meta[0]+'</span><em>'+g.items.length+'개체</em></span></button>';}).join(''):'<div class="empty">검색 결과가 없습니다.<br>이름이나 연락처를 바꿔 검색해 주세요.</div>';
+            directory.querySelectorAll('[data-winner]').forEach(button=>button.onclick=()=>renderWinner(button.dataset.winner));
+            document.getElementById('winner-search-count').textContent=list.length+'명';
         }
         function handleWinnerSearch(input) {
             const hasQuery=Boolean(input.value.trim());
@@ -378,10 +399,11 @@
             if(!group){box.innerHTML='';return;}
             selectedWinnerKey = key;
             if (MOBILE_STATUS_HISTORY && !fromHistory) history.pushState({ creoShippingStatus:true, mode:'winner', winner:key }, '', location.href);
-            document.getElementById('winner-search').style.display='none';
+            document.getElementById('winner-search-controls').hidden=true;
             document.getElementById('winner-directory').style.display='none';
-            box.innerHTML='<div class="result-head"><div><strong>'+esc(group.name)+' 전체 내역</strong><span style="display:block;margin-top:3px">'+group.companies.length+'개 업체 · '+group.items.length+'개체</span></div><button class="view-back" type="button" onclick="resetWinnerSelection()">다른 낙찰자 선택</button></div><div class="record-list">'+recordHtml(group)+'</div>';
-            box.scrollIntoView({behavior:'smooth',block:'start'});
+            box.innerHTML='<div class="result-head"><div><h2 id="winner-detail-title" tabindex="-1">'+esc(group.name)+' 전체 내역</h2><span style="display:block;margin-top:3px">'+group.companies.length+'개 업체 · '+group.items.length+'개체</span></div><button class="view-back" type="button" onclick="resetWinnerSelection()">다른 낙찰자 선택</button></div><div class="record-list">'+recordHtml(group)+'</div>';
+            document.getElementById('winner-detail-title').focus();
+            box.scrollIntoView({behavior:'auto',block:'start'});
         }
         function resetWinnerSelection() {
             if (MOBILE_STATUS_HISTORY && selectedWinnerKey) {
@@ -390,7 +412,7 @@
             }
             const search=document.getElementById('winner-search');
             const directory=document.getElementById('winner-directory');
-            search.style.display='block';
+            document.getElementById('winner-search-controls').hidden=false;
             directory.style.display='grid';
             search.value='';
             document.getElementById('winner-result').innerHTML='';
@@ -398,7 +420,7 @@
             winnerSearchActive = false;
             renderWinnerDirectory('');
             search.focus();
-            window.scrollTo({top:0,behavior:'smooth'});
+            window.scrollTo({top:0,behavior:'auto'});
         }
         function auditLogHtml(log) {
             const statusClass=log.status==='failed'?'mismatch':(log.status==='applied'?'complete':'partial');
@@ -458,12 +480,38 @@
         }
         function showToast(text){const t=document.getElementById('toast');t.textContent=text;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2400);}
         async function loadData() {
+            const version=++statusLoadEpoch;
+            const errorPanel=document.getElementById('status-load-error');
+            const recovering=!errorPanel.hidden;
             document.getElementById('loading').style.display='grid';
-            try { const operation=await shippingOperation.ready();const [items, logs, notifications]=await Promise.all([shippingOperation.loadShippingItems(), operation.adapter.id==='legacy-cdcup'&&typeof getShippingAuditLogs==='function'?getShippingAuditLogs(120):Promise.resolve([]),CreoPlatform.api(`channels/${encodeURIComponent(SHIPPING_CHANNEL_ID)}/notifications?limit=120&scope=round${operation.context.archiveId?'&archive='+encodeURIComponent(operation.context.archiveId):''}`).catch(error=>({delivery:{provider:'unavailable',configured:false,smsConfigured:false,error:error.message},counts:{},notifications:[]}))]); auditLogs=logs||[]; notificationState=notifications||notificationState; soldItems=(items||[]).filter(i=>CreoAuctionContract.isSoldStatus(i.status)||Number(i.soldPrice||i.sold_price)>0); buildGroups(); buildCompanyGroups(); renderStats(); renderWinnerDirectory(''); renderCompanies(''); renderAuditLogs(); renderNotifications(); openMode(activeMode,true); }
-            catch(e){ console.error(e); document.getElementById('mode-'+activeMode).innerHTML='<div class="empty">데이터를 불러오지 못했습니다.</div>'; }
-            finally { document.getElementById('loading').style.display='none'; }
+            errorPanel.hidden=true;
+            document.querySelectorAll('[data-status-content]').forEach(node=>node.hidden=true);
+            try {
+                const operation=await shippingOperation.ready();
+                const [items,logs,notifications]=await Promise.all([
+                    shippingOperation.loadShippingItems(),
+                    operation.adapter.id==='legacy-cdcup'&&typeof getShippingAuditLogs==='function'?getShippingAuditLogs(120):Promise.resolve([]),
+                    CreoPlatform.api(`channels/${encodeURIComponent(SHIPPING_CHANNEL_ID)}/notifications?limit=120&scope=round${operation.context.archiveId?'&archive='+encodeURIComponent(operation.context.archiveId):''}`).catch(error=>({delivery:{provider:'unavailable',configured:false,smsConfigured:false,error:error.message},counts:{},notifications:[]}))
+                ]);
+                if(version!==statusLoadEpoch)return false;
+                auditLogs=logs||[];notificationState=notifications||notificationState;
+                soldItems=(items||[]).filter(i=>CreoAuctionContract.isSoldStatus(i.status)||Number(i.soldPrice||i.sold_price)>0);
+                buildGroups();buildCompanyGroups();renderStats();renderWinnerDirectory('');renderCompanies('');renderAuditLogs();renderNotifications();
+                document.querySelectorAll('[data-status-content]').forEach(node=>node.hidden=false);
+                openMode(activeMode,true,recovering);
+                return true;
+            } catch(error) {
+                if(version!==statusLoadEpoch)return false;
+                console.error(error);
+                document.querySelectorAll('[data-status-content]').forEach(node=>node.hidden=true);
+                errorPanel.hidden=false;
+                errorPanel.querySelector('h2').focus();
+                return false;
+            } finally {
+                if(version===statusLoadEpoch)document.getElementById('loading').style.display='none';
+            }
         }
-        async function reloadData(button){const text=button.textContent;button.disabled=true;button.textContent='갱신 중...';await loadData();button.disabled=false;button.textContent=text;showToast('최신 등록 내역으로 갱신했습니다.');}
+        async function reloadData(button){const text=button.textContent;button.disabled=true;button.textContent='갱신 중...';try{if(await loadData())showToast('최신 등록 내역으로 갱신했습니다.');}finally{button.disabled=false;button.textContent=text;}}
         if (MOBILE_STATUS_HISTORY) window.addEventListener('popstate', event => {
             const state = event.state;
             if (state?.creoShippingExit) {

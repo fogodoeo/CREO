@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | 공통 진입·로그인 | 62개 정적 경로 응답, `/main`의 로그인 경계는 기존 배포 검사 | 로그인 실패·복귀·공통 메뉴·오래된 별칭 |
 | 운영 홈·회차·출품 | 회차 격리, 보관 채널의 배송 메뉴, 잘못된 회차 복구, 320px/PC 홈 확인 | 실제 운영자 로그인 이후 진입, 출품 편집·빈/오류 상태 |
-| 낙찰·배송·인쇄·정산 | 배송 편집 320px/PC·키보드, 업체 선택 초점·특수문자 수정(미배포), 준비 개체 인쇄, 과거 정산 접근 확인 | 배송 검색 상세·공통 창·총정산 전체 흐름 |
+| 낙찰·배송·인쇄·정산 | 배송 편집·업체 선택 배포. 전체조회 오류 복구·검색 초점·원 단위 낙찰가 수정 및 320px/PC 확인(미배포), 준비 개체 인쇄, 과거 정산 접근 확인 | 관리자/안내 창·총정산 전체 흐름 |
 | 업체 로그인·출품·예약·정산 | 기존 개별 검사 기록과 이번 로그인 정리 회귀 | 현재 버전의 모바일 연결·오류·재접속 |
 | 구매자 배송·결제·보관함 | 현재/이전 결제 회차 표시, 가상 상태 전이·복귀 배포. 보관함 회차 선택·재연결·계정 전환 실화면 확인·배포 | 변경 요청·문의·실제 기기 |
 | 방송·핀볼·캡처·배너 | 경기→전라·충청 구성 복사, 실제 준비 화면 확인 | 조작/송출 동기화·재접속·도구 연결 |
@@ -134,7 +134,7 @@ Vanilla HTML/JS/CSS. 기존 `CHECKOUT_DESIGN.md`의 흰 표면·회색 본문·�
 - `8148c9ff3bf59098a1ff4e1d8f1c7814eaa61214` / Render `dep-dbb8gr4s728c73cfh71g`는 06:17:04 KST Live. 배포 후 health·송출 200, 정적 파일 22개 일치, 모든 비교 채널의 개체·배송 식별자 및 낙찰합계 불변이었다. 현재 34개체/34개 배송, 이전 38개체/36개 배송과 양쪽 미결제 조회 200/readOnly=false를 유지했다. 배포 전후 자료는 `site-library-round-before.json`/`site-library-round-after.json`이다.
 - 실제 재연결 후 320px의 두 회차 목록은 `site-library-separated-rounds-320.png`에 남겼다. 새 직접 진입 보관함 탭의 오류·경고 로그는 0개였다.
 
-## 배송 업체 선택 창 · 배포 전 검증
+## 배송 업체 선택 창
 
 위험도: release(배포). 구현은 업체 선택 창의 DOM·초점·표시만 변경한다. 배송 저장·결제·알림 계약은 변경하지 않는다.
 
@@ -143,6 +143,38 @@ Vanilla HTML/JS/CSS. 기존 `CHECKOUT_DESIGN.md`의 흰 표면·회색 본문·�
 - 반복 열기·취소·브라우저 뒤로가기에서 모달과 모바일 이력을 중복 닫지 않도록 검사했다. 실제 PC에서 초점 순환·Escape 복귀, 320px에서 Tab→Space 업체 B 선택→Enter 확정→업체 B 목록과 111,000원 표시를 확인했다. 실제 경매 기록과 발송은 사용하지 않았다.
 - 좁은 화면은 업체명을 읽기 쉽게 1열, 넓은 화면은 기존 2열을 유지한다. 기존 색과 모션을 유지하고 버튼을 44px 이상으로 맞췄다. 실제 320px 사진: `site-shipping-company-320.png`.
 - 집중 `node --test test/shipping-interaction.test.js test/shipping-vendor-settings.test.js` 7개 통과. 배송 갱신 검사를 함께 실행한 중간 검사도 통과했다. 최종 `npm test` 1,399개, `npm run check`, PC `python -m unittest discover -p "test*.py"` 270개 통과. `git diff --check`와 변경 파일 3개의 엄격한 UTF-8·U+FFFD 부재도 확인했다. 로그는 `site-shipping-company-tests.log`, `site-shipping-company-check.log`, 상위 `scratch/site-shipping-company-desktop.log`다.
-- 전체조회에서 현재 3개체의 가상 구매자만 보이고 ‘없는이름’ 검색은 빈 결과로 표시됐다. 검색 입력의 접근성 이름, 상세 복귀, 관리자/안내 창의 키보드 흐름은 다음 범위로 남긴다.
+- 전체조회에서 현재 3개체의 가상 구매자만 보이고 ‘없는이름’ 검색은 빈 결과로 표시됐다. 전화번호 일부 `0003` 검색→현재 3개체 상세→다른 낙찰자 선택으로 복귀도 실제 확인했다. 다만 상세/복귀 후 초점은 문서로 빠졌고 검색 입력은 접근성 이름이 없었다. 관리자/안내 창도 별도 초점 검토가 필요하다. 다음 범위에서 회귀와 함께 보완한다.
+- `73e4506c448bbb4b5b16c107c311e44210e48308` / Render `dep-dbb8khui0phs73euojj0`는 06:24:51 KST Live. 배포 후 health·송출 200, 정적 파일 22개 일치, 전체 비교 채널의 식별자·낙찰합계 불변, 현재/이전 회차의 미결제 조회 200/readOnly=false였다. `site-shipping-company-before.json`/`site-shipping-company-after.json`에 기록했다.
 
-판정: 보관함 수정은 배포 및 운영 GET 확인 완료. 업체 선택 창은 실제 화면 검증 후 최종 전체 검사·인코딩 검토와 배포 검증을 수행한다. 전체 사이트에 대한 Approve 판정은 아직 하지 않는다.
+## 배송 전체조회 오류 복구·검색·금액 표시 · 배포 전 검증
+
+위험도: release. UI 조회 상태와 금액 표시를 수정하고 기존 원 단위 변환 함수를 공개한다. 낙찰·배송·결제 저장과 알림 전송은 변경하지 않는다.
+
+범위: Vanilla HTML/JS/CSS의 전체조회 진입→조회 실패/재시도→낙찰자·업체 검색→상세·목록 복귀, 변경내역/알림 탭의 표시. `AGENTS.md`, `LIVE_RELIABILITY_CHECKLIST.md`, `CHECKOUT_DESIGN.md`와 기존 흰 표면·회색 보조 본문·파란 조작 색을 따랐다. `better-interface`의 여섯 도메인과 `emil-design-eng`의 빈번한 전환에서 불필요한 모션을 줄이는 지침을 적용했다. 전체 사이트 범위를 축소하지 않으며 관리자/안내 창은 다음 점검 항목으로 유지한다.
+
+| 분야 | 확인한 증거 | 결과 |
+| --- | --- | --- |
+| Accessibility | 실제 AX 이름, 오류 heading/재시도/검색/상세/모바일 뒤로가기 초점 | label, 동적 상태, 초점 복귀와 기본 버튼 경로 확인 |
+| Layout | 320px 오류/목록/업체 결과, PC 전체 목록과 탭 | 제목·버튼·금액에 잘림 없이 표시 |
+| Writing | 실패 후 성공 안내, 단위 없는 낙찰가, 빈 검색 결과 | 성공 시에만 안내, 원 단위 표기, 재검색/재시도 행동 명시 |
+| Typography | 10px 요약과 13px 입력의 실제 계산 스타일, 작은 업체/배송 본문 | 보조 정보 12px 이상, 모바일 입력 16px, 제목의 한 글자 줄바꿈 제거 |
+| Colors | 요약 글자/실제 배경의 계산 스타일과 대비 계산 | #7b8492/#fafbfd 3.65:1 → #6b7280/#fafbfd 4.67:1. 같은 새 본문/흰색 4.83:1 |
+| UI | 탭·검색·상세·재시도와 기본 초점 표시 | 불필요한 smooth scroll과 toast 이동 제거, 조작 44px 기준 유지 |
+
+| 심각도 | 분야 | 위치 | 수정 전 | 수정 후 | 이유 |
+| --- | --- | --- | --- | --- | --- |
+| HIGH | Writing | `public/shipping-status.html:482` | 실패 시 검색 DOM을 지우고 성공 toast 표시 | 별도 복구 화면, 최신 성공 응답만 표시·안내 | 오류를 해결할 행동 제공, 오래된/부분 자료를 성공처럼 표시하지 않음 |
+| HIGH | Accessibility | `public/shipping-status.html:166`, `:175`, `:339`, `:397` | 이름 없는 입력, 상세/복귀 후 문서 초점 | 연결된 label, 상세 heading/검색창 초점 | 키보드·보조기술로 연속 작업 가능 |
+| HIGH | Writing | `public/shipping-status.html:335` | 10만 원을 단위 없이 ‘낙찰가 10’으로 표시 | 기존 `itemWon`으로 ‘100,000원’ 표시 | 만원/원 혼동 방지, 명시적 0원 보존 |
+| HIGH | Colors | `public/shipping-status.html:37` | 실제 요약 대비 3.65:1 | 기존 보조 본문 토큰으로 4.67:1 | 본문 최소 대비 확보 |
+| MEDIUM | Typography | `public/shipping-status.html:51`, `:79` | 작은 입력·한 글자 제목 줄바꿈·작은 배송 정보 | 16px 입력, 단어 단위 제목, 본문/보조 크기 정리 | 좁은 화면에서 읽기·검색 용이 |
+
+- 회귀 재현: 가상 요청이 실패한 뒤 `winner-search`가 사라져 다음 성공 응답도 렌더링할 수 없었다. 이제 DOM 구조를 유지하고 실패/로딩에는 기존 자료를 숨긴다. 오류 응답·렌더 실패를 성공으로 안내하지 않으며, 느린 이전 응답이 최신 결과를 덮어쓰지 않는다. 운영 기록은 쓰지 않는다.
+- 실제 업체 화면에서 가상 A01·A02·B03의 낙찰가가 모두 ‘10’으로 보였다. `print-shipping-summary.js`의 기존 `itemWon`을 재사용해 원 단위 값을 표시한다. 명시적인 0원과 레거시 만원 입력을 별도 검사했다. 계산 로직은 기존 함수 그대로이고 export만 추가했다.
+- 낙찰자 식별자를 인라인 onclick에 넣지 않고 data 속성과 이벤트 연결로 취급한다. 따옴표/꺾쇠 식별자의 선택 회귀도 통과했다.
+- 집중 `node --test test/shipping-status-interaction.test.js test/print-shipping-summary.test.js test/shipping-interaction.test.js`: 25개 통과. 실패·재시도·응답 순서·부분 렌더 실패·초점·문자열·원 단위/0원/레거시 표시를 포함한다.
+- 최종 `npm test` 1,404개, `npm run check`, PC `python -m unittest discover -p "test*.py"` 270개 통과. 로그: `site-shipping-status-tests.log`, `site-shipping-status-check.log`, 상위 `scratch/site-shipping-status-desktop.log`. 구현/검사 UTF-8과 `git diff --check` 확인.
+- 실제 격리된 localhost 프록시에서 workspace GET만 503으로 바꿔 실패 화면을 확인했다. 오류를 해제한 뒤 ‘다시 불러오기’를 클릭하자 현재 3개체 목록·검색창 초점이 복구됐다. 상세 heading→다른 낙찰자→검색창 초점, 업체 B 검색→100,000원, PC 두 업체 목록과 빈 변경내역/알림 상태를 확인했다. 실제 낙찰·결제·발송은 수행하지 않았다.
+- 그림: 상위 `scratch/national-session-20261019/site-shipping-status-error-320.png`, `site-shipping-status-recovered-320.png`, `site-shipping-status-company-desktop.png`. 후속 보완: 실제 휴대폰/Safari, 200% 확대, 스크린리더 음성은 Not verified. 현재 범위에서 재현한 HIGH 항목은 수정·검증됐다.
+
+판정: 배송 전체조회에서 확인한 범위는 Approve. 배포 후 운영 GET 비교를 수행한다. 전체 사이트의 나머지 흐름은 첫 표대로 계속 검증하며 전체 사이트에 대한 Approve 판정은 아직 하지 않는다.

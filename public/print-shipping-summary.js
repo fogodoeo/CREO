@@ -261,6 +261,7 @@
     }
 
     return {
+        itemWon: itemWon,
         bundleKey: bundleKey,
         formatKoreanDateTime: formatKoreanDateTime,
         groupBundles: groupBundles,
