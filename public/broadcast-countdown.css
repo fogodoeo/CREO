@@ -1,9 +1,13 @@
 #stage .auction-countdown{
  position:absolute;z-index:12;display:flex;align-items:center;gap:.5em;
- padding:.32em .7em;border:1px solid #ffffff80;border-radius:99px;
- color:#fffefb;background:#172232f2;font-weight:800;line-height:1.2;
+ padding:.32em .65em;border:2px solid #ffdfae;border-radius:.18em;
+ color:#fffefb;background:#8e202b;font-weight:900;line-height:1.2;
  white-space:nowrap;pointer-events:none;letter-spacing:-.02em;
- box-shadow:0 2px 8px #0003;
+ box-shadow:0 3px 12px #0005;
 }
 #stage .auction-countdown[hidden]{display:none}
 #stage .auction-countdown-light{flex:none;width:.48em;height:.48em;border-radius:50%;background:#ffcd70;box-shadow:0 0 0 .15em #ffcd7024}
+@media(prefers-reduced-motion:no-preference){
+ #stage .auction-countdown-light{animation:countdown-signal 1.6s ease-in-out infinite}
+ @keyframes countdown-signal{50%{opacity:.55;transform:scale(.85)}}
+}

@@ -446,11 +446,11 @@
         }
         .label-paper-buyer { left:36.11%; top:3.33%; width:61.11%; height:17.22%; }
         .label-paper-phone { left:36.11%; top:21.94%; width:61.11%; height:7.5%; white-space:nowrap; }
-        .label-paper-region { left:2.78%; top:33.33%; width:94.44%; height:8.61%; white-space:nowrap; }
-        .label-paper-destination { left:2.78%; top:44.17%; width:94.44%; height:15%; white-space:nowrap; }
-        .label-paper-rule { position:absolute; left:2.78%; top:85.28%; width:94.44%; border-top:1px solid #000; }
-        .label-paper-bundle { left:2.78%; top:88.06%; width:94.44%; height:9.44%; white-space:nowrap; }
-        .label-paper .label-paper-lots { left:2.78%; top:63.89%; width:94.44%; height:18.06%; align-items:flex-start; }
+        .label-paper-region { left:2.78%; top:70.28%; width:94.44%; height:8.61%; white-space:nowrap; }
+        .label-paper-destination { left:2.78%; top:81.39%; width:94.44%; height:15%; white-space:nowrap; }
+        .label-paper-rule { position:absolute; left:2.78%; top:66.94%; width:94.44%; border-top:1px solid #000; }
+        .label-paper-bundle { left:2.78%; top:55%; width:94.44%; height:9.44%; white-space:nowrap; }
+        .label-paper .label-paper-lots { left:2.78%; top:33.33%; width:94.44%; height:18.06%; align-items:flex-start; }
         .label-paper-lots > span { display:flex; flex-direction:column; gap:1.04cqw; }
         .label-lot-row { display:flex; flex-wrap:wrap; gap:1.04cqw; }
         .label-lot-chip, .label-lot-remainder { display:inline-flex; flex:none; align-items:center; padding:.35cqw 1.04cqw; border:.35cqw solid transparent; line-height:.78; white-space:nowrap; }
@@ -1359,11 +1359,11 @@
                 + '<div class="label-paper-header" data-label-size="76"><span>' + escapePrintHtml(payload.lot_number || '배송') + '</span></div>'
                 + '<div class="label-paper-buyer" data-label-size="62"><span>' + escapePrintHtml(payload.winner_name || '낙찰자 미입력') + '</span></div>'
                 + '<div class="label-paper-phone" data-label-size="31"><span>' + escapePrintHtml(fmtPhone(payload.winner_phone) || '연락처 미입력') + '</span></div>'
+                + '<div class="label-paper-lots" data-label-size="36"><span>' + shippingLabelLotChipsHtml(group ? group[2] : '', payload.lot_number) + '</span></div>'
+                + '<div class="label-paper-bundle" data-label-size="34"><span>' + escapePrintHtml(route.carrier ? route.carrier + ' · ' : '') + (group ? '합배송 ' + escapePrintHtml(group[1]) + '마리' : /^단독/.test(payload.bundle_summary || '') ? '단독배송' : '합배송 미확인') + '</span></div>'
+                + '<div class="label-paper-rule"></div>'
                 + '<div class="label-paper-region" data-label-size="34"><span>' + escapePrintHtml(route.region) + '</span></div>'
                 + '<div class="label-paper-destination" data-label-size="48"><span>' + escapePrintHtml(route.shop) + '</span></div>'
-                + '<div class="label-paper-rule"></div>'
-                + '<div class="label-paper-bundle" data-label-size="34"><span>' + escapePrintHtml(route.carrier ? route.carrier + ' · ' : '') + (group ? '합배송 ' + escapePrintHtml(group[1]) + '마리' : /^단독/.test(payload.bundle_summary || '') ? '단독배송' : '합배송 미확인') + '</span></div>'
-                + '<div class="label-paper-lots" data-label-size="36"><span>' + shippingLabelLotChipsHtml(group ? group[2] : '', payload.lot_number) + '</span></div>'
                 + '</div>';
             counter.textContent = (position + 1) + ' / ' + indexes.length + (selectedShippingLabelItems().length ? ' · 선택 라벨' : ' · 출력 가능');
             stage.innerHTML += '<div class="label-preview-bundle">' + shippingLabelBundleHtml(items[activeIndex]) + '</div>';
