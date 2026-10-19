@@ -1,0 +1,13 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>파르게 일괄 접수 · CREO</title>
+<script src="/platform-client.js"></script><script src="/channel-runtime.js"></script><script src="/operator-pipeline.js"></script><script src="/mobile-phone.js"></script><script src="/parge-dispatch-core.js"></script>
+<link rel="stylesheet" href="/parge-dispatch.css"></head><body><creo-operator-pipeline current="shipping"></creo-operator-pipeline><main>
+<a id="back" href="/shipping.html">배송 관리로</a><h1>파르게 일괄 접수</h1><p class="muted">출발지 · 크레오 대구본점 <span>010-5002-9163</span></p>
+<form id="login" hidden><label for="password">운영자 비밀번호</label><input id="password" type="password" autocomplete="current-password" required><button>로그인</button></form>
+<section id="app" hidden><div class="controls"><label>방송일<select id="broadcast-date"><option value="">전체</option></select></label><label>파르게 맡김일<input id="handover-date" type="date" required></label><button id="refresh" type="button">새로고침</button></div>
+<p id="count" role="status"></p><div class="controls"><label class="check"><input id="all" type="checkbox"> 접수 가능 건 전체 선택</label><span class="muted">결제 완료 건을 기본 선택해요.</span></div>
+<div id="rows"></div><details id="excluded"><summary>제외된 개체</summary><ul></ul></details>
+<div class="actions"><button class="primary" id="export" type="button">선택한 건 파르게에 담기</button><a href="https://parge.co.kr/booking" target="_blank" rel="noopener">파르게 열기</a></div>
+<p class="muted">같은 낙찰자·같은 도착지는 마릿수로 묶어요. 분양가는 낙찰금 합계, 요청사항은 <b>전크자</b>로 입력해요.</p>
+<h2>담은 내역</h2><p class="muted">장바구니는 예약 완료가 아니에요. 파르게 새로고침으로 비워졌다면 아래에서 확인 후 다시 담을 수 있어요.</p><div id="history"></div>
+<details><summary>처음 한 번 · 자동 입력 도구 설치</summary><ol><li><a href="/downloads/creo-parge-helper.zip" download>입력 도구 내려받기</a> 후 압축을 풀어요.</li><li>Chrome 확장 프로그램 관리에서 개발자 모드를 켜고 ‘압축해제된 확장 프로그램을 로드합니다’로 폴더를 선택해요.</li><li>Chrome에서 이 페이지와 로그인한 파르게 배송신청 탭을 열어요. 이 페이지를 새로고침하면 바로 담을 수 있어요.</li></ol><p>도구는 CREO 배송 페이지와 파르게 입력 화면만 연결해요. 비밀번호를 저장하지 않으며, 결제는 직접 확인해요.</p></details>
+</section><p id="error" role="alert"></p></main><script src="/parge-dispatch.js"></script></body></html>

@@ -1095,6 +1095,13 @@ function createPlatformApi({
     if (!repository) throw new Error('repository is required');
     const testDeliveryChannels = new Set(String(checkoutTestDeliveryChannels).split(',').map(id => id.trim()).filter(id => /^checkout-test-[a-f0-9]{16}$/.test(id)));
     const vendorDirectory = require('./vendor-directory').createVendorDirectory(repository);
+    const pargeDispatch = require('./parge-dispatch').createPargeDispatch({
+        read: async id => (await repository.getRecord(id,'setting','parge-dispatch'))?.records || [],
+        write: (id,records) => repository.upsertRows([{key:channelKey(id,'setting','parge-dispatch'),value:JSON.stringify({id:'parge-dispatch',channelId:id,records})}]),
+        workspace,
+        shops: async () => require('./public/parge-dispatch-core').shopNames(await pargeRates()),
+        lock: (id,work) => withMutationLock(`channel:${id}`,work)
+    });
     const saveVendorLogo = require('./vendor-logo').createVendorLogo(vendorLogoStorage);
     const vendorEntries = require('./vendor-entries').createVendorEntries(repository, {
         resolveMediaUrl: value => entryPhotoStorage ? entryPhotoStorage.resolve(value) : value,
@@ -5673,6 +5680,13 @@ function createPlatformApi({
                 return true;
             }
 
+            if (segments.length === 3 && segments[2] === 'parge-dispatch') {
+                if (!await requireAdmin(req,res)) return true;
+                if (method === 'GET') replyJson(res,200,{records:await pargeDispatch.list(channelId)});
+                else if (method === 'POST') replyJson(res,200,{record:await pargeDispatch.command(channelId,await readJson(req))});
+                else replyJson(res,405,{error:'Method not allowed'});
+                return true;
+            }
             const type = segments[2]?.replace(/s$/, '');
             if (segments[2] !== 'archives' && !TYPES.has(type)) {
                 replyJson(res, 404, { error: 'Not found' });

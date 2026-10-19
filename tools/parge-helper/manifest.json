@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "CREO 파르게 일괄 입력",
+  "version": "1.0.0",
+  "description": "CREO 관리페이지에서 선택한 배송을 파르게에 입력하고 장바구니를 확인합니다. 결제는 직접 진행합니다.",
+  "permissions": [
+    "scripting",
+    "storage"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "파르게 일괄 입력"
+  },
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAogmIqyuRcJZTojgXYODbXXF/rqhbxaQVqfOElTPrcsa2bZaFNn5zWapM15ryL0d+NyqkIX4iU+LPt2qk6ZgZ4fH1qC8vegsiFtFFdB6ki5/EV8f3hx3yFJaEYZk7pNv8M19U02TqcXwce8Lq5bvTne0vgGWzLVgyIhRD1n4/KXXSP170UHj9FbKKgWMii7lzFR/V0zdtdvHVFajay8DQiX6mTrnunDkHf57TZtEPZ0IYK/dpbELs01n5TmAvAEBh72QGFXTg4ie98Ey5pgKu8eWROLn4o8KIpaubglL2jxxVIy1g6D1NpTgzRS8wRxSx46O+avvR/Al6n2tnsWjMtwIDAQAB",
+  "host_permissions": [
+    "https://parge.co.kr/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://creok.onrender.com/parge-dispatch.html*"
+      ],
+      "js": [
+        "bridge.js"
+      ]
+    }
+  ]
+}
