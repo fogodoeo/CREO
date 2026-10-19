@@ -27,6 +27,13 @@ async function main(){
  const server=http.createServer(async(req,res)=>{try{
   const url=new URL(req.url,origin);req.headers['x-creo-admin']=f.secret;
   if(url.pathname.startsWith('/api/')&&await f.api.handle(req,res,url))return;
+  if(url.pathname==='/__audit'){
+   const page=url.searchParams.get('page')||'/main?channel=national-cre',width=Math.max(320,Math.min(1600,Number(url.searchParams.get('width'))||390));
+   if(!page.startsWith('/')||page.startsWith('//')){res.writeHead(400);res.end('Local page required');return;}
+   res.writeHead(200,{'Content-Type':'text/html; charset=utf-8'});
+   const src=page.replaceAll('&','&amp;').replaceAll('"','&quot;').replaceAll('<','&lt;');
+   res.end(`<html lang="ko"><title>${width}px local audit</title><body style="margin:0;background:#ddd"><iframe title="${width}px local audit" style="width:${width}px;height:700px;border:0;background:white" src="${src}"></iframe></body></html>`);return;
+  }
   if(url.pathname==='/__narrow'){res.writeHead(200,{'Content-Type':'text/html; charset=utf-8'});res.end('<html lang="ko"><title>320px 운영 홈 검증</title><body style="margin:0"><iframe title="320px 운영 홈" style="width:320px;height:1100px;border:0" src="/main?channel=clab-1015"></iframe></body></html>');return;}
   const file=path.resolve(root,'.'+(url.pathname==='/main'?'/index.html':url.pathname==='/roulette/'?'/roulette/index.html':url.pathname));
   if(!file.startsWith(root+path.sep)||!fs.existsSync(file)||!fs.statSync(file).isFile()){res.writeHead(404);res.end('Not found');return;}

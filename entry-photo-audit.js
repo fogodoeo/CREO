@@ -45,10 +45,11 @@ function createEntryPhotoAudit({repository,decodeBuyerRecord,now=Date.now,maxRow
   async function pass(consume){
    const hash=crypto.createHash('sha256');
    for(const prefix of ['vendor_directory_v1','vendor_entries_v1::','creo_v2::']){
-    let after='';
+    let after='';const cursors=new Set();
     do{
      const page=await repository.scanRowsByPrefix(prefix,{after,limit:250});
-     if(!Array.isArray(page.rows)||page.rows.length>250||(page.nextCursor&&page.nextCursor<=after))throw fail();
+     if(!Array.isArray(page.rows)||page.rows.length>250||(page.nextCursor&&cursors.has(page.nextCursor)))throw fail();
+     if(page.nextCursor)cursors.add(page.nextCursor);
      for(const row of page.rows){
       scanned++;bytes+=Buffer.byteLength(row.value||'');if(scanned>maxRows||bytes>maxBytes||now()-started>30000)throw fail();
       if(!relevant(row.key))continue;

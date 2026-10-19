@@ -149,20 +149,23 @@ class SQLitePlatformRepository {
     }
 
     async scanRowsByPrefix(prefix, options = {}) {
-        const {scanOptions,pageRows}=require('./repository-scan');
-        const {after,limit,upper}=scanOptions(prefix,options);
-        const local=pageRows(this.db.prepare('SELECT key,value FROM platform_kv WHERE key >= ? AND key < ? AND key > ? ORDER BY key LIMIT ?').all(prefix,upper,after,limit+1),limit);
-        if(!this.mirror)return local;
+        const {scanOptions,pageRows,mirrorCursor,readMirrorCursor}=require('./repository-scan');
+        const position=this.mirror?readMirrorCursor(prefix,options.after):{phase:'local',key:options.after??''};
+        const {after,limit,upper}=scanOptions(prefix,{...options,after:position.key});
+        if(position.phase==='local'){
+            const local=pageRows(this.db.prepare('SELECT key,value FROM platform_kv WHERE key >= ? AND key < ? AND key > ? ORDER BY key LIMIT ?').all(prefix,upper,after,limit+1),limit);
+            if(!this.mirror)return local;
+            if(!this.mirror.scanRowsByPrefix)throw new Error('Mirror inventory is unavailable');
+            return {rows:local.rows,nextCursor:mirrorCursor(prefix,local.nextCursor?'local':'remote',local.nextCursor||'')};
+        }
         if(!this.mirror.scanRowsByPrefix)throw new Error('Mirror inventory is unavailable');
-        // Include cold remote keys, but preserve local edits and deletion marks.
-        // Unlike recovery reads, an unavailable mirror must not look like zero use.
+        // Inspect cold remote keys after the local pass. Skip local rows already
+        // included and deletion marks, without assuming both stores sort alike.
+        // A failed mirror still fails the scan; it cannot produce complete totals.
         const remote=await this.mirror.scanRowsByPrefix(prefix,{after,limit});
-        const boundaries=[local.nextCursor,remote.nextCursor].filter(Boolean).sort();
-        const boundary=boundaries[0]||null,merged=new Map(remote.rows.map(row=>[row.key,row]));
-        for(const row of local.rows)merged.set(row.key,row);
-        const rows=[...merged.values()].filter(row=>(!boundary||row.key<=boundary)&&!this.statements.deleted.get(row.key)).sort((a,b)=>a.key<b.key?-1:a.key>b.key?1:0);
-        const page=pageRows(rows,limit);
-        return {rows:page.rows,nextCursor:page.nextCursor||boundary};
+        if(!Array.isArray(remote.rows)||remote.rows.length>limit||(remote.nextCursor&&remote.nextCursor===after))throw new Error('Invalid inventory response');
+        const rows=remote.rows.filter(row=>!this.statements.get.get(row.key)&&!this.statements.deleted.get(row.key));
+        return {rows,nextCursor:remote.nextCursor?mirrorCursor(prefix,'remote',remote.nextCursor):null};
     }
 
     async getRow(key) {

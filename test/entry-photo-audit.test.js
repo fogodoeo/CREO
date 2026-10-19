@@ -51,17 +51,27 @@ test('SQLite cursor scan merges cold mirror keys, local edits and deletion marks
  const before=repository.db.prepare('SELECT * FROM platform_kv ORDER BY key').all();let after='',result=[],pages=0;
  do{const page=await repository.scanRowsByPrefix('prefix::',{after,limit:2});result.push(...page.rows);after=page.nextCursor;assert.ok(++pages<30);}while(after);
  const expected=[...remote].filter(([k])=>!['00','01','02','04','05','06'].some(n=>k==='prefix::'+n)).map(([key,value])=>({key,value:key==='prefix::03'?'local-edit':value})).concat([{key:'prefix::05a',value:'local-add'},{key:'prefix::90',value:'local-last'}]).sort((a,b)=>a.key.localeCompare(b.key));
- assert.deepEqual(result.map(row=>({...row})),expected);assert.deepEqual(repository.db.prepare('SELECT * FROM platform_kv ORDER BY key').all(),before);
- mirror.scanRowsByPrefix=async()=>{throw Error('offline')};await assert.rejects(repository.scanRowsByPrefix('prefix::'),/offline/);
+ assert.deepEqual(result.map(row=>({...row})).sort((a,b)=>a.key.localeCompare(b.key)),expected);assert.equal(new Set(result.map(r=>r.key)).size,result.length);assert.deepEqual(repository.db.prepare('SELECT * FROM platform_kv ORDER BY key').all(),before);
+ mirror.scanRowsByPrefix=async()=>{throw Error('offline')};const local=await repository.scanRowsByPrefix('prefix::');await assert.rejects(repository.scanRowsByPrefix('prefix::',{after:local.nextCursor}),/offline/);
 });
 test('Supabase inventory uses an ordered cursor and rejects corrupted protected rows instead of skipping them',async()=>{
  const secret='local-signing',rows=['a','b','c'].map(id=>({key:'creo_v2::'+id,value:protectStoredValue('creo_v2::'+id,JSON.stringify({id}),secret)}));let bad=false,queries=[];
  const repository=new SupabaseConfigRepository({url:'https://isolated.supabase.co',key:'fake',integritySecret:secret,fetchImpl:async(url,options)=>{assert.equal(options.method,undefined);assert.ok(options.signal);const query=new URL(url).searchParams;queries.push(query);let data=rows.filter(row=>!query.getAll('key').some(v=>v.startsWith('gt.')&&row.key<=v.slice(3))).slice(0,Number(query.get('limit')));if(bad)data=[{...data[0],value:'bad-signature'}];return new Response(JSON.stringify(data));}});
- let page=await repository.scanRowsByPrefix('creo_v2::',{limit:2});assert.equal(page.nextCursor,'creo_v2::b');assert.equal(page.rows.length,2);page=await repository.scanRowsByPrefix('creo_v2::',{limit:2,after:page.nextCursor});assert.equal(page.rows[0].key,'creo_v2::c');assert.equal(page.nextCursor,null);assert.ok(queries[0].getAll('key').includes('gte.creo_v2::'));
+ let page=await repository.scanRowsByPrefix('creo_v2::',{limit:2});assert.equal(page.nextCursor,'creo_v2::b');assert.equal(page.rows.length,2);page=await repository.scanRowsByPrefix('creo_v2::',{limit:2,after:page.nextCursor});assert.equal(page.rows[0].key,'creo_v2::c');assert.equal(page.nextCursor,null);assert.ok(queries[0].getAll('key').includes('like.creo\\_v2::*'));
  bad=true;await assert.rejects(repository.scanRowsByPrefix('creo_v2::'),/integrity/);await assert.rejects(repository.scanRowsByPrefix('creo_v2::',{after:'other::'}),/cursor/);
 });
 test('photo usage API requires operator authorization and never exposes write actions',async t=>{
  const repository=fixture(t);await seed(repository);const {createPlatformApi}=require('../platform-api');const api=createPlatformApi({repository,buyerAccountConfig:{enabled:false,secret:'local-only-photo-record-secret'},logger:{error(){}}});
  async function call(method,admin=false){const req=Readable.from([]);req.method=method;req.headers=admin?{'x-creo-admin':'local-admin'}:{};req.socket={remoteAddress:'127.0.0.1'};const res={writeHead(status,headers){this.status=status;this.headers=headers},end(body){this.body=body}};await api.handle(req,res,new URL('https://example.test/api/platform/entry-photo-usage'));return res;}
  assert.equal((await call('GET')).status,401);const response=await call('GET',true);assert.equal(response.status,200,response.body);assert.equal(JSON.parse(response.body).totals.photoCount,4);assert.match(response.headers['Cache-Control'],/no-store/);assert.equal((await call('POST',true)).status,405);assert.equal((await call('DELETE',true)).status,405);
+});
+
+test('photo audit completes both passes over opaque mixed-collation mirror cursors',async t=>{
+ const repository=fixture(t),{auth}=await seed(repository),before=await createEntryPhotoAudit({repository,decodeBuyerRecord:auth.decodeRow}).inspect();
+ const remote=repository.db.prepare('SELECT key,value FROM platform_kv').all();repository.db.exec('DELETE FROM platform_kv');
+ const compare=new Intl.Collator('en').compare;
+ repository.mirror={async scanRowsByPrefix(prefix,{after,limit}){const rows=remote.filter(row=>row.key.startsWith(prefix)&&(!after||compare(row.key,after)>0)).sort((a,b)=>compare(a.key,b.key));return {rows:rows.slice(0,limit),nextCursor:rows.length>limit?rows[limit-1].key:null};}};
+ const result=await createEntryPhotoAudit({repository,decodeBuyerRecord:auth.decodeRow}).inspect();
+ assert.equal(result.referenceScanComplete,true);assert.equal(result.consistent,true);assert.deepEqual(result.totals,before.totals);
+ assert.equal(repository.db.prepare('SELECT COUNT(*) AS n FROM platform_kv').get().n,0,'inspection does not warm the cache');
 });

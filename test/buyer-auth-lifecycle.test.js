@@ -118,6 +118,21 @@ test('cleanup coalesces concurrent scans, retains changed rows, and retries stor
  f.repository.deleteRow=remove;assert.equal((await f.auth.cleanupExpired()).removed,1);
 });
 
+test('cleanup traverses opaque mirror cursors and cold mixed-case tokens without touching live sessions',async t=>{
+ const f=await fixture(t),jar=await f.login(),compare=new Intl.Collator('en').compare;
+ const rows=Array.from({length:61},(_,i)=>f.auth.row(ROOT+'state::'+crypto.createHash('sha256').update('cold-'+i).digest('base64url'),{expiresAt:f.now()-2*86400000}));
+ const remote=new Map(rows.map(row=>[row.key,row.value]));
+ f.repository.mirror={
+  async scanRowsByPrefix(prefix,{after,limit}){const rows=[...remote].filter(([key])=>key.startsWith(prefix)&&(!after||compare(key,after)>0)).sort(([a],[b])=>compare(a,b)).map(([key,value])=>({key,value}));return {rows:rows.slice(0,limit),nextCursor:rows.length>limit?rows[limit-1].key:null};},
+  async getRowsByKeys(keys){return keys.filter(key=>remote.has(key)).map(key=>({key,value:remote.get(key)}));}
+ };
+ let total=0,more=true;
+ for(let i=0;more&&i<12;i++){const result=await f.auth.cleanupExpired();assert.ok(result.removed<=25);assert.ok(result.scanned<=25);total+=result.removed;more=result.more;}
+ assert.equal(more,false);assert.equal(total,61);
+ assert.equal((await f.call('GET','session',{jar})).json().authenticated,true);
+ for(let i=0;i<6;i++)assert.equal((await f.auth.cleanupExpired()).removed,0,'tombstones prevent stale remote replay');
+});
+
 test('auth maintenance never overlaps, recovers after failure and drains before repository shutdown',async()=>{
  let callback,release,calls=0,cancelled=false,warnings=0;const gate=new Promise(r=>release=r);
  const worker=createBuyerAuthMaintenance({cleanup:async()=>{calls++;if(calls===1)await gate;else throw Error('isolated failure')},schedule:fn=>{callback=fn;return {unref(){}}},cancel:()=>{cancelled=true},logger:{warn(){warnings++}}});

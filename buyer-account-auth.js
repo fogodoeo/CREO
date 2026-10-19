@@ -86,11 +86,10 @@ function createBuyerAccountAuth({repository,config=configFromEnv(),fetchImpl=glo
   if(!enabled)return {enabled:false,scanned:0,removed:0,invalid:0};
   if(cleanupPending)return cleanupPending;
   cleanupPending=(async()=>{
-   const page=await repository.scanRowsByPrefix(ROOT,{after:cleanupCursor,limit:100}),cutoff=now()-86400000;
-   let scanned=0,removed=0,invalid=0,lastKey='';
+   const page=await repository.scanRowsByPrefix(ROOT,{after:cleanupCursor,limit:25}),cutoff=now()-86400000;
+   let scanned=0,removed=0,invalid=0;
    for(const candidate of page.rows){
-    if(removed>=25)break;
-    scanned++;lastKey=candidate.key;
+    scanned++;
     if(!new RegExp('^'+ROOT+'(?:state|session)::[A-Za-z0-9_-]{43}$').test(candidate.key))continue;
     let value;try{value=unseal(candidate.key,candidate.value)}catch{invalid++;continue;}
     if(!Number.isFinite(value.expiresAt)||value.expiresAt>cutoff)continue;
@@ -101,7 +100,7 @@ function createBuyerAccountAuth({repository,config=configFromEnv(),fetchImpl=glo
     });
     await new Promise(resolve=>setImmediate(resolve));
    }
-   cleanupCursor=scanned<page.rows.length?lastKey:page.nextCursor||'';
+   cleanupCursor=page.nextCursor||'';
    return {enabled:true,scanned,removed,invalid,more:Boolean(cleanupCursor)};
   })();
   try{return await cleanupPending}finally{cleanupPending=null;}
