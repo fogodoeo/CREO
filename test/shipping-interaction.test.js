@@ -22,3 +22,18 @@ test('closing the editor clears selection and restores focus without saving',()=
  const context=vm.createContext({document,activeEditorWinner:'isolated-key',closeMobileShippingView:name=>historyClosed=name});vm.runInContext(functionSource('closeWinnerEditor','syncEditorHubClearButton'),context);vm.runInContext('closeWinnerEditor()',context);
  assert.equal(focused,true);assert.equal(card.getAttribute('aria-expanded'),'false');assert.equal(document.getElementById('winner-edit-modal').style.display,'none');assert.equal(context.activeEditorWinner,null);assert.equal(historyClosed,'editor');
 });
+test('company names containing quotes and markup remain literal selectable labels',()=>{
+ const {document}=parseHTML(html),company='O\'Brien "샵" <img src=x> & 크레';let selected='';
+ const context={document,uniqueSellerCompanies:[company],localStorage:{getItem:()=>null},SHIPPING_COMPANY_STORAGE_KEY:'isolated',activeSellerCompany:'',tempSelectedCompany:'',updateConfirmButtonState(){},updateCurrentCompanyBar(){},clickModalCompanyItem:name=>selected=name};
+ vm.runInNewContext(functionSource('populateCompanySelect','clickModalCompanyItem')+'\npopulateCompanySelect();',context);
+ const button=document.querySelector('.company-select-item');assert.equal(button.getAttribute('onclick'),null);assert.equal(button.querySelector('img'),null);assert.equal(button.textContent.trim(),company);assert.equal(button.dataset.co,company);button.click();assert.equal(selected,company);
+});
+test('company selection uses a modal dialog and closes its mobile history once on cancellation',()=>{
+ const {document,Event}=parseHTML(html),modal=document.getElementById('company-select-modal');assert.equal(modal.tagName,'DIALOG');assert.equal(modal.getAttribute('aria-labelledby'),'shipping-company-dialog-title');
+ const company=document.createElement('button');company.className='company-select-item active';company.dataset.co='가상 업체';company.setAttribute('aria-pressed','true');document.getElementById('modal-company-list').append(company);
+ let opened=0,closed=0,focused=0,pushed=0,popped=0;modal.open=false;modal.showModal=()=>{modal.open=true;opened++};modal.close=()=>{modal.open=false;closed++};company.focus=()=>focused++;
+ const context=vm.createContext({document,tempSelectedCompany:'가상 업체',updateConfirmButtonState(){},pushMobileShippingView:()=>pushed++,closeMobileShippingView:()=>popped++});
+ vm.runInContext(functionSource('openCompanySelectModal','onCompanySelectChange'),context);context.openCompanySelectModal();context.openCompanySelectModal();assert.equal(opened,1);assert.equal(pushed,1);assert.equal(focused,1);assert.equal(company.getAttribute('aria-pressed'),'false');assert.equal(context.tempSelectedCompany,'');
+ const cancel=new Event('cancel',{cancelable:true});modal.dispatchEvent(cancel);assert.equal(cancel.defaultPrevented,true);assert.equal(closed,1);assert.equal(popped,1);assert.equal(modal.open,false);assert.equal(modal.style.display,'none');context.closeCompanySelectModal();assert.equal(popped,1);
+ context.openCompanySelectModal();context.closeCompanySelectModal(true);assert.equal(popped,1,'a browser Back must not close history twice');
+});

@@ -1873,7 +1873,7 @@
 
 
 
-        /* 업체 선택 팝업 모달 2열 Grid (모바일 포함 강제 2열 고정) */
+        /* 업체 선택: 넓은 화면 2열, 좁은 화면 1열 */
         .company-select-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -1886,6 +1886,9 @@
         /* 업체 선택 팝업 모달 아이템 */
         .company-select-item {
             width: 100%;
+            min-width: 0;
+            word-break: keep-all;
+            overflow-wrap: anywhere;
             padding: 16px 20px;
             border-radius: 12px;
             border: 1.5px solid #E2E8F0;
@@ -1913,6 +1916,10 @@
             border-color: var(--accent);
             color: #FFFFFF;
             box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+        }
+        @media (max-width: 480px) {
+            .company-select-grid { grid-template-columns: minmax(0, 1fr); }
+            .company-select-item { min-height: 52px; padding: 12px 16px; }
         }
 
         /* 전화/문자 연동 아이콘 버튼 */
@@ -2039,9 +2046,11 @@
         .editor-save-action:hover { border-color:#60A5FA; background:#DBEAFE; }
         .shipping-admin-login { margin-left:auto; height:36px; padding:0 12px; border:1px solid #D4D4D8; border-radius:9px; background:#FFF; color:#3F3F46; font-family:inherit; font-size:11px; font-weight:850; cursor:pointer; }
         .shipping-admin-login:hover { border-color:#A1A1AA; background:#FAFAFA; }
-        .company-dialog-head { display:grid; grid-template-columns:36px minmax(0,1fr) 36px; align-items:center; margin-bottom:18px; }
+        #company-select-modal { margin:0; width:100%; max-width:none; height:100%; max-height:none; padding:0; border:0; color:inherit; }
+        #company-select-modal::backdrop { background:transparent; }
+        .company-dialog-head { display:grid; grid-template-columns:44px minmax(0,1fr) 44px; align-items:center; gap:8px; margin-bottom:18px; }
         .company-dialog-head h3 { margin:0; text-align:center; }
-        .company-admin-key { display:grid; width:36px; height:36px; padding:0; place-items:center; border:1px solid #D4D4D8; border-radius:10px; background:#FFF; color:#52525B; cursor:pointer; }
+        .company-admin-key { display:grid; width:44px; height:44px; padding:0; place-items:center; border:1px solid #D4D4D8; border-radius:10px; background:#FFF; color:#52525B; cursor:pointer; }
         .company-admin-key:hover { border-color:#A1A1AA; background:#FAFAFA; color:#18181B; }
         .company-admin-key svg { width:19px; height:19px; fill:currentColor; }
         .shipping-admin-modal { position:fixed; inset:0; z-index:2500; display:grid; place-items:center; padding:18px; background:rgba(24,24,27,.48); backdrop-filter:blur(6px); }
@@ -2113,11 +2122,10 @@
             </details>
 
             <!-- 업체 선택 전용 팝업 모달 (사이즈 확장 및 2열 그리드화) -->
-            <div id="company-select-modal" class="modal-overlay" onclick="if(event.target===this) closeCompanySelectModal()" style="display: none; align-items: center; justify-content: center; z-index: 2000; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px);">
-                <button type="button" aria-label="업체 선택 취소" onclick="closeCompanySelectModal()" style="position:absolute;left:0;right:0;top:0;height:5vh;border:0;background:transparent;cursor:default;"></button>
+            <dialog id="company-select-modal" class="modal-overlay" aria-labelledby="shipping-company-dialog-title" onclick="if(event.target===this) closeCompanySelectModal()" style="display: none; align-items: center; justify-content: center; z-index: 2000; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px);">
                 <div class="modal-content" style="position:relative;z-index:1;max-width: 680px; width: 90%; padding: 32px; border-radius: 24px; background: #FFFFFF; box-shadow: var(--shadow-md); display: flex; flex-direction: column; max-height: 90vh;">
                     <div class="company-dialog-head">
-                        <span aria-hidden="true"></span>
+                        <button type="button" class="company-admin-key" aria-label="업체 선택 취소" onclick="closeCompanySelectModal()"><span aria-hidden="true">×</span></button>
                         <h3 id="shipping-company-dialog-title" style="font-size:22px;font-weight:850;color:var(--text-title);">배송관리</h3>
                         <button class="company-admin-key" type="button" onclick="openAdminFromCompanyModal()" aria-label="관리자 로그인" title="관리자 로그인">
                             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 14a5 5 0 1 1 4.58-7H22v4h-2v3h-4v-3h-4.42A5 5 0 0 1 7 14Zm0-2a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></svg>
@@ -2133,7 +2141,7 @@
                         </button>
                     </div>
                 </div>
-            </div>
+            </dialog>
 
             <div class="admin-workspace">
                 <section class="winner-column" aria-label="낙찰자 목록">
@@ -2904,13 +2912,18 @@
             // 처음 팝업 생성 시에는 선택 없음(비활성)으로 초기 설정
             tempSelectedCompany = '';
 
-            listContainer.innerHTML = uniqueSellerCompanies.map(co => {
-                return `
-                    <button type="button" class="company-select-item" data-co="${co}" onclick="clickModalCompanyItem('${co}')" style="justify-content: center; text-align: center;">
-                        <span>${co}</span>
-                    </button>
-                `;
-            }).join('');
+            listContainer.replaceChildren(...uniqueSellerCompanies.map(co => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'company-select-item';
+                button.dataset.co = co;
+                button.setAttribute('aria-pressed', 'false');
+                button.textContent = co;
+                button.style.justifyContent = 'center';
+                button.style.textAlign = 'center';
+                button.onclick = () => clickModalCompanyItem(co);
+                return button;
+            }));
             
             updateConfirmButtonState();
             updateCurrentCompanyBar();
@@ -2923,6 +2936,7 @@
             items.forEach(item => {
                 const itemCo = item.getAttribute('data-co');
                 item.classList.toggle('active', itemCo === co);
+                item.setAttribute('aria-pressed', String(itemCo === co));
             });
 
             updateConfirmButtonState();
@@ -3000,26 +3014,34 @@
 
         function openCompanySelectModal() {
             const modal = document.getElementById('company-select-modal');
-            if (modal) {
+            if (modal && !modal.open) {
                 tempSelectedCompany = '';
                 const items = document.querySelectorAll('.company-select-item');
-                items.forEach(item => item.classList.remove('active'));
+                items.forEach(item => { item.classList.remove('active'); item.setAttribute('aria-pressed', 'false'); });
                 updateConfirmButtonState();
                 
                 modal.style.display = 'flex';
                 modal.classList.add('active');
+                modal.showModal();
+                modal.querySelector('.company-select-item')?.focus();
                 pushMobileShippingView('company-select');
             }
         }
 
         function closeCompanySelectModal(fromHistory = false) {
             const modal = document.getElementById('company-select-modal');
-            if (modal) {
+            if (modal?.open) {
+                modal.close();
                 modal.style.display = 'none';
                 modal.classList.remove('active');
                 if (!fromHistory) closeMobileShippingView('company-select');
             }
         }
+
+        document.getElementById('company-select-modal').addEventListener('cancel', event => {
+            event.preventDefault();
+            closeCompanySelectModal();
+        });
 
         function onCompanySelectChange() {}
         function clearCompanyFilter() {}
