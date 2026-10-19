@@ -35,6 +35,19 @@ test('operator pipeline aliases map old page language onto the four canonical st
     assert.equal(Pipeline.model('x', 'shipping'), null);
 });
 
+test('pipeline follows channel lifecycle and feature permissions without losing archive identity',t=>{
+    const old=global.location;t.after(()=>{global.location=old});
+    const c={id:'national-cre-20261021',name:'가상 회차',status:'draft',nationalRound:{parentId:'national-cre'}};
+    assert.deepEqual(Pipeline.model(c.id,'print',c.name,c).steps.map(s=>s.id),['workspace','broadcast','print']);
+    assert.deepEqual(Pipeline.model(c.id,'print',c.name,{...c,status:'active'}).steps.map(s=>s.id),['workspace','broadcast','shipping','print']);
+    const archived={...c,status:'archived'};
+    assert.deepEqual(Pipeline.model(c.id,'print',c.name,archived).steps.map(s=>s.id),['shipping','print']);
+    assert.deepEqual(Pipeline.model(c.id,'print',c.name,{...archived,features:{shipping:false,auction:false}}).steps,[]);
+    global.location={search:'?channel='+c.id+'&archive=older'};
+    const state=Pipeline.model(c.id,'print',c.name,archived);
+    assert.equal(state.steps.length,2);assert.ok(state.steps.every(s=>new URL(s.href,'https://example.test').searchParams.get('archive')==='older'));
+});
+
 test('every operator page uses the shared pipeline while buyer and vendor links stay clean', () => {
     const pages = {
         'channel-workspace.html': 'workspace',

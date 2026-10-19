@@ -734,7 +734,7 @@ test('print forms have one canonical page linked from both pipeline and workspac
     assert.doesNotMatch(print, /function parseWinner\(str\)[\s\S]{0,400}phoneIdx/);
     assert.match(print, /google-sheets-export\.js/);
     assert.match(print, /accounts\.google\.com\/gsi\/client/);
-    assert.match(print, /await printOperation\.loadShippingItems\(\)/);
+    assert.match(print, /await printOperation\.loadPrintItems\(\)/);
     assert.match(operationChannel, /배송·인쇄 데이터 연결 방식이 설정되지 않았습니다/);
     assert.doesNotMatch(print, /function platformPrintItems\(workspace, channel\)/);
     assert.doesNotMatch(print, /loadShippingItems adapter fallback/);

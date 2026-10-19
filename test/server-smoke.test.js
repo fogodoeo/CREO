@@ -163,6 +163,24 @@ test('HTTP server separates the public home and protected hub while preserving s
     assert.equal(staleShippingResponse.status, 404);
     assert.equal((await staleShippingResponse.json()).code, 'CHANNEL_NOT_AVAILABLE');
 
+    // Browsers get a recovery path; API consumers retain the JSON error contract.
+    for(const channelId of ['missing-old-channel',draftId]){
+        const response=await fetch(`http://127.0.0.1:${port}/shipping.html?channel=${channelId}`,{headers:{Accept:'text/html'}});
+        assert.equal(response.status,404);assert.match(response.headers.get('content-type'),/^text\/html/);
+        const html=await response.text();assert.match(html,/회차를 다시 선택해 주세요/);assert.match(html,/href="\/main"/);assert.doesNotMatch(html,/CHANNEL_NOT_AVAILABLE/);
+    }
+    // Archiving the broadcast must not close outstanding shipping work.
+    for(const [id,shipping] of [['archived-round',true],['archived-no-shipping',false]]){
+        const created=await fetch(`http://127.0.0.1:${port}/api/platform/channels`,{method:'POST',headers:{'X-Creo-Admin':'isolated-smoke-secret','Content-Type':'application/json'},body:JSON.stringify({channel:{id,name:'가상 보관 회차',status:'archived',features:{shipping}}})});
+        assert.equal(created.status,201);
+        for(const page of ['shipping.html','shipping-status.html','shipping-rates.html']){
+            const response=await fetch(`http://127.0.0.1:${port}/${page}?channel=${id}`);
+            assert.equal(response.status,shipping?200:404,`${id} ${page}`);
+        }
+        const studio=await fetch(`http://127.0.0.1:${port}/broadcast-studio.html?channel=${id}`);assert.equal(studio.status,404);
+        const protectedWorkspace=await fetch(`http://127.0.0.1:${port}/api/platform/channels/${id}/workspace`);assert.equal(protectedWorkspace.status,401);
+    }
+
     const scriptResponse = await fetch(`http://127.0.0.1:${port}/crewart-survey.js`);
     assert.equal(scriptResponse.status, 200);
     assert.match(scriptResponse.headers.get('content-type'), /^text\/javascript/);

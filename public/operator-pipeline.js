@@ -35,13 +35,21 @@
         return Runtime.normalizeChannelId(params.get('channel') || params.get('event'));
     }
 
-    function model(channelId, current, channelName = '') {
+    function model(channelId, current, channelName = '', channel = null) {
         if (!Runtime) throw new Error('CreoChannelRuntime is required');
         const id = Runtime.normalizeChannelId(channelId);
         if (!id) return null;
         const routes = Runtime.channelRoutes(id);
         const archive=new URLSearchParams(root.location?.search||'').get('archive')||'';
         const home=routes.home+(archive?'&archive='+encodeURIComponent(archive):'');
+        const knownChannel = channel?.id === id ? channel : null;
+        const available = step => {
+            if (archive && !['shipping','print'].includes(step.id)) return false;
+            if (!knownChannel) return true;
+            if (step.id === 'shipping' || step.id === 'broadcast') return Runtime.operationalFeatureAvailable(knownChannel, step.id);
+            if (knownChannel.features?.auction === false) return false;
+            return step.id !== 'workspace' || ['active','draft'].includes(knownChannel.status);
+        };
         return {
             channelId: id,
             channelName: String(channelName || id).trim() + (new URLSearchParams(root.location?.search || '').has('archive') && !String(channelName).includes('이전 회차') ? ' · 이전 회차' : ''),
@@ -49,7 +57,7 @@
             home,
             settings: routes.settings,
             rounds: home,
-            steps: STEPS.filter(step=>!archive||['shipping','print'].includes(step.id)).map(step => {
+            steps: STEPS.filter(available).map(step => {
                 const archive = new URLSearchParams(root.location?.search || '').get('archive');
                 const suffix = archive && ['shipping','print'].includes(step.id) ? '&archive='+encodeURIComponent(archive) : '';
                 return {...step,href:routes[step.route]+suffix,active:step.id===currentId(current)};
@@ -87,7 +95,7 @@
             @media(max-width:660px){:host([presentation="studio"]) .bar{width:calc(100% - 20px);display:block;padding:6px 0}:host([presentation="studio"]) .bar nav{display:flex;gap:2px}:host([presentation="studio"]) .step{flex:1;min-width:0;padding:7px 4px;gap:5px}:host([presentation="studio"]) .step i{display:none}:host([presentation="studio"]) .step b{font-size:11px}:host([presentation="studio"]) .settings{display:none}}
             @media print{:host{display:none!important}}
             .channel,.settings{min-height:44px;align-content:center}.channel small{font-size:11px;color:${tone==='dark'?'#a4afbf':'#566171'}}.channel b{font-size:14px}.step{min-height:44px}.step b{font-size:13px}.step small{font-size:11px;color:${tone==='dark'?'#a4afbf':'#566171'}}.settings{font-size:13px}:focus-visible{outline:2px solid ${tone==='dark'?'#91b4ff':'#254ac7'};outline-offset:2px}
-        </style><div class="bar"><a class="channel" href="${escapeHtml(state.home)}"><small>선택한 회차</small><b>${escapeHtml(state.channelName)}</b></a><nav aria-label="경매 운영 단계">${steps}</nav><a class="settings" href="${escapeHtml(state.home)}">운영 홈 · 회차 선택</a></div>`;
+        </style><div class="bar"><a class="channel" href="${escapeHtml(state.home)}"><small>선택한 회차</small><b>${escapeHtml(state.channelName)}</b></a><nav aria-label="경매 운영 단계" style="grid-template-columns:repeat(${Math.max(1,state.steps.length)},minmax(0,1fr))">${steps}</nav><a class="settings" href="${escapeHtml(state.home)}">운영 홈 · 회차 선택</a></div>`;
     }
 
     let PipelineElement = null;
@@ -105,7 +113,7 @@
                     this.hidden = true;
                     return;
                 }
-                const state = model(this.getAttribute('channel') || channelFromLocation(), this.getAttribute('current'), this.getAttribute('channel-name'));
+                const state = model(this.getAttribute('channel') || channelFromLocation(), this.getAttribute('current'), this.getAttribute('channel-name'), this.channelContext);
                 this.hidden = !state;
                 this.shadowRoot.innerHTML = state ? renderMarkup(state, this.getAttribute('tone') === 'dark' ? 'dark' : 'light') : '';
             }
@@ -113,9 +121,10 @@
         root.customElements.define('creo-operator-pipeline', PipelineElement);
     }
 
-    function sync(channelId, channelName = '') {
+    function sync(channelId, channelName = '', channel = null) {
         if (!root.document) return;
         root.document.querySelectorAll('creo-operator-pipeline').forEach(element => {
+            element.channelContext = channel;
             element.setAttribute('channel', channelId);
             if (channelName) element.setAttribute('channel-name', channelName);
         });

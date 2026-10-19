@@ -7,8 +7,8 @@
     <title>배송 등록 조회 | CREO</title>
     <script src="auction-contract.js?v=20260819-contract-v1"></script>
     <script src="platform-client.js?v=20260803-admin-session-v2"></script>
-    <script src="channel-runtime.js?v=20260901-operator-routing-v1"></script>
-    <script src="operator-pipeline.js?v=20261020-rounds"></script>
+    <script src="channel-runtime.js?v=20261020-round-access"></script>
+    <script src="operator-pipeline.js?v=20261020-round-access"></script>
     <script src="shipping-access.js?v=20260820-v1"></script>
     <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
     <script src="channel-adapters.js?v=20261020-rounds"></script>
@@ -207,7 +207,7 @@
             const title = document.getElementById('shipping-status-title');
             if (title) title.textContent = `${label} 전체조회`;
             document.title = `${label} · 배송 조회`;
-            CreoOperatorPipeline.sync(SHIPPING_CHANNEL_ID, label);
+            CreoOperatorPipeline.sync(SHIPPING_CHANNEL_ID, label, channel);
         }
 
         function esc(value) { return String(value == null ? '' : value).replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }

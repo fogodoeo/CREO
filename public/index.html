@@ -2,8 +2,8 @@
 <html lang="ko"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0b0d10"><title>운영 홈 · CREO</title>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="operator-home.css?v=20261020-home"><link rel="stylesheet" href="/ongdong-brand.css?v=20260908-logo">
-<script src="platform-client.js?v=20260803-admin-session-v2" defer></script><script src="channel-runtime.js?v=20260901-operator-routing-v1" defer></script><script src="operator-home-model.js?v=20261020-home" defer></script><script src="operator-home.js?v=20261020-home" defer></script><script src="/ongdong-brand.js?v=20260908-logo" defer></script>
+<link rel="stylesheet" href="operator-home.css?v=20261020-round-access"><link rel="stylesheet" href="/ongdong-brand.css?v=20260908-logo">
+<script src="platform-client.js?v=20260803-admin-session-v2" defer></script><script src="channel-runtime.js?v=20261020-round-access" defer></script><script src="operator-home-model.js?v=20261020-round-access" defer></script><script src="operator-home.js?v=20261020-round-access" defer></script><script src="/ongdong-brand.js?v=20260908-logo" defer></script>
 </head><body>
 <a class="skip" href="#work-title">작업 메뉴로 건너뛰기</a>
 <section class="login" id="login-gate" aria-labelledby="login-title"><form class="login-card" id="login-form"><p class="eyebrow">CREO 운영</p><h1 id="login-title">관리자 로그인</h1><label for="admin-password">비밀번호</label><input id="admin-password" name="password" type="password" autocomplete="current-password" required><button id="login-submit">로그인</button><p id="login-error" role="alert"></p><button id="logout-retry" type="button" hidden>로그아웃 다시 시도</button></form></section>
@@ -25,7 +25,7 @@
   <a class="operation" id="quick-shipping"><span class="step">03</span><strong>낙찰·배송</strong><span>배송지 입력과 결제 처리</span></a>
   <a class="operation" id="quick-print"><span class="step">04</span><strong>정산·인쇄</strong><span>회차별 정산표와 배송 라벨</span></a>
  </nav>
- <section class="tools" aria-labelledby="tools-title"><h2 id="tools-title">이 회차 도구</h2><nav class="tool-links" aria-label="선택한 회차의 보조 도구">
+ <section class="tools" id="round-tools" aria-labelledby="tools-title"><h2 id="tools-title">이 회차 도구</h2><nav class="tool-links" aria-label="선택한 회차의 보조 도구">
   <a id="quick-shipping-status">전체 배송 조회</a><a id="quick-report">총정산표·엑셀</a><a id="quick-parge">파르게 접수</a><a id="quick-pinball">핀볼 추첨</a><a id="quick-captures">캡처 자료</a><a id="quick-survey" hidden>참여자 설문</a>
  </nav></section>
  <section class="intake" id="national-intake" hidden aria-labelledby="intake-title"><div><h2 id="intake-title">전국크레자랑 접수</h2><p>업체 접수는 공통으로 받고, 승인 개체는 방송일에 맞춰 회차로 가져옵니다.</p></div><nav aria-label="전국크레자랑 공통 접수"><a id="quick-intake">출품 접수·승인</a><a id="quick-bookings">방송 예약 관리</a></nav></section>

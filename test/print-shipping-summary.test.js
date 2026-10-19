@@ -57,7 +57,7 @@ test('print loads channel-scoped estimates without mutating canonical items and 
  const fs=require('fs'),vm=require('vm'),source=fs.readFileSync(require.resolve('../public/print.html'),'utf8');
  const items=[{_platformItemId:'a',status:'sold',winner_phone:'01012345678'}];
  let response={channelId:'alpha',suggestions:[{itemId:'a',label:'파르게 · 예시점',estimated:true}]},failure;
- const context=vm.createContext({console:{warn(){}},resolvePrintChannelId:async()=> 'alpha',syncPrintChannel(){},printOperation:{ready:async()=>({channel:{id:'alpha',dataAdapter:'platform'}}),loadShippingItems:async()=>items},CreoPlatform:{api:async path=>{assert.equal(path,'channels/alpha/shipping-suggestions');if(failure)throw failure;return response}}});
+ const context=vm.createContext({console:{warn(){}},resolvePrintChannelId:async()=> 'alpha',syncPrintChannel(){},printOperation:{ready:async()=>({channel:{id:'alpha',dataAdapter:'platform'}}),loadPrintItems:async()=>items},CreoPlatform:{api:async path=>{assert.equal(path,'channels/alpha/shipping-suggestions');if(failure)throw failure;return response}}});
  const begin=source.indexOf('        async function loadPrintData('),end=source.indexOf('\n        async function ',begin+1);vm.runInContext(source.slice(begin,end),context);
  const loaded=await context.loadPrintData();assert.equal(loaded[0]._shippingSuggestion.label,'파르게 · 예시점');assert.equal(items[0]._shippingSuggestion,undefined);
  response={...response,channelId:'beta'};assert.equal((await context.loadPrintData())[0]._shippingSuggestion,undefined);

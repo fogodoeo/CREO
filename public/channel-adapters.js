@@ -65,20 +65,22 @@
         return [...visible, `_auction:${auctionType}`, '_visibility:public'].join('|');
     }
 
-    function platformShippingItems(workspace, channel = workspace?.channel, { includeArchived = false } = {}) {
+    function platformShippingItems(workspace, channel = workspace?.channel, { includeArchived = false, includeUnsold = false } = {}) {
         const vendors = new Map((workspace.vendors || []).map(vendor => [vendor.id, vendor]));
         const shipments = new Map((workspace.shipments || []).map(shipment => [shipment.itemId, shipment]));
         const items = includeArchived
             ? [...new Map([...(workspace.items || []), ...(workspace.archivedItems || [])].map(item => [item.id, item])).values()]
             : (workspace.items || []).filter(item => !item.auctionArchiveId);
-        return items.filter(item => AuctionContract.isSoldStatus(item.status) || Number(item.soldPrice) > 0).map(item => {
+        return items.filter(item => includeUnsold || AuctionContract.isSoldStatus(item.status) || Number(item.soldPrice) > 0).map(item => {
             const shipment = shipments.get(item.id);
             const checklist = platformChecklist(item, channel);
+            const sold = AuctionContract.isSoldStatus(item.status) || Number(item.soldPrice) > 0;
+            const status = sold ? (shipment?.status === 'complete' ? '낙찰-입금완료' : ['ready', 'shipped'].includes(shipment?.status) ? '낙찰-연락완료' : '낙찰-대기') : AuctionContract.normalizeStatus(item.status);
             return {
                 ...item, row: item.id, num: item.lotNumber, company: vendors.get(item.vendorId)?.name || item.vendorName || '', name: item.name || '개체',
                 checklist,
                 winner: item.winnerName || item.winnerAlias || '', winner_name: item.winnerName || item.winnerAlias || '', winner_phone: item.winnerPhone || '', sold_price: (Number(item.soldPrice) || 0) / 10000,
-                soldPrice: (Number(item.soldPrice) || 0) / 10000, soldAmountWon: Number(item.soldPrice) || 0, sold_amount_won: Number(item.soldPrice) || 0, status: shipment?.status === 'complete' ? '낙찰-입금완료' : ['ready', 'shipped'].includes(shipment?.status) ? '낙찰-연락완료' : '낙찰-대기',
+                soldPrice: (Number(item.soldPrice) || 0) / 10000, soldAmountWon: Number(item.soldPrice) || 0, sold_amount_won: Number(item.soldPrice) || 0, status,
                 shipping_type: shipment ? (shipment.method === 'pickup' ? '직접수령' : '배송') : '', shipping_company: shipment?.carrier || '', shipping_region: shipment?.address || '', shipping_cost: Number(shipment?.cost) || 0, shipping_bundle_id: shipment?.bundleId || '', shipping_status: shipment?.status || '',
                 shipping_gross_cost: shipment?.grossCost == null ? null : Number(shipment.grossCost), shipping_support_amount: Number(shipment?.shippingSupportAmount) || 0,
                 payment_status: shipment?.paymentStatus || '', payment_method: shipment?.paymentMethod || '', buyer_submitted_at: shipment?.buyerSubmittedAt || '', payment_requested_amount: Number(shipment?.paymentRequestedAmount) || 0, payment_confirmed_amount: Number(shipment?.paymentConfirmedAmount) || 0, payment_confirmed_at: shipment?.paymentConfirmedAt || '', buyer_payment_reported_at: shipment?.buyerPaymentReportedAt || '', card_payment_url: shipment?.cardPaymentUrl || '',
@@ -86,6 +88,16 @@
                 _platformItemId: item.id, _platformShipmentId: shipment?.id || ''
             };
         });
+    }
+
+    async function loadPlatformRoundItems(context, includeUnsold = false) {
+        context.workspace = await api()(endpoint(context.channel,'workspace')+'?scope=round'+(context.archiveId?'&archive='+encodeURIComponent(context.archiveId):''));
+        if (context.archiveId) {
+            const selected = [...(context.workspace.items || []),...(context.workspace.archivedItems || [])].filter(item => item.auctionArchiveId === context.archiveId);
+            // An unknown archive is empty; never fall back to the current round.
+            return platformShippingItems({...context.workspace,items:selected,archivedItems:[]},context.channel,{includeArchived:true,includeUnsold});
+        }
+        return platformShippingItems(context.workspace,context.channel,{includeUnsold});
     }
 
     const platform = {
@@ -101,13 +113,10 @@
             return api()(endpoint(context.channel, type, id), { method: 'DELETE' });
         },
         async loadShippingItems(context) {
-            context.workspace = await api()(endpoint(context.channel,'workspace')+'?scope=round'+(context.archiveId?'&archive='+encodeURIComponent(context.archiveId):''));
-            if (context.archiveId) {
-                const selected = [...(context.workspace.items || []),...(context.workspace.archivedItems || [])].filter(item => item.auctionArchiveId === context.archiveId);
-                // An unknown archive is empty; never fall back to the current round.
-                return platformShippingItems({...context.workspace,items:selected,archivedItems:[]},context.channel,{includeArchived:true});
-            }
-            return platformShippingItems(context.workspace, context.channel);
+            return loadPlatformRoundItems(context);
+        },
+        async loadPrintItems(context) {
+            return loadPlatformRoundItems(context,true);
         },
         async saveShippingItem(context, itemId, shippingData) {
             if (!context.workspace) context.workspace = await this.loadWorkspace(context);
@@ -150,6 +159,9 @@
             if(context?.archiveId)throw new Error('보관 회차의 배송 자료는 이 데이터 연결에서 지원하지 않습니다.');
             if (typeof root.getItems !== 'function') throw new Error('CDCUP 배송 데이터를 불러올 수 없습니다.');
             return root.getItems();
+        },
+        async loadPrintItems(context) {
+            return this.loadShippingItems(context);
         },
         async saveShippingItem(context, itemId, shippingData, auditMeta = {}) {
             if (typeof root.updateItemShipping !== 'function') throw new Error('CDCUP 배송 저장 기능을 불러올 수 없습니다.');

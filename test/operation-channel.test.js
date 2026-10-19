@@ -68,3 +68,38 @@ test('selected archive only loads that round and refuses saves to a different ro
     assert.deepEqual(await make('missing').loadShippingItems(),[]);
     assert.deepEqual((await make('').loadShippingItems()).map(i=>i.id),['current']);
 });
+
+test('print includes waiting and passed lots while shipping and payments stay sold-only in the selected round',async t=>{
+    const previous=global.CreoPlatform;t.after(()=>{global.CreoPlatform=previous});
+    const channel={id:'print-round',dataAdapter:'platform'};
+    const workspace={vendors:[{id:'vendor',name:'가상 업체'}],shipments:[{id:'shipment',itemId:'sold',status:'complete',cost:19000,paymentStatus:'paid'}],items:[
+        {id:'waiting',vendorId:'vendor',status:'waiting',soldPrice:0},
+        {id:'passed',vendorId:'vendor',status:'passed',soldPrice:0},
+        {id:'sold',vendorId:'vendor',status:'sold',soldPrice:100000},
+        {id:'old-sold',status:'sold',soldPrice:200000,auctionArchiveId:'old'}
+    ],archivedItems:[{id:'old-waiting',status:'waiting',soldPrice:0,auctionArchiveId:'old'},{id:'other',status:'sold',soldPrice:300000,auctionArchiveId:'other'}]};
+    const before=structuredClone(workspace),calls=[];let failure=false;
+    global.CreoPlatform={api:async path=>{calls.push(path);if(failure)throw Error('temporary read failure');return structuredClone(workspace)}};
+    const adapters=require('../public/channel-adapters'),contract=require('../public/auction-contract');
+    const make=archiveId=>OperationChannel.create({channelId:channel.id,archiveId,runtime:ChannelRuntime,client:{api:async()=>({channel})},adapters});
+    const operation=make(''),printed=await operation.loadPrintItems(),shipped=await operation.loadShippingItems();
+    assert.deepEqual(printed.map(i=>i.id),['waiting','passed','sold']);
+    assert.deepEqual(printed.filter(i=>contract.isSoldStatus(i.status)).map(i=>i.id),['sold']);
+    assert.equal(contract.normalizeStatus(printed[1].status),'passed');
+    assert.deepEqual(shipped,[printed[2]]);assert.equal(shipped[0].sold_amount_won,100000);assert.equal(shipped[0].shipping_cost,19000);assert.equal(shipped[0].payment_status,'paid');
+    assert.deepEqual((await make('old').loadPrintItems()).map(i=>i.id),['old-sold','old-waiting']);
+    assert.deepEqual((await make('old').loadShippingItems()).map(i=>i.id),['old-sold']);
+    assert.deepEqual(await make('missing').loadPrintItems(),[]);
+    failure=true;await assert.rejects(operation.loadPrintItems(),/temporary read failure/);failure=false;
+    assert.deepEqual(await operation.loadPrintItems(),printed);
+    assert.ok(calls.every(path=>path.startsWith('channels/print-round/workspace?scope=round')));assert.deepEqual(workspace,before);
+});
+
+test('legacy print keeps existing list behavior and rejects unsupported archive scopes',async t=>{
+    const previous=global.getItems;t.after(()=>{global.getItems=previous});
+    const rows=[{row:1,status:'대기',name:'가상 레거시 개체'}];global.getItems=async()=>rows;
+    const channel={id:'legacy-round',dataAdapter:'legacy-cdcup'},adapters=require('../public/channel-adapters');
+    const make=archiveId=>OperationChannel.create({channelId:channel.id,archiveId,runtime:ChannelRuntime,client:{api:async()=>({channel})},adapters});
+    assert.deepEqual(await make('').loadPrintItems(),rows);
+    await assert.rejects(make('old').loadPrintItems(),/보관 회차/);
+});

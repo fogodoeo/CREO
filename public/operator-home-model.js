@@ -18,13 +18,13 @@
   const result={home:s.home,shipping:Runtime.routeUrl('shipping',id,extra),shippingStatus:Runtime.routeUrl('shippingStatus',id,extra),print:Runtime.routeUrl('print',id,extra),report:'/settlement-report.html?'+new URLSearchParams({channel:id,...extra}),settings:arch?'':r.settings,archives:arch?'':r.archives};
   if(!arch&&['active','draft'].includes(c.status)){
    result.workspace=c.dataAdapter==='legacy-cdcup'&&c.legacy?.managementUrl?Runtime.preserveChannel(c.legacy.managementUrl,id):r.workspace;
-   result.broadcast=c.features?.broadcast===false?'':r.control;result.captures=r.captures;
-   result.parge=c.dataAdapter==='platform'&&c.features?.shipping!==false?'/parge-dispatch.html?channel='+encodeURIComponent(id):'';
+   result.broadcast=Runtime.operationalFeatureAvailable(c,'broadcast')?r.control:'';result.captures=r.captures;
+   result.parge=c.dataAdapter==='platform'&&Runtime.operationalFeatureAvailable(c,'shipping')?'/parge-dispatch.html?channel='+encodeURIComponent(id):'';
    const theme=national(c)?'national':c.broadcastProfile==='basic-dice'?'ryangecko':'academy';
    result.pinball='/roulette/?'+new URLSearchParams({channel:id,channelName:s.label,theme});
    if(c.features?.survey===true&&c.pages?.survey)result.survey=Runtime.preserveChannel(c.pages.survey,id);
   }
-  if(c.features?.shipping===false){result.shipping='';result.shippingStatus='';}
+  if(!Runtime.operationalFeatureAvailable(c,'shipping')){result.shipping='';result.shippingStatus='';result.report='';}
   if(c.features?.auction===false){result.workspace='';result.print='';}
   if(c.dataAdapter==='legacy-cdcup'||c.features?.auction===false)result.report='';
   if(national(c)){

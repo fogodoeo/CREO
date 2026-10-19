@@ -42,11 +42,11 @@ Vanilla HTML/JS/CSS. 기존 `CHECKOUT_DESIGN.md`의 흰 표면·회색 본문·�
 
 | 심각도 | 분야 | 위치 | 수정 전 | 수정 후 | 이유 |
 | --- | --- | --- | --- | --- | --- |
-| HIGH | Accessibility | `public/shipping.html` 낙찰 카드·합배송·거점 버튼 | 클릭 가능한 div | 기본 button, 펼침 상태, 닫기 및 초점 복귀 | 키보드 작업 경로 확보 |
-| HIGH | Typography | `public/shipping.html` `.editor-total-item strong` | 320px에서 200,00… | 줄바꿈·좁은 화면 2열·합계 전체 행 | 금액을 생략하지 않음 |
-| HIGH | Colors | `public/shipping.html` `.winner-card-phone`, `.gecko-tag-dimmed`, `.input-text::placeholder` | 흐린 글자와 45% 불투명도 | 기존 보조 본문 색, 불투명도 제거 | 필요한 정보를 읽을 수 있게 함 |
-| HIGH | Accessibility | `public/shipping.html` 편집 입력 | 연결되지 않은 label | for/id 연결 | 입력 이름 제공 |
-| MEDIUM | Writing | `public/shipping.html` 목록·편집 실패 | 코드·스택 노출 | 연결 확인·재조회 안내 | 복구 방법 표시 |
+| HIGH | Accessibility | `public/shipping.html:3379` 낙찰 카드·합배송·거점 버튼 | 클릭 가능한 div | 기본 button, 펼침 상태, 닫기 및 초점 복귀 | 키보드 작업 경로 확보 |
+| HIGH | Typography | `public/shipping.html:1625` `.editor-total-item strong` | 320px에서 200,00… | 줄바꿈·좁은 화면 2열·합계 전체 행 | 금액을 생략하지 않음 |
+| HIGH | Colors | `public/shipping.html:990` `.winner-card-phone`, `.gecko-tag-dimmed`, `.input-text::placeholder` | 흐린 글자와 45% 불투명도 | 기존 보조 본문 색, 불투명도 제거 | 필요한 정보를 읽을 수 있게 함 |
+| HIGH | Accessibility | `public/shipping.html:2282` 편집 입력 | 연결되지 않은 label | for/id 연결 | 입력 이름 제공 |
+| MEDIUM | Writing | `public/shipping.html:3436` 목록·편집 실패 | 코드·스택 노출 | 연결 확인·재조회 안내 | 복구 방법 표시 |
 
 추가로 낙찰자 이름·개체 표시·업체명·수령 안내가 카드에서 HTML로 해석되지 않도록 이스케이프했다.
 
@@ -58,6 +58,33 @@ Vanilla HTML/JS/CSS. 기존 `CHECKOUT_DESIGN.md`의 흰 표면·회색 본문·�
 - 실제 브라우저: 카드 Enter→닫기 초점, 합배송 Space→펼침, Escape→카드 복귀, 기타 배송 입력 이름, 320px 금액 전체 표시·하단 저장/결제 버튼까지 스크롤 확인. 테스트 자료만 사용했고 저장·결제·알림 전송은 실행하지 않았다.
 - 그림: 상위 저장소 `scratch/national-session-20261019/site-audit-shipping-320.png`.
 - 미검증: 실제 휴대폰/Safari·스크린리더 음성·브라우저 200% 확대, 배송 검색 결과와 회사 선택 모달의 전체 키보드 흐름. 전체 사이트 검토는 계속 진행한다.
-- 배포 및 배포 후 로그 확인: 진행 예정.
+- `e4697f9a1f8be4ed5c144264cde7eaf8754e5887` 배포 완료. Render `dep-dbb7eenlk1mc738ntta0`가 05:03:31 KST에 Live가 됐다. 시작 및 이후 표시된 로그에서 `Invalid inventory order` 재발은 관찰하지 못했다. 장기 무오류를 보장하는 관찰은 아니다.
+- 배포 후 GET 검사: 건강 상태 200, 송출 200, 정적 파일 12개 일치, 운영 홈 로그인 경계 유지. 전국크레자랑 72개 낙찰/70개 배송과 씨랩·크레용 각 회차의 식별자·낙찰합계 불변. 이번 회차 34개/34개 배송, 이전 회차 38개/36개 배송 격리 유지. 두 회차의 미결제 구매자 조회 200이며 결제 가능 상태 유지.
+- 62개 HTML의 로컬 JS/CSS 참조 334개 모두 파일 존재. 동적 링크 및 실제 권한 흐름은 별도 점검 대상이다.
+- 새 배송 탭의 목록→키보드 편집 경로에서 브라우저 오류 0개. 기존 iframe 검사 탭에서는 DOM 검사 도중 `MutationObserver` 오류가 1번 기록됐지만 새 직접 진입 탭에서는 재현되지 않았다.
+
+## 회차 메뉴·보관 자료 접근·인쇄 목록
+
+위험도: release. HTTP 입구와 공유 메뉴를 맞추고 인쇄 조회를 배송 조회에서 분리했다. 경매 활성화·납부·알림 쓰기는 변경하지 않는다.
+
+- 재현: 운영 홈은 archived 배송 링크를 만들지만 서버는 거부했다. 준비 중인 draft 회차에는 아직 허용되지 않는 배송 메뉴가 나왔다.
+- 수정: 공통 `operationalFeatureAvailable` 기준을 서버·운영 홈·상단 단계 메뉴에 적용했다. archived는 배송·정산에 계속 접근하고 방송 조작은 숨긴다. draft 전크자는 방송 준비를 유지한다. 기능 자체가 비활성화된 경우는 계속 제한한다. 브라우저의 오래된 주소에는 회차 선택으로 돌아가는 링크를 제공하며 JSON 오류 계약은 유지한다.
+- 회차가 하나면 선택기를 숨긴다. PC 작업 카드는 실제 표시 개수만큼 열을 채우며 비어 있는 보조 도구 영역은 숨긴다. 기존 색·서체·44px 조작 기준을 유지하고 모션은 추가하지 않는다.
+- 실제 화면에서 새 버그 재현: 가상 준비 개체가 1마리인데 인쇄의 ‘경매 리스트’가 0마리였다. 낙찰 전·유찰 개체도 포함하는 `loadPrintItems`를 추가했다. 회차 범위를 유지하며 배송 목록과 정산 합계는 낙찰 개체만 처리한다. 레거시 목록 동작과 지원하지 않는 보관 범위의 오류는 유지한다.
+
+| 분야 | 이번 증거 | 결과 |
+| --- | --- | --- |
+| Accessibility | 기본 select/link, 숨김 메뉴의 접근성 트리 | 단일 회차 선택기와 숨김 링크 미노출 확인 |
+| Layout | 1265px 준비 화면 3열, 보관 화면 2열, 320px 위/아래 스크롤 | 사용 가능한 카드로 공간을 채우며 하단 도구 접근 가능 |
+| Writing | 준비 중·결제/배송 상태와 회차 선택 복구 문구 | 화면과 서버의 가능한 행동 일치 |
+| Typography | 기존 글자·줄바꿈, 320px 회차명 | 잘림 없는 상태 확인 |
+| Colors | 기존 운영 홈 색 토큰 유지 | 이번 변경으로 색상 대비 변경 없음 |
+| UI | 메인→인쇄→경매 리스트, 보관→전체 배송 조회 | 회차 유지, 무관한 방송 메뉴 숨김 |
+
+- 집중 검사: `node --test test/operation-channel.test.js test/print-shipping-summary.test.js test/operator-home.test.js test/operator-pipeline.test.js test/server-smoke.test.js test/checkout-round-continuity.test.js` 39개 통과. 동일 요청·동시 확인·재시작·저장 실패·과거/현재 회차 경계는 기존 continuity 검사로 확인했다. HTTP 검사는 임시 DB를 사용한다.
+- `npm test`: 1,386개 통과. 첫 전체 실행의 실패 1개는 이전 `loadShippingItems` 호출 문자열을 고정한 검사였으며 인쇄 전용 조회 계약에 맞춰 갱신한 후 다시 통과했다. `npm run check` 통과. PC `python -m unittest discover -p "test*.py"`: 270개 통과.
+- 엄격한 UTF-8 디코딩·U+FFFD 부재·`git diff --check` 확인. 캐시 키 변경은 이번에 수정한 의존 화면만 반영했다.
+- 실제 브라우저: 준비 개체 1마리 경매 리스트, 준비 회차의 낙찰 합계 0, 보관 채널의 단일 회차 홈→전체 배송 조회, 보관 상단 배송/인쇄 메뉴, 320px 하단 도구 확인. 모두 로컬 가상 자료다. `site-audit-prepared-print.png`에 낙찰 전 인쇄 결과를 남겼다.
+- 배포 후 운영 GET 및 자료 보존 비교는 별도 기록한다. 미검증한 전체 역할별 흐름은 첫 표의 범위를 계속 유지한다.
 
 판정: 이번 수정 범위는 검증된 경로에 한해 반영 가능. 전체 사이트에 대한 Approve 판정은 아직 하지 않는다.

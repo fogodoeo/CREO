@@ -72,6 +72,16 @@
         return channels.find(channel => channel.id === id) || null;
     }
 
+    // Shared by the operator menu and HTTP entry guard. Closing a broadcast
+    // must not close outstanding payment and shipping work for that channel.
+    function operationalFeatureAvailable(channel, feature) {
+        if (!channel || channel.features?.[feature] === false) return false;
+        if (channel.status === 'active') return true;
+        if (feature === 'shipping' && channel.status === 'archived') return true;
+        return feature === 'broadcast' && channel.status === 'draft'
+            && channel.nationalRound?.parentId === 'national-cre';
+    }
+
     class Runtime {
         constructor(options = {}) {
             this.client = options.client || root.CreoPlatform;
@@ -170,5 +180,5 @@
         return new Runtime(options);
     }
 
-    return Object.freeze({ ROUTES, Runtime, channelRoutes, create, normalizeChannelId, preserveChannel, routeUrl, selectChannel });
+    return Object.freeze({ ROUTES, Runtime, channelRoutes, create, normalizeChannelId, operationalFeatureAvailable, preserveChannel, routeUrl, selectChannel });
 });

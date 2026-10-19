@@ -8,9 +8,27 @@ const catalog={channels},active='national-cre';
 test('all launchers follow selected draft or CLAB round while actual operating channel stays separate',()=>{
  for(const id of ['national-cre-20261021','clab-1015','creyon-1001']){
   const state=M.selection(catalog,rounds,active,'?channel='+id);assert.equal(state.active,false);
-  const links=M.links(state);for(const key of ['workspace','broadcast','shipping','shippingStatus','print','report','pinball','captures','parge'])assert.equal(new URL(links[key],'https://example.test').searchParams.get('channel'),id,key);
+  const links=M.links(state),preparing=state.channel.status==='draft';
+  for(const key of ['workspace','broadcast','print','pinball','captures',...(!preparing?['shipping','shippingStatus','report','parge']:[])])assert.equal(new URL(links[key],'https://example.test').searchParams.get('channel'),id,key);
+  if(preparing)for(const key of ['shipping','shippingStatus','report','parge'])assert.equal(links[key],'',key);
  }
  assert.deepEqual(M.families(catalog).map(c=>c.id),['national-cre','clab']);
+});
+test('closed channels retain financial entry while unavailable operations stay out of the home menu',()=>{
+ const Runtime=require('../public/channel-runtime');
+ for(const status of ['active','draft','archived','paused']){
+  for(const disabled of [false,true]){
+   const c={id:'sample',name:'가상 회차',status,dataAdapter:'platform',features:{shipping:!disabled,broadcast:!disabled}};
+   const s={channel:c,home:'/main?channel=sample'},links=M.links(s),financial=!disabled&&['active','archived'].includes(status);
+   assert.equal(Runtime.operationalFeatureAvailable(c,'shipping'),financial,status);
+   assert.equal(Boolean(links.shipping),financial,status);assert.equal(Boolean(links.shippingStatus),financial,status);assert.equal(Boolean(links.report),financial,status);
+   assert.equal(Boolean(links.broadcast),!disabled&&status==='active',status);
+  }
+ }
+ const prepared=channels.find(c=>c.status==='draft');
+ assert.equal(Runtime.operationalFeatureAvailable(prepared,'broadcast'),true);
+ assert.equal(Runtime.operationalFeatureAvailable({...prepared,features:{broadcast:false}},'broadcast'),false);
+ assert.equal(Runtime.operationalFeatureAvailable(null,'shipping'),false);
 });
 test('archived round only exposes scoped financial routes and rejects missing identity instead of fallback',()=>{
  const s=M.selection(catalog,rounds,active,'?channel=national-cre&archive=old'),links=M.links(s);
@@ -40,4 +58,23 @@ test('home controller reloads selected scope, ignores out-of-order loads and nev
  document.getElementById('refresh-home').dispatchEvent(new window.Event('click'));document.getElementById('refresh-home').dispatchEvent(new window.Event('click'));
  pending[1]({...catalog,rounds,activeChannelId:active});await new Promise(setImmediate);pending[0]({channels:[],rounds:[],activeChannelId:'missing'});await new Promise(setImmediate);
  assert.equal(document.getElementById('work-panel').hidden,false);assert.equal(document.getElementById('work-title').textContent,'씨랩 10/15');assert.ok(calls.every(([p,o])=>p==='operation-rounds'&&!o));assert.ok(history.every(h=>h==='/main?channel=clab-1015'));
+});
+test('home hides a sole round picker and empty tools but keeps preparation and archived financial routes usable',async()=>{
+ const single={id:'single',name:'가상 단일 회차',status:'archived',dataAdapter:'platform',features:{shipping:false,auction:false}};
+ const allChannels=[...channels,single],allRounds=[...rounds,{channelId:single.id,name:single.name,status:single.status,familyId:single.id}];
+ for(const id of ['single','national-cre-20261021','clab-1015']){
+  const {document,window}=parseHTML(fs.readFileSync(require.resolve('../public/index.html'),'utf8'));
+  for(const select of document.querySelectorAll('select'))Object.defineProperty(select,'value',{writable:true,value:''});
+  const platform={escapeHtml:s=>String(s),verifyAdmin:async()=>true,api:async()=>({channels:allChannels,rounds:allRounds,activeChannelId:active})};
+  vm.runInNewContext(fs.readFileSync(require.resolve('../public/operator-home.js'),'utf8'),{document,window,location:{search:'?channel='+id},history:{replaceState(){}},URLSearchParams,CreoPlatform:platform,CreoOperatorHome:M});
+  document.dispatchEvent(new window.Event('DOMContentLoaded'));await new Promise(setImmediate);
+  assert.equal(document.getElementById('work-panel').hidden,false,id);
+  assert.equal(document.getElementById('round-field').hidden,id==='single',id);
+  assert.equal(document.getElementById('round-tools').hidden,id==='single',id);
+  if(id==='national-cre-20261021'){
+   assert.equal(document.getElementById('quick-shipping').hidden,true);
+   assert.equal(document.getElementById('quick-broadcast').hidden,false);
+   assert.match(document.getElementById('quick-broadcast').href,/channel=national-cre-20261021/);
+  }
+ }
 });

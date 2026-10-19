@@ -5,10 +5,12 @@ document.addEventListener('DOMContentLoaded',()=>{
  function link(id,href){$(id).hidden=!href;if(href)$(id).href=href;else $(id).removeAttribute('href')}
  function render(search=location.search,push=false){
   $('work-panel').hidden=true;state=Model.selection(catalog,rounds,activeId,search);const {channel,round,archiveId}=state,links=Model.links(state),isNational=Model.national(channel);
-  $('quick-channel').value=Model.family(channel);$('round-field').hidden=false;
+  $('quick-channel').value=Model.family(channel);$('round-field').hidden=rounds.filter(r=>r.familyId===Model.family(channel)).length<2;
   $('quick-round').innerHTML=rounds.filter(r=>r.familyId===Model.family(channel)).map(r=>`<option value="${esc(Model.key(r))}">${esc(r.name)} · ${r.archiveId?'이전 기록':r.status==='draft'?'준비 중':r.active?'현재 송출':'결제·배송'}</option>`).join('');if(round)$('quick-round').value=Model.key(round);
   for(const [id,name] of Object.entries({'quick-workspace':'workspace','quick-broadcast':'broadcast','quick-shipping':'shipping','quick-print':'print','quick-shipping-status':'shippingStatus','quick-parge':'parge','quick-pinball':'pinball','quick-captures':'captures','quick-survey':'survey','quick-settings':'settings','quick-rounds':'archives','quick-intake':'intake','quick-bookings':'bookings','manage-rounds':'rounds'}))link(id,links[name]);
   link('quick-report',links.report);
+  document.querySelector('.pipeline').style.setProperty('--operation-count',Math.max(1,document.querySelectorAll('.pipeline a:not([hidden])').length));
+  $('round-tools').hidden=![...$('round-tools').querySelectorAll('a')].some(a=>!a.hidden);
   $('manage-rounds').textContent=isNational?'회차 준비·방송 전환':'결과 보관·순위';$('national-intake').hidden=!isNational;
   $('work-title').textContent=state.label;$('work-badge').textContent=archiveId?'이전 회차 기록':state.active?'현재 송출 회차':channel.status==='draft'?'준비 중':'결제·배송 처리';$('work-badge').dataset.active=String(state.active);
   $('scope-note').textContent=archiveId?'이 회차의 낙찰·배송·인쇄 자료를 확인합니다.':channel.status==='draft'?'출품과 순서를 확인한 뒤, 회차 관리에서 방송을 전환하세요.':'아래 메뉴는 모두 선택한 회차의 자료로 열립니다.';

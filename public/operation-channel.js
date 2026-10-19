@@ -65,10 +65,17 @@
             return state.adapter.saveShippingItem(state.context, row, shippingData, auditMeta);
         }
 
+        async function loadPrintItems() {
+            const state = await ready();
+            if (typeof state.adapter?.loadPrintItems !== 'function') throw new Error('이 채널의 인쇄 데이터 연결 방식이 설정되지 않았습니다.');
+            return state.adapter.loadPrintItems(state.context);
+        }
+
         return Object.freeze({
             channelId,
             ready,
             loadShippingItems,
+            loadPrintItems,
             saveShippingItem,
             get channel() { return resolved?.channel || null; },
             get adapter() { return resolved?.adapter || null; },

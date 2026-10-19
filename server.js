@@ -20,6 +20,7 @@ const { createBroadcastAssetApi } = require('./broadcast-asset-api');
 const { BroadcastAssetStorage } = require('./broadcast-asset-storage');
 const { createCdcupRoundsApi } = require('./cdcup-rounds-api');
 const { normalizeChannelId } = require('./platform-core');
+const { operationalFeatureAvailable } = require('./public/channel-runtime');
 const { SupabaseConfigRepository } = require('./platform-repository');
 const { SQLitePlatformRepository } = require('./sqlite-platform-repository');
 const { CheckoutNotificationService } = require('./checkout-notifications');
@@ -190,17 +191,12 @@ function parseRange(value, size) {
     return { start, end };
 }
 
-function isOperationalChannel(channel, feature) {
-    const preparedBroadcast = feature === 'broadcast' && channel?.status === 'draft' && channel?.nationalRound?.parentId === 'national-cre';
-    return (channel?.status === 'active' || preparedBroadcast) && channel?.features?.[feature] !== false;
-}
-
 async function operationalChannelError(url, feature) {
     if (!url.searchParams.has('channel')) return '';
     const requestedId = normalizeChannelId(url.searchParams.get('channel'));
     const catalog = await platformRepository.getCatalog();
     const requested = catalog.channels.find((channel) => channel.id === requestedId);
-    if (isOperationalChannel(requested, feature)) return '';
+    if (operationalFeatureAvailable(requested, feature)) return '';
     return requested
         ? '이 채널에서는 현재 해당 운영 기능을 사용할 수 없습니다.'
         : '요청한 채널을 찾을 수 없습니다. 메인에서 채널을 다시 선택해 주세요.';
@@ -426,7 +422,10 @@ const server = http.createServer(async (req, res) => {
             try { channelError = await operationalChannelError(url, operationalFeature); }
             catch (error) { console.error('[server] channel canonicalization failed:', error.message); }
             if (channelError) {
-                sendJson(res, 404, { error: channelError, code: 'CHANNEL_NOT_AVAILABLE' });
+                if (String(req.headers.accept || '').includes('text/html')) {
+                    const message = channelError.replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+                    send(res, 404, `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>회차 선택 · CREO</title><link rel="stylesheet" href="/operator-home.css"></head><body><main class="login"><section class="login-card"><h1>회차를 다시 선택해 주세요</h1><p>${message}</p><p><a class="secondary" href="/main">운영 홈에서 회차 선택</a></p></section></main></body></html>`, 'text/html; charset=utf-8');
+                } else sendJson(res, 404, { error: channelError, code: 'CHANNEL_NOT_AVAILABLE' });
                 return;
             }
         }

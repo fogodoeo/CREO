@@ -10,10 +10,10 @@
     <meta http-equiv="Expires" content="0">
     <script src="auction-contract.js?v=20260819-contract-v1"></script>
     <script src="platform-client.js?v=20260803-admin-session-v2"></script>
-    <script src="channel-runtime.js?v=20260901-operator-routing-v1"></script>
-    <script src="operator-pipeline.js?v=20261020-rounds"></script>
-    <script src="channel-adapters.js?v=20261020-rounds"></script>
-    <script src="operation-channel.js?v=20261020-rounds"></script>
+    <script src="channel-runtime.js?v=20261020-round-access"></script>
+    <script src="operator-pipeline.js?v=20261020-round-access"></script>
+    <script src="channel-adapters.js?v=20261020-round-print"></script>
+    <script src="operation-channel.js?v=20261020-round-print"></script>
     <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
     <script src="mobile-phone.js?v=20261018-contact"></script>
     <script src="print-shipping-summary.js?v=20261019-label-route"></script>
@@ -1829,7 +1829,7 @@
         function syncPrintChannel(channel) {
             var label = String(channel.name || channel.shortName || PRINT_CHANNEL_ID).trim();
             if(new URLSearchParams(location.search).has('archive'))label += ' · 이전 회차';
-            document.getElementById('parge-dispatch-link').hidden = new URLSearchParams(location.search).has('archive');
+            document.getElementById('parge-dispatch-link').hidden = new URLSearchParams(location.search).has('archive') || channel.status !== 'active' || !CreoChannelRuntime.operationalFeatureAvailable(channel,'shipping');
             document.getElementById('print-channel-name').textContent = label;
             document.title = label + ' 인쇄 · CREO';
             var workspace = channel.legacy && channel.legacy.managementUrl
@@ -1837,10 +1837,10 @@
                 : (channel.links && channel.links.workspace || '/channel-workspace.html');
             var url = new URL(workspace, location.href);
             url.searchParams.set('channel', PRINT_CHANNEL_ID);
-            const archive=new URLSearchParams(location.search).get('archive');if(archive){url.pathname='/main';url.searchParams.set('archive',archive);document.getElementById('workspace-link').textContent='회차 운영 홈';}
+            const archive=new URLSearchParams(location.search).get('archive');if(archive||channel.status==='archived'){url.pathname='/main';if(archive)url.searchParams.set('archive',archive);document.getElementById('workspace-link').textContent='회차 운영 홈';}
             document.getElementById('workspace-link').href = url.pathname + url.search;
             document.getElementById('print-login-description').textContent = label + ' 인쇄 자료를 불러오려면 관리자 비밀번호를 입력해 주세요.';
-            CreoOperatorPipeline.sync(PRINT_CHANNEL_ID, label);
+            CreoOperatorPipeline.sync(PRINT_CHANNEL_ID, label, channel);
         }
 
         function renderPrintError(error) {
@@ -1856,7 +1856,7 @@
             var operation = await printOperation.ready();
             var channel = operation.channel;
             syncPrintChannel(channel);
-            var items=await printOperation.loadShippingItems();
+            var items=await printOperation.loadPrintItems();
             if(channel.dataAdapter==='platform'){
                 try{
                     var result=await CreoPlatform.api('channels/'+encodeURIComponent(channel.id)+'/shipping-suggestions');
