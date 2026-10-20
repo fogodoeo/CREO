@@ -22,6 +22,7 @@ async function main(){
   id:'pinball-fixture-'+index,name:'가상 개체 '+index,status:'sold',winnerName:name,
   winnerPhone:'0100000'+String(1001+index),soldPrice:index===0?200000:100000,
  });
+ await f.repository.upsertRecord('national-cre','item',{id:'pinball-small-amount',name:'소액 낙찰 가상 개체',status:'sold',winnerName:'테스트새벽',winnerPhone:'01000001013',soldPrice:50000});
  await f.repository.upsertRecord('national-cre','item',{id:'pinball-previous',name:'이전 회차 가상 개체',status:'sold',winnerName:'이전회차 제외',winnerPhone:'01000009999',soldPrice:100000,auctionArchiveId:'pinball-previous-round'});
  const admin=f.client();const login=await f.call(admin,'POST','/api/platform/auth/login',{password:f.secret});if(login.status!==200)throw Error(login.body);
  await f.call(admin,'GET','/api/platform/channels');
@@ -33,7 +34,7 @@ async function main(){
    res.writeHead(303,{Location:'/roulette/?'+params,'Set-Cookie':Object.entries(admin.jar).map(([k,v])=>`${k}=${v}; Path=/; HttpOnly; SameSite=Lax`)});res.end();return;
   }
   if(url.pathname==='/screen'){
-   const width=url.searchParams.get('size')==='mobile'?360:1920, height=width===360?800:1080;
+   const size=url.searchParams.get('size'),width=size==='small'?320:size==='mobile'?360:1920,height=width<=360?800:1080;
    const source=url.searchParams.get('mode')==='admin'?'/preview':'/roulette/?channel=national-cre&theme=national&broadcast=1&title='+encodeURIComponent('가마치통닭 쿠폰 추첨')+'&channelName='+encodeURIComponent('전국크레자랑 전라·충청편');
    res.writeHead(200,{'Content-Type':'text/html; charset=utf-8'});res.end(previewScreen(width,height,source));return;
   }

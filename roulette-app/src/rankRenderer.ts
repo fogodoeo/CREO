@@ -1,5 +1,6 @@
 import type { Marble } from './marble';
 import { selectCandidateRanks } from './candidateRanking.js';
+import { runningParticipantName } from './participantDisplay.js';
 import type { RenderParameters } from './rouletteRenderer';
 import { HUD_CONTENT_GAP, HUD_HEIGHT } from './rouletteUiLayout';
 import type { Rect } from './types/rect.type';
@@ -88,7 +89,7 @@ export class RankRenderer implements UIObject {
     const academySkin = document.documentElement.dataset.rouletteTheme === 'academy';
     const nationalSkin = document.documentElement.dataset.rouletteTheme === 'national';
     ctx.canvas.dataset.candidateRanks = candidates.map(({ rank }) => rank).join(',');
-    ctx.canvas.dataset.candidateNames = candidates.map(({ candidate }) => candidate.name).join('|');
+    ctx.canvas.dataset.candidateNames = candidates.map(({ candidate }) => runningParticipantName(candidate.name)).join('|');
     ctx.fillStyle = nationalSkin ? '#0648bf' : academySkin ? 'rgba(14, 20, 18, 0.94)' : 'rgba(4, 10, 18, 0.9)';
     ctx.fillRect(0, 0, width, hudHeight);
     if (academySkin) {
@@ -194,7 +195,7 @@ export class RankRenderer implements UIObject {
     const radius = 5 * uiScale;
     const gap = 5 * uiScale;
     const textMaxWidth = Math.max(30 * uiScale, maxWidth - radius * 2 - gap);
-    const label = this.fitText(ctx, candidate.name, textMaxWidth, 16 * uiScale, 11 * uiScale);
+    const label = this.fitText(ctx, runningParticipantName(candidate.name), textMaxWidth, 16 * uiScale, 11 * uiScale);
     const textWidth = ctx.measureText(label).width;
     const groupWidth = radius * 2 + gap + textWidth;
     const startX = centerX - groupWidth / 2;
@@ -252,7 +253,7 @@ export class RankRenderer implements UIObject {
     ctx.fillStyle = confirmed ? '#ffffff' : 'rgba(255, 255, 255, 0.78)';
     this.drawFittedText(
       ctx,
-      marble.name,
+      runningParticipantName(marble.name),
       nameX,
       rowCenter,
       nameWidth,

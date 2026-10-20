@@ -145,6 +145,8 @@ const dom = {
   ballCount: element<HTMLElement>('ballCount'),
   startBallCount: element<HTMLElement>('startBallCount'),
   syncWinners: element<HTMLButtonElement>('syncWinnersButton'),
+  syncWinnersByAmount: element<HTMLButtonElement>('syncWinnersByAmountButton'),
+  winnerImportActions: element<HTMLElement>('winnerImportActions'),
   sample: element<HTMLButtonElement>('sampleButton'),
   importEntries: element<HTMLButtonElement>('importEntriesButton'),
   clearEntries: element<HTMLButtonElement>('clearEntriesButton'),
@@ -271,9 +273,9 @@ function entrySummary(entries = parseEntries()): { people: number; balls: number
   return { people: participantCount(entries), balls };
 }
 
-async function syncAuctionWinnerEntries(showEmptyMessage = true): Promise<void> {
-  if (!remoteChannelId) return;
-  dom.syncWinners.disabled = true;
+async function syncAuctionWinnerEntries(mode: 'person' | 'amount' = 'amount', showEmptyMessage = true): Promise<void> {
+  if (!remoteChannelId || dom.syncWinners.disabled || dom.syncWinnersByAmount.disabled) return;
+  dom.syncWinners.disabled = dom.syncWinnersByAmount.disabled = true;
   try {
     const phoneSuffix = isNationalChannel(remoteChannelId);
     const response = await fetch(`/api/platform/channels/${encodeURIComponent(remoteChannelId)}/${phoneSuffix ? 'workspace?scope=round' : 'broadcast'}`, {
@@ -287,6 +289,7 @@ async function syncAuctionWinnerEntries(showEmptyMessage = true): Promise<void> 
       house: queryParameters.get('house'),
       isAcademy: queryParameters.get('theme') === 'academy',
       phoneSuffix,
+      mode,
     });
     dom.entries.value = entries.join('\n');
     localStorage.setItem(STORAGE_KEYS.entries, dom.entries.value);
@@ -294,14 +297,15 @@ async function syncAuctionWinnerEntries(showEmptyMessage = true): Promise<void> 
     if (entries.length) {
       const champKey = getLeadingHouseKey(payload.items || []);
       const houseName = champKey ? (HOUSE_NAMES[champKey] || champKey) : '';
-      showToast(houseName ? `우승 기숙사 [${houseName}] ${entries.length}명 · 10만원당 공 1개` : `${entries.length}명 · 10만원당 공 1개`);
+      const rule = mode === 'person' ? '1명당 공 1개' : '10만 원당 공 1개';
+      showToast(houseName ? `우승 기숙사 [${houseName}] ${entries.length}명 · ${rule}` : `${entries.length}명 · ${rule}`);
     } else if (showEmptyMessage) {
-      showToast('10만원 이상 낙찰자가 없습니다.');
+      showToast(mode === 'person' ? '이 회차에 낙찰자가 없습니다.' : '합산 10만 원 이상 낙찰자가 없습니다.');
     }
   } catch (error) {
     showToast(error instanceof Error ? error.message : '낙찰자를 불러오지 못했습니다.');
   } finally {
-    dom.syncWinners.disabled = false;
+    dom.syncWinners.disabled = dom.syncWinnersByAmount.disabled = false;
   }
 }
 
@@ -983,7 +987,8 @@ function bindEvents(): void {
     dom.entries.value = '참가자 A*2\n참가자 B\n참가자 C*3\n참가자 D\n참가자 E';
     updateCounts();
   });
-  dom.syncWinners.addEventListener('click', () => void syncAuctionWinnerEntries());
+  dom.syncWinners.addEventListener('click', () => void syncAuctionWinnerEntries('person'));
+  dom.syncWinnersByAmount.addEventListener('click', () => void syncAuctionWinnerEntries('amount'));
   dom.clearEntries.addEventListener('click', () => {
     dom.entries.value = '';
     updateCounts();
@@ -1121,7 +1126,7 @@ async function initialize(): Promise<void> {
   else closePanel();
 
   if (isRemoteController) {
-    dom.syncWinners.hidden = false;
+    dom.winnerImportActions.hidden = false;
     dom.remoteSection.hidden = false;
     dom.broadcastSource.value = remoteSourceUrl();
     dom.privacyNotice.textContent = '브로드캐스트 모드에서는 참가자 이름과 추첨 설정이 선택한 채널 세션에 저장됩니다.';
@@ -1129,7 +1134,7 @@ async function initialize(): Promise<void> {
     dom.start.querySelector('span')!.textContent = '송출 추첨 시작';
   }
 
-  if (autoLoadAuctionWinners) await syncAuctionWinnerEntries(false);
+  if (autoLoadAuctionWinners) await syncAuctionWinnerEntries('amount', false);
 
   roulette = new Roulette();
   roulette.addEventListener('goal', (event) => {

@@ -133,8 +133,11 @@
                 <textarea id="entriesInput" rows="8" spellcheck="false" placeholder="한 줄에 한 명씩 입력"></textarea>
               </label>
               <p class="field-help"><code>이름*3</code>은 공 3개, <code>이름/5</code>는 물리 가중치 5입니다.</p>
+              <div class="winner-import-actions" id="winnerImportActions" hidden>
+                <button id="syncWinnersButton" class="secondary-action" type="button">일반 불러오기 <span>1명당 공 1개</span></button>
+                <button id="syncWinnersByAmountButton" class="secondary-action" type="button">금액별 불러오기 <span>10만 원당 공 1개</span></button>
+              </div>
               <div class="text-actions">
-                <button id="syncWinnersButton" type="button" hidden>낙찰자 불러오기</button>
                 <button id="sampleButton" type="button">예시 입력</button>
                 <button id="importEntriesButton" type="button">파일 불러오기</button>
                 <button id="clearEntriesButton" type="button">전체 삭제</button>

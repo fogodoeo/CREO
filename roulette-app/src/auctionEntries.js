@@ -35,6 +35,7 @@ function auctionWinnerEntries(items, unitAmount = 100000, options = {}) {
   const houseOption = typeof options === 'string' ? options : options?.house;
   const isAcademyTheme = options?.theme === 'academy' || options?.isAcademy;
   const withPhone = Boolean(options?.phoneSuffix);
+  const byPerson = options?.mode === 'person';
   
   let targetHouse = null;
   if (houseOption && houseOption !== 'all') {
@@ -51,7 +52,7 @@ function auctionWinnerEntries(items, unitAmount = 100000, options = {}) {
     const rawName = String(item?.winnerAlias || item?.winnerName || '').replace(/\s+/g, ' ').trim();
     const name = buyerDisplayName(rawName);
     const soldPrice = Math.max(0, Math.floor(Number(item?.soldPrice) || 0));
-    if (!SOLD_STATUSES.has(status) || !name || soldPrice <= 0) continue;
+    if (!SOLD_STATUSES.has(status) || !name || (!byPerson && soldPrice <= 0)) continue;
     
     if (targetHouse) {
       const itemHouse = String(item?.attributes?.crewart_house_key || item?.groupId || '').toUpperCase();
@@ -64,7 +65,7 @@ function auctionWinnerEntries(items, unitAmount = 100000, options = {}) {
   }
 
   return [...totals.entries()]
-    .map(([name, total]) => ({ name, total, count: Math.floor(total / unit) }))
+    .map(([name, total]) => ({ name, total, count: byPerson ? 1 : Math.floor(total / unit) }))
     .filter((entry) => entry.count > 0)
     .sort((left, right) => right.total - left.total || left.name.localeCompare(right.name, 'ko'))
     .map((entry) => `${entry.name}*${entry.count}`);

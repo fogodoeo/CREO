@@ -7,6 +7,7 @@ import { transformGuard } from './utils/transformGuard';
 import { random } from './utils/random';
 import { rad } from './utils/utils';
 import { Vector } from './utils/Vector';
+import { runningParticipantName } from './participantDisplay.js';
 
 const glassSpriteCache = new Map<string, HTMLCanvasElement>();
 
@@ -310,6 +311,7 @@ export class Marble {
 
   private _drawName(ctx: CanvasRenderingContext2D, zoom: number, simpleLabel: boolean) {
     transformGuard(ctx, () => {
+      const labelName = runningParticipantName(this.name);
       const fontFamily = `'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
       if (document.documentElement.dataset.rouletteTheme === 'national') {
         ctx.translate(this.x, this.y + this.size / 2);
@@ -317,7 +319,7 @@ export class Marble {
         ctx.font = `800 11pt ${fontFamily}`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        const labelWidth = Math.min(92, ctx.measureText(this.name).width) + 12;
+        const labelWidth = Math.min(92, ctx.measureText(labelName).width) + 12;
         ctx.fillStyle = '#fffdf7';
         ctx.strokeStyle = '#739bdb';
         ctx.lineWidth = 0.8;
@@ -327,21 +329,21 @@ export class Marble {
         ctx.fill();
         ctx.stroke();
         ctx.fillStyle = '#172d48';
-        ctx.fillText(this.name, 0, 12, 92);
+        ctx.fillText(labelName, 0, 12, 92);
         return;
       }
       const maxWidth = 112;
       let fontSize = 16;
       ctx.font = `800 ${fontSize}pt ${fontFamily}`;
-      while (fontSize > 11 && ctx.measureText(this.name).width > maxWidth) {
+      while (fontSize > 11 && ctx.measureText(labelName).width > maxWidth) {
         fontSize -= 1;
         ctx.font = `800 ${fontSize}pt ${fontFamily}`;
       }
-      const characters = Array.from(this.name);
+      const characters = Array.from(labelName);
       while (characters.length > 1 && ctx.measureText(`${characters.join('')}…`).width > maxWidth) {
         characters.pop();
       }
-      const displayName = characters.length < Array.from(this.name).length ? `${characters.join('')}…` : this.name;
+      const displayName = characters.length < Array.from(labelName).length ? `${characters.join('')}…` : labelName;
       ctx.strokeStyle = 'black';
       ctx.lineWidth = 2;
       ctx.fillStyle = this.color;
