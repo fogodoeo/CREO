@@ -76,11 +76,10 @@ test('new bundled manuscripts merge into existing state without overwriting edit
  const f=await fixture(t);await f.assign();await f.post({action:'copy',templateId:'wolssu26-relay',version:1});
  const key=require('../platform-core').channelKey('national-cre','setting','promo-center');
  const row=(await f.repository.getRowsByKeys([key]))[0],saved=JSON.parse(row.value);
- saved.templates=saved.templates.filter(t=>t.id==='wolssu26-relay');
- saved.templates[0].title='수정한 나만의 제목과 인사말';saved.templates[0].active=false;
+ saved.templates=[{...saved.templates[0],id:'custom-retired',title:'수정한 나만의 제목과 인사말',active:false}];
  await f.repository.upsertRows([{key,value:JSON.stringify(saved)}]);f.restart();
- let view=(await f.get(f.owner,f.id,true)).json();const bundled=require('../promo-templates.json');assert.equal(view.templates.filter(t=>t.id!=='wolssu26-relay').length,bundled.filter(t=>t.id!=='wolssu26-relay').length);
+ let view=(await f.get(f.owner,f.id,true)).json();const bundled=require('../promo-templates.json');assert.equal(view.templates.filter(t=>t.id!=='custom-retired').length,bundled.length);
  assert.equal(view.templates[0].title,'수정한 나만의 제목과 인사말');assert.equal(view.templates[0].active,false);assert.equal(view.templates.find(t=>t.id==='wolssu26-relay').usage.length,1);assert.equal(view.assignments.length,1);
- assert.equal((await f.post({action:'copy',templateId:'wolssu26-joseon',version:1})).status,200);f.restart();
- view=(await f.get(f.owner,f.id,true)).json();assert.equal(view.templates.length,bundled.length);assert.equal(view.templates.find(t=>t.id==='wolssu26-joseon').usage.length,1);
+ assert.equal((await f.post({action:'copy',templateId:'wolssu26-relay',version:1})).status,200);f.restart();
+ view=(await f.get(f.owner,f.id,true)).json();assert.equal(view.templates.filter(t=>t.active!==false).length,bundled.length);assert.equal(view.templates.find(t=>t.id==='wolssu26-relay').usage.length,2);
 });

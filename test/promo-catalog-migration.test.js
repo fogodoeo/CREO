@@ -41,7 +41,7 @@ function fixture(){
  const create=()=>createPromoCenter({repository,vendorsFor:async()=>[{id:'vendor',name:'업체'}],now:()=>Date.parse('2026-10-16T12:00:00+09:00')});
  return {repository,create,get raw(){return raw},set raw(v){raw=v},get writes(){return writes}};
 }
-test('five Wolssu manuscripts become the only active templates, retired 10.14 drafts archive cleanly and keep operator edits and history',async()=>{
+test('single Wolssu manuscript becomes the only active template, retired drafts archive cleanly and keep operator edits and history',async()=>{
  const f=fixture(),s=createView(f.create());const first=await s();
  assert.equal(first.revision,11);assert.equal(f.writes,1);
  assert.deepEqual(first.templates.filter(t=>t.active!==false).map(t=>t.id),seed.map(t=>t.id));
@@ -50,17 +50,17 @@ test('five Wolssu manuscripts become the only active templates, retired 10.14 dr
   const preserved=first.templates.find(t=>t.id===id);assert.equal(preserved.active,false);assert.equal(preserved.version,4);assert.equal(preserved.title,'운영자가 수정한 '+id);
   assert.equal(preserved.blocks[0].text,'운영자가 다듬은 도입부 '+id);
  }
- assert.equal(first.templates.find(t=>t.id==='wolssu26-taste').version,1);
+ assert.equal(first.templates.find(t=>t.id==='wolssu26-relay').version,1);
  assert.equal(first.templates.find(t=>t.id==='launch26-joseon').title,'승인된 전하 원고');
- assert.equal(first.assignments.find(a=>a.id==='pending').templateId,'wolssu26-afterwork');
- assert.equal(first.assignments.find(a=>a.id==='brief-pending').templateId,'wolssu26-taste');
- assert.equal(first.assignments.find(a=>a.id==='collector-pending').templateId,'wolssu26-breeder');
- assert.equal(first.assignments.find(a=>a.id==='joseon-pending').templateId,'wolssu26-joseon');
+ assert.equal(first.assignments.find(a=>a.id==='pending').templateId,'wolssu26-relay');
+ assert.equal(first.assignments.find(a=>a.id==='brief-pending').templateId,'wolssu26-relay');
+ assert.equal(first.assignments.find(a=>a.id==='collector-pending').templateId,'wolssu26-relay');
+ assert.equal(first.assignments.find(a=>a.id==='joseon-pending').templateId,'wolssu26-relay');
  const done=first.assignments.find(a=>a.id==='done');assert.equal(done.templateId,'launch26-easy');assert.equal(done.publication.title,'게시한 예전 제목');assert.equal(done.publication.version,3);
  assert.equal(old.usage.length,1);await s();await createView(f.create())();assert.equal(f.writes,1);
- const post=await f.create().mutate({admin:true},{action:'template',requestId:randomUUID(),revision:11,id:'wolssu26-afterwork',name:'운영자 수정',title:'어떤 제목이든 수정 유지',blocks:first.templates.find(t=>t.id==='wolssu26-afterwork').blocks,active:true});
- assert.equal(post.revision,12);assert.equal((await createView(f.create())()).templates.find(t=>t.id==='wolssu26-afterwork').title,'어떤 제목이든 수정 유지');
- await assert.rejects(f.create().mutate({vendorId:'vendor'},{action:'copy',requestId:randomUUID(),templateId:'wolssu26-afterwork',version:1}),e=>e.status===409);
+ const post=await f.create().mutate({admin:true},{action:'template',requestId:randomUUID(),revision:11,id:'wolssu26-relay',name:'운영자 수정',title:'어떤 제목이든 수정 유지',blocks:first.templates.find(t=>t.id==='wolssu26-relay').blocks,active:true});
+ assert.equal(post.revision,12);assert.equal((await createView(f.create())()).templates.find(t=>t.id==='wolssu26-relay').title,'어떤 제목이든 수정 유지');
+ await assert.rejects(f.create().mutate({vendorId:'vendor'},{action:'copy',requestId:randomUUID(),templateId:'wolssu26-relay',version:1}),e=>e.status===409);
 });
 function createView(service){return ()=>service.view({admin:true,month:'2026-10'});}
 test('copy polish centers stored paragraphs and removes old notices without replacing operator text or publication history',async()=>{
@@ -126,11 +126,10 @@ test('photo additions preserve version 5 operator edits and history, add once an
 
 test('new concepts append once to the current catalog, preserving edited manuscripts and frozen history',async()=>{
  const f=fixture(),saved=JSON.parse(f.raw);
- const ids=new Set(['wolssu26-afterwork','wolssu26-breeder']);
+ const ids=new Set(['wolssu26-relay']);
  saved.catalogVersion=require('../promo-catalog-migration.json').version;
- saved.templates=structuredClone(seed.filter(t=>!ids.has(t.id)));
- saved.templates[0].title='현재 운영자가 직접 고른 제목';saved.templates[0].blocks[0].text='현재 운영자가 직접 고친 도입부';
- saved.templates[0].active=false;saved.templates[0].version=12;
+ saved.templates=[legacyTemplate('launch26-joseon',{title:'현재 운영자가 직접 고른 제목',active:false,version:12})];
+ saved.templates[0].blocks[0].text='현재 운영자가 직접 고친 도입부';
  const oldTemplates=structuredClone(saved.templates),assignments=structuredClone(saved.assignments),copies=structuredClone(saved.copies);f.raw=JSON.stringify(saved);
  const first=await createView(f.create())();assert.equal(first.revision,11);assert.equal(f.writes,1);
  const persisted=JSON.parse(f.raw);assert.deepEqual(persisted.templates.filter(t=>!ids.has(t.id)),oldTemplates);
@@ -142,8 +141,8 @@ test('new concepts append once to the current catalog, preserving edited manuscr
 });
 
 test('current-catalog additions retry concurrent changes and never report a failed save as successful',async()=>{
- const f=fixture(),saved=JSON.parse(f.raw),ids=new Set(['wolssu26-afterwork','wolssu26-breeder']);
- saved.catalogVersion=require('../promo-catalog-migration.json').version;saved.templates=structuredClone(seed.filter(t=>!ids.has(t.id)));f.raw=JSON.stringify(saved);
+ const f=fixture(),saved=JSON.parse(f.raw),ids=new Set(['wolssu26-relay']);
+ saved.catalogVersion=require('../promo-catalog-migration.json').version;saved.templates=[legacyTemplate('launch26-joseon',{active:false,version:1})];f.raw=JSON.stringify(saved);
  const normal=f.repository.compareAndSwapRows;let conflicted=false;
  f.repository.compareAndSwapRows=async(...args)=>{if(!conflicted){conflicted=true;const latest=JSON.parse(f.raw);latest.revision++;latest.templates[0].title='동시에 수정한 제목';latest.copies.push({vendorId:'vendor',templateId:latest.templates[0].id,version:1,at:99});f.raw=JSON.stringify(latest);return false;}return normal(...args);};
  const first=await createView(f.create())();assert.equal(first.revision,12);assert.equal(first.templates[0].title,'동시에 수정한 제목');assert.equal(JSON.parse(f.raw).copies.at(-1).at,99);assert.equal(f.writes,1);

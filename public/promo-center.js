@@ -26,7 +26,7 @@
    if(hasBoard&&b.type==='text'&&/^※ 2026\.10\.07 기준/.test(b.text))continue;
    blocks.push(b);
    // Insert once, immediately after the paragraph introducing the participating vendors.
-   if(!hasBoard&&!inserted&&b.type==='text'&&(/다양한 크레들을 선보일 예정|다양한 크레들을 선보입니다|30여 곳의 전문|전국의 전문 브리더|여러 업체의 크레|여러 지역의 전문 업체|지역별 전문 업체가 돌아가며 참여/.test(b.text))){blocks.push(...images.map(i=>({...i,type:'image'})));inserted=true;}
+   if(!hasBoard&&!inserted&&b.type==='text'&&(/다양한 크레들을 선보일 예정|다양한 크레들을 선보입니다|30여 곳의 전문|전국의 전문 브리더|여러 업체의 크레|여러 지역의 전문 업체|지역별 전문 업체가 돌아가며 참여|찾아가는 라이브 경매/.test(b.text))){blocks.push(...images.map(i=>({...i,type:'image'})));inserted=true;}
   }
   if(!inserted&&images.length){const index=blocks.findIndex(b=>b.href);blocks.splice(index<0?blocks.length:index,0,...images.map(i=>({...i,type:'image'})));}const ticket={type:'image',src:'/promo-assets/ticket-wolssu-sponsors-v1.png',alt:'전국크레자랑 공식 후원 및 파트너 · 실크트리(SILKTREE) · 파르게(PARGE)'};const linkIndex=blocks.findIndex(b=>b.href);blocks.splice(linkIndex<0?blocks.length:linkIndex,0,ticket);
 
