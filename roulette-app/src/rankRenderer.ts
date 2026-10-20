@@ -89,7 +89,7 @@ export class RankRenderer implements UIObject {
     const nationalSkin = document.documentElement.dataset.rouletteTheme === 'national';
     ctx.canvas.dataset.candidateRanks = candidates.map(({ rank }) => rank).join(',');
     ctx.canvas.dataset.candidateNames = candidates.map(({ candidate }) => candidate.name).join('|');
-    ctx.fillStyle = nationalSkin ? '#172d48' : academySkin ? 'rgba(14, 20, 18, 0.94)' : 'rgba(4, 10, 18, 0.9)';
+    ctx.fillStyle = nationalSkin ? '#0648bf' : academySkin ? 'rgba(14, 20, 18, 0.94)' : 'rgba(4, 10, 18, 0.9)';
     ctx.fillRect(0, 0, width, hudHeight);
     if (academySkin) {
       ctx.fillStyle = 'rgba(212, 189, 134, 0.55)';
@@ -111,7 +111,7 @@ export class RankRenderer implements UIObject {
     ctx.font = `850 ${17 * uiScale}pt ${this.hudFont}`;
     ctx.fillText(`${winners.length} / ${totalCount}`, width - 6 * uiScale, hudHeight / 2);
 
-    ctx.fillStyle = nationalSkin ? '#233e59' : academySkin ? 'rgba(8, 14, 12, 0.78)' : 'rgba(3, 8, 14, 0.74)';
+    ctx.fillStyle = nationalSkin ? '#102e61' : academySkin ? 'rgba(8, 14, 12, 0.78)' : 'rgba(3, 8, 14, 0.74)';
     ctx.fillRect(rankPanelLeft, listTop, rankPanelWidth, Math.max(0, visibleListHeight));
     ctx.beginPath();
     ctx.rect(rankPanelLeft, listTop, rankPanelWidth, Math.max(0, visibleListHeight));

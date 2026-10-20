@@ -27,19 +27,19 @@ export type AppConfig = {
 
 export const THEME_PRESETS: Record<string, ColorTheme> = {
   national: {
-    background: '#fff8e9',
+    background: '#f0f6ff',
     marbleLightness: 46,
     marbleWinningBorder: '#172d48',
     skillColor: '#172d48',
-    coolTimeIndicator: '#edc36e',
+    coolTimeIndicator: '#ffe044',
     entity: {
-      box: { fill: '#244664', outline: '#142c45', bloom: '#244664', bloomRadius: 0 },
-      circle: { fill: '#edc36e', outline: '#87601e', bloom: '#edc36e', bloomRadius: 0 },
-      polyline: { fill: '#fffdf7', outline: '#244664', bloom: '#244664', bloomRadius: 0 },
+      box: { fill: '#1268e8', outline: '#0648bf', bloom: '#1268e8', bloomRadius: 0 },
+      circle: { fill: '#ffe044', outline: '#b76a00', bloom: '#ffe044', bloomRadius: 0 },
+      polyline: { fill: '#f8fbff', outline: '#0648bf', bloom: '#0648bf', bloomRadius: 0 },
     },
-    rankStroke: '#fff8e9',
-    minimapBackground: '#f4e6cb',
-    minimapViewport: '#244664',
+    rankStroke: '#f0f6ff',
+    minimapBackground: '#d8e7fc',
+    minimapViewport: '#0648bf',
     winnerText: '#172d48',
     winnerOutline: '#fff8e9',
     winnerBackground: '#fff8e9',

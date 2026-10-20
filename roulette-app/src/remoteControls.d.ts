@@ -1,4 +1,10 @@
 type Session = { phase: string; runId: string; seed: string };
+export declare function initialEntries(options: {
+  remoteDisplay: boolean;
+  urlEntries?: string;
+  readStored: () => string | null;
+  fallback: string;
+}): string;
 export declare function createRemoteControls<T extends Session>(options: {
   sendCommand: (action: 'prepare' | 'start') => Promise<T>;
   readFingerprint: () => string;

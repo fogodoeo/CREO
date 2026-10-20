@@ -1,5 +1,12 @@
 'use strict';
 
+function initialEntries({ remoteDisplay, urlEntries, readStored, fallback }) {
+  // A broadcast must wait for its channel's authoritative session. A previous
+  // controller/other channel may have left unrelated names in shared storage.
+  if (remoteDisplay) return '';
+  return urlEntries || readStored() || fallback;
+}
+
 // The server owns the draw. A controller preview must never start a second draw
 // or report success before the broadcast command has been accepted.
 function createRemoteControls({ sendCommand, readFingerprint, readSession, preview, onBusy }) {
@@ -43,4 +50,4 @@ function createSessionPoller({ readPulse, fetchSession }) {
   };
 }
 
-module.exports = { createRemoteControls, createSessionPoller };
+module.exports = { createRemoteControls, createSessionPoller, initialEntries };

@@ -238,6 +238,7 @@ export class RouletteRenderer {
 
   private renderEntities(entities: MapEntityState[]) {
     this.ctx.save();
+    const nationalSkin = document.documentElement.dataset.rouletteTheme === 'national';
     entities.forEach((entity) => {
       const transform = this.ctx.getTransform();
       this.ctx.translate(entity.x, entity.y);
@@ -264,7 +265,16 @@ export class RouletteRenderer {
           const h = shape.height * 2;
           this.ctx.rotate(shape.rotation);
           const useAcademyWand = entity.motion === 'kinematic' || w >= h * 2.4;
-          if (this.isRyanGeckoSkin() && useAcademyWand && this.imageReady(this._ryanGeckoAssets.wand)) {
+          if (nationalSkin) {
+            // Bevel the existing shape; collision geometry remains untouched.
+            const bevel = this.ctx.createLinearGradient(0, -h / 2, 0, h / 2);
+            bevel.addColorStop(0, '#8bcaff');
+            bevel.addColorStop(.25, '#287cff');
+            bevel.addColorStop(1, '#0648bf');
+            this.ctx.fillStyle = bevel;
+            this.ctx.fillRect(-w / 2, -h / 2, w, h);
+            this.ctx.strokeRect(-w / 2, -h / 2, w, h);
+          } else if (this.isRyanGeckoSkin() && useAcademyWand && this.imageReady(this._ryanGeckoAssets.wand)) {
             this.ctx.shadowBlur = 10;
             this.ctx.shadowColor = 'rgba(242, 198, 109, 0.6)';
             const wandWidth = Math.max(w * 1.08, h * 4.8);
@@ -293,7 +303,17 @@ export class RouletteRenderer {
           break;
         }
         case 'circle': {
-          if (this.isRyanGeckoSkin() && this.imageReady(this._ryanGeckoAssets.rune)) {
+          if (nationalSkin) {
+            const bevel = this.ctx.createRadialGradient(-shape.radius * .3, -shape.radius * .35, 0, 0, 0, shape.radius);
+            bevel.addColorStop(0, '#fffde0');
+            bevel.addColorStop(.55, '#ffe044');
+            bevel.addColorStop(1, '#ee9d15');
+            this.ctx.fillStyle = bevel;
+            this.ctx.beginPath();
+            this.ctx.arc(0, 0, shape.radius, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.stroke();
+          } else if (this.isRyanGeckoSkin() && this.imageReady(this._ryanGeckoAssets.rune)) {
             const size = shape.radius * 2.55;
             this.ctx.shadowBlur = 10;
             this.ctx.shadowColor = 'rgba(242, 198, 109, 0.6)';
@@ -492,6 +512,8 @@ export class RouletteRenderer {
   ) {
     if (!winner) return;
     if (document.documentElement.dataset.rouletteTheme === 'national') {
+      // The accessible DOM award also survives a completed-session reload.
+      // Keep a canvas award in automatic recordings, which do not capture DOM.
       this.renderNationalWinner(winner, ctx, width, height);
       return;
     }
@@ -544,34 +566,27 @@ export class RouletteRenderer {
 
   private renderNationalWinner(winner: Marble, ctx: CanvasRenderingContext2D, width: number, height: number) {
     const scale = width / 960;
-    const cardWidth = width * 0.72;
-    const cardHeight = Math.min(152 * scale, height * 0.36);
-    const x = (width - cardWidth) / 2;
-    const y = height - cardHeight - 24 * scale;
+    const w = width * .72, h = Math.min(152 * scale, height * .36);
+    const x = (width - w) / 2, y = height - h - 24 * scale;
     ctx.save();
-    ctx.shadowColor = '#172d4833';
-    ctx.shadowBlur = 28 * scale;
-    ctx.fillStyle = '#fffdf7';
-    ctx.strokeStyle = '#bd8e39';
+    ctx.fillStyle = '#f8fbff';
+    ctx.strokeStyle = '#0648bf';
     ctx.lineWidth = 3 * scale;
     ctx.beginPath();
-    ctx.roundRect(x, y, cardWidth, cardHeight, 18 * scale);
-    ctx.fill();
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#9c3328';
+    ctx.roundRect(x, y, w, h, 18 * scale);
+    ctx.fill(); ctx.stroke();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#102e61';
     ctx.font = `850 ${20 * scale}px 'Pretendard Variable', sans-serif`;
-    ctx.fillText(`${options.winnerLabel} · 축하합니다!`, width / 2, y + cardHeight * 0.25, cardWidth - 40 * scale);
-    ctx.fillStyle = '#172d48';
+    ctx.fillText(`${options.winnerLabel} · 축하합니다!`, width / 2, y + h * .25, w - 40 * scale);
+    ctx.fillStyle = '#0648bf';
     let fontSize = 54 * scale;
     ctx.font = `900 ${fontSize}px 'Pretendard Variable', sans-serif`;
-    while (ctx.measureText(winner.name).width > cardWidth - 48 * scale && fontSize > 18 * scale) {
+    while (ctx.measureText(winner.name).width > w - 48 * scale && fontSize > 18 * scale) {
       fontSize -= scale;
       ctx.font = `900 ${fontSize}px 'Pretendard Variable', sans-serif`;
     }
-    ctx.fillText(winner.name, width / 2, y + cardHeight * 0.65, cardWidth - 48 * scale);
+    ctx.fillText(winner.name, width / 2, y + h * .65, w - 48 * scale);
     ctx.restore();
   }
 }

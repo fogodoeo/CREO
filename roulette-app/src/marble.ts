@@ -319,7 +319,7 @@ export class Marble {
         ctx.textBaseline = 'middle';
         const labelWidth = Math.min(92, ctx.measureText(this.name).width) + 12;
         ctx.fillStyle = '#fffdf7';
-        ctx.strokeStyle = '#c2a271';
+        ctx.strokeStyle = '#739bdb';
         ctx.lineWidth = 0.8;
         ctx.shadowBlur = 0;
         ctx.beginPath();

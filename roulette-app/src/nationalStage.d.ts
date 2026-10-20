@@ -1,0 +1,19 @@
+export declare function isNationalChannel(channel: string): boolean;
+export declare function createNationalStage(options: {
+  root: HTMLElement;
+  video: HTMLVideoElement;
+  enabled: () => boolean;
+  reducedMotion: () => boolean;
+  storage?: Pick<Storage, 'getItem' | 'setItem'>;
+  storageKey: string;
+}): {
+  update: (state: {
+    phase?: 'loading' | 'ready' | 'running' | 'complete' | 'error';
+    winner?: string;
+    ballCount?: number;
+    eventTitle?: string;
+    edition?: string;
+  }) => void;
+  start: (runId: string) => void;
+  stop: () => void;
+};

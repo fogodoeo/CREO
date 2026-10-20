@@ -1,8 +1,26 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { createRemoteControls, createSessionPoller } = require('../roulette-app/src/remoteControls');
+const { createRemoteControls, createSessionPoller, initialEntries } = require('../roulette-app/src/remoteControls');
 const { snapshotStandings } = require('../roulette-app/src/standings');
+
+test('broadcast cold start never exposes names from another channel, URL or fallback', () => {
+  let reads = 0;
+  const names = initialEntries({
+    remoteDisplay: true, urlEntries: 'old URL entrant',
+    readStored: () => { reads++; return 'different channel entrant'; },
+    fallback: 'sample entrant',
+  });
+  assert.equal(names, '');
+  assert.equal(reads, 0, 'broadcast cannot even consult shared participant storage');
+});
+
+test('controller retains its explicit list, saved draft and first-use fallback', () => {
+  const base = { remoteDisplay: false, readStored: () => 'saved draft', fallback: 'sample' };
+  assert.equal(initialEntries({ ...base, urlEntries: 'explicit list' }), 'explicit list');
+  assert.equal(initialEntries(base), 'saved draft');
+  assert.equal(initialEntries({ ...base, readStored: () => null }), 'sample');
+});
 
 test('goal-frame standings contain each ball once even before finishers leave the active array', () => {
   const a = { id: 1, name: 'same participant' }, b = { id: 2, name: 'same participant' }, c = { id: 3, name: 'another' };

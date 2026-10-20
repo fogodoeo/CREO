@@ -13,7 +13,8 @@ import type { ColorTheme } from './types/ColorTheme';
 import { createSecureSeed, setRandomSeed } from './utils/random';
 import { parseName } from './utils/utils';
 import { auctionWinnerEntries, getLeadingHouseKey, HOUSE_NAMES } from './auctionEntries.js';
-import { createRemoteControls, createSessionPoller } from './remoteControls.js';
+import { createRemoteControls, createSessionPoller, initialEntries } from './remoteControls.js';
+import { createNationalStage, isNationalChannel } from './nationalStage.js';
 
 const queryParameters = new URLSearchParams(location.search);
 const isBroadcastMode = queryParameters.get('broadcast') === '1';
@@ -184,6 +185,18 @@ const dom = {
   exportRemoteResult: element<HTMLButtonElement>('exportRemoteResultButton'),
   privacyNotice: element<HTMLElement>('privacyNotice'),
 };
+
+const nationalStage = createNationalStage({
+  root: element<HTMLElement>('nationalStage'),
+  video: element<HTMLVideoElement>('nationalStinger'),
+  enabled: () => document.documentElement.dataset.rouletteTheme === 'national' && !isRemoteController,
+  reducedMotion: () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+  storage: {
+    getItem: (key) => sessionStorage.getItem(key),
+    setItem: (key, value) => sessionStorage.setItem(key, value),
+  },
+  storageKey: `creo:national-stinger:${remoteChannelId || 'local'}`,
+});
 
 function safeJsonParse<T>(value: string | null, fallback: T): T {
   if (!value) return fallback;
@@ -361,6 +374,7 @@ function reportControlError(error: unknown): void {
 function setStatus(state: 'loading' | 'ready' | 'running' | 'complete' | 'error', message: string): void {
   dom.statusPill.dataset.state = state;
   dom.statusText.textContent = message;
+  nationalStage.update({ phase: state });
 }
 
 function openPanel(): void {
@@ -380,8 +394,9 @@ function updateBrand(): void {
   dom.resultLabel.textContent = dom.winnerLabel.value.trim() || DEFAULT_CONFIG.winnerLabel;
   document.documentElement.style.setProperty('--accent', dom.accent.value);
   document.documentElement.dataset.rouletteTheme = String(currentThemeName());
-  element<HTMLElement>('nationalEventTitle').textContent = dom.eventTitle.value.trim() || '경품 추첨';
-  element<HTMLElement>('nationalEdition').textContent = dom.channelName.value.trim() || '전국크레자랑';
+  document.documentElement.style.setProperty('--national-stage-art', 'url("/assets/pinball-national/stage-v1.png")');
+  nationalStage.update({ eventTitle: dom.eventTitle.value.trim(), edition: dom.channelName.value.trim() });
+  if (remoteChannelId) element<HTMLAnchorElement>('openBroadcastSource').href = remoteSourceUrl();
   document.title = `${dom.eventTitle.value.trim() || DEFAULT_CONFIG.eventTitle} · ${currentThemeName() === 'national' ? '전국크레자랑' : config.appName}`;
 }
 
@@ -390,6 +405,7 @@ function updateCounts(): void {
   dom.personCount.textContent = String(people);
   dom.ballCount.textContent = String(balls);
   dom.startBallCount.textContent = `${balls}개 공`;
+  nationalStage.update({ ballCount: balls });
   const valid = engineReady && balls >= 2 && balls <= 500 && !running && !remoteCommandPending
     && !remoteActionPending && !(isRemoteController && remotePhase === 'running');
   dom.shuffle.disabled = !valid;
@@ -426,6 +442,7 @@ function collectConfig(): AppConfig {
 
 function persistInputs(): void {
   config = collectConfig();
+  if (isRemoteDisplay) return;
   localStorage.setItem(STORAGE_KEYS.config, JSON.stringify(config));
   localStorage.setItem(STORAGE_KEYS.entries, dom.entries.value);
 }
@@ -528,6 +545,7 @@ async function startRound(): Promise<void> {
   closePanel();
   setStatus('running', '추첨 진행 중');
   roulette.start();
+  nationalStage.start(remotePreparedRunId || `${currentRound.seed}:${currentRound.startedAt}`);
   window.dispatchEvent(new CustomEvent('creo:roulette:start', { detail: { ...currentRound } }));
 }
 
@@ -564,6 +582,7 @@ async function completeRound(winner: string): Promise<void> {
   saveHistory();
   updateCounts();
   setStatus('complete', `${winner} 당첨`);
+  nationalStage.update({ winner });
 
   dom.resultLabel.textContent = dom.winnerLabel.value.trim() || DEFAULT_CONFIG.winnerLabel;
   dom.resultWinner.textContent = winner;
@@ -693,6 +712,12 @@ function updateRemoteSnapshot(session: RemoteSession): void {
     dom.remoteResultStandings.append(row);
   }
   updateCounts();
+  nationalStage.update({
+    phase: session.phase === 'idle' || session.phase === 'prepared' ? 'ready' : session.phase,
+    ballCount: session.ballCount,
+    winner: session.phase === 'complete' ? session.result?.winner || '' : '',
+    ...(session.config ? { eventTitle: session.config.eventTitle, edition: session.config.channelName } : {}),
+  });
 }
 
 async function sendRemoteCommand(action: 'reset' | 'prepare' | 'start'): Promise<RemoteSession> {
@@ -825,7 +850,7 @@ function startRemotePolling(): void {
 function applyConfigToControls(next: AppConfig): void {
   config = { ...DEFAULT_CONFIG, ...next };
   // Existing national-cre broadcast URLs keep working with the event's new skin.
-  if (remoteChannelId === 'national-cre' && config.themePreset === 'clean') {
+  if (isNationalChannel(remoteChannelId) && config.themePreset === 'clean') {
     config.themePreset = 'national';
     config.accentColor = THEME_PRESETS.national.coolTimeIndicator;
   }
@@ -1041,7 +1066,12 @@ async function initialize(): Promise<void> {
   bindEvents();
   const urlState = applyUrlParameters(config);
   applyConfigToControls(urlState.config);
-  dom.entries.value = urlState.entries || localStorage.getItem(STORAGE_KEYS.entries) || config.defaultEntries;
+  dom.entries.value = initialEntries({
+    remoteDisplay: isRemoteDisplay,
+    urlEntries: urlState.entries,
+    readStored: () => localStorage.getItem(STORAGE_KEYS.entries),
+    fallback: config.defaultEntries,
+  });
   renderHistory();
   updateCounts();
   if (!isRemoteDisplay) openPanel();

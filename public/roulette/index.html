@@ -1,21 +1,38 @@
-<!DOCTYPE html><html lang=ko><script type=importmap>{"imports":{"1v7oZ":"/roulette/Box2D.7042bf0d.js","5Lw9Q":"/roulette/Box2D.simd.dd31b167.wasm","9NQTk":"/roulette/Box2D.simd.3eb62d94.js","hOHCw":"/roulette/Box2D.b9b16b27.wasm"}}</script><meta charset=UTF-8><meta name=viewport content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name=theme-color content=#07111f><meta name=description content="채널과 행사에 관계없이 사용할 수 있는 공용 마블 추첨기"><meta property=og:type content=website><meta property=og:title content="MARBLE DRAW"><meta property=og:description content="공이 달리고, 결과가 남는 라이브 추첨"><title>MARBLE DRAW</title><link rel=stylesheet href=/roulette/roulette-app.503da46b.css><body>
+<!DOCTYPE html><html lang=ko><script type=importmap>{"imports":{"1v7oZ":"/roulette/Box2D.7042bf0d.js","5Lw9Q":"/roulette/Box2D.simd.dd31b167.wasm","9NQTk":"/roulette/Box2D.simd.3eb62d94.js","hOHCw":"/roulette/Box2D.b9b16b27.wasm"}}</script><meta charset=UTF-8><meta name=viewport content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name=theme-color content=#07111f><meta name=description content="채널과 행사에 관계없이 사용할 수 있는 공용 마블 추첨기"><meta property=og:type content=website><meta property=og:title content="MARBLE DRAW"><meta property=og:description content="공이 달리고, 결과가 남는 라이브 추첨"><title>MARBLE DRAW</title><link rel=stylesheet href=/roulette/roulette-app.87f2c70c.css><body>
     <main class=app-shell id=appShell>
       <section class=stage aria-label="마블 추첨 화면">
         <div id=canvasHost class=canvas-host data-roulette-canvas-host></div>
 
-        <div class=national-chrome aria-label="전국크레자랑 추첨 행사">
+        <div class=national-chrome id=nationalStage data-draw-phase=loading aria-label="전국크레자랑 추첨 행사">
           <div class=national-masthead>
             <div class=national-identity>
+              <strong class=national-wordmark aria-label=전국크레자랑><span>전국</span><span>크레자랑</span></strong>
               <span class=national-edition id=nationalEdition>전국크레자랑</span>
-              <strong class=national-wordmark><span>전국</span><span>크레</span><span>자랑</span></strong>
             </div>
             <div class=national-prize>
-              <span>함께하는 즐거움 · 행운의 핀볼</span>
+              <span>전국크레자랑 스페셜 · 행운의 핀볼</span>
               <strong id=nationalEventTitle>경품 추첨</strong>
             </div>
           </div>
-          <div class=national-footnote><span>전국크레자랑 · 행운의 주인공을 만나보세요</span><span>CREO</span></div>
+          <div class=national-sidecar>
+            <div class=national-ticket>
+              <span class=national-ticket-tag>LUCKY DRAW</span>
+              <strong>오늘의 행운은<br>누구에게?</strong>
+              <svg aria-hidden=true class=national-marble-art viewBox="0 0 240 150"><defs><radialGradient id=nationalBlue cx=.32 cy=.24 r=.8><stop stop-color=#bceaff /><stop offset=.4 stop-color=#1878ff /><stop offset=1 stop-color=#0538a9 /></radialGradient><radialGradient id=nationalYellow cx=.32 cy=.24 r=.8><stop stop-color=#fffde1 /><stop offset=.4 stop-color=#ffe34a /><stop offset=1 stop-color=#ee8d0a /></radialGradient></defs><ellipse cx=121 cy=130 fill=#d5e2fa rx=89 ry=9 /><path fill=none stroke=#1552cc stroke-linecap=round stroke-width=7 d="M20 111q80 41 200-17"/><circle cx=96 cy=67 r=49 fill=url(#nationalBlue) /><circle cx=166 cy=93 r=32 fill=url(#nationalYellow) /><path fill=#ffb300 d="m190 25 4 12 13 3-13 4-4 12-4-12-12-4 12-3ZM34 60l3 9 9 3-9 3-3 9-3-9-9-3 9-3Z"/><ellipse cx=80 cy=45 fill=#fff opacity=.8 rx=13 ry=8 transform="rotate(-35 80 45)"/><ellipse cx=156 cy=79 fill=#fff opacity=.8 rx=8 ry=5 transform="rotate(-35 156 79)"/></svg>
+              <div class=national-count><strong data-national-count>0</strong><span>개의 공이 함께합니다</span></div>
+            </div>
+            <div class=national-partners role=img aria-label="공식 후원 및 파트너 PARGe, SILKTREE"></div>
+          </div>
+          <div class=national-award data-national-award hidden>
+            <div class=national-award-card>
+              <span class=national-award-ribbon>오늘의 행운 주인공</span>
+              <strong data-national-winner></strong>
+              <span class=national-award-congrats>당첨을 축하합니다!</span>
+            </div>
+          </div>
+          <div class=national-footnote><span class=national-phase data-national-phase>화면 준비 중</span><span>함께 즐기는 전국크레자랑</span><b>CREO</b></div>
         </div>
+        <video class=national-stinger id=nationalStinger muted playsinline preload=none aria-hidden=true hidden></video>
 
         <header class=stage-header>
           <div class=stage-actions>
@@ -58,6 +75,7 @@
               </label>
               <div class=text-actions>
                 <button id=copyBroadcastSourceButton type=button>송출 주소 복사</button>
+                <a id=openBroadcastSource target=_blank rel=noopener>송출 화면 열기 ↗</a>
                 <button id=resetBroadcastSessionButton type=button>송출 상태 초기화</button>
               </div>
               <div class=remote-result id=remoteResult hidden>
@@ -246,4 +264,4 @@
     </dialog>
 
     <div class=toast id=toast role=status aria-live=polite></div>
-    <script type=module src=/roulette/roulette-app.8846b34d.js></script>
+    <script type=module src=/roulette/roulette-app.21782fa0.js></script>
