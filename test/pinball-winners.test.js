@@ -1,9 +1,15 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const {selectDrawWinners,winnerCountError,winnerCount,drawLabel}=require('../roulette-app/src/drawWinners');
+const {selectDrawWinners,winnerCountError,winnerCount,drawLabel,participantCount}=require('../roulette-app/src/drawWinners');
 const {snapshotStandings}=require('../roulette-app/src/standings');
 const {auctionWinnerEntries}=require('../roulette-app/src/auctionEntries');
 const rows=(names,finished)=>names.map(name=>({name,finished}));
+
+test('participant count matches unique winner identity rather than duplicate entry lines or weighted balls',()=>{
+ assert.equal(participantCount(['테스트 (1234)','테스트 (1234)']),1);
+ assert.equal(participantCount(['테스트 (1234)*3','테스트 (1234)/5','테스트 (5678)']),2);
+ assert.equal(participantCount(['A*3/5','A','B*4']),2);
+});
 
 test('first N places count people once even when they own many balls',()=>{
  const config={winnerMode:'first',winnerCount:3};

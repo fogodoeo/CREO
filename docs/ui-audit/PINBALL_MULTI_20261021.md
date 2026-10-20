@@ -5,7 +5,7 @@ Risk: **Release** (winner selection, persisted result contract and deployment). 
 ## Behavior
 
 - The operator can choose first arrivals or last survivors and 1–20 winning people. Rank selection remains a single winner.
-- Weighted balls are preserved; the same participant label receives only one winning place. Last-survivor results are an unordered set, displayed in name order.
+- Weighted balls are preserved; the same participant label receives only one winning place and counts once in the participant total. Last-survivor results are an unordered set, displayed in name order.
 - National auction import uses the authenticated current-round workspace. Public entries contain the display name and phone suffix only; missing numbers are explicitly marked.
 - Server validation recomputes the winner set and verifies ball multiplicity, finished-order prefix, run ID and command ID before persisting. Duplicate completion remains idempotent.
 - Completed results retain all winners through reload/restart. A new preparation clears the visible old result, without deleting history.
@@ -37,12 +37,14 @@ All runtime tests use isolated fixtures, fake people/phones and fake notificatio
 - `npm --prefix roulette-app run build` — pass; regenerated fingerprinted static assets.
 - `node --test test/pinball-winners.test.js test/pinball-national-stage.test.js test/pinball-remote-controls.test.js test/pinball-preview.test.js test/marble-roulette.test.js` — 37/37 pass during iteration.
 - `node --test --test-name-pattern=pinball test/platform-api.test.js` — 4/4 pass during iteration.
-- `npm run check` and `npm test` — **1,441/1,441 pass** on the final code.
+- `npm run check` and `npm test` — **1,442/1,442 pass**, including the final duplicate-participant count regression.
 - Desktop: `python -m unittest discover -p "test*.py"` — **270/270 pass**.
 - Invariants: weighted duplicates; same-frame exits; multiple first/last winners; invalid counts/results; duplicate/concurrent prepare/start/complete; stale completion; persisted reload; next preparation; channel isolation; legacy single-winner compatibility.
-- Real browser: import 12 current-round people / 13 balls with suffixes while excluding an archived fixture; last-five draw matches administrator and broadcast; reload retains the five names without replay; last-20 draw shows all names in two columns; new preparation clears prior winner card; mobile controls and persistent footer verified.
+- Real browser: import 12 current-round people / 13 balls with suffixes while excluding an archived fixture; last-five draw matches administrator and broadcast; reload retains the five names without replay; last-20 draw shows all names in two columns; new preparation clears prior winner card; mobile controls and persistent footer verified; two identical labels show one person / two balls and reject an impossible winner count.
 - Screenshots retained in the parent workspace `scratch/national-session-20261019/pinball-multi-{admin,winners,twenty,mobile}.png`.
 
 Production release checks are GET-only. They compare auction/shipment record identifiers and totals, pinball session state, and deployed static hashes. Legacy default winner-count/result-list fields are normalized before comparing session hashes.
+
+The initial release `95e2910` reached Live at 2026-10-21 01:53:04 KST. Health and broadcast returned HTTP 200; 15 pinball/media assets and 27 operator/checkout/round assets matched; six channels retained item IDs, sold totals and shipment IDs. Current/archived buyer access returned HTTP 200. Both pinball sessions retained their phase/revision/content, with no production draw commands sent. Final duplicate-count follow-up release evidence is retained in the same parent-workspace verification files.
 
 Residual limits: real PRISM rendering and video recording were not exercised in PRISM itself. Long custom display names remain an operator input constraint (40 characters). Tests establish the exercised behavior; they do not guarantee every external browser/network condition.

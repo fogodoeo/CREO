@@ -15,7 +15,7 @@ import { parseName } from './utils/utils';
 import { auctionWinnerEntries, getLeadingHouseKey, HOUSE_NAMES } from './auctionEntries.js';
 import { createRemoteControls, createSessionPoller, initialEntries } from './remoteControls.js';
 import { createNationalStage, isNationalChannel } from './nationalStage.js';
-import { winnerCount as normalizedWinnerCount, winnerCountError, drawLabel } from './drawWinners.js';
+import { winnerCount as normalizedWinnerCount, winnerCountError, drawLabel, participantCount } from './drawWinners.js';
 
 const queryParameters = new URLSearchParams(location.search);
 const isBroadcastMode = queryParameters.get('broadcast') === '1';
@@ -268,7 +268,7 @@ function entrySummary(entries = parseEntries()): { people: number; balls: number
     const parsed = parseName(entry);
     if (parsed) balls += Math.max(1, parsed.count);
   }
-  return { people: entries.length, balls };
+  return { people: participantCount(entries), balls };
 }
 
 async function syncAuctionWinnerEntries(showEmptyMessage = true): Promise<void> {
