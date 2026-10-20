@@ -143,6 +143,57 @@ test('actual renderer highlights the same balls and broadcast labels, and clears
   renderer.render(state, []);
   assert.equal(renderer._candidateMarbles.size, 0);
   assert.deepEqual(bodyFlags.slice(-3).map(row => row[1]), [false,false,true]);
+  context.document.documentElement.dataset.rouletteTheme = 'national';
+  const resultPaint = [];
+  renderer.captureNationalFinishFrame = (_, source) => resultPaint.push(['frame', source]);
+  renderer.renderWinner = () => resultPaint.push(['award']);
+  renderer.render({ ...state, winner: marbles[0], running: false }, []);
+  assert.deepEqual(resultPaint.map(row => row[0]), ['frame','award']);
+  assert.equal(resultPaint[0][1], renderer._canvas);
+  resultPaint.length = 0;
+  renderer._broadcastMode = false;
+  renderer.render({ ...state, winner: marbles[0], running: false }, []);
+  assert.deepEqual(resultPaint.map(row => row[0]), ['frame','award']);
+  assert.equal(resultPaint[0][1], renderer._sceneCanvas);
+});
+
+test('finish scene is copied once per result, cleared on preparation and never copied from an earlier award', () => {
+  const { RouletteRenderer, context } = loadTypeScript('rouletteRenderer.ts'), renderer = new RouletteRenderer();
+  const copies = [], frame = { hidden: true, getContext: () => ({ drawImage: (...args) => copies.push(args) }) };
+  context.document.querySelector = () => frame;
+  const source = { width: 1920, height: 1080 }, winner = { name: '테스트 (1234)' };
+  renderer.captureNationalFinishFrame(null, source);
+  assert.equal(copies.length, 0);
+  renderer.captureNationalFinishFrame(winner, source);
+  assert.equal(copies.length, 1);
+  assert.equal(copies[0][0], source);
+  assert.equal(frame.width, 1920);
+  assert.equal(frame.height, 1080);
+  assert.equal(frame.hidden, false);
+  renderer.captureNationalFinishFrame(winner, source);
+  assert.equal(copies.length, 1, 'polls and animation frames cannot recapture the recorded award');
+  renderer.captureNationalFinishFrame(null, source);
+  assert.equal(frame.hidden, true);
+  renderer.captureNationalFinishFrame(winner, source);
+  assert.equal(copies.length, 2, 'another draw can capture even the same winner identity');
+  context.document.documentElement.dataset.rouletteTheme = 'academy';
+  renderer.captureNationalFinishFrame(winner, source);
+  assert.equal(frame.hidden, true);
+  assert.equal(copies.length, 2);
+});
+
+test('a missing or failed finish frame does not throw or repeatedly retry on the animation loop', () => {
+  for (const frame of [null, { hidden: false, getContext: () => null },
+    { hidden: false, getContext() { throw Error('canvas unavailable'); } }]) {
+    const { RouletteRenderer, context } = loadTypeScript('rouletteRenderer.ts'), renderer = new RouletteRenderer();
+    let lookups = 0;
+    context.document.querySelector = () => { lookups++; return frame; };
+    const winner = { name: '테스트 (1234)' }, source = { width: 1920, height: 1080 };
+    assert.doesNotThrow(() => renderer.captureNationalFinishFrame(winner, source));
+    assert.doesNotThrow(() => renderer.captureNationalFinishFrame(winner, source));
+    assert.equal(lookups, 1);
+    if (frame) assert.equal(frame.hidden, true);
+  }
 });
 
 test('actual candidate name chips use a star as well as gold and never show phone suffixes', () => {

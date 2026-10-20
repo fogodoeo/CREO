@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang=ko><script type=importmap>{"imports":{"1v7oZ":"/roulette/Box2D.7042bf0d.js","5Lw9Q":"/roulette/Box2D.simd.dd31b167.wasm","9NQTk":"/roulette/Box2D.simd.3eb62d94.js","hOHCw":"/roulette/Box2D.b9b16b27.wasm"}}</script><meta charset=UTF-8><meta name=viewport content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name=theme-color content=#07111f><meta name=description content="채널과 행사에 관계없이 사용할 수 있는 공용 마블 추첨기"><meta property=og:type content=website><meta property=og:title content="MARBLE DRAW"><meta property=og:description content="공이 달리고, 결과가 남는 라이브 추첨"><title>MARBLE DRAW</title><link rel=stylesheet href=/roulette/roulette-app.3fe07eef.css><body>
+<!DOCTYPE html><html lang=ko><script type=importmap>{"imports":{"1v7oZ":"/roulette/Box2D.7042bf0d.js","5Lw9Q":"/roulette/Box2D.simd.dd31b167.wasm","9NQTk":"/roulette/Box2D.simd.3eb62d94.js","hOHCw":"/roulette/Box2D.b9b16b27.wasm"}}</script><meta charset=UTF-8><meta name=viewport content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name=theme-color content=#07111f><meta name=description content="채널과 행사에 관계없이 사용할 수 있는 공용 마블 추첨기"><meta property=og:type content=website><meta property=og:title content="MARBLE DRAW"><meta property=og:description content="공이 달리고, 결과가 남는 라이브 추첨"><title>MARBLE DRAW</title><link rel=stylesheet href=/roulette/roulette-app.587b7fb4.css><body>
     <main class=app-shell id=appShell>
       <section class=stage aria-label="마블 추첨 화면">
         <div id=canvasHost class=canvas-host data-roulette-canvas-host></div>
@@ -23,12 +23,13 @@
             </div>
           </section>
           <div class=national-award data-national-award hidden>
-            <div class=national-award-card>
+            <canvas class=national-finish-frame data-national-finish-frame aria-hidden=true hidden></canvas>
+            <section class=national-award-card aria-label="추첨 결과" tabindex=0>
               <span class=national-award-ribbon data-national-award-title>오늘의 당첨자</span>
               <strong data-national-winner></strong>
               <span class=national-award-congrats>당첨을 축하합니다</span>
               <div class=national-brand-logos><img data-brand-image=silktree alt=실크트리><img data-brand-image=parge alt=파르게></div>
-            </div>
+            </section>
           </div>
           <span class=sr-only data-national-phase>화면 준비 중</span>
         </div>
@@ -274,4 +275,4 @@
     </dialog>
 
     <div class=toast id=toast role=status aria-live=polite></div>
-    <script type=module src=/roulette/roulette-app.656ece8b.js></script>
+    <script type=module src=/roulette/roulette-app.bdee44d4.js></script>

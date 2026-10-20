@@ -115,8 +115,23 @@ html[data-roulette-theme='national'] {
     button { min-height: 44px; min-width: 44px; padding: 8px 12px; border-radius: 8px; color: var(--ink); background: #252a32; border: 1px solid var(--line); }
     button:disabled { opacity: .4; cursor: default; }
   }
-  .national-award { display: grid; place-items: center; z-index: 3; overflow: auto; pointer-events: auto; }
-  .national-award-card { display: grid; justify-items: center; gap: 30px; width: 100%; padding: 40px; text-align: center; }
+  .national-award {
+    display: grid; place-items: center; z-index: 3; padding: 32px;
+    overflow: hidden; pointer-events: none; background: transparent; border-color: transparent;
+  }
+  .national-finish-frame { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: inherit; }
+  .national-finish-frame[hidden] { display: none; }
+  .national-award-card {
+    position: relative; display: grid; justify-items: center; gap: 22px;
+    width: min(760px, 100%); max-height: 100%; overflow-y: auto;
+    padding: 40px; text-align: center; pointer-events: auto;
+    background: rgba(22, 25, 30, .82);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(217, 189, 133, .42); border-radius: 24px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, .28);
+  }
+  .national-award-card:focus-visible { outline: 2px solid var(--national-gold); outline-offset: 4px; }
+  .national-chrome[data-winner-columns='2'] .national-award-card { width: min(900px, 100%); }
   .national-award-ribbon { color: var(--national-gold); font-size: clamp(18px, 2cqw, 28px); font-weight: 500; }
   [data-national-winner] {
     color: var(--ink);
@@ -178,7 +193,8 @@ html[data-roulette-theme='national'] {
     .national-prize { top: 76px; height: 52px; strong { font-size: 20px; } }
     .participant-roster { padding: 20px; gap: 20px; }
     #participantRosterList { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; li { gap: 8px; } strong { font-size: 16px; } }
-    .national-award-card { padding: 24px 16px; gap: 16px; }
+    .national-award { padding: 12px; }
+    .national-award-card { padding: 24px 16px; gap: 16px; border-radius: 16px; }
     .national-chrome[data-winner-columns='2'] [data-national-winner] { columns: 1; }
     .stage-actions { bottom: 24px; left: 24px; }
   }
@@ -197,6 +213,7 @@ html[data-roulette-theme='national'].remote-controller-mode {
   .participant-roster { padding: 24px; gap: 20px; }
   #participantRosterList { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; li { padding: 10px 0; gap: 8px; } strong { font-size: 17px; } }
   .roster-heading h2 { font-size: 24px; }
+  .national-award { padding: 16px; }
   .national-award-card { padding: 24px; gap: 16px; }
   [data-national-winner], .national-chrome:not([data-winner-count='1']) [data-national-winner] { font-size: 24px; }
   .control-panel { width: var(--controller-width); height: 100%; top: 0; bottom: 0; right: 0; visibility: visible; transform: none; pointer-events: auto; border-radius: 0; box-shadow: none; transition: none; }
@@ -249,9 +266,9 @@ html[data-roulette-theme='national'].remote-controller-mode {
   }
 }
 @media (prefers-reduced-motion: no-preference) {
-  html[data-roulette-theme='national'] .national-award-card { animation: national-reveal 220ms ease-out both; }
+  html[data-roulette-theme='national'] .national-award-card { animation: national-reveal 260ms cubic-bezier(.23, 1, .32, 1) both; }
 }
 @media (prefers-reduced-motion: reduce) {
   html[data-roulette-theme='national'] .national-stinger { display: none; }
 }
-@keyframes national-reveal { from { opacity: 0; } to { opacity: 1; } }
+@keyframes national-reveal { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }

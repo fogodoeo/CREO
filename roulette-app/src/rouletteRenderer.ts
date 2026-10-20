@@ -171,6 +171,7 @@ export class RouletteRenderer {
   protected onAfterScene(): void {}
 
   private _candidateMarbles = new Set<Marble>();
+  private _nationalFrameWinner: Marble | null = null;
 
   render(renderParameters: RenderParameters, uiObjects: UIObject[]) {
     const candidates = document.documentElement.dataset.rouletteTheme === 'national' && renderParameters.running
@@ -222,14 +223,36 @@ export class RouletteRenderer {
       uiObjects.forEach((obj) =>
         obj.render(this._displayCtx, renderParameters, this._canvas.width, this._canvas.height)
       );
+      this.captureNationalFinishFrame(renderParameters.winner, this._canvas);
       this.renderWinner(renderParameters, this._displayCtx, this._canvas.width, this._canvas.height, true);
     } else {
       uiObjects.forEach((obj) =>
         obj.render(this.ctx, renderParameters, this._sceneCanvas.width, this._sceneCanvas.height)
       );
+      this.captureNationalFinishFrame(renderParameters.winner, this._sceneCanvas);
       this.renderWinner(renderParameters, this.ctx, this._sceneCanvas.width, this._sceneCanvas.height, false);
       this._displayCtx.drawImage(this._sceneCanvas, 0, 0, this._canvas.width, this._canvas.height);
     }
+  }
+
+  private captureNationalFinishFrame(winner: Marble | null, source: HTMLCanvasElement) {
+    const current = document.documentElement.dataset.rouletteTheme === 'national' ? winner || null : null;
+    if (this._nationalFrameWinner === current) return;
+    this._nationalFrameWinner = current;
+    const frame = document.querySelector<HTMLCanvasElement>('[data-national-finish-frame]');
+    if (!frame) return;
+    frame.hidden = true;
+    if (!current) return;
+    // Copy once, before the canvas-only recording award is painted. The DOM card
+    // keeps the actual finish scene behind it without changing physics or replay.
+    try {
+      frame.width = source.width;
+      frame.height = source.height;
+      const ctx = frame.getContext('2d');
+      if (!ctx) return;
+      ctx.drawImage(source, 0, 0);
+      frame.hidden = false;
+    } catch (_) { /* A missing frame must never hide the result text. */ }
   }
 
   private renderBroadcastLabels({ marbles, camera, size }: RenderParameters) {
@@ -531,7 +554,7 @@ export class RouletteRenderer {
     if (!winner) return;
     if (selectedWinners && selectedWinners.length > 1) {
       ctx.save();
-      ctx.fillStyle = document.documentElement.dataset.rouletteTheme === 'national' ? '#16191e' : '#f8fbff';
+      ctx.fillStyle = document.documentElement.dataset.rouletteTheme === 'national' ? 'rgba(22, 25, 30, .82)' : '#f8fbff';
       ctx.fillRect(width * .08, height * .14, width * .84, height * .72);
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
@@ -606,7 +629,7 @@ export class RouletteRenderer {
     const w = width * .72, h = Math.min(152 * scale, height * .36);
     const x = (width - w) / 2, y = height - h - 24 * scale;
     ctx.save();
-    ctx.fillStyle = '#16191e';
+    ctx.fillStyle = 'rgba(22, 25, 30, .82)';
     ctx.strokeStyle = '#525d6b';
     ctx.lineWidth = scale;
     ctx.beginPath();
