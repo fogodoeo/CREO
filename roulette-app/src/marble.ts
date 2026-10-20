@@ -182,10 +182,10 @@ export class Marble {
 
     ctx.shadowColor = '';
     ctx.shadowBlur = 0;
-    if (showLabel) this._drawName(ctx, zoom, simpleLabel);
+    if (showLabel) this._drawName(ctx, zoom, simpleLabel, outline);
 
     if (outline) {
-      this._drawOutline(ctx, 2 / zoom);
+      this._drawOutline(ctx, (document.documentElement.dataset.rouletteTheme === 'national' ? 3 : 2) / zoom);
     }
 
     if (options.useSkills) {
@@ -197,7 +197,8 @@ export class Marble {
     ctx: CanvasRenderingContext2D,
     zoom: number,
     viewPort: { x: number; y: number; w: number; h: number; zoom: number },
-    simpleLabel: boolean = false
+    simpleLabel: boolean = false,
+    highlighted: boolean = false
   ) {
     const viewPortHw = viewPort.w / viewPort.zoom / 2;
     const viewPortHh = viewPort.h / viewPort.zoom / 2;
@@ -209,7 +210,7 @@ export class Marble {
     ) {
       return;
     }
-    this._drawName(ctx, zoom, simpleLabel);
+    this._drawName(ctx, zoom, simpleLabel, highlighted);
   }
 
   renderResultBody(ctx: CanvasRenderingContext2D, x: number, y: number, diameter: number) {
@@ -309,19 +310,20 @@ export class Marble {
     return sprite;
   }
 
-  private _drawName(ctx: CanvasRenderingContext2D, zoom: number, simpleLabel: boolean) {
+  private _drawName(ctx: CanvasRenderingContext2D, zoom: number, simpleLabel: boolean, highlighted = false) {
     transformGuard(ctx, () => {
       const labelName = runningParticipantName(this.name);
       const fontFamily = `'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
       if (document.documentElement.dataset.rouletteTheme === 'national') {
+        const nationalLabel = highlighted ? `★ ${labelName}` : labelName;
         ctx.translate(this.x, this.y + this.size / 2);
         ctx.scale(1 / zoom, 1 / zoom);
         ctx.font = `800 11pt ${fontFamily}`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        const labelWidth = Math.min(92, ctx.measureText(labelName).width) + 12;
-        ctx.fillStyle = '#fffdf7';
-        ctx.strokeStyle = '#739bdb';
+        const labelWidth = Math.min(110, ctx.measureText(nationalLabel).width) + 12;
+        ctx.fillStyle = highlighted ? '#f4d48d' : '#fffdf7';
+        ctx.strokeStyle = highlighted ? '#f4d48d' : '#739bdb';
         ctx.lineWidth = 0.8;
         ctx.shadowBlur = 0;
         ctx.beginPath();
@@ -329,7 +331,7 @@ export class Marble {
         ctx.fill();
         ctx.stroke();
         ctx.fillStyle = '#172d48';
-        ctx.fillText(labelName, 0, 12, 92);
+        ctx.fillText(nationalLabel, 0, 12, 110);
         return;
       }
       const maxWidth = 112;
@@ -357,7 +359,7 @@ export class Marble {
 
   private _drawOutline(ctx: CanvasRenderingContext2D, lineWidth: number) {
     ctx.beginPath();
-    ctx.strokeStyle = this.theme.marbleWinningBorder;
+    ctx.strokeStyle = document.documentElement.dataset.rouletteTheme === 'national' ? '#f4d48d' : this.theme.marbleWinningBorder;
     ctx.lineWidth = lineWidth;
     ctx.arc(this.x, this.y, this.size / 2, 0, Math.PI * 2);
     ctx.stroke();

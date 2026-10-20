@@ -29,4 +29,21 @@ function selectCandidateRanks(ranked, winnerRank, limit = 3) {
   return selected;
 }
 
-module.exports = { selectCandidateRanks };
+// Positional candidates, never a probability estimate or a winner decision.
+// Keep one representative ball per person, matching multiwinner identity rules.
+function selectDrawCandidates(marbles, finishers, config = {}, winnerRank = 0) {
+  if (!marbles.length) return [];
+  const count = Math.max(1, Math.min(20, Math.floor(Number(config.winnerCount) || 1)));
+  if (config.winnerMode === 'last') {
+    return selectCandidateRanks(marbles, marbles.length - 1, count).map(row => row.candidate);
+  }
+  if (config.winnerMode === 'rank') {
+    const index = winnerRank - finishers.length;
+    return index >= 0 && index < marbles.length ? [marbles[index]] : [];
+  }
+  const arrived = new Set(finishers.map(marble => marble.name));
+  const remaining = marbles.filter(marble => !arrived.has(marble.name));
+  return selectCandidateRanks(remaining, 0, Math.max(0, count - arrived.size)).map(row => row.candidate);
+}
+
+module.exports = { selectCandidateRanks, selectDrawCandidates };

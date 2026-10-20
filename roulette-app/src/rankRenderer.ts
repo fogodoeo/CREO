@@ -2,7 +2,7 @@ import type { Marble } from './marble';
 import { selectCandidateRanks } from './candidateRanking.js';
 import { runningParticipantName } from './participantDisplay.js';
 import type { RenderParameters } from './rouletteRenderer';
-import { HUD_CONTENT_GAP, HUD_HEIGHT } from './rouletteUiLayout';
+import { HUD_CONTENT_GAP, HUD_HEIGHT, NATIONAL_FINISHER_WIDTH, NATIONAL_FINISHER_INSET, nationalPanelScale } from './rouletteUiLayout';
 import type { Rect } from './types/rect.type';
 import type { MouseEventArgs, UIObject } from './UIObject';
 import { bound } from './utils/bound.decorator';
@@ -13,6 +13,7 @@ export class RankRenderer implements UIObject {
   private layoutFontHeight = 16;
   private _userMoved = 0;
   private _currentWinner = -1;
+  private _nationalMode = false;
   private maxY = 0;
   private winners: Marble[] = [];
   private marbles: Marble[] = [];
@@ -63,8 +64,11 @@ export class RankRenderer implements UIObject {
     width: number,
     height: number
   ) {
-    // National broadcast leaves the playfield clear; names travel with the balls.
-    if (document.documentElement.dataset.rouletteTheme === 'national') return;
+    if (document.documentElement.dataset.rouletteTheme === 'national') {
+      this.renderNationalFinishers(ctx, winners, winners.length + marbles.length, width, height);
+      return;
+    }
+    this._nationalMode = false;
     const uiScale = Math.max(1, width / 720);
     this.layoutFontHeight = 19 * uiScale;
     const hudHeight = HUD_HEIGHT * uiScale;
@@ -153,6 +157,74 @@ export class RankRenderer implements UIObject {
       ctx.lineTo(rankPanelRight - 3 * uiScale, boundaryY);
       ctx.stroke();
     }
+    ctx.restore();
+  }
+
+  private renderNationalFinishers(
+    ctx: CanvasRenderingContext2D,
+    winners: Marble[],
+    total: number,
+    width: number,
+    height: number
+  ) {
+    const scale = nationalPanelScale(width);
+    const inset = NATIONAL_FINISHER_INSET * scale, panelWidth = NATIONAL_FINISHER_WIDTH * scale;
+    const left = width - panelWidth - inset, top = inset;
+    const panelHeight = height - inset * 2;
+    const listTop = top + 64 * scale, footerHeight = 36 * scale;
+    const listHeight = Math.max(0, panelHeight - 64 * scale - footerHeight);
+    this.layoutFontHeight = 32 * scale;
+    if (!this._nationalMode || winners.length < this._currentWinner) {
+      this._currentY = this._targetY = this._userMoved = 0;
+    }
+    this._nationalMode = true;
+    this._currentWinner = winners.length;
+    this.winners = winners;
+    this.marbles = [];
+    this.maxY = Math.max(0, winners.length * this.layoutFontHeight - listHeight);
+    this._targetY = Math.max(0, Math.min(this.maxY, this._targetY));
+    this._currentY = Math.max(0, Math.min(this.maxY, this._currentY));
+
+    ctx.save();
+    ctx.fillStyle = '#1b1e24';
+    ctx.strokeStyle = '#454b55';
+    ctx.lineWidth = scale;
+    ctx.beginPath();
+    ctx.roundRect(left, top, panelWidth, panelHeight, 10 * scale);
+    ctx.fill(); ctx.stroke();
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#f6f3ec';
+    ctx.font = `750 ${16 * scale}px ${this.hudFont}`;
+    ctx.fillText('골인 순서', left + 14 * scale, top + 23 * scale);
+    ctx.fillStyle = '#b6bdc9';
+    ctx.font = `600 ${12 * scale}px ${this.hudFont}`;
+    ctx.fillText(`${winners.length} / ${total}개 공`, left + 14 * scale, top + 46 * scale);
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(left + scale, listTop, panelWidth - 2 * scale, listHeight);
+    ctx.clip();
+    if (!winners.length) {
+      ctx.fillText('아직 골인 전', left + 14 * scale, listTop + 20 * scale);
+    }
+    winners.forEach((marble, index) => {
+      const y = listTop + index * this.layoutFontHeight - this._currentY;
+      if (y + this.layoutFontHeight < listTop || y > listTop + listHeight) return;
+      ctx.fillStyle = index % 2 === 0 ? '#242830' : '#1b1e24';
+      ctx.fillRect(left + 6 * scale, y, panelWidth - 12 * scale, this.layoutFontHeight);
+      ctx.fillStyle = '#d9bd85';
+      ctx.font = `650 ${12 * scale}px ${this.hudFont}`;
+      ctx.fillText(String(index + 1).padStart(2, '0'), left + 14 * scale, y + 16 * scale);
+      ctx.fillStyle = '#f6f3ec';
+      ctx.font = `700 ${14 * scale}px ${this.hudFont}`;
+      ctx.fillText(this.ellipsize(ctx, runningParticipantName(marble.name), panelWidth - 54 * scale),
+        left + 42 * scale, y + 16 * scale);
+    });
+    ctx.restore();
+    ctx.fillStyle = '#f4d48d';
+    ctx.font = `650 ${12 * scale}px ${this.hudFont}`;
+    ctx.fillText('★ 현재 당첨 후보', left + 14 * scale, top + panelHeight - footerHeight / 2);
     ctx.restore();
   }
 
@@ -271,10 +343,11 @@ export class RankRenderer implements UIObject {
     if (this._userMoved > 0) {
       this._userMoved -= deltaTime;
     } else {
-      this._targetY = this._currentWinner * this.layoutFontHeight + this.layoutFontHeight;
+      this._targetY = this._nationalMode ? this.maxY : this._currentWinner * this.layoutFontHeight + this.layoutFontHeight;
     }
+    if (this._nationalMode) this._targetY = Math.max(0, Math.min(this.maxY, this._targetY));
     if (this._currentY !== this._targetY) {
-      this._currentY += (this._targetY - this._currentY) * (deltaTime / 250);
+      this._currentY += (this._targetY - this._currentY) * Math.min(1, deltaTime / 250);
     }
     if (Math.abs(this._currentY - this._targetY) < 1) {
       this._currentY = this._targetY;

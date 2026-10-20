@@ -94,7 +94,7 @@ function method(file,start,end,header,replacement,extra={}) {
 }
 test('actual marble, candidate and rank-row painters show names without phone suffixes',()=>{
  const drawName=method('marble.ts','  private _drawName(','  private _drawOutline(',
-  /private _drawName\([^\n]+\{/,'function(ctx, zoom, simpleLabel) {',{transformGuard:(_,fn)=>fn()});
+  /private _drawName\([^\n]+\{/,'function(ctx, zoom, simpleLabel, highlighted=false) {',{transformGuard:(_,fn)=>fn()});
  const drawCandidate=method('rankRenderer.ts','  private drawCandidateLabel(','  private ellipsize(',
   /private drawCandidateLabel\([\s\S]*?\n  \) \{/,'function(ctx,candidate,centerX,centerY,maxWidth,uiScale,academySkin) {');
  const drawRow=method('rankRenderer.ts','  private drawRankRow(','  update(deltaTime:',

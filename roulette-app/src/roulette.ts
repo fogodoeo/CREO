@@ -270,6 +270,8 @@ export class Roulette extends EventTarget {
       winnerRank: this._winnerRank,
       winner: this._winner,
       selectedWinners: this._selectedWinners,
+      drawConfig: this._drawConfig,
+      running: this._isRunning,
       size: { x: this._renderer.width, y: this._renderer.height },
       theme: this._theme,
       top5Banner: this._top5BounceBannerTimer > 0,

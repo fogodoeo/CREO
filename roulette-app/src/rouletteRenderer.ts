@@ -9,6 +9,9 @@ import type { ColorTheme } from './types/ColorTheme';
 import type { MapEntityState } from './types/MapEntity.type';
 import type { VectorLike } from './types/VectorLike';
 import type { UIObject } from './UIObject';
+import { selectDrawCandidates } from './candidateRanking.js';
+import { runningParticipantName } from './participantDisplay.js';
+import { nationalPlayfieldRatio } from './rouletteUiLayout';
 
 export type RenderParameters = {
   camera: Camera;
@@ -24,6 +27,8 @@ export type RenderParameters = {
   size: VectorLike;
   theme: ColorTheme;
   top5Banner?: boolean;
+  drawConfig?: { winnerMode?: string; winnerCount?: number };
+  running?: boolean;
 };
 
 const MAX_DISPLAY_WIDTH = 1920;
@@ -165,7 +170,15 @@ export class RouletteRenderer {
   protected onBeforeEntities(): void {}
   protected onAfterScene(): void {}
 
+  private _candidateMarbles = new Set<Marble>();
+
   render(renderParameters: RenderParameters, uiObjects: UIObject[]) {
+    const candidates = document.documentElement.dataset.rouletteTheme === 'national' && renderParameters.running
+      ? selectDrawCandidates(renderParameters.marbles, renderParameters.winners, renderParameters.drawConfig, renderParameters.winnerRank)
+      : [];
+    this._candidateMarbles = new Set(candidates);
+    const candidateNames = candidates.map(marble => runningParticipantName(marble.name)).join('|');
+    if (this._canvas.dataset.highlightedCandidates !== candidateNames) this._canvas.dataset.highlightedCandidates = candidateNames;
     const progressSignature = `${renderParameters.winners.length}:${renderParameters.marbles.length}`;
     if (progressSignature !== this._lastProgressSignature) {
       this._lastProgressSignature = progressSignature;
@@ -178,8 +191,10 @@ export class RouletteRenderer {
     this.ctx.fillRect(0, 0, this._sceneCanvas.width, this._sceneCanvas.height);
 
     this.ctx.save();
+    const fieldRatio = document.documentElement.dataset.rouletteTheme === 'national' ? nationalPlayfieldRatio(this._sceneCanvas.width) : 1;
+    this.ctx.translate(this._sceneCanvas.width * (fieldRatio - 1) / 2, 0);
     this.ctx.translate(this._sceneCanvas.width / 2, this._sceneCanvas.height / 2);
-    this.ctx.scale(SCENE_DISPLAY_ZOOM, SCENE_DISPLAY_ZOOM);
+    this.ctx.scale(SCENE_DISPLAY_ZOOM * fieldRatio, SCENE_DISPLAY_ZOOM * fieldRatio);
     this.ctx.translate(-this._sceneCanvas.width / 2, -this._sceneCanvas.height / 2);
     this.ctx.scale(initialZoom, initialZoom);
     this.ctx.textAlign = 'left';
@@ -223,8 +238,10 @@ export class RouletteRenderer {
 
     this._displayCtx.save();
     this._displayCtx.scale(displayScale, displayScale);
+    const fieldRatio = document.documentElement.dataset.rouletteTheme === 'national' ? nationalPlayfieldRatio(this._sceneCanvas.width) : 1;
+    this._displayCtx.translate(this._sceneCanvas.width * (fieldRatio - 1) / 2, 0);
     this._displayCtx.translate(this._sceneCanvas.width / 2, this._sceneCanvas.height / 2);
-    this._displayCtx.scale(SCENE_DISPLAY_ZOOM, SCENE_DISPLAY_ZOOM);
+    this._displayCtx.scale(SCENE_DISPLAY_ZOOM * fieldRatio, SCENE_DISPLAY_ZOOM * fieldRatio);
     this._displayCtx.translate(-this._sceneCanvas.width / 2, -this._sceneCanvas.height / 2);
     this._displayCtx.scale(initialZoom, initialZoom);
     this._displayCtx.translate(-camera.x * camera.zoom, -camera.y * camera.zoom);
@@ -233,7 +250,7 @@ export class RouletteRenderer {
       this._sceneCanvas.width / (initialZoom * 2 * camera.zoom),
       this._sceneCanvas.height / (initialZoom * 2 * camera.zoom)
     );
-    marbles.forEach((marble) => marble.renderLabel(this._displayCtx, camera.zoom * initialZoom, viewPort));
+    marbles.forEach((marble) => marble.renderLabel(this._displayCtx, camera.zoom * initialZoom, viewPort, false, this._candidateMarbles.has(marble)));
     this._displayCtx.restore();
   }
 
@@ -493,7 +510,7 @@ export class RouletteRenderer {
       marble.render(
         this.ctx,
         camera.zoom * initialZoom,
-        i === winnerIndex,
+        document.documentElement.dataset.rouletteTheme === 'national' ? this._candidateMarbles.has(marble) : i === winnerIndex,
         false,
         this.getMarbleImage(marble.name),
         viewPort,
