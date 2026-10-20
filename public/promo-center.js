@@ -29,8 +29,8 @@
    if(!hasBoard&&!inserted&&b.type==='text'&&(/다양한 크레들을 선보일 예정|다양한 크레들을 선보입니다|30여 곳의 전문|전국의 전문 브리더|여러 업체의 크레|여러 지역의 전문 업체|지역별 전문 업체가 돌아가며 참여/.test(b.text))){blocks.push(...images.map(i=>({...i,type:'image'})));inserted=true;}
   }
   if(!inserted&&images.length){const index=blocks.findIndex(b=>b.href);blocks.splice(index<0?blocks.length:index,0,...images.map(i=>({...i,type:'image'})));}
-  const ticket={type:'image',src:'/promo-assets/ticket-wolssu-gamachi-v1.png',alt:'크레준치 협찬 이벤트 · 낙찰자 중 5명 가마치통닭 쿠폰 증정'};
-  const link=blocks.findIndex(b=>b.href&&/band\.us/.test(b.href));blocks.splice(link<0?blocks.length:link,0,ticket);
+
+
   const header={type:'image',src:'/promo-assets/hero-wolssu-v1.png',alt:'전국크레자랑 월쑤! 매주 월·수 밤 8시 네이버 밴드 LIVE 경매'};
   return [header,...blocks];
  }
