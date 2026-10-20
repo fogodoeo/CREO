@@ -8,6 +8,10 @@
     const col = (key, label, type='text', width=18) => ({key,label,type,width});
     const money = (key,label) => col(key,label,'money',20);
     const count = (key,label) => col(key,label,'number',12);
+    function scopeLabel(report) {
+        const name=String(report.round?.name||'선택한 회차'), date=String(report.round?.date||'');
+        return date&&!name.includes(date)?name+' · '+date:name;
+    }
     function sheets(report) {
         return [
             {name:'업체 총정산', rows:report.vendors, columns:[col('vendorName','업체', 'text',24),money('totalAmount','주관사에 보낼 금액'),money('receivedAmount','주관사 입금 확인'),money('remainingAmount','미입금'),money('overpaidAmount','초과 입금'),money('feeAmount','수수료 합계'),money('entryFeeAmount','출품 수수료'),money('commissionAmount','낙찰 수수료'),money('shippingAmount','업체 수금 배송비'),money('shippingSupportAmount','주관사 배송지원'),money('soldAmount','낙찰금 (취소 제외)'),count('regularCount','일반 출품'),count('eventCount','이벤트'),count('soldCount','낙찰'),count('waitingCount','진행 전'),count('missingShippingCount','배송 미입력'),count('missingPhoneCount','연락처 미확인')]},
@@ -27,10 +31,10 @@
     }
     function buildWorkbook(report, XLSX) {
         const workbook = XLSX.utils.book_new();
-        workbook.Props = {Title:report.channel.name+' 총정산', Subject:'채널 누적 정산', Author:'CREO', CreatedDate:new Date(report.generatedAt)};
+        workbook.Props = {Title:scopeLabel(report)+' 총정산', Subject:'선택 회차 정산', Author:'CREO', CreatedDate:new Date(report.generatedAt)};
         workbook.Workbook = {CalcPr:{fullCalcOnLoad:true}};
         for (const spec of sheets(report)) {
-            const values = [[], [report.channel.name+' '+spec.name], ['채널 누적 · 단위: 원 · '+new Date(report.generatedAt).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'})], [], spec.columns.map(c=>c.label)];
+            const values = [[], [scopeLabel(report)+' '+spec.name], ['단위: 원 · '+new Date(report.generatedAt).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'})], [], spec.columns.map(c=>c.label)];
             for (const row of spec.rows) values.push(spec.columns.map(c=> {
                 const value=row[c.key];
                 if (value == null || value === '') return '';
@@ -98,5 +102,5 @@
         write('xl/workbook.xml',book);
         return new Uint8Array(XLSX.CFB.write(zip,{fileType:'zip',compression:true}));
     }
-    return {sheets,tsv,buildWorkbook,xlsxBytes,statuses};
+    return {sheets,tsv,buildWorkbook,xlsxBytes,statuses,scopeLabel};
 });

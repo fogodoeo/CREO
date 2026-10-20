@@ -92,3 +92,26 @@ test('shipping saves from a stale current tab cannot write into a newly archived
  assert.equal((await send('PUT','/old-shipping',f.archive,{...record,note:'보관 회차 수정'})).status,200);
  f.restart();assert.equal((await f.repository.getRecord('national-cre','shipment','old-shipping')).note,'보관 회차 수정');
 });
+test('settlement identity, receipts and all workbook headings preserve the selected current, historical, and empty round',async t=>{
+ const f=await setup(t),Workbook=require('../public/settlement-workbook'),XLSX=require('../public/assets/vendor/xlsx.mini.min.js');
+ const ledger=[{id:'old-report-paid',vendorId:'v1',amount:5000,status:'confirmed',itemIds:['a01','a02']},{id:'new-report-paid',vendorId:'v1',amount:1000,status:'confirmed',itemIds:['new01']}];
+ await f.repository.upsertRows([{key:'creo_organizer_shipping_ledger::national-cre',value:JSON.stringify(ledger)}]);
+ const get=async archive=>(await f.request('GET','/channels/national-cre/settlement-report'+(archive?'?archive='+archive:''))).json();
+ const [current,old]=await Promise.all([get(),get(f.archive)]);
+ assert.equal(current.scope,'round');assert.equal(current.round.channelId,'national-cre');assert.equal(current.round.archiveId,'');assert.equal(current.round.date,'2026-10-19');
+ assert.equal(old.scope,'round');assert.equal(old.round.archiveId,f.archive);assert.equal(old.round.name,'10/14 이전 회차');assert.equal(old.round.date,'2026-10-14');
+ assert.equal(current.totals.receivedAmount,1000);assert.equal(current.totals.remainingAmount,29000);assert.deepEqual(current.receipts.map(r=>r.id),['new-report-paid']);
+ assert.equal(old.totals.receivedAmount,5000);assert.equal(old.totals.remainingAmount,55000);assert.deepEqual(old.receipts.map(r=>r.id),['old-report-paid']);
+ for(const report of [current,old]){
+  const workbook=XLSX.read(Workbook.xlsxBytes(report,XLSX),{type:'buffer'}),label=Workbook.scopeLabel(report);
+  for(const name of workbook.SheetNames){assert.equal(workbook.Sheets[name].A2.v,label+' '+name);assert.doesNotMatch(workbook.Sheets[name].A3.v,/채널 누적/);}
+  assert.equal(workbook.Props.Title,label+' 총정산');
+ }
+ f.restart();assert.deepEqual((await get(f.archive)).round,old.round);assert.deepEqual((await get()).round,current.round);
+ const catalog=await f.repository.getCatalog();
+ await f.repository.saveCatalog([...catalog.channels,normalizeChannel({id:'national-cre-20261021',name:'전라·충청',status:'draft',nationalRound:{parentId:'national-cre',date:'2026-10-21'}})]);
+ const empty=(await f.request('GET','/channels/national-cre-20261021/settlement-report')).json();
+ assert.equal(empty.items.length,0);assert.equal(empty.totals.remainingAmount,0);assert.equal(empty.round.date,'2026-10-21');assert.match(Workbook.scopeLabel(empty),/전라·충청.*2026-10-21/);
+ assert.deepEqual(JSON.parse((await f.repository.getRowsByKeys(['creo_organizer_shipping_ledger::national-cre']))[0].value),ledger);
+ assert.equal(f.sms.length,0);
+});

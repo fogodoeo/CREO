@@ -10,7 +10,7 @@ const dateOf = item => Checkout.broadcastDate(item);
 
 // A read-only, administrator-only report. Financial values come from the same
 // fee/payment rules as checkout. No live records or notification queues change.
-function buildReport({channel, items, shipments, vendors, organizer, generatedAt = new Date().toISOString()}) {
+function buildReport({channel, items, shipments, vendors, organizer, round, generatedAt = new Date().toISOString()}) {
     const uniqueItems = [...new Map(items.map(item => [item.id, item])).values()].sort(Checkout.itemOrder);
     const vendorMap = new Map(vendors.map(v => [v.id, v]));
     const itemMap = new Map(uniqueItems.map(item => [item.id, item]));
@@ -111,7 +111,8 @@ function buildReport({channel, items, shipments, vendors, organizer, generatedAt
         reportedAt: r.reportedAt || '', reviewedAt: r.reviewedAt || '', memo: r.memo || ''
     })));
     return {
-        channel: {id: channel.id, name: channel.name}, generatedAt, scope: 'channel',
+        channel: {id: channel.id, name: channel.name}, generatedAt, scope: 'round',
+        round: {channelId:channel.id,archiveId:round?.archiveId||'',date:round?.date||'',name:round?.name||channel.name},
         vendors: summary, items: rows, buyers, receipts, unassignedReceiptCount:organizer.unassignedReceiptCount||0,
         totals: Object.fromEntries(['soldAmount', 'entryFeeAmount', 'commissionAmount', 'feeAmount', 'shippingAmount', 'shippingSupportAmount', 'totalAmount', 'receivedAmount', 'remainingAmount', 'overpaidAmount', 'waitingCount', 'missingPhoneCount', 'missingShippingCount'].map(key => [key, sum(summary, key)]))
     };

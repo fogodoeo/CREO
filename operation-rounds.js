@@ -22,11 +22,14 @@ function scopeWorkspace(channel,data,archiveId=''){
  const date=archiveId?'':currentDate(channel,all);
  const items=all.filter(i=>archiveId?i.auctionArchiveId===archiveId:!i.auctionArchiveId&&!i.attributes?.roundTargetChannelId&&(!date||!itemDate(i)||itemDate(i)===date));
  const ids=new Set(items.map(i=>i.id));
- return {...data,items,archivedItems:[],archivedItemCount:0,shipments:(data.shipments||[]).filter(s=>ids.has(s.itemId)),round:{channelId:channel.id,archiveId,date}};
+ return {...data,items,archivedItems:[],archivedItemCount:0,shipments:(data.shipments||[]).filter(s=>ids.has(s.itemId)),round:{channelId:channel.id,archiveId,date,name:archiveId?'이전 회차':channel.id==='national-cre'&&date?`전국크레자랑 · ${date} 회차`:channel.name}};
 }
 async function scopedWorkspace(repository,channel,data,archiveId=''){
- if(archiveId){const a=await repository.getRecord(channel.id,'archive',archiveId);if(!a?.closedAt)throw Object.assign(Error('선택한 보관 회차를 찾을 수 없습니다.'),{status:404});}
- return scopeWorkspace(channel,data,archiveId);
+ let archive=null;
+ if(archiveId){archive=await repository.getRecord(channel.id,'archive',archiveId);if(!archive?.closedAt)throw Object.assign(Error('선택한 보관 회차를 찾을 수 없습니다.'),{status:404});}
+ const scoped=scopeWorkspace(channel,data,archiveId);
+ if(archive){const dates=[...new Set(scoped.items.map(itemDate).filter(Boolean))];scoped.round={...scoped.round,name:archive.title||'이전 회차',date:dates.length===1?dates[0]:''};}
+ return scoped;
 }
 function assertShipmentScope(channel,data,record,body){
  if(!Object.prototype.hasOwnProperty.call(body,'expectedArchiveId'))return;

@@ -83,3 +83,15 @@ test('directory failure leaves an actionable missing phone; archived rounds neve
     const original=f.repository.getRowsByKeys.bind(f.repository);f.repository.getRowsByKeys=async keys=>keys.some(k=>k.includes('organizer_shipping_ledger'))?[{key:keys.find(k=>k.includes('organizer_shipping_ledger')),value:'broken-json'}]:original(keys);
     assert.equal((await get()).status,500); // No successful spreadsheet full of false zeroes.
 });
+test('an archived round inside an active channel never resolves its missing phone from current membership',async t=>{
+ let queries=0;
+ const f=await createFixture({apiOptions:{bandMembership:{resolveMemberIdentity:async()=>{queries++;return {phone:'01000000009'};}}}});t.after(()=>f.close());
+ const row=item('old01','v1',{auctionArchiveId:'old-round',winnerPhone:'',winnerName:'이전 회원',attributes:{broadcastDate:'2026-10-14',bid_log:[{name:'이전 회원',bidder_key:'old-member'}]}});
+ await f.repository.upsertRecord('national-cre','archive',{id:'old-round',title:'이전 회차',closedAt:'2026-10-19T00:00:00Z'});
+ await f.repository.upsertRecord('national-cre','vendor',{id:'v1',name:'가상 업체'});
+ await f.repository.upsertRecord('national-cre','item',row);
+ const response=await f.call(f.client(),'GET','/api/platform/channels/national-cre/settlement-report?archive=old-round',null,{'x-creo-admin':f.secret});
+ assert.equal(response.status,200,response.body);const report=response.json();
+ assert.equal(report.round.archiveId,'old-round');assert.equal(report.items[0].phone,'');assert.equal(report.totals.missingPhoneCount,1);assert.equal(queries,0);
+ assert.equal((await f.repository.getRecord('national-cre','item','old01')).winnerPhone,'');
+});

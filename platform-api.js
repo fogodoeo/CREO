@@ -4140,7 +4140,7 @@ function createPlatformApi({
                         if (stored) { item.winnerPhone = stored; item._phoneSource = 'stored'; continue; }
                         // Archive snapshots must not be rewritten with today's directory.
                         const bid = winningBid(item, true), key = bid?.bidder_key || bid?.bidderKey;
-                        if (channel.status === 'archived' || !key) { item.winnerPhone = ''; continue; }
+                        if (snapshot.round?.archiveId || channel.status === 'archived' || !key) { item.winnerPhone = ''; continue; }
                         if (!lookups.has(key)) lookups.set(key, resolveWinnerPhone(item, bandMembership));
                         item.winnerPhone = await lookups.get(key);
                         item._phoneSource = item.winnerPhone ? 'member' : 'missing';

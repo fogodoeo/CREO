@@ -18,15 +18,19 @@
     }
     async function load() {
         if(busy)return;busy=true;const revision=++sequence;
-        $('excel').disabled=$('copy').disabled=$('refresh').disabled=true;
+        report=null;$('content').hidden=true;$('table').replaceChildren();$('round-name').textContent='';
+        $('excel').disabled=$('copy').disabled=true;
+        $('message').setAttribute('role','status');
         $('message').textContent='최신 내역을 확인하고 있어요…';
         try {
             if(!channelId)throw Error('채널 운영 화면에서 총정산을 열어 주세요.');
             const next=await CreoPlatform.api('channels/'+encodeURIComponent(channelId)+'/settlement-report'+(archive?'?archive='+encodeURIComponent(archive):''),{cache:'no-store'});
             if(revision!==sequence)return;
             if(next.channel?.id!==channelId)throw Error('채널이 일치하지 않습니다. 다시 열어 주세요.');
+            if(next.scope!=='round'||next.round?.channelId!==channelId||next.round?.archiveId!==archive)throw Error('회차 정보가 일치하지 않습니다. 운영 홈에서 해당 회차를 다시 열어 주세요.');
             report=next;$('login').hidden=true;$('content').hidden=false;
             $('channel').textContent=report.channel.name;
+            $('round-name').textContent=CreoSettlementWorkbook.scopeLabel(report);
             $('updated').textContent=new Date(report.generatedAt).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'})+' 기준';
             $('fees').textContent=won(report.totals.feeAmount);$('support').textContent=won(report.totals.shippingSupportAmount);$('due').textContent=won(report.totals.remainingAmount);
             const notes=[];
@@ -37,9 +41,11 @@
             $('attention').hidden=!notes.length;$('attention').textContent=notes.join(' · ');
             renderTable();$('message').textContent='';$('excel').disabled=$('copy').disabled=false;
         } catch(error) {
-            $('message').textContent=error.status===401?'운영자 로그인이 필요해요.':error.message;
+            report=null;$('content').hidden=true;$('table').replaceChildren();$('round-name').textContent='';
+            $('message').setAttribute('role','alert');
+            $('message').textContent=error.status===401?'운영자 로그인이 필요해요.':(error.message||'총정산 내역을 불러오지 못했어요.')+' 새로고침으로 다시 시도해 주세요.';
             if(error.status===401){report=null;$('content').hidden=true;$('table').replaceChildren();$('login').hidden=false;}
-        } finally {busy=false;$('refresh').disabled=false;}
+        } finally {busy=false;}
     }
     $('refresh').onclick=load;
     $('login').onsubmit=async event=>{event.preventDefault();if(busy)return;try{if(!await CreoPlatform.verifyAdmin($('password').value))throw Error('비밀번호를 확인해 주세요.');$('password').value='';await load();}catch(error){$('message').textContent=error.message;}};
@@ -48,7 +54,7 @@
         if(!report||busy)return;
         try {
             const bytes=CreoSettlementWorkbook.xlsxBytes(report,XLSX);
-            const name=(report.channel.name+' 총정산 '+report.generatedAt.slice(0,10)).replace(/[\\/:*?"<>|]/g,'-');
+            const name=(CreoSettlementWorkbook.scopeLabel(report)+' 총정산 '+report.generatedAt.slice(0,10)).replace(/[\\/:*?"<>|]/g,'-');
             const url=URL.createObjectURL(new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
             const anchor=document.createElement('a');anchor.href=url;anchor.download=name+'.xlsx';document.body.appendChild(anchor);anchor.click();anchor.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
             $('message').textContent='엑셀을 저장했어요. 다운로드 폴더에서 확인하세요.';
