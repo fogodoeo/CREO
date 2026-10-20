@@ -63,6 +63,8 @@ export class RankRenderer implements UIObject {
     width: number,
     height: number
   ) {
+    // National broadcast leaves the playfield clear; names travel with the balls.
+    if (document.documentElement.dataset.rouletteTheme === 'national') return;
     const uiScale = Math.max(1, width / 720);
     this.layoutFontHeight = 19 * uiScale;
     const hudHeight = HUD_HEIGHT * uiScale;

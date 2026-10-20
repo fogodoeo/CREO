@@ -69,10 +69,14 @@ export class Minimap implements UIObject {
     if (!stage) return;
     const broadcastMode = this.broadcastMode;
     const uiScale = broadcastMode ? ctx.canvas.width / 720 : 1;
-    this.top = (HUD_HEIGHT + HUD_CONTENT_GAP) * uiScale;
+    this.top = document.documentElement.dataset.rouletteTheme === 'national'
+      ? 12 * uiScale : (HUD_HEIGHT + HUD_CONTENT_GAP) * uiScale;
     this.boundingBox.x = 4 * uiScale;
     const controlsReserve = CONTROLS_RESERVE_HEIGHT * uiScale;
-    const availableHeight = Math.max(120, ctx.canvas.height - this.top - controlsReserve);
+    const availableHeight = Math.min(
+      Math.max(120, ctx.canvas.height - this.top - controlsReserve),
+      document.documentElement.dataset.rouletteTheme === 'national' ? 180 * uiScale : Infinity
+    );
     this.scale = broadcastMode ? availableHeight / stage.goalY : Math.min(4, availableHeight / stage.goalY);
     this.scaleX = this.scale * (broadcastMode ? 1.55 : 1);
     this.boundingBox.y = this.top;
@@ -95,7 +99,7 @@ export class Minimap implements UIObject {
 
     ctx.restore();
     ctx.save();
-    ctx.strokeStyle = 'green';
+    ctx.strokeStyle = document.documentElement.dataset.rouletteTheme === 'national' ? '#525d6b' : 'green';
     ctx.lineWidth = 1;
     ctx.strokeRect(this.boundingBox.x, this.boundingBox.y, this.boundingBox.w, this.boundingBox.h);
     ctx.restore();

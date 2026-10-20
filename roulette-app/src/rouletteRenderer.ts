@@ -269,9 +269,9 @@ export class RouletteRenderer {
           if (nationalSkin) {
             // Bevel the existing shape; collision geometry remains untouched.
             const bevel = this.ctx.createLinearGradient(0, -h / 2, 0, h / 2);
-            bevel.addColorStop(0, '#8bcaff');
-            bevel.addColorStop(.25, '#287cff');
-            bevel.addColorStop(1, '#0648bf');
+            bevel.addColorStop(0, '#a5aeb8');
+            bevel.addColorStop(.25, '#687380');
+            bevel.addColorStop(1, '#353e49');
             this.ctx.fillStyle = bevel;
             this.ctx.fillRect(-w / 2, -h / 2, w, h);
             this.ctx.strokeRect(-w / 2, -h / 2, w, h);
@@ -306,9 +306,9 @@ export class RouletteRenderer {
         case 'circle': {
           if (nationalSkin) {
             const bevel = this.ctx.createRadialGradient(-shape.radius * .3, -shape.radius * .35, 0, 0, 0, shape.radius);
-            bevel.addColorStop(0, '#fffde0');
-            bevel.addColorStop(.55, '#ffe044');
-            bevel.addColorStop(1, '#ee9d15');
+            bevel.addColorStop(0, '#f4e8cf');
+            bevel.addColorStop(.55, '#d9bd85');
+            bevel.addColorStop(1, '#927344');
             this.ctx.fillStyle = bevel;
             this.ctx.beginPath();
             this.ctx.arc(0, 0, shape.radius, 0, Math.PI * 2);
@@ -514,11 +514,11 @@ export class RouletteRenderer {
     if (!winner) return;
     if (selectedWinners && selectedWinners.length > 1) {
       ctx.save();
-      ctx.fillStyle = '#f8fbff';
+      ctx.fillStyle = document.documentElement.dataset.rouletteTheme === 'national' ? '#16191e' : '#f8fbff';
       ctx.fillRect(width * .08, height * .14, width * .84, height * .72);
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillStyle = '#0648bf';
+      ctx.fillStyle = document.documentElement.dataset.rouletteTheme === 'national' ? '#f4e8cf' : '#0648bf';
       ctx.font = `850 ${width * .035}px 'Pretendard Variable', sans-serif`;
       ctx.fillText(`당첨자 ${selectedWinners.length}명`, width / 2, height * .23);
       const columns = selectedWinners.length > 5 ? 2 : 1;
@@ -589,17 +589,17 @@ export class RouletteRenderer {
     const w = width * .72, h = Math.min(152 * scale, height * .36);
     const x = (width - w) / 2, y = height - h - 24 * scale;
     ctx.save();
-    ctx.fillStyle = '#f8fbff';
-    ctx.strokeStyle = '#0648bf';
-    ctx.lineWidth = 3 * scale;
+    ctx.fillStyle = '#16191e';
+    ctx.strokeStyle = '#525d6b';
+    ctx.lineWidth = scale;
     ctx.beginPath();
     ctx.roundRect(x, y, w, h, 18 * scale);
     ctx.fill(); ctx.stroke();
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#102e61';
+    ctx.fillStyle = '#d9bd85';
     ctx.font = `850 ${20 * scale}px 'Pretendard Variable', sans-serif`;
     ctx.fillText(`${options.winnerLabel} · 축하합니다!`, width / 2, y + h * .25, w - 40 * scale);
-    ctx.fillStyle = '#0648bf';
+    ctx.fillStyle = '#f4e8cf';
     let fontSize = 54 * scale;
     ctx.font = `900 ${fontSize}px 'Pretendard Variable', sans-serif`;
     while (ctx.measureText(winner.name).width > w - 48 * scale && fontSize > 18 * scale) {

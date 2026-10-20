@@ -13,7 +13,7 @@ export function isNationalChannel(channel) {
 
 export function createNationalStage({
   root, video, enabled, reducedMotion, storage,
-  storageKey, schedule = setTimeout, cancel = clearTimeout,
+  storageKey, roster, schedule = setTimeout, cancel = clearTimeout,
 }) {
   let timer;
   let generation = 0;
@@ -33,7 +33,8 @@ export function createNationalStage({
   video.addEventListener('ended', stop);
   video.addEventListener('error', stop);
 
-  function update({ phase, winner, winners, ballCount, eventTitle, edition, drawLabel } = {}) {
+  function update({ phase, winner, winners, ballCount, eventTitle, edition, drawLabel, participants, rosterKey } = {}) {
+    roster?.update({ phase, participants, rosterKey });
     if (phase) root.dataset.drawPhase = phase;
     if (phase && phase !== 'running') stop();
     if (phase) text('[data-national-phase]', PHASE_LABELS[phase] || PHASE_LABELS.ready);

@@ -6,6 +6,7 @@ export declare function createNationalStage(options: {
   reducedMotion: () => boolean;
   storage?: Pick<Storage, 'getItem' | 'setItem'>;
   storageKey: string;
+  roster?: { update: (state: { phase?: string; participants?: string[]; rosterKey?: string }) => void };
 }): {
   update: (state: {
     phase?: 'loading' | 'ready' | 'running' | 'complete' | 'error';
@@ -15,6 +16,8 @@ export declare function createNationalStage(options: {
     ballCount?: number;
     eventTitle?: string;
     edition?: string;
+    participants?: string[];
+    rosterKey?: string;
   }) => void;
   start: (runId: string) => void;
   stop: () => void;

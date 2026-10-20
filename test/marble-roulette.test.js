@@ -166,7 +166,7 @@ test('pinball stage stays clean while candidate and controls remain in their ope
     assert.match(rankRenderer, /ctx\.lineTo\(rankPanelRight/);
     assert.match(minimap, /this\.scaleX = this\.scale \* \(broadcastMode \? 1\.55 : 1\)/);
     assert.match(minimap, /CONTROLS_RESERVE_HEIGHT \* uiScale/);
-    assert.match(minimap, /this\.top = \(HUD_HEIGHT \+ HUD_CONTENT_GAP\) \* uiScale/);
+    assert.match(minimap, /rouletteTheme === 'national'\s*\? 12 \* uiScale : \(HUD_HEIGHT \+ HUD_CONTENT_GAP\) \* uiScale/);
     assert.match(minimap, /camera\.zoom \* initialZoom \* SCENE_DISPLAY_ZOOM/);
     assert.match(styles, /bottom: calc\(14px \+ var\(--safe-bottom\)\)/);
     assert.match(styles, /left: calc\(20px \+ var\(--safe-left\)\)/);

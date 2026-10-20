@@ -1,37 +1,36 @@
-<!DOCTYPE html><html lang=ko><script type=importmap>{"imports":{"1v7oZ":"/roulette/Box2D.7042bf0d.js","5Lw9Q":"/roulette/Box2D.simd.dd31b167.wasm","9NQTk":"/roulette/Box2D.simd.3eb62d94.js","hOHCw":"/roulette/Box2D.b9b16b27.wasm"}}</script><meta charset=UTF-8><meta name=viewport content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name=theme-color content=#07111f><meta name=description content="채널과 행사에 관계없이 사용할 수 있는 공용 마블 추첨기"><meta property=og:type content=website><meta property=og:title content="MARBLE DRAW"><meta property=og:description content="공이 달리고, 결과가 남는 라이브 추첨"><title>MARBLE DRAW</title><link rel=stylesheet href=/roulette/roulette-app.fe3cd838.css><body>
+<!DOCTYPE html><html lang=ko><script type=importmap>{"imports":{"1v7oZ":"/roulette/Box2D.7042bf0d.js","5Lw9Q":"/roulette/Box2D.simd.dd31b167.wasm","9NQTk":"/roulette/Box2D.simd.3eb62d94.js","hOHCw":"/roulette/Box2D.b9b16b27.wasm"}}</script><meta charset=UTF-8><meta name=viewport content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name=theme-color content=#07111f><meta name=description content="채널과 행사에 관계없이 사용할 수 있는 공용 마블 추첨기"><meta property=og:type content=website><meta property=og:title content="MARBLE DRAW"><meta property=og:description content="공이 달리고, 결과가 남는 라이브 추첨"><title>MARBLE DRAW</title><link rel=stylesheet href=/roulette/roulette-app.3fe07eef.css><body>
     <main class=app-shell id=appShell>
       <section class=stage aria-label="마블 추첨 화면">
         <div id=canvasHost class=canvas-host data-roulette-canvas-host></div>
 
         <div class=national-chrome id=nationalStage data-draw-phase=loading aria-label="전국크레자랑 추첨 행사">
-          <div class=national-masthead>
-            <div class=national-identity>
+          <div class=national-identity>
               <img class=national-wordmark data-brand-image=national alt=전국크레자랑>
-              <span class=national-edition id=nationalEdition>전국크레자랑</span>
-            </div>
-            <div class=national-prize>
-              <span>전국크레자랑 스페셜 · 행운의 핀볼</span>
-              <strong id=nationalEventTitle>경품 추첨</strong>
-              <small data-national-rule>먼저 도착한 1명</small>
-            </div>
-            <div class=national-brand-logos><img data-brand-image=silktree alt=실크트리><img data-brand-image=parge alt=파르게></div>
+              <span class=sr-only id=nationalEdition>전국크레자랑</span>
           </div>
-          <div class=national-sidecar>
-            <div class=national-ticket>
-              <span class=national-ticket-tag>LUCKY DRAW</span>
-              <strong>오늘의 행운은<br>누구에게?</strong>
-              <svg aria-hidden=true class=national-marble-art viewBox="0 0 240 150"><defs><radialGradient id=nationalBlue cx=.32 cy=.24 r=.8><stop stop-color=#bceaff /><stop offset=.4 stop-color=#1878ff /><stop offset=1 stop-color=#0538a9 /></radialGradient><radialGradient id=nationalYellow cx=.32 cy=.24 r=.8><stop stop-color=#fffde1 /><stop offset=.4 stop-color=#ffe34a /><stop offset=1 stop-color=#ee8d0a /></radialGradient></defs><ellipse cx=121 cy=130 fill=#d5e2fa rx=89 ry=9 /><path fill=none stroke=#1552cc stroke-linecap=round stroke-width=7 d="M20 111q80 41 200-17"/><circle cx=96 cy=67 r=49 fill=url(#nationalBlue) /><circle cx=166 cy=93 r=32 fill=url(#nationalYellow) /><path fill=#ffb300 d="m190 25 4 12 13 3-13 4-4 12-4-12-12-4 12-3ZM34 60l3 9 9 3-9 3-3 9-3-9-9-3 9-3Z"/><ellipse cx=80 cy=45 fill=#fff opacity=.8 rx=13 ry=8 transform="rotate(-35 80 45)"/><ellipse cx=156 cy=79 fill=#fff opacity=.8 rx=8 ry=5 transform="rotate(-35 156 79)"/></svg>
-              <div class=national-count><strong data-national-count>0</strong><span>개의 공이 함께합니다</span></div>
-            </div>
+          <div class=national-prize>
+            <strong id=nationalEventTitle>경품 추첨</strong>
           </div>
+          <section class=participant-roster id=participantRoster aria-label="참가자 명단" hidden>
+            <div class=roster-heading><h2>함께하는 분들</h2><span id=rosterCount></span></div>
+            <p id=rosterEmpty>참가자 명단을 준비하고 있습니다.</p>
+            <ol id=participantRosterList></ol>
+            <div class=roster-pagination id=rosterPagination hidden>
+              <button id=rosterPrevious type=button aria-label="이전 참가자">←</button>
+              <span id=rosterPage aria-live=polite></span>
+              <button id=rosterNext type=button aria-label="다음 참가자">→</button>
+              <button id=rosterToggle type=button>일시정지</button>
+            </div>
+          </section>
           <div class=national-award data-national-award hidden>
             <div class=national-award-card>
-              <span class=national-award-ribbon data-national-award-title>오늘의 행운 주인공</span>
+              <span class=national-award-ribbon data-national-award-title>오늘의 당첨자</span>
               <strong data-national-winner></strong>
-              <span class=national-award-congrats>당첨을 축하합니다!</span>
+              <span class=national-award-congrats>당첨을 축하합니다</span>
+              <div class=national-brand-logos><img data-brand-image=silktree alt=실크트리><img data-brand-image=parge alt=파르게></div>
             </div>
           </div>
-          <div class=national-footnote><span class=national-phase data-national-phase>화면 준비 중</span><span>함께 즐기는 전국크레자랑</span><b>CREO</b></div>
+          <span class=sr-only data-national-phase>화면 준비 중</span>
         </div>
         <video class=national-stinger id=nationalStinger muted playsinline preload=none aria-hidden=true hidden></video>
 
@@ -56,7 +55,7 @@
           <div class=panel-head>
             <a id=operatorHomeLink href=/main hidden style=color:inherit;min-height:44px;display:inline-flex;align-items:center>운영 홈</a>
             <div>
-              <span class=eyebrow>LIVE DRAW CONTROL</span>
+              <span class=eyebrow>추첨 운영</span>
               <h1>핀볼 관리</h1>
             </div>
             <button class="icon-button panel-close" id=closePanelButton type=button aria-label="설정 닫기">
@@ -93,6 +92,21 @@
                 </div>
               </div>
               <p class=field-help>노트북에서 공 배치·추첨 시작을 누르면 이 주소의 송출 화면이 실행됩니다.</p>
+            </section>
+
+            <section class="control-section event-section">
+              <div class=section-title><h2>송출 제목</h2></div>
+              <div class=advanced-body>
+                <label class=field>
+                  <span>어떤 추첨인가요?</span>
+                  <input id=eventTitleInput maxlength=40 autocomplete=off>
+                </label>
+                <label class=field>
+                  <span>회차명 <small>기록용 · 선택</small></span>
+                  <input id=channelNameInput maxlength=30 autocomplete=off placeholder="예: 전국크레자랑 전라·충청편">
+                </label>
+              </div>
+              <p class=field-help>‘명단 준비’를 누르면 입력한 제목과 참가자가 송출 화면에 적용됩니다.</p>
             </section>
 
             <section class="control-section entries-section">
@@ -178,20 +192,6 @@
               </div>
             </section>
 
-            <details class="control-section event-section">
-              <summary><span>행사 정보</span><small>행사명 · 회차명</small></summary>
-              <div class=advanced-body>
-                <label class=field>
-                  <span>행사명</span>
-                  <input id=eventTitleInput maxlength=40 autocomplete=off>
-                </label>
-                <label class=field>
-                  <span>채널명 <small>선택</small></span>
-                  <input id=channelNameInput maxlength=30 autocomplete=off placeholder="예: BAND LIVE · 유튜브 · 오프라인">
-                </label>
-              </div>
-            </details>
-
             <details class="advanced-section control-section">
               <summary><span>화면 디자인</span><small>테마와 결과 문구</small></summary>
               <div class=advanced-body>
@@ -274,4 +274,4 @@
     </dialog>
 
     <div class=toast id=toast role=status aria-live=polite></div>
-    <script type=module src=/roulette/roulette-app.c83e6243.js></script>
+    <script type=module src=/roulette/roulette-app.bca1fd32.js></script>

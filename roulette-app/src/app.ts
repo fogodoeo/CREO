@@ -15,6 +15,7 @@ import { parseName } from './utils/utils';
 import { auctionWinnerEntries, getLeadingHouseKey, HOUSE_NAMES } from './auctionEntries.js';
 import { createRemoteControls, createSessionPoller, initialEntries } from './remoteControls.js';
 import { createNationalStage, isNationalChannel } from './nationalStage.js';
+import { createRosterSequence } from './participantRoster.js';
 import { winnerCount as normalizedWinnerCount, winnerCountError, drawLabel, participantCount } from './drawWinners.js';
 
 const queryParameters = new URLSearchParams(location.search);
@@ -195,6 +196,37 @@ const dom = {
   privacyNotice: element<HTMLElement>('privacyNotice'),
 };
 
+const rosterRoot = element<HTMLElement>('participantRoster');
+const rosterList = element<HTMLOListElement>('participantRosterList');
+const rosterPrevious = element<HTMLButtonElement>('rosterPrevious');
+const rosterNext = element<HTMLButtonElement>('rosterNext');
+const rosterToggle = element<HTMLButtonElement>('rosterToggle');
+const participantRoster = createRosterSequence({
+  reducedMotion: () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+  render: (state) => {
+    rosterRoot.hidden = !state.visible;
+    rosterList.replaceChildren(...state.names.map((name, index) => {
+      const row = document.createElement('li');
+      const number = document.createElement('span');
+      const label = document.createElement('strong');
+      number.textContent = String(state.offset + index + 1).padStart(2, '0');
+      label.textContent = name;
+      row.append(number, label);
+      return row;
+    }));
+    element<HTMLElement>('rosterCount').textContent = state.total ? `${state.total}명` : '잠시 후 시작합니다';
+    element<HTMLElement>('rosterPage').textContent = `${state.page} / ${state.pages}`;
+    element<HTMLElement>('rosterPagination').hidden = state.pages <= 1;
+    element<HTMLElement>('rosterEmpty').hidden = state.total > 0;
+    rosterPrevious.disabled = state.page <= 1;
+    rosterNext.disabled = state.page >= state.pages;
+    rosterToggle.hidden = !state.automatic;
+    rosterToggle.textContent = state.page === state.pages ? '다시 보기' : state.paused ? '자동 넘김' : '일시정지';
+  },
+});
+rosterPrevious.addEventListener('click', () => participantRoster.move(-1));
+rosterNext.addEventListener('click', () => participantRoster.move(1));
+rosterToggle.addEventListener('click', () => participantRoster.toggle());
 const nationalStage = createNationalStage({
   root: element<HTMLElement>('nationalStage'),
   video: element<HTMLVideoElement>('nationalStinger'),
@@ -205,6 +237,7 @@ const nationalStage = createNationalStage({
     setItem: (key, value) => sessionStorage.setItem(key, value),
   },
   storageKey: `creo:national-stinger:${remoteChannelId || 'local'}`,
+  roster: participantRoster,
 });
 
 function safeJsonParse<T>(value: string | null, fallback: T): T {
@@ -425,7 +458,7 @@ function updateCounts(): void {
   dom.personCount.textContent = String(people);
   dom.ballCount.textContent = String(balls);
   dom.startBallCount.textContent = `${balls}개 공`;
-  nationalStage.update({ ballCount: balls });
+  nationalStage.update({ ballCount: balls, participants: parseEntries().map(entry => parseName(entry)?.name || '') });
   const drawConfig = collectConfig();
   const countError = !dom.winnerCount.disabled && !dom.winnerCount.checkValidity()
     ? '당첨 인원은 1~20 사이의 정수로 입력해 주세요.' : winnerCountError(parseEntries(), drawConfig);
@@ -561,6 +594,7 @@ async function prepareRound(seed = createSecureSeed()): Promise<void> {
     startedAt: 0,
   };
   preparedFingerprint = fingerprint(entries);
+  if (!isRemoteDisplay) nationalStage.update({ rosterKey: seed });
   setStatus('ready', `${summary.balls}개 공 준비 완료`);
   if (!isBroadcastMode) showToast(`시드 ${seed.slice(0, 8)} · 공 배치 완료`);
 }
@@ -753,8 +787,10 @@ function updateRemoteSnapshot(session: RemoteSession): void {
     phase: session.phase === 'idle' || session.phase === 'prepared' ? 'ready' : session.phase,
     winner: session.phase === 'complete' ? session.result?.winner || '' : '',
     winners: session.result?.winners,
+    rosterKey: session.runId,
     ...(!isRemoteController ? {
       ballCount: session.ballCount,
+      participants: (session.entries || []).map(entry => parseName(entry)?.name || ''),
       ...(session.config ? { eventTitle: session.config.eventTitle, edition: session.config.channelName, drawLabel: drawLabel(session.config) } : {}),
     } : {}),
   });
@@ -1130,8 +1166,8 @@ async function initialize(): Promise<void> {
     dom.remoteSection.hidden = false;
     dom.broadcastSource.value = remoteSourceUrl();
     dom.privacyNotice.textContent = '브로드캐스트 모드에서는 참가자 이름과 추첨 설정이 선택한 채널 세션에 저장됩니다.';
-    dom.shuffle.textContent = '송출에 공 배치';
-    dom.start.querySelector('span')!.textContent = '송출 추첨 시작';
+    dom.shuffle.textContent = '명단 준비';
+    dom.start.querySelector('span')!.textContent = '추첨 시작';
   }
 
   if (autoLoadAuctionWinners) await syncAuctionWinnerEntries('amount', false);
