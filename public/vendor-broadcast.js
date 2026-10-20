@@ -95,13 +95,15 @@
   if(!sheet.open){lastTrigger=document.activeElement;sheet.showModal()}
  }
  function renderCalendar(){
+  const months=[...new Set(state.dates.map(d=>d.date.slice(0,7)))];
+  if(!months.includes(month))month=months[0];
   const [year,m]=month.split('-').map(Number),count=new Date(Date.UTC(year,m,0)).getUTCDate(),offset=new Date(Date.UTC(year,m-1,1)).getUTCDay();
   let cells='<span aria-hidden="true"></span>'.repeat(offset);
   for(let n=1;n<=count;n++){const k=month+'-'+String(n).padStart(2,'0'),d=state.dates.find(d=>d.date===k),mine=d?.regionName===state.vendor.region,attention=d&&task(d);
    const regionLabel=d&&({'서울·인천':'서울\n인천','전라·충청':'전라\n충청','대구·경북':'대구\n경북','부산·울산·경남':'부울경'}[d.regionName]||d.regionName);
    cells+=`<button class="day ${d?'event':''} ${mine?'mine':''} ${k===selected?'selected':''}" ${d?`data-date="${k}" aria-label="${m}월 ${n}일 ${d.regionName} 방송${attention?', 개체 등록 필요':''}"`:'disabled'}><span>${n}</span>${attention?'<i class="calendar-attention" aria-hidden="true"></i>':''}${d?`<small class="calendar-region">${esc(regionLabel)}</small>`:''}</button>`;
   }
-   $('#calendar-content').innerHTML=`<section class="broadcast-calendar" aria-label="방송 달력"><div class="calendar-head"><h2>${year}년 ${m}월</h2><div><button class="icon" style="display:inline-grid" data-month="-1" aria-label="이전 달">‹</button><button class="icon" style="display:inline-grid" data-month="1" aria-label="다음 달">›</button></div></div><div class="week" aria-hidden="true">${'일월화수목금토'.split('').map(s=>'<div>'+s+'</div>').join('')}</div><div class="dates">${cells}</div></section>${state.dates.filter(d=>d.date.startsWith(month)&&task(d)).map(d=>`<button class="registration-task" data-date="${d.date}"><span class="task-dot" aria-hidden="true"></span><span><strong>개체 등록 필요</strong><small>${dateLabel(d.date)} · ${reservation(d.date)?.completed||0}마리 제출</small></span><span aria-hidden="true">›</span></button>`).join('')}`;
+   $('#calendar-content').innerHTML=`<section class="broadcast-calendar" aria-label="방송 달력"><div class="calendar-head"><h2>${year}년 ${m}월</h2><div><button class="icon" style="display:inline-grid" data-month="-1" aria-label="이전 달" ${month===months[0]?'disabled':''}>‹</button><button class="icon" style="display:inline-grid" data-month="1" aria-label="다음 달" ${month===months.at(-1)?'disabled':''}>›</button></div></div><div class="week" aria-hidden="true">${'일월화수목금토'.split('').map(s=>'<div>'+s+'</div>').join('')}</div><div class="dates">${cells}</div></section>${state.dates.filter(d=>d.date.startsWith(month)&&task(d)).map(d=>`<button class="registration-task" data-date="${d.date}"><span class="task-dot" aria-hidden="true"></span><span><strong>개체 등록 필요</strong><small>${dateLabel(d.date)} · ${reservation(d.date)?.completed||0}마리 제출</small></span><span aria-hidden="true">›</span></button>`).join('')}`;
   renderInbound();
  }
  function renderInbound(){window.CreoInbound?.render({state,month,redraw:renderCalendar,openDate,save:async(carrier,originId)=>{state=await request({type:'inbound-origin',carrier,originId,expectedVersion:state.version})}})}
@@ -263,7 +265,7 @@
  document.addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b||busy||photoBusy)return;
   if(b.dataset.date){openDate(b.dataset.date);return}
-  if(b.dataset.month){const d=new Date(month+'-01T12:00:00Z');d.setUTCMonth(d.getUTCMonth()+Number(b.dataset.month));const next=d.toISOString().slice(0,7);if(next>='2026-10'&&next<=state.dates.at(-1).date.slice(0,7)){month=next;renderCalendar()}return}
+  if(b.dataset.month){const months=[...new Set(state.dates.map(d=>d.date.slice(0,7)))],next=months[months.indexOf(month)+Number(b.dataset.month)];if(next){month=next;renderCalendar()}return}
   if(b.dataset.slot!==undefined){run(async()=>{await commit(false);openDate(selected,Number(b.dataset.slot))});return}
   const action=b.dataset.action;
   if(action==='auction-photo-refresh'){run(async()=>{state=await request();auctionPhotoPending=null;for(const row of auctionNameDrafts.values()){const item=auctionItems().find(item=>item.id===row.itemId);if(item)row.expectedUpdatedAt=item.updatedAt;}refreshAuctionPhotos();$('#step-error').textContent=''});return}

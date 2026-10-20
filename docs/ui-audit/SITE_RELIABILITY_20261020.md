@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | 공통 진입·로그인 | 62개 정적 경로 응답, `/main`의 로그인 경계는 기존 배포 검사 | 로그인 실패·복귀·공통 메뉴·오래된 별칭 |
 | 운영 홈·회차·출품 | 회차 격리, 보관 채널의 배송 메뉴, 잘못된 회차 복구, 320px/PC 홈 확인 | 실제 운영자 로그인 이후 진입, 출품 편집·빈/오류 상태 |
-| 낙찰·배송·인쇄·정산 | 배송 편집·업체 선택·전체조회·관리자 로그인 배포. 총정산 회차명/엑셀·오류 복구 검증 완료(미배포), 같은 회차 입금 관리 연결 확인 | 주관사 입금 관리 회차 표시·전체 조작·실제 기기 |
+| 낙찰·배송·인쇄·정산 | 배송 편집·업체 선택·전체조회·관리자 로그인·총정산 회차명/엑셀·오류 복구 배포. 7개 운영 회차 보고서와 같은 회차 입금 관리 연결 확인 | 주관사 입금 관리 회차 표시·전체 조작·실제 기기 |
 | 업체 로그인·출품·예약·정산 | 기존 개별 검사 기록과 이번 로그인 정리 회귀 | 현재 버전의 모바일 연결·오류·재접속 |
 | 구매자 배송·결제·보관함 | 현재/이전 결제 회차 표시, 가상 상태 전이·복귀 배포. 보관함 회차 선택·재연결·계정 전환 실화면 확인·배포 | 변경 요청·문의·실제 기기 |
 | 방송·핀볼·캡처·배너 | 경기→전라·충청 구성 복사, 실제 준비 화면 확인 | 조작/송출 동기화·재접속·도구 연결 |
@@ -211,7 +211,7 @@ Vanilla HTML/JS/CSS. 기존 `CHECKOUT_DESIGN.md`의 흰 표면·회색 본문·�
 
 판정: 이번 로그인 창 범위는 Approve. 전체 사이트 점검은 첫 표대로 계속한다.
 
-## 총정산 회차 표시·엑셀·오류 복구 · 배포 전 검증
+## 총정산 회차 표시·엑셀·오류 복구
 
 - 로컬 가상 `settlement-report.html?channel=national-cre`의 화면에 ‘채널 누적’, ‘입금 잔액은 업체별 누적 기준’이 나온다(`public/settlement-report.html:10`, `:17`). 현재 3개체의 수수료 60,000원·배송비 지원 0원·업체 미입금 93,000원이 표시됐다. 서버는 `OperationRounds.scopedWorkspace`로 조회한다(`platform-api.js:4129`). 회차 격리와 설명이 어긋나는 HIGH Writing 항목이다.
 - 기존 `settlement-report.js:114`는 항상 `scope: 'channel'`을 반환했다. 이제 조회에 사용한 회차 식별값·보관 회차 제목·확인 가능한 방송일을 응답에 포함하고 화면과 엑셀 네 시트 및 파일명이 같은 이름을 사용한다. 원래 금액 계산과 기록은 변경하지 않는다. 여러 날짜를 가진 옛 회차는 날짜를 추측하지 않고 보관 제목으로 표시한다.
@@ -241,4 +241,36 @@ Vanilla HTML/JS/CSS. 기존 `CHECKOUT_DESIGN.md`의 흰 표면·회색 본문·�
 - 1차 전체 `npm test` 1,415개·`npm run check` 및 PC `python -m unittest discover -p "test*.py"` 270개 통과. 원격 main에 홍보물 변경 3건이 추가되어 `ecebbe5`까지 fast-forward한 뒤 통합 코드의 `npm test` 1,415개와 `npm run check`를 다시 통과했다. 원격 홍보물 수정은 그대로 보존했다. 로그: `site-settlement-round-integrated-tests.log`, `site-settlement-round-integrated-check.log`, 상위 `scratch/site-settlement-round-desktop.log`.
 - 그림: 상위 `scratch/national-session-20261019/site-settlement-current-desktop.png`, `site-settlement-archive-320.png`. 실제 휴대폰/Safari·200% 확대·스크린리더 음성은 Not verified.
 
-판정: 확인한 총정산 범위는 Approve. 배포 후 27개 정적 파일과 각 회차 총정산 응답·운영 자료 보존을 읽기 전용으로 확인한다. 주관사 입금 관리로의 연결은 맞지만, 해당 화면 제목에는 보관 회차명이 보이지 않으므로 다음 점검에서 표시와 조작 흐름을 함께 확인한다. 전체 사이트 목표는 진행 중이다.
+- `e1f5ba3ca91b2dbf005b86f2222e3c5d045032a7` / Render `dep-dbbnei1srm7s738f21u0`는 23:16:28 KST Live. 운영 GET 검사에서 health·송출 200, 정적 27개 파일 일치, 7개 운영 회차의 총정산 scope/회차 ID/개체 집합 일치를 확인했다. 현재 전크자 34개/34개 배송, 이전 38개/36개 배송 및 양쪽 미결제 조회 200/readOnly=false를 유지했다. 모든 비교 채널의 개체·배송 식별자·낙찰합계는 배포 전과 같았다. 자료: `site-settlement-round-before.json`/`site-settlement-round-after.json`.
+
+판정: 확인한 총정산 범위는 Approve. 주관사 입금 관리로의 연결은 맞지만, 해당 화면 제목에는 보관 회차명이 보이지 않으므로 다음 점검에서 표시와 조작 흐름을 함께 확인한다(`public/organizer-shipping.js:81`의 채널명 표시). 전체 사이트 목표는 진행 중이다.
+
+## 업체 방송 신청: 첫 5개 권역으로 제한
+
+사용자 요청에 따라 주관사 입금 관리 점검보다 먼저 신청 달력 범위를 수정했다. 기존 `national-broadcast.js`는 오늘부터 370일 뒤까지 월·수 순환 일정을 생성하여 2회차 이후도 표시했고, 2주 전이면 자동으로 신청 가능해졌다.
+
+- 신규 신청은 2026-10-14 서울·인천, 10-19 경기, 10-21 전라·충청, 10-26 대구·경북, 10-28 부산·울산·경남으로 한정한다. 이후 날짜는 화면에 없는 직접 API 요청도 거부한다. 날짜 경과·재시작·중복/동시 요청으로 다음 순회가 열리지 않는다.
+- 이미 존재하는 예약과 개체는 삭제하지 않는다. 범위 밖이라도 본인 예약/기존 출품 날짜는 계속 표시하고 저장·조회 경로를 유지한다. 다른 업체의 이후 예약은 해당 업체의 달력에 노출하지 않는다. 관리자에는 기존 예약 관리가 남는다.
+- 달력의 이전/다음 달 버튼은 실제 기록이 있는 달로만 이동한다. 첫 순회만 있으면 10월 양쪽 이동 버튼을 비활성화하며, 기존 다른 달 기록이 있으면 접근할 수 있다. 새로고침으로 선택한 달이 없어졌을 때는 첫 순회 달로 복귀한다.
+
+위험도: release. 서버 신청 자격/공개 응답·배포 변경이며 회차 정산·결제 계산은 수정하지 않는다. 기존 `better-interface` 여섯 도메인 기준으로 검토했다.
+
+| 분야 | 확인한 증거 | 결과 |
+| --- | --- | --- |
+| Accessibility | 실제 PC/320px 이전·다음 달 disabled, 날짜 이름 | 가능한 조작 범위와 버튼 이름 일치 |
+| Layout | 실제 PC 달력/신청 창, 320px 달력 | 첫 5개 날짜 유지, 모바일 달력 폭/scrollWidth 모두 273px |
+| Writing | 이후 날짜 직접 신청 거부 사유 | 아직 신청을 받지 않는 방송임을 표시 |
+| Typography | 320px 권역명 줄바꿈 | 기존 표기 유지, 서울·인천/전라·충청/대구·경북/부울경 표시 |
+| Colors | 기존 방송/내 권역/등록 필요 표현 | 색 변경 없음, 날짜 접근 이름에도 권역·등록 필요 포함 |
+| UI | 빈 달 이동 억제, 기존 기록 달 이동/새로고침 | 의미 없는 이동 제한, 기존 기록 접근 유지 |
+
+| 심각도 | 분야 | 위치 | Before | After | Why |
+| --- | --- | --- | --- | --- | --- |
+| HIGH | UI | `national-broadcast.js` 날짜/신청 자격 | 370일간 순환 및 2주 전 자동 개방 | 첫 5개 권역만 신규 신청 가능 | 승인하지 않은 2회차 접수 방지 |
+| MEDIUM | UI | `public/vendor-broadcast.js` 달 이동 | 이동할 날짜가 없어도 활성 버튼 표시 | 실제 기록 월을 기준으로 이동/비활성화 | 빈 달로 이동할 것 같은 혼란 방지 |
+
+- 집중 `node --test test/national-broadcast.test.js test/vendor-broadcast-calendar.test.js test/broadcast-booking.test.js test/broadcast-booking-api.test.js test/vendor-entry-landing.test.js`: 50개 통과. 신규 6개 회귀 테스트는 첫 5개 권역 실제 신청/중복/재시작, 이후 순회 거부/쓰기 없음, 본인 기존 예약 보존/저장/타 업체 격리, 예약 없는 기존 출품 접근, 달 이동 경계/새로고침을 검사한다. 기존 저장 실패/원자성/일반 예약 경로도 통과했다.
+- 최종 `npm test`: 1,421개 통과. `npm run check` 및 PC `python -m unittest discover -p "test*.py"`: 270개 통과. `git diff --check`, 변경 코드의 strict UTF-8/U+FFFD 검사 통과. 로그: `site-first-cycle-focused.log`, `site-first-cycle-tests.log`, `site-first-cycle-check.log`, 상위 `scratch/site-first-cycle-desktop.log`.
+- 실제 화면은 localhost:4377의 임시 SQLite/가상 업체/가상 알림만 사용했다. 첫 5개 날짜와 양쪽 달 이동 비활성화, 10/21 신청→4마리 입력 화면 진입을 확인했다. 320px 그림: 상위 `scratch/national-session-20261019/site-first-cycle-320.png`. 실제 휴대폰/Safari 및 운영 업체의 신청 쓰기는 Not verified.
+
+판정: 첫 순회 신청 제한의 로컬 검증은 Approve. 운영 배포 후 GET으로 기존 접수 보존·실제 일정 범위·정적 파일·회차별 기록을 확인한다. 전체 사이트 점검과 주관사 입금 관리 후속 작업은 남아 있다.

@@ -7,6 +7,8 @@ const Origin=require('./public/broadcast-origin-core');
 const Tasks=require('./public/vendor-task-state');
 const REGIONS=['서울·인천','경기','전라·충청','대구·경북','부산·울산·경남'];
 const START='2026-10-14',MODE='regional-cycle-v1',ENTRY_COUNT=4,KEY=channelKey('national-cre','setting','national-broadcasts');
+// New applications stop after the first five regions. Existing records remain accessible.
+const APPLICATION_DATES=Object.freeze([START,'2026-10-19','2026-10-21','2026-10-26','2026-10-28']);
 const fail=(message,status=409)=>Object.assign(Error(message),{status});
 const uuid=()=>crypto.randomUUID();
 const validCapacity=value=>value===null||(Number.isSafeInteger(value)&&value>=4);
@@ -42,13 +44,14 @@ function createNationalBroadcast(repository,{now=Date.now,entries,notificationSe
   // Regional broadcasts have no automatic intake or entry deadline, including
   // sessions created under the old 72/24-hour defaults. Manual pauses still apply.
   function session(state,date){return {...Legacy.session(state,date),closesAt:null,entriesDueAt:null,selfUntil:null,region:regionAt(date),regionName:REGIONS[regionAt(date)]||''};}
- function dates(state){const result=[],today=Legacy.day(now()),end=Legacy.addDays(today,370);for(let d=START;d<=end;d=Legacy.addDays(d,1))if(scheduled(d))result.push(d);return result;}
+ function dates(state,records=state.reservations){return [...new Set([...APPLICATION_DATES,...records.map(r=>r.date).filter(scheduled)])].sort();}
  function policySession(state,date,vendors){return {...session(state,date),...regionEntryPolicy(state,regionAt(date),vendors)};}
  function limitFor(state,r,vendors){return Legacy.start(r.date)<=now()?r.entryIds.length:Math.min(r.entryIds.length,regionEntryPolicy(state,r.region,vendors).vendorEntryLimit);}
  function limitMessage(){return '전국크레자랑은 모든 업체가 4마리씩 출품합니다. 새로고침 후 확인해 주세요.';}
  function availability(state,date,region,vendorId,vendors){
   if(!scheduled(date))return {date,maxQuantityAvailable:0,reason:'방송일을 선택해 주세요.'};
   const s=policySession(state,date,vendors),block=reason=>({...s,maxQuantityAvailable:0,reason});
+  if(!APPLICATION_DATES.includes(date))return block('아직 신청을 받지 않는 방송이에요.');
   if(!Number.isInteger(region))return block('업체 지역을 먼저 등록해 주세요.');
   if(region!==s.region)return block(s.regionName+' 방송이에요.');
   if(!['draft','active'].includes(state.channelStatus||'active'))return block('종료된 채널이에요.');
@@ -68,7 +71,7 @@ function createNationalBroadcast(repository,{now=Date.now,entries,notificationSe
    return {...r,linkCode:undefined,session:policySession(state,r.date,context.vendors),...entryProgress(r,entryState.entries,limitFor(state,r,context.vendors)),proposal:null,history:state.audit.filter(a=>a.reservationId===r.id)};
   });
   const place=Origin.locality(inboundData,context.vendor.address,REGIONS[region]);
-  return {mode:MODE,enabled:true,version:state.version,now:new Date(now()).toISOString(),channel:{id:context.channel.id,name:context.channel.name,status:context.channel.status},vendor:{id:context.vendor.id,name:context.vendor.name,region:REGIONS[region]||'',locality:place?{id:place.id,city:place.city,district:place.district,label:place.label}:null,inboundOrigins:state.inboundOrigins?.[context.vendor.id]||{}},inboundDestinations:Object.fromEntries(['parge','dodosi'].map(carrier=>[carrier,Inbound.destination(inboundData,carrier)])),inboundDestinationPhones:Object.fromEntries(['parge','dodosi'].map(carrier=>[carrier,Inbound.destinationPhone(inboundData,carrier)])),regions:REGIONS,dates:dates(state).map(d=>availability({...state,channelStatus:context.channel.status},d,region,context.vendor.id,context.vendors)),reservations,entryState,pendingCount:reservations.filter(r=>r.status==='confirmed'&&r.session.startsAt>new Date(now()).toISOString()&&!r.registrationComplete).length};
+  return {mode:MODE,enabled:true,version:state.version,now:new Date(now()).toISOString(),channel:{id:context.channel.id,name:context.channel.name,status:context.channel.status},vendor:{id:context.vendor.id,name:context.vendor.name,region:REGIONS[region]||'',locality:place?{id:place.id,city:place.city,district:place.district,label:place.label}:null,inboundOrigins:state.inboundOrigins?.[context.vendor.id]||{}},inboundDestinations:Object.fromEntries(['parge','dodosi'].map(carrier=>[carrier,Inbound.destination(inboundData,carrier)])),inboundDestinationPhones:Object.fromEntries(['parge','dodosi'].map(carrier=>[carrier,Inbound.destinationPhone(inboundData,carrier)])),regions:REGIONS,dates:dates(state,[...reservations,...(entryState.auctionItems||[])]).map(d=>availability({...state,channelStatus:context.channel.status},d,region,context.vendor.id,context.vendors)),reservations,entryState,pendingCount:reservations.filter(r=>r.status==='confirmed'&&r.session.startsAt>new Date(now()).toISOString()&&!r.registrationComplete).length};
  }
  async function summary(context){const v=await view(context),open=v.entryState.events?.some(e=>e.id===context.channel.id&&e.entriesOpen),attentionCount=v.dates.filter(d=>d.regionName===v.vendor.region&&require('./public/vendor-task-state').broadcastNeedsAction(d,v.reservations.find(r=>r.date===d.date&&r.status==='confirmed'),v.now,open)).length;return {enabled:true,mode:MODE,pendingCount:v.pendingCount,attentionCount};}
  async function command(context,input,{operator=false}={}){
