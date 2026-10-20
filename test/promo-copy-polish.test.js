@@ -27,7 +27,7 @@ test('copy hooks keep genre voices but remove unsupported system and quality cla
  }
  assert.equal(seed.find(t=>t.id==='wolssu26-taste').blocks[0].text,'매주 월·수 밤 8시 ‘월~쑤!’\n당신은 어떤 크레에 끌리시나요');
 });
-test('all published seeds use centered copy, no image notes or parcel claims, specialist delivery, and standalone Jeolla-Chungcheong schedule',()=>{
+test('all published seeds use centered copy, no image notes or parcel claims, specialist delivery, standalone Jeolla-Chungcheong schedule, Lee Chanseong, and Silktree/Parge sponsors',()=>{
  const seed=require('../promo-templates.json');assert.equal(seed.length,5);
  for(const template of seed){
   const text=template.blocks.filter(b=>b.type==='text'),joined=text.map(b=>b.text).join('\n')+'\n'+template.title;
@@ -37,6 +37,9 @@ test('all published seeds use centered copy, no image notes or parcel claims, sp
   assert.match(joined,/생물 전문 배송|전문 배송업체/,template.id);
   assert.match(joined,/10월 21일|10\.21/,template.id);
   assert.match(joined,/전라·충청 편/,template.id);
+  assert.match(joined,/이찬성/,template.id);
+  assert.match(joined,/실크트리/,template.id);
+  assert.match(joined,/파르게/,template.id);
   const chars=text.map(b=>b.text).join('').length;
   assert.ok(chars>=550&&chars<=750,`${template.id} length=${chars}`);
   assert.ok(template.blocks.filter(b=>b.type==='image').every(b=>!b.alt.includes('AI 연출')),template.id);

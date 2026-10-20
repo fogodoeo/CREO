@@ -9,8 +9,9 @@ test('updated partner artwork bypasses old browser caches without changing exter
  assert.equal(ctx.imageURL('/promo-assets/partners-20261007.png?download=1&v=old'),'https://creok.onrender.com/promo-assets/partners-20261007-v4.png?download=1&v=old');
  assert.equal(ctx.imageURL('https://example.com/promo-assets/partners-20261007.png?token=keep'),'https://example.com/promo-assets/partners-20261007.png?token=keep');
  assert.equal(ctx.imageURL('/promo-assets/showtime-photo.png'),'https://creok.onrender.com/promo-assets/showtime-photo.png');
- assert.equal(ctx.imageURL('/promo-assets/ticket.png'),'https://creok.onrender.com/promo-assets/ticket-wolssu-gamachi-v1.png');
- assert.equal(ctx.imageURL('/promo-assets/ticket-seoul-incheon-v2.png'),'https://creok.onrender.com/promo-assets/ticket-wolssu-gamachi-v1.png');
+ assert.equal(ctx.imageURL('/promo-assets/ticket.png'),'https://creok.onrender.com/promo-assets/ticket-wolssu-sponsors-v1.png');
+ assert.equal(ctx.imageURL('/promo-assets/ticket-seoul-incheon-v2.png'),'https://creok.onrender.com/promo-assets/ticket-wolssu-sponsors-v1.png');
+ assert.equal(ctx.imageURL('/promo-assets/ticket-wolssu-gamachi-v1.png'),'https://creok.onrender.com/promo-assets/ticket-wolssu-sponsors-v1.png');
  assert.equal(ctx.imageURL('/promo-assets/hero.jpg'),'https://creok.onrender.com/promo-assets/hero-wolssu-v1.png');
  assert.equal(ctx.imageURL('/promo-assets/hero-seoul-incheon-v2.png'),'https://creok.onrender.com/promo-assets/hero-wolssu-v1.png');
  assert.equal(ctx.imageURL('/promo-assets/hero-seoul-incheon-v3.png'),'https://creok.onrender.com/promo-assets/hero-wolssu-v1.png');
@@ -59,20 +60,23 @@ test('shared hero is added once without mutating source blocks, and thumbnails k
  const external={type:'image',src:'https://other.example/promo-assets/hero.jpg'};
  assert.equal(ctx.thumbnailImage({blocks:[external]}),external);
 });
-test('all manuscripts start with hero-wolssu-v1.png and omit sponsor ticket banners',()=>{
+test('all manuscripts start with hero-wolssu-v1.png and include ticket-wolssu-sponsors-v1.png once before the Band link',()=>{
  const source=fs.readFileSync(require.resolve('../public/promo-center.js'),'utf8'),ctx=vm.createContext({URL,location:{origin:'https://creok.onrender.com'},esc:v=>String(v)});
  vm.runInContext(source.slice(source.indexOf(' function imageURL('),source.indexOf('\n const kst=')),ctx);
  vm.runInContext(source.slice(source.indexOf(' function bodyHTML('),source.indexOf('\n function preview(')),ctx);
  for(const t of require('../promo-templates.json')){
   const result=ctx.postBlocks(t);
   assert.equal(result[0].src,'/promo-assets/hero-wolssu-v1.png',t.id);
-  assert.equal(result.filter(b=>ctx.isSharedAsset(b,'ticket')).length,0,t.id);
+  assert.equal(result.filter(b=>ctx.isSharedAsset(b,'ticket')).length,1,t.id);
+  const linkIndex=result.findIndex(b=>b.href);
+  assert.equal(result[linkIndex-1].src,'/promo-assets/ticket-wolssu-sponsors-v1.png',t.id);
   const html=ctx.bodyHTML(t,true);
   assert.equal((html.match(/src="[^\"]*hero-wolssu-v1.png"/g)||[]).length,1,t.id);
+  assert.equal((html.match(/src="[^\"]*ticket-wolssu-sponsors-v1.png"/g)||[]).length,1,t.id);
   assert.doesNotMatch(html,/ticket-wolssu-gamachi|ticket-seoul-incheon|seoul-incheon-premiere-map/,t.id);
  }
 });
-test('legacy map or old ticket blocks are stripped and normalized to hero-wolssu-v1.png without tickets',()=>{
+test('legacy map or old ticket blocks are stripped and normalized to hero-wolssu-v1.png and ticket-wolssu-sponsors-v1.png',()=>{
  const source=fs.readFileSync(require.resolve('../public/promo-center.js'),'utf8'),ctx=vm.createContext({URL,location:{origin:'https://creok.onrender.com'},esc:v=>String(v)});
  vm.runInContext(source.slice(source.indexOf(' function imageURL('),source.indexOf('\n const kst=')),ctx);
  vm.runInContext(source.slice(source.indexOf(' function bodyHTML('),source.indexOf('\n function preview(')),ctx);
@@ -82,6 +86,7 @@ test('legacy map or old ticket blocks are stripped and normalized to hero-wolssu
   const html=ctx.bodyHTML(mixed,copying);
   assert.match(html,/^<p[^>]*><img src="https:\/\/creok.onrender.com\/promo-assets\/hero-wolssu-v1.png"/);
   assert.equal((html.match(/src="[^"]*hero-wolssu-v1.png"/g)||[]).length,1);
+  assert.equal((html.match(/src="[^"]*ticket-wolssu-sponsors-v1.png"/g)||[]).length,1);
   assert.doesNotMatch(html,/seoul-incheon-premiere-map|ticket-seoul-incheon|ticket-wolssu-gamachi/);
  }
  assert.equal(JSON.stringify(t),before);
