@@ -15,16 +15,17 @@ Coverage: layout, typography, visual polish and focus inspected at 1920×1080 an
 Verification:
 
 - `npm --prefix roulette-app run check`: passed.
-- `npm --prefix roulette-app run build`: passed; JS 157.94 kB, CSS 41.61 kB.
+- `npm --prefix roulette-app run build`: passed; JS 157.94 kB, CSS 41.75 kB.
 - Focused candidate/import/stage/roster/static tests: 44/44. Static bundle checks repeated after the final build: 12/12.
 - `npm run check`: passed.
 - `npm test`: 1466/1466 with isolated localhost fixtures.
 - Desktop `python -m unittest discover -p "test*.py"`: 270/270.
 - Subsequent cosmetic adjustments (blur, card width and focus markup) received another build, focused checks and browser inspection; no state logic changed after the full suite.
+- The final restored-result CSS correction received a regression against the shipped stylesheet/real document selectors plus static bundle checks: 13/13. Browser reload confirms the empty finish list is hidden.
 - New regressions cover one capture per winner, reset/new draw, unchanged other themes, frame capture before the recording award, missing/failed canvas contexts and no repeated frame-loop retry.
 - UTF-8 and `git diff --check`: passed.
 
-The frame is presentation-only and stays in page memory. A full reload restores the saved winners without replaying the draw; it does not reconstruct the prior physical positions. The recording canvas still renders its own translucent award. No auction state, draw decision, API polling or server persistence changed.
+The frame is presentation-only and stays in page memory. A full reload restores the saved winners without replaying the draw; it does not reconstruct the prior physical positions. When that frame is absent, CSS hides the empty game canvas so a restored result cannot misleadingly show “0 / 0” and “아직 골인 전” behind the award. The recording canvas still renders its own translucent award. No auction state, draw decision, API polling or server persistence changed.
 
 Evidence: desktop workspace `scratch/national-session-20261019/pinball-overlay-*`. Deployment checks use GET-only snapshots of both pinball sessions and all six auction/shipping scopes. Production baseline: national complete/revision 38; next session idle/revision 0.
 
