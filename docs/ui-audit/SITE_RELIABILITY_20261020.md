@@ -274,3 +274,24 @@ Vanilla HTML/JS/CSS. 기존 `CHECKOUT_DESIGN.md`의 흰 표면·회색 본문·�
 - 실제 화면은 localhost:4377의 임시 SQLite/가상 업체/가상 알림만 사용했다. 첫 5개 날짜와 양쪽 달 이동 비활성화, 10/21 신청→4마리 입력 화면 진입을 확인했다. 320px 그림: 상위 `scratch/national-session-20261019/site-first-cycle-320.png`. 실제 휴대폰/Safari 및 운영 업체의 신청 쓰기는 Not verified.
 
 판정: 첫 순회 신청 제한의 로컬 검증은 Approve. 운영 배포 후 GET으로 기존 접수 보존·실제 일정 범위·정적 파일·회차별 기록을 확인한다. 전체 사이트 점검과 주관사 입금 관리 후속 작업은 남아 있다.
+
+- `ba848da5ac727a7cf3deb6e60d3919bb4c41dad9` / Render `dep-dbbnoo6i0phs738oli2g`는 2026-10-20 23:37:48 KST Live. 운영 GET에서 일정 108개→5개, 이후 순회 103개→0개, 기존 접수 24건의 식별값·날짜·수량·상태·버전·개체 연결 해시 불변을 확인했다. 달력 HTML/JS 배포 파일도 일치했다.
+- health·송출 200, 정적 27개 파일 일치, 전크자 현재 34개/34개 배송·이전 38개/36개 배송과 다른 비교 채널 기록 불변, 양쪽 미결제 조회 200/readOnly=false 유지. 자료: 상위 `site-first-cycle-bookings-before.json`/`-after.json`, `site-first-cycle-before.json`/`-after.json`. 첫 순회 신청 제한 운영 검증도 Approve.
+
+## 주관사 입금 관리의 회차 표시
+
+총정산→입금 관리에서 필터는 이전 회차를 유지하지만 제목이 채널명으로만 표시되는 문제를 수정했다. 서버의 실제 조회 회차를 응답에 포함하고 화면 상단과 입금 확인 창에 같은 회차 이름/날짜를 표시한다. 채널·보관 회차가 요청과 다른 응답은 기존 표·입금 창을 지우고 재시도를 안내하며, 확인 전에는 입금 쓰기를 시작할 수 없다. 금액 산식과 기록 저장 경로는 그대로 사용한다.
+
+위험도: release. `better-interface`의 Accessibility(기존 dialog/입력 접근 이름), Layout(PC 및 320px 회차명), Writing(회차 이름과 날짜), Typography(기존 글꼴/줄바꿈), Colors(기존 토큰 유지), UI(재조회 실패→입금 비활성→성공 복구) 범위로 확인했다. 불필요한 모션은 추가하지 않았다.
+
+| 심각도 | 분야 | 위치 | Before | After | Why |
+| --- | --- | --- | --- | --- | --- |
+| HIGH | Writing | `public/organizer-shipping.js` 화면/입금 창 | 현재·이전 모두 채널명만 표시 | 실제 조회 회차명과 날짜 표시 | 입금을 어느 회차에 처리하는지 확인 가능 |
+| HIGH | UI | 입금 관리 조회 응답 | 회차 메타데이터 확인 없음 | URL과 응답의 채널/보관 회차 검증 | 다른 회차 응답에서 입금 조작 방지 |
+
+- 집중 `node --test test/organizer-recovery-ui.test.js test/organizer-bank-ui.test.js test/organizer-receipts.test.js test/operation-rounds.test.js`: 34개 통과. 제목의 문자 그대로 표시, 회차 불일치/누락과 복구, 접근 상실/늦은 응답, 중복·동시 입금/재시작/저장 실패·현재/이전 입금 격리를 확인했다.
+- 최종 `npm test`: 1,423개, `npm run check`, PC `python -m unittest discover -p "test*.py"`: 270개 통과. `git diff --check`와 strict UTF-8/U+FFFD 확인 통과. 로그: `site-organizer-round-focused.log`, `site-organizer-round-tests.log`, `site-organizer-round-check.log`, 상위 `scratch/site-organizer-round-desktop.log`.
+- 실제 가상 PC/320px: 현재 회차 미입금 29,000원·입금 1,000원, 이전 회차 미입금 55,000원·입금 5,000원 분리. 이전 업체 A의 입금 창에는 10/14 회차명과 35,000원만 표시됐다. 가상 503→입금 버튼 비활성→최신 내역 재조회 후 같은 회차로 복구를 실제 조작했다. 이전 낙찰 탭은 해당 회차의 3개체/300,000원을 유지했다.
+- 그림: 상위 `scratch/national-session-20261019/site-organizer-round-320.png`. 임시 SQLite·읽기 전용 화면으로 확인했다. 실제 운영 입금 저장, 실제 휴대폰/Safari, 스크린리더 음성은 Not verified. 기존 입금 쓰기는 가상 자동 테스트로 검사했다.
+
+판정: 확인한 주관사 회차 표시/조회/복구 범위는 로컬 Approve. 배포 후 운영 GET으로 회차 응답과 기존 기록을 검증한다. 전체 사이트 점검은 첫 표의 남은 범위까지 완료된 것이 아니다.

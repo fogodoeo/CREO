@@ -2,7 +2,7 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const html=fs.readFileSync(require.resolve('../public/organizer-shipping.html'),'utf8');
 const source=fs.readFileSync(require.resolve('../public/organizer-shipping.js'),'utf8');
-const data=(received=50000)=>({channel:{name:'로컬 경매'},bank:{bankName:'가상은행',bankAccount:'000-000',bankHolder:'예시 주관사',notificationPhone:'01000000000',updatedAt:'bank-1'},vendors:[{vendorId:'v',vendorName:'예시업체',vendorBankHolder:'예시예금주',totalAmount:80000,remainingAmount:80000-received,receivedAmount:received,itemCount:1,history:[],shippingFeeItems:[],missingDestinationItems:[]}],carriers:[]});
+const data=(received=50000)=>({scope:'round',round:{channelId:'alpha',archiveId:'',date:'2026-10-19',name:'로컬 경매'},channel:{id:'alpha',name:'로컬 경매'},bank:{bankName:'가상은행',bankAccount:'000-000',bankHolder:'예시 주관사',notificationPhone:'01000000000',updatedAt:'bank-1'},vendors:[{vendorId:'v',vendorName:'예시업체',vendorBankHolder:'예시예금주',totalAmount:80000,remainingAmount:80000-received,receivedAmount:received,itemCount:1,history:[],shippingFeeItems:[],missingDestinationItems:[]}],carriers:[]});
 function screen(search='?channel=alpha'){
  const nodes=new Map([...html.matchAll(/id="([^"]+)"/g)].map(m=>[m[1],{hidden:false,value:'',textContent:'',innerHTML:'',disabled:false,open:false,focus(){},setAttribute(){},replaceChildren(){this.innerHTML='';this.textContent=''},querySelectorAll(){return []},close(){this.open=false},showModal(){this.open=true}}]));
  const calls=[],timers=[];
@@ -20,6 +20,35 @@ test('first load failure exposes retry; recovery clears the error and never edit
  f.nodes.get('retry').onclick();assert.equal(f.calls.length,2);f.calls[1].resolve(data());await new Promise(setImmediate);
  assert.equal(f.nodes.get('content').hidden,false);assert.equal(f.nodes.get('message').textContent,'');assert.equal(f.nodes.get('retry').hidden,true);
  assert.ok(f.calls.every(r=>(r.options.method||'GET')==='GET'&&r.options.cache==='no-store'));
+});
+test('selected round title stays literal in the page and receipt dialog, and is cleared on lost access',async()=>{
+ const f=screen('?channel=alpha&archive=previous'),old=data();
+ old.round={channelId:'alpha',archiveId:'previous',date:'2026-10-14',name:'<이전 회차>'};
+ f.calls[0].resolve(old);await new Promise(setImmediate);
+ assert.equal(f.calls[0].path,'channels/alpha/organizer-shipping?archive=previous');
+ assert.equal(f.nodes.get('channel').textContent,'<이전 회차> · 2026-10-14');
+ f.run('openReceipt(state.vendors[0])');
+ assert.equal(f.nodes.get('receipt-round').textContent,'<이전 회차> · 2026-10-14');
+ assert.equal(f.nodes.get('receipt-amount').value,'30,000');
+ f.run('clearAccess()');assert.equal(f.nodes.get('channel').textContent,'');assert.equal(f.nodes.get('receipt-round').textContent,'');
+});
+test('wrong channel or round cannot replace the screen or retain an open receipt; retry restores the requested scope',async()=>{
+ for(const mismatch of ['channel','round','archive','missing']){
+  const f=screen();await f.ready();f.run('openReceipt(state.vendors[0])');
+  const next=data(),refresh=f.run('load()');
+  if(mismatch==='channel')next.channel.id='beta';
+  if(mismatch==='round')next.round.channelId='beta';
+  if(mismatch==='archive')next.round.archiveId='previous';
+  if(mismatch==='missing')delete next.round;
+  f.calls[1].resolve(next);await refresh;
+  assert.equal(f.nodes.get('content').hidden,true);assert.equal(f.nodes.get('receipt-dialog').open,false);
+  assert.equal(f.nodes.get('total').textContent,'');assert.equal(f.nodes.get('receipt-amount').value,'');
+  assert.match(f.nodes.get('message').textContent,/회차 정보가 일치하지/);assert.equal(f.nodes.get('retry').hidden,false);
+  await f.run('saveReceipt({preventDefault(){}})');assert.equal(f.calls.length,2);
+  const retry=f.run('load()'),correct=data();correct.round.name='로컬 경매 · 2026-10-19';
+  f.calls[2].resolve(correct);await retry;
+  assert.equal(f.nodes.get('content').hidden,false);assert.equal(f.nodes.get('channel').textContent,'로컬 경매 · 2026-10-19');
+ }
 });
 test('older success and older authorization failure cannot replace a newer screen',async()=>{
  const f=screen();await f.ready();

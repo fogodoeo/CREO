@@ -27,6 +27,7 @@
 </div></main>
 <dialog id="receipt-dialog" class="organizer-sheet" aria-labelledby="receipt-title">
 <header class="organizer-sheet-head"><h2 id="receipt-title">입금 확인</h2><button id="close-receipt" type="button" class="settlement-text" aria-label="닫기">×</button></header>
+<p id="receipt-round" class="settlement-muted"></p>
 <form id="receipt-form">
 <label class="receipt-label" for="receipt-amount">입금액</label><div class="receipt-money"><input id="receipt-amount" inputmode="numeric" autocomplete="off" aria-describedby="receipt-balance" required><span>원</span></div><p id="receipt-balance" class="settlement-muted"></p>
 <div class="receipt-date-row"><label for="receipt-date">입금일</label><input id="receipt-date" type="date" required></div>
@@ -36,4 +37,4 @@
 <button id="receipt-reload" class="settlement-text" type="button" hidden>최신 내역 불러오기</button>
 <footer class="receipt-footer"><button id="confirm-receipt" class="settlement-primary" type="submit">입금 확인 완료</button></footer>
 </form></dialog>
-<script src="/organizer-shipping.js?v=20261014-fees-20260923-portal"></script></body></html>
+<script src="/organizer-shipping.js?v=20261020-round"></script></body></html>

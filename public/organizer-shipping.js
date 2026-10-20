@@ -7,6 +7,7 @@ function organizerApi(path,options={}){const archive=new URLSearchParams(locatio
 let state, saving=false, dirty=false, bankRevision='', editingBank=false, receiptVendor=null, receiptAttempt=null, loadRevision=0, fresh=false, accessDenied=false;
 let organizerView='shipping';
 const money=n=>Number(n||0).toLocaleString('ko-KR')+'원';
+function roundLabel(){const r=state.round,name=r.name||state.channel.name;return name+(r.date&&!name.includes(r.date)?' · '+r.date:'');}
 const date=s=>s?new Date(s).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
 const today=()=>new Date(Date.now()+9*3600000).toISOString().slice(0,10);
 const fields=['bankName','bankAccount','bankHolder','notificationPhone'];
@@ -18,7 +19,7 @@ function clearAccess(){
  for(const id of ['vendors','carriers','receipt-detail-content','auction-items','auction-vendor'])$(id).replaceChildren();
  for(const id of ['auction-count','auction-total','auction-result-count'])$(id).textContent='';
  $('auction-search').value='';setOrganizerView('shipping');
- for(const id of ['channel','total','all-total','received','overpaid-total','missing-total','bank-saved-owner','bank-saved-account','bank-saved-phone','receipt-balance','receipt-error'])$(id).textContent='';
+ for(const id of ['channel','receipt-round','total','all-total','received','overpaid-total','missing-total','bank-saved-owner','bank-saved-account','bank-saved-phone','receipt-balance','receipt-error'])$(id).textContent='';
  for(const id of [...fields,'password','receipt-amount','receipt-date','receipt-memo'])$(id).value='';
  $('receipt-title').textContent='입금 확인';$('receipt-reload').hidden=true;$('receipt-error').hidden=true;
  $('edit-bank').textContent='수정';$('refresh').disabled=false;$('retry').disabled=false;
@@ -26,6 +27,7 @@ function clearAccess(){
 }
 function readFailure(error){
  if(error.status===401){clearAccess();return;}
+ if(error.code==='ROUND_SCOPE_MISMATCH'){clearAccess();$('login').hidden=true;showMessage(error.message,true);return;}
  fresh=false;showMessage(state?'최신 내역을 확인하지 못했어요.':'정산 내역을 불러오지 못했어요.',true);
  if(receiptVendor&&$('receipt-dialog').open){$('receipt-error').hidden=false;$('receipt-error').textContent='최신 내역을 불러온 뒤 확인해 주세요.';$('receipt-reload').hidden=false;updateReceiptBalance();}
 }
@@ -77,7 +79,7 @@ function renderAuction(){
 }
 function render(){
  $('broadcast-bookings').hidden=state.channel.id!=='national-cre';$('broadcast-bookings').href='/organizer-bookings.html?'+new URLSearchParams({channel:state.channel.id,...(organizerCode?{code:organizerCode}:{})});
- $('login').hidden=true;$('content').hidden=false;$('channel').textContent=state.channel.name;
+ $('login').hidden=true;$('content').hidden=false;$('channel').textContent=roundLabel();
  const sum=k=>state.vendors.reduce((n,v)=>n+(v[k]||0),0);
  $('total').textContent=money(sum('remainingAmount'));$('all-total').textContent=money(sum('totalAmount'));$('received').textContent=money(sum('receivedAmount'));
  const overpaid=sum('overpaidAmount');$('overpaid-total').hidden=!overpaid;$('overpaid-total').textContent=overpaid?'초과 입금 '+money(overpaid):'';
@@ -101,6 +103,7 @@ function updateReceiptBalance(){
 }
 function openReceipt(v){
  if(!v)return;receiptVendor=structuredClone(v);receiptAttempt=null;
+ $('receipt-round').textContent=roundLabel();
  $('receipt-title').textContent=vendorLabel(v)+' 입금 확인';$('receipt-amount').value=Number(v.pendingReport?.amount||v.remainingAmount||0).toLocaleString('ko-KR');
  $('receipt-date').value=today();$('receipt-date').max=today();$('receipt-memo').value='';$('receipt-memo').hidden=true;$('add-receipt-memo').hidden=false;
  $('receipt-error').hidden=true;$('receipt-reload').hidden=true;$('receipt-details').open=false;
@@ -135,6 +138,8 @@ async function load(){
   if(!channelId&&organizerCode){const access=await organizerApi('organizer-access',{method:'POST',body:JSON.stringify({code:organizerCode})});if(revision!==loadRevision)return false;channelId=access.channel.id;route='channels/'+encodeURIComponent(channelId)+'/organizer-shipping'}
   if(!channelId){showMessage('주관사 전용 링크로 접속해 주세요.');return false;}
   const next=await organizerApi(route);if(revision!==loadRevision)return false;
+  const archive=new URLSearchParams(location.search).get('archive')||'';
+  if(next.channel?.id!==channelId||next.scope!=='round'||next.round?.channelId!==channelId||next.round?.archiveId!==archive)throw Object.assign(Error('회차 정보가 일치하지 않습니다. 해당 회차를 다시 열거나 다시 불러와 주세요.'),{code:'ROUND_SCOPE_MISMATCH'});
   state=next;fresh=true;accessDenied=false;render();showMessage(state.unassignedReceiptCount?'회차 미지정 입금 '+state.unassignedReceiptCount+'건이 있습니다. 회차 확인 전에는 입금 합계에서 제외됩니다.':'');return true;
  }catch(e){if(revision===loadRevision)readFailure(e);return false}
  finally{if(revision===loadRevision)$('retry').disabled=saving;}

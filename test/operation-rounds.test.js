@@ -68,6 +68,8 @@ test('receipt writes, cancellations and checkout-change lists preserve exact his
  await f.repository.upsertRows([{key,value:JSON.stringify([oldReceipt])}]);
  const get=async archive=>(await f.request('GET','/channels/national-cre/organizer-shipping'+(archive?'?archive='+archive:''))).json();
  const current=await get(),v=current.vendors.find(v=>v.vendorId==='v1');assert.equal(v.receivedAmount,0);
+ assert.equal(current.scope,'round');assert.equal(current.round.channelId,'national-cre');assert.equal(current.round.archiveId,'');assert.equal(current.round.date,'2026-10-19');
+ const old=await get(f.archive);assert.equal(old.scope,'round');assert.equal(old.round.archiveId,f.archive);assert.equal(old.round.name,'10/14 이전 회차');assert.equal(old.round.date,'2026-10-14');
  const body={vendorId:'v1',requestId:'new-round-deposit-01',amount:1000,paidOn:'2026-10-19',memo:'가상 새 회차',expectedReceivedAmount:0,expectedTotalAmount:v.totalAmount};
  const responses=await Promise.all([f.request('POST','/channels/national-cre/organizer-shipping/deposit',body),f.request('POST','/channels/national-cre/organizer-shipping/deposit',body)]);assert.ok(responses.every(r=>r.status===200));assert.deepEqual(responses.map(r=>r.json().duplicate).sort(),[false,true]);
  assert.equal((await get()).vendors.find(v=>v.vendorId==='v1').receivedAmount,1000);assert.equal((await get(f.archive)).vendors.find(v=>v.vendorId==='v1').receivedAmount,10000);

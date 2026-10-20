@@ -4236,7 +4236,7 @@ function createPlatformApi({
                         current.bank = bank;
                         touchCheckout(channelId);
                     }
-                    replyJson(res,200,{channel:{id:channel.id,name:channel.name},bookingEnabled:Booking.enabled(channel),...current});
+                    replyJson(res,200,{channel:{id:channel.id,name:channel.name},bookingEnabled:Booking.enabled(channel),...current,scope:'round',round:data.round});
                 });
                 return true;
             }
