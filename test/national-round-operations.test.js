@@ -71,8 +71,34 @@ test('activation requires fresh selection and no live auction, keeps previous ch
  await f.repository.upsertRecord(ROOT,'broadcast',{id:'state',mode:'live'});assert.equal((await f.command('activate',{expectedActiveChannelId:ROOT})).status,409);
  await f.repository.upsertRecord(ROOT,'broadcast',{id:'state',mode:'standby'});assert.equal((await f.command('activate',{expectedActiveChannelId:ROOT})).status,200);
  assert.equal(await f.repository.getActiveChannel(),TARGET);assert.equal((await f.read()).status,200);
- f.restart();assert.equal((await f.command('activate',{expectedActiveChannelId:ROOT})).json().duplicate,true);assert.equal((await f.command()).status,409);
+ f.restart();assert.equal((await f.command('activate',{expectedActiveChannelId:ROOT})).json().duplicate,true);assert.equal((await f.command()).json().duplicate,true);
  const oldTransition=await f.request('PUT','/channels/'+ROOT+'/auction-transition',{itemId:'new01',status:'live'});assert.equal(oldTransition.status,409);
+});
+test('empty round activates before registration, survives restart, and accepts late approvals only before auction history',async t=>{
+ const f=await fixture();t.after(()=>f.close());await createVendorDirectory(f.repository).enroll(ROOT,'v1');
+ const command=(action,more={})=>f.request('POST','/national-rounds',{action,date:DATE,...more});
+ const old=await records(f,ROOT),oldCheckout=(await f.read()).json();
+ assert.equal((await command('prepare')).status,200);
+ const responses=await Promise.all([command('activate',{expectedActiveChannelId:ROOT}),command('activate',{expectedActiveChannelId:ROOT})]);
+ assert.deepEqual(responses.map(r=>r.status),[200,200]);assert.equal(responses.filter(r=>r.json().duplicate).length,1);
+ f.restart();assert.equal(await f.repository.getActiveChannel(),TARGET);assert.equal((await f.repository.getRecord(TARGET,'broadcast','state')).mode,'standby');
+ assert.deepEqual(await records(f,ROOT),old);assert.deepEqual((await f.read()).json(),oldCheckout);
+ assert.equal((await f.request('GET','/national-rounds')).json().rounds.find(r=>r.channelId===TARGET).canImport,true);
+ await f.repository.upsertRecord(ROOT,'item',pending('late'));
+ assert.equal((await command('prepare')).json().imported,1);assert.equal((await command('prepare')).json().duplicate,true);
+ const row=(await records(f,TARGET))[0];
+ await f.repository.upsertRecord(TARGET,'item',{...row,attributes:{...row.attributes,bid_log:[{name:'가상 입찰',amount:5}]}});
+ const before=await records(f,TARGET);assert.equal((await command('prepare')).status,409);assert.deepEqual(await records(f,TARGET),before);
+ assert.equal((await f.request('GET','/national-rounds')).json().rounds.find(r=>r.channelId===TARGET).canImport,false);
+});
+test('empty activation fails atomically on storage conflict and still refuses a live source auction',async t=>{
+ const f=await fixture();t.after(()=>f.close());const command=()=>f.request('POST','/national-rounds',{action:'activate',date:DATE,expectedActiveChannelId:ROOT});
+ await f.request('POST','/national-rounds',{action:'prepare',date:DATE});
+ const cas=f.repository.compareAndSwapRows.bind(f.repository);f.repository.compareAndSwapRows=async()=>false;
+ assert.equal((await command()).status,409);assert.equal(await f.repository.getActiveChannel(),ROOT);assert.equal((await f.repository.getCatalog()).channels.find(c=>c.id===TARGET).status,'draft');
+ f.repository.compareAndSwapRows=cas;await f.repository.upsertRecord(ROOT,'broadcast',{id:'state',mode:'live'});
+ assert.equal((await command()).status,409);assert.equal(await f.repository.getActiveChannel(),ROOT);
+ await f.repository.upsertRecord(ROOT,'broadcast',{id:'state',mode:'standby'});assert.equal((await command()).status,200);
 });
 test('guard wrong dates on creation/edit and default unassigned items to round date',async t=>{
  const f=await setup(t);await f.command();

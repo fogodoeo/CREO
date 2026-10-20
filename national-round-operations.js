@@ -38,13 +38,13 @@ function createNationalRoundOperations({repository,directory,lock,touch,now=Date
   const catalog=await repository.getCatalog(),activeChannelId=await repository.getActiveChannel();
   const rounds=[];
   for(const c of catalog.channels.filter(c=>c.id===ROOT||c.nationalRound?.parentId===ROOT)){
-   const [all,archives]=await Promise.all(['item','archive'].map(t=>repository.listRecords(c.id,t)));
+   const [all,archives,shipments,broadcast]=await Promise.all([repository.listRecords(c.id,'item'),repository.listRecords(c.id,'archive'),repository.listRecords(c.id,'shipment'),repository.getRecord(c.id,'broadcast','state')]);
    const items=all.filter(i=>!i.auctionArchiveId),sold=items.filter(i=>i.status==='sold');
    const dates=[...new Set(sold.map(dateOf).filter(Boolean))].sort();
    const date=c.nationalRound?.date||(dates.length===1?dates[0]:'');
    const region=National.REGIONS[National.regionAt(date)]||'';
    const scoped=c.id===ROOT&&date?items.filter(i=>dateOf(i)===date):items;
-   rounds.push({channelId:c.id,name:c.nationalRound?c.name:`${date||'기존 회차'} ${region} · 결제·배송`,date,status:c.status,active:activeChannelId===c.id,itemCount:scoped.length,soldCount:sold.length});
+   rounds.push({channelId:c.id,name:c.nationalRound?c.name:`${date||'기존 회차'} ${region} · 결제·배송`,date,status:c.status,active:activeChannelId===c.id,itemCount:scoped.length,soldCount:sold.length,canImport:c.id!==ROOT&&['draft','active'].includes(c.status)&&!shipments.length&&all.every(safeUnstarted)&&broadcast?.mode!=='live'});
    for(const archive of archives.filter(a=>a.closedAt)){
     const archived=all.filter(i=>i.auctionArchiveId===archive.id),dates=[...new Set(archived.map(dateOf).filter(Boolean))];
     rounds.push({channelId:c.id,archiveId:archive.id,name:archive.title||archive.name||'이전 회차',date:dates.length===1?dates[0]:'',status:'history',active:false,itemCount:archived.length,soldCount:archived.filter(i=>i.status==='sold').length});
@@ -76,14 +76,13 @@ function createNationalRoundOperations({repository,directory,lock,touch,now=Date
     const live=await repository.getRecord(active,'broadcast','state');
     const activeItems=await repository.listRecords(active,'item');
     if(live?.mode==='live'||activeItems.some(i=>i.status==='live'))throw fail('진행 중인 경매를 종료한 뒤 방송 회차를 전환해 주세요.');
-    if(!targetItems.length)throw fail('출품 개체와 순서를 준비한 뒤 전환해 주세요.');
     for(const i of targetItems){assertDate(target,i);if(!dateOf(i))throw fail('방송일이 없는 개체를 확인해 주세요.');}
     if(body.expectedActiveChannelId!==active)throw fail('방송 회차가 변경됐습니다. 새로고침 후 다시 선택해 주세요.');
     if(targetState?.mode==='live'||targetItems.some(i=>i.status==='live'))throw fail('대상 회차의 진행 중 경매를 확인해 주세요.');
     target={...target,status:'active',updatedAt:stamp};
     rows.push({key:ACTIVE_CHANNEL_KEY,value:targetId});
    }else{
-    if(target&&target.status!=='draft')throw fail('방송 전 준비 회차에만 새 접수를 가져올 수 있어요.');
+    if(target&&!['draft','active'].includes(target.status))throw fail('방송 준비 중인 회차에만 새 접수를 가져올 수 있어요.');
     if(targetShipments.length||targetItems.some(i=>!safeUnstarted(i))||targetState?.mode==='live')throw fail('입찰·낙찰·배송 이력이 있는 회차에는 가져올 수 없어요.');
     const existingDates=new Set(sourceItems.filter(i=>i.auctionArchiveId||i.status==='sold').map(dateOf));
     if(existingDates.has(date))throw fail('이 날짜는 기존 회차에 낙찰·보관 기록이 있습니다. 해당 회차를 열어 주세요.');

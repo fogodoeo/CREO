@@ -6,8 +6,8 @@
   <link rel="stylesheet" href="studio-layout-editor.css?v=20261014-p2-text-fit">
   <script defer src="platform-client.js?v=20260803-admin-session-v2"></script>
   <script defer src="studio-layout-draft.js?v=20260915-studio"></script>
-  <script defer src="broadcast-text-layout.js?v=20261014-p2-text-fit"></script>
-  <script defer src="studio-layout-editor.js?v=20261014-p2-text-fit"></script>
+  <script defer src="broadcast-text-layout.js?v=20261021-right-anchor"></script>
+  <script defer src="studio-layout-editor.js?v=20261021-right-anchor"></script>
 </head>
 <body>
 <main class="editor">
@@ -31,9 +31,10 @@
       <div class="range-field"><div class="range-heading"><label for="font" id="font-label">글자 크기</label><div class="font-number"><input id="font-number" type="number" min="50" max="250" step="5" value="100" aria-label="글자 크기 백분율" disabled><span>%</span></div></div><input id="font" type="range" min="0.5" max="2.5" step="0.05" value="1" disabled><output class="sr-only" for="font" id="font-value">100%</output></div>
       <label class="toggle" id="auto-width-field" for="auto-width" hidden>글자에 맞춰 가로폭<input id="auto-width" type="checkbox" checked disabled></label>
       <fieldset><legend>위치 <span>(%)</span></legend><div class="paired">
-        <div class="field"><label for="x">가로 X</label><input id="x" type="number" min="0" max="96" step="0.1" disabled></div>
+        <div class="field"><label for="x" id="x-label">가로 X</label><input id="x" type="number" min="0" max="96" step="0.1" disabled></div>
         <div class="field"><label for="y">세로 Y</label><input id="y" type="number" min="0" max="96" step="0.1" disabled></div>
       </div></fieldset>
+      <p class="fit-note" id="right-anchor-note" hidden>100%는 화면 오른쪽 끝 · 100%를 넘으면 화면 밖으로 이동합니다. 박스는 왼쪽으로 늘어납니다.</p>
       <fieldset><legend>크기 <span>(%)</span></legend><div class="paired">
         <div class="field"><label for="width">가로</label><input id="width" type="number" min="4" max="100" step="0.1" disabled></div>
         <div class="field"><label for="height">세로</label><input id="height" type="number" min="4" max="100" step="0.1" disabled></div>

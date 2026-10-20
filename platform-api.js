@@ -240,6 +240,9 @@ function sanitizeBroadcastState(input = {}) {
             if (['p2-info', 'p2-progress', 'p2-bidders', 'p2-price', 'p2-sold'].includes(slot) && typeof raw.autoWidth === 'boolean') {
                 layoutPlacements[slot].autoWidth = raw.autoWidth;
             }
+            if (slot === 'p2-info' && raw.rightEdge !== undefined && raw.rightEdge !== null && Number.isFinite(Number(raw.rightEdge))) {
+                layoutPlacements[slot].rightEdge = clampLayoutNumber(raw.rightEdge, 4, 120, 98);
+            }
         }
     }
     return {

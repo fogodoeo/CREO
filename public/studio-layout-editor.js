@@ -15,7 +15,7 @@
  const target=(slot=selected)=>doc()?.querySelector(`[data-layout-slot="${slot}"]`);
  function status(){const dirty=model.dirty();$('save-status').textContent=saving?'저장 중…':dirty?'저장 전 변경사항':ready?'저장됨':'불러오는 중…';$('save-status').dataset.dirty=String(dirty);$('save').disabled=!ready||saving||!dirty;$('p2-scene').disabled=!ready;}
  function toast(message){$('toast').textContent=message;$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),2400);}
- function currentBox(element){const rect=element.getBoundingClientRect(),view=doc().documentElement;return {x:rect.left/view.clientWidth*100,y:rect.top/view.clientHeight*100,width:rect.width/view.clientWidth*100,height:rect.height/view.clientHeight*100,fontScale:Number(element.style.getPropertyValue('--layout-font-scale'))||1,opacity:100,visible:true};}
+ function currentBox(element){const rect=element.getBoundingClientRect(),view=doc().documentElement;return {x:rect.left/view.clientWidth*100,y:rect.top/view.clientHeight*100,width:rect.width/view.clientWidth*100,height:rect.height/view.clientHeight*100,...(textLayout.rightAnchored(theme(),element.dataset.layoutSlot)?{rightEdge:rect.right/view.clientWidth*100}:{}),fontScale:Number(element.style.getPropertyValue('--layout-font-scale'))||1,opacity:100,visible:true};}
  function box(slot=selected){return model.values()[slot]||(target(slot)?currentBox(target(slot)):null);}
  function paint(slot,value){
   const element=target(slot);if(!element)return;
@@ -32,6 +32,7 @@
  function change(slot,value){
   const next={x:clamp(value.x,0,96),y:clamp(value.y,0,96),width:clamp(value.width,4,100),height:clamp(value.height,4,100),fontScale:clamp(value.fontScale,.5,2.5),opacity:clamp(value.opacity??100,0,100),visible:value.visible!==false};
   if(typeof value.autoWidth==='boolean')next.autoWidth=value.autoWidth;
+  if(textLayout.rightAnchored(theme(),slot)||value.rightEdge!==undefined)next.rightEdge=textLayout.rightEdge(value);
   model.change(slot,next);paint(slot,next);
   const peer=slot==='p1-ticker'?'p2-ticker':slot==='p2-ticker'?'p1-ticker':'';
   if(peer&&model.values()[peer])model.change(peer,{...model.values()[peer],fontScale:next.fontScale});
@@ -41,6 +42,9 @@
   const value=box();for(const id of fields)$(id).disabled=!value;
   for(const name of ['x','y','width','height'])$(name).value=value?value[name].toFixed(1):'';
   for(const name of ['x','y','width','height'])$(name).disabled=!value||isFrame(selected);
+  const rightAnchored=textLayout.rightAnchored(theme(),selected);
+  $('x-label').textContent=rightAnchored?'오른쪽 기준':'가로 X';$('x').min=rightAnchored?'4':'0';$('x').max=rightAnchored?'120':'96';$('right-anchor-note').hidden=!rightAnchored;
+  if(value&&rightAnchored)$('x').value=textLayout.rightEdge(value).toFixed(1);
   $('font').disabled=!value||selected==='p2-parents'||isFrame(selected);$('font').value=value?.fontScale||1;$('font-value').textContent=Math.round((value?.fontScale||1)*100)+'%';
   $('font-number').disabled=$('font').disabled;if(document.activeElement!==$('font-number'))$('font-number').value=Math.round((value?.fontScale||1)*100);
   const canFit=textLayout.supports(theme(),selected),autoWidth=textLayout.automatic(theme(),selected,value);
@@ -67,11 +71,12 @@
    const slot=element.dataset.layoutSlot;element.tabIndex=0;element.setAttribute('role','button');element.setAttribute('aria-label',(labels[slot]||slot)+' 위치 조절');element.style.touchAction='none';
    let handle=element.querySelector(':scope > .creo-layout-handle');if(!handle){handle=document.createElement('span');handle.className='creo-layout-handle';handle.setAttribute('aria-hidden','true');element.appendChild(handle);}
    element.onfocus=()=>select(slot);
-   element.onkeydown=event=>{const steps={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]};if(event.key==='Enter'||event.key===' '){event.preventDefault();select(slot);return;}if(!steps[event.key])return;event.preventDefault();select(slot);const [dx,dy]=steps[event.key],value=box(),step=event.shiftKey?1:.1;change(slot,{...value,x:value.x+dx*step,y:value.y+dy*step});};
+   element.onkeydown=event=>{const steps={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]};if(event.key==='Enter'||event.key===' '){event.preventDefault();select(slot);return;}if(!steps[event.key])return;event.preventDefault();select(slot);const [dx,dy]=steps[event.key],value=box(),step=event.shiftKey?1:.1;change(slot,textLayout.move(theme(),slot,value,dx*step,dy*step));};
+   const rightAnchored=textLayout.rightAnchored(theme(),slot);handle.style.setProperty('left',rightAnchored?'-10px':'auto','important');handle.style.setProperty('right',rightAnchored?'auto':'-10px','important');handle.style.setProperty('cursor',rightAnchored?'nesw-resize':'nwse-resize','important');
    const start=(event,type)=>{if(drag||event.button!==0)return;event.preventDefault();event.stopPropagation();select(slot);let value=box();if(type==='resize'&&textLayout.automatic(theme(),slot,value)){const actual=currentBox(element);value={...value,width:actual.width,height:actual.height,autoWidth:false};if(element.classList.contains('is-lower-caption'))value.y=actual.y;}drag={slot,type,pointer:event.pointerId,startX:event.clientX,startY:event.clientY,box:value};event.currentTarget.setPointerCapture(event.pointerId);};
    element.onpointerdown=event=>{if(event.target!==handle)start(event,'move')};handle.onpointerdown=event=>start(event,'resize');
   }
-  document.onpointermove=event=>{if(!drag||event.pointerId!==drag.pointer)return;const view=document.documentElement,dx=(event.clientX-drag.startX)/view.clientWidth*100,dy=(event.clientY-drag.startY)/view.clientHeight*100;change(drag.slot,drag.type==='move'?{...drag.box,x:drag.box.x+dx,y:drag.box.y+dy}:{...drag.box,width:drag.box.width+dx,height:drag.box.height+dy});};
+  document.onpointermove=event=>{if(!drag||event.pointerId!==drag.pointer)return;const view=document.documentElement,dx=(event.clientX-drag.startX)/view.clientWidth*100,dy=(event.clientY-drag.startY)/view.clientHeight*100;change(drag.slot,(drag.type==='move'?textLayout.move:textLayout.resize)(theme(),drag.slot,drag.box,dx,dy));};
   document.onpointerup=document.onpointercancel=()=>{drag=null};
   select(target(selected)?selected:elements[0]?.dataset.layoutSlot||'');ready=true;clearTimeout(loadTimer);$('preview-error').hidden=true;status();
  }
@@ -92,7 +97,7 @@
   if(event.source===settingsFrame.contentWindow&&event.data?.type==='creo-broadcast-settings-saved'){if(model.dirty()&&!await save(false))return;loadPreview();toast('문구·표시 설정을 반영했어요');}
  });
  $('slot').onchange=()=>select($('slot').value);
- for(const name of ['x','y','width','height','opacity'])$(name).oninput=()=>{if(box()&&$(name).value!=='')change(selected,{...box(),[name]:name==='opacity'&&usesTransparency(selected)?100-Number($(name).value):$(name).value})};
+ for(const name of ['x','y','width','height','opacity'])$(name).oninput=()=>{if(box()&&$(name).value!=='')change(selected,{...box(),[name==='x'&&textLayout.rightAnchored(theme(),selected)?'rightEdge':name]:name==='opacity'&&usesTransparency(selected)?100-Number($(name).value):$(name).value})};
  $('font').oninput=()=>box()&&change(selected,{...box(),fontScale:$('font').value});$('visible').onchange=()=>box()&&change(selected,{...box(),visible:$('visible').checked});
  $('font-number').oninput=()=>{const value=Number($('font-number').value);if(box()&&value>=50&&value<=250)change(selected,{...box(),fontScale:value/100});};
  $('font-number').onchange=()=>{if(box())change(selected,{...box(),fontScale:clamp($('font-number').value,50,250)/100});$('font-number').value=Math.round((box()?.fontScale||1)*100);};

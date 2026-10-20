@@ -46,8 +46,8 @@ body[data-broadcast-theme="national-stage"][data-page="2"] #stage .item-copy.is-
  box-shadow:0 5px 0 #3f568d,0 6px 0 #ffffffb3!important;
 }
 body[data-broadcast-theme="national-stage"][data-page="2"] #stage .item-copy.is-inline-info[data-layout-custom="1"]{
- left:var(--layout-x)!important;right:auto!important;width:var(--layout-width)!important;
- max-width:min(var(--layout-width),calc(98% - var(--layout-x)))!important;
+ left:auto!important;right:calc(100% - var(--text-anchor-right,98%))!important;width:var(--layout-width)!important;
+ max-width:min(100%,calc(var(--text-anchor-right,98%) - 2%))!important;
 }
 /* A lower-third caption grows upward from its saved bottom edge, away from the ticker. */
 body[data-broadcast-theme="national-stage"][data-page="2"] #stage .item-copy.is-inline-info.is-lower-caption[data-layout-custom="1"]{top:auto!important;bottom:calc(100% - var(--layout-y) - var(--layout-height))!important}
@@ -119,9 +119,9 @@ body[data-broadcast-theme="national-stage"][data-page="2"] #stage [data-text-aut
 }
 body[data-broadcast-theme="national-stage"][data-page="2"] #stage [data-text-auto-width="1"][data-layout-custom="1"]{max-width:calc(98% - var(--layout-x))!important}
 body[data-broadcast-theme="national-stage"][data-page="2"] #stage :is(.live-bidders,.price-card,.sold-notice)[data-text-auto-width][data-layout-custom="1"]{transform:translateY(min(0px,calc(98vh - var(--text-anchor-y,0px) - 100%)))!important}
-/* Keep the right safe edge fixed; longer details grow the ribbon to the left. */
+/* The saved right edge can pass the screen boundary; text grows to its left. */
 body[data-broadcast-theme="national-stage"][data-page="2"] #stage .item-copy.is-inline-info[data-text-auto-width="1"],
-body[data-broadcast-theme="national-stage"][data-page="2"] #stage .item-copy.is-inline-info[data-text-auto-width="1"][data-layout-custom="1"]{left:auto!important;right:2%!important;width:max-content!important;max-width:96%!important}
+body[data-broadcast-theme="national-stage"][data-page="2"] #stage .item-copy.is-inline-info[data-text-auto-width="1"][data-layout-custom="1"]{left:auto!important;right:calc(100% - var(--text-anchor-right,98%))!important;width:max-content!important;max-width:min(100%,calc(var(--text-anchor-right,98%) - 2%))!important}
 body[data-broadcast-theme="national-stage"][data-page="2"] #stage .live-bidders[data-text-auto-width]{
  container-type:normal;grid-template-columns:minmax(0,1fr) max-content;grid-template-rows:none;grid-auto-rows:1fr;align-content:start;overflow:visible;
  height:auto!important;max-height:none!important;
