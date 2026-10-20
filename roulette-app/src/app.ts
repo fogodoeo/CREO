@@ -15,6 +15,7 @@ import { parseName } from './utils/utils';
 import { auctionWinnerEntries, getLeadingHouseKey, HOUSE_NAMES } from './auctionEntries.js';
 import { createRemoteControls, createSessionPoller, initialEntries } from './remoteControls.js';
 import { createNationalStage, isNationalChannel } from './nationalStage.js';
+import { winnerCount as normalizedWinnerCount, winnerCountError, drawLabel } from './drawWinners.js';
 
 const queryParameters = new URLSearchParams(location.search);
 const isBroadcastMode = queryParameters.get('broadcast') === '1';
@@ -50,6 +51,7 @@ type PinballStanding = { rank: number; name: string; finished: boolean };
 type PinballResult = {
   runId: string;
   winner: string;
+  winners?: string[];
   completedAt: string | null;
   standings: PinballStanding[];
 };
@@ -76,6 +78,8 @@ type RoundContext = {
   mapTitle: string;
   speed: number;
   winningRank: number;
+  winnerMode: WinnerMode;
+  winnerCount: number;
   ballCount: number;
   startedAt: number;
 };
@@ -83,6 +87,7 @@ type RoundContext = {
 type RoundRecord = RoundContext & {
   id: string;
   winner: string;
+  winners: string[];
   completedAt: string;
   durationMs: number;
   entriesHash: string;
@@ -149,6 +154,8 @@ const dom = {
   renderFps: element<HTMLSelectElement>('renderFpsSelect'),
   rankField: element<HTMLElement>('rankField'),
   winningRank: element<HTMLInputElement>('winningRankInput'),
+  winnerCount: element<HTMLInputElement>('winnerCountInput'),
+  drawSummary: element<HTMLElement>('drawSummary'),
   skills: element<HTMLInputElement>('skillsInput'),
   top5Bounce: element<HTMLInputElement>('top5BounceInput'),
   recording: element<HTMLInputElement>('recordingInput'),
@@ -268,7 +275,8 @@ async function syncAuctionWinnerEntries(showEmptyMessage = true): Promise<void> 
   if (!remoteChannelId) return;
   dom.syncWinners.disabled = true;
   try {
-    const response = await fetch(`/api/platform/channels/${encodeURIComponent(remoteChannelId)}/broadcast`, {
+    const phoneSuffix = isNationalChannel(remoteChannelId);
+    const response = await fetch(`/api/platform/channels/${encodeURIComponent(remoteChannelId)}/${phoneSuffix ? 'workspace?scope=round' : 'broadcast'}`, {
       cache: 'no-store',
       credentials: 'same-origin',
     });
@@ -278,6 +286,7 @@ async function syncAuctionWinnerEntries(showEmptyMessage = true): Promise<void> 
       theme: queryParameters.get('theme'),
       house: queryParameters.get('house'),
       isAcademy: queryParameters.get('theme') === 'academy',
+      phoneSuffix,
     });
     dom.entries.value = entries.join('\n');
     localStorage.setItem(STORAGE_KEYS.entries, dom.entries.value);
@@ -395,6 +404,13 @@ function updateBrand(): void {
   document.documentElement.style.setProperty('--accent', dom.accent.value);
   document.documentElement.dataset.rouletteTheme = String(currentThemeName());
   document.documentElement.style.setProperty('--national-stage-art', 'url("/assets/pinball-national/stage-v1.png")');
+  if (currentThemeName() === 'national') {
+    const images: Record<string, string> = { national: 'national-logo.png', silktree: 'silktree.jpg', parge: 'parge.png' };
+    document.querySelectorAll<HTMLImageElement>('[data-brand-image]').forEach(image => {
+      const src = `/assets/pinball-national/${images[image.dataset.brandImage || '']}`;
+      if (image.getAttribute('src') !== src) image.src = src;
+    });
+  }
   nationalStage.update({ eventTitle: dom.eventTitle.value.trim(), edition: dom.channelName.value.trim() });
   if (remoteChannelId) element<HTMLAnchorElement>('openBroadcastSource').href = remoteSourceUrl();
   document.title = `${dom.eventTitle.value.trim() || DEFAULT_CONFIG.eventTitle} · ${currentThemeName() === 'national' ? '전국크레자랑' : config.appName}`;
@@ -406,8 +422,15 @@ function updateCounts(): void {
   dom.ballCount.textContent = String(balls);
   dom.startBallCount.textContent = `${balls}개 공`;
   nationalStage.update({ ballCount: balls });
+  const drawConfig = collectConfig();
+  const countError = !dom.winnerCount.disabled && !dom.winnerCount.checkValidity()
+    ? '당첨 인원은 1~20 사이의 정수로 입력해 주세요.' : winnerCountError(parseEntries(), drawConfig);
+  const label = drawLabel(drawConfig);
+  dom.drawSummary.textContent = countError || `${label} · 한 사람당 한 번 당첨`;
+  dom.drawSummary.dataset.invalid = countError ? 'true' : 'false';
+  nationalStage.update({ drawLabel: label });
   const valid = engineReady && balls >= 2 && balls <= 500 && !running && !remoteCommandPending
-    && !remoteActionPending && !(isRemoteController && remotePhase === 'running');
+    && !remoteActionPending && !(isRemoteController && remotePhase === 'running') && !countError;
   dom.shuffle.disabled = !valid;
   dom.start.disabled = !valid;
   dom.resetBroadcastSession.disabled = remoteCommandPending || remoteActionPending;
@@ -418,6 +441,8 @@ function updateCounts(): void {
 
 function updateRankVisibility(): void {
   dom.rankField.hidden = currentWinnerMode() !== 'rank';
+  dom.winnerCount.disabled = currentWinnerMode() === 'rank';
+  if (dom.winnerCount.disabled) dom.winnerCount.value = '1';
 }
 
 function collectConfig(): AppConfig {
@@ -431,6 +456,7 @@ function collectConfig(): AppConfig {
     renderFps: Number(dom.renderFps.value) === 120 ? 120 : 60,
     winnerMode: currentWinnerMode(),
     winningRank: Math.max(1, Number(dom.winningRank.value) || 1),
+    winnerCount: normalizedWinnerCount({ winnerMode: currentWinnerMode(), winnerCount: Number(dom.winnerCount.value) }),
     useSkills: dom.skills.checked,
     useTop5Bounce: dom.top5Bounce.checked,
     autoRecording: dom.recording.checked,
@@ -471,6 +497,7 @@ function fingerprint(entries: string[]): string {
     renderFps: dom.renderFps.value,
     winnerMode: currentWinnerMode(),
     rank: dom.winningRank.value,
+    count: dom.winnerCount.value,
     skills: dom.skills.checked,
     theme: currentThemeName(),
     marbleStyle: currentMarbleStyle(),
@@ -484,6 +511,8 @@ async function prepareRound(seed = createSecureSeed()): Promise<void> {
 
   const entries = parseEntries();
   const summary = entrySummary(entries);
+  const countError = winnerCountError(entries, collectConfig());
+  if (countError) throw new Error(countError);
   if (summary.balls < 2) throw new Error('공을 2개 이상 입력해주세요.');
   if (summary.balls > 500) throw new Error('안정적인 실행을 위해 공은 최대 500개까지 지원합니다.');
   if (entries.some((entry) => (parseName(entry)?.name.length ?? 0) > 40)) {
@@ -510,6 +539,7 @@ async function prepareRound(seed = createSecureSeed()): Promise<void> {
   setRandomSeed(seed);
   roulette.setMarbles(entries);
   roulette.setWinningRank(options.winningRank);
+  roulette.setDrawConfig(currentWinnerMode(), collectConfig().winnerCount);
 
   const selectedMap = roulette.getCurrentMap();
   currentRound = {
@@ -521,6 +551,8 @@ async function prepareRound(seed = createSecureSeed()): Promise<void> {
     mapTitle: MAP_LABELS[selectedMap?.title ?? ''] ?? selectedMap?.title ?? '',
     speed: roulette.getSpeed(),
     winningRank: options.winningRank + 1,
+    winnerMode: currentWinnerMode(),
+    winnerCount: collectConfig().winnerCount,
     ballCount: summary.balls,
     startedAt: 0,
   };
@@ -560,7 +592,7 @@ function saveHistory(): void {
   renderHistory();
 }
 
-async function completeRound(winner: string): Promise<void> {
+async function completeRound(winner: string, winners = [winner]): Promise<void> {
   if (!currentRound || !running) return;
   const durationMs = Math.max(0, Date.now() - currentRound.startedAt);
   const standings = roulette.getStandings();
@@ -568,6 +600,7 @@ async function completeRound(winner: string): Promise<void> {
     ...currentRound,
     id: `${new Date().toISOString()}-${currentRound.seed.slice(0, 8)}`,
     winner,
+    winners,
     completedAt: new Date().toISOString(),
     durationMs,
     entriesHash: await sha256(currentRound.entries.join('\n')),
@@ -581,11 +614,11 @@ async function completeRound(winner: string): Promise<void> {
   history = history.slice(0, config.maxHistory);
   saveHistory();
   updateCounts();
-  setStatus('complete', `${winner} 당첨`);
-  nationalStage.update({ winner });
+  setStatus('complete', winners.length > 1 ? `${winners.length}명 당첨` : `${winner} 당첨`);
+  nationalStage.update({ winner, winners });
 
   dom.resultLabel.textContent = dom.winnerLabel.value.trim() || DEFAULT_CONFIG.winnerLabel;
-  dom.resultWinner.textContent = winner;
+  dom.resultWinner.textContent = winners.join('\n');
   dom.resultEvent.textContent = [record.eventTitle, record.channelName].filter(Boolean).join(' · ');
   dom.resultSeed.textContent = record.seed;
   dom.resultDuration.textContent = formatDuration(record.durationMs);
@@ -615,7 +648,7 @@ function renderHistory(): void {
     const winner = document.createElement('strong');
     const meta = document.createElement('span');
     const seed = document.createElement('code');
-    winner.textContent = record.winner;
+    winner.textContent = (record.winners || [record.winner]).join(' · ');
     meta.textContent = `${new Date(record.completedAt).toLocaleString('ko-KR')} · ${record.ballCount}개 공`;
     seed.textContent = record.seed.slice(0, 12);
     info.append(winner, meta);
@@ -651,7 +684,7 @@ async function copyText(value: string): Promise<void> {
 function remoteResultText(result: PinballResult | null): string {
   if (!result) return '';
   return [
-    `당첨: ${result.winner}`,
+    `당첨: ${(result.winners || [result.winner]).join(' · ')}`,
     ...(result.standings || []).map((standing) => `${standing.rank}위\t${standing.name}`),
   ].join('\n');
 }
@@ -693,30 +726,33 @@ function updateRemoteSnapshot(session: RemoteSession): void {
   remoteRevision = Math.max(0, Number(session.revision) || 0);
   remotePhase = session.phase;
   remoteSessionRunId = session.runId;
+  const resultCount = session.result?.winners?.length || 1;
   const status = session.phase === 'prepared'
     ? `${session.ballCount.toLocaleString('ko-KR')}개 공 · 송출 배치 완료`
     : session.phase === 'running'
       ? '송출 화면에서 추첨 진행 중'
       : session.phase === 'complete'
-        ? `${session.result?.winner || '결과'} · 추첨 완료`
+        ? `${resultCount > 1 ? `${resultCount}명 당첨` : session.result?.winner || '결과'} · 추첨 완료`
         : '송출 화면 연결 대기';
   dom.remoteStatus.textContent = status;
-  lastRemoteResult = session.result || session.history?.[0] || null;
+  lastRemoteResult = session.phase === 'complete' ? session.result || null : null;
   dom.remoteResult.hidden = !lastRemoteResult;
-  dom.remoteResultWinner.textContent = lastRemoteResult?.winner || '';
+  dom.remoteResultWinner.textContent = lastRemoteResult ? `${(lastRemoteResult.winners || [lastRemoteResult.winner]).length}명 당첨` : '';
   dom.remoteResultStandings.replaceChildren();
-  for (const standing of lastRemoteResult?.standings || []) {
+  for (const name of lastRemoteResult?.winners || (lastRemoteResult ? [lastRemoteResult.winner] : [])) {
     const row = document.createElement('li');
-    row.value = standing.rank;
-    row.textContent = standing.name;
+    row.textContent = name;
     dom.remoteResultStandings.append(row);
   }
   updateCounts();
   nationalStage.update({
     phase: session.phase === 'idle' || session.phase === 'prepared' ? 'ready' : session.phase,
-    ballCount: session.ballCount,
     winner: session.phase === 'complete' ? session.result?.winner || '' : '',
-    ...(session.config ? { eventTitle: session.config.eventTitle, edition: session.config.channelName } : {}),
+    winners: session.result?.winners,
+    ...(!isRemoteController ? {
+      ballCount: session.ballCount,
+      ...(session.config ? { eventTitle: session.config.eventTitle, edition: session.config.channelName, drawLabel: drawLabel(session.config) } : {}),
+    } : {}),
   });
 }
 
@@ -757,6 +793,7 @@ async function acknowledgeRemoteResult(record: RoundRecord): Promise<void> {
         runId: remotePreparedRunId,
         commandId: remoteStartCommandId,
         winner: record.winner,
+        winners: record.winners,
         standings: record.standings,
       }),
     });
@@ -860,6 +897,7 @@ function applyConfigToControls(next: AppConfig): void {
   dom.speed.value = String(config.defaultSpeed);
   dom.renderFps.value = String(config.renderFps);
   dom.winningRank.value = String(config.winningRank);
+  dom.winnerCount.value = String(normalizedWinnerCount(config));
   dom.skills.checked = config.useSkills;
   dom.top5Bounce.checked = Boolean(config.useTop5Bounce);
   dom.recording.checked = config.autoRecording;
@@ -901,10 +939,14 @@ function bindEvents(): void {
     updateCounts();
     localStorage.setItem(STORAGE_KEYS.entries, dom.entries.value);
   });
+  dom.winnerCount.addEventListener('input', () => {
+    updateCounts();
+    persistInputs();
+  });
   for (const input of [dom.eventTitle, dom.channelName, dom.winnerLabel]) {
     input.addEventListener('input', applyRuntimeAppearance);
   }
-  for (const input of [dom.map, dom.speed, dom.renderFps, dom.winningRank, dom.skills, dom.recording]) {
+  for (const input of [dom.map, dom.speed, dom.renderFps, dom.winningRank, dom.winnerCount, dom.skills, dom.recording]) {
     input.addEventListener('change', () => {
       if (input === dom.winningRank) updateRankVisibility();
       if (input === dom.renderFps && engineReady) roulette.setRenderFps(Number(dom.renderFps.value));
@@ -1016,7 +1058,7 @@ function bindEvents(): void {
   dom.copyResult.addEventListener('click', async () => {
     if (!lastRecord) return;
     const text = [
-      `${lastRecord.eventTitle} · ${dom.winnerLabel.value || '당첨'}: ${lastRecord.winner}`,
+      `${lastRecord.eventTitle} · ${dom.winnerLabel.value || '당첨'}: ${(lastRecord.winners || [lastRecord.winner]).join(' · ')}`,
       `공 ${lastRecord.ballCount}개 · ${lastRecord.mapTitle} · ${formatDuration(lastRecord.durationMs)}`,
       `시드: ${lastRecord.seed}`,
       `참가자 해시: ${lastRecord.entriesHash}`,
@@ -1063,6 +1105,7 @@ async function initialize(): Promise<void> {
   if(operatorHome){operatorHome.hidden=isBroadcastMode||!remoteChannelId;operatorHome.style.display=operatorHome.hidden?'none':'inline-flex';operatorHome.href='/main?channel='+encodeURIComponent(remoteChannelId);}
   document.documentElement.classList.toggle('broadcast-mode', isBroadcastMode);
   document.documentElement.classList.toggle('remote-display-mode', isRemoteDisplay);
+  document.documentElement.classList.toggle('remote-controller-mode', isRemoteController);
   bindEvents();
   const urlState = applyUrlParameters(config);
   applyConfigToControls(urlState.config);
@@ -1090,8 +1133,8 @@ async function initialize(): Promise<void> {
 
   roulette = new Roulette();
   roulette.addEventListener('goal', (event) => {
-    const winner = (event as CustomEvent<{ winner: string }>).detail.winner;
-    void completeRound(winner);
+    const { winner, winners } = (event as CustomEvent<{ winner: string; winners?: string[] }>).detail;
+    void completeRound(winner, winners);
   });
   roulette.addEventListener('message', (event) => {
     showToast((event as CustomEvent<string>).detail);

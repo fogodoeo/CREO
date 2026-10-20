@@ -2091,6 +2091,63 @@ test('pinball lifecycle rejects stale concurrent changes and accepts an idempote
     assert.equal(nextRound.json().session.history[0].standings.length, 3);
 });
 
+test('pinball last-five selection validates results, survives restart and excludes duplicate people', async () => {
+    const repository=new MemoryRepository();
+    const options={repository,logger:{error(){}}};
+    let api=createPlatformApi(options);
+    const path='/api/platform/channels/alpha/pinball-session';
+    const names=['가 (1111)','나 (2222)','다 (3333)','라 (4444)','마 (5555)','바 (6666)'];
+    const prepare={action:'prepare',requestId:'multi_prepare_001',expectedRevision:0,seed:'multi-seed',
+        entries:[names[0]+'*2',...names.slice(1)],config:{winnerMode:'last',winnerCount:5,themePreset:'national'}};
+    const prepared=(await call(api,'PUT',path,prepare)).json().session;
+    assert.equal(prepared.config.winnerCount,5);
+    assert.equal(prepared.config.themePreset,'national');
+    assert.equal((await call(api,'PUT',path,prepare)).json().duplicate,true);
+    const starts=await Promise.all([1,2].map(()=>call(api,'PUT',path,{action:'start',requestId:'multi_start_001',expectedRevision:1})));
+    assert(starts.every(result=>result.status===200));
+    const running=starts[0].json().session;
+    api=createPlatformApi(options);
+    assert.equal((await call(api,'GET',path,null,'')).json().session.phase,'running');
+    const standings=[names[0],names[0],...names.slice(1)].map((name,i)=>({rank:i+1,name,finished:i<2}));
+    const result={runId:running.runId,commandId:running.command.id,winner:names[1],winners:names.slice(1),standings};
+    for(const patch of [
+        {winners:[names[1],names[1],...names.slice(3)]},
+        {winners:names.slice(1,5)},
+        {standings:standings.map((row,i)=>i===0?{...row,name:names[1]}:row)},
+        {standings:standings.map((row,i)=>({...row,finished:i===0||i===3}))},
+    ]) assert.equal((await call(api,'POST',path+'/complete',{...result,...patch},'')).status,422);
+    assert.equal((await call(api,'POST',path+'/complete',{...result,commandId:'stale-command'},'')).status,409);
+    const replies=await Promise.all([1,2].map(()=>call(api,'POST',path+'/complete',result,'')));
+    assert(replies.every(reply=>reply.status===200));
+    assert.deepEqual(replies[0].json().session.result.winners,names.slice(1));
+    assert.equal(replies[1].json().duplicate,true);
+    api=createPlatformApi(options);
+    const restored=(await call(api,'GET',path,null,'')).json().session;
+    assert.deepEqual(restored.result.winners,names.slice(1));
+    assert.equal(restored.history.length,1);
+    assert.equal((await call(api,'GET',path.replace('alpha','beta'),null,'')).json().session.result,null);
+    const next=await call(api,'PUT',path,{...prepare,expectedRevision:restored.revision,requestId:'multi_prepare_002'});
+    assert.equal(next.json().session.result,null);
+    assert.deepEqual(next.json().session.history[0].winners,names.slice(1));
+    assert.equal((await call(api,'POST',path+'/complete',result,'')).status,409);
+    assert.equal((await repository.listRecords('alpha','notification')).length,0);
+});
+
+test('pinball rejects impossible winner counts and validates first N distinct arrivals', async () => {
+    const repository=new MemoryRepository(),api=createPlatformApi({repository,logger:{error(){}}});
+    const path='/api/platform/channels/alpha/pinball-session';
+    const prepare={action:'prepare',requestId:'first_multi_001',expectedRevision:0,seed:'first-seed',
+        entries:['A*2','B','C'],config:{winnerMode:'first',winnerCount:4}};
+    assert.equal((await call(api,'PUT',path,prepare)).status,422);
+    assert.equal((await call(api,'PUT',path,{...prepare,config:{winnerMode:'last',winnerCount:3}})).status,422);
+    assert.equal((await call(api,'PUT',path,{...prepare,config:{winnerMode:'first',winnerCount:2}})).status,200);
+    const running=(await call(api,'PUT',path,{action:'start',requestId:'first_start_001',expectedRevision:1})).json().session;
+    const result={runId:running.runId,commandId:running.command.id,winner:'A',winners:['A','B'],
+        standings:['A','A','B','C'].map((name,i)=>({rank:i+1,name,finished:i<3}))};
+    assert.equal((await call(api,'POST',path+'/complete',result,'')).status,200);
+    assert.deepEqual((await call(api,'GET',path,null,'')).json().session.result.winners,['A','B']);
+});
+
 test('duplicating a legacy channel keeps its broadcast profile but starts on isolated platform data', async () => {
     const repository = new MemoryRepository();
     repository.catalog.channels[0] = normalizeChannel({

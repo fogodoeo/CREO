@@ -1,7 +1,7 @@
 export function auctionWinnerEntries(
-  items: Array<{ status?: unknown; winnerAlias?: unknown; winnerName?: unknown; soldPrice?: unknown; attributes?: unknown; groupId?: unknown }>,
+  items: Array<{ status?: unknown; winnerAlias?: unknown; winnerName?: unknown; winnerPhone?: unknown; soldPrice?: unknown; attributes?: unknown; groupId?: unknown }>,
   unitAmount?: number,
-  options?: { theme?: string | null; house?: string | null; isAcademy?: boolean } | string | null,
+  options?: { theme?: string | null; house?: string | null; isAcademy?: boolean; phoneSuffix?: boolean } | string | null,
 ): string[];
 
 export function getLeadingHouseKey(

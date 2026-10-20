@@ -19,6 +19,7 @@ import { bound } from './utils/bound.decorator';
 import { parseName, shuffle } from './utils/utils';
 import { VideoRecorder } from './utils/videoRecorder';
 import { snapshotStandings } from './standings.js';
+import { selectDrawWinners } from './drawWinners.js';
 
 export class Roulette extends EventTarget {
   private _marbles: Marble[] = [];
@@ -51,6 +52,8 @@ export class Roulette extends EventTarget {
   private _goalDist: number = Infinity;
   private _isRunning: boolean = false;
   private _winner: Marble | null = null;
+  private _drawConfig = { winnerMode: 'first', winnerCount: 1 };
+  private _selectedWinners: string[] = [];
 
   private _uiObjects: UIObject[] = [];
 
@@ -163,7 +166,16 @@ export class Roulette extends EventTarget {
       if (marble.y > this._stage.goalY) {
         this._winners.push(marble);
         finishedIds.add(marble.id);
-        if (this._isRunning && this._winners.length === this._winnerRank + 1) {
+        const selected = this._isRunning && this._drawConfig.winnerCount > 1
+          ? selectDrawWinners(this.getStandings(), this._drawConfig) : [];
+        if (this._isRunning && selected.length) {
+          this._selectedWinners = selected;
+          this._winner = [...this._winners, ...this._marbles].find(candidate => candidate.name === selected[0]) || marble;
+          this._isRunning = false;
+          this.dispatchEvent(new CustomEvent('goal', { detail: { winner: selected[0], winners: selected } }));
+          this._particleManager.shot(this._renderer.width, this._renderer.height);
+          setTimeout(() => this._recorder.stop(), 1000);
+        } else if (this._isRunning && this._drawConfig.winnerCount === 1 && this._winners.length === this._winnerRank + 1) {
           this.dispatchEvent(new CustomEvent('goal', { detail: { winner: marble.name } }));
           this._winner = marble;
           this._isRunning = false;
@@ -173,6 +185,7 @@ export class Roulette extends EventTarget {
           }, 1000);
         } else if (
           this._isRunning &&
+          this._drawConfig.winnerCount === 1 &&
           this._winnerRank === this._winners.length &&
           this._winnerRank === this._totalMarbleCount - 1
         ) {
@@ -256,6 +269,7 @@ export class Roulette extends EventTarget {
       effects: this._effects,
       winnerRank: this._winnerRank,
       winner: this._winner,
+      selectedWinners: this._selectedWinners,
       size: { x: this._renderer.width, y: this._renderer.height },
       theme: this._theme,
       top5Banner: this._top5BounceBannerTimer > 0,
@@ -348,6 +362,7 @@ export class Roulette extends EventTarget {
   public clearMarbles() {
     this.physics.clearMarbles();
     this._winner = null;
+    this._selectedWinners = [];
     this._winners = [];
     this._hasTriggeredTop5Bounce = false;
     this._top5BounceBannerTimer = 0;
@@ -399,6 +414,10 @@ export class Roulette extends EventTarget {
 
   public setWinningRank(rank: number) {
     this._winnerRank = rank;
+  }
+
+  public setDrawConfig(winnerMode: string, winnerCount: number) {
+    this._drawConfig = { winnerMode, winnerCount };
   }
 
   public setAutoRecording(value: boolean) {

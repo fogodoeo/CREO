@@ -19,13 +19,15 @@
         <div class="national-chrome" id="nationalStage" data-draw-phase="loading" aria-label="전국크레자랑 추첨 행사">
           <div class="national-masthead">
             <div class="national-identity">
-              <strong class="national-wordmark" aria-label="전국크레자랑"><span>전국</span><span>크레자랑</span></strong>
+              <img class="national-wordmark" data-brand-image="national" alt="전국크레자랑" />
               <span class="national-edition" id="nationalEdition">전국크레자랑</span>
             </div>
             <div class="national-prize">
               <span>전국크레자랑 스페셜 · 행운의 핀볼</span>
               <strong id="nationalEventTitle">경품 추첨</strong>
+              <small data-national-rule>먼저 도착한 1명</small>
             </div>
+            <div class="national-brand-logos"><img data-brand-image="silktree" alt="실크트리" /><img data-brand-image="parge" alt="파르게" /></div>
           </div>
           <div class="national-sidecar">
             <div class="national-ticket">
@@ -46,11 +48,10 @@
               </svg>
               <div class="national-count"><strong data-national-count>0</strong><span>개의 공이 함께합니다</span></div>
             </div>
-            <div class="national-partners" role="img" aria-label="공식 후원 및 파트너 PARGe, SILKTREE"></div>
           </div>
           <div class="national-award" data-national-award hidden>
             <div class="national-award-card">
-              <span class="national-award-ribbon">오늘의 행운 주인공</span>
+              <span class="national-award-ribbon" data-national-award-title>오늘의 행운 주인공</span>
               <strong data-national-winner></strong>
               <span class="national-award-congrats">당첨을 축하합니다!</span>
             </div>
@@ -81,7 +82,7 @@
             <a id="operatorHomeLink" href="/main" hidden style="color:inherit;min-height:44px;display:inline-flex;align-items:center">운영 홈</a>
             <div>
               <span class="eyebrow">LIVE DRAW CONTROL</span>
-              <h1>추첨 준비</h1>
+              <h1>핀볼 관리</h1>
             </div>
             <button class="icon-button panel-close" id="closePanelButton" type="button" aria-label="설정 닫기">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
@@ -94,42 +95,29 @@
                 <h2>브로드캐스트 송출</h2>
                 <span id="remoteSessionStatus">연결 확인 중</span>
               </div>
+              <a class="broadcast-open-link" id="openBroadcastSource" target="_blank" rel="noopener">송출 화면 열기 ↗</a>
+              <details class="remote-tools"><summary>PRISM 주소 · 송출 설정</summary>
               <label class="field">
                 <span>PRISM 브라우저 소스 URL</span>
                 <input id="broadcastSourceInput" type="text" readonly />
               </label>
               <div class="text-actions">
                 <button id="copyBroadcastSourceButton" type="button">송출 주소 복사</button>
-                <a id="openBroadcastSource" target="_blank" rel="noopener">송출 화면 열기 ↗</a>
                 <button id="resetBroadcastSessionButton" type="button">송출 상태 초기화</button>
               </div>
+              </details>
               <div class="remote-result" id="remoteResult" hidden>
                 <div class="section-title">
-                  <h2>결과 시점 순위</h2>
+                  <h2>이번 추첨 당첨자</h2>
                   <strong id="remoteResultWinner"></strong>
                 </div>
                 <ol id="remoteResultStandings"></ol>
                 <div class="text-actions">
-                  <button id="copyRemoteResultButton" type="button">순위 복사</button>
+                  <button id="copyRemoteResultButton" type="button">결과 복사</button>
                   <button id="exportRemoteResultButton" type="button">결과 저장</button>
                 </div>
               </div>
               <p class="field-help">노트북에서 공 배치·추첨 시작을 누르면 이 주소의 송출 화면이 실행됩니다.</p>
-            </section>
-
-            <section class="control-section">
-              <div class="section-title">
-                <h2>행사 정보</h2>
-                <span>화면 상단에 표시됩니다</span>
-              </div>
-              <label class="field">
-                <span>행사명</span>
-                <input id="eventTitleInput" type="text" maxlength="40" autocomplete="off" />
-              </label>
-              <label class="field">
-                <span>채널명 <small>선택</small></span>
-                <input id="channelNameInput" type="text" maxlength="30" autocomplete="off" placeholder="예: BAND LIVE · 유튜브 · 오프라인" />
-              </label>
             </section>
 
             <section class="control-section entries-section">
@@ -154,7 +142,7 @@
               </div>
             </section>
 
-            <section class="control-section">
+            <section class="control-section draw-section">
               <div class="section-title"><h2>추첨 방식</h2></div>
               <div class="field-grid">
                 <label class="field">
@@ -182,11 +170,16 @@
               <fieldset class="winner-fieldset">
                 <legend>당첨 기준</legend>
                 <div class="segmented" id="winnerModeGroup">
-                  <label><input type="radio" name="winnerMode" value="first" checked /><span>첫 번째</span></label>
-                  <label><input type="radio" name="winnerMode" value="last" /><span>마지막</span></label>
+                  <label><input type="radio" name="winnerMode" value="first" checked /><span>먼저 도착</span></label>
+                  <label><input type="radio" name="winnerMode" value="last" /><span>마지막 생존</span></label>
                   <label><input type="radio" name="winnerMode" value="rank" /><span>직접 지정</span></label>
                 </div>
               </fieldset>
+              <label class="field">
+                <span>당첨 인원</span>
+                <input id="winnerCountInput" type="number" min="1" max="20" value="1" inputmode="numeric" required />
+              </label>
+              <p class="field-help draw-summary" id="drawSummary" aria-live="polite">먼저 도착한 1명 · 한 사람당 한 번 당첨</p>
               <label class="field rank-field" id="rankField" hidden>
                 <span>당첨 순위</span>
                 <input id="winningRankInput" type="number" min="1" value="1" inputmode="numeric" />
@@ -206,6 +199,20 @@
                 </label>
               </div>
             </section>
+
+            <details class="control-section event-section">
+              <summary><span>행사 정보</span><small>행사명 · 회차명</small></summary>
+              <div class="advanced-body">
+                <label class="field">
+                  <span>행사명</span>
+                  <input id="eventTitleInput" type="text" maxlength="40" autocomplete="off" />
+                </label>
+                <label class="field">
+                  <span>채널명 <small>선택</small></span>
+                  <input id="channelNameInput" type="text" maxlength="30" autocomplete="off" placeholder="예: BAND LIVE · 유튜브 · 오프라인" />
+                </label>
+              </div>
+            </details>
 
             <details class="control-section advanced-section">
               <summary><span>화면 디자인</span><small>테마와 결과 문구</small></summary>

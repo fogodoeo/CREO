@@ -5,6 +5,7 @@ const AuctionRounds = require('./auction-rounds');
 const OperationRounds = require('./operation-rounds');
 const CheckoutRounds = require('./checkout-rounds');
 const NationalRounds = require('./national-round-operations');
+const PinballWinners = require('./roulette-app/src/drawWinners');
 const { refreshShippingRate } = require('./shipping-rate-refresh');
 const { rankingsForChannel } = require('./public/ranking-engine');
 const BasicDice = require('./public/basic-dice-core');
@@ -339,10 +340,11 @@ function sanitizePinballConfig(input = {}) {
         defaultSpeed: [0.75, 1, 1.5, 2].includes(speed) ? speed : 1,
         renderFps: Number(input.renderFps) === 120 ? 120 : 60,
         winnerMode: ['first', 'last', 'rank'].includes(input.winnerMode) ? input.winnerMode : 'first',
+        winnerCount: PinballWinners.winnerCount(input),
         winningRank: Number.isFinite(rank) ? Math.max(1, Math.min(500, rank)) : 1,
         useSkills: booleanValue(input.useSkills, false),
         autoRecording: false,
-        themePreset: ['ryangecko', 'academy', 'midnight', 'arena', 'clean'].includes(requestedTheme) ? requestedTheme : 'midnight',
+        themePreset: ['national', 'ryangecko', 'academy', 'midnight', 'arena', 'clean'].includes(requestedTheme) ? requestedTheme : 'midnight',
         marbleStyle: ['glass', 'flat'].includes(input.marbleStyle) ? input.marbleStyle : 'glass',
         accentColor: /^#[0-9a-f]{6}$/i.test(String(input.accentColor || '')) ? String(input.accentColor) : '#f2c66d'
     };
@@ -371,6 +373,7 @@ function publicPinballResult(input) {
     return {
         runId: cleanText(input.runId, 80),
         winner: cleanText(input.winner, 120),
+        winners: (Array.isArray(input.winners) ? input.winners : [input.winner]).slice(0, 20).map(name => cleanText(name, 120)).filter(Boolean),
         completedAt: input.completedAt || null,
         standings: sanitizePinballStandings(input.standings)
     };
@@ -5397,6 +5400,12 @@ function createPlatformApi({
                             replyJson(res, 422, { error: checked.error });
                             return;
                         }
+                        const drawConfig = sanitizePinballConfig(body.config);
+                        const countError = PinballWinners.winnerCountError(checked.entries, drawConfig);
+                        if (countError) {
+                            replyJson(res, 422, { error: countError });
+                            return;
+                        }
                         const seed = cleanText(body.seed, 96);
                         if (!seed) {
                             replyJson(res, 422, { error: '추첨 시드가 필요합니다.' });
@@ -5409,7 +5418,7 @@ function createPlatformApi({
                             runId: crypto.randomUUID(),
                             command: { id: crypto.randomUUID(), type: 'prepare', issuedAt: now },
                             entries: checked.entries,
-                            config: sanitizePinballConfig(body.config),
+                            config: drawConfig,
                             seed,
                             ballCount: checked.ballCount,
                             resultHistory: Array.isArray(current?.resultHistory) ? current.resultHistory : [],
@@ -5476,7 +5485,30 @@ function createPlatformApi({
                         return;
                     }
                     const now = new Date().toISOString();
-                    const result = { runId, winner, completedAt: now, standings };
+                    let winners = [winner];
+                    if (PinballWinners.winnerCount(current.config) > 1) {
+                        const counts = new Map();
+                        for (const entry of current.entries) {
+                            const name = pinballEntryName(entry);
+                            counts.set(name, (counts.get(name) || 0) + pinballEntryCount(entry));
+                        }
+                        for (const standing of standings) counts.set(standing.name, (counts.get(standing.name) || 0) - 1);
+                        const selected = PinballWinners.selectDrawWinners(standings, current.config);
+                        const submitted = Array.isArray(body.winners) ? body.winners.map(name => cleanText(name, 120)) : [];
+                        let unfinished = false;
+                        const ordered = standings.every(row => {
+                            if (!row.finished) unfinished = true;
+                            return !unfinished || !row.finished;
+                        });
+                        if ([...counts.values()].some(value => value !== 0) || !ordered
+                            || selected.length !== PinballWinners.winnerCount(current.config)
+                            || JSON.stringify(selected) !== JSON.stringify(submitted) || winner !== selected[0]) {
+                            replyJson(res, 422, { error: '설정한 당첨 인원과 추첨 방식에 맞는 결과가 필요합니다.' });
+                            return;
+                        }
+                        winners = selected;
+                    }
+                    const result = { runId, winner, winners, completedAt: now, standings };
                     const resultHistory = [
                         result,
                         ...(Array.isArray(current.resultHistory) ? current.resultHistory : [])

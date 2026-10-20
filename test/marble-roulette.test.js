@@ -99,7 +99,7 @@ test('pinball separates an authenticated laptop controller from a clean fixed br
     assert.match(app, /remoteControls\.start\(\)/);
     assert.match(app, /acknowledgeRemoteResult/);
     assert.match(app, /standings: record\.standings/);
-    assert.match(app, /session\.result \|\| session\.history\?\.\[0\]/);
+    assert.match(app, /session\.phase === 'complete' \? session\.result/);
     assert.match(app, /getStandings: \(\) => roulette\.getStandings\(\)/);
     assert.match(app, /renderFps: Number\(dom\.renderFps\.value\) === 120 \? 120 : 60/);
     assert.match(app, /url\.searchParams\.set\('theme', currentThemeName\(\)\)/);

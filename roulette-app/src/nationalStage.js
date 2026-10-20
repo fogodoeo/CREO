@@ -33,11 +33,12 @@ export function createNationalStage({
   video.addEventListener('ended', stop);
   video.addEventListener('error', stop);
 
-  function update({ phase, winner, ballCount, eventTitle, edition } = {}) {
+  function update({ phase, winner, winners, ballCount, eventTitle, edition, drawLabel } = {}) {
     if (phase) root.dataset.drawPhase = phase;
     if (phase && phase !== 'running') stop();
     if (phase) text('[data-national-phase]', PHASE_LABELS[phase] || PHASE_LABELS.ready);
     if (ballCount !== undefined) text('[data-national-count]', Math.max(0, Number(ballCount) || 0));
+    if (drawLabel !== undefined) text('[data-national-rule]', drawLabel);
     if (eventTitle !== undefined) text('#nationalEventTitle', eventTitle || '경품 추첨');
     if (edition !== undefined) {
       text('#nationalEdition', String(edition || '').replace(/^전국크레자랑\s*/, '') || '전국크레자랑');
@@ -47,8 +48,12 @@ export function createNationalStage({
       award.hidden = true;
       text('[data-national-winner]', '');
     } else if (winner !== undefined) {
-      text('[data-national-winner]', winner);
-      award.hidden = !winner || root.dataset.drawPhase !== 'complete';
+      const names = winners?.length ? winners : winner ? [winner] : [];
+      text('[data-national-winner]', names.join('\n'));
+      root.dataset.winnerCount = String(names.length);
+      root.dataset.winnerColumns = names.length > 5 ? '2' : '1';
+      text('[data-national-award-title]', names.length > 1 ? `오늘의 당첨자 ${names.length}명` : '오늘의 행운 주인공');
+      award.hidden = !names.length || root.dataset.drawPhase !== 'complete';
     }
     // Only this skin downloads the supplied clip. Failure cannot gate the draw.
     if (enabled() && !loaded && !reducedMotion()) {

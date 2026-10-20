@@ -10,6 +10,8 @@ export declare function createNationalStage(options: {
   update: (state: {
     phase?: 'loading' | 'ready' | 'running' | 'complete' | 'error';
     winner?: string;
+    winners?: string[];
+    drawLabel?: string;
     ballCount?: number;
     eventTitle?: string;
     edition?: string;

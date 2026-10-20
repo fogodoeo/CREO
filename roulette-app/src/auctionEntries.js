@@ -1,4 +1,5 @@
 'use strict';
+const { buyerDisplayName, extractMobilePhone } = require('../../public/mobile-phone');
 
 const SOLD_STATUSES = new Set(['sold', 'complete', 'completed', '낙찰', '완료']);
 
@@ -33,6 +34,7 @@ function auctionWinnerEntries(items, unitAmount = 100000, options = {}) {
   
   const houseOption = typeof options === 'string' ? options : options?.house;
   const isAcademyTheme = options?.theme === 'academy' || options?.isAcademy;
+  const withPhone = Boolean(options?.phoneSuffix);
   
   let targetHouse = null;
   if (houseOption && houseOption !== 'all') {
@@ -46,7 +48,8 @@ function auctionWinnerEntries(items, unitAmount = 100000, options = {}) {
 
   for (const item of Array.isArray(items) ? items : []) {
     const status = String(item?.status || '').trim().toLowerCase();
-    const name = String(item?.winnerAlias || item?.winnerName || '').replace(/\s+/g, ' ').trim();
+    const rawName = String(item?.winnerAlias || item?.winnerName || '').replace(/\s+/g, ' ').trim();
+    const name = buyerDisplayName(rawName);
     const soldPrice = Math.max(0, Math.floor(Number(item?.soldPrice) || 0));
     if (!SOLD_STATUSES.has(status) || !name || soldPrice <= 0) continue;
     
@@ -55,7 +58,9 @@ function auctionWinnerEntries(items, unitAmount = 100000, options = {}) {
       if (itemHouse !== targetHouse) continue;
     }
     
-    totals.set(name, (totals.get(name) || 0) + soldPrice);
+    const phone = extractMobilePhone(item?.winnerPhone) || extractMobilePhone(rawName);
+    const label = withPhone ? `${name} (${phone ? phone.slice(-4) : '번호 미등록'})` : name;
+    totals.set(label, (totals.get(label) || 0) + soldPrice);
   }
 
   return [...totals.entries()]

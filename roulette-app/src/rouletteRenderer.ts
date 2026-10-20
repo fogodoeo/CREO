@@ -20,6 +20,7 @@ export type RenderParameters = {
   effects: GameObject[];
   winnerRank: number;
   winner: Marble | null;
+  selectedWinners?: string[];
   size: VectorLike;
   theme: ColorTheme;
   top5Banner?: boolean;
@@ -504,13 +505,32 @@ export class RouletteRenderer {
   }
 
   private renderWinner(
-    { winner, theme }: RenderParameters,
+    { winner, theme, selectedWinners }: RenderParameters,
     ctx: CanvasRenderingContext2D,
     width: number,
     height: number,
     scaleForBroadcast: boolean
   ) {
     if (!winner) return;
+    if (selectedWinners && selectedWinners.length > 1) {
+      ctx.save();
+      ctx.fillStyle = '#f8fbff';
+      ctx.fillRect(width * .08, height * .14, width * .84, height * .72);
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#0648bf';
+      ctx.font = `850 ${width * .035}px 'Pretendard Variable', sans-serif`;
+      ctx.fillText(`당첨자 ${selectedWinners.length}명`, width / 2, height * .23);
+      const columns = selectedWinners.length > 5 ? 2 : 1;
+      const rows = Math.ceil(selectedWinners.length / columns);
+      ctx.font = `800 ${Math.min(width * .036, height * .5 / rows * .64)}px 'Pretendard Variable', sans-serif`;
+      selectedWinners.forEach((name, i) => {
+        const col = Math.floor(i / rows), row = i % rows;
+        ctx.fillText(name, width * (.08 + .84 * (col + .5) / columns), height * (.34 + .46 * (row + .5) / rows), width * .76 / columns);
+      });
+      ctx.restore();
+      return;
+    }
     if (document.documentElement.dataset.rouletteTheme === 'national') {
       // The accessible DOM award also survives a completed-session reload.
       // Keep a canvas award in automatic recordings, which do not capture DOM.

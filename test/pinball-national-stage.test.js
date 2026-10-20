@@ -63,6 +63,24 @@ test('completed result is restored without replay and a new preparation clears i
   assert.equal(f.fields.get('[data-national-winner]').textContent, '');
 });
 
+test('multiple winners and masked phone suffixes restore together without replaying the draw', () => {
+  const f=fixture();
+  const winners=['테스트가 (1234)','테스트나 (5678)','테스트다 (2222)','테스트라 (3333)','테스트마 (4444)'];
+  f.stage.update({phase:'complete',winner:winners[0],winners});
+  assert.equal(f.fields.get('[data-national-winner]').textContent,winners.join('\n'));
+  assert.equal(f.fields.get('[data-national-award-title]').textContent,'오늘의 당첨자 5명');
+  assert.equal(f.root.dataset.winnerCount,'5');
+  assert.equal(f.root.dataset.winnerColumns,'1');
+  assert.equal(f.calls(),0);
+  const many=Array.from({length:20},(_,i)=>`테스트${i} (1234)`);
+  f.stage.update({phase:'complete',winner:many[0],winners:many});
+  assert.equal(f.root.dataset.winnerColumns,'2');
+  assert.equal(f.fields.get('[data-national-winner]').textContent,many.join('\n'));
+  f.stage.update({phase:'ready'});
+  assert.equal(f.fields.get('[data-national-winner]').textContent,'');
+  assert.equal(f.fields.get('[data-national-award]').hidden,true);
+});
+
 test('a slow video cannot cover a result or restart after reset', async () => {
   let resolve;
   const f = fixture({ play: () => new Promise(r => { resolve = r; }) });

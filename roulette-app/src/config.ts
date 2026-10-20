@@ -15,6 +15,7 @@ export type AppConfig = {
   defaultSpeed: number;
   renderFps: 60 | 120;
   winnerMode: WinnerMode;
+  winnerCount: number;
   winningRank: number;
   useSkills: boolean;
   useTop5Bounce: boolean;
@@ -164,6 +165,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   defaultSpeed: 1,
   renderFps: 60,
   winnerMode: 'first',
+  winnerCount: 1,
   winningRank: 1,
   useSkills: false,
   useTop5Bounce: false,
