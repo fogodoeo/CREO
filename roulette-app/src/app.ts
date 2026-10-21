@@ -15,7 +15,7 @@ import { parseName } from './utils/utils';
 import { auctionWinnerEntries, getLeadingHouseKey, HOUSE_NAMES } from './auctionEntries.js';
 import { createRemoteControls, createSessionPoller, initialEntries } from './remoteControls.js';
 import { createNationalStage, isNationalChannel } from './nationalStage.js';
-import { createRosterSequence } from './participantRoster.js';
+import { createRosterSequence, rosterLayout } from './participantRoster.js';
 import { winnerCount as normalizedWinnerCount, winnerCountError, drawLabel, participantCount } from './drawWinners.js';
 
 const queryParameters = new URLSearchParams(location.search);
@@ -198,35 +198,38 @@ const dom = {
 
 const rosterRoot = element<HTMLElement>('participantRoster');
 const rosterList = element<HTMLOListElement>('participantRosterList');
-const rosterPrevious = element<HTMLButtonElement>('rosterPrevious');
-const rosterNext = element<HTMLButtonElement>('rosterNext');
-const rosterToggle = element<HTMLButtonElement>('rosterToggle');
+let rosterNames: string[] = [];
+const rosterMeasure = document.createElement('canvas').getContext('2d');
+function fitRoster() {
+  if (rosterRoot.hidden || !rosterList.clientWidth || !rosterList.clientHeight) return;
+  if (rosterMeasure) rosterMeasure.font = `500 100px ${getComputedStyle(rosterList).fontFamily}`;
+  const nameWidth = Math.max(1, ...rosterNames.map(name => rosterMeasure ? rosterMeasure.measureText(name).width / 100 : name.length));
+  const layout = rosterLayout({ total: rosterNames.length, width: rosterList.clientWidth, height: rosterList.clientHeight, nameWidth });
+  rosterList.style.setProperty('--roster-columns', String(layout.columns));
+  rosterList.style.setProperty('--roster-font', `${layout.fontSize}px`);
+  rosterList.style.setProperty('--roster-gap', `${layout.gap}px`);
+}
+new ResizeObserver(fitRoster).observe(rosterList);
+document.fonts.ready.then(fitRoster);
 const participantRoster = createRosterSequence({
-  reducedMotion: () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
   render: (state) => {
+    rosterNames = state.names;
     rosterRoot.hidden = !state.visible;
     rosterList.replaceChildren(...state.names.map((name, index) => {
       const row = document.createElement('li');
       const number = document.createElement('span');
       const label = document.createElement('strong');
-      number.textContent = String(state.offset + index + 1).padStart(2, '0');
+      number.textContent = String(index + 1).padStart(2, '0');
+      number.setAttribute('aria-hidden', 'true');
       label.textContent = name;
       row.append(number, label);
       return row;
     }));
     element<HTMLElement>('rosterCount').textContent = state.total ? `${state.total}명` : '잠시 후 시작합니다';
-    element<HTMLElement>('rosterPage').textContent = `${state.page} / ${state.pages}`;
-    element<HTMLElement>('rosterPagination').hidden = state.pages <= 1;
     element<HTMLElement>('rosterEmpty').hidden = state.total > 0;
-    rosterPrevious.disabled = state.page <= 1;
-    rosterNext.disabled = state.page >= state.pages;
-    rosterToggle.hidden = !state.automatic;
-    rosterToggle.textContent = state.page === state.pages ? '다시 보기' : state.paused ? '자동 넘김' : '일시정지';
+    fitRoster();
   },
 });
-rosterPrevious.addEventListener('click', () => participantRoster.move(-1));
-rosterNext.addEventListener('click', () => participantRoster.move(1));
-rosterToggle.addEventListener('click', () => participantRoster.toggle());
 const nationalStage = createNationalStage({
   root: element<HTMLElement>('nationalStage'),
   video: element<HTMLVideoElement>('nationalStinger'),

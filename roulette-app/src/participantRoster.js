@@ -1,58 +1,35 @@
 import { runningParticipantName } from './participantDisplay.js';
 
-// A presentation-only sequence. It cannot start, delay or finish the draw.
-export function createRosterSequence({
-  render, reducedMotion, schedule = setTimeout, cancel = clearTimeout, pageSize = 24,
-}) {
-  let names = [], phase = 'loading', key = '', signature = '', page = 0;
-  let timer, generation = 0, paused = false;
-  const pages = () => Math.max(1, Math.ceil(names.length / pageSize));
-  const visible = () => phase === 'ready';
-  function stop() {
-    generation++;
-    if (timer !== undefined) cancel(timer);
-    timer = undefined;
-  }
-  function paint() {
-    render({
-      visible: visible(), names: names.slice(page * pageSize, (page + 1) * pageSize).map(runningParticipantName),
-      offset: page * pageSize, page: page + 1, pages: pages(), total: names.length,
-      paused: paused || reducedMotion() || page === pages() - 1,
-      automatic: !reducedMotion(),
-    });
-  }
-  function advance() {
-    stop();
-    paint();
-    if (!visible() || paused || reducedMotion() || page >= pages() - 1) return;
-    const token = generation;
-    timer = schedule(() => {
-      if (token !== generation || !visible()) return;
-      if (reducedMotion()) { paused = true; advance(); return; }
-      page++;
-      advance();
-    }, 6000);
-  }
+// Presentation only: the complete roster stays still until the draw starts.
+export function createRosterSequence({ render }) {
+  let names = [], phase = 'loading', key = '', signature = '';
   function update(state = {}) {
     const nextNames = state.participants === undefined ? names : [...new Set(state.participants.filter(Boolean))];
     const nextSignature = JSON.stringify(nextNames);
     const nextPhase = state.phase ?? phase, nextKey = state.rosterKey ?? key;
-    const changed = nextSignature !== signature || nextKey !== key;
-    const entering = nextPhase === 'ready' && phase !== 'ready';
-    if (!changed && nextPhase === phase) return; // Polls must not restart the tour.
+    if (nextSignature === signature && nextKey === key && nextPhase === phase) return;
     names = nextNames; signature = nextSignature; phase = nextPhase; key = nextKey;
-    if (changed || entering) { page = 0; paused = false; }
-    advance();
+    render({ visible: phase === 'ready', names: names.map(runningParticipantName), total: names.length });
   }
-  function move(delta) {
-    paused = true;
-    page = Math.min(pages() - 1, Math.max(0, page + delta));
-    advance();
+  return { update };
+}
+
+// Fit the full list to the available stage. Narrow screens keep a readable floor
+// and can scroll the same list instead of omitting names or adding another page.
+export function rosterLayout({ total, width, height, nameWidth = 5 }) {
+  const count = Math.max(1, total);
+  const preferred = width >= 900 ? 3 : width >= 360 ? 2 : 1;
+  const minimum = width < 360 ? 14 : 12;
+  const gap = width < 600 ? 12 : 24;
+  const numberWidth = Math.max(2, String(count).length) * 9 + 10;
+  let best;
+  for (let columns = 1; columns <= Math.min(count, Math.max(1, Math.floor(width / 96))); columns++) {
+    const rows = Math.ceil(count / columns);
+    const cellWidth = (width - gap * (columns - 1)) / columns;
+    const size = Math.min(30, (height / rows - 8) / 1.4, (cellWidth - numberWidth) / Math.max(1, nameWidth));
+    if (!best || size > best.size || (size === best.size && Math.abs(columns - preferred) < Math.abs(best.columns - preferred))) {
+      best = { columns, rows, size };
+    }
   }
-  function toggle() {
-    if (page === pages() - 1) { page = 0; paused = false; }
-    else paused = !paused;
-    advance();
-  }
-  return { update, move, toggle, stop };
+  return { columns: best.columns, rows: best.rows, fontSize: Math.max(minimum, Math.floor(best.size)), gap };
 }

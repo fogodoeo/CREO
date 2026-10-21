@@ -1,9 +1,8 @@
 export declare function createRosterSequence(options: {
-  render: (state: { visible: boolean; names: string[]; offset: number; page: number; pages: number; total: number; paused: boolean; automatic: boolean }) => void;
-  reducedMotion: () => boolean;
+  render: (state: { visible: boolean; names: string[]; total: number }) => void;
 }): {
   update: (state: { phase?: string; participants?: string[]; rosterKey?: string }) => void;
-  move: (delta: number) => void;
-  toggle: () => void;
-  stop: () => void;
+};
+export declare function rosterLayout(options: { total: number; width: number; height: number; nameWidth?: number }): {
+  columns: number; rows: number; fontSize: number; gap: number;
 };
