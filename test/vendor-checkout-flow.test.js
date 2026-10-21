@@ -17,12 +17,17 @@ test('cancelled reset sends nothing and failed response retries the same request
  assert.equal(calls.length,2);assert.deepEqual(calls[0],calls[1]);assert.equal(calls[0].path,'/reset-card-guide');assert.equal(calls[0].body.confirmedUnpaid,true);assert.equal(ctx.busy,false);assert.equal(ctx.workFilter,'action');assert.equal(focus,1);
 });
 test('vendor event selector is visible for multiple events and hidden for a single event',()=>{
- const select={parentElement:{},options:[],replaceChildren(){this.options=[]},append(option){this.options.push(option)}};
- const ctx=vm.createContext({data:{channel:{id:'a',name:'A',status:'active'}},$:()=>select,document:{createElement:()=>({})}});
+ let panel;const element=()=>({children:[],replaceChildren(){this.children=[]},append(child){this.children.push(child)}});
+ const select={parentElement:{after(value){panel=value}},options:[],replaceChildren(){this.options=[]},append(option){this.options.push(option)}};
+ const ctx=vm.createContext({data:{channel:{id:'a',name:'A',status:'active'}},$:()=>select,document:{createElement:element,getElementById:()=>panel}});
+ vm.runInContext(fs.readFileSync(require.resolve('../public/vendor-event-view.js'),'utf8'),ctx);
  vm.runInContext(html.slice(html.indexOf('function renderEvents('),html.indexOf("$('vendor-event').onchange")),ctx);
  ctx.renderEvents();assert.equal(select.parentElement.hidden,true);
  ctx.data.events=[ctx.data.channel,{id:'b',name:'B',status:'archived'}];ctx.renderEvents();
  assert.equal(select.parentElement.hidden,false);assert.equal(select.options.length,2);assert.equal(select.options[0].selected,true);
+ ctx.data={channel:{id:'national-cre-20261021',name:'전라·충청',status:'active'},events:[{id:'national-cre',name:'전국크레자랑',status:'active'},{id:'national-cre-20261021',name:'전라·충청',status:'active'}]};
+ ctx.renderEvents();assert.equal(select.parentElement.hidden,true);assert.equal(select.options[0].hidden,true);assert.equal(panel.hidden,false);assert.equal(panel.children[0].textContent,'전라·충청');assert.equal(panel.children[1].textContent,'이전 낙찰·결제 내역 보기');
+ let changed='';select.onchange=({target})=>changed=target.value;panel.children[1].onclick();assert.equal(changed,'national-cre');
 });
 test('card link feedback distinguishes persistence from notification acceptance',()=>{const ctx=vm.createContext({});vm.runInContext(html.slice(html.indexOf('function cardLinkFeedback('),html.indexOf('let workFilter=')),ctx);assert.match(ctx.cardLinkFeedback({failed:true}),/알림톡 발송 실패/);assert.match(ctx.cardLinkFeedback({status:'queued'}),/발송 대기/);assert.match(ctx.cardLinkFeedback({status:'sent'}),/접수 완료/);assert.match(ctx.cardLinkFeedback({status:'configuration_pending'}),/설정 확인/)});
 const buyer=(status,method='bank_transfer',destination={address:'테스트'},cardPaymentUrl='')=>({payment:{status,method,cardPaymentUrl},destination});

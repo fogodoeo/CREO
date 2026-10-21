@@ -1,0 +1,5 @@
+.vendor-event-context{display:grid;gap:8px;margin-block:16px}
+.vendor-event-context[hidden]{display:none}
+.vendor-event-current{margin:0;font-size:16px;font-weight:700;line-height:1.5;overflow-wrap:anywhere}
+.vendor-event-history{justify-self:start;max-width:100%;min-height:44px;padding:8px 12px;border:1px solid var(--line,#d8d8d8);border-radius:8px;background:var(--surface,#fff);color:var(--text,#222);font:inherit;font-size:14px;line-height:1.5;text-align:start;cursor:pointer;overflow-wrap:anywhere}
+.vendor-event-history:focus-visible{outline:2px solid currentColor;outline-offset:3px}

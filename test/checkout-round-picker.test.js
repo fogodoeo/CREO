@@ -30,7 +30,7 @@ test('round switch scopes requests, restores after failed load and respects unsa
 });
 for(const file of ['vendor-checkout.html','buyer-shipping.html'])test(file+' ignores older responses after changing financial round',async()=>{
  const source=fs.readFileSync(require.resolve('../public/'+file),'utf8'),start=source.indexOf('async function load(silent='),end=source.indexOf('function showError',start),pending=[],rendered=[];
- const nodes=new Map(),ctx=vm.createContext({client:{valid:true},loadSequence:0,data:null,api:()=>new Promise(resolve=>pending.push(resolve)),$:id=>{if(!nodes.has(id))nodes.set(id,{});return nodes.get(id)},render(){rendered.push(ctx.data.id)},hydrate(next){rendered.push(next.id)},showError(){throw Error('unexpected error')}});
+ const nodes=new Map(),ctx=vm.createContext({client:{valid:true},loadSequence:0,initialEventResolved:true,data:null,api:()=>new Promise(resolve=>pending.push(resolve)),$:id=>{if(!nodes.has(id))nodes.set(id,{});return nodes.get(id)},render(){rendered.push(ctx.data.id)},hydrate(next){rendered.push(next.id)},showError(){throw Error('unexpected error')}});
  vm.runInContext(source.slice(start,end),ctx);const old=ctx.load(true),next=ctx.load(true);pending[1]({id:'selected'});await next;pending[0]({id:'stale'});await old;assert.deepEqual(rendered,['selected']);
 });
 for(const file of ['vendor-checkout.html','buyer-shipping.html'])test(file+' initializes round picker inside its executable script',()=>{
