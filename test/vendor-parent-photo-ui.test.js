@@ -1,7 +1,7 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
 const source=fs.readFileSync(path.join(__dirname,'../public/vendor-broadcast.js'),'utf8');
-function fn(name,next){return source.slice(source.indexOf(' function '+name+'('),source.indexOf(' function '+next+'('));}
+function fn(name,next){return source.slice(source.indexOf(' function auctionItem('),source.indexOf(' function auctionPhotoList('))+source.slice(source.indexOf(' function '+name+'('),source.indexOf(' function '+next+'('));}
 const rows=Array.from({length:4},(_,i)=>({id:'item-'+i,displayNumber:'A0'+(i+1),traits:{sex:'male',weight:'12',hatchDate:'2026-05-01'},parents:[],canEdit:i!==2}));
 test('assigned auction lots stay together in the spreadsheet view with inline parent uploads',()=>{
  const context={auctionItems:()=>rows,auctionPhotoUndo:new Map(),auctionNameDrafts:new Map(),auctionPhotoPending:null,esc:s=>String(s).replaceAll('<','&lt;').replaceAll('"','&quot;')};
@@ -18,9 +18,19 @@ test('assigned auction lots stay together in the spreadsheet view with inline pa
 test('editing a parent name preserves the input across redraw and marks only changed values',()=>{
  const row={...rows[0],updatedAt:'v1',parents:[{role:'sire',name:'헐크',media:[]}]},save={hidden:true},context={auctionItems:()=>[row],auctionNameDrafts:new Map(),$:()=>save};
  vm.createContext(context);vm.runInContext(fn('captureAuctionName','auctionPhotoError'),context);
- const input={dataset:{item:row.id,auctionName:'sire'},value:'헐크 수정'};context.captureAuctionName(input);assert.equal(save.hidden,false);assert.equal(context.auctionNameDrafts.get(row.id+'sire').expectedUpdatedAt,'v1');
- row.updatedAt='v2';input.value='헐크 재수정';context.captureAuctionName(input);assert.equal(context.auctionNameDrafts.get(row.id+'sire').expectedUpdatedAt,'v1','do not silently overwrite a newer server revision');
+ const input={dataset:{item:row.id,auctionName:'sire'},value:'헐크 수정'};context.captureAuctionName(input);assert.equal(save.hidden,false);assert.equal(context.auctionNameDrafts.get('national-cre:'+row.id+':sire').expectedUpdatedAt,'v1');
+ row.updatedAt='v2';input.value='헐크 재수정';context.captureAuctionName(input);assert.equal(context.auctionNameDrafts.get('national-cre:'+row.id+':sire').expectedUpdatedAt,'v1','do not silently overwrite a newer server revision');
  input.value='헐크';context.captureAuctionName(input);assert.equal(save.hidden,true);assert.equal(context.auctionNameDrafts.size,0);
+});
+
+test('identical lot IDs in different rounds retain separate parent drafts and upload targets',()=>{
+ const items=['national-cre','national-cre-20261021'].map(channelId=>({...rows[0],channelId,updatedAt:channelId,parents:[]}));
+ const context={auctionItems:()=>items,auctionNameDrafts:new Map(),auctionPhotoUndo:new Map(),auctionPhotoPending:null,$:()=>({}),esc:s=>String(s)};
+ vm.createContext(context);vm.runInContext(fn('captureAuctionName','auctionPhotoError')+fn('auctionPhotoList','openAuctionList'),context);
+ for(const item of items)context.captureAuctionName({dataset:{item:item.id,itemChannel:item.channelId,auctionName:'sire'},value:'부 '+item.channelId});
+ assert.equal(context.auctionNameDrafts.size,2);
+ for(const item of items){const draft=context.auctionNameDrafts.get(item.channelId+':'+item.id+':sire');assert.equal(draft.itemChannelId,item.channelId);assert.equal(draft.expectedUpdatedAt,item.channelId);}
+ const html=context.auctionPhotoList();for(const item of items)assert.ok(html.includes('data-item-channel="'+item.channelId+'"'));
 });
 
 test('unlimited registration remains editable and needs attention after the former deadline',()=>{

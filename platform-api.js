@@ -3679,13 +3679,23 @@ function createPlatformApi({
                 let result={};
                 if(method==='POST') {
                     if(body.bookingCode&&body.id!==linkedReservationId)throw buyerInputError('이 예약 링크에서 처리할 수 없는 요청입니다.',403);
-                    if(cycle)result=await withMutationLock(`channel:${context.channel.id}`,async()=>{
+                    if(cycle&&body.type==='parent-photos'){
+                        const targetId=cleanText(body.itemChannelId||context.channel.id,64);
+                        const target=await vendorCheckoutContext({...context.token,checkoutRound:''},targetId);
+                        if(!target||(target.channel.id!==Booking.CHANNEL_ID&&target.channel.nationalRound?.parentId!==Booking.CHANNEL_ID))throw buyerInputError('해당 회차의 업체 권한을 확인해 주세요.',403);
+                        result=await withMutationLock(`channel:${targetId}`,async()=>{
+                            const fresh=await vendorCheckoutContext({...context.token,checkoutRound:''},targetId);
+                            if(!fresh)throw buyerInputError('업체 페이지를 다시 열어 주세요.',401);
+                            return vendorEntries.updateItemParents(fresh,body);
+                        });
+                        if(!result.duplicate){touchCheckout(targetId);touchChannel(targetId);}
+                    }
+                    else if(cycle)result=await withMutationLock(`channel:${context.channel.id}`,async()=>{
                         const fresh=await vendorCheckoutContext(context.token,context.channel.id);if(!fresh)throw buyerInputError('업체 페이지를 다시 열어 주세요.',401);
                         return booking.command(fresh,body);
                     });
                     else result=await booking.command(context,body);
                     touchCheckout(context.channel.id);
-                    if(cycle&&body.type==='parent-photos'&&!result.duplicate)touchChannel(context.channel.id);
                 }
                 replyJson(res,200,{...await booking.vendorView(context),...result,linkedReservationId,navigationToken});return true;
             }
