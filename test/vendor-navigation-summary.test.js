@@ -23,3 +23,11 @@ test('general checkout forwards disabled booking mode so national navigation can
 test('portal checkout uses its dedicated profile screen instead of a duplicate uneditable form',()=>{
  const panel={hidden:false};vm.runInNewContext(render+';renderSettings();',{URLSearchParams,location:{search:'?portal=company'},$:()=>panel,data:{vendor:{}},window:{CreoVendorNavigation:{profileRequired:()=>false,updateStatus(){}}}});assert.equal(panel.hidden,true);
 });
+test('round settlement keeps its event while booking navigation stays on the canonical intake after click',()=>{
+ const {parseHTML}=require('linkedom'),{window}=parseHTML('<html><body><div id="app"><div id="vendor"></div><select id="vendor-event"><option selected value="national-cre-20261021">오늘 회차</option></select></div></body></html>');
+ vm.runInNewContext(fs.readFileSync(require.resolve('../public/vendor-navigation.js'),'utf8'),{window,document:window.document,URLSearchParams,location:{search:'?event=national-cre-20261021&code=isolated-code',pathname:'/vendor-checkout.html'},MutationObserver:window.MutationObserver,Event:window.Event});
+ window.CreoVendorNavigation.configureBooking({enabled:true,mode:'regional-cycle-v1',channelId:'national-cre'});
+ const booking=window.document.querySelector('[data-vendor-section="booking"]');booking.dispatchEvent(new window.Event('click',{bubbles:true,cancelable:true}));
+ assert.match(booking.href,/vendor-broadcast.html/);assert.equal(new URL(booking.href,'https://example.test').searchParams.get('event'),'national-cre');
+ assert.equal(new URL(window.document.querySelector('[data-vendor-section="settlement"]').href,'https://example.test').searchParams.get('event'),'national-cre-20261021');
+});

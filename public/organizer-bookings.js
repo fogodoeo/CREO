@@ -36,7 +36,7 @@
     for(const option of filter.options)option.textContent={all:'예정된 방송',short:'출품 등록 필요',pending:'수거 미완료',past:'지난 방송'}[option.value];
     let month=$('broadcast-month');
     if(!month){const label=document.createElement('label');label.htmlFor='broadcast-month';label.textContent='방송월';month=document.createElement('select');month.id='broadcast-month';label.append(month);filter.closest('label').after(label);const months=[...new Set(state.sessions.map(s=>s.date.slice(0,7)))];month.innerHTML=months.map(m=>`<option value="${m}">${m.replace('-','년 ')}월</option>`).join('');month.value=(state.sessions.find(s=>s.startsAt>state.now)||state.sessions[0]).date.slice(0,7);month.onchange=render;}
-    const sessions=state.sessions.filter(s=>s.date.startsWith(month.value)).filter(s=>filter.value==='past'?s.startsAt<=state.now:s.startsAt>state.now).filter(s=>filter.value==='short'?s.reservations.some(r=>r.status==='confirmed'&&!r.registrationComplete):filter.value==='pending'?s.reservations.some(r=>r.status==='confirmed'&&!r.pickup):true);
+    const requestedDate=query.get('broadcastDate'),sessions=state.sessions.filter(s=>requestedDate?s.date===requestedDate:s.date.startsWith(month.value)).filter(s=>requestedDate|| (filter.value==='past'?s.startsAt<=state.now:s.startsAt>state.now)).filter(s=>filter.value==='short'?s.reservations.some(r=>r.status==='confirmed'&&!r.registrationComplete):filter.value==='pending'?s.reservations.some(r=>r.status==='confirmed'&&!r.pickup):true);
     $('admin-summary').textContent=`${sessions.length}회차`;
     $('session-list').innerHTML=sessions.length?sessions.map(s=>{
       const confirmed=s.reservations.filter(r=>r.status==='confirmed'),completed=confirmed.reduce((n,r)=>n+r.completed,0);
@@ -46,7 +46,7 @@
   async function load(){if(busy)return;const seq=++revision;error('admin-error','');
     try{if(code){const access=await api('organizer-access',{method:'POST',body:JSON.stringify({code})});if(seq!==revision)return;channel=access.channel.id;}
       const data=await api(route());if(seq!==revision)return;state=data;render();$('admin-status').textContent='';
-      $('organizer-home').href=code?'/o/'+encodeURIComponent(code):'/channel-workspace.html?channel='+encodeURIComponent(channel);
+      $('organizer-home').href=code?'/o/'+encodeURIComponent(code):'/channel-workspace.html?channel='+encodeURIComponent(query.get('returnChannel')||channel);
     }catch(e){if(seq!==revision)return;error('admin-error',e.message||'예약을 불러오지 못했습니다. 연결을 확인하고 다시 시도해 주세요.');$('admin-status').textContent='';$('admin-retry').hidden=false;if(e.status===401){state=null;$('admin-content').hidden=true;$('admin-login').hidden=!!code;if($('admin-dialog').open)$('admin-dialog').close();}}
   }
   async function save(body){if(busy)return false;error('admin-dialog-error','');setBusy(true);++revision;

@@ -19,7 +19,7 @@
 
 <button class="btn" id="save-vendor-settings" type="submit">업체 정보 저장</button><p id="settings-feedback" role="status"></p>
 </form></details></main></div></div>
-<script src="/vendor-navigation.js?v=20261020-round"></script>
+<script src="/vendor-navigation.js?v=20261021-round-intake"></script>
 <dialog class="contact-sheet" id="vendor-contacts" aria-labelledby="vendor-contacts-title"><header><div><h2 id="vendor-contacts-title">참여 업체 연락처</h2><p id="vendor-contacts-event"></p></div><button type="button" id="vendor-contacts-close" aria-label="연락처 닫기">×</button></header><div id="vendor-contacts-list"></div></dialog>
 <script>(()=>{'use strict';const Checkout=window.CreoCheckoutClient,client=Checkout.createClient({location,endpoint:'/api/platform/vendor-checkout',shortPrefix:'v'}),$=Checkout.byId,esc=Checkout.escapeHtml,money=Checkout.money,phone=Checkout.formatPhone,uuid=Checkout.requestId;let selectedEvent=new URLSearchParams(location.search).get("event")||"";let data=null,busy=false,settingsDirty=false,settingsLoaded=false;
 const roundPicker=CreoCheckoutRounds.create({client,container:$('app'),load:()=>load(),canChange:()=>!busy&&(!hasDraft()||confirm('입력 중인 내용을 버리고 다른 회차로 이동할까요?'))});

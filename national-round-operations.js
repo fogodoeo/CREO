@@ -95,7 +95,15 @@ function createNationalRoundOperations({repository,directory,lock,touch,now=Date
      // Only presentation settings cross the boundary, never active-item/session state.
      if(config)rows.push(row('setting',{id:'broadcast-config',values:Object.fromEntries(Object.entries(config.values||{}).filter(([k])=>/^(?:page[123]_|p[123]_|font_|layout_|overlay_|theme_|live_bidders_)/.test(k)||['auction_animation_enabled','auction_bid_unit_manwon'].includes(k))),revision:now()}));
     }
-    const sourceVendors=await directory.list(ROOT),known=new Set(targetItems.map(i=>i.attributes?.roundSource?.itemId)),usedVendors=new Set();
+    const sourceVendors=await directory.list(ROOT),known=new Set(targetItems.map(i=>i.attributes?.roundSource?.itemId));
+    const cycle=await repository.getRecord(ROOT,'setting','national-cycle-config');
+    const bookings=cycle?.mode===National.MODE?(await National.createNationalBroadcast(repository).read(source)).state:null;
+    // Participation exists before approval. Keep intake documents and photos on
+    // the root channel; only the shared business identity joins the round.
+    const usedVendors=new Set(sourceVendors.filter(v=>v.active!==false&&!v.deletedAt&&(
+     National.regionForVendor(v)===region||bookings?.reservations.some(r=>r.vendorId===v.id&&r.date===date&&r.status==='confirmed')
+     ||targetItems.some(i=>i.vendorId===v.id)
+    )).map(v=>v.id));
     let lot=Math.max(0,...targetItems.map(i=>Number(i.lotNumber)||0));
     for(const item of sourceItems.filter(i=>dateOf(i)===date&&!i.auctionArchiveId).sort((a,b)=>(a.lotNumber||0)-(b.lotNumber||0)||a.id.localeCompare(b.id))){
      if(known.has(item.id))continue;
@@ -105,14 +113,17 @@ function createNationalRoundOperations({repository,directory,lock,touch,now=Date
      const copy=copyItem(item,target,date,++lot);copy.createdAt=stamp;copy.updatedAt=stamp;rows.push(row('item',copy));usedVendors.add(vendor.id);
      rows.push({key:channelKey(ROOT,'item',item.id),value:JSON.stringify({...item,attributes:{...item.attributes,roundTargetChannelId:targetId},updatedAt:stamp})});
     }
+    let directoryChanged=false;
     for(const id of usedVendors){
-     const vendor=sourceVendors.find(v=>v.id===id),profile=dir.profiles.find(p=>p.members.some(m=>m.channelId===ROOT&&m.vendorId===id));
+     const vendor=sourceVendors.find(v=>v.id===id),profile=directory.enrollInDocument(dir,ROOT,vendor,stamp);
      if(!profile||profile.deletedAt)throw fail('공통 업체 등록을 확인한 뒤 다시 가져와 주세요.');
-     if(profile&&!profile.members.some(m=>m.channelId===targetId)){profile.members.push({channelId:targetId,vendorId:id});profile.revision++;}
+     const targetOwner=dir.profiles.find(p=>p.members.some(m=>m.channelId===targetId&&m.vendorId===id));
+     if(targetOwner&&targetOwner.id!==profile.id)throw fail('대상 회차의 업체 소유 정보가 다릅니다. 연결을 확인해 주세요.');
+     if(profile&&!profile.members.some(m=>m.channelId===targetId)){profile.members.push({channelId:targetId,vendorId:id});profile.revision++;directoryChanged=true;}
      else if(profile&&!profile.members.some(m=>m.channelId===targetId&&m.vendorId===id))throw fail('업체 연결 정보가 다릅니다.');
      if(!await repository.getRecord(targetId,'vendor',id))rows.push(row('vendor',{...vendor,id,channelId:targetId}));
     }
-    if(!rows.length)return {channelId:targetId,duplicate:true,imported:0};
+    if(!rows.length&&!directoryChanged)return {channelId:targetId,duplicate:true,imported:0};
     rows.push({key:directoryKey,value:JSON.stringify(dir)});
    }
    const channels=catalog.channels.some(c=>c.id===targetId)?catalog.channels.map(c=>c.id===targetId?target:c):[...catalog.channels,target];

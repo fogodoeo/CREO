@@ -113,6 +113,7 @@
   try{
    const next=await request();
    if(next.mode!=='regional-cycle-v1'){location.replace('/vendor-bookings.html?'+new URLSearchParams(params()));return}
+   if(q.get('event')&&q.get('event')!==next.channel.id){const canonical=new URL(location.href);canonical.searchParams.set('event',next.channel.id);location.replace(canonical.href);return;}
    await Store.read({state:{...next.entryState,bookingSummary:{enabled:true,mode:next.mode}}});recovery=Store.recovery.read()?.nationalDrafts||{};state=next;
    if(!month)month=(state.dates.find(d=>d.startsAt>=state.now&&d.regionName===state.vendor.region)||state.dates[0]).date.slice(0,7);
    $('#company-name').textContent=state.vendor.name;

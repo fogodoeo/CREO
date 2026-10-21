@@ -31,6 +31,12 @@ function createVendorDirectory(repository) {
     }
     function member(profile,channelId,vendorId) { return profile.members.some(m=>m.channelId===channelId&&m.vendorId===vendorId); }
     const pick = record => ({...Object.fromEntries(FIELDS.filter(key=>record[key]!==undefined).map(key=>[key,record[key]])),inquiryPhone:inquiryPhone(record),inquiryPhoneMode:record.inquiryPhoneMode==='shared'?'shared':'separate'});
+    function enrollInDocument(directory,channelId,record,stamp=new Date().toISOString()) {
+        const existing=directory.profiles.find(p=>member(p,channelId,record.id));if(existing)return existing;
+        const membership={channelId,vendorId:record.id};
+        const profile={id:crypto.randomUUID(),revision:1,info:pick(record),members:[membership],home:{...membership},createdAt:stamp};
+        directory.profiles.push(profile);return profile;
+    }
     // The shared profile is authoritative even when a legacy profile has no mode.
     // A channel-row write from a failed save must not change contact visibility.
     function hydrate(record,profile) { return profile?{...record,...profile.info,...(profile.deletedAt?{active:false}:{}),inquiryPhoneMode:profile.info.inquiryPhoneMode==='shared'?'shared':'separate',directoryId:profile.id,directoryRevision:profile.revision}:record; }
@@ -58,8 +64,7 @@ function createVendorDirectory(repository) {
             const existing=directory.profiles.find(p=>member(p,channelId,vendorId));if(existing)return existing;
             const record=await repository.getRecord(channelId,'vendor',vendorId);
             if(!record)throw fail('업체를 찾을 수 없습니다.',404);
-            const profile={id:crypto.randomUUID(),revision:1,info:pick(record),members:[{channelId,vendorId}],home:{channelId,vendorId},createdAt:new Date().toISOString()};
-            directory.profiles.push(profile);return profile;
+            return enrollInDocument(directory,channelId,record);
         });
     }
     async function attach(profileId,channelId) {
@@ -141,6 +146,6 @@ function createVendorDirectory(repository) {
         const next=previous.catch(()=>{}).then(async()=>{const directory=await read(),profile=directory.profiles.find(p=>member(p,channelId,vendorId));return work(profile,directory,KEY);});
         locks.set(repository,next);return next;
     }
-    return {read,list,find,profileFor,enroll,attach,attachExisting,update,lifecycle};
+    return {read,list,find,profileFor,enroll,enrollInDocument,attach,attachExisting,update,lifecycle};
 }
 module.exports={createVendorDirectory};

@@ -29,7 +29,7 @@
   if(c.dataAdapter==='legacy-cdcup'||c.features?.auction===false)result.report='';
   if(national(c)){
    result.rounds='/national-rounds.html?'+new URLSearchParams({channel:id,...extra});
-   result.bookings='/organizer-bookings.html?channel=national-cre';
+   result.bookings='/organizer-bookings.html?'+new URLSearchParams({channel:'national-cre',...(s.round?.date?{broadcastDate:s.round.date,returnChannel:id}:{})});
    result.intake='/vendor-entry-review.html?'+new URLSearchParams({channel:'national-cre',...(s.round?.date?{broadcastDate:s.round.date}:{})});
   }else result.rounds=r.archives;
   return result;

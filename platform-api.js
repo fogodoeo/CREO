@@ -2306,6 +2306,19 @@ function createPlatformApi({
         return { token:{...token,checkoutRound:round.key}, catalog, channel, round:CheckoutRounds.publicRound(round),rounds:rounds.map(CheckoutRounds.publicRound),financialRounds:rounds,roundShipments:shipments, items:round.items, shipments:shipments.filter(s=>ids.has(s.itemId)), vendors, vendor, profile, access, vendorKey: token.vendorKey };
     }
 
+    async function vendorIntakeContext(context) {
+        if(context?.channel.nationalRound?.parentId!==Booking.CHANNEL_ID)return context;
+        // Resolve through the existing credential and exact shared membership.
+        // Never grant access by a matching business name or contact number.
+        return vendorCheckoutContext({...context.token,checkoutRound:''},Booking.CHANNEL_ID);
+    }
+    async function vendorBookingSummary(context) {
+        const intake=await vendorIntakeContext(context);
+        if(!intake)return {enabled:false};
+        const summary=await booking.summary(intake);
+        return {...summary,...(summary.enabled?{channelId:intake.channel.id}:{})};
+    }
+
     async function vendorBuyerBundles(context) {
         const resolved = await Promise.all(context.items.filter(isSoldItem).map(async (item) => ({
             item,
@@ -2478,7 +2491,7 @@ function createPlatformApi({
             revision: checkoutRevision(context.channel.id),
             // Navigation needs counts only; do not resolve/download entry photos.
             entrySummary: await vendorEntries.summary(context).catch(() => null),
-            bookingSummary: await booking.summary(context),
+            bookingSummary: await vendorBookingSummary(context),
             vendorContacts: context.vendors.filter(v => v.id !== context.vendor.id).map(v => ({name:cleanText(v.name,80),phone:Inquiry.vendorContact(v)?.phone || ''})).sort((a,b) => a.name.localeCompare(b.name,'ko')),
             testDeliveryEnabled: testDeliveryChannels.has(context.channel.id),
             channel: { id: context.channel.id, name: context.channel.name, status: context.channel.status, checkoutOpen:CheckoutRounds.open(context.channel) },
@@ -3654,6 +3667,8 @@ function createPlatformApi({
                     context=await vendorCheckoutContext(navigationToken,channel.id);linkedReservationId=link.reservationId;
                 } else context=await vendorCheckoutContext(await resolveVendorCheckoutCredential(body),body.event||'');
                 if(!context)throw buyerInputError('업체 전용 링크를 다시 확인해 주세요.',401);
+                context=await vendorIntakeContext(context);
+                if(!context)throw buyerInputError('업체 홈에서 방송 신청을 열어 주세요.',403);
                 if(!Booking.enabled(context.channel))throw buyerInputError('전국크레자랑에서만 방송을 예약할 수 있습니다.',404);
                 const cycle=await booking.cycle.active(context.channel);
                 if(cycle&&!context.profile){
@@ -3684,10 +3699,11 @@ function createPlatformApi({
                     let context=await vendorCheckoutContext(initial.token,initial.channel.id);
                     if(!context)throw buyerInputError('업체 정보를 다시 불러와 주세요.',409);
                     if(!context.profile){await vendorDirectory.enroll(context.channel.id,context.vendor.id);context=await vendorCheckoutContext(context.token,context.channel.id);}
-                    if(method==='GET'){replyJson(res,200,{state:{...await vendorEntries.read(context),bookingSummary:await booking.summary(context)}});return;}
-                    if(await booking.cycle.active(context.channel))throw buyerInputError('방송 달력에서 개체를 등록해 주세요.',409);
+                    if(method==='GET'){replyJson(res,200,{state:{...await vendorEntries.read(context),bookingSummary:await vendorBookingSummary(context)}});return;}
+                    const intake=await vendorIntakeContext(context);
+                    if(intake&&await booking.cycle.active(intake.channel))throw buyerInputError('방송 달력에서 개체를 등록해 주세요.',409);
                     const result=await vendorEntries.command(context,body);
-                    result.state.bookingSummary=await booking.summary(context);
+                    result.state.bookingSummary=await vendorBookingSummary(context);
                     if(!result.duplicate)touchCheckout(context.channel.id);
                     if(!result.duplicate&&body.type==='parent')await touchVendorChannels(context.channel.id,context.vendor.id);
                     replyJson(res,200,result);
@@ -6097,7 +6113,8 @@ function createPlatformApi({
         try {
             const credential=await resolveVendorCheckoutCredential({code});
             const context=credential&&await vendorCheckoutContext(credential,event);
-            if(context&&await booking.cycle.active(context.channel))return '/vendor-broadcast.html';
+            const intake=context&&await vendorIntakeContext(context);
+            if(intake&&await booking.cycle.active(intake.channel))return '/vendor-broadcast.html';
         } catch { /* The entry API supplies the normal retry/error screen if storage is unavailable. */ }
         return '/vendor-entries.html';
     }

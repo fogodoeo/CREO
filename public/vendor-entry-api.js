@@ -54,7 +54,7 @@
     const query = new URLSearchParams({ ...credential(), ...(selected ? { event: selected } : {}) });
     const result = prefetched || await request('vendor-entries?' + query);
     if(!prefetched&&result.state.bookingSummary?.mode==='regional-cycle-v1'&&params.get('section')!=='profile'&&(/\/vendor-entries\.html$/.test(location.pathname)||/^\/w\//.test(location.pathname))){
-      location.replace('/vendor-broadcast.html?'+new URLSearchParams({...credential(),event:result.state.channelId,...(params.get('portal')?{portal:params.get('portal')}:{})}));
+      location.replace('/vendor-broadcast.html?'+new URLSearchParams({...credential(),event:result.state.bookingSummary.channelId||result.state.channelId,...(params.get('portal')?{portal:params.get('portal')}:{})}));
     }
     if (selected && result.state.channelId !== selected) throw Error('경매가 일치하지 않아요. 업체 링크를 다시 열어 주세요.');
     const scope = { ownerId: result.state.ownerId, eventId: result.state.channelId };
@@ -159,7 +159,7 @@
     pageUrl(section, event = selected) {
       const query = new URLSearchParams({ ...credential(), event });
       if(params.get('portal')){query.set('portal',params.get('portal'));if(section==='profile')return '/vendor-access.html?section=profile&company='+encodeURIComponent(params.get('portal'));}
-      if (section === 'booking') return (current?.bookingSummary?.mode==='regional-cycle-v1'?'/vendor-broadcast.html?':'/vendor-bookings.html?') + query;
+      if (section === 'booking') {query.set('event',current?.bookingSummary?.channelId||event);return (current?.bookingSummary?.mode==='regional-cycle-v1'?'/vendor-broadcast.html?':'/vendor-bookings.html?') + query;}
       if (section === 'settlement') return '/vendor-checkout.html?' + query;
       query.set('section', section); return '/vendor-entries.html?' + query;
     }

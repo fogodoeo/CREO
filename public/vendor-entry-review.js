@@ -6,7 +6,9 @@
   $('review-form').querySelectorAll('input,textarea,select').forEach(input=>input.setAttribute('aria-describedby','review-error'));
   const params=new URLSearchParams(location.search),Intake=window.CreoEntryIntake;
   let channelId=params.get('channel')||'', data=null, status=['submitted','draft','changes_requested','approved'].includes(params.get('status'))?params.get('status'):'submitted', vendorId=params.get('vendor')||'', selected=null;
-  let broadcastDate='',dateInitialized=false,requestedDate=params.get('broadcastDate');
+  let broadcastDate='',dateInitialized=false,requestedDate=params.get('broadcastDate'),channels=[];
+  function chooseChannel(id){const channel=channels.find(c=>c.id===id),source=Intake.sourceChannel(channel||{id});channelId=source.channelId;if(source.date)requestedDate=source.date;}
+  const selectedRound=()=>channels.find(c=>c.nationalRound?.parentId===channelId&&c.nationalRound.date===(broadcastDate||requestedDate));
   let busy=false, loading=false, sequence=0, reviewMode='approve', opener=null, pending=null, outside=false;
   let preferredPart='1부', checked=new Map(), batchPending=null;
   const Numbering=window.CreoEntryNumbering;
@@ -27,7 +29,7 @@
     updateSelection();
   }
   function setLinks(){
-    $('workspace-link').href=channelId?'/channel-workspace.html?channel='+encodeURIComponent(channelId):'/channel-manager.html';
+    $('workspace-link').href=channelId?'/channel-workspace.html?channel='+encodeURIComponent(selectedRound()?.id||channelId):'/channel-manager.html';
     $('workspace-link').textContent=channelId?'경매 운영':'경매 관리';
   }
   function syncFilters(){const url=new URL(Intake.reviewUrl(channelId,broadcastDate,vendorId,status),location.origin);history.replaceState(null,'',url);}
@@ -95,7 +97,7 @@
       const next=await client.api(endpoint());
       if(current!==sequence||requested!==channelId)return false;
       if(next.channel?.id!==requested)throw Error('다른 경매의 응답입니다. 다시 불러와 주세요.');
-      data=next;if(!dateInitialized){broadcastDate=Intake.initialDate(data,requestedDate);dateInitialized=true;}render();return true;
+      data=next;if(!dateInitialized){broadcastDate=Intake.initialDate(data,requestedDate);dateInitialized=true;}$('review-event').value=selectedRound()?.id||channelId;setLinks();render();return true;
     }catch(e){
       if(current===sequence){error('list-message',e.message);if(e.status===401){$('login-section').hidden=false;$('review-section').hidden=true;}}
       return false;
@@ -232,8 +234,8 @@
   };
   $('refresh').onclick=load;
   $('review-event').onchange=event=>{
-    if(busy)return;channelId=event.target.value;data=null;vendorId='';status='submitted';broadcastDate='';requestedDate=null;dateInitialized=false;preferredPart='1부';$('batch-part').value='1부';checked.clear();batchPending=null;notice('');
-    const url=new URL(location.href);url.searchParams.set('channel',channelId);['broadcastDate','vendor','status'].forEach(key=>url.searchParams.delete(key));history.replaceState(null,'',url);setLinks();render();load();
+    if(busy)return;data=null;vendorId='';status='submitted';broadcastDate='';requestedDate=null;chooseChannel(event.target.value);dateInitialized=false;preferredPart='1부';$('batch-part').value='1부';checked.clear();batchPending=null;notice('');
+    const url=new URL(location.href);url.searchParams.set('channel',event.target.value);['broadcastDate','vendor','status'].forEach(key=>url.searchParams.delete(key));history.replaceState(null,'',url);setLinks();render();load();
   };
   $('login-form').onsubmit=async event=>{
     event.preventDefault();const button=event.submitter;button.disabled=true;error('login-error','');
@@ -245,10 +247,10 @@
       if(!await client.verifyAdmin()){$('login-section').hidden=false;$('review-section').hidden=true;return;}
       $('login-section').hidden=true;$('review-section').hidden=false;
       const catalog=await client.api('channels?includeArchived=1');
-      const channels=catalog.channels.filter(channel=>channel.dataAdapter==='platform');
+      channels=catalog.channels.filter(channel=>channel.dataAdapter==='platform');
       $('review-event').innerHTML='<option value="">경매 선택</option>'+channels.map(channel=>`<option value="${esc(channel.id)}">${esc(channel.name)}${channel.status==='archived'?' · 지난 경매':''}</option>`).join('');
       if(channelId&&!channels.some(channel=>channel.id===channelId)){data=null;render();throw Error('요청한 경매를 찾을 수 없어요. 경매를 다시 선택해 주세요.');}
-      $('review-event').value=channelId;setLinks();await load();
+      chooseChannel(channelId);$('review-event').value=selectedRound()?.id||channelId;setLinks();await load();
     }catch(e){error($('review-section').hidden?'login-error':'list-message',e.message);}
   }
   window.addEventListener('focus',()=>{if(!dialog.open&&!$('entry-label-dialog').open&&!busy&&!loading&&!$('review-section').hidden)load();});

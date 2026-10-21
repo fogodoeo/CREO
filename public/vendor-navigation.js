@@ -7,6 +7,7 @@
   }
   let nav = document.querySelector('.vendor-bottom-nav');
   const settlement = document.getElementById('vendor-event');
+  let bookingChannel='';
   if (!nav && settlement) {
     nav = document.createElement('nav'); nav.className = 'vendor-bottom-nav vendor-settlement-nav'; nav.setAttribute('aria-label', '업체 메뉴');
     nav.innerHTML = '<a data-vendor-section="entries">출품 개체</a><a data-vendor-section="settlement" aria-current="page">낙찰·정산</a><a data-vendor-section="profile">업체 정보</a>';
@@ -39,6 +40,7 @@
     }
   };
   function configureBooking(summary, href) {
+    bookingChannel=summary?.enabled?summary.channelId||'':'';
     nav.classList.remove('national-cycle-nav');nav.querySelector('[data-vendor-section="entries"]')?.removeAttribute('hidden');
     let link = nav.querySelector('[data-vendor-section="booking"]');
     if (!summary?.enabled) { link?.remove(); nav.classList.remove('has-booking');window.CreoVendorShell?.clear(nav); return; }
@@ -55,7 +57,7 @@
     else {
       const query=new URLSearchParams(location.search),short=/^\/(?:w|v)\/([A-Za-z0-9_-]{8,24})$/.exec(location.pathname);
       const code=query.get('code')||short?.[1]||'',token=query.get('token')||'';
-      link.href='/vendor-bookings.html?'+new URLSearchParams({event:settlement?.value||query.get('event')||'',...(code?{code}:{token}),...(query.get('portal')?{portal:query.get('portal')}:{})});
+      link.href='/vendor-bookings.html?'+new URLSearchParams({event:bookingChannel||settlement?.value||query.get('event')||'',...(code?{code}:{token}),...(query.get('portal')?{portal:query.get('portal')}:{})});
     }
     const count=Math.max(0,Number(summary.attentionCount??summary.pendingCount)||0), badge=link.querySelector('.vendor-nav-count');
     badge.hidden=!count;badge.textContent=String(count);badge.setAttribute('aria-hidden','true');
@@ -86,7 +88,7 @@
     const destination = section => {
       const params = new URLSearchParams({ event, ...(code ? { code } : { token }) });
       if(query.get('portal')){params.set('portal',query.get('portal'));if(section==='profile')return '/vendor-access.html?section=profile&company='+encodeURIComponent(query.get('portal'));}
-      if (section === 'booking') return (nav.classList.contains('national-cycle-nav')?'/vendor-broadcast.html?':'/vendor-bookings.html?') + params;
+      if (section === 'booking') {params.set('event',bookingChannel||event);return (nav.classList.contains('national-cycle-nav')?'/vendor-broadcast.html?':'/vendor-bookings.html?') + params;}
       if (section === 'settlement') {if(query.get('round'))params.set('round',query.get('round'));return '/vendor-checkout.html?' + params;}
       params.set('section', section); return (preview ? '/entry-preview/' : '/vendor-entries.html') + '?' + params;
     };
