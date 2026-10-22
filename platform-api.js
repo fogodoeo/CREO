@@ -6,6 +6,7 @@ const OperationRounds = require('./operation-rounds');
 const CheckoutRounds = require('./checkout-rounds');
 const {listVendorSettlementRounds}=require('./vendor-settlement-rounds');
 const NationalRounds = require('./national-round-operations');
+const EntryAuctionScope = require('./entry-auction-scope');
 const PinballWinners = require('./roulette-app/src/drawWinners');
 const { refreshShippingRate } = require('./shipping-rate-refresh');
 const { rankingsForChannel } = require('./public/ranking-engine');
@@ -5917,33 +5918,52 @@ function createPlatformApi({
                         const state=await vendorEntries.read({channel,vendor,profile,catalog});
                         groups.push({...state,vendor:{id:vendor.id,name:vendor.name,groupId:vendor.groupId||'',teamName:vendor.teamName||''},entries:state.entries.filter(entry=>entry.channelId===channelId)});
                     }
-                    const items=await repository.listRecords(channelId,'item');
-                    const allocation=AuctionRounds.currentItems(items).map(item=>({id:item.id,entryId:item.attributes?.vendor_entry?.entryId||'',code:item.attributes?.displayNumber||item.name,order:Number(item.lotNumber)||0,startPrice:Number(item.startPrice)||0,groupId:item.groupId||'',teamName:item.teamName||'',status:item.status,updatedAt:item.updatedAt||''}));
-                    replyJson(res,200,{channel:{id:channelId,name:channel.name,status:channel.status,groups:(channel.groups||[]).map(group=>({id:group.id,name:group.name}))},policy:await vendorEntries.policy(channelId),allocation,groups});return true;
+                    const scope=await EntryAuctionScope.resolve(repository,catalog,channel,url.searchParams.get('broadcastDate'));
+                    const items=scope.channel?await repository.listRecords(scope.channel.id,'item'):[];
+                    const selected=scope.date?items.filter(i=>!i.attributes?.roundTargetChannelId&&OperationRounds.itemDate(i)===scope.date):AuctionRounds.currentItems(items);
+                    const allocation=selected.map(item=>({id:item.id,entryId:item.attributes?.vendor_entry?.entryId||'',code:item.attributes?.displayNumber||item.name,order:Number(item.lotNumber)||0,startPrice:Number(item.startPrice)||0,groupId:item.groupId||'',teamName:item.teamName||'',status:item.status,updatedAt:item.updatedAt||''}));
+                    // Existing imported rounds retain their item IDs; only the response links
+                    // canonical submissions to those copies. Reading never migrates records.
+                    if(scope.channel?.id!==channelId)for(const group of groups)for(const entry of group.entries){
+                        const linked=selected.find(i=>i.attributes?.roundSource?.channelId===channelId&&i.attributes.roundSource.itemId===entry.itemId);
+                        if(linked){entry.itemId=linked.id;entry.lot=linked.attributes?.displayNumber||linked.name;}
+                    }
+                    replyJson(res,200,{channel:{id:channelId,name:channel.name,status:channel.status,groups:(scope.channel?.groups||channel.groups||[]).map(group=>({id:group.id,name:group.name}))},auctionTarget:EntryAuctionScope.publicScope(scope),policy:await vendorEntries.policy(channelId),allocation,groups});return true;
                 }
                 const body=await readJson(req);
-                if(segments[3]==='batch'){
-                    await withMutationLock(`channel:${channelId}`,async()=>{
+                // Same root -> round lock order as round preparation. The target status
+                // and membership are read again after taking the target auction lock.
+                await withMutationLock(`channel:${channelId}`,async()=>{
+                    const firstCatalog=await loadCatalog(),first=firstCatalog.channels.find(c=>c.id===channelId);
+                    if(!first)throw buyerInputError('경매를 다시 선택해 주세요.',404);
+                    const scope=await EntryAuctionScope.resolve(repository,firstCatalog,first,body.broadcastDate);
+                    const assignment=segments[3]==='batch'||['approve','renumber'].includes(body.type);
+                    const target=assignment?EntryAuctionScope.assignmentChannel(scope):first;
+                    const work=async()=>{
                         const currentCatalog=await loadCatalog(),fresh=currentCatalog.channels.find(c=>c.id===channelId);
                         if(!fresh)throw buyerInputError('경매를 다시 선택해 주세요.',404);
+                        const currentScope=await EntryAuctionScope.resolve(repository,currentCatalog,fresh,body.broadcastDate);
+                        const currentTarget=assignment?EntryAuctionScope.assignmentChannel(currentScope):fresh;
+                        if(currentTarget.id!==target.id)throw buyerInputError('방송 회차가 변경됐어요. 다시 확인해 주세요.',409);
+                        const options={operator:true,auctionChannel:target.id===channelId?null:currentTarget};
+                        let result;
+                        if(segments[3]==='batch'){
                         const contexts=[];
                         for(const vendorId of new Set((Array.isArray(body.entries)?body.entries:[]).filter(Boolean).map(e=>cleanText(e.vendorId,64)))){
                             const vendor=await vendorDirectory.find(channelId,vendorId),profile=vendor&&await vendorDirectory.profileFor(channelId,vendorId);
                             if(!vendor||!profile)throw buyerInputError('출품 업체를 다시 확인해 주세요.',404);
                             contexts.push({channel:fresh,vendor,profile,catalog:currentCatalog});
                         }
-                        const result=await vendorEntries.batch(fresh,contexts,body);
-                        if(!result.duplicate)touchChannel(channelId);
+                        result=await vendorEntries.batch(fresh,contexts,body,options);
+                        }else{
+                            const vendor=await vendorDirectory.find(channelId,cleanText(body.vendorId,64)),profile=vendor?await vendorDirectory.profileFor(channelId,vendor.id):null;
+                            if(!vendor||!profile)throw buyerInputError('출품 업체를 다시 확인해 주세요.',404);
+                            result=await vendorEntries.command({channel:fresh,vendor,profile,catalog:currentCatalog},body,options);
+                        }
+                        if(!result.duplicate){touchChannel(channelId);if(target.id!==channelId)touchChannel(target.id);}
                         replyJson(res,200,result);
-                    });return true;
-                }
-                await withMutationLock(`channel:${channelId}`,async()=>{
-                    const currentCatalog=await loadCatalog(),fresh=currentCatalog.channels.find(row=>row.id===channelId),vendor=await vendorDirectory.find(channelId,cleanText(body.vendorId,64));
-                    const profile=vendor?await vendorDirectory.profileFor(channelId,vendor.id):null;
-                    if(!fresh||!vendor||!profile)throw buyerInputError('출품 업체를 다시 확인해 주세요.',404);
-                    const result=await vendorEntries.command({channel:fresh,vendor,profile,catalog:currentCatalog},body,{operator:true});
-                    if(result.itemId&&!result.duplicate)touchChannel(channelId);
-                    replyJson(res,200,result);
+                    };
+                    if(target.id===channelId)await work();else await withMutationLock(`channel:${target.id}`,work);
                 });return true;
             }
 

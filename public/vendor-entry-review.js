@@ -15,28 +15,30 @@
   const key=row=>row.group.vendor.id+':'+row.entry.id;
   const visibleRows=()=>rows().filter(row=>Intake.onDate(row,broadcastDate)&&row.entry.status===status&&(!vendorId||row.group.vendor.id===vendorId)).sort((a,b)=>status==='approved'?(data.allocation.find(i=>i.id===a.entry.itemId)?.order||0)-(data.allocation.find(i=>i.id===b.entry.itemId)?.order||0):a.group.vendor.name.localeCompare(b.group.vendor.name,'ko')||a.entry.entryNumber-b.entry.entryNumber);
   const endpoint=()=>`channels/${encodeURIComponent(channelId)}/entries`;
+  const readEndpoint=()=>endpoint()+(broadcastDate?'?'+new URLSearchParams({broadcastDate}):'');
   const canReview=()=>data&&['draft','active'].includes(data.channel.status);
+  const canAssign=()=>canReview()&&(channelId!=='national-cre'||Boolean(broadcastDate&&data.auctionTarget?.date===broadcastDate&&data.auctionTarget.writable));
   const source=entry=>entry.submission||entry.approved||entry;
   const rows=()=>data?.groups.flatMap(group=>group.entries.map(entry=>({entry,group})))||[];
   function error(id,message){$(id).textContent=message||'';$(id).hidden=!message;}
   function notice(message){$('notice').textContent=message;}
   function setBusy(value){
     busy=value;
-    for(const id of ['toggle-intake','review-event','review-vendor','review-date','refresh','change-review-mode','confirm-review','close-review','reload-entry','batch-part','approve-selected','arrange-vendors','print-entry-labels','select-all'])$(id).disabled=value;
+    for(const id of ['toggle-intake','prepare-round','review-event','review-vendor','review-date','refresh','change-review-mode','confirm-review','close-review','reload-entry','batch-part','approve-selected','arrange-vendors','print-entry-labels','select-all'])$(id).disabled=value;
     $('entry-list').querySelectorAll('input,button').forEach(el=>el.disabled=value||(status==='draft'&&el.matches('input')));
     $('filters').querySelectorAll('button').forEach(el=>el.disabled=value);
     $('review-form').querySelectorAll('input,textarea,select').forEach(input=>{input.disabled=value;});
     updateSelection();
   }
   function setLinks(){
-    $('workspace-link').href=channelId?'/channel-workspace.html?channel='+encodeURIComponent(selectedRound()?.id||channelId):'/channel-manager.html';
+    $('workspace-link').href=channelId?'/channel-workspace.html?channel='+encodeURIComponent(data?.auctionTarget?.channelId||selectedRound()?.id||channelId):'/channel-manager.html';
     $('workspace-link').textContent=channelId?'경매 운영':'경매 관리';
   }
   function syncFilters(){const url=new URL(Intake.reviewUrl(channelId,broadcastDate,vendorId,status),location.origin);history.replaceState(null,'',url);}
   function renderDates(){
-    const dates=Intake.dates(data);if(broadcastDate&&!dates.includes(broadcastDate))dates.push(broadcastDate);dates.sort();
+    const dates=[...new Set([...Intake.dates(data),...channels.filter(c=>c.nationalRound?.parentId===channelId).map(c=>c.nationalRound.date),...(broadcastDate?[broadcastDate]:[])])].sort();
     $('review-date-field').hidden=!dates.length;
-    $('review-date').innerHTML='<option value="">전체 방송</option>'+dates.map(day=>`<option value="${day}">${day}${day===Intake.today()?' · 오늘':''}</option>`).join('');
+    $('review-date').innerHTML='<option value="">전체 방송 · 조회</option>'+dates.map(day=>`<option value="${day}">${day}${day===Intake.today()?' · 오늘':''}</option>`).join('');
     $('review-date').value=broadcastDate;
   }
   function itemView(row){
@@ -62,7 +64,7 @@
       const allocation=data.allocation.find(i=>i.id===entry.itemId);
       return `<article class="entry-row">${status==='draft'?'':`<label class="entry-check"><input type="checkbox" data-check="${esc(key(row))}" aria-label="${esc(row.group.vendor.name+' '+(entry.lot||entry.code))} 선택" ${checked.has(key(row))?'checked':''}></label>`}${picture?`<img src="${esc(picture.thumbnailUrl)}" alt="" loading="lazy">`:''}<div class="row-text"><small>${allocation&&status==='approved'?`<span class="order-badge">${allocation.order}번째</span> `:''}${esc(row.group.vendor.name)}${entry.broadcastDate?' · '+esc(entry.broadcastDate)+' 방송':''} · <b>${esc(entry.lot||entry.code)}</b>${entry.approved&&entry.status==='submitted'?' · 변경안':''}</small><p class="entry-summary" title="${esc(summary)}">${esc(summary)}</p></div><button class="row-detail secondary" type="button" data-entry="${esc(entry.id)}" data-vendor="${esc(row.group.vendor.id)}" aria-label="${esc(row.group.vendor.name+' '+(entry.lot||entry.code))} 상세">상세</button></article>`;
     }).join(''):`<p class="empty">${{submitted:'검토할 개체가 없어요',draft:'작성 중인 개체가 없어요',changes_requested:'수정 요청한 개체가 없어요',approved:'검토 대기에서 개체를 선택해 출품해 주세요'}[status]}</p>`;
-    $('selection-bar').hidden=!visible.length||status==='draft';$('batch-bar').hidden=!canReview()||['changes_requested','draft'].includes(status);
+    $('selection-bar').hidden=!visible.length||status==='draft';$('batch-bar').hidden=!canAssign()||['changes_requested','draft'].includes(status);
     $('approve-selected').hidden=status!=='submitted';$('arrange-vendors').hidden=status!=='approved';
     updateSelection();
   }
@@ -70,14 +72,20 @@
     const visible=visibleRows(),count=visible.filter(r=>checked.has(key(r))).length;
     const part=$('batch-part').value,{targets,scoped}=Intake.arrangement(data,broadcastDate,part,Numbering.partOf);
     $('selection-count').textContent=count+'마리 선택';$('select-all').checked=!!visible.length&&count===visible.length;$('select-all').indeterminate=count>0&&count<visible.length;
-    $('approve-selected').disabled=busy||loading||!canReview()||!count;
+    $('batch-bar').hidden=!canAssign()||!['submitted','approved'].includes(status)||(status==='submitted'&&!count);
+    $('print-entry-labels').hidden=!count;
+    $('approve-selected').disabled=busy||loading||!canAssign()||!count;
     $('print-entry-labels').disabled=busy||loading||!count;
-    $('arrange-vendors').disabled=busy||loading||!canReview()||targets.length<2||!scoped;
+    $('arrange-vendors').disabled=busy||loading||!canAssign()||targets.length<2||!scoped;
     $('select-all').disabled=busy||loading||!visible.length;
-    $('batch-hint').textContent=status==='approved'?(!scoped?'다른 방송일의 편성이 있어요. 교차 배치는 전체 방송에서 확인해 주세요.':`${part} 전체 ${targets.length}마리 · 식별 번호 유지`):'선택한 개체만 경매에 반영돼요.';
+    $('batch-hint').textContent=status==='approved'?(!scoped?'방송일을 선택하고 새로고침해 주세요.':`${part} 전체 ${targets.length}마리 · 식별 번호 유지`):'선택한 개체만 이 방송일에 등록돼요.';
+    $('prepare-round').disabled=busy||loading;
   }
   function render(){
     $('intake').hidden=!data;
+    $('round-context').hidden=!data||channelId!=='national-cre';
+    $('prepare-round').hidden=!data||!broadcastDate||data.auctionTarget?.prepared!==false;
+    $('round-state').textContent=!broadcastDate?'편성할 방송일을 선택해 주세요.':data?.auctionTarget?.prepared===false?broadcastDate+' 회차를 준비하면 출품을 등록할 수 있어요.':data?.auctionTarget?.writable?broadcastDate+' 방송 경매에 등록됩니다.':broadcastDate+' 방송 기록 · 조회만 가능';
     renderDates();
     if(!data){$('entry-list').innerHTML='<p class="empty">검토할 경매를 선택해 주세요</p>';$('selection-bar').hidden=true;$('batch-bar').hidden=true;updateSelection();return;}
     $('intake-status').textContent=data.policy.open&&canReview()?'접수 중':'접수 마감';
@@ -90,14 +98,16 @@
   }
   async function load(){
     if(busy)return false;
-    const current=++sequence,requested=channelId;
-    loading=true;error('list-message','');$('refresh').disabled=true;updateSelection();
+    if(!dateInitialized){broadcastDate=Intake.initialDate({channel:{id:channelId}},requestedDate);dateInitialized=true;}
+    const current=++sequence,requested=channelId,requestedDay=broadcastDate;
+    loading=true;data=null;render();error('list-message','');$('refresh').disabled=true;updateSelection();
     try{
       if(!requested){data=null;render();return true;}
-      const next=await client.api(endpoint());
+      const next=await client.api(readEndpoint());
       if(current!==sequence||requested!==channelId)return false;
       if(next.channel?.id!==requested)throw Error('다른 경매의 응답입니다. 다시 불러와 주세요.');
-      data=next;if(!dateInitialized){broadcastDate=Intake.initialDate(data,requestedDate);dateInitialized=true;}$('review-event').value=selectedRound()?.id||channelId;setLinks();render();return true;
+      if(channelId==='national-cre'&&requestedDay&&next.auctionTarget?.date!==requestedDay)throw Error('다른 방송일의 응답입니다. 새로고침해 주세요.');
+      data=next;$('review-event').value=channelId;setLinks();render();return true;
     }catch(e){
       if(current===sequence){error('list-message',e.message);if(e.status===401){$('login-section').hidden=false;$('review-section').hidden=true;}}
       return false;
@@ -126,7 +136,7 @@
     $('review-company').textContent=row.group.vendor.name;
     $('review-title').textContent=row.entry.lot||row.entry.code;
     $('revision-note').hidden=!(row.entry.approved&&row.entry.status==='submitted');
-    renderInformation(row);showMode('approve');
+    renderInformation(row);showMode(canAssign()?'approve':'request-changes');$('change-review-mode').hidden=!canAssign();
     const reviewable=canReview()&&row.entry.status==='submitted';
     $('review-form').hidden=!reviewable;$('review-actions').hidden=!reviewable;$('reload-entry').hidden=true;
     const existing=data.allocation.find(item=>item.id===row.entry.itemId);
@@ -159,7 +169,7 @@
   $('select-all').onchange=event=>{for(const row of visibleRows()){if(event.target.checked)checked.set(key(row),row.entry.version);else checked.delete(key(row));}batchPending=null;renderList();};
   $('filters').onclick=event=>{const button=event.target.closest('[data-status]');if(!button||busy)return;status=button.dataset.status;checked.clear();batchPending=null;syncFilters();renderList();};
   $('review-vendor').onchange=event=>{vendorId=event.target.value;checked.clear();batchPending=null;syncFilters();renderList();};
-  $('review-date').onchange=event=>{if(busy)return;broadcastDate=event.target.value;checked.clear();batchPending=null;syncFilters();renderList();};
+  $('review-date').onchange=event=>{if(busy)return;broadcastDate=event.target.value;checked.clear();batchPending=null;syncFilters();return load();};
   $('lot-part').onchange=()=>{
     const part=$('lot-part').value;preferredPart=part;pending=null;
     if(part!=='manual')$('lot-code').value=window.CreoEntryNumbering.nextCode(part,data.allocation);
@@ -172,18 +182,19 @@
   $('review-form').oninput=event=>{pending=null;event.target.removeAttribute('aria-invalid');error('review-error','');};
   $('review-form').onsubmit=async event=>{
     event.preventDefault();if(busy||!selected||selected.entry.status!=='submitted')return;
+    if(reviewMode==='approve'&&!canAssign())return;
     error('review-error','');
     const lot=$('lot-code').value.trim().toUpperCase(),order=Number($('lot-order').value),startPrice=Number($('lot-price').value),reason=$('review-reason').value.trim();
     const checks=reviewMode==='approve'?[['lot-code',Numbering.valid(lot),'식별 번호를 입력해 주세요. 예: 1부 A01'],['lot-order',Number.isInteger(order)&&order>0&&order<=10000,'진행 순서는 1~10,000 사이로 입력해 주세요.'],['lot-price',$('lot-price').value!==''&&Number.isSafeInteger(startPrice)&&startPrice>=0,'시작가를 0원 이상으로 입력해 주세요.']]:[['review-reason',Boolean(reason),'수정할 내용을 입력해 주세요.']];
     const invalid=checks.find(([,valid])=>!valid);if(invalid){$(invalid[0]).setAttribute('aria-invalid','true');error('review-error',invalid[2]);$(invalid[0]).focus();return;}
     const team=(data.channel.groups||[]).length?{groupId:$('lot-group').value,teamName:''}:{groupId:'',teamName:$('lot-team').value.trim()};
-    const command={vendorId:selected.group.vendor.id,type:reviewMode,id:selected.entry.id,expectedVersion:selected.entry.version,...(reviewMode==='approve'?{lot,order,startPrice,...team}:{reason})};
+    const command={vendorId:selected.group.vendor.id,type:reviewMode,id:selected.entry.id,expectedVersion:selected.entry.version,...(broadcastDate?{broadcastDate}:{}),...(reviewMode==='approve'?{lot,order,startPrice,...team}:{reason})};
     const signature=JSON.stringify(command);
     if(!pending||pending.signature!==signature)pending={signature,requestId:crypto.randomUUID()};
     setBusy(true);
     try{
       await client.api(endpoint()+'/review',{method:'POST',body:JSON.stringify({...command,requestId:pending.requestId})});
-      const approved=reviewMode==='approve';setBusy(false);dialog.close();notice(approved?'경매 대기 목록에 반영했어요':'업체 출품 화면에 수정 요청을 남겼어요');await load();
+      const approved=reviewMode==='approve';setBusy(false);dialog.close();notice(approved?(broadcastDate?broadcastDate+' 방송 경매에 등록했어요':'경매 대기 목록에 반영했어요'):'업체 출품 화면에 수정 요청을 남겼어요');await load();
     }catch(e){
       error('review-error',e.message);
       // Keep the same request id on a transport failure so retrying is safe.
@@ -197,13 +208,13 @@
   };
   $('batch-part').onchange=()=>{preferredPart=$('batch-part').value;batchPending=null;updateSelection();};
   async function runBatch(type){
-    if(busy||loading||!data||!canReview())return;
+    if(busy||loading||!data||!canAssign())return;
     const part=$('batch-part').value,selection=visibleRows().filter(r=>checked.has(key(r)));
     if(type==='approve-many'&&status!=='submitted')return;
     if(type==='arrange'&&!Intake.arrangement(data,broadcastDate,part,Numbering.partOf).scoped){error('list-message','다른 방송일의 편성이 있어요. 전체 방송을 선택해 확인해 주세요.');return;}
     if(type==='approve-many'&&!selection.length){error('list-message','출품할 개체를 체크해 주세요.');$('select-all').focus();return;}
     const fields=type==='approve-many'?{entries:selection.map(r=>({id:r.entry.id,vendorId:r.group.vendor.id,expectedVersion:checked.get(key(r))}))}:{items:data.allocation.filter(i=>Numbering.partOf(i.code)===part).map(i=>({id:i.id,updatedAt:i.updatedAt}))};
-    const command={type,part,...fields},signature=JSON.stringify(command);
+    const command={type,part,...(broadcastDate?{broadcastDate}:{}),...fields},signature=JSON.stringify(command);
     if(!batchPending||batchPending.signature!==signature)batchPending={signature,body:{...command,requestId:crypto.randomUUID()}};
     error('list-message','');setBusy(true);
     try{
@@ -212,13 +223,13 @@
       checked.clear();batchPending=null;status='approved';vendorId='';setBusy(false);
       const refreshed=await load();if(channelId!==completedChannel)return;
       if(refreshed){for(const row of rows())if(row.entry.status==='approved'&&result.itemIds.includes(row.entry.itemId))checked.set(key(row),row.entry.version);renderList();}
-      notice(!refreshed?'편성은 저장됐어요. 새로고침해 목록을 확인해 주세요.':type==='approve-many'?`${result.count}마리 편성 완료 · 교차 배치하거나 라벨을 출력하세요.`:`${part} 교차 배치 완료 · ${checked.size}마리 라벨 출력 준비`);
+      notice(!refreshed?'편성은 저장됐어요. 새로고침해 목록을 확인해 주세요.':type==='approve-many'?`${broadcastDate?broadcastDate+' 방송에 ':''}${result.count}마리 등록 완료`:`${part} 교차 배치 완료 · ${checked.size}마리 라벨 출력 준비`);
     }catch(e){error('list-message',e.message);if(e.status===409){batchPending=null;checked.clear();setBusy(false);await load();error('list-message',e.message);}}
     finally{setBusy(false);}
   }
   $('approve-selected').onclick=()=>runBatch('approve-many');
   $('arrange-vendors').onclick=()=>runBatch('arrange');
-  const labelPrinter=window.CreoEntryLabelPrint.create({document,client,endpoint,channel:()=>channelId});
+  const labelPrinter=window.CreoEntryLabelPrint.create({document,client,endpoint:readEndpoint,channel:()=>channelId,scope:()=>channelId+'@'+broadcastDate});
   $('print-entry-labels').onclick=()=>{
     if(busy||loading)return;
     const selection=visibleRows().filter(row=>checked.has(key(row)));
@@ -233,6 +244,12 @@
     finally{setBusy(false);}
   };
   $('refresh').onclick=load;
+  $('prepare-round').onclick=async()=>{
+    if(busy||loading||!data||channelId!=='national-cre'||!broadcastDate||data.auctionTarget?.prepared!==false)return;
+    setBusy(true);error('list-message','');
+    try{await client.api('national-rounds',{method:'POST',body:JSON.stringify({action:'prepare',date:broadcastDate})});setBusy(false);await load();notice('회차를 준비했어요. 이제 개체를 선택해 등록하세요.');}
+    catch(e){error('list-message',e.message);}finally{setBusy(false);}
+  };
   $('review-event').onchange=event=>{
     if(busy)return;data=null;vendorId='';status='submitted';broadcastDate='';requestedDate=null;chooseChannel(event.target.value);dateInitialized=false;preferredPart='1부';$('batch-part').value='1부';checked.clear();batchPending=null;notice('');
     const url=new URL(location.href);url.searchParams.set('channel',event.target.value);['broadcastDate','vendor','status'].forEach(key=>url.searchParams.delete(key));history.replaceState(null,'',url);setLinks();render();load();
@@ -248,11 +265,12 @@
       $('login-section').hidden=true;$('review-section').hidden=false;
       const catalog=await client.api('channels?includeArchived=1');
       channels=catalog.channels.filter(channel=>channel.dataAdapter==='platform');
-      $('review-event').innerHTML='<option value="">경매 선택</option>'+channels.map(channel=>`<option value="${esc(channel.id)}">${esc(channel.name)}${channel.status==='archived'?' · 지난 경매':''}</option>`).join('');
+      $('review-event').innerHTML='<option value="">프로그램 선택</option>'+channels.filter(channel=>channel.nationalRound?.parentId!=='national-cre').map(channel=>`<option value="${esc(channel.id)}">${esc(channel.id==='national-cre'?'전국크레자랑':channel.name)}${channel.status==='archived'?' · 지난 경매':''}</option>`).join('');
       if(channelId&&!channels.some(channel=>channel.id===channelId)){data=null;render();throw Error('요청한 경매를 찾을 수 없어요. 경매를 다시 선택해 주세요.');}
       chooseChannel(channelId);$('review-event').value=selectedRound()?.id||channelId;setLinks();await load();
     }catch(e){error($('review-section').hidden?'login-error':'list-message',e.message);}
   }
-  window.addEventListener('focus',()=>{if(!dialog.open&&!$('entry-label-dialog').open&&!busy&&!loading&&!$('review-section').hidden)load();});
+  // Returning to this frame must not replace a checkbox during the first click.
+  // Refresh is explicit; version checks reject stale approval/printing requests.
   start();
 })();

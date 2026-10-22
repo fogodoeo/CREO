@@ -135,7 +135,13 @@
         "../admin-home-review-20261022/operator-worklist-final-tests.log",
         "../admin-home-review-20261022/operator-worklist-320.png",
         "../admin-home-review-20261022/operator-worklist-desktop.png",
-        "../admin-home-review-20261022/program-whole-directory-current.png"
+        "../admin-home-review-20261022/program-whole-directory-current.png",
+        "risk: release (dated intake approval payload and persisted canonical entry auctionChannelId; no production migration)",
+        "test/entry-auction-scope.test.js: 10 pass; test/entry-intake.test.js: 12 pass. Covers direct target assignment, canonical vendor submission, duplicate/concurrent requests, API restart, SQLite rollback, mixed dates, stale versions, vendor membership, legacy imported copies, parent editing, target auction lock, closed-round replay and old payment preservation.",
+        "npm run check: pass; npm test -- --test-concurrency=4: 1634 pass, 0 fail; desktop python -m unittest discover -p test*.py: 270 pass. Logs: ../admin-home-review-20261022/intake-scope-final-full-tests.log and intake-scope-desktop-tests.log",
+        "CUA real 320px isolated fixture: first selection survives returning focus, 4 submissions become A01-A04 in the actual 10/21 round immediately, label preview has those same identities; clientWidth=scrollWidth=305. Old import-after-approval instruction removed.",
+        "CUA program directory: one national program, all five broadcast date choices, 5 synthetic vendors overall and 2 for 10/19; reset restores whole program. No production data or real notifications used.",
+        "../admin-home-review-20261022/program-directory-rounds-verified.png"
       ],
       "completed": [
         "전체 업체 명부는 선택한 프로그램의 모든 업체를 조회하고 방송일로 좁혀 볼 수 있음",
@@ -153,7 +159,10 @@
         "저장 실패 후 입력과 요청 식별자를 유지하여 재시도하며 다른 업체 메모는 보존",
         "입금·배송은 선택 회차의 전체 업체 내역을 바로 표시하고 업체·낙찰자·개체 검색 및 처리 상태 필터 제공",
         "같은 낙찰자의 업체별 개체·금액을 구분하고 편집 중 다른 내역으로 이동할 때 저장하지 않은 입력 보호",
-        "모바일 내부 업무는 프로그램·방송일을 상단에 표시하고 변경 선택창만 접음; 운영 홈과 데스크톱 선택창은 유지"
+        "모바일 내부 업무는 프로그램·방송일을 상단에 표시하고 변경 선택창만 접음; 운영 홈과 데스크톱 선택창은 유지",
+        "전국크레자랑 출품 검토는 한 프로그램과 방송일로 선택하며 승인 즉시 해당 회차 경매에 원자적으로 등록",
+        "전체 방송은 조회로 제한하고 미준비 회차는 준비 버튼을 제공; 선택 회차의 번호·순서·라벨과 업체 부모정보 연결 유지",
+        "전체 접수 설정·사진 저장량은 접고 선택한 개체가 있을 때 편성 버튼을 표시; 자동 포커스 새로고침이 첫 선택을 삼키던 오류 수정"
       ],
       "remaining": [
         "관리자 출품·편성·배송·정산 페이지 내부 작업 정리",
@@ -252,6 +261,6 @@
     "공통 업체 및 회차 구분이 모든 화면에서 일관되게 전달되지 않음",
     "전체 사용자 역할별 개편과 통합 검증은 아직 진행 중"
   ],
-  "next_work": "도도시 신청·SMS 승인 링크·중복 제한과 낙찰자 선택 완료 흐름을 구현하고 격리 화면 및 전체 서버 1621개/데스크톱 270개 테스트로 검증했다. 다음은 관리자 출품 접수·검토·회차 편성 흐름을 프로그램 전체 업체 명부와 연결해 확인한다. 추가 낙찰·입금 후 배송비 조정, 씨랩 출품·방송 도구·전체 키보드/확대 검증과 배포도 남아 있다. 최근 UX와 배송 수정은 모두 로컬이며 아직 배포하지 않았다.",
+  "next_work": "사용자가 확인한 구조는 전국크레자랑 하나 아래 10/14 서울인천·10/19 경기·10/21 전라충청·10/26 경북·10/28 경남 회차와 업체 배정이다. 공통 전체 업체 조회와 날짜별 거래를 유지하고, 이번에는 출품 승인부터 실제 날짜별 경매 등록까지 직접 연결했다. 출품 상세 화면의 모프·비고·부모정보 표시와 씨랩 경로, 추가 낙찰·입금 후 배송비 조정, 방송 도구·전체 키보드/확대 검증 및 배포는 계속 진행할 부분이다. 최근 UX와 배송 수정은 모두 로컬이며 아직 배포하지 않았다.",
   "completion_rule": "모든 workstream이 실제 구현·상태별 검증 증거를 갖출 때만 전체 완료로 판단한다."
 }

@@ -39,10 +39,10 @@
     if(!status.identificationLabels)throw Error('밴드 모니터링 앱을 재실행하면 식별 라벨 출력이 연결돼요.');
     if(format==='fold'&&!status.identificationLabelFormats?.includes('fold'))throw Error('접는형은 업데이트된 밴드 모니터링 앱을 실행해야 출력할 수 있어요. 앱을 재실행하거나 기존형을 선택해 주세요.');
   }
-  function create({document,client,endpoint,channel}){
+  function create({document,client,endpoint,channel,scope=channel}){
     const $=id=>document.getElementById(id),dialog=$('entry-label-dialog'),esc=client.escapeHtml;
     const formatInputs=[...document.querySelectorAll('input[name="entry-label-format"]')];
-    let selection=[],labels=[],allocationSnapshot=[],opener=null,busy=false,openedChannel='',outside=false,format='standard';
+    let selection=[],labels=[],allocationSnapshot=[],opener=null,busy=false,openedChannel='',openedScope='',outside=false,format='standard';
     try{format=normalizeFormat(window.localStorage.getItem(formatKey));}catch{}
     function message(text,error=false){$('label-print-status').textContent=error?'':text;$('label-print-error').textContent=error?text:'';$('label-print-error').hidden=!error;}
     function setBusy(value){busy=value;['b1-entry-print','browser-label-print','close-labels'].forEach(id=>$(id).disabled=value);formatInputs.forEach(input=>input.disabled=value);}
@@ -64,7 +64,7 @@
       message('');render();
     }));
     async function verify(){
-      if(channel()!==openedChannel)throw Error('경매가 변경됐어요. 라벨을 다시 열어 주세요.');
+      if(channel()!==openedChannel||scope()!==openedScope)throw Error('방송일이 변경됐어요. 라벨을 다시 열어 주세요.');
       const fresh=await client.api(endpoint());
       if(fresh.channel?.id!==openedChannel)throw Error('경매를 다시 확인해 주세요.');
       verifySnapshot(selection,allocationSnapshot,fresh);
@@ -88,7 +88,7 @@
         message(`${result.accepted}장 출력 대기열에 추가했어요.`);
       }catch(e){message(submitted?'접수 결과를 확인하지 못했어요. 앱의 출력 대기열을 확인한 뒤 다시 시도해 주세요.':e.message==='Failed to fetch'?'밴드 모니터링 앱과 B1 PRO 연결을 확인해 주세요.':e.message,true);}finally{setBusy(false);}
     };
-    return {open(rows,allocation,button){selection=structuredClone(rows);allocationSnapshot=structuredClone(allocation);labels=rows.map(row=>label(row,allocation));opener=button;openedChannel=channel();message('');$('label-count').textContent=`${labels.length}장 · 50×30mm`;dialog.showModal();render();$('close-labels').focus();}};
+    return {open(rows,allocation,button){selection=structuredClone(rows);allocationSnapshot=structuredClone(allocation);labels=rows.map(row=>label(row,allocation));opener=button;openedChannel=channel();openedScope=scope();message('');$('label-count').textContent=`${labels.length}장 · 50×30mm`;dialog.showModal();render();$('close-labels').focus();}};
   }
   const api={label,parentNames,verifySnapshot,printLabels,previewHtml,normalizeFormat,checkPrinterFormat,create};if(typeof module==='object'&&module.exports)module.exports=api;root.CreoEntryLabelPrint=api;
 })(typeof window==='object'?window:globalThis);
