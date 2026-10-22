@@ -1121,10 +1121,12 @@ function createPlatformApi({
     });
     const organizerAccess = require('./organizer-access').createOrganizerAccess(repository);
     const Booking = require('./broadcast-booking');
+    const nationalParticipation=require('./national-vendor-participation').createNationalVendorParticipation({repository,directory:vendorDirectory,now:bookingNow,touch:touchChannel});
     const booking = require('./national-broadcast').createBookingRouter(repository, {
         entries:vendorEntries,
         contextForVendor:async(channel,vendor)=>({channel,vendor,profile:await vendorDirectory.profileFor(channel.id,vendor.id),catalog:await loadCatalog()}),
         now: bookingNow, notificationService,
+        withParticipation:(context,input,commit)=>nationalParticipation.transaction(async stage=>commit(await stage(context.vendor,{date:input.date}))),
         entriesFor: async context => context.profile
             ? (await vendorEntries.read(context)).entries.filter(e => e.channelId === context.channel.id && e.channelVendorId === context.vendor.id)
             : []
@@ -1153,6 +1155,7 @@ function createPlatformApi({
         smsProvider: notificationService?.provider, buyerAccount, notificationService,
         channelFor: async () => (await loadCatalog()).channels.find(c => Booking.enabled(c) && ['draft','active'].includes(c.status)),
         vendorsFor: () => vendorDirectory.list(Booking.CHANNEL_ID),
+        withRegistration:work=>withMutationLock('channel:'+Booking.CHANNEL_ID,()=>nationalParticipation.transaction(work)),
         withOwnerSetup:(id,work)=>withMutationLock('channel:'+Booking.CHANNEL_ID,()=>vendorDirectory.lifecycle(Booking.CHANNEL_ID,id,async(profile,document,key)=>{
             const vendor=await vendorDirectory.find(Booking.CHANNEL_ID,id),record=await repository.getRecord(Booking.CHANNEL_ID,'vendor',id);
             return work(vendor,number=>{
@@ -3410,7 +3413,7 @@ function createPlatformApi({
                 if(method==='POST'){
                     if(req.headers['sec-fetch-site']==='cross-site'||req.headers.origin&&req.headers.origin!==vendorAccessOrigin){replyJson(res,403,{error:'운영 페이지에서 다시 요청해 주세요.'});return true;}
                     const body=await readJson(req);
-                    replyJson(res,200,body.action?await vendorAccess.review(body):await withMutationLock('channel:national-cre',()=>vendorAccess.preregister(body)),{'Cache-Control':'no-store, private'});
+                    replyJson(res,200,body.action?await vendorAccess.review(body):await vendorAccess.preregister(body),{'Cache-Control':'no-store, private'});
                     touchChannel('national-cre');
                 }else replyJson(res,200,await vendorAccess.directory(),{'Cache-Control':'no-store, private'});
                 return true;

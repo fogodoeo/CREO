@@ -29,7 +29,7 @@ function regionAt(date){
  const days=Math.round((Date.parse(date+'T00:00:00Z')-Date.parse(START+'T00:00:00Z'))/86400000);
  return (Math.floor(days/7)*2+(days%7>=5?1:0))%5;
 }
-function createNationalBroadcast(repository,{now=Date.now,entries,notificationService,contextForVendor}={}){
+function createNationalBroadcast(repository,{now=Date.now,entries,notificationService,contextForVendor,withParticipation}={}){
  const reservedQuantity=(state,date)=>state.reservations.filter(r=>r.date===date&&r.status==='confirmed').reduce((sum,r)=>sum+(Legacy.start(date)>now()?Math.min(r.quantity,ENTRY_COUNT):r.quantity),0);
  const empty=()=>({schema:1,version:0,defaults:{maxQuantity:null,closeHours:72,entryHours:24,selfHours:72,responseHours:24},sessions:{},regions:{},reservations:[],requests:[],audit:[]});
  async function active(channel){return Legacy.enabled(channel)&&(await repository.getRecord(channel.id,'setting','national-cycle-config'))?.mode===MODE;}
@@ -155,8 +155,11 @@ function createNationalBroadcast(repository,{now=Date.now,entries,notificationSe
    }
   }
   state.version++;state.requests.push({key:requestKey,signature,result});rows.unshift({key:KEY,value:JSON.stringify(state)});
-  if(!await repository.compareAndSwapRows(KEY,raw,rows))throw fail('다른 변경이 먼저 반영됐어요. 다시 불러와 주세요.');
-  return {result,duplicate:false};
+  const commit=async(extra=[])=>{
+   if(!await repository.compareAndSwapRows(KEY,raw,[...rows,...extra]))throw fail('다른 변경이 먼저 반영됐어요. 다시 불러와 주세요.');
+   return {result,duplicate:false};
+  };
+  return type==='reserve'&&withParticipation?withParticipation(context,input,commit):commit();
  }
  async function operatorView(channel,vendors){
   const {state}=await read(channel);

@@ -7,7 +7,7 @@ const PREFIX='/api/platform/vendor-access',ROOT='creo_vendor_access_v1::',STATE=
 const fail=(message,status=400)=>Object.assign(new Error(message),{status});
 const phone=value=>{const p=String(value||'').replace(/[\s-]/g,'').replace(/^(?:\+82|0082)0?/,'0');return /^010\d{8}$/.test(p)?p:'';};
 const equal=(a,b)=>{const x=Buffer.from(String(a||'')),y=Buffer.from(String(b||''));return x.length===y.length&&crypto.timingSafeEqual(x,y);};
-function createVendorAccess({repository,secret,origin='https://creok.onrender.com',now=Date.now,smsProvider,buyerAccount,channelFor,vendorsFor,profileFor,saveProfile,saveLogo,deletionContext,reviewDeletion,taskSummary,notificationService,existingVendorsFor,withOwnerSetup}={}){
+function createVendorAccess({repository,secret,origin='https://creok.onrender.com',now=Date.now,smsProvider,buyerAccount,channelFor,vendorsFor,profileFor,saveProfile,saveLogo,deletionContext,reviewDeletion,taskSummary,notificationService,existingVendorsFor,withOwnerSetup,withRegistration}={}){
  const configured=String(secret||'').length>=32&&typeof repository.compareAndSwapRows==='function';
  const key=crypto.createHash('sha256').update('vendor-access:'+String(secret||'unconfigured')).digest();
  const digest=v=>crypto.createHmac('sha256',key).update(String(v)).digest('base64url');
@@ -22,6 +22,7 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
  const row=(k,value)=>({key:k,value:seal(k,value)});
  async function read(k){const r=(await repository.getRowsByKeys([k])).find(r=>r.key===k);if(!r&&repository.mirror&&repository.lastMirrorError)throw fail('접속 정보를 확인하지 못했어요. 잠시 후 다시 시도해 주세요.',503);return {raw:r?.value??null,value:r?unseal(k,r.value):null};}
  const fresh=()=>({version:0,actors:[],companies:[],requests:[],rates:[]});
+ const registration=work=>withRegistration?withRegistration(work):work(async()=>[]);
  async function mutate(work){
   if(!configured)throw fail('업체 접속 설정을 확인 중이에요.',503);
   for(let retry=0;retry<8;retry++){
@@ -55,7 +56,7 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
   const existing=await repository.getRecord('national-cre','vendor',id);
   if(existing?.active===false)throw fail('사용 중지된 업체예요. 업체 관리에서 확인해 주세요.',409);
   const records=await vendorsFor();
-  return mutate((state,extra)=>{
+  return registration(stage=>mutate(async(state,extra)=>{
    let c=state.companies.find(c=>c.id===id);
    if(c&&c.loginPhone===target&&c.region===region)return {id,duplicate:true};
    if(c?.ownerId)throw fail('이미 대표가 연결된 업체예요. 로그인 번호를 변경할 수 없어요.',409);
@@ -65,10 +66,10 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
    if(!c&&(records.some(v=>v.id!==id&&regionForVendor(v)===region&&companyName(v.name)===normalized)||state.companies.some(v=>v.id!==id&&companyRegion(v,records)===region&&companyName(v.name)===normalized)))throw fail('같은 지역에 같은 업체가 있어요. 기존 업체를 선택해 주세요.',409);
    if(!c){c={id,name:existing?.name||name,region,ownerId:'',members:[],createdAt:now(),revision:0};state.companies.push(c);}
    c.loginPhone=target;c.revision=(c.revision||0)+1;c.updatedAt=now();
-   if(!existing)extra.push({key:channelKey('national-cre','vendor',id),value:JSON.stringify({id,name,phone:target,inquiryPhone:target,inquiryPhoneMode:'shared',active:true,broadcastRegion:REGIONS[region],bookingRegion:[0,3,4,6,7][region],paymentMethods:['bank_transfer','card'],cardPaymentEnabled:true,createdAt:new Date(now()).toISOString()})});
+   if(!existing){const vendor={id,name,phone:target,inquiryPhone:target,inquiryPhoneMode:'shared',active:true,broadcastRegion:REGIONS[region],bookingRegion:[0,3,4,6,7][region],paymentMethods:['bank_transfer','card'],cardPaymentEnabled:true,createdAt:new Date(now()).toISOString()};extra.push({key:channelKey('national-cre','vendor',id),value:JSON.stringify(vendor)},...await stage(vendor));}
    else if(!records.find(v=>v.id===id)?.broadcastRegion||regionForVendor(records.find(v=>v.id===id))!==region)extra.push({key:channelKey('national-cre','vendor',id),value:JSON.stringify({...existing,broadcastRegion:REGIONS[region],bookingRegion:[0,3,4,6,7][region]})});
    return {id};
-  });
+  }));
  }
  async function claim(s,id){
   if(!phone(s.verifiedPhone)||!await activeVendor(id))throw fail('등록된 대표 번호로 로그인해 주세요.',403);
@@ -278,14 +279,15 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
     if(previous){if(previous.registrationFingerprint!==fingerprint)throw fail('등록 요청이 변경됐어요. 업체 선택에서 등록 결과를 확인해 주세요.',409);if(!await activeVendor(previous.id))throw fail('사용 중지된 업체예요. 운영자에게 문의해 주세요.',409);json(res,200,{id:previous.id,duplicate:true});return true;}
     if(loginPhone!==contact)await proofFor(body.proof,s,contact,'register');
     const records=await vendorsFor();
-    const result=await mutate((next,extra)=>{
+    const result=await registration(stage=>mutate(async(next,extra)=>{
      const existing=next.companies.find(c=>c.ownerId===s.actorId&&c.registrationId===requestId);
      if(existing){if(existing.registrationFingerprint!==fingerprint)throw fail('등록 요청이 변경됐어요. 업체 선택에서 등록 결과를 확인해 주세요.',409);return {id:existing.id,duplicate:true};}
      const duplicate=records.find(v=>regionForVendor(v)===region&&companyName(v.name)===companyName(name))||next.companies.find(c=>companyRegion(c,records)===region&&companyName(c.name)===companyName(name));
      if(duplicate)throw Object.assign(fail(duplicate.active===false?'사용 중지된 업체가 있어요. 운영자에게 문의해 주세요.':'이미 등록된 업체예요. 기존 업체를 선택해 주세요.',409),duplicate.active===false?{}:{existingCompany:{id:duplicate.id,name:duplicate.name,region:REGIONS[region]}});
      const id='va-'+crypto.randomUUID().replaceAll('-',''),company={id,name,region,ownerId:s.actorId,loginPhone,revision:1,registrationId:requestId,registrationFingerprint:fingerprint,members:[{actorId:s.actorId,name:'대표'}],createdAt:now()};next.companies.push(company);
-     extra.push({key:channelKey('national-cre','vendor',id),value:JSON.stringify({id,name,phone:contact,inquiryPhone:contact,inquiryPhoneMode:'shared',active:true,bookingRegion:[0,3,4,6,7][region],broadcastRegion:REGIONS[region],paymentMethods:['bank_transfer','card'],cardPaymentEnabled:true,createdAt:new Date(now()).toISOString()})});return {id};
-    });json(res,200,result);return true;
+     const vendor={id,name,phone:contact,inquiryPhone:contact,inquiryPhoneMode:'shared',active:true,bookingRegion:[0,3,4,6,7][region],broadcastRegion:REGIONS[region],paymentMethods:['bank_transfer','card'],cardPaymentEnabled:true,createdAt:new Date(now()).toISOString()};
+     extra.push({key:channelKey('national-cre','vendor',id),value:JSON.stringify(vendor)},...await stage(vendor));return {id};
+    }));json(res,200,result);return true;
    }
    if(route==='/select'){
     if(body.channelId){

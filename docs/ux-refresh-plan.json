@@ -65,16 +65,23 @@
         "npm test -- --test-concurrency=4: 1528 pass, 0 fail",
         "CUA isolated 1280px/320px: program directory, five broadcast dates, exact Gyeonggi settlement and Gyeongnam intake, selected vendor region dialog, CLAB separation, keyboard focus 3px visible",
         "Browser 200% zoom not verified: keyboard zoom shortcuts had no effect in IAB",
-        "../admin-home-review-20261022/operator-directory-refresh.png"
+        "../admin-home-review-20261022/operator-directory-refresh.png",
+        "test/national-vendor-participation.test.js: 5 pass (duplicate, concurrent registration/preparation, restart, SQL failure rollback, legacy repair, historical financial preservation, identity collision and closed/other-region boundaries)",
+        "npm run check: pass; npm test -- --test-concurrency=4: 1533 pass",
+        "desktop python -m unittest discover -p test*.py: 270 pass (sandbox temp-folder permission failure resolved by running outside sandbox)",
+        "CUA 390px: late-registered vendor enters prepared 10/26 round, canonical intake home and four-entry form",
+        "../admin-home-review-20261022/vendor-prepared-round.png"
       ],
       "completed": [
         "전체 업체 명부는 선택한 프로그램의 모든 업체를 조회하고 방송일로 좁혀 볼 수 있음",
         "공통 업체의 지역 배정·출품 신청·실제 경매 편성과 보관 회차를 구분해 한 업체 아래 표시",
         "명부에서 해당 업체 지역 관리·날짜별 출품·정산으로 이동하며 기존 회차 식별자를 유지",
-        "통합 관리자 출품 화면은 바깥 방송일 선택만 사용하고 별도 창도 업체·날짜 필터 유지"
+        "통합 관리자 출품 화면은 바깥 방송일 선택만 사용하고 별도 창도 업체·날짜 필터 유지",
+        "미리 준비한 회차의 지역 업체 연결을 신규 업체 등록과 함께 원자적으로 저장",
+        "기존 업체도 방송 신청 시 빠진 회차 연결을 같은 트랜잭션에서 복구"
       ],
       "remaining": [
-        "신규 업체와 준비된 회차의 참여 연결 lifecycle 점검 및 자동화",
+        "관리자 지역 변경 이후의 미진행 회차 배정 정리",
         "관리자 출품·편성·배송·정산 페이지 내부 작업 정리",
         "전체 사용자 역할별 200% 확대와 전체 키보드 경로",
         "업체 초기 설정·사진 업로드·낙찰자·방송 도구 흐름과 통합 검증"
@@ -122,6 +129,6 @@
     "공통 업체 및 회차 구분이 모든 화면에서 일관되게 전달되지 않음",
     "전체 사용자 역할별 개편과 통합 검증은 아직 진행 중"
   ],
-  "next_work": "신규 업체와 지역 변경이 준비된 회차의 업체 연결에 누락되는 경계를 점검한다. 관리자 내부 출품·배송·정산 화면을 동일한 프로그램·회차 구조와 단계별 작업으로 정리한다.",
+  "next_work": "업체 첫 로그인 기본 정보 입력을 필요한 항목부터 단계별로 단순화한다. 선택 정보의 경고를 줄이고 실제 부모 사진 업로드까지 전체 출품 흐름을 검증한다.",
   "completion_rule": "모든 workstream이 실제 구현·상태별 검증 증거를 갖출 때만 전체 완료로 판단한다."
 }
