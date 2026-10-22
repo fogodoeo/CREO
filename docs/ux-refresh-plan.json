@@ -175,11 +175,16 @@
       "completed": [
         "낙찰자 결제 목록은 납부·입력할 업체를 먼저 표시하고 안내 준비·확인 대기 및 완료는 뒤에 표시",
         "모든 업체가 대기 상태이면 결제 진행 대신 안내·확인 중임을 표시",
-        "입금 신고 후에는 결제할 금액 대신 확인 중인 금액으로 표시"
+        "입금 신고 후에는 결제할 금액 대신 확인 중인 금액으로 표시",
+        "수령지 검색 결과가 없어도 변경 취소로 원래 선택을 복구하고 전체 지점 보기·더 보기로 검색을 이어감",
+        "지역 선택 상태와 검색 결과 개수를 표시하고 지점 목록의 40개 이후 항목도 명시적으로 더 볼 수 있음",
+        "저장 실패는 입력을 유지한 화면 내 안내와 다시 저장으로 복구하며 같은 요청 식별자를 재사용",
+        "저장 중 수령지·결제 방법 변경과 중복 제출을 막고 새 회차 진입 시 이전 편집 취소 상태를 제거"
       ],
       "remaining": [
-        "인증·단일/복수 회차·직수령·검색 결과 없음·도도시 승인 경로",
-        "저장 실패 복구·배송 변경 요청·추가 낙찰·결제 완료/취소 화면 전체 검증",
+        "인증·단일/복수 회차·직수령의 실제 완료 경로",
+        "도도시 이용 신청·운영자 SMS 승인 링크·중복 신청 제한: 현재 작업본에는 별도 승인 구현이 없으며 일반 결제 변경 요청 화면만 연결됨",
+        "배송 변경 요청·추가 낙찰·결제 완료/취소 화면 전체 검증",
         "전체 키보드 경로와 200% 확대"
       ],
       "evidence": [
@@ -189,7 +194,17 @@
         "CUA 390px and 320px iframe: no horizontal overflow (clientWidth equals scrollWidth); no production records or real notifications used",
         "tools/buyer-journey-preview.cjs: isolated SQLite/fake notification fixture through real checkout APIs, localhost:4398",
         "../admin-home-review-20261022/buyer-waiting-guidance-320.png",
-        "../admin-home-review-20261022/ux-buyer-tasks-tests.log"
+        "../admin-home-review-20261022/ux-buyer-tasks-tests.log",
+        "risk: medium (buyer local draft/search/recovery controls only; backend persistence, quotes and payment validation unchanged)",
+        "Reproduced CUA bug: editing a saved destination then entering a no-match query cleared the selected shop and hid cancellation. Cancel now restores the exact local draft, including prior unsaved payment choice.",
+        "node --test test/buyer-destination-ui.test.js test/buyer-checkout-flow.test.js test/checkout-actions.test.js test/checkout-client.test.js test/checkout-round-picker.test.js test/checkout-round-continuity.test.js test/checkout-preferences.test.js test/buyer-navigation.test.js: 93 pass; npm run check, preview syntax and inline-script parse: pass",
+        "New 6-test UI coverage: empty search/cancel, carrier switching/pickup, 86 shops with more/reset/initial-consonant search/escaping, background refresh preserves deliberate empty draft, cross-round reset, failure/retry stable id, in-flight controls, conflict recovery and changed-draft id",
+        "CUA isolated 320px: empty query recovery/cancel restores original destination and focus; three consecutive real HTTP 503s exhaust client retries, preserve selection/amounts, and expose inline error with keyboard retry; retry saves canonical A 226000 / B 107000 and displays payment instructions",
+        "CUA final code: while saving, destination change/payment choices/submit disabled; retry success re-enables controls. Error is focused and visible above footer; clientWidth=scrollWidth=305, no horizontal overflow. Rendered error #982525 on #fff6f6 = 7.53:1; visible 3px focus.",
+        "tools/buyer-journey-preview.cjs now supports a separate BUYER_PREVIEW_PORT and 1-3 injected failures; new isolated port4399 avoids replacing existing preview data. No real notifications or production mutations.",
+        "../admin-home-review-20261022/buyer-recovery-final-tests.log",
+        "../admin-home-review-20261022/buyer-search-recovery-320.png",
+        "../admin-home-review-20261022/buyer-save-retry-320.png"
       ],
       "deployed": false
     },
@@ -223,6 +238,6 @@
     "공통 업체 및 회차 구분이 모든 화면에서 일관되게 전달되지 않음",
     "전체 사용자 역할별 개편과 통합 검증은 아직 진행 중"
   ],
-  "next_work": "프로그램 전체 업체 명부와 날짜별 거래 구분을 실제 화면에서 재확인했고 관리자 입금·배송 전체 업체 목록·검색·처리 상태·모바일 상단을 정리했다. 이어서 낙찰자 저장 실패·검색 결과 없음·배송 변경/승인·추가 낙찰·입금 후 배송비 조정 흐름을 검증한다. 관리자 출품·편성, 씨랩 출품·방송 도구·전체 키보드/확대 검증과 배포도 남아 있다. 최근 UX와 배송 수정은 모두 로컬이며 아직 배포하지 않았다.",
+  "next_work": "낙찰자 검색 결과 없음·편집 취소·저장 실패/재시도 경로를 구현하고 실제 320px와 93개 테스트로 검증했다. 다음은 현재 작업본에서 빠진 도도시 이용 신청·운영자 SMS 승인 링크·중복 신청 제한을 기존 회차/낙찰자 권한과 함께 구현·검증한다. 추가 낙찰·입금 후 배송비 조정, 관리자 출품·편성, 씨랩 출품·방송 도구·전체 키보드/확대 검증과 배포도 남아 있다. 최근 UX와 배송 수정은 모두 로컬이며 아직 배포하지 않았다.",
   "completion_rule": "모든 workstream이 실제 구현·상태별 검증 증거를 갖출 때만 전체 완료로 판단한다."
 }
