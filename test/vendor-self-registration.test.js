@@ -9,7 +9,8 @@ test('default onboarding allows verified self-registration and existing admin pr
  assert.equal((await f.refresh(c)).json().preregisteredOnly,false);
  const created=await f.post(c,'register',body({loginPhone:'01000000099',ownerId:'forged'}));assert.equal(created.status,200,created.body);
  const v=await f.repository.getRecord('national-cre','vendor',created.json().id);assert.equal(v.phone,'01000000001');assert.equal(v.loginPhone,undefined);
- assert.equal((await directory(f)).json().companies[0].loginPhone,'01000000001');
+ const registered=(await directory(f)).json();assert.equal(registered.companies[0].loginPhone,'01000000001');
+ assert.equal(registered.companies[0].claimed,true);assert.deepEqual(registered.ownerSetups,[],'new company registration never waits for operator approval');
  assert.equal((await f.post(c,'profile',{companyId:v.id})).json().role,'owner');
  assert.equal((await f.post(c,'select',{id:v.id})).status,200);
 });

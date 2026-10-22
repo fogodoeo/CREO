@@ -5,7 +5,19 @@
  const api=(body)=>CreoPlatform.api('national-vendor-directory',{cache:'no-store',signal:AbortSignal.timeout(20000),...(body?{method:'POST',body:JSON.stringify(body)}:{})});
  function error(message){const el=$($('review').open?'review-error':$('editor').open?'editor-error':'error');el.textContent=message||'';el.hidden=!message;}
  async function run(work){if(busy)return;busy=true;error('');try{await work();}catch(e){error(e.message);if(e.status===401){$('content').hidden=true;$('login').hidden=false;}}finally{busy=false;$('save').disabled=false;$('save').textContent='저장';}}
- async function load(){data=await api();$('login').hidden=true;$('content').hidden=false;$('companies').innerHTML=data.companies.length?data.companies.map(c=>`<button class="result" type="button" data-id="${esc(c.id)}"><span><strong>${esc(c.name)}</strong><small>${esc(c.region)} · ${c.claimed?'대표 연결됨':c.registered?'대표 접속 전':'로그인 번호 미등록'}</small></span><span class="chevron" aria-hidden="true">›</span></button>`).join(''):'<p class="empty">등록된 업체가 없어요.</p>';for(const el of document.querySelectorAll('[data-id]'))el.onclick=()=>open(data.companies.find(c=>c.id===el.dataset.id));renderDeletions();}
+ async function load(){data=await api();$('login').hidden=true;$('content').hidden=false;$('companies').innerHTML=data.companies.length?data.companies.map(c=>`<button class="result" type="button" data-id="${esc(c.id)}"><span><strong>${esc(c.name)}</strong><small>${esc(c.region)} · ${c.claimed?'대표 연결됨':c.registered?'대표 접속 전':'로그인 번호 미등록'}</small></span><span class="chevron" aria-hidden="true">›</span></button>`).join(''):'<p class="empty">등록된 업체가 없어요.</p>';for(const el of document.querySelectorAll('[data-id]'))el.onclick=()=>open(data.companies.find(c=>c.id===el.dataset.id));renderDeletions();renderOwnerSetups();}
+ function renderOwnerSetups(){
+  const requests=data.ownerSetups||[];$('owner-setups').hidden=!requests.length;
+  $('owner-setups').querySelector('h2').textContent='대표 번호 연결 요청 '+requests.length+'건';
+  $('owner-setup-list').innerHTML=requests.map(r=>`<div class="review-request"><strong>${esc(r.companyName)}</strong><small>${esc(r.region)} · ${esc(r.name)} · ${esc(r.phone)}</small><button type="button" class="secondary" data-owner-review="${esc(r.id)}">대표 연결 검토</button></div>`).join('');
+  for(const button of document.querySelectorAll('[data-owner-review]'))button.onclick=()=>{
+   if(busy)return;const r=requests.find(r=>r.id===button.dataset.ownerReview);
+   $('review-title').textContent='대표 번호 연결';$('review-error').hidden=true;
+   $('review-body').innerHTML=`<p class="privacy-note"><strong>${esc(r.companyName)}</strong><br>${esc(r.region)}<br>신청자: ${esc(r.name)}<br>인증한 번호: ${esc(r.phone)}</p><p class="privacy-note">승인하면 이 번호의 계정으로 기존 출품·낙찰·정산 정보를 관리할 수 있어요.</p><label class="check"><input id="confirm-owner" type="checkbox"><span>업체 대표와 연결할 번호를 확인했습니다.</span></label><div class="request-actions"><button id="reject-owner" type="button" class="secondary">반려</button><button id="approve-owner" type="button" class="primary" disabled>대표로 연결</button></div>`;
+   $('review').showModal();$('confirm-owner').onchange=()=>{$('approve-owner').disabled=!$('confirm-owner').checked;};
+   for(const decision of ['approve','reject'])$(decision+'-owner').onclick=()=>run(async()=>{if(decision==='approve'&&!$('confirm-owner').checked)return;await api({action:decision+'-owner-setup',id:r.id,confirmCompanyId:r.companyId,confirmPhone:r.phone});$('review').close();await load();});
+  };
+ }
  function renderDeletions(){
   $('deletions').hidden=!data.deletions?.length;
   $('deletions').querySelector('h2').textContent='삭제 승인 대기 '+(data.deletions?.length||0)+'건';
@@ -29,6 +41,7 @@
   $('region').value=c?.region||'';$('region').disabled=!!c?.registered;
   $('phone').value=c?.loginPhone||'';$('phone').readOnly=!!c?.claimed;
   $('save').hidden=!!c?.claimed;$('editor-title').textContent=c?.claimed?'등록 정보':'업체 등록';
+  $('owner-setup-link').hidden=!c||!!c.claimed;if(c)$('owner-setup-link').href='/vendor-access.html?company='+encodeURIComponent(c.id);
   $('delete-company').hidden=!c;$('delete-company').onclick=()=>run(()=>review({action:'inspect-company-deletion',companyId:c.id}));
  }
  function open(c){

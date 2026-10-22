@@ -1153,6 +1153,15 @@ function createPlatformApi({
         smsProvider: notificationService?.provider, buyerAccount, notificationService,
         channelFor: async () => (await loadCatalog()).channels.find(c => Booking.enabled(c) && ['draft','active'].includes(c.status)),
         vendorsFor: () => vendorDirectory.list(Booking.CHANNEL_ID),
+        withOwnerSetup:(id,work)=>withMutationLock('channel:'+Booking.CHANNEL_ID,()=>vendorDirectory.lifecycle(Booking.CHANNEL_ID,id,async(profile,document,key)=>{
+            const vendor=await vendorDirectory.find(Booking.CHANNEL_ID,id),record=await repository.getRecord(Booking.CHANNEL_ID,'vendor',id);
+            return work(vendor,number=>{
+                const changes={phone:number,...(!vendor?.inquiryPhone?{inquiryPhone:number,inquiryPhoneMode:'shared'}:{})};
+                const rows=[{key:channelKey(Booking.CHANNEL_ID,'vendor',id),value:JSON.stringify({...record,...changes})}];
+                if(profile){const next=structuredClone(document),p=next.profiles.find(p=>p.id===profile.id);p.info={...p.info,...changes};p.revision++;p.updatedAt=new Date().toISOString();rows.push({key,value:JSON.stringify(next)});}
+                return rows;
+            });
+        })),
         saveLogo:saveVendorLogo,
         deletionContext:vendorLifecycle.inspect,reviewDeletion:vendorLifecycle.review,
         taskSummary:async id=>{

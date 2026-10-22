@@ -7,7 +7,7 @@ const PREFIX='/api/platform/vendor-access',ROOT='creo_vendor_access_v1::',STATE=
 const fail=(message,status=400)=>Object.assign(new Error(message),{status});
 const phone=value=>{const p=String(value||'').replace(/[\s-]/g,'').replace(/^(?:\+82|0082)0?/,'0');return /^010\d{8}$/.test(p)?p:'';};
 const equal=(a,b)=>{const x=Buffer.from(String(a||'')),y=Buffer.from(String(b||''));return x.length===y.length&&crypto.timingSafeEqual(x,y);};
-function createVendorAccess({repository,secret,origin='https://creok.onrender.com',now=Date.now,smsProvider,buyerAccount,channelFor,vendorsFor,profileFor,saveProfile,saveLogo,deletionContext,reviewDeletion,taskSummary,notificationService,existingVendorsFor}={}){
+function createVendorAccess({repository,secret,origin='https://creok.onrender.com',now=Date.now,smsProvider,buyerAccount,channelFor,vendorsFor,profileFor,saveProfile,saveLogo,deletionContext,reviewDeletion,taskSummary,notificationService,existingVendorsFor,withOwnerSetup}={}){
  const configured=String(secret||'').length>=32&&typeof repository.compareAndSwapRows==='function';
  const key=crypto.createHash('sha256').update('vendor-access:'+String(secret||'unconfigured')).digest();
  const digest=v=>crypto.createHmac('sha256',key).update(String(v)).digest('base64url');
@@ -47,7 +47,7 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
   return {regions:REGIONS,companies:(await vendorsFor()).filter(v=>v.active!==false).map(v=>{
    const c=state.companies.find(c=>c.id===v.id);
    return {id:v.id,name:v.name,region:REGIONS[regionForVendor(v)]||'',registered:!!c,claimed:!!c?.ownerId,loginPhone:c?.loginPhone||'',revision:c?.revision||0};
-  }),deletions:(state.deletions||[]).filter(r=>r.status==='pending').map(r=>({...r,name:state.companies.find(c=>c.id===r.companyId)?.name||'업체'}))};
+   }),ownerSetups:(state.ownerSetups||[]).filter(r=>r.status==='pending').map(({id,companyId,name,phone,companyName,region,createdAt})=>({id,companyId,name,phone,companyName,region,createdAt})),deletions:(state.deletions||[]).filter(r=>r.status==='pending').map(r=>({...r,name:state.companies.find(c=>c.id===r.companyId)?.name||'업체'}))};
  }
  async function preregister(body){
   const id=String(body.id||''),target=phone(body.loginPhone),region=regionIndex(body.region),name=String(body.name||'').trim();
@@ -108,12 +108,66 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
    const matches=await existingVendorsFor(phone(s.verifiedPhone));
    return matches.some(m=>m.channelId===token.channelId&&m.vendorId===token.vendorKey)?{role:'owner',kind:'phone',actorId:s.actorId}:null;
   }
-  if(token.channelId!=='national-cre')return null;
-  const state=(await read(STATE)).value||fresh(),company=member(state,s.actorId,token.vendorKey);
-  if(!company||!await activeVendor(company.id))return null;
-  if((company.members.find(m=>m.actorId===s.actorId)?.version||0)!==(token.membershipVersion||0))return null;
-  return {role:company.ownerId===s.actorId?'owner':'staff',actorId:s.actorId,companyId:company.id};
- }
+   if(token.channelId!=='national-cre')return null;
+   const state=(await read(STATE)).value||fresh(),company=member(state,s.actorId,token.vendorKey);
+   if(!company||!await activeVendor(company.id))return null;
+   if((company.members.find(m=>m.actorId===s.actorId)?.version||0)!==(token.membershipVersion||0))return null;
+   return {role:company.ownerId===s.actorId?'owner':'staff',actorId:s.actorId,companyId:company.id};
+  }
+  const ownerFingerprint=v=>digest(JSON.stringify([v.id,v.directoryId||'',v.name,phone(v.phone),regionForVendor(v),v.bankName||'',v.bankAccount||'',v.bankHolder||'']));
+  function connectOwner(state,v,s,name='대표'){
+   if(state.companies.some(c=>c.id===v.id))throw fail('업체 연결 상태가 변경됐어요. 목록을 다시 확인해 주세요.',409);
+   const region=regionForVendor(v);if(!Number.isInteger(region)||region<0)throw fail('업체 지역을 운영자에게 확인해 주세요.',409);
+   state.companies.push({id:v.id,name:v.name,region,loginPhone:s.verifiedPhone,ownerId:s.actorId,members:[{actorId:s.actorId,name}],revision:1,createdAt:now()});
+   for(const r of state.ownerSetups||[])if(r.companyId===v.id&&r.status==='pending'){r.status=r.actorId===s.actorId?'approved':'superseded';r.updatedAt=now();}
+   return {id:v.id,connected:true};
+  }
+  async function setupOwner(s,body){
+   if(!phone(s.verifiedPhone))throw fail('대표로 사용할 전화번호를 먼저 인증해 주세요.',403);
+   if(!withOwnerSetup)throw fail('대표 연결을 준비 중이에요. 잠시 후 다시 시도해 주세요.',503);
+   const id=String(body.companyId||'');
+   return withOwnerSetup(id,async v=>{
+    if(!v||v.active===false)throw fail('업체를 찾을 수 없어요. 목록을 다시 확인해 주세요.',404);
+    return mutate(state=>{
+     state.ownerSetups=state.ownerSetups||[];
+     const c=state.companies.find(c=>c.id===id),old=state.ownerSetups.find(r=>r.id===body.requestId);
+     if(body.action==='cancel'){
+      const r=state.ownerSetups.find(r=>r.id===body.id&&r.actorId===s.actorId&&r.companyId===id);
+      if(!r||!['pending','cancelled'].includes(r.status))throw fail('이미 처리된 요청이에요. 연결 상태를 다시 확인해 주세요.',409);
+      r.status='cancelled';r.updatedAt=now();return {id:r.id,status:r.status};
+     }
+     if(c?.ownerId===s.actorId&&!c.deletedAt)return {id,connected:true,duplicate:true};
+     if(c)throw fail('이미 대표 번호가 등록된 업체예요. 등록된 번호로 로그인해 주세요.',409);
+     if(body.action!=='request'||body.consent!==true)throw fail('대표 번호 연결에 동의해 주세요.',422);
+     if(!/^[a-f0-9-]{36}$/.test(body.requestId||''))throw fail('연결 화면을 다시 열어 주세요.',422);
+     if(old){if(old.actorId!==s.actorId||old.companyId!==id||old.phone!==s.verifiedPhone)throw fail('요청 정보가 변경됐어요. 연결 화면을 다시 열어 주세요.',409);return {id:old.id,status:old.status,duplicate:true};}
+     if(phone(v.phone)&&phone(v.phone)===s.verifiedPhone)return connectOwner(state,v,s);
+     const name=String(body.name||'').trim();if(!name||name.length>40)throw fail('운영자가 확인할 수 있는 대표자 이름을 입력해 주세요.',422);
+     const pending=state.ownerSetups.find(r=>r.companyId===id&&r.actorId===s.actorId&&r.status==='pending');
+     if(pending)return {id:pending.id,status:pending.status,duplicate:true};
+     if(state.ownerSetups.filter(r=>r.actorId===s.actorId&&r.status==='pending').length>=5)throw fail('대기 중인 연결 요청을 먼저 확인해 주세요.',429);
+     const r={id:body.requestId,companyId:id,actorId:s.actorId,phone:s.verifiedPhone,name,companyName:v.name,region:REGIONS[regionForVendor(v)]||'',fingerprint:ownerFingerprint(v),status:'pending',createdAt:now()};
+     state.ownerSetups.push(r);return {id:r.id,status:r.status};
+    });
+   });
+  }
+  async function reviewOwnerSetup(body){
+   if(!withOwnerSetup)throw fail('대표 연결을 준비 중이에요.',503);
+   const snapshot=(await read(STATE)).value||fresh(),request=(snapshot.ownerSetups||[]).find(r=>r.id===body.id);
+   if(!request)throw fail('연결 요청을 찾을 수 없어요. 목록을 새로고침해 주세요.',404);
+   return withOwnerSetup(request.companyId,async(v,contactRows)=>mutate((state,extra)=>{
+    const r=(state.ownerSetups||[]).find(r=>r.id===body.id),status=body.action==='approve-owner-setup'?'approved':'rejected';
+    if(r.status===status)return {status,duplicate:true};
+    if(r.status!=='pending')throw fail('이미 처리된 요청이에요. 목록을 새로고침해 주세요.',409);
+    if(status==='approved'){
+     if(!v||v.active===false||ownerFingerprint(v)!==r.fingerprint)throw fail('업체 정보가 변경됐어요. 요청을 반려한 뒤 다시 신청하도록 안내해 주세요.',409);
+     if(body.confirmCompanyId!==r.companyId||body.confirmPhone!==r.phone)throw fail('업체명과 연결할 번호를 다시 확인해 주세요.',422);
+     connectOwner(state,v,{actorId:r.actorId,verifiedPhone:r.phone},r.name);
+     if(!phone(v.phone))extra.push(...contactRows(r.phone));
+    }
+    r.status=status;r.updatedAt=now();return {status};
+   }));
+  }
  async function view(req){
   const s=await session(req),state=(await read(STATE)).value||fresh(),actor=s&&actorOf(state,s);
   const ready=Boolean(configured&&(existingVendorsFor||await channelFor()));
@@ -122,8 +176,10 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
   const records=await vendorsFor(),companies=state.companies.filter(c=>!c.deletedAt&&(member(state,s.actorId,c.id)||(!c.ownerId&&phone(s.verifiedPhone)&&c.loginPhone===phone(s.verifiedPhone)))).map(c=>{const v=records.find(v=>v.id===c.id&&v.active!==false),canClaim=!c.ownerId,role=canClaim||c.ownerId===actor.id?'owner':'staff';return v?{id:c.id,name:v.name,region:REGIONS[regionForVendor(v)]||'',role,canClaim,...profileStatus(v,role,state.requests.filter(r=>r.companyId===c.id&&r.status==='pending'))}:null;}).filter(Boolean);
   const requests=await Promise.all(state.requests.filter(r=>r.actorId===actor.id&&r.status==='pending'&&records.some(v=>v.id===r.companyId&&v.active!==false)).map(async r=>({id:r.id,companyId:r.companyId,name:records.find(v=>v.id===r.companyId)?.name||'업체',status:r.status,notificationStatus:r.notificationId?(await repository.getRecord('national-cre','notification',r.notificationId))?.status||'configuration_pending':'configuration_pending'})));
   const participations=existingVendorsFor&&phone(s.verifiedPhone)?await existingVendorsFor(phone(s.verifiedPhone)):[];
-  const requestResults=state.requests.filter(r=>r.actorId===actor.id&&['rejected','removed'].includes(r.status)&&!r.acknowledgedAt).slice(-20).reverse().map(r=>({id:r.id,name:records.find(v=>v.id===r.companyId)?.name||'업체',status:r.status}));
-  return {...base,authenticated:true,phone:s.verifiedPhone||actor.phone,phoneVerificationRequired:!!existingVendorsFor&&!phone(s.verifiedPhone),participations,csrfToken:s.csrfToken,companies,requests,requestResults};
+   const requestResults=state.requests.filter(r=>r.actorId===actor.id&&['rejected','removed'].includes(r.status)&&!r.acknowledgedAt).slice(-20).reverse().map(r=>({id:r.id,name:records.find(v=>v.id===r.companyId)?.name||'업체',status:r.status}));
+   requestResults.push(...(state.ownerSetups||[]).filter(r=>r.actorId===actor.id&&['rejected','superseded'].includes(r.status)&&!r.acknowledgedAt).slice(-20).reverse().map(r=>({id:r.id,name:r.companyName,status:r.status,kind:'owner-setup'})));
+   const ownerSetups=(state.ownerSetups||[]).filter(r=>r.actorId===actor.id&&r.status==='pending').map(({id,companyId,companyName,phone})=>({id,companyId,companyName,phone}));
+   return {...base,authenticated:true,phone:s.verifiedPhone||actor.phone,phoneVerificationRequired:!!existingVendorsFor&&!phone(s.verifiedPhone),participations,csrfToken:s.csrfToken,companies,requests,requestResults,ownerSetups};
  }
  async function proofFor(token,s,target,purpose){
   if(!valid(token))throw fail('연락처를 인증해 주세요.',422);
@@ -181,11 +237,11 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
    }
    if(route==='/search'&&method==='GET'){
     if(!s)throw fail('먼저 로그인해 주세요.',401);
-    const query=String(url.searchParams.get('q')||'').trim().slice(0,40),state=(await read(STATE)).value||fresh();
+    const query=String(url.searchParams.get('q')||'').trim().slice(0,40),selectedId=url.searchParams.get('id'),state=(await read(STATE)).value||fresh();
     const selectedRegion=url.searchParams.get('region'),selectedIndex=regionIndex(selectedRegion);
-    const list=(query||selectedIndex>=0)?(await vendorsFor()).filter(v=>v.active!==false&&companyName(v.name).includes(companyName(query))&&(!selectedRegion||regionForVendor(v)===selectedIndex)).map(v=>{
+    const list=(query||selectedIndex>=0||selectedId)?(await vendorsFor()).filter(v=>v.active!==false&&(!selectedId||v.id===selectedId)&&companyName(v.name).includes(companyName(query))&&(!selectedRegion||regionForVendor(v)===selectedIndex)).map(v=>{
      const c=state.companies.find(c=>c.id===v.id);
-     return {id:v.id,name:v.name,region:REGIONS[regionForVendor(v)]||'',connected:!!member(state,s.actorId,v.id),canClaim:!!c&&!c.ownerId&&!!phone(s.verifiedPhone)&&c.loginPhone===phone(s.verifiedPhone),canJoin:!!c?.ownerId};
+     return {id:v.id,name:v.name,region:REGIONS[regionForVendor(v)]||'',connected:!!member(state,s.actorId,v.id),canClaim:!!c&&!c.ownerId&&!!phone(s.verifiedPhone)&&c.loginPhone===phone(s.verifiedPhone),canJoin:!!c?.ownerId,ownerSetup:!c&&withOwnerSetup?(phone(v.phone)&&phone(v.phone)===phone(s.verifiedPhone)?'direct':'review'):''};
     }):[];
     json(res,200,{companies:list});return true;
    }
@@ -205,6 +261,7 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
     const actor=await actorFor('kakao:'+account.accountId,phone(account.verifiedPhone));await issueSession(req,res,actor,body.remember===true,account.verifiedPhone);return true;
    }
    if(!s)throw fail('다시 로그인해 주세요.',401);
+   if(route==='/owner-setup'){json(res,200,await setupOwner(s,body));return true;}
    if(route==='/logout'){await repository.upsertRows([row(ROOT+'session:'+s.id,{...s,revoked:true})]);json(res,200,{authenticated:false},{'Set-Cookie':[cookie(cookieName,'',0)]});return true;}
    if(route==='/register'){
     if(!await selfRegistrationAllowed())throw fail('사전 등록된 업체를 선택해 주세요.',403);
@@ -272,7 +329,7 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
     });json(res,200,result);return true;
    }
    if(route==='/request-result'){
-    const result=await mutate(state=>{const item=state.requests.find(r=>r.id===body.id&&r.actorId===s.actorId&&['rejected','removed'].includes(r.status));if(!item)throw fail('처리 결과를 찾을 수 없어요.',404);item.acknowledgedAt=item.acknowledgedAt||now();return {acknowledged:true};});json(res,200,result);return true;
+    const result=await mutate(state=>{const item=[...state.requests,...(state.ownerSetups||[])].find(r=>r.id===body.id&&r.actorId===s.actorId&&['rejected','removed','superseded'].includes(r.status));if(!item)throw fail('처리 결과를 찾을 수 없어요.',404);item.acknowledgedAt=item.acknowledgedAt||now();return {acknowledged:true};});json(res,200,result);return true;
    }
    if(route==='/remove-member'){
     const result=await mutate(state=>{
@@ -325,6 +382,7 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
  }
  async function assertNotification(notice){const state=(await read(STATE)).value||fresh(),id=notice.variables?.참여요청ID||notice.variables?.['#{참여요청ID}'],request=state.requests.find(r=>r.id===id),company=state.companies.find(c=>c.id===request?.companyId),owner=state.actors.find(a=>a.id===company?.ownerId);if(request?.status!=='pending'||company?.deletedAt||!await activeVendor(company?.id)||(company?.loginPhone||owner?.phone)!==notice.recipientPhone)throw Object.assign(fail('이미 처리된 참여 요청이에요.'),{code:'BUYER_LINK_INACTIVE'});}
  async function review(body){
+  if(['approve-owner-setup','reject-owner-setup'].includes(body.action))return reviewOwnerSetup(body);
   if(['inspect-company-deletion','admin-delete-company'].includes(body.action)){
    const id=String(body.companyId||''),snapshot=(await read(STATE)).value||fresh();
    const previous=(snapshot.deletions||[]).find(r=>r.id===body.requestId);
