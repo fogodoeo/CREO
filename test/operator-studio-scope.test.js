@@ -64,6 +64,15 @@ test('reauthentication retains the layout document and unsaved draft',async()=>{
  f.document.getElementById('login-form').dispatchEvent(new f.window.Event('submit',{cancelable:true}));await new Promise(setImmediate);
  assert.equal(f.document.getElementById('studio').hidden,false);assert.equal(frame.src,src);assert.equal(f.messages.at(-1).dirty,true);assert.match(f.document.getElementById('studio-error').textContent,/남아 있는 수정사항/);assert.deepEqual(f.writes,[]);
 });
+test('whole settings draft blocks navigation and activation without accepting stale or foreign settings messages',async()=>{
+ const f=await setup('?channel=national-cre-20261021&view=settings'),frame=f.document.getElementById('control-frame');
+ const draft={type:'creo-settings-draft',channelId:'national-cre-20261021',page:2,dirty:true,saving:false};
+ f.message({...draft,channelId:'other'});f.message(draft,{source:{}});f.message(draft,{origin:'https://foreign.invalid'});assert.equal(f.messages.at(-1).dirty,false);
+ f.message(draft);f.answer(false);f.document.querySelector('[data-view="layout-2"]').click();assert.match(frame.src,/view=settings/);
+ f.message({...draft,saving:true});f.answer(true);f.document.querySelector('[data-view="layout-2"]').click();f.document.getElementById('channel-switch-button').click();assert.match(frame.src,/view=settings/);assert.deepEqual(f.writes,[]);
+ f.message({...draft,dirty:false,saving:false});f.document.querySelector('[data-view="layout-2"]').click();assert.match(frame.src,/view=layout-2/);
+ f.message(draft);assert.equal(f.messages.at(-1).dirty,false);
+});
 test('content settings open a prepared national round without falling back or offering archived broadcasts',async()=>{
  const source=fs.readFileSync(require.resolve('../public/auction-control.html'),'utf8'),body=source.slice(source.indexOf('async function loadCatalog()'),source.indexOf('    async function load(){'));
  const channels=[{id:'national-cre',name:'경기편',status:'active'},{id:'national-cre-20261021',name:'전라·충청편',status:'draft',nationalRound:{parentId:'national-cre'}},{id:'closed',name:'이전 회차',status:'archived'},{id:'disabled',status:'active',features:{broadcast:false}}];

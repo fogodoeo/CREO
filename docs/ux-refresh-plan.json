@@ -282,11 +282,15 @@
         "배치 수정 상태를 방송 관리자와 통합 관리 메뉴에 전달하고 페이지·회차 이동 취소, 저장 중 이동 차단, 재로그인 후 초안 보존 지원",
         "문구 설정을 저장해도 미저장 배치를 자동 송출하지 않고 미리보기 새로고침 후 초안을 유지",
         "송출 전환 실패 후 현재 송출 날짜를 유지하면서 오류와 재시도 경로를 표시; 중복 전환 요청 차단",
-        "예정 회차의 문구 설정은 방송 가능한 준비 회차를 포함해 조회하여 잘못된 로그인 화면으로 되돌아가던 문제 수정"
+        "예정 회차의 문구 설정은 방송 가능한 준비 회차를 포함해 조회하여 잘못된 로그인 화면으로 되돌아가던 문제 수정",
+        "전체·페이지별 문구 설정 저장은 실제 수정한 표시 항목만 전송하여 오래된 개체·경매 상태·배치를 다시 저장하지 않음",
+        "문구 수정도 관리자 이동 보호에 포함하고 저장 중 추가 입력·실패 후 재시도·재로그인·배너 목록 새로고침에서 유지; 즉시 업체 태그 저장과 일반 저장은 순서대로 처리",
+        "저장 진행·미저장·지속 오류·재시도 안내를 표시하고 저장 전후 늦게 도착한 작업 자료가 확정 문구를 덮어쓰지 않게 차단",
+        "실제 키보드 저장으로 문구·배치 각각 반영, 페이지 재진입 유지, 선택 회차 송출 미리보기 진입과 320px 실패·재시도 확인"
       ],
       "remaining": [
-        "방송 편집의 실제 저장→페이지 이동→재진입·실패 재시도와 송출 링크 열기 최종 확인; 자동화의 iframe 확인창 제어가 멈춰 중간 이후 실제 조작 검증은 남아 있음",
-        "전체 설정과 문구·배너 입력의 초안 보호·저장 진행·오류 안내 및 중첩 스크롤 검토; 이번 초안 보호는 배치 편집에 적용",
+        "배너·로고·영상 등록 창 자체의 미저장 파일/입력 보호와 오류 안내 검토; 문구와 배치 초안 보호는 완료",
+        "전체 설정의 중복 안내·추가 진행자·중첩 스크롤을 더 간단한 구성으로 정리",
         "방송 편집 키보드 전체 이동·200% 확대·화면 낭독·다른 관리자에서 전환된 실제 송출 상태 갱신 검토",
         "로컬 데스크톱 경매 조작과 방송 도구 진입 연결 검토",
         "핀볼 다른 테마·200% 확대·전체 키보드 흐름 및 배포 검증"
@@ -305,7 +309,13 @@
         "Initial full run: 11 localhost/network permission failures and 2 old source-structure expectations. Updated the affected fixtures/expectations, reran with isolated localhost access, and obtained a clean full pass after the prepared-round fix.",
         "CUA real local main: compact studio controls rendered; editing X=45 shows pending-save state and navigating to P2 opens the discard confirmation. Prepared 10/21 content settings now load with populated fields instead of a login overlay. Confirmation dismissal and subsequent physical save clicks were not verified because browser control stalled; unit tests cover these state transitions.",
         "CUA real 320px iframe: selected 10/21 and actual live 10/19 visible, status rect bottom 137.5 within header bottom 148.5 after fixing compressed auto grid rows; studio document clientWidth=scrollWidth=320, editor document clientWidth=scrollWidth=290, save status display=block. Rendered secondary text #a4afbf on #101319 measures 8.38:1. Browser viewport override did not change the observed 1280px size and was reset; narrow evidence uses a real 320px iframe.",
-        "../admin-home-review-20261022/studio-ux-full-final.log; ../admin-home-review-20261022/studio-ux-check.log; ../admin-home-review-20261022/studio-ux-focused-final.log; ../admin-home-review-20261022/studio-ux-320.png"
+        "../admin-home-review-20261022/studio-ux-full-final.log; ../admin-home-review-20261022/studio-ux-check.log; ../admin-home-review-20261022/studio-ux-focused-final.log; ../admin-home-review-20261022/studio-ux-320.png",
+        "Settings risk: high (client write payload and draft ordering; existing broadcast-state API, no persistence or desktop changes). npm run check: pass. npm test -- --test-concurrency=4: 1692 pass, 0 fail. Initial full run had one old extracted status-function fixture missing the new settings flags; fixture corrected and full suite rerun cleanly.",
+        "test/studio-settings-ui.test.js: 7 pass. Actual page read/save code plus model covers changed-field allowlist, full/compact scopes, BASIC shared ticker, newer auction/layout preservation, duplicate saves, failure/retry, edit-back-to-baseline during save, asset reload, immediate-toggle order, authentication relay, round reset and stale workspace response boundaries. Added API regression advances the auction through auction-transition before saving stale settings, concurrently updates a separate caption, restarts the API, and verifies item/notification/channel isolation.",
+        "CUA isolated real UI: previous X=45 and host name survive P2/P1 navigation. New whole-settings save updates name, then compact name save preserves pending X=46; explicit layout save commits it. The actual 1P preview link opens the selected 10/21 round and renders the saved host. Current live 10/19 is unchanged.",
+        "CUA real 320px iframe: local proxy injects one HTTP 503; entered host name remains, persistent error receives focus, and keyboard retry saves successfully. Re-entering layout shows saved name and X=45 (before later explicit X=46 change). Inner clientWidth=scrollWidth=305. Rendered error #ffe1e1 on #351e26 contrast 12.53:1, visible 2px focus; error and save button remain visible. Full keyboard, 200% zoom and screen-reader coverage remain unverified.",
+        "CUA program directory recheck: one national program, five date filters (10/14, 10/19, 10/21, 10/26, 10/28), all five synthetic vendors with date-specific work links. No production data or real notifications used; no deployment.",
+        "../admin-home-review-20261022/studio-settings-check.log; ../admin-home-review-20261022/studio-settings-full-final.log; ../admin-home-review-20261022/studio-settings-error-320.png; ../admin-home-review-20261022/program-directory-20261023.png"
       ],
       "deployed": false
     },

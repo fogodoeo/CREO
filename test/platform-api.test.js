@@ -91,6 +91,24 @@ test('P2 text sizing persists through partial saves and restart without moving t
  assert.equal((await call(api,'GET','/api/platform/channels/beta/broadcast?page=2',null,'')).json().state.layoutPlacements?.['p2-info'],undefined);
 });
 
+test('a stale settings screen saves its changed text after the auction advances without replaying the old item',async()=>{
+ const repository=new MemoryRepository();let api=createPlatformApi({repository});
+ const path='/api/platform/channels/alpha';
+ for(const [index,id] of ['first','second'].entries())await repository.upsertRecord('alpha','item',{id,name:id,lotNumber:index+1,status:'waiting'});
+ await repository.upsertRecord('alpha','broadcast',{id:'state',mode:'live',activeItemId:'first',hostName1:'원래 진행자',page2Ticker:'원래 자막'});
+ const oldState=(await call(api,'GET',path+'/broadcast?page=2',null,'')).json().state;
+ const draft=require('../public/studio-settings-draft').create({fields:['hostName1','page2Ticker'],write:async patch=>{const response=await call(api,'PUT',path+'/broadcast-state',patch);assert.equal(response.status,200);return response.json()}});
+ draft.receive(oldState);draft.capture({...oldState,hostName1:'새 진행자'});
+ const transition=await call(api,'PUT',path+'/auction-transition',{itemId:'second',mode:'live',status:'live'});assert.equal(transition.status,200,JSON.stringify(transition.json()));
+ const items=structuredClone(await repository.listRecords('alpha','item'));
+ await Promise.all([draft.save(),call(api,'PUT',path+'/broadcast-state',{page2Ticker:'다른 화면의 새 자막'})]);
+ await draft.save();api=createPlatformApi({repository});
+ const saved=(await call(api,'GET',path+'/broadcast?page=2',null,'')).json();
+ assert.equal(saved.state.activeItemId,'second');assert.equal(saved.state.mode,'live');assert.equal(saved.state.hostName1,'새 진행자');assert.equal(saved.state.page2Ticker,'다른 화면의 새 자막');
+ assert.deepEqual(await repository.listRecords('alpha','item'),items);assert.equal((await repository.listRecords('alpha','notification')).length,0);
+ assert.notEqual((await call(api,'GET','/api/platform/channels/beta/broadcast?page=2',null,'')).json().state.hostName1,'새 진행자');
+});
+
 test('broadcast projects submitted hatch dates through refresh, next item, channel switch and restart without writing records', async () => {
     const repository = new MemoryRepository();
     await repository.upsertRecord('alpha', 'item', { id:'dated', name:'A01', status:'live', attributes:{checklist:'gender:F|weight:28', entry_traits:{hatchDate:'2026-07-14'}} });

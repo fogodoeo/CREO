@@ -55,6 +55,6 @@ test('BASIC P1 and P2 share ticker content and render the NOTICE badge', () => {
     assert.match(live, /c\.broadcastProfile==='basic-dice'\?'NOTICE'/);
     assert.match(live, /function pageTicker\(c,s,pageNo\)/);
     assert.match(control, /P1·P2 공통 순환 자막/);
-    assert.match(control, /next\.page2Ticker=next\.page1Ticker/);
+    assert.match(control, /form\.elements\.page2Ticker\.value=text/);
     assert.match(control, /syncBasicTickerFields\(event\.target\.name\)/);
 });

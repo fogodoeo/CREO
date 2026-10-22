@@ -586,7 +586,7 @@ test('new CDCUP overlays and shipping retain compatibility with the established 
     assert.match(control, /name="page2BiddersOpacity"/);
     assert.match(control, /function ensureUnifiedLayoutSettings/);
     assert.match(control, /위치·크기·전체 투명도는 위 배치 화면에서 조절/);
-    assert.match(control, /next\.page2ItemFontSize=33;next\.page2BiddersFontSize=20/);
+    assert.doesNotMatch(control, /next\.page2ItemFontSize=33;next\.page2BiddersFontSize=20/);
     assert.match(live, /function pageTwoBidders/);
     assert.match(live, /function bidAmountLabel\(value\)\{const amount=Number\(value\)\|\|0;/);
     assert.match(live, /bidLog:\[\{name:'입찰자',region:'지역',amount:10\}\]/);
@@ -985,7 +985,7 @@ test('broadcast control manages reusable banners, sponsors, and vendor logos', (
     assert.match(control, /name="page2TickerInterval"/);
     assert.match(control, /video\/quicktime/);
     assert.match(control, /function updatePositionWarnings/);
-    assert.match(control, /auction-transition/);
+    assert.doesNotMatch(control, /auction-transition/);
     assert.match(live, /function scoreboardRows/);
     assert.match(control, /seedCrewartAssets/);
     assert.match(live, /CREWART_DEFAULT_ASSETS/);
@@ -1107,7 +1107,8 @@ test('broadcast setup keeps live operations separate and removes dead legacy con
     assert.match(control, /집계 화면 <small>3P<\/small>/);
     assert.match(control, /변경 저장/);
     assert.match(control, /compactPageFields/);
-    assert.match(control, /if\(compactMode\)\{saved=await CreoPlatform\.api\(`channels\/\$\{encodeURIComponent\(requestedChannelId\)\}\/broadcast-state`/);
+    assert.match(control, /async write\(patch\)[\s\S]{0,160}\/broadcast-state`/);
+    assert.doesNotMatch(control, /CreoPlatform\.api\('active-channel'/);
     assert.match(control, /page2ProgressOn/);
     assert.match(workspace, /id="live-panel"/);
     assert.match(workspace, /id="live-item"/);

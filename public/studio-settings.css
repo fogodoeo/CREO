@@ -1,0 +1,16 @@
+/* Content settings share the studio's dark palette and have their own save state. */
+.settings-status{margin:0 0 8px;color:#b8c2d1;font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+.settings-error{margin:0 0 10px;padding:10px;border:1px solid #ec9b9b;border-radius:8px;background:#351e26;color:#ffe1e1;font-size:14px;line-height:1.5;overflow-wrap:anywhere}
+.settings-error[hidden]{display:none}
+.save:disabled{cursor:default;background:#313a47;color:#b8c2d1}
+.save:focus-visible,.settings-error:focus-visible{outline:3px solid #91b4ff;outline-offset:3px}
+.controls{scroll-padding-bottom:180px}.panel{padding-bottom:180px}
+.section small,.hint{color:#a4afbf;font-size:12px;line-height:1.5}
+.section-head{align-items:flex-start;gap:12px}.section-head small{text-align:right}
+.field label{color:#b8c2d1;font-size:13px}.field input,.field select,.field textarea{font-size:16px}
+.switch{font-size:14px;min-height:44px}.page-tab{color:#b8c2d1;font-size:14px}.page-tab small{color:inherit;font-size:11px}
+.page-tab:focus-visible,.switch:has(input:focus-visible){outline:3px solid #91b4ff;outline-offset:2px}
+html.compact .panel{padding-bottom:20px}
+html.compact .savebar{background:#0e1116}
+@media(max-width:440px){.section-head{display:block}.section-head small{display:block;margin-top:5px;text-align:left}.section h2{font-size:15px}.savebar{padding:10px 16px}html.compact .panel{padding:12px 16px 20px}html.compact .savebar{padding:10px 16px}}
+@media(prefers-reduced-motion:reduce){.toast{transition:none;transform:none}}
