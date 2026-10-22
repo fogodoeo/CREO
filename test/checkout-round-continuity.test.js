@@ -82,8 +82,11 @@ test('logged-in national company can revisit its prepared rounds without losing 
  const page=await get(id);assert.equal(page.status,200,page.body);assert.equal(page.json().summary.itemCount,1);assert.equal(page.json().vendor.id,company);
  assert.equal((await get('national-cre')).status,200);
  assert.equal((await get('creyon')).status,401);
+ const list=()=>f.call(owner,'GET','/api/platform/vendor-checkout/rounds?token='+token+'&event='+id);
+ assert.equal((await list()).status,200);assert.ok((await list()).json().rounds.some(r=>r.channelId===id));
  f.restart();assert.equal((await get(id)).status,200);
- await f.post(owner,'logout',{});assert.equal((await get(id)).status,401);
+ assert.equal((await list()).status,200);
+ await f.post(owner,'logout',{});assert.equal((await get(id)).status,401);assert.equal((await list()).status,401);
 });
 test('past ownership never resolves from a present-day nickname while the parent channel remains active',async t=>{
  let lookups=0;const f=await fixture({apiOptions:{bandMembership:{async resolveMemberIdentity(){lookups++;return {phone:'01000000003'}}}}});t.after(()=>f.close());

@@ -21,6 +21,8 @@
 .auction-photo-picker>span{white-space:nowrap}@media(max-width:360px){.auction-photo-tools{gap:8px}.auction-photo-picker{font-size:12px;gap:5px;padding-left:6px}.auction-photo-picker img{width:28px;height:32px}}
 .parent-photo-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .parent-photo{min-width:0;position:relative}
+.photo-pending{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px;padding:8px 12px;border:1px solid #e6b8b8;border-radius:8px;background:#fff6f6;color:#982525;font-size:14px;line-height:1.5}
+.photo-pending p{margin:0;overflow-wrap:anywhere}.photo-pending button{flex-shrink:0;min-height:44px;padding:8px 4px;color:inherit;text-decoration:underline;text-underline-offset:3px}
 .parent-name-field{display:grid;gap:4px;margin-top:8px;color:var(--muted,#626d7b);font-size:12px}
 .parent-name-field input{box-sizing:border-box;width:100%;min-width:0;min-height:44px;padding:8px;border:1px solid #c7ced8;border-radius:8px;background:#fff;color:#202631;font:inherit;font-size:16px}
 .parent-name-field input:focus-visible{outline:3px solid #245bd4;outline-offset:2px}

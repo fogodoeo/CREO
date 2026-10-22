@@ -4,6 +4,7 @@ const crypto = require('node:crypto');
 const AuctionRounds = require('./auction-rounds');
 const OperationRounds = require('./operation-rounds');
 const CheckoutRounds = require('./checkout-rounds');
+const {listVendorSettlementRounds}=require('./vendor-settlement-rounds');
 const NationalRounds = require('./national-round-operations');
 const PinballWinners = require('./roulette-app/src/drawWinners');
 const { refreshShippingRate } = require('./shipping-rate-refresh');
@@ -3756,6 +3757,13 @@ function createPlatformApi({
                 }
                 replyJson(res, 200, await vendorStatusPayload(context));
                 return true;
+            }
+
+            if (segments.length === 2 && segments[0] === 'vendor-checkout' && segments[1] === 'rounds' && method === 'GET') {
+                const credential=await resolveVendorCheckoutCredential({code:url.searchParams.get('code'),token:url.searchParams.get('token')});
+                const context=await vendorCheckoutContext(credential,url.searchParams.get('event')||'');
+                if(!context)throw buyerInputError('업체 전용 링크를 다시 확인해 주세요.',401);
+                replyJson(res,200,{rounds:await listVendorSettlementRounds(context,{resolve:vendorCheckoutContext,settlement:organizerShippingSettlement})},{'Cache-Control':'no-store, private'});return true;
             }
 
             if (segments.length === 2 && segments[0] === 'vendor-checkout' && segments[1] === 'revision' && method === 'GET') {

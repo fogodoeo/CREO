@@ -1,0 +1,5 @@
+.checkout-round-switch .settlement-current-round{margin:0;font-size:16px;font-weight:650;color:#202632;line-height:1.5;overflow-wrap:anywhere}
+.checkout-round-switch p[role=status]{margin:8px 0 0;color:#626d7b;font-size:14px;line-height:1.5}
+.checkout-round-switch .settlement-round-retry{min-height:44px;padding:8px 0;border:0;background:none;color:#245bd4;font-size:14px;font-weight:600;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.checkout-round-switch select{font-size:16px;min-height:48px;width:100%;max-width:100%}
+.checkout-round-switch button:focus-visible,.checkout-round-switch select:focus-visible{outline:3px solid #245bd4;outline-offset:3px}

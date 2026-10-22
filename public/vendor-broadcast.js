@@ -40,11 +40,31 @@
   function fields(){const f=$('#entry-step-form');if(!f)return draft;const data=Object.fromEntries(new FormData(f));return {...draft,sex:data.sex||'',weight:String(data.weight||''),hatchDate:data.hatchDate||'',note:data.note||'',parents:Object.fromEntries(['sire','dam'].map(side=>[side,{...draft.parents?.[side],name:data[side+'-name']??draft.parents?.[side]?.name??''}]))}}
  function capture(){if($('#bulk-entry-form')){captureBulk();return}if(!editable()||!draft)return;draft=fields();dirty=true;recovery[draft.id]={...draft};persistRecovery().catch(e=>{$('#step-error').textContent=e.message})}
  function photo(id){return state.entryState.media.find(m=>m.id===id)||Store.getState().media.find(m=>m.id===id)}
+ function photoStatus(id,readonly,label,index){
+  if(readonly||!photo(id)?.pending)return '';
+  return `<div class="photo-pending" role="status"><p>${esc(label)}을 아직 전송하지 못했어요.</p><button type="button" data-action="retry-draft-photo" data-photo-id="${esc(id)}" ${Number.isInteger(index)?`data-index="${index}"`:''} aria-label="${esc(label)} 다시 전송">다시 전송</button></div>`;
+ }
+ async function retryDraftPhoto(id,index){
+  const bulk=Number.isInteger(index)&&!!bulkDrafts;
+  if(bulk?!bulkEditable(index):!editable())return;
+  const row=bulk?bulkDrafts[index]:draft;
+  if(!row||![...(row.photoIds||[]),...Object.values(row.parents||{}).map(p=>p.photoId)].includes(id))return;
+  capture();const scroll=$('.bulk-scroll')?.scrollTop;let failure;
+  try{await Store.send({type:'retry-photo',id})}catch(error){failure=error}
+  state.entryState.media=Store.getState().media;
+  if(bulk){openBulk();$(`[data-bulk-row="${index}"] details`).open=true;$('.bulk-scroll').scrollTop=scroll;}
+  else openDate(selected,slot);
+  const target=bulk?$(`[data-bulk-row="${index}"]`):sheet;
+  target.querySelector('[data-action="retry-draft-photo"]')?.focus();
+  if(failure)throw failure;
+  target.querySelector('input[type=file]')?.focus();
+  message('사진을 전송했어요. 입력창에서 저장을 완료해 주세요.');
+ }
  function photoBlock(readonly){
    return `<fieldset class="parent-photo-fields"><legend>부모정보 <span class="muted">(선택)</span></legend><div class="parent-photo-grid">${[['sire','부 개체'],['dam','모 개체']].map(([side,label])=>{
    const id=draft.parents?.[side]?.photoId,m=id&&photo(id),url=m&&(m.thumbnailUrl||m.url)||photoUrls.get(id);
    return `<div class="parent-photo">${url?`<label class="photo-picker has-photo"><img src="${esc(url)}" alt="${label} 사진"><span>${label}${readonly?'':'<small>사진 교체</small>'}</span>${readonly?'':`<input type="file" accept="image/*" data-photo="${side}" aria-label="${label} 사진 교체">`}</label>${readonly?'':`<button class="photo-remove" type="button" data-action="remove-photo" data-side="${side}" aria-label="${label} 사진 삭제"><span aria-hidden="true">×</span></button>`}`:`<label class="photo-picker"><span class="photo-add" aria-hidden="true">＋</span><span>${label}<small>${readonly?'미등록':'사진 추가'}</small></span>${readonly?'':`<input type="file" accept="image/*" data-photo="${side}" aria-label="${label} 사진 추가">`}</label>`}${!readonly&&removed.has(draft.id+side)?`<button class="photo-undo" type="button" data-action="undo-photo" data-side="${side}">삭제 취소</button>`:''}<label class="parent-name-field"><span>${label} 이름</span><input name="${side}-name" maxlength="40" value="${esc(draft.parents?.[side]?.name||'')}" ${readonly?'readonly':''}></label></div>`;
-  }).join('')}</div></fieldset>`;
+  }).join('')}</div>${['sire','dam'].map(side=>photoStatus(draft.parents?.[side]?.photoId,readonly,side==='sire'?'부 개체 사진':'모 개체 사진')).join('')}</fieldset>`;
  }
  function setBusy(value){busy=value;sheet.querySelectorAll('button').forEach(el=>el.disabled=value);const scroll=sheet.querySelector('.entry-step-scroll');if(scroll)scroll.inert=value;$('#refresh').disabled=value}
  function auctionItem(id,channelId){return auctionItems().find(item=>item.id===id&&(item.channelId||'national-cre')===(channelId||'national-cre'))}
@@ -111,7 +131,7 @@
  }
   function roundCards(){
    const rounds=CreoVendorTasks.vendorBroadcasts(state),upcoming=rounds.filter(r=>!r.past),past=rounds.filter(r=>r.past&&(r.reservation||r.count)).reverse();
-   const card=r=>`<article class="vendor-round-card" aria-label="${esc(dateLabel(r.date)+' '+r.region)}"><p class="round-eyebrow">${r.past?'지난 방송':'내 방송일'}</p><h2>${esc(dateLabel(r.date))}</h2><p class="round-region">${esc(r.region)}편 · 오후 8시</p><p class="round-status">${r.assigned?'경매 편성 완료 · '+r.count+'마리':r.complete?'출품 접수 완료 · '+r.submitted+'마리':r.needsChanges?'수정할 개체가 있어요':r.reservation?r.submitted+' / 4마리 접수 · 작성 중':r.canStart?'출품할 개체 4마리를 등록해 주세요.':'접수 일정 확인이 필요해요.'}</p><button type="button" class="primary ${!r.complete&&!r.past?'registration-task':''}" data-date="${r.date}">${r.assigned?'출품 개체 보기':r.complete?'등록한 개체 보기·수정':r.reservation?'개체 등록 이어하기':r.canStart?'개체 등록 시작':'방송 정보 보기'}</button>${r.count?`<button type="button" class="parent-task" data-date="${r.date}" data-photos="true"><span><strong>부모 사진·이름 ${r.past?'보기':'등록'}</strong><small>${r.missingSire||r.missingDam?`부 사진 ${r.missingSire}마리 · 모 사진 ${r.missingDam}마리 미등록`:'부모 사진 등록 완료'}</small></span><span aria-hidden="true">›</span></button>`:''}</article>`;
+   const card=r=>`<article class="vendor-round-card" aria-label="${esc(dateLabel(r.date)+' '+r.region)}"><p class="round-eyebrow">${r.past?'지난 방송':'내 방송일'}</p><h2>${esc(dateLabel(r.date))}</h2><p class="round-region">${esc(r.region)}편 · 오후 8시</p><p class="round-status">${r.assigned?'경매 편성 완료 · '+r.count+'마리':r.complete?'출품 접수 완료 · '+r.submitted+'마리':r.needsChanges?'수정할 개체가 있어요':r.reservation?r.submitted+' / 4마리 접수 · 작성 중':r.canStart?'출품할 개체 4마리를 등록해 주세요.':'접수 일정 확인이 필요해요.'}</p><button type="button" class="primary ${!r.complete&&!r.past?'registration-task':''}" data-date="${r.date}"${r.canStart&&!r.reservation&&!r.assigned?' data-start-registration="true"':''}>${r.assigned?'출품 개체 보기':r.complete?'등록한 개체 보기·수정':r.reservation?'개체 등록 이어하기':r.canStart?'개체 등록 시작':'방송 정보 보기'}</button>${r.count?`<button type="button" class="parent-task" data-date="${r.date}" data-photos="true"><span><strong>부모 사진·이름 ${r.past?'보기':'등록'}</strong><small>${r.missingSire||r.missingDam?`부 사진 ${r.missingSire}마리 · 모 사진 ${r.missingDam}마리 미등록`:'부모 사진 등록 완료'}</small></span><span aria-hidden="true">›</span></button>`:''}</article>`;
    return `<section class="my-broadcasts" aria-label="내 출품 관리">${upcoming.map(card).join('')||(!past.length?'<p class="vendor-empty">예정된 방송이 없어요. 전체 방송 달력에서 일정을 확인해 주세요.</p>':'')}${past.length?`<details class="vendor-secondary" ${upcoming.length?'':'open'}><summary>지난 출품 내역 · ${past.length}회</summary>${past.map(card).join('')}</details>`:''}</section>`;
   }
  function renderInbound(){window.CreoInbound?.render({state,month,redraw:renderCalendar,openDate,save:async(carrier,originId)=>{state=await request({type:'inbound-origin',carrier,originId,expectedVersion:state.version})}})}
@@ -134,6 +154,13 @@
    if(!state||e.status===401){state=null;$('#calendar-content').innerHTML='';$('.channel-vendor-nav').hidden=true;}
    if(e.status===401)$('#load-error').insertAdjacentHTML('beforeend',' <a class="text" href="/vendor-access.html">다시 로그인</a>');
   }finally{$('#refresh').disabled=false}
+ }
+ function startRegistration(date){
+  if(busy||photoBusy)return;
+  const d=state.dates.find(d=>d.date===date);if(!d)return;
+  openDate(date);
+  if(reservation(date)||d.maxQuantityAvailable<4)return;
+  return run(async()=>{state=await request({type:'reserve',date,quantity:4});openDate(date);renderCalendar();sheet.querySelector('[name="sex-0"]')?.focus();});
  }
  function openDate(date,index){
   selected=date;const d=state.dates.find(d=>d.date===date),r=reservation(date);if(!d)return;
@@ -160,7 +187,7 @@
   return `<div class="bulk-photo-grid">${[['animal','개체'],['sire','부 개체'],['dam','모 개체']].map(([side,label])=>{
    const id=side==='animal'?row.photoIds?.[0]:row.parents?.[side]?.photoId,m=id&&photo(id),url=m&&(m.thumbnailUrl||m.url)||photoUrls.get(id);
    return `<div class="parent-photo"><label class="photo-picker ${url?'has-photo':''}">${url?`<img src="${esc(url)}" alt="개체 ${i+1} ${label} 사진">`:''}<span>${label}<small>${readonly?(url?'등록됨':'미등록'):(url?'사진 교체':'사진 추가')}</small></span>${readonly?'':`<input type="file" accept="image/jpeg,image/png,image/webp" data-bulk-photo="${side}" data-index="${i}" aria-label="개체 ${i+1} ${label} 사진 ${url?'교체':'추가'}">`}</label>${url&&!readonly?`<button type="button" class="photo-remove" data-action="bulk-remove-photo" data-index="${i}" data-side="${side}" aria-label="개체 ${i+1} ${label} 사진 삭제"><span aria-hidden="true">×</span></button>`:''}${removed.has(row.id+side)&&!readonly?`<button class="photo-undo" type="button" data-action="bulk-undo-photo" data-index="${i}" data-side="${side}">삭제 취소</button>`:''}${side==='animal'?'':`<label class="parent-name-field"><span>${label} 이름</span><input name="${side}-name-${i}" aria-label="개체 ${i+1} ${label} 이름" maxlength="40" value="${esc(row.parents?.[side]?.name||'')}" ${readonly?'readonly':''}></label>`}</div>`;
-  }).join('')}</div>`;
+  }).join('')}</div>${[['animal','개체'],['sire','부 개체'],['dam','모 개체']].map(([side,label])=>photoStatus(side==='animal'?row.photoIds?.[0]:row.parents?.[side]?.photoId,readonly,`개체 ${i+1} ${label} 사진`,i)).join('')}`;
  }
   function bulkDetails(row,i,readonly){
   const photos=(row.photoIds?.length||0)+['sire','dam'].filter(side=>row.parents?.[side]?.photoId).length;
@@ -276,10 +303,11 @@
  });
  document.addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b||busy||photoBusy)return;
-   if(b.dataset.date){const r=reservation(b.dataset.date),index=Math.max(0,r?.entries.findIndex(e=>e&&['draft','submitted','changes_requested'].includes(e.status))??0);if(b.dataset.photos&&r?.entries[index]?.status==='submitted')editingSubmitted.add(r.entries[index].id);openDate(b.dataset.date);if(b.dataset.photos){const details=sheet.querySelector(`[data-bulk-row="${index}"] .bulk-details`);if(details){details.open=true;details.querySelector('summary')?.focus()}else sheet.querySelector('[data-auction-parent]')?.focus()}return}
+   if(b.dataset.date){if(b.dataset.startRegistration){startRegistration(b.dataset.date);return}const r=reservation(b.dataset.date),index=Math.max(0,r?.entries.findIndex(e=>e&&['draft','submitted','changes_requested'].includes(e.status))??0);if(b.dataset.photos&&r?.entries[index]?.status==='submitted')editingSubmitted.add(r.entries[index].id);openDate(b.dataset.date);if(b.dataset.photos){const details=sheet.querySelector(`[data-bulk-row="${index}"] .bulk-details`);if(details){details.open=true;details.querySelector('summary')?.focus()}else sheet.querySelector('[data-auction-parent]')?.focus()}return}
   if(b.dataset.month){const months=[...new Set(state.dates.map(d=>d.date.slice(0,7)))],next=months[months.indexOf(month)+Number(b.dataset.month)];if(next){month=next;renderCalendar()}return}
   if(b.dataset.slot!==undefined){run(async()=>{await commit(false);openDate(selected,Number(b.dataset.slot))});return}
   const action=b.dataset.action;
+  if(action==='retry-draft-photo'){run(()=>retryDraftPhoto(b.dataset.photoId,b.dataset.index===undefined?undefined:Number(b.dataset.index)));return}
   if(action==='auction-photo-refresh'){run(async()=>{state=await request();auctionPhotoPending=null;for(const row of auctionNameDrafts.values()){const item=auctionItem(row.itemId,row.itemChannelId);if(item)row.expectedUpdatedAt=item.updatedAt;}refreshAuctionPhotos();$('#step-error').textContent=''});return}
   if(action==='auction-retry-photo'){auctionPhotoItem=auctionItem(auctionPhotoPending.itemId,auctionPhotoPending.itemChannelId);run(()=>saveAuctionParent(auctionPhotoPending.side,auctionPhotoPending));return}
   if(action==='auction-remove-photo'||action==='auction-undo-photo'){
@@ -303,7 +331,7 @@
   if(action==='close'){close();return}
   if(action==='remove-photo'||action==='undo-photo'){run(async()=>{capture();const key=draft.id+b.dataset.side;if(action==='remove-photo'){removed.set(key,draft.parents[b.dataset.side]);draft.parents[b.dataset.side]={...draft.parents[b.dataset.side],photoId:''}}else{draft.parents[b.dataset.side]={...draft.parents[b.dataset.side],photoId:removed.get(key)?.photoId||''};removed.delete(key)}recovery[draft.id]=structuredClone(draft);await persistRecovery();openDate(selected,slot)});return}
   if(action==='discard'){run(async()=>{delete recovery[draft.id];await persistRecovery();dirty=false;await load();openDate(selected,slot)});return}
-  if(action==='reserve')run(async()=>{state=await request({type:'reserve',date:selected,quantity:state.dates.find(d=>d.date===selected).maxQuantityAvailable});openDate(selected);renderCalendar()});
+  if(action==='reserve')startRegistration(selected);
   if(action==='prev'||action==='next')run(async()=>{await commit(false);openDate(selected,action==='prev'?Math.max(0,slot-1):slot<entryLimit(reservation())-1?slot+1:undefined)});
    if(action==='reopen')run(async()=>{editingSubmitted.add(entry().id);openDate(selected,slot)});
   if(action==='pickup')run(async()=>{const r=reservation();state=await request({type:'pickup',id:r.id,expectedVersion:r.version,pickup:!r.pickup});openDate(selected)});

@@ -37,6 +37,7 @@ for(const file of ['vendor-checkout.html','buyer-shipping.html'])test(file+' ini
  const html=fs.readFileSync(require.resolve('../public/'+file),'utf8'),script=[...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].map(m=>m[1]).find(s=>s.includes('async function load(silent='));
  const end=script.indexOf(file==='vendor-checkout.html'?'function renderEvents':'const experience'),prefix=script.slice(script.indexOf('const Checkout='),end);
  let created=0;const context=vm.createContext({window:{CreoCheckoutClient:{createClient:()=>({}),byId:()=>({})}},location:{search:''},URLSearchParams,CreoCheckoutRounds:{create(){created++;return {}}}});
+ context.CreoVendorSettlementPicker=context.CreoCheckoutRounds;
  const result=vm.runInContext('(function(){'+prefix+'return {roundPicker,loadSequence};})()',context);assert.equal(created,1);assert.equal(result.loadSequence,0);assert.ok(result.roundPicker);
 });
 test('vendor settlement navigation retains the selected historical round',()=>{

@@ -16,18 +16,26 @@ test('cancelled reset sends nothing and failed response retries the same request
  confirmed=true;await ctx.resetCardGuide('buyer');fail=false;await ctx.resetCardGuide('buyer');
  assert.equal(calls.length,2);assert.deepEqual(calls[0],calls[1]);assert.equal(calls[0].path,'/reset-card-guide');assert.equal(calls[0].body.confirmedUnpaid,true);assert.equal(ctx.busy,false);assert.equal(ctx.workFilter,'action');assert.equal(focus,1);
 });
-test('vendor event selector is visible for multiple events and hidden for a single event',()=>{
+test('legacy event field stays hidden but tracks the selected round for vendor navigation',()=>{
  let panel;const element=()=>({children:[],replaceChildren(){this.children=[]},append(child){this.children.push(child)}});
  const select={parentElement:{after(value){panel=value}},options:[],replaceChildren(){this.options=[]},append(option){this.options.push(option)}};
  const ctx=vm.createContext({data:{channel:{id:'a',name:'A',status:'active'}},$:()=>select,document:{createElement:element,getElementById:()=>panel}});
  vm.runInContext(fs.readFileSync(require.resolve('../public/vendor-event-view.js'),'utf8'),ctx);
- vm.runInContext(html.slice(html.indexOf('function renderEvents('),html.indexOf("$('vendor-event').onchange")),ctx);
+ vm.runInContext(html.slice(html.indexOf('function renderEvents('),html.indexOf('async function switchSettlementRound(')),ctx);
  ctx.renderEvents();assert.equal(select.parentElement.hidden,true);
  ctx.data.events=[ctx.data.channel,{id:'b',name:'B',status:'archived'}];ctx.renderEvents();
- assert.equal(select.parentElement.hidden,false);assert.equal(select.options.length,2);assert.equal(select.options[0].selected,true);
+ assert.equal(select.parentElement.hidden,true);assert.equal(select.options.length,2);assert.equal(select.value,'a');
  ctx.data={channel:{id:'national-cre-20261021',name:'전라·충청',status:'active'},events:[{id:'national-cre',name:'전국크레자랑',status:'active'},{id:'national-cre-20261021',name:'전라·충청',status:'active'}]};
- ctx.renderEvents();assert.equal(select.parentElement.hidden,true);assert.equal(select.options[0].hidden,true);assert.equal(panel.hidden,false);assert.equal(panel.children[0].textContent,'전라·충청');assert.equal(panel.children[1].textContent,'이전 낙찰·결제 내역 보기');
- let changed='';select.onchange=({target})=>changed=target.value;panel.children[1].onclick();assert.equal(changed,'national-cre');
+ ctx.renderEvents();assert.equal(select.parentElement.hidden,true);assert.equal(select.value,'national-cre-20261021');assert.equal(select.options[0].value,'national-cre');assert.equal(panel,undefined,'no second navigation panel is created');
+});
+test('combined financial switch restores both event and archive after failure and ignores a second click while loading',async()=>{
+ let round='archive:old',resolve;const calls=[];
+ const ctx=vm.createContext({busy:false,selectedEvent:'national-cre',settingsDirty:false,settingsLoaded:true,client:{getRound:()=>round,setRound:v=>round=v},load:async()=>{calls.push([ctx.selectedEvent,round]);return calls.length===1?new Promise(done=>resolve=done):true}});
+ vm.runInContext(html.slice(html.indexOf('async function switchSettlementRound('),html.indexOf('function renderSettings(')),ctx);
+ const target={channelId:'national-cre-20261021',key:'date:2026-10-21'},first=ctx.switchSettlementRound(target);
+ assert.equal(await ctx.switchSettlementRound(target),false);resolve(false);assert.equal(await first,false);
+ assert.deepEqual(calls,[[target.channelId,target.key],['national-cre','archive:old']]);assert.equal(ctx.selectedEvent,'national-cre');assert.equal(round,'archive:old');assert.equal(ctx.busy,false);
+ assert.equal(await ctx.switchSettlementRound(target),true);assert.equal(ctx.selectedEvent,target.channelId);assert.equal(round,target.key);
 });
 test('card link feedback distinguishes persistence from notification acceptance',()=>{const ctx=vm.createContext({});vm.runInContext(html.slice(html.indexOf('function cardLinkFeedback('),html.indexOf('let workFilter=')),ctx);assert.match(ctx.cardLinkFeedback({failed:true}),/알림톡 발송 실패/);assert.match(ctx.cardLinkFeedback({status:'queued'}),/발송 대기/);assert.match(ctx.cardLinkFeedback({status:'sent'}),/접수 완료/);assert.match(ctx.cardLinkFeedback({status:'configuration_pending'}),/설정 확인/)});
 const buyer=(status,method='bank_transfer',destination={address:'테스트'},cardPaymentUrl='')=>({payment:{status,method,cardPaymentUrl},destination});

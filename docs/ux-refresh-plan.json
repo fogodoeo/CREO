@@ -29,11 +29,15 @@
         "수정 진입은 로컬 편집만 수행하고 명시적 저장 때 기존 접수본을 원자적으로 대체",
         "수정 취소·새로고침·저장 실패·중복·동시 저장·승인 후 경계 회귀 검증",
         "첫 로그인은 연락처·정산 계좌만 우선 입력하고 저장 후 자신의 방송일로 이동",
-        "선택 주소·로고는 할 일 경고에서 제외하고 직원 관리는 승인 대기가 없으면 접음"
+        "선택 주소·로고는 할 일 경고에서 제외하고 직원 관리는 승인 대기가 없으면 접음",
+        "내 방송일에서 개체 등록 시작을 누르면 중간 예약 화면 없이 네 마리 입력창으로 진입",
+        "부모 사진 전송 실패를 표시하고 재전송 후 명시적으로 제출하며 입력 이름과 기존 접수를 유지",
+        "업체 낙찰·정산의 이중 경매/회차 선택을 하나의 날짜 목록으로 통합하고 이전 미완료 결제·정산을 표시",
+        "단일 정산 회차는 선택창을 숨기고 방송명만 표시; 기존 링크의 event/round와 업체 접근 권한을 유지"
       ],
       "remaining": [
-        "실제 사진 업로드 포함 전체 부모정보 경로",
-        "업체 낙찰·정산 및 씨랩 흐름",
+        "업체 결제 확인과 주관사 정산의 첫 행동을 구분하는 구성 및 전체 상태별 처리 흐름",
+        "씨랩 출품 등록·수정 전체 흐름",
         "200% 확대·전체 키보드 경로"
       ],
       "evidence": [
@@ -46,7 +50,21 @@
         "../admin-home-review-20261022/vendor-home-refresh.png",
         "test/vendor-required-setup.test.js: 3 pass (save/reload/navigation, failed save input retention, remaining contact, navigation failure)",
         "CUA 320px: required bank form, keyboard focus, no horizontal overflow, fake bank save opens own 10/26 broadcast; optional info does not show attention",
-        "../admin-home-review-20261022/vendor-required-setup.png"
+        "../admin-home-review-20261022/vendor-required-setup.png",
+        "CUA 390px: real synthetic parent image upload, failure injection, local recovery after reload, retry and explicit save; both parent names/photos remain after reload",
+        "CUA 390px: assigned A01 parent photo/name saved together and loaded from durable signed media URL after reload",
+        "CUA 390px/320px: one financial round selector, 10/14 archived / 10/19 / 10/21 targets and separate 20000 / 66000 / 10000 amounts; keyboard changes retain 3px visible focus and no horizontal overflow",
+        "CUA CLAB: single financial round hides selector; date duplication found and corrected with focused regression",
+        "risk: release (new authenticated read-only navigation endpoint, no financial writes or migration)",
+        "npm run check: pass; npm test -- --test-concurrency=4: 1555 pass, 0 fail; desktop python -m unittest discover -p test*.py: 270 pass",
+        "After final CLAB label-only correction: node --test test/vendor-settlement-rounds.test.js test/vendor-settlement-picker.test.js test/vendor-checkout-flow.test.js test/vendor-photo-retry-ui.test.js test/vendor-registration-start.test.js test/vendor-parent-photo-ui.test.js test/vendor-broadcast-calendar.test.js: 36 pass",
+        "Initial full suite had one obsolete event-selector expectation; updated to assert hidden legacy field and exact round navigation, then full suite passed",
+        "New error/retry text contrast: #982525 on #fff6f6 = 7.53:1; picker text/feedback/action all at least 4.85:1",
+        "../admin-home-review-20261022/vendor-photo-retry.png",
+        "../admin-home-review-20261022/vendor-assigned-parent-saved.png",
+        "../admin-home-review-20261022/vendor-unified-rounds-320.png",
+        "../admin-home-review-20261022/ux-vendor-rounds-tests-final.log",
+        "../admin-home-review-20261022/ux-vendor-rounds-desktop-tests.log"
       ],
       "deployed": false
     },
@@ -142,6 +160,6 @@
     "공통 업체 및 회차 구분이 모든 화면에서 일관되게 전달되지 않음",
     "전체 사용자 역할별 개편과 통합 검증은 아직 진행 중"
   ],
-  "next_work": "실제 부모 사진 업로드까지 업체 출품 흐름을 검증하고, 업체 낙찰·정산 및 관리자 회차별 입금·배송·정산 내부 작업을 단순화한다. 전체 개편은 아직 로컬이며 배포 전 통합 검증을 이어간다.",
+  "next_work": "업체 정산 첫 화면에서 구매자 결제 확인과 주관사에 보낼 금액을 구분하고, 관리자 회차별 입금·배송·정산 및 낙찰자 배송 선택 흐름을 실제 상태별로 정리한다. 씨랩 출품·방송 도구·전체 키보드/확대 검증과 배포도 남아 있다. 새 사진/정산 회차 개편은 로컬에서 검증했으며 아직 배포하지 않았다.",
   "completion_rule": "모든 workstream이 실제 구현·상태별 검증 증거를 갖출 때만 전체 완료로 판단한다."
 }
