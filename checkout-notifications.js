@@ -21,6 +21,7 @@ const TEMPLATE_KEYS = Object.freeze([
     'vendor_win',
     'vendor_shipping_registered',
     'operator_checkout_change',
+    'operator_carrier_request',
     'organizer_shipping_reported',
     'vendor_settlement_reported',
     'vendor_payment_reported',
@@ -33,7 +34,7 @@ const TEMPLATE_KEYS = Object.freeze([
 ]);
 
 const NOTIFICATION_TRANSPORTS = Object.freeze(['alimtalk', 'sms']);
-const ACTION_SMS_TEMPLATE_KEYS = new Set(['shipping_data_refresh_failed', 'vendor_settlement_reported']);
+const ACTION_SMS_TEMPLATE_KEYS = new Set(['shipping_data_refresh_failed', 'vendor_settlement_reported', 'operator_carrier_request']);
 
 function notificationTransport(templateKey) {
     return ACTION_SMS_TEMPLATE_KEYS.has(templateKey) ? 'sms' : 'alimtalk';

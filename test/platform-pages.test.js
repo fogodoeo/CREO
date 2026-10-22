@@ -609,7 +609,9 @@ test('new CDCUP overlays and shipping retain compatibility with the established 
     assert.match(shipping, /settlement\.payableAuctionAmount \+ shippingShare/);
     assert.match(buyerShipping, /const globalShipping\(\)|function globalShipping\(\)/);
     assert.doesNotMatch(shipping, /buyer-view|buyerFoundItems|buyerShippingState|\?buyer=1/);
-    assert.ok(Buffer.byteLength(shipping, 'utf8') < 220_000, 'admin shipping must not retain the retired buyer application');
+    // Guard the retired application itself; legitimate admin features and CRLF
+    // checkouts must not fail an unrelated byte-count ceiling.
+    assert.doesNotMatch(shipping, /function (?:renderParge|renderDestinations|buyerPaymentPriority)\s*\(|id=["'](?:parge-search|destination-options|buyer-carrier-request)["']/);
     assert.match(shipping, /shippingOperation\.loadShippingItems/);
     assert.match(shipping, /shippingOperation\.saveShippingItem/);
     assert.match(shipping, /saveShippingItem/);

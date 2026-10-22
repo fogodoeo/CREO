@@ -13,3 +13,8 @@
 .buyer-page #reload-checkout{margin-top:12px}
 .buyer-page #save-feedback:focus{outline:3px solid var(--blue,#2563eb);outline-offset:3px}
 @media(forced-colors:active){.buyer-page #save-feedback:focus{outline-color:Highlight}}
+.buyer-carrier-request{order:1;padding:16px;border:1px solid var(--line);border-radius:14px;background:var(--soft);display:grid;gap:10px}
+.buyer-carrier-request button{min-height:48px;border:1px solid var(--checkout-control-border);border-radius:10px;background:white;padding:12px;color:var(--ink);font:inherit;font-size:15px;font-weight:650;line-height:1.5}
+.buyer-carrier-request p{margin:0;color:var(--muted);font-size:14px;line-height:1.6;overflow-wrap:anywhere}
+.buyer-carrier-request .carrier-access-error{color:#982525}
+.buyer-page[data-buyer-section=items] #buyer-carrier-request,.buyer-page[data-buyer-read-only=true] #buyer-carrier-request{display:none!important}

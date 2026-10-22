@@ -400,7 +400,7 @@ const server = http.createServer(async (req, res) => {
             if (await serveStatic(req, res, vendorPageUrl)) return;
         }
 
-        const operatorChangeShortMatch = /^\/w\/op_[A-Za-z0-9_-]{16}$/.test(url.pathname);
+        const operatorChangeShortMatch = /^\/w\/(?:op|ds)_[A-Za-z0-9_-]{16}$/.test(url.pathname);
         if ((req.method === 'GET' || req.method === 'HEAD') && operatorChangeShortMatch) {
             if (await serveStatic(req, res, new URL('/checkout-changes.html', url))) return;
         }

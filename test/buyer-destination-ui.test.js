@@ -8,14 +8,22 @@ function setup(count=2){
  for(const node of document.querySelectorAll('button,input,h1,[tabindex]')){node.focus=()=>focus.push(node.id);node.select=()=>{};node.scrollIntoView=()=>{};}
  const regions=[{region:'경기',shops:Array.from({length:count},(_,i)=>({name:'수령점 '+i,baseCost:10000+i}))},{region:'전라',shops:[{name:'별빛점',baseCost:15000}]}];
  const state={data:{submittedAt:'saved',editVersion:'version-1',channel:{name:'가상 방송'},selection:{destinationId:'parge',pargeRegion:'경기',pargeShop:'수령점 0'},destinations:[{id:'parge',type:'parge',label:'파르게'},{id:'dodosi',type:'dodosi',label:'도도시'},{id:'pickup',type:'pickup',label:'현장'}],carriers:{parge:{regions,additionalFee:7000},dodosi:{regions,additionalFee:7000}},items:[{id:'one',paymentStatus:'bank_transfer_pending'}],payment:{status:'in_progress'},vendors:[{key:'v',items:[{id:'one',paymentStatus:'bank_transfer_pending'}],paymentMethods:['bank_transfer','card'],payment:{status:'bank_transfer_pending',method:'bank_transfer'}}]},destinationId:'parge',pargeRegion:'경기',pargeShop:'수령점 0',query:'경기 수령점 0',region:'전체',payments:{v:'bank_transfer'},dirty:false,saved:false,saving:false};
- const ctx=vm.createContext({document,window,state,$,Rules,esc:Checkout.escapeHtml,money:Checkout.money,roundPicker:{update(){}},render(){},confirm:()=>true});
+ const ctx=vm.createContext({document,window,state,$,Rules,CreoCarrierSearch:require('../public/carrier-search'),carrierAccess:{render(){},refresh(){}},esc:Checkout.escapeHtml,money:Checkout.money,roundPicker:{update(){}},render(){},confirm:()=>true});
  vm.runInContext(part('let editingDestination=','function vendorDue('),ctx);
+ vm.runInContext(part('function applyCarrierAccess(','const carrierAccess='),ctx);
  ctx.render=()=>{ctx.renderDestinations();ctx.renderParge();ctx.renderFlow();ctx.renderSaveFeedback()};
  vm.runInContext(part('function hydrate(','async function load('),ctx);
  Object.assign(ctx,{Checkout:{createAdaptivePoller:()=>({start(){}})},revisionSync:{stop(){}},load:async()=>true,save(){}});
  vm.runInContext(part('const poller=','load().finally('),ctx);
  ctx.render();return{ctx,state,$,document,window,focus};
 }
+test('approval polling preserves the selected control and unsaved search, payment and version',()=>{
+ const s=setup(),button=s.$('destinations').querySelector('[data-dest="parge"]');s.state.query='없는 지역';s.state.dirty=true;s.state.payments.v='card';
+ const data={destinations:structuredClone(s.state.data.destinations),carriers:s.state.data.carriers,carrierRequest:{state:'pending'}};
+ s.ctx.applyCarrierAccess(data);assert.equal(s.$('destinations').querySelector('[data-dest="parge"]'),button);
+ s.ctx.applyCarrierAccess({carrierRequest:{state:'pending'}});assert.equal(s.state.data.destinations,data.destinations);assert.equal(s.state.data.carriers,data.carriers);assert.equal(s.$('destinations').querySelector('[data-dest="parge"]'),button);
+ assert.equal(s.state.query,'없는 지역');assert.equal(s.state.payments.v,'card');assert.equal(s.state.dirty,true);assert.equal(s.state.data.editVersion,'version-1');
+});
 test('search without results keeps cancellation and restores the exact previous draft without a write',()=>{
  const s=setup(),before=JSON.stringify(s.state.data);
  s.ctx.beginDestinationEdit();s.$('parge-search').value='없는 지역';s.$('parge-search').oninput({target:s.$('parge-search')});

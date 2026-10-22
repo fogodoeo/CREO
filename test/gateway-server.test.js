@@ -37,7 +37,7 @@ test('gateway preserves existing shortlinks and does not expose backend credenti
     const { url, received } = await fixture(t);
     for (const [route, file] of [['/', 'welcome.html'], ['/d/abcdefghijk', 'buyer-shipping.html'],
         ['/s/abcdefghijk', 'buyer-shipping.html'], ['/v/abcdefghijk', 'vendor-checkout.html'],
-        ['/w/abcdefghijk', 'vendor-checkout.html'], ['/w/op_abcdefghijklmnop', 'checkout-changes.html'],
+        ['/w/abcdefghijk', 'vendor-checkout.html'], ['/w/op_abcdefghijklmnop', 'checkout-changes.html'], ['/w/ds_abcdefghijklmnop', 'checkout-changes.html'],
         ['/o/abcdefghijklmnopqrstuvwx', 'organizer-shipping.html']]) {
         const response = await fetch(url + route);
         assert.equal(await response.text(), file);

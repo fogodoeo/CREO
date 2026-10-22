@@ -1109,6 +1109,7 @@ function createPlatformApi({
 } = {}) {
     if (!repository) throw new Error('repository is required');
     const testDeliveryChannels = new Set(String(checkoutTestDeliveryChannels).split(',').map(id => id.trim()).filter(id => /^checkout-test-[a-f0-9]{16}$/.test(id)));
+    const carrierRequests=require('./carrier-requests').createCarrierRequests({repository,notificationService,now:vendorAccessNow,origin:vendorAccessOrigin,rates:pargeRates,canNotify:id=>!id.startsWith('checkout-test-')||testDeliveryChannels.has(id),resolveContext:token=>buyerBundleContext(token,{operatorAccess:true}),locked:async context=>!CheckoutRounds.open(context.channel)||ownCheckoutShipments(context).some(destinationChangeLocked)||Boolean(await pendingCheckoutChange(context)),touch:id=>{touchCheckout(id);touchChannel(id);}});
     const vendorDirectory = require('./vendor-directory').createVendorDirectory(repository);
     const nationalRounds = NationalRounds.createNationalRoundOperations({repository,directory:vendorDirectory,lock:withMutationLock,touch:touchChannel});
     const pargeDispatch = require('./parge-dispatch').createPargeDispatch({
@@ -1568,6 +1569,9 @@ function createPlatformApi({
         const fixedDestinations = pickupDestinations(context.channel);
         const carriers = {};
         const availableCarriers = new Set(context.channel.shippingDefaults?.enabledCarriers || ['parge']);
+        const carrierRequest=await carrierRequests.status(context);
+        if(availableCarriers.has('parge'))availableCarriers.delete('dodosi');
+        if(carrierRequest.canUseDodosi)availableCarriers.add('dodosi');
         if (['parge', 'dodosi'].includes(snapshot.selection?.destinationType)) availableCarriers.add(snapshot.selection.destinationType);
         if (snapshot.selection?.destinationType === 'pickup' && !fixedDestinations.some(row => row.id === snapshot.selection.destinationId)) {
             fixedDestinations.push({id:snapshot.selection.destinationId,type:'pickup',label:snapshot.latest.address || '기존 수령지'});
@@ -1615,6 +1619,7 @@ function createPlatformApi({
             readOnly,
             testDeliveryEnabled: testDeliveryChannels.has(context.channel.id),
             changeRequest: publicChange((await checkoutChanges(context))[0]),
+            carrierRequest,
             canRequestChange: !readOnly && Boolean(submittedAt) && !ownCheckoutShipments(context).some(checkoutChangeLocked),
             canEditDestination: !readOnly && !ownCheckoutShipments(context).some(destinationChangeLocked) && !(await pendingCheckoutChange(context) && checkoutRequestChangesPayment(await pendingCheckoutChange(context))),
             buyer: { name: maskBuyerName(buyerDisplayName(context.bundleItems[0])), phoneLast4: context.anchorPhone.slice(-4) },
@@ -1950,7 +1955,7 @@ function createPlatformApi({
             method = 'pickup';
             carrier = '';
             address = fixed.label;
-        } else if (['parge', 'dodosi'].includes(destinationId) && ((context.channel.shippingDefaults?.enabledCarriers || ['parge']).includes(destinationId) || unchangedDestination)) {
+        } else if (['parge', 'dodosi'].includes(destinationId) && (await carrierRequests.allowed(context,destinationId) || unchangedDestination)) {
             const pargeRegion = cleanText(body.pargeRegion, 80);
             const pargeShop = cleanText(body.pargeShop, 120);
             if (!selectedPargeRate(rates, pargeRegion, pargeShop)) throw buyerInputError('배송업체의 수령 지점을 다시 선택해 주세요.');
@@ -3644,6 +3649,30 @@ function createPlatformApi({
                 return true;
             }
 
+            if(segments.length===1&&segments[0]==='carrier-request-link'&&method==='GET'){
+                if(!await requireAdmin(req,res))return true;
+                const code=cleanText(url.searchParams.get('code'),24);
+                if(!/^ds_[A-Za-z0-9_-]{16}$/.test(code))throw buyerInputError('이용 신청 링크를 확인해 주세요.',404);
+                const rows=await repository.getRowsByKeys(['creo_carrier_request_link::'+code]),link=rows[0]?.value?JSON.parse(rows[0].value):null;
+                if(!link)throw buyerInputError('이용 신청을 찾을 수 없어요.',404);replyJson(res,200,link);return true;
+            }
+            if(segments.length===2&&segments[0]==='buyer-shipping'&&segments[1]==='carrier-request'&&['GET','POST'].includes(method)){
+                const body=method==='POST'?await readJson(req):Object.fromEntries(url.searchParams),context=await buyerBundleContext(await resolveBuyerShippingCredential(body));
+                if(!context)throw buyerInputError('낙찰자 링크를 다시 열어 주세요.',401);
+                if(method==='GET'){
+                    // Pending polls do not hydrate photos, recompute every price,
+                    // or occupy the channel's auction mutation lock.
+                    const carrierRequest=await carrierRequests.status(context);
+                    const payload=carrierRequest.state==='approved'?await buyerShippingPayload(context):null;
+                    replyJson(res,200,payload?{carrierRequest:payload.carrierRequest,destinations:payload.destinations,carriers:payload.carriers}:{carrierRequest},buyerCorsHeaders(req));return true;
+                }
+                await withMutationLock('channel:'+context.channel.id,async()=>{
+                    const fresh=await buyerBundleContext(context.token);if(!fresh)throw buyerInputError('낙찰 내역이 변경됐어요. 다시 확인해 주세요.',409);
+                    const result=await carrierRequests.submit(fresh,body);
+                    const payload=await buyerShippingPayload(fresh);
+                    replyJson(res,200,{...result,carrierRequest:payload.carrierRequest,destinations:payload.destinations,carriers:payload.carriers},buyerCorsHeaders(req));
+                });return true;
+            }
             if (segments.length === 1 && segments[0] === 'checkout-change-link' && method === 'GET') {
                 if (!await requireAdmin(req,res)) return true;
                 const code=cleanText(url.searchParams.get('code'),24);
@@ -5940,6 +5969,19 @@ function createPlatformApi({
                 return true;
             }
 
+            if(segments.length>=3&&segments[2]==='carrier-requests'){
+                if(!await requireAdmin(req,res))return true;
+                if(segments.length===3&&method==='GET'){
+                    const data=await workspace(channelId),focusId=url.searchParams.get('recordId'),focus=focusId?await repository.getRecord(channelId,'carrierrequest',focusId):null;
+                    if(focusId&&!focus)throw buyerInputError('이용 신청을 찾을 수 없어요.',404);
+                    const anchor=focus?data.items.find(i=>focus.itemIds?.includes(i.id)):null,archiveId=anchor?.auctionArchiveId||url.searchParams.get('archive')||'';
+                    const scoped=await OperationRounds.scopedWorkspace(repository,channel,data,archiveId);
+                    replyJson(res,200,{archiveId,round:scoped.round,records:await carrierRequests.list(channelId,scoped.items)});return true;
+                }
+                if(segments.length===4&&method==='POST'){
+                    const body=await readJson(req);await withMutationLock('channel:'+channelId,async()=>replyJson(res,200,await carrierRequests.review(channel,segments[3],body)));return true;
+                }
+            }
             if (segments.length >= 3 && segments[2] === 'checkout-changes') {
                 if(!await requireAdmin(req,res))return true;
                 if(segments.length===3 && method==='GET'){

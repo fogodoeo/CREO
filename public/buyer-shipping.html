@@ -16,6 +16,7 @@
     <script src="/buyer-navigation.js?v=20261020-round"></script>
     <script src="/buyer-library-link.js" defer></script>
     <link rel="stylesheet" href="/buyer-destination.css?v=20261023-recovery">
+    <script src="/carrier-search.js"></script><script src="/buyer-carrier-access.js"></script>
 
 <script src="/checkout-actions.js?v=20260912-checkout-outbox"></script><link rel="stylesheet" href="/checkout-layout.css?v=20260908-mobile-focus"><link rel="stylesheet" href="/ongdong-brand.css?v=20260908-logo"><script src="/ongdong-brand.js?v=20260908-logo"></script><link rel="stylesheet" href="/checkout-pages.css?v=20261016-bank-first"><script src="/checkout-round-picker.js?v=20261020-recovery"></script><link rel="stylesheet" href="/checkout-round-picker.css?v=20261020-recovery"></head>
 <body class="buyer-page"><div class="shell">
@@ -26,6 +27,7 @@
         <main>
             <div id="change-banner" class="waiting-note" role="status" hidden></div>
             <section class="section" id="shipping-section"><div id="destination-summary" class="destination-summary" hidden><div><small>수령지</small><b id="destination-value"></b></div><button id="change-destination" type="button">변경</button></div><div id="destination-editor"><div id="saved-destination" class="saved-destination" hidden></div><div id="destination-options"><div class="head"><h2>수령 방법</h2><button id="cancel-destination" type="button" hidden>변경 취소</button></div><div class="choices" id="destinations"></div><div class="parge" id="parge" hidden><label for="parge-search">수령 지점 찾기</label><input class="search" id="parge-search" type="search" placeholder="지역 또는 지점명" autocomplete="off"><div class="tabs" id="parge-tabs" role="group" aria-label="지역"></div><div class="search-summary"><p id="parge-count" role="status"></p><button id="parge-reset" type="button" hidden>전체 지점 보기</button></div><div class="results" id="parge-results"></div><button id="parge-more" type="button" hidden>지점 더 보기</button><p class="note" id="parge-note"></p></div></div></div></section>
+            <div id="buyer-carrier-request" class="buyer-carrier-request" hidden></div>
             <section class="section" id="payment-section" hidden><div class="head"><h2>업체별 결제</h2></div><div id="vendors"></div><div class="payable-summary" id="payment-summary"><span id="payable-title">이번 결제금액</span><b id="payable-amount"></b><small id="payable-note"></small></div></section>
             <div id="save-feedback" class="buyer-save-feedback" role="alert" tabindex="-1" hidden><b>저장하지 못했어요</b><p id="save-feedback-message"></p><p id="save-feedback-help"></p><button id="reload-checkout" type="button" hidden>최신 정보 불러오기</button></div>
             <details class="order-details" id="order-overview"><summary><b>낙찰 내역</b><span id="item-count"></span></summary><div class="items" id="items"></div></details>
@@ -46,6 +48,8 @@ const state={data:null,destinationId:'',pargeRegion:'',pargeShop:'',query:'',reg
 const roundPicker=CreoCheckoutRounds.create({client,container:$('app'),load:()=>{state.dirty=false;return load()},canChange:()=>!state.saving&&(!state.dirty||confirm('입력 중인 내용을 버리고 다른 회차로 이동할까요?'))});
 let loadSequence=0;
 const experience=CreoBuyerNavigation.create({onNavigate:()=>render()});
+function applyCarrierAccess(data){const changed=data.destinations&&JSON.stringify(state.data.destinations)!==JSON.stringify(data.destinations);state.data.carrierRequest=data.carrierRequest;if(data.destinations)state.data.destinations=data.destinations;if(data.carriers)state.data.carriers=data.carriers;if(changed)renderDestinations();}
+const carrierAccess=CreoBuyerCarrierAccess.create({document,getState:()=>state,request:api,onUpdate:applyCarrierAccess,onChoose:()=>{state.destinationId='dodosi';state.pargeRegion='';state.pargeShop='';state.query='';state.region='전체';state.searchLimit=40;state.dirty=true;state.saved=false;render();$('parge-search').focus();}});
 window.addEventListener('beforeunload',event=>{if(state.dirty||state.saving){event.preventDefault();event.returnValue='';}});
 async function api(path='',body=null){return client.request(path,body)}
 let editingDestination=false,destinationBeforeEdit=null;
@@ -128,12 +132,11 @@ function shippingQuote(){return Rules.allocateShipping(state.data?.items||[],{de
 function renderDestinations(){$('destinations').innerHTML=(state.data.destinations||[]).map(row=>`<button class="choice ${row.id===state.destinationId?'selected':''}" type="button" aria-pressed="${row.id===state.destinationId}" data-dest="${esc(row.id)}" ${state.saving?'disabled':''}><span><b>${esc(row.label)}${row.type==='pickup'?' · 직수령':''}</b></span><i aria-hidden="true"></i></button>`).join('');$('destinations').querySelectorAll('[data-dest]').forEach(button=>button.onclick=()=>{if(state.saving)return;state.destinationId=button.dataset.dest;state.pargeRegion='';state.pargeShop='';state.query='';state.region='전체';state.searchLimit=40;state.saved=false;state.dirty=true;state.saveError=null;editingDestination=Boolean(destinationBeforeEdit);if(!['parge','dodosi'].includes(destination()?.type)){editingDestination=false;destinationBeforeEdit=null}render();if(destination()?.type==='pickup')$('flow-title').focus();else $('parge-search').focus()})}
 function allRates(){return rates().flatMap(group=>(group.shops||[]).map(shop=>({region:group.region,...shop})))}
 function renderParge(){
- const visible=['parge','dodosi'].includes(destination()?.type);$('parge').hidden=!visible;if(!visible)return;
+ const visible=['parge','dodosi'].includes(destination()?.type);$('parge').hidden=!visible;if(!visible){carrierAccess.render({visible:false});return;}
  const regions=['전체',...rates().map(group=>group.region)];$('parge-search').value=state.query;
  $('parge-tabs').innerHTML=regions.map(region=>`<button class="tab ${region===state.region?'active':''}" type="button" aria-pressed="${region===state.region}" data-region="${esc(region)}">${esc(region)}</button>`).join('');
  $('parge-tabs').querySelectorAll('[data-region]').forEach(button=>button.onclick=()=>{state.region=button.dataset.region;state.query='';state.searchLimit=40;renderParge();[...$('parge-tabs').querySelectorAll('[data-region]')].find(row=>row.dataset.region===state.region)?.focus()});
- let rows=allRates().filter(row=>state.region==='전체'||row.region===state.region);const words=norm(state.query).split(/\s+/).filter(Boolean);
- if(words.length)rows=rows.filter(row=>words.every(word=>norm(`${row.region} ${row.name}`).includes(word)||chosung(`${row.region} ${row.name}`).includes(word)));
+ const rows=CreoCarrierSearch.find(rates(),state.query,state.region);
  const visibleRows=rows.slice(0,state.searchLimit||40);
  $('parge-count').textContent=rows.length?`수령 지점 ${rows.length}곳${rows.length>visibleRows.length?' · '+visibleRows.length+'곳 표시':''}`:'찾은 지점이 없어요';
  $('parge-reset').hidden=!state.query&&state.region==='전체';
@@ -145,6 +148,7 @@ function renderParge(){
  const extra=state.pargeRegion.includes('제주')?(state.data.carriers?.[state.destinationId]||state.data.parge).jejuAdditionalFee:(state.data.carriers?.[state.destinationId]||state.data.parge).additionalFee;
  $('parge-note').textContent=`지점 기본 배송비 · 추가 개체당 +${money(extra)}`;
  $('parge').querySelectorAll('button,input').forEach(control=>control.disabled=state.saving);
+ carrierAccess.render({visible:true,matches:rows.length,query:state.query,region:state.region});
 }
 function renderSaveFeedback(){
  const error=state.saveError,box=$('save-feedback');box.hidden=!error;if(!error)return;
@@ -225,5 +229,5 @@ async function report(vendorKey,button){
  finally{state.saving=false;render()}
 }
 const revisionSync=Checkout.createRevisionSync({document,fetchRevision:()=>client.revision(state.data.channel.id),currentRevision:()=>state.data?.revision,isReady:()=>!!state.data&&!state.data.readOnly,isBusy:()=>state.saving,hasDraft:()=>state.dirty||experience.isOpen(),refresh:()=>load(true,true),onStatus:(text,stateName)=>{if($('sync')){$('sync').textContent=text;$('sync').dataset.state=stateName}}});
-const poller=Checkout.createAdaptivePoller(revisionSync.poll,{document,window,onSuspend:()=>revisionSync.stop()});$('parge-search').oninput=event=>{state.query=event.target.value;state.searchLimit=40;if(norm(state.query)!==norm(`${state.pargeRegion} ${state.pargeShop}`)){state.pargeRegion='';state.pargeShop=''}state.saved=false;state.dirty=true;render()};$('change-destination').onclick=beginDestinationEdit;$('cancel-destination').onclick=cancelDestinationEdit;$('reload-checkout').onclick=async()=>{if(state.saving||!confirm('선택 중인 내용을 버리고 최신 정보를 불러올까요?'))return;if(await load(false)){editingDestination=false;destinationBeforeEdit=null;state.saveError=null;render();$('flow-title').focus()}};$('submit').onclick=save;$('retry').onclick=()=>load();load().finally(()=>poller.start(300));
+const poller=Checkout.createAdaptivePoller(async()=>{await revisionSync.poll();if(!document.hidden)await carrierAccess.refresh(true)},{document,window,onSuspend:()=>revisionSync.stop()});$('parge-search').oninput=event=>{state.query=event.target.value;state.searchLimit=40;if(norm(state.query)!==norm(`${state.pargeRegion} ${state.pargeShop}`)){state.pargeRegion='';state.pargeShop=''}state.saved=false;state.dirty=true;render()};$('change-destination').onclick=beginDestinationEdit;$('cancel-destination').onclick=cancelDestinationEdit;$('reload-checkout').onclick=async()=>{if(state.saving||!confirm('선택 중인 내용을 버리고 최신 정보를 불러올까요?'))return;if(await load(false)){editingDestination=false;destinationBeforeEdit=null;state.saveError=null;render();$('flow-title').focus()}};$('submit').onclick=save;$('retry').onclick=()=>load();load().finally(()=>poller.start(300));
 })();</script></body></html>

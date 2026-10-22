@@ -18,7 +18,7 @@ const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; ch
 
 function pageAlias(pathname) {
     if(entryPath(pathname)==='/')return '/welcome.html';
-    if (/^\/w\/op_[A-Za-z0-9_-]{16}$/.test(pathname)) return '/checkout-changes.html';
+    if (/^\/w\/(?:op|ds)_[A-Za-z0-9_-]{16}$/.test(pathname)) return '/checkout-changes.html';
     if (/^\/[ds]\/[A-Za-z0-9_-]{8,24}$/.test(pathname)) return '/buyer-shipping.html';
     if (/^\/[vw]\/[A-Za-z0-9_-]{8,24}$/.test(pathname)) return '/vendor-checkout.html';
     if (/^\/o\/[A-Za-z0-9_-]{24}$/.test(pathname)) return '/organizer-shipping.html';

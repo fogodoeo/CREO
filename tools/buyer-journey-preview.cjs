@@ -9,6 +9,7 @@ async function main(){
  const channels=await f.repository.getCatalog();
  await f.repository.saveCatalog(channels.channels.map(c=>c.id==='national-cre'?{...c,shippingSupport:{enabled:false},shippingDefaults:{...c.shippingDefaults,deliverySchedule:{enabled:true,auctionDate:day}}}:c));
  await f.repository.upsertRows([{key:'shipping_rate_parge',value:JSON.stringify({data:{수도권:[{shop:'가상 정거샵',cost:19000}],경기:[{shop:'가상 경기점',cost:15000}]}})}]);
+ await f.repository.upsertRows([{key:'shipping_rate_dodosi',value:JSON.stringify({items:[{route:'전북',region:'전북',shop:'가상 전주점',price:27000}]})}]);
  const root=path.resolve(__dirname,'../public');let failSave=0,failOperatorSave=false;
  const server=http.createServer(async(req,res)=>{try{
   const url=new URL(req.url,origin);
@@ -27,7 +28,7 @@ async function main(){
   if(failOperatorSave&&req.method==='POST'&&url.pathname.endsWith('/buyer-shipping-editor')){failOperatorSave=false;res.writeHead(503,{'Content-Type':'application/json'});res.end(JSON.stringify({error:'테스트용 저장 실패입니다. 입력은 유지됩니다. 다시 저장해 주세요.'}));return;}
   req.headers['x-creo-admin']=f.secret;
   if(url.pathname.startsWith('/api/')&&await f.api.handle(req,res,url))return;
-  const file=path.resolve(root,'.'+(url.pathname==='/main'?'/index.html':url.pathname));
+  const file=path.resolve(root,'.'+(url.pathname==='/main'?'/index.html':/^\/w\/(?:op|ds)_[A-Za-z0-9_-]{16}$/.test(url.pathname)?'/checkout-changes.html':url.pathname));
   if(!file.startsWith(root+path.sep)||!fs.existsSync(file)||!fs.statSync(file).isFile()){res.writeHead(404);res.end();return;}
   res.writeHead(200,{'Cache-Control':'no-store','Content-Type':{'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.svg':'image/svg+xml'}[path.extname(file)]||'application/octet-stream'});fs.createReadStream(file).pipe(res);
  }catch(error){res.writeHead(500,{'Content-Type':'text/plain'});res.end('Isolated preview error');console.error(error.message)}});
