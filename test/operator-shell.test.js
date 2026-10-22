@@ -48,3 +48,32 @@ test('embedded page links preserve the shell while standalone tools cannot silen
  for(const id of ['known','receipt','setup','tool','live']){const e=new window.Event('click',{bubbles:true,cancelable:true});e.button=0;document.getElementById(id).dispatchEvent(e);}
  assert.deepEqual(messages.map(m=>m.data.href),['/promo-center.html?admin=1','/organizer-shipping.html?channel=national-cre&archive=old','/capture-setup.html']);assert.equal(messages[0].origin,'https://test');for(const id of ['tool','live'])assert.equal(document.getElementById(id).target,'_blank');assert(document.documentElement.classList.contains('operator-embedded'));
 });
+
+test('mobile context disclosure keeps program and round visible, preserves selection, and stays expanded on home and desktop',async()=>{
+ const {document,window}=parseHTML(fs.readFileSync(require.resolve('../public/index.html'),'utf8')),$=id=>document.getElementById(id);
+ for(const s of document.querySelectorAll('select'))Object.defineProperty(s,'value',{value:'',writable:true});
+ const changes=[],media={matches:false,addEventListener:(_,fn)=>changes.push(fn)},calls=[];
+ window.matchMedia=()=>media;window.confirm=()=>true;
+ const location={search:'?channel=national-cre-20261021&view=shipping',origin:'https://test',href:'https://test/main?channel=national-cre-20261021&view=shipping'};
+ const history={replaceState(_,__,url){location.search=new URL(url,location.origin).search;},pushState(_,__,url){this.replaceState(_,__,url);}};
+ const ctx={document,window,location,history,URL,URLSearchParams,CustomEvent:window.CustomEvent,CreoPlatform:{escapeHtml:String,verifyAdmin:async()=>true,api:async(p,o)=>{calls.push([p,o]);return{channels,rounds,activeChannelId:'national-cre'};}},CreoOperatorHome:Home,CreoOperatorShell:Shell};vm.createContext(ctx);
+ for(const file of ['operator-home.js','operator-shell.js'])vm.runInContext(fs.readFileSync(require.resolve('../public/'+file),'utf8'),ctx);
+ document.dispatchEvent(new window.Event('DOMContentLoaded'));await new Promise(setImmediate);
+ const toggle=$('operator-context-toggle'),panel=$('selection-panel');
+ assert.equal(toggle.hidden,false);assert.equal(toggle.textContent,'방송일 변경');assert.equal(toggle.getAttribute('aria-expanded'),'false');assert(panel.classList.contains('compact-closed'));
+ assert.equal($('operator-breadcrumb').textContent,'전국크레자랑 · 전라·충청');
+ const before=$('operator-frame').src;
+ toggle.click();assert.equal(toggle.getAttribute('aria-expanded'),'true');assert(!panel.classList.contains('compact-closed'));assert.equal($('operator-frame').src,before);
+ $('quick-round').value='national-cre@old';$('quick-round').dispatchEvent(new window.Event('change'));
+ assert.equal(toggle.getAttribute('aria-expanded'),'true');assert.match($('operator-frame').src,/channel=national-cre&archive=old/);assert.equal($('operator-breadcrumb').textContent,'전국크레자랑 · 지난 회차');
+ toggle.click();assert(panel.classList.contains('compact-closed'));
+ media.matches=true;changes.forEach(fn=>fn());assert.equal(toggle.hidden,true);assert(!panel.classList.contains('compact-closed'));
+ media.matches=false;changes.forEach(fn=>fn());assert.equal(toggle.hidden,false);assert(panel.classList.contains('compact-closed'));
+ const nav=search=>document.dispatchEvent(new window.CustomEvent('creo:operator-navigate',{detail:{search}}));
+ nav('?channel=national-cre&view=vendors');assert.equal(toggle.textContent,'프로그램 변경');assert.equal($('round-field').hidden,true);assert.equal($('operator-breadcrumb').textContent,'전국크레자랑');
+ toggle.click();assert(!panel.classList.contains('compact-closed'));
+ nav('?channel=national-cre&view=shipping');assert.equal(toggle.getAttribute('aria-expanded'),'false');assert.equal($('round-field').hidden,false);
+ nav('?channel=national-cre&view=promo');assert.equal(toggle.hidden,true);assert.equal(panel.hidden,true);assert.equal($('operator-breadcrumb').textContent,'전체 운영');
+ nav('?channel=national-cre');assert.equal(toggle.hidden,true);assert.equal(panel.hidden,false);assert(!panel.classList.contains('compact-closed'));
+ assert(calls.every(([p,o])=>p==='operation-rounds'&&!o),'Opening or changing the context must not mutate auction state');
+});

@@ -51,7 +51,7 @@ test('main separates whole-program directory from dated work and follows exact i
  const frame=$('operator-frame');Object.defineProperty(frame,'contentWindow',{value:{},configurable:true});
  const navigate=href=>{const e=new window.Event('message');e.origin=location.origin;e.source=frame.contentWindow;e.data={type:'creo:operator-link',href};window.dispatchEvent(e);};
  navigate('/main?channel=national-cre-20261028&view=intake&vendor=v4&status=approved');
- assert.equal($('round-field').hidden,false);assert.equal($('operator-breadcrumb').textContent,'경남편');
+ assert.equal($('round-field').hidden,false);assert.equal($('operator-breadcrumb').textContent,'전국크레자랑 · 경남편');
  let url=new URL(frame.src,location.origin);assert.equal(url.searchParams.get('broadcastDate'),dates[4]);assert.equal(url.searchParams.get('vendor'),'v4');assert.equal(url.searchParams.get('status'),'approved');
  const standalone=new URL($('operator-standalone').href,location.origin);assert.equal(standalone.searchParams.get('vendor'),'v4');assert.equal(standalone.searchParams.get('broadcastDate'),dates[4]);assert.equal(standalone.searchParams.has('embedded'),false);
  navigate('/organizer-bookings.html?channel=national-cre&vendor=v4&action=region');url=new URL(frame.src,location.origin);assert.equal(url.searchParams.get('action'),'region');assert.equal(url.searchParams.get('vendor'),'v4');assert.equal(url.searchParams.has('broadcastDate'),false);assert.equal($('round-field').hidden,true);assert.equal($('operator-page-title').textContent,'방송 지역 배정');

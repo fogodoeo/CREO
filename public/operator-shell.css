@@ -15,3 +15,4 @@
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important}}
 @media(max-width:760px){.operator-sidebar{overflow:visible;min-height:56px}.operator-main{height:calc(100dvh - 56px)}}
 .topbar #refresh-home[hidden]+#logout-button{margin-left:auto}
+@media(max-width:760px){.selection.compact-closed{display:none}.operator-actions{flex-wrap:wrap}.operator-actions a,.operator-actions button{min-height:44px}.topbar>span{line-height:1.5}}

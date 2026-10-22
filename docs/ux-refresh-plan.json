@@ -123,7 +123,19 @@
         "After CSS correction: body height 473px with visible overflow instead of 40px clipped body; Tab reaches payment-confirm button with visible focus and all four footer actions remain reachable",
         "../admin-home-review-20261022/operator-shipping-final-full.log",
         "../admin-home-review-20261022/operator-shipping-desktop-permitted.log",
-        "../admin-home-review-20261022/operator-shipping-canonical-desktop.png"
+        "../admin-home-review-20261022/operator-shipping-canonical-desktop.png",
+        "risk: medium (admin list presentation, search/filter, context disclosure only; no backend writes or monetary calculation changes)",
+        "node --test test/operator-shipping-worklist.test.js test/operator-shipping-editor-ui.test.js test/operator-shipping-checkout.test.js test/shipping-interaction.test.js test/shipping-vendor-settings.test.js test/operator-buyer-page.test.js test/operator-shell.test.js test/operator-home.test.js test/operator-finance-navigation.test.js test/operator-directory-ui.test.js test/operator-vendors.test.js test/operation-rounds.test.js: 67 pass; npm run check and explicit worklist/shell syntax checks: pass",
+        "Focused coverage: same buyer across vendors retains own lot/amount/anchor; statuses and query survive refresh; cancelled navigation retains unsaved editor input; saved refresh restores original vendor; context disclosure preserves archived/dated links and makes no writes",
+        "CUA isolated 320px: company/all search, empty/reset, B03 editor at 107000 with 7000 shipping, keyboard close returns focus to B card; main and inner scrollWidth equal clientWidth (320 / 305)",
+        "CUA isolated 1280px: context remains expanded and current program/date visible; whole-round vendor list and editor layout rendered without horizontal overflow",
+        "CUA program directory: one national program with all five broadcast dates, whole-program 5 companies, 10/19 filter 2 companies, reset returns all; synthetic data only",
+        "Rendered contrast: review 6.72:1, pending 9.45:1, secondary text 4.83:1, selected filter 8.60:1. Existing embedded gold focus on white measured 2.27:1; shipping override now blue 3px with 6.24:1 against white and 5.68:1 against page background",
+        "200% zoom and full screen-reader flow remain unverified; this checkpoint does not claim all-role accessibility completion",
+        "../admin-home-review-20261022/operator-worklist-final-tests.log",
+        "../admin-home-review-20261022/operator-worklist-320.png",
+        "../admin-home-review-20261022/operator-worklist-desktop.png",
+        "../admin-home-review-20261022/program-whole-directory-current.png"
       ],
       "completed": [
         "전체 업체 명부는 선택한 프로그램의 모든 업체를 조회하고 방송일로 좁혀 볼 수 있음",
@@ -138,7 +150,10 @@
         "업체 정산 목록은 확인 필요·미입금·배송비 미확정·완료 필터와 업체·예금주 검색을 제공하고 회차 전체 합계는 유지",
         "관리자 입금·배송 금액을 낙찰자 결제 계산과 통일하고 메모만 저장하면 기존 결제·배송비·카드 안내를 보존",
         "관리자 합배송 수정은 서버 미리보기와 일치하는 금액으로 전체 묶음을 원자적으로 저장하고 중복·오래된 요청을 차단",
-        "저장 실패 후 입력과 요청 식별자를 유지하여 재시도하며 다른 업체 메모는 보존"
+        "저장 실패 후 입력과 요청 식별자를 유지하여 재시도하며 다른 업체 메모는 보존",
+        "입금·배송은 선택 회차의 전체 업체 내역을 바로 표시하고 업체·낙찰자·개체 검색 및 처리 상태 필터 제공",
+        "같은 낙찰자의 업체별 개체·금액을 구분하고 편집 중 다른 내역으로 이동할 때 저장하지 않은 입력 보호",
+        "모바일 내부 업무는 프로그램·방송일을 상단에 표시하고 변경 선택창만 접음; 운영 홈과 데스크톱 선택창은 유지"
       ],
       "remaining": [
         "관리자 출품·편성·배송·정산 페이지 내부 작업 정리",
@@ -208,6 +223,6 @@
     "공통 업체 및 회차 구분이 모든 화면에서 일관되게 전달되지 않음",
     "전체 사용자 역할별 개편과 통합 검증은 아직 진행 중"
   ],
-  "next_work": "관리자 낙찰자 입금·배송의 업체 선택과 모바일 상단 중복을 정리한다. 발견한 관리자/낙찰자 합배송 금액 불일치는 저장까지 통일해 수정했고 전체 검사를 통과했다. 이어서 낙찰자 저장 실패·검색 결과 없음·배송 변경/승인·추가 낙찰·입금 후 배송비 조정 흐름을 검증한다. 씨랩 출품·방송 도구·전체 키보드/확대 검증과 배포도 남아 있다. 최근 UX와 배송 수정은 모두 로컬이며 아직 배포하지 않았다.",
+  "next_work": "프로그램 전체 업체 명부와 날짜별 거래 구분을 실제 화면에서 재확인했고 관리자 입금·배송 전체 업체 목록·검색·처리 상태·모바일 상단을 정리했다. 이어서 낙찰자 저장 실패·검색 결과 없음·배송 변경/승인·추가 낙찰·입금 후 배송비 조정 흐름을 검증한다. 관리자 출품·편성, 씨랩 출품·방송 도구·전체 키보드/확대 검증과 배포도 남아 있다. 최근 UX와 배송 수정은 모두 로컬이며 아직 배포하지 않았다.",
   "completion_rule": "모든 workstream이 실제 구현·상태별 검증 증거를 갖출 때만 전체 완료로 판단한다."
 }

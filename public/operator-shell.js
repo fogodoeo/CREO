@@ -1,14 +1,23 @@
 document.addEventListener('DOMContentLoaded',()=>{
  'use strict';const $=id=>document.getElementById(id),Model=CreoOperatorShell,esc=CreoPlatform.escapeHtml;
- let state=null,current='home',source='',dirty=false;
+ let state=null,current='home',source='',dirty=false,contextOpen=false,contextScope='round';
  $('operator-frame').setAttribute('allowfullscreen','');
  const desktop=window.matchMedia('(min-width:761px)');const syncMenu=()=>{$('operator-menu').open=desktop.matches;};syncMenu();desktop.addEventListener('change',syncMenu);
+ function syncContext(){
+  const compact=Boolean(state)&&!desktop.matches&&current!=='home'&&contextScope!=='global',toggle=$('operator-context-toggle'),panel=$('selection-panel');
+  toggle.hidden=!compact;toggle.setAttribute('aria-expanded',String(compact&&contextOpen));toggle.textContent=contextOpen?'선택 닫기':contextScope==='program'?'프로그램 변경':'방송일 변경';
+  panel.classList.toggle('compact-closed',compact&&!contextOpen);
+  if(compact&&!contextOpen&&panel.contains(document.activeElement))toggle.focus();
+ }
+ desktop.addEventListener('change',syncContext);
+ $('operator-context-toggle').addEventListener('click',()=>{contextOpen=!contextOpen;syncContext();if(contextOpen)$('quick-channel').focus();});
  function allowed(){return !dirty||window.confirm('저장하지 않은 입력이 있습니다. 이 화면을 떠날까요?');}
  function clear(){source='';dirty=false;$('operator-frame').removeAttribute('src');$('operator-content').hidden=true;}
  function navigate(search,push=true){if(!allowed())return false;dirty=false;document.dispatchEvent(new CustomEvent('creo:operator-navigate',{detail:{search,push}}));return true;}
- function render(detail){state=detail.state;const q=new URLSearchParams(location.search);current=q.get('view')||'home';if(current==='bookings'&&q.get('action')==='region')current='regions';const e=Model.entry(state,current);
+ function render(detail){state=detail.state;const previous=current,q=new URLSearchParams(location.search);current=q.get('view')||'home';if(current==='bookings'&&q.get('action')==='region')current='regions';const e=Model.entry(state,current);if(current!==previous)contextOpen=false;contextScope=e?.scope||'round';
   $('admin-nav').innerHTML=`<a class="nav-home" href="${esc(Model.home(state))}"${current==='home'?' aria-current="page"':''}>운영 홈</a>`+Model.menu(state).map(g=>`<details name="operator-section"${g.id===e?.group?' open':''}><summary>${esc(g.label)}</summary><nav aria-label="${esc(g.label)}">${g.entries.map(n=>`<a href="${esc(Model.home(state,n.key))}"${n.key===current?' aria-current="page"':''}>${esc(n.label)}</a>`).join('')}</nav></details>`).join('');
-  $('selection-panel').hidden=e?.scope==='global';if(e?.scope==='program'){$('round-field').hidden=true;$('manage-rounds').hidden=true;}$('work-panel').hidden=current!=='home';$('operator-content').hidden=current==='home';$('operator-page-title').textContent=e?.label||'열 수 없는 메뉴';$('operator-breadcrumb').textContent=e?.scope==='global'?'전체 운영':e?.scope==='program'?(CreoOperatorHome.families(detail.catalog,state.channel.id).find(p=>p.id===CreoOperatorHome.family(state.channel))?.name||'전체 업체'):state.label;
+  const program=CreoOperatorHome.families(detail.catalog,state.channel.id).find(p=>p.id===CreoOperatorHome.family(state.channel))?.name||'';
+  $('selection-panel').hidden=e?.scope==='global';if(e?.scope==='program'){$('round-field').hidden=true;$('manage-rounds').hidden=true;}$('work-panel').hidden=current!=='home';$('operator-content').hidden=current==='home';$('operator-page-title').textContent=e?.label||'열 수 없는 메뉴';$('operator-breadcrumb').textContent=e?.scope==='global'?'전체 운영':e?.scope==='program'?(program||'전체 업체'):program&&!state.label.includes(program)?program+' · '+state.label:state.label;syncContext();
   document.title=(e?.label||'운영 홈')+' · CREO';
   $('refresh-home').hidden=current!=='home';
   document.querySelector('.skip').href=current==='home'?'#work-title':'#operator-page-title';
