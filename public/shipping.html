@@ -12,11 +12,13 @@
     <script src="platform-client.js?v=20260803-admin-session-v2"></script>
     <script src="/buyer-link-manager.js"></script>
     <script src="/checkout-actions.js?v=20260912-confirmation"></script>
+    <script src="/checkout-rules.js"></script>
+    <script src="/operator-shipping-pricing.js"></script>
     <link rel="stylesheet" href="/buyer-link-manager.css">
     <script src="channel-runtime.js?v=20260901-operator-routing-v1"></script>
     <script src="auction-contract.js?v=20260819-contract-v1"></script>
     <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
-    <script src="channel-adapters.js?v=20261020-rounds"></script>
+    <script src="channel-adapters.js?v=20261023-checkout-pricing"></script>
     <script src="operation-channel.js?v=20261020-rounds"></script>
     <script src="settlement-discount.js?v=20260823-v1"></script>
     <script src="mobile-phone.js?v=20261018-contact"></script>
@@ -2083,6 +2085,13 @@
             .editor-total-strip,.editor-total-strip.has-discount { grid-template-columns:repeat(2,minmax(0,1fr)); }
             .editor-total-item.is-grand-total { grid-column:1/-1; }
         }
+        /* The embedded admin page often has a short viewport. Keep the whole
+           form reachable instead of squeezing its body between fixed sections. */
+        @media (min-width: 821px) and (max-height: 760px) {
+            #winner-edit-modal .modal-content { max-height:none; overflow:visible; }
+            #winner-edit-modal .modal-body { flex:0 0 auto; overflow:visible; }
+            #winner-edit-modal .editor-action-footer { position:static; }
+        }
     </style>
 </head>
 <body>
@@ -2274,7 +2283,7 @@
                 <!-- 메모 입력 -->
                 <div class="form-group">
                     <label for="editor-memo">메모</label>
-                    <input type="text" id="editor-memo" class="input-text" placeholder="특이사항 메모 입력">
+                    <input type="text" id="editor-memo" class="input-text" maxlength="500" placeholder="이 업체의 수령 메모">
                 </div>
                 <div class="editor-selected-hub" id="editor-selected-hub" hidden>
                     <span class="editor-selected-hub-head"><span class="editor-selected-hub-label">선택한 배송지</span></span>
@@ -2286,6 +2295,7 @@
 
             <!-- 데스크톱에서는 스크롤과 무관하게 항상 보이는 하단 정산/저장 영역 -->
             <div class="editor-action-footer">
+                <p id="operator-shipping-feedback" role="status" hidden></p>
                 <div class="editor-total-strip">
                     <div class="editor-total-item">
                         <span>낙찰금액</span>
@@ -3048,13 +3058,15 @@
 
             if (company === '파르게') {
                 const isJeju = (region || '').includes('제주');
-                return itemCount <= 1 ? baseCost : baseCost + (itemCount - 1) * (isJeju ? 4000 : 7000);
+                const defaults=shippingOperation?.channel?.shippingDefaults || {};
+                const extra=isJeju?Number(defaults.pargeJejuAdditionalFee??4000):Number(defaults.pargeAdditionalFee??7000);
+                return itemCount <= 1 ? baseCost : baseCost + (itemCount - 1) * extra;
             } else if (company === '랩팡') {
                 return itemCount <= 1 ? baseCost :
                        itemCount <= 4 ? baseCost + (itemCount - 1) * 7000 :
                        itemCount <= 20 ? baseCost + 28000 : baseCost + 35000;
             } else if (company === '도도시') {
-                return baseCost;
+                return baseCost + (shippingOperation?.channel?.dataAdapter==='platform'?Math.max(0,itemCount-1)*Number(shippingOperation.channel.shippingDefaults?.dodosiAdditionalFee??7000):0);
             }
             return 0; // 픽업 / 기타 (기본값)
         }
@@ -3299,7 +3311,7 @@
                         payment_method: firstSelfItem.payment_method || '',
                         buyer_submitted_at: groupSubmittedAt,
                         payment_confirmed_amount: groupConfirmedAmount,
-                        memo: parsedMemo
+                        memo: firstSelfItem.shipping_note || parsedMemo
                     };
                 });
 
@@ -3327,9 +3339,9 @@
                     const shippingAllocations = splitShippingCostByCompany(state.sellerCompanies, totalShipping, state.allItems);
                     const calculatedShippingCost = shippingAllocations[selectedCo] || 0;
                     const savedShippingCost = getSavedShippingCost(groupItems);
-                    const shippingCost = state.shipping_type === '배송'
-                        ? (totalShipping > 0 ? calculatedShippingCost : savedShippingCost)
-                        : 0;
+                    const shippingCost = shippingOperation?.channel?.dataAdapter === 'platform'
+                        ? CreoOperatorShippingPricing.calculate(state.allItems,shippingOperation.channel,SHIPPING_DATA).companies[selectedCo] || 0
+                        : state.shipping_type === '배송' ? (totalShipping > 0 ? calculatedShippingCost : savedShippingCost) : 0;
                     
                     const settlement = settlementDiscountFor(groupItems, allItems);
                     const grandTotal = settlement.payableAuctionAmount + shippingCost;
@@ -3503,6 +3515,14 @@
                 const winnerName = state.winnerName;
 
                 activeEditorWinner = winnerKey;
+                if (shippingOperation?.channel?.dataAdapter === 'platform') {
+                    state.operatorVersion = '';
+                    state.operatorQuote = null;
+                    state.operatorQuoteKey = '';
+                    state.operatorError = '';
+                    state.operatorPending = false;
+                    state.operatorGeneration = (state.operatorGeneration || 0) + 1;
+                }
                 editorShippingState = {
                     type: state.shipping_type || '미설정',
                     company: state.shipping_company || '',
@@ -3774,13 +3794,16 @@
         function renderEditorShippingBreakdown(state, selectedCo, baseCost, totalShipping, allocations, companyName) {
             const container = document.getElementById('editor-shipping-breakdown');
             if (!container || !state) return;
+            if(shippingOperation?.channel?.dataAdapter==='platform' && !state.operatorQuote){container.textContent=state.operatorError || '금액 확인 중…';return;}
 
             const sellerCos = state.sellerCompanies.filter(Boolean);
             const totalObjectCount = state.allItems.length;
             let formulaHtml = '';
             let canShowCompanies = true;
 
-            if (editorShippingState.type === '미설정') {
+            if (shippingOperation?.channel?.dataAdapter === 'platform') {
+                formulaHtml = `<div class="breakdown-formula is-simple"><strong>업체별 배송비</strong><span class="formula-total">총 ${totalShipping.toLocaleString()}원</span></div>`;
+            } else if (editorShippingState.type === '미설정') {
                 formulaHtml = '<div class="breakdown-empty">배송방식을 선택하면 합배송 구성과 업체별 받을 금액이 표시됩니다.</div>';
                 canShowCompanies = false;
             } else if (editorShippingState.type === '직접수령') {
@@ -3826,10 +3849,10 @@
                 return `
                     <div class="breakdown-company ${isCurrent ? 'is-current' : ''}">
                         <div class="breakdown-company-header">
-                            <span class="breakdown-company-name">${co}</span>
+                            <span class="breakdown-company-name">${CreoPlatform.escapeHtml(co)}</span>
                             <span class="breakdown-company-badge ${isCurrent ? '' : 'is-other'}">${isCurrent ? '현재 업체' : '다른 업체'}</span>
                         </div>
-                        <div class="breakdown-objects">개체 ${items.length}개 (${pct}% 부담) · ${objectNames}</div>
+                        <div class="breakdown-objects">개체 ${items.length}개 · ${CreoPlatform.escapeHtml(objectNames)}</div>
                         <div class="breakdown-money-grid">
                             <div><span>낙찰금액</span><strong>${bidWon.toLocaleString()}원</strong></div>
                             ${settlement.discountAmount > 0 ? `<div><span>${settlement.label}</span><strong>-${settlement.discountAmount.toLocaleString()}원</strong></div>` : ''}
@@ -3848,6 +3871,72 @@
                 ${formulaHtml}
                 ${companyRows ? `<div class="breakdown-company-list">${companyRows}</div>` : ''}
             `;
+        }
+
+        function operatorShippingDraft() {
+            const shipping = {type:editorShippingState.type,company:editorShippingState.company,region:editorShippingState.region,hub:editorShippingState.hub};
+            if (shipping.company === '기타') {
+                shipping.company = document.getElementById('editor-custom-company').value.trim();
+                shipping.address = document.getElementById('editor-custom-region').value.trim();
+            } else if (shipping.company === '랩팡') shipping.address = `${shipping.region} (${shipping.hub})`;
+            return shipping;
+        }
+
+        async function refreshOperatorShippingQuote(state) {
+            if (state.operatorPending) return;
+            const winnerKey=activeEditorWinner, item=activeBuyerLinkItem();
+            if(!item)return;
+            const shipping=operatorShippingDraft(),key=JSON.stringify(shipping);
+            if(state.operatorError && state.operatorErrorKey===key)return;
+            state.operatorError='';
+            if(state.operatorVersion && state.operatorQuoteKey===key)return;
+            const generation=state.operatorGeneration;
+            state.operatorPending=true;
+            state.operatorQuote=null;
+            const current=()=>activeEditorWinner===winnerKey && winnerStateMap[winnerKey]===state && state.operatorGeneration===generation;
+            try {
+                const archive=new URLSearchParams(location.search).get('archive')||'';
+                if(!state.operatorVersion) {
+                    const saved=await CreoPlatform.api(`channels/${encodeURIComponent(SHIPPING_CHANNEL_ID)}/buyer-shipping-editor?`+new URLSearchParams({itemId:item._platformItemId,archive}));
+                    if(!current())return;
+                    state.operatorVersion=saved.editVersion;
+                }
+                // An empty destination is an unfinished form, not a zero-fee quote.
+                if(shipping.type==='미설정' || (shipping.type==='배송' && ['파르게','도도시'].includes(shipping.company) && (!shipping.region||!shipping.hub))) {
+                    state.operatorQuoteKey=key;state.operatorHint='수령 방식을 선택해 주세요.';return;
+                }
+                const quote=await CreoPlatform.api(`channels/${encodeURIComponent(SHIPPING_CHANNEL_ID)}/buyer-shipping-editor`,{method:'POST',body:JSON.stringify({action:'quote',itemId:item._platformItemId,expectedArchiveId:archive,expectedVersion:state.operatorVersion,requestId:'quote-'+crypto.randomUUID(),shipping,note:document.getElementById('editor-memo').value})});
+                if(!current())return;
+                if(JSON.stringify(operatorShippingDraft())!==key)return;
+                state.operatorQuote=quote;state.operatorQuoteKey=key;state.operatorHint='';
+            } catch(error) {
+                if(current() && JSON.stringify(operatorShippingDraft())===key){state.operatorErrorKey=key;state.operatorError=error.message || '금액을 불러오지 못했어요. 창을 닫고 다시 열어 주세요.';}
+            } finally {
+                if(current()){state.operatorPending=false;updateEditorPricing();}
+            }
+        }
+
+        async function saveOperatorShippingEditor(state) {
+            const item=activeBuyerLinkItem(),shipping=operatorShippingDraft();
+            if(!item || state.operatorSaving || state.operatorPending || !state.operatorQuote || state.operatorQuoteKey!==JSON.stringify(shipping))return;
+            const body={itemId:item._platformItemId,expectedArchiveId:new URLSearchParams(location.search).get('archive')||'',expectedVersion:state.operatorVersion,expectedAmount:state.operatorQuote.totals.totalAmount,shipping,note:document.getElementById('editor-memo').value};
+            const key=JSON.stringify(body);
+            if(state.operatorSaveKey!==key){state.operatorSaveKey=key;state.operatorRequestId=crypto.randomUUID();}
+            const winnerKey=activeEditorWinner;
+            state.operatorSaving=true;
+            showLoading(true,'배송 정보를 저장하는 중…');
+            try {
+                await CreoPlatform.api(`channels/${encodeURIComponent(SHIPPING_CHANNEL_ID)}/buyer-shipping-editor`,{method:'POST',body:JSON.stringify({...body,requestId:state.operatorRequestId})});
+                closeWinnerEditor();
+                try {
+                    await refreshShippingWorkspace({preserveEditor:false});
+                    showToast('배송 정보를 저장했어요.');
+                } catch(_) {showToast('저장은 완료됐어요. 목록을 새로고침해 주세요.',true);}
+            } catch(error) {
+                if(activeEditorWinner===winnerKey) {
+                    const feedback=document.getElementById('operator-shipping-feedback');feedback.hidden=false;feedback.textContent=error.message || '저장하지 못했어요. 입력은 유지됩니다. 다시 저장해 주세요.';
+                }
+            } finally {state.operatorSaving=false;showLoading(false);}
         }
 
         function updateEditorPricing() {
@@ -3886,8 +3975,11 @@
             const totalShipping = editorShippingState.type === '배송' && comp !== '기타' && reg && hub
                 ? calculateShippingCost(comp, editorShippingState.type, reg, hub, state.allItems.length)
                 : 0;
-            const shippingAllocations = splitShippingCostByCompany(sellerCos, totalShipping, state.allItems);
-            const shipCost = editorShippingState.type === '배송' ? (shippingAllocations[selectedCo] || 0) : 0;
+            const platform = shippingOperation?.channel?.dataAdapter === 'platform';
+            if(platform)refreshOperatorShippingQuote(state);
+            const quote=platform?state.operatorQuote:null;
+            const shippingAllocations = platform ? Object.fromEntries((quote?.vendors||[]).map(v=>[v.name,v.totals.shippingAmount])) : splitShippingCostByCompany(sellerCos, totalShipping, state.allItems);
+            const shipCost = platform ? shippingAllocations[selectedCo] || 0 : editorShippingState.type === '배송' ? (shippingAllocations[selectedCo] || 0) : 0;
             const settlement = settlementDiscountFor(groupItems, allItems);
             const grandTotal = settlement.payableAuctionAmount + shipCost;
 
@@ -3903,7 +3995,14 @@
             const totalLabel = document.getElementById('editor-summary-total-label');
             totalLabel.textContent = confirmedAmount > 0 && additionalDue > 0 ? '추가 결제 금액' : confirmedAmount >= grandTotal && grandTotal > 0 ? '결제 완료' : '받을 금액';
             document.getElementById('editor-summary-total').textContent = (confirmedAmount > 0 && additionalDue > 0 ? additionalDue : grandTotal).toLocaleString() + '원';
-            renderEditorShippingBreakdown(state, selectedCo, baseCost, totalShipping, shippingAllocations, comp || '배송');
+            renderEditorShippingBreakdown(state, selectedCo, baseCost, platform?quote?.totals.shippingAmount||0:totalShipping, shippingAllocations, comp || '배송');
+            if(platform) {
+                const feedback=document.getElementById('operator-shipping-feedback');
+                const paymentHint=quote?.vendors.some(v=>v.payment.cardLinkCancellationRequired)?'이전 카드 안내는 취소 확인 후 다시 등록해야 해요.':quote?.vendors.some(v=>v.payment.shippingChangedAfterReport)?'입금 신고한 금액이 바뀝니다. 저장 후 실제 입금액을 다시 확인해 주세요.':'';
+                feedback.hidden=Boolean(quote) && !paymentHint;feedback.textContent=quote?paymentHint:state.operatorError || state.operatorHint || '금액 확인 중…';
+                document.querySelector('.editor-save-action').disabled=!quote || state.operatorPending;
+                if(!quote){document.getElementById('editor-summary-ship').textContent='—';document.getElementById('editor-summary-total').textContent='—';}
+            }
 
             // 하단 작업 영역에서 배송 입력 링크 문자와 입금 확인을 한 번씩만 제공한다.
             const copyBtn = document.getElementById('editor-info-copy-btn');
@@ -3940,13 +4039,13 @@
                 const paid = grandTotal > 0 && state.payment_confirmed_amount >= grandTotal;
                 const additionalPayment = state.payment_confirmed_amount > 0 && state.payment_confirmed_amount < grandTotal;
                 paymentConfirmBtn.hidden = !state.buyer_submitted_at;
-                paymentConfirmBtn.disabled = paid;
+                paymentConfirmBtn.disabled = paid || (platform && (!quote || state.operatorQuoteKey!==JSON.stringify({type:state.shipping_type,company:state.shipping_company,region:state.shipping_region,hub:state.shipping_hub})));
                 paymentConfirmBtn.textContent = paid ? '결제 확인됨' : additionalPayment ? '추가 결제 확인' : '결제 확인';
                 paymentConfirmBtn.onclick = paid ? null : confirmActiveBuyerPayment;
             }
             } catch (pricingErr) {
                 console.error('[updateEditorPricing ERROR]', pricingErr);
-                alert('[updateEditorPricing CRASH]\nMessage: ' + pricingErr.message + '\nStack: ' + pricingErr.stack);
+                showToast('금액을 표시하지 못했어요. 창을 닫고 다시 열어 주세요.',true);
             }
         }
 
@@ -3985,6 +4084,11 @@
             }
 
             const baseShipping = buildEditorShippingBaseData();
+            if (shippingOperation?.channel?.dataAdapter === 'platform') {
+                const original={type:state.shipping_type,company:state.shipping_company,region:state.shipping_region,hub:state.shipping_hub};
+                if(JSON.stringify(operatorShippingDraft())!==JSON.stringify(original) && !confirmShippingOverwrite(state.allItems,baseShipping))return;
+                return saveOperatorShippingEditor(state);
+            }
             if (!confirmShippingOverwrite(state.allItems, baseShipping)) return;
 
             showLoading(true, '배송 정보를 전송하는 중...');

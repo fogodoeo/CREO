@@ -85,7 +85,7 @@
                 shipping_gross_cost: shipment?.grossCost == null ? null : Number(shipment.grossCost), shipping_support_amount: Number(shipment?.shippingSupportAmount) || 0,
                 payment_status: shipment?.paymentStatus || '', payment_method: shipment?.paymentMethod || '', buyer_submitted_at: shipment?.buyerSubmittedAt || '', payment_requested_amount: Number(shipment?.paymentRequestedAmount) || 0, payment_confirmed_amount: Number(shipment?.paymentConfirmedAmount) || 0, payment_confirmed_at: shipment?.paymentConfirmedAt || '', buyer_payment_reported_at: shipment?.buyerPaymentReportedAt || '', card_payment_url: shipment?.cardPaymentUrl || '',
                 shipping_note: shipment?.note || '',
-                _platformItemId: item.id, _platformShipmentId: shipment?.id || ''
+                _platformItemId: item.id, _platformShipmentId: shipment?.id || '', _checkoutShipment: shipment || null
             };
         });
     }

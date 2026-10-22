@@ -9,11 +9,12 @@ async function main(){
  const channels=await f.repository.getCatalog();
  await f.repository.saveCatalog(channels.channels.map(c=>c.id==='national-cre'?{...c,shippingSupport:{enabled:false},shippingDefaults:{...c.shippingDefaults,deliverySchedule:{enabled:true,auctionDate:day}}}:c));
  await f.repository.upsertRows([{key:'shipping_rate_parge',value:JSON.stringify({data:{수도권:[{shop:'가상 정거샵',cost:19000}],경기:[{shop:'가상 경기점',cost:15000}]}})}]);
- const root=path.resolve(__dirname,'../public');let failSave=false;
+ const root=path.resolve(__dirname,'../public');let failSave=false,failOperatorSave=false;
  const server=http.createServer(async(req,res)=>{try{
   const url=new URL(req.url,origin);
   if(url.pathname==='/'){res.writeHead(302,{Location:'/buyer-shipping.html?code='+f.code});res.end();return;}
   if(url.pathname==='/__preview/fail-save'){failSave=true;res.writeHead(200,{'Content-Type':'text/plain; charset=utf-8'});res.end('Next isolated buyer save fails once.');return;}
+  if(url.pathname==='/__preview/fail-operator-save'){failOperatorSave=true;res.writeHead(200);res.end('Next isolated operator save fails once.');return;}
   if(url.pathname==='/__preview/state'){
    const result=await f.read();res.writeHead(result.status,{'Content-Type':'application/json'});res.end(result.body);return;
   }
@@ -23,6 +24,7 @@ async function main(){
    res.writeHead(200,{'Content-Type':'text/html; charset=utf-8'});res.end(`<html lang="ko"><title>${width}px buyer audit</title><body style="margin:0"><iframe title="${width}px buyer audit" style="width:${width}px;height:844px;border:0" src="${page.replaceAll('&','&amp;').replaceAll('"','&quot;').replaceAll('<','&lt;')}"></iframe></body></html>`);return;
   }
   if(failSave&&req.method==='POST'&&url.pathname==='/api/platform/buyer-shipping'){failSave=false;res.writeHead(503,{'Content-Type':'application/json'});res.end(JSON.stringify({error:'테스트용 저장 실패입니다. 다시 저장해 주세요.'}));return;}
+  if(failOperatorSave&&req.method==='POST'&&url.pathname.endsWith('/buyer-shipping-editor')){failOperatorSave=false;res.writeHead(503,{'Content-Type':'application/json'});res.end(JSON.stringify({error:'테스트용 저장 실패입니다. 입력은 유지됩니다. 다시 저장해 주세요.'}));return;}
   req.headers['x-creo-admin']=f.secret;
   if(url.pathname.startsWith('/api/')&&await f.api.handle(req,res,url))return;
   const file=path.resolve(root,'.'+(url.pathname==='/main'?'/index.html':url.pathname));

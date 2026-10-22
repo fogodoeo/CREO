@@ -1940,7 +1940,12 @@ function createPlatformApi({
         let method;
         let carrier;
         let address;
-        if (fixed) {
+        if (options.operatorCustom) {
+            selection = {destinationType:'',destinationId:'operator-custom',pargeRegion:'',pargeShop:''};
+            method = 'delivery';
+            carrier = options.operatorCustom.carrier;
+            address = options.operatorCustom.address;
+        } else if (fixed) {
             selection = { destinationType: 'pickup', destinationId: fixed.id, pargeRegion: '', pargeShop: '' };
             method = 'pickup';
             carrier = '';
@@ -1959,6 +1964,7 @@ function createPlatformApi({
         const groups = Checkout.groupItemsByVendor(context.bundleItems, context.vendors);
         const requestedMethods = requestedPaymentMethods(body, groups);
         const shipping = Checkout.allocateShipping(context.bundleItems, selection, context.channel, rates, unchangedDestination ? context.shipments : []);
+        if(options.operatorCustom?.allocations)for(const [id,cost] of options.operatorCustom.allocations)shipping.allocations.set(id,cost);
         const existingByItem = new Map(context.shipments.map((shipment) => [shipment.itemId, shipment]));
         const now = new Date().toISOString();
         const saved = [];
@@ -2610,6 +2616,91 @@ function createPlatformApi({
             shippingAmount: bundle.group.shippingAmount, totalAmount: bundle.group.totalAmount,
             hasCardGuide: bundle.group.shipments.some(row => row.cardPaymentUrl || row.cardNoticeMethod === 'external')
         };
+    }
+
+    async function operatorShippingContext(channelId, itemId, archiveId) {
+        const channel = (await loadCatalog()).channels.find(row=>row.id===channelId);
+        if (!channel || channel.dataAdapter!=='platform' || !CheckoutRounds.open(channel)) throw buyerInputError('조회할 수 있는 경매를 다시 선택해 주세요.',409);
+        const data = await workspace(channelId);
+        const scoped = await OperationRounds.scopedWorkspace(repository,channel,data,archiveId);
+        const item = scoped.items.find(row=>row.id===itemId && isSoldItem(row));
+        if (!item) throw buyerInputError('회차가 변경되었습니다. 해당 회차의 낙찰자를 다시 선택해 주세요.',409);
+        const phone = storedWinnerPhone(item) || (item.auctionArchiveId || channel.status==='archived' ? '' : await resolveWinnerPhone(item,bandMembership));
+        if (!phone) throw buyerInputError('낙찰자 전화번호를 먼저 확인해 주세요.',422);
+        const context = await buyerBundleContext({v:2,...await buyerLinkSubject(channelId,phone,item),itemId},{operatorAccess:true});
+        if (!context) throw buyerInputError('낙찰자 내역을 다시 선택해 주세요.',404);
+        return context;
+    }
+
+    async function prepareOperatorShipping(context, body) {
+        const input=body.shipping || {}, latest=latestBundleShipment(context), before=await checkoutSnapshot(context);
+        if (typeof body.note!=='string' || body.note.length>500) throw buyerInputError('메모는 500자 이내로 입력해 주세요.');
+        const note=cleanText(body.note,500), vendorKey=vendorKeyForItem(context.bundleItems.find(item=>item.id===body.itemId));
+        let selection, address, carrier='', method, operatorCustom;
+        if (input.type==='직접수령') {
+            address=cleanText(input.region,300);method='pickup';
+            const pickup=pickupDestinations(context.channel).find(row=>row.label===address);
+            if (!pickup && !(latest?.method==='pickup' && latest.address===address)) throw buyerInputError('직수령 장소를 다시 선택해 주세요.');
+            selection={destinationId:pickup?.id || latest.destinationId,pargeRegion:'',pargeShop:''};
+        } else if(input.type==='배송') {
+            method='delivery';carrier=cleanText(input.company,120);
+            const provider=({'파르게':'parge','도도시':'dodosi'})[carrier];
+            if(provider) {
+                selection={destinationId:provider,pargeRegion:cleanText(input.region,80),pargeShop:cleanText(input.hub,120)};
+                address=`${selection.pargeRegion} (${selection.pargeShop})`;
+            } else {
+                address=cleanText(input.address,300);
+                if(!carrier || !address)throw buyerInputError('배송사와 배송지를 입력해 주세요.');
+                // Manual carriers keep the existing editor's separately arranged fee.
+                // Only this authenticated operator endpoint supplies the option.
+                operatorCustom={carrier,address};selection={destinationId:'operator-custom',pargeRegion:'',pargeShop:''};
+            }
+        } else throw buyerInputError('배송 방식을 선택해 주세요.');
+        const oldAddress=String(latest?.address||'').replace(/\s*\[(?:메모|요청):[\s\S]*\]\s*$/,'').trim();
+        const changed=!latest || latest.method!==method || (latest.carrier||'')!==carrier || oldAddress!==address;
+        const now=new Date().toISOString();
+        let records;
+        const copy=structuredClone(context);
+        if(changed) {
+            await assertNoCheckoutChange(context);
+            if(ownCheckoutShipments(context).some(row=>row.trackingNumber || ['shipped','delivered','received'].includes(row.status))) throw buyerInputError('이미 발송된 내역입니다. 배송업체에 먼저 변경 가능 여부를 확인해 주세요.',409);
+            if(carrier==='랩팡') {
+                const stored=(await repository.getRowsByKeys(['shipping_rate_wrapang']))[0];
+                const data=(stored?JSON.parse(stored.value):require('./public/wrapang_data.json')).data;
+                const rate=data?.[input.region]?.find(row=>row.shop===input.hub);
+                if(!rate)throw buyerInputError('랩팡 수령 지점을 다시 선택해 주세요.');
+                const base=Math.round(Number(rate.cost)|| (String(input.region).includes('제주')?55000:25000));
+                const total=n=>n<1?0:base+(n<=4?(n-1)*7000:n<=20?28000:35000);
+                operatorCustom.allocations=new Map([...context.bundleItems].sort(Checkout.itemOrder).map((item,index)=>[item.id,total(index+1)-total(index)]));
+            }
+            const result=await saveBuyerShipping(copy,{...selection,requestId:body.requestId},{dryRun:true,requirePaymentMethod:false,operatorCustom});
+            const after=await checkoutSnapshot(copy);
+            if(before.groups.some(group=>group.shipments.some(destinationChangeLocked) && group.totalAmount!==after.groups.find(row=>row.key===group.key)?.totalAmount)) throw buyerInputError('입금 확인된 금액이 달라지는 변경입니다. 정산 내역을 먼저 확인해 주세요.',409);
+            records=result.records.map(row=>({...row,destinationRevisionId:body.requestId}));
+        } else records=ownCheckoutShipments(context);
+        records=records.map(row=>row.vendorId===vendorKey || context.bundleItems.some(item=>item.id===row.itemId && vendorKeyForItem(item)===vendorKey)
+            ? {...row,note,updatedAt:row.note===note?row.updatedAt:now} : row);
+        const ids=new Set(records.map(row=>row.itemId));
+        copy.shipments=[...copy.shipments.filter(row=>!ids.has(row.itemId)),...records];
+        return {records,changed,selection,address,payload:await buyerShippingPayload(copy)};
+    }
+
+    async function saveOperatorShipping(context, body) {
+        const requestId=cleanText(body.requestId,80);
+        if(requestId.length<8)throw buyerInputError('저장 요청값이 올바르지 않습니다. 다시 열어 주세요.');
+        const receiptKey=checkoutActionReceiptKey(context,body.itemId,'operator-shipping:'+context.round.key,requestId);
+        const fingerprint=sessionKey(JSON.stringify([body.itemId,body.expectedArchiveId,body.expectedVersion,body.shipping,body.note,body.expectedAmount]));
+        if(body.action!=='quote' && await readCheckoutActionReceipt(context.channel.id,receiptKey,fingerprint))return {duplicate:true};
+        if(!body.expectedVersion || body.expectedVersion!==buyerEditVersion(context))throw buyerInputError('낙찰·결제 정보가 바뀌었습니다. 창을 닫고 다시 열어 주세요.',409);
+        const prepared=await prepareOperatorShipping(context,{...body,requestId});
+        if(body.action==='quote')return prepared.payload;
+        if(!Number.isFinite(body.expectedAmount) || body.expectedAmount!==prepared.payload.totals.totalAmount)throw buyerInputError('금액이 바뀌었습니다. 창을 닫고 다시 확인해 주세요.',409);
+        const now=new Date().toISOString(), rows=prepared.records.map(row=>({key:channelKey(context.channel.id,'shipment',row.id),value:JSON.stringify(row)}));
+        if(prepared.changed)rows.push({key:buyerDestinationKey(context),value:JSON.stringify({...prepared.selection,destinationType:prepared.records[0]?.destinationType||'',address:prepared.address,sourceChannelId:context.channel.id,buyerSubmittedAt:now})});
+        rows.push({key:receiptKey,value:JSON.stringify({fingerprint,createdAt:now,action:'operator-shipping',itemIds:prepared.records.map(row=>row.itemId),previousShipments:ownCheckoutShipments(context),notification:{skipped:true,reason:'operator_shipping_edit'}})});
+        await repository.upsertRows(rows);
+        touchCheckout(context.channel.id);touchChannel(context.channel.id);
+        return {duplicate:false};
     }
 
     async function saveVendorShipping(context, body) {
@@ -5645,6 +5736,18 @@ function createPlatformApi({
                     touchChannel(channelId);
                     replyJson(res, 200, { state: record });
                 });
+                return true;
+            }
+
+            if (segments.length === 3 && segments[2] === 'buyer-shipping-editor' && ['GET','POST'].includes(method)) {
+                if(!await requireAdmin(req,res))return true;
+                const body=method==='POST'?await readJson(req):{itemId:url.searchParams.get('itemId'),expectedArchiveId:url.searchParams.get('archive')||''};
+                if(typeof body.expectedArchiveId!=='string')throw buyerInputError('회차를 다시 선택해 주세요.',409);
+                const work=async()=>{
+                    const context=await operatorShippingContext(channelId,cleanText(body.itemId,64),body.expectedArchiveId);
+                    replyJson(res,200,method==='GET'?await buyerShippingPayload(context):await saveOperatorShipping(context,body));
+                };
+                if(method==='POST')await withMutationLock('channel:'+channelId,work);else await work();
                 return true;
             }
 
