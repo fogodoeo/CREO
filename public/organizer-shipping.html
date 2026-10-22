@@ -11,10 +11,11 @@
 <p><a id="broadcast-bookings" class="settlement-secondary" hidden>방송 예약 관리</a></p>
 <nav class="organizer-navigation" aria-label="주관사 업무"><button id="show-shipping" type="button" aria-pressed="true" aria-controls="shipping-panel">배송비 정산</button><button id="show-auction" type="button" aria-pressed="false" aria-controls="auction-panel">낙찰 내역</button></nav>
 <div id="shipping-panel">
+<details id="unassigned-receipts" class="settlement-card receipt-classification" hidden><summary id="unassigned-title">기존 입금 회차 확인</summary><p>기록된 입금액과 날짜를 보고 해당 방송 회차를 연결해 주세요. 이미 확인된 입금은 다시 입력하지 않아도 됩니다.</p><div id="unassigned-list"></div><p id="unassigned-error" role="alert" hidden></p></details>
 <section class="settlement-card settlement-bank-card" id="bank-settings" aria-labelledby="bank-title"><div class="settlement-pair"><h2 id="bank-title">배송비 받을 계좌 등록</h2><button id="edit-bank" class="settlement-text" type="button" hidden>수정</button></div><p id="bank-intro" class="settlement-muted">업체에 표시할 계좌를 입력해 주세요.</p>
 <div id="bank-saved" hidden><p id="bank-saved-owner" class="settlement-muted"></p><b id="bank-saved-account" class="settlement-saved-account"></b><div class="settlement-pair"><span>입금 알림 번호</span><span id="bank-saved-phone"></span></div></div>
 <form id="bank-form"><label>은행<input id="bankName" required maxlength="40" autocomplete="off" placeholder="예: 국민은행"></label><label>계좌번호<input id="bankAccount" required inputmode="numeric" maxlength="80" autocomplete="off" placeholder="계좌번호 입력"></label><label>예금주<input id="bankHolder" required maxlength="60" autocomplete="off" placeholder="예금주명 입력"></label><label>입금 알림 받을 번호<input id="notificationPhone" type="tel" required maxlength="13" autocomplete="tel" placeholder="010-0000-0000"></label><button id="save" class="settlement-primary">계좌 등록하기</button><button id="cancel-bank" class="settlement-secondary" type="button" hidden>취소</button></form></section>
-<section class="organizer-overview"><span class="settlement-muted">업체별 미입금 합계</span><div class="settlement-amount" id="total"></div><div class="organizer-totals"><span><span id="all-total-label">총 배송비</span> <b id="all-total"></b></span><span>확인 입금 <b id="received"></b></span><span id="overpaid-total" hidden></span></div><p id="missing-total" class="settlement-muted" hidden></p></section>
+<section class="organizer-overview"><span class="settlement-muted" id="remaining-label">업체별 미입금 합계</span><div class="settlement-amount" id="total"></div><div class="organizer-totals"><span><span id="all-total-label">총 배송비</span> <b id="all-total"></b></span><span>확인 입금 <b id="received"></b></span><span id="overpaid-total" hidden></span></div><p id="missing-total" class="settlement-muted" hidden></p></section>
 <section class="organizer-vendors"><div class="settlement-section-head"><h2>업체별 내역</h2><button id="refresh" class="settlement-text" type="button">새로고침</button></div><div id="vendors"></div></section>
 <details class="organizer-carriers"><summary>배송업체별 배송비 <span aria-hidden="true">⌄</span></summary><p class="settlement-muted">배송비 배정 기준 · 송금 내역 별도</p><div id="carriers"></div></details>
 </div>
@@ -28,6 +29,7 @@
 <dialog id="receipt-dialog" class="organizer-sheet" aria-labelledby="receipt-title">
 <header class="organizer-sheet-head"><h2 id="receipt-title">입금 확인</h2><button id="close-receipt" type="button" class="settlement-text" aria-label="닫기">×</button></header>
 <p id="receipt-round" class="settlement-muted"></p>
+<button id="review-old-receipts" class="settlement-secondary" type="button" hidden>기존 입금 회차 확인하기</button>
 <form id="receipt-form">
 <label class="receipt-label" for="receipt-amount">입금액</label><div class="receipt-money"><input id="receipt-amount" inputmode="numeric" autocomplete="off" aria-describedby="receipt-balance" required><span>원</span></div><p id="receipt-balance" class="settlement-muted"></p>
 <div class="receipt-date-row"><label for="receipt-date">입금일</label><input id="receipt-date" type="date" required></div>
@@ -37,4 +39,4 @@
 <button id="receipt-reload" class="settlement-text" type="button" hidden>최신 내역 불러오기</button>
 <footer class="receipt-footer"><button id="confirm-receipt" class="settlement-primary" type="submit">입금 확인 완료</button></footer>
 </form></dialog>
-<script src="/organizer-shipping.js?v=20261020-round"></script></body></html>
+<link rel="stylesheet" href="/organizer-receipt-scope.css?v=20261023-receipt-scope"><script src="/organizer-shipping.js?v=20261023-receipt-scope"></script></body></html>

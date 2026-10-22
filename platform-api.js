@@ -2438,7 +2438,8 @@ function createPlatformApi({
             const history = ledger.filter(r => r.vendorId === v.vendorId);
             const receivedAmount = history.filter(r => r.status === 'confirmed').reduce((n,r) => n + r.amount, 0);
             const fee=fees.find(row=>row.vendorId===v.vendorId),totalAmount=v.totalAmount+(fee?.feeAmount||0);
-            return {...v,...(fee?{...fee,shippingAmount:v.totalAmount}:{}),totalAmount, receivedAmount, remainingAmount:Math.max(0,totalAmount-receivedAmount), overpaidAmount:Math.max(0,receivedAmount-totalAmount), pendingReport:history.find(r => r.status === 'pending') || null, history};
+            const unassignedReceiptCount=hasHistory?allLedger.filter(r=>r.vendorId===v.vendorId&&require('./organizer-receipt-scope').unresolved(r)).length:0;
+            return {...v,...(fee?{...fee,shippingAmount:v.totalAmount}:{}),totalAmount, receivedAmount, remainingAmount:Math.max(0,totalAmount-receivedAmount), overpaidAmount:Math.max(0,receivedAmount-totalAmount), pendingReport:history.find(r => r.status === 'pending') || null, history,unassignedReceiptCount};
         });
         await Promise.all(summaries.map(async v => {
             if(v.pendingReport?.notificationId){
@@ -4188,6 +4189,20 @@ function createPlatformApi({
                 return true;
             }
 
+            if (segments.length === 4 && segments[2] === 'organizer-shipping' && segments[3] === 'assign-round' && method === 'POST') {
+                if(!await requireOrganizer(req,res,channelId))return true;
+                const body=await readJson(req);
+                if(typeof body.targetArchiveId!=='string')throw buyerInputError('연결할 회차를 선택해 주세요.',422);
+                await withMutationLock(`channel:${channelId}`,async()=>{
+                    const data=await OperationRounds.scopedWorkspace(repository,channel,await workspace(channelId),body.targetArchiveId);
+                    const key=`creo_organizer_shipping_ledger::${channelId}`,rows=await repository.getRowsByKeys([key]);
+                    const ledger=JSON.parse(rows.find(r=>r.key===key)?.value||'[]');
+                    const result=require('./organizer-receipt-scope').assign(ledger,body,data);
+                    if(!result.duplicate){await repository.upsertRows([{key,value:JSON.stringify(result.ledger)}]);touchCheckout(channelId);}
+                    replyJson(res,200,{duplicate:result.duplicate});
+                });return true;
+            }
+
             if (segments.length === 4 && segments[2] === 'organizer-shipping' && ['deposit','cancel'].includes(segments[3]) && method === 'POST') {
                 if (!await requireOrganizer(req,res,channelId)) return true;
                 const body = await readJson(req);
@@ -4198,7 +4213,7 @@ function createPlatformApi({
                     const current = await organizerShippingSettlement(channelId,data.items,data.shipments,data.vendors);
                     const vendor = current.vendors.find(v=>v.vendorId===body.vendorId);
                     if (!vendor) throw buyerInputError('업체를 찾을 수 없습니다.',404);
-                    if(current.unassignedReceiptCount)throw buyerInputError('회차 미지정 입금이 있습니다. 기존 입금의 회차를 먼저 확인해 주세요.',409);
+                    if(segments[3]==='deposit'&&vendor.unassignedReceiptCount)throw buyerInputError('이 업체의 기존 입금 회차를 먼저 연결해 주세요. 화면 위쪽 ‘기존 입금 회차 확인’에서 처리할 수 있어요.',409);
                     const rows = await repository.getRowsByKeys([key]);
                     const ledger = JSON.parse(rows.find(r=>r.key===key)?.value || '[]');
                     const receipts = require('./organizer-receipts');
@@ -4224,6 +4239,10 @@ function createPlatformApi({
                     const key = `creo_organizer_shipping_ledger::${channelId}`;
                     const rows = await repository.getRowsByKeys([key]);
                     const ledger = JSON.parse(rows.find(r=>r.key===key)?.value || '[]');
+                    const data=await OperationRounds.scopedWorkspace(repository,channel,await workspace(channelId),url.searchParams.get('archive')||'');
+                    const current=await organizerShippingSettlement(channelId,data.items,data.shipments,data.vendors);
+                    const own=current.vendors.find(v=>v.vendorId===body.vendorId);
+                    if(!own?.history.some(r=>r.id===body.reportId))throw buyerInputError('선택한 회차의 입금 내역이 아닙니다. 기존 입금은 회차를 먼저 연결해 주세요.',409);
                     const record = ledger.find(r=>r.id===body.reportId && r.vendorId===body.vendorId);
                     if (!record) throw buyerInputError('입금 내역을 찾을 수 없습니다.',404);
                     if (!['confirmed','rejected'].includes(body.action)) throw buyerInputError('처리 상태를 확인해 주세요.');
@@ -4245,6 +4264,10 @@ function createPlatformApi({
                 await withMutationLock(`channel:${channelId}`, async () => {
                     const data = await OperationRounds.scopedWorkspace(repository,channel,await workspace(channelId),url.searchParams.get('archive')||'');
                     const current = await organizerShippingSettlement(channelId,data.items,data.shipments,data.vendors);
+                    if(current.unassignedReceiptCount){
+                        const key=`creo_organizer_shipping_ledger::${channelId}`,rows=await repository.getRowsByKeys([key]);
+                        current.unassignedReceipts=require('./organizer-receipt-scope').reviewRows(JSON.parse(rows.find(r=>r.key===key)?.value||'[]'),channel,await workspace(channelId),await repository.listRecords(channelId,'archive'));
+                    }
                     current.carriers = require('./shipping-settlement').summarizeCarriers(data.items,data.shipments,data.vendors);
                     current.auctionItems = require('./shipping-settlement').organizerAuctionItems(data.items.map(item=>({...item,winnerPhone:storedWinnerPhone(item)})),data.shipments,data.vendors,buyerDisplayName);
                     if (deliverySchedules && channel.shippingDefaults?.deliverySchedule?.enabled) {

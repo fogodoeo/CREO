@@ -21,6 +21,20 @@ test('first load failure exposes retry; recovery clears the error and never edit
  assert.equal(f.nodes.get('content').hidden,false);assert.equal(f.nodes.get('message').textContent,'');assert.equal(f.nodes.get('retry').hidden,true);
  assert.ok(f.calls.every(r=>(r.options.method||'GET')==='GET'&&r.options.cache==='no-store'));
 });
+
+test('unassigned receipts expose explicit recovery, block only that vendor and preserve pending status',async()=>{
+ const f=screen(),view=data();view.unassignedReceiptCount=1;view.vendors[0].unassignedReceiptCount=1;
+ view.unassignedReceipts=[{id:'old',vendorId:'v',vendorName:'예시업체',amount:10000,status:'pending',paidOn:'2026-10-15',rounds:[{archiveId:'previous',name:'10/14 회차',date:'2026-10-14',itemIds:['old-item']}]}];
+ f.calls[0].resolve(view);await new Promise(setImmediate);
+ assert.equal(f.nodes.get('unassigned-receipts').hidden,false);assert.match(f.nodes.get('unassigned-list').innerHTML,/회차 선택/);
+ f.run('openReceipt(state.vendors[0])');assert.equal(f.nodes.get('confirm-receipt').disabled,true);assert.equal(f.nodes.get('review-old-receipts').hidden,false);
+ await f.run('saveReceipt({preventDefault(){}})');assert.equal(f.calls.length,1);
+ await f.run("assignReceipt(0,'')");assert.equal(f.calls.length,1,'must explicitly choose a round');
+ const action=f.run("assignReceipt(0,'0')");const payload=JSON.parse(f.calls[1].options.body);
+ assert.equal(f.calls[1].path,'channels/alpha/organizer-shipping/assign-round');assert.equal(payload.targetArchiveId,'previous');assert.equal(payload.expectedStatus,'pending');assert.equal(payload.action,undefined);
+ f.calls[1].resolve({duplicate:false});await new Promise(setImmediate);f.calls[2].resolve(data());await action;
+ assert.equal(f.nodes.get('unassigned-receipts').hidden,true);assert.match(f.nodes.get('message').textContent,/회차를 연결/);
+});
 test('selected round title stays literal in the page and receipt dialog, and is cleared on lost access',async()=>{
  const f=screen('?channel=alpha&archive=previous'),old=data();
  old.round={channelId:'alpha',archiveId:'previous',date:'2026-10-14',name:'<이전 회차>'};
