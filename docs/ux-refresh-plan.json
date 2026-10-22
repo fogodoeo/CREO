@@ -133,14 +133,33 @@
     },
     {
       "id": "buyer",
-      "status": "pending",
+      "status": "in_progress",
       "scope": [
         "낙찰 안내 진입·인증",
         "배송지·직수령·운송사 선택",
         "입금·결제 확인·변경 요청",
         "지난 회차 미완료 내역·완료 상태"
       ],
-      "evidence": []
+      "completed": [
+        "낙찰자 결제 목록은 납부·입력할 업체를 먼저 표시하고 안내 준비·확인 대기 및 완료는 뒤에 표시",
+        "모든 업체가 대기 상태이면 결제 진행 대신 안내·확인 중임을 표시",
+        "입금 신고 후에는 결제할 금액 대신 확인 중인 금액으로 표시"
+      ],
+      "remaining": [
+        "인증·단일/복수 회차·직수령·검색 결과 없음·도도시 승인 경로",
+        "저장 실패 복구·배송 변경 요청·추가 낙찰·결제 완료/취소 화면 전체 검증",
+        "전체 키보드 경로와 200% 확대"
+      ],
+      "evidence": [
+        "risk: medium (buyer task order and status copy only; existing financial methods, writes, and amount calculations unchanged)",
+        "node --test test/buyer-checkout-flow.test.js test/checkout-actions.test.js test/checkout-client.test.js test/checkout-round-picker.test.js test/checkout-round-continuity.test.js: 48 pass; buyer inline scripts parse with vm.Script",
+        "CUA isolated canonical checkout: choose Parge/shop, bank + card methods, save with keyboard, reload, actionable bank vendor first; local fake report then pending + card preparation heading at 320px",
+        "CUA 390px and 320px iframe: no horizontal overflow (clientWidth equals scrollWidth); no production records or real notifications used",
+        "tools/buyer-journey-preview.cjs: isolated SQLite/fake notification fixture through real checkout APIs, localhost:4398",
+        "../admin-home-review-20261022/buyer-waiting-guidance-320.png",
+        "../admin-home-review-20261022/ux-buyer-tasks-tests.log"
+      ],
+      "deployed": false
     },
     {
       "id": "broadcast",
@@ -172,6 +191,6 @@
     "공통 업체 및 회차 구분이 모든 화면에서 일관되게 전달되지 않음",
     "전체 사용자 역할별 개편과 통합 검증은 아직 진행 중"
   ],
-  "next_work": "관리자 낙찰자 입금·배송 목록과 낙찰자 배송 선택·결제 흐름을 실제 상태별로 정리한다. 씨랩 출품·방송 도구·전체 키보드/확대 검증과 배포도 남아 있다. 업체 사진·정산 회차·업무 구분과 관리자 정산 필터는 로컬에서 검증했으며 아직 배포하지 않았다. 모바일 통합 관리자 상단 선택 영역의 높이도 다음 화면 점검에 포함한다.",
+  "next_work": "관리자 낙찰자 입금·배송 목록의 업체 선택과 모바일 상단 높이를 정리하고, 낙찰자 저장 실패·검색 결과 없음·배송 변경/승인·추가 낙찰 상태를 이어서 검증한다. 씨랩 출품·방송 도구·전체 키보드/확대 검증과 배포도 남아 있다. 업체/관리자 정산 업무 구분과 낙찰자 결제 우선순위는 로컬에서 검증했으며 아직 배포하지 않았다.",
   "completion_rule": "모든 workstream이 실제 구현·상태별 검증 증거를 갖출 때만 전체 완료로 판단한다."
 }

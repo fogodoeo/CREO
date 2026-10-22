@@ -78,9 +78,9 @@ test('pending and unsaved vendors do not hide another vendor account or lock its
  Object.assign(s.ctx,{globalShipping:()=>new Map(),esc:String,money:String,shippingQuote:()=>({allocations:new Map()}),paymentStatus:()=>['확인 대기',''],CreoCheckoutActions:{priority:()=>0,phoneHref:()=>''},document:{querySelectorAll:()=>[]}});
  vm.runInContext(html.slice(html.indexOf('function vendorDue('),html.indexOf('function render(){')),s.ctx);s.ctx.renderVendors();
  const markup=s.nodes.vendors.innerHTML,articles=markup.split('<article class="vendor">').slice(1);
- assert.match(articles[0],/method-readonly/);assert.doesNotMatch(articles[0],/data-payment-vendor="pending"/);
- assert.doesNotMatch(articles[1],/data-payment-vendor="ready"[^>]*disabled/);assert.match(articles[1],/12345/);assert.match(articles[1],/data-report="ready"/);
- assert.doesNotMatch(articles[2],/data-payment-vendor="extra"[^>]*disabled/);
+ assert.doesNotMatch(articles[0],/data-payment-vendor="ready"[^>]*disabled/);assert.match(articles[0],/12345/);assert.match(articles[0],/data-report="ready"/);
+ assert.doesNotMatch(articles[1],/data-payment-vendor="extra"[^>]*disabled/);
+ assert.match(articles[2],/method-readonly/);assert.match(articles[2],/확인 중인 금액/);assert.doesNotMatch(articles[2],/data-payment-vendor="pending"/);
  s.state.dirty=true;s.state.payments.extra='card';assert.match(s.ctx.vendorAction(ready,{}),/data-report="ready"/);
  assert.doesNotMatch(s.ctx.vendorAction(extra,{}),/data-report|account-panel/);
 });
@@ -105,4 +105,25 @@ test('payment choices put bank first without changing an existing card choice or
  assert.doesNotMatch(markup,/bank-first|data-method="bank_transfer"/);assert.match(markup,/data-method="card"/);
  s.ready.paymentMethods=['bank_transfer'];s.state.payments.ready='bank_transfer';s.ctx.renderVendors();
  assert.doesNotMatch(s.nodes.vendors.innerHTML,/data-method="card"/);
+});
+
+test('buyer payment work comes before prepared/reported waiting states while the underlying order stays intact',()=>{
+ const s=multiVendorFlow(),guide=vendorCase('guide','card_link_pending'),bank=vendorCase('bank','bank_transfer_pending'),paid=vendorCase('paid','paid');
+ guide.payment.method='card';s.state.data.vendors=[s.pending,guide,bank,paid];s.state.data.items=s.state.data.vendors.flatMap(v=>v.items);
+ s.state.payments={pending:'bank_transfer',guide:'card',bank:'bank_transfer',paid:'bank_transfer'};
+ Object.assign(s.ctx,{globalShipping:()=>new Map(),esc:String,money:String,shippingQuote:()=>({allocations:new Map()}),paymentStatus:()=>['',''],CreoCheckoutActions:{phoneHref:()=>''},document:{querySelectorAll:()=>[]}});
+ vm.runInContext(html.slice(html.indexOf('function vendorDue('),html.indexOf('function render(){')),s.ctx);s.ctx.renderVendors();
+ const markup=s.nodes.vendors.innerHTML;
+ assert.ok(markup.indexOf('<b>bank</b>')<markup.indexOf('<b>pending</b>'));assert.ok(markup.indexOf('<b>pending</b>')<markup.indexOf('<b>guide</b>'));assert.ok(markup.indexOf('<b>guide</b>')<markup.indexOf('<b>paid</b>'));
+ assert.deepEqual(s.state.data.vendors.map(v=>v.key),['pending','guide','bank','paid']);s.run();assert.equal(s.nodes['flow-title'].textContent,'결제를 진행해 주세요');
+ bank.payment.status='bank_transfer_reported';s.run();assert.equal(s.nodes['flow-title'].textContent,'결제 안내·확인 중이에요');
+ guide.payment.cardPaymentUrl='https://example.test/pay';s.run();assert.equal(s.nodes['flow-title'].textContent,'결제를 진행해 주세요');
+ delete guide.payment.cardPaymentUrl;guide.payment.cardNoticeMethod='external';s.run();assert.equal(s.nodes['flow-title'].textContent,'결제를 진행해 주세요');
+});
+
+test('missing bank or card instructions show preparation instead of asking the buyer to pay',()=>{
+ const s=setup({type:'pickup',submitted:true,payment:true}),bank=vendorCase('bank','bank_transfer_pending');
+ bank.payment.account={};s.state.data.vendors=[bank];s.state.data.items=bank.items;s.state.payments={bank:'bank_transfer'};
+ s.run();assert.equal(s.nodes['flow-title'].textContent,'결제 안내를 준비 중이에요');
+ bank.payment.status='paid';s.state.data.payment.status='paid';s.run();assert.equal(s.nodes['flow-title'].textContent,'결제가 완료됐어요');
 });
