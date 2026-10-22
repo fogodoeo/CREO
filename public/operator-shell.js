@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded',()=>{
  function allowed(){return !dirty||window.confirm('저장하지 않은 입력이 있습니다. 이 화면을 떠날까요?');}
  function clear(){source='';dirty=false;$('operator-frame').removeAttribute('src');$('operator-content').hidden=true;}
  function navigate(search,push=true){if(!allowed())return false;dirty=false;document.dispatchEvent(new CustomEvent('creo:operator-navigate',{detail:{search,push}}));return true;}
- function render(detail){state=detail.state;const q=new URLSearchParams(location.search);current=q.get('view')||'home';const e=Model.entry(state,current);
+ function render(detail){state=detail.state;const q=new URLSearchParams(location.search);current=q.get('view')||'home';if(current==='bookings'&&q.get('action')==='region')current='regions';const e=Model.entry(state,current);
   $('admin-nav').innerHTML=`<a class="nav-home" href="${esc(Model.home(state))}"${current==='home'?' aria-current="page"':''}>운영 홈</a>`+Model.menu(state).map(g=>`<details name="operator-section"${g.id===e?.group?' open':''}><summary>${esc(g.label)}</summary><nav aria-label="${esc(g.label)}">${g.entries.map(n=>`<a href="${esc(Model.home(state,n.key))}"${n.key===current?' aria-current="page"':''}>${esc(n.label)}</a>`).join('')}</nav></details>`).join('');
   $('selection-panel').hidden=e?.scope==='global';if(e?.scope==='program'){$('round-field').hidden=true;$('manage-rounds').hidden=true;}$('work-panel').hidden=current!=='home';$('operator-content').hidden=current==='home';$('operator-page-title').textContent=e?.label||'열 수 없는 메뉴';$('operator-breadcrumb').textContent=e?.scope==='global'?'전체 운영':e?.scope==='program'?(CreoOperatorHome.families(detail.catalog,state.channel.id).find(p=>p.id===CreoOperatorHome.family(state.channel))?.name||'전체 업체'):state.label;
   document.title=(e?.label||'운영 홈')+' · CREO';
@@ -37,8 +37,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   const resolved=Model.resolve(data.href,state);if(!resolved)return;const q=new URLSearchParams(location.search),target=resolved.url.searchParams;
   q.set('view',resolved.key);for(const key of ['vendor','action','status'])q.delete(key);
   // Booking/intake use the common reception channel; that is not a round switch.
-  if((['/main','/main/','/index.html'].includes(resolved.url.pathname)||!['intake','bookings','vendors','access','rates'].includes(resolved.key))&&target.has('channel')){q.set('channel',target.get('channel'));if(target.has('archive'))q.set('archive',target.get('archive'));else q.delete('archive');}
-  if(target.get('vendor')&&['items','members','bookings','intake'].includes(resolved.key))q.set('vendor',target.get('vendor'));
+  if((['/main','/main/','/index.html'].includes(resolved.url.pathname)||!['intake','bookings','regions','vendors','access','rates'].includes(resolved.key))&&target.has('channel')){q.set('channel',target.get('channel'));if(target.has('archive'))q.set('archive',target.get('archive'));else q.delete('archive');}
+  if(target.get('vendor')&&['items','members','bookings','regions','intake'].includes(resolved.key))q.set('vendor',target.get('vendor'));
   if(resolved.key==='bookings'&&target.get('action')==='region')q.set('action','region');
   if(resolved.key==='intake'&&target.get('status')==='approved')q.set('status','approved');
   navigate('?'+q);

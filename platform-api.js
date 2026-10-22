@@ -909,6 +909,9 @@ function publicBidderName(value) {
 
 function validateRecord(type, record, workspace) {
     const errors = [];
+    if (['item','shipment'].includes(type) && workspace.vendors.some(v=>v.id===record.vendorId&&v.active===false&&v.nationalAssignmentReleasedAt)) {
+        errors.push('다른 방송일로 배정된 업체입니다. 업체의 방송일을 다시 확인해 주세요.');
+    }
     if (type === 'vendor') {
         if (!record.name) errors.push('업체명을 입력해 주세요.');
         if (record.groupId && !workspace.groups?.some((group) => group.id === record.groupId)) errors.push('이 채널에 등록되지 않은 그룹입니다.');
@@ -1121,12 +1124,14 @@ function createPlatformApi({
     });
     const organizerAccess = require('./organizer-access').createOrganizerAccess(repository);
     const Booking = require('./broadcast-booking');
-    const nationalParticipation=require('./national-vendor-participation').createNationalVendorParticipation({repository,directory:vendorDirectory,now:bookingNow,touch:touchChannel});
+    const nationalParticipation=require('./national-vendor-participation').createNationalVendorParticipation({repository,directory:vendorDirectory,now:bookingNow,touch:touchChannel,lock:withMutationLock});
     const booking = require('./national-broadcast').createBookingRouter(repository, {
         entries:vendorEntries,
         contextForVendor:async(channel,vendor)=>({channel,vendor,profile:await vendorDirectory.profileFor(channel.id,vendor.id),catalog:await loadCatalog()}),
         now: bookingNow, notificationService,
-        withParticipation:(context,input,commit)=>nationalParticipation.transaction(async stage=>commit(await stage(context.vendor,{date:input.date}))),
+        withParticipation:(context,input,commit)=>input.type==='region'
+            ?nationalParticipation.reassign(input.vendorId,input.region,commit)
+            :nationalParticipation.transaction(async stage=>commit(await stage(context.vendor,{date:input.date}))),
         entriesFor: async context => context.profile
             ? (await vendorEntries.read(context)).entries.filter(e => e.channelId === context.channel.id && e.channelVendorId === context.vendor.id)
             : []

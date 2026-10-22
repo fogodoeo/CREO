@@ -27,10 +27,11 @@
         "내 방송일·등록 상태·개체 수정·부모정보를 첫 화면에 배치",
         "달력·운송 상세는 펼치기, 할 일 없는 홍보 배너는 제거",
         "수정 진입은 로컬 편집만 수행하고 명시적 저장 때 기존 접수본을 원자적으로 대체",
-        "수정 취소·새로고침·저장 실패·중복·동시 저장·승인 후 경계 회귀 검증"
+        "수정 취소·새로고침·저장 실패·중복·동시 저장·승인 후 경계 회귀 검증",
+        "첫 로그인은 연락처·정산 계좌만 우선 입력하고 저장 후 자신의 방송일로 이동",
+        "선택 주소·로고는 할 일 경고에서 제외하고 직원 관리는 승인 대기가 없으면 접음"
       ],
       "remaining": [
-        "초기 업체 정보 입력 간소화",
         "실제 사진 업로드 포함 전체 부모정보 경로",
         "업체 낙찰·정산 및 씨랩 흐름",
         "200% 확대·전체 키보드 경로"
@@ -42,7 +43,10 @@
         "npm test -- --test-concurrency=4: 1524 pass, 0 fail",
         "desktop python -m unittest discover -p test*.py: 270 pass",
         "CUA isolated 390px/320px: registration, safe close/reload, weight/parent-name replacement, direct parent editing, no horizontal overflow",
-        "../admin-home-review-20261022/vendor-home-refresh.png"
+        "../admin-home-review-20261022/vendor-home-refresh.png",
+        "test/vendor-required-setup.test.js: 3 pass (save/reload/navigation, failed save input retention, remaining contact, navigation failure)",
+        "CUA 320px: required bank form, keyboard focus, no horizontal overflow, fake bank save opens own 10/26 broadcast; optional info does not show attention",
+        "../admin-home-review-20261022/vendor-required-setup.png"
       ],
       "deployed": false
     },
@@ -70,7 +74,14 @@
         "npm run check: pass; npm test -- --test-concurrency=4: 1533 pass",
         "desktop python -m unittest discover -p test*.py: 270 pass (sandbox temp-folder permission failure resolved by running outside sandbox)",
         "CUA 390px: late-registered vendor enters prepared 10/26 round, canonical intake home and four-entry form",
-        "../admin-home-review-20261022/vendor-prepared-round.png"
+        "../admin-home-review-20261022/vendor-prepared-round.png",
+        "node --test test/national-vendor-participation.test.js test/operator-vendors.test.js test/national-broadcast.test.js test/national-round-operations.test.js: 56 pass",
+        "node --test test/organizer-region-ui.test.js test/operator-directory-ui.test.js test/operator-shell.test.js: 9 pass",
+        "npm run check: pass; npm test -- --test-concurrency=4: 1543 pass, 0 fail; desktop python -m unittest discover -p test*.py: 270 pass",
+        "Initial server suite: 11 local HTTP failures under sandbox (EACCES / readiness timeout); identical full suite passed with normal local networking",
+        "CUA: program-level region menu, individual company selection, reassignment 10/28 to 10/26 and back, saved feedback, all five date filters and whole-program list",
+        "../admin-home-review-20261022/program-vendor-directory.png",
+        "../admin-home-review-20261022/program-round-filter.png"
       ],
       "completed": [
         "전체 업체 명부는 선택한 프로그램의 모든 업체를 조회하고 방송일로 좁혀 볼 수 있음",
@@ -78,10 +89,12 @@
         "명부에서 해당 업체 지역 관리·날짜별 출품·정산으로 이동하며 기존 회차 식별자를 유지",
         "통합 관리자 출품 화면은 바깥 방송일 선택만 사용하고 별도 창도 업체·날짜 필터 유지",
         "미리 준비한 회차의 지역 업체 연결을 신규 업체 등록과 함께 원자적으로 저장",
-        "기존 업체도 방송 신청 시 빠진 회차 연결을 같은 트랜잭션에서 복구"
+        "기존 업체도 방송 신청 시 빠진 회차 연결을 같은 트랜잭션에서 복구",
+        "지역 변경과 사용하지 않은 예정 회차 배정을 원자적으로 저장하고 기존 거래가 있으면 변경을 거절",
+        "이전 회차 업체 신원·낙찰·배송 기록을 유지하며 옮긴 예정 회차의 빈 배정만 해제",
+        "방송 지역 배정은 전체 프로그램 작업으로 표시하고 해당 화면의 회차 선택을 제거"
       ],
       "remaining": [
-        "관리자 지역 변경 이후의 미진행 회차 배정 정리",
         "관리자 출품·편성·배송·정산 페이지 내부 작업 정리",
         "전체 사용자 역할별 200% 확대와 전체 키보드 경로",
         "업체 초기 설정·사진 업로드·낙찰자·방송 도구 흐름과 통합 검증"
@@ -129,6 +142,6 @@
     "공통 업체 및 회차 구분이 모든 화면에서 일관되게 전달되지 않음",
     "전체 사용자 역할별 개편과 통합 검증은 아직 진행 중"
   ],
-  "next_work": "업체 첫 로그인 기본 정보 입력을 필요한 항목부터 단계별로 단순화한다. 선택 정보의 경고를 줄이고 실제 부모 사진 업로드까지 전체 출품 흐름을 검증한다.",
+  "next_work": "실제 부모 사진 업로드까지 업체 출품 흐름을 검증하고, 업체 낙찰·정산 및 관리자 회차별 입금·배송·정산 내부 작업을 단순화한다. 전체 개편은 아직 로컬이며 배포 전 통합 검증을 이어간다.",
   "completion_rule": "모든 workstream이 실제 구현·상태별 검증 증거를 갖출 때만 전체 완료로 판단한다."
 }

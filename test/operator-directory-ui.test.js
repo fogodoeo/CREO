@@ -54,7 +54,7 @@ test('main separates whole-program directory from dated work and follows exact i
  assert.equal($('round-field').hidden,false);assert.equal($('operator-breadcrumb').textContent,'경남편');
  let url=new URL(frame.src,location.origin);assert.equal(url.searchParams.get('broadcastDate'),dates[4]);assert.equal(url.searchParams.get('vendor'),'v4');assert.equal(url.searchParams.get('status'),'approved');
  const standalone=new URL($('operator-standalone').href,location.origin);assert.equal(standalone.searchParams.get('vendor'),'v4');assert.equal(standalone.searchParams.get('broadcastDate'),dates[4]);assert.equal(standalone.searchParams.has('embedded'),false);
- navigate('/organizer-bookings.html?channel=national-cre&vendor=v4&action=region');url=new URL(frame.src,location.origin);assert.equal(url.searchParams.get('action'),'region');assert.equal(url.searchParams.get('vendor'),'v4');
+ navigate('/organizer-bookings.html?channel=national-cre&vendor=v4&action=region');url=new URL(frame.src,location.origin);assert.equal(url.searchParams.get('action'),'region');assert.equal(url.searchParams.get('vendor'),'v4');assert.equal(url.searchParams.has('broadcastDate'),false);assert.equal($('round-field').hidden,true);assert.equal($('operator-page-title').textContent,'방송 지역 배정');
  navigate('/main?channel=national-cre&archive=old&view=organizer');url=new URL(frame.src,location.origin);assert.equal(url.searchParams.get('archive'),'old');assert.equal(url.searchParams.has('vendor'),false);
  navigate('/main?channel=creyon&view=vendors');assert.match(frame.src,/program=clab/);assert.equal($('round-field').hidden,true);
  assert(calls.every(([p,o])=>p==='operation-rounds'&&!o));

@@ -83,3 +83,77 @@ test('automatic participation skips other regions, past or closed shows and neve
  const denied=await f.request('POST','/national-vendor-directory',{id:'collision',name:'가상 신규 업체',region:'대구·경북',loginPhone:'01000000002'});
  assert.equal(denied.status,409,denied.body);assert.equal(await f.repository.getRecord(ROOT,'vendor','collision'),null);assert.deepEqual(await f.directory.read(),before);assert.equal((await f.repository.getRecord(TARGET,'vendor','collision')).phone,collision.phone);
 });
+
+async function regionalVendor(t){
+ const f=await fixture(t);await f.prepare();
+ await f.request('POST','/national-rounds',{action:'prepare',date:'2026-10-28'});
+ f.owner=await f.login('01000000001');f.vendorId=(await f.post(f.owner,'register',registration())).json().id;
+ f.regionBody=async region=>({type:'region',vendorId:f.vendorId,region,expectedVersion:(await f.request('GET','/channels/'+ROOT+'/broadcast-bookings')).json().version,requestId:randomUUID()});
+ f.region=body=>f.request('POST','/channels/'+ROOT+'/broadcast-bookings',body);
+ return f;
+}
+
+test('regional assignment moves only unused future participation, preserving history, identity and retry after restart',async t=>{
+ const f=await regionalVendor(t),south=ROOT+'-20261028',profile=await f.directory.profileFor(ROOT,f.vendorId);
+ const old={id:'past-sale',vendorId:f.vendorId,status:'sold',soldPrice:100000,attributes:{broadcastDate:'2026-10-19'}};
+ const shipping={id:'past-payment',itemId:old.id,vendorId:f.vendorId,paymentStatus:'bank_transfer_reported'};
+ await f.repository.upsertRecord(ROOT,'item',old);await f.repository.upsertRecord(ROOT,'shipment',shipping);
+ const oldStored=await f.repository.getRecord(ROOT,'item',old.id),shippingStored=await f.repository.getRecord(ROOT,'shipment',shipping.id);
+ const body=await f.regionBody(4),responses=await Promise.all([f.region(body),f.region(body)]);
+ assert.ok(responses.every(r=>r.status===200),responses.map(r=>r.body).join('\n'));assert.equal(responses.filter(r=>r.json().duplicate).length,1);
+ assert.equal((await f.directory.find(ROOT,f.vendorId)).broadcastRegion,'부산·울산·경남');
+ assert.equal((await f.directory.find(TARGET,f.vendorId)).active,false);assert.equal((await f.directory.find(south,f.vendorId)).active,true);
+ assert.equal((await f.directory.profileFor(south,f.vendorId)).id,profile.id);
+ const summary=(await f.request('GET','/operator-vendors')).json().vendors.find(v=>v.id===profile.id);
+ assert.deepEqual(summary.broadcasts.map(b=>b.date),['2026-10-19','2026-10-28']);
+ f.restart();assert.equal((await f.region(body)).json().duplicate,true);
+ const back=await f.region(await f.regionBody(3));assert.equal(back.status,200,back.body);
+ assert.equal((await f.directory.find(TARGET,f.vendorId)).active,true);assert.equal((await f.directory.find(south,f.vendorId)).active,false);
+ assert.equal((await f.directory.profileFor(TARGET,f.vendorId)).id,profile.id);
+ assert.deepEqual(await f.repository.getRecord(ROOT,'item',old.id),oldStored);
+ assert.deepEqual(await f.repository.getRecord(ROOT,'shipment',shipping.id),shippingStored);
+});
+
+test('failed regional assignment commits neither region nor either participation, and stale competing region changes fail closed',async t=>{
+ const f=await regionalVendor(t),before=await f.directory.read(),body=await f.regionBody(4);
+ f.repository.db.exec("CREATE TRIGGER reject_region_vendor BEFORE INSERT ON platform_kv WHEN NEW.key LIKE '%national-cre-20261028::vendor::%' BEGIN SELECT RAISE(ABORT,'isolated assignment failure'); END");
+ assert.equal((await f.region(body)).status,500);assert.equal((await f.directory.find(TARGET,f.vendorId)).active,true);
+ assert.equal((await f.directory.find(ROOT,f.vendorId)).broadcastRegion,'대구·경북');assert.deepEqual(await f.directory.read(),before);
+ f.repository.db.exec('DROP TRIGGER reject_region_vendor');
+ const rival={...body,region:2,requestId:randomUUID()},result=await Promise.all([f.region(body),f.region(rival)]);
+ assert.deepEqual(result.map(r=>r.status).sort(),[200,409]);assert.equal((await f.directory.find(ROOT,f.vendorId)).broadcastRegion,'부산·울산·경남');
+ assert.equal((await f.region(body)).json().duplicate,true);
+});
+
+test('region changes never discard prepared items, source entries, live transactions or explicit disabled access',async t=>{
+ for(const kind of ['item','source','shipment','disabled']){
+  const f=await regionalVendor(t),south=ROOT+'-20261028';
+  if(kind==='disabled'){
+   const profile=await f.directory.profileFor(ROOT,f.vendorId);
+   // An explicitly stopped existing membership must not be revived by assignment.
+   await f.directory.attach(profile.id,south);
+   const m=(await f.directory.profileFor(ROOT,f.vendorId)).members.find(m=>m.channelId===south),v=await f.repository.getRecord(south,'vendor',m.vendorId);
+   await f.repository.upsertRecord(south,'vendor',{...v,active:false});
+  }else if(kind==='source')await f.repository.upsertRecord(ROOT,'item',{id:'source-entry',vendorId:f.vendorId,status:'waiting',attributes:{broadcastDate:DATE}});
+  else await f.repository.upsertRecord(TARGET,kind,{id:'prepared-record',vendorId:f.vendorId,status:kind==='item'?'waiting':'complete'});
+  const before=await f.directory.read(),response=await f.region(await f.regionBody(4));
+  assert.equal(response.status,409,response.body);assert.equal((await f.directory.find(ROOT,f.vendorId)).broadcastRegion,'대구·경북');
+  assert.equal((await f.directory.find(TARGET,f.vendorId)).active,true);assert.deepEqual(await f.directory.read(),before);
+ }
+});
+
+test('item creation and regional reassignment serialize in either order, and preparing the old date cannot revive a released assignment',async t=>{
+ for(const itemFirst of [true,false]){
+  const f=await regionalVendor(t),body=await f.regionBody(4);
+  const add=()=>f.request('POST','/channels/'+TARGET+'/items',{record:{id:'new-item',name:'가상 출품',vendorId:f.vendorId,lotNumber:1,status:'waiting'}});
+  const actions=itemFirst?[add,()=>f.region(body)]:[()=>f.region(body),add],result=await Promise.all(actions.map(run=>run()));
+  const itemResponse=result[itemFirst?0:1],regionResponse=result[itemFirst?1:0];
+  if(regionResponse.status===200){
+   assert.equal(itemResponse.status,422,itemResponse.body);assert.deepEqual(await f.repository.listRecords(TARGET,'item'),[]);
+   assert.equal((await f.prepare()).status,200);assert.equal((await f.directory.find(TARGET,f.vendorId)).active,false);
+  }else{
+   assert.equal(regionResponse.status,409,regionResponse.body);assert.equal(itemResponse.status,201,itemResponse.body);
+   assert.equal((await f.directory.find(TARGET,f.vendorId)).active,true);
+  }
+ }
+});

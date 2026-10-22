@@ -46,7 +46,7 @@
   async function load(){if(busy)return;const seq=++revision;error('admin-error','');
     try{if(code){const access=await api('organizer-access',{method:'POST',body:JSON.stringify({code})});if(seq!==revision)return;channel=access.channel.id;}
       const data=await api(route());if(seq!==revision)return;state=data;render();$('admin-status').textContent='';
-      if(!initialActionDone&&query.get('action')==='region'&&state.vendors.some(v=>v.id===query.get('vendor'))){initialActionDone=true;regionsForm();$('region-vendor').value=query.get('vendor');$('region-vendor').onchange();}
+      if(!initialActionDone&&query.get('action')==='region'){initialActionDone=true;regionsForm();if(state.vendors.some(v=>v.id===query.get('vendor'))){$('region-vendor').value=query.get('vendor');$('region-vendor').onchange();}}
       $('organizer-home').href=code?'/o/'+encodeURIComponent(code):'/channel-workspace.html?channel='+encodeURIComponent(query.get('returnChannel')||channel);
     }catch(e){if(seq!==revision)return;error('admin-error',e.message||'예약을 불러오지 못했습니다. 연결을 확인하고 다시 시도해 주세요.');$('admin-status').textContent='';$('admin-retry').hidden=false;if(e.status===401){state=null;$('admin-content').hidden=true;$('admin-login').hidden=!!code;if($('admin-dialog').open)$('admin-dialog').close();}}
   }
@@ -80,7 +80,8 @@
   function regionsForm(){
     open('업체 지역 관리',`<p class="booking-muted">업체가 예약할 때 이 지역을 자동으로 적용합니다. 업체의 실제 소재지를 확인해 등록해 주세요.</p><form id="region-form" class="booking-region-form"><label for="region-vendor">업체<select id="region-vendor" required><option value="">업체 선택</option>${state.vendors.map(v=>`<option value="${esc(v.id)}">${esc(v.name)} · ${v.region===null?'지역 미등록':esc(state.regions[v.region])}</option>`).join('')}</select></label><label for="region-choice">지역<select id="region-choice" required><option value="">지역 선택</option>${state.regions.map((name,i)=>`<option value="${i}">${esc(name)}</option>`).join('')}</select></label><button class="booking-primary" type="submit">지역 저장</button></form>`,'<button class="booking-secondary" id="dialog-back" type="button">닫기</button>');
     $('region-vendor').onchange=()=>{const v=state.vendors.find(v=>v.id===$('region-vendor').value);$('region-choice').value=v?.region??'';};
-    $('region-form').onsubmit=async e=>{e.preventDefault();if(await save({type:'region',expectedVersion:state.version,vendorId:$('region-vendor').value,region:Number($('region-choice').value)}))regionsForm();};
+    const status=document.createElement('p');status.id='region-save-status';status.setAttribute('role','status');$('region-form').after(status);
+    $('region-form').onsubmit=async e=>{e.preventDefault();const vendorId=$('region-vendor').value,region=Number($('region-choice').value);status.textContent='';if(await save({type:'region',expectedVersion:state.version,vendorId,region})){const label=`${state.vendors.find(v=>v.id===vendorId)?.name||'업체'} · ${state.regions[region]}`;const option=[...$('region-vendor').options].find(o=>o.value===vendorId);if(option)option.textContent=label;$('region-save-status').textContent=label+' 저장했습니다.';}};
   }
   function reservationForm(id){const r=state.sessions.flatMap(s=>s.reservations).find(r=>r.id===id);if(!r)return;
     const isFuture=r.session.startsAt>state.now;

@@ -24,7 +24,7 @@ async function listOperatorVendors(channels,vendorDirectory,repository){
    }
    for(const round of rounds.filter(r=>r.channelId===channel.id&&!r.scopeError)){
     const own=(items.get(channel.id)||[]).filter(i=>i.vendorId===vendor.id&&(round.archiveId?i.auctionArchiveId===round.archiveId:!i.auctionArchiveId&&!i.attributes?.roundTargetChannelId&&(!round.date||!Rounds.itemDate(i)||Rounds.itemDate(i)===round.date)));
-    if(!own.length&&(channel.id==='national-cre'||round.archiveId))continue;
+    if(!own.length&&(channel.id==='national-cre'||round.archiveId||vendor.active===false))continue;
     const entry=broadcast(round.date);entry.itemCount+=own.length;entry.rounds.push({channelId:channel.id,archiveId:round.archiveId||'',name:round.name,status:round.status,vendorId:vendor.id,itemCount:own.length});
    }
   }

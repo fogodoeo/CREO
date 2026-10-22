@@ -1,6 +1,13 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict');
 const {createFixture}=require('../tools/vendor-portal-preview.cjs');
+test('only required setup and pending staff approvals raise profile attention',()=>{
+ const {profileStatus}=require('../vendor-profile-status'),complete={phone:'01000000001',bankName:'가상은행',bankAccount:'000000',bankHolder:'가상 업체'};
+ assert.equal(profileStatus(complete).profileAttention,false);
+ assert.equal(profileStatus(complete,'owner',[{id:'request'}]).profileAttention,true);
+ assert.equal(profileStatus(complete,'staff',[{id:'request'}]).profileAttention,false);
+ assert.equal(profileStatus({...complete,bankAccount:''}).setupRequired,true);
+});
 async function setup(t){
  const f=await createFixture();t.after(f.close);f.owner=await f.login('01000000001');f.staff=await f.login('01000000002');
  f.id=(await f.post(f.owner,'register',{name:'권한 테스트',region:'서울',phone:'01000000001'})).json().id;
@@ -12,11 +19,11 @@ async function setup(t){
 test('optional address persists with revision control, never blocks setup and remains owner editable',async t=>{
  const f=await setup(t);let p=await f.profile();assert.equal(p.addressMissing,true);
  assert.equal((await f.post(f.owner,'profile',{companyId:f.id,action:'bank',revision:p.revision,bankName:'123',bankAccount:'12345',bankHolder:'123'})).status,200);
- p=await f.profile();assert.equal(p.setupRequired,false);assert.equal(p.profileAttention,true);
+ p=await f.profile();assert.equal(p.setupRequired,false);assert.equal(p.profileAttention,false);
  const save={companyId:f.id,action:'address',revision:p.revision,address:'서울특별시 테스트로 10, 2층'};
  assert.equal((await f.post(f.owner,'profile',save)).status,200);
  assert.equal((await f.post(f.owner,'profile',{...save,address:'오래된 값'})).status,409);
- f.restart();p=await f.profile();assert.equal(p.address,save.address);assert.equal(p.addressMissing,false);assert.equal(p.profileAttention,true);
+ f.restart();p=await f.profile();assert.equal(p.address,save.address);assert.equal(p.addressMissing,false);assert.equal(p.profileAttention,false);
  assert.equal((await f.post(f.owner,'profile',{...save,revision:p.revision,address:'a'.repeat(241)})).status,422);
  await f.approve();assert.equal((await f.post(f.staff,'profile',{...save,revision:p.revision})).status,403);
  assert.equal((await f.post(f.owner,'profile',{...save,revision:p.revision,address:''})).status,200);

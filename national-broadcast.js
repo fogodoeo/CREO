@@ -159,7 +159,7 @@ function createNationalBroadcast(repository,{now=Date.now,entries,notificationSe
    if(!await repository.compareAndSwapRows(KEY,raw,[...rows,...extra]))throw fail('다른 변경이 먼저 반영됐어요. 다시 불러와 주세요.');
    return {result,duplicate:false};
   };
-  return type==='reserve'&&withParticipation?withParticipation(context,input,commit):commit();
+   return ['reserve','region'].includes(type)&&withParticipation?withParticipation(context,input,commit):commit();
  }
  async function operatorView(channel,vendors){
   const {state}=await read(channel);
