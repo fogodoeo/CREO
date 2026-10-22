@@ -109,14 +109,15 @@ html[data-roulette-theme='national'] {
   .national-award {
     display: grid; place-items: center; z-index: 3; padding: 32px;
     overflow: hidden; pointer-events: none; background: transparent; border-color: transparent;
+    container-type: size;
   }
   .national-finish-frame { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: inherit; }
   .national-finish-frame[hidden] { display: none; }
   .stage:has(.national-award:not([hidden]) .national-finish-frame[hidden]) .canvas-host { visibility: hidden; }
   .national-award-card {
-    position: relative; display: grid; justify-items: center; gap: 22px;
+    position: relative; display: grid; justify-items: center; gap: clamp(10px, 2cqh, 20px);
     width: min(760px, 100%); max-height: 100%; overflow-y: auto;
-    padding: 40px; text-align: center; pointer-events: auto;
+    padding: clamp(16px, 3cqh, 32px); text-align: center; pointer-events: auto;
     background: rgba(22, 25, 30, .82);
     backdrop-filter: blur(6px);
     border: 1px solid rgba(217, 189, 133, .42); border-radius: 24px;
@@ -228,7 +229,8 @@ html[data-roulette-theme='national'].remote-controller-mode {
   .field-grid { grid-template-columns: 1fr 1fr; }
   .field input, .field select { min-width: 0; font-size: 14px; }
   .text-actions { gap: 7px; }
-  .text-actions button { font-size: 12px; border-color: #646b77; }
+  .text-actions button { font-size: 13px; border-color: #646b77; }
+  .segmented span { min-height: 44px; padding: 4px; font-size: 14px; text-align: center; }
   .section-title { gap: 8px; flex-wrap: wrap; }
   .field-help, .toggle-row small { font-size: 12px; color: var(--muted); }
   .toggle-row { gap: 8px; background: #121418; }
@@ -249,6 +251,7 @@ html[data-roulette-theme='national'].remote-controller-mode {
     .panel-scroll { display: flex; flex-direction: column; padding-inline: 16px; }
     .remote-session { display: flex; flex-direction: column; }
     .event-section .advanced-body { grid-template-columns: 1fr; }
+    .field-grid { grid-template-columns: 1fr; }
     .entries-section textarea { min-height: 180px; }
     .field input, .field select, .field textarea { font-size: 16px; }
     .panel-footer { padding: 12px 16px calc(12px + var(--safe-bottom)); }

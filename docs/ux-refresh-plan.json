@@ -262,14 +262,38 @@
     },
     {
       "id": "broadcast",
-      "status": "pending",
+      "status": "in_progress",
       "scope": [
         "방송 진행·송출화면 편집·미리보기",
         "로컬 데스크톱 경매 조작",
         "핀볼 관리자·송출·참가자·결과",
         "방송 도구와 설정의 일관된 진입"
       ],
-      "evidence": []
+      "completed": [
+        "핀볼 관리자는 참가자 준비와 당첨 기준을 앞에 두고 직접 명단 편집·맵·속도·효과·디자인을 펼치기로 정리",
+        "낙찰자 1명당 공 1개와 금액별 불러오기를 별도 버튼으로 제공하고 명단 교체·삭제를 되돌릴 수 있음",
+        "빈 조회·빈 파일·읽기 실패는 기존 명단을 보존하고 명단 조회·파일 읽기·원격 명령 중 설정과 시작을 잠금",
+        "늦은 응답은 새 입력·다른 송출 세션을 덮어쓰지 않으며 잘못된 당첨 인원은 불러오기 완료 후에도 시작을 차단",
+        "진행 중 관리자 새로고침은 실제 송출 명단·인원·설정을 복원하고 완료 후 다음 추첨 초안은 보존",
+        "실행 오류는 입력을 유지한 안내에 초점을 두고 버튼을 가리는 중복 토스트를 제거",
+        "720p 결과창은 다섯 당첨자와 후원 로고가 스크롤 없이 표시되도록 간격 조정; 320px 게임 설정은 한 열로 표시"
+      ],
+      "remaining": [
+        "방송 진행·송출화면 편집·미리보기의 전체 사용자 흐름 검토",
+        "로컬 데스크톱 경매 조작과 방송 도구 진입 연결 검토",
+        "핀볼 다른 테마·200% 확대·전체 키보드 흐름 및 배포 검증"
+      ],
+      "evidence": [
+        "risk: high (existing client draw setup/control state and generated static bundle; no server protocol, physics, auction persistence, production records or real giveaway changes)",
+        "npm run check:roulette and npm run build:roulette: pass; npm run check: pass; npm test -- --test-concurrency=4: 1674 pass, 0 fail",
+        "After final copy/spacing and inline-error-toast polish, node --test test/pinball-*.test.js test/marble-roulette.test.js: 71 pass. Focused coverage includes empty/error preservation, undo, concurrent imports, stale session responses, preset validation, busy locks, invalid count after unlocking, running reload and draft retention, focused persistent error without a covering toast.",
+        "CUA isolated real controller + broadcast: person import 13 people/13 balls, amount import 12 people/13 balls, clear/undo, invalid count, prepare/start and two complete last-five draws. Roster one page; live names hide suffixes, right finishers and starred candidates, same five winners with suffixes in admin/display, translucent result, completed reload without replay.",
+        "CUA 320px: running reload restores 13 balls/5 winners and locked setup; long-name validation preserves input, focuses persistent error with actions uncovered; reimport and prepare recover. Keyboard Tab reaches the map with visible focus. Small-screen field grid changed to one column after map text was cramped.",
+        "Rendered desktop width=scrollWidth=1280. National mode choice text 14px and minimum height 44px. Feedback #b1b6bf, error #ffb9ae and focus #d9bd85 on #1b1e24 measure 8.20:1, 10.18:1 and 9.20:1. 200% zoom and full screen-reader flow remain unverified.",
+        "../admin-home-review-20261022/pinball-ux-server-full.log; ../admin-home-review-20261022/pinball-ux-check.log; ../admin-home-review-20261022/pinball-ux-final-focused.log",
+        "../admin-home-review-20261022/pinball-ux-result-five.png; ../admin-home-review-20261022/pinball-ux-error-320.png; ../admin-home-review-20261022/pinball-ux-admin-desktop.png; ../admin-home-review-20261022/pinball-ux-admin-320.png"
+      ],
+      "deployed": false
     },
     {
       "id": "release",

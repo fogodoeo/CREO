@@ -142,6 +142,11 @@ const dom = {
   eventTitle: element<HTMLInputElement>('eventTitleInput'),
   channelName: element<HTMLInputElement>('channelNameInput'),
   entries: element<HTMLTextAreaElement>('entriesInput'),
+  entryEditor: element<HTMLDetailsElement>('entryEditor'),
+  entryFeedback: element<HTMLElement>('entryFeedback'),
+  undoEntries: element<HTMLButtonElement>('undoEntriesButton'),
+  controlHint: element<HTMLElement>('controlHint'),
+  controlFeedback: element<HTMLElement>('controlFeedback'),
   personCount: element<HTMLElement>('personCount'),
   ballCount: element<HTMLElement>('ballCount'),
   startBallCount: element<HTMLElement>('startBallCount'),
@@ -284,6 +289,37 @@ let remoteCommandPending = false;
 let remoteActionPending = false;
 let remoteSessionRunId = '';
 let lastRemoteResult: PinballResult | null = null;
+let previousEntries: string | null = null;
+let entryImportPending = false;
+
+function setupLocked(): boolean {
+  return running || remoteCommandPending || remoteActionPending || entryImportPending || (isRemoteController && remotePhase === 'running');
+}
+
+function showEntryFeedback(message: string, error = false): void {
+  dom.entryFeedback.hidden = !message;
+  dom.entryFeedback.textContent = message;
+  dom.entryFeedback.dataset.error = String(error);
+  if (error) dom.entryFeedback.focus();
+}
+
+function replaceEntries(value: string, message: string): void {
+  if (dom.entries.value !== value) previousEntries = dom.entries.value;
+  dom.entries.value = value;
+  localStorage.setItem(STORAGE_KEYS.entries, value);
+  updateCounts();
+  showEntryFeedback(message);
+}
+
+function undoEntryReplacement(): void {
+  if (setupLocked() || previousEntries === null) return;
+  dom.entries.value = previousEntries;
+  previousEntries = null;
+  localStorage.setItem(STORAGE_KEYS.entries, dom.entries.value);
+  updateCounts();
+  showEntryFeedback('이전 명단으로 되돌렸어요.');
+  dom.entryFeedback.focus();
+}
 
 const remoteControls = createRemoteControls({
   sendCommand: sendRemoteCommand,
@@ -310,8 +346,12 @@ function entrySummary(entries = parseEntries()): { people: number; balls: number
 }
 
 async function syncAuctionWinnerEntries(mode: 'person' | 'amount' = 'amount', showEmptyMessage = true): Promise<void> {
-  if (!remoteChannelId || dom.syncWinners.disabled || dom.syncWinnersByAmount.disabled) return;
-  dom.syncWinners.disabled = dom.syncWinnersByAmount.disabled = true;
+  if (!remoteChannelId || setupLocked() || dom.syncWinners.disabled || dom.syncWinnersByAmount.disabled) return;
+  const before = dom.entries.value;
+  const revision = remoteRevision;
+  entryImportPending = true;
+  updateCounts();
+  showEntryFeedback('선택한 회차의 낙찰자를 불러오는 중…');
   try {
     const phoneSuffix = isNationalChannel(remoteChannelId);
     const response = await fetch(`/api/platform/channels/${encodeURIComponent(remoteChannelId)}/${phoneSuffix ? 'workspace?scope=round' : 'broadcast'}`, {
@@ -327,21 +367,53 @@ async function syncAuctionWinnerEntries(mode: 'person' | 'amount' = 'amount', sh
       phoneSuffix,
       mode,
     });
-    dom.entries.value = entries.join('\n');
-    localStorage.setItem(STORAGE_KEYS.entries, dom.entries.value);
-    updateCounts();
+    if (dom.entries.value !== before || remoteRevision !== revision || running || (isRemoteController && remotePhase === 'running')) throw new Error('명단이나 추첨 상태가 바뀌었어요. 현재 명단을 확인한 뒤 다시 불러와 주세요.');
     if (entries.length) {
       const champKey = getLeadingHouseKey(payload.items || []);
       const houseName = champKey ? (HOUSE_NAMES[champKey] || champKey) : '';
       const rule = mode === 'person' ? '1명당 공 1개' : '10만 원당 공 1개';
-      showToast(houseName ? `우승 기숙사 [${houseName}] ${entries.length}명 · ${rule}` : `${entries.length}명 · ${rule}`);
+      replaceEntries(entries.join('\n'), houseName ? `우승 기숙사 [${houseName}] ${entries.length}명 · ${rule}` : `${entries.length}명 불러왔어요 · ${rule}`);
     } else if (showEmptyMessage) {
-      showToast(mode === 'person' ? '이 회차에 낙찰자가 없습니다.' : '합산 10만 원 이상 낙찰자가 없습니다.');
+      showEntryFeedback(mode === 'person' ? '이 회차에 낙찰자가 없습니다. 기존 명단은 그대로예요.' : '합산 10만 원 이상 낙찰자가 없습니다. 기존 명단은 그대로예요.');
+    } else {
+      showEntryFeedback('');
     }
   } catch (error) {
-    showToast(error instanceof Error ? error.message : '낙찰자를 불러오지 못했습니다.');
+    showEntryFeedback(error instanceof Error ? error.message : '낙찰자를 불러오지 못했어요. 다시 눌러 주세요.', true);
   } finally {
-    dom.syncWinners.disabled = dom.syncWinnersByAmount.disabled = false;
+    entryImportPending = false;
+    updateCounts();
+  }
+}
+
+async function importEntryFile(file: File, preset = false): Promise<void> {
+  if (setupLocked()) return;
+  const before = dom.entries.value;
+  const revision = remoteRevision;
+  entryImportPending = true;
+  updateCounts();
+  showEntryFeedback('파일을 불러오는 중…');
+  try {
+    const text = await file.text();
+    if (dom.entries.value !== before || remoteRevision !== revision || running || (isRemoteController && remotePhase === 'running')) throw new Error('명단이나 추첨 상태가 바뀌었어요. 다시 파일을 선택해 주세요.');
+    if (preset) {
+      const imported = JSON.parse(text) as { config?: Partial<AppConfig>; entries?: string };
+      if (!imported || typeof imported !== 'object' || Array.isArray(imported)
+        || (imported.config !== undefined && (!imported.config || typeof imported.config !== 'object' || Array.isArray(imported.config)))
+        || (imported.entries !== undefined && typeof imported.entries !== 'string')
+        || (imported.entries === undefined && imported.config === undefined)) throw new Error('설정 파일을 확인한 뒤 다시 선택해 주세요.');
+      configure(imported.config ?? {});
+      if (typeof imported.entries === 'string') replaceEntries(imported.entries, '설정과 명단을 불러왔어요.');
+      else showEntryFeedback('설정을 불러왔어요.');
+    } else {
+      if (!text.trim()) throw new Error('파일에 참가자가 없어요. 기존 명단은 그대로예요.');
+      replaceEntries(text.trim(), `${file.name}을 불러왔어요.`);
+    }
+  } catch (error) {
+    showEntryFeedback(error instanceof SyntaxError ? '설정 파일을 읽지 못했어요. 저장한 JSON 파일을 다시 선택해 주세요.' : error instanceof Error ? error.message : '파일을 읽지 못했어요. 다시 선택해 주세요.', true);
+  } finally {
+    entryImportPending = false;
+    updateCounts();
   }
 }
 
@@ -417,7 +489,9 @@ function reportControlError(error: unknown): void {
   const message = error instanceof Error ? error.message : '송출 명령을 보내지 못했습니다. 다시 시도해 주세요.';
   if (isRemoteController) dom.remoteStatus.textContent = message;
   setStatus('error', message);
-  showToast(message);
+  dom.controlFeedback.hidden = false;
+  dom.controlFeedback.textContent = message;
+  if (!isRemoteDisplay) dom.controlFeedback.focus();
 }
 
 function setStatus(state: 'loading' | 'ready' | 'running' | 'complete' | 'error', message: string): void {
@@ -463,17 +537,29 @@ function updateCounts(): void {
   dom.startBallCount.textContent = `${balls}개 공`;
   nationalStage.update({ ballCount: balls, participants: parseEntries().map(entry => parseName(entry)?.name || '') });
   const drawConfig = collectConfig();
-  const countError = !dom.winnerCount.disabled && !dom.winnerCount.checkValidity()
+  const requestedCount = Number(dom.winnerCount.value);
+  const countError = currentWinnerMode() !== 'rank' && (!Number.isInteger(requestedCount) || requestedCount < 1 || requestedCount > 20)
     ? '당첨 인원은 1~20 사이의 정수로 입력해 주세요.' : winnerCountError(parseEntries(), drawConfig);
   const label = drawLabel(drawConfig);
   dom.drawSummary.textContent = countError || `${label} · 한 사람당 한 번 당첨`;
   dom.drawSummary.dataset.invalid = countError ? 'true' : 'false';
   nationalStage.update({ drawLabel: label });
-  const valid = engineReady && balls >= 2 && balls <= 500 && !running && !remoteCommandPending
-    && !remoteActionPending && !(isRemoteController && remotePhase === 'running') && !countError;
+  const locked = setupLocked();
+  const valid = engineReady && balls >= 2 && balls <= 500 && !locked && !countError;
+  for (const control of [dom.entries, dom.eventTitle, dom.channelName, dom.map, dom.speed, dom.renderFps, dom.winningRank, dom.skills, dom.top5Bounce, dom.recording, dom.accent, dom.winnerLabel, dom.sample, dom.importEntries, dom.clearEntries, dom.importPreset, dom.syncWinners, dom.syncWinnersByAmount, dom.undoEntries]) control.disabled = locked;
+  document.querySelectorAll<HTMLInputElement>('input[name="winnerMode"],input[name="theme"],input[name="marbleStyle"]').forEach(input => { input.disabled = locked; });
+  dom.winnerCount.disabled = locked || currentWinnerMode() === 'rank';
+  dom.undoEntries.hidden = previousEntries === null;
+  dom.controlHint.textContent = entryImportPending ? '명단·설정을 불러오고 있어요.'
+    : running || (isRemoteController && remotePhase === 'running') ? '추첨 중이에요. 결과가 나오면 다음 추첨을 준비할 수 있어요.'
+    : remoteCommandPending || remoteActionPending ? '송출 화면에 적용하고 있어요.'
+    : !engineReady ? '핀볼을 불러오는 중…'
+    : balls < 2 ? '참가자를 불러오거나 명단에 공을 2개 이상 입력해 주세요.'
+    : balls > 500 ? '공은 500개까지 넣을 수 있어요.'
+    : countError || (isRemoteController ? '명단 준비로 송출 내용을 확인한 뒤 추첨을 시작해 주세요.' : '공 배치를 확인한 뒤 추첨을 시작해 주세요.');
   dom.shuffle.disabled = !valid;
   dom.start.disabled = !valid;
-  dom.resetBroadcastSession.disabled = remoteCommandPending || remoteActionPending;
+  dom.resetBroadcastSession.disabled = remoteCommandPending || remoteActionPending || entryImportPending;
   dom.winningRank.max = String(Math.max(1, balls));
   if (balls > 500) setStatus('error', '공은 최대 500개까지');
   preparedFingerprint = '';
@@ -599,7 +685,7 @@ async function prepareRound(seed = createSecureSeed()): Promise<void> {
   preparedFingerprint = fingerprint(entries);
   if (!isRemoteDisplay) nationalStage.update({ rosterKey: seed });
   setStatus('ready', `${summary.balls}개 공 준비 완료`);
-  if (!isBroadcastMode) showToast(`시드 ${seed.slice(0, 8)} · 공 배치 완료`);
+  if (!isBroadcastMode) showToast(`${summary.balls}개 공을 준비했어요.`);
 }
 
 async function startRound(): Promise<void> {
@@ -611,6 +697,7 @@ async function startRound(): Promise<void> {
   currentRound.startedAt = Date.now();
   dom.resultButton.hidden = true;
   running = true;
+  updateCounts();
   dom.appShell.classList.add('is-running');
   dom.openPanel.disabled = true;
   dom.shuffle.disabled = true;
@@ -764,17 +851,27 @@ async function remoteRequest(path: string, init: RequestInit = {}): Promise<{ se
 }
 
 function updateRemoteSnapshot(session: RemoteSession): void {
+  // On reload or another controller's start, display the actual running draw.
+  // Prepared/completed snapshots must not overwrite an editable next-draw draft.
+  if (isRemoteController && session.phase === 'running' && (remotePhase !== 'running' || remoteSessionRunId !== session.runId)) {
+    applyConfigToControls({ ...config, ...session.config });
+    const entries = session.entries.join('\n');
+    if (dom.entries.value !== entries) previousEntries = dom.entries.value;
+    dom.entries.value = entries;
+    persistInputs();
+    showEntryFeedback('이 추첨의 명단과 설정을 불러왔어요.');
+  }
   remoteRevision = Math.max(0, Number(session.revision) || 0);
   remotePhase = session.phase;
   remoteSessionRunId = session.runId;
   const resultCount = session.result?.winners?.length || 1;
   const status = session.phase === 'prepared'
-    ? `${session.ballCount.toLocaleString('ko-KR')}개 공 · 송출 배치 완료`
+    ? `${session.ballCount.toLocaleString('ko-KR')}개 공 · 명단 저장됨`
     : session.phase === 'running'
       ? '송출 화면에서 추첨 진행 중'
       : session.phase === 'complete'
         ? `${resultCount > 1 ? `${resultCount}명 당첨` : session.result?.winner || '결과'} · 추첨 완료`
-        : '송출 화면 연결 대기';
+        : '명단 준비 전';
   dom.remoteStatus.textContent = status;
   lastRemoteResult = session.phase === 'complete' ? session.result || null : null;
   dom.remoteResult.hidden = !lastRemoteResult;
@@ -1023,30 +1120,33 @@ function bindEvents(): void {
   });
 
   dom.sample.addEventListener('click', () => {
-    dom.entries.value = '참가자 A*2\n참가자 B\n참가자 C*3\n참가자 D\n참가자 E';
-    updateCounts();
+    if (setupLocked()) return;
+    replaceEntries('참가자 A*2\n참가자 B\n참가자 C*3\n참가자 D\n참가자 E', '예시 명단을 넣었어요.');
   });
+  dom.undoEntries.addEventListener('click', undoEntryReplacement);
   dom.syncWinners.addEventListener('click', () => void syncAuctionWinnerEntries('person'));
   dom.syncWinnersByAmount.addEventListener('click', () => void syncAuctionWinnerEntries('amount'));
   dom.clearEntries.addEventListener('click', () => {
-    dom.entries.value = '';
-    updateCounts();
+    if (setupLocked()) return;
+    replaceEntries('', '명단을 비웠어요. 이전 명단으로 되돌릴 수 있어요.');
+    dom.entryEditor.open = true;
     dom.entries.focus();
   });
   dom.importEntries.addEventListener('click', () => dom.entriesFile.click());
   dom.entriesFile.addEventListener('change', async () => {
     const file = dom.entriesFile.files?.[0];
-    if (!file) return;
-    dom.entries.value = (await file.text()).trim();
+    if (file) await importEntryFile(file);
     dom.entriesFile.value = '';
-    updateCounts();
-    showToast(`${file.name}을 불러왔습니다.`);
   });
 
   dom.shuffle.addEventListener('click', () => {
+    if (dom.shuffle.disabled) return;
+    dom.controlFeedback.hidden = true;
     void (isRemoteController ? remoteControls.prepare() : prepareRound()).catch(reportControlError);
   });
   dom.start.addEventListener('click', () => {
+    if (dom.start.disabled) return;
+    dom.controlFeedback.hidden = true;
     void (isRemoteController ? remoteControls.start() : startRound()).catch(reportControlError);
   });
 
@@ -1068,8 +1168,10 @@ function bindEvents(): void {
     });
   });
   dom.resetBroadcastSession.addEventListener('click', () => {
+    if (dom.resetBroadcastSession.disabled) return;
     if (remotePhase === 'running' && !window.confirm('송출 화면의 진행 상태를 초기화할까요? 실제 핀볼 화면은 새로고침해야 할 수 있습니다.')) return;
-    void sendRemoteCommand('reset').then(() => showToast('송출 상태를 초기화했습니다.')).catch((error: Error) => showToast(error.message));
+    dom.controlFeedback.hidden = true;
+    void sendRemoteCommand('reset').then(() => showToast('송출 상태를 초기화했습니다.')).catch(reportControlError);
   });
 
   dom.exportPreset.addEventListener('click', () => {
@@ -1079,16 +1181,7 @@ function bindEvents(): void {
   dom.importPreset.addEventListener('click', () => dom.presetFile.click());
   dom.presetFile.addEventListener('change', async () => {
     const file = dom.presetFile.files?.[0];
-    if (!file) return;
-    try {
-      const imported = JSON.parse(await file.text()) as { config?: Partial<AppConfig>; entries?: string };
-      configure(imported.config ?? {});
-      if (typeof imported.entries === 'string') dom.entries.value = imported.entries;
-      updateCounts();
-      showToast('설정을 가져왔습니다.');
-    } catch {
-      showToast('올바른 설정 파일이 아닙니다.');
-    }
+    if (file) await importEntryFile(file, true);
     dom.presetFile.value = '';
   });
 
@@ -1171,7 +1264,7 @@ async function initialize(): Promise<void> {
     dom.privacyNotice.textContent = '브로드캐스트 모드에서는 참가자 이름과 추첨 설정이 선택한 채널 세션에 저장됩니다.';
     dom.shuffle.textContent = '명단 준비';
     dom.start.querySelector('span')!.textContent = '추첨 시작';
-  }
+  } else if (!isRemoteDisplay) dom.entryEditor.open = true;
 
   if (autoLoadAuctionWinners) await syncAuctionWinnerEntries('amount', false);
 

@@ -904,6 +904,20 @@ details.control-section summary span {
   box-shadow: 0 -15px 35px rgba(0, 0, 0, 0.18);
 }
 
+.entry-editor, .game-options { min-width: 0; }
+.entry-editor > summary, .game-options > summary, .entry-syntax > summary { display: list-item; min-height: 44px; padding: 12px 0; cursor: pointer; font-size: 14px; line-height: 1.5; }
+.game-options > summary small { color: var(--muted); margin-left: 6px; }
+.entry-editor[open] > summary, .game-options[open] > summary { margin-bottom: 8px; }
+.entry-editor > .field-help { margin: 10px 0; }
+.game-options .toggle-list { margin-top: 16px; }
+.entry-feedback { margin: 12px 0 0; line-height: 1.6; overflow-wrap: anywhere; }
+.entry-feedback[data-error='true'], .control-feedback { color: #ffb9ae; }
+.entry-undo { min-height: 44px; padding: 8px 10px; margin-top: 8px; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: var(--ink); font: inherit; font-size: 14px; cursor: pointer; }
+.control-hint, .control-feedback { grid-column: 1 / -1; margin: 0; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.control-hint { color: var(--muted); }
+.entry-feedback:focus, .control-feedback:focus { outline: 3px solid var(--accent); outline-offset: 4px; }
+@media (forced-colors: active) { .entry-feedback:focus, .control-feedback:focus { outline-color: Highlight; } }
+
 .secondary-action,
 .primary-action {
   min-height: 52px;
