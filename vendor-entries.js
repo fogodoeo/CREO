@@ -150,7 +150,7 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
         if(!allowed.includes(type))throw fail('이 작업을 실행할 수 없습니다.',403);
         const requestId=cleanText(input.requestId,80);
         if(requestId.length<8)throw fail('요청을 다시 확인해 주세요.',422);
-        const signature=hash({type,entry:input.entry,parent:input.parent,parents:input.parents,id:input.id,expectedVersion:input.expectedVersion,expectedUpdatedAt:input.expectedUpdatedAt,lot:input.lot,order:input.order,startPrice:input.startPrice,teamName:input.teamName,groupId:input.groupId,reason:input.reason});
+        const signature=hash({type,entry:input.entry,parent:input.parent,parents:input.parents,id:input.id,expectedVersion:input.expectedVersion,expectedUpdatedAt:input.expectedUpdatedAt,lot:input.lot,order:input.order,startPrice:input.startPrice,teamName:input.teamName,groupId:input.groupId,reason:input.reason,...(input.replaceSubmitted?{replaceSubmitted:true}:{})});
         const execute=()=>locked(ownerId,async()=>{
             const state=await readOwner(ownerId),key=context.channel.id+':'+type+':'+requestId;
             const previous=state.requests.find(request=>request.key===key);
@@ -198,7 +198,11 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
                 const id=cleanText(input.entry?.id,80),current=state.entries.find(entry=>entry.id===id);
                 if(!uuid(id))throw fail('출품 화면을 다시 열어 주세요.',422);
                 if(current&&(current.channelId!==context.channel.id||current.channelVendorId!==context.vendor.id))throw fail('이 출품을 수정할 수 없습니다.',403);
-                if(current&&(current.version!==input.expectedVersion||!['draft','changes_requested'].includes(current.status)))throw fail('출품 상태가 변경됐어요. 목록에서 다시 열어 주세요.');
+                // A submitted national entry stays submitted until the validated replacement
+                // commits atomically. Opening an editor never needs a durable withdrawal.
+                const replacing=input.replaceSubmitted===true;
+                if(replacing&&(!context.nationalBroadcast||context.channel.id!=='national-cre'||type!=='submit'||current?.status!=='submitted'||current.itemId||current.approved))throw fail('수정할 접수 상태가 변경됐어요. 목록에서 다시 확인해 주세요.');
+                if(current&&(current.version!==input.expectedVersion||!(['draft','changes_requested'].includes(current.status)||replacing)))throw fail('출품 상태가 변경됐어요. 목록에서 다시 열어 주세요.');
                 const normalized=normalizeEntry(input.entry);
                 const broadcast=context.nationalBroadcast;
                 if(broadcast){

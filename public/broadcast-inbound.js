@@ -72,7 +72,8 @@
   if(plans.some(p=>p.requiresSelection))calendar.insertAdjacentHTML('beforeend','<p class="inbound-notice">출발 정거샵을 선택하면 달력에 해당 운송 일정이 표시됩니다.</p>');
   if([...milestones.values()].flat().some(p=>p.estimated))calendar.querySelector('.calendar-key>span:last-child').insertAdjacentHTML('beforeend','<span>· 예상 포함</span>');
   const html=`<section id="inbound-panel" class="inbound-panel" aria-labelledby="inbound-title"><div class="inbound-heading"><h2 id="inbound-title">출품 운송 일정</h2><p>${fmt(target.date)} 방송</p></div>${deliveryNotice}<div class="inbound-carriers">${plans.map(p=>`<article class="inbound-card"><div class="inbound-row"><h3>${names[p.carrier]}</h3>${details(p)}</div>${basisLine(p)}${destinationLine(p)}${originControl(p)}</article>`).join('')}</div><p id="inbound-error" class="form-error" role="alert"></p></section>`;
-  (document.querySelector('.registration-task:last-of-type')||calendar).insertAdjacentHTML('afterend',html);
+   const host=document.querySelector('#vendor-inbound');
+   if(host)host.innerHTML=html;else (document.querySelector('.registration-task:last-of-type')||calendar).insertAdjacentHTML('afterend',html);
  }
  function openDate(date){
   const items=milestones.get(date);if(!items)return;lastTrigger=document.activeElement;

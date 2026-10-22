@@ -1,0 +1,24 @@
+{
+  "objective": "처음 사용하는 청소년도 별도 설명 없이 관리자·업체·낙찰자 기능을 찾고 완료할 수 있게 전체 운영 UI/UX를 교체한다.",
+  "status": "in_progress",
+  "principles": [
+    "전국크레자랑은 상위 프로그램, 방송일은 회차, 업체는 공통 명부에 한 번 등록하고 회차에 배정한다.",
+    "업체 전체 조회와 회차별 거래 처리를 구분하되 기존 결제·배송·정산 링크는 유지한다.",
+    "각 화면의 첫 화면에는 사용자의 현재 상태와 다음 행동이 보인다.",
+    "일상 업무와 드문 설정을 구분하고, 사용자에게 내부 채널 구조를 이해하도록 요구하지 않는다.",
+    "편집창 열기·닫기·새로고침만으로 제출·거래 상태가 변경되지 않는다.",
+    "등록·저장·확정·취소의 효과를 구분하고 오류 위치와 복구 방법을 제공한다.",
+    "320px·모바일·데스크톱·키보드·확대 상태를 관련 화면에서 실제 검증한다."
+  ],
+  "workstreams": [
+    {"id":"vendor","status":"in_progress","scope":["공통 로그인·신규 업체 등록·초기 정보","내 방송일·달력·개체 등록·수정","부모 사진·이름","홍보·출품 운송","업체 낙찰·입금·정산","씨랩 업체 경로"],"completed":["인증된 단일 업체는 출품 관리로 바로 진입","내 방송일·등록 상태·개체 수정·부모정보를 첫 화면에 배치","달력·운송 상세는 펼치기, 할 일 없는 홍보 배너는 제거","수정 진입은 로컬 편집만 수행하고 명시적 저장 때 기존 접수본을 원자적으로 대체","수정 취소·새로고침·저장 실패·중복·동시 저장·승인 후 경계 회귀 검증"],"remaining":["초기 업체 정보 입력 간소화","실제 사진 업로드 포함 전체 부모정보 경로","업체 낙찰·정산 및 씨랩 흐름","200% 확대·전체 키보드 경로"],"evidence":["test/vendor-submitted-edit.test.js: 4 tests","test/vendor-broadcast-calendar.test.js: 7 tests","npm run check: pass","npm test -- --test-concurrency=4: 1524 pass, 0 fail","desktop python -m unittest discover -p test*.py: 270 pass","CUA isolated 390px/320px: registration, safe close/reload, weight/parent-name replacement, direct parent editing, no horizontal overflow","../admin-home-review-20261022/vendor-home-refresh.png"],"deployed":false},
+    {"id":"operator","status":"pending","scope":["main 왼쪽 메뉴와 프로그램·회차 선택","전체 업체 명부·회차 배정","출품 접수·편성·순서","낙찰자 입금·배송","업체 정산·입금 확인","파르게·도도시 승인·접수·인쇄","회차 보관·검색·설정"],"evidence":[]},
+    {"id":"buyer","status":"pending","scope":["낙찰 안내 진입·인증","배송지·직수령·운송사 선택","입금·결제 확인·변경 요청","지난 회차 미완료 내역·완료 상태"],"evidence":[]},
+    {"id":"broadcast","status":"pending","scope":["방송 진행·송출화면 편집·미리보기","로컬 데스크톱 경매 조작","핀볼 관리자·송출·참가자·결과","방송 도구와 설정의 일관된 진입"],"evidence":[]},
+    {"id":"release","status":"pending","scope":["상태별 통합 회귀","서버·데스크톱 전체 영향 테스트","실제 화면과 접근성 검증","UTF-8·diff 점검","운영 배포 및 읽기 전용 검증","전체 요구사항 완료 감사"],"evidence":[]}
+  ],
+  "review_baseline": "scratch/admin-home-review-20261022/vendor-usability-review.html",
+  "known_blockers": ["공통 업체 및 회차 구분이 모든 화면에서 일관되게 전달되지 않음", "전체 사용자 역할별 개편과 통합 검증은 아직 진행 중"],
+  "next_work": "관리자 전체 업체 조회와 프로그램별 명부·회차별 참여 배정 및 작업 선택을 통일한다. 기존 금융·배송 기록은 회차에 고정한다.",
+  "completion_rule": "모든 workstream이 실제 구현·상태별 검증 증거를 갖출 때만 전체 완료로 판단한다."
+}

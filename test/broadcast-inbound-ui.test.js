@@ -100,7 +100,8 @@ test('Daegu route selection replaces the missing timetable with the selected lat
  f.state.vendor.inboundOrigins={};f.render();assert.equal(f.day(20).dataset.inboundDate,undefined);assert.equal(f.writes.length,0);
 });
 test('submitted-entry delivery details show the same destination contacts and preserve pickup state',()=>{
- const code=fs.readFileSync(require.resolve('../public/vendor-broadcast.js'),'utf8'),start=code.indexOf(' function pickupBlock('),end=code.indexOf('\n function editable(',start);
+ const code=fs.readFileSync(require.resolve('../public/vendor-broadcast.js'),'utf8'),start=code.indexOf('function pickupBlock('),end=code.indexOf('function editable(',start);
+ assert.ok(start>=0&&end>start);
  const context=vm.createContext({state:{inboundDestinations:data.destinations,inboundDestinationPhones:data.destinationPhones},esc:String,CreoVendorTasks:require('../public/vendor-task-state')});
  vm.runInContext(code.slice(start,end),context);
  assert.equal(context.pickupBlock({completed:3}),'');

@@ -8,13 +8,15 @@ function payload(){
  const regions=['서울·인천','경기','전라·충청','대구·경북','부산·울산·경남'];
  return {mode:'regional-cycle-v1',now:'2026-10-20T00:00:00Z',vendor:{name:'가상 업체',region:regions[2]},dates:['2026-10-14','2026-10-19','2026-10-21','2026-10-26','2026-10-28'].map((date,i)=>({date,regionName:regions[i],startsAt:date+'T11:00:00Z',maxQuantityAvailable:i===2?4:0})),reservations:[],entryState:{entries:[],parents:[],media:[],events:[{id:'national-cre',entriesOpen:true}]}};
 }
-async function fixture(){
- const {document}=parseHTML(html);let data=payload();
- const Store={token:'isolated',read:async()=>{},recovery:{read:()=>null},pageUrl:()=>'/vendor-checkout.html'};
+async function fixture(initial=payload(),savedRecovery={}){
+  const {document,window:dom}=parseHTML(html);let data=initial,recovery=savedRecovery;const requests=[];
+  const sheet=document.querySelector('#sheet');sheet.showModal=()=>{sheet.open=true};sheet.close=()=>{sheet.open=false;sheet.dispatchEvent(new dom.Event('close'))};
+  const Store={token:'isolated',read:async()=>{},getState:()=>data.entryState,recovery:{read:()=>recovery,save:async value=>{recovery=structuredClone(value)}},pageUrl:()=>'/vendor-checkout.html'};
  const window={EntryPreviewStore:Store,CreoVendorShell:{mount(){}},addEventListener(){}};
- vm.runInNewContext(source,{document,window,location:{search:'',pathname:'/vendor-broadcast.html'},URLSearchParams,CreoVendorTasks:Tasks,AbortSignal,fetch:async()=>({ok:true,json:async()=>structuredClone(data)})});
+  const storage=new Map();
+  vm.runInNewContext(source,{document,window,location:{search:'',pathname:'/vendor-broadcast.html'},URLSearchParams,structuredClone,setTimeout:()=>0,crypto:require('node:crypto'),sessionStorage:{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},CreoVendorTasks:Tasks,AbortSignal,fetch:async(_url,options)=>{if(options.method==='POST')requests.push(JSON.parse(options.body));return {ok:true,json:async()=>structuredClone(data)}}});
  await tick();assert.equal(document.querySelector('#load-error').textContent,'');
- return {document,$:s=>document.querySelector(s),set:next=>data=next};
+  return {document,$:s=>document.querySelector(s),event:type=>new dom.Event(type,{bubbles:true,cancelable:true}),set:next=>data=next,requests,recovery:()=>recovery};
 }
 test('five-date calendar disables empty month navigation and preserves the five region labels',async()=>{
  const f=await fixture();
@@ -22,6 +24,41 @@ test('five-date calendar disables empty month navigation and preserves the five 
  assert.deepEqual([...f.document.querySelectorAll('.day[data-date]')].map(b=>b.dataset.date),payload().dates.map(d=>d.date));
  assert.equal(f.document.querySelectorAll('.registration-task').length,1);
  f.$('[data-month="1"]').click();assert.equal(f.$('.calendar-head h2').textContent,'2026년 10월');
+});
+function submitted(){const data=payload(),date=data.dates[2],entries=Array.from({length:4},(_,i)=>({id:'entry-'+i,version:1,status:'submitted',sex:'unknown',weight:'3',hatchDate:'2026-09-01'}));data.reservations=[{id:'reservation',date:date.date,status:'confirmed',session:date,completed:4,entryLimit:4,entryIds:entries.map(e=>e.id),entries}];data.entryState.entries=entries;return data;}
+test('opening and closing a submitted edit sends no withdrawal or save and keeps a path to the completed entries',async()=>{
+ const f=await fixture(submitted());assert.match(f.$('.vendor-round-card').textContent,/접수 완료/);assert.match(f.$('.vendor-round-card').textContent,/보기·수정/);
+ f.$('.vendor-round-card [data-date]').click();f.$('[data-action="bulk-reopen"]').click();await tick();
+ assert.equal(f.requests.length,0);assert.match(f.$('.bulk-row-state').textContent,/기존 접수 유지/);
+ await f.$('#close').onclick();assert.equal(f.requests.length,0);assert.equal(f.$('#sheet').open,false);
+ await f.$('#refresh').onclick();assert.match(f.$('.round-status').textContent,/접수 완료/);
+});
+test('a recovered submitted edit stays local and cancel restores accepted fields without a server mutation',async()=>{
+ const data=submitted(),saved={nationalDrafts:{'entry-0':{...data.reservations[0].entries[0],weight:'8',note:'',parents:{sire:{},dam:{}}}}};
+ const f=await fixture(data,saved);f.$('.vendor-round-card [data-date]').click();
+ assert.equal(f.$('[name="weight-0"]').value,'8');assert.match(f.$('.bulk-row-state').textContent,/기존 접수 유지/);
+ f.$('[data-action="bulk-cancel-edit"]').click();await tick();
+ assert.equal(f.$('[name="weight-0"]').value,'3');assert.equal(f.recovery().nationalDrafts['entry-0'],undefined);assert.equal(f.requests.length,0);
+});
+test('personal entry cards precede collapsed calendar and delivery details and preserve historical access',async()=>{
+ const f=await fixture(submitted());assert.ok(f.$('#calendar-content').firstElementChild.classList.contains('my-broadcasts'));
+ assert.equal(!!f.$('#all-broadcast-dates').open,false);assert.equal(!!f.$('#vendor-delivery').open,false);assert.ok(f.$('.parent-task'));
+ const past=submitted();past.now='2026-10-22T00:00:00Z';f.set(past);await f.$('#refresh').onclick();assert.match(f.$('.my-broadcasts').textContent,/지난 출품 내역/);assert.match(f.$('.my-broadcasts').textContent,/보기·수정/);
+});
+test('the parent shortcut opens editable fields without withdrawing and today stays current after broadcast start',async()=>{
+ const data=submitted();data.now='2026-10-21T14:00:00Z';assert.equal(Tasks.vendorBroadcasts(data)[0].past,false);
+ const f=await fixture(data);f.$('.parent-task').click();assert.equal(f.$('[data-bulk-row="0"] details').open,true);
+ assert.equal(f.$('[name="weight-0"]').hasAttribute('readonly'),false);assert.ok(f.$('[data-bulk-photo="sire"]'));assert.equal(f.requests.length,0);
+});
+test('unsaved submitted edits survive closing locally and only the explicit save sends an atomic replacement',async()=>{
+ const f=await fixture(submitted());f.$('.vendor-round-card [data-date]').click();f.$('[data-action="bulk-reopen"]').click();await tick();
+ const weight=f.$('[name="weight-0"]');weight.value='8';weight.dispatchEvent(f.event('input'));await f.$('#close').onclick();
+ assert.equal(f.requests.length,0);assert.equal(f.recovery().nationalDrafts['entry-0'].weight,'8');
+ f.$('.vendor-round-card [data-date]').click();assert.equal(f.$('[name="weight-0"]').value,'8');
+ for(const input of f.document.querySelectorAll('input,select'))input.checkValidity=()=>true;
+ f.$('#bulk-entry-form').dispatchEvent(f.event('submit'));await tick();await tick();
+ assert.equal(f.$('#step-error').textContent,'');assert.equal(f.requests.length,1);assert.equal(f.requests[0].type,'save-entries');assert.equal(f.requests[0].submit,true);
+ assert.equal(f.requests[0].entries.length,1);assert.equal(f.requests[0].entries[0].replaceSubmitted,true);assert.equal(f.requests[0].entries[0].entry.weight,'8');
 });
 test('existing later records remain reachable and refreshing a removed month returns to the first cycle',async()=>{
  const f=await fixture(),next=payload();

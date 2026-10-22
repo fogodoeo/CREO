@@ -1,7 +1,7 @@
 (function(global){
  'use strict';
  const sections=[
-  ['booking','방송','<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4M17 3v4M3 11h18"/>'],
+  ['booking','출품 관리','<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4M17 3v4M3 11h18"/>'],
   ['settlement','낙찰·정산','<path d="m4 4 2-1 3 2 3-2 3 2 3-2 2 1v17l-2-1-3 1-3-1-3 1-3-1-2 1Z"/><path d="M8 8h8M8 12h5M8 16h8"/>'],
   ['profile','업체 정보','<circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/>']
  ];
@@ -60,7 +60,7 @@
   const name=String(companyName||host.dataset.name||document.getElementById('company-name')?.textContent||document.getElementById('vendor')?.textContent||'업체 선택');
   if(host.dataset.company===company&&host.dataset.name===name)return;
   host.dataset.company=company;host.dataset.name=name;host.replaceChildren();
-  for(const [label,href,cls,aria]of [['옹동2','/vendor-access.html','vendor-home','업체 홈'],['전국크레자랑 ⌄','/vendor-access.html?section=channels&company='+encodeURIComponent(company),'vendor-channel','채널 선택']]){const a=document.createElement('a');a.textContent=label;a.href=href;a.className=cls;a.setAttribute('aria-label',aria);host.append(a);}
+   for(const [label,href,cls,aria]of [['옹동2','/vendor-access.html','vendor-home','업체 홈'],['전국크레자랑','/vendor-access.html?company='+encodeURIComponent(company),'vendor-channel','전국크레자랑 출품 관리']]){const a=document.createElement('a');a.textContent=label;a.href=href;a.className=cls;a.setAttribute('aria-label',aria);host.append(a);}
   const button=document.createElement('button');button.type='button';button.id='vendor-company-switch';button.className='vendor-company';button.setAttribute('aria-label',name+' · 업체 선택');button.setAttribute('aria-haspopup','dialog');button.innerHTML='<span>'+esc(name)+'</span><span aria-hidden="true">⌄</span>';button.onclick=()=>switchCompany(button,company);host.append(button);
   document.body.classList.add('has-vendor-header');
  }
@@ -96,7 +96,7 @@
   if(currentSection()==='promo')return;
   const main=document.getElementById('main')||document.querySelector('#app > main');if(!main)return;
   let host=document.getElementById('vendor-promo-notice');
-  if(!host){host=document.createElement('section');host.id='vendor-promo-notice';host.setAttribute('aria-label','홍보 게시 일정');main.prepend(host);}
+   if(!host){host=document.createElement('section');host.id='vendor-promo-notice';host.setAttribute('aria-label','홍보 게시 일정');main.append(host);}
   const company=new URLSearchParams(location.search).get('company')||new URLSearchParams(location.search).get('portal')||nav.dataset.company;
   renderPromo(host,company,status);
  }
@@ -105,7 +105,7 @@
   const base='/promo-center.html?company='+encodeURIComponent(company);
   if(status.promoUnavailable)return '<h2>홍보 일정을 불러오지 못했어요</h2><p>다시 확인하거나 홍보 관리에서 일정을 확인해 주세요.</p><div class="vendor-promo-actions"><a class="vendor-promo-action" href="'+base+'">홍보 관리 열기</a><button type="button" data-promo-retry>다시 확인</button></div>';
   const next=status.promoSummary?.next;
-  if(!next)return '<p class="vendor-promo-eyebrow">전국크레자랑</p><h2>홍보 관리</h2><p>홍보 원고를 복사하고 게시 일정을 확인해 주세요.</p><div class="vendor-promo-actions"><a class="vendor-promo-action" href="'+base+'">홍보 관리 열기</a></div>';
+   if(!next)return '';
   const title=next.status==='overdue'?'홍보글 게시 확인이 필요해요':next.isToday?'오늘 홍보글 게시 대상입니다':'홍보글 게시 일정이 배정됐어요';
   const date=next.date.replace(/^(\d{4})-(\d{2})-(\d{2})$/,'$2월 $3일');
   const hint=next.status==='overdue'?'배정 시간이 지났어요. 이미 게시했다면 글 링크를 등록해 주세요.':'이 시간 안에 카페에 게시하고, 글 링크로 완료를 등록해 주세요.';

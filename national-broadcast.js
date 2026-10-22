@@ -91,7 +91,7 @@ function createNationalBroadcast(repository,{now=Date.now,entries,notificationSe
    if(!r||!context.profile)throw fail('출품할 방송을 다시 확인해 주세요.',403);
    if(!Array.isArray(input.entries)||!input.entries.length||input.entries.length>r.entryIds.length||input.entries.some(row=>!row||!Number.isInteger(row.slot)||row.slot<0||row.slot>=r.entryIds.length)||new Set(input.entries.map(row=>row.slot)).size!==input.entries.length)throw fail('등록할 개체를 다시 확인해 주세요.',422);
    if(input.entries.some(row=>row.slot>=limitFor(state,r,context.vendors)))throw fail(limitMessage());
-   return entries.saveMany(context,input.entries.map(row=>({broadcast:{id:r.id,date:r.date,slot:row.slot,today:Legacy.day(now())},input:{type:input.submit===true?'submit':'save',entry:{...row.entry,id:r.entryIds[row.slot]},parents:row.parents,expectedVersion:row.expectedVersion}})),requestId);
+    return entries.saveMany(context,input.entries.map(row=>({broadcast:{id:r.id,date:r.date,slot:row.slot,today:Legacy.day(now())},input:{type:input.submit===true?'submit':'save',...(row.replaceSubmitted===true?{replaceSubmitted:true}:{}),entry:{...row.entry,id:r.entryIds[row.slot]},parents:row.parents,expectedVersion:row.expectedVersion}})),requestId);
   }
   if(type==='save-entry'||type==='reopen-entry'){
    r=state.reservations.find(r=>r.id===input.id&&r.vendorId===context.vendor.id&&r.status==='confirmed');
@@ -100,7 +100,7 @@ function createNationalBroadcast(repository,{now=Date.now,entries,notificationSe
    if(!context.profile)throw fail('업체 페이지를 다시 열어 주세요.');
    const scoped={...context,nationalBroadcast:{id:r.id,date:r.date,slot:input.slot,today:Legacy.day(now())}};
    const payload=type==='reopen-entry'?{type:'withdraw',id:r.entryIds[input.slot]}:{type:input.submit===true?'submit':'save',entry:{...input.entry,id:r.entryIds[input.slot]},parents:input.parents};
-   return entries.command(scoped,{...payload,expectedVersion:input.expectedVersion,requestId});
+    return entries.command(scoped,{...payload,replaceSubmitted:input.replaceSubmitted===true,expectedVersion:input.expectedVersion,requestId});
   }
   if(type==='inbound-origin'){
    if(input.expectedVersion!==state.version)throw fail('다른 화면에서 변경됐어요. 새로고침 후 다시 저장해 주세요.');
