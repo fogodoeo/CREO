@@ -167,9 +167,9 @@ test('camera launcher binds phone, tablet, and OBS to one selected channel room'
 
 test('home presents round selection and ordered operations', () => {
  const hub=fs.readFileSync(path.join(__dirname,'..','public','index.html'),'utf8');
- for(const id of ['login-gate','admin-password','quick-channel','quick-round','quick-workspace','quick-broadcast','quick-shipping','quick-print','quick-pinball','quick-report'])assert.ok(hub.includes('id="'+id+'"'));
+ for(const id of ['login-gate','admin-password','quick-channel','quick-round','quick-workspace','quick-broadcast','quick-shipping','quick-organizer','quick-print','quick-pinball','quick-report'])assert.ok(hub.includes('id="'+id+'"'));
  assert.match(hub,/id="dashboard" hidden/);assert.match(hub,/operator-home-model\.js/);assert.match(hub,/operator-home\.js/);
- assert.match(hub,/출품·순서[\s\S]*방송 진행[\s\S]*낙찰·배송[\s\S]*정산·인쇄/);
+ assert.match(hub,/출품·순서[\s\S]*방송 진행[\s\S]*낙찰자 입금·배송[\s\S]*업체 정산·입금 확인/);
  assert.match(hub,/<details class="settings">/);assert.doesNotMatch(hub,/id="quick-design"|id="quick-companies"|id="quick-rankings"/);
 });
 

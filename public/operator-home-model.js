@@ -16,6 +16,7 @@
  function links(s){
   const c=s.channel,id=c.id,arch=s.archiveId,extra=arch?{archive:arch}:{},r=Runtime.channelRoutes(id);
   const result={home:s.home,shipping:Runtime.routeUrl('shipping',id,extra),shippingStatus:Runtime.routeUrl('shippingStatus',id,extra),print:Runtime.routeUrl('print',id,extra),report:'/settlement-report.html?'+new URLSearchParams({channel:id,...extra}),settings:arch?'':r.settings,archives:arch?'':r.archives};
+  result.organizer=c.dataAdapter==='platform'&&c.features?.auction!==false&&Runtime.operationalFeatureAvailable(c,'shipping')?Runtime.routeUrl('organizer',id,extra):'';
   if(!arch&&['active','draft'].includes(c.status)){
    result.workspace=c.dataAdapter==='legacy-cdcup'&&c.legacy?.managementUrl?Runtime.preserveChannel(c.legacy.managementUrl,id):r.workspace;
    result.broadcast=Runtime.operationalFeatureAvailable(c,'broadcast')?r.control:'';result.captures=r.captures;

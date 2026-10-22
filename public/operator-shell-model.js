@@ -4,13 +4,14 @@
   ['vendors','업체 관리',[['vendors','전체 업체','global'],['access','업체 접속 관리','global']]],
   ['schedule','방송 일정',[['rounds','회차 준비·방송 전환'],['bookings','업체 방송 신청'],['promo','전크자 홍보 일정·원고','global']]],
   ['auction','경매 운영',[['intake','출품 접수·검토'],['items','개체·경매 순서'],['members','참여 업체']]],
-  ['broadcast','방송 도구',[['broadcast','방송 제어·화면 배치'],['pinball','핀볼 추첨'],['captures','캡처 자료']]],
-  ['finance','낙찰·배송·정산',[['shipping','낙찰·입금 확인'],['shippingStatus','배송 현황'],['changes','배송 변경·도도시 승인'],['parge','운송 접수'],['print','정산·인쇄'],['report','총정산표·엑셀']]],
-  ['settings','설정',[['settings','채널 설정'],['rates','배송 요금·거점','global'],['archives','지난 결과·보관 자료'],['survey','참여자 설문']]]
+  ['broadcast','방송 도구',[['broadcast','방송 제어·화면 배치'],['pinball','핀볼 추첨'],['captures','캡처 자료'],['captureSetup','캡처 본체 설정','global']]],
+  ['finance','낙찰·배송·정산',[['shipping','낙찰자 입금·배송 관리'],['organizer','업체 정산·입금 확인'],['shippingStatus','배송 현황'],['changes','배송 변경·도도시 승인'],['parge','파르게 운송 접수'],['report','회차 총정산표·엑셀'],['print','내역·라벨 인쇄']]],
+  ['settings','설정',[['settings','채널 설정'],['rates','배송 요금·거점','global'],['monitor','BAND 승인봇 상태','global'],['archives','지난 결과·보관 자료'],['survey','참여자 설문']]]
  ];
  const origin='https://operator.invalid';
  function routes(state){const links=Home.links(state),q=new URLSearchParams({channel:state.channel.id,...(state.archiveId?{archive:state.archiveId}:{})});return {...links,
   vendors:'/operator-vendors.html',access:'/national-vendors.html',rates:'/shipping-rates.html',promo:'/promo-center.html?admin=1',
+  captureSetup:'/capture-setup.html',monitor:'/band-monitor.html',
   intake:links.intake||(links.workspace&&state.channel.dataAdapter==='platform'?'/vendor-entry-review.html?'+new URLSearchParams({channel:state.channel.id,...(state.round?.date?{broadcastDate:state.round.date}:{})}):''),
   items:links.workspace?links.workspace+'&tab=items':'',members:links.workspace?links.workspace+'&tab=vendors':'',
   changes:links.shipping?'/checkout-changes.html?'+q:''};}

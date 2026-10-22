@@ -27,12 +27,25 @@ test('one operator pipeline keeps every core step on the selected channel', () =
     assert.equal(state.settings, '/channel-manager.html?channel=future-live');
 });
 
-test('operator pipeline aliases map old page language onto the four canonical steps', () => {
+test('operator pipeline aliases distinguish settlement from printing', () => {
     assert.equal(Pipeline.currentId('manage'), 'workspace');
     assert.equal(Pipeline.currentId('control'), 'broadcast');
     assert.equal(Pipeline.currentId('checkout'), 'shipping');
-    assert.equal(Pipeline.currentId('settlement'), 'print');
+    assert.equal(Pipeline.currentId('settlement'), 'organizer');
     assert.equal(Pipeline.model('x', 'shipping'), null);
+});
+
+test('platform pipeline exposes vendor settlement separately from printing and preserves archived scope',t=>{
+    const old=global.location;t.after(()=>{global.location=old});
+    const channel={id:'national-cre',status:'active',dataAdapter:'platform'};
+    for(const archive of ['', 'old-round']){
+        global.location={search:'?channel=national-cre'+(archive?'&archive='+archive:'')};
+        const state=Pipeline.model(channel.id,'settlement','가상 회차',channel);
+        const receipt=state.steps.find(s=>s.id==='organizer');assert(receipt);assert.equal(receipt.active,true);
+        const url=new URL(receipt.href,'https://test');assert.equal(url.pathname,'/organizer-shipping.html');assert.equal(url.searchParams.get('channel'),channel.id);assert.equal(url.searchParams.get('archive')||'',archive);
+        assert(state.steps.find(s=>s.id==='print'));assert.deepEqual(state.steps.map(s=>s.number),state.steps.map((_,i)=>String(i+1)));
+    }
+    assert(!Pipeline.model(channel.id,'print','',{...channel,dataAdapter:'legacy-cdcup'}).steps.some(s=>s.id==='organizer'));
 });
 
 test('pipeline follows channel lifecycle and feature permissions without losing archive identity',t=>{

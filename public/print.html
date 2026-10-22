@@ -783,7 +783,7 @@
     <div class="tab-bar">
         <span class="channel-chip" id="print-channel-name">채널 확인 중</span>
         <a class="workspace-link" id="workspace-link" href="#">등록 · 목록</a>
-        <a class="workspace-link" id="parge-dispatch-link" href="parge-dispatch.html" onclick="this.href='parge-dispatch.html?channel='+encodeURIComponent(new URLSearchParams(location.search).get('channel')||'national-cre')">파르게 접수</a>
+        <a class="workspace-link" id="parge-dispatch-link" hidden>파르게 접수</a>
         <button class="tab-btn" onclick="showTab('list',this)">경매 리스트</button>
         <button class="tab-btn active" onclick="showTab('results',this)">낙찰 결과</button>
         <button class="tab-btn" onclick="showTab('company',this)">구매자별</button>
@@ -1829,7 +1829,9 @@
         function syncPrintChannel(channel) {
             var label = String(channel.name || channel.shortName || PRINT_CHANNEL_ID).trim();
             if(new URLSearchParams(location.search).has('archive'))label += ' · 이전 회차';
-            document.getElementById('parge-dispatch-link').hidden = new URLSearchParams(location.search).has('archive') || channel.status !== 'active' || !CreoChannelRuntime.operationalFeatureAvailable(channel,'shipping');
+            const dispatch=document.getElementById('parge-dispatch-link');
+            dispatch.hidden = new URLSearchParams(location.search).has('archive') || channel.dataAdapter !== 'platform' || channel.status !== 'active' || !CreoChannelRuntime.operationalFeatureAvailable(channel,'shipping');
+            if(dispatch.hidden)dispatch.removeAttribute('href');else dispatch.href='/parge-dispatch.html?'+new URLSearchParams({channel:PRINT_CHANNEL_ID});
             document.getElementById('print-channel-name').textContent = label;
             document.title = label + ' 인쇄 · CREO';
             var workspace = channel.legacy && channel.legacy.managementUrl

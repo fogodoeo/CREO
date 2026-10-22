@@ -83,3 +83,70 @@ Deployment was authorized on 2026-10-23 after local validation. Production healt
 static assets, authentication and read-only round data must be verified after rollout.
 The preview was not used to place a real transport reservation or make a payment.
 Final partner charges still depend on Parge's checkout.
+
+## Settlement entry correction (2026-10-23)
+
+The home previously called the print page "정산·인쇄", while the actual organizer
+receipt page was absent from the sidebar. The fourth home action now opens
+**업체 정산·입금 확인**. The finance group distinguishes buyer payments, vendor
+remittances, shipping, approvals, carrier dispatch, settlement exports and printing.
+The same receipt route is available from the native Parge sidebar and standalone
+platform-page navigation. Current and archived links retain both `channel` and
+`archive`; closed financial rounds remain accessible while other broadcasts run.
+
+### Navigation inventory
+
+| Group | Required destinations |
+| --- | --- |
+| 업체 관리 | Global vendor directory, shared vendor access administration |
+| 방송 일정 | Round preparation/activation, bookings, promotion management |
+| 경매 운영 | Entry review, item order, participating vendors |
+| 방송 도구 | Studio and layout controls, pinball, captures, capture setup |
+| 낙찰·배송·정산 | Buyer payments, organizer receipts, delivery status, change approvals, Parge, settlement export, print |
+| 설정 | Channel settings, shipping rates, BAND monitor, archived results |
+
+`test/operator-finance-navigation.test.js` asserts this independent inventory of
+23 required destinations. Merely iterating existing menu entries would miss a
+missing feature. Optional survey links continue to follow channel configuration.
+Studio-specific editors and banner controls stay in the studio; buyer/vendor
+access and public broadcast pages keep their separate entry flows.
+
+The audit also found that the print page set its Parge channel only in an onclick
+handler. It now builds the complete link after resolving the channel, so copying
+the link or opening a new tab retains its scope. Unsupported and archived dispatch
+links have no href. Capture setup and BAND monitor now have explicit menu entries.
+
+### Verification and limits
+
+Risk: **release** (shared navigation deployment). No receipt amounts, confirmation
+states, notification actions, authentication permissions or broadcast state
+handlers were changed.
+
+- `node --test test/operator-finance-navigation.test.js test/operator-shell.test.js test/operator-home.test.js test/operator-pipeline.test.js test/platform-pages.test.js`: **67 passed**.
+- `npm run check`: passed; all changed JavaScript also passed `node --check`.
+- `npm test -- --test-concurrency=4`: **1,500 passed, 0 failed**.
+  The first unrestricted run caught the old home-label assertion, which was updated
+  for the corrected workflow. A subsequent run had a promo image worker exit after
+  its assertions passed; its six tests passed in isolation and the final complete
+  run passed with four workers. No application assertion remains failing.
+- Desktop `python -m unittest discover -p "test*.py"`: **270 passed**.
+- Strict UTF-8 decoding, U+FFFD scan and `git diff --check`: passed.
+- Deterministic tests cover home/sidebar/native navigation, archived and closed
+  rounds, national and CLAB selections, reload, report-to-receipt navigation,
+  unsupported channels, frame origin checks, unsaved forms and no live-state writes.
+- Local rendered checks used synthetic fixtures: home → receipts, archived report
+  → receipts, CLAB selection, draft unavailable state, desktop and 320px mobile
+  menus, keyboard Tab/Enter and visible focus, standalone print navigation.
+  The home at 320px measured `clientWidth = scrollWidth = 320`; every tile also fit.
+- Interface review used better-interface and all six domain skills. Existing
+  typography, surfaces and spacing were retained; measured menu/title contrast
+  pairs were 16.77:1 (title), 8.44:1 (muted menu), 7.88:1 (selected menu) and
+  10.11:1 (focus ring against the page). No motion was introduced. Native anchors
+  retain accessible names and keyboard activation. Screen-reader speech and actual
+  browser 200% zoom were not separately verified.
+- This is a navigation-flow review, not a redesign of every underlying task form.
+  The pre-existing print-content toolbar remains dense on narrow screens; the
+  changed shared navigation wraps its labels in two columns.
+- Production verification is read-only: compare deployed static files, verify
+  health and authentication, then check each historical/current receipt endpoint's
+  returned channel/archive and unresolved count. No production backtests are used.

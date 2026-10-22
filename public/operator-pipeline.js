@@ -12,8 +12,9 @@
     const STEPS = Object.freeze([
         Object.freeze({ id: 'workspace', route: 'workspace', number: '1', label: '경매 관리', detail: '업체 · 개체 · 순서' }),
         Object.freeze({ id: 'broadcast', route: 'control', number: '2', label: '방송 진행', detail: '1P · 2P · 3P' }),
-        Object.freeze({ id: 'shipping', route: 'shipping', number: '3', label: '배송 · 결제', detail: '구매자 · 업체 확인' }),
-        Object.freeze({ id: 'print', route: 'print', number: '4', label: '정산 · 인쇄', detail: '현황 · 시트 · 라벨' })
+        Object.freeze({ id: 'shipping', route: 'shipping', number: '3', label: '낙찰자 입금·배송', detail: '낙찰자 결제 · 배송지' }),
+        Object.freeze({ id: 'organizer', route: 'organizer', number: '4', label: '업체 정산·입금', detail: '정산금 · 미입금 확인' }),
+        Object.freeze({ id: 'print', route: 'print', number: '5', label: '내역·라벨 인쇄', detail: '현황 · 시트 · 라벨' })
     ]);
 
     const CURRENT_ALIASES = Object.freeze({
@@ -21,7 +22,7 @@
         auction: 'workspace',
         control: 'broadcast',
         checkout: 'shipping',
-        settlement: 'print'
+        settlement: 'organizer'
     });
 
     function currentId(value) {
@@ -44,7 +45,8 @@
         const home=routes.home+(archive?'&archive='+encodeURIComponent(archive):'');
         const knownChannel = channel?.id === id ? channel : null;
         const available = step => {
-            if (archive && !['shipping','print'].includes(step.id)) return false;
+            if (archive && !['shipping','organizer','print'].includes(step.id)) return false;
+            if (step.id === 'organizer') return knownChannel?.dataAdapter === 'platform' && knownChannel.features?.auction !== false && Runtime.operationalFeatureAvailable(knownChannel, 'shipping');
             if (!knownChannel) return true;
             if (step.id === 'shipping' || step.id === 'broadcast') return Runtime.operationalFeatureAvailable(knownChannel, step.id);
             if (knownChannel.features?.auction === false) return false;
@@ -57,10 +59,10 @@
             home,
             settings: routes.settings,
             rounds: home,
-            steps: STEPS.filter(available).map(step => {
+            steps: STEPS.filter(available).map((step,index) => {
                 const archive = new URLSearchParams(root.location?.search || '').get('archive');
-                const suffix = archive && ['shipping','print'].includes(step.id) ? '&archive='+encodeURIComponent(archive) : '';
-                return {...step,href:routes[step.route]+suffix,active:step.id===currentId(current)};
+                const suffix = archive && ['shipping','organizer','print'].includes(step.id) ? '&archive='+encodeURIComponent(archive) : '';
+                return {...step,number:String(index+1),href:routes[step.route]+suffix,active:step.id===currentId(current)};
             })
         };
     }
@@ -93,6 +95,7 @@
             :host([presentation="studio"]) .settings{font-size:12px;color:#bac5d6;padding:12px}
             :host([presentation="studio"]) :focus-visible{outline:2px solid #91b4ff;outline-offset:2px}
             @media(max-width:660px){:host([presentation="studio"]) .bar{width:calc(100% - 20px);display:block;padding:6px 0}:host([presentation="studio"]) .bar nav{display:flex;gap:2px}:host([presentation="studio"]) .step{flex:1;min-width:0;padding:7px 4px;gap:5px}:host([presentation="studio"]) .step i{display:none}:host([presentation="studio"]) .step b{font-size:11px}:host([presentation="studio"]) .settings{display:none}}
+            @media(max-width:760px){.bar nav,:host([presentation="studio"]) .bar nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))!important}.step{justify-content:flex-start}.step b{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.4}}
             @media print{:host{display:none!important}}
             .channel,.settings{min-height:44px;align-content:center}.channel small{font-size:11px;color:${tone==='dark'?'#a4afbf':'#566171'}}.channel b{font-size:14px}.step{min-height:44px}.step b{font-size:13px}.step small{font-size:11px;color:${tone==='dark'?'#a4afbf':'#566171'}}.settings{font-size:13px}:focus-visible{outline:2px solid ${tone==='dark'?'#91b4ff':'#254ac7'};outline-offset:2px}
         </style><div class="bar"><a class="channel" href="${escapeHtml(state.home)}"><small>선택한 회차</small><b>${escapeHtml(state.channelName)}</b></a><nav aria-label="경매 운영 단계" style="grid-template-columns:repeat(${Math.max(1,state.steps.length)},minmax(0,1fr))">${steps}</nav><a class="settings" href="${escapeHtml(state.home)}">운영 홈 · 회차 선택</a></div>`;

@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   $('quick-round').innerHTML=rounds.filter(r=>r.familyId===Model.family(channel)).map(r=>`<option value="${esc(Model.key(r))}">${esc(r.name)} · ${r.archiveId?'이전 기록':r.status==='draft'?'준비 중':r.active?'현재 송출':'결제·배송'}</option>`).join('');if(round)$('quick-round').value=Model.key(round);
   for(const [id,name] of Object.entries({'quick-workspace':'workspace','quick-broadcast':'broadcast','quick-shipping':'shipping','quick-print':'print','quick-shipping-status':'shippingStatus','quick-parge':'parge','quick-pinball':'pinball','quick-captures':'captures','quick-survey':'survey','quick-settings':'settings','quick-rounds':'archives','quick-intake':'intake','quick-bookings':'bookings','manage-rounds':'rounds'}))link(id,links[name]);
   link('quick-report',links.report);
+  link('quick-organizer',links.organizer);
   if(links.workspace)link('quick-workspace',links.workspace+'&tab=items');
   document.querySelector('.pipeline').style.setProperty('--operation-count',Math.max(1,document.querySelectorAll('.pipeline a:not([hidden])').length));
   $('round-tools').hidden=![...$('round-tools').querySelectorAll('a')].some(a=>!a.hidden);
