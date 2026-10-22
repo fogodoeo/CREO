@@ -7,6 +7,7 @@ const {normalizeChannel}=require('../platform-core');
 async function main(){
  const origin='http://127.0.0.1:4369',f=await fixture({origin});
  for(const row of await f.repository.listRecords('national-cre','item'))await f.repository.upsertRecord('national-cre','item',{...row,attributes:{...row.attributes,broadcastDate:'2026-10-19'}});
+ for(const [index,id] of ['a01','a02','b03'].entries())await f.repository.upsertRecord('national-cre','shipment',{id:'preview-parge-'+id,itemId:id,vendorId:id==='b03'?'v2':'v1',recipientName:id==='b03'?'가상 낙찰자 B':'가상 낙찰자 A',recipientPhone:id==='b03'?'01000000004':'01000000003',method:'delivery',destinationType:'parge',destinationId:'parge',address:'수도권 (가상 정거샵)',pargeRegion:'수도권',pargeShop:'가상 정거샵',cost:index===1?7000:19000,paymentStatus:id==='b03'?'bank_transfer_reported':'paid',status:'complete'});
  await createVendorDirectory(f.repository).enroll('national-cre','v1');
  await f.repository.upsertRecord('national-cre','archive',{id:'preview-old-round',title:'10/14 서울·인천',closedAt:'2026-10-19T00:00:00Z'});
  await f.repository.upsertRecord('national-cre','item',item('old01','v1',{auctionArchiveId:'preview-old-round',winnerName:'가상 이전 구매자',winnerPhone:'01000000003'}));

@@ -1,6 +1,16 @@
 (function (global) {
     'use strict';
 
+    // The shared shell is opt-in and applies only to its direct administration
+    // frame. Buyer pages, vendor pages and actual broadcast output stay untouched.
+    try {
+        if (global.parent !== global && global.frameElement?.id === 'operator-frame' && ['/main','/main/','/index.html'].includes(global.parent.location.pathname)) {
+            const bridge = document.createElement('script');
+            bridge.src = '/operator-embed.js?v=20261023-admin-shell';
+            document.head.appendChild(bridge);
+        }
+    } catch (_) {}
+
     const ADMIN_KEY = 'creo_platform_admin';
     const SESSION_MARKER = 'session';
 

@@ -2,6 +2,18 @@
  'use strict';
  const text=v=>String(v??'').trim(), norm=v=>text(v).normalize('NFKC').replace(/\s+/g,'');
  function shopNames(payload){if(Array.isArray(payload))return payload.flatMap(g=>(g.shops||[]).map(r=>({name:text(r.name||r.shop),region:text(g.region)}))).filter(r=>r.name);return Object.entries(payload?.data||{}).flatMap(([region,rows])=>(Array.isArray(rows)?rows:[]).map(r=>({name:text(r.shop||r.name),region}))).filter(r=>r.name);}
+ function partnerQuote(groups,payload){
+  const rateRows=Array.isArray(payload)?payload.flatMap(g=>(g.shops||[]).map(r=>({name:r.name||r.shop,region:g.region,cost:r.baseCost??r.cost}))):Object.entries(payload?.data||{}).flatMap(([region,rows])=>(Array.isArray(rows)?rows:[]).map(r=>({name:r.shop||r.name,region,cost:r.cost??r.baseCost})));
+  const rows=groups.map(g=>{
+   const matches=rateRows.filter(r=>norm(r.name)===norm(g.shop)&&(!text(g.region)||norm(r.region)===norm(g.region)));
+   const raw=matches[0]?.cost,baseCost=Number(raw),quantity=Number(g.quantity);
+   if(matches.length!==1||raw===null||raw===undefined||text(raw)===''||!Number.isSafeInteger(baseCost)||baseCost<0||!Number.isSafeInteger(quantity)||quantity<1)return{known:false,shop:g.shop,quantity,amount:null};
+   const discountedBase=Math.round(baseCost*.5),additionalCount=quantity-1,additionalAmount=additionalCount*7000;
+   return{known:true,shop:g.shop,quantity,baseCost,discountAmount:baseCost-discountedBase,discountedBase,additionalCount,additionalAmount,amount:discountedBase+additionalAmount};
+  });
+  const known=rows.filter(r=>r.known),unknownCount=rows.length-known.length,knownAmount=known.reduce((sum,r)=>sum+r.amount,0);
+  return{rows,unknownCount,knownAmount,amount:unknownCount?null:knownAmount,baseAmount:known.reduce((sum,r)=>sum+r.baseCost,0),discountAmount:known.reduce((sum,r)=>sum+r.discountAmount,0),additionalAmount:known.reduce((sum,r)=>sum+r.additionalAmount,0)};
+ }
  function destination(s,shops){
   if(s.pargeShop)return text(s.pargeShop);
   const a=norm(s.address),matches=shops.filter(r=>[r.name,r.region+' ('+r.name+')',r.region+' · '+r.name].some(v=>norm(v)===a));
@@ -55,5 +67,5 @@
   return plan;
  }
  function manifest(groups,options){return validate({schema:'creo.parge.dispatch.v1',channelId:options.channelId,date:options.date,origin:'크레오 대구본점',senderName:'크레오 대구본점',senderPhone:'01050029163',createdAt:new Date().toISOString(),groups:groups.map(g=>({name:g.name,phone:g.phone,shop:g.shop,region:g.region,quantity:g.quantity,price:g.price,species:'크레스티드게코',memo:'전크자',items:g.items}))});}
- return {build,manifest,validate,shopNames};
+ return {build,manifest,validate,shopNames,partnerQuote};
 });

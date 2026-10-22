@@ -3388,6 +3388,12 @@ function createPlatformApi({
                 const payload=method==='GET'?{...await promoCenter.view({...actor,month:url.searchParams.get('month')}),partners:await promoPartners.view()}:body.action==='partner-image'?await promoPartners.image(body):await promoCenter.mutate(actor,body);
                 replyJson(res,200,payload,{'Cache-Control':'no-store, private'});return true;
             }
+            if(segments[0]==='operator-vendors'){
+                if(!await requireAdmin(req,res))return true;
+                if(segments.length!==1||method!=='GET'){replyJson(res,405,{error:'업체 전체 목록은 조회만 할 수 있어요.'});return true;}
+                const catalog=await loadCatalog();
+                replyJson(res,200,await require('./operator-vendors').listOperatorVendors(catalog.channels,vendorDirectory),{'Cache-Control':'no-store, private'});return true;
+            }
             if(segments[0]==='national-vendor-directory'){
                 if(!await requireAdmin(req,res))return true;
                 if(segments.length!==1||!['GET','POST'].includes(method)){replyJson(res,405,{error:'지원하지 않는 요청입니다.'});return true;}

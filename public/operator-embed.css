@@ -1,0 +1,36 @@
+html.operator-embedded creo-operator-pipeline,html.operator-embedded .app-bottom-nav{display:none!important}
+html.operator-embedded body{padding-bottom:0!important}
+html.operator-embedded :focus-visible{outline:3px solid #d3a547;outline-offset:3px}
+html.operator-embedded[data-operator-page="channel-workspace.html"] .top,
+html.operator-embedded[data-operator-page="channel-workspace.html"] .heading,
+html.operator-embedded[data-operator-page="channel-workspace.html"] .heading h1,
+html.operator-embedded[data-operator-page="channel-workspace.html"] .heading p,
+html.operator-embedded[data-operator-page="channel-workspace.html"] #entry-intake,
+html.operator-embedded[data-operator-page="channel-manager.html"] .rail>.brand,
+html.operator-embedded[data-operator-page="channel-manager.html"] .channel-list,
+html.operator-embedded[data-operator-page="channel-manager.html"] .rail-foot,
+html.operator-embedded[data-operator-page="vendor-entry-review.html"] main>.topbar,
+html.operator-embedded[data-operator-page="organizer-bookings.html"] .booking-header,
+html.operator-embedded[data-operator-page="organizer-bookings.html"] .booking-heading,
+html.operator-embedded[data-operator-page="national-vendors.html"] .portal-header,
+html.operator-embedded[data-operator-page="capture-gallery.html"] .topbar,
+html.operator-embedded[data-operator-page="capture-gallery.html"] #channel-select,
+html.operator-embedded[data-operator-page="shipping.html"] #admin-view>[data-ongdong-brand],
+html.operator-embedded[data-operator-page="print.html"] #print-channel-name,
+html.operator-embedded[data-operator-page="national-rounds.html"] main>header,
+html.operator-embedded[data-operator-page="shipping-rates.html"] #back-link{display:none!important}
+html.operator-embedded[data-operator-page="channel-workspace.html"] .shell{padding-top:16px;width:calc(100% - 40px)}
+html.operator-embedded[data-operator-page="channel-workspace.html"] .summary{margin:16px 0}
+html.operator-embedded[data-operator-page="channel-manager.html"] .shell{display:block}
+html.operator-embedded[data-operator-page="channel-manager.html"] .rail{position:static;height:auto;padding:12px 24px;border:0;border-bottom:1px solid var(--line)}
+html.operator-embedded[data-operator-page="channel-manager.html"] .rail-head{margin:0;justify-content:flex-end;gap:12px}
+html.operator-embedded[data-operator-page="channel-manager.html"] .main{padding:24px}
+html.operator-embedded[data-operator-page="broadcast-studio.html"] .studio{grid-template-rows:auto auto minmax(0,1fr)}
+html.operator-embedded[data-operator-page="broadcast-studio.html"] .topbar{display:flex;min-height:58px;justify-content:space-between;padding:8px 20px}
+html.operator-embedded[data-operator-page="broadcast-studio.html"] .topbar>.brand,
+html.operator-embedded[data-operator-page="broadcast-studio.html"] .channel-wrap,
+html.operator-embedded[data-operator-page="broadcast-studio.html"] .top-actions{display:none}
+html.operator-embedded[data-operator-page="broadcast-studio.html"] .channel-switch{display:flex}
+html.operator-embedded[data-operator-page="broadcast-studio.html"] .status{display:flex}
+html.operator-embedded[data-operator-page="broadcast-studio.html"] .commandbar{flex-wrap:wrap}
+@media(max-width:600px){html.operator-embedded[data-operator-page="channel-workspace.html"] .shell{width:calc(100% - 24px)}html.operator-embedded[data-operator-page="channel-manager.html"] .main{padding:16px}}

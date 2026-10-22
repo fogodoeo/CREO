@@ -255,6 +255,8 @@ CreoItemSheetLink.mount({getChannelId:()=>channelId,getTab:()=>tab,refresh:loadW
 CreoBuyerContactManager.mount({getChannelId:()=>channelId,getTab:()=>tab,refresh:loadWorkspace});
 $('channel-select').onchange=async e=>{closeModal();const next=runtime.setChannel(e.target.value),legacyUrl=legacyWorkspaceUrl(next);if(legacyUrl){location.assign(legacyUrl);return}channelId=next.id;history.replaceState(null,'',runtime.url('workspace',{tab}));try{await loadWorkspace()}catch(error){toast(error.message)}};
 $('live-item').onchange=()=>setLive();document.querySelectorAll('.live-mode').forEach(button=>button.onclick=()=>setLive(button.dataset.mode));
+let initialVendorOpened=false;
+document.addEventListener('creo:workspace-render',()=>{const vendorId=new URLSearchParams(location.search).get('vendor');if(initialVendorOpened||!vendorId||tab!=='vendors')return;initialVendorOpened=true;const vendor=data.vendors.find(v=>v.id===vendorId);if(vendor)openModal('vendors',vendor);else toast('이 회차의 업체를 찾을 수 없습니다.');});
 $('login-form').onsubmit=async e=>{e.preventDefault();try{CreoPlatform.setAdmin($('password').value);if(!await CreoPlatform.verifyAdmin())throw new Error('비밀번호가 맞지 않습니다.');$('login').hidden=true;if(!await loadCatalog())return;tab=new URLSearchParams(location.search).get('tab')||'vendors';await loadWorkspace()}catch(err){toast(err.message)}};
 (async()=>{if(CreoPlatform.getAdmin()){try{if(await CreoPlatform.verifyAdmin()){$('login').hidden=true;if(!await loadCatalog())return;tab=new URLSearchParams(location.search).get('tab')||'vendors';await loadWorkspace();return}}catch(_){CreoPlatform.setAdmin('')}}$('login').hidden=false})();
 </script></body></html>
