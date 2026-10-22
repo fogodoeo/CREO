@@ -87,9 +87,10 @@ test('pending and unsaved vendors do not hide another vendor account or lock its
 test('payment report for a saved vendor can proceed beside another vendor draft',async()=>{
  const s=multiVendorFlow(),ready=vendorCase('ready','bank_transfer_pending');s.state.data.vendors[1]=ready;
  s.state.dirty=true;const extra=vendorCase('extra','awaiting_information',false);s.state.data.vendors.push(extra);s.state.payments.extra='card';
- let requests=0;Object.assign(s.ctx,{confirm:()=>true,uuid:()=> 'isolated-report',api:async(path,body)=>{requests++;assert.equal(body.vendorKey,'ready');return{}},hydrate(data,preserveDraft){assert.equal(preserveDraft,true)},render(){},revisionSync:{publish(){}},CreoCheckoutActions:{paymentReportFeedback:()=>({})},alert:message=>{throw Error(message)}});
- vm.runInContext(html.slice(html.indexOf('const pendingReportRequests='),html.indexOf('const revisionSync=')),s.ctx);
- await s.ctx.report('pending',{});assert.equal(requests,0);await s.ctx.report('extra',{});assert.equal(requests,0);await s.ctx.report('ready',{});assert.equal(requests,1);
+ let config;Object.assign(s.ctx,{document:{},uuid:()=> 'isolated-report',render(){},CreoBuyerPaymentReport:{create:c=>{config=c;return{open(){}}}}});
+ vm.runInContext(html.slice(html.indexOf('const paymentReport='),html.indexOf('const revisionSync=')),s.ctx);
+ assert.equal(config.canReport(s.pending),false);assert.equal(config.canReport(extra),false);assert.equal(config.canReport(ready),true);s.state.saving=true;assert.equal(config.canReport(ready),false);s.state.saving=false;
+ let preserved=false;s.ctx.hydrate=(data,preserveDraft)=>{preserved=preserveDraft;};config.apply({});assert.equal(preserved,true);
 });
 
 test('payment choices put bank first without changing an existing card choice or vendor capabilities',()=>{

@@ -16,6 +16,8 @@
     <script src="/buyer-navigation.js?v=20261020-round"></script>
     <script src="/buyer-library-link.js" defer></script>
     <link rel="stylesheet" href="/buyer-destination.css?v=20261023-recovery">
+    <link rel="stylesheet" href="/buyer-payment-report.css?v=20261023-report">
+    <script src="/buyer-payment-report.js?v=20261023-report"></script>
     <script src="/carrier-search.js"></script><script src="/buyer-carrier-access.js"></script>
 
 <script src="/checkout-actions.js?v=20260912-checkout-outbox"></script><link rel="stylesheet" href="/checkout-layout.css?v=20260908-mobile-focus"><link rel="stylesheet" href="/ongdong-brand.css?v=20260908-logo"><script src="/ongdong-brand.js?v=20260908-logo"></script><link rel="stylesheet" href="/checkout-pages.css?v=20261016-bank-first"><script src="/checkout-round-picker.js?v=20261020-recovery"></script><link rel="stylesheet" href="/checkout-round-picker.css?v=20261020-recovery"></head>
@@ -26,7 +28,8 @@
         <header class="top"><div class="brand"><b data-ongdong-brand>옹동2</b><span class="page-context">배송·결제</span><div class="brand-right" hidden><span id="channel-name"></span><i class="sync" id="sync" role="status">실시간</i></div></div><p class="buyer-event-label" id="buyer-event-label"></p><div class="buyer-greeting"><span id="buyer-name"></span>님</div><div class="flow-steps" aria-label="진행 단계"><span id="step-shipping">1 수령지</span><span aria-hidden="true">›</span><span id="step-payment">2 결제</span></div><div id="flow-symbol" class="flow-symbol" aria-hidden="true" hidden></div><h1 id="flow-title" tabindex="-1">어디서 받으시나요?</h1><div class="status" id="status" hidden><span id="status-label"></span><small id="status-detail"></small></div><div class="saved" id="saved" role="status" aria-live="polite" hidden><b>저장 완료</b></div></header>
         <main>
             <div id="change-banner" class="waiting-note" role="status" hidden></div>
-            <section class="section" id="shipping-section"><div id="destination-summary" class="destination-summary" hidden><div><small>수령지</small><b id="destination-value"></b></div><button id="change-destination" type="button">변경</button></div><div id="destination-editor"><div id="saved-destination" class="saved-destination" hidden></div><div id="destination-options"><div class="head"><h2>수령 방법</h2><button id="cancel-destination" type="button" hidden>변경 취소</button></div><div class="choices" id="destinations"></div><div class="parge" id="parge" hidden><label for="parge-search">수령 지점 찾기</label><input class="search" id="parge-search" type="search" placeholder="지역 또는 지점명" autocomplete="off"><div class="tabs" id="parge-tabs" role="group" aria-label="지역"></div><div class="search-summary"><p id="parge-count" role="status"></p><button id="parge-reset" type="button" hidden>전체 지점 보기</button></div><div class="results" id="parge-results"></div><button id="parge-more" type="button" hidden>지점 더 보기</button><p class="note" id="parge-note"></p></div></div></div></section>
+            <section class="section" id="shipping-section"><div id="destination-summary" class="destination-summary" hidden><div><small>수령지</small><b id="destination-value"></b></div><button id="change-destination" type="button">변경</button></div><div id="destination-editor"><div id="saved-destination" class="saved-destination" hidden></div><div id="destination-options"><div class="head"><h2>수령 방법</h2><button id="cancel-destination" type="button" hidden>변경 취소</button></div><div class="choices" id="destinations"></div><div class="parge" id="parge" hidden><label for="parge-search">수령 지점 찾기</label><input class="search" id="parge-search" type="search" placeholder="지역 또는 지점명" autocomplete="off"><div class="tabs" id="parge-tabs" role="group" aria-label="지역"></div><div class="search-summary"><p id="parge-count" role="status"></p><button id="parge-reset" type="button" hidden>전체 지점 보기</button></div><div class="results" id="parge-results"></div><button id="parge-more" type="button" hidden>지점 더 보기</button><p class="note" id="parge-note"></p></div></div></div>
+            <p id="destination-lock" class="destination-lock" hidden><span id="destination-lock-message"></span> <button id="destination-contact" type="button" hidden>업체 연락처 보기</button></p></section>
             <div id="buyer-carrier-request" class="buyer-carrier-request" hidden></div>
             <section class="section" id="payment-section" hidden><div class="head"><h2>업체별 결제</h2></div><div id="vendors"></div><div class="payable-summary" id="payment-summary"><span id="payable-title">이번 결제금액</span><b id="payable-amount"></b><small id="payable-note"></small></div></section>
             <div id="save-feedback" class="buyer-save-feedback" role="alert" tabindex="-1" hidden><b>저장하지 못했어요</b><p id="save-feedback-message"></p><p id="save-feedback-help"></p><button id="reload-checkout" type="button" hidden>최신 정보 불러오기</button></div>
@@ -45,7 +48,7 @@
  const Checkout=window.CreoCheckoutClient,Rules=window.CreoCheckoutRules,params=new URLSearchParams(location.search),client=Checkout.createClient({location,endpoint:'/api/platform/buyer-shipping',shortPrefix:'s',apiOrigin:params.get('apiOrigin')||''});
  const $=Checkout.byId,esc=Checkout.escapeHtml,money=Checkout.money,uuid=Checkout.requestId,phone=Checkout.formatPhone;
 const state={data:null,destinationId:'',pargeRegion:'',pargeShop:'',query:'',region:'전체',payments:{},saving:false,saved:false,dirty:false};
-const roundPicker=CreoCheckoutRounds.create({client,container:$('app'),load:()=>{state.dirty=false;return load()},canChange:()=>!state.saving&&(!state.dirty||confirm('입력 중인 내용을 버리고 다른 회차로 이동할까요?'))});
+const roundPicker=CreoCheckoutRounds.create({client,container:$('app'),load:()=>{state.dirty=false;return load()},canChange:()=>!state.saving&&!paymentReport.isOpen()&&(!state.dirty||confirm('입력 중인 내용을 버리고 다른 회차로 이동할까요?'))});
 let loadSequence=0;
 const experience=CreoBuyerNavigation.create({onNavigate:()=>render()});
 function applyCarrierAccess(data){const changed=data.destinations&&JSON.stringify(state.data.destinations)!==JSON.stringify(data.destinations);state.data.carrierRequest=data.carrierRequest;if(data.destinations)state.data.destinations=data.destinations;if(data.carriers)state.data.carriers=data.carriers;if(changed)renderDestinations();}
@@ -89,6 +92,10 @@ function renderFlow(){
  const onlyConfirmation=state.data.vendors.every(v=>v.payment.status==='paid'||pendingConfirmation(v));
  const waitingForGuide=saved&&!paid&&state.data.vendors.every(v=>buyerPaymentPriority(v)>0);
  $('change-destination').disabled=state.saving||state.data.canEditDestination===false;
+ $('destination-lock').hidden=!showPayment||state.data.canEditDestination!==false;
+ $('destination-lock-message').textContent=changePending()?'변경 요청을 확인 중이에요. 확인이 끝나면 수령지를 바꿀 수 있어요.':'결제 확인 또는 발송이 진행되어 수령지를 직접 바꿀 수 없어요. 변경이 필요하면 업체나 운영자에게 문의해 주세요.';
+ $('destination-contact').hidden=!state.data.vendors.some(v=>/^0\d{8,10}$/.test(String(v.contact?.phone||'').replace(/\D/g,'')));
+ $('destination-contact').onclick=()=>{const contact=document.querySelector('#vendors .vendor-contact');contact?.focus();contact?.scrollIntoView({block:'center'});};
  $('payment-section').hidden=!showPayment;
  $('destination-summary').hidden=!showPayment;
  $('destination-editor').hidden=showPayment;
@@ -186,9 +193,16 @@ function renderVendors(){
   const call=CreoCheckoutActions.phoneHref(v.contact?.phone);
   return `<article class="vendor"><div class="vendor-head"><div class="vendor-title"><b>${esc(v.name)}</b></div>${call?`<a class="vendor-contact" href="${esc(call)}" aria-label="${esc(v.name)}에 전화 문의"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M7 3H4a1 1 0 0 0-1 1c0 9.4 7.6 17 17 17a1 1 0 0 0 1-1v-3l-5-2-2 2a15 15 0 0 1-7-7l2-2-2-5Z"/></svg>전화 문의</a>`:''}</div><div class="vendor-body"><div class="amount-focus"><div class="amount-caption"><small>${paid?'결제한 금액':pendingConfirmation(v)?'확인 중인 금액':due.confirmed?'추가 결제금액':'결제할 금액'}</small>${saved&&!paid&&v.payment.status!=='card_link_pending'?`<span class="badge ${tone}">${label}</span>`:''}</div><strong>${money(paid?v.payment.confirmedAmount:due.due)}</strong></div>${saved?vendorAction(v,due)+selector:selector+vendorAction(v,due)}${v.shippingNote?`<p class="waiting-note"><b>수령 메모</b><br>${esc(v.shippingNote)}</p>`:''}<details class="receipt-details"><summary>낙찰금·배송비</summary><div class="cost-breakdown"><span>낙찰금 <b>${money(v.totals.auctionAmount)}</b></span><span>배송비 <b>${money(due.shippingAmount+due.shippingSupportAmount)}</b></span>${due.shippingSupportAmount?`<span>전크자 배송비 지원 <b>−${money(due.shippingSupportAmount)}</b></span><span>배송비 부담 <b>${money(due.shippingAmount)}</b></span>`:''}${v.totals.discountAmount?`<span>할인 <b>−${money(v.totals.discountAmount)}</b></span>`:''}${due.confirmed&&!paid?`<span>결제한 금액 <b>${money(due.confirmed)}</b></span>`:''}</div></details></div></article>`;
  }).join('');
+ if(state.reportNotice&&state.reportNotice.version===state.data.editVersion&&state.reportNotice.channelId===state.data.channel.id&&state.reportNotice.roundKey===(state.data.round?.key||'')){const v=state.data.vendors.find(v=>v.key===state.reportNotice.vendorKey),index=state.data.vendors.slice().sort((a,b)=>buyerPaymentPriority(a)-buyerPaymentPriority(b)).indexOf(v),article=$('vendors').children[index];if(article){const note=document.createElement('p');note.className='report-feedback'+(state.reportNotice.warning?' warning':'');note.id='payment-report-feedback';note.setAttribute('role','status');note.setAttribute('tabindex','-1');note.textContent=state.reportNotice.text;article.append(note);}}
  document.querySelectorAll('[data-payment-vendor]').forEach(b=>b.onclick=()=>{state.payments[b.dataset.paymentVendor]=b.dataset.method;state.saved=false;state.dirty=true;render()});
  document.querySelectorAll('[data-copy]').forEach(b=>b.onclick=async()=>{await CreoCheckoutActions.copyAccount(b.dataset.copy,b)});
- document.querySelectorAll('[data-report]').forEach(b=>b.onclick=()=>report(b.dataset.report,b));
+ document.querySelectorAll('[data-report]').forEach(b=>{b.disabled=state.saving;b.onclick=()=>report(b.dataset.report,b)});
+}
+function renderPaymentSummary(){
+ const data=state.data,shipping=globalShipping(),waiting=data.vendors.filter(pendingConfirmation).reduce((sum,v)=>sum+vendorDue(v,shipping).due,0),due=data.vendors.filter(v=>v.payment.status!=='paid'&&!pendingConfirmation(v)).reduce((sum,v)=>sum+vendorDue(v,shipping).due,0),confirmed=data.vendors.reduce((sum,v)=>sum+(Number(v.payment.confirmedAmount)||0),0),paid=data.payment.status==='paid';
+ $('payable-amount').textContent=money(paid?confirmed:due||waiting);
+ $('payable-title').textContent=paid?'결제 확인 완료':due?'결제할 금액':waiting?'결제 확인 중':'결제할 금액';
+ $('payable-note').textContent=state.dirty||!data.submittedAt?'저장 후 결제금액 확정':due&&waiting?'업체 확인 중인 금액 '+money(waiting):waiting?'업체가 입금·결제를 확인하고 있어요':paid?'모든 업체의 결제가 확인됐어요':'업체별로 결제해 주세요';
 }
 function render(){
  const data=state.data;
@@ -204,10 +218,7 @@ function render(){
  let scheduleBox=$('delivery-schedule');if(!scheduleBox){scheduleBox=document.createElement('div');scheduleBox.id='delivery-schedule';scheduleBox.setAttribute('aria-live','polite');$('shipping-section').appendChild(scheduleBox)}
  const schedule=['parge','dodosi'].includes(state.destinationId)&&state.pargeShop?(selectedRate()?.deliverySchedule||null):null;
  scheduleBox.innerHTML=CreoDeliverySchedule.html(schedule);scheduleBox.hidden=!schedule;
- const allocation=globalShipping(),amount=data.vendors.reduce((sum,v)=>sum+vendorDue(v,allocation).due,0);
- $('payable-amount').textContent=money(data.payment.status==='paid'?data.vendors.reduce((sum,v)=>sum+(Number(v.payment.confirmedAmount)||0),0):amount);
- $('payable-title').textContent=data.payment.status==='paid'?'결제 확인 완료':'이번 결제금액';
- $('payable-note').textContent=state.dirty||!data.submittedAt?'저장 후 결제금액 확정':'업체별 결제 · 미결제 금액';
+ renderPaymentSummary();
  const valid=destination()&&(!['parge','dodosi'].includes(destination().type)||selectedRate())&&data.vendors.every(v=>v.payment.status==='paid'||state.payments[v.key]);
  $('submit').disabled=state.saving||!valid;
  $('submit').textContent=state.saving?'저장 중…':data.submittedAt?'변경 내용 저장':'선택 완료';
@@ -217,17 +228,13 @@ function render(){
 function hydrate(data,preserveDraft=false){roundPicker.update(data);const draft=preserveDraft&&state.dirty?{destinationId:state.destinationId,pargeRegion:state.pargeRegion,pargeShop:state.pargeShop,query:state.query,region:state.region,payments:{...state.payments}}:null;if(!draft){editingDestination=false;destinationBeforeEdit=null;state.saveError=null;state.searchLimit=40}state.data=data;state.destinationId=draft?.destinationId??data.selection?.destinationId??'';state.pargeRegion=draft?.pargeRegion??data.selection?.pargeRegion??'';state.pargeShop=draft?.pargeShop??data.selection?.pargeShop??'';state.query=draft?.query??(state.pargeShop?`${state.pargeRegion} ${state.pargeShop}`:'');state.region=draft?.region||'전체';state.payments=Object.fromEntries(data.vendors.map(v=>[v.key,draft?.payments[v.key]||v.payment.method||(v.paymentMethods.includes('bank_transfer')?'bank_transfer':'')]));state.dirty=Boolean(draft);render()}
 async function load(silent=false,preserveDraft=false){const seq=++loadSequence;if(!client.valid)return showError('배송 링크 주소가 올바르지 않습니다.');if(!silent){$('loading').hidden=false;$('app').hidden=true}try{const next=await api();if(seq!==loadSequence)return false;hydrate(next,preserveDraft);return true}catch(error){if(seq!==loadSequence)return false;if(!silent)showError(error.message||'배송 정보를 불러오지 못했습니다.',error.status);return false}}function showError(message,status=0){$('loading').hidden=true;$('app').hidden=true;$('error').hidden=false;$('error-message').textContent=message;$('error-link-help').hidden=![401,403].includes(status);CreoCheckoutRounds.showRecovery($('error-round-recovery'),status)}
 async function save(){if(state.saving||$('submit').disabled)return;state.saving=true;state.saveError=null;render();try{const signature=JSON.stringify([state.data.editVersion,state.destinationId,state.pargeRegion,state.pargeShop,state.payments]);if(state.saveSignature!==signature){state.saveSignature=signature;state.saveRequestId=uuid()}const data=await api('',{requestId:state.saveRequestId,expectedVersion:state.data.editVersion,destinationId:state.destinationId,pargeRegion:state.pargeRegion,pargeShop:state.pargeShop,payments:state.data.vendors.map(v=>({vendorKey:v.key,method:state.payments[v.key]}))});state.saveRequestId=null;state.dirty=false;state.saved=true;hydrate(data);state.saved=true;render();revisionSync.publish('방금 반영','live');$('flow-title').focus();$('flow-title').scrollIntoView({block:'center'})}catch(error){state.saveError={message:error.message||'연결을 확인한 뒤 다시 저장해 주세요.',conflict:error.status===409}}finally{state.saving=false;render();if(state.saveError){$('save-feedback').focus();$('save-feedback').scrollIntoView({block:'center'})}}}
-const pendingReportRequests=new Map();
-async function report(vendorKey,button){
- const vendor=state.data.vendors.find(v=>v.key===vendorKey);
- if(state.saving||!vendor||!vendorSaved(vendor)||pendingConfirmation(vendor))return;if(!confirm('결제를 마치셨나요?'))return;
- const expectedVersion=state.data.editVersion,pending=pendingReportRequests.get(vendorKey);
- const request=pending?.expectedVersion===expectedVersion?pending:{requestId:uuid(),vendorKey,expectedVersion};
- pendingReportRequests.set(vendorKey,request);state.saving=true;button.disabled=true;
- try{const data=await api('/report-payment',request);pendingReportRequests.delete(vendorKey);hydrate(data,true);revisionSync.publish('방금 반영','live');const feedback=CreoCheckoutActions.paymentReportFeedback(data.notification);if(feedback.warning)alert(feedback.text)}
- catch(error){if(error.status&&error.status<500)pendingReportRequests.delete(vendorKey);alert(error.message||'결제 신고를 저장하지 못했습니다. 다시 시도해 주세요.');button.disabled=false}
- finally{state.saving=false;render()}
-}
-const revisionSync=Checkout.createRevisionSync({document,fetchRevision:()=>client.revision(state.data.channel.id),currentRevision:()=>state.data?.revision,isReady:()=>!!state.data&&!state.data.readOnly,isBusy:()=>state.saving,hasDraft:()=>state.dirty||experience.isOpen(),refresh:()=>load(true,true),onStatus:(text,stateName)=>{if($('sync')){$('sync').textContent=text;$('sync').dataset.state=stateName}}});
+const paymentReport=CreoBuyerPaymentReport.create({document,getCheckout:()=>state.data,
+ canReport:v=>!state.saving&&!state.data.readOnly&&vendorSaved(v)&&!pendingConfirmation(v)&&v.payment.status!=='paid'&&!changePending(),
+ getAmount:v=>vendorDue(v,globalShipping()).due,request:body=>api('/report-payment',body),requestId:uuid,
+ setBusy:value=>{state.saving=value;render()},apply:data=>hydrate(data,true),refresh:()=>load(true,true),
+ onFinish:(data,vendorKey)=>{const feedback=CreoCheckoutActions.paymentReportFeedback(data.notification);state.reportNotice={vendorKey,version:data.editVersion,channelId:data.channel.id,roundKey:data.round?.key||'',text:feedback.text.replace('결제 신고 저장','결제 확인을 요청했어요'),warning:feedback.warning};render();revisionSync.publish('방금 반영','live');$('payment-report-feedback')?.focus();}
+});
+function report(vendorKey,button){paymentReport.open(vendorKey,button)}
+const revisionSync=Checkout.createRevisionSync({document,fetchRevision:()=>client.revision(state.data.channel.id),currentRevision:()=>state.data?.revision,isReady:()=>!!state.data&&!state.data.readOnly,isBusy:()=>state.saving||paymentReport.isOpen(),hasDraft:()=>state.dirty||experience.isOpen(),refresh:()=>load(true,true),onStatus:(text,stateName)=>{if($('sync')){$('sync').textContent=text;$('sync').dataset.state=stateName}}});
 const poller=Checkout.createAdaptivePoller(async()=>{await revisionSync.poll();if(!document.hidden)await carrierAccess.refresh(true)},{document,window,onSuspend:()=>revisionSync.stop()});$('parge-search').oninput=event=>{state.query=event.target.value;state.searchLimit=40;if(norm(state.query)!==norm(`${state.pargeRegion} ${state.pargeShop}`)){state.pargeRegion='';state.pargeShop=''}state.saved=false;state.dirty=true;render()};$('change-destination').onclick=beginDestinationEdit;$('cancel-destination').onclick=cancelDestinationEdit;$('reload-checkout').onclick=async()=>{if(state.saving||!confirm('선택 중인 내용을 버리고 최신 정보를 불러올까요?'))return;if(await load(false)){editingDestination=false;destinationBeforeEdit=null;state.saveError=null;render();$('flow-title').focus()}};$('submit').onclick=save;$('retry').onclick=()=>load();load().finally(()=>poller.start(300));
 })();</script></body></html>

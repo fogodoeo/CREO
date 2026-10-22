@@ -54,7 +54,7 @@ test('background hydration preserves a deliberately cleared destination and a ne
 test('save failure retains fields and request id, prevents duplicate in-flight input and retries once',async()=>{
  const s=setup(),calls=[];s.state.dirty=true;s.state.payments.v='card';let fail=true,sequence=0,resolve;
  Object.assign(s.ctx,{uuid:()=>`request-${++sequence}`,api:async(path,body)=>{calls.push(structuredClone(body));if(fail)throw Error('연결을 확인해 주세요.');return new Promise(r=>resolve=r)},revisionSync:{publish(){}}});
- vm.runInContext(part('async function save(){','const pendingReportRequests='),s.ctx);s.ctx.render();
+ vm.runInContext(part('async function save(){','const paymentReport='),s.ctx);s.ctx.render();
  await s.ctx.save();assert.equal(s.state.payments.v,'card');assert.equal(s.state.pargeShop,'수령점 0');assert.equal(s.state.dirty,true);assert.equal(s.$('save-feedback').hidden,false);assert.equal(s.$('submit').textContent,'다시 저장');assert.equal(s.focus.at(-1),'save-feedback');
  fail=false;const pending=s.ctx.save();await s.ctx.save();assert.equal(calls.length,2);assert.equal(calls[0].requestId,calls[1].requestId);assert.equal(s.$('submit').disabled,true);
  assert.equal(s.$('change-destination').disabled,true);assert.equal(s.$('parge-search').disabled,true);assert([...s.$('destinations').querySelectorAll('button')].every(b=>b.disabled));
@@ -65,7 +65,7 @@ test('save failure retains fields and request id, prevents duplicate in-flight i
 test('version conflict offers explicit reload and changed input receives a new retry id',async()=>{
  const s=setup(),calls=[];let sequence=0;
  Object.assign(s.ctx,{uuid:()=>`request-${++sequence}`,api:async(path,body)=>{calls.push(body);throw Object.assign(Error('정보가 변경되었습니다.'),{status:409})},revisionSync:{publish(){}}});
- vm.runInContext(part('async function save(){','const pendingReportRequests='),s.ctx);s.state.dirty=true;s.state.payments.v='card';s.ctx.render();await s.ctx.save();
+ vm.runInContext(part('async function save(){','const paymentReport='),s.ctx);s.state.dirty=true;s.state.payments.v='card';s.ctx.render();await s.ctx.save();
  assert.equal(s.$('reload-checkout').hidden,false);assert.match(s.$('save-feedback-help').textContent,/최신 정보/);
  s.state.pargeRegion='전라';s.state.pargeShop='별빛점';s.ctx.render();await s.ctx.save();assert.notEqual(calls[0].requestId,calls[1].requestId);
  let loads=0;s.ctx.load=async()=>{loads++;return true};s.ctx.confirm=()=>false;await s.$('reload-checkout').onclick();assert.equal(loads,0);assert.equal(s.state.pargeShop,'별빛점');
