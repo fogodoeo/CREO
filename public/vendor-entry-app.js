@@ -280,8 +280,10 @@
   }
   function editEntry(entry) {
     draft = structuredClone(entry); dirty = false;
+    if (Store.live && ['submitted','approved'].includes(entry.status)) draft.reviewEdit = true;
     editorNavigation(true);
-    $('content').innerHTML = `<div class="title-row"><button type="button" id="entry-back" class="icon-button" aria-label="출품 목록으로 돌아가기">←</button><h1>개체 등록</h1>${canDeleteEntry(entry) ? '<button type="button" id="delete-entry" class="text-button danger entry-delete-trigger" aria-label="개체 삭제">삭제</button>' : ''}</div><p class="entry-caption">${esc(entry.code || '출품 번호는 저장 시 자동 부여')}</p>
+    $('content').innerHTML = `<div class="title-row"><button type="button" id="entry-back" class="icon-button" aria-label="출품 목록으로 돌아가기">←</button><h1>${draft.reviewEdit?'개체 수정':'개체 등록'}</h1>${canDeleteEntry(entry) ? '<button type="button" id="delete-entry" class="text-button danger entry-delete-trigger" aria-label="개체 삭제">삭제</button>' : ''}</div><p class="entry-caption">${esc(entry.lot || entry.code || '출품 번호는 저장 시 자동 부여')}</p>
+      ${draft.reviewEdit?`<p class="muted">${entry.approved?'변경안을 보내면 운영자 확인 후 반영돼요.':'수정 저장을 눌러야 접수 내용이 바뀌어요.'}</p>`:''}
       ${entry.sourceUrl ? `<div class="source-link"><span>피들에서 가져온 개체</span><a href="${esc(entry.sourceUrl)}" target="_blank" rel="noopener noreferrer">원본 보기 ↗</a></div>` : ''}
       ${entry.reason ? `<div class="request-note"><b>수정 요청</b>${esc(entry.reason)}</div>` : ''}
       <form id="entry-form" novalidate>
@@ -292,15 +294,16 @@
         <section class="entry-section"><div class="section-head"><h2>부모 정보 <span class="optional">선택</span></h2></div><div id="entry-parents" class="parents"></div></section>
         <label class="field" for="entry-hatch"><span>해칭일 <span class="optional">선택</span></span><input id="entry-hatch" name="hatchDate" type="date" value="${esc(entry.hatchDate)}" max="${new Date().toLocaleDateString('en-CA')}"></label>
         <label class="field" for="entry-note"><span>비고 <span class="optional">선택</span></span><textarea id="entry-note" name="note" maxlength="600" placeholder="개체 특징 등 추가로 알릴 내용">${esc(entry.note)}</textarea></label>
-        <p id="entry-error" class="inline-error" role="alert" hidden></p>
-        <div class="form-actions"><button class="secondary" type="button" id="save-draft">임시 저장</button><button class="primary" type="submit" id="submit-entry">검토 요청</button></div>
+        <p id="entry-error" class="inline-error" role="alert" tabindex="-1" hidden></p>
+        <div class="form-actions"><button class="secondary" type="button" id="save-draft">${draft.reviewEdit?'수정 취소':'임시 저장'}</button><button class="primary" type="submit" id="submit-entry">${draft.reviewEdit?(entry.approved?'변경안 보내기':'수정 저장'):'검토 요청'}</button></div>
       </form>`;
-    $('entry-back').onclick = () => leave(renderList);
+    const backToList = () => {renderList();$('content').focus();};
+    $('entry-back').onclick = () => leave(backToList);
     $('delete-entry')?.addEventListener('click', () => openDelete(entry));
     $('open-import')?.addEventListener('click', () => leave(openImport));
     $('entry-form').addEventListener('input', () => { dirty = true; keepDraft(); });
     $('entry-form').onsubmit = event => { event.preventDefault(); saveEntry(true); };
-    $('save-draft').onclick = () => saveEntry(false);
+    $('save-draft').onclick = () => draft.reviewEdit ? leave(backToList) : saveEntry(false);
     $('entry-photo-input').onchange = event => addEntryPhotos(event.target);
     renderEntryPhotos(); renderParents(); window.scrollTo(0, 0);
   }
@@ -312,6 +315,7 @@
   }
   async function saveEntry(submit, navigate = true) {
     if (busy || uploading) return false;
+    if (draft?.reviewEdit && !submit) return false;
     readDraft();
     busy = true; eventControls(); $('save-draft').disabled = $('submit-entry').disabled = true; errorAt('entry-error', '');
     try {
@@ -319,13 +323,15 @@
         ++profileSequence; profile = await profileApi(); profileEventId = eventId;
         if (!profileReady(profile)) { busy = false; openProfilePopup(true); return false; }
       }
-      const id = await send({ type: submit ? 'submit' : 'save', entry: draft, expectedVersion: draft.version });
+      const editingReview = draft.reviewEdit === true, approved = !!draft.approved;
+      const id = await send({ type: submit ? 'submit' : 'save', entry: draft, expectedVersion: draft.version, ...(editingReview?{reviewEdit:true}:{}) });
       await Store.recovery?.clear();
       dirty = false; draft = structuredClone(entries().find(e => e.id === id));
-      if (navigate) renderList(); toast(submit ? '검토를 요청했어요' : '임시 저장했어요'); return true;
+      if (navigate) {renderList();$('content').focus();} toast(editingReview?(approved?'변경안을 보냈어요. 운영자가 확인 후 반영해요':'접수 내용을 수정했어요'):submit ? '검토를 요청했어요' : '임시 저장했어요'); return true;
     } catch (e) {
       state = Store.getState?.() || state; keepDraft(); renderEntryPhotos();
       errorAt('entry-error', e.message);
+      $('entry-error').focus();
       if (e.status === 409 && Store.live) {
         const button = document.createElement('button'); button.type = 'button'; button.className = 'text-button'; button.textContent = '최신 내용 다시 확인';
         button.onclick = async () => { if (!confirm('작성 중인 내용을 닫고 최신 저장 내용을 확인할까요?')) return; await Store.recovery.clear(); dirty = false; await start(); };
@@ -568,6 +574,16 @@
       $('detail-actions').innerHTML = '<button type="button" class="primary" id="approve-entry">편성 완료</button>';
       $('approve-entry').onclick = () => review('approve');
       $('request-changes').onclick = () => review('request-changes');
+    } else if (Store.live && role === 'vendor' && ['submitted','approved'].includes(entry.status) && currentEvent()?.entriesOpen) {
+      $('detail-actions').hidden=false;
+      $('detail-actions').innerHTML='<button type="button" class="secondary full" id="edit-review-entry">'+(entry.approved?'변경안 작성':'개체 수정')+'</button>';
+      $('edit-review-entry').onclick=()=>{
+        if(busy||uploading)return;
+        const saved=Store.recovery?.read()?.entry;
+        $('detail-dialog').close();
+        editEntry(saved?.reviewEdit&&saved.id===entry.id?saved:entry);
+        $('entry-morph').focus();
+      };
     } else if (role === 'vendor' && entry.status === 'submitted' && currentEvent()?.entriesOpen) {
       $('detail-actions').innerHTML = '<button type="button" class="secondary full" id="withdraw-entry">검토 요청 취소하고 수정</button>';
       $('withdraw-entry').onclick = () => review('withdraw');
@@ -645,6 +661,8 @@
     if (busy || uploading) return;
     if (!dirty && !profileDirty) return action();
     leaveProfileOnly = profileOnly;
+    $('leave-save').hidden = !profileDirty && !!draft?.reviewEdit;
+    $('leave-title').textContent = $('leave-save').hidden ? '수정 내용을 저장하지 않고 나갈까요?' : '작성한 내용을 남길까요?';
     $('leave-save').textContent = profileDirty ? '저장 후 나가기' : '임시 저장 후 나가기';
     leaveAction = action; errorAt('leave-error', ''); $('leave-dialog').showModal();
   }
@@ -743,7 +761,7 @@
       }
       if (role === 'vendor' && section !== 'profile' && recovered && currentEvent()?.entriesOpen) {
         const saved = entries().find(e => e.id === recovered.entry?.id);
-        if (!saved || ['draft', 'changes_requested'].includes(saved.status)) {
+        if (!saved || ['draft', 'changes_requested'].includes(saved.status) || recovered.entry?.reviewEdit === true) {
           restoringRecovery = true;
           if (recovered.entry) { editEntry(recovered.entry); dirty = true; } else renderList();
           if (recovered.parent) { parentRole = recovered.parentRole; parentManage = recovered.parentManage; parentListWasEmpty = parents().length === 0; parentForm(recovered.parent); parentDirty = true; $('parent-dialog').showModal(); }

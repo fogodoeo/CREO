@@ -4,6 +4,11 @@ const Home=require('../public/operator-home-model'),Shell=require('../public/ope
 const channels=[{id:'national-cre',name:'전크자',status:'active',dataAdapter:'platform'},{id:'national-cre-20261021',name:'전라·충청',status:'draft',dataAdapter:'platform',nationalRound:{parentId:'national-cre',date:'2026-10-21'}},{id:'clab-1015',name:'씨랩',status:'active',dataAdapter:'platform'}];
 const rounds=channels.map(c=>({channelId:c.id,name:c.name,status:c.status,familyId:Home.family(c),date:c.nationalRound?.date||''})).concat({channelId:'national-cre',archiveId:'old',familyId:'national-cre',name:'지난 회차'});
 const state=query=>Home.selection({channels},rounds,'national-cre',query);
+test('CLAB intake uses its own channel without a national per-entry broadcast date filter',()=>{
+ const selected=state('?channel=clab-1015');selected.round={...selected.round,date:'2026-10-29'};
+ const url=new URL(Shell.frame(selected,'intake'),'https://test');assert.equal(url.searchParams.get('channel'),'clab-1015');assert.equal(url.searchParams.has('broadcastDate'),false);
+ const national=state('?channel=national-cre-20261021');assert.equal(new URL(Shell.frame(national,'intake'),'https://test').searchParams.get('broadcastDate'),'2026-10-21');
+});
 test('shell routes keep the explicit round and archived scope; global vendor route has no date filter',()=>{
  for(const id of channels.map(c=>c.id)){
   const s=state('?channel='+id);for(const key of ['items','members','broadcast','pinball','print']){const u=new URL(Shell.frame(s,key),'https://test');assert.equal(u.searchParams.get('channel'),id,key);assert.equal(u.searchParams.get('embedded'),'1');}

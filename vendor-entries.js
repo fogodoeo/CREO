@@ -150,7 +150,7 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
         if(!allowed.includes(type))throw fail('이 작업을 실행할 수 없습니다.',403);
         const requestId=cleanText(input.requestId,80);
         if(requestId.length<8)throw fail('요청을 다시 확인해 주세요.',422);
-        const signature=hash({type,entry:input.entry,parent:input.parent,parents:input.parents,id:input.id,expectedVersion:input.expectedVersion,expectedUpdatedAt:input.expectedUpdatedAt,lot:input.lot,order:input.order,startPrice:input.startPrice,teamName:input.teamName,groupId:input.groupId,reason:input.reason,...(input.replaceSubmitted?{replaceSubmitted:true}:{}),...(input.broadcastDate?{broadcastDate:input.broadcastDate}:{}),...(auctionChannel?{auctionChannelId:auctionChannel.id}:{})});
+        const signature=hash({type,entry:input.entry,parent:input.parent,parents:input.parents,id:input.id,expectedVersion:input.expectedVersion,expectedUpdatedAt:input.expectedUpdatedAt,lot:input.lot,order:input.order,startPrice:input.startPrice,teamName:input.teamName,groupId:input.groupId,reason:input.reason,...(input.replaceSubmitted?{replaceSubmitted:true}:{}),...(input.reviewEdit?{reviewEdit:true}:{}),...(input.broadcastDate?{broadcastDate:input.broadcastDate}:{}),...(auctionChannel?{auctionChannelId:auctionChannel.id}:{})});
         const execute=()=>locked(ownerId,async()=>{
             const state=await readOwner(ownerId),key=context.channel.id+':'+type+':'+requestId;
             const previous=state.requests.find(request=>request.key===key);
@@ -204,7 +204,16 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
                 // commits atomically. Opening an editor never needs a durable withdrawal.
                 const replacing=input.replaceSubmitted===true;
                 if(replacing&&(!context.nationalBroadcast||context.channel.id!=='national-cre'||type!=='submit'||current?.status!=='submitted'||current.itemId||current.approved))throw fail('수정할 접수 상태가 변경됐어요. 목록에서 다시 확인해 주세요.');
-                if(current&&(current.version!==input.expectedVersion||!(['draft','changes_requested'].includes(current.status)||replacing)))throw fail('출품 상태가 변경됐어요. 목록에서 다시 열어 주세요.');
+                const reviewEdit=input.reviewEdit===true;
+                if(reviewEdit&&(replacing||context.channel.id==='national-cre'||context.nationalBroadcast||current?.broadcastDate||type!=='submit'||!['submitted','approved'].includes(current?.status)))throw fail('수정할 접수 상태가 변경됐어요. 목록에서 다시 확인해 주세요.');
+                if(current&&(current.version!==input.expectedVersion||!(['draft','changes_requested'].includes(current.status)||replacing||reviewEdit)))throw fail('출품 상태가 변경됐어요. 목록에서 다시 열어 주세요.');
+                if(reviewEdit){
+                    const items=await repository.listRecords(context.channel.id,'item');
+                    if(current.approved||current.itemId){
+                        const existing=items.find(row=>row.id===current.itemId);
+                        if(!current.approved||!existing||!canArrange(existing)||existing.vendorId!==context.vendor.id||existing.attributes?.vendor_entry?.ownerId!==ownerId||existing.attributes?.vendor_entry?.entryId!==id||current.auctionChannelId&&current.auctionChannelId!==context.channel.id)throw fail('입찰이 시작됐거나 편성 정보가 변경됐어요. 운영자에게 수정을 요청해 주세요.');
+                    }else if(items.some(row=>row.id==='entry-'+id||row.attributes?.vendor_entry?.entryId===id))throw fail('이미 편성된 개체예요. 목록에서 다시 확인해 주세요.');
+                }
                 const normalized=normalizeEntry(input.entry);
                 const broadcast=context.nationalBroadcast;
                 if(broadcast){

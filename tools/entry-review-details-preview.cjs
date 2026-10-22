@@ -17,10 +17,11 @@ async function main(){
  const context={channel:clab,vendor:await directory.find(clab.id,member.vendorId),profile:await directory.profileFor(clab.id,member.vendorId),catalog:await f.repository.getCatalog()};
  await entries.command(context,{type:'submit',requestId:randomUUID(),entry:{id:randomUUID(),morph:'씨랩 릴리화이트',sex:'female',weight:'22',hatchDate:'2026-01-10',note:'씨랩에서 등록한 비고'}});
  const link=(await f.request('POST','/channels/'+clab.id+'/vendor-checkout-link',{vendorId:member.vendorId})).json();
- const root=path.resolve(__dirname,'../public');let failures=0;
+ const root=path.resolve(__dirname,'../public');let failures=0,vendorFailures=0;
  const server=http.createServer(async(req,res)=>{try{
   const url=new URL(req.url,origin);req.headers['x-creo-admin']=f.secret;
   if(url.pathname==='/__test/fail-review'&&req.method==='POST'){failures=3;res.writeHead(200);res.end('armed');return;}
+  if(url.pathname==='/__test/fail-vendor'&&req.method==='POST'){vendorFailures=1;res.writeHead(200);res.end('armed');return;}
   if(url.pathname==='/__test/sire.svg'){res.writeHead(200,{'Content-Type':'image/svg+xml'});res.end('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240"><rect width="240" height="240" fill="#d9e4d5"/><circle cx="120" cy="105" r="55" fill="#718b67"/><text x="120" y="202" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#24372b">TEST SIRE</text></svg>');return;}
   if(url.pathname==='/__vendor'){res.writeHead(303,{Location:'/vendor-entries.html?'+new URLSearchParams({code:link.code,event:clab.id})});res.end();return;}
   if(url.pathname==='/__audit'){
@@ -29,6 +30,7 @@ async function main(){
    res.writeHead(200,{'Content-Type':'text/html; charset=utf-8'});res.end('<!doctype html><html lang="ko"><meta name="viewport" content="width=device-width"><title>출품 상세 격리 검증</title><style>body{margin:0;background:#e7ebf0}iframe{display:block;width:'+width+'px;height:660px;border:0;margin:16px auto;background:white}</style><iframe title="출품 검토" src="'+page+'"></iframe></html>');return;
   }
   if(req.method==='POST'&&url.pathname.endsWith('/entries/review')&&failures){failures--;res.writeHead(503,{'Content-Type':'application/json'});res.end(JSON.stringify({error:'저장하지 못했어요. 입력은 유지됩니다. 다시 등록해 주세요.'}));return;}
+  if(req.method==='POST'&&url.pathname==='/api/platform/vendor-entries'&&vendorFailures){vendorFailures--;res.writeHead(503,{'Content-Type':'application/json'});res.end(JSON.stringify({error:'저장하지 못했어요. 입력은 유지됩니다. 다시 저장해 주세요.'}));return;}
   if(url.pathname.startsWith('/api/')&&await f.api.handle(req,res,url))return;
   const file=path.resolve(root,'.'+(url.pathname==='/main'?'/index.html':url.pathname));
   if(!file.startsWith(root+path.sep)||!fs.existsSync(file)||!fs.statSync(file).isFile()){res.writeHead(404);res.end();return;}

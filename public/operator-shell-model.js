@@ -12,7 +12,7 @@
  function routes(state){const links=Home.links(state),q=new URLSearchParams({channel:state.channel.id,...(state.archiveId?{archive:state.archiveId}:{})});return {...links,
   vendors:'/operator-vendors.html?'+new URLSearchParams({program:Home.family(state.channel)}),regions:Home.national(state.channel)?'/organizer-bookings.html?channel=national-cre&action=region':'',access:'/national-vendors.html',rates:'/shipping-rates.html',promo:'/promo-center.html?admin=1',
   captureSetup:'/capture-setup.html',monitor:'/band-monitor.html',
-  intake:links.intake||(links.workspace&&state.channel.dataAdapter==='platform'?'/vendor-entry-review.html?'+new URLSearchParams({channel:state.channel.id,...(state.round?.date?{broadcastDate:state.round.date}:{})}):''),
+  intake:links.intake||(links.workspace&&state.channel.dataAdapter==='platform'?'/vendor-entry-review.html?'+new URLSearchParams({channel:state.channel.id}):''),
   items:links.workspace?links.workspace+'&tab=items':'',members:links.workspace?links.workspace+'&tab=vendors':'',
   changes:links.shipping?'/checkout-changes.html?'+q:''};}
  function menu(state){const links=routes(state);return groups.map(([id,label,entries])=>({id,label,entries:entries.map(([key,label,scope='round'])=>({key,label,scope,href:links[key]||'',group:id})).filter(e=>e.href)})).filter(g=>g.entries.length);}
