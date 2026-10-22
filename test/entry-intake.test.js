@@ -60,19 +60,19 @@ async function reviewHarness(query='?channel=national-cre&broadcastDate=2026-10-
 }
 test('changing review date clears selection, scoped batch approval sends only the selected date',async()=>{
  const h=await reviewHarness(),n=h.nodes;
- assert.match(n['entry-list'].innerHTML,/오늘 정보/);assert.doesNotMatch(n['entry-list'].innerHTML,/다음 방송 정보/);
+ assert.match(n['entry-list'].innerHTML,/data-entry="today"/);assert.doesNotMatch(n['entry-list'].innerHTML,/data-entry="future"/);
  n['select-all'].onchange({target:{checked:true}});assert.equal(n['selection-count'].textContent,'1마리 선택');
- await n['review-date'].onchange({target:{value:'2026-10-19'}});assert.equal(n['selection-count'].textContent,'0마리 선택');assert.match(n['entry-list'].innerHTML,/다음 방송 정보/);
+ await n['review-date'].onchange({target:{value:'2026-10-19'}});assert.equal(n['selection-count'].textContent,'0마리 선택');assert.match(n['entry-list'].innerHTML,/data-entry="future"/);
  n['select-all'].onchange({target:{checked:true}});await n['approve-selected'].onclick();assert.deepEqual(h.calls[0].body.entries.map(row=>row.id),['future']);
  assert.equal(h.calls[0].body.broadcastDate,'2026-10-19');assert.ok(h.reads.includes('channels/national-cre/entries?broadcastDate=2026-10-19'));
 });
 test('direct round review and changing the round both review canonical entries on the requested date',async()=>{
  const h=await reviewHarness('?channel=national-cre-20261019'),n=h.nodes;
- assert.equal(n['review-event'].value,'national-cre');assert.doesNotMatch(n['review-event'].innerHTML,/national-cre-20261019/);assert.match(n['entry-list'].innerHTML,/다음 방송 정보/);assert.doesNotMatch(n['entry-list'].innerHTML,/오늘 정보/);
+ assert.equal(n['review-event'].value,'national-cre');assert.doesNotMatch(n['review-event'].innerHTML,/national-cre-20261019/);assert.match(n['entry-list'].innerHTML,/data-entry="future"/);assert.doesNotMatch(n['entry-list'].innerHTML,/data-entry="today"/);
  assert.match(n['workspace-link'].href,/channel=national-cre-20261019/);
  n['select-all'].onchange({target:{checked:true}});await n['approve-selected'].onclick();assert.equal(h.calls[0].route,'channels/national-cre/entries/batch');
  const old=await reviewHarness();old.nodes['review-event'].onchange({target:{value:'national-cre-20261019'}});await new Promise(setImmediate);
- assert.match(old.nodes['entry-list'].innerHTML,/다음 방송 정보/);assert.doesNotMatch(old.nodes['entry-list'].innerHTML,/오늘 정보/);
+ assert.match(old.nodes['entry-list'].innerHTML,/data-entry="future"/);assert.doesNotMatch(old.nodes['entry-list'].innerHTML,/data-entry="today"/);
 });
 
 test('all-date and unprepared views never approve; explicit preparation precedes dated assignment',async()=>{
@@ -84,7 +84,7 @@ test('all-date and unprepared views never approve; explicit preparation precedes
 
 test('failed or wrong-date refresh clears stale actions and offers recovery',async()=>{
  let broken=false;const h=await reviewHarness(undefined,response=>{if(broken)throw Error('연결 실패 · 새로고침해 주세요.');return response});
- h.nodes['select-all'].onchange({target:{checked:true}});broken=true;await h.nodes.refresh.onclick();assert.equal(h.nodes['approve-selected'].disabled,true);assert.match(h.nodes['list-message'].textContent,/새로고침/);assert.doesNotMatch(h.nodes['entry-list'].innerHTML,/오늘 정보/);
+ h.nodes['select-all'].onchange({target:{checked:true}});broken=true;await h.nodes.refresh.onclick();assert.equal(h.nodes['approve-selected'].disabled,true);assert.match(h.nodes['list-message'].textContent,/새로고침/);assert.doesNotMatch(h.nodes['entry-list'].innerHTML,/data-entry="today"/);
  const wrong=await reviewHarness(undefined,response=>({...response,auctionTarget:{...response.auctionTarget,date:'2026-10-19'}}));assert.equal(wrong.nodes['approve-selected'].disabled,true);assert.match(wrong.nodes['list-message'].textContent,/다른 방송일/);
 });
 
@@ -93,7 +93,7 @@ test('returning focus to the review frame cannot swallow the first selection cli
 });
 test('draft deep links show read-only details without selection or approval controls',async()=>{
  const h=await reviewHarness('?channel=national-cre&broadcastDate=2026-10-14&status=draft&vendor=v1'),n=h.nodes;
- assert.match(n['entry-list'].innerHTML,/미제출/);assert.doesNotMatch(n['entry-list'].innerHTML,/data-check/);assert.equal(n['batch-bar'].hidden,true);assert.equal(n['selection-bar'].hidden,true);
+ assert.match(n['entry-list'].innerHTML,/data-entry="draft"/);assert.doesNotMatch(n['entry-list'].innerHTML,/data-check/);assert.equal(n['batch-bar'].hidden,true);assert.equal(n['selection-bar'].hidden,true);
  const button={dataset:{entry:'draft',vendor:'v1'}};n['entry-list'].onclick({target:{closest:()=>button}});assert.equal(n['review-form'].hidden,true);assert.equal(n['review-actions'].hidden,true);
  await n['approve-selected'].onclick();assert.equal(h.calls.length,0);
 });

@@ -6,7 +6,7 @@
   <title>출품 검토 · 옹동2</title>
   <link rel="stylesheet" href="/ongdong-brand.css">
   <link rel="stylesheet" href="/checkout-navigation.css">
-  <link rel="stylesheet" href="/vendor-entry-review.css?v=20261023-auction-date">
+  <link rel="stylesheet" href="/vendor-entry-review.css?v=20261023-review-details">
   <link rel="stylesheet" href="/entry-photo-usage.css">
   <script defer src="/platform-client.js"></script>
   <script defer src="/ongdong-brand.js"></script>
@@ -14,7 +14,7 @@
   <script defer src="/entry-numbering.js?v=20260917-batch"></script>
   <script defer src="/entry-label-print.js?v=20261023-auction-date"></script>
   <script defer src="/entry-intake.js?v=20261023-auction-date"></script>
-  <script defer src="/vendor-entry-review.js?v=20261023-auction-date"></script>
+  <script defer src="/vendor-entry-review.js?v=20261023-review-details"></script>
   <script defer src="/entry-photo-usage.js"></script>
 </head>
 <body>
@@ -60,20 +60,20 @@
       <p id="revision-note" class="muted" hidden>편성된 개체의 변경안</p>
       <div id="entry-information"></div>
       <form id="review-form" novalidate>
-        <section id="allocation-fields"><h3>편성 정보</h3><div class="field-grid">
+        <details id="allocation-fields"><summary>번호·순서·시작가 설정<span id="allocation-summary"></span></summary><div class="field-grid">
           <label for="lot-part">번호 구분<select id="lot-part"><option value="1부">1부 · A01~</option><option value="2부">2부 · B01~</option><option value="이벤">이벤 · E01~</option><option value="manual">직접 입력 · 기존 번호</option></select></label>
           <label for="lot-code">식별 번호<input id="lot-code" maxlength="16" placeholder="1부 A01" autocomplete="off" required></label>
           <label for="lot-order">진행 순서<input id="lot-order" type="number" inputmode="numeric" min="1" max="10000" step="1" required></label>
           <label for="lot-price">시작가 <span class="muted">원</span><input id="lot-price" type="number" inputmode="numeric" min="0" step="1" required></label>
           <label for="lot-team" id="lot-team-label">팀 <span class="muted">선택</span><input id="lot-team" maxlength="60" autocomplete="off"></label>
           <label for="lot-group" id="lot-group-label" hidden>팀 <span class="muted">선택</span><select id="lot-group"></select></label>
-        </div><p class="muted">번호와 진행 순서는 각각 수정할 수 있어요.</p></section>
+        </div><p class="muted">개체 번호와 방송 진행 순서는 각각 수정할 수 있어요.</p></details>
         <section id="reason-fields" hidden><h3><label for="review-reason">수정할 내용</label></h3><textarea id="review-reason" maxlength="200" rows="3" placeholder="예: 개체 체중을 확인해 주세요"></textarea></section>
-        <p id="review-error" class="error" role="alert" hidden></p>
+        <p id="review-error" class="error" role="alert" tabindex="-1" hidden></p>
         <button id="reload-entry" class="secondary" type="button" hidden>최신 내용 다시 확인</button>
       </form>
     </div>
-    <footer class="dialog-actions" id="review-actions"><button id="change-review-mode" class="secondary" type="button">수정 요청</button><button class="primary" form="review-form" id="confirm-review" type="submit">경매에 반영</button></footer>
+    <footer class="dialog-actions" id="review-actions"><p id="review-target"></p><button id="change-review-mode" class="secondary" type="button">수정 요청</button><button class="primary" form="review-form" id="confirm-review" type="submit">출품 등록</button></footer>
   </dialog>
   <dialog id="entry-label-dialog" aria-labelledby="label-title">
     <header class="dialog-head"><h2 id="label-title">식별 라벨</h2><button class="icon-button" id="close-labels" type="button" aria-label="라벨 인쇄 닫기">×</button></header>

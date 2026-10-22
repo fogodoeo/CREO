@@ -78,10 +78,18 @@
     if (role !== 'vendor') $('navigation').hidden = true;
     document.title = `${role === 'review' ? '출품 검토' : role === 'buyer' ? '개체 확인' : '출품 개체'} · 옹동2`;
   }
+  function entryProgramId(id) {
+    return /^national-cre-\d{8}$/.test(id) && state.events.some(e => e.id === 'national-cre') ? 'national-cre' : id;
+  }
   function eventControls() {
     if (!currentEvent()) eventId = state.channelId || Store.CHANNEL;
-    $('entry-event').innerHTML = state.events.map(e => `<option value="${esc(e.id)}" ${e.id === eventId ? 'selected' : ''}>${esc(e.name)}${e.date ? ' · ' + esc(e.date.slice(5).replace('-', '/')) : ''}${e.entriesOpen ? '' : ' · 접수 마감'}</option>`).join('');
+    const programs = state.events.filter(e => entryProgramId(e.id) === e.id), selected = entryProgramId(eventId);
+    const label = e => e.id === 'national-cre' ? '전국크레자랑' : e.name + (e.date ? ' · ' + e.date.slice(5).replace('-', '/') : '') + (e.entriesOpen ? '' : ' · 접수 마감');
+    $('entry-event').innerHTML = programs.map(e => `<option value="${esc(e.id)}" ${e.id === selected ? 'selected' : ''}>${esc(label(e))}</option>`).join('');
     $('entry-event').disabled = busy || uploading;
+    $('entry-event').parentElement.hidden = !!portal || programs.length < 2;
+    $('entry-program').hidden = !!portal || programs.length !== 1;
+    $('entry-program').textContent = programs.length === 1 ? label(programs[0]) : '';
     window.CreoVendorNavigation.configureBooking(state.bookingSummary, pageUrl('booking'));
     const links = $('navigation').querySelectorAll('a[data-vendor-section]');
     links.forEach(link => {
@@ -278,11 +286,12 @@
       ${entry.reason ? `<div class="request-note"><b>수정 요청</b>${esc(entry.reason)}</div>` : ''}
       <form id="entry-form" novalidate>
         <section class="entry-section"><div class="section-head"><h2>개체 사진 <span class="optional">선택</span></h2><small id="photo-count"></small></div><div id="entry-photos" class="photo-strip"></div><input id="entry-photo-input" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden><div id="photo-error" class="inline-error" role="alert" hidden></div></section>
+        <label class="field" for="entry-morph"><span>모프 <span class="optional">선택</span></span><input id="entry-morph" name="morph" maxlength="60" autocomplete="off" placeholder="예: 릴리화이트" value="${esc(entry.morph)}"></label>
         ${radioGroup('sex', '성별', [['unknown', '미구분'], ['male', '수컷'], ['female', '암컷']], entry.sex)}
         <label class="field" for="entry-weight"><span>체중 <span class="optional">g · 선택</span></span><input id="entry-weight" name="weight" inputmode="decimal" maxlength="6" placeholder="예: 28" value="${esc(entry.weight)}"></label>
         <section class="entry-section"><div class="section-head"><h2>부모 정보 <span class="optional">선택</span></h2></div><div id="entry-parents" class="parents"></div></section>
         <label class="field" for="entry-hatch"><span>해칭일 <span class="optional">선택</span></span><input id="entry-hatch" name="hatchDate" type="date" value="${esc(entry.hatchDate)}" max="${new Date().toLocaleDateString('en-CA')}"></label>
-        <label class="field" for="entry-note"><span>비고 <span class="optional">선택</span></span><textarea id="entry-note" name="note" maxlength="600" placeholder="모프, 개체 특징 등 참고할 내용">${esc(entry.note)}</textarea></label>
+        <label class="field" for="entry-note"><span>비고 <span class="optional">선택</span></span><textarea id="entry-note" name="note" maxlength="600" placeholder="개체 특징 등 추가로 알릴 내용">${esc(entry.note)}</textarea></label>
         <p id="entry-error" class="inline-error" role="alert" hidden></p>
         <div class="form-actions"><button class="secondary" type="button" id="save-draft">임시 저장</button><button class="primary" type="submit" id="submit-entry">검토 요청</button></div>
       </form>`;
@@ -298,13 +307,13 @@
   function readDraft() {
     if (!$('entry-form')) return draft;
     const form = new FormData($('entry-form'));
-    for (const key of ['sex', 'weight', 'hatchDate', 'note']) draft[key] = String(form.get(key) || '');
+    for (const key of ['morph', 'sex', 'weight', 'hatchDate', 'note']) draft[key] = String(form.get(key) || '');
     return draft;
   }
   async function saveEntry(submit, navigate = true) {
     if (busy || uploading) return false;
     readDraft();
-    busy = true; $('save-draft').disabled = $('submit-entry').disabled = true; errorAt('entry-error', '');
+    busy = true; eventControls(); $('save-draft').disabled = $('submit-entry').disabled = true; errorAt('entry-error', '');
     try {
       if (submit) {
         ++profileSequence; profile = await profileApi(); profileEventId = eventId;
@@ -324,7 +333,7 @@
       }
       return false;
     }
-    finally { busy = false; if ($('save-draft')) $('save-draft').disabled = $('submit-entry').disabled = false; }
+    finally { busy = false; eventControls(); if ($('save-draft')) $('save-draft').disabled = $('submit-entry').disabled = false; }
   }
   function renderEntryPhotos() {
     keepDraft();
@@ -687,7 +696,8 @@
     event.preventDefault(); leave(() => { location.href = link.href; });
   });
   $('entry-event').onchange = event => {
-    const requested = event.target.value; event.target.value = eventId;
+    const requested = event.target.value, selected = entryProgramId(eventId); event.target.value = selected;
+    if (requested === selected) return;
     leave(() => {
       if (Store.live) { location.href = pageUrl(section === 'profile' ? 'profile' : 'entries', requested); return; }
       eventId = requested;

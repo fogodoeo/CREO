@@ -49,7 +49,8 @@
       if(parent)return {role,name:parent.name||parent.code,morph:parent.morph,media:photos([parent.photoId])};
       return s.parents?.find(p=>p.role===role)||null;
     }).filter(Boolean);
-    return {id:row.entry.id,name:s.morph,media:photos(s.photoIds),parents};
+    const media=photos(s.photoIds);
+    return {id:row.entry.id,name:s.morph,media:media.length?media:s.media||[],parents};
   }
   function renderList(){
     const all=rows(), visible=visibleRows();
@@ -59,10 +60,11 @@
       button.querySelector('span').textContent=all.filter(row=>Intake.onDate(row,broadcastDate)&&row.entry.status===button.dataset.status&&(!vendorId||row.group.vendor.id===vendorId)).length;
     });
     $('entry-list').innerHTML=visible.length?visible.map(row=>{
-      const entry=row.entry,s=source(entry),picture=View.pictures(itemView(row),location.origin).find(p=>p.group==='개체'&&p.thumbnailUrl);
-      const traits=[s.sex==='unknown'?'미구분':'',View.traitSummary({traits:{...s,morph:'',size:''}}).replace(/ · /g,' ')].filter(Boolean).join(' '),summary=[traits,window.CreoEntryLabelPrint.parentNames(row),s.hatchDate?'해칭 '+s.hatchDate:'',s.note?.replace(/\s+/g,' ')].filter(Boolean).join(' · ')||'미구분';
+      const entry=row.entry,s=source(entry),item=itemView(row),pictures=View.pictures(item,location.origin),picture=pictures.find(p=>p.group==='개체'&&p.thumbnailUrl);
+      const traits=[{male:'수컷',female:'암컷',unknown:'미구분'}[s.sex]||'성별 미입력',s.weight?s.weight+'g':'체중 미입력',s.hatchDate?'출생 '+s.hatchDate:''].filter(Boolean).join(' · ');
+      const names=window.CreoEntryLabelPrint.parentNames(row),parentCount=['부','모'].filter(role=>pictures.some(p=>p.group===role)).length;
       const allocation=data.allocation.find(i=>i.id===entry.itemId);
-      return `<article class="entry-row">${status==='draft'?'':`<label class="entry-check"><input type="checkbox" data-check="${esc(key(row))}" aria-label="${esc(row.group.vendor.name+' '+(entry.lot||entry.code))} 선택" ${checked.has(key(row))?'checked':''}></label>`}${picture?`<img src="${esc(picture.thumbnailUrl)}" alt="" loading="lazy">`:''}<div class="row-text"><small>${allocation&&status==='approved'?`<span class="order-badge">${allocation.order}번째</span> `:''}${esc(row.group.vendor.name)}${entry.broadcastDate?' · '+esc(entry.broadcastDate)+' 방송':''} · <b>${esc(entry.lot||entry.code)}</b>${entry.approved&&entry.status==='submitted'?' · 변경안':''}</small><p class="entry-summary" title="${esc(summary)}">${esc(summary)}</p></div><button class="row-detail secondary" type="button" data-entry="${esc(entry.id)}" data-vendor="${esc(row.group.vendor.id)}" aria-label="${esc(row.group.vendor.name+' '+(entry.lot||entry.code))} 상세">상세</button></article>`;
+      return `<article class="entry-row">${status==='draft'?'':`<label class="entry-check"><input type="checkbox" data-check="${esc(key(row))}" aria-label="${esc(row.group.vendor.name+' '+(entry.lot||entry.code))} 선택" ${checked.has(key(row))?'checked':''}></label>`}${picture?`<img src="${esc(picture.thumbnailUrl)}" alt="" loading="lazy">`:''}<div class="row-text"><small>${allocation&&status==='approved'?`<span class="order-badge">${allocation.order}번째</span> `:''}${esc(row.group.vendor.name)}${entry.broadcastDate&&!broadcastDate?' · '+esc(entry.broadcastDate):''}${entry.approved&&entry.status==='submitted'?' · 변경안':''}</small><strong class="entry-identity">${esc(entry.lot||entry.code)} · ${esc(s.morph||'모프 미입력')}</strong><p class="entry-summary">${esc(traits)}</p>${names?`<p class="entry-parents">${esc(names)}</p>`:''}<span class="entry-photo-status">부모사진 ${parentCount}/2</span></div><button class="row-detail secondary" type="button" data-entry="${esc(entry.id)}" data-vendor="${esc(row.group.vendor.id)}" aria-label="${esc(row.group.vendor.name+' '+(entry.lot||entry.code))} 상세">상세</button></article>`;
     }).join(''):`<p class="empty">${{submitted:'검토할 개체가 없어요',draft:'작성 중인 개체가 없어요',changes_requested:'수정 요청한 개체가 없어요',approved:'검토 대기에서 개체를 선택해 출품해 주세요'}[status]}</p>`;
     $('selection-bar').hidden=!visible.length||status==='draft';$('batch-bar').hidden=!canAssign()||['changes_requested','draft'].includes(status);
     $('approve-selected').hidden=status!=='submitted';$('arrange-vendors').hidden=status!=='approved';
@@ -117,19 +119,25 @@
     const s=source(row.entry), item=itemView(row), pictures=View.pictures(item,location.origin);
     const children=pictures.filter(p=>p.group==='개체');
     const photo=(p,label)=>`<button type="button" class="entry-photo" data-photo="${pictures.indexOf(p)}" aria-label="${esc(label)} 사진 보기"><img src="${esc(p.thumbnailUrl||p.url)}" alt="" loading="lazy"></button>`;
-    const pairs=[['모프',s.morph],['성별',{male:'수컷',female:'암컷',unknown:'미구분'}[s.sex]],['체중',s.weight?s.weight+'g':''],['크기',s.size],['해칭일',s.hatchDate]];
-    $('entry-information').innerHTML=(children.length?`<div class="entry-photos">${children.map(p=>photo(p,'개체')).join('')}</div>`:'')+`<dl class="facts">${pairs.filter(([,v])=>v).map(([k,v])=>`<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>${s.note?`<p class="entry-note">${esc(s.note)}</p>`:''}`+(item.parents.length?`<section class="parent-information"><h3>부모 정보</h3>${item.parents.map(parent=>{
-      const label=parent.role==='sire'?'부':'모',picture=pictures.find(p=>p.group===label);
-      return `<div>${picture?photo(picture,label+' '+(parent.name||'')):''}<p><span class="parent-role">${label}</span><strong>${esc(parent.name||'')}</strong>${parent.morph?`<small>${esc(parent.morph)}</small>`:''}</p></div>`;
-    }).join('')}</section>`:'');
+    const pairs=[['모프',s.morph||'미입력'],['성별',{male:'수컷',female:'암컷',unknown:'미구분'}[s.sex]||'미입력'],['체중',s.weight?s.weight+'g':'미입력'],['크기',s.size],['출생일',s.hatchDate]];
+    $('entry-information').innerHTML=(children.length?`<div class="entry-photos">${children.map(p=>photo(p,'개체')).join('')}</div>`:'')+`<dl class="facts">${pairs.filter(([,v])=>v).map(([k,v])=>`<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl><section class="parent-information"><h3>부모 정보</h3>${['sire','dam'].map(role=>{
+      const parent=item.parents.find(p=>p.role===role),label=role==='sire'?'부':'모',picture=pictures.find(p=>p.group===label);
+      return `<div>${picture?photo(picture,label+'개체 '+(parent?.name||'')):''}<p><span class="parent-role">${label}개체</span><strong>${esc(parent?.name||'이름 미등록')}</strong><small>${picture?'사진 등록됨':'사진 미등록'}${parent?.morph?' · '+esc(parent.morph):''}</small></p></div>`;
+    }).join('')}</section>${s.note?`<details class="entry-note-details"><summary>비고</summary><p class="entry-note">${esc(s.note)}</p></details>`:''}`;
     $('entry-information').querySelectorAll('[data-photo]').forEach(button=>button.onclick=()=>viewer.open(item,button,pictures[Number(button.dataset.photo)]));
   }
   function showMode(mode){
     reviewMode=mode;pending=null;
     $('allocation-fields').hidden=mode!=='approve';$('reason-fields').hidden=mode==='approve';
-    $('change-review-mode').textContent=mode==='approve'?'수정 요청':'편성하기';
-    $('confirm-review').textContent=mode==='approve'?'경매에 반영':'수정 요청 보내기';
+    $('review-target').hidden=mode!=='approve';
+    $('change-review-mode').textContent=mode==='approve'?'수정 요청':'출품 등록으로';
+    $('confirm-review').textContent=mode==='approve'?(selected?.entry.approved?'변경안 반영':'출품 등록'):'수정 요청 보내기';
     error('review-error','');
+  }
+  function summarizeAllocation(){
+    const code=$('lot-code').value.trim(),order=$('lot-order').value,price=Number($('lot-price').value);
+    $('allocation-summary').textContent=[code||'번호 입력',order?order+'번째':'순서 입력',Number.isSafeInteger(price)&&price>=0?'시작가 '+price.toLocaleString('ko-KR')+'원':'시작가 입력'].join(' · ');
+    $('review-target').textContent=$('allocation-summary').textContent;
   }
   function openEntry(row,button){
     selected=row;opener=button||opener;pending=null;
@@ -148,6 +156,7 @@
     $('lot-team-label').hidden=groups.length>0;$('lot-group-label').hidden=!groups.length;
     $('lot-group').innerHTML='<option value="">팀 없음</option>'+groups.map(group=>`<option value="${esc(group.id)}">${esc(group.name)}</option>`).join('');
     $('lot-group').value=existing?.groupId??row.group.vendor.groupId??'';
+    $('allocation-fields').open=false;summarizeAllocation();
     $('review-form').querySelectorAll('[aria-invalid]').forEach(el=>el.removeAttribute('aria-invalid'));
     if(row.entry.status==='changes_requested'){
       const reason=document.createElement('p');reason.className='entry-note';reason.textContent=row.entry.reason||'';$('entry-information').append(reason);
@@ -173,20 +182,21 @@
   $('lot-part').onchange=()=>{
     const part=$('lot-part').value;preferredPart=part;pending=null;
     if(part!=='manual')$('lot-code').value=window.CreoEntryNumbering.nextCode(part,data.allocation);
+    summarizeAllocation();
     error('review-error','');
   };
   $('lot-code').oninput=()=>{
     if($('lot-part').value!=='manual'&&Numbering.partOf($('lot-code').value)!==$('lot-part').value)$('lot-part').value='manual';
   };
-  $('change-review-mode').onclick=()=>{showMode(reviewMode==='approve'?'request-changes':'approve');(reviewMode==='approve'?$('lot-code'):$('review-reason')).focus();};
-  $('review-form').oninput=event=>{pending=null;event.target.removeAttribute('aria-invalid');error('review-error','');};
+  $('change-review-mode').onclick=()=>{showMode(reviewMode==='approve'?'request-changes':'approve');(reviewMode==='approve'?$('allocation-fields').querySelector('summary'):$('review-reason')).focus();};
+  $('review-form').oninput=event=>{pending=null;event.target.removeAttribute('aria-invalid');error('review-error','');summarizeAllocation();};
   $('review-form').onsubmit=async event=>{
     event.preventDefault();if(busy||!selected||selected.entry.status!=='submitted')return;
     if(reviewMode==='approve'&&!canAssign())return;
     error('review-error','');
     const lot=$('lot-code').value.trim().toUpperCase(),order=Number($('lot-order').value),startPrice=Number($('lot-price').value),reason=$('review-reason').value.trim();
     const checks=reviewMode==='approve'?[['lot-code',Numbering.valid(lot),'식별 번호를 입력해 주세요. 예: 1부 A01'],['lot-order',Number.isInteger(order)&&order>0&&order<=10000,'진행 순서는 1~10,000 사이로 입력해 주세요.'],['lot-price',$('lot-price').value!==''&&Number.isSafeInteger(startPrice)&&startPrice>=0,'시작가를 0원 이상으로 입력해 주세요.']]:[['review-reason',Boolean(reason),'수정할 내용을 입력해 주세요.']];
-    const invalid=checks.find(([,valid])=>!valid);if(invalid){$(invalid[0]).setAttribute('aria-invalid','true');error('review-error',invalid[2]);$(invalid[0]).focus();return;}
+    const invalid=checks.find(([,valid])=>!valid);if(invalid){if(reviewMode==='approve')$('allocation-fields').open=true;$(invalid[0]).setAttribute('aria-invalid','true');error('review-error',invalid[2]);$(invalid[0]).focus();return;}
     const team=(data.channel.groups||[]).length?{groupId:$('lot-group').value,teamName:''}:{groupId:'',teamName:$('lot-team').value.trim()};
     const command={vendorId:selected.group.vendor.id,type:reviewMode,id:selected.entry.id,expectedVersion:selected.entry.version,...(broadcastDate?{broadcastDate}:{}),...(reviewMode==='approve'?{lot,order,startPrice,...team}:{reason})};
     const signature=JSON.stringify(command);
@@ -200,6 +210,7 @@
       // Keep the same request id on a transport failure so retrying is safe.
       // A newer entry must be explicitly re-opened before any version changes.
       if(e.status===409){$('reload-entry').hidden=false;}
+      $('review-error').focus();
     }finally{setBusy(false);}
   };
   $('reload-entry').onclick=async()=>{

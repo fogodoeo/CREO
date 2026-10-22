@@ -35,11 +35,13 @@
         "업체 낙찰·정산의 이중 경매/회차 선택을 하나의 날짜 목록으로 통합하고 이전 미완료 결제·정산을 표시",
         "단일 정산 회차는 선택창을 숨기고 방송명만 표시; 기존 링크의 event/round와 업체 접근 권한을 유지",
         "구매자 결제 확인과 주관사 정산을 두 업무로 구분하고 회차별 확인 건수·보낼 금액을 표시",
-        "초과 입금·배송비 미확정은 완료 표시를 제거하고 확인 필요 상태를 유지"
+        "초과 입금·배송비 미확정은 완료 표시를 제거하고 확인 필요 상태를 유지",
+        "업체 출품 프로그램 선택은 전국크레자랑을 한 번만 표시하고 각 날짜는 내 방송일로 연결; 단일 프로그램은 선택창 대신 이름만 표시",
+        "씨랩 직접 등록에 모프 입력을 별도로 제공하고 비고·부모·사진을 유지; 저장 완료와 실패 후 프로그램 선택 잠금 해제"
       ],
       "remaining": [
         "전체 결제 방법·환불·변경 요청 상태를 낙찰자 흐름과 함께 통합 확인",
-        "씨랩 출품 등록·수정 전체 흐름",
+        "씨랩 검토 요청된 개체 수정은 아직 명시적인 취소 후 수정 방식: 전국크레자랑처럼 편집 시작만으로 접수를 취소하지 않도록 후속 개선 필요",
         "200% 확대·전체 키보드 경로"
       ],
       "evidence": [
@@ -72,7 +74,11 @@
         "CUA real 320px/390px iframe rendering: buyer/organizer task switch, archived 10/14 and 10/21 fee-only round, visible keyboard outline 3px, no horizontal overflow; no production mutations",
         "Rendered finance-nav contrast measured: selected title 6.02:1, selected status 4.72:1, normal title 15.18:1, normal status 5.26:1",
         "../admin-home-review-20261022/vendor-finance-tasks-320.png",
-        "../admin-home-review-20261022/ux-finance-tasks-tests.log"
+        "../admin-home-review-20261022/ux-finance-tasks-tests.log",
+        "risk: medium (existing program navigation and entry fields only; no new backend mutation or persistence contract)",
+        "test/vendor-entry-programs.test.js: 4 pass; test/vendor-entry-editor.test.js: 3 pass. National group preserves exact dated context and authorization, cancellation restores selection, morph survives save/retry/import correction, and controls unlock after saving.",
+        "CUA isolated 320px: CLAB direct entry morph/sex/weight submitted through real API, draft reopened and submitted, program selector enabled afterward; national selection lands on own 10/21 broadcast with the newly approved A01 and parent information. Synthetic records only.",
+        "../admin-home-review-20261022/vendor-program-picker-320.png"
       ],
       "deployed": false
     },
@@ -141,7 +147,13 @@
         "npm run check: pass; npm test -- --test-concurrency=4: 1634 pass, 0 fail; desktop python -m unittest discover -p test*.py: 270 pass. Logs: ../admin-home-review-20261022/intake-scope-final-full-tests.log and intake-scope-desktop-tests.log",
         "CUA real 320px isolated fixture: first selection survives returning focus, 4 submissions become A01-A04 in the actual 10/21 round immediately, label preview has those same identities; clientWidth=scrollWidth=305. Old import-after-approval instruction removed.",
         "CUA program directory: one national program, all five broadcast date choices, 5 synthetic vendors overall and 2 for 10/19; reset restores whole program. No production data or real notifications used.",
-        "../admin-home-review-20261022/program-directory-rounds-verified.png"
+        "../admin-home-review-20261022/program-directory-rounds-verified.png",
+        "risk: medium (review layout, disclosure, focus, program picker and existing morph input; no backend or financial changes)",
+        "node --test test/entry-review-details-ui.test.js test/entry-intake.test.js test/entry-auction-scope.test.js test/entry-batch.test.js test/vendor-entries.test.js test/vendor-entry-programs.test.js test/vendor-entry-editor.test.js test/vendor-submitted-edit.test.js test/vendor-broadcast-calendar.test.js test/vendor-registration-start.test.js test/vendor-navigation.test.js: 87 pass, 0 fail. npm run check and preview syntax: pass.",
+        "CUA real 320px: full morph text, separate parent status, collapsed notes/settings, visible footer allocation, real photo viewer/Escape return, 3 injected failed review saves retain inputs and retry registers once in 10/21. Corrected hidden-input focus on mode switch; measured review document clientWidth=scrollWidth=305.",
+        "Embedded review focus originally #d3a547 on white measured 2.27:1; scoped override now uses existing blue #2563eb with 3px outline and forced-colors Highlight. Actual keyboard summary focus verified. 200% zoom and full screen-reader path remain unverified.",
+        "../admin-home-review-20261022/entry-details-programs-tests.log; ../admin-home-review-20261022/entry-details-programs-check.log",
+        "../admin-home-review-20261022/entry-review-details-320.png; ../admin-home-review-20261022/entry-review-focus-320.png; ../admin-home-review-20261022/program-directory-current.png"
       ],
       "completed": [
         "전체 업체 명부는 선택한 프로그램의 모든 업체를 조회하고 방송일로 좁혀 볼 수 있음",
@@ -162,7 +174,9 @@
         "모바일 내부 업무는 프로그램·방송일을 상단에 표시하고 변경 선택창만 접음; 운영 홈과 데스크톱 선택창은 유지",
         "전국크레자랑 출품 검토는 한 프로그램과 방송일로 선택하며 승인 즉시 해당 회차 경매에 원자적으로 등록",
         "전체 방송은 조회로 제한하고 미준비 회차는 준비 버튼을 제공; 선택 회차의 번호·순서·라벨과 업체 부모정보 연결 유지",
-        "전체 접수 설정·사진 저장량은 접고 선택한 개체가 있을 때 편성 버튼을 표시; 자동 포커스 새로고침이 첫 선택을 삼키던 오류 수정"
+        "전체 접수 설정·사진 저장량은 접고 선택한 개체가 있을 때 편성 버튼을 표시; 자동 포커스 새로고침이 첫 선택을 삼키던 오류 수정",
+        "출품 목록에서 모프·성별·체중·출생일·부모사진 등록 수를 확인하고 상세에서 전체 비고와 부모 이름·사진을 확인",
+        "번호·순서·시작가 설정을 접되 등록 대상은 버튼 위에 표시; 오류 시 입력 위치를 펼치고 저장 실패 후 동일 요청으로 재시도"
       ],
       "remaining": [
         "관리자 출품·편성·배송·정산 페이지 내부 작업 정리",
@@ -261,6 +275,6 @@
     "공통 업체 및 회차 구분이 모든 화면에서 일관되게 전달되지 않음",
     "전체 사용자 역할별 개편과 통합 검증은 아직 진행 중"
   ],
-  "next_work": "사용자가 확인한 구조는 전국크레자랑 하나 아래 10/14 서울인천·10/19 경기·10/21 전라충청·10/26 경북·10/28 경남 회차와 업체 배정이다. 공통 전체 업체 조회와 날짜별 거래를 유지하고, 이번에는 출품 승인부터 실제 날짜별 경매 등록까지 직접 연결했다. 출품 상세 화면의 모프·비고·부모정보 표시와 씨랩 경로, 추가 낙찰·입금 후 배송비 조정, 방송 도구·전체 키보드/확대 검증 및 배포는 계속 진행할 부분이다. 최근 UX와 배송 수정은 모두 로컬이며 아직 배포하지 않았다.",
+  "next_work": "전국크레자랑은 하나의 프로그램 아래 10/14 서울인천·10/19 경기·10/21 전라충청·10/26 경북·10/28 경남 회차로 유지한다. 전체 업체 명부·날짜별 출품 등록·모프/부모정보 검토 및 업체 프로그램 중복 선택을 로컬에서 정리했다. 다음은 씨랩 제출 개체의 안전한 수정(현재 취소 후 수정), 입금 후 배송비 조정, 방송 도구, 전체 키보드/확대와 역할별 통합 검증 및 배포다. 최근 변경은 모두 로컬이며 운영 배포는 아직 하지 않았다.",
   "completion_rule": "모든 workstream이 실제 구현·상태별 검증 증거를 갖출 때만 전체 완료로 판단한다."
 }
