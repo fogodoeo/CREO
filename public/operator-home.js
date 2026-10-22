@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   $('scope-note').textContent=archiveId?'이 회차의 낙찰·배송·인쇄 자료를 확인합니다.':channel.status==='draft'?'출품과 순서를 확인한 뒤, 회차 관리에서 방송을 전환하세요.':'아래 메뉴는 모두 선택한 회차의 자료로 열립니다.';
   $('onair-name').textContent=rounds.find(r=>r.channelId===activeId&&!r.archiveId)?.name||catalog.channels.find(c=>c.id===activeId)?.name||'방송 회차 없음';
   $('selection-panel').hidden=false;$('work-panel').hidden=false;$('load-error').hidden=true;$('platform-status').textContent='';document.title=state.label+' · 운영 홈';
-  const params=new URLSearchParams(search),shellParams=new URLSearchParams(state.home.split('?')[1]);for(const k of ['view','vendor'])if(params.get(k))shellParams.set(k,params.get(k));
+  const params=new URLSearchParams(search),shellParams=new URLSearchParams(state.home.split('?')[1]);for(const k of ['view','vendor','action','status'])if(params.get(k))shellParams.set(k,params.get(k));
   history[push?'pushState':'replaceState'](null,'','/main?'+shellParams);
   lastUrl='/main?'+shellParams;
   document.querySelector('.topbar .brand').href=state.home;

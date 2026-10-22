@@ -3402,7 +3402,7 @@ function createPlatformApi({
                 if(!await requireAdmin(req,res))return true;
                 if(segments.length!==1||method!=='GET'){replyJson(res,405,{error:'업체 전체 목록은 조회만 할 수 있어요.'});return true;}
                 const catalog=await loadCatalog();
-                replyJson(res,200,await require('./operator-vendors').listOperatorVendors(catalog.channels,vendorDirectory),{'Cache-Control':'no-store, private'});return true;
+                replyJson(res,200,await require('./operator-vendors').listOperatorVendors(catalog.channels,vendorDirectory,repository),{'Cache-Control':'no-store, private'});return true;
             }
             if(segments[0]==='national-vendor-directory'){
                 if(!await requireAdmin(req,res))return true;

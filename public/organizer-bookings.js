@@ -1,7 +1,7 @@
 (() => {
   'use strict';
   const $=id=>document.getElementById(id),esc=CreoPlatform.escapeHtml,query=new URLSearchParams(location.search),code=query.get('code')||'';
-  let channel=query.get('channel')||'national-cre',state=null,busy=false,revision=0,dirty=false,dialogTrigger=null,triggerData={};
+  let channel=query.get('channel')||'national-cre',state=null,busy=false,revision=0,dirty=false,dialogTrigger=null,triggerData={},initialActionDone=false;
   const date=d=>new Date(d+'T20:00:00+09:00').toLocaleDateString('ko-KR',{timeZone:'Asia/Seoul',month:'long',day:'numeric',weekday:'short'});
   const time=d=>new Date(d).toLocaleString('ko-KR',{timeZone:'Asia/Seoul',month:'numeric',day:'numeric',hour:'numeric',minute:'2-digit'});
   const local=d=>d?new Date(Date.parse(d)+9*3600000).toISOString().slice(0,16):'';
@@ -46,6 +46,7 @@
   async function load(){if(busy)return;const seq=++revision;error('admin-error','');
     try{if(code){const access=await api('organizer-access',{method:'POST',body:JSON.stringify({code})});if(seq!==revision)return;channel=access.channel.id;}
       const data=await api(route());if(seq!==revision)return;state=data;render();$('admin-status').textContent='';
+      if(!initialActionDone&&query.get('action')==='region'&&state.vendors.some(v=>v.id===query.get('vendor'))){initialActionDone=true;regionsForm();$('region-vendor').value=query.get('vendor');$('region-vendor').onchange();}
       $('organizer-home').href=code?'/o/'+encodeURIComponent(code):'/channel-workspace.html?channel='+encodeURIComponent(query.get('returnChannel')||channel);
     }catch(e){if(seq!==revision)return;error('admin-error',e.message||'예약을 불러오지 못했습니다. 연결을 확인하고 다시 시도해 주세요.');$('admin-status').textContent='';$('admin-retry').hidden=false;if(e.status===401){state=null;$('admin-content').hidden=true;$('admin-login').hidden=!!code;if($('admin-dialog').open)$('admin-dialog').close();}}
   }

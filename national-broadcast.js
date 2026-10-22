@@ -178,4 +178,4 @@ function createBookingRouter(repository,options){
  for(const method of ['read','summary','vendorView','operatorView','command','resolveLink','assertNotification'])router[method]=async(first,...rest)=>(await cycle.active(first.channel||first)?cycle:old)[method](first,...rest);
  return router;
 }
-module.exports={REGIONS,START,MODE,regionAt,regionIndex,regionForVendor,regionEntryPolicy,createNationalBroadcast,createBookingRouter};
+module.exports={REGIONS,START,MODE,APPLICATION_DATES,regionAt,regionIndex,regionForVendor,regionEntryPolicy,createNationalBroadcast,createBookingRouter};

@@ -11,14 +11,117 @@
     "320px·모바일·데스크톱·키보드·확대 상태를 관련 화면에서 실제 검증한다."
   ],
   "workstreams": [
-    {"id":"vendor","status":"in_progress","scope":["공통 로그인·신규 업체 등록·초기 정보","내 방송일·달력·개체 등록·수정","부모 사진·이름","홍보·출품 운송","업체 낙찰·입금·정산","씨랩 업체 경로"],"completed":["인증된 단일 업체는 출품 관리로 바로 진입","내 방송일·등록 상태·개체 수정·부모정보를 첫 화면에 배치","달력·운송 상세는 펼치기, 할 일 없는 홍보 배너는 제거","수정 진입은 로컬 편집만 수행하고 명시적 저장 때 기존 접수본을 원자적으로 대체","수정 취소·새로고침·저장 실패·중복·동시 저장·승인 후 경계 회귀 검증"],"remaining":["초기 업체 정보 입력 간소화","실제 사진 업로드 포함 전체 부모정보 경로","업체 낙찰·정산 및 씨랩 흐름","200% 확대·전체 키보드 경로"],"evidence":["test/vendor-submitted-edit.test.js: 4 tests","test/vendor-broadcast-calendar.test.js: 7 tests","npm run check: pass","npm test -- --test-concurrency=4: 1524 pass, 0 fail","desktop python -m unittest discover -p test*.py: 270 pass","CUA isolated 390px/320px: registration, safe close/reload, weight/parent-name replacement, direct parent editing, no horizontal overflow","../admin-home-review-20261022/vendor-home-refresh.png"],"deployed":false},
-    {"id":"operator","status":"pending","scope":["main 왼쪽 메뉴와 프로그램·회차 선택","전체 업체 명부·회차 배정","출품 접수·편성·순서","낙찰자 입금·배송","업체 정산·입금 확인","파르게·도도시 승인·접수·인쇄","회차 보관·검색·설정"],"evidence":[]},
-    {"id":"buyer","status":"pending","scope":["낙찰 안내 진입·인증","배송지·직수령·운송사 선택","입금·결제 확인·변경 요청","지난 회차 미완료 내역·완료 상태"],"evidence":[]},
-    {"id":"broadcast","status":"pending","scope":["방송 진행·송출화면 편집·미리보기","로컬 데스크톱 경매 조작","핀볼 관리자·송출·참가자·결과","방송 도구와 설정의 일관된 진입"],"evidence":[]},
-    {"id":"release","status":"pending","scope":["상태별 통합 회귀","서버·데스크톱 전체 영향 테스트","실제 화면과 접근성 검증","UTF-8·diff 점검","운영 배포 및 읽기 전용 검증","전체 요구사항 완료 감사"],"evidence":[]}
+    {
+      "id": "vendor",
+      "status": "in_progress",
+      "scope": [
+        "공통 로그인·신규 업체 등록·초기 정보",
+        "내 방송일·달력·개체 등록·수정",
+        "부모 사진·이름",
+        "홍보·출품 운송",
+        "업체 낙찰·입금·정산",
+        "씨랩 업체 경로"
+      ],
+      "completed": [
+        "인증된 단일 업체는 출품 관리로 바로 진입",
+        "내 방송일·등록 상태·개체 수정·부모정보를 첫 화면에 배치",
+        "달력·운송 상세는 펼치기, 할 일 없는 홍보 배너는 제거",
+        "수정 진입은 로컬 편집만 수행하고 명시적 저장 때 기존 접수본을 원자적으로 대체",
+        "수정 취소·새로고침·저장 실패·중복·동시 저장·승인 후 경계 회귀 검증"
+      ],
+      "remaining": [
+        "초기 업체 정보 입력 간소화",
+        "실제 사진 업로드 포함 전체 부모정보 경로",
+        "업체 낙찰·정산 및 씨랩 흐름",
+        "200% 확대·전체 키보드 경로"
+      ],
+      "evidence": [
+        "test/vendor-submitted-edit.test.js: 4 tests",
+        "test/vendor-broadcast-calendar.test.js: 7 tests",
+        "npm run check: pass",
+        "npm test -- --test-concurrency=4: 1524 pass, 0 fail",
+        "desktop python -m unittest discover -p test*.py: 270 pass",
+        "CUA isolated 390px/320px: registration, safe close/reload, weight/parent-name replacement, direct parent editing, no horizontal overflow",
+        "../admin-home-review-20261022/vendor-home-refresh.png"
+      ],
+      "deployed": false
+    },
+    {
+      "id": "operator",
+      "status": "in_progress",
+      "scope": [
+        "main 왼쪽 메뉴와 프로그램·회차 선택",
+        "전체 업체 명부·회차 배정",
+        "출품 접수·편성·순서",
+        "낙찰자 입금·배송",
+        "업체 정산·입금 확인",
+        "파르게·도도시 승인·접수·인쇄",
+        "회차 보관·검색·설정"
+      ],
+      "evidence": [
+        "risk: release (admin read payload and shared navigation; no financial writes/migration)",
+        "node --test test/operator-directory-ui.test.js test/operator-vendors.test.js test/operation-rounds.test.js test/operator-home.test.js test/operator-shell.test.js test/operator-finance-navigation.test.js: 30 pass",
+        "npm run check: pass",
+        "npm test -- --test-concurrency=4: 1528 pass, 0 fail",
+        "CUA isolated 1280px/320px: program directory, five broadcast dates, exact Gyeonggi settlement and Gyeongnam intake, selected vendor region dialog, CLAB separation, keyboard focus 3px visible",
+        "Browser 200% zoom not verified: keyboard zoom shortcuts had no effect in IAB",
+        "../admin-home-review-20261022/operator-directory-refresh.png"
+      ],
+      "completed": [
+        "전체 업체 명부는 선택한 프로그램의 모든 업체를 조회하고 방송일로 좁혀 볼 수 있음",
+        "공통 업체의 지역 배정·출품 신청·실제 경매 편성과 보관 회차를 구분해 한 업체 아래 표시",
+        "명부에서 해당 업체 지역 관리·날짜별 출품·정산으로 이동하며 기존 회차 식별자를 유지",
+        "통합 관리자 출품 화면은 바깥 방송일 선택만 사용하고 별도 창도 업체·날짜 필터 유지"
+      ],
+      "remaining": [
+        "신규 업체와 준비된 회차의 참여 연결 lifecycle 점검 및 자동화",
+        "관리자 출품·편성·배송·정산 페이지 내부 작업 정리",
+        "전체 사용자 역할별 200% 확대와 전체 키보드 경로",
+        "업체 초기 설정·사진 업로드·낙찰자·방송 도구 흐름과 통합 검증"
+      ],
+      "deployed": false
+    },
+    {
+      "id": "buyer",
+      "status": "pending",
+      "scope": [
+        "낙찰 안내 진입·인증",
+        "배송지·직수령·운송사 선택",
+        "입금·결제 확인·변경 요청",
+        "지난 회차 미완료 내역·완료 상태"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "broadcast",
+      "status": "pending",
+      "scope": [
+        "방송 진행·송출화면 편집·미리보기",
+        "로컬 데스크톱 경매 조작",
+        "핀볼 관리자·송출·참가자·결과",
+        "방송 도구와 설정의 일관된 진입"
+      ],
+      "evidence": []
+    },
+    {
+      "id": "release",
+      "status": "pending",
+      "scope": [
+        "상태별 통합 회귀",
+        "서버·데스크톱 전체 영향 테스트",
+        "실제 화면과 접근성 검증",
+        "UTF-8·diff 점검",
+        "운영 배포 및 읽기 전용 검증",
+        "전체 요구사항 완료 감사"
+      ],
+      "evidence": []
+    }
   ],
   "review_baseline": "scratch/admin-home-review-20261022/vendor-usability-review.html",
-  "known_blockers": ["공통 업체 및 회차 구분이 모든 화면에서 일관되게 전달되지 않음", "전체 사용자 역할별 개편과 통합 검증은 아직 진행 중"],
-  "next_work": "관리자 전체 업체 조회와 프로그램별 명부·회차별 참여 배정 및 작업 선택을 통일한다. 기존 금융·배송 기록은 회차에 고정한다.",
+  "known_blockers": [
+    "공통 업체 및 회차 구분이 모든 화면에서 일관되게 전달되지 않음",
+    "전체 사용자 역할별 개편과 통합 검증은 아직 진행 중"
+  ],
+  "next_work": "신규 업체와 지역 변경이 준비된 회차의 업체 연결에 누락되는 경계를 점검한다. 관리자 내부 출품·배송·정산 화면을 동일한 프로그램·회차 구조와 단계별 작업으로 정리한다.",
   "completion_rule": "모든 workstream이 실제 구현·상태별 검증 증거를 갖출 때만 전체 완료로 판단한다."
 }

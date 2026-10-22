@@ -7,7 +7,7 @@ const state=query=>Home.selection({channels},rounds,'national-cre',query);
 test('shell routes keep the explicit round and archived scope; global vendor route has no date filter',()=>{
  for(const id of channels.map(c=>c.id)){
   const s=state('?channel='+id);for(const key of ['items','members','broadcast','pinball','print']){const u=new URL(Shell.frame(s,key),'https://test');assert.equal(u.searchParams.get('channel'),id,key);assert.equal(u.searchParams.get('embedded'),'1');}
-  const global=new URL(Shell.frame(s,'vendors'),'https://test');assert.equal(global.searchParams.has('channel'),false);assert.equal(Shell.entry(s,'vendors').scope,'global');
+  const global=new URL(Shell.frame(s,'vendors'),'https://test');assert.equal(global.searchParams.has('channel'),false);assert.equal(global.searchParams.get('program'),Home.family(s.channel));assert.equal(Shell.entry(s,'vendors').scope,'program');
   assert.equal(Shell.entry(s,'promo').scope,'global');assert.equal(new URL(Shell.frame(s,'promo'),'https://test').searchParams.get('admin'),'1');
   assert.equal(new URL(Shell.frame(s,'intake'),'https://test').searchParams.get('channel'),Home.national(s.channel)?'national-cre':id);
  }
@@ -44,7 +44,7 @@ test('shell and home restore the selected work page after round change and refre
 test('embedded page links preserve the shell while standalone tools cannot silently replace the selected work page',()=>{
  const {document,window}=parseHTML('<html><head></head><body><a id="known" href="/promo-center.html?admin=1">홍보</a><a id="receipt" href="/organizer-shipping.html?channel=national-cre&archive=old">업체 정산</a><a id="setup" href="/capture-setup.html">본체 설정</a><a id="tool" href="/national-broadcast-kit.html">방송 자료</a><a id="live" href="/roulette/?broadcast=1">송출</a></body></html>'),messages=[];
  const frame={frameElement:{id:'operator-frame'},parent:{location:{pathname:'/main'},postMessage:(data,origin)=>messages.push({data,origin})}};
- vm.runInNewContext(fs.readFileSync(require.resolve('../public/operator-embed.js'),'utf8'),{document,window:frame,location:{origin:'https://test',href:'https://test/channel-workspace.html',pathname:'/channel-workspace.html'},URL,MutationObserver:window.MutationObserver});
+ vm.runInNewContext(fs.readFileSync(require.resolve('../public/operator-embed.js'),'utf8'),{document,window:frame,location:{origin:'https://test',href:'https://test/channel-workspace.html',pathname:'/channel-workspace.html'},URL,URLSearchParams,MutationObserver:window.MutationObserver});
  for(const id of ['known','receipt','setup','tool','live']){const e=new window.Event('click',{bubbles:true,cancelable:true});e.button=0;document.getElementById(id).dispatchEvent(e);}
  assert.deepEqual(messages.map(m=>m.data.href),['/promo-center.html?admin=1','/organizer-shipping.html?channel=national-cre&archive=old','/capture-setup.html']);assert.equal(messages[0].origin,'https://test');for(const id of ['tool','live'])assert.equal(document.getElementById(id).target,'_blank');assert(document.documentElement.classList.contains('operator-embedded'));
 });

@@ -2,6 +2,11 @@
 const fail=message=>Object.assign(Error(message),{status:409,code:'ROUND_SCOPE_REQUIRED'});
 const itemDate=i=>i.attributes?.broadcastDate||i.attributes?.vendor_entry?.broadcastDate||'';
 const family=c=>c.id==='national-cre'||c.nationalRound?.parentId==='national-cre'?'national-cre':/^(?:creyon|clab)(?:-|$)/.test(c.id)?'clab':c.id;
+function displayName(channel,date,fallback=channel.name){
+ if(family(channel)!=='national-cre'||!date)return fallback;
+ const national=require('./national-broadcast'),region=national.regionAt(date);
+ return region===null?fallback:`${date.replaceAll('-','.')} ${national.REGIONS[region]}편`;
+}
 const scopeKey=i=>i.auctionArchiveId?'archive:'+i.auctionArchiveId:itemDate(i)?'date:'+itemDate(i):'current';
 function buyerScope(items,anchorId,phoneItems){
  if(anchorId){const anchor=items.find(i=>i.id===anchorId);if(!anchor)throw fail('선택한 낙찰 기록이 없습니다.');return items.filter(i=>scopeKey(i)===scopeKey(anchor));}
@@ -41,10 +46,10 @@ async function list(repository){
   const [items,archives]=await Promise.all([repository.listRecords(c.id,'item'),repository.listRecords(c.id,'archive')]);
   let date='',scopeError='';try{date=currentDate(c,items)}catch(e){scopeError=e.message}
   const current=scopeError?[]:scopeWorkspace(c,{items}).items;
-  rounds.push({channelId:c.id,familyId:family(c),name:c.id==='national-cre'&&date?`전국크레자랑 · ${date} 회차`:c.name,date,status:c.status,active:activeChannelId===c.id,itemCount:current.length,soldCount:current.filter(i=>i.status==='sold').length,scopeError});
+  rounds.push({channelId:c.id,familyId:family(c),name:displayName(c,date),date,status:c.status,active:activeChannelId===c.id,itemCount:current.length,soldCount:current.filter(i=>i.status==='sold').length,scopeError});
   for(const a of archives.filter(a=>a.closedAt)){
    const rows=items.filter(i=>i.auctionArchiveId===a.id),dates=[...new Set(rows.map(itemDate).filter(Boolean))];
-   rounds.push({channelId:c.id,familyId:family(c),archiveId:a.id,name:a.title||'이전 회차',date:dates.length===1?dates[0]:'',status:'history',active:false,itemCount:rows.length,soldCount:rows.filter(i=>i.status==='sold').length});
+   rounds.push({channelId:c.id,familyId:family(c),archiveId:a.id,name:displayName(c,dates.length===1?dates[0]:'',a.title||'이전 회차'),date:dates.length===1?dates[0]:'',status:'history',active:false,itemCount:rows.length,soldCount:rows.filter(i=>i.status==='sold').length});
   }
  }
  return {catalogVersion:catalog.version,channels:catalog.channels.filter(c=>!c.id.startsWith('checkout-test-')),activeChannelId,rounds:rounds.sort((a,b)=>b.date.localeCompare(a.date)||Number(b.active)-Number(a.active)||a.name.localeCompare(b.name,'ko'))};
