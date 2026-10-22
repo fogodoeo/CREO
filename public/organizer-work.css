@@ -1,0 +1,8 @@
+.organizer-work-filters{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:12px;margin:12px 0}
+.organizer-work-filters label{font-size:14px;color:var(--muted,#626d7b);display:flex;flex-direction:column;gap:7px}
+.organizer-work-filters input,.organizer-work-filters select{width:100%;min-width:0;min-height:48px;box-sizing:border-box;padding:10px;border:1px solid var(--checkout-control-border,#b8c2ce);border-radius:10px;background:#fff;color:var(--ink,#202632);font:inherit;font-size:16px}
+.organizer-filter-status{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:44px}.organizer-filter-status p{font-size:14px;color:var(--muted,#626d7b);margin:0}
+.organizer-filter-status .settlement-text{font-size:14px}.organizer-totals{flex-wrap:wrap}
+html.operator-embedded .organizer-page .settlement-top,html.operator-embedded .organizer-page main>#channel,html.operator-embedded .organizer-page main>#page-title,html.operator-embedded .organizer-page #content>p:has(#broadcast-bookings){display:none}
+html.operator-embedded .organizer-page main{max-width:780px;margin:0 auto;padding-top:20px}
+@media(max-width:380px){.organizer-work-filters{grid-template-columns:minmax(0,1fr)}.organizer-work-filters label{gap:4px}}

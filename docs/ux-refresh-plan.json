@@ -33,10 +33,12 @@
         "내 방송일에서 개체 등록 시작을 누르면 중간 예약 화면 없이 네 마리 입력창으로 진입",
         "부모 사진 전송 실패를 표시하고 재전송 후 명시적으로 제출하며 입력 이름과 기존 접수를 유지",
         "업체 낙찰·정산의 이중 경매/회차 선택을 하나의 날짜 목록으로 통합하고 이전 미완료 결제·정산을 표시",
-        "단일 정산 회차는 선택창을 숨기고 방송명만 표시; 기존 링크의 event/round와 업체 접근 권한을 유지"
+        "단일 정산 회차는 선택창을 숨기고 방송명만 표시; 기존 링크의 event/round와 업체 접근 권한을 유지",
+        "구매자 결제 확인과 주관사 정산을 두 업무로 구분하고 회차별 확인 건수·보낼 금액을 표시",
+        "초과 입금·배송비 미확정은 완료 표시를 제거하고 확인 필요 상태를 유지"
       ],
       "remaining": [
-        "업체 결제 확인과 주관사 정산의 첫 행동을 구분하는 구성 및 전체 상태별 처리 흐름",
+        "전체 결제 방법·환불·변경 요청 상태를 낙찰자 흐름과 함께 통합 확인",
         "씨랩 출품 등록·수정 전체 흐름",
         "200% 확대·전체 키보드 경로"
       ],
@@ -64,7 +66,13 @@
         "../admin-home-review-20261022/vendor-assigned-parent-saved.png",
         "../admin-home-review-20261022/vendor-unified-rounds-320.png",
         "../admin-home-review-20261022/ux-vendor-rounds-tests-final.log",
-        "../admin-home-review-20261022/ux-vendor-rounds-desktop-tests.log"
+        "../admin-home-review-20261022/ux-vendor-rounds-desktop-tests.log",
+        "risk: medium (financial UI grouping/status only; no amount calculations, mutations, or persistence changes)",
+        "node --test test/vendor-finance-view.test.js test/vendor-settlement-status-ui.test.js test/organizer-bank-ui.test.js test/organizer-recovery-ui.test.js test/vendor-checkout-flow.test.js test/organizer-receipt-scope.test.js test/organizer-receipts.test.js test/vendor-settlement-picker.test.js: 55 pass; npm run check and explicit new-script syntax checks: pass",
+        "CUA real 320px/390px iframe rendering: buyer/organizer task switch, archived 10/14 and 10/21 fee-only round, visible keyboard outline 3px, no horizontal overflow; no production mutations",
+        "Rendered finance-nav contrast measured: selected title 6.02:1, selected status 4.72:1, normal title 15.18:1, normal status 5.26:1",
+        "../admin-home-review-20261022/vendor-finance-tasks-320.png",
+        "../admin-home-review-20261022/ux-finance-tasks-tests.log"
       ],
       "deployed": false
     },
@@ -99,7 +107,10 @@
         "Initial server suite: 11 local HTTP failures under sandbox (EACCES / readiness timeout); identical full suite passed with normal local networking",
         "CUA: program-level region menu, individual company selection, reassignment 10/28 to 10/26 and back, saved feedback, all five date filters and whole-program list",
         "../admin-home-review-20261022/program-vendor-directory.png",
-        "../admin-home-review-20261022/program-round-filter.png"
+        "../admin-home-review-20261022/program-round-filter.png",
+        "CUA 320px integrated organizer: duplicate inner header removed, fake bank setup/saved state, vendor search, empty completed filter, reset, exact 10/19 receipt dialog with 66000 amount, Escape dismissal; outer width and scrollWidth 320, inner clientWidth and scrollWidth 305",
+        "Organizer filters/default priority/refresh/search/authorization reset and unchanged whole-round totals verified in the 55-test finance checkpoint",
+        "../admin-home-review-20261022/organizer-finance-filters-320.png"
       ],
       "completed": [
         "전체 업체 명부는 선택한 프로그램의 모든 업체를 조회하고 방송일로 좁혀 볼 수 있음",
@@ -110,7 +121,8 @@
         "기존 업체도 방송 신청 시 빠진 회차 연결을 같은 트랜잭션에서 복구",
         "지역 변경과 사용하지 않은 예정 회차 배정을 원자적으로 저장하고 기존 거래가 있으면 변경을 거절",
         "이전 회차 업체 신원·낙찰·배송 기록을 유지하며 옮긴 예정 회차의 빈 배정만 해제",
-        "방송 지역 배정은 전체 프로그램 작업으로 표시하고 해당 화면의 회차 선택을 제거"
+        "방송 지역 배정은 전체 프로그램 작업으로 표시하고 해당 화면의 회차 선택을 제거",
+        "업체 정산 목록은 확인 필요·미입금·배송비 미확정·완료 필터와 업체·예금주 검색을 제공하고 회차 전체 합계는 유지"
       ],
       "remaining": [
         "관리자 출품·편성·배송·정산 페이지 내부 작업 정리",
@@ -160,6 +172,6 @@
     "공통 업체 및 회차 구분이 모든 화면에서 일관되게 전달되지 않음",
     "전체 사용자 역할별 개편과 통합 검증은 아직 진행 중"
   ],
-  "next_work": "업체 정산 첫 화면에서 구매자 결제 확인과 주관사에 보낼 금액을 구분하고, 관리자 회차별 입금·배송·정산 및 낙찰자 배송 선택 흐름을 실제 상태별로 정리한다. 씨랩 출품·방송 도구·전체 키보드/확대 검증과 배포도 남아 있다. 새 사진/정산 회차 개편은 로컬에서 검증했으며 아직 배포하지 않았다.",
+  "next_work": "관리자 낙찰자 입금·배송 목록과 낙찰자 배송 선택·결제 흐름을 실제 상태별로 정리한다. 씨랩 출품·방송 도구·전체 키보드/확대 검증과 배포도 남아 있다. 업체 사진·정산 회차·업무 구분과 관리자 정산 필터는 로컬에서 검증했으며 아직 배포하지 않았다. 모바일 통합 관리자 상단 선택 영역의 높이도 다음 화면 점검에 포함한다.",
   "completion_rule": "모든 workstream이 실제 구현·상태별 검증 증거를 갖출 때만 전체 완료로 판단한다."
 }

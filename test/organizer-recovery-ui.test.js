@@ -116,7 +116,44 @@ test('overpayment is visible separately and does not hide another vendor’s out
  f.run("state.vendors.push({...state.vendors[0],vendorId:'overpaid',receivedAmount:90000,remainingAmount:0,overpaidAmount:10000});render()");
  assert.equal(f.nodes.get('total').textContent,'30,000원');assert.equal(f.nodes.get('received').textContent,'140,000원');assert.equal(f.nodes.get('overpaid-total').textContent,'초과 입금 10,000원');assert.equal(f.nodes.get('overpaid-total').hidden,false);
  assert.equal(f.run('vendorStatus(state.vendors[1])'),'초과 입금');assert.equal(f.run('vendorBalance(state.vendors[1])'),'10,000원 초과');
+ f.nodes.get('vendor-stage').value='review';f.nodes.get('vendor-stage').onchange();
  assert.match(f.nodes.get('vendors').innerHTML,/10,000원 초과/);
+});
+
+test('organizer starts with confirmation work and filtering never changes round totals or writes receipts',async()=>{
+ const f=screen(),view=data();view.vendors.push(
+  {...view.vendors[0],vendorId:'request',vendorName:'확인업체',pendingReport:{amount:30000}},
+  {...view.vendors[0],vendorId:'done',vendorName:'완료업체',remainingAmount:0,receivedAmount:80000},
+  {...view.vendors[0],vendorId:'missing',vendorName:'미확정업체',remainingAmount:0,missingDestinationItems:[{id:'item'}]}
+ );
+ f.calls[0].resolve(view);await new Promise(setImmediate);
+ assert.equal(f.nodes.get('vendor-stage').value,'review');assert.match(f.nodes.get('vendors').innerHTML,/확인업체/);assert.doesNotMatch(f.nodes.get('vendors').innerHTML,/완료업체/);
+ const totals=['total','all-total','received'].map(id=>f.nodes.get(id).textContent);
+ for(const [stage,name] of [['unpaid','예시업체'],['done','완료업체'],['missing','미확정업체']]){
+  f.nodes.get('vendor-stage').value=stage;f.nodes.get('vendor-stage').onchange();
+  assert.match(f.nodes.get('vendors').innerHTML,new RegExp(name));assert.equal(f.nodes.get('vendor-result-count').textContent,'1개 업체');
+  assert.deepEqual(['total','all-total','received'].map(id=>f.nodes.get(id).textContent),totals);
+ }
+ assert.equal(f.calls.length,1);assert.equal(f.nodes.get('receipt-dialog').open,false);
+});
+
+test('company and account holder search preserves query on refresh and provides a clear empty-state exit',async()=>{
+ const f=screen();await f.ready();
+ f.nodes.get('vendor-search').value='예시예금주';f.nodes.get('vendor-search').oninput();assert.match(f.nodes.get('vendors').innerHTML,/예시업체/);
+ f.nodes.get('vendor-search').value='없는 업체';f.nodes.get('vendor-search').oninput();
+ assert.equal(f.nodes.get('vendor-result-count').textContent,'0개 업체');assert.equal(f.nodes.get('vendor-reset').hidden,false);assert.match(f.nodes.get('vendors').innerHTML,/전체 업체 보기/);
+ const reload=f.run('load()');f.calls[1].resolve(data());await reload;
+ assert.equal(f.nodes.get('vendor-search').value,'없는 업체');assert.equal(f.nodes.get('vendor-result-count').textContent,'0개 업체');
+ f.nodes.get('vendor-reset').onclick();assert.equal(f.nodes.get('vendor-search').value,'');assert.equal(f.nodes.get('vendor-stage').value,'all');assert.match(f.nodes.get('vendors').innerHTML,/예시업체/);
+ assert.ok(f.calls.every(call=>!call.options.method||call.options.method==='GET'));
+});
+
+test('filters reset for another round and authorization loss clears search and counts',async()=>{
+ const f=screen();await f.ready();f.nodes.get('vendor-search').value='private query';f.nodes.get('vendor-stage').value='done';f.nodes.get('vendor-stage').onchange();
+ f.run("state.round.date='2026-10-21';render()");assert.equal(f.nodes.get('vendor-search').value,'');assert.equal(f.nodes.get('vendor-stage').value,'unpaid');
+ f.nodes.get('vendor-search').value='private query';f.run('clearAccess()');
+ assert.equal(f.nodes.get('vendor-search').value,'');assert.equal(f.nodes.get('vendor-result-count').textContent,'');assert.equal(f.nodes.get('vendor-stage').innerHTML,'');assert.equal(f.nodes.get('vendor-reset').hidden,true);
+ assert.doesNotThrow(()=>f.nodes.get('vendor-search').oninput());
 });
 test('organizer auction view separates sales from shipping, includes pending and pickup, and filters without writes',async()=>{
  const f=screen();await f.ready();

@@ -1,0 +1,6 @@
+.vendor-finance-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0 0 24px}
+.vendor-finance-nav button{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:6px;min-height:90px;padding:14px 12px;border:1px solid var(--checkout-control-border,#b8c2ce);border-radius:12px;background:#fff;color:var(--ink,#202632);font:inherit;line-height:1.5;text-align:left;cursor:pointer}
+.vendor-finance-nav strong{font-size:16px;font-weight:650}.vendor-finance-nav span{color:var(--muted,#626d7b);font-size:13px;overflow-wrap:anywhere}
+.vendor-finance-nav button[aria-pressed=true]{border:2px solid var(--blue,#2864ed);padding:13px 11px;background:#edf3ff}.vendor-finance-nav button[aria-pressed=true] strong{color:#1d4ed8}
+.vendor-finance-nav button:focus-visible{outline:3px solid var(--checkout-focus,#245bd4);outline-offset:3px}
+#vendor-organizer-work .shipping-settlement{margin-top:0}#vendor-buyer-work .work-title{margin-top:0;font-size:17px}
