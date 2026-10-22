@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded',()=>{
  function link(id,href){$(id).hidden=!href;if(href)$(id).href=href;else $(id).removeAttribute('href')}
  function render(search=location.search,push=false){
   $('work-panel').hidden=true;state=Model.selection(catalog,rounds,activeId,search);const {channel,round,archiveId}=state,links=Model.links(state),isNational=Model.national(channel);
+  $('quick-channel').innerHTML=Model.families(catalog,channel.id).map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
   $('quick-channel').value=Model.family(channel);$('round-field').hidden=rounds.filter(r=>r.familyId===Model.family(channel)).length<2;
   $('quick-round').innerHTML=rounds.filter(r=>r.familyId===Model.family(channel)).map(r=>`<option value="${esc(Model.key(r))}">${esc(r.name)} · ${r.archiveId?'이전 기록':r.status==='draft'?'준비 중':r.active?'현재 송출':'결제·배송'}</option>`).join('');if(round)$('quick-round').value=Model.key(round);
   for(const [id,name] of Object.entries({'quick-workspace':'workspace','quick-broadcast':'broadcast','quick-shipping':'shipping','quick-print':'print','quick-shipping-status':'shippingStatus','quick-parge':'parge','quick-pinball':'pinball','quick-captures':'captures','quick-survey':'survey','quick-settings':'settings','quick-rounds':'archives','quick-intake':'intake','quick-bookings':'bookings','manage-rounds':'rounds'}))link(id,links[name]);
@@ -29,7 +30,7 @@ document.addEventListener('DOMContentLoaded',()=>{
  async function load(){const seq=++sequence;$('work-panel').hidden=true;$('selection-panel').hidden=true;$('load-error').hidden=true;$('platform-status').textContent='운영 정보를 불러오는 중…';$('refresh-home').disabled=true;
   try{const data=await CreoPlatform.api('operation-rounds');if(seq!==sequence)return;
    catalog=data;rounds=data.rounds;activeId=data.activeChannelId;
-   $('quick-channel').innerHTML=Model.families(catalog).map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');render();
+   render();
   }catch(e){if(seq!==sequence)return;if(e.status===401)return login('다시 로그인해 주세요.');failure(e)}finally{if(seq===sequence)$('refresh-home').disabled=false}}
  async function dashboard(){$('login-gate').hidden=true;$('dashboard').hidden=false;await load()}
  function changeScope(search){if(typeof CustomEvent!=='undefined'&&!document.dispatchEvent(new CustomEvent('creo:operator-before-navigate',{cancelable:true}))){render();return;}const q=new URLSearchParams(search),view=new URLSearchParams(location.search).get('view');if(view)q.set('view',view);try{render('?'+q,true)}catch(e){failure(e)}}

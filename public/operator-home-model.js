@@ -35,6 +35,14 @@
   }else result.rounds=r.archives;
   return result;
  }
- function families(catalog){return [...new Map(catalog.channels.filter(c=>!c.id.startsWith('checkout-test-')).map(c=>[family(c),{id:family(c),name:family(c)==='national-cre'?'전국크레자랑':family(c)==='clab'?'씨랩 · 크레용':c.name}])).values()];}
+ function families(catalog,selectedId=''){
+  const channels=catalog.channels.filter(c=>!c.id.startsWith('checkout-test-'));
+  const selected=channels.find(c=>c.id===selectedId);
+  // Retired programs leave the routine picker. Their records and explicit links
+  // remain available, including previous rounds of a still-operating program.
+  const visible=new Set(channels.filter(c=>c.status!=='archived').map(family));
+  if(selected)visible.add(family(selected));
+  return [...new Map(channels.filter(c=>visible.has(family(c))).map(c=>[family(c),{id:family(c),name:family(c)==='national-cre'?'전국크레자랑':family(c)==='clab'?'씨랩 · 크레용':c.name}])).values()];
+ }
  return {national,family,key,home,selection,links,families};
 });

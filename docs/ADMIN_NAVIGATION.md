@@ -150,3 +150,37 @@ handlers were changed.
 - Production verification is read-only: compare deployed static files, verify
   health and authentication, then check each historical/current receipt endpoint's
   returned channel/archive and unresolved count. No production backtests are used.
+
+## Prepared regional rounds and retired programs (2026-10-23)
+
+Prepared 2026-10-26 Daegu/Gyeongbuk and 2026-10-28 Busan/Ulsan/Gyeongnam through
+the existing atomic national-round preparation API. Both remain drafts with no
+sales or shipping records. Presentation settings are inherited; the current
+broadcast pointer remains on the 2026-10-21 round. Regional vendor memberships
+are prepared before entry approval (8 and 4 vendors respectively at preparation).
+
+Programs outside national-cre and the Creyon/CLAB family were archived, retaining
+their records and financial links. The routine program picker now omits families
+whose channels are all archived. Earlier rounds of an operating family remain in
+its round picker. An explicit historical URL still opens its exact program/round;
+leaving that program removes it from the routine picker again. Reopening a channel
+in channel settings restores its program without data recovery or a code change.
+
+Risk: release (operational configuration plus picker deployment). Existing channel
+records were backed up privately before mutation. Read-only comparisons after
+preparation/archival verified existing item, shipment, asset, vendor business data
+and broadcast preservation. Only shared-directory membership metadata advanced
+for newly linked vendors. Existing directory identities were retained.
+
+- Focused navigation, preparation, round scope and checkout-continuity tests:
+  `node --test test/operator-program-visibility.test.js test/operator-home.test.js test/operator-shell.test.js test/operator-finance-navigation.test.js test/national-round-operations.test.js test/national-round-intake.test.js test/operation-rounds.test.js test/checkout-round-continuity.test.js` — **50 passed**.
+- `npm run check` and changed-file `node --check`: passed.
+- `npm test -- --test-concurrency=4`: **1,504 passed, 0 failed**.
+- Desktop `python -m unittest discover -p "test*.py"`: **270 passed**.
+- Strict UTF-8, U+FFFD scan and `git diff --check`: passed.
+- Local browser checks used synthetic data only: both draft dates appear under
+  national-cre; only national-cre and CLAB appear in normal selection; an archived
+  program's explicit link opens with financial actions; returning to national-cre
+  removes the archived program from the picker. Layout and styling are unchanged.
+- No production auction was replayed, activated, reset or deleted. Future entry
+  approvals still need to be imported through the existing preparation action.
