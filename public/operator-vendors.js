@@ -13,8 +13,9 @@ document.addEventListener('DOMContentLoaded',()=>{
  }
  function dates(){
   const current=$('date').value,family=$('family').value,values=new Map();
-  vendors.forEach(v=>v.broadcasts.filter(b=>!family||b.familyId===family).forEach(b=>{if(b.date)values.set(b.date,b.region);}));
-  $('date').innerHTML='<option value="">모든 방송일</option>'+[...values].sort(([a],[b])=>a.localeCompare(b)).map(([d,r])=>`<option value="${esc(d)}">${esc(d+' '+(family==='national-cre'?r:''))}</option>`).join('');
+  rounds.filter(r=>!r.scopeError&&(!family||r.familyId===family)).forEach(r=>{if(r.date)values.set(r.date,family?r.name||r.date:r.date);});
+  vendors.forEach(v=>v.broadcasts.filter(b=>!family||b.familyId===family).forEach(b=>{if(b.date&&!values.has(b.date))values.set(b.date,b.date+(family==='national-cre'&&b.region?' '+b.region:''));}));
+  $('date').innerHTML='<option value="">모든 방송일</option>'+[...values].sort(([a],[b])=>a.localeCompare(b)).map(([d,label])=>`<option value="${esc(d)}">${esc(label)}</option>`).join('');
   $('date').value=values.has(current)?current:'';
  }
  function render(){
@@ -40,6 +41,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   try{
    const data=await CreoPlatform.api('operator-vendors');if(seq!==sequence)return;vendors=data.vendors;rounds=data.rounds||[];
    const current=loaded?$('family').value:query.get('program')||'',families=new Map();
+   rounds.forEach(r=>{if(r.familyId)families.set(r.familyId,program(r.familyId));});
    vendors.forEach(v=>v.members.forEach(m=>families.set(m.familyId,program(m.familyId))));
    $('family').innerHTML='<option value="">전체 프로그램</option>'+[...families].map(([id,name])=>`<option value="${esc(id)}">${esc(name)}</option>`).join('');
    $('family').value=families.has(current)?current:'';loaded=true;dates();render();

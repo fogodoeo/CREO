@@ -37,6 +37,25 @@ test('directory failure has retry, hides stale rows, and discards out-of-order r
  assert.equal($('status').textContent,'5개 업체');assert.equal($('reload').disabled,false);
 });
 
+test('program and all scheduled dates remain selectable before vendors are assigned',async()=>{
+ const {document,window}=page('operator-vendors.html'),$=id=>document.getElementById(id),calls=[];
+ const emptyProgram={vendors:[data.vendors.at(-1)],rounds:data.rounds.map((r,i)=>({...r,name:r.date+' '+regions[i]+'편'}))};
+ emptyProgram.rounds.push({channelId:'creyon',familyId:'clab',date:'2026-10-15',name:'10/15 씨랩'});
+ vm.runInNewContext(source('operator-vendors.js'),{document,URLSearchParams,location:{search:'?program=national-cre'},CreoPlatform:{escapeHtml:String,api:async(path,options)=>{calls.push([path,options]);return emptyProgram;}}});
+ document.dispatchEvent(new window.Event('DOMContentLoaded'));await tick();
+ assert.equal($('family').value,'national-cre');assert.equal($('heading').textContent,'전국크레자랑 전체 업체');
+ assert.equal($('status').textContent,'0개 업체');assert.equal($('access').hidden,false);assert.doesNotMatch($('rows').textContent,/가상 씨랩 업체/);
+ assert.deepEqual([...$('date').querySelectorAll('option')].map(o=>o.value),['',...dates]);
+ assert.match($('date').textContent,/2026-10-28 부산·울산·경남편/);
+ $('date').value=dates[4];$('date').dispatchEvent(new window.Event('change'));
+ assert.equal($('status').textContent,'0개 업체');assert.equal($('reset').hidden,false);
+ $('reload').dispatchEvent(new window.Event('click'));await tick();assert.equal($('date').value,dates[4]);
+ $('reset').dispatchEvent(new window.Event('click'));assert.equal($('date').value,'');assert.equal($('family').value,'national-cre');
+ $('family').value='clab';$('family').dispatchEvent(new window.Event('change'));
+ assert.equal($('status').textContent,'1개 업체');assert.deepEqual([...$('date').querySelectorAll('option')].map(o=>o.value),['','2026-10-15']);
+ assert(calls.every(([path,options])=>path==='operator-vendors'&&!options));
+});
+
 test('main separates whole-program directory from dated work and follows exact intake, region and archived settlement links',async()=>{
  const {document,window}=page('index.html'),$=id=>document.getElementById(id),calls=[];
  window.matchMedia=()=>({matches:true,addEventListener(){}});window.confirm=()=>true;
