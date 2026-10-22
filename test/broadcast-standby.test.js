@@ -70,7 +70,7 @@ test('first-open P3 rotation uses the same new-channel defaults as rendering',()
 test('scene switching waits for iframe readiness so an early selection cannot get lost',()=>{
  const source=fs.readFileSync(require.resolve('../public/studio-layout-editor'),'utf8');
  const fields={'save-status':{dataset:{}},save:{},'p2-scene':{}};
- const context=vm.createContext({$:id=>fields[id],model:{dirty:()=>false},saving:false,ready:false});
+ const context=vm.createContext({$:id=>fields[id],model:{dirty:()=>false},saving:false,ready:false,channelId:'test',page:2,window:{parent:{postMessage(){}}},location:{origin:'http://test.invalid'}});
  vm.runInContext(source.slice(source.indexOf(' function status('),source.indexOf(' function toast(')),context);
  context.status();assert.equal(fields['p2-scene'].disabled,true);
  context.ready=true;context.status();assert.equal(fields['p2-scene'].disabled,false);

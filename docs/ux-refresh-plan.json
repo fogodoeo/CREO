@@ -276,10 +276,18 @@
         "늦은 응답은 새 입력·다른 송출 세션을 덮어쓰지 않으며 잘못된 당첨 인원은 불러오기 완료 후에도 시작을 차단",
         "진행 중 관리자 새로고침은 실제 송출 명단·인원·설정을 복원하고 완료 후 다음 추첨 초안은 보존",
         "실행 오류는 입력을 유지한 안내에 초점을 두고 버튼을 가리는 중복 토스트를 제거",
-        "720p 결과창은 다섯 당첨자와 후원 로고가 스크롤 없이 표시되도록 간격 조정; 320px 게임 설정은 한 열로 표시"
+        "720p 결과창은 다섯 당첨자와 후원 로고가 스크롤 없이 표시되도록 간격 조정; 320px 게임 설정은 한 열로 표시",
+        "방송 편집의 회차 목록은 공통 운영 회차 자료에서 프로그램별로 묶고 예정 회차 편집 중에는 실제 송출 날짜를 함께 표시",
+        "1P 진행·2P 경매·3P 집계와 전체 설정을 앞에 두고 디자인·송출 화면 링크는 펼치기로 정리; 모바일에서도 화면 이름·송출 상태·배치 저장 상태를 표시",
+        "배치 수정 상태를 방송 관리자와 통합 관리 메뉴에 전달하고 페이지·회차 이동 취소, 저장 중 이동 차단, 재로그인 후 초안 보존 지원",
+        "문구 설정을 저장해도 미저장 배치를 자동 송출하지 않고 미리보기 새로고침 후 초안을 유지",
+        "송출 전환 실패 후 현재 송출 날짜를 유지하면서 오류와 재시도 경로를 표시; 중복 전환 요청 차단",
+        "예정 회차의 문구 설정은 방송 가능한 준비 회차를 포함해 조회하여 잘못된 로그인 화면으로 되돌아가던 문제 수정"
       ],
       "remaining": [
-        "방송 진행·송출화면 편집·미리보기의 전체 사용자 흐름 검토",
+        "방송 편집의 실제 저장→페이지 이동→재진입·실패 재시도와 송출 링크 열기 최종 확인; 자동화의 iframe 확인창 제어가 멈춰 중간 이후 실제 조작 검증은 남아 있음",
+        "전체 설정과 문구·배너 입력의 초안 보호·저장 진행·오류 안내 및 중첩 스크롤 검토; 이번 초안 보호는 배치 편집에 적용",
+        "방송 편집 키보드 전체 이동·200% 확대·화면 낭독·다른 관리자에서 전환된 실제 송출 상태 갱신 검토",
         "로컬 데스크톱 경매 조작과 방송 도구 진입 연결 검토",
         "핀볼 다른 테마·200% 확대·전체 키보드 흐름 및 배포 검증"
       ],
@@ -291,7 +299,13 @@
         "CUA 320px: running reload restores 13 balls/5 winners and locked setup; long-name validation preserves input, focuses persistent error with actions uncovered; reimport and prepare recover. Keyboard Tab reaches the map with visible focus. Small-screen field grid changed to one column after map text was cramped.",
         "Rendered desktop width=scrollWidth=1280. National mode choice text 14px and minimum height 44px. Feedback #b1b6bf, error #ffb9ae and focus #d9bd85 on #1b1e24 measure 8.20:1, 10.18:1 and 9.20:1. 200% zoom and full screen-reader flow remain unverified.",
         "../admin-home-review-20261022/pinball-ux-server-full.log; ../admin-home-review-20261022/pinball-ux-check.log; ../admin-home-review-20261022/pinball-ux-final-focused.log",
-        "../admin-home-review-20261022/pinball-ux-result-five.png; ../admin-home-review-20261022/pinball-ux-error-320.png; ../admin-home-review-20261022/pinball-ux-admin-desktop.png; ../admin-home-review-20261022/pinball-ux-admin-320.png"
+        "../admin-home-review-20261022/pinball-ux-result-five.png; ../admin-home-review-20261022/pinball-ux-error-320.png; ../admin-home-review-20261022/pinball-ux-admin-desktop.png; ../admin-home-review-20261022/pinball-ux-admin-320.png",
+        "Studio risk: high (existing client navigation, activation guard and draft lifecycle; no new server write contract or auction persistence change). npm run check and changed inline/editor script syntax: pass. Final npm test -- --test-concurrency=4: 1682 pass, 0 fail. Desktop code unchanged in this checkpoint; no deployment.",
+        "Final node --test test/operator-studio-scope.test.js test/studio-layout-editor-ui.test.js test/studio-layout-draft.test.js test/studio-brand-login.test.js test/broadcast-standby.test.js test/broadcast-text-layout.test.js test/operation-rounds.test.js test/operator-shell.test.js test/operator-home.test.js: 49 pass. Covers content-only save preserving dirty placement/reset, repeated save suppression, failure/retry payload preservation, edits during save, page/round navigation cancellation, origin/source/page/channel validation, activation retry and duplicate suppression, reauthentication preservation, and prepared-round content settings without fallback.",
+        "Initial full run: 11 localhost/network permission failures and 2 old source-structure expectations. Updated the affected fixtures/expectations, reran with isolated localhost access, and obtained a clean full pass after the prepared-round fix.",
+        "CUA real local main: compact studio controls rendered; editing X=45 shows pending-save state and navigating to P2 opens the discard confirmation. Prepared 10/21 content settings now load with populated fields instead of a login overlay. Confirmation dismissal and subsequent physical save clicks were not verified because browser control stalled; unit tests cover these state transitions.",
+        "CUA real 320px iframe: selected 10/21 and actual live 10/19 visible, status rect bottom 137.5 within header bottom 148.5 after fixing compressed auto grid rows; studio document clientWidth=scrollWidth=320, editor document clientWidth=scrollWidth=290, save status display=block. Rendered secondary text #a4afbf on #101319 measures 8.38:1. Browser viewport override did not change the observed 1280px size and was reset; narrow evidence uses a real 320px iframe.",
+        "../admin-home-review-20261022/studio-ux-full-final.log; ../admin-home-review-20261022/studio-ux-check.log; ../admin-home-review-20261022/studio-ux-focused-final.log; ../admin-home-review-20261022/studio-ux-320.png"
       ],
       "deployed": false
     },
@@ -314,6 +328,6 @@
     "공통 업체 및 회차 구분이 모든 화면에서 일관되게 전달되지 않음",
     "전체 사용자 역할별 개편과 통합 검증은 아직 진행 중"
   ],
-  "next_work": "전국크레자랑 프로그램/회차 구분과 업체 안전 수정에 이어 낙찰자 직수령·복수 업체 입금 요청·실패 재시도·확인 완료까지 로컬에서 검증했다. 다음은 인증/회차 진입과 카드결제·입금 후 배송비 조정, 방송 도구, 전체 키보드/확대 및 DOM/시각 읽기 순서와 역할별 통합 검증 및 배포다. 최근 변경은 모두 로컬이며 운영 배포는 아직 하지 않았다.",
+  "next_work": "방송 편집의 프로그램·회차 표시, 배치 초안 보호, 문구 저장 분리 및 준비 회차 설정 진입을 수정했다. 다음은 브라우저 확인창 제어 복구 후 방송 배치의 실제 저장·재진입과 전체 설정·문구·배너 흐름을 끝까지 확인하는 것이다. 이후 인증/회차 진입, 카드결제·입금 후 배송비 조정, 데스크톱 경매 조작, 전체 키보드/확대 및 역할별 통합 검증·배포가 남아 있다. 최근 변경은 모두 로컬이며 운영 배포는 아직 하지 않았다.",
   "completion_rule": "모든 workstream이 실제 구현·상태별 검증 증거를 갖출 때만 전체 완료로 판단한다."
 }

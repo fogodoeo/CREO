@@ -3,19 +3,19 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>송출 배치 · 옹동2</title>
-  <link rel="stylesheet" href="studio-layout-editor.css?v=20261014-p2-text-fit">
+  <link rel="stylesheet" href="studio-layout-editor.css?v=20261023-draft-status">
   <script defer src="platform-client.js?v=20260803-admin-session-v2"></script>
   <script defer src="studio-layout-draft.js?v=20260915-studio"></script>
   <script defer src="broadcast-text-layout.js?v=20261021-right-anchor"></script>
-  <script defer src="studio-layout-editor.js?v=20261021-right-anchor"></script>
+  <script defer src="studio-layout-editor.js?v=20261023-draft-status"></script>
 </head>
 <body>
 <main class="editor">
   <header class="editor-head">
-    <div class="editor-title"><span class="page-chip" id="page-chip">P1</span><div><h1 id="editor-title">진행 화면 배치</h1><p>화면에서 요소를 선택해 조절하세요</p></div></div>
+    <div class="editor-title"><span class="page-chip" id="page-chip">P1</span><div><h1 id="editor-title">진행 화면 배치</h1><p>수정 후 배치 저장을 누르면 송출에 반영됩니다.</p></div></div>
     <div class="head-actions"><span class="save-status" id="save-status" role="status">불러오는 중…</span><button class="action primary" id="save" type="button" disabled>배치 저장</button></div>
   </header>
-  <p class="save-error" id="save-error" role="alert" hidden></p>
+  <p class="save-error" id="save-error" role="alert" tabindex="-1" hidden></p>
   <section class="workspace" aria-label="송출 배치 편집">
     <section class="canvas" aria-label="송출 미리보기">
       <div class="canvas-top"><strong>송출 미리보기</strong><label id="p2-scene-option" hidden>화면 <select id="p2-scene"><option value="item">개체 정보</option><option value="waiting">개체 대기</option></select></label><label id="example-option" hidden><input id="example-preview" type="checkbox" checked> 예시 데이터</label><span>1920 × 1080 · <span id="preview-scale">맞춤</span></span></div>
