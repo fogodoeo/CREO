@@ -1,5 +1,18 @@
 html.operator-embedded creo-operator-pipeline,html.operator-embedded .app-bottom-nav{display:none!important}
 html.operator-embedded body{padding-bottom:0!important}
+/* The outer toolbar supplies the page title, round and navigation. Keep task controls. */
+html.operator-embedded[data-operator-page="organizer-shipping.html"] .settlement-top,
+html.operator-embedded[data-operator-page="organizer-shipping.html"] #channel,
+html.operator-embedded[data-operator-page="organizer-shipping.html"] #page-title,
+html.operator-embedded[data-operator-page="settlement-report.html"] main>header,
+html.operator-embedded[data-operator-page="settlement-report.html"] #back,
+html.operator-embedded[data-operator-page="checkout-changes.html"] main>header,
+html.operator-embedded[data-operator-page="checkout-changes.html"] main>h1,
+html.operator-embedded[data-operator-page="checkout-changes.html"] #reload-requests,
+html.operator-embedded[data-operator-page="shipping-status.html"] .hero>.topbar,
+html.operator-embedded[data-operator-page="national-vendors.html"] .intro>h1{display:none!important}
+html.operator-embedded[data-operator-page="shipping.html"] .admin-workspace:not(.is-editing){grid-template-columns:minmax(0,1fr)}
+html.operator-embedded[data-operator-page="shipping.html"] .admin-workspace:not(.is-editing) #editor-panel-slot{display:none}
 html.operator-embedded :focus-visible{outline:3px solid #d3a547;outline-offset:3px}
 html.operator-embedded[data-operator-page="channel-workspace.html"] .top,
 html.operator-embedded[data-operator-page="channel-workspace.html"] .heading,

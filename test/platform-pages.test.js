@@ -93,20 +93,17 @@ test('BASIC page two reuses the one-line item and traits formula', () => {
     assert.match(source, /item-inline-identity">\$\{vendorTag\}<h1>/);
 });
 
-test('BASIC P3 waits for the dice video and shows only live contribution totals', () => {
+test('BASIC P3 shows numeric results on schedule and retains live contribution totals', () => {
     const source = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-live.html'), 'utf8');
-    assert.match(source, /video\.addEventListener\('ended',finish/);
-    assert.match(source, /video\.addEventListener\('timeupdate'/);
-    assert.match(source, /video\.currentTime>=video\.duration-\.04/);
-    assert.match(source, /video\.pause\(\);finishDiceVideo/);
+    assert.doesNotMatch(source, /finishDiceVideo|wireDiceVideos|activeDiceVideos|finishedDiceVideos/);
+    assert.match(source, /const rolling=Number\.isFinite\(reveal\)&&now<reveal/);
     assert.doesNotMatch(source, /diceRevealAtByEvent/);
-    assert.match(source, /function finishDiceVideo\(eventId\)/);
     assert.match(source, /function refreshDiceTeamBoard\(data\)/);
     assert.match(source, /dice-result-strip"><span>낙찰금 ×<\/span><b>\$\{face\}/);
     assert.match(source, /function liveParityContribution\(items\)/);
     assert.match(source, /live\?\.group===group\.id\?live\.amount:0/);
     assert.match(source, /points:scoreUnits\(raw\)/);
-    assert.match(source, /videoActive&&Number\.isFinite\(effectiveAt\)/);
+    assert.doesNotMatch(source, /videoActive/);
     assert.match(source, /current\.querySelector\('\.dice-result-strip'\)/);
     assert.match(source, /function animateScoreCounter\(element,key,target,previous\)/);
     assert.match(source, /duration=Math\.min\(1600,Math\.max\(420,distance\*48\)\)/);
@@ -987,7 +984,7 @@ test('broadcast control manages reusable banners, sponsors, and vendor logos', (
     assert.doesNotMatch(control, /name="page2BannerOn"/);
     assert.match(control, /name="page1TickerInterval"/);
     assert.match(control, /name="page2TickerInterval"/);
-    assert.match(control, /video\/quicktime/);
+    assert.doesNotMatch(control, /video\/quicktime/);
     assert.match(control, /function updatePositionWarnings/);
     assert.doesNotMatch(control, /auction-transition/);
     assert.match(live, /function scoreboardRows/);
@@ -1047,24 +1044,19 @@ test('broadcast control automatically optimizes oversized MP4 banners before upl
     assert.match(settings, /uploadFile\.size > 8 \* 1024 \* 1024/);
 });
 
-test('BASIC control uploads six dice videos and P3 renders parity totals without changing sold price', () => {
+test('BASIC retains numeric dice results and parity totals without video uploads or playback', () => {
     const control = ['auction-control.html','studio-asset-editor.js'].map(file=>fs.readFileSync(path.join(__dirname,'..','public',file),'utf8')).join('\n');
     const live = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-live.html'), 'utf8');
     const profiles = fs.readFileSync(path.join(__dirname, '..', 'public', 'broadcast-profiles.js'), 'utf8');
-    assert.match(control, /value="dice"/);
-    assert.match(control, /주사위 눈금 \(1~6\)/);
-    assert.match(control, /section\.id='dice-video-section'/);
-    assert.match(control, /Array\.from\(\{length:6\}/);
-    assert.match(control, /function optimizeDiceVideo/);
-    assert.match(control, /width:960,height:540,fps:30,bitrate:1200000/);
-    assert.match(control, /prepared\.size>8\*1024\*1024/);
+    assert.doesNotMatch(control, /value="dice"|주사위 영상|dice-video-section|optimizeDiceVideo|MediaRecorder/);
+    assert.match(control, /file\.size>8\*1024\*1024/);
     assert.match(control, /allowActiveFallback:false/);
     assert.match(control, /\/api\/broadcast-assets\//);
     assert.match(control, /assetSaver\.save/);
     assert.match(live, /function renderDiceTeamsPageThree/);
     assert.match(live, /audience_group_key/);
     assert.match(live, /audience_contribution_amount/);
-    assert.match(live, /kind==='dice'/);
+    assert.doesNotMatch(live, /kind==='dice'|function wireDiceVideos|activeDiceVideos|finishedDiceVideos/);
     assert.match(live, /dice-result-strip"><span>낙찰금 ×<\/span><b>\$\{face\}/);
     assert.match(profiles, /id: 'basic-dice'[\s\S]{0,900}page2Price: false, page2InfoLayout: 'inline-traits', soldEffectPage: 3/);
     assert.match(profiles, /id: 'cdcup-finals'[\s\S]{0,900}page2Price: false, page2InfoLayout: 'inline-traits', soldEffectPage: 3/);

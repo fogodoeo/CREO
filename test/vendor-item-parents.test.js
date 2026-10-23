@@ -7,9 +7,10 @@ function fixture(){
  const put=(type,value)=>rows.set(`creo_v2::national-cre::${type}::${value.id}`,{key:`creo_v2::national-cre::${type}::${value.id}`,value:JSON.stringify(value)});
  put('setting',{id:'entry-policy',open:true});
  const item={id:'imported',name:'A01',lotNumber:1,vendorId:vendor.id,status:'waiting',startPrice:10000,soldPrice:0,updatedAt:'2026-10-14T10:00:00.000Z',attributes:{broadcastDate:'2026-10-14',checklist:'gender:M|weight:5',organizerFeePolicy:{enabled:true,entryFee:10000,ratePercent:10}}};put('item',item);
- const service=createVendorEntries(repository),media=async(label='photo')=>{const id=randomUUID();await service.addMedia(context,{id,url:'/assets/'+label+'.webp',thumbnailUrl:'/assets/'+label+'-thumb.webp',size:100,thumbnailSize:20});return id};
+ let clock=Date.parse('2026-10-14T10:00:00Z');const options={now:()=>clock};
+ const service=createVendorEntries(repository,options),media=async(label='photo')=>{const id=randomUUID();await service.addMedia(context,{id,url:'/assets/'+label+'.webp',thumbnailUrl:'/assets/'+label+'-thumb.webp',size:100,thumbnailSize:20});return id};
  const command=(photoId,extra={})=>({itemId:item.id,side:'sire',photoId,expectedUpdatedAt:item.updatedAt,requestId:randomUUID(),...extra});
- return {rows,repository,context,put,item,service,media,command};
+ return {rows,repository,context,put,item,service,media,command,options,advance:ms=>clock+=ms};
 }
 test('imported lots accept parent photos without a reservation and preserve auction facts',async()=>{
  const f=fixture(),id=await f.media();await f.service.updateItemParents(f.context,f.command(id));
@@ -18,6 +19,14 @@ test('imported lots accept parent photos without a reservation and preserve auct
  assert.equal(saved.attributes.parents[0].media[0].url,'/assets/photo.webp');
  const visible=await f.service.auctionPhotos(f.context);assert.equal(visible.length,1);assert.equal(visible[0].parentPhotoIds.sire,id);assert.equal(visible[0].canEdit,true);assert.equal(visible[0].traits.weight,'5');assert.equal(visible[0].parents[0].media[0].url,'/assets/photo.webp');
  assert.equal(JSON.stringify(visible).includes('bankAccount'),false);
+});
+test('past broadcasts retain parent history but reject new edits, including after restart',async()=>{
+ const f=fixture(),photo=await f.media(),body=f.command(photo);await f.service.updateItemParents(f.context,body);
+ f.advance(86400000);const before=[...f.rows];
+ assert.equal((await f.service.auctionPhotos(f.context))[0].canEdit,false);
+ assert.equal((await f.service.updateItemParents(f.context,body)).duplicate,true);
+ for(const service of [f.service,createVendorEntries(f.repository,f.options)])await assert.rejects(service.updateItemParents(f.context,{...body,requestId:randomUUID()}),/방송이 종료/);
+ assert.deepEqual([...f.rows],before);
 });
 test('parent photo retries are idempotent across concurrency and restart',async()=>{
  const f=fixture(),id=await f.media(),body=f.command(id),results=await Promise.all([f.service.updateItemParents(f.context,body),f.service.updateItemParents(f.context,body)]);
@@ -60,7 +69,7 @@ test('parent names save without photos, survive restart and do not change auctio
  const f=fixture(),body=f.command(undefined,{name:'헐크'});delete body.photoId;
  const results=await Promise.all([f.service.updateItemParents(f.context,body),f.service.updateItemParents(f.context,body)]);
  assert.deepEqual(results.map(r=>r.duplicate).sort(),[false,true]);
- const service=createVendorEntries(f.repository),item=await f.repository.getRecord('national-cre','item',f.item.id);
+ const service=createVendorEntries(f.repository,f.options),item=await f.repository.getRecord('national-cre','item',f.item.id);
  assert.equal((await service.updateItemParents(f.context,body)).duplicate,true);
  assert.deepEqual(item.attributes.parents,[{role:'sire',name:'헐크',morph:'',media:[]}]);
  assert.equal((await service.auctionPhotos(f.context))[0].parents[0].name,'헐크');

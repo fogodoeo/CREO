@@ -61,7 +61,7 @@ test('individual approval and arrangement use only the chosen round, while legac
  const entry=(await f.doc()).entries[0];const legacy=await f.request('POST',base+'/review',{type:'renumber',vendorId:f.vendorId,id:entry.id,expectedVersion:entry.version,requestId:randomUUID(),lot:'1부 A99',order:99,startPrice:0});assert.equal(legacy.status,409);
 });
 test('approved canonical entry retains parent library and vendor photo edit access on its dated auction item',async t=>{
- const f=await setup(t);await f.approve();const service=createVendorEntries(f.repository),catalog=await f.repository.getCatalog(),profile=await createVendorDirectory(f.repository).profileFor(ROOT,f.vendorId);
+ const f=await setup(t);await f.approve();const service=createVendorEntries(f.repository,{now:()=>Date.parse(DATE+'T00:00:00+09:00')}),catalog=await f.repository.getCatalog(),profile=await createVendorDirectory(f.repository).profileFor(ROOT,f.vendorId);
  const context={catalog,profile,channel:catalog.channels.find(c=>c.id===ROOT),vendor:await f.repository.getRecord(ROOT,'vendor',f.vendorId)};
  const photos=await service.auctionPhotos(context);assert.equal(photos.length,4);assert.ok(photos.every(i=>i.channelId===TARGET&&i.canEdit));
  const item=photos[0];await service.updateItemParents({...context,channel:catalog.channels.find(c=>c.id===TARGET)},{itemId:item.id,side:'sire',name:'가상 부개체',requestId:randomUUID(),expectedUpdatedAt:item.updatedAt});

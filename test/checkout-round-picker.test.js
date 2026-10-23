@@ -42,7 +42,7 @@ for(const file of ['vendor-checkout.html','buyer-shipping.html'])test(file+' ini
 });
 test('vendor settlement navigation retains the selected historical round',()=>{
  const source=fs.readFileSync(require.resolve('../public/vendor-navigation'),'utf8'),start=source.indexOf('const destination = section =>'),end=source.indexOf("nav.querySelectorAll('a[data-vendor-section]')",start);
- const ctx=vm.createContext({query:new URLSearchParams({round:'archive:old'}),URLSearchParams,event:'national-cre',code:'synthetic-link',token:'',preview:false,nav:{classList:{contains:()=>false}}});
+ const ctx=vm.createContext({query:new URLSearchParams({round:'archive:old'}),URLSearchParams,event:'national-cre',code:'synthetic-link',token:'',preview:false,nav:{querySelector:()=>null,classList:{contains:()=>false}}});
  const href=vm.runInContext(source.slice(start,end)+"destination('settlement')",ctx);assert.equal(new URL(href,'https://example.test').searchParams.get('round'),'archive:old');
 });
 test('unavailable round recovery removes only the view filter and keeps link authority, event and tab',()=>{

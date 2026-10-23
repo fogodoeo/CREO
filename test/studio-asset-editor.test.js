@@ -58,10 +58,12 @@ test('reauthentication leaves inputs recoverable, and a new context cannot recei
  f.context.channelId='other-round';f.fail(null);await f.submit();assert.equal(f.writes.length,1);assert.match(f.$('asset-status').textContent,/원래 방송일/);
  f.context.channelId='national-cre-20261021';await f.submit();assert.equal(f.writes.length,2);assert.equal(f.uploads.length,1);
 });
-test('dice selection opens a recoverable explicit save, replacing the existing face once',async()=>{
+test('removed dice videos stay hidden and cannot be submitted from the logo editor',async()=>{
  const f=setup(),dice={...base,id:'dice-2',kind:'dice',name:'주사위 2번',targetName:'2',imageUrl:'/dice.mp4'};f.context.workspace.assets.push(dice);f.records.set(dice.id,dice);
- f.context.uploadDiceVideo(2,new File(['video'],'주사위.mov',{type:'video/quicktime'}));assert.equal(f.writes.length,0);assert.equal(f.$('asset-kind').value,'dice');assert.equal(f.$('asset-target').value,'2');
- f.fail(Error('실패'));await f.submit();f.fail(null);await f.submit();assert.equal(f.uploads.length,1);assert.equal(f.writes.at(-1)[0],'channels/national-cre-20261021/assets/dice-2');assert.equal(f.writes.at(-1)[2],'PUT');assert.equal(f.records.size,2);
+ f.context.renderAssets();assert.doesNotMatch(f.$('asset-grid').innerHTML,/dice-2|dice\.mp4|<video/);assert.equal(f.$('asset-kind').querySelector('option[value="dice"]'),null);
+ f.context.editAsset(dice.id);assert.equal(f.$('asset-form').hidden,true);
+ f.start();f.edit('name','선택 로고');f.choose(new File(['video'],'주사위.mov',{type:'video/quicktime'}));await f.submit();assert.match(f.$('asset-status').textContent,/이미지/);
+ f.edit('kind','dice');await f.submit();assert.match(f.$('asset-status').textContent,/로고/);assert.equal(f.uploads.length,0);assert.equal(f.writes.length,0);assert.deepEqual(f.records.get(dice.id),dice);
 });
 test('late upload cannot write into another round and reset cannot bypass an active save',async()=>{
  let scope='one',release;const writes=[],errors=[];const model=saver.create({context:()=>scope,upload:()=>new Promise(resolve=>{release=resolve}),write:async(...args)=>{writes.push(args);return{record:args[1]};},onError:e=>errors.push(e),makeId:()=> 'stable'});

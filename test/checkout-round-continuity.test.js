@@ -34,6 +34,8 @@ test('previous unpaid buyer and vendor pages remain usable after close, next auc
 });
 test('vendor remittance retains its old round, retries once and never reduces next round balance',async t=>{
  const f=await setup(t);
+ const previous=(await f.readVendor(f.round)).json(),buyer=previous.buyers[0];
+ const confirmed=await f.request('POST','/vendor-checkout/confirm-payment',{code:f.vendor.code,round:f.round,buyerId:buyer.id,requestId:'remittance-confirm-buyer',expectedVersion:buyer.payment.editVersion,expectedAmount:buyer.totals.totalAmount},false);assert.equal(confirmed.status,200,confirmed.body);
  assert.equal((await f.request('PUT','/channels/national-cre/organizer-shipping',{bankName:'가상은행',bankAccount:'000-000-000',bankHolder:'가상 주관사',notificationPhone:'01000000009',expectedUpdatedAt:''})).status,200);
  const data=(await f.readVendor(f.round)).json(),own=data.shippingSettlement.vendors[0];
  const body={code:f.vendor.code,round:f.round,requestId:'old-round-remittance',expectedAmount:own.remainingAmount,expectedBankUpdatedAt:data.shippingSettlement.bank.updatedAt};

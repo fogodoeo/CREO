@@ -5,7 +5,7 @@
  const send=(type,extra={})=>window.parent.postMessage({type,...extra},location.origin);
  document.documentElement.classList.add('operator-embedded');document.documentElement.dataset.operatorPage=location.pathname.split('/').pop()||'roulette';
  if(new URLSearchParams(location.search).get('broadcastDate'))document.documentElement.dataset.operatorDated='true';
- const style=document.createElement('link');style.rel='stylesheet';style.href='/operator-embed.css?v=20261023-program-directory';document.head.appendChild(style);
+ const style=document.createElement('link');style.rel='stylesheet';style.href='/operator-embed.css?v=20261023-whole-work';document.head.appendChild(style);
  // Resolve only known admin links. New windows, downloads, hash links and public
  // broadcast/buyer pages retain their existing behavior.
  const paths=new Set(['/main','/main/','/index.html','/channel-workspace.html','/broadcast-studio.html','/shipping.html','/shipping-status.html','/checkout-changes.html','/print.html','/settlement-report.html','/national-rounds.html','/organizer-bookings.html','/vendor-entry-review.html','/national-vendors.html','/operator-vendors.html','/channel-manager.html','/shipping-rates.html','/channel-archives.html','/capture-gallery.html','/parge-dispatch.html','/roulette/']);

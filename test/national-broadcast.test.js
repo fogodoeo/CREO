@@ -19,6 +19,16 @@ test('five-region rotation has a fixed first broadcast and covers month/year bou
  assert.equal(regionAt('2027-01-04'),3);assert.equal(regionAt('9999-12-29'),4);
 });
 const firstCycle=['2026-10-14','2026-10-19','2026-10-21','2026-10-26','2026-10-28'];
+test('past broadcast entries are read-only while committed single and batch retries survive the date boundary and restart',async t=>{
+ const f=await fixture(t),r=(await f.command({type:'reserve',date:'2026-10-14',quantity:4})).json().reservations[0];
+ const single={type:'save-entry',id:r.id,slot:0,expectedVersion:0,entry:{weight:'3'},requestId:randomUUID()},batch={type:'save-entries',id:r.id,entries:[{slot:1,expectedVersion:0,entry:{weight:'4'}}],requestId:randomUUID()};
+ assert.equal((await f.command(single)).status,200);assert.equal((await f.command(batch)).status,200);
+ const before=(await f.get()).json().entryState.entries;
+ f.advance(13*86400000);f.restart();
+ for(const body of [single,batch]){const retry=await f.command(body);assert.equal(retry.status,200,retry.body);assert.equal(retry.json().duplicate,true);assert.equal((await f.command({...body,requestId:randomUUID()})).status,409);}
+ assert.equal((await f.command({type:'reopen-entry',id:r.id,slot:0,expectedVersion:1})).status,409);
+ assert.deepEqual((await f.get()).json().entryState.entries,before);
+});
 test('applications expose exactly the first five regions, and each region can reserve its first broadcast',async t=>{
  for(const [index,region] of REGIONS.entries()){
   const f=await fixture(t,'첫 순회 테스트',region);f.advance(12*86400000);

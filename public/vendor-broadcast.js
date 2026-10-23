@@ -12,7 +12,7 @@
   const auctionPhotoUndo=new Map(),auctionNameDrafts=new Map();
  const auctionItems=(date=selected)=>(state?.entryState.auctionItems||[]).filter(item=>item.date===date);
   const rowHasData=row=>!!(row.sex||row.weight||row.hatchDate||row.note||row.photoIds?.length||['sire','dam'].some(side=>row.parents?.[side]?.photoId||row.parents?.[side]?.name?.trim()));
-  const registrationOpen=r=>!r.session.entriesDueAt||Date.parse(r.session.entriesDueAt)>Date.parse(state.now);
+  const registrationOpen=r=>!!r&&r.date>=koreanDay(state.now)&&(!r.session.entriesDueAt||Date.parse(r.session.entriesDueAt)>Date.parse(state.now));
   function entryParents(e){return Object.fromEntries(['sire','dam'].map(side=>{const p=state.entryState.parents.find(p=>p.id===e?.[side+'Id']);return [side,{name:p?.name||'',photoId:p?.photoId||''}]}))}
  function message(s){$('#notice').textContent=s;setTimeout(()=>{$('#notice').textContent=''},4500)}
  function params(){return {...(Store.code?{code:Store.code}:{token:Store.token}),event:'national-cre'}}
@@ -21,7 +21,7 @@
  const entryLimit=r=>r.entryLimit??Math.min(4,r.entryIds.length);
  const policyText=d=>`${d.regionName} ${d.regionVendorCount}개 업체 · 업체당 4마리`;
  function pickupBlock(r){
-  if(!CreoVendorTasks.broadcastRegistrationComplete(r))return '';
+  if(!registrationOpen(r)||!CreoVendorTasks.broadcastRegistrationComplete(r))return '';
   const places=state.inboundDestinations||{},phones=state.inboundDestinationPhones||{};
   return `<section class="entry-delivery" aria-label="출품 배송"><h3>출품 배송</h3><dl class="inbound-destination">${[['parge','파르게'],['dodosi','도도시']].filter(([carrier])=>places[carrier]).map(([carrier,name])=>`<dt>${name} 도착지</dt><dd>${esc(places[carrier])}${phones[carrier]?`<a class="inbound-phone" href="tel:${phones[carrier].replace(/\D/g,'')}" aria-label="${esc(places[carrier]+'에 전화 '+phones[carrier])}">${esc(phones[carrier])}</a>`:''}</dd>`).join('')}</dl><div class="pickup-line"><div><strong>수거 상태</strong><span>${r.pickup?'수거 완료':'수거 전'}</span></div><button type="button" class="pickup-button" data-action="pickup">${r.pickup?'수거 전으로 변경':'수거 완료 표시'}</button></div></section>`;
  }
@@ -131,8 +131,8 @@
  }
   function roundCards(){
    const rounds=CreoVendorTasks.vendorBroadcasts(state),upcoming=rounds.filter(r=>!r.past),past=rounds.filter(r=>r.past&&(r.reservation||r.count)).reverse();
-   const card=r=>`<article class="vendor-round-card" aria-label="${esc(dateLabel(r.date)+' '+r.region)}"><p class="round-eyebrow">${r.past?'지난 방송':'내 방송일'}</p><h2>${esc(dateLabel(r.date))}</h2><p class="round-region">${esc(r.region)}편 · 오후 8시</p><p class="round-status">${r.assigned?'경매 편성 완료 · '+r.count+'마리':r.complete?'출품 접수 완료 · '+r.submitted+'마리':r.needsChanges?'수정할 개체가 있어요':r.reservation?r.submitted+' / 4마리 접수 · 작성 중':r.canStart?'출품할 개체 4마리를 등록해 주세요.':'접수 일정 확인이 필요해요.'}</p><button type="button" class="primary ${!r.complete&&!r.past?'registration-task':''}" data-date="${r.date}"${r.canStart&&!r.reservation&&!r.assigned?' data-start-registration="true"':''}>${r.assigned?'출품 개체 보기':r.complete?'등록한 개체 보기·수정':r.reservation?'개체 등록 이어하기':r.canStart?'개체 등록 시작':'방송 정보 보기'}</button>${r.count?`<button type="button" class="parent-task" data-date="${r.date}" data-photos="true"><span><strong>부모 사진·이름 ${r.past?'보기':'등록'}</strong><small>${r.missingSire||r.missingDam?`부 사진 ${r.missingSire}마리 · 모 사진 ${r.missingDam}마리 미등록`:'부모 사진 등록 완료'}</small></span><span aria-hidden="true">›</span></button>`:''}</article>`;
-   return `<section class="my-broadcasts" aria-label="내 출품 관리">${upcoming.map(card).join('')||(!past.length?'<p class="vendor-empty">예정된 방송이 없어요. 전체 방송 달력에서 일정을 확인해 주세요.</p>':'')}${past.length?`<details class="vendor-secondary" ${upcoming.length?'':'open'}><summary>지난 출품 내역 · ${past.length}회</summary>${past.map(card).join('')}</details>`:''}</section>`;
+   const card=r=>`<article class="vendor-round-card" aria-label="${esc(dateLabel(r.date)+' '+r.region)}"><p class="round-eyebrow">${r.past?'지난 방송':'내 방송일'}</p><h2>${esc(dateLabel(r.date))}</h2><p class="round-region">${esc(r.region)}편 · 오후 8시</p><p class="round-status">${r.past?'방송 종료 · '+r.count+'마리':r.assigned?'경매 편성 완료 · '+r.count+'마리':r.complete?'출품 접수 완료 · '+r.submitted+'마리':r.needsChanges?'수정할 개체가 있어요':r.reservation?r.submitted+' / 4마리 접수 · 작성 중':r.canStart?'출품할 개체 4마리를 등록해 주세요.':'접수 일정 확인이 필요해요.'}</p><button type="button" class="primary ${!r.complete&&!r.past?'registration-task':''}" data-date="${r.date}"${!r.past&&r.canStart&&!r.reservation&&!r.assigned?' data-start-registration="true"':''}>${r.past?'출품 내역 보기':r.assigned?'출품 개체 보기':r.complete?'등록한 개체 보기·수정':r.reservation?'개체 등록 이어하기':r.canStart?'개체 등록 시작':'방송 정보 보기'}</button>${r.count&&!r.past?`<button type="button" class="parent-task" data-date="${r.date}" data-photos="true"><span><strong>부모 사진·이름 ${r.past?'보기':'등록'}</strong><small>${r.missingSire||r.missingDam?`부 사진 ${r.missingSire}마리 · 모 사진 ${r.missingDam}마리 미등록`:'부모 사진 등록 완료'}</small></span><span aria-hidden="true">›</span></button>`:''}</article>`;
+   return `<section class="my-broadcasts" aria-label="내 출품 관리">${upcoming.map(card).join('')||(!past.length?'<p class="vendor-empty">예정된 방송이 없어요. 전체 방송 달력에서 일정을 확인해 주세요.</p>':'')}${past.length?`<details class="vendor-secondary"><summary>지난 출품 내역 · ${past.length}회</summary>${past.map(card).join('')}</details>`:''}</section>`;
   }
  function renderInbound(){window.CreoInbound?.render({state,month,redraw:renderCalendar,openDate,save:async(carrier,originId)=>{state=await request({type:'inbound-origin',carrier,originId,expectedVersion:state.version})}})}
  async function load(){

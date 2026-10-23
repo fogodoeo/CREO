@@ -40,16 +40,16 @@ function assertShipmentScope(channel,data,record,body){
  if(!Object.prototype.hasOwnProperty.call(body,'expectedArchiveId'))return;
  if(!scopeWorkspace(channel,data,body.expectedArchiveId||'').items.some(i=>i.id===record.itemId))throw fail('회차가 변경되었습니다. 해당 회차를 다시 선택한 뒤 저장해 주세요.');
 }
-async function list(repository){
+async function list(repository,now=Date.now()){
  const catalog=await repository.getCatalog(),activeChannelId=await repository.getActiveChannel(),rounds=[];
  for(const c of catalog.channels.filter(c=>!c.id.startsWith('checkout-test-'))){
   const [items,archives]=await Promise.all([repository.listRecords(c.id,'item'),repository.listRecords(c.id,'archive')]);
   let date='',scopeError='';try{date=currentDate(c,items)}catch(e){scopeError=e.message}
   const current=scopeError?[]:scopeWorkspace(c,{items}).items;
-  rounds.push({channelId:c.id,familyId:family(c),name:displayName(c,date),date,status:c.status,active:activeChannelId===c.id,itemCount:current.length,soldCount:current.filter(i=>i.status==='sold').length,scopeError});
+  rounds.push({channelId:c.id,familyId:family(c),name:displayName(c,date),date,status:c.status,phase:require('./public/round-phase').fromItems(current,date,c.status,now),active:activeChannelId===c.id,itemCount:current.length,soldCount:current.filter(i=>i.status==='sold').length,scopeError});
   for(const a of archives.filter(a=>a.closedAt)){
    const rows=items.filter(i=>i.auctionArchiveId===a.id),dates=[...new Set(rows.map(itemDate).filter(Boolean))];
-   rounds.push({channelId:c.id,familyId:family(c),archiveId:a.id,name:displayName(c,dates.length===1?dates[0]:'',a.title||'이전 회차'),date:dates.length===1?dates[0]:'',status:'history',active:false,itemCount:rows.length,soldCount:rows.filter(i=>i.status==='sold').length});
+   rounds.push({channelId:c.id,familyId:family(c),archiveId:a.id,name:displayName(c,dates.length===1?dates[0]:'',a.title||'이전 회차'),date:dates.length===1?dates[0]:'',status:'history',phase:'finished',active:false,itemCount:rows.length,soldCount:rows.filter(i=>i.status==='sold').length});
   }
  }
  return {catalogVersion:catalog.version,channels:catalog.channels.filter(c=>!c.id.startsWith('checkout-test-')),activeChannelId,rounds:rounds.sort((a,b)=>b.date.localeCompare(a.date)||Number(b.active)-Number(a.active)||a.name.localeCompare(b.name,'ko'))};

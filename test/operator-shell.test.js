@@ -59,7 +59,7 @@ test('embedded page links preserve the shell while standalone tools cannot silen
  assert.deepEqual(messages.map(m=>m.data.href),['/promo-center.html?admin=1','/organizer-shipping.html?channel=national-cre&archive=old','/capture-setup.html']);assert.equal(messages[0].origin,'https://test');for(const id of ['tool','live'])assert.equal(document.getElementById(id).target,'_blank');assert(document.documentElement.classList.contains('operator-embedded'));
 });
 
-test('mobile context disclosure keeps program and round visible, preserves selection, and stays expanded on home and desktop',async()=>{
+test('one toolbar keeps the round visible and the selector collapsed on work pages at every width',async()=>{
  const {document,window}=parseHTML(fs.readFileSync(require.resolve('../public/index.html'),'utf8')),$=id=>document.getElementById(id);
  for(const s of document.querySelectorAll('select'))Object.defineProperty(s,'value',{value:'',writable:true});
  const changes=[],media={matches:false,addEventListener:(_,fn)=>changes.push(fn)},calls=[];
@@ -77,7 +77,7 @@ test('mobile context disclosure keeps program and round visible, preserves selec
  $('quick-round').value='national-cre@old';$('quick-round').dispatchEvent(new window.Event('change'));
  assert.equal(toggle.getAttribute('aria-expanded'),'true');assert.match($('operator-frame').src,/channel=national-cre&archive=old/);assert.equal($('operator-breadcrumb').textContent,'전국크레자랑 · 지난 회차');
  toggle.click();assert(panel.classList.contains('compact-closed'));
- media.matches=true;changes.forEach(fn=>fn());assert.equal(toggle.hidden,true);assert(!panel.classList.contains('compact-closed'));
+ media.matches=true;changes.forEach(fn=>fn());assert.equal(toggle.hidden,false);assert(panel.classList.contains('compact-closed'));
  media.matches=false;changes.forEach(fn=>fn());assert.equal(toggle.hidden,false);assert(panel.classList.contains('compact-closed'));
  const nav=search=>document.dispatchEvent(new window.CustomEvent('creo:operator-navigate',{detail:{search}}));
  nav('?channel=national-cre&view=vendors');assert.equal(toggle.textContent,'프로그램 변경');assert.equal($('round-field').hidden,true);assert.equal($('operator-breadcrumb').textContent,'전국크레자랑');
@@ -85,5 +85,8 @@ test('mobile context disclosure keeps program and round visible, preserves selec
  nav('?channel=national-cre&view=shipping');assert.equal(toggle.getAttribute('aria-expanded'),'false');assert.equal($('round-field').hidden,false);
  nav('?channel=national-cre&view=promo');assert.equal(toggle.hidden,true);assert.equal(panel.hidden,true);assert.equal($('operator-breadcrumb').textContent,'전체 운영');
  nav('?channel=national-cre');assert.equal(toggle.hidden,true);assert.equal(panel.hidden,false);assert(!panel.classList.contains('compact-closed'));
+ assert.equal(document.querySelectorAll('.operator-content-head').length,0);assert.equal($('operator-page-title').closest('header').classList.contains('operator-toolbar'),true);
+ assert.equal($('operator-reload').hidden,true);assert.equal($('refresh-home').hidden,false);
+ nav('?channel=national-cre&view=shipping');assert.equal($('operator-reload').hidden,false);assert.equal($('refresh-home').hidden,true);assert(document.body.classList.contains('operator-working'));
  assert(calls.every(([p,o])=>p==='operation-rounds'&&!o),'Opening or changing the context must not mutate auction state');
 });

@@ -35,10 +35,10 @@ test('identical lot IDs in different rounds retain separate parent drafts and up
 
 test('unlimited registration remains editable and needs attention after the former deadline',()=>{
  const {broadcastNeedsAction}=require('../public/vendor-task-state');
- const now='2026-10-18T12:00:00.000Z',date={startsAt:'2026-10-19T11:00:00.000Z'},reservation={session:{entriesDueAt:null},completed:0,entryLimit:4};
+ const now='2026-10-18T12:00:00.000Z',date={startsAt:'2026-10-19T11:00:00.000Z'},reservation={date:'2026-10-19',session:{entriesDueAt:null},completed:0,entryLimit:4};
  assert.equal(broadcastNeedsAction(date,reservation,now),true);
  assert.equal(broadcastNeedsAction(date,reservation,now,false),false);
- const start=source.indexOf('const registrationOpen='),end=source.indexOf('\n',start),context={state:{now},r:reservation};vm.createContext(context);vm.runInContext(source.slice(start,end)+'\nresult=registrationOpen(r)',context);assert.equal(context.result,true);
+ const start=source.indexOf('const registrationOpen='),end=source.indexOf('\n',start),context={state:{now},r:reservation,koreanDay:v=>new Date(Date.parse(v)+9*3600000).toISOString().slice(0,10)};vm.createContext(context);vm.runInContext(source.slice(start,end)+'\nresult=registrationOpen(r)',context);assert.equal(context.result,true);
  reservation.session.entriesDueAt='2026-10-18T11:00:00.000Z';vm.runInContext('result=registrationOpen(r)',context);assert.equal(context.result,false);
 });
 test('photo redraw replaces only the assigned-item table and preserves the bulk registration form',()=>{

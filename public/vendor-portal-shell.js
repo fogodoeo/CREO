@@ -85,10 +85,23 @@
    link.dataset.label=label;
    if(active){if(active===key)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');}
   }
-  header(companyName);showPromoNotice(nav,{});refreshAttention(nav);
+  header(companyName);refreshAttention(nav);
  }
  function applyAttention(nav,status){
-  for(const [key,label]of sections){const link=nav.querySelector('[data-vendor-section="'+key+'"]');if(!link)continue;const needed=!!status[key+'Attention'];link.classList.toggle('portal-attention',needed);if(key==='profile')link.classList.remove('registration-required');link.setAttribute('aria-label',label+(needed?' · 확인할 일 있음':''));}
+  const error=document.getElementById('vendor-task-error');if(error)error.hidden=true;
+  for(const [key,label]of sections){
+   const link=nav.querySelector('[data-vendor-section="'+key+'"]');if(!link)continue;
+   const needed=!!status[key+'Attention'],count=Math.max(0,Number(status[key+'Count'])||Number(needed));
+   link.classList.toggle('portal-attention',needed);if(key==='profile')link.classList.remove('registration-required');
+   let badge=link.querySelector('.vendor-nav-count');if(!badge){badge=document.createElement('b');badge.className='vendor-nav-count';badge.setAttribute('aria-hidden','true');link.append(badge);}
+   badge.hidden=!needed;badge.textContent=String(count);
+   link.setAttribute('aria-label',label+(needed?' · 확인할 일 '+count+'건':''));
+   if(key==='settlement'&&!status.settlementTarget){delete link.dataset.settlementEvent;delete link.dataset.settlementRound;}
+   if(key==='settlement'&&status.settlementTarget&&link.tagName==='A'){
+    link.dataset.settlementEvent=status.settlementTarget.channelId;link.dataset.settlementRound=status.settlementTarget.round;
+    const url=new URL(link.href,location.origin);url.searchParams.set('event',status.settlementTarget.channelId);url.searchParams.set('round',status.settlementTarget.round);link.href=url.pathname+url.search;
+   }
+  }
   const promo=nav.querySelector('[data-promo-nav]');if(promo){promo.classList.toggle('portal-attention',!!status.promoAttention);promo.setAttribute('aria-label','홍보 관리'+(status.promoAttention?' · 게시 일정 있음':''));}
   showPromoNotice(nav,status);
  }
@@ -135,10 +148,17 @@
   if(!company)return;
   const version=(refreshVersions.get(nav)||0)+1;refreshVersions.set(nav,version);
   const current=()=>nav.isConnected&&refreshVersions.get(nav)===version;
-  try{const response=await fetch('/api/platform/vendor-access/tasks?company='+encodeURIComponent(company),{cache:'no-store',credentials:'same-origin',signal:AbortSignal.timeout(10000)});if(!response.ok)throw Error('unavailable');const data=await response.json();if(current())applyAttention(nav,data);}catch{if(current())showPromoNotice(nav,{promoUnavailable:true});}
+  try{const response=await fetch('/api/platform/vendor-access/tasks?company='+encodeURIComponent(company),{cache:'no-store',credentials:'same-origin',signal:AbortSignal.timeout(10000)});if(!response.ok)throw Error('unavailable');const data=await response.json();if(current())applyAttention(nav,data);}catch{if(current())showTaskFailure(nav);}
+ }
+ function showTaskFailure(nav){
+  let message=document.getElementById('vendor-task-error');
+  if(!message){message=document.createElement('p');message.id='vendor-task-error';message.setAttribute('role','status');message.className='vendor-task-error';nav.before(message);}
+  message.innerHTML='할 일을 불러오지 못했어요. <button type="button">다시 확인</button>';message.hidden=false;
+  message.querySelector('button').onclick=()=>refreshAttention(nav);
  }
  function clear(nav){nav?.classList.remove('vendor-portal-nav');document.documentElement.classList.remove('vendor-shell-pending');document.body.classList.remove('national-vendor-shell','has-vendor-header');document.getElementById('vendor-shared-header')?.remove();}
  function refreshTasks(){const nav=document.querySelector('.vendor-portal-nav');if(nav)refreshAttention(nav);else{const host=document.getElementById('vendor-promo-notice');if(host?.dataset.company)mountPromo(host,host.dataset.company);}}
+ global.addEventListener('vendor-tasks-changed',refreshTasks);
  global.addEventListener('focus',refreshTasks);
  document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshTasks();});
  global.CreoVendorShell={mount,clear,header,applyAttention,refreshAttention,mountPromo};

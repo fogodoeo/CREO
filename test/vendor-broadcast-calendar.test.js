@@ -43,7 +43,9 @@ test('a recovered submitted edit stays local and cancel restores accepted fields
 test('personal entry cards precede collapsed calendar and delivery details and preserve historical access',async()=>{
  const f=await fixture(submitted());assert.ok(f.$('#calendar-content').firstElementChild.classList.contains('my-broadcasts'));
  assert.equal(!!f.$('#all-broadcast-dates').open,false);assert.equal(!!f.$('#vendor-delivery').open,false);assert.ok(f.$('.parent-task'));
- const past=submitted();past.now='2026-10-22T00:00:00Z';f.set(past);await f.$('#refresh').onclick();assert.match(f.$('.my-broadcasts').textContent,/지난 출품 내역/);assert.match(f.$('.my-broadcasts').textContent,/보기·수정/);
+ const past=submitted();past.now='2026-10-22T00:00:00Z';f.set(past);await f.$('#refresh').onclick();assert.match(f.$('.my-broadcasts').textContent,/지난 출품 내역/);assert.match(f.$('.my-broadcasts').textContent,/출품 내역 보기/);
+ assert.doesNotMatch(f.$('.my-broadcasts').textContent,/수정|미등록|등록 이어|등록 시작/);assert.equal(f.$('.parent-task'),null);
+ f.$('.vendor-round-card [data-date]').click();assert.equal(f.$('[name="weight-0"]').hasAttribute('readonly'),true);assert.equal(f.$('[data-action="bulk-reopen"]'),null);assert.equal(f.$('[data-bulk-photo="sire"]'),null);assert.equal(f.$('[data-action="pickup"]'),null);assert.equal(f.requests.length,0);
 });
 test('the parent shortcut opens editable fields without withdrawing and today stays current after broadcast start',async()=>{
  const data=submitted();data.now='2026-10-21T14:00:00Z';assert.equal(Tasks.vendorBroadcasts(data)[0].past,false);

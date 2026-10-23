@@ -66,14 +66,14 @@ function createNationalBroadcast(repository,{now=Date.now,entries,notificationSe
  async function view(context){
   const {state}=await read(context.channel),region=state.regions[context.vendor.id]??regionForVendor(context.vendor);
   const entryState=context.profile?await entries.read(context):{entries:[],parents:[],media:[],events:[]};
-  if(context.profile&&entries.auctionPhotos)entryState.auctionItems=await entries.auctionPhotos(context);
+  if(context.profile&&entries.auctionPhotos)entryState.auctionItems=(await entries.auctionPhotos(context)).map(item=>({...item,canEdit:item.canEdit&&item.date>=Legacy.day(now())}));
   const reservations=state.reservations.filter(r=>r.vendorId===context.vendor.id).map(r=>{
    return {...r,linkCode:undefined,session:policySession(state,r.date,context.vendors),...entryProgress(r,entryState.entries,limitFor(state,r,context.vendors)),proposal:null,history:state.audit.filter(a=>a.reservationId===r.id)};
   });
   const place=Origin.locality(inboundData,context.vendor.address,REGIONS[region]);
   return {mode:MODE,enabled:true,version:state.version,now:new Date(now()).toISOString(),channel:{id:context.channel.id,name:context.channel.name,status:context.channel.status},vendor:{id:context.vendor.id,name:context.vendor.name,region:REGIONS[region]||'',locality:place?{id:place.id,city:place.city,district:place.district,label:place.label}:null,inboundOrigins:state.inboundOrigins?.[context.vendor.id]||{}},inboundDestinations:Object.fromEntries(['parge','dodosi'].map(carrier=>[carrier,Inbound.destination(inboundData,carrier)])),inboundDestinationPhones:Object.fromEntries(['parge','dodosi'].map(carrier=>[carrier,Inbound.destinationPhone(inboundData,carrier)])),regions:REGIONS,dates:dates(state,[...reservations,...(entryState.auctionItems||[])]).map(d=>availability({...state,channelStatus:context.channel.status},d,region,context.vendor.id,context.vendors)),reservations,entryState,pendingCount:reservations.filter(r=>r.status==='confirmed'&&r.session.startsAt>new Date(now()).toISOString()&&!r.registrationComplete).length};
  }
- async function summary(context){const v=await view(context),open=v.entryState.events?.some(e=>e.id===context.channel.id&&e.entriesOpen),attentionCount=v.dates.filter(d=>d.regionName===v.vendor.region&&require('./public/vendor-task-state').broadcastNeedsAction(d,v.reservations.find(r=>r.date===d.date&&r.status==='confirmed'),v.now,open)).length;return {enabled:true,mode:MODE,pendingCount:v.pendingCount,attentionCount};}
+ async function summary(context){const v=await view(context),open=v.entryState.events?.some(e=>e.id===context.channel.id&&e.entriesOpen),attentionCount=v.dates.filter(d=>d.regionName===v.vendor.region&&require('./public/vendor-task-state').broadcastNeedsAction(d,v.reservations.find(r=>r.date===d.date&&r.status==='confirmed'),v.now,open)).length;return {enabled:true,mode:MODE,pendingCount:v.pendingCount,attentionCount,hasPastBroadcast:require('./public/vendor-task-state').vendorBroadcasts(v).some(r=>r.past)};}
  async function command(context,input,{operator=false}={}){
   if(!['draft','active'].includes(context.channel.status)||(!operator&&context.vendor?.active===false))throw fail('현재 방송을 변경할 수 없어요.',403);
   if(!repository.compareAndSwapRows)throw fail('방송 저장소를 확인해 주세요.',503);

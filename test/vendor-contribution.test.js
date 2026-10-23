@@ -101,7 +101,7 @@ test('P3 adds live points once and keeps the same total when the item sells', ()
 
 test('contribution counter animates from the visible value and retains decimal targets', () => {
     const source=fs.readFileSync(require.resolve('../public/auction-live.html'),'utf8');
-    const start=source.indexOf('const contributionCounters='),end=source.indexOf('function finishDiceVideo(',start);
+    const start=source.indexOf('const contributionCounters='),end=source.indexOf('function render(data)',start);
     const el={dataset:{contributionKey:'a',contributionValue:'0'},isConnected:true,textContent:''};
     let callback,now=0;
     const context={stage:{querySelectorAll:()=>[el]},performance:{now:()=>now},requestAnimationFrame:fn=>{callback=fn;return 1},cancelAnimationFrame:()=>{}};

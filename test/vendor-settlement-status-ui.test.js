@@ -10,6 +10,11 @@ function screen(row,options={}){
  return {panel:draw(),draw,data};
 }
 function render(row){return screen(row).panel;}
+test('whole-round settlement hides bank and report while preparing, then shows the whole residual',()=>{
+ const view=screen({remainingAmount:30000,totalAmount:40000,receivedAmount:10000,remittance:{ready:false,reason:'낙찰자 결제 1건을 먼저 확인해 주세요.'}});
+ assert.match(view.panel.textContent,/정산 준비 중/);assert.match(view.panel.textContent,/결제 1건/);assert.equal(view.panel.querySelector('#copy-organizer-bank'),null);assert.equal(view.panel.querySelector('#report-organizer-shipping').disabled,true);
+ view.data.shippingSettlement.vendors[0].remittance={ready:true};const panel=view.draw();assert.match(panel.textContent,/이번 회차에 보낼 전체 금액/);assert.equal(panel.querySelector('.settlement-amount').textContent,'30,000원');assert.equal(panel.querySelector('#report-organizer-shipping').disabled,false);assert.ok(panel.querySelector('#copy-organizer-bank'));
+});
 test('overpaid and not-yet-priced shipping stay visible without a misleading completed badge',()=>{
  const overpaid=render({remainingAmount:0,receivedAmount:9000,totalAmount:6000,overpaidAmount:3000});
  assert.ok(overpaid);assert.equal(overpaid.querySelector('.settlement-status.done'),null);assert.equal(overpaid.classList.contains('settlement-complete'),false);assert.match(overpaid.textContent,/초과 입금 3,000원 · 주관사 확인/);

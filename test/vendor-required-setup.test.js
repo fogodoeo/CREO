@@ -10,7 +10,7 @@ function setup(){
 test('required bank save reloads authoritative profile before opening the company broadcast',async()=>{
  const f=setup();await f.context.submit();
  assert.equal(f.calls[0].route,'profile');assert.equal(f.calls[0].body.companyId,'company-one');assert.equal(f.calls[0].body.revision,7);assert.equal(f.calls[0].body.bankName,'가상은행');assert.equal(f.calls[0].body.bankAccount,'000000');
- assert.deepEqual(f.calls.slice(1),['reload','booking']);
+ assert.deepEqual(f.calls.slice(1),['reload','home']);
 });
 test('failed save keeps typed values and does not navigate; retry and remaining required contact are safe',async()=>{
  const f=setup();f.context.request=async()=>{throw Error('저장 실패');};await assert.rejects(f.context.submit(),/저장 실패/);

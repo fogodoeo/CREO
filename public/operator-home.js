@@ -8,16 +8,19 @@ document.addEventListener('DOMContentLoaded',()=>{
   $('work-panel').hidden=true;state=Model.selection(catalog,rounds,activeId,search);const {channel,round,archiveId}=state,links=Model.links(state),isNational=Model.national(channel);
   $('quick-channel').innerHTML=Model.families(catalog,channel.id).map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
   $('quick-channel').value=Model.family(channel);$('round-field').hidden=rounds.filter(r=>r.familyId===Model.family(channel)).length<2;
-  $('quick-round').innerHTML=rounds.filter(r=>r.familyId===Model.family(channel)).map(r=>`<option value="${esc(Model.key(r))}">${esc(r.name)} · ${r.archiveId?'이전 기록':r.status==='draft'?'준비 중':r.active?'현재 송출':'결제·배송'}</option>`).join('');if(round)$('quick-round').value=Model.key(round);
+  $('quick-round').innerHTML=rounds.filter(r=>r.familyId===Model.family(channel)).map(r=>`<option value="${esc(Model.key(r))}">${esc(r.name)} · ${r.phase==='finished'||r.archiveId?'방송 종료':r.phase==='live'?'경매 진행 중':r.status==='draft'?'준비 중':'방송 준비'}</option>`).join('');if(round)$('quick-round').value=Model.key(round);
   for(const [id,name] of Object.entries({'quick-workspace':'workspace','quick-broadcast':'broadcast','quick-shipping':'shipping','quick-print':'print','quick-shipping-status':'shippingStatus','quick-parge':'parge','quick-pinball':'pinball','quick-captures':'captures','quick-survey':'survey','quick-settings':'settings','quick-rounds':'archives','quick-intake':'intake','quick-bookings':'bookings','manage-rounds':'rounds'}))link(id,links[name]);
   link('quick-report',links.report);
   link('quick-organizer',links.organizer);
   if(links.workspace)link('quick-workspace',links.workspace+'&tab=items');
+  for(const id of ['quick-workspace','quick-broadcast'])if(state.finished)$(id).hidden=true;
+  const priority=state.finished?['quick-shipping','quick-organizer','quick-workspace','quick-broadcast']:['quick-workspace','quick-broadcast','quick-shipping','quick-organizer'];
+  let step=0;for(const id of priority){document.querySelector('.pipeline').append($(id));if(!$(id).hidden)$(id).querySelector('.step').textContent=String(++step).padStart(2,'0');}
   document.querySelector('.pipeline').style.setProperty('--operation-count',Math.max(1,document.querySelectorAll('.pipeline a:not([hidden])').length));
   $('round-tools').hidden=![...$('round-tools').querySelectorAll('a')].some(a=>!a.hidden);
   $('manage-rounds').textContent=isNational?'회차 준비·방송 전환':'결과 보관·순위';$('national-intake').hidden=!isNational;
-  $('work-title').textContent=state.label;$('work-badge').textContent=archiveId?'이전 회차 기록':state.active?'현재 송출 회차':channel.status==='draft'?'준비 중':'결제·배송 처리';$('work-badge').dataset.active=String(state.active);
-  $('scope-note').textContent=archiveId?'이 회차의 낙찰·배송·인쇄 자료를 확인합니다.':channel.status==='draft'?'출품과 순서를 확인한 뒤, 회차 관리에서 방송을 전환하세요.':'아래 메뉴는 모두 선택한 회차의 자료로 열립니다.';
+  $('work-title').textContent=state.label;$('work-badge').textContent=state.finished?'방송 종료 · 낙찰·정산':round.phase==='live'?'경매 진행 중':'방송 준비';$('work-badge').dataset.active=String(round.phase==='live');
+  $('scope-note').textContent=state.finished?'이 회차의 입금·배송·정산을 확인하세요.':channel.status==='draft'?'출품과 순서를 확인한 뒤, 회차 관리에서 방송을 전환하세요.':'아래 메뉴는 모두 선택한 회차의 자료로 열립니다.';
   $('onair-name').textContent=rounds.find(r=>r.channelId===activeId&&!r.archiveId)?.name||catalog.channels.find(c=>c.id===activeId)?.name||'방송 회차 없음';
   $('selection-panel').hidden=false;$('work-panel').hidden=false;$('load-error').hidden=true;$('platform-status').textContent='';document.title=state.label+' · 운영 홈';
   const params=new URLSearchParams(search),shellParams=new URLSearchParams(state.home.split('?')[1]);for(const k of ['view','vendor','action','status'])if(params.get(k))shellParams.set(k,params.get(k));

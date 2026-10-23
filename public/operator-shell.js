@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded',()=>{
  $('operator-frame').setAttribute('allowfullscreen','');
  const desktop=window.matchMedia('(min-width:761px)');const syncMenu=()=>{$('operator-menu').open=desktop.matches;};syncMenu();desktop.addEventListener('change',syncMenu);
  function syncContext(){
-  const compact=Boolean(state)&&!desktop.matches&&current!=='home'&&contextScope!=='global',toggle=$('operator-context-toggle'),panel=$('selection-panel');
+  const compact=Boolean(state)&&current!=='home'&&contextScope!=='global',toggle=$('operator-context-toggle'),panel=$('selection-panel');
   toggle.hidden=!compact;toggle.setAttribute('aria-expanded',String(compact&&contextOpen));toggle.textContent=contextOpen?'선택 닫기':contextScope==='program'?'프로그램 변경':'방송일 변경';
   panel.classList.toggle('compact-closed',compact&&!contextOpen);
   if(compact&&!contextOpen&&panel.contains(document.activeElement))toggle.focus();
@@ -15,13 +15,13 @@ document.addEventListener('DOMContentLoaded',()=>{
  function clear(){source='';dirty=false;busy=false;$('operator-frame').removeAttribute('src');$('operator-content').hidden=true;}
  function navigate(search,push=true){if(!allowed())return false;dirty=false;document.dispatchEvent(new CustomEvent('creo:operator-navigate',{detail:{search,push}}));return true;}
  function render(detail){state=detail.state;const previous=current,q=new URLSearchParams(location.search);current=q.get('view')||'home';if(current==='bookings'&&q.get('action')==='region')current='regions';const e=Model.entry(state,current);if(current!==previous)contextOpen=false;contextScope=e?.scope||'round';
-  $('admin-nav').innerHTML=`<a class="nav-home" href="${esc(Model.home(state))}"${current==='home'?' aria-current="page"':''}>운영 홈</a>`+Model.menu(state).map(g=>`<details name="operator-section"${g.id===e?.group?' open':''}><summary>${esc(g.label)}</summary><nav aria-label="${esc(g.label)}">${g.entries.map(n=>`<a href="${esc(Model.home(state,n.key))}"${n.key===current?' aria-current="page"':''}>${esc(n.label)}</a>`).join('')}</nav></details>`).join('');
+  $('admin-nav').innerHTML=`<a class="nav-home" href="${esc(Model.home(state))}"${current==='home'?' aria-current="page"':''}>운영 홈</a>`+Model.menu(state).map(g=>`<details name="operator-section"${g.id===e?.group||current==='home'&&state.finished&&g.id==='finance'?' open':''}><summary data-work-group="${g.id}">${esc(g.label)}</summary><nav aria-label="${esc(g.label)}">${g.entries.map(n=>`<a data-work-key="${n.key}" href="${esc(Model.home(state,n.key))}"${n.key===current?' aria-current="page"':''}>${esc(n.label)}</a>`).join('')}</nav></details>`).join('');
   const program=CreoOperatorHome.families(detail.catalog,state.channel.id).find(p=>p.id===CreoOperatorHome.family(state.channel))?.name||'';
   $('selection-panel').hidden=e?.scope==='global';if(e?.scope==='program'){$('round-field').hidden=true;$('manage-rounds').hidden=true;}$('work-panel').hidden=current!=='home';$('operator-content').hidden=current==='home';$('operator-page-title').textContent=e?.label||'열 수 없는 메뉴';$('operator-breadcrumb').textContent=e?.scope==='global'?'전체 운영':e?.scope==='program'?(program||'전체 업체'):program&&!state.label.includes(program)?program+' · '+state.label:state.label;syncContext();
   document.title=(e?.label||'운영 홈')+' · CREO';
-  $('refresh-home').hidden=current!=='home';
+  $('refresh-home').hidden=current!=='home';$('operator-reload').hidden=current==='home';$('operator-page-title').hidden=current==='home';document.body.classList.toggle('operator-working',current!=='home');document.querySelector('.operator-more').open=false;
   document.querySelector('.skip').href=current==='home'?'#work-title':'#operator-page-title';
-  if(current==='home'){clear();return;}
+  if(current==='home'){$('operator-standalone').hidden=true;clear();return;}
   // The installed Parge extension is scoped to a top-level dispatch page.
   // Its native page supplies the same navigation without changing that contract.
   if(current==='parge'&&e?.href){location.replace(e.href);return;}
@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded',()=>{
  document.addEventListener('creo:operator-ready',e=>render(e.detail));
  document.addEventListener('creo:operator-reset',clear);
  document.addEventListener('creo:operator-before-navigate',e=>{if(!allowed())e.preventDefault();else dirty=false;});
- $('operator-frame').addEventListener('load',()=>{try{const doc=$('operator-frame').contentDocument;if(doc&&!doc.documentElement.classList.contains('operator-embedded')){const bridge=doc.createElement('script');bridge.src='/operator-embed.js?v=20261023-item-editor';doc.head.appendChild(bridge);}}catch(_){}$('operator-loading').hidden=true;});
+ $('operator-frame').addEventListener('load',()=>{try{const doc=$('operator-frame').contentDocument;if(doc&&!doc.documentElement.classList.contains('operator-embedded')){const bridge=doc.createElement('script');bridge.src='/operator-embed.js?v=20261023-whole-work';doc.head.appendChild(bridge);}}catch(_){}$('operator-loading').hidden=true;});
  $('operator-reload').addEventListener('click',()=>{if(!allowed())return;dirty=false;if(source){$('operator-loading').hidden=false;$('operator-frame').src=source;}});
  document.addEventListener('click',event=>{const a=event.target.closest?.('a');if(!a||!state||event.defaultPrevented||event.button!==0||event.ctrlKey||event.metaKey||event.shiftKey||event.altKey||a.target==='_blank'||a.hasAttribute('download'))return;
   const url=new URL(a.href,location.href);if(url.origin!==location.origin)return;

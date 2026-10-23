@@ -108,7 +108,7 @@ test('BASIC uses the platform renderer with a dedicated dice team page', () => {
     const basic = channel('basic', { broadcastProfile: 'basic-dice' });
     const profile = Profiles.resolve(basic);
     assert.equal(profile.engine, 'platform');
-    assert.equal(profile.settings.diceAssets, true);
+    assert.notEqual(profile.settings.diceAssets, true);
     assert.equal(Profiles.pageContract(basic, 3).id, 'dice-teams');
     assert.deepEqual(Profiles.pageContract(basic, 3).slots, ['teamContribution', 'dice']);
     assert.equal(Profiles.defaultState(basic).page3On, true);

@@ -102,8 +102,9 @@ test('Daegu route selection replaces the missing timetable with the selected lat
 test('submitted-entry delivery details show the same destination contacts and preserve pickup state',()=>{
  const code=fs.readFileSync(require.resolve('../public/vendor-broadcast.js'),'utf8'),start=code.indexOf('function pickupBlock('),end=code.indexOf('function editable(',start);
  assert.ok(start>=0&&end>start);
- const context=vm.createContext({state:{inboundDestinations:data.destinations,inboundDestinationPhones:data.destinationPhones},esc:String,CreoVendorTasks:require('../public/vendor-task-state')});
+ const context=vm.createContext({state:{inboundDestinations:data.destinations,inboundDestinationPhones:data.destinationPhones},registrationOpen:r=>!r.past,esc:String,CreoVendorTasks:require('../public/vendor-task-state')});
  vm.runInContext(code.slice(start,end),context);
  assert.equal(context.pickupBlock({completed:3}),'');
+ assert.equal(context.pickupBlock({completed:4,past:true}),'');
  for(const completed of [4])for(const pickup of [false,true]){const html=context.pickupBlock({completed,pickup});assert.match(html,/href="tel:01050029163"/);assert.match(html,/href="tel:01025088240"/);assert.ok(html.includes('<span>'+(pickup?'수거 완료':'수거 전')+'</span>'));}
 });

@@ -29,7 +29,7 @@ function normalizeEntry(input = {}) {
     };
 }
 
-function createVendorEntries(repository, { resolveMediaUrl = async value => value, maxMediaBytes = 100000000 } = {}) {
+function createVendorEntries(repository, { resolveMediaUrl = async value => value, maxMediaBytes = 100000000, now = Date.now } = {}) {
     maxMediaBytes=Number.isSafeInteger(maxMediaBytes)&&maxMediaBytes>0?maxMediaBytes:100000000;
     async function resolvePhoto(photo) {
         const result = { ...photo };
@@ -155,6 +155,7 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
             const state=await readOwner(ownerId),key=context.channel.id+':'+type+':'+requestId;
             const previous=state.requests.find(request=>request.key===key);
             if(previous){if(previous.signature!==signature)throw fail('같은 요청으로 다른 내용을 저장할 수 없습니다. 다시 시도해 주세요.');return {state:await read(context),result:previous.result,duplicate:true}}
+            if(!operator&&context.nationalBroadcast?.date<context.nationalBroadcast?.today)throw fail('방송이 종료되어 출품 내역만 확인할 수 있어요.');
             if(type!=='parent'&&!(operator||type==='delete'?['draft','active'].includes(context.channel.status):entriesOpen(context,await policy(context.channel.id))))throw fail('출품 접수가 마감됐어요. 운영자에게 문의해 주세요.');
             if(type==='parent'&&!['active','draft'].includes(context.channel.status))throw fail('진행 중인 경매의 업체 페이지에서 부모 정보를 수정해 주세요.');
             const now=new Date().toISOString();let result,item=null;
@@ -315,7 +316,7 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
                 listRecords:repository.listRecords.bind(repository),
                 upsertRows:async values=>{for(const row of values)staged.set(row.key,{...row});}
             };
-            const service=createVendorEntries(stage,{resolveMediaUrl,maxMediaBytes}),results=[];
+            const service=createVendorEntries(stage,{resolveMediaUrl,maxMediaBytes,now}),results=[];
             for(const row of rows){
                 try{results.push(await service.command({...context,nationalBroadcast:row.broadcast},{...row.input,requestId:hash({requestId})+'-'+row.broadcast.slot}));}
                 catch(error){throw fail(`개체 ${row.broadcast.slot+1}: ${error.message}`,error.status||500);}
@@ -446,7 +447,7 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
             return {
                 ...require('./checkout-item-data').checkoutItem(item), channelId:context.channel.id, date:item.attributes.broadcastDate,
                 status:item.status, updatedAt:item.updatedAt,
-                canEdit:!AuctionRounds.isArchived(item)&&['draft','active'].includes(context.channel.status)&&context.vendor.active!==false&&['waiting','live','passed'].includes(item.status),
+                canEdit:item.attributes.broadcastDate>=new Date(now()+9*3600000).toISOString().slice(0,10)&&!AuctionRounds.isArchived(item)&&['draft','active'].includes(context.channel.status)&&context.vendor.active!==false&&['waiting','live','passed'].includes(item.status),
                 parentPhotoIds:Object.fromEntries(['sire','dam'].map(role=>{
                     const url=parents.find(p=>p.role===role)?.media?.[0]?.url;
                     return [role,state.media.find(m=>m.url===url)?.id||''];
@@ -467,6 +468,7 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
             AuctionRounds.assertCurrent(item);
             if(!item||item.vendorId!==context.vendor.id)throw fail('해당 업체의 개체만 변경할 수 있어요.',403);
             if(item.attributes?.roundTargetChannelId)throw fail('회차로 이동한 개체입니다. 해당 방송일에서 수정해 주세요.');
+            if(item.attributes?.broadcastDate&&item.attributes.broadcastDate<new Date(now()+9*3600000).toISOString().slice(0,10))throw fail('방송이 종료되어 출품 내역만 확인할 수 있어요.');
             if(!['waiting','live','passed'].includes(item.status))throw fail('낙찰·종료된 개체는 운영자에게 문의해 주세요.');
             if(!input.expectedUpdatedAt||input.expectedUpdatedAt!==item.updatedAt)throw fail('개체가 변경됐어요. 최신 자료를 불러와 주세요.');
             const entry=state.entries.find(e=>e.itemId===id&&(e.auctionChannelId||e.channelId)===context.channel.id&&e.channelVendorId===context.vendor.id&&e.approved);

@@ -2,17 +2,18 @@
 <html lang="ko"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0b0d10"><title>운영 홈 · CREO</title>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-<link rel="stylesheet" href="operator-home.css?v=20261020-round-access"><link rel="stylesheet" href="/ongdong-brand.css?v=20260908-logo">
-<script src="platform-client.js?v=20261023-finance-nav" defer></script><script src="channel-runtime.js?v=20261023-finance-nav" defer></script><script src="operator-home-model.js?v=20261023-finance-nav" defer></script><script src="operator-home.js?v=20261023-program-directory" defer></script><script src="/ongdong-brand.js?v=20260908-logo" defer></script>
-<link rel="stylesheet" href="operator-shell.css?v=20261023-compact-context">
-<script src="operator-shell-model.js?v=20261023-clab-intake" defer></script><script src="operator-shell.js?v=20261023-item-editor" defer></script>
+<link rel="stylesheet" href="operator-home.css?v=20261023-whole-work"><link rel="stylesheet" href="/ongdong-brand.css?v=20260908-logo">
+<script src="platform-client.js?v=20261023-finance-nav" defer></script><script src="channel-runtime.js?v=20261023-finance-nav" defer></script><script src="operator-home-model.js?v=20261023-whole-work" defer></script><script src="operator-home.js?v=20261023-whole-work" defer></script><script src="/ongdong-brand.js?v=20260908-logo" defer></script>
+<link rel="stylesheet" href="operator-shell.css?v=20261023-whole-work">
+<script src="operator-shell-model.js?v=20261023-whole-work" defer></script><script src="operator-shell.js?v=20261023-whole-work" defer></script>
+<script src="/operator-work.js?v=20261023-round-work" defer></script>
 </head><body>
 <a class="skip" href="#work-title">작업 메뉴로 건너뛰기</a>
 <section class="login" id="login-gate" aria-labelledby="login-title"><form class="login-card" id="login-form"><p class="eyebrow">CREO 운영</p><h1 id="login-title">관리자 로그인</h1><label for="admin-password">비밀번호</label><input id="admin-password" name="password" type="password" autocomplete="current-password" required><button id="login-submit">로그인</button><p id="login-error" role="alert"></p><button id="logout-retry" type="button" hidden>로그아웃 다시 시도</button></form></section>
 <main class="shell" id="dashboard" hidden>
  <aside class="operator-sidebar" aria-label="관리 메뉴"><a class="brand" href="/main">CREO<span>운영 관리</span></a><details id="operator-menu"><summary>메뉴</summary><nav id="admin-nav" aria-label="전체 관리 메뉴"></nav></details></aside>
  <div class="operator-main">
- <header class="topbar"><a class="brand" href="/main">운영 관리</a><span id="operator-breadcrumb">운영 홈</span><button class="secondary" id="refresh-home">새로고침</button><button class="secondary" id="logout-button">로그아웃</button></header>
+ <header class="topbar operator-toolbar"><div class="operator-heading"><a class="brand" href="/main">운영 관리</a><h1 id="operator-page-title" tabindex="-1" hidden></h1><span id="operator-breadcrumb">운영 홈</span></div><div class="operator-actions"><button id="operator-context-toggle" type="button" aria-controls="selection-panel" aria-expanded="false" hidden>방송일 변경</button><button id="refresh-home" type="button">새로고침</button><button id="operator-reload" type="button" hidden>새로고침</button><details class="operator-more"><summary>더보기</summary><nav aria-label="화면 도구"><a id="operator-standalone" target="_blank" rel="noopener" hidden>현재 화면 별도 창</a><button id="logout-button" type="button">로그아웃</button></nav></details></div></header>
  <p id="platform-status" role="status" aria-live="polite">운영 정보를 불러오는 중…</p>
  <div id="load-error" role="alert" hidden><p id="load-error-text"></p><a href="/main">현재 방송 회차로 돌아가기</a></div>
  <section class="selection" id="selection-panel" hidden aria-label="작업할 프로그램과 방송일">
@@ -20,8 +21,9 @@
   <div class="field" id="round-field"><label for="quick-round">방송일 · 회차</label><select id="quick-round"></select></div>
   <a class="secondary" id="manage-rounds" href="national-rounds.html">회차 준비·방송 전환</a>
  </section>
+ <p id="work-summary-status" role="status" hidden></p>
  <div id="work-panel" hidden>
- <section class="work-heading" aria-labelledby="work-title"><div><span class="badge" id="work-badge"></span><h2 id="work-title" tabindex="-1"></h2><p id="scope-note"></p></div><div class="onair"><span>현재 송출</span><strong id="onair-name"></strong><p>작업 회차 선택만으로 송출은 바뀌지 않습니다.</p></div></section>
+ <section class="work-heading" aria-labelledby="work-title"><div><span class="badge" id="work-badge"></span><h2 id="work-title" tabindex="-1"></h2><p id="scope-note"></p></div><div class="onair"><span>송출 연결 회차</span><strong id="onair-name"></strong><p>작업 회차 선택만으로 송출은 바뀌지 않습니다.</p></div></section>
  <nav class="pipeline" aria-label="선택한 회차의 작업">
   <a class="operation" id="quick-workspace"><span class="step">01</span><strong>출품·순서</strong><span>개체 정보와 진행 순서 확인</span></a>
   <a class="operation" id="quick-broadcast"><span class="step">02</span><strong>방송 진행</strong><span>화면 배치·미리보기·방송 전환</span></a>
@@ -34,6 +36,6 @@
  <section class="intake" id="national-intake" hidden aria-labelledby="intake-title"><div><h2 id="intake-title">전국크레자랑 접수</h2><p>업체 접수는 공통으로 받고, 승인 개체는 방송일에 맞춰 회차로 가져옵니다.</p></div><nav aria-label="전국크레자랑 공통 접수"><a id="quick-intake">출품 접수·승인</a><a id="quick-bookings">방송 예약 관리</a></nav></section>
  <details class="settings"><summary>설정·보관 자료</summary><nav class="tool-links" aria-label="설정과 보관 자료"><a id="quick-settings">채널 설정</a><a id="quick-rounds">결과 보관·순위</a><a href="/shipping-rates.html">공통 배송 요금</a></nav><p>방송 디자인은 ‘방송 진행’, 핀볼 스킨은 ‘핀볼 추첨’에서 설정합니다.</p></details>
  </div>
- <section id="operator-content" hidden aria-labelledby="operator-page-title"><header class="operator-content-head"><h1 id="operator-page-title" tabindex="-1"></h1><div class="operator-actions"><button id="operator-context-toggle" type="button" aria-controls="selection-panel" aria-expanded="false" hidden>방송일 변경</button><button id="operator-reload" type="button">새로고침</button><a id="operator-standalone" class="secondary" target="_blank" rel="noopener">별도 창</a></div></header><p id="operator-loading" role="status">화면을 불러오는 중…</p><p id="operator-unavailable" role="alert" hidden>이 회차에서 사용할 수 없는 메뉴입니다. 왼쪽에서 다른 메뉴를 선택해 주세요.</p><iframe id="operator-frame" title="관리 작업 화면"></iframe></section>
+ <section id="operator-content" hidden aria-labelledby="operator-page-title"><p id="operator-loading" role="status">화면을 불러오는 중…</p><p id="operator-unavailable" role="alert" hidden>이 회차에서 사용할 수 없는 메뉴입니다. 왼쪽에서 다른 메뉴를 선택해 주세요.</p><iframe id="operator-frame" title="관리 작업 화면"></iframe></section>
  </div>
 </main></body></html>

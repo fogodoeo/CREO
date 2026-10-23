@@ -335,7 +335,7 @@ async function shippingRemittanceFixture(){
  await repository.upsertRecord('alpha','vendor',{id:'v',name:'아주긴업체이름'.repeat(10),phone:'01011112222'});
  await repository.upsertRecord('alpha','vendor',{id:'other',name:'다른업체'});
  await repository.upsertRecord('alpha','item',{id:'i',vendorId:'v',name:'A01',lotNumber:1,status:'sold',soldPrice:100000,winnerPhone:'01012345678'});
- await repository.upsertRecord('alpha','shipment',{id:'s',itemId:'i',vendorId:'v',method:'delivery',cost:19000,paymentStatus:'pending'});
+ await repository.upsertRecord('alpha','shipment',{id:'s',itemId:'i',vendorId:'v',method:'delivery',address:'가상 거점',cost:19000,paymentStatus:'paid'});
  const sends=[];
  const notificationService=new CheckoutNotificationService({repository,provider:{readiness:()=>({ready:true,missing:[]}),async send(record){sends.push(record);return {messageId:'fake'}}}});
  const options={repository,notificationService,adminSessionSecret:'remittance-test',logger:{error(){},warn(){}}};
@@ -397,6 +397,8 @@ test('shipping report failure saves neither ledger nor notification; amount chan
  let state=(await call(f.api,'GET',f.route)).json(),v=state.vendors.find(v=>v.vendorId==='v');
  assert.equal(v.pendingReport.amount,19000);assert.equal(v.remainingAmount,26000);
  await call(f.api,'POST',f.route+'/review',{vendorId:'v',reportId:v.pendingReport.id,expectedAmount:19000,action:'confirmed'});
+ assert.equal((await call(f.api,'POST',endpoint,{...f.body,requestId:'remit-extra',expectedAmount:7000},'')).status,409,'a later charge must be fully ready before another whole-balance report');
+ await f.repository.upsertRecord('alpha','shipment',{id:'s',itemId:'i',vendorId:'v',method:'delivery',address:'가상 변경 거점',cost:26000,paymentStatus:'paid'});
  assert.equal((await call(f.api,'POST',endpoint,{...f.body,requestId:'remit-extra',expectedAmount:7000},'')).status,200);
  state=(await call(f.api,'GET',f.route)).json();v=state.vendors.find(v=>v.vendorId==='v');assert.equal(v.pendingReport.amount,7000);
  await call(f.api,'POST',f.route+'/review',{vendorId:'v',reportId:v.pendingReport.id,expectedAmount:7000,action:'rejected'});

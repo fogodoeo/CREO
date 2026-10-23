@@ -1,15 +1,14 @@
 (function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.CreoStudioAssetSave=api;})(typeof globalThis==='object'?globalThis:this,function(){
  'use strict';
  const imageTypes=['image/png','image/jpeg','image/webp','image/gif','image/svg+xml'];
- function mime(file){return file?.type||(/\.mov$/i.test(file?.name||'')?'video/quicktime':/\.mp4$/i.test(file?.name||'')?'video/mp4':'');}
+ function mime(file){return file?.type||'';}
  function validate(record,file){
   if(!String(record.name||'').trim())return '이름을 입력해 주세요.';
   if(record.kind==='vendor'&&!String(record.targetName||'').trim())return '연결할 업체명을 입력해 주세요.';
-  if(record.kind==='dice'&&!/^[1-6]$/.test(record.targetName))return '주사위 눈금을 1~6 중에서 입력해 주세요.';
+  if(!['sponsor','vendor'].includes(record.kind))return '협찬 로고 또는 업체 로고를 선택해 주세요.';
   if(file){
-   const video=record.kind==='dice';
-   if(!(video?['video/mp4','video/quicktime']:imageTypes).includes(mime(file)))return video?'MP4 또는 MOV 영상을 선택해 주세요.':'PNG, JPG, WEBP, GIF 또는 SVG 이미지를 선택해 주세요.';
-   if(file.size>(video?100:8)*1024*1024)return video?'원본 영상은 100MB 이하로 선택해 주세요.':'이미지는 8MB 이하로 선택해 주세요.';
+   if(!imageTypes.includes(mime(file)))return 'PNG, JPG, WEBP, GIF 또는 SVG 이미지를 선택해 주세요.';
+   if(file.size>8*1024*1024)return '이미지는 8MB 이하로 선택해 주세요.';
   }else if(!/^(https?:\/\/|\/[^/]|assets\/)/i.test(String(record.imageUrl||'').trim()))return '파일을 선택하거나 파일 주소를 입력해 주세요.';
   return '';
  }

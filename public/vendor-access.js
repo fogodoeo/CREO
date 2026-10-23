@@ -12,10 +12,17 @@
  async function run(work){if(busy)return;busy=true;error('');document.body.setAttribute('aria-busy','true');document.querySelectorAll('button,input,select').forEach(el=>{el.dataset.wasDisabled=String(el.disabled);el.disabled=true;});let invalid;try{await work();}catch(e){if(!state){state={};go('unavailable');}error(e.name==='TimeoutError'||e instanceof TypeError?'연결을 확인하고 다시 시도해 주세요.':e.message);if(e.status===422&&['phone','verify'].includes(screen)){invalid=$(screen==='phone'?'phone':'otp-code');invalid?.setAttribute('aria-invalid','true');invalid?.setAttribute('aria-describedby','page-error');}}finally{busy=false;document.body.removeAttribute('aria-busy');document.querySelectorAll('[data-was-disabled]').forEach(el=>{el.disabled=el.dataset.wasDisabled==='true';delete el.dataset.wasDisabled;});invalid?.focus();}}
  function go(next){screen=next;error('');render();$(next==='verify'?'otp-code':next==='phone'?'phone':'main')?.focus({preventScroll:true});window.scrollTo(0,0);}
  async function refresh(){state=await request('session');return state;}
- async function navigate(section='booking',id=company){if(section==='profile'){location.href='/vendor-access.html?section=profile&company='+encodeURIComponent(id);return;}const data=await request('select',{id});const params=new URLSearchParams({event:'national-cre',token:data.token,portal:id});if(section==='entries')params.set('section','entries');location.href=(section==='booking'?'/vendor-broadcast.html':section==='settlement'?'/vendor-checkout.html':'/vendor-entries.html')+'?'+params;}
+ async function navigate(section='home',id=company){
+  if(section==='profile'){location.href='/vendor-access.html?section=profile&company='+encodeURIComponent(id);return;}
+  let target=null;
+  if(section==='home'||section==='settlement'){const tasks=await request('tasks?company='+encodeURIComponent(id));if(section==='home')section=tasks.defaultSection==='settlement'?'settlement':'booking';if(section==='settlement')target=tasks.settlementTarget;}
+  const data=await request('select',{id}),params=new URLSearchParams({event:target?.channelId||'national-cre',token:data.token,portal:id});
+  if(target?.round)params.set('round',target.round);if(section==='entries')params.set('section','entries');
+  location.href=(section==='booking'?'/vendor-broadcast.html':section==='settlement'?'/vendor-checkout.html':'/vendor-entries.html')+'?'+params;
+ }
  async function enter(){await refresh();if(!state.available){go('unavailable');return;}if(!state.authenticated){go('login');return;}if(state.phoneVerificationRequired){go('verify-required');return;}if(state.requestResults?.length){go('request-result');return;}if(q.get('section')==='companies'&&state.companies.length){go('companies');return;}if(q.get('section')==='profile'&&state.companies.some(c=>c.id===company)){const c=state.companies.find(c=>c.id===company);if(c.canClaim)await request('claim',{id:company});await loadProfile();return;}if(state.companies.some(c=>c.id===company)){await chooseCompany(company);return;}if(state.ownerSetups?.length){go('owner-pending');return;}if(company){const selected=(await request('search?id='+encodeURIComponent(company))).companies[0];if(selected){await selectDirectoryCompany(selected);return;}company='';sessionStorage.removeItem('vendor-setup-company');}if(state.companies.length===1){await chooseCompany(state.companies[0].id);return;}if(state.companies.length){go('companies');return;}if(state.requests.length){go('pending');return;}await openDirectory();}
  async function loadProfile(){profile=await request('profile',{companyId:company});go('profile');}
-  async function chooseCompany(id){let selected=state.companies?.find(c=>c.id===id);if(!selected){await refresh();selected=state.companies?.find(c=>c.id===id);}if(!state.authenticated||state.phoneVerificationRequired||!selected)throw Error('업체 연결을 확인하고 다시 선택해 주세요.');if(selected.canClaim){await request('claim',{id});selected.canClaim=false;}company=id;sessionStorage.removeItem('vendor-setup-company');if(selected.setupRequired||q.has('review')){await loadProfile();return;}if(q.get('section')==='channels'){go('channels');return;}await navigate('booking');}
+  async function chooseCompany(id){let selected=state.companies?.find(c=>c.id===id);if(!selected){await refresh();selected=state.companies?.find(c=>c.id===id);}if(!state.authenticated||state.phoneVerificationRequired||!selected)throw Error('업체 연결을 확인하고 다시 선택해 주세요.');if(selected.canClaim){await request('claim',{id});selected.canClaim=false;}company=id;sessionStorage.removeItem('vendor-setup-company');if(selected.setupRequired||q.has('review')){await loadProfile();return;}if(q.get('section')==='channels'){go('channels');return;}await navigate('home');}
  async function selectDirectoryCompany(selected){
   directoryRegion=selected.region;
   if(selected.connected){await chooseCompany(selected.id);return;}
@@ -63,7 +70,7 @@
   }
   bind('retry',enter);bind('phone-login',()=>{sessionStorage.setItem('vendor-remember',String($('remember').checked));go('phone');});
   bind('verify-phone',()=>go('phone'));
-  bind('open-national',()=>navigate('booking'));
+  bind('open-national',()=>navigate('home'));
   bind('other-company',openDirectory);
   if($('directory-region'))$('directory-region').onchange=()=>run(loadDirectory);
   if($('kakao-form'))$('kakao-form').onsubmit=()=>{sessionStorage.setItem('vendor-remember',String($('remember').checked));};
@@ -138,8 +145,8 @@
  }
  function bindProfile(){
   bind('edit-contact',()=>openEditor('contact'));bind('edit-bank',()=>openEditor('bank'));bind('edit-address',()=>openEditor('address'));bind('refresh-profile',loadProfile);bind('choose-company',async()=>{await refresh();go('companies');});
-  bind('profile-next',()=>profile.setupRequired?openEditor(profile.required.includes('contact')?'contact':'bank'):navigate('booking'));
-  form('setup-bank-form',async()=>{await request('profile',{companyId:company,action:'bank',revision:profile.revision,bankName:$('setup-bank-name').value.trim(),bankAccount:$('setup-bank-account').value.trim(),bankHolder:$('setup-bank-holder').value.trim()});await loadProfile();if(!profile.setupRequired)await navigate('booking');});
+  bind('profile-next',()=>profile.setupRequired?openEditor(profile.required.includes('contact')?'contact':'bank'):navigate('home'));
+  form('setup-bank-form',async()=>{await request('profile',{companyId:company,action:'bank',revision:profile.revision,bankName:$('setup-bank-name').value.trim(),bankAccount:$('setup-bank-account').value.trim(),bankHolder:$('setup-bank-holder').value.trim()});await loadProfile();if(!profile.setupRequired)await navigate('home');});
   $('profile-logout').onclick=()=>$('account').click();
   for(const button of document.querySelectorAll('[data-remove-member]'))button.onclick=()=>{if(busy)return;const m=profile.members.find(m=>m.id===button.dataset.removeMember);if(!m)return;$('editor-error').hidden=true;$('editor-title').textContent='직원 연결을 해제할까요?';$('editor-content').innerHTML=`<p class="privacy-note">${esc(m.name)} 님은 이 업체에 더 이상 접속할 수 없어요.</p><div class="actions"><button id="confirm-remove-member" type="button" class="primary danger">연결 해제</button></div>`;$('editor').showModal();bind('confirm-remove-member',async()=>{await request('remove-member',{companyId:company,memberId:m.id});$('editor').close();await loadProfile();});};
   if($('logo-file'))$('logo-file').onchange=e=>{const file=e.target.files[0];if(!file)return;run(async()=>{if(file.size>5*1024*1024)throw Error('5MB 이하의 사진을 선택해 주세요.');const data=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(Error('사진을 읽지 못했어요. 다시 선택해 주세요.'));reader.readAsDataURL(file);});await request('logo',{companyId:company,revision:profile.revision,data});await loadProfile();});};

@@ -1124,7 +1124,7 @@ function createPlatformApi({
     const saveVendorLogo = require('./vendor-logo').createVendorLogo(vendorLogoStorage);
     const vendorEntries = require('./vendor-entries').createVendorEntries(repository, {
         resolveMediaUrl: value => entryPhotoStorage ? entryPhotoStorage.resolve(value) : value,
-        maxMediaBytes: entryPhotoMaxBytes
+        maxMediaBytes: entryPhotoMaxBytes, now: bookingNow
     });
     const organizerAccess = require('./organizer-access').createOrganizerAccess(repository);
     const Booking = require('./broadcast-booking');
@@ -1179,12 +1179,12 @@ function createPlatformApi({
         taskSummary:async id=>{
             const catalog=await loadCatalog(),channel=catalog.channels.find(c=>c.id===Booking.CHANNEL_ID),vendor=await vendorDirectory.find(Booking.CHANNEL_ID,id),profile=await vendorDirectory.profileFor(Booking.CHANNEL_ID,id);
             if(!channel)return {bookingAttention:false,settlementAttention:false};
-            const [items,shipments,vendors]=await Promise.all([repository.listRecords(channel.id,'item'),repository.listRecords(channel.id,'shipment'),vendorDirectory.list(channel.id)]);
+            const vendors=await vendorDirectory.list(channel.id);
             const summary=profile?await booking.summary({channel,vendor,profile,catalog,vendors}):null;
-            const bundles=await vendorBuyerBundles({channel,vendor,profile,catalog,items,shipments,vendors,vendorKey:id});
-            const actions=await Promise.all(bundles.map(async bundle=>require('./public/vendor-task-state').settlementStage({...vendorBuyerPublicPayload(bundle),changePending:Boolean(await pendingCheckoutChange(bundle.context))},channel)==='action'));
-            const shipping=await organizerShippingSettlement(channel.id,items,shipments,[vendor]),money=shipping.vendors.find(v=>v.vendorId===id);
-            const tasks={bookingAttention:!!(summary?.attentionCount??summary?.pendingCount),settlementAttention:actions.some(Boolean)||!!(money?.remainingAmount&&!money.pendingReport&&shipping.bank.bankAccount&&normalizePhone(shipping.bank.notificationPhone))};
+            const context=await vendorCheckoutContext({channelId:channel.id,vendorKey:id});
+            const finance=context?await require('./vendor-work-summary').summarize(context,{resolve:vendorCheckoutContext,bundles:vendorBuyerBundles,settlement:organizerShippingSettlement,publicBuyer:vendorBuyerPublicPayload,pendingChange:pendingCheckoutChange,canReport:totals=>Boolean(totals.bank?.bankAccount&&normalizePhone(totals.bank.notificationPhone))}):{settlementAttention:false,settlementCount:0,hasSales:false};
+            const bookingCount=Math.max(0,Number(summary?.attentionCount??summary?.pendingCount)||0);
+            const tasks={...finance,bookingCount,bookingAttention:bookingCount>0,defaultSection:finance.settlementAttention||!bookingCount&&(finance.hasSales||summary?.hasPastBroadcast)?'settlement':'booking'};
             try{const promoSummary=await promoCenter.summary(id);return {...tasks,promoSummary,promoAttention:promoSummary.pendingCount>0};}
             catch{return {...tasks,promoUnavailable:true};}
         },
@@ -2480,6 +2480,8 @@ function createPlatformApi({
                 v.pendingReport.notificationStatus=notification?.status || 'configuration_pending';
             }
         }));
+        const changes=await repository.listRecords(channelId,'checkoutchange');
+        for(const row of summaries)row.remittance=require('./organizer-remittance').readiness(channel,items,shipments,vendors.find(v=>v.id===row.vendorId),changes,bookingNow());
         return {bank, vendors:summaries,unassignedReceiptCount,...(channel.vendorSettlement?.enabled?{includesVendorFees:true}: {})};
     }
 
@@ -2491,6 +2493,7 @@ function createPlatformApi({
         const requestId = cleanText(body.requestId,80);
         if (requestId.length < 8) throw buyerInputError('다시 시도해 주세요.');
         if (row.history.some(r => r.id === requestId) || row.pendingReport) return {duplicate:true};
+        if(!row.remittance.ready)throw buyerInputError(row.remittance.reason,409);
         if (!bank.bankAccount || !normalizePhone(bank.notificationPhone)) throw buyerInputError('주관사 계좌·알림번호 등록 대기 중입니다.',409);
         if (body.expectedBankUpdatedAt !== bank.updatedAt || Number(body.expectedAmount) !== row.remainingAmount || row.remainingAmount <= 0) throw buyerInputError('정산 금액·계좌가 변경되었습니다. 새로고침해 주세요.',409);
         if (!notificationService?.prepare) throw buyerInputError('알림 발송 설정을 확인해 주세요.',503);
@@ -4421,6 +4424,12 @@ function createPlatformApi({
                 return true;
             }
 
+            if (segments.length === 3 && segments[2] === 'work-summary' && method === 'GET') {
+                if (!await requireAdmin(req,res)) return true;
+                const data=await OperationRounds.scopedWorkspace(repository,channel,await workspace(channelId),url.searchParams.get('archive')||'');
+                const [settlement,changes,requests]=await Promise.all([organizerShippingSettlement(channelId,data.items,data.shipments,data.vendors),repository.listRecords(channelId,'checkoutchange'),repository.listRecords(channelId,'carrierrequest')]);
+                replyJson(res,200,{channelId,archiveId:data.round.archiveId||'',counts:require('./operator-work-summary').summarize(data,settlement,changes,requests)});return true;
+            }
             if (segments.length === 3 && segments[2] === 'organizer-shipping' && ['GET','PUT'].includes(method)) {
                 if (!await requireOrganizer(req,res,channelId)) return true;
                 await withMutationLock(`channel:${channelId}`, async () => {

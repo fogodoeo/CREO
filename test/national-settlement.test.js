@@ -66,6 +66,8 @@ test('API subsidy is atomic, durable, buyer scoped and stable through paid addit
 test('organizer fees include unsold and zero-fee event details; reporting is idempotent, restart-safe and never sends shipping-only text',async t=>{
  const f=await fixture();t.after(()=>f.close());
  await f.repository.upsertRecord('national-cre','item',item('a04','v1',{status:'passed'}));await f.repository.upsertRecord('national-cre','item',item('e05','v1',{attributes:{broadcastDate:day,auctionKind:'event'}}));
+ f.advance(30*86400000);
+ for(const row of (await f.repository.listRecords('national-cre','item')).filter(i=>i.vendorId==='v1'&&i.status==='sold'))await f.repository.upsertRecord('national-cre','shipment',{id:'paid-'+row.id,itemId:row.id,vendorId:'v1',method:'pickup',address:'가상 직수령',paymentStatus:'paid'});
  const route='/channels/national-cre/organizer-shipping';
  let r=await f.request('PUT',route,{bankName:'가상은행',bankAccount:'000000',bankHolder:'가상주관사',notificationPhone:'01000000009'});assert.equal(r.status,200,r.body);
  const bank=r.json().bank,code=(await f.request('POST','/channels/national-cre/vendor-checkout-link',{vendorId:'v1'})).json().code;

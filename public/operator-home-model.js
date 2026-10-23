@@ -11,7 +11,7 @@
   const round=rounds.find(r=>r.channelId===id&&(r.archiveId||'')===archive);
   if(!round)throw Error('선택한 회차를 찾을 수 없습니다. 회차 목록을 새로고침해 주세요.');
   if(round.scopeError)throw Error(round.scopeError);
-  return {channel,round,archiveId:archive,label:round?.name||channel.name,active:!archive&&id===activeId,home:home(id,archive)};
+  return {channel,round,archiveId:archive,label:round?.name||channel.name,finished:round.phase==='finished'||!!archive||['archived','history'].includes(round.status),active:!archive&&id===activeId,home:home(id,archive)};
  }
  function links(s){
   const c=s.channel,id=c.id,arch=s.archiveId,extra=arch?{archive:arch}:{},r=Runtime.channelRoutes(id);
