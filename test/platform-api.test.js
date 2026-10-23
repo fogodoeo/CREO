@@ -1047,6 +1047,9 @@ test('shared banner selection is atomic, durable, channel-local and absent from 
     const added=await call(api,'POST',library,{record:{name:'새 배너',imageUrl:'/new.png'}});
     assert.equal(added.status,201,added.body);
     const newId=added.json().record.id,oldId=old[0].id;
+    const retries=await Promise.all(Array.from({length:2},()=>call(api,'POST',library,{record:{name:'새 배너',imageUrl:'/new.png'}})));
+    for(const retry of retries){assert.equal(retry.status,201,retry.body);assert.equal(retry.json().record.id,newId);}
+    assert.equal((await call(api,'GET',library)).json().banners.length,2);
     const select=(channel,id,selected)=>call(api,'PUT',`/api/platform/channels/${channel}/banner-selection`,{id,selected});
     const read=(channel,page=1)=>call(api,'GET',`/api/platform/channels/${channel}/broadcast?page=${page}`,null,'');
     assert.deepEqual((await read('alpha')).json().assets.map(a=>a.id),[oldId]);

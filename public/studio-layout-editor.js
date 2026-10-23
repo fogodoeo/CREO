@@ -9,7 +9,7 @@
  const usesTransparency=slot=>slot==='p2-parents'||isFrame(slot);
  const textLayout=CreoBroadcastTextLayout;
  const theme=()=>doc()?.body.dataset.broadcastTheme;
- let selected='',drag=null,saving=false,ready=false,toastTimer,loadTimer,pendingTheme=null,pendingStyle=null,settingsDirty=false,settingsSaving=false;
+ let selected='',drag=null,saving=false,ready=false,toastTimer,loadTimer,pendingTheme=null,pendingStyle=null,settingsDirty=false,settingsSaving=false,assetTrigger=null;
  const clamp=(value,min,max)=>Math.max(min,Math.min(max,Number(value)||0));
  const doc=()=>frame.contentDocument;
  const target=(slot=selected)=>doc()?.querySelector(`[data-layout-slot="${slot}"]`);
@@ -95,7 +95,7 @@
   if(event.source===frame.contentWindow&&event.data?.type==='creo-layout-ready'&&Number(event.data.page)===page){model.receive(event.data.placements);requestAnimationFrame(install);return;}
   if(event.source===settingsFrame.contentWindow&&event.data?.type==='creo-settings-draft'&&event.data.channelId===channelId&&Number(event.data.page)===page){settingsDirty=event.data.dirty===true;settingsSaving=event.data.saving===true;status();return;}
   if(event.source===settingsFrame.contentWindow&&event.data?.type==='creo-admin-required'){window.parent.postMessage({type:'creo-admin-required'},location.origin);return;}
-  if(event.source===settingsFrame.contentWindow&&event.data?.type==='creo-asset-manager'){settingsFrame.classList.toggle('assets-open',event.data.open===true);return;}
+  if(event.source===settingsFrame.contentWindow&&event.data?.type==='creo-asset-manager'){const open=event.data.open===true;settingsFrame.classList.toggle('assets-open',open);document.querySelectorAll('.editor-head,.workspace,.settings-head').forEach(element=>{element.inert=open});window.parent.postMessage({type:'creo-asset-manager',channelId,page,open},location.origin);if(!open&&assetTrigger){assetTrigger.focus();assetTrigger=null}return;}
   if(event.source===settingsFrame.contentWindow&&event.data?.type==='creo-broadcast-settings-saved'){loadPreview();toast(model.dirty()?'문구 설정 반영됨 · 배치 수정은 아직 저장 전이에요':'문구·표시 설정을 반영했어요');}
  });
  $('slot').onchange=()=>select($('slot').value);
@@ -106,7 +106,7 @@
  $('auto-width').onchange=()=>{if(!box())return;const value=box(),actual=currentBox(target());change(selected,{...value,...(!$('auto-width').checked?{width:actual.width,height:actual.height,...(target().classList.contains('is-lower-caption')?{y:actual.y}:{})}:{}),autoWidth:$('auto-width').checked});};
  $('reset').onclick=()=>{if(!selected)return;model.change(selected,null);paint(selected,null);syncFields();status();toast('배치 저장을 누르면 기본 위치로 반영돼요');};
  const settings=()=>$('settings-dock').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'instant':'smooth',block:'start'});
- $('content').onclick=settings;$('banners').onclick=()=>{settingsFrame.classList.add('assets-open');settings();settingsFrame.contentWindow?.postMessage({type:'creo-open-assets',filter:'banner'},location.origin)};
+ $('content').onclick=settings;$('banners').onclick=()=>{assetTrigger=$('banners');settingsFrame.contentWindow?.postMessage({type:'creo-open-assets',filter:'banner'},location.origin)};
   $('save').onclick=()=>save();$('retry-preview').onclick=loadPreview;
   $('p2-scene').onchange=()=>frame.contentWindow?.postMessage({type:'creo-preview-p2-scene',scene:$('p2-scene').value},location.origin);
  $('p2-scene-option').hidden=page!==2;

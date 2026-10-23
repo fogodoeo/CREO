@@ -287,10 +287,13 @@
         "전체·페이지별 문구 설정 저장은 실제 수정한 표시 항목만 전송하여 오래된 개체·경매 상태·배치를 다시 저장하지 않음",
         "문구 수정도 관리자 이동 보호에 포함하고 저장 중 추가 입력·실패 후 재시도·재로그인·배너 목록 새로고침에서 유지; 즉시 업체 태그 저장과 일반 저장은 순서대로 처리",
         "저장 진행·미저장·지속 오류·재시도 안내를 표시하고 저장 전후 늦게 도착한 작업 자료가 확정 문구를 덮어쓰지 않게 차단",
-        "실제 키보드 저장으로 문구·배치 각각 반영, 페이지 재진입 유지, 선택 회차 송출 미리보기 진입과 320px 실패·재시도 확인"
+        "실제 키보드 저장으로 문구·배치 각각 반영, 페이지 재진입 유지, 선택 회차 송출 미리보기 진입과 320px 실패·재시도 확인",
+        "배너 보관함을 먼저 보여주고 신규 등록은 펼치기로 분리; 회차별 즉시 표시 상태·검색·검색 초기화 제공",
+        "배너 파일과 이름을 실패·재로그인 때 보존하고 이미 업로드된 파일은 재사용; 중복 등록·작업 중 닫기 차단, 입력 취소 확인과 키보드 초점 복귀 제공",
+        "배너 선택 중 방송 메뉴와 배치 편집을 가려 전체 높이를 사용하고 중첩 스크롤 제거; 실제 320px 화면과 데스크톱에서 닫기·계속 작성·복귀 확인"
       ],
       "remaining": [
-        "배너·로고·영상 등록 창 자체의 미저장 파일/입력 보호와 오류 안내 검토; 문구와 배치 초안 보호는 완료",
+        "협찬·업체 로고와 주사위 영상 등록 창 자체의 미저장 파일/입력 보호와 오류 안내 검토; 배너 등록·문구·배치 초안 보호는 완료",
         "전체 설정의 중복 안내·추가 진행자·중첩 스크롤을 더 간단한 구성으로 정리",
         "방송 편집 키보드 전체 이동·200% 확대·화면 낭독·다른 관리자에서 전환된 실제 송출 상태 갱신 검토",
         "로컬 데스크톱 경매 조작과 방송 도구 진입 연결 검토",
@@ -316,7 +319,8 @@
         "CUA isolated real UI: previous X=45 and host name survive P2/P1 navigation. New whole-settings save updates name, then compact name save preserves pending X=46; explicit layout save commits it. The actual 1P preview link opens the selected 10/21 round and renders the saved host. Current live 10/19 is unchanged.",
         "CUA real 320px iframe: local proxy injects one HTTP 503; entered host name remains, persistent error receives focus, and keyboard retry saves successfully. Re-entering layout shows saved name and X=45 (before later explicit X=46 change). Inner clientWidth=scrollWidth=305. Rendered error #ffe1e1 on #351e26 contrast 12.53:1, visible 2px focus; error and save button remain visible. Full keyboard, 200% zoom and screen-reader coverage remain unverified.",
         "CUA program directory recheck: one national program, five date filters (10/14, 10/19, 10/21, 10/26, 10/28), all five synthetic vendors with date-specific work links. No production data or real notifications used; no deployment.",
-        "../admin-home-review-20261022/studio-settings-check.log; ../admin-home-review-20261022/studio-settings-full-final.log; ../admin-home-review-20261022/studio-settings-error-320.png; ../admin-home-review-20261022/program-directory-20261023.png"
+        "../admin-home-review-20261022/studio-settings-check.log; ../admin-home-review-20261022/studio-settings-full-final.log; ../admin-home-review-20261022/studio-settings-error-320.png; ../admin-home-review-20261022/program-directory-20261023.png",
+        "Banner workflow: docs/ui-audit/BANNER_WORKFLOW_20261023.md. Focused 28 pass; npm run check and strict UTF-8/script parse pass; final server suite 1703 pass; desktop suite 270 pass. Actual upload with one injected metadata failure reuses the uploaded URL (1 upload, 2 metadata requests, 1 record). Desktop and 320px full-height selection, input retention, keyboard discard/continue and return focus verified. 320px content clientWidth=scrollWidth=305; rendered primary contrast corrected from 4.40:1 to 4.72:1. Broader accessibility and logo/video forms remain pending."
       ],
       "deployed": false
     },
@@ -339,6 +343,6 @@
     "공통 업체 및 회차 구분이 모든 화면에서 일관되게 전달되지 않음",
     "전체 사용자 역할별 개편과 통합 검증은 아직 진행 중"
   ],
-  "next_work": "방송 편집의 프로그램·회차 표시, 배치 초안 보호, 문구 저장 분리 및 준비 회차 설정 진입을 수정했다. 다음은 브라우저 확인창 제어 복구 후 방송 배치의 실제 저장·재진입과 전체 설정·문구·배너 흐름을 끝까지 확인하는 것이다. 이후 인증/회차 진입, 카드결제·입금 후 배송비 조정, 데스크톱 경매 조작, 전체 키보드/확대 및 역할별 통합 검증·배포가 남아 있다. 최근 변경은 모두 로컬이며 운영 배포는 아직 하지 않았다.",
+  "next_work": "배너 선택·등록·오류 재시도·입력 보호와 전체 높이 모달을 실제 화면에서 검증했다. 검증된 누적 변경을 배포하고 회차별 업체·낙찰자·정산 경로와 운영 상태를 읽기 전용으로 확인한다. 이후 협찬·업체 로고와 주사위 영상 등록, 인증/회차 진입, 카드결제·입금 후 배송비 조정, 데스크톱 경매 조작, 전체 키보드/확대 및 역할별 통합 검증이 남아 있다. 전체 개편은 아직 완료되지 않았다.",
   "completion_rule": "모든 workstream이 실제 구현·상태별 검증 증거를 갖출 때만 전체 완료로 판단한다."
 }

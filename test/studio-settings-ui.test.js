@@ -10,6 +10,7 @@ function setup({compact=false,page=1,basic=false}={}){
  for(const el of form.elements){if(el.localName==='select')Object.defineProperty(el,'value',{writable:true,value:''});if(el.type==='checkbox')el.checked=true;else el.value=el.name==='hostName1'?'진행자':el.name.endsWith('Interval')?'5':'';}
  let failure=null,held=null,server={mode:'sold',page:3,activeItemId:'new-winner',layoutPlacements:{slot:{x:40}},...Object.fromEntries(form.elements.map(el=>[el.name,el.type==='checkbox'?el.checked:el.value]))};
  window.parent={postMessage:data=>messages.push(JSON.parse(JSON.stringify(data)))};
+ window.frameElement=null;
  const context=vm.createContext({document,window,location:{origin:'http://test.invalid'},channelId:'national-cre-20261021',workspaceLoadSequence:0,state:{mode:'live',activeItemId:'old-item'},page,compactMode:compact,$:id=>document.getElementById(id),form,isBasicDice:()=>basic,CreoStudioSettings:settings,syncBidderOpacityValue(){},toast(){},confirm:()=>false,CreoPlatform:{api:async(path,options)=>{const patch=JSON.parse(options.body);writes.push([path,patch]);if(held)await held;if(failure)throw failure;server={...server,...patch};return {state:{...server}}}}});
  vm.runInContext(between('function read(){','function updatePositionWarnings'),context);
  vm.runInContext(between('function syncBasicTickerFields','function isCrewart'),context);
@@ -51,6 +52,26 @@ test('immediate vendor toggles are ordered with manual saves, retain later edits
 test('configuration allowlist excludes unexpected and auction fields even if a caller offers them',async()=>{
  const writes=[],draft=settings.create({fields:['hostName1'],write:async patch=>{writes.push(patch);return {state:patch}}});
  draft.receive({hostName1:'이름',activeItemId:'old'});draft.capture({hostName1:'새 이름',mode:'sold',activeItemId:'wrong',layoutPlacements:{},page:2});await draft.save();assert.deepEqual(writes,[{hostName1:'새 이름'}]);
+});
+test('banner dialog relays only its own round drafts, blocks leaving while busy, and preserves content on close',async()=>{
+ const f=setup(),childMessages=[];let reloads=0,returned=false;
+ f.window.HTMLElement.prototype.showModal=function(){this.open=true;};f.window.HTMLElement.prototype.close=function(){this.open=false;};
+ Object.defineProperty(f.document,'activeElement',{get:()=>({focus(){returned=true;}})});
+ f.context.load=async()=>{reloads++;};
+ vm.runInContext(between('function openSharedBannerLibrary(){','let catalog='),f.context);
+ f.context.openSharedBannerLibrary();const overlay=f.document.getElementById('shared-banner-overlay'),frame=overlay.querySelector('iframe'),child={postMessage:data=>childMessages.push(data)};
+ Object.defineProperty(frame,'contentWindow',{value:child});assert.equal(overlay.localName,'dialog');assert.equal(overlay.open,true);assert.equal(frame.dataset.layoutDraftHost,'1');
+ const message=(data,{origin='http://test.invalid',source=child}={})=>{const e=new f.window.Event('message');Object.assign(e,{origin,source,data});f.window.dispatchEvent(e);};
+ const draft={type:'creo-banner-draft',channelId:'national-cre-20261021',dirty:true,saving:false};
+ message(draft,{origin:'https://foreign.invalid'});message(draft,{source:{}});message({...draft,channelId:'other'});assert.equal(f.context.canLeaveSettings(),true);
+ message(draft);assert.equal(f.messages.at(-1).dirty,true);assert.equal(f.context.canLeaveSettings(),false);
+ const unload=new f.window.Event('beforeunload',{cancelable:true});f.window.dispatchEvent(unload);assert.equal(unload.defaultPrevented,true);
+ message({...draft,saving:true});assert.equal(f.messages.at(-1).saving,true);
+ message({type:'creo-close-banner-library',channelId:draft.channelId});assert.equal(overlay.open,true);assert.equal(reloads,0);
+ const escape=new f.window.Event('cancel',{cancelable:true});overlay.dispatchEvent(escape);assert.equal(escape.defaultPrevented,true);assert.equal(childMessages.at(-1).type,'creo-close-banner-request');
+ f.edit('hostName1','유지할 문구');message({...draft,dirty:false,saving:false});assert.equal(f.messages.at(-1).dirty,true);
+ message({type:'creo-close-banner-library',channelId:draft.channelId});assert.equal(overlay.open,false);assert.equal(reloads,1);assert.equal(returned,true);assert.equal(f.value('hostName1'),'유지할 문구');assert.equal(f.status().dirty,true);
+ f.context.openSharedBannerLibrary();assert.equal(childMessages.at(-1).type,'creo-refresh-banner-library');assert.equal(f.document.querySelectorAll('#shared-banner-overlay').length,1);
 });
 test('workspace responses begun before or during a save cannot refill an older settings snapshot afterward',async()=>{
  for(const during of [false,true]){

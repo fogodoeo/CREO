@@ -60,7 +60,7 @@
     <section class="frame-shell"><iframe id="control-frame" data-layout-draft-host="1" title="방송 화면 구성"></iframe></section>
 </main>
 <link rel="stylesheet" href="broadcast-themes.css?v=20261015-recessive"><script src="broadcast-palette.js?v=20260915-retro-console"></script><script src="broadcast-themes.js?v=20261015-recessive"></script><script src="studio-theme.js?v=20260915-retro-console"></script>
-<link rel="stylesheet" href="studio-workspace.css?v=20261023-draft-status">
+<link rel="stylesheet" href="studio-workspace.css?v=20261023-assets">
 <script>
 document.addEventListener('DOMContentLoaded',()=>{
     const $=id=>document.getElementById(id),gate=$('login-gate'),studio=$('studio'),form=$('login-form'),password=$('admin-password'),submit=$('login-submit'),error=$('login-error'),select=$('channel-select'),switchButton=$('channel-switch-button'),frame=$('control-frame');
@@ -70,6 +70,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     const esc=value=>CreoPlatform.escapeHtml(value);
     const roundName=id=>rounds.find(round=>round.channelId===id&&!round.archiveId)?.name||channels.find(channel=>channel.id===id)?.name||'-';
     function frameUrl(channel,view){return CreoBroadcastProfiles.studioFrame(channel,view)}
+    function assetView(open){studio.classList.toggle('assets-open',open);for(const child of studio.children)if(!child.classList.contains('frame-shell'))child.inert=open;}
     function liveUrl(channel,page){return channel.id===operatingChannelId?`broadcast-router.html?page=${page}&live=1`:`broadcast-router.html?event=${encodeURIComponent(channel.id)}&page=${page}&preview=1`}
     function draft(dirty=false,saving=false){editorDirty=dirty;editorSaving=saving;if(window.parent!==window)window.parent.postMessage({type:'creo:operator-dirty',dirty:dirty||saving},location.origin)}
     function studioError(message=''){$('studio-error').textContent=message;$('studio-error').hidden=!message;if(message)$('studio-error').focus()}
@@ -85,6 +86,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     document.querySelectorAll('[data-view]').forEach(button=>button.addEventListener('click',()=>{if(button.dataset.view===activeView||!canLeave())return;studioError();showView(button.dataset.view)}));
     window.addEventListener('message',event=>{if(event.origin!==location.origin||event.source!==frame.contentWindow)return;if(event.data?.channelId===activeChannel?.id&&((event.data.type==='creo-layout-draft'&&activeView==='layout-'+event.data.page)||(event.data.type==='creo-settings-draft'&&activeView==='settings'))){draft(event.data.dirty===true,event.data.saving===true);return}if(event.data?.type==='creo-open-studio-view'&&event.data.view==='settings'){if(canLeave())showView('settings');return}if(event.data?.type==='creo-admin-required'){reauthRequired=true;showLogin('관리자 인증이 만료되었습니다. 다시 로그인해 주세요.')}});
     window.addEventListener('beforeunload',event=>{if((editorDirty||editorSaving)&&!document.documentElement.classList.contains('operator-embedded')){event.preventDefault();event.returnValue=''}});
+    window.addEventListener('message',event=>{if(event.origin!==location.origin||event.source!==frame.contentWindow||event.data?.type!=='creo-asset-manager'||event.data.channelId!==activeChannel?.id)return;if(activeView!=='settings'&&activeView!=='layout-'+event.data.page)return;assetView(event.data.open===true)});
     for(const menu of [$('studio-theme'),$('studio-output')]){menu.addEventListener('toggle',()=>{if(menu.open)for(const other of [$('studio-theme'),$('studio-output')])if(other!==menu)other.open=false});menu.addEventListener('keydown',event=>{if(event.key==='Escape'){menu.open=false;menu.querySelector('summary').focus()}})}
     form.addEventListener('submit',async event=>{event.preventDefault();const value=password.value;if(!value)return;submit.disabled=true;password.disabled=true;error.textContent='';try{CreoPlatform.setAdmin(value);if(!await CreoPlatform.verifyAdmin(value))throw new Error('비밀번호가 맞지 않습니다.');password.value='';if(reauthRequired){reauthRequired=false;gate.hidden=true;studio.hidden=false;studioError('다시 로그인했습니다. 남아 있는 수정사항을 저장해 주세요.')}else await load()}catch(failure){CreoPlatform.setAdmin('');showLogin(failure.message||'로그인하지 못했습니다.')}});
     (async()=>{try{if(await CreoPlatform.verifyAdmin())return await load()}catch(e){showLogin(e.message);return}showLogin()})();

@@ -73,6 +73,15 @@ test('whole settings draft blocks navigation and activation without accepting st
  f.message({...draft,dirty:false,saving:false});f.document.querySelector('[data-view="layout-2"]').click();assert.match(frame.src,/view=layout-2/);
  f.message(draft);assert.equal(f.messages.at(-1).dirty,false);
 });
+test('banner overlay fills the studio without exposing background controls and ignores other frames or rounds',async()=>{
+ for(const view of ['layout-1','settings']){
+  const f=await setup('?channel=national-cre&view='+view),studio=f.document.getElementById('studio'),event={type:'creo-asset-manager',channelId:'national-cre',page:1,open:true};
+  f.message({...event,channelId:'other'});f.message(event,{source:{}});f.message(event,{origin:'https://foreign.invalid'});assert.equal(studio.classList.contains('assets-open'),false);
+  if(view==='layout-1'){f.message({...event,page:2});assert.equal(studio.classList.contains('assets-open'),false)}
+  f.message(event);assert.equal(studio.classList.contains('assets-open'),true);assert.equal(f.document.querySelector('.topbar').inert,true);assert.notEqual(f.document.querySelector('.frame-shell').inert,true);
+  f.message({...event,open:false});assert.equal(studio.classList.contains('assets-open'),false);assert.equal(f.document.querySelector('.topbar').inert,false);assert.deepEqual(f.writes,[]);
+ }
+});
 test('content settings open a prepared national round without falling back or offering archived broadcasts',async()=>{
  const source=fs.readFileSync(require.resolve('../public/auction-control.html'),'utf8'),body=source.slice(source.indexOf('async function loadCatalog()'),source.indexOf('    async function load(){'));
  const channels=[{id:'national-cre',name:'경기편',status:'active'},{id:'national-cre-20261021',name:'전라·충청편',status:'draft',nationalRound:{parentId:'national-cre'}},{id:'closed',name:'이전 회차',status:'archived'},{id:'disabled',status:'active',features:{broadcast:false}}];

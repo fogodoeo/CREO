@@ -5,7 +5,7 @@ const placements={x:10,y:20,width:30,height:10,fontScale:1,opacity:100,visible:t
 function setup(){
  const {document,window}=parseHTML(html),preview=parseHTML('<html><head></head><body data-broadcast-theme="national"><div data-layout-slot="p1-host-1"></div></body></html>').document,messages=[],writes=[];
  let failure=false,hold=null;
- const frame=document.getElementById('frame'),settings=document.getElementById('settings-frame');frame.contentDocument=preview;frame.contentWindow={};settings.contentWindow={};
+ const frame=document.getElementById('frame'),settings=document.getElementById('settings-frame');frame.contentDocument=preview;frame.contentWindow={};settings.contentWindow={postMessage:data=>messages.push(JSON.parse(JSON.stringify(data)))};
  Object.defineProperties(preview.documentElement,{clientWidth:{value:1920},clientHeight:{value:1080}});
  preview.querySelector('[data-layout-slot]').getBoundingClientRect=()=>({left:192,top:216,width:576,height:108,right:768});
  for(const id of ['slot','p2-scene'])Object.defineProperty(document.getElementById(id),'value',{writable:true,value:id==='slot'?'':'item'});
@@ -38,4 +38,12 @@ test('settings drafts join layout navigation protection with channel/source/page
  f.settingsMessage({...draft,saving:true});assert.equal(f.messages.at(-1).saving,true);
  f.settingsMessage({type:'creo-admin-required'});assert.equal(f.messages.at(-1).type,'creo-admin-required');
  f.settingsMessage({...draft,dirty:false});assert.equal(f.messages.at(-1).dirty,false);f.change(28);f.settingsMessage({...draft,dirty:false});assert.equal(f.messages.at(-1).dirty,true);
+});
+test('banner selection covers the editor only after opening and restores keyboard focus on close',()=>{
+ const f=setup(),button=f.document.getElementById('banners'),frame=f.document.getElementById('settings-frame');let focused=0;button.focus=()=>{focused++};
+ button.onclick();assert.deepEqual(f.messages.at(-1),{type:'creo-open-assets',filter:'banner'});assert.equal(frame.classList.contains('assets-open'),false);
+ f.settingsMessage({type:'creo-asset-manager',open:true},'https://foreign.invalid');assert.equal(frame.classList.contains('assets-open'),false);
+ f.settingsMessage({type:'creo-asset-manager',open:true});assert.equal(frame.classList.contains('assets-open'),true);assert.equal(f.document.querySelector('.workspace').inert,true);
+ f.settingsMessage({type:'creo-asset-manager',open:false});assert.equal(frame.classList.contains('assets-open'),false);assert.equal(f.document.querySelector('.workspace').inert,false);assert.equal(focused,1);
+ f.settingsMessage({type:'creo-asset-manager',open:false});assert.equal(focused,1);
 });
