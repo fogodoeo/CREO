@@ -1217,6 +1217,7 @@ function createPlatformApi({
             return items.map((item,index)=>({...item,...(inquiries[index]?{inquiry:inquiries[index]}:{})}));
         }});
     if (entryPhotoStorage && !entryPhotoStorage.secret) entryPhotoStorage.secret = sessionSecret;
+    const workspaceItemPhotos=require('./workspace-item-photos').create({repository,storage:entryPhotoStorage,processor:entryPhotoProcessor});
     const sessionTtlMs = Math.max(60_000, Number(adminSessionTtlMs) || ADMIN_SESSION_TTL_MS);
     const mutationLocks = new Map();
     const itemSheetSync = require('./item-sheet-sync').createItemSheetSync({
@@ -4273,6 +4274,11 @@ function createPlatformApi({
                 return true;
             }
 
+            if(segments.length===3&&segments[2]==='item-editor-photos'&&['GET','POST'].includes(method)){
+                if(!await requireAdmin(req,res))return true;
+                const result=method==='GET'?await workspaceItemPhotos.views(channelId,url.searchParams.get('itemId')):await workspaceItemPhotos.upload(channelId,await readJson(req,600000));
+                replyJson(res,200,result);return true;
+            }
             if(segments.length===3&&segments[2]==='national-cycle-config'&&['GET','PUT'].includes(method)){
                 if(!await requireAdmin(req,res))return true;
                 if(channelId!=='national-cre')throw buyerInputError('전국크레자랑 전용 설정입니다.',404);
