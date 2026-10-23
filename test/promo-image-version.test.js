@@ -1,5 +1,25 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+test('episode poster replaces shared hero once in preview and copied HTML without changing other manuscripts',()=>{
+ const source=fs.readFileSync(require.resolve('../public/promo-center.js'),'utf8');
+ const ctx=vm.createContext({URL,location:{origin:'https://creok.onrender.com'},esc:v=>String(v)});
+ vm.runInContext(source.slice(source.indexOf(' function imageURL('),source.indexOf('\n const kst=')),ctx);
+ vm.runInContext(source.slice(source.indexOf(' function bodyHTML('),source.indexOf('\n function preview(')),ctx);
+ const src='/promo-assets/hero-gyeongsang-20261026-28-v1.png';
+ const poster={type:'image',src,copySrc:'https://creok.onrender.com'+src,alt:'10월 26일·28일 경상도 편'};
+ const manuscript={blocks:[poster,{type:'image',src:'/promo-assets/hero-wolssu-v1.png'},{type:'text',text:'두 번의 방송',size:24},{type:'text',text:'밴드',href:'https://band.us/n/a6a6beMe97Ucc'}]};
+ const before=JSON.stringify(manuscript);
+ for(const copy of [false,true]){
+  const html=ctx.bodyHTML(manuscript,copy);
+  assert.match(html,/^<p[^>]*><img src="https:\/\/creok.onrender.com\/promo-assets\/hero-gyeongsang-20261026-28-v1.png"/);
+  assert.equal(html.split('src="https://creok.onrender.com'+src+'"').length-1,1);
+  assert.doesNotMatch(html,/hero-wolssu-v1/);
+ }
+ assert.equal(ctx.thumbnailImage(manuscript),poster);
+ assert.equal(JSON.stringify(manuscript),before);
+ assert.equal(ctx.postBlocks({blocks:[{type:'text',text:'기존 원고'}]})[0].src,'/promo-assets/hero-wolssu-v1.png');
+ assert.equal(require('../promo-media.json')[src],poster.copySrc);
+});
 test('updated partner artwork bypasses old browser caches without changing external image URLs',()=>{
  const source=fs.readFileSync(require.resolve('../public/promo-center.js'),'utf8');
  const start=source.indexOf(' function imageURL('),end=source.indexOf('\n const kst=',start);

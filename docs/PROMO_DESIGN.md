@@ -1,5 +1,7 @@
 # Promo manuscript formatting
 
+- The October 26/28 Gyeongsang manuscript uses its approved episode poster as the first image and catalog thumbnail. Render it once, at the existing 500px responsive width with its original aspect ratio. Other manuscripts keep their existing shared hero. Preview and formatted clipboard output use the same block order.
+
 - The management interface currently uses its existing light theme.
 - Manuscript text is intended to be pasted into external editors. Its HTML must not set foreground colors, background colors, text fill colors, or a color scheme. The destination decides its light/dark text and link colors.
 - Keep size, weight, centered alignment, line spacing, images and links. Use size and weight for emphasis.
