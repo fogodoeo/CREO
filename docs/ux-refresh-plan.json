@@ -290,10 +290,12 @@
         "실제 키보드 저장으로 문구·배치 각각 반영, 페이지 재진입 유지, 선택 회차 송출 미리보기 진입과 320px 실패·재시도 확인",
         "배너 보관함을 먼저 보여주고 신규 등록은 펼치기로 분리; 회차별 즉시 표시 상태·검색·검색 초기화 제공",
         "배너 파일과 이름을 실패·재로그인 때 보존하고 이미 업로드된 파일은 재사용; 중복 등록·작업 중 닫기 차단, 입력 취소 확인과 키보드 초점 복귀 제공",
-        "배너 선택 중 방송 메뉴와 배치 편집을 가려 전체 높이를 사용하고 중첩 스크롤 제거; 실제 320px 화면과 데스크톱에서 닫기·계속 작성·복귀 확인"
+        "배너 선택 중 방송 메뉴와 배치 편집을 가려 전체 높이를 사용하고 중첩 스크롤 제거; 실제 320px 화면과 데스크톱에서 닫기·계속 작성·복귀 확인",
+        "로고·영상 보관함을 먼저 보여주고 파일 선택 후 한 번 저장으로 등록; 실패 시 파일·이름 보존, 업로드 재사용과 고정 식별자로 중복 등록 방지, 주사위 영상도 명시적 저장과 재시도 지원",
+        "로고 창을 기본 대화상자로 전환하고 닫기 확인·저장 중 이동 차단·회차별 초안 전달을 연결; 실제 320px에서 이중 스크롤과 체크박스 정렬을 보정하고 키보드 저장 검증"
       ],
       "remaining": [
-        "협찬·업체 로고와 주사위 영상 등록 창 자체의 미저장 파일/입력 보호와 오류 안내 검토; 배너 등록·문구·배치 초안 보호는 완료",
+        "실제 대용량 주사위 영상 압축의 브라우저별 검증; 로고·영상 등록 입력 보호와 실패 재시도 개편은 완료",
         "전체 설정의 중복 안내·추가 진행자·중첩 스크롤을 더 간단한 구성으로 정리",
         "방송 편집 키보드 전체 이동·200% 확대·화면 낭독·다른 관리자에서 전환된 실제 송출 상태 갱신 검토",
         "로컬 데스크톱 경매 조작과 방송 도구 진입 연결 검토",
@@ -338,8 +340,8 @@
       "evidence": [
         "2026-10-23: verified batch deployed as 2a923216188dfe6c82a8b1210c6dde1cda8047d7; Render dep-dbddich42hec7391u160 is Live (1m23s). Server 1703 tests and desktop 270 tests passed.",
         "Read-only production verification: health/durable storage OK, outboxPending 0, mirrorError null; 24 changed UI/static files including pinball bundles match the tested source. Active channel stays national-cre-20261021. Four national channel snapshots preserve exact item, shipment, organizer-settlement and broadcast hashes.",
-        "Operator browser login requires its separately configured password; API verification succeeded but live operator menu inspection awaits user login. Existing vendor short link remains available and shows the assigned 10/21 broadcast and explicit parent photo action.",
-        "Production vendor navigation exposed an empty undated program context beside the vendor's sole real financial round. Corrected with guarded automatic navigation to the authorized dated context; single-round selector disappears. docs/ui-audit/VENDOR_SETTLEMENT_LANDING_20261023.md records 28 focused and 1707 full-suite passes plus isolated real-browser verification. This corrective change awaits deployment verification.",
+        "Operator browser login completed using the owner-supplied existing password. Actual main menu opens 10/21 organizer settlement; selecting 10/19 shows separate Gyeonggi totals/vendors. Program directory shows 44 vendors and all five date filters, without an outer round selector. Main restored to 10/21; no payment, messages or broadcast switch. Screenshots: operator-home-live.png, operator-directory-live.png. Existing vendor short link remains available and shows the assigned 10/21 broadcast and explicit parent photo action.",
+        "Production vendor navigation exposed an empty undated program context beside the vendor's sole real financial round. Corrected with guarded automatic navigation to the authorized dated context; single-round selector disappears. docs/ui-audit/VENDOR_SETTLEMENT_LANDING_20261023.md records 28 focused and 1707 full-suite passes plus isolated real-browser verification. Correction deployed as 228e9f7ebee6cf402f9694840a0842cd27ab7676, Render dep-dbddmnu417fc738ghcjg Live (1m25s). All 25 static checks match, four national channel item/shipment/settlement/broadcast hashes remain identical. Existing vendor link now opens 10/21 directly with one hidden selector option, organizer amount 248000 and the correct bank. No payment report was submitted. Evidence: settlement-landing-release-before.json, settlement-landing-release-after.json, vendor-single-round-live.png in ../admin-home-review-20261022/.",
         "Evidence: ../admin-home-review-20261022/ux-batch-release-before.json, ux-batch-release-after.json, ux-batch-render-live.png. This batch deployment does not complete the broader UX goal."
       ]
     }
@@ -349,6 +351,6 @@
     "공통 업체 및 회차 구분이 모든 화면에서 일관되게 전달되지 않음",
     "전체 사용자 역할별 개편과 통합 검증은 아직 진행 중"
   ],
-  "next_work": "2a92321 배포와 정적 파일·운영 데이터 보존 검증을 완료했다. 운영자 화면의 별도 비밀번호 로그인 후 실제 메인 메뉴 진입 확인을 마무리한다. 계속해서 협찬·업체 로고와 주사위 영상 등록, 인증/회차 진입, 카드결제·입금 후 배송비 조정, 데스크톱 경매 조작, 전체 키보드/확대 및 역할별 통합 검증을 진행한다. 전체 개편은 아직 완료되지 않았다.",
+  "next_work": "실제 운영자 로그인과 날짜별 정산/공통 업체 메뉴 검증을 완료했다. 로고·영상 보관함, 한 번 저장, 파일/입력 보존, 중복 등록 방지와 오류 복구 개편은 docs/ui-audit/LOGO_VIDEO_WORKFLOW_20261023.md에 검증 증거를 기록했다(서버 1716, 데스크톱 270 통과). 이번 변경 배포 후 읽기 전용 운영 검증을 마무리하고, 전체 설정의 중복 안내·추가 진행자와 데스크톱 경매 도구 진입을 정리한다. 인증/회차 진입, 카드결제·입금 후 배송비 조정, 실제 대용량 주사위 영상, 전체 키보드/확대 및 역할별 통합 검증이 남아 있다. 전체 개편은 아직 완료되지 않았다.",
   "completion_rule": "모든 workstream이 실제 구현·상태별 검증 증거를 갖출 때만 전체 완료로 판단한다."
 }

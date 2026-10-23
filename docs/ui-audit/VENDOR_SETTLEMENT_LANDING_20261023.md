@@ -17,3 +17,5 @@ Verification:
 - Regression tests cover draft preservation, repeated in-flight refresh, failure/retry, explicit dated history, populated/current financial contexts, no-history vendors, and authorized round catalogue boundaries.
 
 Production verification uses the existing vendor link and GET requests only. No production payment confirmation or message is used as a test.
+
+Deployment verified: `228e9f7ebee6cf402f9694840a0842cd27ab7676`, Render `dep-dbddmnu417fc738ghcjg` Live. The existing vendor link now resolves from `national-cre/current` to `national-cre-20261021/date:2026-10-21`; the selector has one option and is hidden. The real organizer amount and bank are visible immediately. All 25 selected static files match, health is normal, and four national channel item/shipment/settlement/broadcast hashes equal the pre-deployment snapshot. Evidence: `settlement-landing-release-after.json` and `vendor-single-round-live.png` in the desktop checkout's `scratch/admin-home-review-20261022`.

@@ -959,7 +959,7 @@ test('CDCUP three-round format assigns round-two teams and round-three finalists
 });
 
 test('broadcast control manages reusable banners, sponsors, and vendor logos', () => {
-    const control = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-control.html'), 'utf8');
+    const control = ['auction-control.html','studio-asset-editor.js'].map(file=>fs.readFileSync(path.join(__dirname,'..','public',file),'utf8')).join('\n');
     const live = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-live.html'), 'utf8');
     for (const marker of ['화면 자산', '회전 배너', '협찬 로고', '업체 로고', 'importLegacyAssets']) {
         assert.match(control, new RegExp(marker));
@@ -978,7 +978,7 @@ test('broadcast control manages reusable banners, sponsors, and vendor logos', (
     assert.match(control, /value="team">그룹별 금액/);
     assert.match(control, /name="scoreboardId"/);
     assert.match(control, /data-open-banner-assets/);
-    assert.match(control, /배너를 저장하고 송출에 표시했습니다/);
+    assert.match(control, /studio-asset-save\.js/);
     assert.doesNotMatch(control, /name="page1BannerOn"/);
     assert.doesNotMatch(control, /name="page2BannerOn"/);
     assert.match(control, /name="page1TickerInterval"/);
@@ -1044,7 +1044,7 @@ test('broadcast control automatically optimizes oversized MP4 banners before upl
 });
 
 test('BASIC control uploads six dice videos and P3 renders parity totals without changing sold price', () => {
-    const control = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-control.html'), 'utf8');
+    const control = ['auction-control.html','studio-asset-editor.js'].map(file=>fs.readFileSync(path.join(__dirname,'..','public',file),'utf8')).join('\n');
     const live = fs.readFileSync(path.join(__dirname, '..', 'public', 'auction-live.html'), 'utf8');
     const profiles = fs.readFileSync(path.join(__dirname, '..', 'public', 'broadcast-profiles.js'), 'utf8');
     assert.match(control, /value="dice"/);
@@ -1053,10 +1053,10 @@ test('BASIC control uploads six dice videos and P3 renders parity totals without
     assert.match(control, /Array\.from\(\{length:6\}/);
     assert.match(control, /function optimizeDiceVideo/);
     assert.match(control, /width:960,height:540,fps:30,bitrate:1200000/);
-    assert.match(control, /optimized\.size>8\*1024\*1024/);
+    assert.match(control, /prepared\.size>8\*1024\*1024/);
     assert.match(control, /allowActiveFallback:false/);
     assert.match(control, /\/api\/broadcast-assets\//);
-    assert.match(control, /file\.size>8\*1024\*1024/);
+    assert.match(control, /assetSaver\.save/);
     assert.match(live, /function renderDiceTeamsPageThree/);
     assert.match(live, /audience_group_key/);
     assert.match(live, /audience_contribution_amount/);

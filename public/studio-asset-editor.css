@@ -1,0 +1,54 @@
+/* One dialog and one scrolling body for library, editing and recoverable errors. */
+html:has(#asset-manager[open]){overflow:hidden}
+dialog.asset-manager{--studio-action:#306bed;width:min(920px,100%);max-width:100%;height:min(820px,100dvh);max-height:100dvh;margin:auto;padding:0;border:1px solid var(--line);border-radius:16px;background:var(--panel);color:var(--text);backdrop-filter:none;overflow:hidden}
+dialog.asset-manager:not([open]){display:none}
+dialog.asset-manager[open]{display:block}
+dialog.asset-manager::backdrop{background:#030508c9}
+.asset-manager .asset-shell{width:100%;height:100%;border:0;border-radius:0;box-shadow:none;grid-template-rows:auto minmax(0,1fr)}
+.asset-manager .asset-head{padding:16px 20px;align-items:flex-start}
+.asset-manager .asset-head h2{font-size:20px;line-height:1.3}
+.asset-manager .asset-head p{display:block;font-size:13px;line-height:1.5;color:#a4afbf}
+.asset-manager .asset-close{flex-shrink:0;width:auto;min-width:44px;min-height:44px;padding-inline:12px;font-size:14px}
+.asset-manager .asset-body{display:block;overflow:auto;padding:20px;scroll-padding:16px}
+.asset-manager .asset-library,.asset-manager .asset-editor{padding:0;overflow:visible;border:0;background:none}
+.asset-manager .asset-library[hidden],.asset-manager .asset-editor[hidden],.asset-manager [hidden]{display:none!important}
+.asset-manager .library-head{align-items:flex-start;flex-wrap:wrap;gap:16px}
+.asset-manager #new-asset{flex:0 1 auto;min-width:180px}
+.asset-manager .asset-filters{flex-wrap:wrap;gap:8px}
+.asset-manager button,.asset-manager input,.asset-manager select,.asset-manager summary{font-size:14px;line-height:1.4}
+.asset-manager button{min-height:44px;height:auto;padding:10px 14px}
+.asset-manager button:disabled{opacity:.65;cursor:wait}
+.asset-manager :focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+.asset-manager .asset-filter{color:#bec8d7}
+.asset-manager .asset-filter.active{color:var(--gold)}
+.asset-manager .asset-grid{margin-top:24px;gap:16px}
+.asset-manager .asset-card{grid-template-columns:96px minmax(0,1fr);padding:12px;gap:12px;min-height:130px}
+.asset-manager .asset-card.off{opacity:1}
+.asset-manager .asset-thumb{border-radius:8px;overflow:hidden}
+.asset-manager .asset-info{padding:0}
+.asset-manager .asset-info strong{font-size:15px;line-height:1.5;white-space:normal;overflow-wrap:anywhere}
+.asset-manager .asset-info span,.asset-manager .asset-info em{font-size:13px;line-height:1.5;color:#a4afbf}
+.asset-manager .asset-card-actions{position:static;grid-column:2;gap:8px;flex-wrap:wrap}
+.asset-manager .icon-btn{width:auto;min-height:40px;color:var(--text)}
+.asset-manager .empty-library{padding:48px 16px;font-size:14px;line-height:1.6;color:#a4afbf}
+.asset-manager .asset-editor{max-width:640px;margin-inline:auto}
+.asset-manager .asset-editor h3{font-size:18px;margin-bottom:20px}
+.asset-manager .asset-editor .fields{gap:20px 16px}
+.asset-manager .field label{font-size:14px;color:#c8d0da;margin-bottom:8px}
+.asset-manager .field input,.asset-manager .field select{min-height:44px}
+.asset-manager .field input[type=file]{white-space:normal;padding:12px;min-width:0}
+.asset-manager .hint,.asset-manager .asset-file-note{font-size:13px;line-height:1.6;color:#a4afbf;overflow-wrap:anywhere}
+.asset-manager .active-check{height:auto;min-height:44px;padding:12px;font-size:14px}
+.asset-manager .field label.active-check{display:flex;align-items:center;gap:10px}
+.asset-manager .active-check input{min-height:0;width:18px;height:18px;margin:0;flex:0 0 auto}
+.asset-manager .preview-image{height:150px;font-size:13px;color:#a4afbf}
+.asset-manager .editor-actions{gap:12px;margin-top:24px;flex-wrap:wrap}
+.asset-manager .asset-options{margin-top:24px;color:#c8d0da}
+.asset-manager .asset-options summary{cursor:pointer;padding:12px 0;min-height:44px}
+.asset-manager .asset-status{font-size:14px;line-height:1.5;color:#a4afbf;margin:0 0 16px;overflow-wrap:anywhere}
+.asset-manager .asset-status.error{padding:12px;border:1px solid #84434e;border-radius:8px;background:#351e26;color:#ffe1e1}
+.asset-discard-dialog{width:min(420px,calc(100% - 32px));padding:24px;border:1px solid var(--line);border-radius:16px;background:var(--panel);color:var(--text)}
+.asset-discard-dialog::backdrop{background:#030508c9}
+.asset-discard-dialog h2{font-size:20px;margin-top:0}.asset-discard-dialog p{font-size:14px;line-height:1.6;color:#c8d0da}
+.asset-discard-dialog button{min-height:44px;font-size:14px}.asset-discard-dialog :focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+@media(max-width:600px){dialog.asset-manager{height:100dvh;border:0;border-radius:0}.asset-manager .asset-head,.asset-manager .asset-body{padding:16px}.asset-manager .asset-head p{margin-bottom:0}.asset-manager .asset-grid{grid-template-columns:1fr}.asset-manager .asset-editor .fields{grid-template-columns:1fr}.asset-manager input,.asset-manager select{font-size:16px}.asset-manager .editor-actions>*{flex:1}.asset-manager .library-head{display:block}.asset-manager #new-asset{width:100%;margin-bottom:16px}}

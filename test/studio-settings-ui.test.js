@@ -14,9 +14,9 @@ function setup({compact=false,page=1,basic=false}={}){
  const context=vm.createContext({document,window,location:{origin:'http://test.invalid'},channelId:'national-cre-20261021',workspaceLoadSequence:0,state:{mode:'live',activeItemId:'old-item'},page,compactMode:compact,$:id=>document.getElementById(id),form,isBasicDice:()=>basic,CreoStudioSettings:settings,syncBidderOpacityValue(){},toast(){},confirm:()=>false,CreoPlatform:{api:async(path,options)=>{const patch=JSON.parse(options.body);writes.push([path,patch]);if(held)await held;if(failure)throw failure;server={...server,...patch};return {state:{...server}}}}});
  vm.runInContext(between('function read(){','function updatePositionWarnings'),context);
  vm.runInContext(between('function syncBasicTickerFields','function isCrewart'),context);
- vm.runInContext(between('let settingsDraft=null','function assetKindLabel'),context);
+ vm.runInContext(between('let settingsDraft=null','async function fileToBase64'),context);
  vm.runInContext(between('function saveVendorTag(',"\nform.addEventListener('change'"),context);
- vm.runInContext(between("$('save').onclick=",'function openAssetManager'),context);
+ vm.runInContext(between("$('save').onclick=",'async function boot'),context);
  context.receiveSettings();
  return {document,window,context,writes,messages,server:()=>server,fail(error=Object.assign(Error('연결 끊김'),{status:503})){failure=error},hold(promise){held=promise},edit(name,value){const el=form.elements[name];if(el.type==='checkbox')el.checked=value;else el.value=value;context.captureSettings();},save:()=>document.getElementById('save').onclick(),reload(values){server={...server,...values};for(const el of form.elements)if(Object.hasOwn(server,el.name)){if(el.type==='checkbox')el.checked=server[el.name];else el.value=server[el.name];}context.receiveSettings();},value:name=>form.elements[name].value,status:()=>vm.runInContext('settingsDraft.status()',context)};
 }
