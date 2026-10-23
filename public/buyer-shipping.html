@@ -115,6 +115,7 @@ function renderFlow(){
  $('saved').hidden=true;
  $('submit').parentElement && ($('submit').parentElement.hidden=saved||!showPayment);
  const paymentReady=state.data.vendors.every(v=>v.payment.status==='paid'||state.payments[v.key]);
+  if(showPayment&&!pending&&!saved&&state.data.submittedAt&&needsShippingSave()&&paymentReady&&!destinationDraft()&&!requiresChange())$('flow-title').textContent='추가 낙찰 내역을 확인해 주세요';
  $('payment-summary').hidden=!showPayment||!paymentReady||state.data.vendors.length===1;
  $('submit').disabled=state.saving||pending||!showPayment||!paymentReady||saved;
  $('submit').textContent=state.saving?'저장 중…':!showPayment?(ready?'수령지를 선택해 주세요':destination()&&destination().type!=='pickup'?'수령 지점을 선택해 주세요':'수령지를 선택해 주세요'):!paymentReady?'결제 방식을 선택해 주세요':saved?'저장 완료':state.data.submittedAt?'변경 내용 저장':'선택 완료';
@@ -164,11 +165,11 @@ function renderSaveFeedback(){
  $('reload-checkout').hidden=!error.conflict;
  if(!$('submit').disabled)$('submit').textContent='다시 저장';
 }
-function vendorDue(vendor,shipping){const shippingAmount=vendorSaved(vendor)?Number(vendor.totals.shippingAmount||0):vendor.items.reduce((sum,item)=>sum+(shipping.get(item.id)||0),0),total=Number(vendor.totals.payableAuctionAmount||0)+shippingAmount,confirmed=Number(vendor.payment.confirmedAmount||0);const shippingSupportAmount=vendorSaved(vendor)?Number(vendor.totals.shippingSupportAmount||0):vendor.items.reduce((sum,item)=>sum+(shippingQuote().supportAllocations?.get(item.id)||0),0);return{shippingAmount,shippingSupportAmount,total,due:Math.max(0,total-confirmed),confirmed}}
+function vendorDue(vendor,shipping){const shippingAmount=vendorSaved(vendor)?Number(vendor.totals.shippingAmount||0):vendor.items.reduce((sum,item)=>sum+(shipping.get(item.id)||0),0),total=Number(vendor.totals.payableAuctionAmount||0)+shippingAmount,confirmed=Number(vendor.payment.confirmedAmount||0);const shippingSupportAmount=vendorSaved(vendor)?Number(vendor.totals.shippingSupportAmount||0):vendor.items.reduce((sum,item)=>sum+(shippingQuote().supportAllocations?.get(item.id)||0),0),outstanding=Math.max(0,total-confirmed),due=pendingConfirmation(vendor)?Math.max(0,Number(vendor.payment.confirmationDue??((vendor.payment.reportedAmount??vendor.payment.requestedAmount??total)-confirmed))):outstanding;return{shippingAmount,shippingSupportAmount,total,due,confirmed,outstanding,later:pendingConfirmation(vendor)?Math.max(0,outstanding-due):0}}
 function vendorAction(vendor,due){
  const p=vendor.payment,status=p.status;
  if(state.data.changeRequest?.state==='pending')return '<p class="waiting-note">운영자 승인 대기</p>';
- if(['bank_transfer_reported','card_payment_reported'].includes(status))return `<p class="waiting-note">${p.shippingChangedAfterReport?'배송비 변경 · 업체 금액 재확인 중':'확인되면 알림톡으로 알려드려요'}</p>`;
+  if(['bank_transfer_reported','card_payment_reported'].includes(status))return p.shippingChangedAfterReport?`<div class="waiting-note"><b>배송비 변경 확인 중</b><span>변경 후 남은 금액 ${money(due.outstanding)} · 실제 입금·결제 내역을 업체가 확인하고 있어요.</span></div>`:due.later?`<div class="waiting-note"><b>추가 낙찰 내역이 있어요</b><span>추가 예상금액 ${money(due.later)} · 기존 결제가 확인되면 추가 내역을 저장하고 결제해 주세요.</span></div>`:'<p class="waiting-note">확인되면 알림톡으로 알려드려요</p>';
  if(status==='paid'||!vendorSaved(vendor))return '';
  if(p.method==='bank_transfer'){
   const a=p.account||{};
@@ -202,7 +203,8 @@ function renderPaymentSummary(){
  const data=state.data,shipping=globalShipping(),waiting=data.vendors.filter(pendingConfirmation).reduce((sum,v)=>sum+vendorDue(v,shipping).due,0),due=data.vendors.filter(v=>v.payment.status!=='paid'&&!pendingConfirmation(v)).reduce((sum,v)=>sum+vendorDue(v,shipping).due,0),confirmed=data.vendors.reduce((sum,v)=>sum+(Number(v.payment.confirmedAmount)||0),0),paid=data.payment.status==='paid';
  $('payable-amount').textContent=money(paid?confirmed:due||waiting);
  $('payable-title').textContent=paid?'결제 확인 완료':due?'결제할 금액':waiting?'결제 확인 중':'결제할 금액';
- $('payable-note').textContent=state.dirty||!data.submittedAt?'저장 후 결제금액 확정':due&&waiting?'업체 확인 중인 금액 '+money(waiting):waiting?'업체가 입금·결제를 확인하고 있어요':paid?'모든 업체의 결제가 확인됐어요':'업체별로 결제해 주세요';
+ const later=data.vendors.filter(v=>pendingConfirmation(v)&&!v.payment.shippingChangedAfterReport).reduce((sum,v)=>sum+vendorDue(v,shipping).later,0);
+ $('payable-note').textContent=state.dirty||!data.submittedAt?'저장 후 결제금액 확정':(due&&waiting?'업체 확인 중인 금액 '+money(waiting):waiting?'업체가 입금·결제를 확인하고 있어요':paid?'모든 업체의 결제가 확인됐어요':needsShippingSave()?'추가 낙찰 내역을 저장하면 결제금액이 확정돼요.':'업체별로 결제해 주세요')+(later?' · 추가 낙찰 예상 '+money(later)+'은 기존 결제 확인 후 안내돼요.':'');
 }
 function render(){
  const data=state.data;

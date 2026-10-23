@@ -33,6 +33,25 @@ async function resetRequest(f, extra={}) {
  const current=(await f.call('GET','vendor-checkout?code='+f.vendor.code)).json().buyers[0];
  return {code:f.vendor.code,buyerId:current.id,requestId:'reset-card-guide',expectedVersion:current.payment.editVersion,expectedAmount:current.totals.totalAmount,confirmedOldCardLinkCancelled:true,confirmedUnpaid:true,...extra};
 }
+for(const external of [false,true])test(`completed ${external?'external':'linked'} card payment permits additional wins without cancelling the paid guide`,async t=>{
+ const f=await fixture(t);assert.equal((await f.card(external?{cardNoticeMethod:'external'}:{})).status,200);
+ let current=(await f.call('GET','vendor-checkout?code='+f.vendor.code)).json().buyers[0];
+ const paid=await f.call('POST','vendor-checkout/confirm-payment',{code:f.vendor.code,buyerId:current.id,expectedVersion:current.payment.editVersion,expectedAmount:50000,requestId:'initial-paid'});assert.equal(paid.status,200,paid.body);
+ const before=await f.repository.listRecords('alpha','shipment');
+ await f.repository.upsertRecord('alpha','item',{id:'third',name:'A03',status:'sold',soldPrice:40000,winnerName:'가상 구매자',winnerPhone:'01000000002',vendorId:'vendor',vendorName:'가상 업체'});
+ const selection={...f.selection,requestId:'additional-after-paid'},upsert=f.repository.upsertRows.bind(f.repository);
+ f.repository.upsertRows=rows=>upsert(rows.some(r=>r.key.includes('::shipment::')&&JSON.parse(r.value).itemId==='third')?[...rows,{key:{invalid:true},value:'fail new quote'}]:rows);
+ assert.equal((await f.call('POST','buyer-shipping',selection)).status,500);assert.deepEqual(await f.repository.listRecords('alpha','shipment'),before);f.repository.upsertRows=upsert;
+ const saves=await Promise.all([f.call('POST','buyer-shipping',selection),f.call('POST','buyer-shipping',selection)]);for(const r of saves)assert.equal(r.status,200,r.body);
+ f.restart();current=(await f.call('GET','vendor-checkout?code='+f.vendor.code)).json().buyers[0];assert.equal(current.payment.cardLinkCancellationRequired,false);assert.equal(current.payment.additionalDue,40000);assert.equal(current.payment.confirmedAmount,50000);
+ const card=await f.card({requestId:'additional-guide',expectedAmount:90000,expectedVersion:current.payment.editVersion,cardPaymentUrl:'https://pay.example.test/additional'});assert.equal(card.status,200,card.body);
+ for(const row of before){const after=(await f.repository.listRecords('alpha','shipment')).find(s=>s.id===row.id);for(const field of ['paymentStatus','paymentConfirmedAmount','paymentConfirmedAt','paymentConfirmationRequestId'])assert.equal(after[field],row[field],field);}
+ // A later amount change still retires the new, unpaid guide even when paid rows share timestamps.
+ await f.repository.upsertRecord('alpha','item',{id:'fourth',name:'A04',status:'sold',soldPrice:10000,winnerName:'가상 구매자',winnerPhone:'01000000002',vendorId:'vendor',vendorName:'가상 업체'});
+ const resave=await f.call('POST','buyer-shipping',{...f.selection,requestId:'new-unpaid-amount'});assert.equal(resave.status,200,resave.body);
+ f.restart();current=(await f.call('GET','vendor-checkout?code='+f.vendor.code)).json().buyers[0];assert.equal(current.payment.cardLinkCancellationRequired,true);assert.equal(current.payment.retiredCardPaymentUrl,'https://pay.example.test/additional');
+ assert.equal((await f.card({requestId:'cannot-overwrite-unpaid',expectedAmount:100000,expectedVersion:current.payment.editVersion})).status,409);assert.equal((await f.repository.listRecords('beta','shipment')).length,0);
+});
 for(const external of [false,true])test(`reset ${external?'external':'linked'} card guide preserves shipping and allows a new guide after restart`,async t=>{
  const f=await fixture(t);assert.equal((await f.card(external?{cardNoticeMethod:'external'}:{})).status,200);
  const before=await f.repository.listRecords('alpha','shipment');

@@ -1979,7 +1979,7 @@ function createPlatformApi({
         const preservedShipmentIds = new Set();
         for (const group of groups) {
             const groupShipments = context.shipments.filter((shipment) => group.items.some((item) => item.id === shipment.itemId));
-            const groupLatest = Checkout.newestShipment(groupShipments);
+            const groupLatest = Checkout.newestShipment(groupShipments.filter(shipment => shipment.paymentStatus !== 'paid')) || Checkout.newestShipment(groupShipments);
             const paymentMethod = requestedMethods.get(group.key) || groupLatest?.paymentMethod || '';
             if (!destinationChanged && groupShipments.some(shipment => ['bank_transfer_reported', 'card_payment_reported'].includes(shipment.paymentStatus))) {
                 // A vendor's pending report freezes only its own payment bundle.
@@ -2003,7 +2003,8 @@ function createPlatformApi({
             const previousRequested = Math.max(0, Number(groupLatest?.paymentRequestedAmount) || 0);
             const amountChanged = previousRequested > 0 && previousRequested !== totalAmount;
             const methodChanged = Boolean(groupLatest?.paymentMethod) && groupLatest.paymentMethod !== paymentMethod;
-            const retireCard = (methodChanged || amountChanged) && Boolean(groupLatest?.cardPaymentUrl || groupLatest?.cardNoticeMethod === 'external');
+            // A completed payment is history; only an outstanding guide needs retirement.
+            const retireCard = (methodChanged || amountChanged) && groupLatest?.paymentStatus !== 'paid' && Boolean(groupLatest?.cardPaymentUrl || groupLatest?.cardNoticeMethod === 'external');
             const cardPaymentUrl = paymentMethod === 'card' && !amountChanged ? (groupLatest?.cardPaymentUrl || '') : '';
             const externalNotice = paymentMethod === 'card' && !amountChanged && groupLatest?.cardNoticeMethod === 'external' && Boolean(groupLatest?.cardLinkPreparedAt);
             const openStatus = confirmedAmount >= totalAmount && totalAmount > 0

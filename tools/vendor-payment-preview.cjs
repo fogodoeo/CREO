@@ -7,6 +7,15 @@ async function main(){
  const catalog=await f.repository.getCatalog();await f.repository.saveCatalog(catalog.channels.map(c=>c.id==='national-cre'?{...c,shippingSupport:{enabled:false},shippingDefaults:{...c.shippingDefaults,deliverySchedule:{enabled:true,auctionDate:day}}}:c));
  const selection={...f.saveBody,payments:[{vendorKey:'v1',method:'bank_transfer'},{vendorKey:'v2',method:'card'}]};const saved=await f.request('POST','/buyer-shipping',selection,false);if(saved.status!==200)throw Error(saved.body);
  const links={};for(const id of ['v1','v2']){const result=await f.request('POST','/channels/national-cre/vendor-checkout-link',{vendorId:id});if(result.status!==200)throw Error(result.body);links[id]=result.json().code;}
+ if(process.env.VENDOR_PAYMENT_PREVIEW_ADDITIONAL==='1'){
+  const must=async(promise)=>{const r=await promise;if(r.status!==200)throw Error(r.body);return r.json()};
+  const before=await must(f.read());await must(f.request('POST','/buyer-shipping/report-payment',{code:f.code,vendorKey:'v1',requestId:'preview-first-report',expectedVersion:before.editVersion},false));
+  let data=await must(f.request('GET','/vendor-checkout?code='+links.v2,null,false)),b=data.buyers[0];
+  data=await must(f.request('POST','/vendor-checkout/card-link',{code:links.v2,buyerId:b.id,cardPaymentUrl:'https://pay.example.test/initial',cardNoticeMethod:'link',expectedVersion:b.payment.editVersion,expectedAmount:b.totals.totalAmount,requestId:'preview-first-card'},false));b=data.buyers[0];
+  await must(f.request('POST','/vendor-checkout/confirm-payment',{code:links.v2,buyerId:b.id,expectedVersion:b.payment.editVersion,expectedAmount:b.totals.totalAmount,requestId:'preview-first-confirm'},false));
+  for(const [id,source,price] of [['a04','a01',50000],['b05','b03',80000]])await f.repository.upsertRecord('national-cre','item',{...(await f.repository.getRecord('national-cre','item',source)),id,name:id.toUpperCase(),lotNumber:Number(id.slice(1)),soldPrice:price});
+  await must(f.request('POST','/buyer-shipping',{...selection,requestId:'preview-additional-selection'},false));
+ }
  if(process.env.VENDOR_PAYMENT_PREVIEW_PENDING_SETTLEMENT==='1'){
   const account=await f.request('PUT','/channels/national-cre/organizer-shipping',{bankName:'가상은행',bankAccount:'000-000-000000',bankHolder:'가상 주관사',notificationPhone:'01000000009'});if(account.status!==200)throw Error(account.body);
   const checkout=await f.request('GET','/vendor-checkout?code='+links.v2,null,false);if(checkout.status!==200)throw Error(checkout.body);
