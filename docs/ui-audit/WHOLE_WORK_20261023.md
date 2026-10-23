@@ -24,6 +24,8 @@ Risk: Release. This batch changes derived API metadata, vendor remittance eligib
 
 Evidence under `scratch/admin-home-review-20261022/`: `one-toolbar-admin-320.png`, `whole-remittance-preparing-320.png`, final desktop screenshot and release before/after snapshots. Production verification is recorded after deployment.
 
+Production `250d660`: authenticated `/main` shows the single toolbar and collapsed round chooser (`one-toolbar-organizer-live.png`). Read-only checks at 2026-10-23 14:36 UTC confirm durable healthy storage, no outbox backlog, 72 vendors, and unchanged item/shipment/broadcast hashes in all four sampled channels. Public static checks match the commit; unauthenticated `/index.html` correctly redirects to `/main` and serves `operator-login.html`, so its login gate was compared instead of incorrectly treating it as the authenticated HTML. The 10/21 settlement response changed since the earlier 10:05 UTC baseline: two existing vendor reports were confirmed at 10:21 UTC (311,000 and 248,000 won). Other settlement hashes are unchanged. No financial mutation was performed by this release verification.
+
 ## Limits
 
 200% zoom, full keyboard and screen-reader journeys across every page remain unverified. Bank transfers still occur externally; the product controls the amount/instructions/report, not the user's banking app. Separate Parge dispatch continues its existing top-level window requirement for the installed extension. Broad UX work remains in progress.

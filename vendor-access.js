@@ -127,9 +127,9 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
    if(!phone(s.verifiedPhone))throw fail('대표로 사용할 전화번호를 먼저 인증해 주세요.',403);
    if(!withOwnerSetup)throw fail('대표 연결을 준비 중이에요. 잠시 후 다시 시도해 주세요.',503);
    const id=String(body.companyId||'');
-   return withOwnerSetup(id,async v=>{
+   return withOwnerSetup(id,async(v,contactRows)=>{
     if(!v||v.active===false)throw fail('업체를 찾을 수 없어요. 목록을 다시 확인해 주세요.',404);
-    return mutate(state=>{
+    return mutate((state,extra)=>{
      state.ownerSetups=state.ownerSetups||[];
      const c=state.companies.find(c=>c.id===id),old=state.ownerSetups.find(r=>r.id===body.requestId);
      if(body.action==='cancel'){
@@ -141,14 +141,12 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
      if(c)throw fail('이미 대표 번호가 등록된 업체예요. 등록된 번호로 로그인해 주세요.',409);
      if(body.action!=='request'||body.consent!==true)throw fail('대표 번호 연결에 동의해 주세요.',422);
      if(!/^[a-f0-9-]{36}$/.test(body.requestId||''))throw fail('연결 화면을 다시 열어 주세요.',422);
-     if(old){if(old.actorId!==s.actorId||old.companyId!==id||old.phone!==s.verifiedPhone)throw fail('요청 정보가 변경됐어요. 연결 화면을 다시 열어 주세요.',409);return {id:old.id,status:old.status,duplicate:true};}
-     if(phone(v.phone)&&phone(v.phone)===s.verifiedPhone)return connectOwner(state,v,s);
-     const name=String(body.name||'').trim();if(!name||name.length>40)throw fail('운영자가 확인할 수 있는 대표자 이름을 입력해 주세요.',422);
-     const pending=state.ownerSetups.find(r=>r.companyId===id&&r.actorId===s.actorId&&r.status==='pending');
-     if(pending)return {id:pending.id,status:pending.status,duplicate:true};
-     if(state.ownerSetups.filter(r=>r.actorId===s.actorId&&r.status==='pending').length>=5)throw fail('대기 중인 연결 요청을 먼저 확인해 주세요.',429);
-     const r={id:body.requestId,companyId:id,actorId:s.actorId,phone:s.verifiedPhone,name,companyName:v.name,region:REGIONS[regionForVendor(v)]||'',fingerprint:ownerFingerprint(v),status:'pending',createdAt:now()};
-     state.ownerSetups.push(r);return {id:r.id,status:r.status};
+     if(old){if(old.actorId!==s.actorId||old.companyId!==id||old.phone!==s.verifiedPhone)throw fail('요청 정보가 변경됐어요. 연결 화면을 다시 열어 주세요.',409);if(old.status!=='pending')return {id:old.id,status:old.status,duplicate:true};}
+     // The first verified representative connects directly. Established login
+     // numbers and owners remain protected by the company guard above.
+     const result=connectOwner(state,v,s,String(old?.name||body.name||'대표').trim().slice(0,40)||'대표');
+     if(!phone(v.phone))extra.push(...contactRows(s.verifiedPhone));
+     return result;
     });
    });
   }
@@ -242,7 +240,7 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
     const selectedRegion=url.searchParams.get('region'),selectedIndex=regionIndex(selectedRegion);
     const list=(query||selectedIndex>=0||selectedId)?(await vendorsFor()).filter(v=>v.active!==false&&(!selectedId||v.id===selectedId)&&companyName(v.name).includes(companyName(query))&&(!selectedRegion||regionForVendor(v)===selectedIndex)).map(v=>{
      const c=state.companies.find(c=>c.id===v.id);
-     return {id:v.id,name:v.name,region:REGIONS[regionForVendor(v)]||'',connected:!!member(state,s.actorId,v.id),canClaim:!!c&&!c.ownerId&&!!phone(s.verifiedPhone)&&c.loginPhone===phone(s.verifiedPhone),canJoin:!!c?.ownerId,ownerSetup:!c&&withOwnerSetup?(phone(v.phone)&&phone(v.phone)===phone(s.verifiedPhone)?'direct':'review'):''};
+     return {id:v.id,name:v.name,region:REGIONS[regionForVendor(v)]||'',connected:!!member(state,s.actorId,v.id),canClaim:!!c&&!c.ownerId&&!!phone(s.verifiedPhone)&&c.loginPhone===phone(s.verifiedPhone),canJoin:!!c?.ownerId,ownerSetup:!c&&withOwnerSetup?'direct':''};
     }):[];
     json(res,200,{companies:list});return true;
    }
