@@ -2,6 +2,7 @@
 
 const crypto = require('node:crypto');
 const AuctionRounds = require('./auction-rounds');
+const WorkspaceItemSave = require('./workspace-item-save');
 const OperationRounds = require('./operation-rounds');
 const CheckoutRounds = require('./checkout-rounds');
 const {listVendorSettlementRounds}=require('./vendor-settlement-rounds');
@@ -6080,6 +6081,8 @@ function createPlatformApi({
             if (segments.length === 3 && method === 'POST' && segments[2] !== 'archives') {
                 await withMutationLock(`channel:${channelId}`, async () => {
                     const body = await readJson(req);
+                    const editorSave=type==='item'?await WorkspaceItemSave.prepare(repository,channelId,'POST',body,body.record?.id):null;
+                    if(editorSave?.record){replyJson(res,201,{record:editorSave.record,duplicate:true});return;}
                     if (type === 'item' && body.requireActiveChannel === true) {
                         const activeId = await repository.getActiveChannel();
                         if (activeId !== channelId) {
@@ -6095,10 +6098,12 @@ function createPlatformApi({
                     let record = sanitizeRecord(type, body.record);
                     if (type === 'item') {
                         const previous=await repository.getRecord(channelId,'item',record.id);
+                        if(editorSave&&previous)throw buyerInputError('이미 등록된 개체입니다. 목록에서 다시 열어 주세요.',409);
                         AuctionRounds.assertCurrent(previous);
                         if(previous?.attributes?.roundTargetChannelId)throw Object.assign(new Error('별도 회차로 가져온 개체의 접수 원본은 덮어쓸 수 없어요.'),{status:409});
                     }
                     if(type==='item')record=require('./auction-settlement').stamp(NationalRounds.assertDate(channel,record),channel);
+                    if(editorSave)WorkspaceItemSave.assertScope(channel,data,body,record);
                     if(type==='shipment'){OperationRounds.assertShipmentScope(channel,data,record,body);await assertShipmentNotPending(channelId,record);}
                     if (type === 'item' && body.allocateNextLot === true) {
                         const nextLotNumber = AuctionRounds.currentItems(data.items).reduce(
@@ -6112,7 +6117,7 @@ function createPlatformApi({
                         replyJson(res, 422, { error: errors.join(' '), errors });
                         return;
                     }
-                    const saved = type === 'vendor' ? await vendorDirectory.update(channelId,record,body.record?.directoryRevision) : await repository.upsertRecord(channelId, type, record);
+                    const saved = editorSave ? await WorkspaceItemSave.commit(repository,channelId,record,editorSave) : type === 'vendor' ? await vendorDirectory.update(channelId,record,body.record?.directoryRevision) : await repository.upsertRecord(channelId, type, record);
                     touchRecord(channelId, type, null, saved);
                     if(type==='vendor')await touchVendorChannels(channelId,saved.id);
                     replyJson(res, 201, { record: saved });
@@ -6200,6 +6205,8 @@ function createPlatformApi({
             if (segments.length === 4 && method === 'PUT') {
                 await withMutationLock(`channel:${channelId}`, async () => {
                     const body = await readJson(req);
+                    const editorSave=type==='item'?await WorkspaceItemSave.prepare(repository,channelId,'PUT',body,segments[3]):null;
+                    if(editorSave?.record){replyJson(res,200,{record:editorSave.record,duplicate:true});return;}
                     const current = await repository.getRecord(channelId, type, segments[3]);
                     if (!current) {
                         replyJson(res, 404, { error: '항목을 찾을 수 없습니다.' });
@@ -6223,6 +6230,7 @@ function createPlatformApi({
                     }
                     let record = sanitizeRecord(type, incoming, current);
                     if(type==='item')record=require('./auction-settlement').stamp(NationalRounds.assertDate(channel,record,current),channel,current);
+                    if(editorSave)WorkspaceItemSave.assertScope(channel,data,body,record);
                     if(type==='shipment'){OperationRounds.assertShipmentScope(channel,data,current,body);OperationRounds.assertShipmentScope(channel,data,record,body);await assertShipmentNotPending(channelId,current);await assertShipmentNotPending(channelId,record);}
                     if (type === 'item' && current.status === 'live' && audienceCompetitionEnabled(channel)) {
                         const decorated = await decorateCrewartBidLog(channelId, channel, data.broadcast, record);
@@ -6233,7 +6241,7 @@ function createPlatformApi({
                         replyJson(res, 422, { error: errors.join(' '), errors });
                         return;
                     }
-                    const saved = type === 'vendor' ? await vendorDirectory.update(channelId,record,body.record?.directoryRevision) : await repository.upsertRecord(channelId, type, record);
+                    const saved = editorSave ? await WorkspaceItemSave.commit(repository,channelId,record,editorSave,current) : type === 'vendor' ? await vendorDirectory.update(channelId,record,body.record?.directoryRevision) : await repository.upsertRecord(channelId, type, record);
                     touchRecord(channelId, type, current, saved);
                     if(type==='vendor')await touchVendorChannels(channelId,saved.id);
                     replyJson(res, 200, { record: saved });

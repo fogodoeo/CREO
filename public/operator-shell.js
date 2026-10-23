@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded',()=>{
  'use strict';const $=id=>document.getElementById(id),Model=CreoOperatorShell,esc=CreoPlatform.escapeHtml;
- let state=null,current='home',source='',dirty=false,contextOpen=false,contextScope='round';
+ let state=null,current='home',source='',dirty=false,busy=false,contextOpen=false,contextScope='round';
  $('operator-frame').setAttribute('allowfullscreen','');
  const desktop=window.matchMedia('(min-width:761px)');const syncMenu=()=>{$('operator-menu').open=desktop.matches;};syncMenu();desktop.addEventListener('change',syncMenu);
  function syncContext(){
@@ -11,8 +11,8 @@ document.addEventListener('DOMContentLoaded',()=>{
  }
  desktop.addEventListener('change',syncContext);
  $('operator-context-toggle').addEventListener('click',()=>{contextOpen=!contextOpen;syncContext();if(contextOpen)$('quick-channel').focus();});
- function allowed(){return !dirty||window.confirm('저장하지 않은 입력이 있습니다. 이 화면을 떠날까요?');}
- function clear(){source='';dirty=false;$('operator-frame').removeAttribute('src');$('operator-content').hidden=true;}
+ function allowed(){if(busy){$('operator-frame').contentWindow.postMessage({type:'creo:operator-navigation-blocked'},location.origin);return false;}return !dirty||window.confirm('저장하지 않은 입력이 있습니다. 이 화면을 떠날까요?');}
+ function clear(){source='';dirty=false;busy=false;$('operator-frame').removeAttribute('src');$('operator-content').hidden=true;}
  function navigate(search,push=true){if(!allowed())return false;dirty=false;document.dispatchEvent(new CustomEvent('creo:operator-navigate',{detail:{search,push}}));return true;}
  function render(detail){state=detail.state;const previous=current,q=new URLSearchParams(location.search);current=q.get('view')||'home';if(current==='bookings'&&q.get('action')==='region')current='regions';const e=Model.entry(state,current);if(current!==previous)contextOpen=false;contextScope=e?.scope||'round';
   $('admin-nav').innerHTML=`<a class="nav-home" href="${esc(Model.home(state))}"${current==='home'?' aria-current="page"':''}>운영 홈</a>`+Model.menu(state).map(g=>`<details name="operator-section"${g.id===e?.group?' open':''}><summary>${esc(g.label)}</summary><nav aria-label="${esc(g.label)}">${g.entries.map(n=>`<a href="${esc(Model.home(state,n.key))}"${n.key===current?' aria-current="page"':''}>${esc(n.label)}</a>`).join('')}</nav></details>`).join('');
@@ -28,12 +28,12 @@ document.addEventListener('DOMContentLoaded',()=>{
   const next=Model.frame(state,current,location.search);$('operator-unavailable').hidden=Boolean(next);$('operator-frame').hidden=!next;$('operator-standalone').hidden=!next;
   if(!next){source='';$('operator-loading').hidden=true;$('operator-frame').removeAttribute('src');return;}
   const standalone=new URL(next,location.origin);standalone.searchParams.delete('embedded');standalone.searchParams.delete('adminShell');$('operator-standalone').href=standalone.pathname+standalone.search+standalone.hash;$('operator-frame').title=e.label;
-  if(source!==next){source=next;dirty=false;$('operator-loading').hidden=false;$('operator-frame').src=next;}
+  if(source!==next){source=next;dirty=false;busy=false;$('operator-loading').hidden=false;$('operator-frame').src=next;}
  }
  document.addEventListener('creo:operator-ready',e=>render(e.detail));
  document.addEventListener('creo:operator-reset',clear);
  document.addEventListener('creo:operator-before-navigate',e=>{if(!allowed())e.preventDefault();else dirty=false;});
- $('operator-frame').addEventListener('load',()=>{try{const doc=$('operator-frame').contentDocument;if(doc&&!doc.documentElement.classList.contains('operator-embedded')){const bridge=doc.createElement('script');bridge.src='/operator-embed.js?v=20261023-program-directory';doc.head.appendChild(bridge);}}catch(_){}$('operator-loading').hidden=true;});
+ $('operator-frame').addEventListener('load',()=>{try{const doc=$('operator-frame').contentDocument;if(doc&&!doc.documentElement.classList.contains('operator-embedded')){const bridge=doc.createElement('script');bridge.src='/operator-embed.js?v=20261023-item-editor';doc.head.appendChild(bridge);}}catch(_){}$('operator-loading').hidden=true;});
  $('operator-reload').addEventListener('click',()=>{if(!allowed())return;dirty=false;if(source){$('operator-loading').hidden=false;$('operator-frame').src=source;}});
  document.addEventListener('click',event=>{const a=event.target.closest?.('a');if(!a||!state||event.defaultPrevented||event.button!==0||event.ctrlKey||event.metaKey||event.shiftKey||event.altKey||a.target==='_blank'||a.hasAttribute('download'))return;
   const url=new URL(a.href,location.href);if(url.origin!==location.origin)return;
@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   else search=Model.home(state,resolved.key).split('?')[1];
   if(navigate('?'+String(search).replace(/^\?/,''))){if(!desktop.matches)$('operator-menu').open=false;$(current==='home'?'work-title':'operator-page-title').focus();}
  });
- window.addEventListener('message',event=>{if(event.origin!==location.origin||event.source!==$('operator-frame').contentWindow)return;const data=event.data;if(data?.type==='creo:operator-dirty'){dirty=data.dirty===true;return;}if(data?.type!=='creo:operator-link'||!state)return;
+ window.addEventListener('message',event=>{if(event.origin!==location.origin||event.source!==$('operator-frame').contentWindow)return;const data=event.data;if(data?.type==='creo:operator-dirty'){dirty=data.dirty===true;if(typeof data.busy==='boolean')busy=data.busy;return;}if(data?.type!=='creo:operator-link'||!state)return;
   const resolved=Model.resolve(data.href,state);if(!resolved)return;const q=new URLSearchParams(location.search),target=resolved.url.searchParams;
   q.set('view',resolved.key);for(const key of ['vendor','action','status'])q.delete(key);
   // Booking/intake use the common reception channel; that is not a round switch.

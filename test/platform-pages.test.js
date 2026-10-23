@@ -274,8 +274,10 @@ test('shared workspace builds real select fields for channel groups and auction 
     const workspace = fs.readFileSync(path.join(__dirname, '..', 'public', 'channel-workspace.html'), 'utf8');
     assert.match(workspace, /color-scheme:light/);
     assert.match(workspace, /field\('groupId',term\('group','그룹'\),record\?\.groupId,'select'/);
-    assert.match(workspace, /field\('status','상태',record\?\.status,'select'/);
-    assert.match(workspace, /field\('winnerAlias','방송용 낙찰자명'/);
+    const editor = fs.readFileSync(path.join(__dirname, '..', 'public', 'workspace-item-editor.js'), 'utf8');
+    assert.match(workspace, /CreoWorkspaceItemEditor\.create/);
+    assert.match(editor, /select\('status','경매 상태',states/);
+    assert.match(editor, /input\('winnerAlias','방송에 표시할 낙찰자 이름'/);
     assert.match(workspace, /auction-transition/);
     assert.match(workspace, /allowActiveFallback:false/);
     assert.match(workspace, /function legacyWorkspaceUrl\(channel\)/);

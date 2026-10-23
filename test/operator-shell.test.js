@@ -43,6 +43,11 @@ test('shell and home restore the selected work page after round change and refre
  select.value='national-cre';select.dispatchEvent(new window.Event('change'));assert.equal(location.search,'?channel=national-cre-20261021&view=items');
  location.search='?channel=national-cre';window.dispatchEvent(new window.Event('popstate'));assert.equal(location.search,'?channel=national-cre-20261021&view=items');
  window.confirm=()=>true;
+ const blocked=[];frame.contentWindow.postMessage=data=>blocked.push(data);dirty.data={type:'creo:operator-dirty',dirty:true,busy:true};window.dispatchEvent(dirty);
+ select.value='national-cre';select.dispatchEvent(new window.Event('change'));assert.equal(location.search,'?channel=national-cre-20261021&view=items');
+ document.getElementById('operator-reload').click();assert.ok(blocked.length>=2);assert.ok(blocked.every(m=>m.type==='creo:operator-navigation-blocked'));
+ dirty.data={type:'creo:operator-dirty',dirty:false};window.dispatchEvent(dirty);select.value='national-cre';select.dispatchEvent(new window.Event('change'));assert.equal(location.search,'?channel=national-cre-20261021&view=items');
+ dirty.data={type:'creo:operator-dirty',dirty:false,busy:false};window.dispatchEvent(dirty);
  select.value='national-cre@old';select.dispatchEvent(new window.Event('change'));assert.equal(document.getElementById('operator-unavailable').hidden,false);assert.equal(document.getElementById('operator-frame').getAttribute('src'),null);
  assert(writes.every(([path,options])=>path==='operation-rounds'&&!options),'Navigation must never write live auction state');
 });

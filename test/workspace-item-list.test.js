@@ -63,7 +63,8 @@ test('workspace scopes vendor controls and keeps broadcast transitions behind an
     const panel=document.getElementById('live-panel');assert.equal(panel.tagName,'DETAILS');assert.equal(panel.hasAttribute('open'),false);assert.equal(panel.querySelectorAll('.live-mode').length,3);
     const source=html.slice(html.indexOf('function render(){'),html.indexOf('async function deleteRecord'));
     const ctx=vm.createContext({window:{},document,tab:'items',channelId:'round-a',selectedChannel:()=>({}),term:(_,fallback)=>fallback,$:id=>document.getElementById(id),data:{items:[],vendors:[],shipments:[]},itemList:{render:()=>'<p>Items</p>'},groupName:()=>'',statusName:()=>'',actions:()=>'',CreoPlatform:{money:()=>''},CreoMobilePhone:{buyerDisplayName:()=>''},bindTableActions(){},Event:document.defaultView.Event,CreoWorkspaceVendorTable:{render:()=>'<p>Vendors</p>'}});
-    vm.runInContext(source+';render();',ctx);
+    const focusSource=html.slice(html.indexOf('function restoreItemFocus('),html.indexOf('const itemEditor='));
+    vm.runInContext(focusSource+source+';render();',ctx);
     assert.equal(document.getElementById('shared-vendors').hidden,true);assert.equal(document.getElementById('manage-vendor-links').hidden,true);assert.equal(document.getElementById('item-list-tools').hidden,false);
     ctx.tab='vendors';ctx.render();assert.equal(document.getElementById('shared-vendors').hidden,false);assert.equal(document.getElementById('item-list-tools').hidden,true);
 });

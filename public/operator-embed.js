@@ -12,7 +12,7 @@
  for(const path of ['/promo-center.html','/organizer-shipping.html','/capture-setup.html','/band-monitor.html'])paths.add(path);
  document.addEventListener('click',event=>{const a=event.target.closest?.('a');if(!a||event.defaultPrevented||event.button!==0||event.ctrlKey||event.metaKey||event.shiftKey||event.altKey||a.target==='_blank'||a.hasAttribute('download'))return;const href=a.getAttribute('href');if(!href||href.startsWith('#'))return;const url=new URL(a.href,location.href);if(url.origin!==location.origin)return;if(!paths.has(url.pathname)||url.searchParams.has('broadcast')){a.target='_blank';a.rel='noopener';return;}event.preventDefault();send('creo:operator-link',{href:url.pathname+url.search+url.hash});});
  let editedForm=null;
- document.addEventListener('input',event=>{const form=event.target.closest?.('form');if(!form||event.target.type==='search'||event.target.type==='password')return;editedForm=form;send('creo:operator-dirty',{dirty:true});});
+ document.addEventListener('input',event=>{const form=event.target.closest?.('form');if(!form||form.dataset.managedDraft==='true'||event.target.type==='search'||event.target.type==='password')return;editedForm=form;send('creo:operator-dirty',{dirty:true});});
  const observer=new MutationObserver(()=>{if(editedForm&&(!editedForm.isConnected||editedForm.closest('[hidden]')||editedForm.closest('dialog:not([open])'))){editedForm=null;send('creo:operator-dirty',{dirty:false});}});
  observer.observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['hidden','open']});
  document.addEventListener('reset',()=>{editedForm=null;send('creo:operator-dirty',{dirty:false});});

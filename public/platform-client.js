@@ -6,7 +6,7 @@
     try {
         if (global.parent !== global && global.frameElement?.id === 'operator-frame' && ['/main','/main/','/index.html'].includes(global.parent.location.pathname)) {
             const bridge = document.createElement('script');
-            bridge.src = '/operator-embed.js?v=20261023-finance-nav';
+            bridge.src = '/operator-embed.js?v=20261023-item-editor';
             document.head.appendChild(bridge);
         }
     } catch (_) {}

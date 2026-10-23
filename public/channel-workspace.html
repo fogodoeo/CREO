@@ -4,7 +4,7 @@
     <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
     <title>채널 운영 · CREO</title>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-    <script src="platform-client.js?v=20260803-admin-session-v2"></script>
+    <script src="platform-client.js?v=20261023-item-editor"></script>
     <script src="/mobile-phone.js?v=20261018-contact"></script>
     <script src="channel-runtime.js?v=20261020-round-access"></script>
     <script src="operator-pipeline.js?v=20261020-round-access"></script>
@@ -23,6 +23,9 @@
     <script src="/workspace-vendor-table.js?v=20261012-vendor-directory"></script>
     <link rel="stylesheet" href="/workspace-item-list.css?v=20261023-item-search">
     <script src="/workspace-item-list.js?v=20261023-item-search"></script>
+    <link rel="stylesheet" href="/workspace-item-editor.css?v=20261023-safe-editor">
+    <script src="/workspace-item-draft.js?v=20261023-safe-editor"></script>
+    <script src="/workspace-item-editor.js?v=20261023-safe-editor"></script>
     <script src="/entry-intake.js?v=20261021-round-intake"></script>
     <script src="/workspace-entry-intake.js?v=20261023-auction-date"></script>
     <link rel="stylesheet" href="/workspace-entry-intake.css?v=20261014-intake">
@@ -41,6 +44,7 @@
     <section id="vendor-access-requests" class="vendor-access-requests" aria-live="polite" hidden></section>
     <section class="entry-intake" id="entry-intake" aria-label="업체 출품 접수 현황" hidden></section>
     <section class="item-list-tools" id="item-list-tools" aria-label="편성된 개체 찾기" hidden></section>
+    <div id="workspace-save-feedback" role="status" hidden><p></p><button class="btn" type="button" hidden>목록 다시 불러오기</button></div>
     <div class="table-wrap" id="table-wrap"></div>
     <details class="workspace-live" id="live-panel"><summary>송출 개체·화면 직접 제어</summary><section class="live-panel"><div class="live-label"><span>LIVE</span><strong>현재 송출</strong></div><select class="live-item" id="live-item" aria-label="송출할 개체"><option value="">개체 선택</option></select><div class="live-modes" id="live-modes"><button class="live-mode" data-mode="standby" type="button">대기 화면</button><button class="live-mode" data-mode="live" type="button">진행 화면</button><button class="live-mode" data-mode="sold" type="button">낙찰 화면</button></div></section></details>
 </main>
@@ -51,6 +55,16 @@
 <script>
 const $=id=>document.getElementById(id),esc=v=>CreoPlatform.escapeHtml(v);let catalog={channels:[]},runtime=null,channelId='',data={vendors:[],items:[],shipments:[],broadcast:{}},tab='vendors',editing=null,workspaceLoadSequence=0,livePending=false,recordPending=false;
 const itemList=CreoWorkspaceItemList.create({document,onChange:html=>{if(tab!=='items')return;$('table-wrap').innerHTML=html;bindTableActions();}});
+let workspaceFeedbackVersion=0;
+function workspaceSaveFeedback(message='',retry=false){const box=$('workspace-save-feedback');box.hidden=!message;box.querySelector('p').textContent=message;box.querySelector('button').hidden=!retry;}
+function restoreItemFocus(opener,id){const button=[...document.querySelectorAll('[data-edit]')].find(b=>b.dataset.edit==='items:'+id);(button||(opener?.isConnected?opener:null)||$('add-record')).focus();}
+function refreshSavedItemFocus(){const active=document.activeElement,id=active?.dataset?.edit;return ()=>{if(id?.startsWith('items:')&&!active.isConnected&&document.activeElement===document.body)restoreItemFocus(null,id.slice(6));};}
+const itemEditor=CreoWorkspaceItemEditor.create({document,context:()=>({channelId,channel:selectedChannel(),round:data.round,items:data.items,vendors:data.vendors}),api:CreoPlatform.api,restoreFocus:restoreItemFocus,onSaved(record,scope){
+    if(scope!==channelId)return;const version=++workspaceFeedbackVersion;workspaceLoadSequence++;data.items=[...data.items.filter(i=>i.id!==record.id),record];render();restoreItemFocus(null,record.id);workspaceSaveFeedback('저장했습니다.');
+    loadWorkspace().catch(()=>{if(scope===channelId&&version===workspaceFeedbackVersion)workspaceSaveFeedback('저장은 완료됐지만 목록을 새로 불러오지 못했어요.',true);});
+}});
+async function retryWorkspaceList(event){if(event.currentTarget.disabled)return;const button=event.currentTarget,scope=channelId,version=++workspaceFeedbackVersion,returnFocus=document.activeElement===button;button.disabled=true;try{await loadWorkspace();if(scope===channelId&&version===workspaceFeedbackVersion){const canRestore=returnFocus&&(document.activeElement===button||document.activeElement===document.body);workspaceSaveFeedback('목록을 새로 불러왔습니다.');if(canRestore)$('item-list-query').focus();}}catch(error){if(scope===channelId&&version===workspaceFeedbackVersion)workspaceSaveFeedback(error.message+' 다시 시도해 주세요.',true);}finally{button.disabled=false;}}
+$('workspace-save-feedback').querySelector('button').onclick=retryWorkspaceList;
 function toast(m){const e=$('toast');e.textContent=m;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),2500)}
 function selectedChannel(){return runtime?.channel||catalog.channels.find(c=>c.id===channelId)}
 function endpoint(type,id='',targetChannelId=channelId){return`channels/${encodeURIComponent(targetChannelId)}/${type}${id?'/'+encodeURIComponent(id):''}`}
@@ -84,7 +98,7 @@ async function setLive(mode=data.broadcast.mode||'standby'){
 function term(key,fallback){return selectedChannel()?.terminology?.[key]||fallback}function groupName(id){return selectedChannel()?.groups?.find(group=>group.id===id)?.name||''}function groupOptions(current=''){const rows=selectedChannel()?.groups||[];return`<option value="">선택 안 함</option>`+rows.map(group=>`<option value="${esc(group.id)}" ${group.id===current?'selected':''}>${esc(group.name)}</option>`).join('')}function vendorName(id){return data.vendors.find(v=>v.id===id)?.name||'-'}function itemName(id){const i=[...data.items,...(data.archivedItems||[])].find(v=>v.id===id);return i?`${String(i.lotNumber).padStart(3,'0')} · ${i.name}`:'-'}function statusName(value){return({waiting:'대기',live:'진행 중',sold:'낙찰',passed:'유찰',cancelled:'취소',complete:'완료',completed:'완료'})[value]||'상태 확인 필요'}
 function shippingStatusName(value){return({pending:'입력 대기',payment_pending:'결제 대기',bank_transfer_pending:'입금 대기',bank_transfer_reported:'입금 확인 필요',card_link_pending:'카드 링크 등록 대기',card_payment_pending:'카드결제 대기',card_payment_reported:'카드결제 확인 필요',paid:'결제 확인 완료',ready:'발송 준비',shipped:'발송 완료',complete:'수령 완료',completed:'수령 완료',cancelled:'취소'})[value]||'상태 확인 필요'}
 function actions(type,id){return`<div class="row-actions">${type==='vendors'?`<button class="btn" data-vendor-link="${esc(id)}">업체 페이지</button>`:data.items.find(i=>i.id===id)?.status==='sold'?`<button class="btn" data-buyer-contact="${esc(id)}">번호·발송</button>`:''}<button class="btn" data-edit="${esc(type)}:${esc(id)}">수정</button><button class="btn danger" data-delete="${esc(type)}:${esc(id)}">삭제</button></div>`}
-function render(){window.CreoWorkspaceEntryIntake?.update({channelId,tab,channel:selectedChannel()});document.body.classList.toggle('vendor-directory-view',tab==='vendors');document.body.classList.toggle('item-list-view',tab==='items');$('shared-vendors').hidden=tab!=='vendors';$('manage-vendor-links').hidden=tab!=='vendors';$('item-list-tools').hidden=tab!=='items';document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));document.querySelector('[data-tab="vendors"]').textContent=term('vendor','업체');document.querySelector('[data-tab="items"]').textContent=term('item','개체');const labels={vendors:`＋ ${term('vendor','업체')} 추가`,items:`＋ ${term('item','개체')} 추가`,shipping:'배송·결제 관리 열기'},help={vendors:channelId==='national-cre'?'지역별 참여 업체와 담당자·연락처·정산 정보를 확인합니다.':`이 채널에 참여하는 ${term('vendor','업체')}와 결제 정보를 관리합니다.`,items:`경매 순서와 ${term('item','개체')} 정보를 관리합니다.`,shipping:'여기서는 상태만 확인합니다. 배송지·금액·결제 처리는 전용 페이지 한 곳에서 관리합니다.'};$('tab-help').textContent=help[tab]||'';$('add-record').textContent=labels[tab]||'';let html='';if(tab==='vendors'){html=CreoWorkspaceVendorTable.render({vendors:data.vendors,channelId,vendorLabel:term('vendor','업체'),groupLabel:term('group','그룹'),groupName,actions})}else if(tab==='items'){html=itemList.render({channelId,items:data.items,vendors:data.vendors,groupLabel:term('group','그룹'),groupName,money:CreoPlatform.money,buyerName:CreoMobilePhone.buyerDisplayName,statusName,actions})}else{html=data.shipments.length?`<table><thead><tr><th>${esc(term('item','개체'))}</th><th>수령인</th><th>연락처</th><th>수령 방식</th><th>배송·결제 상태</th></tr></thead><tbody>${data.shipments.map(s=>`<tr><td>${esc(itemName(s.itemId))}</td><td>${esc(s.recipientName||'-')}</td><td>${esc(s.recipientPhone||'-')}</td><td>${esc(s.method==='pickup'?'직접수령':'배송')}</td><td><span class="pill">${esc(shippingStatusName(s.status))}</span></td></tr>`).join('')}</tbody></table>`:'<div class="empty">아직 입력된 배송·결제 정보가 없습니다.</div>'}$('table-wrap').innerHTML=html;bindTableActions();document.dispatchEvent(new Event('creo:workspace-render'))}
+function render(){const restore=refreshSavedItemFocus();window.CreoWorkspaceEntryIntake?.update({channelId,tab,channel:selectedChannel()});document.body.classList.toggle('vendor-directory-view',tab==='vendors');document.body.classList.toggle('item-list-view',tab==='items');$('shared-vendors').hidden=tab!=='vendors';$('manage-vendor-links').hidden=tab!=='vendors';$('item-list-tools').hidden=tab!=='items';document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));document.querySelector('[data-tab="vendors"]').textContent=term('vendor','업체');document.querySelector('[data-tab="items"]').textContent=term('item','개체');const labels={vendors:`＋ ${term('vendor','업체')} 추가`,items:`＋ ${term('item','개체')} 추가`,shipping:'배송·결제 관리 열기'},help={vendors:channelId==='national-cre'?'지역별 참여 업체와 담당자·연락처·정산 정보를 확인합니다.':`이 채널에 참여하는 ${term('vendor','업체')}와 결제 정보를 관리합니다.`,items:`경매 순서와 ${term('item','개체')} 정보를 관리합니다.`,shipping:'여기서는 상태만 확인합니다. 배송지·금액·결제 처리는 전용 페이지 한 곳에서 관리합니다.'};$('tab-help').textContent=help[tab]||'';$('add-record').textContent=labels[tab]||'';let html='';if(tab==='vendors'){html=CreoWorkspaceVendorTable.render({vendors:data.vendors,channelId,vendorLabel:term('vendor','업체'),groupLabel:term('group','그룹'),groupName,actions})}else if(tab==='items'){html=itemList.render({channelId,items:data.items,vendors:data.vendors,groupLabel:term('group','그룹'),groupName,money:CreoPlatform.money,buyerName:CreoMobilePhone.buyerDisplayName,statusName,actions})}else{html=data.shipments.length?`<table><thead><tr><th>${esc(term('item','개체'))}</th><th>수령인</th><th>연락처</th><th>수령 방식</th><th>배송·결제 상태</th></tr></thead><tbody>${data.shipments.map(s=>`<tr><td>${esc(itemName(s.itemId))}</td><td>${esc(s.recipientName||'-')}</td><td>${esc(s.recipientPhone||'-')}</td><td>${esc(s.method==='pickup'?'직접수령':'배송')}</td><td><span class="pill">${esc(shippingStatusName(s.status))}</span></td></tr>`).join('')}</tbody></table>`:'<div class="empty">아직 입력된 배송·결제 정보가 없습니다.</div>'}$('table-wrap').innerHTML=html;bindTableActions();restore();document.dispatchEvent(new Event('creo:workspace-render'))}
 async function deleteRecord(type,id,button){
     if(type==='vendors'&&channelId==='national-cre'){await CreoWorkspaceVendorAccess.open(id,'delete');return;}
     if(button.disabled||!confirm('이 항목을 삭제할까요?'))return;
@@ -188,7 +202,8 @@ function bindTableActions(){
 function field(name,label,value='',type='text',options=''){const id='record-'+name;if(type==='select')return`<div class="field"><label for="${id}">${label}</label><select id="${id}" name="${name}">${options}</select></div>`;if(type==='textarea')return`<div class="field full"><label for="${id}">${label}</label><textarea id="${id}" name="${name}">${esc(value)}</textarea></div>`;return`<div class="field"><label for="${id}">${label}</label><input id="${id}" name="${name}" type="${type}" value="${esc(value)}"></div>`}
 function optionList(rows,current,label){return`<option value="">선택</option>`+rows.map(r=>`<option value="${esc(r.id)}" ${r.id===current?'selected':''}>${esc(label(r))}</option>`).join('')}
 function openModal(type,record=null){
-    if(!['vendors','items'].includes(type))return;
+    if(type==='items')return itemEditor.open(record);
+    if(type!=='vendors')return;
     editing={type,id:record?.id||'',channelId,directoryRevision:record?.directoryRevision};
     editing.record=record?structuredClone(record):null;
     let f='';
@@ -206,59 +221,31 @@ function openModal(type,record=null){
         f+=field('note','메모',record?.note,'textarea');
         const methods=(record?.paymentMethods||[]).join(',')||'bank_transfer,card';
         f+=field('paymentMethods','허용 결제방식',methods,'select',`<option value="bank_transfer,card" ${methods==='bank_transfer,card'?'selected':''}>계좌이체 + 카드결제</option><option value="bank_transfer" ${methods==='bank_transfer'?'selected':''}>계좌이체만</option><option value="card" ${methods==='card'?'selected':''}>카드결제만</option>`);
-    }else{
-        f+=field('lotNumber','번호',record?.lotNumber,'number');
-        f+=field('name',`${term('item','개체')}명`,record?.name);
-        if(selectedChannel()?.vendorSettlement?.enabled){
-            f+=field('auctionKind','출품 구분',record?.attributes?.auctionKind,'select',`<option value="normal" ${record?.attributes?.auctionKind!=='event'?'selected':''}>일반 출품</option><option value="event" ${record?.attributes?.auctionKind==='event'?'selected':''}>이벤트 · 수수료 면제</option>`);
-            f+=field('broadcastDate','방송일',record?.attributes?.broadcastDate||new Date(Date.now()+9*3600000).toISOString().slice(0,10),'date');
-        }
-        if(selectedChannel()?.features?.vendors)f+=field('vendorId',term('vendor','업체'),record?.vendorId,'select',optionList(data.vendors,record?.vendorId,v=>v.name));
-        if(selectedChannel()?.features?.groups)f+=field('groupId',term('group','그룹'),record?.groupId,'select',groupOptions(record?.groupId));
-        f+=field('category','카테고리',record?.category);
-        f+=field('points','포인트',record?.points,'number');
-        f+=field('startPrice','시작가',record?.startPrice,'number');
-        f+=field('soldPrice','낙찰가',record?.soldPrice,'number');
-        f+=field('winnerName','낙찰자',record?.winnerName);
-        f+=field('winnerAlias','방송용 낙찰자명',record?.winnerAlias);
-        f+=field('status','상태',record?.status,'select',`<option value="waiting" ${record?.status==='waiting'?'selected':''}>대기</option><option value="live" ${record?.status==='live'?'selected':''}>진행</option><option value="sold" ${record?.status==='sold'?'selected':''}>낙찰</option><option value="passed" ${record?.status==='passed'?'selected':''}>유찰</option>`);
-        f+=field('photoUrl','이미지 주소',record?.photoUrl);
-        f+=field('note','설명',record?.note,'textarea');
     }
     $('record-fields').innerHTML=f;
-    const kind=type==='items'&&selectedChannel()?.vendorSettlement?.enabled?$('record-fields').querySelector('[name="auctionKind"]'):null;
-    if(kind&&!record)kind.onchange=()=>{if(kind.value!=='event')return;const names=new Set(data.items.map(row=>row.name));let n=1;while(names.has('E'+String(n).padStart(2,'0')))n++;$('record-fields').querySelector('[name="name"]').value='E'+String(n).padStart(2,'0');$('record-fields').querySelector('[name="lotNumber"]').value=Math.max(0,...data.items.map(row=>Number(row.lotNumber)||0))+1;};
     $('dialog-title').textContent=(type==='vendors'?term('vendor','업체'):term('item','개체'))+(record?' 수정':' 추가');
     $('record-modal').hidden=false;
 }
-function closeModal(){$('record-modal').hidden=true;editing=null}$('close-modal').onclick=$('cancel-modal').onclick=closeModal;$('add-record').onclick=()=>{if(tab==='shipping'){location.href=runtime.url('shipping');return}openModal(tab)};document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;history.replaceState(null,'',runtime.url('workspace',{tab}));render()});
+function closeModal(){$('record-modal').hidden=true;editing=null}$('close-modal').onclick=$('cancel-modal').onclick=closeModal;$('add-record').onclick=()=>{if(tab==='shipping'){location.href=runtime.url('shipping');return}openModal(tab)};document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>itemEditor.leave(()=>{itemEditor.close();tab=b.dataset.tab;history.replaceState(null,'',runtime.url('workspace',{tab}));render()}));
 $('record-form').onsubmit=async event=>{
     event.preventDefault();
     if(recordPending)return;
     if(!editing||editing.channelId!==channelId)return toast('채널이 변경되었습니다. 항목을 다시 열어 주세요.');
     const requestedChannelId=channelId,currentEditing={...editing},form=Object.fromEntries(new FormData(event.currentTarget)),button=$('save-record');
     if(currentEditing.directoryRevision)form.directoryRevision=currentEditing.directoryRevision;
-    if(currentEditing.type==='items'&&selectedChannel()?.vendorSettlement?.enabled){
-        const original=data.items.find(row=>row.id===currentEditing.id);
-        form.attributes={...(original?.attributes||{}),auctionKind:form.auctionKind==='event'?'event':'normal',broadcastDate:form.broadcastDate,displayNumber:form.name};
-        delete form.auctionKind;delete form.broadcastDate;
-        if(form.attributes.auctionKind==='event'&&!/^E\d{2,}$/.test(form.name||''))return toast('이벤트 번호를 E01 형식으로 입력해 주세요.');
-    }
-    ['lotNumber','startPrice','soldPrice','points'].forEach(key=>{if(key in form)form[key]=Number(form[key])||0});
     recordPending=true;button.disabled=true;button.textContent='저장 중…';
     try{
         const path=endpoint(currentEditing.type,currentEditing.id,requestedChannelId),method=currentEditing.id?'PUT':'POST';
-        const record=currentEditing.type==='items'?{...(currentEditing.record||{}),...form}:form;
-        await CreoPlatform.api(path,{method,body:JSON.stringify({record,expectedUpdatedAt:currentEditing.type==='items'?currentEditing.record?.updatedAt:undefined})});
+        await CreoPlatform.api(path,{method,body:JSON.stringify({record:form})});
         if(requestedChannelId!==channelId)return;
         closeModal();await loadWorkspace();toast('저장했습니다.');
     }catch(error){if(requestedChannelId===channelId)toast(error.message)}
     finally{recordPending=false;if(button.isConnected){button.disabled=false;button.textContent='저장'}}
 };
-CreoItemSheetLink.mount({getChannelId:()=>channelId,getTab:()=>tab,refresh:loadWorkspace,isEditing:()=>!!editing||recordPending||livePending||document.activeElement?.matches('input,select,textarea')});
+CreoItemSheetLink.mount({getChannelId:()=>channelId,getTab:()=>tab,refresh:loadWorkspace,isEditing:()=>itemEditor.isOpen()||itemEditor.busy()||!!editing||recordPending||livePending||document.activeElement?.matches('input,select,textarea')});
 CreoBuyerContactManager.mount({getChannelId:()=>channelId,getTab:()=>tab,refresh:loadWorkspace});
 $('table-wrap').before($('item-list-tools'));
-$('channel-select').onchange=async e=>{closeModal();const next=runtime.setChannel(e.target.value),legacyUrl=legacyWorkspaceUrl(next);if(legacyUrl){location.assign(legacyUrl);return}channelId=next.id;history.replaceState(null,'',runtime.url('workspace',{tab}));try{await loadWorkspace()}catch(error){toast(error.message)}};
+$('channel-select').onchange=e=>{const target=e.target.value;e.target.value=channelId;itemEditor.leave(async()=>{itemEditor.close();closeModal();const next=runtime.setChannel(target),legacyUrl=legacyWorkspaceUrl(next);if(legacyUrl){location.assign(legacyUrl);return}channelId=next.id;$('channel-select').value=channelId;workspaceFeedbackVersion++;workspaceSaveFeedback();history.replaceState(null,'',runtime.url('workspace',{tab}));try{await loadWorkspace()}catch(error){toast(error.message)}});};
 $('live-item').onchange=()=>setLive();document.querySelectorAll('.live-mode').forEach(button=>button.onclick=()=>setLive(button.dataset.mode));
 let initialVendorOpened=false;
 document.addEventListener('creo:workspace-render',()=>{const vendorId=new URLSearchParams(location.search).get('vendor');if(initialVendorOpened||!vendorId||tab!=='vendors')return;initialVendorOpened=true;const vendor=data.vendors.find(v=>v.id===vendorId);if(vendor)openModal('vendors',vendor);else toast('이 회차의 업체를 찾을 수 없습니다.');});
