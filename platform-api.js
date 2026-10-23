@@ -2668,7 +2668,7 @@ function createPlatformApi({
         const oldAddress=String(latest?.address||'').replace(/\s*\[(?:메모|요청):[\s\S]*\]\s*$/,'').trim();
         const changed=!latest || latest.method!==method || (latest.carrier||'')!==carrier || oldAddress!==address;
         const now=new Date().toISOString();
-        let records;
+        let records, operatorAdjustment;
         const copy=structuredClone(context);
         if(changed) {
             await assertNoCheckoutChange(context);
@@ -2684,14 +2684,22 @@ function createPlatformApi({
             }
             const result=await saveBuyerShipping(copy,{...selection,requestId:body.requestId},{dryRun:true,requirePaymentMethod:false,operatorCustom});
             const after=await checkoutSnapshot(copy);
-            if(before.groups.some(group=>group.shipments.some(destinationChangeLocked) && group.totalAmount!==after.groups.find(row=>row.key===group.key)?.totalAmount)) throw buyerInputError('입금 확인된 금액이 달라지는 변경입니다. 정산 내역을 먼저 확인해 주세요.',409);
+            const affected=before.groups.filter(group=>group.shipments.some(destinationChangeLocked) && group.totalAmount!==after.groups.find(row=>row.key===group.key)?.totalAmount);
+            if(affected.length) {
+                const reason='이미 확인된 결제금액이 달라져 저장할 수 없어요. 업체와 차액을 확인해 주세요. 이 화면은 자동 결제·환불을 처리하지 않아요.';
+                if(body.action!=='quote')throw buyerInputError(reason,409);
+                operatorAdjustment={canSave:false,reason,vendors:affected.map(group=>{
+                    const proposedAmount=after.groups.find(row=>row.key===group.key).totalAmount;
+                    return {key:group.key,name:group.vendor?.name||group.key,beforeAmount:group.totalAmount,proposedAmount,confirmedAmount:group.payment.confirmedAmount,difference:proposedAmount-group.totalAmount};
+                })};
+            }
             records=result.records.map(row=>({...row,destinationRevisionId:body.requestId}));
         } else records=ownCheckoutShipments(context);
         records=records.map(row=>row.vendorId===vendorKey || context.bundleItems.some(item=>item.id===row.itemId && vendorKeyForItem(item)===vendorKey)
             ? {...row,note,updatedAt:row.note===note?row.updatedAt:now} : row);
         const ids=new Set(records.map(row=>row.itemId));
         copy.shipments=[...copy.shipments.filter(row=>!ids.has(row.itemId)),...records];
-        return {records,changed,selection,address,payload:await buyerShippingPayload(copy)};
+        return {records,changed,selection,address,payload:{...await buyerShippingPayload(copy),...(operatorAdjustment?{operatorAdjustment}:{})}};
     }
 
     async function saveOperatorShipping(context, body) {

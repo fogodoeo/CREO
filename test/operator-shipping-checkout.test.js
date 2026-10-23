@@ -94,6 +94,31 @@ test('reported bank quote remains reviewable when destination changes, paid amou
     body=await f.body({requestId:'paid-reprice-request'});const before=await f.rows();assert.equal((await f.save(body)).status,409);assert.deepEqual(await f.rows(),before);
 });
 
+test('paid shipping changes show a read-only price comparison while every save stays blocked',async t=>{
+    const f=await fixture(t),initial=await f.editor();
+    const confirmed=await f.request('POST','/channels/national-cre/buyer-shipping-payment',{itemId:'a01',requestId:'review-paid-confirm',expectedVersion:initial.editVersion,expectedAmount:226000});
+    assert.equal(confirmed.status,200,confirmed.body);
+    const before=await f.rows(),notifications=await f.repository.listRecords('national-cre','notification');
+    const body=await f.body({shipping:{type:'직접수령',region:'현장 수령'},expectedAmount:300000});
+    for(const response of await Promise.all([f.save({...body,action:'quote'}),f.save({...body,action:'quote'})])){
+        assert.equal(response.status,200,response.body);
+        const review=response.json().operatorAdjustment;
+        assert.equal(review.canSave,false);assert.match(review.reason,/자동.*환불/);
+        assert.equal(review.vendors.length,1);
+        assert.deepEqual({...review.vendors[0],name:''},{key:'v1',name:'',beforeAmount:226000,proposedAmount:200000,confirmedAmount:226000,difference:-26000});
+    }
+    assert.deepEqual(await f.rows(),before);assert.deepEqual(await f.repository.listRecords('national-cre','notification'),notifications);
+    await f.repository.upsertRows([{key:'shipping_rate_parge',value:JSON.stringify({data:{수도권:[{shop:'가상 정거샵',cost:19000},{shop:'먼 수령점',cost:34000}]}})}]);
+    const increased={...body,shipping:{type:'배송',company:'파르게',region:'수도권',hub:'먼 수령점'},expectedAmount:348000};
+    assert.equal((await f.save({...increased,action:'quote'})).json().operatorAdjustment.vendors[0].difference,15000);
+    assert.equal((await f.save(increased)).status,409);assert.deepEqual(await f.rows(),before);
+    for(const extra of [{},{action:'save',operatorAdjustment:{canSave:true}}])assert.equal((await f.save({...body,...extra})).status,409);
+    f.restart();assert.equal((await f.save({...body,action:'quote'})).json().operatorAdjustment.canSave,false);assert.equal((await f.save(body)).status,409);
+    assert.deepEqual(await f.rows(),before);
+    const note=await f.body({requestId:'paid-note-stays-valid'});assert.equal((await f.save({...note,action:'quote'})).json().operatorAdjustment,undefined);assert.equal((await f.save(note)).status,200);
+    for(const row of await f.rows()){const old=before.find(s=>s.id===row.id);assert.deepEqual({...row,note:old.note,updatedAt:old.updatedAt},old)}
+});
+
 test('manual handoff and Wrapang keep their distinct shipping prices in checkout',async t=>{
     for(const wrapang of [false,true]) {
         const f=await fixture(t);

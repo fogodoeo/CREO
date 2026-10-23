@@ -2039,6 +2039,14 @@
         .editor-action-footer { padding:12px 20px 16px; border-color:#E4E4E7; box-shadow:0 -6px 18px rgba(0,0,0,.035); }
         .editor-footer-actions { display:grid; grid-template-columns:repeat(2,minmax(86px,1fr)); gap:8px; }
         .editor-link-control { display:inline-flex;align-items:center;min-height:44px;margin-top:8px;padding:8px 12px;border:1px solid #cbd3dd;border-radius:10px;background:#fff;color:#364152;font-family:inherit;font-size:14px;font-weight:600;line-height:1.4;cursor:pointer; }
+        .operator-shipping-review { margin-block:12px;padding:16px;border:1px solid #cbd3dd;border-radius:12px;background:#f8fafc;color:#334155;font-size:14px;line-height:1.5;overflow-wrap:anywhere; }
+        .operator-shipping-review h3 { margin:0 0 8px;font-size:16px;color:#191f28; }
+        .operator-shipping-review p { margin:8px 0; }
+        .operator-shipping-review dl { margin:12px 0 0;font-variant-numeric:tabular-nums; }
+        .operator-shipping-review dl>div { display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px 12px; }
+        .operator-shipping-review dd { margin:0;font-weight:600; }
+        .operator-shipping-recovery { display:flex;flex-wrap:wrap;gap:8px;margin-block:8px; }
+        .operator-shipping-recovery [hidden] { display:none!important; }
         .editor-copy-action,.editor-save-action { display:flex; align-items:center; justify-content:center; height:44px; border-radius:10px; font-family:inherit; font-size:12px; font-weight:850; text-align:center; cursor:pointer; }
         .editor-copy-action { border:1px solid #D4D4D8; background:#FFF; color:#3F3F46; }
         .editor-copy-action:hover { border-color:#A1A1AA; background:#FAFAFA; }
@@ -2079,6 +2087,7 @@
         .app-bottom-nav { position:fixed; left:50%; bottom:max(2px,env(safe-area-inset-bottom)); z-index:1900; display:grid; grid-template-columns:repeat(2,1fr); gap:2px; width:min(410px,calc(100% - 8px)); height:50px; padding:3px; border:1px solid #D4D4D8; border-radius:12px; background:rgba(255,255,255,.97); box-shadow:0 6px 20px rgba(0,0,0,.10); transform:translateX(-50%); backdrop-filter:blur(16px); }
         .app-bottom-nav a,.app-bottom-nav button { display:flex; align-items:center; justify-content:center; min-width:0; border:0; border-radius:10px; background:transparent; color:#64748B; font-family:inherit; font-size:10.5px; font-weight:850; text-decoration:none; white-space:nowrap; cursor:pointer; }
         .app-bottom-nav a.active { background:#2563EB; color:#fff; }
+        body.editor-open .app-bottom-nav { display:none; }
         @media (max-width:820px) {
             .editor-footer-actions { grid-template-columns:1fr; }
             .input-text,.form-group input,.shipping-admin-card input { font-size:16px;min-height:44px; }
@@ -2296,6 +2305,7 @@
                     <label for="editor-memo">메모</label>
                     <input type="text" id="editor-memo" class="input-text" maxlength="500" placeholder="이 업체의 수령 메모">
                 </div>
+                <section id="operator-shipping-review" class="operator-shipping-review" aria-label="배송비 변경 검토" tabindex="-1" hidden></section>
                 <div class="editor-selected-hub" id="editor-selected-hub" hidden>
                     <span class="editor-selected-hub-head"><span class="editor-selected-hub-label">선택한 배송지</span></span>
                     <strong id="editor-selected-hub-name"></strong>
@@ -2307,6 +2317,10 @@
             <!-- 데스크톱에서는 스크롤과 무관하게 항상 보이는 하단 정산/저장 영역 -->
             <div class="editor-action-footer">
                 <p id="operator-shipping-feedback" role="status" hidden></p>
+                <div class="operator-shipping-recovery">
+                    <button id="operator-shipping-retry" class="editor-link-control" type="button" onclick="retryOperatorShippingQuote()" hidden>금액 다시 확인</button>
+                    <button id="operator-shipping-restore" class="editor-link-control" type="button" onclick="restoreOperatorShippingDraft()" hidden>수령지 변경 되돌리기</button>
+                </div>
                 <div class="editor-total-strip">
                     <div class="editor-total-item">
                         <span>낙찰금액</span>
@@ -4000,8 +4014,8 @@
                     state.operatorVersion=saved.editVersion;
                 }
                 // An empty destination is an unfinished form, not a zero-fee quote.
-                if(shipping.type==='미설정' || (shipping.type==='배송' && ['파르게','도도시'].includes(shipping.company) && (!shipping.region||!shipping.hub))) {
-                    state.operatorQuoteKey=key;state.operatorHint='수령 방식을 선택해 주세요.';return;
+                if(shipping.type==='미설정' || (shipping.type==='직접수령' && !shipping.region) || (shipping.type==='배송' && ['파르게','도도시'].includes(shipping.company) && (!shipping.region||!shipping.hub))) {
+                    state.operatorQuoteKey=key;state.operatorHint=shipping.type==='직접수령'?'직수령 장소를 선택해 주세요.':'수령 방식을 선택해 주세요.';return;
                 }
                 const quote=await CreoPlatform.api(`channels/${encodeURIComponent(SHIPPING_CHANNEL_ID)}/buyer-shipping-editor`,{method:'POST',body:JSON.stringify({action:'quote',itemId:item._platformItemId,expectedArchiveId:archive,expectedVersion:state.operatorVersion,requestId:'quote-'+crypto.randomUUID(),shipping,note:document.getElementById('editor-memo').value})});
                 if(!current())return;
@@ -4016,7 +4030,7 @@
 
         async function saveOperatorShippingEditor(state) {
             const item=activeBuyerLinkItem(),shipping=operatorShippingDraft();
-            if(!item || state.operatorSaving || state.operatorPending || !state.operatorQuote || state.operatorQuoteKey!==JSON.stringify(shipping))return;
+            if(!item || !operatorShippingCanSave(state))return;
             const body={itemId:item._platformItemId,expectedArchiveId:new URLSearchParams(location.search).get('archive')||'',expectedVersion:state.operatorVersion,expectedAmount:state.operatorQuote.totals.totalAmount,shipping,note:document.getElementById('editor-memo').value};
             const key=JSON.stringify(body);
             if(state.operatorSaveKey!==key){state.operatorSaveKey=key;state.operatorRequestId=crypto.randomUUID();}
@@ -4035,6 +4049,47 @@
                     const feedback=document.getElementById('operator-shipping-feedback');feedback.hidden=false;feedback.textContent=error.message || '저장하지 못했어요. 입력은 유지됩니다. 다시 저장해 주세요.';
                 }
             } finally {state.operatorSaving=false;showLoading(false);}
+        }
+
+        function operatorShippingCanSave(state) {
+            return Boolean(!state.operatorSaving && !state.operatorPending && state.operatorQuote && state.operatorQuote.operatorAdjustment?.canSave!==false && state.operatorQuoteKey===JSON.stringify(operatorShippingDraft()));
+        }
+
+        async function retryOperatorShippingQuote() {
+            const state=winnerStateMap[activeEditorWinner];
+            if(!state || state.operatorSaving || state.operatorPending)return;
+            const winnerKey=activeEditorWinner,generation=state.operatorGeneration;
+            state.operatorError='';state.operatorErrorKey='';state.operatorQuoteKey='';state.operatorVersion='';
+            const work=refreshOperatorShippingQuote(state);updateEditorPricing();await work;
+            if(activeEditorWinner===winnerKey && winnerStateMap[winnerKey]===state && state.operatorGeneration===generation){
+                const target=state.operatorError?'operator-shipping-retry':state.operatorQuote?.operatorAdjustment?'operator-shipping-review':'editor-memo';
+                document.getElementById(target).focus();
+            }
+        }
+
+        function restoreOperatorShippingDraft() {
+            const state=winnerStateMap[activeEditorWinner];
+            if(!state || state.operatorSaving || state.operatorPending || !state.operatorInitialDraft)return;
+            const initial=JSON.parse(state.operatorInitialDraft);
+            Object.assign(editorShippingState,initial);
+            const mode=initial.type==='직접수령'?'픽업':initial.type==='배송'?(['파르게','도도시','랩팡'].includes(initial.company)?'업체 배송':'기타'):'미설정';
+            setEditorShippingType(mode,true);
+            if(mode==='기타'){
+                document.getElementById('editor-custom-company').value=initial.company||'';
+                document.getElementById('editor-custom-region').value=initial.address||'';
+            }
+            state.operatorError='';state.operatorErrorKey='';state.operatorQuoteKey='';
+            updateEditorPricing();document.getElementById('editor-memo').focus();
+        }
+
+        function renderOperatorShippingReview(state) {
+            const review=state.operatorQuote?.operatorAdjustment,section=document.getElementById('operator-shipping-review');
+            section.hidden=!review;
+            const money=value=>Number(value||0).toLocaleString('ko-KR')+'원';
+            section.innerHTML=review?'<h3>결제한 금액을 먼저 확인해 주세요</h3><p>'+CreoPlatform.escapeHtml(review.reason)+'</p>'+review.vendors.map(v=>'<div><b>'+CreoPlatform.escapeHtml(v.name)+'</b><dl><div><dt>현재 전체 금액</dt><dd>'+money(v.beforeAmount)+'</dd></div><div><dt>변경 시 예상 금액</dt><dd>'+money(v.proposedAmount)+'</dd></div><div><dt>결제 확인 금액</dt><dd>'+money(v.confirmedAmount)+'</dd></div><div><dt>금액 차이</dt><dd>'+money(Math.abs(v.difference))+(v.difference<0?' 감소':' 증가')+'</dd></div></dl></div>').join('')+'<p>아직 변경하지 않았어요. 수령지 변경을 되돌리면 메모만 저장할 수 있어요.</p>':'';
+            const retry=document.getElementById('operator-shipping-retry'),restore=document.getElementById('operator-shipping-restore');
+            retry.hidden=!state.operatorError;retry.disabled=state.operatorPending||state.operatorSaving;
+            restore.hidden=!state.operatorInitialDraft || state.operatorInitialDraft===JSON.stringify(operatorShippingDraft());restore.disabled=state.operatorPending||state.operatorSaving;
         }
 
         function updateEditorPricing() {
@@ -4097,8 +4152,11 @@
             if(platform) {
                 const feedback=document.getElementById('operator-shipping-feedback');
                 const paymentHint=quote?.vendors.some(v=>v.payment.cardLinkCancellationRequired)?'이전 카드 안내는 취소 확인 후 다시 등록해야 해요.':quote?.vendors.some(v=>v.payment.shippingChangedAfterReport)?'입금 신고한 금액이 바뀝니다. 저장 후 실제 입금액을 다시 확인해 주세요.':'';
-                feedback.hidden=Boolean(quote) && !paymentHint;feedback.textContent=quote?paymentHint:state.operatorError || state.operatorHint || '금액 확인 중…';
-                document.querySelector('.editor-save-action').disabled=!quote || state.operatorPending;
+                const review=quote?.operatorAdjustment;
+                feedback.hidden=Boolean(quote) && !paymentHint && !review;feedback.textContent=review?'결제한 금액이 달라져 아직 저장할 수 없어요.':quote?paymentHint:state.operatorError || state.operatorHint || '금액 확인 중…';
+                renderOperatorShippingReview(state);
+                document.querySelector('.editor-save-action').disabled=!operatorShippingCanSave(state);
+                if(review){totalLabel.textContent='변경 시 예상 금액';document.getElementById('editor-summary-total').textContent=grandTotal.toLocaleString()+'원';}
                 if(!quote){document.getElementById('editor-summary-ship').textContent='—';document.getElementById('editor-summary-total').textContent='—';}
             }
 

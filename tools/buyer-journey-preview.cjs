@@ -10,6 +10,10 @@ async function main(){
  await f.repository.saveCatalog(channels.channels.map(c=>c.id==='national-cre'?{...c,shippingSupport:{enabled:false},shippingDefaults:{...c.shippingDefaults,deliverySchedule:{enabled:true,auctionDate:day}}}:c));
  await f.repository.upsertRows([{key:'shipping_rate_parge',value:JSON.stringify({data:{수도권:[{shop:'가상 정거샵',cost:19000}],경기:[{shop:'가상 경기점',cost:15000}]}})}]);
  await f.repository.upsertRows([{key:'shipping_rate_dodosi',value:JSON.stringify({items:[{route:'전북',region:'전북',shop:'가상 전주점',price:27000}]})}]);
+ if(process.env.BUYER_PREVIEW_PAID_REVIEW==='1'){
+  const saved=await f.request('POST','/buyer-shipping',f.saveBody,false);if(saved.status!==200)throw Error(saved.body);
+  const payload=(await f.read()).json(),confirmed=await f.request('POST','/channels/national-cre/buyer-shipping-payment',{itemId:'a01',requestId:'preview-paid-review',expectedVersion:payload.editVersion,expectedAmount:226000});if(confirmed.status!==200)throw Error(confirmed.body);
+ }
  const root=path.resolve(__dirname,'../public');let failSave=0,failReport=0,failOperatorSave=false;
  const server=http.createServer(async(req,res)=>{try{
   const url=new URL(req.url,origin);
