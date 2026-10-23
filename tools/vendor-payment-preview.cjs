@@ -7,6 +7,12 @@ async function main(){
  const catalog=await f.repository.getCatalog();await f.repository.saveCatalog(catalog.channels.map(c=>c.id==='national-cre'?{...c,shippingSupport:{enabled:false},shippingDefaults:{...c.shippingDefaults,deliverySchedule:{enabled:true,auctionDate:day}}}:c));
  const selection={...f.saveBody,payments:[{vendorKey:'v1',method:'bank_transfer'},{vendorKey:'v2',method:'card'}]};const saved=await f.request('POST','/buyer-shipping',selection,false);if(saved.status!==200)throw Error(saved.body);
  const links={};for(const id of ['v1','v2']){const result=await f.request('POST','/channels/national-cre/vendor-checkout-link',{vendorId:id});if(result.status!==200)throw Error(result.body);links[id]=result.json().code;}
+ if(process.env.VENDOR_PAYMENT_PREVIEW_PENDING_SETTLEMENT==='1'){
+  const account=await f.request('PUT','/channels/national-cre/organizer-shipping',{bankName:'가상은행',bankAccount:'000-000-000000',bankHolder:'가상 주관사',notificationPhone:'01000000009'});if(account.status!==200)throw Error(account.body);
+  const checkout=await f.request('GET','/vendor-checkout?code='+links.v2,null,false);if(checkout.status!==200)throw Error(checkout.body);
+  const row=checkout.json().shippingSettlement.vendors.find(v=>v.vendorId==='v2');
+  const reported=await f.request('POST','/vendor-checkout/report-shipping',{code:links.v2,requestId:'isolated-settlement-bank',expectedAmount:row.remainingAmount,expectedBankUpdatedAt:account.json().bank.updatedAt},false);if(reported.status!==200)throw Error(reported.body);
+ }
  const root=path.resolve(__dirname,'../public'),controls={failCard:0,loseCard:0,failConfirm:0,loseConfirm:0},calls=[];
  const read=req=>new Promise((resolve,reject)=>{let body='';req.on('data',bytes=>body+=bytes);req.on('end',()=>{try{resolve(JSON.parse(body||'{}'))}catch(e){reject(e)}});req.on('error',reject);});
  const json=(res,status,data)=>{res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(data));};
