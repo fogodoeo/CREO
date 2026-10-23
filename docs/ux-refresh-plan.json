@@ -84,7 +84,7 @@
         "npm run check: pass; npm test -- --test-concurrency=4: 1660 pass, 0 fail; desktop python -m unittest discover -p test*.py: 270 pass. Final CSS-only word wrapping checked separately in rendered 320px review.",
         "../admin-home-review-20261022/safe-edit-check.log; ../admin-home-review-20261022/safe-edit-server-full.log; ../admin-home-review-20261022/safe-edit-desktop-full.log; ../admin-home-review-20261022/clab-review-safe-edit-320.png"
       ],
-      "deployed": false
+      "deployed": true
     },
     {
       "id": "operator",
@@ -190,7 +190,7 @@
         "전체 사용자 역할별 200% 확대와 전체 키보드 경로",
         "업체 초기 설정·사진 업로드·낙찰자·방송 도구 흐름과 통합 검증"
       ],
-      "deployed": false
+      "deployed": true
     },
     {
       "id": "buyer",
@@ -259,7 +259,7 @@
         "Contact anchor initially triggered checkout navigation and returned to heading; replaced with explicit contact focus/scroll, verified in final 320px UI. Dialog keyboard focus visible; native modal locks background. Desktop clientWidth=scrollWidth=1265. 200% zoom, screen-reader journey and whole-page DOM/visual reading order remain unverified.",
         "../admin-home-review-20261022/buyer-report-confirm.png; ../admin-home-review-20261022/buyer-completed-contact-320.png; ../admin-home-review-20261022/buyer-report-focused.log; ../admin-home-review-20261022/buyer-report-server-full.log; ../admin-home-review-20261022/buyer-report-check.log"
       ],
-      "deployed": false
+      "deployed": true
     },
     {
       "id": "broadcast",
@@ -322,11 +322,11 @@
         "../admin-home-review-20261022/studio-settings-check.log; ../admin-home-review-20261022/studio-settings-full-final.log; ../admin-home-review-20261022/studio-settings-error-320.png; ../admin-home-review-20261022/program-directory-20261023.png",
         "Banner workflow: docs/ui-audit/BANNER_WORKFLOW_20261023.md. Focused 28 pass; npm run check and strict UTF-8/script parse pass; final server suite 1703 pass; desktop suite 270 pass. Actual upload with one injected metadata failure reuses the uploaded URL (1 upload, 2 metadata requests, 1 record). Desktop and 320px full-height selection, input retention, keyboard discard/continue and return focus verified. 320px content clientWidth=scrollWidth=305; rendered primary contrast corrected from 4.40:1 to 4.72:1. Broader accessibility and logo/video forms remain pending."
       ],
-      "deployed": false
+      "deployed": true
     },
     {
       "id": "release",
-      "status": "pending",
+      "status": "in_progress",
       "scope": [
         "상태별 통합 회귀",
         "서버·데스크톱 전체 영향 테스트",
@@ -335,7 +335,13 @@
         "운영 배포 및 읽기 전용 검증",
         "전체 요구사항 완료 감사"
       ],
-      "evidence": []
+      "evidence": [
+        "2026-10-23: verified batch deployed as 2a923216188dfe6c82a8b1210c6dde1cda8047d7; Render dep-dbddich42hec7391u160 is Live (1m23s). Server 1703 tests and desktop 270 tests passed.",
+        "Read-only production verification: health/durable storage OK, outboxPending 0, mirrorError null; 24 changed UI/static files including pinball bundles match the tested source. Active channel stays national-cre-20261021. Four national channel snapshots preserve exact item, shipment, organizer-settlement and broadcast hashes.",
+        "Operator browser login requires its separately configured password; API verification succeeded but live operator menu inspection awaits user login. Existing vendor short link remains available and shows the assigned 10/21 broadcast and explicit parent photo action.",
+        "Production vendor navigation exposed an empty undated program context beside the vendor's sole real financial round. Corrected with guarded automatic navigation to the authorized dated context; single-round selector disappears. docs/ui-audit/VENDOR_SETTLEMENT_LANDING_20261023.md records 28 focused and 1707 full-suite passes plus isolated real-browser verification. This corrective change awaits deployment verification.",
+        "Evidence: ../admin-home-review-20261022/ux-batch-release-before.json, ux-batch-release-after.json, ux-batch-render-live.png. This batch deployment does not complete the broader UX goal."
+      ]
     }
   ],
   "review_baseline": "scratch/admin-home-review-20261022/vendor-usability-review.html",
@@ -343,6 +349,6 @@
     "공통 업체 및 회차 구분이 모든 화면에서 일관되게 전달되지 않음",
     "전체 사용자 역할별 개편과 통합 검증은 아직 진행 중"
   ],
-  "next_work": "배너 선택·등록·오류 재시도·입력 보호와 전체 높이 모달을 실제 화면에서 검증했다. 검증된 누적 변경을 배포하고 회차별 업체·낙찰자·정산 경로와 운영 상태를 읽기 전용으로 확인한다. 이후 협찬·업체 로고와 주사위 영상 등록, 인증/회차 진입, 카드결제·입금 후 배송비 조정, 데스크톱 경매 조작, 전체 키보드/확대 및 역할별 통합 검증이 남아 있다. 전체 개편은 아직 완료되지 않았다.",
+  "next_work": "2a92321 배포와 정적 파일·운영 데이터 보존 검증을 완료했다. 운영자 화면의 별도 비밀번호 로그인 후 실제 메인 메뉴 진입 확인을 마무리한다. 계속해서 협찬·업체 로고와 주사위 영상 등록, 인증/회차 진입, 카드결제·입금 후 배송비 조정, 데스크톱 경매 조작, 전체 키보드/확대 및 역할별 통합 검증을 진행한다. 전체 개편은 아직 완료되지 않았다.",
   "completion_rule": "모든 workstream이 실제 구현·상태별 검증 증거를 갖출 때만 전체 완료로 판단한다."
 }

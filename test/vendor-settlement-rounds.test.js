@@ -44,3 +44,10 @@ test('CLAB shared vendor uses the same dated catalogue without acquiring access 
  const response=await f.request('GET','/vendor-checkout/rounds?code='+link.code,null,false);assert.equal(response.status,200,response.body);
  assert.deepEqual(response.json().rounds.map(r=>[r.channelId,r.key]),[['clab-next','date:2026-10-15'],['creyon','date:2026-10-01']]);assert.ok(response.json().rounds.every(r=>!r.name.includes('전국크레자랑')));
 });
+test('a program link with no own sales lists only its authorized dated settlement round',async t=>{
+ const f=await require('../tools/vendor-settlement-landing-preview.cjs').landingFixture();t.after(()=>f.close());
+ const read=route=>f.call(f.client(),'GET','/api/platform/vendor-checkout'+route);
+ const parent=(await read('?code='+f.code+'&event=national-cre')).json();assert.equal(parent.round.key,'current');assert.equal(parent.summary.itemCount,0);assert.deepEqual(parent.buyers,[]);
+ const rows=(await read('/rounds?code='+f.code+'&event=national-cre')).json().rounds;assert.equal(rows.length,1);assert.equal(rows[0].channelId,f.child);assert.equal(rows[0].key,'date:2026-10-21');
+ const child=(await read('?code='+f.code+'&event='+f.child+'&round='+encodeURIComponent(rows[0].key))).json();assert.equal(child.summary.itemCount,1);assert.equal(child.channel.id,f.child);assert.equal((await f.repository.listRecords('national-cre','item')).length,0);
+});
