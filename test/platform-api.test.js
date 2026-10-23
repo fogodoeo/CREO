@@ -367,8 +367,11 @@ test('shipping remittance is vendor scoped, atomic, durable, duplicate safe and 
  assert.equal(notifications[0].variables['#{입금금액}'],'19,000');
  assert.equal(notifications[0].variables['#{업체명}'],'아주긴업체이름'.repeat(10));
  const organizer = require('../organizer-access').createOrganizerAccess(f.repository);
- assert.equal((await organizer.resolve(notifications[0].variables['#{주관사접속코드}'])).channelId,'alpha');
- assert.equal((await organizer.issue('alpha')).code,notifications[0].variables['#{주관사접속코드}']);
+ const [organizerCode,reportRef]=notifications[0].variables['#{주관사접속코드}'].split('#');
+ assert.equal((await organizer.resolve(organizerCode)).channelId,'alpha');
+ assert.equal((await organizer.issue('alpha')).code,organizerCode);
+ assert.equal(reportRef,require('../organizer-report-link').reference(v.pendingReport.id));
+ assert.ok(notifications[0].fallbackText.includes('/o/'+organizerCode+'#'+reportRef));
  assert.equal((await f.repository.listRecords('beta','notification')).length,0);
  await f.notificationService.flushChannel('alpha',20);await f.notificationService.flushChannel('alpha',20);assert.equal(f.sends.length,1);
  api=createPlatformApi(f.options);

@@ -27,6 +27,18 @@ test('new company joins an already prepared regional show on registration, with 
  assert.equal((await f.prepare()).json().duplicate,true);
 });
 
+test('a Busan/Ulsan/Gyeongnam signup automatically joins October 28 and exposes entry registration without a separate booking',async t=>{
+ const f=await fixture(t);await f.prepare();
+ assert.equal((await f.request('POST','/national-rounds',{action:'prepare',date:'2026-10-28'})).status,200);
+ const owner=await f.login('01000000001'),response=await f.post(owner,'register',registration({region:'부산·울산·경남'}));
+ assert.equal(response.status,200,response.body);const id=response.json().id;
+ assert.equal((await f.directory.profileFor(ROOT,id)).id,(await f.directory.profileFor(ROOT+'-20261028',id)).id);
+ assert.equal(await f.directory.profileFor(TARGET,id),null);
+ const token=(await f.post(owner,'select',{id})).json().token;
+ const view=await f.call(owner,'GET','/api/platform/vendor-bookings?'+new URLSearchParams({token,event:ROOT}));
+ assert.equal(view.status,200,view.body);assert.equal(view.json().reservations.length,0);assert.ok(view.json().dates.some(d=>d.date==='2026-10-28'&&d.maxQuantityAvailable===4));
+});
+
 test('registration and round preparation in either concurrent order keep the same company without importing transactions',async t=>{
  for(const registrationFirst of [true,false]){
   const f=await fixture(t),owner=await f.login('01000000001');

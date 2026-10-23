@@ -1,9 +1,11 @@
 'use strict';
 const $=id=>document.getElementById(id), esc=CreoPlatform.escapeHtml;
 const organizerCode=/^\/o\/([A-Za-z0-9_-]{24})$/.exec(location.pathname||'')?.[1]||new URLSearchParams(location.search).get('code')||'';
+const reportRef=organizerCode?String(location.hash||'').slice(1):'';
+let receiptArchive=new URLSearchParams(location.search).get('archive')||'',reportTarget=null,reportFocusDone=false;
 let channelId=organizerCode?'':new URLSearchParams(location.search).get('channel')||'';
 let route='channels/'+encodeURIComponent(channelId)+'/organizer-shipping';
-function organizerApi(path,options={}){const archive=new URLSearchParams(location.search).get('archive');if(archive&&path.startsWith('channels/'))path+=(path.includes('?')?'&':'?')+'archive='+encodeURIComponent(archive);return CreoPlatform.api(path,{cache:'no-store',...options,headers:{...options.headers,...(organizerCode?{'X-Creo-Organizer':organizerCode}:{})}})}
+function organizerApi(path,options={}){if(receiptArchive&&path.startsWith('channels/'))path+=(path.includes('?')?'&':'?')+'archive='+encodeURIComponent(receiptArchive);return CreoPlatform.api(path,{cache:'no-store',...options,headers:{...options.headers,...(organizerCode?{'X-Creo-Organizer':organizerCode}:{})}})}
 let state, saving=false, dirty=false, bankRevision='', editingBank=false, receiptVendor=null, receiptAttempt=null, loadRevision=0, fresh=false, accessDenied=false;
 let organizerView='shipping';
 let vendorFilter=null,vendorFilterScope='';
@@ -29,6 +31,7 @@ function clearAccess(){
 }
 function readFailure(error){
  if(error.status===401){clearAccess();return;}
+ if(reportRef&&!reportTarget&&[404,409,422].includes(error.status)){fresh=false;showMessage(error.message,true);return;}
  if(error.code==='ROUND_SCOPE_MISMATCH'){clearAccess();$('login').hidden=true;showMessage(error.message,true);return;}
  fresh=false;showMessage(state?'최신 내역을 확인하지 못했어요.':'정산 내역을 불러오지 못했어요.',true);
  if(receiptVendor&&$('receipt-dialog').open){$('receipt-error').hidden=false;$('receipt-error').textContent='최신 내역을 불러온 뒤 확인해 주세요.';$('receipt-reload').hidden=false;updateReceiptBalance();}
@@ -165,14 +168,22 @@ async function rejectReceipt(){
 async function load(){
  const revision=++loadRevision;$('retry').disabled=true;if(!state)showMessage('불러오는 중…');
  try{
-  if(!channelId&&organizerCode){const access=await organizerApi('organizer-access',{method:'POST',body:JSON.stringify({code:organizerCode})});if(revision!==loadRevision)return false;channelId=access.channel.id;route='channels/'+encodeURIComponent(channelId)+'/organizer-shipping'}
+  if(!channelId&&organizerCode){const access=await organizerApi('organizer-access',{method:'POST',body:JSON.stringify({code:organizerCode,...(reportRef?{reportRef}:{})})});if(revision!==loadRevision)return false;if(reportRef&&!access.reportTarget)throw Object.assign(Error('입금신고 연결을 확인하지 못했어요. 원래 알림의 링크를 다시 열어 주세요.'),{status:409});reportTarget=access.reportTarget||null;if(reportTarget)receiptArchive=reportTarget.archiveId;channelId=access.channel.id;route='channels/'+encodeURIComponent(channelId)+'/organizer-shipping'}
   if(!channelId){showMessage('주관사 전용 링크로 접속해 주세요.');return false;}
   const next=await organizerApi(route);if(revision!==loadRevision)return false;
-  const archive=new URLSearchParams(location.search).get('archive')||'';
+  const archive=receiptArchive;
   if(next.channel?.id!==channelId||next.scope!=='round'||next.round?.channelId!==channelId||next.round?.archiveId!==archive)throw Object.assign(Error('회차 정보가 일치하지 않습니다. 해당 회차를 다시 열거나 다시 불러와 주세요.'),{code:'ROUND_SCOPE_MISMATCH'});
-  state=next;fresh=true;accessDenied=false;render();showMessage(state.unassignedReceiptCount?'기존 입금 '+state.unassignedReceiptCount+'건의 회차 확인이 필요합니다. 아래 ‘기존 입금 회차 확인’을 열어 주세요. 해당 업체의 잔액은 연결 후 확정됩니다.':'');return true;
+  state=next;fresh=true;accessDenied=false;render();showMessage(state.unassignedReceiptCount?'기존 입금 '+state.unassignedReceiptCount+'건의 회차 확인이 필요합니다. 아래 ‘기존 입금 회차 확인’을 열어 주세요. 해당 업체의 잔액은 연결 후 확정됩니다.':'');focusReport();return true;
  }catch(e){if(revision===loadRevision)readFailure(e);return false}
  finally{if(revision===loadRevision)$('retry').disabled=saving;}
+}
+function focusReport(){
+ if(!reportTarget||reportFocusDone)return;
+ const vendor=state.vendors.find(v=>v.vendorId===reportTarget.vendorId),report=vendor?.history.find(r=>r.id===reportTarget.reportId);
+ if(!report){showMessage('입금신고를 찾을 수 없어요. 최신 내역을 다시 불러와 주세요.',true);return;}
+ reportFocusDone=true;vendorFilter='all';$('vendor-search').value=vendor.vendorName;renderVendorList();
+ if(report.status==='pending'&&vendor.pendingReport?.id===report.id){openReceipt(vendor);return;}
+ showMessage(`${vendor.vendorName} · ${money(report.amount)} · ${{confirmed:'이미 입금 확인된 신고예요.',rejected:'미입금으로 처리된 신고예요.',cancelled:'취소된 신고예요.'}[report.status]||'입금 내역에서 현재 상태를 확인해 주세요.'}`);
 }
 $('login-form').onsubmit=async e=>{e.preventDefault();try{if(!await CreoPlatform.verifyAdmin($('password').value))throw Error('비밀번호를 확인해 주세요.');$('password').value='';$('message').textContent='';await load()}catch(err){$('message').textContent=err.message}};
 $('bank-form').oninput=()=>{dirty=true};

@@ -3,16 +3,45 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const html=fs.readFileSync(require.resolve('../public/organizer-shipping.html'),'utf8');
 const source=fs.readFileSync(require.resolve('../public/organizer-shipping.js'),'utf8');
 const data=(received=50000)=>({scope:'round',round:{channelId:'alpha',archiveId:'',date:'2026-10-19',name:'로컬 경매'},channel:{id:'alpha',name:'로컬 경매'},bank:{bankName:'가상은행',bankAccount:'000-000',bankHolder:'예시 주관사',notificationPhone:'01000000000',updatedAt:'bank-1'},vendors:[{vendorId:'v',vendorName:'예시업체',vendorBankHolder:'예시예금주',totalAmount:80000,remainingAmount:80000-received,receivedAmount:received,itemCount:1,history:[],shippingFeeItems:[],missingDestinationItems:[]}],carriers:[]});
-function screen(search='?channel=alpha'){
+function screen(search='?channel=alpha',hash=''){
  const nodes=new Map([...html.matchAll(/id="([^"]+)"/g)].map(m=>[m[1],{hidden:false,value:'',textContent:'',innerHTML:'',disabled:false,open:false,focus(){},setAttribute(){},replaceChildren(){this.innerHTML='';this.textContent=''},querySelectorAll(){return []},close(){this.open=false},showModal(){this.open=true}}]));
  const calls=[],timers=[];
- const context=vm.createContext({URLSearchParams,structuredClone,crypto:{randomUUID:()=> 'same-ui-request'},location:{search,pathname:'/organizer-shipping.html'},document:{getElementById:id=>nodes.get(id),hidden:false,querySelector:()=>null},CreoPlatform:{escapeHtml:String,api:(path,options)=>new Promise((resolve,reject)=>calls.push({path,options,resolve,reject}))},setInterval(fn){timers.push(fn)}});
+ const context=vm.createContext({URLSearchParams,structuredClone,crypto:{randomUUID:()=> 'same-ui-request'},location:{search,hash,pathname:'/organizer-shipping.html'},document:{getElementById:id=>nodes.get(id),hidden:false,querySelector:()=>null},CreoPlatform:{escapeHtml:String,api:(path,options)=>new Promise((resolve,reject)=>calls.push({path,options,resolve,reject}))},setInterval(fn){timers.push(fn)}});
  context.window=context;
  vm.runInContext(fs.readFileSync(require.resolve('../public/delivery-schedule-view.js'),'utf8'),context);
  vm.runInContext(source,context);
  return {nodes,calls,timers,run:code=>vm.runInContext(code,context),async ready(){calls[0].resolve(data());await new Promise(setImmediate)}};
 }
 const failure=status=>Object.assign(Error('예시 오류'),{status});
+
+async function reportScreen(status='pending',archiveId='previous'){
+ const f=screen('?code=abcdefghijklmnopqrstuvwx','#reportABC123');
+ assert.deepEqual(JSON.parse(f.calls[0].options.body),{code:'abcdefghijklmnopqrstuvwx',reportRef:'reportABC123'});
+ f.calls[0].resolve({channel:{id:'alpha'},reportTarget:{reportId:'target',vendorId:'v',archiveId}});await new Promise(setImmediate);
+ const view=data();view.round.archiveId=archiveId;view.vendors[0].history=[{id:'target',status,amount:30000}];view.vendors[0].pendingReport={id:status==='pending'?'target':'newer',amount:30000};
+ assert.equal(f.calls[1].path,'channels/alpha/organizer-shipping'+(archiveId?'?archive='+archiveId:''));
+ f.calls[1].resolve(view);await new Promise(setImmediate);return {f,view};
+}
+test('notification opens the exact archived report once, and approval requires an explicit scoped action',async()=>{
+ const {f,view}=await reportScreen();assert.equal(f.nodes.get('receipt-dialog').open,true);assert.equal(f.nodes.get('receipt-title').textContent,'예시업체(예시예금주) 입금 확인');assert.equal(f.nodes.get('receipt-amount').value,'30,000');assert.equal(f.calls.length,2);
+ f.nodes.get('close-receipt').onclick();const refresh=f.run('load()');f.calls[2].resolve(view);await refresh;assert.equal(f.nodes.get('receipt-dialog').open,false,'refresh must not reopen dismissed work');
+ f.run('openReceipt(state.vendors[0])');const save=f.run('saveReceipt({preventDefault(){}})');
+ assert.equal(f.calls[3].path,'channels/alpha/organizer-shipping/deposit?archive=previous');assert.equal(JSON.parse(f.calls[3].options.body).reportId,'target');
+ f.calls[3].resolve({ok:true});await new Promise(setImmediate);f.calls[4].resolve({...view,vendors:[{...view.vendors[0],pendingReport:null,history:[{id:'target',status:'confirmed',amount:30000}]}]});await save;
+ assert.equal(f.nodes.get('receipt-dialog').open,false);
+});
+test('an already processed notification cannot open a newer pending report for the same vendor',async()=>{
+ for(const status of ['confirmed','rejected','cancelled']){
+  const {f}=await reportScreen(status,'');assert.equal(f.nodes.get('receipt-dialog').open,false);assert.equal(f.calls.length,2);assert.match(f.nodes.get('message').textContent,/예시업체 · 30,000원/);
+ }
+});
+test('invalid notification and legacy server responses cannot silently select a different round',async()=>{
+ for(const response of [null,404,409,422]){
+  const f=screen('?code=abcdefghijklmnopqrstuvwx','#reportABC123');
+  if(response)f.calls[0].reject(failure(response));else f.calls[0].resolve({channel:{id:'alpha'}});
+  await new Promise(setImmediate);assert.equal(f.calls.length,1);assert.equal(f.nodes.get('receipt-dialog').open,false);assert.equal(f.run('fresh'),false);assert.equal(f.nodes.get('retry').hidden,false);
+ }
+});
 
 test('first load failure exposes retry; recovery clears the error and never edits the ledger',async()=>{
  const f=screen();f.calls[0].reject(failure(503));await new Promise(setImmediate);

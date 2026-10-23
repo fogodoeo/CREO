@@ -2500,12 +2500,10 @@ function createPlatformApi({
         if (channelId.startsWith('checkout-test-') && !testDeliveryChannels.has(channelId)) throw buyerInputError('연습 채널은 알림 발송이 꺼져 있습니다.',409);
         const record = {id:requestId,itemIds:context.items.filter(i=>i.vendorId===context.vendor.id).map(i=>i.id),vendorId:context.vendor.id,vendorName:context.vendor.name,amount:row.remainingAmount,status:'pending',reportedAt:new Date().toISOString(),bank:{bankName:bank.bankName,bankAccount:bank.bankAccount,bankHolder:bank.bankHolder}};
         if(current.includesVendorFees) Object.assign(record,{kind:'vendor-settlement',entryFeeAmount:row.entryFeeAmount,commissionAmount:row.commissionAmount,shippingAmount:row.shippingAmount});
-        let vendorLabel = cleanText(context.vendor.name,60);
-        const sms = () => `[옹동2] ${vendorLabel} ${current.includesVendorFees?'정산금':'배송비'} ${record.amount.toLocaleString('ko-KR')}원 입금 신고`;
-        while (Buffer.byteLength(sms(),'utf8') > 90 && vendorLabel.length) vendorLabel = vendorLabel.slice(0,-1);
         const eventKey = 'shipping-remit:'+crypto.createHash('sha256').update(JSON.stringify([context.vendor.id,requestId])).digest('hex');
         const access = await organizerAccess.issue(channelId);
-        const prepared = await notificationService.prepare(channelId,{eventKey,templateKey:current.includesVendorFees?'vendor_settlement_reported':'organizer_shipping_reported',recipientRole:'operator',recipientPhone:bank.notificationPhone,transport:current.includesVendorFees?'sms':'alimtalk',failureSmsFallback:true,variables:{업체명:context.vendor.name,입금금액:record.amount.toLocaleString('ko-KR'),주관사접속코드:access.code},fallbackText:sms()});
+        const reportLink=require('./organizer-report-link'),reviewUrl=reportLink.link(access.code,record.id);
+        const prepared = await notificationService.prepare(channelId,{eventKey,templateKey:current.includesVendorFees?'vendor_settlement_reported':'organizer_shipping_reported',recipientRole:'operator',recipientPhone:bank.notificationPhone,transport:current.includesVendorFees?'sms':'alimtalk',failureSmsFallback:true,variables:{업체명:context.vendor.name,입금금액:record.amount.toLocaleString('ko-KR'),주관사접속코드:access.code+'#'+reportLink.reference(record.id)},fallbackText:reportLink.message(record.amount,reviewUrl,current.includesVendorFees)});
         record.notificationId = prepared.record.id;
         const key = `creo_organizer_shipping_ledger::${channelId}`;
         const rows = await repository.getRowsByKeys([key]);
@@ -4256,7 +4254,16 @@ function createPlatformApi({
                 const body=await readJson(req),access=await organizerAccess.resolve(body.code);
                 const channel=access?(await loadCatalog()).channels.find(c=>c.id===access.channelId):null;
                 if(!channel){replyJson(res,401,{error:'주관사 전용 링크가 만료되었거나 올바르지 않습니다.'});return true;}
-                replyJson(res,200,{channel:{id:channel.id,name:channel.name},expiresAt:access.expiresAt});return true;
+                let reportTarget;
+                if(body.reportRef!==undefined){
+                    const key=`creo_organizer_shipping_ledger::${channel.id}`,rows=await repository.getRowsByKeys([key]),data=await workspace(channel.id);
+                    const ledger=JSON.parse(rows.find(r=>r.key===key)?.value||'[]');
+                    reportTarget=require('./organizer-report-link').target(ledger,data,body.reportRef);
+                    const scoped=await OperationRounds.scopedWorkspace(repository,channel,data,reportTarget.archiveId);
+                    const report=ledger.find(r=>r.id===reportTarget.reportId);
+                    if(!report.itemIds.every(id=>scoped.items.some(i=>i.id===id&&i.vendorId===reportTarget.vendorId)))throw buyerInputError('입금신고의 방송 회차를 확인해 주세요. 정산 목록에서 확인할 수 있어요.',409);
+                }
+                replyJson(res,200,{channel:{id:channel.id,name:channel.name},expiresAt:access.expiresAt,...(reportTarget?{reportTarget}:{})});return true;
             }
 
             if (segments[0] !== 'channels' || !segments[1]) {
