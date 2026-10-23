@@ -41,3 +41,11 @@ test('opening during initial load still works and stale channel responses cannot
  assert.equal(opener.disabled,true);f.reads[0]();f.reads[1]();await loading;await opening;assert.ok(f.dialog);assert.equal(opener.disabled,false);
  const g=fixture();g.holdReads();const delayed=g.manager.open('a01',node());g.switchChannel();g.reads[0]();await delayed;assert.equal(g.dialog,undefined);
 });
+
+test('contact work starts collapsed with its attention count, retains expansion and makes no writes on refresh',async()=>{
+ const {parseHTML}=require('linkedom'),{document}=parseHTML('<html><body><div id="table-wrap"></div></body></html>');
+ const calls=[],ctx={window:{CreoPlatform:{escapeHtml:String,api:async(route,options)=>{calls.push({route,options});return {rows:[{itemId:'a01',lot:'A01',name:'가상 구매자',phone:'01000000003',status:'not_sent',attention:true}]};}}},document,setInterval(){}};
+ vm.runInNewContext(source,ctx);const manager=ctx.window.CreoBuyerContactManager.mount({getChannelId:()=> 'round-a',getTab:()=> 'items',refresh(){}});
+ await manager.load();const detail=document.querySelector('details');assert.equal(detail.hasAttribute('open'),false);assert.match(detail.querySelector('summary').textContent,/확인 필요 1건/);
+ detail.open=true;await manager.load();assert.equal(document.querySelector('details').hasAttribute('open'),true);assert.equal(document.querySelectorAll('[data-contact-open]').length,1);assert.ok(calls.every(c=>!c.options));
+});
