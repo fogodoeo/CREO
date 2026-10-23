@@ -5,6 +5,7 @@ html:has(.shared-banner-dialog[open]){overflow:hidden}
 .settings-error{margin:0 0 10px;padding:10px;border:1px solid #ec9b9b;border-radius:8px;background:#351e26;color:#ffe1e1;font-size:14px;line-height:1.5;overflow-wrap:anywhere}
 .settings-error[hidden]{display:none}
 .save:disabled{cursor:default;background:#313a47;color:#b8c2d1}
+#save:disabled{background:#313a47!important;color:#b8c2d1!important}
 .save:focus-visible,.settings-error:focus-visible{outline:3px solid #91b4ff;outline-offset:3px}
 .controls{scroll-padding-bottom:180px}.panel{padding-bottom:180px}
 .section small,.hint{color:#a4afbf;font-size:12px;line-height:1.5}
@@ -16,3 +17,24 @@ html.compact .panel{padding-bottom:20px}
 html.compact .savebar{background:#0e1116}
 @media(max-width:440px){.section-head{display:block}.section-head small{display:block;margin-top:5px;text-align:left}.section h2{font-size:15px}.savebar{padding:10px 16px}html.compact .panel{padding:12px 16px 20px}html.compact .savebar{padding:10px 16px}}
 @media(prefers-reduced-motion:reduce){.toast{transition:none;transform:none}}
+/* Whole settings use one document scroll; compact settings remain page-specific. */
+:root{--studio-action:#306bed}
+.settings-overview .layout{height:auto;min-height:100vh}
+.settings-overview .controls{height:auto;overflow:visible}
+.settings-overview .page-tabs[hidden]{display:none}
+.settings-overview .controls-head h1{font-size:22px}
+.settings-overview .controls-head p{font-size:14px;color:#b8c2d1}
+.settings-overview #control-form{padding:0 24px 24px}
+.settings-page{margin:0 0 12px;border:1px solid #303844;border-radius:12px;background:#11161d}
+.settings-page[hidden]{display:none}
+.settings-page>summary{padding:18px;font-size:17px;font-weight:750;cursor:pointer}
+.settings-overview .settings-page>.panel{display:block;padding:0 18px 12px}
+.settings-overview .savebar{position:sticky;left:auto;bottom:0;width:100%;transform:none}
+.settings-disclosure{margin:12px 0;border:1px solid #303844;border-radius:9px}
+.settings-disclosure>summary{min-height:48px;padding:14px;font-size:14px;font-weight:650;cursor:pointer;overflow-wrap:anywhere}
+.settings-disclosure>div{padding:0 14px 14px}
+.settings-disclosure .switch+.switch{margin-top:8px}
+.settings-page>summary:focus-visible,.settings-disclosure>summary:focus-visible{outline:3px solid #91b4ff;outline-offset:3px;border-radius:8px}
+.settings-page>.panel .section:first-child{padding-top:8px}
+.controls .field{min-width:0}.controls .field input,.controls .field select,.controls .field textarea{min-width:0}
+@media(max-width:440px){.settings-overview #control-form{padding:0 12px 16px}.settings-page>summary{padding:16px;font-size:16px}.settings-overview .settings-page>.panel{padding:0 12px 12px}.settings-disclosure>summary{padding:14px 10px}.settings-disclosure>div{padding:0 10px 12px}}

@@ -26,6 +26,7 @@
     <script src="broadcast-profiles.js?v=20260915-reveal-tv"></script>
     <script src="broadcast-summary.js?v=20260915-summary"></script>
     <script src="studio-settings-draft.js?v=20261023-settings"></script>
+    <script src="studio-settings-view.js?v=20261023-overview"></script>
     <script src="studio-asset-save.js?v=20261023-assets"></script>
     <style>#standard-rankings[hidden],#special-scoreboard-settings[hidden]{display:none!important}#standard-rankings>.field{max-width:240px;margin-top:14px}#standard-rankings>small{display:block;margin-top:8px;color:#a4b0c2}</style>
     <style>
@@ -39,7 +40,7 @@
         .dice-video-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}.dice-video-slot{position:relative;min-height:104px;padding:11px;border:1px solid var(--line);border-radius:9px;background:#0d1116}.dice-video-slot.ready{border-color:#5f714d;background:#10170f}.dice-video-slot strong{display:block;color:var(--gold);font-size:12px}.dice-video-slot span{display:block;margin:5px 0 10px;color:#737e8b;font-size:9px;line-height:1.4}.dice-video-slot input{position:absolute;width:1px;height:1px;opacity:0}.dice-video-slot button{width:100%;height:32px;border:1px solid #3a434f;border-radius:7px;background:#171c23;color:#cbd2db;font-size:10px;font-weight:820;cursor:pointer}.dice-video-slot button:disabled{opacity:.5}.dice-video-note{margin:9px 0 0;color:#697482;font-size:9px;line-height:1.5}@media(max-width:700px){.dice-video-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
         .layout{display:block}.controls{width:min(760px,100%);height:100%;margin:auto;border-right:0}.preview{display:none}.savebar{left:50%;width:min(760px,100%);transform:translateX(-50%)}
     </style>
-<link rel="stylesheet" href="operator-studio.css?v=20260915-studio"><link rel="stylesheet" href="studio-settings.css?v=20261023-banner"><link rel="stylesheet" href="studio-asset-editor.css?v=20261023-assets"><script defer src="studio-interface.js?v=20260915-studio"></script></head>
+<link rel="stylesheet" href="operator-studio.css?v=20260915-studio"><link rel="stylesheet" href="studio-settings.css?v=20261023-overview"><link rel="stylesheet" href="studio-asset-editor.css?v=20261023-assets"><script defer src="studio-interface.js?v=20260915-studio"></script></head>
 <body>
 <header class="top">
     <a class="brand" href="/main">CREO</a>
@@ -51,13 +52,13 @@
 </header>
 <main class="layout">
     <section class="controls">
-        <div class="controls-head"><span class="eyebrow">BROADCAST</span><h1 id="title">방송 관리</h1></div>
+        <div class="controls-head"><h1 id="title">문구·표시 설정</h1><p>바꿀 화면을 펼쳐 수정한 뒤 저장하세요.</p></div>
         <div class="page-tabs">
             <button class="page-tab active" data-page="1" type="button">진행 화면 <small>1P</small></button>
             <button class="page-tab" data-page="2" type="button">경매 화면 <small>2P</small></button>
             <button class="page-tab" id="page-tab-3" data-page="3" type="button">집계 화면 <small>3P</small></button>
         </div>
-        <form id="control-form">
+        <form id="control-form" inert>
             <div class="panel active" data-panel="1">
                 <div class="section"><div class="section-head"><h2>진행자</h2><small>위치·크기·투명도는 위 배치 화면에서 조절</small></div><label class="switch"><input name="page1HostsOn" type="checkbox"> 진행자 이름 표시</label><div class="fields" style="margin-top:10px"><div class="field"><label>진행자 1</label><input name="hostName1" maxlength="60"></div><div class="field"><label>역할</label><input name="hostRole1" maxlength="40" placeholder="진행"></div><div class="field"><label>진행자 2</label><input name="hostName2" maxlength="60"></div><div class="field"><label>역할</label><input name="hostRole2" maxlength="40" placeholder="해설"></div><div class="field"><label>진행자 3</label><input name="hostName3" maxlength="60"></div><div class="field"><label>역할</label><input name="hostRole3" maxlength="40" placeholder="게스트"></div></div></div>
                 <div class="section"><div class="section-head"><h2>P1·P2 공통 순환 자막</h2><small>양쪽 화면에 같은 문구 표시</small></div><label class="switch"><input name="page1TickerOn" type="checkbox"> P1 자막 표시</label><div class="fields" style="margin-top:10px"><div class="field full"><label>공통 자막 문구 · 한 줄에 한 문장</label><textarea name="page1Ticker" maxlength="1200" placeholder="첫 번째 안내\n두 번째 안내\n세 번째 안내"></textarea></div><div class="field"><label>줄 전환 간격 (초)</label><input name="page1TickerInterval" type="number" min="1" max="30" step="1"></div></div></div>
@@ -140,7 +141,7 @@ function ensureSharedPage2Controls(){
     const section=document.createElement('div');
     section.className='section';
     section.id='shared-page2-controls';
-    section.innerHTML='<div class="section-head"><h2>P2 세부 표시</h2><small>위치·크기·전체 투명도는 위 배치 화면에서 조절</small></div><label class="switch"><input name="page2NoteOn" type="checkbox"> 비고 표시</label><label class="switch"><input name="page2VendorTagOn" type="checkbox"> 개체명에 업체 태그 표시</label><div class="fields" style="margin-top:10px"><div class="field full"><label>입찰명단 내부 행 투명도 <strong id="page2-bidders-opacity-value" style="float:right;color:var(--gold)">94%</strong></label><input name="page2BiddersOpacity" type="range" min="0" max="100" step="1" value="94"></div></div>';
+    section.innerHTML='<div class="section-head"><h2>P2 세부 표시</h2></div><label class="switch"><input name="page2NoteOn" type="checkbox"> 비고 표시</label><label class="switch"><input name="page2VendorTagOn" type="checkbox"> 업체 이름 표시</label><div class="fields" style="margin-top:10px"><div class="field full"><label>입찰 목록 배경 진하기 <strong id="page2-bidders-opacity-value" style="float:right;color:var(--gold)">94%</strong></label><input name="page2BiddersOpacity" type="range" min="0" max="100" step="1" value="94"></div></div>';
     panel.prepend(section);
 }
 function ensureDiceVideoControls(){
@@ -163,9 +164,9 @@ function ensureUnifiedLayoutSettings(){
     const positionFields=['page1HostsPosition','page1NoticePosition','page1BannerPosition','page1TickerPosition','page2BiddersPosition','page2HeaderPosition','page2InfoPosition','page2PhotoPosition','page2PricePosition','page2SoldPosition','page2BannerPosition','page2TickerPosition','page3BoardPosition','page3QuizPosition'];
     for(const name of positionFields)form.elements[name]?.closest('.field')?.remove();
     document.querySelectorAll('.position-warning').forEach(element=>element.remove());
-    for(const pageNo of [1,2,3]){const panel=document.querySelector(`[data-panel="${pageNo}"]`);if(!panel||panel.querySelector('.unified-layout-note'))continue;panel.insertAdjacentHTML('afterbegin',`<div class="section unified-layout-note"><div class="section-head"><h2>실제 화면 직접 배치</h2><small>${pageNo}P 배치에서 드래그 · 크기 · 폰트 조절</small></div><p class="hint">이곳에서는 문구, 표시 여부와 파일만 설정합니다. 위치 선택값은 더 이상 사용하지 않습니다.</p></div>`)}
 }
 ensureUnifiedLayoutSettings();
+const settingsView=CreoStudioSettingsView.create({document,compact:compactMode,initialPage:page});
 function sampleAssetUrl(asset){return new URL(asset.imageUrl, location.href).toString()}
 function selectedChannel(){return runtime?.channel||catalog.channels.find(row=>row.id===channelId)}
 function selectedProfile(){return CreoBroadcastProfiles.resolve(selectedChannel())}
@@ -201,7 +202,7 @@ function settingsStatus(status){
     $('save').disabled=status.saving||!status.dirty;$('save').textContent=status.saving?'저장 중…':'변경 저장';
     window.parent.postMessage({type:'creo-settings-draft',channelId,page,dirty:status.dirty||bannerDirty||assetDirty,saving:status.saving||bannerSaving||assetSaving},location.origin);
 }
-function applySettings(values){for(const el of form.elements){if(!Object.hasOwn(values,el.name))continue;if(el.type==='checkbox')el.checked=values[el.name];else el.value=values[el.name]}syncBidderOpacityValue()}
+function applySettings(values){for(const el of form.elements){if(!Object.hasOwn(values,el.name))continue;if(el.type==='checkbox')el.checked=values[el.name];else el.value=values[el.name]}syncBidderOpacityValue();settingsView.refresh({channelId,sharedTicker:isBasicDice()})}
 function receiveSettings(){
     if(!settingsDraft||settingsChannelId!==channelId){
         const requestedChannelId=channelId;settingsChannelId=channelId;bannerDirty=false;bannerSaving=false;
@@ -213,6 +214,8 @@ function receiveSettings(){
         });
     }
     applySettings(settingsDraft.receive(read()));
+    $('title').textContent='문구·표시 설정';
+    form.removeAttribute('inert');
 }
 function captureSettings(){settingsDraft?.capture(read())}
 function canLeaveSettings(){const status=settingsDraft?.status();if(status?.saving||bannerSaving||assetSaving){toast('저장이 끝난 뒤 이동해 주세요.');return false}return !(status?.dirty||bannerDirty||assetDirty)||confirm('저장하지 않은 설정이나 파일이 있습니다. 수정을 버리고 이동할까요?')}

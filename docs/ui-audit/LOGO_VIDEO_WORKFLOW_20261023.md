@@ -25,6 +25,8 @@ Scope: broadcast settings → sponsor/vendor logos and BASIC dice videos. Risk: 
 
 Evidence in `../admin-home-review-20261022/`: `logo-save-retry.png`, `logo-error-320.png`, `logo-library-320-final.png`, `logo-library-desktop-final.png`, `logo-editor-focused.log`, `logo-editor-server-final.log`, `logo-editor-desktop-full.log`, `operator-home-live.png`, `operator-directory-live.png`.
 
+Deployment: commit `36d583d390a427b3ca23e94962cf65e6961c9930`, Render `dep-dbde5qc9v7es73dsco00` Live (1m50s). Read-only production checks: 28 static files match; health/durable storage OK, outboxPending 0, mirrorError null; four national channels preserve exact item/shipment/organizer-settlement/broadcast hashes and active channel stays 10/21. Actual authenticated production studio opens the new library and Add form with the correct 10/21 heading; no asset or configuration was saved. Evidence: `logo-video-release-before.json`, `logo-video-release-after.json`, `logo-library-production.png`, `logo-form-production.png`. Final adjacent tests after the last copy/color polish: 27 passed. Local preview proxy stopped after verification.
+
 ## Coverage and verdict
 
 Accessibility, layout, writing, typography, colors and UI reviewed for library, add/edit, busy, error/retry, discard and narrow states. Native modal and normal scrolling used; no new animation. Approve for this scoped workflow after release checks. Actual large-video transcoding, 200% browser zoom, full screen-reader navigation and the rest of the broader product UX goal remain unverified/pending. The existing optimizer is preserved; file-size/type rejection and dice retry are covered deterministically.

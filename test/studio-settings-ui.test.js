@@ -11,8 +11,10 @@ function setup({compact=false,page=1,basic=false}={}){
  let failure=null,held=null,server={mode:'sold',page:3,activeItemId:'new-winner',layoutPlacements:{slot:{x:40}},...Object.fromEntries(form.elements.map(el=>[el.name,el.type==='checkbox'?el.checked:el.value]))};
  window.parent={postMessage:data=>messages.push(JSON.parse(JSON.stringify(data)))};
  window.frameElement=null;
+ const settingsView=require('../public/studio-settings-view').create({document,compact,initialPage:page});
  const context=vm.createContext({document,window,location:{origin:'http://test.invalid'},channelId:'national-cre-20261021',workspaceLoadSequence:0,state:{mode:'live',activeItemId:'old-item'},page,compactMode:compact,$:id=>document.getElementById(id),form,isBasicDice:()=>basic,CreoStudioSettings:settings,syncBidderOpacityValue(){},toast(){},confirm:()=>false,CreoPlatform:{api:async(path,options)=>{const patch=JSON.parse(options.body);writes.push([path,patch]);if(held)await held;if(failure)throw failure;server={...server,...patch};return {state:{...server}}}}});
  vm.runInContext(between('function read(){','function updatePositionWarnings'),context);
+ context.settingsView=settingsView;
  vm.runInContext(between('function syncBasicTickerFields','function isCrewart'),context);
  vm.runInContext(between('let settingsDraft=null','async function fileToBase64'),context);
  vm.runInContext(between('function saveVendorTag(',"\nform.addEventListener('change'"),context);

@@ -585,7 +585,7 @@ test('new CDCUP overlays and shipping retain compatibility with the established 
     assert.match(control, /name="page2BiddersOn"/);
     assert.match(control, /name="page2BiddersOpacity"/);
     assert.match(control, /function ensureUnifiedLayoutSettings/);
-    assert.match(control, /위치·크기·전체 투명도는 위 배치 화면에서 조절/);
+    assert.match(control, /CreoStudioSettingsView\.create/);
     assert.doesNotMatch(control, /next\.page2ItemFontSize=33;next\.page2BiddersFontSize=20/);
     assert.match(live, /function pageTwoBidders/);
     assert.match(live, /function bidAmountLabel\(value\)\{const amount=Number\(value\)\|\|0;/);
