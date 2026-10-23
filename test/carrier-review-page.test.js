@@ -12,7 +12,7 @@ async function page({login=true,path='/w/ds_0123456789abcdef',search='',changes=
  return{context,document,domWindow,calls,messages,login:v=>signedIn=v,fail:v=>fail=v,allowRefresh:v=>allowRefresh=v,$:id=>document.getElementById(id)};
 }
 test('SMS approval link requires login, opens the precise archived round and exposes no other pending rounds',async()=>{
- const s=await page({login:false});assert.equal(s.$('login').hidden,false);assert.equal(s.calls.length,0);
+ const s=await page({login:false});assert.equal(s.$('login').hidden,false);assert.equal(s.calls.length,0);assert.match(s.$('notice').textContent,/로그인 후/);assert.doesNotMatch(s.$('notice').textContent,/불러오는 중/);
  s.login(true);await s.$('login').onsubmit({preventDefault(){}});
  assert.equal(s.$('login').hidden,true);assert.deepEqual(s.calls.map(c=>c.route),['carrier-request-link?code=ds_0123456789abcdef','channels/national-cre/carrier-requests?recordId=c1','channels/national-cre/checkout-changes?archive=old-round']);
  assert.equal(s.$('back').getAttribute('href'),'/shipping.html?channel=national-cre&archive=old-round');assert.match(s.$('carrier-requests').textContent,/가상 낙찰자/);

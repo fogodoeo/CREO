@@ -23,7 +23,7 @@ function setBusy(value,owner){busy=value;$('reload-requests').disabled=value;for
 async function load(){
  if(busy)return;
  setBusy(true,'load');try{
- if(!await client.verifyAdmin()){ $('login').hidden=false;$('list').replaceChildren();$('carrier-requests').replaceChildren();$('carrier-requests').hidden=true;publishDraft();return; }$('login').hidden=true;
+ if(!await client.verifyAdmin()){ $('login').hidden=false;$('list').replaceChildren();$('carrier-requests').replaceChildren();$('carrier-requests').hidden=true;$('notice').textContent='운영자 로그인 후 요청을 확인할 수 있어요.';$('notice').className='';publishDraft();return; }$('login').hidden=true;
  const code=location.pathname.match(/^\/w\/(op_[A-Za-z0-9_-]{16})$/)?.[1];
  if(code){const link=await client.api('checkout-change-link?code='+encodeURIComponent(code));channel=link.channelId;focusId=link.id;}
  const carrierCode=location.pathname.match(/^\/w\/(ds_[A-Za-z0-9_-]{16})$/)?.[1];let carrierData;
