@@ -11,7 +11,8 @@ test('cancelled reset sends nothing and failed response retries the same request
  let confirmed=false,fail=true,calls=[],sequence=0,focus=0;
  const buyer={id:'buyer',name:'예시',payment:{canResetCardGuide:true,editVersion:'one'},totals:{totalAmount:50000}};
  const ctx=vm.createContext({data:{buyers:[buyer]},busy:false,selectedEvent:'alpha',workFilter:'waiting',CreoVendorCardReset:{confirm:async()=>confirmed},uuid:()=>String(++sequence),CSS:{escape:String},document:{querySelector:()=>({focus(){focus++}})},render(){},revisionSync:{publish(){}},alert(){},api:async(path,body)=>{calls.push({path,body});if(fail)throw Error('lost response');return{buyers:[buyer]}}});
- vm.runInContext(html.slice(html.indexOf('const pendingCardRequests='),html.indexOf('async function sendCard(')),ctx);
+ ctx.paymentWork={clear(){}};
+ vm.runInContext(html.slice(html.indexOf('const pendingShippingEdits='),html.indexOf('async function sendCard(')),ctx);
  await ctx.resetCardGuide('buyer');assert.equal(calls.length,0);assert.equal(ctx.busy,false);
  confirmed=true;await ctx.resetCardGuide('buyer');fail=false;await ctx.resetCardGuide('buyer');
  assert.equal(calls.length,2);assert.deepEqual(calls[0],calls[1]);assert.equal(calls[0].path,'/reset-card-guide');assert.equal(calls[0].body.confirmedUnpaid,true);assert.equal(ctx.busy,false);assert.equal(ctx.workFilter,'action');assert.equal(focus,1);
