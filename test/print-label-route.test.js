@@ -21,7 +21,7 @@ test('shipping label payload excludes fees while bundle accounting remains avail
     const html = fs.readFileSync(path.join(__dirname, '../public/print.html'), 'utf8');
     const start = html.indexOf('function d10ShippingLabelPayload(');
     const end = html.indexOf('\n        async function', start);
-    const context = {window: {_shippingLabelBundles: new Map()}, parseWinner: () => ({name:'테스트',phone:'01012345678'}), shippingLabelDestination: ()=>'파르게 · 서울 (테스트샵)'};
+    const context = {CreoPrintShippingSummary: require('../public/print-shipping-summary'), window: {_shippingLabelBundles: new Map()}, parseWinner: () => ({name:'테스트',phone:'01012345678'}), shippingLabelDestination: ()=>'파르게 · 서울 (테스트샵)'};
     const vm = require('node:vm');
     vm.createContext(context);
     vm.runInContext(html.slice(start, end), context);

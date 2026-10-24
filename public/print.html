@@ -16,7 +16,7 @@
     <script src="operation-channel.js?v=20261020-round-print"></script>
     <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
     <script src="mobile-phone.js?v=20261018-contact"></script>
-    <script src="print-shipping-summary.js?v=20261019-label-route"></script>
+    <script src="print-shipping-summary.js?v=20261024-packing-label"></script>
     <script src="google-sheets-export.js?v=20261015-gross-shipping"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
@@ -456,6 +456,19 @@
         .label-lot-chip, .label-lot-remainder { display:inline-flex; flex:none; align-items:center; padding:.35cqw 1.04cqw; border:.35cqw solid transparent; line-height:.78; white-space:nowrap; }
         .label-lot-chip { border-color:#000; border-radius:.52cqw; }
         .label-lot-chip.is-current { background:#000; color:#fff; }
+        .label-paper.is-combined::after { content:''; position:absolute; inset:3.61% 2.26%; border:.694cqw solid #000; border-radius:1.39cqw; pointer-events:none; }
+        .label-paper-header { left:4.86%; top:7.5%; width:28.82%; height:24.44%; }
+        .label-paper-buyer { left:36.63%; top:7.78%; width:58.51%; height:15.56%; white-space:nowrap; }
+        .label-paper-phone { left:36.63%; top:26.11%; width:58.51%; height:7.78%; }
+        .label-paper .label-paper-lots { left:4.86%; top:38.61%; width:79.86%; height:14.17%; }
+        .label-paper-carrier { left:4.86%; top:55.83%; width:22.92%; height:12.78%; border:.347cqw solid #000; box-sizing:border-box; text-align:center; white-space:nowrap; }
+        .label-paper-region { left:30.73%; top:57.5%; width:54%; height:10%; }
+        .label-paper-destination { left:4.86%; top:70%; width:79.86%; height:13.61%; }
+        .label-paper-date { left:77.43%; top:86.39%; width:17.71%; height:6.11%; text-align:right; white-space:nowrap; }
+        .label-paper-routes { position:absolute; left:88.19%; top:39.44%; width:6.94%; display:grid; gap:.694cqw; }
+        .label-paper-routes b { display:flex; align-items:center; justify-content:center; height:7.64cqw; box-sizing:border-box; border:.174cqw solid #000; border-radius:.52cqw; font-size:5.56cqw; line-height:1; }
+        .label-paper-routes .is-current { background:#000; color:#fff; }
+        .label-lot-count { display:inline-flex; align-items:center; white-space:nowrap; padding-left:1cqw; font-weight:700; }
 
         .label-preview-empty {
             display: grid;
@@ -1307,7 +1320,7 @@
             renderShippingLabelPreview();
         }
 
-        function shippingLabelLotChipsHtml(text, currentLot) {
+        function shippingLabelLotChipsHtml(text, currentLot, count) {
             text = String(text || '').trim().replace(/\s+/g, ' ');
             var remainder = text.match(/(?:\s|·)+(외\s*\d+\s*(?:마리|개))$/);
             if (remainder) text = text.slice(0, remainder.index).trim();
@@ -1321,6 +1334,7 @@
             });
             if (remainder) chips.push('<b class="label-lot-remainder">' + escapePrintHtml(remainder[1]) + '</b>');
             if (!chips.length) return '';
+            if (count) chips.push('<b class="label-lot-count">— ' + escapePrintHtml(count) + '</b>');
             var split = chips.length > 6 ? Math.ceil(chips.length / 2) : chips.length;
             return '<span class="label-lot-row">' + chips.slice(0, split).join('') + '</span>'
                 + (split < chips.length ? '<span class="label-lot-row">' + chips.slice(split).join('') + '</span>' : '');
@@ -1353,17 +1367,19 @@
 
             var position = indexes.indexOf(activeIndex);
             var payload = d10ShippingLabelPayload(items[activeIndex]);
-            var route = CreoPrintShippingSummary.labelRoute(payload.destination);
+            var route = CreoPrintShippingSummary.compactLabelRoute(payload.destination);
             var group = String(payload.bundle_summary || '').match(/^합배송(?: 대상)?\s*(\d+)\s*(?:마리|개)\s*·\s*(.*)$/);
-            stage.innerHTML = '<div class="label-paper" title="' + escapePrintHtml(payload.lot_number || '') + '">'
+            var combined = group && Number(group[1]) > 1;
+            stage.innerHTML = '<div class="label-paper' + (combined ? ' is-combined' : '') + '" title="' + escapePrintHtml(payload.lot_number || '') + '">'
                 + '<div class="label-paper-header" data-label-size="76"><span>' + escapePrintHtml(payload.lot_number || '배송') + '</span></div>'
                 + '<div class="label-paper-buyer" data-label-size="62"><span>' + escapePrintHtml(payload.winner_name || '낙찰자 미입력') + '</span></div>'
                 + '<div class="label-paper-phone" data-label-size="31"><span>' + escapePrintHtml(fmtPhone(payload.winner_phone) || '연락처 미입력') + '</span></div>'
-                + '<div class="label-paper-lots" data-label-size="36"><span>' + shippingLabelLotChipsHtml(group ? group[2] : '', payload.lot_number) + '</span></div>'
-                + '<div class="label-paper-bundle" data-label-size="34"><span>' + escapePrintHtml(route.carrier ? route.carrier + ' · ' : '') + (group ? '합배송 ' + escapePrintHtml(group[1]) + '마리' : /^단독/.test(payload.bundle_summary || '') ? '단독배송' : '합배송 미확인') + '</span></div>'
-                + '<div class="label-paper-rule"></div>'
+                + '<div class="label-paper-lots" data-label-size="36"><span>' + (combined ? shippingLabelLotChipsHtml(group[2], payload.lot_number, group[1]) : group || /^단독/.test(payload.bundle_summary || '') ? '' : '합배송 미확인') + '</span></div>'
+                + '<div class="label-paper-carrier" data-label-size="37"><span>' + escapePrintHtml(route.carrier || '배송') + '</span></div>'
                 + '<div class="label-paper-region" data-label-size="34"><span>' + escapePrintHtml(route.region) + '</span></div>'
-                + '<div class="label-paper-destination" data-label-size="48"><span>' + escapePrintHtml(route.shop) + '</span></div>'
+                + '<div class="label-paper-destination" data-label-size="54"><span>' + escapePrintHtml(route.shop) + '</span></div>'
+                + '<div class="label-paper-routes" aria-label="' + escapePrintHtml(route.carrier || '배송방식 미확인') + '">' + ['파르게','도도시','직수령'].map(function(name) { return '<b class="' + (route.carrier === name ? 'is-current' : '') + '">' + name[0] + '</b>'; }).join('') + '</div>'
+                + '<div class="label-paper-date" data-label-size="25"><span>' + escapePrintHtml(payload.sold_date ? payload.sold_date.slice(5).replace('-', '/') : '') + '</span></div>'
                 + '</div>';
             counter.textContent = (position + 1) + ' / ' + indexes.length + (selectedShippingLabelItems().length ? ' · 선택 라벨' : ' · 출력 가능');
             stage.innerHTML += '<div class="label-preview-bundle">' + shippingLabelBundleHtml(items[activeIndex]) + '</div>';
@@ -1381,7 +1397,7 @@
             document.querySelectorAll('.label-paper [data-label-size]').forEach(function (box) {
                 var content = box.firstElementChild;
                 if (!content || !box.clientWidth) return;
-                var minimum = box.classList.contains('label-paper-destination') || box.classList.contains('label-paper-region') ? 6 : 10;
+                var minimum = 1;
                 for (var size = Number(box.dataset.labelSize); size >= minimum; size--) {
                     box.style.fontSize = (size / 5.76) + 'cqw';
                     if (content.scrollWidth <= box.clientWidth + 1 && content.getBoundingClientRect().height <= box.clientHeight + 1) break;
@@ -1418,7 +1434,7 @@
                 if (!response.ok) throw new Error('브리지 응답 오류');
                 var payload = await response.json();
                 var suffix = payload.printing ? ' · 인쇄 중' : payload.queued ? ' · 대기 ' + payload.queued + '장' : '';
-                if (!payload.shippingLabelDetails) {
+                if (!payload.shippingLabelDetails || !(Number(payload.shippingLabelVersion) >= 2)) {
                     setD10PrinterStatus('새 라벨 적용: 모니터 앱 다시 열기', 'error');
                     return false;
                 }
@@ -1443,6 +1459,7 @@
                 winner_name: winner.name || '낙찰자',
                 winner_phone: winner.phone || '',
                 destination: shippingLabelDestination(it),
+                sold_date: CreoPrintShippingSummary.labelDate(it),
                 bundle_summary: bundle ? (bundle.count > 1 ? '합배송 ' + bundle.count + '마리 · ' : '단독 · ') + printedLots.join(' · ') + (bundle.count > 8 ? ' 외 ' + (bundle.count - 8) + '마리' : '') : '',
                 amount_summary: ''
             };

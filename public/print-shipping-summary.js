@@ -124,6 +124,24 @@
         return { carrier: carrier, region: region, shop: shop };
     }
 
+    function compactLabelRoute(destination) {
+        var route = labelRoute(destination);
+        var suffix = route.shop.match(/^(.+?)\s*\(([^()]+)\)$/);
+        if (['파르게', '도도시'].includes(route.carrier) && suffix) {
+            route.shop = suffix[1].trim(); route.region = suffix[2].trim();
+        }
+        if (route.region === '배송지') route.region = '';
+        return route;
+    }
+
+    function labelDate(item) {
+        // Use the record's own round date, never today's date or active channel.
+        var value = text(item.attributes?.broadcastDate || item.attributes?.vendor_entry?.broadcastDate);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return '';
+        var date = new Date(value + 'T00:00:00Z');
+        return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value ? value : '';
+    }
+
     function newest(values) {
         return values.filter(Boolean).sort().at(-1) || '';
     }
@@ -274,6 +292,8 @@
         recordedShippingDisplays: recordedShippingDisplays,
         shippingDestination: shippingDestination,
         labelRoute: labelRoute,
+        compactLabelRoute: compactLabelRoute,
+        labelDate: labelDate,
         winnerIdentity: winnerIdentity
     };
 });
