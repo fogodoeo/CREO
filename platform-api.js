@@ -1113,6 +1113,7 @@ function createPlatformApi({
     const testDeliveryChannels = new Set(String(checkoutTestDeliveryChannels).split(',').map(id => id.trim()).filter(id => /^checkout-test-[a-f0-9]{16}$/.test(id)));
     const carrierRequests=require('./carrier-requests').createCarrierRequests({repository,notificationService,now:vendorAccessNow,origin:vendorAccessOrigin,rates:pargeRates,canNotify:id=>!id.startsWith('checkout-test-')||testDeliveryChannels.has(id),resolveContext:token=>buyerBundleContext(token,{operatorAccess:true}),locked:async context=>!CheckoutRounds.open(context.channel)||ownCheckoutShipments(context).some(destinationChangeLocked)||Boolean(await pendingCheckoutChange(context)),touch:id=>{touchCheckout(id);touchChannel(id);}});
     const vendorDirectory = require('./vendor-directory').createVendorDirectory(repository);
+    const numberLabelPlans = require('./number-label-plans').create({repository,lock:withMutationLock});
     const nationalRounds = NationalRounds.createNationalRoundOperations({repository,directory:vendorDirectory,lock:withMutationLock,touch:touchChannel});
     const pargeDispatch = require('./parge-dispatch').createPargeDispatch({
         read: async id => (await repository.getRecord(id,'setting','parge-dispatch'))?.records || [],
@@ -4293,6 +4294,17 @@ function createPlatformApi({
                 return true;
             }
 
+            if(segments.length===3&&segments[2]==='number-label-plans'&&['GET','POST'].includes(method)){
+                if(!await requireAdmin(req,res))return true;
+                if(method==='POST')replyJson(res,200,{plan:await numberLabelPlans.save(channelId,await readJson(req))});
+                else {
+                    const date=url.searchParams.get('date');
+                    const plans=await numberLabelPlans.list(channelId,date);
+                    const vendors=await vendorDirectory.list(channel.nationalRound?.parentId||channelId);
+                    replyJson(res,200,{plans,vendors:vendors.filter(v=>v.active!==false).map(v=>({name:v.name}))});
+                }
+                return true;
+            }
             if(segments.length===3&&segments[2]==='item-editor-photos'&&['GET','POST'].includes(method)){
                 if(!await requireAdmin(req,res))return true;
                 const result=method==='GET'?await workspaceItemPhotos.views(channelId,url.searchParams.get('itemId')):await workspaceItemPhotos.upload(channelId,await readJson(req,600000));

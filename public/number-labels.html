@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>순서·번호라벨 · CREO</title>
+<link rel="stylesheet" href="/number-labels.css?v=20261024-1">
+<script defer src="/platform-client.js"></script><script defer src="/number-label-model.js?v=20261024-1"></script><script defer src="/number-labels.js?v=20261024-1"></script></head>
+<body><main>
+<header class="standalone"><a id="home" href="/main">← 운영 홈</a><h1>순서·번호라벨</h1></header>
+<div id="error" role="alert" hidden></div><p id="status" role="status">회차를 불러오는 중…</p>
+<section class="scope"><label id="round-field">방송 회차<select id="round" disabled></select></label><label id="date-field" hidden>방송일<input id="date" type="date"></label><button id="reload" type="button">새로고침</button></section>
+<p id="scope-name"></p>
+<section class="saved-bar"><label>저장한 번호표<select id="saved"><option value="">새 번호표</option></select></label><button id="new-plan" type="button">새로 만들기</button><button id="edit-plan" type="button" hidden>이 설정으로 새 번호표</button></section>
+<section id="editor" hidden>
+ <h2 id="setup-heading">업체 순서와 총 개체수</h2><p id="setup-hint" class="muted">업체 순서대로 배정한 뒤 전체 수량을 절반씩 1·2부로 나눕니다.</p>
+ <details class="advanced"><summary>상세 설정</summary><label>구성 방식<select id="config-mode"><option value="split">총 개체수로 1·2부 자동 나누기</option><option value="parts">부별 순서·수량 직접 지정</option></select></label></details>
+ <label id="reverse-field" class="check"><input id="reverse-second" type="checkbox" checked>2부는 업체 역순으로 배치</label>
+ <fieldset id="setup"><div id="parts"></div><div class="actions"><button id="add-part" type="button">부 추가</button><button id="add-panel" type="button">E 패널 추가</button></div>
+ <label class="title-field">저장본 이름<input id="title" maxlength="80" placeholder="예: 현장 확정 번호표"></label>
+ <div class="actions"><button id="preview" type="button">번호표 미리보기</button><button id="save" class="primary" type="button">확정·저장</button></div></fieldset>
+</section>
+<section id="result" hidden>
+ <div class="result-heading"><div><h2 id="result-title">번호표 미리보기</h2><p id="result-note" class="muted"></p></div><strong id="total"></strong></div>
+ <div class="result-layout"><div><div class="selection"><label>부 선택<select id="filter"><option value="">전체</option></select></label><button id="select-all" type="button">보이는 번호 전체 선택</button><button id="select-none" type="button">선택 해제</button></div><div id="rows" class="rows"></div></div>
+ <aside><h3>30 × 50 mm 접이식</h3><div id="sample"></div><p class="muted">윗면 35 mm · 옆면 15 mm<br>무게·비고는 현장에서 직접 적습니다.</p><div class="print-actions"><strong id="selected-count">0장 선택</strong><button id="print-b1" class="primary" type="button">선택한 번호 B1 PRO 출력</button><button id="print-browser" type="button">선택한 번호 브라우저 인쇄</button></div><p id="print-status" role="status"></p><p class="muted">B1 PRO는 한 번에 120장까지 선택해 주세요.</p></aside></div>
+</section>
+<datalist id="vendors"></datalist>
+</main><div id="print-pages" aria-hidden="true"></div></body></html>

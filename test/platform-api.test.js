@@ -14,6 +14,24 @@ const { normalizeChannel } = require('../platform-core');
 const { createCrewartHouseService } = require('../crewart-house-service');
 const {CheckoutNotificationService} = require('../checkout-notifications');
 
+test('number label planning is admin-only, independent of entries, immutable and isolated from auction data',async()=>{
+ const repository=new MemoryRepository(),api=createPlatformApi({repository});
+ const path='/api/platform/channels/alpha/number-label-plans';
+ const body={date:'2026-10-26',requestId:'number-label-test-0001',title:'현장 번호',parts:[{name:'1부',prefix:'A',start:1,vendors:[{company:'새 업체',count:2}]}]};
+ await repository.upsertRecord('alpha','item',{id:'live',name:'A01',status:'live'});
+ await repository.upsertRecord('alpha','vendor',{id:'v',name:'업체',phone:'01012345678'});
+ const before=await repository.listRecords('alpha','item');
+ assert.equal((await call(api,'POST',path,body,'')).status,401);
+ assert.equal((await call(api,'GET',path+'?date=2026-10-26',null,'')).status,401);
+ assert.equal((await call(api,'POST',path,body)).status,200);
+ const read=(await call(api,'GET',path+'?date=2026-10-26')).json();assert.equal(read.plans[0].labels.length,2);assert.doesNotMatch(JSON.stringify(read),/01012345678/);
+ assert.equal((await call(api,'POST',path,body)).json().plan.id,read.plans[0].id);
+ assert.equal((await call(api,'GET',path+'?date=2026-10-28')).json().plans.length,0);
+ assert.equal((await call(api,'GET','/api/platform/channels/beta/number-label-plans?date=2026-10-26')).json().plans.length,0);
+ assert.equal((await call(api,'GET',path)).status,422);
+ assert.deepEqual(await repository.listRecords('alpha','item'),before);assert.equal((await repository.listRecords('alpha','notification')).length,0);
+});
+
 test('retired countdown display accepts old clients without storage, revisions or auction locks',async()=>{
  const repository=new MemoryRepository(),api=createPlatformApi({repository});
  const path='/api/platform/channels/alpha';

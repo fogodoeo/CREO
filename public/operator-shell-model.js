@@ -3,7 +3,7 @@
  const groups=[
   ['vendors','업체 관리',[['vendors','전체 업체','program'],['regions','방송 지역 배정','program'],['access','업체 접속 관리','global']]],
   ['schedule','방송 일정',[['rounds','회차 준비·방송 전환'],['bookings','업체 방송 신청'],['promo','전크자 홍보 일정·원고','global']]],
-  ['auction','경매 운영',[['intake','출품 접수·검토'],['items','개체·경매 순서'],['members','참여 업체']]],
+  ['auction','경매 운영',[['numberLabels','순서·번호라벨'],['intake','출품 접수·검토'],['items','개체·경매 순서'],['members','참여 업체']]],
   ['broadcast','방송 도구',[['broadcast','방송 제어·화면 배치'],['pinball','핀볼 추첨'],['captures','캡처 자료'],['captureSetup','캡처 본체 설정','global']]],
   ['finance','낙찰·배송·정산',[['shipping','낙찰자 입금·배송 관리'],['organizer','업체 정산·입금 확인'],['shippingStatus','배송 현황'],['changes','배송 변경·도도시 승인'],['parge','파르게 운송 접수'],['report','회차 총정산표·엑셀'],['print','내역·라벨 인쇄']]],
   ['settings','설정',[['settings','채널 설정'],['rates','배송 요금·거점','global'],['monitor','BAND 승인봇 상태','global'],['archives','지난 결과·보관 자료'],['survey','참여자 설문']]]
@@ -14,6 +14,7 @@
   captureSetup:'/capture-setup.html',monitor:'/band-monitor.html',
   intake:links.intake||(links.workspace&&state.channel.dataAdapter==='platform'?'/vendor-entry-review.html?'+new URLSearchParams({channel:state.channel.id}):''),
   items:links.workspace?links.workspace+'&tab=items':'',members:links.workspace?links.workspace+'&tab=vendors':'',
+  numberLabels:state.channel.dataAdapter==='platform'&&state.channel.features?.auction!==false?'/number-labels.html?'+new URLSearchParams({channel:state.channel.id,...(state.round?.date?{date:state.round.date}:{}),...(state.archiveId?{archive:state.archiveId}:{})}):'',
   changes:links.shipping?'/checkout-changes.html?'+q:''};}
  function menu(state){const links=routes(state),ordered=state.finished?[...groups.filter(g=>g[0]==='finance'),...groups.filter(g=>g[0]!=='finance')]:groups;return ordered.map(([id,label,entries])=>({id,label,entries:entries.map(([key,label,scope='round'])=>({key,label:state.finished&&key==='items'?'출품 내역 확인':label,scope,href:links[key]||'',group:id})).filter(e=>e.href)})).filter(g=>g.entries.length);}
  function entry(state,key='home'){if(key==='home')return{key,label:'운영 홈',scope:'round',group:'',href:''};return menu(state).flatMap(g=>g.entries).find(e=>e.key===key)||null;}
