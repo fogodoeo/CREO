@@ -4301,7 +4301,13 @@ function createPlatformApi({
                     const date=url.searchParams.get('date');
                     const plans=await numberLabelPlans.list(channelId,date);
                     const vendors=await vendorDirectory.list(channel.nationalRound?.parentId||channelId);
-                    replyJson(res,200,{plans,vendors:vendors.filter(v=>v.active!==false).map(v=>({name:v.name}))});
+                    let participants=channel.nationalRound?.parentId?await vendorDirectory.list(channelId):vendors;
+                    if(channelId==='national-cre'&&(await repository.getRecord(channelId,'setting','national-cycle-config'))?.mode==='regional-cycle-v1'){
+                        const national=require('./national-broadcast'),region=national.regionAt(date);
+                        participants=participants.filter(v=>national.regionForVendor(v)===region);
+                    }
+                    const names=rows=>rows.filter(v=>v.active!==false&&v.name).map(v=>({name:v.name}));
+                    replyJson(res,200,{plans,vendors:names(vendors),roundVendors:names(participants)});
                 }
                 return true;
             }

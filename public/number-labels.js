@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded',async()=>{
  'use strict';
  const $=id=>document.getElementById(id),api=CreoPlatform.api,esc=CreoPlatform.escapeHtml,M=CreoNumberLabels,q=new URLSearchParams(location.search);
- let rounds=[],round=null,parts=[],plans=[],selectedPlan=null,labels=[],checked=new Set(),busy=false,sequence=0,dirty=false;
+ let rounds=[],round=null,parts=[],plans=[],roundVendors=[],selectedPlan=null,labels=[],checked=new Set(),busy=false,sequence=0,dirty=false;
  const initial=()=>$('config-mode').value==='split'?[{name:'업체 순서',prefix:'A',start:1,defaultCount:4,vendors:[]}]:[{name:'1부',prefix:'A',start:1,vendors:[]},{name:'2부',prefix:'B',start:1,vendors:[]}];
  function configuration(){return $('config-mode').value==='split'?{mode:'split',setup:{vendors:parts[0]?.vendors||[],defaultCount:parts[0]?.defaultCount??4,reverse:$('reverse-second').checked,panels:parts.slice(1)}}:{mode:'parts',parts};}
  const endpoint=()=>`channels/${encodeURIComponent(round.channelId)}/number-label-plans`;
@@ -13,7 +13,10 @@ document.addEventListener('DOMContentLoaded',async()=>{
  function fit(){document.querySelectorAll('.fit').forEach(el=>{el.style.fontSize=el.dataset.base||'';const width=el.closest('.number-label').clientWidth;if(!width)return;let size=parseFloat(getComputedStyle(el).fontSize);while(size>1&&(el.scrollWidth>el.clientWidth+1||el.scrollHeight>el.clientHeight+1)){size-=.5;el.style.fontSize=size+'px';}if(el.style.fontSize)el.style.fontSize=(size/width*100)+'cqw';});}
  function renderParts(){
   $('parts').innerHTML=parts.map((p,i)=>`<section class="part" data-part="${i}"><div class="part-header"><label>부 이름<input data-field="name" value="${esc(p.name)}" maxlength="30"></label><label>앞글자<input data-field="prefix" value="${esc(p.prefix)}" maxlength="1"></label><label>시작번호<input data-field="start" type="number" min="1" max="999" value="${p.start}"></label><label>기본 개수<input data-default type="number" min="0" max="100" value="2"></label><button data-action="remove-part" type="button">부 삭제</button></div><div class="part-tools"><button data-action="add-vendor" type="button">업체 추가</button><button data-action="apply-count" type="button">기본 개수 일괄 적용</button>${i?'<button data-action="copy" type="button">앞 부 설정 복사</button>':''}<button data-action="reverse" type="button">업체 역순</button></div>${p.vendors.length?p.vendors.map((v,j)=>`<div class="vendor-row" data-vendor="${j}"><span class="position">${j+1}</span><label>업체명<input list="vendors" data-field="company" maxlength="80" value="${esc(v.company)}"></label><label>개수<input data-field="count" type="number" min="0" max="100" value="${v.count}"></label><div class="move"><button type="button" data-action="up" aria-label="${esc(v.company||'업체')} 위로" ${j===0?'disabled':''}>↑</button><button type="button" data-action="down" aria-label="${esc(v.company||'업체')} 아래로" ${j===p.vendors.length-1?'disabled':''}>↓</button><button type="button" data-action="remove-vendor">삭제</button></div></div>`).join(''):'<p class="part-empty">업체를 추가하고 추첨 순서대로 배치해 주세요.</p>'}</section>`).join('');
-  document.querySelectorAll('[data-part]').forEach(card=>card.querySelector('[data-default]').value=parts[Number(card.dataset.part)].defaultCount??2);
+  document.querySelectorAll('[data-part]').forEach(card=>{
+   const p=parts[Number(card.dataset.part)];card.querySelector('[data-default]').value=p.defaultCount??2;
+   if(p.prefix!=='E'){const button=document.createElement('button');button.type='button';button.dataset.action='import-vendors';button.textContent='이 회차 업체 가져오기'+(roundVendors.length?' ('+roundVendors.length+'곳)':'');card.querySelector('.part-tools').prepend(button);}
+  });
   const simple=$('config-mode').value==='split';$('editor').classList.toggle('simple-mode',simple);$('reverse-field').hidden=!simple;$('add-part').hidden=simple;
   $('setup-heading').textContent=simple?'업체 순서와 총 개체수':'부별 업체 순서와 개수';$('setup-hint').textContent=simple?'업체 순서대로 배정한 뒤 전체 수량을 절반씩 1·2부로 나눕니다. 홀수면 1부에 한 마리 더 배정합니다.':'위에서부터 한 업체씩 돌아갑니다. 수량이 끝난 업체는 건너뜁니다.';
   if(simple){const first=$('parts').querySelector('.part');if(first){first.querySelector('[data-default]').parentElement.firstChild.textContent='업체당 기본 총수';first.querySelectorAll('[data-field="count"]').forEach(el=>el.parentElement.firstChild.textContent='총 개체수');}}
@@ -40,7 +43,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
  async function load(){
   const seq=++sequence;error('');message('번호표를 불러오는 중…');lock(true);$('editor').hidden=$('result').hidden=true;selectedPlan=null;plans=[];
   try{M.date(round.date);const data=await api(endpoint()+'?'+new URLSearchParams({date:round.date}));if(seq!==sequence)return;
-   plans=data.plans;$('vendors').innerHTML=data.vendors.map(v=>`<option value="${esc(v.name)}"></option>`).join('');
+   plans=data.plans;roundVendors=data.roundVendors||[];$('vendors').innerHTML=data.vendors.map(v=>`<option value="${esc(v.name)}"></option>`).join('');
    $('saved').innerHTML='<option value="">새 번호표</option>'+plans.map(p=>`<option value="${esc(p.id)}">${esc(p.title)} · ${new Date(p.createdAt).toLocaleString('ko-KR')} · ${p.labels.length}장</option>`).join('');
    openPlan(plans[0]?.id||'');
   }catch(e){error(e);message('날짜와 연결 상태를 확인한 뒤 새로고침해 주세요.');}finally{if(seq===sequence)lock(false);}
@@ -54,6 +57,13 @@ document.addEventListener('DOMContentLoaded',async()=>{
  $('parts').addEventListener('click',e=>{const b=e.target.closest('[data-action]');if(!b||busy)return;const card=b.closest('[data-part]'),i=Number(card.dataset.part),p=parts[i],j=Number(b.closest('[data-vendor]')?.dataset.vendor),a=b.dataset.action;
   if(a==='remove-part'){if(!confirm(p.name+' 설정을 삭제할까요? 저장본은 유지됩니다.'))return;parts.splice(i,1);}
   if(a==='add-vendor')p.vendors.push({company:'',count:Number(card.querySelector('[data-default]').value)});
+  if(a==='import-vendors'){
+   error('');if(!roundVendors.length){error('이 회차에 연결된 업체가 없습니다. 참여 업체 메뉴에서 배정을 확인하거나 업체 추가로 직접 입력해 주세요.');return;}
+   try{const next=M.importVendors(p.vendors,roundVendors,Number(card.querySelector('[data-default]').value)),added=next.length-p.vendors.length;
+    if(!added){message('이 회차 업체가 이미 모두 들어가 있어요. 입력한 순서와 개수는 유지됩니다.');return;}
+    p.vendors=next;remember();renderParts();message(added+'곳을 추가했어요. 추첨 순서대로 정렬하고 업체별 개수를 확인해 주세요.');
+   }catch(e){error(e);}return;
+  }
   if(a==='apply-count'){const count=Number(card.querySelector('[data-default]').value);if(!Number.isInteger(count)||count<0||count>100){error('개수는 0~100개로 정해 주세요.');return;}p.vendors.forEach(v=>v.count=count);}
   if(a==='copy'){if(p.vendors.length&&!confirm('이 부의 업체 순서·개수를 앞 부 설정으로 바꿀까요?'))return;p.vendors=structuredClone(parts[i-1].vendors);p.defaultCount=parts[i-1].defaultCount??2;}
   if(a==='reverse')p.vendors.reverse();if(a==='remove-vendor')p.vendors.splice(j,1);

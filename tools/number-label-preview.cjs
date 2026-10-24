@@ -14,7 +14,7 @@ http.createServer(async(req,res)=>{
   if(url.pathname==='/api/platform/admin-check')return json(200,{authenticated:true});
   if(url.pathname==='/api/platform/operation-rounds')return json(200,{channels,rounds,activeChannelId:channels[0].id});
   const match=/^\/api\/platform\/channels\/([^/]+)\/number-label-plans$/.exec(url.pathname);
-  if(match){if(req.method==='POST'){let body='';for await(const chunk of req)body+=chunk;return json(200,{plan:await service.save(match[1],JSON.parse(body))});}return json(200,{plans:await service.list(match[1],url.searchParams.get('date')),vendors:['크레오','크레빠','마이리틀드래곤','마리드'].map(name=>({name}))});}
+  if(match){if(req.method==='POST'){let body='';for await(const chunk of req)body+=chunk;return json(200,{plan:await service.save(match[1],JSON.parse(body))});}return json(200,{plans:await service.list(match[1],url.searchParams.get('date')),vendors:['크레오','크레빠','마이리틀드래곤','마리드'].map(name=>({name})),roundVendors:(match[1]==='label-fixture-a'?['크레오','크레빠','마이리틀드래곤']:['마리드']).map(name=>({name}))});}
   const file=path.resolve(root,'.'+decodeURIComponent(url.pathname));if(!file.startsWith(root+path.sep)||!fs.existsSync(file)||!fs.statSync(file).isFile())return json(404,{error:'not found'});
   res.writeHead(200,{'Content-Type':file.endsWith('.css')?'text/css':file.endsWith('.js')?'text/javascript':'text/html; charset=utf-8'});res.end(fs.readFileSync(file));
  }catch(e){json(e.status||500,{error:e.message});}

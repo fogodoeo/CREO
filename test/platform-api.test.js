@@ -32,6 +32,20 @@ test('number label planning is admin-only, independent of entries, immutable and
  assert.deepEqual(await repository.listRecords('alpha','item'),before);assert.equal((await repository.listRecords('alpha','notification')).length,0);
 });
 
+test('number label import lists only this round participants and exposes names only',async()=>{
+ const repository=new MemoryRepository();
+ await repository.saveCatalog([{id:'national-cre',name:'전크자',status:'active'},{id:'national-cre-20261026',name:'경북',status:'active',nationalRound:{parentId:'national-cre',date:'2026-10-26'}}].map(normalizeChannel));
+ await repository.upsertRecord('national-cre','vendor',{id:'a',name:'경북업체',broadcastRegion:'대구·경북',phone:'01012345678'});
+ await repository.upsertRecord('national-cre','vendor',{id:'b',name:'경남업체',broadcastRegion:'부산·울산·경남'});
+ await repository.upsertRecord('national-cre','setting',{id:'national-cycle-config',mode:'regional-cycle-v1'});
+ await repository.upsertRecord('national-cre-20261026','vendor',{id:'a',name:'경북업체'});
+ await repository.upsertRecord('national-cre-20261026','vendor',{id:'x',name:'비활성',active:false});
+ const api=createPlatformApi({repository}),get=async(c,d)=>(await call(api,'GET','/api/platform/channels/'+c+'/number-label-plans?date='+d)).json();
+ const child=await get('national-cre-20261026','2026-10-26');assert.deepEqual(child.roundVendors,[{name:'경북업체'}]);assert.equal(child.vendors.length,2);assert.doesNotMatch(JSON.stringify(child),/01012345678/);
+ assert.deepEqual((await get('national-cre','2026-10-26')).roundVendors,[{name:'경북업체'}]);
+ assert.deepEqual((await get('national-cre','2026-10-28')).roundVendors,[{name:'경남업체'}]);
+});
+
 test('retired countdown display accepts old clients without storage, revisions or auction locks',async()=>{
  const repository=new MemoryRepository(),api=createPlatformApi({repository});
  const path='/api/platform/channels/alpha';

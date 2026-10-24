@@ -42,10 +42,18 @@
   const result=generate([a,b,...panels]);
   return {mode:'split',setup:{vendors:source.vendors,defaultCount:source.defaultCount,reverse:setup.reverse===true,panels:result.parts.filter(p=>p.prefix==='E')},...result};
  }
+ function importVendors(existing,candidates,count){
+  if(!Number.isInteger(count)||count<0||count>100)fail('기본 개수는 0~100개로 정해 주세요.');
+  const result=existing.map(v=>({...v})),seen=new Set(existing.map(v=>clean(v.company).toLowerCase()));
+  for(const v of candidates){const company=clean(v.name);if(!company||seen.has(company.toLowerCase()))continue;
+   if(company.length>80||result.length>=100)fail('업체는 100곳까지, 업체명은 80자 이내로 지정해 주세요.');
+   result.push({company,count});seen.add(company.toLowerCase());
+  }return result;
+ }
  function labelHtml(l,escape){
   // Keep a conservative single-line fit even while print pages are display:none.
   const units=Array.from(l.company).reduce((sum,c)=>sum+(/[\u0000-\u007f]/.test(c)?.7:1),0),top=Math.min(9,86/Math.max(1,units)),side=Math.min(8,top);
   return `<div class="number-sheet"><div class="number-label"><div class="write-weight">무게 <span></span> g</div><div class="write-note">비고 <span></span></div><div class="top-company fit" data-base="${top}cqw" style="font-size:${top}cqw">${escape(l.company)}</div><div class="top-code fit">${escape(l.lot_number)}</div><div class="fold-line"></div><div class="side-company fit" data-base="${side}cqw" style="font-size:${side}cqw">${escape(l.company)}</div><div class="side-code fit">${escape(l.lot_number)}</div></div></div>`;
  }
- const api={clean,date,normalize,generate,build,labelHtml};if(typeof module==='object'&&module.exports)module.exports=api;root.CreoNumberLabels=api;
+ const api={clean,date,normalize,generate,build,importVendors,labelHtml};if(typeof module==='object'&&module.exports)module.exports=api;root.CreoNumberLabels=api;
 })(typeof window==='object'?window:globalThis);

@@ -2,6 +2,14 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const M=require('../public/number-label-model'),Plans=require('../number-label-plans');
 const parts=()=>[{name:'1부',prefix:'A',start:1,vendors:[{company:'크레오',count:2},{company:'크레빠',count:3},{company:'마이리틀드래곤',count:2}]},{name:'2부',prefix:'B',start:1,vendors:[{company:'마리드',count:2},{company:'크레빠',count:2},{company:'크레오',count:1}]},{name:'패널',prefix:'E',start:1,vendors:[{company:'패널',count:2}]}];
+test('vendor import preserves manual order and counts, skips duplicates and fails atomically',()=>{
+ const existing=[{company:'크레빠',count:7}],candidates=[{name:'크레오'},{name:' 크레빠 '},{name:'크레오'},{name:'마리드'}];
+ const result=M.importVendors(existing,candidates,4);
+ assert.deepEqual(result,[{company:'크레빠',count:7},{company:'크레오',count:4},{company:'마리드',count:4}]);
+ assert.deepEqual(M.importVendors(result,candidates,2),result);assert.deepEqual(existing,[{company:'크레빠',count:7}]);
+ assert.throws(()=>M.importVendors(existing,candidates,-1));assert.deepEqual(M.importVendors(existing,[],4),existing);
+ assert.throws(()=>M.importVendors(existing,Array.from({length:100},(_,i)=>({name:'업체'+i})),4));assert.equal(existing.length,1);
+});
 test('independent parts cycle vendor order, skip exhausted quantities and keep panel numbering separate',()=>{
  const input=parts(),before=structuredClone(input),result=M.generate(input);assert.deepEqual(input,before);
  assert.deepEqual(result.labels.map(l=>l.lot_number+':'+l.company),['A01:크레오','A02:크레빠','A03:마이리틀드래곤','A04:크레오','A05:크레빠','A06:마이리틀드래곤','A07:크레빠','B01:마리드','B02:크레빠','B03:크레오','B04:마리드','B05:크레빠','E01:패널','E02:패널']);
