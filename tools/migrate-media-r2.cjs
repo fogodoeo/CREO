@@ -10,6 +10,8 @@ const { DiskMediaSource } = require('../disk-media-source');
 async function main() {
     const args = process.argv.slice(2);
     const mode = args.includes('--apply') ? 'copy' : args.includes('--verify') ? 'verify' : 'inventory';
+    const concurrencyIndex = args.indexOf('--concurrency');
+    const concurrency = concurrencyIndex < 0 ? 1 : Number(args[concurrencyIndex + 1]);
     if (args.includes('--apply') && args.includes('--verify')) throw Error('Choose --apply or --verify');
     const outputIndex = args.indexOf('--output');
     const output = path.resolve(outputIndex >= 0 ? args[outputIndex + 1] : path.join('outputs', 'r2-migration', `${Date.now()}`));
@@ -29,7 +31,7 @@ async function main() {
     const run = `${Date.now()}-${process.pid}`;
     const journal = path.join(output, `objects-${run}.jsonl`);
     let count = 0;
-    const report = await migrateMedia({ source, target, mode, ...(namespace ? { buckets: [namespace] } : {}), onRecord: async record => {
+    const report = await migrateMedia({ source, target, mode, concurrency, ...(namespace ? { buckets: [namespace] } : {}), onRecord: async record => {
         await fs.appendFile(journal, JSON.stringify(record) + '\n', 'utf8');
         if (++count % 100 === 0) console.log(JSON.stringify({ mode, processed: count }));
     } });

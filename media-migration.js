@@ -57,16 +57,18 @@ class SupabaseMediaSource {
     }
 }
 
-async function migrateMedia({ source, target, mode = 'inventory', onRecord = async () => {}, buckets = BUCKETS } = {}) {
+async function migrateMedia({ source, target, mode = 'inventory', onRecord = async () => {}, buckets = BUCKETS, concurrency = 1 } = {}) {
     if (!['inventory', 'copy', 'verify'].includes(mode)) throw Error('Invalid migration mode');
+    if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > 4) throw Error('Concurrency must be from 1 to 4');
     if (mode !== 'inventory' && !target) throw Error('R2 target required');
     const catalog = await source.buckets(), names = new Set(catalog.map(bucket => bucket.id || bucket.name));
     const report = { mode, startedAt: new Date().toISOString(), objects: 0, bytes: 0, copied: 0, verified: 0,
         otherBuckets: [...names].filter(name => !buckets.includes(name)), missingBuckets: buckets.filter(name => !names.has(name)) };
     if (mode !== 'inventory') await target.ensureReady();
-    // Sequential, bounded work; never mutate the source or auction database.
-    for (const bucket of buckets.filter(name => names.has(name))) {
-        for await (const object of source.list(bucket)) {
+    // Bounded batches; serialize journal appends and drain every started task
+    // before returning or throwing. Never mutate the source or auction database.
+    let recordTail = Promise.resolve(), batch = [];
+    async function processObject(bucket, object) {
             let result = { ...object, status: 'listed' };
             if (mode !== 'inventory') {
                 const original = await source.read(bucket, object.key), hash = sha256(original.bytes);
@@ -81,8 +83,25 @@ async function migrateMedia({ source, target, mode = 'inventory', onRecord = asy
                 report.verified++;
             }
             report.objects++; report.bytes += result.size;
-            await onRecord(result);
+            recordTail = recordTail.then(() => onRecord(result));
+            await recordTail;
+    }
+    async function drain() {
+        const results = await Promise.all(batch); batch = [];
+        const failed = results.find(result => result.error);
+        if (failed) throw failed.error;
+    }
+    try {
+        for (const bucket of buckets.filter(name => names.has(name))) {
+            for await (const object of source.list(bucket)) {
+                batch.push(processObject(bucket, object).then(() => ({}), error => ({ error })));
+                if (batch.length >= concurrency) await drain();
+            }
+            await drain();
         }
+    } catch (error) {
+        await Promise.all(batch);
+        throw error;
     }
     return { ...report, completedAt: new Date().toISOString() };
 }

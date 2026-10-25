@@ -52,6 +52,12 @@ node tools/migrate-media-r2.cjs --source broadcast-disk --directory /actual/broa
 node tools/migrate-media-r2.cjs --source capture-disk --directory /actual/capture-media --apply --output /var/data/r2-audit/capture
 ```
 
+`--concurrency 4` enables at most four independent file operations per batch;
+the default is one. Journals remain serialized, and any failed batch waits for
+all already-started file operations before returning an error. Retry still uses
+immutable writes and byte verification. Do not run parallel migration processes
+against the same source; stop the first run before resuming with this option.
+
 Missing legacy buckets are reported. Other, unrecognized buckets must be reviewed
 before declaring all media migrated. Inventory database-embedded data URLs and
 external URLs separately: the tool does not modify arbitrary DB records, download

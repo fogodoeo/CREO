@@ -178,6 +178,31 @@ test('verification detects missing/corrupt copies instead of marking migration c
     await assert.rejects(migrateMedia({ source, target: m.r2, mode: 'verify' }), /verification failed/);
 });
 
+test('bounded migration drains failures and serializes journals without background writes', async () => {
+    let active = 0, maximum = 0, completed = 0, journalActive = 0;
+    const gates = [];
+    const source = { async buckets() { return [{ id: 'banner' }]; },
+        async *list() { for (let i = 0; i < 6; i++) yield { bucket: 'banner', key: `${i}.webp`, size: 1 }; },
+        async read(_bucket, key) {
+            active++; maximum = Math.max(active, maximum);
+            await new Promise(resolve => gates.push(resolve));
+            active--; completed++;
+            if (key === '1.webp') throw Error('source failed');
+            return { bytes: Buffer.from('a'), contentType: 'image/webp' };
+        } };
+    const m = memory();
+    const operation = migrateMedia({ source, target: m.r2, mode: 'copy', concurrency: 3, onRecord: async () => {
+        assert.equal(journalActive++, 0); await Promise.resolve(); journalActive--;
+    } });
+    const rejected = assert.rejects(operation, /source failed/);
+    while (gates.length < 3) await new Promise(resolve => setImmediate(resolve));
+    gates.splice(0).forEach(resolve => resolve());
+    await rejected;
+    assert.equal(maximum, 3); assert.equal(completed, 3); assert.equal(active, 0);
+    assert.equal(m.objects.size, 2);
+    await assert.rejects(migrateMedia({ source, concurrency: 5 }), /Concurrency/);
+});
+
 test('Supabase inventory paginates and traverses folders without writing source data', async () => {
     const calls = [];
     const source = new SupabaseMediaSource({ url: 'https://demo.supabase.co', serviceKey: 'secret', fetchFn: async (url, init) => {
