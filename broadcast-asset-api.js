@@ -73,6 +73,12 @@ function createBroadcastAssetApi({ storage, isAdmin, logger = console } = {}) {
             }
 
             if ((req.method === 'GET' || req.method === 'HEAD') && segments.length === 2) {
+                const location = await storage.view?.(channelId, segments[1], req.method);
+                if (location) {
+                    res.writeHead(307, { Location: location, 'Cache-Control': 'private, no-store', 'Referrer-Policy': 'no-referrer' });
+                    res.end();
+                    return true;
+                }
                 const found = await storage.localFile(channelId, segments[1]);
                 if (!found) {
                     replyJson(res, 404, { error: '배너 파일을 찾을 수 없습니다.' });

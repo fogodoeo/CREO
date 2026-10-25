@@ -24,6 +24,9 @@ function encodedObjectPath(value) {
 
 class BroadcastAssetStorage {
     constructor(options = {}) {
+        this.r2 = options.r2 || null;
+        this.writeToR2 = options.writeToR2 !== false;
+        this.legacyFallback = options.legacyFallback !== false;
         this.supabaseUrl = String(options.supabaseUrl ?? process.env.SUPABASE_URL ?? '').replace(/\/+$/, '');
         this.serviceKey = String(options.serviceKey ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? '');
         this.bucket = String(options.bucket ?? process.env.CREO_BROADCAST_ASSET_BUCKET ?? 'broadcast-assets').trim() || 'broadcast-assets';
@@ -75,6 +78,10 @@ class BroadcastAssetStorage {
         if (!ASSET_MIME_EXTENSIONS[mimeType]) throw new Error('Unsupported broadcast asset type');
         if (!Buffer.isBuffer(buffer) || !buffer.length) throw new Error('Broadcast asset is empty');
         const objectPath = `${channel}/${file}`;
+        if (this.r2 && this.writeToR2) {
+            await this.r2.put(this.bucket, objectPath, buffer, mimeType, { cacheControl: 'public, max-age=31536000, immutable' });
+            return { backend: 'r2', url: `/api/broadcast-assets/${encodeURIComponent(channel)}/${encodeURIComponent(file)}` };
+        }
         if (this.remote) {
             await this.ensureBucket();
             const response = await fetch(`${this.supabaseUrl}/storage/v1/object/${encodeURIComponent(this.bucket)}/${encodedObjectPath(objectPath)}`, {
@@ -105,7 +112,7 @@ class BroadcastAssetStorage {
     }
 
     async localFile(channelId, fileName) {
-        if (this.remote) return null;
+        if (this.remote && !this.r2) return null;
         const channel = safePart(channelId);
         const file = safePart(fileName);
         const directory = path.resolve(this.localDir, channel);
@@ -121,7 +128,17 @@ class BroadcastAssetStorage {
     }
 
     health() {
-        return { backend: this.remote ? 'supabase' : 'local', bucket: this.remote ? this.bucket : null };
+        return { backend: this.r2 ? 'r2' : this.remote ? 'supabase' : 'local', bucket: this.r2 ? this.r2.bucket : this.remote ? this.bucket : null };
+    }
+
+    async view(channelId, fileName, method = 'GET') {
+        if (!this.r2) return null;
+        const object = `${safePart(channelId)}/${safePart(fileName)}`;
+        if (await this.r2.has(this.bucket, object)) return this.r2.signedUrl(this.bucket, object, { method });
+        if (!this.legacyFallback) return null;
+        // Prefer old disk assets before remote fallback; older deployments used both.
+        if (await this.localFile(channelId, fileName)) return null;
+        return this.remote ? `${this.supabaseUrl}/storage/v1/object/public/${encodeURIComponent(this.bucket)}/${encodedObjectPath(object)}` : null;
     }
 }
 

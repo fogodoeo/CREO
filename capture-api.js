@@ -324,12 +324,13 @@ function createCaptureApi({ repository, storage, isAdmin, logger = console } = {
                 if (!image.length || image.length > 3 * 1024 * 1024) throw Object.assign(new Error('캡처 이미지 크기가 올바르지 않습니다.'), { status: 400 });
                 const extension = MIME_EXTENSIONS[mimeType];
                 const objectPath = `${actualChannelId}/${jobId}.${extension}`;
-                await storage.put(objectPath, image, mimeType);
+                const stored = await storage.put(objectPath, image, mimeType);
                 const saved = await repository.upsertRecord(actualChannelId, 'capture', {
                     ...current,
                     status: 'complete',
                     mimeType,
                     objectPath,
+                    storageBackend: stored?.readBackend || '',
                     bytes: image.length,
                     width: Math.max(0, Number.parseInt(body.width, 10) || 0),
                     height: Math.max(0, Number.parseInt(body.height, 10) || 0),
@@ -406,7 +407,15 @@ function createCaptureApi({ repository, storage, isAdmin, logger = console } = {
                     replyJson(res, 404, { error: '사진을 찾을 수 없습니다.' });
                     return true;
                 }
-                const image = await storage.get(record.objectPath);
+                const download = url.searchParams.get('download') === '1'
+                    ? `capture-${Number(record.itemNumber) || 0}-${record.id}.${String(record.objectPath || '').split('.').pop() || 'webp'}` : '';
+                const location = await storage.view?.(record.objectPath, { download, backend: record.storageBackend });
+                if (location) {
+                    res.writeHead(307, { Location: location, 'Cache-Control': 'private, no-store', 'Referrer-Policy': 'no-referrer' });
+                    res.end();
+                    return true;
+                }
+                const image = await storage.get(record.objectPath, { backend: record.storageBackend });
                 if (!image) {
                     replyJson(res, 404, { error: '사진 파일을 찾을 수 없습니다.' });
                     return true;

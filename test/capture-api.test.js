@@ -46,6 +46,24 @@ class ResponseCapture {
     json() { return JSON.parse((this.rawBody || Buffer.from('{}')).toString('utf8')); }
 }
 
+test('R2 capture redirect is available only after channel and share-token validation', async () => {
+    const repository = new MemoryRepository(), reads = [];
+    await repository.upsertRecord('cdcup', 'capture', { id: 'private-capture', status: 'complete',
+        shareToken: 'existing-share-token-12345', objectPath: 'cdcup/private.webp', itemNumber: 7 });
+    const api = createCaptureApi({ repository, storage: {
+        async view(object, options) { reads.push({ object, options }); return 'https://media.example.test/private?signature=temporary'; },
+        async get() { throw Error('must not proxy image bytes'); }
+    }, isAdmin: () => false });
+    for (const path of ['/api/capture/image/cdcup/wrong-token', '/api/capture/image/event-night/existing-share-token-12345']) {
+        assert.equal((await call(api, 'GET', path, null, false)).status, 404);
+    }
+    assert.equal(reads.length, 0);
+    const response = await call(api, 'GET', '/api/capture/image/cdcup/existing-share-token-12345?download=1', null, false);
+    assert.equal(response.status, 307); assert.match(response.headers.Location, /signature=temporary/);
+    assert.equal(reads[0].options.download, 'capture-7-private-capture.webp');
+    assert.equal(response.rawBody.length, 0);
+});
+
 function request(method, body, authenticated = true) {
     const stream = Readable.from(body ? [Buffer.from(JSON.stringify(body))] : []);
     stream.method = method;

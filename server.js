@@ -18,6 +18,11 @@ const { CaptureStorage } = require('./capture-storage');
 const { EntryPhotoStorage } = require('./entry-photo-storage');
 const { createBroadcastAssetApi } = require('./broadcast-asset-api');
 const { BroadcastAssetStorage } = require('./broadcast-asset-storage');
+const r2MediaStorage = require('./r2-media-storage').createR2MediaStorage();
+const mediaLegacyFallback = process.env.CREO_MEDIA_LEGACY_FALLBACK !== 'false';
+const mediaWriteToR2 = process.env.CREO_MEDIA_STORAGE !== 'r2-read';
+const publicMedia = require('./public-media').createPublicMedia({ r2: r2MediaStorage,
+    supabaseUrl: process.env.SUPABASE_URL, legacyFallback: mediaLegacyFallback });
 const { createCdcupRoundsApi } = require('./cdcup-rounds-api');
 const { normalizeChannelId } = require('./platform-core');
 const { operationalFeatureAvailable } = require('./public/channel-runtime');
@@ -28,6 +33,7 @@ const { CheckoutNotificationService } = require('./checkout-notifications');
 const PORT = Number(process.env.PORT || 10000);
 const HOST = process.env.HOST || '0.0.0.0';
 const PUBLIC_DIR = path.resolve(__dirname, 'public');
+const siteMedia = require('./disk-media-source').createSiteMedia({ r2: r2MediaStorage, directory: PUBLIC_DIR });
 // Optional UI split. Leave unset until the web gateway has passed the rollout checks.
 const frontendOrigin = process.env.CREO_FRONTEND_ORIGIN ? new URL(process.env.CREO_FRONTEND_ORIGIN) : null;
 if (frontendOrigin && (!['http:', 'https:'].includes(frontendOrigin.protocol)
@@ -56,9 +62,10 @@ const deliverySchedules = require('./delivery-schedule-service').createDeliveryS
 const entryPhotoStorage = new EntryPhotoStorage({
     supabaseUrl: process.env.SUPABASE_URL,
     serviceKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
-    bucket: process.env.CREO_ENTRY_PHOTO_BUCKET || 'auction-entry-photos'
+    bucket: process.env.CREO_ENTRY_PHOTO_BUCKET || 'auction-entry-photos',
+    r2: r2MediaStorage, legacyFallback: mediaLegacyFallback, writeToR2: mediaWriteToR2
 });
-const broadcastAssetStorage = new BroadcastAssetStorage();
+const broadcastAssetStorage = new BroadcastAssetStorage({ r2: r2MediaStorage, legacyFallback: mediaLegacyFallback, writeToR2: mediaWriteToR2 });
 platformApi = createPlatformApi({
     vendorAccessSecret: require('./vendor-access-secret').vendorAccessSecret({repository:platformRepository}),
     repository: platformRepository,
@@ -69,10 +76,11 @@ platformApi = createPlatformApi({
     legacyShippingHistory: require('./shipping-destination-history').createLegacyShippingHistory({repository:supabasePlatformRepository}),
     entryPhotoStorage,
     vendorLogoStorage:broadcastAssetStorage,
+    mediaUrlReplacer: publicMedia.replacer,
     entryPhotoMaxBytes: Number(process.env.CREO_ENTRY_PHOTO_VENDOR_MAX_BYTES) || 100000000
 });
 const operatorEntry = require('./operator-entry').createOperatorEntry({isAuthenticated:platformApi.hasAdminSession,frontendOrigin});
-const captureStorage = new CaptureStorage();
+const captureStorage = new CaptureStorage({ r2: r2MediaStorage, legacyFallback: mediaLegacyFallback, writeToR2: mediaWriteToR2 });
 const captureApi = createCaptureApi({
     repository: platformRepository,
     storage: captureStorage,
@@ -144,7 +152,7 @@ function send(res, status, body, contentType, headers = {}) {
 }
 
 function sendJson(res, status, value) {
-    send(res, status, JSON.stringify(value), 'application/json; charset=utf-8');
+    send(res, status, JSON.stringify(value, publicMedia.replacer), 'application/json; charset=utf-8');
 }
 
 function cacheControlFor(filePath) {
@@ -226,6 +234,13 @@ async function serveStatic(req, res, url) {
         destination.pathname = original.pathname;
         destination.search = original.search;
         writeHeaders(res, 307, { Location: destination.href, 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' });
+        res.end();
+        return true;
+    }
+
+    const mediaLocation = await siteMedia.view(filePath, stat, req.method);
+    if (mediaLocation) {
+        writeHeaders(res, 307, { Location: mediaLocation, 'Cache-Control': 'private, max-age=60', 'Referrer-Policy': 'no-referrer' });
         res.end();
         return true;
     }
@@ -316,6 +331,8 @@ const server = http.createServer(async (req, res) => {
             sendJson(res, 404, { error: 'Not found' });
             return;
         }
+
+        if (await publicMedia.handle(req, res, url)) return;
 
         if (url.pathname.startsWith('/api/capture/')) {
             if (await captureApi.handleApi(req, res, url)) return;

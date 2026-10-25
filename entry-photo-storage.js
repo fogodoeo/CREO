@@ -23,7 +23,10 @@ function privatePhotoReference(value) {
 
 class EntryPhotoStorage {
     constructor({ supabaseUrl = '', serviceKey = '', bucket = 'auction-entry-photos', localDir = '',
-        secret = '', fetchFn = fetch, now = Date.now, expiresIn = 3600 } = {}) {
+        secret = '', fetchFn = fetch, now = Date.now, expiresIn = 3600, r2 = null, legacyFallback = true, writeToR2 = true } = {}) {
+        this.r2 = r2;
+        this.writeToR2 = writeToR2;
+        this.legacyFallback = legacyFallback;
         this.base = String(supabaseUrl).replace(/\/+$/, '');
         this.key = String(serviceKey);
         this.bucket = bucket;
@@ -42,6 +45,7 @@ class EntryPhotoStorage {
 
     configured() {
         if (this.localDir) return Boolean(this.secret);
+        if (this.r2) return Boolean(this.secret);
         try {
             const url = new URL(this.base);
             return Boolean(this.key && this.secret && /^[a-z0-9][a-z0-9-]{0,62}$/.test(this.bucket)
@@ -62,6 +66,12 @@ class EntryPhotoStorage {
     async ensureReady() {
         if (!this.configured()) throw error('사진 저장소가 아직 연결되지 않았어요. 운영자에게 문의해 주세요.');
         if (this.localDir) return;
+        if (this.r2 && this.writeToR2) return;
+        return this.ensureLegacyReady();
+    }
+
+    async ensureLegacyReady() {
+        if (!this.base || !this.key) throw error('기존 사진 저장소가 연결되지 않았어요.');
         if (this.bucketCheckedAt && this.now() - this.bucketCheckedAt < 300000) return;
         if (!this.bucketCheck) this.bucketCheck = (async () => {
             const response = await this.request(`/bucket/${this.bucket}`);
@@ -83,6 +93,7 @@ class EntryPhotoStorage {
 
     async put(object, bytes) {
         objectPath(object);
+        if (this.r2 && this.writeToR2 && !this.localDir) return this.r2.put(this.bucket, object, bytes, 'image/webp');
         if (this.localDir) {
             const target = path.join(this.localDir, object);
             await fs.mkdir(path.dirname(target), { recursive: true });
@@ -129,11 +140,17 @@ class EntryPhotoStorage {
     }
 
     async remoteSigned(object) {
-        await this.ensureReady();
+        objectPath(object);
+        if (!this.r2) await this.ensureReady();
         const cached = this.signed.get(object);
         if (cached && cached.until > this.now()) return cached.url;
         if (this.pending.has(object)) return this.pending.get(object);
         const operation = (async () => {
+            if (this.r2) {
+                if (await this.r2.has(this.bucket, object)) return this.r2.signedUrl(this.bucket, object, { expiresIn: this.expiresIn });
+                if (!this.legacyFallback) throw error('사진 파일을 찾을 수 없습니다.', 404);
+                await this.ensureLegacyReady();
+            }
             const response = await this.request(`/object/sign/${this.bucket}/${object}`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ expiresIn: this.expiresIn })
             });

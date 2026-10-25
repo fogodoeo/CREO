@@ -3601,3 +3601,19 @@ test('vendor logos follow the vendor id into public item data without exposing v
     assert.equal(response.json().items[0].vendorLogoUrl, 'https://example.com/vendor.webp');
     assert.equal(response.json().items[0].phone, undefined);
 });
+
+test('R2 public media mapping changes response URLs without rewriting auction records or exposing contacts', async () => {
+    const repository = new MemoryRepository();
+    const publicMedia = require('../public-media').createPublicMedia({ r2: {}, supabaseUrl: 'https://demo.supabase.co' });
+    const api = createPlatformApi({ repository, mediaUrlReplacer: publicMedia.replacer });
+    const source = 'https://demo.supabase.co/storage/v1/object/public/broadcast-assets/alpha/logo.webp';
+    await repository.upsertRecord('alpha', 'vendor', { id: 'r2-vendor', name: '가상 업체', phone: '01000000001', logoUrl: source });
+    await repository.upsertRecord('alpha', 'item', { id: 'r2-item', name: 'A01', vendorId: 'r2-vendor', lotNumber: 1, status: 'sold', soldPrice: 100000 });
+    const response = await call(api, 'GET', '/api/platform/channels/alpha/broadcast', null, '');
+    assert.equal(response.status, 200);
+    assert.equal(response.json().items[0].vendorLogoUrl, '/api/media/public/broadcast-assets/alpha/logo.webp');
+    assert.equal((await repository.getRecord('alpha', 'vendor', 'r2-vendor')).logoUrl, source);
+    assert.equal((await repository.getRecord('alpha', 'item', 'r2-item')).soldPrice, 100000);
+    assert.equal(JSON.stringify(response.json()).includes('01000000001'), false);
+    assert.equal((await call(api, 'GET', '/api/platform/channels/beta/broadcast', null, '')).json().items.length, 0);
+});

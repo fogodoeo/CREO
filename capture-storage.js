@@ -23,6 +23,9 @@ function encodedObjectPath(value) {
 
 class CaptureStorage {
     constructor(options = {}) {
+        this.r2 = options.r2 || null;
+        this.writeToR2 = options.writeToR2 !== false;
+        this.legacyFallback = options.legacyFallback !== false;
         this.supabaseUrl = String(options.supabaseUrl ?? process.env.SUPABASE_URL ?? '').replace(/\/+$/, '');
         this.serviceKey = String(options.serviceKey ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? '');
         this.bucket = String(options.bucket ?? process.env.CREO_CAPTURE_BUCKET ?? 'auction-captures').trim() || 'auction-captures';
@@ -82,6 +85,10 @@ class CaptureStorage {
         const object = safeObjectPath(objectPath);
         if (!Buffer.isBuffer(buffer) || !buffer.length) throw new Error('Capture image is empty');
         if (!MIME_EXTENSIONS[mimeType]) throw new Error('Unsupported capture image type');
+        if (this.r2 && this.writeToR2) {
+            await this.r2.put(this.bucket, object, buffer, mimeType, { immutable: false });
+            return { backend: 'r2', objectPath: object };
+        }
         if (this.remote) {
             await this.ensureBucket();
             const response = await fetch(`${this.supabaseUrl}/storage/v1/object/${encodeURIComponent(this.bucket)}/${encodedObjectPath(object)}`, {
@@ -97,17 +104,21 @@ class CaptureStorage {
                 const detail = await response.text().catch(() => '');
                 throw new Error(`Capture upload failed (${response.status}): ${detail.slice(0, 160)}`);
             }
-            return { backend: 'supabase', objectPath: object };
+            return { backend: 'supabase', objectPath: object, ...(this.r2 && !this.writeToR2 ? { readBackend: 'supabase' } : {}) };
         }
         const target = path.resolve(this.localDir, object);
         if (target !== this.localDir && !target.startsWith(`${this.localDir}${path.sep}`)) throw new Error('Invalid local capture path');
         await fs.mkdir(path.dirname(target), { recursive: true });
         await fs.writeFile(target, buffer);
-        return { backend: 'local', objectPath: object };
+        return { backend: 'local', objectPath: object, ...(this.r2 && !this.writeToR2 ? { readBackend: 'local' } : {}) };
     }
 
-    async get(objectPath) {
+    async get(objectPath, { backend = '' } = {}) {
         const object = safeObjectPath(objectPath);
+        if (this.r2 && backend !== 'supabase' && backend !== 'local') {
+            const bytes = await this.r2.get(this.bucket, object);
+            if (bytes || !this.legacyFallback) return bytes;
+        }
         if (this.remote) {
             await this.ensureBucket();
             const response = await fetch(`${this.supabaseUrl}/storage/v1/object/${encodeURIComponent(this.bucket)}/${encodedObjectPath(object)}`, {
@@ -127,6 +138,9 @@ class CaptureStorage {
 
     async delete(objectPath) {
         const object = safeObjectPath(objectPath);
+        // Remove the old copy first so a later R2 miss cannot resurrect it.
+        // The caller only removes the DB record after both deletes succeed.
+        if (this.r2 && !this.legacyFallback) return this.r2.delete(this.bucket, object);
         if (this.remote) {
             await this.ensureBucket();
             const response = await fetch(`${this.supabaseUrl}/storage/v1/object/${encodeURIComponent(this.bucket)}/${encodedObjectPath(object)}`, {
@@ -137,16 +151,25 @@ class CaptureStorage {
                 const detail = await response.text().catch(() => '');
                 throw new Error(`Capture delete failed (${response.status}): ${detail.slice(0, 160)}`);
             }
+            if (this.r2) await this.r2.delete(this.bucket, object);
             return;
         }
         const target = path.resolve(this.localDir, object);
         if (target !== this.localDir && !target.startsWith(`${this.localDir}${path.sep}`)) throw new Error('Invalid local capture path');
         try { await fs.unlink(target); }
         catch (error) { if (error.code !== 'ENOENT') throw error; }
+        if (this.r2) await this.r2.delete(this.bucket, object);
     }
 
     health() {
-        return { backend: this.remote ? 'supabase' : 'local', bucket: this.remote ? this.bucket : null };
+        return { backend: this.r2 ? 'r2' : this.remote ? 'supabase' : 'local', bucket: this.r2 ? this.r2.bucket : this.remote ? this.bucket : null };
+    }
+
+    async view(objectPath, { download = '', backend = '' } = {}) {
+        const object = safeObjectPath(objectPath);
+        if (!this.r2 || backend === 'supabase' || backend === 'local') return null;
+        if (await this.r2.has(this.bucket, object)) return this.r2.signedUrl(this.bucket, object, { download });
+        return null;
     }
 }
 

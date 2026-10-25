@@ -68,8 +68,8 @@ const LEGACY_BUYER_SHIPPING_SHORT_KEY_PREFIX = 'buyer_shipping_short_v1_';
 const VENDOR_CHECKOUT_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const VENDOR_CHECKOUT_SHORT_KEY_PREFIX = 'vendor_checkout_short_v1_';
 
-function replyJson(res, status, value, headers = {}) {
-    const body = Buffer.from(JSON.stringify(value));
+function writeJson(res, status, value, headers = {}, replacer) {
+    const body = Buffer.from(JSON.stringify(value, replacer));
     res.writeHead(status, {
         'Content-Type': 'application/json; charset=utf-8',
         'Content-Length': body.length,
@@ -1094,6 +1094,7 @@ function createPlatformApi({
     buyerAccountNow = Date.now,
     entryPhotoStorage = null,
     vendorLogoStorage = null,
+    mediaUrlReplacer = undefined,
     entryPhotoProcessor = require('./entry-photo-codec').createEntryPhotoProcessor(),
     entryPhotoMaxBytes = 100000000,
     feedleImporter = require('./feedle-import').createImporter(),
@@ -1110,6 +1111,7 @@ function createPlatformApi({
     itemSheetGoogle = null
 } = {}) {
     if (!repository) throw new Error('repository is required');
+    const replyJson = (res, status, value, headers) => writeJson(res, status, value, headers, mediaUrlReplacer);
     const testDeliveryChannels = new Set(String(checkoutTestDeliveryChannels).split(',').map(id => id.trim()).filter(id => /^checkout-test-[a-f0-9]{16}$/.test(id)));
     const carrierRequests=require('./carrier-requests').createCarrierRequests({repository,notificationService,now:vendorAccessNow,origin:vendorAccessOrigin,rates:pargeRates,canNotify:id=>!id.startsWith('checkout-test-')||testDeliveryChannels.has(id),resolveContext:token=>buyerBundleContext(token,{operatorAccess:true}),locked:async context=>!CheckoutRounds.open(context.channel)||ownCheckoutShipments(context).some(destinationChangeLocked)||Boolean(await pendingCheckoutChange(context)),touch:id=>{touchCheckout(id);touchChannel(id);}});
     const vendorDirectory = require('./vendor-directory').createVendorDirectory(repository);
