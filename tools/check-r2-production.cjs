@@ -27,10 +27,15 @@ async function main() {
         if (typeof value === 'string' && value.startsWith(REF_PREFIX)) references.add(value);
         else if (value && typeof value === 'object') Object.values(value).forEach(visit);
     }
-    for (const row of db.prepare('SELECT value FROM platform_kv').all()) {
+    const rows = db.prepare('SELECT key,value FROM platform_kv ORDER BY key').all();
+    for (const row of rows) {
         try { visit(JSON.parse(row.value)); } catch { /* Non-JSON settings. */ }
     }
     db.close();
+    const business = rows.filter(row => /::(item|shipment|vendor|archive)::/.test(row.key));
+    const baselinePath = '/var/data/r2-migration-business-before.json';
+    const baseline = fs.existsSync(baselinePath) ? JSON.parse(fs.readFileSync(baselinePath, 'utf8')) : null;
+    const businessRecordsUnchanged = baseline ? baseline.records === business.length && baseline.sha256 === sha256(JSON.stringify(business)) : null;
     assert.ok(references.size > 0, 'Existing photo references expected');
     const signer = new EntryPhotoStorage({ localDir: '/unused-read-only-signer', secret: process.env.CREO_ADMIN_SECRET });
     let privatePhotos = 0;
@@ -55,6 +60,6 @@ async function main() {
     assert.equal(sha256(siteBytes), sha256(fs.readFileSync(path.join(__dirname, '..', 'public', sitePath))));
     const privateBypass = await fetch(origin + '/api/media/public/auction-entry-photos/forbidden.webp');
     assert.equal(privateBypass.status, 404);
-    console.log(JSON.stringify({ passed: true, backend: 'r2', privatePhotos, staticHash: 'matched', invalidSignatures: 'denied', privateNamespace: 'denied', customerRecordsChanged: false }));
+    console.log(JSON.stringify({ passed: true, backend: 'r2', privatePhotos, staticHash: 'matched', invalidSignatures: 'denied', privateNamespace: 'denied', businessRecordsUnchanged }));
 }
 main().catch(error => { console.error(error.name === 'AssertionError' ? `Production media check failed: ${error.message}` : 'Production media check failed'); process.exitCode = 1; });
