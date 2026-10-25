@@ -58,6 +58,9 @@ async function main() {
     assert.equal(new URL(staticRedirect.headers.get('location')).hostname, `${account}.r2.cloudflarestorage.com`);
     const siteBytes = Buffer.from(await (await fetch(staticRedirect.headers.get('location'))).arrayBuffer());
     assert.equal(sha256(siteBytes), sha256(fs.readFileSync(path.join(__dirname, '..', 'public', sitePath))));
+    const range = await fetch(`${origin}/${sitePath}`, { headers: { Range: 'bytes=0-15' } });
+    assert.equal(range.status, 206);
+    assert.deepEqual(Buffer.from(await range.arrayBuffer()), siteBytes.subarray(0, 16));
     const privateBypass = await fetch(origin + '/api/media/public/auction-entry-photos/forbidden.webp');
     assert.equal(privateBypass.status, 404);
     console.log(JSON.stringify({ passed: true, backend: 'r2', privatePhotos, staticHash: 'matched', invalidSignatures: 'denied', privateNamespace: 'denied', businessRecordsUnchanged }));
