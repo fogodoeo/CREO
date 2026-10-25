@@ -7,6 +7,7 @@
   const url=new URL(src,location.origin);
   if(url.origin===location.origin&&/^\/promo-assets\/partners-20261007\.(png|thumb\.webp)$/.test(url.pathname))url.pathname=url.pathname.replace('partners-20261007.','partners-20261007-v4.');
   if(url.origin===location.origin&&/^\/promo-assets\/ticket(?:-seoul-incheon-v2|-wolssu-gamachi-v1)?\.(png|thumb\.webp)$/.test(url.pathname))url.pathname=url.pathname.replace(/^\/promo-assets\/ticket(?:-seoul-incheon-v2|-wolssu-gamachi-v1)?\./,'/promo-assets/ticket-wolssu-sponsors-v1.');
+  if(url.origin===location.origin&&/^\/promo-assets\/hero-gyeongsang-20261026-28-v5\.(png|thumb\.webp)$/.test(url.pathname))url.pathname=url.pathname.replace('-v5.','-v10.');
   if(url.origin===location.origin&&/^\/promo-assets\/(weekly|easy)\.(png|thumb\.webp)$/.test(url.pathname))url.pathname=url.pathname.replace(/\.(png|thumb\.webp)$/,'-v2.$1');
   if(url.origin===location.origin&&['/promo-assets/hero.jpg','/promo-assets/hero-seoul-incheon-v2.png','/promo-assets/hero-seoul-incheon-v3.png','/promo-assets/seoul-incheon-premiere-map-v7.png'].includes(url.pathname))url.pathname='/promo-assets/hero-wolssu-v1.png';
   return url.href;
@@ -14,9 +15,9 @@
  function isSharedHero(block){
   if(block.type!=='image')return false;
   const url=new URL(block.src,location.origin);
-  return url.origin===location.origin&&['/promo-assets/hero.jpg','/promo-assets/hero-seoul-incheon-v2.png','/promo-assets/hero-seoul-incheon-v3.png','/promo-assets/seoul-incheon-premiere-map-v7.png','/promo-assets/hero-wolssu-v1.png','/promo-assets/hero-gyeongsang-20261026-28-v1.png','/promo-assets/hero-gyeongsang-20261026-28-v5.png'].includes(url.pathname);
+  return url.origin===location.origin&&['/promo-assets/hero.jpg','/promo-assets/hero-seoul-incheon-v2.png','/promo-assets/hero-seoul-incheon-v3.png','/promo-assets/seoul-incheon-premiere-map-v7.png','/promo-assets/hero-wolssu-v1.png','/promo-assets/hero-gyeongsang-20261026-28-v1.png','/promo-assets/hero-gyeongsang-20261026-28-v5.png','/promo-assets/hero-gyeongsang-20261026-28-v10.png'].includes(url.pathname);
  }
- function episodeHero(t){return t.blocks.find(b=>b.type==='image'&&new URL(b.src,location.origin).origin===location.origin&&['/promo-assets/hero-gyeongsang-20261026-28-v1.png','/promo-assets/hero-gyeongsang-20261026-28-v5.png'].includes(new URL(b.src,location.origin).pathname));}
+ function episodeHero(t){return t.blocks.find(b=>b.type==='image'&&new URL(b.src,location.origin).origin===location.origin&&['/promo-assets/hero-gyeongsang-20261026-28-v1.png','/promo-assets/hero-gyeongsang-20261026-28-v5.png','/promo-assets/hero-gyeongsang-20261026-28-v10.png'].includes(new URL(b.src,location.origin).pathname));}
  function isSharedAsset(b,kind){if(b.type!=='image')return false;const u=new URL(b.src,location.origin);return u.origin===location.origin&&(kind==='ticket'?/^\/promo-assets\/ticket(?:-seoul-incheon-v2|-wolssu-gamachi-v1|-wolssu-sponsors-v1)?\.png$/:/^\/promo-assets\/partners-20261007(?:-v4)?\.png$/).test(u.pathname);}
  function postBlocks(t,images=[]){
   const blocks=[],hasBoard=t.blocks.some(b=>isSharedAsset(b,'partners'));
