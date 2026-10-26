@@ -29,6 +29,21 @@ async function fixture(t){
  t.after(()=>{repository.close();const target=path.resolve(dir);if(path.dirname(target)!==path.resolve(os.tmpdir())||!path.basename(target).startsWith('creo-link-access-'))throw Error('Invalid cleanup target');fs.rmSync(target,{recursive:true,force:true});});
  return {secret,call,issue,access,link,get repository(){return repository},get api(){return api},restart(){repository.close();repository=new SQLitePlatformRepository(options);start();}};
 }
+test('buyer checkout displays only its confirmed item capture across reload and restart, with unchanged payments',async t=>{
+ const f=await fixture(t),other=await f.issue('beta'),{captureIdFor}=require('../capture-api');
+ const before=JSON.stringify(await f.repository.listRecords('alpha','shipment'));
+ await f.repository.upsertRecord('alpha','capture',{id:captureIdFor('alpha','item'),channelId:'alpha',itemId:'item',status:'complete',confirmed:true,shareToken:'buyer-capture-share-token',confirmationId:'buyer-capture-confirmation'});
+ const read=code=>f.call('GET','buyer-shipping?code='+code);
+ for(let i=0;i<2;i++){
+  const response=await read(f.link.code);assert.equal(response.status,200,response.body);const body=response.json();
+  assert.equal(body.items[0].media[0].label,'경매 현장 사진');assert.equal(body.vendors[0].items[0].media[0].label,'경매 현장 사진');
+  assert.equal((await read(other.code)).json().items[0].media,undefined,'same item ID in another channel does not share capture');
+  f.restart();
+ }
+ assert.equal((await read('invalid-code')).status,401);
+ assert.equal(JSON.stringify(await f.repository.listRecords('alpha','shipment')),before);
+});
+
 test('rotating one buyer link invalidates its old short and signed credentials without changing sold or payment records',async t=>{
  const f=await fixture(t),other=await f.issue('beta'),oldRows=await f.repository.getRowsByKeys(['buyer_shipping_short_v2_'+f.link.code]),oldToken=JSON.parse(oldRows[0].value).token;
  const before=JSON.stringify(await f.repository.listRecords('alpha','shipment'));

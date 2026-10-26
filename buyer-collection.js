@@ -106,7 +106,7 @@ function createBuyerCollection({repository,auth,linkAccess,resolveProof,resolveR
   if(!round)throw fail('선택한 보관 회차를 찾을 수 없어요. 목록을 다시 열어 주세요.');
   if(!round.available)throw fail('이 회차의 새 낙찰 링크로 다시 연결해 주세요.',403);
   const records=round.records;
-  const items=await hydrateRecords(records);
+  const items=await hydrateRecords(records,{channelId:grant.channelId});
   // Revocation during photo/parent resolution must not return private content.
   if(!await roundAccessible(grant,round))throw fail('새 낙찰 링크로 다시 연결해 주세요.',403);
   const publicRound=r=>({key:r.key,name:r.name,itemCount:r.records.length,available:r.available});
