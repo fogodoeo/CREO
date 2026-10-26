@@ -85,6 +85,8 @@ function publicCapture(record, origin = '') {
         width: Number(record.width) || 0,
         height: Number(record.height) || 0,
         bytes: Number(record.bytes) || 0,
+        confirmed: record.confirmed === true,
+        confirmationId: record.confirmationId || '',
         imageUrl: channelId && token ? `${base}/api/capture/image/${encodeURIComponent(channelId)}/${encodeURIComponent(token)}` : '',
         shareUrl: channelId && token ? `${base}/capture/${encodeURIComponent(channelId)}/${encodeURIComponent(token)}` : ''
     };
@@ -115,6 +117,9 @@ function createCaptureApi({ repository, storage, isAdmin, logger = console } = {
     const configuredAgentToken = String(process.env.CREO_CAPTURE_AGENT_TOKEN || '');
     const onlineAgents = new Map();
     const startedAt = Date.now();
+    // Only capture writes are serialized. Bids/broadcast updates use their own API.
+    // This also fences a legacy agent upload already in flight when a photo is confirmed.
+    let captureWrites = Promise.resolve();
 
     async function resolveChannelId(value, { requireExplicit = false } = {}) {
         const requested = String(value || '').trim().toLowerCase();
@@ -189,6 +194,16 @@ function createCaptureApi({ repository, storage, isAdmin, logger = console } = {
 
     async function handleApi(req, res, url) {
         if (!url.pathname.startsWith('/api/capture/')) return false;
+        if (['POST', 'PUT', 'DELETE'].includes(req.method)) {
+            const operation = captureWrites.catch(() => {}).then(() => dispatchApi(req, res, url));
+            captureWrites = operation;
+            return operation;
+        }
+        return dispatchApi(req, res, url);
+    }
+
+    async function dispatchApi(req, res, url) {
+        if (!url.pathname.startsWith('/api/capture/')) return false;
         try {
             const segments = url.pathname.slice('/api/capture/'.length).split('/').filter(Boolean).map(decodeURIComponent);
             const method = req.method || 'GET';
@@ -208,9 +223,77 @@ function createCaptureApi({ repository, storage, isAdmin, logger = console } = {
                 if (!await requireAgent(req, res)) return true;
                 replyJson(res, 200, {
                     authenticated: true,
+                    confirmationProtocol: 1,
                     activeChannel: await resolveChannelId('auto'),
                     storage: storage.health()
                 });
+                return true;
+            }
+
+            // Small authenticated poll payload; no full broadcast assets or buyer data.
+            if (segments.length === 1 && segments[0] === 'context' && method === 'GET') {
+                if (!await requireAgent(req, res)) return true;
+                const channelId = await resolveChannelId('auto');
+                const catalog = await repository.getCatalog();
+                const channel = catalog.channels.find(row => row.id === channelId);
+                const state = channelId ? await repository.getRecord(channelId, 'broadcast', 'state') : null;
+                const item = state?.activeItemId ? await repository.getRecord(channelId, 'item', state.activeItemId) : null;
+                replyJson(res, 200, { context: {
+                    channelId, channelName: channel?.name || channelId,
+                    itemId: item?.id || '', itemNumber: Number(item?.lotNumber) || 0,
+                    itemName: cleanText(item?.name, 160), vendorName: cleanText(item?.vendorName, 80),
+                    running: channel?.dataAdapter !== 'legacy-cdcup' && channel?.status === 'active'
+                        && state?.mode === 'live' && !!item && !['sold', 'passed', 'cancelled'].includes(item.status),
+                    serverReady: true
+                } });
+                return true;
+            }
+
+            // A confirmed frame is uploaded directly, never put on the PRISM agent queue.
+            // The frame's explicit item/channel stay fixed even if the auction moves on.
+            if (segments.length === 1 && segments[0] === 'confirmed' && method === 'POST') {
+                if (!await requireAgent(req, res)) return true;
+                const body = await readJson(req);
+                const channelId = await resolveChannelId(body.channelId, { requireExplicit: true });
+                if (!channelId) throw Object.assign(new Error('확정 사진의 회차 ID가 필요합니다.'), { status: 400 });
+                const input = normalizeJob(body, channelId);
+                const confirmationId = cleanText(body.confirmationId, 80);
+                if (!/^[a-zA-Z0-9_-]{16,80}$/.test(confirmationId)) throw Object.assign(new Error('사진 확정 ID가 올바르지 않습니다.'), { status: 400 });
+                const id = captureIdFor(channelId, input.itemId);
+                const current = await repository.getRecord(channelId, 'capture', id);
+                if (current?.confirmed && current.confirmationId === confirmationId) {
+                    replyJson(res, 200, { capture: publicCapture(current, requestOrigin(req)), duplicate: true });
+                    return true;
+                }
+                if (current?.confirmed && body.previousConfirmationId !== current.confirmationId) {
+                    throw Object.assign(new Error('이미 다른 사진이 확정되었습니다. 저장 상태를 확인한 뒤 다시 촬영하세요.'), { status: 409 });
+                }
+                const item = await repository.getRecord(channelId, 'item', input.itemId);
+                if (!item) throw Object.assign(new Error('이 회차의 개체를 찾을 수 없습니다.'), { status: 404 });
+                const image = Buffer.from(String(body.imageBase64 || ''), 'base64');
+                if (!image.length || image.length > 2700000 || body.mimeType !== 'image/webp') throw Object.assign(new Error('270만 바이트 이하 WebP 사진이 필요합니다.'), { status: 400 });
+                // Decode before accepting; do not trust the extension, MIME, or dimensions.
+                const metadata = await require('sharp')(image, { limitInputPixels: 16000000 }).metadata().catch(() => null);
+                if (metadata?.format !== 'webp' || !metadata.width || !metadata.height) throw Object.assign(new Error('WebP 사진을 읽을 수 없습니다.'), { status: 400 });
+                const objectPath = `${channelId}/${id}-${confirmationId}.webp`;
+                const stored = await storage.put(objectPath, image, 'image/webp');
+                let saved;
+                try {
+                    saved = await repository.upsertRecord(channelId, 'capture', {
+                        ...(current || {}), id, ...input,
+                        itemNumber: Number(item.lotNumber) || input.itemNumber,
+                        itemName: item.name || input.itemName,
+                        status: 'complete', confirmed: true, confirmationId,
+                        mimeType: 'image/webp', objectPath, storageBackend: stored?.readBackend || '',
+                        bytes: image.length, width: metadata.width, height: metadata.height,
+                        requestedAt: current?.requestedAt || new Date().toISOString(),
+                        capturedAt: Number.isFinite(Date.parse(body.capturedAt)) ? body.capturedAt : new Date().toISOString(),
+                        leaseUntil: null, error: '',
+                        shareToken: current?.shareToken || crypto.randomBytes(24).toString('base64url')
+                    });
+                } catch (error) { await storage.delete(objectPath).catch(() => {}); throw error; }
+                if (current?.objectPath && current.objectPath !== objectPath) await storage.delete(current.objectPath).catch(() => {});
+                replyJson(res, 200, { capture: publicCapture(saved, requestOrigin(req)) });
                 return true;
             }
 
@@ -249,6 +332,10 @@ function createCaptureApi({ repository, storage, isAdmin, logger = console } = {
                 const input = normalizeJob(body, channelId);
                 const id = captureIdFor(input.channelId, input.itemId);
                 const current = await repository.getRecord(input.channelId, 'capture', id);
+                if (current?.confirmed) {
+                    replyJson(res, 200, { job: publicCapture(current, requestOrigin(req)), duplicate: true, skipped: true, reason: 'confirmed-capture' });
+                    return true;
+                }
                 if (body.skipIfCaptured === true && current && ['pending', 'capturing', 'complete'].includes(current.status)) {
                     replyJson(res, 200, {
                         job: publicCapture(current, requestOrigin(req)),
@@ -318,6 +405,10 @@ function createCaptureApi({ repository, storage, isAdmin, logger = console } = {
                 if (!actualChannelId) throw Object.assign(new Error('업로드할 캡처 작업의 채널 ID가 필요합니다.'), { status: 400 });
                 const current = actualChannelId && await repository.getRecord(actualChannelId, 'capture', jobId);
                 if (!current) throw Object.assign(new Error('캡처 작업을 찾을 수 없습니다.'), { status: 404 });
+                if (current.confirmed) {
+                    replyJson(res, 200, { capture: publicCapture(current, requestOrigin(req)), skipped: true, reason: 'confirmed-capture' });
+                    return true;
+                }
                 const mimeType = String(body.mimeType || 'image/webp').toLowerCase();
                 if (!MIME_EXTENSIONS[mimeType]) throw Object.assign(new Error('지원하지 않는 이미지 형식입니다.'), { status: 415 });
                 const image = Buffer.from(String(body.imageBase64 || ''), 'base64');
@@ -350,6 +441,10 @@ function createCaptureApi({ repository, storage, isAdmin, logger = console } = {
                 const jobId = cleanItemId(segments[1]);
                 const current = channelId && await repository.getRecord(channelId, 'capture', jobId);
                 if (!current) throw Object.assign(new Error('캡처 작업을 찾을 수 없습니다.'), { status: 404 });
+                if (current.confirmed) {
+                    replyJson(res, 200, { capture: publicCapture(current, requestOrigin(req)), skipped: true, reason: 'confirmed-capture' });
+                    return true;
+                }
                 const saved = await repository.upsertRecord(channelId, 'capture', {
                     ...current,
                     status: 'error',
@@ -391,6 +486,8 @@ function createCaptureApi({ repository, storage, isAdmin, logger = console } = {
                 const saved = await repository.upsertRecord(channelId, 'capture', {
                     ...current,
                     status: 'pending',
+                    confirmed: false,
+                    confirmationId: '',
                     requestedAt: new Date().toISOString(),
                     leaseUntil: null,
                     error: ''
