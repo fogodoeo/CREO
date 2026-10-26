@@ -52,8 +52,8 @@
  }
  function labelHtml(l,escape){
   // Keep a conservative single-line fit even while print pages are display:none.
-  const units=Array.from(l.company).reduce((sum,c)=>sum+(/[\u0000-\u007f]/.test(c)?.7:1),0),top=Math.min(9,86/Math.max(1,units)),side=Math.min(8,top);
-  return `<div class="number-sheet"><div class="number-label"><div class="write-weight">무게 <span></span> g</div><div class="write-note">비고 <span></span></div><div class="top-company fit" data-base="${top}cqw" style="font-size:${top}cqw">${escape(l.company)}</div><div class="top-code fit">${escape(l.lot_number)}</div><div class="fold-line"></div><div class="side-company fit" data-base="${side}cqw" style="font-size:${side}cqw">${escape(l.company)}</div><div class="side-code fit">${escape(l.lot_number)}</div></div></div>`;
+  const units=Array.from(l.company).reduce((sum,c)=>sum+(/[\u0000-\u007f]/.test(c)?.7:1),0),top=Math.min(5.5,86/Math.max(1,units)),side=Math.min(4.8,top);
+  return `<div class="number-sheet"><div class="number-label"><div class="top-company fit" data-base="${top}cqw" style="font-size:${top}cqw">${escape(l.company)}</div><div class="top-code fit">${escape(l.lot_number)}</div><div class="fold-line"></div><div class="side-company fit" data-base="${side}cqw" style="font-size:${side}cqw">${escape(l.company)}</div><div class="side-code fit">${escape(l.lot_number)}</div></div></div>`;
  }
  const api={clean,date,normalize,generate,build,importVendors,labelHtml};if(typeof module==='object'&&module.exports)module.exports=api;root.CreoNumberLabels=api;
 })(typeof window==='object'?window:globalThis);

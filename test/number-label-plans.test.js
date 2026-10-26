@@ -2,6 +2,13 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const M=require('../public/number-label-model'),Plans=require('../number-label-plans');
 const parts=()=>[{name:'1부',prefix:'A',start:1,vendors:[{company:'크레오',count:2},{company:'크레빠',count:3},{company:'마이리틀드래곤',count:2}]},{name:'2부',prefix:'B',start:1,vendors:[{company:'마리드',count:2},{company:'크레빠',count:2},{company:'크레오',count:1}]},{name:'패널',prefix:'E',start:1,vendors:[{company:'패널',count:2}]}];
+test('numbering print uses landscape stock without rotating and leaves handwriting space unlabelled',()=>{
+ const html=M.labelHtml({company:'크레용 대구본점',lot_number:'A01'},v=>v),css=require('node:fs').readFileSync(require.resolve('../public/number-labels.css'),'utf8');
+ assert.doesNotMatch(html,/무게|비고|write-weight|write-note/);
+ assert.equal((html.match(/A01/g)||[]).length,2);assert.equal((html.match(/크레용 대구본점/g)||[]).length,2);
+ assert.match(css,/@page\{size:50mm 30mm/);assert.match(css,/#print-pages \.number-label\{width:50mm;height:30mm/);assert.doesNotMatch(css,/rotate\(/);
+ assert.match(css,/\.fold-line\{[^}]*top:60%/);
+});
 test('vendor import preserves manual order and counts, skips duplicates and fails atomically',()=>{
  const existing=[{company:'크레빠',count:7}],candidates=[{name:'크레오'},{name:' 크레빠 '},{name:'크레오'},{name:'마리드'}];
  const result=M.importVendors(existing,candidates,4);
