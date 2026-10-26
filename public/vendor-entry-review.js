@@ -152,7 +152,7 @@
     const reviewable=canReview()&&row.entry.status==='submitted';
     $('review-form').hidden=!reviewable;$('review-actions').hidden=!reviewable;$('reload-entry').hidden=true;
     const existing=data.allocation.find(item=>item.id===row.entry.itemId);
-    const numbering=window.CreoEntryNumbering.initial({allocation:data.allocation,existing,lot:row.entry.lot||row.entry.sheetLot,teamBased:!!data.channel.groups?.length,preferred:preferredPart});
+    const numbering=window.CreoEntryNumbering.initial({allocation:data.allocation,existing,lot:row.entry.lot||row.entry.sheetLot,teamBased:!!data.channel.groups?.length,preferred:row.entry.auctionKind==='event'?'이벤':preferredPart});
     $('lot-part').value=Numbering.parts.includes(numbering.mode)?numbering.mode:'manual';$('lot-code').value=numbering.code;
     $('lot-order').value=numbering.order;
     $('lot-price').value=existing?.startPrice??row.entry.sheetStartPrice??0;$('lot-team').value=existing?.teamName||row.group.vendor.teamName||'';$('review-reason').value='';

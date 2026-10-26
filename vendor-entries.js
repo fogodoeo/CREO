@@ -376,9 +376,10 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
                     if(!entry||entry.version!==row.expectedVersion)throw fail('선택한 출품이 변경됐어요. 새로고침 후 다시 선택해 주세요.');
                     if(input.broadcastDate&&entry.broadcastDate!==input.broadcastDate)throw fail('선택한 방송일의 출품만 처리할 수 있어요.');
                     const currentItems=AuctionRounds.currentItems(await stage.listRecords(target.id,'item')),existing=currentItems.find(i=>i.id===entry.itemId||i.attributes?.roundSource?.channelId===channel.id&&i.attributes.roundSource.itemId===entry.itemId);
+                    const part=entry.auctionKind==='event'?'이벤':input.part;
                     let order=existing?.lotNumber||Math.max(0,...currentItems.map(i=>Number(i.lotNumber)||0))+1;
                     if(!existing){
-                        const nextPart=currentItems.filter(i=>Numbering.parts.indexOf(Numbering.partOf(i.attributes?.displayNumber||i.name))>Numbering.parts.indexOf(input.part)).sort((a,b)=>a.lotNumber-b.lotNumber)[0];
+                        const nextPart=currentItems.filter(i=>Numbering.parts.indexOf(Numbering.partOf(i.attributes?.displayNumber||i.name))>Numbering.parts.indexOf(part)).sort((a,b)=>a.lotNumber-b.lotNumber)[0];
                         if(nextPart){
                             order=Number(nextPart.lotNumber);
                             const shifted=currentItems.filter(i=>Number(i.lotNumber)>=order);
@@ -387,7 +388,7 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
                             await stage.upsertRows(shifted.map(i=>({key:channelKey(target.id,'item',i.id),value:JSON.stringify({...i,lotNumber:i.lotNumber+1,updatedAt:nextItemTimestamp(i)})})));
                         }
                     }
-                    const approved=await service.command(context,{type:'approve',requestId:requestId.slice(0,65)+'-'+index,id:row.id,expectedVersion:row.expectedVersion,...(input.broadcastDate?{broadcastDate:input.broadcastDate}:{}),lot:existing?.attributes?.displayNumber||existing?.name||Numbering.nextCode(input.part,currentItems),order,startPrice:existing?.startPrice??0},{operator:true,auctionChannel});
+                    const approved=await service.command(context,{type:'approve',requestId:requestId.slice(0,65)+'-'+index,id:row.id,expectedVersion:row.expectedVersion,...(input.broadcastDate?{broadcastDate:input.broadcastDate}:{}),lot:existing?.attributes?.displayNumber||existing?.name||Numbering.nextCode(part,currentItems),order,startPrice:existing?.startPrice??0},{operator:true,auctionChannel});
                     itemIds.push(approved.itemId);
                 }
                 result={type,count:selection.length,itemIds};

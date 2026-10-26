@@ -20,6 +20,46 @@ test('five-region rotation has a fixed first broadcast and covers month/year bou
 });
 const firstCycle=['2026-10-14','2026-10-19','2026-10-21','2026-10-26','2026-10-28'];
 
+test('a dated panel assignment preserves ordinary participation and enforces one separate entry across retries and restart',async t=>{
+ const f=await fixture(t),date=firstCycle[3],route='/api/platform/channels/national-cre/broadcast-bookings';
+ const r=(await f.command({type:'reserve',date:firstCycle[0],quantity:4})).json().reservations[0];
+ const catalog=await f.repository.getCatalog(),root=catalog.channels.find(c=>c.id==='national-cre'),childId='national-cre-20261026';
+ await f.repository.saveCatalog([...catalog.channels,{...root,id:childId,name:'격리 대구 경북편',nationalRound:{parentId:root.id,date,regionName:'대구·경북'}}]);f.restart();
+ const read=async()=>(await f.call(f.client,'GET',route,null,f.admin)).json();
+ const body={type:'panel-assignment',date,vendorId:f.vendorId,quantity:1,expectedVersion:(await read()).version,requestId:randomUUID()};
+ assert.equal((await f.command(body)).status,403);
+ const results=await Promise.all([1,2].map(()=>f.call(f.client,'POST',route,body,f.admin)));
+ for(const res of results)assert.equal(res.status,200,res.body);
+ assert.equal(results.filter(res=>res.json().duplicate).length,1);
+ assert.equal((await f.call(f.client,'POST',route,{...body,requestId:randomUUID()},f.admin)).status,409);
+ f.restart();let view=(await f.get()).json();
+ assert.equal(view.vendor.region,'서울·인천');assert.equal(view.dates.find(d=>d.date===date).panelLimit,1);
+ assert.equal(view.dates.find(d=>d.date===date).maxQuantityAvailable,0);
+ assert.equal(view.reservations[0].entryIds.length,4);
+ assert.equal((await f.repository.getRecord(childId,'vendor',f.vendorId)).broadcastRegion,'서울·인천');
+ assert.ok(require('../public/vendor-task-state').vendorBroadcasts(view).some(d=>d.date===date));
+ const create=id=>({type:'save-panels',date,entries:[{entry:{id},expectedVersion:0}],requestId:randomUUID()});
+ const competing=await Promise.all([f.command(create(randomUUID())),f.command(create(randomUUID()))]);
+ assert.deepEqual(competing.map(r=>r.status).sort(),[200,409]);
+ view=(await f.get()).json();const panel=view.entryState.entries.find(e=>e.broadcastDate===date);
+ assert.equal(panel.auctionKind,'event');assert.equal(panel.status,'draft');
+ assert.equal((await f.command({type:'save-entry',id:r.id,slot:0,entry:{weight:'3',auctionKind:'event'},expectedVersion:0})).status,200);
+ assert.equal((await f.get()).json().reservations[0].entries[0].auctionKind,'regular');
+ const denied=await f.call(f.client,'POST',route,{...body,quantity:0,expectedVersion:(await read()).version,requestId:randomUUID()},f.admin);assert.equal(denied.status,409);
+ const edit={type:'save-panels',date,entries:[{entry:{id:panel.id,weight:'5'},expectedVersion:1}],requestId:randomUUID()};
+ assert.equal((await f.command(edit)).status,200);f.restart();assert.equal((await f.command(edit)).json().duplicate,true);
+ const otherDate=await f.command({...create(randomUUID()),date:firstCycle[4]});assert.equal(otherDate.status,403);
+ f.advance(25*86400000);assert.equal((await f.command({...edit,requestId:randomUUID(),entries:[{entry:{id:panel.id,weight:'8'},expectedVersion:2}]})).status,409);
+});
+
+test('panel assignment storage failure leaves assignment unchanged',async t=>{
+ const f=await fixture(t),route='/api/platform/channels/national-cre/broadcast-bookings',before=(await f.call(f.client,'GET',route,null,f.admin)).json();
+ const cas=f.repository.compareAndSwapRows.bind(f.repository);f.repository.compareAndSwapRows=async()=>false;
+ const res=await f.call(f.client,'POST',route,{type:'panel-assignment',date:firstCycle[3],vendorId:f.vendorId,quantity:1,expectedVersion:before.version,requestId:randomUUID()},f.admin);
+ assert.equal(res.status,409);f.repository.compareAndSwapRows=cas;
+ const after=(await f.call(f.client,'GET',route,null,f.admin)).json();assert.deepEqual(after.panels,before.panels);assert.equal(after.version,before.version);
+});
+
 test('panels are separate from four ordinary slots and retain fee exemption through approval, sale and renumber',async t=>{
  const f=await fixture(t),r=(await f.command({type:'reserve',date:firstCycle[0],quantity:4})).json().reservations[0];
  const ordinary=await f.command({type:'save-entry',id:r.id,slot:0,submit:true,expectedVersion:0,entry:{auctionKind:'event',sex:'unknown',weight:'3',hatchDate:'2026-09-01'}});
@@ -37,6 +77,8 @@ test('panels are separate from four ordinary slots and retain fee exemption thro
   const fees=settlement.summarize([{...item,status,soldPrice:1000000}],[],[{id:f.vendorId}],{vendorSettlement:policy})[0];assert.equal(fees.feeAmount,0);assert.equal(fees.entryFeeAmount,0);assert.equal(fees.commissionAmount,0);
  }
  const fees=settlement.summarize([{...item,attributes:{...item.attributes,auctionKind:'regular'},status:'sold',soldPrice:1000000}],[],[{id:f.vendorId}],{vendorSettlement:policy})[0];assert.equal(fees.feeAmount,110000);
+ const mixed=settlement.summarize([{...item,status:'sold',soldPrice:1000000},{...item,id:'ordinary-item',attributes:{...item.attributes,auctionKind:'regular'},status:'sold',soldPrice:1000000}],[],[{id:f.vendorId}],{vendorSettlement:policy})[0];
+ assert.equal(mixed.entryFeeAmount,10000);assert.equal(mixed.commissionAmount,100000);assert.equal(mixed.feeAmount,110000);
  const approved=(await f.get()).json().entryState.entries.find(e=>e.id===id);
  const renumber=await f.call(f.client,'POST','/api/platform/channels/national-cre/entries/review',{type:'renumber',requestId:randomUUID(),vendorId:f.vendorId,id,expectedVersion:approved.version,expectedUpdatedAt:item.updatedAt,lot:'B01',order:10,startPrice:0},f.admin);assert.equal(renumber.status,200,renumber.body);
  assert.equal((await f.repository.listRecords('national-cre','item'))[0].attributes.auctionKind,'event');
@@ -71,6 +113,19 @@ test('panel approvals never complete ordinary registration tasks',()=>{
  const task=require('../public/vendor-task-state'),date={date:firstCycle[0],regionName:'서울·인천',maxQuantityAvailable:4};
  const base={now:'2026-10-02T00:00:00.000Z',dates:[date],vendor:{region:'서울·인천'},reservations:[],entryState:{parents:[],auctionItems:Array.from({length:4},(_,i)=>({id:String(i),date:date.date,auctionKind:'event'}))}};
  const view=task.vendorBroadcasts(base)[0];assert.equal(view.assigned,false);assert.equal(view.complete,false);assert.equal(view.canStart,true);
+});
+
+test('mixed bulk approval keeps ordinary A numbers and assigns consecutive E numbers only to panel entries',async t=>{
+ const f=await fixture(t),date=firstCycle[0],r=(await f.command({type:'reserve',date,quantity:4})).json().reservations[0],facts={sex:'unknown',weight:'3',hatchDate:'2026-09-01'};
+ assert.equal((await f.command({type:'save-entry',id:r.id,slot:0,submit:true,expectedVersion:0,entry:facts})).status,200);
+ const ids=[randomUUID(),randomUUID()];assert.equal((await f.command({type:'save-panels',date,submit:true,entries:ids.map(id=>({entry:{id,...facts},expectedVersion:0}))})).status,200);
+ const entries=(await f.get()).json().entryState.entries;
+ const body={type:'approve-many',part:'1부',requestId:randomUUID(),entries:entries.map(e=>({id:e.id,vendorId:f.vendorId,expectedVersion:e.version}))};
+ const result=await f.call(f.client,'POST','/api/platform/channels/national-cre/entries/batch',body,f.admin);assert.equal(result.status,200,result.body);
+ const items=await f.repository.listRecords('national-cre','item');
+ assert.deepEqual(items.filter(i=>i.attributes.auctionKind==='event').map(i=>i.attributes.displayNumber).sort(),['이벤 E01','이벤 E02']);
+ assert.equal(items.find(i=>i.attributes.auctionKind!=='event').attributes.displayNumber,'1부 A01');
+ f.restart();assert.equal((await f.call(f.client,'POST','/api/platform/channels/national-cre/entries/batch',body,f.admin)).status,200);assert.equal((await f.repository.listRecords('national-cre','item')).length,3);
 });
 test('past broadcast entries are read-only while committed single and batch retries survive the date boundary and restart',async t=>{
  const f=await fixture(t),r=(await f.command({type:'reserve',date:'2026-10-14',quantity:4})).json().reservations[0];

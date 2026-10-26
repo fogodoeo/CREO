@@ -25,6 +25,17 @@ test('five-date calendar disables empty month navigation and preserves the five 
  assert.equal(f.document.querySelectorAll('.registration-task').length,1);
  f.$('[data-month="1"]').click();assert.equal(f.$('.calendar-head h2').textContent,'2026년 10월');
 });
+
+test('cross-region panel assignment is visible separately, with a one-entry limit and no ordinary registration prompt',async()=>{
+ const data=payload();data.vendor.id='vendor';const date=data.dates[3];date.panelAssigned=true;date.panelLimit=1;
+ data.entryState.entries=[{id:'panel-1',entryNumber:1,channelId:'national-cre',channelVendorId:'vendor',broadcastDate:date.date,auctionKind:'event',status:'draft',version:1}];
+ const f=await fixture(data),button=f.$('[data-panel-date="2026-10-26"]');assert.ok(button);
+ assert.match(button.closest('article').textContent,/패널 참여 · 1 \/ 1마리/);
+ assert.doesNotMatch(button.closest('article').textContent,/접수 일정 확인|출품할 개체 4마리/);
+ button.click();await tick();assert.equal(f.document.querySelectorAll('.bulk-row').length,1);assert.equal(f.$('[data-action="panel-add"]'),null);
+ f.$('[data-action="panel-back"]').click();await tick();assert.equal(f.$('#sheet').open,false);assert.equal(f.requests.length,0);
+ assert.ok(f.$('[data-start-registration="true"]'));
+});
 function submitted(){const data=payload(),date=data.dates[2],entries=Array.from({length:4},(_,i)=>({id:'entry-'+i,version:1,status:'submitted',sex:'unknown',weight:'3',hatchDate:'2026-09-01'}));data.reservations=[{id:'reservation',date:date.date,status:'confirmed',session:date,completed:4,entryLimit:4,entryIds:entries.map(e=>e.id),entries}];data.entryState.entries=entries;return data;}
 
 test('panel editor shows a separate count and preserves stable rows and the normal four-entry route',async()=>{

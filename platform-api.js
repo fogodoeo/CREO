@@ -1138,7 +1138,7 @@ function createPlatformApi({
         now: bookingNow, notificationService,
         withParticipation:(context,input,commit)=>input.type==='region'
             ?nationalParticipation.reassign(input.vendorId,input.region,commit)
-            :nationalParticipation.transaction(async stage=>commit(await stage(context.vendor,{date:input.date}))),
+            :nationalParticipation.transaction(async stage=>commit(await stage(input.type==='panel-assignment'?context.vendors.find(v=>v.id===input.vendorId):context.vendor,{date:input.date}))),
         entriesFor: async context => context.profile
             ? (await vendorEntries.read(context)).entries.filter(e => e.channelId === context.channel.id && e.channelVendorId === context.vendor.id)
             : []

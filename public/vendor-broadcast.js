@@ -21,7 +21,8 @@
   return state.reservations.find(r=>r.date===date&&r.status==='confirmed');
  }
  const panelEntries=date=>(state.entryState.entries||[]).filter(e=>e.channelId==='national-cre'&&e.channelVendorId===state.vendor.id&&e.broadcastDate===date&&e.auctionKind==='event'&&e.status!=='deleted').sort((a,b)=>a.entryNumber-b.entryNumber);
- function panelLink(date=selected){return `<section class="panel-registration"><h3>패널개체</h3><p class="muted">일반 출품 4마리와 별도 · 낙찰 수수료 및 개체등록비 1만 원 면제</p><button type="button" class="secondary" data-panel-date="${esc(date)}">패널개체 ${panelEntries(date).length?'보기·수정 ('+panelEntries(date).length+'마리)':'등록'}</button></section>`;}
+ const panelLimit=date=>state.dates.find(d=>d.date===date)?.panelLimit??100;
+ function panelLink(date=selected){if(!panelLimit(date)&&!panelEntries(date).length)return '';return `<section class="panel-registration"><h3>패널개체${panelLimit(date)<100?' · '+panelLimit(date)+'마리':''}</h3><p class="muted">E번호로 편성 · 패널개체만 낙찰 수수료 및 개체등록비 1만 원 면제</p><button type="button" class="secondary" data-panel-date="${esc(date)}">패널개체 ${panelEntries(date).length?'보기·수정 ('+panelEntries(date).length+'마리)':'등록'}</button></section>`;}
  function openPanels(date){if(selected!==date)pendingPanelId='';selected=date;panelMode=true;openBulk();}
  function entry(r=reservation(),i=slot){return r?.entries[i]||null}
  const entryLimit=r=>r.entryLimit??Math.min(4,r.entryIds.length);
@@ -135,6 +136,11 @@
    $('#calendar-content').innerHTML=`${roundCards()}<details id="all-broadcast-dates" class="vendor-secondary" ${calendarOpen?'open':''}><summary>전체 방송 달력</summary><section class="broadcast-calendar" aria-label="방송 달력"><div class="calendar-head"><h2>${year}년 ${m}월</h2><div><button class="icon" style="display:inline-grid" data-month="-1" aria-label="이전 달" ${month===months[0]?'disabled':''}>‹</button><button class="icon" style="display:inline-grid" data-month="1" aria-label="다음 달" ${month===months.at(-1)?'disabled':''}>›</button></div></div><div class="week" aria-hidden="true">${'일월화수목금토'.split('').map(s=>'<div>'+s+'</div>').join('')}</div><div class="dates">${cells}</div></section></details><details id="vendor-delivery" class="vendor-secondary" ${deliveryOpen?'open':''}><summary>개체 보내는 방법·운송 일정</summary><div id="vendor-inbound"></div></details>`;
   for(const card of document.querySelectorAll('.vendor-round-card')){
    const date=card.querySelector('[data-date]')?.dataset.date;
+   const d=state.dates.find(d=>d.date===date);
+   if(d?.panelAssigned&&d.regionName!==state.vendor.region&&!state.reservations.some(r=>r.date===date&&r.status==='confirmed')&&!auctionItems(date).some(i=>i.auctionKind!=='event')){
+    card.querySelector('.round-status').textContent=`패널 참여 · ${panelEntries(date).length} / ${panelLimit(date)}마리 등록`;
+    card.querySelector('button[data-date]').remove();
+   }
    if(date&&(date>=koreanDay(state.now)||panelEntries(date).length))card.insertAdjacentHTML('beforeend',panelLink(date));
   }
   renderInbound();
@@ -175,6 +181,7 @@
  function openDate(date,index){
   panelMode=false;
   selected=date;const d=state.dates.find(d=>d.date===date),r=reservation(date);if(!d)return;
+  if(d.panelAssigned&&d.regionName!==state.vendor.region&&!r&&!auctionItems(date).some(i=>i.auctionKind!=='event')){openPanels(date);return;}
   if(index===undefined&&auctionItems(date).filter(i=>i.auctionKind!=='event').length>=(r?entryLimit(r):1)){openAuctionList();return}
   auctionPhotoItem=null;
   if(r&&index===undefined){openBulk();return}
@@ -215,7 +222,7 @@
   dirty=bulkDrafts.some((row,i)=>bulkEditable(i)&&!!recovery[row.id]);
    modal(dateLabel(selected),`<form id="bulk-entry-form" novalidate><div class="entry-step-scroll bulk-scroll"><div class="entry-progress"><h3>${panelMode?'패널개체':CreoVendorTasks.broadcastRegistrationComplete(r)?'개체 등록 완료':'출품 개체'}</h3><span>${r.completed?r.completed+'마리 접수':entryLimit(r)+'마리'}</span></div>
    <p class="muted">${panelMode?'일반 출품과 별도 등록 · 낙찰 수수료 및 개체등록비 1만 원 면제':esc(policyText(r.session))}</p>
-   ${panelMode?`<div class="panel-actions"><button type="button" class="secondary" data-action="panel-back">일반 출품 보기</button>${registrationOpen(r)?'<button type="button" class="secondary" data-action="panel-add">패널개체 추가</button>':''}</div>${!r.entries.length?'<p class="muted">추가 버튼을 눌러 패널개체 정보를 입력해 주세요.</p>':''}`:''}
+   ${panelMode?`<div class="panel-actions"><button type="button" class="secondary" data-action="panel-back">${state.dates.find(d=>d.date===selected)?.regionName===state.vendor.region?'일반 출품 보기':'방송 목록으로'}</button>${registrationOpen(r)&&r.entries.length<panelLimit(selected)?'<button type="button" class="secondary" data-action="panel-add">패널개체 추가</button>':''}</div>${!r.entries.length?'<p class="muted">추가 버튼을 눌러 패널개체 정보를 입력해 주세요.</p>':''}`:''}
    <div class="bulk-columns" aria-hidden="true"><span>개체</span><span>성별</span><span>체중(g)</span><span>출생년월일</span></div>
    <div class="bulk-rows">${bulkDrafts.map((row,i)=>{
     const e=r.entries[i],conflict=bulkEditable(i)&&row.version!==(e?.version||0),readonly=!bulkEditable(i)||conflict;
@@ -320,7 +327,7 @@
   if(b.dataset.month){const months=[...new Set(state.dates.map(d=>d.date.slice(0,7)))],next=months[months.indexOf(month)+Number(b.dataset.month)];if(next){month=next;renderCalendar()}return}
   if(b.dataset.slot!==undefined){run(async()=>{await commit(false);openDate(selected,Number(b.dataset.slot))});return}
   const action=b.dataset.action;
-  if(action==='panel-back'){run(async()=>{await commit(false);openDate(selected)});return;}
+  if(action==='panel-back'){if(state.dates.find(d=>d.date===selected)?.regionName!==state.vendor.region){close();return;}run(async()=>{await commit(false);openDate(selected)});return;}
   if(action==='panel-add'){run(async()=>{await commit(false);pendingPanelId||=uid();state=await request({type:'save-panels',date:selected,submit:false,entries:[{entry:{id:pendingPanelId},expectedVersion:0}]});pendingPanelId='';openPanels(selected);sheet.querySelector('.bulk-row:last-child select')?.focus();});return;}
   if(action==='panel-delete'){const id=reservation().entries[Number(b.dataset.index)]?.id;if(!id||!confirm('이 패널개체를 삭제할까요? 일반 출품 개체는 유지됩니다.'))return;run(async()=>{await commit(false);const entry=panelEntries(selected).find(e=>e.id===id);state=await request({type:'delete-panel',date:selected,entryId:id,expectedVersion:entry.version});delete recovery[id];await persistRecovery();openPanels(selected);});return;}
   if(action==='retry-draft-photo'){run(()=>retryDraftPhoto(b.dataset.photoId,b.dataset.index===undefined?undefined:Number(b.dataset.index)));return}
