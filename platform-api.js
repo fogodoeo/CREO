@@ -19,6 +19,7 @@ const FALLBACK_PARGE_RATES = require('./public/parge_data.json');
 const Checkout = require('./checkout-core');
 const { shortSms } = require('./checkout-notifications');
 const { checkoutItem } = require('./checkout-item-data');
+const { withCapturePhotos, withCollectionCapturePhotos } = require('./checkout-capture-photos');
 const Inquiry = require('./public/checkout-inquiry');
 const ShippingHistory = require('./shipping-destination-history');
 const { collectionInquiries } = require('./vendor-inquiry');
@@ -1215,9 +1216,10 @@ function createPlatformApi({
             for(let i=0;i<keys.length;i+=100)for(const row of await repository.getRowsByKeys(keys.slice(i,i+100)))items.push(JSON.parse(row.value));
             return {channel:catalog.channels.find(channel=>channel.id===grant.channelId),items,archives:await repository.listRecords(grant.channelId,'archive')};
         },
-        hydrateRecords:async records=>{
+        hydrateRecords:async (records,{channelId})=>{
             const [items,inquiries]=await Promise.all([vendorEntries.hydrateCollectionRecords(records),collectionInquiries(records,vendorDirectory)]);
-            return items.map((item,index)=>({...item,...(inquiries[index]?{inquiry:inquiries[index]}:{})}));
+            const displayed=await withCollectionCapturePhotos(repository,channelId,records,items);
+            return displayed.map((item,index)=>({...item,...(inquiries[index]?{inquiry:inquiries[index]}:{})}));
         }});
     if (entryPhotoStorage && !entryPhotoStorage.secret) entryPhotoStorage.secret = sessionSecret;
     const workspaceItemPhotos=require('./workspace-item-photos').create({repository,storage:entryPhotoStorage,processor:entryPhotoProcessor});
@@ -1570,7 +1572,7 @@ function createPlatformApi({
     async function buyerShippingPayload(context) {
         const readOnly = !CheckoutRounds.open(context.channel);
         const snapshot = await checkoutSnapshot(context);
-        const displayItems = await vendorEntries.hydrateItems(context.channel.id, context.bundleItems);
+        const displayItems = await withCapturePhotos(repository,context.channel.id,await vendorEntries.hydrateItems(context.channel.id, context.bundleItems));
         const displayById = new Map(displayItems.map(item => [item.id,item]));
         const fixedDestinations = pickupDestinations(context.channel);
         const carriers = {};
