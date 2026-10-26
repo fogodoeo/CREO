@@ -77,6 +77,82 @@ async function call(api, method, pathname, body, authenticated = true) {
     return response;
 }
 
+async function confirmationFixture() {
+    const repository = new MemoryRepository(), storage = new MemoryStorage();
+    await repository.upsertRecord('cdcup', 'item', { id: 'item_1', lotNumber: 1, name: '확인 개체', status: 'live' });
+    await repository.upsertRecord('cdcup', 'broadcast', { id: 'state', mode: 'live', activeItemId: 'item_1', buyerPhone: 'private-data' });
+    const api = createCaptureApi({ repository, storage, isAdmin: req => req.headers['x-creo-admin'] === 'secret', logger: { warn() {} } });
+    const image = await require('sharp')({ create: { width: 16, height: 12, channels: 3, background: '#96cc7c' } }).webp().toBuffer();
+    const body = { channelId: 'cdcup', itemId: 'item_1', confirmationId: 'confirmation-id-0001', mimeType: 'image/webp', imageBase64: image.toString('base64') };
+    return { repository, storage, api, body };
+}
+
+test('capture context is compact, authenticated and follows active item/channel lifecycle', async () => {
+    const f = await confirmationFixture();
+    assert.equal((await call(f.api, 'GET', '/api/capture/context', null, false)).status, 401);
+    const response = await call(f.api, 'GET', '/api/capture/context');
+    assert.equal(response.json().context.itemId, 'item_1'); assert.equal(response.json().context.running, true);
+    assert.ok(response.rawBody.length < 1000); assert.ok(!response.rawBody.toString().includes('private-data'));
+    await f.repository.upsertRecord('cdcup', 'broadcast', { id: 'state', mode: 'sold', activeItemId: 'item_1' });
+    assert.equal((await call(f.api, 'GET', '/api/capture/context')).json().context.running, false);
+    f.repository.active = 'event-night';
+    assert.equal((await call(f.api, 'GET', '/api/capture/context')).json().context.itemId, '');
+    assert.equal((await call(f.api, 'GET', '/api/capture/agent-check')).json().confirmationProtocol, 1);
+});
+
+test('confirmed capture is idempotent concurrently and late legacy writes cannot overwrite it', async () => {
+    const f = await confirmationFixture();
+    const responses = await Promise.all([call(f.api, 'POST', '/api/capture/confirmed', f.body), call(f.api, 'POST', '/api/capture/confirmed', f.body)]);
+    assert.deepEqual(responses.map(row => row.status), [200, 200]); assert.equal(responses[1].json().duplicate, true);
+    assert.equal(f.storage.objects.size, 1);
+    const capture = responses[0].json().capture; assert.equal(capture.confirmed, true); assert.equal(capture.width, 16);
+    const legacy = await call(f.api, 'POST', `/api/capture/jobs/${capture.id}/upload`, { channelId: 'cdcup', mimeType: 'image/webp', imageBase64: Buffer.from('late frame').toString('base64') });
+    assert.equal(legacy.json().reason, 'confirmed-capture');
+    const failed = await call(f.api, 'POST', `/api/capture/jobs/${capture.id}/fail`, { channelId: 'cdcup', error: 'late failure' });
+    assert.equal(failed.json().capture.status, 'complete');
+    const sold = await call(f.api, 'POST', '/api/capture/jobs', { channelId: 'cdcup', itemId: 'item_1', eventKey: 'sold-event' });
+    assert.equal(sold.json().reason, 'confirmed-capture');
+    const stored = await f.repository.getRecord('cdcup', 'capture', capture.id);
+    assert.equal(stored.confirmationId, f.body.confirmationId); assert.equal(f.storage.objects.size, 1);
+});
+
+test('retake requires previous confirmation and stale retries cannot overwrite newer confirmation after restart', async () => {
+    const f = await confirmationFixture();
+    await call(f.api, 'POST', '/api/capture/confirmed', f.body);
+    const next = { ...f.body, confirmationId: 'confirmation-id-0002' };
+    assert.equal((await call(f.api, 'POST', '/api/capture/confirmed', next)).status, 409);
+    next.previousConfirmationId = f.body.confirmationId;
+    assert.equal((await call(f.api, 'POST', '/api/capture/confirmed', next)).status, 200); assert.equal(f.storage.objects.size, 1);
+    const restarted = createCaptureApi({ repository: f.repository, storage: f.storage, isAdmin: () => true, logger: { warn() {} } });
+    assert.equal((await call(restarted, 'POST', '/api/capture/confirmed', f.body)).status, 409);
+    assert.equal((await call(restarted, 'POST', '/api/capture/confirmed', next)).json().duplicate, true);
+});
+
+test('confirmed image validation and fixed channel protect against malformed or misassigned frames', async () => {
+    const f = await confirmationFixture();
+    assert.equal((await call(f.api, 'POST', '/api/capture/confirmed', f.body, false)).status, 401);
+    for (const patch of [{ channelId: 'auto' }, { itemId: '' }, { confirmationId: 'short' }, { mimeType: 'image/jpeg' }, { imageBase64: Buffer.from('bad-image').toString('base64') }]) {
+        assert.equal((await call(f.api, 'POST', '/api/capture/confirmed', { ...f.body, ...patch })).status, 400);
+    }
+    assert.equal((await call(f.api, 'POST', '/api/capture/confirmed', { ...f.body, channelId: 'event-night' })).status, 404);
+    f.repository.active = 'event-night';
+    const result = await call(f.api, 'POST', '/api/capture/confirmed', f.body);
+    assert.equal(result.status, 200); assert.equal(result.json().capture.channelId, 'cdcup');
+});
+
+test('failed replacement storage or repository write preserves the prior confirmed frame and allows recovery', async () => {
+    const f = await confirmationFixture();
+    const first = (await call(f.api, 'POST', '/api/capture/confirmed', f.body)).json().capture;
+    const next = { ...f.body, confirmationId: 'confirmation-id-0002', previousConfirmationId: f.body.confirmationId };
+    const put = f.storage.put.bind(f.storage); f.storage.put = async () => { throw Error('storage offline'); };
+    assert.equal((await call(f.api, 'POST', '/api/capture/confirmed', next)).status, 500); f.storage.put = put;
+    const upsert = f.repository.upsertRecord.bind(f.repository); f.repository.upsertRecord = async () => { throw Error('disk full'); };
+    assert.equal((await call(f.api, 'POST', '/api/capture/confirmed', next)).status, 500); f.repository.upsertRecord = upsert;
+    assert.equal((await f.repository.getRecord('cdcup', 'capture', first.id)).confirmationId, f.body.confirmationId);
+    assert.equal(f.storage.objects.size, 1);
+    assert.equal((await call(f.api, 'POST', '/api/capture/confirmed', next)).status, 200); assert.equal(f.storage.objects.size, 1);
+});
+
 test('capture job is leased, uploaded, listed and served by item id', async () => {
     const repository = new MemoryRepository();
     const storage = new MemoryStorage();
