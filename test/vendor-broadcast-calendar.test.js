@@ -26,6 +26,18 @@ test('five-date calendar disables empty month navigation and preserves the five 
  f.$('[data-month="1"]').click();assert.equal(f.$('.calendar-head h2').textContent,'2026년 10월');
 });
 function submitted(){const data=payload(),date=data.dates[2],entries=Array.from({length:4},(_,i)=>({id:'entry-'+i,version:1,status:'submitted',sex:'unknown',weight:'3',hatchDate:'2026-09-01'}));data.reservations=[{id:'reservation',date:date.date,status:'confirmed',session:date,completed:4,entryLimit:4,entryIds:entries.map(e=>e.id),entries}];data.entryState.entries=entries;return data;}
+
+test('panel editor shows a separate count and preserves stable rows and the normal four-entry route',async()=>{
+ const data=submitted();data.vendor.id='vendor';
+ const panels=[2,1].map(i=>({id:'panel-'+i,entryNumber:i,channelId:'national-cre',channelVendorId:'vendor',broadcastDate:data.dates[2].date,auctionKind:'event',status:'draft',version:1,sex:'unknown',weight:String(i+10),hatchDate:'2025-01-01'}));data.entryState.entries.push(...panels);
+ const f=await fixture(data);f.$('[data-panel-date]').click();await tick();
+ assert.match(f.$('.entry-progress').textContent,/패널개체/);assert.equal(f.document.querySelectorAll('.bulk-row').length,2);
+ assert.equal(f.$('[name="weight-0"]').value,'11');assert.equal(f.$('[name="weight-1"]').value,'12');
+ assert.match(f.$('#bulk-entry-form').textContent,/개체등록비 1만 원 면제/);
+ assert.equal(f.$('[data-action="pickup"]'),null);
+ f.$('[data-action="panel-back"]').click();await tick();assert.equal(f.document.querySelectorAll('.bulk-row').length,4);assert.equal(f.requests.length,0);
+ const css=fs.readFileSync(require.resolve('../public/vendor-broadcast.css'),'utf8');assert.match(css,/\[data-action="panel-delete"\][^{]*\{[^}]*grid-column:1\/-1/);
+});
 test('opening and closing a submitted edit sends no withdrawal or save and keeps a path to the completed entries',async()=>{
  const f=await fixture(submitted());assert.match(f.$('.vendor-round-card').textContent,/접수 완료/);assert.match(f.$('.vendor-round-card').textContent,/보기·수정/);
  f.$('.vendor-round-card [data-date]').click();f.$('[data-action="bulk-reopen"]').click();await tick();

@@ -8,7 +8,7 @@
  const koreanDay=value=>new Date(Date.parse(value)+9*3600000).toISOString().slice(0,10);
  let state,month='',selected='',slot=0,busy=false,draft=null,dirty=false,recovery={},recoveryQueue=Promise.resolve(),photoBusy=false,lastTrigger=null;
   const removed=new Map(),photoUrls=new Map(),editingSubmitted=new Set();
- let bulkDrafts=null,auctionPhotoItem=null,auctionPhotoPending=null;
+ let bulkDrafts=null,auctionPhotoItem=null,auctionPhotoPending=null,panelMode=false,pendingPanelId='';
   const auctionPhotoUndo=new Map(),auctionNameDrafts=new Map();
  const auctionItems=(date=selected)=>(state?.entryState.auctionItems||[]).filter(item=>item.date===date);
   const rowHasData=row=>!!(row.sex||row.weight||row.hatchDate||row.note||row.photoIds?.length||['sire','dam'].some(side=>row.parents?.[side]?.photoId||row.parents?.[side]?.name?.trim()));
@@ -16,7 +16,13 @@
   function entryParents(e){return Object.fromEntries(['sire','dam'].map(side=>{const p=state.entryState.parents.find(p=>p.id===e?.[side+'Id']);return [side,{name:p?.name||'',photoId:p?.photoId||''}]}))}
  function message(s){$('#notice').textContent=s;setTimeout(()=>{$('#notice').textContent=''},4500)}
  function params(){return {...(Store.code?{code:Store.code}:{token:Store.token}),event:'national-cre'}}
- function reservation(date=selected){return state.reservations.find(r=>r.date===date&&r.status==='confirmed')}
+ function reservation(date=selected){
+  if(panelMode){const entries=panelEntries(date);return {id:'panel:'+date,date,session:state.dates.find(d=>d.date===date),entries,entryIds:entries.map(e=>e.id),entryLimit:entries.length,completed:entries.filter(e=>['submitted','approved'].includes(e.status)).length};}
+  return state.reservations.find(r=>r.date===date&&r.status==='confirmed');
+ }
+ const panelEntries=date=>(state.entryState.entries||[]).filter(e=>e.channelId==='national-cre'&&e.channelVendorId===state.vendor.id&&e.broadcastDate===date&&e.auctionKind==='event'&&e.status!=='deleted').sort((a,b)=>a.entryNumber-b.entryNumber);
+ function panelLink(date=selected){return `<section class="panel-registration"><h3>패널개체</h3><p class="muted">일반 출품 4마리와 별도 · 낙찰 수수료 및 개체등록비 1만 원 면제</p><button type="button" class="secondary" data-panel-date="${esc(date)}">패널개체 ${panelEntries(date).length?'보기·수정 ('+panelEntries(date).length+'마리)':'등록'}</button></section>`;}
+ function openPanels(date){if(selected!==date)pendingPanelId='';selected=date;panelMode=true;openBulk();}
  function entry(r=reservation(),i=slot){return r?.entries[i]||null}
  const entryLimit=r=>r.entryLimit??Math.min(4,r.entryIds.length);
  const policyText=d=>`${d.regionName} ${d.regionVendorCount}개 업체 · 업체당 4마리`;
@@ -26,7 +32,7 @@
   return `<section class="entry-delivery" aria-label="출품 배송"><h3>출품 배송</h3><dl class="inbound-destination">${[['parge','파르게'],['dodosi','도도시']].filter(([carrier])=>places[carrier]).map(([carrier,name])=>`<dt>${name} 도착지</dt><dd>${esc(places[carrier])}${phones[carrier]?`<a class="inbound-phone" href="tel:${phones[carrier].replace(/\D/g,'')}" aria-label="${esc(places[carrier]+'에 전화 '+phones[carrier])}">${esc(phones[carrier])}</a>`:''}</dd>`).join('')}</dl><div class="pickup-line"><div><strong>수거 상태</strong><span>${r.pickup?'수거 완료':'수거 전'}</span></div><button type="button" class="pickup-button" data-action="pickup">${r.pickup?'수거 전으로 변경':'수거 완료 표시'}</button></div></section>`;
  }
   function editable(e=entry(),i=slot){return i<entryLimit(reservation())&&(!e||['draft','changes_requested'].includes(e.status)||(e.status==='submitted'&&editingSubmitted.has(e.id)))&&registrationOpen(reservation())&&state.entryState.events.some(e=>e.id==='national-cre'&&e.entriesOpen)}
- function task(d){if(auctionItems(d.date).length>=4)return false;return d.regionName===state.vendor.region&&CreoVendorTasks.broadcastNeedsAction(d,reservation(d.date),state.now,state.entryState.events.some(e=>e.id==='national-cre'&&e.entriesOpen))}
+ function task(d){if(auctionItems(d.date).filter(i=>i.auctionKind!=='event').length>=4)return false;return d.regionName===state.vendor.region&&CreoVendorTasks.broadcastNeedsAction(d,state.reservations.find(r=>r.date===d.date&&r.status==='confirmed'),state.now,state.entryState.events.some(e=>e.id==='national-cre'&&e.entriesOpen))}
  async function request(body){
   let requestId,storageKey='national-broadcast-request:'+Store.VENDOR,payload;
   if(body){payload=JSON.stringify(body);let saved;try{saved=JSON.parse(sessionStorage.getItem(storageKey)||'null')}catch{}
@@ -127,6 +133,10 @@
     cells+=`<button class="day ${d?'event':''} ${mine?'mine':''} ${k===selected?'selected':''}" ${d?`data-date="${k}" aria-label="${m}월 ${n}일 ${d.regionName} 방송${attention?', 개체 등록 필요':mine?', 내 출품 보기':''}"`:'disabled'}><span>${n}</span>${attention?'<i class="calendar-attention" aria-hidden="true"></i>':''}${d?`<small class="calendar-region">${esc(regionLabel)}</small>${mine?'<small class="calendar-mine">내 방송</small>':''}`:''}</button>`;
   }
    $('#calendar-content').innerHTML=`${roundCards()}<details id="all-broadcast-dates" class="vendor-secondary" ${calendarOpen?'open':''}><summary>전체 방송 달력</summary><section class="broadcast-calendar" aria-label="방송 달력"><div class="calendar-head"><h2>${year}년 ${m}월</h2><div><button class="icon" style="display:inline-grid" data-month="-1" aria-label="이전 달" ${month===months[0]?'disabled':''}>‹</button><button class="icon" style="display:inline-grid" data-month="1" aria-label="다음 달" ${month===months.at(-1)?'disabled':''}>›</button></div></div><div class="week" aria-hidden="true">${'일월화수목금토'.split('').map(s=>'<div>'+s+'</div>').join('')}</div><div class="dates">${cells}</div></section></details><details id="vendor-delivery" class="vendor-secondary" ${deliveryOpen?'open':''}><summary>개체 보내는 방법·운송 일정</summary><div id="vendor-inbound"></div></details>`;
+  for(const card of document.querySelectorAll('.vendor-round-card')){
+   const date=card.querySelector('[data-date]')?.dataset.date;
+   if(date&&(date>=koreanDay(state.now)||panelEntries(date).length))card.insertAdjacentHTML('beforeend',panelLink(date));
+  }
   renderInbound();
  }
   function roundCards(){
@@ -163,8 +173,9 @@
   return run(async()=>{state=await request({type:'reserve',date,quantity:4});openDate(date);renderCalendar();sheet.querySelector('[name="sex-0"]')?.focus();});
  }
  function openDate(date,index){
+  panelMode=false;
   selected=date;const d=state.dates.find(d=>d.date===date),r=reservation(date);if(!d)return;
-  if(index===undefined&&auctionItems(date).length>=(r?entryLimit(r):1)){openAuctionList();return}
+  if(index===undefined&&auctionItems(date).filter(i=>i.auctionKind!=='event').length>=(r?entryLimit(r):1)){openAuctionList();return}
   auctionPhotoItem=null;
   if(r&&index===undefined){openBulk();return}
   bulkDrafts=null;
@@ -202,8 +213,9 @@
    return saved&&bulkEditable(i)?structuredClone(saved):{id,version:e?.version||0,sex:e?.sex||'',weight:e?.weight||'',hatchDate:e?.hatchDate||'',note:e?.note||'',photoIds:e?.photoIds||[],parents:entryParents(e)};
   });
   dirty=bulkDrafts.some((row,i)=>bulkEditable(i)&&!!recovery[row.id]);
-   modal(dateLabel(selected),`<form id="bulk-entry-form" novalidate><div class="entry-step-scroll bulk-scroll"><div class="entry-progress"><h3>${CreoVendorTasks.broadcastRegistrationComplete(r)?'개체 등록 완료':'출품 개체'}</h3><span>${r.completed?r.completed+'마리 접수':entryLimit(r)+'마리'}</span></div>
-   <p class="muted">${esc(policyText(r.session))}</p>
+   modal(dateLabel(selected),`<form id="bulk-entry-form" novalidate><div class="entry-step-scroll bulk-scroll"><div class="entry-progress"><h3>${panelMode?'패널개체':CreoVendorTasks.broadcastRegistrationComplete(r)?'개체 등록 완료':'출품 개체'}</h3><span>${r.completed?r.completed+'마리 접수':entryLimit(r)+'마리'}</span></div>
+   <p class="muted">${panelMode?'일반 출품과 별도 등록 · 낙찰 수수료 및 개체등록비 1만 원 면제':esc(policyText(r.session))}</p>
+   ${panelMode?`<div class="panel-actions"><button type="button" class="secondary" data-action="panel-back">일반 출품 보기</button>${registrationOpen(r)?'<button type="button" class="secondary" data-action="panel-add">패널개체 추가</button>':''}</div>${!r.entries.length?'<p class="muted">추가 버튼을 눌러 패널개체 정보를 입력해 주세요.</p>':''}`:''}
    <div class="bulk-columns" aria-hidden="true"><span>개체</span><span>성별</span><span>체중(g)</span><span>출생년월일</span></div>
    <div class="bulk-rows">${bulkDrafts.map((row,i)=>{
     const e=r.entries[i],conflict=bulkEditable(i)&&row.version!==(e?.version||0),readonly=!bulkEditable(i)||conflict;
@@ -212,9 +224,9 @@
     <label class="bulk-field"><span>체중 (g)</span><input name="weight-${i}" aria-label="개체 ${i+1} 체중 (g)" type="number" inputmode="decimal" min=".01" max="1000" step=".01" placeholder="g" value="${esc(row.weight)}" ${readonly?'readonly':''}></label>
     <label class="bulk-field bulk-date"><span>출생년월일</span><input name="hatchDate-${i}" aria-label="개체 ${i+1} 출생년월일" type="date" max="${koreanDay(state.now)}" value="${esc(row.hatchDate)}" ${readonly?'readonly':''}></label>
      <div class="bulk-row-state"><span>${e?.status==='submitted'&&editingSubmitted.has(e.id)?'수정 중 · 기존 접수 유지':labels[e?.status]||''}</span>${e?.status==='submitted'&&!editingSubmitted.has(e.id)&&registrationOpen(r)?`<button type="button" class="text" data-action="bulk-reopen" data-index="${i}" aria-label="개체 ${i+1} 수정">수정</button>`:''}</div>
-    ${bulkDetails(row,i,readonly)}${e?.reason?`<p class="entry-reason">${esc(e.reason)}</p>`:''}${conflict?`<p class="entry-reason">다른 화면에서 변경된 개체예요.</p><button type="button" class="text bulk-latest" data-action="bulk-latest" data-index="${i}">최신 자료 불러오기</button>`:''}</section>`;
+    ${bulkDetails(row,i,readonly)}${panelMode&&registrationOpen(r)&&e?.status!=='approved'?`<button type="button" class="text" data-action="panel-delete" data-index="${i}" aria-label="패널개체 ${i+1} 삭제">패널개체 삭제</button>`:''}${e?.reason?`<p class="entry-reason">${esc(e.reason)}</p>`:''}${conflict?`<p class="entry-reason">다른 화면에서 변경된 개체예요.</p><button type="button" class="text bulk-latest" data-action="bulk-latest" data-index="${i}">최신 자료 불러오기</button>`:''}</section>`;
    }).join('')}</div><p id="step-error" class="form-error" role="alert"></p>
-   ${retainedEntries(r)}${auctionItems().length?'<h3 class="auction-photo-heading">편성된 개체 부모정보</h3>'+auctionPhotoList():''}${pickupBlock(r)}
+   ${panelMode?'':retainedEntries(r)+panelLink()+(auctionItems().length?'<h3 class="auction-photo-heading">편성된 개체 부모정보</h3>'+auctionPhotoList():'')+pickupBlock(r)}
    </div><div class="step-footer"></div></form>`,true);
   renderBulkActions();
   sheet.classList.add('bulk-sheet');
@@ -247,14 +259,14 @@
   if(!bulkDrafts||(!dirty&&!submit))return true;
   captureBulk();await recoveryQueue;
    const rows=bulkDrafts.map((row,i)=>({row,i})).filter(({row,i})=>bulkEditable(i)&&(submit||reservation().entries[i]?.status!=='submitted')&&(rowHasData(row)||!!reservation().entries[i]));
-   if(submit&&reservation().completed+rows.filter(({i})=>reservation().entries[i]?.status!=='submitted').length<4){const empty=bulkDrafts.findIndex(row=>!rowHasData(row));$(`[name="sex-${empty}"]`)?.focus();throw Error('4마리의 정보를 모두 입력해 주세요.');}
+   if(!panelMode&&submit&&reservation().completed+rows.filter(({i})=>reservation().entries[i]?.status!=='submitted').length<4){const empty=bulkDrafts.findIndex(row=>!rowHasData(row));$(`[name="sex-${empty}"]`)?.focus();throw Error('4마리의 정보를 모두 입력해 주세요.');}
   if(!rows.length){if(submit)throw Error('등록할 개체 정보를 입력해 주세요.');dirty=false;return true}
   for(const {row,i} of rows){
    if(row.version!==(reservation().entries[i]?.version||0))throw Error(`개체 ${i+1}: 최신 자료를 불러온 뒤 다시 저장해 주세요.`);
    if(submit){for(const key of ['sex','weight','hatchDate']){const input=$(`[name="${key}-${i}"]`);input.required=true;if(!input.checkValidity()){input.setAttribute('aria-invalid','true');input.focus();input.reportValidity();throw Error(`개체 ${i+1}: 성별·체중·출생년월일을 확인해 주세요.`)}input.removeAttribute('aria-invalid')}}
    for(const id of [...(row.photoIds||[]),...Object.values(row.parents||{}).map(p=>p.photoId)].filter(Boolean)){if(Store.getState().media.find(m=>m.id===id)?.pending)await Store.send({type:'retry-photo',id})}
   }
-   state=await request({type:'save-entries',id:reservation().id,submit,entries:rows.map(({row,i})=>({slot:i,expectedVersion:row.version,...(reservation().entries[i]?.status==='submitted'?{replaceSubmitted:true}:{}),entry:{sex:row.sex,weight:row.weight,hatchDate:row.hatchDate,note:row.note,photoIds:row.photoIds||[]},parents:row.parents}))});
+   state=await request({type:panelMode?'save-panels':'save-entries',id:reservation().id,...(panelMode?{date:selected}:{}),submit,entries:rows.map(({row,i})=>({slot:i,expectedVersion:row.version,...(reservation().entries[i]?.status==='submitted'?{replaceSubmitted:true}:{}),entry:{...(panelMode?{id:row.id}:{}),sex:row.sex,weight:row.weight,hatchDate:row.hatchDate,note:row.note,photoIds:row.photoIds||[]},parents:row.parents}))});
    for(const {row} of rows){delete recovery[row.id];editingSubmitted.delete(row.id);for(const side of ['animal','sire','dam'])removed.delete(row.id+side)}
   await persistRecovery();dirty=false;return true;
  }
@@ -303,10 +315,14 @@
  });
  document.addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b||busy||photoBusy)return;
+  if(b.dataset.panelDate){run(async()=>{await commit(false);openPanels(b.dataset.panelDate)});return;}
    if(b.dataset.date){if(b.dataset.startRegistration){startRegistration(b.dataset.date);return}const r=reservation(b.dataset.date),index=Math.max(0,r?.entries.findIndex(e=>e&&['draft','submitted','changes_requested'].includes(e.status))??0);if(b.dataset.photos&&r?.entries[index]?.status==='submitted')editingSubmitted.add(r.entries[index].id);openDate(b.dataset.date);if(b.dataset.photos){const details=sheet.querySelector(`[data-bulk-row="${index}"] .bulk-details`);if(details){details.open=true;details.querySelector('summary')?.focus()}else sheet.querySelector('[data-auction-parent]')?.focus()}return}
   if(b.dataset.month){const months=[...new Set(state.dates.map(d=>d.date.slice(0,7)))],next=months[months.indexOf(month)+Number(b.dataset.month)];if(next){month=next;renderCalendar()}return}
   if(b.dataset.slot!==undefined){run(async()=>{await commit(false);openDate(selected,Number(b.dataset.slot))});return}
   const action=b.dataset.action;
+  if(action==='panel-back'){run(async()=>{await commit(false);openDate(selected)});return;}
+  if(action==='panel-add'){run(async()=>{await commit(false);pendingPanelId||=uid();state=await request({type:'save-panels',date:selected,submit:false,entries:[{entry:{id:pendingPanelId},expectedVersion:0}]});pendingPanelId='';openPanels(selected);sheet.querySelector('.bulk-row:last-child select')?.focus();});return;}
+  if(action==='panel-delete'){const id=reservation().entries[Number(b.dataset.index)]?.id;if(!id||!confirm('이 패널개체를 삭제할까요? 일반 출품 개체는 유지됩니다.'))return;run(async()=>{await commit(false);const entry=panelEntries(selected).find(e=>e.id===id);state=await request({type:'delete-panel',date:selected,entryId:id,expectedVersion:entry.version});delete recovery[id];await persistRecovery();openPanels(selected);});return;}
   if(action==='retry-draft-photo'){run(()=>retryDraftPhoto(b.dataset.photoId,b.dataset.index===undefined?undefined:Number(b.dataset.index)));return}
   if(action==='auction-photo-refresh'){run(async()=>{state=await request();auctionPhotoPending=null;for(const row of auctionNameDrafts.values()){const item=auctionItem(row.itemId,row.itemChannelId);if(item)row.expectedUpdatedAt=item.updatedAt;}refreshAuctionPhotos();$('#step-error').textContent=''});return}
   if(action==='auction-retry-photo'){auctionPhotoItem=auctionItem(auctionPhotoPending.itemId,auctionPhotoPending.itemChannelId);run(()=>saveAuctionParent(auctionPhotoPending.side,auctionPhotoPending));return}
@@ -318,7 +334,7 @@
   if(action==='bulk-save'){run(async()=>{await commitBulk(false);openBulk();renderCalendar();message('입력한 개체를 저장했어요')});return}
    if(action==='bulk-reopen'){run(async()=>{captureBulk();const i=Number(b.dataset.index);editingSubmitted.add(reservation().entries[i].id);openBulk();if(b.dataset.photos){const details=$(`[data-bulk-row="${i}"] details`);details.open=true;details.querySelector('input[type=file]')?.focus()}else $(`[name="sex-${i}"]`)?.focus()});return}
    if(action==='bulk-cancel-edit'){run(async()=>{for(const e of reservation().entries)if(e?.status==='submitted'){delete recovery[e.id];editingSubmitted.delete(e.id)}await persistRecovery();openBulk()});return}
-   if(action==='bulk-withdraw'){const i=Number(b.dataset.index);if(!confirm(`개체 ${i+1}의 제출을 철회할까요? 기존 정보는 작성 중으로 보관됩니다.`))return;run(async()=>{state=await request({type:'reopen-entry',id:reservation().id,slot:i,expectedVersion:reservation().entries[i].version});openBulk();renderCalendar()});return}
+   if(action==='bulk-withdraw'){const i=Number(b.dataset.index);if(!confirm(`개체 ${i+1}의 제출을 철회할까요? 기존 정보는 작성 중으로 보관됩니다.`))return;run(async()=>{state=await request({type:panelMode?'reopen-panel':'reopen-entry',id:reservation().id,slot:i,...(panelMode?{date:selected,entryId:reservation().entries[i].id}:{}),expectedVersion:reservation().entries[i].version});openBulk();renderCalendar()});return}
   if(action==='bulk-latest'){run(async()=>{const i=Number(b.dataset.index);captureBulk();delete recovery[bulkDrafts[i].id];await persistRecovery();await load();openBulk()});return}
   if(action==='bulk-remove-photo'||action==='bulk-undo-photo'){
    const i=Number(b.dataset.index),side=b.dataset.side;if(!bulkEditable(i))return;
@@ -343,7 +359,7 @@
    run(async()=>{await commitBulk(true);openBulk();renderCalendar();message('입력한 개체를 제출했어요')});return;
   }
   if(e.target.id!=='entry-step-form')return;e.preventDefault();if(!e.target.reportValidity())return;run(async()=>{await commit(true);const r=reservation(),missing=r.entries.slice(0,entryLimit(r)).findIndex(pending);openDate(selected,CreoVendorTasks.broadcastRegistrationComplete(r)||missing<0?undefined:missing);renderCalendar()})});
-  $('#close').onclick=close;sheet.addEventListener('cancel',e=>{e.preventDefault();close()});sheet.addEventListener('close',()=>{draft=null;auctionPhotoItem=null;dirty=false;editingSubmitted.clear();(lastTrigger?.isConnected?lastTrigger:$('#refresh')).focus()});
+  $('#close').onclick=close;sheet.addEventListener('cancel',e=>{e.preventDefault();close()});sheet.addEventListener('close',()=>{draft=null;bulkDrafts=null;panelMode=false;auctionPhotoItem=null;dirty=false;editingSubmitted.clear();(lastTrigger?.isConnected?lastTrigger:$('#refresh')).focus()});
  $('#refresh').onclick=load;window.addEventListener('beforeunload',e=>{if(busy||photoBusy||auctionNameDrafts.size){e.preventDefault();e.returnValue=''}});
  load();
 })();

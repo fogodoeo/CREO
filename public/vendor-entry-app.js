@@ -113,6 +113,13 @@
         return `<button type="button" class="entry-row" data-entry="${esc(e.id)}">${shown.photoIds?.length ? avatar(shown.photoIds[0]) : ''}<span class="row-info">${role !== 'buyer' ? `<span class="status ${e.status}">${statusName[e.status]}</span>` : ''}<strong>${esc(e.lot || e.code)} · ${esc(shown.morph || '새 개체')}</strong><small>${[sexName[shown.sex], shown.weight ? shown.weight + 'g' : ''].filter(Boolean).map(esc).join(' · ')}</small></span><span class="chevron" aria-hidden="true">›</span></button>`;
       }).join('')}</div>` : `<div class="empty-state"><p>${role === 'review' ? '검토할 개체가 없어요' : role === 'buyer' ? '편성 완료한 개체가 여기에 표시돼요' : currentEvent()?.entriesOpen ? '첫 개체를 등록해 보세요' : '등록된 출품 개체가 없어요'}</p></div>`}
       `;
+    if ($('add-entry')) {
+      $('content').querySelector('.entry-create-actions').insertAdjacentHTML('afterend','<section class="entry-section"><h2>패널개체</h2><p class="muted">낙찰 수수료와 개체등록비 1만 원 면제</p><button class="secondary" type="button" id="add-panel-entry">패널개체 등록</button></section>');
+      $('add-panel-entry').onclick = () => editEntry({...blankEntry(), auctionKind:'event'});
+    }
+    document.querySelectorAll('[data-entry]').forEach(button => {
+      if (entries().find(e=>e.id===button.dataset.entry)?.auctionKind==='event') button.querySelector('.row-info').insertAdjacentHTML('beforeend','<small>패널 · 수수료 면제</small>');
+    });
     $('add-entry')?.addEventListener('click', () => editEntry(blankEntry()));
     $('open-import')?.addEventListener('click', openImport);
     $('manage-parents')?.addEventListener('click', () => {
@@ -297,6 +304,10 @@
         <p id="entry-error" class="inline-error" role="alert" tabindex="-1" hidden></p>
         <div class="form-actions"><button class="secondary" type="button" id="save-draft">${draft.reviewEdit?'수정 취소':'임시 저장'}</button><button class="primary" type="submit" id="submit-entry">${draft.reviewEdit?(entry.approved?'변경안 보내기':'수정 저장'):'검토 요청'}</button></div>
       </form>`;
+    if (draft.auctionKind==='event') {
+      $('content').querySelector('h1').textContent = draft.reviewEdit ? '패널개체 수정' : '패널개체 등록';
+      $('content').querySelector('.entry-caption').insertAdjacentHTML('afterend','<p class="muted">낙찰 수수료와 개체등록비 1만 원 면제</p>');
+    }
     const backToList = () => {renderList();$('content').focus();};
     $('entry-back').onclick = () => leave(backToList);
     $('delete-entry')?.addEventListener('click', () => openDelete(entry));

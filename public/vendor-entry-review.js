@@ -66,6 +66,10 @@
       const allocation=data.allocation.find(i=>i.id===entry.itemId);
       return `<article class="entry-row">${status==='draft'?'':`<label class="entry-check"><input type="checkbox" data-check="${esc(key(row))}" aria-label="${esc(row.group.vendor.name+' '+(entry.lot||entry.code))} 선택" ${checked.has(key(row))?'checked':''}></label>`}${picture?`<img src="${esc(picture.thumbnailUrl)}" alt="" loading="lazy">`:''}<div class="row-text"><small>${allocation&&status==='approved'?`<span class="order-badge">${allocation.order}번째</span> `:''}${esc(row.group.vendor.name)}${entry.broadcastDate&&!broadcastDate?' · '+esc(entry.broadcastDate):''}${entry.approved&&entry.status==='submitted'?' · 변경안':''}</small><strong class="entry-identity">${esc(entry.lot||entry.code)} · ${esc(s.morph||'모프 미입력')}</strong><p class="entry-summary">${esc(traits)}</p>${names?`<p class="entry-parents">${esc(names)}</p>`:''}<span class="entry-photo-status">부모사진 ${parentCount}/2</span></div><button class="row-detail secondary" type="button" data-entry="${esc(entry.id)}" data-vendor="${esc(row.group.vendor.id)}" aria-label="${esc(row.group.vendor.name+' '+(entry.lot||entry.code))} 상세">상세</button></article>`;
     }).join(''):`<p class="empty">${{submitted:'검토할 개체가 없어요',draft:'작성 중인 개체가 없어요',changes_requested:'수정 요청한 개체가 없어요',approved:'검토 대기에서 개체를 선택해 출품해 주세요'}[status]}</p>`;
+    $('entry-list').querySelectorAll('[data-entry]').forEach(button=>{
+      const row=visible.find(r=>r.entry.id===button.dataset.entry&&r.group.vendor.id===button.dataset.vendor);
+      if(row?.entry.auctionKind==='event')button.closest('.entry-row').querySelector('.row-text').insertAdjacentHTML('beforeend','<p class="entry-summary">패널 · 낙찰 수수료·등록비 면제</p>');
+    });
     $('selection-bar').hidden=!visible.length||status==='draft';$('batch-bar').hidden=!canAssign()||['changes_requested','draft'].includes(status);
     $('approve-selected').hidden=status!=='submitted';$('arrange-vendors').hidden=status!=='approved';
     updateSelection();

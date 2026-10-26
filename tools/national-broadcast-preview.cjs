@@ -17,6 +17,10 @@ async function main(){
  }
  http.createServer(async(req,res)=>{try{
   const url=new URL(req.url,origin);
+  if(url.pathname==='/__audit'){
+   const width=Math.max(320,Math.min(1280,Number(url.searchParams.get('width'))||320));
+   res.writeHead(200,{'Content-Type':'text/html; charset=utf-8'});res.end('<!doctype html><html lang="ko"><meta name="viewport" content="width=device-width"><title>격리 패널 등록 검증</title><style>body{margin:0;background:#e7ebf0}iframe{display:block;width:'+width+'px;height:900px;border:0;margin:16px auto;background:white}</style><iframe title="업체 출품 관리" src="/"></iframe></html>');return;
+  }
   if(url.pathname==='/'){res.writeHead(303,{Location:'/vendor-broadcast.html?'+new URLSearchParams({event:'national-cre',token}),'Set-Cookie':Object.entries(owner.jar).map(([k,v])=>`${k}=${v}; Path=/; HttpOnly; SameSite=Lax`)});res.end();return;}
   if(url.pathname.startsWith('/api/')&&await f.api.handle(req,res,url))return;
   const file=path.resolve(root,'.'+url.pathname);if(!file.startsWith(root+path.sep)||!fs.existsSync(file)||!fs.statSync(file).isFile()){res.writeHead(404);res.end();return;}

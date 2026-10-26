@@ -79,13 +79,32 @@ function createNationalBroadcast(repository,{now=Date.now,entries,notificationSe
   if(!repository.compareAndSwapRows)throw fail('방송 저장소를 확인해 주세요.',503);
   const {state,raw}=await read(context.channel),requestId=String(input.requestId||''),type=input.type;
   if(!/^[a-zA-Z0-9_-]{8,80}$/.test(requestId))throw fail('요청을 다시 확인해 주세요.',422);
-  const allowed=operator?['session','defaults','region','cancel']:['reserve','save-entry','save-entries','reopen-entry','parent-photos','pickup','inbound-origin'];
+  const allowed=operator?['session','defaults','region','cancel']:['reserve','save-entry','save-entries','reopen-entry','save-panels','reopen-panel','delete-panel','parent-photos','pickup','inbound-origin'];
   if(!allowed.includes(type))throw fail('이 작업을 실행할 수 없어요.',403);
   const clean={...input};for(const k of ['requestId','code','token','bookingCode'])delete clean[k];
   const signature=crypto.createHash('sha256').update(JSON.stringify(clean)).digest('hex'),requestKey=(operator?'operator':context.vendor.id)+':'+requestId,prior=state.requests.find(r=>r.key===requestKey);
   if(prior){if(prior.signature!==signature)throw fail('요청 내용이 변경됐어요. 다시 확인해 주세요.');return {result:prior.result,duplicate:true};}
   let r,result='',action='';
   if(type==='parent-photos')return entries.updateItemParents(context,input);
+  // Panel entries are independent of the four normal reservation slots.
+  // The trusted broadcast context owns the fee classification, never a client flag.
+  if(['save-panels','reopen-panel','delete-panel'].includes(type)){
+   const date=input.date,region=state.regions[context.vendor.id]??regionForVendor(context.vendor);
+   if(!context.profile||!APPLICATION_DATES.includes(date)||regionAt(date)!==region)throw fail('업체에 배정된 방송일을 선택해 주세요.',403);
+   if(session(state,date).paused)throw fail('접수가 마감된 방송이에요.');
+   const data=await entries.read(context);
+   const owned=id=>data.entries.find(e=>e.id===id&&e.channelId===context.channel.id&&e.channelVendorId===context.vendor.id&&e.broadcastDate===date&&e.auctionKind==='event');
+   if(type!=='save-panels'){
+    return entries.command({...context,nationalBroadcast:{id:'panel:'+date,date,slot:0,today:Legacy.day(now()),panel:true}},
+     {type:type==='delete-panel'?'delete':'withdraw',id:input.entryId,broadcastDate:date,expectedVersion:input.expectedVersion,requestId});
+   }
+   if(!Array.isArray(input.entries)||!input.entries.length||input.entries.length>100||input.entries.some(row=>!row?.entry?.id)||new Set(input.entries.map(row=>row.entry.id)).size!==input.entries.length)throw fail('등록할 패널개체를 확인해 주세요.',422);
+   for(const row of input.entries){
+    const existing=data.entries.find(e=>e.id===row.entry?.id);
+    if(existing&&!owned(existing.id))throw fail('일반 출품이나 다른 방송의 개체를 패널로 변경할 수 없어요.',403);
+   }
+   return entries.saveMany(context,input.entries.map((row,index)=>({broadcast:{id:'panel:'+date,date,slot:index,today:Legacy.day(now()),panel:true},input:{type:input.submit===true?'submit':'save',entry:row.entry,parents:row.parents,expectedVersion:row.expectedVersion,...(row.replaceSubmitted===true?{replaceSubmitted:true}:{})}})),requestId);
+  }
   if(type==='save-entries'){
    r=state.reservations.find(r=>r.id===input.id&&r.vendorId===context.vendor.id&&r.status==='confirmed');
    if(!r||!context.profile)throw fail('출품할 방송을 다시 확인해 주세요.',403);

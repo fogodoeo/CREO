@@ -14,6 +14,22 @@ function fixture(){
 const draft=()=>({id:randomUUID(),morph:'릴리화이트',sex:'female',weight:'28',photoIds:[]});
 const command=(type,fields={})=>({type,requestId:randomUUID(),...fields});
 
+test('non-national vendor panel registration preserves exemption through draft, submit, review and restart',async()=>{
+ const {repository,context,service}=fixture(),entry={...draft(),auctionKind:'event'};
+ await service.command(context,command('save',{entry}));
+ await service.command(context,command('submit',{entry:{...entry,auctionKind:'regular'},expectedVersion:1}));
+ assert.equal((await service.read(context)).entries[0].submission.auctionKind,'event');
+ await service.command(context,command('approve',{id:entry.id,expectedVersion:2,lot:'A01',order:1}),{operator:true});
+ const restarted=createVendorEntries(repository),approved=(await restarted.read(context)).entries[0];assert.equal(approved.auctionKind,'event');
+ assert.equal((await repository.listRecords('alpha','item'))[0].attributes.auctionKind,'event');
+ await restarted.command(context,command('submit',{entry:{...approved,weight:'31',auctionKind:'regular'},expectedVersion:3,reviewEdit:true}));
+ await restarted.command(context,command('approve',{id:entry.id,expectedVersion:4,lot:'A01',order:1}),{operator:true});
+ assert.equal((await repository.listRecords('alpha','item'))[0].attributes.auctionKind,'event');
+ const regular=draft();await restarted.command(context,command('save',{entry:regular}));
+ await restarted.command(context,command('submit',{entry:{...regular,auctionKind:'event'},expectedVersion:1}));
+ assert.equal((await restarted.read(context)).entries.find(e=>e.id===regular.id).auctionKind,'regular');
+});
+
 test('operator renumber keeps entry and auction identity aligned, preserves facts, and replays across restart',async()=>{
     const {repository,context,service}=fixture(),entry=draft();
     await service.command(context,command('submit',{entry}));

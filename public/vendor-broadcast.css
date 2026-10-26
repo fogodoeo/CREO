@@ -187,3 +187,8 @@ textarea{font:inherit;resize:vertical;line-height:1.7}.field textarea{display:bl
 @media(max-width:360px){.topbar{padding-inline:16px}.shell{padding-inline:16px}.surface{padding:22px 16px}.calendar-surface{padding:0}.day{min-height:61px}.day small{font-size:8px}.next h2{font-size:24px}.quantity{font-size:23px}.channel{margin-left:8px;padding-left:8px}.auth{padding-inline:20px}.profile-surface{padding:0}}
 
 #company-name{font-size:13px;color:var(--muted)}.channel-vendor-nav a{font-size:14px!important}.server-status{font-size:13px;color:var(--muted);margin-bottom:12px}.readonly-field{font-size:16px;padding:12px 0}.entry-sheet .photo-picker img{object-fit:contain;background:#f8f9fb}.photo-remove[disabled]{display:none}.entry-sheet .entry-reason{font-size:14px;background:#fff4e8;padding:12px;border-radius:12px;margin:12px 0}.load-error:empty{display:none}
+.panel-registration{margin-block-start:20px;padding-block-start:16px;border-block-start:1px solid var(--line,#dce3eb)}
+.panel-registration h3{margin:0 0 8px;font-size:1rem}
+.panel-registration p{margin:0 0 12px;line-height:1.6}
+.panel-actions{display:flex;gap:12px;flex-wrap:wrap;margin-block:16px}
+.bulk-row [data-action="panel-delete"]{grid-column:1/-1;justify-self:start;width:auto;white-space:nowrap;min-height:44px}

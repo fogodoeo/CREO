@@ -19,6 +19,59 @@ test('five-region rotation has a fixed first broadcast and covers month/year bou
  assert.equal(regionAt('2027-01-04'),3);assert.equal(regionAt('9999-12-29'),4);
 });
 const firstCycle=['2026-10-14','2026-10-19','2026-10-21','2026-10-26','2026-10-28'];
+
+test('panels are separate from four ordinary slots and retain fee exemption through approval, sale and renumber',async t=>{
+ const f=await fixture(t),r=(await f.command({type:'reserve',date:firstCycle[0],quantity:4})).json().reservations[0];
+ const ordinary=await f.command({type:'save-entry',id:r.id,slot:0,submit:true,expectedVersion:0,entry:{auctionKind:'event',sex:'unknown',weight:'3',hatchDate:'2026-09-01'}});
+ assert.equal(ordinary.status,200,ordinary.body);assert.equal(ordinary.json().reservations[0].entries[0].auctionKind,'regular');
+ const id=randomUUID(),body={type:'save-panels',date:firstCycle[0],submit:true,entries:[{entry:{id,sex:'female',weight:'30',hatchDate:'2025-09-01'},parents:{sire:{name:'패널 부개체'}},expectedVersion:0}],requestId:randomUUID()};
+ const results=await Promise.all([f.command(body),f.command(body)]);for(const res of results)assert.equal(res.status,200,res.body);
+ assert.equal(results.filter(res=>res.json().duplicate).length,1);
+ const view=(await f.get()).json(),e=view.entryState.entries.find(e=>e.id===id);
+ assert.equal(e.auctionKind,'event');assert.equal(e.submission.auctionKind,'event');assert.equal(view.reservations[0].entryIds.length,4);assert.equal(view.reservations[0].completed,1);
+ const policy={enabled:true,entryFee:10000,ratePercent:10};
+ const catalog=await f.repository.getCatalog();await f.repository.saveCatalog(catalog.channels.map(c=>c.id==='national-cre'?{...c,vendorSettlement:policy}:c));
+ const review=await f.call(f.client,'POST','/api/platform/channels/national-cre/entries/review',{type:'approve',requestId:randomUUID(),vendorId:f.vendorId,id,expectedVersion:e.version,lot:'A05',order:5,startPrice:0},f.admin);assert.equal(review.status,200,review.body);
+ const item=(await f.repository.listRecords('national-cre','item'))[0];assert.equal(item.attributes.auctionKind,'event');assert.equal(item.attributes.parents[0].name,'패널 부개체');
+ const settlement=require('../auction-settlement');for(const status of ['waiting','live','sold','passed']){
+  const fees=settlement.summarize([{...item,status,soldPrice:1000000}],[],[{id:f.vendorId}],{vendorSettlement:policy})[0];assert.equal(fees.feeAmount,0);assert.equal(fees.entryFeeAmount,0);assert.equal(fees.commissionAmount,0);
+ }
+ const fees=settlement.summarize([{...item,attributes:{...item.attributes,auctionKind:'regular'},status:'sold',soldPrice:1000000}],[],[{id:f.vendorId}],{vendorSettlement:policy})[0];assert.equal(fees.feeAmount,110000);
+ const approved=(await f.get()).json().entryState.entries.find(e=>e.id===id);
+ const renumber=await f.call(f.client,'POST','/api/platform/channels/national-cre/entries/review',{type:'renumber',requestId:randomUUID(),vendorId:f.vendorId,id,expectedVersion:approved.version,expectedUpdatedAt:item.updatedAt,lot:'B01',order:10,startPrice:0},f.admin);assert.equal(renumber.status,200,renumber.body);
+ assert.equal((await f.repository.listRecords('national-cre','item'))[0].attributes.auctionKind,'event');
+ assert.equal((await f.get()).json().entryState.auctionItems[0].auctionKind,'event');
+ assert.equal((await f.command({type:'delete-panel',date:firstCycle[0],entryId:id,expectedVersion:approved.version+1})).status,409);
+ f.advance(13*86400000);f.restart();const replay=await f.command(body);assert.equal(replay.status,200,replay.body);assert.equal(replay.json().duplicate,true);
+ assert.equal((await f.command({...body,requestId:randomUUID()})).status,409);
+});
+
+test('panel batch rejects foreign dates, ordinary IDs, malformed rows and stale writes; failure is atomic',async t=>{
+ const f=await fixture(t),r=(await f.command({type:'reserve',date:firstCycle[0],quantity:4})).json().reservations[0];
+ await f.command({type:'save-entry',id:r.id,slot:0,expectedVersion:0,entry:{weight:'3'}});
+ const id=randomUUID(),body={type:'save-panels',date:firstCycle[0],entries:[{entry:{id,weight:'12'},expectedVersion:0}]};
+ assert.equal((await f.command({...body,date:firstCycle[1]})).status,403);
+ assert.equal((await f.command({...body,entries:[null]})).status,422);
+ assert.equal((await f.command({...body,entries:[{entry:{id:r.entryIds[0]},expectedVersion:1}]})).status,403);
+ const before=(await f.get()).json().entryState.entries;
+ const bad=await f.command({...body,submit:true,entries:[{entry:{id,sex:'male',weight:'12',hatchDate:'2025-01-01'},expectedVersion:0},{entry:{id:randomUUID(),weight:'2'},expectedVersion:0}]});assert.equal(bad.status,422);assert.deepEqual((await f.get()).json().entryState.entries,before);
+ const persist=f.repository.upsertRows.bind(f.repository);f.repository.upsertRows=async rows=>{if(rows.some(r=>r.key.startsWith('vendor_entries_v1::')))throw Error('isolated persistence failure');return persist(rows)};
+ assert.equal((await f.command(body)).status,500);f.repository.upsertRows=persist;assert.deepEqual((await f.get()).json().entryState.entries,before);
+ assert.equal((await f.command(body)).status,200);
+ const edits=await Promise.all(['13','14'].map(weight=>f.command({...body,entries:[{entry:{id,weight},expectedVersion:1}]})));assert.deepEqual(edits.map(r=>r.status).sort(),[200,409]);
+ const latest=(await f.get()).json().entryState.entries.find(e=>e.id===id);assert.equal(latest.version,2);assert.equal(latest.auctionKind,'event');
+ assert.equal((await f.command({type:'delete-panel',date:firstCycle[0],entryId:r.entryIds[0],expectedVersion:1})).status,403);
+ const deletion={type:'delete-panel',date:firstCycle[0],entryId:id,expectedVersion:2,requestId:randomUUID()};
+ const removed=await f.command(deletion);assert.equal(removed.status,200,removed.body);f.restart();assert.equal((await f.command(deletion)).json().duplicate,true);
+ assert.equal((await f.command({...body,entries:[{entry:{id},expectedVersion:3}]})).status,409);
+ assert.equal((await f.get()).json().reservations[0].entries[0].weight,'3');
+});
+
+test('panel approvals never complete ordinary registration tasks',()=>{
+ const task=require('../public/vendor-task-state'),date={date:firstCycle[0],regionName:'서울·인천',maxQuantityAvailable:4};
+ const base={now:'2026-10-02T00:00:00.000Z',dates:[date],vendor:{region:'서울·인천'},reservations:[],entryState:{parents:[],auctionItems:Array.from({length:4},(_,i)=>({id:String(i),date:date.date,auctionKind:'event'}))}};
+ const view=task.vendorBroadcasts(base)[0];assert.equal(view.assigned,false);assert.equal(view.complete,false);assert.equal(view.canStart,true);
+});
 test('past broadcast entries are read-only while committed single and batch retries survive the date boundary and restart',async t=>{
  const f=await fixture(t),r=(await f.command({type:'reserve',date:'2026-10-14',quantity:4})).json().reservations[0];
  const single={type:'save-entry',id:r.id,slot:0,expectedVersion:0,entry:{weight:'3'},requestId:randomUUID()},batch={type:'save-entries',id:r.id,entries:[{slot:1,expectedVersion:0,entry:{weight:'4'}}],requestId:randomUUID()};

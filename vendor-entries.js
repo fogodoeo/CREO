@@ -21,6 +21,7 @@ function normalizeEntry(input = {}) {
     if(hatchDate && (!/^\d{4}-\d{2}-\d{2}$/.test(hatchDate)||!Number.isFinite(Date.parse(hatchDate))||new Date(hatchDate).toISOString().slice(0,10)!==hatchDate))throw fail('해칭일을 다시 확인해 주세요.',422);
     const sourceId=uuid(input.sourceId)?input.sourceId.toLowerCase():'';
     return {
+        auctionKind:input.auctionKind==='event'?'event':'regular',
         morph:cleanText(input.morph,60), sex:['male','female','unknown'].includes(input.sex)?input.sex:'unknown',
         weight, hatchDate, size:['베이비','아성체','준성체','성체'].includes(input.size)?input.size:'', note:cleanText(input.note,600),
         photoIds:[...new Set(Array.isArray(input.photoIds)?input.photoIds:[])].slice(0,3).map(id=>cleanText(id,80)),
@@ -139,6 +140,7 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
         const safe=value=>String(value||'').replace(/[|:]/g,' ');
         const item={...(existing||{}),id:itemId,lotNumber:order,name:lot,vendorId:context.vendor.id,vendorName:context.vendor.name,groupId,teamName,category:facts.morph,status:'waiting',startPrice,soldPrice:0,photoUrl:facts.media[0]?.url||'',createdAt:existing?.createdAt||now,updatedAt:now,attributes:{...(existing?.attributes||{}),checklist:`gender:${{male:'M',female:'F',unknown:''}[facts.sex]}|weight:${facts.weight}|morph:${safe(facts.morph)}|size:${safe(facts.size)}`,displayNumber:lot,entry_traits:{morph:facts.morph,sex:facts.sex,weight:facts.weight,size:facts.size,hatchDate:facts.hatchDate},media:facts.media,parents:facts.parents,vendor_entry:{ownerId,entryId:entry.id}}};
         item.note=facts.note;
+        if(facts.auctionKind==='event')item.attributes.auctionKind='event';
         if(entry.broadcastDate)item.attributes.broadcastDate=entry.broadcastDate;
         if(context.channel.vendorSettlement?.enabled)item.attributes.organizerFeePolicy=existing?.attributes?.organizerFeePolicy||require('./auction-settlement').normalizePolicy(context.channel.vendorSettlement);
         entry.approved={...copy(facts),approvedAt:now};entry.itemId=itemId;entry.lot=lot;entry.status='approved';
@@ -217,6 +219,8 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
                 }
                 const normalized=normalizeEntry(input.entry);
                 const broadcast=context.nationalBroadcast;
+                normalized.auctionKind=current?(current.auctionKind==='event'?'event':'regular'):((broadcast?broadcast.panel===true:input.entry.auctionKind==='event')?'event':'regular');
+                if(broadcast&&current&&((current.auctionKind==='event')!==(broadcast.panel===true)))throw fail('일반 출품과 패널개체 등록 구분을 확인해 주세요.',403);
                 if(broadcast){
                     if(context.channel.id!=='national-cre'||(current?.broadcastDate&&current.broadcastDate!==broadcast.date))throw fail('방송 연결을 확인해 주세요.',403);
                     normalized.sex=['male','female','unknown'].includes(input.entry.sex)?input.entry.sex:'';
@@ -239,7 +243,7 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
                 if(normalized.sourceId&&state.entries.some(entry=>entry.status!=='deleted'&&entry.id!==id&&entry.channelId===context.channel.id&&entry.sourceId===normalized.sourceId))throw fail('이미 가져온 피들 개체예요. 기존 출품을 확인해 주세요.');
                 const entryNumber=current?.entryNumber||Math.max(0,...state.entries.filter(entry=>entry.channelId===context.channel.id).map(entry=>entry.entryNumber))+1;
                 const entry={...normalized,id,vendorId:ownerId,channelVendorId:context.vendor.id,channelId:context.channel.id,entryNumber,code:`출품 ${String(entryNumber).padStart(2,'0')}`,version:(current?.version||0)+1,status:type==='submit'?'submitted':'draft',updatedAt:now,...(current?.approved?{approved:current.approved,itemId:current.itemId,lot:current.lot,...(current.auctionChannelId?{auctionChannelId:current.auctionChannelId}:{})}: {})};
-                if(broadcast)Object.assign(entry,{code:'개체 '+(broadcast.slot+1),broadcastDate:broadcast.date,broadcastReservationId:broadcast.id,broadcastSlot:broadcast.slot});
+                if(broadcast)Object.assign(entry,{code:broadcast.panel?'패널개체 '+entryNumber:'개체 '+(broadcast.slot+1),broadcastDate:broadcast.date,broadcastReservationId:broadcast.id,broadcastSlot:broadcast.slot});
                 const facts=snapshot(state,entry);
                 if(type==='submit'){
                     if(!normalizePhone(context.vendor.phone)||!['bankName','bankAccount','bankHolder'].every(field=>cleanText(context.vendor[field],100)))throw fail('업체 연락처와 계좌를 먼저 등록해 주세요.',422);
@@ -249,6 +253,7 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
             }else{
                 const entry=state.entries.find(entry=>entry.id===input.id&&entry.channelId===context.channel.id&&entry.channelVendorId===context.vendor.id);
                 if(!entry)throw fail('출품을 찾을 수 없습니다.',404);
+                if(context.nationalBroadcast?.panel&&entry.auctionKind!=='event')throw fail('패널개체를 다시 선택해 주세요.',403);
                 if(entry.version!==input.expectedVersion)throw fail('출품이 변경됐어요. 내용을 다시 확인해 주세요.');
                 if(input.broadcastDate&&entry.broadcastDate!==input.broadcastDate)throw fail('선택한 방송일의 출품만 처리할 수 있어요.');
                 if(['approve','renumber'].includes(type)){
@@ -304,9 +309,9 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
         return operator?locked('review:'+context.channel.id,execute):execute();
     }
     async function saveMany(context, rows, requestId) {
-        if (!Array.isArray(rows) || !rows.length || rows.length > 5 || new Set(rows.map(row=>row.input.entry.id)).size !== rows.length) throw fail('등록할 개체를 다시 확인해 주세요.',422);
+        if (!Array.isArray(rows) || !rows.length || rows.length > (rows.every(row=>row.broadcast?.panel===true)?100:5) || new Set(rows.map(row=>row.input.entry.id)).size !== rows.length) throw fail('등록할 개체를 다시 확인해 주세요.',422);
         return locked(owner(context),async()=>{
-            const key=context.channel.id+':save-many:'+requestId,signature=hash(rows.map(row=>({...row,broadcast:{id:row.broadcast.id,date:row.broadcast.date,slot:row.broadcast.slot}}))),initial=await readOwner(owner(context));
+            const key=context.channel.id+':save-many:'+requestId,signature=hash(rows.map(row=>({...row,broadcast:{id:row.broadcast.id,date:row.broadcast.date,slot:row.broadcast.slot,...(row.broadcast.panel?{panel:true}:{})}}))),initial=await readOwner(owner(context));
             const prior=initial.requests.find(row=>row.key===key);
             if(prior){if(prior.signature!==signature)throw fail('같은 요청으로 다른 내용을 저장할 수 없습니다. 다시 시도해 주세요.');return {result:prior.result,duplicate:true};}
             const staged=new Map();
@@ -446,7 +451,7 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
             if(entry)try{parents=mergedParents(raw,parentPhotos(state,entry.approved))}catch{}
             return {
                 ...require('./checkout-item-data').checkoutItem(item), channelId:context.channel.id, date:item.attributes.broadcastDate,
-                status:item.status, updatedAt:item.updatedAt,
+                status:item.status, updatedAt:item.updatedAt, auctionKind:item.attributes?.auctionKind==='event'?'event':'regular',
                 canEdit:item.attributes.broadcastDate>=new Date(now()+9*3600000).toISOString().slice(0,10)&&!AuctionRounds.isArchived(item)&&['draft','active'].includes(context.channel.status)&&context.vendor.active!==false&&['waiting','live','passed'].includes(item.status),
                 parentPhotoIds:Object.fromEntries(['sire','dam'].map(role=>{
                     const url=parents.find(p=>p.role===role)?.media?.[0]?.url;
