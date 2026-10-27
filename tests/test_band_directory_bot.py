@@ -38,9 +38,10 @@ class DirectoryBotTests(unittest.TestCase):
     def test_approved_identity_reconciliation_uses_band_user_number_not_profile_name(self):
         monitor = worker(FakeDirectory())
         monitor.next_reconcile = 0
-        monitor.directory.call = Mock(side_effect=[{"members": [{"memberKey": "old_key_123"}]}, {"linked": True}])
+        monitor.directory.call = Mock(side_effect=[{"members": [{"memberKey": "old_key_123"}]}, {"saved": 1}, {"linked": True}])
         monitor.api = Mock(return_value={"member_key": "current_key_123", "user_no": 42})
         monitor.reconcile_step(None, 100)
+        self.assertEqual(monitor.directory.call.call_args_list[1].args[0], "members")
         self.assertEqual(monitor.directory.call.call_args.args, ("reconcile", {
             "memberKey": "old_key_123", "canonicalMemberKey": "current_key_123", "userNo": "42"}))
         monitor.reconcile_step(None, 101)
@@ -49,7 +50,7 @@ class DirectoryBotTests(unittest.TestCase):
     def test_old_applicant_key_resolves_through_user_number_before_linking(self):
         monitor = worker(FakeDirectory())
         monitor.next_reconcile = 0
-        monitor.directory.call = Mock(side_effect=[{"members": [{"memberKey": "old_key_123"}]}, {"linked": True}])
+        monitor.directory.call = Mock(side_effect=[{"members": [{"memberKey": "old_key_123"}]}, {"saved": 1}, {"linked": True}])
         monitor.api = Mock(side_effect=[{"user_no": 42}, {"user_no": 42, "member_key": "current_key_123"}])
         monitor.reconcile_step(None, 100)
         self.assertEqual(monitor.api.call_args.args[1:], ("memberByUserNo", [42]))
@@ -59,6 +60,7 @@ class DirectoryBotTests(unittest.TestCase):
         monitor = worker(FakeDirectory())
         monitor.next_poll = monitor.next_roster = monitor.last_heartbeat = 0
         monitor.poll, monitor.heartbeat = Mock(), Mock()
+        monitor.reconcile_step = Mock()
         monitor.runtime_state = "running"
         monitor.roster_step = Mock(side_effect=RuntimeError("roster_schema_changed"))
         with patch("band_directory_bot.time.monotonic", return_value=100):

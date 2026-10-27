@@ -363,6 +363,7 @@ class DirectoryMonitor(base.BandJoinMonitor):
             self.directory.call("finish", {"applicationId": application_id, "success": success})
         if success:
             self.approved_count += 1
+            self.next_reconcile = 0.0
 
     def poll(self, connection):
         paging = None
@@ -507,6 +508,9 @@ class DirectoryMonitor(base.BandJoinMonitor):
             if user_no and not detail.get("member_key"):
                 detail = self.api(connection, "memberByUserNo", [user_no])
             if user_no and str(detail.get("user_no")) == str(user_no) and detail.get("member_key"):
+                if detail.get("is_member") is False:
+                    continue
+                self.directory.call("members", {"members": [member_record(detail, existing=True)]})
                 self.directory.call("reconcile", {"memberKey": pending["memberKey"],
                     "canonicalMemberKey": detail["member_key"], "userNo": str(user_no)})
 
@@ -520,9 +524,9 @@ class DirectoryMonitor(base.BandJoinMonitor):
             if now >= self.next_roster:
                 self.next_roster = now + 3
                 try:
+                    self.reconcile_step(connection, now)
                     self.roster_step(connection)
                     if (self.progress or {}).get("complete"):
-                        self.reconcile_step(connection, now)
                         self.update_step(connection, now)
                 except (RuntimeError, OSError) as exc:
                     if isinstance(exc, (TimeoutError, ConnectionError)):
