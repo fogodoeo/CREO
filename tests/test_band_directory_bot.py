@@ -34,6 +34,13 @@ def worker(directory):
 
 
 class DirectoryBotTests(unittest.TestCase):
+    def test_renderer_crash_restarts_only_the_workers_browser(self):
+        monitor = worker(FakeDirectory())
+        monitor.chrome = Mock()
+        with self.assertRaisesRegex(ConnectionError, "browser_renderer_crashed"):
+            monitor._handle_event(None, {"method": "Inspector.targetCrashed"})
+        monitor.chrome.stop.assert_called_once()
+
     def test_profile_changes_and_manual_approvals_join_the_same_directory(self):
         directory = FakeDirectory()
         monitor = worker(directory)

@@ -2,7 +2,7 @@
 (() => {
     const $ = id => document.getElementById(id);
     let offset = 0, matched = 0, generation = 0;
-    const sources = { profile: '프로필 번호', answer: '가입답변 번호', verified: '밴드 인증번호' };
+    const sources = { profile: '프로필 번호', answer: '가입답변 번호', verified: '인증 휴대폰번호' };
     const phone = value => value ? value.replace(/^(010)(\d{4})(\d{4})$/, '$1-$2-$3') : '연락처 확인 필요';
     const element = (tag, text, className) => {
         const node = document.createElement(tag); node.textContent = text;

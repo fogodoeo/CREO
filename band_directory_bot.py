@@ -220,6 +220,10 @@ class DirectoryMonitor(base.BandJoinMonitor):
         # network/DOM parsers that could confuse another member or phone field.
         if event.get("method") in {"Inspector.detached", "Target.detachedFromTarget"}:
             raise ConnectionError("browser_disconnected")
+        if event.get("method") in {"Inspector.targetCrashed", "Target.targetCrashed"}:
+            print("BAND renderer crashed; restarting isolated browser", flush=True)
+            self.chrome.stop()
+            raise ConnectionError("browser_renderer_crashed")
 
     def process_application(self, item, approve):
         record = member_record(item)
@@ -401,6 +405,11 @@ class DirectoryMonitor(base.BandJoinMonitor):
                     connection.call("Page.reload", {})
                     self.last_refresh = now
                 self.heartbeat()
+            except TimeoutError:
+                # A network promise may be slow while the page is healthy. Only
+                # restart if even a synchronous location read cannot respond.
+                self.chrome.stop()
+                raise ConnectionError("browser_unresponsive")
             except Exception:
                 pass
 
@@ -416,6 +425,7 @@ def build_config():
             cwd=ROOT, text=True).strip()
     config.update({"chrome_executable": executable, "chrome_profile_dir": str(tmp / "chrome"),
         "chrome_headless": True, "band_start_url": "https://www.band.us/band/104432443/applications",
+        "chrome_extra_args": ["--js-flags=--max-old-space-size=128", "--blink-settings=imagesEnabled=false"],
         "state_file": str(tmp / "state.json"), "log_file": str(tmp / "worker.log"),
         "runtime_status_file": str(tmp / "runtime.json"), "diagnostic_file": str(tmp / "diagnostic.jsonl"),
         "notification_enabled": False, "notification_trigger_enabled": False,
