@@ -100,6 +100,22 @@ API_SCRIPT = r"""
       data = await owner.getLoginV1Client().sendAndThenProcess({
         url:'https://api.band.us/v2.3.0/get_member', data:{band_no:'104432443',user_no:args[0]}
       });
+    } else if(operation === 'rosterList') {
+      const members = new Map();
+      let expectedCount = 0;
+      // Current BAND lists are capped at 1,001. Merge the supported UI sort
+      // orders and prove coverage against BAND's count before marking complete.
+      for(const order of [null,'recently_joined','last_word','oldest_visited']) {
+        const page = await find('getMembersOfBand').getMembersOfBand('104432443',order);
+        if(!Array.isArray(page.members)) throw new Error('roster_schema_changed');
+        expectedCount = Math.max(expectedCount, Number(page.member_count) || 0);
+        for(const member of page.members) {
+          if(!member.user_no) throw new Error('member_identity_missing');
+          members.set(String(member.user_no),member);
+        }
+        if(expectedCount && members.size >= expectedCount) break;
+      }
+      data = {members:[...members.values()].sort((a,b)=>Number(a.user_no)-Number(b.user_no)),expectedCount};
     } else if(operation === 'rosterDetails') {
       const rows = args[0].slice(0,10), members = new Array(rows.length);
       let next = 0;
@@ -142,6 +158,7 @@ class DirectoryMonitor(base.BandJoinMonitor):
         self.progress = None
         self.roster_rows = []
         self.roster_index = 0
+        self.roster_loaded = False
         self.saved_fingerprints = {}
         self.pending_count = 0
         self.approved_count = 0
@@ -252,17 +269,20 @@ class DirectoryMonitor(base.BandJoinMonitor):
             self.progress = self.directory.call("progress")
         if self.progress.get("complete"):
             return
-        if self.roster_index >= len(self.roster_rows):
-            offset = int(self.progress.get("offset", 0))
-            page = self.api(connection, "getBandMembers", [{"band_no": BAND_NO, "member_offset": offset, "member_count": 50}])
+        if not self.roster_loaded:
+            page = self.api(connection, "rosterList", [])
             rows = page.get("members")
-            if not isinstance(rows, list):
+            expected = int(page.get("expectedCount") or 0)
+            if not isinstance(rows, list) or not expected or len(rows) < expected:
                 raise RuntimeError("roster_schema_changed")
-            if not rows:
-                self.directory.call("progress", {"offset": offset, "complete": True})
-                self.progress["complete"] = True
-                return
-            self.roster_rows, self.roster_index = rows, 0
+            self.roster_rows = rows
+            self.roster_index = min(int(self.progress.get("offset", 0)), len(rows))
+            self.roster_loaded = True
+            print("Existing roster coverage:", len(rows), "of", expected, flush=True)
+        if self.roster_index >= len(self.roster_rows):
+            self.directory.call("progress", {"offset": self.roster_index, "complete": True})
+            self.progress["complete"] = True
+            return
         batch = self.roster_rows[self.roster_index:self.roster_index + 10]
         details = self.api(connection, "rosterDetails", [batch]).get("members")
         if not isinstance(details, list) or len(details) != len(batch) or any(not row.get("member_key") for row in details):
@@ -278,7 +298,7 @@ class DirectoryMonitor(base.BandJoinMonitor):
     def update_step(self, connection, now):
         if now >= self.next_updates and not self.updated_members:
             data = self.api(connection, "getUpdatedMembers", [BAND_NO])
-            rows = data.get("members", data.get("items", []))
+            rows = data.get("profile_updated_members")
             if not isinstance(rows, list):
                 raise RuntimeError("updated_members_schema_changed")
             self.updated_members = rows[:200]

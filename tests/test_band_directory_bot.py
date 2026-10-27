@@ -74,6 +74,7 @@ class DirectoryBotTests(unittest.TestCase):
         monitor = worker(directory)
         rows = [{"member_key": "member_key_%02d" % i, "name": "회원"} for i in range(12)]
         monitor.progress, monitor.roster_rows, monitor.roster_index = {"offset": 50}, rows, 0
+        monitor.roster_loaded = True
         monitor.api = lambda _connection, _operation, args: {"members": args[0]}
         directory.fail = "members"
         with self.assertRaises(OSError):
@@ -92,17 +93,31 @@ class DirectoryBotTests(unittest.TestCase):
         self.assertEqual(monitor.progress["offset"], 62)
         self.assertEqual(directory.events[-1], ("progress", {"offset": 62, "complete": False}))
 
-    def test_empty_roster_page_completes_but_short_detail_batch_cannot_skip(self):
+    def test_incomplete_roster_cannot_be_marked_complete(self):
         directory = FakeDirectory()
         monitor = worker(directory)
-        monitor.progress, monitor.roster_rows, monitor.roster_index = {"offset": 1157}, [], 0
-        monitor.api = Mock(return_value={"members": []})
-        monitor.roster_step(None)
-        self.assertTrue(monitor.progress["complete"])
-        monitor.progress, monitor.roster_rows = {"offset": 0}, [{"user_no": 123}]
+        monitor.progress, monitor.roster_loaded = {"offset": 0}, False
+        monitor.api = Mock(return_value={"members": [], "expectedCount": 1157})
+        with self.assertRaisesRegex(RuntimeError, "roster_schema_changed"):
+            monitor.roster_step(None)
+        self.assertEqual(directory.events, [])
+        monitor.roster_rows, monitor.roster_loaded, monitor.roster_index = [{"user_no": 123}], True, 0
         with self.assertRaisesRegex(RuntimeError, "roster_schema_changed"):
             monitor.roster_step(None)
         self.assertEqual(monitor.progress["offset"], 0)
+
+    def test_resumed_roster_finishes_only_after_final_batch(self):
+        directory = FakeDirectory()
+        monitor = worker(directory)
+        rows = [{"member_key": "member_key_%02d" % i} for i in range(12)]
+        monitor.progress, monitor.roster_loaded = {"offset": 10}, False
+        monitor.api = Mock(side_effect=[{"members": rows, "expectedCount": 12}, {"members": rows[10:]}])
+        monitor.roster_step(None)
+        self.assertEqual(monitor.roster_index, 12)
+        self.assertFalse(monitor.progress.get("complete", False))
+        monitor.roster_step(None)
+        self.assertTrue(monitor.progress["complete"])
+        self.assertEqual(directory.events[-1], ("progress", {"offset": 12, "complete": True}))
 
     def test_answer_only_business_is_eligible_without_profile_format(self):
         item = {"member_key": "key", "name": "사업체", "join_answer": "연락처 010-1234-5678"}
