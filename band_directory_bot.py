@@ -191,11 +191,12 @@ API_SCRIPT = r"""
         : {pending:!job.failed,failed:!!job.failed,count:job.count,expectedCount:job.expectedCount,views:job.views};
     } else if(operation === 'rosterDetails') {
       const rows = args[0].slice(0,10), members = new Array(rows.length);
-      const joinInfo = {read:0,answers:0,unavailable:0,codes:{}};
+      const joinInfo = {read:0,answers:0,unavailable:0,keyChanged:0,codes:{}};
       let next = 0;
       const read = async () => {
         while(next < rows.length) {
           const index = next++, row = {...rows[index]};
+          const originalKey = row.member_key;
           if(!row.member_key) {
             if(!row.user_no) throw new Error('member_identity_missing');
             Object.assign(row, await readBand('/v2.3.0/get_member',
@@ -205,9 +206,10 @@ API_SCRIPT = r"""
               '104432443',row.member_key,{needUserNo:true}));
           }
           if(!row.member_key) throw new Error('member_key_missing');
+          if(originalKey && originalKey !== row.member_key) joinInfo.keyChanged++;
           try {
             const info = await readBand('/v2.0.1/get_join_info',
-              {band_no:'104432443',member_key:row.member_key});
+              {band_no:'104432443',member_key:originalKey || row.member_key});
             joinInfo.read++;
             joinInfo.fields = Object.keys(info || {});
             if(info?.data?.application?.join_answer) {
@@ -218,6 +220,9 @@ API_SCRIPT = r"""
             joinInfo.unavailable++;
             joinInfo.errorType = error?.name || typeof error;
             joinInfo.errorFields = Object.keys(error || {}).filter(key=>/^[A-Za-z_][A-Za-z_0-9]*$/.test(key)).slice(0,20);
+            joinInfo.resultFields = Object.keys(error?.result_data || {}).filter(key=>/^[A-Za-z_][A-Za-z_0-9]*$/.test(key)).slice(0,20);
+            const message = JSON.stringify(error?.result_data || '');
+            joinInfo.errorCategories = ['권한','파라미터','로그인','지원','관리자','멤버'].filter(word=>message.includes(word));
             const value = error?.result_code || error?.responseJSON?.result_code || error?.code || error?.status;
             const code = /^\d{1,8}$/.test(String(value)) ? String(value) : 'unknown';
             joinInfo.codes[code] = (joinInfo.codes[code] || 0)+1;
@@ -247,6 +252,7 @@ class DirectoryMonitor(base.BandJoinMonitor):
         self.next_session = 0.0
         self.synced_session_digest = ""
         self.next_updates = 0.0
+        self.next_reconcile = 0.0
         self.updated_members = []
         self.update_fingerprints = {}
         self.recent_join_cursor = 0.0
@@ -471,7 +477,10 @@ class DirectoryMonitor(base.BandJoinMonitor):
         if not self.updated_members:
             return
         batch = self.updated_members[:10]
-        details = self.api(connection, "rosterDetails", [[entry["row"] for entry in batch]]).get("members")
+        detail_page = self.api(connection, "rosterDetails", [[entry["row"] for entry in batch]])
+        details = detail_page.get("members")
+        if not self.update_fingerprints:
+            print("Updated profile join info:", json.dumps(detail_page.get("joinInfo", {})), flush=True)
         if not isinstance(details, list) or len(details) != len(batch):
             raise RuntimeError("updated_members_schema_changed")
         self.directory.call("members", {"members": [member_record(row, existing=True) for row in details]})
@@ -488,6 +497,16 @@ class DirectoryMonitor(base.BandJoinMonitor):
             "approved": self.approved_count, "rosterComplete": bool((self.progress or {}).get("complete")),
             "state": state, "serviceUrl": os.environ.get("RENDER_EXTERNAL_URL", "")})
 
+    def reconcile_step(self, connection, now):
+        if now < self.next_reconcile:
+            return
+        self.next_reconcile = now + 60
+        for pending in self.directory.call("reconcile").get("members", []):
+            detail = self.api(connection, "getMemberByMemberKey", [BAND_NO, pending["memberKey"], {"needUserNo": True}])
+            if detail.get("user_no") and detail.get("member_key"):
+                self.directory.call("reconcile", {"memberKey": pending["memberKey"],
+                    "canonicalMemberKey": detail["member_key"], "userNo": str(detail["user_no"])})
+
     def _periodic_dom_tasks(self, connection):
         now = time.monotonic()
         if now < self.next_poll:
@@ -500,6 +519,7 @@ class DirectoryMonitor(base.BandJoinMonitor):
                 try:
                     self.roster_step(connection)
                     if (self.progress or {}).get("complete"):
+                        self.reconcile_step(connection, now)
                         self.update_step(connection, now)
                 except (RuntimeError, OSError) as exc:
                     if isinstance(exc, (TimeoutError, ConnectionError)):

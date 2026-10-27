@@ -53,6 +53,8 @@ class BandMemberDirectory {
                 member_key TEXT NOT NULL, state TEXT NOT NULL, updated_at INTEGER NOT NULL,
                 PRIMARY KEY(band_no, application_id));
             CREATE TABLE IF NOT EXISTS bot_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);`);
+        this.db.exec(`CREATE TABLE IF NOT EXISTS member_aliases (band_no TEXT NOT NULL,
+            alias_key TEXT NOT NULL, member_key TEXT NOT NULL, PRIMARY KEY(band_no,alias_key));`);
     }
 
     transaction(fn) {
@@ -63,7 +65,8 @@ class BandMemberDirectory {
 
     upsert(input) {
         if (String(input.bandNo) !== this.bandNo) throw new Error('wrong_band');
-        const key = clean(input.memberKey);
+        const originalKey = clean(input.memberKey);
+        const key = this.canonicalKey(originalKey);
         // BAND returns opaque base64 keys, including padding and +/ characters.
         // Keep the exact identity; these values are only used in bound SQL.
         if (!key || !/^[A-Za-z0-9_+/=-]{8,160}$/.test(key)) throw new Error('member_key_required');
@@ -85,7 +88,10 @@ class BandMemberDirectory {
         }
         if (observedAt >= member.updatedAt) {
             if (typeof input.displayName === 'string') member.displayName = clean(input.displayName, 240);
-            if (typeof input.userNo === 'string') member.userNo = clean(input.userNo);
+            if (typeof input.userNo === 'string' && clean(input.userNo)) {
+                if (member.userNo && member.userNo !== clean(input.userNo)) throw new Error('identity_mismatch');
+                member.userNo = clean(input.userNo);
+            }
             if (['existing', 'pending', 'approved'].includes(input.status)
                 && !(member.status === 'approved' && input.status === 'pending')) member.status = input.status;
             member.updatedAt = observedAt;
@@ -101,11 +107,51 @@ class BandMemberDirectory {
     resolve(input) {
         if (!this.enabled || !input.bandMemberKey || (input.bandNo && String(input.bandNo) !== this.bandNo)) return null;
         const row = this.db.prepare('SELECT data FROM members WHERE band_no=? AND member_key=?')
-            .get(this.bandNo, clean(input.bandMemberKey));
+            .get(this.bandNo, this.canonicalKey(clean(input.bandMemberKey)));
         if (!row) return null;
         const member = JSON.parse(row.data);
         if (!member.phone || member.status === 'pending') return null;
         return { phone: member.phone, memberKey: member.memberKey, displayName: member.displayName || '', phoneSource: member.phoneSource };
+    }
+
+    canonicalKey(key) {
+        return this.db.prepare('SELECT member_key FROM member_aliases WHERE band_no=? AND alias_key=?')
+            .get(this.bandNo, key)?.member_key || key;
+    }
+
+    unresolvedApprovals() {
+        return this.db.prepare('SELECT data FROM members WHERE band_no=?').all(this.bandNo)
+            .map(row => JSON.parse(row.data)).filter(m => m.status === 'approved' && !m.userNo)
+            .slice(0, 10).map(m => ({ memberKey: m.memberKey }));
+    }
+
+    reconcile(input) {
+        const sourceKey = clean(input.memberKey), targetKey = clean(input.canonicalMemberKey), userNo = clean(input.userNo);
+        if (!/^\d{1,20}$/.test(userNo) || !sourceKey || !targetKey) throw new Error('verified_identity_required');
+        return this.transaction(() => {
+            if (this.canonicalKey(sourceKey) === targetKey && sourceKey !== targetKey) return { linked: true };
+            const read = key => {
+                const row = this.db.prepare('SELECT data FROM members WHERE band_no=? AND member_key=?').get(this.bandNo, key);
+                return row ? JSON.parse(row.data) : null;
+            };
+            const source = read(sourceKey), target = read(targetKey);
+            if (!source || source.status !== 'approved' || (source.userNo && source.userNo !== userNo)
+                || !target || (sourceKey !== targetKey ? target.userNo !== userNo : target.userNo && target.userNo !== userNo)) throw new Error('identity_mismatch');
+            const merged = { ...target, userNo, status: 'approved', sources: { ...target.sources },
+                createdAt: Math.min(source.createdAt, target.createdAt), updatedAt: Math.max(source.updatedAt, target.updatedAt) };
+            for (const [name, evidence] of Object.entries(source.sources)) {
+                if (!merged.sources[name] || evidence.observedAt > merged.sources[name].observedAt) merged.sources[name] = evidence;
+            }
+            const contact = contactOf(merged); merged.phone = contact.phone; merged.phoneSource = contact.source;
+            this.db.prepare('UPDATE members SET data=? WHERE band_no=? AND member_key=?').run(JSON.stringify(merged), this.bandNo, targetKey);
+            if (sourceKey !== targetKey) {
+                this.db.prepare('UPDATE member_aliases SET member_key=? WHERE band_no=? AND member_key=?').run(targetKey, this.bandNo, sourceKey);
+                this.db.prepare('INSERT INTO member_aliases VALUES(?,?,?) ON CONFLICT(band_no,alias_key) DO UPDATE SET member_key=excluded.member_key')
+                    .run(this.bandNo, sourceKey, targetKey);
+                this.db.prepare('DELETE FROM members WHERE band_no=? AND member_key=?').run(this.bandNo, sourceKey);
+            }
+            return { linked: true };
+        });
     }
 
     claim(input) {
@@ -196,6 +242,7 @@ class BandMemberDirectory {
                 else if (url.pathname.endsWith('/status')) json(res, 200, this.status());
                 else if (botRoute && url.pathname.endsWith('/progress')) json(res, 200, this.getMeta('rosterProgress') || {});
                 else if (botRoute && url.pathname.endsWith('/session')) json(res, 200, this.readSession());
+                else if (botRoute && url.pathname.endsWith('/reconcile')) json(res, 200, { members: this.unresolvedApprovals() });
                 else json(res, 404, { error: 'not_found' });
                 return true;
             }
@@ -209,6 +256,7 @@ class BandMemberDirectory {
                 json(res, 200, { saved: count });
             } else if (url.pathname.endsWith('/claim')) json(res, 200, this.claim(body));
             else if (url.pathname.endsWith('/session')) { this.saveSession(body); json(res, 200, { ok: true }); }
+            else if (url.pathname.endsWith('/reconcile')) json(res, 200, this.reconcile(body));
             else if (url.pathname.endsWith('/finish')) json(res, 200, this.finish(body));
             else if (url.pathname.endsWith('/progress')) {
                 this.setMeta('rosterProgress', { complete: body.complete === true, offset: Math.max(0, Number(body.offset) || 0), updatedAt: this.now() });

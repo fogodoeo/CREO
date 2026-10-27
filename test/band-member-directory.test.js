@@ -54,6 +54,31 @@ test('BAND base64 member keys survive API ingestion and exact auction resolution
     assert.throws(() => d.upsert({ ...input, memberKey: '<invalid>key' }), /member_key_required/);
 });
 
+test('verified applicant-to-member reconciliation retains answers and both lookup keys across restart', t => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'band-alias-'));
+    const options = { dbPath: path.join(dir, 'test.sqlite') };
+    let d = make(options);
+    t.after(() => { d.close(); fs.rmSync(dir, { recursive: true, force: true }); });
+    const currentKey = 'current_member_key_123456';
+    d.upsert(member({ answer: { text: '01012345678' } }, { status: 'approved' }));
+    d.upsert(member({ profile: { text: '업체' } }, { memberKey: currentKey, userNo: '42' }));
+    const input = { memberKey: KEY, canonicalMemberKey: currentKey, userNo: '42' };
+    assert.deepEqual(d.unresolvedApprovals(), [{ memberKey: KEY }]);
+    assert.throws(() => d.reconcile({ ...input, userNo: '43' }), /identity_mismatch/);
+    assert.equal(d.list().total, 2);
+    assert.equal(d.reconcile(input).linked, true);
+    assert.equal(d.reconcile(input).linked, true);
+    assert.equal(d.list().total, 1);
+    assert.equal(d.resolve({ bandMemberKey: KEY }).phone, '01012345678');
+    assert.equal(d.resolve({ bandMemberKey: currentKey }).phoneSource, 'answer');
+    d.close(); d = make(options);
+    d.upsert(member({ profile: { text: '업체 01099998888' } }, { userNo: '', status: 'pending' }));
+    assert.equal(d.list().total, 1);
+    assert.equal(d.list().items[0].userNo, '42');
+    assert.equal(d.resolve({ bandMemberKey: currentKey }).phone, '01099998888');
+    assert.equal(d.resolve({ bandMemberKey: KEY, bandNo: 'other' }), null);
+});
+
 test('durable claim saves contact before approval; duplicate, uncertain and restart do not resend', t => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'band-directory-'));
     const options = { dbPath: path.join(dir, 'test.sqlite') };

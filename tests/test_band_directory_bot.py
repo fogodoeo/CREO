@@ -35,6 +35,17 @@ def worker(directory):
 
 
 class DirectoryBotTests(unittest.TestCase):
+    def test_approved_identity_reconciliation_uses_band_user_number_not_profile_name(self):
+        monitor = worker(FakeDirectory())
+        monitor.next_reconcile = 0
+        monitor.directory.call = Mock(side_effect=[{"members": [{"memberKey": "old_key_123"}]}, {"linked": True}])
+        monitor.api = Mock(return_value={"member_key": "current_key_123", "user_no": 42})
+        monitor.reconcile_step(None, 100)
+        self.assertEqual(monitor.directory.call.call_args.args, ("reconcile", {
+            "memberKey": "old_key_123", "canonicalMemberKey": "current_key_123", "userNo": "42"}))
+        monitor.reconcile_step(None, 101)
+        self.assertEqual(monitor.api.call_count, 1)
+
     def test_roster_failure_does_not_delay_successful_application_polling(self):
         monitor = worker(FakeDirectory())
         monitor.next_poll = monitor.next_roster = monitor.last_heartbeat = 0
