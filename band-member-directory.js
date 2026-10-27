@@ -176,6 +176,7 @@ class BandMemberDirectory {
         if (!this.enabled) return { enabled: false };
         const heartbeat = this.getMeta('heartbeat');
         return { enabled: true, bandNo: this.bandNo, heartbeat,
+            keepalive: this.getMeta('keepalive'),
             stale: !heartbeat || this.now() - heartbeat.receivedAt > 90000,
             members: this.db.prepare('SELECT count(*) AS count FROM members WHERE band_no=?').get(this.bandNo).count };
     }
@@ -230,8 +231,12 @@ class BandMemberDirectory {
             const target = this.botUrl || this.getMeta('botUrl');
             if (!target || !/^https:\/\/[a-z0-9-]+\.onrender\.com\/?$/.test(target)) return;
             this.pinging = true;
-            try { const response = await this.fetchImpl(new URL('/healthz', target), { signal: AbortSignal.timeout(15000), redirect: 'error' }); await response.body?.cancel(); }
-            catch { /* The bot heartbeat separately exposes a stale service. */ }
+            try {
+                const response = await this.fetchImpl(new URL('/healthz', target), { signal: AbortSignal.timeout(15000), redirect: 'error' });
+                await response.body?.cancel();
+                this.setMeta('keepalive', { at: this.now(), ok: response.ok, intervalSeconds: 300 });
+            }
+            catch { this.setMeta('keepalive', { at: this.now(), ok: false, intervalSeconds: 300 }); }
             finally { this.pinging = false; }
         };
         void ping();

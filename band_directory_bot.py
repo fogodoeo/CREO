@@ -123,6 +123,7 @@ class DirectoryMonitor(base.BandJoinMonitor):
         self.pending_count = 0
         self.approved_count = 0
         self.runtime_state = "starting"
+        self.poll_success_at = 0.0
         self.auto_enabled = os.environ.get("BAND_DIRECTORY_AUTO_APPROVE") == "true"
         self.session_revision = os.environ.get("BAND_SESSION_REVISION", "initial")
         session = directory.call("session")
@@ -185,6 +186,7 @@ class DirectoryMonitor(base.BandJoinMonitor):
                 break
         self.pending_count = count
         self.runtime_state = "running"
+        self.poll_success_at = time.monotonic()
 
     def roster_step(self, connection):
         if self.progress is None:
@@ -243,10 +245,13 @@ class DirectoryMonitor(base.BandJoinMonitor):
         self.updated_members.pop(0)
 
     def heartbeat(self):
-        self.directory.call("heartbeat", {"connected": self.runtime_state == "running",
+        state = self.runtime_state
+        if state == "running" and time.monotonic() - self.poll_success_at > 60:
+            state = "error"
+        self.directory.call("heartbeat", {"connected": state == "running",
             "autoApprove": self.auto_enabled, "pending": self.pending_count,
             "approved": self.approved_count, "rosterComplete": bool((self.progress or {}).get("complete")),
-            "state": self.runtime_state, "serviceUrl": os.environ.get("RENDER_EXTERNAL_URL", "")})
+            "state": state, "serviceUrl": os.environ.get("RENDER_EXTERNAL_URL", "")})
 
     def _periodic_dom_tasks(self, connection):
         now = time.monotonic()
@@ -292,7 +297,9 @@ def build_config():
     tmp.mkdir(parents=True, exist_ok=True)
     executable = os.environ.get("BAND_CHROME_EXECUTABLE", "")
     if not executable:
-        executable = subprocess.check_output(["node", "-e", "process.stdout.write(require('puppeteer').executablePath())"], cwd=ROOT, text=True).strip()
+        executable = subprocess.check_output(["node", "-e",
+            "Promise.resolve(require('puppeteer').executablePath()).then(p=>process.stdout.write(p)).catch(()=>process.exit(1))"],
+            cwd=ROOT, text=True).strip()
     config.update({"chrome_executable": executable, "chrome_profile_dir": str(tmp / "chrome"),
         "chrome_headless": True, "band_start_url": "https://www.band.us/band/104432443/applications",
         "state_file": str(tmp / "state.json"), "log_file": str(tmp / "worker.log"),
@@ -327,6 +334,10 @@ def main():
     try:
         while not monitor.stop_event.wait(10):
             monitor.write_runtime_status()
+            try:
+                monitor.heartbeat()
+            except Exception:
+                pass
     finally:
         monitor.stop()
         server.shutdown()
