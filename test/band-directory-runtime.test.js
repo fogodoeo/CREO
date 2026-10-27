@@ -86,3 +86,17 @@ test('BAND roster searches observed number characters when a rare name prefix wa
     const result = await run(fixture.scope, 'rosterList');
     assert.equal(result.data.members.length, 2);
 });
+
+test('BAND member details use the no-alert reader and tolerate unavailable historical answers', async () => {
+    const calls = [];
+    const fixture = context({ getLoginV1ClientWithoutErrorAlert: () => ({ send: async request => {
+        calls.push(request.url);
+        if(request.url.endsWith('/get_join_info')) return { result_code: 1009 };
+        return { result_code: 1, result_data: { member_key: 'member==', name: '업체', description: '01012345678' } };
+    } }) });
+    const result = await run(fixture.scope, 'rosterDetails', [[{ user_no: 42 }]]);
+    assert.equal(result.ok, true);
+    assert.equal(result.data.members[0].member_key, 'member==');
+    assert.equal(Object.hasOwn(result.data.members[0], 'join_answer'), false);
+    assert.equal(calls.length, 2);
+});

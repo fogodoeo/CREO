@@ -109,12 +109,18 @@ API_SCRIPT = r"""
   };
   try {
     const operation = __OPERATION__, args = __ARGS__;
+    const readBand = async (url, data) => {
+      const response = await find('getLoginV1ClientWithoutErrorAlert')
+        .getLoginV1ClientWithoutErrorAlert().send({url:'https://api.band.us'+url,data});
+      if(!response?.result_data) {
+        const error = new Error('band_request_failed');
+        error.code = response?.result_code; throw error;
+      }
+      return response.result_data;
+    };
     let data;
     if(operation === 'memberByUserNo') {
-      const owner = find('getLoginV1Client');
-      data = await owner.getLoginV1Client().sendAndThenProcess({
-        url:'https://api.band.us/v2.3.0/get_member', data:{band_no:'104432443',user_no:args[0]}
-      });
+      data = await readBand('/v2.3.0/get_member',{band_no:'104432443',user_no:args[0]});
     } else if(operation === 'rosterList') {
       if(window.__creoRosterJob?.failed && Date.now()-window.__creoRosterJob.startedAt>120000)
         delete window.__creoRosterJob;
@@ -190,16 +196,16 @@ API_SCRIPT = r"""
           const index = next++, row = {...rows[index]};
           if(!row.member_key) {
             if(!row.user_no) throw new Error('member_identity_missing');
-            Object.assign(row, await find('getLoginV1Client').getLoginV1Client().sendAndThenProcess({
-              url:'https://api.band.us/v2.3.0/get_member', data:{band_no:'104432443',user_no:row.user_no}
-            }));
+            Object.assign(row, await readBand('/v2.3.0/get_member',
+              {band_no:'104432443',user_no:row.user_no}));
           } else if(!Object.hasOwn(row,'description') || !row.user_no) {
             Object.assign(row, await find('getMemberByMemberKey').getMemberByMemberKey(
               '104432443',row.member_key,{needUserNo:true}));
           }
           if(!row.member_key) throw new Error('member_key_missing');
           try {
-            const info = await find('getJoinInfo').getJoinInfo('104432443', row.member_key);
+            const info = await readBand('/v2.0.1/get_join_info',
+              {band_no:'104432443',member_key:row.member_key});
             if(info?.data?.application?.join_answer) row.join_answer = info.data.application.join_answer;
           } catch(_) {} // Historical answers may be unavailable; preserve any saved evidence.
           members[index] = row;
@@ -209,7 +215,10 @@ API_SCRIPT = r"""
       data = {members};
     } else data = await find(operation)[operation](...args);
     return {ok:true, data};
-  } catch(error) { return {ok:false, reason:error?.message === 'api_unavailable' ? 'api_unavailable' : 'band_request_failed'}; }
+  } catch(error) {
+    return {ok:false, reason:error?.message === 'api_unavailable' ? 'api_unavailable' : 'band_request_failed',
+      code:/^\d{1,8}$/.test(String(error?.code)) ? String(error.code) : undefined};
+  }
 })()
 """
 
@@ -258,7 +267,8 @@ class DirectoryMonitor(base.BandJoinMonitor):
             raise
         if not isinstance(result, dict) or not result.get("ok"):
             reason = result.get("reason", "band_request_failed") if isinstance(result, dict) else "band_request_failed"
-            print("BAND API unavailable:", operation, reason, flush=True)
+            print("BAND API unavailable:", operation, reason,
+                  result.get("code", "") if isinstance(result, dict) else "", flush=True)
             raise RuntimeError(reason)
         if operation not in self.api_shapes:
             self.api_shapes.add(operation)
