@@ -30,6 +30,7 @@ def worker(directory):
     monitor.approved_count = 0
     monitor.checkpoint_session = Mock()
     monitor.roster_discovered = None
+    monitor.join_response_request, monitor.join_response_logged = None, False
     return monitor
 
 

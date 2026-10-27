@@ -1,6 +1,7 @@
 """Isolated BAND approval worker. Durable member records live on the main service."""
 from __future__ import annotations
 
+import base64
 import copy
 import hashlib
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -258,6 +259,8 @@ class DirectoryMonitor(base.BandJoinMonitor):
         self.runtime_state = "starting"
         self.poll_success_at = 0.0
         self.api_shapes = set()
+        self.join_response_request = None
+        self.join_response_logged = False
         self.auto_enabled = os.environ.get("BAND_DIRECTORY_AUTO_APPROVE") == "true"
         self.session_revision = os.environ.get("BAND_SESSION_REVISION", "initial")
         # Do not fall back to an old bootstrap cookie after a temporary database
@@ -306,6 +309,27 @@ class DirectoryMonitor(base.BandJoinMonitor):
             kind = event.get("params", {}).get("type", "unknown")
             print("BAND browser dialog dismissed:", kind, flush=True)
             connection.call("Page.handleJavaScriptDialog", {"accept": False})
+        params = event.get("params", {})
+        if event.get("method") == "Network.responseReceived" and not self.join_response_logged:
+            if params.get("response", {}).get("url", "").startswith("https://api.band.us/v2.0.1/get_join_info?"):
+                self.join_response_request = params.get("requestId")
+        if event.get("method") == "Network.loadingFinished" and self.join_response_request == params.get("requestId"):
+            self.join_response_request = None
+            try:
+                result = connection.call("Network.getResponseBody", {"requestId": params["requestId"]})
+                raw = result.get("body", "")
+                if result.get("base64Encoded"):
+                    raw = base64.b64decode(raw).decode("utf8")
+                body = json.loads(raw)
+                code = str(body.get("result_code", "unknown"))
+                message = str(body.get("result_message", "")).lower()
+                print("Join history response:", json.dumps({
+                    "code": code if re.fullmatch(r"[A-Z_0-9]{1,60}", code) else "unknown",
+                    "fields": list(body),
+                    "permissionMessage": any(word in message for word in ("권한", "permission", "denied"))}), flush=True)
+                self.join_response_logged = True
+            except Exception:
+                pass
 
     def process_application(self, item, approve):
         record = member_record(item)
