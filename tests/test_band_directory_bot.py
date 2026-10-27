@@ -46,6 +46,15 @@ class DirectoryBotTests(unittest.TestCase):
         monitor.reconcile_step(None, 101)
         self.assertEqual(monitor.api.call_count, 1)
 
+    def test_old_applicant_key_resolves_through_user_number_before_linking(self):
+        monitor = worker(FakeDirectory())
+        monitor.next_reconcile = 0
+        monitor.directory.call = Mock(side_effect=[{"members": [{"memberKey": "old_key_123"}]}, {"linked": True}])
+        monitor.api = Mock(side_effect=[{"user_no": 42}, {"user_no": 42, "member_key": "current_key_123"}])
+        monitor.reconcile_step(None, 100)
+        self.assertEqual(monitor.api.call_args.args[1:], ("memberByUserNo", [42]))
+        self.assertEqual(monitor.directory.call.call_args.args[1]["canonicalMemberKey"], "current_key_123")
+
     def test_roster_failure_does_not_delay_successful_application_polling(self):
         monitor = worker(FakeDirectory())
         monitor.next_poll = monitor.next_roster = monitor.last_heartbeat = 0

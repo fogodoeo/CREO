@@ -503,9 +503,12 @@ class DirectoryMonitor(base.BandJoinMonitor):
         self.next_reconcile = now + 60
         for pending in self.directory.call("reconcile").get("members", []):
             detail = self.api(connection, "getMemberByMemberKey", [BAND_NO, pending["memberKey"], {"needUserNo": True}])
-            if detail.get("user_no") and detail.get("member_key"):
+            user_no = detail.get("user_no")
+            if user_no and not detail.get("member_key"):
+                detail = self.api(connection, "memberByUserNo", [user_no])
+            if user_no and str(detail.get("user_no")) == str(user_no) and detail.get("member_key"):
                 self.directory.call("reconcile", {"memberKey": pending["memberKey"],
-                    "canonicalMemberKey": detail["member_key"], "userNo": str(detail["user_no"])})
+                    "canonicalMemberKey": detail["member_key"], "userNo": str(user_no)})
 
     def _periodic_dom_tasks(self, connection):
         now = time.monotonic()
