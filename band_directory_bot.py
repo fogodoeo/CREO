@@ -121,7 +121,7 @@ API_SCRIPT = r"""
     };
     let data;
     if(operation === 'memberByUserNo') {
-      data = await readBand('/v2.3.0/get_member',{band_no:'104432443',user_no:args[0]});
+      data = await readBand('/v2.3.0/get_member',{band_no:'104432443',user_no:args[0],need_user_no:true});
     } else if(operation === 'rosterList') {
       if(window.__creoRosterJob?.failed && Date.now()-window.__creoRosterJob.startedAt>120000)
         delete window.__creoRosterJob;
