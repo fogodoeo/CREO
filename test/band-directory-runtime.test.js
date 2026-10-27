@@ -43,3 +43,21 @@ test('BAND roster indexing merges capped views without duplicates and transfers 
     assert.doesNotMatch(JSON.stringify(result), /private profile/);
     assert.equal(new Set(result.data.members.map(m => m.user_no)).size, 3);
 });
+
+test('BAND roster retains readable members when a sort is unavailable or a row has no identity', async () => {
+    const fixture = context({ getMembersOfBand: async (_band, order) => {
+        if (order === 'recently_joined') throw Object.assign(Error('private error'), { code: 403 });
+        return { member_count: 2, members: order === 'last_word'
+            ? [{ member_key: 'second==' }]
+            : [{ member_key: 'first==' }, {}] };
+    } });
+    await run(fixture.scope, 'rosterList');
+    while (!fixture.window.__creoRosterJob.ready) await new Promise(resolve => setImmediate(resolve));
+    const result = await run(fixture.scope, 'rosterList');
+    assert.equal(result.data.members.length, 2);
+    assert.equal(result.data.expectedCount, 2);
+    assert.equal(result.data.views[0].missingIdentity, 1);
+    assert.equal(result.data.views[1].failed, true);
+    assert.equal(result.data.views[1].code, '403');
+    assert.doesNotMatch(JSON.stringify(result), /private error/);
+});

@@ -119,28 +119,39 @@ API_SCRIPT = r"""
       if(window.__creoRosterJob?.failed && Date.now()-window.__creoRosterJob.startedAt>120000)
         delete window.__creoRosterJob;
       if(!window.__creoRosterJob) {
-        const job = window.__creoRosterJob = {startedAt:Date.now(),count:0,expectedCount:0};
+        const job = window.__creoRosterJob = {startedAt:Date.now(),count:0,expectedCount:0,views:[]};
         // Do not block application polling while collecting capped list views.
         void (async()=>{
           const members = new Map();
           for(const order of [null,'recently_joined','last_word','oldest_visited']) {
-            const page = await find('getMembersOfBand').getMembersOfBand('104432443',order);
-            if(!Array.isArray(page.members)) throw new Error('roster_schema_changed');
-            job.expectedCount = Math.max(job.expectedCount, Number(page.member_count) || 0);
-            for(const member of page.members) {
-              if(!member.user_no) throw new Error('member_identity_missing');
-              members.set(String(member.user_no),{user_no:member.user_no});
+            const view = {order,count:0,missingIdentity:0}; job.views.push(view);
+            try {
+              const page = await find('getMembersOfBand').getMembersOfBand('104432443',order);
+              if(!Array.isArray(page.members)) throw new Error('roster_schema_changed');
+              job.expectedCount = Math.max(job.expectedCount, Number(page.member_count) || 0);
+              view.count = page.members.length;
+              view.fields = Object.keys(page.members[0] || {});
+              for(const member of page.members) {
+                const identity = member.user_no || member.member_key;
+                if(!identity) { view.missingIdentity++; continue; }
+                members.set(String(identity),member.user_no ? {user_no:member.user_no}
+                  : {member_key:member.member_key});
+              }
+            } catch(error) {
+              view.failed = true;
+              const code = error?.result_code || error?.code;
+              if(/^\d{1,8}$/.test(String(code))) view.code = String(code);
             }
             job.count = members.size;
             if(job.expectedCount && members.size >= job.expectedCount) break;
           }
-          job.members = [...members.values()].sort((a,b)=>Number(a.user_no)-Number(b.user_no));
+          job.members = [...members.values()].sort((a,b)=>String(a.user_no||a.member_key).localeCompare(String(b.user_no||b.member_key)));
           job.ready = true;
         })().catch(()=>{job.failed=true});
       }
       const job = window.__creoRosterJob;
-      data = job.ready ? {members:job.members,expectedCount:job.expectedCount}
-        : {pending:!job.failed,failed:!!job.failed,count:job.count,expectedCount:job.expectedCount};
+      data = job.ready ? {members:job.members,expectedCount:job.expectedCount,views:job.views}
+        : {pending:!job.failed,failed:!!job.failed,count:job.count,expectedCount:job.expectedCount,views:job.views};
     } else if(operation === 'rosterDetails') {
       const rows = args[0].slice(0,10), members = new Array(rows.length);
       let next = 0;
@@ -326,7 +337,8 @@ class DirectoryMonitor(base.BandJoinMonitor):
             rows = page.get("members")
             expected = int(page.get("expectedCount") or 0)
             if not isinstance(rows, list) or not expected or len(rows) < expected:
-                print("Roster coverage incomplete:", len(rows) if isinstance(rows, list) else 0, "of", expected, flush=True)
+                print("Roster coverage incomplete:", page.get("count", len(rows) if isinstance(rows, list) else 0), "of", expected,
+                      json.dumps(page.get("views", [])), flush=True)
                 raise RuntimeError("roster_schema_changed")
             self.roster_rows = rows
             self.roster_index = min(int(self.progress.get("offset", 0)), len(rows))
