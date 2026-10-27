@@ -216,7 +216,9 @@ API_SCRIPT = r"""
           } catch(error) {
             // Keep only aggregate diagnostics, never responses or member data.
             joinInfo.unavailable++;
-            const value = error?.responseJSON?.result_code || error?.code || error?.status;
+            joinInfo.errorType = error?.name || typeof error;
+            joinInfo.errorFields = Object.keys(error || {}).filter(key=>/^[A-Za-z_][A-Za-z_0-9]*$/.test(key)).slice(0,20);
+            const value = error?.result_code || error?.responseJSON?.result_code || error?.code || error?.status;
             const code = /^\d{1,8}$/.test(String(value)) ? String(value) : 'unknown';
             joinInfo.codes[code] = (joinInfo.codes[code] || 0)+1;
           }
@@ -320,7 +322,8 @@ class DirectoryMonitor(base.BandJoinMonitor):
                 raw = result.get("body", "")
                 if result.get("base64Encoded"):
                     raw = base64.b64decode(raw).decode("utf8")
-                body = json.loads(raw)
+                # Some legacy BAND reads are JSONP-wrapped responses.
+                body = json.loads(raw[raw.find("{"):raw.rfind("}")+1])
                 code = str(body.get("result_code", "unknown"))
                 message = str(body.get("result_message", "")).lower()
                 print("Join history response:", json.dumps({
@@ -328,8 +331,8 @@ class DirectoryMonitor(base.BandJoinMonitor):
                     "fields": list(body),
                     "permissionMessage": any(word in message for word in ("권한", "permission", "denied"))}), flush=True)
                 self.join_response_logged = True
-            except Exception:
-                pass
+            except Exception as exc:
+                print("Join history response diagnostic:", type(exc).__name__, flush=True)
 
     def process_application(self, item, approve):
         record = member_record(item)
