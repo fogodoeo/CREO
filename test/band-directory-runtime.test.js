@@ -47,10 +47,8 @@ test('BAND roster indexing merges capped views without duplicates and transfers 
 test('BAND roster retains readable members when a sort is unavailable or a row has no identity', async () => {
     const fixture = context({ getMembersOfBand: async (_band, order) => {
         if (order === 'recently_joined') throw Object.assign(Error('private error'), { code: 403 });
-        return { member_count: 2, members: order === 'last_word'
-            ? [{ member_key: 'second==' }]
-            : [{ member_key: 'first==' }, {}] };
-    } });
+        return { member_count: 2, members: [{ member_key: 'first==', name: '홍길동' }, {}] };
+    }, searchMember: async () => ({ members: [{ member_key: 'second==' }] }) });
     await run(fixture.scope, 'rosterList');
     while (!fixture.window.__creoRosterJob.ready) await new Promise(resolve => setImmediate(resolve));
     const result = await run(fixture.scope, 'rosterList');
@@ -62,12 +60,13 @@ test('BAND roster retains readable members when a sort is unavailable or a row h
     assert.doesNotMatch(JSON.stringify(result), /private error/);
 });
 
-test('BAND roster can complete a capped view using only roles observed in the same band', async () => {
+test('BAND roster completes capped views by searching observed name prefixes', async () => {
     const fixture = context({
-        getMembersOfBand: async () => ({ member_count: 2, members: [{ user_no: 1, role: 'member' }] }),
-        getMembersByRole: async (band, roles) => {
-            assert.equal(band, '104432443'); assert.equal(roles, 'member');
-            return [{ user_no: 1 }, { user_no: 2 }];
+        getMembersOfBand: async () => ({ member_count: 2, members: [{ user_no: 1, name: '홍길동' }] }),
+        searchMember: async (query, band, filter) => {
+            assert.equal(band, '104432443'); assert.equal(filter, 'member');
+            assert.equal(query, '홍');
+            return { members: [{ user_no: 1 }, { user_no: 2 }] };
         }
     });
     await run(fixture.scope, 'rosterList');

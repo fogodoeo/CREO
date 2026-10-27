@@ -122,8 +122,15 @@ API_SCRIPT = r"""
         const job = window.__creoRosterJob = {startedAt:Date.now(),count:0,expectedCount:0,views:[]};
         // Do not block application polling while collecting capped list views.
         void (async()=>{
-          const members = new Map(), roles = new Set();
-          for(const order of [null,'recently_joined','last_word','oldest_visited']) {
+          const members = new Map(), searchTerms = new Set();
+          const addTerms = name => {
+            const first = [...String(name || '').normalize('NFC').trim()][0];
+            if(!first) return;
+            searchTerms.add(first);
+            const code = first.codePointAt(0)-0xAC00;
+            if(code>=0 && code<11172) searchTerms.add('ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ'[Math.floor(code/588)]);
+          };
+          for(const order of [null,'recently_joined']) {
             const view = {order,count:0,missingIdentity:0}; job.views.push(view);
             try {
               const page = await find('getMembersOfBand').getMembersOfBand('104432443',order);
@@ -132,12 +139,13 @@ API_SCRIPT = r"""
               view.count = page.members.length;
               view.fields = Object.keys(page.members[0] || {});
               for(const member of page.members) {
-                if(/^[A-Za-z0-9_]{1,32}$/.test(String(member.role))) roles.add(String(member.role));
                 const identity = member.user_no || member.member_key;
                 if(!identity) { view.missingIdentity++; continue; }
+                if(order && !members.has(String(identity))) addTerms(member.name);
                 members.set(String(identity),member.user_no ? {user_no:member.user_no}
                   : {member_key:member.member_key});
               }
+              if(!order) addTerms(page.members.findLast(member=>member.user_no||member.member_key)?.name);
             } catch(error) {
               view.failed = true;
               const code = error?.result_code || error?.code;
@@ -146,13 +154,14 @@ API_SCRIPT = r"""
             job.count = members.size;
             if(job.expectedCount && members.size >= job.expectedCount) break;
           }
-          // The administrator's role picker uses this same comma-separated
-          // role filter. Reuse roles actually present in this band's response.
-          if(members.size < job.expectedCount && roles.size) {
-            const view = {order:'roles',count:0,missingIdentity:0}; job.views.push(view);
+          // The member screen searches with filter "member". Search the name
+          // prefixes observed beyond the alphabetical cap, never guessed IDs.
+          for(const query of [...searchTerms].slice(0,160)) {
+            if(members.size >= job.expectedCount) break;
+            const view = {order:'search',count:0,missingIdentity:0}; job.views.push(view);
             try {
-              const page = await find('getMembersByRole').getMembersByRole('104432443',[...roles].join(','));
-              const rows = Array.isArray(page) ? page : page.members;
+              const page = await find('searchMember').searchMember(query,'104432443','member');
+              const rows = page.members;
               if(!Array.isArray(rows)) throw new Error('roster_schema_changed');
               view.count = rows.length; view.fields = Object.keys(rows[0] || {});
               for(const member of rows) {
