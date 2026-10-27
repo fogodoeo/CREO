@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>전국크레자랑 회원 관리 · CREOK</title>
+    <link rel="stylesheet" href="/band-monitor.css">
+    <link rel="stylesheet" href="/band-members.css">
+    <script src="/band-members.js" defer></script>
+</head>
+<body>
+<main class="monitorShell directoryShell">
+    <header class="directoryHeader">
+        <a class="backLink" href="/main">← 운영 화면</a>
+        <div class="headerCopy"><p>전국크레자랑</p><h1>회원 관리</h1>
+            <p>기존 회원과 새 가입자를 함께 확인합니다. 낙찰 연락처는 프로필, 가입답변, 인증번호 순으로 사용합니다.</p>
+        </div>
+    </header>
+    <section class="panel directoryStatus" aria-labelledby="botHeading">
+        <div><h2 id="botHeading">자동승인 봇</h2><p id="botState" role="status">연결 상태를 확인하고 있습니다.</p></div>
+        <p>프로필에 번호가 없어도 답변에 유효한 번호가 있으면 승인합니다. 번호를 확인할 수 없는 신청은 대기 상태로 남습니다.</p>
+    </section>
+    <section class="panel directoryMembers" aria-labelledby="membersHeading">
+        <div class="panelHead"><div><h2 id="membersHeading">통합 회원 명단</h2><p id="memberCount">불러오는 중…</p></div><button id="refreshMembers" type="button">새로고침</button></div>
+        <form id="searchForm" role="search"><label for="memberQuery">이름·전화번호·가입답변 검색</label>
+            <div class="searchRow"><input id="memberQuery" name="q" type="search" autocomplete="off" maxlength="120"><button type="submit">검색</button></div>
+        </form>
+        <p id="directoryMessage" role="status"></p>
+        <a id="loginLink" href="/main" hidden>운영자 로그인하기</a>
+        <div id="memberList" aria-label="회원 검색 결과"></div>
+        <nav class="directoryPager" aria-label="회원 목록 페이지"><button id="previousMembers" type="button" disabled>이전</button><span id="pagePosition">—</span><button id="nextMembers" type="button" disabled>다음</button></nav>
+    </section>
+</main>
+</body>
+</html>

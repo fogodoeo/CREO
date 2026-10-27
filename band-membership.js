@@ -365,9 +365,11 @@ function createBandMembership(options = {}) {
     }
 
     async function resolveMemberIdentity(input = {}) {
-        if (!config.configured) return null;
         const phone = normalizePhone(input.phone);
-        if (phone) return { phone, subject: publicSubject(phone, config.sessionSecret), displayName: '', memberKey: '' };
+        if (phone && config.configured) return { phone, subject: publicSubject(phone, config.sessionSecret), displayName: '', memberKey: '' };
+        const directoryIdentity = options.directory?.resolve(input);
+        if (directoryIdentity) return { ...directoryIdentity, subject: publicSubject(directoryIdentity.phone, config.sessionSecret) };
+        if (!config.configured) return null;
         // Financial/contact resolution must use an exact member key. Names can
         // change or be shared by multiple people, even when only one is mirrored.
         const byMemberKey = await lookupMemberIdentity(config.memberKeyColumn, input.bandMemberKey);

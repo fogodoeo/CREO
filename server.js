@@ -42,7 +42,11 @@ if (frontendOrigin && (!['http:', 'https:'].includes(frontendOrigin.protocol)
 const GOOGLE_OAUTH_CLIENT_ID = String(process.env.GOOGLE_OAUTH_CLIENT_ID || process.env.GOOGLE_SHEETS_CLIENT_ID || '').trim();
 const bandOAuth = createBandOAuth();
 let platformApi;
+const bandDirectory = new (require('./band-member-directory').BandMemberDirectory)({
+    isAdmin: (req) => platformApi?.isAdmin(req) || false
+});
 const bandMembership = createBandMembership({
+    directory: bandDirectory,
     isAdmin: (req) => platformApi?.isAdmin(req) || false
 });
 const readBandMonitorStatus = createBandMonitorStatusReader();
@@ -298,6 +302,7 @@ async function serveStatic(req, res, url) {
 const server = http.createServer(async (req, res) => {
     try {
         const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+        if (await bandDirectory.handle(req, res, url)) return;
 
         if (url.pathname.startsWith('/api/band-oauth/')) {
             if (await bandOAuth.handle(req, res, url)) return;
@@ -363,6 +368,7 @@ const server = http.createServer(async (req, res) => {
                 bandOAuthConfigured: bandOAuth.config.configured,
                 bandMembershipConfigured: bandMembership.config.configured,
                 bandMonitor: await readBandMonitorStatus(),
+                bandDirectory: bandDirectory.status(),
                 platform,
                 capture: captureStorage.health(),
                 broadcastAssets: broadcastAssetStorage.health(),
@@ -465,6 +471,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, HOST, () => {
+    bandDirectory.startKeepalive();
     console.log(`[creo] listening on http://${HOST}:${PORT}`);
     console.log(`[creo] public directory: ${PUBLIC_DIR}`);
     console.log(`[creo] BAND OAuth configured: ${bandOAuth.config.configured}`);

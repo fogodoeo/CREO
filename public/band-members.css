@@ -1,0 +1,36 @@
+.directoryShell { line-height: 1.6; }
+.directoryShell .panel { background: var(--panel-strong); }
+.directoryHeader { display: grid; gap: 16px; margin-block-end: 32px; }
+.directoryHeader .headerCopy h1 { font-size: clamp(2rem, 4vw, 3rem); line-height: 1.15; text-wrap: balance; }
+.directoryStatus { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-block-end: 24px; }
+.directoryShell p { color: var(--muted); max-width: 70ch; text-wrap: pretty; }
+.directoryShell h2 { margin-block-start: 0; }
+.directoryShell button, .directoryShell input { font: inherit; font-size: 16px; min-height: 44px; border: 1px solid var(--muted); border-radius: 10px; color: var(--text); background: var(--panel-strong); padding: 8px 16px; }
+.directoryShell button { cursor: pointer; }
+.directoryShell button:disabled { opacity: .5; cursor: default; }
+.directoryShell a { color: var(--blue); text-underline-offset: .2em; }
+.directoryShell :focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
+.directoryShell input { width: 100%; min-width: 0; }
+.directoryShell form { margin-block: 24px; }
+.directoryShell label { display: block; margin-block-end: 8px; }
+.searchRow { display: flex; gap: 12px; }
+.searchRow input { flex: 1; }
+.searchRow button { flex: none; white-space: nowrap; background: var(--mint); color: var(--bg); border-color: var(--mint); font-weight: 600; }
+.memberRow { padding-block: 20px; border-block-start: 1px solid var(--line); display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, .6fr); gap: 16px 32px; }
+.memberRow h3 { margin: 0; font-size: 1rem; overflow-wrap: anywhere; }
+.memberRow p { margin-block: 4px 0; }
+.memberContact { font-variant-numeric: tabular-nums; }
+.memberRow details { grid-column: 1 / -1; overflow-wrap: anywhere; }
+.memberRow summary { cursor: pointer; min-height: 44px; padding-block: 8px; color: var(--blue); }
+.memberRow dl { margin: 12px 0; display: grid; grid-template-columns: 100px minmax(0, 1fr); gap: 12px; }
+.memberRow dt { color: var(--muted); }
+.memberRow dd { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.directoryPager { display: flex; justify-content: center; align-items: center; gap: 16px; margin-block-start: 24px; font-variant-numeric: tabular-nums; }
+@media (hover: hover) { .directoryShell button:not(:disabled):hover { filter: brightness(1.15); } }
+@media (max-width: 42rem) {
+    .directoryStatus, .memberRow { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+    .directoryShell .panel { padding: 20px; }
+    .directoryShell .panelHead { flex-wrap: wrap; }
+    .memberRow dl { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+    .memberRow dd { margin-block-end: 12px; }
+}
