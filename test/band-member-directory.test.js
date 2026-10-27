@@ -44,6 +44,16 @@ test('roster and approvals share exact identity; sparse and stale writes preserv
     assert.equal(d.resolve({ bandMemberKey: KEY }), null);
 });
 
+test('BAND base64 member keys survive API ingestion and exact auction resolution', async t => {
+    const d = make(); t.after(() => d.close());
+    const key = 'sample+opaque/member_identity==';
+    const input = member({ answer: { text: '01012345678' } }, { memberKey: key });
+    assert.equal((await call(d, 'POST', '/api/band-directory/bot/members', { members: [input] }, `Bearer ${TOKEN}`)).status, 200);
+    assert.equal(d.resolve({ bandMemberKey: key }).phone, '01012345678');
+    assert.equal(d.resolve({ bandMemberKey: key.replace(/[+/=]/g, '') }), null);
+    assert.throws(() => d.upsert({ ...input, memberKey: '<invalid>key' }), /member_key_required/);
+});
+
 test('durable claim saves contact before approval; duplicate, uncertain and restart do not resend', t => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'band-directory-'));
     const options = { dbPath: path.join(dir, 'test.sqlite') };

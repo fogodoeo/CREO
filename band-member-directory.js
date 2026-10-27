@@ -64,7 +64,9 @@ class BandMemberDirectory {
     upsert(input) {
         if (String(input.bandNo) !== this.bandNo) throw new Error('wrong_band');
         const key = clean(input.memberKey);
-        if (!key || !/^[A-Za-z0-9_-]{8,160}$/.test(key)) throw new Error('member_key_required');
+        // BAND returns opaque base64 keys, including padding and +/ characters.
+        // Keep the exact identity; these values are only used in bound SQL.
+        if (!key || !/^[A-Za-z0-9_+/=-]{8,160}$/.test(key)) throw new Error('member_key_required');
         const observedAt = Number(input.observedAt);
         if (!Number.isFinite(observedAt) || observedAt <= 0 || observedAt > this.now() + 60000) throw new Error('invalid_observation_time');
         const existing = this.db.prepare('SELECT data FROM members WHERE band_no=? AND member_key=?').get(this.bandNo, key);
