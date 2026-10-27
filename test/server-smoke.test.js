@@ -94,7 +94,11 @@ test('HTTP server separates the public home and protected hub while preserving s
 
     const monitorPageResponse = await fetch(`http://127.0.0.1:${port}/band-monitor.html`);
     assert.equal(monitorPageResponse.status, 200);
-    assert.match(await monitorPageResponse.text(), /승인봇 상태판/);
+    assert.match(monitorPageResponse.url, /\/band-members\.html$/);
+    assert.match(await monitorPageResponse.text(), /통합 회원 명단/);
+    const embeddedMonitor = await fetch(`http://127.0.0.1:${port}/band-monitor.html?embedded=1&adminShell=1`, {redirect:'manual'});
+    assert.equal(embeddedMonitor.status, 302);
+    assert.equal(embeddedMonitor.headers.get('location'), '/band-members.html?embedded=1&adminShell=1');
 
     const homeResponse = await fetch(`http://127.0.0.1:${port}/`);
     assert.equal(homeResponse.status, 200);

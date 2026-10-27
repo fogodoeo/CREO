@@ -453,6 +453,11 @@ const server = http.createServer(async (req, res) => {
             }
         }
 
+        if (['GET', 'HEAD'].includes(req.method) && url.pathname === '/band-monitor.html') {
+            writeHeaders(res, 302, { Location: '/band-members.html' + url.search, 'Cache-Control': 'no-store' });
+            res.end();
+            return;
+        }
         if (await operatorEntry(req,res,url)) return;
         if ((req.method === 'GET' || req.method === 'HEAD') && await serveStatic(req, res, url)) {
             return;

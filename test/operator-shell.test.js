@@ -4,6 +4,23 @@ const Home=require('../public/operator-home-model'),Shell=require('../public/ope
 const channels=[{id:'national-cre',name:'전크자',status:'active',dataAdapter:'platform'},{id:'national-cre-20261021',name:'전라·충청',status:'draft',dataAdapter:'platform',nationalRound:{parentId:'national-cre',date:'2026-10-21'}},{id:'clab-1015',name:'씨랩',status:'active',dataAdapter:'platform'}];
 const rounds=channels.map(c=>({channelId:c.id,name:c.name,status:c.status,familyId:Home.family(c),date:c.nationalRound?.date||''})).concat({channelId:'national-cre',archiveId:'old',familyId:'national-cre',name:'지난 회차'});
 const state=query=>Home.selection({channels},rounds,'national-cre',query);
+test('existing monitor deep links open the unified BAND directory and preserve the chosen round on reload',async()=>{
+ const {document,window}=parseHTML(fs.readFileSync(require.resolve('../public/index.html'),'utf8'));
+ for(const select of document.querySelectorAll('select'))Object.defineProperty(select,'value',{value:'',writable:true});
+ window.matchMedia=()=>({matches:true,addEventListener(){}});window.confirm=()=>true;
+ const location={search:'?channel=national-cre-20261021&view=monitor',origin:'https://test',href:'https://test/main?channel=national-cre-20261021&view=monitor'};
+ const history={replaceState(_,__,url){location.search=new URL(url,location.origin).search;},pushState(_,__,url){this.replaceState(_,__,url)}};
+ const calls=[],platform={escapeHtml:String,verifyAdmin:async()=>true,api:async(path,options)=>{calls.push({path,options});return{channels,rounds,activeChannelId:'national-cre'}}};
+ const context={document,window,location,history,URL,URLSearchParams,CustomEvent:window.CustomEvent,CreoPlatform:platform,CreoOperatorHome:Home,CreoOperatorShell:Shell};vm.createContext(context);
+ for(const file of ['operator-home.js','operator-shell.js'])vm.runInContext(fs.readFileSync(require.resolve('../public/'+file),'utf8'),context);
+ document.dispatchEvent(new window.Event('DOMContentLoaded'));await new Promise(setImmediate);
+ const frame=document.getElementById('operator-frame'),expected='/band-members.html?embedded=1&adminShell=1';
+ assert.equal(frame.src,expected);assert.equal(document.getElementById('operator-page-title').textContent,'BAND 회원·자동승인');
+ document.getElementById('operator-reload').click();assert.equal(frame.src,expected);
+ assert.equal(location.search,'?channel=national-cre-20261021&view=monitor');
+ const s=state(location.search);assert.equal(Shell.resolve('/band-monitor.html',s).key,'monitor');assert.equal(Shell.resolve('/band-members.html',s).key,'monitor');
+ assert(calls.every(call=>!call.options?.method||call.options.method==='GET'));
+});
 test('CLAB intake uses its own channel without a national per-entry broadcast date filter',()=>{
  const selected=state('?channel=clab-1015');selected.round={...selected.round,date:'2026-10-29'};
  const url=new URL(Shell.frame(selected,'intake'),'https://test');assert.equal(url.searchParams.get('channel'),'clab-1015');assert.equal(url.searchParams.has('broadcastDate'),false);

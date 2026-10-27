@@ -1,5 +1,10 @@
 html.operator-embedded creo-operator-pipeline,html.operator-embedded .app-bottom-nav{display:none!important}
 html.operator-embedded body{padding-bottom:0!important}
+html.operator-embedded[data-operator-page="band-members.html"] .directoryShell{width:100%;max-width:none;margin:0;padding:24px}
+html.operator-embedded[data-operator-page="band-members.html"] .directoryHeader{gap:0;margin-block-end:20px}
+html.operator-embedded[data-operator-page="band-members.html"] .backLink{display:none}
+html.operator-embedded[data-operator-page="band-members.html"] .directoryHeader h1{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+@media(max-width:600px){html.operator-embedded[data-operator-page="band-members.html"] .directoryShell{padding:16px}}
 /* The outer toolbar supplies the page title, round and navigation. Keep task controls. */
 html.operator-embedded[data-operator-page="organizer-shipping.html"] .settlement-top,
 html.operator-embedded[data-operator-page="organizer-shipping.html"] #channel,

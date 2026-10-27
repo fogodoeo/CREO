@@ -6,12 +6,12 @@
   ['auction','경매 운영',[['numberLabels','순서·번호라벨'],['intake','출품 접수·검토'],['items','개체·경매 순서'],['members','참여 업체']]],
   ['broadcast','방송 도구',[['broadcast','방송 제어·화면 배치'],['pinball','핀볼 추첨'],['captures','캡처 자료'],['captureSetup','캡처 본체 설정','global']]],
   ['finance','낙찰·배송·정산',[['shipping','낙찰자 입금·배송 관리'],['organizer','업체 정산·입금 확인'],['shippingStatus','배송 현황'],['changes','배송 변경·도도시 승인'],['parge','파르게 운송 접수'],['report','회차 총정산표·엑셀'],['print','내역·라벨 인쇄']]],
-  ['settings','설정',[['settings','채널 설정'],['rates','배송 요금·거점','global'],['monitor','BAND 승인봇 상태','global'],['archives','지난 결과·보관 자료'],['survey','참여자 설문']]]
+  ['settings','설정',[['settings','채널 설정'],['rates','배송 요금·거점','global'],['monitor','BAND 회원·자동승인','global'],['archives','지난 결과·보관 자료'],['survey','참여자 설문']]]
  ];
  const origin='https://operator.invalid';
  function routes(state){const links=Home.links(state),q=new URLSearchParams({channel:state.channel.id,...(state.archiveId?{archive:state.archiveId}:{})});return {...links,
   vendors:'/operator-vendors.html?'+new URLSearchParams({program:Home.family(state.channel)}),regions:Home.national(state.channel)?'/organizer-bookings.html?channel=national-cre&action=region':'',access:'/national-vendors.html',rates:'/shipping-rates.html',promo:'/promo-center.html?admin=1',
-  captureSetup:'/capture-setup.html',monitor:'/band-monitor.html',
+  captureSetup:'/capture-setup.html',monitor:'/band-members.html',
   intake:links.intake||(links.workspace&&state.channel.dataAdapter==='platform'?'/vendor-entry-review.html?'+new URLSearchParams({channel:state.channel.id}):''),
   items:links.workspace?links.workspace+'&tab=items':'',members:links.workspace?links.workspace+'&tab=vendors':'',
   numberLabels:state.channel.dataAdapter==='platform'&&state.channel.features?.auction!==false?'/number-labels.html?'+new URLSearchParams({channel:state.channel.id,...(state.round?.date?{date:state.round.date}:{}),...(state.archiveId?{archive:state.archiveId}:{})}):'',
@@ -24,6 +24,7 @@
  // Broadcast displays and buyer/vendor access links deliberately remain separate.
  function resolve(href,state){let url;try{url=new URL(href,origin)}catch{return null}if(url.origin!==origin||url.searchParams.has('broadcast')||url.searchParams.has('live'))return null;
   if(['/main','/main/','/index.html'].includes(url.pathname))return{key:url.searchParams.get('view')||'home',url};
+  if(url.pathname==='/band-monitor.html')return{key:'monitor',url};
   for(const e of menu(state).flatMap(g=>g.entries)){const target=new URL(e.href,origin);if(target.pathname!==url.pathname)continue;if(['items','members'].includes(e.key)&&e.key!==(url.searchParams.get('tab')==='items'?'items':'members'))continue;if(['bookings','regions'].includes(e.key)&&e.key!==(url.searchParams.get('action')==='region'?'regions':'bookings'))continue;
    return{key:e.key,url};}return null;}
  return{groups,routes,menu,entry,home,frame,resolve};

@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded',()=>{
  document.addEventListener('creo:operator-ready',e=>render(e.detail));
  document.addEventListener('creo:operator-reset',clear);
  document.addEventListener('creo:operator-before-navigate',e=>{if(!allowed())e.preventDefault();else dirty=false;});
- $('operator-frame').addEventListener('load',()=>{try{const doc=$('operator-frame').contentDocument;if(doc&&!doc.documentElement.classList.contains('operator-embedded')){const bridge=doc.createElement('script');bridge.src='/operator-embed.js?v=20261023-whole-work';doc.head.appendChild(bridge);}}catch(_){}$('operator-loading').hidden=true;});
+ $('operator-frame').addEventListener('load',()=>{try{const doc=$('operator-frame').contentDocument;if(doc&&!doc.documentElement.classList.contains('operator-embedded')){const bridge=doc.createElement('script');bridge.src='/operator-embed.js?v=20261028-band-members';doc.head.appendChild(bridge);}}catch(_){}$('operator-loading').hidden=true;});
  $('operator-reload').addEventListener('click',()=>{if(!allowed())return;dirty=false;if(source){$('operator-loading').hidden=false;$('operator-frame').src=source;}});
  document.addEventListener('click',event=>{const a=event.target.closest?.('a');if(!a||!state||event.defaultPrevented||event.button!==0||event.ctrlKey||event.metaKey||event.shiftKey||event.altKey||a.target==='_blank'||a.hasAttribute('download'))return;
   const url=new URL(a.href,location.href);if(url.origin!==location.origin)return;
