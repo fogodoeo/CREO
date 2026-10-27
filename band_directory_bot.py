@@ -126,7 +126,12 @@ class DirectoryMonitor(base.BandJoinMonitor):
         self.poll_success_at = 0.0
         self.auto_enabled = os.environ.get("BAND_DIRECTORY_AUTO_APPROVE") == "true"
         self.session_revision = os.environ.get("BAND_SESSION_REVISION", "initial")
-        session = directory.call("session")
+        try:
+            session = directory.call("session")
+        except Exception:
+            # A main-service rollout must not prevent the worker's health server
+            # from starting. All approval writes still fail closed in the poller.
+            session = {}
         if session.get("revision") == self.session_revision and session.get("cookies"):
             os.environ["BAND_COOKIE_JSON"] = json.dumps(session["cookies"])
         super().__init__(config, root)
@@ -220,7 +225,7 @@ class DirectoryMonitor(base.BandJoinMonitor):
         except RuntimeError:
             info = {}  # Some historical join records are not disclosed by BAND.
         application = (info.get("data") or {}).get("application")
-        if isinstance(application, dict) and "join_answer" in application:
+        if isinstance(application, dict) and application.get("join_answer"):
             item["join_answer"] = application["join_answer"]
         self.directory.call("members", {"members": [member_record(item, existing=True)]})
         self.roster_index += 1
