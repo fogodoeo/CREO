@@ -98,5 +98,7 @@ test('BAND member details use the no-alert reader and tolerate unavailable histo
     assert.equal(result.ok, true);
     assert.equal(result.data.members[0].member_key, 'member==');
     assert.equal(Object.hasOwn(result.data.members[0], 'join_answer'), false);
+    assert.equal(result.data.joinInfo.unavailable, 1);
+    assert.equal(result.data.joinInfo.codes['1009'], 1);
     assert.equal(calls.length, 2);
 });

@@ -190,6 +190,7 @@ API_SCRIPT = r"""
         : {pending:!job.failed,failed:!!job.failed,count:job.count,expectedCount:job.expectedCount,views:job.views};
     } else if(operation === 'rosterDetails') {
       const rows = args[0].slice(0,10), members = new Array(rows.length);
+      const joinInfo = {read:0,answers:0,unavailable:0,codes:{}};
       let next = 0;
       const read = async () => {
         while(next < rows.length) {
@@ -206,13 +207,23 @@ API_SCRIPT = r"""
           try {
             const info = await readBand('/v2.0.1/get_join_info',
               {band_no:'104432443',member_key:row.member_key});
-            if(info?.data?.application?.join_answer) row.join_answer = info.data.application.join_answer;
-          } catch(_) {} // Historical answers may be unavailable; preserve any saved evidence.
+            joinInfo.read++;
+            joinInfo.fields = Object.keys(info || {});
+            if(info?.data?.application?.join_answer) {
+              row.join_answer = info.data.application.join_answer; joinInfo.answers++;
+            }
+          } catch(error) {
+            // Keep only aggregate diagnostics, never responses or member data.
+            joinInfo.unavailable++;
+            const value = error?.responseJSON?.result_code || error?.code || error?.status;
+            const code = /^\d{1,8}$/.test(String(value)) ? String(value) : 'unknown';
+            joinInfo.codes[code] = (joinInfo.codes[code] || 0)+1;
+          }
           members[index] = row;
         }
       };
       await Promise.all(Array.from({length:Math.min(3,rows.length)},read));
-      data = {members};
+      data = {members,joinInfo};
     } else data = await find(operation)[operation](...args);
     return {ok:true, data};
   } catch(error) {
@@ -389,7 +400,8 @@ class DirectoryMonitor(base.BandJoinMonitor):
             self.progress["complete"] = True
             return
         batch = self.roster_rows[self.roster_index:self.roster_index + 10]
-        details = self.api(connection, "rosterDetails", [batch]).get("members")
+        detail_page = self.api(connection, "rosterDetails", [batch])
+        details = detail_page.get("members")
         if not isinstance(details, list) or len(details) != len(batch) or any(not row.get("member_key") for row in details):
             raise RuntimeError("roster_schema_changed")
         self.directory.call("members", {"members": [member_record(row, existing=True) for row in details]})
@@ -399,6 +411,9 @@ class DirectoryMonitor(base.BandJoinMonitor):
         self.directory.call("progress", {"offset": offset, "complete": False})
         self.roster_index += len(batch)
         self.progress["offset"] = offset
+        if offset % 100 == 0 or offset == len(self.roster_rows):
+            print("Roster saved:", offset, "of", len(self.roster_rows),
+                  "join info:", json.dumps(detail_page.get("joinInfo", {})), flush=True)
 
     def update_step(self, connection, now):
         if now >= self.next_updates and not self.updated_members:
