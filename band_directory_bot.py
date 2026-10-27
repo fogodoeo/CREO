@@ -121,7 +121,7 @@ API_SCRIPT = r"""
     };
     let data;
     if(operation === 'memberByUserNo') {
-      data = await readBand('/v2.3.0/get_member',{band_no:'104432443',user_no:args[0],need_user_no:true});
+      data = await readBand('/v2.3.0/get_member',{band_no:'104432443',user_no:args[0]});
     } else if(operation === 'rosterList') {
       if(window.__creoRosterJob?.failed && Date.now()-window.__creoRosterJob.startedAt>120000)
         delete window.__creoRosterJob;
@@ -507,6 +507,15 @@ class DirectoryMonitor(base.BandJoinMonitor):
             user_no = detail.get("user_no")
             if user_no and not detail.get("member_key"):
                 detail = self.api(connection, "memberByUserNo", [user_no])
+                # BAND returns either user_no or member_key, depending on the
+                # need_user_no flag. Verify the canonical key independently
+                # before assigning the original user number to its profile.
+                if detail.get("member_key"):
+                    identity = self.api(connection, "getMemberByMemberKey",
+                        [BAND_NO, detail["member_key"], {"needUserNo": True}])
+                    if str(identity.get("user_no")) != str(user_no) or identity.get("is_member") is False:
+                        continue
+                    detail = {**detail, "user_no": str(user_no)}
             if user_no and str(detail.get("user_no")) == str(user_no) and detail.get("member_key"):
                 if detail.get("is_member") is False:
                     continue

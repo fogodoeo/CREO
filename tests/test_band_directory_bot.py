@@ -51,10 +51,21 @@ class DirectoryBotTests(unittest.TestCase):
         monitor = worker(FakeDirectory())
         monitor.next_reconcile = 0
         monitor.directory.call = Mock(side_effect=[{"members": [{"memberKey": "old_key_123"}]}, {"saved": 1}, {"linked": True}])
-        monitor.api = Mock(side_effect=[{"user_no": 42}, {"user_no": 42, "member_key": "current_key_123"}])
+        monitor.api = Mock(side_effect=[{"user_no": 42}, {"member_key": "current_key_123"}, {"user_no": 42}])
         monitor.reconcile_step(None, 100)
-        self.assertEqual(monitor.api.call_args.args[1:], ("memberByUserNo", [42]))
+        self.assertEqual(monitor.api.call_args_list[1].args[1:], ("memberByUserNo", [42]))
+        self.assertEqual(monitor.api.call_args.args[1:], ("getMemberByMemberKey", ["104432443", "current_key_123", {"needUserNo": True}]))
         self.assertEqual(monitor.directory.call.call_args.args[1]["canonicalMemberKey"], "current_key_123")
+
+    def test_canonical_key_with_different_or_departed_user_is_not_linked(self):
+        for identity in ({"user_no": 43}, {"user_no": 42, "is_member": False}, {}):
+            with self.subTest(identity=identity):
+                monitor = worker(FakeDirectory())
+                monitor.next_reconcile = 0
+                monitor.directory.call = Mock(return_value={"members": [{"memberKey": "old_key_123"}]})
+                monitor.api = Mock(side_effect=[{"user_no": 42}, {"member_key": "current_key_123"}, identity])
+                monitor.reconcile_step(None, 100)
+                self.assertEqual(monitor.directory.call.call_count, 1)
 
     def test_roster_failure_does_not_delay_successful_application_polling(self):
         monitor = worker(FakeDirectory())
