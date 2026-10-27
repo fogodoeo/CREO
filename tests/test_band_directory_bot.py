@@ -33,6 +33,34 @@ def worker(directory):
 
 
 class DirectoryBotTests(unittest.TestCase):
+    def test_profile_changes_and_manual_approvals_join_the_same_directory(self):
+        directory = FakeDirectory()
+        monitor = worker(directory)
+        monitor.next_updates, monitor.updated_members, monitor.update_fingerprints = 0, [], {}
+        monitor.progress, monitor.recent_join_cursor = {"updatedAt": 2000000}, 0
+        updated = {"member_key": "updated_member", "name": "new profile", "profile_updated_at": 1900}
+        recent = {"user_no": 123, "created_at": 1950}
+        details = [{**updated, "description": "01012345678"},
+                   {**recent, "member_key": "manual_member", "join_answer": "01099998888"}]
+        monitor.api = Mock(side_effect=[{"profile_updated_members": [updated]},
+                                       {"members": [recent, {"user_no": 122, "created_at": 100}]},
+                                       {"members": details}])
+        monitor.update_step(None, 100)
+        records = directory.events[-1][1]["members"]
+        self.assertEqual(len(records), 2)
+        self.assertEqual(records[1]["sources"]["answer"]["text"], "01099998888")
+        self.assertEqual(monitor.updated_members, [])
+        monitor.api.reset_mock()
+        monitor.update_step(None, 101)
+        monitor.api.assert_not_called()
+
+    def test_database_session_outage_does_not_start_with_stale_bootstrap(self):
+        directory = FakeDirectory()
+        directory.fail = "session"
+        with self.assertRaises(OSError):
+            DirectoryMonitor({}, directory)
+        self.assertEqual(directory.events, [("session", None)])
+
     def test_application_detail_is_saved_before_approval(self):
         directory = FakeDirectory()
         monitor = worker(directory)
@@ -105,6 +133,15 @@ class DirectoryBotTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "roster_schema_changed"):
             monitor.roster_step(None)
         self.assertEqual(monitor.progress["offset"], 0)
+
+    def test_roster_indexing_does_not_block_or_pretend_collection_is_complete(self):
+        directory = FakeDirectory()
+        monitor = worker(directory)
+        monitor.progress, monitor.roster_loaded = {"offset": 0}, False
+        monitor.api = Mock(return_value={"pending": True, "count": 1001, "expectedCount": 1157})
+        monitor.roster_step(None)
+        self.assertEqual(directory.events, [])
+        self.assertFalse(monitor.roster_loaded)
 
     def test_resumed_roster_finishes_only_after_final_batch(self):
         directory = FakeDirectory()

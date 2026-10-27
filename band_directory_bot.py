@@ -101,21 +101,31 @@ API_SCRIPT = r"""
         url:'https://api.band.us/v2.3.0/get_member', data:{band_no:'104432443',user_no:args[0]}
       });
     } else if(operation === 'rosterList') {
-      const members = new Map();
-      let expectedCount = 0;
-      // Current BAND lists are capped at 1,001. Merge the supported UI sort
-      // orders and prove coverage against BAND's count before marking complete.
-      for(const order of [null,'recently_joined','last_word','oldest_visited']) {
-        const page = await find('getMembersOfBand').getMembersOfBand('104432443',order);
-        if(!Array.isArray(page.members)) throw new Error('roster_schema_changed');
-        expectedCount = Math.max(expectedCount, Number(page.member_count) || 0);
-        for(const member of page.members) {
-          if(!member.user_no) throw new Error('member_identity_missing');
-          members.set(String(member.user_no),member);
-        }
-        if(expectedCount && members.size >= expectedCount) break;
+      if(window.__creoRosterJob?.failed && Date.now()-window.__creoRosterJob.startedAt>120000)
+        delete window.__creoRosterJob;
+      if(!window.__creoRosterJob) {
+        const job = window.__creoRosterJob = {startedAt:Date.now(),count:0,expectedCount:0};
+        // Do not block application polling while collecting capped list views.
+        void (async()=>{
+          const members = new Map();
+          for(const order of [null,'recently_joined','last_word','oldest_visited']) {
+            const page = await find('getMembersOfBand').getMembersOfBand('104432443',order);
+            if(!Array.isArray(page.members)) throw new Error('roster_schema_changed');
+            job.expectedCount = Math.max(job.expectedCount, Number(page.member_count) || 0);
+            for(const member of page.members) {
+              if(!member.user_no) throw new Error('member_identity_missing');
+              members.set(String(member.user_no),member);
+            }
+            job.count = members.size;
+            if(job.expectedCount && members.size >= job.expectedCount) break;
+          }
+          job.members = [...members.values()].sort((a,b)=>Number(a.user_no)-Number(b.user_no));
+          job.ready = true;
+        })().catch(()=>{job.failed=true});
       }
-      data = {members:[...members.values()].sort((a,b)=>Number(a.user_no)-Number(b.user_no)),expectedCount};
+      const job = window.__creoRosterJob;
+      data = job.ready ? {members:job.members,expectedCount:job.expectedCount}
+        : {pending:!job.failed,failed:!!job.failed,count:job.count,expectedCount:job.expectedCount};
     } else if(operation === 'rosterDetails') {
       const rows = args[0].slice(0,10), members = new Array(rows.length);
       let next = 0;
@@ -127,6 +137,9 @@ API_SCRIPT = r"""
             Object.assign(row, await find('getLoginV1Client').getLoginV1Client().sendAndThenProcess({
               url:'https://api.band.us/v2.3.0/get_member', data:{band_no:'104432443',user_no:row.user_no}
             }));
+          } else if(!Object.hasOwn(row,'description') || !row.user_no) {
+            Object.assign(row, await find('getMemberByMemberKey').getMemberByMemberKey(
+              '104432443',row.member_key,{needUserNo:true}));
           }
           if(!row.member_key) throw new Error('member_key_missing');
           try {
@@ -153,8 +166,11 @@ class DirectoryMonitor(base.BandJoinMonitor):
         self.last_refresh = time.monotonic()
         self.next_roster = 0.0
         self.next_session = 0.0
+        self.synced_session_digest = ""
         self.next_updates = 0.0
         self.updated_members = []
+        self.update_fingerprints = {}
+        self.recent_join_cursor = 0.0
         self.progress = None
         self.roster_rows = []
         self.roster_index = 0
@@ -167,12 +183,9 @@ class DirectoryMonitor(base.BandJoinMonitor):
         self.api_shapes = set()
         self.auto_enabled = os.environ.get("BAND_DIRECTORY_AUTO_APPROVE") == "true"
         self.session_revision = os.environ.get("BAND_SESSION_REVISION", "initial")
-        try:
-            session = directory.call("session")
-        except Exception:
-            # A main-service rollout must not prevent the worker's health server
-            # from starting. All approval writes still fail closed in the poller.
-            session = {}
+        # Do not fall back to an old bootstrap cookie after a temporary database
+        # outage. main() serves health while retrying this encrypted session read.
+        session = directory.call("session")
         if session.get("revision") == self.session_revision and session.get("cookies"):
             os.environ["BAND_COOKIE_JSON"] = json.dumps(session["cookies"])
         super().__init__(config, root)
@@ -180,7 +193,8 @@ class DirectoryMonitor(base.BandJoinMonitor):
     def api(self, connection, operation, args):
         script = API_SCRIPT.replace("__OPERATION__", json.dumps(operation)).replace("__ARGS__", json.dumps(args))
         result = base.runtime_value(connection.call("Runtime.evaluate", {
-            "expression": script, "returnByValue": True, "awaitPromise": True}, timeout=15))
+            "expression": script, "returnByValue": True, "awaitPromise": True},
+            timeout=45 if operation == "rosterDetails" else 15))
         if not isinstance(result, dict) or not result.get("ok"):
             reason = result.get("reason", "band_request_failed") if isinstance(result, dict) else "band_request_failed"
             print("BAND API unavailable:", operation, reason, flush=True)
@@ -261,7 +275,10 @@ class DirectoryMonitor(base.BandJoinMonitor):
         if self._session_snapshot_path.is_file():
             snapshot = json.loads(self._session_snapshot_path.read_text(encoding="utf8"))
             cookies = snapshot.get("cookies", []) if isinstance(snapshot, dict) else snapshot
-            self.directory.call("session", {"cookies": cookies, "revision": self.session_revision})
+            digest = hashlib.sha256(json.dumps(cookies, sort_keys=True).encode()).hexdigest()
+            if digest != self.synced_session_digest:
+                self.directory.call("session", {"cookies": cookies, "revision": self.session_revision})
+                self.synced_session_digest = digest
         self.next_session = now + 30
 
     def roster_step(self, connection):
@@ -271,6 +288,8 @@ class DirectoryMonitor(base.BandJoinMonitor):
             return
         if not self.roster_loaded:
             page = self.api(connection, "rosterList", [])
+            if page.get("pending"):
+                return
             rows = page.get("members")
             expected = int(page.get("expectedCount") or 0)
             if not isinstance(rows, list) or not expected or len(rows) < expected:
@@ -301,16 +320,36 @@ class DirectoryMonitor(base.BandJoinMonitor):
             rows = data.get("profile_updated_members")
             if not isinstance(rows, list):
                 raise RuntimeError("updated_members_schema_changed")
-            self.updated_members = rows[:200]
+            recent = self.api(connection, "getMembersOfBand", [BAND_NO, "recently_joined"])
+            if not isinstance(recent.get("members"), list):
+                raise RuntimeError("updated_members_schema_changed")
+            if not self.recent_join_cursor:
+                self.recent_join_cursor = float((self.progress or {}).get("updatedAt", 0)) / 1000 - 600
+            for row in recent["members"]:
+                joined = float(row.get("created_at") or 0)
+                joined = joined / 1000 if joined > 100000000000 else joined
+                if joined >= self.recent_join_cursor:
+                    rows.append(row)
+            pending = {}
+            for row in rows:
+                identity = str(row.get("member_key") or row.get("user_no") or "")
+                fingerprint = hashlib.sha256(json.dumps(row, sort_keys=True).encode()).hexdigest()
+                if identity and self.update_fingerprints.get(identity) != fingerprint:
+                    pending[identity] = {"row": row, "fingerprint": fingerprint, "identity": identity}
+            self.updated_members = list(pending.values())
+            # Keep an overlap window for members approved by another co-leader.
+            self.recent_join_cursor = time.time() - 600
             self.next_updates = now + 600
         if not self.updated_members:
             return
-        item = self.updated_members[0]
-        if not item.get("member_key") and item.get("user_no"):
-            item = {**item, **self.api(connection, "memberByUserNo", [item["user_no"]])}
-        if item.get("member_key"):
-            self.directory.call("members", {"members": [member_record(item, existing=True)]})
-        self.updated_members.pop(0)
+        batch = self.updated_members[:10]
+        details = self.api(connection, "rosterDetails", [[entry["row"] for entry in batch]]).get("members")
+        if not isinstance(details, list) or len(details) != len(batch):
+            raise RuntimeError("updated_members_schema_changed")
+        self.directory.call("members", {"members": [member_record(row, existing=True) for row in details]})
+        for entry in batch:
+            self.update_fingerprints[entry["identity"]] = entry["fingerprint"]
+        del self.updated_members[:len(batch)]
 
     def heartbeat(self):
         state = self.runtime_state
@@ -377,11 +416,13 @@ def build_config():
 
 def main():
     directory = DirectoryClient()
-    monitor = DirectoryMonitor(build_config(), directory)
+    monitor = None
+    shutdown = threading.Event()
 
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self):
-            body = json.dumps({"ok": True, "service": "creo-band-directory", "state": monitor.runtime_state}).encode()
+            body = json.dumps({"ok": True, "service": "creo-band-directory",
+                               "state": monitor.runtime_state if monitor else "starting"}).encode()
             self.send_response(200 if self.path in {"/", "/healthz"} else 404)
             self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(body)))
@@ -393,18 +434,33 @@ def main():
 
     server = ThreadingHTTPServer(("0.0.0.0", int(os.environ.get("PORT", "10000"))), Handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
+    def stop(*_args):
+        shutdown.set()
+        if monitor:
+            monitor.stop_event.set()
+
     for signum in (signal.SIGTERM, signal.SIGINT):
-        signal.signal(signum, lambda *_args: monitor.stop_event.set())
-    monitor.start()
+        signal.signal(signum, stop)
     try:
-        while not monitor.stop_event.wait(10):
+        while not shutdown.is_set():
+            if monitor is None:
+                try:
+                    monitor = DirectoryMonitor(build_config(), directory)
+                except Exception as exc:
+                    print("Directory startup waiting:", type(exc).__name__, flush=True)
+                    shutdown.wait(10)
+                    continue
+                monitor.start()
+            if shutdown.wait(10):
+                break
             monitor.write_runtime_status()
             try:
                 monitor.heartbeat()
             except Exception:
                 pass
     finally:
-        monitor.stop()
+        if monitor:
+            monitor.stop()
         server.shutdown()
 
 
