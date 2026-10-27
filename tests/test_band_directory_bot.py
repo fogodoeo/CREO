@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import Mock
 from band_directory_bot import DirectoryMonitor, member_record, eligible, phone_from_text
 
 
@@ -31,6 +32,63 @@ def worker(directory):
 
 
 class DirectoryBotTests(unittest.TestCase):
+    def test_application_detail_is_saved_before_approval(self):
+        directory = FakeDirectory()
+        monitor = worker(directory)
+        monitor.api = Mock(side_effect=[
+            {"items": [{"member_key": "padded+member/key==", "applicant_name": "업체", "created_at": 100}], "paging": {}},
+            {"application": {"cellphone_verified": True, "cellphone": "01012345678"}},
+            {},
+        ])
+        monitor.poll(None)
+        self.assertEqual(directory.events[0][1]["members"][0]["sources"]["verified"]["text"], "01012345678")
+        self.assertEqual([c.args[1] for c in monitor.api.call_args_list],
+                         ["getApplicationOfBand", "getApplicationDetailInfo", "acceptApplication"])
+        self.assertEqual(monitor.approved_count, 1)
+
+    def test_incomplete_application_detail_never_approves(self):
+        directory = FakeDirectory()
+        monitor = worker(directory)
+        monitor.api = Mock(side_effect=[{"items": [{"member_key": "key", "name": "01012345678"}]}, {}])
+        with self.assertRaisesRegex(RuntimeError, "application_detail_schema_changed"):
+            monitor.poll(None)
+        self.assertEqual(directory.events, [])
+
+    def test_roster_batch_checkpoint_advances_only_after_saved_records(self):
+        directory = FakeDirectory()
+        monitor = worker(directory)
+        rows = [{"member_key": "member_key_%02d" % i, "name": "회원"} for i in range(12)]
+        monitor.progress, monitor.roster_rows, monitor.roster_index = {"offset": 50}, rows, 0
+        monitor.api = lambda _connection, _operation, args: {"members": args[0]}
+        directory.fail = "members"
+        with self.assertRaises(OSError):
+            monitor.roster_step(None)
+        self.assertEqual(monitor.progress["offset"], 50)
+        self.assertEqual(monitor.roster_index, 0)
+        directory.fail = "progress"
+        with self.assertRaises(OSError):
+            monitor.roster_step(None)
+        self.assertEqual(monitor.progress["offset"], 50)
+        self.assertEqual(monitor.roster_index, 0)
+        directory.fail = None
+        monitor.roster_step(None)
+        self.assertEqual(monitor.progress["offset"], 60)
+        monitor.roster_step(None)
+        self.assertEqual(monitor.progress["offset"], 62)
+        self.assertEqual(directory.events[-1], ("progress", {"offset": 62, "complete": False}))
+
+    def test_empty_roster_page_completes_but_short_detail_batch_cannot_skip(self):
+        directory = FakeDirectory()
+        monitor = worker(directory)
+        monitor.progress, monitor.roster_rows, monitor.roster_index = {"offset": 1157}, [], 0
+        monitor.api = Mock(return_value={"members": []})
+        monitor.roster_step(None)
+        self.assertTrue(monitor.progress["complete"])
+        monitor.progress, monitor.roster_rows = {"offset": 0}, [{"user_no": 123}]
+        with self.assertRaisesRegex(RuntimeError, "roster_schema_changed"):
+            monitor.roster_step(None)
+        self.assertEqual(monitor.progress["offset"], 0)
+
     def test_answer_only_business_is_eligible_without_profile_format(self):
         item = {"member_key": "key", "name": "사업체", "join_answer": "연락처 010-1234-5678"}
         self.assertTrue(eligible(member_record(item)))

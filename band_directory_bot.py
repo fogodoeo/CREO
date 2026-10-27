@@ -100,6 +100,28 @@ API_SCRIPT = r"""
       data = await owner.getLoginV1Client().sendAndThenProcess({
         url:'https://api.band.us/v2.3.0/get_member', data:{band_no:'104432443',user_no:args[0]}
       });
+    } else if(operation === 'rosterDetails') {
+      const rows = args[0].slice(0,10), members = new Array(rows.length);
+      let next = 0;
+      const read = async () => {
+        while(next < rows.length) {
+          const index = next++, row = {...rows[index]};
+          if(!row.member_key) {
+            if(!row.user_no) throw new Error('member_identity_missing');
+            Object.assign(row, await find('getLoginV1Client').getLoginV1Client().sendAndThenProcess({
+              url:'https://api.band.us/v2.3.0/get_member', data:{band_no:'104432443',user_no:row.user_no}
+            }));
+          }
+          if(!row.member_key) throw new Error('member_key_missing');
+          try {
+            const info = await find('getJoinInfo').getJoinInfo('104432443', row.member_key);
+            if(info?.data?.application?.join_answer) row.join_answer = info.data.application.join_answer;
+          } catch(_) {} // Historical answers may be unavailable; preserve any saved evidence.
+          members[index] = row;
+        }
+      };
+      await Promise.all(Array.from({length:Math.min(3,rows.length)},read));
+      data = {members};
     } else data = await find(operation)[operation](...args);
     return {ok:true, data};
   } catch(error) { return {ok:false, reason:error?.message === 'api_unavailable' ? 'api_unavailable' : 'band_request_failed'}; }
@@ -112,7 +134,7 @@ class DirectoryMonitor(base.BandJoinMonitor):
         self.directory = directory
         self.next_poll = 0.0
         self.last_heartbeat = 0.0
-        self.last_refresh = 0.0
+        self.last_refresh = time.monotonic()
         self.next_roster = 0.0
         self.next_session = 0.0
         self.next_updates = 0.0
@@ -198,6 +220,12 @@ class DirectoryMonitor(base.BandJoinMonitor):
                 raise RuntimeError("application_schema_changed")
             count += len(items)
             for item in items:
+                # The list omits the disclosed full phone; fetch the same detail
+                # that the administrator sees before saving/deciding approval.
+                detail = self.api(connection, "getApplicationDetailInfo", [BAND_NO, item["member_key"]])
+                if not isinstance(detail.get("application"), dict):
+                    raise RuntimeError("application_detail_schema_changed")
+                item = {**item, **detail["application"]}
                 self.process_application(item, lambda key: self.api(connection, "acceptApplication", [BAND_NO, key]))
             paging = result.get("paging", {}).get("next_params")
             if not paging:
@@ -222,28 +250,17 @@ class DirectoryMonitor(base.BandJoinMonitor):
                 self.progress["complete"] = True
                 return
             self.roster_rows, self.roster_index = rows, 0
-        item = self.roster_rows[self.roster_index]
-        if not item.get("member_key"):
-            user_no = item.get("user_no")
-            if not user_no:
-                raise RuntimeError("member_identity_missing")
-            detail = self.api(connection, "memberByUserNo", [user_no])
-            item = {**item, **detail}
-        if not item.get("member_key"):
-            raise RuntimeError("member_key_missing")
-        # Existing join answers remain available for some members. Masked phone
-        # fields are deliberately ignored; they cannot reconstruct a full number.
-        try:
-            info = self.api(connection, "getJoinInfo", [BAND_NO, item["member_key"]])
-        except RuntimeError:
-            info = {}  # Some historical join records are not disclosed by BAND.
-        application = (info.get("data") or {}).get("application")
-        if isinstance(application, dict) and application.get("join_answer"):
-            item["join_answer"] = application["join_answer"]
-        self.directory.call("members", {"members": [member_record(item, existing=True)]})
-        self.roster_index += 1
-        self.progress["offset"] = int(self.progress.get("offset", 0)) + 1
-        self.directory.call("progress", {"offset": self.progress["offset"], "complete": False})
+        batch = self.roster_rows[self.roster_index:self.roster_index + 10]
+        details = self.api(connection, "rosterDetails", [batch]).get("members")
+        if not isinstance(details, list) or len(details) != len(batch) or any(not row.get("member_key") for row in details):
+            raise RuntimeError("roster_schema_changed")
+        self.directory.call("members", {"members": [member_record(row, existing=True) for row in details]})
+        offset = int(self.progress.get("offset", 0)) + len(batch)
+        # Advance only after durable records AND the checkpoint are stored.
+        # A failed checkpoint repeats safe upserts after a restart.
+        self.directory.call("progress", {"offset": offset, "complete": False})
+        self.roster_index += len(batch)
+        self.progress["offset"] = offset
 
     def update_step(self, connection, now):
         if now >= self.next_updates and not self.updated_members:
@@ -298,7 +315,7 @@ class DirectoryMonitor(base.BandJoinMonitor):
             self.next_poll = now + 30
             self.logger.warning("Directory worker waiting: %s", type(exc).__name__)
             safe_reasons = {"client_not_ready", "wrong_page", "api_unavailable", "band_request_failed",
-                            "application_schema_changed", "roster_schema_changed", "member_identity_missing",
+                            "application_schema_changed", "application_detail_schema_changed", "roster_schema_changed", "member_identity_missing",
                             "member_key_missing", "updated_members_schema_changed"}
             print("Directory worker waiting:", str(exc) if str(exc) in safe_reasons else type(exc).__name__, flush=True)
             try:
