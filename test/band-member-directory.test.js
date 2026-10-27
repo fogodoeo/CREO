@@ -106,6 +106,9 @@ test('auction member resolver uses directory answer phone without name matching 
     d.upsert(member({ answer: { text: '01012345678' } }));
     const service = createBandMembership({ env: { BAND_MEMBER_SESSION_SECRET: TOKEN }, directory: d });
     assert.equal((await service.resolveMemberIdentity({ bandMemberKey: KEY, requireMemberKey: true })).phone, '01012345678');
+    assert.equal(await service.resolveMemberSubject({ bandMemberKey: KEY }),
+        (await service.resolveMemberIdentity({ bandMemberKey: KEY })).subject);
+    assert.equal(await service.resolveMemberSubject({ bandMemberKey: KEY, bandNo: 'other-band' }), '');
     assert.equal(await service.resolveMemberIdentity({ displayName: '업체 이름', requireMemberKey: true }), null);
 });
 

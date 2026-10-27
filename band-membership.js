@@ -423,9 +423,11 @@ function createBandMembership(options = {}) {
     }
 
     async function resolveMemberSubject(input = {}) {
-        if (!config.configured) return '';
         const phone = normalizePhone(input.phone);
-        if (phone) return publicSubject(phone, config.sessionSecret);
+        if (phone && config.configured) return publicSubject(phone, config.sessionSecret);
+        const directoryIdentity = options.directory?.resolve(input);
+        if (directoryIdentity && config.sessionSecret.length >= 32) return publicSubject(directoryIdentity.phone, config.sessionSecret);
+        if (!config.configured) return '';
         for (const displayName of profileNameCandidates(input.displayName)) {
             const byDisplayName = await lookupMemberSubject(config.displayNameColumn, displayName);
             if (byDisplayName) return byDisplayName;
