@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 from band_directory_bot import DirectoryMonitor, member_record, eligible, phone_from_text
 
 
@@ -34,6 +34,19 @@ def worker(directory):
 
 
 class DirectoryBotTests(unittest.TestCase):
+    def test_roster_failure_does_not_delay_successful_application_polling(self):
+        monitor = worker(FakeDirectory())
+        monitor.next_poll = monitor.next_roster = monitor.last_heartbeat = 0
+        monitor.poll, monitor.heartbeat = Mock(), Mock()
+        monitor.runtime_state = "running"
+        monitor.roster_step = Mock(side_effect=RuntimeError("roster_schema_changed"))
+        with patch("band_directory_bot.time.monotonic", return_value=100):
+            monitor._periodic_dom_tasks(None)
+        self.assertEqual(monitor.next_poll, 103)
+        self.assertEqual(monitor.next_roster, 130)
+        self.assertEqual(monitor.runtime_state, "running")
+        monitor.heartbeat.assert_called_once()
+
     def test_unexpected_browser_dialog_is_dismissed_without_confirming(self):
         connection = Mock()
         worker(FakeDirectory())._handle_event(connection, {"method": "Page.javascriptDialogOpening", "params": {"type": "confirm"}})

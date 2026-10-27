@@ -122,7 +122,7 @@ API_SCRIPT = r"""
         const job = window.__creoRosterJob = {startedAt:Date.now(),count:0,expectedCount:0,views:[]};
         // Do not block application polling while collecting capped list views.
         void (async()=>{
-          const members = new Map();
+          const members = new Map(), roles = new Set();
           for(const order of [null,'recently_joined','last_word','oldest_visited']) {
             const view = {order,count:0,missingIdentity:0}; job.views.push(view);
             try {
@@ -132,6 +132,7 @@ API_SCRIPT = r"""
               view.count = page.members.length;
               view.fields = Object.keys(page.members[0] || {});
               for(const member of page.members) {
+                if(/^[A-Za-z0-9_]{1,32}$/.test(String(member.role))) roles.add(String(member.role));
                 const identity = member.user_no || member.member_key;
                 if(!identity) { view.missingIdentity++; continue; }
                 members.set(String(identity),member.user_no ? {user_no:member.user_no}
@@ -145,7 +146,26 @@ API_SCRIPT = r"""
             job.count = members.size;
             if(job.expectedCount && members.size >= job.expectedCount) break;
           }
+          // The administrator's role picker uses this same comma-separated
+          // role filter. Reuse roles actually present in this band's response.
+          if(members.size < job.expectedCount && roles.size) {
+            const view = {order:'roles',count:0,missingIdentity:0}; job.views.push(view);
+            try {
+              const page = await find('getMembersByRole').getMembersByRole('104432443',[...roles].join(','));
+              const rows = Array.isArray(page) ? page : page.members;
+              if(!Array.isArray(rows)) throw new Error('roster_schema_changed');
+              view.count = rows.length; view.fields = Object.keys(rows[0] || {});
+              for(const member of rows) {
+                const identity = member.user_no || member.member_key;
+                if(!identity) { view.missingIdentity++; continue; }
+                members.set(String(identity),member.user_no ? {user_no:member.user_no}
+                  : {member_key:member.member_key});
+              }
+              job.count = members.size;
+            } catch(error) { view.failed = true; }
+          }
           job.members = [...members.values()].sort((a,b)=>String(a.user_no||a.member_key).localeCompare(String(b.user_no||b.member_key)));
+          job.failed = !job.expectedCount || members.size < job.expectedCount;
           job.ready = true;
         })().catch(()=>{job.failed=true});
       }
@@ -415,9 +435,16 @@ class DirectoryMonitor(base.BandJoinMonitor):
             self.poll(connection)
             if now >= self.next_roster:
                 self.next_roster = now + 3
-                self.roster_step(connection)
-                if (self.progress or {}).get("complete"):
-                    self.update_step(connection, now)
+                try:
+                    self.roster_step(connection)
+                    if (self.progress or {}).get("complete"):
+                        self.update_step(connection, now)
+                except (RuntimeError, OSError) as exc:
+                    if isinstance(exc, (TimeoutError, ConnectionError)):
+                        raise
+                    # Initial import failures must not delay valid applications.
+                    self.next_roster = now + 30
+                    print("Member sync retry:", type(exc).__name__, flush=True)
             if now - self.last_heartbeat >= 20:
                 self.heartbeat()
                 self.last_heartbeat = now

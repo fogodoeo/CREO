@@ -61,3 +61,18 @@ test('BAND roster retains readable members when a sort is unavailable or a row h
     assert.equal(result.data.views[1].code, '403');
     assert.doesNotMatch(JSON.stringify(result), /private error/);
 });
+
+test('BAND roster can complete a capped view using only roles observed in the same band', async () => {
+    const fixture = context({
+        getMembersOfBand: async () => ({ member_count: 2, members: [{ user_no: 1, role: 'member' }] }),
+        getMembersByRole: async (band, roles) => {
+            assert.equal(band, '104432443'); assert.equal(roles, 'member');
+            return [{ user_no: 1 }, { user_no: 2 }];
+        }
+    });
+    await run(fixture.scope, 'rosterList');
+    while (!fixture.window.__creoRosterJob.ready) await new Promise(resolve => setImmediate(resolve));
+    const result = await run(fixture.scope, 'rosterList');
+    assert.equal(result.data.members.length, 2);
+    assert.equal(fixture.window.__creoRosterJob.failed, false);
+});
