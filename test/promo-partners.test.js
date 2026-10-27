@@ -1,6 +1,6 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict');
-const {createPromoPartners,makeCatalog,publicCatalog,selection,safeLogoURL,curatedId}=require('../promo-partners');
+const {createPromoPartners,makeCatalog,publicCatalog,selection,safeLogoURL,logoBytes,curatedId}=require('../promo-partners');
 const curated=require('../tools/promo-partners.json');
 test('catalog uses live active membership and regions; expands approved split brands without contact data',()=>{
  const doze=curated[0],split=curated.find(v=>v.name==='도레미');
@@ -8,6 +8,43 @@ test('catalog uses live active membership and regions; expands approved split br
  const c=makeCatalog(vendors),p=publicCatalog(c);assert.equal(p.items[0].name,'도즈게코');assert.equal(p.count,7);assert.equal(p.vendorCount,6);assert.deepEqual(p.items.filter(v=>v.region===4).map(v=>v.name),['도레미','셀렙']);assert.equal(p.regions[1].count,1);assert.doesNotMatch(JSON.stringify(p),/secret|private|logoUrl|fingerprint/);
  assert.notEqual(c.version,makeCatalog([...vendors,{id:'extra',name:'신규'}]).version);assert.notEqual(c.version,makeCatalog(vendors.slice(1)).version);
  assert.notEqual(c.version,makeCatalog(vendors.map(v=>({...v,broadcastRegion:'경기'}))).version);
+});
+test('separate Celeb registration replaces the legacy split and preserves each registered region and logo',()=>{
+ const doremi=curated.find(v=>v.name==='도레미'),celeb=curated.find(v=>v.name==='셀렙');
+ const proxy='/api/media/public/broadcast-assets/vendor-logos/'+doremi.url.split('/').pop();
+ const ownLogo='/api/broadcast-assets/vendor-logos/nv-celeb-current.webp';
+ const vendors=[{id:curatedId(doremi),name:'도레미',broadcastRegion:'부산·울산·경남',logoUrl:proxy},{id:celeb.vendorId,name:'셀렙',broadcastRegion:'경기',logoUrl:ownLogo}];
+ const c=makeCatalog(vendors),one=c.items.filter(v=>v.name==='셀렙');
+ assert.equal(one.length,1);assert.equal(one[0].vendorId,celeb.vendorId);assert.equal(one[0].region,1);assert.deepEqual(one[0].logo,{url:ownLogo});
+ const first=c.items.find(v=>v.name==='도레미');assert.equal(first.logo.file,doremi.file);assert.deepEqual(first.logo.crop,doremi.crop);
+ for(const state of [{active:false},{deletedAt:'now'}])assert.equal(makeCatalog([vendors[0],{...vendors[1],...state}]).items.some(v=>v.name==='셀렙'),false);
+ assert.equal(makeCatalog([vendors[0]]).items.filter(v=>v.name==='셀렙').length,1);
+ assert.equal(makeCatalog([...vendors].reverse()).version,c.version);
+});
+test('Forest Lizard uses its confirmed Busan promotion fallback and preserved original logo without overwriting a registered region',()=>{
+ const approved=curated.find(v=>v.name==='숲속도마뱀 더숲부산');
+ const vendor={id:approved.vendorId,name:approved.name,logoUrl:'https://cdninstagram.com/expiring-logo.jpg'};
+ const entry=makeCatalog([vendor]).items.find(v=>v.vendorId===vendor.id);
+ assert.equal(entry.region,4);assert.equal(entry.logo.file,approved.file);assert.equal(vendor.broadcastRegion,undefined);
+ assert.equal(makeCatalog([{...vendor,broadcastRegion:'경기'}]).items.find(v=>v.vendorId===vendor.id).region,1);
+ assert.equal(makeCatalog([{...vendor,active:false}]).items.some(v=>v.vendorId===vendor.id),false);
+});
+test('owned logo paths resolve through asset storage and reject unrelated paths or arbitrary hosts',async()=>{
+ const name='nv-celeb-current.webp',relative='/api/broadcast-assets/vendor-logos/'+name,proxy='/api/media/public/broadcast-assets/vendor-logos/'+name;
+ const bytes=Buffer.from('logo bytes'),calls=[];
+ const storage={view:async(channel,file)=>{calls.push([channel,file]);return 'https://signed-storage.example/'+file;}};
+ const fetcher=async(url,options)=>{assert.equal(url,'https://signed-storage.example/'+name);assert.equal(options.redirect,'error');return new Response(bytes);};
+ for(const url of [relative,proxy]){assert.equal(safeLogoURL(url),url);assert.deepEqual(await logoBytes({url},fetcher,storage),bytes);}
+ assert.deepEqual(calls,[['vendor-logos',name],['vendor-logos',name]]);
+ const local=require('node:path').join(__dirname,'../public/promo-assets/partner-logos/18.png'),fs=require('node:fs');
+ assert.deepEqual(await logoBytes({url:relative},()=>{throw Error('must not fetch local logo')},{localFile:async()=>({target:local,stat:fs.statSync(local)})}),fs.readFileSync(local));
+ await assert.rejects(logoBytes({url:relative},fetcher,{localFile:async()=>({target:local,stat:{size:4*1024*1024}})}),/logo size/);
+ await assert.rejects(logoBytes({url:relative},fetcher,{}),/storage unavailable/);
+ const remote={remote:true,supabaseUrl:'https://configured-store.example',bucket:'broadcast-assets'};
+ await logoBytes({url:proxy},async url=>{assert.equal(url,'https://configured-store.example/storage/v1/object/public/broadcast-assets/vendor-logos/'+name);return new Response(bytes);},remote);
+ for(const url of ['/api/broadcast-assets/private/secret.webp','/api/broadcast-assets/vendor-logos/../secret.webp','//evil.invalid/a.webp',relative+'?redirect=https://evil.invalid','https://evil.invalid'+relative]){
+  assert.equal(safeLogoURL(url),'');assert.equal(await logoBytes({url},()=>{throw Error('must not fetch rejected logo')},storage),null);
+ }
 });
 test('promotion-only Instagram logos appear in Gyeongbuk without creating or duplicating registrations',()=>{
  const vendors=[],c=makeCatalog(vendors);assert.equal(vendors.length,0);

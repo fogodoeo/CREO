@@ -2,14 +2,16 @@
 const crypto=require('node:crypto'),fs=require('node:fs'),path=require('node:path');
 const National=require('./national-broadcast'),curated=require('./tools/promo-partners.json');
 const ASSETS=path.join(__dirname,'public/promo-assets/partner-logos');
-const VERSION='partners-layout-4-full-creyon-name';
+const VERSION='partners-layout-5-current-brand-membership';
 const fail=(message,status=422)=>Object.assign(Error(message),{status});
 const hash=value=>crypto.createHash('sha256').update(value).digest('hex');
 const curatedId=v=>v.vendorId||v.url?.match(/vendor-logos\/((?:va|nv)-[a-f0-9]+)/)?.[1];
 const approved=curated.map(v=>({...v,vendorId:curatedId(v),fingerprint:hash(fs.readFileSync(path.join(ASSETS,v.file)))}));
 const origins=new Set(approved.filter(v=>v.url).map(v=>new URL(v.url).origin));
 if(process.env.SUPABASE_URL)origins.add(new URL(process.env.SUPABASE_URL).origin);
-function safeLogoURL(value){try{const u=new URL(value);return u.protocol==='https:'&&!u.username&&!u.password&&!u.port&&origins.has(u.origin)&&/^\/storage\/v1\/object\/public\/broadcast-assets\/vendor-logos\/[\w.-]+$/.test(u.pathname)?u.href:'';}catch{return '';}}
+function storedLogoName(value){return String(value||'').match(/^\/api\/(?:broadcast-assets|media\/public\/broadcast-assets)\/vendor-logos\/([\w-][\w.-]*\.(?:webp|png|jpe?g|gif))$/i)?.[1]||'';}
+function safeLogoURL(value){if(storedLogoName(value))return value;try{const u=new URL(value);return u.protocol==='https:'&&!u.username&&!u.password&&!u.port&&origins.has(u.origin)&&/^\/storage\/v1\/object\/public\/broadcast-assets\/vendor-logos\/[\w.-]+$/.test(u.pathname)?u.href:'';}catch{return '';}}
+function sameLogo(a,b){const key=value=>{const safe=safeLogoURL(value);return safe?(storedLogoName(safe)||new URL(safe).pathname.split('/').pop()):'';};return !!key(a)&&key(a)===key(b);}
 function makeCatalog(vendors){
  const items=[],seen=new Set();
  // Approved promotion-only brands do not create login, booking or settlement records.
@@ -20,9 +22,12 @@ function makeCatalog(vendors){
  for(const v of [...vendors,...supplements]){
   if(!v.id||seen.has(v.id)||v.active===false||v.deletedAt)continue;
   seen.add(v.id);
-  const region=National.regionForVendor(v),overrides=approved.filter(x=>x.vendorId===v.id||(x.displayOnly&&sameName(v.name,x.name)));
+  // Once a split brand has its own record, even an inactive one, the old
+  // combined registration must no longer create an extra copy of that brand.
+  const overrides=approved.filter(x=>x.vendorId===v.id||(x.legacyVendorId===v.id&&!vendors.some(v=>v.id===x.vendorId))||(x.displayOnly&&sameName(v.name,x.name)));
   for(const x of overrides.length?overrides:[null]){
-   const useLocal=x&&(!v.logoUrl||!x.url||v.logoUrl===x.url||overrides.length>1);
+   const region=National.regionForVendor(v)??National.regionForVendor({broadcastRegion:x?.region});
+   const useLocal=x&&(!v.logoUrl||!x.url||sameLogo(v.logoUrl,x.url)||overrides.length>1);
    const logo=useLocal?{file:x.file,crop:x.crop,circle:x.circle,squareBackground:x.squareBackground,fingerprint:x.fingerprint}:safeLogoURL(v.logoUrl)?{url:safeLogoURL(v.logoUrl)}:null;
    items.push({key:v.id+(overrides.length>1?':'+x.name:''),vendorId:v.id,name:x?.name||String(v.name||'').slice(0,80),region:Number.isInteger(region)?region:null,logo});
   }
@@ -42,10 +47,22 @@ function selection(body){
  if(!Array.isArray(body.regions)||!body.regions.length||body.regions.length>5||body.regions.some(r=>!Number.isInteger(r)||r<0||r>4))throw fail('소개할 지역을 한 곳 이상 선택해 주세요.');
  return {mode:'regions',regions:[...new Set(body.regions)].sort((a,b)=>a-b)};
 }
-async function logoBytes(logo,fetcher=fetch){
+async function logoBytes(logo,fetcher=fetch,storage){
  if(!logo)return null;
  if(logo.file)return fs.readFileSync(path.join(ASSETS,logo.file));
- const url=safeLogoURL(logo.url);if(!url)return null;
+ let url=safeLogoURL(logo.url);if(!url)return null;
+ const storedName=storedLogoName(url);
+ if(storedName){
+  // Resolve through the configured asset store, never fetch an arbitrary host
+  // or loop back through the application's own HTTP server.
+  url=await storage?.view?.('vendor-logos',storedName);
+  if(!url){
+   const local=await storage?.localFile?.('vendor-logos',storedName);
+   if(local){if(local.stat.size>3*1024*1024)throw Error('logo size');return fs.readFileSync(local.target);}
+   if(storage?.remote)url=`${storage.supabaseUrl}/storage/v1/object/public/${encodeURIComponent(storage.bucket)}/vendor-logos/${encodeURIComponent(storedName)}`;
+   else throw Error('logo storage unavailable');
+  }
+ }
  const response=await fetcher(url,{redirect:'error',signal:AbortSignal.timeout(7000)});
  if(!response.ok)throw Error('logo fetch');
  if(Number(response.headers.get('content-length')||0)>3*1024*1024)throw Error('logo size');
@@ -71,7 +88,7 @@ function createPromoPartners({repository,vendorsFor,storage,render=require('./pr
    if(!stored){
     if(!pending.has(id)){
      const task=(async()=>{
-      const png=await render(group,{logoBytes});
+      const png=await render(group,{logoBytes:logo=>logoBytes(logo,fetch,storage)});
       const saved=await storage.put('national-cre',id+'-'+crypto.randomUUID()+'.png',png,'image/png');
       const value={id,url:saved.url,title:group.title,names:group.items.map(v=>v.name),count:group.items.length,columns:group.columns,createdAt:now()};
       await repository.upsertRecord('national-cre','setting',value);

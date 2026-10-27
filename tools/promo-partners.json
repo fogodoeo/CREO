@@ -120,6 +120,8 @@
   },
   {
     "name": "셀렙",
+    "vendorId": "nv-celeb-20261028",
+    "legacyVendorId": "va-a63bc21e207a455488f4bc87b0254a54",
     "url": "https://iuwqjeecwepqyqqlzprf.supabase.co/storage/v1/object/public/broadcast-assets/vendor-logos/va-a63bc21e207a455488f4bc87b0254a54-866df161-b274-48b6-9ed5-2669059adf98.webp",
     "file": "18.png",
     "squareBackground": "#000000",
@@ -129,6 +131,14 @@
       320,
       145
     ]
+  },
+  {
+    "name": "숲속도마뱀 더숲부산",
+    "vendorId": "va-2d861f20fa82456e8c4b9160640111fd",
+    "region": "부산·울산·경남",
+    "url": "",
+    "file": "forest-lizard-busan-20261028.jpg",
+    "source": "registered-vendor-logo-20261028"
   },
   {
     "name": "베누스게코",
