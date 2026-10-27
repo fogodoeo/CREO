@@ -85,6 +85,7 @@ API_SCRIPT = r"""
     const cache = window.__creoDirectoryApis || (window.__creoDirectoryApis = {});
     if(cache[name]) return cache[name];
     for(const id of Object.keys(require.m || {})) {
+      if(!String(require.m[id]).includes(name)) continue;
       try { const mod = require(id); for(const owner of [mod, mod && mod.default]) {
         if(owner && typeof owner[name] === 'function') return cache[name] = owner;
       }} catch(_) {}
@@ -101,7 +102,7 @@ API_SCRIPT = r"""
       });
     } else data = await find(operation)[operation](...args);
     return {ok:true, data};
-  } catch(_) { return {ok:false, reason:'band_request_failed'}; }
+  } catch(error) { return {ok:false, reason:error?.message === 'api_unavailable' ? 'api_unavailable' : 'band_request_failed'}; }
 })()
 """
 
@@ -124,6 +125,7 @@ class DirectoryMonitor(base.BandJoinMonitor):
         self.approved_count = 0
         self.runtime_state = "starting"
         self.poll_success_at = 0.0
+        self.api_shapes = set()
         self.auto_enabled = os.environ.get("BAND_DIRECTORY_AUTO_APPROVE") == "true"
         self.session_revision = os.environ.get("BAND_SESSION_REVISION", "initial")
         try:
@@ -141,7 +143,18 @@ class DirectoryMonitor(base.BandJoinMonitor):
         result = base.runtime_value(connection.call("Runtime.evaluate", {
             "expression": script, "returnByValue": True, "awaitPromise": True}, timeout=15))
         if not isinstance(result, dict) or not result.get("ok"):
-            raise RuntimeError((result or {}).get("reason", "band_request_failed"))
+            reason = result.get("reason", "band_request_failed") if isinstance(result, dict) else "band_request_failed"
+            print("BAND API unavailable:", operation, reason, flush=True)
+            raise RuntimeError(reason)
+        if operation not in self.api_shapes:
+            self.api_shapes.add(operation)
+            data = result.get("data")
+            shape = {"operation": operation, "type": type(data).__name__}
+            if isinstance(data, dict):
+                shape["fields"] = list(data)
+                shape["lists"] = {k: {"count": len(v), "fields": list(v[0]) if v and isinstance(v[0], dict) else []}
+                                  for k, v in data.items() if isinstance(v, list)}
+            print("BAND response schema:", json.dumps(shape), flush=True)
         return result.get("data") or {}
 
     def _handle_event(self, connection, event):
@@ -284,6 +297,10 @@ class DirectoryMonitor(base.BandJoinMonitor):
             self.runtime_state = "error"
             self.next_poll = now + 30
             self.logger.warning("Directory worker waiting: %s", type(exc).__name__)
+            safe_reasons = {"client_not_ready", "wrong_page", "api_unavailable", "band_request_failed",
+                            "application_schema_changed", "roster_schema_changed", "member_identity_missing",
+                            "member_key_missing", "updated_members_schema_changed"}
+            print("Directory worker waiting:", str(exc) if str(exc) in safe_reasons else type(exc).__name__, flush=True)
             try:
                 location = base.runtime_value(connection.call("Runtime.evaluate", {"expression": "location.href", "returnByValue": True}, timeout=3))
                 if "/band/104432443/" not in str(location):
