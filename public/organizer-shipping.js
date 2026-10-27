@@ -5,6 +5,8 @@ const reportRef=organizerCode?String(location.hash||'').slice(1):'';
 let receiptArchive=new URLSearchParams(location.search).get('archive')||'',reportTarget=null,reportFocusDone=false;
 let channelId=organizerCode?'':new URLSearchParams(location.search).get('channel')||'';
 let route='channels/'+encodeURIComponent(channelId)+'/organizer-shipping';
+window.getOrganizerClosingContext=()=>({channelId,archiveId:receiptArchive,refresh:()=>load()});
+function closingAccess(allowed){document.body.dataset.closingAdmin=String(allowed&&!organizerCode);window.dispatchEvent(new CustomEvent('organizer-closing-state'));}
 function organizerApi(path,options={}){if(receiptArchive&&path.startsWith('channels/'))path+=(path.includes('?')?'&':'?')+'archive='+encodeURIComponent(receiptArchive);return CreoPlatform.api(path,{cache:'no-store',...options,headers:{...options.headers,...(organizerCode?{'X-Creo-Organizer':organizerCode}:{})}})}
 let state, saving=false, dirty=false, bankRevision='', editingBank=false, receiptVendor=null, receiptAttempt=null, loadRevision=0, fresh=false, accessDenied=false;
 let organizerView='shipping';
@@ -16,6 +18,7 @@ const today=()=>new Date(Date.now()+9*3600000).toISOString().slice(0,10);
 const fields=['bankName','bankAccount','bankHolder','notificationPhone'];
 function showMessage(text,retry=false){$('message').textContent=text;$('retry').hidden=!retry;}
 function clearAccess(){
+ closingAccess(false);
  ++loadRevision;fresh=false;accessDenied=true;state=null;receiptVendor=null;receiptAttempt=null;dirty=false;editingBank=false;bankRevision='';vendorFilter=null;vendorFilterScope='';
  if($('receipt-dialog').open)$('receipt-dialog').close();
  $('content').hidden=true;$('login').hidden=!!organizerCode;
@@ -173,7 +176,7 @@ async function load(){
   const next=await organizerApi(route);if(revision!==loadRevision)return false;
   const archive=receiptArchive;
   if(next.channel?.id!==channelId||next.scope!=='round'||next.round?.channelId!==channelId||next.round?.archiveId!==archive)throw Object.assign(Error('회차 정보가 일치하지 않습니다. 해당 회차를 다시 열거나 다시 불러와 주세요.'),{code:'ROUND_SCOPE_MISMATCH'});
-  state=next;fresh=true;accessDenied=false;render();showMessage(state.unassignedReceiptCount?'기존 입금 '+state.unassignedReceiptCount+'건의 회차 확인이 필요합니다. 아래 ‘기존 입금 회차 확인’을 열어 주세요. 해당 업체의 잔액은 연결 후 확정됩니다.':'');focusReport();return true;
+  state=next;fresh=true;accessDenied=false;render();closingAccess(true);showMessage(state.unassignedReceiptCount?'기존 입금 '+state.unassignedReceiptCount+'건의 회차 확인이 필요합니다. 아래 ‘기존 입금 회차 확인’을 열어 주세요. 해당 업체의 잔액은 연결 후 확정됩니다.':'');focusReport();return true;
  }catch(e){if(revision===loadRevision)readFailure(e);return false}
  finally{if(revision===loadRevision)$('retry').disabled=saving;}
 }

@@ -6,7 +6,7 @@ const data=(received=50000)=>({scope:'round',round:{channelId:'alpha',archiveId:
 function screen(search='?channel=alpha',hash=''){
  const nodes=new Map([...html.matchAll(/id="([^"]+)"/g)].map(m=>[m[1],{hidden:false,value:'',textContent:'',innerHTML:'',disabled:false,open:false,focus(){},setAttribute(){},replaceChildren(){this.innerHTML='';this.textContent=''},querySelectorAll(){return []},close(){this.open=false},showModal(){this.open=true}}]));
  const calls=[],timers=[];
- const context=vm.createContext({URLSearchParams,structuredClone,crypto:{randomUUID:()=> 'same-ui-request'},location:{search,hash,pathname:'/organizer-shipping.html'},document:{getElementById:id=>nodes.get(id),hidden:false,querySelector:()=>null},CreoPlatform:{escapeHtml:String,api:(path,options)=>new Promise((resolve,reject)=>calls.push({path,options,resolve,reject}))},setInterval(fn){timers.push(fn)}});
+ const context=vm.createContext({URLSearchParams,structuredClone,CustomEvent:class{constructor(type){this.type=type}},dispatchEvent(){},crypto:{randomUUID:()=> 'same-ui-request'},location:{search,hash,pathname:'/organizer-shipping.html'},document:{body:{dataset:{}},getElementById:id=>nodes.get(id),hidden:false,querySelector:()=>null},CreoPlatform:{escapeHtml:String,api:(path,options)=>new Promise((resolve,reject)=>calls.push({path,options,resolve,reject}))},setInterval(fn){timers.push(fn)}});
  context.window=context;
  vm.runInContext(fs.readFileSync(require.resolve('../public/delivery-schedule-view.js'),'utf8'),context);
  vm.runInContext(source,context);

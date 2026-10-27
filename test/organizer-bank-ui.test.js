@@ -4,6 +4,7 @@ function screen(bank){
  const html=fs.readFileSync(require.resolve('../public/organizer-shipping.html'),'utf8');
  const nodes=new Map([...html.matchAll(/id="([^"]+)"/g)].map(m=>[m[1],{hidden:false,value:'',textContent:'',focus(){},setAttribute(){}}]));
  const context=vm.createContext({URLSearchParams,location:{search:'?channel=alpha'},document:{getElementById:id=>nodes.get(id)},CreoPlatform:{escapeHtml:s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'),api:()=>new Promise(()=>{})},setInterval(){}});
+ context.window=context;
  vm.runInContext(fs.readFileSync(require.resolve('../public/organizer-shipping.js'),'utf8'),context);
  context.bankFixture=bank;vm.runInContext('state={bank:bankFixture};renderBank()',context);
  return {nodes,context,html};

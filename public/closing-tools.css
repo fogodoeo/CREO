@@ -1,6 +1,8 @@
 #closing-tools,.closing-dialog{--closing-surface:#fff;--closing-ink:#172033;--closing-muted:#526071;--closing-border:#d7dee8;--closing-primary:#255ac7;--closing-soft:#f5f7fa;color:var(--closing-ink);font-family:var(--font-pretendard,system-ui);font-size:15px;line-height:1.5}
 #closing-tools[hidden],#closing-tools [hidden],.closing-dialog [hidden]{display:none!important}
 #closing-tools{margin-block-end:24px;background:var(--closing-surface);border:1px solid var(--closing-border);border-radius:14px}
+#closing-tools .closing-route{display:flex;align-items:center;min-height:44px;font-size:14px;color:#255ac7;text-decoration:underline;overflow-wrap:anywhere}
+.organizer-page #closing-tools{order:1}.organizer-page #closing-tools .closing-row{grid-template-columns:20px minmax(0,1fr)}.organizer-page #closing-tools .closing-amount,.organizer-page #closing-tools .closing-note{grid-column:2;text-align:start}
 #closing-tools summary{cursor:pointer;min-height:48px;padding:16px;overflow-wrap:anywhere}
 #closing-panel>summary span{display:block;color:var(--closing-muted);font-size:14px;margin-block-start:4px}
 .closing-body{padding:0 16px 16px;display:grid;gap:16px;min-width:0}
