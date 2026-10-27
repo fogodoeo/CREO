@@ -1160,6 +1160,66 @@ function createPlatformApi({
         buyerName:buyerDisplayName,winningBid,prepareLink:prepareBuyerCheckoutLink,notifications:notificationService,touch:touchChannel,
         vendorName:async(channelId,id)=>(await vendorDirectory.find(channelId,id))?.name||'업체'
     });
+    const closingOperations=require('./closing-operations').createClosingOperations({
+        repository,channelKey,notifications:notificationService,now:bookingNow,read:closingSnapshot,
+        confirmPayment:async(channelId,archiveId,target,requestId,req)=>{
+            const data=await closingSnapshot(channelId,archiveId),fresh=data.payments.find(p=>p.id===target.id);
+            if(!fresh)throw buyerInputError('낙찰 내역이 변경됐어요.',409);
+            if(fresh.paid)return {duplicate:true};
+            const stable=p=>JSON.stringify({...p,version:undefined});
+            if(stable(fresh)!==stable(target))throw buyerInputError('결제 정보가 변경됐어요. 해당 건을 다시 확인해 주세요.',409);
+            if(fresh.blocked)throw buyerInputError(fresh.blocked,409);
+            const context=await buyerBundleContext({v:2,channelId,itemId:fresh.itemIds[0],phoneHash:sessionKey(fresh.phone),expiresAt:Date.now()+BUYER_SHIPPING_TOKEN_TTL_MS},{operatorAccess:true});
+            return confirmBuyerPayment(context,fresh.vendorId,requestId,{expectedVersion:fresh.version,expectedAmount:fresh.amount,shippingAmountReviewed:true},req);
+        },
+        link:async(channelId,archiveId,action,target,req)=>{
+            if(action==='vendor_sms'){
+                const prepared=await prepareVendorCheckoutLink(req,channelId,target.id);
+                prepared.url.searchParams.set('event',channelId);
+                prepared.url.searchParams.set('round',target.roundKey);
+                return {url:prepared.url.toString()};
+            }
+            const item=await repository.getRecord(channelId,'item',target.itemIds[0]);
+            const prepared=await prepareBuyerCheckoutLink(req,channelId,target.phone,item);
+            return {url:prepared.url.toString(),variables:{접속코드:prepared.code}};
+        }
+    });
+    async function closingSnapshot(channelId,archiveId=''){
+        const channel=(await loadCatalog()).channels.find(c=>c.id===channelId);
+        if(!channel||channel.dataAdapter!=='platform'||!CheckoutRounds.open(channel)||channelId.startsWith('checkout-test-'))throw buyerInputError('진행 중이거나 보관된 경매 회차를 선택해 주세요.',409);
+        const data=await OperationRounds.scopedWorkspace(repository,channel,await workspace(channelId),archiveId);
+        const sold=data.items.filter(isSoldItem),settlement=await organizerShippingSettlement(channelId,data.items,data.shipments,data.vendors);
+        const people=new Map(),payments=[],buyers=[];
+        for(const item of sold){
+            const phone=storedWinnerPhone(item)||(channel.status==='archived'||item.auctionArchiveId?'':await resolveWinnerPhone(item,bandMembership)),id=phone?sessionKey(phone):'missing-'+item.id;
+            if(!people.has(id))people.set(id,{id,phone,name:buyerDisplayName(item),items:[]});people.get(id).items.push(item);
+        }
+        for(const person of people.values()){
+            const itemIds=person.items.map(i=>i.id).sort(),context=person.phone?await buyerBundleContext({v:2,channelId,itemId:itemIds[0],phoneHash:sessionKey(person.phone),expiresAt:Date.now()+BUYER_SHIPPING_TOKEN_TTL_MS},{operatorAccess:true,allowArchived:true}):null;
+            const snapshot=context?await checkoutSnapshot(context):null;
+            const own=data.shipments.filter(s=>itemIds.includes(s.itemId)&&(!s.recipientPhone||normalizePhone(s.recipientPhone)===person.phone));
+            const missing=person.items.some(i=>{const s=Checkout.newestShipment(own.filter(s=>s.itemId===i.id));return !s?.buyerSubmittedAt||!(s.address||s.destinationId);});
+            const evidence=person.items.map(i=>[i.id,i.buyerSaleId,i.updatedAt,i.soldPrice,i.vendorId]);
+            buyers.push({id:person.id,name:person.name,phone:person.phone,itemIds,missing,itemCount:itemIds.length,companies:[...new Set(person.items.map(i=>data.vendors.find(v=>v.id===i.vendorId)?.name||i.vendorName||'업체'))],evidence,shipmentEvidence:own.map(s=>[s.id,s.updatedAt,s.paymentStatus,s.destinationId,s.address]).sort()});
+            for(const vendorId of new Set(person.items.map(vendorKeyForItem))){
+                const group=snapshot?.groups.find(g=>g.key===vendorId),items=person.items.filter(i=>vendorKeyForItem(i)===vendorId);
+                const paid=group?.payment.status==='paid';
+                let blocked=!person.phone?'낙찰자 연락처를 먼저 등록해 주세요.':!group||!snapshot.selection||!group.payment.latest?.paymentMethod?'수령지·결제수단을 먼저 등록해 주세요.':group.shipments.some(s=>s.paymentStatus!=='paid'&&s.cardLinkCancellationRequired)?'이전 카드 안내 취소를 먼저 확인해 주세요.':'';
+                if(context&&await pendingCheckoutChange(context))blocked='배송·결제 변경 요청을 먼저 처리해 주세요.';
+                if(group?.payment.latest?.cardNoticeMethod==='external'&&(group.shipments.length!==group.items.length||group.shipments.some(s=>Number(s.paymentRequestedAmount)!==group.totalAmount)))blocked='외부 카드결제 안내 금액을 먼저 확인해 주세요.';
+                const reported=group?.shipments.filter(s=>['bank_transfer_reported','card_payment_reported'].includes(s.paymentStatus))||[];
+                if(reported.length&&(group.shipments.length!==group.items.length||group.shipments.some(s=>s.paymentStatus!=='paid'&&!reported.includes(s))))blocked='일부 개체만 입금 신고됐어요. 개별 결제 내역에서 먼저 확인해 주세요.';
+                payments.push({id:vendorId+':'+person.id,vendorId,name:(data.vendors.find(v=>v.id===vendorId)?.name||'업체')+' · '+person.name,phone:person.phone,itemIds:items.map(i=>i.id).sort(),amount:group?.totalAmount||0,paid:!!paid,blocked,version:context?buyerEditVersion(context):'',evidence:items.map(i=>[i.id,i.buyerSaleId,i.updatedAt,i.soldPrice]),shipmentEvidence:(group?.shipments||[]).map(s=>[s.id,s.updatedAt,s.paymentStatus,s.paymentRequestedAmount,s.paymentMethod,s.destinationId,s.address]).sort()});
+            }
+        }
+        const roundKey=archiveId?'archive:'+archiveId:data.round.date?'date:'+data.round.date:'current';
+        const vendors=settlement.vendors.map(v=>{
+            const vendor=data.vendors.find(row=>row.id===v.vendorId),own=payments.filter(p=>p.vendorId===v.vendorId),itemIds=sold.filter(i=>vendorKeyForItem(i)===v.vendorId).map(i=>i.id).sort();
+            const settlementBlocked=vendor?.active===false?'참여 중지된 업체예요.':v.unassignedReceiptCount?'회차가 미지정된 입금 내역을 먼저 확인해 주세요.':v.pendingReport?'입금 신고 확인 대기 중이에요.':v.remainingAmount<=0?'정산 완료된 업체예요.':!v.remittance?.ready?v.remittance?.reason||'정산 준비를 확인해 주세요.':'';
+            return {id:v.vendorId,name:v.vendorName,phone:normalizePhone(vendor?.phone),roundKey,itemIds,itemCount:itemIds.length,unpaidCount:own.filter(p=>!p.paid).length,paymentReadyCount:own.filter(p=>!p.paid&&!p.blocked).length,remainingAmount:v.remainingAmount,pendingReport:!!v.pendingReport,settlementBlocked};
+        });
+        return {round:data.round,vendors,buyers,payments};
+    }
     const buyerAccount = require('./buyer-account-auth').createBuyerAccountAuth({repository,config:buyerAccountConfig,fetchImpl:buyerAccountFetch,now:buyerAccountNow,hashPhone:sessionKey});
     const vendorLifecycle=require('./vendor-lifecycle').createVendorLifecycle({repository,vendorDirectory,loadCatalog,booking,settlement:organizerShippingSettlement,lock:withMutationLock,touch:touchChannel,now:vendorAccessNow});
     const vendorAccess = require('./vendor-access').createVendorAccess({
@@ -4607,6 +4667,16 @@ function createPlatformApi({
                 return true;
             }
 
+            if (segments.length === 3 && segments[2] === 'closing-tools' && ['GET','POST'].includes(method)) {
+                if(!await requireAdmin(req,res))return true;
+                if(method==='GET')replyJson(res,200,await closingOperations.list(channelId,url.searchParams.get('archive')||''));
+                else {
+                    const body=await readJson(req);
+                    const result=await withMutationLock(`channel:${channelId}`,()=>body.mode==='preview'?closingOperations.preview(channelId,body,req):body.mode==='execute'?closingOperations.execute(channelId,body,req):Promise.reject(buyerInputError('처리 방식을 다시 선택해 주세요.',422)));
+                    replyJson(res,200,result);
+                }
+                return true;
+            }
             if (segments.length === 3 && segments[2] === 'buyer-contacts' && ['GET','POST'].includes(method)) {
                 if (!await requireAdmin(req,res)) return true;
                 if (channel.dataAdapter!=='platform') throw buyerInputError('이 채널에서는 사용할 수 없어요.',409);
@@ -6364,6 +6434,7 @@ function createPlatformApi({
     }
 
     async function assertBuyerNotificationLink(channelId,notification) {
+        await closingOperations.assertCurrent(channelId,notification);
         if(notification.templateKey==='vendor_join_requested')return vendorAccess.assertNotification(notification);
         if(notification.templateKey==='broadcast_booking_updated') {
             const channel=(await loadCatalog()).channels.find(c=>c.id===channelId);

@@ -478,9 +478,9 @@ async function flushCheckoutNotifications() {
     notificationWorkerRunning = true;
     try {
         const catalog = await platformRepository.getCatalog();
-        for (const channel of catalog.channels.filter((entry) => entry.status === 'active' && entry.dataAdapter === 'platform')) {
+        for (const channel of catalog.channels.filter((entry) => ['active','archived'].includes(entry.status) && entry.dataAdapter === 'platform')) {
             if (shuttingDown) break;
-            await checkoutNotificationService.flushChannel(channel.id, 20);
+            await checkoutNotificationService.flushChannel(channel.id, 20, channel.status==='archived'?{allowedTemplates:require('./closing-operations').MANUAL_TEMPLATES}:{});
         }
         if (!shuttingDown) await checkoutNotificationService.flushChannel(require('./delivery-schedule-service').SYSTEM_CHANNEL, 2);
     } catch (error) {

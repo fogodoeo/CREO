@@ -36,6 +36,25 @@ class MemoryRepository {
     }
 }
 
+test('operator reminders explicitly use LMS while ordinary transaction SMS stays capped',async()=>{
+ let request;
+ const provider=new AligoNotificationProvider({fetchImpl:async(_url,options)=>{request=options;return {ok:true,status:200,json:async()=>({result_code:1,msg_id:'fake',error_cnt:0})};}});
+ await provider.sendSms({templateKey:'operator_vendor_reminder',recipientPhone:'01000000001',fallbackText:'정산 안내\n'+'가'.repeat(100)});
+ assert.equal(new URLSearchParams(request.body).get('msg_type'),'LMS');
+ await assert.rejects(provider.sendSms({templateKey:'operator_buyer_reminder',fallbackText:'가'.repeat(700)}),/너무 깁니다/);
+ await assert.rejects(provider.sendSms({templateKey:'buyer_win_initial',fallbackText:'가'.repeat(100)}),/90바이트/);
+});
+
+test('archived channel drain only processes manually requested reminders',async()=>{
+ const repository=new MemoryRepository(),sent=[];
+ const service=new CheckoutNotificationService({repository,provider:{readiness:()=>({ready:true}),send:async n=>{sent.push(n.templateKey);return {messageId:'fake'};}}});
+ await service.enqueue('past',event({eventKey:'old',transport:'sms'}));
+ await service.enqueue('past',event({eventKey:'manual',templateKey:'operator_buyer_reminder',transport:'sms'}));
+ await service.flushChannel('past',20,{allowedTemplates:require('../closing-operations').MANUAL_TEMPLATES});
+ assert.deepEqual(sent,['operator_buyer_reminder']);
+ assert.equal((await repository.listRecords('past','notification')).find(n=>n.eventKey==='old').status,'queued');
+});
+
 test('explicit one-shot real test is recipient-bound, duplicate-safe and isolated from dry worker', async () => {
     const repository = new MemoryRepository();
     let sends = 0;

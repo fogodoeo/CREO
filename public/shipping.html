@@ -16,6 +16,8 @@
     <script src="/operator-shipping-pricing.js"></script>
     <script src="/operator-shipping-worklist.js"></script>
     <link rel="stylesheet" href="/operator-shipping-worklist.css">
+    <script src="/closing-tools.js" defer></script>
+    <link rel="stylesheet" href="/closing-tools.css">
     <link rel="stylesheet" href="/buyer-link-manager.css">
     <script src="channel-runtime.js?v=20260901-operator-routing-v1"></script>
     <script src="auction-contract.js?v=20260819-contract-v1"></script>
@@ -2122,6 +2124,7 @@
                 <a id="shipping-changes-link" class="shipping-admin-login" style="display:grid;place-items:center;text-decoration:none;margin-left:8px" href="#">변경 요청</a>
                 <a id="shipping-parge-link" class="shipping-admin-login" style="display:grid;place-items:center;text-decoration:none;margin-left:8px" href="#">파르게 접수</a>
             </div>
+            <section id="closing-tools" hidden aria-label="회차 마감과 안내"></section>
             <section id="shipping-work-tools" aria-label="낙찰 내역 찾기" hidden>
                 <div class="shipping-work-search">
                     <label for="shipping-work-company">업체<select id="shipping-work-company"><option value="">전체 업체</option></select></label>
@@ -2405,6 +2408,7 @@
 
         function setShippingAdminState(authenticated) {
             document.body.dataset.shippingAdmin = authenticated ? 'true' : 'false';
+            window.dispatchEvent(new CustomEvent('shipping-admin-state'));
             let home=document.getElementById('shipping-operator-home');
             if(!home){home=document.createElement('a');home.id='shipping-operator-home';home.textContent='운영 홈 · 회차 선택';home.style.cssText='display:inline-flex;min-height:44px;align-items:center;font-size:14px;color:#254ac7';document.getElementById('shipping-channel-label')?.parentElement.append(home);}
             home.hidden=!authenticated;home.style.display=authenticated?'inline-flex':'none';home.href='/main?'+new URLSearchParams({channel:SHIPPING_CHANNEL_ID,...(new URLSearchParams(location.search).get('archive')?{archive:new URLSearchParams(location.search).get('archive')}:{})});
@@ -2517,6 +2521,7 @@
         })();
 
         let registeredShippingVendors = [];
+        window.getShippingClosingContext=()=>({channelId:SHIPPING_CHANNEL_ID,archiveId:new URLSearchParams(location.search).get('archive')||'',refresh:()=>refreshShippingWorkspace({preserveEditor:true})});
         async function loadShippingItems() {
             const [items, workspace] = await Promise.all([
                 shippingOperation.loadShippingItems(),

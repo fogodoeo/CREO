@@ -30,11 +30,13 @@ const TEMPLATE_KEYS = Object.freeze([
     'buyer_card_link_ready',
     'buyer_checkout_change_reviewed',
     'buyer_payment_confirmed',
+    'operator_vendor_reminder',
+    'operator_buyer_reminder',
     'shipping_data_refresh_failed'
 ]);
 
 const NOTIFICATION_TRANSPORTS = Object.freeze(['alimtalk', 'sms']);
-const ACTION_SMS_TEMPLATE_KEYS = new Set(['shipping_data_refresh_failed', 'vendor_settlement_reported', 'operator_carrier_request']);
+const ACTION_SMS_TEMPLATE_KEYS = new Set(['shipping_data_refresh_failed', 'vendor_settlement_reported', 'operator_carrier_request','operator_vendor_reminder','operator_buyer_reminder']);
 
 function notificationTransport(templateKey) {
     return ACTION_SMS_TEMPLATE_KEYS.has(templateKey) ? 'sms' : 'alimtalk';
@@ -239,7 +241,9 @@ class AligoNotificationProvider {
 
     async sendSms(notification, testMode = this.testMode) {
         const message = messageText(notification.fallbackText, 2000);
-        if (!message || Buffer.byteLength(message, 'utf8') > 90) {
+        const manualLms=['operator_vendor_reminder','operator_buyer_reminder'].includes(notification.templateKey);
+        if (manualLms && (!message || Buffer.byteLength(message,'utf8')>2000)) throw new Error('안내 문자 본문이 없거나 너무 깁니다.');
+        if (!manualLms && (!message || Buffer.byteLength(message, 'utf8') > 90)) {
             throw new Error('SMS 90바이트 초과 또는 빈 본문: 자동 LMS 전환하지 않습니다.');
         }
         const params = new URLSearchParams({
@@ -248,7 +252,7 @@ class AligoNotificationProvider {
             sender: this.from,
             receiver: notification.recipientPhone,
             msg: message,
-            msg_type: 'SMS',
+            msg_type: manualLms ? 'LMS' : 'SMS',
             title: '옹동2 안내',
             testmode_yn: testMode ? 'Y' : 'N'
         });
@@ -420,7 +424,7 @@ class CheckoutNotificationService {
         }
     }
 
-    async flushChannel(channelId, limit = 20) {
+    async flushChannel(channelId, limit = 20, options = {}) {
         // Dry runs must never consume real auction events or mark them delivered.
         if (this.provider.testMode) return { skipped: true, processed: 0 };
         if (this.running || this.stopping) return { skipped: true, processed: 0 };
@@ -429,6 +433,7 @@ class CheckoutNotificationService {
         try {
             const now = this.now();
             const candidates = (await this.repository.listRecords(channelId, 'notification'))
+                .filter(record=>!options.allowedTemplates||options.allowedTemplates.includes(record.templateKey))
                 .filter((record) => ['queued', 'configuration_pending', 'failed'].includes(record.status)
                     || (record.status === 'sending' && (!record.nextAttemptAt || Date.parse(record.nextAttemptAt) <= now)))
                 .filter((record) => !record.nextAttemptAt || Date.parse(record.nextAttemptAt) <= now)
