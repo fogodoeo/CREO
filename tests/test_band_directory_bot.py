@@ -28,6 +28,7 @@ def worker(directory):
     monitor.auto_enabled = True
     monitor.saved_fingerprints = {}
     monitor.approved_count = 0
+    monitor.checkpoint_session = Mock()
     return monitor
 
 
@@ -45,6 +46,20 @@ class DirectoryBotTests(unittest.TestCase):
         self.assertEqual([c.args[1] for c in monitor.api.call_args_list],
                          ["getApplicationOfBand", "getApplicationDetailInfo", "acceptApplication"])
         self.assertEqual(monitor.approved_count, 1)
+        monitor.checkpoint_session.assert_called_once()
+
+    def test_authenticated_session_is_checkpointed_before_member_storage_failure(self):
+        directory = FakeDirectory()
+        directory.fail = "members"
+        monitor = worker(directory)
+        monitor.api = Mock(side_effect=[
+            {"items": [{"member_key": "member-key", "name": "01012345678"}]},
+            {"application": {}},
+        ])
+        with self.assertRaises(OSError):
+            monitor.poll(None)
+        monitor.checkpoint_session.assert_called_once()
+        self.assertEqual(monitor.api.call_count, 2)
 
     def test_incomplete_application_detail_never_approves(self):
         directory = FakeDirectory()

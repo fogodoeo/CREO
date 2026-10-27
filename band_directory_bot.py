@@ -218,6 +218,7 @@ class DirectoryMonitor(base.BandJoinMonitor):
             items = result.get("items")
             if not isinstance(items, list):
                 raise RuntimeError("application_schema_changed")
+            self.checkpoint_session(connection, time.monotonic())
             count += len(items)
             for item in items:
                 # The list omits the disclosed full phone; fetch the same detail
@@ -233,6 +234,18 @@ class DirectoryMonitor(base.BandJoinMonitor):
         self.pending_count = count
         self.runtime_state = "running"
         self.poll_success_at = time.monotonic()
+
+    def checkpoint_session(self, connection, now):
+        if now < self.next_session:
+            return
+        # Save the live, possibly rotated cookie jar as soon as BAND confirms
+        # authentication. A later member-storage failure must not lose it.
+        self._persist_session_cookie_snapshot(connection)
+        if self._session_snapshot_path.is_file():
+            snapshot = json.loads(self._session_snapshot_path.read_text(encoding="utf8"))
+            cookies = snapshot.get("cookies", []) if isinstance(snapshot, dict) else snapshot
+            self.directory.call("session", {"cookies": cookies, "revision": self.session_revision})
+        self.next_session = now + 30
 
     def roster_step(self, connection):
         if self.progress is None:
@@ -295,13 +308,6 @@ class DirectoryMonitor(base.BandJoinMonitor):
         self.next_poll = now + 3
         try:
             self.poll(connection)
-            if now >= self.next_session:
-                self._persist_session_cookie_snapshot(connection)
-                if self._session_snapshot_path.is_file():
-                    snapshot = json.loads(self._session_snapshot_path.read_text(encoding="utf8"))
-                    cookies = snapshot.get("cookies", []) if isinstance(snapshot, dict) else snapshot
-                    self.directory.call("session", {"cookies": cookies, "revision": self.session_revision})
-                self.next_session = now + 600
             if now >= self.next_roster:
                 self.next_roster = now + 3
                 self.roster_step(connection)
@@ -322,7 +328,7 @@ class DirectoryMonitor(base.BandJoinMonitor):
                 location = base.runtime_value(connection.call("Runtime.evaluate", {"expression": "location.href", "returnByValue": True}, timeout=3))
                 if "/band/104432443/" not in str(location):
                     self.runtime_state = "login_required"
-                elif now - self.last_refresh > 120:
+                elif str(exc) in {"client_not_ready", "api_unavailable"} and now - self.last_refresh > 120:
                     connection.call("Page.reload", {})
                     self.last_refresh = now
                 self.heartbeat()
