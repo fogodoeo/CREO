@@ -34,6 +34,11 @@ def worker(directory):
 
 
 class DirectoryBotTests(unittest.TestCase):
+    def test_unexpected_browser_dialog_is_dismissed_without_confirming(self):
+        connection = Mock()
+        worker(FakeDirectory())._handle_event(connection, {"method": "Page.javascriptDialogOpening", "params": {"type": "confirm"}})
+        connection.call.assert_called_once_with("Page.handleJavaScriptDialog", {"accept": False})
+
     def test_renderer_crash_restarts_only_the_workers_browser(self):
         monitor = worker(FakeDirectory())
         monitor.chrome = Mock()

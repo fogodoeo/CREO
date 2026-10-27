@@ -7,6 +7,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import os
 from pathlib import Path
+import queue
 import re
 import signal
 import subprocess
@@ -84,8 +85,22 @@ API_SCRIPT = r"""
   const find = name => {
     const cache = window.__creoDirectoryApis || (window.__creoDirectoryApis = {});
     if(cache[name]) return cache[name];
+    const known = ['getApplicationOfBand','getApplicationDetailInfo','acceptApplication','getJoinInfo'].includes(name)
+      ? 929 : ['getMembersOfBand','getUpdatedMembers'].includes(name) ? 870 : null;
+    if(known && String(require.m?.[known] || '').includes(name+':function')) {
+      const owner = require(known);
+      if(typeof owner?.[name] === 'function') return cache[name] = owner;
+    }
+    for(const entry of Object.values(require.c || {})) {
+      const mod = entry.exports;
+      for(const owner of [mod,mod?.default]) {
+        if(owner && typeof owner[name] === 'function') return cache[name] = owner;
+      }
+    }
     for(const id of Object.keys(require.m || {})) {
-      if(!String(require.m[id]).includes(name)) continue;
+      const source = String(require.m[id]);
+      // Import only a definition, never an unrelated screen mentioning the API.
+      if(!source.includes(name+':function') && !source.includes(name+'=function')) continue;
       try { const mod = require(id); for(const owner of [mod, mod && mod.default]) {
         if(owner && typeof owner[name] === 'function') return cache[name] = owner;
       }} catch(_) {}
@@ -224,6 +239,11 @@ class DirectoryMonitor(base.BandJoinMonitor):
             print("BAND renderer crashed; restarting isolated browser", flush=True)
             self.chrome.stop()
             raise ConnectionError("browser_renderer_crashed")
+        if event.get("method") == "Page.javascriptDialogOpening":
+            # Dismiss an error alert; never confirm an unexpected action dialog.
+            kind = event.get("params", {}).get("type", "unknown")
+            print("BAND browser dialog dismissed:", kind, flush=True)
+            connection.call("Page.handleJavaScriptDialog", {"accept": False})
 
     def process_application(self, item, approve):
         record = member_record(item)
@@ -397,6 +417,14 @@ class DirectoryMonitor(base.BandJoinMonitor):
                             "application_schema_changed", "application_detail_schema_changed", "roster_schema_changed", "member_identity_missing",
                             "member_key_missing", "updated_members_schema_changed"}
             print("Directory worker waiting:", str(exc) if str(exc) in safe_reasons else type(exc).__name__, flush=True)
+            if isinstance(exc, TimeoutError):
+                # CDP events continue arriving while an awaited API is blocked.
+                # Handle a native alert/crash before probing the page again.
+                for _ in range(2000):
+                    try:
+                        self._handle_event(connection, connection.get_event(timeout=0))
+                    except queue.Empty:
+                        break
             try:
                 location = base.runtime_value(connection.call("Runtime.evaluate", {"expression": "location.href", "returnByValue": True}, timeout=3))
                 if "/band/104432443/" not in str(location):
