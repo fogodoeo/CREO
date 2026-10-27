@@ -122,7 +122,7 @@ API_SCRIPT = r"""
         const job = window.__creoRosterJob = {startedAt:Date.now(),count:0,expectedCount:0,views:[]};
         // Do not block application polling while collecting capped list views.
         void (async()=>{
-          const members = new Map(), searchTerms = new Set();
+          const members = new Map(), searchTerms = new Set(), numericTerms = new Set();
           const addTerms = name => {
             const first = [...String(name || '').normalize('NFC').trim()][0];
             if(!first) return;
@@ -139,6 +139,7 @@ API_SCRIPT = r"""
               view.count = page.members.length;
               view.fields = Object.keys(page.members[0] || {});
               for(const member of page.members) {
+                for(const digit of String(member.name || '').match(/\d/g) || []) numericTerms.add(digit);
                 const identity = member.user_no || member.member_key;
                 if(!identity) { view.missingIdentity++; continue; }
                 if(order && !members.has(String(identity))) addTerms(member.name);
@@ -156,7 +157,7 @@ API_SCRIPT = r"""
           }
           // The member screen searches with filter "member". Search the name
           // prefixes observed beyond the alphabetical cap, never guessed IDs.
-          for(const query of [...searchTerms].slice(0,160)) {
+          for(const query of [...new Set([...searchTerms,...numericTerms])].slice(0,170)) {
             if(members.size >= job.expectedCount) break;
             const view = {order:'search',count:0,missingIdentity:0}; job.views.push(view);
             try {

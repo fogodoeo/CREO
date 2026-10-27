@@ -75,3 +75,14 @@ test('BAND roster completes capped views by searching observed name prefixes', a
     assert.equal(result.data.members.length, 2);
     assert.equal(fixture.window.__creoRosterJob.failed, false);
 });
+
+test('BAND roster searches observed number characters when a rare name prefix was outside both lists', async () => {
+    const fixture = context({
+        getMembersOfBand: async () => ({ member_count: 2, members: [{ user_no: 1, name: '홍길동 010' }] }),
+        searchMember: async query => ({ members: query === '0' ? [{ user_no: 2 }] : [] })
+    });
+    await run(fixture.scope, 'rosterList');
+    while (!fixture.window.__creoRosterJob.ready) await new Promise(resolve => setImmediate(resolve));
+    const result = await run(fixture.scope, 'rosterList');
+    assert.equal(result.data.members.length, 2);
+});
