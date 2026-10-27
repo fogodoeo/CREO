@@ -1,10 +1,10 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-function fixture(){
+function fixture(implicit=false){
  const element=()=>({children:[],append(...rows){this.children.push(...rows)},prepend(row){this.children.unshift(row)},replaceChildren(){this.children=[]},setAttribute(k,v){this[k]=v},focus(){this.focused=true}}),container=element();
  const current={channelId:'national-cre',key:'date:2026-10-19',name:'10/19 경기'},old={channelId:'national-cre',key:'archive:old',name:'10/14 서울·인천',openCount:2,settlementRemaining:20000},child={channelId:'national-cre-20261021',key:'date:2026-10-21',name:'10/21 전라·충청'};
  let allowed=true,autoAllowed=true,handler=async()=>true,request=async()=>({rounds:[child,current,old]}),key='',calls=[];
- const location={href:'http://localhost/vendor-checkout.html?code=synthetic'};
+ const location={href:'http://localhost/vendor-checkout.html?code=synthetic'+(implicit?'':'&round=date%3A2026-10-19')};
  const context={window:{},document:{createElement:element},URL,location,history:{replaceState:(_a,_b,url)=>location.href=String(url)}};
  vm.runInNewContext(fs.readFileSync(require.resolve('../public/vendor-settlement-picker.js'),'utf8'),context);
  const picker=context.window.CreoVendorSettlementPicker.create({container,client:{setRound:value=>key=value,request:path=>request(path)},change:async target=>{calls.push([target.channelId,target.key]);return handler(target)},canChange:()=>allowed,canAutoChange:()=>autoAllowed});
@@ -44,4 +44,19 @@ test('real historical or populated rounds and empty catalogues never trigger aut
   f.request=async()=>({rounds:kind==='none'?[]:kind==='catalogued'?[{channelId:'national-cre',key:'current',name:'기존 미정산'},f.child]:[f.child]});
   f.picker.update(data);await f.picker.refresh();assert.equal(f.calls.length,0,kind);assert.equal(f.key,data.round.key);
  }
+});
+test('generic populated landing opens priority round once; refresh and explicit reload retain user selection',async()=>{
+ const f=fixture(true);f.request=async()=>({rounds:[f.child,f.current,f.old]});
+ f.handler=async target=>{f.picker.update({...f.data,channel:{id:target.channelId},round:target,summary:{itemCount:5},buyers:[{}]});return true};
+ f.picker.update({...f.data,summary:{itemCount:2},buyers:[{}]});await f.picker.refresh();
+ assert.deepEqual(f.calls,[[f.child.channelId,f.child.key]]);
+ f.select.value=JSON.stringify([f.current.channelId,f.current.key]);await f.select.onchange();await f.picker.refresh();
+ assert.equal(f.key,f.current.key);assert.equal(f.calls.length,2);
+ const reload=fixture();reload.picker.update(reload.data);await reload.picker.refresh();assert.equal(reload.calls.length,0);
+});
+test('generic populated landing keeps drafts and retries failed automatic navigation without losing scope',async()=>{
+ const f=fixture(true);f.request=async()=>({rounds:[f.child,f.current]});f.autoAllowed=false;
+ f.picker.update({...f.data,summary:{itemCount:2},buyers:[{}]});await f.picker.refresh();assert.equal(f.calls.length,0);
+ f.autoAllowed=true;f.handler=async()=>false;await f.picker.refresh();assert.equal(f.key,f.current.key);assert.equal(f.panel.children[4].hidden,false);
+ f.handler=async target=>{f.picker.update({...f.data,channel:{id:target.channelId},round:target});return true};await f.panel.children[4].onclick();await f.picker.refresh();assert.equal(f.calls.length,2);assert.equal(f.key,f.child.key);
 });

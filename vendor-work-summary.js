@@ -1,5 +1,6 @@
 'use strict';
 const {settlementStage}=require('./public/vendor-task-state');
+const {compare}=require('./checkout-rounds');
 // Counts only, from the same membership and financial-round boundaries as checkout.
 // Never combine shipments or receipts from different broadcasts.
 async function summarize(root,{resolve,bundles,settlement,publicBuyer,pendingChange,canReport}){
@@ -18,11 +19,11 @@ async function summarize(root,{resolve,bundles,settlement,publicBuyer,pendingCha
     const totals=await settlement(channelId,round.items,shipments,[context.vendor]),money=totals.vendors.find(v=>v.vendorId===context.vendor.id);
     const paymentCount=stages.filter(s=>s==='action').length;
     const organizerCount=Number(Boolean(money?.remainingAmount>0&&money.remittance?.ready&&!money.pendingReport&&!totals.unassignedReceiptCount&&canReport(totals)));
-    rounds.push({channelId,round:round.key,date:round.date||'',paymentCount,organizerCount,actionCount:paymentCount+organizerCount,waitingCount:stages.filter(s=>s==='waiting').length+Number(Boolean(money?.pendingReport)),openCount:round.openCount||0});
+    rounds.push({channelId,round:round.key,key:round.key,date:round.date||'',paymentCount,organizerCount,actionCount:paymentCount+organizerCount,waitingCount:stages.filter(s=>s==='waiting').length+Number(Boolean(money?.pendingReport)),openCount:round.openCount||0,settlementRemaining:money?.remainingAmount||0,settlementPending:!!money?.pendingReport,settlementNeedsReview:!!totals.unassignedReceiptCount});
    }
   }
  }));
- rounds.sort((a,b)=>Number(b.actionCount>0)-Number(a.actionCount>0)||Number(b.openCount>0||b.waitingCount>0)-Number(a.openCount>0||a.waitingCount>0)||b.date.localeCompare(a.date)||a.channelId.localeCompare(b.channelId)||a.round.localeCompare(b.round));
+ rounds.sort(compare);
  const paymentActionCount=rounds.reduce((n,r)=>n+r.paymentCount,0),settlementRoundCount=rounds.reduce((n,r)=>n+r.organizerCount,0),settlementCount=paymentActionCount+settlementRoundCount;
  return {settlementAttention:settlementCount>0,settlementCount,paymentActionCount,settlementRoundCount,settlementWaitingCount:rounds.reduce((n,r)=>n+r.waitingCount,0),hasSales:rounds.length>0,
   settlementTarget:rounds[0]?{channelId:rounds[0].channelId,round:rounds[0].round}:null};

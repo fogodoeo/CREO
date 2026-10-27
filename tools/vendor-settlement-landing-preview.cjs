@@ -12,6 +12,10 @@ async function landingFixture(origin='http://127.0.0.1:4425'){
 }
 async function main(){
  const f=await landingFixture(),root=path.resolve(__dirname,'../public');
+ if(process.argv.includes('--populated')){
+  await f.repository.upsertRecord('national-cre','item',{id:'past-paid',name:'지난 회차 완료 개체',vendorId:'empty-parent-vendor',status:'sold',soldPrice:100000,winnerName:'가상 구매자',winnerPhone:'01000000003',attributes:{broadcastDate:'2026-10-19'}});
+  await f.repository.upsertRecord('national-cre','shipment',{id:'past-paid',itemId:'past-paid',paymentStatus:'paid'});
+ }
  const server=http.createServer(async(req,res)=>{try{
   const url=new URL(req.url,f.origin);
   if(url.pathname==='/'){res.writeHead(302,{Location:'/vendor-checkout.html?code='+f.code+'&event=national-cre'});res.end();return;}

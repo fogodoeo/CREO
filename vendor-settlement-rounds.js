@@ -1,5 +1,6 @@
 'use strict';
 const National=require('./national-broadcast');
+const {compare}=require('./checkout-rounds');
 function roundName(channel,round){
  const date=round.date?.slice(0,10)||channel.nationalRound?.date||'';
  if(channel.id==='national-cre'||channel.nationalRound?.parentId==='national-cre'){
@@ -24,6 +25,6 @@ async function listVendorSettlementRounds(context,{resolve,settlement}){
    }
   }
  }));
- return result.sort((a,b)=>b.date.localeCompare(a.date)||a.channelId.localeCompare(b.channelId)||a.key.localeCompare(b.key));
+ return result.sort(compare);
 }
 module.exports={listVendorSettlementRounds,roundName};

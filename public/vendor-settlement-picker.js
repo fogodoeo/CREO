@@ -3,7 +3,8 @@
  const key=r=>JSON.stringify([r.channelId,r.key]);
  const label=r=>r.name+(r.openCount?' · 결제 미완료 '+r.openCount+'개체':'')+(r.settlementNeedsReview?' · 기존 입금 확인 필요':r.settlementPending?' · 정산 확인 중':r.settlementRemaining?' · 정산 남음':'');
  root.CreoVendorSettlementPicker={create({client,container,change,canChange=()=>true,canAutoChange=canChange}){
-  let data=null,choices=[],loaded=false,pending=null,busy=false,error='';
+  let data=null,choices=[],loaded=false,pending=null,busy=false,error='',landingResolved=false;
+  const explicitRound=new URL(location.href).searchParams.has('round');
   const panel=document.createElement('section');panel.className='checkout-round-switch';
   const title=document.createElement('label'),select=document.createElement('select'),current=document.createElement('p'),feedback=document.createElement('p'),retry=document.createElement('button');
   title.htmlFor=select.id='vendor-settlement-round';title.textContent='방송일 · 낙찰·정산';current.className='settlement-current-round';feedback.setAttribute('role','status');retry.type='button';retry.textContent='회차 다시 불러오기';retry.className='settlement-round-retry';
@@ -23,15 +24,16 @@
    error='';
    pending=(async()=>{try{
     const result=await client.request('/rounds?event='+encodeURIComponent(data.channel.id));choices=result.rounds;loaded=true;
-    // A program entry link can resolve to an empty, undated context. It is not
-    // a financial round: open the vendor's latest authorized round instead.
+    // Generic links open the first outstanding round once. Explicit history,
+    // edits and subsequent refreshes must never silently change financial scope.
     const emptyLanding=selected().key==='current'&&data.summary?.itemCount===0&&data.buyers?.length===0&&!choices.some(r=>key(r)===key(selected()));
-    if(emptyLanding&&choices.length&&canAutoChange()){
+    const target=choices[0],automatic=!landingResolved&&(!explicitRound||emptyLanding);
+    if(automatic&&target&&key(target)!==key(selected())&&canAutoChange()){
      busy=true;render();
-     try{if(!await change(choices[0]))error='낙찰 내역이 있는 방송일을 열지 못했어요. 회차 다시 불러오기를 눌러 주세요.';}
+     try{if(!await change(target))error='낙찰 내역이 있는 방송일을 열지 못했어요. 회차 다시 불러오기를 눌러 주세요.';else landingResolved=true;}
      catch{error='낙찰 내역이 있는 방송일을 열지 못했어요. 회차 다시 불러오기를 눌러 주세요.';}
      finally{busy=false;}
-    }
+    }else if(automatic&&(!target||key(target)===key(selected())))landingResolved=true;
    }catch{error='다른 회차를 불러오지 못했어요. 다시 불러오기를 눌러 주세요.';}finally{pending=null;render();}})();
    render();return pending;
   }
@@ -44,7 +46,7 @@
   select.onchange=async()=>{
    const previous=key(selected()),target=choices.find(r=>key(r)===select.value);
    if(busy||pending||!target||select.value===previous||!canChange()){select.value=previous;return;}
-   busy=true;error='';render();
+   landingResolved=true;busy=true;error='';render();
    try{if(!await change(target)){error='선택한 회차를 열지 못했어요. 다시 선택해 주세요.';}}
    catch{error='선택한 회차를 열지 못했어요. 다시 선택해 주세요.';}
    finally{busy=false;render();select.focus({preventScroll:true});}

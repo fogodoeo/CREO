@@ -61,6 +61,22 @@ test('legacy unanchored links offer owned rounds instead of hiding pending histo
  assert.equal((await f.request('GET','/buyer-shipping?code='+f.code+'&round=date:2026-10-19',null,false)).status,409,'legacy links cannot bypass a later round revocation');
  assert.equal((await f.request('GET','/buyer-shipping?code='+f.code+'&round='+encodeURIComponent(f.round),null,false)).status,200);
 });
+
+test('unscoped buyer link opens unpaid history before a newer paid round while sale links remain pinned',async t=>{
+ const f=await setup(t),key='buyer_shipping_short_v2_'+f.code,row=JSON.parse((await f.repository.getRowsByKeys([key]))[0].value),payload=JSON.parse(Buffer.from(row.token.split('.')[1],'base64url'));
+ delete payload.itemId;delete payload.roundScope;
+ const unsigned='bs2.'+Buffer.from(JSON.stringify(payload)).toString('base64url'),token=unsigned+'.'+crypto.createHmac('sha256',f.secret).update(unsigned).digest('base64url');
+ await f.repository.upsertRows([{key,value:JSON.stringify({...row,token})}]);
+ const shipment=(await f.repository.listRecords('national-cre','shipment')).find(s=>s.itemId==='new01');
+ await f.repository.upsertRecord('national-cre','shipment',{...shipment,paymentStatus:'paid',paymentConfirmedAmount:50000});
+ const before=await f.repository.listRecords('national-cre','shipment');
+ const read=()=>f.request('GET','/buyer-shipping?code='+f.code,null,false);
+ const results=await Promise.all([read(),read()]);
+ for(const result of results){assert.equal(result.status,200,result.body);assert.equal(result.json().round.key,f.round);assert.equal(result.json().rounds[0].key,f.round);}
+ const pinned=(await f.request('GET','/buyer-shipping?code='+f.next.code,null,false)).json();assert.equal(pinned.round.key,'date:2026-10-19');
+ const explicit=(await f.request('GET','/buyer-shipping?code='+f.code+'&round=date:2026-10-19',null,false)).json();assert.equal(explicit.round.key,'date:2026-10-19');
+ f.restart();assert.equal((await read()).json().round.key,f.round);assert.deepEqual(await f.repository.listRecords('national-cre','shipment'),before);
+});
 test('stale cross-round confirmation and storage failure leave both rounds untouched',async t=>{
  const f=await setup(t),old=(await f.readVendor(f.round)).json(),next=(await f.readVendor()).json(),buyer=old.buyers[0];
  const body={code:f.vendor.code,round:f.round,buyerId:buyer.id,requestId:'failed-confirmation',expectedVersion:buyer.payment.editVersion,expectedAmount:buyer.totals.totalAmount};

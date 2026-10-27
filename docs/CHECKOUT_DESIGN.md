@@ -91,3 +91,9 @@
 - 파르게는 초록색(`#237b46`) 점선, 도도시는 파란색(`#4071ab`) 실선을 사용한다. 달력 선·운송사 이름·방송일 끝점·범례에 같은 운송사 색상을 적용하고, 색상 외에도 점선/실선으로 구분한다.
 - 운송사 이름은 실제 준비 일정이 시작하는 날짜에만 표시한다. 주 또는 월이 바뀌어 이어지는 구간에는 선만 표시한다. 10월 19일 방송의 파르게 일정은 11일에 이름을 표시하고 18일에는 초록 점선만 잇는다.
 - 같은 운송사의 새 일정이 기존 일정과 겹쳐 시작하는 날은 이름을 표시한다. 일정 계산과 날짜별 접근성 설명, 상세 일정의 도착일 표시는 유지한다.
+# Financial round entry priority (2026-10-27)
+
+- Generic vendor settlement links open outstanding work first, then reported payments awaiting confirmation, then completed rounds. Within a state, the newest broadcast comes first. The company home target and combined round selector use the same ordering.
+- Buyer checkout lists prioritize unpaid rounds over reported/paid rounds within the link's authorized scope. A sale-specific link stays with its original sale; a view preference never expands access.
+- Automatic vendor selection runs once on initial entry. Explicit date/archive URLs, manual selections, drafts and in-flight work retain their context. Failed catalogue or switch requests expose the existing retry control.
+- Reuse the labeled native select, current status wording and existing checkout spacing/colors. No new modal or additional confirmation step is introduced.

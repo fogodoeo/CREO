@@ -24,5 +24,6 @@ test('vendor tasks include authorized dated settlements, keep round receipts sep
  assert.equal((await read(other)).status,403);assert.equal((await read(f.client())).status,401);
  for(const [index,child]of children.entries())await f.repository.upsertRows([{key:'creo_organizer_shipping_ledger::'+child,value:JSON.stringify([{id:'receipt-'+index,vendorId:members[index].vendorId,amount:10000,status:index?'confirmed':'pending',itemIds:['sold-'+index]}])}]);
  const waiting=(await read()).json();assert.equal(waiting.settlementAttention,false);assert.equal(waiting.settlementCount,0);assert.equal(waiting.settlementWaitingCount>=1,true);assert.equal(waiting.hasSales,true);
+ assert.deepEqual(waiting.settlementTarget,{channelId:children[0],round:'date:2026-10-19'},'pending older settlement precedes a completed newer round');
  f.restart();assert.deepEqual((await read()).json(),waiting);assert.deepEqual(await Promise.all(children.map(c=>f.repository.listRecords(c,'item'))),before);
 });
