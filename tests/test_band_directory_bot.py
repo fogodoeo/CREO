@@ -29,6 +29,7 @@ def worker(directory):
     monitor.saved_fingerprints = {}
     monitor.approved_count = 0
     monitor.checkpoint_session = Mock()
+    monitor.roster_discovered = None
     return monitor
 
 

@@ -114,7 +114,7 @@ API_SCRIPT = r"""
             job.expectedCount = Math.max(job.expectedCount, Number(page.member_count) || 0);
             for(const member of page.members) {
               if(!member.user_no) throw new Error('member_identity_missing');
-              members.set(String(member.user_no),member);
+              members.set(String(member.user_no),{user_no:member.user_no});
             }
             job.count = members.size;
             if(job.expectedCount && members.size >= job.expectedCount) break;
@@ -175,6 +175,7 @@ class DirectoryMonitor(base.BandJoinMonitor):
         self.roster_rows = []
         self.roster_index = 0
         self.roster_loaded = False
+        self.roster_discovered = None
         self.saved_fingerprints = {}
         self.pending_count = 0
         self.approved_count = 0
@@ -192,9 +193,13 @@ class DirectoryMonitor(base.BandJoinMonitor):
 
     def api(self, connection, operation, args):
         script = API_SCRIPT.replace("__OPERATION__", json.dumps(operation)).replace("__ARGS__", json.dumps(args))
-        result = base.runtime_value(connection.call("Runtime.evaluate", {
-            "expression": script, "returnByValue": True, "awaitPromise": True},
-            timeout=45 if operation == "rosterDetails" else 15))
+        try:
+            result = base.runtime_value(connection.call("Runtime.evaluate", {
+                "expression": script, "returnByValue": True, "awaitPromise": True},
+                timeout=45 if operation == "rosterDetails" else 15))
+        except TimeoutError:
+            print("BAND API timeout:", operation, flush=True)
+            raise
         if not isinstance(result, dict) or not result.get("ok"):
             reason = result.get("reason", "band_request_failed") if isinstance(result, dict) else "band_request_failed"
             print("BAND API unavailable:", operation, reason, flush=True)
@@ -289,10 +294,15 @@ class DirectoryMonitor(base.BandJoinMonitor):
         if not self.roster_loaded:
             page = self.api(connection, "rosterList", [])
             if page.get("pending"):
+                discovered = (page.get("count", 0), page.get("expectedCount", 0))
+                if discovered != self.roster_discovered:
+                    print("Roster indexing:", *discovered, flush=True)
+                    self.roster_discovered = discovered
                 return
             rows = page.get("members")
             expected = int(page.get("expectedCount") or 0)
             if not isinstance(rows, list) or not expected or len(rows) < expected:
+                print("Roster coverage incomplete:", len(rows) if isinstance(rows, list) else 0, "of", expected, flush=True)
                 raise RuntimeError("roster_schema_changed")
             self.roster_rows = rows
             self.roster_index = min(int(self.progress.get("offset", 0)), len(rows))
