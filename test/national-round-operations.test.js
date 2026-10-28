@@ -7,6 +7,50 @@ const ROOT='national-cre',TARGET='national-cre-20261021',DATE='2026-10-21';
 const pending=(id,date=DATE)=>item(id,'v1',{status:'waiting',soldPrice:0,winnerName:'',winnerPhone:'',attributes:{broadcastDate:date,checklist:'weight:3|gender:',entry_traits:{weight:3},parents:[{side:'father',name:'가상 부개체'}],media:[{url:'https://example.invalid/photo.webp'}]}});
 async function setup(t){const f=await fixture();t.after(()=>f.close());await createVendorDirectory(f.repository).enroll(ROOT,'v1');await f.repository.upsertRecord(ROOT,'item',pending('new01'));f.command=(action='prepare',more={})=>f.request('POST','/national-rounds',{action,date:DATE,...more});return f;}
 const records=(f,ch,type='item')=>f.repository.listRecords(ch,type);
+const bankKey=id=>`creo_organizer_shipping_bank::${id}`;
+const organizerBank={bankName:'가상은행',bankAccount:'000-123-456',bankHolder:'가상 주관사',notificationPhone:'01000000009',updatedAt:'2026-10-01T00:00:00.000Z'};
+const storedBank=async(f,id)=>JSON.parse((await f.repository.getRowsByKeys([bankKey(id)]))[0]?.value||'null');
+
+test('prepare automatically snapshots organizer bank, including notification phone, without copying receipts',async t=>{
+ const f=await setup(t);
+ await f.repository.upsertRows([{key:bankKey(ROOT),value:JSON.stringify({...organizerBank,privateNote:'do not copy'})},{key:'creo_organizer_shipping_ledger::'+ROOT,value:JSON.stringify([{id:'old-receipt',vendorId:'v1',amount:1000,status:'confirmed'}])}]);
+ const results=await Promise.all([f.command(),f.command()]);assert.ok(results.every(r=>r.status===200));
+ const bank=await storedBank(f,TARGET);assert.deepEqual(bank,{...organizerBank,updatedAt:bank.updatedAt});assert.notEqual(bank.updatedAt,organizerBank.updatedAt);
+ const response=await f.request('GET','/channels/'+TARGET+'/organizer-shipping');assert.equal(response.status,200,response.body);assert.deepEqual(response.json().bank,bank);
+ const link=await f.request('POST','/channels/'+TARGET+'/vendor-checkout-link',{vendorId:'v1'});assert.equal(link.status,200,link.body);
+ const vendor=await f.request('GET','/vendor-checkout?code='+link.json().code+'&event='+TARGET,null,false);assert.equal(vendor.status,200,vendor.body);
+ const {notificationPhone,...publicBank}=bank;assert.deepEqual(vendor.json().shippingSettlement.bank,publicBank);assert.equal(vendor.json().shippingSettlement.notificationReady,true);
+ assert.equal(response.json().vendors.reduce((n,v)=>n+v.receivedAmount,0),0);
+ assert.deepEqual(await f.repository.getRowsByKeys(['creo_organizer_shipping_ledger::'+TARGET]),[]);
+ assert.deepEqual(await records(f,TARGET,'notification'),[]);
+ assert.deepEqual((await f.request('GET','/channels/creyon/organizer-shipping')).json().bank,{});
+ f.restart();assert.deepEqual((await f.request('GET','/channels/'+TARGET+'/organizer-shipping')).json().bank,bank);
+ await f.repository.upsertRows([{key:bankKey(ROOT),value:JSON.stringify({...organizerBank,bankAccount:'999-999'})}]);
+ assert.equal((await f.command()).json().duplicate,true);assert.deepEqual(await storedBank(f,TARGET),bank);
+});
+
+test('prepare preserves explicit round bank and repairs a previously prepared round missing its account',async t=>{
+ const f=await setup(t);assert.equal((await f.command()).status,200);assert.equal(await storedBank(f,TARGET),null);
+ await f.repository.upsertRows([{key:bankKey(ROOT),value:JSON.stringify(organizerBank)}]);
+ const repaired=await f.command();assert.equal(repaired.status,200,repaired.body);assert.equal(repaired.json().imported,0);assert.equal((await storedBank(f,TARGET)).bankAccount,organizerBank.bankAccount);
+ const bank=await storedBank(f,TARGET);
+ const override={...bank,bankAccount:'111-222-333',bankHolder:'회차 주관사',expectedUpdatedAt:bank.updatedAt};
+ const saved=await f.request('PUT','/channels/'+TARGET+'/organizer-shipping',override);assert.equal(saved.status,200,saved.body);
+ assert.equal((await f.command()).json().duplicate,true);assert.deepEqual(await storedBank(f,TARGET),saved.json().bank);
+ assert.deepEqual(await storedBank(f,ROOT),organizerBank);
+ const stale=await f.request('PUT','/channels/'+TARGET+'/organizer-shipping',override);assert.equal(stale.status,409);
+});
+
+test('organizer bank is committed atomically with round creation; failures never leave a partial account',async t=>{
+ const f=await setup(t);await f.repository.upsertRows([{key:bankKey(ROOT),value:JSON.stringify(organizerBank)}]);
+ const cas=f.repository.compareAndSwapRows.bind(f.repository);
+ for(const conflict of [true,false]){
+  f.repository.compareAndSwapRows=async()=>{if(conflict)return false;throw Error('isolated failure')};
+  const response=await f.command();assert.equal(response.status,conflict?409:500);
+  assert.equal(await storedBank(f,TARGET),null);assert.deepEqual(await records(f,TARGET),[]);
+ }
+ f.repository.compareAndSwapRows=cas;assert.equal((await f.command()).status,200);assert.equal((await storedBank(f,TARGET)).bankHolder,organizerBank.bankHolder);
+});
 test('prepare isolates date, money, notifications, draw and broadcasts; old buyer link still works',async t=>{
  const f=await setup(t),before=await f.read();assert.equal(before.status,200);
  await f.repository.upsertRecord(ROOT,'item',pending('later','2026-10-28'));

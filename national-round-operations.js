@@ -95,6 +95,17 @@ function createNationalRoundOperations({repository,directory,lock,touch,now=Date
      // Only presentation settings cross the boundary, never active-item/session state.
      if(config)rows.push(row('setting',{id:'broadcast-config',values:Object.fromEntries(Object.entries(config.values||{}).filter(([k])=>/^(?:page[123]_|p[123]_|font_|layout_|overlay_|theme_|live_bidders_)/.test(k)||['auction_animation_enabled','auction_bid_unit_manwon'].includes(k))),revision:now()}));
     }
+    // Settlement settings use separate rows, so cloning the channel alone
+    // omits the organizer account. Freeze the configured account per round;
+    // later preparations and changes to the root must preserve local choices.
+    const bankKey=id=>`creo_organizer_shipping_bank::${id}`;
+    const banks=await repository.getRowsByKeys([bankKey(ROOT),bankKey(targetId)]);
+    if(!banks.some(r=>r.key===bankKey(targetId))){
+     const bank=JSON.parse(banks.find(r=>r.key===bankKey(ROOT))?.value||'{}');
+     if(bank.bankName&&bank.bankHolder&&/^[0-9 -]{5,80}$/.test(bank.bankAccount||'')){
+      rows.push({key:bankKey(targetId),value:JSON.stringify({bankName:bank.bankName,bankAccount:bank.bankAccount,bankHolder:bank.bankHolder,notificationPhone:bank.notificationPhone||'',updatedAt:stamp})});
+     }
+    }
     const sourceVendors=await directory.list(ROOT),known=new Set(targetItems.map(i=>i.attributes?.roundSource?.itemId));
     const cycle=await repository.getRecord(ROOT,'setting','national-cycle-config');
     const bookings=cycle?.mode===National.MODE?(await National.createNationalBroadcast(repository).read(source)).state:null;
