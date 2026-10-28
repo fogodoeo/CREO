@@ -4,6 +4,11 @@ const fs=require('node:fs'),path=require('node:path'),http=require('node:http');
 const {fixture,day}=require('./national-settlement-fixture.cjs');
 async function main(){
  const port=Number(process.env.BUYER_PREVIEW_PORT)||4398,origin='http://127.0.0.1:'+port,f=await fixture({origin});f.advance(30*86400000);
+ const photoReview=process.env.BUYER_PREVIEW_PHOTOS==='1';
+ if(photoReview){
+  const item=await f.repository.getRecord('national-cre','item','a01');
+  await f.repository.upsertRecord('national-cre','item',{...item,name:'릴리화이트 크레스티드게코 긴 이름',media:[{url:'/__preview/photo/landscape',thumbnailUrl:'/__preview/photo/landscape',label:'가로 사진 · 16:9'},{url:'/__preview/photo/portrait',label:'세로 사진 · 9:16'}],parents:[{role:'sire',name:'부모 이름이 길어도 모두 표시되는 아빠',morph:'릴리화이트 트라이컬러',media:['/__preview/photo/square']},{role:'dam',name:'엄마 크레스티드게코',media:['/__preview/photo/missing']}],attributes:{...item.attributes,morph:'릴리화이트',weight:'28'}});
+ }
  const second=await f.repository.getRecord('national-cre','vendor','v2');
  await f.repository.upsertRecord('national-cre','vendor',{...second,paymentMethods:['bank_transfer','card']});
  const channels=await f.repository.getCatalog();
@@ -17,6 +22,12 @@ async function main(){
  const root=path.resolve(__dirname,'../public');let failSave=0,failReport=0,failOperatorSave=false;
  const server=http.createServer(async(req,res)=>{try{
   const url=new URL(req.url,origin);
+  if(photoReview&&url.pathname.startsWith('/__preview/photo/')){
+   const shape=url.pathname.split('/').pop(),size={landscape:[1200,675],portrait:[675,1200],square:[800,800]}[shape];
+   if(!size){res.writeHead(404);res.end();return;}
+   const [w,h]=size;
+   res.writeHead(200,{'Content-Type':'image/svg+xml; charset=utf-8'});res.end(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><rect width="100%" height="100%" fill="#eaf1ff"/><rect x="8" y="8" width="${w-16}" height="${h-16}" fill="none" stroke="#2563eb" stroke-width="16"/><circle cx="${w/2}" cy="${h/2}" r="180" fill="#2563eb"/><text x="50%" y="12%" text-anchor="middle" font-family="sans-serif" font-size="36" fill="#202631">사진 비율 확인 · ${w} × ${h}</text></svg>`);return;
+  }
   if(url.pathname==='/'){res.writeHead(302,{Location:'/buyer-shipping.html?code='+f.code});res.end();return;}
   if(url.pathname==='/__preview/fail-save'){failSave=Math.max(1,Math.min(3,Number(url.searchParams.get('count'))||3));res.writeHead(200,{'Content-Type':'text/plain; charset=utf-8'});res.end('Isolated buyer save outage: '+failSave+' attempts.');return;}
   if(url.pathname==='/__preview/fail-report'){failReport=Math.max(1,Math.min(3,Number(url.searchParams.get('count'))||3));res.writeHead(200,{'Content-Type':'text/plain; charset=utf-8'});res.end('Isolated payment report outage: '+failReport+' attempts.');return;}

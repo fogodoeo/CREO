@@ -45,17 +45,19 @@
     const dialog = document.createElement('dialog'); dialog.className = 'checkout-photo-viewer';
     const titleId='checkout-photo-title-'+document.querySelectorAll('.checkout-photo-viewer').length;
     dialog.setAttribute('aria-labelledby',titleId);
-    dialog.innerHTML = `<header><h2 id="${titleId}"></h2><button type="button" data-photo-close aria-label="사진 닫기">×</button></header><div class="checkout-parent-info" hidden></div><div class="checkout-photo-groups" role="group" aria-label="사진 종류"></div><div class="checkout-photo-stage"><img alt=""><p role="status" hidden>사진을 불러오지 못했어요</p><button type="button" data-photo-retry hidden>다시 불러오기</button></div><p class="checkout-photo-caption"></p><footer><button type="button" data-photo-prev aria-label="이전 사진">←</button><span aria-live="polite"></span><button type="button" data-photo-next aria-label="다음 사진">→</button></footer>`;
+    dialog.innerHTML = `<header><h2 id="${titleId}"></h2><button type="button" data-photo-close aria-label="사진 닫기">×</button></header><div class="checkout-parent-info" hidden></div><div class="checkout-photo-groups" role="group" aria-label="사진 종류"></div><div class="checkout-photo-stage"><img alt=""><p role="status" hidden>사진을 불러오지 못했어요</p><button type="button" data-photo-retry hidden>다시 불러오기</button></div><div class="checkout-photo-meta"><p class="checkout-photo-caption"></p><a data-photo-original target="_blank" rel="noopener noreferrer">원본 보기</a></div><footer><button type="button" data-photo-prev aria-label="이전 사진">←</button><span aria-live="polite"></span><button type="button" data-photo-next aria-label="다음 사진">→</button></footer>`;
     document.body.append(dialog);
     const $ = selector => dialog.querySelector(selector);
     let photos=[], index=0, opener=null, outside=false;
     function render() {
       const photo=photos[index];
-      for(const selector of ['.checkout-photo-stage','.checkout-photo-groups','.checkout-photo-caption','footer'])$(selector).hidden=!photo;
-      if(!photo){$('img').removeAttribute('src');return;}
+      for(const selector of ['.checkout-photo-stage','.checkout-photo-groups','.checkout-photo-meta','footer'])$(selector).hidden=!photo;
+      if(!photo){$('img').removeAttribute('src');$('[data-photo-original]').removeAttribute('href');return;}
       const img=$('img'); img.hidden=false; $('.checkout-photo-stage p').hidden=true;$('[data-photo-retry]').hidden=true;
       img.onerror=()=>{img.hidden=true;$('.checkout-photo-stage p').hidden=false;$('[data-photo-retry]').hidden=false;};
       img.alt=photo.label; img.src=photo.url;
+      $('[data-photo-original]').href=photo.url;
+      $('[data-photo-original]').setAttribute('aria-label',photo.label+' 원본 보기 (새 창)');
       $('.checkout-photo-caption').textContent=photo.label;
       $('footer span').textContent=`${index+1} / ${photos.length}`;
       $('[data-photo-prev]').disabled=index===0; $('[data-photo-next]').disabled=index===photos.length-1;
@@ -76,6 +78,7 @@
     return { isOpen:()=>dialog.open, clear(){
       opener=null;photos=[];index=0;outside=false;if(dialog.open)dialog.close();
       $('img').onerror=null;$('img').removeAttribute('src');$('img').alt='';
+      $('[data-photo-original]').removeAttribute('href');$('[data-photo-original]').removeAttribute('aria-label');
       for(const selector of ['h2','.checkout-parent-info','.checkout-photo-groups','.checkout-photo-caption','footer span'])$(selector).replaceChildren();
     }, open(item, trigger, initialPhoto) {
       photos=pictures(item,origin);const parents=parentDetails(item);if(!photos.length&&!parents.length)return;

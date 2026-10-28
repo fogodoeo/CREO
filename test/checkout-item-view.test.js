@@ -29,3 +29,33 @@ test('legacy parent fields remain compatible and long photo collections are boun
 test('lot codes retain A/B numbering without turning missing values into lot zero',()=>{
  assert.equal(lotLabel({lotNumber:'A01'}),'A01');assert.equal(lotLabel({lotNumber:3}),'03');assert.equal(lotLabel({lotNumber:0}),'');assert.equal(lotLabel({lotCode:'B15',lotNumber:30}),'B15');
 });
+
+function viewerFixture(){
+ const {parseHTML}=require('linkedom'),{document,window}=parseHTML('<html><body><button id="opener">사진 보기</button></body></html>');
+ const viewer=require('../public/checkout-item-view').createViewer({document,origin}),dialog=document.querySelector('dialog');
+ dialog.showModal=()=>{dialog.open=true};dialog.close=()=>{dialog.open=false;dialog.dispatchEvent(new window.Event('close'))};
+ return{viewer,dialog,$:selector=>dialog.querySelector(selector)};
+}
+test('original photo follows child and parent navigation, uses full size and clears on text-only items',()=>{
+ const {viewer,$}=viewerFixture();
+ viewer.open({name:'개체',media:[{url:'/full.webp',thumbnailUrl:'/thumb.webp'}],parents:[{role:'sire',name:'부모',media:['/parent.webp']}]});
+ assert.equal($('[data-photo-original]').getAttribute('href'),origin+'/full.webp');
+ assert.equal($('[data-photo-original]').getAttribute('rel'),'noopener noreferrer');
+ assert.match($('[data-photo-original]').getAttribute('aria-label'),/새 창/);
+ $('[data-photo-next]').click();
+ assert.equal($('[data-photo-original]').getAttribute('href'),origin+'/parent.webp');
+ $('img').onerror();assert.equal($('[data-photo-retry]').hidden,false);
+ $('[data-photo-retry]').click();assert.equal($('img').hidden,false);
+ viewer.open({name:'사진 없는 개체',parents:[{role:'dam',name:'모 이름'}]});
+ assert.equal($('.checkout-photo-meta').hidden,true);
+ assert.equal($('[data-photo-original]').hasAttribute('href'),false);
+});
+test('clearing viewer removes the original photo URL and rejects unsafe image links',()=>{
+ const {viewer,$}=viewerFixture();
+ viewer.open({name:'개체',media:['/safe.webp']});viewer.clear();
+ assert.equal($('[data-photo-original]').hasAttribute('href'),false);
+ assert.equal($('[data-photo-original]').hasAttribute('aria-label'),false);
+ viewer.open({name:'개체',media:['javascript:alert(1)'],parents:[{role:'sire',name:'부모'}]});
+ assert.equal($('.checkout-photo-meta').hidden,true);
+ assert.equal($('[data-photo-original]').hasAttribute('href'),false);
+});
