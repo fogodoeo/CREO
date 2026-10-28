@@ -20,15 +20,26 @@ function contactOf(member) {
         const phone = source === 'verified'
             ? (evidence?.verified === true && /^[+\d\s().-]+$/.test(evidence.text) && evidence.text.replace(/\D/g, '').length >= 11
                 ? normalizeMobilePhone(evidence.text) : '')
-            : extractContact(evidence?.text, source === 'profile');
+            : extractContact(evidence?.text, source === 'profile' ? true : 'answer');
         if (phone) return { phone, source };
     }
     return { phone: '', source: '' };
 }
 
 function extractContact(text, allowShort) {
-    const full = String(text || '').normalize('NFKC').match(/(?<!\d)(?:010|\+?82[ .-]*10)[ .()-]*\d{4}[ .()-]*\d{4}(?!\d)/g) || [];
-    const phones = [...new Set([...(allowShort ? mobilePhoneCandidates(text) : []), ...full.map(normalizeMobilePhone)].filter(Boolean))];
+    const normalized = String(text || '').normalize('NFKC').trim();
+    const full = normalized.match(/(?<!\d)(?:010|\+?82[ .-]*10)[ .()-]*\d{4}[ .()-]*\d{4}(?!\d)/g) || [];
+    let short = allowShort === true ? mobilePhoneCandidates(text) : [];
+    if (allowShort === 'answer' && !full.length) {
+        // Accept an omitted 010 in a phone field, not any eight-digit date,
+        // order number or verification code appearing in a free-text answer.
+        const plain = normalized.match(/^(\d{4}[ .-]*\d{4})$/);
+        const profile = normalized.match(/^[^/|\r\n]+[/|][^/|\r\n]+[/|]\s*(\d{4}[ .-]*\d{4})\s*$/);
+        const labeled = [...normalized.matchAll(/(?:연락처|휴대폰(?:번호)?|전화번호|핸드폰(?:번호)?)\s*[:：=]?\s*(\d{4}[ .-]*\d{4})(?!\d)/g)];
+        short = [plain, profile, ...labeled].filter(Boolean).map(m => m[1]).filter(value =>
+            !/^(?:19|20)\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])$/.test(value.replace(/\D/g, ''))).map(normalizeMobilePhone);
+    }
+    const phones = [...new Set([...short, ...full.map(normalizeMobilePhone)].filter(Boolean))];
     return phones.length === 1 ? phones[0] : '';
 }
 

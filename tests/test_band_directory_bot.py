@@ -1,4 +1,6 @@
 import unittest
+import json
+from pathlib import Path
 from unittest.mock import Mock, patch
 from band_directory_bot import DirectoryMonitor, member_record, eligible, phone_from_text
 
@@ -220,6 +222,24 @@ class DirectoryBotTests(unittest.TestCase):
         item = {"member_key": "key", "name": "사업체", "join_answer": "연락처 010-1234-5678"}
         self.assertTrue(eligible(member_record(item)))
         self.assertFalse(eligible(member_record({"name": "사업체", "join_answer": "가입일 20261028"})))
+
+    def test_short_answer_phone_fields_match_directory_rules(self):
+        cases = json.loads((Path(__file__).resolve().parents[1] / "test/fixtures/band-answer-phones.json").read_text(encoding="utf8"))
+        for case in cases:
+            with self.subTest(text=case["text"]):
+                self.assertEqual(phone_from_text(case["text"], allow_short="answer"), case["phone"])
+                self.assertEqual(eligible(member_record({"name": "가상회원", "join_answer": case["text"]})), bool(case["phone"]))
+
+    def test_short_answer_is_saved_and_approved_only_once(self):
+        directory = FakeDirectory()
+        monitor = worker(directory)
+        item = {"member_key": "short-answer-key", "name": "가상회원", "created_at": 100, "join_answer": "가상회원/울산/34567890"}
+        actions = []
+        monitor.process_application(item, actions.append)
+        monitor.process_application(item, actions.append)
+        self.assertEqual(actions, ["short-answer-key"])
+        self.assertEqual([event[0] for event in directory.events[:3]], ["members", "claim", "finish"])
+        self.assertEqual(directory.events[0][1]["members"][0]["sources"]["answer"]["text"], item["join_answer"])
 
     def test_real_verified_phone_only_and_no_otp_or_mask_inference(self):
         self.assertNotIn("verified", member_record({"cellphone": "01012345678"})["sources"])
