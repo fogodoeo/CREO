@@ -15,6 +15,7 @@ import subprocess
 import threading
 import time
 import urllib.request
+import unicodedata
 
 import band_join_monitor as base
 
@@ -26,13 +27,24 @@ def phone_from_text(text: str, allow_short=True) -> str:
     # Full mobile numbers are valid even when attached to a Korean profile name.
     values = set()
     words = str.maketrans("공영일이삼사오육칠팔구", "00123456789")
-    normalized = str(text or "").translate(words)
+    normalized = unicodedata.normalize("NFKC", str(text or "")).translate(words).strip()
     for match in re.finditer(r"(?<!\d)(?:010|\+?82[ .-]*10)[ .()-]*\d{4}[ .()-]*\d{4}(?!\d)", normalized):
         value = re.sub(r"\D", "", match.group())
         if value.startswith("82"):
             value = "0" + value[2:]
         values.add(value)
-    if not values and allow_short:
+    if not values and allow_short == "answer":
+        candidates = []
+        for pattern in (r"^(\d{4}[ .-]*\d{4})$", r"^[^/|\r\n]+[/|][^/|\r\n]+[/|]\s*(\d{4}[ .-]*\d{4})\s*$"):
+            match = re.fullmatch(pattern, normalized)
+            if match:
+                candidates.append(match.group(1))
+        candidates.extend(re.findall(r"(?:연락처|휴대폰(?:번호)?|전화번호|핸드폰(?:번호)?)\s*[:：=]?\s*(\d{4}[ .-]*\d{4})(?!\d)", normalized))
+        for value in candidates:
+            digits = re.sub(r"\D", "", value)
+            if not re.fullmatch(r"(?:19|20)\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])", digits):
+                values.add("010" + digits)
+    elif not values and allow_short:
         for match in re.finditer(r"(?<![\dA-Za-z가-힣])\d{4}[ .-]*\d{4}(?!\d)", normalized):
             values.add("010" + re.sub(r"\D", "", match.group()))
     return next(iter(values)) if len(values) == 1 else ""
@@ -57,7 +69,7 @@ def member_record(item: dict, *, existing=False, now=None) -> dict:
 
 def eligible(record: dict) -> bool:
     sources = record.get("sources", {})
-    return any(phone_from_text(sources.get(source, {}).get("text", ""), allow_short=source == "profile")
+    return any(phone_from_text(sources.get(source, {}).get("text", ""), allow_short=True if source == "profile" else "answer" if source == "answer" else False)
                for source in ("profile", "answer", "verified"))
 
 

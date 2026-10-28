@@ -13,6 +13,27 @@ const TOKEN = 'test-token-with-at-least-thirty-two-characters';
 const make = options => new BandMemberDirectory({ enabled: true, dbPath: ':memory:', now: () => NOW, token: TOKEN, ...options });
 const member = (sources, extra = {}) => ({ bandNo: '104432443', memberKey: KEY, observedAt: NOW, displayName: '업체 이름', sources, ...extra });
 
+test('answer phone fields allow omitted 010 but reject dates, codes and ambiguity consistently with the worker', () => {
+    for (const { text, phone } of require('./fixtures/band-answer-phones.json')) {
+        const result = contactOf({ sources: { answer: { text } } });
+        assert.equal(result.phone, phone, text);
+        assert.equal(result.source, phone ? 'answer' : '', text);
+    }
+});
+
+test('short answer survives approval and resolves for auction contact without modifying evidence', t => {
+    const d = make(); t.after(() => d.close());
+    const text = '가상회원/울산/34567890';
+    const request = { applicationId: 'short-answer-join', member: member({ answer: { text } }) };
+    assert.equal(d.claim(request).claimed, true);
+    assert.equal(d.list().items[0].sources.answer.text, text);
+    assert.equal(d.resolve({ bandMemberKey: KEY }), null);
+    d.finish({ applicationId: request.applicationId, success: true });
+    assert.equal(d.resolve({ bandMemberKey: KEY }).phone, '01034567890');
+    assert.equal(d.resolve({ bandMemberKey: KEY }).phoneSource, 'answer');
+    assert.equal(d.claim(request).claimed, false);
+});
+
 test('profile, application answer, verified phone priority; ambiguous source falls back', () => {
     const sources = { profile: { text: '업체 이름' }, answer: { text: '연락처 010-1234-5678 입니다.' }, verified: { text: '01099998888', verified: true } };
     assert.deepEqual(contactOf({ sources }), { phone: '01012345678', source: 'answer' });
