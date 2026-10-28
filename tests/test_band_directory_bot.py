@@ -252,6 +252,34 @@ class DirectoryBotTests(unittest.TestCase):
         self.assertEqual(phone_from_text("01012345678 / 01099998888"), "")
         self.assertEqual(phone_from_text("20261028", allow_short=False), "")
 
+    def test_attached_region_or_name_digit_syllable_preserves_phone_boundary(self):
+        for suffix in ("대구", "서구", "중구", "영", "일", "이", "삼", "사", "오", "육", "칠", "팔"):
+            for number in ("01034567890", "010-3456-7890", "+82 10-3456-7890", "０１０３４５６７８９０"):
+                profile = "가상회원" + suffix + number
+                with self.subTest(suffix=suffix, number=number):
+                    self.assertEqual(phone_from_text(profile), "01034567890")
+                    self.assertTrue(eligible(member_record({"name": profile, "join_answer": "넵"})))
+
+    def test_literal_and_spelled_contacts_still_require_one_unique_number(self):
+        self.assertEqual(phone_from_text("공일공삼사오육칠팔구공"), "01034567890")
+        self.assertEqual(phone_from_text("가상회원대구01034567890 / 공일공삼사오육칠팔구공"), "01034567890")
+        for text in ("가상회원대구01034567890 / 01045678901",
+                     "가상회원대구01034567890 / 공일공사오육칠팔구공일",
+                     "901034567890"):
+            with self.subTest(text=text):
+                self.assertEqual(phone_from_text(text), "")
+
+    def test_attached_region_contact_is_saved_before_one_approval(self):
+        directory = FakeDirectory()
+        monitor = worker(directory)
+        item = {"member_key": "attached-region-key", "name": "가상회원대구01034567890", "created_at": 100, "join_answer": "넵"}
+        actions = []
+        monitor.process_application(item, actions.append)
+        monitor.process_application(item, actions.append)
+        self.assertEqual(actions, ["attached-region-key"])
+        self.assertEqual([event[0] for event in directory.events[:3]], ["members", "claim", "finish"])
+        self.assertEqual(directory.events[0][1]["members"][0]["sources"]["profile"]["text"], item["name"])
+
     def test_store_before_approve_and_duplicate_suppression(self):
         directory = FakeDirectory()
         monitor = worker(directory)

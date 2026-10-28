@@ -27,12 +27,17 @@ def phone_from_text(text: str, allow_short=True) -> str:
     # Full mobile numbers are valid even when attached to a Korean profile name.
     values = set()
     words = str.maketrans("공영일이삼사오육칠팔구", "00123456789")
-    normalized = unicodedata.normalize("NFKC", str(text or "")).translate(words).strip()
-    for match in re.finditer(r"(?<!\d)(?:010|\+?82[ .-]*10)[ .()-]*\d{4}[ .()-]*\d{4}(?!\d)", normalized):
-        value = re.sub(r"\D", "", match.group())
-        if value.startswith("82"):
-            value = "0" + value[2:]
-        values.add(value)
+    raw = unicodedata.normalize("NFKC", str(text or "")).strip()
+    normalized = raw.translate(words)
+    # Preserve literal numbers before translating Korean digits: "대구010..."
+    # becomes "대9010...", which would otherwise hide the phone boundary.
+    # Collect both forms so a second, spelled-out contact remains ambiguous.
+    for candidate_text in {raw, normalized}:
+        for match in re.finditer(r"(?<!\d)(?:010|\+?82[ .-]*10)[ .()-]*\d{4}[ .()-]*\d{4}(?!\d)", candidate_text):
+            value = re.sub(r"\D", "", match.group())
+            if value.startswith("82"):
+                value = "0" + value[2:]
+            values.add(value)
     if not values and allow_short == "answer":
         candidates = []
         for pattern in (r"^(\d{4}[ .-]*\d{4})$", r"^[^/|\r\n]+[/|][^/|\r\n]+[/|]\s*(\d{4}[ .-]*\d{4})\s*$"):
