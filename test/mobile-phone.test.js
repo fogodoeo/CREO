@@ -2,6 +2,15 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const Phone=require('../public/mobile-phone');
 const Summary=require('../public/print-shipping-summary');
+
+test('public redaction hides mobile numbers attached to names and regions without changing extraction',()=>{
+ for(const value of ['가상업체 광주01012345678','가상업체 광주010-1234-5678','가상업체 광주０１０１２３４５６７８','가상업체 광주010일이삼사5678','가상업체 광주+821012345678']){
+  assert.equal(Phone.redactPhoneText(value),'가상업체 광주',value);
+  assert.equal(Phone.redactPhoneText(Phone.redactPhoneText(value)),'가상업체 광주');
+ }
+ assert.equal(Phone.redactPhoneText('크레용 대구본점'),'크레용 대구본점');
+ assert.equal(Phone.extractMobilePhone('가상업체 광주01012345678'),'');
+});
 test('mixed Korean numbers, omitted prefix, spaces, fullwidth and international phones share one policy',()=>{
  for(const [input,expected] of [
   ['쩡/용인/2093-4625','01020934625'],['쩡/용인/20934625','01020934625'],

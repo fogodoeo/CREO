@@ -29,7 +29,11 @@ function extractMobilePhone(value) {
 }
 const phoneChunks = () => /(?<![0-9A-Za-z가-힣])[0-9공영일이삼사오육칠팔구](?:[ \t().-]*[0-9공영일이삼사오육칠팔구]){7,}/g;
 function redactPhoneText(value) {
-    return clean(value).replace(phoneChunks(),' ').replace(/[\s/|·]+$/g,'').replace(/\s+/g,' ').trim();
+    // Public display must also hide a full mobile number attached to a name or
+    // region. Keep contact extraction conservative; this is redaction only.
+    return clean(value)
+        .replace(/(?<![0-9])(?:0[ \t().-]*1[ \t().-]*0|\+?82[ \t().-]*1[ \t().-]*0)(?:[ \t().-]*[0-9공영일이삼사오육칠팔구]){8}(?![0-9])/g,' ')
+        .replace(phoneChunks(),' ').replace(/[\s/|·]+$/g,'').replace(/\s+/g,' ').trim();
 }
 const regions = new Set('서울 경기 인천 부산 대구 대전 광주 울산 세종 강원 충북 충남 전북 전남 경북 경남 제주 용인 천안 수원 성남 고양 부천 안산 안양 화성 평택 의정부 파주 김포 광명 군포 시흥 오산 이천 양주 구리 남양주 포천 하남 과천 여주 양평 가평 연천 동두천 청주 충주 제천 아산 공주 논산 계룡 당진 서산 전주 익산 군산 정읍 김제 남원 목포 순천 여수 광양 나주 포항 경주 구미 김천 안동 영주 영천 상주 문경 경산 창원 진주 김해 양산 밀양 거제 통영 사천 춘천 원주 강릉 속초 동해 태백 삼척 서귀포'.split(' '));
 const isRegion = value => regions.has(value.replace(/(?:특별자치시|특별자치도|특별시|광역시|시)$/,''));

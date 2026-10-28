@@ -299,6 +299,21 @@ test('public buyer rank identities separate matching names, preserve explicit wi
  api=createPlatformApi(options);assert.equal((await read('alpha')).items.find(i=>i.id==='one').winnerPublicKey,byId.get('one').winnerPublicKey);
 });
 
+test('public broadcast strips attached phones from live bids and sold names while retaining private records',async()=>{
+ const repository=new MemoryRepository();
+ const raw='가상업체 광주01012345678';
+ const item={id:'attached-phone',lotNumber:1,name:'B01',status:'sold',soldPrice:350000,winnerName:raw,winnerAlias:raw,winnerPhone:'01012345678',attributes:{bid_log:JSON.stringify([{name:raw,bidder_key:'private-band-key',amount:35,time:'22:30'}])}};
+ await repository.upsertRecord('alpha','item',item);
+ await repository.upsertRecord('alpha','broadcast',{id:'state',activeItemId:item.id,mode:'sold',page:2});
+ for(let repeat=0;repeat<2;repeat++){
+  const api=createPlatformApi({repository}),response=await call(api,'GET','/api/platform/channels/alpha/broadcast?page=2',null,'');
+  assert.equal(response.status,200);const data=response.json(),display=data.items.find(i=>i.id===item.id);
+  assert.equal(display.bidLog[0].name,'가상업체 광주');assert.equal(display.winnerAlias,'가상업체 광주');
+  assert.doesNotMatch(JSON.stringify(data),/01012345678|private-band-key/);
+  assert.deepEqual(await repository.getRecord('alpha','item',item.id),{...item,channelId:'alpha'});
+ }
+});
+
 test('organizer link is durable, channel scoped and cannot grant auction or vendor management access',async()=>{
  const repository=new MemoryRepository(),route='/api/platform/channels/alpha/organizer-link';
  let api=createPlatformApi({repository});
