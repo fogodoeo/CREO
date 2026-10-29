@@ -19,6 +19,38 @@ test('five-region rotation has a fixed first broadcast and covers month/year bou
  assert.equal(regionAt('2027-01-04'),3);assert.equal(regionAt('9999-12-29'),4);
 });
 const firstCycle=['2026-10-14','2026-10-19','2026-10-21','2026-10-26','2026-10-28'];
+const novemberCycle=['2026-11-09','2026-11-11','2026-11-16','2026-11-18','2026-11-23'];
+const announcedDates=[...firstCycle,...novemberCycle];
+
+test('November restarts with Seoul/Incheon and opens each regional application exactly two weeks before broadcast',async t=>{
+ assert.deepEqual(novemberCycle.map(regionAt),[0,1,2,3,4]);
+ for(const [index,region] of REGIONS.entries()){
+  const f=await fixture(t,'11월 신청 테스트',region),date=novemberCycle[index];
+  const opens=Date.parse(date+'T09:00:00+09:00')-14*86400000;
+  f.advance(opens-Date.parse('2026-10-02T09:00:00+09:00')-86400000);
+  const client=await f.login('01000000001'),token=(await f.post(client,'select',{id:f.vendorId})).json().token;
+  const get=()=>f.call(client,'GET','/api/platform/vendor-bookings?'+new URLSearchParams({token,event:'national-cre'}));
+  const command=body=>f.call(client,'POST','/api/platform/vendor-bookings',{requestId:randomUUID(),...body,token,event:'national-cre'});
+  let view=(await get()).json();
+  assert.deepEqual(view.dates.map(d=>d.date),announcedDates);
+  assert.equal(view.dates.find(d=>d.date===date).maxQuantityAvailable,0);
+  assert.equal((await command({type:'reserve',date,quantity:4})).status,409);
+  f.advance(86400000);view=(await get()).json();
+  assert.equal(view.dates.find(d=>d.date===date).maxQuantityAvailable,4);
+  const wrong=novemberCycle[(index+4)%5];
+  assert.equal((await command({type:'reserve',date:wrong,quantity:4})).status,409);
+  const body={type:'reserve',date,quantity:4,requestId:randomUUID()};
+  const results=await Promise.all([command(body),command(body)]);
+  for(const r of results)assert.equal(r.status,200,r.body);
+  f.restart();assert.equal((await command(body)).json().duplicate,true);
+  const saved=(await get()).json().reservations.filter(r=>r.date===date);
+  assert.equal(saved.length,1);assert.equal(saved[0].region,index);assert.equal(saved[0].entryIds.length,4);
+  const prepared=await f.call(f.client,'POST','/api/platform/national-rounds',{action:'prepare',date},f.admin);
+  assert.equal(prepared.status,200,prepared.body);
+  const channel=(await f.repository.getCatalog()).channels.find(c=>c.id==='national-cre-'+date.replaceAll('-',''));
+  assert.equal(channel.name,`전국크레자랑 · ${date.slice(5).replace('-','/')} ${region}`);
+ }
+});
 
 test('a dated panel assignment preserves ordinary participation and enforces one separate entry across retries and restart',async t=>{
  const f=await fixture(t),date=firstCycle[3],route='/api/platform/channels/national-cre/broadcast-bookings';
@@ -137,20 +169,20 @@ test('past broadcast entries are read-only while committed single and batch retr
  assert.equal((await f.command({type:'reopen-entry',id:r.id,slot:0,expectedVersion:1})).status,409);
  assert.deepEqual((await f.get()).json().entryState.entries,before);
 });
-test('applications expose exactly the first five regions, and each region can reserve its first broadcast',async t=>{
+test('announced dates include both cycles, and each region can still reserve its first broadcast',async t=>{
  for(const [index,region] of REGIONS.entries()){
   const f=await fixture(t,'첫 순회 테스트',region);f.advance(12*86400000);
   const view=(await f.get()).json();
-  assert.deepEqual(view.dates.map(d=>d.date),firstCycle);
-  assert.deepEqual(view.dates.map(d=>d.regionName),REGIONS);
+  assert.deepEqual(view.dates.map(d=>d.date),announcedDates);
+  assert.deepEqual(view.dates.map(d=>d.regionName),[...REGIONS,...REGIONS]);
   const own=view.dates[index];assert.equal(own.maxQuantityAvailable,4);
   const body={type:'reserve',date:own.date,quantity:4,requestId:randomUUID()};
   const reserved=await f.command(body);assert.equal(reserved.status,200,reserved.body);
   f.restart();assert.equal((await f.command(body)).json().duplicate,true);
-  assert.deepEqual((await f.get()).json().dates.map(d=>d.date),firstCycle);
+  assert.deepEqual((await f.get()).json().dates.map(d=>d.date),announcedDates);
  }
 });
-test('second-cycle requests stay closed within the old two-week window, on the day and after restart without writes',async t=>{
+test('unannounced November 2 requests stay closed within the old two-week window, on the day and after restart without writes',async t=>{
  const f=await fixture(t);f.advance(18*86400000);
  const before=await f.repository.getRecord('national-cre','setting','national-broadcasts');
  const body={type:'reserve',date:'2026-11-02',quantity:4,requestId:randomUUID()};
@@ -162,7 +194,7 @@ test('second-cycle requests stay closed within the old two-week window, on the d
   const replies=await Promise.all([send(body),send(body),send({...body,requestId:randomUUID()})]);
   for(const result of replies){assert.equal(result.status,409,result.body);assert.match(result.json().error,/아직 신청을 받지 않는/);}
   const view=await f.call(client,'GET','/api/platform/vendor-bookings?'+new URLSearchParams({token,event:'national-cre'}));
-  assert.deepEqual(view.json().dates.map(d=>d.date),firstCycle);
+  assert.deepEqual(view.json().dates.map(d=>d.date),announcedDates);
   assert.deepEqual(await f.repository.getRecord('national-cre','setting','national-broadcasts'),before);
   assert.deepEqual(await f.repository.listRecords('national-cre','notification'),notices);
  }
@@ -176,10 +208,10 @@ test('existing later bookings remain accessible to their owner and operator, wit
  const before=await f.repository.getRecord('national-cre','setting','national-broadcasts');
  for(let pass=0;pass<2;pass++){
   if(pass)f.restart();
-  const view=(await f.get()).json();assert.deepEqual(view.dates.map(d=>d.date),[...firstCycle,'2026-11-02']);
-  assert.equal(view.dates.at(-1).maxQuantityAvailable,0);assert.deepEqual(view.reservations[0].entryIds,reserved.entryIds);
+  const view=(await f.get()).json();assert.deepEqual(view.dates.map(d=>d.date),[...announcedDates,'2026-11-02'].sort());
+  assert.equal(view.dates.find(d=>d.date==='2026-11-02').maxQuantityAvailable,0);assert.deepEqual(view.reservations[0].entryIds,reserved.entryIds);
   const operator=(await f.call(f.client,'GET','/api/platform/channels/national-cre/broadcast-bookings',null,f.admin)).json();
-  assert.deepEqual(operator.sessions.map(s=>s.date),[...firstCycle,'2026-11-02','2026-11-09']);
+  assert.deepEqual(operator.sessions.map(s=>s.date),[...announcedDates,'2026-11-02'].sort());
  }
  assert.deepEqual(await f.repository.getRecord('national-cre','setting','national-broadcasts'),before);
  const saved=await f.command({type:'save-entry',id:reserved.id,slot:0,expectedVersion:0,entry:{sex:'unknown',weight:'3',hatchDate:'2026-09-01',note:'기존 접수 보존'}});
@@ -190,8 +222,8 @@ test('imported lots without a reservation retain their calendar entry without re
  const f=await fixture(t);
  await f.repository.upsertRecord('national-cre','item',{id:'later-import',name:'A01',lotNumber:1,vendorId:f.vendorId,status:'waiting',startPrice:0,attributes:{broadcastDate:'2026-11-02'}});
  const view=(await f.get()).json();
- assert.deepEqual(view.dates.map(d=>d.date),[...firstCycle,'2026-11-02']);
- assert.equal(view.dates.at(-1).maxQuantityAvailable,0);assert.equal(view.entryState.auctionItems[0].id,'later-import');
+ assert.deepEqual(view.dates.map(d=>d.date),[...announcedDates,'2026-11-02'].sort());
+ assert.equal(view.dates.find(d=>d.date==='2026-11-02').maxQuantityAvailable,0);assert.equal(view.entryState.auctionItems[0].id,'later-import');
 });
 test('vendor parent photos update imported lots after the entry deadline and refresh the broadcast pulse',async t=>{
  const f=await fixture(t),view=(await f.get()).json(),ownerId=view.entryState.ownerId,photoId=randomUUID();

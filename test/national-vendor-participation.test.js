@@ -117,7 +117,7 @@ test('regional assignment moves only unused future participation, preserving his
  assert.equal((await f.directory.find(TARGET,f.vendorId)).active,false);assert.equal((await f.directory.find(south,f.vendorId)).active,true);
  assert.equal((await f.directory.profileFor(south,f.vendorId)).id,profile.id);
  const summary=(await f.request('GET','/operator-vendors')).json().vendors.find(v=>v.id===profile.id);
- assert.deepEqual(summary.broadcasts.map(b=>b.date),['2026-10-19','2026-10-28']);
+ assert.deepEqual(summary.broadcasts.map(b=>b.date),['2026-10-19','2026-10-28','2026-11-23']);
  f.restart();assert.equal((await f.region(body)).json().duplicate,true);
  const back=await f.region(await f.regionBody(3));assert.equal(back.status,200,back.body);
  assert.equal((await f.directory.find(TARGET,f.vendorId)).active,true);assert.equal((await f.directory.find(south,f.vendorId)).active,false);

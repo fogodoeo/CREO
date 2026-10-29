@@ -30,7 +30,7 @@ test('program directory separates planned regions, submitted bookings and actual
   const response=await f.request('GET','/operator-vendors');assert.equal(response.status,200,response.body);
   const data=response.json(),a=data.vendors.find(v=>v.id===profile.id),b=data.vendors.find(v=>v.name==='가상 업체 B');
   assert.equal(data.vendors.filter(v=>v.name==='가상 업체 A').length,1);
-  assert.deepEqual(a.broadcasts.map(b=>[b.date,b.itemCount]),[['2026-10-14',2],['2026-10-26',1]]);
+  assert.deepEqual(a.broadcasts.map(b=>[b.date,b.itemCount]),[['2026-10-14',2],['2026-10-26',1],['2026-11-18',0]]);
   assert.equal(a.broadcasts[0].rounds[0].archiveId,'old');assert.equal(a.broadcasts[1].scheduled,true);
   assert.equal(b.members[0].region,'부산·울산·경남');
   assert.equal(b.broadcasts.find(b=>b.date==='2026-10-19').requested,true);

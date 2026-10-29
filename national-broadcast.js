@@ -7,8 +7,9 @@ const Origin=require('./public/broadcast-origin-core');
 const Tasks=require('./public/vendor-task-state');
 const REGIONS=['서울·인천','경기','전라·충청','대구·경북','부산·울산·경남'];
 const START='2026-10-14',MODE='regional-cycle-v1',ENTRY_COUNT=4,KEY=channelKey('national-cre','setting','national-broadcasts');
-// New applications stop after the first five regions. Existing records remain accessible.
-const APPLICATION_DATES=Object.freeze([START,'2026-10-19','2026-10-21','2026-10-26','2026-10-28']);
+// Each announced cycle is explicit; unannounced weeks remain closed.
+const NOVEMBER_DATES=Object.freeze(['2026-11-09','2026-11-11','2026-11-16','2026-11-18','2026-11-23']);
+const APPLICATION_DATES=Object.freeze([START,'2026-10-19','2026-10-21','2026-10-26','2026-10-28',...NOVEMBER_DATES]);
 const fail=(message,status=409)=>Object.assign(Error(message),{status});
 const uuid=()=>crypto.randomUUID();
 const validCapacity=value=>value===null||(Number.isSafeInteger(value)&&value>=4);
@@ -26,6 +27,8 @@ function regionEntryPolicy(state,region,vendors){
 function scheduled(date){return /^\d{4}-\d{2}-\d{2}$/.test(date||'')&&Number.isFinite(Legacy.start(date))&&Legacy.day(Legacy.start(date))===date&&date>=START&&[1,3].includes(new Date(date+'T00:00:00Z').getUTCDay());}
 function regionAt(date){
  if(!scheduled(date))return null;
+ const announcedRegion=NOVEMBER_DATES.indexOf(date);
+ if(announcedRegion>=0)return announcedRegion;
  const days=Math.round((Date.parse(date+'T00:00:00Z')-Date.parse(START+'T00:00:00Z'))/86400000);
  return (Math.floor(days/7)*2+(days%7>=5?1:0))%5;
 }
