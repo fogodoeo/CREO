@@ -11,6 +11,12 @@ async function main(){
  }
  const second=await f.repository.getRecord('national-cre','vendor','v2');
  await f.repository.upsertRecord('national-cre','vendor',{...second,paymentMethods:['bank_transfer','card']});
+ if(process.env.BUYER_PREVIEW_INQUIRY==='1'){
+  const catalog=await f.repository.getCatalog(),base=catalog.channels.find(c=>c.id==='national-cre');
+  await f.repository.saveCatalog([...catalog.channels,{...base,id:'clab-1029',name:'씨랩',shippingSupport:{enabled:false}}]);
+  for(const type of ['vendor','item'])for(const row of await f.repository.listRecords('national-cre',type))await f.repository.upsertRecord('clab-1029',type,type==='vendor'?{...row,phone:row.id==='v1'?'01000000001':'01000000002'}:{...row,attributes:{...row.attributes,broadcastDate:'2026-10-29'}});
+  const link=await f.request('POST','/channels/clab-1029/buyer-shipping-link',{itemId:'a01'});if(link.status!==200)throw Error(link.body);f.code=link.json().code;
+ }
  const channels=await f.repository.getCatalog();
  await f.repository.saveCatalog(channels.channels.map(c=>c.id==='national-cre'?{...c,shippingSupport:{enabled:false},shippingDefaults:{...c.shippingDefaults,deliverySchedule:{enabled:true,auctionDate:day}}}:c));
  await f.repository.upsertRows([{key:'shipping_rate_parge',value:JSON.stringify({data:{수도권:[{shop:'가상 정거샵',cost:19000}],경기:[{shop:'가상 경기점',cost:15000}]}})}]);

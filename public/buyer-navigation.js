@@ -53,7 +53,7 @@
           $('collection-items').innerHTML=data.items.map(itemMarkup).join('');
           $('collection-empty').hidden=data.items.length!==0;
           $('collection-items').querySelectorAll('[data-item-photo]').forEach(button=>button.onclick=()=>{const item=data.items.find(i=>i.id===button.dataset.itemPhoto);if(item)viewer.open(item,button);});
-          $('collection-items').querySelectorAll('[data-item-inquiry]').forEach(button=>button.onclick=()=>{const item=data.items.find(i=>i.id===button.dataset.itemInquiry);if(item)inquiry.open(item,data.channel?.name,button);});
+          $('collection-items').querySelectorAll('[data-item-inquiry]').forEach(button=>button.onclick=()=>{const item=data.items.find(i=>i.id===button.dataset.itemInquiry);if(item)inquiry.open(item,CreoCheckoutInquiry.inquiryContext(data),button);});
           // Initial registration can inspect photos without leaving the required sequence.
           $('items').querySelectorAll('[data-initial-photo]').forEach(node=>node.remove());
           $('items').querySelectorAll('[data-initial-actions]').forEach(node=>node.remove());
@@ -64,7 +64,7 @@
             const row=$('items').children[i];if(!row)continue;
             const actions=document.createElement('div');actions.className='item-actions';actions.dataset.initialActions='';row.append(actions);
             if(hasPhotos||hasParents){const button=document.createElement('button');button.type='button';button.dataset.initialPhoto='';button.className='collection-photo-link';button.textContent=hasPhotos?'사진 보기':'부모 정보 보기';button.onclick=()=>viewer.open(item,button);actions.append(button);}
-            if(canInquire){const button=document.createElement('button');button.type='button';button.dataset.initialInquiry='';button.className='inquiry-link';button.textContent='업체 문의';button.setAttribute('aria-label',CreoCheckoutItemView.itemTitle(item)+' 업체 문의');button.onclick=()=>inquiry.open(item,data.channel?.name,button);actions.append(button);}
+            if(canInquire){const button=document.createElement('button');button.type='button';button.dataset.initialInquiry='';button.className='inquiry-link';button.textContent='업체 문의';button.setAttribute('aria-label',CreoCheckoutItemView.itemTitle(item)+' 업체 문의');button.onclick=()=>inquiry.open(item,CreoCheckoutInquiry.inquiryContext(data),button);actions.append(button);}
           }
         }
       };
