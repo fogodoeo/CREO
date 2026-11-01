@@ -107,6 +107,9 @@ test('broadcast reload restores an active run once but never replays a completed
     .replace('session: RemoteSession): Promise<void>', 'session)');
   const calls = [];
   const context = {
+    document: require('linkedom').parseHTML('<html><body></body></html>').document,
+    syncRemoteResult: require('../roulette-app/src/remoteResult').syncRemoteResult,
+    isRemoteDisplay: true, currentThemeName: () => 'midnight',
     updateRemoteSnapshot: () => {}, configure: () => {}, closePanel: () => {}, setStatus: () => {},
     remoteAppliedCommandId: '', remotePreparedRunId: '', remoteStartCommandId: '',
     window: { CreoMarbleRoulette: { setEntries: () => {} } },
@@ -119,4 +122,5 @@ test('broadcast reload restores an active run once but never replays a completed
   calls.length = 0; context.remoteAppliedCommandId = ''; context.remotePreparedRunId = '';
   await apply({ ...session, phase: 'complete', result: { winner: 'test-a' } });
   assert.deepEqual(calls, []);
+  assert.match(context.document.getElementById('restoredDrawResult').textContent, /test-a/);
 });

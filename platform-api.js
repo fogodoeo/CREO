@@ -299,6 +299,7 @@ function sanitizeBroadcastState(input = {}) {
         page2BannerPosition: position(input.page2BannerPosition),
         page2TickerPosition: ['auto', 'top', 'bottom'].includes(input.page2TickerPosition) ? input.page2TickerPosition : 'auto',
         page3On: booleanValue(input.page3On, false),
+        page3Content: input.page3Content === 'pinball' ? 'pinball' : 'summary',
         page3BannerOn: false,
         page3BannerUrl: '',
         bannerSelectionConfigured: input.bannerSelectionConfigured === true,

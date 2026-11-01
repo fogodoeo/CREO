@@ -6,4 +6,6 @@ P1 provides host labels, banners, and centered captions. P2 defaults to inline i
 
 P3 is the extension point: scoreboard, team contribution, dice, roulette, or a future scoring model may provide different content and rules inside the same visual system. Do not reuse the captain multiplier or team membership from another event without configuration. Implement future P3 renderers through the broadcast-profile contract.
 
+Platform P3 can explicitly switch between its existing summary and the channel's pinball session with `page3Content`. The control stays in the P3 settings section and requires the existing save action. The draw uses a full-stage iframe whose identity survives ordinary broadcast refreshes; the layout editor shows an inert explanation, never a second running draw. The existing authenticated pinball controller prepares and starts the draw. Switching back preserves the saved summary layout. Chat-based entry collection is not enabled by this switch.
+
 Generic presets must not contain event names such as 왕중왕전, vendor names, logo URLs, or event-specific team rosters. These belong to channel configuration. Existing explicit channel titles and settings take precedence and are not rewritten when common defaults change.

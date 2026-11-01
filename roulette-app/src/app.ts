@@ -14,6 +14,7 @@ import { createSecureSeed, setRandomSeed } from './utils/random';
 import { parseName } from './utils/utils';
 import { auctionWinnerEntries, getLeadingHouseKey, HOUSE_NAMES } from './auctionEntries.js';
 import { createRemoteControls, createSessionPoller, initialEntries } from './remoteControls.js';
+import { syncRemoteResult } from './remoteResult.js';
 import { createNationalStage, isNationalChannel } from './nationalStage.js';
 import { createRosterSequence, rosterLayout } from './participantRoster.js';
 import { winnerCount as normalizedWinnerCount, winnerCountError, drawLabel, participantCount } from './drawWinners.js';
@@ -354,7 +355,7 @@ async function syncAuctionWinnerEntries(mode: 'person' | 'amount' = 'amount', sh
   showEntryFeedback('선택한 회차의 낙찰자를 불러오는 중…');
   try {
     const phoneSuffix = isNationalChannel(remoteChannelId);
-    const response = await fetch(`/api/platform/channels/${encodeURIComponent(remoteChannelId)}/${phoneSuffix ? 'workspace?scope=round' : 'broadcast'}`, {
+    const response = await fetch(`/api/platform/channels/${encodeURIComponent(remoteChannelId)}/${phoneSuffix || mode === 'person' ? 'workspace?scope=round' : 'broadcast'}`, {
       cache: 'no-store',
       credentials: 'same-origin',
     });
@@ -945,6 +946,7 @@ async function acknowledgeRemoteResult(record: RoundRecord): Promise<void> {
 
 async function applyRemoteSession(session: RemoteSession): Promise<void> {
   updateRemoteSnapshot(session);
+  syncRemoteResult(document, session, isRemoteDisplay && currentThemeName() !== 'national');
   if (session.phase === 'complete') {
     remoteAppliedCommandId = session.command?.id || '';
     setStatus('complete', `${session.result?.winner || '결과'} · 추첨 완료`);
@@ -1247,7 +1249,7 @@ async function initialize(): Promise<void> {
   const urlState = applyUrlParameters(config);
   applyConfigToControls(urlState.config);
   dom.entries.value = initialEntries({
-    remoteDisplay: isRemoteDisplay,
+    remoteDisplay: isRemoteDisplay || queryParameters.get('source') === 'auction-winners',
     urlEntries: urlState.entries,
     readStored: () => localStorage.getItem(STORAGE_KEYS.entries),
     fallback: config.defaultEntries,
@@ -1266,7 +1268,8 @@ async function initialize(): Promise<void> {
     dom.start.querySelector('span')!.textContent = '추첨 시작';
   } else if (!isRemoteDisplay) dom.entryEditor.open = true;
 
-  if (autoLoadAuctionWinners) await syncAuctionWinnerEntries('amount', false);
+  if (isRemoteController && queryParameters.get('source') === 'auction-winners') await syncAuctionWinnerEntries('person');
+  else if (autoLoadAuctionWinners) await syncAuctionWinnerEntries('amount', false);
 
   roulette = new Roulette();
   roulette.addEventListener('goal', (event) => {

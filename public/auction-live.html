@@ -271,7 +271,21 @@ function renderDiceTeamsPageThree(channel,state,items,assets){
     const overlay=renderDiceOverlay(items),board=diceTeamBoardMarkup(channel,items);
     return`<section class="layer enter" data-page3-renderer="dice-teams">${board}${overlay}</section>`
 }
-function profilePageThree(channel,state,items,assets){if((channel.scoreboards||[]).some(board=>board.metric==='vendorContribution'))return renderVendorContributionPageThree(channel,state,items,assets);const contract=CreoBroadcastProfiles.pageContract(channel,3);document.body.dataset.page3Renderer=contract.id;if(state.quizOn){return pageThree(channel,state,items)}if(contract.id==='tournament')return renderTournamentPageThree(channel,state,items);if(contract.id==='academy')return renderAcademyPageThree(channel,state,items);if(contract.id==='dice-teams')return renderDiceTeamsPageThree(channel,state,items,assets);return renderScoreboardPageThree(channel,state,items)}
+function profilePageThree(channel,state,items,assets){
+    const contract=CreoBroadcastProfiles.pageContract(channel,3,state);document.body.dataset.page3Renderer=contract.id;
+    if(contract.id==='pinball'){
+        if(state.page3On===false)return '';
+        if(editorMode)return pageThreeFrame(channel,'낙찰자 추첨','<div class="standby-note glass">추첨 운영 화면에서 명단을 불러온 뒤 시작하세요.<br>실제 추첨은 P3 송출 화면에 표시됩니다.</div>');
+        const source='/roulette/?'+new URLSearchParams({channel:channel.id,broadcast:'1',theme:'midnight',title:'낙찰자 추첨',channelName:channel.name||''});
+        return `<section class="layer" data-page3-renderer="pinball"><iframe title="낙찰자 추첨 송출" src="${esc(source)}" style="position:absolute;inset:0;width:100%;height:100%;border:0"></iframe></section>`;
+    }
+    if((channel.scoreboards||[]).some(board=>board.metric==='vendorContribution'))return renderVendorContributionPageThree(channel,state,items,assets);
+    if(state.quizOn)return pageThree(channel,state,items);
+    if(contract.id==='tournament')return renderTournamentPageThree(channel,state,items);
+    if(contract.id==='academy')return renderAcademyPageThree(channel,state,items);
+    if(contract.id==='dice-teams')return renderDiceTeamsPageThree(channel,state,items,assets);
+    return renderScoreboardPageThree(channel,state,items);
+}
 const layoutSelectors={1:{'p1-host-1':'.host-card[data-host-index="1"]','p1-host-2':'.host-card[data-host-index="2"]','p1-host-3':'.host-card[data-host-index="3"]','p1-banner':'.banner','p1-ticker':'.ticker','p1-frame':'.broadcast-console'},2:{'p2-progress':'.item-progress','p2-info':'.item-copy','p2-waiting':'.standby-note','p2-bidders':'.live-bidders','p2-photo':'.item-photo','p2-parents':'.parent-photos','p2-price':'.price-card','p2-sold':'.sold-notice','p2-banner':'.banner','p2-ticker':'.ticker','p2-frame':'.broadcast-console'},3:{'p3-board':'.dice-team-board, .board, .quiz-board, .contribution-teams','p3-effect':'.dice-overlay-card, .contribution-stage','p3-frame':'.broadcast-console'}};
 function resolvedLayoutPlacements(state){const placements={...(state.layoutPlacements||{})},legacy=placements['p1-hosts'];if(page===1&&legacy){const slots=['p1-host-1','p1-host-2','p1-host-3'].filter(slot=>stage.querySelector(layoutSelectors[1][slot]));if(slots.length){const legacyWidth=Math.max(1,Number(legacy.width)||53),gap=Math.min(1,legacyWidth/(slots.length*8)),cardWidth=Math.max(1,(legacyWidth-gap*(slots.length-1))/slots.length),baseX=Number(legacy.x)||0;slots.forEach((slot,index)=>{if(placements[slot])return;placements[slot]={...legacy,x:baseX+(slots.length-1-index)*(cardWidth+gap),width:cardWidth}})}}return placements}
 function tickerFontScale(placements){const raw=placements['p1-ticker']?.fontScale??placements['p2-ticker']?.fontScale??1;return Math.max(.5,Math.min(2.5,Number(raw)||1))}

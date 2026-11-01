@@ -31,6 +31,8 @@ function getLeadingHouseKey(items) {
 function auctionWinnerEntries(items, unitAmount = 100000, options = {}) {
   const unit = Math.max(1, Math.floor(Number(unitAmount) || 100000));
   const totals = new Map();
+  const people = new Map();
+  const usedLabels = new Set();
   
   const houseOption = typeof options === 'string' ? options : options?.house;
   const isAcademyTheme = options?.theme === 'academy' || options?.isAcademy;
@@ -48,6 +50,7 @@ function auctionWinnerEntries(items, unitAmount = 100000, options = {}) {
   }
 
   for (const item of Array.isArray(items) ? items : []) {
+    if (item?.auctionArchiveId) continue;
     const status = String(item?.status || '').trim().toLowerCase();
     const rawName = String(item?.winnerAlias || item?.winnerName || '').replace(/\s+/g, ' ').trim();
     const name = buyerDisplayName(rawName);
@@ -60,7 +63,19 @@ function auctionWinnerEntries(items, unitAmount = 100000, options = {}) {
     }
     
     const phone = extractMobilePhone(item?.winnerPhone) || extractMobilePhone(rawName);
-    const label = withPhone ? `${name} (${phone ? phone.slice(-4) : '번호 미등록'})` : name;
+    let label = withPhone ? `${name} (${phone ? phone.slice(-4) : '번호 미등록'})` : name;
+    if (byPerson) {
+      // Identity stays in memory; only the display label enters the public draw.
+      const identity = phone ? `phone:${phone}` : `name:${name}`;
+      if (people.has(identity)) label = people.get(identity);
+      else {
+        const base = label;
+        let duplicate = 1;
+        while (usedLabels.has(label)) label = `${base} (동명이인 ${++duplicate})`;
+        usedLabels.add(label);
+        people.set(identity, label);
+      }
+    }
     totals.set(label, (totals.get(label) || 0) + soldPrice);
   }
 
