@@ -1,6 +1,14 @@
-# November studio designs — 2026-11-02 (revision 3)
+# November studio designs — 2026-11-02 (revision 4)
 
-## Current revision: Jjunine monochrome
+## Current revision: Instagram host identities
+
+Revision 4 uses the generated `쭌이네_인스타_태그_레퍼런스.png` reference. The first host is **이승준 / @jjunes_9**, the second **크레초아 / @cre.coa05**, as supplied by the user. The existing host-role field holds the handle. In the Jjunine theme only, a valid @handle renders with a monochrome Instagram outline icon and an accessible Instagram label. Plain roles and other themes keep their existing rendering. Handles remain escaped display text, with no external requests or navigation.
+
+Host plates now have two lines: bold name, then icon + handle at 52% of the name's font size. The previous mascot, JJUNINE overline and LIVE endcap are removed from host plates. The original mascot remains in the masthead. The item tag also uses the simpler black side stripe. Silver seams, 6px outer / 4px inner corner tokens, a shallow black bottom edge and a 12px left stripe unify the host, event, item, ticker and ranking plates. Bid leader remains black with white text. No new animation.
+
+Actual P1/P2/P3 renderings were inspected. Both handles fit without truncation; at the saved 80% host scale, the 31.2px declared handle text renders at about 25px on a 1080p canvas. Saved screenshots: `쭌이네_인스타_P1.jpg` through `P3.jpg`. The background is the earlier room asset. C·LAB rules and auction logic are unchanged.
+
+## Previous revision: Jjunine monochrome
 
 Revision 3 supersedes the Jjunine brass-plaque specification below. The user's official identity is a white surface with a black character. Generated reference: `Desktop/전크자/output/november_broadcast_design/쭌이네_모노크롬_태그_레퍼런스.png`. This reference guided real HTML/CSS components; no generated text is baked into live names or amounts. C·LAB retains revision 2.
 

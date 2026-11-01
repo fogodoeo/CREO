@@ -4,7 +4,7 @@ const html=fs.readFileSync(path.join(__dirname,'../public/auction-live.html'),'u
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 test('national presenter captions use Korean defaults and retain explicitly configured names and roles',()=>{
  const ctx={esc,banner:()=>'',showBanner:()=>false,pageTicker:()=>'',c:{broadcastTheme:'national-stage'},s:{hostName1:'옹동2',hostName2:'함께하는 업체',hostName3:'초대 손님'}};
- vm.createContext(ctx);vm.runInContext(html.match(/^function pageOne\([^\n]+/m)[0],ctx);
+ vm.createContext(ctx);vm.runInContext(html.slice(html.indexOf('function hostCaptionRole('),html.indexOf('function activeItem(')),ctx);
  const render=()=>vm.runInContext('pageOne(c,s,[])',ctx);
  assert.match(render(),/>진행<.*>함께<.*>초대</);ctx.s.hostRole1='특별 진행';assert.match(render(),/>특별 진행</);
  ctx.s.hostName1='<img onerror="bad">';assert.doesNotMatch(render(),/<img/);assert.match(render(),/&lt;img/);
