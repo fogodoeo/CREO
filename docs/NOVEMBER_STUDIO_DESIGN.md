@@ -1,6 +1,14 @@
-# November studio designs — 2026-11-02 (revision 4)
+# November studio designs — 2026-11-02 (revision 5)
 
-## Current revision: Instagram host identities
+## Current revision: color Instagram icons and broadcast notices
+
+Only the Instagram icon gets a pink/purple/orange/yellow gradient tile and a white camera outline; handles stay dark and readable. This brand accent does not encode auction state. The host layout, names and state are unchanged.
+
+Two static 1920×1080 PNG assets are provided under `public/assets/jjunine/`: `opening-1920x1080.png` and `standby-1920x1080.png`. Editable source: `broadcast-notice.html` (`?scene=opening` selects the opening copy). They use the original logo, local Pretendard font, white/silver plate system and black event panel. PNGs were captured directly from the browser at native size, with no resampling. These are manually selectable broadcast images; no automatic P1/P2 switch behavior is added.
+
+Copy distinguishes pickup locations (대구 크레오 / 광주 쭌이네) from carrier origins (광주 쭌이네 → 도도시, 대구 크레오 → 파르게). Quiz copy advertises chicken, coffee and other prizes without implying every participant wins. Opening title: 잠시 후, 방송이 시작됩니다. Intermission title: 잠시 후, 방송이 이어집니다. Both versions were visually inspected at 1920×1080. No new motion.
+
+## Previous revision: Instagram host identities
 
 Revision 4 uses the generated `쭌이네_인스타_태그_레퍼런스.png` reference. The first host is **이승준 / @jjunes_9**, the second **크레초아 / @cre.coa05**, as supplied by the user. The existing host-role field holds the handle. In the Jjunine theme only, a valid @handle renders with a monochrome Instagram outline icon and an accessible Instagram label. Plain roles and other themes keep their existing rendering. Handles remain escaped display text, with no external requests or navigation.
 

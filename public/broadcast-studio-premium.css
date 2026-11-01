@@ -111,7 +111,7 @@ body[data-broadcast-theme="jjun-boutique"][data-page="1"] #stage .host-card stro
 body[data-broadcast-theme="jjun-boutique"][data-page="1"] #stage .host-name{font-weight:850;line-height:1.05}
 body[data-broadcast-theme="jjun-boutique"][data-page="1"] #stage .host-role{font-size:calc(var(--broadcast-body-size) * .52)!important;font-weight:600!important;letter-spacing:0;color:#30343a!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
 body[data-broadcast-theme="jjun-boutique"][data-page="1"] #stage .host-role.host-social{display:flex;align-items:center;gap:.4em;max-width:100%;line-height:1.2}
-body[data-broadcast-theme="jjun-boutique"][data-page="1"] #stage .host-instagram{display:block;width:1em;height:1em;flex:0 0 1em}
+body[data-broadcast-theme="jjun-boutique"][data-page="1"] #stage .host-instagram{display:block;width:1em;height:1em;flex:0 0 1em;padding:.16em;box-sizing:content-box;border-radius:.3em;background:radial-gradient(circle at 25% 105%,#feda75 0%,#fa7e1e 25%,#d62976 52%,#962fbf 76%,#4f5bd5 100%);color:#fff}
 body[data-broadcast-theme="jjun-boutique"][data-page="1"] #stage .host-handle{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 body[data-broadcast-theme="jjun-boutique"][data-page="1"] #stage .host-role::before{display:none}
 /* C·LAB: left-aligned wall label, a short sage rule leading the role. */
