@@ -100,7 +100,7 @@ function estimate({ config: rawConfig, carrier, destination, source, submittedAt
     const submittedDate = submittedAt && Number.isFinite(Date.parse(submittedAt)) ? new Date(Date.parse(submittedAt) + 9 * 3600000).toISOString().slice(0, 10) : '';
     if (submittedDate && submittedDate >= dispatchDate && !override) return review('late_registration', source);
     // The national Monday run joins Tuesday's route directly; this is not a generic origin rule.
-    let earliest = add(dispatchDate, special ? 0 : transitDays);
+    let earliest = add(dispatchDate, special && dispatchDate === add(config.auctionDate, 1) ? 0 : transitDays);
     if (carrier === 'parge' && (region(origin.region) === 'jeju' || region(target.region) === 'jeju') && earliest < source.jejuSaturdayFrom) earliest = source.jejuSaturdayFrom;
     let arrivalDate = nextDay(earliest, arrivalDays, { include: true, weeks: arrivalWeeks });
     if (!arrivalDate) return review('arrival', source);

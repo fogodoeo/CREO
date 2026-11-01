@@ -32,6 +32,7 @@ test('national Monday special departs Tuesday; Wednesday and ordinary channels k
  assert.equal(run({config:{...cfg,pargeDispatchDate:'2026-09-29'}}).dispatchDate,'2026-09-29');
  assert.equal(run({submittedAt:'2026-09-22T01:00:00Z'}).reason,'late_registration');
  source.schedules.push({partnerName:'서울 도착점',deliveryDayLabel:'화요일'});assert.equal(run().arrivalDate,'2026-09-22');
+ assert.equal(run({config:{...cfg,pargeDispatchDate:'2026-09-29'}}).arrivalDate,'2026-10-06');
 });
 
 test('uses collection after auction, not the customer drop-off day', () => {
