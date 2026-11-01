@@ -42,7 +42,7 @@ function matchOrders(record, orders, workspace, channel, records) {
  });
 }
 async function preview(record, workspace, channel, estimate) {
- if(record.status!=='booked'||!record.orders?.length)fail('주문번호를 낙찰자별로 연결하고 예약 완료를 저장해 주세요.');
+ if(record.status!=='booked'||!record.orders?.length)fail('파르게 예약 완료 여부를 확인해 주세요.');
  const groups=currentGroups(record,workspace,channel),result=[];
  for(const [index,g] of groups.entries()) {
   const order=record.orders[index];
@@ -52,9 +52,22 @@ async function preview(record, workspace, channel, estimate) {
   const item=workspace.items.find(i=>i.id===g.items[0].id);
   const schedule=order.arrivalDate?null:await estimate?.(g,item,order);
   const arrival=order.arrivalDate || (schedule?.status==='estimated'?schedule.arrivalDate:'');
-  result.push({eventKey:'parge-booking:'+record.id+':'+hash(order.orderNumber),templateKey:TEMPLATE,recipientRole:'buyer',recipientPhone:buyers[0],itemIds:order.itemIds,allowSmsFallback:false,failureSmsFallback:false,
-   variables:{낙찰자명:Phone.buyerDisplayName(item.winnerName||item.winnerAlias),개체내역:g.items.map(i=>i.lot).join(', ')+' · '+g.quantity+'마리',거점명:g.shop,수령예정일:arrival||'일정 확인 중',주문번호:order.orderNumber}});
+  result.push({eventKey:'parge-booking:'+record.id+':'+hash(order.orderNumber||[...order.itemIds].sort()),templateKey:TEMPLATE,recipientRole:'buyer',recipientPhone:buyers[0],itemIds:order.itemIds,allowSmsFallback:false,failureSmsFallback:false,
+   variables:{낙찰자명:Phone.buyerDisplayName(item.winnerName||item.winnerAlias),개체내역:g.items.map(i=>i.lot).join(', ')+' · '+g.quantity+'마리',거점명:g.shop,수령예정일:arrival||'일정 확인 중'}});
  }
  return result;
 }
-module.exports={TEMPLATE,matchOrders,preview};
+function confirmReservation(record, deliveries, workspace, channel) {
+ const groups=currentGroups(record,workspace,channel);
+ if(!Array.isArray(deliveries)||deliveries.length!==groups.length)fail('예약 완료할 배송 목록을 다시 확인해 주세요.');
+ return groups.map(g=>{
+  const ids=g.items.map(i=>i.id).sort(),matches=deliveries.filter(d=>Array.isArray(d.itemIds)&&JSON.stringify([...d.itemIds].sort())===JSON.stringify(ids));
+  if(matches.length!==1)fail('예약 완료할 개체 구성이 달라요. 새로고침해 주세요.');
+  const d=matches[0];
+  for(const key of ['arrivalDate','dispatchDate'])if(d[key]&&!Dates.date(d[key]))fail('날짜를 확인해 주세요.');
+  if(d.arrivalDate&&d.dispatchDate&&d.arrivalDate<d.dispatchDate)fail('수령 예정일은 출발일보다 빠를 수 없어요.');
+  const previous=record.orders?.find(o=>JSON.stringify([...o.itemIds].sort())===JSON.stringify(ids));
+  return {name:g.name,phone:g.phone,shop:g.shop,quantity:g.quantity,itemIds:ids,arrivalDate:d.arrivalDate||'',dispatchDate:d.dispatchDate||'',snapshot:snapshot(g,workspace),...(previous?.orderNumber?{orderNumber:previous.orderNumber}:{})};
+ });
+}
+module.exports={TEMPLATE,matchOrders,preview,confirmReservation};

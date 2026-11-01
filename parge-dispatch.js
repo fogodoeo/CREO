@@ -5,7 +5,7 @@ const fail=message=>{const e=new Error(message);e.status=409;throw e;};
 function createPargeDispatch({read,write,workspace,shops,lock,notifications,estimate,notificationRows=async()=>[],now=()=>new Date().toISOString()}){
  const fingerprint=p=>JSON.stringify({date:p.date,groups:p.groups.map(g=>({name:g.name,phone:g.phone,shop:g.shop,quantity:g.quantity,price:g.price,items:g.items.map(i=>({id:i.id,shipmentId:i.shipmentId,price:i.price,buyerSaleId:i.buyerSaleId||''}))}))});
  const belongs=(record,ids)=>record.plan.groups.every(g=>g.items.every(i=>ids.has(i.id)));
- async function list(channel){const w=await workspace(channel),ids=new Set(w.items.map(i=>i.id)),notices=await notificationRows(channel);return ((await read(channel))||[]).filter(r=>belongs(r,ids)).map(r=>({...r,notices:notices.filter(n=>n.templateKey===Booking.TEMPLATE&&n.eventKey.startsWith('parge-booking:'+r.id+':')).map(n=>({id:n.id,status:n.status,orderNumber:n.variables?.['#{주문번호}'],lastError:n.lastError}))}));}
+ async function list(channel){const w=await workspace(channel),ids=new Set(w.items.map(i=>i.id)),notices=await notificationRows(channel);return ((await read(channel))||[]).filter(r=>belongs(r,ids)).map(r=>({...r,notices:notices.filter(n=>n.templateKey===Booking.TEMPLATE&&n.eventKey.startsWith('parge-booking:'+r.id+':')).map(n=>({id:n.id,status:n.status,buyerName:n.variables?.['#{낙찰자명}'],shop:n.variables?.['#{거점명}'],lastError:n.lastError}))}));}
  async function command(channel,body){return lock(channel,async()=>{
   const records=(await read(channel))||[],w=await workspace(channel),scopeIds=new Set(w.items.map(i=>i.id)),scopedRecords=records.filter(r=>belongs(r,scopeIds));
   if(body.action==='prepare'){
@@ -38,11 +38,11 @@ function createPargeDispatch({read,write,workspace,shops,lock,notifications,esti
    const next={...old,noticeRequestedAt:old.noticeRequestedAt||now(),updatedAt:now()};records[index]=next;
    await write(channel,records,prepared.filter(p=>!p.duplicate).map(p=>p.record));return next;
   }
-  if(body.action==='link-orders'){
+  if(body.action==='link-orders'||body.action==='confirm-reservation'){
    if(body.confirmed!==true||old.status==='released')fail('파르게 예약 완료 내용을 확인해 주세요.');
    if(body.expectedUpdatedAt!==old.updatedAt)fail('다른 창에서 예약 정보가 변경됐어요. 새로고침해 주세요.');
    if(old.noticeRequestedAt)fail('안내 발송을 요청한 예약은 수정할 수 없어요. 변경 안내가 필요합니다.');
-   records[index]={...old,status:'booked',orders:Booking.matchOrders(old,body.orders,w,channel,records),bookedAt:old.bookedAt||now(),updatedAt:now()};
+   records[index]={...old,status:'booked',orders:body.action==='confirm-reservation'?Booking.confirmReservation(old,body.deliveries,w,channel):Booking.matchOrders(old,body.orders,w,channel,records),bookedAt:old.bookedAt||now(),updatedAt:now()};
    await write(channel,records);return records[index];
   }
   if(body.action==='attempted'){
