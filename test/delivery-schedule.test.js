@@ -21,6 +21,19 @@ function dodosi() { return { ratePayload:{items:[{route:'서울A',shop:'도착�
 ] }] }; }
 const estimate = (carrier = 'parge', extra = {}) => Core.estimate({ config, carrier, source: carrier === 'parge' ? parge() : dodosi(), destination: carrier === 'parge' ? {region:'서울/경기/인천',shop:'서울 도착점'} : {region:'서울A',shop:'서울 방배 - 도착점'}, now, ...extra });
 
+test('national Monday special departs Tuesday; Wednesday and ordinary channels keep next cycle',()=>{
+ const source=parge();source.partners[0].name='크레오 대구본점';source.schedules[0].partnerName='크레오 대구본점';
+ const cfg={...config,pargeOrigin:'크레오 대구본점',auctionDate:'2026-09-21'};
+ const run=extra=>estimate('parge',{source,config:cfg,nationalMondaySpecial:true,...extra});
+ assert.equal(run().dispatchDate,'2026-09-22');assert.equal(run().arrivalDate,'2026-09-24');
+ assert.equal(run({nationalMondaySpecial:false}).dispatchDate,'2026-09-28');
+ assert.equal(run({config:{...cfg,auctionDate:'2026-09-23'}}).dispatchDate,'2026-09-28');
+ assert.equal(run({config:{...cfg,auctionDate:'2026-09-23'}}).arrivalDate,'2026-10-01');
+ assert.equal(run({config:{...cfg,pargeDispatchDate:'2026-09-29'}}).dispatchDate,'2026-09-29');
+ assert.equal(run({submittedAt:'2026-09-22T01:00:00Z'}).reason,'late_registration');
+ source.schedules.push({partnerName:'서울 도착점',deliveryDayLabel:'화요일'});assert.equal(run().arrivalDate,'2026-09-22');
+});
+
 test('uses collection after auction, not the customer drop-off day', () => {
     assert.deepEqual(estimate(), {status:'estimated',dispatchDate:'2026-09-21',arrivalDate:'2026-09-24',checkedAt});
     const sunday = estimate('parge',{destination:{region:'전라/광주',shop:'광주 도착점'}});

@@ -4,7 +4,7 @@ from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
 
 ROOT = Path(__file__).resolve().parents[1]
 FILES = {name: ROOT / 'tools/parge-helper' / name for name in (
-    'manifest.json', 'popup.html', 'popup.css', 'form.js', 'background.js', 'bridge.js')}
+    'manifest.json', 'popup.html', 'popup.css', 'form.js', 'orders.js', 'background.js', 'bridge.js')}
 FILES.update({name: ROOT / 'public' / name for name in ('mobile-phone.js', 'parge-dispatch-core.js')})
 
 def build():

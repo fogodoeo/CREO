@@ -1,10 +1,11 @@
 'use strict';
 const crypto=require('node:crypto'),Core=require('./public/parge-dispatch-core');
+const Booking=require('./parge-booking');
 const fail=message=>{const e=new Error(message);e.status=409;throw e;};
-function createPargeDispatch({read,write,workspace,shops,lock,now=()=>new Date().toISOString()}){
- const fingerprint=p=>JSON.stringify({date:p.date,groups:p.groups.map(g=>({name:g.name,phone:g.phone,shop:g.shop,quantity:g.quantity,price:g.price,items:g.items.map(i=>({id:i.id,shipmentId:i.shipmentId,price:i.price}))}))});
+function createPargeDispatch({read,write,workspace,shops,lock,notifications,estimate,notificationRows=async()=>[],now=()=>new Date().toISOString()}){
+ const fingerprint=p=>JSON.stringify({date:p.date,groups:p.groups.map(g=>({name:g.name,phone:g.phone,shop:g.shop,quantity:g.quantity,price:g.price,items:g.items.map(i=>({id:i.id,shipmentId:i.shipmentId,price:i.price,buyerSaleId:i.buyerSaleId||''}))}))});
  const belongs=(record,ids)=>record.plan.groups.every(g=>g.items.every(i=>ids.has(i.id)));
- async function list(channel){const w=await workspace(channel),ids=new Set(w.items.map(i=>i.id));return ((await read(channel))||[]).filter(r=>belongs(r,ids));}
+ async function list(channel){const w=await workspace(channel),ids=new Set(w.items.map(i=>i.id)),notices=await notificationRows(channel);return ((await read(channel))||[]).filter(r=>belongs(r,ids)).map(r=>({...r,notices:notices.filter(n=>n.templateKey===Booking.TEMPLATE&&n.eventKey.startsWith('parge-booking:'+r.id+':')).map(n=>({id:n.id,status:n.status,orderNumber:n.variables?.['#{주문번호}'],lastError:n.lastError}))}));}
  async function command(channel,body){return lock(channel,async()=>{
   const records=(await read(channel))||[],w=await workspace(channel),scopeIds=new Set(w.items.map(i=>i.id)),scopedRecords=records.filter(r=>belongs(r,scopeIds));
   if(body.action==='prepare'){
@@ -27,6 +28,23 @@ function createPargeDispatch({read,write,workspace,shops,lock,now=()=>new Date()
   const index=records.findIndex(r=>r.id===body.id);if(index<0)fail('접수 기록을 찾지 못했어요.');
   const old=records[index];
   if(!belongs(old,scopeIds))fail('선택한 회차의 접수 기록이 아닙니다.');
+  if(body.action==='preview-notices'||body.action==='send-notices'){
+   const events=await Booking.preview(old,w,channel,(g,item,order)=>estimate?.(channel,g,item,order));
+   if(body.action==='preview-notices')return {...old,preview:events,noticeReady:notifications?.provider?.readiness(Booking.TEMPLATE,'alimtalk')?.ready===true};
+   if(body.confirmed!==true)fail('낙찰자별 예약 안내 내용을 확인해 주세요.');
+   if(JSON.stringify(body.preview)!==JSON.stringify(events))fail('미리보기 내용이 변경됐어요. 다시 열어서 확인해 주세요.');
+   if(!notifications?.provider?.readiness(Booking.TEMPLATE,'alimtalk')?.ready)fail('예약확인 알림톡 검수 승인과 템플릿 연결이 필요해요.');
+   const prepared=await Promise.all(events.map(e=>notifications.prepare(channel,e)));
+   const next={...old,noticeRequestedAt:old.noticeRequestedAt||now(),updatedAt:now()};records[index]=next;
+   await write(channel,records,prepared.filter(p=>!p.duplicate).map(p=>p.record));return next;
+  }
+  if(body.action==='link-orders'){
+   if(body.confirmed!==true||old.status==='released')fail('파르게 예약 완료 내용을 확인해 주세요.');
+   if(body.expectedUpdatedAt!==old.updatedAt)fail('다른 창에서 예약 정보가 변경됐어요. 새로고침해 주세요.');
+   if(old.noticeRequestedAt)fail('안내 발송을 요청한 예약은 수정할 수 없어요. 변경 안내가 필요합니다.');
+   records[index]={...old,status:'booked',orders:Booking.matchOrders(old,body.orders,w,channel,records),bookedAt:old.bookedAt||now(),updatedAt:now()};
+   await write(channel,records);return records[index];
+  }
   if(body.action==='attempted'){
    if(old.status==='released')fail('해제된 접수 기록이에요.');
    if(['cart','booked'].includes(old.status))return old;
@@ -47,6 +65,14 @@ function createPargeDispatch({read,write,workspace,shops,lock,now=()=>new Date()
   }else fail('지원하지 않는 접수 작업이에요.');
   await write(channel,records);return records[index];
  });}
- return {list,command};
+ async function assertNotification(channel,notification){try{
+  const record=((await read(channel))||[]).find(r=>notification.eventKey.startsWith('parge-booking:'+r.id+':'));
+  if(!record)fail('접수 기록이 없습니다.');
+  const events=await Booking.preview(record,await workspace(channel),channel,(g,item,order)=>estimate?.(channel,g,item,order));
+  const event=events.find(e=>e.eventKey===notification.eventKey);
+  const safe=require('./checkout-notifications').safeVariables;
+  if(!event||event.recipientPhone!==notification.recipientPhone||JSON.stringify(safe(event.variables))!==JSON.stringify(notification.variables))fail('예약 안내 정보가 변경됐어요. 다시 확인해 주세요.');
+ }catch(error){throw Object.assign(error,{code:'BUYER_LINK_INACTIVE'});}}
+ return {list,command,assertNotification};
 }
 module.exports={createPargeDispatch};

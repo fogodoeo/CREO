@@ -118,7 +118,7 @@ function createDeliveryScheduleService({ repository, notificationService = null,
         try { await load(); } catch { return Core.estimate({ config: channel.shippingDefaults.deliverySchedule, carrier, destination: { shop: selection.pargeShop }, now: now() }); }
         checkConfiguration(channel, carrier);
         if (!snapshot[carrier]) refreshSoon();
-        return Core.estimate({ config: channel.shippingDefaults.deliverySchedule, carrier,
+        return Core.estimate({ config: channel.shippingDefaults.deliverySchedule, carrier, nationalMondaySpecial: /^national-cre(?:-\d{8})?$/.test(channel.id || ''),
             destination: { region: selection.pargeRegion, shop: selection.pargeShop }, source: snapshot[carrier], submittedAt, now: now() });
     }
     async function enrichRates(channel, carrier, regions, submittedAt = '', selection = null) {
@@ -127,7 +127,7 @@ function createDeliveryScheduleService({ repository, notificationService = null,
         checkConfiguration(channel, carrier);
         if (!snapshot[carrier]) refreshSoon();
         return regions.map(group => ({ ...group, shops: group.shops.map(shop => ({ ...shop, deliverySchedule: Core.estimate({
-            config: channel.shippingDefaults.deliverySchedule, carrier, destination: { region: group.region, shop: shop.name },
+            config: channel.shippingDefaults.deliverySchedule, carrier, nationalMondaySpecial: /^national-cre(?:-\d{8})?$/.test(channel.id || ''), destination: { region: group.region, shop: shop.name },
             source: snapshot[carrier], submittedAt: selection?.destinationType === carrier && selection.pargeRegion === group.region && selection.pargeShop === shop.name
                 ? submittedAt || new Date(now()).toISOString() : new Date(now()).toISOString(), now: now()
         }) })) }));

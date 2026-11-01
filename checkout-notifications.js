@@ -14,6 +14,7 @@ const NOTIFICATION_STATUSES = new Set([
 ]);
 
 const TEMPLATE_KEYS = Object.freeze([
+    'buyer_parge_booking_confirmed',
     'broadcast_booking_updated',
     'vendor_join_requested',
     'buyer_win_initial',

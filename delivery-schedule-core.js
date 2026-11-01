@@ -55,7 +55,7 @@ function nextDay(start, allowed, { include = false, weeks = [], shop = null } = 
 function review(reason, source) { return { status: 'review', reason, checkedAt: source?.checkedAt || '' }; }
 
 // Pure projection: never writes shipments, payment, notifications, or auction state.
-function estimate({ config: rawConfig, carrier, destination, source, submittedAt = '', now = Date.now() }) {
+function estimate({ config: rawConfig, carrier, destination, source, submittedAt = '', nationalMondaySpecial = false, now = Date.now() }) {
     const config = normalizeConfig(rawConfig);
     if (!config?.enabled || !['parge', 'dodosi'].includes(carrier) || !destination?.shop) return null;
     if (!config.auctionDate) return review('configuration', source);
@@ -93,12 +93,14 @@ function estimate({ config: rawConfig, carrier, destination, source, submittedAt
     }
     if (!collectDays?.length || !arrivalDays?.length) return review('schedule_unavailable', source);
     const override = config[carrier + 'DispatchDate'];
-    let dispatchDate = override || nextDay(config.auctionDate, collectDays, { weeks: origin.collectWeeks || [], shop: origin });
+    const special = carrier === 'parge' && nationalMondaySpecial && weekday(config.auctionDate) === 1 && compact(config.pargeOrigin) === compact('크레오 대구본점');
+    let dispatchDate = override || (special ? add(config.auctionDate, 1) : nextDay(config.auctionDate, collectDays, { weeks: origin.collectWeeks || [], shop: origin }));
     if (!dispatchDate || dispatchDate <= config.auctionDate || inVacation(dispatchDate, origin)) return review('dispatch', source);
     // An explicit operator dispatch date can reflect a provider-confirmed special run.
     const submittedDate = submittedAt && Number.isFinite(Date.parse(submittedAt)) ? new Date(Date.parse(submittedAt) + 9 * 3600000).toISOString().slice(0, 10) : '';
     if (submittedDate && submittedDate >= dispatchDate && !override) return review('late_registration', source);
-    let earliest = add(dispatchDate, transitDays);
+    // The national Monday run joins Tuesday's route directly; this is not a generic origin rule.
+    let earliest = add(dispatchDate, special ? 0 : transitDays);
     if (carrier === 'parge' && (region(origin.region) === 'jeju' || region(target.region) === 'jeju') && earliest < source.jejuSaturdayFrom) earliest = source.jejuSaturdayFrom;
     let arrivalDate = nextDay(earliest, arrivalDays, { include: true, weeks: arrivalWeeks });
     if (!arrivalDate) return review('arrival', source);

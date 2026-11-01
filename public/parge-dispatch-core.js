@@ -43,7 +43,7 @@
    if(item.soldPrice==null||text(item.soldPrice)===''||!Number.isSafeInteger(price)||price<0){skip('낙찰금액 확인 필요');continue;}
    const key=JSON.stringify([channelId,buyerPhone,phone,norm(name),norm(shop)]);
    if(!groups.has(key))groups.set(key,{key,name,phone,shop,region:text(s.pargeRegion),quantity:0,price:0,items:[],paid:true});
-   const g=groups.get(key);g.quantity++;g.price+=price;g.items.push({id:item.id,shipmentId:s.id,lot:text(item.name),price});g.paid=g.paid&&s.paymentStatus==='paid';
+   const g=groups.get(key);g.quantity++;g.price+=price;g.items.push({id:item.id,shipmentId:s.id,lot:text(item.name),price,buyerSaleId:item.buyerSaleId||''});g.paid=g.paid&&s.paymentStatus==='paid';
   }
   const rows=[...groups.values()];for(const g of rows)g.items.sort((a,b)=>a.lot.localeCompare(b.lot,'en',{numeric:true}));
   rows.sort((a,b)=>a.items[0].lot.localeCompare(b.items[0].lot,'en',{numeric:true}));

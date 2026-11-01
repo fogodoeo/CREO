@@ -1120,7 +1120,15 @@ function createPlatformApi({
     const nationalRounds = NationalRounds.createNationalRoundOperations({repository,directory:vendorDirectory,lock:withMutationLock,touch:touchChannel});
     const pargeDispatch = require('./parge-dispatch').createPargeDispatch({
         read: async id => (await repository.getRecord(id,'setting','parge-dispatch'))?.records || [],
-        write: (id,records) => repository.upsertRows([{key:channelKey(id,'setting','parge-dispatch'),value:JSON.stringify({id:'parge-dispatch',channelId:id,records})}]),
+        write: (id,records,notices=[]) => repository.upsertRows([{key:channelKey(id,'setting','parge-dispatch'),value:JSON.stringify({id:'parge-dispatch',channelId:id,records})},...notices.map(n=>({key:channelKey(id,'notification',n.id),value:JSON.stringify(n)}))]),
+        notifications:notificationService,
+        notificationRows:id=>repository.listRecords(id,'notification'),
+        estimate:async(id,g,item,order)=>{
+            if(!deliverySchedules)return null;
+            const channel=(await repository.getCatalog()).channels.find(c=>c.id===id);
+            const auctionDate=item.attributes?.broadcastDate||item.broadcastDate||channel?.shippingDefaults?.deliverySchedule?.auctionDate;
+            return deliverySchedules.estimate({...channel,shippingDefaults:{...channel?.shippingDefaults,deliverySchedule:{...channel?.shippingDefaults?.deliverySchedule,enabled:true,auctionDate,...(order.dispatchDate?{pargeDispatchDate:order.dispatchDate}:{})}}},{destinationType:'parge',pargeRegion:g.region,pargeShop:g.shop});
+        },
         workspace:async id=>OperationRounds.scopeWorkspace((await repository.getCatalog()).channels.find(c=>c.id===id),await workspace(id)),
         shops: async () => require('./public/parge-dispatch-core').shopNames(await pargeRates()),
         lock: (id,work) => withMutationLock(`channel:${id}`,work)
@@ -6434,6 +6442,7 @@ function createPlatformApi({
     }
 
     async function assertBuyerNotificationLink(channelId,notification) {
+        if(notification.templateKey==='buyer_parge_booking_confirmed')return pargeDispatch.assertNotification(channelId,notification);
         await closingOperations.assertCurrent(channelId,notification);
         if(notification.templateKey==='vendor_join_requested')return vendorAccess.assertNotification(notification);
         if(notification.templateKey==='broadcast_booking_updated') {
