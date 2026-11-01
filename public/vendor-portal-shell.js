@@ -104,6 +104,56 @@
   }
   const promo=nav.querySelector('[data-promo-nav]');if(promo){promo.classList.toggle('portal-attention',!!status.promoAttention);promo.setAttribute('aria-label','홍보 관리'+(status.promoAttention?' · 게시 일정 있음':''));}
   showPromoNotice(nav,status);
+  showSeason(nav.dataset.company||query.get('company')||query.get('portal'),status);
+ }
+ let seasonHost,seasonDialog,seasonCompany='',seasonState,seasonBusy=false,seasonClaiming=false,seasonGeneration=0;
+ function clearSeason(){seasonGeneration++;seasonCompany='';seasonState=null;seasonHost?.remove();seasonHost=null;seasonDialog?.close();seasonDialog?.remove();seasonDialog=null;}
+ function seasonBanner(){
+  if(!seasonHost||!seasonState)return;
+  const s=seasonState,label={accepted:'참가 희망으로 제출했어요',declined:'이번 시즌 불참으로 제출했어요',pending:s.open?'참가 여부를 알려주세요':'참가 여부 미응답 · 응답 기한 종료'}[s.status];
+  seasonHost.innerHTML='<h2>'+esc(s.title)+'</h2><p>'+label+'</p><p>'+(s.status==='pending'?(s.open?'11월 2일(월) 밤 11시 59분까지 업체 대표가 응답해 주세요.':'미응답을 불참으로 처리하지 않았어요. 운영자에게 참가 여부를 알려주세요.'):'기존 정산·배송 내역은 계속 확인할 수 있어요. 응답 변경은 운영자에게 문의해 주세요.')+'</p>'+(s.status==='pending'&&s.open&&s.canRespond?'<button type="button">참가 여부 확인</button>':'');
+  seasonHost.querySelector('button')?.addEventListener('click',()=>openSeason());
+ }
+ async function seasonWrite(action,confirmDecline=false){
+  const companyId=seasonCompany,campaign=seasonState.id,session=await access('session');
+  if(!session.authenticated)throw Error('다시 로그인한 뒤 참가 여부를 제출해 주세요.');
+  return access('season-response',session,{companyId,campaign,action,confirmDecline});
+ }
+ function openSeason(){
+  if(!seasonState||seasonBusy||document.querySelector('dialog[open]'))return;
+  const s=seasonState;
+  seasonDialog?.remove();seasonDialog=document.createElement('dialog');const dialog=seasonDialog,generation=seasonGeneration;
+  dialog.className='vendor-season-dialog';dialog.setAttribute('aria-labelledby','vendor-season-title');dialog.setAttribute('aria-describedby','vendor-season-description');
+  dialog.innerHTML='<header><h2 id="vendor-season-title">'+esc(s.title)+'</h2><button type="button" data-season-close aria-label="참가 안내 닫기">×</button></header><p class="season-deadline">응답 기한 · 11월 2일(월) 밤 11시 59분</p><div id="vendor-season-description"><p>11월 전국크레자랑 참가를 희망하시나요?</p><p>불참으로 생긴 자리는 다른 업체로 충원합니다. 이후 시즌 재참여는 잔여 자리와 운영 일정에 따라 제한될 수 있습니다.</p><p>참가 희망 제출 후 방송 일정과 출품 내용은 출품 관리에서 확인해 주세요.</p></div><div class="season-decline-confirm" hidden><label><input type="checkbox"> 이번 시즌 불참 및 자리 충원 안내를 확인했습니다.</label><p>불참해도 기존 정산·배송 내역은 유지됩니다. 제출 후 변경은 운영자에게 문의해 주세요.</p></div><p class="season-error" role="alert"></p><div class="season-actions"><button type="button" data-season-decline>이번 시즌 불참</button><button type="button" data-season-accept class="season-primary">참가 희망</button></div><button type="button" data-season-later class="season-later">나중에 응답</button>';
+  document.body.append(dialog);dialog.showModal();
+  const close=()=>{if(!seasonBusy)dialog.close();};dialog.querySelector('[data-season-close]').onclick=close;dialog.querySelector('[data-season-later]').onclick=close;
+  dialog.addEventListener('cancel',e=>{if(seasonBusy)e.preventDefault();});
+  dialog.addEventListener('close',()=>seasonHost?.querySelector('button')?.focus({preventScroll:true}));
+  const submit=async action=>{
+   if(seasonBusy)return;const error=dialog.querySelector('.season-error'),confirmation=dialog.querySelector('.season-decline-confirm');error.textContent='';
+   if(action==='declined'){
+    if(confirmation.hidden){confirmation.hidden=false;dialog.querySelector('[data-season-decline]').textContent='불참 확정';confirmation.querySelector('input').focus();return;}
+    if(!confirmation.querySelector('input').checked){error.textContent='자리 충원 안내를 확인한 뒤 체크해 주세요.';confirmation.querySelector('input').focus();return;}
+   }
+   seasonBusy=true;dialog.setAttribute('aria-busy','true');dialog.querySelectorAll('button,input').forEach(b=>b.disabled=true);
+   try{const result=await seasonWrite(action,action==='declined');if(generation!==seasonGeneration)return;seasonState=result;seasonBanner();dialog.close();seasonHost?.focus({preventScroll:true});}
+   catch(e){if(generation===seasonGeneration)error.textContent=e.name==='TimeoutError'||e instanceof TypeError?'저장 결과를 확인하지 못했어요. 연결을 확인한 뒤 같은 선택으로 다시 제출해 주세요.':e.message;}
+   finally{seasonBusy=false;dialog.removeAttribute('aria-busy');dialog.querySelectorAll('button,input').forEach(b=>b.disabled=false);}
+  };
+  dialog.querySelector('[data-season-accept]').onclick=()=>submit('accepted');dialog.querySelector('[data-season-decline]').onclick=()=>submit('declined');
+ }
+ async function showSeason(company,status){
+  const s=status.seasonResponse;if(!company||!s?.visible){clearSeason();return;}
+  if(seasonCompany!==company)clearSeason();
+  seasonCompany=company;if(!seasonBusy&&(!seasonState||seasonState.status==='pending'))seasonState=s;
+  const main=document.getElementById('main')||document.querySelector('main');if(!main)return;
+  if(!seasonHost?.isConnected){seasonHost=document.createElement('section');seasonHost.className='vendor-season-notice';seasonHost.tabIndex=-1;seasonHost.setAttribute('aria-label','시즌 참가 여부');main.prepend(seasonHost);}
+  seasonBanner();
+  if(!s.open||!s.canRespond||s.status!=='pending'||s.seenAt||seasonClaiming||document.querySelector('dialog[open]'))return;
+  seasonClaiming=true;const generation=seasonGeneration;
+  try{const result=await seasonWrite('seen');if(generation!==seasonGeneration)return;seasonState=result;seasonBanner();if(result.show)openSeason();}
+  catch{ /* The persistent banner remains usable when the one-time claim fails. */ }
+  finally{seasonClaiming=false;}
  }
  function showPromoNotice(nav,status){
   if(currentSection()==='promo')return;
@@ -138,7 +188,7 @@
   host.setAttribute('aria-busy','true');
   try{
    const response=await fetch('/api/platform/vendor-access/tasks?company='+encodeURIComponent(company),{cache:'no-store',credentials:'same-origin',signal:AbortSignal.timeout(10000)});
-   if(!response.ok)throw Error('unavailable');const data=await response.json();if(current())renderPromo(host,company,data);
+   if(!response.ok)throw Error('unavailable');const data=await response.json();if(current()){renderPromo(host,company,data);globalThis.CreoVendorShell?.showSeason(company,data);}
   }catch{if(current())renderPromo(host,company,{promoUnavailable:true});}
   finally{if(current())host.removeAttribute('aria-busy');}
  }
@@ -156,12 +206,12 @@
   message.innerHTML='할 일을 불러오지 못했어요. <button type="button">다시 확인</button>';message.hidden=false;
   message.querySelector('button').onclick=()=>refreshAttention(nav);
  }
- function clear(nav){nav?.classList.remove('vendor-portal-nav');document.documentElement.classList.remove('vendor-shell-pending');document.body.classList.remove('national-vendor-shell','has-vendor-header');document.getElementById('vendor-shared-header')?.remove();}
+ function clear(nav){clearSeason();nav?.classList.remove('vendor-portal-nav');document.documentElement.classList.remove('vendor-shell-pending');document.body.classList.remove('national-vendor-shell','has-vendor-header');document.getElementById('vendor-shared-header')?.remove();}
  function refreshTasks(){const nav=document.querySelector('.vendor-portal-nav');if(nav)refreshAttention(nav);else{const host=document.getElementById('vendor-promo-notice');if(host?.dataset.company)mountPromo(host,host.dataset.company);}}
  global.addEventListener('vendor-tasks-changed',refreshTasks);
  global.addEventListener('focus',refreshTasks);
  document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshTasks();});
- global.CreoVendorShell={mount,clear,header,applyAttention,refreshAttention,mountPromo};
+ global.CreoVendorShell={mount,clear,header,applyAttention,refreshAttention,mountPromo,showSeason};
  // Keep the same header and page width before and after the first API response.
  function boot(){if(document.documentElement.classList.contains('vendor-shell-pending')){document.body.classList.add('national-vendor-shell');header();}}
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();

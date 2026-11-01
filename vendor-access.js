@@ -3,6 +3,7 @@ const crypto=require('node:crypto');
 const {channelKey}=require('./platform-core');
 const {REGIONS,regionIndex,regionForVendor}=require('./national-broadcast');
 const {profileStatus}=require('./vendor-profile-status');
+const SeasonResponse=require('./vendor-season-response');
 const PREFIX='/api/platform/vendor-access',ROOT='creo_vendor_access_v1::',STATE=ROOT+'directory';
 const fail=(message,status=400)=>Object.assign(new Error(message),{status});
 const phone=value=>{const p=String(value||'').replace(/[\s-]/g,'').replace(/^(?:\+82|0082)0?/,'0');return /^010\d{8}$/.test(p)?p:'';};
@@ -47,7 +48,7 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
   const state=(await read(STATE)).value||fresh();
   return {regions:REGIONS,companies:(await vendorsFor()).filter(v=>v.active!==false).map(v=>{
    const c=state.companies.find(c=>c.id===v.id);
-   return {id:v.id,name:v.name,region:REGIONS[regionForVendor(v)]||'',registered:!!c,claimed:!!c?.ownerId,loginPhone:c?.loginPhone||'',revision:c?.revision||0};
+   return {id:v.id,name:v.name,region:REGIONS[regionForVendor(v)]||'',registered:!!c,claimed:!!c?.ownerId,loginPhone:c?.loginPhone||'',revision:c?.revision||0,seasonResponse:SeasonResponse.summary(c,now())};
    }),ownerSetups:(state.ownerSetups||[]).filter(r=>r.status==='pending').map(({id,companyId,name,phone,companyName,region,createdAt})=>({id,companyId,name,phone,companyName,region,createdAt})),deletions:(state.deletions||[]).filter(r=>r.status==='pending').map(r=>({...r,name:state.companies.find(c=>c.id===r.companyId)?.name||'업체'}))};
  }
  async function preregister(body){
@@ -232,7 +233,7 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
     const state=(await read(STATE)).value||fresh(),c=member(state,s.actorId,url.searchParams.get('company')),v=c&&await activeVendor(c.id);
     if(!v)throw fail('연결된 업체를 확인해 주세요.',403);
     const role=c.ownerId===s.actorId?'owner':'staff';
-    json(res,200,{...profileStatus(v,role,state.requests.filter(r=>r.companyId===c.id&&r.status==='pending')),...(taskSummary?await taskSummary(c.id):{})});return true;
+    json(res,200,{...profileStatus(v,role,state.requests.filter(r=>r.companyId===c.id&&r.status==='pending')),...(taskSummary?await taskSummary(c.id):{}),seasonResponse:SeasonResponse.summary(c,now(),role)});return true;
    }
    if(route==='/search'&&method==='GET'){
     if(!s)throw fail('먼저 로그인해 주세요.',401);
@@ -260,6 +261,14 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
     const actor=await actorFor('kakao:'+account.accountId,phone(account.verifiedPhone));await issueSession(req,res,actor,body.remember===true,account.verifiedPhone);return true;
    }
    if(!s)throw fail('다시 로그인해 주세요.',401);
+   if(route==='/season-response'){
+    const result=await mutate(async state=>{
+     const c=member(state,s.actorId,body.companyId),v=c&&await activeVendor(c.id);
+     if(!v||c.ownerId!==s.actorId||!phone(s.verifiedPhone))throw fail('업체 대표 계정으로 로그인해 주세요.',403);
+     return SeasonResponse.update(c,body,now(),s.actorId);
+    });
+    json(res,200,result);return true;
+   }
    if(route==='/owner-setup'){json(res,200,await setupOwner(s,body));return true;}
    if(route==='/logout'){await repository.upsertRows([row(ROOT+'session:'+s.id,{...s,revoked:true})]);json(res,200,{authenticated:false},{'Set-Cookie':[cookie(cookieName,'',0)]});return true;}
    if(route==='/register'){
@@ -375,7 +384,7 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
      await saveProfile(company.id,changes,body.revision);json(res,200,{saved:true});return true;
     }
     const requests=state.requests.filter(r=>r.companyId===company.id&&r.status==='pending');
-    json(res,200,{id:vendor.id,name:vendor.name,region:REGIONS[regionForVendor(vendor)]||REGIONS[company.region],phone:vendor.phone,address:vendor.address||'',logoUrl:vendor.logoUrl||'',...profileStatus(vendor,owner?'owner':'staff',requests),revision:vendor.directoryRevision||0,role:owner?'owner':'staff',...(owner?{deletion:(state.deletions||[]).filter(r=>r.companyId===company.id).at(-1)||null,bankName:vendor.bankName||'',bankAccount:vendor.bankAccount||'',bankHolder:vendor.bankHolder||'',members:company.members.map(m=>({id:membershipId(company,m),name:m.name,owner:m.actorId===company.ownerId})),requests:requests.map(r=>({id:r.id,name:r.name,phone:state.actors.find(a=>a.id===r.actorId)?.phone||''}))}:{})});return true;
+    json(res,200,{id:vendor.id,name:vendor.name,region:REGIONS[regionForVendor(vendor)]||REGIONS[company.region],phone:vendor.phone,address:vendor.address||'',logoUrl:vendor.logoUrl||'',...profileStatus(vendor,owner?'owner':'staff',requests),seasonResponse:SeasonResponse.summary(company,now(),owner?'owner':'staff'),revision:vendor.directoryRevision||0,role:owner?'owner':'staff',...(owner?{deletion:(state.deletions||[]).filter(r=>r.companyId===company.id).at(-1)||null,bankName:vendor.bankName||'',bankAccount:vendor.bankAccount||'',bankHolder:vendor.bankHolder||'',members:company.members.map(m=>({id:membershipId(company,m),name:m.name,owner:m.actorId===company.ownerId})),requests:requests.map(r=>({id:r.id,name:r.name,phone:state.actors.find(a=>a.id===r.actorId)?.phone||''}))}:{})});return true;
    }
    throw fail('요청을 찾을 수 없어요.',404);
   }catch(e){json(res,e.status||503,{error:e.status?e.message:'처리하지 못했어요. 잠시 후 다시 시도해 주세요.',...(e.existingCompany?{existingCompany:e.existingCompany}:{})});return true;}

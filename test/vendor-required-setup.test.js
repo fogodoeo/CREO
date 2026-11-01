@@ -5,10 +5,11 @@ const binding=source.slice(source.indexOf(' function bindProfile()'),source.inde
 function setup(){
  const calls=[],elements={'setup-bank-name':{value:' 가상은행 '},'setup-bank-account':{value:' 000000 '},'setup-bank-holder':{value:' 가상 업체 '},'profile-logout':{},main:{classList:{remove(){}}}};
  const context={profile:{role:'owner',setupRequired:true,revision:7,requests:[],members:[]},company:'company-one',$:id=>elements[id],bind(){},document:{querySelectorAll:()=>[]},form:(id,callback)=>{if(id==='setup-bank-form')context.submit=callback;},request:async(route,body)=>calls.push({route,body}),loadProfile:async()=>{calls.push('reload');context.profile.setupRequired=false;},navigate:async section=>calls.push(section)};
- vm.runInNewContext(binding+'\nbindProfile()',context);return {context,calls,elements};
+ const notices=[];context.window={CreoVendorShell:{showSeason:(company,profile)=>notices.push({company,profile})}};
+ vm.runInNewContext(binding+'\nbindProfile()',context);return {context,calls,elements,notices};
 }
 test('required bank save reloads authoritative profile before opening the company broadcast',async()=>{
- const f=setup();await f.context.submit();
+ const f=setup();assert.equal(f.notices.length,1);assert.equal(f.notices[0].company,'company-one');assert.equal(f.notices[0].profile.setupRequired,true);await f.context.submit();
  assert.equal(f.calls[0].route,'profile');assert.equal(f.calls[0].body.companyId,'company-one');assert.equal(f.calls[0].body.revision,7);assert.equal(f.calls[0].body.bankName,'가상은행');assert.equal(f.calls[0].body.bankAccount,'000000');
  assert.deepEqual(f.calls.slice(1),['reload','home']);
 });

@@ -145,6 +145,7 @@
    ${owner?`<section class="deletion-section">${deletion?.status==='pending'?`<p>업체 삭제 승인 대기</p>${action('cancel-deletion','요청 취소','text-button')}`:`${deletion?.status==='rejected'?`<p>삭제 요청 반려 · ${esc(deletion.note)}</p>`:''}${action('request-deletion','업체 삭제 요청','text-button danger-text')}`}</section>`:''}`;
  }
  function bindProfile(){
+  window.CreoVendorShell?.showSeason(company,profile);
   bind('edit-contact',()=>openEditor('contact'));bind('edit-bank',()=>openEditor('bank'));bind('edit-address',()=>openEditor('address'));bind('refresh-profile',loadProfile);bind('choose-company',async()=>{await refresh();go('companies');});
   bind('profile-next',()=>profile.setupRequired?openEditor(profile.required.includes('contact')?'contact':'bank'):navigate('home'));
   form('setup-bank-form',async()=>{await request('profile',{companyId:company,action:'bank',revision:profile.revision,bankName:$('setup-bank-name').value.trim(),bankAccount:$('setup-bank-account').value.trim(),bankHolder:$('setup-bank-holder').value.trim()});await loadProfile();if(!profile.setupRequired)await navigate('home');});
