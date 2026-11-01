@@ -1,0 +1,21 @@
+'use strict';
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),{parseHTML}=require('linkedom');
+test('background work refresh stays silent, retains counts until completion and rejects stale rounds',async()=>{
+ const {document,window}=parseHTML(fs.readFileSync(require.resolve('../public/index.html'),'utf8'));
+ document.getElementById('admin-nav').innerHTML='<a data-work-key="shipping"></a><summary data-work-group="finance"></summary>';
+ const pending=[],timers=[];
+ const context={document,window,location:{origin:'https://test'},encodeURIComponent,setTimeout:fn=>{timers.push(fn);return timers.length},clearTimeout(){},CreoPlatform:{api:path=>new Promise((resolve,reject)=>pending.push({path,resolve,reject}))}};
+ vm.runInNewContext(fs.readFileSync(require.resolve('../public/operator-work.js'),'utf8'),context);
+ document.dispatchEvent(new window.Event('DOMContentLoaded'));
+ const ready=id=>document.dispatchEvent(new window.CustomEvent('creo:operator-ready',{detail:{state:{channel:{id}}}}));
+ const flush=()=>new Promise(setImmediate),reply=(i,id,count)=>pending[i].resolve({channelId:id,counts:{shipping:count,organizer:0,changes:0}});
+ const message=document.getElementById('work-summary-status'),badge=()=>document.querySelector('[data-work-key="shipping"] .operator-work-count');
+ ready('one');assert.equal(message.hidden,true);reply(0,'one',3);await flush();assert.equal(badge().textContent,'3');
+ window.dispatchEvent(new window.Event('focus'));timers.pop()();assert.equal(message.hidden,true);assert.equal(badge().textContent,'3');
+ reply(1,'one',4);await flush();assert.equal(badge().textContent,'4');
+ window.dispatchEvent(new window.Event('focus'));timers.pop()();pending[2].reject(Error('offline'));await flush();assert.equal(message.hidden,false);assert.match(message.textContent,/다시 확인/);
+ message.querySelector('button').onclick();assert.equal(message.hidden,true);reply(3,'one',2);await flush();assert.equal(badge().textContent,'2');
+ window.dispatchEvent(new window.Event('focus'));timers.pop()();ready('two');assert.equal(badge(),null);
+ reply(4,'one',99);await flush();assert.equal(badge(),null);reply(5,'two',1);await flush();assert.equal(badge().textContent,'1');
+ document.dispatchEvent(new window.Event('creo:operator-reset'));assert.equal(badge(),null);assert.equal(message.hidden,true);
+});

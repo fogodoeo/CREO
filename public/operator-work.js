@@ -5,8 +5,9 @@ document.addEventListener('DOMContentLoaded',()=>{
  function reset(){for(const badge of document.querySelectorAll('.operator-work-count'))badge.remove();for(const node of document.querySelectorAll('[data-work-pending]'))node.removeAttribute('data-work-pending');}
  function badge(host,count,label){if(!host||!count)return;const b=document.createElement('span');b.className='operator-work-count';b.textContent=host.classList.contains('operation')?label+' '+count+'건':count;b.setAttribute('aria-label',label+' '+count+'건');host.append(b);host.dataset.workPending='true';}
  async function refresh(){
-  if(!state)return;const seq=++version,selected=state;reset();
-  const message=$('work-summary-status');message.hidden=false;message.textContent='확인할 일을 불러오는 중…';
+  if(!state)return;const seq=++version,selected=state;
+  // Background refresh keeps the current badges and never inserts a loading row.
+  const message=$('work-summary-status');message.hidden=true;message.textContent='';
   try{
    const data=await CreoPlatform.api('channels/'+encodeURIComponent(selected.channel.id)+'/work-summary'+(selected.archiveId?'?archive='+encodeURIComponent(selected.archiveId):''));
    if(seq!==version||state!==selected)return;
@@ -17,7 +18,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   }catch{if(seq!==version)return;reset();message.hidden=false;message.innerHTML='할 일을 불러오지 못했어요. <button type="button">다시 확인</button>';message.querySelector('button').onclick=refresh;}
  }
  function schedule(){clearTimeout(timer);timer=setTimeout(refresh,300);}
- document.addEventListener('creo:operator-ready',event=>{state=event.detail.state;clearTimeout(timer);refresh();});
+ document.addEventListener('creo:operator-ready',event=>{state=event.detail.state;reset();clearTimeout(timer);refresh();});
  document.addEventListener('creo:operator-reset',()=>{state=null;version++;clearTimeout(timer);reset();$('work-summary-status').hidden=true;});
  window.addEventListener('focus',schedule);
  document.addEventListener('visibilitychange',()=>{if(!document.hidden)schedule();});

@@ -1,0 +1,181 @@
+/* November studio themes. Scoped to jjun-boutique and clab-gallery only; every other theme, profile and auction rule is untouched.
+   The camera area stays transparent and every operator placement box is respected as drawn.
+   쭌이네 부티크: espresso brass plaques. A champagne hairline is inset 6px inside each plaque (concentric 10px → 4px corners),
+                 echoing the raised bronze sign and walnut niches. Captions are centred like shop signage.
+   씨랩 갤러리: porcelain museum labels on the brushed-steel wall. Square corners, ink type, left-aligned captions and one deep-sage accent.
+                The six CREYON ring colours (sampled from the wall logo) appear once, as a small swatch in the masthead. */
+
+/* ── Tokens (role names; contrast measured on the panel each pair renders on) ─────────────────────────── */
+body[data-broadcast-theme="jjun-boutique"]{
+ --studio-panel:#23160e;          /* espresso, oklch(.215 .026 52) */
+ --studio-text:#faf3e6;           /* 15.96:1 on panel */
+ --studio-text-muted:#ccbba5;     /*  9.41:1 on panel */
+ --studio-accent:#e1ba82;         /* champagne bronze; 9.68:1 as text on panel and as a fill under panel-coloured text */
+ --studio-on-accent:#23160e;
+ --studio-row:#372619;            /* rank-1 row; text 13.09:1, accent 7.94:1 */
+ --studio-rule:rgb(225 186 130 / .28);
+ --studio-frame:rgb(225 186 130 / .5);
+ --studio-radius:10px;--studio-inner-radius:4px;
+ --studio-surface-shadow:inset 0 0 0 6px var(--studio-panel),inset 0 0 0 7px var(--studio-frame),0 12px 28px rgb(24 14 8 / .32),0 2px 4px rgb(24 14 8 / .28);
+ --studio-accent-shadow:inset 0 0 0 6px var(--studio-accent),inset 0 0 0 7px rgb(35 22 14 / .38),0 12px 28px rgb(24 14 8 / .32),0 2px 4px rgb(24 14 8 / .28);
+}
+body[data-broadcast-theme="clab-gallery"]{
+ --studio-panel:#f8f8f5;          /* porcelain, oklch(.978 .004 110) */
+ --studio-text:#151d1a;           /* 16.14:1 on panel */
+ --studio-text-muted:#4d5c56;     /*  6.62:1 on panel */
+ --studio-accent:#224f3e;         /* deep sage; 8.75:1 as text on panel and as a fill under panel-coloured text */
+ --studio-on-accent:#f8f8f5;
+ --studio-row:#e1ede6;            /* rank-1 row; text 14.28:1, accent 7.74:1 */
+ --studio-rule:#d1d8d3;
+ --studio-frame:rgb(21 29 26 / .07);
+ --studio-radius:3px;--studio-inner-radius:2px;
+ --studio-surface-shadow:0 0 0 1px var(--studio-frame),0 1px 1px rgb(12 14 13 / .14),0 10px 20px -8px rgb(12 14 13 / .42);
+ --studio-accent-shadow:0 1px 1px rgb(12 14 13 / .14),0 10px 20px -8px rgb(12 14 13 / .42);
+ /* CREYON wall-logo ring, clockwise from the top: measured #e04038 #f08444 #f0c434 #749c42 #3884bc #8460a4 */
+ --studio-spectrum:linear-gradient(90deg,#e04038 0 16.667%,#f08444 0 33.333%,#f0c434 0 50%,#749c42 0 66.667%,#3884bc 0 83.333%,#8460a4 0);
+}
+
+/* ── Shared surface recipe ───────────────────────────────────────────────────────────────────────────── */
+.studio-masthead{display:none}
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"]) #stage{
+ --broadcast-card:var(--studio-panel);--broadcast-ink:var(--studio-text);--broadcast-muted:var(--studio-text-muted);--broadcast-radius:var(--studio-radius);
+}
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"]) #stage :is(.host-card,.item-copy,.item-progress,.price-card,.sold-notice,.simple-ranking,.ticker,.live-bid-row,.standby-note){
+ background:var(--studio-panel)!important;color:var(--studio-text)!important;border:0!important;border-radius:var(--studio-radius)!important;
+ box-shadow:var(--studio-surface-shadow)!important;text-shadow:none!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
+}
+
+/* ── Masthead (P1, P3): one plate — kicker, event title, date and weekday ────────────────────────────── */
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"]) #stage .studio-masthead{
+ position:absolute;top:4%;left:4%;z-index:8;display:flex;max-width:62%;pointer-events:none;
+}
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"])[data-page="2"] .studio-masthead,
+body[data-page3-renderer="pinball"] .studio-masthead{display:none!important}
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"]) .studio-plate{
+ box-sizing:border-box;display:flex;align-items:stretch;min-width:0;min-height:104px;
+ background:var(--studio-panel);color:var(--studio-text);border-radius:var(--studio-radius);box-shadow:var(--studio-surface-shadow);
+}
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"]) .studio-title{
+ display:flex;min-width:0;flex-direction:column;justify-content:center;gap:8px;padding:0 34px;
+}
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"]) .studio-title>span{
+ display:flex;align-items:center;gap:12px;color:var(--studio-accent);font-size:21px;font-weight:700;letter-spacing:.02em;line-height:1.2;white-space:nowrap;
+}
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"]) .studio-title>strong{
+ overflow:hidden;font-size:40px;font-weight:750;letter-spacing:-.035em;line-height:1.1;text-overflow:ellipsis;white-space:nowrap;
+}
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"]) .studio-date{
+ display:flex;flex:0 0 auto;flex-direction:column;justify-content:center;gap:8px;margin-block:22px;padding:0 32px;border-left:1px solid var(--studio-rule);
+}
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"]) .studio-date>strong{
+ font-size:40px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1.1;white-space:nowrap;
+}
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"]) .studio-date>span{
+ color:var(--studio-text-muted);font-size:21px;font-weight:600;line-height:1.2;white-space:nowrap;
+}
+/* Jjunine: a small bronze lozenge, like a jeweller's hallmark. C·LAB: the logo's six ring colours as one swatch. */
+body[data-broadcast-theme="jjun-boutique"] .studio-title>span::before{
+ content:"";flex:0 0 auto;width:9px;height:9px;border-radius:1px;background:var(--studio-accent);transform:rotate(45deg);
+}
+body[data-broadcast-theme="clab-gallery"] .studio-title>span::before{
+ content:"";flex:0 0 auto;width:60px;height:6px;background:var(--studio-spectrum);
+}
+body[data-broadcast-theme="clab-gallery"] .studio-date{margin-block:24px}
+
+/* ── P1 host captions: small role above, name below ─────────────────────────────────────────────────── */
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"])[data-page="1"] #stage .host-card{padding:0 32px!important;align-items:center}
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"])[data-page="1"] #stage .host-card strong{
+ flex-direction:column-reverse!important;justify-content:center;gap:8px!important;width:100%;line-height:1.1;
+}
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"])[data-page="1"] #stage .host-name{
+ max-width:100%;color:var(--studio-text)!important;font-size:var(--broadcast-body-size)!important;font-weight:750;letter-spacing:-.035em;line-height:1.12;
+}
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"])[data-page="1"] #stage .host-role{
+ display:flex;align-items:center;gap:.6em;max-width:100%;color:var(--studio-accent)!important;
+ font-size:calc(var(--broadcast-body-size) * .5)!important;font-weight:700!important;letter-spacing:.04em;line-height:1.2;
+}
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"])[data-page="1"] #stage .host-role::before{
+ content:"";flex:0 0 auto;align-self:center;margin:0;border-radius:0;transform:none;background:var(--studio-accent);
+}
+/* Jjunine: centred plaque, the role flanked by two short champagne rules. */
+body[data-broadcast-theme="jjun-boutique"][data-page="1"] #stage .host-card strong{align-items:center!important;text-align:center}
+body[data-broadcast-theme="jjun-boutique"][data-page="1"] #stage .host-role::before,
+body[data-broadcast-theme="jjun-boutique"][data-page="1"] #stage .host-role::after{width:1.4em;height:1px;background:var(--studio-frame)}
+body[data-broadcast-theme="jjun-boutique"][data-page="1"] #stage .host-role::after{content:"";flex:0 0 auto;align-self:center}
+/* C·LAB: left-aligned wall label, a short sage rule leading the role. */
+body[data-broadcast-theme="clab-gallery"][data-page="1"] #stage .host-card strong{align-items:flex-start!important}
+body[data-broadcast-theme="clab-gallery"][data-page="1"] #stage .host-role::before{width:1.5em;height:2px}
+
+/* ── Ticker (P1, P2) ─────────────────────────────────────────────────────────────────────────────────── */
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"]) #stage .ticker-text{color:var(--studio-text)!important;font-weight:600;letter-spacing:-.02em}
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"])[data-page] #stage .ticker-text{padding-inline:88px!important}
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"]) #stage .ticker::before,
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"]) #stage .ticker::after{
+ content:"";position:absolute;top:50%;pointer-events:none;background:var(--studio-accent);
+}
+body[data-broadcast-theme="jjun-boutique"] #stage .ticker::before,
+body[data-broadcast-theme="jjun-boutique"] #stage .ticker::after{width:9px;height:9px;margin-top:-4.5px;border-radius:1px;transform:rotate(45deg)}
+body[data-broadcast-theme="jjun-boutique"] #stage .ticker::before{left:34px}
+body[data-broadcast-theme="jjun-boutique"] #stage .ticker::after{right:34px}
+body[data-broadcast-theme="clab-gallery"] #stage .ticker::before,
+body[data-broadcast-theme="clab-gallery"] #stage .ticker::after{width:32px;height:2px;margin-top:-1px}
+body[data-broadcast-theme="clab-gallery"] #stage .ticker::before{left:30px}
+body[data-broadcast-theme="clab-gallery"] #stage .ticker::after{right:30px}
+
+/* ── P2 progress and item label ─────────────────────────────────────────────────────────────────────── */
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"]) #stage .item-progress strong{color:var(--studio-text)!important;font-weight:750;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"]) #stage .item-copy.is-inline-info{padding:18px 32px!important;row-gap:10px}
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"]) #stage :is(.item-inline-identity h1,.item-inline-pill){color:var(--studio-text)!important;letter-spacing:-.035em}
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"]) #stage .item-inline-identity h1{font-weight:800}
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"]) #stage .item-inline-pill{font-weight:650;font-variant-numeric:tabular-nums}
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"]) #stage .item-inline-pill+.item-inline-pill{border-color:var(--studio-rule)!important}
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"]) #stage .item-inline-sep{background:var(--studio-rule)}
+/* The shop name is context, not the headline: quieter and smaller than the lot. Sizes scale once, through the slot's zoom. */
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"]) #stage .item-inline-identity .vendor-tag{
+ color:var(--studio-text-muted)!important;font-size:calc(var(--broadcast-body-size,54px) * .72)!important;font-weight:600;letter-spacing:-.02em;
+}
+/* The morph note is the headline fact of each lot: accent colour, a step below the traits. */
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"]) #stage .item-copy.is-inline-info .broadcast-item-note{
+ color:var(--studio-accent)!important;font-size:calc(var(--broadcast-body-size,54px) * .88)!important;font-weight:700;letter-spacing:-.025em;line-height:1.2;
+}
+
+/* ── P2 live bids: only the leader is filled ────────────────────────────────────────────────────────── */
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"]) #stage .live-bid-row{padding-inline:30px!important}
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"]) #stage .live-bid-row :is(.live-bid-name,.live-bid-amount){color:var(--studio-text)!important}
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"]) #stage .live-bid-name{font-weight:650;letter-spacing:-.03em}
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"]) #stage .live-bid-amount{font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"]) #stage .live-bid-row[data-rank="1"]{background:var(--studio-accent)!important;box-shadow:var(--studio-accent-shadow)!important}
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"]) #stage .live-bid-row[data-rank="1"] :is(.live-bid-name,.live-bid-amount){color:var(--studio-on-accent)!important}
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"]) #stage .live-bid-row.is-empty .live-bid-name{color:var(--studio-text-muted)!important}
+
+/* ── P2 parents, price, sold and standby notices ────────────────────────────────────────────────────── */
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"]) #stage .parent-photos{border-radius:var(--studio-radius);background:transparent}
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"]) #stage .parent-photos figcaption{background:var(--studio-panel);color:var(--studio-text);box-shadow:inset 0 1px 0 var(--studio-rule)}
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"]) #stage :is(.price b,.sold-notice strong){color:var(--studio-text)!important;font-variant-numeric:tabular-nums}
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"]) #stage :is(.price-card,.sold-notice) :is(small,span){color:var(--studio-text-muted)!important}
+
+/* ── P3 summary board ───────────────────────────────────────────────────────────────────────────────── */
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"])[data-page="3"] #stage .simple-ranking .board-head{
+ background:transparent!important;border:0!important;border-bottom:1px solid var(--studio-rule)!important;border-radius:0!important;box-shadow:none!important;color:var(--studio-text)!important;
+}
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"])[data-page="3"] #stage .simple-ranking h1{font-weight:750;letter-spacing:-.04em;text-wrap:balance}
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"])[data-page="3"] #stage .summary-row{border-color:var(--studio-rule);padding-inline:20px;margin-inline:-20px}
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"])[data-page="3"] #stage :is(.summary-name,.summary-amount){color:var(--studio-text)!important;letter-spacing:-.035em}
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"])[data-page="3"] #stage .summary-name{font-weight:650}
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"])[data-page="3"] #stage :is(.summary-rank,.ranking-page,.summary-empty,.summary-amount small){color:var(--studio-text-muted)!important}
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"])[data-page="3"] #stage .summary-rank{font-weight:650;font-variant-numeric:tabular-nums}
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"])[data-page="3"] #stage .summary-row[data-rank="1"]{background:var(--studio-row);border-radius:var(--studio-inner-radius);border-bottom-color:transparent}
+body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"])[data-page="3"] #stage .summary-row[data-rank="1"] :is(.summary-rank,.summary-amount){color:var(--studio-accent)!important}
+/* Jjunine: centred title between two champagne lozenges, like an engraved plaque heading. */
+body[data-broadcast-theme="jjun-boutique"][data-page="3"] #stage .simple-ranking .board-head{justify-content:center}
+body[data-broadcast-theme="jjun-boutique"][data-page="3"] #stage .simple-ranking h1{display:flex;align-items:center;gap:.5em;text-align:center}
+body[data-broadcast-theme="jjun-boutique"][data-page="3"] #stage .simple-ranking h1::before,
+body[data-broadcast-theme="jjun-boutique"][data-page="3"] #stage .simple-ranking h1::after{
+ content:"";flex:0 0 auto;width:.2em;height:.2em;border-radius:1px;background:var(--studio-accent);transform:rotate(45deg);
+}
+body[data-broadcast-theme="jjun-boutique"][data-page="3"] #stage .simple-ranking .ranking-page{margin-left:24px}
+/* C·LAB: left-aligned catalogue heading over an ink rule; the leader's number sits in a sage square. */
+body[data-broadcast-theme="clab-gallery"][data-page="3"] #stage .simple-ranking .board-head{border-bottom:2px solid var(--studio-text)!important}
+body[data-broadcast-theme="clab-gallery"][data-page="3"] #stage .summary-row[data-rank="1"] .summary-rank{
+ display:grid;place-items:center;width:1.4em;aspect-ratio:1;border-radius:var(--studio-inner-radius);background:var(--studio-accent);color:var(--studio-on-accent)!important;font-size:.82em;
+}
