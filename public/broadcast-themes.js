@@ -6,7 +6,7 @@
   Object.freeze({id:'pixel',name:'픽셀',description:'레트로 게임기',frame:''}),
   Object.freeze({id:'national-stage',name:'전국크레자랑',description:'흰색 이름칸 · 번호 원 · 청록·자주 방송 자막',frame:''}),
   Object.freeze({id:'recessive-special',name:'열성모프 특집',description:'아이보리 · 차콜 · 세이지 포인트',frame:''}),
-  Object.freeze({id:'jjun-boutique',name:'쭌이네 부티크',description:'에스프레소 · 샴페인 · 웜 아이보리',frame:''}),
+  Object.freeze({id:'jjun-boutique',name:'쭌이네 모노크롬',description:'화이트 명판 · 블랙 캐릭터 · 실버 엣지',frame:''}),
   Object.freeze({id:'clab-gallery',name:'씨랩 갤러리',description:'포슬린 · 잉크 · 딥 세이지',frame:''})
  ]);
  function resolve(id){return presets.find(p=>p.id===id)||presets[0]}
@@ -22,7 +22,8 @@
   const valid=Boolean(day&&day.getUTCMonth()===+parts[2]-1&&day.getUTCDate()===+parts[3]);
   const dateLabel=valid?`${parts[2]}.${parts[3]}`:date.replaceAll('-','.'),weekday=valid?'일월화수목금토'[day.getUTCDay()]+'요일':'';
   const dateBlock=dateLabel?`<div class="studio-date"><strong>${esc(dateLabel)}</strong>${weekday?`<span>${weekday}</span>`:''}</div>`:'';
-  return `<header class="studio-masthead"><div class="studio-plate"><div class="studio-title"><span>${esc(channel.shortName||channel.name)}</span><strong>${esc(channel.broadcastDefaults?.notice||channel.name)}</strong></div>${dateBlock}</div></header>`;
+  const logo=channel.broadcastTheme==='jjun-boutique'?'<img class="jjun-brand-image" src="assets/jjunine/official-logo.png" alt="쭌이네" width="96" height="96">':'';
+  return `<header class="studio-masthead"><div class="studio-plate">${logo}<div class="studio-title"><span>${esc(channel.shortName||channel.name)}</span><strong>${esc(channel.broadcastDefaults?.notice||channel.name)}</strong></div>${dateBlock}</div></header>`;
  }
  function bannerFrame(){return '<div class="banner-tv-decor" aria-hidden="true"><div class="banner-tv-controls"><i class="banner-tv-dial"></i><i class="banner-tv-dial small"></i><i class="banner-tv-speaker"></i><i class="banner-tv-led"></i></div><i class="banner-tv-foot left"></i><i class="banner-tv-foot right"></i></div>';}
  return Object.freeze({presets,resolve,apply,frame,bannerFrame});

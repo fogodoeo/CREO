@@ -1,23 +1,23 @@
 /* November studio themes. Scoped to jjun-boutique and clab-gallery only; every other theme, profile and auction rule is untouched.
    The camera area stays transparent and every operator placement box is respected as drawn.
-   쭌이네 부티크: espresso brass plaques. A champagne hairline is inset 6px inside each plaque (concentric 10px → 4px corners),
-                 echoing the raised bronze sign and walnut niches. Captions are centred like shop signage.
+   쭌이네 모노크롬: white lacquer plates, the official black mascot, silver seams and black endcaps.
+                 Based on the generated November 2 tag reference; all names and prices remain live text.
    씨랩 갤러리: porcelain museum labels on the brushed-steel wall. Square corners, ink type, left-aligned captions and one deep-sage accent.
                 The six CREYON ring colours (sampled from the wall logo) appear once, as a small swatch in the masthead. */
 
 /* ── Tokens (role names; contrast measured on the panel each pair renders on) ─────────────────────────── */
 body[data-broadcast-theme="jjun-boutique"]{
- --studio-panel:#23160e;          /* espresso, oklch(.215 .026 52) */
- --studio-text:#faf3e6;           /* 15.96:1 on panel */
- --studio-text-muted:#ccbba5;     /*  9.41:1 on panel */
- --studio-accent:#e1ba82;         /* champagne bronze; 9.68:1 as text on panel and as a fill under panel-coloured text */
- --studio-on-accent:#23160e;
- --studio-row:#372619;            /* rank-1 row; text 13.09:1, accent 7.94:1 */
- --studio-rule:rgb(225 186 130 / .28);
- --studio-frame:rgb(225 186 130 / .5);
- --studio-radius:10px;--studio-inner-radius:4px;
- --studio-surface-shadow:inset 0 0 0 6px var(--studio-panel),inset 0 0 0 7px var(--studio-frame),0 12px 28px rgb(24 14 8 / .32),0 2px 4px rgb(24 14 8 / .28);
- --studio-accent-shadow:inset 0 0 0 6px var(--studio-accent),inset 0 0 0 7px rgb(35 22 14 / .38),0 12px 28px rgb(24 14 8 / .32),0 2px 4px rgb(24 14 8 / .28);
+ --studio-panel:#fff;
+ --studio-text:#101114;
+ --studio-text-muted:#52565e;
+ --studio-accent:#101114;
+ --studio-on-accent:#fff;
+ --studio-row:#eceef1;
+ --studio-rule:#d1d4d9;
+ --studio-frame:#b6bbc2;
+ --studio-radius:3px;--studio-inner-radius:1px;
+ --studio-surface-shadow:inset 0 0 0 1px #fff,inset 0 0 0 2px #c5c9cf,0 5px 0 #101114,0 10px 18px #0004;
+ --studio-accent-shadow:inset 0 0 0 1px #64686e,inset 0 0 0 2px #202226,0 5px 0 #08090a,0 10px 18px #0004;
 }
 body[data-broadcast-theme="clab-gallery"]{
  --studio-panel:#f8f8f5;          /* porcelain, oklch(.978 .004 110) */
@@ -73,10 +73,14 @@ body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-galle
 body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"]) .studio-date>span{
  color:var(--studio-text-muted);font-size:21px;font-weight:600;line-height:1.2;white-space:nowrap;
 }
-/* Jjunine: a small bronze lozenge, like a jeweller's hallmark. C·LAB: the logo's six ring colours as one swatch. */
-body[data-broadcast-theme="jjun-boutique"] .studio-title>span::before{
- content:"";flex:0 0 auto;width:9px;height:9px;border-radius:1px;background:var(--studio-accent);transform:rotate(45deg);
-}
+/* The unmodified official logo is displayed in a white badge, not redrawn. */
+body[data-broadcast-theme="jjun-boutique"] .studio-plate{overflow:hidden}
+body[data-broadcast-theme="jjun-boutique"] .studio-plate>.jjun-brand-image{flex:0 0 100px;width:100px;height:100px;margin:2px 0 2px 8px;object-fit:contain;background:#fff}
+body[data-broadcast-theme="jjun-boutique"] .studio-title{padding-inline:22px;gap:8px}
+body[data-broadcast-theme="jjun-boutique"] .studio-title>span{font-size:18px;letter-spacing:.12em}
+body[data-broadcast-theme="jjun-boutique"] .studio-title>strong{font-weight:850}
+body[data-broadcast-theme="jjun-boutique"] .studio-date{margin:2px 2px 2px 0;padding:18px 26px;background:#101114;color:#fff;border-left:1px solid #aeb3ba;border-radius:0 2px 2px 0}
+body[data-broadcast-theme="jjun-boutique"] .studio-date>span{color:#d5d8dd;font-size:18px}
 body[data-broadcast-theme="clab-gallery"] .studio-title>span::before{
  content:"";flex:0 0 auto;width:60px;height:6px;background:var(--studio-spectrum);
 }
@@ -97,11 +101,15 @@ body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-galle
 body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"])[data-page="1"] #stage .host-role::before{
  content:"";flex:0 0 auto;align-self:center;margin:0;border-radius:0;transform:none;background:var(--studio-accent);
 }
-/* Jjunine: centred plaque, the role flanked by two short champagne rules. */
-body[data-broadcast-theme="jjun-boutique"][data-page="1"] #stage .host-card strong{align-items:center!important;text-align:center}
-body[data-broadcast-theme="jjun-boutique"][data-page="1"] #stage .host-role::before,
-body[data-broadcast-theme="jjun-boutique"][data-page="1"] #stage .host-role::after{width:1.4em;height:1px;background:var(--studio-frame)}
-body[data-broadcast-theme="jjun-boutique"][data-page="1"] #stage .host-role::after{content:"";flex:0 0 auto;align-self:center}
+/* White mascot seal / engraved name / black LIVE endcap. */
+body[data-broadcast-theme="jjun-boutique"][data-page="1"] #stage .host-card{padding:8px 58px 8px 124px!important}
+body[data-broadcast-theme="jjun-boutique"][data-page="1"] #stage .host-card>.jjun-brand-image{position:absolute;inset-inline-start:6px;top:50%;width:108px;height:108px;transform:translateY(-50%);object-fit:contain;background:#fff;border-right:1px solid var(--studio-rule)}
+body[data-broadcast-theme="jjun-boutique"][data-page="1"] #stage .host-card::after{content:"LIVE";display:grid!important;place-items:center;position:absolute;inset:2px 2px 2px auto;width:42px;border-left:1px solid #aeb3ba;border-radius:0 2px 2px 0;background:#101114;color:#fff;font-size:10px;font-weight:750;letter-spacing:.08em}
+body[data-broadcast-theme="jjun-boutique"][data-page="1"] #stage .host-card strong{flex-direction:column!important;align-items:flex-start!important;gap:4px!important;text-align:left}
+body[data-broadcast-theme="jjun-boutique"][data-page="1"] #stage .host-card strong::before{content:"JJUNINE";font-size:13px;font-weight:600;letter-spacing:.24em;color:var(--studio-text-muted)}
+body[data-broadcast-theme="jjun-boutique"][data-page="1"] #stage .host-name{font-weight:850}
+body[data-broadcast-theme="jjun-boutique"][data-page="1"] #stage .host-role{font-size:calc(var(--broadcast-body-size) * .42)!important;font-weight:600!important;letter-spacing:-.02em;color:var(--studio-text-muted)!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+body[data-broadcast-theme="jjun-boutique"][data-page="1"] #stage .host-role::before{display:none}
 /* C·LAB: left-aligned wall label, a short sage rule leading the role. */
 body[data-broadcast-theme="clab-gallery"][data-page="1"] #stage .host-card strong{align-items:flex-start!important}
 body[data-broadcast-theme="clab-gallery"][data-page="1"] #stage .host-role::before{width:1.5em;height:2px}
@@ -113,10 +121,8 @@ body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-galle
 body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"]) #stage .ticker::after{
  content:"";position:absolute;top:50%;pointer-events:none;background:var(--studio-accent);
 }
-body[data-broadcast-theme="jjun-boutique"] #stage .ticker::before,
-body[data-broadcast-theme="jjun-boutique"] #stage .ticker::after{width:9px;height:9px;margin-top:-4.5px;border-radius:1px;transform:rotate(45deg)}
-body[data-broadcast-theme="jjun-boutique"] #stage .ticker::before{left:34px}
-body[data-broadcast-theme="jjun-boutique"] #stage .ticker::after{right:34px}
+body[data-broadcast-theme="jjun-boutique"] #stage .ticker::before{content:"";left:28px;width:32px;height:3px;margin-top:-1.5px;background:#101114}
+body[data-broadcast-theme="jjun-boutique"] #stage .ticker::after{inset:2px 2px 2px auto;width:24px;border-left:1px solid #aeb3ba;background:#101114}
 body[data-broadcast-theme="clab-gallery"] #stage .ticker::before,
 body[data-broadcast-theme="clab-gallery"] #stage .ticker::after{width:32px;height:2px;margin-top:-1px}
 body[data-broadcast-theme="clab-gallery"] #stage .ticker::before{left:30px}
@@ -147,6 +153,13 @@ body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-galle
 body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"]) #stage .live-bid-row[data-rank="1"]{background:var(--studio-accent)!important;box-shadow:var(--studio-accent-shadow)!important}
 body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"]) #stage .live-bid-row[data-rank="1"] :is(.live-bid-name,.live-bid-amount){color:var(--studio-on-accent)!important}
 body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"]) #stage .live-bid-row.is-empty .live-bid-name{color:var(--studio-text-muted)!important}
+body[data-broadcast-theme="jjun-boutique"] #stage .live-bid-row{position:relative;padding-left:90px!important;overflow:hidden}
+body[data-broadcast-theme="jjun-boutique"] #stage .live-bid-row::before{content:"0" attr(data-rank);position:absolute;inset:2px auto 2px 2px;width:64px;display:grid;place-items:center;background:#eceef1;color:#101114;border-right:1px solid #b6bbc2;font-size:34px;font-weight:850;font-variant-numeric:tabular-nums}
+body[data-broadcast-theme="jjun-boutique"] #stage .live-bid-row[data-rank="1"]::before{background:#fff}
+body[data-broadcast-theme="jjun-boutique"] #stage .live-bid-amount{padding-left:18px;border-left:1px solid #c8cbd0}
+body[data-broadcast-theme="jjun-boutique"] #stage .live-bid-row[data-rank="1"] .live-bid-amount{border-color:#565a60}
+body[data-broadcast-theme="jjun-boutique"] #stage .item-copy.is-inline-info{padding-left:122px!important}
+body[data-broadcast-theme="jjun-boutique"] #stage .item-copy>.jjun-brand-image{position:absolute;left:6px;top:50%;transform:translateY(-50%);width:104px;height:104px;object-fit:contain;background:#fff;border-right:1px solid var(--studio-rule)}
 
 /* ── P2 parents, price, sold and standby notices ────────────────────────────────────────────────────── */
 body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"]) #stage .parent-photos{border-radius:var(--studio-radius);background:transparent}
@@ -166,13 +179,10 @@ body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-galle
 body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"])[data-page="3"] #stage .summary-rank{font-weight:650;font-variant-numeric:tabular-nums}
 body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"])[data-page="3"] #stage .summary-row[data-rank="1"]{background:var(--studio-row);border-radius:var(--studio-inner-radius);border-bottom-color:transparent}
 body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"])[data-page="3"] #stage .summary-row[data-rank="1"] :is(.summary-rank,.summary-amount){color:var(--studio-accent)!important}
-/* Jjunine: centred title between two champagne lozenges, like an engraved plaque heading. */
-body[data-broadcast-theme="jjun-boutique"][data-page="3"] #stage .simple-ranking .board-head{justify-content:center}
-body[data-broadcast-theme="jjun-boutique"][data-page="3"] #stage .simple-ranking h1{display:flex;align-items:center;gap:.5em;text-align:center}
-body[data-broadcast-theme="jjun-boutique"][data-page="3"] #stage .simple-ranking h1::before,
-body[data-broadcast-theme="jjun-boutique"][data-page="3"] #stage .simple-ranking h1::after{
- content:"";flex:0 0 auto;width:.2em;height:.2em;border-radius:1px;background:var(--studio-accent);transform:rotate(45deg);
-}
+/* Jjunine: official seal above a strong ink rule, consistent with the host tag. */
+body[data-broadcast-theme="jjun-boutique"][data-page="3"] #stage .simple-ranking .board-head{justify-content:flex-start;border-bottom:2px solid #101114!important}
+body[data-broadcast-theme="jjun-boutique"][data-page="3"] #stage .simple-ranking h1{display:flex;align-items:center;gap:20px;text-align:left;font-weight:850}
+body[data-broadcast-theme="jjun-boutique"][data-page="3"] #stage .simple-ranking h1::before{content:"";flex:0 0 5px;width:5px;height:42px;background:#101114}
 body[data-broadcast-theme="jjun-boutique"][data-page="3"] #stage .simple-ranking .ranking-page{margin-left:24px}
 /* C·LAB: left-aligned catalogue heading over an ink rule; the leader's number sits in a sage square. */
 body[data-broadcast-theme="clab-gallery"][data-page="3"] #stage .simple-ranking .board-head{border-bottom:2px solid var(--studio-text)!important}

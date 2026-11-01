@@ -1,4 +1,17 @@
-# November studio designs — 2026-11-02 (revision 2)
+# November studio designs — 2026-11-02 (revision 3)
+
+## Current revision: Jjunine monochrome
+
+Revision 3 supersedes the Jjunine brass-plaque specification below. The user's official identity is a white surface with a black character. Generated reference: `Desktop/전크자/output/november_broadcast_design/쭌이네_모노크롬_태그_레퍼런스.png`. This reference guided real HTML/CSS components; no generated text is baked into live names or amounts. C·LAB retains revision 2.
+
+- White lacquer faces (`#ffffff`), ink text/accent (`#101114`), muted text (`#52565e`), cool silver rules (`#d1d4d9`) and frame (`#b6bbc2`). Corners are 3px outer / 1px inner. A narrow black bottom edge gives the plates depth.
+- Original logo copied unchanged to `public/assets/jjunine/official-logo.png`. Native image elements keep the outline clear at small sizes. Host and item logos are decorative; the masthead logo has the shop name as alt text.
+- Host plate: official logo at left, small JJUNINE kicker, bold name, smaller role, black LIVE endcap. Event plate has a black date endcap. Ticker uses a short black rule and black endcap.
+- P2 leader: black face, white text, white rank tab. Second bid: white face, black text. P3 uses a white board, quiet gray leader row and aligned tabular amounts.
+- Existing placements, Pretendard, price formatting, channel state and motion remain unchanged. Theme ID remains `jjun-boutique`, so saved channel selections continue working.
+- P1/P2/P3 rendered locally at a 1920×1080 inner canvas. Saved monochrome screenshots use example names and bids. The warm room shown behind the overlays is the earlier background asset, not a newly generated room.
+
+Revision 2 was deployed before this revision. Historical preview/deployment statements below describe that earlier design phase only.
 
 ## Scope and status
 
