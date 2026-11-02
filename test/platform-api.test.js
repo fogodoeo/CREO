@@ -1131,6 +1131,26 @@ test('shared banner selection is atomic, durable, channel-local and absent from 
     assert.deepEqual(await repository.getRecord('alpha','broadcast','state'),before);
 });
 
+test('shared banner archive is admin-only, invalidates output and does not resurrect on import', async()=>{
+ const repository=new MemoryRepository(),api=createPlatformApi({repository}),base='/api/platform/banner-library';
+ const record=(await call(api,'POST',base,{record:{name:'old',imageUrl:'/old.mp4'}})).json().record;
+ const route=base+'/'+record.id+'/archive';
+ await call(api,'PUT','/api/platform/channels/alpha/banner-selection',{id:record.id,selected:true});
+ const read=async()=>(await call(api,'GET','/api/platform/channels/alpha/broadcast?page=1',null,'')).json();
+ const before=await read();assert.equal(before.assets.length,1);
+ assert.equal((await call(api,'PUT',route,{archived:true},'')).status,401);
+ assert.equal((await call(api,'PUT',route,{archived:'true'})).status,422);
+ const writes=await Promise.all([call(api,'PUT',route,{archived:true}),call(api,'PUT',route,{archived:true})]);
+ assert.ok(writes.every(r=>r.status===200));
+ const after=await read();assert.equal(after.assets.length,0);assert.notEqual(after.revision,before.revision);
+ assert.equal((await call(api,'GET',base)).json().banners.length,0);
+ assert.equal((await call(api,'GET',base+'?includeArchived=1')).json().banners.length,1);
+ await call(api,'POST',base+'/import',{});assert.equal((await read()).assets.length,0);
+ assert.equal((await call(api,'PUT','/api/platform/channels/alpha/banner-selection',{id:record.id,selected:true})).status,422);
+ assert.equal((await call(api,'PUT',route,{archived:false})).status,200);
+ assert.equal((await read()).assets.length,1);
+});
+
 test('explicit draft SMS sale test never switches the operating channel', async () => {
     for (const allowed of [false, true]) {
         const repository = new MemoryRepository();

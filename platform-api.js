@@ -3633,7 +3633,16 @@ function createPlatformApi({
 
             if(segments[0]==='banner-library'){
                 if(!await requireAdmin(req,res))return true;
-                if(segments.length===1&&method==='GET'){replyJson(res,200,{banners:await bannerLibrary.list()});return true}
+                if(segments.length===1&&method==='GET'){replyJson(res,200,{banners:await bannerLibrary.list(url.searchParams.get('includeArchived')==='1')});return true}
+                if(segments.length===3&&segments[2]==='archive'&&method==='PUT'){
+                    const body=await readJson(req);
+                    if(typeof body.archived!=='boolean'){replyJson(res,422,{error:'배너 정리 상태를 확인해 주세요.'});return true;}
+                    await withMutationLock('shared-banners',async()=>{
+                        const record=await bannerLibrary.archive(segments[1],body.archived);
+                        const catalog=await repository.getCatalog();for(const channel of catalog.channels)touchChannel(channel.id);
+                        replyJson(res,200,{record});
+                    });return true;
+                }
                 if(segments.length===1&&method==='POST'){
                     const body=await readJson(req);
                     await withMutationLock('shared-banners',async()=>{const record=await bannerLibrary.save(body.record||{});const catalog=await repository.getCatalog();for(const channel of catalog.channels)touchChannel(channel.id);replyJson(res,201,{record})});return true;
