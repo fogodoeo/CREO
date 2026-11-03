@@ -31,6 +31,23 @@ test('switching from CLAB goes to the national program; cancelling an edit keeps
 });
 test('without a national membership the picker preserves authorized round links and escapes names',()=>{
  const f=setup([round,{...clab,name:'<img src=x onerror=alert(1)>'}],round.id);
- assert.deepEqual(f.options().map(e=>e.id),[round.id,clab.id]);assert.equal(f.document.querySelector('img'),null);
- assert.match(f.options()[0].text,/접수 마감/);f.ctx.busy=true;f.ctx.eventControls();assert.equal(f.select.disabled,true);
+ assert.deepEqual(f.options().map(e=>e.id),[clab.id,round.id]);assert.equal(f.document.querySelector('img'),null);
+ assert.equal(f.select.value,round.id);assert.match(f.options()[1].text,/접수 마감/);f.ctx.busy=true;f.ctx.eventControls();assert.equal(f.select.disabled,true);
+});
+
+test('open CLAB intake comes before national programs and retains its scoped default',()=>{
+ const current={...clab,id:'clab-1105',name:'씨랩 1105',status:'active'};
+ for(const open of [false,true]){
+  const events=[{...national,entriesOpen:open},round,{...clab,id:'clab-1015',entriesOpen:false},current];
+  const before=JSON.stringify(events),f=setup(events,current.id);
+  assert.equal(f.options()[0].id,current.id);assert.equal(f.select.value,current.id);
+  f.ctx.eventControls();assert.equal(f.select.value,current.id);assert.equal(JSON.stringify(events),before);
+  assert.equal(f.ctx.location.href,'original');
+ }
+});
+
+test('reordering intake does not silently switch a closed explicit link or leak a nonmember event',()=>{
+ const current={...clab,id:'clab-1105'},f=setup([{...national,entriesOpen:false},current],national.id);
+ assert.equal(f.options()[0].id,current.id);assert.equal(f.select.value,national.id);assert.equal(f.ctx.eventId,national.id);
+ assert.deepEqual(setup([national],national.id).options().map(e=>e.id),[national.id]);
 });

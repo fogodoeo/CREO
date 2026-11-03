@@ -83,7 +83,12 @@
   }
   function eventControls() {
     if (!currentEvent()) eventId = state.channelId || Store.CHANNEL;
-    const programs = state.events.filter(e => entryProgramId(e.id) === e.id), selected = entryProgramId(eventId);
+    const selected = entryProgramId(eventId);
+    // Intake is the primary task here. Keep the explicitly opened event selected
+    // while placing open intake ahead of closed/history programs.
+    const programs = state.events.filter(e => entryProgramId(e.id) === e.id).sort((a,b) =>
+      Number(b.entriesOpen === true) - Number(a.entriesOpen === true) ||
+      Number(b.id === selected) - Number(a.id === selected));
     const label = e => e.id === 'national-cre' ? '전국크레자랑' : e.name + (e.date ? ' · ' + e.date.slice(5).replace('-', '/') : '') + (e.entriesOpen ? '' : ' · 접수 마감');
     $('entry-event').innerHTML = programs.map(e => `<option value="${esc(e.id)}" ${e.id === selected ? 'selected' : ''}>${esc(label(e))}</option>`).join('');
     $('entry-event').disabled = busy || uploading;
