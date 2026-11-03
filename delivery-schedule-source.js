@@ -71,6 +71,7 @@ function createSourceReader(fetchImpl = globalThis.fetch) {
             collectWeeks: String(row[6] || '').split(',').filter(Boolean).map(Number) };
     }
     async function dodosi(originNames, options = {}) {
+        const ratesOnly = options.ratesOnly === true;
         const get = budget(90000, options.signal);
         const html = await get.text('https://www.dodosi.co.kr/113');
         const id = html.match(/const spreadsheetId\s*=\s*'([a-zA-Z0-9_-]+)'/)?.[1];
@@ -92,11 +93,13 @@ function createSourceReader(fetchImpl = globalThis.fetch) {
             const origin = matches[0];
             const city = origin.area.split('[')[0].replace(/^(경기|경남|경북|충남|충북)\s*/, '');
             // The current directory uses an unambiguous departure-group label for these cities.
-            const groups = [...new Set(sheets.dodosiDeliveryData.filter(r => clean(r[1]).replace(/출발$/, '') === city || clean(r[2]).split(/,\s*/).includes(city)).map(r => r[1]))];
+            const routeTable = origin.area.startsWith('광주[광산]') ? sheets.dodosiDeliveryData.filter(r => r[0] === '전라') : sheets.dodosiDeliveryData;
+            const groups = [...new Set(routeTable.filter(r => clean(r[1]).replace(/출발$/, '') === city || clean(r[2]).split(/,\s*/).includes(city)).map(r => r[1]))];
             if (groups.length !== 1) continue;
             const routes = sheets.dodosiDeliveryData.filter(r => r[1] === groups[0]);
             if (!routes.length || routes.length > 24) throw new Error('Invalid DODOSI route count');
             const destinations = [];
+            const originRates = [];
             for (const route of routes) {
                 if (!/^\/shop_view\?idx=\d+$/.test(route[5])) throw new Error('Invalid DODOSI product reference');
                 const idx = route[5].split('=')[1];
@@ -118,13 +121,14 @@ function createSourceReader(fetchImpl = globalThis.fetch) {
                 const finalOptions = await options([first[0], second]);
                 const last = finalOptions.rows.filter(o => o.value_name.includes('//찾는날-'));
                 if (!last.length) throw new Error('DODOSI destination options unavailable');
-                if (Core.compact(origin.name) === Core.compact('크레용(대구)')) {
+                if (ratesOnly || Core.compact(origin.name) === Core.compact('크레용(대구)')) {
                     const start = finalOptions.html.lastIndexOf('도착&nbsp;샵&nbsp;선택');
-                    const prices = Rates.requiredValuesWithPrice(finalOptions.html.slice(Math.max(0, start)))
+                    const prices = finalOptions.html.slice(Math.max(0, start)).split(/(?=selectRequireOption\('prod')/).flatMap(Rates.requiredValuesWithPrice)
                         .map(value => Rates.parseDodosiDestination(value, route[3].replace(/도착$/, ''), Number(idx))).filter(Boolean);
-                    if (prices.length !== last.length || prices.some(p => !Number.isSafeInteger(p.price) || p.price <= 0)) throw new Error('DODOSI prices are incomplete');
-                    rateItems.push(...prices);
+                    if ((!ratesOnly && prices.length !== last.length) || !prices.length || prices.some(p => !Number.isSafeInteger(p.price) || p.price <= 0)) throw new Error('DODOSI prices are incomplete');
+                    originRates.push(...prices);
                 }
+                if (ratesOnly) continue;
                 for (const option of last) {
                     const [address, label] = option.value_name.split('//찾는날-');
                     const separator = address.indexOf('-'), area = address.slice(0, separator), shopName = address.slice(separator + 1);
@@ -142,7 +146,8 @@ function createSourceReader(fetchImpl = globalThis.fetch) {
                         arrivalWeeks: /제주/.test(area) ? [2, 4] : [] });
                 }
             }
-            origins.push({ ...origin, destinations });
+            if (Core.compact(origin.name) === Core.compact('크레용(대구)')) rateItems.push(...originRates);
+            origins.push({ ...origin, destinations, ...(ratesOnly ? { rateItems: originRates } : {}) });
         }
         if (!origins.length) throw new Error('DODOSI departure schedule unavailable');
         return { origins, ...(rateItems.length ? { ratePayload: { updated: new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }), source: 'dodosi-public-options', items: rateItems } } : {}) };

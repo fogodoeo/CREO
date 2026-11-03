@@ -10,6 +10,24 @@ async function setup(t,apiOptions={}){
  f.review=(id,body={action:'approve'})=>f.request('POST','/channels/national-cre/carrier-requests/'+id,body);
  return f;
 }
+test('Jjunine buyers can save a Gwangju quote directly while national buyers still need approval',async t=>{
+ const f=await setup(t),catalog=await f.repository.getCatalog();
+ const original=catalog.channels.find(c=>c.id==='national-cre');
+ const channel={...original,id:'jjunine',name:'쭌이네',shippingDefaults:{...original.shippingDefaults,enabledCarriers:['parge','dodosi'],deliverySchedule:{auctionDate:'2026-11-03',dodosiOrigin:'쭌이네'}}};
+ await f.repository.saveCatalog([...catalog.channels,channel]);
+ await f.repository.upsertRecord(channel.id,'vendor',await f.repository.getRecord(original.id,'vendor','v1'));
+ await f.repository.upsertRecord(channel.id,'item',item('a01'));
+ const link=await f.request('POST','/channels/jjunine/buyer-shipping-link',{itemId:'a01'});
+ const code=link.json().code,read=()=>f.request('GET','/buyer-shipping?code='+code,null,false);
+ const buyer=(await read()).json();
+ assert.equal(buyer.destinations[0].id,'dodosi');assert(buyer.destinations.some(d=>d.id==='parge'));assert.equal(buyer.carrierRequest.canRequest,false);
+ const group=buyer.carriers.dodosi.regions[0],shop=group.shops[0];
+ assert(!buyer.carriers.dodosi.regions.some(r=>r.shops.some(s=>s.name.includes('가상 전주점'))));
+ const body={...f.saveBody,code,destinationId:'dodosi',pargeShop:shop.name,pargeRegion:group.region,payments:[{vendorKey:'v1',method:'bank_transfer'}]};
+ assert.equal((await f.request('POST','/buyer-shipping',body,false)).status,200);
+ assert.equal((await read()).json().selection.pargeShop,shop.name);
+ assert.equal((await f.read()).json().carrierRequest.canUseDodosi,false);
+});
 test('request appears only after empty Parge search and never accepts an unapproved Dodosi save',async t=>{
  const f=await setup(t),initial=(await f.read()).json();assert.equal(initial.carrierRequest.canRequest,true);assert(!initial.destinations.some(d=>d.id==='dodosi'));
  for(const extra of [{query:''},{query:'전'},{query:'수도권'},{query:'가상 정거샵'},{query:'ㄱㅅ'},{region:'없는 분류'}])assert.equal((await f.submit(extra)).status,422,JSON.stringify(extra));

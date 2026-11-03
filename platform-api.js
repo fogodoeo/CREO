@@ -1437,10 +1437,13 @@ function createPlatformApi({
         })).filter(row => !(defaults.disabledPickupLocations || []).includes(row.label));
     }
 
-    async function pargeRates(provider = 'parge') {
+    async function pargeRates(provider = 'parge', channel) {
         if (provider === 'dodosi') {
             let payload = require('./public/dodosi_data.json');
-            try {
+            if (channel?.id === 'jjunine') {
+                const local = require('./jjun-dodosi-rates.json');
+                payload = local.origin === channel.shippingDefaults?.deliverySchedule?.dodosiOrigin ? local : [];
+            } else try {
                 const rows = await repository.getRowsByKeys(['shipping_rate_dodosi']);
                 const stored = rows?.find(row => row.key === 'shipping_rate_dodosi')?.value;
                 if (stored) payload = JSON.parse(stored);
@@ -1566,7 +1569,7 @@ function createPlatformApi({
 
     async function checkoutSnapshot(context) {
         const latest = latestBundleShipment(context);
-        const rates = await pargeRates(latest?.destinationType || ({'파르게':'parge','도도시':'dodosi'})[latest?.carrier]);
+        const rates = await pargeRates(latest?.destinationType || ({'파르게':'parge','도도시':'dodosi'})[latest?.carrier],context.channel);
         const selection = shipmentSelection(latest,context.channel,rates);
         const shipping = Checkout.allocateShipping(context.bundleItems, selection, context.channel, rates, context.shipments);
         // Saved allocations are the quoted shipping price; settings changes do not reprice them.
@@ -1654,8 +1657,15 @@ function createPlatformApi({
             fixedDestinations.push({id:snapshot.selection.destinationId,type:'pickup',label:snapshot.latest.address || '기존 수령지'});
         }
         for (const id of availableCarriers) {
-            carriers[id] = { regions: await pargeRates(id), additionalFee: Number(context.channel.shippingDefaults?.[id + 'AdditionalFee'] ?? 7000), jejuAdditionalFee: Number(context.channel.shippingDefaults?.[id + 'JejuAdditionalFee'] ?? (id === 'parge' ? 4000 : 7000)) };
+            carriers[id] = { regions: await pargeRates(id,context.channel), additionalFee: Number(context.channel.shippingDefaults?.[id + 'AdditionalFee'] ?? 7000), jejuAdditionalFee: Number(context.channel.shippingDefaults?.[id + 'JejuAdditionalFee'] ?? (id === 'parge' ? 4000 : 7000)) };
             if (deliverySchedules) carriers[id].regions = await deliverySchedules.enrichRates(context.channel, id, carriers[id].regions, snapshot.latest?.destinationRegisteredAt || snapshot.latest?.buyerSubmittedAt, snapshot.selection);
+        }
+        const destinations = [...fixedDestinations, ...Object.keys(carriers).map(id => ({ id, type: id, label: id === 'parge' ? '파르게 배송' : '도도시 배송', provider: id === 'parge' ? '파르게' : '도도시' }))];
+        if (require('./carrier-requests').dodosiFirst(context.channel)) {
+            const preferred = destinations.find(row => row.id === 'dodosi');
+            preferred.label = '도도시 배송 · 광주 쭌이네 출발';
+            destinations.splice(destinations.indexOf(preferred), 1);
+            destinations.unshift(preferred);
         }
         const groups = snapshot.groups.map(group => groupPublicPayload({...group,items:group.items.map(item=>displayById.get(item.id)||item)}));
         if (readOnly) for (const group of groups) {
@@ -1702,7 +1712,7 @@ function createPlatformApi({
             buyer: { name: maskBuyerName(buyerDisplayName(context.bundleItems[0])), phoneLast4: context.anchorPhone.slice(-4) },
             items,
             vendors: groups,
-            destinations: [...fixedDestinations, ...Object.keys(carriers).map(id => ({ id, type: id, label: id === 'parge' ? '파르게 배송' : '도도시 배송', provider: id === 'parge' ? '파르게' : '도도시' }))],
+            destinations,
             carriers,
             parge: {
                 regions: snapshot.rates,
@@ -1858,7 +1868,7 @@ function createPlatformApi({
         if (!pending.length) return [];
         const phones = new Set(pending.map(storedWinnerPhone)),history=await destinationHistory(phones,catalog,channel.id,data.shipments);
         const carriers={};
-        for (const id of channel.shippingDefaults?.enabledCarriers || ['parge']) carriers[id]={regions:await pargeRates(id)};
+        for (const id of channel.shippingDefaults?.enabledCarriers || ['parge']) carriers[id]={regions:await pargeRates(id,channel)};
         const fixed=pickupDestinations(channel), suggestions=new Map();
         for (const phone of phones) {
             const found=ShippingHistory.latestDestination(history.get(phone)||[],channel.id,fixed,carriers);
@@ -2017,7 +2027,7 @@ function createPlatformApi({
         const unchangedDestination = latest?.destinationId === destinationId && (latest.pargeRegion || '') === (body.pargeRegion || '') && (latest.pargeShop || '') === (body.pargeShop || '');
         if (unchangedDestination && latest.destinationType === 'pickup' && !fixedDestinations.some(row => row.id === destinationId)) fixedDestinations.push({id:destinationId,type:'pickup',label:latest.address});
         const fixed = fixedDestinations.find((destination) => destination.id === destinationId);
-        const rates = await pargeRates(destinationId);
+        const rates = await pargeRates(destinationId,context.channel);
         let selection;
         let method;
         let carrier;
@@ -4549,7 +4559,7 @@ function createPlatformApi({
                     current.carriers = require('./shipping-settlement').summarizeCarriers(data.items,data.shipments,data.vendors);
                     current.auctionItems = require('./shipping-settlement').organizerAuctionItems(data.items.map(item=>({...item,winnerPhone:storedWinnerPhone(item)})),data.shipments,data.vendors,buyerDisplayName);
                     if (deliverySchedules && channel.shippingDefaults?.deliverySchedule?.enabled) {
-                        const rateMap = Object.fromEntries(await Promise.all(['parge', 'dodosi'].map(async id => [id, await pargeRates(id)])));
+                        const rateMap = Object.fromEntries(await Promise.all(['parge', 'dodosi'].map(async id => [id, await pargeRates(id,channel)])));
                         current.auctionItems = await Promise.all(current.auctionItems.map(async row => {
                             if (row.method !== 'delivery' || ['cancelled', 'refunded'].includes(row.paymentStatus)) return row;
                             const item = data.items.find(i => i.id === row.id);
