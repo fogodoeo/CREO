@@ -4,6 +4,11 @@ const Home=require('../public/operator-home-model'),Shell=require('../public/ope
 const channels=[{id:'national-cre',name:'전크자',status:'active',dataAdapter:'platform'},{id:'national-cre-20261021',name:'전라·충청',status:'draft',dataAdapter:'platform',nationalRound:{parentId:'national-cre',date:'2026-10-21'}},{id:'clab-1015',name:'씨랩',status:'active',dataAdapter:'platform'}];
 const rounds=channels.map(c=>({channelId:c.id,name:c.name,status:c.status,familyId:Home.family(c),date:c.nationalRound?.date||''})).concat({channelId:'national-cre',archiveId:'old',familyId:'national-cre',name:'지난 회차'});
 const state=query=>Home.selection({channels},rounds,'national-cre',query);
+test('operator drive is global and resolves inside the administration shell',()=>{
+ const s=state('?channel=clab-1015');assert.equal(Shell.entry(s,'drive').scope,'global');
+ assert.equal(Shell.frame(s,'drive'),'/operator-drive.html?embedded=1&adminShell=1');
+ assert.equal(Shell.resolve('/operator-drive.html',s).key,'drive');
+});
 test('existing monitor deep links open the unified BAND directory and preserve the chosen round on reload',async()=>{
  const {document,window}=parseHTML(fs.readFileSync(require.resolve('../public/index.html'),'utf8'));
  for(const select of document.querySelectorAll('select'))Object.defineProperty(select,'value',{value:'',writable:true});

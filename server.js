@@ -94,6 +94,11 @@ const broadcastAssetApi = createBroadcastAssetApi({
     storage: broadcastAssetStorage,
     isAdmin: platformApi.isAdmin
 });
+const operatorDriveApi = require('./operator-drive-api').createDriveApi({
+    drive: new (require('./operator-drive').OperatorDrive)({repository:platformRepository,
+        storage:mediaWriteToR2 ? require('./operator-drive-storage').createDriveStorage(r2MediaStorage) : null}),
+    isAdmin:platformApi.isAdmin
+});
 const cdcupRoundsApi = createCdcupRoundsApi({
     repository: supabasePlatformRepository,
     isAdmin: platformApi.isAdmin
@@ -344,6 +349,8 @@ const server = http.createServer(async (req, res) => {
             sendJson(res, 404, { error: 'Not found' });
             return;
         }
+
+        if (await operatorDriveApi(req, res, url)) return;
 
         if (url.pathname.startsWith('/api/platform/')) {
             if (await platformApi.handle(req, res, url)) return;

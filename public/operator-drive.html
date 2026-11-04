@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>공용 파일함 · CREO</title>
+<link rel="stylesheet" href="/operator-home.css"><link rel="stylesheet" href="/operator-drive.css?v=20261104">
+<script src="/platform-client.js?v=20260803-admin-session-v2"></script><script defer src="/operator-drive.js?v=20261104"></script></head>
+<body><a class="skip" href="#files">파일 목록으로 이동</a>
+<header class="drive-head"><div><span class="eyebrow">CREO / STORAGE</span><h1>공용 파일함</h1><p>방송 자료부터 원본 파일까지, 폴더로 정리하세요.</p></div><a class="secondary home-link" href="/main">운영 홈</a></header>
+<form id="login" class="login" hidden><h2>관리자 로그인</h2><label for="password">관리자 비밀번호</label><input id="password" type="password" autocomplete="current-password" required><button class="primary">로그인</button></form>
+<p id="error" role="alert" hidden></p><p id="status" role="status" class="status"></p>
+<main id="drive" hidden>
+ <div class="drive-top"><nav aria-label="파일함 보기"><button id="all" type="button" aria-pressed="true">내 파일</button><button id="trash" type="button" aria-pressed="false">휴지통</button></nav><p id="usage">파일함 사용량 확인 중…</p></div>
+ <section class="workbench" aria-label="폴더와 파일">
+  <div class="folder-bar"><nav id="breadcrumbs" aria-label="현재 폴더"></nav><button id="refresh" type="button">새로고침</button></div>
+  <div class="file-tools"><label class="search-label" for="search">이 폴더에서 검색<input id="search" type="search" placeholder="파일·폴더 이름"></label><div class="actions"><button id="new-folder" type="button">새 폴더</button><button id="upload" class="primary" type="button">파일 올리기</button><input id="file-input" type="file" multiple hidden></div></div>
+  <div id="drop-zone" class="drop-zone"><span id="drop-copy">파일을 여기에 끌어놓거나 ‘파일 올리기’를 선택하세요.</span><span class="hint">파일당 최대 20GB · 모든 파일 형식</span></div>
+  <section id="transfer" class="transfer" hidden aria-label="파일 전송"><div><strong id="transfer-name"></strong><button id="cancel-upload" type="button">업로드 취소</button></div><progress id="progress" max="100" value="0" aria-label="파일 전송 진행률"></progress><p id="transfer-status" role="status"></p></section>
+  <div class="selection-bar"><label><input id="select-all" type="checkbox"> <span id="selection-count">전체 선택</span></label><div class="actions"><button id="rename" type="button" disabled>이름 변경</button><button id="move" type="button" disabled>이동</button><button id="delete" type="button" disabled>휴지통으로</button><button id="restore" type="button" hidden disabled>복원</button><button id="purge" class="danger" type="button" hidden disabled>영구 삭제</button></div></div>
+  <div id="files" tabindex="-1"><div class="table-head" aria-hidden="true"><span>이름</span><span>크기</span><span>수정일</span><span>작업</span></div><ul id="file-list" aria-label="파일 목록"></ul><div id="empty" class="empty" hidden></div></div>
+ </section>
+ <p class="footnote">운영자만 접근할 수 있는 공용 공간입니다. 휴지통 파일도 저장 용량에 포함됩니다.</p>
+</main>
+<dialog id="edit-dialog" aria-labelledby="edit-title"><form id="edit-form" data-managed-draft="true"><h2 id="edit-title"></h2><p id="edit-description"></p><div id="name-field"><label for="entry-name">이름</label><input id="entry-name" maxlength="180" autocomplete="off"></div><div id="destination-field" hidden><label for="destination">이동할 폴더</label><select id="destination"></select></div><p id="dialog-error" role="alert" hidden></p><div class="dialog-actions"><button id="dialog-cancel" type="button">취소</button><button id="dialog-submit" class="primary" type="submit">저장</button></div></form></dialog>
+<dialog id="preview-dialog" aria-labelledby="preview-title"><div class="preview-head"><h2 id="preview-title"></h2><button id="preview-close" type="button">닫기</button></div><div id="preview-media"></div><a id="preview-download" class="secondary" download>다운로드</a></dialog>
+</body></html>
