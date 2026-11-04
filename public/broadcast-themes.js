@@ -7,7 +7,7 @@
   Object.freeze({id:'national-stage',name:'전국크레자랑',description:'흰색 이름칸 · 번호 원 · 청록·자주 방송 자막',frame:''}),
   Object.freeze({id:'recessive-special',name:'열성모프 특집',description:'아이보리 · 차콜 · 세이지 포인트',frame:''}),
   Object.freeze({id:'jjun-boutique',name:'쭌이네 모노크롬',description:'화이트 명판 · 블랙 캐릭터 · 실버 엣지',frame:''}),
-  Object.freeze({id:'clab-gallery',name:'씨랩 갤러리',description:'포슬린 · 잉크 · 딥 세이지',frame:''})
+  Object.freeze({id:'clab-gallery',name:'씨랩 메탈',description:'건메탈 플레이트 · 실버 엣지 · 스틸 포인트',frame:''})
  ]);
  function resolve(id){return presets.find(p=>p.id===id)||presets[0]}
  function apply(doc,id){const theme=resolve(id);if(doc.body)doc.body.dataset.broadcastTheme=theme.id;return theme.id}

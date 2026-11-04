@@ -2,7 +2,7 @@
    The camera area stays transparent and every operator placement box is respected as drawn.
    쭌이네 모노크롬: white lacquer plates, the official black mascot, silver seams and black endcaps.
                  Based on the generated November 2 tag reference; all names and prices remain live text.
-   씨랩 갤러리: porcelain museum labels on the brushed-steel wall. Square corners, ink type, left-aligned captions and one deep-sage accent.
+   씨랩 메탈: dark machined plates on the brushed-steel wall. Silver bevels, bright live text and a steel leader plate.
                 The six CREYON ring colours (sampled from the wall logo) appear once, as a small swatch in the masthead. */
 
 /* ── Tokens (role names; contrast measured on the panel each pair renders on) ─────────────────────────── */
@@ -20,17 +20,21 @@ body[data-broadcast-theme="jjun-boutique"]{
  --studio-accent-shadow:inset 0 0 0 1px #777d85,inset 0 0 0 2px #e4e6e9,inset 0 0 0 3px #30343a,0 4px 0 #08090a,0 7px 12px #0003;
 }
 body[data-broadcast-theme="clab-gallery"]{
- --studio-panel:#f8f8f5;          /* porcelain, oklch(.978 .004 110) */
- --studio-text:#151d1a;           /* 16.14:1 on panel */
- --studio-text-muted:#4d5c56;     /*  6.62:1 on panel */
- --studio-accent:#224f3e;         /* deep sage; 8.75:1 as text on panel and as a fill under panel-coloured text */
- --studio-on-accent:#f8f8f5;
- --studio-row:#e1ede6;            /* rank-1 row; text 14.28:1, accent 7.74:1 */
- --studio-rule:#d1d8d3;
- --studio-frame:rgb(21 29 26 / .07);
- --studio-radius:3px;--studio-inner-radius:2px;
- --studio-surface-shadow:0 0 0 1px var(--studio-frame),0 1px 1px rgb(12 14 13 / .14),0 10px 20px -8px rgb(12 14 13 / .42);
- --studio-accent-shadow:0 1px 1px rgb(12 14 13 / .14),0 10px 20px -8px rgb(12 14 13 / .42);
+ --studio-panel:#242a32;
+ --studio-text:#f2f4f7;
+ --studio-text-muted:#bfc8d2;
+ --studio-accent:#d1dce7;
+ --studio-on-accent:#151b23;
+ --studio-row:#394754;
+ --studio-rule:#56616e;
+ --studio-frame:#8793a1;
+ --studio-radius:5px;--studio-inner-radius:3px;
+ --studio-surface-shadow:inset 0 1px 0 #ccd4df,inset 0 0 0 1px var(--studio-frame),inset 0 0 0 3px #171d25,0 3px 0 #10151c,0 8px 18px -5px #0009;
+ --studio-accent-shadow:inset 0 1px 0 #e0e7ee,inset 0 0 0 1px #a6b3c1,inset 0 0 0 3px #293644,0 3px 0 #10151c,0 8px 18px -5px #0009;
+ /* Static low-contrast machining; live type never receives texture or a gradient. */
+ --clab-metal-surface:repeating-linear-gradient(0deg,#ffffff03 0 1px,transparent 1px 4px),linear-gradient(112deg,#20262e 0%,#303944 39%,#242b34 58%,#1b2129 100%);
+ --clab-metal-leader:linear-gradient(112deg,#415263,#4b5d70 42%,#354657);
+ --clab-metal-inset:#192029;
  /* CREYON wall-logo ring, clockwise from the top: measured #e04038 #f08444 #f0c434 #749c42 #3884bc #8460a4 */
  --studio-spectrum:linear-gradient(90deg,#e04038 0 16.667%,#f08444 0 33.333%,#f0c434 0 50%,#749c42 0 66.667%,#3884bc 0 83.333%,#8460a4 0);
 }
@@ -114,7 +118,7 @@ body[data-broadcast-theme="jjun-boutique"][data-page="1"] #stage .host-role.host
 body[data-broadcast-theme="jjun-boutique"][data-page="1"] #stage .host-instagram{display:block;width:1em;height:1em;flex:0 0 1em;padding:.16em;box-sizing:content-box;border-radius:.3em;background:radial-gradient(circle at 25% 105%,#feda75 0%,#fa7e1e 25%,#d62976 52%,#962fbf 76%,#4f5bd5 100%);color:#fff}
 body[data-broadcast-theme="jjun-boutique"][data-page="1"] #stage .host-handle{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 body[data-broadcast-theme="jjun-boutique"][data-page="1"] #stage .host-role::before{display:none}
-/* C·LAB: left-aligned wall label, a short sage rule leading the role. */
+/* C·LAB: left-aligned metal nameplate, a silver rule leading the role. */
 body[data-broadcast-theme="clab-gallery"][data-page="1"] #stage .host-card strong{align-items:flex-start!important}
 body[data-broadcast-theme="clab-gallery"][data-page="1"] #stage .host-role::before{width:1.5em;height:2px}
 
@@ -191,8 +195,36 @@ body[data-broadcast-theme="jjun-boutique"][data-page="3"] #stage .simple-ranking
 body[data-broadcast-theme="jjun-boutique"][data-page="3"] #stage .simple-ranking h1{display:flex;align-items:center;gap:20px;text-align:left;font-weight:850}
 body[data-broadcast-theme="jjun-boutique"][data-page="3"] #stage .simple-ranking h1::before{content:"";flex:0 0 5px;width:5px;height:42px;background:#101114}
 body[data-broadcast-theme="jjun-boutique"][data-page="3"] #stage .simple-ranking .ranking-page{margin-left:24px}
-/* C·LAB: left-aligned catalogue heading over an ink rule; the leader's number sits in a sage square. */
-body[data-broadcast-theme="clab-gallery"][data-page="3"] #stage .simple-ranking .board-head{border-bottom:2px solid var(--studio-text)!important}
+/* C·LAB: catalogue heading over a machined seam; the leader has a silver rank tab. */
+body[data-broadcast-theme="clab-gallery"][data-page="3"] #stage .simple-ranking .board-head{border-bottom:1px solid var(--studio-rule)!important}
 body[data-broadcast-theme="clab-gallery"][data-page="3"] #stage .summary-row[data-rank="1"] .summary-rank{
  display:grid;place-items:center;width:1.4em;aspect-ratio:1;border-radius:var(--studio-inner-radius);background:var(--studio-accent);color:var(--studio-on-accent)!important;font-size:.82em;
 }
+
+/* C·LAB finish. Surface-only overrides: never move saved slots or fill the camera canvas. */
+body[data-broadcast-theme="clab-gallery"] #stage :is(.studio-plate,.host-card,.item-copy,.item-progress,.price-card,.sold-notice,.simple-ranking,.ticker,.live-bid-row,.standby-note){
+ background:var(--clab-metal-surface)!important;
+}
+body[data-broadcast-theme="clab-gallery"] #stage .studio-plate{padding:3px}
+body[data-broadcast-theme="clab-gallery"] #stage .studio-date{
+ margin:0;padding:18px 30px;border-left:1px solid var(--studio-rule);
+ background:var(--clab-metal-inset);border-radius:0 var(--studio-inner-radius) var(--studio-inner-radius) 0;
+ box-shadow:inset 1px 0 0 #10151c,inset 0 1px 0 #ffffff0a;
+}
+body[data-broadcast-theme="clab-gallery"] #stage .studio-title>span::before{height:4px;opacity:.85}
+body[data-broadcast-theme="clab-gallery"][data-page="1"] #stage .host-card strong{flex-direction:column!important;gap:10px!important}
+body[data-broadcast-theme="clab-gallery"][data-page="1"] #stage .host-name{font-weight:800}
+body[data-broadcast-theme="clab-gallery"][data-page="1"] #stage .host-role{color:var(--studio-text-muted)!important;letter-spacing:.015em}
+body[data-broadcast-theme="clab-gallery"] #stage .ticker::before,
+body[data-broadcast-theme="clab-gallery"] #stage .ticker::after{background:linear-gradient(90deg,#56616e,#c9d2dd,#56616e)}
+body[data-broadcast-theme="clab-gallery"] #stage .live-bid-row[data-rank="1"]{
+ background:var(--clab-metal-leader)!important;box-shadow:var(--studio-accent-shadow)!important;
+}
+body[data-broadcast-theme="clab-gallery"] #stage .live-bid-row[data-rank="1"] :is(.live-bid-name,.live-bid-amount){color:var(--studio-text)!important}
+body[data-broadcast-theme="clab-gallery"] #stage .live-bid-row .live-bid-amount{color:var(--studio-accent)!important}
+body[data-broadcast-theme="clab-gallery"] #stage .parent-photos figcaption{background:var(--clab-metal-surface)}
+body[data-broadcast-theme="clab-gallery"][data-page="3"] #stage .summary-row[data-rank="1"]{
+ background:var(--clab-metal-leader);box-shadow:inset 0 1px 0 #ffffff20,inset 0 -1px 0 #0004;
+}
+body[data-broadcast-theme="clab-gallery"][data-page="3"] #stage .summary-row[data-rank="1"] .summary-amount{color:var(--studio-text)!important}
+body[data-broadcast-theme="clab-gallery"][data-page="3"] #stage .summary-row[data-rank="1"] .summary-amount small{color:var(--studio-accent)!important}

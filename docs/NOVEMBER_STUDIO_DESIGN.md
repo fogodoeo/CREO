@@ -1,6 +1,18 @@
-# November studio designs — 2026-11-02 (revision 5)
+# November studio designs
 
-## Current revision: color Instagram icons and broadcast notices
+## Current C·LAB revision — 2026-11-04: metal plates
+
+The existing `clab-gallery` ID now displays as **씨랩 메탈**, preserving saved channel selection. This supersedes all porcelain/sage C·LAB descriptions below. Jjunine remains unchanged.
+
+- P1 host/event/ticker plates, P2 lot/progress/bids/price/notice/parent captions and P3 summary use a dark machined steel surface, restrained static grain, thin silver bevel and shallow mount shadow. No new animation or raster text.
+- Surface stops: `#20262e`, `#303944`, `#242b34`, `#1b2129`; body `#f2f4f7`, muted `#bfc8d2`, silver accent `#d1dce7`. Leader surface `#415263` → `#4b5d70` → `#354657`; bright text remains on the leader. The P3 unit uses the brighter silver accent on the leader.
+- Name first, smaller role below. Existing placements, font scaling, dynamic number formatting, ranking order, camera transparency and record state stay shared. The CREYON spectrum remains a small masthead decoration only.
+- Conservative contrast checks against the brightest textured plate bound `#333c47`: body 10.15:1, muted 6.61:1. Leader body against `#4b5d70`: 6.15:1. The silver rank tab uses dark `#151b23` text: 12.45:1.
+- Real local browser inspection: P1/P2/P3 at the 1920×1080 inner canvas, P2 editor extra panels, and Jjunine P1 regression. The all-slots editor deliberately shows existing overlapping optional slots; no saved positions were changed. Screenshots are in `Desktop/씨랩/방송소스/메탈UI/P1.png` through `P3.png` using fictional preview data.
+- Focused theme/layout/bid/summary tests: 28 passed. `npm run check` passed. Full suite after incorporating upstream main: `node --test --test-concurrency=4`, 1,965 passed. An initial unrestricted run had one unrelated buyer-library UI wait failure; its isolated eight tests and the bounded full rerun passed without source changes. Production camera keying and on-air PRISM capture are not verified.
+
+## Previous revision: color Instagram icons and broadcast notices
+
 
 Only the Instagram icon gets a pink/purple/orange/yellow gradient tile and a white camera outline; handles stay dark and readable. This brand accent does not encode auction state. The host layout, names and state are unchanged.
 
