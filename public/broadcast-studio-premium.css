@@ -118,9 +118,9 @@ body[data-broadcast-theme="jjun-boutique"][data-page="1"] #stage .host-role.host
 body[data-broadcast-theme="jjun-boutique"][data-page="1"] #stage .host-instagram{display:block;width:1em;height:1em;flex:0 0 1em;padding:.16em;box-sizing:content-box;border-radius:.3em;background:radial-gradient(circle at 25% 105%,#feda75 0%,#fa7e1e 25%,#d62976 52%,#962fbf 76%,#4f5bd5 100%);color:#fff}
 body[data-broadcast-theme="jjun-boutique"][data-page="1"] #stage .host-handle{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 body[data-broadcast-theme="jjun-boutique"][data-page="1"] #stage .host-role::before{display:none}
-/* C·LAB: left-aligned metal nameplate, a silver rule leading the role. */
+/* Repeat the wall logo's six colour bands on the host plate and ticker endcaps. */
 body[data-broadcast-theme="clab-gallery"][data-page="1"] #stage .host-card strong{align-items:flex-start!important}
-body[data-broadcast-theme="clab-gallery"][data-page="1"] #stage .host-role::before{width:1.5em;height:2px}
+body[data-broadcast-theme="clab-gallery"][data-page="1"] #stage .host-role::before{width:1.5em;height:.22em;background:var(--studio-spectrum)}
 
 /* ── Ticker (P1, P2) ─────────────────────────────────────────────────────────────────────────────────── */
 body:is([data-broadcast-theme="jjun-boutique"],[data-broadcast-theme="clab-gallery"]) #stage .ticker-text{color:var(--studio-text)!important;font-weight:600;letter-spacing:-.02em}
@@ -133,7 +133,7 @@ body[data-broadcast-theme="jjun-boutique"] #stage .ticker::before{content:"";ins
 body[data-broadcast-theme="jjun-boutique"] #stage .ticker::after{display:none}
 body[data-broadcast-theme="jjun-boutique"][data-page] #stage .ticker-text{padding-inline:40px!important;text-align:left;font-weight:650}
 body[data-broadcast-theme="clab-gallery"] #stage .ticker::before,
-body[data-broadcast-theme="clab-gallery"] #stage .ticker::after{width:32px;height:2px;margin-top:-1px}
+body[data-broadcast-theme="clab-gallery"] #stage .ticker::after{width:clamp(30px,2.5vw,48px);height:clamp(4px,.55vh,6px);transform:translateY(-50%);background:var(--studio-spectrum)}
 body[data-broadcast-theme="clab-gallery"] #stage .ticker::before{left:30px}
 body[data-broadcast-theme="clab-gallery"] #stage .ticker::after{right:30px}
 
@@ -216,8 +216,6 @@ body[data-broadcast-theme="clab-gallery"][data-page="1"] #stage .host-card{--cla
 body[data-broadcast-theme="clab-gallery"][data-page="1"] #stage .host-card strong{flex-direction:column!important;gap:min(10px,.925926vh)!important}
 body[data-broadcast-theme="clab-gallery"][data-page="1"] #stage .host-name{font-size:var(--clab-host-size)!important;font-weight:800}
 body[data-broadcast-theme="clab-gallery"][data-page="1"] #stage .host-role{font-size:calc(var(--clab-host-size) * .5)!important;color:var(--studio-text-muted)!important;letter-spacing:.015em}
-body[data-broadcast-theme="clab-gallery"] #stage .ticker::before,
-body[data-broadcast-theme="clab-gallery"] #stage .ticker::after{background:linear-gradient(90deg,#56616e,#c9d2dd,#56616e)}
 body[data-broadcast-theme="clab-gallery"] #stage .live-bid-row[data-rank="1"]{
  background:var(--clab-metal-leader)!important;box-shadow:var(--studio-accent-shadow)!important;
 }
