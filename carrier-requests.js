@@ -6,6 +6,7 @@ const Search=require('./public/carrier-search');
 const fail=(message,status=422)=>Object.assign(Error(message),{status});
 const configured=context=>context.channel.shippingDefaults?.enabledCarriers||['parge'];
 const dodosiFirst=channel=>channel.id==='jjunine' && channel.shippingDefaults?.enabledCarriers?.includes('dodosi');
+const isClab=channel=>require('./public/operator-home-model').family(channel)==='clab';
 const publicRecord=row=>row?{state:row.state,createdAt:row.createdAt,reviewedAt:row.reviewedAt||'',reason:row.reason||''}:null;
 function createCarrierRequests({repository,notificationService,now=Date.now,origin='https://creok.onrender.com',locked,resolveContext,rates,touch,canNotify=()=>true}){
  async function find(context){
@@ -14,7 +15,7 @@ function createCarrierRequests({repository,notificationService,now=Date.now,orig
  }
  function legacy(context){return context.shipments.some(s=>context.bundleItems.some(i=>i.id===s.itemId)&&s.destinationType==='dodosi'&&s.buyerSubmittedAt);}
  async function status(context){
-  const record=await find(context),enabled=configured(context),gated=enabled.includes('parge')&&!dodosiFirst(context.channel);
+  const record=await find(context),enabled=configured(context),gated=enabled.includes('parge')&&!dodosiFirst(context.channel)&&!(isClab(context.channel)&&enabled.includes('dodosi'));
   const canUseDodosi=legacy(context)||record?.state==='approved'||(!gated&&enabled.includes('dodosi'));
   return {...(publicRecord(record)||{state:'available'}),canUseDodosi,canRequest:gated&&!record&&!canUseDodosi&&!await locked(context)};
  }
@@ -62,4 +63,4 @@ function createCarrierRequests({repository,notificationService,now=Date.now,orig
  }
  return{status,allowed,submit,review,list};
 }
-module.exports={createCarrierRequests,dodosiFirst};
+module.exports={createCarrierRequests,dodosiFirst,isClab};

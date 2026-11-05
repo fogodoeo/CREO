@@ -1666,6 +1666,10 @@ function createPlatformApi({
             preferred.label = '도도시 배송 · 광주 쭌이네 출발';
             destinations.splice(destinations.indexOf(preferred), 1);
             destinations.unshift(preferred);
+        } else if (require('./carrier-requests').isClab(context.channel)) {
+            const dodosi = destinations.find(row => row.id === 'dodosi');
+            if (dodosi) dodosi.label = '도도시 배송 · 대구 크레용 출발';
+            destinations.sort((a,b) => Number(a.type === 'pickup') - Number(b.type === 'pickup'));
         }
         const groups = snapshot.groups.map(group => groupPublicPayload({...group,items:group.items.map(item=>displayById.get(item.id)||item)}));
         if (readOnly) for (const group of groups) {

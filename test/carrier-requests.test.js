@@ -28,6 +28,27 @@ test('Jjunine buyers can save a Gwangju quote directly while national buyers sti
  assert.equal((await read()).json().selection.pargeShop,shop.name);
  assert.equal((await f.read()).json().carrierRequest.canUseDodosi,false);
 });
+test('C-LAB offers both carriers before pickup and accepts the Daegu Dodosi quote without approval',async t=>{
+ const f=await setup(t),catalog=await f.repository.getCatalog();
+ const original=catalog.channels.find(c=>c.id==='national-cre');
+ const channel={...original,id:'clab-1105',nationalRound:undefined,shippingDefaults:{...original.shippingDefaults,enabledCarriers:['parge','dodosi'],pickupLocations:['대구본점'],deliverySchedule:{auctionDate:'2026-11-05',dodosiOrigin:'크레용(대구)'}}};
+ await f.repository.saveCatalog([...catalog.channels,channel]);
+ await f.repository.upsertRecord(channel.id,'vendor',await f.repository.getRecord(original.id,'vendor','v1'));
+ await f.repository.upsertRecord(channel.id,'item',item('a01'));
+ const link=await f.request('POST','/channels/'+channel.id+'/buyer-shipping-link',{itemId:'a01'});
+ const code=link.json().code,read=async()=>(await f.request('GET','/buyer-shipping?code='+code,null,false)).json();
+ const buyer=await read();
+ assert.deepEqual(buyer.destinations.slice(0,2).map(row=>row.id),['parge','dodosi']);
+ assert.equal(buyer.destinations[1].label,'도도시 배송 · 대구 크레용 출발');
+ assert(buyer.destinations.some(row=>row.type==='pickup'));
+ assert.equal(buyer.carrierRequest.canRequest,false);
+ const group=buyer.carriers.dodosi.regions[0],shop=group.shops[0];
+ assert.equal(shop.baseCost,27000);
+ const body={...f.saveBody,code,destinationId:'dodosi',pargeShop:shop.name,pargeRegion:group.region,payments:[{vendorKey:'v1',method:'bank_transfer'}]};
+ assert.equal((await f.request('POST','/buyer-shipping',body,false)).status,200);
+ assert.equal((await read()).selection.pargeShop,shop.name);
+ assert.equal((await f.read()).json().carrierRequest.canUseDodosi,false);
+});
 test('request appears only after empty Parge search and never accepts an unapproved Dodosi save',async t=>{
  const f=await setup(t),initial=(await f.read()).json();assert.equal(initial.carrierRequest.canRequest,true);assert(!initial.destinations.some(d=>d.id==='dodosi'));
  for(const extra of [{query:''},{query:'전'},{query:'수도권'},{query:'가상 정거샵'},{query:'ㄱㅅ'},{region:'없는 분류'}])assert.equal((await f.submit(extra)).status,422,JSON.stringify(extra));
