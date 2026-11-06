@@ -36,7 +36,6 @@
  function render(){
   $('back').hidden=(screen==='channels'&&state.companies.length<2)||(['login','profile','companies','directory','verify-required','unavailable'].includes(screen)&&!(screen==='directory'&&state.companies.length));$('account').hidden=!state?.authenticated;$('main').classList.toggle('has-nav',screen==='profile');$('main').classList.toggle('login-screen',screen==='login');document.querySelector('.portal-nav')?.remove();
   if(screen!=='profile')window.CreoVendorShell?.clear();
-  const promo=document.querySelector('.promo-library-entry');if(promo)promo.hidden=Boolean(state?.authenticated);
   const html={
    directory:()=>heading('업체를 선택해 주세요')+`<label class="field" for="directory-region">지역<select id="directory-region"><option value="">지역 선택</option>${state.regions.map(r=>`<option ${r===directoryRegion?'selected':''}>${esc(r)}</option>`).join('')}</select></label><div id="directory-results" class="result-list" aria-live="polite"></div>`+(state.preregisteredOnly?'':`<div class="register-option"><span>업체가 없나요?</span>${action('new-company','새 업체 등록','text-button')}</div>`),
    unavailable:()=>heading('접속을 준비하고 있어요','잠시 후 다시 열어 주세요.')+action('retry','다시 확인'),
