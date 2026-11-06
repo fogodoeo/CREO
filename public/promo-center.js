@@ -17,6 +17,7 @@
   const url=new URL(block.src,location.origin);
   return url.origin===location.origin&&['/promo-assets/hero.jpg','/promo-assets/hero-seoul-incheon-v2.png','/promo-assets/hero-seoul-incheon-v3.png','/promo-assets/seoul-incheon-premiere-map-v7.png','/promo-assets/hero-wolssu-v1.png','/promo-assets/hero-gyeongsang-20261026-28-v1.png','/promo-assets/hero-gyeongsang-20261026-28-v5.png','/promo-assets/hero-gyeongsang-20261026-28-v10.png'].includes(url.pathname);
  }
+ function seasonTwoHero(t){return /시즌\s*2/.test(t.name||'')||/시즌\s*2/.test(t.title||'')?{type:'image',src:'/promo-assets/hero-season2-museum-v23.png',alt:'전국크레자랑 시즌 2 · 월요일도 수요일도 도파민이 터지는 축제 · 매주 월·수 밤 8시 네이버 밴드 라이브 경매'}:null;}
  function episodeHero(t){return t.blocks.find(b=>b.type==='image'&&new URL(b.src,location.origin).origin===location.origin&&['/promo-assets/hero-gyeongsang-20261026-28-v1.png','/promo-assets/hero-gyeongsang-20261026-28-v5.png','/promo-assets/hero-gyeongsang-20261026-28-v10.png'].includes(new URL(b.src,location.origin).pathname));}
  function isSharedAsset(b,kind){if(b.type!=='image')return false;const u=new URL(b.src,location.origin);return u.origin===location.origin&&(kind==='ticket'?/^\/promo-assets\/ticket(?:-seoul-incheon-v2|-wolssu-gamachi-v1|-wolssu-sponsors-v1)?\.png$/:/^\/promo-assets\/partners-20261007(?:-v4)?\.png$/).test(u.pathname);}
  function postBlocks(t,images=[]){
@@ -33,10 +34,10 @@
   if(!inserted&&images.length){const index=blocks.findIndex(b=>b.href);blocks.splice(index<0?blocks.length:index,0,...images.map(i=>({...i,type:'image'})));}const ticket={type:'image',src:'/promo-assets/ticket-wolssu-sponsors-v1.png',alt:'전국크레자랑 공식 후원 및 파트너 · 실크트리(SILKTREE) · 파르게(PARGE)'};const linkIndex=blocks.findIndex(b=>b.href);blocks.splice(linkIndex<0?blocks.length:linkIndex,0,ticket);
 
 
-  const header=episodeHero(t)||{type:'image',src:'/promo-assets/hero-wolssu-v1.png',alt:'전국크레자랑 월쑤! 매주 월·수 밤 8시 네이버 밴드 LIVE 경매'};
+  const header=seasonTwoHero(t)||episodeHero(t)||{type:'image',src:'/promo-assets/hero-wolssu-v1.png',alt:'전국크레자랑 월쑤! 매주 월·수 밤 8시 네이버 밴드 LIVE 경매'};
   return [header,...blocks];
  }
- function thumbnailImage(t){return episodeHero(t)||t.blocks.find(b=>b.type==='image'&&!isSharedHero(b));}
+ function thumbnailImage(t){return seasonTwoHero(t)||episodeHero(t)||t.blocks.find(b=>b.type==='image'&&!isSharedHero(b));}
  function enablePreviewDismiss(dialog){
   let outsideStart=false;
   const outside=e=>{const r=dialog.getBoundingClientRect();return e.target===dialog&&(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom);};
