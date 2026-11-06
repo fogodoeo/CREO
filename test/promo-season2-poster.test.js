@@ -20,4 +20,14 @@ test('season 2 preview, copy and thumbnail use approved museum poster while hist
  assert.equal(ctx.postBlocks({...t,name:'',title:'전국크레자랑 시즌2 시작'})[0].src,src);
  assert.ok(fs.existsSync(require('node:path').join(__dirname,'../public',src)));
  assert.equal(require('../promo-media.json')[src],'https://creok.onrender.com'+src);
+ const seoul={...t,name:'시즌 2 · 11.9 서울·인천',title:'11월 9일 월요일 밤 8시'};
+ const seoulSrc='/promo-assets/hero-season2-20261109-seoul-v2.png';
+ assert.equal(ctx.thumbnailImage(seoul).src,seoulSrc);
+ for(const copying of [false,true]){
+  const html=ctx.bodyHTML(seoul,copying);
+  assert.equal((html.match(/hero-season2-20261109-seoul-v2\.png/g)||[]).length,1);
+  assert.doesNotMatch(html,/hero-season2-museum-v23/);
+ }
+ assert.ok(fs.existsSync(require('node:path').join(__dirname,'../public',seoulSrc)));
+ assert.equal(require('../promo-media.json')[seoulSrc],'https://creok.onrender.com'+seoulSrc);
 });
