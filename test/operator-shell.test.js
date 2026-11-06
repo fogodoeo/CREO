@@ -9,6 +9,12 @@ test('operator drive is global and resolves inside the administration shell',()=
  assert.equal(Shell.frame(s,'drive'),'/operator-drive.html?embedded=1&adminShell=1');
  assert.equal(Shell.resolve('/operator-drive.html',s).key,'drive');
 });
+
+test('desktop installation is a global operator tool and preserves shell navigation',()=>{
+ const s=state('?channel=clab-1015');assert.equal(Shell.entry(s,'desktopApp').scope,'global');
+ assert.equal(Shell.frame(s,'desktopApp'),'/monitor-download.html?embedded=1&adminShell=1');
+ assert.equal(Shell.resolve('/monitor-download.html',s).key,'desktopApp');
+});
 test('existing monitor deep links open the unified BAND directory and preserve the chosen round on reload',async()=>{
  const {document,window}=parseHTML(fs.readFileSync(require.resolve('../public/index.html'),'utf8'));
  for(const select of document.querySelectorAll('select'))Object.defineProperty(select,'value',{value:'',writable:true});

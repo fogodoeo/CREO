@@ -94,11 +94,13 @@ const broadcastAssetApi = createBroadcastAssetApi({
     storage: broadcastAssetStorage,
     isAdmin: platformApi.isAdmin
 });
+const operatorDrive = new (require('./operator-drive').OperatorDrive)({repository:platformRepository,
+    storage:mediaWriteToR2 ? require('./operator-drive-storage').createDriveStorage(r2MediaStorage) : null});
 const operatorDriveApi = require('./operator-drive-api').createDriveApi({
-    drive: new (require('./operator-drive').OperatorDrive)({repository:platformRepository,
-        storage:mediaWriteToR2 ? require('./operator-drive-storage').createDriveStorage(r2MediaStorage) : null}),
+    drive: operatorDrive,
     isAdmin:platformApi.isAdmin
 });
+const desktopReleaseApi = require('./desktop-releases').createDesktopReleaseApi({drive:operatorDrive,isAdmin:platformApi.isAdmin});
 const cdcupRoundsApi = createCdcupRoundsApi({
     repository: supabasePlatformRepository,
     isAdmin: platformApi.isAdmin
@@ -351,6 +353,7 @@ const server = http.createServer(async (req, res) => {
         }
 
         if (await operatorDriveApi(req, res, url)) return;
+        if (await desktopReleaseApi(req, res, url)) return;
 
         if (url.pathname.startsWith('/api/platform/')) {
             if (await platformApi.handle(req, res, url)) return;

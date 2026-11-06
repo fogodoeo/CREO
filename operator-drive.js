@@ -92,6 +92,7 @@ class OperatorDrive {
     }
     async edit(id,body) {
         return this.change(s=>{
+            if(Object.values(s.desktopReleases||{}).some(r=>r.fileId===id))throw fail('배포 중인 설치 파일은 변경할 수 없습니다.',409);
             const e=this.entry(s,id);if(e.trashRoot||e.state!=='ready')throw fail('정리할 수 있는 파일이 아닙니다.',409);
             if(body.revision!==e.revision)throw fail('다른 창에서 변경되었습니다. 새로고침 후 다시 시도해 주세요.',409);
             const name=body.name===undefined?e.name:cleanName(body.name),parent=body.parent===undefined?e.parent:body.parent;
@@ -103,6 +104,7 @@ class OperatorDrive {
         return this.change(s=>{
             const e=this.entry(s,id);if(e.trashRoot)return {id};
             const ids=this.descendants(s,id),rows=s.entries.filter(e=>ids.has(e.id)&&!e.trashRoot);
+            if(Object.values(s.desktopReleases||{}).some(r=>ids.has(r.fileId)))throw fail('배포 중인 설치 파일이 포함되어 있습니다. 보관해 주세요.',409);
             if(rows.some(e=>e.state!=='ready'))throw fail('폴더 안에 미완료 업로드가 있습니다. 먼저 업로드를 완료하거나 취소해 주세요.',409);
             for(const row of rows){row.trashRoot=id;row.deletedAt=this.now();row.revision++;row.updatedAt=this.now();}return {id};
         });
