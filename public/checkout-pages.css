@@ -1,4 +1,7 @@
 /* Shared transaction screens: one place for colors, typography and controls. */
+.buyer-page[data-buyer-section=checkout][data-buyer-read-only=false] .flow-steps:not([hidden]){display:flex!important;align-items:center;gap:10px;margin:12px 0 16px;font-size:14px;line-height:1.5;color:var(--muted)}
+.buyer-page .flow-steps [aria-current=step]{color:var(--blue);font-weight:700}
+.buyer-page .flow-steps .complete{color:var(--ink);font-weight:600}
 :is(.buyer-page,.vendor-page,.organizer-page) {
  --ink:#202631;--muted:#5e6978;--line:#e2e7ed;--soft:#f5f7fa;
  --blue:#2563eb;--green:#18724d;--red:#b42318;

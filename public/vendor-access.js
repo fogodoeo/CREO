@@ -39,10 +39,15 @@
   catch(e){go('work-error');throw e;}
  }
  function workHtml(){
-  const rows=window.CreoVendorWork.ordered(workRows);
+  const model=window.CreoVendorWork,rows=model.ordered(workRows),current=rows.filter(r=>!model.isHistory(r)),history=rows.filter(model.isHistory);
+  const card=r=>{
+   const settlement=model.primarySection(r)==='settlement';
+   return `<article class="work-card"><div class="work-card-top"><span class="work-status" data-rank="${r.work.rank}">${esc(r.work.label)}</span>${r.date?`<time datetime="${esc(r.date)}">${esc(r.date.replaceAll('-','.'))}</time>`:''}</div><h2>${esc(r.name)}</h2><p class="work-vendor">${esc(r.vendorName)}${r.region?' · '+esc(r.region):''}</p><p class="work-description">${esc(r.work.description)}</p>${r.setupRequired||r.canClaim?`<button class="primary" data-work="${r.index}" data-section="setup">업체 확인하고 시작</button>`:`<div class="work-actions"><button class="${settlement?'secondary':'primary'}" data-work="${r.index}" data-section="${r.kind==='national'?'booking':'entries'}">${r.kind==='national'?'방송일·출품 등록':r.entriesOpen?'출품 등록':'출품 내역'}</button><button class="${settlement?'primary':'secondary'}" data-work="${r.index}" data-section="settlement">낙찰·정산${r.settlementCount?' · '+Number(r.settlementCount):''}</button></div>`}${r.bookingAttention&&r.settlementAttention?`<p class="field-note">다음 방송 출품 ${Number(r.bookingCount)}회</p>`:''}<div class="work-card-footer"><button class="text-button" data-work="${r.index}" data-section="profile">업체 정보</button>${r.unavailable?'<span class="danger-text">상태 확인 필요</span>':''}</div></article>`;
+  };
   return heading('내 경매')+
-   `<div class="work-heading"><h2>참여 중인 경매 ${rows.length}</h2>${action('reload-work','새로고침','text-button')}</div>`+
-   (rows.length?rows.map(r=>`<article class="work-card"><div class="work-card-top"><span class="work-status" data-rank="${r.work.rank}">${esc(r.work.label)}</span>${r.date?`<time datetime="${esc(r.date)}">${esc(r.date.replaceAll('-','.'))}</time>`:''}</div><h2>${esc(r.name)}</h2><p class="work-vendor">${esc(r.vendorName)}${r.region?' · '+esc(r.region):''}</p><p class="work-description">${esc(r.work.description)}</p>${r.setupRequired||r.canClaim?`<button class="primary" data-work="${r.index}" data-section="setup">업체 확인하고 시작</button>`:`<div class="work-actions"><button class="${r.defaultSection==='settlement'?'secondary':'primary'}" data-work="${r.index}" data-section="${r.kind==='national'?'booking':'entries'}">${r.kind==='national'?'방송일·출품 등록':'출품 등록·확인'}</button><button class="${r.defaultSection==='settlement'?'primary':'secondary'}" data-work="${r.index}" data-section="settlement">낙찰·정산${r.settlementCount?' · '+Number(r.settlementCount):''}</button></div>`}${r.bookingAttention&&r.settlementAttention?`<p class="field-note">다음 방송 출품도 ${Number(r.bookingCount)}회 남아 있어요.</p>`:''}<div class="work-card-footer"><button class="text-button" data-work="${r.index}" data-section="profile">업체 정보</button>${r.unavailable?'<span class="danger-text">완료 여부 확인 불가</span>':''}</div></article>`).join(''):'<p class="empty">연결된 경매가 없어요.</p>')+
+   `<div class="work-heading"><h2>진행·확인할 경매 ${current.length}</h2>${action('reload-work','새로고침','text-button')}</div>`+
+   (current.length?current.map(card).join(''):`<p class="empty">${history.length?'진행·확인할 경매가 없어요. 지난 내역은 아래에서 볼 수 있어요.':'연결된 경매가 없어요.'}</p>`)+
+   (history.length?`<details class="work-past"><summary>지난 경매 ${history.length}</summary>${history.map(card).join('')}</details>`:'')+
    `<details class="work-help"><summary>경매가 안 보이나요?</summary><p>다른 경매는 운영자에게 업체 연락처 연결을 요청해 주세요.</p>${action('work-directory','전크자 업체 찾기·등록','secondary')}</details>`;
  }
  async function openWorkRow(index,section,target){
@@ -57,6 +62,7 @@
   location.href=window.CreoVendorWork.destination(row,data.token,section,section==='settlement'?(target||row.settlementTarget):null);
  }
  function render(){
+  document.body.classList.toggle('work-screen',screen.startsWith('work'));
   $('back').hidden=(screen==='channels'&&state.companies.length<2)||(['login','profile','companies','directory','verify-required','unavailable'].includes(screen)&&!(screen==='directory'&&state.companies.length));$('account').hidden=!state?.authenticated;$('main').classList.toggle('has-nav',screen==='profile');$('main').classList.toggle('login-screen',screen==='login');document.querySelector('.portal-nav')?.remove();
   if(screen!=='profile')window.CreoVendorShell?.clear();
   const html={
@@ -89,7 +95,7 @@
    for(const r of (row.broadcasts||[]).filter(r=>!r.past)){
     const line=document.createElement('p');line.textContent=`${r.date.slice(5).replace('-','/')} ${r.region} · ${r.complete?'등록 완료':r.count?'작성 중':'출품 등록'}`;detail.append(line);
    }
-   if(row.workflow){const line=document.createElement('p');line.textContent=`배송: ${row.workflow.fulfillment==='organizer'?'주관 업체':'참여 업체'}${row.workflow.settlementContact?' · 정산: '+row.workflow.settlementContact:''}`;detail.append(line);}
+   if(row.workflow){const info=document.createElement('details'),title=document.createElement('summary'),line=document.createElement('p');info.className='work-responsibility';title.textContent='배송·정산 담당';line.textContent=`배송: ${row.workflow.fulfillment==='organizer'?'주관 업체':'참여 업체'}${row.workflow.settlementContact?' · 정산: '+row.workflow.settlementContact:''}`;info.append(title,line);card.querySelector('.work-card-footer').after(info);}
    if(detail.childElementCount)card.querySelector('.work-actions')?.before(detail);
    if(row.workRounds?.length){
     const rounds=document.createElement('details');rounds.className='work-history';

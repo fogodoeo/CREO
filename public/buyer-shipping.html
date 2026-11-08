@@ -20,7 +20,7 @@
     <script src="/buyer-payment-report.js?v=20261023-report"></script>
     <script src="/carrier-search.js"></script><script src="/buyer-carrier-access.js"></script>
 
-<script src="/checkout-actions.js?v=20260912-checkout-outbox"></script><link rel="stylesheet" href="/checkout-layout.css?v=20260908-mobile-focus"><link rel="stylesheet" href="/ongdong-brand.css?v=20260908-logo"><script src="/ongdong-brand.js?v=20260908-logo"></script><link rel="stylesheet" href="/checkout-pages.css?v=20261016-bank-first"><script src="/checkout-round-picker.js?v=20261020-recovery"></script><link rel="stylesheet" href="/checkout-round-picker.css?v=20261020-recovery"></head>
+<script src="/checkout-actions.js?v=20260912-checkout-outbox"></script><link rel="stylesheet" href="/checkout-layout.css?v=20260908-mobile-focus"><link rel="stylesheet" href="/ongdong-brand.css?v=20260908-logo"><script src="/ongdong-brand.js?v=20260908-logo"></script><link rel="stylesheet" href="/checkout-pages.css?v=20261108-focus"><script src="/checkout-round-picker.js?v=20261020-recovery"></script><link rel="stylesheet" href="/checkout-round-picker.css?v=20261020-recovery"></head>
 <body class="buyer-page"><div class="shell">
     <div class="loading" id="loading"><b>불러오는 중…</b></div>
     <div class="error" id="error" hidden><b data-ongdong-brand>옹동2</b><h1>페이지를 열 수 없어요</h1><span id="error-message" role="alert"></span><p id="error-link-help" hidden>링크 재발급은 운영자에게 요청해 주세요.</p><div class="error-actions"><a id="error-round-recovery" class="btn checkout-round-recovery" hidden>낙찰 내역 다시 열기</a><button id="retry" type="button">다시 시도</button><a id="error-library" href="/buyer-library.html" hidden>내 보관함</a></div></div>
@@ -105,6 +105,8 @@ function renderFlow(){
  $('flow-title').textContent=!showPayment?'어디서 받으시나요?':paid&&saved?'결제가 완료됐어요':waitingForGuide?(onlyConfirmation?'결제 확인 중이에요':pending?'결제 안내·확인 중이에요':'결제 안내를 준비 중이에요'):pending?(onlyConfirmation?'결제 확인 중이에요':'결제를 진행해 주세요'):saved?'결제를 진행해 주세요':destinationDraft()?'배송지를 확인해 주세요':'결제 방법을 선택해 주세요';
  $('step-shipping').className=showPayment?'complete':'active';
  $('step-payment').className=showPayment?'active':'';
+ $('step-shipping').parentElement?.toggleAttribute('hidden',saved||state.data.readOnly===true);
+ for(const [id,current] of [['step-shipping',!showPayment],['step-payment',showPayment]])$(id).ariaCurrent=current?'step':null;
  $('status').hidden=true;
  $('flow-symbol').hidden=!(showPayment&&saved&&(paid||(pending&&onlyConfirmation)));
  $('flow-symbol').textContent=paid?'✓':'…';
@@ -118,7 +120,7 @@ function renderFlow(){
   if(showPayment&&!pending&&!saved&&state.data.submittedAt&&needsShippingSave()&&paymentReady&&!destinationDraft()&&!requiresChange())$('flow-title').textContent='추가 낙찰 내역을 확인해 주세요';
  $('payment-summary').hidden=!showPayment||!paymentReady||state.data.vendors.length===1;
  $('submit').disabled=state.saving||pending||!showPayment||!paymentReady||saved;
- $('submit').textContent=state.saving?'저장 중…':!showPayment?(ready?'수령지를 선택해 주세요':destination()&&destination().type!=='pickup'?'수령 지점을 선택해 주세요':'수령지를 선택해 주세요'):!paymentReady?'결제 방식을 선택해 주세요':saved?'저장 완료':state.data.submittedAt?'변경 내용 저장':'선택 완료';
+ $('submit').textContent=state.saving?'저장 중…':!showPayment?(ready?'수령지를 선택해 주세요':destination()&&destination().type!=='pickup'?'수령 지점을 선택해 주세요':'수령지를 선택해 주세요'):!paymentReady?'결제 방식을 선택해 주세요':saved?'저장 완료':state.data.submittedAt?'변경 내용 저장':'수령지·결제 방법 저장';
  if(pending)$('submit').textContent='업체 결제 확인 중';
  else if(needsShippingSave()&&state.data.submittedAt&&showPayment&&paymentReady)$('submit').textContent='추가 낙찰 내역 저장';
  if(!pending&&showPayment&&paymentReady&&destinationDraft())$('submit').textContent='배송지 저장';

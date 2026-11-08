@@ -2,6 +2,21 @@
 const test=require('node:test'),assert=require('node:assert/strict'),{randomUUID}=require('node:crypto');
 const {createFixture}=require('../tools/vendor-portal-preview.cjs'),{normalizeChannel}=require('../platform-core');
 const Work=require('../public/vendor-work-model'),Home=require('../public/operator-home-model'),Workflow=require('../auction-workflow');
+
+test('past broadcasts stay in current work when any action or waiting state remains',()=>{
+ const past={kind:'channel',finished:true,hasSales:false};
+ assert.equal(Work.isHistory(past),true);
+ for(const key of ['unavailable','setupRequired','canClaim','entriesOpen','bookingAttention','settlementAttention','settlementWaitingCount'])assert.equal(Work.isHistory({...past,[key]:1}),false,key);
+ assert.equal(Work.isHistory({...past,kind:'national'}),false);
+ assert.equal(Work.isHistory({...past,hasSales:true}),false);
+ const delivered={...past,hasSales:true,workflow:{fulfillment:'organizer'},workRounds:[{}]};
+ assert.equal(Work.isHistory(delivered),true);
+ for(const key of ['openCount','settlementRemaining','settlementPending','settlementNeedsReview'])assert.equal(Work.isHistory({...delivered,workRounds:[{[key]:1}]}),false,key);
+ assert.equal(Work.isHistory({...delivered,workflow:{fulfillment:'vendor'}}),false);
+ assert.equal(Work.primarySection(past),'settlement');
+ assert.equal(Work.primarySection({...past,entriesOpen:true}),'entries');
+ assert.equal(Work.primarySection({defaultSection:'settlement'}),'settlement');
+});
 test('unified work respects verified membership, isolates failures and survives reload without creating records',async t=>{
  const f=await createFixture();t.after(f.close);
  const channels=['clab-test','other-test'].map(id=>normalizeChannel({id,name:id,status:'active',dataAdapter:'platform'}));

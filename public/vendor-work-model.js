@@ -11,6 +11,13 @@
   if(row.finished)return {rank:4,label:'지난 방송',description:'출품·낙찰 내역 확인'};
   return {rank:3,label:row.kind==='national'?'방송 일정':'접수 대기',description:row.kind==='national'?'방송일별 출품 관리':'운영자 접수 안내 대기'};
  }
+ function isHistory(row){
+  if(row.kind==='national'||!row.finished||row.unavailable||row.setupRequired||row.canClaim||row.entriesOpen||row.bookingAttention||row.settlementAttention||row.settlementWaitingCount)return false;
+  // Payment completion alone does not establish delivery or organizer settlement completion.
+  if(row.hasSales&&(row.workflow?.fulfillment!=='organizer'||!row.workRounds?.length))return false;
+  return !(row.workRounds||[]).some(r=>r.openCount||r.settlementRemaining>0||r.settlementPending||r.settlementNeedsReview);
+ }
+ function primarySection(row){return row.defaultSection==='settlement'||(row.finished&&!row.entriesOpen)?'settlement':'entries';}
  function ordered(rows){return rows.map((r,i)=>({...r,index:i,work:state(r)})).sort((a,b)=>a.work.rank-b.work.rank||(a.date||'9999').localeCompare(b.date||'9999')||a.name.localeCompare(b.name,'ko'));}
  function destination(row,token,section='entries',target){
   const national=row.kind==='national',params=new URLSearchParams({event:target?.channelId||row.channelId||'national-cre',token});
@@ -19,5 +26,5 @@
   if(section==='profile'||section==='entries')params.set('section',section);
   return (section==='settlement'?'/vendor-checkout.html':national&&section==='booking'?'/vendor-broadcast.html':'/vendor-entries.html')+'?'+params;
  }
- return {state,ordered,destination};
+ return {state,ordered,destination,isHistory,primarySection};
 });
