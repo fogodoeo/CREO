@@ -1,5 +1,19 @@
 html.operator-embedded creo-operator-pipeline,html.operator-embedded .app-bottom-nav{display:none!important}
 html.operator-embedded body{padding-bottom:0!important}
+html.operator-embedded{scroll-padding-block:16px;scrollbar-width:thin}
+html.operator-embedded body{min-width:0}
+html.operator-embedded[data-operator-page="settlement-report.html"] .table-wrap{max-height:none}
+html.operator-embedded[data-operator-page="channel-workspace.html"] .tabs{display:none}
+@media(max-width:760px){
+ html.operator-embedded :is(input:not([type=checkbox]):not([type=radio]):not([type=color]),select,textarea){font-size:16px}
+ html.operator-embedded :is(button,.btn,.secondary){min-height:44px}
+ html.operator-embedded[data-operator-page="channel-workspace.html"] .toolbar{flex-wrap:wrap}
+ html.operator-embedded[data-operator-page="channel-workspace.html"] .toolbar p{flex-basis:100%}
+ html.operator-embedded[data-operator-page="channel-workspace.html"] .toolbar>.btn{flex:1 1 auto}
+ html.operator-embedded[data-operator-page="channel-workspace.html"] .summary article{padding:12px}
+ html.operator-embedded[data-operator-page="channel-manager.html"] .builder-row,
+ html.operator-embedded[data-operator-page="channel-manager.html"] .builder-row.group{grid-template-columns:1fr}
+}
 html.operator-embedded[data-operator-page="band-members.html"] .directoryShell{width:100%;max-width:none;margin:0;padding:24px}
 html.operator-embedded[data-operator-page="band-members.html"] .directoryHeader{gap:0;margin-block-end:20px}
 html.operator-embedded[data-operator-page="band-members.html"] .backLink{display:none}

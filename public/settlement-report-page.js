@@ -8,17 +8,24 @@
     $('receipts').href='/organizer-shipping.html'+suffix;
     let report=null, view=0, busy=false, sequence=0;
     const won=value=>Number(value).toLocaleString('ko-KR')+'원';
+    function renderCards(spec){
+        const headline=['vendorName','code','buyerName','vendorName'][view],secondary=['','vendorName','vendorName','paidOn'][view],amount=['remainingAmount','netSoldAmount','totalAmount','amount'][view];
+        const format=(row,c)=>{const value=row[c.key];return value==null||value===''?'—':c.type==='money'?won(value):c.type==='number'?Number(value).toLocaleString('ko-KR'):c.type==='datetime'?new Date(value).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'}):value;};
+        const amountColumn=spec.columns.find(c=>c.key===amount);
+        $('report-cards').innerHTML=spec.rows.length?spec.rows.map(row=>'<details class="report-record"><summary><span><b>'+esc(row[headline]||'내역')+'</b>'+(secondary?'<small>'+esc(row[secondary]||'—')+'</small>':'')+'</span>'+(amountColumn?'<span class="report-record-amount"><small>'+esc(amountColumn.label)+'</small><strong>'+esc(format(row,amountColumn))+'</strong></span>':'')+'</summary><dl>'+spec.columns.map(c=>'<div><dt>'+esc(c.label)+'</dt><dd>'+esc(format(row,c))+'</dd></div>').join('')+'</dl></details>').join(''):'<p class="empty">아직 내역이 없어요</p>';
+    }
     function renderTable() {
         if(!report)return;
         const spec=CreoSettlementWorkbook.sheets(report)[view];
         if(view===0)spec.columns=['vendorName','totalAmount','receivedAmount','remainingAmount','feeAmount','shippingAmount','shippingSupportAmount'].map(key=>spec.columns.find(c=>c.key===key));
         $('table').innerHTML='<caption class="empty" hidden>'+esc(spec.name)+'</caption><thead><tr>'+spec.columns.map(c=>'<th scope="col" class="'+(['money','number'].includes(c.type)?'num':'')+'">'+esc(c.label)+'</th>').join('')+'</tr></thead><tbody>'+(spec.rows.length?spec.rows.map(row=>'<tr>'+spec.columns.map(c=>{const value=row[c.key],numeric=['money','number'].includes(c.type);return '<td class="'+(numeric?'num':'')+'">'+esc(value==null||value===''?'—':numeric?Number(value).toLocaleString('ko-KR'):c.type==='datetime'?new Date(value).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'}):value)+'</td>';}).join('')+'</tr>').join(''):'<tr><td class="empty" colspan="'+spec.columns.length+'">아직 내역이 없어요</td></tr>')+'</tbody>';
         $('copy').textContent='구글시트용 복사';$('copy').setAttribute('aria-label',spec.name+' 구글시트용 복사');
+        renderCards(spec);
         document.querySelectorAll('[data-view]').forEach(button=>button.setAttribute('aria-pressed',String(Number(button.dataset.view)===view)));
     }
     async function load() {
         if(busy)return;busy=true;const revision=++sequence;
-        report=null;$('content').hidden=true;$('table').replaceChildren();$('round-name').textContent='';
+        report=null;$('content').hidden=true;$('table').replaceChildren();$('report-cards').replaceChildren();$('round-name').textContent='';
         $('excel').disabled=$('copy').disabled=true;
         $('message').setAttribute('role','status');
         $('message').textContent='최신 내역을 확인하고 있어요…';
@@ -41,7 +48,7 @@
             $('attention').hidden=!notes.length;$('attention').textContent=notes.join(' · ');
             renderTable();$('message').textContent='';$('excel').disabled=$('copy').disabled=false;
         } catch(error) {
-            report=null;$('content').hidden=true;$('table').replaceChildren();$('round-name').textContent='';
+            report=null;$('content').hidden=true;$('table').replaceChildren();$('report-cards').replaceChildren();$('round-name').textContent='';
             $('message').setAttribute('role','alert');
             $('message').textContent=error.status===401?'운영자 로그인이 필요해요.':(error.message||'총정산 내역을 불러오지 못했어요.')+' 새로고침으로 다시 시도해 주세요.';
             if(error.status===401){report=null;$('content').hidden=true;$('table').replaceChildren();$('login').hidden=false;}

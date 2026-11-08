@@ -25,12 +25,12 @@ test('report rejects another round response and retry restores only the requeste
  assert.equal(f.$('excel').disabled,false);
 });
 test('refresh failure removes stale settlement values and exports, then recovers without duplicate pending loads',async()=>{
- const f=fixture();f.requests[0].resolve(payload());await tick();assert.match(f.$('table').textContent,/100,000/);
+ const f=fixture();f.requests[0].resolve(payload());await tick();assert.match(f.$('table').textContent,/100,000/);assert.match(f.$('report-cards').textContent,/100,000원/);
  const refresh=f.$('refresh').onclick();await f.$('refresh').onclick();assert.equal(f.requests.length,2);
- assert.equal(f.$('content').hidden,true);assert.equal(f.$('table').textContent,'');
+ assert.equal(f.$('content').hidden,true);assert.equal(f.$('table').textContent,'');assert.equal(f.$('report-cards').textContent,'');
  f.requests[1].reject(Object.assign(Error('가상 연결 실패'),{status:503}));await refresh;
  assert.equal(f.$('content').hidden,true);assert.equal(f.$('copy').disabled,true);assert.equal(f.$('excel').disabled,true);assert.equal(f.$('round-name').textContent,'');
- assert.equal(f.$('message').getAttribute('role'),'alert');assert.match(f.$('message').textContent,/새로고침/);assert.equal(f.$('refresh').disabled,false);
+ assert.equal(f.$('message').getAttribute('role'),'alert');assert.match(f.$('message').textContent,/새로고침/);assert.equal(f.$('refresh').disabled,false);assert.equal(f.$('report-cards').textContent,'');
  const retry=f.$('refresh').onclick();f.requests[2].resolve(payload());await retry;
  assert.equal(f.$('message').textContent,'');assert.equal(f.$('content').hidden,false);assert.equal(f.$('copy').disabled,false);
 });
@@ -46,4 +46,12 @@ test('empty selected round is a successful empty report; a different channel is 
  f.requests[0].resolve(data);await tick();assert.equal(f.$('content').hidden,false);assert.equal(f.$('fees').textContent,'0원');assert.match(f.$('table').textContent,/아직 내역이 없어요/);
  const retry=f.$('refresh').onclick();data.channel.id='other';f.requests[1].resolve(data);await retry;
  assert.equal(f.$('content').hidden,true);assert.match(f.$('message').textContent,/채널이 일치하지/);assert.equal(f.$('table').textContent,'');
+});
+
+test('mobile settlement records show the same amounts as the table and keep vendor text literal',async()=>{
+ const f=fixture(),data=payload();data.vendors[0].vendorName='<img src=x onerror=alert(1)> 긴 업체명';
+ f.requests[0].resolve(data);await tick();
+ const card=f.$('report-cards').querySelector('details');assert(card);assert.equal(card.querySelector('summary b').textContent,data.vendors[0].vendorName);assert.equal(card.querySelector('img'),null);
+ assert.match(card.querySelector('summary').textContent,/미입금100,000원/);assert.equal(card.querySelectorAll('dd').length,f.$('table').querySelectorAll('tbody td').length);
+ for(const button of f.document.querySelectorAll('[data-view]')){button.click();assert.match(f.$('report-cards').textContent,button.dataset.view==='0'?/100,000원/:/아직 내역이 없어요/);}
 });

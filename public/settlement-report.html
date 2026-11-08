@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><meta name="referrer" content="no-referrer"><title>총정산 · CREO</title>
-<link rel="stylesheet" href="/settlement-report.css?v=20261020-round"><script src="/platform-client.js?v=20260803-admin-session-v2"></script><script src="/assets/vendor/xlsx.mini.min.js"></script><script src="/settlement-workbook.js?v=20261020-round"></script><script defer src="/settlement-report-page.js?v=20261020-round"></script></head>
+<link rel="stylesheet" href="/settlement-report.css?v=20261108-responsive"><script src="/platform-client.js?v=20260803-admin-session-v2"></script><script src="/assets/vendor/xlsx.mini.min.js"></script><script src="/settlement-workbook.js?v=20261020-round"></script><script defer src="/settlement-report-page.js?v=20261108-responsive"></script></head>
 <body><main>
 <a id="back" class="back" href="/channel-workspace.html">← 채널 운영</a>
 <header><div><p id="channel">CREO</p><h1>총정산</h1></div><button id="refresh" type="button">새로고침</button></header>
@@ -14,4 +14,5 @@
 <p class="hint">엑셀에는 업체·개체·낙찰자 결제·입금 내역이 담겨요. 구글시트에서도 열 수 있어요.</p>
 <nav id="tabs" aria-label="정산 내역"><button type="button" data-view="0" aria-pressed="true">업체 총정산</button><button type="button" data-view="1" aria-pressed="false">개체 내역</button><button type="button" data-view="2" aria-pressed="false">낙찰자 결제</button><button type="button" data-view="3" aria-pressed="false">입금 내역</button></nav>
 <div class="table-wrap" tabindex="0" role="region" aria-label="정산표 가로 스크롤"><table id="table"></table></div>
+<div id="report-cards" aria-label="정산 내역"></div>
 </div></main></body></html>

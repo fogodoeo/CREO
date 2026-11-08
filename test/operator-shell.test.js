@@ -106,7 +106,13 @@ test('one toolbar keeps the round visible and the selector collapsed on work pag
  assert.equal(toggle.getAttribute('aria-expanded'),'true');assert.match($('operator-frame').src,/channel=national-cre&archive=old/);assert.equal($('operator-breadcrumb').textContent,'전국크레자랑 · 지난 회차');
  toggle.click();assert(panel.classList.contains('compact-closed'));
  media.matches=true;changes.forEach(fn=>fn());assert.equal(toggle.hidden,false);assert(panel.classList.contains('compact-closed'));
- media.matches=false;changes.forEach(fn=>fn());assert.equal(toggle.hidden,false);assert(panel.classList.contains('compact-closed'));
+ assert(toggle.closest('.operator-heading'));assert($('operator-reload').closest('.operator-more'));assert.match(toggle.textContent,/지난 회차/);
+ const picker=$('operator-task-select'),frame=$('operator-frame');Object.defineProperty(frame,'contentWindow',{value:{postMessage(){}}});
+ const dirty=new window.Event('message');Object.assign(dirty,{origin:location.origin,source:frame.contentWindow,data:{type:'creo:operator-dirty',dirty:true,busy:false}});window.dispatchEvent(dirty);window.confirm=()=>false;
+ picker.value='report';picker.dispatchEvent(new window.Event('change'));assert.equal(picker.value,'shipping');assert.match(frame.src,/shipping\.html.*archive=old/);
+ dirty.data={type:'creo:operator-dirty',dirty:false,busy:false};window.dispatchEvent(dirty);
+ picker.value='report';picker.dispatchEvent(new window.Event('change'));assert.match(frame.src,/settlement-report\.html.*archive=old/);assert.match(location.search,/view=report/);
+ media.matches=false;changes.forEach(fn=>fn());assert.equal(toggle.hidden,false);assert(panel.classList.contains('compact-closed'));assert(toggle.closest('.operator-actions'));assert(!$('operator-reload').closest('.operator-more'));
  const nav=search=>document.dispatchEvent(new window.CustomEvent('creo:operator-navigate',{detail:{search}}));
  nav('?channel=national-cre&view=vendors');assert.equal(toggle.textContent,'프로그램 변경');assert.equal($('round-field').hidden,true);assert.equal($('operator-breadcrumb').textContent,'전국크레자랑');
  toggle.click();assert(!panel.classList.contains('compact-closed'));
