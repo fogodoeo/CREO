@@ -50,17 +50,17 @@ test('single Wolssu manuscript becomes the only active template, retired drafts 
   const preserved=first.templates.find(t=>t.id===id);assert.equal(preserved.active,false);assert.equal(preserved.version,4);assert.equal(preserved.title,'운영자가 수정한 '+id);
   assert.equal(preserved.blocks[0].text,'운영자가 다듬은 도입부 '+id);
  }
- assert.equal(first.templates.find(t=>t.id==='wolssu26-relay').version,1);
+ assert.equal(first.templates.find(t=>t.id==='a6c7e2ec-e54b-4cdd-a4c7-0b23bc347ade').version,1);
  assert.equal(first.templates.find(t=>t.id==='launch26-joseon').title,'승인된 전하 원고');
- assert.equal(first.assignments.find(a=>a.id==='pending').templateId,'wolssu26-relay');
- assert.equal(first.assignments.find(a=>a.id==='brief-pending').templateId,'wolssu26-relay');
- assert.equal(first.assignments.find(a=>a.id==='collector-pending').templateId,'wolssu26-relay');
- assert.equal(first.assignments.find(a=>a.id==='joseon-pending').templateId,'wolssu26-relay');
+ assert.equal(first.assignments.find(a=>a.id==='pending').templateId,'season2-20261109-seoul-afterwork');
+ assert.equal(first.assignments.find(a=>a.id==='brief-pending').templateId,'season2-20261109-seoul-taste');
+ assert.equal(first.assignments.find(a=>a.id==='collector-pending').templateId,'season2-20261109-seoul-breeder');
+ assert.equal(first.assignments.find(a=>a.id==='joseon-pending').templateId,'a6c7e2ec-e54b-4cdd-a4c7-0b23bc347ade');
  const done=first.assignments.find(a=>a.id==='done');assert.equal(done.templateId,'launch26-easy');assert.equal(done.publication.title,'게시한 예전 제목');assert.equal(done.publication.version,3);
  assert.equal(old.usage.length,1);await s();await createView(f.create())();assert.equal(f.writes,1);
- const post=await f.create().mutate({admin:true},{action:'template',requestId:randomUUID(),revision:11,id:'wolssu26-relay',name:'운영자 수정',title:'어떤 제목이든 수정 유지',blocks:first.templates.find(t=>t.id==='wolssu26-relay').blocks,active:true});
- assert.equal(post.revision,12);assert.equal((await createView(f.create())()).templates.find(t=>t.id==='wolssu26-relay').title,'어떤 제목이든 수정 유지');
- await assert.rejects(f.create().mutate({vendorId:'vendor'},{action:'copy',requestId:randomUUID(),templateId:'wolssu26-relay',version:1}),e=>e.status===409);
+ const post=await f.create().mutate({admin:true},{action:'template',requestId:randomUUID(),revision:11,id:'a6c7e2ec-e54b-4cdd-a4c7-0b23bc347ade',name:'운영자 수정',title:'어떤 제목이든 수정 유지',blocks:first.templates.find(t=>t.id==='a6c7e2ec-e54b-4cdd-a4c7-0b23bc347ade').blocks,active:true});
+ assert.equal(post.revision,12);assert.equal((await createView(f.create())()).templates.find(t=>t.id==='a6c7e2ec-e54b-4cdd-a4c7-0b23bc347ade').title,'어떤 제목이든 수정 유지');
+ await assert.rejects(f.create().mutate({vendorId:'vendor'},{action:'copy',requestId:randomUUID(),templateId:'a6c7e2ec-e54b-4cdd-a4c7-0b23bc347ade',version:1}),e=>e.status===409);
 });
 function createView(service){return ()=>service.view({admin:true,month:'2026-10'});}
 test('copy polish centers stored paragraphs and removes old notices without replacing operator text or publication history',async()=>{
@@ -78,7 +78,7 @@ test('copy polish centers stored paragraphs and removes old notices without repl
  assert.deepEqual(JSON.parse(f.raw).assignments.find(a=>a.id==='done'),history);assert.deepEqual(JSON.parse(f.raw).copies,copies);
  assert.equal(JSON.parse(f.raw).catalogVersion,require('../promo-catalog-migration.json').version);assert.equal(f.writes,1);
  await createView(f.create())();assert.equal(f.writes,1);
- const activeTarget=first.templates.find(t=>t.id==='wolssu26-relay');
+ const activeTarget=first.templates.find(t=>t.id==='a6c7e2ec-e54b-4cdd-a4c7-0b23bc347ade');
  const edited=await f.create().mutate({admin:true},{action:'template',requestId:randomUUID(),revision:first.revision,id:activeTarget.id,name:activeTarget.name,title:'나중에 또 다듬은 제목',blocks:activeTarget.blocks,active:true});
  const after=await createView(f.create())();assert.equal(after.revision,edited.revision);assert.equal(after.templates.find(t=>t.id===activeTarget.id).title,'나중에 또 다듬은 제목');
 });
@@ -126,7 +126,7 @@ test('photo additions preserve version 5 operator edits and history, add once an
 
 test('new concepts append once to the current catalog, preserving edited manuscripts and frozen history',async()=>{
  const f=fixture(),saved=JSON.parse(f.raw);
- const ids=new Set(['wolssu26-relay']);
+ const ids=new Set(seed.map(t=>t.id));
  saved.catalogVersion=require('../promo-catalog-migration.json').version;
  saved.templates=[legacyTemplate('launch26-joseon',{title:'현재 운영자가 직접 고른 제목',active:false,version:12})];
  saved.templates[0].blocks[0].text='현재 운영자가 직접 고친 도입부';
@@ -141,7 +141,7 @@ test('new concepts append once to the current catalog, preserving edited manuscr
 });
 
 test('current-catalog additions retry concurrent changes and never report a failed save as successful',async()=>{
- const f=fixture(),saved=JSON.parse(f.raw),ids=new Set(['wolssu26-relay']);
+ const f=fixture(),saved=JSON.parse(f.raw),ids=new Set(seed.map(t=>t.id));
  saved.catalogVersion=require('../promo-catalog-migration.json').version;saved.templates=[legacyTemplate('launch26-joseon',{active:false,version:1})];f.raw=JSON.stringify(saved);
  const normal=f.repository.compareAndSwapRows;let conflicted=false;
  f.repository.compareAndSwapRows=async(...args)=>{if(!conflicted){conflicted=true;const latest=JSON.parse(f.raw);latest.revision++;latest.templates[0].title='동시에 수정한 제목';latest.copies.push({vendorId:'vendor',templateId:latest.templates[0].id,version:1,at:99});f.raw=JSON.stringify(latest);return false;}return normal(...args);};
