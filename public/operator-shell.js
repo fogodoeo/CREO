@@ -15,7 +15,11 @@ document.addEventListener('DOMContentLoaded',()=>{
  function clear(){source='';dirty=false;busy=false;$('operator-frame').removeAttribute('src');$('operator-content').hidden=true;}
  function navigate(search,push=true){if(!allowed())return false;dirty=false;document.dispatchEvent(new CustomEvent('creo:operator-navigate',{detail:{search,push}}));return true;}
  function render(detail){state=detail.state;const previous=current,q=new URLSearchParams(location.search);current=q.get('view')||'home';if(current==='bookings'&&q.get('action')==='region')current='regions';const e=Model.entry(state,current);if(current!==previous)contextOpen=false;contextScope=e?.scope||'round';
-  $('admin-nav').innerHTML=`<a class="nav-home" href="${esc(Model.home(state))}"${current==='home'?' aria-current="page"':''}>운영 홈</a>`+Model.menu(state).map(g=>`<details name="operator-section"${g.id===e?.group||current==='home'&&state.finished&&g.id==='finance'?' open':''}><summary data-work-group="${g.id}">${esc(g.label)}</summary><nav aria-label="${esc(g.label)}">${g.entries.map(n=>`<a data-work-key="${n.key}" href="${esc(Model.home(state,n.key))}"${n.key===current?' aria-current="page"':''}>${esc(n.label)}</a>`).join('')}</nav></details>`).join('');
+  const groups=Model.menu(state);
+  $('admin-nav').innerHTML=`<a class="nav-home" href="${esc(Model.home(state))}"${current==='home'?' aria-current="page"':''}>운영 홈·전체 일정</a>`+groups.map(g=>`<a data-work-group="${g.id}" href="${esc(Model.home(state,g.entries[0].key))}"${g.id===e?.group?' aria-current="page"':''}>${esc(g.label)}</a>`).join('');
+  const related=groups.find(g=>g.id===e?.group);
+  $('operator-task-nav').hidden=!related;
+  $('operator-task-nav').innerHTML=related?related.entries.map(n=>`<a data-work-key="${n.key}" href="${esc(Model.home(state,n.key))}"${n.key===current?' aria-current="page"':''}>${esc(n.label)}</a>`).join(''):'';
   const program=CreoOperatorHome.families(detail.catalog,state.channel.id).find(p=>p.id===CreoOperatorHome.family(state.channel))?.name||'';
   $('selection-panel').hidden=e?.scope==='global';if(e?.scope==='program'){$('round-field').hidden=true;$('manage-rounds').hidden=true;}$('work-panel').hidden=current!=='home';$('operator-content').hidden=current==='home';$('operator-page-title').textContent=e?.label||'열 수 없는 메뉴';$('operator-breadcrumb').textContent=e?.scope==='global'?'전체 운영':e?.scope==='program'?(program||'전체 업체'):program&&!state.label.includes(program)?program+' · '+state.label:state.label;syncContext();
   document.title=(e?.label||'운영 홈')+' · CREO';

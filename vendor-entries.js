@@ -88,11 +88,11 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
         }).filter(Boolean);
     }
     function snapshot(state, entry) { return {...normalizeEntry(entry), media:photos(state,entry.photoIds), parents:parentPhotos(state,entry)}; }
-    function entriesOpen(context, policy) { return ['draft','active'].includes(context.channel.status)&&policy.open===true; }
+    function entriesOpen(context, policy) { return ['draft','active'].includes(context.channel.status)&&policy.open===true&&(!policy.closesAt||now()<Date.parse(policy.closesAt)); }
     async function policy(channelId) {
         const value=await repository.getRecord(channelId,'setting','entry-policy');
         // Existing live auctions are closed until the operator opens intake.
-        return {open:value?.open===true,revision:Number(value?.revision)||0};
+        return {open:value?.open===true,revision:Number(value?.revision)||0,...(value?.closesAt?{closesAt:value.closesAt}:{}),...(value?.fulfillment?{fulfillment:value.fulfillment}:{}),...(value?.settlementContact!==undefined?{settlementContact:value.settlementContact}:{})};
     }
     async function summary(context) {
         const currentPolicy = await policy(context.channel.id);

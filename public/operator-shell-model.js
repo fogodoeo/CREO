@@ -1,11 +1,11 @@
 (function(root,factory){const api=factory(typeof module==='object'&&module.exports?require('./operator-home-model'):root.CreoOperatorHome);if(typeof module==='object'&&module.exports)module.exports=api;else root.CreoOperatorShell=api;})(typeof window!=='undefined'?window:globalThis,function(Home){
  'use strict';
  const groups=[
-  ['vendors','업체 관리',[['vendors','전체 업체','program'],['regions','방송 지역 배정','program'],['access','업체 접속 관리','global']]],
-  ['schedule','방송 일정',[['rounds','회차 준비·방송 전환'],['bookings','업체 방송 신청'],['promo','전크자 홍보 일정·원고','global']]],
-  ['auction','경매 운영',[['numberLabels','순서·번호라벨'],['intake','출품 접수·검토'],['items','개체·경매 순서'],['members','참여 업체']]],
+  ['schedule','일정·홍보',[['rounds','회차 준비·방송 전환'],['bookings','업체 방송 신청'],['promo','전크자 홍보 일정·원고','global']]],
+  ['auction','출품·경매 준비',[['intake','출품 접수·검토'],['items','개체·경매 순서'],['numberLabels','순서·번호라벨'],['members','참여 업체']]],
   ['broadcast','방송 도구',[['broadcast','방송 제어·화면 배치'],['drive','공용 파일함','global'],['pinball','핀볼 추첨'],['captures','캡처 자료'],['captureSetup','캡처 본체 설정','global']]],
   ['finance','낙찰·배송·정산',[['shipping','낙찰자 입금·배송 관리'],['organizer','업체 정산·입금 확인'],['shippingStatus','배송 현황'],['changes','배송 변경·도도시 승인'],['parge','파르게 운송 접수'],['report','회차 총정산표·엑셀'],['print','내역·라벨 인쇄']]],
+  ['vendors','업체·접속 관리',[['vendors','전체 업체','program'],['regions','방송 지역 배정','program'],['access','업체 접속 관리','global']]],
   ['settings','설정',[['settings','채널 설정'],['desktopApp','밴드 모니터 설치','global'],['rates','배송 요금·거점','global'],['monitor','BAND 회원·자동승인','global'],['archives','지난 결과·보관 자료'],['survey','참여자 설문']]]
  ];
  const origin='https://operator.invalid';

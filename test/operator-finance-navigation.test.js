@@ -49,10 +49,11 @@ test('home tile, sidebar, report link, reload and round changes all reach the sa
   picker.value=value;picker.dispatchEvent(new window.Event('change'));const [id,archive='']=value.split('@');
   const check=()=>{const u=new URL(frame.src,'https://test');assert.equal(u.pathname,'/organizer-shipping.html');assert.equal(u.searchParams.get('channel'),id);assert.equal(u.searchParams.get('archive')||'',archive);assert.equal(new URLSearchParams(location.search).get('view'),'organizer');};
   check();document.getElementById('refresh-home').dispatchEvent(new window.Event('click'));await new Promise(setImmediate);check();
-  const link=document.querySelector('#admin-nav a[aria-current="page"]');assert.equal(link.textContent,'업체 정산·입금 확인');click(link);check();
+  assert.equal(document.querySelector('#admin-nav a[aria-current="page"]').textContent,'낙찰·배송·정산');
+  const link=document.querySelector('#operator-task-nav a[aria-current="page"]');assert.equal(link.textContent,'업체 정산·입금 확인');click(link);check();
  }
  picker.value='national-cre@old';picker.dispatchEvent(new window.Event('change'));
- click(document.querySelector('#admin-nav a[href*="view=report"]'));
+ click(document.querySelector('#operator-task-nav a[href*="view=report"]'));
  const message=new window.Event('message');message.origin='https://test';message.source=frame.contentWindow;message.data={type:'creo:operator-link',href:'/organizer-shipping.html?channel=national-cre&archive=old'};window.dispatchEvent(message);
  assert.equal(location.search,'?channel=national-cre&archive=old&view=organizer');assert.match(frame.src,/archive=old/);
  assert(calls.every(([path,options])=>path==='operation-rounds'&&!options));

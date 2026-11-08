@@ -94,7 +94,12 @@
     $('round-state').textContent=!broadcastDate?'편성할 방송일을 선택해 주세요.':data?.auctionTarget?.prepared===false?broadcastDate+' 회차를 준비하면 출품을 등록할 수 있어요.':data?.auctionTarget?.writable?broadcastDate+' 방송 경매에 등록됩니다.':broadcastDate+' 방송 기록 · 조회만 가능';
     renderDates();
     if(!data){$('entry-list').innerHTML='<p class="empty">검토할 경매를 선택해 주세요</p>';$('selection-bar').hidden=true;$('batch-bar').hidden=true;updateSelection();return;}
-    $('intake-status').textContent=data.policy.open&&canReview()?'접수 중':'접수 마감';
+    $('intake-status').textContent=data.policy.open&&canReview()&&(!data.policy.closesAt||Date.now()<Date.parse(data.policy.closesAt))?'접수 중':'접수 마감';
+    $('workflow-form').hidden=!canReview();$('deadline-field').hidden=channelId==='national-cre';
+    $('entry-deadline').value=data.policy.closesAt?new Date(Date.parse(data.policy.closesAt)+9*3600000).toISOString().slice(0,16):'';
+    const clab=/^(?:clab|creyon)(?:-|$)/.test(channelId);
+    $('fulfillment-owner').value=data.policy.fulfillment||(clab?'organizer':'vendor');
+    $('settlement-contact').value=data.policy.settlementContact??(clab?'크레용':'');
     $('toggle-intake').textContent=data.policy.open?'접수 마감':'접수 시작';
     $('toggle-intake').hidden=!canReview();
     $('review-vendor').innerHTML='<option value="">전체 업체</option>'+data.groups.map(group=>`<option value="${esc(group.vendor.id)}">${esc(group.vendor.name)}</option>`).join('');
@@ -259,6 +264,11 @@
     finally{setBusy(false);}
   };
   $('refresh').onclick=load;
+  $('workflow-form').onsubmit=async event=>{
+    event.preventDefault();if(busy||loading||!data||!canReview())return;
+    const body={open:data.policy.open,expectedRevision:data.policy.revision,fulfillment:$('fulfillment-owner').value,settlementContact:$('settlement-contact').value,closesAt:channelId==='national-cre'?'':$('entry-deadline').value?$('entry-deadline').value+':00+09:00':''};
+    setBusy(true);try{await client.api(`channels/${encodeURIComponent(channelId)}/entry-policy`,{method:'PUT',body:JSON.stringify(body)});setBusy(false);await load();notice('설정 저장 완료');}catch(e){error('list-message',e.message);setBusy(false);if(e.status===409)await load();}finally{setBusy(false);}
+  };
   $('prepare-round').onclick=async()=>{
     if(busy||loading||!data||channelId!=='national-cre'||!broadcastDate||data.auctionTarget?.prepared!==false)return;
     setBusy(true);error('list-message','');

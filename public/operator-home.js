@@ -4,6 +4,10 @@ document.addEventListener('DOMContentLoaded',()=>{
  const emit=(name,detail)=>{if(typeof CustomEvent!=='undefined')document.dispatchEvent(new CustomEvent(name,{detail}));};
  function login(message=''){emit('creo:operator-reset');$('dashboard').hidden=true;$('login-gate').hidden=false;$('login-error').textContent=message;$('login-submit').disabled=false;$('admin-password').focus()}
  function link(id,href){$(id).hidden=!href;if(href)$(id).href=href;else $(id).removeAttribute('href')}
+ function renderAgenda(){
+  const list=Model.agenda(rounds,$('schedule-filter').value||'upcoming');
+  $('schedule-list').innerHTML=list.length?list.map(r=>`<a href="${esc(Model.home(r.channelId,r.archiveId))}" class="schedule-item"${Model.key(r)===Model.key(state.round)?' aria-current="true"':''}><time datetime="${esc(r.date||'')}">${r.date?esc(r.date.slice(5).replace('-',' / ')):'날짜 미정'}</time><span><strong>${esc(r.name)}</strong><small>${r.phase==='live'?'경매 진행 중':r.phase==='finished'||r.archiveId?'방송 종료 · 후처리 가능':'방송 준비'} · 출품 ${Number(r.itemCount)||0}마리</small></span><span aria-hidden="true">›</span></a>`).join(''):'<p class="agenda-empty">표시할 방송이 없습니다. 다른 기간을 선택해 주세요.</p>';
+ }
  function render(search=location.search,push=false){
   $('work-panel').hidden=true;state=Model.selection(catalog,rounds,activeId,search);const {channel,round,archiveId}=state,links=Model.links(state),isNational=Model.national(channel);
   $('quick-channel').innerHTML=Model.families(catalog,channel.id).map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
@@ -23,6 +27,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   $('scope-note').textContent=state.finished?'이 회차의 입금·배송·정산을 확인하세요.':channel.status==='draft'?'출품과 순서를 확인한 뒤, 회차 관리에서 방송을 전환하세요.':'아래 메뉴는 모두 선택한 회차의 자료로 열립니다.';
   $('onair-name').textContent=rounds.find(r=>r.channelId===activeId&&!r.archiveId)?.name||catalog.channels.find(c=>c.id===activeId)?.name||'방송 회차 없음';
   $('selection-panel').hidden=false;$('work-panel').hidden=false;$('load-error').hidden=true;$('platform-status').textContent='';document.title=state.label+' · 운영 홈';
+  renderAgenda();
   const params=new URLSearchParams(search),shellParams=new URLSearchParams(state.home.split('?')[1]);for(const k of ['view','vendor','action','status'])if(params.get(k))shellParams.set(k,params.get(k));
   history[push?'pushState':'replaceState'](null,'','/main?'+shellParams);
   lastUrl='/main?'+shellParams;
@@ -41,6 +46,7 @@ document.addEventListener('DOMContentLoaded',()=>{
  $('quick-round').addEventListener('change',()=>{const r=rounds.find(r=>Model.key(r)===$('quick-round').value);if(r)changeScope(new URLSearchParams({channel:r.channelId,...(r.archiveId?{archive:r.archiveId}:{})}));});
  document.addEventListener('creo:operator-navigate',e=>{try{render(e.detail.search,e.detail.push)}catch(error){failure(error)}});
  $('refresh-home').addEventListener('click',load);window.addEventListener('popstate',()=>{if(typeof CustomEvent!=='undefined'&&!document.dispatchEvent(new CustomEvent('creo:operator-before-navigate',{cancelable:true}))){if(lastUrl)history.pushState(null,'',lastUrl);return;}try{render()}catch(e){failure(e)}});
+ $('schedule-filter').addEventListener('change',renderAgenda);
  $('login-form').addEventListener('submit',async e=>{e.preventDefault();$('login-submit').disabled=true;try{if(!await CreoPlatform.verifyAdmin($('admin-password').value))throw Error('비밀번호를 확인해 주세요.');$('admin-password').value='';await dashboard()}catch(e){login(e.message)}});
  async function logout(){++sequence;emit('creo:operator-reset');$('dashboard').hidden=true;try{await CreoPlatform.logout();location.replace('/main'+location.search)}catch(e){login('로그아웃하지 못했습니다. 다시 시도해 주세요.');$('logout-retry').hidden=false}}
  $('logout-button').addEventListener('click',logout);$('logout-retry').addEventListener('click',logout);

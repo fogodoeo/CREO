@@ -44,5 +44,9 @@
   if(selected)visible.add(family(selected));
   return [...new Map(channels.filter(c=>visible.has(family(c))).map(c=>[family(c),{id:family(c),name:family(c)==='national-cre'?'전국크레자랑':family(c)==='clab'?'씨랩 · 크레용':c.name}])).values()];
  }
- return {national,family,key,home,selection,links,families};
+ function agenda(rounds,filter='upcoming'){
+  return rounds.filter(r=>!r.scopeError&&(filter==='all'||(filter==='past')===(r.phase==='finished'||!!r.archiveId||['archived','history'].includes(r.status))))
+   .sort((a,b)=>filter==='past'?(b.date||'').localeCompare(a.date||''):Number(b.phase==='live')-Number(a.phase==='live')||(a.date||'9999').localeCompare(b.date||'9999')||a.name.localeCompare(b.name,'ko'));
+ }
+ return {national,family,key,home,selection,links,families,agenda};
 });

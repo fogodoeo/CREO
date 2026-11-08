@@ -10,7 +10,8 @@ function createVendorChannelAccess({loadCatalog,vendorDirectory}){
   for(const channel of channels){
    for(const vendor of await vendorDirectory.list(channel.id)){
     if(vendor.active===false||phone(vendor.phone)!==number)continue;
-    result.push({channelId:channel.id,channelName:channel.name,vendorId:vendor.id,vendorName:vendor.name,createdAt:channel.createdAt||''});
+    const profile=channel.nationalRound?.parentId==='national-cre'?await vendorDirectory.profileFor(channel.id,vendor.id):null;
+    result.push({channelId:channel.id,channelName:channel.name,vendorId:vendor.id,vendorName:vendor.name,createdAt:channel.createdAt||'',...(profile?.members.find(m=>m.channelId==='national-cre')?{nationalCompanyId:profile.members.find(m=>m.channelId==='national-cre').vendorId}:{})});
    }
   }
   return result.sort((a,b)=>b.createdAt.localeCompare(a.createdAt)||a.channelName.localeCompare(b.channelName,'ko')||a.vendorName.localeCompare(b.vendorName,'ko'));

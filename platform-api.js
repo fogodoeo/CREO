@@ -1249,6 +1249,14 @@ function createPlatformApi({
         })),
         saveLogo:saveVendorLogo,
         deletionContext:vendorLifecycle.inspect,reviewDeletion:vendorLifecycle.review,
+        participationSummary:async p=>{
+            const context=await vendorCheckoutContext({channelId:p.channelId,vendorKey:p.vendorId});
+            if(!context)throw buyerInputError('업체 연결을 다시 확인해 주세요.',403);
+            const intake=await vendorEntries.summary(context);
+            const finance=await require('./vendor-work-summary').summarize(context,{resolve:vendorCheckoutContext,bundles:vendorBuyerBundles,settlement:organizerShippingSettlement,publicBuyer:vendorBuyerPublicPayload,pendingChange:pendingCheckoutChange,canReport:totals=>Boolean(totals.bank?.bankAccount&&normalizePhone(totals.bank.notificationPhone))});
+            const workflow=require('./auction-workflow').fromPolicy(await vendorEntries.policy(p.channelId),context.channel);
+            return {...intake,...finance,workflow,date:context.channel.nationalRound?.date||context.channel.shippingDefaults?.deliverySchedule?.auctionDate||context.round.date||'',defaultSection:finance.settlementAttention||finance.hasSales?'settlement':'entries'};
+        },
         taskSummary:async id=>{
             const catalog=await loadCatalog(),channel=catalog.channels.find(c=>c.id===Booking.CHANNEL_ID),vendor=await vendorDirectory.find(Booking.CHANNEL_ID,id),profile=await vendorDirectory.profileFor(Booking.CHANNEL_ID,id);
             if(!channel)return {bookingAttention:false,settlementAttention:false};
@@ -1257,7 +1265,7 @@ function createPlatformApi({
             const context=await vendorCheckoutContext({channelId:channel.id,vendorKey:id});
             const finance=context?await require('./vendor-work-summary').summarize(context,{resolve:vendorCheckoutContext,bundles:vendorBuyerBundles,settlement:organizerShippingSettlement,publicBuyer:vendorBuyerPublicPayload,pendingChange:pendingCheckoutChange,canReport:totals=>Boolean(totals.bank?.bankAccount&&normalizePhone(totals.bank.notificationPhone))}):{settlementAttention:false,settlementCount:0,hasSales:false};
             const bookingCount=Math.max(0,Number(summary?.attentionCount??summary?.pendingCount)||0);
-            const tasks={...finance,bookingCount,bookingAttention:bookingCount>0,defaultSection:finance.settlementAttention||!bookingCount&&(finance.hasSales||summary?.hasPastBroadcast)?'settlement':'booking'};
+            const tasks={...finance,workflow:require('./auction-workflow').fromPolicy(await vendorEntries.policy(channel.id),channel),broadcasts:summary?.broadcasts||[],bookingCount,bookingAttention:bookingCount>0,defaultSection:finance.settlementAttention||!bookingCount&&(finance.hasSales||summary?.hasPastBroadcast)?'settlement':'booking'};
             try{const promoSummary=await promoCenter.summary(id);return {...tasks,promoSummary,promoAttention:promoSummary.pendingCount>0};}
             catch{return {...tasks,promoUnavailable:true};}
         },
@@ -6061,7 +6069,9 @@ function createPlatformApi({
                     const fresh=(await loadCatalog()).channels.find(row=>row.id===channelId),current=await vendorEntries.policy(channelId);
                     if(!fresh||fresh.dataAdapter!=='platform'||typeof body.open!=='boolean'||(body.open&&!['active','draft'].includes(fresh.status)))throw buyerInputError('출품 접수 상태를 확인해 주세요.');
                     if(body.expectedRevision!==current.revision)throw buyerInputError('접수 상태가 변경됐어요. 다시 확인해 주세요.',409);
-                    const result={id:'entry-policy',open:body.open,revision:current.revision+1,updatedAt:new Date().toISOString()};
+                    const workflow=require('./auction-workflow').normalize(body,require('./auction-workflow').fromPolicy(current,fresh));
+                    if(channelId==='national-cre'&&workflow.closesAt)throw buyerInputError('전국크레자랑 마감은 방송일별로 설정해 주세요.',422);
+                    const result={id:'entry-policy',open:body.open,...workflow,revision:current.revision+1,updatedAt:new Date().toISOString()};
                     await repository.upsertRecord(channelId,'setting',result);touchCheckout(channelId);replyJson(res,200,result);
                 });return true;
             }

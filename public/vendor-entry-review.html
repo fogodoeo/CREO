@@ -6,7 +6,7 @@
   <title>출품 검토 · 옹동2</title>
   <link rel="stylesheet" href="/ongdong-brand.css">
   <link rel="stylesheet" href="/checkout-navigation.css?v=20261029-photo-layout">
-  <link rel="stylesheet" href="/vendor-entry-review.css?v=20261023-review-edit">
+  <link rel="stylesheet" href="/vendor-entry-review.css?v=20261108-work">
   <link rel="stylesheet" href="/entry-photo-usage.css">
   <script defer src="/platform-client.js"></script>
   <script defer src="/ongdong-brand.js"></script>
@@ -14,7 +14,7 @@
   <script defer src="/entry-numbering.js?v=20260917-batch"></script>
   <script defer src="/entry-label-print.js?v=20261023-auction-date"></script>
   <script defer src="/entry-intake.js?v=20261023-auction-date"></script>
-  <script defer src="/vendor-entry-review.js?v=20261026-panel-assignment"></script>
+  <script defer src="/vendor-entry-review.js?v=20261108-work"></script>
   <script defer src="/entry-photo-usage.js"></script>
 </head>
 <body>
@@ -51,7 +51,7 @@
       <p id="list-message" class="error" role="alert" hidden></p>
       <p id="notice" role="status"></p>
       <div id="entry-list" aria-live="polite"></div>
-      <details id="intake" hidden><summary>전체 접수 설정·사진 저장량</summary><div class="intake"><div><span class="eyebrow">프로그램 전체 출품 접수</span><strong id="intake-status"></strong></div><button class="secondary" id="toggle-intake" type="button"></button></div><button id="open-photo-usage" class="secondary" type="button">사진 저장량</button></details>
+      <details id="intake" hidden><summary>접수·담당 설정</summary><div class="intake"><div><span class="eyebrow">출품 접수</span><strong id="intake-status"></strong></div><button class="secondary" id="toggle-intake" type="button"></button></div><form id="workflow-form" class="workflow-form"><label id="deadline-field" for="entry-deadline">자동 마감 (한국 시간)<input id="entry-deadline" type="datetime-local"></label><label for="fulfillment-owner">배송 담당<select id="fulfillment-owner"><option value="vendor">참여 업체</option><option value="organizer">주관 업체</option></select></label><label for="settlement-contact">정산 담당<input id="settlement-contact" maxlength="40" placeholder="예: 크레용"></label><p class="muted">담당 안내만 변경 · 계좌·정산액은 유지</p><button class="secondary" type="submit">설정 저장</button></form><button id="open-photo-usage" class="secondary" type="button">사진 저장량</button></details>
     </section>
   </main>
   <dialog id="review-dialog" aria-labelledby="review-title">

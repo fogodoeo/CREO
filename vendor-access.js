@@ -8,7 +8,7 @@ const PREFIX='/api/platform/vendor-access',ROOT='creo_vendor_access_v1::',STATE=
 const fail=(message,status=400)=>Object.assign(new Error(message),{status});
 const phone=value=>{const p=String(value||'').replace(/[\s-]/g,'').replace(/^(?:\+82|0082)0?/,'0');return /^010\d{8}$/.test(p)?p:'';};
 const equal=(a,b)=>{const x=Buffer.from(String(a||'')),y=Buffer.from(String(b||''));return x.length===y.length&&crypto.timingSafeEqual(x,y);};
-function createVendorAccess({repository,secret,origin='https://creok.onrender.com',now=Date.now,smsProvider,buyerAccount,channelFor,vendorsFor,profileFor,saveProfile,saveLogo,deletionContext,reviewDeletion,taskSummary,notificationService,existingVendorsFor,withOwnerSetup,withRegistration}={}){
+function createVendorAccess({repository,secret,origin='https://creok.onrender.com',now=Date.now,smsProvider,buyerAccount,channelFor,vendorsFor,profileFor,saveProfile,saveLogo,deletionContext,reviewDeletion,taskSummary,participationSummary,notificationService,existingVendorsFor,withOwnerSetup,withRegistration}={}){
  const configured=String(secret||'').length>=32&&typeof repository.compareAndSwapRows==='function';
  const key=crypto.createHash('sha256').update('vendor-access:'+String(secret||'unconfigured')).digest();
  const digest=v=>crypto.createHmac('sha256',key).update(String(v)).digest('base64url');
@@ -228,6 +228,24 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
     json(res,200,{...data,...(!data.authenticated?{csrfToken:digest('flow:'+flow)}:{})},{'Set-Cookie':[cookie(flowName,flow,86400)]});return true;
    }
    const s=await session(req);
+   if(route==='/work'&&method==='GET'){
+    if(!s||!phone(s.verifiedPhone))throw fail('전화번호 인증 후 다시 로그인해 주세요.',401);
+    const current=await view(req),rows=[];
+    // A read-only inbox. No claims, identity matching or registration as a side effect.
+    // Failures remain visible on the affected card, never masquerading as completion.
+    for(const c of current.companies||[]){
+     let tasks={};
+     if(!c.canClaim&&!c.setupRequired&&taskSummary)try{tasks=await taskSummary(c.id);}catch{tasks={unavailable:true};}
+     rows.push({kind:'national',companyId:c.id,name:'전국크레자랑',vendorName:c.name,region:c.region,setupRequired:c.setupRequired,canClaim:c.canClaim,...tasks});
+    }
+    const nationalIds=new Set((current.companies||[]).map(c=>c.id));
+    for(const p of current.participations||[]){
+     if(p.nationalCompanyId&&nationalIds.has(p.nationalCompanyId))continue;
+     let tasks={};try{tasks=participationSummary?await participationSummary(p):{};}catch{tasks={unavailable:true};}
+     rows.push({kind:'channel',channelId:p.channelId,vendorId:p.vendorId,name:p.channelName,vendorName:p.vendorName,...tasks});
+    }
+    json(res,200,{rows,now:new Date(now()).toISOString()});return true;
+   }
    if(route==='/tasks'&&method==='GET'){
     if(!s)throw fail('다시 로그인해 주세요.',401);
     const state=(await read(STATE)).value||fresh(),c=member(state,s.actorId,url.searchParams.get('company')),v=c&&await activeVendor(c.id);

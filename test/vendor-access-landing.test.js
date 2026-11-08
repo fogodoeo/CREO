@@ -4,7 +4,7 @@ const source=fs.readFileSync(require.resolve('../public/vendor-access.js'),'utf8
 const enter=source.slice(source.indexOf(' async function enter()'),source.indexOf(' async function loadProfile()'));
 const choose=source.slice(source.indexOf(' async function chooseCompany('),source.indexOf(' function bind('));
 async function landing(overrides={},search='',found=[]){
- const calls=[],context={URLSearchParams,crypto:require('node:crypto'),sessionStorage:{removeItem(){}},request:async()=>({companies:found}),state:{available:true,authenticated:true,channelLogin:true,phoneVerificationRequired:false,companies:[],requests:[],participations:Array.from({length:20},(_,i)=>({channelId:'other-'+i})),...overrides},company:'company-a',q:new URLSearchParams(search),refresh:async()=>{},go:s=>calls.push(s),openDirectory:async()=>calls.push('directory'),navigate:async()=>calls.push('broadcast:'+context.company),loadProfile:async()=>calls.push('profile')};
+ const calls=[],context={URLSearchParams,crypto:require('node:crypto'),sessionStorage:{removeItem(){}},request:async()=>({companies:found}),state:{available:true,authenticated:true,channelLogin:true,phoneVerificationRequired:false,companies:[],requests:[],participations:[],...overrides},company:'company-a',q:new URLSearchParams(search),refresh:async()=>{},go:s=>calls.push(s),openWork:async()=>calls.push('work'),openDirectory:async()=>calls.push('directory'),navigate:async()=>calls.push('broadcast:'+context.company),loadProfile:async()=>calls.push('profile')};
  await vm.runInNewContext(enter+'\n'+choose+'\nenter()',context);return calls;
 }
 test('common login opens the only authorized company broadcast directly',async()=>{
@@ -29,10 +29,10 @@ test('company selection refreshes missing membership and never accepts an unrela
 test('entry checks the session once and presents two authorized companies before channel choice',async()=>{
  assert.deepEqual(await landing({companies:[{id:'doremi'},{id:'celeb'}]}),['companies']);
  assert.deepEqual(await landing({companies:[{id:'company-a'},{id:'celeb'}]},'?section=companies'),['companies']);
-  const calls=[],context={sessionStorage:{removeItem(){}},q:new URLSearchParams(),state:{available:true,authenticated:true,companies:[{id:'doremi',canClaim:true}],requests:[]},company:'',refresh:async()=>calls.push('session'),request:async(route,body)=>calls.push(route+':'+body.id),go:s=>calls.push(s),navigate:async()=>calls.push('broadcast'),openDirectory:async()=>{},loadProfile:async()=>{}};
+  const calls=[],context={sessionStorage:{removeItem(){}},q:new URLSearchParams(),state:{available:true,authenticated:true,companies:[{id:'doremi',canClaim:true}],requests:[]},company:'',refresh:async()=>calls.push('session'),request:async(route,body)=>calls.push(route+':'+body.id),go:s=>calls.push(s),openWork:async()=>calls.push('work'),navigate:async()=>calls.push('broadcast'),openDirectory:async()=>{},loadProfile:async()=>{}};
  await vm.runInNewContext(enter+'\n'+choose+'\nenter()',context);
-  assert.deepEqual(calls,['session','claim:doremi','broadcast']);
- assert.equal(context.company,'doremi');
+  assert.deepEqual(calls,['session','work']);
+ assert.equal(context.company,'');
  // The ordinary bootstrap must not make a session read before enter() does it.
  const bootstrap=source.slice(source.lastIndexOf('  run(async()=>'),source.lastIndexOf('})();'));
  assert.ok(bootstrap);

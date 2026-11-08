@@ -3,9 +3,9 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0b0d10"><title>운영 홈 · CREO</title>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <link rel="stylesheet" href="operator-home.css?v=20261023-whole-work"><link rel="stylesheet" href="/ongdong-brand.css?v=20260908-logo">
-<script src="platform-client.js?v=20261023-finance-nav" defer></script><script src="channel-runtime.js?v=20261023-finance-nav" defer></script><script src="operator-home-model.js?v=20261023-whole-work" defer></script><script src="operator-home.js?v=20261023-whole-work" defer></script><script src="/ongdong-brand.js?v=20260908-logo" defer></script>
-<link rel="stylesheet" href="operator-shell.css?v=20261102-stable-loading">
-<script src="operator-shell-model.js?v=20261107-desktop" defer></script><script src="operator-shell.js?v=20261028-band-members" defer></script>
+<script src="platform-client.js?v=20261023-finance-nav" defer></script><script src="channel-runtime.js?v=20261023-finance-nav" defer></script><script src="operator-home-model.js?v=20261108-work" defer></script><script src="operator-home.js?v=20261108-work" defer></script><script src="/ongdong-brand.js?v=20260908-logo" defer></script>
+<link rel="stylesheet" href="operator-shell.css?v=20261108-work">
+<script src="operator-shell-model.js?v=20261108-work" defer></script><script src="operator-shell.js?v=20261108-work" defer></script>
 <script src="/operator-work.js?v=20261102-stable-loading" defer></script>
 </head><body>
 <a class="skip" href="#work-title">작업 메뉴로 건너뛰기</a>
@@ -21,8 +21,10 @@
   <div class="field" id="round-field"><label for="quick-round">방송일 · 회차</label><select id="quick-round"></select></div>
   <a class="secondary" id="manage-rounds" href="national-rounds.html">회차 준비·방송 전환</a>
  </section>
+ <nav id="operator-task-nav" aria-label="현재 업무의 세부 메뉴" hidden></nav>
  <p id="work-summary-status" role="status" hidden></p>
  <div id="work-panel" hidden>
+ <section class="schedule-board" aria-labelledby="schedule-title"><div class="schedule-board-head"><div><h2 id="schedule-title">전체 방송 일정</h2></div><label for="schedule-filter" class="sr-only">일정 표시</label><select id="schedule-filter"><option value="upcoming">진행·예정 방송</option><option value="past">지난 방송</option><option value="all">전체 방송</option></select></div><div id="schedule-list" class="schedule-list"></div></section>
  <section class="work-heading" aria-labelledby="work-title"><div><span class="badge" id="work-badge"></span><h2 id="work-title" tabindex="-1"></h2><p id="scope-note"></p></div><div class="onair"><span>송출 연결 회차</span><strong id="onair-name"></strong><p>작업 회차 선택만으로 송출은 바뀌지 않습니다.</p></div></section>
  <nav class="pipeline" aria-label="선택한 회차의 작업">
   <a class="operation" id="quick-workspace"><span class="step">01</span><strong>출품·순서</strong><span>개체 정보와 진행 순서 확인</span></a>

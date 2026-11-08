@@ -26,6 +26,7 @@ async function summarize(root,{resolve,bundles,settlement,publicBuyer,pendingCha
  rounds.sort(compare);
  const paymentActionCount=rounds.reduce((n,r)=>n+r.paymentCount,0),settlementRoundCount=rounds.reduce((n,r)=>n+r.organizerCount,0),settlementCount=paymentActionCount+settlementRoundCount;
  return {settlementAttention:settlementCount>0,settlementCount,paymentActionCount,settlementRoundCount,settlementWaitingCount:rounds.reduce((n,r)=>n+r.waitingCount,0),hasSales:rounds.length>0,
-  settlementTarget:rounds[0]?{channelId:rounds[0].channelId,round:rounds[0].round}:null};
+  settlementTarget:rounds[0]?{channelId:rounds[0].channelId,round:rounds[0].round}:null,
+  workRounds:rounds};
 }
 module.exports={summarize};
