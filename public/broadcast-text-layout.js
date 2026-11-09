@@ -14,7 +14,7 @@
  function resize(theme,slot,value,dx,dy){return {...value,width:value.width+(rightAnchored(theme,slot)?-dx:dx),height:value.height+dy};}
  let infoElement=null,infoObserver=null;
  function fitInfoRows(element){
-  for(const row of element.querySelectorAll?.('.national-item-detail .vendor-tag,.national-item-detail .item-inline-traits')||[]){
+  for(const row of element.querySelectorAll?.('.item-inline-identity .vendor-tag,.national-item-detail .item-inline-traits')||[]){
    row.style.setProperty('--national-row-fit','1');
    if(!row.clientWidth||row.scrollWidth<=row.clientWidth)continue;
    let low=0,high=1;

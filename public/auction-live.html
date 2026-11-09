@@ -14,7 +14,7 @@
     <script src="basic-dice-core.js?v=20260830-balance-v2"></script>
     <script src="supabase-bridge.js?v=20260720-quota-fallback-v2"></script>
     <script src="broadcast-profiles.js?v=20261023-whole-work"></script>
-    <script src="broadcast-text-layout.js?v=20261021-right-anchor"></script>
+    <script src="broadcast-text-layout.js?v=20261109-compact-info"></script>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
     <link rel="stylesheet" href="auction-skin-metal.css?v=20260819-metal-v1">
@@ -145,7 +145,7 @@
     <link rel="stylesheet" href="broadcast-scenes.css?v=20260915-reveal-tv">
     <link rel="stylesheet" href="broadcast-item-notes.css?v=20261029-right-fit">
     <link rel="stylesheet" href="broadcast-bidders.css?v=20261001-bid-flow">
-    <link rel="stylesheet" href="broadcast-national.css?v=20261021-right-anchor">
+    <link rel="stylesheet" href="broadcast-national.css?v=20261109-compact-info">
     <link rel="stylesheet" href="broadcast-recessive.css?v=20261015-recessive">
     <link rel="stylesheet" href="broadcast-studio-premium.css?v=20261105-clab-spectrum">
     <script src="broadcast-bidders.js?v=20261001-bid-flow"></script>
@@ -196,7 +196,7 @@ function pageTwoBidders(item,s){
 }
 function pageTwoProgress(s,progress){if(s.page2ProgressOn===false)return'';const current=Math.max(0,Number(progress?.current)||0),total=Math.max(0,Number(progress?.total)||0);return`<div class="item-progress glass"><strong>${current}/${total}</strong></div>`}
 function pageTwoInfoTraits(item){const checklist=CreoAuctionContract.parseChecklist(item?.attributes?.checklist||item?.checklist||''),gender={M:'수컷',F:'암컷',U:'미구분'},yn={O:'O',X:'X'},rows=[];const add=(text,accent=false)=>{const value=String(text||'').trim();if(value&&!['none','null','undefined'].includes(value.toLowerCase())&&!rows.some(row=>row.text===value))rows.push({text:value,accent})};if(checklist.gender)add(gender[checklist.gender]||checklist.gender,true);if(checklist.weight)add(`${checklist.weight}g`,true);if(checklist.birth)add(checklist.birth);if(checklist.spot)add(`점:${yn[checklist.spot]||checklist.spot}`);if(checklist.pin)add(`풀핀:${yn[checklist.pin]||checklist.pin}`);if(checklist.size)add(`도살:${checklist.size}`);if(checklist.wall)add(`월높이:${checklist.wall}`);if(checklist.color)add(`색감:${checklist.color}`);if(checklist.activity)add(`활동성:${checklist.activity}`);if(checklist.feed)add(`먹이:${checklist.feed}`);if(checklist.structure)add(`체형:${checklist.structure}`);return rows}
-function pageTwoInlineInfo(item,vendorTag,showNote=true,national=false,lower=false,pricing={}){const traits=pageTwoInfoTraits(item),checklist=CreoAuctionContract.parseChecklist(item?.attributes?.checklist||item?.checklist||''),note=showNote?CreoBroadcastItemNotes.markup(checklist.memo,item?.note,...CreoBroadcastItemNotes.pricingTerms(item,pricing)):'',traitMarkup=traits.length?`<div class="item-inline-traits">${traits.map(row=>`<span class="item-inline-pill${row.accent?' is-accent':''}">${esc(row.text)}</span>`).join('')}</div>`:'';const main=national?`<div class="item-inline-identity"><h1>${esc(item.name)}</h1></div><div class="national-item-detail">${vendorTag}${traitMarkup}${note}</div>`:`<div class="item-inline-identity">${vendorTag}<h1>${esc(item.name)}</h1></div>${traits.length?'<span class="item-inline-sep"></span>'+traitMarkup:''}`;return`<div class="item-copy is-inline-info${note?' has-item-note':''}${national&&lower?' is-lower-caption':''}"><div class="item-inline-main">${main}</div>${national?'':note}</div>`}
+function pageTwoInlineInfo(item,vendorTag,showNote=true,national=false,lower=false,pricing={}){const traits=pageTwoInfoTraits(item),checklist=CreoAuctionContract.parseChecklist(item?.attributes?.checklist||item?.checklist||''),note=showNote?CreoBroadcastItemNotes.markup(checklist.memo,item?.note,...CreoBroadcastItemNotes.pricingTerms(item,pricing)):'',traitMarkup=traits.length?`<div class="item-inline-traits">${traits.map(row=>`<span class="item-inline-pill${row.accent?' is-accent':''}">${esc(row.text)}</span>`).join('')}</div>`:'';const main=national?`<div class="item-inline-identity"><h1>${esc(item.name)}</h1>${vendorTag}</div><div class="national-item-detail">${traitMarkup}${note}</div>`:`<div class="item-inline-identity">${vendorTag}<h1>${esc(item.name)}</h1></div>${traits.length?'<span class="item-inline-sep"></span>'+traitMarkup:''}`;return`<div class="item-copy is-inline-info${note?' has-item-note':''}${national&&lower?' is-lower-caption':''}"><div class="item-inline-main">${main}</div>${national?'':note}</div>`}
 function pageTwoParents(item,s){if(s.page2ParentsOn===false&&!editorMode)return '';const photos=CreoBroadcastSummary.parentPhotos(item);if(!photos.length&&!editorMode)return '';return `<div class="parent-photos" data-parent-photos="${esc(JSON.stringify(photos))}"></div>`}
 function pageTwo(c,s,items,assets,progress,pricing={}){
     const item=CreoBroadcastStandby.view(s,items,channelId).item;

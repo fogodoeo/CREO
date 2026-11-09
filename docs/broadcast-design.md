@@ -1,9 +1,10 @@
 # Broadcast caption layout
 
-## National stage, page 2 — 2026-10-18
+## National stage, page 2 — 2026-11-09
 
 - Keep the established white/ink identity tile, mint border and teal–violet ribbon tokens.
-- The item number occupies the full height of the left white column. The right column contains vendor, traits, then optional notes on separate aligned rows. Hiding notes must remove that row without leaving a blank strip.
+- Use two compact rows: lot number then vendor on the white header, traits then optional scrolling notes on the ribbon below. Keep the established font sizes and saved font scale; only overlong vendor/trait rows use the existing fit-to-width fallback. Hidden notes leave no extra row or separator.
+- Automatic width is capped at 46% of the canvas, anchored to the saved right edge, to leave the central camera area clear. Manual width remains adjustable. Notes share the detail row and retain the existing overflow pan; do not truncate stored content or alter pricing terms.
 - Preserve saved positioning and font scaling, including lower captions that grow upward.
 - Bidder ribbons share a name column and an amount column across both rows. Amount length must not move the column boundary independently for each bidder.
 - Use equal row tracks and tabular numbers. Preserve long names by allowing wrapping; both rows retain equal heights. Do not change amount formatting, bid ordering, acceptance or auction state to achieve alignment.
