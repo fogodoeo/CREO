@@ -17,6 +17,15 @@ test('national captions remain theme-scoped, transparent outside their slots, an
  assert.ok(html.indexOf('broadcast-national.css')>html.indexOf('broadcast-bidders.css'));
  const bodyRule=css.match(/body\[data-broadcast-theme="national-stage"\]\{([^}]+)\}/)[1];assert.doesNotMatch(bodyRule,/(?:^|;)\s*(?:background|border|padding|margin):/);
 });
+test('national item notes stay on one still line, including when reduced motion is enabled',()=>{
+ const shared=fs.readFileSync(path.join(__dirname,'../public/broadcast-item-notes.css'),'utf8');
+ assert.match(shared,/@media\(prefers-reduced-motion:reduce\)/);
+ const selector='body[data-broadcast-theme="national-stage"][data-page="2"] #stage .national-item-detail .broadcast-item-note > span';
+ const rule=css.slice(css.indexOf(selector)).split('}')[0];
+ assert.ok(css.includes(selector));
+ for(const property of ['white-space:nowrap','text-overflow:ellipsis','overflow:hidden','animation-name:none!important','transform:none!important'])assert.ok(rule.includes(property),property);
+ assert.ok(html.indexOf('broadcast-national.css')>html.indexOf('broadcast-item-notes.css'));
+});
 test('national caption and board color pairs meet text contrast requirements',()=>{
  const rgb=hex=>hex.match(/\w\w/g).map(n=>parseInt(n,16));
  const luminance=rgb=>{const c=rgb.map(n=>n/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4);return c[0]*.2126+c[1]*.7152+c[2]*.0722};
