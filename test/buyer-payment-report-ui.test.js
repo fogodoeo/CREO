@@ -45,7 +45,7 @@ test('a successful request with failed rendering retains its identity for recove
 test('buyer totals separate amounts already reported from money still to pay, including partial and complete payment',()=>{
  const {document}=parseHTML(html),$=id=>document.getElementById(id),vendor=(key,amount,status,confirmed=0)=>({key,items:[],totals:{payableAuctionAmount:amount,shippingAmount:0},payment:{status,confirmedAmount:confirmed}});
  const state={data:{submittedAt:'saved',payment:{status:'in_progress'},vendors:[vendor('a',200000,'bank_transfer_reported'),vendor('b',100000,'bank_transfer_pending')]},dirty:false};
- const ctx=vm.createContext({state,$,money:v=>Number(v).toLocaleString('ko-KR')+'원',globalShipping:()=>new Map(),vendorSaved:()=>true,pendingConfirmation:v=>['bank_transfer_reported','card_payment_reported'].includes(v.payment.status)});
+ const ctx=vm.createContext({state,$,money:v=>Number(v).toLocaleString('ko-KR')+'원',globalShipping:()=>new Map(),vendorSaved:()=>true,needsPaymentSave:()=>false,pendingConfirmation:v=>['bank_transfer_reported','card_payment_reported'].includes(v.payment.status)});
  vm.runInContext(html.slice(html.indexOf('function vendorDue('),html.indexOf('function vendorAction('))+html.slice(html.indexOf('function renderPaymentSummary('),html.indexOf('function render(){')),ctx);
  ctx.renderPaymentSummary();assert.equal($('payable-amount').textContent,'100,000원');assert.equal($('payable-title').textContent,'결제할 금액');assert.match($('payable-note').textContent,/200,000원/);
  state.data.vendors[1]=vendor('b',100000,'additional_payment',70000);ctx.renderPaymentSummary();assert.equal($('payable-amount').textContent,'30,000원');

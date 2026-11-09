@@ -1,7 +1,7 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const html=fs.readFileSync(require.resolve('../public/buyer-shipping.html'),'utf8');
 function setup({type='',shop=false,submitted=false,payment=false,dirty=false}={}){
- const nodes={};const state={data:{submittedAt:submitted?'saved':null,payment:{status:'awaiting_information'},vendors:[{key:'v',payment:{status:'awaiting_information'}}]},payments:payment?{v:'bank_transfer'}:{},dirty,saving:false,pargeRegion:'서울',pargeShop:'테스트점'};
+ const nodes={};const state={data:{submittedAt:submitted?'saved':null,payment:{status:'awaiting_information'},vendors:[{key:'v',payment:{status:'awaiting_information',method:payment?'bank_transfer':''}}]},payments:payment?{v:'bank_transfer'}:{},dirty,saving:false,pargeRegion:'서울',pargeShop:'테스트점'};
  let chosen=type?{type,label:'테스트 수령지'}:null,rate=shop?{baseCost:10000}:null;
  const ctx=vm.createContext({state,$:id=>nodes[id]??=( {}),destination:()=>chosen,selectedRate:()=>rate});
  vm.runInContext(html.slice(html.indexOf('let editingDestination='),html.indexOf(' const destination=')),ctx);
@@ -138,4 +138,26 @@ test('missing bank or card instructions show preparation instead of asking the b
  bank.payment.account={};s.state.data.vendors=[bank];s.state.data.items=bank.items;s.state.payments={bank:'bank_transfer'};
  s.run();assert.equal(s.nodes['flow-title'].textContent,'결제 안내를 준비 중이에요');
  bank.payment.status='paid';s.state.data.payment.status='paid';s.run();assert.equal(s.nodes['flow-title'].textContent,'결제가 완료됐어요');
+});
+
+test('a saved destination with no persisted payment method still offers payment setup on reload',()=>{
+ const s=setup({type:'pickup',submitted:true,payment:true}),bank=vendorCase('v','awaiting_information');
+ bank.payment.method='';s.state.data.vendors=[bank];s.state.data.items=bank.items;
+ s.nodes.submit={parentElement:{hidden:true}};
+ s.run();assert.equal(s.ctx.vendorSaved(bank),false);assert.equal(s.nodes.submit.parentElement.hidden,false);
+ assert.equal(s.nodes.submit.disabled,false);assert.equal(s.nodes.submit.textContent,'결제 방법 저장');
+ assert.equal(s.nodes['flow-title'].textContent,'결제 방법을 선택해 주세요');
+ Object.assign(s.ctx,{globalShipping:()=>new Map(),esc:String,money:String,shippingQuote:()=>({allocations:new Map()}),paymentStatus:()=>['정보 입력 대기',''],CreoCheckoutActions:{phoneHref:()=>''},document:{querySelectorAll:()=>[]}});
+ vm.runInContext(html.slice(html.indexOf('function vendorDue('),html.indexOf('function render(){')),s.ctx);s.ctx.renderVendors();
+ assert.match(s.nodes.vendors.innerHTML,/data-payment-vendor="v"/);assert.doesNotMatch(s.nodes.vendors.innerHTML,/method-details|account-panel|data-report=/);
+ bank.payment.method='bank_transfer';bank.payment.status='bank_transfer_pending';s.run();s.ctx.renderVendors();
+ assert.equal(s.nodes.submit.parentElement.hidden,true);assert.match(s.nodes.vendors.innerHTML,/account-panel|data-report="v"/);
+});
+
+test('missing payment method can be saved beside a reported vendor without unlocking its payment',()=>{
+ const s=multiVendorFlow();s.ready.items[0].paymentStatus='awaiting_information';s.run();
+ assert.equal(s.ctx.needsShippingSave(),false);assert.equal(s.ctx.needsPaymentSave(),true);
+ assert.equal(s.nodes.submit.disabled,false);assert.equal(s.nodes.submit.textContent,'결제 방법 저장');
+ assert.equal(s.ctx.needsPaymentSave(s.pending),false);
+ s.ready.payment.status='paid';s.run();assert.equal(s.ctx.needsPaymentSave(),false);assert.equal(s.nodes.submit.disabled,true);
 });

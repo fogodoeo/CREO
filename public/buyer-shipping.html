@@ -69,9 +69,10 @@ function cancelDestinationEdit(){
  destinationBeforeEdit=null;editingDestination=false;render();$('change-destination').focus();
 }
 function needsShippingSave(vendor){return (vendor?.items||state.data.items||[]).some(item=>!item.paymentStatus)}
+function needsPaymentSave(vendor){return (vendor?[vendor]:state.data.vendors).some(v=>v.payment.status!=='paid'&&!pendingConfirmation(v)&&!v.payment.method)}
 function pendingConfirmation(vendor){return vendor?['bank_transfer_reported','card_payment_reported'].includes(vendor.payment.status):state.data.vendors.some(v=>pendingConfirmation(v))}
 function vendorHasDraft(vendor){const s=state.data.selection;return Boolean(state.dirty&&(!s||s.destinationId!==state.destinationId||(s.pargeRegion||'')!==state.pargeRegion||(s.pargeShop||'')!==state.pargeShop||(vendor.payment.method||'')!==state.payments[vendor.key]))}
-function vendorSaved(vendor){return Boolean(state.data.submittedAt)&&!vendorHasDraft(vendor)&&!needsShippingSave(vendor)}
+function vendorSaved(vendor){return Boolean(state.data.submittedAt)&&!vendorHasDraft(vendor)&&!needsShippingSave(vendor)&&!needsPaymentSave(vendor)}
 function buyerPaymentPriority(vendor){
  const p=vendor.payment;
  if(p.status==='paid')return 2;
@@ -87,8 +88,8 @@ function destinationDraft(){const s=state.data.selection;return Boolean(state.da
 function destinationReady(){const chosen=destination();return Boolean(chosen&&(chosen.type==='pickup'||(['parge','dodosi'].includes(chosen.type)&&selectedRate())))}
 function renderFlow(){
  const ready=destinationReady(),showPayment=ready&&!editingDestination;
- const otherVendorWork=state.data.vendors.some(v=>!pendingConfirmation(v)&&(needsShippingSave(v)||vendorHasDraft(v)));
- const pending=((pendingConfirmation()&&!otherVendorWork)||changePending())&&!destinationDraft(),paid=state.data.payment.status==='paid',saved=Boolean(state.data.submittedAt)&&!state.dirty&&!needsShippingSave();
+ const otherVendorWork=state.data.vendors.some(v=>!pendingConfirmation(v)&&(needsShippingSave(v)||needsPaymentSave(v)||vendorHasDraft(v)));
+ const pending=((pendingConfirmation()&&!otherVendorWork)||changePending())&&!destinationDraft(),paid=state.data.payment.status==='paid',saved=Boolean(state.data.submittedAt)&&!state.dirty&&!needsShippingSave()&&!needsPaymentSave();
  const onlyConfirmation=state.data.vendors.every(v=>v.payment.status==='paid'||pendingConfirmation(v));
  const waitingForGuide=saved&&!paid&&state.data.vendors.every(v=>buyerPaymentPriority(v)>0);
  $('change-destination').disabled=state.saving||state.data.canEditDestination===false;
@@ -125,6 +126,7 @@ function renderFlow(){
  else if(needsShippingSave()&&state.data.submittedAt&&showPayment&&paymentReady)$('submit').textContent='추가 낙찰 내역 저장';
  if(!pending&&showPayment&&paymentReady&&destinationDraft())$('submit').textContent='배송지 저장';
  if(!pending&&showPayment&&paymentReady&&requiresChange())$('submit').textContent='결제 방법 저장';
+ if(!pending&&showPayment&&paymentReady&&state.data.submittedAt&&needsPaymentSave()&&!needsShippingSave()&&!destinationDraft())$('submit').textContent='결제 방법 저장';
 }
 function renderSavedDestination(){
  const saved=state.data.savedDestination,box=$('saved-destination');
@@ -207,6 +209,7 @@ function renderPaymentSummary(){
  $('payable-title').textContent=paid?'결제 확인 완료':due?'결제할 금액':waiting?'결제 확인 중':'결제할 금액';
  const later=data.vendors.filter(v=>pendingConfirmation(v)&&!v.payment.shippingChangedAfterReport).reduce((sum,v)=>sum+vendorDue(v,shipping).later,0);
  $('payable-note').textContent=state.dirty||!data.submittedAt?'저장 후 결제금액 확정':(due&&waiting?'업체 확인 중인 금액 '+money(waiting):waiting?'업체가 입금·결제를 확인하고 있어요':paid?'모든 업체의 결제가 확인됐어요':needsShippingSave()?'추가 낙찰 내역을 저장하면 결제금액이 확정돼요.':'업체별로 결제해 주세요')+(later?' · 추가 낙찰 예상 '+money(later)+'은 기존 결제 확인 후 안내돼요.':'');
+ if(needsPaymentSave()&&!state.dirty&&!needsShippingSave())$('payable-note').textContent='결제 방법을 저장하면 입금·결제 안내가 표시돼요';
 }
 function render(){
  const data=state.data;
