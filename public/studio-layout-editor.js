@@ -3,6 +3,7 @@
  const params=new URLSearchParams(location.search),channelId=String(params.get('channel')||'').replace(/[^a-z0-9-]/g,''),page=Math.max(1,Math.min(3,Number(params.get('page'))||1));
  const $=id=>document.getElementById(id),frame=$('frame'),settingsFrame=$('settings-frame'),model=CreoLayoutDraft.create();
  const labels={'p1-host-1':'네임택 1','p1-host-2':'네임택 2','p1-host-3':'네임택 3','p1-banner':'배너','p1-ticker':'자막','p2-progress':'경매 진행률','p2-info':'개체 정보','p2-waiting':'개체 대기 화면','p2-bidders':'실시간 입찰자','p2-photo':'개체 사진','p2-parents':'부모 사진','p2-price':'가격','p2-sold':'낙찰 알림','p2-banner':'배너','p2-ticker':'자막','p3-board':'집계판','p3-effect':'낙찰·결과 연출'};
+ labels['p1-progress']='경매 진행 상황';
  const fields=['x','y','width','height','font','opacity','visible'];
  for(const p of [1,2,3])labels['p'+p+'-frame']='게임기 프레임';
  const isFrame=slot=>slot.endsWith('-frame');

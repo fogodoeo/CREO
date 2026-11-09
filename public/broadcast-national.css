@@ -39,6 +39,24 @@ body[data-broadcast-theme="national-stage"][data-page="1"] #stage .host-role{
 }
 body[data-broadcast-theme="national-stage"][data-page="1"] #stage .host-role::before{display:none}
 
+/* P1: a compact, movable progress object leaves the presenter area clear. */
+body[data-broadcast-theme="national-stage"][data-page="1"] #stage .auction-progress{
+ position:absolute;top:4%;right:4%;width:28%;height:auto!important;min-height:0;box-sizing:border-box;
+ container-type:inline-size;padding:14px 20px;border:2px solid var(--national-rim);border-radius:18px;
+ background:var(--national-paper);color:var(--national-ink);box-shadow:0 3px 0 #3f568d;pointer-events:none;
+}
+body[data-broadcast-theme="national-stage"][data-page="1"] #stage .auction-progress>*{zoom:1!important}
+body[data-broadcast-theme="national-stage"][data-page="1"][data-layout-editor="1"] #stage .auction-progress{pointer-events:auto}
+body[data-broadcast-theme="national-stage"][data-page="1"] #stage .auction-progress-heading{display:flex;align-items:baseline;justify-content:space-between;gap:12px;white-space:nowrap;line-height:1.15}
+body[data-broadcast-theme="national-stage"][data-page="1"] #stage .auction-progress-heading>span{font-size:min(calc(28px * var(--layout-font-scale,1)),9cqw);font-weight:750}
+body[data-broadcast-theme="national-stage"][data-page="1"] #stage .auction-progress-heading strong{font-size:min(calc(40px * var(--layout-font-scale,1)),12.5cqw);font-weight:850;font-variant-numeric:tabular-nums;letter-spacing:-.025em}
+body[data-broadcast-theme="national-stage"][data-page="1"] #stage .auction-progress-heading small{font-size:.65em;font-weight:650}
+body[data-broadcast-theme="national-stage"][data-page="1"] #stage .auction-progress progress{display:block;appearance:none;width:100%;height:8px;margin:10px 0 8px;border:0;border-radius:99px;overflow:hidden;background:color-mix(in srgb,var(--national-ink) 15%,var(--national-paper))}
+body[data-broadcast-theme="national-stage"][data-page="1"] #stage .auction-progress progress::-webkit-progress-bar{background:color-mix(in srgb,var(--national-ink) 15%,var(--national-paper));border-radius:99px}
+body[data-broadcast-theme="national-stage"][data-page="1"] #stage .auction-progress progress::-webkit-progress-value{background:var(--national-ribbon);border-radius:99px}
+body[data-broadcast-theme="national-stage"][data-page="1"] #stage .auction-progress progress::-moz-progress-bar{background:var(--national-ribbon);border-radius:99px}
+body[data-broadcast-theme="national-stage"][data-page="1"] #stage .auction-progress-detail{font-size:min(calc(22px * var(--layout-font-scale,1)),5.8cqw);font-weight:650;line-height:1.3;white-space:nowrap}
+
 /* P2: identity on the first row; traits and the existing scrolling note below. */
 body[data-broadcast-theme="national-stage"][data-page="2"] #stage .item-copy.is-inline-info{
  border:3px solid var(--national-rim)!important;border-radius:34px!important;background:var(--national-ribbon)!important;

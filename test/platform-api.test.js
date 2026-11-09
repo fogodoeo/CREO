@@ -2897,6 +2897,7 @@ test('page-scoped broadcast payloads keep PRISM overlays channel-local and compa
     const pageTwo = await call(api, 'GET', '/api/platform/channels/alpha/broadcast?page=2', null, '');
     const pageThree = await call(api, 'GET', '/api/platform/channels/alpha/broadcast?page=3', null, '');
     assert.deepEqual(pageOne.json().items, []);
+    assert.deepEqual(pageOne.json().itemProgress, { current: 2, total: 3, completed: 1, remaining: 2 });
     assert.deepEqual(pageTwo.json().items.map((item) => item.id), ['active']);
     assert.deepEqual(pageTwo.json().itemProgress, { current: 2, total: 3, completed: 1, remaining: 2 });
     assert.deepEqual(pageThree.json().items.map((item) => item.id).sort(), ['active', 'sold']);

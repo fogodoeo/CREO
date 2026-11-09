@@ -1,5 +1,13 @@
 # Broadcast caption layout
 
+## National stage, page 1 — 2026-11-09
+
+- Show one compact progress object at the top right (4% inset, 28% width), above the presenter area. Reuse paper/ink, mint edging and the existing ribbon for the progress fill.
+- The main number is the current lot's ordinal / total; the bar and footer use completed / total. A final lot still in progress must not show a full bar. Preserve the server's definition of completed (including passed/cancelled), never treat the ordinal as a sold count.
+- Show preparation/empty and fully completed states explicitly. Refresh through the existing channel-scoped broadcast/pulse feed, without new timers, requests, animated loops or auction writes.
+- `p1-progress` is a regular layout-editor object: position, width, text size, visibility and opacity can be saved independently. Height follows content. Other broadcast themes and P2 remain unchanged.
+- Verify with `node tools/verify-national-progress-layout.cjs` (empty, preparation, mid-auction, final live lot, completion, font sizes, 1920/1280/676 px and editor hiding) and `node --test test/broadcast-p1-progress.test.js` (counts, theme scope, layout persistence and public-feed refresh).
+
 ## National stage, page 2 — 2026-11-09
 
 - Keep the established white/ink identity tile, mint border and teal–violet ribbon tokens.

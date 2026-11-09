@@ -212,7 +212,7 @@ function sanitizeBroadcastState(input = {}) {
     const itemFontSizeRaw = Number.parseInt(input.page2ItemFontSize, 10);
     const itemFontSize = Number.isFinite(itemFontSizeRaw) ? Math.max(16, Math.min(96, itemFontSizeRaw)) : 33;
     const allowedLayoutSlots = new Set([
-        'p1-hosts', 'p1-host-1', 'p1-host-2', 'p1-host-3', 'p1-banner', 'p1-ticker', 'p1-brand',
+        'p1-progress', 'p1-hosts', 'p1-host-1', 'p1-host-2', 'p1-host-3', 'p1-banner', 'p1-ticker', 'p1-brand',
         'p2-progress', 'p2-info', 'p2-bidders', 'p2-photo', 'p2-parents', 'p2-price', 'p2-sold', 'p2-banner', 'p2-ticker', 'p2-brand',
         'p3-board', 'p3-effect', 'p1-frame', 'p2-frame', 'p3-frame', 'p2-waiting'
     ]);
