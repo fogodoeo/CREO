@@ -23,7 +23,7 @@
  }
  function episodeHero(t){return t.blocks.find(b=>b.type==='image'&&new URL(b.src,location.origin).origin===location.origin&&['/promo-assets/hero-gyeongsang-20261026-28-v1.png','/promo-assets/hero-gyeongsang-20261026-28-v5.png','/promo-assets/hero-gyeongsang-20261026-28-v10.png'].includes(new URL(b.src,location.origin).pathname));}
  function isSharedAsset(b,kind){if(b.type!=='image')return false;const u=new URL(b.src,location.origin);return u.origin===location.origin&&(kind==='ticket'?/^\/promo-assets\/ticket(?:-seoul-incheon-v2|-wolssu-gamachi-v1|-wolssu-sponsors-v1)?\.png$/:/^\/promo-assets\/partners-20261007(?:-v4)?\.png$/).test(u.pathname);}
- function singlePoster(t){return t.blocks.find(b=>b.type==='image'&&/^\/promo-assets\/gyeonggi-ten-20261111(?:-v5)?\.png$/.test(new URL(b.src,location.origin).pathname));}
+ function singlePoster(t){return t.blocks.find(b=>b.type==='image'&&/^\/promo-assets\/gyeonggi-ten-20261111(?:-v[56])?\.png$/.test(new URL(b.src,location.origin).pathname));}
  function postBlocks(t,images=[]){
   if(singlePoster(t))return t.blocks;
   const blocks=[],hasBoard=t.blocks.some(b=>isSharedAsset(b,'partners'));
