@@ -1,5 +1,17 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+test('Gyeonggi proclamation stays a single poster in thumbnail, preview and clipboard',()=>{
+ const source=fs.readFileSync(require.resolve('../public/promo-center.js'),'utf8');
+ const ctx=vm.createContext({URL,location:{origin:'https://creok.onrender.com'},esc:v=>String(v)});
+ vm.runInContext(source.slice(source.indexOf(' function imageURL('),source.indexOf('\n const kst=')),ctx);
+ vm.runInContext(source.slice(source.indexOf(' function bodyHTML('),source.indexOf('\n function preview(')),ctx);
+ const src='/promo-assets/gyeonggi-ten-20261111.png',t={name:'경기십선',title:'전국크레자랑 시즌2',blocks:[{type:'image',src,alt:'경기십선'},{type:'text',text:'11월 11일 수요일 밤 8시',size:20,bold:true}]};
+ assert.equal(ctx.thumbnailImage(t).src,src);
+ assert.equal(ctx.postBlocks(t,[{src:'/unused-partners.png'}]).filter(b=>b.type==='image').length,1);
+ for(const copy of [false,true]){const html=ctx.bodyHTML(t,copy);assert.equal((html.match(/<img /g)||[]).length,1);assert.match(html,/gyeonggi-ten-20261111/);assert.doesNotMatch(html,/museum|ticket|partners/);}
+ assert.ok(fs.existsSync(require('node:path').join(__dirname,'../public',src)));
+ assert.equal(require('../promo-media.json')[src],'https://creok.onrender.com'+src);
+});
 test('season 2 preview, copy and thumbnail use approved museum poster while historical manuscripts retain theirs',()=>{
  const source=fs.readFileSync(require.resolve('../public/promo-center.js'),'utf8');
  const ctx=vm.createContext({URL,location:{origin:'https://creok.onrender.com'},esc:v=>String(v)});

@@ -1,5 +1,7 @@
 # Promo manuscript formatting
 
+- 2026-11-11 경기십선 원고는 포스터 한 장과 본문만 포함한다. 같은 포스터를 카드 썸네일·미리보기·복사·다운로드에 사용하며, 이전 시즌 메인 포스터·전체 업체 보드·협찬 배너를 자동으로 덧붙이지 않는다. 이 원고의 업체 이미지 선택은 숨긴다. 기존 보관 원고의 구성은 유지한다.
+
 - Partner boards follow explicit registered brand IDs. 셀렙 uses its own registration; the old 도레미·셀렙 split is only a fallback while that registration does not exist. Inactive/deleted individual registrations never reappear through the old split. The existing combined source still supplies 도레미's approved crop.
 - Registered CREOK asset URLs resolve through the configured logo store, including the migrated media proxy. External image hosts are not generally allowed. 숲속도마뱀 더숲부산 uses a preserved copy of its registered original logo and the confirmed 부산·울산·경남 promotion region only when its main registration has no region; an explicit registered region wins. Neither rule edits vendor accounts, reservations or settlement records.
 - Keep the existing white logo board, native image proportions, 4-column full board / 3-column regional board and 500px responsive manuscript width. Updated catalogs produce new immutable image URLs; previously copied posts retain their old images.

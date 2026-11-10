@@ -3,6 +3,7 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 function fixture(){
  const nodes=new Map(['detail','partner-retry','partner-refresh','partner-status','copy-status'].map(id=>[id,{open:true,hidden:false,textContent:'',setAttribute(){},removeAttribute(){}}])),calls=[];
  const ctx=vm.createContext({partnerMode:'all',partnerRegions:new Set(),partnerImages:[],partnerReady:true,partnerSequence:0,state:{},$:id=>nodes.get(id),drawPost(){},syncCopyButtons(){},showPartnerRegions(){},crypto:{randomUUID:()=>String(calls.length)},request:body=>new Promise((resolve,reject)=>calls.push({body,resolve,reject})),Image:class{set src(value){queueMicrotask(()=>this.onload());}},queueMicrotask,setTimeout:()=>1,clearTimeout(){},imageURL:v=>v});
+ ctx.singlePoster=()=>false;ctx.template={};
  const source=fs.readFileSync(require.resolve('../public/promo-center.js'),'utf8');vm.runInContext(source.slice(source.indexOf(' async function updatePartners('),source.indexOf('\n async function copy(')),ctx);return{ctx,calls,nodes};
 }
 test('opening any manuscript starts with all partners, including after a previous none/region choice',()=>{
@@ -12,6 +13,7 @@ test('opening any manuscript starts with all partners, including after a previou
  let updates=0;
  const ctx=vm.createContext({state:{templates:[{id:'new',title:'새 원고',blocks:[{type:'text',text:'소개'}]}]},partnerMode:'none',partnerRegions:new Set([1]),partnerImages:[{src:'old.png'}],partnerReady:true,
   $:id=>nodes.get(id),document:{activeElement:{},querySelectorAll:()=>radios},error(){},showPartnerRegions(){},drawPost(){},updatePartners(){updates++;}});
+ nodes.set('partner-controls',{closest:()=>({hidden:false})});ctx.singlePoster=()=>false;
  vm.runInContext(source.slice(source.indexOf(' function preview('),source.indexOf('\n function syncCopyButtons(')),ctx);
  for(const previous of ['none','regions']){
   ctx.partnerMode=previous;ctx.preview('new');

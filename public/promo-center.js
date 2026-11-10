@@ -23,7 +23,9 @@
  }
  function episodeHero(t){return t.blocks.find(b=>b.type==='image'&&new URL(b.src,location.origin).origin===location.origin&&['/promo-assets/hero-gyeongsang-20261026-28-v1.png','/promo-assets/hero-gyeongsang-20261026-28-v5.png','/promo-assets/hero-gyeongsang-20261026-28-v10.png'].includes(new URL(b.src,location.origin).pathname));}
  function isSharedAsset(b,kind){if(b.type!=='image')return false;const u=new URL(b.src,location.origin);return u.origin===location.origin&&(kind==='ticket'?/^\/promo-assets\/ticket(?:-seoul-incheon-v2|-wolssu-gamachi-v1|-wolssu-sponsors-v1)?\.png$/:/^\/promo-assets\/partners-20261007(?:-v4)?\.png$/).test(u.pathname);}
+ function singlePoster(t){return t.blocks.find(b=>b.type==='image'&&new URL(b.src,location.origin).pathname==='/promo-assets/gyeonggi-ten-20261111.png');}
  function postBlocks(t,images=[]){
+  if(singlePoster(t))return t.blocks;
   const blocks=[],hasBoard=t.blocks.some(b=>isSharedAsset(b,'partners'));
   let inserted=false;
   for(const b of t.blocks){
@@ -40,7 +42,7 @@
   const header=seasonTwoHero(t)||episodeHero(t)||{type:'image',src:'/promo-assets/hero-wolssu-v1.png',alt:'전국크레자랑 월쑤! 매주 월·수 밤 8시 네이버 밴드 LIVE 경매'};
   return [header,...blocks];
  }
- function thumbnailImage(t){return seasonTwoHero(t)||episodeHero(t)||t.blocks.find(b=>b.type==='image'&&!isSharedHero(b));}
+ function thumbnailImage(t){return singlePoster(t)||seasonTwoHero(t)||episodeHero(t)||t.blocks.find(b=>b.type==='image'&&!isSharedHero(b));}
  function enablePreviewDismiss(dialog){
   let outsideStart=false;
   const outside=e=>{const r=dialog.getBoundingClientRect();return e.target===dialog&&(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom);};
@@ -128,7 +130,9 @@
  function bodyHTML(t,copying=false,images=[]){return postBlocks(t,images).map(b=>b.type==='image'?`<p align="center" style="text-align:center;margin:20px 0"><img src="${esc(imageURL(copying&&b.copySrc?b.copySrc:b.src))}" alt="${esc(b.alt)}" width="500" style="width:500px;max-width:100%;height:auto"></p>`:`<p align="${b.align||'center'}" style="text-align:${b.align||'center'};font-family:NanumSquareNeo,'나눔스퀘어 네오',sans-serif;line-height:1.75;margin:0;word-break:keep-all;overflow-wrap:anywhere"><span style="font-family:NanumSquareNeo,'나눔스퀘어 네오',sans-serif;font-size:${b.size}px;font-weight:${b.bold?700:400}">${b.href?'<a href="'+esc(b.href)+'">':''}${(esc(b.text).replace(/\n/g,'<br>')||'<br>')}${b.href?'</a>':''}</span></p>`).join('');}
  function plainBody(t,images=[]){return postBlocks(t,images).filter(b=>b.type==='text').map(b=>b.href?b.text+'\n'+b.href:b.text).join('\n');}
  function preview(id){template=state.templates.find(t=>t.id===id);if(!template){error('보관된 원고입니다. 운영자에게 문의해 주세요.');return;}
-  partnerMode='all';partnerRegions=new Set();partnerImages=[];partnerReady=false;
+  const standalone=!!singlePoster(template);
+  partnerMode=standalone?'none':'all';partnerRegions=new Set();partnerImages=[];partnerReady=standalone;
+  $('partner-controls').closest('.partner-picker').hidden=standalone;
   $('post-title').textContent=template.title;$('copy-status').textContent='';
   for(const radio of document.querySelectorAll('[name="partner-mode"]'))radio.checked=radio.value===partnerMode;
   showPartnerRegions();drawPost();trigger=document.activeElement;$('detail').showModal();$('detail').querySelector('.dialog-scroll').scrollTop=0;updatePartners();
@@ -149,7 +153,7 @@
  async function updatePartners(){
   const sequence=++partnerSequence,mode=partnerMode,regions=[...partnerRegions];partnerImages=[];partnerReady=mode==='none';$('copy-status').textContent='';$('partner-refresh').hidden=mode==='none';$('partner-retry').hidden=true;$('partner-status').removeAttribute('aria-busy');drawPost();
   const current=()=>sequence===partnerSequence&&$('detail').open;
-  if(mode==='none'){$('partner-status').textContent='업체 소개 이미지 없이 복사합니다. 하단 협찬 이벤트 배너는 항상 포함됩니다.';return;}
+  if(mode==='none'){$('partner-status').textContent=singlePoster(template)?'포스터 1장과 원고를 복사합니다.':'업체 소개 이미지 없이 복사합니다. 하단 협찬 이벤트 배너는 항상 포함됩니다.';return;}
   if(mode==='regions'&&!regions.length){$('partner-status').textContent='소개할 지역을 한 곳 이상 선택해 주세요.';return;}
   $('partner-status').textContent='최신 참여업체로 이미지를 준비하고 있어요';$('partner-status').setAttribute('aria-busy','true');
   try{
