@@ -21,6 +21,15 @@ test('five-region rotation has a fixed first broadcast and covers month/year bou
 const firstCycle=['2026-10-14','2026-10-19','2026-10-21','2026-10-26','2026-10-28'];
 const novemberCycle=['2026-11-09','2026-11-11','2026-11-16','2026-11-18','2026-11-23'];
 const announcedDates=[...firstCycle,...novemberCycle];
+test('national region directory retains inactive vendor with explicit status',async t=>{
+ const f=await fixture(t);
+ const vendor=await f.repository.getRecord('national-cre','vendor',f.vendorId);
+ await f.repository.upsertRecord('national-cre','vendor',{...vendor,active:false});
+ const result=await f.call(f.client,'GET','/api/platform/channels/national-cre/broadcast-bookings',null,f.admin);
+ assert.equal(result.status,200,result.body);
+ const listed=result.json().vendors.find(v=>v.id===f.vendorId);
+ assert.equal(listed.active,false);assert.equal(listed.region,0);
+});
 
 test('November restarts with Seoul/Incheon and opens each regional application exactly two weeks before broadcast',async t=>{
  assert.deepEqual(novemberCycle.map(regionAt),[0,1,2,3,4]);

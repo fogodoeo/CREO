@@ -118,7 +118,7 @@ function createBroadcastBooking(repository, {now=Date.now, notificationService=n
         const {state}=await read(channel),dates=[...new Set(timeline(state,now()).filter(d=>d>=day(now())).concat(state.reservations.map(r=>r.date)))].sort();
         const notifications=await repository.listRecords(channel.id,'notification');
         return {version:state.version,now:new Date(now()).toISOString(),channel:{id:channel.id,name:channel.name},defaults:state.defaults,regions:REGIONS,
-            vendors:vendors.map(v=>({id:v.id,name:v.name,region:state.regions[v.id]??v.bookingRegion??null})),
+            vendors:vendors.map(v=>({id:v.id,name:v.name,active:v.active!==false&&!v.deletedAt,region:state.regions[v.id]??v.bookingRegion??null})),
             sessions:dates.map(date=>{
                 const s=session(state,date),u=usage(state,date,now());
                 return {...s,confirmedQuantity:u.confirmedTotal,heldQuantity:u.total-u.confirmedTotal,shortfall:Math.max(0,32-u.confirmedTotal),

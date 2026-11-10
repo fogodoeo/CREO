@@ -1,6 +1,14 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),{randomUUID}=require('node:crypto');
 const {createFixture}=require('../tools/booking-preview.cjs');
+test('operator regions expose inactive status without dropping historical vendors',async t=>{
+ const f=await createFixture();t.after(f.close);
+ await f.repository.upsertRecord(f.channel.id,'vendor',{...f.vendors[0],active:false});
+ const result=await f.call('GET','/api/platform/channels/national-cre/broadcast-bookings');
+ assert.equal(result.status,200);
+ assert.equal(result.json().vendors.find(v=>v.id===f.vendors[0].id).active,false);
+ assert.equal(result.json().vendors.find(v=>v.id===f.vendors[1].id).active,true);
+});
 test('real API authenticates vendor/organizer and limits reservation links and other channels',async t=>{
  const f=await createFixture();t.after(f.close);
  const get=await f.call('GET','/api/platform/vendor-bookings?event=national-cre&code='+f.code,null,'');assert.equal(get.status,200,get.body);assert.equal(get.json().pendingCount,1);
