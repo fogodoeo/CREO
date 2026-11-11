@@ -14,8 +14,11 @@
  function resize(theme,slot,value,dx,dy){return {...value,width:value.width+(rightAnchored(theme,slot)?-dx:dx),height:value.height+dy};}
  let infoElement=null,infoObserver=null;
  function fitInfoRows(element){
-  for(const row of element.querySelectorAll?.('.item-inline-identity .vendor-tag,.national-item-detail .item-inline-traits')||[]){
-   row.style.setProperty('--national-row-fit','1');
+  // Notes must never make the sex, weight or hatch date smaller.
+  for(const row of element.querySelectorAll?.('.national-item-detail .item-inline-traits')||[])row.style.setProperty('--national-row-fit','1');
+  const rows=element.querySelectorAll?.('.item-inline-identity .vendor-tag,.national-item-detail .broadcast-item-note > span')||[];
+  for(const row of rows)row.style.setProperty('--national-row-fit','1');
+  for(const row of rows){
    if(!row.clientWidth||row.scrollWidth<=row.clientWidth)continue;
    let low=0,high=1;
    for(let i=0;i<12;i++){
@@ -29,12 +32,17 @@
   fitInfoRows(element);
   if(infoElement===element||typeof ResizeObserver!=='function')return;
   infoObserver?.disconnect();infoElement=element;
-  let width=element.clientWidth;
+  const container=element.parentElement;
+  let width=element.clientWidth,containerWidth=container?.clientWidth;
   const observer=new ResizeObserver(()=>{
    if(!element.isConnected){observer.disconnect();return;}
-   if(element.clientWidth!==width){width=element.clientWidth;fitInfoRows(element);}
+   if(element.clientWidth===width&&container?.clientWidth===containerWidth)return;
+   fitInfoRows(element);
+   width=element.clientWidth;containerWidth=container?.clientWidth;
   });
-  observer.observe(element);infoObserver=observer;
+  observer.observe(element);
+  if(container)observer.observe(container);
+  infoObserver=observer;
   element.ownerDocument?.fonts?.ready.then(()=>{if(element.isConnected)fitInfoRows(element);});
  }
  function apply(element,theme,slot,value){
