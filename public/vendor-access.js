@@ -2,7 +2,7 @@
  'use strict';
  const $=id=>document.getElementById(id),q=new URLSearchParams(location.search),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const fmt=p=>String(p||'').replace(/^(\d{3})(\d{4})(\d{4})$/,'$1-$2-$3');
- let state,screen='login',busy=false,company=q.get('company')||sessionStorage.getItem('vendor-setup-company')||'',profile,otp,registration={},joinCompany,setupCompany,setupRequestId,searchSequence=0,directoryRegion='',workRows=[];
+ let state,screen='login',busy=false,company=q.get('company')||sessionStorage.getItem('vendor-setup-company')||'',profile,otp,registration={},joinCompany,setupCompany,setupRequestId,searchSequence=0,directoryRegion='',workRows=[],joinAuctions=[],joinAuction,joinVendors=[],joinVendor,auctionRequestId='';
  if(q.get('company'))sessionStorage.setItem('vendor-setup-company',company);
  const field=(label,id,attrs='')=>`<label class="field" for="${id}">${label}<input id="${id}" ${attrs}></label>`;
  const heading=(title,sub='')=>`<div class="intro"><h1>${title}</h1>${sub?`<p class="muted">${sub}</p>`:''}</div>`;
@@ -20,7 +20,7 @@
   if(target?.round)params.set('round',target.round);if(section==='entries')params.set('section','entries');
   location.href=(section==='booking'?'/vendor-broadcast.html':section==='settlement'?'/vendor-checkout.html':'/vendor-entries.html')+'?'+params;
  }
- async function enter(){await refresh();if(!state.available){go('unavailable');return;}if(!state.authenticated){go('login');return;}if(state.phoneVerificationRequired){go('verify-required');return;}if(state.requestResults?.length){go('request-result');return;}if(!q.get('section')&&!q.get('company')&&!company&&(state.companies.length||state.participations?.length)){await openWork();return;}if(q.get('section')==='companies'&&state.companies.length){go('companies');return;}if(q.get('section')==='profile'&&state.companies.some(c=>c.id===company)){const c=state.companies.find(c=>c.id===company);if(c.canClaim)await request('claim',{id:company});await loadProfile();return;}if(state.companies.some(c=>c.id===company)){await chooseCompany(company);return;}if(state.ownerSetups?.length){go('owner-pending');return;}if(company){const selected=(await request('search?id='+encodeURIComponent(company))).companies[0];if(selected){await selectDirectoryCompany(selected);return;}company='';sessionStorage.removeItem('vendor-setup-company');}if(state.participations?.length){await openWork();return;}if(state.companies.length===1){await chooseCompany(state.companies[0].id);return;}if(state.companies.length){go('companies');return;}if(state.requests.length){go('pending');return;}await openDirectory();}
+ async function enter(){await refresh();if(!state.available){go('unavailable');return;}if(!state.authenticated){go('login');return;}if(state.phoneVerificationRequired){go('verify-required');return;}if(state.requestResults?.length){go('request-result');return;}if(!q.get('section')&&!q.get('company')&&!company&&(state.companies.length||state.participations?.length)){await openWork();return;}if(q.get('section')==='companies'&&state.companies.length){go('companies');return;}if(q.get('section')==='profile'&&state.companies.some(c=>c.id===company)){const c=state.companies.find(c=>c.id===company);if(c.canClaim)await request('claim',{id:company});await loadProfile();return;}if(state.companies.some(c=>c.id===company)){await chooseCompany(company);return;}if(state.ownerSetups?.length){go('owner-pending');return;}if(company){const selected=(await request('search?id='+encodeURIComponent(company))).companies[0];if(selected){await selectDirectoryCompany(selected);return;}company='';sessionStorage.removeItem('vendor-setup-company');}if(state.participations?.length){await openWork();return;}if(state.companies.length===1){await chooseCompany(state.companies[0].id);return;}if(state.companies.length){go('companies');return;}if(state.requests.length){go('pending');return;}await openAuctions();}
  async function loadProfile(){profile=await request('profile',{companyId:company});go('profile');}
   async function chooseCompany(id){let selected=state.companies?.find(c=>c.id===id);if(!selected){await refresh();selected=state.companies?.find(c=>c.id===id);}if(!state.authenticated||state.phoneVerificationRequired||!selected)throw Error('업체 연결을 확인하고 다시 선택해 주세요.');if(selected.canClaim){await request('claim',{id});selected.canClaim=false;}company=id;sessionStorage.removeItem('vendor-setup-company');if(selected.setupRequired||q.has('review')){await loadProfile();return;}if(q.get('section')==='channels'){go('channels');return;}await navigate('home');}
  async function selectDirectoryCompany(selected){
@@ -48,7 +48,8 @@
    `<div class="work-heading"><h2>진행·확인할 경매 ${current.length}</h2>${action('reload-work','새로고침','text-button')}</div>`+
    (current.length?current.map(card).join(''):`<p class="empty">${history.length?'진행·확인할 경매가 없어요. 지난 내역은 아래에서 볼 수 있어요.':'연결된 경매가 없어요.'}</p>`)+
    (history.length?`<details class="work-past"><summary>지난 경매 ${history.length}</summary>${history.map(card).join('')}</details>`:'')+
-   `<details class="work-help"><summary>경매가 안 보이나요?</summary><p>다른 경매는 운영자에게 업체 연락처 연결을 요청해 주세요.</p>${action('work-directory','전크자 업체 찾기·등록','secondary')}</details>`;
+   action('work-auctions','다른 경매 참가','secondary')+
+   `<details class="work-help"><summary>경매가 안 보이나요?</summary><p>참가할 경매를 골라 업체를 등록해 주세요.</p><a class="help-link" href="tel:01049278600">운영자에게 문의</a></details>`;
  }
  async function openWorkRow(index,section,target){
   const row=workRows[index];if(!row)throw Error('경매 목록을 새로고침해 주세요.');
@@ -61,15 +62,37 @@
   const data=await request('select',{channelId:row.channelId,vendorId:row.vendorId});
   location.href=window.CreoVendorWork.destination(row,data.token,section,section==='settlement'?(target||row.settlementTarget):null);
  }
+ async function openAuctions(){
+  go('auctions-loading');
+  try{joinAuctions=(await request('auctions')).auctions;go('auctions');}catch(e){go('auctions-error');throw e;}
+ }
+ async function selectAuction(id){
+  joinAuction=joinAuctions.find(a=>a.id===id);if(!joinAuction)throw Error('경매를 다시 선택해 주세요.');
+  if(joinAuction.kind==='national'){await openDirectory();return;}
+  go('auction-vendors-loading');
+  try{joinVendors=(await request('auction-companies?channel='+encodeURIComponent(id))).companies;go('auction-vendors');}catch(e){go('auctions-error');throw e;}
+ }
+ async function finishAuctionJoin(vendorId){
+  const data=await request('select',{channelId:joinAuction.id,vendorId});
+  location.href='/vendor-entries.html?'+new URLSearchParams({event:joinAuction.id,token:data.token,section:'entries'});
+ }
  function render(){
   document.body.classList.toggle('work-screen',screen.startsWith('work'));
-  $('back').hidden=(screen==='channels'&&state.companies.length<2)||(['login','profile','companies','directory','verify-required','unavailable'].includes(screen)&&!(screen==='directory'&&state.companies.length));$('account').hidden=!state?.authenticated;$('main').classList.toggle('has-nav',screen==='profile');$('main').classList.toggle('login-screen',screen==='login');document.querySelector('.portal-nav')?.remove();
+  const promo=document.querySelector('.promo-library-entry');if(promo)promo.hidden=!['directory','register','search','join','pending','owner-setup','owner-pending','profile','channels','companies'].includes(screen);
+  $('back').hidden=(screen==='channels'&&state.companies.length<2)||(['login','profile','companies','verify-required','unavailable'].includes(screen));$('account').hidden=!state?.authenticated;$('main').classList.toggle('has-nav',screen==='profile');$('main').classList.toggle('login-screen',screen==='login');document.querySelector('.portal-nav')?.remove();
   if(screen!=='profile')window.CreoVendorShell?.clear();
   const html={
+   'auctions-loading':()=>heading('참가할 경매 선택')+'<p role="status">경매를 불러오는 중…</p>',
+   'auctions-error':()=>heading('경매를 불러오지 못했어요')+action('reload-auctions','다시 불러오기'),
+   auctions:()=>heading('참가할 경매 선택')+(joinAuctions.length?joinAuctions.map(a=>`<button type="button" class="choice" data-join-auction="${esc(a.id)}"><span><strong>${esc(a.name)}</strong><small>${a.kind==='national'?'지역별 방송 · 업체 등록':a.date?esc(a.date.replaceAll('-','.'))+' · 출품 접수 중':'출품 접수 중'}</small></span><span class="chevron" aria-hidden="true">›</span></button>`).join(''):'<p class="empty">지금 참가할 수 있는 경매가 없어요.</p>'),
+   'auction-vendors-loading':()=>heading(esc(joinAuction.name))+'<p role="status">업체를 불러오는 중…</p>',
+   'auction-vendors':()=>heading('업체 선택',esc(joinAuction.name))+(joinVendors.length?joinVendors.map(v=>`<button type="button" class="result" data-join-vendor="${esc(v.id)}"><span><strong>${esc(v.name)}</strong><small>${v.connected?'내 업체 · 출품 등록':v.canConnect?'대표 번호 연결':'연결 확인 필요'}</small></span><span class="chevron" aria-hidden="true">›</span></button>`).join(''):'<p class="empty">첫 참가 업체를 등록해 주세요.</p>')+action('auction-new-vendor','새 업체 등록','secondary'),
+   'auction-connect':()=>heading(joinVendor?'대표 번호 연결':'업체 등록',esc(joinAuction.name))+`<form id="auction-join-form">${joinVendor?'<p class="setup-company"><strong>'+esc(joinVendor.name)+'</strong></p>':field('업체명','auction-vendor-name','maxlength="40" autocomplete="organization" required')}<p class="muted">대표 번호 ${esc(fmt(state.phone))}</p><label class="check"><input id="auction-owner-consent" type="checkbox" required><span>이 업체의 대표이며, 이 번호로 연결해요.</span></label><div class="actions"><button class="primary">연결하고 출품 등록</button></div></form>`,
+   'auction-protected':()=>heading('대표 번호를 확인해 주세요',esc(joinVendor.name))+'<p class="muted">등록된 대표 번호로 로그인하거나 운영자에게 연결을 요청해 주세요.</p><a class="help-link" href="tel:01049278600">운영자에게 문의</a>'+action('auction-back-vendors','업체 목록으로','secondary'),
    'work-loading':()=>heading('내 경매')+'<p role="status">출품·낙찰·정산 상태를 확인하고 있어요…</p>',
    'work-error':()=>heading('내 경매를 불러오지 못했어요','연결을 확인하고 다시 시도해 주세요.')+action('reload-work','다시 불러오기'),
    work:workHtml,
-   directory:()=>heading('업체를 선택해 주세요')+`<label class="field" for="directory-region">지역<select id="directory-region"><option value="">지역 선택</option>${state.regions.map(r=>`<option ${r===directoryRegion?'selected':''}>${esc(r)}</option>`).join('')}</select></label><div id="directory-results" class="result-list" aria-live="polite"></div>`+(state.preregisteredOnly?'':`<div class="register-option"><span>업체가 없나요?</span>${action('new-company','새 업체 등록','text-button')}</div>`),
+   directory:()=>heading('전국크레자랑 업체 선택')+`<label class="field" for="directory-region">지역<select id="directory-region"><option value="">지역 선택</option>${state.regions.map(r=>`<option ${r===directoryRegion?'selected':''}>${esc(r)}</option>`).join('')}</select></label><div id="directory-results" class="result-list" aria-live="polite"></div>`+(state.preregisteredOnly?'':`<div class="register-option"><span>업체가 없나요?</span>${action('new-company','새 업체 등록','text-button')}</div>`),
    unavailable:()=>heading('접속을 준비하고 있어요','잠시 후 다시 열어 주세요.')+action('retry','다시 확인'),
    login:()=>heading('업체 로그인')+`<div class="login-actions">${state.kakaoAvailable?`<form id="kakao-form" method="post" action="/api/platform/buyer-account/start"><input type="hidden" name="returnTo" value="vendor"><button class="kakao"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 3C6.5 3 2 6.5 2 10.8c0 2.8 1.9 5.3 4.8 6.7l-1.1 4 4.6-2.8 1.7.1c5.5 0 10-3.6 10-8S17.5 3 12 3Z"/></svg>카카오로 시작하기</button></form>`:''}${state.smsAvailable?action('phone-login','전화번호로 로그인',state.kakaoAvailable?'secondary':'primary'):'<p class="muted">문자 로그인을 준비 중이에요. 잠시 후 다시 시도해 주세요.</p>'}<label class="check"><input id="remember" type="checkbox" checked>로그인 유지</label></div>`,
    phone:()=>heading('전화번호로 로그인')+`<form id="phone-form">${field('휴대전화 번호','phone','type="tel" inputmode="tel" autocomplete="tel-national" placeholder="010-0000-0000" maxlength="13" required')}<div class="actions"><button class="primary">인증번호 받기</button></div></form>`,
@@ -89,8 +112,10 @@
   };
   $('main').innerHTML=(html[screen]||html.login)();
   if(screen.startsWith('work'))$('back').hidden=true;
+  if(screen==='auctions'&&!state.companies.length&&!state.participations?.length)$('back').hidden=true;
   if(screen==='work')for(const card of document.querySelectorAll('.work-card')){
    const row=workRows[Number(card.querySelector('[data-work]')?.dataset.work)];if(!row)continue;
+   if(row.kind==='national'){const link=document.createElement('a');link.className='help-link';link.href='/promo-center.html?company='+encodeURIComponent(row.companyId);link.textContent='전크자 홍보 원고';card.append(link);}
    const detail=document.createElement('div');detail.className='work-rounds';
    for(const r of (row.broadcasts||[]).filter(r=>!r.past)){
     const line=document.createElement('p');line.textContent=`${r.date.slice(5).replace('-','/')} ${r.region} · ${r.complete?'등록 완료':r.count?'작성 중':'출품 등록'}`;detail.append(line);
@@ -104,7 +129,16 @@
     card.append(rounds);
    }
   }
-  bind('reload-work',openWork);bind('work-directory',openDirectory);
+  bind('reload-work',openWork);bind('work-auctions',openAuctions);bind('reload-auctions',openAuctions);
+  for(const b of document.querySelectorAll('[data-join-auction]'))b.onclick=()=>run(()=>selectAuction(b.dataset.joinAuction));
+  for(const b of document.querySelectorAll('[data-join-vendor]'))b.onclick=()=>run(async()=>{
+   joinVendor=joinVendors.find(v=>v.id===b.dataset.joinVendor);
+   if(joinVendor.connected){await finishAuctionJoin(joinVendor.id);return;}
+   auctionRequestId=crypto.randomUUID();go(joinVendor.canConnect?'auction-connect':'auction-protected');
+  });
+  bind('auction-new-vendor',()=>{joinVendor=null;auctionRequestId=crypto.randomUUID();go('auction-connect');});
+  bind('auction-back-vendors',()=>selectAuction(joinAuction.id));
+  form('auction-join-form',async()=>{const result=await request('auction-join',{channelId:joinAuction.id,vendorId:joinVendor?.id||'',name:joinVendor?.name||$('auction-vendor-name').value,requestId:auctionRequestId,consent:$('auction-owner-consent').checked});await refresh();await finishAuctionJoin(result.vendorId);});
   for(const b of document.querySelectorAll('[data-work]'))b.onclick=()=>run(()=>openWorkRow(Number(b.dataset.work),b.dataset.section));
   if(screen==='channels')window.CreoVendorShell?.mountPromo($('vendor-promo-notice'),company);
   if(['login','phone','register','join','profile','choice','directory'].includes(screen)){
@@ -230,7 +264,7 @@
   if(screen==='directory')return state?.companies?.length?'companies':'login';
   return 'companies';
  }
- $('back').onclick=()=>{if(busy)return;if(['register','join','pending','search','owner-setup','owner-pending'].includes(screen)){run(()=>openDirectory());return;}go(previousScreen());};
+ $('back').onclick=()=>{if(busy)return;if(screen==='directory'){run(openAuctions);return;}if(['auctions','auctions-error'].includes(screen)){run(openWork);return;}if(screen.startsWith('auction-')){run(()=>screen==='auction-vendors'||screen==='auction-vendors-loading'?openAuctions():selectAuction(joinAuction.id));return;}if(['register','join','pending','search','owner-setup','owner-pending'].includes(screen)){run(()=>openDirectory());return;}go(previousScreen());};
  $('account').onclick=()=>run(async()=>{await request('logout',{});company='';sessionStorage.removeItem('vendor-setup-company');await refresh();go('login');});
   run(async()=>{if(q.get('from')==='kakao'){await refresh();await request('kakao',{remember:sessionStorage.getItem('vendor-remember')!=='false'});history.replaceState(null,'','/vendor-access.html');}await enter();if(q.has('error'))error('카카오 로그인을 완료하지 못했어요. 다시 시도해 주세요.');});
 })();

@@ -8,7 +8,7 @@ const PREFIX='/api/platform/vendor-access',ROOT='creo_vendor_access_v1::',STATE=
 const fail=(message,status=400)=>Object.assign(new Error(message),{status});
 const phone=value=>{const p=String(value||'').replace(/[\s-]/g,'').replace(/^(?:\+82|0082)0?/,'0');return /^010\d{8}$/.test(p)?p:'';};
 const equal=(a,b)=>{const x=Buffer.from(String(a||'')),y=Buffer.from(String(b||''));return x.length===y.length&&crypto.timingSafeEqual(x,y);};
-function createVendorAccess({repository,secret,origin='https://creok.onrender.com',now=Date.now,smsProvider,buyerAccount,channelFor,vendorsFor,profileFor,saveProfile,saveLogo,deletionContext,reviewDeletion,taskSummary,participationSummary,notificationService,existingVendorsFor,withOwnerSetup,withRegistration}={}){
+function createVendorAccess({repository,secret,origin='https://creok.onrender.com',now=Date.now,smsProvider,buyerAccount,channelFor,vendorsFor,profileFor,saveProfile,saveLogo,deletionContext,reviewDeletion,taskSummary,participationSummary,notificationService,existingVendorsFor,withOwnerSetup,withRegistration,auctionOnboarding}={}){
  const configured=String(secret||'').length>=32&&typeof repository.compareAndSwapRows==='function';
  const key=crypto.createHash('sha256').update('vendor-access:'+String(secret||'unconfigured')).digest();
  const digest=v=>crypto.createHmac('sha256',key).update(String(v)).digest('base64url');
@@ -228,6 +228,11 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
     json(res,200,{...data,...(!data.authenticated?{csrfToken:digest('flow:'+flow)}:{})},{'Set-Cookie':[cookie(flowName,flow,86400)]});return true;
    }
    const s=await session(req);
+   if(['/auctions','/auction-companies'].includes(route)&&method==='GET'){
+    if(!s||!phone(s.verifiedPhone))throw fail('전화번호 인증 후 다시 로그인해 주세요.',401);
+    if(!auctionOnboarding)throw fail('참가 접수를 준비 중이에요.',503);
+    json(res,200,route==='/auctions'?{auctions:await auctionOnboarding.auctions()}:{companies:await auctionOnboarding.companies(url.searchParams.get('channel'),phone(s.verifiedPhone))});return true;
+   }
    if(route==='/work'&&method==='GET'){
     if(!s||!phone(s.verifiedPhone))throw fail('전화번호 인증 후 다시 로그인해 주세요.',401);
     const current=await view(req),rows=[];
@@ -279,6 +284,10 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
     const actor=await actorFor('kakao:'+account.accountId,phone(account.verifiedPhone));await issueSession(req,res,actor,body.remember===true,account.verifiedPhone);return true;
    }
    if(!s)throw fail('다시 로그인해 주세요.',401);
+   if(route==='/auction-join'){
+    if(!auctionOnboarding)throw fail('참가 접수를 준비 중이에요.',503);
+    json(res,200,await auctionOnboarding.join(body,phone(s.verifiedPhone)));return true;
+   }
    if(route==='/season-response'){
     const result=await mutate(async state=>{
      const c=member(state,s.actorId,body.companyId),v=c&&await activeVendor(c.id);

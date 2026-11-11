@@ -4,13 +4,13 @@ const source=fs.readFileSync(require.resolve('../public/vendor-access.js'),'utf8
 const enter=source.slice(source.indexOf(' async function enter()'),source.indexOf(' async function loadProfile()'));
 const choose=source.slice(source.indexOf(' async function chooseCompany('),source.indexOf(' function bind('));
 async function landing(overrides={},search='',found=[]){
- const calls=[],context={URLSearchParams,crypto:require('node:crypto'),sessionStorage:{removeItem(){}},request:async()=>({companies:found}),state:{available:true,authenticated:true,channelLogin:true,phoneVerificationRequired:false,companies:[],requests:[],participations:[],...overrides},company:'company-a',q:new URLSearchParams(search),refresh:async()=>{},go:s=>calls.push(s),openWork:async()=>calls.push('work'),openDirectory:async()=>calls.push('directory'),navigate:async()=>calls.push('broadcast:'+context.company),loadProfile:async()=>calls.push('profile')};
+ const calls=[],context={URLSearchParams,crypto:require('node:crypto'),sessionStorage:{removeItem(){}},request:async()=>({companies:found}),state:{available:true,authenticated:true,channelLogin:true,phoneVerificationRequired:false,companies:[],requests:[],participations:[],...overrides},company:'company-a',q:new URLSearchParams(search),refresh:async()=>{},go:s=>calls.push(s),openWork:async()=>calls.push('work'),openDirectory:async()=>calls.push('directory'),openAuctions:async()=>calls.push('auctions'),navigate:async()=>calls.push('broadcast:'+context.company),loadProfile:async()=>calls.push('profile')};
  await vm.runInNewContext(enter+'\n'+choose+'\nenter()',context);return calls;
 }
 test('common login opens the only authorized company broadcast directly',async()=>{
   assert.deepEqual(await landing({companies:[{id:'national-vendor'}]}),['broadcast:national-vendor']);
- assert.deepEqual(await landing(),['directory']);
- assert.deepEqual(await landing({preregisteredOnly:true}),['directory']);
+ assert.deepEqual(await landing(),['auctions']);
+ assert.deepEqual(await landing({preregisteredOnly:true}),['auctions']);
 });
 test('channel return keeps the selected authorized company and rejects unrelated IDs',async()=>{
  assert.deepEqual(await landing({companies:[{id:'company-a'},{id:'b'}]},'?section=channels'),['channels']);

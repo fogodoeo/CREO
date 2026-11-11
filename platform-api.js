@@ -1232,6 +1232,7 @@ function createPlatformApi({
     const buyerAccount = require('./buyer-account-auth').createBuyerAccountAuth({repository,config:buyerAccountConfig,fetchImpl:buyerAccountFetch,now:buyerAccountNow,hashPhone:sessionKey});
     const vendorLifecycle=require('./vendor-lifecycle').createVendorLifecycle({repository,vendorDirectory,loadCatalog,booking,settlement:organizerShippingSettlement,lock:withMutationLock,touch:touchChannel,now:vendorAccessNow});
     const vendorAccess = require('./vendor-access').createVendorAccess({
+        auctionOnboarding:require('./vendor-auction-onboarding').createVendorAuctionOnboarding({repository,directory:vendorDirectory,loadCatalog,lock:withMutationLock,now:vendorAccessNow}),
         existingVendorsFor: require('./vendor-channel-access').createVendorChannelAccess({loadCatalog,vendorDirectory}),
         repository, secret: vendorAccessSecret, origin: vendorAccessOrigin, now: vendorAccessNow,
         smsProvider: notificationService?.provider, buyerAccount, notificationService,
