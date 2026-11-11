@@ -1,17 +1,39 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs');
 const layout=require('../public/broadcast-text-layout'),draft=require('../public/studio-layout-draft');
-test('national info fits whole vendor and trait rows, resets on resize and does not change their text',()=>{
+test('national info fits vendor and note rows, resets on resize and preserves trait size',()=>{
  let width=300;
  const rows=[600,480,120].map(natural=>({textContent:'원문 그대로',scale:1,get clientWidth(){return width;},get scrollWidth(){return Math.max(width,Math.ceil(natural*this.scale+20));},style:{setProperty(name,value){assert.equal(name,'--national-row-fit');this.owner.scale=Number(value);}}}));
  for(const row of rows)row.style.owner=row;
- const element={querySelectorAll:()=>rows};
+ const traits={scale:.4,style:{setProperty(name,value){traits.scale=Number(value);}}};
+ const element={querySelectorAll:selector=>selector==='.national-item-detail .item-inline-traits'?[traits]:rows};
  layout.fitInfoRows(element);
+ assert.equal(traits.scale,1);
  for(const row of rows){assert.ok(row.scrollWidth<=row.clientWidth);assert.equal(row.textContent,'원문 그대로');}
  assert.ok(rows[0].scale<rows[1].scale);assert.equal(rows[2].scale,1);
  const scales=rows.map(r=>r.scale);layout.fitInfoRows(element);assert.deepEqual(rows.map(r=>r.scale),scales);
  width=900;layout.fitInfoRows(element);assert.ok(rows.every(r=>r.scale===1));
  width=0;layout.fitInfoRows(element);assert.ok(rows.every(r=>r.scale===1));
+ assert.equal(traits.scale,1);
+ const css=fs.readFileSync(require.resolve('../public/broadcast-national.css'),'utf8');
+ const pill=css.match(/\.item-inline-pill\{([^}]+)\}/)[1];
+ assert.doesNotMatch(pill,/--national-row-fit/);
+ assert.match(css,/:has\(>\.item-inline-traits\):has\(>\.broadcast-item-note\)\{grid-template-columns:max-content minmax\(0,1fr\)\}/);
+});
+test('the whole still note fits after reaching the screen edge and returns to full size when space opens',()=>{
+ let width=320,scale=1;
+ const note={
+  get clientWidth(){return width;},
+  get scrollWidth(){return Math.max(width,Math.ceil(1200*scale));},
+  style:{setProperty(name,value){assert.equal(name,'--national-row-fit');scale=Number(value);}}
+ };
+ const card={querySelectorAll:selector=>selector.includes('.national-item-detail .broadcast-item-note > span')?[note]:[]};
+ layout.fitInfoRows(card);
+ assert.ok(scale>0.26&&scale<0.27);
+ assert.ok(note.scrollWidth<=width);
+ width=1300;
+ layout.fitInfoRows(card);
+ assert.equal(scale,1);
 });
 test('national text auto width defaults on, honors manual width, and leaves other themes and media untouched',()=>{
  for(const slot of ['p2-info','p2-progress','p2-bidders','p2-price','p2-sold']){

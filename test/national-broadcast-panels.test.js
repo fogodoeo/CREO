@@ -23,7 +23,8 @@ test('national item notes stay on one still line, including when reduced motion 
  const selector='body[data-broadcast-theme="national-stage"][data-page="2"] #stage .national-item-detail .broadcast-item-note > span';
  const rule=css.slice(css.indexOf(selector)).split('}')[0];
  assert.ok(css.includes(selector));
- for(const property of ['white-space:nowrap','text-overflow:ellipsis','overflow:hidden','animation-name:none!important','transform:none!important'])assert.ok(rule.includes(property),property);
+ for(const property of ['white-space:nowrap','--national-row-fit','animation-name:none!important','transform:none!important'])assert.ok(rule.includes(property),property);
+ assert.doesNotMatch(rule,/ellipsis/);
  assert.ok(html.indexOf('broadcast-national.css')>html.indexOf('broadcast-item-notes.css'));
 });
 test('national caption and board color pairs meet text contrast requirements',()=>{
