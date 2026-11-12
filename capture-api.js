@@ -456,6 +456,7 @@ function createCaptureApi({ repository, storage, isAdmin, logger = console } = {
             }
 
             if (segments.length === 2 && segments[0] === 'channel' && method === 'GET') {
+                if (!await requireAgent(req, res)) return true;
                 const channelId = normalizeChannelId(segments[1]);
                 if (!channelId) throw Object.assign(new Error('채널 ID가 올바르지 않습니다.'), { status: 400 });
                 const records = await repository.listRecords(channelId, 'capture');

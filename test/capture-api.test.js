@@ -184,7 +184,9 @@ test('capture job is leased, uploaded, listed and served by item id', async () =
     assert.equal(response.json().capture.bytes, bytes.length);
     assert.match(response.json().capture.shareUrl, /^https:\/\/creo\.test\/capture\/cdcup\//);
 
-    const listed = await call(api, 'GET', '/api/capture/channel/cdcup', null, false);
+    const unauthListed = await call(api, 'GET', '/api/capture/channel/cdcup', null, false);
+    assert.equal(unauthListed.status, 401);
+    const listed = await call(api, 'GET', '/api/capture/channel/cdcup');
     assert.equal(listed.status, 200);
     assert.equal(listed.json().captures[0].itemId, 'item_17');
     const imageUrl = new URL(listed.json().captures[0].imageUrl);

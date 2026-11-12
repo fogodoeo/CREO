@@ -26,7 +26,7 @@
 <body>
 <main class="shell">
     <header class="top"><div><div class="eyebrow">GLOBAL SHIPPING DATA</div><h1>공용 배송 데이터</h1><p>여기서 갱신한 거점과 요금은 모든 채널에 즉시 적용됩니다.</p></div><div class="top-actions"><button class="admin-button" id="admin-button" type="button">관리자 로그인</button><a class="back" id="back-link" href="/">돌아가기</a></div></header>
-    <section class="auth-gate" id="auth-gate"><div><div class="gate-icon">🔒</div><h2>관리자 전용 요금표</h2><p>배송사 요금과 거점 정보는 관리자 로그인 후 확인하고 갱신할 수 있습니다.<br>채널 배송 조회 페이지는 로그인 없이 계속 이용할 수 있습니다.</p><button class="gate-login" id="gate-login" type="button">관리자 로그인</button></div></section>
+    <section class="auth-gate" id="auth-gate" hidden><div><div class="gate-icon">🔒</div><h2>관리자 전용 요금표</h2><p>배송사 요금과 거점 정보는 관리자 로그인 후 확인하고 갱신할 수 있습니다.<br>채널 배송 조회 페이지는 로그인 없이 계속 이용할 수 있습니다.</p><button class="gate-login" id="gate-login" type="button">관리자 로그인</button></div></section>
     <div class="admin-content" id="admin-content" hidden>
         <section class="notice"><div><strong>파르게 API와 도도시·랩팡 공개 옵션을 직접 확인합니다.</strong><span>수집 결과가 비정상이면 저장하지 않고 현재 데이터를 유지합니다.</span></div><button class="refresh-all" id="refresh-all" type="button">전체 최신정보 가져오기</button></section>
         <div class="status" id="status"></div>
@@ -76,7 +76,7 @@ async function saveWorkbook(){if(!state.imported.length||!(await ensureAdmin(()=
 $('refresh-all').addEventListener('click',refreshAll);$('gate-login').addEventListener('click',()=>openLogin());$('admin-button').addEventListener('click',async()=>{if(document.body.dataset.authenticated==='true'){await CreoPlatform.logout();state.data={};state.rows=[];state.changes={};clearStatus();setAuthenticated(false);return}openLogin()});$('login-form').addEventListener('submit',async event=>{event.preventDefault();const input=$('password'),error=$('login-error');error.textContent='';try{CreoPlatform.setAdmin(input.value);if(!await CreoPlatform.verifyAdmin(input.value))throw new Error('비밀번호가 맞지 않습니다.');input.value='';$('login').classList.remove('show');if(mobileRateHistory&&history.state?.creoRateView==='login')history.back();setAuthenticated(true);await loadCurrent();const action=state.pendingAction;state.pendingAction=null;if(action)await action()}catch(failure){CreoPlatform.setAdmin('');error.textContent=failure.message||'로그인하지 못했습니다.'}});
 $('back-link').href=returnUrl;$('back-link').textContent=channel?'배송관리로':'운영 메인';
 if(mobileRateHistory){if(!document.referrer){history.replaceState({creoRateExit:true},'',location.href);history.pushState({creoRateView:'base'},'',location.href)}else history.replaceState({creoRateView:'base'},'',location.href);addEventListener('popstate',event=>{if(event.state?.creoRateExit){location.replace(returnUrl);return}if(event.state?.creoRateView!=='login')$('login').classList.remove('show')})}
-(async()=>{setAuthenticated(false);try{if(await CreoPlatform.verifyAdmin()){setAuthenticated(true);await loadCurrent()}}catch(_){await CreoPlatform.logout()}})();
+(async()=>{let ok=false;try{ok=await CreoPlatform.verifyAdmin()}catch(_){await CreoPlatform.logout()}setAuthenticated(Boolean(ok));if(ok){try{await loadCurrent()}catch(error){setStatus('공용 배송 데이터를 불러오지 못했습니다. '+error.message,'error')}}})();
 </script>
 </body>
 </html>

@@ -29,7 +29,7 @@
     </style>
 <link rel="stylesheet" href="/ongdong-brand.css?v=20260908-logo"><script src="/ongdong-brand.js?v=20260908-logo"></script><link rel="stylesheet" href="operator-studio.css?v=20260915-studio"><script defer src="studio-interface.js?v=20260915-studio"></script></head>
 <body class="broadcast-workspace">
-<section class="login" id="login-gate">
+<section class="login" id="login-gate" hidden>
     <form class="login-card" id="login-form">
         <div class="login-brand"><span data-ongdong-brand>옹동2</span><h1>송출 관리<small>CONTROL STUDIO</small></h1></div>
         <label for="admin-password">관리자 비밀번호</label>
@@ -37,6 +37,11 @@
         <p class="login-note">관리자 전용</p>
         <p class="error" id="login-error" role="alert"></p>
     </form>
+    <div class="login-card" id="boot-error-card" hidden>
+        <div class="login-brand"><span data-ongdong-brand>옹동2</span><h1>방송 화면 안내<small>CONTROL STUDIO</small></h1></div>
+        <p class="error" id="boot-error-text" role="alert"></p>
+        <p class="login-note"><a href="/main" style="color:var(--accent)">운영 홈에서 회차 다시 선택</a></p>
+    </div>
 </section>
 <main class="studio" id="studio" hidden>
     <header class="topbar">
@@ -80,7 +85,8 @@ document.addEventListener('DOMContentLoaded',()=>{
     function markPending(){const pending=activeChannel?.id!==operatingChannelId;switchButton.disabled=activating||!pending;switchButton.hidden=!pending;studio.dataset.preview=String(pending);$('engine-label').textContent=pending?`미리보기 중 · 현재 송출: ${roundName(operatingChannelId)}`:'이 회차가 현재 송출 중입니다.';$('output-label').textContent=pending?'미리보기 열기':'송출 화면 열기';document.querySelectorAll('a[href="/main"],a[data-operator-home]').forEach(a=>{a.dataset.operatorHome='1';a.href='/main?channel='+encodeURIComponent(activeChannel.id)});const labels={1:'진행',2:'경매',3:CreoBroadcastProfiles.resolve(activeChannel).page3Label||'집계'};for(let p=1;p<=3;p++){const a=$('live-'+p);a.href=liveUrl(activeChannel,p);a.textContent=`${p}P ${labels[p]} · 새 창`}}
     async function activate(id){const next=channels.find(row=>row.id===id);if(!next||id===operatingChannelId||activating)return;if(editorDirty||editorSaving){studioError('배치 수정을 먼저 저장한 뒤 송출을 전환해 주세요.');return}if(!confirm(`${next.name} 회차로 실제 송출을 전환할까요?\n송출 화면과 경매 프로그램의 기준 회차가 함께 바뀝니다. 진행 중인 경매가 있으면 전환은 차단됩니다.`))return;const sequence=++activationSequence;activating=true;studioError();select.disabled=true;switchButton.disabled=true;try{if(next.status==='draft'&&next.nationalRound)await CreoPlatform.api('national-rounds',{method:'POST',body:JSON.stringify({action:'activate',date:next.nationalRound.date,expectedActiveChannelId:operatingChannelId})});else await CreoPlatform.api('active-channel',{method:'PUT',body:JSON.stringify({channelId:next.id,expectedCurrentChannelId:operatingChannelId,confirmChannelId:next.id})});if(sequence!==activationSequence)return;operatingChannelId=next.id;next.status='active';renderActive(next)}catch(failure){studioError((failure.message||'송출을 전환하지 못했습니다.')+' 확인 후 송출 전환을 다시 눌러 주세요.')}finally{if(sequence===activationSequence){activating=false;select.disabled=false;markPending()}}}
     async function load(){const data=await CreoPlatform.api('operation-rounds');rounds=data.rounds||[];channels=(data.channels||[]).filter(channel=>(channel.status==='active'||channel.status==='draft'&&channel.nationalRound)&&channel.features?.broadcast!==false);const selected=channels.find(c=>c.id===(requested||data.activeChannelId)),round=rounds.find(row=>row.channelId===selected?.id&&!row.archiveId);if(!selected||!round||round.scopeError||initialParams.has('archive'))throw new Error('선택한 회차의 방송 화면을 열 수 없습니다. 운영 홈에서 다시 선택해 주세요.');if(!channels.some(c=>c.id===data.activeChannelId))throw new Error('현재 송출 회차를 확인하지 못했습니다. 운영 홈에서 다시 확인해 주세요.');operatingChannelId=data.activeChannelId;const groups=new Map();for(const channel of channels){const row=rounds.find(r=>r.channelId===channel.id&&!r.archiveId);if(!row||row.scopeError)continue;const name=row.familyId==='national-cre'?'전국크레자랑':row.familyId==='clab'?'씨랩 · 크레용':channel.name;if(!groups.has(name))groups.set(name,[]);groups.get(name).push(channel)}select.innerHTML=[...groups].map(([name,rows])=>`<optgroup label="${esc(name)}">${rows.map(channel=>`<option value="${esc(channel.id)}">${esc(roundName(channel.id))}</option>`).join('')}</optgroup>`).join('');gate.hidden=true;studio.hidden=false;renderActive(selected);markPending()}
-    function showLogin(message=''){studio.hidden=true;gate.hidden=false;error.textContent=message;submit.disabled=false;password.disabled=false;requestAnimationFrame(()=>password.focus({preventScroll:true}))}
+    function showBootError(message=''){studio.hidden=true;gate.hidden=false;form.hidden=true;$('boot-error-card').hidden=false;$('boot-error-text').textContent=message||'방송 화면을 열 수 없습니다.'}
+    function showLogin(message=''){studio.hidden=true;gate.hidden=false;$('boot-error-card').hidden=true;form.hidden=false;error.textContent=message;submit.disabled=false;password.disabled=false;requestAnimationFrame(()=>password.focus({preventScroll:true}))}
     select.addEventListener('change',()=>{const next=channels.find(c=>c.id===select.value);if(!next||next.id===activeChannel?.id)return;if(!canLeave()){select.value=activeChannel.id;return}studioError();renderActive(next);markPending()});
     switchButton.addEventListener('click',()=>activate(select.value).catch(()=>{}));
     document.querySelectorAll('[data-view]').forEach(button=>button.addEventListener('click',()=>{if(button.dataset.view===activeView||!canLeave())return;studioError();showView(button.dataset.view)}));
@@ -89,7 +95,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     window.addEventListener('message',event=>{if(event.origin!==location.origin||event.source!==frame.contentWindow||event.data?.type!=='creo-asset-manager'||event.data.channelId!==activeChannel?.id)return;if(activeView!=='settings'&&activeView!=='layout-'+event.data.page)return;assetView(event.data.open===true)});
     for(const menu of [$('studio-theme'),$('studio-output')]){menu.addEventListener('toggle',()=>{if(menu.open)for(const other of [$('studio-theme'),$('studio-output')])if(other!==menu)other.open=false});menu.addEventListener('keydown',event=>{if(event.key==='Escape'){menu.open=false;menu.querySelector('summary').focus()}})}
     form.addEventListener('submit',async event=>{event.preventDefault();const value=password.value;if(!value)return;submit.disabled=true;password.disabled=true;error.textContent='';try{CreoPlatform.setAdmin(value);if(!await CreoPlatform.verifyAdmin(value))throw new Error('비밀번호가 맞지 않습니다.');password.value='';if(reauthRequired){reauthRequired=false;gate.hidden=true;studio.hidden=false;studioError('다시 로그인했습니다. 남아 있는 수정사항을 저장해 주세요.')}else await load()}catch(failure){CreoPlatform.setAdmin('');showLogin(failure.message||'로그인하지 못했습니다.')}});
-    (async()=>{try{if(await CreoPlatform.verifyAdmin())return await load()}catch(e){showLogin(e.message);return}showLogin()})();
+    (async()=>{let ok=false;try{ok=await CreoPlatform.verifyAdmin()}catch(e){showLogin(e.message);return}if(!ok){showLogin();return}try{await load()}catch(e){if(e?.status===401||e?.status===403)showLogin('관리자 인증이 만료되었습니다. 다시 로그인해 주세요.');else showBootError(e.message)}})();
 });
 </script>
 </body>

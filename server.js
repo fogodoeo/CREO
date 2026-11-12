@@ -367,6 +367,18 @@ const server = http.createServer(async (req, res) => {
             if (await captureApi.handleSharePage(req, res, url)) return;
         }
 
+        if ((req.method === 'GET' || req.method === 'HEAD') && (url.pathname === '/favicon.ico' || url.pathname === '/favicon.svg')) {
+            const icon = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#12151a"/><text x="16" y="22" text-anchor="middle" font-family="system-ui,sans-serif" font-size="18" font-weight="800" fill="#dfb55f">C</text></svg>';
+            const payload = Buffer.from(icon, 'utf8');
+            writeHeaders(res, 200, {
+                'Content-Type': 'image/svg+xml; charset=utf-8',
+                'Content-Length': payload.length,
+                'Cache-Control': 'public, max-age=86400'
+            });
+            res.end(req.method === 'HEAD' ? undefined : payload);
+            return;
+        }
+
         if (url.pathname === '/health' && req.method === 'GET') {
             let platform;
             try { platform = await platformRepository.health(); }

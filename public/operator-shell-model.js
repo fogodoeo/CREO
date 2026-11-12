@@ -26,6 +26,9 @@
   if(['/main','/main/','/index.html'].includes(url.pathname))return{key:url.searchParams.get('view')||'home',url};
   if(url.pathname==='/band-monitor.html')return{key:'monitor',url};
   for(const e of menu(state).flatMap(g=>g.entries)){const target=new URL(e.href,origin);if(target.pathname!==url.pathname)continue;if(['items','members'].includes(e.key)&&e.key!==(url.searchParams.get('tab')==='items'?'items':'members'))continue;if(['bookings','regions'].includes(e.key)&&e.key!==(url.searchParams.get('action')==='region'?'regions':'bookings'))continue;
-   return{key:e.key,url};}return null;}
+   return{key:e.key,url};}
+  if(url.pathname==='/promo-center.html'&&url.searchParams.get('admin')==='1')return{key:'promo',url};
+  const cross={'/organizer-bookings.html':url.searchParams.get('action')==='region'?'regions':'bookings','/vendor-entry-review.html':'intake','/channel-workspace.html':url.searchParams.get('tab')==='items'?'items':'members','/number-labels.html':'numberLabels','/broadcast-studio.html':'broadcast','/roulette/':'pinball','/capture-gallery.html':'captures','/parge-dispatch.html':'parge','/channel-archives.html':'archives','/national-rounds.html':'rounds','/channel-manager.html':'settings','/operator-vendors.html':'vendors','/national-vendors.html':'access','/shipping-rates.html':'rates','/operator-drive.html':'drive','/monitor-download.html':'desktopApp','/capture-setup.html':'captureSetup','/band-members.html':'monitor'};
+  return cross[url.pathname]?{key:cross[url.pathname],url}:null;}
  return{groups,routes,menu,entry,home,frame,resolve};
 });

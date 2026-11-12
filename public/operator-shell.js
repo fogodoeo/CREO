@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded',()=>{
  'use strict';const $=id=>document.getElementById(id),Model=CreoOperatorShell,esc=CreoPlatform.escapeHtml;
- let state=null,current='home',source='',dirty=false,busy=false,contextOpen=false,contextScope='round';
+ let state=null,rounds=[],current='home',source='',dirty=false,busy=false,contextOpen=false,contextScope='round';
  $('operator-frame').setAttribute('allowfullscreen','');
  const desktop=window.matchMedia('(min-width:1440px)'),mobile=window.matchMedia('(max-width:760px)');
  const syncMenu=()=>{$('operator-menu').open=desktop.matches;};syncMenu();desktop.addEventListener('change',syncMenu);
@@ -21,14 +21,14 @@ document.addEventListener('DOMContentLoaded',()=>{
  function allowed(){if(busy){$('operator-frame').contentWindow.postMessage({type:'creo:operator-navigation-blocked'},location.origin);return false;}return !dirty||window.confirm('저장하지 않은 입력이 있습니다. 이 화면을 떠날까요?');}
  function clear(){source='';dirty=false;busy=false;$('operator-frame').removeAttribute('src');$('operator-content').hidden=true;}
  function navigate(search,push=true){if(!allowed())return false;dirty=false;document.dispatchEvent(new CustomEvent('creo:operator-navigate',{detail:{search,push}}));return true;}
- function render(detail){state=detail.state;const previous=current,q=new URLSearchParams(location.search);current=q.get('view')||'home';if(current==='bookings'&&q.get('action')==='region')current='regions';const e=Model.entry(state,current);if(current!==previous)contextOpen=false;contextScope=e?.scope||'round';
+ function render(detail){state=detail.state;rounds=detail.rounds||[];const previous=current,q=new URLSearchParams(location.search);current=q.get('view')||'home';if(current==='bookings'&&q.get('action')==='region')current='regions';const e=Model.entry(state,current);if(current!==previous)contextOpen=false;contextScope=e?.scope||'round';
   const groups=Model.menu(state);
   $('admin-nav').innerHTML=`<a class="nav-home" href="${esc(Model.home(state))}"${current==='home'?' aria-current="page"':''}>운영 홈·전체 일정</a>`+groups.map(g=>`<a data-work-group="${g.id}" href="${esc(Model.home(state,g.entries[0].key))}"${g.id===e?.group?' aria-current="page"':''}>${esc(g.label)}</a>`).join('');
   const related=groups.find(g=>g.id===e?.group);
   $('operator-task-nav').hidden=!related;
   $('operator-task-nav').innerHTML=related?related.entries.map(n=>`<a data-work-key="${n.key}" href="${esc(Model.home(state,n.key))}"${n.key===current?' aria-current="page"':''}>${esc(n.label)}</a>`).join(''):'';
   $('operator-task-picker').hidden=!related;
-  $('operator-task-select').innerHTML=related?related.entries.map(n=>`<option value="${esc(n.key)}"${n.key===current?' selected':''}>${esc(n.label)}</option>`).join(''):'';
+  $('operator-task-select').innerHTML=related?related.entries.map(n=>`<option value="${esc(n.key)}" data-base-label="${esc(n.label)}"${n.key===current?' selected':''}>${esc(n.label)}</option>`).join(''):'';
   const program=CreoOperatorHome.families(detail.catalog,state.channel.id).find(p=>p.id===CreoOperatorHome.family(state.channel))?.name||'';
   $('selection-panel').hidden=e?.scope==='global';if(e?.scope==='program'){$('round-field').hidden=true;$('manage-rounds').hidden=true;}$('work-panel').hidden=current!=='home';$('operator-content').hidden=current==='home';$('operator-page-title').textContent=e?.label||'열 수 없는 메뉴';$('operator-breadcrumb').textContent=e?.scope==='global'?'전체 운영':e?.scope==='program'?(program||'전체 업체'):program&&!state.label.includes(program)?program+' · '+state.label:state.label;syncContext();
   document.title=(e?.label||'운영 홈')+' · CREO';
@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded',()=>{
  document.addEventListener('creo:operator-ready',e=>render(e.detail));
  document.addEventListener('creo:operator-reset',clear);
  document.addEventListener('creo:operator-before-navigate',e=>{if(!allowed())e.preventDefault();else dirty=false;});
- $('operator-frame').addEventListener('load',()=>{try{const doc=$('operator-frame').contentDocument;if(doc&&!doc.documentElement.classList.contains('operator-embedded')){const bridge=doc.createElement('script');bridge.src='/operator-embed.js?v=20261108-responsive';doc.head.appendChild(bridge);}}catch(_){}$('operator-loading').hidden=true;});
+ $('operator-frame').addEventListener('load',()=>{try{const doc=$('operator-frame').contentDocument;if(doc&&!doc.documentElement.classList.contains('operator-embedded')){const bridge=doc.createElement('script');bridge.src='/operator-embed.js?v=20261112-audit';doc.head.appendChild(bridge);}}catch(_){}$('operator-loading').hidden=true;});
  $('operator-reload').addEventListener('click',()=>{if(!allowed())return;dirty=false;if(source){$('operator-loading').hidden=false;$('operator-frame').src=source;}});
  document.addEventListener('click',event=>{const a=event.target.closest?.('a');if(!a||!state||event.defaultPrevented||event.button!==0||event.ctrlKey||event.metaKey||event.shiftKey||event.altKey||a.target==='_blank'||a.hasAttribute('download'))return;
   const url=new URL(a.href,location.href);if(url.origin!==location.origin)return;
@@ -61,8 +61,17 @@ document.addEventListener('DOMContentLoaded',()=>{
  window.addEventListener('message',event=>{if(event.origin!==location.origin||event.source!==$('operator-frame').contentWindow)return;const data=event.data;if(data?.type==='creo:operator-dirty'){dirty=data.dirty===true;if(typeof data.busy==='boolean')busy=data.busy;return;}if(data?.type!=='creo:operator-link'||!state)return;
   const resolved=Model.resolve(data.href,state);if(!resolved)return;const q=new URLSearchParams(location.search),target=resolved.url.searchParams;
   q.set('view',resolved.key);for(const key of ['vendor','action','status'])q.delete(key);
-  // Booking/intake use the common reception channel; that is not a round switch.
-  if((['/main','/main/','/index.html'].includes(resolved.url.pathname)||!['intake','bookings','regions','vendors','access','rates'].includes(resolved.key))&&target.has('channel')){q.set('channel',target.get('channel'));if(target.has('archive'))q.set('archive',target.get('archive'));else q.delete('archive');}
+  // Booking/intake use the common reception channel unless switching from a non-national family.
+  const crossNational=['bookings','regions'].includes(resolved.key)&&!CreoOperatorHome.national(state.channel);
+  const crossIntake=resolved.key==='intake'&&target.get('channel')==='national-cre'&&!CreoOperatorHome.national(state.channel);
+  if((['/main','/main/','/index.html'].includes(resolved.url.pathname)||crossNational||crossIntake||!['intake','bookings','regions','vendors','access','rates'].includes(resolved.key))&&(target.has('channel')||target.has('returnChannel'))){
+   const nextChannel=target.get('returnChannel')||target.get('channel');
+   if(crossNational||crossIntake){const chosen=rounds.find(r=>r.channelId===nextChannel&&!r.archiveId)||rounds.find(r=>r.familyId==='national-cre'&&!r.archiveId)||rounds.find(r=>r.familyId==='national-cre');if(chosen){q.set('channel',chosen.channelId);if(chosen.archiveId)q.set('archive',chosen.archiveId);else q.delete('archive');}else{q.set('channel',nextChannel);q.delete('archive');}}
+   else{q.set('channel',target.get('channel')||nextChannel);if(target.has('archive'))q.set('archive',target.get('archive'));else q.delete('archive');}
+  }else if(resolved.key==='vendors'&&target.get('program')&&target.get('program')!==CreoOperatorHome.family(state.channel)){
+   const chosen=rounds.find(r=>r.familyId===target.get('program')&&!r.archiveId)||rounds.find(r=>r.familyId===target.get('program'));
+   if(chosen){q.set('channel',chosen.channelId);if(chosen.archiveId)q.set('archive',chosen.archiveId);else q.delete('archive');}
+  }
   if(target.get('vendor')&&['items','members','bookings','regions','intake'].includes(resolved.key))q.set('vendor',target.get('vendor'));
   if(resolved.key==='bookings'&&target.get('action')==='region')q.set('action','region');
   if(resolved.key==='intake'&&target.get('status')==='approved')q.set('status','approved');

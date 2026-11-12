@@ -5,4 +5,4 @@
 .organizer-filter-status .settlement-text{font-size:14px}.organizer-totals{flex-wrap:wrap}
 html.operator-embedded .organizer-page .settlement-top,html.operator-embedded .organizer-page main>#channel,html.operator-embedded .organizer-page main>#page-title,html.operator-embedded .organizer-page #content>p:has(#broadcast-bookings){display:none}
 html.operator-embedded .organizer-page main{max-width:780px;margin:0 auto;padding-top:20px}
-@media(max-width:380px){.organizer-work-filters{grid-template-columns:minmax(0,1fr)}.organizer-work-filters label{gap:4px}}
+@media(max-width:520px){.organizer-work-filters{grid-template-columns:minmax(0,1fr)}.organizer-work-filters label{gap:4px}}

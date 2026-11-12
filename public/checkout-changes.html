@@ -13,13 +13,13 @@
 </main><script>
 'use strict';
 const client=window.CreoPlatform,$=id=>document.getElementById(id),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let channel=new URLSearchParams(location.search).get('channel')||'',focusId='',carrierFocusId='',busy=false;
+let channel=new URLSearchParams(location.search).get('channel')||'',focusId='',carrierFocusId='',busy=false,busyOwner='';
 let archive=new URLSearchParams(location.search).get('archive')||'';
-const hasDraft=()=>busy||[...document.querySelectorAll('textarea')].some(n=>n.value.trim())||Boolean(document.querySelector('input[type=checkbox]:checked'));
-function publishDraft(){if(window.parent!==window)window.parent.postMessage({type:'creo:operator-dirty',dirty:hasDraft()},location.origin);}
-document.addEventListener('input',publishDraft);
-window.addEventListener('beforeunload',event=>{if(window.parent===window&&hasDraft()){event.preventDefault();event.returnValue='';}});
-function setBusy(value,owner){busy=value;$('reload-requests').disabled=value;for(const [id,type] of [['list','changes'],['carrier-requests','carrier']])if(type!==owner){const other=$(id);other.dataset.busy=String(value);other.inert=value;}publishDraft();}
+const hasDraft=()=>[...document.querySelectorAll('textarea')].some(n=>n.value.trim())||[...document.querySelectorAll('input[type=checkbox]')].some(n=>n.checked);
+function publishDraft(){if(window.parent!==window)window.parent.postMessage({type:'creo:operator-dirty',dirty:hasDraft(),busy:busy&&busyOwner!=='load'},location.origin);}
+document.addEventListener('input',publishDraft);document.addEventListener('change',publishDraft);
+window.addEventListener('beforeunload',event=>{if(window.parent===window&&(busy&&busyOwner!=='load'||hasDraft())){event.preventDefault();event.returnValue='';}});
+function setBusy(value,owner){busy=value;busyOwner=value?owner:'';$('reload-requests').disabled=value;for(const [id,type] of [['list','changes'],['carrier-requests','carrier']])if(type!==owner){const other=$(id);other.dataset.busy=String(value);other.inert=value;}publishDraft();}
 async function load(){
  if(busy)return;
  setBusy(true,'load');try{

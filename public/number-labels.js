@@ -1,15 +1,16 @@
 document.addEventListener('DOMContentLoaded',async()=>{
  'use strict';
  const $=id=>document.getElementById(id),api=CreoPlatform.api,esc=CreoPlatform.escapeHtml,M=CreoNumberLabels,q=new URLSearchParams(location.search);
- let rounds=[],round=null,parts=[],plans=[],roundVendors=[],selectedPlan=null,labels=[],checked=new Set(),busy=false,sequence=0,dirty=false;
+ let rounds=[],round=null,parts=[],plans=[],roundVendors=[],selectedPlan=null,labels=[],checked=new Set(),busy=false,saving=false,sequence=0,dirty=false;
+ function syncShell(){if(window.parent!==window)window.parent.postMessage({type:'creo:operator-dirty',dirty,busy:saving},location.origin);}
  const initial=()=>$('config-mode').value==='split'?[{name:'업체 순서',prefix:'A',start:1,defaultCount:4,vendors:[]}]:[{name:'1부',prefix:'A',start:1,vendors:[]},{name:'2부',prefix:'B',start:1,vendors:[]}];
  function configuration(){return $('config-mode').value==='split'?{mode:'split',setup:{vendors:parts[0]?.vendors||[],defaultCount:parts[0]?.defaultCount??4,reverse:$('reverse-second').checked,panels:parts.slice(1)}}:{mode:'parts',parts};}
  const endpoint=()=>`channels/${encodeURIComponent(round.channelId)}/number-label-plans`;
  const storageKey=()=>`creo.number-labels:${round.channelId}:${round.date}`;
  function error(e){$('error').textContent=e?.message||e||'';$('error').hidden=!$('error').textContent;}
  function message(t){$('status').textContent=t;}
- function lock(value){busy=value;document.querySelectorAll('main button,main input,main select').forEach(el=>el.disabled=value);$('setup').disabled=value;}
- function remember(){dirty=true;try{localStorage.setItem(storageKey(),JSON.stringify({parts,title:$('title').value,mode:$('config-mode').value,reverse:$('reverse-second').checked}));}catch{}labels=[];checked.clear();$('print-pages').innerHTML='';$('result').hidden=true;message('설정 변경 · 미리보기 후 저장해 주세요.');}
+ function lock(value,activeSave=false){busy=value;saving=value&&activeSave;document.querySelectorAll('main button,main input,main select').forEach(el=>el.disabled=value);$('setup').disabled=value;syncShell();}
+ function remember(){dirty=true;syncShell();try{localStorage.setItem(storageKey(),JSON.stringify({parts,title:$('title').value,mode:$('config-mode').value,reverse:$('reverse-second').checked}));}catch{}labels=[];checked.clear();$('print-pages').innerHTML='';$('result').hidden=true;message('설정 변경 · 미리보기 후 저장해 주세요.');}
  function fit(){document.querySelectorAll('.fit').forEach(el=>{el.style.fontSize=el.dataset.base||'';const width=el.closest('.number-label').clientWidth;if(!width)return;let size=parseFloat(getComputedStyle(el).fontSize);while(size>1&&(el.scrollWidth>el.clientWidth+1||el.scrollHeight>el.clientHeight+1)){size-=.5;el.style.fontSize=size+'px';}if(el.style.fontSize)el.style.fontSize=(size/width*100)+'cqw';});}
  function renderParts(){
   $('parts').innerHTML=parts.map((p,i)=>`<section class="part" data-part="${i}"><div class="part-header"><label>부 이름<input data-field="name" value="${esc(p.name)}" maxlength="30"></label><label>앞글자<input data-field="prefix" value="${esc(p.prefix)}" maxlength="1"></label><label>시작번호<input data-field="start" type="number" min="1" max="999" value="${p.start}"></label><label>기본 개수<input data-default type="number" min="0" max="100" value="2"></label><button data-action="remove-part" type="button">부 삭제</button></div><div class="part-tools"><button data-action="add-vendor" type="button">업체 추가</button><button data-action="apply-count" type="button">기본 개수 일괄 적용</button>${i?'<button data-action="copy" type="button">앞 부 설정 복사</button>':''}<button data-action="reverse" type="button">업체 역순</button></div>${p.vendors.length?p.vendors.map((v,j)=>`<div class="vendor-row" data-vendor="${j}"><span class="position">${j+1}</span><label>업체명<input list="vendors" data-field="company" maxlength="80" value="${esc(v.company)}"></label><label>개수<input data-field="count" type="number" min="0" max="100" value="${v.count}"></label><div class="move"><button type="button" data-action="up" aria-label="${esc(v.company||'업체')} 위로" ${j===0?'disabled':''}>↑</button><button type="button" data-action="down" aria-label="${esc(v.company||'업체')} 아래로" ${j===p.vendors.length-1?'disabled':''}>↓</button><button type="button" data-action="remove-vendor">삭제</button></div></div>`).join(''):'<p class="part-empty">업체를 추가하고 추첨 순서대로 배치해 주세요.</p>'}</section>`).join('');
@@ -39,6 +40,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
   $('editor').hidden=!!selectedPlan;$('edit-plan').hidden=!selectedPlan;
   if(selectedPlan){parts=structuredClone(selectedPlan.parts);labels=structuredClone(selectedPlan.labels);$('saved').value=selectedPlan.id;renderResult();}
   else{$('config-mode').value='split';$('reverse-second').checked=true;parts=initial();$('title').value='';try{const draft=JSON.parse(localStorage.getItem(storageKey()));if(draft&&Array.isArray(draft.parts)&&draft.parts.length<=8){parts=draft.parts;$('config-mode').value=draft.mode||'parts';$('reverse-second').checked=draft.reverse!==false;$('title').value=draft.title||'';dirty=true;}}catch{}labels=[];$('saved').value='';$('result').hidden=true;renderParts();}
+  syncShell();
  }
  async function load(){
   const seq=++sequence;error('');message('번호표를 불러오는 중…');lock(true);$('editor').hidden=$('result').hidden=true;selectedPlan=null;plans=[];
@@ -80,7 +82,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
   const signature=JSON.stringify(input),key=storageKey()+':pending';let pending;
   try{pending=JSON.parse(localStorage.getItem(key));}catch{}
   if(!pending||pending.signature!==signature){pending={signature,requestId:crypto.randomUUID()};try{localStorage.setItem(key,JSON.stringify(pending));}catch{}}
-  lock(true);message('번호표 저장 중…');
+  lock(true,true);message('번호표 저장 중…');
   try{const {plan}=await api(endpoint(),{method:'POST',body:JSON.stringify({...input,requestId:pending.requestId})});plans=[plan,...plans.filter(p=>p.id!==plan.id)];const option=document.createElement('option');option.value=plan.id;option.textContent=plan.title+' · '+plan.labels.length+'장';$('saved').prepend(option);try{localStorage.removeItem(key);localStorage.removeItem(storageKey());}catch{}openPlan(plan.id);message('번호표를 저장했어요. 출력할 번호를 선택해 주세요.');}
   catch(e){error(e);message('저장 여부를 확인하지 못했어요. 같은 내용으로 다시 저장해도 중복되지 않습니다.');}finally{lock(false);}
  };
@@ -94,7 +96,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
   if(busy||!selectedPlan)return;error('');const chosen=labels.filter(l=>checked.has(l.lot_number));
   if(!chosen.length){error('출력할 번호를 선택해 주세요.');return;}
   if(!browser&&chosen.length>120){error('B1 PRO는 한 번에 120장까지 출력해 주세요. 부별로 나누어 선택할 수 있어요.');return;}
-  lock(true);let submitted=false;$('print-status').textContent='저장본 확인 중…';
+  lock(true,true);let submitted=false;$('print-status').textContent='저장본 확인 중…';
   try{const fresh=await api(endpoint()+'?'+new URLSearchParams({date:round.date}));const saved=fresh.plans.find(p=>p.id===selectedPlan.id);if(!saved||JSON.stringify(saved.labels)!==JSON.stringify(selectedPlan.labels))throw Error('저장본이 달라졌어요. 새로고침한 뒤 다시 선택해 주세요.');
    if(browser){$('print-pages').innerHTML=chosen.map(l=>M.labelHtml(l,esc)).join('');fit();$('print-status').textContent='용지 50×30 mm · 배율 100% · 머리글/바닥글 끄기';window.print();return;}
    const base='http://127.0.0.1:17876',status=await fetch(base+'/v1/status',{signal:AbortSignal.timeout(5000)}).then(r=>r.json());
@@ -106,7 +108,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
   }catch(e){error(submitted?'접수 결과가 불확실합니다. 모니터 앱의 출력 대기열을 확인한 뒤 재출력해 주세요.':e.message==='Failed to fetch'?'밴드 모니터 앱과 프린터 연결을 확인해 주세요.':e.message);$('print-status').textContent='';}finally{lock(false);}
  }
  $('print-b1').onclick=()=>print(false);$('print-browser').onclick=()=>print(true);$('reload').onclick=load;
- $('round').onchange=()=>{round=structuredClone(rounds[Number($('round').value)]);dirty=false;updateScope();load();};$('date').onchange=()=>{round.date=$('date').value;updateScope();load();};
+ $('round').onchange=()=>{round=structuredClone(rounds[Number($('round').value)]);dirty=false;syncShell();updateScope();load();};$('date').onchange=()=>{round.date=$('date').value;updateScope();load();};
  window.addEventListener('beforeunload',e=>{if(busy){e.preventDefault();e.returnValue='';}});
  try{
   if(!await CreoPlatform.verifyAdmin()){location.replace('/operator-login.html?next='+encodeURIComponent(location.pathname+location.search));return;}

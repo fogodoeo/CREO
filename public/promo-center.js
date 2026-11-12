@@ -244,7 +244,7 @@
   if(library){try{await refresh();window.CreoPromoGuide?.offer();}catch(e){error(e.status?e.message:'연결을 확인하고 새로고침해 주세요.');}finally{$('refresh').disabled=false;$('loading').hidden=true;}return;}
   try{if(admin){if(!await CreoPlatform.verifyAdmin()){$('content').hidden=true;$('login').hidden=false;$('login').querySelector('a').hidden=true;$('admin-login').hidden=false;return;}}
    else{const r=await fetch('/api/platform/vendor-access/session',{credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(20000)});if(!r.ok)throw Error('로그인을 확인하지 못했어요. 새로고침해 주세요.');session=await r.json();if(!session.authenticated){$('content').hidden=true;$('login').hidden=false;return;}if(!company&&session.companies?.length===1){company=session.companies[0].id;history.replaceState(null,'','?company='+encodeURIComponent(company));}if(!company){$('content').hidden=true;$('login').hidden=false;return;}}
-   await refresh();if(query.get('view')==='templates')$('tab-templates').click();await window.CreoPromoGuide?.offer();await openAssignedPreview();
+   await refresh();if(query.get('view')==='templates')$('tab-templates').click();if(!admin)await window.CreoPromoGuide?.offer();await openAssignedPreview();
   }catch(e){error(e.status?e.message:'연결을 확인하고 새로고침해 주세요.');if(e.status===401||e.status===403)$('login').hidden=false;}
   finally{$('refresh').disabled=false;$('loading').hidden=true;}
  }
@@ -260,6 +260,6 @@
  for(const [id,step]of [['prev',-1],['next-month',1]])$(id).onclick=async()=>{const [y,m]=month.split('-').map(Number);month=new Date(Date.UTC(y,m-1+step,1)).toISOString().slice(0,7);selected=month+'-01';try{await refresh();}catch(e){error(e.message);}};
  for(const view of ['calendar','templates'])$('tab-'+view).onclick=()=>{for(const v of ['calendar','templates']){$(v+'-view').hidden=v!==view;if(v===view)$('tab-'+v).setAttribute('aria-current','page');else $('tab-'+v).removeAttribute('aria-current');}};
  $('capacity-form').onsubmit=async e=>{e.preventDefault();try{await request({action:'capacity',requestId:crypto.randomUUID(),revision:state.revision,capacity:Number($('capacity').value)});await refresh();$('status').textContent='정원을 저장했습니다.';}catch(e){error(e.message);}};
- $('admin-login').onsubmit=async e=>{e.preventDefault();try{if(!await CreoPlatform.verifyAdmin($('password').value))throw Error('비밀번호를 확인해 주세요.');$('password').value='';await refresh();window.CreoPromoGuide?.offer();}catch(e){error(e.message);}};
+ $('admin-login').onsubmit=async e=>{e.preventDefault();try{if(!await CreoPlatform.verifyAdmin($('password').value))throw Error('비밀번호를 확인해 주세요.');$('password').value='';await refresh();}catch(e){error(e.message);}};
  start();
 })();

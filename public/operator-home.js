@@ -4,9 +4,10 @@ document.addEventListener('DOMContentLoaded',()=>{
  const emit=(name,detail)=>{if(typeof CustomEvent!=='undefined')document.dispatchEvent(new CustomEvent(name,{detail}));};
  function login(message=''){emit('creo:operator-reset');$('dashboard').hidden=true;$('login-gate').hidden=false;$('login-error').textContent=message;$('login-submit').disabled=false;$('admin-password').focus()}
  function link(id,href){$(id).hidden=!href;if(href)$(id).href=href;else $(id).removeAttribute('href')}
+ function agendaTitle(r){if(!r.date)return r.name||'';const [y,m,d]=r.date.split('-');for(const p of [`${y}.${m}.${d}`,`${y}-${m}-${d}`,`${m}/${d}`,`${Number(m)}/${Number(d)}`])if((r.name||'').startsWith(p)){const rest=r.name.slice(p.length).replace(/^[\s·-]+/,'');if(rest)return rest;}return r.name||'';}
  function renderAgenda(){
   const list=Model.agenda(rounds,$('schedule-filter').value||'upcoming');
-  $('schedule-list').innerHTML=list.length?list.map(r=>`<a href="${esc(Model.home(r.channelId,r.archiveId))}" class="schedule-item"${Model.key(r)===Model.key(state.round)?' aria-current="true"':''}><time datetime="${esc(r.date||'')}">${r.date?esc(r.date.slice(5).replace('-',' / ')):'날짜 미정'}</time><span><strong>${esc(r.name)}</strong><small>${r.phase==='live'?'경매 진행 중':r.phase==='finished'||r.archiveId?'방송 종료 · 입금·배송·정산':'방송 준비'}</small></span><span aria-hidden="true">›</span></a>`).join(''):'<p class="agenda-empty">표시할 방송이 없습니다. 다른 기간을 선택해 주세요.</p>';
+  $('schedule-list').innerHTML=list.length?list.map(r=>`<a href="${esc(Model.home(r.channelId,r.archiveId))}" class="schedule-item"${Model.key(r)===Model.key(state.round)?' aria-current="true"':''}><time datetime="${esc(r.date||'')}">${r.date?esc(r.date.slice(5).replace('-',' / ')):'날짜 미정'}</time><span><strong>${esc(agendaTitle(r))}</strong><small>${r.phase==='live'?'경매 진행 중':r.phase==='finished'||r.archiveId?'방송 종료 · 입금·배송·정산':'방송 준비'}</small></span><span aria-hidden="true">›</span></a>`).join(''):'<p class="agenda-empty">표시할 방송이 없습니다. 다른 기간을 선택해 주세요.</p>';
  }
  function render(search=location.search,push=false){
   $('work-panel').hidden=true;state=Model.selection(catalog,rounds,activeId,search);const {channel,round,archiveId}=state,links=Model.links(state),isNational=Model.national(channel);
@@ -25,7 +26,9 @@ document.addEventListener('DOMContentLoaded',()=>{
   $('manage-rounds').textContent=isNational?'회차 준비·방송 전환':'결과 보관·순위';$('national-intake').hidden=!isNational;
   $('work-title').textContent=state.label;$('work-badge').textContent=state.finished?'방송 종료 · 낙찰·정산':round.phase==='live'?'경매 진행 중':'방송 준비';$('work-badge').dataset.active=String(round.phase==='live');
   $('scope-note').textContent=state.finished?'남은 입금·배송·정산을 확인하세요.':channel.status==='draft'?'출품 검토 후 방송을 준비하세요.':'이 방송에서 할 일을 선택하세요.';
-  $('onair-name').textContent=rounds.find(r=>r.channelId===activeId&&!r.archiveId)?.name||catalog.channels.find(c=>c.id===activeId)?.name||'방송 회차 없음';
+  const onairRound=rounds.find(r=>r.channelId===activeId&&!r.archiveId);
+  $('onair-name').textContent=(onairRound?.name||catalog.channels.find(c=>c.id===activeId)?.name||'방송 회차 없음')+(onairRound?.phase==='finished'?' (종료됨)':'');
+  document.querySelector('.onair')?.toggleAttribute('data-finished',onairRound?.phase==='finished');
   $('selection-panel').hidden=false;$('work-panel').hidden=false;$('load-error').hidden=true;$('platform-status').textContent='';document.title=state.label+' · 운영 홈';
   renderAgenda();
   const params=new URLSearchParams(search),shellParams=new URLSearchParams(state.home.split('?')[1]);for(const k of ['view','vendor','action','status'])if(params.get(k))shellParams.set(k,params.get(k));
